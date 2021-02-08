@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\TsudaKageyu-minhook\src\buffer.c" />
+    <ClCompile Include="..\TsudaKageyu-minhook\src\HDE\hde32.c" />
+    <ClCompile Include="..\TsudaKageyu-minhook\src\hook.c" />
+    <ClCompile Include="..\TsudaKageyu-minhook\src\trampoline.c" />
+    <ClCompile Include="..\TsudaKageyu-minhook\src\hde\hde64.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\TsudaKageyu-minhook\include\MinHook.h" />
+    <ClInclude Include="..\TsudaKageyu-minhook\src\buffer.h" />
+    <ClInclude Include="..\TsudaKageyu-minhook\src\HDE\hde32.h" />
+    <ClInclude Include="..\TsudaKageyu-minhook\src\HDE\hde64.h" />
+    <ClInclude Include="..\TsudaKageyu-minhook\src\HDE\pstdint.h" />
+    <ClInclude Include="..\TsudaKageyu-minhook\src\HDE\table32.h" />
+    <ClInclude Include="..\TsudaKageyu-minhook\src\HDE\table64.h" />
+    <ClInclude Include="..\TsudaKageyu-minhook\src\trampoline.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{9d24b740-be2e-4cfd-b9a4-340a50946ee9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{76381bc7-2863-4cc5-aede-926ec2c506e4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="HDE">
+      <UniqueIdentifier>{56ddb326-6179-430d-ae19-e13bfd767bfa}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

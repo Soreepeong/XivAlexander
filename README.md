@@ -1,0 +1,111 @@
+# XivAlexander
+| Connection | Image |
+| --- | --- |
+| Korea to NA DC<br />VPN only | ![Before GIF](https://github.com/Soreepeong/XivAlexander/raw/main/Graphics/before.gif) |
+| Korea to NA DC<br />XivAlexander enabled | ![After GIF](https://github.com/Soreepeong/XivAlexander/raw/main/Graphics/after.gif) | 
+| Korea to Korean DC<br />Direct connection | ![After GIF](https://github.com/Soreepeong/XivAlexander/raw/main/Graphics/ref.gif) | 
+
+Use [XivMitmLatencyMitigator](https://github.com/Soreepeong/XivMitmLatencyMitigator) instead if you're playing on non-Windows system(Linux using WINE, Mac, or PlayStation(PS4)), or want to apply this solution to a custom VPN server running on Linux operating system. Do **not** stack both solutions.
+
+# English
+This add-on will make double weaving always possible. No more low DPS output just because you are on high latency network. (Actions with long delay to begin with - like High Jump - don't count.)
+
+## Usage
+Run the game if it isn't already running, run `XivAlexanderLoader.exe`, and follow the instructions. Try running as Administrator if it fails to load.
+
+**As it uses DLL injection, your anti-virus software might flag this add-on.**
+You might have to add both `XivAlexander.dll` and `XivAlexanderLoader.exe` to exclusion list.
+Refer to your anti-virus software manual for instructions.
+
+### First time setup
+1. Open `XivAlexander.dll.json` with a text editor which should have been created after a successful load for the first time.
+2. Modify opcode values. As of Patch 5.45 for the international release, opcodes are as following:
+   ```json
+   {
+       "ActorCast": "0x02b2",
+       "ActorControl": "0x00f0",
+       "RequestUseAction": "0x017a",
+       "ActorControlSelf": "0x0350",
+       "SkillResultResponse01": "0x021f",
+       "SkillResultResponse08": "0x03df",
+       "SkillResultResponse16": "0x00ad",
+       "SkillResultResponse24": "0x0229",
+       "SkillResultResponse32": "0x0197"
+   }
+   ```
+3. Find the XivAlexander icon on your shell notification area (tray area), and click on *Reload Configuration*.
+
+### How to find Opcodes
+1. Turn on *Use IPC Type Finder* menu from notification area icon, and open Log window.
+2. Cast Cure-like casted actions to self, and figure out `RequestUseAction`, `SkillResultResponse01`, `ActorCast`, and `ActorControlSelf`(this includes cooldown information.) 
+3. Cancel cast by moving around, and figure out `ActorControl`.
+4. Use AoE action without any target around, and figure out `SkillResultResponse08`.
+5. Enter Sastasha without level synchronization, pull more than 9 adds, and use an AoE action to figure out `SkillResultResponse16`.
+6. Do the same but pull more than 17 adds to figure out `SkillResultResponse24`.
+7. Leave and re-enter Sastasha, and do the same but pull more than 25 adds to figure out `SkillResultResponse32`.
+
+## How it works
+After you use an action, the game will apply 500ms animation lock. 
+When server responds to action use request, it will contain animation lock duration information, and the game client will re-apply the animation lock with the duration given from the server.
+The game does not take latency into account, so higher your latency is, longer the net effect of animation lock will be. (up to 500ms + &lt;action animation lock duration&gt;).
+This add-on will subtract the time taken for a response from the server for the particular request from animation lock duration.
+
+In case when it takes more than 500ms to receive a response, the client will let you use two actions consecutively, which will occasionally trigger server-side sanity check to reject the third action, or even delay the usage of the third action.
+This add-on will prevent that from happening by forcing animation lock times for both actions combined.
+
+Example:
+1. [0.0s] Action A Request
+2. [0.5s] Action B Request
+3. [0.6s] Action A Response (1.0s lock)
+4. [1.1s] Action B Response (1.0s lock)
+* By default, the client will let you input at 2.1s.
+* This addon will force the next input to be accepted at 2.0s.
+
+## Third-party Libraries
+* https://github.com/TsudaKageyu/minhook
+* https://github.com/madler/zlib
+* https://github.com/mirror/scintilla
+* https://github.com/nlohmann/json
+
+## License
+Apache License 2.0
+
+# 한국어
+높은 핑에서 글쿨 밀리지 않고 오프글쿨을 두개 쓰세요. 핑이 높다고 딜이 떨어지는 일이 있어서야 되겠습니까? (하이점프 같은 애초에 긴 스킬은 해당사항 없습니다)
+
+## 사용 방법
+게임이 이미 켜져 있지 않다면 게임을 켜고, `XivAlexanderLoader.exe`를 관리자 권한으로 실행하세요.
+
+**DLL 인젝션을 이용하므로 안티바이러스 프로그램에서 악성코드로 잡을 수 있습니다. 예외로 추가해 주세요.**
+
+### 처음 사용할 때 세팅
+1. `XivAlexanderLoader.exe`가 있는 폴더에 생긴 `XivAlexander.dll.json`를 텍스트 편집기 (메모장 등)으로 열어 주세요.
+2. 옵코드를 적당히 수정해 주세요. 현재 한썹 5.3에서는 다음과 같습니다. 
+   ```json
+   {
+       "ActorCast": "0x03b8",
+       "ActorControl": "0x013d",
+       "ActorControlSelf": "0x025f",
+       "RequestUseAction": "0x00f0",
+       "SkillResultResponse01": "0x0266",
+       "SkillResultResponse08": "0x0167",
+       "SkillResultResponse16": "0x03a7",
+       "SkillResultResponse24": "0x016b",
+       "SkillResultResponse32": "0x0231"
+   }
+   ```
+3. 시스템 알림 영역(트레이)에 있는 아이콘을 오른쪽 클릭한 후 *Reload Configuration*을 누르세요.
+
+### 옵코드 찾는 방법
+1. 메뉴에서 *Use IPC Type Finder*를 켜고, 로그 창을 엽니다.
+2. 자기 자신에게 케알을 시전해 `RequestUseAction`, `SkillResultResponse01`, `ActorCast`, `ActorControlSelf`(재사용 대기시간 정보 포함)를 알아냅니다.
+3. 케알 시전 중 움직여서 취소해서 `ActorControl`을 알아냅니다.
+4. 대상이 안 닿는 광역기를 시전해서 `SkillResultResponse08`을 알아냅니다.
+5. 사스타샤를 조율 해제하고 들어가서 9쫄까지 몰아서 광역기를 쓴 후 `SkillResultResponse16`을 알아냅니다.
+6. 17쫄까지 몰아서 광역기를 쓴 후 `SkillResultResponse24`을 알아냅니다.
+7. 사스타샤를 다시 들어가서 25쫄까지 몰아서 광역기를 쓴 후 `SkillResultResponse32`을 알아냅니다.
+
+### 작동 원리
+스킬 사용 후 기본으로 0.5초동안 다른 스킬을 사용할 수 없습니다.
+서버에서 스킬 다시 사용할 수 있을 때까지의 시간을 응답하면 그 때부터 다시 지정된 시간 동안 스킬을 사용할 수 없게 됩니다.
+응답받은 대기시간을 핑과 상관없이 이용하기 때문에, 그 대기시간에서 서버에서 응답하기까지 걸린 시간을 빼서 이용합니다.

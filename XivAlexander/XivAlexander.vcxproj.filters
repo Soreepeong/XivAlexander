@@ -1,0 +1,125 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Project Items">
+      <UniqueIdentifier>{23099293-0584-4c64-852f-044d412606ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Signatures">
+      <UniqueIdentifier>{696509c9-33b2-4777-81fe-e2504c251ef2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Network">
+      <UniqueIdentifier>{ea7dc46e-d6ee-4afb-85e4-e9876d9814b1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Misc">
+      <UniqueIdentifier>{2bf35a29-24e3-4da4-a984-7d975faff46f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Feature">
+      <UniqueIdentifier>{ca7e3e97-d02b-44f7-bd44-d1065410a357}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Window">
+      <UniqueIdentifier>{b4121b9e-107c-474d-8bc1-6d8a8dc8be3d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources">
+      <UniqueIdentifier>{f96ebb19-9c57-4d68-8afe-d887a9e1372b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="pch.cpp">
+      <Filter>Project Items</Filter>
+    </ClCompile>
+    <ClCompile Include="App.cpp" />
+    <ClCompile Include="App_Signatures.cpp">
+      <Filter>Signatures</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Signatures_Functions.cpp">
+      <Filter>Signatures</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Network_SocketHook.cpp">
+      <Filter>Network</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Network_Structures.cpp">
+      <Filter>Network</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Misc_FreeGameMutex.cpp">
+      <Filter>Misc</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Feature_AnimationLockLatencyHandler.cpp">
+      <Filter>Feature</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Window_Base.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Window_Log.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Misc_Logger.cpp">
+      <Filter>Misc</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Feature_IpcTypeFinder.cpp">
+      <Filter>Feature</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Window_TrayIcon.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="App_ConfigRepository.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h">
+      <Filter>Project Items</Filter>
+    </ClInclude>
+    <ClInclude Include="App.h" />
+    <ClInclude Include="App_Signatures.h">
+      <Filter>Signatures</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Signatures_Functions.h">
+      <Filter>Signatures</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Network_SocketHook.h">
+      <Filter>Network</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Network_Structures.h">
+      <Filter>Network</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Misc_FreeGameMutex.h">
+      <Filter>Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Feature_AnimationLockLatencyHandler.h">
+      <Filter>Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Window_Base.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Window_Log.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Misc_Logger.h">
+      <Filter>Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Feature_IpcTypeFinder.h">
+      <Filter>Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="json.hpp">
+      <Filter>Project Items</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Window_TrayIcon.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="App_ConfigRepository.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="ShellNotificationAreaIcon.png">
+      <Filter>Resources</Filter>
+    </Image>
+    <Image Include="C:\Temp\Player4_Icon.png" />
+    <Image Include="TrayIcon.ico" />
+    <Image Include="..\Graphics\Icon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="XivAlexander.rc">
+      <Filter>Resources</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>
