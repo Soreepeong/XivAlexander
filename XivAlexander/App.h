@@ -11,12 +11,13 @@ namespace App {
 		App& operator =(const App&) = delete;
 		App& operator =(App&&) = delete;
 
-		const std::unique_ptr<Internals> pInternals;
-
 	public:
 		App();
 
+		const std::unique_ptr<Internals> pInternals;
+
 		void Run();
+		int Unload();
 		void QueueRunOnMessageLoop(std::function<void()>, bool wait = false);
 		void AddHook(LPVOID pTarget, LPVOID pDetour, LPVOID* ppOriginal = nullptr);
 	};

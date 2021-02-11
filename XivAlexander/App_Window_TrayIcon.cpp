@@ -22,10 +22,10 @@ static WNDCLASSEXW WindowClass() {
 	return wcex;
 }
 
-App::Window::TrayIcon::TrayIcon(HWND hGameWnd, HANDLE hExitEvent)
+App::Window::TrayIcon::TrayIcon(HWND hGameWnd, std::function<void()> unloadFunction)
 	: Base(WindowClass(), L"TrayIcon", WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr)
 	, m_hMenu(LoadMenu(g_hInstance, MAKEINTRESOURCE(IDR_TRAY_MENU)))
-	, m_hExitEvent(hExitEvent)
+	, m_triggerUnload(unloadFunction)
 	, m_hGameWnd(hGameWnd) {
 
 	wchar_t path[MAX_PATH] = {};
@@ -33,7 +33,7 @@ App::Window::TrayIcon::TrayIcon(HWND hGameWnd, HANDLE hExitEvent)
 	
 	std::vector<unsigned char> hashSourceData{ 0x95, 0xf8, 0x89, 0x5c, 0x59, 0x94, 0x44, 0xf2, 0x9d, 0xda, 0xa6, 0x9a, 0x91, 0xb4, 0xe8, 0x51 };
 	hashSourceData.insert(hashSourceData.begin(), reinterpret_cast<unsigned char*>(path), reinterpret_cast<unsigned char*>(path) + sizeof path);
-	HashData(hashSourceData.data(), hashSourceData.size(), reinterpret_cast<BYTE*>(&m_guid.Data1), static_cast<DWORD>(sizeof GUID));
+	HashData(hashSourceData.data(), static_cast<DWORD>(hashSourceData.size()), reinterpret_cast<BYTE*>(&m_guid.Data1), static_cast<DWORD>(sizeof GUID));
 
 	Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIcon(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)));
 	NOTIFYICONDATAW nid = { sizeof(NOTIFYICONDATAW) };
@@ -121,7 +121,7 @@ LRESULT App::Window::TrayIcon::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) 
 					config.ShowLoggingWindow = !config.ShowLoggingWindow;
 					break;
 				case ID_TRAYMENU_UNLOADXIVALEXANDER:
-					SetEvent(m_hExitEvent);
+					m_triggerUnload();
 					break;
 			}
 		}

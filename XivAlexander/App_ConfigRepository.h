@@ -16,7 +16,7 @@ namespace App {
 		ConfigItemBase& operator =(const ConfigItemBase&) = delete;
 		ConfigItemBase& operator =(ConfigItemBase&&) = delete;
 
-		virtual bool LoadFrom(const nlohmann::json&) = 0;
+		virtual bool LoadFrom(const nlohmann::json&, bool announceChanged = false) = 0;
 		virtual void SaveTo(nlohmann::json&) const = 0;
 
 	protected:
@@ -54,7 +54,7 @@ namespace App {
 			return sanitized == rv;
 		}
 		 
-		virtual bool LoadFrom(const nlohmann::json& data) override;
+		virtual bool LoadFrom(const nlohmann::json& data, bool announceChanged = false) override;
 
 		virtual void SaveTo(nlohmann::json& data) const override;
 
@@ -113,7 +113,7 @@ namespace App {
 
 		ConfigRepository();
 		
-		void Reload();
+		void Reload(bool announceChange = false);
 		void SetQuitting();
 
 		static ConfigRepository& Config();

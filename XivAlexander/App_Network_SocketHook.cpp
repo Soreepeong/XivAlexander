@@ -392,6 +392,7 @@ class App::Network::SocketHook::Internals {
 public:
 	HWND m_hGameWnd;
 	std::map<SOCKET, std::unique_ptr<SingleConnection>> m_sockets;
+	std::set<SOCKET> m_nonGameSockets;
 	std::map<size_t, std::vector<std::function<void(SingleConnection&)>>> m_onSocketFoundListeners;
 	std::map<size_t, std::vector<std::function<void(SingleConnection&)>>> m_onSocketGoneListeners;
 	std::mutex m_socketMutex;
@@ -436,6 +437,7 @@ public:
 		SocketFn::closesocket.SetupHook([&](SOCKET s) {
 			CleanupSocket(s);
 			Misc::Logger::GetLogger().Format("%p: Close", s);
+			m_nonGameSockets.erase(s);
 			return SocketFn::closesocket.bridge(s);
 		});
 		SocketFn::send.SetupHook([&](SOCKET s, const char* buf, int len, int flags) {
@@ -546,11 +548,35 @@ public:
 
 	SingleConnection* OnSocketFound(SOCKET socket, bool existingOnly = false) {
 		std::lock_guard<std::mutex> _guard(m_socketMutex);
-		const auto found = m_sockets.find(socket);
-		
-		if (found != m_sockets.end()) {
-			found->second->ResolveAddresses();
-			return found->second.get();
+
+		{
+			const auto found = m_sockets.find(socket);
+
+			if (found != m_sockets.end()) {
+				found->second->ResolveAddresses();
+				return found->second.get();
+			}
+		}
+		{
+			const auto found = m_nonGameSockets.find(socket);
+			if (found != m_nonGameSockets.end())
+				return nullptr;
+			
+			sockaddr_in addr_v4;
+			int namelen = sizeof addr_v4;
+			if (0 != getpeername(socket, reinterpret_cast<sockaddr*>(&addr_v4), &namelen))
+				return nullptr; // Not interested if not connected yet
+
+			if (addr_v4.sin_family != AF_INET) {
+				m_nonGameSockets.emplace(socket);
+				return nullptr;
+			}
+			const auto mask24 = (addr_v4.sin_addr.S_un.S_addr & 0x00FFFFFFUL);
+			if (mask24 != 0x00E502CC && mask24 != 0x009D967C && mask24 != 0x00BD6FB7 && mask24 != 0x003252c3) {
+				Misc::Logger::GetLogger().Format("%p: Mark ignored; remote=%s", socket, get_ip_str(reinterpret_cast<sockaddr*>(&addr_v4)).c_str());
+				m_nonGameSockets.emplace(socket);
+				return nullptr;
+			}
 		}
 		if (m_unloading || existingOnly)
 			return nullptr;

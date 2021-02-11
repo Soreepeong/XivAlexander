@@ -119,6 +119,25 @@ const char* AddDebugPrivilege() {
 	return nullptr;
 }
 
+void* FindModuleAddress(HANDLE hProcess, LPWSTR szDllPath) {
+	HMODULE hMods[1024];
+	DWORD cbNeeded;
+	unsigned int i;
+	bool skip = false;
+	if (EnumProcessModules(hProcess, hMods, sizeof(hMods), &cbNeeded)) {
+		for (i = 0; i < (cbNeeded / sizeof(HMODULE)); i++) {
+			WCHAR szModName[MAX_PATH];
+			if (GetModuleFileNameExW(hProcess, hMods[i], szModName, MAX_PATH)) {
+				if (wcsncmp(szModName, szDllPath, MAX_PATH) == 0)
+					return hMods[i];
+			}
+		}
+	}
+	return nullptr;
+}
+
+extern "C" __declspec(dllimport) int __stdcall LoadXivAlexander(void* lpReserved);
+
 int WINAPI wWinMain(
 	_In_ HINSTANCE hInstance,
 	_In_opt_ HINSTANCE hPrevInstance,
@@ -169,20 +188,7 @@ int WINAPI wWinMain(
 
 			{
 				Utils::Win32Handle<> hProcess(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid));
-				HMODULE hMods[1024];
-				DWORD cbNeeded;
-				unsigned int i;
-				bool skip = false;
-				if (EnumProcessModules(hProcess, hMods, sizeof(hMods), &cbNeeded)) {
-					for (i = 0; i < (cbNeeded / sizeof(HMODULE)); i++) {
-						WCHAR szModName[MAX_PATH];
-						if (GetModuleFileNameExW(hProcess, hMods[i], szModName, MAX_PATH)) {
-							if (wcsncmp(szModName, szDllPath, MAX_PATH) == 0)
-								skip = true;
-						}
-					}
-				}
-				if (skip)
+				if (FindModuleAddress(hProcess, szDllPath))
 					continue;
 			}
 			
@@ -198,6 +204,13 @@ int WINAPI wWinMain(
 			{
 				Utils::Win32Handle<> hProcess(OpenProcess(PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_WRITE, false, pid));
 				InjectDll(hProcess, szDllPath);
+				
+				void* rpModule = FindModuleAddress(hProcess, szDllPath);
+
+				Utils::Win32Handle<> hLoadXivAlexanderThread(CreateRemoteThread(hProcess, nullptr, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(LoadXivAlexander), nullptr, 0, nullptr));
+				WaitForSingleObject(hLoadXivAlexanderThread, INFINITE);
+				DWORD exitCode;
+				GetExitCodeThread(hLoadXivAlexanderThread, &exitCode);
 			}
 		} catch (std::exception& e) {
 			if (!params.noerror)

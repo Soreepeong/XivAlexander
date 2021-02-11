@@ -14,6 +14,7 @@
 #include <functional>
 #include <string>
 #include <map>
+#include <set>
 #include <mutex>
 #include <functional>
 #include <numeric>

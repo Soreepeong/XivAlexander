@@ -30,7 +30,7 @@ const char* App::ConfigItemBase::Name() const {
 	return m_pszName;
 }
 
-void App::ConfigRepository::Reload() {
+void App::ConfigRepository::Reload(bool announceChange) {
 	nlohmann::json config;
 	try {
 		std::ifstream in(m_sConfigPath);
@@ -43,9 +43,11 @@ void App::ConfigRepository::Reload() {
 		config[m_sGamePath] = nlohmann::json::object();
 	auto& specificConfig = config[m_sGamePath];
 
+	m_destructionCallbacks.clear();
+
 	bool changed = false;
 	for (auto& item : m_allItems) {
-		changed |= item->LoadFrom(specificConfig);
+		changed |= item->LoadFrom(specificConfig, announceChange);
 		m_destructionCallbacks.push_back(item->OnChangeListener([this](ConfigItemBase& item) {
 			Save();
 			}));
@@ -97,17 +99,24 @@ App::ConfigRepository& App::ConfigRepository::Config() {
 }
 
 
-bool App::ConfigItem<uint16_t>::LoadFrom(const nlohmann::json& data) {
+bool App::ConfigItem<uint16_t>::LoadFrom(const nlohmann::json& data, bool announceChanged) {
 	auto i = data.find(Name());
 	if (i != data.end()) {
+		uint16_t newValue;
 		try {
-			if (i->is_string()) {
-				return Assign(static_cast<uint16_t>(std::stoi(i->get<std::string>(), nullptr, 0)));
-			} else if (i->is_number_integer())
-				return Assign(i->get<uint16_t>());
+			if (i->is_string())
+				newValue = static_cast<uint16_t>(std::stoi(i->get<std::string>(), nullptr, 0));
+			else if (i->is_number_integer())
+				newValue = i->get<uint16_t>();
+			else
+				return false;
 		} catch (std::exception& e) {
-			return false;
+			App::Misc::Logger::GetLogger().Format("Config value parse error: %s", e.what());
 		}
+		if (announceChanged)
+			this->operator=(newValue);
+		else
+			Assign(newValue);
 	}
 	return false;
 }
@@ -117,11 +126,14 @@ void App::ConfigItem<uint16_t>::SaveTo(nlohmann::json& data) const {
 }
 
 template<typename T>
-bool App::ConfigItem<T>::LoadFrom(const nlohmann::json& data) {
+bool App::ConfigItem<T>::LoadFrom(const nlohmann::json& data, bool announceChanged) {
 	auto i = data.find(Name());
 	if (i != data.end()) {
-		const auto value = i->get<T>();
-		return Assign(value);
+		const auto newValue = i->get<T>();
+		if (announceChanged)
+			this->operator=(newValue);
+		else
+			Assign(newValue);
 	}
 	return false;
 }

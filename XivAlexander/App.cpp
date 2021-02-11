@@ -57,6 +57,7 @@ public:
 	std::unique_ptr<::App::Feature::AnimationLockLatencyHandler> m_animationLockLatencyHandler;
 	std::unique_ptr<::App::Feature::IpcTypeFinder> m_ipcTypeFinder;
 	Utils::Win32Handle<> m_hUnloadEvent;
+	bool m_bUnloadDisabled = false;
 
 	std::unique_ptr<Window::Log> m_logWindow;
 	std::unique_ptr<Window::TrayIcon> m_trayWindow;
@@ -168,7 +169,7 @@ public:
 		QueueRunOnMessageLoop([&]() {
 			MH_EnableHook(MH_ALL_HOOKS);
 
-			m_trayWindow = std::make_unique<Window::TrayIcon>(m_hGameMainWindow, m_hUnloadEvent);
+			m_trayWindow = std::make_unique<Window::TrayIcon>(m_hGameMainWindow, [this]() {this->Unload(); });
 			onCleanup([this]() { m_trayWindow = nullptr; });
 
 			if (config.AlwaysOnTop)
@@ -227,6 +228,8 @@ public:
 		m_socketHook = nullptr;
 		RemoveAllHooks();
 		MH_Uninitialize();
+
+		SendMessage(m_hGameMainWindow, WM_NULL, 0, 0);
 	}
 
 	void QueueRunOnMessageLoop(std::function<void()> f, bool wait = false) {
@@ -264,6 +267,15 @@ public:
 		if (result != MH_OK)
 			throw std::exception("AddHook failure");
 	}
+
+	int Unload() {
+		if (!m_bUnloadDisabled) {
+			SetEvent(m_hUnloadEvent);
+			return 0;
+		}
+
+		return -1;
+	}
 };
 
 App::App::App() : pInternals(std::make_unique<App::Internals>()) {
@@ -273,6 +285,10 @@ void App::App::Run() {
 	pInternals->Run();
 }
 
+int App::App::Unload() {
+	return pInternals->Unload();
+}
+
 void App::App::QueueRunOnMessageLoop(std::function<void()> f, bool wait) {
 	pInternals->QueueRunOnMessageLoop(f, wait);
 }
@@ -280,6 +296,8 @@ void App::App::QueueRunOnMessageLoop(std::function<void()> f, bool wait) {
 void App::App::AddHook(LPVOID pTarget, LPVOID pDetour, LPVOID* ppOriginal) {
 	pInternals->AddHook(pTarget, pDetour, ppOriginal);
 }
+
+static bool l_bFreeLibraryAndExitThread = true;
 
 static DWORD WINAPI DllThread(PVOID param1) {
 	{
@@ -293,9 +311,11 @@ static DWORD WINAPI DllThread(PVOID param1) {
 				logger.Format(u8"Error: %s", e.what());
 		}
 		pInstance = nullptr;
-		Sleep(1000);
 	}
-	FreeLibraryAndExitThread(g_hInstance, 0);
+	if (l_bFreeLibraryAndExitThread) {
+		Sleep(1000);
+		FreeLibraryAndExitThread(g_hInstance, 0);
+	}
 	return 0;
 }
 
@@ -308,13 +328,41 @@ BOOL WINAPI DllMain(
 		case DLL_PROCESS_ATTACH:
 			g_hInstance = hinstDLL;
 
-			try {
-				Utils::Win32Handle<> hThread(CreateThread(nullptr, 0, DllThread, hinstDLL, 0, nullptr));
-				return TRUE;
-			} catch (const std::exception&) {
-				return FALSE;
-			}
 			break;
 	}
 	return TRUE;
+}
+
+extern "C" __declspec(dllexport) int __stdcall LoadXivAlexander(void* lpReserved) {
+	if (pInstance)
+		return 0;
+	try {
+		Utils::Win32Handle<> hThread(CreateThread(nullptr, 0, DllThread, g_hInstance, 0, nullptr));
+		return 0;
+	} catch (const std::exception& e) {
+		OutputDebugStringA(Utils::FormatString("LoadXivAlexander error: %s\n", e.what()).c_str());
+		return -1;
+	}
+}
+
+extern "C" __declspec(dllexport) int __stdcall DisableUnloading(int bDisable) {
+	pInstance->pInternals->m_bUnloadDisabled = !!bDisable;
+	return 0;
+}
+
+extern "C" __declspec(dllexport) int __stdcall SetFreeLibraryAndExitThread(int use) {
+	l_bFreeLibraryAndExitThread = !!use;
+	return 0;
+}
+
+extern "C" __declspec(dllexport) int __stdcall UnloadXivAlexander() {
+	if (pInstance)
+		pInstance->Unload();
+	return 0;
+}
+
+extern "C" __declspec(dllexport) int __stdcall ReloadConfiguration() {
+	if (pInstance)
+		App::ConfigRepository::Config().Reload(true);
+	return 0;
 }

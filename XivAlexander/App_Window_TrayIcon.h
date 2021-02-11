@@ -4,12 +4,12 @@
 namespace App::Window {
 	class TrayIcon : public Base {
 		const Utils::Win32Handle<HMENU, DestroyMenu> m_hMenu;
-		HANDLE const m_hExitEvent;
 		HWND const m_hGameWnd;
 		GUID m_guid;
+		const std::function<void()> m_triggerUnload;
 
 	public:
-		TrayIcon(HWND hGameWnd, HANDLE hExitEvent);
+		TrayIcon(HWND hGameWnd, std::function<void()> unloadFunction);
 		virtual ~TrayIcon();
 
 	protected:
