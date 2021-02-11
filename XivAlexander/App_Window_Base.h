@@ -44,6 +44,7 @@ namespace App::Window {
 		virtual ~Base();
 
         HWND GetHandle() const;
+        bool IsDestroyed() const;
 
         Utils::ListenerManager<Base, void> OnDestroyListener;
 

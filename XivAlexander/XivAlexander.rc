@@ -81,8 +81,18 @@ BEGIN
         MENUITEM "Use IPC Type &Finder",        ID_TRAYMENU_USEIPCTYPEFINDER
         MENUITEM SEPARATOR
         MENUITEM "Show &Logging Window",        ID_TRAYMENU_SHOWLOGGINGWINDOW
+        MENUITEM "Edit &Configuration",         ID_TRAYMENU_EDITCONFIGURATION
         MENUITEM "&Reload Configuration",       ID_TRAYMENU_RELOADCONFIGURATION
         MENUITEM "&Unload XivAlexander",        ID_TRAYMENU_UNLOADXIVALEXANDER
+    END
+END
+
+IDR_CONFIG_EDITOR_MENU MENU
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "&Apply",                      ID_FILE_APPLY
+        MENUITEM "&Revert",                     ID_FILE_REVERT
     END
 END
 

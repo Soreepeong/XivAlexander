@@ -1,24 +1,9 @@
 #include "pch.h"
 #include "App_ConfigRepository.h"
 
-static
-std::wstring GetConfigurationPath() {
-	wchar_t configPath[MAX_PATH];
-	GetModuleFileName(g_hInstance, configPath, MAX_PATH);
-	wcsncat_s(configPath, L".json", _countof(configPath));
-	return configPath;
-}
-
-static
-std::string GetGamePath(){
-	wchar_t path[MAX_PATH];
-	GetModuleFileName(nullptr, path, MAX_PATH);
-	return Utils::ToUtf8(path);
-}
-
 App::ConfigRepository::ConfigRepository()
 	: m_sGamePath(GetGamePath())
-	, m_sConfigPath(GetConfigurationPath()) {
+	, m_sConfigPath(GetConfigPath()) {
 }
 
 App::ConfigItemBase::ConfigItemBase(ConfigRepository* pRepository, const char* pszName)
@@ -59,6 +44,19 @@ void App::ConfigRepository::Reload(bool announceChange) {
 
 void App::ConfigRepository::SetQuitting() {
 	m_bSuppressSave = true;
+}
+
+std::string App::ConfigRepository::GetGamePath() {
+	wchar_t path[MAX_PATH];
+	GetModuleFileName(nullptr, path, MAX_PATH);
+	return Utils::ToUtf8(path);
+}
+
+std::wstring App::ConfigRepository::GetConfigPath() {
+	wchar_t configPath[MAX_PATH];
+	GetModuleFileName(g_hInstance, configPath, MAX_PATH);
+	wcsncat_s(configPath, L".json", _countof(configPath));
+	return configPath;
 }
 
 void App::ConfigRepository::Save() {

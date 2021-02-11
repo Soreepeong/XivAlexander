@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "resource.h"
 #include "App_Window_TrayIcon.h"
+#include "App_Window_Config.h"
 
 static const auto WM_TRAY_CALLBACK = WM_APP + 1;
 static const int trayItemId = 1;
@@ -123,6 +124,13 @@ LRESULT App::Window::TrayIcon::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) 
 				case ID_TRAYMENU_UNLOADXIVALEXANDER:
 					m_triggerUnload();
 					break;
+				case ID_TRAYMENU_EDITCONFIGURATION:
+					if (App::Window::Config::m_pConfigWindow && !App::Window::Config::m_pConfigWindow->IsDestroyed()) {
+						SetFocus(App::Window::Config::m_pConfigWindow->GetHandle());
+					} else {
+						App::Window::Config::m_pConfigWindow = std::make_unique< App::Window::Config>();
+					}
+					break;
 			}
 		}
 	}
@@ -130,6 +138,7 @@ LRESULT App::Window::TrayIcon::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) 
 }
 
 void App::Window::TrayIcon::OnDestroy() {
+	App::Window::Config::m_pConfigWindow = nullptr;
 	NOTIFYICONDATAW nid = { sizeof(NOTIFYICONDATAW) };
 	nid.guidItem = m_guid;
 	nid.uID = trayItemId;

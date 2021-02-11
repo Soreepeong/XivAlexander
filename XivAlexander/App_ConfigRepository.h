@@ -87,8 +87,6 @@ namespace App {
 
 		bool m_bSuppressSave = false;
 
-		void Save();
-
 	public:
 		// Set defaults so that the values will never be a valid IPC code.
 		// Assumes structure doesn't change too often.
@@ -112,9 +110,13 @@ namespace App {
 		ConfigItem<bool> ShowLoggingWindow{ this, "ShowLoggingWindow", false };
 
 		ConfigRepository();
-		
+
+		void Save();
 		void Reload(bool announceChange = false);
 		void SetQuitting();
+
+		static std::string GetGamePath();
+		static std::wstring GetConfigPath();
 
 		static ConfigRepository& Config();
 	};

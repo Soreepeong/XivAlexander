@@ -49,6 +49,10 @@ HWND App::Window::Base::GetHandle() const {
 	return m_hWnd;
 }
 
+bool App::Window::Base::IsDestroyed() const {
+	return m_bDestroyed;
+}
+
 LRESULT App::Window::Base::RunOnUiThreadWait(std::function<LRESULT()> fn) {
 	return SendMessage(m_hWnd, AppMessageRunOnUiThread, 0, LPARAM(&fn));
 }
@@ -137,6 +141,7 @@ LRESULT App::Window::Base::OnSysCommand(WPARAM commandId, short xPos, short yPos
 
 void App::Window::Base::OnDestroy() {
 	OnDestroyListener();
+	m_bDestroyed = true;
 }
 
 void App::Window::Base::Destroy() {

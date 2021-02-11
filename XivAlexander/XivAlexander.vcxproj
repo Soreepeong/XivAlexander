@@ -104,6 +104,7 @@
     <ClCompile Include="App_Signatures_Functions.cpp" />
     <ClCompile Include="App_Signatures.cpp" />
     <ClCompile Include="App_Window_Base.cpp" />
+    <ClCompile Include="App_Window_Config.cpp" />
     <ClCompile Include="App_Window_Log.cpp" />
     <ClCompile Include="App_Window_TrayIcon.cpp" />
     <ClCompile Include="pch.cpp">
@@ -123,6 +124,7 @@
     <ClInclude Include="App_Signatures_Functions.h" />
     <ClInclude Include="App_Signatures.h" />
     <ClInclude Include="App_Window_Base.h" />
+    <ClInclude Include="App_Window_Config.h" />
     <ClInclude Include="App_Window_Log.h" />
     <ClInclude Include="App_Window_TrayIcon.h" />
     <ClInclude Include="json.hpp" />
