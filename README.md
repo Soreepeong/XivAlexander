@@ -61,6 +61,8 @@ Example:
 * By default, the client will let you input at 2.1s.
 * This addon will force the next input to be accepted at 2.0s.
 
+**Because of how it works, this addon is only a step away from flat out cheating. Changing parameters below the limit means you're effectively claiming that your latency is below zero, which is just impossible. Do NOT modify numeric parameters outside of opcodes, or you ARE cheating. You have been warned.**
+
 ## Third-party Libraries
 * https://github.com/TsudaKageyu/minhook
 * https://github.com/madler/zlib
@@ -109,3 +111,5 @@ Apache License 2.0
 스킬 사용 후 기본으로 0.5초동안 다른 스킬을 사용할 수 없습니다.
 서버에서 스킬 다시 사용할 수 있을 때까지의 시간을 응답하면 그 때부터 다시 지정된 시간 동안 스킬을 사용할 수 없게 됩니다.
 응답받은 대기시간을 핑과 상관없이 이용하기 때문에, 그 대기시간에서 서버에서 응답하기까지 걸린 시간을 빼서 이용합니다.
+
+**작동 원리 때문에 부정행위 직전까지 가는 애드온입니다. 핑이 아무리 낮아도 0초 이상이지, 핑이 음수일 수는 없는 것처럼, 여러 수치를 지정한 값보다 낮게 바꾸면 확실한 부정행위입니다. 분명히 경고하였으니, 지정된 값 이하로 쓰지 마십시오.**

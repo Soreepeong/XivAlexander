@@ -78,7 +78,7 @@ public:
 											extraDelay = 5;
 										}
 									}
-									const auto addedDelay = static_cast<uint64_t>(1000. * std::max(0., ExtraDelay + newDuration));
+									const auto addedDelay = static_cast<uint64_t>(1000. * std::max(0., extraDelay + newDuration));
 									m_lastAnimationLockEndsAt += addedDelay;
 									newDuration = std::max(0.f, static_cast<int64_t>(m_lastAnimationLockEndsAt - now) / 1000.f);
 								}
