@@ -13,6 +13,8 @@ public:
 	// Feel free to increase and see how does it feel like to play on high latency instead, though.
 	static inline const uint64_t ExtraDelay = 75;  // in milliseconds
 
+	static inline const uint64_t AutoAttackDelay = 100; // in milliseconds
+
 	class SingleConnectionHandler {
 		const uint64_t CAST_SENTINEL = 0;
 
@@ -87,12 +89,12 @@ public:
 									) {
 									if (m_lastAnimationLockEndsAt > now) {
 										// if animation lock is supposedly already in progress, add the new value to previously in-progress animation lock, instead of replacing it.
-										m_lastAnimationLockEndsAt += 100;
+										m_lastAnimationLockEndsAt += AutoAttackDelay;
 										waitTime = m_lastAnimationLockEndsAt - now;
 
 									} else {
 										// even if it wasn't, the server would consider other actions in progress when calculating auto-attack delay, so we fix it to 100ms.
-										waitTime = 100;
+										waitTime = AutoAttackDelay;
 									}
 								} else
 									Misc::Logger::GetLogger().Format(reinterpret_cast<const char*>(u8"\t¦Ç Not user-originated, and isn't an auto-attack (%04x)"), actionEffect.ActionId);
