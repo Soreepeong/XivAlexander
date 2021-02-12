@@ -45,6 +45,7 @@ namespace App::Window {
 
         HWND GetHandle() const;
         bool IsDestroyed() const;
+        virtual HACCEL GetAcceleratorTable() const;
 
         Utils::ListenerManager<Base, void> OnDestroyListener;
 

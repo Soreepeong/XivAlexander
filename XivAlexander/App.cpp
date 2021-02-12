@@ -1,14 +1,20 @@
 #include "pch.h"
-#include "App.h"
 #include "App_Network_SocketHook.h"
 #include "App_Misc_FreeGameMutex.h"
-#include <conio.h>
 #include "App_Feature_AnimationLockLatencyHandler.h"
 #include "App_Feature_IpcTypeFinder.h"
 #include "App_Window_Log.h"
 #include "App_Window_TrayIcon.h"
+#include "App_Window_Config.h"
+
+namespace App {
+	class App;
+}
 
 HINSTANCE g_hInstance;
+
+static App::App* l_pApp = nullptr;
+static bool s_bFreeLibraryAndExitThread = true;
 
 static HWND FindGameMainWindow() {
 	HWND hwnd = 0;
@@ -42,13 +48,10 @@ static HWND FindGameMainWindow() {
 	return hwnd;
 }
 
-static std::unique_ptr<App::App> pInstance;
-
-class App::App::Internals {
-
+class App::App {
 public:
 	const HWND m_hGameMainWindow;
-	std::vector<std::function<void()>> m_initFailureCleanupList;
+	std::vector<Utils::CallOnDestruction> m_cleanupPendingDestructions;
 
 	std::mutex m_runInMessageLoopLock;
 	std::queue<std::function<void()>> m_qRunInMessageLoop;
@@ -56,7 +59,6 @@ public:
 	std::unique_ptr<::App::Network::SocketHook> m_socketHook;
 	std::unique_ptr<::App::Feature::AnimationLockLatencyHandler> m_animationLockLatencyHandler;
 	std::unique_ptr<::App::Feature::IpcTypeFinder> m_ipcTypeFinder;
-	Utils::Win32Handle<> m_hUnloadEvent;
 	bool m_bUnloadDisabled = false;
 
 	std::unique_ptr<Window::Log> m_logWindow;
@@ -82,7 +84,7 @@ public:
 		
 		switch (msg) {
 			case WM_DESTROY:
-				RemoveAllHooks();
+				SendMessage(m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
 				break;
 		}
 
@@ -92,91 +94,55 @@ public:
 		return res;
 	}
 
-	void RemoveAllHooks() {
-		MH_DisableHook(MH_ALL_HOOKS);
-
-		if (m_originalGameMainWndProc) {
-			SetWindowLongPtrW(m_hGameMainWindow, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(m_originalGameMainWndProc));
-			m_originalGameMainWndProc = nullptr;
-		}
+	void onCleanup(std::function<void()> cb) {
+		m_cleanupPendingDestructions.push_back(Utils::CallOnDestruction(cb));
 	}
 
-	Internals()
-		: m_hGameMainWindow(FindGameMainWindow())
-		, m_hUnloadEvent(CreateEventW(nullptr, true, false, nullptr)) {
+	void onCleanup(Utils::CallOnDestruction cb) {
+		m_cleanupPendingDestructions.push_back(std::move(cb));
+	}
 
-		const auto onFail = [&](std::function<void()> cb) {
-			m_initFailureCleanupList.push_back(cb);
-		};
+	App()
+		: m_hGameMainWindow(FindGameMainWindow()) {
+		l_pApp = this;
+
 		try {
 			Misc::FreeGameMutex::FreeGameMutex();
 
 			ConfigRepository::Config();
 
 			Scintilla_RegisterClasses(g_hInstance);
-			onFail([]() { Scintilla_ReleaseResources(); });
+			onCleanup([]() { Scintilla_ReleaseResources(); });
 
 			if (!m_hGameMainWindow)
 				throw std::exception("Game main window not found!");
 
 			MH_Initialize();
-			onFail([]() { MH_Uninitialize(); });
-			for (const auto& signature : Signatures::AllSignatures()) {
+			onCleanup([this]() { MH_Uninitialize(); });
+			for (const auto& signature : Signatures::AllSignatures())
 				signature->Setup();
-			}
-
-			namespace WinApiFn = ::App::Signatures::Functions::WinApi;
-
-			// Prevents "Limit frame rate when client is inactive" from making log window unresponsive.
-			WinApiFn::SleepEx.SetupHook([this](DWORD dwMilliseconds, BOOL bAlertable) -> DWORD {
-				if (m_mainThreadId == GetCurrentThreadId() && dwMilliseconds == 50) {
-					const auto res = MsgWaitForMultipleObjectsEx(0, nullptr, dwMilliseconds, QS_ALLEVENTS, bAlertable ? MWMO_ALERTABLE : 0);
-					if (res == WAIT_TIMEOUT)
-						return 0;
-					return WAIT_IO_COMPLETION;
-				} else
-					return WinApiFn::SleepEx.bridge(dwMilliseconds, bAlertable);
-				});
 
 			m_originalGameMainWndProc = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(m_hGameMainWindow, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(
-				static_cast<WNDPROC>([](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) { return pInstance->pInternals->OverridenWndProc(hwnd, msg, wParam, lParam); })
+				static_cast<WNDPROC>([](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) { return l_pApp->OverridenWndProc(hwnd, msg, wParam, lParam); })
 				)));
-		} catch (std::exception&) {
-			for (const auto& cb : m_initFailureCleanupList)
-				cb();
-			throw;
-		}
-	}
+			onCleanup([this]() {
+				QueueRunOnMessageLoop([]() { MH_DisableHook(MH_ALL_HOOKS); }, true);
+				SetWindowLongPtrW(m_hGameMainWindow, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(m_originalGameMainWndProc));
+				});
 
-	~Internals() {
-		while (!m_qRunInMessageLoop.empty())
-			Sleep(1);
-
-		for (const auto& cb : m_initFailureCleanupList)
-			cb();
-	}
-
-	void Run() {
-		auto& config = ConfigRepository::Config();
-		std::vector<std::function<void()>> cleanupCallbacks;
-		std::vector<Utils::CallOnDestruction> pendingDestructions;
-		const auto onCleanup = [&](std::function<void()> cb) {
-			cleanupCallbacks.push_back(cb);
-		};
-
-		m_socketHook = std::make_unique<Network::SocketHook>(m_hGameMainWindow);
-
-		QueueRunOnMessageLoop([&]() {
-			MH_EnableHook(MH_ALL_HOOKS);
+			m_socketHook = std::make_unique<Network::SocketHook>(m_hGameMainWindow);
+			onCleanup([this]() { m_socketHook = nullptr; });
 
 			m_trayWindow = std::make_unique<Window::TrayIcon>(m_hGameMainWindow, [this]() {this->Unload(); });
 			onCleanup([this]() { m_trayWindow = nullptr; });
+
+			auto& config = ConfigRepository::Config();
 
 			if (config.AlwaysOnTop)
 				SetWindowPos(m_hGameMainWindow, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 			else
 				SetWindowPos(m_hGameMainWindow, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-			pendingDestructions.push_back(config.AlwaysOnTop.OnChangeListener([&](ConfigItemBase&) {
+			onCleanup(config.AlwaysOnTop.OnChangeListener([&](ConfigItemBase&) {
 				if (config.AlwaysOnTop)
 					SetWindowPos(m_hGameMainWindow, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 				else
@@ -186,7 +152,7 @@ public:
 
 			if (config.UseHighLatencyMitigation)
 				m_animationLockLatencyHandler = std::make_unique<Feature::AnimationLockLatencyHandler>();
-			pendingDestructions.push_back(config.UseHighLatencyMitigation.OnChangeListener([&](ConfigItemBase&) {
+			onCleanup(config.UseHighLatencyMitigation.OnChangeListener([&](ConfigItemBase&) {
 				if (config.UseHighLatencyMitigation)
 					m_animationLockLatencyHandler = std::make_unique<Feature::AnimationLockLatencyHandler>();
 				else
@@ -196,7 +162,7 @@ public:
 
 			if (config.UseOpcodeFinder)
 				m_ipcTypeFinder = std::make_unique<Feature::IpcTypeFinder>();
-			pendingDestructions.push_back(config.UseOpcodeFinder.OnChangeListener([&](ConfigItemBase&) {
+			onCleanup(config.UseOpcodeFinder.OnChangeListener([&](ConfigItemBase&) {
 				if (config.UseOpcodeFinder)
 					m_ipcTypeFinder = std::make_unique<Feature::IpcTypeFinder>();
 				else
@@ -206,7 +172,7 @@ public:
 
 			if (config.ShowLoggingWindow)
 				m_logWindow = std::make_unique<Window::Log>();
-			pendingDestructions.push_back(config.ShowLoggingWindow.OnChangeListener([&](ConfigItemBase&) {
+			onCleanup(config.ShowLoggingWindow.OnChangeListener([&](ConfigItemBase&) {
 				if (config.ShowLoggingWindow)
 					m_logWindow = std::make_unique<Window::Log>();
 				else
@@ -214,22 +180,55 @@ public:
 				}));
 			onCleanup([this]() { m_logWindow = nullptr; });
 
-		}, true);
+		} catch (std::exception&) {
+			ConfigRepository::Config().SetQuitting();
+			while (!m_cleanupPendingDestructions.empty())
+				m_cleanupPendingDestructions.pop_back();
 
-		WaitForSingleObject(m_hUnloadEvent, INFINITE);
+			l_pApp = nullptr;
+			throw;
+		}
+	}
 
-		QueueRunOnMessageLoop([&]() {
-			config.SetQuitting();
-			pendingDestructions.clear();
-			for (auto i = cleanupCallbacks.crbegin(); i != cleanupCallbacks.crend(); ++i) 
-				(*i)();
-		}, true);
+	~App() {
+		ConfigRepository::Config().SetQuitting();
+		while (!m_cleanupPendingDestructions.empty())
+			m_cleanupPendingDestructions.pop_back();
 
-		m_socketHook = nullptr;
-		RemoveAllHooks();
-		MH_Uninitialize();
+		l_pApp = nullptr;
+	}
 
-		SendMessage(m_hGameMainWindow, WM_NULL, 0, 0);
+	void Run() {
+		QueueRunOnMessageLoop([&]() { MH_EnableHook(MH_ALL_HOOKS); }, true);
+
+		MSG msg;
+		std::vector<Window::Base*> openWindows;
+		while (GetMessageW(&msg, nullptr, 0, 0)) {
+			openWindows.clear();
+			if (m_logWindow) openWindows.push_back(dynamic_cast<Window::Base*>(&*m_logWindow));
+			if (Window::Config::m_pConfigWindow) openWindows.push_back(dynamic_cast<Window::Base*>(&*Window::Config::m_pConfigWindow));
+			if (m_trayWindow) openWindows.push_back(dynamic_cast<Window::Base*>(&*m_trayWindow));
+
+			bool dispatchMessage = true;
+			for (const auto pWindow : openWindows) {
+				HWND hWnd = pWindow->GetHandle();
+				HACCEL hAccel = pWindow->GetAcceleratorTable();
+				if (hAccel && (hWnd == msg.hwnd || IsChild(hWnd, msg.hwnd))){
+					if (TranslateAcceleratorW(hWnd, hAccel, &msg)) {
+						dispatchMessage = false;
+						break;
+					}
+					if (IsDialogMessageW(hWnd, &msg)) {
+						dispatchMessage = false;
+						break;
+					}
+				}
+			}
+			if (dispatchMessage) {
+				TranslateMessage(&msg);
+				DispatchMessageW(&msg);
+			}
+		}
 	}
 
 	void QueueRunOnMessageLoop(std::function<void()> f, bool wait = false) {
@@ -259,18 +258,9 @@ public:
 		}
 	}
 
-	void AddHook(LPVOID pTarget, LPVOID pDetour, LPVOID* ppOriginal = nullptr) {
-		int result = MH_OK;
-		QueueRunOnMessageLoop([&]() {
-			result = MH_CreateHook(pTarget, pDetour, ppOriginal);
-			}, true);
-		if (result != MH_OK)
-			throw std::exception("AddHook failure");
-	}
-
 	int Unload() {
 		if (!m_bUnloadDisabled) {
-			SetEvent(m_hUnloadEvent);
+			SendMessage(m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
 			return 0;
 		}
 
@@ -278,46 +268,20 @@ public:
 	}
 };
 
-App::App::App() : pInternals(std::make_unique<App::Internals>()) {
-}
-
-void App::App::Run() {
-	pInternals->Run();
-}
-
-int App::App::Unload() {
-	return pInternals->Unload();
-}
-
-void App::App::QueueRunOnMessageLoop(std::function<void()> f, bool wait) {
-	pInternals->QueueRunOnMessageLoop(f, wait);
-}
-
-void App::App::AddHook(LPVOID pTarget, LPVOID pDetour, LPVOID* ppOriginal) {
-	pInternals->AddHook(pTarget, pDetour, ppOriginal);
-}
-
-static bool l_bFreeLibraryAndExitThread = true;
-
 static DWORD WINAPI DllThread(PVOID param1) {
 	{
 		App::Misc::Logger logger;
 		try {
-			pInstance = std::make_unique<App::App>();
+			App::App app;
 			logger.Log(u8"XivAlexander initialized.");
-			pInstance->Run();
+			app.Run();
 		} catch (const std::exception& e) {
 			if (e.what())
 				logger.Format(u8"Error: %s", e.what());
 		}
-		pInstance = nullptr;
 	}
-	if (l_bFreeLibraryAndExitThread) {
-		// Without this, the game would crash. One possible reason is that other threads might
-		// still be executing the code of this DLL when it's already unloaded.
-		Sleep(1000);
+	if (s_bFreeLibraryAndExitThread)
 		FreeLibraryAndExitThread(g_hInstance, 0);
-	}
 	return 0;
 }
 
@@ -336,7 +300,7 @@ BOOL WINAPI DllMain(
 }
 
 extern "C" __declspec(dllexport) int __stdcall LoadXivAlexander(void* lpReserved) {
-	if (pInstance)
+	if (l_pApp)
 		return 0;
 	try {
 		Utils::Win32Handle<> hThread(CreateThread(nullptr, 0, DllThread, g_hInstance, 0, nullptr));
@@ -348,23 +312,23 @@ extern "C" __declspec(dllexport) int __stdcall LoadXivAlexander(void* lpReserved
 }
 
 extern "C" __declspec(dllexport) int __stdcall DisableUnloading(int bDisable) {
-	pInstance->pInternals->m_bUnloadDisabled = !!bDisable;
+	l_pApp->m_bUnloadDisabled = !!bDisable;
 	return 0;
 }
 
 extern "C" __declspec(dllexport) int __stdcall SetFreeLibraryAndExitThread(int use) {
-	l_bFreeLibraryAndExitThread = !!use;
+	s_bFreeLibraryAndExitThread = !!use;
 	return 0;
 }
 
 extern "C" __declspec(dllexport) int __stdcall UnloadXivAlexander() {
-	if (pInstance)
-		pInstance->Unload();
+	if (l_pApp)
+		l_pApp->Unload();
 	return 0;
 }
 
 extern "C" __declspec(dllexport) int __stdcall ReloadConfiguration() {
-	if (pInstance)
+	if (l_pApp)
 		App::ConfigRepository::Config().Reload(true);
 	return 0;
 }

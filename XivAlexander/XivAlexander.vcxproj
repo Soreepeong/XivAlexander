@@ -113,7 +113,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="App.h" />
     <ClInclude Include="App_ConfigRepository.h" />
     <ClInclude Include="App_Feature_AnimationLockLatencyHandler.h" />
     <ClInclude Include="App_Feature_IpcTypeFinder.h" />

@@ -70,7 +70,6 @@
     <ClInclude Include="pch.h">
       <Filter>Project Items</Filter>
     </ClInclude>
-    <ClInclude Include="App.h" />
     <ClInclude Include="App_Signatures.h">
       <Filter>Signatures</Filter>
     </ClInclude>

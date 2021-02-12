@@ -25,12 +25,5 @@ namespace App::Signatures::Functions {
 		FunctionSignature<BOOL> IsDebuggerPresent("WinApi::IsDebuggerPresent", ::IsDebuggerPresent,
 			[]() -> BOOL { return FALSE; }
 		);
-
-		// "Limit frame rate when client is inactive." triggers the game to call SleepEx in main message loop.
-		FunctionSignature<DWORD, DWORD, BOOL> SleepEx("WinApi::SleepEx", ::SleepEx,
-			[](DWORD dwMilliseconds, BOOL bAlertable) -> DWORD {
-				return SleepEx.Thunked(dwMilliseconds, bAlertable);
-			}
-		);
 	}
 }

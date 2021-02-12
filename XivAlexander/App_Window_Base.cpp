@@ -53,6 +53,10 @@ bool App::Window::Base::IsDestroyed() const {
 	return m_bDestroyed;
 }
 
+HACCEL App::Window::Base::GetAcceleratorTable() const {
+	return NULL;
+}
+
 LRESULT App::Window::Base::RunOnUiThreadWait(std::function<LRESULT()> fn) {
 	return SendMessage(m_hWnd, AppMessageRunOnUiThread, 0, LPARAM(&fn));
 }

@@ -61,7 +61,7 @@ App::Window::TrayIcon::~TrayIcon() {
 
 LRESULT App::Window::TrayIcon::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	if (uMsg == WM_CLOSE) {
-		if (MessageBoxW(m_hWnd, L"Closing this window will unload XivAlexander. Disable \"Show Control Window\" from the menu to hide this window. Proceed?", L"XivAlexander", MB_YESNO | MB_ICONQUESTION) == IDNO) {
+		if (!lParam && MessageBoxW(m_hWnd, L"Closing this window will unload XivAlexander. Disable \"Show Control Window\" from the menu to hide this window. Proceed?", L"XivAlexander", MB_YESNO | MB_ICONQUESTION) == IDNO) {
 			return 0;
 		}
 	} else if (uMsg == WM_INITMENUPOPUP) {
@@ -166,6 +166,7 @@ void App::Window::TrayIcon::OnDestroy() {
 	nid.uFlags = NIF_GUID;
 	Shell_NotifyIconW(NIM_DELETE, &nid);
 	Base::OnDestroy();
+	PostQuitMessage(0);
 }
 
 void App::Window::TrayIcon::RepopulateMenu() {

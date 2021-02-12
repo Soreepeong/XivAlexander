@@ -73,6 +73,5 @@ namespace App::Signatures::Functions {
 
 	namespace WinApi {
 		extern FunctionSignature<BOOL> IsDebuggerPresent;
-		extern FunctionSignature<DWORD, DWORD, BOOL> SleepEx;
 	}
 }
