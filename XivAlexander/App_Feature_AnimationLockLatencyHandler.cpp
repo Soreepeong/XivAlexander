@@ -95,9 +95,9 @@ public:
 										waitTime = 100;
 									}
 								} else
-									Misc::Logger::GetLogger().Format(reinterpret_cast<const char*>(u8"\t¦Ç Not user-originated, and isn't an auto-attack"));
+									Misc::Logger::GetLogger().Format(reinterpret_cast<const char*>(u8"\t¦Ç Not user-originated, and isn't an auto-attack (%04x)"), actionEffect.ActionId);
 
-							} else if (actionEffect.SourceSequence != 0) {
+							} else {
 								// find the one sharing Sequence, assuming action responses are always in order
 								while (!m_pendingActions.empty() && m_pendingActions.front().Sequence != actionEffect.SourceSequence) {
 									const auto& item = m_pendingActions.front();
