@@ -313,6 +313,8 @@ static DWORD WINAPI DllThread(PVOID param1) {
 		pInstance = nullptr;
 	}
 	if (l_bFreeLibraryAndExitThread) {
+		// Without this, the game would crash. One possible reason is that other threads might
+		// still be executing the code of this DLL when it's already unloaded.
 		Sleep(1000);
 		FreeLibraryAndExitThread(g_hInstance, 0);
 	}
