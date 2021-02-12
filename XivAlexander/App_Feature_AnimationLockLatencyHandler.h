@@ -7,7 +7,5 @@ namespace App::Feature {
 	public:
 		AnimationLockLatencyHandler();
 		~AnimationLockLatencyHandler();
-
-		void ReloadConfig();
 	};
 }

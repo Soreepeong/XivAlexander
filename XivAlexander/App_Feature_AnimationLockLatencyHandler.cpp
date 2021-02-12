@@ -256,7 +256,3 @@ App::Feature::AnimationLockLatencyHandler::AnimationLockLatencyHandler()
 
 App::Feature::AnimationLockLatencyHandler::~AnimationLockLatencyHandler() {
 }
-
-void App::Feature::AnimationLockLatencyHandler::ReloadConfig() {
-	ConfigRepository::Config().Reload();
-}
