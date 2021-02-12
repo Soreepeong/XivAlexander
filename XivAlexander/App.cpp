@@ -107,9 +107,8 @@ public:
 		l_pApp = this;
 
 		try {
-			Misc::FreeGameMutex::FreeGameMutex();
-
 			ConfigRepository::Config();
+			onCleanup([]() { ConfigRepository::DestroyConfig(); });
 
 			Scintilla_RegisterClasses(g_hInstance);
 			onCleanup([]() { Scintilla_ReleaseResources(); });
@@ -293,7 +292,7 @@ BOOL WINAPI DllMain(
 	switch (fdwReason) {
 		case DLL_PROCESS_ATTACH:
 			g_hInstance = hinstDLL;
-
+			App::Misc::FreeGameMutex::FreeGameMutex();
 			break;
 	}
 	return TRUE;

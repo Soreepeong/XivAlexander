@@ -120,5 +120,6 @@ namespace App {
 		static std::wstring GetConfigPath();
 
 		static ConfigRepository& Config();
+		static void DestroyConfig();
 	};
 }

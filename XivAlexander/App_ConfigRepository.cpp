@@ -96,6 +96,10 @@ App::ConfigRepository& App::ConfigRepository::Config() {
 	return *s_pConfig;
 }
 
+void App::ConfigRepository::DestroyConfig() {
+	s_pConfig = nullptr;
+}
+
 
 bool App::ConfigItem<uint16_t>::LoadFrom(const nlohmann::json& data, bool announceChanged) {
 	auto i = data.find(Name());
