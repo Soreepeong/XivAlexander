@@ -28,12 +28,153 @@ namespace App::Network::Structures {
 		ClientKeepAlive = 7,
 		ServerKeepAlive = 8,
 	};
+	
+	enum class IpcType : uint16_t {
+		InterestedType = 0x0014,
+	};
 
 	enum class ActionEffectDisplayType : uint8_t {
 		HideActionName = 0,
 		ShowActionName = 1,
 		ShowItemName = 2,
 		MountName = 0x0d,
+	};
+
+	enum class S2C_ActorControlSelfCategory : uint16_t {
+		Cooldown = 0x0011,
+		ActionRejected = 0x02bc,
+	};
+
+	enum class S2C_ActorControlCategory : uint16_t {
+		CancelCast = 0x000f,
+	};
+
+	struct KeepAliveMessageData {
+		uint32_t Id;
+		uint32_t Epoch;
+	};
+
+	namespace IPCMessageDataType {
+		// See: https://github.com/ravahn/machina/blob/NetworkStructs/Machina.FFXIV/Headers/Global/Server_ActionEffect.cs
+		// See: https://github.com/SapphireServer/Sapphire/blob/develop/src/common/Network/PacketDef/Zone/ServerZoneDef.h#L557-L563
+
+		struct S2C_ActionEffect {
+			uint32_t AnimationTargetActor;
+			uint32_t Unknown1;
+			uint32_t ActionId;
+			uint32_t GlobalEffectCounter;
+			float AnimationLockDuration;
+			uint32_t UnknownTargetId;
+			uint16_t SourceSequence;
+			uint16_t Rotation;
+			uint16_t ActionAnimationId;
+			uint8_t Variation; // animation
+			ActionEffectDisplayType EffectDisplayType;
+			uint8_t Unknown2;
+			uint8_t EffectCount;
+			uint16_t Padding1;
+		};
+		struct S2C_ActorControl {
+			S2C_ActorControlCategory Category;
+			union {
+				struct {
+					uint16_t Padding1;
+					uint32_t Param1;
+					uint32_t Param2;
+					uint32_t Param3;
+					uint32_t Param4;
+					uint32_t Padding2;
+				} Raw;
+				struct {
+					uint16_t Padding1;
+					uint32_t Param1;
+					uint32_t ActionId;
+					uint32_t Param3;
+					uint32_t Param4;
+					uint32_t Padding2;
+				} CancelCast;
+			};
+		};
+		struct S2C_ActorControlSelf {
+			S2C_ActorControlSelfCategory Category;
+			union {
+				struct {
+					uint16_t Padding1;
+					uint32_t Param1;
+					uint32_t Param2;
+					uint32_t Param3;
+					uint32_t Param4;
+					uint32_t Param5;
+					uint32_t Param6;
+					uint32_t Padding2;
+				} Raw;
+				struct {
+					uint16_t Padding1;
+					uint32_t Param1;
+					uint32_t Param2;
+					uint32_t ActionId;
+					uint32_t Param4;
+					uint32_t Param5;
+					uint32_t Param6;
+					uint32_t Padding2;
+				} Rollback;
+				struct {
+					uint16_t Padding1;
+					uint32_t Param1;
+					uint32_t ActionId;
+					uint32_t Duration;  // in milliseconds
+					uint32_t Param4;
+					uint32_t Param5;
+					uint32_t Param6;
+					uint32_t Padding2;
+				} Cooldown;
+			};
+		};
+		struct S2C_ActorCast {
+			uint16_t ActionId;
+			uint8_t SkillType;
+			uint8_t Unknown1;
+			uint16_t ActionId2;
+			uint16_t Unknown2;
+			float CastTime;
+			uint32_t TargetId;
+			float Rotation; // rad
+			uint16_t Flag;  // 1 = interruptible blinking
+			uint16_t Unknown3;
+			uint16_t X;
+			uint16_t Y;
+			uint16_t Z;
+			uint16_t Unknown4;
+		};
+		struct C2S_ActionRequest {
+			uint8_t Pad_0000;
+			uint8_t Type;
+			uint8_t Pad_0002[2];
+			uint32_t ActionId;
+			uint16_t Sequence;
+			uint8_t Pad_000C[6];
+			uint64_t TargetId;
+			uint16_t ItemSourceSlot;
+			uint16_t ItemSourceContainer;
+			uint32_t Unknown;
+		};
+	};
+	
+	struct IPCMessageData {
+		IpcType Type;
+		uint16_t SubType;
+		uint16_t Unknown1;
+		uint16_t ServerId;
+		uint32_t Epoch;
+		uint32_t Unknown2;
+		union {
+			uint8_t Raw[1];
+			IPCMessageDataType::S2C_ActionEffect S2C_ActionEffect;
+			IPCMessageDataType::S2C_ActorControl S2C_ActorControl;
+			IPCMessageDataType::S2C_ActorControlSelf S2C_ActorControlSelf;
+			IPCMessageDataType::S2C_ActorCast S2C_ActorCast;
+			IPCMessageDataType::C2S_ActionRequest C2S_ActionRequest;
+		} Data;
 	};
 
 	struct FFXIVMessage {
@@ -45,115 +186,8 @@ namespace App::Network::Structures {
 
 		union {
 			uint8_t Raw[1];
-			struct {
-				uint32_t Id;
-				uint32_t Epoch;
-			} KeepAlive;
-			struct {
-				uint16_t Type;
-				uint16_t SubType;
-				uint16_t Unknown1;
-				uint16_t ServerId;
-				uint32_t Epoch;
-				uint32_t Unknown2;
-				union {
-					// See: https://github.com/ravahn/machina/blob/NetworkStructs/Machina.FFXIV/Headers/Global/Server_ActionEffect.cs
-					uint8_t Raw[1];
-					struct {
-						uint32_t AnimationTargetActor;
-						uint32_t Unknown1;
-						uint32_t ActionId;
-						uint32_t GlobalEffectCounter;
-						float AnimationLockDuration;
-						uint32_t UnknownTargetId;
-						uint16_t HideAnimation;
-						uint16_t Rotation;
-						uint16_t ActionAnimationId;
-						uint8_t Variation; // animation
-						ActionEffectDisplayType EffectDisplayType;
-						uint8_t Unknown2;
-						uint8_t EffectCount;
-						uint16_t Padding1;
-					} ActionEffect;
-					struct {
-						// 0f 00 00 00  1a 02 00 00  01 00 00 00  9d 40 00 00  00 00 00 00  00 00 00 00
-						uint16_t Category;
-						uint16_t Padding1;
-						uint32_t Param1;
-						uint32_t Param2;
-						uint32_t Param3;
-						uint32_t Param4;
-						uint32_t Padding2;
-					} ActorControl;
-					struct {
-						uint16_t Category;
-						uint16_t Padding1;
-						uint32_t Param1;
-						uint32_t Param2;
-						uint32_t Param3;
-						uint32_t Param4;
-						uint32_t Param5;
-						uint32_t Param6;
-						uint32_t Padding2;
-					} ActorControlSelf;
-					struct {
-						uint16_t ActionId;
-						uint8_t SkillType;
-						uint8_t Unknown1;
-						uint16_t ActionId2;
-						uint16_t Unknown2;
-						float CastTime;
-						uint32_t TargetId;
-						float Rotation; // rad
-						uint32_t Unknown3;
-						uint16_t X;
-						uint16_t Y;
-						uint16_t Z;
-						uint16_t Unknown4;
-					} ActorCast;
-					struct {
-						uint32_t RelatedActionSequence;
-						uint32_t ActorId;
-						uint32_t CurrentHp;
-						uint32_t MaxHp;
-						uint16_t CurrentMp;
-						uint16_t Unknown1;
-						uint16_t MaxMp;
-						uint16_t Unknown2;
-						uint8_t DamageShield;
-						uint8_t EffectCount;
-						uint16_t Unknown3;
-						struct {
-							uint8_t EffectIndex;
-							uint8_t Unknown1;
-							uint16_t EffectId;
-							uint32_t Unknown2;
-							float Duration;
-							uint32_t SourceActorId;
-						} Effects[4];
-						uint32_t Unknown4;
-					} AddStatusEffect;
-					struct {
-						uint8_t JobId;
-						uint8_t Level1;
-						uint8_t Level2;
-						uint8_t Level3;
-						uint32_t CurrentHp;
-						uint32_t MaxHp;
-						uint16_t CurrentMp;
-						uint16_t MaxMp;
-						uint16_t Unknown1;
-						uint8_t DamageShield;
-						uint8_t Unknown2;
-						struct {
-							uint16_t EffectId;
-							uint16_t OtherInfo;
-							float Duration;
-							uint32_t ActorId;
-						} Effects[30];
-					} StatusEffectList;
-				} Data;
-			} IPC;
+			KeepAliveMessageData KeepAlive;
+			IPCMessageData IPC;
 		} Data;
 
 		void DebugPrint(const char* head, bool dump = false) const;

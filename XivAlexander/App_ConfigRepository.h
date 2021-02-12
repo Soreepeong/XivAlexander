@@ -91,17 +91,17 @@ namespace App {
 		// Set defaults so that the values will never be a valid IPC code.
 		// Assumes structure doesn't change too often.
 		// Will be loaded from configuration file on initialization.
-		ConfigItem<uint16_t> SkillResultResponses[5]{
+		ConfigItem<uint16_t> S2C_ActionEffects[5]{
 			{this, "SkillResultResponse01", InvalidIpcType },
 			{this, "SkillResultResponse08", InvalidIpcType },
 			{this, "SkillResultResponse16", InvalidIpcType },
 			{this, "SkillResultResponse24", InvalidIpcType },
 			{this, "SkillResultResponse32", InvalidIpcType },
 		};
-		ConfigItem<uint16_t> ActorControl{ this, "ActorControl", InvalidIpcType };
-		ConfigItem<uint16_t> ActorControlSelf{ this, "ActorControlSelf", InvalidIpcType };
-		ConfigItem<uint16_t> ActorCast{ this, "ActorCast", InvalidIpcType };
-		ConfigItem<uint16_t> RequestUseAction{ this, "RequestUseAction", InvalidIpcType };
+		ConfigItem<uint16_t> S2C_ActorControl{ this, "ActorControl", InvalidIpcType };
+		ConfigItem<uint16_t> S2C_ActorControlSelf{ this, "ActorControlSelf", InvalidIpcType };
+		ConfigItem<uint16_t> S2C_ActorCast{ this, "ActorCast", InvalidIpcType };
+		ConfigItem<uint16_t> C2S_ActionRequest{ this, "RequestUseAction", InvalidIpcType };
 
 		// Miscellaneous configuration
 		ConfigItem<bool> AlwaysOnTop{ this, "AlwaysOnTop", false };

@@ -15,12 +15,26 @@ public:
 
 	class SingleConnectionHandler {
 		const uint64_t CAST_SENTINEL = 0;
+
+		struct PendingAction {
+			const uint16_t ActionId;
+			const uint16_t Sequence;
+			const uint64_t RequestTimestamp;
+			bool CastFlag = false;
+
+			PendingAction(const Network::Structures::IPCMessageDataType::C2S_ActionRequest& request)
+				: ActionId(request.ActionId)
+				, Sequence(request.Sequence)
+				, RequestTimestamp(Utils::GetHighPerformanceCounter()){
+			}
+		};
+
 	public:
 		// The game will allow the user to use an action, if server does not respond in 500ms since last action usage.
 		// This will result in cancellation of following actions, so to prevent this, we keep track of outgoing action
 		// request timestamps, and stack up required animation lock time responses from server.
 		// The game will only process the latest animation lock duration information.
-		std::deque<uint64_t> PendingActionRequestTimestamps;
+		std::deque<PendingAction> m_pendingActions;
 		uint64_t m_lastAnimationLockEndsAt = 0;
 
 		Internals& internals;
@@ -33,134 +47,141 @@ public:
 			const auto& config = ConfigRepository::Config();
 
 			conn.AddOutgoingFFXIVMessageHandler(this, [&](Network::Structures::FFXIVMessage* pMessage, std::vector<uint8_t>&) {
-				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == 0x14 && (pMessage->Data.IPC.SubType == config.RequestUseAction)) {
-					// pMessage->DebugPrint(L"Send", true);
-					FILETIME ft;
-					SYSTEMTIME st;
-					GetSystemTimePreciseAsFileTime(&ft);
-					FileTimeToSystemTime(&ft, &st);
+				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
+					if (pMessage->Data.IPC.SubType == config.C2S_ActionRequest) {
+						const auto& actionRequest = pMessage->Data.IPC.Data.C2S_ActionRequest;
+						m_pendingActions.emplace_back(actionRequest);
 
-					const auto now = Utils::GetHighPerformanceCounter();
-					PendingActionRequestTimestamps.push_back(now);
+						if (m_pendingActions.size() == 1)
+							m_lastAnimationLockEndsAt = m_pendingActions.front().RequestTimestamp;
 
-					if (PendingActionRequestTimestamps.size() == 1) {
-						m_lastAnimationLockEndsAt = now;
+						Misc::Logger::GetLogger().Format(
+							"C2S_ActionRequest: actionId=%04x sequence=%04x",
+							actionRequest.ActionId,
+							actionRequest.Sequence);
 					}
-
-					const auto actionId = *reinterpret_cast<const uint32_t*>(pMessage->Data.IPC.Data.Raw + 4);
-
-					Misc::Logger::GetLogger().Format(
-						"Attack Request: length=%x t=%02x skill=%04x",
-						pMessage->Length,
-						pMessage->Data.IPC.Data.Raw[0],
-						actionId);
 				}
 				return true;
 				});
 			conn.AddIncomingFFXIVMessageHandler(this, [&](Network::Structures::FFXIVMessage* pMessage, std::vector<uint8_t>& additionalMessages) {
 				const auto now = Utils::GetHighPerformanceCounter();
 
-				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == 0x14) {
+				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					// Only interested in messages intended for the current player
 					if (pMessage->CurrentActor == pMessage->SourceActor) {
-						if (std::find(config.SkillResultResponses, config.SkillResultResponses + _countof(config.SkillResultResponses), static_cast<int>(pMessage->Data.IPC.SubType)) != config.SkillResultResponses + _countof(config.SkillResultResponses)) {
-							double newDuration = pMessage->Data.IPC.Data.ActionEffect.AnimationLockDuration;
-							if (!PendingActionRequestTimestamps.empty()
-								&& pMessage->Data.IPC.Data.ActionEffect.ActionId != 0x0007 // ignore auto-attack
-								) {
-								// 100ms animation lock after cast ends stays. Modify animation lock duration for instant actions only.
-								if (PendingActionRequestTimestamps.front() != CAST_SENTINEL) {
-									auto extraDelay = ExtraDelay;
-									if (extraDelay <= 0.07) {
-										// I told you to not decrease the value below 70ms.
-										if (rand() % 10000 < 50) {
-											// This is what you get for decreasing the value.
-											extraDelay = 5;
-										}
-									}
-									const auto addedDelay = static_cast<uint64_t>(1000. * std::max(0., extraDelay + newDuration));
-									m_lastAnimationLockEndsAt += addedDelay;
-									newDuration = std::max(0.f, static_cast<int64_t>(m_lastAnimationLockEndsAt - now) / 1000.f);
-								}
-								PendingActionRequestTimestamps.pop_front();
-							}
+						if (config.S2C_ActionEffects[0] == pMessage->Data.IPC.SubType
+							|| config.S2C_ActionEffects[1] == pMessage->Data.IPC.SubType
+							|| config.S2C_ActionEffects[2] == pMessage->Data.IPC.SubType
+							|| config.S2C_ActionEffects[3] == pMessage->Data.IPC.SubType
+							|| config.S2C_ActionEffects[4] == pMessage->Data.IPC.SubType) {
+
+							// actionEffect has to be modified later on, so no const
+							auto& actionEffect = pMessage->Data.IPC.Data.S2C_ActionEffect;
 							Misc::Logger::GetLogger().Format(
-								"Attack Response: length=%x skill=%04x wait=%.3f->%.3f",
-								pMessage->Length,
-								pMessage->Data.IPC.Data.ActionEffect.ActionId,
-								pMessage->Data.IPC.Data.ActionEffect.AnimationLockDuration, newDuration);
+								"S2C_ActionEffect: actionId=%04x sourceSequence=%04x wait=%.3f",
+								actionEffect.ActionId,
+								actionEffect.SourceSequence,
+								actionEffect.AnimationLockDuration);
 
-							pMessage->Data.IPC.Data.ActionEffect.AnimationLockDuration = static_cast<float>(newDuration);
+							if (actionEffect.SourceSequence != 0) {
+								// find the one sharing Sequence, assuming action responses are always in order
+								while (!m_pendingActions.empty() && m_pendingActions.front().Sequence != actionEffect.SourceSequence) {
+									const auto& item = m_pendingActions.front();
+									Misc::Logger::GetLogger().Format("\t=> Action ignored for processing: actionId=%04x sequence=%04x",
+										item.ActionId, item.Sequence);
+									m_pendingActions.pop_front();
+								}
 
-						} else if (pMessage->Data.IPC.SubType == config.ActorControlSelf) {
+								if (!m_pendingActions.empty()) {
+									const auto& item = m_pendingActions.front();
+									// 100ms animation lock after cast ends stays. Modify animation lock duration for instant actions only.
+									if (!item.CastFlag) {
+										auto extraDelay = ExtraDelay;
+										if (extraDelay <= 0.07) {
+											// I told you to not decrease the value below 70ms.
+											if (rand() % 10000 < 50) {
+												// This is what you get for decreasing the value.
+												extraDelay = 5;
+											}
+										}
+										const auto addedDelay = static_cast<uint64_t>(1000. * std::max(0., extraDelay + actionEffect.AnimationLockDuration));
+										m_lastAnimationLockEndsAt += addedDelay;
+										actionEffect.AnimationLockDuration = std::max(0.f, static_cast<int64_t>(m_lastAnimationLockEndsAt - now) / 1000.f);
+
+										Misc::Logger::GetLogger().Format("\t=> wait time changed to %.3f", actionEffect.AnimationLockDuration);
+									}
+									m_pendingActions.pop_front();
+								}
+							}
+
+						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorControlSelf) {
+							const auto& actorControlSelf = pMessage->Data.IPC.Data.S2C_ActorControlSelf;
 
 							// Latest action request has been rejected from server.
-							if (pMessage->Data.IPC.Data.ActorControlSelf.Category == 0x2bc) {
-								if (!PendingActionRequestTimestamps.empty())
-									PendingActionRequestTimestamps.pop_front();
+							if (actorControlSelf.Category == S2C_ActorControlSelfCategory::ActionRejected) {
+								const auto& rollback = actorControlSelf.Rollback;
+
+								if (!m_pendingActions.empty())
+									m_pendingActions.pop_front();
+
 								Misc::Logger::GetLogger().Format(
-									"Rollback: length=%x p1=%08x p2=%08x skill=%04x",
-									pMessage->Length,
-									pMessage->Data.IPC.Data.ActorControlSelf.Param1,
-									pMessage->Data.IPC.Data.ActorControlSelf.Param2,
-									pMessage->Data.IPC.Data.ActorControlSelf.Param3);
+									"S2C_ActorControlSelf/ActionRejected: p1=%08x p2=%08x actionId=%04x p4=%08x p5=%08x p6=%08x",
+									rollback.Param1,
+									rollback.Param2,
+									rollback.ActionId,
+									rollback.Param4,
+									rollback.Param5,
+									rollback.Param6);
 							}
 
-						} else if (pMessage->Data.IPC.SubType == config.ActorControl) {
+						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorControl) {
+							const auto& actorControl = pMessage->Data.IPC.Data.S2C_ActorControl;
 							
 							// The server has cancelled a cast in progress.
-							if (pMessage->Data.IPC.Data.ActorControl.Category == 0x0f) {
-								const auto latency = conn.GetServerResponseDelay();
-								double responseWait = latency;
-								if (!PendingActionRequestTimestamps.empty()) {
-									if (PendingActionRequestTimestamps.front() == 0)
-										responseWait = 0;
-									else
-										responseWait = (now - PendingActionRequestTimestamps.front()) / 1000.f;
-									PendingActionRequestTimestamps.pop_front();
-								}
+							if (actorControl.Category == S2C_ActorControlCategory::CancelCast) {
+								const auto& cancelCast = actorControl.CancelCast;
+
+								if (!m_pendingActions.empty())
+									m_pendingActions.pop_front();
+
 								Misc::Logger::GetLogger().Format(
-									"CancelCast: length=%x p1=%08x p2=%08x skill=%04x p4=%08x pad1=%04x pad2=%08x latency=%.3f responseWait=%.3f",
-									pMessage->Length,
-									pMessage->Data.IPC.Data.ActorControl.Param1,
-									pMessage->Data.IPC.Data.ActorControl.Param2,
-									pMessage->Data.IPC.Data.ActorControl.Param3,
-									pMessage->Data.IPC.Data.ActorControl.Param4,
-									pMessage->Data.IPC.Data.ActorControl.Padding1,
-									pMessage->Data.IPC.Data.ActorControl.Padding2,
-									latency, responseWait);
+									"S2C_ActorControl/CancelCast: p1=%08x actionId=%04x p2=%08x p4=%08x pad1=%04x pad2=%08x",
+									cancelCast.Param1,
+									cancelCast.ActionId,
+									cancelCast.Param3,
+									cancelCast.Param4,
+									cancelCast.Padding1,
+									cancelCast.Padding2);
 							}
 
-						} else if (pMessage->Data.IPC.SubType == config.ActorCast) {
-							const auto latency = conn.GetServerResponseDelay();
-
+						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorCast) {
+							const auto& actorCast = pMessage->Data.IPC.Data.S2C_ActorCast;
 							// Mark that the last request was a cast.
 							// If it indeed is a cast, the game UI will block the user from generating additional requests,
 							// so first item is guaranteed to be the cast action.
-							if (!PendingActionRequestTimestamps.empty())
-								PendingActionRequestTimestamps[0] = CAST_SENTINEL;
+							if (!m_pendingActions.empty())
+								m_pendingActions.front().CastFlag = true;
 
 							Misc::Logger::GetLogger().Format(
-								"ActorCast: length=%x "
-								"skill=%04x type=%02x u1=%02x skill2=%04x u2=%08x time=%.3f "
+								"S2C_ActorCast: "
+								"actionId=%04x type=%02x u1=%02x skill2=%04x u2=%08x time=%.3f "
 								"target=%08x rotation=%.3f u3=%08x "
 								"x=%d y=%d z=%d u=%04x",
-								pMessage->Length,
 
-								pMessage->Data.IPC.Data.ActorCast.ActionId,
-								pMessage->Data.IPC.Data.ActorCast.SkillType,
-								pMessage->Data.IPC.Data.ActorCast.Unknown1,
-								pMessage->Data.IPC.Data.ActorCast.ActionId2,
-								pMessage->Data.IPC.Data.ActorCast.Unknown2,
-								pMessage->Data.IPC.Data.ActorCast.CastTime,
+								actorCast.ActionId,
+								actorCast.SkillType,
+								actorCast.Unknown1,
+								actorCast.ActionId2,
+								actorCast.Unknown2,
+								actorCast.CastTime,
 
-								pMessage->Data.IPC.Data.ActorCast.TargetId,
-								pMessage->Data.IPC.Data.ActorCast.Rotation,
-								pMessage->Data.IPC.Data.ActorCast.Unknown3,
-								pMessage->Data.IPC.Data.ActorCast.X,
-								pMessage->Data.IPC.Data.ActorCast.Y,
-								pMessage->Data.IPC.Data.ActorCast.Z,
-								pMessage->Data.IPC.Data.ActorCast.Unknown4);
+								actorCast.TargetId,
+								actorCast.Rotation,
+								actorCast.Unknown3,
+								actorCast.X,
+								actorCast.Y,
+								actorCast.Z,
+								actorCast.Unknown4);
 						}
 					}
 				}

@@ -18,64 +18,90 @@ public:
 			using namespace App::Network::Structures;
 
 			conn.AddIncomingFFXIVMessageHandler(this, [&](Network::Structures::FFXIVMessage* pMessage, std::vector<uint8_t>&) {
-				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == 0x14) {
+				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					if (pMessage->CurrentActor == pMessage->SourceActor) {
 						if (pMessage->Length == 0x9c ||
 							pMessage->Length == 0x29c ||
 							pMessage->Length == 0x4dc ||
 							pMessage->Length == 0x71c ||
 							pMessage->Length == 0x95c) {
+							// Test ActionEffect
+
+							const auto& actionEffect = pMessage->Data.IPC.Data.S2C_ActionEffect;
+
 							Misc::Logger::GetLogger().Format(
-								"[IpcTypeFinder/AttackResponse] subtype=%04x length=%x skill=%04x wait=%.3f",
+								"[IpcTypeFinder/AttackResponse] subtype=%04x length=%x actionId=%04x sequence=%04x wait=%.3f",
 								pMessage->Data.IPC.SubType,
 								pMessage->Length,
-								pMessage->Data.IPC.Data.ActionEffect.ActionId,
-								pMessage->Data.IPC.Data.ActionEffect.AnimationLockDuration);
+								actionEffect.ActionId,
+								actionEffect.SourceSequence,
+								actionEffect.AnimationLockDuration);
 							pMessage->DebugPrint("IpcTypeFinder", true);
+
 						} else if (pMessage->Length == 0x40) {
-							if (pMessage->Data.IPC.Data.ActorControlSelf.Category == 0x11) {
+							// Two possibilities: ActorControlSelf and ActorCast
+
+							//
+							// Test ActorControlSelf
+							// 
+							const auto& actorControlSelf = pMessage->Data.IPC.Data.S2C_ActorControlSelf;
+							if (actorControlSelf.Category == S2C_ActorControlSelfCategory::Cooldown) {
+								const auto& cooldown = actorControlSelf.Cooldown;
 								Misc::Logger::GetLogger().Format(
-									"[IpcTypeFinder/ActorControlSelf] Cooldown: p1=%08x skill=%04x duration=%d",
-									pMessage->Data.IPC.Data.ActorControlSelf.Param1,
-									pMessage->Data.IPC.Data.ActorControlSelf.Param2,
-									pMessage->Data.IPC.Data.ActorControlSelf.Param3);
+									"[IpcTypeFinder/S2C_ActorControlSelf] Cooldown: p1=%08x actionId=%04x duration=%d",
+									cooldown.Param1,
+									cooldown.ActionId,
+									cooldown.Duration);
 								pMessage->DebugPrint("IpcTypeFinder", true);
-							} else if (pMessage->Data.IPC.Data.ActorControlSelf.Category == 0x2bc) {
+
+							} else if (pMessage->Data.IPC.Data.S2C_ActorControlSelf.Category == S2C_ActorControlSelfCategory::ActionRejected) {
+								const auto& rollback = actorControlSelf.Rollback;
 								Misc::Logger::GetLogger().Format(
-									"[IpcTypeFinder/ActorControlSelf] Rollback: p1=%08x p2=%08x skill=%04x",
-									pMessage->Data.IPC.Data.ActorControlSelf.Param1,
-									pMessage->Data.IPC.Data.ActorControlSelf.Param2,
-									pMessage->Data.IPC.Data.ActorControlSelf.Param3);
+									"[IpcTypeFinder/S2C_ActorControlSelf] Rollback: p1=%08x p2=%08x actionId=%04x",
+									rollback.Param1,
+									rollback.Param2,
+									rollback.ActionId);
 								pMessage->DebugPrint("IpcTypeFinder", true);
 							}
+
+							//
+							// Test ActorCast
+							//
 							Misc::Logger::GetLogger().Format(
-								"[IpcTypeFinder/ActorCast] "
-								"skill=%04x type=%02x u1=%02x skill2=%04x u2=%08x time=%.3f "
+								"[IpcTypeFinder/S2C_ActorCast] "
+								"actionId=%04x type=%02x u1=%02x skill2=%04x u2=%08x time=%.3f "
 								"target=%08x rotation=%.3f u3=%08x "
 								"x=%d y=%d z=%d u=%04x",
-								pMessage->Data.IPC.Data.ActorCast.ActionId,
-								pMessage->Data.IPC.Data.ActorCast.SkillType,
-								pMessage->Data.IPC.Data.ActorCast.Unknown1,
-								pMessage->Data.IPC.Data.ActorCast.ActionId2,
-								pMessage->Data.IPC.Data.ActorCast.Unknown2,
-								pMessage->Data.IPC.Data.ActorCast.CastTime,
+								pMessage->Data.IPC.Data.S2C_ActorCast.ActionId,
+								pMessage->Data.IPC.Data.S2C_ActorCast.SkillType,
+								pMessage->Data.IPC.Data.S2C_ActorCast.Unknown1,
+								pMessage->Data.IPC.Data.S2C_ActorCast.ActionId2,
+								pMessage->Data.IPC.Data.S2C_ActorCast.Unknown2,
+								pMessage->Data.IPC.Data.S2C_ActorCast.CastTime,
 
-								pMessage->Data.IPC.Data.ActorCast.TargetId,
-								pMessage->Data.IPC.Data.ActorCast.Rotation,
-								pMessage->Data.IPC.Data.ActorCast.Unknown3,
-								pMessage->Data.IPC.Data.ActorCast.X,
-								pMessage->Data.IPC.Data.ActorCast.Y,
-								pMessage->Data.IPC.Data.ActorCast.Z,
-								pMessage->Data.IPC.Data.ActorCast.Unknown4);
+								pMessage->Data.IPC.Data.S2C_ActorCast.TargetId,
+								pMessage->Data.IPC.Data.S2C_ActorCast.Rotation,
+								pMessage->Data.IPC.Data.S2C_ActorCast.Unknown3,
+								pMessage->Data.IPC.Data.S2C_ActorCast.X,
+								pMessage->Data.IPC.Data.S2C_ActorCast.Y,
+								pMessage->Data.IPC.Data.S2C_ActorCast.Z,
+								pMessage->Data.IPC.Data.S2C_ActorCast.Unknown4);
 							pMessage->DebugPrint("IpcTypeFinder", true);
+
 						} else if (pMessage->Length == 0x38) {
-							// Cancel Cast
-							if (pMessage->Data.IPC.Data.ActorControl.Category == 0x0f) {
+							// Test ActorControl
+							const auto& actorControl = pMessage->Data.IPC.Data.S2C_ActorControl;
+							if (actorControl.Category == S2C_ActorControlCategory::CancelCast) {
+								const auto& cancelCast = actorControl.CancelCast;
 								Misc::Logger::GetLogger().Format(
-									"[IpcTypeFinder/ActorControl] CancelCast: p1=%08x p2=%08x skill=%04x",
-									pMessage->Data.IPC.Data.ActorControl.Param1,
-									pMessage->Data.IPC.Data.ActorControl.Param2,
-									pMessage->Data.IPC.Data.ActorControl.Param3);
+									"[IpcTypeFinder/S2C_ActorControl] CancelCast: p1=%08x actionId=%04x p2=%08x p4=%08x pad1=%04x pad2=%08x",
+									pMessage->Length,
+									cancelCast.Param1,
+									cancelCast.ActionId,
+									cancelCast.Param3,
+									cancelCast.Param4,
+									cancelCast.Padding1,
+									cancelCast.Padding2);
 								pMessage->DebugPrint("IpcTypeFinder", true);
 							}
 						}
@@ -84,12 +110,13 @@ public:
 				return true;
 				});
 			conn.AddOutgoingFFXIVMessageHandler(this, [&](Network::Structures::FFXIVMessage* pMessage, std::vector<uint8_t>&) {
-				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == 0x14) {
+				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					if (pMessage->Length == 0x40) {
-						const auto actionId = *reinterpret_cast<const uint32_t*>(pMessage->Data.IPC.Data.Raw + 4);
+						// Test ActionRequest
+						const auto& actionRequest = pMessage->Data.IPC.Data.C2S_ActionRequest;
 						Misc::Logger::GetLogger().Format(
-							"[IpcTypeFinder/AttackRequest] skill=%04x",
-							actionId);
+							"[IpcTypeFinder/AttackRequest] actionId=%04x sequence=%04x",
+							actionRequest.ActionId, actionRequest.Sequence);
 						pMessage->DebugPrint("IpcTypeFinder", true);
 					}
 				}
