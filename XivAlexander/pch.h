@@ -36,6 +36,9 @@
 #include <bcrypt.h>
 #include <shellscalingapi.h>
 #include <iphlpapi.h>
+#include <comdef.h>
+#include <shobjidl_core.h>
+#include <PathCch.h>
 
 #define ZLIB_CONST
 #include <zlib.h>

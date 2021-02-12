@@ -96,6 +96,14 @@ BEGIN
     END
 END
 
+IDR_LOG_MENU MENU
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "&Save",                       ID_FILE_SAVE
+    END
+END
+
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 

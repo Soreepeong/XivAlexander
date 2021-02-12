@@ -14,6 +14,7 @@ namespace App::Window {
 		virtual ~Log();
 
 	protected:
+		virtual LRESULT WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 		void OnLayout(double zoom, double width, double height) override;
 		LRESULT OnNotify(const LPNMHDR nmhdr) override;
 		LRESULT OnSysCommand(WPARAM commandId, short xPos, short yPos) override;
