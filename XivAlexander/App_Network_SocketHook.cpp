@@ -555,7 +555,7 @@ public:
 				}
 				m_allowedIpRange.emplace_back(startIp, endIp);
 			} catch (std::exception& e) {
-				Misc::Logger::GetLogger().Format<Misc::Logger::LogLevel::Error>("Invalid IP range item \"%s\": %s. It must be in the form of either \"0.0.0.0-255.255.255.255\" or \"127.0.0.0/8\", delimited by comma(,).", range.c_str(), e.what());
+				Misc::Logger::GetLogger().Format<Misc::Logger::LogLevel::Error>("Invalid IP range item \"%s\": %s. It must be in the form of \"0.0.0.0\", \"0.0.0.0-255.255.255.255\", or \"127.0.0.0/8\", delimited by comma(,).", range.c_str(), e.what());
 			}
 		}
 	}
@@ -579,7 +579,7 @@ public:
 				}
 				m_allowedPortRange.emplace_back(start, end);
 			} catch (std::exception& e) {
-				Misc::Logger::GetLogger().Format<Misc::Logger::LogLevel::Error>("Invalid IP range item: %s. It must be in the form of either \"0.0.0.0-255.255.255.255\" or \"127.0.0.0/8\", delimited by comma(,).", e.what());
+				Misc::Logger::GetLogger().Format<Misc::Logger::LogLevel::Error>("Invalid port range item \"%s\": %s. It must be in the form of \"0-65535\" or single item, delimited by comma(,).", range.c_str(), e.what());
 			}
 		}
 	}
