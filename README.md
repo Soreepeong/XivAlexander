@@ -5,7 +5,7 @@
 | Korea to NA DC<br />XivAlexander enabled | ![After GIF](https://github.com/Soreepeong/XivAlexander/raw/main/Graphics/after.gif) | 
 | Korea to Korean DC<br />Direct connection | ![After GIF](https://github.com/Soreepeong/XivAlexander/raw/main/Graphics/ref.gif) | 
 
-Use [XivMitmLatencyMitigator](https://github.com/Soreepeong/XivMitmLatencyMitigator) instead if you're playing on non-Windows system(Linux using WINE, Mac, or PlayStation(PS4)), or want to apply this solution to a custom VPN server running on Linux operating system. Do **not** stack both solutions.
+Use [XivMitmLatencyMitigator](https://github.com/Soreepeong/XivMitmLatencyMitigator) instead if you're playing on non-Windows system(Linux using WINE, Mac, or PlayStation(PS4)), or want to apply this solution to a custom VPN server running on Linux operating system. You can use both solutions at the same time, in which case, this(XivAlexander) will take precedence.
 
 # English
 This add-on will make double weaving always possible. No more low DPS output just because you are on high latency network. (Actions with long delay to begin with - like High Jump - don't count.)
