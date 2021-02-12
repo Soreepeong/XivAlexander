@@ -26,6 +26,14 @@ static std::wstring GetProcessExecutablePath(HANDLE hProcess) {
 	return sPath;
 }
 
+static int CallRemoteFunction(HANDLE hProcess, void* rpfn, void* rpParam) {
+	Utils::Win32Handle<> hLoadLibraryThread(CreateRemoteThread(hProcess, nullptr, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(rpfn), rpParam, 0, nullptr));
+	WaitForSingleObject(hLoadLibraryThread, INFINITE);
+	DWORD exitCode;
+	GetExitCodeThread(hLoadLibraryThread, &exitCode);
+	return exitCode;
+}
+
 static int InjectDll(HANDLE hProcess, const wchar_t* pszDllPath) {
 	const size_t nDllPathLength = wcslen(pszDllPath) + 1;
 
@@ -43,10 +51,7 @@ static int InjectDll(HANDLE hProcess, const wchar_t* pszDllPath) {
 		return -1;
 	}
 
-	Utils::Win32Handle<> hLoadLibraryThread(CreateRemoteThread(hProcess, nullptr, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(LoadLibraryW), rpszDllPath, 0, nullptr));
-	WaitForSingleObject(hLoadLibraryThread, INFINITE);
-	DWORD exitCode;
-	GetExitCodeThread(hLoadLibraryThread, &exitCode);
+	const auto exitCode = CallRemoteFunction(hProcess, LoadLibraryW, rpszDllPath);
 	VirtualFreeEx(hProcess, rpszDllPath, 0, MEM_RELEASE);
 	return exitCode;
 }
@@ -207,10 +212,11 @@ int WINAPI wWinMain(
 				
 				void* rpModule = FindModuleAddress(hProcess, szDllPath);
 
-				Utils::Win32Handle<> hLoadXivAlexanderThread(CreateRemoteThread(hProcess, nullptr, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(LoadXivAlexander), nullptr, 0, nullptr));
-				WaitForSingleObject(hLoadXivAlexanderThread, INFINITE);
-				DWORD exitCode;
-				GetExitCodeThread(hLoadXivAlexanderThread, &exitCode);
+				DWORD loadResult = CallRemoteFunction(hProcess, LoadXivAlexander, nullptr);
+				if (loadResult != 0) {
+					CallRemoteFunction(hProcess, FreeLibrary, rpModule);
+					throw std::exception(Utils::FormatString("Failed to start the addon: %d", loadResult).c_str());
+				}
 			}
 		} catch (std::exception& e) {
 			if (!params.noerror)
