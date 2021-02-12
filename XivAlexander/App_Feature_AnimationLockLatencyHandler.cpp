@@ -164,7 +164,7 @@ public:
 									m_pendingActions.pop_front();
 
 								Misc::Logger::GetLogger().Format(
-									"S2C_ActorControl/CancelCast: p1=%08x actionId=%04x p2=%08x p4=%08x pad1=%04x pad2=%08x",
+									"S2C_ActorControl/CancelCast: p1=%08x actionId=%04x p3=%08x p4=%08x pad1=%04x pad2=%08x",
 									cancelCast.Param1,
 									cancelCast.ActionId,
 									cancelCast.Param3,
