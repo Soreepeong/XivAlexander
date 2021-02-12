@@ -1,8 +1,6 @@
 #include "pch.h"
 #include "App_Window_Log.h"
 
-constexpr auto TimeStyle = static_cast<int>(App::Misc::Logger::LogLevel::Debug) - 1;
-
 constexpr int BaseFontSize = 8;
 
 enum SysMenuExtras {
@@ -41,25 +39,24 @@ App::Window::Log::Log()
 	m_direct(m_directPtr, SCI_STYLESETSIZE, STYLE_DEFAULT, static_cast<int>(BaseFontSize * GetZoom()));
 	m_direct(m_directPtr, SCI_SETWRAPMODE, SC_WRAP_CHAR, 0);
 	m_direct(m_directPtr, SCI_SETREADONLY, TRUE, 0);
-	m_direct(m_directPtr, SCI_SETMARGINTYPEN, 0, SC_MARGIN_TEXT);
+	m_direct(m_directPtr, SCI_SETMARGINTYPEN, 0, SC_MARGIN_NUMBER);
 	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 1, 0);
 	m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, sptr_t(Utils::ToUtf8(ncm.lfMessageFont.lfFaceName).c_str()));
 	m_direct(m_directPtr, SCI_STYLESETFORE, static_cast<int>(Misc::Logger::LogLevel::Debug), RGB(80, 80, 80));
 	m_direct(m_directPtr, SCI_STYLESETFORE, static_cast<int>(Misc::Logger::LogLevel::Info), RGB(0, 0, 0));
 	m_direct(m_directPtr, SCI_STYLESETFORE, static_cast<int>(Misc::Logger::LogLevel::Warning), RGB(160, 160, 0));
 	m_direct(m_directPtr, SCI_STYLESETFORE, static_cast<int>(Misc::Logger::LogLevel::Error), RGB(255, 80, 80));
-	m_direct(m_directPtr, SCI_STYLESETBACK, TimeStyle, GetSysColor(COLOR_3DFACE));
 
 	const auto addLogFn = [&](const Misc::Logger::LogItem& item) {
 		FILETIME lt;
 		SYSTEMTIME st;
 		FileTimeToLocalFileTime(&item.timestamp, &lt);
 		FileTimeToSystemTime(&lt, &st);
-		const auto timestr = Utils::FormatString("%04d-%02d-%02d %02d:%02d:%02d.%03d",
+		const auto logstr = Utils::FormatString("%04d-%02d-%02d %02d:%02d:%02d.%03d\t%s\n",
 			st.wYear, st.wMonth, st.wDay,
 			st.wHour, st.wMinute, st.wSecond,
-			st.wMilliseconds);
-		const auto logstr = item.log + "\n";
+			st.wMilliseconds,
+			item.log.c_str());
 		RunOnUiThreadWait([&]() {
 			SendMessage(m_hScintilla, WM_SETREDRAW, FALSE, 0);
 			m_direct(m_directPtr, SCI_SETREADONLY, FALSE, 0);
@@ -72,8 +69,6 @@ App::Window::Log::Log()
 
 			m_direct(m_directPtr, SCI_APPENDTEXT, logstr.length(), sptr_t(logstr.c_str()));
 			m_direct(m_directPtr, SCI_SETSTYLING, logstr.length(), static_cast<int>(item.level));
-			m_direct(m_directPtr, SCI_MARGINSETTEXT, nLineCount, sptr_t(timestr.c_str()));
-			m_direct(m_directPtr, SCI_MARGINSETSTYLE, nLineCount, TimeStyle);
 			nPos += logstr.length();
 			nLineCount++;
 			if (nLineCount > 32768) {
@@ -157,5 +152,5 @@ void App::Window::Log::OnDestroy() {
 }
 
 void App::Window::Log::ResizeMargin() {
-	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 0, static_cast<int>(130 * GetZoom() * (BaseFontSize + m_direct(m_directPtr, SCI_GETZOOM, 0, 0)) / BaseFontSize));
+	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 0, static_cast<int>(m_direct(m_directPtr, SCI_TEXTWIDTH, uptr_t(STYLE_LINENUMBER), reinterpret_cast<sptr_t>("999999"))));
 }
