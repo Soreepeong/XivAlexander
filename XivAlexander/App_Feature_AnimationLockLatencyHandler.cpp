@@ -11,7 +11,7 @@ public:
 	// and it's very easy to identify whether you're trying to go below allowed minimum value.
 	// This addon is already in gray area. Do NOT decrease this value. You've been warned.
 	// Feel free to increase and see how does it feel like to play on high latency instead, though.
-	static inline const double ExtraDelay = 0.075;
+	static inline const uint64_t ExtraDelay = 75;  // in milliseconds
 
 	class SingleConnectionHandler {
 		const uint64_t CAST_SENTINEL = 0;
@@ -52,8 +52,9 @@ public:
 						const auto& actionRequest = pMessage->Data.IPC.Data.C2S_ActionRequest;
 						m_pendingActions.emplace_back(actionRequest);
 
-						if (m_pendingActions.size() == 1)
-							m_lastAnimationLockEndsAt = m_pendingActions.front().RequestTimestamp;
+						// if latest action request has been made after last animation lock end time, reset animation lock base time
+						if (m_pendingActions.back().RequestTimestamp > m_lastAnimationLockEndsAt)
+							m_lastAnimationLockEndsAt = m_pendingActions.back().RequestTimestamp;
 
 						Misc::Logger::GetLogger().Format(
 							"C2S_ActionRequest: actionId=%04x sequence=%04x",
@@ -77,17 +78,30 @@ public:
 
 							// actionEffect has to be modified later on, so no const
 							auto& actionEffect = pMessage->Data.IPC.Data.S2C_ActionEffect;
-							Misc::Logger::GetLogger().Format(
-								"S2C_ActionEffect: actionId=%04x sourceSequence=%04x wait=%.3f",
-								actionEffect.ActionId,
-								actionEffect.SourceSequence,
-								actionEffect.AnimationLockDuration);
+							const auto originalWaitTime = static_cast<uint64_t>(static_cast<double>(actionEffect.AnimationLockDuration) * 1000ULL);
+							auto waitTime = originalWaitTime;
 
-							if (actionEffect.SourceSequence != 0) {
+							if (actionEffect.SourceSequence == 0) {
+								if (actionEffect.ActionId == 0x0007  // auto-attack
+									|| actionEffect.ActionId == 0x0008  // MCH auto-attack
+									) {
+									if (m_lastAnimationLockEndsAt > now) {
+										// if animation lock is supposedly already in progress, add the new value to previously in-progress animation lock, instead of replacing it.
+										m_lastAnimationLockEndsAt += 100;
+										waitTime = m_lastAnimationLockEndsAt - now;
+
+									} else {
+										// even if it wasn't, the server would consider other actions in progress when calculating auto-attack delay, so we fix it to 100ms.
+										waitTime = 100;
+									}
+								} else
+									Misc::Logger::GetLogger().Format(reinterpret_cast<const char*>(u8"\t¦Ç Not user-originated, and isn't an auto-attack"));
+
+							} else if (actionEffect.SourceSequence != 0) {
 								// find the one sharing Sequence, assuming action responses are always in order
 								while (!m_pendingActions.empty() && m_pendingActions.front().Sequence != actionEffect.SourceSequence) {
 									const auto& item = m_pendingActions.front();
-									Misc::Logger::GetLogger().Format("\t=> Action ignored for processing: actionId=%04x sequence=%04x",
+									Misc::Logger::GetLogger().Format(reinterpret_cast<const char*>(u8"\t¦Ç ActionRequest ignored for processing: actionId=%04x sequence=%04x"),
 										item.ActionId, item.Sequence);
 									m_pendingActions.pop_front();
 								}
@@ -95,23 +109,28 @@ public:
 								if (!m_pendingActions.empty()) {
 									const auto& item = m_pendingActions.front();
 									// 100ms animation lock after cast ends stays. Modify animation lock duration for instant actions only.
+									// Since no other action is in progress right before the cast ends, we can safely replace the animation lock with the latest after-cast lock.
 									if (!item.CastFlag) {
-										auto extraDelay = ExtraDelay;
-										if (extraDelay <= 0.07) {
-											// I told you to not decrease the value below 70ms.
-											if (rand() % 10000 < 50) {
-												// This is what you get for decreasing the value.
-												extraDelay = 5;
-											}
-										}
-										const auto addedDelay = static_cast<uint64_t>(1000. * std::max(0., extraDelay + actionEffect.AnimationLockDuration));
-										m_lastAnimationLockEndsAt += addedDelay;
-										actionEffect.AnimationLockDuration = std::max(0.f, static_cast<int64_t>(m_lastAnimationLockEndsAt - now) / 1000.f);
-
-										Misc::Logger::GetLogger().Format("\t=> wait time changed to %.3f", actionEffect.AnimationLockDuration);
+										m_lastAnimationLockEndsAt += originalWaitTime + ExtraDelay;
+										waitTime = m_lastAnimationLockEndsAt - now;
 									}
 									m_pendingActions.pop_front();
 								}
+							}
+							if (waitTime != originalWaitTime) {
+								actionEffect.AnimationLockDuration = std::max(0ULL, waitTime) / 1000.f;
+								Misc::Logger::GetLogger().Format(
+									"S2C_ActionEffect: actionId=%04x sourceSequence=%04x wait=%llums->%llums",
+									actionEffect.ActionId,
+									actionEffect.SourceSequence,
+									originalWaitTime, waitTime);
+
+							} else {
+								Misc::Logger::GetLogger().Format(
+									"S2C_ActionEffect: actionId=%04x sourceSequence=%04x wait=%llums",
+									actionEffect.ActionId,
+									actionEffect.SourceSequence,
+									originalWaitTime);
 							}
 
 						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorControlSelf) {
