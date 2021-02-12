@@ -18,7 +18,7 @@ namespace App::Window {
 		virtual LRESULT WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 		virtual void OnDestroy() override;
 
-		void RepopulateMenu();
+		void RepopulateMenu(HMENU hMenu);
 		void RegisterTrayIcon();
 	};
 };

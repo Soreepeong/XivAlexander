@@ -65,7 +65,7 @@ LRESULT App::Window::TrayIcon::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) 
 			return 0;
 		}
 	} else if (uMsg == WM_INITMENUPOPUP) {
-		RepopulateMenu();
+		RepopulateMenu(GetMenu(m_hWnd));
 	} else if (uMsg == WM_COMMAND) {
 		if (!lParam) {
 			auto& config = ConfigRepository::Config();
@@ -128,17 +128,18 @@ LRESULT App::Window::TrayIcon::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		const auto iconId = HIWORD(lParam);
 		const auto eventId = LOWORD(lParam);
 		if (eventId == WM_CONTEXTMENU) {
-			RepopulateMenu();
+			HMENU hMenu = GetMenu(m_hWnd);
+			HMENU hSubMenu = GetSubMenu(hMenu, 0);
+			RepopulateMenu(hSubMenu);
 			POINT curPoint;
 			GetCursorPos(&curPoint);
-			SetForegroundWindow(m_hGameWnd);
 			const auto result = TrackPopupMenu(
 				GetSubMenu(GetMenu(m_hWnd), 0),
 				TPM_RETURNCMD | TPM_NONOTIFY,
 				curPoint.x,
 				curPoint.y,
 				0,
-				m_hGameWnd,
+				m_hWnd,
 				NULL
 			);
 
@@ -169,8 +170,7 @@ void App::Window::TrayIcon::OnDestroy() {
 	PostQuitMessage(0);
 }
 
-void App::Window::TrayIcon::RepopulateMenu() {
-	const auto hMenu = GetMenu(m_hWnd);
+void App::Window::TrayIcon::RepopulateMenu(HMENU hMenu) {
 	const auto& config = ConfigRepository::Config();
 
 	MENUITEMINFOW mii = { sizeof(MENUITEMINFOW) };
