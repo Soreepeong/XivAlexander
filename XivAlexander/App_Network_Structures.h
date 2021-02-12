@@ -31,6 +31,11 @@ namespace App::Network::Structures {
 	
 	enum class IpcType : uint16_t {
 		InterestedType = 0x0014,
+		CustomType = 0x0e852,
+	};
+
+	enum class IpcCustomSubtype : uint16_t {
+		OriginalWaitTime = 0x0000,
 	};
 
 	enum class ActionEffectDisplayType : uint8_t {
@@ -158,6 +163,12 @@ namespace App::Network::Structures {
 			uint16_t ItemSourceContainer;
 			uint32_t Unknown;
 		};
+
+		struct S2C_Custom_OriginalWaitTime {
+			uint16_t SourceSequence;
+			uint8_t Pad_0002[2];
+			float OriginalWaitTime;
+		};
 	};
 	
 	struct IPCMessageData {
@@ -174,6 +185,7 @@ namespace App::Network::Structures {
 			IPCMessageDataType::S2C_ActorControlSelf S2C_ActorControlSelf;
 			IPCMessageDataType::S2C_ActorCast S2C_ActorCast;
 			IPCMessageDataType::C2S_ActionRequest C2S_ActionRequest;
+			IPCMessageDataType::S2C_Custom_OriginalWaitTime S2C_Custom_OriginalWaitTime;
 		} Data;
 	};
 

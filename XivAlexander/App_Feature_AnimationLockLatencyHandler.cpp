@@ -38,6 +38,7 @@ public:
 		// The game will only process the latest animation lock duration information.
 		std::deque<PendingAction> m_pendingActions;
 		uint64_t m_lastAnimationLockEndsAt = 0;
+		std::map<int, uint64_t> m_originalWaitTimeMap;
 
 		Internals& internals;
 		Network::SingleConnection& conn;
@@ -69,7 +70,16 @@ public:
 			conn.AddIncomingFFXIVMessageHandler(this, [&](Network::Structures::FFXIVMessage* pMessage, std::vector<uint8_t>& additionalMessages) {
 				const auto now = Utils::GetHighPerformanceCounter();
 
-				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
+				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::CustomType) {
+					if (pMessage->Data.IPC.SubType == static_cast<uint16_t>(IpcCustomSubtype::OriginalWaitTime)) {
+						const auto& data = pMessage->Data.IPC.Data.S2C_Custom_OriginalWaitTime;
+						m_originalWaitTimeMap[data.SourceSequence] = static_cast<uint64_t>(static_cast<double>(data.OriginalWaitTime) * 1000ULL);
+					}
+
+					// Don't relay custom IPC data to game.
+					return false;
+
+				} else if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					// Only interested in messages intended for the current player
 					if (pMessage->CurrentActor == pMessage->SourceActor) {
 						if (config.S2C_ActionEffects[0] == pMessage->Data.IPC.SubType
@@ -80,8 +90,17 @@ public:
 
 							// actionEffect has to be modified later on, so no const
 							auto& actionEffect = pMessage->Data.IPC.Data.S2C_ActionEffect;
-							const auto originalWaitTime = static_cast<uint64_t>(static_cast<double>(actionEffect.AnimationLockDuration) * 1000ULL);
-							auto waitTime = originalWaitTime;
+							int64_t originalWaitTime, waitTime;
+
+							{
+								const auto it = m_originalWaitTimeMap.find(actionEffect.SourceSequence);
+								if (it == m_originalWaitTimeMap.end())
+									waitTime = originalWaitTime = static_cast<int64_t>(static_cast<double>(actionEffect.AnimationLockDuration) * 1000ULL);
+								else {
+									waitTime = originalWaitTime = it->second;
+									m_originalWaitTimeMap.erase(it);
+								}
+							}
 
 							if (actionEffect.SourceSequence == 0) {
 								if (actionEffect.ActionId == 0x0007  // auto-attack
@@ -120,7 +139,7 @@ public:
 								}
 							}
 							if (waitTime != originalWaitTime) {
-								actionEffect.AnimationLockDuration = std::max(0ULL, waitTime) / 1000.f;
+								actionEffect.AnimationLockDuration = std::max(0LL, waitTime) / 1000.f;
 								Misc::Logger::GetLogger().Format(
 									"S2C_ActionEffect: actionId=%04x sourceSequence=%04x wait=%llums->%llums",
 									actionEffect.ActionId,
