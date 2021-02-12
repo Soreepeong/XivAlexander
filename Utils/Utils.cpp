@@ -116,6 +116,33 @@ int Utils::sockaddr_cmp(const void* x, const void* y) {
 	return 0;
 }
 
+std::vector<std::string> Utils::StringSplit(const std::string& str, const std::string& delimiter) {
+	std::vector<std::string> result;
+	if (delimiter.empty()){
+		for (size_t i = 0; i < str.size(); ++i)
+			result.push_back(str.substr(i, 1));
+	} else {
+		size_t previousOffset = 0, offset;
+		while ((offset = str.find(delimiter, previousOffset)) != std::string::npos) {
+			result.push_back(str.substr(previousOffset, offset - previousOffset));
+			previousOffset = offset + delimiter.length();
+		}
+		result.push_back(str.substr(previousOffset));
+	}
+	return result;
+}
+
+std::string Utils::StringTrim(const std::string& str, bool leftTrim, bool rightTrim) {
+	size_t left = 0, right = str.length() - 1;
+	if (leftTrim)
+		while (left < str.length() && std::isspace(str[left]))
+			left++;
+	if (rightTrim)
+		while (right != SIZE_MAX && std::isspace(str[right]))
+			right--;
+	return str.substr(left, right + 1 - left);
+}
+
 std::vector<uint8_t> Utils::ZlibDecompress(const uint8_t* src, size_t length) {
 	z_stream stream;
 	memset(&stream, 0, sizeof(stream));

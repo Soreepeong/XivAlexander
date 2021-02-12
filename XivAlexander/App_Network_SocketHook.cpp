@@ -397,49 +397,33 @@ public:
 	std::map<size_t, std::vector<std::function<void(SingleConnection&)>>> m_onSocketGoneListeners;
 	std::mutex m_socketMutex;
 	bool m_unloading = false;
-
-	void AttemptReceive(SingleConnection* conn) {
-		const auto s = conn->GetSocket();
-		uint8_t buf[4096];
-		unsigned long readable;
-		while (true) {
-			readable = 0;
-			if (ioctlsocket(s, FIONREAD, &readable) == SOCKET_ERROR)
-				break;
-			if (!readable)
-				break;
-			int recvlen = SocketFn::recv.bridge(s, reinterpret_cast<char*>(buf), sizeof buf, 0);
-			if (recvlen > 0)
-				conn->impl->recvBefore.Write(buf, recvlen);
-		}
-		conn->impl->ProcessRecvData();
-	}
-
-	void AttemptSend(SingleConnection* conn) {
-		const auto s = conn->GetSocket();
-		uint8_t buf[4096];
-		while (conn->impl->sendProcessed.Available()) {
-			const auto len = conn->impl->sendProcessed.Peek(buf, sizeof buf);
-			const auto sent = SocketFn::send.bridge(s, reinterpret_cast<char*>(buf), len, 0);
-			if (sent == SOCKET_ERROR)
-				break;
-			conn->impl->sendProcessed.Consume(sent);
-		}
-	}
+	std::vector<std::pair<uint32_t, uint32_t>> m_allowedIpRange;
+	std::vector<std::pair<uint32_t, uint32_t>> m_allowedPortRange;
+	std::vector<Utils::CallOnDestruction> m_cleanupList;
 
 	Internals() {
+		m_cleanupList.push_back(ConfigRepository::Config().GameServerIpRange.OnChangeListener([this](ConfigItemBase&) {
+			parseIpRange();
+			m_nonGameSockets.clear();
+			}));
+		m_cleanupList.push_back(ConfigRepository::Config().GameServerPortRange.OnChangeListener([this](ConfigItemBase&) {
+			parsePortRange();
+			m_nonGameSockets.clear();
+			}));
+		parseIpRange();
+		parsePortRange();
 		SocketFn::socket.SetupHook([&](_In_ int af, _In_ int type, _In_ int protocol) {
 			const auto result = App::Signatures::Functions::Socket::socket.bridge(af, type, protocol);
 			Misc::Logger::GetLogger().Format("%p: New", result);
 			OnSocketFound(result);
 			return result;
-		});
+			});
 		SocketFn::closesocket.SetupHook([&](SOCKET s) {
 			CleanupSocket(s);
 			Misc::Logger::GetLogger().Format("%p: Close", s);
 			m_nonGameSockets.erase(s);
 			return SocketFn::closesocket.bridge(s);
-		});
+			});
 		SocketFn::send.SetupHook([&](SOCKET s, const char* buf, int len, int flags) {
 			const auto conn = OnSocketFound(s);
 			if (conn == nullptr)
@@ -449,20 +433,20 @@ public:
 			conn->impl->ProcessSendData();
 			AttemptSend(conn);
 			return len;
-		});
+			});
 		SocketFn::recv.SetupHook([&](SOCKET s, char* buf, int len, int flags) {
 			const auto conn = OnSocketFound(s);
 			if (conn == nullptr)
 				return SocketFn::recv.bridge(s, buf, len, flags);
-			
+
 			AttemptReceive(conn);
-			
+
 			const auto result = conn->impl->recvProcessed.Read(reinterpret_cast<uint8_t*>(buf), len);
 			if (m_unloading && conn->impl->CloseRecvIfPossible())
 				CleanupSocket(s);
 
 			return result;
-		});
+			});
 		SocketFn::select.SetupHook([&](int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const timeval* timeout) {
 			const fd_set readfds_original = *readfds;
 			fd_set readfds_temp = *readfds;
@@ -507,15 +491,156 @@ public:
 					CleanupSocket(s);
 			}
 
-			return (readfds ? readfds->fd_count : 0) + 
+			return (readfds ? readfds->fd_count : 0) +
 				(writefds ? writefds->fd_count : 0) +
 				(exceptfds ? exceptfds->fd_count : 0);
-		});
+			});
 		SocketFn::connect.SetupHook([&](SOCKET s, const sockaddr* name, int namelen) {
 			const auto result = SocketFn::connect.bridge(s, name, namelen);
 			Misc::Logger::GetLogger().Format("%p: connect: %s", s, get_ip_str(name).c_str());
 			return result;
-		});
+			});
+	}
+
+	~Internals() {
+		Unload();
+	}
+
+	int ipToInt(std::string s) {
+		std::vector<uint32_t> parts;
+		for (const auto& part : Utils::StringSplit(s, "."))
+			parts.push_back(std::stoul(Utils::StringTrim(part)));
+		if (parts.size() == 1)
+			return parts[0];
+		else if (parts.size() == 2)
+			return (parts[0] << 24) | parts[1];
+		else if (parts.size() == 3)
+			return (parts[0] << 24) | (parts[1] << 16) | parts[2];
+		else if (parts.size() == 4)
+			return (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3];
+		else
+			throw std::exception();
+	}
+
+	void parseIpRange() {
+		m_allowedIpRange.clear();
+		for (auto range : Utils::StringSplit(ConfigRepository::Config().GameServerIpRange, ",")) {
+			size_t pos;
+			try {
+				range = Utils::StringTrim(range);
+				if (range.empty())
+					continue;
+				uint32_t startIp, endIp;
+				if ((pos = range.find('/')) != std::string::npos) {
+					int subnet = std::stoi(Utils::StringTrim(range.substr(pos + 1)));
+					startIp = endIp = ipToInt(range.substr(0, pos));
+					if (subnet == 32) {
+						startIp = 0;
+						endIp = 0xFFFFFFFFUL;
+					} else if (subnet > 0) {
+						startIp = (startIp & ~((1 << (32 - subnet)) - 1));
+						endIp = (((endIp >> (32 - subnet)) + 1) << (32 - subnet)) - 1;
+					}
+				} else {
+					auto ips = Utils::StringSplit(range, "-");
+					if (ips.size() > 2)
+						throw std::exception();
+					startIp = ipToInt(ips[0]);
+					endIp = ips.size() == 2 ? ipToInt(ips[1]) : startIp;
+					if (startIp > endIp) {
+						const auto t = startIp;
+						startIp = endIp;
+						endIp = t;
+					}
+				}
+				m_allowedIpRange.emplace_back(startIp, endIp);
+			} catch (std::exception& e) {
+				Misc::Logger::GetLogger().Format<Misc::Logger::LogLevel::Error>("Invalid IP range item \"%s\": %s. It must be in the form of either \"0.0.0.0-255.255.255.255\" or \"127.0.0.0/8\", delimited by comma(,).", range.c_str(), e.what());
+			}
+		}
+	}
+
+	void parsePortRange() {
+		m_allowedPortRange.clear();
+		for (auto range : Utils::StringSplit(ConfigRepository::Config().GameServerPortRange, ",")) {
+			try {
+				range = Utils::StringTrim(range);
+				if (range.empty())
+					continue;
+				auto ports = Utils::StringSplit(range, "-");
+				if (ports.size() > 2)
+					throw std::exception();
+				uint32_t start = ipToInt(ports[0]);
+				uint32_t end = ports.size() == 2 ? ipToInt(ports[1]) : start;
+				if (start > end) {
+					const auto t = start;
+					start = end;
+					end = t;
+				}
+				m_allowedPortRange.emplace_back(start, end);
+			} catch (std::exception& e) {
+				Misc::Logger::GetLogger().Format<Misc::Logger::LogLevel::Error>("Invalid IP range item: %s. It must be in the form of either \"0.0.0.0-255.255.255.255\" or \"127.0.0.0/8\", delimited by comma(,).", e.what());
+			}
+		}
+	}
+
+	bool TestRemoteAddress(const sockaddr_in& addr) {
+		if (!m_allowedIpRange.empty()) {
+			const uint32_t ip = ((static_cast<uint32_t>(addr.sin_addr.S_un.S_un_b.s_b1) << 24)
+				| (static_cast<uint32_t>(addr.sin_addr.S_un.S_un_b.s_b2) << 16)
+				| (static_cast<uint32_t>(addr.sin_addr.S_un.S_un_b.s_b3) << 8)
+				| (static_cast<uint32_t>(addr.sin_addr.S_un.S_un_b.s_b4) << 0));
+			bool pass = false;
+			for (const auto& range : m_allowedIpRange) {
+				if (range.first <= ip && ip <= range.second) {
+					pass = true;
+					break;
+				}
+			}
+			if (!pass)
+				return false;
+		}
+		if (!m_allowedPortRange.empty()) {
+			bool pass = false;
+			for (const auto& range : m_allowedPortRange) {
+				if (range.first <= addr.sin_port  && addr.sin_port <= range.second) {
+					pass = true;
+					break;
+				}
+			}
+			if (!pass)
+				return false;
+		}
+		return true;
+	}
+
+	void AttemptReceive(SingleConnection* conn) {
+		const auto s = conn->GetSocket();
+		uint8_t buf[4096];
+		unsigned long readable;
+		while (true) {
+			readable = 0;
+			if (ioctlsocket(s, FIONREAD, &readable) == SOCKET_ERROR)
+				break;
+			if (!readable)
+				break;
+			int recvlen = SocketFn::recv.bridge(s, reinterpret_cast<char*>(buf), sizeof buf, 0);
+			if (recvlen > 0)
+				conn->impl->recvBefore.Write(buf, recvlen);
+		}
+		conn->impl->ProcessRecvData();
+	}
+
+	void AttemptSend(SingleConnection* conn) {
+		const auto s = conn->GetSocket();
+		uint8_t buf[4096];
+		while (conn->impl->sendProcessed.Available()) {
+			const auto len = conn->impl->sendProcessed.Peek(buf, sizeof buf);
+			const auto sent = SocketFn::send.bridge(s, reinterpret_cast<char*>(buf), len, 0);
+			if (sent == SOCKET_ERROR)
+				break;
+			conn->impl->sendProcessed.Consume(sent);
+		}
 	}
 
 	void Unload() {
@@ -540,10 +665,6 @@ public:
 
 		// Let it process main message loop first to ensure that no socket operation is in progress
 		SendMessage(m_hGameWnd, WM_NULL, 0, 0);
-	}
-
-	~Internals() {
-		Unload();
 	}
 
 	SingleConnection* OnSocketFound(SOCKET socket, bool existingOnly = false) {
@@ -571,9 +692,8 @@ public:
 				m_nonGameSockets.emplace(socket);
 				return nullptr;
 			}
-			const auto mask24 = (addr_v4.sin_addr.S_un.S_addr & 0x00FFFFFFUL);
-			if (mask24 != 0x00E502CC && mask24 != 0x009D967C && mask24 != 0x00BD6FB7 && mask24 != 0x003252c3) {
-				Misc::Logger::GetLogger().Format("%p: Mark ignored; remote=%s", socket, get_ip_str(reinterpret_cast<sockaddr*>(&addr_v4)).c_str());
+			if (!TestRemoteAddress(addr_v4)) {
+				Misc::Logger::GetLogger().Format("%p: Mark ignored; remote=%s:%d", socket, get_ip_str(reinterpret_cast<sockaddr*>(&addr_v4)).c_str(), addr_v4.sin_port);
 				m_nonGameSockets.emplace(socket);
 				return nullptr;
 			}

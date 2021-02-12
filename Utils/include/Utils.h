@@ -61,4 +61,7 @@ namespace Utils {
 	std::wstring FormatString(const _Printf_format_string_ std::wstring& format, Args ... args) {
 		return FormatString(format.c_str(), std::forward<Args>(args)...);
 	}
+
+	std::vector<std::string> StringSplit(const std::string& str, const std::string& delimiter);
+	std::string StringTrim(const std::string& str, bool leftTrim = true, bool rightTrim = true);
 }

@@ -109,6 +109,17 @@ namespace App {
 		ConfigItem<bool> UseOpcodeFinder{ this, "UseOpcodeFinder", false };
 		ConfigItem<bool> ShowLoggingWindow{ this, "ShowLoggingWindow", false };
 		ConfigItem<bool> ShowControlWindow{ this, "ShowControlWindow", false };
+		ConfigItem<std::string> GameServerIpRange{ this, "GameServerIpRange",
+			"124.150.157.0/24,"  // Japanese
+			"195.82.50.0/24,"    // European
+			"204.2.229.0/24,"    // North American
+			"183.111.189.3/24,"  // Korean
+			"127.0.0.0/8,"       // Loopback
+			"10.0.0.0/8,"        // Private range A
+			"172.16.0.0/12,"     // Private range B
+			"192.168.0.0/16,"    // Private range C
+		};
+		ConfigItem<std::string> GameServerPortRange{ this, "GameServerPortRange", "10000,10001-65535" };
 
 		ConfigRepository();
 
