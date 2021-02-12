@@ -4,12 +4,6 @@
 
 constexpr int BaseFontSize = 8;
 
-enum SysMenuExtras {
-	SystemMenuClear = 0xE000,
-	SystemMenuAlwaysOnTop,
-	SystemMenuEndSeparator,
-};
-
 static WNDCLASSEXW WindowClass() {
 	WNDCLASSEXW wcex;
 	ZeroMemory(&wcex, sizeof wcex);
@@ -91,11 +85,6 @@ App::Window::Log::Log()
 		addLogFn(*item);
 	m_callbackHandle = Misc::Logger::GetLogger().OnNewLogItem(addLogFn);
 
-	const auto hMenu = GetSystemMenu(m_hWnd, false);
-	InsertMenuW(hMenu, SC_CLOSE, MF_BYCOMMAND | ((GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST) ? MF_CHECKED : 0), SystemMenuAlwaysOnTop, L"Always on Top");
-	InsertMenuW(hMenu, SC_CLOSE, MF_BYCOMMAND, SystemMenuClear, L"Clear");
-	InsertMenuW(hMenu, SC_CLOSE, MF_BYCOMMAND | MF_SEPARATOR, SystemMenuEndSeparator, L"-");
-
 	ShowWindow(m_hWnd, SW_SHOW);
 }
 
@@ -175,6 +164,31 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 						}, pDataT, 0, nullptr));
 					return 0;
 				}
+				
+				case ID_FILE_CLEAR:
+				{
+					Misc::Logger::GetLogger().Clear();
+					m_direct(m_directPtr, SCI_SETREADONLY, FALSE, 0);
+					m_direct(m_directPtr, SCI_CLEARALL, 0, 0);
+					m_direct(m_directPtr, SCI_SETREADONLY, TRUE, 0);
+					return 0;
+				}
+
+				case ID_VIEW_ALWAYSONTOP:
+				{
+					HMENU hMenu = GetMenu(m_hWnd);
+					MENUITEMINFOW menuInfo = { sizeof(MENUITEMINFOW) };
+					menuInfo.fMask = MIIM_STATE;
+					GetMenuItemInfo(hMenu, ID_VIEW_ALWAYSONTOP, FALSE, &menuInfo);
+					if (GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST) {
+						SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+						menuInfo.fState &= ~MFS_CHECKED;
+					} else {
+						SetWindowPos(m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+						menuInfo.fState |= MFS_CHECKED;
+					}
+					SetMenuItemInfoW(hMenu, ID_VIEW_ALWAYSONTOP, FALSE, &menuInfo);
+				}
 			}
 			break;
 		}
@@ -190,36 +204,6 @@ LRESULT App::Window::Log::OnNotify(const LPNMHDR nmhdr) {
 		}
 	}
 	return App::Window::Base::OnNotify(nmhdr);
-}
-
-LRESULT App::Window::Log::OnSysCommand(WPARAM commandId, short xPos, short yPos) {
-	switch (commandId) {
-		case SystemMenuAlwaysOnTop:
-		{
-			HMENU hMenu = GetSystemMenu(m_hWnd, FALSE);
-			MENUITEMINFOW menuInfo = { sizeof(MENUITEMINFOW) };
-			menuInfo.fMask = MIIM_STATE;
-			GetMenuItemInfo(hMenu, SystemMenuAlwaysOnTop, FALSE, &menuInfo);
-			if (GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST) {
-				SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-				menuInfo.fState &= ~MFS_CHECKED;
-			} else {
-				SetWindowPos(m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-				menuInfo.fState |= MFS_CHECKED;
-			}
-			SetMenuItemInfoW(hMenu, SystemMenuAlwaysOnTop, FALSE, &menuInfo);
-			return 0;
-		}
-		case SystemMenuClear:
-		{
-			Misc::Logger::GetLogger().Clear();
-			m_direct(m_directPtr, SCI_SETREADONLY, FALSE, 0);
-			m_direct(m_directPtr, SCI_CLEARALL, 0, 0);
-			m_direct(m_directPtr, SCI_SETREADONLY, TRUE, 0);
-			return 0;
-		}
-	}
-	return App::Window::Base::OnSysCommand(commandId, xPos, yPos);
 }
 
 void App::Window::Log::OnDestroy() {

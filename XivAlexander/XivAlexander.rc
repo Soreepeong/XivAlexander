@@ -101,6 +101,12 @@ BEGIN
     POPUP "&File"
     BEGIN
         MENUITEM "&Save",                       ID_FILE_SAVE
+        MENUITEM SEPARATOR
+        MENUITEM "&Clear",                      ID_FILE_CLEAR
+    END
+    POPUP "&View"
+    BEGIN
+        MENUITEM "Always on &Top",              ID_VIEW_ALWAYSONTOP
     END
 END
 
