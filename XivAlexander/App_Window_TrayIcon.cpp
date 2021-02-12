@@ -8,6 +8,7 @@ static const int TrayItemId = 1;
 static const int TimerIdReregisterTrayIcon = 100;
 
 static WNDCLASSEXW WindowClass() {
+	Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIcon(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)));
 	WNDCLASSEXW wcex;
 	ZeroMemory(&wcex, sizeof wcex);
 	wcex.cbSize = sizeof(WNDCLASSEX);
@@ -15,12 +16,12 @@ static WNDCLASSEXW WindowClass() {
 	wcex.cbClsExtra = 0;
 	wcex.cbWndExtra = 0;
 	wcex.hInstance = g_hInstance;
-	wcex.hIcon = LoadIcon(wcex.hInstance, IDI_APPLICATION);
+	wcex.hIcon = hIcon;
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
 	wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
 	wcex.lpszMenuName = MAKEINTRESOURCE(IDR_TRAY_MENU);
 	wcex.lpszClassName = L"XivAlexander::Window::Log";
-	wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
+	wcex.hIconSm = hIcon;
 	return wcex;
 }
 

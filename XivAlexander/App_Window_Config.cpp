@@ -6,6 +6,7 @@ std::unique_ptr<App::Window::Config> App::Window::Config::m_pConfigWindow;
 constexpr int BaseFontSize = 8;
 
 static WNDCLASSEXW WindowClass() {
+	Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIcon(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)));
 	WNDCLASSEXW wcex;
 	ZeroMemory(&wcex, sizeof wcex);
 	wcex.cbSize = sizeof(WNDCLASSEX);
@@ -13,12 +14,12 @@ static WNDCLASSEXW WindowClass() {
 	wcex.cbClsExtra = 0;
 	wcex.cbWndExtra = 0;
 	wcex.hInstance = g_hInstance;
-	wcex.hIcon = LoadIcon(wcex.hInstance, IDI_APPLICATION);
+	wcex.hIcon = hIcon;
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
 	wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
 	wcex.lpszMenuName = MAKEINTRESOURCE(IDR_CONFIG_EDITOR_MENU);
 	wcex.lpszClassName = L"XivAlexander::Window::Config";
-	wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
+	wcex.hIconSm = hIcon;
 	return wcex;
 }
 
