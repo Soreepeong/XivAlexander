@@ -75,41 +75,4 @@ namespace App::Signatures::Functions {
 		extern FunctionSignature<BOOL> IsDebuggerPresent;
 		extern FunctionSignature<DWORD, DWORD, BOOL> SleepEx;
 	}
-
-	namespace DXGISwapChain {
-		enum VTable : size_t {
-			VTQueryInterface = 0,
-			VTAddRef = 1,
-			VTRelease = 2,
-			VTSetPrivateData = 3,
-			VTSetPrivateDataInterface = 4,
-			VTGetPrivateData = 5,
-			VTGetParent = 6,
-			VTGetDevice = 7,
-			VTPresent = 8,
-			VTGetBuffer = 9,
-			VTSetFullscreenState = 10,
-			VTGetFullscreenState = 11,
-			VTGetDesc = 12,
-			VTResizeBuffers = 13,
-			VTResizeTarget = 14,
-			VTGetContainingOutput = 15,
-			VTGetFrameStatistics = 16,
-			VTGetLastPresentCount = 17,
-			VTCOUNT = 18
-		};
-		struct CompareLuid {
-			bool operator ()(const LUID& l, const LUID& r) const {
-				return *reinterpret_cast<const uint64_t*>(&l) < *reinterpret_cast<const uint64_t*>(&r);
-			}
-		};
-		const std::map<LUID, std::vector<void*>, CompareLuid>& _GetDxgiSwapChainVtable();
-
-		extern FunctionSignature<HRESULT, IDXGISwapChain*, UINT, UINT> Present;
-	}
-
-	extern FunctionSignature<size_t> PeekMessageAndProcess;
-	extern FunctionSignature<size_t, void*> HideFFXIVWindow;
-	extern FunctionSignature<size_t, void*> ShowFFXIVWindow;
-	extern FunctionSignature<size_t, void*, void*, size_t> OnNewChatItem;
 }
