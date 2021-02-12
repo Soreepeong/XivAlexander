@@ -3,11 +3,12 @@
 
 namespace App::Window {
 	class TrayIcon : public Base {
-		const Utils::Win32Handle<HMENU, DestroyMenu> m_hMenu;
 		HWND const m_hGameWnd;
 		GUID m_guid;
 		const std::function<void()> m_triggerUnload;
 		const int m_uTaskbarRestartMessage;
+
+		Utils::CallOnDestruction m_callbackHandle;
 
 	public:
 		TrayIcon(HWND hGameWnd, std::function<void()> unloadFunction);
@@ -17,6 +18,7 @@ namespace App::Window {
 		virtual LRESULT WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 		virtual void OnDestroy() override;
 
+		void RepopulateMenu();
 		void RegisterTrayIcon();
 	};
 };

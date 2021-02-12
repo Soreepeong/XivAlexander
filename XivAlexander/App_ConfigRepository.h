@@ -108,6 +108,7 @@ namespace App {
 		ConfigItem<bool> UseHighLatencyMitigation{ this, "UseHighLatencyMitigation", true };
 		ConfigItem<bool> UseOpcodeFinder{ this, "UseOpcodeFinder", false };
 		ConfigItem<bool> ShowLoggingWindow{ this, "ShowLoggingWindow", false };
+		ConfigItem<bool> ShowControlWindow{ this, "ShowControlWindow", false };
 
 		ConfigRepository();
 

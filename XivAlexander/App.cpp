@@ -343,7 +343,7 @@ extern "C" __declspec(dllexport) int __stdcall LoadXivAlexander(void* lpReserved
 		return 0;
 	} catch (const std::exception& e) {
 		OutputDebugStringA(Utils::FormatString("LoadXivAlexander error: %s\n", e.what()).c_str());
-		return -1;
+		return GetLastError();
 	}
 }
 

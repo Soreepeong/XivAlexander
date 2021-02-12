@@ -18,15 +18,14 @@ static WNDCLASSEXW WindowClass() {
 	wcex.hIcon = LoadIcon(wcex.hInstance, IDI_APPLICATION);
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
 	wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
-	wcex.lpszMenuName = nullptr;
+	wcex.lpszMenuName = MAKEINTRESOURCE(IDR_TRAY_MENU);
 	wcex.lpszClassName = L"XivAlexander::Window::Log";
 	wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
 	return wcex;
 }
 
 App::Window::TrayIcon::TrayIcon(HWND hGameWnd, std::function<void()> unloadFunction)
-	: Base(WindowClass(), L"TrayIcon", WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr)
-	, m_hMenu(LoadMenu(g_hInstance, MAKEINTRESOURCE(IDR_TRAY_MENU)))
+	: Base(WindowClass(), L"XivAlexander", WS_OVERLAPPEDWINDOW, WS_EX_TOPMOST, CW_USEDEFAULT, CW_USEDEFAULT, 480, 80, nullptr, nullptr)
 	, m_triggerUnload(unloadFunction)
 	, m_hGameWnd(hGameWnd)
 	, m_uTaskbarRestartMessage(RegisterWindowMessage(TEXT("TaskbarCreated"))) {
@@ -38,93 +37,112 @@ App::Window::TrayIcon::TrayIcon(HWND hGameWnd, std::function<void()> unloadFunct
 	hashSourceData.insert(hashSourceData.begin(), reinterpret_cast<unsigned char*>(path), reinterpret_cast<unsigned char*>(path) + sizeof path);
 	HashData(hashSourceData.data(), static_cast<DWORD>(hashSourceData.size()), reinterpret_cast<BYTE*>(&m_guid.Data1), static_cast<DWORD>(sizeof GUID));
 	
-	ModifyMenu(m_hMenu, ID_TRAYMENU_CURRENT_INFO, MF_BYCOMMAND | MF_DISABLED, ID_TRAYMENU_CURRENT_INFO, Utils::FormatString(L"XivAlexander(%d): %s", GetCurrentProcessId(), path).c_str());
+	const auto title = Utils::FormatString(L"XivAlexander(%d): %s", GetCurrentProcessId(), path);
+	SetWindowTextW(m_hWnd, title.c_str());
+	ModifyMenu(GetMenu(m_hWnd), ID_TRAYMENU_CURRENT_INFO, MF_BYCOMMAND | MF_DISABLED, ID_TRAYMENU_CURRENT_INFO, title.c_str());
 
 	RegisterTrayIcon();
 
 	// Try to restore tray icon every 5 seconds in case things go wrong
 	SetTimer(m_hWnd, TimerIdReregisterTrayIcon, 5000, nullptr);
+
+	m_callbackHandle = ConfigRepository::Config().ShowControlWindow.OnChangeListener([this](ConfigItemBase&) {
+		ShowWindow(m_hWnd, ConfigRepository::Config().ShowControlWindow ? SW_SHOW : SW_HIDE);
+		});
+	if (ConfigRepository::Config().ShowControlWindow)
+		ShowWindow(m_hWnd, SW_SHOW);
 }
 
 App::Window::TrayIcon::~TrayIcon() {
+	m_callbackHandle = nullptr;
 	Destroy();
 }
 
 LRESULT App::Window::TrayIcon::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
-	if (uMsg == WmTrayCallback) {
-		const auto iconId = HIWORD(lParam);
-		const auto eventId = LOWORD(lParam);
-		if (eventId == WM_CONTEXTMENU) {
+	if (uMsg == WM_CLOSE) {
+		if (MessageBoxW(m_hWnd, L"Closing this window will unload XivAlexander. Disable \"Show Control Window\" from the menu to hide this window. Proceed?", L"XivAlexander", MB_YESNO | MB_ICONQUESTION) == IDNO) {
+			return 0;
+		}
+	} else if (uMsg == WM_INITMENUPOPUP) {
+		RepopulateMenu();
+	} else if (uMsg == WM_COMMAND) {
+		if (!lParam) {
 			auto& config = ConfigRepository::Config();
-			POINT curPoint;
-			GetCursorPos(&curPoint);
-			SetForegroundWindow(m_hGameWnd);
-
-			MENUITEMINFOW mii = { sizeof(MENUITEMINFOW) };
-			mii.fMask = MIIM_STATE;
-			GetMenuItemInfoW(m_hMenu, ID_TRAYMENU_ALWAYSONTOP, false, &mii);
-			if (config.AlwaysOnTop)
-				mii.fState |= MFS_CHECKED;
-			else
-				mii.fState &= ~MFS_CHECKED;
-			SetMenuItemInfoW(m_hMenu, ID_TRAYMENU_ALWAYSONTOP, false, &mii);
-
-			GetMenuItemInfoW(m_hMenu, ID_TRAYMENU_HIGH_LATENCY_MITIGATION, false, &mii);
-			if (config.UseHighLatencyMitigation)
-				mii.fState |= MFS_CHECKED;
-			else
-				mii.fState &= ~MFS_CHECKED;
-			SetMenuItemInfoW(m_hMenu, ID_TRAYMENU_HIGH_LATENCY_MITIGATION, false, &mii);
-
-			GetMenuItemInfoW(m_hMenu, ID_TRAYMENU_SHOWLOGGINGWINDOW, false, &mii);
-			if (config.ShowLoggingWindow)
-				mii.fState |= MFS_CHECKED;
-			else
-				mii.fState &= ~MFS_CHECKED;
-			SetMenuItemInfoW(m_hMenu, ID_TRAYMENU_SHOWLOGGINGWINDOW, false, &mii);
-
-			GetMenuItemInfoW(m_hMenu, ID_TRAYMENU_USEIPCTYPEFINDER, false, &mii);
-			if (config.UseOpcodeFinder)
-				mii.fState |= MFS_CHECKED;
-			else
-				mii.fState &= ~MFS_CHECKED;
-			SetMenuItemInfoW(m_hMenu, ID_TRAYMENU_USEIPCTYPEFINDER, false, &mii);
-
-			switch (TrackPopupMenu(
-				GetSubMenu(m_hMenu, 0),
-				TPM_RETURNCMD | TPM_NONOTIFY,
-				curPoint.x,
-				curPoint.y,
-				0,
-				m_hGameWnd,
-				NULL
-			)) {
+			switch (LOWORD(wParam)) {
 				case ID_TRAYMENU_ALWAYSONTOP:
 					config.AlwaysOnTop = !config.AlwaysOnTop;
-					break;
+					return 0;
+
 				case ID_TRAYMENU_HIGH_LATENCY_MITIGATION:
 					config.UseHighLatencyMitigation = !config.UseHighLatencyMitigation;
-					break;
+					return 0;
+
 				case ID_TRAYMENU_USEIPCTYPEFINDER:
 					config.UseOpcodeFinder = !config.UseOpcodeFinder;
-					break;
+					return 0;
+
 				case ID_TRAYMENU_RELOADCONFIGURATION:
 					config.Reload();
-					break;
+					return 0;
+
 				case ID_TRAYMENU_SHOWLOGGINGWINDOW:
 					config.ShowLoggingWindow = !config.ShowLoggingWindow;
-					break;
+					return 0;
+
+				case ID_TRAYMENU_SHOWCONTROLWINDOW:
+					config.ShowControlWindow = !config.ShowControlWindow;
+					return 0;
+
 				case ID_TRAYMENU_UNLOADXIVALEXANDER:
 					m_triggerUnload();
-					break;
+					return 0;
+
 				case ID_TRAYMENU_EDITCONFIGURATION:
 					if (App::Window::Config::m_pConfigWindow && !App::Window::Config::m_pConfigWindow->IsDestroyed()) {
 						SetFocus(App::Window::Config::m_pConfigWindow->GetHandle());
 					} else {
 						App::Window::Config::m_pConfigWindow = std::make_unique< App::Window::Config>();
 					}
-					break;
+					return 0;
+
+				case ID_VIEW_ALWAYSONTOP:
+				{
+					HMENU hMenu = GetMenu(m_hWnd);
+					MENUITEMINFOW menuInfo = { sizeof(MENUITEMINFOW) };
+					menuInfo.fMask = MIIM_STATE;
+					GetMenuItemInfo(hMenu, ID_VIEW_ALWAYSONTOP, FALSE, &menuInfo);
+					if (GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST) {
+						SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+						menuInfo.fState &= ~MFS_CHECKED;
+					} else {
+						SetWindowPos(m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+						menuInfo.fState |= MFS_CHECKED;
+					}
+					SetMenuItemInfoW(hMenu, ID_VIEW_ALWAYSONTOP, FALSE, &menuInfo);
+					return 0;
+				}
 			}
+		}
+	} else if (uMsg == WmTrayCallback) {
+		const auto iconId = HIWORD(lParam);
+		const auto eventId = LOWORD(lParam);
+		if (eventId == WM_CONTEXTMENU) {
+			RepopulateMenu();
+			POINT curPoint;
+			GetCursorPos(&curPoint);
+			SetForegroundWindow(m_hGameWnd);
+			const auto result = TrackPopupMenu(
+				GetSubMenu(GetMenu(m_hWnd), 0),
+				TPM_RETURNCMD | TPM_NONOTIFY,
+				curPoint.x,
+				curPoint.y,
+				0,
+				m_hGameWnd,
+				NULL
+			);
+
+			if (result)
+				SendMessage(m_hWnd, WM_COMMAND, MAKEWPARAM(result, 0), 0);
 		}
 	} else if (uMsg == m_uTaskbarRestartMessage) {
 		RegisterTrayIcon();
@@ -137,6 +155,8 @@ LRESULT App::Window::TrayIcon::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) 
 }
 
 void App::Window::TrayIcon::OnDestroy() {
+	m_triggerUnload();
+
 	App::Window::Config::m_pConfigWindow = nullptr;
 	NOTIFYICONDATAW nid = { sizeof(NOTIFYICONDATAW) };
 	nid.guidItem = m_guid;
@@ -145,6 +165,56 @@ void App::Window::TrayIcon::OnDestroy() {
 	nid.uFlags = NIF_GUID;
 	Shell_NotifyIconW(NIM_DELETE, &nid);
 	Base::OnDestroy();
+}
+
+void App::Window::TrayIcon::RepopulateMenu() {
+	const auto hMenu = GetMenu(m_hWnd);
+	const auto& config = ConfigRepository::Config();
+
+	MENUITEMINFOW mii = { sizeof(MENUITEMINFOW) };
+	mii.fMask = MIIM_STATE;
+
+	GetMenuItemInfoW(hMenu, ID_VIEW_ALWAYSONTOP, false, &mii);
+	if (GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST)
+		mii.fState |= MFS_CHECKED;
+	else
+		mii.fState &= ~MFS_CHECKED;
+	SetMenuItemInfoW(hMenu, ID_VIEW_ALWAYSONTOP, false, &mii);
+
+	GetMenuItemInfoW(hMenu, ID_TRAYMENU_ALWAYSONTOP, false, &mii);
+	if (config.AlwaysOnTop)
+		mii.fState |= MFS_CHECKED;
+	else
+		mii.fState &= ~MFS_CHECKED;
+	SetMenuItemInfoW(hMenu, ID_TRAYMENU_ALWAYSONTOP, false, &mii);
+
+	GetMenuItemInfoW(hMenu, ID_TRAYMENU_HIGH_LATENCY_MITIGATION, false, &mii);
+	if (config.UseHighLatencyMitigation)
+		mii.fState |= MFS_CHECKED;
+	else
+		mii.fState &= ~MFS_CHECKED;
+	SetMenuItemInfoW(hMenu, ID_TRAYMENU_HIGH_LATENCY_MITIGATION, false, &mii);
+
+	GetMenuItemInfoW(hMenu, ID_TRAYMENU_SHOWCONTROLWINDOW, false, &mii);
+	if (config.ShowControlWindow)
+		mii.fState |= MFS_CHECKED;
+	else
+		mii.fState &= ~MFS_CHECKED;
+	SetMenuItemInfoW(hMenu, ID_TRAYMENU_SHOWCONTROLWINDOW, false, &mii);
+
+	GetMenuItemInfoW(hMenu, ID_TRAYMENU_SHOWLOGGINGWINDOW, false, &mii);
+	if (config.ShowLoggingWindow)
+		mii.fState |= MFS_CHECKED;
+	else
+		mii.fState &= ~MFS_CHECKED;
+	SetMenuItemInfoW(hMenu, ID_TRAYMENU_SHOWLOGGINGWINDOW, false, &mii);
+
+	GetMenuItemInfoW(hMenu, ID_TRAYMENU_USEIPCTYPEFINDER, false, &mii);
+	if (config.UseOpcodeFinder)
+		mii.fState |= MFS_CHECKED;
+	else
+		mii.fState &= ~MFS_CHECKED;
+	SetMenuItemInfoW(hMenu, ID_TRAYMENU_USEIPCTYPEFINDER, false, &mii);
 }
 
 void App::Window::TrayIcon::RegisterTrayIcon() {
