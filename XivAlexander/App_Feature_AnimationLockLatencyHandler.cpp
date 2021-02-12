@@ -55,9 +55,14 @@ public:
 						const auto& actionRequest = pMessage->Data.IPC.Data.C2S_ActionRequest;
 						m_pendingActions.emplace_back(actionRequest);
 
-						// if latest action request has been made after last animation lock end time, reset animation lock base time
-						if (m_pendingActions.back().RequestTimestamp > m_lastAnimationLockEndsAt)
-							m_lastAnimationLockEndsAt = m_pendingActions.back().RequestTimestamp;
+						// If somehow latest action request has been made before last animation lock end time, keep it.
+						// Otherwise...
+						if (m_pendingActions.back().RequestTimestamp > m_lastAnimationLockEndsAt) {
+
+							// If there was no action queued to begin with before the current one, update the base lock time to now.
+							if (m_pendingActions.size() == 1)
+								m_lastAnimationLockEndsAt = m_pendingActions.back().RequestTimestamp;
+						}
 
 						Misc::Logger::GetLogger().Format(
 							"C2S_ActionRequest: actionId=%04x sequence=%04x",
@@ -157,7 +162,7 @@ public:
 						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorControlSelf) {
 							const auto& actorControlSelf = pMessage->Data.IPC.Data.S2C_ActorControlSelf;
 
-							// Latest action request has been rejected from server.
+							// Oldest action request has been rejected from server.
 							if (actorControlSelf.Category == S2C_ActorControlSelfCategory::ActionRejected) {
 								const auto& rollback = actorControlSelf.Rollback;
 
@@ -177,7 +182,7 @@ public:
 						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorControl) {
 							const auto& actorControl = pMessage->Data.IPC.Data.S2C_ActorControl;
 							
-							// The server has cancelled a cast in progress.
+							// The server has cancelled an oldest action (which is a cast) in progress.
 							if (actorControl.Category == S2C_ActorControlCategory::CancelCast) {
 								const auto& cancelCast = actorControl.CancelCast;
 
