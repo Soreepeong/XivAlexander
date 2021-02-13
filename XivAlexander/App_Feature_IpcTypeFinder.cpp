@@ -48,8 +48,7 @@ public:
 							if (actorControlSelf.Category == S2C_ActorControlSelfCategory::Cooldown) {
 								const auto& cooldown = actorControlSelf.Cooldown;
 								Misc::Logger::GetLogger().Format(
-									"[IpcTypeFinder/S2C_ActorControlSelf] Cooldown: p1=%08x actionId=%04x duration=%d",
-									cooldown.Param1,
+									"[IpcTypeFinder/S2C_ActorControlSelf] Cooldown: actionId=%04x duration=%d",
 									cooldown.ActionId,
 									cooldown.Duration);
 								pMessage->DebugPrint("IpcTypeFinder", true);
@@ -67,24 +66,10 @@ public:
 							// Test ActorCast
 							//
 							Misc::Logger::GetLogger().Format(
-								"[IpcTypeFinder/S2C_ActorCast] "
-								"actionId=%04x type=%02x u1=%02x skill2=%04x u2=%08x time=%.3f "
-								"target=%08x rotation=%.3f u3=%08x "
-								"x=%d y=%d z=%d u=%04x",
+								"[IpcTypeFinder/S2C_ActorCast] actionId=%04x time=%.3f target=%08x",
 								pMessage->Data.IPC.Data.S2C_ActorCast.ActionId,
-								pMessage->Data.IPC.Data.S2C_ActorCast.SkillType,
-								pMessage->Data.IPC.Data.S2C_ActorCast.Unknown1,
-								pMessage->Data.IPC.Data.S2C_ActorCast.ActionId2,
-								pMessage->Data.IPC.Data.S2C_ActorCast.Unknown2,
 								pMessage->Data.IPC.Data.S2C_ActorCast.CastTime,
-
-								pMessage->Data.IPC.Data.S2C_ActorCast.TargetId,
-								pMessage->Data.IPC.Data.S2C_ActorCast.Rotation,
-								pMessage->Data.IPC.Data.S2C_ActorCast.Unknown3,
-								pMessage->Data.IPC.Data.S2C_ActorCast.X,
-								pMessage->Data.IPC.Data.S2C_ActorCast.Y,
-								pMessage->Data.IPC.Data.S2C_ActorCast.Z,
-								pMessage->Data.IPC.Data.S2C_ActorCast.Unknown4);
+								pMessage->Data.IPC.Data.S2C_ActorCast.TargetId);
 							pMessage->DebugPrint("IpcTypeFinder", true);
 
 						} else if (pMessage->Length == 0x38) {
@@ -93,14 +78,9 @@ public:
 							if (actorControl.Category == S2C_ActorControlCategory::CancelCast) {
 								const auto& cancelCast = actorControl.CancelCast;
 								Misc::Logger::GetLogger().Format(
-									"[IpcTypeFinder/S2C_ActorControl] CancelCast: p1=%08x actionId=%04x p2=%08x p4=%08x pad1=%04x pad2=%08x",
+									"[IpcTypeFinder/S2C_ActorControl] CancelCast: actionId=%04x",
 									pMessage->Length,
-									cancelCast.Param1,
-									cancelCast.ActionId,
-									cancelCast.Param3,
-									cancelCast.Param4,
-									cancelCast.Padding1,
-									cancelCast.Padding2);
+									cancelCast.ActionId);
 								pMessage->DebugPrint("IpcTypeFinder", true);
 							}
 						}

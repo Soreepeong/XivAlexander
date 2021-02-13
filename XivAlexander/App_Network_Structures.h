@@ -80,9 +80,10 @@ namespace App::Network::Structures {
 			uint16_t Padding1;
 		};
 		struct S2C_ActorControl {
-			S2C_ActorControlCategory Category;
 			union {
+				S2C_ActorControlCategory Category;
 				struct {
+					S2C_ActorControlCategory Category;
 					uint16_t Padding1;
 					uint32_t Param1;
 					uint32_t Param2;
@@ -91,19 +92,21 @@ namespace App::Network::Structures {
 					uint32_t Padding2;
 				} Raw;
 				struct {
+					S2C_ActorControlCategory Category;
 					uint16_t Padding1;
 					uint32_t Param1;
+					uint32_t Param2;
 					uint32_t ActionId;
-					uint32_t Param3;
 					uint32_t Param4;
 					uint32_t Padding2;
 				} CancelCast;
 			};
 		};
 		struct S2C_ActorControlSelf {
-			S2C_ActorControlSelfCategory Category;
 			union {
+				S2C_ActorControlSelfCategory Category;
 				struct {
+					S2C_ActorControlSelfCategory Category;
 					uint16_t Padding1;
 					uint32_t Param1;
 					uint32_t Param2;
@@ -114,21 +117,23 @@ namespace App::Network::Structures {
 					uint32_t Padding2;
 				} Raw;
 				struct {
+					S2C_ActorControlSelfCategory Category;
 					uint16_t Padding1;
 					uint32_t Param1;
+					uint32_t Param2;
 					uint32_t ActionId;
-					uint32_t Param3;
 					uint32_t Param4;
+					uint32_t Param5;
 					uint32_t SourceSequence;
-					uint32_t Param6;
 					uint32_t Padding2;
 				} Rollback;
 				struct {
+					S2C_ActorControlSelfCategory Category;
 					uint16_t Padding1;
 					uint32_t Param1;
+					uint32_t Param2;
 					uint32_t ActionId;
 					uint32_t Duration;  // in milliseconds
-					uint32_t Param4;
 					uint32_t Param5;
 					uint32_t Param6;
 					uint32_t Padding2;

@@ -167,7 +167,12 @@ public:
 								const auto& rollback = actorControlSelf.Rollback;
 
 								// find the one sharing Sequence, assuming action responses are always in order
-								while (!m_pendingActions.empty() && m_pendingActions.front().Sequence != rollback.SourceSequence) {
+								while (!m_pendingActions.empty() 
+									&& (
+										// Sometimes SourceSequence is empty, in which case, we use ActionId to judge.
+										(rollback.SourceSequence != 0 && m_pendingActions.front().Sequence != rollback.SourceSequence)
+										|| (rollback.SourceSequence == 0 && m_pendingActions.front().ActionId != rollback.ActionId)
+									)) {
 									const auto& item = m_pendingActions.front();
 									Misc::Logger::GetLogger().Format(reinterpret_cast<const char*>(u8"\t┎ ActionRequest ignored for processing: actionId=%04x sequence=%04x"),
 										item.ActionId, item.Sequence);
@@ -190,17 +195,20 @@ public:
 							if (actorControl.Category == S2C_ActorControlCategory::CancelCast) {
 								const auto& cancelCast = actorControl.CancelCast;
 
+								// find the one sharing Sequence, assuming action responses are always in order
+								while (!m_pendingActions.empty()&& m_pendingActions.front().ActionId != cancelCast.ActionId) {
+									const auto& item = m_pendingActions.front();
+									Misc::Logger::GetLogger().Format(reinterpret_cast<const char*>(u8"\t┎ ActionRequest ignored for processing: actionId=%04x sequence=%04x"),
+										item.ActionId, item.Sequence);
+									m_pendingActions.pop_front();
+								}
+
 								if (!m_pendingActions.empty())
 									m_pendingActions.pop_front();
 
 								Misc::Logger::GetLogger().Format(
-									"S2C_ActorControl/CancelCast: p1=%08x actionId=%04x p3=%08x p4=%08x pad1=%04x pad2=%08x",
-									cancelCast.Param1,
-									cancelCast.ActionId,
-									cancelCast.Param3,
-									cancelCast.Param4,
-									cancelCast.Padding1,
-									cancelCast.Padding2);
+									"S2C_ActorControl/CancelCast: actionId=%04x",
+									cancelCast.ActionId);
 							}
 
 						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorCast) {
@@ -212,25 +220,10 @@ public:
 								m_pendingActions.front().CastFlag = true;
 
 							Misc::Logger::GetLogger().Format(
-								"S2C_ActorCast: "
-								"actionId=%04x type=%02x u1=%02x skill2=%04x u2=%08x time=%.3f "
-								"target=%08x rotation=%.3f u3=%08x "
-								"x=%d y=%d z=%d u=%04x",
-
+								"S2C_ActorCast: actionId=%04x time=%.3f target=%08x",
 								actorCast.ActionId,
-								actorCast.SkillType,
-								actorCast.Unknown1,
-								actorCast.ActionId2,
-								actorCast.Unknown2,
 								actorCast.CastTime,
-
-								actorCast.TargetId,
-								actorCast.Rotation,
-								actorCast.Unknown3,
-								actorCast.X,
-								actorCast.Y,
-								actorCast.Z,
-								actorCast.Unknown4);
+								actorCast.TargetId);
 						}
 					}
 				}
