@@ -113,15 +113,15 @@ void ProcessData(SingleStream& source, SingleStream& target, std::function<void(
 	source.Peek(&buf[0], buf.size());
 	while (!buf.empty()) {
 		const auto searchLength = std::min(sizeof FFXIVBundle::Magic, buf.size());
-		auto possibleMagicOffset = std::search(buf.begin(), buf.end(), FFXIVBundle::MagicConstant1.begin(), FFXIVBundle::MagicConstant1.begin() + searchLength);
-		if (possibleMagicOffset == buf.end())
-			possibleMagicOffset = std::search(buf.begin(), buf.end(), FFXIVBundle::MagicConstant2.begin(), FFXIVBundle::MagicConstant2.begin() + searchLength);
-		if (possibleMagicOffset != buf.begin()) {
-			const auto wasteLength = possibleMagicOffset - buf.begin();
-			source.Consume(wasteLength);
-			target.Write(&buf[0], wasteLength);
-			discardedBytes.insert(discardedBytes.end(), buf.begin(), buf.begin() + wasteLength);
-			buf.erase(buf.begin(), possibleMagicOffset);
+		const auto possibleMagicOffset = std::min(
+			std::search(buf.begin(), buf.end(), FFXIVBundle::MagicConstant1.begin(), FFXIVBundle::MagicConstant1.begin() + searchLength) - buf.begin(),
+			std::search(buf.begin(), buf.end(), FFXIVBundle::MagicConstant2.begin(), FFXIVBundle::MagicConstant2.begin() + searchLength) - buf.begin()
+		);
+		if (possibleMagicOffset != 0) {
+			source.Consume(possibleMagicOffset);
+			target.Write(&buf[0], possibleMagicOffset);
+			discardedBytes.insert(discardedBytes.end(), buf.begin(), buf.begin() + possibleMagicOffset);
+			buf.erase(buf.begin(), buf.begin() + possibleMagicOffset);
 		}
 
 		// Incomplete header
