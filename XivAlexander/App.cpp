@@ -315,23 +315,25 @@ extern "C" __declspec(dllexport) int __stdcall LoadXivAlexander(void* lpReserved
 	}
 }
 
-extern "C" __declspec(dllexport) int __stdcall DisableUnloading(int bDisable) {
+extern "C" __declspec(dllexport) int __stdcall DisableUnloading(size_t bDisable) {
 	l_pApp->m_bUnloadDisabled = !!bDisable;
 	return 0;
 }
 
-extern "C" __declspec(dllexport) int __stdcall SetFreeLibraryAndExitThread(int use) {
+extern "C" __declspec(dllexport) int __stdcall SetFreeLibraryAndExitThread(size_t use) {
 	s_bFreeLibraryAndExitThread = !!use;
 	return 0;
 }
 
-extern "C" __declspec(dllexport) int __stdcall UnloadXivAlexander() {
-	if (l_pApp)
+extern "C" __declspec(dllexport) int __stdcall UnloadXivAlexander(void* lpReserved) {
+	if (l_pApp) {
 		l_pApp->Unload();
-	return 0;
+		return 0;
+	}
+	return -1;
 }
 
-extern "C" __declspec(dllexport) int __stdcall ReloadConfiguration() {
+extern "C" __declspec(dllexport) int __stdcall ReloadConfiguration(void* lpReserved) {
 	if (l_pApp)
 		App::ConfigRepository::Config().Reload(true);
 	return 0;

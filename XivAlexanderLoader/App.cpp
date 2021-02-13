@@ -142,6 +142,7 @@ void* FindModuleAddress(HANDLE hProcess, LPWSTR szDllPath) {
 }
 
 extern "C" __declspec(dllimport) int __stdcall LoadXivAlexander(void* lpReserved);
+extern "C" __declspec(dllimport) int __stdcall UnloadXivAlexander(void* lpReserved);
 
 int WINAPI wWinMain(
 	_In_ HINSTANCE hInstance,
@@ -191,32 +192,68 @@ int WINAPI wWinMain(
 			if (sExePath.length() < ProcessName.length() || (0 != sExePath.compare(sExePath.length() - ProcessName.length(), ProcessName.length(), ProcessName)))
 				continue;
 
+			found = true;
+
+			void* rpModule;
 			{
 				Utils::Win32Handle<> hProcess(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid));
-				if (FindModuleAddress(hProcess, szDllPath))
-					continue;
+				rpModule = FindModuleAddress(hProcess, szDllPath);
 			}
-			
-			found = true;
-			
-			if (!params.noask && MessageBoxW(nullptr, Utils::FormatString(
-				L"FFXIV Process found: %s\nProceeed loading into the process?\n\n"
-				L"Note: your anti-virus software will probably classify DLL injection as a malicious action, "
-				L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.", 
-				sExePath.c_str()).c_str(), L"XivAlexander Loader", MB_YESNO) != IDYES)
+
+			std::wstring msg;
+			UINT nMsgType;
+			if (rpModule) {
+				msg = Utils::FormatString(
+					L"XivAlexander detected in FFXIV Process (%d:%s)\n"
+					L"Press Yes to try loading again if it hasn't loaded properly,\n"
+					L"Press No to skip,\n"
+					L"Press Cancel to unload.\n"
+					L"\n"
+					L"Note: your anti-virus software will probably classify DLL injection as a malicious action, "
+					L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
+					static_cast<int>(pid), sExePath.c_str());
+				nMsgType = (MB_YESNOCANCEL | MB_ICONQUESTION | MB_DEFBUTTON1);
+			} else {
+				msg = Utils::FormatString(
+					L"FFXIV Process found (%d:%s)\n"
+					L"Continue loading XivAlexander into this process?\n"
+					L"\n"
+					L"Note: your anti-virus software will probably classify DLL injection as a malicious action, "
+					L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
+					static_cast<int>(pid), sExePath.c_str());
+				nMsgType = (MB_YESNO | MB_DEFBUTTON1);
+			}
+
+			int response = params.noask ? IDYES : MessageBoxW(nullptr, msg.c_str(), L"XivAlexander Loader", nMsgType);
+			if (response == IDNO)
 				continue;
 
 			{
-				Utils::Win32Handle<> hProcess(OpenProcess(PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_WRITE, false, pid));
-				InjectDll(hProcess, szDllPath);
-				
-				void* rpModule = FindModuleAddress(hProcess, szDllPath);
+				Utils::Win32Handle<> hProcess(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, pid));
 
-				DWORD loadResult = CallRemoteFunction(hProcess, LoadXivAlexander, nullptr);
-				if (loadResult != 0) {
-					CallRemoteFunction(hProcess, FreeLibrary, rpModule);
-					throw std::exception(Utils::FormatString("Failed to start the addon: %d", loadResult).c_str());
+				rpModule = FindModuleAddress(hProcess, szDllPath);
+				if (response == IDCANCEL && !rpModule)
+					continue;
+
+				if (!rpModule) {
+					InjectDll(hProcess, szDllPath);
+					rpModule = FindModuleAddress(hProcess, szDllPath);
 				}
+
+				DWORD loadResult = 0;
+				if (response == IDYES) {
+					loadResult = CallRemoteFunction(hProcess, LoadXivAlexander, nullptr);
+					if (loadResult != 0) {
+						response = IDCANCEL;
+					}
+				}
+				if (response == IDCANCEL) {
+					if (CallRemoteFunction(hProcess, UnloadXivAlexander, nullptr)) {
+						CallRemoteFunction(hProcess, FreeLibrary, rpModule);
+					}
+				}
+				if (loadResult)
+					throw std::exception(Utils::FormatString("Failed to start the addon: %d", loadResult).c_str());
 			}
 		} catch (std::exception& e) {
 			if (!params.noerror)
