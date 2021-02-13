@@ -107,6 +107,12 @@ public:
 		l_pApp = this;
 
 		try {
+			Misc::FreeGameMutex::FreeGameMutex();
+		} catch (std::exception& e) {
+			Misc::Logger::GetLogger().Format<Misc::Logger::LogLevel::Warning>("Failed to free game mutex: %s", e.what());
+		}
+
+		try {
 			ConfigRepository::Config();
 			onCleanup([]() { ConfigRepository::DestroyConfig(); });
 
@@ -292,7 +298,6 @@ BOOL WINAPI DllMain(
 	switch (fdwReason) {
 		case DLL_PROCESS_ATTACH:
 			g_hInstance = hinstDLL;
-			App::Misc::FreeGameMutex::FreeGameMutex();
 			break;
 	}
 	return TRUE;
