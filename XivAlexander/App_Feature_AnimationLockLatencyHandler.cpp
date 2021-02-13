@@ -166,17 +166,21 @@ public:
 							if (actorControlSelf.Category == S2C_ActorControlSelfCategory::ActionRejected) {
 								const auto& rollback = actorControlSelf.Rollback;
 
+								// find the one sharing Sequence, assuming action responses are always in order
+								while (!m_pendingActions.empty() && m_pendingActions.front().Sequence != rollback.SourceSequence) {
+									const auto& item = m_pendingActions.front();
+									Misc::Logger::GetLogger().Format(reinterpret_cast<const char*>(u8"\t¦Ç ActionRequest ignored for processing: actionId=%04x sequence=%04x"),
+										item.ActionId, item.Sequence);
+									m_pendingActions.pop_front();
+								}
+
 								if (!m_pendingActions.empty())
 									m_pendingActions.pop_front();
 
 								Misc::Logger::GetLogger().Format(
-									"S2C_ActorControlSelf/ActionRejected: p1=%08x p2=%08x actionId=%04x p4=%08x p5=%08x p6=%08x",
-									rollback.Param1,
-									rollback.Param2,
+									"S2C_ActorControlSelf/ActionRejected: actionId=%04x sourceSequence=%08x",
 									rollback.ActionId,
-									rollback.Param4,
-									rollback.Param5,
-									rollback.Param6);
+									rollback.SourceSequence);
 							}
 
 						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorControl) {

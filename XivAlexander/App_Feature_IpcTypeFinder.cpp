@@ -57,10 +57,9 @@ public:
 							} else if (pMessage->Data.IPC.Data.S2C_ActorControlSelf.Category == S2C_ActorControlSelfCategory::ActionRejected) {
 								const auto& rollback = actorControlSelf.Rollback;
 								Misc::Logger::GetLogger().Format(
-									"[IpcTypeFinder/S2C_ActorControlSelf] Rollback: p1=%08x p2=%08x actionId=%04x",
-									rollback.Param1,
-									rollback.Param2,
-									rollback.ActionId);
+									"[IpcTypeFinder/S2C_ActorControlSelf] Rollback: actionId=%04x sourceSequence=%04x",
+									rollback.ActionId,
+									rollback.SourceSequence);
 								pMessage->DebugPrint("IpcTypeFinder", true);
 							}
 

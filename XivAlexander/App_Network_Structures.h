@@ -116,10 +116,10 @@ namespace App::Network::Structures {
 				struct {
 					uint16_t Padding1;
 					uint32_t Param1;
-					uint32_t Param2;
 					uint32_t ActionId;
+					uint32_t Param3;
 					uint32_t Param4;
-					uint32_t Param5;
+					uint32_t SourceSequence;
 					uint32_t Param6;
 					uint32_t Padding2;
 				} Rollback;
