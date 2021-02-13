@@ -1,4 +1,4 @@
-#include "pch.h"
+ï»¿#include "pch.h"
 #include "App_Feature_AnimationLockLatencyHandler.h"
 #include "App_Network_SocketHook.h"
 #include "App_Network_Structures.h"
@@ -121,13 +121,13 @@ public:
 										waitTime = AutoAttackDelay;
 									}
 								} else
-									Misc::Logger::GetLogger().Format(reinterpret_cast<const char*>(u8"\t¦Ç Not user-originated, and isn't an auto-attack (%04x)"), actionEffect.ActionId);
+									Misc::Logger::GetLogger().Format(reinterpret_cast<const char*>(u8"\tâ”Ž Not user-originated, and isn't an auto-attack (%04x)"), actionEffect.ActionId);
 
 							} else {
 								// find the one sharing Sequence, assuming action responses are always in order
 								while (!m_pendingActions.empty() && m_pendingActions.front().Sequence != actionEffect.SourceSequence) {
 									const auto& item = m_pendingActions.front();
-									Misc::Logger::GetLogger().Format(reinterpret_cast<const char*>(u8"\t¦Ç ActionRequest ignored for processing: actionId=%04x sequence=%04x"),
+									Misc::Logger::GetLogger().Format(reinterpret_cast<const char*>(u8"\tâ”Ž ActionRequest ignored for processing: actionId=%04x sequence=%04x"),
 										item.ActionId, item.Sequence);
 									m_pendingActions.pop_front();
 								}
@@ -169,7 +169,7 @@ public:
 								// find the one sharing Sequence, assuming action responses are always in order
 								while (!m_pendingActions.empty() && m_pendingActions.front().Sequence != rollback.SourceSequence) {
 									const auto& item = m_pendingActions.front();
-									Misc::Logger::GetLogger().Format(reinterpret_cast<const char*>(u8"\t¦Ç ActionRequest ignored for processing: actionId=%04x sequence=%04x"),
+									Misc::Logger::GetLogger().Format(reinterpret_cast<const char*>(u8"\tâ”Ž ActionRequest ignored for processing: actionId=%04x sequence=%04x"),
 										item.ActionId, item.Sequence);
 									m_pendingActions.pop_front();
 								}

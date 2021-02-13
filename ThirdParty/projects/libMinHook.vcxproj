@@ -63,6 +63,7 @@
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
       <DebugInformationFormat>None</DebugInformationFormat>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Lib />
   </ItemDefinitionGroup>
@@ -82,6 +83,7 @@
       <DebugInformationFormat>None</DebugInformationFormat>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Lib />
   </ItemDefinitionGroup>
