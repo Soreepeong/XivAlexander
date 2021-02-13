@@ -68,6 +68,10 @@ public:
 	int m_nWndProcDepth = 0;
 	
 	WNDPROC m_originalGameMainWndProc = nullptr;
+	const LONG_PTR m_overridenGameMainWndProc = reinterpret_cast<LONG_PTR>(
+		static_cast<WNDPROC>([](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) { return l_pApp->OverridenWndProc(hwnd, msg, wParam, lParam); })
+		);
+
 	LRESULT CALLBACK OverridenWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 		m_mainThreadId = GetCurrentThreadId();
 		if (m_nWndProcDepth == 0) {
@@ -94,12 +98,23 @@ public:
 		return res;
 	}
 
-	void onCleanup(std::function<void()> cb) {
+	void OnCleanup(std::function<void()> cb) {
 		m_cleanupPendingDestructions.push_back(Utils::CallOnDestruction(cb));
 	}
 
-	void onCleanup(Utils::CallOnDestruction cb) {
+	void OnCleanup(Utils::CallOnDestruction cb) {
 		m_cleanupPendingDestructions.push_back(std::move(cb));
+	}
+
+	void SetupTrayWindow() {
+		m_trayWindow = std::make_unique<Window::TrayIcon>(m_hGameMainWindow, [this]() {
+			try {
+				this->Unload();
+			} catch(std::exception& e) {
+				SetupTrayWindow();
+				MessageBoxW(m_trayWindow->GetHandle(), Utils::FromUtf8(Utils::FormatString("Unable to unload XivAlexander: %s", e.what())).c_str(), L"XivAlexander", MB_ICONERROR);
+			}
+			});
 	}
 
 	App()
@@ -114,32 +129,30 @@ public:
 
 		try {
 			ConfigRepository::Config();
-			onCleanup([]() { ConfigRepository::DestroyConfig(); });
+			OnCleanup([]() { ConfigRepository::DestroyConfig(); });
 
 			Scintilla_RegisterClasses(g_hInstance);
-			onCleanup([]() { Scintilla_ReleaseResources(); });
+			OnCleanup([]() { Scintilla_ReleaseResources(); });
 
 			if (!m_hGameMainWindow)
 				throw std::exception("Game main window not found!");
 
 			MH_Initialize();
-			onCleanup([this]() { MH_Uninitialize(); });
+			OnCleanup([this]() { MH_Uninitialize(); });
 			for (const auto& signature : Signatures::AllSignatures())
 				signature->Setup();
 
-			m_originalGameMainWndProc = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(m_hGameMainWindow, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(
-				static_cast<WNDPROC>([](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) { return l_pApp->OverridenWndProc(hwnd, msg, wParam, lParam); })
-				)));
-			onCleanup([this]() {
+			m_originalGameMainWndProc = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(m_hGameMainWindow, GWLP_WNDPROC, m_overridenGameMainWndProc));
+			OnCleanup([this]() {
 				QueueRunOnMessageLoop([]() { MH_DisableHook(MH_ALL_HOOKS); }, true);
 				SetWindowLongPtrW(m_hGameMainWindow, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(m_originalGameMainWndProc));
 				});
 
 			m_socketHook = std::make_unique<Network::SocketHook>(m_hGameMainWindow);
-			onCleanup([this]() { m_socketHook = nullptr; });
+			OnCleanup([this]() { m_socketHook = nullptr; });
 
-			m_trayWindow = std::make_unique<Window::TrayIcon>(m_hGameMainWindow, [this]() {this->Unload(); });
-			onCleanup([this]() { m_trayWindow = nullptr; });
+			SetupTrayWindow();
+			OnCleanup([this]() { m_trayWindow = nullptr; });
 
 			auto& config = ConfigRepository::Config();
 
@@ -147,43 +160,43 @@ public:
 				SetWindowPos(m_hGameMainWindow, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 			else
 				SetWindowPos(m_hGameMainWindow, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-			onCleanup(config.AlwaysOnTop.OnChangeListener([&](ConfigItemBase&) {
+			OnCleanup(config.AlwaysOnTop.OnChangeListener([&](ConfigItemBase&) {
 				if (config.AlwaysOnTop)
 					SetWindowPos(m_hGameMainWindow, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 				else
 					SetWindowPos(m_hGameMainWindow, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 				}));
-			onCleanup([this]() { SetWindowPos(m_hGameMainWindow, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE); });
+			OnCleanup([this]() { SetWindowPos(m_hGameMainWindow, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE); });
 
 			if (config.UseHighLatencyMitigation)
 				m_animationLockLatencyHandler = std::make_unique<Feature::AnimationLockLatencyHandler>();
-			onCleanup(config.UseHighLatencyMitigation.OnChangeListener([&](ConfigItemBase&) {
+			OnCleanup(config.UseHighLatencyMitigation.OnChangeListener([&](ConfigItemBase&) {
 				if (config.UseHighLatencyMitigation)
 					m_animationLockLatencyHandler = std::make_unique<Feature::AnimationLockLatencyHandler>();
 				else
 					m_animationLockLatencyHandler = nullptr;
 				}));
-			onCleanup([this]() { m_animationLockLatencyHandler = nullptr; });
+			OnCleanup([this]() { m_animationLockLatencyHandler = nullptr; });
 
 			if (config.UseOpcodeFinder)
 				m_ipcTypeFinder = std::make_unique<Feature::IpcTypeFinder>();
-			onCleanup(config.UseOpcodeFinder.OnChangeListener([&](ConfigItemBase&) {
+			OnCleanup(config.UseOpcodeFinder.OnChangeListener([&](ConfigItemBase&) {
 				if (config.UseOpcodeFinder)
 					m_ipcTypeFinder = std::make_unique<Feature::IpcTypeFinder>();
 				else
 					m_ipcTypeFinder = nullptr;
 				}));
-			onCleanup([this]() { m_ipcTypeFinder = nullptr; });
+			OnCleanup([this]() { m_ipcTypeFinder = nullptr; });
 
 			if (config.ShowLoggingWindow)
 				m_logWindow = std::make_unique<Window::Log>();
-			onCleanup(config.ShowLoggingWindow.OnChangeListener([&](ConfigItemBase&) {
+			OnCleanup(config.ShowLoggingWindow.OnChangeListener([&](ConfigItemBase&) {
 				if (config.ShowLoggingWindow)
 					m_logWindow = std::make_unique<Window::Log>();
 				else
 					m_logWindow = nullptr;
 				}));
-			onCleanup([this]() { m_logWindow = nullptr; });
+			OnCleanup([this]() { m_logWindow = nullptr; });
 
 		} catch (std::exception&) {
 			ConfigRepository::Config().SetQuitting();
@@ -264,12 +277,14 @@ public:
 	}
 
 	int Unload() {
-		if (!m_bUnloadDisabled) {
-			SendMessage(m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
-			return 0;
-		}
+		if (m_bUnloadDisabled)
+			throw std::exception("Unloading is currently disabled.");
 
-		return -1;
+		if (GetWindowLongPtrW(m_hGameMainWindow, GWLP_WNDPROC) != m_overridenGameMainWndProc)
+			throw std::exception("Something has hooked the game process after XivAlexander, so you cannot unload XivAlexander until that other thing has been unloaded.");
+
+		SendMessage(m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
+		return 0;
 	}
 };
 
@@ -327,7 +342,11 @@ extern "C" __declspec(dllexport) int __stdcall SetFreeLibraryAndExitThread(size_
 
 extern "C" __declspec(dllexport) int __stdcall UnloadXivAlexander(void* lpReserved) {
 	if (l_pApp) {
-		l_pApp->Unload();
+		try {
+			l_pApp->Unload();
+		} catch (std::exception& e) {
+			MessageBoxW(nullptr, Utils::FromUtf8(Utils::FormatString("Unable to unload XivAlexander: %s", e.what())).c_str(), L"XivAlexander", MB_ICONERROR);
+		}
 		return 0;
 	}
 	return -1;
