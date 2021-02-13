@@ -3,7 +3,7 @@
 #include "resource.h"
 
 std::unique_ptr<App::Window::Config> App::Window::Config::m_pConfigWindow;
-constexpr int BaseFontSize = 8;
+constexpr int BaseFontSize = 9;
 
 static WNDCLASSEXW WindowClass() {
 	Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIcon(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)));
@@ -35,6 +35,8 @@ App::Window::Config::Config()
 	m_directPtr = static_cast<sptr_t>(SendMessageW(m_hScintilla, SCI_GETDIRECTPOINTER, 0, 0));
 	m_direct(m_directPtr, SCI_STYLESETSIZE, STYLE_DEFAULT, static_cast<int>(BaseFontSize * GetZoom()));
 	m_direct(m_directPtr, SCI_SETWRAPMODE, SC_WRAP_CHAR, 0);
+	m_direct(m_directPtr, SCI_SETMARGINTYPEN, 0, SC_MARGIN_NUMBER);
+	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 1, 0);
 	m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, sptr_t(Utils::ToUtf8(ncm.lfMessageFont.lfFaceName).c_str()));
 	m_direct(m_directPtr, SCI_SETLEXERLANGUAGE, 0, sptr_t("json"));
 
@@ -48,8 +50,10 @@ App::Window::Config::~Config() {
 
 LRESULT App::Window::Config::OnNotify(const LPNMHDR nmhdr) {
 	if (nmhdr->hwndFrom == m_hScintilla) {
-		// const auto nm = reinterpret_cast<SCNotification*>(nmhdr);
-		// TODO?
+		const auto nm = reinterpret_cast<SCNotification*>(nmhdr);
+		if (nmhdr->code == SCN_ZOOM) {
+			ResizeMargin();
+		}
 	}
 	return App::Window::Base::OnNotify(nmhdr);
 }
@@ -124,4 +128,9 @@ LRESULT App::Window::Config::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
 void App::Window::Config::OnLayout(double zoom, double width, double height) {
 	SetWindowPos(m_hScintilla, nullptr, 0, 0, static_cast<int>(width), static_cast<int>(height), 0);
+	ResizeMargin();
+}
+
+void App::Window::Config::ResizeMargin() {
+	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 0, static_cast<int>(m_direct(m_directPtr, SCI_TEXTWIDTH, uptr_t(STYLE_LINENUMBER), reinterpret_cast<sptr_t>("999999"))));
 }

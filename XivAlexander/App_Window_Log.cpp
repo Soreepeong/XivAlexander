@@ -2,7 +2,7 @@
 #include "App_Window_Log.h"
 #include "resource.h"
 
-constexpr int BaseFontSize = 8;
+constexpr int BaseFontSize = 9;
 
 static WNDCLASSEXW WindowClass() {
 	Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIcon(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)));

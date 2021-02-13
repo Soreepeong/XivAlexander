@@ -22,5 +22,7 @@ namespace App::Window {
 		virtual LRESULT WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 		void OnLayout(double zoom, double width, double height) override;
 		virtual LRESULT OnNotify(const LPNMHDR nmhdr) override;
+
+		void ResizeMargin();
 	};
 };
