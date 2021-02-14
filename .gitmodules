@@ -1,9 +1,0 @@
-[submodule "ThirdParty/TsudaKageyu-minhook"]
-	path = ThirdParty/TsudaKageyu-minhook
-	url = https://github.com/TsudaKageyu/minhook.git
-[submodule "ThirdParty/madler-zlib"]
-	path = ThirdParty/madler-zlib
-	url = https://github.com/madler/zlib.git
-[submodule "ThirdParty/scintilla"]
-	path = ThirdParty/scintilla
-	url = https://github.com/mirror/scintilla.git

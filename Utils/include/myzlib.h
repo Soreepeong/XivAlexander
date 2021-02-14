@@ -1,5 +1,3 @@
-#define ZLIB_CONST
-#include <zlib.h>
 #include <vector>
 
 namespace Utils {

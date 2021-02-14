@@ -48,13 +48,26 @@
     <OutDir>$(SolutionDir)build\$(Platform)_$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Platform)_$(Configuration)\Temp\$(ProjectName)\</IntDir>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>$(SolutionDir)\Utils\include;$(SolutionDir)\ThirdParty\TsudaKageyu-minhook\include;$(SolutionDir)\ThirdParty\madler-zlib;$(SolutionDir)\ThirdParty\scintilla\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)\Utils\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)build\$(Platform)_$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Platform)_$(Configuration)\Temp\$(ProjectName)\</IntDir>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>$(SolutionDir)\Utils\include;$(SolutionDir)\ThirdParty\TsudaKageyu-minhook\include;$(SolutionDir)\ThirdParty\madler-zlib;$(SolutionDir)\ThirdParty\scintilla\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)\Utils\include;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg">
+    <VcpkgEnableManifest>true</VcpkgEnableManifest>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <VcpkgInstalledDir>$(ProjectDir)vcpkg</VcpkgInstalledDir>
+    <VcpkgAdditionalInstallOptions>--feature-flags=versions</VcpkgAdditionalInstallOptions>
+    <VcpkgUseStatic>true</VcpkgUseStatic>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <VcpkgInstalledDir>$(ProjectDir)vcpkg</VcpkgInstalledDir>
+    <VcpkgAdditionalInstallOptions>--feature-flags=versions</VcpkgAdditionalInstallOptions>
+    <VcpkgUseStatic>true</VcpkgUseStatic>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -70,8 +83,12 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>dxgi.lib;d3d11.lib;ws2_32.lib;shcore.lib;iphlpapi.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;ShCore.lib;Iphlpapi.lib;Shlwapi.lib;Imm32.lib;zlib.lib;Msimg32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -91,8 +108,12 @@
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>dxgi.lib;d3d11.lib;ws2_32.lib;shcore.lib;iphlpapi.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;ShCore.lib;Iphlpapi.lib;Shlwapi.lib;Imm32.lib;zlib.lib;Msimg32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp" />
@@ -128,23 +149,12 @@
     <ClInclude Include="App_Window_Config.h" />
     <ClInclude Include="App_Window_Log.h" />
     <ClInclude Include="App_Window_TrayIcon.h" />
-    <ClInclude Include="json.hpp" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Utils\Utils.vcxproj">
       <Project>{58daddf6-5733-40e0-855c-cc3b4bf235eb}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\ThirdParty\projects\libMinHook.vcxproj">
-      <Project>{f142a341-5ee0-442d-a15f-98ae9b48dbae}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\ThirdParty\projects\SciLexer.vcxproj">
-      <Project>{fbe04237-9c7b-4973-9c60-505975998b39}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\ThirdParty\projects\zlibvc.vcxproj">
-      <Project>{8fd826f8-3739-44e6-8cc8-997122e53b8d}</Project>
-      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
@@ -155,6 +165,9 @@
     <Image Include="C:\Temp\Player4_Icon.png" />
     <Image Include="ShellNotificationAreaIcon.png" />
     <Image Include="TrayIcon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="vcpkg.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

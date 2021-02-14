@@ -100,9 +100,6 @@
     <ClInclude Include="App_Feature_IpcTypeFinder.h">
       <Filter>Feature</Filter>
     </ClInclude>
-    <ClInclude Include="json.hpp">
-      <Filter>Project Items</Filter>
-    </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>Resources</Filter>
     </ClInclude>
@@ -126,5 +123,10 @@
     <ResourceCompile Include="XivAlexander.rc">
       <Filter>Resources</Filter>
     </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="vcpkg.json">
+      <Filter>Project Items</Filter>
+    </None>
   </ItemGroup>
 </Project>

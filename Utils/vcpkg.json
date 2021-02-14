@@ -1,0 +1,7 @@
+{
+  "name": "xivalexander-utils",
+  "version-string": "_",
+  "dependencies": [
+    {"name": "zlib", "version>=": "1.2.11#9"}
+  ]
+}

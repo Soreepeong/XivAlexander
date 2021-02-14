@@ -40,14 +40,12 @@
 #include <shobjidl_core.h>
 #include <PathCch.h>
 
-#define ZLIB_CONST
-#include <zlib.h>
 #include <MinHook.h>
 #include <Win32Handle.h>
 #include <Scintilla.h>
 #include <ListenerManager.h>
 
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 
 extern HINSTANCE g_hInstance;
 

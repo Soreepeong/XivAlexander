@@ -14,4 +14,7 @@
   <ItemGroup>
     <Image Include="..\Graphics\Icon.ico" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="vcpkg.json" />
+  </ItemGroup>
 </Project>

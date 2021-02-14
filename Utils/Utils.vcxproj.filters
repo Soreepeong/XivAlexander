@@ -46,5 +46,6 @@
     <None Include="include\myzlib.h">
       <Filter>Header Files</Filter>
     </None>
+    <None Include="vcpkg.json" />
   </ItemGroup>
 </Project>

@@ -17,4 +17,7 @@
 #include <Windows.h>
 #include <ws2tcpip.h>
 
+#define ZLIB_CONST
+#include <zlib.h>
+
 #endif //PCH_H
