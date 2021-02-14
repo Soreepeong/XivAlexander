@@ -3,7 +3,7 @@
 #include "App_Network_Structures.h"
 #include <myzlib.h>
 
-namespace SocketFn = App::Signatures::Functions::Socket;
+namespace SocketFn = App::Hooks::Socket;
 
 static std::string get_ip_str(const struct sockaddr* sa) {
 	char s[1024] = { 0 };
@@ -413,7 +413,7 @@ public:
 		parseIpRange();
 		parsePortRange();
 		SocketFn::socket.SetupHook([&](_In_ int af, _In_ int type, _In_ int protocol) {
-			const auto result = App::Signatures::Functions::Socket::socket.bridge(af, type, protocol);
+			const auto result = App::Hooks::Socket::socket.bridge(af, type, protocol);
 			Misc::Logger::GetLogger().Format("%p: New", result);
 			OnSocketFound(result);
 			return result;

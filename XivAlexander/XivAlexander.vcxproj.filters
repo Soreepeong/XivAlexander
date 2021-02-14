@@ -28,12 +28,6 @@
       <Filter>Project Items</Filter>
     </ClCompile>
     <ClCompile Include="App.cpp" />
-    <ClCompile Include="App_Signatures.cpp">
-      <Filter>Signatures</Filter>
-    </ClCompile>
-    <ClCompile Include="App_Signatures_Functions.cpp">
-      <Filter>Signatures</Filter>
-    </ClCompile>
     <ClCompile Include="App_Network_SocketHook.cpp">
       <Filter>Network</Filter>
     </ClCompile>
@@ -65,16 +59,12 @@
     <ClCompile Include="App_Window_Config.cpp">
       <Filter>Window</Filter>
     </ClCompile>
+    <ClCompile Include="App_Hooks.cpp" />
+    <ClCompile Include="App_Signatures.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
       <Filter>Project Items</Filter>
-    </ClInclude>
-    <ClInclude Include="App_Signatures.h">
-      <Filter>Signatures</Filter>
-    </ClInclude>
-    <ClInclude Include="App_Signatures_Functions.h">
-      <Filter>Signatures</Filter>
     </ClInclude>
     <ClInclude Include="App_Network_SocketHook.h">
       <Filter>Network</Filter>
@@ -110,6 +100,8 @@
     <ClInclude Include="App_Window_Config.h">
       <Filter>Window</Filter>
     </ClInclude>
+    <ClInclude Include="App_Hooks.h" />
+    <ClInclude Include="App_Signatures.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\Graphics\Icon.ico">

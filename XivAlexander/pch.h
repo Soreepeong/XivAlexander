@@ -50,7 +50,7 @@
 extern HINSTANCE g_hInstance;
 
 #include "App_Signatures.h"
-#include "App_Signatures_Functions.h"
+#include "App_Hooks.h"
 #include "App_ConfigRepository.h"
 #include "App_Misc_Logger.h"
 

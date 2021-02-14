@@ -1,8 +1,10 @@
 #pragma once
-namespace App::Signatures::Functions {
+namespace App::Hooks {
+
+	using namespace App::Signatures;
 
 	template<typename R, typename ...Args>
-	class FunctionSignature : public Signature<R(*)(Args...)> {
+	class Function : public Signature<R(*)(Args...)> {
 		typedef R(*type)(Args...);
 
 		const type m_pfnBinder;
@@ -11,22 +13,22 @@ namespace App::Signatures::Functions {
 		std::function<std::remove_pointer_t<type>> m_pfnDetour = nullptr;
 
 	public:
-		FunctionSignature(const char* szName, void* pAddress, type pfnBinder)
+		Function(const char* szName, void* pAddress, type pfnBinder)
 			: Signature<type>(szName, pAddress)
 			, m_pfnBinder(pfnBinder) {
 		}
 
-		FunctionSignature(const char* szName, std::function<void* ()> fnResolver, type pfnBinder)
+		Function(const char* szName, std::function<void* ()> fnResolver, type pfnBinder)
 			: Signature<type>(szName, fnResolver)
 			, m_pfnBinder(pfnBinder) {
 		}
 
-		FunctionSignature(const char* szName, SectionFilter sectionFilter, const char* sPattern, const char* szMask, type pfnBinder)
+		Function(const char* szName, SectionFilter sectionFilter, const char* sPattern, const char* szMask, type pfnBinder)
 			: Signature<type>(szName, sectionFilter, sPattern, szMask)
 			, m_pfnBinder(pfnBinder) {
 		}
 
-		FunctionSignature(const char* szName, SectionFilter sectionFilter, const char* sPattern, const char* szMask, std::vector<size_t> nextOffsets, type pfnBinder)
+		Function(const char* szName, SectionFilter sectionFilter, const char* sPattern, const char* szMask, std::vector<size_t> nextOffsets, type pfnBinder)
 			: Signature<type>(szName, sectionFilter, sPattern, szMask, nextOffsets)
 			, m_pfnBinder(pfnBinder) {
 		}
@@ -63,15 +65,15 @@ namespace App::Signatures::Functions {
 	};
 
 	namespace Socket {
-		extern FunctionSignature<SOCKET, int, int, int> socket;
-		extern FunctionSignature<int, SOCKET, const sockaddr*, int> connect;
-		extern FunctionSignature<int, int, fd_set*, fd_set*, fd_set*, const timeval*> select;
-		extern FunctionSignature<int, SOCKET, char*, int, int> recv;
-		extern FunctionSignature<int, SOCKET, const char*, int, int> send;
-		extern FunctionSignature<int, SOCKET> closesocket;
+		extern Function<SOCKET, int, int, int> socket;
+		extern Function<int, SOCKET, const sockaddr*, int> connect;
+		extern Function<int, int, fd_set*, fd_set*, fd_set*, const timeval*> select;
+		extern Function<int, SOCKET, char*, int, int> recv;
+		extern Function<int, SOCKET, const char*, int, int> send;
+		extern Function<int, SOCKET> closesocket;
 	};
 
 	namespace WinApi {
-		extern FunctionSignature<BOOL> IsDebuggerPresent;
+		extern Function<BOOL> IsDebuggerPresent;
 	}
 }
