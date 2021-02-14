@@ -17,6 +17,8 @@ namespace App::Signatures {
 
 		virtual operator void* () const = 0;
 
+		virtual void Startup() = 0;
+		virtual void Cleanup() = 0;
 		virtual void Setup() = 0;
 
 		operator bool() const { return !!(this->operator void* ()); }
@@ -69,6 +71,10 @@ namespace App::Signatures {
 			else
 				m_pAddress = LookupForData(m_sectionFilter, m_sPattern.c_str(), m_sMask.c_str(), m_nextOffsets);
 		}
+
+		virtual void Startup() {}
+
+		virtual void Cleanup() {}
 
 		virtual operator void* () const {
 			return m_pAddress;

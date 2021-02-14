@@ -144,7 +144,11 @@ public:
 
 			m_originalGameMainWndProc = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(m_hGameMainWindow, GWLP_WNDPROC, m_overridenGameMainWndProc));
 			OnCleanup([this]() {
-				QueueRunOnMessageLoop([]() { MH_DisableHook(MH_ALL_HOOKS); }, true);
+				QueueRunOnMessageLoop([]() {
+					for (const auto& signature : Signatures::AllSignatures())
+						signature->Cleanup();
+					MH_DisableHook(MH_ALL_HOOKS);
+					}, true);
 				SetWindowLongPtrW(m_hGameMainWindow, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(m_originalGameMainWndProc));
 				});
 
@@ -217,7 +221,10 @@ public:
 	}
 
 	void Run() {
-		QueueRunOnMessageLoop([&]() { MH_EnableHook(MH_ALL_HOOKS); }, true);
+		QueueRunOnMessageLoop([&]() {
+			for (const auto& signature : Signatures::AllSignatures())
+				signature->Startup();
+		}, true);
 
 		MSG msg;
 		std::vector<Window::Base*> openWindows;

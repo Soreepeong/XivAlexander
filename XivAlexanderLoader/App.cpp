@@ -124,7 +124,7 @@ const char* AddDebugPrivilege() {
 	return nullptr;
 }
 
-void* FindModuleAddress(HANDLE hProcess, LPWSTR szDllPath) {
+void* FindModuleAddress(HANDLE hProcess, const wchar_t* szDllPath) {
 	HMODULE hMods[1024];
 	DWORD cbNeeded;
 	unsigned int i;
