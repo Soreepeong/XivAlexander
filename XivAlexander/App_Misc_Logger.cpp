@@ -27,7 +27,7 @@ public:
 	}
 
 	DWORD ThreadWorker() {
-		SetThreadDescription(GetCurrentThread(), L"XivAlexander::Misc::Logger::Internals::ThreadWorker");
+		Utils::SetThreadDescription(GetCurrentThread(), L"XivAlexander::Misc::Logger::Internals::ThreadWorker");
 		while (true) {
 			std::deque<LogItem> pendingItems;
 			{

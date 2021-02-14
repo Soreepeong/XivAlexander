@@ -289,6 +289,7 @@ public:
 };
 
 static DWORD WINAPI DllThread(PVOID param1) {
+	Utils::SetThreadDescription(GetCurrentThread(), L"XivAlexander::DllThread");
 	{
 		App::Misc::Logger logger;
 		try {

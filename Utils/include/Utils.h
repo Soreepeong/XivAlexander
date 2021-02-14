@@ -64,4 +64,21 @@ namespace Utils {
 
 	std::vector<std::string> StringSplit(const std::string& str, const std::string& delimiter);
 	std::string StringTrim(const std::string& str, bool leftTrim = true, bool rightTrim = true);
+
+	template <typename ... Args>
+	void SetThreadDescription(HANDLE hThread, const _Printf_format_string_ std::wstring& format, Args ... args) {
+		typedef HRESULT(WINAPI* SetThreadDescriptionT)(
+			_In_ HANDLE hThread,
+			_In_ PCWSTR lpThreadDescription
+			);
+		SetThreadDescriptionT pfnSetThreadDescription = nullptr;
+
+		if (const auto hMod = GetModuleHandleW(L"kernel32.dll"))
+			pfnSetThreadDescription = reinterpret_cast<SetThreadDescriptionT>(GetProcAddress(hMod, "SetThreadDescription"));
+		else if (const auto hMod = GetModuleHandleW(L"KernelBase.dll"))
+			pfnSetThreadDescription = reinterpret_cast<SetThreadDescriptionT>(GetProcAddress(hMod, "SetThreadDescription"));
+
+		if (pfnSetThreadDescription)
+			pfnSetThreadDescription(GetCurrentThread(), FormatString(format.c_str(), std::forward<Args>(args)...).c_str());
+	}
 }

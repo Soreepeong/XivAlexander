@@ -123,11 +123,12 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 							{L"Log Files (*.log)",		L"*.log"},
 							{L"All Documents (*.*)",	L"*.*"}
 						};
-
 						auto throw_on_error = [](HRESULT val) { 
 							if (!SUCCEEDED(val))
 								_com_raise_error(val); 
 						};
+
+						Utils::SetThreadDescription(GetCurrentThread(), L"XivAlexander::Window::Log::WndProc::FileSaveThread(%p)", pDataT->hWnd);
 
 						try {
 							_com_ptr_t<_com_IIID<IFileSaveDialog, &__uuidof(IFileSaveDialog)>> pDialog;
