@@ -162,9 +162,6 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\Graphics\Icon.ico" />
-    <Image Include="C:\Temp\Player4_Icon.png" />
-    <Image Include="ShellNotificationAreaIcon.png" />
-    <Image Include="TrayIcon.ico" />
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />

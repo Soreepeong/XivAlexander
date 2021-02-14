@@ -112,12 +112,9 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="ShellNotificationAreaIcon.png">
+    <Image Include="..\Graphics\Icon.ico">
       <Filter>Resources</Filter>
     </Image>
-    <Image Include="C:\Temp\Player4_Icon.png" />
-    <Image Include="TrayIcon.ico" />
-    <Image Include="..\Graphics\Icon.ico" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="XivAlexander.rc">
