@@ -19,10 +19,17 @@ public:
 		const uint64_t CAST_SENTINEL = 0;
 
 		struct PendingAction {
-			const uint16_t ActionId;
-			const uint16_t Sequence;
-			const uint64_t RequestTimestamp;
+			uint16_t ActionId;
+			uint16_t Sequence;
+			uint64_t RequestTimestamp;
+			uint64_t ResponseTimestamp = 0;
 			bool CastFlag = false;
+			int64_t OriginalWaitTime = 0;
+
+			PendingAction()
+			: ActionId(0)
+			, Sequence(0)
+			, RequestTimestamp(0) {}
 
 			PendingAction(const Network::Structures::IPCMessageDataType::C2S_ActionRequest& request)
 				: ActionId(request.ActionId)
@@ -37,6 +44,7 @@ public:
 		// request timestamps, and stack up required animation lock time responses from server.
 		// The game will only process the latest animation lock duration information.
 		std::deque<PendingAction> m_pendingActions;
+		PendingAction m_latestSuccessfulRequest;
 		uint64_t m_lastAnimationLockEndsAt = 0;
 		std::map<int, uint64_t> m_originalWaitTimeMap;
 
@@ -108,20 +116,14 @@ public:
 							}
 
 							if (actionEffect.SourceSequence == 0) {
-								if (actionEffect.ActionId == 0x0007  // auto-attack
-									|| actionEffect.ActionId == 0x0008  // MCH auto-attack
-									) {
-									if (m_lastAnimationLockEndsAt > now) {
-										// if animation lock is supposedly already in progress, add the new value to previously in-progress animation lock, instead of replacing it.
-										m_lastAnimationLockEndsAt += AutoAttackDelay;
-										waitTime = m_lastAnimationLockEndsAt - now;
-
-									} else {
-										// even if it wasn't, the server would consider other actions in progress when calculating auto-attack delay, so we fix it to 100ms.
-										waitTime = AutoAttackDelay;
-									}
-								} else
-									Misc::Logger::GetLogger().Format(reinterpret_cast<const char*>(u8"\t┎ Not user-originated, and isn't an auto-attack (%04x)"), actionEffect.ActionId);
+								// Process actions originating from server.
+								if (!m_latestSuccessfulRequest.CastFlag && m_latestSuccessfulRequest.Sequence && m_lastAnimationLockEndsAt > now) {
+									m_latestSuccessfulRequest.ActionId = actionEffect.ActionId;
+									m_latestSuccessfulRequest.Sequence = 0;
+									m_lastAnimationLockEndsAt += (originalWaitTime + now) - (m_latestSuccessfulRequest.OriginalWaitTime + m_latestSuccessfulRequest.ResponseTimestamp);
+									m_lastAnimationLockEndsAt = std::max(m_lastAnimationLockEndsAt, now + AutoAttackDelay);
+									waitTime = m_lastAnimationLockEndsAt - now;
+								}
 
 							} else {
 								// find the one sharing Sequence, assuming action responses are always in order
@@ -133,10 +135,13 @@ public:
 								}
 
 								if (!m_pendingActions.empty()) {
-									const auto& item = m_pendingActions.front();
+									m_latestSuccessfulRequest = m_pendingActions.front();
+
 									// 100ms animation lock after cast ends stays. Modify animation lock duration for instant actions only.
 									// Since no other action is in progress right before the cast ends, we can safely replace the animation lock with the latest after-cast lock.
-									if (!item.CastFlag) {
+									if (!m_latestSuccessfulRequest.CastFlag) {
+										m_latestSuccessfulRequest.ResponseTimestamp = now;
+										m_latestSuccessfulRequest.OriginalWaitTime = originalWaitTime;
 										m_lastAnimationLockEndsAt += originalWaitTime + ExtraDelay;
 										waitTime = m_lastAnimationLockEndsAt - now;
 									}
@@ -146,7 +151,7 @@ public:
 							if (waitTime != originalWaitTime) {
 								actionEffect.AnimationLockDuration = std::max(0LL, waitTime) / 1000.f;
 								Misc::Logger::GetLogger().Format(
-									"S2C_ActionEffect: actionId=%04x sourceSequence=%04x wait=%llums->%llums",
+									"S2C_ActionEffect: actionId=%04x sourceSequence=%04x wait=%lldms->%lldms",
 									actionEffect.ActionId,
 									actionEffect.SourceSequence,
 									originalWaitTime, waitTime);
