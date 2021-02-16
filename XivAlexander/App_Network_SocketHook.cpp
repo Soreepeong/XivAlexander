@@ -167,8 +167,8 @@ public:
 	std::map<size_t, std::vector<std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)>>> m_incomingHandlers;
 	std::map<size_t, std::vector<std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)>>> m_outgoingHandlers;
 
-	uint64_t m_lastLatencyRequestTime = 0;
-	std::vector<uint64_t> ObservedLatencyList;
+	std::deque<uint64_t> KeepAliveRequestTimestamps;
+	std::deque<uint64_t> ObservedLatencyList;
 
 	SingleStream recvBefore;
 	SingleStream recvProcessed;
@@ -242,12 +242,12 @@ public:
 				auto pMessage = reinterpret_cast<FFXIVMessage*>(&message[0]);
 
 				if (pMessage->Type == SegmentType::ServerKeepAlive) {
-					if (m_lastLatencyRequestTime) {
-						const auto newLatency = Utils::GetHighPerformanceCounter() - m_lastLatencyRequestTime;
-						m_lastLatencyRequestTime = 0;
-						ObservedLatencyList.push_back(newLatency);
+					if (!KeepAliveRequestTimestamps.empty()) {
+						ObservedLatencyList.push_back(Utils::GetHighPerformanceCounter() - KeepAliveRequestTimestamps.back());
+						KeepAliveRequestTimestamps.pop_front();
 						while (ObservedLatencyList.size() > 8)
-							ObservedLatencyList.erase(ObservedLatencyList.begin());
+							ObservedLatencyList.pop_front();
+						Misc::Logger::GetLogger().Format("%p: KeepAliveResponse: %llums", m_socket, ObservedLatencyList.back());
 					}
 				} else if (pMessage->Type == SegmentType::IPC) {
 					for (const auto& cbs : m_incomingHandlers) {
@@ -303,7 +303,8 @@ public:
 				auto pMessage = reinterpret_cast<FFXIVMessage*>(&message[0]);
 
 				if (pMessage->Type == SegmentType::ClientKeepAlive) {
-					m_lastLatencyRequestTime = Utils::GetHighPerformanceCounter();
+					KeepAliveRequestTimestamps.push_back(Utils::GetHighPerformanceCounter());
+					Misc::Logger::GetLogger().Format("%p: KeepAliveRequest", m_socket);
 				} else if (pMessage->Type == SegmentType::IPC) {
 					for (const auto& cbs : m_outgoingHandlers) {
 						for (const auto& cb : cbs.second) {
