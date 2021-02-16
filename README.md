@@ -19,18 +19,18 @@ Refer to your anti-virus software manual for instructions.
 
 ### First time setup
 1. Open `XivAlexander.dll.json` with a text editor which should have been created after a successful load for the first time.
-2. Modify opcode values. As of Patch 5.45 for the international release, opcodes are as following:
+2. Modify opcode values. As of Patch 5.45 Hotfix for the international release, opcodes are as following:
    ```json
    {
-       "ActorCast": "0x02b2",
-       "ActorControl": "0x00f0",
-       "RequestUseAction": "0x017a",
-       "ActorControlSelf": "0x0350",
-       "SkillResultResponse01": "0x021f",
-       "SkillResultResponse08": "0x03df",
-       "SkillResultResponse16": "0x00ad",
-       "SkillResultResponse24": "0x0229",
-       "SkillResultResponse32": "0x0197"
+       "ActorCast": "0x0303",
+       "ActorControl": "0x0347",
+       "ActorControlSelf": "0x02fc",
+       "RequestUseAction": "0x01de",
+       "SkillResultResponse01": "0x024b",
+       "SkillResultResponse08": "0x03da",
+       "SkillResultResponse16": "0x03e6",
+       "SkillResultResponse24": "0x01c0",
+       "SkillResultResponse32": "0x03b3"
    }
    ```
 3. Find the XivAlexander icon on your shell notification area (tray area), and click on *Reload Configuration*.
@@ -82,18 +82,18 @@ Apache License 2.0
 
 ### 처음 사용할 때 세팅
 1. `XivAlexanderLoader.exe`가 있는 폴더에 생긴 `XivAlexander.dll.json`를 텍스트 편집기 (메모장 등)으로 열어 주세요.
-2. 옵코드를 적당히 수정해 주세요. 현재 한썹 5.3에서는 다음과 같습니다. 
+2. 옵코드를 적당히 수정해 주세요. 현재 한썹 5.31에서는 다음과 같습니다. 
    ```json
    {
-       "ActorCast": "0x03b8",
-       "ActorControl": "0x013d",
-       "ActorControlSelf": "0x025f",
-       "RequestUseAction": "0x00f0",
-       "SkillResultResponse01": "0x0266",
-       "SkillResultResponse08": "0x0167",
-       "SkillResultResponse16": "0x03a7",
-       "SkillResultResponse24": "0x016b",
-       "SkillResultResponse32": "0x0231"
+       "ActorCast": "0x0303",
+       "ActorControl": "0x0347",
+       "ActorControlSelf": "0x02fc",
+       "RequestUseAction": "0x01de",
+       "SkillResultResponse01": "0x024b",
+       "SkillResultResponse08": "0x03da",
+       "SkillResultResponse16": "0x03e6",
+       "SkillResultResponse24": "0x01c0",
+       "SkillResultResponse32": "0x03b3"
    }
    ```
 3. 시스템 알림 영역(트레이)에 있는 아이콘을 오른쪽 클릭한 후 *Reload Configuration*을 누르세요.
