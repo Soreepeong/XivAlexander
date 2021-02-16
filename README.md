@@ -22,15 +22,15 @@ Refer to your anti-virus software manual for instructions.
 2. Modify opcode values. As of Patch 5.45 Hotfix for the international release, opcodes are as following:
    ```json
    {
-       "ActorCast": "0x0303",
-       "ActorControl": "0x0347",
-       "ActorControlSelf": "0x02fc",
-       "RequestUseAction": "0x01de",
-       "SkillResultResponse01": "0x024b",
-       "SkillResultResponse08": "0x03da",
-       "SkillResultResponse16": "0x03e6",
-       "SkillResultResponse24": "0x01c0",
-       "SkillResultResponse32": "0x03b3"
+       "ActorCast": "0x034c",
+       "ActorControl": "0x00c2",
+       "ActorControlSelf": "0x03d5",
+       "RequestUseAction": "0x0388",
+       "SkillResultResponse01": "0x027f",
+       "SkillResultResponse08": "0x009b",
+       "SkillResultResponse16": "0x028c",
+       "SkillResultResponse24": "0x02ad",
+       "SkillResultResponse32": "0x00a7"
    }
    ```
 3. Find the XivAlexander icon on your shell notification area (tray area), and click on *Reload Configuration*.
