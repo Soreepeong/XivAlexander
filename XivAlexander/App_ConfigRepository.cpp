@@ -1,6 +1,19 @@
 #include "pch.h"
 #include "App_ConfigRepository.h"
 
+static
+nlohmann::json LowerCaseKeys(const nlohmann::json& json) {
+	auto result = nlohmann::json::object();
+
+	for (auto& item : json.items()) {
+		std::wstring key = Utils::FromUtf8(item.key());
+		CharLowerW(&key[0]);
+		result.emplace(Utils::ToUtf8(key), item.value());
+	}
+
+	return result;
+}
+
 App::ConfigRepository::ConfigRepository()
 	: m_sGamePath(GetGamePath())
 	, m_sConfigPath(GetConfigPath()) {
@@ -23,6 +36,7 @@ void App::ConfigRepository::Reload(bool announceChange) {
 	} catch (std::exception& e) {
 		App::Misc::Logger::GetLogger().Format("JSON Config load error: %s", e.what());
 	}
+	config = LowerCaseKeys(config);
 
 	if (config.find(m_sGamePath) == config.end())
 		config[m_sGamePath] = nlohmann::json::object();
@@ -49,6 +63,7 @@ void App::ConfigRepository::SetQuitting() {
 std::string App::ConfigRepository::GetGamePath() {
 	wchar_t path[MAX_PATH];
 	GetModuleFileName(nullptr, path, MAX_PATH);
+	CharLowerW(path);
 	return Utils::ToUtf8(path);
 }
 
@@ -70,6 +85,7 @@ void App::ConfigRepository::Save() {
 	} catch (std::exception& e) {
 		App::Misc::Logger::GetLogger().Format("JSON Config load error: %s", e.what());
 	}
+	config = LowerCaseKeys(config);
 
 	if (config.find(m_sGamePath) == config.end())
 		config[m_sGamePath] = nlohmann::json::object();
@@ -99,7 +115,6 @@ App::ConfigRepository& App::ConfigRepository::Config() {
 void App::ConfigRepository::DestroyConfig() {
 	s_pConfig = nullptr;
 }
-
 
 bool App::ConfigItem<uint16_t>::LoadFrom(const nlohmann::json& data, bool announceChanged) {
 	auto i = data.find(Name());
