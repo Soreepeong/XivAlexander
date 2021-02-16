@@ -243,7 +243,7 @@ public:
 
 				if (pMessage->Type == SegmentType::ServerKeepAlive) {
 					if (!KeepAliveRequestTimestamps.empty()) {
-						ObservedLatencyList.push_back(Utils::GetHighPerformanceCounter() - KeepAliveRequestTimestamps.back());
+						ObservedLatencyList.push_back(Utils::GetHighPerformanceCounter() - KeepAliveRequestTimestamps.front());
 						KeepAliveRequestTimestamps.pop_front();
 						while (ObservedLatencyList.size() > 8)
 							ObservedLatencyList.pop_front();
