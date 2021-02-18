@@ -39,6 +39,7 @@
 #include <comdef.h>
 #include <shobjidl_core.h>
 #include <PathCch.h>
+#include <icmpapi.h>
 
 #include <MinHook.h>
 #include <Win32Handle.h>

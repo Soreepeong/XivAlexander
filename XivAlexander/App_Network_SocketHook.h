@@ -21,8 +21,11 @@ namespace App::Network {
 		void RemoveMessageHandlers(void* token);
 		void SendFFXIVMessage(const Structures::FFXIVMessage* pMessage);
 		SOCKET GetSocket() const;
-		double GetServerResponseDelay() const;
 		void ResolveAddresses();
+		void AddServerResponseDelayItem(uint64_t delay);
+		std::string FormatMedianServerResponseDelayStatistics() const;
+		int64_t GetMedianServerResponseDelay() const;
+		int64_t GetMedianLatency() const;
 	};
 
 	class SocketHook {

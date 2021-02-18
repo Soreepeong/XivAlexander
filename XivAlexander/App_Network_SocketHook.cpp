@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "App_Network_SocketHook.h"
 #include "App_Network_Structures.h"
+#include "App_Network_IcmpPingTracker.h"
 #include <myzlib.h>
 
 namespace SocketFn = App::Hooks::Socket;
@@ -167,8 +168,9 @@ public:
 	std::map<size_t, std::vector<std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)>>> m_incomingHandlers;
 	std::map<size_t, std::vector<std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)>>> m_outgoingHandlers;
 
+	static const size_t LatencyTrackCount = 16;
 	std::deque<uint64_t> KeepAliveRequestTimestamps;
-	std::deque<uint64_t> ObservedLatencyList;
+	std::vector<uint64_t> ObservedLatencyList;
 
 	SingleStream recvBefore;
 	SingleStream recvProcessed;
@@ -177,6 +179,8 @@ public:
 
 	sockaddr_storage localAddress = { AF_UNSPEC };
 	sockaddr_storage remoteAddress = { AF_UNSPEC };
+
+	Utils::CallOnDestruction m_pingTrackKeeper;
 
 	Internals(SOCKET s)
 		: m_socket(s) {
@@ -197,6 +201,14 @@ public:
 			remoteAddress = remote;
 			Misc::Logger::GetLogger().Format("%p: Remote=%s", m_socket, get_ip_str(reinterpret_cast<sockaddr*>(&remote)).c_str());
 		}
+
+		if (localAddress.ss_family == AF_INET && remoteAddress.ss_family == AF_INET && !m_pingTrackKeeper) {
+			const auto& source = reinterpret_cast<const sockaddr_in*>(&localAddress)->sin_addr;
+			const auto& destination = reinterpret_cast<const sockaddr_in*>(&remoteAddress)->sin_addr;
+			if (source.S_un.S_addr && destination.S_un.S_addr) {
+				m_pingTrackKeeper = IcmpPingTracker::GetInstance().Track(source, destination);
+			}
+		}
 	}
 
 	void Unload() {
@@ -207,10 +219,38 @@ public:
 		m_unloading = true;
 	}
 
-	double GetServerResponseDelay() const {
+	int64_t GetMedianLatency() const {
+		const auto& source = reinterpret_cast<const sockaddr_in*>(&localAddress)->sin_addr;
+		const auto& destination = reinterpret_cast<const sockaddr_in*>(&remoteAddress)->sin_addr;
+		if (localAddress.ss_family == AF_INET && remoteAddress.ss_family == AF_INET && source.S_un.S_addr && destination.S_un.S_addr) {
+			return IcmpPingTracker::GetInstance().GetMedianLatency(source, destination);
+		}
+		return 0;
+	}
+
+	void AddServerResponseDelayItem(uint64_t delay) {
+		const auto newPos = ObservedLatencyList.empty() ? 0 : std::upper_bound(ObservedLatencyList.begin(), ObservedLatencyList.end(), delay) - ObservedLatencyList.begin();
+		ObservedLatencyList.insert(ObservedLatencyList.begin() + newPos, delay);
+		if (ObservedLatencyList.size() > LatencyTrackCount) {
+			if (newPos >= LatencyTrackCount / 2)
+				ObservedLatencyList.pop_back();
+			else
+				ObservedLatencyList.erase(ObservedLatencyList.begin());
+		}
+	}
+
+	int64_t GetMedianServerResponseDelay() const {
 		if (ObservedLatencyList.empty())
-			return 0.f;
-		return static_cast<double>(std::accumulate(ObservedLatencyList.begin(), ObservedLatencyList.end(), 0ULL) / 1000. / ObservedLatencyList.size());
+			return 0;
+		else if (ObservedLatencyList.size() % 2)
+			return ObservedLatencyList[ObservedLatencyList.size() / 2];
+		else
+			return (ObservedLatencyList[ObservedLatencyList.size() / 2] + ObservedLatencyList[ObservedLatencyList.size() / 2 - 1]) / 2;
+	}
+
+	std::string FormatMedianServerResponseDelayStatistics() const {
+		return Utils::FormatString("median=%llums (%llums ~ %llums, %lld %s)",
+			GetMedianServerResponseDelay(), ObservedLatencyList.front(), ObservedLatencyList.back(), ObservedLatencyList.size(), ObservedLatencyList.size() > 1 ? "items" : "item");
 	}
 
 	void ProcessRecvData() {
@@ -243,11 +283,14 @@ public:
 
 				if (pMessage->Type == SegmentType::ServerKeepAlive) {
 					if (!KeepAliveRequestTimestamps.empty()) {
-						ObservedLatencyList.push_back(Utils::GetHighPerformanceCounter() - KeepAliveRequestTimestamps.front());
-						KeepAliveRequestTimestamps.pop_front();
-						while (ObservedLatencyList.size() > 8)
-							ObservedLatencyList.pop_front();
-						Misc::Logger::GetLogger().Format("%p: KeepAliveResponse: %llums", m_socket, ObservedLatencyList.back());
+						uint64_t delay;
+						do {
+							delay = Utils::GetHighPerformanceCounter() - KeepAliveRequestTimestamps.front();
+							KeepAliveRequestTimestamps.pop_front();
+						} while (!KeepAliveRequestTimestamps.empty() && delay > 5000);
+
+						AddServerResponseDelayItem(delay);
+						Misc::Logger::GetLogger().Format("%p: KeepAliveResponse: %llums; %s", m_socket, delay, FormatMedianServerResponseDelayStatistics().c_str());
 					}
 				} else if (pMessage->Type == SegmentType::IPC) {
 					for (const auto& cbs : m_incomingHandlers) {
@@ -381,12 +424,24 @@ SOCKET App::Network::SingleConnection::GetSocket() const {
 	return impl->m_socket;
 }
 
-double App::Network::SingleConnection::GetServerResponseDelay() const {
-	return impl->GetServerResponseDelay();
-}
-
 void App::Network::SingleConnection::ResolveAddresses() {
 	impl->ResolveAddresses();
+}
+
+void App::Network::SingleConnection::AddServerResponseDelayItem(uint64_t delay) {
+	return impl->AddServerResponseDelayItem(delay);
+}
+
+std::string App::Network::SingleConnection::FormatMedianServerResponseDelayStatistics() const {
+	return impl->FormatMedianServerResponseDelayStatistics();
+}
+
+int64_t App::Network::SingleConnection::GetMedianServerResponseDelay() const {
+	return impl->GetMedianServerResponseDelay();
+}
+
+int64_t App::Network::SingleConnection::GetMedianLatency() const {
+	return impl->GetMedianLatency();
 }
 
 class App::Network::SocketHook::Internals {

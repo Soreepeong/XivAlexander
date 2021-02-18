@@ -107,6 +107,7 @@ namespace App {
 		ConfigItem<bool> AlwaysOnTop{ this, "AlwaysOnTop", false };
 		ConfigItem<bool> UseHighLatencyMitigation{ this, "UseHighLatencyMitigation", true };
 		ConfigItem<bool> UseOpcodeFinder{ this, "UseOpcodeFinder", false };
+		ConfigItem<bool> UseAutoAdjustingExtraDelay{ this, "UseAutoAdjustingExtraDelay", true };
 		ConfigItem<bool> ShowLoggingWindow{ this, "ShowLoggingWindow", false };
 		ConfigItem<bool> ShowControlWindow{ this, "ShowControlWindow", false };
 		ConfigItem<std::string> GameServerIpRange{ this, "GameServerIpRange",
