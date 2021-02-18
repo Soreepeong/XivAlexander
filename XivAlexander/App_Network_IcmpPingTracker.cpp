@@ -14,7 +14,7 @@ struct ConnectionPair {
 static std::unique_ptr<App::Network::IcmpPingTracker> s_instance;
 static std::mutex s_latestKnownLatencyLock;
 static std::map<ConnectionPair, std::vector<uint64_t>> s_latestKnownLatency;
-static const int LatencyTrackCount = 16;
+static const int LatencyTrackCount = 32;
 
 class App::Network::IcmpPingTracker::Implementation {
 public:
@@ -62,7 +62,7 @@ public:
 			DWORD waitTime;
 			size_t successCount = 0;
 			do {
-				const auto interval = successCount > 16 ? 10000 : 1000;
+				const auto interval = successCount > LatencyTrackCount ? 10000 : 1000;
 				const auto startTime = Utils::GetHighPerformanceCounter();
 				const auto ok = IcmpSendEcho2Ex(hIcmp, nullptr, nullptr, nullptr, info.Pair.Source.S_un.S_addr, info.Pair.Destination.S_un.S_addr, SendBuf, sizeof SendBuf, nullptr, ReplyBuf, sizeof ReplyBuf, interval);
 				const auto endTime = Utils::GetHighPerformanceCounter();
@@ -75,7 +75,8 @@ public:
 					const auto newPos = list.empty() ? 0 : std::upper_bound(list.begin(), list.end(), latency) - list.begin();
 					list.insert(list.begin() + newPos, latency);
 					if (list.size() > LatencyTrackCount) {
-						if (newPos >= LatencyTrackCount / 2)
+						// try to send new item to middle
+						if (newPos < LatencyTrackCount / 2)
 							list.pop_back();
 						else
 							list.erase(list.begin());

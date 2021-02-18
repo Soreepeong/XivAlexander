@@ -168,7 +168,7 @@ public:
 	std::map<size_t, std::vector<std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)>>> m_incomingHandlers;
 	std::map<size_t, std::vector<std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)>>> m_outgoingHandlers;
 
-	static const size_t LatencyTrackCount = 16;
+	static const size_t LatencyTrackCount = 32;
 	std::deque<uint64_t> KeepAliveRequestTimestamps;
 	std::vector<uint64_t> ObservedLatencyList;
 
@@ -232,7 +232,8 @@ public:
 		const auto newPos = ObservedLatencyList.empty() ? 0 : std::upper_bound(ObservedLatencyList.begin(), ObservedLatencyList.end(), delay) - ObservedLatencyList.begin();
 		ObservedLatencyList.insert(ObservedLatencyList.begin() + newPos, delay);
 		if (ObservedLatencyList.size() > LatencyTrackCount) {
-			if (newPos >= LatencyTrackCount / 2)
+			// try to send new item to middle
+			if (newPos < LatencyTrackCount / 2)
 				ObservedLatencyList.pop_back();
 			else
 				ObservedLatencyList.erase(ObservedLatencyList.begin());
