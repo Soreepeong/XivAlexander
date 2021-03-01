@@ -115,7 +115,7 @@ LRESULT App::Window::Config::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 				auto res = MessageBox(m_hWnd, L"Apply changed configuration?", L"XivAlexander", MB_YESNOCANCEL | MB_ICONQUESTION);
 				if (res == IDCANCEL) {
 					return 0;
-				} else if (res == IDOK) {
+				} else if (res == IDYES) {
 					if (!TrySave()) {
 						return 0;
 					}

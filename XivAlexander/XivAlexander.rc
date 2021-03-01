@@ -78,6 +78,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Always on &Top",              ID_TRAYMENU_ALWAYSONTOP
         MENUITEM "Use High Latency &Mitigation", ID_TRAYMENU_HIGH_LATENCY_MITIGATION
+        MENUITEM "Use &Delay Detection",        ID_MENU_USEDELAYDETECTION
         MENUITEM "Use IPC Type &Finder",        ID_TRAYMENU_USEIPCTYPEFINDER
         MENUITEM SEPARATOR
         MENUITEM "Show &Logging Window",        ID_TRAYMENU_SHOWLOGGINGWINDOW

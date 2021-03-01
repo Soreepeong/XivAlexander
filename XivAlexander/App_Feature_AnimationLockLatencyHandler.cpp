@@ -59,7 +59,8 @@ public:
 
 			conn.AddOutgoingFFXIVMessageHandler(this, [&](Network::Structures::FFXIVMessage* pMessage, std::vector<uint8_t>&) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
-					if (pMessage->Data.IPC.SubType == config.C2S_ActionRequest) {
+					if (pMessage->Data.IPC.SubType == config.C2S_ActionRequest[0]
+						|| pMessage->Data.IPC.SubType == config.C2S_ActionRequest[1]) {
 						const auto& actionRequest = pMessage->Data.IPC.Data.C2S_ActionRequest;
 						m_pendingActions.emplace_back(actionRequest);
 
@@ -73,8 +74,9 @@ public:
 						}
 
 						Misc::Logger::GetLogger().Format(
-							"%p: C2S_ActionRequest: actionId=%04x sequence=%04x",
+							"%p: C2S_ActionRequest(%04x): actionId=%04x sequence=%04x",
 							conn.GetSocket(),
+							pMessage->Data.IPC.SubType,
 							actionRequest.ActionId,
 							actionRequest.Sequence);
 					}
@@ -143,19 +145,20 @@ public:
 									// 100ms animation lock after cast ends stays. Modify animation lock duration for instant actions only.
 									// Since no other action is in progress right before the cast ends, we can safely replace the animation lock with the latest after-cast lock.
 									if (!m_latestSuccessfulRequest.CastFlag) {
+										const int64_t rtt = now - m_latestSuccessfulRequest.RequestTimestamp;
+										conn.AddServerResponseDelayItem(rtt);
+
+										m_latestSuccessfulRequest.ResponseTimestamp = now;
+
 										int64_t extraDelay = ExtraDelay;
-										const auto latency = conn.GetMedianLatency();
-										const auto delay = conn.GetMedianServerResponseDelay();
+										const int64_t latency = conn.GetConnectionLatency();
+										const int64_t delay = conn.GetMedianServerResponseDelay();
 										if (config.UseAutoAdjustingExtraDelay) {
 											if (latency && delay) {
 												extraDelay = std::max(0LL, delay - latency);
-												extraMessage = Utils::FormatString(" extraDelay=%lldms", extraDelay);
+												extraMessage = Utils::FormatString(" latency=%lldms delay=%lldms extraDelay=%lldms", latency, delay, extraDelay);
 											}
 										}
-										m_latestSuccessfulRequest.ResponseTimestamp = now;
-
-										int64_t rtt = m_latestSuccessfulRequest.ResponseTimestamp - m_latestSuccessfulRequest.RequestTimestamp;
-										conn.AddServerResponseDelayItem(rtt);
 										extraMessage += Utils::FormatString(" rtt=%llums %s", rtt, conn.FormatMedianServerResponseDelayStatistics().c_str());
 
 										m_latestSuccessfulRequest.OriginalWaitTime = originalWaitTime;
@@ -168,8 +171,9 @@ public:
 							if (waitTime != originalWaitTime) {
 								actionEffect.AnimationLockDuration = std::max(0LL, waitTime) / 1000.f;
 								Misc::Logger::GetLogger().Format(
-									"%p: S2C_ActionEffect: actionId=%04x sourceSequence=%04x wait=%lldms->%lldms%s",
+									"%p: S2C_ActionEffect(%04x): actionId=%04x sourceSequence=%04x wait=%lldms->%lldms%s",
 									conn.GetSocket(),
+									pMessage->Data.IPC.SubType,
 									actionEffect.ActionId,
 									actionEffect.SourceSequence,
 									originalWaitTime, waitTime,
@@ -177,8 +181,9 @@ public:
 
 							} else {
 								Misc::Logger::GetLogger().Format(
-									"%p: S2C_ActionEffect: actionId=%04x sourceSequence=%04x wait=%llums",
+									"%p: S2C_ActionEffect(%04x): actionId=%04x sourceSequence=%04x wait=%llums",
 									conn.GetSocket(),
+									pMessage->Data.IPC.SubType,
 									actionEffect.ActionId,
 									actionEffect.SourceSequence,
 									originalWaitTime);

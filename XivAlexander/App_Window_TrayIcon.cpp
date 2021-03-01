@@ -82,6 +82,10 @@ LRESULT App::Window::TrayIcon::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) 
 					config.UseOpcodeFinder = !config.UseOpcodeFinder;
 					return 0;
 
+				case ID_MENU_USEDELAYDETECTION:
+					config.UseAutoAdjustingExtraDelay = !config.UseAutoAdjustingExtraDelay;
+					return 0;
+
 				case ID_TRAYMENU_RELOADCONFIGURATION:
 					config.Reload();
 					return 0;
@@ -217,6 +221,13 @@ void App::Window::TrayIcon::RepopulateMenu(HMENU hMenu) {
 	else
 		mii.fState &= ~MFS_CHECKED;
 	SetMenuItemInfoW(hMenu, ID_TRAYMENU_USEIPCTYPEFINDER, false, &mii);
+
+	GetMenuItemInfoW(hMenu, ID_MENU_USEDELAYDETECTION, false, &mii);
+	if (config.UseAutoAdjustingExtraDelay)
+		mii.fState |= MFS_CHECKED;
+	else
+		mii.fState &= ~MFS_CHECKED;
+	SetMenuItemInfoW(hMenu, ID_MENU_USEDELAYDETECTION, false, &mii);
 }
 
 void App::Window::TrayIcon::RegisterTrayIcon() {

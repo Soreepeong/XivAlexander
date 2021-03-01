@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "App_Network_SocketHook.h"
-#include "App_Network_IcmpPingTracker.h"
+#include "App_Network_TcpTableWatcher.h"
 #include "App_Misc_FreeGameMutex.h"
 #include "App_Feature_AnimationLockLatencyHandler.h"
 #include "App_Feature_IpcTypeFinder.h"
@@ -132,6 +132,9 @@ public:
 			ConfigRepository::Config();
 			OnCleanup([]() { ConfigRepository::DestroyConfig(); });
 
+			Network::TcpTableWatcher::GetInstance();
+			OnCleanup([]() { Network::TcpTableWatcher::Cleanup(); });
+
 			Scintilla_RegisterClasses(g_hInstance);
 			OnCleanup([]() { Scintilla_ReleaseResources(); });
 
@@ -218,7 +221,6 @@ public:
 		while (!m_cleanupPendingDestructions.empty())
 			m_cleanupPendingDestructions.pop_back();
 
-		Network::IcmpPingTracker::Cleanup();
 		l_pApp = nullptr;
 	}
 

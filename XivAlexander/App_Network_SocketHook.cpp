@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "App_Network_SocketHook.h"
 #include "App_Network_Structures.h"
-#include "App_Network_IcmpPingTracker.h"
+#include "App_Network_TcpTableWatcher.h"
 #include <myzlib.h>
 
 namespace SocketFn = App::Hooks::Socket;
@@ -168,7 +168,6 @@ public:
 	std::map<size_t, std::vector<std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)>>> m_incomingHandlers;
 	std::map<size_t, std::vector<std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)>>> m_outgoingHandlers;
 
-	static const size_t LatencyTrackCount = 32;
 	std::deque<uint64_t> KeepAliveRequestTimestamps;
 	std::vector<uint64_t> ObservedLatencyList;
 
@@ -201,14 +200,6 @@ public:
 			remoteAddress = remote;
 			Misc::Logger::GetLogger().Format("%p: Remote=%s", m_socket, get_ip_str(reinterpret_cast<sockaddr*>(&remote)).c_str());
 		}
-
-		if (localAddress.ss_family == AF_INET && remoteAddress.ss_family == AF_INET && !m_pingTrackKeeper) {
-			const auto& source = reinterpret_cast<const sockaddr_in*>(&localAddress)->sin_addr;
-			const auto& destination = reinterpret_cast<const sockaddr_in*>(&remoteAddress)->sin_addr;
-			if (source.S_un.S_addr && destination.S_un.S_addr) {
-				m_pingTrackKeeper = IcmpPingTracker::GetInstance().Track(source, destination);
-			}
-		}
 	}
 
 	void Unload() {
@@ -219,21 +210,27 @@ public:
 		m_unloading = true;
 	}
 
-	int64_t GetMedianLatency() const {
-		const auto& source = reinterpret_cast<const sockaddr_in*>(&localAddress)->sin_addr;
-		const auto& destination = reinterpret_cast<const sockaddr_in*>(&remoteAddress)->sin_addr;
-		if (localAddress.ss_family == AF_INET && remoteAddress.ss_family == AF_INET && source.S_un.S_addr && destination.S_un.S_addr) {
-			return IcmpPingTracker::GetInstance().GetMedianLatency(source, destination);
-		}
-		return 0;
+	int64_t GetConnectionLatency() const {
+		const auto& source = reinterpret_cast<const sockaddr_in*>(&localAddress);
+		const auto& destination = reinterpret_cast<const sockaddr_in*>(&remoteAddress);
+		return TcpTableWatcher::GetInstance().GetSmoothedRtt(
+			source->sin_addr.S_un.S_addr, source->sin_port, 
+			destination->sin_addr.S_un.S_addr, destination->sin_port);
 	}
 
 	void AddServerResponseDelayItem(uint64_t delay) {
+		const int latencyTrackCount = ConfigRepository::ConfigRepository().MedianRttCalculationCount;
+		if (latencyTrackCount == 1) {
+			ObservedLatencyList.clear();
+			ObservedLatencyList.push_back(delay);
+			return;
+		}
+
 		const auto newPos = ObservedLatencyList.empty() ? 0 : std::upper_bound(ObservedLatencyList.begin(), ObservedLatencyList.end(), delay) - ObservedLatencyList.begin();
 		ObservedLatencyList.insert(ObservedLatencyList.begin() + newPos, delay);
-		if (ObservedLatencyList.size() > LatencyTrackCount) {
+		if (ObservedLatencyList.size() > latencyTrackCount) {
 			// try to send new item to middle
-			if (newPos < LatencyTrackCount / 2)
+			if (newPos < latencyTrackCount / 2)
 				ObservedLatencyList.pop_back();
 			else
 				ObservedLatencyList.erase(ObservedLatencyList.begin());
@@ -441,8 +438,8 @@ int64_t App::Network::SingleConnection::GetMedianServerResponseDelay() const {
 	return impl->GetMedianServerResponseDelay();
 }
 
-int64_t App::Network::SingleConnection::GetMedianLatency() const {
-	return impl->GetMedianLatency();
+int64_t App::Network::SingleConnection::GetConnectionLatency() const {
+	return impl->GetConnectionLatency();
 }
 
 class App::Network::SocketHook::Internals {

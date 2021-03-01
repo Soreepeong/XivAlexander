@@ -25,7 +25,7 @@ namespace App::Network {
 		void AddServerResponseDelayItem(uint64_t delay);
 		std::string FormatMedianServerResponseDelayStatistics() const;
 		int64_t GetMedianServerResponseDelay() const;
-		int64_t GetMedianLatency() const;
+		int64_t GetConnectionLatency() const;
 	};
 
 	class SocketHook {
