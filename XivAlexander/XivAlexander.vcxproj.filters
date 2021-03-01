@@ -61,6 +61,9 @@
     </ClCompile>
     <ClCompile Include="App_Hooks.cpp" />
     <ClCompile Include="App_Signatures.cpp" />
+    <ClCompile Include="App_Network_TcpTableWatcher.cpp">
+      <Filter>Network</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -102,6 +105,9 @@
     </ClInclude>
     <ClInclude Include="App_Hooks.h" />
     <ClInclude Include="App_Signatures.h" />
+    <ClInclude Include="App_Network_TcpTableWatcher.h">
+      <Filter>Network</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\Graphics\Icon.ico">

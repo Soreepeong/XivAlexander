@@ -148,12 +148,13 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 									throw std::exception("The selected file does not have a filesystem path.");
 
 								Utils::CallOnDestruction freeFileName([pszNewFileName]() { CoTaskMemFree(pszNewFileName); });
-
-								Utils::Win32Handle<> hFile(CreateFile(pszNewFileName, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr));
-								DWORD written;
-								WriteFile(hFile, pDataT->buf.data(), static_cast<DWORD>(pDataT->buf.length()), &written, nullptr);
-								if (written != pDataT->buf.length())
-									throw std::exception("Failed to fully write the log file.");
+								{
+									Utils::Win32Handle<> hFile(CreateFile(pszNewFileName, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr));
+									DWORD written;
+									WriteFile(hFile, pDataT->buf.data(), static_cast<DWORD>(pDataT->buf.length()), &written, nullptr);
+									if (written != pDataT->buf.length())
+										throw std::exception("Failed to fully write the log file.");
+								}
 
 								MessageBoxW(pDataT->hWnd, Utils::FormatString(L"Log saved to %s.", pszNewFileName).c_str(), L"XivAlexander", MB_ICONINFORMATION);
 							}

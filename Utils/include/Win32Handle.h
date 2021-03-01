@@ -44,6 +44,10 @@ namespace Utils {
 		Win32Handle<T, CloserFunction>(const Win32Handle<T, CloserFunction>&) = delete;
 		Win32Handle<T, CloserFunction>& operator = (const Win32Handle<T, CloserFunction>&) = delete;
 
+		void Detach() {
+			m_hHandle = nullptr;
+		}
+
 		~Win32Handle() {
 			if (m_hHandle)
 				CloserFunction(m_hHandle);

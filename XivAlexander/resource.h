@@ -26,13 +26,14 @@
 #define ID_Menu40018                    40018
 #define ID_TRAYMENU_SHOWCONTROLWINDOW   40019
 #define ID_VIEW_ALWAYSONTOP40020        40020
+#define ID_MENU_USEDELAYDETECTION       40021
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        108
-#define _APS_NEXT_COMMAND_VALUE         40021
+#define _APS_NEXT_COMMAND_VALUE         40022
 #define _APS_NEXT_CONTROL_VALUE         1001
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
