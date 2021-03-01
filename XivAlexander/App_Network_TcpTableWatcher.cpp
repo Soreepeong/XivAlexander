@@ -100,6 +100,7 @@ void App::Network::TcpTableWatcher::Cleanup() {
 }
 
 int App::Network::TcpTableWatcher::GetSmoothedRtt(uint32_t localAddr, uint32_t localPort, uint32_t remoteAddr, uint32_t remotePort) const {
+	std::lock_guard<decltype(m_pImpl->m_dataLock)> _lock(m_pImpl->m_dataLock);
 	const auto it = m_pImpl->m_data.find({ localAddr, localPort, remoteAddr, remotePort });
 	if (it == m_pImpl->m_data.end())
 		return -1;
