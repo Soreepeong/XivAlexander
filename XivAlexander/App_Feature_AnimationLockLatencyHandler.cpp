@@ -154,7 +154,7 @@ public:
 										const int64_t latency = conn.GetConnectionLatency();
 										const int64_t delay = conn.GetMedianServerResponseDelay();
 										if (config.UseAutoAdjustingExtraDelay) {
-											if (latency && delay) {
+											if (latency > 0 && delay > 0) {
 												extraDelay = std::max(0LL, delay - latency);
 												extraMessage = Utils::FormatString(" latency=%lldms delay=%lldms extraDelay=%lldms", latency, delay, extraDelay);
 											}
