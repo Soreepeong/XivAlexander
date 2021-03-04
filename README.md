@@ -39,11 +39,12 @@ Refer to your anti-virus software manual for instructions.
 ### How to find Opcodes
 1. Turn on *Use IPC Type Finder* menu from notification area icon, and open Log window.
 2. Cast Cure-like casted actions to self, and figure out `RequestUseAction`, `SkillResultResponse01`, `ActorCast`, and `ActorControlSelf`(this includes cooldown information.) 
-3. Cancel cast by moving around, and figure out `ActorControl`.
-4. Use AoE action without any target around, and figure out `SkillResultResponse08`.
-5. Enter Sastasha without level synchronization, pull more than 9 adds, and use an AoE action to figure out `SkillResultResponse16`.
-6. Do the same but pull more than 17 adds to figure out `SkillResultResponse24`.
-7. Leave and re-enter Sastasha, and do the same but pull more than 25 adds to figure out `SkillResultResponse32`.
+3. Use ground targeted action (Asylum, Shukuchi, Sacred Soil, Soten, Earthly Star) to figure out `RequestUseAction2`.
+4. Cancel cast by moving around, and figure out `ActorControl`.
+5. Use AoE action without any target around, and figure out `SkillResultResponse08`.
+6. Enter Sastasha without level synchronization, pull more than 9 adds, and use an AoE action to figure out `SkillResultResponse16`.
+7. Do the same but pull more than 17 adds to figure out `SkillResultResponse24`.
+8. Leave and re-enter Sastasha, and do the same but pull more than 25 adds to figure out `SkillResultResponse32`.
 
 ## How it works
 After you use an action, the game will apply 500ms animation lock. 
@@ -104,10 +105,11 @@ Apache License 2.0
 1. 메뉴에서 *Use IPC Type Finder*를 켜고, 로그 창을 엽니다.
 2. 자기 자신에게 케알을 시전해 `RequestUseAction`, `SkillResultResponse01`, `ActorCast`, `ActorControlSelf`(재사용 대기시간 정보 포함)를 알아냅니다.
 3. 케알 시전 중 움직여서 취소해서 `ActorControl`을 알아냅니다.
-4. 대상이 안 닿는 광역기를 시전해서 `SkillResultResponse08`을 알아냅니다.
-5. 사스타샤를 조율 해제하고 들어가서 9쫄까지 몰아서 광역기를 쓴 후 `SkillResultResponse16`을 알아냅니다.
-6. 17쫄까지 몰아서 광역기를 쓴 후 `SkillResultResponse24`을 알아냅니다.
-7. 사스타샤를 다시 들어가서 25쫄까지 몰아서 광역기를 쓴 후 `SkillResultResponse32`을 알아냅니다.
+4. 위치 지정 스킬을 이용해서 (축지법 등) `RequestUseAction2`을 알아냅니다.
+5. 대상이 안 닿는 광역기를 시전해서 `SkillResultResponse08`을 알아냅니다.
+6. 사스타샤를 조율 해제하고 들어가서 9쫄까지 몰아서 광역기를 쓴 후 `SkillResultResponse16`을 알아냅니다.
+7. 17쫄까지 몰아서 광역기를 쓴 후 `SkillResultResponse24`을 알아냅니다.
+8. 사스타샤를 다시 들어가서 25쫄까지 몰아서 광역기를 쓴 후 `SkillResultResponse32`을 알아냅니다.
 
 ### 작동 원리
 스킬 사용 후 기본으로 0.5초동안 다른 스킬을 사용할 수 없습니다.
