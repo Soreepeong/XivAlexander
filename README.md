@@ -84,19 +84,20 @@ Apache License 2.0
 
 ### 처음 사용할 때 세팅
 1. `XivAlexanderLoader.exe`가 있는 폴더에 생긴 `XivAlexander.dll.json`를 텍스트 편집기 (메모장 등)으로 열어 주세요.
-2. 옵코드를 적당히 수정해 주세요. 현재 한썹 5.31에서는 다음과 같습니다. 
+2. 옵코드를 적당히 수정해 주세요. 현재 한썹 5.35에서는 다음과 같습니다. 
    ```json
    {
-       "ActorCast": "0x0303",
-       "ActorControl": "0x0347",
-       "ActorControlSelf": "0x02fc",
-       "RequestUseAction": "0x01de",
-       "RequestUseAction2": "0x0383",
-       "SkillResultResponse01": "0x024b",
-       "SkillResultResponse08": "0x03da",
-       "SkillResultResponse16": "0x03e6",
-       "SkillResultResponse24": "0x01c0",
-       "SkillResultResponse32": "0x03b3"
+        "ActorCast": "0x012c",
+        "ActorControl": "0x017a",
+        "ActorControlSelf": "0x007c",
+        "AddStatusEffect": "0x0204",
+        "RequestUseAction": "0x02b3",
+        "RequestUseAction2": "0x0250",
+        "SkillResultResponse01": "0x02d0",
+        "SkillResultResponse08": "0x0199",
+        "SkillResultResponse16": "0x02d1",
+        "SkillResultResponse24": "0x01a4",
+        "SkillResultResponse32": "0x016e"
    }
    ```
 3. 시스템 알림 영역(트레이)에 있는 아이콘을 오른쪽 클릭한 후 *Reload Configuration*을 누르세요.
