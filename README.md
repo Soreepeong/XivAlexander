@@ -25,6 +25,7 @@ Refer to your anti-virus software manual for instructions.
        "ActorCast": "0x034c",
        "ActorControl": "0x00c2",
        "ActorControlSelf": "0x03d5",
+       "AddStatusEffect": "0x01d7",
        "RequestUseAction": "0x0388",
        "RequestUseAction2": "0x03a0",
        "SkillResultResponse01": "0x027f",
