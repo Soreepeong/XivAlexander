@@ -52,9 +52,6 @@
     <ClCompile Include="App_Feature_IpcTypeFinder.cpp">
       <Filter>Feature</Filter>
     </ClCompile>
-    <ClCompile Include="App_Window_TrayIcon.cpp">
-      <Filter>Window</Filter>
-    </ClCompile>
     <ClCompile Include="App_ConfigRepository.cpp" />
     <ClCompile Include="App_Window_Config.cpp">
       <Filter>Window</Filter>
@@ -63,6 +60,15 @@
     <ClCompile Include="App_Signatures.cpp" />
     <ClCompile Include="App_Network_TcpTableWatcher.cpp">
       <Filter>Network</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Feature_EffectApplicationDelayLogger.cpp">
+      <Filter>Feature</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Window_Main.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Feature_AllIpcMessageLogger.cpp">
+      <Filter>Feature</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -96,9 +102,6 @@
     <ClInclude Include="resource.h">
       <Filter>Resources</Filter>
     </ClInclude>
-    <ClInclude Include="App_Window_TrayIcon.h">
-      <Filter>Window</Filter>
-    </ClInclude>
     <ClInclude Include="App_ConfigRepository.h" />
     <ClInclude Include="App_Window_Config.h">
       <Filter>Window</Filter>
@@ -107,6 +110,15 @@
     <ClInclude Include="App_Signatures.h" />
     <ClInclude Include="App_Network_TcpTableWatcher.h">
       <Filter>Network</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Feature_EffectApplicationDelayLogger.h">
+      <Filter>Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Window_Main.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Feature_AllIpcMessageLogger.h">
+      <Filter>Feature</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

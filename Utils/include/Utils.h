@@ -81,4 +81,7 @@ namespace Utils {
 		if (pfnSetThreadDescription)
 			pfnSetThreadDescription(GetCurrentThread(), FormatString(format.c_str(), std::forward<Args>(args)...).c_str());
 	}
+
+	void SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked);
+	void SetMenuState(HWND hWnd, DWORD nMenuId, bool bChecked);
 }

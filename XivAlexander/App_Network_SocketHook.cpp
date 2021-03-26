@@ -155,7 +155,7 @@ void ProcessData(SingleStream& source, SingleStream& target, std::function<void(
 			if (i % 4 == 3 && i != discardedBytes.size() - 1)
 				buffer.push_back(' ');
 		}
-		App::Misc::Logger::GetLogger().Log(buffer, App::Misc::Logger::LogLevel::Warning);
+		App::Misc::Logger::GetLogger().Log(App::LogCategory::SocketHook, buffer, App::LogLevel::Warning);
 	}
 }
 
@@ -184,7 +184,7 @@ public:
 	Internals(SOCKET s)
 		: m_socket(s) {
 
-		Misc::Logger::GetLogger().Format("%p: Found", m_socket);
+		Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Found", m_socket);
 		ResolveAddresses();
 	}
 
@@ -193,12 +193,12 @@ public:
 		socklen_t addrlen = sizeof local;
 		if (0 == getsockname(m_socket, reinterpret_cast<sockaddr*>(&local), &addrlen) && Utils::sockaddr_cmp(&localAddress, &local)) {
 			localAddress = local;
-			Misc::Logger::GetLogger().Format("%p: Local=%s", m_socket, get_ip_str(reinterpret_cast<sockaddr*>(&local)).c_str());
+			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Local=%s", m_socket, get_ip_str(reinterpret_cast<sockaddr*>(&local)).c_str());
 		}
 		addrlen = sizeof remote;
 		if (0 == getpeername(m_socket, reinterpret_cast<sockaddr*>(&remote), &addrlen) && Utils::sockaddr_cmp(&remoteAddress, &remote)) {
 			remoteAddress = remote;
-			Misc::Logger::GetLogger().Format("%p: Remote=%s", m_socket, get_ip_str(reinterpret_cast<sockaddr*>(&remote)).c_str());
+			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Remote=%s", m_socket, get_ip_str(reinterpret_cast<sockaddr*>(&remote)).c_str());
 		}
 	}
 
@@ -288,7 +288,6 @@ public:
 						} while (!KeepAliveRequestTimestamps.empty() && delay > 5000);
 
 						AddServerResponseDelayItem(delay);
-						Misc::Logger::GetLogger().Format("%p: KeepAliveResponse: %llums; %s", m_socket, delay, FormatMedianServerResponseDelayStatistics().c_str());
 					}
 				} else if (pMessage->Type == SegmentType::IPC) {
 					for (const auto& cbs : m_incomingHandlers) {
@@ -345,7 +344,6 @@ public:
 
 				if (pMessage->Type == SegmentType::ClientKeepAlive) {
 					KeepAliveRequestTimestamps.push_back(Utils::GetHighPerformanceCounter());
-					Misc::Logger::GetLogger().Format("%p: KeepAliveRequest", m_socket);
 				} else if (pMessage->Type == SegmentType::IPC) {
 					for (const auto& cbs : m_outgoingHandlers) {
 						for (const auto& cb : cbs.second) {
@@ -468,13 +466,13 @@ public:
 		parsePortRange();
 		SocketFn::socket.SetupHook([&](_In_ int af, _In_ int type, _In_ int protocol) {
 			const auto result = App::Hooks::Socket::socket.bridge(af, type, protocol);
-			Misc::Logger::GetLogger().Format("%p: New", result);
+			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: New", result);
 			OnSocketFound(result);
 			return result;
 			});
 		SocketFn::closesocket.SetupHook([&](SOCKET s) {
 			CleanupSocket(s);
-			Misc::Logger::GetLogger().Format("%p: Close", s);
+			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Close", s);
 			m_nonGameSockets.erase(s);
 			return SocketFn::closesocket.bridge(s);
 			});
@@ -551,7 +549,7 @@ public:
 			});
 		SocketFn::connect.SetupHook([&](SOCKET s, const sockaddr* name, int namelen) {
 			const auto result = SocketFn::connect.bridge(s, name, namelen);
-			Misc::Logger::GetLogger().Format("%p: connect: %s", s, get_ip_str(name).c_str());
+			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: connect: %s", s, get_ip_str(name).c_str());
 			return result;
 			});
 	}
@@ -609,7 +607,7 @@ public:
 				}
 				m_allowedIpRange.emplace_back(startIp, endIp);
 			} catch (std::exception& e) {
-				Misc::Logger::GetLogger().Format<Misc::Logger::LogLevel::Error>("Invalid IP range item \"%s\": %s. It must be in the form of \"0.0.0.0\", \"0.0.0.0-255.255.255.255\", or \"127.0.0.0/8\", delimited by comma(,).", range.c_str(), e.what());
+				Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::SocketHook, "Invalid IP range item \"%s\": %s. It must be in the form of \"0.0.0.0\", \"0.0.0.0-255.255.255.255\", or \"127.0.0.0/8\", delimited by comma(,).", range.c_str(), e.what());
 			}
 		}
 	}
@@ -633,7 +631,7 @@ public:
 				}
 				m_allowedPortRange.emplace_back(start, end);
 			} catch (std::exception& e) {
-				Misc::Logger::GetLogger().Format<Misc::Logger::LogLevel::Error>("Invalid port range item \"%s\": %s. It must be in the form of \"0-65535\" or single item, delimited by comma(,).", range.c_str(), e.what());
+				Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::SocketHook, "Invalid port range item \"%s\": %s. It must be in the form of \"0-65535\" or single item, delimited by comma(,).", range.c_str(), e.what());
 			}
 		}
 	}
@@ -747,7 +745,7 @@ public:
 				return nullptr;
 			}
 			if (!TestRemoteAddress(addr_v4)) {
-				Misc::Logger::GetLogger().Format("%p: Mark ignored; remote=%s:%d", socket, get_ip_str(reinterpret_cast<sockaddr*>(&addr_v4)).c_str(), addr_v4.sin_port);
+				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Mark ignored; remote=%s:%d", socket, get_ip_str(reinterpret_cast<sockaddr*>(&addr_v4)).c_str(), addr_v4.sin_port);
 				m_nonGameSockets.emplace(socket);
 				return nullptr;
 			}

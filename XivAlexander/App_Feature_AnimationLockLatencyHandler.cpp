@@ -73,12 +73,14 @@ public:
 								m_lastAnimationLockEndsAt = m_pendingActions.back().RequestTimestamp;
 						}
 
-						Misc::Logger::GetLogger().Format(
-							"%p: C2S_ActionRequest(%04x): actionId=%04x sequence=%04x",
-							conn.GetSocket(),
-							pMessage->Data.IPC.SubType,
-							actionRequest.ActionId,
-							actionRequest.Sequence);
+						if (config.UseHighLatencyMitigationLogging)
+							Misc::Logger::GetLogger().Format(
+								LogCategory::AnimationLockLatencyHandler,
+								"%p: C2S_ActionRequest(%04x): actionId=%04x sequence=%04x",
+								conn.GetSocket(),
+								pMessage->Data.IPC.SubType,
+								actionRequest.ActionId,
+								actionRequest.Sequence);
 					}
 				}
 				return true;
@@ -134,7 +136,9 @@ public:
 								// find the one sharing Sequence, assuming action responses are always in order
 								while (!m_pendingActions.empty() && m_pendingActions.front().Sequence != actionEffect.SourceSequence) {
 									const auto& item = m_pendingActions.front();
-									Misc::Logger::GetLogger().Format(reinterpret_cast<const char*>(u8"\t┎ ActionRequest ignored for processing: actionId=%04x sequence=%04x"),
+									Misc::Logger::GetLogger().Format(
+										LogCategory::AnimationLockLatencyHandler, 
+										u8"\t┎ ActionRequest ignored for processing: actionId=%04x sequence=%04x",
 										item.ActionId, item.Sequence);
 									m_pendingActions.pop_front();
 								}
@@ -170,23 +174,28 @@ public:
 							}
 							if (waitTime != originalWaitTime) {
 								actionEffect.AnimationLockDuration = std::max(0LL, waitTime) / 1000.f;
-								Misc::Logger::GetLogger().Format(
-									"%p: S2C_ActionEffect(%04x): actionId=%04x sourceSequence=%04x wait=%lldms->%lldms%s",
-									conn.GetSocket(),
-									pMessage->Data.IPC.SubType,
-									actionEffect.ActionId,
-									actionEffect.SourceSequence,
-									originalWaitTime, waitTime,
-									extraMessage.c_str());
+
+								if (config.UseHighLatencyMitigationLogging)
+									Misc::Logger::GetLogger().Format(
+										LogCategory::AnimationLockLatencyHandler,
+										"%p: S2C_ActionEffect(%04x): actionId=%04x sourceSequence=%04x wait=%lldms->%lldms%s",
+										conn.GetSocket(),
+										pMessage->Data.IPC.SubType,
+										actionEffect.ActionId,
+										actionEffect.SourceSequence,
+										originalWaitTime, waitTime,
+										extraMessage.c_str());
 
 							} else {
-								Misc::Logger::GetLogger().Format(
-									"%p: S2C_ActionEffect(%04x): actionId=%04x sourceSequence=%04x wait=%llums",
-									conn.GetSocket(),
-									pMessage->Data.IPC.SubType,
-									actionEffect.ActionId,
-									actionEffect.SourceSequence,
-									originalWaitTime);
+								if (config.UseHighLatencyMitigationLogging)
+									Misc::Logger::GetLogger().Format(
+										LogCategory::AnimationLockLatencyHandler,
+										"%p: S2C_ActionEffect(%04x): actionId=%04x sourceSequence=%04x wait=%llums",
+										conn.GetSocket(),
+										pMessage->Data.IPC.SubType,
+										actionEffect.ActionId,
+										actionEffect.SourceSequence,
+										originalWaitTime);
 							}
 
 						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorControlSelf) {
@@ -204,7 +213,9 @@ public:
 										|| (rollback.SourceSequence == 0 && m_pendingActions.front().ActionId != rollback.ActionId)
 									)) {
 									const auto& item = m_pendingActions.front();
-									Misc::Logger::GetLogger().Format(reinterpret_cast<const char*>(u8"\t┎ ActionRequest ignored for processing: actionId=%04x sequence=%04x"),
+									Misc::Logger::GetLogger().Format(
+										LogCategory::AnimationLockLatencyHandler, 
+										u8"\t┎ ActionRequest ignored for processing: actionId=%04x sequence=%04x",
 										item.ActionId, item.Sequence);
 									m_pendingActions.pop_front();
 								}
@@ -212,11 +223,13 @@ public:
 								if (!m_pendingActions.empty())
 									m_pendingActions.pop_front();
 
-								Misc::Logger::GetLogger().Format(
-									"%p: S2C_ActorControlSelf/ActionRejected: actionId=%04x sourceSequence=%08x",
-									conn.GetSocket(),
-									rollback.ActionId,
-									rollback.SourceSequence);
+								if (config.UseHighLatencyMitigationLogging)
+									Misc::Logger::GetLogger().Format(
+										LogCategory::AnimationLockLatencyHandler,
+										"%p: S2C_ActorControlSelf/ActionRejected: actionId=%04x sourceSequence=%08x",
+										conn.GetSocket(),
+										rollback.ActionId,
+										rollback.SourceSequence);
 							}
 
 						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorControl) {
@@ -229,7 +242,9 @@ public:
 								// find the one sharing Sequence, assuming action responses are always in order
 								while (!m_pendingActions.empty()&& m_pendingActions.front().ActionId != cancelCast.ActionId) {
 									const auto& item = m_pendingActions.front();
-									Misc::Logger::GetLogger().Format(reinterpret_cast<const char*>(u8"\t┎ ActionRequest ignored for processing: actionId=%04x sequence=%04x"),
+									Misc::Logger::GetLogger().Format(
+										LogCategory::AnimationLockLatencyHandler, 
+										u8"\t┎ ActionRequest ignored for processing: actionId=%04x sequence=%04x",
 										item.ActionId, item.Sequence);
 									m_pendingActions.pop_front();
 								}
@@ -237,10 +252,12 @@ public:
 								if (!m_pendingActions.empty())
 									m_pendingActions.pop_front();
 
-								Misc::Logger::GetLogger().Format(
-									"%p: S2C_ActorControl/CancelCast: actionId=%04x",
-									conn.GetSocket(),
-									cancelCast.ActionId);
+								if (config.UseHighLatencyMitigationLogging)
+									Misc::Logger::GetLogger().Format(
+										LogCategory::AnimationLockLatencyHandler,
+										"%p: S2C_ActorControl/CancelCast: actionId=%04x",
+										conn.GetSocket(),
+										cancelCast.ActionId);
 							}
 
 						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorCast) {
@@ -251,12 +268,14 @@ public:
 							if (!m_pendingActions.empty())
 								m_pendingActions.front().CastFlag = true;
 
-							Misc::Logger::GetLogger().Format(
-								"%p: S2C_ActorCast: actionId=%04x time=%.3f target=%08x",
-								conn.GetSocket(),
-								actorCast.ActionId,
-								actorCast.CastTime,
-								actorCast.TargetId);
+							if (config.UseHighLatencyMitigationLogging)
+								Misc::Logger::GetLogger().Format(
+									LogCategory::AnimationLockLatencyHandler,
+									"%p: S2C_ActorCast: actionId=%04x time=%.3f target=%08x",
+									conn.GetSocket(),
+									actorCast.ActionId,
+									actorCast.CastTime,
+									actorCast.TargetId);
 						}
 					}
 				}

@@ -14,9 +14,10 @@ const std::vector<uint8_t> App::Network::Structures::FFXIVBundle::MagicConstant2
 	0, 0, 0, 0,
 };
 
-void App::Network::Structures::FFXIVBundle::DebugPrint(const char* head) const {
+void App::Network::Structures::FFXIVBundle::DebugPrint(LogCategory logCategory, const char* head) const {
 	const auto st = Utils::EpochToLocalSystemTime(Timestamp);
-	Misc::Logger::GetLogger().Format<Misc::Logger::LogLevel::Debug>(
+	Misc::Logger::GetLogger().Format<LogLevel::Debug>(
+		logCategory,
 		"[%s / %04d-%02d-%02d %02d:%02d:%02d.%03d] Length=%d ConnType=%d Count=%d Gzip=%dn",
 		head,
 		st.wYear, st.wMonth, st.wDay,
@@ -26,7 +27,7 @@ void App::Network::Structures::FFXIVBundle::DebugPrint(const char* head) const {
 	);
 }
 
-void App::Network::Structures::FFXIVMessage::DebugPrint(const char* head, bool dump) const {
+void App::Network::Structures::FFXIVMessage::DebugPrint(LogCategory logCategory, const char* head, bool dump) const {
 	std::string dumpstr;
 	if (Type == SegmentType::ClientKeepAlive || Type == SegmentType::ServerKeepAlive) {
 		const auto st = Utils::EpochToLocalSystemTime(Data.KeepAlive.Epoch * 1000ULL);
@@ -56,7 +57,8 @@ void App::Network::Structures::FFXIVMessage::DebugPrint(const char* head, bool d
 			}
 		}
 	}
-	Misc::Logger::GetLogger().Format<Misc::Logger::LogLevel::Debug>(
+	Misc::Logger::GetLogger().Format<LogLevel::Debug>(
+		logCategory,
 		"[%s] Length=%d Source=%08x Current=%08x Type=%d%s",
 		head, Length, SourceActor, CurrentActor, static_cast<int>(Type), dumpstr.c_str()
 		);

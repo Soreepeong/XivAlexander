@@ -34,7 +34,7 @@ void App::ConfigRepository::Reload(bool announceChange) {
 		std::ifstream in(m_sConfigPath);
 		in >> config;
 	} catch (std::exception& e) {
-		App::Misc::Logger::GetLogger().Format("JSON Config load error: %s", e.what());
+		App::Misc::Logger::GetLogger().Format(LogCategory::General, "JSON Config load error: %s", e.what());
 	}
 	config = LowerCaseKeys(config);
 
@@ -83,7 +83,7 @@ void App::ConfigRepository::Save() {
 		std::ifstream in(m_sConfigPath);
 		in >> config;
 	} catch (std::exception& e) {
-		App::Misc::Logger::GetLogger().Format("JSON Config load error: %s", e.what());
+		App::Misc::Logger::GetLogger().Format(LogCategory::General, "JSON Config load error: %s", e.what());
 	}
 	config = LowerCaseKeys(config);
 
@@ -99,7 +99,7 @@ void App::ConfigRepository::Save() {
 		std::ofstream out(m_sConfigPath);
 		out << config.dump(1, '\t');
 	} catch (std::exception& e) {
-		App::Misc::Logger::GetLogger().Format("JSON Config save error: %s", e.what());
+		App::Misc::Logger::GetLogger().Format(LogCategory::General, "JSON Config save error: %s", e.what());
 	}
 }
 
@@ -128,7 +128,7 @@ bool App::ConfigItem<uint16_t>::LoadFrom(const nlohmann::json& data, bool announ
 			else
 				return false;
 		} catch (std::exception& e) {
-			App::Misc::Logger::GetLogger().Format("Config value parse error: %s", e.what());
+			App::Misc::Logger::GetLogger().Format(LogCategory::General, "Config value parse error: %s", e.what());
 		}
 		if (announceChanged)
 			this->operator=(newValue);

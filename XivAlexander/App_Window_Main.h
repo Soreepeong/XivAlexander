@@ -2,7 +2,7 @@
 #include "App_Window_Base.h"
 
 namespace App::Window {
-	class TrayIcon : public Base {
+	class Main : public Base {
 		HWND const m_hGameWnd;
 		GUID m_guid;
 		const std::function<void()> m_triggerUnload;
@@ -11,8 +11,8 @@ namespace App::Window {
 		Utils::CallOnDestruction m_callbackHandle;
 
 	public:
-		TrayIcon(HWND hGameWnd, std::function<void()> unloadFunction);
-		virtual ~TrayIcon();
+		Main(HWND hGameWnd, std::function<void()> unloadFunction);
+		virtual ~Main();
 
 	protected:
 		virtual LRESULT WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) override;

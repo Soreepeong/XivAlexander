@@ -204,3 +204,19 @@ std::vector<uint8_t> Utils::ZlibCompress(const uint8_t* src, size_t length) {
 		throw;
 	}
 }
+
+void Utils::SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked) {
+	MENUITEMINFOW mii = { sizeof(MENUITEMINFOW) };
+	mii.fMask = MIIM_STATE;
+
+	GetMenuItemInfoW(hMenu, nMenuId, false, &mii);
+	if (bChecked)
+		mii.fState |= MFS_CHECKED;
+	else
+		mii.fState &= ~MFS_CHECKED;
+	SetMenuItemInfoW(hMenu, nMenuId, false, &mii);
+}
+
+void Utils::SetMenuState(HWND hWnd, DWORD nMenuId, bool bChecked) {
+	SetMenuState(GetMenu(hWnd), nMenuId, bChecked);
+}

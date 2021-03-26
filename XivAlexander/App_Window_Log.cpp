@@ -4,6 +4,22 @@
 
 constexpr int BaseFontSize = 9;
 
+static const std::map<App::LogLevel, int> LogLevelStyleMap{
+	{App::LogLevel::Debug, STYLE_LASTPREDEFINED + 0},
+	{App::LogLevel::Info, STYLE_LASTPREDEFINED + 1},
+	{App::LogLevel::Warning, STYLE_LASTPREDEFINED + 2},
+	{App::LogLevel::Error, STYLE_LASTPREDEFINED + 3},
+};
+
+static const std::map<App::LogCategory, const char*> LogCategoryNames{
+	{App::LogCategory::General, "General"},
+	{App::LogCategory::SocketHook, "SocketHook"},
+	{App::LogCategory::AllIpcMessageLogger, "AllIpcMessageLogger"},
+	{App::LogCategory::AnimationLockLatencyHandler, "AnimationLockLatencyHandler"},
+	{App::LogCategory::EffectApplicationDelayLogger, "EffectApplicationDelayLogger"},
+	{App::LogCategory::IpcTypeFinder, "IpcTypeFinder"},
+};
+
 static WNDCLASSEXW WindowClass() {
 	Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIcon(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)));
 	WNDCLASSEXW wcex;
@@ -17,7 +33,7 @@ static WNDCLASSEXW WindowClass() {
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
 	wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
 	wcex.lpszMenuName = MAKEINTRESOURCE(IDR_LOG_MENU);
-	wcex.lpszClassName = L"XivAlexander::Window::LogM";
+	wcex.lpszClassName = L"XivAlexander::Window::Log";
 	wcex.hIconSm = hIcon;
 	return wcex;
 }
@@ -38,20 +54,21 @@ App::Window::Log::Log()
 	m_direct(m_directPtr, SCI_SETMARGINTYPEN, 0, SC_MARGIN_NUMBER);
 	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 1, 0);
 	m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, sptr_t(Utils::ToUtf8(ncm.lfMessageFont.lfFaceName).c_str()));
-	m_direct(m_directPtr, SCI_STYLESETFORE, static_cast<int>(Misc::Logger::LogLevel::Debug), RGB(80, 80, 80));
-	m_direct(m_directPtr, SCI_STYLESETFORE, static_cast<int>(Misc::Logger::LogLevel::Info), RGB(0, 0, 0));
-	m_direct(m_directPtr, SCI_STYLESETFORE, static_cast<int>(Misc::Logger::LogLevel::Warning), RGB(160, 160, 0));
-	m_direct(m_directPtr, SCI_STYLESETFORE, static_cast<int>(Misc::Logger::LogLevel::Error), RGB(255, 80, 80));
+	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Debug), RGB(80, 80, 80));
+	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Info), RGB(0, 0, 0));
+	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Warning), RGB(160, 160, 0));
+	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Error), RGB(255, 80, 80));
 
 	const auto addLogFn = [&](const Misc::Logger::LogItem& item) {
 		FILETIME lt;
 		SYSTEMTIME st;
 		FileTimeToLocalFileTime(&item.timestamp, &lt);
 		FileTimeToSystemTime(&lt, &st);
-		const auto logstr = Utils::FormatString("%04d-%02d-%02d %02d:%02d:%02d.%03d\t%s\n",
+		const auto logstr = Utils::FormatString("%04d-%02d-%02d %02d:%02d:%02d.%03d\t%s\t%s\n",
 			st.wYear, st.wMonth, st.wDay,
 			st.wHour, st.wMinute, st.wSecond,
 			st.wMilliseconds,
+			LogCategoryNames.at(item.category),
 			item.log.c_str());
 		RunOnUiThreadWait([&]() {
 			SendMessage(m_hScintilla, WM_SETREDRAW, FALSE, 0);
@@ -64,7 +81,7 @@ App::Window::Log::Log()
 			m_direct(m_directPtr, SCI_STARTSTYLING, nPos, 0);
 
 			m_direct(m_directPtr, SCI_APPENDTEXT, logstr.length(), sptr_t(logstr.c_str()));
-			m_direct(m_directPtr, SCI_SETSTYLING, logstr.length(), static_cast<int>(item.level));
+			m_direct(m_directPtr, SCI_SETSTYLING, logstr.length(), LogLevelStyleMap.at(item.level));
 			nPos += logstr.length();
 			nLineCount++;
 			if (nLineCount > 32768) {
@@ -119,7 +136,7 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					Utils::Win32Handle<> hThread(CreateThread(nullptr, 0, [](void* pDataRaw) -> DWORD {
 						DataT* pDataT = reinterpret_cast<DataT*>(pDataRaw);
 						Utils::CallOnDestruction freeDataT([pDataT]() { delete pDataT; });
-						const COMDLG_FILTERSPEC saveFileTypes[] = {
+						static const COMDLG_FILTERSPEC saveFileTypes[] = {
 							{L"Log Files (*.log)",		L"*.log"},
 							{L"All Documents (*.*)",	L"*.*"}
 						};

@@ -4,8 +4,10 @@
 #include "App_Misc_FreeGameMutex.h"
 #include "App_Feature_AnimationLockLatencyHandler.h"
 #include "App_Feature_IpcTypeFinder.h"
+#include "App_Feature_AllIpcMessageLogger.h"
+#include "App_Feature_EffectApplicationDelayLogger.h"
 #include "App_Window_Log.h"
-#include "App_Window_TrayIcon.h"
+#include "App_Window_Main.h"
 #include "App_Window_Config.h"
 
 namespace App {
@@ -60,10 +62,12 @@ public:
 	std::unique_ptr<::App::Network::SocketHook> m_socketHook;
 	std::unique_ptr<::App::Feature::AnimationLockLatencyHandler> m_animationLockLatencyHandler;
 	std::unique_ptr<::App::Feature::IpcTypeFinder> m_ipcTypeFinder;
+	std::unique_ptr<::App::Feature::AllIpcMessageLogger> m_allIpcMessageLogger;
+	std::unique_ptr<::App::Feature::EffectApplicationDelayLogger> m_effectApplicationDelayLogger;
 	bool m_bUnloadDisabled = false;
 
 	std::unique_ptr<Window::Log> m_logWindow;
-	std::unique_ptr<Window::TrayIcon> m_trayWindow;
+	std::unique_ptr<Window::Main> m_trayWindow;
 
 	DWORD m_mainThreadId = -1;
 	int m_nWndProcDepth = 0;
@@ -108,7 +112,7 @@ public:
 	}
 
 	void SetupTrayWindow() {
-		m_trayWindow = std::make_unique<Window::TrayIcon>(m_hGameMainWindow, [this]() {
+		m_trayWindow = std::make_unique<Window::Main>(m_hGameMainWindow, [this]() {
 			try {
 				this->Unload();
 			} catch(std::exception& e) {
@@ -125,7 +129,7 @@ public:
 		try {
 			Misc::FreeGameMutex::FreeGameMutex();
 		} catch (std::exception& e) {
-			Misc::Logger::GetLogger().Format<Misc::Logger::LogLevel::Warning>("Failed to free game mutex: %s", e.what());
+			Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::General, "Failed to free game mutex: %s", e.what());
 		}
 
 		try {
@@ -195,6 +199,26 @@ public:
 					m_ipcTypeFinder = nullptr;
 				}));
 			OnCleanup([this]() { m_ipcTypeFinder = nullptr; });
+
+			if (config.UseAllIpcMessageLogger)
+				m_allIpcMessageLogger = std::make_unique<Feature::AllIpcMessageLogger>();
+			OnCleanup(config.UseAllIpcMessageLogger.OnChangeListener([&](ConfigItemBase&) {
+				if (config.UseAllIpcMessageLogger)
+					m_allIpcMessageLogger = std::make_unique<Feature::AllIpcMessageLogger>();
+				else
+					m_allIpcMessageLogger = nullptr;
+				}));
+			OnCleanup([this]() { m_allIpcMessageLogger = nullptr; });
+
+			if (config.UseEffectApplicationDelayLogger)
+				m_effectApplicationDelayLogger = std::make_unique<Feature::EffectApplicationDelayLogger>();
+			OnCleanup(config.UseEffectApplicationDelayLogger.OnChangeListener([&](ConfigItemBase&) {
+				if (config.UseEffectApplicationDelayLogger)
+					m_effectApplicationDelayLogger = std::make_unique<Feature::EffectApplicationDelayLogger>();
+				else
+					m_effectApplicationDelayLogger = nullptr;
+				}));
+			OnCleanup([this]() { m_effectApplicationDelayLogger = nullptr; });
 
 			if (config.ShowLoggingWindow)
 				m_logWindow = std::make_unique<Window::Log>();
@@ -305,11 +329,11 @@ static DWORD WINAPI DllThread(PVOID param1) {
 		App::Misc::Logger logger;
 		try {
 			App::App app;
-			logger.Log(u8"XivAlexander initialized.");
+			logger.Log(App::LogCategory::General, u8"XivAlexander initialized.");
 			app.Run();
 		} catch (const std::exception& e) {
 			if (e.what())
-				logger.Format(u8"Error: %s", e.what());
+				logger.Format<App::LogLevel::Error>(App::LogCategory::General, u8"Error: %s", e.what());
 		}
 	}
 	if (s_bFreeLibraryAndExitThread)

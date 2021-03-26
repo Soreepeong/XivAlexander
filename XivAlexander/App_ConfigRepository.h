@@ -101,6 +101,7 @@ namespace App {
 		ConfigItem<uint16_t> S2C_ActorControl{ this, "ActorControl", InvalidIpcType };
 		ConfigItem<uint16_t> S2C_ActorControlSelf{ this, "ActorControlSelf", InvalidIpcType };
 		ConfigItem<uint16_t> S2C_ActorCast{ this, "ActorCast", InvalidIpcType };
+		ConfigItem<uint16_t> S2C_AddStatusEffect{ this, "AddStatusEffect", InvalidIpcType };
 		ConfigItem<uint16_t> C2S_ActionRequest[2]{
 			{this, "RequestUseAction", InvalidIpcType},
 			{this, "RequestUseAction2", InvalidIpcType},
@@ -109,7 +110,9 @@ namespace App {
 		// Miscellaneous configuration
 		ConfigItem<bool> AlwaysOnTop{ this, "AlwaysOnTop", false };
 		ConfigItem<bool> UseHighLatencyMitigation{ this, "UseHighLatencyMitigation", true };
+		ConfigItem<bool> UseHighLatencyMitigationLogging{ this, "UseHighLatencyMitigationLogging", true };
 		ConfigItem<bool> UseOpcodeFinder{ this, "UseOpcodeFinder", false };
+		ConfigItem<bool> UseEffectApplicationDelayLogger{ this, "UseEffectApplicationDelayLogger", false };
 		ConfigItem<bool> UseAutoAdjustingExtraDelay{ this, "UseAutoAdjustingExtraDelay", true };
 		ConfigItem<int> MedianRttCalculationCount{ this, "MedianRttCalculationCount", 1, [](int newValue) {
 			return std::min(128, std::max(1, newValue));
@@ -127,6 +130,7 @@ namespace App {
 			"192.168.0.0/16,"    // Private range C
 		};
 		ConfigItem<std::string> GameServerPortRange{ this, "GameServerPortRange", "10000,10001-65535" };
+		ConfigItem<bool> UseAllIpcMessageLogger{ this, "UseAllIpcMessageLogger", false };
 
 		ConfigRepository();
 

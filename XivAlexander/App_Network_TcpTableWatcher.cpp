@@ -53,7 +53,7 @@ public:
 				buffer.resize(len);
 
 			if (retVal != NO_ERROR) {
-				Misc::Logger::GetLogger().Format<Misc::Logger::LogLevel::Warning>(u8"Failed to get TCP table: %d / %d", retVal, GetLastError());
+				Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::General, u8"Failed to get TCP table: %d / %d", retVal, GetLastError());
 				continue;
 			}
 

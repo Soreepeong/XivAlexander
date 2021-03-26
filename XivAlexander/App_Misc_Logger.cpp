@@ -67,18 +67,19 @@ App::Misc::Logger::~Logger() {
 	s_pLogger = nullptr;
 }
 
-void App::Misc::Logger::Log(const char* s, LogLevel level) {
-	Log(std::string(s));
+void App::Misc::Logger::Log(LogCategory category, const char* s, LogLevel level) {
+	Log(category, std::string(s));
 }
 
-void App::Misc::Logger::Log(const char8_t* s, LogLevel level) {
-	Log(reinterpret_cast<const char*>(s));
+void App::Misc::Logger::Log(LogCategory category, const char8_t* s, LogLevel level) {
+	Log(category, reinterpret_cast<const char*>(s));
 }
 
-void App::Misc::Logger::Log(const std::string& s, LogLevel level) {
+void App::Misc::Logger::Log(LogCategory category, const std::string& s, LogLevel level) {
 	FILETIME ft;
 	GetSystemTimePreciseAsFileTime(&ft);
 	m_pImpl->AddLogItem(LogItem{
+		category,
 		ft,
 		level,
 		s,

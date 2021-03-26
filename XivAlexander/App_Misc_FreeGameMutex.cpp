@@ -164,10 +164,16 @@ void App::Misc::FreeGameMutex::FreeGameMutex() {
 			const auto name = GetHandleObjectName(hObject);
 			if (name.starts_with(L"\\BaseNamedObjects\\6AA83AB5-BAC4-4a36-9F66-A309770760CB")) {
 				CloseHandle(hObject);
-				Misc::Logger::GetLogger().Format("Freed game mutex %s.", Utils::ToUtf8(name).c_str());
+				Misc::Logger::GetLogger().Format(
+					LogCategory::General, 
+					"Freed game mutex %s.", 
+					Utils::ToUtf8(name).c_str());
 			}
 		} catch (std::exception& e) {
-			Misc::Logger::GetLogger().Format("Failed to process handle %p(type %2x): %s", hObject, handle.ObjectTypeNumber, e.what());
+			Misc::Logger::GetLogger().Format(
+				LogCategory::General, 
+				"Failed to process handle %p(type %2x): %s",
+				hObject, handle.ObjectTypeNumber, e.what());
 		}
 	}
 }

@@ -18,7 +18,7 @@ namespace App::Network::Structures {
 		static const std::vector<uint8_t> MagicConstant1;
 		static const std::vector<uint8_t> MagicConstant2;
 
-		void DebugPrint(const char* head) const;
+		void DebugPrint(LogCategory logCategory, const char* head) const;
 	};
 
 	constexpr size_t GamePacketHeaderSize = offsetof(FFXIVBundle, Data);
@@ -63,6 +63,27 @@ namespace App::Network::Structures {
 		// See: https://github.com/ravahn/machina/blob/NetworkStructs/Machina.FFXIV/Headers/Global/Server_ActionEffect.cs
 		// See: https://github.com/SapphireServer/Sapphire/blob/develop/src/common/Network/PacketDef/Zone/ServerZoneDef.h#L557-L563
 
+		struct S2C_AddStatusEffect {
+			uint32_t RelatedActionSequence;
+			uint32_t ActorId;
+			uint32_t CurrentHp;
+			uint32_t MaxHp;
+			uint16_t CurentMp;
+			uint16_t Unknown1;
+			uint8_t DamageShield;
+			uint8_t EffectCount;
+			uint16_t Unknown2;
+			
+			struct Effect {
+				uint8_t EffectIndex;
+				uint8_t Unknown1;
+				uint16_t EffectId;
+				uint16_t Unknown2;
+				uint16_t Unknown3;
+				float Duration;
+				uint32_t SourceActorId;
+			} Effects[4];
+		};
 		struct S2C_ActionEffect {
 			uint32_t AnimationTargetActor;
 			uint32_t Unknown1;
@@ -187,6 +208,7 @@ namespace App::Network::Structures {
 			uint8_t Raw[1];
 			IPCMessageDataType::S2C_ActionEffect S2C_ActionEffect;
 			IPCMessageDataType::S2C_ActorControl S2C_ActorControl;
+			IPCMessageDataType::S2C_AddStatusEffect S2C_AddStatusEffect;
 			IPCMessageDataType::S2C_ActorControlSelf S2C_ActorControlSelf;
 			IPCMessageDataType::S2C_ActorCast S2C_ActorCast;
 			IPCMessageDataType::C2S_ActionRequest C2S_ActionRequest;
@@ -207,6 +229,6 @@ namespace App::Network::Structures {
 			IPCMessageData IPC;
 		} Data;
 
-		void DebugPrint(const char* head, bool dump = false) const;
+		void DebugPrint(LogCategory logCategory, const char* head, bool dump = false) const;
 	};
 }
