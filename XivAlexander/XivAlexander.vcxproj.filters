@@ -58,9 +58,6 @@
     </ClCompile>
     <ClCompile Include="App_Hooks.cpp" />
     <ClCompile Include="App_Signatures.cpp" />
-    <ClCompile Include="App_Network_TcpTableWatcher.cpp">
-      <Filter>Network</Filter>
-    </ClCompile>
     <ClCompile Include="App_Feature_EffectApplicationDelayLogger.cpp">
       <Filter>Feature</Filter>
     </ClCompile>
@@ -108,9 +105,6 @@
     </ClInclude>
     <ClInclude Include="App_Hooks.h" />
     <ClInclude Include="App_Signatures.h" />
-    <ClInclude Include="App_Network_TcpTableWatcher.h">
-      <Filter>Network</Filter>
-    </ClInclude>
     <ClInclude Include="App_Feature_EffectApplicationDelayLogger.h">
       <Filter>Feature</Filter>
     </ClInclude>

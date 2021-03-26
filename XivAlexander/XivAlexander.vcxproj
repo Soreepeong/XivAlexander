@@ -127,7 +127,6 @@
     <ClCompile Include="App_Network_SocketHook.cpp" />
     <ClCompile Include="App_Network_Structures.cpp" />
     <ClCompile Include="App_Hooks.cpp" />
-    <ClCompile Include="App_Network_TcpTableWatcher.cpp" />
     <ClCompile Include="App_Signatures.cpp" />
     <ClCompile Include="App_Window_Base.cpp" />
     <ClCompile Include="App_Window_Config.cpp" />
@@ -149,7 +148,6 @@
     <ClInclude Include="App_Network_SocketHook.h" />
     <ClInclude Include="App_Network_Structures.h" />
     <ClInclude Include="App_Hooks.h" />
-    <ClInclude Include="App_Network_TcpTableWatcher.h" />
     <ClInclude Include="App_Signatures.h" />
     <ClInclude Include="App_Window_Base.h" />
     <ClInclude Include="App_Window_Config.h" />

@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "App_Network_SocketHook.h"
 #include "App_Network_Structures.h"
-#include "App_Network_TcpTableWatcher.h"
 #include <myzlib.h>
+#include <mstcpip.h>
 
 namespace SocketFn = App::Hooks::Socket;
 
@@ -181,6 +181,8 @@ public:
 
 	Utils::CallOnDestruction m_pingTrackKeeper;
 
+	mutable int m_nIoctlTcpInfoFailureCount = 0;
+
 	Internals(SOCKET s)
 		: m_socket(s) {
 
@@ -211,11 +213,22 @@ public:
 	}
 
 	int64_t GetConnectionLatency() const {
-		const auto& source = reinterpret_cast<const sockaddr_in*>(&localAddress);
-		const auto& destination = reinterpret_cast<const sockaddr_in*>(&remoteAddress);
-		return TcpTableWatcher::GetInstance().GetSmoothedRtt(
-			source->sin_addr.S_un.S_addr, source->sin_port, 
-			destination->sin_addr.S_un.S_addr, destination->sin_port);
+		if (m_nIoctlTcpInfoFailureCount >= 5)
+			return 0;
+
+		TCP_INFO_v0 info;
+		DWORD tcpInfoVersion = 0, cb;
+		if (0 != WSAIoctl(m_socket, SIO_TCP_INFO, &tcpInfoVersion, sizeof tcpInfoVersion, &info, sizeof info, &cb, nullptr, nullptr)) {
+			Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::SocketHook, "%p: WSAIoctl SIO_TCP_INFO v0 failed: %08x", m_socket, WSAGetLastError());
+			m_nIoctlTcpInfoFailureCount++;
+			return 0;
+		} else if (cb != sizeof info) {
+			Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::SocketHook, "%p: WSAIoctl SIO_TCP_INFO v0: buffer size mismatch (%d != %d)", m_socket, cb, sizeof info);
+			m_nIoctlTcpInfoFailureCount++;
+			return 0;
+		} else {
+			return std::max(1LL, info.RttUs / 1000LL);
+		}
 	}
 
 	void AddServerResponseDelayItem(uint64_t delay) {

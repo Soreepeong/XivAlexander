@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "App_Network_SocketHook.h"
-#include "App_Network_TcpTableWatcher.h"
 #include "App_Misc_FreeGameMutex.h"
 #include "App_Feature_AnimationLockLatencyHandler.h"
 #include "App_Feature_IpcTypeFinder.h"
@@ -135,9 +134,6 @@ public:
 		try {
 			ConfigRepository::Config();
 			OnCleanup([]() { ConfigRepository::DestroyConfig(); });
-
-			Network::TcpTableWatcher::GetInstance();
-			OnCleanup([]() { Network::TcpTableWatcher::Cleanup(); });
 
 			Scintilla_RegisterClasses(g_hInstance);
 			OnCleanup([]() { Scintilla_ReleaseResources(); });
