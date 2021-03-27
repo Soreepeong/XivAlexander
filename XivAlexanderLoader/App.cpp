@@ -154,17 +154,20 @@ int WINAPI wWinMain(
 		bool noask = false;
 		bool noerror = false;
 	} params;
-	int nArgs;
-	LPWSTR *szArgList = CommandLineToArgvW(lpCmdLine, &nArgs);
-	if (nArgs > 1) {
-		for (int i = 1; i < nArgs; i++) {
-			if (wcsncmp(L"/noask", szArgList[i], 6) == 0)
-				params.noask = true;
-			if (wcsncmp(L"/noerror", szArgList[i], 8) == 0)
-				params.noerror = true;
+	
+	if (wcslen(lpCmdLine) > 0) {
+		int nArgs;
+		LPWSTR* szArgList = CommandLineToArgvW(lpCmdLine, &nArgs);
+		if (nArgs > 0) {
+			for (int i = 0; i < nArgs; i++) {
+				if (wcsncmp(L"/noask", szArgList[i], 6) == 0)
+					params.noask = true;
+				if (wcsncmp(L"/noerror", szArgList[i], 8) == 0)
+					params.noerror = true;
+			}
 		}
+		LocalFree(szArgList);
 	}
-	LocalFree(szArgList);
 
 	DWORD pid;
 	HWND hwnd = nullptr;
