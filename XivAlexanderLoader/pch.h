@@ -20,4 +20,6 @@
 
 #include <Win32Handle.h>
 
+#include <argparse/argparse.hpp>
+
 #endif //PCH_H

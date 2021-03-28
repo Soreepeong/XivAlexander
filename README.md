@@ -17,6 +17,21 @@ Run the game if it isn't already running, run `XivAlexanderLoader.exe`, and foll
 You might have to add both `XivAlexander.dll` and `XivAlexanderLoader.exe` to exclusion list.
 Refer to your anti-virus software manual for instructions.
 
+### Command line arguments
+Usage: XivAlexanderLoader [options] targets
+
+#### Positional arguments
+* targets: list of target process ID or path suffix.
+
+#### Optional arguments
+* -h (--help): show this help message and exit
+* -a (--action): specifies default action for each process (possible values: ask, load, unload)
+* -q (--quiet): disables error messages
+
+#### Example:
+* `XivAlexanderLoader.exe -a load 16844`: Loads XivAlexander into process ID 16844.
+* `XivAlexanderLoader.exe -q -a unload ffxiv_dx11.exe`: Unloads XivAlexander from every process with its path ending with `ffxiv_dx11.exe`, and suppress all error messages.
+
 ### First time setup
 1. Open `XivAlexander.dll.json` with a text editor which should have been created after a successful load for the first time.
 2. Modify opcode values. As of Patch 5.45 Hotfix for the international release, opcodes are as following:
@@ -82,6 +97,17 @@ Apache License 2.0
 게임이 이미 켜져 있지 않다면 게임을 켜고, `XivAlexanderLoader.exe`를 관리자 권한으로 실행하세요.
 
 **DLL 인젝션을 이용하므로 안티바이러스 프로그램에서 악성코드로 잡을 수 있습니다. 예외로 추가해 주세요.**
+
+### 실행 인자
+사용 방법: XivAlexanderLoader [options] targets
+
+#### 위치 인자
+* targets: XivAlexander를 불러들일 프로세스 ID, 또는 문자열 지정 시 해당 문자열로 끝나는 경로를 가진 프로세스에 불러들임
+
+#### 선택적 인자
+* -h (--help): 도움말 메시지 출력
+* -a (--action): 찾은 프로세스별로 할 작업 선택 (가능한 값: ask, load, unload)
+* -q (--quiet): 오류 메시지 출력하지 않음
 
 ### 처음 사용할 때 세팅
 1. `XivAlexanderLoader.exe`가 있는 폴더에 생긴 `XivAlexander.dll.json`를 텍스트 편집기 (메모장 등)으로 열어 주세요.

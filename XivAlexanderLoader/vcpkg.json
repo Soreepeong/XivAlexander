@@ -2,6 +2,13 @@
   "name": "xivalexander-loader",
   "version-string": "1.10",
   "dependencies": [
-    {"name": "zlib", "version>=": "1.2.11#9"}
+    {
+      "name": "zlib",
+      "version>=": "1.2.11#9"
+    },
+    {
+      "name": "argparse",
+      "version>=": "2.1"
+    }
   ]
 }

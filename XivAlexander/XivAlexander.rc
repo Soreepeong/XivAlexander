@@ -125,6 +125,45 @@ BEGIN
     END
 END
 
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,14,0,0
+ PRODUCTVERSION 1,14,0,0
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040004b0"
+        BEGIN
+            VALUE "CompanyName", "Soreepeong"
+            VALUE "FileDescription", "Main DLL for XivAlexander."
+            VALUE "FileVersion", "1.14.0.0"
+            VALUE "InternalName", "XivAlexander.dll"
+            VALUE "LegalCopyright", "Copyright (C) 2021"
+            VALUE "OriginalFilename", "XivAlexander.dll"
+            VALUE "ProductName", "XivAlexander"
+            VALUE "ProductVersion", "1.14.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x400, 1200
+    END
+END
+
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 
