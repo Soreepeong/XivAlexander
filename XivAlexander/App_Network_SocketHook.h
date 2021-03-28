@@ -22,8 +22,11 @@ namespace App::Network {
 		void SendFFXIVMessage(const Structures::FFXIVMessage* pMessage);
 		SOCKET GetSocket() const;
 		void ResolveAddresses();
+		void AddConnectionLatencyItem(int64_t latency);
+		int64_t GetConnectionLatencyDeviation() const;
 		void AddServerResponseDelayItem(uint64_t delay);
 		std::string FormatMedianServerResponseDelayStatistics() const;
+		int64_t GetMeanServerResponseDelay() const;
 		int64_t GetMedianServerResponseDelay() const;
 		int64_t GetConnectionLatency() const;
 	};

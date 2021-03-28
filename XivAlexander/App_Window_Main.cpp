@@ -82,6 +82,10 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					config.UseAutoAdjustingExtraDelay = !config.UseAutoAdjustingExtraDelay;
 					return 0;
 
+				case ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION:
+					config.UseLatencyCorrection = !config.UseLatencyCorrection;
+					return 0;
+
 				case ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING:
 					config.UseHighLatencyMitigationLogging = !config.UseHighLatencyMitigationLogging;
 					return 0;
@@ -193,6 +197,7 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) {
 	Utils::SetMenuState(hMenu, ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER, config.UseEffectApplicationDelayLogger);
 	Utils::SetMenuState(hMenu, ID_TRAYMENU_SHOWCONTROLWINDOW, config.ShowControlWindow);
 	Utils::SetMenuState(hMenu, ID_TRAYMENU_SHOWLOGGINGWINDOW, config.ShowLoggingWindow);
+	Utils::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION, config.UseLatencyCorrection);
 }
 
 void App::Window::Main::RegisterTrayIcon() {

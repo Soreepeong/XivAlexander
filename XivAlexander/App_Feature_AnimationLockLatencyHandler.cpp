@@ -27,14 +27,14 @@ public:
 			int64_t OriginalWaitTime = 0;
 
 			PendingAction()
-			: ActionId(0)
-			, Sequence(0)
-			, RequestTimestamp(0) {}
+				: ActionId(0)
+				, Sequence(0)
+				, RequestTimestamp(0) {}
 
 			PendingAction(const Network::Structures::IPCMessageDataType::C2S_ActionRequest& request)
 				: ActionId(request.ActionId)
 				, Sequence(request.Sequence)
-				, RequestTimestamp(Utils::GetHighPerformanceCounter()){
+				, RequestTimestamp(Utils::GetHighPerformanceCounter()) {
 			}
 		};
 
@@ -97,7 +97,8 @@ public:
 					// Don't relay custom IPC data to game.
 					return false;
 
-				} else if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
+				}
+				else if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					// Only interested in messages intended for the current player
 					if (pMessage->CurrentActor == pMessage->SourceActor) {
 						if (config.S2C_ActionEffects[0] == pMessage->Data.IPC.SubType
@@ -132,12 +133,13 @@ public:
 									waitTime = m_lastAnimationLockEndsAt - now;
 								}
 
-							} else {
+							}
+							else {
 								// find the one sharing Sequence, assuming action responses are always in order
 								while (!m_pendingActions.empty() && m_pendingActions.front().Sequence != actionEffect.SourceSequence) {
 									const auto& item = m_pendingActions.front();
 									Misc::Logger::GetLogger().Format(
-										LogCategory::AnimationLockLatencyHandler, 
+										LogCategory::AnimationLockLatencyHandler,
 										u8"\t┎ ActionRequest ignored for processing: actionId=%04x sequence=%04x",
 										item.ActionId, item.Sequence);
 									m_pendingActions.pop_front();
@@ -155,14 +157,38 @@ public:
 										m_latestSuccessfulRequest.ResponseTimestamp = now;
 
 										int64_t extraDelay = ExtraDelay;
-										const int64_t latency = conn.GetConnectionLatency();
-										const int64_t delay = conn.GetMedianServerResponseDelay();
+
 										if (config.UseAutoAdjustingExtraDelay) {
-											if (latency > 0 && delay > 0) {
-												extraDelay = std::max(0LL, delay - latency);
-												extraMessage = Utils::FormatString(" latency=%lldms delay=%lldms extraDelay=%lldms", latency, delay, extraDelay);
+											// Get current connection latency, but also account for fluctuation by using standard deviation.
+											const int64_t latency_orig = conn.GetConnectionLatency();
+											int64_t latency = latency_orig;
+											
+											conn.AddConnectionLatencyItem(latency);
+
+											const int64_t latency_dev = conn.GetConnectionLatencyDeviation();
+
+											// Delay determined by median as a starting point, and then use mean for soft fluctuation, and then current response time for hard fluctuation.
+											int64_t delay = conn.GetMedianServerResponseDelay() + conn.GetMeanServerResponseDelay();
+
+											if (delay > 0) {
+												delay += rtt;
+												delay /= 3;
 											}
+											else {
+												delay = rtt;
+											}
+
+											if (delay > rtt) {
+												latency += latency_dev;
+											}
+											else if (delay < rtt) {
+												latency -= latency_dev;
+											}
+											
+											extraDelay = std::max(0LL, delay - latency);
+											extraMessage = Utils::FormatString(" latency=%lldms (dev=%lldms) delay=%lldms extraDelay=%lldms", latency_orig, latency_dev, delay, extraDelay);
 										}
+
 										extraMessage += Utils::FormatString(" rtt=%llums %s", rtt, conn.FormatMedianServerResponseDelayStatistics().c_str());
 
 										m_latestSuccessfulRequest.OriginalWaitTime = originalWaitTime;
@@ -186,7 +212,8 @@ public:
 										originalWaitTime, waitTime,
 										extraMessage.c_str());
 
-							} else {
+							}
+							else {
 								if (config.UseHighLatencyMitigationLogging)
 									Misc::Logger::GetLogger().Format(
 										LogCategory::AnimationLockLatencyHandler,
@@ -198,7 +225,8 @@ public:
 										originalWaitTime);
 							}
 
-						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorControlSelf) {
+						}
+						else if (pMessage->Data.IPC.SubType == config.S2C_ActorControlSelf) {
 							const auto& actorControlSelf = pMessage->Data.IPC.Data.S2C_ActorControlSelf;
 
 							// Oldest action request has been rejected from server.
@@ -206,15 +234,15 @@ public:
 								const auto& rollback = actorControlSelf.Rollback;
 
 								// find the one sharing Sequence, assuming action responses are always in order
-								while (!m_pendingActions.empty() 
+								while (!m_pendingActions.empty()
 									&& (
 										// Sometimes SourceSequence is empty, in which case, we use ActionId to judge.
 										(rollback.SourceSequence != 0 && m_pendingActions.front().Sequence != rollback.SourceSequence)
 										|| (rollback.SourceSequence == 0 && m_pendingActions.front().ActionId != rollback.ActionId)
-									)) {
+										)) {
 									const auto& item = m_pendingActions.front();
 									Misc::Logger::GetLogger().Format(
-										LogCategory::AnimationLockLatencyHandler, 
+										LogCategory::AnimationLockLatencyHandler,
 										u8"\t┎ ActionRequest ignored for processing: actionId=%04x sequence=%04x",
 										item.ActionId, item.Sequence);
 									m_pendingActions.pop_front();
@@ -232,18 +260,19 @@ public:
 										rollback.SourceSequence);
 							}
 
-						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorControl) {
+						}
+						else if (pMessage->Data.IPC.SubType == config.S2C_ActorControl) {
 							const auto& actorControl = pMessage->Data.IPC.Data.S2C_ActorControl;
-							
+
 							// The server has cancelled an oldest action (which is a cast) in progress.
 							if (actorControl.Category == S2C_ActorControlCategory::CancelCast) {
 								const auto& cancelCast = actorControl.CancelCast;
 
 								// find the one sharing Sequence, assuming action responses are always in order
-								while (!m_pendingActions.empty()&& m_pendingActions.front().ActionId != cancelCast.ActionId) {
+								while (!m_pendingActions.empty() && m_pendingActions.front().ActionId != cancelCast.ActionId) {
 									const auto& item = m_pendingActions.front();
 									Misc::Logger::GetLogger().Format(
-										LogCategory::AnimationLockLatencyHandler, 
+										LogCategory::AnimationLockLatencyHandler,
 										u8"\t┎ ActionRequest ignored for processing: actionId=%04x sequence=%04x",
 										item.ActionId, item.Sequence);
 									m_pendingActions.pop_front();
@@ -260,7 +289,8 @@ public:
 										cancelCast.ActionId);
 							}
 
-						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorCast) {
+						}
+						else if (pMessage->Data.IPC.SubType == config.S2C_ActorCast) {
 							const auto& actorCast = pMessage->Data.IPC.Data.S2C_ActorCast;
 							// Mark that the last request was a cast.
 							// If it indeed is a cast, the game UI will block the user from generating additional requests,
@@ -292,10 +322,10 @@ public:
 	Internals() {
 		Network::SocketHook::Instance()->AddOnSocketFoundListener(this, [&](Network::SingleConnection& conn) {
 			m_handlers.emplace(&conn, std::make_unique<SingleConnectionHandler>(*this, conn));
-		});
+			});
 		Network::SocketHook::Instance()->AddOnSocketGoneListener(this, [&](Network::SingleConnection& conn) {
 			m_handlers.erase(&conn);
-		});
+			});
 	}
 
 	~Internals() {
@@ -305,7 +335,7 @@ public:
 };
 
 App::Feature::AnimationLockLatencyHandler::AnimationLockLatencyHandler()
-: impl(std::make_unique<Internals>()){
+	: impl(std::make_unique<Internals>()) {
 }
 
 App::Feature::AnimationLockLatencyHandler::~AnimationLockLatencyHandler() {
