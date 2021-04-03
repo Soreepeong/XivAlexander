@@ -154,11 +154,15 @@ public:
 										const int64_t rtt = now - m_latestSuccessfulRequest.RequestTimestamp;
 										conn.AddServerResponseDelayItem(rtt);
 
-										extraMessage = Utils::FormatString(" rtt=%lldms", rtt);
+										const int64_t rtt_med = conn.GetMedianServerResponseDelay();
+										const int64_t rtt_dev = conn.GetServerResponseDelayDeviation();
+
+										extraMessage = Utils::FormatString(" rtt=%lldms/%lldms/%lldms", rtt, rtt_med, rtt_dev);
 
 										m_latestSuccessfulRequest.ResponseTimestamp = now;
 
 										int64_t extraDelay = ExtraDelay;
+										int64_t delay = rtt;
 
 										if (config.UseAutoAdjustingExtraDelay) {
 											// Get current latency data
@@ -171,6 +175,21 @@ public:
 											conn.AddConnectionLatencyItem(latency);
 
 											if (config.UseLatencyCorrection) {
+												/*
+												// Set server response delay to predicted value as pivot point.
+												delay = rtt_med;
+
+												if (rtt > rtt_med)
+													delay += rtt_dev;
+
+												if (rtt < rtt_med)
+													delay -= rtt_dev;
+												
+												// Use current server response delay to get a better prediction.
+												delay += rtt;
+												delay /= 2;
+												*/
+
 												// Get latency statistic data
 												const int64_t latency_med = conn.GetMedianConnectionLatency();
 												const int64_t latency_dev = conn.GetConnectionLatencyDeviation();
@@ -188,12 +207,22 @@ public:
 
 												// Apply base latency with deviation.
 												// This is essentially a penalty for fluctuating connections. However, it will also help prevent overcompensating.
-												latency = std::max(latency_dev, latency - latency_dev);
+												int64_t latency_base = config.BaseLatencyPenalty;
+
+												if (latency < latency_base) {
+													latency_base -= latency;
+												}
+
+												int64_t penalty = std::max(latency_base, latency_dev);
+
+												latency = std::max(penalty, latency - penalty);
+
+												extraMessage += Utils::FormatString(" penalty=%lldms", penalty);
 											}
 											
 											// Adjust the extraDelay based on latency and server response time.
-											extraDelay = std::max(0LL, rtt - latency);
-											extraMessage += Utils::FormatString(" extraDelay=%lldms", extraDelay);
+											extraDelay = std::max(0LL, delay - latency);
+											extraMessage += Utils::FormatString(" delay=%lldms extraDelay=%lldms", delay, extraDelay);
 										}
 
 										m_latestSuccessfulRequest.OriginalWaitTime = originalWaitTime;

@@ -112,6 +112,9 @@ namespace App {
 		ConfigItem<bool> UseHighLatencyMitigation{ this, "UseHighLatencyMitigation", true };
 		ConfigItem<bool> UseHighLatencyMitigationLogging{ this, "UseHighLatencyMitigationLogging", true };
 		ConfigItem<bool> UseLatencyCorrection{ this, "UseLatencyCorrection", true };
+		ConfigItem<int> BaseLatencyPenalty{ this, "BaseLatencyPenalty", 30, [](int newValue) {
+			return std::min(60, std::max(1, newValue));
+		} };
 		ConfigItem<bool> UseOpcodeFinder{ this, "UseOpcodeFinder", false };
 		ConfigItem<bool> UseEffectApplicationDelayLogger{ this, "UseEffectApplicationDelayLogger", false };
 		ConfigItem<bool> UseAutoAdjustingExtraDelay{ this, "UseAutoAdjustingExtraDelay", true };
