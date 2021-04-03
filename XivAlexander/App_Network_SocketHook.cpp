@@ -236,36 +236,57 @@ public:
 	}
 
 	void AddConnectionLatencyItem(int64_t latency) {
-		const int latencyTrackCount = ConfigRepository::Config().UseLatencyCorrection ? 10 : 1;
+		const int latencyTrackCount = 10;
 
-		if (latencyTrackCount == 1)
-			ObservedConnectionLatencyList.clear();
-		
 		ObservedConnectionLatencyList.push_back(latency);
 
 		if (ObservedConnectionLatencyList.size() > latencyTrackCount)
 			ObservedConnectionLatencyList.erase(ObservedConnectionLatencyList.begin());
 	}
 
-	int64_t GetConnectionLatencyDeviation() const {
-		if (ObservedConnectionLatencyList.size() < 2)
+	int64_t GetMedianConnectionLatency() const {
+		if (ObservedConnectionLatencyList.empty())
+			return 0;
+
+		size_t count = ObservedConnectionLatencyList.size();
+		std::vector<int64_t> SortedConnectionLatencyList(count);
+		std::partial_sort_copy(ObservedConnectionLatencyList.begin(), ObservedConnectionLatencyList.end(), SortedConnectionLatencyList.begin(), SortedConnectionLatencyList.end());
+
+		if ((count % 2) == 0)
+			// even
+			return (SortedConnectionLatencyList[count / 2] + SortedConnectionLatencyList[count / 2 - 1]) / 2;
+
+		// odd
+		return SortedConnectionLatencyList[count / 2];
+	}
+
+	int64_t GetMeanConnectionLatency() const {
+		if (ObservedServerResponseList.empty())
 			return 0;
 
 		double mean = std::accumulate(ObservedConnectionLatencyList.begin(), ObservedConnectionLatencyList.end(), 0.0) / ObservedConnectionLatencyList.size();
 
-		std::vector<double> diff(ObservedConnectionLatencyList.size());
+		return std::llround(mean);
+	}
+
+	int64_t GetConnectionLatencyDeviation() const {
+		size_t count = ObservedConnectionLatencyList.size();
+
+		if (count < 2)
+			return 0;
+
+		double mean = std::accumulate(ObservedConnectionLatencyList.begin(), ObservedConnectionLatencyList.end(), 0.0) / count;
+
+		std::vector<double> diff(count);
 		std::transform(ObservedConnectionLatencyList.begin(), ObservedConnectionLatencyList.end(), diff.begin(), [mean](int64_t x) { return double(x) - mean; });
 		double sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
-		double stddev = std::sqrt(sq_sum / diff.size());
+		double stddev = std::sqrt(sq_sum / count);
 
 		return std::llround(stddev);
 	}
 
 	void AddServerResponseDelayItem(uint64_t delay) {
-		const int latencyTrackCount = ConfigRepository::Config().UseLatencyCorrection ? 10 : 1;
-
-		if (latencyTrackCount == 1)
-			ObservedServerResponseList.clear();
+		const int latencyTrackCount = 10;
 
 		ObservedServerResponseList.push_back(delay);
 
@@ -286,20 +307,32 @@ public:
 		if (ObservedServerResponseList.empty())
 			return 0;
 
-		std::vector<uint64_t> SortedServerResponseList(ObservedServerResponseList.size());
+		size_t count = ObservedServerResponseList.size();
+		std::vector<uint64_t> SortedServerResponseList(count);
 		std::partial_sort_copy(ObservedServerResponseList.begin(), ObservedServerResponseList.end(), SortedServerResponseList.begin(), SortedServerResponseList.end());
 		
 		if ((SortedServerResponseList.size() % 2) == 0)
 			// even
-			return (SortedServerResponseList[SortedServerResponseList.size() / 2] + SortedServerResponseList[SortedServerResponseList.size() / 2 - 1]) / 2;
+			return (SortedServerResponseList[count / 2] + SortedServerResponseList[count / 2 - 1]) / 2;
 
 		// odd
-		return SortedServerResponseList[SortedServerResponseList.size() / 2];
+		return SortedServerResponseList[count / 2];
 	}
 
-	std::string FormatMedianServerResponseDelayStatistics() const {
-		return Utils::FormatString("med=%llums avg=%llums n=%lld (%llums ~ %llums)",
-			GetMedianServerResponseDelay(), GetMeanServerResponseDelay(), ObservedServerResponseList.size(), ObservedServerResponseList.front(), ObservedServerResponseList.back());
+	int64_t GetServerResponseDelayDeviation() const {
+		size_t count = ObservedServerResponseList.size();
+
+		if (count < 2)
+			return 0;
+
+		double mean = std::accumulate(ObservedServerResponseList.begin(), ObservedServerResponseList.end(), 0.0) / count;
+
+		std::vector<double> diff(count);
+		std::transform(ObservedServerResponseList.begin(), ObservedServerResponseList.end(), diff.begin(), [mean](int64_t x) { return double(x) - mean; });
+		double sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
+		double stddev = std::sqrt(sq_sum / count);
+
+		return std::llround(stddev);
 	}
 
 	void ProcessRecvData() {
@@ -339,7 +372,9 @@ public:
 							KeepAliveRequestTimestamps.pop_front();
 						} while (!KeepAliveRequestTimestamps.empty() && delay > 5000);
 
+						// Add statistics sample
 						AddServerResponseDelayItem(delay);
+						AddConnectionLatencyItem(GetConnectionLatency());
 					}
 				}
 				else if (pMessage->Type == SegmentType::IPC) {
@@ -483,6 +518,14 @@ void App::Network::SingleConnection::AddConnectionLatencyItem(int64_t latency) {
 	return impl->AddConnectionLatencyItem(latency);
 }
 
+int64_t App::Network::SingleConnection::GetMedianConnectionLatency() const {
+	return impl->GetMedianConnectionLatency();
+}
+
+int64_t App::Network::SingleConnection::GetMeanConnectionLatency() const {
+	return impl->GetMeanConnectionLatency();
+}
+
 int64_t App::Network::SingleConnection::GetConnectionLatencyDeviation() const {
 	return impl->GetConnectionLatencyDeviation();
 }
@@ -491,16 +534,16 @@ void App::Network::SingleConnection::AddServerResponseDelayItem(uint64_t delay) 
 	return impl->AddServerResponseDelayItem(delay);
 }
 
-std::string App::Network::SingleConnection::FormatMedianServerResponseDelayStatistics() const {
-	return impl->FormatMedianServerResponseDelayStatistics();
-}
-
 int64_t App::Network::SingleConnection::GetMeanServerResponseDelay() const {
 	return impl->GetMeanServerResponseDelay();
 }
 
 int64_t App::Network::SingleConnection::GetMedianServerResponseDelay() const {
 	return impl->GetMedianServerResponseDelay();
+}
+
+int64_t App::Network::SingleConnection::GetServerResponseDelayDeviation() const {
+	return impl->GetServerResponseDelayDeviation();
 }
 
 int64_t App::Network::SingleConnection::GetConnectionLatency() const {

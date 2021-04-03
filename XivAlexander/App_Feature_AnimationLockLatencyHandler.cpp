@@ -154,42 +154,47 @@ public:
 										const int64_t rtt = now - m_latestSuccessfulRequest.RequestTimestamp;
 										conn.AddServerResponseDelayItem(rtt);
 
+										extraMessage = Utils::FormatString(" rtt=%lldms", rtt);
+
 										m_latestSuccessfulRequest.ResponseTimestamp = now;
 
 										int64_t extraDelay = ExtraDelay;
 
 										if (config.UseAutoAdjustingExtraDelay) {
-											// Get current connection latency, but also account for fluctuation by using standard deviation.
+											// Get current latency data
 											const int64_t latency_orig = conn.GetConnectionLatency();
 											int64_t latency = latency_orig;
-											
+
+											extraMessage += Utils::FormatString(" latency=%lldms", latency);
+
+											// Update latency statistics
 											conn.AddConnectionLatencyItem(latency);
 
-											const int64_t latency_dev = conn.GetConnectionLatencyDeviation();
+											if (config.UseLatencyCorrection) {
+												// Get latency statistic data
+												const int64_t latency_med = conn.GetMedianConnectionLatency();
+												const int64_t latency_dev = conn.GetConnectionLatencyDeviation();
 
-											// Delay determined by median as a starting point, and then use mean for soft fluctuation, and then current response time for hard fluctuation.
-											int64_t delay = conn.GetMedianServerResponseDelay() + conn.GetMeanServerResponseDelay();
+												extraMessage += Utils::FormatString("/%lldms/%lldms", latency_med, latency_dev);
 
-											if (delay > 0) {
-												delay += rtt;
-												delay /= 3;
-											}
-											else {
-												delay = rtt;
-											}
+												// Adjust latency calculation with deviation and median.
+												latency = latency_med;
 
-											if (delay > rtt) {
-												latency += latency_dev;
-											}
-											else if (delay < rtt) {
-												latency -= latency_dev;
+												if (latency_orig > latency_med)
+													latency += latency_dev;
+
+												if (latency_orig < latency_med)
+													latency -= latency_dev;
+
+												// Apply base latency with deviation.
+												// This is essentially a penalty for fluctuating connections. However, it will also help prevent overcompensating.
+												latency = std::max(latency_dev, latency - latency_dev);
 											}
 											
-											extraDelay = std::max(0LL, delay - latency);
-											extraMessage = Utils::FormatString(" latency=%lldms (dev=%lldms) delay=%lldms extraDelay=%lldms", latency_orig, latency_dev, delay, extraDelay);
+											// Adjust the extraDelay based on latency and server response time.
+											extraDelay = std::max(0LL, rtt - latency);
+											extraMessage += Utils::FormatString(" extraDelay=%lldms", extraDelay);
 										}
-
-										extraMessage += Utils::FormatString(" rtt=%llums %s", rtt, conn.FormatMedianServerResponseDelayStatistics().c_str());
 
 										m_latestSuccessfulRequest.OriginalWaitTime = originalWaitTime;
 										m_lastAnimationLockEndsAt += originalWaitTime + extraDelay;
