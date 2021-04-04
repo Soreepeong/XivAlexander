@@ -209,13 +209,8 @@ public:
 
 												// Apply base latency with deviation.
 												// This is essentially a penalty for fluctuating connections. However, it will also help prevent overcompensating.
-												int64_t latency_base = config.BaseLatencyPenalty;
-
-												if (latency < latency_base) {
-													latency_base -= latency;
-												}
-
-												int64_t penalty = std::max(latency_base / 2, latency_dev);
+												const int64_t latency_base = config.BaseLatencyPenalty;
+												int64_t penalty = (latency < latency_base) ? ((latency / 2) + latency_dev) : std::max(latency_base / 2, latency_dev);
 
 												latency = std::max(penalty, latency - penalty);
 
