@@ -10,19 +10,19 @@ static std::string get_ip_str(const struct sockaddr* sa) {
 	char s[1024] = { 0 };
 	size_t maxlen = sizeof s;
 	switch (sa->sa_family) {
-	case AF_INET:
-	{
-		const auto addr = (struct sockaddr_in*)sa;
-		inet_ntop(AF_INET, &(addr->sin_addr), s, maxlen);
-		return Utils::FormatString("%s:%d", s, addr->sin_port);
-	}
+		case AF_INET:
+		{
+			const auto addr = (struct sockaddr_in*)sa;
+			inet_ntop(AF_INET, &(addr->sin_addr), s, maxlen);
+			return Utils::FormatString("%s:%d", s, addr->sin_port);
+		}
 
-	case AF_INET6:
-	{
-		const auto addr = (struct sockaddr_in6*)sa;
-		inet_ntop(AF_INET6, &(addr->sin6_addr), s, maxlen);
-		return Utils::FormatString("%s:%d", s, addr->sin6_port);
-	}
+		case AF_INET6:
+		{
+			const auto addr = (struct sockaddr_in6*)sa;
+			inet_ntop(AF_INET6, &(addr->sin6_addr), s, maxlen);
+			return Utils::FormatString("%s:%d", s, addr->sin6_port);
+		}
 	}
 	return "Unknown AF";
 }
