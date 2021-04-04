@@ -196,6 +196,7 @@ public:
 
 												extraMessage += Utils::FormatString("/%lldms/%lldms", latency_med, latency_dev);
 
+												/*
 												// Adjust latency calculation with deviation and median.
 												latency = latency_med;
 
@@ -204,6 +205,7 @@ public:
 
 												if (latency_orig < latency_med)
 													latency -= latency_dev;
+												*/
 
 												// Apply base latency with deviation.
 												// This is essentially a penalty for fluctuating connections. However, it will also help prevent overcompensating.
@@ -213,7 +215,7 @@ public:
 													latency_base -= latency;
 												}
 
-												int64_t penalty = std::max(latency_base, latency_dev);
+												int64_t penalty = std::max(latency_base / 2, latency_dev);
 
 												latency = std::max(penalty, latency - penalty);
 
