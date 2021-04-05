@@ -261,7 +261,7 @@ public:
 	}
 
 	int64_t GetMeanConnectionLatency() const {
-		if (ObservedServerResponseList.empty())
+		if (ObservedConnectionLatencyList.empty())
 			return 0;
 
 		double mean = std::accumulate(ObservedConnectionLatencyList.begin(), ObservedConnectionLatencyList.end(), 0.0) / ObservedConnectionLatencyList.size();

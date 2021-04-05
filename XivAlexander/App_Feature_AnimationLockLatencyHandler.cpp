@@ -175,45 +175,19 @@ public:
 											conn.AddConnectionLatencyItem(latency);
 
 											if (config.UseLatencyCorrection) {
-												/*
-												// Set server response delay to predicted value as pivot point.
-												delay = rtt_med;
-
-												if (rtt > rtt_med)
-													delay += rtt_dev;
-
-												if (rtt < rtt_med)
-													delay -= rtt_dev;
-												
-												// Use current server response delay to get a better prediction.
-												delay += rtt;
-												delay /= 2;
-												*/
-
 												// Get latency statistic data
 												const int64_t latency_med = conn.GetMedianConnectionLatency();
 												const int64_t latency_dev = conn.GetConnectionLatencyDeviation();
 
 												extraMessage += Utils::FormatString("/%lldms/%lldms", latency_med, latency_dev);
 
-												/*
-												// Adjust latency calculation with deviation and median.
-												latency = latency_med;
+												// Calculate penalty from standard deviation of ping or using BaseLatencyPenalty
+												const int64_t latency_base = std::min(int64_t(config.BaseLatencyPenalty), latency_med + latency_dev);
+												const int64_t penalty = std::max(latency_base / 2, latency_dev);
 
-												if (latency_orig > latency_med)
-													latency += latency_dev;
-
-												if (latency_orig < latency_med)
-													latency -= latency_dev;
-												*/
-
-												// Apply base latency with deviation.
-												// This is essentially a penalty for fluctuating connections. However, it will also help prevent overcompensating.
-												const int64_t latency_base = config.BaseLatencyPenalty;
-												int64_t penalty = (latency_med < latency_base) ? ((latency_med + latency_dev) / 2) : std::max(latency_base / 2, latency_dev);
-
+												// Adjust the latency variable for extraDelay calculation with penalty.
+												// The penalty is the amount of ping not accounted for in calculation, so it is just like increasing extraDelay.
 												latency = std::max(penalty, latency - penalty);
-
 												extraMessage += Utils::FormatString(" penalty=%lldms", penalty);
 											}
 											
