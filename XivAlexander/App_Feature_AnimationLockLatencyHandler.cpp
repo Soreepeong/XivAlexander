@@ -182,7 +182,7 @@ public:
 												extraMessage += Utils::FormatString("/%lldms/%lldms", latency_med, latency_dev);
 
 												// Calculate penalty from standard deviation of ping or using BaseLatencyPenalty
-												const int64_t latency_base = std::min(int64_t(config.BaseLatencyPenalty), latency_med + latency_dev);
+												const int64_t latency_base = std::min(int64_t(config.BaseLatencyPenalty) - latency_dev, latency_med + latency_dev);
 												const int64_t penalty = std::max(latency_base / 2, latency_dev);
 
 												// Adjust the latency variable for extraDelay calculation with penalty.
