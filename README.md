@@ -1,3 +1,6 @@
+# Download [here](https://github.com/Soreepeong/XivAlexander/releases)
+Use [**Releases**](https://github.com/Soreepeong/XivAlexander/releases) section on the sidebar. Don't download using the green Code button.
+
 # XivAlexander
 | Connection | Image |
 | --- | --- |
