@@ -192,7 +192,7 @@ public:
 												const int64_t penalty = std::max(latency_base, latency_dev) / 2;
 
 												// Adjust latency value to add a one-way safety buffer using penalty value.
-												latency -= penalty;
+												latency = std::max(penalty, latency - penalty);
 												extraMessage += Utils::FormatString(" penalty=%lldms", penalty);
 											}
 
