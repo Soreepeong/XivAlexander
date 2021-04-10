@@ -161,10 +161,11 @@ public:
 
 										m_latestSuccessfulRequest.ResponseTimestamp = now;
 
-										int64_t extraDelay = ExtraDelay;
-										int64_t delay = rtt;
+										int64_t delay = ExtraDelay;
 
 										if (config.UseAutoAdjustingExtraDelay) {
+											delay = rtt;
+
 											// Get current latency data
 											const int64_t latency_orig = conn.GetConnectionLatency();
 											int64_t latency = latency_orig;
@@ -181,24 +182,28 @@ public:
 
 												extraMessage += Utils::FormatString("/%lldms/%lldms", latency_med, latency_dev);
 
+												// Use median with deviation in case of spikes.
+												latency = std::min(latency, latency_med + latency_dev);
+												delay = std::min(delay, rtt_med + rtt_dev);
+
 												// Calculate penalty from standard deviation of ping or using BaseLatencyPenalty
 												// If user's ping is lower than the setting, simulate their expected ping from observed statistics.
 												const int64_t latency_base = std::min(int64_t(config.BaseLatencyPenalty) - latency_dev, latency_med + latency_dev);
-												const int64_t penalty = std::max(latency_base / 2, latency_dev);
+												const int64_t penalty = std::max(latency_base, latency_dev) / 2;
 
-												// Adjust the latency variable for extraDelay calculation with penalty.
-												// The penalty is the amount of ping not accounted for in calculation, so it is just like increasing extraDelay.
-												latency = std::max(penalty, latency - penalty);
+												// Adjust latency value to add a one-way safety buffer using penalty value.
+												latency -= penalty;
 												extraMessage += Utils::FormatString(" penalty=%lldms", penalty);
 											}
-											
-											// Adjust the extraDelay based on latency and server response time.
-											extraDelay = std::max(0LL, delay - latency);
-											extraMessage += Utils::FormatString(" delay=%lldms extraDelay=%lldms", delay, extraDelay);
-										}
 
+											// This delay is based on server's processing time. If the server is busy, everyone should feel the same effect.
+											// Only the player's ping is taken out of the equation.
+											delay = std::max(0LL, (delay % originalWaitTime) - latency);
+											extraMessage += Utils::FormatString(" delay=%lldms", delay);
+										}
+										
 										m_latestSuccessfulRequest.OriginalWaitTime = originalWaitTime;
-										m_lastAnimationLockEndsAt += originalWaitTime + extraDelay;
+										m_lastAnimationLockEndsAt += originalWaitTime + delay;
 										waitTime = m_lastAnimationLockEndsAt - now;
 									}
 									m_pendingActions.pop_front();
