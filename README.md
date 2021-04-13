@@ -40,7 +40,7 @@ Usage: XivAlexanderLoader [options] targets
 2. Modify opcode values. As of Patch 5.5 for the international release, opcodes are as following:
    ```json
    {
-       "ActorCast": "0x03c0",
+       "ActorCast": "0x00b6",
        "ActorControl": "0x03b5",
        "ActorControlSelf": "0x03c0",
        "AddStatusEffect": "0x0143",
