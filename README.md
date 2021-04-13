@@ -37,20 +37,20 @@ Usage: XivAlexanderLoader [options] targets
 
 ### First time setup
 1. Open `XivAlexander.dll.json` with a text editor which should have been created after a successful load for the first time.
-2. Modify opcode values. As of Patch 5.45 Hotfix for the international release, opcodes are as following:
+2. Modify opcode values. As of Patch 5.5 for the international release, opcodes are as following:
    ```json
    {
-       "ActorCast": "0x034c",
-       "ActorControl": "0x00c2",
-       "ActorControlSelf": "0x03d5",
-       "AddStatusEffect": "0x01d7",
-       "RequestUseAction": "0x0388",
-       "RequestUseAction2": "0x03a0",
-       "SkillResultResponse01": "0x027f",
-       "SkillResultResponse08": "0x009b",
-       "SkillResultResponse16": "0x028c",
-       "SkillResultResponse24": "0x02ad",
-       "SkillResultResponse32": "0x00a7"
+       "ActorCast": "0x03c0",
+       "ActorControl": "0x03b5",
+       "ActorControlSelf": "0x03c0",
+       "AddStatusEffect": "0x0143",
+       "RequestUseAction": "0x03b0",
+       "RequestUseAction2": "0x01a9",
+       "SkillResultResponse01": "0x0204",
+       "SkillResultResponse08": "0x01c7",
+       "SkillResultResponse16": "0x032a",
+       "SkillResultResponse24": "0x035c",
+       "SkillResultResponse32": "0x0d20"
    }
    ```
 3. Find the XivAlexander icon on your shell notification area (tray area), and click on *Reload Configuration*.
