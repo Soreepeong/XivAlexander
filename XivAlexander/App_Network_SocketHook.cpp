@@ -29,8 +29,8 @@ static std::string get_ip_str(const struct sockaddr* sa) {
 
 class SingleStream {
 public:
-	bool ending = false;
-	bool closed = false;
+	bool m_ending = false;
+	bool m_closed = false;
 
 	std::vector<uint8_t> m_pending;
 	size_t m_pendingStartPos = 0;
@@ -168,17 +168,17 @@ public:
 	std::map<size_t, std::vector<std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)>>> m_incomingHandlers;
 	std::map<size_t, std::vector<std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)>>> m_outgoingHandlers;
 
-	std::deque<uint64_t> KeepAliveRequestTimestamps;
-	std::vector<uint64_t> ObservedServerResponseList;
-	std::vector<int64_t> ObservedConnectionLatencyList;
+	std::deque<uint64_t> m_keepAliveRequestTimestamps;
+	std::vector<uint64_t> m_observedServerResponseList;
+	std::vector<int64_t> m_observedConnectionLatencyList;
 
-	SingleStream recvBefore;
-	SingleStream recvProcessed;
-	SingleStream sendBefore;
-	SingleStream sendProcessed;
+	SingleStream m_recvRaw;
+	SingleStream m_recvProcessed;
+	SingleStream m_sendRaw;
+	SingleStream m_sendProcessed;
 
-	sockaddr_storage localAddress = { AF_UNSPEC };
-	sockaddr_storage remoteAddress = { AF_UNSPEC };
+	sockaddr_storage m_localAddress = { AF_UNSPEC };
+	sockaddr_storage m_remoteAddress = { AF_UNSPEC };
 
 	Utils::CallOnDestruction m_pingTrackKeeper;
 
@@ -194,22 +194,22 @@ public:
 	void ResolveAddresses() {
 		sockaddr_storage local, remote;
 		socklen_t addrlen = sizeof local;
-		if (0 == getsockname(m_socket, reinterpret_cast<sockaddr*>(&local), &addrlen) && Utils::sockaddr_cmp(&localAddress, &local)) {
-			localAddress = local;
+		if (0 == getsockname(m_socket, reinterpret_cast<sockaddr*>(&local), &addrlen) && Utils::sockaddr_cmp(&m_localAddress, &local)) {
+			m_localAddress = local;
 			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Local=%s", m_socket, get_ip_str(reinterpret_cast<sockaddr*>(&local)).c_str());
 		}
 		addrlen = sizeof remote;
-		if (0 == getpeername(m_socket, reinterpret_cast<sockaddr*>(&remote), &addrlen) && Utils::sockaddr_cmp(&remoteAddress, &remote)) {
-			remoteAddress = remote;
+		if (0 == getpeername(m_socket, reinterpret_cast<sockaddr*>(&remote), &addrlen) && Utils::sockaddr_cmp(&m_remoteAddress, &remote)) {
+			m_remoteAddress = remote;
 			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Remote=%s", m_socket, get_ip_str(reinterpret_cast<sockaddr*>(&remote)).c_str());
 		}
 	}
 
 	void Unload() {
-		recvBefore.ending = true;
-		sendBefore.ending = true;
-		recvProcessed.ending = true;
-		sendProcessed.ending = true;
+		m_recvRaw.m_ending = true;
+		m_sendRaw.m_ending = true;
+		m_recvProcessed.m_ending = true;
+		m_sendProcessed.m_ending = true;
 		m_unloading = true;
 	}
 
@@ -235,19 +235,19 @@ public:
 	void AddConnectionLatencyItem(int64_t latency) {
 		const int latencyTrackCount = 10;
 
-		ObservedConnectionLatencyList.push_back(latency);
+		m_observedConnectionLatencyList.push_back(latency);
 
-		if (ObservedConnectionLatencyList.size() > latencyTrackCount)
-			ObservedConnectionLatencyList.erase(ObservedConnectionLatencyList.begin());
+		if (m_observedConnectionLatencyList.size() > latencyTrackCount)
+			m_observedConnectionLatencyList.erase(m_observedConnectionLatencyList.begin());
 	}
 
 	int64_t GetMedianConnectionLatency() const {
-		if (ObservedConnectionLatencyList.empty())
+		if (m_observedConnectionLatencyList.empty())
 			return 0;
 
-		size_t count = ObservedConnectionLatencyList.size();
+		size_t count = m_observedConnectionLatencyList.size();
 		std::vector<int64_t> SortedConnectionLatencyList(count);
-		std::partial_sort_copy(ObservedConnectionLatencyList.begin(), ObservedConnectionLatencyList.end(), SortedConnectionLatencyList.begin(), SortedConnectionLatencyList.end());
+		std::partial_sort_copy(m_observedConnectionLatencyList.begin(), m_observedConnectionLatencyList.end(), SortedConnectionLatencyList.begin(), SortedConnectionLatencyList.end());
 
 		if ((count % 2) == 0)
 			// even
@@ -258,24 +258,24 @@ public:
 	}
 
 	int64_t GetMeanConnectionLatency() const {
-		if (ObservedConnectionLatencyList.empty())
+		if (m_observedConnectionLatencyList.empty())
 			return 0;
 
-		double mean = std::accumulate(ObservedConnectionLatencyList.begin(), ObservedConnectionLatencyList.end(), 0.0) / ObservedConnectionLatencyList.size();
+		double mean = std::accumulate(m_observedConnectionLatencyList.begin(), m_observedConnectionLatencyList.end(), 0.0) / m_observedConnectionLatencyList.size();
 
 		return std::llround(mean);
 	}
 
 	int64_t GetConnectionLatencyDeviation() const {
-		size_t count = ObservedConnectionLatencyList.size();
+		size_t count = m_observedConnectionLatencyList.size();
 
 		if (count < 2)
 			return 0;
 
-		double mean = std::accumulate(ObservedConnectionLatencyList.begin(), ObservedConnectionLatencyList.end(), 0.0) / count;
+		double mean = std::accumulate(m_observedConnectionLatencyList.begin(), m_observedConnectionLatencyList.end(), 0.0) / count;
 
 		std::vector<double> diff(count);
-		std::transform(ObservedConnectionLatencyList.begin(), ObservedConnectionLatencyList.end(), diff.begin(), [mean](int64_t x) { return double(x) - mean; });
+		std::transform(m_observedConnectionLatencyList.begin(), m_observedConnectionLatencyList.end(), diff.begin(), [mean](int64_t x) { return double(x) - mean; });
 		double sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
 		double stddev = std::sqrt(sq_sum / count);
 
@@ -285,28 +285,28 @@ public:
 	void AddServerResponseDelayItem(uint64_t delay) {
 		const int latencyTrackCount = 10;
 
-		ObservedServerResponseList.push_back(delay);
+		m_observedServerResponseList.push_back(delay);
 
-		if (ObservedServerResponseList.size() > latencyTrackCount)
-			ObservedServerResponseList.erase(ObservedServerResponseList.begin());
+		if (m_observedServerResponseList.size() > latencyTrackCount)
+			m_observedServerResponseList.erase(m_observedServerResponseList.begin());
 	}
 
 	int64_t GetMeanServerResponseDelay() const {
-		if (ObservedServerResponseList.empty())
+		if (m_observedServerResponseList.empty())
 			return 0;
 
-		double mean = std::accumulate(ObservedServerResponseList.begin(), ObservedServerResponseList.end(), 0.0) / ObservedServerResponseList.size();
+		double mean = std::accumulate(m_observedServerResponseList.begin(), m_observedServerResponseList.end(), 0.0) / m_observedServerResponseList.size();
 
 		return std::llround(mean);
 	}
 
 	int64_t GetMedianServerResponseDelay() const {
-		if (ObservedServerResponseList.empty())
+		if (m_observedServerResponseList.empty())
 			return 0;
 
-		size_t count = ObservedServerResponseList.size();
+		size_t count = m_observedServerResponseList.size();
 		std::vector<uint64_t> SortedServerResponseList(count);
-		std::partial_sort_copy(ObservedServerResponseList.begin(), ObservedServerResponseList.end(), SortedServerResponseList.begin(), SortedServerResponseList.end());
+		std::partial_sort_copy(m_observedServerResponseList.begin(), m_observedServerResponseList.end(), SortedServerResponseList.begin(), SortedServerResponseList.end());
 
 		if ((SortedServerResponseList.size() % 2) == 0)
 			// even
@@ -317,15 +317,15 @@ public:
 	}
 
 	int64_t GetServerResponseDelayDeviation() const {
-		size_t count = ObservedServerResponseList.size();
+		size_t count = m_observedServerResponseList.size();
 
 		if (count < 2)
 			return 0;
 
-		double mean = std::accumulate(ObservedServerResponseList.begin(), ObservedServerResponseList.end(), 0.0) / count;
+		double mean = std::accumulate(m_observedServerResponseList.begin(), m_observedServerResponseList.end(), 0.0) / count;
 
 		std::vector<double> diff(count);
-		std::transform(ObservedServerResponseList.begin(), ObservedServerResponseList.end(), diff.begin(), [mean](int64_t x) { return double(x) - mean; });
+		std::transform(m_observedServerResponseList.begin(), m_observedServerResponseList.end(), diff.begin(), [mean](int64_t x) { return double(x) - mean; });
 		double sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
 		double stddev = std::sqrt(sq_sum / count);
 
@@ -334,7 +334,7 @@ public:
 
 	void ProcessRecvData() {
 		using namespace App::Network::Structures;
-		ProcessData(recvBefore, recvProcessed, [&](const FFXIVBundle* pGamePacket, SingleStream& target) {
+		ProcessData(m_recvRaw, m_recvProcessed, [&](const FFXIVBundle* pGamePacket, SingleStream& target) {
 			if (!pGamePacket->MessageCount) {
 				target.Write(pGamePacket, pGamePacket->TotalLength);
 				return;
@@ -361,12 +361,12 @@ public:
 				auto pMessage = reinterpret_cast<FFXIVMessage*>(&message[0]);
 
 				if (pMessage->Type == SegmentType::ServerKeepAlive) {
-					if (!KeepAliveRequestTimestamps.empty()) {
+					if (!m_keepAliveRequestTimestamps.empty()) {
 						uint64_t delay;
 						do {
-							delay = Utils::GetHighPerformanceCounter() - KeepAliveRequestTimestamps.front();
-							KeepAliveRequestTimestamps.pop_front();
-						} while (!KeepAliveRequestTimestamps.empty() && delay > 5000);
+							delay = Utils::GetHighPerformanceCounter() - m_keepAliveRequestTimestamps.front();
+							m_keepAliveRequestTimestamps.pop_front();
+						} while (!m_keepAliveRequestTimestamps.empty() && delay > 5000);
 
 						// Add statistics sample
 						AddServerResponseDelayItem(delay);
@@ -399,7 +399,7 @@ public:
 
 	void ProcessSendData() {
 		using namespace App::Network::Structures;
-		ProcessData(sendBefore, sendProcessed, [&](const FFXIVBundle* pGamePacket, SingleStream& target) {
+		ProcessData(m_sendRaw, m_sendProcessed, [&](const FFXIVBundle* pGamePacket, SingleStream& target) {
 			if (!pGamePacket->MessageCount) {
 				target.Write(pGamePacket, pGamePacket->TotalLength);
 				return;
@@ -426,7 +426,7 @@ public:
 				auto pMessage = reinterpret_cast<FFXIVMessage*>(&message[0]);
 
 				if (pMessage->Type == SegmentType::ClientKeepAlive) {
-					KeepAliveRequestTimestamps.push_back(Utils::GetHighPerformanceCounter());
+					m_keepAliveRequestTimestamps.push_back(Utils::GetHighPerformanceCounter());
 				} else if (pMessage->Type == SegmentType::IPC) {
 					for (const auto& cbs : m_outgoingHandlers) {
 						for (const auto& cb : cbs.second) {
@@ -453,19 +453,19 @@ public:
 	}
 
 	bool CloseRecvIfPossible() {
-		if (!recvBefore.Available() && !recvProcessed.Available() && m_unloading)
-			recvBefore.closed = recvProcessed.closed = true;
+		if (!m_recvRaw.Available() && !m_recvProcessed.Available() && m_unloading)
+			m_recvRaw.m_closed = m_recvProcessed.m_closed = true;
 		return IsFinished();
 	}
 
 	bool CloseSendIfPossible() {
-		if (!sendBefore.Available() && !sendProcessed.Available() && m_unloading)
-			sendBefore.closed = sendProcessed.closed = true;
+		if (!m_sendRaw.Available() && !m_sendProcessed.Available() && m_unloading)
+			m_sendRaw.m_closed = m_sendProcessed.m_closed = true;
 		return IsFinished();
 	}
 
 	bool IsFinished() const {
-		return recvBefore.closed && sendBefore.closed;
+		return m_recvRaw.m_closed && m_sendRaw.m_closed;
 	}
 };
 
@@ -495,8 +495,8 @@ void App::Network::SingleConnection::SendFFXIVMessage(const App::Network::Struct
 	bundle.Timestamp = Utils::GetEpoch();
 	bundle.TotalLength = static_cast<uint16_t>(Structures::GamePacketHeaderSize + pMessage->Length);
 	bundle.MessageCount = 1;
-	impl->recvProcessed.Write(&bundle, sizeof bundle);
-	impl->recvProcessed.Write(pMessage, pMessage->Length);
+	impl->m_recvProcessed.Write(&bundle, sizeof bundle);
+	impl->m_recvProcessed.Write(pMessage, pMessage->Length);
 }
 
 SOCKET App::Network::SingleConnection::GetSocket() const {
@@ -584,7 +584,7 @@ public:
 			if (conn == nullptr)
 				return SocketFn::send.bridge(s, buf, len, flags);
 
-			conn->impl->sendBefore.Write(reinterpret_cast<const uint8_t*>(buf), len);
+			conn->impl->m_sendRaw.Write(reinterpret_cast<const uint8_t*>(buf), len);
 			conn->impl->ProcessSendData();
 			AttemptSend(conn);
 			return len;
@@ -596,7 +596,7 @@ public:
 
 			AttemptReceive(conn);
 
-			const auto result = conn->impl->recvProcessed.Read(reinterpret_cast<uint8_t*>(buf), len);
+			const auto result = conn->impl->m_recvProcessed.Read(reinterpret_cast<uint8_t*>(buf), len);
 			if (m_unloading && conn->impl->CloseRecvIfPossible())
 				CleanupSocket(s);
 
@@ -621,7 +621,7 @@ public:
 				if (FD_ISSET(s, &readfds_temp))
 					AttemptReceive(conn);
 
-				if (conn->impl->recvProcessed.Available())
+				if (conn->impl->m_recvProcessed.Available())
 					FD_SET(s, readfds);
 
 				if (conn->impl->CloseRecvIfPossible())
@@ -781,7 +781,7 @@ public:
 				break;
 			int recvlen = SocketFn::recv.bridge(s, reinterpret_cast<char*>(buf), sizeof buf, 0);
 			if (recvlen > 0)
-				conn->impl->recvBefore.Write(buf, recvlen);
+				conn->impl->m_recvRaw.Write(buf, recvlen);
 		}
 		conn->impl->ProcessRecvData();
 	}
@@ -789,12 +789,12 @@ public:
 	void AttemptSend(SingleConnection* conn) {
 		const auto s = conn->GetSocket();
 		uint8_t buf[4096];
-		while (conn->impl->sendProcessed.Available()) {
-			const auto len = conn->impl->sendProcessed.Peek(buf, sizeof buf);
+		while (conn->impl->m_sendProcessed.Available()) {
+			const auto len = conn->impl->m_sendProcessed.Peek(buf, sizeof buf);
 			const auto sent = SocketFn::send.bridge(s, reinterpret_cast<char*>(buf), len, 0);
 			if (sent == SOCKET_ERROR)
 				break;
-			conn->impl->sendProcessed.Consume(sent);
+			conn->impl->m_sendProcessed.Consume(sent);
 		}
 	}
 
