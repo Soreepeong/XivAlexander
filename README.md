@@ -50,7 +50,7 @@ Usage: XivAlexanderLoader [options] targets
        "SkillResultResponse08": "0x01c7",
        "SkillResultResponse16": "0x032a",
        "SkillResultResponse24": "0x035c",
-       "SkillResultResponse32": "0x0d20"
+       "SkillResultResponse32": "0x02c5"
    }
    ```
 3. Find the XivAlexander icon on your shell notification area (tray area), and click on *Reload Configuration*.
