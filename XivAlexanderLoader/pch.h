@@ -8,7 +8,9 @@
 #define PCH_H
 
 #include <vector>
+#include <set>
 #include <algorithm>
+#include <fstream>
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -17,9 +19,11 @@
 #include <TlHelp32.h>
 #include <PathCch.h>
 #include <shellapi.h>
+#include <Shlwapi.h>
 
 #include <Win32Handle.h>
 
 #include <argparse/argparse.hpp>
+#include <nlohmann/json.hpp>
 
 #endif //PCH_H

@@ -297,6 +297,26 @@ public:
 	}
 } g_parameters;
 
+static
+bool ShowConfigurationWarning(const wchar_t* pszMessage) {
+	if (!g_parameters.m_quiet) {
+		const auto r = MessageBoxW(nullptr,
+			Utils::FormatString(
+				L"%s\n\n"
+				L"Do you want to download again from Github?\n"
+				L"Press Yes to open Github,\n"
+				L"Press No to continue, or\n"
+				L"Press Cancel to exit.", pszMessage
+			).c_str(), L"XivAlexanderLoader", MB_YESNOCANCEL);
+		if (r == IDYES) {
+			ShellExecuteW(nullptr, L"open", L"https://github.com/Soreepeong/XivAlexander/releases", nullptr, nullptr, SW_SHOW);
+			return true;
+		} else if (r == IDCANCEL)
+			return true;
+	}
+	return false;
+}
+
 int WINAPI wWinMain(
 	_In_ HINSTANCE hInstance,
 	_In_opt_ HINSTANCE hPrevInstance,
@@ -324,16 +344,41 @@ int WINAPI wWinMain(
 	DWORD pid;
 	HWND hwnd = nullptr;
 	wchar_t szDllPath[PATHCCH_MAX_CCH] = { 0 };
+	wchar_t szConfigPath[PATHCCH_MAX_CCH] = { 0 };
 	GetModuleFileNameW(nullptr, szDllPath, _countof(szDllPath));
 	PathCchRemoveFileSpec(szDllPath, _countof(szDllPath));
 	PathCchAppend(szDllPath, _countof(szDllPath), L"XivAlexander.dll");
+	wcsncpy_s(szConfigPath, szDllPath, _countof(szConfigPath));
+	wcscat_s(szConfigPath, _countof(szConfigPath), L".json");
+
+	std::set<std::wstring> availableGamePaths;
+	if (!PathFileExistsW(szConfigPath)) {
+		if (ShowConfigurationWarning(L"No configuration file found."))
+			return -1;
+	} else {
+		try {
+			nlohmann::json config;
+			std::ifstream in(szConfigPath);
+			in >> config;
+			for (const auto& item : config.items()) {
+				auto key = Utils::FromUtf8(item.key());
+				CharLowerW(&key[0]);
+				availableGamePaths.insert(key);
+			}
+			if (availableGamePaths.empty())
+				throw std::exception("Configuration file is empty.");
+		} catch (std::exception& e) {
+			if (ShowConfigurationWarning(Utils::FormatString(L"Failed to validate configuration file: %s", Utils::FromUtf8(e.what()).c_str()).c_str()))
+				return -1;
+		}
+	}
 
 	try {
 		CheckDllVersion(szDllPath);
 	} catch (std::exception& e) {
 		if (MessageBoxW(nullptr, 
 			Utils::FormatString(
-				L"Failed to verify XivAlexander.dll and XivAlexanderLoader.exe have the matching versions (%s).\n\nDo you want to download again from the official webpage?",
+				L"Failed to verify XivAlexander.dll and XivAlexanderLoader.exe have the matching versions (%s).\n\nDo you want to download again from Github?",
 				Utils::FromUtf8(e.what()).c_str()
 			).c_str(),
 			L"XivAlexanderLoader", MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON1) == IDYES) {
@@ -375,6 +420,8 @@ int WINAPI wWinMain(
 
 			found = true;
 
+			CharLowerW(&sExePath[0]);
+
 			void* rpModule;
 			{
 				Utils::Win32Handle<> hProcess(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid));
@@ -395,14 +442,28 @@ int WINAPI wWinMain(
 					static_cast<int>(pid), sExePath.c_str());
 				nMsgType = (MB_YESNOCANCEL | MB_ICONQUESTION | MB_DEFBUTTON1);
 			} else {
-				msg = Utils::FormatString(
-					L"FFXIV Process found (%d:%s)\n"
-					L"Continue loading XivAlexander into this process?\n"
-					L"\n"
-					L"Note: your anti-virus software will probably classify DLL injection as a malicious m_action, "
-					L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
-					static_cast<int>(pid), sExePath.c_str());
-				nMsgType = (MB_YESNO | MB_DEFBUTTON1);
+				if (!g_parameters.m_quiet && !availableGamePaths.empty() && !availableGamePaths.contains(sExePath)) {
+					msg = Utils::FormatString(
+						L"FFXIV Process found (%d:%s)\n"
+						L"Continue loading XivAlexander into this process?\n"
+						L"\n"
+						L"Notes\n"
+						L"* Corresponding configuration entry for this process does not exist in XivAlexander.dll.json file. "
+						L"You may want to check your game installation path, and edit the right entry in the above file first.\n"
+						L"* Your anti-virus software will probably classify DLL injection as a malicious m_action, "
+						L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
+						static_cast<int>(pid), sExePath.c_str());
+					nMsgType = (MB_YESNO | MB_DEFBUTTON1 | MB_ICONWARNING);
+				} else {
+					msg = Utils::FormatString(
+						L"FFXIV Process found (%d:%s)\n"
+						L"Continue loading XivAlexander into this process?\n"
+						L"\n"
+						L"Note: your anti-virus software will probably classify DLL injection as a malicious m_action, "
+						L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
+						static_cast<int>(pid), sExePath.c_str());
+					nMsgType = (MB_YESNO | MB_DEFBUTTON1);
+				}
 			}
 
 			int response;
@@ -453,7 +514,7 @@ int WINAPI wWinMain(
 
 	if (!found && !g_parameters.m_quiet) {
 		if (g_parameters.m_targetPids.empty() && g_parameters.m_targetSuffix.empty()) {
-			MessageBoxW(nullptr, L"ffxiv_dx11.exe not found.", L"Error", MB_OK | MB_ICONERROR);
+			MessageBoxW(nullptr, L"ffxiv_dx11.exe not found. Run the game first, and then try again.", L"Error", MB_OK | MB_ICONERROR);
 		} else {
 			MessageBoxW(nullptr, L"No matching process found.", L"Error", MB_OK | MB_ICONERROR);
 		}

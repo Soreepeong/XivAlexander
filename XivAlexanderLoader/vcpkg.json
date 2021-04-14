@@ -9,6 +9,10 @@
     {
       "name": "argparse",
       "version>=": "2.1"
+    },
+    {
+      "name": "nlohmann-json",
+      "version>=": "3.9.1"
     }
   ]
 }

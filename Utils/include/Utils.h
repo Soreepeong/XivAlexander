@@ -28,10 +28,7 @@ namespace Utils {
 				buf.resize(length);
 				return buf;
 			}
-			if (errno == ERANGE)
-				buf.resize(std::min(buf.capacity() * 2, buf.capacity() + 1024));
-			else
-				return "";
+			buf.resize(std::min(buf.capacity() * 2, buf.capacity() + 1024));
 		} while (true);
 	}
 
@@ -50,10 +47,7 @@ namespace Utils {
 				buf.resize(length);
 				return buf;
 			}
-			if (errno == ERANGE)
-				buf.resize(std::min(buf.capacity() * 2, buf.capacity() + 1024));
-			else
-				return L"";
+			buf.resize(std::min(buf.capacity() * 2, buf.capacity() + 1024));
 		} while (true);
 	}
 
