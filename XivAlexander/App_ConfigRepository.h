@@ -111,12 +111,13 @@ namespace App {
 		ConfigItem<bool> AlwaysOnTop{ this, "AlwaysOnTop", false };
 		ConfigItem<bool> UseHighLatencyMitigation{ this, "UseHighLatencyMitigation", true };
 		ConfigItem<bool> UseHighLatencyMitigationLogging{ this, "UseHighLatencyMitigationLogging", true };
+		ConfigItem<bool> UseLatencyCorrection{ this, "UseLatencyCorrection", true };
+		ConfigItem<int> BaseLatencyPenalty{ this, "BaseLatencyPenalty", 1, [](int newValue) {
+			return std::min(60, std::max(1, newValue));
+		} };
 		ConfigItem<bool> UseOpcodeFinder{ this, "UseOpcodeFinder", false };
 		ConfigItem<bool> UseEffectApplicationDelayLogger{ this, "UseEffectApplicationDelayLogger", false };
 		ConfigItem<bool> UseAutoAdjustingExtraDelay{ this, "UseAutoAdjustingExtraDelay", true };
-		ConfigItem<int> MedianRttCalculationCount{ this, "MedianRttCalculationCount", 1, [](int newValue) {
-			return std::min(128, std::max(1, newValue));
-		} };
 		ConfigItem<bool> ShowLoggingWindow{ this, "ShowLoggingWindow", false };
 		ConfigItem<bool> ShowControlWindow{ this, "ShowControlWindow", false };
 		ConfigItem<std::string> GameServerIpRange{ this, "GameServerIpRange",

@@ -27,14 +27,15 @@ public:
 			int64_t OriginalWaitTime = 0;
 
 			PendingAction()
-			: ActionId(0)
-			, Sequence(0)
-			, RequestTimestamp(0) {}
+				: ActionId(0)
+				, Sequence(0)
+				, RequestTimestamp(0) {
+			}
 
 			PendingAction(const Network::Structures::IPCMessageDataType::C2S_ActionRequest& request)
 				: ActionId(request.ActionId)
 				, Sequence(request.Sequence)
-				, RequestTimestamp(Utils::GetHighPerformanceCounter()){
+				, RequestTimestamp(Utils::GetHighPerformanceCounter()) {
 			}
 		};
 
@@ -137,7 +138,7 @@ public:
 								while (!m_pendingActions.empty() && m_pendingActions.front().Sequence != actionEffect.SourceSequence) {
 									const auto& item = m_pendingActions.front();
 									Misc::Logger::GetLogger().Format(
-										LogCategory::AnimationLockLatencyHandler, 
+										LogCategory::AnimationLockLatencyHandler,
 										u8"\t┎ ActionRequest ignored for processing: actionId=%04x sequence=%04x",
 										item.ActionId, item.Sequence);
 									m_pendingActions.pop_front();
@@ -152,21 +153,56 @@ public:
 										const int64_t rtt = now - m_latestSuccessfulRequest.RequestTimestamp;
 										conn.AddServerResponseDelayItem(rtt);
 
+										const int64_t rttMedian = conn.GetMedianServerResponseDelay();
+										const int64_t rttDeviation = conn.GetServerResponseDelayDeviation();
+
+										extraMessage = Utils::FormatString(" rtt=%lldms/%lldms/%lldms", rtt, rttMedian, rttDeviation);
+
 										m_latestSuccessfulRequest.ResponseTimestamp = now;
 
-										int64_t extraDelay = ExtraDelay;
-										const int64_t latency = conn.GetConnectionLatency();
-										const int64_t delay = conn.GetMedianServerResponseDelay();
+										int64_t delay = ExtraDelay;
+
 										if (config.UseAutoAdjustingExtraDelay) {
-											if (latency > 0 && delay > 0) {
-												extraDelay = std::max(0LL, delay - latency);
-												extraMessage = Utils::FormatString(" latency=%lldms delay=%lldms extraDelay=%lldms", latency, delay, extraDelay);
+											delay = rtt;
+
+											// Get current latency data
+											const int64_t latency = conn.GetConnectionLatency();
+											int64_t latencyAdjusted = latency;
+
+											extraMessage += Utils::FormatString(" latency=%lldms", latencyAdjusted);
+
+											// Update latency statistics
+											conn.AddConnectionLatencyItem(latencyAdjusted);
+
+											if (config.UseLatencyCorrection) {
+												// Get latency statistic data
+												const int64_t latencyMedian = conn.GetMedianConnectionLatency();
+												const int64_t latencyDeviation = conn.GetConnectionLatencyDeviation();
+
+												extraMessage += Utils::FormatString("/%lldms/%lldms", latencyMedian, latencyDeviation);
+
+												// Use median with deviation in case of spikes.
+												latencyAdjusted = std::min(latencyAdjusted, latencyMedian + latencyDeviation);
+												delay = std::min(delay, rttMedian + rttDeviation);
+
+												// Calculate penalty from standard deviation of ping or using BaseLatencyPenalty
+												// If user's ping is lower than the setting, simulate their expected ping from observed statistics.
+												const int64_t latencyBase = std::min(int64_t(config.BaseLatencyPenalty) - latencyDeviation, latencyMedian + latencyDeviation);
+												const int64_t penalty = std::max(latencyBase, latencyDeviation) / 2;
+
+												// Adjust latency value to add a one-way safety buffer using penalty value.
+												latencyAdjusted = std::max(penalty, latencyAdjusted - penalty);
+												extraMessage += Utils::FormatString(" penalty=%lldms", penalty);
 											}
+
+											// This delay is based on server's processing time. If the server is busy, everyone should feel the same effect.
+											// Only the player's ping is taken out of the equation.
+											delay = std::max(0LL, (delay % originalWaitTime) - latencyAdjusted);
+											extraMessage += Utils::FormatString(" delay=%lldms", delay);
 										}
-										extraMessage += Utils::FormatString(" rtt=%llums %s", rtt, conn.FormatMedianServerResponseDelayStatistics().c_str());
 
 										m_latestSuccessfulRequest.OriginalWaitTime = originalWaitTime;
-										m_lastAnimationLockEndsAt += originalWaitTime + extraDelay;
+										m_lastAnimationLockEndsAt += originalWaitTime + delay;
 										waitTime = m_lastAnimationLockEndsAt - now;
 									}
 									m_pendingActions.pop_front();
@@ -206,15 +242,15 @@ public:
 								const auto& rollback = actorControlSelf.Rollback;
 
 								// find the one sharing Sequence, assuming action responses are always in order
-								while (!m_pendingActions.empty() 
+								while (!m_pendingActions.empty()
 									&& (
 										// Sometimes SourceSequence is empty, in which case, we use ActionId to judge.
 										(rollback.SourceSequence != 0 && m_pendingActions.front().Sequence != rollback.SourceSequence)
 										|| (rollback.SourceSequence == 0 && m_pendingActions.front().ActionId != rollback.ActionId)
-									)) {
+										)) {
 									const auto& item = m_pendingActions.front();
 									Misc::Logger::GetLogger().Format(
-										LogCategory::AnimationLockLatencyHandler, 
+										LogCategory::AnimationLockLatencyHandler,
 										u8"\t┎ ActionRequest ignored for processing: actionId=%04x sequence=%04x",
 										item.ActionId, item.Sequence);
 									m_pendingActions.pop_front();
@@ -234,16 +270,16 @@ public:
 
 						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorControl) {
 							const auto& actorControl = pMessage->Data.IPC.Data.S2C_ActorControl;
-							
+
 							// The server has cancelled an oldest action (which is a cast) in progress.
 							if (actorControl.Category == S2C_ActorControlCategory::CancelCast) {
 								const auto& cancelCast = actorControl.CancelCast;
 
 								// find the one sharing Sequence, assuming action responses are always in order
-								while (!m_pendingActions.empty()&& m_pendingActions.front().ActionId != cancelCast.ActionId) {
+								while (!m_pendingActions.empty() && m_pendingActions.front().ActionId != cancelCast.ActionId) {
 									const auto& item = m_pendingActions.front();
 									Misc::Logger::GetLogger().Format(
-										LogCategory::AnimationLockLatencyHandler, 
+										LogCategory::AnimationLockLatencyHandler,
 										u8"\t┎ ActionRequest ignored for processing: actionId=%04x sequence=%04x",
 										item.ActionId, item.Sequence);
 									m_pendingActions.pop_front();
@@ -292,10 +328,10 @@ public:
 	Internals() {
 		Network::SocketHook::Instance()->AddOnSocketFoundListener(this, [&](Network::SingleConnection& conn) {
 			m_handlers.emplace(&conn, std::make_unique<SingleConnectionHandler>(*this, conn));
-		});
+			});
 		Network::SocketHook::Instance()->AddOnSocketGoneListener(this, [&](Network::SingleConnection& conn) {
 			m_handlers.erase(&conn);
-		});
+			});
 	}
 
 	~Internals() {
@@ -305,7 +341,7 @@ public:
 };
 
 App::Feature::AnimationLockLatencyHandler::AnimationLockLatencyHandler()
-: impl(std::make_unique<Internals>()){
+	: impl(std::make_unique<Internals>()) {
 }
 
 App::Feature::AnimationLockLatencyHandler::~AnimationLockLatencyHandler() {
