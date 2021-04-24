@@ -189,6 +189,23 @@ public:
 
 		Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Found", m_socket);
 		ResolveAddresses();
+
+		SetTCPDelay(ConfigRepository::Config().ReducePacketDelay);
+	}
+
+	void SetTCPDelay(bool enabled) {
+		int result;
+
+		int optval = enabled ? 1 : 0;
+		result = setsockopt(m_socket, SOL_SOCKET, TCP_NODELAY, (char*)&optval, sizeof(int));
+
+		Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: TCP_NODELAY = %d: %d", m_socket, optval, result);
+
+		int freq = enabled ? 1 : 2;
+		DWORD bytes = 0;
+		result = WSAIoctl(m_socket, SIO_TCP_SET_ACK_FREQUENCY, &freq, sizeof(freq), nullptr, 0, &bytes, nullptr, nullptr);
+
+		Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: SIO_TCP_SET_ACK_FREQUENCY = %d: %d", m_socket, freq, result);
 	}
 
 	void ResolveAddresses() {
