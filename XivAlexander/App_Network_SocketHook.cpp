@@ -191,18 +191,18 @@ public:
 		ResolveAddresses();
 	}
 
-	void SetTCPDelay(bool enabled) {
+	void SetTCPDelay() {
 		int result;
 
 		// SIO_TCP_SET_ACK_FREQUENCY: Controls ACK delay every x ACK. Default delay is 40 or 200ms. Default value is 2 ACKs, set to 1 to disable ACK delay.
-		int freq = enabled ? 1 : 2;
+		int freq = 1;
 		DWORD bytes = 0;
 		result = WSAIoctl(m_socket, SIO_TCP_SET_ACK_FREQUENCY, &freq, sizeof(freq), nullptr, 0, &bytes, nullptr, nullptr);
 
 		Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: SIO_TCP_SET_ACK_FREQUENCY = %d: %d", m_socket, freq, result);
 
-		// TCP_NODELAY: if disabled, sends packets as soon as possible instead of waiting for ACK or large packet.
-		int optval = enabled ? 1 : 0;
+		// TCP_NODELAY: if enabled, sends packets as soon as possible instead of waiting for ACK or large packet.
+		int optval = 1;
 		result = setsockopt(m_socket, SOL_SOCKET, TCP_NODELAY, (char*)&optval, sizeof(int));
 
 		Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: TCP_NODELAY = %d: %d", m_socket, optval, result);
@@ -216,8 +216,8 @@ public:
 			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Local=%s", m_socket, get_ip_str(reinterpret_cast<sockaddr*>(&local)).c_str());
 
 			// Set TCP delay here because SIO_TCP_SET_ACK_FREQUENCY seems to work only when localAddress is not 0.0.0.0.
-			if (reinterpret_cast<sockaddr_in*>(&local)->sin_addr.s_addr != INADDR_ANY) {
-				SetTCPDelay(ConfigRepository::Config().ReducePacketDelay);
+			if (ConfigRepository::Config().ReducePacketDelay && reinterpret_cast<sockaddr_in*>(&local)->sin_addr.s_addr != INADDR_ANY) {
+				SetTCPDelay();
 			}
 		}
 		addrlen = sizeof remote;
