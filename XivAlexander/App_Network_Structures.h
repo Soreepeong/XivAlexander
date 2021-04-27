@@ -152,9 +152,9 @@ namespace App::Network::Structures {
 					S2C_ActorControlSelfCategory Category;
 					uint16_t Padding1;
 					uint32_t Param1;
-					uint32_t Param2;
 					uint32_t ActionId;
-					uint32_t Duration;  // in milliseconds
+					uint32_t Duration;  // in 10 milliseconds unit
+					uint32_t Param4;
 					uint32_t Param5;
 					uint32_t Param6;
 					uint32_t Padding2;

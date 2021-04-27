@@ -235,7 +235,7 @@ public:
 							}
 
 						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorControlSelf) {
-							const auto& actorControlSelf = pMessage->Data.IPC.Data.S2C_ActorControlSelf;
+							auto& actorControlSelf = pMessage->Data.IPC.Data.S2C_ActorControlSelf;
 
 							// Oldest action request has been rejected from server.
 							if (actorControlSelf.Category == S2C_ActorControlSelfCategory::ActionRejected) {
