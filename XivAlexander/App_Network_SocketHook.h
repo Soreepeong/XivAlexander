@@ -21,6 +21,7 @@ namespace App::Network {
 		void RemoveMessageHandlers(void* token);
 		void SendFFXIVMessage(const Structures::FFXIVMessage* pMessage);
 		SOCKET GetSocket() const;
+		void SetTCPDelay();
 		void ResolveAddresses();
 		void AddConnectionLatencyItem(int64_t latency);
 		int64_t GetMedianConnectionLatency() const;

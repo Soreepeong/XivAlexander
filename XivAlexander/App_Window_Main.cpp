@@ -90,6 +90,10 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					config.UseHighLatencyMitigationLogging = !config.UseHighLatencyMitigationLogging;
 					return 0;
 
+				case ID_TRAYMENU_REDUCEPACKETDELAY:
+					config.ReducePacketDelay = !config.ReducePacketDelay;
+					return 0;
+
 				case ID_TRAYMENU_USEALLIPCMESSAGELOGGER:
 					config.UseAllIpcMessageLogger = !config.UseAllIpcMessageLogger;
 					return 0;
@@ -198,6 +202,7 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) {
 	Utils::SetMenuState(hMenu, ID_TRAYMENU_SHOWCONTROLWINDOW, config.ShowControlWindow);
 	Utils::SetMenuState(hMenu, ID_TRAYMENU_SHOWLOGGINGWINDOW, config.ShowLoggingWindow);
 	Utils::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION, config.UseLatencyCorrection);
+	Utils::SetMenuState(hMenu, ID_TRAYMENU_REDUCEPACKETDELAY, config.ReducePacketDelay);
 }
 
 void App::Window::Main::RegisterTrayIcon() {

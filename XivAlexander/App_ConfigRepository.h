@@ -111,6 +111,7 @@ namespace App {
 		ConfigItem<bool> AlwaysOnTop{ this, "AlwaysOnTop", false };
 		ConfigItem<bool> UseHighLatencyMitigation{ this, "UseHighLatencyMitigation", true };
 		ConfigItem<bool> UseHighLatencyMitigationLogging{ this, "UseHighLatencyMitigationLogging", true };
+		ConfigItem<bool> ReducePacketDelay{ this, "ReducePacketDelay", true };
 		ConfigItem<bool> UseLatencyCorrection{ this, "UseLatencyCorrection", true };
 		ConfigItem<int> BaseLatencyPenalty{ this, "BaseLatencyPenalty", 1, [](int newValue) {
 			return std::min(60, std::max(1, newValue));
