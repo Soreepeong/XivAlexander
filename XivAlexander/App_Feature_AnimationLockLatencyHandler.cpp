@@ -11,12 +11,14 @@ public:
 	// and it's very easy to identify whether you're trying to go below allowed minimum value.
 	// This addon is already in gray area. Do NOT decrease this value. You've been warned.
 	// Feel free to increase and see how does it feel like to play on high latency instead, though.
-	static inline const uint64_t ExtraDelay = 75;  // in milliseconds
+	static inline const int64_t ExtraDelay = 75;  // in milliseconds
 
-	static inline const uint64_t AutoAttackDelay = 100; // in milliseconds
+	// On unstable network connection, limit the possible overshoot in ExtraDelay.
+	static inline const int64_t MaximumExtraDelay = 150;  // in milliseconds
+
+	static inline const int64_t AutoAttackDelay = 100; // in milliseconds
 
 	class SingleConnectionHandler {
-		const uint64_t CAST_SENTINEL = 0;
 
 		struct PendingAction {
 			uint16_t ActionId;
@@ -187,7 +189,7 @@ public:
 
 												// Calculate penalty from standard deviation of ping or using BaseLatencyPenalty
 												// If user's ping is lower than the setting, simulate their expected ping from observed statistics.
-												const int64_t latencyBase = std::min(int64_t(config.BaseLatencyPenalty) - latencyDeviation, latencyMedian + latencyDeviation);
+												const int64_t latencyBase = std::min(static_cast<int64_t>(config.BaseLatencyPenalty) - latencyDeviation, latencyMedian + latencyDeviation);
 												const int64_t penalty = std::max(latencyBase, latencyDeviation) / 2;
 
 												// Adjust latency value to add a one-way safety buffer using penalty value.
@@ -198,6 +200,10 @@ public:
 											// This delay is based on server's processing time. If the server is busy, everyone should feel the same effect.
 											// Only the player's ping is taken out of the equation.
 											delay = std::max(0LL, (delay % originalWaitTime) - latencyAdjusted);
+
+											// Prevent accidentally too high ExtraDelay.
+											delay = std::min(MaximumExtraDelay, delay);
+											
 											extraMessage += Utils::FormatString(" delay=%lldms", delay);
 										}
 
