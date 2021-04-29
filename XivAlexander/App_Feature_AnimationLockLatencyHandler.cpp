@@ -187,6 +187,15 @@ public:
 												latencyAdjusted = std::min(latencyAdjusted, latencyMedian + latencyDeviation);
 												delay = std::min(delay, rttMedian + rttDeviation);
 
+												// Correct latency value to server response in cases of extreme values (0 ping or extremely high RTT)
+												const int64_t rttMin = conn.GetMinServerResponseDelay();
+
+												latencyAdjusted = std::max(rttMin - rttDeviation - latencyAdjusted, latencyAdjusted);
+
+												if (latencyAdjusted != latency) {
+													extraMessage += Utils::FormatString(" (%lldms)", latencyAdjusted);
+												}
+
 												// Calculate penalty from standard deviation of ping or using BaseLatencyPenalty
 												// If user's ping is lower than the setting, simulate their expected ping from observed statistics.
 												const int64_t latencyBase = std::min(static_cast<int64_t>(config.BaseLatencyPenalty) - latencyDeviation, latencyMedian + latencyDeviation);
