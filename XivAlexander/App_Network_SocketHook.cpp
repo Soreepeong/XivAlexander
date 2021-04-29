@@ -250,7 +250,7 @@ public:
 			m_nIoctlTcpInfoFailureCount++;
 			return 0;
 		} else {
-			return std::max(1LL, info.RttUs / 1000LL);
+			return (info.RttUs / 1000LL);
 		}
 	}
 
