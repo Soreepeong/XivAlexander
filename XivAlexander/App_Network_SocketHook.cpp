@@ -250,7 +250,7 @@ public:
 			m_nIoctlTcpInfoFailureCount++;
 			return 0;
 		} else {
-			return (info.RttUs / 1000LL);
+			return std::max(1LL, info.RttUs / 1000LL);
 		}
 	}
 
@@ -311,20 +311,6 @@ public:
 
 		if (m_observedServerResponseList.size() > latencyTrackCount)
 			m_observedServerResponseList.erase(m_observedServerResponseList.begin());
-	}
-
-	int64_t GetMinServerResponseDelay() const {
-		if (m_observedServerResponseList.empty())
-			return 0;
-
-		return *std::min_element(m_observedServerResponseList.begin(), m_observedServerResponseList.end());
-	}
-
-	int64_t GetMaxServerResponseDelay() const {
-		if (m_observedServerResponseList.empty())
-			return 0;
-
-		return *std::max_element(m_observedServerResponseList.begin(), m_observedServerResponseList.end());
 	}
 
 	int64_t GetMeanServerResponseDelay() const {
@@ -561,14 +547,6 @@ int64_t App::Network::SingleConnection::GetConnectionLatencyDeviation() const {
 
 void App::Network::SingleConnection::AddServerResponseDelayItem(uint64_t delay) {
 	return impl->AddServerResponseDelayItem(delay);
-}
-
-int64_t App::Network::SingleConnection::GetMinServerResponseDelay() const {
-	return impl->GetMinServerResponseDelay();
-}
-
-int64_t App::Network::SingleConnection::GetMaxServerResponseDelay() const {
-	return impl->GetMaxServerResponseDelay();
 }
 
 int64_t App::Network::SingleConnection::GetMeanServerResponseDelay() const {

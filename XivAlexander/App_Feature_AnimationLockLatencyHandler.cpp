@@ -187,10 +187,8 @@ public:
 												latencyAdjusted = std::min(latencyAdjusted, latencyMedian + latencyDeviation);
 												delay = std::min(delay, rttMedian + rttDeviation);
 
-												// Correct latency value to server response in cases of extreme values (0 ping or extremely high RTT)
-												const int64_t rttMin = conn.GetMinServerResponseDelay();
-
-												latencyAdjusted = std::max(rttMin - rttDeviation - (latencyAdjusted / 2), latencyAdjusted);
+												// Estimate latency based on server response time if discrepancy from ping is too large.
+												latencyAdjusted = std::max(((delay + rttMedian) / 2) - rttDeviation - (rttDeviation / 2), latencyAdjusted);
 
 												if (latencyAdjusted != latency) {
 													extraMessage += Utils::FormatString(" (%lldms)", latencyAdjusted);
