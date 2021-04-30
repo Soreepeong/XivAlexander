@@ -188,20 +188,11 @@ public:
 												delay = std::min(delay, rttMedian + rttDeviation);
 
 												// Estimate latency based on server response time if discrepancy from ping is too large.
-												latencyAdjusted = std::max(((delay + rttMedian) / 2) - rttDeviation - (rttDeviation / 2), latencyAdjusted);
+												latencyAdjusted = std::max(((rtt + delay + rttMedian) / 3) - rttDeviation - (rttDeviation / 2), latencyAdjusted);
 
 												if (latencyAdjusted != latency) {
 													extraMessage += Utils::FormatString(" (%lldms)", latencyAdjusted);
 												}
-
-												// Calculate penalty from standard deviation of ping or using BaseLatencyPenalty
-												// If user's ping is lower than the setting, simulate their expected ping from observed statistics.
-												const int64_t latencyBase = std::min(static_cast<int64_t>(config.BaseLatencyPenalty) - latencyDeviation, latencyMedian + latencyDeviation);
-												const int64_t penalty = std::max(latencyBase, latencyDeviation) / 2;
-
-												// Adjust latency value to add a one-way safety buffer using penalty value.
-												latencyAdjusted = std::max(penalty, latencyAdjusted - penalty);
-												extraMessage += Utils::FormatString(" penalty=%lldms", penalty);
 											}
 
 											// This delay is based on server's processing time. If the server is busy, everyone should feel the same effect.
