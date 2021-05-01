@@ -192,7 +192,7 @@ public:
 
 												extraMessage += Utils::FormatString(" (%lldms)", latencyEstimate);
 
-												// Correct latency value if discrepancy is detected.
+												// Correct latency value based on estimate if server response time is stable.
 												latencyAdjusted = std::max(latencyEstimate, latencyAdjusted);
 											}
 
