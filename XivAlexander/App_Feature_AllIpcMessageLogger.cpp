@@ -3,8 +3,6 @@
 #include "App_Network_SocketHook.h"
 #include "App_Network_Structures.h"
 
-static const float ExtraDelay = 0.1f;
-
 class App::Feature::AllIpcMessageLogger::Internals {
 public:
 
@@ -15,32 +13,43 @@ public:
 		SingleConnectionHandler(Internals& internals, Network::SingleConnection& conn)
 			: internals(internals)
 			, conn(conn) {
-			using namespace App::Network::Structures;
+			using namespace Network::Structures;
 
-			conn.AddIncomingFFXIVMessageHandler(this, [&](Network::Structures::FFXIVMessage* pMessage, std::vector<uint8_t>&) {
+			conn.AddIncomingFFXIVMessageHandler(this, [&](FFXIVMessage* pMessage, std::vector<uint8_t>&) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
-					const char* expected;
+					const char* pszPossibleMessageType;
 					switch (pMessage->Length) {
-						case 0x09c: expected = "AttackResponse01"; break;
-						case 0x29c: expected = "AttackResponse08"; break;
-						case 0x4dc: expected = "AttackResponse16"; break;
-						case 0x71c: expected = "AttackResponse24"; break;
-						case 0x95c: expected = "AttackResponse32"; break;
-						case 0x040: expected = "ActorControlSelf/ActorCast"; break;
-						case 0x038: expected = "ActorControl"; break;
-						case 0x078: expected = "AddStatusEffect"; break;
-						default: expected = "?";
+						case 0x09c: pszPossibleMessageType = "AttackResponse01"; break;
+						case 0x29c: pszPossibleMessageType = "AttackResponse08"; break;
+						case 0x4dc: pszPossibleMessageType = "AttackResponse16"; break;
+						case 0x71c: pszPossibleMessageType = "AttackResponse24"; break;
+						case 0x95c: pszPossibleMessageType = "AttackResponse32"; break;
+						case 0x040: pszPossibleMessageType = "ActorControlSelf, ActorCast"; break;
+						case 0x038: pszPossibleMessageType = "ActorControl"; break;
+						case 0x078: pszPossibleMessageType = "AddStatusEffect"; break;
+						default: pszPossibleMessageType = nullptr;
 					}
-					Misc::Logger::GetLogger().Format(LogCategory::AllIpcMessageLogger, "source=%08x current=%08x subtype=%04x length=%x (%s)",
+					Misc::Logger::GetLogger().Format(LogCategory::AllIpcMessageLogger, "source=%08x current=%08x subtype=%04x length=%x (S2C%s%s)",
 						pMessage->SourceActor, pMessage->CurrentActor,
 						pMessage->Data.IPC.SubType, pMessage->Length,
-						expected);
+						pszPossibleMessageType ? ": Possibly " : "",
+						pszPossibleMessageType ? pszPossibleMessageType : "");
 				}
 				return true;
 				});
-			conn.AddOutgoingFFXIVMessageHandler(this, [&](Network::Structures::FFXIVMessage* pMessage, std::vector<uint8_t>&) {
+			conn.AddOutgoingFFXIVMessageHandler(this, [&](FFXIVMessage* pMessage, std::vector<uint8_t>&) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
-					// todo?
+					const char* pszPossibleMessageType;
+					switch (pMessage->Length) {
+						case 0x038: pszPossibleMessageType = "PositionUpdate"; break;
+						case 0x040: pszPossibleMessageType = "ActionRequest, ActionRequest2, InteractTarget"; break;
+						default: pszPossibleMessageType = nullptr;
+					}
+					Misc::Logger::GetLogger().Format(LogCategory::AllIpcMessageLogger, "source=%08x current=%08x subtype=%04x length=%x (C2S%s%s)",
+						pMessage->SourceActor, pMessage->CurrentActor,
+						pMessage->Data.IPC.SubType, pMessage->Length,
+						pszPossibleMessageType ? ": Possibly " : "",
+						pszPossibleMessageType ? pszPossibleMessageType : "");
 				}
 				return true;
 				});
