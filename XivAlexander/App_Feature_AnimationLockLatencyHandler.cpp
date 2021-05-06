@@ -155,10 +155,7 @@ public:
 										const int64_t rtt = now - m_latestSuccessfulRequest.RequestTimestamp;
 										conn.AddServerResponseDelayItem(rtt);
 
-										const int64_t rttMedian = conn.GetMedianServerResponseDelay();
-										const int64_t rttDeviation = conn.GetServerResponseDelayDeviation();
-
-										extraMessage = Utils::FormatString(" rtt=%lldms/%lldms/%lldms", rtt, rttMedian, rttDeviation);
+										extraMessage = Utils::FormatString(" rtt=%lldms", rtt);
 
 										m_latestSuccessfulRequest.ResponseTimestamp = now;
 
@@ -177,24 +174,26 @@ public:
 											conn.AddConnectionLatencyItem(latencyAdjusted);
 
 											if (config.UseLatencyCorrection) {
-												// Get latency statistic data
-												const int64_t latencyMedian = conn.GetMedianConnectionLatency();
+												// Get server response time statistic data.
+												const int64_t rttMin = conn.GetMinServerResponseDelay();
+												const int64_t rttMean = conn.GetMeanServerResponseDelay();
+												const int64_t rttDeviation = conn.GetServerResponseDelayDeviation();
+
+												// Get latency statistic data.
+												const int64_t latencyMean = conn.GetMeanConnectionLatency();
 												const int64_t latencyDeviation = conn.GetConnectionLatencyDeviation();
 
-												extraMessage += Utils::FormatString("/%lldms/%lldms", latencyMedian, latencyDeviation);
+												// Correct latency and server response time values in case of outliers.
+												latencyAdjusted = std::min(std::max(latencyMean - latencyDeviation, latencyAdjusted), latencyMean + latencyDeviation);
+												delay = std::min(std::max(rttMean - rttDeviation, delay), rttMean + rttDeviation);
 
-												// Use median with deviation in case of spikes.
-												latencyAdjusted = std::min(latencyAdjusted, latencyMedian + latencyDeviation);
-												delay = std::min(delay, rttMedian + rttDeviation);
+												// Estimate latency based on server response time statistics.
+												const int64_t latencyEstimate = ((delay + rttMin + rttMean) / 3) - rttDeviation;
 
-												// Calculate penalty from standard deviation of ping or using BaseLatencyPenalty
-												// If user's ping is lower than the setting, simulate their expected ping from observed statistics.
-												const int64_t latencyBase = std::min(static_cast<int64_t>(config.BaseLatencyPenalty) - latencyDeviation, latencyMedian + latencyDeviation);
-												const int64_t penalty = std::max(latencyBase, latencyDeviation) / 2;
+												extraMessage += Utils::FormatString(" (%lldms)", latencyEstimate);
 
-												// Adjust latency value to add a one-way safety buffer using penalty value.
-												latencyAdjusted = std::max(penalty, latencyAdjusted - penalty);
-												extraMessage += Utils::FormatString(" penalty=%lldms", penalty);
+												// Correct latency value based on estimate if server response time is stable.
+												latencyAdjusted = std::max(latencyEstimate, latencyAdjusted);
 											}
 
 											// This delay is based on server's processing time. If the server is busy, everyone should feel the same effect.

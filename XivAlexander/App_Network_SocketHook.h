@@ -28,6 +28,7 @@ namespace App::Network {
 		int64_t GetMeanConnectionLatency() const;
 		int64_t GetConnectionLatencyDeviation() const;
 		void AddServerResponseDelayItem(uint64_t delay);
+		int64_t GetMinServerResponseDelay() const;
 		int64_t GetMeanServerResponseDelay() const;
 		int64_t GetMedianServerResponseDelay() const;
 		int64_t GetServerResponseDelayDeviation() const;
