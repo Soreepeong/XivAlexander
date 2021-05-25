@@ -37,20 +37,20 @@ Usage: XivAlexanderLoader [options] targets
 
 ### First time setup
 1. Open `XivAlexander.dll.json` with a text editor which should have been created after a successful load for the first time.
-2. Modify opcode values. As of Patch 5.5 HotFix for the international release, opcodes are as following:
+2. Modify opcode values. As of Patch 5.55 for the international release, opcodes are as following:
    ```json
    {
-       "ActorCast": "0x02ad",
-       "ActorControl": "0x02db",
-       "ActorControlSelf": "0x023e",
-       "AddStatusEffect": "0x0334",
-       "RequestUseAction": "0x00d0",
-       "RequestUseAction2": "0x0094",
-       "SkillResultResponse01": "0x03e7",
-       "SkillResultResponse08": "0x020a",
-       "SkillResultResponse16": "0x01f9",
-       "SkillResultResponse24": "0x01eb",
-       "SkillResultResponse32": "0x013e"
+       "ActorCast": "0x0228",
+       "ActorControl": "0x030f",
+       "ActorControlSelf": "0x0200",
+       "AddStatusEffect": "0x0093",
+       "RequestUseAction": "0x0396",
+       "RequestUseAction2": "0x0205",
+       "SkillResultResponse01": "0x0128",
+       "SkillResultResponse08": "0x0295",
+       "SkillResultResponse16": "0x025e",
+       "SkillResultResponse24": "0x0299",
+       "SkillResultResponse32": "0x00a7"
    }
    ```
 3. Find the XivAlexander icon on your shell notification area (tray area), and click on *Reload Configuration*.
@@ -114,20 +114,20 @@ Apache License 2.0
 
 ### 처음 사용할 때 세팅
 1. `XivAlexanderLoader.exe`가 있는 폴더에 생긴 `XivAlexander.dll.json`를 텍스트 편집기 (메모장 등)으로 열어 주세요.
-2. 옵코드를 적당히 수정해 주세요. 현재 한썹 5.35에서는 다음과 같습니다. 
+2. 옵코드를 적당히 수정해 주세요. 현재 한썹 5.4 HotFix에서는 다음과 같습니다. 
    ```json
    {
-        "ActorCast": "0x012c",
-        "ActorControl": "0x017a",
-        "ActorControlSelf": "0x007c",
-        "AddStatusEffect": "0x0204",
-        "RequestUseAction": "0x02b3",
-        "RequestUseAction2": "0x0250",
-        "SkillResultResponse01": "0x02d0",
-        "SkillResultResponse08": "0x0199",
-        "SkillResultResponse16": "0x02d1",
-        "SkillResultResponse24": "0x01a4",
-        "SkillResultResponse32": "0x016e"
+        "ActorCast": "0x00eb",
+        "ActorControl": "0x01cf",
+        "ActorControlSelf": "0x0307",
+        "AddStatusEffect": "0x01f2",
+        "RequestUseAction": "0x0398",
+        "RequestUseAction2": "0x02b0",
+        "SkillResultResponse01": "0x00b5",
+        "SkillResultResponse08": "0x0235",
+        "SkillResultResponse16": "0x0131",
+        "SkillResultResponse24": "0x03c0",
+        "SkillResultResponse32": "0x0361"
    }
    ```
 3. 시스템 알림 영역(트레이)에 있는 아이콘을 오른쪽 클릭한 후 *Reload Configuration*을 누르세요.
