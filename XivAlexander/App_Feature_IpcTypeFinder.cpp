@@ -31,7 +31,7 @@ public:
 
 							Misc::Logger::GetLogger().Format(
 								LogCategory::IpcTypeFinder,
-								"%p: S2C_AttackResponse: subtype=%04x length=%x actionId=%04x sequence=%04x wait=%.3f",
+								"%p: S2C_AttackResponse(0x%04x) length=%x actionId=%04x sequence=%04x wait=%.3f",
 								conn.GetSocket(),
 								pMessage->Data.IPC.SubType,
 								pMessage->Length,
@@ -51,8 +51,9 @@ public:
 								const auto& cooldown = actorControlSelf.Cooldown;
 								Misc::Logger::GetLogger().Format(
 									LogCategory::IpcTypeFinder,
-									"%p: S2C_ActorControlSelf: Cooldown: actionId=%04x duration=%d",
+									"%p: S2C_ActorControlSelf(0x%04x): Cooldown: actionId=%04x duration=%d",
 									conn.GetSocket(),
+									pMessage->Data.IPC.SubType,
 									cooldown.ActionId,
 									cooldown.Duration);
 								pMessage->DebugPrint(LogCategory::IpcTypeFinder, "IpcTypeFinder", true);
@@ -61,8 +62,9 @@ public:
 								const auto& rollback = actorControlSelf.Rollback;
 								Misc::Logger::GetLogger().Format(
 									LogCategory::IpcTypeFinder,
-									"%p: S2C_ActorControlSelf: Rollback: actionId=%04x sourceSequence=%04x",
+									"%p: S2C_ActorControlSelf(0x%04x): Rollback: actionId=%04x sourceSequence=%04x",
 									conn.GetSocket(),
+									pMessage->Data.IPC.SubType,
 									rollback.ActionId,
 									rollback.SourceSequence);
 								pMessage->DebugPrint(LogCategory::IpcTypeFinder, "IpcTypeFinder", true);
@@ -73,8 +75,9 @@ public:
 							//
 							Misc::Logger::GetLogger().Format(
 								LogCategory::IpcTypeFinder,
-								"%p: S2C_ActorCast: actionId=%04x time=%.3f target=%08x",
+								"%p: S2C_ActorCast(0x%04x): actionId=%04x time=%.3f target=%08x",
 								conn.GetSocket(),
+								pMessage->Data.IPC.SubType,
 								pMessage->Data.IPC.Data.S2C_ActorCast.ActionId,
 								pMessage->Data.IPC.Data.S2C_ActorCast.CastTime,
 								pMessage->Data.IPC.Data.S2C_ActorCast.TargetId);
@@ -87,8 +90,9 @@ public:
 								const auto& cancelCast = actorControl.CancelCast;
 								Misc::Logger::GetLogger().Format(
 									LogCategory::IpcTypeFinder,
-									"%p: S2C_ActorControl: CancelCast: actionId=%04x",
+									"%p: S2C_ActorControl(0x%04x): CancelCast: actionId=%04x",
 									conn.GetSocket(),
+									pMessage->Data.IPC.SubType,
 									pMessage->Length,
 									cancelCast.ActionId);
 								pMessage->DebugPrint(LogCategory::IpcTypeFinder, "IpcTypeFinder", true);
@@ -111,8 +115,9 @@ public:
 						}
 						Misc::Logger::GetLogger().Format(
 							LogCategory::IpcTypeFinder,
-							"%p: S2C_AddStatusEffect: relatedActionSequence=%08x actorId=%08x HP=%d/%d MP=%d shield=%d%s",
+							"%p: S2C_AddStatusEffect(0x%04x): relatedActionSequence=%08x actorId=%08x HP=%d/%d MP=%d shield=%d%s",
 							conn.GetSocket(),
+							pMessage->Data.IPC.SubType,
 							addStatusEffect.RelatedActionSequence,
 							addStatusEffect.ActorId,
 							addStatusEffect.CurrentHp,
@@ -132,8 +137,9 @@ public:
 						const auto& actionRequest = pMessage->Data.IPC.Data.C2S_ActionRequest;
 						Misc::Logger::GetLogger().Format(
 							LogCategory::IpcTypeFinder,
-							"5p: C2S_AttackRequest: actionId=%04x sequence=%04x",
+							"%p: C2S_AttackRequest(0x%04x): actionId=%04x sequence=%04x",
 							conn.GetSocket(),
+							pMessage->Data.IPC.SubType,
 							actionRequest.ActionId, actionRequest.Sequence);
 						pMessage->DebugPrint(LogCategory::IpcTypeFinder, "IpcTypeFinder", true);
 					}
