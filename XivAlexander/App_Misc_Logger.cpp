@@ -31,7 +31,7 @@ public:
 		while (true) {
 			std::deque<LogItem> pendingItems;
 			{
-				std::unique_lock<std::mutex> lock(m_pendingItemLock);
+				std::unique_lock lock(m_pendingItemLock);
 				if (m_pendingItems.empty()) {
 					m_threadTrigger.wait(lock);
 					if (m_bQuitting)
@@ -41,7 +41,7 @@ public:
 			}
 			for (auto& item : pendingItems) {
 				{
-					std::lock_guard<std::mutex> lock(m_itemLock);
+					std::lock_guard lock(m_itemLock);
 					m_items.push_back(item);
 					if (m_items.size() > 1024)
 						m_items.pop_front();
@@ -52,7 +52,7 @@ public:
 	}
 
 	void AddLogItem(LogItem item) {
-		std::lock_guard<std::mutex> lock(m_pendingItemLock);
+		std::lock_guard lock(m_pendingItemLock);
 		m_pendingItems.push_back(std::move(item));
 		m_threadTrigger.notify_all();
 	}
@@ -87,8 +87,8 @@ void App::Misc::Logger::Log(LogCategory category, const std::string& s, LogLevel
 }
 
 void App::Misc::Logger::Clear() {
-	std::lock_guard<std::mutex> lock(m_pImpl->m_itemLock);
-	std::lock_guard<std::mutex> lock2(m_pImpl->m_pendingItemLock);
+	std::lock_guard lock(m_pImpl->m_itemLock);
+	std::lock_guard lock2(m_pImpl->m_pendingItemLock);
 	m_pImpl->m_items.clear();
 	m_pImpl->m_pendingItems.clear();
 }

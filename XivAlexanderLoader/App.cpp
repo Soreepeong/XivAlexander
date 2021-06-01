@@ -1,7 +1,7 @@
 #include "pch.h"
 
 static void* GetModulePointer(HANDLE hProcess, const wchar_t* sDllPath) {
-	Utils::Win32Handle<> th32(CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, GetProcessId(hProcess)));
+	Utils::Win32Handle th32(CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, GetProcessId(hProcess)));
 	MODULEENTRY32W mod{ sizeof MODULEENTRY32W };
 	if (!Module32FirstW(th32, &mod))
 		return nullptr;
@@ -27,7 +27,7 @@ static std::wstring GetProcessExecutablePath(HANDLE hProcess) {
 }
 
 static int CallRemoteFunction(HANDLE hProcess, void* rpfn, void* rpParam) {
-	Utils::Win32Handle<> hLoadLibraryThread(CreateRemoteThread(hProcess, nullptr, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(rpfn), rpParam, 0, nullptr));
+	const Utils::Win32Handle hLoadLibraryThread(CreateRemoteThread(hProcess, nullptr, 0, static_cast<LPTHREAD_START_ROUTINE>(rpfn), rpParam, 0, nullptr));
 	WaitForSingleObject(hLoadLibraryThread, INFINITE);
 	DWORD exitCode;
 	GetExitCodeThread(hLoadLibraryThread, &exitCode);
@@ -156,7 +156,7 @@ std::pair<std::string, std::string> FormatModuleVersionString(HMODULE hModule) {
 	LPVOID lpBuffer = nullptr;
 	if (!VerQueryValueW(lpVersionInfo, L"\\", &lpBuffer, &size))
 		throw std::exception("Failed to query version information.");
-	const VS_FIXEDFILEINFO& versionInfo = *reinterpret_cast<const VS_FIXEDFILEINFO*>(lpBuffer);
+	const VS_FIXEDFILEINFO& versionInfo = *static_cast<const VS_FIXEDFILEINFO*>(lpBuffer);
 	if (versionInfo.dwSignature != 0xfeef04bd)
 		throw std::exception("Invalid version info found.");
 	return std::make_pair<>(
@@ -400,7 +400,7 @@ int WINAPI wWinMain(
 
 		try {
 			{
-				Utils::Win32Handle<> hProcess(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid));
+				Utils::Win32Handle hProcess(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid));
 				sExePath = GetProcessExecutablePath(hProcess);
 			}
 			if (g_parameters.m_targetPids.empty() && g_parameters.m_targetSuffix.empty()) {
@@ -424,7 +424,7 @@ int WINAPI wWinMain(
 
 			void* rpModule;
 			{
-				Utils::Win32Handle<> hProcess(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid));
+				Utils::Win32Handle hProcess(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid));
 				rpModule = FindModuleAddress(hProcess, szDllPath);
 			}
 
@@ -480,7 +480,7 @@ int WINAPI wWinMain(
 				continue;
 
 			{
-				Utils::Win32Handle<> hProcess(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, pid));
+				Utils::Win32Handle hProcess(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, pid));
 
 				rpModule = FindModuleAddress(hProcess, szDllPath);
 				if (response == IDCANCEL && !rpModule)

@@ -51,7 +51,7 @@ namespace App::Window {
 
     protected:
 
-        LRESULT RunOnUiThreadWait(std::function<LRESULT()>);
+        LRESULT RunOnUiThreadWait(const std::function<LRESULT()>&);
         bool RunOnUiThread(std::function<void()>, bool immediateIfNoWindow = true);
 
         double GetZoom() const;

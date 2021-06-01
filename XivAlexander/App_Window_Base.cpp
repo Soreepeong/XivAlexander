@@ -57,18 +57,18 @@ HACCEL App::Window::Base::GetAcceleratorTable() const {
 	return NULL;
 }
 
-LRESULT App::Window::Base::RunOnUiThreadWait(std::function<LRESULT()> fn) {
-	return SendMessage(m_hWnd, AppMessageRunOnUiThread, 0, LPARAM(&fn));
+LRESULT App::Window::Base::RunOnUiThreadWait(const std::function<LRESULT()> &fn) {
+	return SendMessage(m_hWnd, AppMessageRunOnUiThread, 0, reinterpret_cast<LPARAM>(&fn));
 }
 
-bool App::Window::Base::RunOnUiThread(std::function<void()> fn, bool immediateIfNoWindow) {
+auto App::Window::Base::RunOnUiThread(std::function<void()> fn, bool immediateIfNoWindow) -> bool {
 	if (!m_hWnd) {
 		if (immediateIfNoWindow)
 			fn();
 		return immediateIfNoWindow;
 	}
-	const auto pfn = new std::function<void()>(fn);
-	if (!PostMessage(m_hWnd, AppMessageRunOnUiThread, 1, LPARAM(pfn))) {
+	const auto pfn = new std::function(std::move(fn));
+	if (!PostMessage(m_hWnd, AppMessageRunOnUiThread, 1, reinterpret_cast<LPARAM>(pfn))) {
 		delete pfn;
 		return false;
 	}

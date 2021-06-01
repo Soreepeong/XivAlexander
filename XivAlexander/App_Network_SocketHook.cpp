@@ -663,7 +663,7 @@ public:
 
 			std::vector<SOCKET> writeSockets;
 			{
-				std::lock_guard<std::mutex> _guard(m_socketMutex);
+				std::lock_guard _guard(m_socketMutex);
 				for (const auto& pair : m_sockets)
 					writeSockets.push_back(pair.first);
 			}
@@ -835,7 +835,7 @@ public:
 		m_unloading = true;
 		while (true) {
 			{
-				std::lock_guard<std::mutex> _guard(m_socketMutex);
+				std::lock_guard _guard(m_socketMutex);
 				if (m_sockets.empty())
 					break;
 				for (auto& item : m_sockets) {
@@ -856,7 +856,7 @@ public:
 	}
 
 	SingleConnection* OnSocketFound(SOCKET socket, bool existingOnly = false) {
-		std::lock_guard<std::mutex> _guard(m_socketMutex);
+		std::lock_guard _guard(m_socketMutex);
 
 		{
 			const auto found = m_sockets.find(socket);
@@ -899,7 +899,7 @@ public:
 	}
 
 	void CleanupSocket(SOCKET socket) {
-		std::lock_guard<std::mutex> _guard(m_socketMutex);
+		std::lock_guard _guard(m_socketMutex);
 		const auto f = m_sockets.find(socket);
 		if (f == m_sockets.end())
 			return;
@@ -928,7 +928,7 @@ App::Network::SocketHook* App::Network::SocketHook::Instance() {
 }
 
 void App::Network::SocketHook::AddOnSocketFoundListener(void* token, std::function<void(SingleConnection&)> cb) {
-	std::lock_guard<std::mutex> _guard(this->impl->m_socketMutex);
+	std::lock_guard _guard(this->impl->m_socketMutex);
 	this->impl->m_onSocketFoundListeners[reinterpret_cast<size_t>(token)].push_back(cb);
 	for (const auto& item : this->impl->m_sockets) {
 		cb(*item.second);
@@ -936,12 +936,12 @@ void App::Network::SocketHook::AddOnSocketFoundListener(void* token, std::functi
 }
 
 void App::Network::SocketHook::AddOnSocketGoneListener(void* token, std::function<void(SingleConnection&)> cb) {
-	std::lock_guard<std::mutex> _guard(this->impl->m_socketMutex);
+	std::lock_guard _guard(this->impl->m_socketMutex);
 	this->impl->m_onSocketGoneListeners[reinterpret_cast<size_t>(token)].push_back(cb);
 }
 
 void App::Network::SocketHook::RemoveListeners(void* token) {
-	std::lock_guard<std::mutex> _guard(this->impl->m_socketMutex);
+	std::lock_guard _guard(this->impl->m_socketMutex);
 	this->impl->m_onSocketFoundListeners.erase(reinterpret_cast<size_t>(token));
 	this->impl->m_onSocketGoneListeners.erase(reinterpret_cast<size_t>(token));
 }

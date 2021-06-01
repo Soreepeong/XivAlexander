@@ -93,18 +93,18 @@ static void sockaddr_cmp_helper(int x) {
 }
 
 int Utils::sockaddr_cmp(const void* x, const void* y) {
-	const auto family1 = reinterpret_cast<const sockaddr*>(x)->sa_family;
-	const auto family2 = reinterpret_cast<const sockaddr*>(y)->sa_family;
+	const auto family1 = static_cast<const sockaddr*>(x)->sa_family;
+	const auto family2 = static_cast<const sockaddr*>(y)->sa_family;
 	try {
 		sockaddr_cmp_helper(family1, family2);
 		if (family1 == AF_INET) {
-			const auto addr1 = reinterpret_cast<const sockaddr_in*>(x);
-			const auto addr2 = reinterpret_cast<const sockaddr_in*>(y);
+			const auto addr1 = static_cast<const sockaddr_in*>(x);
+			const auto addr2 = static_cast<const sockaddr_in*>(y);
 			sockaddr_cmp_helper(ntohl(addr1->sin_addr.s_addr), ntohl(addr2->sin_addr.s_addr));
 			sockaddr_cmp_helper(ntohs(addr1->sin_port), ntohs(addr2->sin_port));
 		} else if (family1 == AF_INET6) {
-			const auto addr1 = reinterpret_cast<const sockaddr_in6*>(x);
-			const auto addr2 = reinterpret_cast<const sockaddr_in6*>(y);
+			const auto addr1 = static_cast<const sockaddr_in6*>(x);
+			const auto addr2 = static_cast<const sockaddr_in6*>(y);
 			sockaddr_cmp_helper(memcmp(addr1->sin6_addr.s6_addr, addr2->sin6_addr.s6_addr, sizeof addr1->sin6_addr.s6_addr));
 			sockaddr_cmp_helper(ntohs(addr1->sin6_port), ntohs(addr2->sin6_port));
 			sockaddr_cmp_helper(addr1->sin6_flowinfo, addr2->sin6_flowinfo);

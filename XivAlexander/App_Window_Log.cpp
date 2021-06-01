@@ -133,7 +133,7 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					m_direct(m_directPtr, SCI_GETTEXT, pDataT->buf.length(), reinterpret_cast<sptr_t>(&pDataT->buf[0]));
 					pDataT->buf.resize(pDataT->buf.length() - 1);
 
-					Utils::Win32Handle<> hThread(CreateThread(nullptr, 0, [](void* pDataRaw) -> DWORD {
+					Utils::Win32Handle hThread(CreateThread(nullptr, 0, [](void* pDataRaw) -> DWORD {
 						DataT* pDataT = reinterpret_cast<DataT*>(pDataRaw);
 						Utils::CallOnDestruction freeDataT([pDataT]() { delete pDataT; });
 						static const COMDLG_FILTERSPEC saveFileTypes[] = {
@@ -166,7 +166,7 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
 								Utils::CallOnDestruction freeFileName([pszNewFileName]() { CoTaskMemFree(pszNewFileName); });
 								{
-									Utils::Win32Handle<> hFile(CreateFile(pszNewFileName, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr));
+									Utils::Win32Handle hFile(CreateFile(pszNewFileName, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr));
 									DWORD written;
 									WriteFile(hFile, pDataT->buf.data(), static_cast<DWORD>(pDataT->buf.length()), &written, nullptr);
 									if (written != pDataT->buf.length())

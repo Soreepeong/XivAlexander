@@ -19,7 +19,7 @@ namespace Utils {
 
 	public:
 		virtual ~_ListenerManagerImplBase() {
-			std::lock_guard<std::mutex> lock(*m_lock);
+			std::lock_guard lock(*m_lock);
 			m_callbacks.clear();
 			for (auto& i : m_alreadyDestructedList)
 				*i = true;
@@ -31,14 +31,14 @@ namespace Utils {
 		virtual CallOnDestruction operator() (const std::function<R(T ...)>& fn) {
 			auto& callbacks = m_callbacks;
 			auto& alreadyDestructedList = m_alreadyDestructedList;
-			std::lock_guard<std::mutex> lock(*m_lock);
+			std::lock_guard lock(*m_lock);
 			const auto callbackId = m_callbackId++;
 			callbacks.emplace(callbackId, fn);
 
 			auto indicator = std::make_shared<bool>(false);
 			alreadyDestructedList.push_back(indicator);
 			return CallOnDestruction([fn, indicator = std::move(indicator), mutex = m_lock, callbackId, &callbacks, &alreadyDestructedList]() {
-				std::lock_guard<std::mutex> lock(*mutex);
+				std::lock_guard lock(*mutex);
 
 				// already destructed?
 				if (*indicator)
@@ -56,7 +56,7 @@ namespace Utils {
 		virtual size_t operator() (T ... t) {
 			std::vector<std::function<R(T ...)>> callbacks;
 			{
-				std::lock_guard<std::mutex> lock(*m_lock);
+				std::lock_guard lock(*m_lock);
 				for (const auto& cbp : m_callbacks)
 					callbacks.push_back(cbp.second);
 			}

@@ -15,12 +15,12 @@ namespace App {
 
 HINSTANCE g_hInstance;
 
-static App::App* l_pApp = nullptr;
 static bool s_bFreeLibraryAndExitThread = true;
+static bool s_bUnloadDisabled = false;
 
 static HWND FindGameMainWindow() {
 	HWND hwnd = 0;
-	while (hwnd = FindWindowExW(nullptr, hwnd, L"FFXIVGAME", nullptr)) {
+	while ((hwnd = FindWindowExW(nullptr, hwnd, L"FFXIVGAME", nullptr))) {
 		DWORD pid;
 		GetWindowThreadProcessId(hwnd, &pid);
 
@@ -29,28 +29,11 @@ static HWND FindGameMainWindow() {
 		return hwnd;
 	}
 	return 0;
-
-	EnumWindows([](HWND hwnd, LPARAM lParam) -> BOOL {
-		DWORD pid;
-		HWND& hGameMainWindow = *reinterpret_cast<HWND*>(lParam);
-		std::wstring buf;
-		GetWindowThreadProcessId(hwnd, &pid);
-
-		if (pid != GetCurrentProcessId())
-			return TRUE;
-
-		buf.reserve(128);
-		buf.resize(GetClassNameW(hwnd, &buf[0], static_cast<int>(buf.capacity())));
-		if (buf != L"FFXIVGAME")
-			return TRUE;
-
-		hGameMainWindow = hwnd;
-		return FALSE;
-		}, reinterpret_cast<LPARAM>(&hwnd));
-	return hwnd;
 }
 
 class App::App {
+	static App* m_instance;
+	
 public:
 	const HWND m_hGameMainWindow;
 	std::vector<Utils::CallOnDestruction> m_cleanupPendingDestructions;
@@ -63,18 +46,14 @@ public:
 	std::unique_ptr<::App::Feature::IpcTypeFinder> m_ipcTypeFinder;
 	std::unique_ptr<::App::Feature::AllIpcMessageLogger> m_allIpcMessageLogger;
 	std::unique_ptr<::App::Feature::EffectApplicationDelayLogger> m_effectApplicationDelayLogger;
-	bool m_bUnloadDisabled = false;
 
 	std::unique_ptr<Window::Log> m_logWindow;
 	std::unique_ptr<Window::Main> m_trayWindow;
 
 	DWORD m_mainThreadId = -1;
 	int m_nWndProcDepth = 0;
-	
+
 	WNDPROC m_originalGameMainWndProc = nullptr;
-	const LONG_PTR m_overridenGameMainWndProc = reinterpret_cast<LONG_PTR>(
-		static_cast<WNDPROC>([](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) { return l_pApp->OverridenWndProc(hwnd, msg, wParam, lParam); })
-		);
 
 	LRESULT CALLBACK OverridenWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 		m_mainThreadId = GetCurrentThreadId();
@@ -82,7 +61,7 @@ public:
 			while (!m_qRunInMessageLoop.empty()) {
 				std::function<void()> fn;
 				{
-					std::lock_guard<std::mutex> _lock(m_runInMessageLoopLock);
+					std::lock_guard _lock(m_runInMessageLoopLock);
 					fn = std::move(m_qRunInMessageLoop.front());
 					m_qRunInMessageLoop.pop();
 				}
@@ -101,6 +80,10 @@ public:
 		m_nWndProcDepth -= 1;
 		return res;
 	}
+
+	const LONG_PTR m_overridenGameMainWndProc = reinterpret_cast<LONG_PTR>(
+		static_cast<WNDPROC>([](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) { return m_instance->OverridenWndProc(hwnd, msg, wParam, lParam); })
+		);
 
 	void OnCleanup(std::function<void()> cb) {
 		m_cleanupPendingDestructions.push_back(Utils::CallOnDestruction(cb));
@@ -123,7 +106,10 @@ public:
 
 	App()
 		: m_hGameMainWindow(FindGameMainWindow()) {
-		l_pApp = this;
+		if (m_instance)
+			throw std::runtime_error("App already initialized");
+		
+		m_instance = this;
 
 		try {
 			Misc::FreeGameMutex::FreeGameMutex();
@@ -231,7 +217,7 @@ public:
 			while (!m_cleanupPendingDestructions.empty())
 				m_cleanupPendingDestructions.pop_back();
 
-			l_pApp = nullptr;
+			m_instance = nullptr;
 			throw;
 		}
 	}
@@ -241,7 +227,7 @@ public:
 		while (!m_cleanupPendingDestructions.empty())
 			m_cleanupPendingDestructions.pop_back();
 
-		l_pApp = nullptr;
+		m_instance = nullptr;
 	}
 
 	void Run() {
@@ -283,13 +269,13 @@ public:
 	void QueueRunOnMessageLoop(std::function<void()> f, bool wait = false) {
 		if (!wait) {
 			{
-				std::lock_guard<std::mutex> _lock(m_runInMessageLoopLock);
+				std::lock_guard _lock(m_runInMessageLoopLock);
 				m_qRunInMessageLoop.push(f);
 			}
 			PostMessageW(m_hGameMainWindow, WM_NULL, 0, 0);
 
 		} else {
-			Utils::Win32Handle<> hEvent(CreateEvent(nullptr, true, false, nullptr));
+			Utils::Win32Handle hEvent(CreateEvent(nullptr, true, false, nullptr));
 			const auto fn = [&f, &hEvent]() {
 				try {
 					f();
@@ -299,7 +285,7 @@ public:
 				SetEvent(hEvent);
 			};
 			{
-				std::lock_guard<std::mutex> _lock(m_runInMessageLoopLock);
+				std::lock_guard _lock(m_runInMessageLoopLock);
 				m_qRunInMessageLoop.push(fn);
 			}
 			SendMessageW(m_hGameMainWindow, WM_NULL, 0, 0);
@@ -308,7 +294,7 @@ public:
 	}
 
 	int Unload() {
-		if (m_bUnloadDisabled)
+		if (s_bUnloadDisabled)
 			throw std::exception("Unloading is currently disabled.");
 
 		if (GetWindowLongPtrW(m_hGameMainWindow, GWLP_WNDPROC) != m_overridenGameMainWndProc)
@@ -317,7 +303,14 @@ public:
 		SendMessage(m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
 		return 0;
 	}
+
+	static
+	App* GetInstance() {
+		return m_instance;
+	}
 };
+
+App::App* App::App::m_instance;
 
 static DWORD WINAPI DllThread(PVOID param1) {
 	Utils::SetThreadDescription(GetCurrentThread(), L"XivAlexander::DllThread");
@@ -351,10 +344,10 @@ BOOL WINAPI DllMain(
 }
 
 extern "C" __declspec(dllexport) int __stdcall LoadXivAlexander(void* lpReserved) {
-	if (l_pApp)
+	if (App::App::GetInstance())
 		return 0;
 	try {
-		Utils::Win32Handle<> hThread(CreateThread(nullptr, 0, DllThread, g_hInstance, 0, nullptr));
+		Utils::Win32Handle hThread(CreateThread(nullptr, 0, DllThread, g_hInstance, 0, nullptr));
 		return 0;
 	} catch (const std::exception& e) {
 		OutputDebugStringA(Utils::FormatString("LoadXivAlexander error: %s\n", e.what()).c_str());
@@ -363,7 +356,7 @@ extern "C" __declspec(dllexport) int __stdcall LoadXivAlexander(void* lpReserved
 }
 
 extern "C" __declspec(dllexport) int __stdcall DisableUnloading(size_t bDisable) {
-	l_pApp->m_bUnloadDisabled = !!bDisable;
+	s_bUnloadDisabled = !!bDisable;
 	return 0;
 }
 
@@ -373,9 +366,9 @@ extern "C" __declspec(dllexport) int __stdcall SetFreeLibraryAndExitThread(size_
 }
 
 extern "C" __declspec(dllexport) int __stdcall UnloadXivAlexander(void* lpReserved) {
-	if (l_pApp) {
+	if (auto pApp = App::App::GetInstance()) {
 		try {
-			l_pApp->Unload();
+			pApp->Unload();
 		} catch (std::exception& e) {
 			MessageBoxW(nullptr, Utils::FromUtf8(Utils::FormatString("Unable to unload XivAlexander: %s", e.what())).c_str(), L"XivAlexander", MB_ICONERROR);
 		}
@@ -385,7 +378,7 @@ extern "C" __declspec(dllexport) int __stdcall UnloadXivAlexander(void* lpReserv
 }
 
 extern "C" __declspec(dllexport) int __stdcall ReloadConfiguration(void* lpReserved) {
-	if (l_pApp)
+	if (App::App::GetInstance())
 		App::ConfigRepository::Config().Reload(true);
 	return 0;
 }

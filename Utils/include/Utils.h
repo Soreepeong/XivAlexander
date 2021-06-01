@@ -73,7 +73,7 @@ namespace Utils {
 			pfnSetThreadDescription = reinterpret_cast<SetThreadDescriptionT>(GetProcAddress(hMod, "SetThreadDescription"));
 
 		if (pfnSetThreadDescription)
-			pfnSetThreadDescription(GetCurrentThread(), FormatString(format.c_str(), std::forward<Args>(args)...).c_str());
+			pfnSetThreadDescription(GetCurrentThread(), FormatString(format, std::forward<Args>(args)...).c_str());
 	}
 
 	void SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked);
