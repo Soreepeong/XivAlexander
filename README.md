@@ -65,6 +65,19 @@ Usage: XivAlexanderLoader [options] targets
 7. Do the same but pull more than 17 adds to figure out `SkillResultResponse24`.
 8. Leave and re-enter Sastasha, and do the same but pull more than 25 adds to figure out `SkillResultResponse32`.
 
+### Description on options
+* `High Latency Mitigation`: The purpose of this program.
+  * `Enable`: Turn this off when you're looking for updated opcodes.
+  * `Use Delay Detection`: When checked, the program will try to detect how much time does the server spend to process your action requests.
+  * Turn both `Use Delay Detection` and `Use Latency Correction` off if...
+    * ...your ping is above 200ms.
+    * ...your VPN gives a fake ping of 0ms (&lt;1ms).
+* `Reduce Packet Delay`: When checked, following additional socket options are set or changed. 
+  * `TCP_NODELAY`: If enabled, sends packets as soon as possible instead of waiting for ACK or large packet.
+  * `SIO_TCP_SET_ACK_FREQUENCY`: Controls ACK delay every x ACK. Default delay is 40 or 200ms. Default value is 2 ACKs, set to 1 to disable ACK delay.
+* `Use IPC Type Finder` and `Use All IPC Message Logger`: When checked, the program will dump some network traffic and print all opcodes, to assist finding out the opcodes after patch.
+* `Use Effect Appliation Delay Logger`: When enabled, the program will log whenever an action actually takes effect. Used to measure how long does it take for an action to actually take effect. 
+   
 ## How it works
 After you use an action, the game will apply 500ms animation lock. 
 When server responds to action use request, it will contain animation lock duration information, and the game client will re-apply the animation lock with the duration given from the server.
