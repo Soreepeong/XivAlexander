@@ -10,10 +10,14 @@ namespace Utils {
 	public:
 		Win32Handle() : m_hHandle(nullptr) {}
 
-		explicit Win32Handle(T handle) :
+		explicit Win32Handle(T handle, bool suppressError = false) :
 			m_hHandle(handle) {
-			if (handle == nullptr || handle == INVALID_HANDLE_VALUE)
-				throw std::exception(FormatString("Handle error: %s", FormatWindowsErrorMessage().c_str()).c_str());
+			if (handle == nullptr || handle == INVALID_HANDLE_VALUE) {
+				if (suppressError)
+					m_hHandle = nullptr;
+				else
+					throw std::exception(FormatString("Handle error: %s", FormatWindowsErrorMessage().c_str()).c_str());
+			}
 		}
 
 		Win32Handle(Win32Handle<T, CloserFunction>&& r) noexcept {

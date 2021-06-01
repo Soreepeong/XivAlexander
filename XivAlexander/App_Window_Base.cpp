@@ -76,14 +76,30 @@ bool App::Window::Base::RunOnUiThread(std::function<void()> fn, bool immediateIf
 }
 
 double App::Window::Base::GetZoom() const {
-	const auto monitor = MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST);
-	UINT newDpiX;
-	UINT newDpiY;
-	if (FAILED(GetDpiForMonitor(monitor, MONITOR_DPI_TYPE::MDT_EFFECTIVE_DPI, &newDpiX, &newDpiY))) {
-		newDpiX = 96;
-		newDpiY = 96;
+	try {
+		const auto hMonitor = MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST);
+		UINT newDpiX = 96;
+		UINT newDpiY = 96;
+
+		bool fallback = false;
+		const Utils::Win32Handle<HMODULE, FreeLibrary> hShcore(LoadLibraryExW(L"Shcore.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32), true);
+		if (hShcore) {
+			const auto pGetDpiForMonitor = reinterpret_cast<decltype(GetDpiForMonitor)*>(GetProcAddress(hShcore, "GetDpiForMonitor"));
+			if (!pGetDpiForMonitor || FAILED(pGetDpiForMonitor(hMonitor, MONITOR_DPI_TYPE::MDT_EFFECTIVE_DPI, &newDpiX, &newDpiY)))
+				fallback = true;
+		}
+		if (fallback) {
+			MONITORINFOEXW mi{ sizeof(MONITORINFOEXW) };
+			GetMonitorInfoW(hMonitor, &mi);
+			const Utils::Win32Handle<HDC, DeleteDC> hdc(CreateDCW(L"DISPLAY", mi.szDevice, nullptr, nullptr));
+			newDpiX = GetDeviceCaps(hdc, LOGPIXELSX);
+			newDpiY = GetDeviceCaps(hdc, LOGPIXELSY);
+		}
+		return std::min(newDpiY, newDpiX) / 96.;
+	} catch (std::exception&) {
+		// uninterested in handling errors here
+		return 1.;
 	}
-	return std::min(newDpiY, newDpiX) / 96.;
 }
 
 LRESULT App::Window::Base::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
