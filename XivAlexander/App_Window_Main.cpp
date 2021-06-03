@@ -27,8 +27,8 @@ static WNDCLASSEXW WindowClass() {
 
 App::Window::Main::Main(HWND hGameWnd, std::function<void()> unloadFunction)
 	: Base(WindowClass(), L"XivAlexander", WS_OVERLAPPEDWINDOW, WS_EX_TOPMOST, CW_USEDEFAULT, CW_USEDEFAULT, 480, 80, nullptr, nullptr)
-	, m_triggerUnload(unloadFunction)
 	, m_hGameWnd(hGameWnd)
+	, m_triggerUnload(std::move(unloadFunction))
 	, m_uTaskbarRestartMessage(RegisterWindowMessage(TEXT("TaskbarCreated"))) {
 
 	wchar_t path[MAX_PATH] = {};
@@ -47,15 +47,16 @@ App::Window::Main::Main(HWND hGameWnd, std::function<void()> unloadFunction)
 	// Try to restore tray icon every 5 seconds in case things go wrong
 	SetTimer(m_hWnd, TimerIdReregisterTrayIcon, 5000, nullptr);
 
-	m_callbackHandle = ConfigRepository::Config().ShowControlWindow.OnChangeListener([this](ConfigItemBase&) {
-		ShowWindow(m_hWnd, ConfigRepository::Config().ShowControlWindow ? SW_SHOW : SW_HIDE);
-		});
-	if (ConfigRepository::Config().ShowControlWindow)
+	m_cleanupList.emplace_back(App::Config::Instance().Runtime.ShowControlWindow.OnChangeListener([this](App::Config::ItemBase&) {
+		ShowWindow(m_hWnd, App::Config::Instance().Runtime.ShowControlWindow ? SW_SHOW : SW_HIDE);
+		}));
+	if (App::Config::Instance().Runtime.ShowControlWindow)
 		ShowWindow(m_hWnd, SW_SHOW);
 }
 
 App::Window::Main::~Main() {
-	m_callbackHandle = nullptr;
+	while (!m_cleanupList.empty())
+		m_cleanupList.pop_back();
 	Destroy();
 }
 
@@ -68,7 +69,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		RepopulateMenu(GetMenu(m_hWnd));
 	} else if (uMsg == WM_COMMAND) {
 		if (!lParam) {
-			auto& config = ConfigRepository::Config();
+			auto& config = App::Config::Instance().Runtime;
 			switch (LOWORD(wParam)) {
 				case ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP:
 					config.AlwaysOnTop = !config.AlwaysOnTop;
@@ -122,12 +123,18 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					m_triggerUnload();
 					return 0;
 
-				case ID_TRAYMENU_EDITCONFIGURATION:
-					if (App::Window::Config::m_pConfigWindow && !App::Window::Config::m_pConfigWindow->IsDestroyed()) {
-						SetFocus(App::Window::Config::m_pConfigWindow->GetHandle());
-					} else {
-						App::Window::Config::m_pConfigWindow = std::make_unique< App::Window::Config>();
-					}
+				case ID_TRAYMENU_EDITRUNTIMECONFIGURATION:
+					if (m_runtimeConfigEditor && !m_runtimeConfigEditor->IsDestroyed())
+						SetFocus(m_runtimeConfigEditor->GetHandle());
+					else
+						m_runtimeConfigEditor = std::make_unique<Config>(&App::Config::Instance().Runtime);
+					return 0;
+
+				case ID_TRAYMENU_EDITOPCODECONFIGURATION:
+					if (m_gameConfigEditor && !m_gameConfigEditor->IsDestroyed())
+						SetFocus(m_gameConfigEditor->GetHandle());
+					else
+						m_gameConfigEditor = std::make_unique<Config>(&App::Config::Instance().Game);
 					return 0;
 
 				case ID_VIEW_ALWAYSONTOP:
@@ -177,7 +184,8 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 void App::Window::Main::OnDestroy() {
 	m_triggerUnload();
 
-	App::Window::Config::m_pConfigWindow = nullptr;
+	m_runtimeConfigEditor = nullptr;
+	m_gameConfigEditor = nullptr;
 	NOTIFYICONDATAW nid = { sizeof(NOTIFYICONDATAW) };
 	nid.guidItem = m_guid;
 	nid.uID = TrayItemId;
@@ -189,7 +197,7 @@ void App::Window::Main::OnDestroy() {
 }
 
 void App::Window::Main::RepopulateMenu(HMENU hMenu) {
-	const auto& config = ConfigRepository::Config();
+	const auto& config = App::Config::Instance().Runtime;
 
 	Utils::SetMenuState(hMenu, ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST);
 	Utils::SetMenuState(hMenu, ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP, config.AlwaysOnTop);

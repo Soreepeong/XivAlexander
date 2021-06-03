@@ -2,11 +2,10 @@
 #include "App_Window_Config.h"
 #include "resource.h"
 
-std::unique_ptr<App::Window::Config> App::Window::Config::m_pConfigWindow;
-constexpr int BaseFontSize = 9;
+constexpr int BaseFontSize = 11;
 
 static WNDCLASSEXW WindowClass() {
-	Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIcon(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)));
+	const Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIcon(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)));
 	WNDCLASSEXW wcex;
 	ZeroMemory(&wcex, sizeof wcex);
 	wcex.cbSize = sizeof(WNDCLASSEX);
@@ -23,8 +22,9 @@ static WNDCLASSEXW WindowClass() {
 	return wcex;
 }
 
-App::Window::Config::Config()
-	: Base(WindowClass(), L"Config", WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr) {
+App::Window::Config::Config(App::Config::BaseRepository* pRepository)
+	: Base(WindowClass(), L"Config", WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr)
+	, m_pRepository(pRepository) {
 
 	NONCLIENTMETRICS ncm = { sizeof(NONCLIENTMETRICS) };
 	SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
@@ -32,13 +32,13 @@ App::Window::Config::Config()
 	m_hScintilla = CreateWindowExW(0, TEXT("Scintilla"), TEXT(""), WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
 		0, 0, 0, 0, m_hWnd, nullptr, g_hInstance, nullptr);
 	m_direct = reinterpret_cast<SciFnDirect>(SendMessageW(m_hScintilla, SCI_GETDIRECTFUNCTION, 0, 0));
-	m_directPtr = static_cast<sptr_t>(SendMessageW(m_hScintilla, SCI_GETDIRECTPOINTER, 0, 0));
+	m_directPtr = SendMessageW(m_hScintilla, SCI_GETDIRECTPOINTER, 0, 0);
 	m_direct(m_directPtr, SCI_STYLESETSIZE, STYLE_DEFAULT, static_cast<int>(BaseFontSize * GetZoom()));
 	m_direct(m_directPtr, SCI_SETWRAPMODE, SC_WRAP_CHAR, 0);
 	m_direct(m_directPtr, SCI_SETMARGINTYPEN, 0, SC_MARGIN_NUMBER);
 	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 1, 0);
-	m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, sptr_t(Utils::ToUtf8(ncm.lfMessageFont.lfFaceName).c_str()));
-	m_direct(m_directPtr, SCI_SETLEXERLANGUAGE, 0, sptr_t("json"));
+	m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>(Utils::ToUtf8(ncm.lfMessageFont.lfFaceName).c_str()));
+	m_direct(m_directPtr, SCI_SETLEXERLANGUAGE, 0, reinterpret_cast<sptr_t>("json"));
 
 	Revert();
 	ShowWindow(m_hWnd, SW_SHOW);
@@ -59,13 +59,13 @@ LRESULT App::Window::Config::OnNotify(const LPNMHDR nmhdr) {
 }
 
 void App::Window::Config::Revert() {
-	ConfigRepository::Config().Save();
+	m_pRepository->Save();
 	nlohmann::json config;
 	try {
-		std::ifstream in(ConfigRepository::Config().GetConfigPath());
+		std::ifstream in(m_pRepository->GetConfigPath());
 		in >> config;
 		m_originalConfig = config.dump(1, '\t');
-		m_direct(m_directPtr, SCI_SETTEXT, 0, sptr_t(m_originalConfig.c_str()));
+		m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(m_originalConfig.c_str()));
 	} catch (std::exception& e) {
 		MessageBox(m_hWnd, Utils::FormatString(L"JSON Config load error: %s", Utils::FromUtf8(e.what())).c_str(), L"XivAlexander", MB_ICONERROR);
 		DestroyWindow(m_hWnd);
@@ -83,14 +83,18 @@ bool App::Window::Config::TrySave() {
 		return false;
 	}
 	try {
-		std::ofstream out(ConfigRepository::Config().GetConfigPath());
+		std::ofstream out(m_pRepository->GetConfigPath());
 		out << buf;
 	} catch (std::exception& e) {
 		MessageBox(m_hWnd, Utils::FormatString(L"JSON Config save error: %s", Utils::FromUtf8(e.what()).c_str()).c_str(), L"XivAlexander", MB_ICONERROR);
 		return false;
 	}
-	ConfigRepository::Config().Reload(true);
+	m_pRepository->Reload(true);
 	return true;
+}
+
+App::Config::BaseRepository* App::Window::Config::GetRepository() const {
+	return m_pRepository;
 }
 
 LRESULT App::Window::Config::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {

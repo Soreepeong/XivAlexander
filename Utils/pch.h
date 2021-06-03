@@ -15,7 +15,10 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <Windows.h>
-#include <ws2tcpip.h>
+#include <WS2tcpip.h>
+#include <PathCch.h>
+#include <wincrypt.h>
+#include <wintrust.h>
 
 #define ZLIB_CONST
 #include <zlib.h>

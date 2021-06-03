@@ -13,7 +13,7 @@ namespace App::Window {
             _In_opt_ HMENU hMenu,
             _In_ Base* pBase);
 
-        bool m_bDestroyed;
+        bool m_bDestroyed = false;
 
     protected:
         const WNDCLASSEXW m_windowClass;
@@ -48,6 +48,8 @@ namespace App::Window {
         virtual HACCEL GetAcceleratorTable() const;
 
         Utils::ListenerManager<Base, void> OnDestroyListener;
+
+        static const std::set<Base*>& GetAllOpenWindows();
 
     protected:
 

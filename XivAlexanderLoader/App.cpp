@@ -343,11 +343,19 @@ int WINAPI wWinMain(
 
 	DWORD pid;
 	HWND hwnd = nullptr;
-	wchar_t szDllPath[PATHCCH_MAX_CCH] = { 0 };
+	std::wstring dllDirectory;
+	dllDirectory.resize(PATHCCH_MAX_CCH);
+	GetModuleFileNameW(nullptr, &dllDirectory[0], static_cast<DWORD>(dllDirectory.size()));
+	PathCchRemoveFileSpec(&dllDirectory[0], static_cast<DWORD>(dllDirectory.size()));
+	dllDirectory.resize(wcsnlen(&dllDirectory[0], dllDirectory.size()));
+
+	std::wstring dllPath = dllDirectory;
+	dllPath.resize(PATHCCH_MAX_CCH);
+	PathCchAppend(&dllPath[0], dllPath.size(), L"XivAlexander.dll");
+	dllDirectory.resize(wcsnlen(&dllPath[0], dllPath.size()));
+
+	/*
 	wchar_t szConfigPath[PATHCCH_MAX_CCH] = { 0 };
-	GetModuleFileNameW(nullptr, szDllPath, _countof(szDllPath));
-	PathCchRemoveFileSpec(szDllPath, _countof(szDllPath));
-	PathCchAppend(szDllPath, _countof(szDllPath), L"XivAlexander.dll");
 	wcsncpy_s(szConfigPath, szDllPath, _countof(szConfigPath));
 	wcscat_s(szConfigPath, _countof(szConfigPath), L".json");
 
@@ -372,9 +380,10 @@ int WINAPI wWinMain(
 				return -1;
 		}
 	}
+	//*/
 
 	try {
-		CheckDllVersion(szDllPath);
+		CheckDllVersion(dllPath.c_str());
 	} catch (std::exception& e) {
 		if (MessageBoxW(nullptr, 
 			Utils::FormatString(
@@ -419,13 +428,11 @@ int WINAPI wWinMain(
 			}
 
 			found = true;
-
-			CharLowerW(&sExePath[0]);
-
+			
 			void* rpModule;
 			{
 				Utils::Win32Handle hProcess(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid));
-				rpModule = FindModuleAddress(hProcess, szDllPath);
+				rpModule = FindModuleAddress(hProcess, dllPath.c_str());
 			}
 
 			std::wstring msg;
@@ -437,31 +444,45 @@ int WINAPI wWinMain(
 					L"Press No to skip,\n"
 					L"Press Cancel to unload.\n"
 					L"\n"
-					L"Note: your anti-virus software will probably classify DLL injection as a malicious m_action, "
+					L"Note: your anti-virus software will probably classify DLL injection as a malicious action, "
 					L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
 					static_cast<int>(pid), sExePath.c_str());
 				nMsgType = (MB_YESNOCANCEL | MB_ICONQUESTION | MB_DEFBUTTON1);
 			} else {
-				if (!g_parameters.m_quiet && !availableGamePaths.empty() && !availableGamePaths.contains(sExePath)) {
+				const auto regionAndVersion = Utils::ResolveGameReleaseRegion(sExePath);
+				const auto gameConfigFilename = Utils::FormatString(L"game.%s.%s.json", 
+					std::get<0>(regionAndVersion).c_str(),
+					std::get<1>(regionAndVersion).c_str());
+				const auto gameConfigPath = Utils::FormatString(L"%s\\%s", dllDirectory.c_str(), gameConfigFilename.c_str());
+
+				if (!g_parameters.m_quiet && !PathFileExistsW(&gameConfigPath[0])) {
 					msg = Utils::FormatString(
-						L"FFXIV Process found (%d:%s)\n"
+						L"FFXIV Process found:\n"
+						L"* PID: %d\n"
+						L"* Path: %s\n"
+						L"* Game Version Configuration File: %s\n"
 						L"Continue loading XivAlexander into this process?\n"
 						L"\n"
 						L"Notes\n"
-						L"* Corresponding configuration entry for this process does not exist in XivAlexander.dll.json file. "
+						L"* Corresponding game version configuration file for this process does not exist. "
 						L"You may want to check your game installation path, and edit the right entry in the above file first.\n"
 						L"* Your anti-virus software will probably classify DLL injection as a malicious m_action, "
 						L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
-						static_cast<int>(pid), sExePath.c_str());
+						static_cast<int>(pid), sExePath.c_str(), gameConfigFilename.c_str(),
+						std::get<0>(regionAndVersion).c_str(),
+						std::get<1>(regionAndVersion).c_str());
 					nMsgType = (MB_YESNO | MB_DEFBUTTON1 | MB_ICONWARNING);
 				} else {
 					msg = Utils::FormatString(
-						L"FFXIV Process found (%d:%s)\n"
+						L"FFXIV Process found:\n"
+						L"* Process ID: %d\n"
+						L"* Path: %s\n"
+						L"* Game Version Configuration File: %s\n"
 						L"Continue loading XivAlexander into this process?\n"
 						L"\n"
 						L"Note: your anti-virus software will probably classify DLL injection as a malicious m_action, "
 						L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
-						static_cast<int>(pid), sExePath.c_str());
+						static_cast<int>(pid), sExePath.c_str(), gameConfigFilename.c_str());
 					nMsgType = (MB_YESNO | MB_DEFBUTTON1);
 				}
 			}
@@ -482,13 +503,13 @@ int WINAPI wWinMain(
 			{
 				Utils::Win32Handle hProcess(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, pid));
 
-				rpModule = FindModuleAddress(hProcess, szDllPath);
+				rpModule = FindModuleAddress(hProcess, dllPath.c_str());
 				if (response == IDCANCEL && !rpModule)
 					continue;
 
 				if (!rpModule) {
-					InjectDll(hProcess, szDllPath);
-					rpModule = FindModuleAddress(hProcess, szDllPath);
+					InjectDll(hProcess, dllPath.c_str());
+					rpModule = FindModuleAddress(hProcess, dllPath.c_str());
 				}
 
 				DWORD loadResult = 0;

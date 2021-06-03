@@ -1,6 +1,11 @@
 #include "pch.h"
 #include "include/Utils.h"
+
+#include <stdexcept>
+
+#include "include/CallOnDestruction.h"
 #include "include/myzlib.h"
+#include "include/Win32Handle.h"
 
 std::wstring Utils::FromOem(const std::string& in) {
 	const size_t length = MultiByteToWideChar(CP_ACP, MB_ERR_INVALID_CHARS, in.c_str(), static_cast<int>(in.size()), nullptr, 0);
@@ -219,4 +224,135 @@ void Utils::SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked) {
 
 void Utils::SetMenuState(HWND hWnd, DWORD nMenuId, bool bChecked) {
 	SetMenuState(GetMenu(hWnd), nMenuId, bChecked);
+}
+
+std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion() {
+	std::wstring path(PATHCCH_MAX_CCH, L'\0');
+	path.resize(GetModuleFileNameW(nullptr, &path[0], static_cast<DWORD>(path.size())));
+	return ResolveGameReleaseRegion(path);
+}
+
+static const wchar_t* TestPublisher(const std::wstring &path) {
+	// See: https://docs.microsoft.com/en-US/troubleshoot/windows/win32/get-information-authenticode-signed-executables
+
+	constexpr auto ENCODING = X509_ASN_ENCODING | PKCS_7_ASN_ENCODING;
+	
+	HCERTSTORE hStore = nullptr;
+	HCRYPTMSG hMsg = nullptr;
+	DWORD dwEncoding = 0, dwContentType = 0, dwFormatType = 0;
+	std::vector<Utils::CallOnDestruction> cleanupList;
+	if (!CryptQueryObject(CERT_QUERY_OBJECT_FILE,
+		&path[0],
+		CERT_QUERY_CONTENT_FLAG_PKCS7_SIGNED_EMBED,
+		CERT_QUERY_FORMAT_FLAG_BINARY,
+		0,
+		&dwEncoding,
+		&dwContentType,
+		&dwFormatType,
+		&hStore,
+		&hMsg,
+		nullptr))
+		return nullptr;
+	if (hMsg) cleanupList.emplace_back([hMsg]() { CryptMsgClose(hMsg); });
+	if (hStore) cleanupList.emplace_back([hStore]() { CertCloseStore(hStore, 0); });
+
+	DWORD cbData = 0;
+	std::vector<uint8_t> signerInfoBuf;
+	for (size_t i = 0; i < 2; ++i) {
+		if (!CryptMsgGetParam(hMsg,
+			CMSG_SIGNER_INFO_PARAM,
+			0,
+			signerInfoBuf.empty() ? nullptr : &signerInfoBuf[0],
+			&cbData))
+			return nullptr;
+		signerInfoBuf.resize(cbData);
+	}
+
+	const auto& signerInfo = *reinterpret_cast<CMSG_SIGNER_INFO*>(&signerInfoBuf[0]);
+	
+	CERT_INFO certInfo{};
+	certInfo.Issuer = signerInfo.Issuer;
+	certInfo.SerialNumber = signerInfo.SerialNumber;
+	const auto pCertContext = CertFindCertificateInStore(hStore,
+		ENCODING,
+		0,
+		CERT_FIND_SUBJECT_CERT,
+		&certInfo,
+		nullptr);
+	if (!pCertContext)
+		return nullptr;
+	if (pCertContext) cleanupList.emplace_back([pCertContext]() { CertFreeCertificateContext(pCertContext); });
+	
+	std::wstring subjectName;
+	subjectName.resize(CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, nullptr, nullptr, 0));
+	subjectName.resize(CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, nullptr, &subjectName[0], static_cast<DWORD>(subjectName.size())) - 1);
+	
+	if (subjectName == L"SQUARE ENIX CO., LTD.")
+		return L"international";
+	if (subjectName == L"ACTOZSOFT CO.Ltd,.")
+		return L"korean";
+	
+	return nullptr;
+}
+
+std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const std::wstring& path) {
+	std::wstring bootPath = path;
+	bootPath.resize(PATHCCH_MAX_CCH);
+
+	// boot: C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\ffxiv_dx11.exe
+	
+	PathCchRemoveFileSpec(&bootPath[0], bootPath.size());
+	// boot: C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game
+
+	std::wstring gameVerPath = bootPath;
+	gameVerPath.resize(PATHCCH_MAX_CCH);
+	PathCchAppend(&gameVerPath[0], gameVerPath.size(), L"ffxivgame.ver");
+	gameVerPath.resize(wcsnlen(&gameVerPath[0], gameVerPath.size()));
+	// boot: C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\ffxivgame.ver
+	
+	PathCchRemoveFileSpec(&bootPath[0], bootPath.size());
+	// boot: C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn
+	
+	PathCchAppend(&bootPath[0], bootPath.size(), L"boot");
+	// boot: C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\boot
+
+	bootPath.resize(wcsnlen(&bootPath[0], bootPath.size()));
+
+	std::wstring gameVer;
+	{
+		const Win32Handle hGameVer(CreateFile(gameVerPath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr));
+		LARGE_INTEGER size{};
+		GetFileSizeEx(hGameVer, &size);
+		if (size.QuadPart > 64)
+			throw std::runtime_error("Game version file size too big");
+		std::string buf;
+		buf.resize(size.QuadPart);
+		DWORD read = 0;
+		if (!ReadFile(hGameVer, &buf[0], size.LowPart, &read, nullptr) || read != size.LowPart)
+			throw std::runtime_error("Failed to read game version");
+		gameVer = FromUtf8(buf);
+	}
+
+	WIN32_FIND_DATAW data{};
+	Win32Handle<HANDLE, FindClose> hFindFile(FindFirstFileW(FormatString(L"%s\\*.exe", bootPath.c_str()).c_str(), &data));
+	do {
+		const auto path = FormatString(L"%s\\%s", bootPath.c_str(), data.cFileName);
+
+		if (const auto pwzPublisher = TestPublisher(path))
+			return std::make_tuple(
+				std::wstring(pwzPublisher),
+				gameVer
+			);
+		
+	} while (FindNextFileW(hFindFile, &data));
+
+	CharLowerW(&bootPath[0]);
+	uLong crc = crc32(crc32(0L, nullptr, 0), 
+		reinterpret_cast<Bytef*>(&bootPath[0]), 
+		static_cast<uInt>(bootPath.size() * sizeof bootPath[0]));
+	
+	return std::make_tuple(
+		FormatString(L"unknown_%08x", crc),
+		gameVer
+	);
 }

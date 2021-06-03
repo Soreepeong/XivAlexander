@@ -117,17 +117,15 @@ void App::Window::Log::OnLayout(double zoom, double width, double height) {
 
 LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
-		case WM_COMMAND:
-		{
+		case WM_COMMAND: {
 			switch (LOWORD(wParam)) {
-				case ID_FILE_SAVE:
-				{
+				case ID_FILE_SAVE: {
 					struct DataT {
 						HWND hWnd;
 						std::string buf;
 					};
 
-					DataT *pDataT = new DataT();
+					DataT* pDataT = new DataT();
 					pDataT->hWnd = m_hWnd;
 					pDataT->buf = std::string(m_direct(m_directPtr, SCI_GETLENGTH, 0, 0) + 1, '\0');
 					m_direct(m_directPtr, SCI_GETTEXT, pDataT->buf.length(), reinterpret_cast<sptr_t>(&pDataT->buf[0]));
@@ -140,9 +138,9 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 							{L"Log Files (*.log)",		L"*.log"},
 							{L"All Documents (*.*)",	L"*.*"}
 						};
-						auto throw_on_error = [](HRESULT val) { 
+						auto throw_on_error = [](HRESULT val) {
 							if (!SUCCEEDED(val))
-								_com_raise_error(val); 
+								_com_raise_error(val);
 						};
 
 						Utils::SetThreadDescription(GetCurrentThread(), L"XivAlexander::Window::Log::WndProc::FileSaveThread(%p)", pDataT->hWnd);
@@ -184,9 +182,8 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 						}, pDataT, 0, nullptr));
 					return 0;
 				}
-				
-				case ID_FILE_CLEAR:
-				{
+
+				case ID_FILE_CLEAR: {
 					Misc::Logger::GetLogger().Clear();
 					m_direct(m_directPtr, SCI_SETREADONLY, FALSE, 0);
 					m_direct(m_directPtr, SCI_CLEARALL, 0, 0);
@@ -194,9 +191,8 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					return 0;
 				}
 
-				case ID_VIEW_ALWAYSONTOP:
-				{
-					HMENU hMenu = GetMenu(m_hWnd);
+				case ID_VIEW_ALWAYSONTOP: {
+					const auto hMenu = GetMenu(m_hWnd);
 					MENUITEMINFOW menuInfo = { sizeof(MENUITEMINFOW) };
 					menuInfo.fMask = MIIM_STATE;
 					GetMenuItemInfo(hMenu, ID_VIEW_ALWAYSONTOP, FALSE, &menuInfo);
@@ -223,13 +219,13 @@ LRESULT App::Window::Log::OnNotify(const LPNMHDR nmhdr) {
 			ResizeMargin();
 		}
 	}
-	return App::Window::Base::OnNotify(nmhdr);
+	return Base::OnNotify(nmhdr);
 }
 
 void App::Window::Log::OnDestroy() {
-	ConfigRepository::Config().ShowLoggingWindow = false;
+	Config::Instance().Runtime.ShowLoggingWindow = false;
 }
 
 void App::Window::Log::ResizeMargin() {
-	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 0, static_cast<int>(m_direct(m_directPtr, SCI_TEXTWIDTH, uptr_t(STYLE_LINENUMBER), reinterpret_cast<sptr_t>("999999"))));
+	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 0, static_cast<int>(m_direct(m_directPtr, SCI_TEXTWIDTH, static_cast<uptr_t>(STYLE_LINENUMBER), reinterpret_cast<sptr_t>("999999"))));
 }

@@ -78,4 +78,7 @@ namespace Utils {
 
 	void SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked);
 	void SetMenuState(HWND hWnd, DWORD nMenuId, bool bChecked);
+
+	std::tuple<std::wstring, std::wstring> ResolveGameReleaseRegion();
+	std::tuple<std::wstring, std::wstring> ResolveGameReleaseRegion(const std::wstring& path);
 }

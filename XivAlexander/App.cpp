@@ -118,8 +118,8 @@ public:
 		}
 
 		try {
-			ConfigRepository::Config();
-			OnCleanup([]() { ConfigRepository::DestroyConfig(); });
+			Config::Instance();
+			OnCleanup([]() { Config::DestroyInstance(); });
 
 			Scintilla_RegisterClasses(g_hInstance);
 			OnCleanup([]() { Scintilla_ReleaseResources(); });
@@ -148,13 +148,13 @@ public:
 			SetupTrayWindow();
 			OnCleanup([this]() { m_trayWindow = nullptr; });
 
-			auto& config = ConfigRepository::Config();
+			auto& config = Config::Instance().Runtime;
 
 			if (config.AlwaysOnTop)
 				SetWindowPos(m_hGameMainWindow, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 			else
 				SetWindowPos(m_hGameMainWindow, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-			OnCleanup(config.AlwaysOnTop.OnChangeListener([&](ConfigItemBase&) {
+			OnCleanup(config.AlwaysOnTop.OnChangeListener([&](Config::ItemBase&) {
 				if (config.AlwaysOnTop)
 					SetWindowPos(m_hGameMainWindow, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 				else
@@ -164,7 +164,7 @@ public:
 
 			if (config.UseHighLatencyMitigation)
 				m_animationLockLatencyHandler = std::make_unique<Feature::AnimationLockLatencyHandler>();
-			OnCleanup(config.UseHighLatencyMitigation.OnChangeListener([&](ConfigItemBase&) {
+			OnCleanup(config.UseHighLatencyMitigation.OnChangeListener([&](Config::ItemBase&) {
 				if (config.UseHighLatencyMitigation)
 					m_animationLockLatencyHandler = std::make_unique<Feature::AnimationLockLatencyHandler>();
 				else
@@ -174,7 +174,7 @@ public:
 
 			if (config.UseOpcodeFinder)
 				m_ipcTypeFinder = std::make_unique<Feature::IpcTypeFinder>();
-			OnCleanup(config.UseOpcodeFinder.OnChangeListener([&](ConfigItemBase&) {
+			OnCleanup(config.UseOpcodeFinder.OnChangeListener([&](Config::ItemBase&) {
 				if (config.UseOpcodeFinder)
 					m_ipcTypeFinder = std::make_unique<Feature::IpcTypeFinder>();
 				else
@@ -184,7 +184,7 @@ public:
 
 			if (config.UseAllIpcMessageLogger)
 				m_allIpcMessageLogger = std::make_unique<Feature::AllIpcMessageLogger>();
-			OnCleanup(config.UseAllIpcMessageLogger.OnChangeListener([&](ConfigItemBase&) {
+			OnCleanup(config.UseAllIpcMessageLogger.OnChangeListener([&](Config::ItemBase&) {
 				if (config.UseAllIpcMessageLogger)
 					m_allIpcMessageLogger = std::make_unique<Feature::AllIpcMessageLogger>();
 				else
@@ -194,7 +194,7 @@ public:
 
 			if (config.UseEffectApplicationDelayLogger)
 				m_effectApplicationDelayLogger = std::make_unique<Feature::EffectApplicationDelayLogger>();
-			OnCleanup(config.UseEffectApplicationDelayLogger.OnChangeListener([&](ConfigItemBase&) {
+			OnCleanup(config.UseEffectApplicationDelayLogger.OnChangeListener([&](Config::ItemBase&) {
 				if (config.UseEffectApplicationDelayLogger)
 					m_effectApplicationDelayLogger = std::make_unique<Feature::EffectApplicationDelayLogger>();
 				else
@@ -204,7 +204,7 @@ public:
 
 			if (config.ShowLoggingWindow)
 				m_logWindow = std::make_unique<Window::Log>();
-			OnCleanup(config.ShowLoggingWindow.OnChangeListener([&](ConfigItemBase&) {
+			OnCleanup(config.ShowLoggingWindow.OnChangeListener([&](Config::ItemBase&) {
 				if (config.ShowLoggingWindow)
 					m_logWindow = std::make_unique<Window::Log>();
 				else
@@ -213,7 +213,7 @@ public:
 			OnCleanup([this]() { m_logWindow = nullptr; });
 
 		} catch (std::exception&) {
-			ConfigRepository::Config().SetQuitting();
+			Config::Instance().SetQuitting();
 			while (!m_cleanupPendingDestructions.empty())
 				m_cleanupPendingDestructions.pop_back();
 
@@ -223,7 +223,7 @@ public:
 	}
 
 	~App() {
-		ConfigRepository::Config().SetQuitting();
+		Config::Instance().SetQuitting();
 		while (!m_cleanupPendingDestructions.empty())
 			m_cleanupPendingDestructions.pop_back();
 
@@ -237,17 +237,11 @@ public:
 		}, true);
 
 		MSG msg;
-		std::vector<Window::Base*> openWindows;
 		while (GetMessageW(&msg, nullptr, 0, 0)) {
-			openWindows.clear();
-			if (m_logWindow) openWindows.push_back(dynamic_cast<Window::Base*>(&*m_logWindow));
-			if (Window::Config::m_pConfigWindow) openWindows.push_back(dynamic_cast<Window::Base*>(&*Window::Config::m_pConfigWindow));
-			if (m_trayWindow) openWindows.push_back(dynamic_cast<Window::Base*>(&*m_trayWindow));
-
 			bool dispatchMessage = true;
-			for (const auto pWindow : openWindows) {
-				HWND hWnd = pWindow->GetHandle();
-				HACCEL hAccel = pWindow->GetAcceleratorTable();
+			for (const auto pWindow : Window::Base::GetAllOpenWindows()) {
+				const auto hWnd = pWindow->GetHandle();
+				const auto hAccel = pWindow->GetAcceleratorTable();
 				if (hAccel && (hWnd == msg.hwnd || IsChild(hWnd, msg.hwnd))){
 					if (TranslateAcceleratorW(hWnd, hAccel, &msg)) {
 						dispatchMessage = false;
@@ -378,7 +372,9 @@ extern "C" __declspec(dllexport) int __stdcall UnloadXivAlexander(void* lpReserv
 }
 
 extern "C" __declspec(dllexport) int __stdcall ReloadConfiguration(void* lpReserved) {
-	if (App::App::GetInstance())
-		App::ConfigRepository::Config().Reload(true);
+	if (App::App::GetInstance()) {
+		App::Config::Instance().Runtime.Reload(true);
+		App::Config::Instance().Game.Reload(true);
+	}
 	return 0;
 }

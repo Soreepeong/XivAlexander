@@ -15,7 +15,7 @@ public:
 			, conn(conn) {
 			using namespace App::Network::Structures;
 
-			const auto& config = ConfigRepository::Config();
+			const auto& config = Config::Instance().Game;
 
 			conn.AddIncomingFFXIVMessageHandler(this, [&](Network::Structures::FFXIVMessage* pMessage, std::vector<uint8_t>& additionalMessages) {
 				const auto now = Utils::GetHighPerformanceCounter();

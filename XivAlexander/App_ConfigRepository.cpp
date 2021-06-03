@@ -1,53 +1,37 @@
 #include "pch.h"
 #include "App_ConfigRepository.h"
 
-static
-nlohmann::json LowerCaseKeys(const nlohmann::json& json) {
-	auto result = nlohmann::json::object();
+std::unique_ptr<App::Config> App::Config::s_pInstance;
 
-	for (auto& item : json.items()) {
-		std::wstring key = Utils::FromUtf8(item.key());
-		CharLowerW(&key[0]);
-		result.emplace(Utils::ToUtf8(key), item.value());
-	}
-
-	return result;
+App::Config::BaseRepository::BaseRepository(Config* pConfig, std::wstring path)
+	: m_pConfig(pConfig)
+	, m_sConfigPath(std::move(path)) {
 }
 
-App::ConfigRepository::ConfigRepository()
-	: m_sGamePath(GetGamePath())
-	, m_sConfigPath(GetConfigPath()) {
-}
-
-App::ConfigItemBase::ConfigItemBase(ConfigRepository* pRepository, const char* pszName)
+App::Config::ItemBase::ItemBase(BaseRepository* pRepository, const char* pszName)
 	: m_pszName(pszName) {
 	pRepository->m_allItems.push_back(this);
 }
 
-const char* App::ConfigItemBase::Name() const {
+const char* App::Config::ItemBase::Name() const {
 	return m_pszName;
 }
 
-void App::ConfigRepository::Reload(bool announceChange) {
+void App::Config::BaseRepository::Reload(bool announceChange) {
 	nlohmann::json config;
 	try {
 		std::ifstream in(m_sConfigPath);
 		in >> config;
 	} catch (std::exception& e) {
-		App::Misc::Logger::GetLogger().Format(LogCategory::General, "JSON Config load error: %s", e.what());
+		Misc::Logger::GetLogger().Format(LogCategory::General, "JSON Config load error: %s", e.what());
 	}
-	config = LowerCaseKeys(config);
-
-	if (config.find(m_sGamePath) == config.end())
-		config[m_sGamePath] = nlohmann::json::object();
-	auto& specificConfig = config[m_sGamePath];
 
 	m_destructionCallbacks.clear();
 
 	bool changed = false;
 	for (auto& item : m_allItems) {
-		changed |= item->LoadFrom(specificConfig, announceChange);
-		m_destructionCallbacks.push_back(item->OnChangeListener([this](ConfigItemBase& item) {
+		changed |= item->LoadFrom(config, announceChange);
+		m_destructionCallbacks.push_back(item->OnChangeListener([this](ItemBase& item) {
 			Save();
 			}));
 	}
@@ -56,26 +40,45 @@ void App::ConfigRepository::Reload(bool announceChange) {
 		Save();
 }
 
-void App::ConfigRepository::SetQuitting() {
+App::Config& App::Config::Instance() {
+	if (!s_pInstance) {
+		std::wstring directory(PATHCCH_MAX_CCH, L'\0');
+		directory.resize(GetModuleFileNameW(g_hInstance, &directory[0], static_cast<DWORD>(directory.size())));
+		PathCchRemoveFileSpec(&directory[0], directory.size());
+		directory.resize(wcsnlen(&directory[0], directory.size()));
+
+		const auto regionAndVersion = Utils::ResolveGameReleaseRegion();
+		
+		s_pInstance = std::make_unique<Config>(
+			Utils::FormatString(L"%s/config.runtime.json", directory.c_str()),
+			Utils::FormatString(L"%s/game.%s.%s.json", directory.c_str(),
+				std::get<0>(regionAndVersion).c_str(),
+				std::get<1>(regionAndVersion).c_str())
+			);
+	}
+	return *s_pInstance;
+}
+
+void App::Config::DestroyInstance() {
+	s_pInstance = nullptr;
+}
+
+
+App::Config::Config(std::wstring runtimeConfigPath, std::wstring gameInfoPath)
+	: Runtime(this, std::move(runtimeConfigPath))
+	, Game(this, std::move(gameInfoPath)) {
+	Runtime.Reload();
+	Game.Reload();
+}
+
+App::Config::~Config() = default;
+
+void App::Config::SetQuitting() {
 	m_bSuppressSave = true;
 }
 
-std::string App::ConfigRepository::GetGamePath() {
-	wchar_t path[MAX_PATH];
-	GetModuleFileName(nullptr, path, MAX_PATH);
-	CharLowerW(path);
-	return Utils::ToUtf8(path);
-}
-
-std::wstring App::ConfigRepository::GetConfigPath() {
-	wchar_t configPath[MAX_PATH];
-	GetModuleFileName(g_hInstance, configPath, MAX_PATH);
-	wcsncat_s(configPath, L".json", _countof(configPath));
-	return configPath;
-}
-
-void App::ConfigRepository::Save() {
-	if (m_bSuppressSave)
+void App::Config::BaseRepository::Save() {
+	if (m_pConfig->m_bSuppressSave)
 		return;
 
 	nlohmann::json config;
@@ -83,18 +86,13 @@ void App::ConfigRepository::Save() {
 		std::ifstream in(m_sConfigPath);
 		in >> config;
 	} catch (std::exception& e) {
-		App::Misc::Logger::GetLogger().Format(LogCategory::General, "JSON Config load error: %s", e.what());
+		Misc::Logger::GetLogger().Format(LogCategory::General, "JSON Config load error: %s", e.what());
 	}
-	config = LowerCaseKeys(config);
-
-	if (config.find(m_sGamePath) == config.end())
-		config[m_sGamePath] = nlohmann::json::object();
-	auto& specificConfig = config[m_sGamePath];
 
 	for (auto& item : m_allItems) {
-		item->SaveTo(specificConfig);
+		item->SaveTo(config);
 	}
-	
+
 	try {
 		std::ofstream out(m_sConfigPath);
 		out << config.dump(1, '\t');
@@ -103,22 +101,8 @@ void App::ConfigRepository::Save() {
 	}
 }
 
-std::unique_ptr<App::ConfigRepository> App::ConfigRepository::s_pConfig;
-App::ConfigRepository& App::ConfigRepository::Config() {
-	if (!s_pConfig) {
-		s_pConfig = std::make_unique<App::ConfigRepository>();
-		s_pConfig->Reload();
-	}
-	return *s_pConfig;
-}
-
-void App::ConfigRepository::DestroyConfig() {
-	s_pConfig = nullptr;
-}
-
-bool App::ConfigItem<uint16_t>::LoadFrom(const nlohmann::json& data, bool announceChanged) {
-	auto i = data.find(Name());
-	if (i != data.end()) {
+bool App::Config::Item<uint16_t>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
+	if (auto i = data.find(Name()); i != data.end()) {
 		uint16_t newValue;
 		try {
 			if (i->is_string())
@@ -128,7 +112,7 @@ bool App::ConfigItem<uint16_t>::LoadFrom(const nlohmann::json& data, bool announ
 			else
 				return false;
 		} catch (std::exception& e) {
-			App::Misc::Logger::GetLogger().Format(LogCategory::General, "Config value parse error: %s", e.what());
+			Misc::Logger::GetLogger().Format(LogCategory::General, "Config value parse error: %s", e.what());
 		}
 		if (announceChanged)
 			this->operator=(newValue);
@@ -138,14 +122,13 @@ bool App::ConfigItem<uint16_t>::LoadFrom(const nlohmann::json& data, bool announ
 	return false;
 }
 
-void App::ConfigItem<uint16_t>::SaveTo(nlohmann::json& data) const {
+void App::Config::Item<uint16_t>::SaveTo(nlohmann::json & data) const {
 	data[Name()] = Utils::FormatString("0x%04x", m_value);
 }
 
 template<typename T>
-bool App::ConfigItem<T>::LoadFrom(const nlohmann::json& data, bool announceChanged) {
-	auto i = data.find(Name());
-	if (i != data.end()) {
+bool App::Config::Item<T>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
+	if (auto i = data.find(Name()); i != data.end()) {
 		const auto newValue = i->get<T>();
 		if (announceChanged)
 			this->operator=(newValue);
@@ -156,6 +139,6 @@ bool App::ConfigItem<T>::LoadFrom(const nlohmann::json& data, bool announceChang
 }
 
 template<typename T>
-void App::ConfigItem<T>::SaveTo(nlohmann::json& data) const {
+void App::Config::Item<T>::SaveTo(nlohmann::json & data) const {
 	data[Name()] = m_value;
 }

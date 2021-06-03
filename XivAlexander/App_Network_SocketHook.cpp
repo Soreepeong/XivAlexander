@@ -216,7 +216,7 @@ public:
 			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Local=%s", m_socket, get_ip_str(reinterpret_cast<sockaddr*>(&local)).c_str());
 
 			// Set TCP delay here because SIO_TCP_SET_ACK_FREQUENCY seems to work only when localAddress is not 0.0.0.0.
-			if (ConfigRepository::Config().ReducePacketDelay && reinterpret_cast<sockaddr_in*>(&local)->sin_addr.s_addr != INADDR_ANY) {
+			if (Config::Instance().Runtime.ReducePacketDelay && reinterpret_cast<sockaddr_in*>(&local)->sin_addr.s_addr != INADDR_ANY) {
 				SetTCPDelay();
 			}
 		}
@@ -590,11 +590,11 @@ public:
 	std::vector<Utils::CallOnDestruction> m_cleanupList;
 
 	Internals() {
-		m_cleanupList.push_back(ConfigRepository::Config().GameServerIpRange.OnChangeListener([this](ConfigItemBase&) {
+		m_cleanupList.push_back(Config::Instance().Runtime.GameServerIpRange.OnChangeListener([this](Config::ItemBase&) {
 			parseIpRange();
 			m_nonGameSockets.clear();
 			}));
-		m_cleanupList.push_back(ConfigRepository::Config().GameServerPortRange.OnChangeListener([this](ConfigItemBase&) {
+		m_cleanupList.push_back(Config::Instance().Runtime.GameServerPortRange.OnChangeListener([this](Config::ItemBase&) {
 			parsePortRange();
 			m_nonGameSockets.clear();
 			}));
@@ -712,7 +712,7 @@ public:
 
 	void parseIpRange() {
 		m_allowedIpRange.clear();
-		for (auto range : Utils::StringSplit(ConfigRepository::Config().GameServerIpRange, ",")) {
+		for (auto range : Utils::StringSplit(Config::Instance().Runtime.GameServerIpRange, ",")) {
 			size_t pos;
 			try {
 				range = Utils::StringTrim(range);
@@ -750,7 +750,7 @@ public:
 
 	void parsePortRange() {
 		m_allowedPortRange.clear();
-		for (auto range : Utils::StringSplit(ConfigRepository::Config().GameServerPortRange, ",")) {
+		for (auto range : Utils::StringSplit(Config::Instance().Runtime.GameServerPortRange, ",")) {
 			try {
 				range = Utils::StringTrim(range);
 				if (range.empty())

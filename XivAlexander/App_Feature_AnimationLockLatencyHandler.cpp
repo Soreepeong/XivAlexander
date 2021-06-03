@@ -56,14 +56,15 @@ public:
 		SingleConnectionHandler(Internals& internals, Network::SingleConnection& conn)
 			: internals(internals)
 			, conn(conn) {
-			using namespace App::Network::Structures;
+			using namespace Network::Structures;
 
-			const auto& config = ConfigRepository::Config();
+			const auto& gameConfig = Config::Instance().Game;
+			const auto& runtimeConfig = Config::Instance().Runtime;
 
 			conn.AddOutgoingFFXIVMessageHandler(this, [&](Network::Structures::FFXIVMessage* pMessage, std::vector<uint8_t>&) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
-					if (pMessage->Data.IPC.SubType == config.C2S_ActionRequest[0]
-						|| pMessage->Data.IPC.SubType == config.C2S_ActionRequest[1]) {
+					if (pMessage->Data.IPC.SubType == gameConfig.C2S_ActionRequest[0]
+						|| pMessage->Data.IPC.SubType == gameConfig.C2S_ActionRequest[1]) {
 						const auto& actionRequest = pMessage->Data.IPC.Data.C2S_ActionRequest;
 						m_pendingActions.emplace_back(actionRequest);
 
@@ -76,7 +77,7 @@ public:
 								m_lastAnimationLockEndsAt = m_pendingActions.back().RequestTimestamp;
 						}
 
-						if (config.UseHighLatencyMitigationLogging)
+						if (runtimeConfig.UseHighLatencyMitigationLogging)
 							Misc::Logger::GetLogger().Format(
 								LogCategory::AnimationLockLatencyHandler,
 								"%p: C2S_ActionRequest(%04x): actionId=%04x sequence=%04x",
@@ -103,11 +104,11 @@ public:
 				} else if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					// Only interested in messages intended for the current player
 					if (pMessage->CurrentActor == pMessage->SourceActor) {
-						if (config.S2C_ActionEffects[0] == pMessage->Data.IPC.SubType
-							|| config.S2C_ActionEffects[1] == pMessage->Data.IPC.SubType
-							|| config.S2C_ActionEffects[2] == pMessage->Data.IPC.SubType
-							|| config.S2C_ActionEffects[3] == pMessage->Data.IPC.SubType
-							|| config.S2C_ActionEffects[4] == pMessage->Data.IPC.SubType) {
+						if (gameConfig.S2C_ActionEffects[0] == pMessage->Data.IPC.SubType
+							|| gameConfig.S2C_ActionEffects[1] == pMessage->Data.IPC.SubType
+							|| gameConfig.S2C_ActionEffects[2] == pMessage->Data.IPC.SubType
+							|| gameConfig.S2C_ActionEffects[3] == pMessage->Data.IPC.SubType
+							|| gameConfig.S2C_ActionEffects[4] == pMessage->Data.IPC.SubType) {
 
 							// actionEffect has to be modified later on, so no const
 							auto& actionEffect = pMessage->Data.IPC.Data.S2C_ActionEffect;
@@ -161,7 +162,7 @@ public:
 
 										int64_t delay = ExtraDelay;
 
-										if (config.UseAutoAdjustingExtraDelay) {
+										if (runtimeConfig.UseAutoAdjustingExtraDelay) {
 											delay = rtt;
 
 											// Get current latency data
@@ -173,7 +174,7 @@ public:
 											// Update latency statistics
 											conn.AddConnectionLatencyItem(latencyAdjusted);
 
-											if (config.UseLatencyCorrection) {
+											if (runtimeConfig.UseLatencyCorrection) {
 												// Get server response time statistic data.
 												const int64_t rttMin = conn.GetMinServerResponseDelay();
 												const int64_t rttMean = conn.GetMeanServerResponseDelay();
@@ -216,7 +217,7 @@ public:
 							if (waitTime != originalWaitTime) {
 								actionEffect.AnimationLockDuration = std::max(0LL, waitTime) / 1000.f;
 
-								if (config.UseHighLatencyMitigationLogging)
+								if (runtimeConfig.UseHighLatencyMitigationLogging)
 									Misc::Logger::GetLogger().Format(
 										LogCategory::AnimationLockLatencyHandler,
 										"%p: S2C_ActionEffect(%04x): actionId=%04x sourceSequence=%04x wait=%lldms->%lldms%s",
@@ -228,7 +229,7 @@ public:
 										extraMessage.c_str());
 
 							} else {
-								if (config.UseHighLatencyMitigationLogging)
+								if (runtimeConfig.UseHighLatencyMitigationLogging)
 									Misc::Logger::GetLogger().Format(
 										LogCategory::AnimationLockLatencyHandler,
 										"%p: S2C_ActionEffect(%04x): actionId=%04x sourceSequence=%04x wait=%llums",
@@ -239,7 +240,7 @@ public:
 										originalWaitTime);
 							}
 
-						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorControlSelf) {
+						} else if (pMessage->Data.IPC.SubType == gameConfig.S2C_ActorControlSelf) {
 							auto& actorControlSelf = pMessage->Data.IPC.Data.S2C_ActorControlSelf;
 
 							// Oldest action request has been rejected from server.
@@ -264,7 +265,7 @@ public:
 								if (!m_pendingActions.empty())
 									m_pendingActions.pop_front();
 
-								if (config.UseHighLatencyMitigationLogging)
+								if (runtimeConfig.UseHighLatencyMitigationLogging)
 									Misc::Logger::GetLogger().Format(
 										LogCategory::AnimationLockLatencyHandler,
 										"%p: S2C_ActorControlSelf/ActionRejected: actionId=%04x sourceSequence=%08x",
@@ -273,7 +274,7 @@ public:
 										rollback.SourceSequence);
 							}
 
-						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorControl) {
+						} else if (pMessage->Data.IPC.SubType == gameConfig.S2C_ActorControl) {
 							const auto& actorControl = pMessage->Data.IPC.Data.S2C_ActorControl;
 
 							// The server has cancelled an oldest action (which is a cast) in progress.
@@ -293,7 +294,7 @@ public:
 								if (!m_pendingActions.empty())
 									m_pendingActions.pop_front();
 
-								if (config.UseHighLatencyMitigationLogging)
+								if (runtimeConfig.UseHighLatencyMitigationLogging)
 									Misc::Logger::GetLogger().Format(
 										LogCategory::AnimationLockLatencyHandler,
 										"%p: S2C_ActorControl/CancelCast: actionId=%04x",
@@ -301,7 +302,7 @@ public:
 										cancelCast.ActionId);
 							}
 
-						} else if (pMessage->Data.IPC.SubType == config.S2C_ActorCast) {
+						} else if (pMessage->Data.IPC.SubType == gameConfig.S2C_ActorCast) {
 							const auto& actorCast = pMessage->Data.IPC.Data.S2C_ActorCast;
 							// Mark that the last request was a cast.
 							// If it indeed is a cast, the game UI will block the user from generating additional requests,
@@ -309,7 +310,7 @@ public:
 							if (!m_pendingActions.empty())
 								m_pendingActions.front().CastFlag = true;
 
-							if (config.UseHighLatencyMitigationLogging)
+							if (runtimeConfig.UseHighLatencyMitigationLogging)
 								Misc::Logger::GetLogger().Format(
 									LogCategory::AnimationLockLatencyHandler,
 									"%p: S2C_ActorCast: actionId=%04x time=%.3f target=%08x",

@@ -1,7 +1,22 @@
 #include "pch.h"
 #include "App_Window_Base.h"
 
-HWND App::Window::Base::InternalCreateWindow(const WNDCLASSEXW& wndclassex, LPCWSTR lpWindowName, DWORD dwStyle, DWORD dwExStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, Base* pBase) {
+static std::set<App::Window::Base*> s_allOpenWindows;
+const std::set<App::Window::Base*>& App::Window::Base::GetAllOpenWindows() {
+	return s_allOpenWindows;
+}
+
+HWND App::Window::Base::InternalCreateWindow(const WNDCLASSEXW& wndclassex,
+	_In_opt_ LPCWSTR lpWindowName,
+	_In_ DWORD dwStyle,
+	_In_ DWORD dwExStyle,
+	_In_ int X,
+	_In_ int Y,
+	_In_ int nWidth,
+	_In_ int nHeight,
+	_In_opt_ HWND hWndParent,
+	_In_opt_ HMENU hMenu,
+	_In_ Base* pBase) {
 	WNDCLASSEXW c = wndclassex;
 	if (c.lpfnWndProc)
 		throw std::exception("lpfnWndProc cannot be not null");
@@ -35,12 +50,23 @@ HWND App::Window::Base::InternalCreateWindow(const WNDCLASSEXW& wndclassex, LPCW
 	return hWnd;
 }
 
-App::Window::Base::Base(const WNDCLASSEXW& wndclassex, LPCWSTR lpWindowName, DWORD dwStyle, DWORD dwExStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu) 
-: m_windowClass(wndclassex)
-, m_hWnd(InternalCreateWindow(wndclassex, lpWindowName, dwStyle, dwExStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, this)) {
+App::Window::Base::Base(const WNDCLASSEXW& wndclassex,
+	_In_opt_ LPCWSTR lpWindowName,
+	_In_ DWORD dwStyle,
+	_In_ DWORD dwExStyle,
+	_In_ int X,
+	_In_ int Y,
+	_In_ int nWidth,
+	_In_ int nHeight,
+	_In_opt_ HWND hWndParent,
+	_In_opt_ HMENU hMenu)
+	: m_windowClass(wndclassex)
+	, m_hWnd(InternalCreateWindow(wndclassex, lpWindowName, dwStyle, dwExStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, this)) {
+	s_allOpenWindows.insert(this);
 }
 
 App::Window::Base::~Base() {
+	s_allOpenWindows.erase(this);
 	Destroy();
 	UnregisterClassW(m_windowClass.lpszClassName, g_hInstance);
 }
@@ -57,7 +83,7 @@ HACCEL App::Window::Base::GetAcceleratorTable() const {
 	return NULL;
 }
 
-LRESULT App::Window::Base::RunOnUiThreadWait(const std::function<LRESULT()> &fn) {
+LRESULT App::Window::Base::RunOnUiThreadWait(const std::function<LRESULT()>& fn) {
 	return SendMessage(m_hWnd, AppMessageRunOnUiThread, 0, reinterpret_cast<LPARAM>(&fn));
 }
 
