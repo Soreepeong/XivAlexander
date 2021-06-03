@@ -36,9 +36,9 @@ Usage: XivAlexanderLoader [options] targets
 * `XivAlexanderLoader.exe -q -a unload ffxiv_dx11.exe`: Unloads XivAlexander from every process with its path ending with `ffxiv_dx11.exe`, and suppress all error messages.
 
 ### First time setup
-1. Open `XivAlexander.dll.json` with a text editor which should have been created after a successful load for the first time.
-2. Modify opcode values referring to [this page](https://github.com/Soreepeong/XivAlexander/tree/main/StaticData/OpcodeDefinition).
-3. Find the XivAlexander icon on your shell notification area (tray area), and click on *Reload Configuration*.
+1. Open `XivAlexanderLoader.exe` (as Administrator if it shows error), and load the program to the game, pressing Yes **ignoring the warning**.
+2. Find the XivAlexander icon on your shell notification area (tray area), and click on *Edit Opcode Configuration*.
+3. Modify opcode values referring to [this page](https://github.com/Soreepeong/XivAlexander/tree/main/StaticData/OpcodeDefinition), or refer to Issues page for the most recent opcodes.
 
 ### How to find Opcodes
 1. Turn on *Use IPC Type Finder* menu from notification area icon, and open Log window.
@@ -111,11 +111,6 @@ Apache License 2.0
 * -h (--help): 도움말 메시지 출력
 * -a (--action): 찾은 프로세스별로 할 작업 선택 (가능한 값: ask, load, unload)
 * -q (--quiet): 오류 메시지 출력하지 않음
-
-### 처음 사용할 때 세팅
-1. `XivAlexanderLoader.exe`가 있는 폴더에 생긴 `XivAlexander.dll.json`를 텍스트 편집기 (메모장 등)으로 열어 주세요.
-2. [이 페이지를 참고해서](https://github.com/Soreepeong/XivAlexander/tree/main/StaticData/OpcodeDefinition) 옵코드를 적당히 수정해 주세요.
-3. 시스템 알림 영역(트레이)에 있는 아이콘을 오른쪽 클릭한 후 *Reload Configuration*을 누르세요.
 
 ### 옵코드 찾는 방법
 1. 메뉴에서 *Use IPC Type Finder*를 켜고, 로그 창을 엽니다.
