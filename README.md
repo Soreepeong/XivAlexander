@@ -37,22 +37,7 @@ Usage: XivAlexanderLoader [options] targets
 
 ### First time setup
 1. Open `XivAlexander.dll.json` with a text editor which should have been created after a successful load for the first time.
-2. Modify opcode values. As of Patch 5.55 for the international release, opcodes are as following:
-   ```json
-   {
-       "ActorCast": "0x0228",
-       "ActorControl": "0x030f",
-       "ActorControlSelf": "0x0200",
-       "AddStatusEffect": "0x0093",
-       "RequestUseAction": "0x0396",
-       "RequestUseAction2": "0x0205",
-       "SkillResultResponse01": "0x0128",
-       "SkillResultResponse08": "0x0295",
-       "SkillResultResponse16": "0x025e",
-       "SkillResultResponse24": "0x0299",
-       "SkillResultResponse32": "0x00a7"
-   }
-   ```
+2. Modify opcode values referring to [this page](https://github.com/Soreepeong/XivAlexander/tree/main/StaticData/OpcodeDefinition).
 3. Find the XivAlexander icon on your shell notification area (tray area), and click on *Reload Configuration*.
 
 ### How to find Opcodes
@@ -129,22 +114,7 @@ Apache License 2.0
 
 ### 처음 사용할 때 세팅
 1. `XivAlexanderLoader.exe`가 있는 폴더에 생긴 `XivAlexander.dll.json`를 텍스트 편집기 (메모장 등)으로 열어 주세요.
-2. 옵코드를 적당히 수정해 주세요. 현재 한썹 5.4 HotFix에서는 다음과 같습니다. 
-   ```json
-   {
-        "ActorCast": "0x00eb",
-        "ActorControl": "0x01cf",
-        "ActorControlSelf": "0x0307",
-        "AddStatusEffect": "0x01f2",
-        "RequestUseAction": "0x0398",
-        "RequestUseAction2": "0x02b0",
-        "SkillResultResponse01": "0x00b5",
-        "SkillResultResponse08": "0x0235",
-        "SkillResultResponse16": "0x0131",
-        "SkillResultResponse24": "0x03c0",
-        "SkillResultResponse32": "0x0361"
-   }
-   ```
+2. [이 페이지를 참고해서](https://github.com/Soreepeong/XivAlexander/tree/main/StaticData/OpcodeDefinition) 옵코드를 적당히 수정해 주세요.
 3. 시스템 알림 영역(트레이)에 있는 아이콘을 오른쪽 클릭한 후 *Reload Configuration*을 누르세요.
 
 ### 옵코드 찾는 방법
