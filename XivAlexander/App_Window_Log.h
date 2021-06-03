@@ -11,13 +11,13 @@ namespace App::Window {
 
 	public:
 		Log();
-		virtual ~Log();
+		~Log() override;
 
 	protected:
-		virtual LRESULT WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
+		LRESULT WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 		void OnLayout(double zoom, double width, double height) override;
 		LRESULT OnNotify(const LPNMHDR nmhdr) override;
-		virtual void OnDestroy() override;
+		void OnDestroy() override;
 
 		void ResizeMargin();
 	};

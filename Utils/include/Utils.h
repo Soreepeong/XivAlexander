@@ -17,6 +17,10 @@ namespace Utils {
 	std::string FormatWindowsErrorMessage(unsigned int errorCode = -1);
 	
 	int sockaddr_cmp(const void* x, const void* y);
+	std::string DescribeSockaddr(const struct sockaddr_in& sa);
+	std::string DescribeSockaddr(const struct sockaddr_in6& sa);
+	std::string DescribeSockaddr(const struct sockaddr& sa);
+	std::string DescribeSockaddr(const struct sockaddr_storage& sa);
 
 	template <typename ... Args>
 	std::string FormatString(const _Printf_format_string_ char* format, Args ... args) {

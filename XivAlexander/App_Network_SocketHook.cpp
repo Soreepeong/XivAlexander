@@ -6,27 +6,6 @@
 
 namespace SocketFn = App::Hooks::Socket;
 
-static std::string get_ip_str(const struct sockaddr* sa) {
-	char s[1024] = { 0 };
-	size_t maxlen = sizeof s;
-	switch (sa->sa_family) {
-		case AF_INET:
-		{
-			const auto addr = (struct sockaddr_in*)sa;
-			inet_ntop(AF_INET, &(addr->sin_addr), s, maxlen);
-			return Utils::FormatString("%s:%d", s, addr->sin_port);
-		}
-
-		case AF_INET6:
-		{
-			const auto addr = (struct sockaddr_in6*)sa;
-			inet_ntop(AF_INET6, &(addr->sin6_addr), s, maxlen);
-			return Utils::FormatString("%s:%d", s, addr->sin6_port);
-		}
-	}
-	return "Unknown AF";
-}
-
 class SingleStream {
 public:
 	bool m_ending = false;
@@ -36,7 +15,7 @@ public:
 	size_t m_pendingStartPos = 0;
 
 	void Write(const void* buf, size_t length) {
-		const auto uint8buf = reinterpret_cast<const uint8_t*>(buf);
+		const auto uint8buf = static_cast<const uint8_t*>(buf);
 		m_pending.insert(m_pending.end(), uint8buf, uint8buf + length);
 	}
 
@@ -213,7 +192,7 @@ public:
 		socklen_t addrlen = sizeof local;
 		if (0 == getsockname(m_socket, reinterpret_cast<sockaddr*>(&local), &addrlen) && Utils::sockaddr_cmp(&m_localAddress, &local)) {
 			m_localAddress = local;
-			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Local=%s", m_socket, get_ip_str(reinterpret_cast<sockaddr*>(&local)).c_str());
+			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Local=%s", m_socket, Utils::DescribeSockaddr(local).c_str());
 
 			// Set TCP delay here because SIO_TCP_SET_ACK_FREQUENCY seems to work only when localAddress is not 0.0.0.0.
 			if (Config::Instance().Runtime.ReducePacketDelay && reinterpret_cast<sockaddr_in*>(&local)->sin_addr.s_addr != INADDR_ANY) {
@@ -223,7 +202,7 @@ public:
 		addrlen = sizeof remote;
 		if (0 == getpeername(m_socket, reinterpret_cast<sockaddr*>(&remote), &addrlen) && Utils::sockaddr_cmp(&m_remoteAddress, &remote)) {
 			m_remoteAddress = remote;
-			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Remote=%s", m_socket, get_ip_str(reinterpret_cast<sockaddr*>(&remote)).c_str());
+			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Remote=%s", m_socket, Utils::DescribeSockaddr(remote).c_str());
 		}
 	}
 
@@ -685,7 +664,7 @@ public:
 			});
 		SocketFn::connect.SetupHook([&](SOCKET s, const sockaddr* name, int namelen) {
 			const auto result = SocketFn::connect.bridge(s, name, namelen);
-			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: connect: %s", s, get_ip_str(name).c_str());
+			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: connect: %s", s, Utils::DescribeSockaddr(*name).c_str());
 			return result;
 			});
 	}
@@ -881,7 +860,7 @@ public:
 				return nullptr;
 			}
 			if (!TestRemoteAddress(addr_v4)) {
-				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Mark ignored; remote=%s:%d", socket, get_ip_str(reinterpret_cast<sockaddr*>(&addr_v4)).c_str(), addr_v4.sin_port);
+				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Mark ignored; remote=%s:%d", socket, Utils::DescribeSockaddr(addr_v4).c_str(), addr_v4.sin_port);
 				m_nonGameSockets.emplace(socket);
 				return nullptr;
 			}
@@ -929,7 +908,7 @@ App::Network::SocketHook* App::Network::SocketHook::Instance() {
 
 void App::Network::SocketHook::AddOnSocketFoundListener(void* token, std::function<void(SingleConnection&)> cb) {
 	std::lock_guard _guard(this->impl->m_socketMutex);
-	this->impl->m_onSocketFoundListeners[reinterpret_cast<size_t>(token)].push_back(cb);
+	this->impl->m_onSocketFoundListeners[reinterpret_cast<size_t>(token)].emplace_back(std::move(cb));
 	for (const auto& item : this->impl->m_sockets) {
 		cb(*item.second);
 	}
@@ -937,11 +916,33 @@ void App::Network::SocketHook::AddOnSocketFoundListener(void* token, std::functi
 
 void App::Network::SocketHook::AddOnSocketGoneListener(void* token, std::function<void(SingleConnection&)> cb) {
 	std::lock_guard _guard(this->impl->m_socketMutex);
-	this->impl->m_onSocketGoneListeners[reinterpret_cast<size_t>(token)].push_back(cb);
+	this->impl->m_onSocketGoneListeners[reinterpret_cast<size_t>(token)].emplace_back(std::move(cb));
 }
 
 void App::Network::SocketHook::RemoveListeners(void* token) {
 	std::lock_guard _guard(this->impl->m_socketMutex);
 	this->impl->m_onSocketFoundListeners.erase(reinterpret_cast<size_t>(token));
 	this->impl->m_onSocketGoneListeners.erase(reinterpret_cast<size_t>(token));
+}
+
+std::wstring App::Network::SocketHook::Describe() const {
+	std::lock_guard lock(impl->m_socketMutex);
+
+	std::wstring result;
+	for (const auto& [s, conn] : impl->m_sockets) {
+		result += Utils::FormatString(
+			L"Connection %p (%s -> %s)\n"
+			L"* Latency: last %lldms, med %lldms, avg %lldms, dev %lldms\n"
+			L"* Response Delay: med %lldms, avg %lldms, dev %lldms\n"
+			L"\n",
+			reinterpret_cast<const void*>(s),
+			Utils::FromUtf8(Utils::DescribeSockaddr(conn->impl->m_localAddress)).c_str(),
+			Utils::FromUtf8(Utils::DescribeSockaddr(conn->impl->m_remoteAddress)).c_str(),
+			conn->GetConnectionLatency(), conn->GetConnectionLatencyDeviation(),
+			conn->GetMedianConnectionLatency(), conn->GetMeanConnectionLatency(),
+			conn->GetMedianServerResponseDelay(), conn->GetMeanServerResponseDelay(),
+			conn->GetServerResponseDelayDeviation()
+		);
+	}
+	return result;
 }

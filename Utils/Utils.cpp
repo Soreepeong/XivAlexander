@@ -121,6 +121,36 @@ int Utils::sockaddr_cmp(const void* x, const void* y) {
 	return 0;
 }
 
+std::string Utils::DescribeSockaddr(const sockaddr_in& sa) {
+	if (sa.sin_family != AF_INET)
+		return "invalid sockaddr_in";
+	
+	char s[INET_ADDRSTRLEN + 6] = { 0 };
+	inet_ntop(AF_INET, &sa.sin_addr, s, sizeof s);
+	return FormatString("%s:%d", s, ntohs(sa.sin_port));
+}
+
+std::string Utils::DescribeSockaddr(const sockaddr_in6& sa) {
+	if (sa.sin6_family != AF_INET6)
+		return "invalid sockaddr_in6";
+
+	char s[INET6_ADDRSTRLEN + 6] = { 0 };
+	inet_ntop(AF_INET6, &sa.sin6_addr, s, sizeof s);
+	return FormatString("%s:%d", s, ntohs(sa.sin6_port));
+}
+
+std::string Utils::DescribeSockaddr(const sockaddr& sa) {
+	if (sa.sa_family == AF_INET)
+		return DescribeSockaddr(*reinterpret_cast<const sockaddr_in*>(&sa));
+	if (sa.sa_family == AF_INET6)
+		return DescribeSockaddr(*reinterpret_cast<const sockaddr_in6*>(&sa));
+	return "unknown sa_family";
+}
+
+std::string Utils::DescribeSockaddr(const sockaddr_storage& sa) {
+	return DescribeSockaddr(*reinterpret_cast<const sockaddr*>(&sa));
+}
+
 std::vector<std::string> Utils::StringSplit(const std::string& str, const std::string& delimiter) {
 	std::vector<std::string> result;
 	if (delimiter.empty()){

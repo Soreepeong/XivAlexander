@@ -1,11 +1,14 @@
 #include "pch.h"
 #include "resource.h"
 #include "App_Window_Main.h"
+
+#include "App_Network_SocketHook.h"
 #include "App_Window_Config.h"
 
 static const auto WmTrayCallback = WM_APP + 1;
 static const int TrayItemId = 1;
 static const int TimerIdReregisterTrayIcon = 100;
+static const int TimerIdRepaint = 101;
 
 static WNDCLASSEXW WindowClass() {
 	Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIcon(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)));
@@ -18,7 +21,7 @@ static WNDCLASSEXW WindowClass() {
 	wcex.hInstance = g_hInstance;
 	wcex.hIcon = hIcon;
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
-	wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+	wcex.hbrBackground = static_cast<HBRUSH>(GetStockObject(HOLLOW_BRUSH));
 	wcex.lpszMenuName = MAKEINTRESOURCE(IDR_TRAY_MENU);
 	wcex.lpszClassName = L"XivAlexander::Window::Main";
 	wcex.hIconSm = hIcon;
@@ -26,19 +29,20 @@ static WNDCLASSEXW WindowClass() {
 }
 
 App::Window::Main::Main(HWND hGameWnd, std::function<void()> unloadFunction)
-	: Base(WindowClass(), L"XivAlexander", WS_OVERLAPPEDWINDOW, WS_EX_TOPMOST, CW_USEDEFAULT, CW_USEDEFAULT, 480, 80, nullptr, nullptr)
+	: Base(WindowClass(), L"XivAlexander", WS_OVERLAPPEDWINDOW, WS_EX_TOPMOST, CW_USEDEFAULT, CW_USEDEFAULT, 480, 160, nullptr, nullptr)
 	, m_hGameWnd(hGameWnd)
 	, m_triggerUnload(std::move(unloadFunction))
 	, m_uTaskbarRestartMessage(RegisterWindowMessage(TEXT("TaskbarCreated"))) {
 
-	wchar_t path[MAX_PATH] = {};
-	GetModuleFileNameW(nullptr, path, MAX_PATH);
+	m_sPath.resize(PATHCCH_MAX_CCH);
+	m_sPath.resize(GetModuleFileNameW(nullptr, &m_sPath[0], static_cast<DWORD>(m_sPath.size())));
+	std::tie(m_sRegion, m_sVersion) = Utils::ResolveGameReleaseRegion();
 	
 	std::vector<unsigned char> hashSourceData{ 0x95, 0xf8, 0x89, 0x5c, 0x59, 0x94, 0x44, 0xf2, 0x9d, 0xda, 0xa6, 0x9a, 0x91, 0xb4, 0xe8, 0x51 };
-	hashSourceData.insert(hashSourceData.begin(), reinterpret_cast<unsigned char*>(path), reinterpret_cast<unsigned char*>(path) + sizeof path);
+	hashSourceData.insert(hashSourceData.begin(), reinterpret_cast<unsigned char*>(&m_sPath[0]), reinterpret_cast<unsigned char*>(&m_sPath[m_sPath.size()]));
 	HashData(hashSourceData.data(), static_cast<DWORD>(hashSourceData.size()), reinterpret_cast<BYTE*>(&m_guid.Data1), static_cast<DWORD>(sizeof GUID));
 	
-	const auto title = Utils::FormatString(L"XivAlexander(%d): %s", GetCurrentProcessId(), path);
+	const auto title = Utils::FormatString(L"XivAlexander: %d, %s, %s", GetCurrentProcessId(), m_sRegion.c_str(), m_sVersion.c_str());
 	SetWindowTextW(m_hWnd, title.c_str());
 	ModifyMenu(GetMenu(m_hWnd), ID_TRAYMENU_CURRENTINFO, MF_BYCOMMAND | MF_DISABLED, ID_TRAYMENU_CURRENTINFO, title.c_str());
 
@@ -47,11 +51,21 @@ App::Window::Main::Main(HWND hGameWnd, std::function<void()> unloadFunction)
 	// Try to restore tray icon every 5 seconds in case things go wrong
 	SetTimer(m_hWnd, TimerIdReregisterTrayIcon, 5000, nullptr);
 
+	SetTimer(m_hWnd, TimerIdRepaint, 1000, nullptr);
+
 	m_cleanupList.emplace_back(App::Config::Instance().Runtime.ShowControlWindow.OnChangeListener([this](App::Config::ItemBase&) {
 		ShowWindow(m_hWnd, App::Config::Instance().Runtime.ShowControlWindow ? SW_SHOW : SW_HIDE);
 		}));
 	if (App::Config::Instance().Runtime.ShowControlWindow)
 		ShowWindow(m_hWnd, SW_SHOW);
+
+	Network::SocketHook::Instance()->AddOnSocketFoundListener(this, [this](Network::SingleConnection&) {
+		InvalidateRect(m_hWnd, nullptr, false);
+		});
+	Network::SocketHook::Instance()->AddOnSocketGoneListener(this, [this](Network::SingleConnection&) {
+		InvalidateRect(m_hWnd, nullptr, false);
+		});
+	m_cleanupList.emplace_back([this]() { Network::SocketHook::Instance()->RemoveListeners(this); });
 }
 
 App::Window::Main::~Main() {
@@ -165,7 +179,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 				curPoint.y,
 				0,
 				m_hWnd,
-				NULL
+				nullptr
 			);
 
 			if (result)
@@ -176,7 +190,60 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	} else if (uMsg == WM_TIMER) {
 		if (wParam == TimerIdReregisterTrayIcon) {
 			RegisterTrayIcon();
+		} else if (wParam == TimerIdRepaint) {
+			InvalidateRect(m_hWnd, nullptr, false);
 		}
+	} else if (uMsg == WM_PAINT) {
+		PAINTSTRUCT ps{};
+		RECT rect{};
+		const auto hdc = BeginPaint(m_hWnd, &ps);
+		
+		const auto zoom = GetZoom();
+		NONCLIENTMETRICSW ncm = { sizeof(NONCLIENTMETRICSW) };
+		SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof ncm, &ncm, 0);
+		
+		GetClientRect(m_hWnd, &rect);
+		const auto backdc = CreateCompatibleDC(hdc);
+		
+		std::vector<HGDIOBJ> gdiRestoreStack;
+		gdiRestoreStack.emplace_back(SelectObject(backdc, CreateCompatibleBitmap(hdc, rect.right - rect.left, rect.bottom - rect.top)));
+		gdiRestoreStack.emplace_back(SelectObject(backdc, CreateFontIndirectW(&ncm.lfMessageFont)));
+		
+		FillRect(backdc, &rect, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
+		const auto str = Utils::FormatString(
+			L"Process ID: %d\n"
+			L"Game Path: %s\n"
+			L"Game Release: %s (%s)\n"
+			L"\n",
+			GetCurrentProcessId(), m_sPath.c_str(), m_sVersion.c_str(), m_sRegion.c_str()
+		) +
+			Network::SocketHook::Instance()->Describe() + 
+			Utils::FormatString(
+				L"Tips:\n"
+				L"* Turn off \"Use Delay Detection\" and \"Use Latency Correction\" if any of the following is true.\n"
+				L"  * You're using a VPN software and your latency is being displayed below 10ms when it shouldn't be.\n"
+				L"  * Your ping is above 200ms.\n"
+				L"  * You can't double weave comfortably."
+				);
+		const auto pad = static_cast<int>(8 * zoom);
+		RECT rct = {
+			pad,
+			pad,
+			rect.right - pad,
+			rect.bottom - pad,
+		};
+		DrawTextW(backdc, &str[0], -1, &rct, DT_TOP | DT_LEFT | DT_NOCLIP | DT_EDITCONTROL | DT_WORDBREAK);
+
+		BitBlt(hdc, 0, 0, rect.right - rect.left, rect.bottom - rect.top, backdc, 0, 0, SRCCOPY);
+
+		while (!gdiRestoreStack.empty()) {
+			DeleteObject(SelectObject(backdc, gdiRestoreStack.back()));
+			gdiRestoreStack.pop_back();
+		}
+		DeleteDC(backdc);
+
+		EndPaint(m_hWnd, &ps);
+		return 0;
 	}
 	return Base::WndProc(uMsg, wParam, lParam);
 }

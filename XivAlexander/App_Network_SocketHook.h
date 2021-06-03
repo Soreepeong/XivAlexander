@@ -20,18 +20,27 @@ namespace App::Network {
 		void AddOutgoingFFXIVMessageHandler(void* token, std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb);
 		void RemoveMessageHandlers(void* token);
 		void SendFFXIVMessage(const Structures::FFXIVMessage* pMessage);
-		SOCKET GetSocket() const;
-		void SetTCPDelay();
 		void ResolveAddresses();
 		void AddConnectionLatencyItem(int64_t latency);
-		int64_t GetMedianConnectionLatency() const;
-		int64_t GetMeanConnectionLatency() const;
-		int64_t GetConnectionLatencyDeviation() const;
 		void AddServerResponseDelayItem(uint64_t delay);
+		
+		[[nodiscard]]
+		SOCKET GetSocket() const;
+		[[nodiscard]]
+		int64_t GetMedianConnectionLatency() const;
+		[[nodiscard]]
+		int64_t GetMeanConnectionLatency() const;
+		[[nodiscard]]
+		int64_t GetConnectionLatencyDeviation() const;
+		[[nodiscard]]
 		int64_t GetMinServerResponseDelay() const;
+		[[nodiscard]]
 		int64_t GetMeanServerResponseDelay() const;
+		[[nodiscard]]
 		int64_t GetMedianServerResponseDelay() const;
+		[[nodiscard]]
 		int64_t GetServerResponseDelayDeviation() const;
+		[[nodiscard]]
 		int64_t GetConnectionLatency() const;
 	};
 
@@ -39,13 +48,12 @@ namespace App::Network {
 		class Internals;
 		const std::unique_ptr<Internals> impl;
 
+	public:
+		SocketHook(HWND hGameWnd);
 		SocketHook(const SocketHook&) = delete;
 		SocketHook(SocketHook&&) = delete;
 		SocketHook& operator =(const SocketHook&) = delete;
 		SocketHook& operator =(SocketHook&&) = delete;
-
-	public:
-		SocketHook(HWND hGameWnd);
 		~SocketHook();
 
 		static SocketHook* Instance();
@@ -53,5 +61,7 @@ namespace App::Network {
 		void AddOnSocketFoundListener(void* token, std::function<void(SingleConnection&)> cb);
 		void AddOnSocketGoneListener(void* token, std::function<void(SingleConnection&)> cb);
 		void RemoveListeners(void* token);
+
+		std::wstring Describe() const;
 	};
 }

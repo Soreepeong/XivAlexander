@@ -26,7 +26,7 @@ HWND App::Window::Base::InternalCreateWindow(const WNDCLASSEXW& wndclassex,
 
 		if (uMsg == WM_NCCREATE) {
 			const auto cs = reinterpret_cast<LPCREATESTRUCTW>(lParam);
-			pBase = reinterpret_cast<Base*>(cs->lpCreateParams);
+			pBase = static_cast<Base*>(cs->lpCreateParams);
 			pBase->m_hWnd = hWnd;
 			SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(cs->lpCreateParams));
 		} else {

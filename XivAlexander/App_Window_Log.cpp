@@ -47,13 +47,13 @@ App::Window::Log::Log()
 	m_hScintilla = CreateWindowExW(0, TEXT("Scintilla"), TEXT(""), WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
 		0, 0, 0, 0, m_hWnd, nullptr, g_hInstance, nullptr);
 	m_direct = reinterpret_cast<SciFnDirect>(SendMessageW(m_hScintilla, SCI_GETDIRECTFUNCTION, 0, 0));
-	m_directPtr = static_cast<sptr_t>(SendMessageW(m_hScintilla, SCI_GETDIRECTPOINTER, 0, 0));
+	m_directPtr = SendMessageW(m_hScintilla, SCI_GETDIRECTPOINTER, 0, 0);
 	m_direct(m_directPtr, SCI_STYLESETSIZE, STYLE_DEFAULT, static_cast<int>(BaseFontSize * GetZoom()));
 	m_direct(m_directPtr, SCI_SETWRAPMODE, SC_WRAP_CHAR, 0);
 	m_direct(m_directPtr, SCI_SETREADONLY, TRUE, 0);
 	m_direct(m_directPtr, SCI_SETMARGINTYPEN, 0, SC_MARGIN_NUMBER);
 	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 1, 0);
-	m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, sptr_t(Utils::ToUtf8(ncm.lfMessageFont.lfFaceName).c_str()));
+	m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>(Utils::ToUtf8(ncm.lfMessageFont.lfFaceName).c_str()));
 	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Debug), RGB(80, 80, 80));
 	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Info), RGB(0, 0, 0));
 	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Warning), RGB(160, 160, 0));
@@ -80,7 +80,7 @@ App::Window::Log::Log()
 			const auto atBottom = nFirstLine >= nLineCount - nLinesOnScreen && m_direct(m_directPtr, SCI_GETSELECTIONEMPTY, 0, 0);
 			m_direct(m_directPtr, SCI_STARTSTYLING, nPos, 0);
 
-			m_direct(m_directPtr, SCI_APPENDTEXT, logstr.length(), sptr_t(logstr.c_str()));
+			m_direct(m_directPtr, SCI_APPENDTEXT, logstr.length(), reinterpret_cast<sptr_t>(logstr.c_str()));
 			m_direct(m_directPtr, SCI_SETSTYLING, logstr.length(), LogLevelStyleMap.at(item.level));
 			nPos += logstr.length();
 			nLineCount++;
@@ -125,14 +125,14 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 						std::string buf;
 					};
 
-					DataT* pDataT = new DataT();
+					auto pDataT = new DataT();
 					pDataT->hWnd = m_hWnd;
 					pDataT->buf = std::string(m_direct(m_directPtr, SCI_GETLENGTH, 0, 0) + 1, '\0');
 					m_direct(m_directPtr, SCI_GETTEXT, pDataT->buf.length(), reinterpret_cast<sptr_t>(&pDataT->buf[0]));
 					pDataT->buf.resize(pDataT->buf.length() - 1);
 
 					Utils::Win32Handle hThread(CreateThread(nullptr, 0, [](void* pDataRaw) -> DWORD {
-						DataT* pDataT = reinterpret_cast<DataT*>(pDataRaw);
+						auto pDataT = static_cast<DataT*>(pDataRaw);
 						Utils::CallOnDestruction freeDataT([pDataT]() { delete pDataT; });
 						static const COMDLG_FILTERSPEC saveFileTypes[] = {
 							{L"Log Files (*.log)",		L"*.log"},

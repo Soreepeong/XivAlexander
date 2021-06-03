@@ -13,8 +13,8 @@ namespace App::Window {
 		Utils::CallOnDestruction m_callbackHandle;
 
 	public:
-		Config(App::Config::BaseRepository* pRepository);
-		virtual ~Config();
+		explicit Config(App::Config::BaseRepository* pRepository);
+		~Config() override;
 
 		void Revert();
 		bool TrySave();
@@ -23,9 +23,9 @@ namespace App::Window {
 		App::Config::BaseRepository* GetRepository() const;
 		
 	protected:
-		virtual LRESULT WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
+		LRESULT WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 		void OnLayout(double zoom, double width, double height) override;
-		virtual LRESULT OnNotify(const LPNMHDR nmhdr) override;
+		LRESULT OnNotify(const LPNMHDR nmhdr) override;
 
 		void ResizeMargin();
 	};

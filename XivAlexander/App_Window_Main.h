@@ -15,9 +15,12 @@ namespace App::Window {
 
 		std::vector<Utils::CallOnDestruction> m_cleanupList;
 
+		std::wstring m_sPath;
+		std::wstring m_sRegion, m_sVersion;
+
 	public:
 		Main(HWND hGameWnd, std::function<void()> unloadFunction);
-		virtual ~Main();
+		~Main() override;
 
 	protected:
 		LRESULT WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
