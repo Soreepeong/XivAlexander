@@ -18,22 +18,24 @@ const char* App::Config::ItemBase::Name() const {
 }
 
 void App::Config::BaseRepository::Reload(bool announceChange) {
+	bool changed = false;
 	nlohmann::json config;
-	try {
-		std::ifstream in(m_sConfigPath);
-		in >> config;
-	} catch (std::exception& e) {
-		Misc::Logger::GetLogger().Format(LogCategory::General, "JSON Config load error: %s", e.what());
+	if (PathFileExistsW(m_sConfigPath.c_str())) {
+		try {
+			std::ifstream in(m_sConfigPath);
+			in >> config;
+		} catch (std::exception& e) {
+			Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::General, "Failed to load configuration file: %s", e.what());
+		}
+	} else {
+		changed = true;
+		Misc::Logger::GetLogger().Format(LogCategory::General, "Creating new config file: %s", Utils::ToUtf8(m_sConfigPath).c_str());
 	}
 
 	m_destructionCallbacks.clear();
-
-	bool changed = false;
 	for (auto& item : m_allItems) {
 		changed |= item->LoadFrom(config, announceChange);
-		m_destructionCallbacks.push_back(item->OnChangeListener([this](ItemBase& item) {
-			Save();
-			}));
+		m_destructionCallbacks.push_back(item->OnChangeListener([this](ItemBase& item) { Save(); }));
 	}
 
 	if (changed)
@@ -50,8 +52,8 @@ App::Config& App::Config::Instance() {
 		const auto regionAndVersion = Utils::ResolveGameReleaseRegion();
 		
 		s_pInstance = std::make_unique<Config>(
-			Utils::FormatString(L"%s/config.runtime.json", directory.c_str()),
-			Utils::FormatString(L"%s/game.%s.%s.json", directory.c_str(),
+			Utils::FormatString(L"%s\\config.runtime.json", directory.c_str()),
+			Utils::FormatString(L"%s\\game.%s.%s.json", directory.c_str(),
 				std::get<0>(regionAndVersion).c_str(),
 				std::get<1>(regionAndVersion).c_str())
 			);
@@ -82,22 +84,14 @@ void App::Config::BaseRepository::Save() {
 		return;
 
 	nlohmann::json config;
-	try {
-		std::ifstream in(m_sConfigPath);
-		in >> config;
-	} catch (std::exception& e) {
-		Misc::Logger::GetLogger().Format(LogCategory::General, "JSON Config load error: %s", e.what());
-	}
-
-	for (auto& item : m_allItems) {
+	for (auto& item : m_allItems)
 		item->SaveTo(config);
-	}
 
 	try {
 		std::ofstream out(m_sConfigPath);
 		out << config.dump(1, '\t');
 	} catch (std::exception& e) {
-		App::Misc::Logger::GetLogger().Format(LogCategory::General, "JSON Config save error: %s", e.what());
+		Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "JSON Config save error: %s", e.what());
 	}
 }
 

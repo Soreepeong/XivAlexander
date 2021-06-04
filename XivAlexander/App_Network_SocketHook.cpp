@@ -906,15 +906,15 @@ App::Network::SocketHook* App::Network::SocketHook::Instance() {
 	return s_socketHookInstance;
 }
 
-void App::Network::SocketHook::AddOnSocketFoundListener(void* token, std::function<void(SingleConnection&)> cb) {
+void App::Network::SocketHook::AddOnSocketFoundListener(void* token, const std::function<void(SingleConnection&)>& cb) {
 	std::lock_guard _guard(this->impl->m_socketMutex);
-	this->impl->m_onSocketFoundListeners[reinterpret_cast<size_t>(token)].emplace_back(std::move(cb));
+	this->impl->m_onSocketFoundListeners[reinterpret_cast<size_t>(token)].emplace_back(cb);
 	for (const auto& item : this->impl->m_sockets) {
 		cb(*item.second);
 	}
 }
 
-void App::Network::SocketHook::AddOnSocketGoneListener(void* token, std::function<void(SingleConnection&)> cb) {
+void App::Network::SocketHook::AddOnSocketGoneListener(void* token, const std::function<void(SingleConnection&)>& cb) {
 	std::lock_guard _guard(this->impl->m_socketMutex);
 	this->impl->m_onSocketGoneListeners[reinterpret_cast<size_t>(token)].emplace_back(std::move(cb));
 }

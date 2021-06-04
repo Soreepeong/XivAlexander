@@ -85,6 +85,8 @@ bool App::Window::Config::TrySave() {
 		MessageBox(m_hWnd, Utils::FormatString(L"JSON Config save error: %s", Utils::FromUtf8(e.what()).c_str()).c_str(), L"XivAlexander", MB_ICONERROR);
 		return false;
 	}
+	m_originalConfig = std::move(buf);
+	m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(&m_originalConfig[0]));
 	m_pRepository->Reload(true);
 	return true;
 }

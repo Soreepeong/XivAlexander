@@ -92,7 +92,7 @@ namespace App {
 			void Save();
 			void Reload(bool announceChange = false);
 
-			const std::wstring& GetConfigPath() const {
+			[[nodiscard]] const std::wstring& GetConfigPath() const {
 				return m_sConfigPath;
 			}
 

@@ -58,8 +58,8 @@ namespace App::Network {
 
 		static SocketHook* Instance();
 
-		void AddOnSocketFoundListener(void* token, std::function<void(SingleConnection&)> cb);
-		void AddOnSocketGoneListener(void* token, std::function<void(SingleConnection&)> cb);
+		void AddOnSocketFoundListener(void* token, const std::function<void(SingleConnection&)>& cb);
+		void AddOnSocketGoneListener(void* token, const std::function<void(SingleConnection&)>& cb);
 		void RemoveListeners(void* token);
 
 		std::wstring Describe() const;

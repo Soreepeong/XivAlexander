@@ -294,7 +294,8 @@ public:
 		if (GetWindowLongPtrW(m_hGameMainWindow, GWLP_WNDPROC) != m_overridenGameMainWndProc)
 			throw std::exception("Something has hooked the game process after XivAlexander, so you cannot unload XivAlexander until that other thing has been unloaded.");
 
-		SendMessage(m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
+		if (m_trayWindow)
+			SendMessage(m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
 		return 0;
 	}
 
