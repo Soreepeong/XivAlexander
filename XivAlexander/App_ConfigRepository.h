@@ -122,8 +122,8 @@ namespace App {
 			Item<bool> UseOpcodeFinder = CreateConfigItem(this, "UseOpcodeFinder", false);
 			Item<bool> UseEffectApplicationDelayLogger = CreateConfigItem(this, "UseEffectApplicationDelayLogger", false);
 			Item<bool> UseAutoAdjustingExtraDelay = CreateConfigItem(this, "UseAutoAdjustingExtraDelay", true);
-			Item<bool> ShowLoggingWindow = CreateConfigItem(this, "ShowLoggingWindow", false);
-			Item<bool> ShowControlWindow = CreateConfigItem(this, "ShowControlWindow", false);
+			Item<bool> ShowLoggingWindow = CreateConfigItem(this, "ShowLoggingWindow", true);
+			Item<bool> ShowControlWindow = CreateConfigItem(this, "ShowControlWindow", true);
 			Item<std::string> GameServerIpRange = CreateConfigItem(this, "GameServerIpRange", std::string(
 				"124.150.157.0/24,"  // Japanese
 				"195.82.50.0/24,"    // European
