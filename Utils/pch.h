@@ -19,6 +19,7 @@
 #include <PathCch.h>
 #include <wincrypt.h>
 #include <wintrust.h>
+#include <Shlwapi.h>
 
 #define ZLIB_CONST
 #include <zlib.h>

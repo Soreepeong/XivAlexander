@@ -337,6 +337,9 @@ std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const std
 	
 	PathCchRemoveFileSpec(&bootPath[0], bootPath.size());
 	// boot: C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn
+
+	std::wstring installationPath = bootPath;
+	installationPath.resize(wcsnlen(&installationPath[0], installationPath.size()));
 	
 	PathCchAppend(&bootPath[0], bootPath.size(), L"boot");
 	// boot: C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\boot
@@ -365,10 +368,16 @@ std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const std
 		}
 	}
 
+	std::wstring launcherDirectory;
+	if (PathIsDirectoryW(bootPath.c_str()))
+		launcherDirectory = bootPath;
+	else
+		launcherDirectory = installationPath;
+
 	WIN32_FIND_DATAW data{};
-	Win32Handle<HANDLE, FindClose> hFindFile(FindFirstFileW(FormatString(L"%s\\ffxiv*.exe", bootPath.c_str()).c_str(), &data));
+	Win32Handle<HANDLE, FindClose> hFindFile(FindFirstFileW(FormatString(L"%s\\ffxiv*.exe", launcherDirectory.c_str()).c_str(), &data));
 	do {
-		const auto path = FormatString(L"%s\\%s", bootPath.c_str(), data.cFileName);
+		const auto path = FormatString(L"%s\\%s", launcherDirectory.c_str(), data.cFileName);
 		const auto publisherCountry = TestPublisher(path);
 		if (!publisherCountry.empty())
 			return std::make_tuple(
@@ -378,10 +387,10 @@ std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const std
 		
 	} while (FindNextFileW(hFindFile, &data));
 
-	CharLowerW(&bootPath[0]);
+	CharLowerW(&installationPath[0]);
 	uLong crc = crc32(crc32(0L, nullptr, 0), 
-		reinterpret_cast<Bytef*>(&bootPath[0]), 
-		static_cast<uInt>(bootPath.size() * sizeof bootPath[0]));
+		reinterpret_cast<Bytef*>(&installationPath[0]),
+		static_cast<uInt>(installationPath.size() * sizeof installationPath[0]));
 	
 	return std::make_tuple(
 		FormatString(L"unknown_%08x", crc),
