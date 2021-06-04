@@ -262,7 +262,7 @@ std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion() {
 	return ResolveGameReleaseRegion(path);
 }
 
-static const wchar_t* TestPublisher(const std::wstring &path) {
+static std::wstring TestPublisher(const std::wstring &path) {
 	// See: https://docs.microsoft.com/en-US/troubleshoot/windows/win32/get-information-authenticode-signed-executables
 
 	constexpr auto ENCODING = X509_ASN_ENCODING | PKCS_7_ASN_ENCODING;
@@ -282,7 +282,7 @@ static const wchar_t* TestPublisher(const std::wstring &path) {
 		&hStore,
 		&hMsg,
 		nullptr))
-		return nullptr;
+		return L"";
 	if (hMsg) cleanupList.emplace_back([hMsg]() { CryptMsgClose(hMsg); });
 	if (hStore) cleanupList.emplace_back([hStore]() { CertCloseStore(hStore, 0); });
 
@@ -294,7 +294,7 @@ static const wchar_t* TestPublisher(const std::wstring &path) {
 			0,
 			signerInfoBuf.empty() ? nullptr : &signerInfoBuf[0],
 			&cbData))
-			return nullptr;
+			return L"";
 		signerInfoBuf.resize(cbData);
 	}
 
@@ -310,19 +310,14 @@ static const wchar_t* TestPublisher(const std::wstring &path) {
 		&certInfo,
 		nullptr);
 	if (!pCertContext)
-		return nullptr;
+		return L"";
 	if (pCertContext) cleanupList.emplace_back([pCertContext]() { CertFreeCertificateContext(pCertContext); });
+
+	std::wstring country;
+	country.resize(CertGetNameStringW(pCertContext, CERT_NAME_ATTR_TYPE, 0, const_cast<char*>(szOID_COUNTRY_NAME), nullptr, 0));
+	country.resize(CertGetNameStringW(pCertContext, CERT_NAME_ATTR_TYPE, 0, const_cast<char*>(szOID_COUNTRY_NAME), &country[0], static_cast<DWORD>(country.size())) - 1);
 	
-	std::wstring subjectName;
-	subjectName.resize(CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, nullptr, nullptr, 0));
-	subjectName.resize(CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, nullptr, &subjectName[0], static_cast<DWORD>(subjectName.size())) - 1);
-	
-	if (subjectName == L"SQUARE ENIX CO., LTD.")
-		return L"international";
-	if (subjectName == L"ACTOZSOFT CO.Ltd,.")
-		return L"korean";
-	
-	return nullptr;
+	return country;
 }
 
 std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const std::wstring& path) {
@@ -364,13 +359,13 @@ std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const std
 	}
 
 	WIN32_FIND_DATAW data{};
-	Win32Handle<HANDLE, FindClose> hFindFile(FindFirstFileW(FormatString(L"%s\\*.exe", bootPath.c_str()).c_str(), &data));
+	Win32Handle<HANDLE, FindClose> hFindFile(FindFirstFileW(FormatString(L"%s\\ffxiv*.exe", bootPath.c_str()).c_str(), &data));
 	do {
 		const auto path = FormatString(L"%s\\%s", bootPath.c_str(), data.cFileName);
-
-		if (const auto pwzPublisher = TestPublisher(path))
+		const auto publisherCountry = TestPublisher(path);
+		if (!publisherCountry.empty())
 			return std::make_tuple(
-				std::wstring(pwzPublisher),
+				publisherCountry,
 				gameVer
 			);
 		
