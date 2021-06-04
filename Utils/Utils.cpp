@@ -356,6 +356,13 @@ std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const std
 		if (!ReadFile(hGameVer, &buf[0], size.LowPart, &read, nullptr) || read != size.LowPart)
 			throw std::runtime_error("Failed to read game version");
 		gameVer = FromUtf8(buf);
+
+		for (auto& chr : gameVer) {
+			for (auto i : L"<>:\"/\\|?*") {
+				if (chr == i || chr < 32)
+					chr = L'_';
+			}
+		}
 	}
 
 	WIN32_FIND_DATAW data{};
