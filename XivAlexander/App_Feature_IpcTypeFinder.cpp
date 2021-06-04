@@ -27,12 +27,25 @@ public:
 							pMessage->Length == 0x95c) {
 							// Test ActionEffect
 
+							int expectedCount = 0;
+							if (pMessage->Length == 0x9c)
+								expectedCount = 1;
+							else if(pMessage->Length == 0x29c)
+								expectedCount = 8;
+							else if (pMessage->Length == 0x4dc)
+								expectedCount = 16;
+							else if (pMessage->Length == 0x71c)
+								expectedCount = 24;
+							else if (pMessage->Length == 0x95c)
+								expectedCount = 32;
+
 							const auto& actionEffect = pMessage->Data.IPC.Data.S2C_ActionEffect;
 
 							Misc::Logger::GetLogger().Format(
 								LogCategory::IpcTypeFinder,
-								"%p: S2C_AttackResponse(0x%04x) length=%x actionId=%04x sequence=%04x wait=%.3f",
+								"%p: S2C_ActionEffect%02d(0x%04x) length=%x actionId=%04x sequence=%04x wait=%.3f",
 								conn.GetSocket(),
+								expectedCount,
 								pMessage->Data.IPC.SubType,
 								pMessage->Length,
 								actionEffect.ActionId,
@@ -137,7 +150,7 @@ public:
 						const auto& actionRequest = pMessage->Data.IPC.Data.C2S_ActionRequest;
 						Misc::Logger::GetLogger().Format(
 							LogCategory::IpcTypeFinder,
-							"%p: C2S_AttackRequest(0x%04x): actionId=%04x sequence=%04x",
+							"%p: C2S_ActionRequest/GroundTargeted(0x%04x): actionId=%04x sequence=%04x",
 							conn.GetSocket(),
 							pMessage->Data.IPC.SubType,
 							actionRequest.ActionId, actionRequest.Sequence);
