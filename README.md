@@ -20,6 +20,8 @@ Run the game if it isn't already running, run `XivAlexanderLoader.exe`, and foll
 You might have to add both `XivAlexander.dll` and `XivAlexanderLoader.exe` to exclusion list.
 Refer to your anti-virus software manual for instructions.
 
+**[Find opcodes](https://github.com/Soreepeong/XivAlexander/wiki/How-to-find-opcodes)** after game updates. This add-on will break whenever ACT FFXIV Plugin breaks.
+
 ### Command line arguments
 Usage: XivAlexanderLoader [options] targets
 
@@ -34,21 +36,6 @@ Usage: XivAlexanderLoader [options] targets
 #### Example:
 * `XivAlexanderLoader.exe -a load 16844`: Loads XivAlexander into process ID 16844.
 * `XivAlexanderLoader.exe -q -a unload ffxiv_dx11.exe`: Unloads XivAlexander from every process with its path ending with `ffxiv_dx11.exe`, and suppress all error messages.
-
-### First time setup
-1. Open `XivAlexanderLoader.exe` (as Administrator if it shows error), and load the program to the game, pressing Yes **ignoring the warning**.
-2. Find the XivAlexander icon on your shell notification area (tray area), and click on *Edit Opcode Configuration*.
-3. Modify opcode values referring to [this page](https://github.com/Soreepeong/XivAlexander/tree/main/StaticData/OpcodeDefinition), or refer to Issues page for the most recent opcodes.
-
-### How to find Opcodes
-1. Turn on *Use IPC Type Finder* menu from notification area icon, and open Log window.
-2. Cast Cure-like casted actions to self, and figure out `RequestUseAction`, `SkillResultResponse01`, `ActorCast`, and `ActorControlSelf`(this includes cooldown information.) 
-3. Use ground targeted action (Asylum, Shukuchi, Sacred Soil, Soten, Earthly Star) to figure out `RequestUseAction2`.
-4. Cancel cast by moving around, and figure out `ActorControl`.
-5. Use AoE action without any target around, and figure out `SkillResultResponse08`.
-6. Enter Sastasha without level synchronization, pull more than 9 adds, and use an AoE action to figure out `SkillResultResponse16`.
-7. Do the same but pull more than 17 adds to figure out `SkillResultResponse24`.
-8. Leave and re-enter Sastasha, and do the same but pull more than 25 adds to figure out `SkillResultResponse32`.
 
 ### Description on options
 * `High Latency Mitigation`: The purpose of this program.
