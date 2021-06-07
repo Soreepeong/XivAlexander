@@ -383,7 +383,7 @@ int WINAPI wWinMain(
 	try {
 		AddDebugPrivilege();
 	} catch (const std::exception& err) {
-		debugPrivilegeError = Utils::FormatString("Failed to obtain.\n* %s", err.what());
+		debugPrivilegeError = Utils::FormatString("Failed to obtain.\n* Try running this program as Administrator.\n* %s", err.what());
 	}
 
 	const std::wstring ProcessName(L"ffxiv_dx11.exe");
