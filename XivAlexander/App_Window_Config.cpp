@@ -5,7 +5,10 @@
 constexpr int BaseFontSize = 11;
 
 static WNDCLASSEXW WindowClass() {
-	const Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIcon(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)));
+	const Utils::Win32Handle<HICON, DestroyIcon> hIcon(
+		LoadIconW(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)),
+		nullptr,
+		"Failed to load app icon.");
 	WNDCLASSEXW wcex;
 	ZeroMemory(&wcex, sizeof wcex);
 	wcex.cbSize = sizeof(WNDCLASSEX);

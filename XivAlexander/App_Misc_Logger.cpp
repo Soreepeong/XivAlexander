@@ -15,7 +15,9 @@ public:
 
 	Internals(Logger& logger)
 		: logger(logger)
-		, m_hLogDispatcherThread(CreateThread(nullptr, 0, [](PVOID p) -> DWORD { return reinterpret_cast<Internals*>(p)->ThreadWorker(); }, this, CREATE_SUSPENDED, nullptr))
+		, m_hLogDispatcherThread(CreateThread(nullptr, 0, [](PVOID p) -> DWORD { return static_cast<Internals*>(p)->ThreadWorker(); }, this, CREATE_SUSPENDED, nullptr),
+			Utils::NullHandle, 
+			"Logger::CreateThread(ThreadWorker)")
 	{
 		ResumeThread(m_hLogDispatcherThread);
 	}

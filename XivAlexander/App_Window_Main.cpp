@@ -11,7 +11,9 @@ static const int TimerIdReregisterTrayIcon = 100;
 static const int TimerIdRepaint = 101;
 
 static WNDCLASSEXW WindowClass() {
-	Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIcon(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)));
+	const Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIconW(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)),
+		nullptr,
+		"Failed to load app icon.");
 	WNDCLASSEXW wcex;
 	ZeroMemory(&wcex, sizeof wcex);
 	wcex.cbSize = sizeof(WNDCLASSEX);
@@ -281,7 +283,9 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) {
 }
 
 void App::Window::Main::RegisterTrayIcon() {
-	Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIcon(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)));
+	const Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIconW(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)),
+		nullptr,
+		"Failed to load app icon.");
 	NOTIFYICONDATAW nid = { sizeof(NOTIFYICONDATAW) };
 	nid.uVersion = NOTIFYICON_VERSION_4;
 	nid.guidItem = m_guid;

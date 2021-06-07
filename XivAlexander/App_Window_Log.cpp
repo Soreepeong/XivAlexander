@@ -21,7 +21,9 @@ static const std::map<App::LogCategory, const char*> LogCategoryNames{
 };
 
 static WNDCLASSEXW WindowClass() {
-	Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIcon(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)));
+	const Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIconW(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)),
+		nullptr,
+		"Failed to load app icon.");
 	WNDCLASSEXW wcex;
 	ZeroMemory(&wcex, sizeof wcex);
 	wcex.cbSize = sizeof(WNDCLASSEX);
@@ -164,7 +166,9 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
 								Utils::CallOnDestruction freeFileName([pszNewFileName]() { CoTaskMemFree(pszNewFileName); });
 								{
-									Utils::Win32Handle hFile(CreateFile(pszNewFileName, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr));
+									const Utils::Win32Handle hFile(CreateFile(pszNewFileName, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr),
+										INVALID_HANDLE_VALUE,
+										L"Failed to open file: %s", pszNewFileName);
 									DWORD written;
 									WriteFile(hFile, pDataT->buf.data(), static_cast<DWORD>(pDataT->buf.length()), &written, nullptr);
 									if (written != pDataT->buf.length())
@@ -179,7 +183,9 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 							MessageBoxW(pDataT->hWnd, e.Description(), L"XivAlexander", MB_ICONERROR);
 						}
 						return 0;
-						}, pDataT, 0, nullptr));
+						}, pDataT, 0, nullptr),
+						Utils::NullHandle,
+							"Failed to start FileSaveThread.");
 					return 0;
 				}
 

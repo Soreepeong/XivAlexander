@@ -1,6 +1,7 @@
 {
   "name": "xivalexander-loader",
   "version-string": "1.10",
+  "builtin-baseline": "751fc199af8d33eb300af5edbd9e3b77c48f0bca",
   "dependencies": [
     {
       "name": "zlib",
@@ -8,7 +9,7 @@
     },
     {
       "name": "argparse",
-      "version>=": "2.1"
+      "version>=": "2021-03-04"
     },
     {
       "name": "nlohmann-json",

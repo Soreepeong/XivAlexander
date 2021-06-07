@@ -108,7 +108,7 @@ double App::Window::Base::GetZoom() const {
 		UINT newDpiY = 96;
 
 		bool fallback = false;
-		const Utils::Win32Handle<HMODULE, FreeLibrary> hShcore(LoadLibraryExW(L"Shcore.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32), true);
+		const Utils::Win32Handle<HMODULE, FreeLibrary> hShcore(LoadLibraryExW(L"Shcore.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32), nullptr);
 		if (hShcore) {
 			const auto pGetDpiForMonitor = reinterpret_cast<decltype(GetDpiForMonitor)*>(GetProcAddress(hShcore, "GetDpiForMonitor"));
 			if (!pGetDpiForMonitor || FAILED(pGetDpiForMonitor(hMonitor, MONITOR_DPI_TYPE::MDT_EFFECTIVE_DPI, &newDpiX, &newDpiY)))
@@ -117,7 +117,9 @@ double App::Window::Base::GetZoom() const {
 		if (fallback) {
 			MONITORINFOEXW mi{ sizeof(MONITORINFOEXW) };
 			GetMonitorInfoW(hMonitor, &mi);
-			const Utils::Win32Handle<HDC, DeleteDC> hdc(CreateDCW(L"DISPLAY", mi.szDevice, nullptr, nullptr));
+			const Utils::Win32Handle<HDC, DeleteDC> hdc(CreateDCW(L"DISPLAY", mi.szDevice, nullptr, nullptr), 
+				nullptr, 
+				L"Failed to create display \"%s\" for zoom determination purposes.", mi.szDevice);
 			newDpiX = GetDeviceCaps(hdc, LOGPIXELSX);
 			newDpiY = GetDeviceCaps(hdc, LOGPIXELSY);
 		}

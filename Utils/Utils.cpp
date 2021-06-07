@@ -151,6 +151,14 @@ std::string Utils::DescribeSockaddr(const sockaddr_storage& sa) {
 	return DescribeSockaddr(*reinterpret_cast<const sockaddr*>(&sa));
 }
 
+void Utils::ThrowFromWinLastError(const std::string& message) {
+	throw std::system_error(GetLastError(), std::system_category(), message);
+}
+
+void Utils::ThrowFromWinLastError(const std::wstring& message) {
+	throw std::system_error(GetLastError(), std::system_category(), Utils::ToUtf8(message));
+}
+
 std::vector<std::string> Utils::StringSplit(const std::string& str, const std::string& delimiter) {
 	std::vector<std::string> result;
 	if (delimiter.empty()){
@@ -348,16 +356,21 @@ std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const std
 
 	std::wstring gameVer;
 	{
-		const Win32Handle hGameVer(CreateFile(gameVerPath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr));
+		const Win32Handle hGameVer(
+			CreateFileW(gameVerPath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr),
+			INVALID_HANDLE_VALUE,
+			FormatString(L"Failed to open game version file(%s)", gameVerPath.c_str()));
 		LARGE_INTEGER size{};
 		GetFileSizeEx(hGameVer, &size);
 		if (size.QuadPart > 64)
-			throw std::runtime_error("Game version file size too big");
+			throw std::runtime_error("Game version file size too big.");
 		std::string buf;
 		buf.resize(size.QuadPart);
 		DWORD read = 0;
-		if (!ReadFile(hGameVer, &buf[0], size.LowPart, &read, nullptr) || read != size.LowPart)
-			throw std::runtime_error("Failed to read game version");
+		if (!ReadFile(hGameVer, &buf[0], size.LowPart, &read, nullptr))
+			ThrowFromWinLastError("Failed to read game version file");
+		if (read != size.LowPart)
+			throw std::runtime_error("Failed to read game version file in entirety.");
 		gameVer = FromUtf8(buf);
 
 		for (auto& chr : gameVer) {
@@ -375,7 +388,10 @@ std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const std
 		launcherDirectory = installationPath;
 
 	WIN32_FIND_DATAW data{};
-	Win32Handle<HANDLE, FindClose> hFindFile(FindFirstFileW(FormatString(L"%s\\ffxiv*.exe", launcherDirectory.c_str()).c_str(), &data));
+	const Win32Handle<HANDLE, FindClose> hFindFile(
+		FindFirstFileW(FormatString(L"%s\\ffxiv*.exe", launcherDirectory.c_str()).c_str(), &data),
+		INVALID_HANDLE_VALUE,
+		FormatString(R"(Failed to list files matching pattern "%s\ffxiv*.exe")", launcherDirectory.c_str()));
 	do {
 		const auto path = FormatString(L"%s\\%s", launcherDirectory.c_str(), data.cFileName);
 		const auto publisherCountry = TestPublisher(path);

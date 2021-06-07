@@ -269,7 +269,9 @@ public:
 			PostMessageW(m_hGameMainWindow, WM_NULL, 0, 0);
 
 		} else {
-			Utils::Win32Handle hEvent(CreateEvent(nullptr, true, false, nullptr));
+			Utils::Win32Handle hEvent(CreateEventW(nullptr, true, false, nullptr),
+				INVALID_HANDLE_VALUE, 
+				"App::QueueRunOnMessageLoop/CreateEventW");
 			const auto fn = [&f, &hEvent]() {
 				try {
 					f();
@@ -342,7 +344,9 @@ extern "C" __declspec(dllexport) int __stdcall LoadXivAlexander(void* lpReserved
 	if (App::App::GetInstance())
 		return 0;
 	try {
-		Utils::Win32Handle hThread(CreateThread(nullptr, 0, DllThread, g_hInstance, 0, nullptr));
+		Utils::Win32Handle hThread(CreateThread(nullptr, 0, DllThread, g_hInstance, 0, nullptr),
+			Utils::NullHandle,
+			"LoadXivAlexander/CreateThread");
 		return 0;
 	} catch (const std::exception& e) {
 		OutputDebugStringA(Utils::FormatString("LoadXivAlexander error: %s\n", e.what()).c_str());

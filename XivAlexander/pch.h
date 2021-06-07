@@ -42,7 +42,7 @@
 
 #include <MinHook.h>
 #include <Win32Handle.h>
-#include <Scintilla.h>
+#include <scintilla/Scintilla.h>
 #include <ListenerManager.h>
 
 #include <nlohmann/json.hpp>
