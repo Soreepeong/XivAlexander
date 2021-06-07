@@ -13,8 +13,6 @@ namespace Utils {
 	uint64_t GetEpoch();
 	SYSTEMTIME EpochToLocalSystemTime(uint64_t epochMilliseconds);
 	uint64_t GetHighPerformanceCounter(int32_t multiplier = 1000);
-
-	std::string FormatWindowsErrorMessage(unsigned int errorCode = -1);
 	
 	int sockaddr_cmp(const void* x, const void* y);
 	std::string DescribeSockaddr(const struct sockaddr_in& sa);

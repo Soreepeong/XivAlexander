@@ -106,7 +106,7 @@ BOOL SetPrivilege(HANDLE hToken, LPCTSTR Privilege, BOOL bEnablePrivilege) {
 	return TRUE;
 }
 
-const char* AddDebugPrivilege() {
+void AddDebugPrivilege() {
 	Utils::Win32Handle token;
 	{
 		HANDLE hToken;
@@ -125,7 +125,6 @@ const char* AddDebugPrivilege() {
 
 	if (!SetPrivilege(token, SE_DEBUG_NAME, TRUE))
 		Utils::ThrowFromWinLastError(L"AddDebugPrivilege/SetPrivilege(%s)", SE_DEBUG_NAME);
-	return nullptr;
 }
 
 void* FindModuleAddress(HANDLE hProcess, const wchar_t* szDllPath) {
@@ -301,32 +300,12 @@ public:
 		}
 	}
 
-	const std::wstring GetHelpMessage() const {
+	std::wstring GetHelpMessage() const {
 		return Utils::FormatString(L"XivAlexanderLoader: loads XivAlexander into game process (DirectX 11 version, x64 only).\n\n%s",
 			Utils::FromUtf8(argp.help().str()).c_str()
 			);
 	}
 } g_parameters;
-
-static
-bool ShowConfigurationWarning(const wchar_t* pszMessage) {
-	if (!g_parameters.m_quiet) {
-		const auto r = MessageBoxW(nullptr,
-			Utils::FormatString(
-				L"%s\n\n"
-				L"Do you want to download again from Github?\n"
-				L"Press Yes to open Github,\n"
-				L"Press No to continue, or\n"
-				L"Press Cancel to exit.", pszMessage
-			).c_str(), L"XivAlexanderLoader", MB_YESNOCANCEL);
-		if (r == IDYES) {
-			ShellExecuteW(nullptr, L"open", L"https://github.com/Soreepeong/XivAlexander/releases", nullptr, nullptr, SW_SHOW);
-			return true;
-		} else if (r == IDCANCEL)
-			return true;
-	}
-	return false;
-}
 
 int WINAPI wWinMain(
 	_In_ HINSTANCE hInstance,
@@ -334,17 +313,19 @@ int WINAPI wWinMain(
 	_In_ LPWSTR lpCmdLine,
 	_In_ int nShowCmd
 ) {
+	const auto MsgboxTitle = L"XivAlexander Loader";
+	
 	try {
 		g_parameters.Parse(lpCmdLine);
 	} catch (std::exception& err) {
 		const auto what = Utils::FromUtf8(err.what());
 		const auto help = g_parameters.GetHelpMessage();
 		const auto msg = std::wstring(L"Failed to parse command line arguments.\n\n") + what + L"\n\n" + help;
-		MessageBoxW(nullptr, msg.c_str(), L"XivAlexanderLoader", MB_OK | MB_ICONWARNING);
+		MessageBoxW(nullptr, msg.c_str(), MsgboxTitle, MB_OK | MB_ICONWARNING);
 		return -1;
 	}
 	if (g_parameters.m_help){
-		MessageBoxW(nullptr, g_parameters.GetHelpMessage().c_str(), L"XivAlexanderLoader", MB_OK);
+		MessageBoxW(nullptr, g_parameters.GetHelpMessage().c_str(), MsgboxTitle, MB_OK);
 		return 0;
 	}
 	if (g_parameters.m_web) {
@@ -373,7 +354,7 @@ int WINAPI wWinMain(
 				L"Failed to verify XivAlexander.dll and XivAlexanderLoader.exe have the matching versions (%s).\n\nDo you want to download again from Github?",
 				Utils::FromUtf8(e.what()).c_str()
 			).c_str(),
-			L"XivAlexanderLoader", MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON1) == IDYES) {
+			MsgboxTitle, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON1) == IDYES) {
 			ShellExecuteW(nullptr, L"open", L"https://github.com/Soreepeong/XivAlexander/releases", nullptr, nullptr, SW_SHOW);
 		}
 		return -1;
@@ -482,7 +463,7 @@ int WINAPI wWinMain(
 
 			int response;
 			if (g_parameters.m_action == XivAlexanderLoaderParameter::DefaultAction::Ask)
-				response = MessageBoxW(nullptr, msg.c_str(), L"XivAlexander Loader", nMsgType);
+				response = MessageBoxW(nullptr, msg.c_str(), MsgboxTitle, nMsgType);
 			else if (g_parameters.m_action == XivAlexanderLoaderParameter::DefaultAction::Load)
 				response = IDYES;
 			else if (g_parameters.m_action == XivAlexanderLoaderParameter::DefaultAction::Unload)
@@ -534,15 +515,15 @@ int WINAPI wWinMain(
 					pid,
 					debugPrivilegeError.c_str(), 
 					e.what()
-				)).c_str(), L"Error", MB_OK | MB_ICONERROR);
+				)).c_str(), MsgboxTitle, MB_OK | MB_ICONERROR);
 		}
 	}
 
 	if (!found && !g_parameters.m_quiet) {
 		if (g_parameters.m_targetPids.empty() && g_parameters.m_targetSuffix.empty()) {
-			MessageBoxW(nullptr, L"ffxiv_dx11.exe not found. Run the game first, and then try again.", L"Error", MB_OK | MB_ICONERROR);
+			MessageBoxW(nullptr, L"ffxiv_dx11.exe not found. Run the game first, and then try again.", MsgboxTitle, MB_OK | MB_ICONERROR);
 		} else {
-			MessageBoxW(nullptr, L"No matching process found.", L"Error", MB_OK | MB_ICONERROR);
+			MessageBoxW(nullptr, L"No matching process found.", MsgboxTitle, MB_OK | MB_ICONERROR);
 		}
 	}
 	return 0;

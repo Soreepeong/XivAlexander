@@ -62,68 +62,41 @@ std::string Utils::ToUtf8(const std::string& in) {
 	return ToUtf8(FromOem(in));
 }
 
-std::string Utils::FormatWindowsErrorMessage(unsigned int errorCode) {
-	if (errorCode == -1)
-		errorCode = GetLastError();
-	std::string res;
-	LPTSTR errorText = nullptr;
-	FormatMessage(
-		FORMAT_MESSAGE_FROM_SYSTEM
-		| FORMAT_MESSAGE_ALLOCATE_BUFFER
-		| FORMAT_MESSAGE_IGNORE_INSERTS,
-		nullptr,
-		errorCode,
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		reinterpret_cast<LPTSTR>(&errorText), // output 
-		0, // minimum size for output buffer
-		nullptr); // arguments - see note 
-
-	if (nullptr != errorText) {
-		OutputDebugString(FormatString(TEXT("Windows Error: %s\n"), errorText).c_str());
-		res = ToUtf8(errorText);
-		LocalFree(errorText);
-	}
-	return res;
-}
-
-static void sockaddr_cmp_helper(int x, int y) {
+static int sockaddr_cmp_helper(int x, int y) {
 	if (x < y)
-		throw (-1);
+		return -1;
 	else if (x > y)
-		throw 1;
+		return 1;
+	return 0;
 }
-static void sockaddr_cmp_helper(int x) {
-	if (x)
-		throw x;
+static int sockaddr_cmp_helper(int x) {
+	return x;
 }
 
 int Utils::sockaddr_cmp(const void* x, const void* y) {
 	const auto family1 = static_cast<const sockaddr*>(x)->sa_family;
 	const auto family2 = static_cast<const sockaddr*>(y)->sa_family;
-	try {
-		sockaddr_cmp_helper(family1, family2);
-		if (family1 == AF_INET) {
-			const auto addr1 = static_cast<const sockaddr_in*>(x);
-			const auto addr2 = static_cast<const sockaddr_in*>(y);
-			sockaddr_cmp_helper(ntohl(addr1->sin_addr.s_addr), ntohl(addr2->sin_addr.s_addr));
-			sockaddr_cmp_helper(ntohs(addr1->sin_port), ntohs(addr2->sin_port));
-		} else if (family1 == AF_INET6) {
-			const auto addr1 = static_cast<const sockaddr_in6*>(x);
-			const auto addr2 = static_cast<const sockaddr_in6*>(y);
-			sockaddr_cmp_helper(memcmp(addr1->sin6_addr.s6_addr, addr2->sin6_addr.s6_addr, sizeof addr1->sin6_addr.s6_addr));
-			sockaddr_cmp_helper(ntohs(addr1->sin6_port), ntohs(addr2->sin6_port));
-			sockaddr_cmp_helper(addr1->sin6_flowinfo, addr2->sin6_flowinfo);
-			sockaddr_cmp_helper(addr1->sin6_scope_id, addr2->sin6_scope_id);
-		}
-	} catch (int r) {
-		return r;
+	int n;
+	if ((n = sockaddr_cmp_helper(family1, family2))) return n;
+	if (family1 == AF_INET) {
+		const auto addr1 = static_cast<const sockaddr_in*>(x);
+		const auto addr2 = static_cast<const sockaddr_in*>(y);
+		if ((n = sockaddr_cmp_helper(ntohl(addr1->sin_addr.s_addr), ntohl(addr2->sin_addr.s_addr)))) return n;
+		if ((n = sockaddr_cmp_helper(ntohs(addr1->sin_port), ntohs(addr2->sin_port)))) return n;
+	} else if (family1 == AF_INET6) {
+		const auto addr1 = static_cast<const sockaddr_in6*>(x);
+		const auto addr2 = static_cast<const sockaddr_in6*>(y);
+		if ((n = sockaddr_cmp_helper(memcmp(addr1->sin6_addr.s6_addr, addr2->sin6_addr.s6_addr, sizeof addr1->sin6_addr.s6_addr)))) return n;
+		if ((n = sockaddr_cmp_helper(ntohs(addr1->sin6_port), ntohs(addr2->sin6_port)))) return n;
+		if ((n = sockaddr_cmp_helper(addr1->sin6_flowinfo, addr2->sin6_flowinfo))) return n;
+		if ((n = sockaddr_cmp_helper(addr1->sin6_scope_id, addr2->sin6_scope_id))) return n;
 	}
 	return 0;
 }
 
 std::string Utils::DescribeSockaddr(const sockaddr_in& sa) {
 	if (sa.sin_family != AF_INET)
-		return "invalid sockaddr_in";
+		return FormatString("sockaddr_in?(AF_INET=%d)", sa.sin_family);
 	
 	char s[INET_ADDRSTRLEN + 6] = { 0 };
 	inet_ntop(AF_INET, &sa.sin_addr, s, sizeof s);
@@ -132,7 +105,7 @@ std::string Utils::DescribeSockaddr(const sockaddr_in& sa) {
 
 std::string Utils::DescribeSockaddr(const sockaddr_in6& sa) {
 	if (sa.sin6_family != AF_INET6)
-		return "invalid sockaddr_in6";
+		return FormatString("sockaddr_in6?(AF_INET=%d)", sa.sin6_family);
 
 	char s[INET6_ADDRSTRLEN + 6] = { 0 };
 	inet_ntop(AF_INET6, &sa.sin6_addr, s, sizeof s);
@@ -144,7 +117,7 @@ std::string Utils::DescribeSockaddr(const sockaddr& sa) {
 		return DescribeSockaddr(*reinterpret_cast<const sockaddr_in*>(&sa));
 	if (sa.sa_family == AF_INET6)
 		return DescribeSockaddr(*reinterpret_cast<const sockaddr_in6*>(&sa));
-	return "unknown sa_family";
+	return FormatString("sockaddr(AF_INET=%d)", sa.sa_family);
 }
 
 std::string Utils::DescribeSockaddr(const sockaddr_storage& sa) {
