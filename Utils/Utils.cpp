@@ -407,7 +407,10 @@ std::string FormatWindowsErrorMessage(unsigned int errorCode) {
 		| FORMAT_MESSAGE_IGNORE_INSERTS,
 		nullptr,
 		errorCode,
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		// MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
+		// MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN),
+		// MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN),
 		reinterpret_cast<LPTSTR>(&errorText), // output 
 		0, // minimum size for output buffer
 		nullptr); // arguments - see note 
