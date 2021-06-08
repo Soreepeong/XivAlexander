@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "include/Utils.h"
 
+#include <set>
 #include <stdexcept>
 
 #include "include/CallOnDestruction.h"
@@ -399,24 +400,36 @@ std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const Win
 
 static
 std::string FormatWindowsErrorMessage(unsigned int errorCode) {
-	std::string res;
-	LPTSTR errorText = nullptr;
-	FormatMessage(
-		FORMAT_MESSAGE_FROM_SYSTEM
-		| FORMAT_MESSAGE_ALLOCATE_BUFFER
-		| FORMAT_MESSAGE_IGNORE_INSERTS,
-		nullptr,
-		errorCode,
-		// MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+	std::set<std::string> messages;
+	for (const auto langId : {
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 		MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
-		// MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN),
-		// MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN),
-		reinterpret_cast<LPTSTR>(&errorText), // output 
-		0, // minimum size for output buffer
-		nullptr); // arguments - see note 
-	if (nullptr != errorText) {
-		res = Utils::ToUtf8(errorText);
-		LocalFree(errorText);
+#ifdef _DEBUG
+		MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN),
+		MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN),
+#endif
+	}) {
+		LPTSTR errorText = nullptr;
+		FormatMessage(
+			FORMAT_MESSAGE_FROM_SYSTEM
+			| FORMAT_MESSAGE_ALLOCATE_BUFFER
+			| FORMAT_MESSAGE_IGNORE_INSERTS,
+			nullptr,
+			errorCode,
+			langId,
+			reinterpret_cast<LPTSTR>(&errorText), // output 
+			0, // minimum size for output buffer
+			nullptr); // arguments - see note 
+		if (nullptr != errorText) {
+			messages.insert(Utils::ToUtf8(errorText));
+			LocalFree(errorText);
+		}
+	}
+	std::string res;
+	for (const auto& message : messages) {
+		if (!res.empty())
+			res += " / ";
+		res += message;
 	}
 	return res;
 }
