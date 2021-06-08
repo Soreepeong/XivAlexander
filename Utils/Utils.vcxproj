@@ -15,6 +15,7 @@
     <ClInclude Include="include\ListenerManager.h" />
     <ClInclude Include="include\Utils.h" />
     <ClInclude Include="include\Win32Handle.h" />
+    <ClInclude Include="include\WinPath.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
@@ -24,6 +25,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Utils.cpp" />
+    <ClCompile Include="WinPath.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="include\myzlib.h">

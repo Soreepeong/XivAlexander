@@ -175,7 +175,7 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 										throw std::exception("Failed to fully write the log file.");
 								}
 
-								MessageBoxW(pDataT->hWnd, Utils::FormatString(L"Log saved to %s.", pszNewFileName).c_str(), L"XivAlexander", MB_ICONINFORMATION);
+								Utils::MessageBoxF(pDataT->hWnd, MB_ICONINFORMATION, L"XivAlexander", L"Log saved to: %s", pszNewFileName);
 							}
 						} catch (std::exception& e) {
 							MessageBoxW(pDataT->hWnd, Utils::FromUtf8(e.what()).c_str(), L"XivAlexander", MB_ICONERROR);

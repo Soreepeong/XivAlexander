@@ -81,18 +81,18 @@ namespace App {
 			friend class ItemBase;
 
 			const Config* m_pConfig;
-			const std::wstring m_sConfigPath;
+			const Utils::WinPath m_sConfigPath;
 
 			std::vector<ItemBase*> m_allItems;
 			std::vector<Utils::CallOnDestruction> m_destructionCallbacks;
 
 		public:
-			BaseRepository(Config* pConfig, std::wstring path);
+			BaseRepository(Config* pConfig, Utils::WinPath path);
 
 			void Save();
 			void Reload(bool announceChange = false);
 
-			[[nodiscard]] const std::wstring& GetConfigPath() const {
+			[[nodiscard]] const Utils::WinPath& GetConfigPath() const {
 				return m_sConfigPath;
 			}
 

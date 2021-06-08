@@ -6,13 +6,7 @@
 #include "include/CallOnDestruction.h"
 #include "include/myzlib.h"
 #include "include/Win32Handle.h"
-
-std::wstring Utils::FromOem(const std::string& in) {
-	const size_t length = MultiByteToWideChar(CP_ACP, MB_ERR_INVALID_CHARS, in.c_str(), static_cast<int>(in.size()), nullptr, 0);
-	std::wstring u16(length, 0);
-	MultiByteToWideChar(CP_ACP, MB_ERR_INVALID_CHARS, in.c_str(), static_cast<int>(in.size()), const_cast<LPWSTR>(u16.c_str()), static_cast<int>(u16.size()));
-	return u16;
-}
+#include "include/WinPath.h"
 
 std::wstring Utils::FromUtf8(const std::string& in) {
 	const size_t length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, in.c_str(), static_cast<int>(in.size()), nullptr, 0);
@@ -56,10 +50,6 @@ uint64_t Utils::GetHighPerformanceCounter(int32_t multiplier) {
 	QueryPerformanceFrequency(&freq);
 	QueryPerformanceCounter(&time);
 	return time.QuadPart * multiplier / freq.QuadPart;
-}
-
-std::string Utils::ToUtf8(const std::string& in) {
-	return ToUtf8(FromOem(in));
 }
 
 static int sockaddr_cmp_helper(int x, int y) {
@@ -124,12 +114,38 @@ std::string Utils::DescribeSockaddr(const sockaddr_storage& sa) {
 	return DescribeSockaddr(*reinterpret_cast<const sockaddr*>(&sa));
 }
 
-void Utils::ThrowFromWinLastError(const std::string& message) {
-	throw std::system_error(GetLastError(), std::system_category(), message);
+std::string Utils::FormatString(const char* format, ...) {
+	std::string buf;
+	va_list args;
+
+	va_start(args, format);
+	buf.resize(static_cast<size_t>(_vscprintf(format, args)) + 1);
+	va_end(args);
+
+	va_start(args, format);
+	vsprintf_s(&buf[0], buf.size(), format, args);
+	va_end(args);
+
+	buf.resize(buf.size() - 1);
+
+	return buf;
 }
 
-void Utils::ThrowFromWinLastError(const std::wstring& message) {
-	throw std::system_error(GetLastError(), std::system_category(), Utils::ToUtf8(message));
+std::wstring Utils::FormatString(const wchar_t* format, ...) {
+	std::wstring buf;
+	va_list args;
+
+	va_start(args, format);
+	buf.resize(static_cast<size_t>(_vscwprintf(format, args)) + 1);
+	va_end(args);
+
+	va_start(args, format);
+	vswprintf_s(&buf[0], buf.size(), format, args);
+	va_end(args);
+
+	buf.resize(buf.size() - 1);
+
+	return buf;
 }
 
 std::vector<std::string> Utils::StringSplit(const std::string& str, const std::string& delimiter) {
@@ -157,6 +173,22 @@ std::string Utils::StringTrim(const std::string& str, bool leftTrim, bool rightT
 		while (right != SIZE_MAX && std::isspace(str[right]))
 			right--;
 	return str.substr(left, right + 1 - left);
+}
+
+void Utils::SetThreadDescription(HANDLE hThread, const std::wstring& description) {
+	typedef HRESULT(WINAPI* SetThreadDescriptionT)(
+		_In_ HANDLE hThread,
+		_In_ PCWSTR lpThreadDescription
+		);
+	SetThreadDescriptionT pfnSetThreadDescription = nullptr;
+
+	if (const Win32Handle<HMODULE, FreeLibrary> hMod{ LoadLibraryExW(L"kernel32.dll", NullHandle, LOAD_LIBRARY_SEARCH_SYSTEM32), nullptr })
+		pfnSetThreadDescription = reinterpret_cast<SetThreadDescriptionT>(GetProcAddress(hMod, "SetThreadDescription"));
+	else if (const Win32Handle<HMODULE, FreeLibrary> hMod{ LoadLibraryExW(L"KernelBase.dll", NullHandle, LOAD_LIBRARY_SEARCH_SYSTEM32), nullptr })
+		pfnSetThreadDescription = reinterpret_cast<SetThreadDescriptionT>(GetProcAddress(hMod, "SetThreadDescription"));
+
+	if (pfnSetThreadDescription)
+		pfnSetThreadDescription(hThread, description.c_str());
 }
 
 std::vector<uint8_t> Utils::ZlibDecompress(const uint8_t* src, size_t length) {
@@ -243,7 +275,7 @@ std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion() {
 	return ResolveGameReleaseRegion(path);
 }
 
-static std::wstring TestPublisher(const std::wstring &path) {
+static std::wstring TestPublisher(const Utils::WinPath &path) {
 	// See: https://docs.microsoft.com/en-US/troubleshoot/windows/win32/get-information-authenticode-signed-executables
 
 	constexpr auto ENCODING = X509_ASN_ENCODING | PKCS_7_ASN_ENCODING;
@@ -253,7 +285,7 @@ static std::wstring TestPublisher(const std::wstring &path) {
 	DWORD dwEncoding = 0, dwContentType = 0, dwFormatType = 0;
 	std::vector<Utils::CallOnDestruction> cleanupList;
 	if (!CryptQueryObject(CERT_QUERY_OBJECT_FILE,
-		&path[0],
+		path.wbuf(),
 		CERT_QUERY_CONTENT_FLAG_PKCS7_SIGNED_EMBED,
 		CERT_QUERY_FORMAT_FLAG_BINARY,
 		0,
@@ -301,49 +333,32 @@ static std::wstring TestPublisher(const std::wstring &path) {
 	return country;
 }
 
-std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const std::wstring& path) {
-	std::wstring bootPath = path;
-	bootPath.resize(PATHCCH_MAX_CCH);
-
-	// boot: C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\ffxiv_dx11.exe
+std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const WinPath& path) {
+	const auto installationDir = WinPath(path)
+		.RemoveComponentInplace(2); // remove "\game", "\ffxiv_dx11.exe"
+	const auto gameDir = WinPath(installationDir, L"game");
+	const auto gameVerPath = WinPath(gameDir, L"ffxivgame.ver");
+	const auto bootDir = WinPath(installationDir, L"boot");
+	const auto gameLauncherDir = bootDir.IsDirectory() ? bootDir : installationDir;
 	
-	PathCchRemoveFileSpec(&bootPath[0], bootPath.size());
-	// boot: C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game
-
-	std::wstring gameVerPath = bootPath;
-	gameVerPath.resize(PATHCCH_MAX_CCH);
-	PathCchAppend(&gameVerPath[0], gameVerPath.size(), L"ffxivgame.ver");
-	gameVerPath.resize(wcsnlen(&gameVerPath[0], gameVerPath.size()));
-	// boot: C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\ffxivgame.ver
-	
-	PathCchRemoveFileSpec(&bootPath[0], bootPath.size());
-	// boot: C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn
-
-	std::wstring installationPath = bootPath;
-	installationPath.resize(wcsnlen(&installationPath[0], installationPath.size()));
-	
-	PathCchAppend(&bootPath[0], bootPath.size(), L"boot");
-	// boot: C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\boot
-
-	bootPath.resize(wcsnlen(&bootPath[0], bootPath.size()));
-
 	std::wstring gameVer;
 	{
 		const Win32Handle hGameVer(
-			CreateFileW(gameVerPath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr),
+			CreateFileW(gameVerPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr),
 			INVALID_HANDLE_VALUE,
-			FormatString(L"Failed to open game version file(%s)", gameVerPath.c_str()));
+			L"ResolveGameReleaseRegion: Failed to open game version file(%s)", 
+			gameVerPath.wbuf());
 		LARGE_INTEGER size{};
 		GetFileSizeEx(hGameVer, &size);
 		if (size.QuadPart > 64)
-			throw std::runtime_error("Game version file size too big.");
+			throw std::runtime_error("ResolveGameReleaseRegion: Game version file size too big.");
 		std::string buf;
 		buf.resize(size.QuadPart);
 		DWORD read = 0;
 		if (!ReadFile(hGameVer, &buf[0], size.LowPart, &read, nullptr))
-			ThrowFromWinLastError("Failed to read game version file");
+			throw WindowsError("ResolveGameReleaseRegion: Failed to read game version file");
 		if (read != size.LowPart)
-			throw std::runtime_error("Failed to read game version file in entirety.");
+			throw std::runtime_error("ResolveGameReleaseRegion: Failed to read game version file in entirety.");
 		gameVer = FromUtf8(buf);
 
 		for (auto& chr : gameVer) {
@@ -353,20 +368,14 @@ std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const std
 			}
 		}
 	}
-
-	std::wstring launcherDirectory;
-	if (PathIsDirectoryW(bootPath.c_str()))
-		launcherDirectory = bootPath;
-	else
-		launcherDirectory = installationPath;
-
+	
 	WIN32_FIND_DATAW data{};
 	const Win32Handle<HANDLE, FindClose> hFindFile(
-		FindFirstFileW(FormatString(L"%s\\ffxiv*.exe", launcherDirectory.c_str()).c_str(), &data),
+		FindFirstFileW(WinPath(gameLauncherDir).AddComponentInplace(L"ffxiv*.exe"), &data),
 		INVALID_HANDLE_VALUE,
-		FormatString(R"(Failed to list files matching pattern "%s\ffxiv*.exe")", launcherDirectory.c_str()));
+		"ResolveGameReleaseRegion: Failed to list files matching pattern ffxiv*.exe");
 	do {
-		const auto path = FormatString(L"%s\\%s", launcherDirectory.c_str(), data.cFileName);
+		const WinPath path(gameLauncherDir, data.cFileName);
 		const auto publisherCountry = TestPublisher(path);
 		if (!publisherCountry.empty())
 			return std::make_tuple(
@@ -376,13 +385,43 @@ std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const std
 		
 	} while (FindNextFileW(hFindFile, &data));
 
-	CharLowerW(&installationPath[0]);
+	std::wstring buf(installationDir.wstr());
+	CharLowerW(&buf[0]);
 	uLong crc = crc32(crc32(0L, nullptr, 0), 
-		reinterpret_cast<Bytef*>(&installationPath[0]),
-		static_cast<uInt>(installationPath.size() * sizeof installationPath[0]));
+		reinterpret_cast<Bytef*>(&buf[0]),
+		static_cast<uInt>(buf.size() * sizeof buf[0]));
 	
 	return std::make_tuple(
 		FormatString(L"unknown_%08x", crc),
 		gameVer
 	);
+}
+
+static
+std::string FormatWindowsErrorMessage(unsigned int errorCode) {
+	std::string res;
+	LPTSTR errorText = nullptr;
+	FormatMessage(
+		FORMAT_MESSAGE_FROM_SYSTEM
+		| FORMAT_MESSAGE_ALLOCATE_BUFFER
+		| FORMAT_MESSAGE_IGNORE_INSERTS,
+		nullptr,
+		errorCode,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		reinterpret_cast<LPTSTR>(&errorText), // output 
+		0, // minimum size for output buffer
+		nullptr); // arguments - see note 
+	if (nullptr != errorText) {
+		res = Utils::ToUtf8(errorText);
+		LocalFree(errorText);
+	}
+	return res;
+}
+
+Utils::WindowsError::WindowsError(int errorCode, const std::string& msg)
+	: std::runtime_error(FormatWindowsErrorMessage(errorCode) + ": " + msg)
+	, m_nErrorCode(errorCode) {
+}
+
+Utils::WindowsError::WindowsError(const std::string& msg): WindowsError(GetLastError(), msg) {
 }

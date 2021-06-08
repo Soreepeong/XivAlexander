@@ -1,13 +1,13 @@
 #pragma once
 
+#include <stdexcept>
 #include <string>
-#include <algorithm>
 #include <vector>
 
+#include "WinPath.h"
+
 namespace Utils {
-	std::wstring FromOem(const std::string&);
 	std::wstring FromUtf8(const std::string&);
-	std::string ToUtf8(const std::string&);
 	std::string ToUtf8(const std::wstring&);
 
 	uint64_t GetEpoch();
@@ -20,78 +20,51 @@ namespace Utils {
 	std::string DescribeSockaddr(const struct sockaddr& sa);
 	std::string DescribeSockaddr(const struct sockaddr_storage& sa);
 
-	template <typename ... Args>
-	std::string FormatString(const _Printf_format_string_ char* format, Args ... args) {
-		std::string buf;
-		buf.resize(512);
-		do {
-			const auto length = _snprintf_s(&buf[0], buf.capacity(), _TRUNCATE, format, args ...);
-			if (length >= 0) {
-				buf.resize(length);
-				return buf;
-			}
-			buf.resize(std::min(buf.capacity() * 2, buf.capacity() + 1024));
-		} while (true);
-	}
+	[[nodiscard]]
+	std::string FormatString(const _Printf_format_string_ char* format, ...);
 
-	template <typename ... Args>
-	std::string FormatString(const _Printf_format_string_ std::string& format, Args ... args) {
-		return FormatString(format.c_str(), std::forward<Args>(args)...);
-	}
+	[[nodiscard]]
+	std::wstring FormatString(const _Printf_format_string_ wchar_t* format, ...);
 
-	template <typename ... Args>
-	std::wstring FormatString(const _Printf_format_string_ wchar_t* format, Args ... args) {
-		std::wstring buf;
-		buf.resize(512);
-		do {
-			const auto length = _snwprintf_s(&buf[0], buf.capacity(), _TRUNCATE, format, args ...);
-			if (length >= 0) {
-				buf.resize(length);
-				return buf;
-			}
-			buf.resize(std::min(buf.capacity() * 2, buf.capacity() + 1024));
-		} while (true);
-	}
-
-	template <typename ... Args>
-	std::wstring FormatString(const _Printf_format_string_ std::wstring& format, Args ... args) {
-		return FormatString(format.c_str(), std::forward<Args>(args)...);
-	}
-
-	void ThrowFromWinLastError(const std::string& message);
-	void ThrowFromWinLastError(const std::wstring& message);
-	template <typename ... Args>
-	void ThrowFromWinLastError(const std::string& message, Args ... args) {
-		return ThrowFromWinLastError(FormatString(message, std::forward<Args>(args)...));
-	}
-	template <typename ... Args>
-	void ThrowFromWinLastError(const std::wstring& message, Args ... args) {
-		return ThrowFromWinLastError(FormatString(message, std::forward<Args>(args)...));
-	}
-
+	[[nodiscard]]
 	std::vector<std::string> StringSplit(const std::string& str, const std::string& delimiter);
+
+	[[nodiscard]]
 	std::string StringTrim(const std::string& str, bool leftTrim = true, bool rightTrim = true);
 
+	void SetThreadDescription(HANDLE hThread, const std::wstring& description);
+
 	template <typename ... Args>
-	void SetThreadDescription(HANDLE hThread, const _Printf_format_string_ std::wstring& format, Args ... args) {
-		typedef HRESULT(WINAPI* SetThreadDescriptionT)(
-			_In_ HANDLE hThread,
-			_In_ PCWSTR lpThreadDescription
-			);
-		SetThreadDescriptionT pfnSetThreadDescription = nullptr;
+	void SetThreadDescription(HANDLE hThread, const _Printf_format_string_ wchar_t* format, Args ... args) {
+		SetThreadDescription(hThread, FormatString(format, std::forward<Args>(args)...));
+	}
 
-		if (const auto hMod = GetModuleHandleW(L"kernel32.dll"))
-			pfnSetThreadDescription = reinterpret_cast<SetThreadDescriptionT>(GetProcAddress(hMod, "SetThreadDescription"));
-		else if (const auto hMod = GetModuleHandleW(L"KernelBase.dll"))
-			pfnSetThreadDescription = reinterpret_cast<SetThreadDescriptionT>(GetProcAddress(hMod, "SetThreadDescription"));
-
-		if (pfnSetThreadDescription)
-			pfnSetThreadDescription(GetCurrentThread(), FormatString(format, std::forward<Args>(args)...).c_str());
+	template <typename ... Args>
+	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const _Printf_format_string_ wchar_t* format, Args ... args) {
+		return MessageBoxW(hWnd, Utils::FormatString(format, std::forward<Args>(args)...).c_str(), lpCaption, uType);
 	}
 
 	void SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked);
 	void SetMenuState(HWND hWnd, DWORD nMenuId, bool bChecked);
 
+	[[nodiscard]]
 	std::tuple<std::wstring, std::wstring> ResolveGameReleaseRegion();
-	std::tuple<std::wstring, std::wstring> ResolveGameReleaseRegion(const std::wstring& path);
+	[[nodiscard]]
+	std::tuple<std::wstring, std::wstring> ResolveGameReleaseRegion(const WinPath& path);
+
+	class WindowsError : public std::runtime_error {
+		const int m_nErrorCode;
+	public:
+		WindowsError(int errorCode, const std::string& msg);
+		WindowsError(const std::string& msg);
+
+		template<typename ... Args>
+		WindowsError(const _Printf_format_string_ char* format, Args...args)
+			: WindowsError(GetLastError(), FormatString(format, std::forward<Args>(args)...)) {
+		}
+		template<typename ... Args>
+		WindowsError(int errorCode, const _Printf_format_string_ char* format, Args...args)
+			: WindowsError(errorCode, FormatString(format, std::forward<Args>(args)...)) {
+		}
+	};
 }

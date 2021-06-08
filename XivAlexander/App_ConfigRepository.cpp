@@ -3,7 +3,7 @@
 
 std::unique_ptr<App::Config> App::Config::s_pInstance;
 
-App::Config::BaseRepository::BaseRepository(Config* pConfig, std::wstring path)
+App::Config::BaseRepository::BaseRepository(Config* pConfig, Utils::WinPath path)
 	: m_pConfig(pConfig)
 	, m_sConfigPath(std::move(path)) {
 }
@@ -20,16 +20,16 @@ const char* App::Config::ItemBase::Name() const {
 void App::Config::BaseRepository::Reload(bool announceChange) {
 	bool changed = false;
 	nlohmann::json config;
-	if (PathFileExistsW(m_sConfigPath.c_str())) {
+	if (m_sConfigPath.Exists()) {
 		try {
-			std::ifstream in(m_sConfigPath);
+			std::ifstream in(m_sConfigPath.wstr());
 			in >> config;
 		} catch (std::exception& e) {
 			Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::General, "Failed to load configuration file: %s", e.what());
 		}
 	} else {
 		changed = true;
-		Misc::Logger::GetLogger().Format(LogCategory::General, "Creating new config file: %s", Utils::ToUtf8(m_sConfigPath).c_str());
+		Misc::Logger::GetLogger().Format(LogCategory::General, "Creating new config file: %s", m_sConfigPath.wbuf());
 	}
 
 	m_destructionCallbacks.clear();
@@ -44,19 +44,15 @@ void App::Config::BaseRepository::Reload(bool announceChange) {
 
 App::Config& App::Config::Instance() {
 	if (!s_pInstance) {
-		std::wstring directory(PATHCCH_MAX_CCH, L'\0');
-		directory.resize(GetModuleFileNameW(g_hInstance, &directory[0], static_cast<DWORD>(directory.size())));
-		PathCchRemoveFileSpec(&directory[0], directory.size());
-		directory.resize(wcsnlen(&directory[0], directory.size()));
-
+		const auto dllDir = Utils::WinPath(g_hInstance).RemoveComponentInplace();
 		const auto regionAndVersion = Utils::ResolveGameReleaseRegion();
 		
 		s_pInstance = std::make_unique<Config>(
-			Utils::FormatString(L"%s\\config.runtime.json", directory.c_str()),
-			Utils::FormatString(L"%s\\game.%s.%s.json", directory.c_str(),
+			Utils::WinPath(dllDir, "config.runtime.json"),
+			Utils::WinPath(dllDir, Utils::FormatString(L"game.%s.%s.json",
 				std::get<0>(regionAndVersion).c_str(),
 				std::get<1>(regionAndVersion).c_str())
-			);
+			));
 	}
 	return *s_pInstance;
 }
@@ -88,7 +84,7 @@ void App::Config::BaseRepository::Save() {
 		item->SaveTo(config);
 
 	try {
-		std::ofstream out(m_sConfigPath);
+		std::ofstream out(m_sConfigPath.wstr());
 		out << config.dump(1, '\t');
 	} catch (std::exception& e) {
 		Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "JSON Config save error: %s", e.what());

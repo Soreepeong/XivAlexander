@@ -20,6 +20,7 @@
 #include <wincrypt.h>
 #include <wintrust.h>
 #include <Shlwapi.h>
+#include <Psapi.h>
 
 #define ZLIB_CONST
 #include <zlib.h>

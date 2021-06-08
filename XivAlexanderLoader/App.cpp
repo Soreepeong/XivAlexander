@@ -1,5 +1,7 @@
 #include "pch.h"
 
+#include "WinPath.h"
+
 static void* GetModulePointer(HANDLE hProcess, const wchar_t* sDllPath) {
 	Utils::Win32Handle th32(CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, GetProcessId(hProcess)),
 		INVALID_HANDLE_VALUE,
@@ -20,7 +22,7 @@ static std::wstring GetProcessExecutablePath(HANDLE hProcess) {
 	while (true) {
 		auto length = static_cast<DWORD>(sPath.size());
 		if (!QueryFullProcessImageNameW(hProcess, 0, &sPath[0], &length))
-			Utils::ThrowFromWinLastError("GetProcessExecutablePath:QueryFullProcessImageNameW");
+			throw Utils::WindowsError("GetProcessExecutablePath:QueryFullProcessImageNameW");
 		if (length < sPath.size() - 1) {
 			sPath.resize(length);
 			break;
@@ -113,38 +115,37 @@ void AddDebugPrivilege() {
 		if (!OpenThreadToken(GetCurrentThread(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, FALSE, &hToken)) {
 			if (GetLastError() == ERROR_NO_TOKEN) {
 				if (!ImpersonateSelf(SecurityImpersonation))
-					Utils::ThrowFromWinLastError("AddDebugPrivilege/ImpersonateSelf(SecurityImpersonation)");
+					throw Utils::WindowsError("AddDebugPrivilege: ImpersonateSelf(SecurityImpersonation)");
 
 				if (!OpenThreadToken(GetCurrentThread(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, FALSE, &hToken))
-					Utils::ThrowFromWinLastError("AddDebugPrivilege/OpenThreadToken#2");
+					throw Utils::WindowsError("AddDebugPrivilege: OpenThreadToken#2");
 			} else
-				Utils::ThrowFromWinLastError("AddDebugPrivilege/OpenThreadToken#1");
+				throw Utils::WindowsError("AddDebugPrivilege: OpenThreadToken#1");
 		}
-		token = Utils::Win32Handle(hToken, INVALID_HANDLE_VALUE, "AddDebugPrivilege/Invalid");
+		token = Utils::Win32Handle(hToken, INVALID_HANDLE_VALUE, "AddDebugPrivilege: Invalid");
 	}
 
 	if (!SetPrivilege(token, SE_DEBUG_NAME, TRUE))
-		Utils::ThrowFromWinLastError(L"AddDebugPrivilege/SetPrivilege(%s)", SE_DEBUG_NAME);
+		throw Utils::WindowsError("AddDebugPrivilege/SetPrivilege(SeDebugPrivilege)");
 }
 
-void* FindModuleAddress(HANDLE hProcess, const wchar_t* szDllPath) {
+void* FindModuleAddress(HANDLE hProcess, const Utils::WinPath& szDllPath) {
 	std::vector<HMODULE> hMods;
 	DWORD cbNeeded;
 	do {
 		hMods.resize(hMods.size() + std::min<size_t>(1024, std::max<size_t>(32768, hMods.size())));
 		cbNeeded = static_cast<DWORD>(hMods.size());
 		if (!EnumProcessModules(hProcess, &hMods[0], static_cast<DWORD>(hMods.size() * sizeof(HMODULE)), &cbNeeded))
-			Utils::ThrowFromWinLastError(L"FindModuleAdderss(pid=%d, path=%s)/EnumProcessModules", GetProcessId(hProcess), szDllPath);
+			throw Utils::WindowsError(Utils::FormatString("FindModuleAdderss(pid=%d, path=%s)/EnumProcessModules", GetProcessId(hProcess), szDllPath));
 	} while (cbNeeded == hMods.size() * sizeof(HMODULE));
 	hMods.resize(cbNeeded / sizeof(HMODULE));
 
 	std::wstring sModName;
 	sModName.resize(PATHCCH_MAX_CCH);
 	for (const auto hMod : hMods) {
-		if (GetModuleFileNameExW(hProcess, hMod, &sModName[0], static_cast<DWORD>(sModName.length()))) {
-			if (sModName == szDllPath)
-				return hMod;
-		}
+		const auto remoteModulePath = Utils::WinPath(hMod, hProcess);
+		if (remoteModulePath == szDllPath)
+			return hMod;
 	}
 	return nullptr;
 }
@@ -335,19 +336,11 @@ int WINAPI wWinMain(
 
 	DWORD pid;
 	HWND hwnd = nullptr;
-	std::wstring dllDirectory;
-	dllDirectory.resize(PATHCCH_MAX_CCH);
-	GetModuleFileNameW(nullptr, &dllDirectory[0], static_cast<DWORD>(dllDirectory.size()));
-	PathCchRemoveFileSpec(&dllDirectory[0], static_cast<DWORD>(dllDirectory.size()));
-	dllDirectory.resize(wcsnlen(&dllDirectory[0], dllDirectory.size()));
-
-	std::wstring dllPath = dllDirectory;
-	dllPath.resize(PATHCCH_MAX_CCH);
-	PathCchAppend(&dllPath[0], dllPath.size(), L"XivAlexander.dll");
-	dllDirectory.resize(wcsnlen(&dllPath[0], dllPath.size()));
+	const auto dllDir = Utils::WinPath(nullptr).RemoveComponentInplace();
+	const auto dllPath = Utils::WinPath(dllDir, L"XivAlexander.dll");
 	
 	try {
-		CheckDllVersion(dllPath.c_str());
+		CheckDllVersion(dllPath);
 	} catch (std::exception& e) {
 		if (MessageBoxW(nullptr, 
 			Utils::FormatString(
@@ -406,7 +399,7 @@ int WINAPI wWinMain(
 				Utils::Win32Handle hProcess(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid),
 					Utils::NullHandle,
 					"OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, false, %d)", pid);
-				rpModule = FindModuleAddress(hProcess, dllPath.c_str());
+				rpModule = FindModuleAddress(hProcess, dllPath);
 			}
 
 			std::wstring msg;
@@ -427,9 +420,9 @@ int WINAPI wWinMain(
 				const auto gameConfigFilename = Utils::FormatString(L"game.%s.%s.json", 
 					std::get<0>(regionAndVersion).c_str(),
 					std::get<1>(regionAndVersion).c_str());
-				const auto gameConfigPath = Utils::FormatString(L"%s\\%s", dllDirectory.c_str(), gameConfigFilename.c_str());
+				const auto gameConfigPath = Utils::WinPath(dllDir, gameConfigFilename);
 
-				if (!g_parameters.m_quiet && !PathFileExistsW(&gameConfigPath[0])) {
+				if (!g_parameters.m_quiet && !gameConfigPath.Exists()) {
 					msg = Utils::FormatString(
 						L"FFXIV Process found:\n"
 						L"* PID: %d\n"
@@ -479,13 +472,13 @@ int WINAPI wWinMain(
 					Utils::NullHandle,
 					"OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, %d)", pid);
 
-				rpModule = FindModuleAddress(hProcess, dllPath.c_str());
+				rpModule = FindModuleAddress(hProcess, dllPath);
 				if (response == IDCANCEL && !rpModule)
 					continue;
 
 				if (!rpModule) {
-					InjectDll(hProcess, dllPath.c_str());
-					rpModule = FindModuleAddress(hProcess, dllPath.c_str());
+					InjectDll(hProcess, dllPath);
+					rpModule = FindModuleAddress(hProcess, dllPath);
 				}
 
 				DWORD loadResult = 0;

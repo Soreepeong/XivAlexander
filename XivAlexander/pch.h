@@ -38,10 +38,10 @@
 #include <iphlpapi.h>
 #include <comdef.h>
 #include <shobjidl_core.h>
-#include <PathCch.h>
 
 #include <MinHook.h>
 #include <Win32Handle.h>
+#include <WinPath.h>
 #include <scintilla/Scintilla.h>
 #include <ListenerManager.h>
 
