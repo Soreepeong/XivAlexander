@@ -9,7 +9,7 @@
 #include "include/WinPath.h"
 
 std::wstring Utils::FromUtf8(const std::string& in) {
-	const size_t length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, in.c_str(), static_cast<int>(in.size()), nullptr, 0);
+	const size_t length = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), static_cast<int>(in.size()), nullptr, 0);
 	std::wstring u16(length, 0);
 	MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, in.c_str(), static_cast<int>(in.size()), const_cast<LPWSTR>(u16.c_str()), static_cast<int>(u16.size()));
 	return u16;
