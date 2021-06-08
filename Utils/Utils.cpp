@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "include/Utils.h"
 
+#include <map>
 #include <set>
 #include <stdexcept>
 
@@ -339,8 +340,6 @@ std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const Win
 		.RemoveComponentInplace(2); // remove "\game", "\ffxiv_dx11.exe"
 	const auto gameDir = WinPath(installationDir, L"game");
 	const auto gameVerPath = WinPath(gameDir, L"ffxivgame.ver");
-	const auto bootDir = WinPath(installationDir, L"boot");
-	const auto gameLauncherDir = bootDir.IsDirectory() ? bootDir : installationDir;
 	
 	std::wstring gameVer;
 	{
@@ -369,22 +368,34 @@ std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const Win
 			}
 		}
 	}
-	
-	WIN32_FIND_DATAW data{};
-	const Win32Handle<HANDLE, FindClose> hFindFile(
-		FindFirstFileW(WinPath(gameLauncherDir).AddComponentInplace(L"ffxiv*.exe"), &data),
-		INVALID_HANDLE_VALUE,
-		"ResolveGameReleaseRegion: Failed to list files matching pattern ffxiv*.exe");
-	do {
-		const WinPath path(gameLauncherDir, data.cFileName);
-		const auto publisherCountry = TestPublisher(path);
-		if (!publisherCountry.empty())
-			return std::make_tuple(
-				publisherCountry,
-				gameVer
-			);
+
+	std::map<std::wstring, size_t> publisherCountries;
+	for (const auto possibleRegionSpecificFilesDir : {
+		WinPath(installationDir, L"boot", L"ffxiv*.exe"),
+		WinPath(installationDir, L"sdo", L"sdologinentry.dll"),
+		}) {
+		WIN32_FIND_DATAW data{};
+		const Win32Handle<HANDLE, FindClose> hFindFile(
+			FindFirstFileW(possibleRegionSpecificFilesDir, &data),
+			INVALID_HANDLE_VALUE);
+		if (!hFindFile)
+			continue;
 		
-	} while (FindNextFileW(hFindFile, &data));
+		do {
+			const auto path = WinPath(possibleRegionSpecificFilesDir).RemoveComponentInplace().AddComponentInplace(data.cFileName);
+			const auto publisherCountry = TestPublisher(path);
+			if (!publisherCountry.empty())
+				publisherCountries[publisherCountry]++;
+		} while (FindNextFileW(hFindFile, &data));
+	}
+
+	if (!publisherCountries.empty()) {
+		auto maxElem = std::max_element(publisherCountries.begin(), publisherCountries.end());
+		return std::make_tuple(
+			maxElem->first,
+			gameVer
+		);
+	}
 
 	std::wstring buf(installationDir.wstr());
 	CharLowerW(&buf[0]);
