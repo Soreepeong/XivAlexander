@@ -54,4 +54,6 @@ extern HINSTANCE g_hInstance;
 #include "App_ConfigRepository.h"
 #include "App_Misc_Logger.h"
 
+static DECLSPEC_NORETURN void mark_unreachable_code() {}
+
 #endif //PCH_H

@@ -673,38 +673,45 @@ public:
 		Unload();
 	}
 
-	int ipToInt(std::string s) {
-		std::vector<uint32_t> parts;
-		for (const auto& part : Utils::StringSplit(s, "."))
-			parts.push_back(std::stoul(Utils::StringTrim(part)));
-		if (parts.size() == 1)
-			return parts[0];
-		else if (parts.size() == 2)
-			return (parts[0] << 24) | parts[1];
-		else if (parts.size() == 3)
-			return (parts[0] << 24) | (parts[1] << 16) | parts[2];
-		else if (parts.size() == 4)
-			return (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3];
-		else
-			throw std::exception();
+	static in_addr parseIp(const std::string& s) {
+		in_addr addr{};
+		switch (inet_pton(AF_INET, &s[0], &addr)){
+			case 1:
+				return addr;
+			case 0:
+				throw std::runtime_error(Utils::FormatString("\"%s\" is an invalid IP address.", s.c_str()).c_str());
+			case -1:
+				throw Utils::WindowsError(WSAGetLastError(), "Failed to parse IP address \"%s\".", s.c_str());
+			default:
+				mark_unreachable_code();
+		}
 	}
 
+	static uint16_t parsePort(const std::string& s) {
+		size_t i = 0;
+		const auto parsed = std::stoul(s, &i);
+		if (parsed > UINT16_MAX)
+			throw std::out_of_range("Not in uint16 range");
+		if (i != s.length())
+			throw std::out_of_range("Incomplete conversion");
+		return static_cast<uint16_t>(parsed);
+	}
+	
 	void parseIpRange() {
 		m_allowedIpRange.clear();
-		for (auto range : Utils::StringSplit(Config::Instance().Runtime.GameServerIpRange, ",")) {
-			size_t pos;
+		for (auto &range : Utils::StringSplit(Config::Instance().Runtime.GameServerIpRange, ",")) {
 			try {
 				range = Utils::StringTrim(range);
 				if (range.empty())
 					continue;
 				uint32_t startIp, endIp;
-				if ((pos = range.find('/')) != std::string::npos) {
-					int subnet = std::stoi(Utils::StringTrim(range.substr(pos + 1)));
-					startIp = endIp = ipToInt(range.substr(0, pos));
-					if (subnet == 32) {
+				if (size_t pos; (pos = range.find('/')) != std::string::npos) {
+					const auto subnet = std::stoi(Utils::StringTrim(range.substr(pos + 1)));
+					startIp = endIp = ntohl(parseIp(range.substr(0, pos)).s_addr);
+					if (subnet == 0) {
 						startIp = 0;
 						endIp = 0xFFFFFFFFUL;
-					} else if (subnet > 0) {
+					} else if (subnet < 32) {
 						startIp = (startIp & ~((1 << (32 - subnet)) - 1));
 						endIp = (((endIp >> (32 - subnet)) + 1) << (32 - subnet)) - 1;
 					}
@@ -712,8 +719,8 @@ public:
 					auto ips = Utils::StringSplit(range, "-");
 					if (ips.size() > 2)
 						throw std::exception();
-					startIp = ipToInt(ips[0]);
-					endIp = ips.size() == 2 ? ipToInt(ips[1]) : startIp;
+					startIp = ntohl(parseIp(ips[0]).s_addr);
+					endIp = ips.size() == 2 ? ntohl(parseIp(ips[1]).s_addr) : startIp;
 					if (startIp > endIp) {
 						const auto t = startIp;
 						startIp = endIp;
@@ -737,8 +744,8 @@ public:
 				auto ports = Utils::StringSplit(range, "-");
 				if (ports.size() > 2)
 					throw std::exception();
-				uint32_t start = ipToInt(ports[0]);
-				uint32_t end = ports.size() == 2 ? ipToInt(ports[1]) : start;
+				uint32_t start = parsePort(ports[0]);
+				uint32_t end = ports.size() == 2 ? parsePort(ports[1]) : start;
 				if (start > end) {
 					const auto t = start;
 					start = end;
@@ -753,10 +760,7 @@ public:
 
 	bool TestRemoteAddress(const sockaddr_in& addr) {
 		if (!m_allowedIpRange.empty()) {
-			const uint32_t ip = ((static_cast<uint32_t>(addr.sin_addr.S_un.S_un_b.s_b1) << 24)
-				| (static_cast<uint32_t>(addr.sin_addr.S_un.S_un_b.s_b2) << 16)
-				| (static_cast<uint32_t>(addr.sin_addr.S_un.S_un_b.s_b3) << 8)
-				| (static_cast<uint32_t>(addr.sin_addr.S_un.S_un_b.s_b4) << 0));
+			const uint32_t ip = ntohl(addr.sin_addr.s_addr);
 			bool pass = false;
 			for (const auto& range : m_allowedIpRange) {
 				if (range.first <= ip && ip <= range.second) {
