@@ -7,7 +7,6 @@
 #include "App_Feature_EffectApplicationDelayLogger.h"
 #include "App_Window_Log.h"
 #include "App_Window_Main.h"
-#include "App_Window_Config.h"
 
 namespace App {
 	class App;
@@ -19,16 +18,15 @@ static bool s_bFreeLibraryAndExitThread = true;
 static bool s_bUnloadDisabled = false;
 
 static HWND FindGameMainWindow() {
-	HWND hwnd = 0;
+	HWND hwnd = nullptr;
 	while ((hwnd = FindWindowExW(nullptr, hwnd, L"FFXIVGAME", nullptr))) {
 		DWORD pid;
 		GetWindowThreadProcessId(hwnd, &pid);
 
-		if (pid != GetCurrentProcessId())
-			continue;
-		return hwnd;
+		if (pid == GetCurrentProcessId())
+			break;
 	}
-	return 0;
+	return hwnd;
 }
 
 class App::App {
@@ -41,11 +39,11 @@ public:
 	std::mutex m_runInMessageLoopLock;
 	std::queue<std::function<void()>> m_qRunInMessageLoop;
 
-	std::unique_ptr<::App::Network::SocketHook> m_socketHook;
-	std::unique_ptr<::App::Feature::AnimationLockLatencyHandler> m_animationLockLatencyHandler;
-	std::unique_ptr<::App::Feature::IpcTypeFinder> m_ipcTypeFinder;
-	std::unique_ptr<::App::Feature::AllIpcMessageLogger> m_allIpcMessageLogger;
-	std::unique_ptr<::App::Feature::EffectApplicationDelayLogger> m_effectApplicationDelayLogger;
+	std::unique_ptr<Network::SocketHook> m_socketHook;
+	std::unique_ptr<Feature::AnimationLockLatencyHandler> m_animationLockLatencyHandler;
+	std::unique_ptr<Feature::IpcTypeFinder> m_ipcTypeFinder;
+	std::unique_ptr<Feature::AllIpcMessageLogger> m_allIpcMessageLogger;
+	std::unique_ptr<Feature::EffectApplicationDelayLogger> m_effectApplicationDelayLogger;
 
 	std::unique_ptr<Window::Log> m_logWindow;
 	std::unique_ptr<Window::Main> m_trayWindow;
@@ -76,7 +74,7 @@ public:
 		}
 
 		m_nWndProcDepth += 1;
-		auto res = CallWindowProcW(m_originalGameMainWndProc, hwnd, msg, wParam, lParam);
+		const auto res = CallWindowProcW(m_originalGameMainWndProc, hwnd, msg, wParam, lParam);
 		m_nWndProcDepth -= 1;
 		return res;
 	}
@@ -86,7 +84,7 @@ public:
 		);
 
 	void OnCleanup(std::function<void()> cb) {
-		m_cleanupPendingDestructions.push_back(Utils::CallOnDestruction(cb));
+		m_cleanupPendingDestructions.emplace_back(std::move(cb));
 	}
 
 	void OnCleanup(Utils::CallOnDestruction cb) {
@@ -327,14 +325,10 @@ static DWORD WINAPI DllThread(PVOID param1) {
 	return 0;
 }
 
-BOOL WINAPI DllMain(
-	_In_ HINSTANCE hinstDLL,
-	_In_ DWORD     fdwReason,
-	_In_ LPVOID    lpvReserved
-) {
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved) {
+	g_hInstance = hinstDLL;
 	switch (fdwReason) {
 		case DLL_PROCESS_ATTACH:
-			g_hInstance = hinstDLL;
 			break;
 	}
 	return TRUE;

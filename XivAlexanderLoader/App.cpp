@@ -136,7 +136,7 @@ void* FindModuleAddress(HANDLE hProcess, const Utils::WinPath& szDllPath) {
 		hMods.resize(hMods.size() + std::min<size_t>(1024, std::max<size_t>(32768, hMods.size())));
 		cbNeeded = static_cast<DWORD>(hMods.size());
 		if (!EnumProcessModules(hProcess, &hMods[0], static_cast<DWORD>(hMods.size() * sizeof(HMODULE)), &cbNeeded))
-			throw Utils::WindowsError(Utils::FormatString("FindModuleAdderss(pid=%d, path=%s)/EnumProcessModules", GetProcessId(hProcess), szDllPath));
+			throw Utils::WindowsError(FormatString("FindModuleAdderss(pid=%d, path=%s)/EnumProcessModules", GetProcessId(hProcess), szDllPath));
 	} while (cbNeeded == hMods.size() * sizeof(HMODULE));
 	hMods.resize(cbNeeded / sizeof(HMODULE));
 

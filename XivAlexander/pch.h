@@ -23,6 +23,7 @@
 #include <cassert>
 #include <locale>
 #include <fstream>
+#include <span>
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -31,17 +32,17 @@
 #include <Shlwapi.h>
 #include <windowsx.h>
 #include <WinSock2.h>
-#include <ws2tcpip.h>
+#include <WS2tcpip.h>
+#include <mstcpip.h>
 #include <d3d11.h>
 #include <bcrypt.h>
-#include <shellscalingapi.h>
+#include <ShellScalingApi.h>
 #include <iphlpapi.h>
 #include <comdef.h>
-#include <shobjidl_core.h>
+#include <ShObjIdl_core.h>
 
+#include <Utils.h>
 #include <MinHook.h>
-#include <Win32Handle.h>
-#include <WinPath.h>
 #include <scintilla/Scintilla.h>
 #include <ListenerManager.h>
 
@@ -53,7 +54,5 @@ extern HINSTANCE g_hInstance;
 #include "App_Hooks.h"
 #include "App_ConfigRepository.h"
 #include "App_Misc_Logger.h"
-
-static DECLSPEC_NORETURN void mark_unreachable_code() {}
 
 #endif //PCH_H

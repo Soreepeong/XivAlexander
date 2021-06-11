@@ -3,8 +3,6 @@
 #include "App_Network_SocketHook.h"
 #include "App_Network_Structures.h"
 
-static const float ExtraDelay = 0.1f;
-
 class App::Feature::IpcTypeFinder::Internals {
 public:
 
@@ -15,9 +13,9 @@ public:
 		SingleConnectionHandler(Internals& internals, Network::SingleConnection& conn)
 			: internals(internals)
 			, conn(conn) {
-			using namespace App::Network::Structures;
+			using namespace Network::Structures;
 
-			conn.AddIncomingFFXIVMessageHandler(this, [&](Network::Structures::FFXIVMessage* pMessage, std::vector<uint8_t>&) {
+			conn.AddIncomingFFXIVMessageHandler(this, [&](FFXIVMessage* pMessage, std::vector<uint8_t>&) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					if (pMessage->CurrentActor == pMessage->SourceActor) {
 						if (pMessage->Length == 0x9c ||
@@ -143,7 +141,7 @@ public:
 				}
 				return true;
 				});
-			conn.AddOutgoingFFXIVMessageHandler(this, [&](Network::Structures::FFXIVMessage* pMessage, std::vector<uint8_t>&) {
+			conn.AddOutgoingFFXIVMessageHandler(this, [&](FFXIVMessage* pMessage, std::vector<uint8_t>&) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					if (pMessage->Length == 0x40) {
 						// Test ActionRequest
@@ -186,5 +184,4 @@ App::Feature::IpcTypeFinder::IpcTypeFinder()
 : impl(std::make_unique<Internals>()){
 }
 
-App::Feature::IpcTypeFinder::~IpcTypeFinder() {
-}
+App::Feature::IpcTypeFinder::~IpcTypeFinder() = default;

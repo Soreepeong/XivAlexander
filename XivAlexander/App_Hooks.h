@@ -1,7 +1,7 @@
 #pragma once
 namespace App::Hooks {
 
-	using namespace App::Signatures;
+	using namespace Signatures;
 
 	template<typename R, typename ...Args>
 	class Function : public Signature<R(*)(Args...)> {

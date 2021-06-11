@@ -15,10 +15,14 @@ namespace App::Network::Structures {
 		uint32_t Unknown3;		// 36 ~ 39
 		uint8_t Data[1];
 
-		static const std::vector<uint8_t> MagicConstant1;
-		static const std::vector<uint8_t> MagicConstant2;
+		static const uint8_t MagicConstant1[sizeof Magic];
+		static const uint8_t MagicConstant2[sizeof Magic];
+		[[nodiscard]] static size_t FindPossibleBundleIndex(const void* buf, size_t len);
 
 		void DebugPrint(LogCategory logCategory, const char* head) const;
+
+		[[nodiscard]] static std::vector<std::vector<uint8_t>> SplitMessages(uint16_t expectedMessageCount, const std::span<const uint8_t>& buf);
+		[[nodiscard]] std::vector<std::vector<uint8_t>> GetMessages() const;
 	};
 
 	constexpr size_t GamePacketHeaderSize = offsetof(FFXIVBundle, Data);
@@ -103,7 +107,7 @@ namespace App::Network::Structures {
 		struct S2C_ActorControl {
 			union {
 				S2C_ActorControlCategory Category;
-				struct {
+				struct RawType {
 					S2C_ActorControlCategory Category;
 					uint16_t Padding1;
 					uint32_t Param1;
@@ -112,7 +116,7 @@ namespace App::Network::Structures {
 					uint32_t Param4;
 					uint32_t Padding2;
 				} Raw;
-				struct {
+				struct CancelCastType {
 					S2C_ActorControlCategory Category;
 					uint16_t Padding1;
 					uint32_t Param1;
@@ -126,7 +130,7 @@ namespace App::Network::Structures {
 		struct S2C_ActorControlSelf {
 			union {
 				S2C_ActorControlSelfCategory Category;
-				struct {
+				struct RawType {
 					S2C_ActorControlSelfCategory Category;
 					uint16_t Padding1;
 					uint32_t Param1;
@@ -137,7 +141,7 @@ namespace App::Network::Structures {
 					uint32_t Param6;
 					uint32_t Padding2;
 				} Raw;
-				struct {
+				struct RollbackType {
 					S2C_ActorControlSelfCategory Category;
 					uint16_t Padding1;
 					uint32_t Param1;
@@ -148,7 +152,7 @@ namespace App::Network::Structures {
 					uint32_t SourceSequence;
 					uint32_t Padding2;
 				} Rollback;
-				struct {
+				struct CooldownType {
 					S2C_ActorControlSelfCategory Category;
 					uint16_t Padding1;
 					uint32_t Param1;

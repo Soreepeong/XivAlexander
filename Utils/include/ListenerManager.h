@@ -14,38 +14,31 @@ namespace Utils {
 
 		size_t m_callbackId = 0;
 		std::map<size_t, std::function<R(T ...)>> m_callbacks;
-		std::list<std::shared_ptr<bool>> m_alreadyDestructedList;
 		std::shared_ptr<std::mutex> m_lock = std::make_shared<std::mutex>();
+		std::shared_ptr<bool> m_destructed = std::make_shared<bool>(false);
 
 	public:
 		virtual ~_ListenerManagerImplBase() {
 			std::lock_guard lock(*m_lock);
 			m_callbacks.clear();
-			for (auto& i : m_alreadyDestructedList)
-				*i = true;
-			m_alreadyDestructedList.clear();
+			*m_destructed = true;
 		}
 
 		/// \brief Adds a callback function to call when an event has been fired.
 		/// \returns An object that will remove the callback when destructed.
 		virtual CallOnDestruction operator() (const std::function<R(T ...)>& fn) {
-			auto& callbacks = m_callbacks;
-			auto& alreadyDestructedList = m_alreadyDestructedList;
 			std::lock_guard lock(*m_lock);
 			const auto callbackId = m_callbackId++;
-			callbacks.emplace(callbackId, fn);
-
-			auto indicator = std::make_shared<bool>(false);
-			alreadyDestructedList.push_back(indicator);
-			return CallOnDestruction([fn, indicator = std::move(indicator), mutex = m_lock, callbackId, &callbacks, &alreadyDestructedList]() {
+			m_callbacks.emplace(callbackId, fn);
+			
+			return CallOnDestruction([destructed = m_destructed, mutex = m_lock, callbackId, this]() {
 				std::lock_guard lock(*mutex);
 
 				// already destructed?
-				if (*indicator)
+				if (*destructed)
 					return;
 
-				callbacks.erase(callbackId);
-				alreadyDestructedList.erase(std::find(alreadyDestructedList.begin(), alreadyDestructedList.end(), indicator));
+				m_callbacks.erase(callbackId);
 			});
 		}
 

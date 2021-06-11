@@ -13,7 +13,11 @@
   <ItemGroup>
     <ClInclude Include="include\CallOnDestruction.h" />
     <ClInclude Include="include\ListenerManager.h" />
-    <ClInclude Include="include\Utils.h" />
+    <ClInclude Include="include\NumericStatisticsTracker.h" />
+    <ClInclude Include="include\Misc.h" />
+    <ClInclude Include="include\Utils.h">
+      <DeploymentContent>true</DeploymentContent>
+    </ClInclude>
     <ClInclude Include="include\Win32Handle.h" />
     <ClInclude Include="include\WinPath.h" />
     <ClInclude Include="pch.h" />
@@ -24,7 +28,8 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Utils.cpp" />
+    <ClCompile Include="Misc.cpp" />
+    <ClCompile Include="NumericStatisticsTracker.cpp" />
     <ClCompile Include="WinPath.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -105,6 +110,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -128,6 +134,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

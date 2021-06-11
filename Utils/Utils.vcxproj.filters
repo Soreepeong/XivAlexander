@@ -21,7 +21,7 @@
     <ClInclude Include="include\Win32Handle.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\Utils.h">
+    <ClInclude Include="include\Misc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\ListenerManager.h">
@@ -33,18 +33,27 @@
     <ClInclude Include="include\WinPath.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\NumericStatisticsTracker.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Utils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Utils.cpp">
+    <ClCompile Include="Misc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CallOnDestruction.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="WinPath.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="NumericStatisticsTracker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

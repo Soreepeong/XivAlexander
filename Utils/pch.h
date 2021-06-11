@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <vector>
 #include <functional>
+#include <numeric>
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX

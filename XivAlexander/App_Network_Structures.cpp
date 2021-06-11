@@ -1,18 +1,29 @@
 #include "pch.h"
 #include "App_Network_Structures.h"
 
-const std::vector<uint8_t> App::Network::Structures::FFXIVBundle::MagicConstant1 {
+#include "myzlib.h"
+
+const uint8_t App::Network::Structures::FFXIVBundle::MagicConstant1[] {
 	0x52, 0x52, 0xa0, 0x41,
 	0xff, 0x5d, 0x46, 0xe2,
 	0x7f, 0x2a, 0x64, 0x4d, 
 	0x7b, 0x99, 0xc4, 0x75,
 };
-const std::vector<uint8_t> App::Network::Structures::FFXIVBundle::MagicConstant2 {
+const uint8_t App::Network::Structures::FFXIVBundle::MagicConstant2[] {
 	0, 0, 0, 0,
 	0, 0, 0, 0,
 	0, 0, 0, 0,
 	0, 0, 0, 0,
 };
+
+size_t App::Network::Structures::FFXIVBundle::FindPossibleBundleIndex(const void* buf, size_t len) {
+	const std::span view{static_cast<const uint8_t*>(buf), len };
+	const auto searchLength = std::min(sizeof Magic, view.size());
+	return std::min(
+		std::search(view.begin(), view.end(), MagicConstant1, MagicConstant1 + searchLength) - view.begin(),
+		std::search(view.begin(), view.end(), MagicConstant2, MagicConstant2 + searchLength) - view.begin()
+	);
+}
 
 void App::Network::Structures::FFXIVBundle::DebugPrint(LogCategory logCategory, const char* head) const {
 	const auto st = Utils::EpochToLocalSystemTime(Timestamp);
@@ -25,6 +36,30 @@ void App::Network::Structures::FFXIVBundle::DebugPrint(LogCategory logCategory, 
 		st.wMilliseconds,
 		TotalLength, ConnType, MessageCount, GzipCompressed
 	);
+}
+
+std::vector<std::vector<uint8_t>> App::Network::Structures::FFXIVBundle::SplitMessages(uint16_t expectedMessageCount, const std::span<const uint8_t>& buf) {
+	std::vector<std::vector<uint8_t>> result;
+	result.reserve(expectedMessageCount);
+	for (size_t i = 0; i < buf.size(); ) {
+		const auto& message = *reinterpret_cast<const FFXIVMessage*>(&buf[i]);
+		if (i + message.Length > buf.size() || !message.Length)
+			throw std::runtime_error("Could not parse game message (sum(message.length for each message) > total message length)");
+
+		const auto sub = buf.subspan(i, static_cast<size_t>(message.Length));
+		result.emplace_back(sub.begin(), sub.end());
+		i += message.Length;
+	}
+	return result;
+}
+
+std::vector<std::vector<uint8_t>> App::Network::Structures::FFXIVBundle::GetMessages() const {
+	const std::span view(reinterpret_cast<const uint8_t*>(this) + GamePacketHeaderSize, TotalLength - GamePacketHeaderSize);
+
+	if (GzipCompressed)
+		return SplitMessages(MessageCount, Utils::ZlibDecompress(&view[0], view.size()));
+	else
+		return SplitMessages(MessageCount, view);
 }
 
 void App::Network::Structures::FFXIVMessage::DebugPrint(LogCategory logCategory, const char* head, bool dump) const {

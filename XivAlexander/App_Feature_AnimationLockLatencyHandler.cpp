@@ -21,8 +21,8 @@ public:
 	class SingleConnectionHandler {
 
 		struct PendingAction {
-			uint16_t ActionId;
-			uint16_t Sequence;
+			uint32_t ActionId;
+			uint32_t Sequence;
 			uint64_t RequestTimestamp;
 			uint64_t ResponseTimestamp = 0;
 			bool CastFlag = false;
@@ -34,7 +34,7 @@ public:
 				, RequestTimestamp(0) {
 			}
 
-			PendingAction(const Network::Structures::IPCMessageDataType::C2S_ActionRequest& request)
+			explicit PendingAction(const Network::Structures::IPCMessageDataType::C2S_ActionRequest& request)
 				: ActionId(request.ActionId)
 				, Sequence(request.Sequence)
 				, RequestTimestamp(Utils::GetHighPerformanceCounter()) {
@@ -61,7 +61,7 @@ public:
 			const auto& gameConfig = Config::Instance().Game;
 			const auto& runtimeConfig = Config::Instance().Runtime;
 
-			conn.AddOutgoingFFXIVMessageHandler(this, [&](Network::Structures::FFXIVMessage* pMessage, std::vector<uint8_t>&) {
+			conn.AddOutgoingFFXIVMessageHandler(this, [&](FFXIVMessage* pMessage, std::vector<uint8_t>&) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					if (pMessage->Data.IPC.SubType == gameConfig.C2S_ActionRequest[0]
 						|| pMessage->Data.IPC.SubType == gameConfig.C2S_ActionRequest[1]) {
@@ -89,7 +89,7 @@ public:
 				}
 				return true;
 				});
-			conn.AddIncomingFFXIVMessageHandler(this, [&](Network::Structures::FFXIVMessage* pMessage, std::vector<uint8_t>& additionalMessages) {
+			conn.AddIncomingFFXIVMessageHandler(this, [&](FFXIVMessage* pMessage, std::vector<uint8_t>& additionalMessages) {
 				const auto now = Utils::GetHighPerformanceCounter();
 
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::CustomType) {
@@ -153,43 +153,41 @@ public:
 									// 100ms animation lock after cast ends stays. Modify animation lock duration for instant actions only.
 									// Since no other action is in progress right before the cast ends, we can safely replace the animation lock with the latest after-cast lock.
 									if (!m_latestSuccessfulRequest.CastFlag) {
-										const int64_t rtt = now - m_latestSuccessfulRequest.RequestTimestamp;
-										conn.AddServerResponseDelayItem(rtt);
+										const auto rtt = static_cast<int64_t>(now - m_latestSuccessfulRequest.RequestTimestamp);
+										conn.ApplicationLatency.AddValue(rtt);
 
 										extraMessage = Utils::FormatString(" rtt=%lldms", rtt);
 
 										m_latestSuccessfulRequest.ResponseTimestamp = now;
 
-										int64_t delay = ExtraDelay;
+										auto delay = ExtraDelay;
 
-										if (runtimeConfig.UseAutoAdjustingExtraDelay) {
+										if (int64_t latency; conn.GetCurrentNetworkLatency(latency) && runtimeConfig.UseAutoAdjustingExtraDelay) {
 											delay = rtt;
 
-											// Get current latency data
-											const int64_t latency = conn.GetConnectionLatency();
-											int64_t latencyAdjusted = latency;
+											auto latencyAdjusted = latency;
 
 											extraMessage += Utils::FormatString(" latency=%lldms", latencyAdjusted);
 
 											// Update latency statistics
-											conn.AddConnectionLatencyItem(latencyAdjusted);
+											conn.NetworkLatency.AddValue(latencyAdjusted);
 
 											if (runtimeConfig.UseLatencyCorrection) {
 												// Get server response time statistic data.
-												const int64_t rttMin = conn.GetMinServerResponseDelay();
-												const int64_t rttMean = conn.GetMeanServerResponseDelay();
-												const int64_t rttDeviation = conn.GetServerResponseDelayDeviation();
+												const auto rttMin = conn.ApplicationLatency.Min();
+												const auto rttMean = conn.ApplicationLatency.Mean();
+												const auto rttDeviation = conn.ApplicationLatency.Deviation();
 
 												// Get latency statistic data.
-												const int64_t latencyMean = conn.GetMeanConnectionLatency();
-												const int64_t latencyDeviation = conn.GetConnectionLatencyDeviation();
+												const auto latencyMean = conn.NetworkLatency.Mean();
+												const auto latencyDeviation = conn.NetworkLatency.Deviation();
 
 												// Correct latency and server response time values in case of outliers.
 												latencyAdjusted = std::min(std::max(latencyMean - latencyDeviation, latencyAdjusted), latencyMean + latencyDeviation);
 												delay = std::min(std::max(rttMean - rttDeviation, delay), rttMean + rttDeviation);
 
 												// Estimate latency based on server response time statistics.
-												const int64_t latencyEstimate = ((delay + rttMin + rttMean) / 3) - rttDeviation;
+												const auto latencyEstimate = (delay + rttMin + rttMean) / 3 - rttDeviation;
 
 												extraMessage += Utils::FormatString(" (%lldms)", latencyEstimate);
 
@@ -350,5 +348,4 @@ App::Feature::AnimationLockLatencyHandler::AnimationLockLatencyHandler()
 	: impl(std::make_unique<Internals>()) {
 }
 
-App::Feature::AnimationLockLatencyHandler::~AnimationLockLatencyHandler() {
-}
+App::Feature::AnimationLockLatencyHandler::~AnimationLockLatencyHandler() = default;

@@ -2,7 +2,6 @@
 #include "App_Network_SocketHook.h"
 #include "App_Network_Structures.h"
 #include <myzlib.h>
-#include <mstcpip.h>
 
 namespace SocketFn = App::Hooks::Socket;
 
@@ -19,8 +18,8 @@ public:
 		m_pending.insert(m_pending.end(), uint8buf, uint8buf + length);
 	}
 
-	int Peek(uint8_t* buf, size_t maxlen) const {
-		int len = static_cast<int>(std::min({
+	size_t Peek(uint8_t* buf, size_t maxlen) const {
+		const auto len = static_cast<int>(std::min({
 			static_cast<size_t>(1048576),
 			maxlen,
 			m_pending.size() - m_pendingStartPos,
@@ -37,110 +36,73 @@ public:
 		}
 	}
 
-	int Read(uint8_t* buf, size_t maxlen) {
+	size_t Read(uint8_t* buf, size_t maxlen) {
 		const auto len = Peek(buf, maxlen);
 		Consume(len);
 		return len;
 	}
 
-	size_t Available() {
+	[[nodiscard]] size_t Available() const {
 		return m_pending.size() - m_pendingStartPos;
 	}
-};
 
-static
-std::vector<std::vector<uint8_t>> GetMessages(const App::Network::Structures::FFXIVBundle* pGamePacket) {
-	using namespace App::Network::Structures;
+	static void ProxyAvailableData(SingleStream& source, SingleStream& target, const std::function<void(const App::Network::Structures::FFXIVBundle* packet, SingleStream& target)>& processor) {
+		using namespace App::Network::Structures;
 
-	std::vector<uint8_t> inflatedBuffer;
-	std::vector<std::vector<uint8_t>> result;
-	const uint8_t* pPointer = reinterpret_cast<const uint8_t*>(pGamePacket) + GamePacketHeaderSize;
-	const uint8_t* pUpperBound = pPointer + pGamePacket->TotalLength - GamePacketHeaderSize;
-
-	if (pGamePacket->GzipCompressed) {
-		inflatedBuffer = Utils::ZlibDecompress(pPointer, pUpperBound - pPointer);
-		if (inflatedBuffer.empty()) {
-			return {};
-		}
-		pPointer = &inflatedBuffer[0];
-		pUpperBound = pPointer + inflatedBuffer.size();
-	}
-	while (pPointer < pUpperBound) {
-		const FFXIVMessage* pMessage = reinterpret_cast<const FFXIVMessage*>(pPointer);
-		const auto length = pMessage->Length;
-		if (pPointer + length <= pUpperBound) {
-			result.push_back(std::vector<uint8_t>{pPointer, pPointer + length});
-			pPointer += length;
-		} else {
-			// error, discard
-			return {};
-		}
-	}
-	return result;
-}
-
-static
-void ProcessData(SingleStream& source, SingleStream& target, std::function<void(const App::Network::Structures::FFXIVBundle* packet, SingleStream& target)> processor) {
-	using namespace App::Network::Structures;
-
-	const auto availableLength = source.Available();
-	if (!availableLength)
-		return;
-
-	std::vector<uint8_t> discardedBytes;
-	std::vector<uint8_t> buf;
-	buf.resize(availableLength);
-	source.Peek(&buf[0], buf.size());
-	while (!buf.empty()) {
-		const auto searchLength = std::min(sizeof FFXIVBundle::Magic, buf.size());
-		const auto possibleMagicOffset = std::min(
-			std::search(buf.begin(), buf.end(), FFXIVBundle::MagicConstant1.begin(), FFXIVBundle::MagicConstant1.begin() + searchLength) - buf.begin(),
-			std::search(buf.begin(), buf.end(), FFXIVBundle::MagicConstant2.begin(), FFXIVBundle::MagicConstant2.begin() + searchLength) - buf.begin()
-		);
-		if (possibleMagicOffset != 0) {
-			source.Consume(possibleMagicOffset);
-			target.Write(&buf[0], possibleMagicOffset);
-			discardedBytes.insert(discardedBytes.end(), buf.begin(), buf.begin() + possibleMagicOffset);
-			buf.erase(buf.begin(), buf.begin() + possibleMagicOffset);
-		}
-
-		// Incomplete header
-		if (buf.size() < GamePacketHeaderSize)
+		const auto availableLength = source.Available();
+		if (!availableLength)
 			return;
 
-		const FFXIVBundle* pGamePacket = reinterpret_cast<FFXIVBundle*>(&buf[0]);
+		std::vector<uint8_t> discardedBytes;
+		std::vector<uint8_t> buf;
+		buf.resize(availableLength);
+		source.Peek(&buf[0], buf.size());
+		while (!buf.empty()) {
+			if (const auto possibleMagicOffset = FFXIVBundle::FindPossibleBundleIndex(&buf[0], buf.size())) {
+				source.Consume(possibleMagicOffset);
+				target.Write(&buf[0], possibleMagicOffset);
+				discardedBytes.insert(discardedBytes.end(), buf.begin(), buf.begin() + possibleMagicOffset);
+				buf.erase(buf.begin(), buf.begin() + possibleMagicOffset);
+			}
 
-		// Incomplete data
-		if (buf.size() < pGamePacket->TotalLength)
-			return;
+			// Incomplete header
+			if (buf.size() < GamePacketHeaderSize)
+				return;
 
-		processor(pGamePacket, target);
+			const FFXIVBundle* pGamePacket = reinterpret_cast<FFXIVBundle*>(&buf[0]);
 
-		source.Consume(pGamePacket->TotalLength);
-		buf.erase(buf.begin(), buf.begin() + pGamePacket->TotalLength);
-	}
+			// Incomplete data
+			if (buf.size() < pGamePacket->TotalLength)
+				return;
 
-	if (!discardedBytes.empty()) {
-		std::string buffer = Utils::FormatString("Discarded Bytes (%db)\n\t", discardedBytes.size());
-		char map[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
-		size_t i = 0;
-		for (size_t i = 0; i < discardedBytes.size(); ++i) {
-			const auto b = discardedBytes[i];
-			buffer.push_back(map[b >> 4]);
-			buffer.push_back(map[b & 0b1111]);
-			buffer.push_back(' ');
-			if (i % 32 == 31 && i != discardedBytes.size() - 1)
-				buffer.append("\n\t");
-			if (i % 4 == 3 && i != discardedBytes.size() - 1)
+			processor(pGamePacket, target);
+
+			source.Consume(pGamePacket->TotalLength);
+			buf.erase(buf.begin(), buf.begin() + pGamePacket->TotalLength);
+		}
+
+		if (!discardedBytes.empty()) {
+			std::string buffer = Utils::FormatString("Discarded Bytes (%zub)\n\t", discardedBytes.size());
+			char map[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+			for (size_t i = 0; i < discardedBytes.size(); ++i) {
+				const auto b = discardedBytes[i];
+				buffer.push_back(map[b >> 4]);
+				buffer.push_back(map[b & 0b1111]);
 				buffer.push_back(' ');
+				if (i % 32 == 31 && i != discardedBytes.size() - 1)
+					buffer.append("\n\t");
+				if (i % 4 == 3 && i != discardedBytes.size() - 1)
+					buffer.push_back(' ');
+			}
+			App::Misc::Logger::GetLogger().Log(App::LogCategory::SocketHook, buffer, App::LogLevel::Warning);
 		}
-		App::Misc::Logger::GetLogger().Log(App::LogCategory::SocketHook, buffer, App::LogLevel::Warning);
 	}
-}
+};
 
 class App::Network::SingleConnection::Internals {
 	friend class SocketHook;
 public:
+	SingleConnection* const this_;
 	const SOCKET m_socket;
 	bool m_unloading = false;
 
@@ -148,8 +110,8 @@ public:
 	std::map<size_t, std::vector<std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)>>> m_outgoingHandlers;
 
 	std::deque<uint64_t> m_keepAliveRequestTimestamps;
-	std::vector<uint64_t> m_observedServerResponseList;
-	std::vector<int64_t> m_observedConnectionLatencyList;
+	std::deque<uint64_t> m_observedServerResponseList;
+	std::deque<int64_t> m_observedConnectionLatencyList;
 
 	SingleStream m_recvRaw;
 	SingleStream m_recvProcessed;
@@ -163,32 +125,41 @@ public:
 
 	mutable int m_nIoctlTcpInfoFailureCount = 0;
 
-	Internals(SOCKET s)
-		: m_socket(s) {
+	uint64_t m_nextTcpDelaySetAttempt = 0;
+
+	Internals(SingleConnection* this_, SOCKET s)
+		: this_(this_)
+		, m_socket(s) {
 
 		Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Found", m_socket);
 		ResolveAddresses();
 	}
 
 	void SetTCPDelay() {
-		int result;
-
+		if (m_nextTcpDelaySetAttempt > GetTickCount64())
+			return;
+		
+		DWORD buf = 0, cb = 0;
+		
 		// SIO_TCP_SET_ACK_FREQUENCY: Controls ACK delay every x ACK. Default delay is 40 or 200ms. Default value is 2 ACKs, set to 1 to disable ACK delay.
 		int freq = 1;
-		DWORD bytes = 0;
-		result = WSAIoctl(m_socket, SIO_TCP_SET_ACK_FREQUENCY, &freq, sizeof(freq), nullptr, 0, &bytes, nullptr, nullptr);
-
-		Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: SIO_TCP_SET_ACK_FREQUENCY = %d: %d", m_socket, freq, result);
+		if (SOCKET_ERROR == WSAIoctl(m_socket, SIO_TCP_SET_ACK_FREQUENCY, &freq, sizeof freq, &buf, sizeof buf, &cb, nullptr, nullptr)) {
+			m_nextTcpDelaySetAttempt = GetTickCount64() + 1000;
+			throw Utils::WindowsError(WSAGetLastError(), "WSAIoctl(SIO_TCP_SET_ACK_FREQUENCY, 1, 0)");
+		}
 
 		// TCP_NODELAY: if enabled, sends packets as soon as possible instead of waiting for ACK or large packet.
 		int optval = 1;
-		result = setsockopt(m_socket, SOL_SOCKET, TCP_NODELAY, (char*)&optval, sizeof(int));
+		if (SOCKET_ERROR == setsockopt(m_socket, SOL_SOCKET, TCP_NODELAY, reinterpret_cast<char*>(&optval), sizeof optval)) {
+			m_nextTcpDelaySetAttempt = GetTickCount64() + 1000;
+			throw Utils::WindowsError(WSAGetLastError(), "setsockopt(TCP_NODELAY, 1)");
+		}
 
-		Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: TCP_NODELAY = %d: %d", m_socket, optval, result);
+		m_nextTcpDelaySetAttempt = GetTickCount64();
 	}
 
 	void ResolveAddresses() {
-		sockaddr_storage local, remote;
+		sockaddr_storage local{}, remote{};
 		socklen_t addrlen = sizeof local;
 		if (0 == getsockname(m_socket, reinterpret_cast<sockaddr*>(&local), &addrlen) && Utils::sockaddr_cmp(&m_localAddress, &local)) {
 			m_localAddress = local;
@@ -214,135 +185,36 @@ public:
 		m_unloading = true;
 	}
 
-	int64_t GetConnectionLatency() const {
-		if (m_nIoctlTcpInfoFailureCount >= 5)
-			return 0;
+	void AttemptReceive() {
+		uint8_t buf[4096];
+		unsigned long readable;
+		while (true) {
+			readable = 0;
+			if (ioctlsocket(m_socket, FIONREAD, &readable) == SOCKET_ERROR)
+				break;
+			if (!readable)
+				break;
+			const auto recvlen = SocketFn::recv.bridge(m_socket, reinterpret_cast<char*>(buf), sizeof buf, 0);
+			if (recvlen > 0)
+				m_recvRaw.Write(buf, recvlen);
+		}
+		ProcessRecvData();
+	}
 
-		TCP_INFO_v0 info;
-		DWORD tcpInfoVersion = 0, cb;
-		if (0 != WSAIoctl(m_socket, SIO_TCP_INFO, &tcpInfoVersion, sizeof tcpInfoVersion, &info, sizeof info, &cb, nullptr, nullptr)) {
-			Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::SocketHook, "%p: WSAIoctl SIO_TCP_INFO v0 failed: %08x", m_socket, WSAGetLastError());
-			m_nIoctlTcpInfoFailureCount++;
-			return 0;
-		} else if (cb != sizeof info) {
-			Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::SocketHook, "%p: WSAIoctl SIO_TCP_INFO v0: buffer size mismatch (%d != %d)", m_socket, cb, sizeof info);
-			m_nIoctlTcpInfoFailureCount++;
-			return 0;
-		} else {
-			return (info.RttUs / 1000LL);
+	void AttemptSend() {
+		uint8_t buf[4096];
+		while (m_sendProcessed.Available()) {
+			const auto len = m_sendProcessed.Peek(buf, sizeof buf);
+			const auto sent = SocketFn::send.bridge(m_socket, reinterpret_cast<char*>(buf), static_cast<int>(len), 0);
+			if (sent == SOCKET_ERROR)
+				break;
+			m_sendProcessed.Consume(sent);
 		}
 	}
 
-	void AddConnectionLatencyItem(int64_t latency) {
-		const int latencyTrackCount = 10;
-
-		m_observedConnectionLatencyList.push_back(latency);
-
-		if (m_observedConnectionLatencyList.size() > latencyTrackCount)
-			m_observedConnectionLatencyList.erase(m_observedConnectionLatencyList.begin());
-	}
-
-	int64_t GetMedianConnectionLatency() const {
-		if (m_observedConnectionLatencyList.empty())
-			return 0;
-
-		size_t count = m_observedConnectionLatencyList.size();
-		std::vector<int64_t> SortedConnectionLatencyList(count);
-		std::partial_sort_copy(m_observedConnectionLatencyList.begin(), m_observedConnectionLatencyList.end(), SortedConnectionLatencyList.begin(), SortedConnectionLatencyList.end());
-
-		if ((count % 2) == 0)
-			// even
-			return (SortedConnectionLatencyList[count / 2] + SortedConnectionLatencyList[count / 2 - 1]) / 2;
-
-		// odd
-		return SortedConnectionLatencyList[count / 2];
-	}
-
-	int64_t GetMeanConnectionLatency() const {
-		if (m_observedConnectionLatencyList.empty())
-			return 0;
-
-		double mean = std::accumulate(m_observedConnectionLatencyList.begin(), m_observedConnectionLatencyList.end(), 0.0) / m_observedConnectionLatencyList.size();
-
-		return std::llround(mean);
-	}
-
-	int64_t GetConnectionLatencyDeviation() const {
-		size_t count = m_observedConnectionLatencyList.size();
-
-		if (count < 2)
-			return 0;
-
-		double mean = std::accumulate(m_observedConnectionLatencyList.begin(), m_observedConnectionLatencyList.end(), 0.0) / count;
-
-		std::vector<double> diff(count);
-		std::transform(m_observedConnectionLatencyList.begin(), m_observedConnectionLatencyList.end(), diff.begin(), [mean](int64_t x) { return double(x) - mean; });
-		double sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
-		double stddev = std::sqrt(sq_sum / count);
-
-		return std::llround(stddev);
-	}
-
-	void AddServerResponseDelayItem(uint64_t delay) {
-		const int latencyTrackCount = 10;
-
-		m_observedServerResponseList.push_back(delay);
-
-		if (m_observedServerResponseList.size() > latencyTrackCount)
-			m_observedServerResponseList.erase(m_observedServerResponseList.begin());
-	}
-
-	int64_t GetMinServerResponseDelay() const {
-		if (m_observedServerResponseList.empty())
-			return 0;
-
-		return *std::min_element(m_observedServerResponseList.begin(), m_observedServerResponseList.end());
-	}
-
-	int64_t GetMeanServerResponseDelay() const {
-		if (m_observedServerResponseList.empty())
-			return 0;
-
-		double mean = std::accumulate(m_observedServerResponseList.begin(), m_observedServerResponseList.end(), 0.0) / m_observedServerResponseList.size();
-
-		return std::llround(mean);
-	}
-
-	int64_t GetMedianServerResponseDelay() const {
-		if (m_observedServerResponseList.empty())
-			return 0;
-
-		size_t count = m_observedServerResponseList.size();
-		std::vector<uint64_t> SortedServerResponseList(count);
-		std::partial_sort_copy(m_observedServerResponseList.begin(), m_observedServerResponseList.end(), SortedServerResponseList.begin(), SortedServerResponseList.end());
-
-		if ((SortedServerResponseList.size() % 2) == 0)
-			// even
-			return (SortedServerResponseList[count / 2] + SortedServerResponseList[count / 2 - 1]) / 2;
-
-		// odd
-		return SortedServerResponseList[count / 2];
-	}
-
-	int64_t GetServerResponseDelayDeviation() const {
-		size_t count = m_observedServerResponseList.size();
-
-		if (count < 2)
-			return 0;
-
-		double mean = std::accumulate(m_observedServerResponseList.begin(), m_observedServerResponseList.end(), 0.0) / count;
-
-		std::vector<double> diff(count);
-		std::transform(m_observedServerResponseList.begin(), m_observedServerResponseList.end(), diff.begin(), [mean](int64_t x) { return double(x) - mean; });
-		double sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
-		double stddev = std::sqrt(sq_sum / count);
-
-		return std::llround(stddev);
-	}
-
 	void ProcessRecvData() {
-		using namespace App::Network::Structures;
-		ProcessData(m_recvRaw, m_recvProcessed, [&](const FFXIVBundle* pGamePacket, SingleStream& target) {
+		using namespace Structures;
+		SingleStream::ProxyAvailableData(m_recvRaw, m_recvProcessed, [&](const FFXIVBundle* pGamePacket, SingleStream& target) {
 			if (!pGamePacket->MessageCount) {
 				target.Write(pGamePacket, pGamePacket->TotalLength);
 				return;
@@ -350,8 +222,9 @@ public:
 
 			std::vector<std::vector<uint8_t>> messages;
 			try {
-				messages = GetMessages(pGamePacket);
-			} catch (std::exception&) {
+				messages = pGamePacket->GetMessages();
+			} catch (std::exception& e) {
+				pGamePacket->DebugPrint(LogCategory::SocketHook, e.what());
 				target.Write(pGamePacket, pGamePacket->TotalLength);
 				return;
 			}
@@ -366,7 +239,7 @@ public:
 
 			for (auto& message : messages) {
 				bool use = true;
-				auto pMessage = reinterpret_cast<FFXIVMessage*>(&message[0]);
+				const auto pMessage = reinterpret_cast<FFXIVMessage*>(&message[0]);
 
 				if (pMessage->Type == SegmentType::ServerKeepAlive) {
 					if (!m_keepAliveRequestTimestamps.empty()) {
@@ -377,8 +250,9 @@ public:
 						} while (!m_keepAliveRequestTimestamps.empty() && delay > 5000);
 
 						// Add statistics sample
-						AddServerResponseDelayItem(delay);
-						AddConnectionLatencyItem(GetConnectionLatency());
+						this_->ApplicationLatency.AddValue(delay);
+						if (int64_t latency; this_->GetCurrentNetworkLatency(latency))
+							this_->NetworkLatency.AddValue(latency);
 					}
 				} else if (pMessage->Type == SegmentType::IPC) {
 					for (const auto& cbs : m_incomingHandlers) {
@@ -406,8 +280,8 @@ public:
 	}
 
 	void ProcessSendData() {
-		using namespace App::Network::Structures;
-		ProcessData(m_sendRaw, m_sendProcessed, [&](const FFXIVBundle* pGamePacket, SingleStream& target) {
+		using namespace Structures;
+		SingleStream::ProxyAvailableData(m_sendRaw, m_sendProcessed, [&](const FFXIVBundle* pGamePacket, SingleStream& target) {
 			if (!pGamePacket->MessageCount) {
 				target.Write(pGamePacket, pGamePacket->TotalLength);
 				return;
@@ -415,7 +289,7 @@ public:
 
 			std::vector<std::vector<uint8_t>> messages;
 			try {
-				messages = GetMessages(pGamePacket);
+				messages = pGamePacket->GetMessages();
 			} catch (std::exception&) {
 				target.Write(pGamePacket, pGamePacket->TotalLength);
 				return;
@@ -431,7 +305,7 @@ public:
 
 			for (auto& message : messages) {
 				bool use = true;
-				auto pMessage = reinterpret_cast<FFXIVMessage*>(&message[0]);
+				const auto pMessage = reinterpret_cast<FFXIVMessage*>(&message[0]);
 
 				if (pMessage->Type == SegmentType::ClientKeepAlive) {
 					m_keepAliveRequestTimestamps.push_back(Utils::GetHighPerformanceCounter());
@@ -478,33 +352,22 @@ public:
 };
 
 App::Network::SingleConnection::SingleConnection(SOCKET s)
-	: impl(std::make_unique<Internals>(s)) {
+	: impl(std::make_unique<Internals>(this, s)) {
 
 }
 App::Network::SingleConnection::~SingleConnection() = default;
 
-void App::Network::SingleConnection::AddIncomingFFXIVMessageHandler(void* token, std::function<bool(App::Network::Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb) {
-	this->impl->m_incomingHandlers[reinterpret_cast<size_t>(token)].push_back(cb);
+void App::Network::SingleConnection::AddIncomingFFXIVMessageHandler(void* token, std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb) {
+	this->impl->m_incomingHandlers[reinterpret_cast<size_t>(token)].emplace_back(std::move(cb));
 }
 
-void App::Network::SingleConnection::AddOutgoingFFXIVMessageHandler(void* token, std::function<bool(App::Network::Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb) {
-	this->impl->m_outgoingHandlers[reinterpret_cast<size_t>(token)].push_back(cb);
+void App::Network::SingleConnection::AddOutgoingFFXIVMessageHandler(void* token, std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb) {
+	this->impl->m_outgoingHandlers[reinterpret_cast<size_t>(token)].emplace_back(std::move(cb));
 }
 
 void App::Network::SingleConnection::RemoveMessageHandlers(void* token) {
 	this->impl->m_incomingHandlers.erase(reinterpret_cast<size_t>(token));
 	this->impl->m_outgoingHandlers.erase(reinterpret_cast<size_t>(token));
-}
-
-void App::Network::SingleConnection::SendFFXIVMessage(const App::Network::Structures::FFXIVMessage * pMessage) {
-	Structures::FFXIVBundle bundle;
-	memset(&bundle, 0, sizeof bundle);
-	memcpy(bundle.Magic, Structures::FFXIVBundle::MagicConstant1.data(), sizeof bundle.Magic);
-	bundle.Timestamp = Utils::GetEpoch();
-	bundle.TotalLength = static_cast<uint16_t>(Structures::GamePacketHeaderSize + pMessage->Length);
-	bundle.MessageCount = 1;
-	impl->m_recvProcessed.Write(&bundle, sizeof bundle);
-	impl->m_recvProcessed.Write(pMessage, pMessage->Length);
 }
 
 SOCKET App::Network::SingleConnection::GetSocket() const {
@@ -515,49 +378,29 @@ void App::Network::SingleConnection::ResolveAddresses() {
 	impl->ResolveAddresses();
 }
 
-void App::Network::SingleConnection::AddConnectionLatencyItem(int64_t latency) {
-	return impl->AddConnectionLatencyItem(latency);
-}
+bool App::Network::SingleConnection::GetCurrentNetworkLatency(int64_t& latency) const {
+	if (impl->m_nIoctlTcpInfoFailureCount >= 5)
+		return false;
 
-int64_t App::Network::SingleConnection::GetMedianConnectionLatency() const {
-	return impl->GetMedianConnectionLatency();
-}
-
-int64_t App::Network::SingleConnection::GetMeanConnectionLatency() const {
-	return impl->GetMeanConnectionLatency();
-}
-
-int64_t App::Network::SingleConnection::GetConnectionLatencyDeviation() const {
-	return impl->GetConnectionLatencyDeviation();
-}
-
-void App::Network::SingleConnection::AddServerResponseDelayItem(uint64_t delay) {
-	return impl->AddServerResponseDelayItem(delay);
-}
-
-int64_t App::Network::SingleConnection::GetMinServerResponseDelay() const {
-	return impl->GetMinServerResponseDelay();
-}
-
-int64_t App::Network::SingleConnection::GetMeanServerResponseDelay() const {
-	return impl->GetMeanServerResponseDelay();
-}
-
-int64_t App::Network::SingleConnection::GetMedianServerResponseDelay() const {
-	return impl->GetMedianServerResponseDelay();
-}
-
-int64_t App::Network::SingleConnection::GetServerResponseDelayDeviation() const {
-	return impl->GetServerResponseDelayDeviation();
-}
-
-int64_t App::Network::SingleConnection::GetConnectionLatency() const {
-	return impl->GetConnectionLatency();
+	TCP_INFO_v0 info{};
+	DWORD tcpInfoVersion = 0, cb = 0;
+	if (0 != WSAIoctl(impl->m_socket, SIO_TCP_INFO, &tcpInfoVersion, sizeof tcpInfoVersion, &info, sizeof info, &cb, nullptr, nullptr)) {
+		Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::SocketHook, "%p: WSAIoctl SIO_TCP_INFO v0 failed: %08x", impl->m_socket, WSAGetLastError());
+		impl->m_nIoctlTcpInfoFailureCount++;
+		return false;
+	} else if (cb != sizeof info) {
+		Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::SocketHook, "%p: WSAIoctl SIO_TCP_INFO v0: buffer size mismatch (%d != %d)", impl->m_socket, cb, sizeof info);
+		impl->m_nIoctlTcpInfoFailureCount++;
+		return false;
+	} else {
+		latency = info.RttUs / 1000LL;
+		return true;
+	}
 }
 
 class App::Network::SocketHook::Internals {
 public:
-	HWND m_hGameWnd;
+	HWND m_hGameWnd = nullptr;
 	std::map<SOCKET, std::unique_ptr<SingleConnection>> m_sockets;
 	std::set<SOCKET> m_nonGameSockets;
 	std::map<size_t, std::vector<std::function<void(SingleConnection&)>>> m_onSocketFoundListeners;
@@ -580,7 +423,7 @@ public:
 		parseIpRange();
 		parsePortRange();
 		SocketFn::socket.SetupHook([&](_In_ int af, _In_ int type, _In_ int protocol) {
-			const auto result = App::Hooks::Socket::socket.bridge(af, type, protocol);
+			const auto result = Hooks::Socket::socket.bridge(af, type, protocol);
 			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: New", result);
 			OnSocketFound(result);
 			return result;
@@ -596,9 +439,9 @@ public:
 			if (conn == nullptr)
 				return SocketFn::send.bridge(s, buf, len, flags);
 
-			conn->impl->m_sendRaw.Write(reinterpret_cast<const uint8_t*>(buf), len);
+			conn->impl->m_sendRaw.Write(buf, len);
 			conn->impl->ProcessSendData();
-			AttemptSend(conn);
+			conn->impl->AttemptSend();
 			return len;
 			});
 		SocketFn::recv.SetupHook([&](SOCKET s, char* buf, int len, int flags) {
@@ -606,13 +449,13 @@ public:
 			if (conn == nullptr)
 				return SocketFn::recv.bridge(s, buf, len, flags);
 
-			AttemptReceive(conn);
+			conn->impl->AttemptReceive();
 
 			const auto result = conn->impl->m_recvProcessed.Read(reinterpret_cast<uint8_t*>(buf), len);
 			if (m_unloading && conn->impl->CloseRecvIfPossible())
 				CleanupSocket(s);
 
-			return result;
+			return static_cast<int>(result);
 			});
 		SocketFn::select.SetupHook([&](int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const timeval* timeout) {
 			const fd_set readfds_original = *readfds;
@@ -631,7 +474,7 @@ public:
 				}
 
 				if (FD_ISSET(s, &readfds_temp))
-					AttemptReceive(conn);
+					conn->impl->AttemptReceive();
 
 				if (conn->impl->m_recvProcessed.Available())
 					FD_SET(s, readfds);
@@ -652,7 +495,7 @@ public:
 					continue;
 				}
 
-				AttemptSend(conn);
+				conn->impl->AttemptSend();
 
 				if (conn->impl->CloseSendIfPossible())
 					CleanupSocket(s);
@@ -675,7 +518,7 @@ public:
 
 	static in_addr parseIp(const std::string& s) {
 		in_addr addr{};
-		switch (inet_pton(AF_INET, &s[0], &addr)){
+		switch (inet_pton(AF_INET, &s[0], &addr)) {
 			case 1:
 				return addr;
 			case 0:
@@ -696,10 +539,10 @@ public:
 			throw std::out_of_range("Incomplete conversion");
 		return static_cast<uint16_t>(parsed);
 	}
-	
+
 	void parseIpRange() {
 		m_allowedIpRange.clear();
-		for (auto &range : Utils::StringSplit(Config::Instance().Runtime.GameServerIpRange, ",")) {
+		for (auto& range : Utils::StringSplit(Config::Instance().Runtime.GameServerIpRange, ",")) {
 			try {
 				range = Utils::StringTrim(range);
 				if (range.empty())
@@ -785,35 +628,6 @@ public:
 		return true;
 	}
 
-	void AttemptReceive(SingleConnection* conn) {
-		const auto s = conn->GetSocket();
-		uint8_t buf[4096];
-		unsigned long readable;
-		while (true) {
-			readable = 0;
-			if (ioctlsocket(s, FIONREAD, &readable) == SOCKET_ERROR)
-				break;
-			if (!readable)
-				break;
-			int recvlen = SocketFn::recv.bridge(s, reinterpret_cast<char*>(buf), sizeof buf, 0);
-			if (recvlen > 0)
-				conn->impl->m_recvRaw.Write(buf, recvlen);
-		}
-		conn->impl->ProcessRecvData();
-	}
-
-	void AttemptSend(SingleConnection* conn) {
-		const auto s = conn->GetSocket();
-		uint8_t buf[4096];
-		while (conn->impl->m_sendProcessed.Available()) {
-			const auto len = conn->impl->m_sendProcessed.Peek(buf, sizeof buf);
-			const auto sent = SocketFn::send.bridge(s, reinterpret_cast<char*>(buf), len, 0);
-			if (sent == SOCKET_ERROR)
-				break;
-			conn->impl->m_sendProcessed.Consume(sent);
-		}
-	}
-
 	void Unload() {
 		m_unloading = true;
 		while (true) {
@@ -854,17 +668,17 @@ public:
 			if (found != m_nonGameSockets.end())
 				return nullptr;
 
-			sockaddr_in addr_v4;
-			int namelen = sizeof addr_v4;
-			if (0 != getpeername(socket, reinterpret_cast<sockaddr*>(&addr_v4), &namelen))
+			sockaddr_in addr{};
+			int namelen = sizeof addr;
+			if (0 != getpeername(socket, reinterpret_cast<sockaddr*>(&addr), &namelen))
 				return nullptr; // Not interested if not connected yet
 
-			if (addr_v4.sin_family != AF_INET) {
+			if (addr.sin_family != AF_INET) {
 				m_nonGameSockets.emplace(socket);
 				return nullptr;
 			}
-			if (!TestRemoteAddress(addr_v4)) {
-				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Mark ignored; remote=%s", socket, Utils::DescribeSockaddr(addr_v4).c_str());
+			if (!TestRemoteAddress(addr)) {
+				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Mark ignored; remote=%s", socket, Utils::DescribeSockaddr(addr).c_str());
 				m_nonGameSockets.emplace(socket);
 				return nullptr;
 			}
@@ -910,7 +724,7 @@ App::Network::SocketHook* App::Network::SocketHook::Instance() {
 	return s_socketHookInstance;
 }
 
-void App::Network::SocketHook::AddOnSocketFoundListener(void* token, const std::function<void(SingleConnection&)>& cb) {
+void App::Network::SocketHook::AddOnSocketFoundListener(void* token, const std::function<void(SingleConnection&)>&cb) {
 	std::lock_guard _guard(this->impl->m_socketMutex);
 	this->impl->m_onSocketFoundListeners[reinterpret_cast<size_t>(token)].emplace_back(cb);
 	for (const auto& item : this->impl->m_sockets) {
@@ -918,9 +732,9 @@ void App::Network::SocketHook::AddOnSocketFoundListener(void* token, const std::
 	}
 }
 
-void App::Network::SocketHook::AddOnSocketGoneListener(void* token, const std::function<void(SingleConnection&)>& cb) {
+void App::Network::SocketHook::AddOnSocketGoneListener(void* token, const std::function<void(SingleConnection&)>&cb) {
 	std::lock_guard _guard(this->impl->m_socketMutex);
-	this->impl->m_onSocketGoneListeners[reinterpret_cast<size_t>(token)].emplace_back(std::move(cb));
+	this->impl->m_onSocketGoneListeners[reinterpret_cast<size_t>(token)].emplace_back(cb);
 }
 
 void App::Network::SocketHook::RemoveListeners(void* token) {
@@ -934,19 +748,17 @@ std::wstring App::Network::SocketHook::Describe() const {
 
 	std::wstring result;
 	for (const auto& [s, conn] : impl->m_sockets) {
-		result += Utils::FormatString(
-			L"Connection %p (%s -> %s)\n"
-			L"* Latency: last %lldms, med %lldms, avg %lldms, dev %lldms\n"
-			L"* Response Delay: med %lldms, avg %lldms, dev %lldms\n"
-			L"\n",
-			reinterpret_cast<const void*>(s),
+		result += Utils::FormatString(L"Connection %p (%s -> %s)\n",
+			s,
 			Utils::FromUtf8(Utils::DescribeSockaddr(conn->impl->m_localAddress)).c_str(),
-			Utils::FromUtf8(Utils::DescribeSockaddr(conn->impl->m_remoteAddress)).c_str(),
-			conn->GetConnectionLatency(), conn->GetConnectionLatencyDeviation(),
-			conn->GetMedianConnectionLatency(), conn->GetMeanConnectionLatency(),
-			conn->GetMedianServerResponseDelay(), conn->GetMeanServerResponseDelay(),
-			conn->GetServerResponseDelayDeviation()
-		);
+			Utils::FromUtf8(Utils::DescribeSockaddr(conn->impl->m_remoteAddress)).c_str());
+		if (int64_t latency; conn->GetCurrentNetworkLatency(latency)) {
+			result += Utils::FormatString(L"* Latency: last %lldms, med %lldms, avg %lldms, dev %lldms\n",
+				latency, conn->NetworkLatency.Median(), conn->NetworkLatency.Mean(), conn->NetworkLatency.Deviation());
+		} else
+			result += L"* Latency: failed to resolve\n";
+		result += Utils::FormatString(L"* Response Delay: med %lldms, avg %lldms, dev %lldms\n\n",
+			conn->ApplicationLatency.Median(), conn->ApplicationLatency.Mean(), conn->ApplicationLatency.Deviation());
 	}
 	return result;
 }

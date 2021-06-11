@@ -96,7 +96,7 @@ void App::Misc::Logger::Clear() {
 }
 
 std::deque<const App::Misc::Logger::LogItem*> App::Misc::Logger::GetLogs() const {
-	std::deque<const App::Misc::Logger::LogItem*> res;
+	std::deque<const LogItem*> res;
 	std::for_each(m_pImpl->m_items.begin(), m_pImpl->m_items.end(), [&res](LogItem& item) {res.push_back(&item); });
 	return res;
 }

@@ -54,7 +54,7 @@ LRESULT App::Window::Config::OnNotify(const LPNMHDR nmhdr) {
 			ResizeMargin();
 		}
 	}
-	return App::Window::Base::OnNotify(nmhdr);
+	return Base::OnNotify(nmhdr);
 }
 
 void App::Window::Config::Revert() {
@@ -117,13 +117,12 @@ LRESULT App::Window::Config::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(&buf[0]));
 			buf.resize(buf.length() - 1);
 			if (buf != m_originalConfig) {
-				auto res = MessageBox(m_hWnd, L"Apply changed configuration?", L"XivAlexander", MB_YESNOCANCEL | MB_ICONQUESTION);
-				if (res == IDCANCEL) {
-					return 0;
-				} else if (res == IDYES) {
-					if (!TrySave()) {
+				switch (MessageBoxW(m_hWnd, L"Apply changed configuration?", L"XivAlexander", MB_YESNOCANCEL | MB_ICONQUESTION)) {
+					case IDCANCEL:
 						return 0;
-					}
+					case IDYES:
+						if (!TrySave())
+							return 0;
 				}
 			}
 			break;

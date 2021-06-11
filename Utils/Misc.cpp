@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "include/Utils.h"
+#include "include/Misc.h"
 
 #include <map>
 #include <set>
@@ -329,8 +329,9 @@ static std::wstring TestPublisher(const Utils::WinPath &path) {
 	if (pCertContext) cleanupList.emplace_back([pCertContext]() { CertFreeCertificateContext(pCertContext); });
 
 	std::wstring country;
-	country.resize(CertGetNameStringW(pCertContext, CERT_NAME_ATTR_TYPE, 0, const_cast<char*>(szOID_COUNTRY_NAME), nullptr, 0));
-	country.resize(CertGetNameStringW(pCertContext, CERT_NAME_ATTR_TYPE, 0, const_cast<char*>(szOID_COUNTRY_NAME), &country[0], static_cast<DWORD>(country.size())) - 1);
+	const auto pvTypePara = const_cast<char*>(szOID_COUNTRY_NAME);
+	country.resize(CertGetNameStringW(pCertContext, CERT_NAME_ATTR_TYPE, 0, pvTypePara, nullptr, 0));
+	country.resize(CertGetNameStringW(pCertContext, CERT_NAME_ATTR_TYPE, 0, pvTypePara, &country[0], static_cast<DWORD>(country.size())) - 1);
 	
 	return country;
 }

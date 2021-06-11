@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "include/Utils.h"
+#include "include/Misc.h"
 #include "include/WinPath.h"
 
 #include <system_error>
@@ -27,14 +27,14 @@ Utils::WinPath::WinPath(WinPath&& r) noexcept
 	r.m_empty = true;
 }
 
-Utils::WinPath& Utils::WinPath::operator=(const Utils::WinPath& r) {
+Utils::WinPath& Utils::WinPath::operator=(const WinPath& r) {
 	m_empty = r.m_empty;
 	m_wbuf = r.m_wbuf;
 	m_sbuf = nullptr;
 	return *this;
 }
 
-Utils::WinPath& Utils::WinPath::operator=(Utils::WinPath&& r) noexcept {
+Utils::WinPath& Utils::WinPath::operator=(WinPath&& r) noexcept {
 	m_empty = r.m_empty;
 	m_wbuf = std::move(r.m_wbuf);
 	m_sbuf = std::move(r.m_sbuf);
@@ -109,7 +109,7 @@ const std::wstring& Utils::WinPath::wstr() const {
 
 const std::string& Utils::WinPath::str() const {
 	if (!m_sbuf)
-		m_sbuf = std::make_unique<std::string>(Utils::ToUtf8(m_wbuf));
+		m_sbuf = std::make_unique<std::string>(ToUtf8(m_wbuf));
 	return *m_sbuf;
 }
 

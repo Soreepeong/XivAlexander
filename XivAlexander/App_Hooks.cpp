@@ -40,7 +40,7 @@ namespace App::Hooks {
 			if (!pImportTable[i].Name)
 				continue;
 
-			if (_strcmpi(reinterpret_cast<const char*>(pBaseAddress + pImportTable[i].Name), szDllName))
+			if (_strcmpi(pBaseAddress + pImportTable[i].Name, szDllName))
 				continue;
 
 			if (pImportTable[i].OriginalFirstThunk) {

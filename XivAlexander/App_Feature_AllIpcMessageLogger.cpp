@@ -80,5 +80,4 @@ App::Feature::AllIpcMessageLogger::AllIpcMessageLogger()
 : impl(std::make_unique<Internals>()){
 }
 
-App::Feature::AllIpcMessageLogger::~AllIpcMessageLogger() {
-}
+App::Feature::AllIpcMessageLogger::~AllIpcMessageLogger() = default;

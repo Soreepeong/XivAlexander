@@ -13,12 +13,11 @@ public:
 		SingleConnectionHandler(Internals& internals, Network::SingleConnection& conn)
 			: internals(internals)
 			, conn(conn) {
-			using namespace App::Network::Structures;
+			using namespace Network::Structures;
 
 			const auto& config = Config::Instance().Game;
 
-			conn.AddIncomingFFXIVMessageHandler(this, [&](Network::Structures::FFXIVMessage* pMessage, std::vector<uint8_t>& additionalMessages) {
-				const auto now = Utils::GetHighPerformanceCounter();
+			conn.AddIncomingFFXIVMessageHandler(this, [&](FFXIVMessage* pMessage, std::vector<uint8_t>& additionalMessages) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					if (config.S2C_ActionEffects[0] == pMessage->Data.IPC.SubType
 						|| config.S2C_ActionEffects[1] == pMessage->Data.IPC.SubType
@@ -92,5 +91,4 @@ App::Feature::EffectApplicationDelayLogger::EffectApplicationDelayLogger()
 	: impl(std::make_unique<Internals>()) {
 }
 
-App::Feature::EffectApplicationDelayLogger::~EffectApplicationDelayLogger() {
-}
+App::Feature::EffectApplicationDelayLogger::~EffectApplicationDelayLogger() = default;
