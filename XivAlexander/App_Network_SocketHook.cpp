@@ -860,7 +860,7 @@ public:
 				return nullptr;
 			}
 			if (!TestRemoteAddress(addr_v4)) {
-				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Mark ignored; remote=%s:%d", socket, Utils::DescribeSockaddr(addr_v4).c_str(), addr_v4.sin_port);
+				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Mark ignored; remote=%s", socket, Utils::DescribeSockaddr(addr_v4).c_str());
 				m_nonGameSockets.emplace(socket);
 				return nullptr;
 			}
