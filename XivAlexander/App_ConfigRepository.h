@@ -124,19 +124,6 @@ namespace App {
 			Item<bool> UseAutoAdjustingExtraDelay = CreateConfigItem(this, "UseAutoAdjustingExtraDelay", true);
 			Item<bool> ShowLoggingWindow = CreateConfigItem(this, "ShowLoggingWindow", true);
 			Item<bool> ShowControlWindow = CreateConfigItem(this, "ShowControlWindow", true);
-			Item<std::string> GameServerIpRange = CreateConfigItem(this, "GameServerIpRange", std::string(
-				"124.150.157.0/24,"  // Japanese
-				"195.82.50.0/24,"    // European
-				"204.2.229.0/24,"    // North American
-				"183.111.189.3/24,"  // Korean
-				"127.0.0.0/8,"       // Loopback
-				"10.0.0.0/8,"        // Private range A
-				"172.16.0.0/12,"     // Private range B
-				"192.168.0.0/16,"    // Private range C
-			));
-			Item<std::string> GameServerPortRange = CreateConfigItem(this, "GameServerPortRange", std::string(
-				"10000,10001-65535"
-			));
 			Item<bool> UseAllIpcMessageLogger = CreateConfigItem(this, "UseAllIpcMessageLogger", false);
 		};
 
@@ -147,6 +134,10 @@ namespace App {
 			using BaseRepository::BaseRepository;
 
 		public:
+			// Make the program consume all network connections by default.
+			Item<std::string> Server_IpRange = CreateConfigItem(this, "Server_IpRange", std::string("0.0.0.0/0"));
+			Item<std::string> Server_PortRange = CreateConfigItem(this, "Server_PortRange", std::string("1-65535"));
+			
 			// Set defaults so that the values will never be a valid IPC code.
 			// Assumes structure doesn't change too often.
 			// Will be loaded from configuration file on initialization.

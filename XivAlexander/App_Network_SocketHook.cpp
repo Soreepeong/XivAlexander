@@ -412,11 +412,11 @@ public:
 	std::vector<Utils::CallOnDestruction> m_cleanupList;
 
 	Internals() {
-		m_cleanupList.push_back(Config::Instance().Runtime.GameServerIpRange.OnChangeListener([this](Config::ItemBase&) {
+		m_cleanupList.push_back(Config::Instance().Game.Server_IpRange.OnChangeListener([this](Config::ItemBase&) {
 			parseIpRange();
 			m_nonGameSockets.clear();
 			}));
-		m_cleanupList.push_back(Config::Instance().Runtime.GameServerPortRange.OnChangeListener([this](Config::ItemBase&) {
+		m_cleanupList.push_back(Config::Instance().Game.Server_PortRange.OnChangeListener([this](Config::ItemBase&) {
 			parsePortRange();
 			m_nonGameSockets.clear();
 			}));
@@ -542,7 +542,7 @@ public:
 
 	void parseIpRange() {
 		m_allowedIpRange.clear();
-		for (auto& range : Utils::StringSplit(Config::Instance().Runtime.GameServerIpRange, ",")) {
+		for (auto& range : Utils::StringSplit(Config::Instance().Game.Server_IpRange, ",")) {
 			try {
 				range = Utils::StringTrim(range);
 				if (range.empty())
@@ -579,7 +579,7 @@ public:
 
 	void parsePortRange() {
 		m_allowedPortRange.clear();
-		for (auto range : Utils::StringSplit(Config::Instance().Runtime.GameServerPortRange, ",")) {
+		for (auto range : Utils::StringSplit(Config::Instance().Game.Server_PortRange, ",")) {
 			try {
 				range = Utils::StringTrim(range);
 				if (range.empty())

@@ -1,4 +1,6 @@
 {
+	"Server_IpRange": "124.150.157.0/24, 195.82.50.0/24, 204.2.229.0/24, 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16",
+	"Server_PortRange": "1025-65535",
 	"C2S_ActionRequest": "0x02a2",
 	"C2S_ActionRequestGroundTargeted": "0x02f6",
 	"S2C_ActionEffect01": "0x0283",
