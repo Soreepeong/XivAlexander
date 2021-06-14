@@ -1,14 +1,8 @@
 #include "pch.h"
 #include "include/Misc.h"
-
-#include <map>
-#include <set>
-#include <stdexcept>
-
 #include "include/CallOnDestruction.h"
 #include "include/myzlib.h"
 #include "include/Win32Handle.h"
-#include "include/WinPath.h"
 
 std::wstring Utils::FromUtf8(const std::string& in) {
 	const size_t length = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), static_cast<int>(in.size()), nullptr, 0);
@@ -22,15 +16,6 @@ std::string Utils::ToUtf8(const std::wstring& u16) {
 	std::string u8(length, 0);
 	WideCharToMultiByte(CP_UTF8, 0, u16.c_str(), static_cast<int>(u16.size()), const_cast<LPSTR>(u8.c_str()), static_cast<int>(u8.size()), nullptr, nullptr);
 	return u8;
-}
-
-uint64_t Utils::GetEpoch() {
-	union {
-		FILETIME ft;
-		LARGE_INTEGER li;
-	};
-	GetSystemTimePreciseAsFileTime(&ft);
-	return (li.QuadPart - 116444736000000000ULL) / 10 / 1000;
 }
 
 SYSTEMTIME Utils::EpochToLocalSystemTime(uint64_t epochMilliseconds) {
@@ -271,13 +256,35 @@ void Utils::SetMenuState(HWND hWnd, DWORD nMenuId, bool bChecked) {
 	SetMenuState(GetMenu(hWnd), nMenuId, bChecked);
 }
 
+std::filesystem::path Utils::PathFromModule(HMODULE hModule, HANDLE hProcess) {
+	auto buf = std::wstring(PATHCCH_MAX_CCH, 0);
+	
+	if (hProcess == INVALID_HANDLE_VALUE)
+		hProcess = GetCurrentProcess();
+
+	DWORD length;
+	if (hProcess == GetCurrentProcess())
+		length = GetModuleFileNameW(hModule, &buf[0], static_cast<DWORD>(buf.size()));
+	else if (!hModule) {
+		length = static_cast<DWORD>(buf.size());
+		if (!QueryFullProcessImageNameW(hProcess, 0, &buf[0], &length))
+			length = 0;
+	} else
+		length = GetModuleFileNameExW(hProcess, hModule, &buf[0], static_cast<DWORD>(buf.size()));
+	if (!length)
+		throw WindowsError("Failed to get module name.");
+	buf.resize(length);
+
+	return buf;
+}
+
 std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion() {
 	std::wstring path(PATHCCH_MAX_CCH, L'\0');
 	path.resize(GetModuleFileNameW(nullptr, &path[0], static_cast<DWORD>(path.size())));
 	return ResolveGameReleaseRegion(path);
 }
 
-static std::wstring TestPublisher(const Utils::WinPath &path) {
+static std::wstring TestPublisher(const std::filesystem::path& path) {
 	// See: https://docs.microsoft.com/en-US/troubleshoot/windows/win32/get-information-authenticode-signed-executables
 
 	constexpr auto ENCODING = X509_ASN_ENCODING | PKCS_7_ASN_ENCODING;
@@ -287,7 +294,7 @@ static std::wstring TestPublisher(const Utils::WinPath &path) {
 	DWORD dwEncoding = 0, dwContentType = 0, dwFormatType = 0;
 	std::vector<Utils::CallOnDestruction> cleanupList;
 	if (!CryptQueryObject(CERT_QUERY_OBJECT_FILE,
-		path.wbuf(),
+		path.c_str(),
 		CERT_QUERY_CONTENT_FLAG_PKCS7_SIGNED_EMBED,
 		CERT_QUERY_FORMAT_FLAG_BINARY,
 		0,
@@ -336,19 +343,18 @@ static std::wstring TestPublisher(const Utils::WinPath &path) {
 	return country;
 }
 
-std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const WinPath& path) {
-	const auto installationDir = WinPath(path)
-		.RemoveComponentInplace(2); // remove "\game", "\ffxiv_dx11.exe"
-	const auto gameDir = WinPath(installationDir, L"game");
-	const auto gameVerPath = WinPath(gameDir, L"ffxivgame.ver");
+std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const std::filesystem::path& path) {
+	const auto installationDir = path.parent_path().parent_path(); // remove "\game", "\ffxiv_dx11.exe"
+	const auto gameDir = installationDir / L"game";
+	const auto gameVerPath = gameDir / L"ffxivgame.ver";
 	
 	std::wstring gameVer;
 	{
 		const Win32Handle hGameVer(
-			CreateFileW(gameVerPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr),
+			CreateFileW(gameVerPath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr),
 			INVALID_HANDLE_VALUE,
 			L"ResolveGameReleaseRegion: Failed to open game version file(%s)", 
-			gameVerPath.wbuf());
+			gameVerPath.c_str());
 		LARGE_INTEGER size{};
 		GetFileSizeEx(hGameVer, &size);
 		if (size.QuadPart > 64)
@@ -372,18 +378,18 @@ std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const Win
 
 	std::map<std::wstring, size_t> publisherCountries;
 	for (const auto possibleRegionSpecificFilesDir : {
-		WinPath(installationDir, L"boot", L"ffxiv*.exe"),
-		WinPath(installationDir, L"sdo", L"sdologinentry.dll"),
+		installationDir / L"boot" / L"ffxiv*.exe",
+		installationDir / L"sdo" / L"sdologinentry.dll",
 		}) {
 		WIN32_FIND_DATAW data{};
 		const Win32Handle<HANDLE, FindClose> hFindFile(
-			FindFirstFileW(possibleRegionSpecificFilesDir, &data),
+			FindFirstFileW(possibleRegionSpecificFilesDir.c_str(), &data),
 			INVALID_HANDLE_VALUE);
 		if (!hFindFile)
 			continue;
 		
 		do {
-			const auto path = WinPath(possibleRegionSpecificFilesDir).RemoveComponentInplace().AddComponentInplace(data.cFileName);
+			const auto path = possibleRegionSpecificFilesDir.parent_path() / data.cFileName;
 			const auto publisherCountry = TestPublisher(path);
 			if (!publisherCountry.empty())
 				publisherCountries[publisherCountry]++;
@@ -398,7 +404,7 @@ std::tuple<std::wstring, std::wstring> Utils::ResolveGameReleaseRegion(const Win
 		);
 	}
 
-	std::wstring buf(installationDir.wstr());
+	auto buf = installationDir.wstring();
 	CharLowerW(&buf[0]);
 	uLong crc = crc32(crc32(0L, nullptr, 0), 
 		reinterpret_cast<Bytef*>(&buf[0]),

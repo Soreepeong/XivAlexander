@@ -30,9 +30,6 @@
     <ClInclude Include="include\CallOnDestruction.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\WinPath.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\NumericStatisticsTracker.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -48,9 +45,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CallOnDestruction.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="WinPath.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="NumericStatisticsTracker.cpp">

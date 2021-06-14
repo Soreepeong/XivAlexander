@@ -3,7 +3,7 @@
 
 std::unique_ptr<App::Config> App::Config::s_pInstance;
 
-App::Config::BaseRepository::BaseRepository(Config* pConfig, Utils::WinPath path)
+App::Config::BaseRepository::BaseRepository(Config* pConfig, std::filesystem::path path)
 	: m_pConfig(pConfig)
 	, m_sConfigPath(std::move(path)) {
 }
@@ -20,16 +20,16 @@ const char* App::Config::ItemBase::Name() const {
 void App::Config::BaseRepository::Reload(bool announceChange) {
 	bool changed = false;
 	nlohmann::json config;
-	if (m_sConfigPath.Exists()) {
+	if (exists(m_sConfigPath)) {
 		try {
-			std::ifstream in(m_sConfigPath.wstr());
+			std::ifstream in(m_sConfigPath);
 			in >> config;
 		} catch (std::exception& e) {
 			Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::General, "Failed to load configuration file: %s", e.what());
 		}
 	} else {
 		changed = true;
-		Misc::Logger::GetLogger().Format(LogCategory::General, "Creating new config file: %s", m_sConfigPath.wbuf());
+		Misc::Logger::GetLogger().Format(LogCategory::General, "Creating new config file: %s", Utils::ToUtf8(m_sConfigPath.c_str()));
 	}
 
 	m_destructionCallbacks.clear();
@@ -44,15 +44,15 @@ void App::Config::BaseRepository::Reload(bool announceChange) {
 
 App::Config& App::Config::Instance() {
 	if (!s_pInstance) {
-		const auto dllDir = Utils::WinPath(g_hInstance).RemoveComponentInplace();
+		const auto dllDir = Utils::PathFromModule(g_hInstance).parent_path();
 		const auto regionAndVersion = Utils::ResolveGameReleaseRegion();
 		
 		s_pInstance = std::make_unique<Config>(
-			Utils::WinPath(dllDir, "config.runtime.json"),
-			Utils::WinPath(dllDir, Utils::FormatString(L"game.%s.%s.json",
+			dllDir / "config.runtime.json",
+			dllDir / Utils::FormatString(L"game.%s.%s.json",
 				std::get<0>(regionAndVersion).c_str(),
 				std::get<1>(regionAndVersion).c_str())
-			));
+			);
 	}
 	return *s_pInstance;
 }
@@ -84,7 +84,7 @@ void App::Config::BaseRepository::Save() {
 		item->SaveTo(config);
 
 	try {
-		std::ofstream out(m_sConfigPath.wstr());
+		std::ofstream out(m_sConfigPath);
 		out << config.dump(1, '\t');
 	} catch (std::exception& e) {
 		Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "JSON Config save error: %s", e.what());

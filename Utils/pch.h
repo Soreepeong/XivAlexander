@@ -12,6 +12,10 @@
 #include <vector>
 #include <functional>
 #include <numeric>
+#include <map>
+#include <set>
+#include <stdexcept>
+#include <chrono>
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX

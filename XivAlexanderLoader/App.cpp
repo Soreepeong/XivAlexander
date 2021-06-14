@@ -1,34 +1,37 @@
 #include "pch.h"
 
-#include "WinPath.h"
+#include "CallOnDestruction.h"
 
-static void* GetModulePointer(HANDLE hProcess, const wchar_t* sDllPath) {
-	Utils::Win32Handle th32(CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, GetProcessId(hProcess)),
+const auto MsgboxTitle = L"XivAlexander Loader";
+
+static std::vector<DWORD> GetProcessList() {
+	std::vector<DWORD> res;
+	DWORD cb = 0;
+	do {
+		res.resize(res.size() + 1024);
+		EnumProcesses(&res[0], static_cast<DWORD>(sizeof res[0] * res.size()), &cb);
+	} while (cb == sizeof res[0] * res.size());
+	res.resize(cb / sizeof res[0]);
+	return res;
+}
+
+static void* GetModulePointer(HANDLE hProcess, const std::filesystem::path& path) {
+	const Utils::Win32Handle th32(CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, GetProcessId(hProcess)),
 		INVALID_HANDLE_VALUE,
 		"Failed to list modules of process %d.", GetProcessId(hProcess));
 	MODULEENTRY32W mod{ sizeof MODULEENTRY32W };
 	if (!Module32FirstW(th32, &mod))
 		return nullptr;
 
+	auto buf = path.wstring();
+	CharLowerW(&buf[0]);
 	do {
-		if (_wcsicmp(mod.szExePath, sDllPath) == 0)
+		auto buf2 = std::wstring(mod.szExePath);
+		CharLowerW(&buf2[0]);
+		if (buf == buf2)
 			return mod.modBaseAddr;
 	} while (Module32NextW(th32, &mod));
 	return nullptr;
-}
-
-static std::wstring GetProcessExecutablePath(HANDLE hProcess) {
-	std::wstring sPath(PATHCCH_MAX_CCH, L'\0');
-	while (true) {
-		auto length = static_cast<DWORD>(sPath.size());
-		if (!QueryFullProcessImageNameW(hProcess, 0, &sPath[0], &length))
-			throw Utils::WindowsError("GetProcessExecutablePath:QueryFullProcessImageNameW");
-		if (length < sPath.size() - 1) {
-			sPath.resize(length);
-			break;
-		}
-	}
-	return sPath;
 }
 
 static int CallRemoteFunction(HANDLE hProcess, void* rpfn, void* rpParam, const char* pcszDescription) {
@@ -41,29 +44,31 @@ static int CallRemoteFunction(HANDLE hProcess, void* rpfn, void* rpParam, const 
 	return exitCode;
 }
 
-static int InjectDll(HANDLE hProcess, const wchar_t* pszDllPath) {
-	const size_t nDllPathLength = wcslen(pszDllPath) + 1;
+static void* InjectDll(HANDLE hProcess, const std::filesystem::path& path) {
+	auto buf = path.wstring();
+	buf.resize(buf.size() + 1);
 
-	if (GetModulePointer(hProcess, pszDllPath))
-		return 0;
+	if (const auto ptr = GetModulePointer(hProcess, &buf[0]))
+		return ptr;
 
-	const auto nNumberOfBytes = nDllPathLength * sizeof pszDllPath[0];
+	const auto nNumberOfBytes = buf.size() * sizeof buf[0];
 
 	void* rpszDllPath = VirtualAllocEx(hProcess, nullptr, nNumberOfBytes, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 	if (!rpszDllPath)
-		return -1;
+		throw Utils::WindowsError(GetLastError(), "VirtualAllocEx(pid %d, nullptr, %d, MEM_COMMIT, PAGE_EXECUTE_READWRITE)", GetProcessId(hProcess), nNumberOfBytes);
 
-	if (!WriteProcessMemory(hProcess, rpszDllPath, pszDllPath, nNumberOfBytes, nullptr)) {
+	const auto releaseRemoteAllocation = Utils::CallOnDestruction([&]() {
 		VirtualFreeEx(hProcess, rpszDllPath, 0, MEM_RELEASE);
-		return -1;
-	}
+		});
 
-	const auto exitCode = CallRemoteFunction(hProcess, LoadLibraryW, rpszDllPath, "LoadLibraryW");
-	VirtualFreeEx(hProcess, rpszDllPath, 0, MEM_RELEASE);
-	return exitCode;
+	if (!WriteProcessMemory(hProcess, rpszDllPath, &buf[0], nNumberOfBytes, nullptr))
+		throw Utils::WindowsError(GetLastError(), "WriteProcessMemory(pid %d, %p, %s, %d, nullptr)", GetProcessId(hProcess), rpszDllPath, Utils::ToUtf8(buf).c_str(), nNumberOfBytes);
+
+	CallRemoteFunction(hProcess, LoadLibraryW, rpszDllPath, "LoadLibraryW");
+	return GetModulePointer(hProcess, path);
 }
 
-BOOL SetPrivilege(HANDLE hToken, LPCTSTR Privilege, BOOL bEnablePrivilege) {
+static BOOL SetPrivilege(HANDLE hToken, LPCTSTR Privilege, BOOL bEnablePrivilege) {
 	TOKEN_PRIVILEGES tp;
 	LUID luid;
 	TOKEN_PRIVILEGES tpPrevious;
@@ -129,21 +134,21 @@ void AddDebugPrivilege() {
 		throw Utils::WindowsError("AddDebugPrivilege/SetPrivilege(SeDebugPrivilege)");
 }
 
-void* FindModuleAddress(HANDLE hProcess, const Utils::WinPath& szDllPath) {
+void* FindModuleAddress(HANDLE hProcess, const std::filesystem::path& szDllPath) {
 	std::vector<HMODULE> hMods;
 	DWORD cbNeeded;
 	do {
 		hMods.resize(hMods.size() + std::min<size_t>(1024, std::max<size_t>(32768, hMods.size())));
 		cbNeeded = static_cast<DWORD>(hMods.size());
 		if (!EnumProcessModules(hProcess, &hMods[0], static_cast<DWORD>(hMods.size() * sizeof(HMODULE)), &cbNeeded))
-			throw Utils::WindowsError(FormatString("FindModuleAdderss(pid=%d, path=%s)/EnumProcessModules", GetProcessId(hProcess), szDllPath));
+			throw Utils::WindowsError(Utils::FormatString("FindModuleAdderss(pid=%d, path=%s)/EnumProcessModules", GetProcessId(hProcess), Utils::ToUtf8(szDllPath.c_str()).c_str()));
 	} while (cbNeeded == hMods.size() * sizeof(HMODULE));
 	hMods.resize(cbNeeded / sizeof(HMODULE));
 
 	std::wstring sModName;
 	sModName.resize(PATHCCH_MAX_CCH);
 	for (const auto hMod : hMods) {
-		const auto remoteModulePath = Utils::WinPath(hMod, hProcess);
+		const auto remoteModulePath = Utils::PathFromModule(hMod, hProcess);
 		if (remoteModulePath == szDllPath)
 			return hMod;
 	}
@@ -158,8 +163,8 @@ std::pair<std::string, std::string> FormatModuleVersionString(HMODULE hModule) {
 	const auto hDllVersion = FindResourceW(hModule, MAKEINTRESOURCE(VS_VERSION_INFO), RT_VERSION);
 	if (hDllVersion == nullptr)
 		throw std::exception("Failed to find version resource.");
-	const Utils::Win32Handle<HGLOBAL, FreeResource> hVersionResource(LoadResource(hModule, hDllVersion), 
-		nullptr, 
+	const Utils::Win32Handle<HGLOBAL, FreeResource> hVersionResource(LoadResource(hModule, hDllVersion),
+		nullptr,
 		"FormatModuleVersionString: Failed to load version resource.");
 	const auto lpVersionInfo = LockResource(hVersionResource);  // no need to "UnlockResource"
 
@@ -184,8 +189,8 @@ std::pair<std::string, std::string> FormatModuleVersionString(HMODULE hModule) {
 }
 
 static
-void CheckDllVersion(const wchar_t* szDllPath) {
-	const auto hDll = GetModuleHandleW(szDllPath);
+void CheckDllVersion(const std::filesystem::path& dllPath) {
+	const auto hDll = GetModuleHandleW(dllPath.c_str());
 	if (!hDll)
 		throw std::exception("XivAlexander.dll not found.");
 	auto [dllFileVersion, dllProductVersion] = FormatModuleVersionString(hDll);
@@ -200,20 +205,23 @@ void CheckDllVersion(const wchar_t* szDllPath) {
 			selfProductVersion.c_str(), selfFileVersion.c_str()).c_str());
 }
 
+enum class LoaderAction {
+	Ask,
+	Load,
+	Unload,
+	Ignore,  // for internal use only
+};
+
 class XivAlexanderLoaderParameter {
 public:
 	argparse::ArgumentParser argp;
 
-	enum class DefaultAction {
-		Ask,
-		Load,
-		Unload,
-	} m_action = DefaultAction::Ask;
+	LoaderAction m_action = LoaderAction::Ask;
 	bool m_quiet = false;
 	bool m_help = false;
 	bool m_web = false;
-	std::vector<int> m_targetPids{};
-	std::vector<std::wstring> m_targetSuffix{};
+	std::set<DWORD> m_targetPids{};
+	std::set<std::wstring> m_targetSuffix{};
 
 	XivAlexanderLoaderParameter()
 		: argp("XivAlexanderLoader") {
@@ -222,19 +230,19 @@ public:
 			.help("specifies default action for each process (possible values: ask, load, unload)")
 			.required()
 			.nargs(1)
-			.default_value(DefaultAction::Ask)
+			.default_value(LoaderAction::Ask)
 			.action([](std::string val) {
-				std::wstring valw = Utils::FromUtf8(val);
-				CharLowerW(&valw[0]);
-				val = Utils::ToUtf8(valw);
-				if (val == "ask")
-					return DefaultAction::Ask;
-				else if (val == "load")
-					return DefaultAction::Load;
-				else if (val == "unload")
-					return DefaultAction::Unload;
-				else
-					throw std::exception("Invalid parameter given for action parameter.");
+			std::wstring valw = Utils::FromUtf8(val);
+			CharLowerW(&valw[0]);
+			val = Utils::ToUtf8(valw);
+			if (val == "ask")
+				return LoaderAction::Ask;
+			else if (val == "load")
+				return LoaderAction::Load;
+			else if (val == "unload")
+				return LoaderAction::Unload;
+			else
+				throw std::exception("Invalid parameter given for action parameter.");
 				});
 		argp.add_argument("-q", "--quiet")
 			.help("disables error messages")
@@ -249,10 +257,10 @@ public:
 			.default_value(std::vector<std::string>())
 			.remaining()
 			.action([](std::string val) {
-				std::wstring valw = Utils::FromUtf8(val);
-				CharLowerW(&valw[0]);
-				return Utils::ToUtf8(valw);
-			});
+			std::wstring valw = Utils::FromUtf8(val);
+			CharLowerW(&valw[0]);
+			return Utils::ToUtf8(valw);
+				});
 	}
 
 	void Parse(LPWSTR lpCmdLine) {
@@ -279,13 +287,13 @@ public:
 
 		argp.parse_args(args);
 
-		m_action = argp.get<DefaultAction>("-a");
+		m_action = argp.get<LoaderAction>("-a");
 		m_quiet = argp.get<bool>("-q");
 		m_web = argp.get<bool>("--web");
-		
+
 		for (const auto& target : argp.get<std::vector<std::string>>("targets")) {
 			size_t idx = 0;
-			int pid = -1;
+			DWORD pid = 0;
 
 			try {
 				pid = std::stoi(target, &idx);
@@ -294,19 +302,158 @@ public:
 			} catch (std::out_of_range&) {
 				// empty
 			}
-			if (pid == -1 || idx != target.length())
-				m_targetSuffix.push_back(Utils::FromUtf8(target));
-			else
-				m_targetPids.push_back(pid);
+			if (idx != target.length()) {
+				auto buf = Utils::FromUtf8(target);
+				CharLowerW(&buf[0]);
+				m_targetSuffix.emplace(std::move(buf));
+			} else
+				m_targetPids.insert(pid);
 		}
 	}
 
-	std::wstring GetHelpMessage() const {
+	[[nodiscard]] std::wstring GetHelpMessage() const {
 		return Utils::FormatString(L"XivAlexanderLoader: loads XivAlexander into game process (DirectX 11 version, x64 only).\n\n%s",
 			Utils::FromUtf8(argp.help().str()).c_str()
-			);
+		);
 	}
 } g_parameters;
+
+static std::set<DWORD> GetTargetPidList() {
+	std::set<DWORD> pids;
+	if (!g_parameters.m_targetPids.empty()) {
+		const auto list = GetProcessList();
+		std::set_intersection(list.begin(), list.end(), g_parameters.m_targetPids.begin(), g_parameters.m_targetPids.end(), std::inserter(pids, pids.end()));
+		pids.insert(g_parameters.m_targetPids.begin(), g_parameters.m_targetPids.end());
+	} else if (g_parameters.m_targetSuffix.empty()) {
+		g_parameters.m_targetSuffix.emplace(L"ffxiv_dx11.exe");
+	}
+	if (!g_parameters.m_targetSuffix.empty()) {
+		for (const auto pid : GetProcessList()) {
+			try {
+				auto hProcess = Utils::Win32Handle(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid),
+					Utils::NullHandle,
+					"OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, %d)", pid);
+				const auto path = PathFromModule(nullptr, hProcess);
+				auto buf = path.wstring();
+				auto suffixFound = false;
+				CharLowerW(&buf[0]);
+				for (const auto& suffix : g_parameters.m_targetSuffix) {
+					if ((suffixFound = buf.ends_with(suffix)))
+						break;
+				}
+				if (suffixFound)
+					pids.insert(pid);
+			} catch (std::runtime_error&) {
+				// uninterested
+			}
+		}
+	}
+	return pids;
+}
+
+void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesystem::path& dllPath) {
+	const auto hProcess = Utils::Win32Handle(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, pid),
+		Utils::NullHandle,
+		"OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, %d)", pid);
+	void* rpModule = FindModuleAddress(hProcess, dllPath);
+	const auto path = PathFromModule(nullptr, hProcess);
+
+	auto loaderAction = g_parameters.m_action;
+	if (loaderAction == LoaderAction::Ask) {
+		if (rpModule) {
+			switch (MessageBoxW(nullptr, Utils::FormatString(
+				L"XivAlexander detected in FFXIV Process (%d:%s)\n"
+				L"Press Yes to try loading again if it hasn't loaded properly,\n"
+				L"Press No to unload, or\n"
+				L"Press Cancel to skip.\n"
+				L"\n"
+				L"Note: your anti-virus software will probably classify DLL injection as a malicious action, "
+				L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
+				static_cast<int>(pid), path.c_str()).c_str(), MsgboxTitle, MB_YESNOCANCEL | MB_ICONQUESTION | MB_DEFBUTTON1)) {
+				case IDYES:
+					loaderAction = LoaderAction::Load;
+					break;
+				case IDNO:
+					loaderAction = LoaderAction::Unload;
+					break;
+				case IDCANCEL:
+					loaderAction = LoaderAction::Ignore;
+			}
+		} else {
+			const auto regionAndVersion = Utils::ResolveGameReleaseRegion(path);
+			const auto gameConfigFilename = Utils::FormatString(L"game.%s.%s.json",
+				std::get<0>(regionAndVersion).c_str(),
+				std::get<1>(regionAndVersion).c_str());
+			const auto gameConfigPath = dllDir / gameConfigFilename;
+
+			if (!g_parameters.m_quiet && !exists(gameConfigPath)) {
+				switch (MessageBoxW(nullptr, Utils::FormatString(
+					L"FFXIV Process found:\n"
+					L"* PID: %d\n"
+					L"* Path: %s\n"
+					L"* Game Version Configuration File: %s\n"
+					L"Continue loading XivAlexander into this process?\n"
+					L"\n"
+					L"Notes\n"
+					L"* Corresponding game version configuration file for this process does not exist. "
+					L"You may want to check your game installation path, and edit the right entry in the above file first.\n"
+					L"* Your anti-virus software will probably classify DLL injection as a malicious action, "
+					L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
+					static_cast<int>(pid), path.c_str(), gameConfigPath.c_str()
+				).c_str(), MsgboxTitle, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON1)) {
+					case IDYES:
+						loaderAction = LoaderAction::Load;
+						break;
+					case IDNO:
+						loaderAction = LoaderAction::Ignore;
+				}
+			} else {
+				switch (MessageBoxW(nullptr, Utils::FormatString(
+					L"FFXIV Process found:\n"
+					L"* Process ID: %d\n"
+					L"* Path: %s\n"
+					L"* Game Version Configuration File: %s\n"
+					L"Continue loading XivAlexander into this process?\n"
+					L"\n"
+					L"Note: your anti-virus software will probably classify DLL injection as a malicious action, "
+					L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
+					static_cast<int>(pid), path.c_str(), gameConfigPath.c_str()
+				).c_str(), MsgboxTitle, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON1)) {
+					case IDYES:
+						loaderAction = LoaderAction::Load;
+						break;
+					case IDNO:
+						loaderAction = LoaderAction::Ignore;
+				}
+			}
+		}
+	}
+
+	if (loaderAction == LoaderAction::Ignore)
+		return;
+
+	rpModule = FindModuleAddress(hProcess, dllPath);
+	if (loaderAction == LoaderAction::Unload && !rpModule)
+		return;
+
+	if (!rpModule)
+		rpModule = InjectDll(hProcess, dllPath);
+
+	DWORD loadResult = 0;
+	if (loaderAction == LoaderAction::Load) {
+		loadResult = CallRemoteFunction(hProcess, LoadXivAlexander, nullptr, "LoadXivAlexander");
+		if (loadResult != 0) {
+			loaderAction = LoaderAction::Unload;
+		}
+	}
+	if (loaderAction == LoaderAction::Unload) {
+		if (CallRemoteFunction(hProcess, UnloadXivAlexander, nullptr, "UnloadXivAlexander")) {
+			CallRemoteFunction(hProcess, FreeLibrary, rpModule, "FreeLibrary");
+		}
+	}
+	if (loadResult)
+		throw std::exception(Utils::FormatString("Failed to start the addon: exit code %d", loadResult).c_str());
+}
 
 int WINAPI wWinMain(
 	_In_ HINSTANCE hInstance,
@@ -314,8 +461,6 @@ int WINAPI wWinMain(
 	_In_ LPWSTR lpCmdLine,
 	_In_ int nShowCmd
 ) {
-	const auto MsgboxTitle = L"XivAlexander Loader";
-	
 	try {
 		g_parameters.Parse(lpCmdLine);
 	} catch (std::exception& err) {
@@ -325,7 +470,7 @@ int WINAPI wWinMain(
 		MessageBoxW(nullptr, msg.c_str(), MsgboxTitle, MB_OK | MB_ICONWARNING);
 		return -1;
 	}
-	if (g_parameters.m_help){
+	if (g_parameters.m_help) {
 		MessageBoxW(nullptr, g_parameters.GetHelpMessage().c_str(), MsgboxTitle, MB_OK);
 		return 0;
 	}
@@ -334,15 +479,13 @@ int WINAPI wWinMain(
 		return 0;
 	}
 
-	DWORD pid;
-	HWND hwnd = nullptr;
-	const auto dllDir = Utils::WinPath(nullptr).RemoveComponentInplace();
-	const auto dllPath = Utils::WinPath(dllDir, L"XivAlexander.dll");
-	
+	const auto dllDir = Utils::PathFromModule().parent_path();
+	const auto dllPath = dllDir / L"XivAlexander.dll";
+
 	try {
 		CheckDllVersion(dllPath);
 	} catch (std::exception& e) {
-		if (MessageBoxW(nullptr, 
+		if (MessageBoxW(nullptr,
 			Utils::FormatString(
 				L"Failed to verify XivAlexander.dll and XivAlexanderLoader.exe have the matching versions (%s).\n\nDo you want to download again from Github?",
 				Utils::FromUtf8(e.what()).c_str()
@@ -360,142 +503,23 @@ int WINAPI wWinMain(
 		debugPrivilegeError = Utils::FormatString("Failed to obtain.\n* Try running this program as Administrator.\n* %s", err.what());
 	}
 
-	const std::wstring ProcessName(L"ffxiv_dx11.exe");
+	const auto pids = GetTargetPidList();
 
-	bool found = false;
-	
-	while ((hwnd = FindWindowExW(nullptr, hwnd, L"FFXIVGAME", nullptr))) {
-		GetWindowThreadProcessId(hwnd, &pid);
-
-		std::wstring sExePath;
-		
-		try {
-			{
-				Utils::Win32Handle hProcess(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid),
-					Utils::NullHandle,
-					"OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, %d)", pid);
-				
-				sExePath = GetProcessExecutablePath(hProcess);
-			}
-			if (g_parameters.m_targetPids.empty() && g_parameters.m_targetSuffix.empty()) {
-				if (sExePath.length() < ProcessName.length() || (0 != sExePath.compare(sExePath.length() - ProcessName.length(), ProcessName.length(), ProcessName)))
-					continue;
-			} else if (std::find(g_parameters.m_targetPids.begin(), g_parameters.m_targetPids.end(), pid) == g_parameters.m_targetPids.end()) {
-				bool suffixFound = false;
-				auto sExePathLowercase = sExePath;
-				CharLowerW(&sExePathLowercase[0]);
-				for (const auto& suffix : g_parameters.m_targetSuffix) {
-					if (sExePathLowercase.length() >= suffix.length() && (0 == sExePathLowercase.compare(sExePathLowercase.length() - suffix.length(), suffix.length(), suffix)))
-						suffixFound = true;
-				}
-				if (!suffixFound)
-					continue;
-			}
-
-			found = true;
-			
-			void* rpModule;
-			{
-				Utils::Win32Handle hProcess(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid),
-					Utils::NullHandle,
-					"OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, false, %d)", pid);
-				rpModule = FindModuleAddress(hProcess, dllPath);
-			}
-
-			std::wstring msg;
-			UINT nMsgType;
-			if (rpModule) {
-				msg = Utils::FormatString(
-					L"XivAlexander detected in FFXIV Process (%d:%s)\n"
-					L"Press Yes to try loading again if it hasn't loaded properly,\n"
-					L"Press No to skip,\n"
-					L"Press Cancel to unload.\n"
-					L"\n"
-					L"Note: your anti-virus software will probably classify DLL injection as a malicious action, "
-					L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
-					static_cast<int>(pid), sExePath.c_str());
-				nMsgType = (MB_YESNOCANCEL | MB_ICONQUESTION | MB_DEFBUTTON1);
-			} else {
-				const auto regionAndVersion = Utils::ResolveGameReleaseRegion(sExePath);
-				const auto gameConfigFilename = Utils::FormatString(L"game.%s.%s.json", 
-					std::get<0>(regionAndVersion).c_str(),
-					std::get<1>(regionAndVersion).c_str());
-				const auto gameConfigPath = Utils::WinPath(dllDir, gameConfigFilename);
-
-				if (!g_parameters.m_quiet && !gameConfigPath.Exists()) {
-					msg = Utils::FormatString(
-						L"FFXIV Process found:\n"
-						L"* PID: %d\n"
-						L"* Path: %s\n"
-						L"* Game Version Configuration File: %s\n"
-						L"Continue loading XivAlexander into this process?\n"
-						L"\n"
-						L"Notes\n"
-						L"* Corresponding game version configuration file for this process does not exist. "
-						L"You may want to check your game installation path, and edit the right entry in the above file first.\n"
-						L"* Your anti-virus software will probably classify DLL injection as a malicious action, "
-						L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
-						static_cast<int>(pid), sExePath.c_str(), gameConfigFilename.c_str(),
-						std::get<0>(regionAndVersion).c_str(),
-						std::get<1>(regionAndVersion).c_str());
-					nMsgType = (MB_YESNO | MB_DEFBUTTON1 | MB_ICONWARNING);
-				} else {
-					msg = Utils::FormatString(
-						L"FFXIV Process found:\n"
-						L"* Process ID: %d\n"
-						L"* Path: %s\n"
-						L"* Game Version Configuration File: %s\n"
-						L"Continue loading XivAlexander into this process?\n"
-						L"\n"
-						L"Note: your anti-virus software will probably classify DLL injection as a malicious action, "
-						L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
-						static_cast<int>(pid), sExePath.c_str(), gameConfigFilename.c_str());
-					nMsgType = (MB_YESNO | MB_DEFBUTTON1);
-				}
-			}
-
-			int response;
-			if (g_parameters.m_action == XivAlexanderLoaderParameter::DefaultAction::Ask)
-				response = MessageBoxW(nullptr, msg.c_str(), MsgboxTitle, nMsgType);
-			else if (g_parameters.m_action == XivAlexanderLoaderParameter::DefaultAction::Load)
-				response = IDYES;
-			else if (g_parameters.m_action == XivAlexanderLoaderParameter::DefaultAction::Unload)
-				response = IDCANCEL;
+	if (pids.empty()) {
+		if (!g_parameters.m_quiet) {
+			std::wstring errors;
+			if (g_parameters.m_targetPids.empty() && g_parameters.m_targetSuffix.empty())
+				errors = L"ffxiv_dx11.exe not found. Run the game first, and then try again.";
 			else
-				throw std::exception("Unreachable");
+				errors = L"No matching process found.";
+			MessageBoxW(nullptr, errors.c_str(), MsgboxTitle, MB_OK | MB_ICONERROR);
+		}
+		return -1;
+	}
 
-			if (response == IDNO)
-				continue;
-
-			{
-				Utils::Win32Handle hProcess(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, pid),
-					Utils::NullHandle,
-					"OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, %d)", pid);
-
-				rpModule = FindModuleAddress(hProcess, dllPath);
-				if (response == IDCANCEL && !rpModule)
-					continue;
-
-				if (!rpModule) {
-					InjectDll(hProcess, dllPath);
-					rpModule = FindModuleAddress(hProcess, dllPath);
-				}
-
-				DWORD loadResult = 0;
-				if (response == IDYES) {
-					loadResult = CallRemoteFunction(hProcess, LoadXivAlexander, nullptr, "LoadXivAlexander");
-					if (loadResult != 0) {
-						response = IDCANCEL;
-					}
-				}
-				if (response == IDCANCEL) {
-					if (CallRemoteFunction(hProcess, UnloadXivAlexander, nullptr, "UnloadXivAlexander")) {
-						CallRemoteFunction(hProcess, FreeLibrary, rpModule, "FreeLibrary");
-					}
-				}
-				if (loadResult)
-					throw std::exception(Utils::FormatString("Failed to start the addon: %d", loadResult).c_str());
-			}
+	for (const auto pid : pids) {
+		try {
+			DoPidTask(pid, dllDir, dllPath);
 		} catch (std::exception& e) {
 			if (!g_parameters.m_quiet)
 				MessageBoxW(nullptr, Utils::FromUtf8(Utils::FormatString(
@@ -504,19 +528,11 @@ int WINAPI wWinMain(
 					"Debug Privilege: %s\n"
 					"\n"
 					"Error:\n"
-					"* %s", 
+					"* %s",
 					pid,
-					debugPrivilegeError.c_str(), 
+					debugPrivilegeError.c_str(),
 					e.what()
 				)).c_str(), MsgboxTitle, MB_OK | MB_ICONERROR);
-		}
-	}
-
-	if (!found && !g_parameters.m_quiet) {
-		if (g_parameters.m_targetPids.empty() && g_parameters.m_targetSuffix.empty()) {
-			MessageBoxW(nullptr, L"ffxiv_dx11.exe not found. Run the game first, and then try again.", MsgboxTitle, MB_OK | MB_ICONERROR);
-		} else {
-			MessageBoxW(nullptr, L"No matching process found.", MsgboxTitle, MB_OK | MB_ICONERROR);
 		}
 	}
 	return 0;

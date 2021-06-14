@@ -61,7 +61,7 @@ void App::Window::Config::Revert() {
 	m_pRepository->Save();
 	nlohmann::json config;
 	try {
-		std::ifstream in(m_pRepository->GetConfigPath().wbuf());
+		std::ifstream in(m_pRepository->GetConfigPath());
 		in >> config;
 		m_originalConfig = config.dump(1, '\t');
 		m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(m_originalConfig.c_str()));
@@ -82,7 +82,7 @@ bool App::Window::Config::TrySave() {
 		return false;
 	}
 	try {
-		std::ofstream out(m_pRepository->GetConfigPath().wbuf());
+		std::ofstream out(m_pRepository->GetConfigPath());
 		out << buf;
 	} catch (std::exception& e) {
 		Utils::MessageBoxF(m_hWnd, MB_OK, L"XivAlexander", L"Failed to save new configuration file: %s", Utils::FromUtf8(e.what()).c_str());

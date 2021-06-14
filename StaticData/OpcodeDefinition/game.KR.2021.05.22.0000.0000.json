@@ -1,5 +1,5 @@
 {
-	"Server_IpRange": "183.111.189.0/24",
+	"Server_IpRange": "183.111.189.0/24, 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16",
 	"Server_PortRange": "1025-65535",
 	"C2S_ActionRequest": "0x0398",
 	"C2S_ActionRequestGroundTargeted": "0x02b0",

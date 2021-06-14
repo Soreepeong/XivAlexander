@@ -19,7 +19,6 @@
       <DeploymentContent>true</DeploymentContent>
     </ClInclude>
     <ClInclude Include="include\Win32Handle.h" />
-    <ClInclude Include="include\WinPath.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
@@ -30,7 +29,6 @@
     </ClCompile>
     <ClCompile Include="Misc.cpp" />
     <ClCompile Include="NumericStatisticsTracker.cpp" />
-    <ClCompile Include="WinPath.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="include\myzlib.h">
@@ -117,7 +115,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>Ws2_32.lib;crypt32.lib;Pathcch.lib</AdditionalDependencies>
+      <AdditionalDependencies>Ws2_32.lib;crypt32.lib</AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -143,7 +141,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>Ws2_32.lib;crypt32.lib;Pathcch.lib</AdditionalDependencies>
+      <AdditionalDependencies>Ws2_32.lib;crypt32.lib</AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

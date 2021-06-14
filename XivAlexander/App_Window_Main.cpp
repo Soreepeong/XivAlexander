@@ -35,13 +35,16 @@ App::Window::Main::Main(HWND hGameWnd, std::function<void()> unloadFunction)
 	, m_hGameWnd(hGameWnd)
 	, m_triggerUnload(std::move(unloadFunction))
 	, m_uTaskbarRestartMessage(RegisterWindowMessage(TEXT("TaskbarCreated")))
-	, m_sPath(nullptr) {
+	, m_path(Utils::PathFromModule()) {
 
 	std::tie(m_sRegion, m_sVersion) = Utils::ResolveGameReleaseRegion();
 	
-	std::vector<uint8_t> hashSourceData{ 0x95, 0xf8, 0x89, 0x5c, 0x59, 0x94, 0x44, 0xf2, 0x9d, 0xda, 0xa6, 0x9a, 0x91, 0xb4, 0xe8, 0x51 };
-	hashSourceData.insert(hashSourceData.begin(), reinterpret_cast<const uint8_t*>(&m_sPath.wstr()[0]), reinterpret_cast<const uint8_t*>(&m_sPath.wstr()[m_sPath.wstr().size()]));
-	HashData(hashSourceData.data(), static_cast<DWORD>(hashSourceData.size()), reinterpret_cast<BYTE*>(&m_guid.Data1), static_cast<DWORD>(sizeof GUID));
+	{
+		std::vector<uint8_t> hashSourceData{ 0x95, 0xf8, 0x89, 0x5c, 0x59, 0x94, 0x44, 0xf2, 0x9d, 0xda, 0xa6, 0x9a, 0x91, 0xb4, 0xe8, 0x51 };
+		auto buf = m_path.wstring();
+		hashSourceData.insert(hashSourceData.begin(), reinterpret_cast<const uint8_t*>(&buf[0]), reinterpret_cast<const uint8_t*>(&buf[buf.size()]));
+		HashData(hashSourceData.data(), static_cast<DWORD>(hashSourceData.size()), reinterpret_cast<BYTE*>(&m_guid.Data1), static_cast<DWORD>(sizeof GUID));
+	}
 	
 	const auto title = Utils::FormatString(L"XivAlexander: %d, %s, %s", GetCurrentProcessId(), m_sRegion.c_str(), m_sVersion.c_str());
 	SetWindowTextW(m_hWnd, title.c_str());
@@ -222,7 +225,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			L"  * You're using a VPN software and your latency is being displayed below 10ms when it shouldn't be.\n"
 			L"  * Your ping is above 200ms.\n"
 			L"  * You can't double weave comfortably.",
-			GetCurrentProcessId(), m_sPath.wbuf(), m_sVersion.c_str(), m_sRegion.c_str(),
+			GetCurrentProcessId(), m_path.c_str(), m_sVersion.c_str(), m_sRegion.c_str(),
 			Network::SocketHook::Instance()->Describe().c_str());
 		const auto pad = static_cast<int>(8 * zoom);
 		RECT rct = {

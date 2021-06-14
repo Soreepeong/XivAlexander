@@ -22,9 +22,11 @@ namespace App::Misc {
 
 		struct LogItem {
 			LogCategory category;
-			FILETIME timestamp;
+			std::chrono::system_clock::time_point timestamp;
 			LogLevel level;
 			std::string log;
+
+			SYSTEMTIME TimestampAsLocalSystemTime() const;
 		};
 		
 	private:

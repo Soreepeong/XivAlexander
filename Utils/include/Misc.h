@@ -3,14 +3,12 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-
-#include "WinPath.h"
+#include <filesystem>
 
 namespace Utils {
 	std::wstring FromUtf8(const std::string&);
 	std::string ToUtf8(const std::wstring&);
-
-	uint64_t GetEpoch();
+	
 	SYSTEMTIME EpochToLocalSystemTime(uint64_t epochMilliseconds);
 	uint64_t GetHighPerformanceCounter(int32_t multiplier = 1000);
 	
@@ -47,10 +45,12 @@ namespace Utils {
 	void SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked);
 	void SetMenuState(HWND hWnd, DWORD nMenuId, bool bChecked);
 
+	std::filesystem::path PathFromModule(HMODULE hModule = nullptr, HANDLE hProcess = INVALID_HANDLE_VALUE);
+
 	[[nodiscard]]
 	std::tuple<std::wstring, std::wstring> ResolveGameReleaseRegion();
 	[[nodiscard]]
-	std::tuple<std::wstring, std::wstring> ResolveGameReleaseRegion(const WinPath& path);
+	std::tuple<std::wstring, std::wstring> ResolveGameReleaseRegion(const std::filesystem::path& path);
 
 	class WindowsError : public std::runtime_error {
 		const int m_nErrorCode;

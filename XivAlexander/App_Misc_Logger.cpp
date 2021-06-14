@@ -60,6 +60,10 @@ public:
 	}
 };
 
+SYSTEMTIME App::Misc::Logger::LogItem::TimestampAsLocalSystemTime() const {
+	return Utils::EpochToLocalSystemTime(std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count());
+}
+
 App::Misc::Logger::Logger()
 	: m_pImpl(std::make_unique<Internals>(*this)) {
 	s_pLogger = this;
@@ -78,11 +82,9 @@ void App::Misc::Logger::Log(LogCategory category, const char8_t* s, LogLevel lev
 }
 
 void App::Misc::Logger::Log(LogCategory category, const std::string& s, LogLevel level) {
-	FILETIME ft;
-	GetSystemTimePreciseAsFileTime(&ft);
 	m_pImpl->AddLogItem(LogItem{
 		category,
-		ft,
+		std::chrono::system_clock::now(),
 		level,
 		s,
 		});

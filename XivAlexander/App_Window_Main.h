@@ -15,7 +15,7 @@ namespace App::Window {
 
 		std::vector<Utils::CallOnDestruction> m_cleanupList;
 
-		Utils::WinPath m_sPath;
+		std::filesystem::path m_path;
 		std::wstring m_sRegion, m_sVersion;
 
 	public:

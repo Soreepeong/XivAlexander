@@ -62,10 +62,7 @@ App::Window::Log::Log()
 	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Error), RGB(255, 80, 80));
 
 	const auto addLogFn = [&](const Misc::Logger::LogItem& item) {
-		FILETIME lt;
-		SYSTEMTIME st;
-		FileTimeToLocalFileTime(&item.timestamp, &lt);
-		FileTimeToSystemTime(&lt, &st);
+		const auto st = item.TimestampAsLocalSystemTime();
 		const auto logstr = Utils::FormatString("%04d-%02d-%02d %02d:%02d:%02d.%03d\t%s\t%s\n",
 			st.wYear, st.wMonth, st.wDay,
 			st.wHour, st.wMinute, st.wSecond,
