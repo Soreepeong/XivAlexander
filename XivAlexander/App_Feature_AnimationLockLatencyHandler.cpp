@@ -80,7 +80,7 @@ public:
 						if (runtimeConfig.UseHighLatencyMitigationLogging)
 							Misc::Logger::GetLogger().Format(
 								LogCategory::AnimationLockLatencyHandler,
-								"%p: C2S_ActionRequest(%04x): actionId=%04x sequence=%04x",
+								"%zx: C2S_ActionRequest(%04x): actionId=%04x sequence=%04x",
 								conn.GetSocket(),
 								pMessage->Data.IPC.SubType,
 								actionRequest.ActionId,
@@ -218,7 +218,7 @@ public:
 								if (runtimeConfig.UseHighLatencyMitigationLogging)
 									Misc::Logger::GetLogger().Format(
 										LogCategory::AnimationLockLatencyHandler,
-										"%p: S2C_ActionEffect(%04x): actionId=%04x sourceSequence=%04x wait=%lldms->%lldms%s",
+										"%zx: S2C_ActionEffect(%04x): actionId=%04x sourceSequence=%04x wait=%lldms->%lldms%s",
 										conn.GetSocket(),
 										pMessage->Data.IPC.SubType,
 										actionEffect.ActionId,
@@ -230,7 +230,7 @@ public:
 								if (runtimeConfig.UseHighLatencyMitigationLogging)
 									Misc::Logger::GetLogger().Format(
 										LogCategory::AnimationLockLatencyHandler,
-										"%p: S2C_ActionEffect(%04x): actionId=%04x sourceSequence=%04x wait=%llums",
+										"%zx: S2C_ActionEffect(%04x): actionId=%04x sourceSequence=%04x wait=%llums",
 										conn.GetSocket(),
 										pMessage->Data.IPC.SubType,
 										actionEffect.ActionId,
@@ -266,7 +266,7 @@ public:
 								if (runtimeConfig.UseHighLatencyMitigationLogging)
 									Misc::Logger::GetLogger().Format(
 										LogCategory::AnimationLockLatencyHandler,
-										"%p: S2C_ActorControlSelf/ActionRejected: actionId=%04x sourceSequence=%08x",
+										"%zx: S2C_ActorControlSelf/ActionRejected: actionId=%04x sourceSequence=%08x",
 										conn.GetSocket(),
 										rollback.ActionId,
 										rollback.SourceSequence);
@@ -295,7 +295,7 @@ public:
 								if (runtimeConfig.UseHighLatencyMitigationLogging)
 									Misc::Logger::GetLogger().Format(
 										LogCategory::AnimationLockLatencyHandler,
-										"%p: S2C_ActorControl/CancelCast: actionId=%04x",
+										"%zx: S2C_ActorControl/CancelCast: actionId=%04x",
 										conn.GetSocket(),
 										cancelCast.ActionId);
 							}
@@ -311,7 +311,7 @@ public:
 							if (runtimeConfig.UseHighLatencyMitigationLogging)
 								Misc::Logger::GetLogger().Format(
 									LogCategory::AnimationLockLatencyHandler,
-									"%p: S2C_ActorCast: actionId=%04x time=%.3f target=%08x",
+									"%zx: S2C_ActorCast: actionId=%04x time=%.3f target=%08x",
 									conn.GetSocket(),
 									actorCast.ActionId,
 									actorCast.CastTime,

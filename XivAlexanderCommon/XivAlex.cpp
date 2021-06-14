@@ -103,7 +103,7 @@ std::tuple<std::wstring, std::wstring> XivAlex::ResolveGameReleaseRegion(const s
 	}
 
 	std::map<std::wstring, size_t> publisherCountries;
-	for (const auto possibleRegionSpecificFilesDir : {
+	for (const auto& possibleRegionSpecificFilesDir : {
 		installationDir / L"boot" / L"ffxiv*.exe",
 		installationDir / L"sdo" / L"sdologinentry.dll",
 		}) {

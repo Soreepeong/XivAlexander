@@ -24,12 +24,23 @@ void CheckDllVersion(const std::filesystem::path& dllPath) {
 			selfProductVersion.c_str(), selfFileVersion.c_str()).c_str());
 }
 
-enum class LoaderAction {
+enum class LoaderAction : int {
 	Ask,
 	Load,
 	Unload,
 	Ignore,  // for internal use only
 };
+
+template <>
+std::string argparse::details::repr(LoaderAction const& val) {
+	switch (val) {
+		case LoaderAction::Ask: return "ask";
+		case LoaderAction::Load: return "load";
+		case LoaderAction::Unload: return "unload";
+		case LoaderAction::Ignore: return "ignore";
+		default: return Utils::FormatString("(%d)", val);
+	}
+}
 
 class XivAlexanderLoaderParameter {
 public:
@@ -50,18 +61,17 @@ public:
 			.required()
 			.nargs(1)
 			.default_value(LoaderAction::Ask)
-			.action([](std::string val) {
-			std::wstring valw = Utils::FromUtf8(val);
-			CharLowerW(&valw[0]);
-			val = Utils::ToUtf8(valw);
-			if (val == "ask")
-				return LoaderAction::Ask;
-			else if (val == "load")
-				return LoaderAction::Load;
-			else if (val == "unload")
-				return LoaderAction::Unload;
-			else
-				throw std::runtime_error("Invalid parameter given for action parameter.");
+			.action([](const std::string &val) {
+				auto valw = Utils::FromUtf8(val);
+				CharLowerW(&valw[0]);
+				if (valw == L"ask")
+					return LoaderAction::Ask;
+				else if (valw == L"load")
+					return LoaderAction::Load;
+				else if (valw == L"unload")
+					return LoaderAction::Unload;
+				else
+					throw std::runtime_error("Invalid parameter given for action parameter.");
 				});
 		argp.add_argument("-q", "--quiet")
 			.help("disables error messages")
@@ -75,19 +85,17 @@ public:
 			.help("list of target process ID or path suffix.")
 			.default_value(std::vector<std::string>())
 			.remaining()
-			.action([](std::string val) {
-			std::wstring valw = Utils::FromUtf8(val);
-			CharLowerW(&valw[0]);
-			return Utils::ToUtf8(valw);
+			.action([](const std::string &val) {
+				auto valw = Utils::FromUtf8(val);
+				CharLowerW(&valw[0]);
+				return Utils::ToUtf8(valw);
 				});
 	}
 
 	void Parse(LPWSTR lpCmdLine) {
 		std::vector<std::string> args;
 
-		wchar_t szModulePath[PATHCCH_MAX_CCH] = { 0 };
-		GetModuleFileNameW(nullptr, szModulePath, _countof(szModulePath));
-		args.push_back(Utils::ToUtf8(szModulePath));
+		args.push_back(Utils::ToUtf8(W32Modules::PathFromModule().wstring()));
 
 		if (wcslen(lpCmdLine) > 0) {
 			int nArgs;

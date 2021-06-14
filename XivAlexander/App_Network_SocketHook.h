@@ -25,7 +25,7 @@ namespace App::Network {
 		[[nodiscard]]
 		SOCKET GetSocket() const;
 
-		[[nodiscard]]
+		[[nodiscard]] _Success_(return)
 		bool GetCurrentNetworkLatency(_Out_ int64_t& latency) const;
 		
 		Utils::NumericStatisticsTracker NetworkLatency{ 10, 0 };

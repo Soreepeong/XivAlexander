@@ -28,7 +28,7 @@ public:
 						const auto& actionEffect = pMessage->Data.IPC.Data.S2C_ActionEffect;
 						Misc::Logger::GetLogger().Format(
 							LogCategory::EffectApplicationDelayLogger,
-							"%p: S2C_ActionEffect(%04x): actionId=%04x sourceSequence=%04x wait=%llums",
+							"%zx: S2C_ActionEffect(%04x): actionId=%04x sourceSequence=%04x wait=%llums",
 							conn.GetSocket(),
 							pMessage->Data.IPC.SubType,
 							actionEffect.ActionId,
@@ -50,7 +50,7 @@ public:
 						}
 						Misc::Logger::GetLogger().Format(
 							LogCategory::EffectApplicationDelayLogger,
-							"%p: S2C_AddStatusEffect: relatedActionSequence=%08x actorId=%08x HP=%d/%d MP=%d shield=%d%s",
+							"%zx: S2C_AddStatusEffect: relatedActionSequence=%08x actorId=%08x HP=%d/%d MP=%d shield=%d%s",
 							conn.GetSocket(),
 							addStatusEffect.RelatedActionSequence,
 							addStatusEffect.ActorId,

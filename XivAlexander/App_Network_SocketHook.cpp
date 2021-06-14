@@ -130,7 +130,7 @@ public:
 		: this_(this_)
 		, m_socket(s) {
 
-		Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Found", m_socket);
+		Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%zx: Found", m_socket);
 		ResolveAddresses();
 	}
 
@@ -162,7 +162,7 @@ public:
 		socklen_t addrlen = sizeof local;
 		if (0 == getsockname(m_socket, reinterpret_cast<sockaddr*>(&local), &addrlen) && Utils::CompareSockaddr(&m_localAddress, &local)) {
 			m_localAddress = local;
-			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Local=%s", m_socket, Utils::ToString(local).c_str());
+			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%zx: Local=%s", m_socket, Utils::ToString(local).c_str());
 
 			// Set TCP delay here because SIO_TCP_SET_ACK_FREQUENCY seems to work only when localAddress is not 0.0.0.0.
 			if (Config::Instance().Runtime.ReducePacketDelay && reinterpret_cast<sockaddr_in*>(&local)->sin_addr.s_addr != INADDR_ANY) {
@@ -172,7 +172,7 @@ public:
 		addrlen = sizeof remote;
 		if (0 == getpeername(m_socket, reinterpret_cast<sockaddr*>(&remote), &addrlen) && Utils::CompareSockaddr(&m_remoteAddress, &remote)) {
 			m_remoteAddress = remote;
-			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Remote=%s", m_socket, Utils::ToString(remote).c_str());
+			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%zx: Remote=%s", m_socket, Utils::ToString(remote).c_str());
 		}
 	}
 
@@ -377,18 +377,19 @@ void App::Network::SingleConnection::ResolveAddresses() {
 	impl->ResolveAddresses();
 }
 
-bool App::Network::SingleConnection::GetCurrentNetworkLatency(int64_t& latency) const {
+_Success_(return)
+bool App::Network::SingleConnection::GetCurrentNetworkLatency(_Out_ int64_t& latency) const {
 	if (impl->m_nIoctlTcpInfoFailureCount >= 5)
 		return false;
 
 	TCP_INFO_v0 info{};
 	DWORD tcpInfoVersion = 0, cb = 0;
 	if (0 != WSAIoctl(impl->m_socket, SIO_TCP_INFO, &tcpInfoVersion, sizeof tcpInfoVersion, &info, sizeof info, &cb, nullptr, nullptr)) {
-		Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::SocketHook, "%p: WSAIoctl SIO_TCP_INFO v0 failed: %08x", impl->m_socket, WSAGetLastError());
+		Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::SocketHook, "%zx: WSAIoctl SIO_TCP_INFO v0 failed: %08x", impl->m_socket, WSAGetLastError());
 		impl->m_nIoctlTcpInfoFailureCount++;
 		return false;
 	} else if (cb != sizeof info) {
-		Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::SocketHook, "%p: WSAIoctl SIO_TCP_INFO v0: buffer size mismatch (%d != %d)", impl->m_socket, cb, sizeof info);
+		Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::SocketHook, "%zx: WSAIoctl SIO_TCP_INFO v0: buffer size mismatch (%d != %d)", impl->m_socket, cb, sizeof info);
 		impl->m_nIoctlTcpInfoFailureCount++;
 		return false;
 	} else {
@@ -423,13 +424,13 @@ public:
 		parsePortRange();
 		SocketFn::socket.SetupHook([&](_In_ int af, _In_ int type, _In_ int protocol) {
 			const auto result = Hooks::Socket::socket.bridge(af, type, protocol);
-			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: New", result);
+			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%zx: New", result);
 			OnSocketFound(result);
 			return result;
 			});
 		SocketFn::closesocket.SetupHook([&](SOCKET s) {
 			CleanupSocket(s);
-			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Close", s);
+			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%zx: Close", s);
 			m_nonGameSockets.erase(s);
 			return SocketFn::closesocket.bridge(s);
 			});
@@ -506,7 +507,7 @@ public:
 			});
 		SocketFn::connect.SetupHook([&](SOCKET s, const sockaddr* name, int namelen) {
 			const auto result = SocketFn::connect.bridge(s, name, namelen);
-			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: connect: %s", s, Utils::ToString(*name).c_str());
+			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%zx: Connect: %s", s, Utils::ToString(*name).c_str());
 			return result;
 			});
 	}
@@ -677,7 +678,7 @@ public:
 				return nullptr;
 			}
 			if (!TestRemoteAddress(addr)) {
-				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Mark ignored; remote=%s", socket, Utils::ToString(addr).c_str());
+				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%zx: Mark ignored; remote=%s", socket, Utils::ToString(addr).c_str());
 				m_nonGameSockets.emplace(socket);
 				return nullptr;
 			}
@@ -747,7 +748,7 @@ std::wstring App::Network::SocketHook::Describe() const {
 
 	std::wstring result;
 	for (const auto& [s, conn] : impl->m_sockets) {
-		result += Utils::FormatString(L"Connection %p (%s -> %s)\n",
+		result += Utils::FormatString(L"Connection %zx (%s -> %s)\n",
 			s,
 			Utils::FromUtf8(Utils::ToString(conn->impl->m_localAddress)).c_str(),
 			Utils::FromUtf8(Utils::ToString(conn->impl->m_remoteAddress)).c_str());
