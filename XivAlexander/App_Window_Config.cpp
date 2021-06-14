@@ -5,7 +5,7 @@
 constexpr int BaseFontSize = 11;
 
 static WNDCLASSEXW WindowClass() {
-	const Utils::Win32Handle<HICON, DestroyIcon> hIcon(
+	const auto hIcon = Utils::Win32::Closeable::Icon(
 		LoadIconW(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)),
 		nullptr,
 		"Failed to load app icon.");
@@ -66,7 +66,7 @@ void App::Window::Config::Revert() {
 		m_originalConfig = config.dump(1, '\t');
 		m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(m_originalConfig.c_str()));
 	} catch (std::exception& e) {
-		Utils::MessageBoxF(m_hWnd, MB_ICONERROR, L"XivAlexander", L"Failed to reload previous configuration file: %s", Utils::FromUtf8(e.what()).c_str());
+		Utils::Win32::MessageBoxF(m_hWnd, MB_ICONERROR, L"XivAlexander", L"Failed to reload previous configuration file: %s", Utils::FromUtf8(e.what()).c_str());
 		DestroyWindow(m_hWnd);
 	}
 }
@@ -78,14 +78,14 @@ bool App::Window::Config::TrySave() {
 	try {
 		buf = nlohmann::json::parse(buf).dump(1, '\t');
 	} catch (nlohmann::json::exception& e) {
-		Utils::MessageBoxF(m_hWnd, MB_ICONERROR, L"XivAlexander", L"Invalid JSON: %s", Utils::FromUtf8(e.what()).c_str());
+		Utils::Win32::MessageBoxF(m_hWnd, MB_ICONERROR, L"XivAlexander", L"Invalid JSON: %s", Utils::FromUtf8(e.what()).c_str());
 		return false;
 	}
 	try {
 		std::ofstream out(m_pRepository->GetConfigPath());
 		out << buf;
 	} catch (std::exception& e) {
-		Utils::MessageBoxF(m_hWnd, MB_OK, L"XivAlexander", L"Failed to save new configuration file: %s", Utils::FromUtf8(e.what()).c_str());
+		Utils::Win32::MessageBoxF(m_hWnd, MB_OK, L"XivAlexander", L"Failed to save new configuration file: %s", Utils::FromUtf8(e.what()).c_str());
 		return false;
 	}
 	m_originalConfig = std::move(buf);

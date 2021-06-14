@@ -92,6 +92,9 @@ public:
 	}
 
 	void SetupTrayWindow() {
+		if (m_trayWindow)
+			return;
+		
 		m_trayWindow = std::make_unique<Window::Main>(m_hGameMainWindow, [this]() {
 			try {
 				this->Unload();
@@ -267,7 +270,7 @@ public:
 			PostMessageW(m_hGameMainWindow, WM_NULL, 0, 0);
 
 		} else {
-			Utils::Win32Handle hEvent(CreateEventW(nullptr, true, false, nullptr),
+			Utils::Win32::Closeable::Handle hEvent(CreateEventW(nullptr, true, false, nullptr),
 				INVALID_HANDLE_VALUE, 
 				"App::QueueRunOnMessageLoop/CreateEventW");
 			const auto fn = [&f, &hEvent]() {
@@ -308,7 +311,7 @@ public:
 App::App* App::App::m_instance;
 
 static DWORD WINAPI DllThread(PVOID param1) {
-	Utils::SetThreadDescription(GetCurrentThread(), L"XivAlexander::DllThread");
+	Utils::Win32::SetThreadDescription(GetCurrentThread(), L"XivAlexander::DllThread");
 	{
 		App::Misc::Logger logger;
 		try {
@@ -338,8 +341,8 @@ extern "C" __declspec(dllexport) int __stdcall LoadXivAlexander(void* lpReserved
 	if (App::App::GetInstance())
 		return 0;
 	try {
-		Utils::Win32Handle hThread(CreateThread(nullptr, 0, DllThread, g_hInstance, 0, nullptr),
-			Utils::NullHandle,
+		Utils::Win32::Closeable::Handle hThread(CreateThread(nullptr, 0, DllThread, g_hInstance, 0, nullptr),
+			Utils::Win32::Closeable::Handle::Null,
 			"LoadXivAlexander/CreateThread");
 		return 0;
 	} catch (const std::exception& e) {

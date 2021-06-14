@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "App_Network_SocketHook.h"
 #include "App_Network_Structures.h"
-#include <myzlib.h>
 
 namespace SocketFn = App::Hooks::Socket;
 
@@ -145,14 +144,14 @@ public:
 		int freq = 1;
 		if (SOCKET_ERROR == WSAIoctl(m_socket, SIO_TCP_SET_ACK_FREQUENCY, &freq, sizeof freq, &buf, sizeof buf, &cb, nullptr, nullptr)) {
 			m_nextTcpDelaySetAttempt = GetTickCount64() + 1000;
-			throw Utils::WindowsError(WSAGetLastError(), "WSAIoctl(SIO_TCP_SET_ACK_FREQUENCY, 1, 0)");
+			throw Utils::Win32::Error(WSAGetLastError(), "WSAIoctl(SIO_TCP_SET_ACK_FREQUENCY, 1, 0)");
 		}
 
 		// TCP_NODELAY: if enabled, sends packets as soon as possible instead of waiting for ACK or large packet.
 		int optval = 1;
 		if (SOCKET_ERROR == setsockopt(m_socket, SOL_SOCKET, TCP_NODELAY, reinterpret_cast<char*>(&optval), sizeof optval)) {
 			m_nextTcpDelaySetAttempt = GetTickCount64() + 1000;
-			throw Utils::WindowsError(WSAGetLastError(), "setsockopt(TCP_NODELAY, 1)");
+			throw Utils::Win32::Error(WSAGetLastError(), "setsockopt(TCP_NODELAY, 1)");
 		}
 
 		m_nextTcpDelaySetAttempt = GetTickCount64();
@@ -161,9 +160,9 @@ public:
 	void ResolveAddresses() {
 		sockaddr_storage local{}, remote{};
 		socklen_t addrlen = sizeof local;
-		if (0 == getsockname(m_socket, reinterpret_cast<sockaddr*>(&local), &addrlen) && Utils::sockaddr_cmp(&m_localAddress, &local)) {
+		if (0 == getsockname(m_socket, reinterpret_cast<sockaddr*>(&local), &addrlen) && Utils::CompareSockaddr(&m_localAddress, &local)) {
 			m_localAddress = local;
-			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Local=%s", m_socket, Utils::DescribeSockaddr(local).c_str());
+			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Local=%s", m_socket, Utils::ToString(local).c_str());
 
 			// Set TCP delay here because SIO_TCP_SET_ACK_FREQUENCY seems to work only when localAddress is not 0.0.0.0.
 			if (Config::Instance().Runtime.ReducePacketDelay && reinterpret_cast<sockaddr_in*>(&local)->sin_addr.s_addr != INADDR_ANY) {
@@ -171,9 +170,9 @@ public:
 			}
 		}
 		addrlen = sizeof remote;
-		if (0 == getpeername(m_socket, reinterpret_cast<sockaddr*>(&remote), &addrlen) && Utils::sockaddr_cmp(&m_remoteAddress, &remote)) {
+		if (0 == getpeername(m_socket, reinterpret_cast<sockaddr*>(&remote), &addrlen) && Utils::CompareSockaddr(&m_remoteAddress, &remote)) {
 			m_remoteAddress = remote;
-			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Remote=%s", m_socket, Utils::DescribeSockaddr(remote).c_str());
+			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Remote=%s", m_socket, Utils::ToString(remote).c_str());
 		}
 	}
 
@@ -507,7 +506,7 @@ public:
 			});
 		SocketFn::connect.SetupHook([&](SOCKET s, const sockaddr* name, int namelen) {
 			const auto result = SocketFn::connect.bridge(s, name, namelen);
-			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: connect: %s", s, Utils::DescribeSockaddr(*name).c_str());
+			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: connect: %s", s, Utils::ToString(*name).c_str());
 			return result;
 			});
 	}
@@ -524,7 +523,7 @@ public:
 			case 0:
 				throw std::runtime_error(Utils::FormatString("\"%s\" is an invalid IP address.", s.c_str()).c_str());
 			case -1:
-				throw Utils::WindowsError(WSAGetLastError(), "Failed to parse IP address \"%s\".", s.c_str());
+				throw Utils::Win32::Error(WSAGetLastError(), "Failed to parse IP address \"%s\".", s.c_str());
 			default:
 				mark_unreachable_code();
 		}
@@ -678,7 +677,7 @@ public:
 				return nullptr;
 			}
 			if (!TestRemoteAddress(addr)) {
-				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Mark ignored; remote=%s", socket, Utils::DescribeSockaddr(addr).c_str());
+				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "%p: Mark ignored; remote=%s", socket, Utils::ToString(addr).c_str());
 				m_nonGameSockets.emplace(socket);
 				return nullptr;
 			}
@@ -750,8 +749,8 @@ std::wstring App::Network::SocketHook::Describe() const {
 	for (const auto& [s, conn] : impl->m_sockets) {
 		result += Utils::FormatString(L"Connection %p (%s -> %s)\n",
 			s,
-			Utils::FromUtf8(Utils::DescribeSockaddr(conn->impl->m_localAddress)).c_str(),
-			Utils::FromUtf8(Utils::DescribeSockaddr(conn->impl->m_remoteAddress)).c_str());
+			Utils::FromUtf8(Utils::ToString(conn->impl->m_localAddress)).c_str(),
+			Utils::FromUtf8(Utils::ToString(conn->impl->m_remoteAddress)).c_str());
 		if (int64_t latency; conn->GetCurrentNetworkLatency(latency)) {
 			result += Utils::FormatString(L"* Latency: last %lldms, med %lldms, avg %lldms, dev %lldms\n",
 				latency, conn->NetworkLatency.Median(), conn->NetworkLatency.Mean(), conn->NetworkLatency.Deviation());

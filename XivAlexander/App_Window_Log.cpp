@@ -21,7 +21,7 @@ static const std::map<App::LogCategory, const char*> LogCategoryNames{
 };
 
 static WNDCLASSEXW WindowClass() {
-	const Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIconW(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)),
+	const auto hIcon = Utils::Win32::Closeable::Icon(LoadIconW(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)),
 		nullptr,
 		"Failed to load app icon.");
 	WNDCLASSEXW wcex;
@@ -130,7 +130,7 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					m_direct(m_directPtr, SCI_GETTEXT, pDataT->buf.length(), reinterpret_cast<sptr_t>(&pDataT->buf[0]));
 					pDataT->buf.resize(pDataT->buf.length() - 1);
 
-					Utils::Win32Handle hThread(CreateThread(nullptr, 0, [](void* pDataRaw) -> DWORD {
+					Utils::Win32::Closeable::Handle hThread(CreateThread(nullptr, 0, [](void* pDataRaw) -> DWORD {
 						auto pDataT = static_cast<DataT*>(pDataRaw);
 						Utils::CallOnDestruction freeDataT([pDataT]() { delete pDataT; });
 						static const COMDLG_FILTERSPEC saveFileTypes[] = {
@@ -142,7 +142,7 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 								_com_raise_error(val);
 						};
 
-						Utils::SetThreadDescription(GetCurrentThread(), L"XivAlexander::Window::Log::WndProc::FileSaveThread(%p)", pDataT->hWnd);
+						Utils::Win32::SetThreadDescription(GetCurrentThread(), L"XivAlexander::Window::Log::WndProc::FileSaveThread(%p)", pDataT->hWnd);
 
 						try {
 							_com_ptr_t<_com_IIID<IFileSaveDialog, &__uuidof(IFileSaveDialog)>> pDialog;
@@ -163,7 +163,7 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
 								Utils::CallOnDestruction freeFileName([pszNewFileName]() { CoTaskMemFree(pszNewFileName); });
 								{
-									const Utils::Win32Handle hFile(CreateFile(pszNewFileName, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr),
+									const Utils::Win32::Closeable::Handle hFile(CreateFile(pszNewFileName, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr),
 										INVALID_HANDLE_VALUE,
 										L"Failed to open file: %s", pszNewFileName);
 									DWORD written;
@@ -172,7 +172,7 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 										throw std::exception("Failed to fully write the log file.");
 								}
 
-								Utils::MessageBoxF(pDataT->hWnd, MB_ICONINFORMATION, L"XivAlexander", L"Log saved to: %s", pszNewFileName);
+								Utils::Win32::MessageBoxF(pDataT->hWnd, MB_ICONINFORMATION, L"XivAlexander", L"Log saved to: %s", pszNewFileName);
 							}
 						} catch (std::exception& e) {
 							MessageBoxW(pDataT->hWnd, Utils::FromUtf8(e.what()).c_str(), L"XivAlexander", MB_ICONERROR);
@@ -181,7 +181,7 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 						}
 						return 0;
 						}, pDataT, 0, nullptr),
-						Utils::NullHandle,
+						Utils::Win32::Closeable::Handle::Null,
 							"Failed to start FileSaveThread.");
 					return 0;
 				}

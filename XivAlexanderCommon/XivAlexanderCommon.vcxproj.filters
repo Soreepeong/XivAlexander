@@ -1,0 +1,95 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Project Items">
+      <UniqueIdentifier>{5414d1f9-ea36-49e7-9889-80e52683e767}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Exported">
+      <UniqueIdentifier>{23942193-c486-4e9b-b2fa-c1c26b2fb77a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Implementation">
+      <UniqueIdentifier>{a4f3a325-f8b4-4316-b70a-af3928520783}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Implementation\Win32">
+      <UniqueIdentifier>{0410d4d2-87ce-4c44-ab8d-6f291e90fa04}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Implementation\Root">
+      <UniqueIdentifier>{b7e5751c-b37d-4bf8-892b-e263b03e9cd3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Implementation\UtilityClasses">
+      <UniqueIdentifier>{fb3faa0c-99de-4bc7-a260-a0e96bdf543a}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h">
+      <Filter>Project Items</Filter>
+    </ClInclude>
+    <ClInclude Include="include\XivAlexanderCommon.h">
+      <Filter>Exported</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils_Win32_Modules.h">
+      <Filter>Implementation\Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils_Win32.h">
+      <Filter>Implementation\Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils_Win32_Closeable.h">
+      <Filter>Implementation\Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils_ListenerManager.h">
+      <Filter>Implementation\UtilityClasses</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils_NumericStatisticsTracker.h">
+      <Filter>Implementation\UtilityClasses</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils_CallOnDestruction.h">
+      <Filter>Implementation\UtilityClasses</Filter>
+    </ClInclude>
+    <ClInclude Include="XivAlex.h">
+      <Filter>Implementation</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils__Zlib.h">
+      <Filter>Implementation\Root</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils__String.h">
+      <Filter>Implementation\Root</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils__Misc.h">
+      <Filter>Implementation\Root</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="pch.cpp">
+      <Filter>Project Items</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils_Win32.cpp">
+      <Filter>Implementation\Win32</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils_Win32_Modules.cpp">
+      <Filter>Implementation\Win32</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils_CallOnDestruction.cpp">
+      <Filter>Implementation\UtilityClasses</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils_NumericStatisticsTracker.cpp">
+      <Filter>Implementation\UtilityClasses</Filter>
+    </ClCompile>
+    <ClCompile Include="XivAlex.cpp">
+      <Filter>Implementation</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils__Strings.cpp">
+      <Filter>Implementation\Root</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils__Zlib.cpp">
+      <Filter>Implementation\Root</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils__Misc.cpp">
+      <Filter>Implementation\Root</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="vcpkg.json">
+      <Filter>Project Items</Filter>
+    </None>
+  </ItemGroup>
+</Project>

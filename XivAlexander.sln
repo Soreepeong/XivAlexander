@@ -11,9 +11,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Files", "Solution 
 		README.md = README.md
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Utils", "Utils\Utils.vcxproj", "{58DADDF6-5733-40E0-855C-CC3B4BF235EB}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Components", "Components", "{23F62DAC-FE34-4A06-9147-E9A262F8EC05}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XivAlexanderCommon", "XivAlexanderCommon\XivAlexanderCommon.vcxproj", "{58DADDF6-5733-40E0-855C-CC3B4BF235EB}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XivAlexanderLoader", "XivAlexanderLoader\XivAlexanderLoader.vcxproj", "{AE08AFB8-15BE-44E2-9705-FE74DB52C953}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -78,9 +76,6 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{58DADDF6-5733-40E0-855C-CC3B4BF235EB} = {23F62DAC-FE34-4A06-9147-E9A262F8EC05}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {094FE1F7-0CAC-46E8-91DA-E64A6201AE02}

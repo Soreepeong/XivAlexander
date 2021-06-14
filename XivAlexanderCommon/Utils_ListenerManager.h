@@ -1,6 +1,10 @@
 #pragma once
 
-#include "CallOnDestruction.h"
+#include <functional>
+#include <memory>
+#include <map>
+#include <mutex>
+#include "Utils_CallOnDestruction.h"
 
 namespace Utils {
 

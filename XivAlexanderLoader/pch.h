@@ -21,7 +21,7 @@
 #include <shellapi.h>
 #include <Shlwapi.h>
 
-#include <Win32Handle.h>
+#include <XivAlexanderCommon.h>
 
 #include <argparse/argparse.hpp>
 #include <nlohmann/json.hpp>

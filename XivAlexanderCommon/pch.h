@@ -23,9 +23,10 @@
 #include <WS2tcpip.h>
 #include <PathCch.h>
 #include <wincrypt.h>
-#include <wintrust.h>
+#include <WinTrust.h>
 #include <Shlwapi.h>
 #include <Psapi.h>
+#include <TlHelp32.h>
 
 #define ZLIB_CONST
 #include <zlib.h>

@@ -4,68 +4,76 @@
     <Filter Include="Project Items">
       <UniqueIdentifier>{23099293-0584-4c64-852f-044d412606ce}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Signatures">
-      <UniqueIdentifier>{696509c9-33b2-4777-81fe-e2504c251ef2}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Network">
-      <UniqueIdentifier>{ea7dc46e-d6ee-4afb-85e4-e9876d9814b1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Misc">
-      <UniqueIdentifier>{2bf35a29-24e3-4da4-a984-7d975faff46f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Feature">
-      <UniqueIdentifier>{ca7e3e97-d02b-44f7-bd44-d1065410a357}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Window">
-      <UniqueIdentifier>{b4121b9e-107c-474d-8bc1-6d8a8dc8be3d}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Resources">
       <UniqueIdentifier>{f96ebb19-9c57-4d68-8afe-d887a9e1372b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="App">
+      <UniqueIdentifier>{23a8c836-27cd-4064-bd7a-0b8a0753e135}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="App\Window">
+      <UniqueIdentifier>{b4121b9e-107c-474d-8bc1-6d8a8dc8be3d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="App\Network">
+      <UniqueIdentifier>{ea7dc46e-d6ee-4afb-85e4-e9876d9814b1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="App\Misc">
+      <UniqueIdentifier>{2bf35a29-24e3-4da4-a984-7d975faff46f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="App\Feature">
+      <UniqueIdentifier>{ca7e3e97-d02b-44f7-bd44-d1065410a357}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
       <Filter>Project Items</Filter>
     </ClCompile>
-    <ClCompile Include="App.cpp" />
     <ClCompile Include="App_Network_SocketHook.cpp">
-      <Filter>Network</Filter>
+      <Filter>App\Network</Filter>
     </ClCompile>
     <ClCompile Include="App_Network_Structures.cpp">
-      <Filter>Network</Filter>
+      <Filter>App\Network</Filter>
     </ClCompile>
     <ClCompile Include="App_Misc_FreeGameMutex.cpp">
-      <Filter>Misc</Filter>
+      <Filter>App\Misc</Filter>
     </ClCompile>
     <ClCompile Include="App_Feature_AnimationLockLatencyHandler.cpp">
-      <Filter>Feature</Filter>
+      <Filter>App\Feature</Filter>
     </ClCompile>
     <ClCompile Include="App_Window_Base.cpp">
-      <Filter>Window</Filter>
+      <Filter>App\Window</Filter>
     </ClCompile>
     <ClCompile Include="App_Window_Log.cpp">
-      <Filter>Window</Filter>
+      <Filter>App\Window</Filter>
     </ClCompile>
     <ClCompile Include="App_Misc_Logger.cpp">
-      <Filter>Misc</Filter>
+      <Filter>App\Misc</Filter>
     </ClCompile>
     <ClCompile Include="App_Feature_IpcTypeFinder.cpp">
-      <Filter>Feature</Filter>
+      <Filter>App\Feature</Filter>
     </ClCompile>
-    <ClCompile Include="App_ConfigRepository.cpp" />
     <ClCompile Include="App_Window_Config.cpp">
-      <Filter>Window</Filter>
+      <Filter>App\Window</Filter>
     </ClCompile>
-    <ClCompile Include="App_Hooks.cpp" />
-    <ClCompile Include="App_Signatures.cpp" />
     <ClCompile Include="App_Feature_EffectApplicationDelayLogger.cpp">
-      <Filter>Feature</Filter>
+      <Filter>App\Feature</Filter>
     </ClCompile>
     <ClCompile Include="App_Window_Main.cpp">
-      <Filter>Window</Filter>
+      <Filter>App\Window</Filter>
     </ClCompile>
     <ClCompile Include="App_Feature_AllIpcMessageLogger.cpp">
-      <Filter>Feature</Filter>
+      <Filter>App\Feature</Filter>
+    </ClCompile>
+    <ClCompile Include="App.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="App_ConfigRepository.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Hooks.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Signatures.cpp">
+      <Filter>App</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -73,46 +81,52 @@
       <Filter>Project Items</Filter>
     </ClInclude>
     <ClInclude Include="App_Network_SocketHook.h">
-      <Filter>Network</Filter>
+      <Filter>App\Network</Filter>
     </ClInclude>
     <ClInclude Include="App_Network_Structures.h">
-      <Filter>Network</Filter>
+      <Filter>App\Network</Filter>
     </ClInclude>
     <ClInclude Include="App_Misc_FreeGameMutex.h">
-      <Filter>Misc</Filter>
+      <Filter>App\Misc</Filter>
     </ClInclude>
     <ClInclude Include="App_Feature_AnimationLockLatencyHandler.h">
-      <Filter>Feature</Filter>
+      <Filter>App\Feature</Filter>
     </ClInclude>
     <ClInclude Include="App_Window_Base.h">
-      <Filter>Window</Filter>
+      <Filter>App\Window</Filter>
     </ClInclude>
     <ClInclude Include="App_Window_Log.h">
-      <Filter>Window</Filter>
+      <Filter>App\Window</Filter>
     </ClInclude>
     <ClInclude Include="App_Misc_Logger.h">
-      <Filter>Misc</Filter>
+      <Filter>App\Misc</Filter>
     </ClInclude>
     <ClInclude Include="App_Feature_IpcTypeFinder.h">
-      <Filter>Feature</Filter>
+      <Filter>App\Feature</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>Resources</Filter>
     </ClInclude>
-    <ClInclude Include="App_ConfigRepository.h" />
     <ClInclude Include="App_Window_Config.h">
-      <Filter>Window</Filter>
+      <Filter>App\Window</Filter>
     </ClInclude>
-    <ClInclude Include="App_Hooks.h" />
-    <ClInclude Include="App_Signatures.h" />
     <ClInclude Include="App_Feature_EffectApplicationDelayLogger.h">
-      <Filter>Feature</Filter>
+      <Filter>App\Feature</Filter>
     </ClInclude>
     <ClInclude Include="App_Window_Main.h">
-      <Filter>Window</Filter>
+      <Filter>App\Window</Filter>
     </ClInclude>
     <ClInclude Include="App_Feature_AllIpcMessageLogger.h">
-      <Filter>Feature</Filter>
+      <Filter>App\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Signatures.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="App_ConfigRepository.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Hooks.h">
+      <Filter>App</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -5,7 +5,7 @@ static App::Misc::Logger* s_pLogger;
 class App::Misc::Logger::Internals {
 public:
 	Logger& logger;
-	const Utils::Win32Handle<> m_hLogDispatcherThread;
+	const Utils::Win32::Closeable::Handle m_hLogDispatcherThread;
 	std::condition_variable m_threadTrigger;
 
 	bool m_bQuitting = false;
@@ -16,7 +16,7 @@ public:
 	Internals(Logger& logger)
 		: logger(logger)
 		, m_hLogDispatcherThread(CreateThread(nullptr, 0, [](PVOID p) -> DWORD { return static_cast<Internals*>(p)->ThreadWorker(); }, this, CREATE_SUSPENDED, nullptr),
-			Utils::NullHandle, 
+			Utils::Win32::Closeable::Handle::Null, 
 			"Logger::CreateThread(ThreadWorker)")
 	{
 		ResumeThread(m_hLogDispatcherThread);
@@ -29,7 +29,7 @@ public:
 	}
 
 	DWORD ThreadWorker() {
-		Utils::SetThreadDescription(GetCurrentThread(), L"XivAlexander::Misc::Logger::Internals::ThreadWorker");
+		Utils::Win32::SetThreadDescription(GetCurrentThread(), L"XivAlexander::Misc::Logger::Internals::ThreadWorker");
 		while (true) {
 			std::deque<LogItem> pendingItems;
 			{

@@ -1,9 +1,8 @@
 #include "pch.h"
 #include "resource.h"
-#include "App_Window_Main.h"
-
-#include "App_Network_SocketHook.h"
 #include "App_Window_Config.h"
+#include "App_Window_Main.h"
+#include "App_Network_SocketHook.h"
 
 static const auto WmTrayCallback = WM_APP + 1;
 static const int TrayItemId = 1;
@@ -11,7 +10,7 @@ static const int TimerIdReregisterTrayIcon = 100;
 static const int TimerIdRepaint = 101;
 
 static WNDCLASSEXW WindowClass() {
-	const Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIconW(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)),
+	const auto hIcon = Utils::Win32::Closeable::Icon(LoadIconW(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)),
 		nullptr,
 		"Failed to load app icon.");
 	WNDCLASSEXW wcex;
@@ -35,9 +34,9 @@ App::Window::Main::Main(HWND hGameWnd, std::function<void()> unloadFunction)
 	, m_hGameWnd(hGameWnd)
 	, m_triggerUnload(std::move(unloadFunction))
 	, m_uTaskbarRestartMessage(RegisterWindowMessage(TEXT("TaskbarCreated")))
-	, m_path(Utils::PathFromModule()) {
+	, m_path(Utils::Win32::Modules::PathFromModule()) {
 
-	std::tie(m_sRegion, m_sVersion) = Utils::ResolveGameReleaseRegion();
+	std::tie(m_sRegion, m_sVersion) = XivAlex::ResolveGameReleaseRegion();
 	
 	{
 		std::vector<uint8_t> hashSourceData{ 0x95, 0xf8, 0x89, 0x5c, 0x59, 0x94, 0x44, 0xf2, 0x9d, 0xda, 0xa6, 0x9a, 0x91, 0xb4, 0xe8, 0x51 };
@@ -162,7 +161,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					} else {
 						SetWindowPos(m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 					}
-					Utils::SetMenuState(m_hWnd, ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE)& WS_EX_TOPMOST);
+					Utils::Win32::SetMenuState(m_hWnd, ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE)& WS_EX_TOPMOST);
 					return 0;
 				}
 			}
@@ -268,22 +267,22 @@ void App::Window::Main::OnDestroy() {
 void App::Window::Main::RepopulateMenu(HMENU hMenu) {
 	const auto& config = App::Config::Instance().Runtime;
 
-	Utils::SetMenuState(hMenu, ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST);
-	Utils::SetMenuState(hMenu, ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP, config.AlwaysOnTop);
-	Utils::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE, config.UseHighLatencyMitigation);
-	Utils::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION, config.UseAutoAdjustingExtraDelay);
-	Utils::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING, config.UseHighLatencyMitigationLogging);
-	Utils::SetMenuState(hMenu, ID_TRAYMENU_USEIPCTYPEFINDER, config.UseOpcodeFinder);
-	Utils::SetMenuState(hMenu, ID_TRAYMENU_USEALLIPCMESSAGELOGGER, config.UseAllIpcMessageLogger);
-	Utils::SetMenuState(hMenu, ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER, config.UseEffectApplicationDelayLogger);
-	Utils::SetMenuState(hMenu, ID_TRAYMENU_SHOWCONTROLWINDOW, config.ShowControlWindow);
-	Utils::SetMenuState(hMenu, ID_TRAYMENU_SHOWLOGGINGWINDOW, config.ShowLoggingWindow);
-	Utils::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION, config.UseLatencyCorrection);
-	Utils::SetMenuState(hMenu, ID_TRAYMENU_REDUCEPACKETDELAY, config.ReducePacketDelay);
+	Utils::Win32::SetMenuState(hMenu, ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST);
+	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP, config.AlwaysOnTop);
+	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE, config.UseHighLatencyMitigation);
+	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION, config.UseAutoAdjustingExtraDelay);
+	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING, config.UseHighLatencyMitigationLogging);
+	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_USEIPCTYPEFINDER, config.UseOpcodeFinder);
+	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_USEALLIPCMESSAGELOGGER, config.UseAllIpcMessageLogger);
+	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER, config.UseEffectApplicationDelayLogger);
+	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_SHOWCONTROLWINDOW, config.ShowControlWindow);
+	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_SHOWLOGGINGWINDOW, config.ShowLoggingWindow);
+	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION, config.UseLatencyCorrection);
+	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_REDUCEPACKETDELAY, config.ReducePacketDelay);
 }
 
 void App::Window::Main::RegisterTrayIcon() {
-	const Utils::Win32Handle<HICON, DestroyIcon> hIcon(LoadIconW(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)),
+	const auto hIcon = Utils::Win32::Closeable::Icon(LoadIconW(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)),
 		nullptr,
 		"Failed to load app icon.");
 	NOTIFYICONDATAW nid = { sizeof(NOTIFYICONDATAW) };

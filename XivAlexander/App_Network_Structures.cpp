@@ -1,8 +1,6 @@
 #include "pch.h"
 #include "App_Network_Structures.h"
 
-#include "myzlib.h"
-
 const uint8_t App::Network::Structures::FFXIVBundle::MagicConstant1[] {
 	0x52, 0x52, 0xa0, 0x41,
 	0xff, 0x5d, 0x46, 0xe2,

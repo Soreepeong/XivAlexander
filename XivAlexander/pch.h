@@ -41,10 +41,9 @@
 #include <comdef.h>
 #include <ShObjIdl_core.h>
 
-#include <Utils.h>
+#include <XivAlexanderCommon.h>
 #include <MinHook.h>
 #include <scintilla/Scintilla.h>
-#include <ListenerManager.h>
 
 #include <nlohmann/json.hpp>
 

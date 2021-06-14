@@ -1,4 +1,7 @@
 #pragma once
+
+#include <functional>
+
 namespace Utils {
 	/// \brief Calls a function on destruction.
 	/// Used in places where finally is required (when using C-style functions)

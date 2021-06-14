@@ -139,8 +139,8 @@ static std::wstring GetHandleObjectName(HANDLE hHandle) {
 
 void App::Misc::FreeGameMutex::FreeGameMutex() {
 	// Create a mutex to figure out ObjectTypeNumber.
-	const Utils::Win32Handle hMutexTemp(CreateMutexW(nullptr, false, nullptr),
-		Utils::NullHandle,
+	const Utils::Win32::Closeable::Handle hMutexTemp(CreateMutexW(nullptr, false, nullptr),
+		Utils::Win32::Closeable::Handle::Null,
 		"App::Misc::FreeGameMutex::FreeGameMutex/CreateMutexW");
 	const auto allHandles = EnumerateLocalHandles();
 

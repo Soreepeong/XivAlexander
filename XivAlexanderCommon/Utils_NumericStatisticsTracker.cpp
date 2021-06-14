@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "include/NumericStatisticsTracker.h"
+#include "Utils_NumericStatisticsTracker.h"
 
 Utils::NumericStatisticsTracker::NumericStatisticsTracker(size_t trackCount, int64_t emptyValue)
 	: m_trackCount(trackCount)
