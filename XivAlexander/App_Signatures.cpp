@@ -38,6 +38,8 @@ namespace App::Signatures {
 		AllSignatures().push_back(this);
 	}
 
+	BaseSignature::~BaseSignature() = default;
+
 	std::vector<BaseSignature*>& AllSignatures() {
 		static std::vector<BaseSignature*> signatures;
 		return signatures;

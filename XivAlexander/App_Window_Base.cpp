@@ -19,7 +19,7 @@ HWND App::Window::Base::InternalCreateWindow(const WNDCLASSEXW& wndclassex,
 	_In_ Base* pBase) {
 	WNDCLASSEXW c = wndclassex;
 	if (c.lpfnWndProc)
-		throw std::exception("lpfnWndProc cannot be not null");
+		throw std::runtime_error("lpfnWndProc cannot be not null");
 
 	c.lpfnWndProc = [](HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT {
 		Base* pBase;
@@ -40,12 +40,12 @@ HWND App::Window::Base::InternalCreateWindow(const WNDCLASSEXW& wndclassex,
 	};
 
 	if (!RegisterClassExW(&c) && GetLastError() != ERROR_CLASS_ALREADY_EXISTS)
-		throw std::exception("RegisterClass failed");
+		throw std::runtime_error("RegisterClass failed");
 
 	const auto hWnd = CreateWindowExW(dwExStyle, c.lpszClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, g_hInstance, pBase);
 	if (!hWnd) {
 		UnregisterClassW(c.lpszClassName, g_hInstance);
-		throw std::exception("CreateWindow failed");
+		throw std::runtime_error("CreateWindow failed");
 	}
 	return hWnd;
 }

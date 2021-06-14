@@ -126,7 +126,7 @@ public:
 			OnCleanup([]() { Scintilla_ReleaseResources(); });
 
 			if (!m_hGameMainWindow)
-				throw std::exception("Game main window not found!");
+				throw std::runtime_error("Game main window not found!");
 
 			MH_Initialize();
 			OnCleanup([this]() { MH_Uninitialize(); });
@@ -292,10 +292,10 @@ public:
 
 	int Unload() {
 		if (s_bUnloadDisabled)
-			throw std::exception("Unloading is currently disabled.");
+			throw std::runtime_error("Unloading is currently disabled.");
 
 		if (GetWindowLongPtrW(m_hGameMainWindow, GWLP_WNDPROC) != m_overridenGameMainWndProc)
-			throw std::exception("Something has hooked the game process after XivAlexander, so you cannot unload XivAlexander until that other thing has been unloaded.");
+			throw std::runtime_error("Something has hooked the game process after XivAlexander, so you cannot unload XivAlexander until that other thing has been unloaded.");
 
 		if (m_trayWindow)
 			SendMessage(m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);

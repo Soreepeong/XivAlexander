@@ -13,7 +13,8 @@ namespace App::Signatures {
 		const std::string m_sName;
 
 	public:
-		BaseSignature(const char* szName);
+		explicit BaseSignature(const char* szName);
+		virtual ~BaseSignature();
 
 		virtual operator void* () const = 0;
 
@@ -21,7 +22,7 @@ namespace App::Signatures {
 		virtual void Cleanup() = 0;
 		virtual void Setup() = 0;
 
-		operator bool() const { return !!(this->operator void* ()); }
+		operator bool() const { return !!this->operator void* (); }
 	};
 
 	std::vector<BaseSignature*>& AllSignatures();
@@ -63,7 +64,7 @@ namespace App::Signatures {
 			, m_nextOffsets(std::move(nextOffsets)) {
 		}
 
-		virtual void Setup() {
+		void Setup() override {
 			if (m_pAddress)
 				return;
 			else if (m_fnResolver)
@@ -72,11 +73,11 @@ namespace App::Signatures {
 				m_pAddress = LookupForData(m_sectionFilter, m_sPattern.c_str(), m_sMask.c_str(), m_nextOffsets);
 		}
 
-		virtual void Startup() {}
+		void Startup() override {}
 
-		virtual void Cleanup() {}
+		void Cleanup() override {}
 
-		virtual operator void* () const {
+		operator void* () const override {
 			return m_pAddress;
 		}
 	};

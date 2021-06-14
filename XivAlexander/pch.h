@@ -42,10 +42,13 @@
 #include <ShObjIdl_core.h>
 
 #include <XivAlexanderCommon.h>
+
 #include <MinHook.h>
 #include <scintilla/Scintilla.h>
-
 #include <nlohmann/json.hpp>
+
+_COM_SMARTPTR_TYPEDEF(IFileSaveDialog, __uuidof(IFileSaveDialog));
+_COM_SMARTPTR_TYPEDEF(IShellItem, __uuidof(IShellItem));
 
 extern HINSTANCE g_hInstance;
 

@@ -96,7 +96,7 @@ const auto NtQuerySystemInformation = GetLibraryProcAddress<NtQuerySystemInforma
 
 static std::vector<SYSTEM_HANDLE> EnumerateLocalHandles() {
 	if (!NtQuerySystemInformation)
-		throw std::exception("Failed to find ntdll.dll!NtQuerySystemInformation");
+		throw std::runtime_error("Failed to find ntdll.dll!NtQuerySystemInformation");
 
 	NTSTATUS status;
 	std::vector<SYSTEM_HANDLE> result;
@@ -109,7 +109,7 @@ static std::vector<SYSTEM_HANDLE> EnumerateLocalHandles() {
 
 	// NtQuerySystemInformation stopped giving us STATUS_INFO_LENGTH_MISMATCH.
 	if (!NtSuccess(status))
-		throw std::exception(Utils::FormatString("NtQuerySystemInformation returned %d.", status).c_str());
+		throw std::runtime_error(Utils::FormatString("NtQuerySystemInformation returned %d.", status).c_str());
 
 	const auto pHandleInfo = reinterpret_cast<SYSTEM_HANDLE_INFORMATION*>(handleInfoBuffer.data());
 	for (size_t i = 0; i < pHandleInfo->HandleCount; i++)
@@ -120,7 +120,7 @@ static std::vector<SYSTEM_HANDLE> EnumerateLocalHandles() {
 
 static std::wstring GetHandleObjectName(HANDLE hHandle) {
 	if (!NtQueryObject)
-		throw std::exception("Failed to find ntdll.dll!NtQueryObject");
+		throw std::runtime_error("Failed to find ntdll.dll!NtQueryObject");
 
 	ULONG returnLength = 0;
 	if (NtSuccess(NtQueryObject(hHandle, NtObjectInformationClass::ObjectNameInformation, nullptr, 0, &returnLength)))
@@ -129,7 +129,7 @@ static std::wstring GetHandleObjectName(HANDLE hHandle) {
 	std::vector<char> objectNameInfo;
 	objectNameInfo.resize(returnLength);
 	if (!NtSuccess(NtQueryObject(hHandle, NtObjectInformationClass::ObjectNameInformation, &objectNameInfo[0], returnLength, NULL)))
-		throw std::exception(Utils::FormatString("Failed to get object name for handle %p", hHandle).c_str());
+		throw std::runtime_error(Utils::FormatString("Failed to get object name for handle %p", hHandle).c_str());
 
 	const auto pObjectName = reinterpret_cast<UNICODE_STRING*>(objectNameInfo.data());
 	if (pObjectName->Length)

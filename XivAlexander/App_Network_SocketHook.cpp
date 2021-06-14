@@ -560,7 +560,7 @@ public:
 				} else {
 					auto ips = Utils::StringSplit(range, "-");
 					if (ips.size() > 2)
-						throw std::exception();
+						throw std::runtime_error("Too many items in range specification.");
 					startIp = ntohl(parseIp(ips[0]).s_addr);
 					endIp = ips.size() == 2 ? ntohl(parseIp(ips[1]).s_addr) : startIp;
 					if (startIp > endIp) {
@@ -585,7 +585,7 @@ public:
 					continue;
 				auto ports = Utils::StringSplit(range, "-");
 				if (ports.size() > 2)
-					throw std::exception();
+					throw std::runtime_error("Too many items in range specification.");
 				uint32_t start = parsePort(ports[0]);
 				uint32_t end = ports.size() == 2 ? parsePort(ports[1]) : start;
 				if (start > end) {

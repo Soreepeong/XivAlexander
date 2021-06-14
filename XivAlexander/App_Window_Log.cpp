@@ -145,7 +145,7 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 						Utils::Win32::SetThreadDescription(GetCurrentThread(), L"XivAlexander::Window::Log::WndProc::FileSaveThread(%p)", pDataT->hWnd);
 
 						try {
-							_com_ptr_t<_com_IIID<IFileSaveDialog, &__uuidof(IFileSaveDialog)>> pDialog;
+							IFileSaveDialogPtr pDialog;
 							DWORD dwFlags;
 							throw_on_error(pDialog.CreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER));
 							throw_on_error(pDialog->SetFileTypes(ARRAYSIZE(saveFileTypes), saveFileTypes));
@@ -154,12 +154,12 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 							throw_on_error(pDialog->GetOptions(&dwFlags));
 							throw_on_error(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
 							if (SUCCEEDED(pDialog->Show(pDataT->hWnd))) {
-								_com_ptr_t<_com_IIID<IShellItem, &__uuidof(IShellItem)>> pResult;
+								IShellItemPtr pResult;
 								PWSTR pszNewFileName;
 								throw_on_error(pDialog->GetResult(&pResult));
 								throw_on_error(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszNewFileName));
 								if (!pszNewFileName)
-									throw std::exception("The selected file does not have a filesystem path.");
+									throw std::runtime_error("The selected file does not have a filesystem path.");
 
 								Utils::CallOnDestruction freeFileName([pszNewFileName]() { CoTaskMemFree(pszNewFileName); });
 								{
@@ -169,7 +169,7 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 									DWORD written;
 									WriteFile(hFile, pDataT->buf.data(), static_cast<DWORD>(pDataT->buf.length()), &written, nullptr);
 									if (written != pDataT->buf.length())
-										throw std::exception("Failed to fully write the log file.");
+										throw std::runtime_error("Failed to fully write the log file.");
 								}
 
 								Utils::Win32::MessageBoxF(pDataT->hWnd, MB_ICONINFORMATION, L"XivAlexander", L"Log saved to: %s", pszNewFileName);

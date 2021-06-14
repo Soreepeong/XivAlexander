@@ -40,7 +40,7 @@ std::string Utils::Win32::FormatWindowsErrorMessage(unsigned int errorCode) {
 std::pair<std::string, std::string> Utils::Win32::FormatModuleVersionString(HMODULE hModule) {
 	const auto hDllVersion = FindResourceW(hModule, MAKEINTRESOURCE(VS_VERSION_INFO), RT_VERSION);
 	if (hDllVersion == nullptr)
-		throw std::exception("Failed to find version resource.");
+		throw std::runtime_error("Failed to find version resource.");
 	const auto hVersionResource = Closeable::GlobalResource(LoadResource(hModule, hDllVersion),
 	                                                        nullptr,
 	                                                        "FormatModuleVersionString: Failed to load version resource.");
@@ -49,10 +49,10 @@ std::pair<std::string, std::string> Utils::Win32::FormatModuleVersionString(HMOD
 	UINT size = 0;
 	LPVOID lpBuffer = nullptr;
 	if (!VerQueryValueW(lpVersionInfo, L"\\", &lpBuffer, &size))
-		throw std::exception("Failed to query version information.");
+		throw std::runtime_error("Failed to query version information.");
 	const VS_FIXEDFILEINFO& versionInfo = *static_cast<const VS_FIXEDFILEINFO*>(lpBuffer);
 	if (versionInfo.dwSignature != 0xfeef04bd)
-		throw std::exception("Invalid version info found.");
+		throw std::runtime_error("Invalid version info found.");
 	return std::make_pair<>(
 		FormatString("%d.%d.%d.%d",
 		             (versionInfo.dwFileVersionMS >> 16) & 0xFFFF,

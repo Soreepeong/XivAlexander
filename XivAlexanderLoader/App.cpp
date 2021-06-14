@@ -11,16 +11,16 @@ static
 void CheckDllVersion(const std::filesystem::path& dllPath) {
 	const auto hDll = GetModuleHandleW(dllPath.c_str());
 	if (!hDll)
-		throw std::exception("XivAlexander.dll not found.");
+		throw std::runtime_error("XivAlexander.dll not found.");
 	auto [dllFileVersion, dllProductVersion] = Utils::Win32::FormatModuleVersionString(hDll);
 	auto [selfFileVersion, selfProductVersion] = Utils::Win32::FormatModuleVersionString(GetModuleHandleW(nullptr));
 
 	if (dllFileVersion != selfFileVersion)
-		throw std::exception(Utils::FormatString("File versions do not match. (XivAlexanderLoader.exe: %s, XivAlexander.dll: %s)",
+		throw std::runtime_error(Utils::FormatString("File versions do not match. (XivAlexanderLoader.exe: %s, XivAlexander.dll: %s)",
 			selfFileVersion.c_str(), dllFileVersion.c_str()).c_str());
 
 	if (dllProductVersion != selfProductVersion)
-		throw std::exception(Utils::FormatString("Product versions do not match. (XivAlexanderLoader.exe: %s, XivAlexander.dll: %s)",
+		throw std::runtime_error(Utils::FormatString("Product versions do not match. (XivAlexanderLoader.exe: %s, XivAlexander.dll: %s)",
 			selfProductVersion.c_str(), selfFileVersion.c_str()).c_str());
 }
 
@@ -61,7 +61,7 @@ public:
 			else if (val == "unload")
 				return LoaderAction::Unload;
 			else
-				throw std::exception("Invalid parameter given for action parameter.");
+				throw std::runtime_error("Invalid parameter given for action parameter.");
 				});
 		argp.add_argument("-q", "--quiet")
 			.help("disables error messages")
@@ -271,7 +271,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 		}
 	}
 	if (loadResult)
-		throw std::exception(Utils::FormatString("Failed to start the addon: exit code %d", loadResult).c_str());
+		throw std::runtime_error(Utils::FormatString("Failed to start the addon: exit code %d", loadResult).c_str());
 }
 
 int WINAPI wWinMain(
