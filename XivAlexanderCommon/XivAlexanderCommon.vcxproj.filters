@@ -10,14 +10,14 @@
     <Filter Include="Implementation">
       <UniqueIdentifier>{a4f3a325-f8b4-4316-b70a-af3928520783}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Implementation\Win32">
-      <UniqueIdentifier>{0410d4d2-87ce-4c44-ab8d-6f291e90fa04}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Implementation\Root">
       <UniqueIdentifier>{b7e5751c-b37d-4bf8-892b-e263b03e9cd3}</UniqueIdentifier>
     </Filter>
     <Filter Include="Implementation\UtilityClasses">
       <UniqueIdentifier>{fb3faa0c-99de-4bc7-a260-a0e96bdf543a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Implementation\Win32">
+      <UniqueIdentifier>{0410d4d2-87ce-4c44-ab8d-6f291e90fa04}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -51,10 +51,10 @@
     <ClInclude Include="Utils__Zlib.h">
       <Filter>Implementation\Root</Filter>
     </ClInclude>
-    <ClInclude Include="Utils__String.h">
+    <ClInclude Include="Utils__Misc.h">
       <Filter>Implementation\Root</Filter>
     </ClInclude>
-    <ClInclude Include="Utils__Misc.h">
+    <ClInclude Include="Utils__String.h">
       <Filter>Implementation\Root</Filter>
     </ClInclude>
   </ItemGroup>
@@ -77,7 +77,7 @@
     <ClCompile Include="XivAlex.cpp">
       <Filter>Implementation</Filter>
     </ClCompile>
-    <ClCompile Include="Utils__Strings.cpp">
+    <ClCompile Include="Utils__String.cpp">
       <Filter>Implementation\Root</Filter>
     </ClCompile>
     <ClCompile Include="Utils__Zlib.cpp">

@@ -33,7 +33,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Utils__Misc.cpp" />
-    <ClCompile Include="Utils__Strings.cpp" />
+    <ClCompile Include="Utils__String.cpp" />
     <ClCompile Include="Utils_NumericStatisticsTracker.cpp" />
     <ClCompile Include="Utils_Win32.cpp" />
     <ClCompile Include="Utils_Win32_Modules.cpp" />
