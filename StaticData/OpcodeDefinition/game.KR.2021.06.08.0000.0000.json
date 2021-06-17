@@ -1,0 +1,15 @@
+{
+	"C2S_ActionRequest": "0x009f",
+	"C2S_ActionRequestGroundTargeted": "0x00e1",
+	"S2C_ActionEffect01": "0x0210",
+	"S2C_ActionEffect08": "0x00d7",
+	"S2C_ActionEffect16": "0x01f6",
+	"S2C_ActionEffect24": "0x010c",
+	"S2C_ActionEffect32": "0x0384",
+	"S2C_ActorCast": "0x033c",
+	"S2C_ActorControl": "0x0217",
+	"S2C_ActorControlSelf": "0x03b3",
+	"S2C_AddStatusEffect": "0x00a6",
+	"Server_IpRange": "183.111.189.0/24, 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16",
+	"Server_PortRange": "1025-65535"
+}
