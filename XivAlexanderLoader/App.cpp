@@ -95,7 +95,7 @@ public:
 	void Parse(LPWSTR lpCmdLine) {
 		std::vector<std::string> args;
 
-		args.push_back(Utils::ToUtf8(W32Modules::PathFromModule().wstring()));
+		args.push_back(Utils::ToUtf8(W32Modules::PathFromModule()));
 
 		if (wcslen(lpCmdLine) > 0) {
 			int nArgs;

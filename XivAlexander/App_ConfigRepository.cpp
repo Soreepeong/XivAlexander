@@ -29,7 +29,7 @@ void App::Config::BaseRepository::Reload(bool announceChange) {
 		}
 	} else {
 		changed = true;
-		Misc::Logger::GetLogger().Format(LogCategory::General, "Creating new config file: %s", Utils::ToUtf8(m_sConfigPath.c_str()));
+		Misc::Logger::GetLogger().Format(LogCategory::General, "Creating new config file: %s", Utils::ToUtf8(m_sConfigPath).c_str());
 	}
 
 	m_destructionCallbacks.clear();
