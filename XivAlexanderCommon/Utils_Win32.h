@@ -1,20 +1,19 @@
 #pragma once
 
 #include <windef.h>
-#include "Utils__String.h"
 
 namespace Utils::Win32 {
 
 	void SetThreadDescription(HANDLE hThread, const std::wstring& description);
 
 	template <typename ... Args>
-	void SetThreadDescription(HANDLE hThread, const _Printf_format_string_ wchar_t* format, Args ... args) {
-		SetThreadDescription(hThread, FormatString(format, std::forward<Args>(args)...));
+	void SetThreadDescription(HANDLE hThread, const wchar_t* format, Args ... args) {
+		SetThreadDescription(hThread, std::format(format, std::forward<Args>(args)...));
 	}
 
 	template <typename ... Args>
-	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const _Printf_format_string_ wchar_t* format, Args ... args) {
-		return MessageBoxW(hWnd, FormatString(format, std::forward<Args>(args)...).c_str(), lpCaption, uType);
+	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const wchar_t* format, Args ... args) {
+		return MessageBoxW(hWnd, std::format(format, std::forward<Args>(args)...).c_str(), lpCaption, uType);
 	}
 
 	void SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked);
@@ -36,12 +35,12 @@ namespace Utils::Win32 {
 		explicit Error(const std::string& msg);
 
 		template<typename ... Args>
-		explicit Error(const _Printf_format_string_ char* format, Args...args)
-			: Error(FormatString(format, std::forward<Args>(args)...)) {
+		explicit Error(const char* format, Args...args)
+			: Error(std::format(format, std::forward<Args>(args)...)) {
 		}
 		template<typename ... Args>
-		Error(int errorCode, const _Printf_format_string_ char* format, Args...args)
-			: Error(errorCode, FormatString(format, std::forward<Args>(args)...)) {
+		Error(int errorCode, const char* format, Args...args)
+			: Error(errorCode, std::format(format, std::forward<Args>(args)...)) {
 		}
 	};
 }

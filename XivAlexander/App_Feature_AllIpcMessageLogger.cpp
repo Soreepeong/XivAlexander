@@ -29,7 +29,7 @@ public:
 						case 0x078: pszPossibleMessageType = "AddStatusEffect"; break;
 						default: pszPossibleMessageType = nullptr;
 					}
-					Misc::Logger::GetLogger().Format(LogCategory::AllIpcMessageLogger, "source=%08x current=%08x subtype=%04x length=%x (S2C%s%s)",
+					Misc::Logger::GetLogger().Format(LogCategory::AllIpcMessageLogger, "source={:08x} current={:08x} subtype={:04x} length={:x} (S2C{}{})",
 						pMessage->SourceActor, pMessage->CurrentActor,
 						pMessage->Data.IPC.SubType, pMessage->Length,
 						pszPossibleMessageType ? ": Possibly " : "",
@@ -45,7 +45,7 @@ public:
 						case 0x040: pszPossibleMessageType = "ActionRequest, C2S_ActionRequestGroundTargeted, InteractTarget"; break;
 						default: pszPossibleMessageType = nullptr;
 					}
-					Misc::Logger::GetLogger().Format(LogCategory::AllIpcMessageLogger, "source=%08x current=%08x subtype=%04x length=%x (C2S%s%s)",
+					Misc::Logger::GetLogger().Format(LogCategory::AllIpcMessageLogger, "source={:08x} current={:08x} subtype={:04x} length={:x} (C2S{}{})",
 						pMessage->SourceActor, pMessage->CurrentActor,
 						pMessage->Data.IPC.SubType, pMessage->Length,
 						pszPossibleMessageType ? ": Possibly " : "",

@@ -46,7 +46,7 @@ App::Window::Main::Main(HWND hGameWnd, std::function<void()> unloadFunction)
 		HashData(hashSourceData.data(), static_cast<DWORD>(hashSourceData.size()), reinterpret_cast<BYTE*>(&m_guid.Data1), static_cast<DWORD>(sizeof GUID));
 	}
 	
-	const auto title = Utils::FormatString(L"XivAlexander: %d, %s, %s", GetCurrentProcessId(), m_sRegion.c_str(), m_sVersion.c_str());
+	const auto title = std::format(L"XivAlexander: {:d}, {}, {}", GetCurrentProcessId(), m_sRegion, m_sVersion);
 	SetWindowTextW(m_hWnd, title.c_str());
 	ModifyMenu(GetMenu(m_hWnd), ID_TRAYMENU_CURRENTINFO, MF_BYCOMMAND | MF_DISABLED, ID_TRAYMENU_CURRENTINFO, title.c_str());
 
@@ -251,19 +251,19 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		gdiRestoreStack.emplace_back(SelectObject(backdc, CreateFontIndirectW(&ncm.lfMessageFont)));
 		
 		FillRect(backdc, &rect, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
-		const auto str = Utils::FormatString(
-			L"Process ID: %d\n"
-			L"Game Path: %s\n"
-			L"Game Release: %s (%s)\n"
+		const auto str = std::format(
+			L"Process ID: {:d}\n"
+			L"Game Path: {}\n"
+			L"Game Release: {} ({})\n"
 			L"\n"
-			L"%s\n"
+			L"{}\n"
 			L"Tips:\n"
 			L"* Turn off \"Use Delay Detection\" and \"Use Latency Correction\" if any of the following is true.\n"
 			L"  * You're using a VPN software and your latency is being displayed below 10ms when it shouldn't be.\n"
 			L"  * Your ping is above 200ms.\n"
 			L"  * You can't double weave comfortably.",
-			GetCurrentProcessId(), m_path.c_str(), m_sVersion.c_str(), m_sRegion.c_str(),
-			Network::SocketHook::Instance()->Describe().c_str());
+			GetCurrentProcessId(), m_path, m_sVersion, m_sRegion,
+			Network::SocketHook::Instance()->Describe());
 		const auto pad = static_cast<int>(8 * zoom);
 		RECT rct = {
 			pad,
@@ -338,7 +338,7 @@ void App::Window::Main::RegisterTrayIcon() {
 	nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP | NIF_GUID;
 	nid.uCallbackMessage = WmTrayCallback;
 	nid.hIcon = hIcon;
-	wcscpy_s(nid.szTip, Utils::FormatString(L"XivAlexander(%d)", GetCurrentProcessId()).c_str());
+	wcscpy_s(nid.szTip, std::format(L"XivAlexander({:d})", GetCurrentProcessId()).c_str());
 	Shell_NotifyIconW(NIM_ADD, &nid);
 	Shell_NotifyIconW(NIM_SETVERSION, &nid);
 }

@@ -80,7 +80,7 @@ public:
 						if (runtimeConfig.UseHighLatencyMitigationLogging)
 							Misc::Logger::GetLogger().Format(
 								LogCategory::AnimationLockLatencyHandler,
-								"%zx: C2S_ActionRequest(%04x): actionId=%04x sequence=%04x",
+								"{:x}: C2S_ActionRequest({:04x}): actionId={:04x} sequence={:04x}",
 								conn.GetSocket(),
 								pMessage->Data.IPC.SubType,
 								actionRequest.ActionId,
@@ -142,7 +142,7 @@ public:
 									const auto& item = m_pendingActions.front();
 									Misc::Logger::GetLogger().Format(
 										LogCategory::AnimationLockLatencyHandler,
-										u8"\t┎ ActionRequest ignored for processing: actionId=%04x sequence=%04x",
+										u8"\t┎ ActionRequest ignored for processing: actionId={:04x} sequence={:04x}",
 										item.ActionId, item.Sequence);
 									m_pendingActions.pop_front();
 								}
@@ -156,7 +156,7 @@ public:
 										const auto rtt = static_cast<int64_t>(now - m_latestSuccessfulRequest.RequestTimestamp);
 										conn.ApplicationLatency.AddValue(rtt);
 
-										extraMessage = Utils::FormatString(" rtt=%lldms", rtt);
+										extraMessage = std::format(" rtt={:d}ms", rtt);
 
 										m_latestSuccessfulRequest.ResponseTimestamp = now;
 
@@ -167,7 +167,7 @@ public:
 
 											auto latencyAdjusted = latency;
 
-											extraMessage += Utils::FormatString(" latency=%lldms", latencyAdjusted);
+											extraMessage += std::format(" latency={:d}ms", latencyAdjusted);
 
 											// Update latency statistics
 											conn.NetworkLatency.AddValue(latencyAdjusted);
@@ -189,7 +189,7 @@ public:
 												// Estimate latency based on server response time statistics.
 												const auto latencyEstimate = (delay + rttMin + rttMean) / 3 - rttDeviation;
 
-												extraMessage += Utils::FormatString(" (%lldms)", latencyEstimate);
+												extraMessage += std::format(" ({:d}ms)", latencyEstimate);
 
 												// Correct latency value based on estimate if server response time is stable.
 												latencyAdjusted = std::max(latencyEstimate, latencyAdjusted);
@@ -202,7 +202,7 @@ public:
 											// Prevent accidentally too high ExtraDelay.
 											delay = std::min(MaximumExtraDelay, delay);
 											
-											extraMessage += Utils::FormatString(" delay=%lldms", delay);
+											extraMessage += std::format(" delay={:d}ms", delay);
 										}
 
 										m_latestSuccessfulRequest.OriginalWaitTime = originalWaitTime;
@@ -218,19 +218,19 @@ public:
 								if (runtimeConfig.UseHighLatencyMitigationLogging)
 									Misc::Logger::GetLogger().Format(
 										LogCategory::AnimationLockLatencyHandler,
-										"%zx: S2C_ActionEffect(%04x): actionId=%04x sourceSequence=%04x wait=%lldms->%lldms%s",
+										"{:x}: S2C_ActionEffect({:04x}): actionId={:04x} sourceSequence={:04x} wait={:d}ms->{:d}ms{}",
 										conn.GetSocket(),
 										pMessage->Data.IPC.SubType,
 										actionEffect.ActionId,
 										actionEffect.SourceSequence,
 										originalWaitTime, waitTime,
-										extraMessage.c_str());
+										extraMessage);
 
 							} else {
 								if (runtimeConfig.UseHighLatencyMitigationLogging)
 									Misc::Logger::GetLogger().Format(
 										LogCategory::AnimationLockLatencyHandler,
-										"%zx: S2C_ActionEffect(%04x): actionId=%04x sourceSequence=%04x wait=%llums",
+										"{:x}: S2C_ActionEffect({:04x}): actionId={:04x} sourceSequence={:04x} wait={:d}ms",
 										conn.GetSocket(),
 										pMessage->Data.IPC.SubType,
 										actionEffect.ActionId,
@@ -255,7 +255,7 @@ public:
 									const auto& item = m_pendingActions.front();
 									Misc::Logger::GetLogger().Format(
 										LogCategory::AnimationLockLatencyHandler,
-										u8"\t┎ ActionRequest ignored for processing: actionId=%04x sequence=%04x",
+										u8"\t┎ ActionRequest ignored for processing: actionId={:04x} sequence={:04x}",
 										item.ActionId, item.Sequence);
 									m_pendingActions.pop_front();
 								}
@@ -266,7 +266,7 @@ public:
 								if (runtimeConfig.UseHighLatencyMitigationLogging)
 									Misc::Logger::GetLogger().Format(
 										LogCategory::AnimationLockLatencyHandler,
-										"%zx: S2C_ActorControlSelf/ActionRejected: actionId=%04x sourceSequence=%08x",
+										"{:x}: S2C_ActorControlSelf/ActionRejected: actionId={:04x} sourceSequence={:08x}",
 										conn.GetSocket(),
 										rollback.ActionId,
 										rollback.SourceSequence);
@@ -284,7 +284,7 @@ public:
 									const auto& item = m_pendingActions.front();
 									Misc::Logger::GetLogger().Format(
 										LogCategory::AnimationLockLatencyHandler,
-										u8"\t┎ ActionRequest ignored for processing: actionId=%04x sequence=%04x",
+										u8"\t┎ ActionRequest ignored for processing: actionId={:04x} sequence={:04x}",
 										item.ActionId, item.Sequence);
 									m_pendingActions.pop_front();
 								}
@@ -295,7 +295,7 @@ public:
 								if (runtimeConfig.UseHighLatencyMitigationLogging)
 									Misc::Logger::GetLogger().Format(
 										LogCategory::AnimationLockLatencyHandler,
-										"%zx: S2C_ActorControl/CancelCast: actionId=%04x",
+										"{:x}: S2C_ActorControl/CancelCast: actionId={:04x}",
 										conn.GetSocket(),
 										cancelCast.ActionId);
 							}
@@ -311,7 +311,7 @@ public:
 							if (runtimeConfig.UseHighLatencyMitigationLogging)
 								Misc::Logger::GetLogger().Format(
 									LogCategory::AnimationLockLatencyHandler,
-									"%zx: S2C_ActorCast: actionId=%04x time=%.3f target=%08x",
+									"{:x}: S2C_ActorCast: actionId={:04x} time={:.3f} target={:08x}",
 									conn.GetSocket(),
 									actorCast.ActionId,
 									actorCast.CastTime,

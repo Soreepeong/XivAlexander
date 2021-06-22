@@ -94,7 +94,7 @@ public:
 				this_->Unload();
 			} catch (std::exception& e) {
 				SetupTrayWindow();
-				MessageBoxW(m_trayWindow->GetHandle(), Utils::FromUtf8(Utils::FormatString("Unable to unload XivAlexander: %s", e.what())).c_str(), L"XivAlexander", MB_ICONERROR);
+				Utils::Win32::MessageBoxF(m_trayWindow->GetHandle(), MB_ICONERROR, L"XivAlexander", L"Unable to unload XivAlexander: {}", Utils::FromUtf8(e.what()));
 			}
 			});
 	}
@@ -248,9 +248,9 @@ void App::App::QueueRunOnMessageLoop(std::function<void()> f, bool wait) {
 			try {
 				f();
 			} catch (const std::exception& e) {
-				Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred: %s", e.what());
+				Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred: {}", e.what());
 			} catch (const _com_error& e) {
-				Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred: %s",
+				Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred: {}",
 					Utils::ToUtf8(static_cast<const wchar_t*>(e.Description())));
 			} catch (...) {
 				Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred");

@@ -25,11 +25,11 @@ void App::Config::BaseRepository::Reload(bool announceChange) {
 			std::ifstream in(m_sConfigPath);
 			in >> config;
 		} catch (std::exception& e) {
-			Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::General, "Failed to load configuration file: %s", e.what());
+			Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::General, "Failed to load configuration file: {}", e.what());
 		}
 	} else {
 		changed = true;
-		Misc::Logger::GetLogger().Format(LogCategory::General, "Creating new config file: %s", Utils::ToUtf8(m_sConfigPath).c_str());
+		Misc::Logger::GetLogger().Format(LogCategory::General, "Creating new config file: {}", Utils::ToUtf8(m_sConfigPath));
 	}
 
 	m_destructionCallbacks.clear();
@@ -49,9 +49,9 @@ App::Config& App::Config::Instance() {
 		
 		s_pInstance = std::make_unique<Config>(
 			dllDir / "config.runtime.json",
-			dllDir / Utils::FormatString(L"game.%s.%s.json",
-				std::get<0>(regionAndVersion).c_str(),
-				std::get<1>(regionAndVersion).c_str())
+			dllDir / std::format(L"game.{}.{}.json",
+				std::get<0>(regionAndVersion),
+				std::get<1>(regionAndVersion))
 			);
 	}
 	return *s_pInstance;
@@ -87,7 +87,7 @@ void App::Config::BaseRepository::Save() {
 		std::ofstream out(m_sConfigPath);
 		out << config.dump(1, '\t');
 	} catch (std::exception& e) {
-		Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "JSON Config save error: %s", e.what());
+		Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "JSON Config save error: {}", e.what());
 	}
 }
 
@@ -102,7 +102,7 @@ bool App::Config::Item<uint16_t>::LoadFrom(const nlohmann::json & data, bool ann
 			else
 				return false;
 		} catch (std::exception& e) {
-			Misc::Logger::GetLogger().Format(LogCategory::General, "Config value parse error: %s", e.what());
+			Misc::Logger::GetLogger().Format(LogCategory::General, "Config value parse error: {}", e.what());
 		}
 		if (announceChanged)
 			this->operator=(newValue);
@@ -113,7 +113,7 @@ bool App::Config::Item<uint16_t>::LoadFrom(const nlohmann::json & data, bool ann
 }
 
 void App::Config::Item<uint16_t>::SaveTo(nlohmann::json & data) const {
-	data[Name()] = Utils::FormatString("0x%04x", m_value);
+	data[Name()] = std::format("0x{:04x}", m_value);
 }
 
 template<typename T>

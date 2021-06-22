@@ -13,7 +13,7 @@ static DWORD WINAPI XivAlexanderThreadBody(void*) {
 		try {
 			App::Misc::FreeGameMutex::FreeGameMutex();
 		} catch (std::exception& e) {
-			App::Misc::Logger::GetLogger().Format<App::LogLevel::Warning>(App::LogCategory::General, "Failed to free game mutex: %s", e.what());
+			App::Misc::Logger::GetLogger().Format<App::LogLevel::Warning>(App::LogCategory::General, "Failed to free game mutex: {}", e.what());
 		}
 		
 		try {
@@ -22,7 +22,7 @@ static DWORD WINAPI XivAlexanderThreadBody(void*) {
 			app.Run();
 		} catch (const std::exception& e) {
 			if (e.what())
-				logger.Format<App::LogLevel::Error>(App::LogCategory::General, u8"Error: %s", e.what());
+				logger.Format<App::LogLevel::Error>(App::LogCategory::General, u8"Error: {}", e.what());
 		}
 	}
 	FreeLibraryAndExitThread(g_hInstance, 0);
@@ -46,7 +46,7 @@ extern "C" __declspec(dllexport) int __stdcall LoadXivAlexander(void* lpReserved
 			"LoadXivAlexander/CreateThread");
 		return 0;
 	} catch (const std::exception& e) {
-		OutputDebugStringA(Utils::FormatString("LoadXivAlexander error: %s\n", e.what()).c_str());
+		OutputDebugStringA(std::format("LoadXivAlexander error: {}\n", e.what()).c_str());
 		const auto lastError = GetLastError();
 		if (bLibraryLoaded)
 			FreeLibrary(g_hInstance);
@@ -64,7 +64,7 @@ extern "C" __declspec(dllexport) int __stdcall UnloadXivAlexander(void* lpReserv
 		try {
 			pApp->Unload();
 		} catch (std::exception& e) {
-			MessageBoxW(nullptr, Utils::FromUtf8(Utils::FormatString("Unable to unload XivAlexander: %s", e.what())).c_str(), L"XivAlexander", MB_ICONERROR);
+			Utils::Win32::MessageBoxF(nullptr, MB_ICONERROR, L"XivAlexander", L"Unable to unload XivAlexander: {}", Utils::FromUtf8(e.what()));
 		}
 		return 0;
 	}

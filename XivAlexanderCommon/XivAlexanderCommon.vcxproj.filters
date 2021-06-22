@@ -57,6 +57,9 @@
     <ClInclude Include="Utils__String.h">
       <Filter>Implementation\Root</Filter>
     </ClInclude>
+    <ClInclude Include="CustomFormatter.h">
+      <Filter>Implementation</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">

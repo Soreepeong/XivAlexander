@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../CustomFormatter.h"
 #include "../Utils__String.h"
 #include "../Utils__Zlib.h"
 #include "../Utils__Misc.h"

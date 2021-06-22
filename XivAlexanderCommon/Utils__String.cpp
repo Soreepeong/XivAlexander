@@ -18,20 +18,20 @@ std::string Utils::ToUtf8(const std::wstring& u16) {
 
 std::string Utils::ToString(const sockaddr_in& sa) {
 	if (sa.sin_family != AF_INET)
-		return FormatString("sockaddr_in?(AF_INET=%d)", sa.sin_family);
+		return std::format("sockaddr_in?(AF_INET={:d})", sa.sin_family);
 
 	char s[INET_ADDRSTRLEN + 6] = { 0 };
 	inet_ntop(AF_INET, &sa.sin_addr, s, sizeof s);
-	return FormatString("%s:%d", s, ntohs(sa.sin_port));
+	return std::format("{}:{:d}", s, ntohs(sa.sin_port));
 }
 
 std::string Utils::ToString(const sockaddr_in6& sa) {
 	if (sa.sin6_family != AF_INET6)
-		return FormatString("sockaddr_in6?(AF_INET=%d)", sa.sin6_family);
+		return std::format("sockaddr_in6?(AF_INET={:d})", sa.sin6_family);
 
 	char s[INET6_ADDRSTRLEN + 6] = { 0 };
 	inet_ntop(AF_INET6, &sa.sin6_addr, s, sizeof s);
-	return FormatString("%s:%d", s, ntohs(sa.sin6_port));
+	return std::format("{}:{:d}", s, ntohs(sa.sin6_port));
 }
 
 std::string Utils::ToString(const sockaddr& sa) {
@@ -39,45 +39,11 @@ std::string Utils::ToString(const sockaddr& sa) {
 		return ToString(*reinterpret_cast<const sockaddr_in*>(&sa));
 	if (sa.sa_family == AF_INET6)
 		return ToString(*reinterpret_cast<const sockaddr_in6*>(&sa));
-	return FormatString("sockaddr(AF_INET=%d)", sa.sa_family);
+	return std::format("sockaddr(AF_INET={:d})", sa.sa_family);
 }
 
 std::string Utils::ToString(const sockaddr_storage& sa) {
 	return ToString(*reinterpret_cast<const sockaddr*>(&sa));
-}
-
-std::string Utils::FormatString(const char* format, ...) {
-	std::string buf;
-	va_list args;
-
-	va_start(args, format);
-	buf.resize(static_cast<size_t>(_vscprintf(format, args)) + 1);
-	va_end(args);
-
-	va_start(args, format);
-	vsprintf_s(&buf[0], buf.size(), format, args);
-	va_end(args);
-
-	buf.resize(buf.size() - 1);
-
-	return buf;
-}
-
-std::wstring Utils::FormatString(const wchar_t* format, ...) {
-	std::wstring buf;
-	va_list args;
-
-	va_start(args, format);
-	buf.resize(static_cast<size_t>(_vscwprintf(format, args)) + 1);
-	va_end(args);
-
-	va_start(args, format);
-	vswprintf_s(&buf[0], buf.size(), format, args);
-	va_end(args);
-
-	buf.resize(buf.size() - 1);
-
-	return buf;
 }
 
 std::vector<std::string> Utils::StringSplit(const std::string& str, const std::string& delimiter) {

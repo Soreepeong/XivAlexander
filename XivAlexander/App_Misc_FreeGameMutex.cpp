@@ -109,7 +109,7 @@ static std::vector<SYSTEM_HANDLE> EnumerateLocalHandles() {
 
 	// NtQuerySystemInformation stopped giving us STATUS_INFO_LENGTH_MISMATCH.
 	if (!NtSuccess(status))
-		throw std::runtime_error(Utils::FormatString("NtQuerySystemInformation returned %d.", status).c_str());
+		throw std::runtime_error(std::format("NtQuerySystemInformation returned {:d}.", status));
 
 	const auto pHandleInfo = reinterpret_cast<SYSTEM_HANDLE_INFORMATION*>(handleInfoBuffer.data());
 	for (size_t i = 0; i < pHandleInfo->HandleCount; i++)
@@ -129,7 +129,7 @@ static std::wstring GetHandleObjectName(HANDLE hHandle) {
 	std::vector<char> objectNameInfo;
 	objectNameInfo.resize(returnLength);
 	if (!NtSuccess(NtQueryObject(hHandle, NtObjectInformationClass::ObjectNameInformation, &objectNameInfo[0], returnLength, NULL)))
-		throw std::runtime_error(Utils::FormatString("Failed to get object name for handle %p", hHandle).c_str());
+		throw std::runtime_error(std::format("Failed to get object name for handle {:p}", hHandle));
 
 	const auto pObjectName = reinterpret_cast<UNICODE_STRING*>(objectNameInfo.data());
 	if (pObjectName->Length)
@@ -174,13 +174,13 @@ void App::Misc::FreeGameMutex::FreeGameMutex() {
 				CloseHandle(hObject);
 				Logger::GetLogger().Format(
 					LogCategory::General,
-					"Freed game mutex %s.",
-					Utils::ToUtf8(name).c_str());
+					"Freed game mutex {}.",
+					Utils::ToUtf8(name));
 			}
 		} catch (std::exception& e) {
 			Logger::GetLogger().Format(
 				LogCategory::General,
-				"Failed to process handle %p(type %2x): %s",
+				"Failed to process handle {:p}(type {:2x}): {}",
 				hObject, handle.ObjectTypeNumber, e.what());
 		}
 	}

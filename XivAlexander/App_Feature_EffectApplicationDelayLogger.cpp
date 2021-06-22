@@ -28,12 +28,12 @@ public:
 						const auto& actionEffect = pMessage->Data.IPC.Data.S2C_ActionEffect;
 						Misc::Logger::GetLogger().Format(
 							LogCategory::EffectApplicationDelayLogger,
-							"%zx: S2C_ActionEffect(%04x): actionId=%04x sourceSequence=%04x wait=%llums",
+							"{:x}: S2C_ActionEffect({:04x}): actionId={:04x} sourceSequence={:04x} wait={:d}ms",
 							conn.GetSocket(),
 							pMessage->Data.IPC.SubType,
 							actionEffect.ActionId,
 							actionEffect.SourceSequence,
-							actionEffect.AnimationLockDuration);
+							static_cast<int>(1000 * actionEffect.AnimationLockDuration));
 
 					}
 					else if (pMessage->Data.IPC.SubType == config.S2C_AddStatusEffect) {
@@ -41,8 +41,8 @@ public:
 						std::string effects;
 						for (int i = 0; i < addStatusEffect.EffectCount; ++i) {
 							const auto& entry = addStatusEffect.Effects[i];
-							effects += Utils::FormatString(
-								"\n\teffectId=%04x duration=%f sourceActorId=%08x",
+							effects += std::format(
+								"\n\teffectId={:04x} duration={:.3f} sourceActorId={:08x}",
 								entry.EffectId,
 								entry.Duration,
 								entry.SourceActorId
@@ -50,7 +50,7 @@ public:
 						}
 						Misc::Logger::GetLogger().Format(
 							LogCategory::EffectApplicationDelayLogger,
-							"%zx: S2C_AddStatusEffect: relatedActionSequence=%08x actorId=%08x HP=%d/%d MP=%d shield=%d%s",
+							"{:x}: S2C_AddStatusEffect: relatedActionSequence={:08x} actorId={:08x} HP={:d}/{:d} MP={:d} shield={:d}{}",
 							conn.GetSocket(),
 							addStatusEffect.RelatedActionSequence,
 							addStatusEffect.ActorId,
@@ -58,7 +58,7 @@ public:
 							addStatusEffect.MaxHp,
 							addStatusEffect.CurentMp,
 							addStatusEffect.DamageShield,
-							effects.c_str()
+							effects
 						);
 					}
 				}

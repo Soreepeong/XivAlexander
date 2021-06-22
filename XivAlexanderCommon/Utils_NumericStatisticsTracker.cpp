@@ -33,7 +33,7 @@ int64_t Utils::NumericStatisticsTracker::Max() const {
 int64_t Utils::NumericStatisticsTracker::Mean() const {
 	if (m_values.empty())
 		return m_emptyValue;
-	return std::llround(std::accumulate(m_values.begin(), m_values.end(), 0.0) / m_values.size());
+	return static_cast<int64_t>(std::round(std::accumulate(m_values.begin(), m_values.end(), 0.0) / m_values.size()));
 }
 
 int64_t Utils::NumericStatisticsTracker::Median() const {
@@ -61,5 +61,5 @@ int64_t Utils::NumericStatisticsTracker::Deviation() const {
 	std::vector<double> diff(m_values.size());
 	std::transform(m_values.begin(), m_values.end(), diff.begin(), [mean](int64_t x) { return static_cast<double>(x) - mean; });
 	const auto sum2 = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
-	return std::llround(std::sqrt(sum2 / m_values.size()));
+	return static_cast<int64_t>(std::round(std::sqrt(sum2 / m_values.size())));
 }

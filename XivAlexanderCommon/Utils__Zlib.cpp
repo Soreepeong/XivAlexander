@@ -75,7 +75,7 @@ std::string Utils::ZlibError::DescribeReturnCode(int code) {
 		case Z_MEM_ERROR: return "Memory error";
 		case Z_BUF_ERROR: return "Buffer error";
 		case Z_VERSION_ERROR: return "Version error";
-		default: return FormatString("Unknown return code %d", code);
+		default: return std::format("Unknown return code {:d}", code);
 	}
 }
 

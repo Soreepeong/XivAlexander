@@ -16,12 +16,12 @@ void CheckDllVersion(const std::filesystem::path& dllPath) {
 	auto [selfFileVersion, selfProductVersion] = Utils::Win32::FormatModuleVersionString(GetModuleHandleW(nullptr));
 
 	if (dllFileVersion != selfFileVersion)
-		throw std::runtime_error(Utils::FormatString("File versions do not match. (XivAlexanderLoader.exe: %s, XivAlexander.dll: %s)",
-			selfFileVersion.c_str(), dllFileVersion.c_str()).c_str());
+		throw std::runtime_error(std::format("File versions do not match. (XivAlexanderLoader.exe: {}, XivAlexander.dll: {})",
+			selfFileVersion, dllFileVersion));
 
 	if (dllProductVersion != selfProductVersion)
-		throw std::runtime_error(Utils::FormatString("Product versions do not match. (XivAlexanderLoader.exe: %s, XivAlexander.dll: %s)",
-			selfProductVersion.c_str(), selfFileVersion.c_str()).c_str());
+		throw std::runtime_error(std::format("Product versions do not match. (XivAlexanderLoader.exe: {}, XivAlexander.dll: {})",
+			selfProductVersion, selfFileVersion));
 }
 
 enum class LoaderAction : int {
@@ -38,8 +38,8 @@ std::string argparse::details::repr(LoaderAction const& val) {
 		case LoaderAction::Load: return "load";
 		case LoaderAction::Unload: return "unload";
 		case LoaderAction::Ignore: return "ignore";
-		default: return Utils::FormatString("(%d)", val);
 	}
+	return std::format("({:d})", static_cast<int>(val));
 }
 
 class XivAlexanderLoaderParameter {
@@ -61,17 +61,17 @@ public:
 			.required()
 			.nargs(1)
 			.default_value(LoaderAction::Ask)
-			.action([](const std::string &val) {
-				auto valw = Utils::FromUtf8(val);
-				CharLowerW(&valw[0]);
-				if (valw == L"ask")
-					return LoaderAction::Ask;
-				else if (valw == L"load")
-					return LoaderAction::Load;
-				else if (valw == L"unload")
-					return LoaderAction::Unload;
-				else
-					throw std::runtime_error("Invalid parameter given for action parameter.");
+			.action([](const std::string& val) {
+			auto valw = Utils::FromUtf8(val);
+			CharLowerW(&valw[0]);
+			if (valw == L"ask")
+				return LoaderAction::Ask;
+			else if (valw == L"load")
+				return LoaderAction::Load;
+			else if (valw == L"unload")
+				return LoaderAction::Unload;
+			else
+				throw std::runtime_error("Invalid parameter given for action parameter.");
 				});
 		argp.add_argument("-q", "--quiet")
 			.help("disables error messages")
@@ -85,10 +85,10 @@ public:
 			.help("list of target process ID or path suffix.")
 			.default_value(std::vector<std::string>())
 			.remaining()
-			.action([](const std::string &val) {
-				auto valw = Utils::FromUtf8(val);
-				CharLowerW(&valw[0]);
-				return Utils::ToUtf8(valw);
+			.action([](const std::string& val) {
+			auto valw = Utils::FromUtf8(val);
+			CharLowerW(&valw[0]);
+			return Utils::ToUtf8(valw);
 				});
 	}
 
@@ -139,8 +139,8 @@ public:
 	}
 
 	[[nodiscard]] std::wstring GetHelpMessage() const {
-		return Utils::FormatString(L"XivAlexanderLoader: loads XivAlexander into game process (DirectX 11 version, x64 only).\n\n%s",
-			Utils::FromUtf8(argp.help().str()).c_str()
+		return std::format(L"XivAlexanderLoader: loads XivAlexander into game process (DirectX 11 version, x64 only).\n\n{}",
+			Utils::FromUtf8(argp.help().str())
 		);
 	}
 } g_parameters;
@@ -159,7 +159,7 @@ static std::set<DWORD> GetTargetPidList() {
 			try {
 				auto hProcess = Utils::Win32::Closeable::Handle(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid),
 					Utils::Win32::Closeable::Handle::Null,
-					"OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, %d)", pid);
+					"OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, {:d})", pid);
 				const auto path = W32Modules::PathFromModule(nullptr, hProcess);
 				auto buf = path.wstring();
 				auto suffixFound = false;
@@ -181,22 +181,22 @@ static std::set<DWORD> GetTargetPidList() {
 void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesystem::path& dllPath) {
 	const auto hProcess = Utils::Win32::Closeable::Handle(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, pid),
 		Utils::Win32::Closeable::Handle::Null,
-		"OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, %d)", pid);
+		"OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, {:d})", pid);
 	void* rpModule = W32Modules::FindModuleAddress(hProcess, dllPath);
 	const auto path = W32Modules::PathFromModule(nullptr, hProcess);
 
 	auto loaderAction = g_parameters.m_action;
 	if (loaderAction == LoaderAction::Ask) {
 		if (rpModule) {
-			switch (MessageBoxW(nullptr, Utils::FormatString(
-				L"XivAlexander detected in FFXIV Process (%d:%s)\n"
+			switch (Utils::Win32::MessageBoxF(nullptr, MB_YESNOCANCEL | MB_ICONQUESTION | MB_DEFBUTTON1, MsgboxTitle,
+				L"XivAlexander detected in FFXIV Process ({:d}:{})\n"
 				L"Press Yes to try loading again if it hasn't loaded properly,\n"
 				L"Press No to unload, or\n"
 				L"Press Cancel to skip.\n"
 				L"\n"
 				L"Note: your anti-virus software will probably classify DLL injection as a malicious action, "
 				L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
-				static_cast<int>(pid), path.c_str()).c_str(), MsgboxTitle, MB_YESNOCANCEL | MB_ICONQUESTION | MB_DEFBUTTON1)) {
+				static_cast<int>(pid), path)) {
 				case IDYES:
 					loaderAction = LoaderAction::Load;
 					break;
@@ -208,17 +208,17 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 			}
 		} else {
 			const auto regionAndVersion = XivAlex::ResolveGameReleaseRegion(path);
-			const auto gameConfigFilename = Utils::FormatString(L"game.%s.%s.json",
-				std::get<0>(regionAndVersion).c_str(),
-				std::get<1>(regionAndVersion).c_str());
+			const auto gameConfigFilename = std::format(L"game.{}.{}.json",
+				std::get<0>(regionAndVersion),
+				std::get<1>(regionAndVersion));
 			const auto gameConfigPath = dllDir / gameConfigFilename;
 
 			if (!g_parameters.m_quiet && !exists(gameConfigPath)) {
-				switch (MessageBoxW(nullptr, Utils::FormatString(
+				switch (Utils::Win32::MessageBoxF(nullptr, MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON1, MsgboxTitle,
 					L"FFXIV Process found:\n"
-					L"* PID: %d\n"
-					L"* Path: %s\n"
-					L"* Game Version Configuration File: %s\n"
+					L"* PID: {:d}\n"
+					L"* Path: {}\n"
+					L"* Game Version Configuration File: {}\n"
 					L"Continue loading XivAlexander into this process?\n"
 					L"\n"
 					L"Notes\n"
@@ -226,8 +226,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 					L"You may want to check your game installation path, and edit the right entry in the above file first.\n"
 					L"* Your anti-virus software will probably classify DLL injection as a malicious action, "
 					L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
-					static_cast<int>(pid), path.c_str(), gameConfigPath.c_str()
-				).c_str(), MsgboxTitle, MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON1)) {
+					static_cast<int>(pid), path, gameConfigPath)) {
 					case IDYES:
 						loaderAction = LoaderAction::Load;
 						break;
@@ -235,17 +234,16 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 						loaderAction = LoaderAction::Ignore;
 				}
 			} else {
-				switch (MessageBoxW(nullptr, Utils::FormatString(
+				switch (Utils::Win32::MessageBoxF(nullptr, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON1, MsgboxTitle,
 					L"FFXIV Process found:\n"
-					L"* Process ID: %d\n"
-					L"* Path: %s\n"
-					L"* Game Version Configuration File: %s\n"
+					L"* Process ID: {:d}\n"
+					L"* Path: {}\n"
+					L"* Game Version Configuration File: {}\n"
 					L"Continue loading XivAlexander into this process?\n"
 					L"\n"
 					L"Note: your anti-virus software will probably classify DLL injection as a malicious action, "
 					L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
-					static_cast<int>(pid), path.c_str(), gameConfigPath.c_str()
-				).c_str(), MsgboxTitle, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON1)) {
+					static_cast<int>(pid), path, gameConfigPath)) {
 					case IDYES:
 						loaderAction = LoaderAction::Load;
 						break;
@@ -268,12 +266,12 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 		if (unloadRequired)
 			W32Modules::CallRemoteFunction(hProcess, UnloadXivAlexander, nullptr, "UnloadXivAlexander");
 		W32Modules::CallRemoteFunction(hProcess, FreeLibrary, rpModule, "FreeLibrary");
-	});
+		});
 
 	if (loaderAction == LoaderAction::Load) {
 		unloadRequired = true;
 		if (const auto loadResult = W32Modules::CallRemoteFunction(hProcess, LoadXivAlexander, nullptr, "LoadXivAlexander"); loadResult != 0)
-			throw std::runtime_error(Utils::FormatString("Failed to start the addon: exit code %d", loadResult).c_str());
+			throw std::runtime_error(std::format("Failed to start the addon: exit code {:d}", loadResult));
 		else
 			unloadRequired = false;
 	} else if (loaderAction == LoaderAction::Unload) {
@@ -311,12 +309,10 @@ int WINAPI wWinMain(
 	try {
 		CheckDllVersion(dllPath);
 	} catch (std::exception& e) {
-		if (MessageBoxW(nullptr,
-			Utils::FormatString(
-				L"Failed to verify XivAlexander.dll and XivAlexanderLoader.exe have the matching versions (%s).\n\nDo you want to download again from Github?",
-				Utils::FromUtf8(e.what()).c_str()
-			).c_str(),
-			MsgboxTitle, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON1) == IDYES) {
+		if (Utils::Win32::MessageBoxF(nullptr, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON1, MsgboxTitle,
+			L"Failed to verify XivAlexander.dll and XivAlexanderLoader.exe have the matching versions ({}).\n\nDo you want to download again from Github?",
+			Utils::FromUtf8(e.what())
+		) == IDYES) {
 			ShellExecuteW(nullptr, L"open", L"https://github.com/Soreepeong/XivAlexander/releases", nullptr, nullptr, SW_SHOW);
 		}
 		return -1;
@@ -326,7 +322,7 @@ int WINAPI wWinMain(
 	try {
 		Utils::Win32::AddDebugPrivilege();
 	} catch (const std::exception& err) {
-		debugPrivilegeError = Utils::FormatString("Failed to obtain.\n* Try running this program as Administrator.\n* %s", err.what());
+		debugPrivilegeError = std::format("Failed to obtain.\n* Try running this program as Administrator.\n* {}", err.what());
 	}
 
 	const auto pids = GetTargetPidList();
@@ -338,7 +334,7 @@ int WINAPI wWinMain(
 				errors = L"ffxiv_dx11.exe not found. Run the game first, and then try again.";
 			else
 				errors = L"No matching process found.";
-			MessageBoxW(nullptr, errors.c_str(), MsgboxTitle, MB_OK | MB_ICONERROR);
+			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"{}", errors);
 		}
 		return -1;
 	}
@@ -348,17 +344,17 @@ int WINAPI wWinMain(
 			DoPidTask(pid, dllDir, dllPath);
 		} catch (std::exception& e) {
 			if (!g_parameters.m_quiet)
-				MessageBoxW(nullptr, Utils::FromUtf8(Utils::FormatString(
-					"Process ID: %d\n"
-					"\n"
-					"Debug Privilege: %s\n"
-					"\n"
-					"Error:\n"
-					"* %s",
+				Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle,
+					L"Process ID: {:d}\n"
+					L"\n"
+					L"Debug Privilege: {}\n"
+					L"\n"
+					L"Error:\n"
+					L"* {}",
 					pid,
-					debugPrivilegeError.c_str(),
+					debugPrivilegeError,
 					e.what()
-				)).c_str(), MsgboxTitle, MB_OK | MB_ICONERROR);
+				);
 		}
 	}
 	return 0;

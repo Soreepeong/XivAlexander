@@ -79,8 +79,8 @@ std::tuple<std::wstring, std::wstring> XivAlex::ResolveGameReleaseRegion(const s
 		const Utils::Win32::Closeable::Handle hGameVer(
 			CreateFileW(gameVerPath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr),
 			INVALID_HANDLE_VALUE,
-			L"ResolveGameReleaseRegion: Failed to open game version file(%s)",
-			gameVerPath.c_str());
+			L"ResolveGameReleaseRegion: Failed to open game version file({})",
+			gameVerPath);
 		LARGE_INTEGER size{};
 		GetFileSizeEx(hGameVer, &size);
 		if (size.QuadPart > 64)
@@ -137,7 +137,7 @@ std::tuple<std::wstring, std::wstring> XivAlex::ResolveGameReleaseRegion(const s
 		static_cast<uInt>(buf.size() * sizeof buf[0]));
 
 	return std::make_tuple(
-		Utils::FormatString(L"unknown_%08x", crc),
+		std::format(L"unknown_{:08x}", crc),
 		gameVer
 	);
 }
@@ -156,7 +156,7 @@ XivAlex::VersionInformation XivAlex::CheckUpdates() {
 	std::chrono::sys_seconds tp;
 	from_stream(in, "%FT%TZ", tp);
 	if (in.fail())
-		throw std::format_error(Utils::FormatString("Failed to parse datetime string \"%s\"", in.str().c_str()));
+		throw std::format_error(std::format("Failed to parse datetime string \"{}\"", in.str()));
 	
 	return {
 		.Name = parsed.at("name").get<std::string>(),

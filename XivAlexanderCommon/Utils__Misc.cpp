@@ -63,9 +63,9 @@ in_addr Utils::ParseIp(const std::string& s) {
 		case 1:
 			return addr;
 		case 0:
-			throw std::runtime_error(FormatString("\"%s\" is an invalid IP address.", s.c_str()).c_str());
+			throw std::runtime_error(std::format("\"{}\" is an invalid IP address.", s));
 		case -1:
-			throw Win32::Error(WSAGetLastError(), "Failed to parse IP address \"%s\".", s.c_str());
+			throw Win32::Error(WSAGetLastError(), "Failed to parse IP address \"{}\".", s);
 		default:
 			mark_unreachable_code();
 	}
@@ -113,7 +113,7 @@ std::vector<std::pair<uint32_t, uint32_t>> Utils::ParseIpRange(const std::string
 			}
 			result.emplace_back(startIp, endIp);
 		} catch (std::exception& e) {
-			throw std::format_error(FormatString("Invalid IP range item \"%s\": %s. It must be in the form of \"0.0.0.0\", \"0.0.0.0-255.255.255.255\", or \"127.0.0.0/8\", delimited by comma(,).", range.c_str(), e.what()));
+			throw std::format_error(std::format("Invalid IP range item \"{}\": {}. It must be in the form of \"0.0.0.0\", \"0.0.0.0-255.255.255.255\", or \"127.0.0.0/8\", delimited by comma(,).", range, e.what()));
 		}
 	}
 	if (!result.empty()) {
@@ -152,7 +152,7 @@ std::vector<std::pair<uint32_t, uint32_t>> Utils::ParsePortRange(const std::stri
 			}
 			result.emplace_back(start, end);
 		} catch (std::exception& e) {
-			throw std::format_error(FormatString("Invalid port range item \"%s\": %s. It must be in the form of \"0-65535\" or single item, delimited by comma(,).", range.c_str(), e.what()));
+			throw std::format_error(std::format("Invalid port range item \"{}\": {}. It must be in the form of \"0-65535\" or single item, delimited by comma(,).", range, e.what()));
 		}
 	}
 	if (allowAll)

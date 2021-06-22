@@ -78,7 +78,7 @@ namespace App::Hooks {
 			void* bridge;
 			const auto res = MH_CreateHook(this->m_pAddress, static_cast<void*>(this->m_pfnBinder), &bridge);
 			if (res != MH_OK)
-				throw std::runtime_error(Utils::FormatString("SetupHook error for %s: %d", this->m_sName.c_str(), res).c_str());
+				throw std::runtime_error(std::format("SetupHook error for {}: {:d}", this->m_sName, static_cast<int>(res)));
 			this->m_pfnBridge = static_cast<type>(bridge);
 		}
 

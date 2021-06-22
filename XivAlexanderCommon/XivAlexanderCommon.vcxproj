@@ -11,6 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CustomFormatter.h" />
     <ClInclude Include="Utils_CallOnDestruction.h" />
     <ClInclude Include="include\XivAlexanderCommon.h">
       <DeploymentContent>true</DeploymentContent>

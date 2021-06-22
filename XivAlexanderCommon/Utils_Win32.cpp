@@ -54,12 +54,12 @@ std::pair<std::string, std::string> Utils::Win32::FormatModuleVersionString(HMOD
 	if (versionInfo.dwSignature != 0xfeef04bd)
 		throw std::runtime_error("Invalid version info found.");
 	return std::make_pair<>(
-		FormatString("%d.%d.%d.%d",
+		std::format("{:d}.{:d}.{:d}.{:d}",
 		             (versionInfo.dwFileVersionMS >> 16) & 0xFFFF,
 		             (versionInfo.dwFileVersionMS >> 0) & 0xFFFF,
 		             (versionInfo.dwFileVersionLS >> 16) & 0xFFFF,
 		             (versionInfo.dwFileVersionLS >> 0) & 0xFFFF),
-		FormatString("%d.%d.%d.%d",
+		std::format("{:d}.{:d}.{:d}.{:d}",
 		             (versionInfo.dwProductVersionMS >> 16) & 0xFFFF,
 		             (versionInfo.dwProductVersionMS >> 0) & 0xFFFF,
 		             (versionInfo.dwProductVersionLS >> 16) & 0xFFFF,
@@ -124,7 +124,7 @@ void Utils::Win32::SetThreadDescription(HANDLE hThread, const std::wstring& desc
 		pfnSetThreadDescription = reinterpret_cast<SetThreadDescriptionT>(GetProcAddress(hMod, "SetThreadDescription"));
 
 	if (pfnSetThreadDescription)
-		pfnSetThreadDescription(hThread, description.c_str());
+		pfnSetThreadDescription(hThread, description.data());
 }
 
 void Utils::Win32::SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked) {

@@ -41,7 +41,7 @@ public:
 
 							Misc::Logger::GetLogger().Format(
 								LogCategory::IpcTypeFinder,
-								"%zx: S2C_ActionEffect%02d(0x%04x) length=%x actionId=%04x sequence=%04x wait=%.3f",
+								"{:x}: S2C_ActionEffect{:02d}(0x{:04x}) length={:x} actionId={:04x} sequence={:04x} wait={:.3f}",
 								conn.GetSocket(),
 								expectedCount,
 								pMessage->Data.IPC.SubType,
@@ -62,7 +62,7 @@ public:
 								const auto& cooldown = actorControlSelf.Cooldown;
 								Misc::Logger::GetLogger().Format(
 									LogCategory::IpcTypeFinder,
-									"%zx: S2C_ActorControlSelf(0x%04x): Cooldown: actionId=%04x duration=%d",
+									"{:x}: S2C_ActorControlSelf(0x{:04x}): Cooldown: actionId={:04x} duration={:d}",
 									conn.GetSocket(),
 									pMessage->Data.IPC.SubType,
 									cooldown.ActionId,
@@ -73,7 +73,7 @@ public:
 								const auto& rollback = actorControlSelf.Rollback;
 								Misc::Logger::GetLogger().Format(
 									LogCategory::IpcTypeFinder,
-									"%zx: S2C_ActorControlSelf(0x%04x): Rollback: actionId=%04x sourceSequence=%04x",
+									"{:x}: S2C_ActorControlSelf(0x{:04x}): Rollback: actionId={:04x} sourceSequence={:04x}",
 									conn.GetSocket(),
 									pMessage->Data.IPC.SubType,
 									rollback.ActionId,
@@ -86,7 +86,7 @@ public:
 							//
 							Misc::Logger::GetLogger().Format(
 								LogCategory::IpcTypeFinder,
-								"%zx: S2C_ActorCast(0x%04x): actionId=%04x time=%.3f target=%08x",
+								"{:x}: S2C_ActorCast(0x{:04x}): actionId={:04x} time={:.3f} target={:08x}",
 								conn.GetSocket(),
 								pMessage->Data.IPC.SubType,
 								pMessage->Data.IPC.Data.S2C_ActorCast.ActionId,
@@ -101,7 +101,7 @@ public:
 								const auto& cancelCast = actorControl.CancelCast;
 								Misc::Logger::GetLogger().Format(
 									LogCategory::IpcTypeFinder,
-									"%zx: S2C_ActorControl(0x%04x): CancelCast: actionId=%04x",
+									"{:x}: S2C_ActorControl(0x{:04x}): CancelCast: actionId={:04x}",
 									conn.GetSocket(),
 									pMessage->Data.IPC.SubType,
 									pMessage->Length,
@@ -117,8 +117,8 @@ public:
 						std::string effects;
 						for (int i = 0; i < addStatusEffect.EffectCount; ++i) {
 							const auto& entry = addStatusEffect.Effects[i];
-							effects += Utils::FormatString(
-								"\n\teffectId=%04x duration=%f sourceActorId=%08x",
+							effects += std::format(
+								"\n\teffectId={:04x} duration={:g} sourceActorId={:08x}",
 								entry.EffectId,
 								entry.Duration,
 								entry.SourceActorId
@@ -126,7 +126,7 @@ public:
 						}
 						Misc::Logger::GetLogger().Format(
 							LogCategory::IpcTypeFinder,
-							"%zx: S2C_AddStatusEffect(0x%04x): relatedActionSequence=%08x actorId=%08x HP=%d/%d MP=%d shield=%d%s",
+							"{:x}: S2C_AddStatusEffect(0x{:04x}): relatedActionSequence={:08x} actorId={:08x} HP={:d}/{:d} MP={:d} shield={:d}{}",
 							conn.GetSocket(),
 							pMessage->Data.IPC.SubType,
 							addStatusEffect.RelatedActionSequence,
@@ -135,7 +135,7 @@ public:
 							addStatusEffect.MaxHp,
 							addStatusEffect.CurentMp,
 							addStatusEffect.DamageShield,
-							effects.c_str()
+							effects
 						);
 					}
 				}
@@ -148,7 +148,7 @@ public:
 						const auto& actionRequest = pMessage->Data.IPC.Data.C2S_ActionRequest;
 						Misc::Logger::GetLogger().Format(
 							LogCategory::IpcTypeFinder,
-							"%zx: C2S_ActionRequest/GroundTargeted(0x%04x): actionId=%04x sequence=%04x",
+							"{:x}: C2S_ActionRequest/GroundTargeted(0x{:04x}): actionId={:04x} sequence={:04x}",
 							conn.GetSocket(),
 							pMessage->Data.IPC.SubType,
 							actionRequest.ActionId, actionRequest.Sequence);

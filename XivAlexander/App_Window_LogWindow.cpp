@@ -55,7 +55,7 @@ App::Window::Log::Log()
 	m_direct(m_directPtr, SCI_SETREADONLY, TRUE, 0);
 	m_direct(m_directPtr, SCI_SETMARGINTYPEN, 0, SC_MARGIN_NUMBER);
 	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 1, 0);
-	m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>(Utils::ToUtf8(ncm.lfMessageFont.lfFaceName).c_str()));
+	m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>(Utils::ToUtf8(ncm.lfMessageFont.lfFaceName).data()));
 	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Debug), RGB(80, 80, 80));
 	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Info), RGB(0, 0, 0));
 	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Warning), RGB(160, 160, 0));
@@ -63,12 +63,12 @@ App::Window::Log::Log()
 
 	const auto addLogFn = [&](const Misc::Logger::LogItem& item) {
 		const auto st = item.TimestampAsLocalSystemTime();
-		const auto logstr = Utils::FormatString("%04d-%02d-%02d %02d:%02d:%02d.%03d\t%s\t%s\n",
+		const auto logstr = std::format("{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}.{:03d}\t{}\t{}\n",
 			st.wYear, st.wMonth, st.wDay,
 			st.wHour, st.wMinute, st.wSecond,
 			st.wMilliseconds,
 			LogCategoryNames.at(item.category),
-			item.log.c_str());
+			item.log);
 		RunOnUiThreadWait([&]() {
 			SendMessage(m_hScintilla, WM_SETREDRAW, FALSE, 0);
 			m_direct(m_directPtr, SCI_SETREADONLY, FALSE, 0);
@@ -79,7 +79,7 @@ App::Window::Log::Log()
 			const auto atBottom = nFirstLine >= nLineCount - nLinesOnScreen && m_direct(m_directPtr, SCI_GETSELECTIONEMPTY, 0, 0);
 			m_direct(m_directPtr, SCI_STARTSTYLING, nPos, 0);
 
-			m_direct(m_directPtr, SCI_APPENDTEXT, logstr.length(), reinterpret_cast<sptr_t>(logstr.c_str()));
+			m_direct(m_directPtr, SCI_APPENDTEXT, logstr.length(), reinterpret_cast<sptr_t>(logstr.data()));
 			m_direct(m_directPtr, SCI_SETSTYLING, logstr.length(), LogLevelStyleMap.at(item.level));
 			nPos += logstr.length();
 			nLineCount++;
@@ -142,7 +142,7 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 								_com_raise_error(val);
 						};
 
-						Utils::Win32::SetThreadDescription(GetCurrentThread(), L"XivAlexander::Window::Log::WndProc::FileSaveThread(%p)", pDataT->hWnd);
+						Utils::Win32::SetThreadDescription(GetCurrentThread(), L"XivAlexander::Window::Log::WndProc::FileSaveThread({:p})", reinterpret_cast<size_t>(pDataT->hWnd));
 
 						try {
 							IFileSaveDialogPtr pDialog;
@@ -165,19 +165,19 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 								{
 									const Utils::Win32::Closeable::Handle hFile(CreateFile(pszNewFileName, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr),
 										INVALID_HANDLE_VALUE,
-										L"Failed to open file: %s", pszNewFileName);
+										L"Failed to open file: {}", pszNewFileName);
 									DWORD written;
 									WriteFile(hFile, pDataT->buf.data(), static_cast<DWORD>(pDataT->buf.length()), &written, nullptr);
 									if (written != pDataT->buf.length())
 										throw std::runtime_error("Failed to fully write the log file.");
 								}
 
-								Utils::Win32::MessageBoxF(pDataT->hWnd, MB_ICONINFORMATION, L"XivAlexander", L"Log saved to: %s", pszNewFileName);
+								Utils::Win32::MessageBoxF(pDataT->hWnd, MB_ICONINFORMATION, L"XivAlexander", L"Log saved to: {}", pszNewFileName);
 							}
 						} catch (std::exception& e) {
-							MessageBoxW(pDataT->hWnd, Utils::FromUtf8(e.what()).c_str(), L"XivAlexander", MB_ICONERROR);
+							Utils::Win32::MessageBoxF(pDataT->hWnd, MB_ICONERROR, L"XivAlexander", L"Unable to save: {}", Utils::FromUtf8(e.what()));
 						} catch (_com_error& e) {
-							MessageBoxW(pDataT->hWnd, e.Description(), L"XivAlexander", MB_ICONERROR);
+							Utils::Win32::MessageBoxF(pDataT->hWnd, MB_ICONERROR, L"XivAlexander", L"Unable to save: {}", static_cast<const wchar_t*>(e.Description()));
 						}
 						return 0;
 						}, pDataT, 0, nullptr),

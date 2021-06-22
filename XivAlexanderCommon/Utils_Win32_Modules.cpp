@@ -20,7 +20,7 @@ std::vector<DWORD> Utils::Win32::Modules::GetProcessList() {
 void* Utils::Win32::Modules::GetModulePointer(HANDLE hProcess, const std::filesystem::path& path) {
 	const auto th32 = Handle(CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, GetProcessId(hProcess)),
 		INVALID_HANDLE_VALUE,
-		"Failed to list modules of process %d.", GetProcessId(hProcess));
+		"Failed to list modules of process {:d}.", GetProcessId(hProcess));
 	MODULEENTRY32W mod{ sizeof MODULEENTRY32W };
 	if (!Module32FirstW(th32, &mod))
 		return nullptr;
@@ -39,7 +39,7 @@ void* Utils::Win32::Modules::GetModulePointer(HANDLE hProcess, const std::filesy
 int Utils::Win32::Modules::CallRemoteFunction(HANDLE hProcess, void* rpfn, void* rpParam, const char* pcszDescription) {
 	const auto hLoadLibraryThread = Handle(CreateRemoteThread(hProcess, nullptr, 0, static_cast<LPTHREAD_START_ROUTINE>(rpfn), rpParam, 0, nullptr),
 		Handle::Null,
-		"Failed to call remote function %s@%p(%p)", pcszDescription, rpfn, rpParam);
+		"Failed to call remote function {}@{:p}({:p})", pcszDescription, rpfn, rpParam);
 	WaitForSingleObject(hLoadLibraryThread, INFINITE);
 	DWORD exitCode;
 	GetExitCodeThread(hLoadLibraryThread, &exitCode);
@@ -57,14 +57,14 @@ void* Utils::Win32::Modules::InjectDll(HANDLE hProcess, const std::filesystem::p
 
 	void* rpszDllPath = VirtualAllocEx(hProcess, nullptr, nNumberOfBytes, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 	if (!rpszDllPath)
-		throw Error(GetLastError(), "VirtualAllocEx(pid %d, nullptr, %d, MEM_COMMIT, PAGE_EXECUTE_READWRITE)", GetProcessId(hProcess), nNumberOfBytes);
+		throw Error(GetLastError(), "VirtualAllocEx(pid {:d}, nullptr, {:d}, MEM_COMMIT, PAGE_EXECUTE_READWRITE)", GetProcessId(hProcess), nNumberOfBytes);
 
 	const auto releaseRemoteAllocation = CallOnDestruction([&]() {
 		VirtualFreeEx(hProcess, rpszDllPath, 0, MEM_RELEASE);
 		});
 
 	if (!WriteProcessMemory(hProcess, rpszDllPath, &buf[0], nNumberOfBytes, nullptr))
-		throw Error(GetLastError(), "WriteProcessMemory(pid %d, %p, %s, %d, nullptr)", GetProcessId(hProcess), rpszDllPath, ToUtf8(buf).c_str(), nNumberOfBytes);
+		throw Error(GetLastError(), "WriteProcessMemory(pid {:d}, {:p}, {}, {:d}, nullptr)", GetProcessId(hProcess), rpszDllPath, ToUtf8(buf), nNumberOfBytes);
 
 	CallRemoteFunction(hProcess, LoadLibraryW, rpszDllPath, "LoadLibraryW");
 	return GetModulePointer(hProcess, path);
@@ -77,7 +77,7 @@ void* Utils::Win32::Modules::FindModuleAddress(HANDLE hProcess, const std::files
 		hMods.resize(hMods.size() + std::min<size_t>(1024, std::max<size_t>(32768, hMods.size())));
 		cbNeeded = static_cast<DWORD>(hMods.size());
 		if (!EnumProcessModules(hProcess, &hMods[0], static_cast<DWORD>(hMods.size() * sizeof(HMODULE)), &cbNeeded))
-			throw Error(FormatString("FindModuleAdderss(pid=%d, path=%s)/EnumProcessModules", GetProcessId(hProcess), ToUtf8(szDllPath.c_str()).c_str()));
+			throw Error(std::format("FindModuleAdderss(pid={:d}, path={})/EnumProcessModules", GetProcessId(hProcess), ToUtf8(szDllPath)));
 	} while (cbNeeded == hMods.size() * sizeof(HMODULE));
 	hMods.resize(cbNeeded / sizeof(HMODULE));
 

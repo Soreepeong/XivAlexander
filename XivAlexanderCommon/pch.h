@@ -35,6 +35,8 @@
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
 
+#include "CustomFormatter.h"
+
 static DECLSPEC_NORETURN void mark_unreachable_code() {}
 
 #endif //PCH_H

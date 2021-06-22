@@ -26,13 +26,13 @@ namespace Utils::Win32::Closeable {
 		}
 
 		template <typename ... Args>
-		Base(T Base, T invalidValue, const _Printf_format_string_ char* errorMessageFormat, Args ... args) :
-			Base(Base, invalidValue, FormatString(errorMessageFormat, std::forward<Args>(args)...)) {
+		Base(T Base, T invalidValue, const char* errorMessageFormat, Args ... args) :
+			Base(Base, invalidValue, std::format(errorMessageFormat, std::forward<Args>(args)...)) {
 		}
 
 		template <typename ... Args>
-		Base(T Base, T invalidValue, const _Printf_format_string_ wchar_t* errorMessageFormat, Args ... args) :
-			Base(Base, invalidValue, Utils::ToUtf8(FormatString(errorMessageFormat, std::forward<Args>(args)...))) {
+		Base(T Base, T invalidValue, const wchar_t* errorMessageFormat, Args ... args) :
+			Base(Base, invalidValue, Utils::ToUtf8(std::format(errorMessageFormat, std::forward<Args>(args)...))) {
 		}
 
 		Base(Base&& r) noexcept {

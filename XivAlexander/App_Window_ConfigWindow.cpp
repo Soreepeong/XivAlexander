@@ -64,9 +64,9 @@ void App::Window::Config::Revert() {
 		std::ifstream in(m_pRepository->GetConfigPath());
 		in >> config;
 		m_originalConfig = config.dump(1, '\t');
-		m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(m_originalConfig.c_str()));
+		m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(m_originalConfig.data()));
 	} catch (std::exception& e) {
-		Utils::Win32::MessageBoxF(m_hWnd, MB_ICONERROR, L"XivAlexander", L"Failed to reload previous configuration file: %s", Utils::FromUtf8(e.what()).c_str());
+		Utils::Win32::MessageBoxF(m_hWnd, MB_ICONERROR, L"XivAlexander", L"Failed to reload previous configuration file: {}", Utils::FromUtf8(e.what()));
 		DestroyWindow(m_hWnd);
 	}
 }
@@ -78,14 +78,14 @@ bool App::Window::Config::TrySave() {
 	try {
 		buf = nlohmann::json::parse(buf).dump(1, '\t');
 	} catch (nlohmann::json::exception& e) {
-		Utils::Win32::MessageBoxF(m_hWnd, MB_ICONERROR, L"XivAlexander", L"Invalid JSON: %s", Utils::FromUtf8(e.what()).c_str());
+		Utils::Win32::MessageBoxF(m_hWnd, MB_ICONERROR, L"XivAlexander", L"Invalid JSON: {}", Utils::FromUtf8(e.what()));
 		return false;
 	}
 	try {
 		std::ofstream out(m_pRepository->GetConfigPath());
 		out << buf;
 	} catch (std::exception& e) {
-		Utils::Win32::MessageBoxF(m_hWnd, MB_OK, L"XivAlexander", L"Failed to save new configuration file: %s", Utils::FromUtf8(e.what()).c_str());
+		Utils::Win32::MessageBoxF(m_hWnd, MB_OK, L"XivAlexander", L"Failed to save new configuration file: {}", Utils::FromUtf8(e.what()));
 		return false;
 	}
 	m_originalConfig = std::move(buf);

@@ -119,7 +119,7 @@ double App::Window::BaseWindow::GetZoom() const {
 			GetMonitorInfoW(hMonitor, &mi);
 			const auto hdc = Utils::Win32::Closeable::CreatedDC(CreateDCW(L"DISPLAY", mi.szDevice, nullptr, nullptr), 
 				nullptr, 
-				L"Failed to create display \"%s\" for zoom determination purposes.", mi.szDevice);
+				L"Failed to create display \"{}\" for zoom determination purposes.", mi.szDevice);
 			newDpiX = GetDeviceCaps(hdc, LOGPIXELSX);
 			newDpiY = GetDeviceCaps(hdc, LOGPIXELSY);
 		}
