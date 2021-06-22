@@ -1,3 +1,5 @@
+enc_temp_folder
+
 # Ignore all IDEA related files for now
 .idea
 

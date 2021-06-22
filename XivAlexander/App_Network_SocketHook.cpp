@@ -691,6 +691,9 @@ void App::Network::SocketHook::RemoveListeners(void* token) {
 
 void App::Network::SocketHook::ReleaseSockets() {
 	for (auto& [s, con] : impl->m_sockets) {
+		if (con->impl->m_unloading)
+			continue;
+		
 		Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Detaching", s);
 		con->impl->Unload();
 	}
