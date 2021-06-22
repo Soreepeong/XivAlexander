@@ -39,10 +39,10 @@
     <ClCompile Include="App_Feature_AnimationLockLatencyHandler.cpp">
       <Filter>App\Feature</Filter>
     </ClCompile>
-    <ClCompile Include="App_Window_Base.cpp">
+    <ClCompile Include="App_Window_BaseWindow.cpp">
       <Filter>App\Window</Filter>
     </ClCompile>
-    <ClCompile Include="App_Window_Log.cpp">
+    <ClCompile Include="App_Window_LogWindow.cpp">
       <Filter>App\Window</Filter>
     </ClCompile>
     <ClCompile Include="App_Misc_Logger.cpp">
@@ -51,19 +51,19 @@
     <ClCompile Include="App_Feature_IpcTypeFinder.cpp">
       <Filter>App\Feature</Filter>
     </ClCompile>
-    <ClCompile Include="App_Window_Config.cpp">
+    <ClCompile Include="App_Window_ConfigWindow.cpp">
       <Filter>App\Window</Filter>
     </ClCompile>
     <ClCompile Include="App_Feature_EffectApplicationDelayLogger.cpp">
       <Filter>App\Feature</Filter>
     </ClCompile>
-    <ClCompile Include="App_Window_Main.cpp">
+    <ClCompile Include="App_Window_MainWindow.cpp">
       <Filter>App\Window</Filter>
     </ClCompile>
     <ClCompile Include="App_Feature_AllIpcMessageLogger.cpp">
       <Filter>App\Feature</Filter>
     </ClCompile>
-    <ClCompile Include="App.cpp">
+    <ClCompile Include="DllMain.cpp">
       <Filter>App</Filter>
     </ClCompile>
     <ClCompile Include="App_ConfigRepository.cpp">
@@ -73,6 +73,9 @@
       <Filter>App</Filter>
     </ClCompile>
     <ClCompile Include="App_Signatures.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="App_App.cpp">
       <Filter>App</Filter>
     </ClCompile>
   </ItemGroup>
@@ -92,10 +95,10 @@
     <ClInclude Include="App_Feature_AnimationLockLatencyHandler.h">
       <Filter>App\Feature</Filter>
     </ClInclude>
-    <ClInclude Include="App_Window_Base.h">
+    <ClInclude Include="App_Window_BaseWindow.h">
       <Filter>App\Window</Filter>
     </ClInclude>
-    <ClInclude Include="App_Window_Log.h">
+    <ClInclude Include="App_Window_LogWindow.h">
       <Filter>App\Window</Filter>
     </ClInclude>
     <ClInclude Include="App_Misc_Logger.h">
@@ -107,13 +110,13 @@
     <ClInclude Include="resource.h">
       <Filter>Resources</Filter>
     </ClInclude>
-    <ClInclude Include="App_Window_Config.h">
+    <ClInclude Include="App_Window_ConfigWindow.h">
       <Filter>App\Window</Filter>
     </ClInclude>
     <ClInclude Include="App_Feature_EffectApplicationDelayLogger.h">
       <Filter>App\Feature</Filter>
     </ClInclude>
-    <ClInclude Include="App_Window_Main.h">
+    <ClInclude Include="App_Window_MainWindow.h">
       <Filter>App\Window</Filter>
     </ClInclude>
     <ClInclude Include="App_Feature_AllIpcMessageLogger.h">
@@ -126,6 +129,9 @@
       <Filter>App</Filter>
     </ClInclude>
     <ClInclude Include="App_Hooks.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="App_App.h">
       <Filter>App</Filter>
     </ClInclude>
   </ItemGroup>

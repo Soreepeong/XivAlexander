@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "App_Window_Log.h"
+#include "App_Window_LogWindow.h"
 #include "resource.h"
 
 constexpr int BaseFontSize = 9;
@@ -41,7 +41,7 @@ static WNDCLASSEXW WindowClass() {
 }
 
 App::Window::Log::Log()
-	: Base(WindowClass(), L"Log", WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr) {
+	: BaseWindow(WindowClass(), L"Log", WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr) {
 
 	NONCLIENTMETRICS ncm = { sizeof(NONCLIENTMETRICS) };
 	SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
@@ -212,7 +212,7 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			break;
 		}
 	}
-	return Base::WndProc(uMsg, wParam, lParam);
+	return BaseWindow::WndProc(uMsg, wParam, lParam);
 }
 
 LRESULT App::Window::Log::OnNotify(const LPNMHDR nmhdr) {
@@ -222,7 +222,7 @@ LRESULT App::Window::Log::OnNotify(const LPNMHDR nmhdr) {
 			ResizeMargin();
 		}
 	}
-	return Base::OnNotify(nmhdr);
+	return BaseWindow::OnNotify(nmhdr);
 }
 
 void App::Window::Log::OnDestroy() {

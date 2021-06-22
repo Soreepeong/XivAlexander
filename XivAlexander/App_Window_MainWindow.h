@@ -1,10 +1,10 @@
 #pragma once
-#include "App_Window_Base.h"
+#include "App_Window_BaseWindow.h"
 
 namespace App::Window {
 	class Config;
 	
-	class Main : public Base {
+	class Main : public BaseWindow {
 		HWND const m_hGameWnd;
 		GUID m_guid{};
 		const std::function<void()> m_triggerUnload;

@@ -1,6 +1,6 @@
 #pragma once
 namespace App::Window {
-	class Base {
+	class BaseWindow {
 		static HWND InternalCreateWindow(const WNDCLASSEXW& wndclassex,
             _In_opt_ LPCWSTR lpWindowName,
             _In_ DWORD dwStyle,
@@ -11,7 +11,7 @@ namespace App::Window {
             _In_ int nHeight,
             _In_opt_ HWND hWndParent,
             _In_opt_ HMENU hMenu,
-            _In_ Base* pBase);
+            _In_ BaseWindow* pBase);
 
         bool m_bDestroyed = false;
 
@@ -27,7 +27,7 @@ namespace App::Window {
             AppMessageRunOnUiThread = WM_APP + 1001,
         };
 
-		Base(const WNDCLASSEXW& wndclassex,
+		BaseWindow(const WNDCLASSEXW& wndclassex,
             _In_opt_ LPCWSTR lpWindowName,
             _In_ DWORD dwStyle,
             _In_ DWORD dwExStyle,
@@ -37,19 +37,19 @@ namespace App::Window {
             _In_ int nHeight,
             _In_opt_ HWND hWndParent,
             _In_opt_ HMENU hMenu);
-        Base(Base&&) = delete;
-        Base(const Base&) = delete;
-        Base operator =(Base&&) = delete;
-        Base operator =(const Base&) = delete;
-		virtual ~Base();
+        BaseWindow(BaseWindow&&) = delete;
+        BaseWindow(const BaseWindow&) = delete;
+        BaseWindow operator =(BaseWindow&&) = delete;
+        BaseWindow operator =(const BaseWindow&) = delete;
+		virtual ~BaseWindow();
 
         HWND GetHandle() const;
         bool IsDestroyed() const;
         virtual HACCEL GetAcceleratorTable() const;
 
-        Utils::ListenerManager<Base, void> OnDestroyListener;
+        Utils::ListenerManager<BaseWindow, void> OnDestroyListener;
 
-        static const std::set<Base*>& GetAllOpenWindows();
+        static const std::set<BaseWindow*>& GetAllOpenWindows();
 
     protected:
 

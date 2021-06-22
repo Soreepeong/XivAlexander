@@ -1,7 +1,5 @@
 #pragma once
 
-static DECLSPEC_NORETURN void mark_unreachable_code() {}
-
 #include "../Utils__String.h"
 #include "../Utils__Zlib.h"
 #include "../Utils__Misc.h"

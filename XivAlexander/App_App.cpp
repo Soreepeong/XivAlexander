@@ -1,21 +1,15 @@
 #include "pch.h"
+#include "App_App.h"
 #include "App_Network_SocketHook.h"
-#include "App_Misc_FreeGameMutex.h"
 #include "App_Feature_AnimationLockLatencyHandler.h"
 #include "App_Feature_IpcTypeFinder.h"
 #include "App_Feature_AllIpcMessageLogger.h"
 #include "App_Feature_EffectApplicationDelayLogger.h"
-#include "App_Window_Log.h"
-#include "App_Window_Main.h"
+#include "App_Window_LogWindow.h"
+#include "App_Window_MainWindow.h"
 
-namespace App {
-	class App;
-}
-
-HINSTANCE g_hInstance;
-
-static bool s_bFreeLibraryAndExitThread = true;
-static bool s_bUnloadDisabled = false;
+App::App* App::App::s_pInstance = nullptr;
+bool App::App::s_bUnloadDisabled = false;
 
 static HWND FindGameMainWindow() {
 	HWND hwnd = nullptr;
@@ -29,9 +23,9 @@ static HWND FindGameMainWindow() {
 	return hwnd;
 }
 
-class App::App {
-	static App* m_instance;
-	
+class App::App::Implementation {
+	App* const this_;
+
 public:
 	const HWND m_hGameMainWindow;
 	std::vector<Utils::CallOnDestruction> m_cleanupPendingDestructions;
@@ -66,7 +60,7 @@ public:
 				fn();
 			}
 		}
-		
+
 		switch (msg) {
 			case WM_DESTROY:
 				SendMessage(m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
@@ -80,7 +74,7 @@ public:
 	}
 
 	const LONG_PTR m_overridenGameMainWndProc = reinterpret_cast<LONG_PTR>(
-		static_cast<WNDPROC>([](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) { return m_instance->OverridenWndProc(hwnd, msg, wParam, lParam); })
+		static_cast<WNDPROC>([](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) { return s_pInstance->m_pImpl->OverridenWndProc(hwnd, msg, wParam, lParam); })
 		);
 
 	void OnCleanup(std::function<void()> cb) {
@@ -94,31 +88,35 @@ public:
 	void SetupTrayWindow() {
 		if (m_trayWindow)
 			return;
-		
+
 		m_trayWindow = std::make_unique<Window::Main>(m_hGameMainWindow, [this]() {
 			try {
-				this->Unload();
-			} catch(std::exception& e) {
+				this_->Unload();
+			} catch (std::exception& e) {
 				SetupTrayWindow();
 				MessageBoxW(m_trayWindow->GetHandle(), Utils::FromUtf8(Utils::FormatString("Unable to unload XivAlexander: %s", e.what())).c_str(), L"XivAlexander", MB_ICONERROR);
 			}
 			});
 	}
 
-	App()
-		: m_hGameMainWindow(FindGameMainWindow()) {
-		if (m_instance)
-			throw std::runtime_error("App already initialized");
-		
-		m_instance = this;
+	Implementation(App* this_)
+		: this_(this_)
+		, m_hGameMainWindow(FindGameMainWindow()) {
+	}
 
-		try {
-			Misc::FreeGameMutex::FreeGameMutex();
-		} catch (std::exception& e) {
-			Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::General, "Failed to free game mutex: %s", e.what());
-		}
+	~Implementation() {
+		Config::Instance().SetQuitting();
+		while (!m_cleanupPendingDestructions.empty())
+			m_cleanupPendingDestructions.pop_back();
 
+		s_pInstance = nullptr;
+	}
+
+	void Load() {
 		try {
+			s_pInstance = this_;
+			OnCleanup([]() { s_pInstance = nullptr; });
+
 			Config::Instance();
 			OnCleanup([]() { Config::DestroyInstance(); });
 
@@ -135,7 +133,7 @@ public:
 
 			m_originalGameMainWndProc = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(m_hGameMainWindow, GWLP_WNDPROC, m_overridenGameMainWndProc));
 			OnCleanup([this]() {
-				QueueRunOnMessageLoop([]() {
+				this->this_->QueueRunOnMessageLoop([]() {
 					for (const auto& signature : Signatures::AllSignatures())
 						signature->Cleanup();
 					MH_DisableHook(MH_ALL_HOOKS);
@@ -218,165 +216,102 @@ public:
 			while (!m_cleanupPendingDestructions.empty())
 				m_cleanupPendingDestructions.pop_back();
 
-			m_instance = nullptr;
+			s_pInstance = nullptr;
 			throw;
 		}
 	}
-
-	~App() {
-		Config::Instance().SetQuitting();
-		while (!m_cleanupPendingDestructions.empty())
-			m_cleanupPendingDestructions.pop_back();
-
-		m_instance = nullptr;
-	}
-
-	void Run() {
-		QueueRunOnMessageLoop([&]() {
-			for (const auto& signature : Signatures::AllSignatures())
-				signature->Startup();
-		}, true);
-
-		MSG msg;
-		while (GetMessageW(&msg, nullptr, 0, 0)) {
-			bool dispatchMessage = true;
-			for (const auto pWindow : Window::Base::GetAllOpenWindows()) {
-				const auto hWnd = pWindow->GetHandle();
-				const auto hAccel = pWindow->GetAcceleratorTable();
-				if (hAccel && (hWnd == msg.hwnd || IsChild(hWnd, msg.hwnd))){
-					if (TranslateAcceleratorW(hWnd, hAccel, &msg)) {
-						dispatchMessage = false;
-						break;
-					}
-					if (IsDialogMessageW(hWnd, &msg)) {
-						dispatchMessage = false;
-						break;
-					}
-				}
-			}
-			if (dispatchMessage) {
-				TranslateMessage(&msg);
-				DispatchMessageW(&msg);
-			}
-		}
-	}
-
-	void QueueRunOnMessageLoop(std::function<void()> f, bool wait = false) {
-		if (!wait) {
-			{
-				std::lock_guard _lock(m_runInMessageLoopLock);
-				m_qRunInMessageLoop.push(f);
-			}
-			PostMessageW(m_hGameMainWindow, WM_NULL, 0, 0);
-
-		} else {
-			Utils::Win32::Closeable::Handle hEvent(CreateEventW(nullptr, true, false, nullptr),
-				INVALID_HANDLE_VALUE, 
-				"App::QueueRunOnMessageLoop/CreateEventW");
-			const auto fn = [&f, &hEvent]() {
-				try {
-					f();
-				} catch (...) {
-
-				}
-				SetEvent(hEvent);
-			};
-			{
-				std::lock_guard _lock(m_runInMessageLoopLock);
-				m_qRunInMessageLoop.push(fn);
-			}
-			SendMessageW(m_hGameMainWindow, WM_NULL, 0, 0);
-			WaitForSingleObject(hEvent, INFINITE);
-		}
-	}
-
-	int Unload() {
-		if (s_bUnloadDisabled)
-			throw std::runtime_error("Unloading is currently disabled.");
-
-		if (GetWindowLongPtrW(m_hGameMainWindow, GWLP_WNDPROC) != m_overridenGameMainWndProc)
-			throw std::runtime_error("Something has hooked the game process after XivAlexander, so you cannot unload XivAlexander until that other thing has been unloaded.");
-
-		if (m_trayWindow)
-			SendMessage(m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
-		return 0;
-	}
-
-	static
-	App* GetInstance() {
-		return m_instance;
-	}
 };
 
-App::App* App::App::m_instance;
+App::App::App()
+	: m_pImpl(std::make_unique<Implementation>(this)) {
+	if (s_pInstance)
+		throw std::runtime_error("App already initialized");
 
-static DWORD WINAPI DllThread(PVOID param1) {
-	Utils::Win32::SetThreadDescription(GetCurrentThread(), L"XivAlexander::DllThread");
-	{
-		App::Misc::Logger logger;
-		try {
-			App::App app;
-			logger.Log(App::LogCategory::General, u8"XivAlexander initialized.");
-			app.Run();
-		} catch (const std::exception& e) {
-			if (e.what())
-				logger.Format<App::LogLevel::Error>(App::LogCategory::General, u8"Error: %s", e.what());
+	m_pImpl->Load();
+}
+
+App::App::~App() = default;
+
+void App::App::QueueRunOnMessageLoop(std::function<void()> f, bool wait) {
+	if (!wait) {
+		{
+			std::lock_guard _lock(m_pImpl->m_runInMessageLoopLock);
+			m_pImpl->m_qRunInMessageLoop.push(f);
+		}
+		PostMessageW(m_pImpl->m_hGameMainWindow, WM_NULL, 0, 0);
+
+	} else {
+		Utils::Win32::Closeable::Handle hEvent(CreateEventW(nullptr, true, false, nullptr),
+			INVALID_HANDLE_VALUE,
+			"App::QueueRunOnMessageLoop/CreateEventW");
+		const auto fn = [&f, &hEvent]() {
+			try {
+				f();
+			} catch (const std::exception& e) {
+				Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred: %s", e.what());
+			} catch (const _com_error& e) {
+				Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred: %s",
+					Utils::ToUtf8(static_cast<const wchar_t*>(e.Description())));
+			} catch (...) {
+				Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred");
+			}
+			SetEvent(hEvent);
+		};
+		{
+			std::lock_guard _lock(m_pImpl->m_runInMessageLoopLock);
+			m_pImpl->m_qRunInMessageLoop.push(fn);
+		}
+		SendMessageW(m_pImpl->m_hGameMainWindow, WM_NULL, 0, 0);
+		WaitForSingleObject(hEvent, INFINITE);
+	}
+}
+
+void App::App::Run() {
+	QueueRunOnMessageLoop([&]() {
+		for (const auto& signature : Signatures::AllSignatures())
+			signature->Startup();
+		}, true);
+
+	MSG msg;
+	while (GetMessageW(&msg, nullptr, 0, 0)) {
+		bool dispatchMessage = true;
+		for (const auto pWindow : Window::BaseWindow::GetAllOpenWindows()) {
+			const auto hWnd = pWindow->GetHandle();
+			const auto hAccel = pWindow->GetAcceleratorTable();
+			if (hAccel && (hWnd == msg.hwnd || IsChild(hWnd, msg.hwnd))) {
+				if (TranslateAcceleratorW(hWnd, hAccel, &msg)) {
+					dispatchMessage = false;
+					break;
+				}
+				if (IsDialogMessageW(hWnd, &msg)) {
+					dispatchMessage = false;
+					break;
+				}
+			}
+		}
+		if (dispatchMessage) {
+			TranslateMessage(&msg);
+			DispatchMessageW(&msg);
 		}
 	}
-	if (s_bFreeLibraryAndExitThread)
-		FreeLibraryAndExitThread(g_hInstance, 0);
+}
+
+int App::App::Unload() {
+	if (s_bUnloadDisabled)
+		throw std::runtime_error("Unloading is currently disabled.");
+
+	if (GetWindowLongPtrW(m_pImpl->m_hGameMainWindow, GWLP_WNDPROC) != m_pImpl->m_overridenGameMainWndProc)
+		throw std::runtime_error("Something has hooked the game process after XivAlexander, so you cannot unload XivAlexander until that other thing has been unloaded.");
+
+	if (m_pImpl->m_trayWindow)
+		SendMessage(m_pImpl->m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
 	return 0;
 }
 
-BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved) {
-	g_hInstance = hinstDLL;
-	switch (fdwReason) {
-		case DLL_PROCESS_ATTACH:
-			break;
-	}
-	return TRUE;
+void App::App::SetDisableUnloading(bool v) {
+	s_bUnloadDisabled = v;
 }
 
-extern "C" __declspec(dllexport) int __stdcall LoadXivAlexander(void* lpReserved) {
-	if (App::App::GetInstance())
-		return 0;
-	try {
-		Utils::Win32::Closeable::Handle hThread(CreateThread(nullptr, 0, DllThread, g_hInstance, 0, nullptr),
-			Utils::Win32::Closeable::Handle::Null,
-			"LoadXivAlexander/CreateThread");
-		return 0;
-	} catch (const std::exception& e) {
-		OutputDebugStringA(Utils::FormatString("LoadXivAlexander error: %s\n", e.what()).c_str());
-		return GetLastError();
-	}
-}
-
-extern "C" __declspec(dllexport) int __stdcall DisableUnloading(size_t bDisable) {
-	s_bUnloadDisabled = !!bDisable;
-	return 0;
-}
-
-extern "C" __declspec(dllexport) int __stdcall SetFreeLibraryAndExitThread(size_t use) {
-	s_bFreeLibraryAndExitThread = !!use;
-	return 0;
-}
-
-extern "C" __declspec(dllexport) int __stdcall UnloadXivAlexander(void* lpReserved) {
-	if (auto pApp = App::App::GetInstance()) {
-		try {
-			pApp->Unload();
-		} catch (std::exception& e) {
-			MessageBoxW(nullptr, Utils::FromUtf8(Utils::FormatString("Unable to unload XivAlexander: %s", e.what())).c_str(), L"XivAlexander", MB_ICONERROR);
-		}
-		return 0;
-	}
-	return -1;
-}
-
-extern "C" __declspec(dllexport) int __stdcall ReloadConfiguration(void* lpReserved) {
-	if (App::App::GetInstance()) {
-		App::Config::Instance().Runtime.Reload(true);
-		App::Config::Instance().Game.Reload(true);
-	}
-	return 0;
+App::App* App::App::Instance() {
+	return s_pInstance;
 }

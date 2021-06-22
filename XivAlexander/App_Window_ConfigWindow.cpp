@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "App_Window_Config.h"
+#include "App_Window_ConfigWindow.h"
 #include "resource.h"
 
 constexpr int BaseFontSize = 11;
@@ -26,7 +26,7 @@ static WNDCLASSEXW WindowClass() {
 }
 
 App::Window::Config::Config(App::Config::BaseRepository* pRepository)
-	: Base(WindowClass(), L"Config", WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr)
+	: BaseWindow(WindowClass(), L"Config", WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr)
 	, m_pRepository(pRepository) {
 	m_hScintilla = CreateWindowExW(0, TEXT("Scintilla"), TEXT(""), WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
 		0, 0, 0, 0, m_hWnd, nullptr, g_hInstance, nullptr);
@@ -54,7 +54,7 @@ LRESULT App::Window::Config::OnNotify(const LPNMHDR nmhdr) {
 			ResizeMargin();
 		}
 	}
-	return Base::OnNotify(nmhdr);
+	return BaseWindow::OnNotify(nmhdr);
 }
 
 void App::Window::Config::Revert() {
@@ -127,7 +127,7 @@ LRESULT App::Window::Config::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			}
 			break;
 	}
-	return Base::WndProc(uMsg, wParam, lParam);
+	return BaseWindow::WndProc(uMsg, wParam, lParam);
 }
 
 void App::Window::Config::OnLayout(double zoom, double width, double height) {

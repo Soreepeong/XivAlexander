@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "resource.h"
-#include "App_Window_Config.h"
-#include "App_Window_Main.h"
+#include "App_App.h"
+#include "App_Window_ConfigWindow.h"
+#include "App_Window_MainWindow.h"
 #include "App_Network_SocketHook.h"
 
 static const auto WmTrayCallback = WM_APP + 1;
@@ -30,7 +31,7 @@ static WNDCLASSEXW WindowClass() {
 }
 
 App::Window::Main::Main(HWND hGameWnd, std::function<void()> unloadFunction)
-	: Base(WindowClass(), L"XivAlexander", WS_OVERLAPPEDWINDOW, WS_EX_TOPMOST, CW_USEDEFAULT, CW_USEDEFAULT, 480, 160, nullptr, nullptr)
+	: BaseWindow(WindowClass(), L"XivAlexander", WS_OVERLAPPEDWINDOW, WS_EX_TOPMOST, CW_USEDEFAULT, CW_USEDEFAULT, 480, 160, nullptr, nullptr)
 	, m_hGameWnd(hGameWnd)
 	, m_triggerUnload(std::move(unloadFunction))
 	, m_uTaskbarRestartMessage(RegisterWindowMessage(TEXT("TaskbarCreated")))
@@ -56,10 +57,10 @@ App::Window::Main::Main(HWND hGameWnd, std::function<void()> unloadFunction)
 
 	SetTimer(m_hWnd, TimerIdRepaint, 1000, nullptr);
 
-	m_cleanupList.emplace_back(App::Config::Instance().Runtime.ShowControlWindow.OnChangeListener([this](App::Config::ItemBase&) {
-		ShowWindow(m_hWnd, App::Config::Instance().Runtime.ShowControlWindow ? SW_SHOW : SW_HIDE);
+	m_cleanupList.emplace_back(::App::Config::Instance().Runtime.ShowControlWindow.OnChangeListener([this](::App::Config::ItemBase&) {
+		ShowWindow(m_hWnd, ::App::Config::Instance().Runtime.ShowControlWindow ? SW_SHOW : SW_HIDE);
 		}));
-	if (App::Config::Instance().Runtime.ShowControlWindow)
+	if (::App::Config::Instance().Runtime.ShowControlWindow)
 		ShowWindow(m_hWnd, SW_SHOW);
 
 	Network::SocketHook::Instance()->AddOnSocketFoundListener(this, [this](Network::SingleConnection&) {
@@ -86,11 +87,14 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		RepopulateMenu(GetMenu(m_hWnd));
 	} else if (uMsg == WM_COMMAND) {
 		if (!lParam) {
-			auto& config = App::Config::Instance().Runtime;
+			auto& config = ::App::Config::Instance().Runtime;
 			switch (LOWORD(wParam)) {
+				
 				case ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP:
 					config.AlwaysOnTop = !config.AlwaysOnTop;
 					return 0;
+
+					/***************************************************************/
 
 				case ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE:
 					config.UseHighLatencyMitigation = !config.UseHighLatencyMitigation;
@@ -108,10 +112,36 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					config.UseHighLatencyMitigationLogging = !config.UseHighLatencyMitigationLogging;
 					return 0;
 
-				case ID_TRAYMENU_REDUCEPACKETDELAY:
+					/***************************************************************/
+
+				case ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY:
 					config.ReducePacketDelay = !config.ReducePacketDelay;
 					return 0;
 
+				case ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES:
+					config.TakeOverLoopbackAddresses = !config.TakeOverLoopbackAddresses;
+					return 0;
+
+				case ID_TRAYMENU_NETWORKING_TAKEOVERPRIVATEADDRESSES:
+					config.TakeOverPrivateAddresses = !config.TakeOverPrivateAddresses;
+					return 0;
+
+				case ID_TRAYMENU_NETWORKING_TAKEOVERALLADDRESSES:
+					config.TakeOverAllAddresses = !config.TakeOverAllAddresses;
+					return 0;
+
+				case ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS:
+					config.TakeOverAllPorts = !config.TakeOverAllPorts;
+					return 0;
+
+				case ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS:
+					App::Instance()->QueueRunOnMessageLoop([]() {
+						Network::SocketHook::Instance()->ReleaseSockets();
+					}, true);
+					return 0;
+
+					/***************************************************************/
+					
 				case ID_TRAYMENU_USEALLIPCMESSAGELOGGER:
 					config.UseAllIpcMessageLogger = !config.UseAllIpcMessageLogger;
 					return 0;
@@ -136,23 +166,27 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					config.ShowControlWindow = !config.ShowControlWindow;
 					return 0;
 
-				case ID_TRAYMENU_UNLOADXIVALEXANDER:
-					m_triggerUnload();
-					return 0;
-
 				case ID_TRAYMENU_EDITRUNTIMECONFIGURATION:
 					if (m_runtimeConfigEditor && !m_runtimeConfigEditor->IsDestroyed())
 						SetFocus(m_runtimeConfigEditor->GetHandle());
 					else
-						m_runtimeConfigEditor = std::make_unique<Config>(&App::Config::Instance().Runtime);
+						m_runtimeConfigEditor = std::make_unique<Config>(&::App::Config::Instance().Runtime);
 					return 0;
 
 				case ID_TRAYMENU_EDITOPCODECONFIGURATION:
 					if (m_gameConfigEditor && !m_gameConfigEditor->IsDestroyed())
 						SetFocus(m_gameConfigEditor->GetHandle());
 					else
-						m_gameConfigEditor = std::make_unique<Config>(&App::Config::Instance().Game);
+						m_gameConfigEditor = std::make_unique<Config>(&::App::Config::Instance().Game);
 					return 0;
+
+					/***************************************************************/
+
+				case ID_TRAYMENU_UNLOADXIVALEXANDER:
+					m_triggerUnload();
+					return 0;
+
+					/***************************************************************/
 
 				case ID_VIEW_ALWAYSONTOP:
 				{
@@ -246,7 +280,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		EndPaint(m_hWnd, &ps);
 		return 0;
 	}
-	return Base::WndProc(uMsg, wParam, lParam);
+	return BaseWindow::WndProc(uMsg, wParam, lParam);
 }
 
 void App::Window::Main::OnDestroy() {
@@ -260,25 +294,32 @@ void App::Window::Main::OnDestroy() {
 	nid.hWnd = m_hWnd;
 	nid.uFlags = NIF_GUID;
 	Shell_NotifyIconW(NIM_DELETE, &nid);
-	Base::OnDestroy();
+	BaseWindow::OnDestroy();
 	PostQuitMessage(0);
 }
 
 void App::Window::Main::RepopulateMenu(HMENU hMenu) {
-	const auto& config = App::Config::Instance().Runtime;
+	const auto& config = ::App::Config::Instance().Runtime;
 
 	Utils::Win32::SetMenuState(hMenu, ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST);
+	
 	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP, config.AlwaysOnTop);
 	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE, config.UseHighLatencyMitigation);
 	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION, config.UseAutoAdjustingExtraDelay);
+	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION, config.UseLatencyCorrection);
 	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING, config.UseHighLatencyMitigationLogging);
+
+	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY, config.ReducePacketDelay);
+	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES, config.TakeOverLoopbackAddresses);
+	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERPRIVATEADDRESSES, config.TakeOverPrivateAddresses);
+	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERALLADDRESSES, config.TakeOverAllAddresses);
+	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS, config.TakeOverAllPorts);
+	
 	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_USEIPCTYPEFINDER, config.UseOpcodeFinder);
 	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_USEALLIPCMESSAGELOGGER, config.UseAllIpcMessageLogger);
 	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER, config.UseEffectApplicationDelayLogger);
 	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_SHOWCONTROLWINDOW, config.ShowControlWindow);
 	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_SHOWLOGGINGWINDOW, config.ShowLoggingWindow);
-	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION, config.UseLatencyCorrection);
-	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_REDUCEPACKETDELAY, config.ReducePacketDelay);
 }
 
 void App::Window::Main::RegisterTrayIcon() {

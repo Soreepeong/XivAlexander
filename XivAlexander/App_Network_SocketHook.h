@@ -49,6 +49,7 @@ namespace App::Network {
 		void AddOnSocketFoundListener(void* token, const std::function<void(SingleConnection&)>& cb);
 		void AddOnSocketGoneListener(void* token, const std::function<void(SingleConnection&)>& cb);
 		void RemoveListeners(void* token);
+		void ReleaseSockets();
 
 		[[nodiscard]] std::wstring Describe() const;
 	};

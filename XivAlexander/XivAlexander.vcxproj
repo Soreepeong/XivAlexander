@@ -134,7 +134,8 @@
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="App.cpp" />
+    <ClCompile Include="DllMain.cpp" />
+    <ClCompile Include="App_App.cpp" />
     <ClCompile Include="App_ConfigRepository.cpp" />
     <ClCompile Include="App_Feature_AnimationLockLatencyHandler.cpp" />
     <ClCompile Include="App_Feature_EffectApplicationDelayLogger.cpp" />
@@ -146,16 +147,17 @@
     <ClCompile Include="App_Network_Structures.cpp" />
     <ClCompile Include="App_Hooks.cpp" />
     <ClCompile Include="App_Signatures.cpp" />
-    <ClCompile Include="App_Window_Base.cpp" />
-    <ClCompile Include="App_Window_Config.cpp" />
-    <ClCompile Include="App_Window_Log.cpp" />
-    <ClCompile Include="App_Window_Main.cpp" />
+    <ClCompile Include="App_Window_BaseWindow.cpp" />
+    <ClCompile Include="App_Window_ConfigWindow.cpp" />
+    <ClCompile Include="App_Window_LogWindow.cpp" />
+    <ClCompile Include="App_Window_MainWindow.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="App_App.h" />
     <ClInclude Include="App_ConfigRepository.h" />
     <ClInclude Include="App_Feature_AnimationLockLatencyHandler.h" />
     <ClInclude Include="App_Feature_EffectApplicationDelayLogger.h" />
@@ -167,10 +169,10 @@
     <ClInclude Include="App_Network_Structures.h" />
     <ClInclude Include="App_Hooks.h" />
     <ClInclude Include="App_Signatures.h" />
-    <ClInclude Include="App_Window_Base.h" />
-    <ClInclude Include="App_Window_Config.h" />
-    <ClInclude Include="App_Window_Log.h" />
-    <ClInclude Include="App_Window_Main.h" />
+    <ClInclude Include="App_Window_BaseWindow.h" />
+    <ClInclude Include="App_Window_ConfigWindow.h" />
+    <ClInclude Include="App_Window_LogWindow.h" />
+    <ClInclude Include="App_Window_MainWindow.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>

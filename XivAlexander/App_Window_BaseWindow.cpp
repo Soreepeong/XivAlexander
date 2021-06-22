@@ -1,12 +1,12 @@
 #include "pch.h"
-#include "App_Window_Base.h"
+#include "App_Window_BaseWindow.h"
 
-static std::set<App::Window::Base*> s_allOpenWindows;
-const std::set<App::Window::Base*>& App::Window::Base::GetAllOpenWindows() {
+static std::set<App::Window::BaseWindow*> s_allOpenWindows;
+const std::set<App::Window::BaseWindow*>& App::Window::BaseWindow::GetAllOpenWindows() {
 	return s_allOpenWindows;
 }
 
-HWND App::Window::Base::InternalCreateWindow(const WNDCLASSEXW& wndclassex,
+HWND App::Window::BaseWindow::InternalCreateWindow(const WNDCLASSEXW& wndclassex,
 	_In_opt_ LPCWSTR lpWindowName,
 	_In_ DWORD dwStyle,
 	_In_ DWORD dwExStyle,
@@ -16,21 +16,21 @@ HWND App::Window::Base::InternalCreateWindow(const WNDCLASSEXW& wndclassex,
 	_In_ int nHeight,
 	_In_opt_ HWND hWndParent,
 	_In_opt_ HMENU hMenu,
-	_In_ Base* pBase) {
+	_In_ BaseWindow* pBase) {
 	WNDCLASSEXW c = wndclassex;
 	if (c.lpfnWndProc)
 		throw std::runtime_error("lpfnWndProc cannot be not null");
 
 	c.lpfnWndProc = [](HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT {
-		Base* pBase;
+		BaseWindow* pBase;
 
 		if (uMsg == WM_NCCREATE) {
 			const auto cs = reinterpret_cast<LPCREATESTRUCTW>(lParam);
-			pBase = static_cast<Base*>(cs->lpCreateParams);
+			pBase = static_cast<BaseWindow*>(cs->lpCreateParams);
 			pBase->m_hWnd = hWnd;
 			SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(cs->lpCreateParams));
 		} else {
-			pBase = reinterpret_cast<Base*>(GetWindowLongPtrW(hWnd, GWLP_USERDATA));
+			pBase = reinterpret_cast<BaseWindow*>(GetWindowLongPtrW(hWnd, GWLP_USERDATA));
 		}
 
 		if (!pBase)
@@ -50,7 +50,7 @@ HWND App::Window::Base::InternalCreateWindow(const WNDCLASSEXW& wndclassex,
 	return hWnd;
 }
 
-App::Window::Base::Base(const WNDCLASSEXW& wndclassex,
+App::Window::BaseWindow::BaseWindow(const WNDCLASSEXW& wndclassex,
 	_In_opt_ LPCWSTR lpWindowName,
 	_In_ DWORD dwStyle,
 	_In_ DWORD dwExStyle,
@@ -65,29 +65,29 @@ App::Window::Base::Base(const WNDCLASSEXW& wndclassex,
 	s_allOpenWindows.insert(this);
 }
 
-App::Window::Base::~Base() {
+App::Window::BaseWindow::~BaseWindow() {
 	s_allOpenWindows.erase(this);
 	Destroy();
 	UnregisterClassW(m_windowClass.lpszClassName, g_hInstance);
 }
 
-HWND App::Window::Base::GetHandle() const {
+HWND App::Window::BaseWindow::GetHandle() const {
 	return m_hWnd;
 }
 
-bool App::Window::Base::IsDestroyed() const {
+bool App::Window::BaseWindow::IsDestroyed() const {
 	return m_bDestroyed;
 }
 
-HACCEL App::Window::Base::GetAcceleratorTable() const {
+HACCEL App::Window::BaseWindow::GetAcceleratorTable() const {
 	return NULL;
 }
 
-LRESULT App::Window::Base::RunOnUiThreadWait(const std::function<LRESULT()>& fn) {
+LRESULT App::Window::BaseWindow::RunOnUiThreadWait(const std::function<LRESULT()>& fn) {
 	return SendMessage(m_hWnd, AppMessageRunOnUiThread, 0, reinterpret_cast<LPARAM>(&fn));
 }
 
-auto App::Window::Base::RunOnUiThread(std::function<void()> fn, bool immediateIfNoWindow) -> bool {
+auto App::Window::BaseWindow::RunOnUiThread(std::function<void()> fn, bool immediateIfNoWindow) -> bool {
 	if (!m_hWnd) {
 		if (immediateIfNoWindow)
 			fn();
@@ -101,7 +101,7 @@ auto App::Window::Base::RunOnUiThread(std::function<void()> fn, bool immediateIf
 	return true;
 }
 
-double App::Window::Base::GetZoom() const {
+double App::Window::BaseWindow::GetZoom() const {
 	try {
 		const auto hMonitor = MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST);
 		UINT newDpiX = 96;
@@ -130,7 +130,7 @@ double App::Window::Base::GetZoom() const {
 	}
 }
 
-LRESULT App::Window::Base::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
+LRESULT App::Window::BaseWindow::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
 		case AppMessageRunOnUiThread:
 		{
@@ -176,23 +176,23 @@ LRESULT App::Window::Base::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	return DefWindowProcW(m_hWnd, uMsg, wParam, lParam);
 }
 
-void App::Window::Base::OnLayout(double zoom, double width, double height) {
+void App::Window::BaseWindow::OnLayout(double zoom, double width, double height) {
 }
 
-LRESULT App::Window::Base::OnNotify(const LPNMHDR nmhdr) {
+LRESULT App::Window::BaseWindow::OnNotify(const LPNMHDR nmhdr) {
 	return DefWindowProcW(m_hWnd, WM_NOTIFY, nmhdr->idFrom, reinterpret_cast<LPARAM>(nmhdr));
 }
 
-LRESULT App::Window::Base::OnSysCommand(WPARAM commandId, short xPos, short yPos) {
+LRESULT App::Window::BaseWindow::OnSysCommand(WPARAM commandId, short xPos, short yPos) {
 	return DefWindowProcW(m_hWnd, WM_SYSCOMMAND, commandId, MAKELPARAM(xPos, yPos));
 }
 
-void App::Window::Base::OnDestroy() {
+void App::Window::BaseWindow::OnDestroy() {
 	OnDestroyListener();
 	m_bDestroyed = true;
 }
 
-void App::Window::Base::Destroy() {
+void App::Window::BaseWindow::Destroy() {
 	if (m_bDestroyed)
 		return;
 	m_bDestroyed = true;

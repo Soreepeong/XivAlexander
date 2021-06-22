@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "Utils__Misc.h"
 
+#include "Utils_Win32.h"
+#include "Utils__String.h"
+
 SYSTEMTIME Utils::EpochToLocalSystemTime(uint64_t epochMilliseconds) {
 	union {
 		FILETIME ft;
@@ -52,4 +55,107 @@ int Utils::CompareSockaddr(const void* x, const void* y) {
 		if ((n = sockaddr_cmp_helper(addr1->sin6_scope_id, addr2->sin6_scope_id))) return n;
 	}
 	return 0;
+}
+
+in_addr Utils::ParseIp(const std::string& s) {
+	in_addr addr{};
+	switch (inet_pton(AF_INET, &s[0], &addr)) {
+		case 1:
+			return addr;
+		case 0:
+			throw std::runtime_error(FormatString("\"%s\" is an invalid IP address.", s.c_str()).c_str());
+		case -1:
+			throw Win32::Error(WSAGetLastError(), "Failed to parse IP address \"%s\".", s.c_str());
+		default:
+			mark_unreachable_code();
+	}
+}
+
+uint16_t Utils::ParsePort(const std::string& s) {
+	size_t i = 0;
+	const auto parsed = std::stoul(s, &i);
+	if (parsed > UINT16_MAX)
+		throw std::out_of_range("Not in uint16 range");
+	if (i != s.length())
+		throw std::out_of_range("Incomplete conversion");
+	return static_cast<uint16_t>(parsed);
+}
+
+std::vector<std::pair<uint32_t, uint32_t>> Utils::ParseIpRange(const std::string& s, bool allowAll, bool allowPrivate, bool allowLoopback) {
+	std::vector<std::pair<uint32_t, uint32_t>> result;
+	for (auto& range : StringSplit(s, ",")) {
+		try {
+			range = StringTrim(range);
+			if (range.empty())
+				continue;
+			uint32_t startIp, endIp;
+			if (size_t pos; (pos = range.find('/')) != std::string::npos) {
+				const auto subnet = std::stoi(StringTrim(range.substr(pos + 1)));
+				startIp = endIp = ntohl(ParseIp(range.substr(0, pos)).s_addr);
+				if (subnet == 0) {
+					startIp = 0;
+					endIp = 0xFFFFFFFFUL;
+				} else if (subnet < 32) {
+					startIp = (startIp & ~((1 << (32 - subnet)) - 1));
+					endIp = (((endIp >> (32 - subnet)) + 1) << (32 - subnet)) - 1;
+				}
+			} else {
+				auto ips = StringSplit(range, "-");
+				if (ips.size() > 2)
+					throw std::format_error("Too many items in range specification.");
+				startIp = ntohl(ParseIp(ips[0]).s_addr);
+				endIp = ips.size() == 2 ? ntohl(ParseIp(ips[1]).s_addr) : startIp;
+				if (startIp > endIp) {
+					const auto t = startIp;
+					startIp = endIp;
+					endIp = t;
+				}
+			}
+			result.emplace_back(startIp, endIp);
+		} catch (std::exception& e) {
+			throw std::format_error(FormatString("Invalid IP range item \"%s\": %s. It must be in the form of \"0.0.0.0\", \"0.0.0.0-255.255.255.255\", or \"127.0.0.0/8\", delimited by comma(,).", range.c_str(), e.what()));
+		}
+	}
+	if (!result.empty()) {
+		if (allowAll)
+			result.clear();
+		else {
+			if (allowLoopback)
+				result.emplace_back(0x7F000000U, 0x7FFFFFFFU);  // 127.0.0.0 ~ 127.255.255.255
+			if (allowPrivate) {
+				result.emplace_back(0x0A000000U, 0x0AFFFFFFU);  // 10.0.0.0 ~ 10.255.255.255
+				result.emplace_back(0xA9FE0000U, 0xA9FEFFFFU);  // 169.254.0.0 ~ 169.254.255.255
+				result.emplace_back(0xAC100000U, 0xAC1FFFFFU);  // 172.16.0.0 ~ 172.31.255.255
+				result.emplace_back(0xC0A80000U, 0xC0A8FFFFU);  // 192.168.0.0 ~ 192.168.255.255
+			}
+		}
+	}
+	return result;
+}
+
+std::vector<std::pair<uint32_t, uint32_t>> Utils::ParsePortRange(const std::string& s, bool allowAll) {
+	std::vector<std::pair<uint32_t, uint32_t>> result;
+	for (auto range : StringSplit(s, ",")) {
+		try {
+			range = StringTrim(range);
+			if (range.empty())
+				continue;
+			auto ports = StringSplit(range, "-");
+			if (ports.size() > 2)
+				throw std::format_error("Too many items in range specification.");
+			uint32_t start = ParsePort(ports[0]);
+			uint32_t end = ports.size() == 2 ? ParsePort(ports[1]) : start;
+			if (start > end) {
+				const auto t = start;
+				start = end;
+				end = t;
+			}
+			result.emplace_back(start, end);
+		} catch (std::exception& e) {
+			throw std::format_error(FormatString("Invalid port range item \"%s\": %s. It must be in the form of \"0-65535\" or single item, delimited by comma(,).", range.c_str(), e.what()));
+		}
+	}
+	if (allowAll)
+		result.clear();
+	return result;
 }

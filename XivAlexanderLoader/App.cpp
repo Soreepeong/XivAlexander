@@ -259,27 +259,26 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 	if (loaderAction == LoaderAction::Ignore)
 		return;
 
-	rpModule = W32Modules::FindModuleAddress(hProcess, dllPath);
 	if (loaderAction == LoaderAction::Unload && !rpModule)
 		return;
 
-	if (!rpModule)
-		rpModule = W32Modules::InjectDll(hProcess, dllPath);
+	rpModule = W32Modules::InjectDll(hProcess, dllPath);
+	auto unloadRequired = false;
+	const auto cleanup = Utils::CallOnDestruction([&hProcess, rpModule, &unloadRequired]() {
+		if (unloadRequired)
+			W32Modules::CallRemoteFunction(hProcess, UnloadXivAlexander, nullptr, "UnloadXivAlexander");
+		W32Modules::CallRemoteFunction(hProcess, FreeLibrary, rpModule, "FreeLibrary");
+	});
 
-	DWORD loadResult = 0;
 	if (loaderAction == LoaderAction::Load) {
-		loadResult = W32Modules::CallRemoteFunction(hProcess, LoadXivAlexander, nullptr, "LoadXivAlexander");
-		if (loadResult != 0) {
-			loaderAction = LoaderAction::Unload;
-		}
+		unloadRequired = true;
+		if (const auto loadResult = W32Modules::CallRemoteFunction(hProcess, LoadXivAlexander, nullptr, "LoadXivAlexander"); loadResult != 0)
+			throw std::runtime_error(Utils::FormatString("Failed to start the addon: exit code %d", loadResult).c_str());
+		else
+			unloadRequired = false;
+	} else if (loaderAction == LoaderAction::Unload) {
+		unloadRequired = true;
 	}
-	if (loaderAction == LoaderAction::Unload) {
-		if (W32Modules::CallRemoteFunction(hProcess, UnloadXivAlexander, nullptr, "UnloadXivAlexander")) {
-			W32Modules::CallRemoteFunction(hProcess, FreeLibrary, rpModule, "FreeLibrary");
-		}
-	}
-	if (loadResult)
-		throw std::runtime_error(Utils::FormatString("Failed to start the addon: exit code %d", loadResult).c_str());
 }
 
 int WINAPI wWinMain(

@@ -1,0 +1,80 @@
+#include "pch.h"
+#include "App_App.h"
+#include "App_Misc_FreeGameMutex.h"
+
+HINSTANCE g_hInstance;
+
+static DWORD WINAPI XivAlexanderThreadBody(void*) {
+	{
+		App::Misc::Logger logger;
+
+		Utils::Win32::SetThreadDescription(GetCurrentThread(), L"XivAlexander::XivAlexanderThread");
+		
+		try {
+			App::Misc::FreeGameMutex::FreeGameMutex();
+		} catch (std::exception& e) {
+			App::Misc::Logger::GetLogger().Format<App::LogLevel::Warning>(App::LogCategory::General, "Failed to free game mutex: %s", e.what());
+		}
+		
+		try {
+			App::App app;
+			logger.Log(App::LogCategory::General, u8"XivAlexander initialized.");
+			app.Run();
+		} catch (const std::exception& e) {
+			if (e.what())
+				logger.Format<App::LogLevel::Error>(App::LogCategory::General, u8"Error: %s", e.what());
+		}
+	}
+	FreeLibraryAndExitThread(g_hInstance, 0);
+}
+
+BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
+	g_hInstance = hInstance;
+	return TRUE;
+}
+
+extern "C" __declspec(dllexport) int __stdcall LoadXivAlexander(void* lpReserved) {
+	if (App::App::Instance())
+		return 0;
+	auto bLibraryLoaded = false;
+	try {
+		LoadLibraryW(Utils::Win32::Modules::PathFromModule(g_hInstance).c_str());
+		bLibraryLoaded = true;
+		
+		Utils::Win32::Closeable::Handle hThread(CreateThread(nullptr, 0, XivAlexanderThreadBody, nullptr, 0, nullptr),
+			Utils::Win32::Closeable::Handle::Null,
+			"LoadXivAlexander/CreateThread");
+		return 0;
+	} catch (const std::exception& e) {
+		OutputDebugStringA(Utils::FormatString("LoadXivAlexander error: %s\n", e.what()).c_str());
+		const auto lastError = GetLastError();
+		if (bLibraryLoaded)
+			FreeLibrary(g_hInstance);
+		return lastError;
+	}
+}
+
+extern "C" __declspec(dllexport) int __stdcall DisableUnloading(size_t bDisable) {
+	App::App::SetDisableUnloading(bDisable);
+	return 0;
+}
+
+extern "C" __declspec(dllexport) int __stdcall UnloadXivAlexander(void* lpReserved) {
+	if (auto pApp = App::App::Instance()) {
+		try {
+			pApp->Unload();
+		} catch (std::exception& e) {
+			MessageBoxW(nullptr, Utils::FromUtf8(Utils::FormatString("Unable to unload XivAlexander: %s", e.what())).c_str(), L"XivAlexander", MB_ICONERROR);
+		}
+		return 0;
+	}
+	return -1;
+}
+
+extern "C" __declspec(dllexport) int __stdcall ReloadConfiguration(void* lpReserved) {
+	if (App::App::Instance()) {
+		App::Config::Instance().Runtime.Reload(true);
+		App::Config::Instance().Game.Reload(true);
+	}
+	return 0;
+}

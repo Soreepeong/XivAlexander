@@ -115,13 +115,20 @@ namespace App {
 			
 			// Miscellaneous configuration
 			Item<bool> AlwaysOnTop = CreateConfigItem(this, "AlwaysOnTop", false);
+			
 			Item<bool> UseHighLatencyMitigation = CreateConfigItem(this, "UseHighLatencyMitigation", true);
-			Item<bool> UseHighLatencyMitigationLogging = CreateConfigItem(this, "UseHighLatencyMitigationLogging", true);
-			Item<bool> ReducePacketDelay = CreateConfigItem(this, "ReducePacketDelay", true);
+			Item<bool> UseAutoAdjustingExtraDelay = CreateConfigItem(this, "UseAutoAdjustingExtraDelay", true);
 			Item<bool> UseLatencyCorrection = CreateConfigItem(this, "UseLatencyCorrection", true);
+			Item<bool> UseHighLatencyMitigationLogging = CreateConfigItem(this, "UseHighLatencyMitigationLogging", true);
+
+			Item<bool> ReducePacketDelay = CreateConfigItem(this, "ReducePacketDelay", true);
+			Item<bool> TakeOverLoopbackAddresses = CreateConfigItem(this, "TakeOverLoopback", false);
+			Item<bool> TakeOverPrivateAddresses = CreateConfigItem(this, "TakeOverPrivateAddresses", false);
+			Item<bool> TakeOverAllAddresses = CreateConfigItem(this, "TakeOverAllAddresses", false);
+			Item<bool> TakeOverAllPorts = CreateConfigItem(this, "TakeOverAllPorts", false);
+			
 			Item<bool> UseOpcodeFinder = CreateConfigItem(this, "UseOpcodeFinder", false);
 			Item<bool> UseEffectApplicationDelayLogger = CreateConfigItem(this, "UseEffectApplicationDelayLogger", false);
-			Item<bool> UseAutoAdjustingExtraDelay = CreateConfigItem(this, "UseAutoAdjustingExtraDelay", true);
 			Item<bool> ShowLoggingWindow = CreateConfigItem(this, "ShowLoggingWindow", true);
 			Item<bool> ShowControlWindow = CreateConfigItem(this, "ShowControlWindow", true);
 			Item<bool> UseAllIpcMessageLogger = CreateConfigItem(this, "UseAllIpcMessageLogger", false);
