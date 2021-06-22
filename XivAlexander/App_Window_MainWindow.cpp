@@ -182,6 +182,10 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
 					/***************************************************************/
 
+				case ID_TRAYMENU_CHECKFORUPDATES:
+					App::Instance()->CheckUpdates();
+					return 0;
+
 				case ID_TRAYMENU_UNLOADXIVALEXANDER:
 					m_triggerUnload();
 					return 0;

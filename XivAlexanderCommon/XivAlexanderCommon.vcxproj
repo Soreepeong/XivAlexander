@@ -123,7 +123,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>version.lib;Ws2_32.lib;crypt32.lib</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;Wldap32.lib;Crypt32.lib;Iphlpapi.lib;Shlwapi.lib;version.lib</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
     </Lib>
   </ItemDefinitionGroup>
@@ -150,7 +150,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>version.lib;Ws2_32.lib;crypt32.lib</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;Wldap32.lib;Crypt32.lib;Iphlpapi.lib;Shlwapi.lib;version.lib</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
     </Lib>
   </ItemDefinitionGroup>

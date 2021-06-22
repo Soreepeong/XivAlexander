@@ -30,6 +30,10 @@
 
 #define ZLIB_CONST
 #include <zlib.h>
+#include <nlohmann/json.hpp>
+#include <curlpp/cURLpp.hpp>
+#include <curlpp/Easy.hpp>
+#include <curlpp/Options.hpp>
 
 static DECLSPEC_NORETURN void mark_unreachable_code() {}
 

@@ -308,6 +308,19 @@ int App::App::Unload() {
 	return 0;
 }
 
+void App::App::CheckUpdates() {
+	try {
+		auto [selfFileVersion, selfProductVersion] = Utils::Win32::FormatModuleVersionString(g_hInstance);
+		auto up = XivAlex::CheckUpdates();
+		if (up.Name == "v" + selfProductVersion) {
+			Misc::Logger::GetLogger().Format(LogCategory::General, "No updates available (most recent version is {}, released at {:%Ec})", up.Name, up.PublishDate);
+			return;
+		}
+	} catch (const std::exception& e) {
+		Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "Failed to check for updates: {}", e.what());
+	}
+}
+
 void App::App::SetDisableUnloading(bool v) {
 	s_bUnloadDisabled = v;
 }

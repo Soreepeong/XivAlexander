@@ -107,6 +107,7 @@ BEGIN
         MENUITEM "Edit &Opcode Configuration",  ID_TRAYMENU_EDITOPCODECONFIGURATION
         MENUITEM "&Reload Configuration",       ID_TRAYMENU_RELOADCONFIGURATION
         MENUITEM SEPARATOR
+        MENUITEM "Check for U&pdates",          ID_TRAYMENU_CHECKFORUPDATES
         MENUITEM "&Unload XivAlexander",        ID_TRAYMENU_UNLOADXIVALEXANDER
     END
     POPUP "View"

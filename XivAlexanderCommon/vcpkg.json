@@ -3,9 +3,8 @@
   "version-string": "_",
   "builtin-baseline": "751fc199af8d33eb300af5edbd9e3b77c48f0bca",
   "dependencies": [
-    {
-      "name": "zlib",
-      "version>=": "1.2.11"
-    }
+    "zlib",
+    "nlohmann-json",
+    "curlpp"
   ]
 }

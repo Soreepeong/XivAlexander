@@ -50,15 +50,15 @@ namespace App::Misc {
 		Utils::ListenerManager<Logger, void, const LogItem&> OnNewLogItem;
 
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
-		void Format(LogCategory category, const _Printf_format_string_ char* format, Args ... args) {
-			Log(category, Utils::FormatString(format, std::forward<Args>(args)...), Level);
+		void Format(LogCategory category, const char* format, Args ... args) {
+			Log(category, std::format(format, std::forward<Args>(args)...), Level);
 		}
 
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
-		void Format(LogCategory category, const _Printf_format_string_ char8_t* format, Args ... args) {
-			Log(category, Utils::FormatString(reinterpret_cast<const char*>(format), std::forward<Args>(args)...), Level);
+		void Format(LogCategory category, const char8_t* format, Args ... args) {
+			Log(category, std::format(reinterpret_cast<const char*>(format), std::forward<Args>(args)...), Level);
 		}
-
+		
 		static Logger& GetLogger();
 	};
 }

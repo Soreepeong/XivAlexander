@@ -141,3 +141,28 @@ std::tuple<std::wstring, std::wstring> XivAlex::ResolveGameReleaseRegion(const s
 		gameVer
 	);
 }
+
+XivAlex::VersionInformation XivAlex::CheckUpdates() {
+	std::ostringstream os;
+	
+	curlpp::Easy req;
+	req.setOpt(curlpp::options::Url("https://api.github.com/repos/Soreepeong/XivAlexander/releases/latest"));
+	req.setOpt(curlpp::options::UserAgent("Mozilla/5.0"));
+	os << req;
+	const auto parsed = nlohmann::json::parse(os.str());
+	const auto item = parsed.at("assets")[0];
+
+	std::istringstream in(parsed.at("published_at").get<std::string>());
+	std::chrono::sys_seconds tp;
+	from_stream(in, "%FT%TZ", tp);
+	if (in.fail())
+		throw std::format_error(Utils::FormatString("Failed to parse datetime string \"%s\"", in.str().c_str()));
+	
+	return {
+		.Name = parsed.at("name").get<std::string>(),
+		.Body = parsed.at("body").get<std::string>(),
+		.PublishDate = std::chrono::zoned_time(std::chrono::current_zone(), tp),
+		.DownloadLink = item.at("browser_download_url").get<std::string>(),
+		.DownloadSize = item.at("size").get<size_t>(),
+	};
+}

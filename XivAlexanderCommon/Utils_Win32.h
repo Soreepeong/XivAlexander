@@ -27,7 +27,7 @@ namespace Utils::Win32 {
 	BOOL EnableTokenPrivilege(HANDLE hToken, LPCTSTR Privilege, BOOL bEnablePrivilege);
 
 	void AddDebugPrivilege();
-
+	
 	class Error : public std::runtime_error {
 		const int m_nErrorCode;
 
