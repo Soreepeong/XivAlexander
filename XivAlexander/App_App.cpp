@@ -308,13 +308,49 @@ int App::App::Unload() {
 	return 0;
 }
 
-void App::App::CheckUpdates() {
+void App::App::CheckUpdates(bool silent) {
 	try {
-		auto [selfFileVersion, selfProductVersion] = Utils::Win32::FormatModuleVersionString(g_hInstance);
-		auto up = XivAlex::CheckUpdates();
-		if (up.Name == "v" + selfProductVersion) {
-			Misc::Logger::GetLogger().Format(LogCategory::General, "No updates available (most recent version is {}, released at {:%Ec})", up.Name, up.PublishDate);
-			return;
+		const auto [selfFileVersion, selfProductVersion] = Utils::Win32::FormatModuleVersionString(g_hInstance);
+		const auto up = XivAlex::CheckUpdates();
+		const auto remoteS = Utils::StringSplit(up.Name.substr(1), ".");
+		const auto localS = Utils::StringSplit(selfProductVersion, ".");
+		std::vector<int> remote, local;
+		for (const auto& s : remoteS)
+			remote.emplace_back(std::stoi(s));
+		for (const auto& s : localS)
+			local.emplace_back(std::stoi(s));
+		if (local.size() != 4 || remote.size() != 4)
+			throw std::runtime_error("Invalid format specification");
+		if (local > remote) {
+			const auto s = std::format("No updates available; you have the most recent version {}.{}.{}.{}; server version is {}.{}.{}.{} released at {:%Ec}",
+				local[0], local[1], local[2], local[3], remote[0], remote[1], remote[2], remote[3], up.PublishDate);
+			Misc::Logger::GetLogger().Log(LogCategory::General, s);
+			if (!silent)
+				MessageBoxW(nullptr, Utils::FromUtf8(s).c_str(), L"XivAlexander", MB_OK);
+		} else if (local == remote) {
+			const auto s = std::format("No updates available; you have the most recent version {}.{}.{}.{}, released at {:%Ec}", local[0], local[1], local[2], local[3], up.PublishDate);
+			Misc::Logger::GetLogger().Log(LogCategory::General, s);
+			if (!silent)
+				MessageBoxW(nullptr, Utils::FromUtf8(s).c_str(), L"XivAlexander", MB_OK);
+		} else {
+			const auto s = std::format("New version {}.{}.{}.{}, released at {:%Ec}, is available. Local version is {}.{}.{}.{}", remote[0], remote[1], remote[2], remote[3], up.PublishDate, local[0], local[1], local[2], local[3]);
+			Misc::Logger::GetLogger().Log(LogCategory::General, s);
+			if (!silent) {
+				switch (Utils::Win32::MessageBoxF(nullptr, MB_YESNOCANCEL, L"XivAlexander", std::format(
+					L"{}\n\n"
+					L"Press Yes to check out the changelog,\n"
+					L"Press No to download the file right now, or\n"
+					L"Press Cancel to do nothing.",
+					s
+				).c_str())) {
+					case IDYES:
+						ShellExecuteW(nullptr, L"open", L"https://github.com/Soreepeong/XivAlexander/releases", nullptr, nullptr, SW_SHOW);
+						break;
+					case IDNO:
+						ShellExecuteW(nullptr, L"open", Utils::FromUtf8(up.DownloadLink).c_str(), nullptr, nullptr, SW_SHOW);
+						break;
+				}
+			}
 		}
 	} catch (const std::exception& e) {
 		Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "Failed to check for updates: {}", e.what());

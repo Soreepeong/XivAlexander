@@ -19,7 +19,7 @@ namespace App {
 		void QueueRunOnMessageLoop(std::function<void()> f, bool wait = false);
 		int Unload();
 
-		void CheckUpdates();
+		void CheckUpdates(bool silent = true);
 
 		static void SetDisableUnloading(bool);
 		static App* Instance();
