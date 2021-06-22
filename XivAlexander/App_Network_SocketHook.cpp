@@ -627,6 +627,8 @@ public:
 			case TestRemoteAddressResult::RegisterIgnore:
 				m_nonGameSockets.emplace(s);
 				return nullptr;
+			case TestRemoteAddressResult::TakeOver:
+				break;
 		}
 		m_sockets.emplace(s, std::make_unique<SingleConnection>(s));
 		const auto ptr = m_sockets.at(s).get();
