@@ -10,6 +10,6 @@
 	"S2C_ActorControl": "0x0217",
 	"S2C_ActorControlSelf": "0x03b3",
 	"S2C_AddStatusEffect": "0x00a6",
-	"Server_IpRange": "183.111.189.0/24, 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16",
+	"Server_IpRange": "183.111.189.0/24",
 	"Server_PortRange": "1025-65535"
 }
