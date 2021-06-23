@@ -153,6 +153,7 @@ public:
 								if (!m_pendingActions.empty()) {
 									m_latestSuccessfulRequest = m_pendingActions.front();
 									m_latestSuccessfulRequest.ResponseTimestamp = now;
+									m_latestSuccessfulRequest.OriginalWaitTime = originalWaitTime;
 
 									// 100ms animation lock after cast ends stays. Modify animation lock duration for instant actions only.
 									// Since no other action is in progress right before the cast ends, we can safely replace the animation lock with the latest after-cast lock.
@@ -161,7 +162,6 @@ public:
 										conn.ApplicationLatency.AddValue(rtt);
 										description << std::format(" rtt={}ms", rtt);
 										m_lastAnimationLockEndsAt += originalWaitTime + ResolveAdjustedExtraDelay(rtt, description);
-										m_latestSuccessfulRequest.OriginalWaitTime = originalWaitTime;
 										waitTime = m_lastAnimationLockEndsAt - now;
 									}
 									m_pendingActions.pop_front();
