@@ -30,6 +30,7 @@ namespace App::Network {
 		
 		Utils::NumericStatisticsTracker NetworkLatency{ 10, 0 };
 		Utils::NumericStatisticsTracker ApplicationLatency{ 10, 0 };
+		Utils::NumericStatisticsTracker ExaggeratedNetworkLatency{ 10, INT64_MAX, 30000 };
 	};
 
 	class SocketHook {

@@ -1,17 +1,30 @@
 #include "pch.h"
 #include "Utils_NumericStatisticsTracker.h"
 
-Utils::NumericStatisticsTracker::NumericStatisticsTracker(size_t trackCount, int64_t emptyValue)
+Utils::NumericStatisticsTracker::NumericStatisticsTracker(size_t trackCount, int64_t emptyValue, uint64_t maxAge)
 	: m_trackCount(trackCount)
-	, m_emptyValue(emptyValue) {
+	, m_emptyValue(emptyValue)
+	, m_maxAge(maxAge) {
 }
 
 Utils::NumericStatisticsTracker::~NumericStatisticsTracker() = default;
 
 void Utils::NumericStatisticsTracker::AddValue(int64_t v) {
 	m_values.push_back(v);
-	while (m_values.size() > m_trackCount)
+	m_expiryTimestamp.push_back(m_maxAge == UINT64_MAX ? UINT64_MAX : GetTickCount64() + m_maxAge);
+	while (m_values.size() > m_trackCount) {
 		m_values.pop_front();
+		m_expiryTimestamp.pop_front();
+	}
+}
+
+const std::deque<int64_t>& Utils::NumericStatisticsTracker::RemoveExpired() const {
+	const auto now = GetTickCount64();
+	while (!m_expiryTimestamp.empty() && m_expiryTimestamp.front() < now) {
+		m_values.pop_front();
+		m_expiryTimestamp.pop_front();
+	}
+	return m_values;
 }
 
 int64_t Utils::NumericStatisticsTracker::InvalidValue() const {
@@ -19,47 +32,52 @@ int64_t Utils::NumericStatisticsTracker::InvalidValue() const {
 }
 
 int64_t Utils::NumericStatisticsTracker::Min() const {
-	if (m_values.empty())
+	const auto vals = RemoveExpired();
+	if (vals.empty())
 		return m_emptyValue;
-	return *std::min_element(m_values.begin(), m_values.end());
+	return *std::min_element(vals.begin(), vals.end());
 }
 
 int64_t Utils::NumericStatisticsTracker::Max() const {
-	if (m_values.empty())
+	const auto vals = RemoveExpired();
+	if (vals.empty())
 		return m_emptyValue;
-	return *std::max_element(m_values.begin(), m_values.end());
+	return *std::max_element(vals.begin(), vals.end());
 }
 
 int64_t Utils::NumericStatisticsTracker::Mean() const {
-	if (m_values.empty())
+	const auto vals = RemoveExpired();
+	if (vals.empty())
 		return m_emptyValue;
-	return static_cast<int64_t>(std::round(std::accumulate(m_values.begin(), m_values.end(), 0.0) / m_values.size()));
+	return static_cast<int64_t>(std::round(std::accumulate(vals.begin(), vals.end(), 0.0) / vals.size()));
 }
 
 int64_t Utils::NumericStatisticsTracker::Median() const {
-	if (m_values.empty())
+	const auto vals = RemoveExpired();
+	if (vals.empty())
 		return m_emptyValue;
 
-	std::vector<int64_t> sorted(m_values.size());
-	std::partial_sort_copy(m_values.begin(), m_values.end(), sorted.begin(), sorted.end());
+	std::vector<int64_t> sorted(vals.size());
+	std::partial_sort_copy(vals.begin(), vals.end(), sorted.begin(), sorted.end());
 
 	if (sorted.size() % 2 == 0) {
 		// even
-		return (sorted[m_values.size() / 2] + sorted[m_values.size() / 2 - 1]) / 2;
+		return (sorted[vals.size() / 2] + sorted[vals.size() / 2 - 1]) / 2;
 	} else {
 		// odd
-		return sorted[m_values.size() / 2];
+		return sorted[vals.size() / 2];
 	}
 }
 
 int64_t Utils::NumericStatisticsTracker::Deviation() const {
-	if (m_values.size() < 2)
+	const auto vals = RemoveExpired();
+	if (vals.size() < 2)
 		return m_emptyValue;
 
-	const auto mean = std::accumulate(m_values.begin(), m_values.end(), 0.0) / m_values.size();
+	const auto mean = std::accumulate(vals.begin(), vals.end(), 0.0) / vals.size();
 
-	std::vector<double> diff(m_values.size());
-	std::transform(m_values.begin(), m_values.end(), diff.begin(), [mean](int64_t x) { return static_cast<double>(x) - mean; });
+	std::vector<double> diff(vals.size());
+	std::transform(vals.begin(), vals.end(), diff.begin(), [mean](int64_t x) { return static_cast<double>(x) - mean; });
 	const auto sum2 = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
-	return static_cast<int64_t>(std::round(std::sqrt(sum2 / m_values.size())));
+	return static_cast<int64_t>(std::round(std::sqrt(sum2 / vals.size())));
 }

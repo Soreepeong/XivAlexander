@@ -16,4 +16,9 @@ namespace Utils {
 
 	std::vector<std::pair<uint32_t, uint32_t>> ParseIpRange(const std::string& s, bool allowAll, bool allowPrivate, bool allowLoopback);
 	std::vector<std::pair<uint32_t, uint32_t>> ParsePortRange(const std::string& s, bool allowAll);
+
+	template<typename T>
+	T Clamp(T v, T min, T max) {
+		return std::min(max, std::min(max, v));
+	}
 }

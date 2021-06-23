@@ -11,7 +11,7 @@ public:
 	// and it's very easy to identify whether you're trying to go below allowed minimum value.
 	// This addon is already in gray area. Do NOT decrease this value. You've been warned.
 	// Feel free to increase and see how does it feel like to play on high latency instead, though.
-	static inline const int64_t ExtraDelay = 75;  // in milliseconds
+	static inline const int64_t DefaultDelay = 75;  // in milliseconds
 
 	// On unstable network connection, limit the possible overshoot in ExtraDelay.
 	static inline const int64_t MaximumExtraDelay = 150;  // in milliseconds
@@ -114,16 +114,18 @@ public:
 							auto& actionEffect = pMessage->Data.IPC.Data.S2C_ActionEffect;
 							int64_t originalWaitTime, waitTime;
 
-							std::string extraMessage;
+							std::stringstream description;
+							description << std::format("{:x}: S2C_ActionEffect({:04x}): actionId={:04x} sourceSequence={:04x}",
+								conn.GetSocket(),
+								pMessage->Data.IPC.SubType,
+								actionEffect.ActionId,
+								actionEffect.SourceSequence);
 
-							{
-								const auto it = m_originalWaitTimeMap.find(actionEffect.SourceSequence);
-								if (it == m_originalWaitTimeMap.end())
-									waitTime = originalWaitTime = static_cast<int64_t>(static_cast<double>(actionEffect.AnimationLockDuration) * 1000ULL);
-								else {
-									waitTime = originalWaitTime = it->second;
-									m_originalWaitTimeMap.erase(it);
-								}
+							if (const auto it = m_originalWaitTimeMap.find(actionEffect.SourceSequence); it == m_originalWaitTimeMap.end())
+								waitTime = originalWaitTime = static_cast<int64_t>(static_cast<double>(actionEffect.AnimationLockDuration) * 1000ULL);
+							else {
+								waitTime = originalWaitTime = it->second;
+								m_originalWaitTimeMap.erase(it);
 							}
 
 							if (actionEffect.SourceSequence == 0) {
@@ -135,6 +137,7 @@ public:
 									m_lastAnimationLockEndsAt = std::max(m_lastAnimationLockEndsAt, now + AutoAttackDelay);
 									waitTime = m_lastAnimationLockEndsAt - now;
 								}
+								description << " serverOriginated";
 
 							} else {
 								// find the one sharing Sequence, assuming action responses are always in order
@@ -149,94 +152,33 @@ public:
 
 								if (!m_pendingActions.empty()) {
 									m_latestSuccessfulRequest = m_pendingActions.front();
+									m_latestSuccessfulRequest.ResponseTimestamp = now;
 
 									// 100ms animation lock after cast ends stays. Modify animation lock duration for instant actions only.
 									// Since no other action is in progress right before the cast ends, we can safely replace the animation lock with the latest after-cast lock.
 									if (!m_latestSuccessfulRequest.CastFlag) {
 										const auto rtt = static_cast<int64_t>(now - m_latestSuccessfulRequest.RequestTimestamp);
 										conn.ApplicationLatency.AddValue(rtt);
-
-										extraMessage = std::format(" rtt={:d}ms", rtt);
-
-										m_latestSuccessfulRequest.ResponseTimestamp = now;
-
-										auto delay = ExtraDelay;
-
-										if (int64_t latency; conn.GetCurrentNetworkLatency(latency) && runtimeConfig.UseAutoAdjustingExtraDelay) {
-											delay = rtt;
-
-											auto latencyAdjusted = latency;
-
-											extraMessage += std::format(" latency={:d}ms", latencyAdjusted);
-
-											// Update latency statistics
-											conn.NetworkLatency.AddValue(latencyAdjusted);
-
-											if (runtimeConfig.UseLatencyCorrection) {
-												// Get server response time statistic data.
-												const auto rttMin = conn.ApplicationLatency.Min();
-												const auto rttMean = conn.ApplicationLatency.Mean();
-												const auto rttDeviation = conn.ApplicationLatency.Deviation();
-
-												// Get latency statistic data.
-												const auto latencyMean = conn.NetworkLatency.Mean();
-												const auto latencyDeviation = conn.NetworkLatency.Deviation();
-
-												// Correct latency and server response time values in case of outliers.
-												latencyAdjusted = std::min(std::max(latencyMean - latencyDeviation, latencyAdjusted), latencyMean + latencyDeviation);
-												delay = std::min(std::max(rttMean - rttDeviation, delay), rttMean + rttDeviation);
-
-												// Estimate latency based on server response time statistics.
-												const auto latencyEstimate = (delay + rttMin + rttMean) / 3 - rttDeviation;
-
-												extraMessage += std::format(" ({:d}ms)", latencyEstimate);
-
-												// Correct latency value based on estimate if server response time is stable.
-												latencyAdjusted = std::max(latencyEstimate, latencyAdjusted);
-											}
-
-											// This delay is based on server's processing time. If the server is busy, everyone should feel the same effect.
-											// Only the player's ping is taken out of the equation.
-											delay = std::max(0LL, (delay % originalWaitTime) - latencyAdjusted);
-
-											// Prevent accidentally too high ExtraDelay.
-											delay = std::min(MaximumExtraDelay, delay);
-											
-											extraMessage += std::format(" delay={:d}ms", delay);
-										}
-
+										description << std::format(" rtt={}ms", rtt);
+										m_lastAnimationLockEndsAt += originalWaitTime + ResolveAdjustedExtraDelay(rtt, description);
 										m_latestSuccessfulRequest.OriginalWaitTime = originalWaitTime;
-										m_lastAnimationLockEndsAt += originalWaitTime + delay;
 										waitTime = m_lastAnimationLockEndsAt - now;
 									}
 									m_pendingActions.pop_front();
 								}
 							}
-							if (waitTime != originalWaitTime) {
-								actionEffect.AnimationLockDuration = std::max(0LL, waitTime) / 1000.f;
-
-								if (runtimeConfig.UseHighLatencyMitigationLogging)
-									Misc::Logger::GetLogger().Format(
-										LogCategory::AnimationLockLatencyHandler,
-										"{:x}: S2C_ActionEffect({:04x}): actionId={:04x} sourceSequence={:04x} wait={:d}ms->{:d}ms{}",
-										conn.GetSocket(),
-										pMessage->Data.IPC.SubType,
-										actionEffect.ActionId,
-										actionEffect.SourceSequence,
-										originalWaitTime, waitTime,
-										extraMessage);
-
-							} else {
-								if (runtimeConfig.UseHighLatencyMitigationLogging)
-									Misc::Logger::GetLogger().Format(
-										LogCategory::AnimationLockLatencyHandler,
-										"{:x}: S2C_ActionEffect({:04x}): actionId={:04x} sourceSequence={:04x} wait={:d}ms",
-										conn.GetSocket(),
-										pMessage->Data.IPC.SubType,
-										actionEffect.ActionId,
-										actionEffect.SourceSequence,
-										originalWaitTime);
-							}
+							
+							if (waitTime < 0) {
+								actionEffect.AnimationLockDuration = 0;
+								description << std::format(" wait={}ms->{}ms->0ms (ping/jitter too high)",
+									originalWaitTime, waitTime);
+							} else if (waitTime != originalWaitTime) {
+								actionEffect.AnimationLockDuration = waitTime / 1000.f;
+								description << std::format(" wait={}ms->{}ms", originalWaitTime, waitTime);
+							} else
+								description << std::format(" wait={}ms", originalWaitTime);
+							if (runtimeConfig.UseHighLatencyMitigationLogging)
+								Misc::Logger::GetLogger().Log(LogCategory::AnimationLockLatencyHandler, description.str());
 
 						} else if (pMessage->Data.IPC.SubType == gameConfig.S2C_ActorControlSelf) {
 							auto& actorControlSelf = pMessage->Data.IPC.Data.S2C_ActorControlSelf;
@@ -322,8 +264,76 @@ public:
 				return true;
 				});
 		}
+		
 		~SingleConnectionHandler() {
 			conn.RemoveMessageHandlers(this);
+		}
+
+		int64_t ResolveAdjustedExtraDelay(const int64_t rtt, std::stringstream& description) {
+			const auto& runtimeConfig = Config::Instance().Runtime;
+
+			if (int64_t latency; conn.GetCurrentNetworkLatency(latency)) {
+				// latency = 0;  // emulate VPNs that reports zero ping
+				// latency = 300;  // test bad ping measurements
+
+				if (latency > rtt)
+					conn.ExaggeratedNetworkLatency.AddValue(latency - rtt);
+
+				if (const auto exaggeration = conn.ExaggeratedNetworkLatency.Median();
+					exaggeration != conn.ExaggeratedNetworkLatency.InvalidValue() && latency >= exaggeration) {
+					// Reported latency is higher than rtt, which means latency measurement is unreliable.
+					description << std::format(" latency={}ms->{}ms", latency, latency - exaggeration);
+					latency -= exaggeration;
+				} else {
+					description << std::format(" latency={}ms", latency);
+				}
+
+				if (runtimeConfig.UseAutoAdjustingExtraDelay) {
+					auto rttAdjusted = rtt;
+					auto latencyAdjusted = latency;
+
+					// Update latency statistics
+					conn.NetworkLatency.AddValue(latencyAdjusted);
+
+					if (runtimeConfig.UseLatencyCorrection) {
+						const auto rttMin = conn.ApplicationLatency.Min();
+						const auto rttMean = conn.ApplicationLatency.Mean();
+						const auto rttDeviation = conn.ApplicationLatency.Deviation();
+						const auto latencyMean = conn.NetworkLatency.Mean();
+						const auto latencyDeviation = conn.NetworkLatency.Deviation();
+
+						// Correct latency and server response time values in case of outliers.
+						latencyAdjusted = Utils::Clamp(latencyAdjusted, latencyMean - latencyDeviation, latencyMean + latencyDeviation);
+						rttAdjusted = Utils::Clamp(rttAdjusted, rttMean - rttDeviation, rttMean + rttDeviation);
+
+						// Estimate latency based on server response time statistics.
+						const auto latencyEstimate = (rttAdjusted + rttMin + rttMean) / 3 - rttDeviation;
+						description << std::format(" latencyEstimate={}ms", latencyEstimate);
+
+						// Correct latency value based on estimate if server response time is stable.
+						latencyAdjusted = std::max(latencyEstimate, latencyAdjusted);
+					}
+
+					// This delay is based on server's processing time.
+					// If the server is busy, everyone should feel the same effect.
+					// * Only the player's ping is taken out of the equation. (- latencyAdjusted)
+					// * Prevent accidentally too high ExtraDelay. (Clamp above 1ms)
+					const auto delay = Utils::Clamp(rttAdjusted - latencyAdjusted, 1LL, MaximumExtraDelay);
+					description << std::format(" delayAdjusted={}ms", delay);
+
+					if (rtt > 100 && latency < 5) {
+						Misc::Logger::GetLogger().Format<LogLevel::Warning>(
+							LogCategory::AnimationLockLatencyHandler,
+							u8"\t┎ rtt={} but latency={}; your VPN or network might be reporting 0 ping. "
+							u8"Disabling <Delay Detection> is recommended",
+							rtt, latency);
+					}
+					return delay;
+				} else
+					description << std::format(" delay={}ms", DefaultDelay);
+			} else
+				description << " latency=unavailable";
+			return DefaultDelay;
 		}
 	};
 
