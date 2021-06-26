@@ -18,20 +18,20 @@ std::string Utils::ToUtf8(const std::wstring& u16) {
 
 std::string Utils::ToString(const sockaddr_in& sa) {
 	if (sa.sin_family != AF_INET)
-		return std::format("sockaddr_in?(AF_INET={:d})", sa.sin_family);
+		return std::format("sockaddr_in?(AF_INET={})", sa.sin_family);
 
 	char s[INET_ADDRSTRLEN + 6] = { 0 };
 	inet_ntop(AF_INET, &sa.sin_addr, s, sizeof s);
-	return std::format("{}:{:d}", s, ntohs(sa.sin_port));
+	return std::format("{}:{}", s, ntohs(sa.sin_port));
 }
 
 std::string Utils::ToString(const sockaddr_in6& sa) {
 	if (sa.sin6_family != AF_INET6)
-		return std::format("sockaddr_in6?(AF_INET={:d})", sa.sin6_family);
+		return std::format("sockaddr_in6?(AF_INET={})", sa.sin6_family);
 
 	char s[INET6_ADDRSTRLEN + 6] = { 0 };
 	inet_ntop(AF_INET6, &sa.sin6_addr, s, sizeof s);
-	return std::format("{}:{:d}", s, ntohs(sa.sin6_port));
+	return std::format("{}:{}", s, ntohs(sa.sin6_port));
 }
 
 std::string Utils::ToString(const sockaddr& sa) {
@@ -39,7 +39,7 @@ std::string Utils::ToString(const sockaddr& sa) {
 		return ToString(*reinterpret_cast<const sockaddr_in*>(&sa));
 	if (sa.sa_family == AF_INET6)
 		return ToString(*reinterpret_cast<const sockaddr_in6*>(&sa));
-	return std::format("sockaddr(AF_INET={:d})", sa.sa_family);
+	return std::format("sockaddr(AF_INET={})", sa.sa_family);
 }
 
 std::string Utils::ToString(const sockaddr_storage& sa) {

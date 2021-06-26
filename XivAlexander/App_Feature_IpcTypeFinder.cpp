@@ -41,7 +41,7 @@ public:
 
 							Misc::Logger::GetLogger().Format(
 								LogCategory::IpcTypeFinder,
-								"{:x}: S2C_ActionEffect{:02d}(0x{:04x}) length={:x} actionId={:04x} sequence={:04x} wait={:.3f}",
+								"{:x}: S2C_ActionEffect{:02}(0x{:04x}) length={:x} actionId={:04x} sequence={:04x} wait={:.3f}",
 								conn.GetSocket(),
 								expectedCount,
 								pMessage->Data.IPC.SubType,
@@ -62,7 +62,7 @@ public:
 								const auto& cooldown = actorControlSelf.Cooldown;
 								Misc::Logger::GetLogger().Format(
 									LogCategory::IpcTypeFinder,
-									"{:x}: S2C_ActorControlSelf(0x{:04x}): Cooldown: actionId={:04x} duration={:d}",
+									"{:x}: S2C_ActorControlSelf(0x{:04x}): Cooldown: actionId={:04x} duration={}",
 									conn.GetSocket(),
 									pMessage->Data.IPC.SubType,
 									cooldown.ActionId,
@@ -126,7 +126,7 @@ public:
 						}
 						Misc::Logger::GetLogger().Format(
 							LogCategory::IpcTypeFinder,
-							"{:x}: S2C_AddStatusEffect(0x{:04x}): relatedActionSequence={:08x} actorId={:08x} HP={:d}/{:d} MP={:d} shield={:d}{}",
+							"{:x}: S2C_AddStatusEffect(0x{:04x}): relatedActionSequence={:08x} actorId={:08x} HP={}/{} MP={} shield={}{}",
 							conn.GetSocket(),
 							pMessage->Data.IPC.SubType,
 							addStatusEffect.RelatedActionSequence,

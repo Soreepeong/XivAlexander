@@ -46,7 +46,7 @@ App::Window::Main::Main(HWND hGameWnd, std::function<void()> unloadFunction)
 		HashData(hashSourceData.data(), static_cast<DWORD>(hashSourceData.size()), reinterpret_cast<BYTE*>(&m_guid.Data1), static_cast<DWORD>(sizeof GUID));
 	}
 	
-	const auto title = std::format(L"XivAlexander: {:d}, {}, {}", GetCurrentProcessId(), m_sRegion, m_sVersion);
+	const auto title = std::format(L"XivAlexander: {}, {}, {}", GetCurrentProcessId(), m_sRegion, m_sVersion);
 	SetWindowTextW(m_hWnd, title.c_str());
 	ModifyMenu(GetMenu(m_hWnd), ID_TRAYMENU_CURRENTINFO, MF_BYCOMMAND | MF_DISABLED, ID_TRAYMENU_CURRENTINFO, title.c_str());
 
@@ -252,7 +252,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		
 		FillRect(backdc, &rect, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
 		const auto str = std::format(
-			L"Process ID: {:d}\n"
+			L"Process ID: {}\n"
 			L"Game Path: {}\n"
 			L"Game Release: {} ({})\n"
 			L"\n"
@@ -338,7 +338,7 @@ void App::Window::Main::RegisterTrayIcon() {
 	nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP | NIF_GUID;
 	nid.uCallbackMessage = WmTrayCallback;
 	nid.hIcon = hIcon;
-	wcscpy_s(nid.szTip, std::format(L"XivAlexander({:d})", GetCurrentProcessId()).c_str());
+	wcscpy_s(nid.szTip, std::format(L"XivAlexander({})", GetCurrentProcessId()).c_str());
 	Shell_NotifyIconW(NIM_ADD, &nid);
 	Shell_NotifyIconW(NIM_SETVERSION, &nid);
 }

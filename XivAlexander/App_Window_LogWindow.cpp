@@ -63,7 +63,7 @@ App::Window::Log::Log()
 
 	const auto addLogFn = [&](const Misc::Logger::LogItem& item) {
 		const auto st = item.TimestampAsLocalSystemTime();
-		const auto logstr = std::format("{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}.{:03d}\t{}\t{}\n",
+		const auto logstr = std::format("{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}\t{}\t{}\n",
 			st.wYear, st.wMonth, st.wDay,
 			st.wHour, st.wMinute, st.wSecond,
 			st.wMilliseconds,

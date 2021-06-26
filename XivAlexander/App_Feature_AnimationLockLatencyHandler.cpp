@@ -68,11 +68,13 @@ public:
 						const auto& actionRequest = pMessage->Data.IPC.Data.C2S_ActionRequest;
 						m_pendingActions.emplace_back(actionRequest);
 
-						// If somehow latest action request has been made before last animation lock end time, keep it.
-						// Otherwise...
-						if (m_pendingActions.back().RequestTimestamp > m_lastAnimationLockEndsAt) {
+						const auto delay = static_cast<int64_t>(m_pendingActions.back().RequestTimestamp - m_lastAnimationLockEndsAt);
 
-							// If there was no action queued to begin with before the current one, update the base lock time to now.
+						if (delay < 0) {
+							// If somehow latest action request has been made before last animation lock end time, keep it.
+							
+						} else {
+							// Otherwise, if there was no action queued to begin with before the current one, update the base lock time to now.
 							if (m_pendingActions.size() == 1)
 								m_lastAnimationLockEndsAt = m_pendingActions.back().RequestTimestamp;
 						}
@@ -80,11 +82,13 @@ public:
 						if (runtimeConfig.UseHighLatencyMitigationLogging)
 							Misc::Logger::GetLogger().Format(
 								LogCategory::AnimationLockLatencyHandler,
-								"{:x}: C2S_ActionRequest({:04x}): actionId={:04x} sequence={:04x}",
+								"{:x}: C2S_ActionRequest({:04x}): actionId={:04x} sequence={:04x} delay={}ms{}",
 								conn.GetSocket(),
 								pMessage->Data.IPC.SubType,
 								actionRequest.ActionId,
-								actionRequest.Sequence);
+								actionRequest.Sequence,
+								std::min<int64_t>(10000, delay),
+								delay >= 10000 ? "+" : "");
 					}
 				}
 				return true;
@@ -177,6 +181,7 @@ public:
 								description << std::format(" wait={}ms->{}ms", originalWaitTime, waitTime);
 							} else
 								description << std::format(" wait={}ms", originalWaitTime);
+							description << std::format(" next={:%H:%M:%S}", std::chrono::system_clock::now() + std::chrono::milliseconds(waitTime));
 							if (runtimeConfig.UseHighLatencyMitigationLogging)
 								Misc::Logger::GetLogger().Log(LogCategory::AnimationLockLatencyHandler, description.str());
 
@@ -208,7 +213,7 @@ public:
 								if (runtimeConfig.UseHighLatencyMitigationLogging)
 									Misc::Logger::GetLogger().Format(
 										LogCategory::AnimationLockLatencyHandler,
-										"{:x}: S2C_ActorControlSelf/ActionRejected: actionId={:04x} sourceSequence={:08x}",
+										"{:x}: S2C_ActorControlSelf/ActionRejected: actionId={:04x} sourceSequence={:04x}",
 										conn.GetSocket(),
 										rollback.ActionId,
 										rollback.SourceSequence);

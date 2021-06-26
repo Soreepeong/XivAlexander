@@ -83,7 +83,7 @@ public:
 		}
 
 		if (!discardedBytes.empty()) {
-			std::string buffer = std::format("Discarded Bytes ({:d}b)\n\t", discardedBytes.size());
+			std::string buffer = std::format("Discarded Bytes ({}b)\n\t", discardedBytes.size());
 			char map[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
 			for (size_t i = 0; i < discardedBytes.size(); ++i) {
 				const auto b = discardedBytes[i];
@@ -392,7 +392,7 @@ bool App::Network::SingleConnection::GetCurrentNetworkLatency(_Out_ int64_t & la
 		impl->m_nIoctlTcpInfoFailureCount++;
 		return false;
 	} else if (cb != sizeof info) {
-		Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0: buffer size mismatch ({:d} != {:d})", impl->m_socket, cb, sizeof info);
+		Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0: buffer size mismatch ({} != {})", impl->m_socket, cb, sizeof info);
 		impl->m_nIoctlTcpInfoFailureCount++;
 		return false;
 	} else {
@@ -712,11 +712,11 @@ std::wstring App::Network::SocketHook::Describe() const {
 					Utils::FromUtf8(Utils::ToString(conn->impl->m_localAddress)),
 					Utils::FromUtf8(Utils::ToString(conn->impl->m_remoteAddress)));
 				if (int64_t latency; conn->GetCurrentNetworkLatency(latency)) {
-					result += std::format(L"* Latency: last {:d}ms, med {:d}ms, avg {:d}ms, dev {:d}ms\n",
+					result += std::format(L"* Latency: last {}ms, med {}ms, avg {}ms, dev {}ms\n",
 						latency, conn->NetworkLatency.Median(), conn->NetworkLatency.Mean(), conn->NetworkLatency.Deviation());
 				} else
 					result += L"* Latency: failed to resolve\n";
-				result += std::format(L"* Response Delay: med {:d}ms, avg {:d}ms, dev {:d}ms\n\n",
+				result += std::format(L"* Response Delay: med {}ms, avg {}ms, dev {}ms\n\n",
 					conn->ApplicationLatency.Median(), conn->ApplicationLatency.Mean(), conn->ApplicationLatency.Deviation());
 			}
 			return result;

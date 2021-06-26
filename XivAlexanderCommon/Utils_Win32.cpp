@@ -54,12 +54,12 @@ std::pair<std::string, std::string> Utils::Win32::FormatModuleVersionString(HMOD
 	if (versionInfo.dwSignature != 0xfeef04bd)
 		throw std::runtime_error("Invalid version info found.");
 	return std::make_pair<>(
-		std::format("{:d}.{:d}.{:d}.{:d}",
+		std::format("{}.{}.{}.{}",
 		             (versionInfo.dwFileVersionMS >> 16) & 0xFFFF,
 		             (versionInfo.dwFileVersionMS >> 0) & 0xFFFF,
 		             (versionInfo.dwFileVersionLS >> 16) & 0xFFFF,
 		             (versionInfo.dwFileVersionLS >> 0) & 0xFFFF),
-		std::format("{:d}.{:d}.{:d}.{:d}",
+		std::format("{}.{}.{}.{}",
 		             (versionInfo.dwProductVersionMS >> 16) & 0xFFFF,
 		             (versionInfo.dwProductVersionMS >> 0) & 0xFFFF,
 		             (versionInfo.dwProductVersionLS >> 16) & 0xFFFF,

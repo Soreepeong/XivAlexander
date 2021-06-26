@@ -39,7 +39,7 @@ std::string argparse::details::repr(LoaderAction const& val) {
 		case LoaderAction::Unload: return "unload";
 		case LoaderAction::Ignore: return "ignore";
 	}
-	return std::format("({:d})", static_cast<int>(val));
+	return std::format("({})", static_cast<int>(val));
 }
 
 class XivAlexanderLoaderParameter {
@@ -159,7 +159,7 @@ static std::set<DWORD> GetTargetPidList() {
 			try {
 				auto hProcess = Utils::Win32::Closeable::Handle(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid),
 					Utils::Win32::Closeable::Handle::Null,
-					"OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, {:d})", pid);
+					"OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, {})", pid);
 				const auto path = W32Modules::PathFromModule(nullptr, hProcess);
 				auto buf = path.wstring();
 				auto suffixFound = false;
@@ -181,7 +181,7 @@ static std::set<DWORD> GetTargetPidList() {
 void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesystem::path& dllPath) {
 	const auto hProcess = Utils::Win32::Closeable::Handle(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, pid),
 		Utils::Win32::Closeable::Handle::Null,
-		"OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, {:d})", pid);
+		"OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, {})", pid);
 	void* rpModule = W32Modules::FindModuleAddress(hProcess, dllPath);
 	const auto path = W32Modules::PathFromModule(nullptr, hProcess);
 
@@ -189,7 +189,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 	if (loaderAction == LoaderAction::Ask) {
 		if (rpModule) {
 			switch (Utils::Win32::MessageBoxF(nullptr, MB_YESNOCANCEL | MB_ICONQUESTION | MB_DEFBUTTON1, MsgboxTitle,
-				L"XivAlexander detected in FFXIV Process ({:d}:{})\n"
+				L"XivAlexander detected in FFXIV Process ({}:{})\n"
 				L"Press Yes to try loading again if it hasn't loaded properly,\n"
 				L"Press No to unload, or\n"
 				L"Press Cancel to skip.\n"
@@ -216,7 +216,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 			if (!g_parameters.m_quiet && !exists(gameConfigPath)) {
 				switch (Utils::Win32::MessageBoxF(nullptr, MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON1, MsgboxTitle,
 					L"FFXIV Process found:\n"
-					L"* PID: {:d}\n"
+					L"* PID: {}\n"
 					L"* Path: {}\n"
 					L"* Game Version Configuration File: {}\n"
 					L"Continue loading XivAlexander into this process?\n"
@@ -236,7 +236,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 			} else {
 				switch (Utils::Win32::MessageBoxF(nullptr, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON1, MsgboxTitle,
 					L"FFXIV Process found:\n"
-					L"* Process ID: {:d}\n"
+					L"* Process ID: {}\n"
 					L"* Path: {}\n"
 					L"* Game Version Configuration File: {}\n"
 					L"Continue loading XivAlexander into this process?\n"
@@ -271,7 +271,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 	if (loaderAction == LoaderAction::Load) {
 		unloadRequired = true;
 		if (const auto loadResult = W32Modules::CallRemoteFunction(hProcess, LoadXivAlexander, nullptr, "LoadXivAlexander"); loadResult != 0)
-			throw std::runtime_error(std::format("Failed to start the addon: exit code {:d}", loadResult));
+			throw std::runtime_error(std::format("Failed to start the addon: exit code {}", loadResult));
 		else
 			unloadRequired = false;
 	} else if (loaderAction == LoaderAction::Unload) {
@@ -345,7 +345,7 @@ int WINAPI wWinMain(
 		} catch (std::exception& e) {
 			if (!g_parameters.m_quiet)
 				Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle,
-					L"Process ID: {:d}\n"
+					L"Process ID: {}\n"
 					L"\n"
 					L"Debug Privilege: {}\n"
 					L"\n"

@@ -109,7 +109,7 @@ static std::vector<SYSTEM_HANDLE> EnumerateLocalHandles() {
 
 	// NtQuerySystemInformation stopped giving us STATUS_INFO_LENGTH_MISMATCH.
 	if (!NtSuccess(status))
-		throw std::runtime_error(std::format("NtQuerySystemInformation returned {:d}.", status));
+		throw std::runtime_error(std::format("NtQuerySystemInformation returned {}.", status));
 
 	const auto pHandleInfo = reinterpret_cast<SYSTEM_HANDLE_INFORMATION*>(handleInfoBuffer.data());
 	for (size_t i = 0; i < pHandleInfo->HandleCount; i++)

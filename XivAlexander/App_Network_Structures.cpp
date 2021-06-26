@@ -27,7 +27,7 @@ void App::Network::Structures::FFXIVBundle::DebugPrint(LogCategory logCategory, 
 	const auto st = Utils::EpochToLocalSystemTime(Timestamp);
 	Misc::Logger::GetLogger().Format<LogLevel::Debug>(
 		logCategory,
-		"[{} / {:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}.{:03d}] Length={:d} ConnType={:d} Count={:d} Gzip={:d}n",
+		"[{} / {:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}] Length={} ConnType={} Count={} Gzip={}n",
 		head,
 		st.wYear, st.wMonth, st.wDay,
 		st.wHour, st.wMinute, st.wSecond,
@@ -65,7 +65,7 @@ void App::Network::Structures::FFXIVMessage::DebugPrint(LogCategory logCategory,
 	if (Type == SegmentType::ClientKeepAlive || Type == SegmentType::ServerKeepAlive) {
 		const auto st = Utils::EpochToLocalSystemTime(Data.KeepAlive.Epoch * 1000ULL);
 		dumpstr += std::format(
-			"\n\tFFXIVMessage {:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d} ID={:d}",
+			"\n\tFFXIVMessage {:04}-{:02}-{:02} {:02}:{:02}:{:02} ID={}",
 			st.wYear, st.wMonth, st.wDay,
 			st.wHour, st.wMinute, st.wSecond,
 			Data.KeepAlive.Id
@@ -73,7 +73,7 @@ void App::Network::Structures::FFXIVMessage::DebugPrint(LogCategory logCategory,
 	} else if (Type == SegmentType::IPC) {
 		const auto st = Utils::EpochToLocalSystemTime(Data.IPC.Epoch * 1000ULL);
 		dumpstr += std::format(
-			"\n\tFFXIVMessage {:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d} Type={:04x} SubType={:04x} Unknown1={:04x} SeqId={:04x} Unknown2={:08x}",
+			"\n\tFFXIVMessage {:04}-{:02}-{:02} {:02}:{:02}:{:02} Type={:04x} SubType={:04x} Unknown1={:04x} SeqId={:04x} Unknown2={:08x}",
 			st.wYear, st.wMonth, st.wDay,
 			st.wHour, st.wMinute, st.wSecond,
 			static_cast<int>(Data.IPC.Type), Data.IPC.SubType, Data.IPC.Unknown1, Data.IPC.ServerId, Data.IPC.Unknown2
@@ -92,7 +92,7 @@ void App::Network::Structures::FFXIVMessage::DebugPrint(LogCategory logCategory,
 	}
 	Misc::Logger::GetLogger().Format<LogLevel::Debug>(
 		logCategory,
-		"[{}] Length={:d} Source={:08x} Current={:08x} Type={:d}{}",
+		"[{}] Length={} Source={:08x} Current={:08x} Type={}{}",
 		head, Length, SourceActor, CurrentActor, static_cast<int>(Type), dumpstr
 		);
 }
