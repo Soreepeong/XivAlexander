@@ -21,11 +21,14 @@ namespace Utils {
 
 	public:
 		[[nodiscard]] int64_t InvalidValue() const;
+		[[nodiscard]] int64_t Latest() const;
 		[[nodiscard]] int64_t Min() const;
 		[[nodiscard]] int64_t Max() const;
 		[[nodiscard]] int64_t Mean() const;
 		[[nodiscard]] int64_t Median() const;
 		[[nodiscard]] int64_t Deviation() const;
+		[[nodiscard]] size_t Count() const;
+		[[nodiscard]] uint64_t NextBlankIn() const;
 	};
 }
 

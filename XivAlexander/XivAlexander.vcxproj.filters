@@ -78,6 +78,9 @@
     <ClCompile Include="App_App.cpp">
       <Filter>App</Filter>
     </ClCompile>
+    <ClCompile Include="App_Network_IcmpPingTracker.cpp">
+      <Filter>App\Network</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -133,6 +136,9 @@
     </ClInclude>
     <ClInclude Include="App_App.h">
       <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Network_IcmpPingTracker.h">
+      <Filter>App\Network</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

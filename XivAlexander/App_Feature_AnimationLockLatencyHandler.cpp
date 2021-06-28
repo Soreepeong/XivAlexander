@@ -1,5 +1,7 @@
 ﻿#include "pch.h"
 #include "App_Feature_AnimationLockLatencyHandler.h"
+
+#include "App_Network_IcmpPingTracker.h"
 #include "App_Network_SocketHook.h"
 #include "App_Network_Structures.h"
 
@@ -34,10 +36,15 @@ public:
 				, RequestTimestamp(0) {
 			}
 
+			static uint64_t Now() {
+				// return Utils::GetHighPerformanceCounter();
+				return GetTickCount64();
+			}
+
 			explicit PendingAction(const Network::Structures::IPCMessageDataType::C2S_ActionRequest& request)
 				: ActionId(request.ActionId)
 				, Sequence(request.Sequence)
-				, RequestTimestamp(Utils::GetHighPerformanceCounter()) {
+				, RequestTimestamp(Now()) {
 			}
 		};
 
@@ -50,6 +57,7 @@ public:
 		PendingAction m_latestSuccessfulRequest;
 		uint64_t m_lastAnimationLockEndsAt = 0;
 		std::map<int, uint64_t> m_originalWaitTimeMap;
+		Utils::NumericStatisticsTracker m_earlyRequestsDuration{ 32, 0 };
 
 		Internals& internals;
 		Network::SingleConnection& conn;
@@ -71,7 +79,12 @@ public:
 						const auto delay = static_cast<int64_t>(m_pendingActions.back().RequestTimestamp - m_lastAnimationLockEndsAt);
 
 						if (delay < 0) {
-							// If somehow latest action request has been made before last animation lock end time, keep it.
+							// If somehow latest action request has been made before last animation lock end time,
+							// penalize by forcing the next action to be usable after the early duration passes.
+							m_lastAnimationLockEndsAt -= delay;
+
+							// Record how early did the game let the user user action, and reflect that when deciding next extraDelay.
+							m_earlyRequestsDuration.AddValue(-delay);
 							
 						} else {
 							// Otherwise, if there was no action queued to begin with before the current one, update the base lock time to now.
@@ -94,7 +107,7 @@ public:
 				return true;
 				});
 			conn.AddIncomingFFXIVMessageHandler(this, [&](FFXIVMessage* pMessage, std::vector<uint8_t>& additionalMessages) {
-				const auto now = Utils::GetHighPerformanceCounter();
+				const auto now = PendingAction::Now();
 
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::CustomType) {
 					if (pMessage->Data.IPC.SubType == static_cast<uint16_t>(IpcCustomSubtype::OriginalWaitTime)) {
@@ -276,8 +289,12 @@ public:
 
 		int64_t ResolveAdjustedExtraDelay(const int64_t rtt, std::stringstream& description) {
 			const auto& runtimeConfig = Config::Instance().Runtime;
+			const auto pingTracker = conn.GetPingLatencyTracker();
 
-			if (int64_t latency; conn.GetCurrentNetworkLatency(latency)) {
+			const auto socketLatency = conn.FetchSocketLatency();
+			const auto pingLatency = pingTracker ? pingTracker->Latest() : INT64_MAX;
+
+			if (auto latency = std::min(pingLatency, socketLatency); latency != INT64_MAX) {
 				// latency = 0;  // emulate VPNs that reports zero ping
 				// latency = 300;  // test bad ping measurements
 
@@ -287,25 +304,28 @@ public:
 				if (const auto exaggeration = conn.ExaggeratedNetworkLatency.Median();
 					exaggeration != conn.ExaggeratedNetworkLatency.InvalidValue() && latency >= exaggeration) {
 					// Reported latency is higher than rtt, which means latency measurement is unreliable.
-					description << std::format(" latency={}ms->{}ms", latency, latency - exaggeration);
+					if (socketLatency < pingLatency)
+						description << std::format(" socketLatency={}->{}ms", latency, latency - exaggeration);
+					else
+						description << std::format(" pingLatency={}->{}ms", latency, latency - exaggeration);
 					latency -= exaggeration;
 				} else {
-					description << std::format(" latency={}ms", latency);
+					if (socketLatency < pingLatency)
+						description << std::format(" pingLatency={}ms", latency);
+					else
+						description << std::format(" socketLatency={}ms", latency);
 				}
 
 				if (runtimeConfig.UseAutoAdjustingExtraDelay) {
 					auto rttAdjusted = rtt;
 					auto latencyAdjusted = latency;
 
-					// Update latency statistics
-					conn.NetworkLatency.AddValue(latencyAdjusted);
-
 					if (runtimeConfig.UseLatencyCorrection) {
 						const auto rttMin = conn.ApplicationLatency.Min();
 						const auto rttMean = conn.ApplicationLatency.Mean();
 						const auto rttDeviation = conn.ApplicationLatency.Deviation();
-						const auto latencyMean = conn.NetworkLatency.Mean();
-						const auto latencyDeviation = conn.NetworkLatency.Deviation();
+						const auto latencyMean = pingLatency > socketLatency ? conn.SocketLatency.Mean() : pingTracker->Mean();
+						const auto latencyDeviation = pingLatency > socketLatency ? conn.SocketLatency.Deviation() : pingTracker->Deviation();
 
 						// Correct latency and server response time values in case of outliers.
 						latencyAdjusted = Utils::Clamp(latencyAdjusted, latencyMean - latencyDeviation, latencyMean + latencyDeviation);
@@ -319,11 +339,16 @@ public:
 						latencyAdjusted = std::max(latencyEstimate, latencyAdjusted);
 					}
 
+					const auto earlyPenalty = m_earlyRequestsDuration.Max();
+					if (earlyPenalty) {
+						description << std::format(" earlyPenalty={}ms", earlyPenalty);
+					}
+
 					// This delay is based on server's processing time.
 					// If the server is busy, everyone should feel the same effect.
 					// * Only the player's ping is taken out of the equation. (- latencyAdjusted)
 					// * Prevent accidentally too high ExtraDelay. (Clamp above 1ms)
-					const auto delay = Utils::Clamp(rttAdjusted - latencyAdjusted, 1LL, MaximumExtraDelay);
+					const auto delay = Utils::Clamp(rttAdjusted - latencyAdjusted + earlyPenalty, 1LL, MaximumExtraDelay);
 					description << std::format(" delayAdjusted={}ms", delay);
 
 					if (rtt > 100 && latency < 5) {

@@ -134,6 +134,7 @@
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="App_Network_IcmpPingTracker.cpp" />
     <ClCompile Include="DllMain.cpp" />
     <ClCompile Include="App_App.cpp" />
     <ClCompile Include="App_ConfigRepository.cpp" />
@@ -165,6 +166,7 @@
     <ClInclude Include="App_Feature_AllIpcMessageLogger.h" />
     <ClInclude Include="App_Misc_FreeGameMutex.h" />
     <ClInclude Include="App_Misc_Logger.h" />
+    <ClInclude Include="App_Network_IcmpPingTracker.h" />
     <ClInclude Include="App_Network_SocketHook.h" />
     <ClInclude Include="App_Network_Structures.h" />
     <ClInclude Include="App_Hooks.h" />

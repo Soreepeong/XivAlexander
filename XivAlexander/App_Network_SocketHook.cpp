@@ -2,6 +2,7 @@
 #include "App_Network_SocketHook.h"
 
 #include "App_App.h"
+#include "App_Network_IcmpPingTracker.h"
 #include "App_Network_Structures.h"
 
 namespace SocketFn = App::Hooks::Socket;
@@ -177,6 +178,11 @@ public:
 			m_remoteAddress = remote;
 			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Remote={}", m_socket, Utils::ToString(remote));
 		}
+		if (m_localAddress.ss_family == AF_INET && m_remoteAddress.ss_family == AF_INET && !m_pingTrackKeeper)
+			m_pingTrackKeeper = IcmpPingTracker::GetInstance().Track(
+				reinterpret_cast<sockaddr_in*>(&m_localAddress)->sin_addr,
+				reinterpret_cast<sockaddr_in*>(&m_remoteAddress)->sin_addr
+			);
 	}
 
 	void Unload() {
@@ -253,8 +259,8 @@ public:
 
 						// Add statistics sample
 						this_->ApplicationLatency.AddValue(delay);
-						if (int64_t latency; this_->GetCurrentNetworkLatency(latency))
-							this_->NetworkLatency.AddValue(latency);
+						if (const auto latency = this_->FetchSocketLatency())
+							this_->SocketLatency.AddValue(latency);
 					}
 				} else if (pMessage->Type == SegmentType::IPC) {
 					for (const auto& cbs : m_incomingHandlers) {
@@ -380,24 +386,24 @@ void App::Network::SingleConnection::ResolveAddresses() {
 	impl->ResolveAddresses();
 }
 
-_Success_(return)
-bool App::Network::SingleConnection::GetCurrentNetworkLatency(_Out_ int64_t & latency) const {
+int64_t App::Network::SingleConnection::FetchSocketLatency() {
 	if (impl->m_nIoctlTcpInfoFailureCount >= 5)
-		return false;
+		return INT64_MAX;
 
 	TCP_INFO_v0 info{};
 	DWORD tcpInfoVersion = 0, cb = 0;
 	if (0 != WSAIoctl(impl->m_socket, SIO_TCP_INFO, &tcpInfoVersion, sizeof tcpInfoVersion, &info, sizeof info, &cb, nullptr, nullptr)) {
 		Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0 failed: {:08x}", impl->m_socket, WSAGetLastError());
 		impl->m_nIoctlTcpInfoFailureCount++;
-		return false;
+		return INT64_MAX;
 	} else if (cb != sizeof info) {
 		Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0: buffer size mismatch ({} != {})", impl->m_socket, cb, sizeof info);
 		impl->m_nIoctlTcpInfoFailureCount++;
-		return false;
+		return INT64_MAX;
 	} else {
-		latency = info.RttUs / 1000LL;
-		return true;
+		const auto latency = info.RttUs / 1000LL;
+		SocketLatency.AddValue(latency);
+		return latency;
 	}
 }
 
@@ -656,6 +662,14 @@ public:
 
 static App::Network::SocketHook* s_socketHookInstance;
 
+const Utils::NumericStatisticsTracker* App::Network::SingleConnection::GetPingLatencyTracker() const {
+	if (impl->m_localAddress.ss_family != AF_INET || impl->m_remoteAddress.ss_family != AF_INET)
+		return nullptr;
+	const auto &local = *reinterpret_cast<const sockaddr_in*>(&impl->m_localAddress);
+	const auto &remote = *reinterpret_cast<const sockaddr_in*>(&impl->m_remoteAddress);
+	return IcmpPingTracker::GetInstance().GetTracker(local.sin_addr, remote.sin_addr);
+}
+
 App::Network::SocketHook::SocketHook(HWND hGameWnd)
 	: impl(std::make_unique<Internals>(this, hGameWnd)) {
 	s_socketHookInstance = this;
@@ -711,11 +725,19 @@ std::wstring App::Network::SocketHook::Describe() const {
 					s,
 					Utils::FromUtf8(Utils::ToString(conn->impl->m_localAddress)),
 					Utils::FromUtf8(Utils::ToString(conn->impl->m_remoteAddress)));
-				if (int64_t latency; conn->GetCurrentNetworkLatency(latency)) {
-					result += std::format(L"* Latency: last {}ms, med {}ms, avg {}ms, dev {}ms\n",
-						latency, conn->NetworkLatency.Median(), conn->NetworkLatency.Mean(), conn->NetworkLatency.Deviation());
+				
+				if (const auto latency = conn->FetchSocketLatency()) {
+					result += std::format(L"* Socket Latency: last {}ms, med {}ms, avg {}+{}ms\n",
+						latency, conn->SocketLatency.Median(), conn->SocketLatency.Mean(), conn->SocketLatency.Deviation());
 				} else
-					result += L"* Latency: failed to resolve\n";
+					result += L"* Socket Latency: failed to resolve\n";
+				
+				if (const auto tracker = conn->GetPingLatencyTracker(); tracker && tracker->Count()) {
+					result += std::format(L"* Ping Latency: last {}ms, med {}ms, avg {}+{}ms\n",
+						tracker->Latest(), tracker->Median(), tracker->Mean(), tracker->Deviation());
+				} else
+					result += L"* Ping Latency: failed to resolve\n";
+				
 				result += std::format(L"* Response Delay: med {}ms, avg {}ms, dev {}ms\n\n",
 					conn->ApplicationLatency.Median(), conn->ApplicationLatency.Mean(), conn->ApplicationLatency.Deviation());
 			}

@@ -40,6 +40,7 @@
 #include <iphlpapi.h>
 #include <comdef.h>
 #include <ShObjIdl_core.h>
+#include <icmpapi.h>
 
 #include <XivAlexanderCommon.h>
 

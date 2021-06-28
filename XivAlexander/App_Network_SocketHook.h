@@ -25,12 +25,13 @@ namespace App::Network {
 		[[nodiscard]]
 		SOCKET GetSocket() const;
 
-		[[nodiscard]] _Success_(return)
-		bool GetCurrentNetworkLatency(_Out_ int64_t& latency) const;
+		[[nodiscard]]
+		int64_t FetchSocketLatency();
 		
-		Utils::NumericStatisticsTracker NetworkLatency{ 10, 0 };
+		Utils::NumericStatisticsTracker SocketLatency{ 10, 0 };
 		Utils::NumericStatisticsTracker ApplicationLatency{ 10, 0 };
 		Utils::NumericStatisticsTracker ExaggeratedNetworkLatency{ 10, INT64_MAX, 30000 };
+		const Utils::NumericStatisticsTracker* GetPingLatencyTracker() const;
 	};
 
 	class SocketHook {

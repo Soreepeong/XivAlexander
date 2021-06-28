@@ -31,29 +31,36 @@ int64_t Utils::NumericStatisticsTracker::InvalidValue() const {
 	return m_emptyValue;
 }
 
+int64_t Utils::NumericStatisticsTracker::Latest() const {
+	const auto& vals = RemoveExpired();
+	if (vals.empty())
+		return m_emptyValue;
+	return vals.back();
+}
+
 int64_t Utils::NumericStatisticsTracker::Min() const {
-	const auto vals = RemoveExpired();
+	const auto& vals = RemoveExpired();
 	if (vals.empty())
 		return m_emptyValue;
 	return *std::min_element(vals.begin(), vals.end());
 }
 
 int64_t Utils::NumericStatisticsTracker::Max() const {
-	const auto vals = RemoveExpired();
+	const auto& vals = RemoveExpired();
 	if (vals.empty())
 		return m_emptyValue;
 	return *std::max_element(vals.begin(), vals.end());
 }
 
 int64_t Utils::NumericStatisticsTracker::Mean() const {
-	const auto vals = RemoveExpired();
+	const auto& vals = RemoveExpired();
 	if (vals.empty())
 		return m_emptyValue;
 	return static_cast<int64_t>(std::round(std::accumulate(vals.begin(), vals.end(), 0.0) / vals.size()));
 }
 
 int64_t Utils::NumericStatisticsTracker::Median() const {
-	const auto vals = RemoveExpired();
+	const auto& vals = RemoveExpired();
 	if (vals.empty())
 		return m_emptyValue;
 
@@ -70,7 +77,7 @@ int64_t Utils::NumericStatisticsTracker::Median() const {
 }
 
 int64_t Utils::NumericStatisticsTracker::Deviation() const {
-	const auto vals = RemoveExpired();
+	const auto& vals = RemoveExpired();
 	if (vals.size() < 2)
 		return m_emptyValue;
 
@@ -80,4 +87,14 @@ int64_t Utils::NumericStatisticsTracker::Deviation() const {
 	std::transform(vals.begin(), vals.end(), diff.begin(), [mean](int64_t x) { return static_cast<double>(x) - mean; });
 	const auto sum2 = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
 	return static_cast<int64_t>(std::round(std::sqrt(sum2 / vals.size())));
+}
+
+size_t Utils::NumericStatisticsTracker::Count() const {
+	return RemoveExpired().size();
+}
+
+uint64_t Utils::NumericStatisticsTracker::NextBlankIn() const {
+	if (RemoveExpired().size() < m_trackCount)
+		return 0;
+	return m_expiryTimestamp.front() - GetTickCount64();
 }

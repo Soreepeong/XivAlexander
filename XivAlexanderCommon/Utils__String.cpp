@@ -16,6 +16,12 @@ std::string Utils::ToUtf8(const std::wstring& u16) {
 	return u8;
 }
 
+std::string Utils::ToString(const in_addr& ia) {
+	char s[INET_ADDRSTRLEN + 6] = { 0 };
+	inet_ntop(AF_INET, &ia, s, sizeof s);
+	return s;
+}
+
 std::string Utils::ToString(const sockaddr_in& sa) {
 	if (sa.sin_family != AF_INET)
 		return std::format("sockaddr_in?(AF_INET={})", sa.sin_family);
