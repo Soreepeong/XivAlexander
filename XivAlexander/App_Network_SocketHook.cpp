@@ -178,7 +178,10 @@ public:
 			m_remoteAddress = remote;
 			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Remote={}", m_socket, Utils::ToString(remote));
 		}
-		if (m_localAddress.ss_family == AF_INET && m_remoteAddress.ss_family == AF_INET && !m_pingTrackKeeper)
+
+		const auto& local4 = *reinterpret_cast<const sockaddr_in*>(&m_localAddress);
+		const auto& remote4 = *reinterpret_cast<const sockaddr_in*>(&m_remoteAddress);
+		if (local4.sin_family == AF_INET && remote4.sin_family == AF_INET && local4.sin_addr.s_addr && remote4.sin_addr.s_addr && !m_pingTrackKeeper)
 			m_pingTrackKeeper = IcmpPingTracker::GetInstance().Track(
 				reinterpret_cast<sockaddr_in*>(&m_localAddress)->sin_addr,
 				reinterpret_cast<sockaddr_in*>(&m_remoteAddress)->sin_addr
@@ -667,6 +670,8 @@ const Utils::NumericStatisticsTracker* App::Network::SingleConnection::GetPingLa
 		return nullptr;
 	const auto &local = *reinterpret_cast<const sockaddr_in*>(&impl->m_localAddress);
 	const auto &remote = *reinterpret_cast<const sockaddr_in*>(&impl->m_remoteAddress);
+	if (!local.sin_addr.s_addr || !remote.sin_addr.s_addr)
+		return nullptr;
 	return IcmpPingTracker::GetInstance().GetTracker(local.sin_addr, remote.sin_addr);
 }
 
