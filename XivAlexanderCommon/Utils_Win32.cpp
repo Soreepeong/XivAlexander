@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "Utils_Win32.h"
+
+#include "Utils_CallOnDestruction.h"
 #include "Utils_Win32_Closeable.h"
 
 std::string Utils::Win32::FormatWindowsErrorMessage(unsigned int errorCode) {
@@ -66,13 +68,13 @@ std::pair<std::string, std::string> Utils::Win32::FormatModuleVersionString(HMOD
 		             (versionInfo.dwProductVersionLS >> 0) & 0xFFFF));
 }
 
-BOOL Utils::Win32::EnableTokenPrivilege(HANDLE hToken, LPCTSTR Privilege, BOOL bEnablePrivilege) {
+bool Utils::Win32::EnableTokenPrivilege(HANDLE hToken, LPCTSTR Privilege, bool bEnablePrivilege) {
 	TOKEN_PRIVILEGES tp;
 	LUID luid;
 	TOKEN_PRIVILEGES tpPrevious;
 	DWORD cbPrevious = sizeof(TOKEN_PRIVILEGES);
 
-	if (!LookupPrivilegeValue(NULL, Privilege, &luid)) return FALSE;
+	if (!LookupPrivilegeValue(nullptr, Privilege, &luid)) return false;
 
 	// 
 	// first pass.  get current privilege setting
@@ -90,7 +92,7 @@ BOOL Utils::Win32::EnableTokenPrivilege(HANDLE hToken, LPCTSTR Privilege, BOOL b
 		&cbPrevious
 	);
 
-	if (GetLastError() != ERROR_SUCCESS) return FALSE;
+	if (GetLastError() != ERROR_SUCCESS) return false;
 
 	// 
 	// second pass.  set privilege based on previous setting
@@ -103,12 +105,11 @@ BOOL Utils::Win32::EnableTokenPrivilege(HANDLE hToken, LPCTSTR Privilege, BOOL b
 	else
 		tpPrevious.Privileges[0].Attributes ^= (SE_PRIVILEGE_ENABLED & tpPrevious.Privileges[0].Attributes);
 
-	AdjustTokenPrivileges(
-		hToken, FALSE, &tpPrevious, cbPrevious, NULL, NULL);
+	AdjustTokenPrivileges(hToken, FALSE, &tpPrevious, cbPrevious, nullptr, nullptr);
 
-	if (GetLastError() != ERROR_SUCCESS) return FALSE;
+	if (GetLastError() != ERROR_SUCCESS) return false;
 
-	return TRUE;
+	return true;
 }
 
 void Utils::Win32::SetThreadDescription(HANDLE hThread, const std::wstring& description) {
@@ -164,10 +165,32 @@ void Utils::Win32::AddDebugPrivilege() {
 		throw Error("AddDebugPrivilege/EnableTokenPrivilege(SeDebugPrivilege)");
 }
 
+bool Utils::Win32::IsUserAnAdmin() {
+	SID_IDENTIFIER_AUTHORITY authority = SECURITY_NT_AUTHORITY;
+	PSID adminGroup;
+	if (!AllocateAndInitializeSid(
+		&authority,
+		2,
+		SECURITY_BUILTIN_DOMAIN_RID,
+		DOMAIN_ALIAS_RID_ADMINS,
+		0, 0, 0, 0, 0, 0,
+		&adminGroup))
+		return false;
+	const auto cleanup = CallOnDestruction([adminGroup]() {FreeSid(adminGroup); });
+	
+	if (BOOL b = FALSE; CheckTokenMembership(nullptr, adminGroup, &b) && b)
+		return true;
+	return false;
+}
+
 Utils::Win32::Error::Error(int errorCode, const std::string& msg)
 	: std::runtime_error(FormatWindowsErrorMessage(errorCode) + ": " + msg)
 	, m_nErrorCode(errorCode) {
 }
 
 Utils::Win32::Error::Error(const std::string& msg) : Error(GetLastError(), msg) {
+}
+
+int Utils::Win32::Error::Code() const {
+	return m_nErrorCode;
 }

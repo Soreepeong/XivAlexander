@@ -50,6 +50,7 @@ public:
 	bool m_quiet = false;
 	bool m_help = false;
 	bool m_web = false;
+	bool m_disableAutoRunAs = true;
 	std::set<DWORD> m_targetPids{};
 	std::set<std::wstring> m_targetSuffix{};
 
@@ -57,7 +58,7 @@ public:
 		: argp("XivAlexanderLoader") {
 
 		argp.add_argument("-a", "--action")
-			.help("specifies default action for each process (possible values: ask, load, unload)")
+			.help("specify default action for each process (possible values: ask, load, unload)")
 			.required()
 			.nargs(1)
 			.default_value(LoaderAction::Ask)
@@ -74,11 +75,15 @@ public:
 				throw std::runtime_error("Invalid parameter given for action parameter.");
 				});
 		argp.add_argument("-q", "--quiet")
-			.help("disables error messages")
+			.help("disable error messages")
+			.default_value(false)
+			.implicit_value(true);
+		argp.add_argument("-d", "--disable-runas")
+			.help("do not try to run as administrator in any case")
 			.default_value(false)
 			.implicit_value(true);
 		argp.add_argument("--web")
-			.help("opens github repository at https://github.com/Soreepeong/XivAlexander and exit")
+			.help("open github repository at https://github.com/Soreepeong/XivAlexander and exit")
 			.default_value(false)
 			.implicit_value(true);
 		argp.add_argument("targets")
@@ -117,6 +122,7 @@ public:
 		m_action = argp.get<LoaderAction>("-a");
 		m_quiet = argp.get<bool>("-q");
 		m_web = argp.get<bool>("--web");
+		m_disableAutoRunAs = argp.get<bool>("-d");
 
 		for (const auto& target : argp.get<std::vector<std::string>>("targets")) {
 			size_t idx = 0;
@@ -178,10 +184,14 @@ static std::set<DWORD> GetTargetPidList() {
 	return pids;
 }
 
-void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesystem::path& dllPath) {
-	const auto hProcess = Utils::Win32::Closeable::Handle(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, pid),
+auto OpenProcessForInjection(DWORD pid) {
+	return Utils::Win32::Closeable::Handle(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, pid),
 		Utils::Win32::Closeable::Handle::Null,
 		"OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, {})", pid);
+}
+
+void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesystem::path& dllPath) {
+	const auto hProcess = OpenProcessForInjection(pid);
 	void* rpModule = W32Modules::FindModuleAddress(hProcess, dllPath);
 	const auto path = W32Modules::PathFromModule(nullptr, hProcess);
 
@@ -196,7 +206,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 				L"\n"
 				L"Note: your anti-virus software will probably classify DLL injection as a malicious action, "
 				L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
-				static_cast<int>(pid), path)) {
+				pid, path)) {
 				case IDYES:
 					loaderAction = LoaderAction::Load;
 					break;
@@ -226,7 +236,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 					L"You may want to check your game installation path, and edit the right entry in the above file first.\n"
 					L"* Your anti-virus software will probably classify DLL injection as a malicious action, "
 					L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
-					static_cast<int>(pid), path, gameConfigPath)) {
+					pid, path, gameConfigPath)) {
 					case IDYES:
 						loaderAction = LoaderAction::Load;
 						break;
@@ -243,7 +253,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 					L"\n"
 					L"Note: your anti-virus software will probably classify DLL injection as a malicious action, "
 					L"and you will have to add both XivAlexanderLoader.exe and XivAlexander.dll to exceptions.",
-					static_cast<int>(pid), path, gameConfigPath)) {
+					pid, path, gameConfigPath)) {
 					case IDYES:
 						loaderAction = LoaderAction::Load;
 						break;
@@ -279,6 +289,17 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 	}
 }
 
+bool RequiresAdminAccess(const std::set<DWORD>& pids) {
+	try {
+		for (const auto pid : pids)
+			OpenProcessForInjection(pid);
+	} catch (const Utils::Win32::Error& e) {
+		if (e.Code() == ERROR_ACCESS_DENIED)
+			return true;
+	}
+	return false;
+}
+
 int WINAPI wWinMain(
 	_In_ HINSTANCE hInstance,
 	_In_opt_ HINSTANCE hPrevInstance,
@@ -288,10 +309,7 @@ int WINAPI wWinMain(
 	try {
 		g_parameters.Parse(lpCmdLine);
 	} catch (std::exception& err) {
-		const auto what = Utils::FromUtf8(err.what());
-		const auto help = g_parameters.GetHelpMessage();
-		const auto msg = std::wstring(L"Failed to parse command line arguments.\n\n") + what + L"\n\n" + help;
-		MessageBoxW(nullptr, msg.c_str(), MsgboxTitle, MB_OK | MB_ICONWARNING);
+		Utils::Win32::MessageBoxF(nullptr, MB_ICONWARNING, MsgboxTitle, L"Faild to parse command line arguments.\n\n{}\n\n{}", err.what(), g_parameters.GetHelpMessage());
 		return -1;
 	}
 	if (g_parameters.m_help) {
@@ -337,6 +355,18 @@ int WINAPI wWinMain(
 			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"{}", errors);
 		}
 		return -1;
+	}
+	
+	if (!g_parameters.m_disableAutoRunAs && !Utils::Win32::IsUserAnAdmin() && RequiresAdminAccess(pids)) {
+		SHELLEXECUTEINFOW si = {};
+		const auto path = Utils::Win32::Modules::PathFromModule();
+		si.cbSize = sizeof si;
+		si.lpVerb = L"runas";
+		si.lpFile = path.c_str();
+		si.lpParameters = lpCmdLine;
+		si.nShow = nShowCmd;
+		if (ShellExecuteExW(&si))
+			return 0;
 	}
 
 	for (const auto pid : pids) {

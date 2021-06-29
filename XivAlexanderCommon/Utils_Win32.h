@@ -23,9 +23,11 @@ namespace Utils::Win32 {
 
 	std::pair<std::string, std::string> FormatModuleVersionString(HMODULE hModule);
 
-	BOOL EnableTokenPrivilege(HANDLE hToken, LPCTSTR Privilege, BOOL bEnablePrivilege);
+	bool EnableTokenPrivilege(HANDLE hToken, LPCTSTR Privilege, bool bEnablePrivilege);
 
 	void AddDebugPrivilege();
+
+	bool IsUserAnAdmin();
 	
 	class Error : public std::runtime_error {
 		const int m_nErrorCode;
@@ -42,5 +44,7 @@ namespace Utils::Win32 {
 		Error(int errorCode, const char* format, Args...args)
 			: Error(errorCode, std::format(format, std::forward<Args>(args)...)) {
 		}
+
+		int Code() const;
 	};
 }
