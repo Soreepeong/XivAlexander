@@ -126,22 +126,12 @@ public:
 			if (!m_hGameMainWindow)
 				throw std::runtime_error("Game main window not found!");
 
-			MH_Initialize();
-			OnCleanup([this]() { MH_Uninitialize(); });
-			for (const auto& signature : Signatures::AllSignatures())
-				signature->Setup();
-
 			m_originalGameMainWndProc = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(m_hGameMainWindow, GWLP_WNDPROC, m_overridenGameMainWndProc));
 			OnCleanup([this]() {
-				this->this_->QueueRunOnMessageLoop([]() {
-					for (const auto& signature : Signatures::AllSignatures())
-						signature->Cleanup();
-					MH_DisableHook(MH_ALL_HOOKS);
-					}, true);
 				SetWindowLongPtrW(m_hGameMainWindow, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(m_originalGameMainWndProc));
 				});
 
-			m_socketHook = std::make_unique<Network::SocketHook>(m_hGameMainWindow);
+			m_socketHook = std::make_unique<Network::SocketHook>(this->this_);
 			OnCleanup([this]() { m_socketHook = nullptr; });
 
 			SetupTrayWindow();
@@ -232,8 +222,14 @@ App::App::App()
 
 App::App::~App() = default;
 
-void App::App::QueueRunOnMessageLoop(std::function<void()> f, bool wait) {
-	if (!wait) {
+HWND App::App::GetGameWindowHandle() const {
+	return m_pImpl->m_hGameMainWindow;
+}
+
+void App::App::QueueRunOnMessageLoop(std::function<void()> f) {
+	constexpr bool wait = true;
+	
+	if constexpr (!wait) {
 		{
 			std::lock_guard _lock(m_pImpl->m_runInMessageLoopLock);
 			m_pImpl->m_qRunInMessageLoop.push(f);
@@ -267,11 +263,6 @@ void App::App::QueueRunOnMessageLoop(std::function<void()> f, bool wait) {
 }
 
 void App::App::Run() {
-	QueueRunOnMessageLoop([&]() {
-		for (const auto& signature : Signatures::AllSignatures())
-			signature->Startup();
-		}, true);
-
 	MSG msg;
 	while (GetMessageW(&msg, nullptr, 0, 0)) {
 		bool dispatchMessage = true;

@@ -34,6 +34,13 @@ Utils::CallOnDestruction& Utils::CallOnDestruction::operator=(std::nullptr_t) no
 	return *this;
 }
 
+Utils::CallOnDestruction& Utils::CallOnDestruction::Wrap(std::function<void(std::function<void()>)> wrapper) {
+	m_fn = [fn = std::move(m_fn), wrapper = std::move(wrapper)]() {
+		wrapper(fn);
+	};
+	return *this;
+}
+
 Utils::CallOnDestruction::~CallOnDestruction() {
 	if (m_fn)
 		m_fn();

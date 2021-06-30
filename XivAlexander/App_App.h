@@ -15,8 +15,10 @@ namespace App {
 		App();
 		~App();
 
+		HWND GetGameWindowHandle() const;
+
 		void Run();
-		void QueueRunOnMessageLoop(std::function<void()> f, bool wait = false);
+		void QueueRunOnMessageLoop(std::function<void()> f);
 		int Unload();
 
 		void CheckUpdates(bool silent = true);

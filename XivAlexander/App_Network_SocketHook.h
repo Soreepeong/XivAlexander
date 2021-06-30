@@ -1,5 +1,9 @@
 #pragma once
 
+namespace App {
+	class App;
+}
+
 namespace App::Network {
 	namespace Structures {
 		struct FFXIVMessage;
@@ -39,7 +43,7 @@ namespace App::Network {
 		const std::unique_ptr<Internals> impl;
 
 	public:
-		SocketHook(HWND hGameWnd);
+		SocketHook(App* pApp);
 		SocketHook(const SocketHook&) = delete;
 		SocketHook(SocketHook&&) = delete;
 		SocketHook& operator =(const SocketHook&) = delete;

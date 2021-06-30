@@ -30,6 +30,16 @@ static DWORD WINAPI XivAlexanderThreadBody(void*) {
 
 BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 	g_hInstance = hInstance;
+	switch (fdwReason) {
+		case DLL_PROCESS_ATTACH:
+			MH_Initialize();
+			for (const auto& signature : App::Signatures::AllSignatures())
+				signature->Setup();
+			break;
+		case DLL_PROCESS_DETACH:
+			MH_Uninitialize();
+			break;
+	}
 	return TRUE;
 }
 

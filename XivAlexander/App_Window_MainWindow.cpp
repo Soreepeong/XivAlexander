@@ -137,7 +137,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 				case ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS:
 					App::Instance()->QueueRunOnMessageLoop([]() {
 						Network::SocketHook::Instance()->ReleaseSockets();
-					}, true);
+					});
 					return 0;
 
 					/***************************************************************/

@@ -1,24 +1,7 @@
 #include "pch.h"
-#include "App_Signatures.h"
 #include "App_Hooks.h"
 
 namespace App::Hooks {
-
-	namespace Socket {
-		ImportedFunction<SOCKET, int, int, int> socket("socket::socket", "ws2_32.dll", "socket", 23,
-			[](int af, int type, int protocol) { return socket.Thunked(af, type, protocol); });
-		ImportedFunction<int, SOCKET, const sockaddr*, int> connect("socket::connect", "ws2_32.dll", "connect", 4,
-			[](SOCKET s, const sockaddr* name, int namelen) { return connect.Thunked(s, name, namelen); });
-		ImportedFunction<int, int, fd_set*, fd_set*, fd_set*, const timeval*> select("socket::select", "ws2_32.dll", "select", 18,
-			[](int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const timeval* timeout) { return select.Thunked(nfds, readfds, writefds, exceptfds, timeout); });
-		ImportedFunction<int, SOCKET, char*, int, int> recv("socket::recv", "ws2_32.dll", "recv", 16,
-			[](SOCKET s, char* buf, int len, int flags) { return recv.Thunked(s, buf, len, flags); });
-		ImportedFunction<int, SOCKET, const char*, int, int> send("socket::send", "ws2_32.dll", "send", 19,
-			[](SOCKET s, const char* buf, int len, int flags) { return send.Thunked(s, buf, len, flags); });
-		ImportedFunction<int, SOCKET> closesocket("socket::closesocket", "ws2_32.dll", "closesocket", 3,
-			[](SOCKET s) { return closesocket.Thunked(s); });
-	}
-
 	namespace WinApi {
 #ifdef _DEBUG
 		// The game client's internal debugging code often trips when this function returns true,

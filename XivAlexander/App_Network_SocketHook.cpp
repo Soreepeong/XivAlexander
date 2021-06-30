@@ -5,7 +5,35 @@
 #include "App_Network_IcmpPingTracker.h"
 #include "App_Network_Structures.h"
 
-namespace SocketFn = App::Hooks::Socket;
+namespace App::Network::HookedSocketFunctions_ {
+	using namespace Hooks;
+	extern ImportedFunction<SOCKET, int, int, int> socket;
+	extern ImportedFunction<int, SOCKET, const sockaddr*, int> connect;
+	extern ImportedFunction<int, int, fd_set*, fd_set*, fd_set*, const timeval*> select;
+	extern ImportedFunction<int, SOCKET, char*, int, int> recv;
+	extern ImportedFunction<int, SOCKET, const char*, int, int> send;
+	extern ImportedFunction<int, SOCKET> closesocket;
+
+	ImportedFunction<SOCKET, int, int, int> socket("socket::socket", "ws2_32.dll", "socket", 23,
+		[](int af, int type, int protocol) { return socket.Thunked(af, type, protocol); });
+
+	ImportedFunction<int, SOCKET, const sockaddr*, int> connect("socket::connect", "ws2_32.dll", "connect", 4,
+		[](SOCKET s, const sockaddr* name, int namelen) { return connect.Thunked(s, name, namelen); });
+
+	ImportedFunction<int, int, fd_set*, fd_set*, fd_set*, const timeval*> select("socket::select", "ws2_32.dll", "select", 18,
+		[](int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const timeval* timeout) { return select.Thunked(nfds, readfds, writefds, exceptfds, timeout); });
+
+	ImportedFunction<int, SOCKET, char*, int, int> recv("socket::recv", "ws2_32.dll", "recv", 16,
+		[](SOCKET s, char* buf, int len, int flags) { return recv.Thunked(s, buf, len, flags); });
+
+	ImportedFunction<int, SOCKET, const char*, int, int> send("socket::send", "ws2_32.dll", "send", 19,
+		[](SOCKET s, const char* buf, int len, int flags) { return send.Thunked(s, buf, len, flags); });
+
+	ImportedFunction<int, SOCKET> closesocket("socket::closesocket", "ws2_32.dll", "closesocket", 3,
+		[](SOCKET s) { return closesocket.Thunked(s); });
+}
+
+namespace SocketFn = App::Network::HookedSocketFunctions_;
 
 class SingleStream {
 public:
@@ -408,13 +436,13 @@ int64_t App::Network::SingleConnection::FetchSocketLatency() {
 		SocketLatency.AddValue(latency);
 		return latency;
 	}
-}
+};
 
 class App::Network::SocketHook::Internals {
 	SocketHook* this_;
 
 public:
-	HWND const m_hGameWnd;
+	App* const m_pApp;
 	DWORD const m_dwGameMainThreadId;
 	std::map<SOCKET, std::unique_ptr<SingleConnection>> m_sockets;
 	std::set<SOCKET> m_nonGameSockets;
@@ -423,138 +451,141 @@ public:
 	bool m_unloading = false;
 	std::vector<std::pair<uint32_t, uint32_t>> m_allowedIpRange;
 	std::vector<std::pair<uint32_t, uint32_t>> m_allowedPortRange;
-	std::vector<Utils::CallOnDestruction> m_cleanupList;
-
-	Internals(SocketHook* this_, HWND hGameWnd)
+	Utils::CallOnDestruction::Multiple m_cleanupList;
+	
+	Internals(SocketHook* this_, App* pApp)
 		: this_(this_)
-		, m_hGameWnd(hGameWnd)
-		, m_dwGameMainThreadId(GetWindowThreadProcessId(hGameWnd, nullptr)) {
+		, m_pApp(pApp)
+		, m_dwGameMainThreadId(GetWindowThreadProcessId(pApp->GetGameWindowHandle(), nullptr)) {
 		auto reparse = [this](Config::ItemBase&) {
 			ParseTakeOverAddresses();
 			this->this_->ReleaseSockets();
 		};
-		m_cleanupList.push_back(Config::Instance().Game.Server_IpRange.OnChangeListener(reparse));
-		m_cleanupList.push_back(Config::Instance().Game.Server_PortRange.OnChangeListener(reparse));
-		m_cleanupList.push_back(Config::Instance().Runtime.TakeOverAllAddresses.OnChangeListener(reparse));
-		m_cleanupList.push_back(Config::Instance().Runtime.TakeOverPrivateAddresses.OnChangeListener(reparse));
-		m_cleanupList.push_back(Config::Instance().Runtime.TakeOverLoopbackAddresses.OnChangeListener(reparse));
-		m_cleanupList.push_back(Config::Instance().Runtime.TakeOverAllPorts.OnChangeListener(reparse));
+		m_cleanupList += Config::Instance().Game.Server_IpRange.OnChangeListener(reparse);
+		m_cleanupList += Config::Instance().Game.Server_PortRange.OnChangeListener(reparse);
+		m_cleanupList += Config::Instance().Runtime.TakeOverAllAddresses.OnChangeListener(reparse);
+		m_cleanupList += Config::Instance().Runtime.TakeOverPrivateAddresses.OnChangeListener(reparse);
+		m_cleanupList += Config::Instance().Runtime.TakeOverLoopbackAddresses.OnChangeListener(reparse);
+		m_cleanupList += Config::Instance().Runtime.TakeOverAllPorts.OnChangeListener(reparse);
 		ParseTakeOverAddresses();
-		SocketFn::socket.SetupHook([&](_In_ int af, _In_ int type, _In_ int protocol) {
-			const auto result = SocketFn::socket.bridge(af, type, protocol);
-			if (GetCurrentThreadId() == m_dwGameMainThreadId) {
-				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: New", result);
-				FindOrCreateSingleConnection(result);
-			}
-			return result;
-			});
-		SocketFn::closesocket.SetupHook([&](SOCKET s) {
-			if (GetCurrentThreadId() != m_dwGameMainThreadId)
-				return SocketFn::closesocket.bridge(s);
 
-			CleanupSocket(s);
-			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Close", s);
-			m_nonGameSockets.erase(s);
-			return SocketFn::closesocket.bridge(s);
-			});
-		SocketFn::send.SetupHook([&](SOCKET s, const char* buf, int len, int flags) {
-			if (GetCurrentThreadId() != m_dwGameMainThreadId)
-				return SocketFn::send.bridge(s, buf, len, flags);
-
-			const auto conn = FindOrCreateSingleConnection(s);
-			if (conn == nullptr)
-				return SocketFn::send.bridge(s, buf, len, flags);
-
-			conn->impl->m_sendRaw.Write(buf, len);
-			conn->impl->ProcessSendData();
-			conn->impl->AttemptSend();
-			return len;
-			});
-		SocketFn::recv.SetupHook([&](SOCKET s, char* buf, int len, int flags) {
-			if (GetCurrentThreadId() != m_dwGameMainThreadId)
-				return SocketFn::recv.bridge(s, buf, len, flags);
-
-			const auto conn = FindOrCreateSingleConnection(s);
-			if (conn == nullptr)
-				return SocketFn::recv.bridge(s, buf, len, flags);
-
-			conn->impl->AttemptReceive();
-
-			const auto result = conn->impl->m_recvProcessed.Read(reinterpret_cast<uint8_t*>(buf), len);
-			if (conn->impl->CloseRecvIfPossible())
-				CleanupSocket(s);
-
-			return static_cast<int>(result);
-			});
-		SocketFn::select.SetupHook([&](int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const timeval* timeout) {
-			if (GetCurrentThreadId() != m_dwGameMainThreadId)
-				return SocketFn::select.bridge(nfds, readfds, writefds, exceptfds, timeout);
-			
-			const fd_set readfds_original = *readfds;
-			fd_set readfds_temp = *readfds;
-
-			SocketFn::select.bridge(nfds, &readfds_temp, writefds, exceptfds, timeout);
-
-			FD_ZERO(readfds);
-			for (size_t i = 0; i < readfds_original.fd_count; ++i) {
-				const auto s = readfds_original.fd_array[i];
-				const auto conn = FindOrCreateSingleConnection(s);
-				if (conn == nullptr) {
-					if (FD_ISSET(s, &readfds_temp))
-						FD_SET(s, readfds);
-					continue;
+		pApp->QueueRunOnMessageLoop([&]() {
+			m_cleanupList += std::move(SocketFn::socket.SetHook([&](_In_ int af, _In_ int type, _In_ int protocol) {
+				const auto result = SocketFn::socket.bridge(af, type, protocol);
+				if (GetCurrentThreadId() == m_dwGameMainThreadId) {
+					Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: New", result);
+					FindOrCreateSingleConnection(result);
 				}
+				return result;
+				}).Wrap([pApp](auto fn) { pApp->QueueRunOnMessageLoop(std::move(fn)); }));
 
-				if (FD_ISSET(s, &readfds_temp))
-					conn->impl->AttemptReceive();
+			m_cleanupList += std::move(SocketFn::closesocket.SetHook([&](SOCKET s) {
+				if (GetCurrentThreadId() != m_dwGameMainThreadId)
+					return SocketFn::closesocket.bridge(s);
 
-				if (conn->impl->m_recvProcessed.Available())
-					FD_SET(s, readfds);
+				CleanupSocket(s);
+				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Close", s);
+				m_nonGameSockets.erase(s);
+				return SocketFn::closesocket.bridge(s);
+				}).Wrap([pApp](auto fn) { pApp->QueueRunOnMessageLoop(std::move(fn)); }));
+			
+			m_cleanupList += std::move(SocketFn::send.SetHook([&](SOCKET s, const char* buf, int len, int flags) {
+				if (GetCurrentThreadId() != m_dwGameMainThreadId)
+					return SocketFn::send.bridge(s, buf, len, flags);
 
+				const auto conn = FindOrCreateSingleConnection(s);
+				if (conn == nullptr)
+					return SocketFn::send.bridge(s, buf, len, flags);
+
+				conn->impl->m_sendRaw.Write(buf, len);
+				conn->impl->ProcessSendData();
+				conn->impl->AttemptSend();
+				return len;
+				}).Wrap([pApp](auto fn) { pApp->QueueRunOnMessageLoop(std::move(fn)); }));
+			
+			m_cleanupList += std::move(SocketFn::recv.SetHook([&](SOCKET s, char* buf, int len, int flags) {
+				if (GetCurrentThreadId() != m_dwGameMainThreadId)
+					return SocketFn::recv.bridge(s, buf, len, flags);
+
+				const auto conn = FindOrCreateSingleConnection(s);
+				if (conn == nullptr)
+					return SocketFn::recv.bridge(s, buf, len, flags);
+
+				conn->impl->AttemptReceive();
+
+				const auto result = conn->impl->m_recvProcessed.Read(reinterpret_cast<uint8_t*>(buf), len);
 				if (conn->impl->CloseRecvIfPossible())
 					CleanupSocket(s);
-			}
 
-			for (auto it = m_sockets.begin(); it != m_sockets.end(); ) {
-				const auto& [s, conn] = *it;
+				return static_cast<int>(result);
+				}).Wrap([pApp](auto fn) { pApp->QueueRunOnMessageLoop(std::move(fn)); }));
+			
+			m_cleanupList += std::move(SocketFn::select.SetHook([&](int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const timeval* timeout) {
+				if (GetCurrentThreadId() != m_dwGameMainThreadId)
+					return SocketFn::select.bridge(nfds, readfds, writefds, exceptfds, timeout);
 
-				conn->impl->AttemptSend();
+				const fd_set readfds_original = *readfds;
+				fd_set readfds_temp = *readfds;
 
-				if (conn->impl->CloseSendIfPossible())
-					it = CleanupSocket(s);
-				else
-					++it;
-			}
+				SocketFn::select.bridge(nfds, &readfds_temp, writefds, exceptfds, timeout);
 
-			return static_cast<int>((readfds ? readfds->fd_count : 0) +
-				(writefds ? writefds->fd_count : 0) +
-				(exceptfds ? exceptfds->fd_count : 0));
-			});
-		SocketFn::connect.SetupHook([&](SOCKET s, const sockaddr* name, int namelen) {
-			if (GetCurrentThreadId() != m_dwGameMainThreadId)
-				return SocketFn::connect.bridge(s, name, namelen);
+				FD_ZERO(readfds);
+				for (size_t i = 0; i < readfds_original.fd_count; ++i) {
+					const auto s = readfds_original.fd_array[i];
+					const auto conn = FindOrCreateSingleConnection(s);
+					if (conn == nullptr) {
+						if (FD_ISSET(s, &readfds_temp))
+							FD_SET(s, readfds);
+						continue;
+					}
 
-			const auto result = SocketFn::connect.bridge(s, name, namelen);
-			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Connect: {}", s, Utils::ToString(*name));
-			return result;
-			});
+					if (FD_ISSET(s, &readfds_temp))
+						conn->impl->AttemptReceive();
+
+					if (conn->impl->m_recvProcessed.Available())
+						FD_SET(s, readfds);
+
+					if (conn->impl->CloseRecvIfPossible())
+						CleanupSocket(s);
+				}
+
+				for (auto it = m_sockets.begin(); it != m_sockets.end(); ) {
+					const auto& [s, conn] = *it;
+
+					conn->impl->AttemptSend();
+
+					if (conn->impl->CloseSendIfPossible())
+						it = CleanupSocket(s);
+					else
+						++it;
+				}
+
+				return static_cast<int>((readfds ? readfds->fd_count : 0) +
+					(writefds ? writefds->fd_count : 0) +
+					(exceptfds ? exceptfds->fd_count : 0));
+				}).Wrap([pApp](auto fn) { pApp->QueueRunOnMessageLoop(std::move(fn)); }));
+			
+			m_cleanupList += std::move(SocketFn::connect.SetHook([&](SOCKET s, const sockaddr* name, int namelen) {
+				if (GetCurrentThreadId() != m_dwGameMainThreadId)
+					return SocketFn::connect.bridge(s, name, namelen);
+
+				const auto result = SocketFn::connect.bridge(s, name, namelen);
+				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Connect: {}", s, Utils::ToString(*name));
+				return result;
+				}).Wrap([pApp](auto fn) { pApp->QueueRunOnMessageLoop(std::move(fn)); }));
+			
+		});
 	}
 
 	~Internals() {
 		m_unloading = true;
 		while (!m_sockets.empty()) {
-			App::Instance()->QueueRunOnMessageLoop([this]() { this->this_->ReleaseSockets(); }, true);
+			App::Instance()->QueueRunOnMessageLoop([this]() { this->this_->ReleaseSockets(); });
 			Sleep(1);
 		}
-		SocketFn::socket.SetupHook(nullptr);
-		SocketFn::closesocket.SetupHook(nullptr);
-		SocketFn::send.SetupHook(nullptr);
-		SocketFn::recv.SetupHook(nullptr);
-		SocketFn::select.SetupHook(nullptr);
-		SocketFn::connect.SetupHook(nullptr);
-
+		
 		// Let it process main message loop first to ensure that no socket operation is in progress
-		SendMessage(m_hGameWnd, WM_NULL, 0, 0);
+		SendMessage(m_pApp->GetGameWindowHandle(), WM_NULL, 0, 0);
 	}
 
 	void ParseTakeOverAddresses() {
@@ -675,8 +706,8 @@ const Utils::NumericStatisticsTracker* App::Network::SingleConnection::GetPingLa
 	return IcmpPingTracker::GetInstance().GetTracker(local.sin_addr, remote.sin_addr);
 }
 
-App::Network::SocketHook::SocketHook(HWND hGameWnd)
-	: impl(std::make_unique<Internals>(this, hGameWnd)) {
+App::Network::SocketHook::SocketHook(App* pApp)
+	: impl(std::make_unique<Internals>(this, pApp)) {
 	s_socketHookInstance = this;
 }
 
@@ -694,20 +725,20 @@ void App::Network::SocketHook::AddOnSocketFoundListener(void* token, const std::
 		for (const auto& item : this->impl->m_sockets) {
 			cb(*item.second);
 		}
-		}, true);
+	});
 }
 
 void App::Network::SocketHook::AddOnSocketGoneListener(void* token, const std::function<void(SingleConnection&)>&cb) {
 	App::Instance()->QueueRunOnMessageLoop([this, token, &cb]() {
 		this->impl->m_onSocketGoneListeners[reinterpret_cast<size_t>(token)].emplace_back(cb);
-		}, true);
+	});
 }
 
 void App::Network::SocketHook::RemoveListeners(void* token) {
 	App::Instance()->QueueRunOnMessageLoop([this, token]() {
 		this->impl->m_onSocketFoundListeners.erase(reinterpret_cast<size_t>(token));
 		this->impl->m_onSocketGoneListeners.erase(reinterpret_cast<size_t>(token));
-		}, true);
+	});
 }
 
 void App::Network::SocketHook::ReleaseSockets() {
