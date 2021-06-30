@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "App_App.h"
+#include "App_Misc_Hooks.h"
 #include "App_Misc_FreeGameMutex.h"
 
 HINSTANCE g_hInstance;

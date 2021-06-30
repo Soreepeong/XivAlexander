@@ -146,7 +146,7 @@
     <ClCompile Include="App_Misc_Logger.cpp" />
     <ClCompile Include="App_Network_SocketHook.cpp" />
     <ClCompile Include="App_Network_Structures.cpp" />
-    <ClCompile Include="App_Hooks.cpp" />
+    <ClCompile Include="App_Misc_Hooks.cpp" />
     <ClCompile Include="App_Signatures.cpp" />
     <ClCompile Include="App_Window_BaseWindow.cpp" />
     <ClCompile Include="App_Window_ConfigWindow.cpp" />
@@ -169,7 +169,7 @@
     <ClInclude Include="App_Network_IcmpPingTracker.h" />
     <ClInclude Include="App_Network_SocketHook.h" />
     <ClInclude Include="App_Network_Structures.h" />
-    <ClInclude Include="App_Hooks.h" />
+    <ClInclude Include="App_Misc_Hooks.h" />
     <ClInclude Include="App_Signatures.h" />
     <ClInclude Include="App_Window_BaseWindow.h" />
     <ClInclude Include="App_Window_ConfigWindow.h" />

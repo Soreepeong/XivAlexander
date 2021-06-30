@@ -53,8 +53,6 @@ _COM_SMARTPTR_TYPEDEF(IShellItem, __uuidof(IShellItem));
 
 extern HINSTANCE g_hInstance;
 
-#include "App_Signatures.h"
-#include "App_Hooks.h"
 #include "App_ConfigRepository.h"
 #include "App_Misc_Logger.h"
 

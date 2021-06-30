@@ -69,9 +69,6 @@
     <ClCompile Include="App_ConfigRepository.cpp">
       <Filter>App</Filter>
     </ClCompile>
-    <ClCompile Include="App_Hooks.cpp">
-      <Filter>App</Filter>
-    </ClCompile>
     <ClCompile Include="App_Signatures.cpp">
       <Filter>App</Filter>
     </ClCompile>
@@ -80,6 +77,9 @@
     </ClCompile>
     <ClCompile Include="App_Network_IcmpPingTracker.cpp">
       <Filter>App\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Misc_Hooks.cpp">
+      <Filter>App\Misc</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -131,14 +131,14 @@
     <ClInclude Include="App_ConfigRepository.h">
       <Filter>App</Filter>
     </ClInclude>
-    <ClInclude Include="App_Hooks.h">
-      <Filter>App</Filter>
-    </ClInclude>
     <ClInclude Include="App_App.h">
       <Filter>App</Filter>
     </ClInclude>
     <ClInclude Include="App_Network_IcmpPingTracker.h">
       <Filter>App\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Misc_Hooks.h">
+      <Filter>App\Misc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "App_Misc_Hooks.h"
 #include "App_Network_SocketHook.h"
 
 #include "App_App.h"
@@ -6,7 +7,7 @@
 #include "App_Network_Structures.h"
 
 namespace App::Network::HookedSocketFunctions_ {
-	using namespace Hooks;
+	using namespace Misc::Hooks;
 	extern ImportedFunction<SOCKET, int, int, int> socket;
 	extern ImportedFunction<int, SOCKET, const sockaddr*, int> connect;
 	extern ImportedFunction<int, int, fd_set*, fd_set*, fd_set*, const timeval*> select;

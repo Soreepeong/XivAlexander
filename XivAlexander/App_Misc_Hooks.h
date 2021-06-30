@@ -1,5 +1,8 @@
 #pragma once
-namespace App::Hooks {
+
+#include "App_Signatures.h"
+
+namespace App::Misc::Hooks {
 
 	using namespace Signatures;
 

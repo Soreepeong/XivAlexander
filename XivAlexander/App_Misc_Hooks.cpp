@@ -1,7 +1,7 @@
 #include "pch.h"
-#include "App_Hooks.h"
+#include "App_Misc_Hooks.h"
 
-namespace App::Hooks {
+namespace App::Misc::Hooks {
 	namespace WinApi {
 #ifdef _DEBUG
 		// The game client's internal debugging code often trips when this function returns true,
