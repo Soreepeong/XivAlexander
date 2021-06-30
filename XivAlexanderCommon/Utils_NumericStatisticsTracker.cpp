@@ -79,7 +79,7 @@ int64_t Utils::NumericStatisticsTracker::Median() const {
 int64_t Utils::NumericStatisticsTracker::Deviation() const {
 	const auto& vals = RemoveExpired();
 	if (vals.size() < 2)
-		return m_emptyValue;
+		return 0;
 
 	const auto mean = std::accumulate(vals.begin(), vals.end(), 0.0) / vals.size();
 
