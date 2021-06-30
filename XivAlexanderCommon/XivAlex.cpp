@@ -166,3 +166,13 @@ XivAlex::VersionInformation XivAlex::CheckUpdates() {
 		.DownloadSize = item.at("size").get<size_t>(),
 	};
 }
+
+std::filesystem::path XivAlex::FindGameInstallationPath() {
+	wchar_t buf[512];
+	auto buflen = static_cast<DWORD>(sizeof buf);
+	if (RegQueryValueExW(HKEY_LOCAL_MACHINE,
+		LR"(HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{2B41E132-07DF-4925-A3D3-F2D1765CCDFE}\DisplayIcon)",
+		nullptr, nullptr, reinterpret_cast<LPBYTE>(&buf[0]), &buflen))
+		throw Utils::Win32::Error("Failed to query FFXIV installation information.");
+	return std::filesystem::path(buf).parent_path().parent_path();
+}

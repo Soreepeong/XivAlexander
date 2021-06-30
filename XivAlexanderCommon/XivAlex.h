@@ -18,4 +18,6 @@ namespace XivAlex {
 		size_t DownloadSize;
 	};
 	VersionInformation CheckUpdates();
+
+	std::filesystem::path FindGameInstallationPath();
 }
