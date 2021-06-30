@@ -69,9 +69,6 @@
     <ClCompile Include="App_ConfigRepository.cpp">
       <Filter>App</Filter>
     </ClCompile>
-    <ClCompile Include="App_Signatures.cpp">
-      <Filter>App</Filter>
-    </ClCompile>
     <ClCompile Include="App_App.cpp">
       <Filter>App</Filter>
     </ClCompile>
@@ -79,6 +76,9 @@
       <Filter>App\Network</Filter>
     </ClCompile>
     <ClCompile Include="App_Misc_Hooks.cpp">
+      <Filter>App\Misc</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Misc_Signatures.cpp">
       <Filter>App\Misc</Filter>
     </ClCompile>
   </ItemGroup>
@@ -125,9 +125,6 @@
     <ClInclude Include="App_Feature_AllIpcMessageLogger.h">
       <Filter>App\Feature</Filter>
     </ClInclude>
-    <ClInclude Include="App_Signatures.h">
-      <Filter>App</Filter>
-    </ClInclude>
     <ClInclude Include="App_ConfigRepository.h">
       <Filter>App</Filter>
     </ClInclude>
@@ -138,6 +135,9 @@
       <Filter>App\Network</Filter>
     </ClInclude>
     <ClInclude Include="App_Misc_Hooks.h">
+      <Filter>App\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Misc_Signatures.h">
       <Filter>App\Misc</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,7 +1,7 @@
 #include "pch.h"
-#include "App_Signatures.h"
+#include "App_Misc_Signatures.h"
 
-namespace App::Signatures {
+namespace App::Misc::Signatures {
 
 	bool SectionFilterTextOnly(const IMAGE_SECTION_HEADER& pSectionHeader) {
 		return 0 == strncmp(reinterpret_cast<const char*>(pSectionHeader.Name), ".text", 6);
@@ -31,17 +31,5 @@ namespace App::Signatures {
 			}
 		}
 		return nullptr;
-	}
-
-	BaseSignature::BaseSignature(const char* szName)
-	: m_sName(szName) {
-		AllSignatures().push_back(this);
-	}
-
-	BaseSignature::~BaseSignature() = default;
-
-	std::vector<BaseSignature*>& AllSignatures() {
-		static std::vector<BaseSignature*> signatures;
-		return signatures;
 	}
 }

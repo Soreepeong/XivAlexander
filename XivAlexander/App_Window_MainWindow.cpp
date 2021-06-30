@@ -135,7 +135,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					return 0;
 
 				case ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS:
-					App::Instance()->QueueRunOnMessageLoop([]() {
+					App::Instance()->RunOnGameLoop([]() {
 						Network::SocketHook::Instance()->ReleaseSockets();
 					});
 					return 0;

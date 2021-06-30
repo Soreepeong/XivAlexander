@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "App_App.h"
+#include "App_Misc_Hooks.h"
 #include "App_Network_SocketHook.h"
 #include "App_Feature_AnimationLockLatencyHandler.h"
 #include "App_Feature_IpcTypeFinder.h"
@@ -20,6 +21,8 @@ static HWND FindGameMainWindow() {
 		if (pid == GetCurrentProcessId())
 			break;
 	}
+	if (hwnd == nullptr)
+		throw std::runtime_error("Game window not found");
 	return hwnd;
 }
 
@@ -28,7 +31,7 @@ class App::App::Implementation {
 
 public:
 	const HWND m_hGameMainWindow;
-	std::vector<Utils::CallOnDestruction> m_cleanupPendingDestructions;
+	Utils::CallOnDestruction::Multiple m_cleanup;
 
 	std::mutex m_runInMessageLoopLock;
 	std::queue<std::function<void()>> m_qRunInMessageLoop;
@@ -45,7 +48,7 @@ public:
 	DWORD m_mainThreadId = -1;
 	int m_nWndProcDepth = 0;
 
-	WNDPROC m_originalGameMainWndProc = nullptr;
+	Misc::Hooks::WndProcFunction m_wndProc;
 
 	LRESULT CALLBACK OverridenWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 		m_mainThreadId = GetCurrentThreadId();
@@ -63,26 +66,15 @@ public:
 
 		switch (msg) {
 			case WM_DESTROY:
-				SendMessage(m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
+				if (m_trayWindow)
+					SendMessage(m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
 				break;
 		}
 
 		m_nWndProcDepth += 1;
-		const auto res = CallWindowProcW(m_originalGameMainWndProc, hwnd, msg, wParam, lParam);
+		const auto res = m_wndProc.bridge(hwnd, msg, wParam, lParam);
 		m_nWndProcDepth -= 1;
 		return res;
-	}
-
-	const LONG_PTR m_overridenGameMainWndProc = reinterpret_cast<LONG_PTR>(
-		static_cast<WNDPROC>([](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) { return s_pInstance->m_pImpl->OverridenWndProc(hwnd, msg, wParam, lParam); })
-		);
-
-	void OnCleanup(std::function<void()> cb) {
-		m_cleanupPendingDestructions.emplace_back(std::move(cb));
-	}
-
-	void OnCleanup(Utils::CallOnDestruction cb) {
-		m_cleanupPendingDestructions.push_back(std::move(cb));
 	}
 
 	void SetupTrayWindow() {
@@ -101,114 +93,101 @@ public:
 
 	Implementation(App* this_)
 		: this_(this_)
-		, m_hGameMainWindow(FindGameMainWindow()) {
+		, m_hGameMainWindow(FindGameMainWindow())
+		, m_wndProc("GameMainWindow", m_hGameMainWindow) {
 	}
 
 	~Implementation() {
 		Config::Instance().SetQuitting();
-		while (!m_cleanupPendingDestructions.empty())
-			m_cleanupPendingDestructions.pop_back();
-
-		s_pInstance = nullptr;
 	}
 
 	void Load() {
-		try {
-			s_pInstance = this_;
-			OnCleanup([]() { s_pInstance = nullptr; });
+		s_pInstance = this_;
+		m_cleanup += []() { s_pInstance = nullptr; };
 
-			Config::Instance();
-			OnCleanup([]() { Config::DestroyInstance(); });
+		Config::Instance();
+		m_cleanup += []() { Config::DestroyInstance(); };
 
-			Scintilla_RegisterClasses(g_hInstance);
-			OnCleanup([]() { Scintilla_ReleaseResources(); });
+		Scintilla_RegisterClasses(g_hInstance);
+		m_cleanup += []() { Scintilla_ReleaseResources(); };
 
-			if (!m_hGameMainWindow)
-				throw std::runtime_error("Game main window not found!");
+		if (!m_hGameMainWindow)
+			throw std::runtime_error("Game main window not found!");
 
-			m_originalGameMainWndProc = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(m_hGameMainWindow, GWLP_WNDPROC, m_overridenGameMainWndProc));
-			OnCleanup([this]() {
-				SetWindowLongPtrW(m_hGameMainWindow, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(m_originalGameMainWndProc));
-				});
+		m_cleanup += m_wndProc.SetHook([this](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+			return OverridenWndProc(hwnd, msg, wParam, lParam);
+			});
 
-			m_socketHook = std::make_unique<Network::SocketHook>(this->this_);
-			OnCleanup([this]() { m_socketHook = nullptr; });
+		m_socketHook = std::make_unique<Network::SocketHook>(this->this_);
+		m_cleanup += [this]() { m_socketHook = nullptr; };
 
-			SetupTrayWindow();
-			OnCleanup([this]() { m_trayWindow = nullptr; });
+		SetupTrayWindow();
+		m_cleanup += [this]() { m_trayWindow = nullptr; };
 
-			auto& config = Config::Instance().Runtime;
+		auto& config = Config::Instance().Runtime;
 
+		if (config.AlwaysOnTop)
+			SetWindowPos(m_hGameMainWindow, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+		else
+			SetWindowPos(m_hGameMainWindow, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+		m_cleanup += config.AlwaysOnTop.OnChangeListener([&](Config::ItemBase&) {
 			if (config.AlwaysOnTop)
 				SetWindowPos(m_hGameMainWindow, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 			else
 				SetWindowPos(m_hGameMainWindow, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-			OnCleanup(config.AlwaysOnTop.OnChangeListener([&](Config::ItemBase&) {
-				if (config.AlwaysOnTop)
-					SetWindowPos(m_hGameMainWindow, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-				else
-					SetWindowPos(m_hGameMainWindow, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-				}));
-			OnCleanup([this]() { SetWindowPos(m_hGameMainWindow, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE); });
+			});
+		m_cleanup += [this]() { SetWindowPos(m_hGameMainWindow, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE); };
 
+		if (config.UseHighLatencyMitigation)
+			m_animationLockLatencyHandler = std::make_unique<Feature::AnimationLockLatencyHandler>();
+		m_cleanup += config.UseHighLatencyMitigation.OnChangeListener([&](Config::ItemBase&) {
 			if (config.UseHighLatencyMitigation)
 				m_animationLockLatencyHandler = std::make_unique<Feature::AnimationLockLatencyHandler>();
-			OnCleanup(config.UseHighLatencyMitigation.OnChangeListener([&](Config::ItemBase&) {
-				if (config.UseHighLatencyMitigation)
-					m_animationLockLatencyHandler = std::make_unique<Feature::AnimationLockLatencyHandler>();
-				else
-					m_animationLockLatencyHandler = nullptr;
-				}));
-			OnCleanup([this]() { m_animationLockLatencyHandler = nullptr; });
+			else
+				m_animationLockLatencyHandler = nullptr;
+			});
+		m_cleanup += [this]() { m_animationLockLatencyHandler = nullptr; };
 
+		if (config.UseOpcodeFinder)
+			m_ipcTypeFinder = std::make_unique<Feature::IpcTypeFinder>();
+		m_cleanup += config.UseOpcodeFinder.OnChangeListener([&](Config::ItemBase&) {
 			if (config.UseOpcodeFinder)
 				m_ipcTypeFinder = std::make_unique<Feature::IpcTypeFinder>();
-			OnCleanup(config.UseOpcodeFinder.OnChangeListener([&](Config::ItemBase&) {
-				if (config.UseOpcodeFinder)
-					m_ipcTypeFinder = std::make_unique<Feature::IpcTypeFinder>();
-				else
-					m_ipcTypeFinder = nullptr;
-				}));
-			OnCleanup([this]() { m_ipcTypeFinder = nullptr; });
+			else
+				m_ipcTypeFinder = nullptr;
+			});
+		m_cleanup += [this]() { m_ipcTypeFinder = nullptr; };
 
+		if (config.UseAllIpcMessageLogger)
+			m_allIpcMessageLogger = std::make_unique<Feature::AllIpcMessageLogger>();
+		m_cleanup += config.UseAllIpcMessageLogger.OnChangeListener([&](Config::ItemBase&) {
 			if (config.UseAllIpcMessageLogger)
 				m_allIpcMessageLogger = std::make_unique<Feature::AllIpcMessageLogger>();
-			OnCleanup(config.UseAllIpcMessageLogger.OnChangeListener([&](Config::ItemBase&) {
-				if (config.UseAllIpcMessageLogger)
-					m_allIpcMessageLogger = std::make_unique<Feature::AllIpcMessageLogger>();
-				else
-					m_allIpcMessageLogger = nullptr;
-				}));
-			OnCleanup([this]() { m_allIpcMessageLogger = nullptr; });
+			else
+				m_allIpcMessageLogger = nullptr;
+			});
+		m_cleanup += [this]() { m_allIpcMessageLogger = nullptr; };
 
+		if (config.UseEffectApplicationDelayLogger)
+			m_effectApplicationDelayLogger = std::make_unique<Feature::EffectApplicationDelayLogger>();
+		m_cleanup += config.UseEffectApplicationDelayLogger.OnChangeListener([&](Config::ItemBase&) {
 			if (config.UseEffectApplicationDelayLogger)
 				m_effectApplicationDelayLogger = std::make_unique<Feature::EffectApplicationDelayLogger>();
-			OnCleanup(config.UseEffectApplicationDelayLogger.OnChangeListener([&](Config::ItemBase&) {
-				if (config.UseEffectApplicationDelayLogger)
-					m_effectApplicationDelayLogger = std::make_unique<Feature::EffectApplicationDelayLogger>();
-				else
-					m_effectApplicationDelayLogger = nullptr;
-				}));
-			OnCleanup([this]() { m_effectApplicationDelayLogger = nullptr; });
+			else
+				m_effectApplicationDelayLogger = nullptr;
+			});
+		m_cleanup += [this]() { m_effectApplicationDelayLogger = nullptr; };
 
+		if (config.ShowLoggingWindow)
+			m_logWindow = std::make_unique<Window::Log>();
+		m_cleanup += config.ShowLoggingWindow.OnChangeListener([&](Config::ItemBase&) {
 			if (config.ShowLoggingWindow)
 				m_logWindow = std::make_unique<Window::Log>();
-			OnCleanup(config.ShowLoggingWindow.OnChangeListener([&](Config::ItemBase&) {
-				if (config.ShowLoggingWindow)
-					m_logWindow = std::make_unique<Window::Log>();
-				else
-					m_logWindow = nullptr;
-				}));
-			OnCleanup([this]() { m_logWindow = nullptr; });
+			else
+				m_logWindow = nullptr;
+			});
+		m_cleanup += [this]() { m_logWindow = nullptr; };
 
-		} catch (std::exception&) {
-			Config::Instance().SetQuitting();
-			while (!m_cleanupPendingDestructions.empty())
-				m_cleanupPendingDestructions.pop_back();
-
-			s_pInstance = nullptr;
-			throw;
-		}
 	}
 };
 
@@ -226,9 +205,9 @@ HWND App::App::GetGameWindowHandle() const {
 	return m_pImpl->m_hGameMainWindow;
 }
 
-void App::App::QueueRunOnMessageLoop(std::function<void()> f) {
+void App::App::RunOnGameLoop(std::function<void()> f) {
 	constexpr bool wait = true;
-	
+
 	if constexpr (!wait) {
 		{
 			std::lock_guard _lock(m_pImpl->m_runInMessageLoopLock);
@@ -239,7 +218,7 @@ void App::App::QueueRunOnMessageLoop(std::function<void()> f) {
 	} else {
 		Utils::Win32::Closeable::Handle hEvent(CreateEventW(nullptr, true, false, nullptr),
 			INVALID_HANDLE_VALUE,
-			"App::QueueRunOnMessageLoop/CreateEventW");
+			"App::RunOnGameLoop/CreateEventW");
 		const auto fn = [&f, &hEvent]() {
 			try {
 				f();
@@ -291,7 +270,7 @@ int App::App::Unload() {
 	if (s_bUnloadDisabled)
 		throw std::runtime_error("Unloading is currently disabled.");
 
-	if (GetWindowLongPtrW(m_pImpl->m_hGameMainWindow, GWLP_WNDPROC) != m_pImpl->m_overridenGameMainWndProc)
+	if (!m_pImpl->m_socketHook->IsUnloadable() || !m_pImpl->m_wndProc.IsUnloadable())
 		throw std::runtime_error("Something has hooked the game process after XivAlexander, so you cannot unload XivAlexander until that other thing has been unloaded.");
 
 	if (m_pImpl->m_trayWindow)

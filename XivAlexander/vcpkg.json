@@ -9,6 +9,7 @@
     "scintilla",
     "nlohmann-json",
     "minhook",
-    "curlpp"
+    "curlpp",
+    "zydis"
   ]
 }

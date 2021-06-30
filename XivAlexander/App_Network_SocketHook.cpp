@@ -1,40 +1,8 @@
 #include "pch.h"
-#include "App_Misc_Hooks.h"
-#include "App_Network_SocketHook.h"
-
 #include "App_App.h"
+#include "App_Network_SocketHook.h"
 #include "App_Network_IcmpPingTracker.h"
 #include "App_Network_Structures.h"
-
-namespace App::Network::HookedSocketFunctions_ {
-	using namespace Misc::Hooks;
-	extern ImportedFunction<SOCKET, int, int, int> socket;
-	extern ImportedFunction<int, SOCKET, const sockaddr*, int> connect;
-	extern ImportedFunction<int, int, fd_set*, fd_set*, fd_set*, const timeval*> select;
-	extern ImportedFunction<int, SOCKET, char*, int, int> recv;
-	extern ImportedFunction<int, SOCKET, const char*, int, int> send;
-	extern ImportedFunction<int, SOCKET> closesocket;
-
-	ImportedFunction<SOCKET, int, int, int> socket("socket::socket", "ws2_32.dll", "socket", 23,
-		[](int af, int type, int protocol) { return socket.Thunked(af, type, protocol); });
-
-	ImportedFunction<int, SOCKET, const sockaddr*, int> connect("socket::connect", "ws2_32.dll", "connect", 4,
-		[](SOCKET s, const sockaddr* name, int namelen) { return connect.Thunked(s, name, namelen); });
-
-	ImportedFunction<int, int, fd_set*, fd_set*, fd_set*, const timeval*> select("socket::select", "ws2_32.dll", "select", 18,
-		[](int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const timeval* timeout) { return select.Thunked(nfds, readfds, writefds, exceptfds, timeout); });
-
-	ImportedFunction<int, SOCKET, char*, int, int> recv("socket::recv", "ws2_32.dll", "recv", 16,
-		[](SOCKET s, char* buf, int len, int flags) { return recv.Thunked(s, buf, len, flags); });
-
-	ImportedFunction<int, SOCKET, const char*, int, int> send("socket::send", "ws2_32.dll", "send", 19,
-		[](SOCKET s, const char* buf, int len, int flags) { return send.Thunked(s, buf, len, flags); });
-
-	ImportedFunction<int, SOCKET> closesocket("socket::closesocket", "ws2_32.dll", "closesocket", 3,
-		[](SOCKET s) { return closesocket.Thunked(s); });
-}
-
-namespace SocketFn = App::Network::HookedSocketFunctions_;
 
 class SingleStream {
 public:
@@ -134,6 +102,7 @@ class App::Network::SingleConnection::Internals {
 	friend class SocketHook;
 public:
 	SingleConnection* const this_;
+	SocketHook* const hook_;
 	const SOCKET m_socket;
 	bool m_unloading = false;
 
@@ -158,8 +127,9 @@ public:
 
 	uint64_t m_nextTcpDelaySetAttempt = 0;
 
-	Internals(SingleConnection* this_, SOCKET s)
+	Internals(SingleConnection* this_, SocketHook* hook_, SOCKET s)
 		: this_(this_)
+		, hook_(hook_)
 		, m_socket(s) {
 
 		Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Found", m_socket);
@@ -234,7 +204,7 @@ public:
 				break;
 			if (!readable)
 				break;
-			const auto recvlen = SocketFn::recv.bridge(m_socket, reinterpret_cast<char*>(buf), sizeof buf, 0);
+			const auto recvlen = hook_->recv.bridge(m_socket, reinterpret_cast<char*>(buf), sizeof buf, 0);
 			if (recvlen > 0)
 				m_recvRaw.Write(buf, recvlen);
 		}
@@ -245,7 +215,7 @@ public:
 		uint8_t buf[4096];
 		while (m_sendProcessed.Available()) {
 			const auto len = m_sendProcessed.Peek(buf, sizeof buf);
-			const auto sent = SocketFn::send.bridge(m_socket, reinterpret_cast<char*>(buf), static_cast<int>(len), 0);
+			const auto sent = hook_->send.bridge(m_socket, reinterpret_cast<char*>(buf), static_cast<int>(len), 0);
 			if (sent == SOCKET_ERROR)
 				break;
 			m_sendProcessed.Consume(sent);
@@ -391,8 +361,8 @@ public:
 	}
 };
 
-App::Network::SingleConnection::SingleConnection(SOCKET s)
-	: impl(std::make_unique<Internals>(this, s)) {
+App::Network::SingleConnection::SingleConnection(SocketHook* hook, SOCKET s)
+	: impl(std::make_unique<Internals>(this, hook, s)) {
 
 }
 App::Network::SingleConnection::~SingleConnection() = default;
@@ -453,7 +423,7 @@ public:
 	std::vector<std::pair<uint32_t, uint32_t>> m_allowedIpRange;
 	std::vector<std::pair<uint32_t, uint32_t>> m_allowedPortRange;
 	Utils::CallOnDestruction::Multiple m_cleanupList;
-	
+
 	Internals(SocketHook* this_, App* pApp)
 		: this_(this_)
 		, m_pApp(pApp)
@@ -470,47 +440,47 @@ public:
 		m_cleanupList += Config::Instance().Runtime.TakeOverAllPorts.OnChangeListener(reparse);
 		ParseTakeOverAddresses();
 
-		pApp->QueueRunOnMessageLoop([&]() {
-			m_cleanupList += std::move(SocketFn::socket.SetHook([&](_In_ int af, _In_ int type, _In_ int protocol) {
-				const auto result = SocketFn::socket.bridge(af, type, protocol);
+		pApp->RunOnGameLoop([&]() {
+			m_cleanupList += std::move(this_->socket.SetHook([&](_In_ int af, _In_ int type, _In_ int protocol) {
+				const auto result = this_->socket.bridge(af, type, protocol);
 				if (GetCurrentThreadId() == m_dwGameMainThreadId) {
 					Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: New", result);
 					FindOrCreateSingleConnection(result);
 				}
 				return result;
-				}).Wrap([pApp](auto fn) { pApp->QueueRunOnMessageLoop(std::move(fn)); }));
+				}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
 
-			m_cleanupList += std::move(SocketFn::closesocket.SetHook([&](SOCKET s) {
+			m_cleanupList += std::move(this_->closesocket.SetHook([&](SOCKET s) {
 				if (GetCurrentThreadId() != m_dwGameMainThreadId)
-					return SocketFn::closesocket.bridge(s);
+					return this_->closesocket.bridge(s);
 
 				CleanupSocket(s);
 				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Close", s);
 				m_nonGameSockets.erase(s);
-				return SocketFn::closesocket.bridge(s);
-				}).Wrap([pApp](auto fn) { pApp->QueueRunOnMessageLoop(std::move(fn)); }));
+				return this_->closesocket.bridge(s);
+				}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
 			
-			m_cleanupList += std::move(SocketFn::send.SetHook([&](SOCKET s, const char* buf, int len, int flags) {
+			m_cleanupList += std::move(this_->send.SetHook([&](SOCKET s, const char* buf, int len, int flags) {
 				if (GetCurrentThreadId() != m_dwGameMainThreadId)
-					return SocketFn::send.bridge(s, buf, len, flags);
+					return this_->send.bridge(s, buf, len, flags);
 
 				const auto conn = FindOrCreateSingleConnection(s);
 				if (conn == nullptr)
-					return SocketFn::send.bridge(s, buf, len, flags);
+					return this_->send.bridge(s, buf, len, flags);
 
 				conn->impl->m_sendRaw.Write(buf, len);
 				conn->impl->ProcessSendData();
 				conn->impl->AttemptSend();
 				return len;
-				}).Wrap([pApp](auto fn) { pApp->QueueRunOnMessageLoop(std::move(fn)); }));
+				}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
 			
-			m_cleanupList += std::move(SocketFn::recv.SetHook([&](SOCKET s, char* buf, int len, int flags) {
+			m_cleanupList += std::move(this_->recv.SetHook([&](SOCKET s, char* buf, int len, int flags) {
 				if (GetCurrentThreadId() != m_dwGameMainThreadId)
-					return SocketFn::recv.bridge(s, buf, len, flags);
+					return this_->recv.bridge(s, buf, len, flags);
 
 				const auto conn = FindOrCreateSingleConnection(s);
 				if (conn == nullptr)
-					return SocketFn::recv.bridge(s, buf, len, flags);
+					return this_->recv.bridge(s, buf, len, flags);
 
 				conn->impl->AttemptReceive();
 
@@ -519,16 +489,16 @@ public:
 					CleanupSocket(s);
 
 				return static_cast<int>(result);
-				}).Wrap([pApp](auto fn) { pApp->QueueRunOnMessageLoop(std::move(fn)); }));
+				}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
 			
-			m_cleanupList += std::move(SocketFn::select.SetHook([&](int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const timeval* timeout) {
+			m_cleanupList += std::move(this_->select.SetHook([&](int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const timeval* timeout) {
 				if (GetCurrentThreadId() != m_dwGameMainThreadId)
-					return SocketFn::select.bridge(nfds, readfds, writefds, exceptfds, timeout);
+					return this_->select.bridge(nfds, readfds, writefds, exceptfds, timeout);
 
 				const fd_set readfds_original = *readfds;
 				fd_set readfds_temp = *readfds;
 
-				SocketFn::select.bridge(nfds, &readfds_temp, writefds, exceptfds, timeout);
+				this_->select.bridge(nfds, &readfds_temp, writefds, exceptfds, timeout);
 
 				FD_ZERO(readfds);
 				for (size_t i = 0; i < readfds_original.fd_count; ++i) {
@@ -564,16 +534,16 @@ public:
 				return static_cast<int>((readfds ? readfds->fd_count : 0) +
 					(writefds ? writefds->fd_count : 0) +
 					(exceptfds ? exceptfds->fd_count : 0));
-				}).Wrap([pApp](auto fn) { pApp->QueueRunOnMessageLoop(std::move(fn)); }));
+				}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
 			
-			m_cleanupList += std::move(SocketFn::connect.SetHook([&](SOCKET s, const sockaddr* name, int namelen) {
+			m_cleanupList += std::move(this_->connect.SetHook([&](SOCKET s, const sockaddr* name, int namelen) {
 				if (GetCurrentThreadId() != m_dwGameMainThreadId)
-					return SocketFn::connect.bridge(s, name, namelen);
+					return this_->connect.bridge(s, name, namelen);
 
-				const auto result = SocketFn::connect.bridge(s, name, namelen);
+				const auto result = this_->connect.bridge(s, name, namelen);
 				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Connect: {}", s, Utils::ToString(*name));
 				return result;
-				}).Wrap([pApp](auto fn) { pApp->QueueRunOnMessageLoop(std::move(fn)); }));
+				}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
 			
 		});
 	}
@@ -581,7 +551,7 @@ public:
 	~Internals() {
 		m_unloading = true;
 		while (!m_sockets.empty()) {
-			App::Instance()->QueueRunOnMessageLoop([this]() { this->this_->ReleaseSockets(); });
+			App::Instance()->RunOnGameLoop([this]() { this->this_->ReleaseSockets(); });
 			Sleep(1);
 		}
 		
@@ -671,7 +641,7 @@ public:
 			case TestRemoteAddressResult::TakeOver:
 				break;
 		}
-		m_sockets.emplace(s, std::make_unique<SingleConnection>(s));
+		m_sockets.emplace(s, std::make_unique<SingleConnection>(this_, s));
 		const auto ptr = m_sockets.at(s).get();
 		for (const auto& listeners : m_onSocketFoundListeners) {
 			for (const auto& cb : listeners.second)
@@ -720,8 +690,17 @@ App::Network::SocketHook* App::Network::SocketHook::Instance() {
 	return s_socketHookInstance;
 }
 
+bool App::Network::SocketHook::IsUnloadable() const {
+	return socket.IsUnloadable()
+		&& connect.IsUnloadable()
+		&& select.IsUnloadable()
+		&& recv.IsUnloadable()
+		&& send.IsUnloadable()
+		&& closesocket.IsUnloadable();
+}
+
 void App::Network::SocketHook::AddOnSocketFoundListener(void* token, const std::function<void(SingleConnection&)>&cb) {
-	App::Instance()->QueueRunOnMessageLoop([this, token, &cb]() {
+	App::Instance()->RunOnGameLoop([this, token, &cb]() {
 		this->impl->m_onSocketFoundListeners[reinterpret_cast<size_t>(token)].emplace_back(cb);
 		for (const auto& item : this->impl->m_sockets) {
 			cb(*item.second);
@@ -730,13 +709,13 @@ void App::Network::SocketHook::AddOnSocketFoundListener(void* token, const std::
 }
 
 void App::Network::SocketHook::AddOnSocketGoneListener(void* token, const std::function<void(SingleConnection&)>&cb) {
-	App::Instance()->QueueRunOnMessageLoop([this, token, &cb]() {
+	App::Instance()->RunOnGameLoop([this, token, &cb]() {
 		this->impl->m_onSocketGoneListeners[reinterpret_cast<size_t>(token)].emplace_back(cb);
 	});
 }
 
 void App::Network::SocketHook::RemoveListeners(void* token) {
-	App::Instance()->QueueRunOnMessageLoop([this, token]() {
+	App::Instance()->RunOnGameLoop([this, token]() {
 		this->impl->m_onSocketFoundListeners.erase(reinterpret_cast<size_t>(token));
 		this->impl->m_onSocketGoneListeners.erase(reinterpret_cast<size_t>(token));
 	});

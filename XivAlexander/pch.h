@@ -47,6 +47,7 @@
 #include <MinHook.h>
 #include <scintilla/Scintilla.h>
 #include <nlohmann/json.hpp>
+#include <Zydis/Zydis.h>
 
 _COM_SMARTPTR_TYPEDEF(IFileSaveDialog, __uuidof(IFileSaveDialog));
 _COM_SMARTPTR_TYPEDEF(IShellItem, __uuidof(IShellItem));

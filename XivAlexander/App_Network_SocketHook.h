@@ -1,5 +1,7 @@
 #pragma once
 
+#include "App_Misc_Hooks.h"
+
 namespace App {
 	class App;
 }
@@ -18,7 +20,7 @@ namespace App::Network {
 		const std::unique_ptr<Internals> impl;
 
 	public:
-		SingleConnection(SOCKET s);
+		SingleConnection(SocketHook* hook, SOCKET s);
 		~SingleConnection();
 
 		void AddIncomingFFXIVMessageHandler(void* token, std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb);
@@ -40,7 +42,16 @@ namespace App::Network {
 
 	class SocketHook {
 		class Internals;
+		friend class SingleConnection;
+		friend class SingleConnection::Internals;
 		const std::unique_ptr<Internals> impl;
+
+		Misc::Hooks::ImportedFunction<SOCKET, int, int, int> socket{ "socket::socket", "ws2_32.dll", "socket", 23 };
+		Misc::Hooks::ImportedFunction<int, SOCKET, const sockaddr*, int> connect{ "socket::connect", "ws2_32.dll", "connect", 4 };
+		Misc::Hooks::ImportedFunction<int, int, fd_set*, fd_set*, fd_set*, const timeval*> select{ "socket::select", "ws2_32.dll", "select", 18 };
+		Misc::Hooks::ImportedFunction<int, SOCKET, char*, int, int> recv{ "socket::recv", "ws2_32.dll", "recv", 16 };
+		Misc::Hooks::ImportedFunction<int, SOCKET, const char*, int, int> send{ "socket::send", "ws2_32.dll", "send", 19 };
+		Misc::Hooks::ImportedFunction<int, SOCKET> closesocket{ "socket::closesocket", "ws2_32.dll", "closesocket", 3 };
 
 	public:
 		SocketHook(App* pApp);
@@ -51,6 +62,7 @@ namespace App::Network {
 		~SocketHook();
 
 		static SocketHook* Instance();
+		[[nodiscard]] bool IsUnloadable() const;
 
 		void AddOnSocketFoundListener(void* token, const std::function<void(SingleConnection&)>& cb);
 		void AddOnSocketGoneListener(void* token, const std::function<void(SingleConnection&)>& cb);

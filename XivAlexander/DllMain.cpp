@@ -10,13 +10,13 @@ static DWORD WINAPI XivAlexanderThreadBody(void*) {
 		App::Misc::Logger logger;
 
 		Utils::Win32::SetThreadDescription(GetCurrentThread(), L"XivAlexander::XivAlexanderThread");
-		
+
 		try {
 			App::Misc::FreeGameMutex::FreeGameMutex();
 		} catch (std::exception& e) {
 			App::Misc::Logger::GetLogger().Format<App::LogLevel::Warning>(App::LogCategory::General, "Failed to free game mutex: {}", e.what());
 		}
-		
+
 		try {
 			App::App app;
 			logger.Log(App::LogCategory::General, u8"XivAlexander initialized.");
@@ -29,15 +29,29 @@ static DWORD WINAPI XivAlexanderThreadBody(void*) {
 	FreeLibraryAndExitThread(g_hInstance, 0);
 }
 
+class DebuggerPresenceDisabler {
+	App::Misc::Hooks::PointerFunction<BOOL> m_IsDebuggerPresent;
+	Utils::CallOnDestruction m_disableDebuggerPresence;
+
+public:
+	DebuggerPresenceDisabler()
+		: m_IsDebuggerPresent("DebuggerPresenceDisabler::m_IsDebuggerPresent", ::IsDebuggerPresent)
+		, m_disableDebuggerPresence(m_IsDebuggerPresent.SetHook([]() {return FALSE; })) {
+	}
+};
+
+static DebuggerPresenceDisabler* s_debuggerPresenceDisabler = nullptr;
+
 BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 	g_hInstance = hInstance;
 	switch (fdwReason) {
 		case DLL_PROCESS_ATTACH:
 			MH_Initialize();
-			for (const auto& signature : App::Signatures::AllSignatures())
-				signature->Setup();
+			s_debuggerPresenceDisabler = new DebuggerPresenceDisabler();
 			break;
+
 		case DLL_PROCESS_DETACH:
+			delete s_debuggerPresenceDisabler;
 			MH_Uninitialize();
 			break;
 	}
@@ -51,7 +65,7 @@ extern "C" __declspec(dllexport) int __stdcall LoadXivAlexander(void* lpReserved
 	try {
 		LoadLibraryW(Utils::Win32::Modules::PathFromModule(g_hInstance).c_str());
 		bLibraryLoaded = true;
-		
+
 		Utils::Win32::Closeable::Handle hThread(CreateThread(nullptr, 0, XivAlexanderThreadBody, nullptr, 0, nullptr),
 			Utils::Win32::Closeable::Handle::Null,
 			"LoadXivAlexander/CreateThread");
