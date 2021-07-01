@@ -22,9 +22,6 @@
     <Filter Include="App\Feature">
       <UniqueIdentifier>{ca7e3e97-d02b-44f7-bd44-d1065410a357}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Exported">
-      <UniqueIdentifier>{147c4ec0-76a9-491e-a659-12a2ef331fed}</UniqueIdentifier>
-    </Filter>
     <Filter Include="App\Apps">
       <UniqueIdentifier>{8558bf64-2138-4a68-bf1e-d9fec57dafa5}</UniqueIdentifier>
     </Filter>
@@ -90,6 +87,9 @@
     <ClCompile Include="App_Misc_DebuggerDetectionDisabler.cpp">
       <Filter>App\Misc</Filter>
     </ClCompile>
+    <ClCompile Include="App_InjectOnCreateProcessApp.cpp">
+      <Filter>App\Apps</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -146,14 +146,14 @@
     <ClInclude Include="App_Misc_Signatures.h">
       <Filter>App\Misc</Filter>
     </ClInclude>
-    <ClInclude Include="include\XivAlexander.h">
-      <Filter>Exported</Filter>
-    </ClInclude>
     <ClInclude Include="App_XivAlexApp.h">
       <Filter>App\Apps</Filter>
     </ClInclude>
     <ClInclude Include="App_Misc_DebuggerDetectionDisabler.h">
       <Filter>App\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="App_InjectOnCreateProcessApp.h">
+      <Filter>App\Apps</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

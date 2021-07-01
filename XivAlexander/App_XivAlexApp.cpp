@@ -10,7 +10,6 @@
 #include "App_Misc_FreeGameMutex.h"
 #include "App_Window_LogWindow.h"
 #include "App_Window_MainWindow.h"
-#include "include/XivAlexander.h"
 
 static HWND FindGameMainWindow() {
 	HWND hwnd = nullptr;
@@ -72,7 +71,6 @@ public:
 				this->this_->m_bMainWindowDestroyed = true;
 
 				EnableXivAlexander(0);
-				EnableDebuggerPresenceDisabler(0);
 
 				return bridger->bridge(hwnd, msg, wParam, lParam);
 			}
@@ -102,7 +100,6 @@ public:
 			Utils::Win32::Closeable::Handle unloader(
 				CreateThread(nullptr, 0, [](void*) -> DWORD {
 					EnableXivAlexander(0);
-					EnableDebuggerPresenceDisabler(0);
 					FreeLibraryAndExitThread(g_hInstance, 0);
 				}, nullptr, 0, nullptr),
 				Utils::Win32::Closeable::Handle::Null,
@@ -381,3 +378,26 @@ void App::XivAlexApp::CheckUpdates(bool silent) {
 		m_logger->Format<LogLevel::Error>(LogCategory::General, "Failed to check for updates: {}", e.what());
 	}
 }
+
+static std::unique_ptr<App::XivAlexApp> s_xivAlexApp;
+
+extern "C" __declspec(dllexport) int __stdcall EnableXivAlexander(size_t bEnable) {
+	if (!!bEnable == !!s_xivAlexApp)
+		return 0;
+	try {
+		s_xivAlexApp = bEnable ? std::make_unique<App::XivAlexApp>() : nullptr;
+		return 0;
+	} catch (const std::exception& e) {
+		OutputDebugStringA(std::format("LoadXivAlexander error: {}\n", e.what()).c_str());
+		return -1;
+	}
+}
+
+extern "C" __declspec(dllexport) int __stdcall ReloadConfiguration(void* lpReserved) {
+	if (s_xivAlexApp) {
+		App::Config::Instance().Runtime.Reload(true);
+		App::Config::Instance().Game.Reload(true);
+	}
+	return 0;
+}
+

@@ -48,13 +48,13 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)XivAlexanderCommon\include;$(SolutionDir)XivAlexander\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)XivAlexanderCommon\include;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)build\$(Platform)_$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Platform)_$(Configuration)\Temp\$(ProjectName)\</IntDir>
     <LibraryPath>$(OutDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(SolutionDir)XivAlexanderCommon\include;$(SolutionDir)XivAlexander\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)XivAlexanderCommon\include;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)build\$(Platform)_$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Platform)_$(Configuration)\Temp\$(ProjectName)\</IntDir>
     <LibraryPath>$(OutDir);$(LibraryPath)</LibraryPath>

@@ -2,12 +2,14 @@
 
 #include <memory>
 
-#include "App_Misc_Logger.h"
-#include "App_Network_SocketHook.h"
-
 namespace App {
+	namespace Network {
+		class SocketHook;
+	}
+
 	namespace Misc {
 		class DebuggerDetectionDisabler;
+		class Logger;
 	}
 	
 	class XivAlexApp {
@@ -36,3 +38,5 @@ namespace App {
 		void CheckUpdates(bool silent = true);
 	};
 }
+
+extern "C" __declspec(dllexport) int __stdcall EnableXivAlexander(size_t bEnable);

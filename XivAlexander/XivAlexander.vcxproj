@@ -134,6 +134,7 @@
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="App_InjectOnCreateProcessApp.cpp" />
     <ClCompile Include="App_Misc_DebuggerDetectionDisabler.cpp" />
     <ClCompile Include="App_Network_IcmpPingTracker.cpp" />
     <ClCompile Include="DllMain.cpp" />
@@ -159,6 +160,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="App_InjectOnCreateProcessApp.h" />
     <ClInclude Include="App_Misc_DebuggerDetectionDisabler.h" />
     <ClInclude Include="App_XivAlexApp.h" />
     <ClInclude Include="App_ConfigRepository.h" />
@@ -177,7 +179,6 @@
     <ClInclude Include="App_Window_ConfigWindow.h" />
     <ClInclude Include="App_Window_LogWindow.h" />
     <ClInclude Include="App_Window_MainWindow.h" />
-    <ClInclude Include="include\XivAlexander.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>

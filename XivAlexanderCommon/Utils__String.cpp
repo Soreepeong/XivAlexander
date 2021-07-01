@@ -16,6 +16,13 @@ std::string Utils::ToUtf8(const std::wstring& u16) {
 	return u8;
 }
 
+std::wstring Utils::FromOem(const std::string& in) {
+	const size_t length = MultiByteToWideChar(CP_OEMCP, 0, in.c_str(), static_cast<int>(in.size()), nullptr, 0);
+	std::wstring u16(length, 0);
+	MultiByteToWideChar(CP_OEMCP, MB_ERR_INVALID_CHARS, in.c_str(), static_cast<int>(in.size()), const_cast<LPWSTR>(u16.c_str()), static_cast<int>(u16.size()));
+	return u16;
+}
+
 std::string Utils::ToString(const in_addr& ia) {
 	char s[INET_ADDRSTRLEN + 6] = { 0 };
 	inet_ntop(AF_INET, &ia, s, sizeof s);

@@ -1,16 +1,12 @@
 #include "pch.h"
-#include "XivAlexander.h"
 
 const auto MsgboxTitle = L"XivAlexander Loader";
 
 namespace W32Modules = Utils::Win32::Modules;
 
 static
-void CheckDllVersion(const std::filesystem::path& dllPath) {
-	const auto hDll = GetModuleHandleW(dllPath.c_str());
-	if (!hDll)
-		throw std::runtime_error("XivAlexander.dll not found.");
-	auto [dllFileVersion, dllProductVersion] = Utils::Win32::FormatModuleVersionString(hDll);
+void CheckDllVersion(HMODULE hModule) {
+	auto [dllFileVersion, dllProductVersion] = Utils::Win32::FormatModuleVersionString(hModule);
 	auto [selfFileVersion, selfProductVersion] = Utils::Win32::FormatModuleVersionString(GetModuleHandleW(nullptr));
 
 	if (dllFileVersion != selfFileVersion)
@@ -23,10 +19,11 @@ void CheckDllVersion(const std::filesystem::path& dllPath) {
 }
 
 enum class LoaderAction : int {
+	Auto,
 	Ask,
 	Load,
 	Unload,
-	Ignore,  // for internal use only
+	Count_,  // for internal use only
 };
 
 template <>
@@ -35,7 +32,7 @@ std::string argparse::details::repr(LoaderAction const& val) {
 		case LoaderAction::Ask: return "ask";
 		case LoaderAction::Load: return "load";
 		case LoaderAction::Unload: return "unload";
-		case LoaderAction::Ignore: return "ignore";
+		case LoaderAction::Auto: return "auto";
 	}
 	return std::format("({})", static_cast<int>(val));
 }
@@ -43,7 +40,7 @@ LoaderAction ParseLoaderAction(std::string val) {
 	auto valw = Utils::FromUtf8(val);
 	CharLowerW(&valw[0]);
 	val = Utils::ToUtf8(valw);
-	for (size_t i = 0; i < static_cast<size_t>(LoaderAction::Ignore); ++i) {
+	for (size_t i = 0; i < static_cast<size_t>(LoaderAction::Count_); ++i) {
 		const auto compare = argparse::details::repr(static_cast<LoaderAction>(i));
 		auto equal = true;
 		for (size_t j = 0; equal && j < val.length() && j < compare.length(); ++j) {
@@ -59,7 +56,7 @@ class XivAlexanderLoaderParameter {
 public:
 	argparse::ArgumentParser argp;
 
-	LoaderAction m_action = LoaderAction::Ask;
+	LoaderAction m_action = LoaderAction::Auto;
 	bool m_quiet = false;
 	bool m_help = false;
 	bool m_web = false;
@@ -72,10 +69,10 @@ public:
 		: argp("XivAlexanderLoader") {
 
 		argp.add_argument("-a", "--action")
-			.help("specify action (possible values: ask, load, unload)")
+			.help("specify action (possible values: auto, ask, load, unload)")
 			.required()
 			.nargs(1)
-			.default_value(LoaderAction::Ask)
+			.default_value(LoaderAction::Auto)
 			.action([](const std::string& val) { return ParseLoaderAction(val); });
 		argp.add_argument("-q", "--quiet")
 			.help("disable error messages")
@@ -200,7 +197,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 	const auto path = W32Modules::PathFromModule(nullptr, hProcess);
 
 	auto loaderAction = g_parameters.m_action;
-	if (loaderAction == LoaderAction::Ask) {
+	if (loaderAction == LoaderAction::Ask || loaderAction == LoaderAction::Auto) {
 		if (rpModule) {
 			switch (Utils::Win32::MessageBoxF(nullptr, MB_YESNOCANCEL | MB_ICONQUESTION | MB_DEFBUTTON1, MsgboxTitle,
 				L"XivAlexander detected in FFXIV Process ({}:{})\n"
@@ -218,7 +215,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 					loaderAction = LoaderAction::Unload;
 					break;
 				case IDCANCEL:
-					loaderAction = LoaderAction::Ignore;
+					loaderAction = LoaderAction::Count_;
 			}
 		} else {
 			const auto regionAndVersion = XivAlex::ResolveGameReleaseRegion(path);
@@ -245,7 +242,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 						loaderAction = LoaderAction::Load;
 						break;
 					case IDNO:
-						loaderAction = LoaderAction::Ignore;
+						loaderAction = LoaderAction::Count_;
 				}
 			} else {
 				switch (Utils::Win32::MessageBoxF(nullptr, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON1, MsgboxTitle,
@@ -262,29 +259,28 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 						loaderAction = LoaderAction::Load;
 						break;
 					case IDNO:
-						loaderAction = LoaderAction::Ignore;
+						loaderAction = LoaderAction::Count_;
 				}
 			}
 		}
 	}
 
-	if (loaderAction == LoaderAction::Ignore)
+	if (loaderAction == LoaderAction::Count_)
 		return;
 
 	if (loaderAction == LoaderAction::Unload && !rpModule)
 		return;
 
-	rpModule = W32Modules::InjectDll(hProcess, dllPath);
+	const auto hModule = W32Modules::InjectedModule(hProcess, dllPath);
 	auto unloadRequired = false;
-	const auto cleanup = Utils::CallOnDestruction([&hProcess, rpModule, &unloadRequired]() {
+	const auto cleanup = Utils::CallOnDestruction([&hModule, &unloadRequired]() {
 		if (unloadRequired)
-			W32Modules::CallRemoteFunction(hProcess, EnableXivAlexander, 0, "UnloadXivAlexander");
-		W32Modules::CallRemoteFunction(hProcess, FreeLibrary, rpModule, "FreeLibrary");
+			hModule.Call("EnableXivAlexander", 0, "EnableXivAlexander(0)");
 		});
 
 	if (loaderAction == LoaderAction::Load) {
 		unloadRequired = true;
-		if (const auto loadResult = W32Modules::CallRemoteFunction(hProcess, EnableXivAlexander, reinterpret_cast<void*>(1), "LoadXivAlexander"); loadResult != 0)
+		if (const auto loadResult = hModule.Call("EnableXivAlexander", reinterpret_cast<void*>(1), "EnableXivAlexander(1)"); loadResult != 0)
 			throw std::runtime_error(std::format("Failed to start the addon: exit code {}", loadResult));
 		else
 			unloadRequired = false;
@@ -327,9 +323,11 @@ int WINAPI wWinMain(
 		
 	const auto dllDir = W32Modules::PathFromModule().parent_path();
 	const auto dllPath = dllDir / L"XivAlexander.dll";
+	Utils::Win32::Closeable::LoadedModule hModule;
 
 	try {
-		CheckDllVersion(dllPath);
+		hModule = Utils::Win32::Closeable::LoadedModule(LoadLibraryW(dllPath.c_str()), nullptr, "Failed to load XivAlexander.dll");
+		CheckDllVersion(hModule);
 	} catch (std::exception& e) {
 		if (Utils::Win32::MessageBoxF(nullptr, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON1, MsgboxTitle,
 			L"Failed to verify XivAlexander.dll and XivAlexanderLoader.exe have the matching versions ({}).\n\nDo you want to download again from Github?",
@@ -350,6 +348,77 @@ int WINAPI wWinMain(
 	const auto pids = GetTargetPidList();
 
 	if (pids.empty()) {
+		if (g_parameters.m_action == LoaderAction::Auto) {
+			const auto gamePath = XivAlex::FindGameInstallationPath();
+			if (gamePath.empty()) {
+				MessageBoxW(nullptr, MsgboxTitle, L"No running FFXIV process or installation detected.", MB_OK | MB_ICONINFORMATION);
+				return -1;
+			}
+
+			std::map<DWORD, Utils::Win32::Modules::InjectedModule> injectedProcesses;
+			Utils::CallOnDestruction injectedProcessesCleanup([&]() {
+				for (auto& [pid, val] : injectedProcesses) {
+					val.Call("EnableInjectOnCreateProcess", nullptr, "EnableInjectOnCreateProcess");
+				}
+				injectedProcesses.clear();
+			});
+			try {
+				const auto hExitEvent = std::make_shared<Utils::Win32::Closeable::Handle>(
+					CreateEventW(nullptr, true, false, nullptr),
+					Utils::Win32::Closeable::Handle::Null, "CreateEventW");
+				const auto bootPathStr = (gamePath / L"boot" / L"ffxivboot64.exe").wstring();
+				const auto launcherPathStr = (gamePath / L"boot" / L"ffxivlauncher64.exe").wstring();
+				SHELLEXECUTEINFOW si{};
+				si.cbSize = sizeof si;
+				si.lpVerb = L"open";
+				si.lpFile = bootPathStr.c_str();
+				if (!ShellExecuteExW(&si))
+					throw Utils::Win32::Error("ShellExecuteW({})", bootPathStr);
+
+				if (!g_parameters.m_quiet) {
+					std::thread([hExitEvent]() {
+						MessageBoxW(nullptr,
+							L"Waiting for the game to run to load XivAlexander...\n\n"
+							L"This message will automatically close when compatible launcher exits.\n"
+							L"Alternatively, press OK to exit now.",
+							MsgboxTitle, MB_ICONINFORMATION | MB_OK);
+						SetEvent(*hExitEvent);
+						}).detach();
+				}
+				
+				while (WaitForSingleObject(*hExitEvent, 100) == WAIT_TIMEOUT) {
+					auto ffxivLauncherFound = false;
+					for (const auto pid : Utils::Win32::Modules::GetProcessList()) {
+						if (injectedProcesses.find(pid) != injectedProcesses.end()) {
+							ffxivLauncherFound = true;
+							continue;
+						}
+						try {
+							auto hProcess = OpenProcessForInjection(pid);
+							const auto path = Utils::Win32::Modules::PathFromModule(nullptr, hProcess).wstring();
+							if (path == bootPathStr) {
+								ffxivLauncherFound = true;
+							} else if (path == launcherPathStr) {
+								ffxivLauncherFound = true;
+								auto hModule = Utils::Win32::Modules::InjectedModule(hProcess, dllPath);
+								if (hModule.Call("EnableInjectOnCreateProcess", reinterpret_cast<void*>(1), "EnableInjectOnCreateProcess"))
+									continue;
+								injectedProcesses.emplace(pid, std::move(hModule));
+							}
+						} catch (std::exception&) {
+							// do nothing
+						}
+					}
+					if (!ffxivLauncherFound)
+						break;
+				}
+			} catch (std::exception& e) {
+				if (!g_parameters.m_quiet)
+					Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"Error occurred: {}", e.what());
+				return -1;
+			}
+			return 0;
+		}
 		if (!g_parameters.m_quiet) {
 			std::wstring errors;
 			if (g_parameters.m_targetPids.empty() && g_parameters.m_targetSuffix.empty())
