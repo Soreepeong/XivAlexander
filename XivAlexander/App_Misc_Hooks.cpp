@@ -2,6 +2,7 @@
 #include "App_Misc_Hooks.h"
 
 HANDLE App::Misc::Hooks::Binder::s_hHeap = nullptr;
+std::mutex App::Misc::Hooks::Binder::s_hHeapMutex;
 
 App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 	auto source = static_cast<const char*>(templateMethod);
@@ -28,6 +29,22 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 		ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, source + offset, funclen - offset, &instruction));
 		) {
 
+		auto relativeAddressHandled = true;
+		for (size_t i = 0; i < instruction.operand_count && relativeAddressHandled; ++i) {
+			const auto& operand = instruction.operands[0];
+			if (operand.type == ZYDIS_OPERAND_TYPE_MEMORY) {
+				switch (operand.mem.base) {
+					case ZYDIS_REGISTER_IP:
+					case ZYDIS_REGISTER_EIP:
+					case ZYDIS_REGISTER_RIP:
+						relativeAddressHandled = false;
+				}
+			} else if (operand.type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+				if (!operand.imm.is_relative)
+					relativeAddressHandled = false;
+			}
+		}
+
 #ifdef _DEBUG
 		// Just My Code will add additional calls.
 		if (instruction.opcode == 0x8d  // lea rcx, [rip+?]
@@ -40,9 +57,11 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 			ZydisCalcAbsoluteAddress(&instruction, &instruction.operands[1],
 				reinterpret_cast<size_t>(source) + offset, &resultAddress);
 			replacementJumps[body.size() + 3] = resultAddress;
+			relativeAddressHandled = true;
 		}
 #endif
 
+		auto append = true;
 		switch (instruction.meta.category) {
 			case ZYDIS_CATEGORY_CALL:
 			{
@@ -57,20 +76,21 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 					body.push_back('\x15');
 					replacementJumps[body.size()] = resultAddress;
 					body.resize(body.size() + 4, '\0');
-				} else {
-					body.insert(body.end(), source + offset, source + offset + instruction.length);
+					append = false;
+					relativeAddressHandled = true;
 				}
 				break;
 			}
 
 			case ZYDIS_CATEGORY_RET:
 				funclen = offset + instruction.length;
-				// falls through
-
-			default:
-				body.insert(body.end(), source + offset, source + offset + instruction.length);
 				break;
 		}
+		if (!relativeAddressHandled) {
+			throw std::runtime_error("Could not handle relative address while thunking");
+		}
+		if (append)
+			body.insert(body.end(), source + offset, source + offset + instruction.length);
 		offset += instruction.length;
 	}
 
@@ -84,6 +104,7 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 		body.insert(body.end(), reinterpret_cast<const char*>(&ptr), reinterpret_cast<const char*>(&ptr + 1));
 	}
 
+	std::lock_guard lock(s_hHeapMutex);
 	if (s_hHeap == nullptr) {
 		s_hHeap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE, 0, 0);
 		if (!s_hHeap)
@@ -161,20 +182,30 @@ App::Misc::Hooks::WndProcFunction::WndProcFunction(const char* szName, HWND hWnd
 App::Misc::Hooks::WndProcFunction::~WndProcFunction() = default;
 
 bool App::Misc::Hooks::WndProcFunction::IsDisableable() const {
-	return !m_detour || reinterpret_cast<WNDPROC>(GetWindowLongPtrW(m_hWnd, GWLP_WNDPROC)) == m_binder.GetBinder<WNDPROC>();
+	return m_windowDestroyed || !m_detour || reinterpret_cast<WNDPROC>(GetWindowLongPtrW(m_hWnd, GWLP_WNDPROC)) == m_binder.GetBinder<WNDPROC>();
 }
 
-LRESULT App::Misc::Hooks::WndProcFunction::bridge(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) const {
+LRESULT App::Misc::Hooks::WndProcFunction::bridge(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+	if (msg == WM_DESTROY) {
+		m_windowDestroyed = true;
+	}
 	return CallWindowProcW(reinterpret_cast<WNDPROC>(m_prevProc), hwnd, msg, wParam, lParam);
 }
 
 void App::Misc::Hooks::WndProcFunction::HookEnable() {
+	if (m_windowDestroyed)
+		return;
+	
 	m_prevProc = SetWindowLongPtrW(m_hWnd, GWLP_WNDPROC, m_binder.GetBinder<LONG_PTR>());
 }
 
 void App::Misc::Hooks::WndProcFunction::HookDisable() {
+	if (m_windowDestroyed)
+		return;
+	
 	if (!IsDisableable())
 		throw std::runtime_error("Cannot disable hook");
+	
 	SetWindowLongPtrW(m_hWnd, GWLP_WNDPROC, m_prevProc);
 }
 

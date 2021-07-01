@@ -48,7 +48,7 @@ public:
 	DWORD m_mainThreadId = -1;
 	int m_nWndProcDepth = 0;
 
-	Misc::Hooks::WndProcFunction m_gameWindowSubclass;
+	std::shared_ptr<Misc::Hooks::WndProcFunction> m_gameWindowSubclass;
 
 	LRESULT CALLBACK SubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 		m_mainThreadId = GetCurrentThreadId();
@@ -66,14 +66,22 @@ public:
 
 		switch (msg) {
 			case WM_DESTROY:
-				if (m_trayWindow)
-					SendMessage(m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
-				break;
+			{
+				const auto bridger = std::move(m_gameWindowSubclass);
+				this->this_->m_bInterrnalUnloadInitiated = true;
+				this->this_->m_bMainWindowDestroyed = true;
+
+				EnableXivAlexander(0);
+				EnableDebuggerPresenceDisabler(0);
+
+				return bridger->bridge(hwnd, msg, wParam, lParam);
+			}
 		}
 
 		m_nWndProcDepth += 1;
-		const auto res = m_gameWindowSubclass.bridge(hwnd, msg, wParam, lParam);
+		const auto res = m_gameWindowSubclass->bridge(hwnd, msg, wParam, lParam);
 		m_nWndProcDepth -= 1;
+		
 		return res;
 	}
 
@@ -105,7 +113,7 @@ public:
 	Implementation(XivAlexApp* this_)
 		: this_(this_)
 		, m_hGameMainWindow(FindGameMainWindow())
-		, m_gameWindowSubclass("GameMainWindow", m_hGameMainWindow) {
+		, m_gameWindowSubclass(std::make_shared<Misc::Hooks::WndProcFunction>("GameMainWindow", m_hGameMainWindow)) {
 	}
 
 	~Implementation() {
@@ -123,7 +131,7 @@ public:
 		if (!m_hGameMainWindow)
 			throw std::runtime_error("Game main window not found!");
 
-		m_cleanup += m_gameWindowSubclass.SetHook([this](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+		m_cleanup += m_gameWindowSubclass->SetHook([this](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 			return SubclassProc(hwnd, msg, wParam, lParam);
 			});
 
@@ -266,6 +274,13 @@ App::XivAlexApp::~XivAlexApp() {
 		SendMessage(m_pImpl->m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
 	
 	m_customMessageLoop.join();
+
+	if (!m_bInterrnalUnloadInitiated) {
+		// Being destructed from DllMain(Process detach).
+		// Should have been cleaned up first, but couldn't get a chance,
+		// so the only thing possible is to force quit, or an error message will appear.
+		TerminateProcess(GetCurrentProcess(), 0);
+	}
 }
 
 HWND App::XivAlexApp::GetGameWindowHandle() const {
@@ -273,20 +288,17 @@ HWND App::XivAlexApp::GetGameWindowHandle() const {
 }
 
 void App::XivAlexApp::RunOnGameLoop(std::function<void()> f) {
-	constexpr bool wait = true;
-
-	if constexpr (!wait) {
-		{
-			std::lock_guard _lock(m_pImpl->m_runInMessageLoopLock);
-			m_pImpl->m_qRunInMessageLoop.push(f);
-		}
-		PostMessageW(m_pImpl->m_hGameMainWindow, WM_NULL, 0, 0);
-
-	} else {
-		const Utils::Win32::Closeable::Handle hEvent(CreateEventW(nullptr, true, false, nullptr),
-			INVALID_HANDLE_VALUE,
-			"XivAlexApp::RunOnGameLoop/CreateEventW");
-		const auto fn = [this, &f, &hEvent]() {
+	if (m_bMainWindowDestroyed) {
+		f();
+		return;
+	}
+	
+	const Utils::Win32::Closeable::Handle hEvent(CreateEventW(nullptr, true, false, nullptr),
+		INVALID_HANDLE_VALUE,
+		"XivAlexApp::RunOnGameLoop/CreateEventW");
+	{
+		std::lock_guard _lock(m_pImpl->m_runInMessageLoopLock);
+		m_pImpl->m_qRunInMessageLoop.emplace([this, &f, &hEvent]() {
 			try {
 				f();
 			} catch (const std::exception& e) {
@@ -298,14 +310,10 @@ void App::XivAlexApp::RunOnGameLoop(std::function<void()> f) {
 				m_logger->Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred");
 			}
 			SetEvent(hEvent);
-		};
-		{
-			std::lock_guard _lock(m_pImpl->m_runInMessageLoopLock);
-			m_pImpl->m_qRunInMessageLoop.push(fn);
-		}
-		SendMessageW(m_pImpl->m_hGameMainWindow, WM_NULL, 0, 0);
-		WaitForSingleObject(hEvent, INFINITE);
+			});
 	}
+	SendMessageW(m_pImpl->m_hGameMainWindow, WM_NULL, 0, 0);
+	WaitForSingleObject(hEvent, INFINITE);
 }
 
 std::string App::XivAlexApp::IsUnloadable() const {
@@ -315,7 +323,7 @@ std::string App::XivAlexApp::IsUnloadable() const {
 	if (m_pImpl->m_socketHook && !m_pImpl->m_socketHook->IsUnloadable())
 		return "Another module has hooked socket functions over XivAlexander. Try unloading that other module first.";
 	
-	if (!m_pImpl->m_gameWindowSubclass.IsDisableable())
+	if (!m_pImpl->m_gameWindowSubclass->IsDisableable())
 		return "Another module has hooked window procedure over XivAlexander. Try unloading that other module first.";
 
 	return "";

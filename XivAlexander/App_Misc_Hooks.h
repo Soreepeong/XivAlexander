@@ -12,6 +12,7 @@ namespace App::Misc::Hooks {
 
 	private:
 		static HANDLE s_hHeap;
+		static std::mutex s_hHeapMutex;
 
 		void* m_pAddress = nullptr;
 		Utils::CallOnDestruction::Multiple m_cleanup;
@@ -42,7 +43,7 @@ namespace App::Misc::Hooks {
 
 		const Binder m_binder{ this, DetouredGatewayTemplateFunction };
 
-		std::shared_ptr<bool> destructed = std::make_shared<bool>(false);
+		std::shared_ptr<bool> m_destructed = std::make_shared<bool>(false);
 
 	public:
 		using Signature<FunctionType>::Signature;
@@ -50,10 +51,10 @@ namespace App::Misc::Hooks {
 			if (m_detour)
 				std::abort();
 			
-			*destructed = true;
+			*m_destructed = true;
 		}
 		
-		virtual R bridge(Args ...args) const {
+		virtual R bridge(Args ...args) {
 			return m_bridge(std::forward<Args>(args)...);
 		}
 
@@ -69,8 +70,8 @@ namespace App::Misc::Hooks {
 			m_detour = std::move(pfnDetour);
 			HookEnable();
 
-			return Utils::CallOnDestruction([this, destructed=destructed]() {
-				if (*destructed)
+			return Utils::CallOnDestruction([this, m_destructed=m_destructed]() {
+				if (*m_destructed)
 					return;
 				
 				OutputDebugStringA(std::format("{}\n", this->m_sName).c_str());
@@ -154,7 +155,7 @@ namespace App::Misc::Hooks {
 		using Super = Function<LRESULT, HWND, UINT, WPARAM, LPARAM>;
 
 		HWND const m_hWnd;
-		std::shared_ptr<bool> destructed = std::make_shared<bool>(false);
+		bool m_windowDestroyed = false;
 
 		LONG_PTR m_prevProc;
 
@@ -164,7 +165,7 @@ namespace App::Misc::Hooks {
 
 		[[nodiscard]] bool IsDisableable() const final;
 		
-		LRESULT bridge(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) const final;
+		LRESULT bridge(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) final;
 
 	protected:
 		void HookEnable() final;

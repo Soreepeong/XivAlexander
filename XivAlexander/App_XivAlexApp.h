@@ -19,6 +19,7 @@ namespace App {
 		std::unique_ptr<Implementation> m_pImpl;
 
 		bool m_bInterrnalUnloadInitiated = false;
+		bool m_bMainWindowDestroyed = false;
 		std::thread m_customMessageLoop;
 
 	public:
