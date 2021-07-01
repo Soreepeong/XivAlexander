@@ -40,7 +40,7 @@
 #include <iphlpapi.h>
 #include <comdef.h>
 #include <ShObjIdl_core.h>
-#include <icmpapi.h>
+#include <IcmpAPI.h>
 #include <winternl.h>
 #include <Psapi.h>
 #include <PathCch.h>

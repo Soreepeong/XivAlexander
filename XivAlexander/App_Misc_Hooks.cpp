@@ -40,12 +40,13 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 						relativeAddressHandled = false;
 				}
 			} else if (operand.type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-				if (!operand.imm.is_relative)
+				if (operand.imm.is_relative)
 					relativeAddressHandled = false;
 			}
 		}
 
 #ifdef _DEBUG
+#if INTPTR_MAX == INT64_MAX
 		// Just My Code will add additional calls.
 		if (instruction.opcode == 0x8d  // lea rcx, [rip+?]
 			&& instruction.operand_count == 2
@@ -53,29 +54,42 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 			&& instruction.operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY
 			&& instruction.operands[1].mem.base == ZYDIS_REGISTER_RIP) {
 			// lea
-			size_t resultAddress = 0;
+			uint64_t resultAddress = 0;
 			ZydisCalcAbsoluteAddress(&instruction, &instruction.operands[1],
 				reinterpret_cast<size_t>(source) + offset, &resultAddress);
 			replacementJumps[body.size() + 3] = resultAddress;
 			relativeAddressHandled = true;
 		}
 #endif
+#endif
 
 		auto append = true;
 		switch (instruction.meta.category) {
 			case ZYDIS_CATEGORY_CALL:
 			{
-				if (size_t resultAddress;
+				if (uint64_t resultAddress;
 					instruction.operand_count >= 1
 					&& ZYAN_STATUS_SUCCESS == ZydisCalcAbsoluteAddress(&instruction, &instruction.operands[0],
 						reinterpret_cast<size_t>(source) + offset, &resultAddress)) {
 
+#if INTPTR_MAX == INT32_MAX
+					// call relative_addr
+					body.push_back('\xE8');
+					replacementJumps[body.size()] = static_cast<size_t>(resultAddress);
+					body.resize(body.size() + 4, '\0');
+					
+#elif INTPTR_MAX == INT64_MAX
 					// call QWORD PTR [rip+0x00000000]
 					// FF 15 00 00 00 00
 					body.push_back('\xFF');
 					body.push_back('\x15');
 					replacementJumps[body.size()] = resultAddress;
 					body.resize(body.size() + 4, '\0');
+					
+#else
+#error "Environment not x86 or x64."
+#endif
+
 					append = false;
 					relativeAddressHandled = true;
 				}
@@ -87,6 +101,7 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 				break;
 		}
 		if (!relativeAddressHandled) {
+			
 			throw std::runtime_error("Could not handle relative address while thunking");
 		}
 		if (append)
@@ -99,10 +114,12 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 		reinterpret_cast<const char*>(&DummyAddress), reinterpret_cast<const char*>(&DummyAddress + 1)
 	)) = this_;
 
+#if INTPTR_MAX == INT64_MAX
 	for (const auto& [pos, ptr] : replacementJumps) {
 		*reinterpret_cast<uint32_t*>(&body[pos]) = static_cast<uint32_t>(body.size() - 4 - pos);
 		body.insert(body.end(), reinterpret_cast<const char*>(&ptr), reinterpret_cast<const char*>(&ptr + 1));
 	}
+#endif
 
 	std::lock_guard lock(s_hHeapMutex);
 	if (s_hHeap == nullptr) {
@@ -128,6 +145,13 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 	m_pAddress = HeapAlloc(s_hHeap, 0, body.size());
 	if (!m_pAddress)
 		throw Utils::Win32::Error("HeapAlloc");
+
+#if INTPTR_MAX == INT32_MAX
+	for (const auto& [pos, ptr] : replacementJumps) {
+		// From (m_pAddress+pos+5) to ptr 
+		*reinterpret_cast<uint32_t*>(&body[pos]) = ptr - pos - 4 - reinterpret_cast<size_t>(m_pAddress);
+	}
+#endif
 
 	memcpy(m_pAddress, &body[0], body.size());
 }

@@ -3,6 +3,7 @@
 #include <string>
 #include <filesystem>
 #include <chrono>
+#include <set>
 
 namespace XivAlex {
 	[[nodiscard]]
@@ -34,4 +35,7 @@ namespace XivAlex {
 	};
 
 	std::map<GameRegion, GameRegionInfo> FindGameLaunchers();
+
+	extern const char* const GameExecutableName;
+	extern const wchar_t* const GameExecutableNameW;
 }

@@ -4,6 +4,21 @@
 #include "Utils_Win32.h"
 #include "Utils_Win32_Closeable.h"
 
+#if INTPTR_MAX == INT32_MAX
+
+const char* const XivAlex::GameExecutableName = "ffxiv.exe";
+const wchar_t* const XivAlex::GameExecutableNameW = L"ffxiv.exe";
+
+#elif INTPTR_MAX == INT64_MAX
+
+const char* const XivAlex::GameExecutableName = "ffxiv_dx11.exe";
+const wchar_t* const XivAlex::GameExecutableNameW = L"ffxiv_dx11.exe";
+
+#else
+#error "Environment not x86 or x64."
+#endif
+
+
 std::tuple<std::wstring, std::wstring> XivAlex::ResolveGameReleaseRegion() {
 	std::wstring path(PATHCCH_MAX_CCH, L'\0');
 	path.resize(GetModuleFileNameW(nullptr, &path[0], static_cast<DWORD>(path.size())));
@@ -86,7 +101,7 @@ std::tuple<std::wstring, std::wstring> XivAlex::ResolveGameReleaseRegion(const s
 		if (size.QuadPart > 64)
 			throw std::runtime_error("ResolveGameReleaseRegion: Game version file size too big.");
 		std::string buf;
-		buf.resize(size.QuadPart);
+		buf.resize(static_cast<size_t>(size.QuadPart));
 		DWORD read = 0;
 		if (!ReadFile(hGameVer, &buf[0], size.LowPart, &read, nullptr))
 			throw Utils::Win32::Error("ResolveGameReleaseRegion: Failed to read game version file");

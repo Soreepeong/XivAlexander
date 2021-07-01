@@ -159,7 +159,7 @@ static std::set<DWORD> GetTargetPidList() {
 		std::set_intersection(list.begin(), list.end(), g_parameters.m_targetPids.begin(), g_parameters.m_targetPids.end(), std::inserter(pids, pids.end()));
 		pids.insert(g_parameters.m_targetPids.begin(), g_parameters.m_targetPids.end());
 	} else if (g_parameters.m_targetSuffix.empty()) {
-		g_parameters.m_targetSuffix.emplace(L"ffxiv_dx11.exe");
+		g_parameters.m_targetSuffix.emplace(XivAlex::GameExecutableNameW);
 	}
 	if (!g_parameters.m_targetSuffix.empty()) {
 		for (const auto pid : W32Modules::GetProcessList()) {
@@ -300,6 +300,8 @@ bool RequiresAdminAccess(const std::set<DWORD>& pids) {
 	return false;
 }
 
+extern "C" __declspec(dllimport) int __stdcall EnableInjectOnCreateProcess(size_t bEnable);
+
 int WINAPI wWinMain(
 	_In_ HINSTANCE hInstance,
 	_In_opt_ HINSTANCE hPrevInstance,
@@ -357,65 +359,23 @@ int WINAPI wWinMain(
 			} else
 				gamePath = it->second.RootPath;
 
-			std::map<DWORD, Utils::Win32::Modules::InjectedModule> injectedProcesses;
-			Utils::CallOnDestruction injectedProcessesCleanup([&]() {
-				for (auto& [pid, val] : injectedProcesses) {
-					val.Call("EnableInjectOnCreateProcess", nullptr, "EnableInjectOnCreateProcess");
-				}
-				injectedProcesses.clear();
-			});
+			EnableInjectOnCreateProcess(1);
 			try {
-				const auto hExitEvent = std::make_shared<Utils::Win32::Closeable::Handle>(
-					CreateEventW(nullptr, true, false, nullptr),
-					Utils::Win32::Closeable::Handle::Null, "CreateEventW");
-				const auto bootPathStr = (gamePath / L"boot" / L"ffxivboot64.exe").wstring();
-				const auto launcherPathStr = (gamePath / L"boot" / L"ffxivlauncher64.exe").wstring();
-				const auto workingDirectory = gamePath.wstring();
+				// const auto bootPathStr = (gamePath / L"boot" / L"ffxivboot64.exe").wstring();
+				const auto bootPathStr = launchers.at(XivAlex::GameRegion::International).AlternativeBoots.begin()->second.wstring();
+
+				PROCESS_INFORMATION pi{};
+				STARTUPINFOW psi{};
+				psi.cb = sizeof psi;
+				CreateProcessW(bootPathStr.c_str(), nullptr, nullptr, nullptr, false, 0, nullptr, nullptr, &psi, &pi);
+				
 				SHELLEXECUTEINFOW si{};
 				si.cbSize = sizeof si;
 				si.lpVerb = L"open";
 				si.lpFile = bootPathStr.c_str();
-				si.lpDirectory = workingDirectory.c_str();
+				si.nShow = SW_SHOW;
 				if (!ShellExecuteExW(&si))
 					throw Utils::Win32::Error("ShellExecuteW({})", bootPathStr);
-
-				if (!g_parameters.m_quiet) {
-					std::thread([hExitEvent]() {
-						MessageBoxW(nullptr,
-							L"Waiting for the game to run to load XivAlexander...\n\n"
-							L"This message will automatically close when compatible launcher exits.\n"
-							L"Alternatively, press OK to exit now.",
-							MsgboxTitle, MB_ICONINFORMATION | MB_OK);
-						SetEvent(*hExitEvent);
-						}).detach();
-				}
-				
-				while (WaitForSingleObject(*hExitEvent, 100) == WAIT_TIMEOUT) {
-					auto ffxivLauncherFound = false;
-					for (const auto pid : Utils::Win32::Modules::GetProcessList()) {
-						if (injectedProcesses.find(pid) != injectedProcesses.end()) {
-							ffxivLauncherFound = true;
-							continue;
-						}
-						try {
-							auto hProcess = OpenProcessForInjection(pid);
-							const auto path = Utils::Win32::Modules::PathFromModule(nullptr, hProcess).wstring();
-							if (path == bootPathStr) {
-								ffxivLauncherFound = true;
-							} else if (path == launcherPathStr) {
-								ffxivLauncherFound = true;
-								auto hModule = Utils::Win32::Modules::InjectedModule(hProcess, dllPath);
-								if (hModule.Call("EnableInjectOnCreateProcess", reinterpret_cast<void*>(1), "EnableInjectOnCreateProcess"))
-									continue;
-								injectedProcesses.emplace(pid, std::move(hModule));
-							}
-						} catch (std::exception&) {
-							// do nothing
-						}
-					}
-					if (!ffxivLauncherFound)
-						break;
-				}
 			} catch (std::exception& e) {
 				if (!g_parameters.m_quiet)
 					Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"Error occurred: {}", e.what());
@@ -426,7 +386,7 @@ int WINAPI wWinMain(
 		if (!g_parameters.m_quiet) {
 			std::wstring errors;
 			if (g_parameters.m_targetPids.empty() && g_parameters.m_targetSuffix.empty())
-				errors = L"ffxiv_dx11.exe not found. Run the game first, and then try again.";
+				errors = std::format(L"{} not found. Run the game first, and then try again.", XivAlex::GameExecutableNameW);
 			else
 				errors = L"No matching process found.";
 			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"{}", errors);

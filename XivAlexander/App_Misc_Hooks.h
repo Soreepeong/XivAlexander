@@ -5,10 +5,20 @@
 namespace App::Misc::Hooks {
 
 	using namespace Signatures;
-
+	
 	class Binder {
 	public:
-		static constexpr auto DummyAddress = 0xFF00FF00FF00FF00ULL;
+#if INTPTR_MAX == INT32_MAX
+
+		static constexpr size_t DummyAddress = 0xFF00FF00U;
+
+#elif INTPTR_MAX == INT64_MAX
+
+		static constexpr size_t DummyAddress = 0xFF00FF00FF00FF00ULL;
+
+#else
+#error "Environment not x86 or x64."
+#endif
 
 	private:
 		static HANDLE s_hHeap;
@@ -28,15 +38,14 @@ namespace App::Misc::Hooks {
 	};
 
 	template<typename R, typename ...Args>
-	class Function : public Signature<R(*)(Args...)> {
+	class Function : public Signature<R(_stdcall *)(Args...)> {
 	protected:
-		typedef R(*FunctionType)(Args...);
-		typedef R(*BinderType_)(FunctionType, Args...);
+		typedef R(__stdcall *FunctionType)(Args...);
 
 		FunctionType m_bridge = nullptr;
 		std::function<std::remove_pointer_t<FunctionType>> m_detour = nullptr;
 
-		static R DetouredGatewayTemplateFunction(Args...args) {
+		static R __stdcall DetouredGatewayTemplateFunction(Args...args) {
 			const volatile auto target = reinterpret_cast<Function<R, Args...>*>(Binder::DummyAddress);
 			return target->DetouredGateway(args...);
 		}
