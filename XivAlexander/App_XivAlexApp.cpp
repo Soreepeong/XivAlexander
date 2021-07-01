@@ -85,8 +85,8 @@ public:
 			if (this->this_->m_bInterrnalUnloadInitiated)
 				return;
 			
-			if (!this_->IsUnloadable()) {
-				Utils::Win32::MessageBoxF(m_trayWindow->GetHandle(), MB_ICONERROR, L"XivAlexander", L"Unable to unload XivAlexander");
+			if (const auto err = this_->IsUnloadable(); !err.empty()) {
+				Utils::Win32::MessageBoxF(m_trayWindow->GetHandle(), MB_ICONERROR, L"XivAlexander", L"Unable to unload XivAlexander: {}", err);
 				return;
 			}
 
@@ -259,7 +259,7 @@ App::XivAlexApp::XivAlexApp()
 }
 
 App::XivAlexApp::~XivAlexApp() {
-	if (!IsUnloadable())
+	if (!IsUnloadable().empty())
 		std::abort();
 
 	if (m_pImpl->m_trayWindow)
@@ -308,11 +308,17 @@ void App::XivAlexApp::RunOnGameLoop(std::function<void()> f) {
 	}
 }
 
-bool App::XivAlexApp::IsUnloadable() const {
-	return m_pImpl == nullptr || (
-		(m_pImpl->m_socketHook == nullptr || m_pImpl->m_socketHook->IsUnloadable()
-		&& m_pImpl->m_gameWindowSubclass.IsDisableable())
-	);
+std::string App::XivAlexApp::IsUnloadable() const {
+	if (m_pImpl == nullptr)
+		return "";
+
+	if (m_pImpl->m_socketHook && !m_pImpl->m_socketHook->IsUnloadable())
+		return "Another module has hooked socket functions over XivAlexander. Try unloading that other module first.";
+	
+	if (!m_pImpl->m_gameWindowSubclass.IsDisableable())
+		return "Another module has hooked window procedure over XivAlexander. Try unloading that other module first.";
+
+	return "";
 }
 
 App::Network::SocketHook* App::XivAlexApp::GetSocketHook() {

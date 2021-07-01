@@ -127,6 +127,11 @@ namespace App::Misc::Hooks {
 			this->m_bridge = static_cast<FunctionType>(*reinterpret_cast<void**>(this->m_pAddress));
 		}
 
+		[[nodiscard]] bool IsDisableable() const final {
+			return *reinterpret_cast<void**>(this->m_pAddress) == this->m_binder.GetBinder()
+				|| *reinterpret_cast<void**>(this->m_pAddress) == this->m_bridge;
+		}
+
 	protected:
 		void HookEnable() final {
 			MEMORY_BASIC_INFORMATION mbi;
@@ -157,7 +162,7 @@ namespace App::Misc::Hooks {
 		WndProcFunction(const char* szName, HWND hWnd);
 		~WndProcFunction() override;
 
-		bool IsDisableable() const final;
+		[[nodiscard]] bool IsDisableable() const final;
 		
 		LRESULT bridge(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) const final;
 

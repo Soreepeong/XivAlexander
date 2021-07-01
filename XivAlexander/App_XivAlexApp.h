@@ -28,7 +28,7 @@ namespace App {
 		[[nodiscard]] HWND GetGameWindowHandle() const;
 
 		void RunOnGameLoop(std::function<void()> f);
-		[[nodiscard]] bool IsUnloadable() const;
+		[[nodiscard]] std::string IsUnloadable() const;
 		
 		[[nodiscard]] Network::SocketHook* GetSocketHook();
 
