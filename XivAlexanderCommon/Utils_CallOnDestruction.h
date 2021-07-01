@@ -30,31 +30,17 @@ namespace Utils {
 			std::vector<CallOnDestruction> m_list;
 			
 		public:
-			Multiple& operator+=(CallOnDestruction o) {
-				if (o)
-					m_list.emplace_back(std::move(o));
-				return *this;
-			}
+			Multiple();
 
-			Multiple& operator+=(std::function<void()> f) {
-				m_list.emplace_back(f);
-				return *this;
-			}
+			~Multiple();
 
-			Multiple& operator+=(Multiple r) {
-				m_list.insert(m_list.end(), std::make_move_iterator(r.m_list.begin()), std::make_move_iterator(r.m_list.end()));
-				r.m_list.clear();
-				return *this;
-			}
+			Multiple& operator+=(CallOnDestruction o);
 
-			void Clear() {
-				while (!m_list.empty())
-					m_list.pop_back();
-			}
+			Multiple& operator+=(std::function<void()> f);
 
-			~Multiple() {
-				Clear();
-			}
+			Multiple& operator+=(Multiple r);
+
+			void Clear();
 		};
 	};
 }

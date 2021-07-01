@@ -1,16 +1,16 @@
 #include "pch.h"
-#include "App_App.h"
+#include "App_XivAlexApp.h"
 #include "App_Misc_Hooks.h"
 #include "App_Network_SocketHook.h"
 #include "App_Feature_AnimationLockLatencyHandler.h"
 #include "App_Feature_IpcTypeFinder.h"
 #include "App_Feature_AllIpcMessageLogger.h"
 #include "App_Feature_EffectApplicationDelayLogger.h"
+#include "App_Misc_DebuggerDetectionDisabler.h"
+#include "App_Misc_FreeGameMutex.h"
 #include "App_Window_LogWindow.h"
 #include "App_Window_MainWindow.h"
-
-App::App* App::App::s_pInstance = nullptr;
-bool App::App::s_bUnloadDisabled = false;
+#include "include/XivAlexander.h"
 
 static HWND FindGameMainWindow() {
 	HWND hwnd = nullptr;
@@ -26,8 +26,8 @@ static HWND FindGameMainWindow() {
 	return hwnd;
 }
 
-class App::App::Implementation {
-	App* const this_;
+class App::XivAlexApp::Implementation {
+	XivAlexApp* const this_;
 
 public:
 	const HWND m_hGameMainWindow;
@@ -48,9 +48,9 @@ public:
 	DWORD m_mainThreadId = -1;
 	int m_nWndProcDepth = 0;
 
-	Misc::Hooks::WndProcFunction m_wndProc;
+	Misc::Hooks::WndProcFunction m_gameWindowSubclass;
 
-	LRESULT CALLBACK OverridenWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+	LRESULT CALLBACK SubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 		m_mainThreadId = GetCurrentThreadId();
 		if (m_nWndProcDepth == 0) {
 			while (!m_qRunInMessageLoop.empty()) {
@@ -72,7 +72,7 @@ public:
 		}
 
 		m_nWndProcDepth += 1;
-		const auto res = m_wndProc.bridge(hwnd, msg, wParam, lParam);
+		const auto res = m_gameWindowSubclass.bridge(hwnd, msg, wParam, lParam);
 		m_nWndProcDepth -= 1;
 		return res;
 	}
@@ -81,30 +81,39 @@ public:
 		if (m_trayWindow)
 			return;
 
-		m_trayWindow = std::make_unique<Window::Main>(m_hGameMainWindow, [this]() {
-			try {
-				this_->Unload();
-			} catch (std::exception& e) {
-				SetupTrayWindow();
-				Utils::Win32::MessageBoxF(m_trayWindow->GetHandle(), MB_ICONERROR, L"XivAlexander", L"Unable to unload XivAlexander: {}", Utils::FromUtf8(e.what()));
+		m_trayWindow = std::make_unique<Window::Main>(this_, [this]() {
+			if (this->this_->m_bInterrnalUnloadInitiated)
+				return;
+			
+			if (!this_->IsUnloadable()) {
+				Utils::Win32::MessageBoxF(m_trayWindow->GetHandle(), MB_ICONERROR, L"XivAlexander", L"Unable to unload XivAlexander");
+				return;
 			}
+
+			this->this_->m_bInterrnalUnloadInitiated = true;
+			Utils::Win32::Closeable::Handle unloader(
+				CreateThread(nullptr, 0, [](void*) -> DWORD {
+					EnableXivAlexander(0);
+					EnableDebuggerPresenceDisabler(0);
+					FreeLibraryAndExitThread(g_hInstance, 0);
+				}, nullptr, 0, nullptr),
+				Utils::Win32::Closeable::Handle::Null,
+				"Failed to create unloader");
 			});
 	}
 
-	Implementation(App* this_)
+	Implementation(XivAlexApp* this_)
 		: this_(this_)
 		, m_hGameMainWindow(FindGameMainWindow())
-		, m_wndProc("GameMainWindow", m_hGameMainWindow) {
+		, m_gameWindowSubclass("GameMainWindow", m_hGameMainWindow) {
 	}
 
 	~Implementation() {
 		Config::Instance().SetQuitting();
+		m_cleanup.Clear();
 	}
 
 	void Load() {
-		s_pInstance = this_;
-		m_cleanup += []() { s_pInstance = nullptr; };
-
 		Config::Instance();
 		m_cleanup += []() { Config::DestroyInstance(); };
 
@@ -114,12 +123,14 @@ public:
 		if (!m_hGameMainWindow)
 			throw std::runtime_error("Game main window not found!");
 
-		m_cleanup += m_wndProc.SetHook([this](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-			return OverridenWndProc(hwnd, msg, wParam, lParam);
+		m_cleanup += m_gameWindowSubclass.SetHook([this](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+			return SubclassProc(hwnd, msg, wParam, lParam);
 			});
 
 		m_socketHook = std::make_unique<Network::SocketHook>(this->this_);
-		m_cleanup += [this]() { m_socketHook = nullptr; };
+		m_cleanup += [this]() {
+			m_socketHook = nullptr;
+		};
 
 		SetupTrayWindow();
 		m_cleanup += [this]() { m_trayWindow = nullptr; };
@@ -139,40 +150,40 @@ public:
 		m_cleanup += [this]() { SetWindowPos(m_hGameMainWindow, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE); };
 
 		if (config.UseHighLatencyMitigation)
-			m_animationLockLatencyHandler = std::make_unique<Feature::AnimationLockLatencyHandler>();
+			m_animationLockLatencyHandler = std::make_unique<Feature::AnimationLockLatencyHandler>(m_socketHook.get());
 		m_cleanup += config.UseHighLatencyMitigation.OnChangeListener([&](Config::ItemBase&) {
 			if (config.UseHighLatencyMitigation)
-				m_animationLockLatencyHandler = std::make_unique<Feature::AnimationLockLatencyHandler>();
+				m_animationLockLatencyHandler = std::make_unique<Feature::AnimationLockLatencyHandler>(m_socketHook.get());
 			else
 				m_animationLockLatencyHandler = nullptr;
 			});
 		m_cleanup += [this]() { m_animationLockLatencyHandler = nullptr; };
 
 		if (config.UseOpcodeFinder)
-			m_ipcTypeFinder = std::make_unique<Feature::IpcTypeFinder>();
+			m_ipcTypeFinder = std::make_unique<Feature::IpcTypeFinder>(m_socketHook.get());
 		m_cleanup += config.UseOpcodeFinder.OnChangeListener([&](Config::ItemBase&) {
 			if (config.UseOpcodeFinder)
-				m_ipcTypeFinder = std::make_unique<Feature::IpcTypeFinder>();
+				m_ipcTypeFinder = std::make_unique<Feature::IpcTypeFinder>(m_socketHook.get());
 			else
 				m_ipcTypeFinder = nullptr;
 			});
 		m_cleanup += [this]() { m_ipcTypeFinder = nullptr; };
 
 		if (config.UseAllIpcMessageLogger)
-			m_allIpcMessageLogger = std::make_unique<Feature::AllIpcMessageLogger>();
+			m_allIpcMessageLogger = std::make_unique<Feature::AllIpcMessageLogger>(m_socketHook.get());
 		m_cleanup += config.UseAllIpcMessageLogger.OnChangeListener([&](Config::ItemBase&) {
 			if (config.UseAllIpcMessageLogger)
-				m_allIpcMessageLogger = std::make_unique<Feature::AllIpcMessageLogger>();
+				m_allIpcMessageLogger = std::make_unique<Feature::AllIpcMessageLogger>(m_socketHook.get());
 			else
 				m_allIpcMessageLogger = nullptr;
 			});
 		m_cleanup += [this]() { m_allIpcMessageLogger = nullptr; };
 
 		if (config.UseEffectApplicationDelayLogger)
-			m_effectApplicationDelayLogger = std::make_unique<Feature::EffectApplicationDelayLogger>();
+			m_effectApplicationDelayLogger = std::make_unique<Feature::EffectApplicationDelayLogger>(m_socketHook.get());
 		m_cleanup += config.UseEffectApplicationDelayLogger.OnChangeListener([&](Config::ItemBase&) {
 			if (config.UseEffectApplicationDelayLogger)
-				m_effectApplicationDelayLogger = std::make_unique<Feature::EffectApplicationDelayLogger>();
+				m_effectApplicationDelayLogger = std::make_unique<Feature::EffectApplicationDelayLogger>(m_socketHook.get());
 			else
 				m_effectApplicationDelayLogger = nullptr;
 			});
@@ -191,21 +202,77 @@ public:
 	}
 };
 
-App::App::App()
-	: m_pImpl(std::make_unique<Implementation>(this)) {
-	if (s_pInstance)
-		throw std::runtime_error("App already initialized");
+App::XivAlexApp::XivAlexApp()
+	: m_detectionDisabler(Misc::DebuggerDetectionDisabler::Acquire())
+	, m_logger(Misc::Logger::Acquire())
+	, m_pImpl(std::make_unique<Implementation>(this)) {
 
-	m_pImpl->Load();
+	auto bLibraryLoaded = false;
+	try {
+		LoadLibraryW(Utils::Win32::Modules::PathFromModule(g_hInstance).c_str());
+		bLibraryLoaded = true;
+
+		m_customMessageLoop = std::thread([this]() {
+			m_pImpl->Load();
+			
+			m_logger->Log(LogCategory::General, u8"XivAlexander initialized.");
+
+			try {
+				Misc::FreeGameMutex::FreeGameMutex();
+			} catch (std::exception& e) {
+				m_logger->Format<LogLevel::Warning>(LogCategory::General, "Failed to free game mutex: {}", e.what());
+			}
+
+			MSG msg;
+			while (GetMessageW(&msg, nullptr, 0, 0)) {
+				bool dispatchMessage = true;
+				
+				for (const auto pWindow : {
+					static_cast<Window::BaseWindow*>(m_pImpl->m_logWindow.get()),
+					static_cast<Window::BaseWindow*>(m_pImpl->m_trayWindow.get()),
+				}) {
+					if (!pWindow)
+						continue;
+					const auto hWnd = pWindow->GetHandle();
+					const auto hAccel = pWindow->GetAcceleratorTable();
+					if (hAccel && (hWnd == msg.hwnd || IsChild(hWnd, msg.hwnd))) {
+						if (TranslateAcceleratorW(hWnd, hAccel, &msg)) {
+							dispatchMessage = false;
+							break;
+						}
+					}
+				}
+				if (IsDialogMessageW(msg.hwnd, &msg))
+					dispatchMessage = false;
+				
+				if (dispatchMessage) {
+					TranslateMessage(&msg);
+					DispatchMessageW(&msg);
+				}
+			}
+			});
+	} catch (...) {
+		if (bLibraryLoaded)
+			FreeLibrary(g_hInstance);
+		throw;
+	}
 }
 
-App::App::~App() = default;
+App::XivAlexApp::~XivAlexApp() {
+	if (!IsUnloadable())
+		std::abort();
 
-HWND App::App::GetGameWindowHandle() const {
+	if (m_pImpl->m_trayWindow)
+		SendMessage(m_pImpl->m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
+	
+	m_customMessageLoop.join();
+}
+
+HWND App::XivAlexApp::GetGameWindowHandle() const {
 	return m_pImpl->m_hGameMainWindow;
 }
 
-void App::App::RunOnGameLoop(std::function<void()> f) {
+void App::XivAlexApp::RunOnGameLoop(std::function<void()> f) {
 	constexpr bool wait = true;
 
 	if constexpr (!wait) {
@@ -216,19 +283,19 @@ void App::App::RunOnGameLoop(std::function<void()> f) {
 		PostMessageW(m_pImpl->m_hGameMainWindow, WM_NULL, 0, 0);
 
 	} else {
-		Utils::Win32::Closeable::Handle hEvent(CreateEventW(nullptr, true, false, nullptr),
+		const Utils::Win32::Closeable::Handle hEvent(CreateEventW(nullptr, true, false, nullptr),
 			INVALID_HANDLE_VALUE,
-			"App::RunOnGameLoop/CreateEventW");
-		const auto fn = [&f, &hEvent]() {
+			"XivAlexApp::RunOnGameLoop/CreateEventW");
+		const auto fn = [this, &f, &hEvent]() {
 			try {
 				f();
 			} catch (const std::exception& e) {
-				Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred: {}", e.what());
+				m_logger->Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred: {}", e.what());
 			} catch (const _com_error& e) {
-				Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred: {}",
+				m_logger->Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred: {}",
 					Utils::ToUtf8(static_cast<const wchar_t*>(e.Description())));
 			} catch (...) {
-				Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred");
+				m_logger->Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred");
 			}
 			SetEvent(hEvent);
 		};
@@ -241,44 +308,18 @@ void App::App::RunOnGameLoop(std::function<void()> f) {
 	}
 }
 
-void App::App::Run() {
-	MSG msg;
-	while (GetMessageW(&msg, nullptr, 0, 0)) {
-		bool dispatchMessage = true;
-		for (const auto pWindow : Window::BaseWindow::GetAllOpenWindows()) {
-			const auto hWnd = pWindow->GetHandle();
-			const auto hAccel = pWindow->GetAcceleratorTable();
-			if (hAccel && (hWnd == msg.hwnd || IsChild(hWnd, msg.hwnd))) {
-				if (TranslateAcceleratorW(hWnd, hAccel, &msg)) {
-					dispatchMessage = false;
-					break;
-				}
-				if (IsDialogMessageW(hWnd, &msg)) {
-					dispatchMessage = false;
-					break;
-				}
-			}
-		}
-		if (dispatchMessage) {
-			TranslateMessage(&msg);
-			DispatchMessageW(&msg);
-		}
-	}
+bool App::XivAlexApp::IsUnloadable() const {
+	return m_pImpl == nullptr || (
+		(m_pImpl->m_socketHook == nullptr || m_pImpl->m_socketHook->IsUnloadable()
+		&& m_pImpl->m_gameWindowSubclass.IsDisableable())
+	);
 }
 
-int App::App::Unload() {
-	if (s_bUnloadDisabled)
-		throw std::runtime_error("Unloading is currently disabled.");
-
-	if (!m_pImpl->m_socketHook->IsUnloadable() || !m_pImpl->m_wndProc.IsUnloadable())
-		throw std::runtime_error("Something has hooked the game process after XivAlexander, so you cannot unload XivAlexander until that other thing has been unloaded.");
-
-	if (m_pImpl->m_trayWindow)
-		SendMessage(m_pImpl->m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
-	return 0;
+App::Network::SocketHook* App::XivAlexApp::GetSocketHook() {
+	return m_pImpl->m_socketHook.get();
 }
 
-void App::App::CheckUpdates(bool silent) {
+void App::XivAlexApp::CheckUpdates(bool silent) {
 	try {
 		const auto [selfFileVersion, selfProductVersion] = Utils::Win32::FormatModuleVersionString(g_hInstance);
 		const auto up = XivAlex::CheckUpdates();
@@ -294,17 +335,17 @@ void App::App::CheckUpdates(bool silent) {
 		if (local > remote) {
 			const auto s = std::format("No updates available; you have the most recent version {}.{}.{}.{}; server version is {}.{}.{}.{} released at {:%Ec}",
 				local[0], local[1], local[2], local[3], remote[0], remote[1], remote[2], remote[3], up.PublishDate);
-			Misc::Logger::GetLogger().Log(LogCategory::General, s);
+			m_logger->Log(LogCategory::General, s);
 			if (!silent)
 				MessageBoxW(nullptr, Utils::FromUtf8(s).c_str(), L"XivAlexander", MB_OK);
 		} else if (local == remote) {
 			const auto s = std::format("No updates available; you have the most recent version {}.{}.{}.{}, released at {:%Ec}", local[0], local[1], local[2], local[3], up.PublishDate);
-			Misc::Logger::GetLogger().Log(LogCategory::General, s);
+			m_logger->Log(LogCategory::General, s);
 			if (!silent)
 				MessageBoxW(nullptr, Utils::FromUtf8(s).c_str(), L"XivAlexander", MB_OK);
 		} else {
 			const auto s = std::format("New version {}.{}.{}.{}, released at {:%Ec}, is available. Local version is {}.{}.{}.{}", remote[0], remote[1], remote[2], remote[3], up.PublishDate, local[0], local[1], local[2], local[3]);
-			Misc::Logger::GetLogger().Log(LogCategory::General, s);
+			m_logger->Log(LogCategory::General, s);
 			if (!silent) {
 				switch (Utils::Win32::MessageBoxF(nullptr, MB_YESNOCANCEL, L"XivAlexander", std::format(
 					L"{}\n\n"
@@ -323,14 +364,6 @@ void App::App::CheckUpdates(bool silent) {
 			}
 		}
 	} catch (const std::exception& e) {
-		Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "Failed to check for updates: {}", e.what());
+		m_logger->Format<LogLevel::Error>(LogCategory::General, "Failed to check for updates: {}", e.what());
 	}
-}
-
-void App::App::SetDisableUnloading(bool v) {
-	s_bUnloadDisabled = v;
-}
-
-App::App* App::App::Instance() {
-	return s_pInstance;
 }

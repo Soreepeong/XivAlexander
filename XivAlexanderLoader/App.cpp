@@ -1,11 +1,9 @@
 #include "pch.h"
+#include "XivAlexander.h"
 
 const auto MsgboxTitle = L"XivAlexander Loader";
 
 namespace W32Modules = Utils::Win32::Modules;
-
-extern "C" __declspec(dllimport) int __stdcall LoadXivAlexander(void* lpReserved);
-extern "C" __declspec(dllimport) int __stdcall UnloadXivAlexander(void* lpReserved);
 
 static
 void CheckDllVersion(const std::filesystem::path& dllPath) {
@@ -41,6 +39,21 @@ std::string argparse::details::repr(LoaderAction const& val) {
 	}
 	return std::format("({})", static_cast<int>(val));
 }
+LoaderAction ParseLoaderAction(std::string val) {
+	auto valw = Utils::FromUtf8(val);
+	CharLowerW(&valw[0]);
+	val = Utils::ToUtf8(valw);
+	for (size_t i = 0; i < static_cast<size_t>(LoaderAction::Ignore); ++i) {
+		const auto compare = argparse::details::repr(static_cast<LoaderAction>(i));
+		auto equal = true;
+		for (size_t j = 0; equal && j < val.length() && j < compare.length(); ++j) {
+			equal = val[j] == compare[j];
+		}
+		if (equal)
+			return static_cast<LoaderAction>(i);
+	}
+	throw std::runtime_error("Invalid action");
+}
 
 class XivAlexanderLoaderParameter {
 public:
@@ -53,27 +66,17 @@ public:
 	bool m_disableAutoRunAs = true;
 	std::set<DWORD> m_targetPids{};
 	std::set<std::wstring> m_targetSuffix{};
+	std::wstring m_runProgram;
 
 	XivAlexanderLoaderParameter()
 		: argp("XivAlexanderLoader") {
 
 		argp.add_argument("-a", "--action")
-			.help("specify default action for each process (possible values: ask, load, unload)")
+			.help("specify action (possible values: ask, load, unload)")
 			.required()
 			.nargs(1)
 			.default_value(LoaderAction::Ask)
-			.action([](const std::string& val) {
-			auto valw = Utils::FromUtf8(val);
-			CharLowerW(&valw[0]);
-			if (valw == L"ask")
-				return LoaderAction::Ask;
-			else if (valw == L"load")
-				return LoaderAction::Load;
-			else if (valw == L"unload")
-				return LoaderAction::Unload;
-			else
-				throw std::runtime_error("Invalid parameter given for action parameter.");
-				});
+			.action([](const std::string& val) { return ParseLoaderAction(val); });
 		argp.add_argument("-q", "--quiet")
 			.help("disable error messages")
 			.default_value(false)
@@ -89,12 +92,7 @@ public:
 		argp.add_argument("targets")
 			.help("list of target process ID or path suffix.")
 			.default_value(std::vector<std::string>())
-			.remaining()
-			.action([](const std::string& val) {
-			auto valw = Utils::FromUtf8(val);
-			CharLowerW(&valw[0]);
-			return Utils::ToUtf8(valw);
-				});
+			.remaining();
 	}
 
 	void Parse(LPWSTR lpCmdLine) {
@@ -124,23 +122,29 @@ public:
 		m_web = argp.get<bool>("--web");
 		m_disableAutoRunAs = argp.get<bool>("-d");
 
-		for (const auto& target : argp.get<std::vector<std::string>>("targets")) {
-			size_t idx = 0;
-			DWORD pid = 0;
+		switch (m_action) {
+		case LoaderAction::Ask:
+		case LoaderAction::Load:
+		case LoaderAction::Unload:
+			for (const auto& target : argp.get<std::vector<std::string>>("targets")) {
+				size_t idx = 0;
+				DWORD pid = 0;
 
-			try {
-				pid = std::stoi(target, &idx);
-			} catch (std::invalid_argument&) {
-				// empty
-			} catch (std::out_of_range&) {
-				// empty
+				try {
+					pid = std::stoi(target, &idx);
+				} catch (std::invalid_argument&) {
+					// empty
+				} catch (std::out_of_range&) {
+					// empty
+				}
+				if (idx != target.length()) {
+					auto buf = Utils::FromUtf8(target);
+					CharLowerW(&buf[0]);
+					m_targetSuffix.emplace(std::move(buf));
+				} else
+					m_targetPids.insert(pid);
 			}
-			if (idx != target.length()) {
-				auto buf = Utils::FromUtf8(target);
-				CharLowerW(&buf[0]);
-				m_targetSuffix.emplace(std::move(buf));
-			} else
-				m_targetPids.insert(pid);
+			break;
 		}
 	}
 
@@ -274,13 +278,13 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 	auto unloadRequired = false;
 	const auto cleanup = Utils::CallOnDestruction([&hProcess, rpModule, &unloadRequired]() {
 		if (unloadRequired)
-			W32Modules::CallRemoteFunction(hProcess, UnloadXivAlexander, nullptr, "UnloadXivAlexander");
+			W32Modules::CallRemoteFunction(hProcess, EnableXivAlexander, 0, "UnloadXivAlexander");
 		W32Modules::CallRemoteFunction(hProcess, FreeLibrary, rpModule, "FreeLibrary");
 		});
 
 	if (loaderAction == LoaderAction::Load) {
 		unloadRequired = true;
-		if (const auto loadResult = W32Modules::CallRemoteFunction(hProcess, LoadXivAlexander, nullptr, "LoadXivAlexander"); loadResult != 0)
+		if (const auto loadResult = W32Modules::CallRemoteFunction(hProcess, EnableXivAlexander, reinterpret_cast<void*>(1), "LoadXivAlexander"); loadResult != 0)
 			throw std::runtime_error(std::format("Failed to start the addon: exit code {}", loadResult));
 		else
 			unloadRequired = false;
@@ -320,7 +324,7 @@ int WINAPI wWinMain(
 		ShellExecuteW(nullptr, L"open", L"https://github.com/Soreepeong/XivAlexander", nullptr, nullptr, SW_SHOW);
 		return 0;
 	}
-
+		
 	const auto dllDir = W32Modules::PathFromModule().parent_path();
 	const auto dllPath = dllDir / L"XivAlexander.dll";
 

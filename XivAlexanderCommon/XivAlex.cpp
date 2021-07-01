@@ -170,9 +170,16 @@ XivAlex::VersionInformation XivAlex::CheckUpdates() {
 std::filesystem::path XivAlex::FindGameInstallationPath() {
 	wchar_t buf[512];
 	auto buflen = static_cast<DWORD>(sizeof buf);
-	if (RegQueryValueExW(HKEY_LOCAL_MACHINE,
-		LR"(HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{2B41E132-07DF-4925-A3D3-F2D1765CCDFE}\DisplayIcon)",
+	HKEY hKey;
+	if (const auto err = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+		LR"(SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\{2B41E132-07DF-4925-A3D3-F2D1765CCDFE})",
+		0, KEY_READ | KEY_WOW64_32KEY, &hKey))
+		throw Utils::Win32::Error(err, "Failed to find FFXIV install information.");
+	Utils::CallOnDestruction c([hKey]() { RegCloseKey(hKey); });
+	
+	if (const auto err = RegQueryValueExW(hKey,
+		L"DisplayIcon",
 		nullptr, nullptr, reinterpret_cast<LPBYTE>(&buf[0]), &buflen))
-		throw Utils::Win32::Error("Failed to query FFXIV installation information.");
+		throw Utils::Win32::Error(err, "Failed to query FFXIV installation information.");
 	return std::filesystem::path(buf).parent_path().parent_path();
 }

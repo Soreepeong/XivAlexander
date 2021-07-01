@@ -17,25 +17,6 @@ std::vector<DWORD> Utils::Win32::Modules::GetProcessList() {
 	return res;
 }
 
-void* Utils::Win32::Modules::GetModulePointer(HANDLE hProcess, const std::filesystem::path& path) {
-	const auto th32 = Handle(CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, GetProcessId(hProcess)),
-		INVALID_HANDLE_VALUE,
-		"Failed to list modules of process {}.", GetProcessId(hProcess));
-	MODULEENTRY32W mod{ sizeof MODULEENTRY32W };
-	if (!Module32FirstW(th32, &mod))
-		return nullptr;
-
-	auto buf = path.wstring();
-	CharLowerW(&buf[0]);
-	do {
-		auto buf2 = std::wstring(mod.szExePath);
-		CharLowerW(&buf2[0]);
-		if (buf == buf2)
-			return mod.modBaseAddr;
-	} while (Module32NextW(th32, &mod));
-	return nullptr;
-}
-
 int Utils::Win32::Modules::CallRemoteFunction(HANDLE hProcess, void* rpfn, void* rpParam, const char* pcszDescription) {
 	const auto hLoadLibraryThread = Handle(CreateRemoteThread(hProcess, nullptr, 0, static_cast<LPTHREAD_START_ROUTINE>(rpfn), rpParam, 0, nullptr),
 		Handle::Null,
@@ -50,7 +31,7 @@ void* Utils::Win32::Modules::InjectDll(HANDLE hProcess, const std::filesystem::p
 	auto buf = path.wstring();
 	buf.resize(buf.size() + 1);
 
-	if (const auto ptr = GetModulePointer(hProcess, &buf[0]))
+	if (const auto ptr = FindModuleAddress(hProcess, &buf[0]))
 		return ptr;
 
 	const auto nNumberOfBytes = buf.size() * sizeof buf[0];
@@ -67,7 +48,7 @@ void* Utils::Win32::Modules::InjectDll(HANDLE hProcess, const std::filesystem::p
 		throw Error(GetLastError(), "WriteProcessMemory(pid {}, {:p}, {}, {}, nullptr)", GetProcessId(hProcess), rpszDllPath, ToUtf8(buf), nNumberOfBytes);
 
 	CallRemoteFunction(hProcess, LoadLibraryW, rpszDllPath, "LoadLibraryW");
-	return GetModulePointer(hProcess, path);
+	return FindModuleAddress(hProcess, path);
 }
 
 void* Utils::Win32::Modules::FindModuleAddress(HANDLE hProcess, const std::filesystem::path& szDllPath) {

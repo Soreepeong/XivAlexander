@@ -28,6 +28,9 @@ namespace Utils::Win32 {
 	void AddDebugPrivilege();
 
 	bool IsUserAnAdmin();
+
+	std::filesystem::path GetMappedImageNativePath(HANDLE hProcess, void* lpMem);
+	std::filesystem::path ToNativePath(const std::filesystem::path& path);
 	
 	class Error : public std::runtime_error {
 		const int m_nErrorCode;

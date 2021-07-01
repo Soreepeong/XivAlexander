@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "App_App.h"
+#include "App_XivAlexApp.h"
 #include "App_Network_SocketHook.h"
 #include "App_Network_IcmpPingTracker.h"
 #include "App_Network_Structures.h"
@@ -11,6 +11,9 @@ public:
 
 	std::vector<uint8_t> m_pending;
 	size_t m_pendingStartPos = 0;
+
+	SingleStream() = default;
+	~SingleStream() = default;
 
 	void Write(const void* buf, size_t length) {
 		const auto uint8buf = static_cast<const uint8_t*>(buf);
@@ -45,7 +48,7 @@ public:
 		return m_pending.size() - m_pendingStartPos;
 	}
 
-	static void ProxyAvailableData(SingleStream& source, SingleStream& target, const std::function<void(const App::Network::Structures::FFXIVBundle* packet, SingleStream& target)>& processor) {
+	static void ProxyAvailableData(SingleStream& source, SingleStream& target, const std::function<void(const App::Network::Structures::FFXIVBundle* packet, SingleStream& target)>& processor, App::Misc::Logger* logger) {
 		using namespace App::Network::Structures;
 
 		const auto availableLength = source.Available();
@@ -93,14 +96,15 @@ public:
 				if (i % 4 == 3 && i != discardedBytes.size() - 1)
 					buffer.push_back(' ');
 			}
-			App::Misc::Logger::GetLogger().Log(App::LogCategory::SocketHook, buffer, App::LogLevel::Warning);
+			logger->Log(App::LogCategory::SocketHook, buffer, App::LogLevel::Warning);
 		}
 	}
 };
 
-class App::Network::SingleConnection::Internals {
+class App::Network::SingleConnection::Implementation {
 	friend class SocketHook;
 public:
+	std::shared_ptr<Misc::Logger> const m_logger;
 	SingleConnection* const this_;
 	SocketHook* const hook_;
 	const SOCKET m_socket;
@@ -127,12 +131,13 @@ public:
 
 	uint64_t m_nextTcpDelaySetAttempt = 0;
 
-	Internals(SingleConnection* this_, SocketHook* hook_, SOCKET s)
-		: this_(this_)
+	Implementation(SingleConnection* this_, SocketHook* hook_, SOCKET s)
+		: m_logger(App::Misc::Logger::Acquire())
+		, this_(this_)
 		, hook_(hook_)
 		, m_socket(s) {
 
-		Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Found", m_socket);
+		m_logger->Format(LogCategory::SocketHook, "{:x}: Found", m_socket);
 		ResolveAddresses();
 	}
 
@@ -160,32 +165,7 @@ public:
 		m_nextTcpDelaySetAttempt = GetTickCount64();
 	}
 
-	void ResolveAddresses() {
-		sockaddr_storage local{}, remote{};
-		socklen_t addrlen = sizeof local;
-		if (0 == getsockname(m_socket, reinterpret_cast<sockaddr*>(&local), &addrlen) && Utils::CompareSockaddr(&m_localAddress, &local)) {
-			m_localAddress = local;
-			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Local={}", m_socket, Utils::ToString(local));
-
-			// Set TCP delay here because SIO_TCP_SET_ACK_FREQUENCY seems to work only when localAddress is not 0.0.0.0.
-			if (Config::Instance().Runtime.ReducePacketDelay && reinterpret_cast<sockaddr_in*>(&local)->sin_addr.s_addr != INADDR_ANY) {
-				SetTCPDelay();
-			}
-		}
-		addrlen = sizeof remote;
-		if (0 == getpeername(m_socket, reinterpret_cast<sockaddr*>(&remote), &addrlen) && Utils::CompareSockaddr(&m_remoteAddress, &remote)) {
-			m_remoteAddress = remote;
-			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Remote={}", m_socket, Utils::ToString(remote));
-		}
-
-		const auto& local4 = *reinterpret_cast<const sockaddr_in*>(&m_localAddress);
-		const auto& remote4 = *reinterpret_cast<const sockaddr_in*>(&m_remoteAddress);
-		if (local4.sin_family == AF_INET && remote4.sin_family == AF_INET && local4.sin_addr.s_addr && remote4.sin_addr.s_addr && !m_pingTrackKeeper)
-			m_pingTrackKeeper = IcmpPingTracker::GetInstance().Track(
-				reinterpret_cast<sockaddr_in*>(&m_localAddress)->sin_addr,
-				reinterpret_cast<sockaddr_in*>(&m_remoteAddress)->sin_addr
-			);
-	}
+	void ResolveAddresses();
 
 	void Unload() {
 		m_recvRaw.m_ending = true;
@@ -286,7 +266,7 @@ public:
 			pHeader->TotalLength = static_cast<uint16_t>(data.size());
 			pHeader->GzipCompressed = 0;
 			target.Write(&data[0], data.size());
-			});
+			}, m_logger.get());
 	}
 
 	void ProcessSendData() {
@@ -341,7 +321,7 @@ public:
 			pHeader->GzipCompressed = 0;
 			pHeader->TotalLength = static_cast<uint16_t>(data.size());
 			target.Write(&data[0], data.size());
-			});
+			}, m_logger.get());
 	}
 
 	bool CloseRecvIfPossible() {
@@ -361,70 +341,21 @@ public:
 	}
 };
 
-App::Network::SingleConnection::SingleConnection(SocketHook* hook, SOCKET s)
-	: impl(std::make_unique<Internals>(this, hook, s)) {
-
-}
-App::Network::SingleConnection::~SingleConnection() = default;
-
-void App::Network::SingleConnection::AddIncomingFFXIVMessageHandler(void* token, std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb) {
-	this->impl->m_incomingHandlers[reinterpret_cast<size_t>(token)].emplace_back(std::move(cb));
-}
-
-void App::Network::SingleConnection::AddOutgoingFFXIVMessageHandler(void* token, std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb) {
-	this->impl->m_outgoingHandlers[reinterpret_cast<size_t>(token)].emplace_back(std::move(cb));
-}
-
-void App::Network::SingleConnection::RemoveMessageHandlers(void* token) {
-	this->impl->m_incomingHandlers.erase(reinterpret_cast<size_t>(token));
-	this->impl->m_outgoingHandlers.erase(reinterpret_cast<size_t>(token));
-}
-
-SOCKET App::Network::SingleConnection::GetSocket() const {
-	return impl->m_socket;
-}
-
-void App::Network::SingleConnection::ResolveAddresses() {
-	impl->ResolveAddresses();
-}
-
-int64_t App::Network::SingleConnection::FetchSocketLatency() {
-	if (impl->m_nIoctlTcpInfoFailureCount >= 5)
-		return INT64_MAX;
-
-	TCP_INFO_v0 info{};
-	DWORD tcpInfoVersion = 0, cb = 0;
-	if (0 != WSAIoctl(impl->m_socket, SIO_TCP_INFO, &tcpInfoVersion, sizeof tcpInfoVersion, &info, sizeof info, &cb, nullptr, nullptr)) {
-		Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0 failed: {:08x}", impl->m_socket, WSAGetLastError());
-		impl->m_nIoctlTcpInfoFailureCount++;
-		return INT64_MAX;
-	} else if (cb != sizeof info) {
-		Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0: buffer size mismatch ({} != {})", impl->m_socket, cb, sizeof info);
-		impl->m_nIoctlTcpInfoFailureCount++;
-		return INT64_MAX;
-	} else {
-		const auto latency = info.RttUs / 1000LL;
-		SocketLatency.AddValue(latency);
-		return latency;
-	}
-};
-
-class App::Network::SocketHook::Internals {
+class App::Network::SocketHook::Implementation {
 	SocketHook* this_;
 
 public:
-	App* const m_pApp;
+	XivAlexApp* const m_pApp;
 	DWORD const m_dwGameMainThreadId;
+	IcmpPingTracker m_pingTracker;
 	std::map<SOCKET, std::unique_ptr<SingleConnection>> m_sockets;
 	std::set<SOCKET> m_nonGameSockets;
-	std::map<size_t, std::vector<std::function<void(SingleConnection&)>>> m_onSocketFoundListeners;
-	std::map<size_t, std::vector<std::function<void(SingleConnection&)>>> m_onSocketGoneListeners;
 	bool m_unloading = false;
 	std::vector<std::pair<uint32_t, uint32_t>> m_allowedIpRange;
 	std::vector<std::pair<uint32_t, uint32_t>> m_allowedPortRange;
 	Utils::CallOnDestruction::Multiple m_cleanupList;
 
-	Internals(SocketHook* this_, App* pApp)
+	Implementation(SocketHook* this_, XivAlexApp* pApp)
 		: this_(this_)
 		, m_pApp(pApp)
 		, m_dwGameMainThreadId(GetWindowThreadProcessId(pApp->GetGameWindowHandle(), nullptr)) {
@@ -439,125 +370,9 @@ public:
 		m_cleanupList += Config::Instance().Runtime.TakeOverLoopbackAddresses.OnChangeListener(reparse);
 		m_cleanupList += Config::Instance().Runtime.TakeOverAllPorts.OnChangeListener(reparse);
 		ParseTakeOverAddresses();
-
-		pApp->RunOnGameLoop([&]() {
-			m_cleanupList += std::move(this_->socket.SetHook([&](_In_ int af, _In_ int type, _In_ int protocol) {
-				const auto result = this_->socket.bridge(af, type, protocol);
-				if (GetCurrentThreadId() == m_dwGameMainThreadId) {
-					Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: New", result);
-					FindOrCreateSingleConnection(result);
-				}
-				return result;
-				}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
-
-			m_cleanupList += std::move(this_->closesocket.SetHook([&](SOCKET s) {
-				if (GetCurrentThreadId() != m_dwGameMainThreadId)
-					return this_->closesocket.bridge(s);
-
-				CleanupSocket(s);
-				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Close", s);
-				m_nonGameSockets.erase(s);
-				return this_->closesocket.bridge(s);
-				}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
-			
-			m_cleanupList += std::move(this_->send.SetHook([&](SOCKET s, const char* buf, int len, int flags) {
-				if (GetCurrentThreadId() != m_dwGameMainThreadId)
-					return this_->send.bridge(s, buf, len, flags);
-
-				const auto conn = FindOrCreateSingleConnection(s);
-				if (conn == nullptr)
-					return this_->send.bridge(s, buf, len, flags);
-
-				conn->impl->m_sendRaw.Write(buf, len);
-				conn->impl->ProcessSendData();
-				conn->impl->AttemptSend();
-				return len;
-				}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
-			
-			m_cleanupList += std::move(this_->recv.SetHook([&](SOCKET s, char* buf, int len, int flags) {
-				if (GetCurrentThreadId() != m_dwGameMainThreadId)
-					return this_->recv.bridge(s, buf, len, flags);
-
-				const auto conn = FindOrCreateSingleConnection(s);
-				if (conn == nullptr)
-					return this_->recv.bridge(s, buf, len, flags);
-
-				conn->impl->AttemptReceive();
-
-				const auto result = conn->impl->m_recvProcessed.Read(reinterpret_cast<uint8_t*>(buf), len);
-				if (conn->impl->CloseRecvIfPossible())
-					CleanupSocket(s);
-
-				return static_cast<int>(result);
-				}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
-			
-			m_cleanupList += std::move(this_->select.SetHook([&](int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const timeval* timeout) {
-				if (GetCurrentThreadId() != m_dwGameMainThreadId)
-					return this_->select.bridge(nfds, readfds, writefds, exceptfds, timeout);
-
-				const fd_set readfds_original = *readfds;
-				fd_set readfds_temp = *readfds;
-
-				this_->select.bridge(nfds, &readfds_temp, writefds, exceptfds, timeout);
-
-				FD_ZERO(readfds);
-				for (size_t i = 0; i < readfds_original.fd_count; ++i) {
-					const auto s = readfds_original.fd_array[i];
-					const auto conn = FindOrCreateSingleConnection(s);
-					if (conn == nullptr) {
-						if (FD_ISSET(s, &readfds_temp))
-							FD_SET(s, readfds);
-						continue;
-					}
-
-					if (FD_ISSET(s, &readfds_temp))
-						conn->impl->AttemptReceive();
-
-					if (conn->impl->m_recvProcessed.Available())
-						FD_SET(s, readfds);
-
-					if (conn->impl->CloseRecvIfPossible())
-						CleanupSocket(s);
-				}
-
-				for (auto it = m_sockets.begin(); it != m_sockets.end(); ) {
-					const auto& [s, conn] = *it;
-
-					conn->impl->AttemptSend();
-
-					if (conn->impl->CloseSendIfPossible())
-						it = CleanupSocket(s);
-					else
-						++it;
-				}
-
-				return static_cast<int>((readfds ? readfds->fd_count : 0) +
-					(writefds ? writefds->fd_count : 0) +
-					(exceptfds ? exceptfds->fd_count : 0));
-				}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
-			
-			m_cleanupList += std::move(this_->connect.SetHook([&](SOCKET s, const sockaddr* name, int namelen) {
-				if (GetCurrentThreadId() != m_dwGameMainThreadId)
-					return this_->connect.bridge(s, name, namelen);
-
-				const auto result = this_->connect.bridge(s, name, namelen);
-				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Connect: {}", s, Utils::ToString(*name));
-				return result;
-				}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
-			
-		});
 	}
 
-	~Internals() {
-		m_unloading = true;
-		while (!m_sockets.empty()) {
-			App::Instance()->RunOnGameLoop([this]() { this->this_->ReleaseSockets(); });
-			Sleep(1);
-		}
-		
-		// Let it process main message loop first to ensure that no socket operation is in progress
-		SendMessage(m_pApp->GetGameWindowHandle(), WM_NULL, 0, 0);
-	}
+	~Implementation() = default;
 
 	void ParseTakeOverAddresses() {
 		const auto& game = Config::Instance().Game;
@@ -565,12 +380,12 @@ public:
 		try {
 			m_allowedIpRange = Utils::ParseIpRange(game.Server_IpRange, runtime.TakeOverAllAddresses, runtime.TakeOverPrivateAddresses, runtime.TakeOverLoopbackAddresses);
 		} catch (std::exception& e) {
-			Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::SocketHook, e.what());
+			this_->m_logger->Format<LogLevel::Error>(LogCategory::SocketHook, e.what());
 		}
 		try {
 			m_allowedPortRange = Utils::ParsePortRange(game.Server_PortRange, runtime.TakeOverAllPorts);
 		} catch (std::exception& e) {
-			Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::SocketHook, e.what());
+			this_->m_logger->Format<LogLevel::Error>(LogCategory::SocketHook, e.what());
 		}
 	}
 
@@ -587,7 +402,7 @@ public:
 			return TestRemoteAddressResult::Pass; // Not interested if not connected yet
 
 		if (addr.sin_family != AF_INET) {
-			Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Mark ignored; not IPv4", s);
+			this_->m_logger->Format(LogCategory::SocketHook, "{:x}: Mark ignored; not IPv4", s);
 			m_nonGameSockets.emplace(s);
 			return TestRemoteAddressResult::RegisterIgnore;
 		}
@@ -602,7 +417,7 @@ public:
 				}
 			}
 			if (!pass) {
-				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Mark ignored; remote={}; IP address not accepted", s, Utils::ToString(addr));
+				this_->m_logger->Format(LogCategory::SocketHook, "{:x}: Mark ignored; remote={}; IP address not accepted", s, Utils::ToString(addr));
 				return TestRemoteAddressResult::RegisterIgnore;
 			}
 		}
@@ -615,7 +430,7 @@ public:
 				}
 			}
 			if (!pass) {
-				Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Mark ignored; remote={}; port not accepted", s, Utils::ToString(addr));
+				this_->m_logger->Format(LogCategory::SocketHook, "{:x}: Mark ignored; remote={}; port not accepted", s, Utils::ToString(addr));
 				return TestRemoteAddressResult::RegisterIgnore;
 			}
 		}
@@ -643,20 +458,14 @@ public:
 		}
 		m_sockets.emplace(s, std::make_unique<SingleConnection>(this_, s));
 		const auto ptr = m_sockets.at(s).get();
-		for (const auto& listeners : m_onSocketFoundListeners) {
-			for (const auto& cb : listeners.second)
-				cb(*ptr);
-		}
+		this_->OnSocketFound(*ptr);
 		return ptr;
 	}
 
 	decltype(m_sockets.end()) CleanupSocket(decltype(m_sockets.end()) it) {
 		if (it == m_sockets.end())
 			return it;
-		for (const auto& listeners : m_onSocketGoneListeners) {
-			for (const auto& cb : listeners.second)
-				cb(*it->second);
-		}
+		this_->OnSocketGone(*it->second);
 		return m_sockets.erase(it);
 	}
 
@@ -665,82 +474,248 @@ public:
 	}
 };
 
-static App::Network::SocketHook* s_socketHookInstance;
+void App::Network::SingleConnection::Implementation::ResolveAddresses() {
+	sockaddr_storage local{}, remote{};
+	socklen_t addrlen = sizeof local;
+	if (0 == getsockname(m_socket, reinterpret_cast<sockaddr*>(&local), &addrlen) && Utils::CompareSockaddr(&m_localAddress, &local)) {
+		m_localAddress = local;
+		m_logger->Format(LogCategory::SocketHook, "{:x}: Local={}", m_socket, Utils::ToString(local));
 
-const Utils::NumericStatisticsTracker* App::Network::SingleConnection::GetPingLatencyTracker() const {
-	if (impl->m_localAddress.ss_family != AF_INET || impl->m_remoteAddress.ss_family != AF_INET)
-		return nullptr;
-	const auto &local = *reinterpret_cast<const sockaddr_in*>(&impl->m_localAddress);
-	const auto &remote = *reinterpret_cast<const sockaddr_in*>(&impl->m_remoteAddress);
-	if (!local.sin_addr.s_addr || !remote.sin_addr.s_addr)
-		return nullptr;
-	return IcmpPingTracker::GetInstance().GetTracker(local.sin_addr, remote.sin_addr);
+		// Set TCP delay here because SIO_TCP_SET_ACK_FREQUENCY seems to work only when localAddress is not 0.0.0.0.
+		if (Config::Instance().Runtime.ReducePacketDelay && reinterpret_cast<sockaddr_in*>(&local)->sin_addr.s_addr != INADDR_ANY) {
+			SetTCPDelay();
+		}
+	}
+	addrlen = sizeof remote;
+	if (0 == getpeername(m_socket, reinterpret_cast<sockaddr*>(&remote), &addrlen) && Utils::CompareSockaddr(&m_remoteAddress, &remote)) {
+		m_remoteAddress = remote;
+		m_logger->Format(LogCategory::SocketHook, "{:x}: Remote={}", m_socket, Utils::ToString(remote));
+	}
+
+	const auto& local4 = *reinterpret_cast<const sockaddr_in*>(&m_localAddress);
+	const auto& remote4 = *reinterpret_cast<const sockaddr_in*>(&m_remoteAddress);
+	if (local4.sin_family == AF_INET && remote4.sin_family == AF_INET && local4.sin_addr.s_addr && remote4.sin_addr.s_addr && !m_pingTrackKeeper)
+		m_pingTrackKeeper = hook_->m_pImpl->m_pingTracker.Track(
+			reinterpret_cast<sockaddr_in*>(&m_localAddress)->sin_addr,
+			reinterpret_cast<sockaddr_in*>(&m_remoteAddress)->sin_addr
+		);
 }
 
-App::Network::SocketHook::SocketHook(App* pApp)
-	: impl(std::make_unique<Internals>(this, pApp)) {
-	s_socketHookInstance = this;
+App::Network::SingleConnection::SingleConnection(SocketHook* hook, SOCKET s)
+	: m_pImpl(std::make_unique<Implementation>(this, hook, s)) {
+
+}
+App::Network::SingleConnection::~SingleConnection() = default;
+
+void App::Network::SingleConnection::AddIncomingFFXIVMessageHandler(void* token, std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb) {
+	this->m_pImpl->m_incomingHandlers[reinterpret_cast<size_t>(token)].emplace_back(std::move(cb));
+}
+
+void App::Network::SingleConnection::AddOutgoingFFXIVMessageHandler(void* token, std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb) {
+	this->m_pImpl->m_outgoingHandlers[reinterpret_cast<size_t>(token)].emplace_back(std::move(cb));
+}
+
+void App::Network::SingleConnection::RemoveMessageHandlers(void* token) {
+	this->m_pImpl->m_incomingHandlers.erase(reinterpret_cast<size_t>(token));
+	this->m_pImpl->m_outgoingHandlers.erase(reinterpret_cast<size_t>(token));
+}
+
+SOCKET App::Network::SingleConnection::GetSocket() const {
+	return m_pImpl->m_socket;
+}
+
+void App::Network::SingleConnection::ResolveAddresses() {
+	m_pImpl->ResolveAddresses();
+}
+
+int64_t App::Network::SingleConnection::FetchSocketLatency() {
+	if (m_pImpl->m_nIoctlTcpInfoFailureCount >= 5)
+		return INT64_MAX;
+
+	TCP_INFO_v0 info{};
+	DWORD tcpInfoVersion = 0, cb = 0;
+	if (0 != WSAIoctl(m_pImpl->m_socket, SIO_TCP_INFO, &tcpInfoVersion, sizeof tcpInfoVersion, &info, sizeof info, &cb, nullptr, nullptr)) {
+		m_pImpl->m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0 failed: {:08x}", m_pImpl->m_socket, WSAGetLastError());
+		m_pImpl->m_nIoctlTcpInfoFailureCount++;
+		return INT64_MAX;
+	} else if (cb != sizeof info) {
+		m_pImpl->m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0: buffer size mismatch ({} != {})", m_pImpl->m_socket, cb, sizeof info);
+		m_pImpl->m_nIoctlTcpInfoFailureCount++;
+		return INT64_MAX;
+	} else {
+		const auto latency = info.RttUs / 1000LL;
+		SocketLatency.AddValue(latency);
+		return latency;
+	}
+};
+
+const Utils::NumericStatisticsTracker* App::Network::SingleConnection::GetPingLatencyTracker() const {
+	if (m_pImpl->m_localAddress.ss_family != AF_INET || m_pImpl->m_remoteAddress.ss_family != AF_INET)
+		return nullptr;
+	const auto &local = *reinterpret_cast<const sockaddr_in*>(&m_pImpl->m_localAddress);
+	const auto &remote = *reinterpret_cast<const sockaddr_in*>(&m_pImpl->m_remoteAddress);
+	if (!local.sin_addr.s_addr || !remote.sin_addr.s_addr)
+		return nullptr;
+	return m_pImpl->hook_->m_pImpl->m_pingTracker.GetTracker(local.sin_addr, remote.sin_addr);
+}
+
+App::Network::SocketHook::SocketHook(XivAlexApp* pApp)
+	: m_logger(Misc::Logger::Acquire())
+	, OnSocketFound([this](const auto& cb) {
+		for (const auto& item : this->m_pImpl->m_sockets)
+			cb(*item.second);
+	})
+	, m_pImpl(std::make_unique<Implementation>(this, pApp)) {
+
+	pApp->RunOnGameLoop([&]() {
+		m_pImpl->m_cleanupList += std::move(socket.SetHook([&](_In_ int af, _In_ int type, _In_ int protocol) {
+			const auto result = socket.bridge(af, type, protocol);
+			if (GetCurrentThreadId() == m_pImpl->m_dwGameMainThreadId) {
+				m_logger->Format(LogCategory::SocketHook, "{:x}: New", result);
+				m_pImpl->FindOrCreateSingleConnection(result);
+			}
+			return result;
+			}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
+
+		m_pImpl->m_cleanupList += std::move(closesocket.SetHook([&](SOCKET s) {
+			if (GetCurrentThreadId() != m_pImpl->m_dwGameMainThreadId)
+				return closesocket.bridge(s);
+
+			m_pImpl->CleanupSocket(s);
+			m_logger->Format(LogCategory::SocketHook, "{:x}: Close", s);
+			m_pImpl->m_nonGameSockets.erase(s);
+			return closesocket.bridge(s);
+			}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
+
+		m_pImpl->m_cleanupList += std::move(send.SetHook([&](SOCKET s, const char* buf, int len, int flags) {
+			if (GetCurrentThreadId() != m_pImpl->m_dwGameMainThreadId)
+				return send.bridge(s, buf, len, flags);
+
+			const auto conn = m_pImpl->FindOrCreateSingleConnection(s);
+			if (conn == nullptr)
+				return send.bridge(s, buf, len, flags);
+
+			conn->m_pImpl->m_sendRaw.Write(buf, len);
+			conn->m_pImpl->ProcessSendData();
+			conn->m_pImpl->AttemptSend();
+			return len;
+			}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
+
+		m_pImpl->m_cleanupList += std::move(recv.SetHook([&](SOCKET s, char* buf, int len, int flags) {
+			if (GetCurrentThreadId() != m_pImpl->m_dwGameMainThreadId)
+				return recv.bridge(s, buf, len, flags);
+
+			const auto conn = m_pImpl->FindOrCreateSingleConnection(s);
+			if (conn == nullptr)
+				return recv.bridge(s, buf, len, flags);
+
+			conn->m_pImpl->AttemptReceive();
+
+			const auto result = conn->m_pImpl->m_recvProcessed.Read(reinterpret_cast<uint8_t*>(buf), len);
+			if (conn->m_pImpl->CloseRecvIfPossible())
+				m_pImpl->CleanupSocket(s);
+
+			return static_cast<int>(result);
+			}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
+
+		m_pImpl->m_cleanupList += std::move(select.SetHook([&](int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const timeval* timeout) {
+			if (GetCurrentThreadId() != m_pImpl->m_dwGameMainThreadId)
+				return select.bridge(nfds, readfds, writefds, exceptfds, timeout);
+
+			const fd_set readfds_original = *readfds;
+			fd_set readfds_temp = *readfds;
+
+			select.bridge(nfds, &readfds_temp, writefds, exceptfds, timeout);
+
+			FD_ZERO(readfds);
+			for (size_t i = 0; i < readfds_original.fd_count; ++i) {
+				const auto s = readfds_original.fd_array[i];
+				const auto conn = m_pImpl->FindOrCreateSingleConnection(s);
+				if (conn == nullptr) {
+					if (FD_ISSET(s, &readfds_temp))
+						FD_SET(s, readfds);
+					continue;
+				}
+
+				if (FD_ISSET(s, &readfds_temp))
+					conn->m_pImpl->AttemptReceive();
+
+				if (conn->m_pImpl->m_recvProcessed.Available())
+					FD_SET(s, readfds);
+
+				if (conn->m_pImpl->CloseRecvIfPossible())
+					m_pImpl->CleanupSocket(s);
+			}
+
+			for (auto it = m_pImpl->m_sockets.begin(); it != m_pImpl->m_sockets.end(); ) {
+				const auto& [s, conn] = *it;
+
+				conn->m_pImpl->AttemptSend();
+
+				if (conn->m_pImpl->CloseSendIfPossible())
+					it = m_pImpl->CleanupSocket(s);
+				else
+					++it;
+			}
+
+			return static_cast<int>((readfds ? readfds->fd_count : 0) +
+				(writefds ? writefds->fd_count : 0) +
+				(exceptfds ? exceptfds->fd_count : 0));
+			}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
+
+		m_pImpl->m_cleanupList += std::move(connect.SetHook([&](SOCKET s, const sockaddr* name, int namelen) {
+			if (GetCurrentThreadId() != m_pImpl->m_dwGameMainThreadId)
+				return connect.bridge(s, name, namelen);
+
+			const auto result = connect.bridge(s, name, namelen);
+			m_logger->Format(LogCategory::SocketHook, "{:x}: Connect: {}", s, Utils::ToString(*name));
+			return result;
+			}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
+
+		});
 }
 
 App::Network::SocketHook::~SocketHook() {
-	s_socketHookInstance = nullptr;
-}
+	m_pImpl->m_unloading = true;
+	while (!m_pImpl->m_sockets.empty()) {
+		m_pImpl->m_pApp->RunOnGameLoop([this]() { this->ReleaseSockets(); });
+		Sleep(1);
+	}
 
-App::Network::SocketHook* App::Network::SocketHook::Instance() {
-	return s_socketHookInstance;
+	// Let it process main message loop first to ensure that no socket operation is in progress
+	SendMessage(m_pImpl->m_pApp->GetGameWindowHandle(), WM_NULL, 0, 0);
+	m_pImpl->m_cleanupList.Clear();
 }
 
 bool App::Network::SocketHook::IsUnloadable() const {
-	return socket.IsUnloadable()
-		&& connect.IsUnloadable()
-		&& select.IsUnloadable()
-		&& recv.IsUnloadable()
-		&& send.IsUnloadable()
-		&& closesocket.IsUnloadable();
-}
-
-void App::Network::SocketHook::AddOnSocketFoundListener(void* token, const std::function<void(SingleConnection&)>&cb) {
-	App::Instance()->RunOnGameLoop([this, token, &cb]() {
-		this->impl->m_onSocketFoundListeners[reinterpret_cast<size_t>(token)].emplace_back(cb);
-		for (const auto& item : this->impl->m_sockets) {
-			cb(*item.second);
-		}
-	});
-}
-
-void App::Network::SocketHook::AddOnSocketGoneListener(void* token, const std::function<void(SingleConnection&)>&cb) {
-	App::Instance()->RunOnGameLoop([this, token, &cb]() {
-		this->impl->m_onSocketGoneListeners[reinterpret_cast<size_t>(token)].emplace_back(cb);
-	});
-}
-
-void App::Network::SocketHook::RemoveListeners(void* token) {
-	App::Instance()->RunOnGameLoop([this, token]() {
-		this->impl->m_onSocketFoundListeners.erase(reinterpret_cast<size_t>(token));
-		this->impl->m_onSocketGoneListeners.erase(reinterpret_cast<size_t>(token));
-	});
+	return socket.IsDisableable()
+		&& connect.IsDisableable()
+		&& select.IsDisableable()
+		&& recv.IsDisableable()
+		&& send.IsDisableable()
+		&& closesocket.IsDisableable();
 }
 
 void App::Network::SocketHook::ReleaseSockets() {
-	for (auto& [s, con] : impl->m_sockets) {
-		if (con->impl->m_unloading)
+	for (auto& [s, con] : m_pImpl->m_sockets) {
+		if (con->m_pImpl->m_unloading)
 			continue;
 		
-		Misc::Logger::GetLogger().Format(LogCategory::SocketHook, "{:x}: Detaching", s);
-		con->impl->Unload();
+		m_logger->Format(LogCategory::SocketHook, "{:x}: Detaching", s);
+		con->m_pImpl->Unload();
 	}
-	impl->m_nonGameSockets.clear();
+	m_pImpl->m_nonGameSockets.clear();
 }
 
 std::wstring App::Network::SocketHook::Describe() const {
 	while (true) {
 		try {
 			std::wstring result;
-			for (const auto& [s, conn] : impl->m_sockets) {
+			for (const auto& [s, conn] : m_pImpl->m_sockets) {
 				result += std::format(L"Connection {:x} ({} -> {})\n",
 					s,
-					Utils::FromUtf8(Utils::ToString(conn->impl->m_localAddress)),
-					Utils::FromUtf8(Utils::ToString(conn->impl->m_remoteAddress)));
+					Utils::FromUtf8(Utils::ToString(conn->m_pImpl->m_localAddress)),
+					Utils::FromUtf8(Utils::ToString(conn->m_pImpl->m_remoteAddress)));
 				
 				if (const auto latency = conn->FetchSocketLatency()) {
 					result += std::format(L"* Socket Latency: last {}ms, med {}ms, avg {}+{}ms\n",

@@ -96,11 +96,10 @@ App::Window::Log::Log()
 			return 0;
 			});
 	};
-
-	const auto& logger = Misc::Logger::GetLogger();
-	for (const auto item : logger.GetLogs())
+	
+	for (const auto item : m_logger->GetLogs())
 		addLogFn(*item);
-	m_callbackHandle = Misc::Logger::GetLogger().OnNewLogItem(addLogFn);
+	m_callbackHandle = m_logger->OnNewLogItem(addLogFn);
 
 	ShowWindow(m_hWnd, SW_SHOW);
 }
@@ -187,7 +186,7 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 				}
 
 				case ID_FILE_CLEAR: {
-					Misc::Logger::GetLogger().Clear();
+					m_logger->Clear();
 					m_direct(m_directPtr, SCI_SETREADONLY, FALSE, 0);
 					m_direct(m_directPtr, SCI_CLEARALL, 0, 0);
 					m_direct(m_directPtr, SCI_SETREADONLY, TRUE, 0);

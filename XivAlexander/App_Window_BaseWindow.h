@@ -16,6 +16,7 @@ namespace App::Window {
         bool m_bDestroyed = false;
 
     protected:
+        std::shared_ptr<Misc::Logger> const m_logger;
         const WNDCLASSEXW m_windowClass;
         HWND m_hWnd;
 
@@ -25,6 +26,7 @@ namespace App::Window {
 
         enum : int {
             AppMessageRunOnUiThread = WM_APP + 1001,
+        	AppMessageGetClassInstance,
         };
 
 		BaseWindow(const WNDCLASSEXW& wndclassex,
@@ -48,8 +50,6 @@ namespace App::Window {
         virtual HACCEL GetAcceleratorTable() const;
 
         Utils::ListenerManager<BaseWindow, void> OnDestroyListener;
-
-        static const std::set<BaseWindow*>& GetAllOpenWindows();
 
     protected:
 

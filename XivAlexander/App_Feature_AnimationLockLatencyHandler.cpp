@@ -1,11 +1,9 @@
 ﻿#include "pch.h"
 #include "App_Feature_AnimationLockLatencyHandler.h"
-
-#include "App_Network_IcmpPingTracker.h"
 #include "App_Network_SocketHook.h"
 #include "App_Network_Structures.h"
 
-class App::Feature::AnimationLockLatencyHandler::Internals {
+class App::Feature::AnimationLockLatencyHandler::Implementation {
 public:
 	// Server responses have been usually taking between 50ms and 100ms on below-1ms
 	// latency to server, so 75ms is a good average.
@@ -59,10 +57,10 @@ public:
 		std::map<int, uint64_t> m_originalWaitTimeMap;
 		Utils::NumericStatisticsTracker m_earlyRequestsDuration{ 32, 0 };
 
-		Internals& internals;
+		Implementation* m_pImpl;
 		Network::SingleConnection& conn;
-		SingleConnectionHandler(Internals& internals, Network::SingleConnection& conn)
-			: internals(internals)
+		SingleConnectionHandler(Implementation* pImpl, Network::SingleConnection& conn)
+			: m_pImpl(pImpl)
 			, conn(conn) {
 			using namespace Network::Structures;
 
@@ -93,7 +91,7 @@ public:
 						}
 
 						if (runtimeConfig.UseHighLatencyMitigationLogging)
-							Misc::Logger::GetLogger().Format(
+							m_pImpl->m_logger->Format(
 								LogCategory::AnimationLockLatencyHandler,
 								"{:x}: C2S_ActionRequest({:04x}): actionId={:04x} sequence={:04x} delay={}ms{}",
 								conn.GetSocket(),
@@ -160,7 +158,7 @@ public:
 								// find the one sharing Sequence, assuming action responses are always in order
 								while (!m_pendingActions.empty() && m_pendingActions.front().Sequence != actionEffect.SourceSequence) {
 									const auto& item = m_pendingActions.front();
-									Misc::Logger::GetLogger().Format(
+									m_pImpl->m_logger->Format(
 										LogCategory::AnimationLockLatencyHandler,
 										u8"\t┎ ActionRequest ignored for processing: actionId={:04x} sequence={:04x}",
 										item.ActionId, item.Sequence);
@@ -196,7 +194,7 @@ public:
 								description << std::format(" wait={}ms", originalWaitTime);
 							description << std::format(" next={:%H:%M:%S}", std::chrono::system_clock::now() + std::chrono::milliseconds(waitTime));
 							if (runtimeConfig.UseHighLatencyMitigationLogging)
-								Misc::Logger::GetLogger().Log(LogCategory::AnimationLockLatencyHandler, description.str());
+								m_pImpl->m_logger->Log(LogCategory::AnimationLockLatencyHandler, description.str());
 
 						} else if (pMessage->Data.IPC.SubType == gameConfig.S2C_ActorControlSelf) {
 							auto& actorControlSelf = pMessage->Data.IPC.Data.S2C_ActorControlSelf;
@@ -213,7 +211,7 @@ public:
 										|| (rollback.SourceSequence == 0 && m_pendingActions.front().ActionId != rollback.ActionId)
 										)) {
 									const auto& item = m_pendingActions.front();
-									Misc::Logger::GetLogger().Format(
+									m_pImpl->m_logger->Format(
 										LogCategory::AnimationLockLatencyHandler,
 										u8"\t┎ ActionRequest ignored for processing: actionId={:04x} sequence={:04x}",
 										item.ActionId, item.Sequence);
@@ -224,7 +222,7 @@ public:
 									m_pendingActions.pop_front();
 
 								if (runtimeConfig.UseHighLatencyMitigationLogging)
-									Misc::Logger::GetLogger().Format(
+									m_pImpl->m_logger->Format(
 										LogCategory::AnimationLockLatencyHandler,
 										"{:x}: S2C_ActorControlSelf/ActionRejected: actionId={:04x} sourceSequence={:04x}",
 										conn.GetSocket(),
@@ -242,7 +240,7 @@ public:
 								// find the one sharing Sequence, assuming action responses are always in order
 								while (!m_pendingActions.empty() && m_pendingActions.front().ActionId != cancelCast.ActionId) {
 									const auto& item = m_pendingActions.front();
-									Misc::Logger::GetLogger().Format(
+									m_pImpl->m_logger->Format(
 										LogCategory::AnimationLockLatencyHandler,
 										u8"\t┎ ActionRequest ignored for processing: actionId={:04x} sequence={:04x}",
 										item.ActionId, item.Sequence);
@@ -253,7 +251,7 @@ public:
 									m_pendingActions.pop_front();
 
 								if (runtimeConfig.UseHighLatencyMitigationLogging)
-									Misc::Logger::GetLogger().Format(
+									m_pImpl->m_logger->Format(
 										LogCategory::AnimationLockLatencyHandler,
 										"{:x}: S2C_ActorControl/CancelCast: actionId={:04x}",
 										conn.GetSocket(),
@@ -269,7 +267,7 @@ public:
 								m_pendingActions.front().CastFlag = true;
 
 							if (runtimeConfig.UseHighLatencyMitigationLogging)
-								Misc::Logger::GetLogger().Format(
+								m_pImpl->m_logger->Format(
 									LogCategory::AnimationLockLatencyHandler,
 									"{:x}: S2C_ActorCast: actionId={:04x} time={:.3f} target={:08x}",
 									conn.GetSocket(),
@@ -352,7 +350,7 @@ public:
 					description << std::format(" delayAdjusted={}ms", delay);
 
 					if (rtt > 100 && latency < 5) {
-						Misc::Logger::GetLogger().Format<LogLevel::Warning>(
+						m_pImpl->m_logger->Format<LogLevel::Warning>(
 							LogCategory::AnimationLockLatencyHandler,
 							u8"\t┎ rtt={} but latency={}; your VPN or network might be reporting 0 ping. "
 							u8"Disabling <Delay Detection> is recommended",
@@ -367,25 +365,29 @@ public:
 		}
 	};
 
+	const std::shared_ptr<Misc::Logger> m_logger;
+	Network::SocketHook* const m_socketHook;
 	std::map<Network::SingleConnection*, std::unique_ptr<SingleConnectionHandler>> m_handlers;
+	Utils::CallOnDestruction::Multiple m_cleanup;
 
-	Internals() {
-		Network::SocketHook::Instance()->AddOnSocketFoundListener(this, [&](Network::SingleConnection& conn) {
-			m_handlers.emplace(&conn, std::make_unique<SingleConnectionHandler>(*this, conn));
+	Implementation(Network::SocketHook* socketHook)
+		: m_logger(Misc::Logger::Acquire())
+		, m_socketHook(socketHook) {
+		m_cleanup += m_socketHook->OnSocketFound([&](Network::SingleConnection& conn) {
+			m_handlers.emplace(&conn, std::make_unique<SingleConnectionHandler>(this, conn));
 			});
-		Network::SocketHook::Instance()->AddOnSocketGoneListener(this, [&](Network::SingleConnection& conn) {
+		m_cleanup += m_socketHook->OnSocketGone([&](Network::SingleConnection& conn) {
 			m_handlers.erase(&conn);
 			});
 	}
 
-	~Internals() {
+	~Implementation() {
 		m_handlers.clear();
-		Network::SocketHook::Instance()->RemoveListeners(this);
 	}
 };
 
-App::Feature::AnimationLockLatencyHandler::AnimationLockLatencyHandler()
-	: impl(std::make_unique<Internals>()) {
+App::Feature::AnimationLockLatencyHandler::AnimationLockLatencyHandler(Network::SocketHook* socketHook)
+	: m_pImpl(std::make_unique<Implementation>(socketHook)) {
 }
 
 App::Feature::AnimationLockLatencyHandler::~AnimationLockLatencyHandler() = default;

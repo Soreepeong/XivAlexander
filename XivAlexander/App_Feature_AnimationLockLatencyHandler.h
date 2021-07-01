@@ -1,11 +1,17 @@
 #pragma once
+namespace App {
+	namespace Network {
+		class SocketHook;
+	}
+}
+
 namespace App::Feature {
 	class AnimationLockLatencyHandler {
-		class Internals;
-		std::unique_ptr<Internals> impl;
+		class Implementation;
+		std::unique_ptr<Implementation> m_pImpl;
 
 	public:
-		AnimationLockLatencyHandler();
+		AnimationLockLatencyHandler(Network::SocketHook* socketHook);
 		~AnimationLockLatencyHandler();
 	};
 }

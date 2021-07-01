@@ -183,6 +183,26 @@ bool Utils::Win32::IsUserAnAdmin() {
 	return false;
 }
 
+std::filesystem::path Utils::Win32::GetMappedImageNativePath(HANDLE hProcess, void* lpMem) {
+	std::wstring fn;
+	fn.resize(PATHCCH_MAX_CCH);
+	fn.resize(GetMappedFileNameW(hProcess, lpMem, &fn[0], static_cast<DWORD>(fn.size())));
+	return L"\\\\?" + fn;
+}
+
+std::filesystem::path Utils::Win32::ToNativePath(const std::filesystem::path& path) {
+	const auto hFile = Closeable::Handle(CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr),
+		INVALID_HANDLE_VALUE, "CreateFileW");
+
+	std::wstring result;
+	result.resize(PATHCCH_MAX_CCH);
+	result.resize(GetFinalPathNameByHandleW(hFile, &result[0], static_cast<DWORD>(result.size()), VOLUME_NAME_NT));
+	if (result.empty())
+		throw Error("GetFinalPathNameByHandleW");
+
+	return L"\\\\?" + result;
+}
+
 Utils::Win32::Error::Error(int errorCode, const std::string& msg)
 	: std::runtime_error(FormatWindowsErrorMessage(errorCode) + ": " + msg)
 	, m_nErrorCode(errorCode) {

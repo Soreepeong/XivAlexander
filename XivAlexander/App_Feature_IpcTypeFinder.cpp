@@ -3,15 +3,15 @@
 #include "App_Network_SocketHook.h"
 #include "App_Network_Structures.h"
 
-class App::Feature::IpcTypeFinder::Internals {
+class App::Feature::IpcTypeFinder::Implementation {
 public:
 
 	class SingleConnectionHandler {
 	public:
-		Internals& internals;
+		Implementation* m_pImpl;
 		Network::SingleConnection& conn;
-		SingleConnectionHandler(Internals& internals, Network::SingleConnection& conn)
-			: internals(internals)
+		SingleConnectionHandler(Implementation* pImpl, Network::SingleConnection& conn)
+			: m_pImpl(pImpl)
 			, conn(conn) {
 			using namespace Network::Structures;
 
@@ -39,7 +39,7 @@ public:
 
 							const auto& actionEffect = pMessage->Data.IPC.Data.S2C_ActionEffect;
 
-							Misc::Logger::GetLogger().Format(
+							m_pImpl->m_logger->Format(
 								LogCategory::IpcTypeFinder,
 								"{:x}: S2C_ActionEffect{:02}(0x{:04x}) length={:x} actionId={:04x} sequence={:04x} wait={:.3f}",
 								conn.GetSocket(),
@@ -60,7 +60,7 @@ public:
 							const auto& actorControlSelf = pMessage->Data.IPC.Data.S2C_ActorControlSelf;
 							if (actorControlSelf.Category == S2C_ActorControlSelfCategory::Cooldown) {
 								const auto& cooldown = actorControlSelf.Cooldown;
-								Misc::Logger::GetLogger().Format(
+								m_pImpl->m_logger->Format(
 									LogCategory::IpcTypeFinder,
 									"{:x}: S2C_ActorControlSelf(0x{:04x}): Cooldown: actionId={:04x} duration={}",
 									conn.GetSocket(),
@@ -71,7 +71,7 @@ public:
 
 							} else if (pMessage->Data.IPC.Data.S2C_ActorControlSelf.Category == S2C_ActorControlSelfCategory::ActionRejected) {
 								const auto& rollback = actorControlSelf.Rollback;
-								Misc::Logger::GetLogger().Format(
+								m_pImpl->m_logger->Format(
 									LogCategory::IpcTypeFinder,
 									"{:x}: S2C_ActorControlSelf(0x{:04x}): Rollback: actionId={:04x} sourceSequence={:04x}",
 									conn.GetSocket(),
@@ -84,7 +84,7 @@ public:
 							//
 							// Test ActorCast
 							//
-							Misc::Logger::GetLogger().Format(
+							m_pImpl->m_logger->Format(
 								LogCategory::IpcTypeFinder,
 								"{:x}: S2C_ActorCast(0x{:04x}): actionId={:04x} time={:.3f} target={:08x}",
 								conn.GetSocket(),
@@ -99,7 +99,7 @@ public:
 							const auto& actorControl = pMessage->Data.IPC.Data.S2C_ActorControl;
 							if (actorControl.Category == S2C_ActorControlCategory::CancelCast) {
 								const auto& cancelCast = actorControl.CancelCast;
-								Misc::Logger::GetLogger().Format(
+								m_pImpl->m_logger->Format(
 									LogCategory::IpcTypeFinder,
 									"{:x}: S2C_ActorControl(0x{:04x}): CancelCast: actionId={:04x}",
 									conn.GetSocket(),
@@ -124,7 +124,7 @@ public:
 								entry.SourceActorId
 							);
 						}
-						Misc::Logger::GetLogger().Format(
+						m_pImpl->m_logger->Format(
 							LogCategory::IpcTypeFinder,
 							"{:x}: S2C_AddStatusEffect(0x{:04x}): relatedActionSequence={:08x} actorId={:08x} HP={}/{} MP={} shield={}{}",
 							conn.GetSocket(),
@@ -146,7 +146,7 @@ public:
 					if (pMessage->Length == 0x40) {
 						// Test ActionRequest
 						const auto& actionRequest = pMessage->Data.IPC.Data.C2S_ActionRequest;
-						Misc::Logger::GetLogger().Format(
+						m_pImpl->m_logger->Format(
 							LogCategory::IpcTypeFinder,
 							"{:x}: C2S_ActionRequest/GroundTargeted(0x{:04x}): actionId={:04x} sequence={:04x}",
 							conn.GetSocket(),
@@ -162,26 +162,30 @@ public:
 			conn.RemoveMessageHandlers(this);
 		}
 	};
-
+	
+	const std::shared_ptr<Misc::Logger> m_logger;
+	Network::SocketHook* const m_socketHook;
 	std::map<Network::SingleConnection*, std::unique_ptr<SingleConnectionHandler>> m_handlers;
+	Utils::CallOnDestruction::Multiple m_cleanup;
 
-	Internals() {
-		Network::SocketHook::Instance()->AddOnSocketFoundListener(this, [&](Network::SingleConnection& conn) {
-			m_handlers.emplace(&conn, std::make_unique<SingleConnectionHandler>(*this, conn));
-		});
-		Network::SocketHook::Instance()->AddOnSocketGoneListener(this, [&](Network::SingleConnection& conn) {
+	Implementation(Network::SocketHook* socketHook)
+		: m_logger(Misc::Logger::Acquire())
+		, m_socketHook(socketHook) {
+		m_cleanup += m_socketHook->OnSocketFound([&](Network::SingleConnection& conn) {
+			m_handlers.emplace(&conn, std::make_unique<SingleConnectionHandler>(this, conn));
+			});
+		m_cleanup += m_socketHook->OnSocketGone([&](Network::SingleConnection& conn) {
 			m_handlers.erase(&conn);
 			});
 	}
 
-	~Internals() {
+	~Implementation() {
 		m_handlers.clear();
-		Network::SocketHook::Instance()->RemoveListeners(this);
 	}
 };
 
-App::Feature::IpcTypeFinder::IpcTypeFinder()
-: impl(std::make_unique<Internals>()){
+App::Feature::IpcTypeFinder::IpcTypeFinder(Network::SocketHook* socketHook)
+	: m_pImpl(std::make_unique<Implementation>(socketHook)){
 }
 
 App::Feature::IpcTypeFinder::~IpcTypeFinder() = default;

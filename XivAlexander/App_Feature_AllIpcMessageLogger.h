@@ -1,11 +1,17 @@
 #pragma once
+namespace App {
+	namespace Network {
+		class SocketHook;
+	}
+}
+
 namespace App::Feature {
 	class AllIpcMessageLogger {
-		class Internals;
-		std::unique_ptr<Internals> impl;
+		class Implementation;
+		std::unique_ptr<Implementation> m_pImpl;
 
 	public:
-		AllIpcMessageLogger();
+		AllIpcMessageLogger(Network::SocketHook* socketHook);
 		~AllIpcMessageLogger();
 	};
 }

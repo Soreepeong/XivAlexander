@@ -3,15 +3,15 @@
 #include "App_Network_SocketHook.h"
 #include "App_Network_Structures.h"
 
-class App::Feature::AllIpcMessageLogger::Internals {
+class App::Feature::AllIpcMessageLogger::Implementation {
 public:
 
 	class SingleConnectionHandler {
 	public:
-		Internals& internals;
+		Implementation* m_pImpl;
 		Network::SingleConnection& conn;
-		SingleConnectionHandler(Internals& internals, Network::SingleConnection& conn)
-			: internals(internals)
+		SingleConnectionHandler(Implementation* pImpl, Network::SingleConnection& conn)
+			: m_pImpl(pImpl)
 			, conn(conn) {
 			using namespace Network::Structures;
 
@@ -29,7 +29,7 @@ public:
 						case 0x078: pszPossibleMessageType = "AddStatusEffect"; break;
 						default: pszPossibleMessageType = nullptr;
 					}
-					Misc::Logger::GetLogger().Format(LogCategory::AllIpcMessageLogger, "source={:08x} current={:08x} subtype={:04x} length={:x} (S2C{}{})",
+					m_pImpl->m_logger->Format(LogCategory::AllIpcMessageLogger, "source={:08x} current={:08x} subtype={:04x} length={:x} (S2C{}{})",
 						pMessage->SourceActor, pMessage->CurrentActor,
 						pMessage->Data.IPC.SubType, pMessage->Length,
 						pszPossibleMessageType ? ": Possibly " : "",
@@ -45,7 +45,7 @@ public:
 						case 0x040: pszPossibleMessageType = "ActionRequest, C2S_ActionRequestGroundTargeted, InteractTarget"; break;
 						default: pszPossibleMessageType = nullptr;
 					}
-					Misc::Logger::GetLogger().Format(LogCategory::AllIpcMessageLogger, "source={:08x} current={:08x} subtype={:04x} length={:x} (C2S{}{})",
+					m_pImpl->m_logger->Format(LogCategory::AllIpcMessageLogger, "source={:08x} current={:08x} subtype={:04x} length={:x} (C2S{}{})",
 						pMessage->SourceActor, pMessage->CurrentActor,
 						pMessage->Data.IPC.SubType, pMessage->Length,
 						pszPossibleMessageType ? ": Possibly " : "",
@@ -59,25 +59,29 @@ public:
 		}
 	};
 
+	const std::shared_ptr<Misc::Logger> m_logger;
+	Network::SocketHook* const m_socketHook;
 	std::map<Network::SingleConnection*, std::unique_ptr<SingleConnectionHandler>> m_handlers;
+	Utils::CallOnDestruction::Multiple m_cleanup;
 
-	Internals() {
-		Network::SocketHook::Instance()->AddOnSocketFoundListener(this, [&](Network::SingleConnection& conn) {
-			m_handlers.emplace(&conn, std::make_unique<SingleConnectionHandler>(*this, conn));
-		});
-		Network::SocketHook::Instance()->AddOnSocketGoneListener(this, [&](Network::SingleConnection& conn) {
+	Implementation(Network::SocketHook* socketHook)
+		: m_logger(Misc::Logger::Acquire())
+		, m_socketHook(socketHook) {
+		m_cleanup += m_socketHook->OnSocketFound([&](Network::SingleConnection& conn) {
+			m_handlers.emplace(&conn, std::make_unique<SingleConnectionHandler>(this, conn));
+			});
+		m_cleanup += m_socketHook->OnSocketGone([&](Network::SingleConnection& conn) {
 			m_handlers.erase(&conn);
 			});
 	}
 
-	~Internals() {
+	~Implementation() {
 		m_handlers.clear();
-		Network::SocketHook::Instance()->RemoveListeners(this);
 	}
 };
 
-App::Feature::AllIpcMessageLogger::AllIpcMessageLogger()
-: impl(std::make_unique<Internals>()){
+App::Feature::AllIpcMessageLogger::AllIpcMessageLogger(Network::SocketHook* socketHook)
+: m_pImpl(std::make_unique<Implementation>(socketHook)){
 }
 
 App::Feature::AllIpcMessageLogger::~AllIpcMessageLogger() = default;

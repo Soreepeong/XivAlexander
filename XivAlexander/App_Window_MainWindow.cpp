@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "resource.h"
-#include "App_App.h"
+#include "App_XivAlexApp.h"
 #include "App_Window_ConfigWindow.h"
 #include "App_Window_MainWindow.h"
 #include "App_Network_SocketHook.h"
@@ -30,9 +30,9 @@ static WNDCLASSEXW WindowClass() {
 	return wcex;
 }
 
-App::Window::Main::Main(HWND hGameWnd, std::function<void()> unloadFunction)
+App::Window::Main::Main(XivAlexApp *pApp, std::function<void()> unloadFunction)
 	: BaseWindow(WindowClass(), L"XivAlexander", WS_OVERLAPPEDWINDOW, WS_EX_TOPMOST, CW_USEDEFAULT, CW_USEDEFAULT, 480, 160, nullptr, nullptr)
-	, m_hGameWnd(hGameWnd)
+	, m_pApp(pApp)
 	, m_triggerUnload(std::move(unloadFunction))
 	, m_uTaskbarRestartMessage(RegisterWindowMessage(TEXT("TaskbarCreated")))
 	, m_path(Utils::Win32::Modules::PathFromModule()) {
@@ -57,24 +57,22 @@ App::Window::Main::Main(HWND hGameWnd, std::function<void()> unloadFunction)
 
 	SetTimer(m_hWnd, TimerIdRepaint, 1000, nullptr);
 
-	m_cleanupList.emplace_back(::App::Config::Instance().Runtime.ShowControlWindow.OnChangeListener([this](::App::Config::ItemBase&) {
-		ShowWindow(m_hWnd, ::App::Config::Instance().Runtime.ShowControlWindow ? SW_SHOW : SW_HIDE);
-		}));
-	if (::App::Config::Instance().Runtime.ShowControlWindow)
+	m_cleanup += App::Config::Instance().Runtime.ShowControlWindow.OnChangeListener([this](App::Config::ItemBase&) {
+		ShowWindow(m_hWnd, App::Config::Instance().Runtime.ShowControlWindow ? SW_SHOW : SW_HIDE);
+	});
+	if (App::Config::Instance().Runtime.ShowControlWindow)
 		ShowWindow(m_hWnd, SW_SHOW);
 
-	Network::SocketHook::Instance()->AddOnSocketFoundListener(this, [this](Network::SingleConnection&) {
+	m_cleanup += m_pApp->GetSocketHook()->OnSocketFound([this](Network::SingleConnection&) {
 		InvalidateRect(m_hWnd, nullptr, false);
 		});
-	Network::SocketHook::Instance()->AddOnSocketGoneListener(this, [this](Network::SingleConnection&) {
+	m_cleanup += m_pApp->GetSocketHook()->OnSocketGone([this](Network::SingleConnection&) {
 		InvalidateRect(m_hWnd, nullptr, false);
 		});
-	m_cleanupList.emplace_back([this]() { Network::SocketHook::Instance()->RemoveListeners(this); });
 }
 
 App::Window::Main::~Main() {
-	while (!m_cleanupList.empty())
-		m_cleanupList.pop_back();
+	m_cleanup.Clear();
 	Destroy();
 }
 
@@ -87,7 +85,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		RepopulateMenu(GetMenu(m_hWnd));
 	} else if (uMsg == WM_COMMAND) {
 		if (!lParam) {
-			auto& config = ::App::Config::Instance().Runtime;
+			auto& config = App::Config::Instance().Runtime;
 			switch (LOWORD(wParam)) {
 				
 				case ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP:
@@ -135,8 +133,8 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					return 0;
 
 				case ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS:
-					App::Instance()->RunOnGameLoop([]() {
-						Network::SocketHook::Instance()->ReleaseSockets();
+					m_pApp->RunOnGameLoop([this]() {
+						m_pApp->GetSocketHook()->ReleaseSockets();
 					});
 					return 0;
 
@@ -170,20 +168,20 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					if (m_runtimeConfigEditor && !m_runtimeConfigEditor->IsDestroyed())
 						SetFocus(m_runtimeConfigEditor->GetHandle());
 					else
-						m_runtimeConfigEditor = std::make_unique<Config>(&::App::Config::Instance().Runtime);
+						m_runtimeConfigEditor = std::make_unique<Config>(&App::Config::Instance().Runtime);
 					return 0;
 
 				case ID_TRAYMENU_EDITOPCODECONFIGURATION:
 					if (m_gameConfigEditor && !m_gameConfigEditor->IsDestroyed())
 						SetFocus(m_gameConfigEditor->GetHandle());
 					else
-						m_gameConfigEditor = std::make_unique<Config>(&::App::Config::Instance().Game);
+						m_gameConfigEditor = std::make_unique<Config>(&App::Config::Instance().Game);
 					return 0;
 
 					/***************************************************************/
 
 				case ID_TRAYMENU_CHECKFORUPDATES:
-					App::Instance()->CheckUpdates(false);
+					m_pApp->CheckUpdates(false);
 					return 0;
 
 				case ID_TRAYMENU_UNLOADXIVALEXANDER:
@@ -263,7 +261,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			L"  * Your ping is above 200ms.\n"
 			L"  * You can't double weave comfortably.",
 			GetCurrentProcessId(), m_path, m_sVersion, m_sRegion,
-			Network::SocketHook::Instance()->Describe());
+			m_pApp->GetSocketHook()->Describe());
 		const auto pad = static_cast<int>(8 * zoom);
 		RECT rct = {
 			pad,
@@ -303,7 +301,7 @@ void App::Window::Main::OnDestroy() {
 }
 
 void App::Window::Main::RepopulateMenu(HMENU hMenu) {
-	const auto& config = ::App::Config::Instance().Runtime;
+	const auto& config = App::Config::Instance().Runtime;
 
 	Utils::Win32::SetMenuState(hMenu, ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST);
 	

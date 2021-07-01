@@ -17,7 +17,6 @@ namespace App::Misc::Hooks {
 		Utils::CallOnDestruction::Multiple m_cleanup;
 
 	public:
-		Binder() = default;
 		Binder(void* this_, void* templateMethod);
 		~Binder();
 
@@ -53,18 +52,13 @@ namespace App::Misc::Hooks {
 			
 			*destructed = true;
 		}
-
-		/*
-		R operator()(Args ...args) const {
-			return reinterpret_cast<FunctionType>(this->m_pAddress)(std::forward<Args>(args)...);
-		}//*/
-
-		R bridge(Args ...args) const {
+		
+		virtual R bridge(Args ...args) const {
 			return m_bridge(std::forward<Args>(args)...);
 		}
 
-		[[nodiscard]] virtual bool IsUnloadable() const {
-			return !m_detour;
+		[[nodiscard]] virtual bool IsDisableable() const {
+			return true;
 		}
 
 		Utils::CallOnDestruction SetHook(std::function<std::remove_pointer_t<FunctionType>> pfnDetour) {
@@ -76,20 +70,21 @@ namespace App::Misc::Hooks {
 			HookEnable();
 
 			return Utils::CallOnDestruction([this, destructed=destructed]() {
-				if (destructed)
+				if (*destructed)
 					return;
 				
+				OutputDebugStringA(std::format("{}\n", this->m_sName).c_str());
 				HookDisable();
 				m_detour = nullptr;
 				});
 		}
 
 	protected:
-		R DetouredGateway(Args...args) const {
+		virtual R DetouredGateway(Args...args) {
 			if (m_detour)
 				return m_detour(std::forward<Args>(args)...);
 			else
-				return m_bridge(std::forward<Args>(args)...);
+				return bridge(std::forward<Args>(args)...);
 		}
 		
 		virtual void HookEnable() = 0;
@@ -111,11 +106,11 @@ namespace App::Misc::Hooks {
 		}
 
 	protected:
-		void HookEnable() override {
+		void HookEnable() final {
 			MH_EnableHook(this->m_pAddress);
 		}
 
-		void HookDisable() override {
+		void HookDisable() final {
 			MH_DisableHook(this->m_pAddress);
 		}
 	};
@@ -133,7 +128,7 @@ namespace App::Misc::Hooks {
 		}
 
 	protected:
-		void HookEnable() override {
+		void HookEnable() final {
 			MEMORY_BASIC_INFORMATION mbi;
 			VirtualQuery(this->m_pAddress, &mbi, sizeof(MEMORY_BASIC_INFORMATION));
 			VirtualProtect(mbi.BaseAddress, mbi.RegionSize, PAGE_EXECUTE_READWRITE, &mbi.Protect);
@@ -141,36 +136,33 @@ namespace App::Misc::Hooks {
 			VirtualProtect(mbi.BaseAddress, mbi.RegionSize, mbi.Protect, &mbi.Protect);
 		}
 
-		void HookDisable() override {
+		void HookDisable() final {
 			MEMORY_BASIC_INFORMATION mbi;
 			VirtualQuery(this->m_pAddress, &mbi, sizeof(MEMORY_BASIC_INFORMATION));
 			VirtualProtect(mbi.BaseAddress, mbi.RegionSize, PAGE_EXECUTE_READWRITE, &mbi.Protect);
-			*reinterpret_cast<void**>(this->m_pAddress) = this->m_binder.GetBinder();
+			*reinterpret_cast<void**>(this->m_pAddress) = this->m_bridge;
 			VirtualProtect(mbi.BaseAddress, mbi.RegionSize, mbi.Protect, &mbi.Protect);
 		}
 	};
-
+	
 	class WndProcFunction : public Function<LRESULT, HWND, UINT, WPARAM, LPARAM> {
 		using Super = Function<LRESULT, HWND, UINT, WPARAM, LPARAM>;
+
 		HWND const m_hWnd;
+		std::shared_ptr<bool> destructed = std::make_shared<bool>(false);
+
+		LONG_PTR m_prevProc;
 
 	public:
-		WndProcFunction(const char* szName, HWND hWnd)
-			: Super(szName, reinterpret_cast<WNDPROC>(GetWindowLongPtrW(hWnd, GWLP_WNDPROC)))
-			, m_hWnd(hWnd) {
-			m_bridge = reinterpret_cast<decltype(m_bridge)>(SetWindowLongPtrW(m_hWnd, GWLP_WNDPROC, m_binder.GetBinder<LONG_PTR>()));
-		}
+		WndProcFunction(const char* szName, HWND hWnd);
+		~WndProcFunction() override;
 
-		~WndProcFunction() override {
-			SetWindowLongPtrW(m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(m_bridge));
-		}
-
-		[[nodiscard]] bool IsUnloadable() const override {
-			return GetWindowLongPtrW(m_hWnd, GWLP_WNDPROC) == m_binder.GetBinder<LONG_PTR>();
-		}
+		bool IsDisableable() const final;
+		
+		LRESULT bridge(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) const final;
 
 	protected:
-		void HookEnable() override {}
-		void HookDisable() override {}
+		void HookEnable() final;
+		void HookDisable() final;
 	};
 }

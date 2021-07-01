@@ -1,11 +1,6 @@
 #include "pch.h"
 #include "App_Window_BaseWindow.h"
 
-static std::set<App::Window::BaseWindow*> s_allOpenWindows;
-const std::set<App::Window::BaseWindow*>& App::Window::BaseWindow::GetAllOpenWindows() {
-	return s_allOpenWindows;
-}
-
 HWND App::Window::BaseWindow::InternalCreateWindow(const WNDCLASSEXW& wndclassex,
 	_In_opt_ LPCWSTR lpWindowName,
 	_In_ DWORD dwStyle,
@@ -34,7 +29,7 @@ HWND App::Window::BaseWindow::InternalCreateWindow(const WNDCLASSEXW& wndclassex
 		}
 
 		if (!pBase)
-			return DefWindowProc(hWnd, uMsg, wParam, lParam);
+			return DefWindowProcW(hWnd, uMsg, wParam, lParam);
 
 		return pBase->WndProc(uMsg, wParam, lParam);
 	};
@@ -60,13 +55,12 @@ App::Window::BaseWindow::BaseWindow(const WNDCLASSEXW& wndclassex,
 	_In_ int nHeight,
 	_In_opt_ HWND hWndParent,
 	_In_opt_ HMENU hMenu)
-	: m_windowClass(wndclassex)
+	: m_logger(Misc::Logger::Acquire())
+	, m_windowClass(wndclassex)
 	, m_hWnd(InternalCreateWindow(wndclassex, lpWindowName, dwStyle, dwExStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, this)) {
-	s_allOpenWindows.insert(this);
 }
 
 App::Window::BaseWindow::~BaseWindow() {
-	s_allOpenWindows.erase(this);
 	Destroy();
 	UnregisterClassW(m_windowClass.lpszClassName, g_hInstance);
 }

@@ -29,12 +29,6 @@ typedef NTSTATUS(NTAPI NtQueryObjectType)(
 	PULONG ReturnLength
 	);
 
-struct UNICODE_STRING {
-	USHORT Length;
-	USHORT MaximumLength;
-	PWSTR Buffer;
-};
-
 struct SYSTEM_HANDLE {
 	ULONG ProcessId;
 	BYTE ObjectTypeNumber;
@@ -91,25 +85,25 @@ T* GetLibraryProcAddress(const wchar_t* szLibraryName, const char* szProcName) {
 		return nullptr;
 	return reinterpret_cast<T*>(GetProcAddress(hModule, szProcName));
 }
-const auto NtQueryObject = GetLibraryProcAddress<NtQueryObjectType>(L"ntdll.dll", "NtQueryObject");
-const auto NtQuerySystemInformation = GetLibraryProcAddress<NtQuerySystemInformationType>(L"ntdll.dll", "NtQuerySystemInformation");
+static const auto NtQueryObject_ = GetLibraryProcAddress<NtQueryObjectType>(L"ntdll.dll", "NtQueryObject");
+static const auto NtQuerySystemInformation_ = GetLibraryProcAddress<NtQuerySystemInformationType>(L"ntdll.dll", "NtQuerySystemInformation");
 
 static std::vector<SYSTEM_HANDLE> EnumerateLocalHandles() {
-	if (!NtQuerySystemInformation)
-		throw std::runtime_error("Failed to find ntdll.dll!NtQuerySystemInformation");
+	if (!NtQuerySystemInformation_)
+		throw std::runtime_error("Failed to find ntdll.dll!NtQuerySystemInformation_");
 
 	NTSTATUS status;
 	std::vector<SYSTEM_HANDLE> result;
 	std::vector<char> handleInfoBuffer;
 	handleInfoBuffer.resize(0x10000);
 
-	// NtQuerySystemInformation won't give us the correct buffer size, so we guess by doubling the buffer size.
-	while ((status = NtQuerySystemInformation(NtSystemInformationClass::SystemHandleInformation, &handleInfoBuffer[0], static_cast<ULONG>(handleInfoBuffer.size()), nullptr)) == STATUS_INFO_LENGTH_MISMATCH)
+	// NtQuerySystemInformation_ won't give us the correct buffer size, so we guess by doubling the buffer size.
+	while ((status = NtQuerySystemInformation_(NtSystemInformationClass::SystemHandleInformation, &handleInfoBuffer[0], static_cast<ULONG>(handleInfoBuffer.size()), nullptr)) == STATUS_INFO_LENGTH_MISMATCH)
 		handleInfoBuffer.resize(handleInfoBuffer.size() * 2);
 
-	// NtQuerySystemInformation stopped giving us STATUS_INFO_LENGTH_MISMATCH.
+	// NtQuerySystemInformation_ stopped giving us STATUS_INFO_LENGTH_MISMATCH.
 	if (!NtSuccess(status))
-		throw std::runtime_error(std::format("NtQuerySystemInformation returned {}.", status));
+		throw std::runtime_error(std::format("NtQuerySystemInformation_ returned {}.", status));
 
 	const auto pHandleInfo = reinterpret_cast<SYSTEM_HANDLE_INFORMATION*>(handleInfoBuffer.data());
 	for (size_t i = 0; i < pHandleInfo->HandleCount; i++)
@@ -119,16 +113,16 @@ static std::vector<SYSTEM_HANDLE> EnumerateLocalHandles() {
 }
 
 static std::wstring GetHandleObjectName(HANDLE hHandle) {
-	if (!NtQueryObject)
-		throw std::runtime_error("Failed to find ntdll.dll!NtQueryObject");
+	if (!NtQueryObject_)
+		throw std::runtime_error("Failed to find ntdll.dll!NtQueryObject_");
 
 	ULONG returnLength = 0;
-	if (NtSuccess(NtQueryObject(hHandle, NtObjectInformationClass::ObjectNameInformation, nullptr, 0, &returnLength)))
+	if (NtSuccess(NtQueryObject_(hHandle, NtObjectInformationClass::ObjectNameInformation, nullptr, 0, &returnLength)))
 		return L"";
 
 	std::vector<char> objectNameInfo;
 	objectNameInfo.resize(returnLength);
-	if (!NtSuccess(NtQueryObject(hHandle, NtObjectInformationClass::ObjectNameInformation, &objectNameInfo[0], returnLength, NULL)))
+	if (!NtSuccess(NtQueryObject_(hHandle, NtObjectInformationClass::ObjectNameInformation, &objectNameInfo[0], returnLength, NULL)))
 		throw std::runtime_error(std::format("Failed to get object name for handle {:p}", hHandle));
 
 	const auto pObjectName = reinterpret_cast<UNICODE_STRING*>(objectNameInfo.data());
@@ -156,6 +150,8 @@ void App::Misc::FreeGameMutex::FreeGameMutex() {
 		}
 	}
 
+	const auto logger = Logger::Acquire();
+
 	for (const auto& handle : allHandles) {
 		const auto hObject = reinterpret_cast<HANDLE>(handle.Handle);
 
@@ -172,13 +168,13 @@ void App::Misc::FreeGameMutex::FreeGameMutex() {
 			const auto name = GetHandleObjectName(hObject);
 			if (name.starts_with(L"\\BaseNamedObjects\\6AA83AB5-BAC4-4a36-9F66-A309770760CB")) {
 				CloseHandle(hObject);
-				Logger::GetLogger().Format(
+				logger->Format(
 					LogCategory::General,
 					"Freed game mutex {}.",
 					Utils::ToUtf8(name));
 			}
 		} catch (std::exception& e) {
-			Logger::GetLogger().Format(
+			logger->Format(
 				LogCategory::General,
 				"Failed to process handle {:p}(type {:2x}): {}",
 				hObject, handle.ObjectTypeNumber, e.what());

@@ -25,7 +25,7 @@ size_t App::Network::Structures::FFXIVBundle::FindPossibleBundleIndex(const void
 
 void App::Network::Structures::FFXIVBundle::DebugPrint(LogCategory logCategory, const char* head) const {
 	const auto st = Utils::EpochToLocalSystemTime(Timestamp);
-	Misc::Logger::GetLogger().Format<LogLevel::Debug>(
+	Misc::Logger::Acquire()->Format<LogLevel::Debug>(
 		logCategory,
 		"[{} / {:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}] Length={} ConnType={} Count={} Gzip={}n",
 		head,
@@ -90,7 +90,7 @@ void App::Network::Structures::FFXIVMessage::DebugPrint(LogCategory logCategory,
 			}
 		}
 	}
-	Misc::Logger::GetLogger().Format<LogLevel::Debug>(
+	Misc::Logger::Acquire()->Format<LogLevel::Debug>(
 		logCategory,
 		"[{}] Length={} Source={:08x} Current={:08x} Type={}{}",
 		head, Length, SourceActor, CurrentActor, static_cast<int>(Type), dumpstr

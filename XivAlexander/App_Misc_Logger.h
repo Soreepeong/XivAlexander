@@ -29,24 +29,30 @@ namespace App::Misc {
 			SYSTEMTIME TimestampAsLocalSystemTime() const;
 		};
 		
-	private:
-		class Internals;
-		const std::unique_ptr<Internals> m_pImpl;
+	protected:
+		class Implementation;
+		const std::unique_ptr<Implementation> m_pImpl;
+
+		class LoggerCreator;
+		friend class LoggerCreator;
+		Logger();
+		static std::weak_ptr<Logger> s_instance;
 
 	public:
-		Logger();
+		static std::shared_ptr<Logger> Acquire();
+		
 		Logger(Logger&&) = delete;
 		Logger(const Logger&) = delete;
 		Logger operator =(Logger&&) = delete;
 		Logger operator =(const Logger&) = delete;
-		~Logger();
+		virtual ~Logger();
 
 		void Log(LogCategory category, const char* s, LogLevel level = LogLevel::Info);
 		void Log(LogCategory category, const char8_t* s, LogLevel level = LogLevel::Info);
 		void Log(LogCategory category, const std::string& s, LogLevel level = LogLevel::Info);
 		void Clear();
 
-		std::deque<const LogItem*> GetLogs() const;
+		[[nodiscard]] std::deque<const LogItem*> GetLogs() const;
 		Utils::ListenerManager<Logger, void, const LogItem&> OnNewLogItem;
 
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
@@ -58,7 +64,5 @@ namespace App::Misc {
 		void Format(LogCategory category, const char8_t* format, Args ... args) {
 			Log(category, std::format(reinterpret_cast<const char*>(format), std::forward<Args>(args)...), Level);
 		}
-		
-		static Logger& GetLogger();
 	};
 }

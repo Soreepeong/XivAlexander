@@ -1,5 +1,9 @@
 #pragma once
 namespace App {
+	namespace Misc {
+		class Logger;
+	}
+
 	class Config {
 	public:
 		class BaseRepository;
@@ -13,6 +17,8 @@ namespace App {
 			const char* m_pszName;
 
 		protected:
+			BaseRepository* const m_pBaseRepository;
+			
 			ItemBase(BaseRepository* pRepository, const char* pszName);
 
 			virtual bool LoadFrom(const nlohmann::json&, bool announceChanged = false) = 0;
@@ -79,9 +85,13 @@ namespace App {
 
 		class BaseRepository {
 			friend class ItemBase;
+			template<typename T>
+			friend class Item;
 
 			const Config* m_pConfig;
 			const std::filesystem::path m_sConfigPath;
+			
+			const std::shared_ptr<Misc::Logger> m_logger;
 
 			std::vector<ItemBase*> m_allItems;
 			std::vector<Utils::CallOnDestruction> m_destructionCallbacks;

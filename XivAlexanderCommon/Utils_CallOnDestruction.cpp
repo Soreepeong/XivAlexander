@@ -49,3 +49,31 @@ Utils::CallOnDestruction::~CallOnDestruction() {
 Utils::CallOnDestruction::operator bool() const {
 	return !!m_fn;
 }
+
+Utils::CallOnDestruction::Multiple::Multiple() = default;
+
+Utils::CallOnDestruction::Multiple& Utils::CallOnDestruction::Multiple::operator+=(CallOnDestruction o) {
+	if (o)
+		m_list.emplace_back(std::move(o));
+	return *this;
+}
+
+Utils::CallOnDestruction::Multiple& Utils::CallOnDestruction::Multiple::operator+=(std::function<void()> f) {
+	m_list.emplace_back(f);
+	return *this;
+}
+
+Utils::CallOnDestruction::Multiple& Utils::CallOnDestruction::Multiple::operator+=(Multiple r) {
+	m_list.insert(m_list.end(), std::make_move_iterator(r.m_list.begin()), std::make_move_iterator(r.m_list.end()));
+	r.m_list.clear();
+	return *this;
+}
+
+void Utils::CallOnDestruction::Multiple::Clear() {
+	while (!m_list.empty())
+		m_list.pop_back();
+}
+
+Utils::CallOnDestruction::Multiple::~Multiple() {
+	Clear();
+}

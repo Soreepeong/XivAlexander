@@ -5,11 +5,13 @@ std::unique_ptr<App::Config> App::Config::s_pInstance;
 
 App::Config::BaseRepository::BaseRepository(Config* pConfig, std::filesystem::path path)
 	: m_pConfig(pConfig)
-	, m_sConfigPath(std::move(path)) {
+	, m_sConfigPath(std::move(path))
+	, m_logger(Misc::Logger::Acquire()) {
 }
 
 App::Config::ItemBase::ItemBase(BaseRepository* pRepository, const char* pszName)
-	: m_pszName(pszName) {
+	: m_pszName(pszName)
+	, m_pBaseRepository(pRepository) {
 	pRepository->m_allItems.push_back(this);
 }
 
@@ -25,11 +27,11 @@ void App::Config::BaseRepository::Reload(bool announceChange) {
 			std::ifstream in(m_sConfigPath);
 			in >> config;
 		} catch (std::exception& e) {
-			Misc::Logger::GetLogger().Format<LogLevel::Warning>(LogCategory::General, "Failed to load configuration file: {}", e.what());
+			m_logger->Format<LogLevel::Warning>(LogCategory::General, "Failed to load configuration file: {}", e.what());
 		}
 	} else {
 		changed = true;
-		Misc::Logger::GetLogger().Format(LogCategory::General, "Creating new config file: {}", Utils::ToUtf8(m_sConfigPath));
+		m_logger->Format(LogCategory::General, "Creating new config file: {}", Utils::ToUtf8(m_sConfigPath));
 	}
 
 	m_destructionCallbacks.clear();
@@ -87,22 +89,22 @@ void App::Config::BaseRepository::Save() {
 		std::ofstream out(m_sConfigPath);
 		out << config.dump(1, '\t');
 	} catch (std::exception& e) {
-		Misc::Logger::GetLogger().Format<LogLevel::Error>(LogCategory::General, "JSON Config save error: {}", e.what());
+		m_logger->Format<LogLevel::Error>(LogCategory::General, "JSON Config save error: {}", e.what());
 	}
 }
 
 bool App::Config::Item<uint16_t>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
-	if (auto i = data.find(Name()); i != data.end()) {
+	if (const auto it = data.find(Name()); it != data.end()) {
 		uint16_t newValue;
 		try {
-			if (i->is_string())
-				newValue = static_cast<uint16_t>(std::stoi(i->get<std::string>(), nullptr, 0));
-			else if (i->is_number_integer())
-				newValue = i->get<uint16_t>();
+			if (it->is_string())
+				newValue = static_cast<uint16_t>(std::stoi(it->get<std::string>(), nullptr, 0));
+			else if (it->is_number_integer())
+				newValue = it->get<uint16_t>();
 			else
 				return false;
 		} catch (std::exception& e) {
-			Misc::Logger::GetLogger().Format(LogCategory::General, "Config value parse error: {}", e.what());
+			m_pBaseRepository->m_logger->Format(LogCategory::General, "Config value parse error: {}", e.what());
 		}
 		if (announceChanged)
 			this->operator=(newValue);

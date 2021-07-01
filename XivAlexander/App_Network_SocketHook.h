@@ -3,7 +3,7 @@
 #include "App_Misc_Hooks.h"
 
 namespace App {
-	class App;
+	class XivAlexApp;
 }
 
 namespace App::Network {
@@ -16,8 +16,8 @@ namespace App::Network {
 	class SingleConnection {
 		friend class SocketHook;
 
-		class Internals;
-		const std::unique_ptr<Internals> impl;
+		class Implementation;
+		const std::unique_ptr<Implementation> m_pImpl;
 
 	public:
 		SingleConnection(SocketHook* hook, SOCKET s);
@@ -41,10 +41,17 @@ namespace App::Network {
 	};
 
 	class SocketHook {
-		class Internals;
+		class Implementation;
 		friend class SingleConnection;
-		friend class SingleConnection::Internals;
-		const std::unique_ptr<Internals> impl;
+		friend class SingleConnection::Implementation;
+	
+	public:
+		std::shared_ptr<Misc::Logger> const m_logger;
+		Utils::ListenerManager<Implementation, void, SingleConnection&> OnSocketFound;
+		Utils::ListenerManager<Implementation, void, SingleConnection&> OnSocketGone;
+
+	private:
+		std::unique_ptr<Implementation> m_pImpl;
 
 		Misc::Hooks::ImportedFunction<SOCKET, int, int, int> socket{ "socket::socket", "ws2_32.dll", "socket", 23 };
 		Misc::Hooks::ImportedFunction<int, SOCKET, const sockaddr*, int> connect{ "socket::connect", "ws2_32.dll", "connect", 4 };
@@ -52,21 +59,17 @@ namespace App::Network {
 		Misc::Hooks::ImportedFunction<int, SOCKET, char*, int, int> recv{ "socket::recv", "ws2_32.dll", "recv", 16 };
 		Misc::Hooks::ImportedFunction<int, SOCKET, const char*, int, int> send{ "socket::send", "ws2_32.dll", "send", 19 };
 		Misc::Hooks::ImportedFunction<int, SOCKET> closesocket{ "socket::closesocket", "ws2_32.dll", "closesocket", 3 };
-
+		
 	public:
-		SocketHook(App* pApp);
+		SocketHook(XivAlexApp* pApp);
 		SocketHook(const SocketHook&) = delete;
 		SocketHook(SocketHook&&) = delete;
 		SocketHook& operator =(const SocketHook&) = delete;
 		SocketHook& operator =(SocketHook&&) = delete;
 		~SocketHook();
-
-		static SocketHook* Instance();
+		
 		[[nodiscard]] bool IsUnloadable() const;
-
-		void AddOnSocketFoundListener(void* token, const std::function<void(SingleConnection&)>& cb);
-		void AddOnSocketGoneListener(void* token, const std::function<void(SingleConnection&)>& cb);
-		void RemoveListeners(void* token);
+		
 		void ReleaseSockets();
 
 		[[nodiscard]] std::wstring Describe() const;

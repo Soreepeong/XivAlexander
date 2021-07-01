@@ -3,15 +3,15 @@
 #include "App_Network_SocketHook.h"
 #include "App_Network_Structures.h"
 
-class App::Feature::EffectApplicationDelayLogger::Internals {
+class App::Feature::EffectApplicationDelayLogger::Implementation {
 public:
-
+	
 	class SingleConnectionHandler {
 	public:
-		Internals& internals;
+		Implementation* m_pImpl;
 		Network::SingleConnection& conn;
-		SingleConnectionHandler(Internals& internals, Network::SingleConnection& conn)
-			: internals(internals)
+		SingleConnectionHandler(Implementation* pImpl, Network::SingleConnection& conn)
+			: m_pImpl(pImpl)
 			, conn(conn) {
 			using namespace Network::Structures;
 
@@ -26,7 +26,7 @@ public:
 						|| config.S2C_ActionEffects[4] == pMessage->Data.IPC.SubType) {
 
 						const auto& actionEffect = pMessage->Data.IPC.Data.S2C_ActionEffect;
-						Misc::Logger::GetLogger().Format(
+						m_pImpl->m_logger->Format(
 							LogCategory::EffectApplicationDelayLogger,
 							"{:x}: S2C_ActionEffect({:04x}): actionId={:04x} sourceSequence={:04x} wait={}ms",
 							conn.GetSocket(),
@@ -48,7 +48,7 @@ public:
 								entry.SourceActorId
 							);
 						}
-						Misc::Logger::GetLogger().Format(
+						m_pImpl->m_logger->Format(
 							LogCategory::EffectApplicationDelayLogger,
 							"{:x}: S2C_AddStatusEffect: relatedActionSequence={:08x} actorId={:08x} HP={}/{} MP={} shield={}{}",
 							conn.GetSocket(),
@@ -70,25 +70,28 @@ public:
 		}
 	};
 
+	const std::shared_ptr<Misc::Logger> m_logger;
+	Network::SocketHook* const m_socketHook;
 	std::map<Network::SingleConnection*, std::unique_ptr<SingleConnectionHandler>> m_handlers;
+	Utils::CallOnDestruction::Multiple m_cleanup;
 
-	Internals() {
-		Network::SocketHook::Instance()->AddOnSocketFoundListener(this, [&](Network::SingleConnection& conn) {
-			m_handlers.emplace(&conn, std::make_unique<SingleConnectionHandler>(*this, conn));
+	Implementation(Network::SocketHook* socketHook)
+		: m_socketHook(socketHook) {
+		m_cleanup += m_socketHook->OnSocketFound([&](Network::SingleConnection& conn) {
+			m_handlers.emplace(&conn, std::make_unique<SingleConnectionHandler>(this, conn));
 			});
-		Network::SocketHook::Instance()->AddOnSocketGoneListener(this, [&](Network::SingleConnection& conn) {
+		m_cleanup += m_socketHook->OnSocketGone([&](Network::SingleConnection& conn) {
 			m_handlers.erase(&conn);
 			});
 	}
 
-	~Internals() {
+	~Implementation() {
 		m_handlers.clear();
-		Network::SocketHook::Instance()->RemoveListeners(this);
 	}
 };
 
-App::Feature::EffectApplicationDelayLogger::EffectApplicationDelayLogger()
-	: impl(std::make_unique<Internals>()) {
+App::Feature::EffectApplicationDelayLogger::EffectApplicationDelayLogger(Network::SocketHook* socketHook)
+	: m_pImpl(std::make_unique<Implementation>(socketHook)) {
 }
 
 App::Feature::EffectApplicationDelayLogger::~EffectApplicationDelayLogger() = default;

@@ -9,7 +9,7 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 	/*
 	 * Extremely compiler implementation specific! May break anytime. Shouldn't be too difficult to fix though.
 	 */
-	
+
 #ifdef _DEBUG
 	while (*source == '\xE9') {  // JMP in case the program's compiled in Debug mode
 		const auto displacement = *reinterpret_cast<const int*>(source + 1);
@@ -22,7 +22,7 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 
 	std::vector<char> body;
 	std::map<size_t, size_t> replacementJumps;
-	
+
 	ZydisDecodedInstruction instruction;
 	for (size_t offset = 0, funclen = 32768;
 		ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, source + offset, funclen - offset, &instruction));
@@ -42,14 +42,14 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 			replacementJumps[body.size() + 3] = resultAddress;
 		}
 #endif
-		
+
 		switch (instruction.meta.category) {
 			case ZYDIS_CATEGORY_CALL:
 			{
 				if (size_t resultAddress;
-					instruction.operand_count == 1
-					&& 0 == ZydisCalcAbsoluteAddress(&instruction, &instruction.operands[0],
-					reinterpret_cast<size_t>(source) + offset, &resultAddress)) {
+					instruction.operand_count >= 1
+					&& ZYAN_STATUS_SUCCESS == ZydisCalcAbsoluteAddress(&instruction, &instruction.operands[0],
+						reinterpret_cast<size_t>(source) + offset, &resultAddress)) {
 
 					// call QWORD PTR [rip+0x00000000]
 					// FF 15 00 00 00 00
@@ -62,48 +62,58 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 				}
 				break;
 			}
-			
+
 			case ZYDIS_CATEGORY_RET:
 				funclen = offset + instruction.length;
 				// falls through
-			
+
 			default:
 				body.insert(body.end(), source + offset, source + offset + instruction.length);
 				break;
 		}
 		offset += instruction.length;
 	}
+
+	*reinterpret_cast<void**>(std::search(
+		&body[0], &body[0] + body.size(),
+		reinterpret_cast<const char*>(&DummyAddress), reinterpret_cast<const char*>(&DummyAddress + 1)
+	)) = this_;
+
 	for (const auto& [pos, ptr] : replacementJumps) {
 		*reinterpret_cast<uint32_t*>(&body[pos]) = static_cast<uint32_t>(body.size() - 4 - pos);
 		body.insert(body.end(), reinterpret_cast<const char*>(&ptr), reinterpret_cast<const char*>(&ptr + 1));
 	}
-	
+
 	if (s_hHeap == nullptr) {
 		s_hHeap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE, 0, 0);
 		if (!s_hHeap)
 			throw Utils::Win32::Error("HeapCreate");
 	}
-	m_cleanup += [this]() {
+	m_cleanup += [this, size = body.size()]() {
+#ifdef _DEBUG
+		memset(m_pAddress, 0xCC, size);
+#endif
+		HeapFree(s_hHeap, 0, m_pAddress);
 		PROCESS_HEAP_ENTRY entry{};
-		if (HeapWalk(s_hHeap, &entry))
-			return;
+		while (HeapWalk(s_hHeap, &entry)) {
+			if (entry.wFlags & PROCESS_HEAP_ENTRY_BUSY)
+				return;
+		}
 		if (const auto err = GetLastError(); err != ERROR_NO_MORE_ITEMS)
 			OutputDebugStringW(std::format(L"HeapWalk failure: {}\n", err).c_str());
 		HeapDestroy(s_hHeap);
 	};
-	
+
 	m_pAddress = HeapAlloc(s_hHeap, 0, body.size());
 	if (!m_pAddress)
 		throw Utils::Win32::Error("HeapAlloc");
-	
+
 	memcpy(m_pAddress, &body[0], body.size());
-	*reinterpret_cast<void**>(std::search(
-		static_cast<char*>(m_pAddress), static_cast<char*>(m_pAddress) + body.size(),
-		reinterpret_cast<const char*>(&DummyAddress), reinterpret_cast<const char*>(&DummyAddress + 1)
-	)) = this_;
 }
 
-App::Misc::Hooks::Binder::~Binder() = default;
+App::Misc::Hooks::Binder::~Binder() {
+	m_cleanup.Clear();
+}
 
 const void* App::Misc::Hooks::FindImportAddressTableItem(const char* szDllName, const char* szFunctionName, uint32_t hintOrOrdinal) {
 	const auto pBaseAddress = reinterpret_cast<const char*>(GetModuleHandleW(nullptr));
@@ -133,6 +143,8 @@ const void* App::Misc::Hooks::FindImportAddressTableItem(const char* szDllName, 
 					if ((hintOrOrdinal && pName->Hint == hintOrOrdinal)
 						|| (szFunctionName && pName->Name && !strcmp(szFunctionName, pName->Name)))
 						return &pImportAddressTable[j];
+					else
+						OutputDebugStringA(std::format("{} / {}\n", pName->Name, hintOrOrdinal).c_str());
 				}
 			}
 		}
@@ -140,3 +152,29 @@ const void* App::Misc::Hooks::FindImportAddressTableItem(const char* szDllName, 
 
 	return nullptr;
 }
+
+App::Misc::Hooks::WndProcFunction::WndProcFunction(const char* szName, HWND hWnd)
+	: Super(szName, reinterpret_cast<WNDPROC>(GetWindowLongPtrW(hWnd, GWLP_WNDPROC)))
+	, m_hWnd(hWnd) {
+}
+
+App::Misc::Hooks::WndProcFunction::~WndProcFunction() = default;
+
+bool App::Misc::Hooks::WndProcFunction::IsDisableable() const {
+	return !m_detour || reinterpret_cast<WNDPROC>(GetWindowLongPtrW(m_hWnd, GWLP_WNDPROC)) == m_binder.GetBinder<WNDPROC>();
+}
+
+LRESULT App::Misc::Hooks::WndProcFunction::bridge(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) const {
+	return CallWindowProcW(reinterpret_cast<WNDPROC>(m_prevProc), hwnd, msg, wParam, lParam);
+}
+
+void App::Misc::Hooks::WndProcFunction::HookEnable() {
+	m_prevProc = SetWindowLongPtrW(m_hWnd, GWLP_WNDPROC, m_binder.GetBinder<LONG_PTR>());
+}
+
+void App::Misc::Hooks::WndProcFunction::HookDisable() {
+	if (!IsDisableable())
+		throw std::runtime_error("Cannot disable hook");
+	SetWindowLongPtrW(m_hWnd, GWLP_WNDPROC, m_prevProc);
+}
+

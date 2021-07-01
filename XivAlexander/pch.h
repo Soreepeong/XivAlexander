@@ -41,6 +41,9 @@
 #include <comdef.h>
 #include <ShObjIdl_core.h>
 #include <icmpapi.h>
+#include <winternl.h>
+#include <Psapi.h>
+#include <PathCch.h>
 
 #include <XivAlexanderCommon.h>
 

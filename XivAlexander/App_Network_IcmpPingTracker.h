@@ -4,16 +4,14 @@ namespace App::Network {
 		class Implementation;
 		friend class Implementation;
 
-		std::unique_ptr<Implementation> const m_impl;
+		std::unique_ptr<Implementation> const m_pImpl;
 
 	public:
 		IcmpPingTracker();
-
-		static IcmpPingTracker& GetInstance();
-		static void Cleanup();
+		~IcmpPingTracker();
 
 		Utils::CallOnDestruction Track(const in_addr& source, const in_addr& destination);
 
-		const Utils::NumericStatisticsTracker* GetTracker(const in_addr& source, const in_addr& destination) const;
+		[[nodiscard]] const Utils::NumericStatisticsTracker* GetTracker(const in_addr& source, const in_addr& destination) const;
 	};
 }

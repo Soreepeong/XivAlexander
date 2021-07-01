@@ -5,7 +5,7 @@ namespace App::Window {
 	class Config;
 	
 	class Main : public BaseWindow {
-		HWND const m_hGameWnd;
+		XivAlexApp* m_pApp;
 		GUID m_guid{};
 		const std::function<void()> m_triggerUnload;
 		const int m_uTaskbarRestartMessage;
@@ -13,13 +13,13 @@ namespace App::Window {
 		std::unique_ptr<Config> m_runtimeConfigEditor{ nullptr };
 		std::unique_ptr<Config> m_gameConfigEditor{ nullptr };
 
-		std::vector<Utils::CallOnDestruction> m_cleanupList;
+		Utils::CallOnDestruction::Multiple m_cleanup;
 
 		std::filesystem::path m_path;
 		std::wstring m_sRegion, m_sVersion;
 
 	public:
-		Main(HWND hGameWnd, std::function<void()> unloadFunction);
+		Main(XivAlexApp* pApp, std::function<void()> unloadFunction);
 		~Main() override;
 
 	protected:

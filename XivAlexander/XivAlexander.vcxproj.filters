@@ -22,6 +22,12 @@
     <Filter Include="App\Feature">
       <UniqueIdentifier>{ca7e3e97-d02b-44f7-bd44-d1065410a357}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Exported">
+      <UniqueIdentifier>{147c4ec0-76a9-491e-a659-12a2ef331fed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="App\Apps">
+      <UniqueIdentifier>{8558bf64-2138-4a68-bf1e-d9fec57dafa5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -69,9 +75,6 @@
     <ClCompile Include="App_ConfigRepository.cpp">
       <Filter>App</Filter>
     </ClCompile>
-    <ClCompile Include="App_App.cpp">
-      <Filter>App</Filter>
-    </ClCompile>
     <ClCompile Include="App_Network_IcmpPingTracker.cpp">
       <Filter>App\Network</Filter>
     </ClCompile>
@@ -79,6 +82,12 @@
       <Filter>App\Misc</Filter>
     </ClCompile>
     <ClCompile Include="App_Misc_Signatures.cpp">
+      <Filter>App\Misc</Filter>
+    </ClCompile>
+    <ClCompile Include="App_XivAlexApp.cpp">
+      <Filter>App\Apps</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Misc_DebuggerDetectionDisabler.cpp">
       <Filter>App\Misc</Filter>
     </ClCompile>
   </ItemGroup>
@@ -128,9 +137,6 @@
     <ClInclude Include="App_ConfigRepository.h">
       <Filter>App</Filter>
     </ClInclude>
-    <ClInclude Include="App_App.h">
-      <Filter>App</Filter>
-    </ClInclude>
     <ClInclude Include="App_Network_IcmpPingTracker.h">
       <Filter>App\Network</Filter>
     </ClInclude>
@@ -138,6 +144,15 @@
       <Filter>App\Misc</Filter>
     </ClInclude>
     <ClInclude Include="App_Misc_Signatures.h">
+      <Filter>App\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\XivAlexander.h">
+      <Filter>Exported</Filter>
+    </ClInclude>
+    <ClInclude Include="App_XivAlexApp.h">
+      <Filter>App\Apps</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Misc_DebuggerDetectionDisabler.h">
       <Filter>App\Misc</Filter>
     </ClInclude>
   </ItemGroup>
