@@ -27,6 +27,7 @@
 #include <Shlwapi.h>
 #include <Psapi.h>
 #include <TlHelp32.h>
+#include <shellapi.h>
 
 #define ZLIB_CONST
 #include <zlib.h>

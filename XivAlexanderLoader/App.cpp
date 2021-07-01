@@ -349,11 +349,13 @@ int WINAPI wWinMain(
 
 	if (pids.empty()) {
 		if (g_parameters.m_action == LoaderAction::Auto) {
-			const auto gamePath = XivAlex::FindGameInstallationPath();
-			if (gamePath.empty()) {
-				MessageBoxW(nullptr, MsgboxTitle, L"No running FFXIV process or installation detected.", MB_OK | MB_ICONINFORMATION);
+			const auto launchers = XivAlex::FindGameLaunchers();
+			std::filesystem::path gamePath;
+			if (auto it = launchers.find(XivAlex::GameRegion::International); it == launchers.end()) {
+				MessageBoxW(nullptr, L"No running FFXIV process or installation detected.", MsgboxTitle, MB_OK | MB_ICONINFORMATION);
 				return -1;
-			}
+			} else
+				gamePath = it->second.RootPath;
 
 			std::map<DWORD, Utils::Win32::Modules::InjectedModule> injectedProcesses;
 			Utils::CallOnDestruction injectedProcessesCleanup([&]() {
@@ -368,10 +370,12 @@ int WINAPI wWinMain(
 					Utils::Win32::Closeable::Handle::Null, "CreateEventW");
 				const auto bootPathStr = (gamePath / L"boot" / L"ffxivboot64.exe").wstring();
 				const auto launcherPathStr = (gamePath / L"boot" / L"ffxivlauncher64.exe").wstring();
+				const auto workingDirectory = gamePath.wstring();
 				SHELLEXECUTEINFOW si{};
 				si.cbSize = sizeof si;
 				si.lpVerb = L"open";
 				si.lpFile = bootPathStr.c_str();
+				si.lpDirectory = workingDirectory.c_str();
 				if (!ShellExecuteExW(&si))
 					throw Utils::Win32::Error("ShellExecuteW({})", bootPathStr);
 

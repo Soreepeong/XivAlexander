@@ -144,7 +144,7 @@ std::tuple<std::wstring, std::wstring> XivAlex::ResolveGameReleaseRegion(const s
 
 XivAlex::VersionInformation XivAlex::CheckUpdates() {
 	std::ostringstream os;
-	
+
 	curlpp::Easy req;
 	req.setOpt(curlpp::options::Url("https://api.github.com/repos/Soreepeong/XivAlexander/releases/latest"));
 	req.setOpt(curlpp::options::UserAgent("Mozilla/5.0"));
@@ -157,7 +157,7 @@ XivAlex::VersionInformation XivAlex::CheckUpdates() {
 	from_stream(in, "%FT%TZ", tp);
 	if (in.fail())
 		throw std::format_error(std::format("Failed to parse datetime string \"{}\"", in.str()));
-	
+
 	return {
 		.Name = parsed.at("name").get<std::string>(),
 		.Body = parsed.at("body").get<std::string>(),
@@ -167,19 +167,113 @@ XivAlex::VersionInformation XivAlex::CheckUpdates() {
 	};
 }
 
-std::filesystem::path XivAlex::FindGameInstallationPath() {
-	wchar_t buf[512];
-	auto buflen = static_cast<DWORD>(sizeof buf);
+static std::wstring ReadRegistryAsString(const wchar_t* lpSubKey, const wchar_t* lpValueName, int mode = 0) {
+	if (mode == 0) {
+		auto res1 = ReadRegistryAsString(lpSubKey, lpValueName, KEY_WOW64_32KEY);
+		if (res1.empty())
+			res1 = ReadRegistryAsString(lpSubKey, lpValueName, KEY_WOW64_64KEY);
+		return res1;
+	}
 	HKEY hKey;
 	if (const auto err = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
-		LR"(SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\{2B41E132-07DF-4925-A3D3-F2D1765CCDFE})",
-		0, KEY_READ | KEY_WOW64_32KEY, &hKey))
-		throw Utils::Win32::Error(err, "Failed to find FFXIV install information.");
+		lpSubKey,
+		0, KEY_READ | mode, &hKey))
+		return {};
 	Utils::CallOnDestruction c([hKey]() { RegCloseKey(hKey); });
-	
-	if (const auto err = RegQueryValueExW(hKey,
-		L"DisplayIcon",
-		nullptr, nullptr, reinterpret_cast<LPBYTE>(&buf[0]), &buflen))
-		throw Utils::Win32::Error(err, "Failed to query FFXIV installation information.");
-	return std::filesystem::path(buf).parent_path().parent_path();
+
+	DWORD buflen = 0;
+	if (RegQueryValueExW(hKey, lpValueName, nullptr, nullptr, nullptr, &buflen))
+		return {};
+
+	std::wstring buf;
+	buf.resize(buflen);
+	if (RegQueryValueExW(hKey, lpValueName, nullptr, nullptr, reinterpret_cast<LPBYTE>(&buf[0]), &buflen))
+		return {};
+
+	return buf;
+}
+
+std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLaunchers() {
+	std::map<GameRegion, GameRegionInfo> result;
+
+	if (const auto reg = ReadRegistryAsString(
+		LR"(SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{2B41E132-07DF-4925-A3D3-F2D1765CCDFE})",
+		L"DisplayIcon"
+	); !reg.empty()) {
+		GameRegionInfo info{
+			GameRegion::International,
+			std::filesystem::path(reg).parent_path().parent_path(),
+			info.RootPath / L"boot" / L"ffxivboot64.exe",
+			{
+				info.RootPath / L"boot" / L"ffxivboot.exe",
+				info.RootPath / L"boot" / L"ffxivboot64.exe",
+				info.RootPath / L"boot" / L"ffxivconfig.exe",
+				info.RootPath / L"boot" / L"ffxivconfig64.exe",
+				info.RootPath / L"boot" / L"ffxivlauncher.exe",
+				info.RootPath / L"boot" / L"ffxivlauncher64.exe",
+				info.RootPath / L"boot" / L"ffxivupdater.exe",
+				info.RootPath / L"boot" / L"ffxivupdater.exe",
+			},
+		};
+
+		std::wstring localAppData(PATHCCH_MAX_CCH, 0);
+		localAppData.resize(GetEnvironmentVariableW(L"LOCALAPPDATA", &localAppData[0], PATHCCH_MAX_CCH));
+		if (!localAppData.empty()) {
+			const auto path = std::filesystem::path(localAppData) / L"XIVLauncher" / L"XIVLauncher.exe";
+			if (exists(path)) {
+				info.AlternativeBoots["FFXIVQuickLauncher"] = path;
+				info.RelatedApps.insert(info.RootPath / "XIVLauncher.PatchInstaller.exe");
+				info.RelatedApps.insert(info.RootPath / "XIVLauncher.exe");
+				info.RelatedApps.insert(info.RootPath / "Update.exe");
+			}
+		}
+
+		result.emplace(GameRegion::International, info);
+	}
+
+	if (const auto reg = ReadRegistryAsString(
+		LR"(SOFTWARE\Classes\ff14kr\shell\open\command)",
+		L""
+	); !reg.empty()) {
+		int cnt = 0;
+		const auto argv = CommandLineToArgvW(&reg[0], &cnt);
+		if (!argv)
+			return {};
+
+		Utils::CallOnDestruction c2([argv]() {LocalFree(argv); });
+		if (cnt < 1)
+			return {};
+
+		GameRegionInfo info{
+			GameRegion::Korean,
+			std::filesystem::path(reg).parent_path().parent_path(),
+			info.RootPath / L"boot" / L"FFXIV_Boot.exe",
+			{
+				info.RootPath / L"boot" / L"FFXIV_Boot.exe",
+				info.RootPath / L"boot" / L"FFXIV_Launcher.exe",
+			},
+		};
+		result.emplace(GameRegion::Korean, info);
+	}
+
+	if (const auto reg = ReadRegistryAsString(
+		LR"(SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\FFXIV)",
+		L"DisplayIcon"
+	); !reg.empty()) {
+		GameRegionInfo info{
+			GameRegion::Chinese,
+			std::filesystem::path(reg).parent_path(),
+			info.RootPath / L"FFXIVBoot.exe",
+			{
+				info.RootPath / "LauncherUpdate" / "LauncherUpdater.exe",
+				info.RootPath / "FFXIVBoot.exe",
+				info.RootPath / "sdo" / "sdologin" / "sdologin.exe",
+				info.RootPath / "sdo" / "sdologin" / "Launcher.exe",
+				info.RootPath / "sdo" / "sdologin" / "sdolplugin.exe",
+				info.RootPath / "sdo" / "sdologin" / "update.exe",
+			},
+		};
+		result.emplace(GameRegion::Chinese, info);
+	}
+	return result;
 }

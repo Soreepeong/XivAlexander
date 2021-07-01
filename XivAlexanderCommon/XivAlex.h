@@ -19,5 +19,19 @@ namespace XivAlex {
 	};
 	VersionInformation CheckUpdates();
 
-	std::filesystem::path FindGameInstallationPath();
+	enum class GameRegion {
+		International,
+		Korean,
+		Chinese,
+	};
+
+	struct GameRegionInfo {
+		GameRegion Type;
+		std::filesystem::path RootPath;
+		std::filesystem::path BootApp;
+		std::set<std::filesystem::path> RelatedApps;
+		std::map<std::string, std::filesystem::path> AlternativeBoots;
+	};
+
+	std::map<GameRegion, GameRegionInfo> FindGameLaunchers();
 }
