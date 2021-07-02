@@ -42,7 +42,6 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 			} else if (operand.type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
 				if (operand.imm.is_relative){
 					relativeAddressHandled = false;
-					DebugBreak();
 				}
 			}
 		}

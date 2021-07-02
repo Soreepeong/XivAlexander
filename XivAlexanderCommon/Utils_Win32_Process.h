@@ -122,15 +122,16 @@ namespace Utils::Win32 {
 
 	public:
 		template<typename T>
-		std::span<T> ReadAligned(size_t rva, size_t maxCount = SIZE_MAX) {
-			const auto res = Read(rva, maxCount / sizeof T);
-			if (reinterpret_cast<size_t>(&res[0]) % sizeof T != 0)
-				throw std::runtime_error("Not aligned");
-			return { reinterpret_cast<T*>(&res[0]), res.size_bytes() / sizeof T };
+		std::vector<T> ReadAligned(size_t rva, size_t maxCount = SIZE_MAX) {
+			const auto r = Read(rva, maxCount * sizeof T);
+			std::vector<T> res;
+			res.resize(r.size() / sizeof T);
+			memcpy(&res[0], &r[0], res.size() * sizeof T);
+			return res;
 		}
 	
 		template<typename T>
-		std::span<T> ReadDataDirectory(int index) {
+		std::vector<T> ReadDataDirectory(int index) {
 			return ReadAligned<T>(OptionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC
 				? OptionalHeader32.DataDirectory[index].VirtualAddress
 				: OptionalHeader64.DataDirectory[index].VirtualAddress);

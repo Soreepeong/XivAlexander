@@ -192,7 +192,7 @@ std::pair<void*, void*> Utils::Win32::Process::FindImportedFunction(HMODULE hMod
 
 			} else {
 				const auto pName = mem.ReadAligned<IMAGE_IMPORT_BY_NAME>(pImportLookupTable[j]);
-				const auto remaining = pName.size_bytes() + reinterpret_cast<char*>(&pName[0]) - &pName[0].Name[0];
+				const auto remaining = pName.size() * sizeof pName[0] + reinterpret_cast<const char*>(&pName[0]) - &pName[0].Name[0];
 				if ((!hintOrOrdinal || pName[0].Hint != hintOrOrdinal)
 					&& (!pszFunctionName || 0 != strncmp(pszFunctionName, pName[0].Name, remaining)))
 					continue;
@@ -218,7 +218,7 @@ void* Utils::Win32::Process::FindExportedFunction(HMODULE hModule, const char* p
 	for (DWORD i = 0; i < pExportTable->NumberOfNames; ++i) {
 		if (!pNames.empty() && pNames[i]) {
 			const auto pName = mem.ReadAligned<char>(pNames[i]);
-			if (strncmp(pName.data(), pszFunctionName, pName.size_bytes()) != 0)
+			if (strncmp(pName.data(), pszFunctionName, pName.size()) != 0)
 				continue;
 		} else if (!ordinal)
 			continue; // invalid; either one of name or ordinal shoould exist

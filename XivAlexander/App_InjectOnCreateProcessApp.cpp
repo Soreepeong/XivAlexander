@@ -248,6 +248,9 @@ extern "C" __declspec(dllexport) void __stdcall InjectEntryPoint(InjectEntryPoin
 		VirtualFree(param.TrampolineAddress, 0, MEM_RELEASE);
 
 		RunBeforeAppInit();
+#ifdef _DEBUG
+		MessageBoxW(nullptr, Utils::Win32::Process::Current().PathOf().wstring().c_str(), L"Injected EntryPoint", MB_OK);
+#endif
 		FreeLibraryAndExitThread(g_hInstance, 0);
 		}, p, 0, nullptr);
 	assert(h);

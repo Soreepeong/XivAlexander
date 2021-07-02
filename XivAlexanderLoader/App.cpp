@@ -205,11 +205,13 @@ public:
 static std::set<DWORD> GetTargetPidList() {
 	std::set<DWORD> pids;
 	if (!g_parameters.m_targetPids.empty()) {
-		const auto list = Utils::Win32::GetProcessList();
+		auto list = Utils::Win32::GetProcessList();
+		std::sort(list.begin(), list.end());
 		std::set_intersection(list.begin(), list.end(), g_parameters.m_targetPids.begin(), g_parameters.m_targetPids.end(), std::inserter(pids, pids.end()));
 		pids.insert(g_parameters.m_targetPids.begin(), g_parameters.m_targetPids.end());
 	} else if (g_parameters.m_targetSuffix.empty()) {
-		g_parameters.m_targetSuffix.emplace(XivAlex::GameExecutableNameW);
+		g_parameters.m_targetSuffix.emplace(XivAlex::GameExecutable32NameW);
+		g_parameters.m_targetSuffix.emplace(XivAlex::GameExecutable64NameW);
 	}
 	if (!g_parameters.m_targetSuffix.empty()) {
 		for (const auto pid : Utils::Win32::GetProcessList()) {
@@ -247,10 +249,48 @@ auto OpenProcessForInjection(DWORD pid) {
 	return Utils::Win32::Process(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, pid);
 }
 
+bool RequiresAdminAccess(const std::set<DWORD>& pids) {
+	try {
+		for (const auto pid : pids)
+			OpenProcessForInjection(pid);
+	} catch (const Utils::Win32::Error& e) {
+		if (e.Code() == ERROR_ACCESS_DENIED)
+			return true;
+	}
+	return false;
+}
+
+extern "C" __declspec(dllimport) int __stdcall EnableInjectOnCreateProcess(size_t bEnable);
+
+int RunProgram(const std::filesystem::path& path, std::wstring args = L"", bool wait = false) {
+	STARTUPINFOW si{};
+	si.cb = sizeof si;
+	PROCESS_INFORMATION pi;
+	const auto wd= path.parent_path().wstring();
+	args = args.empty() ? std::format(L"\"{}\"", path) : std::format(L"\"{}\" {}", path, args);
+	if (!CreateProcessW(path.c_str(), &args[0], nullptr, nullptr, FALSE, 0, nullptr, &wd[0], &si, &pi))
+		throw Utils::Win32::Error("CreateProcessW({})", path);
+	if (wait)
+		WaitForSingleObject(pi.hProcess, INFINITE);
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
+	return 0;
+}
+
 void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesystem::path& dllPath) {
-	auto hProcess = OpenProcessForInjection(pid);
-	void* rpModule = hProcess.AddressOf(dllPath, Utils::Win32::Process::ModuleNameCompareMode::FullPath, false);
-	const auto path = hProcess.PathOf();
+	auto process = OpenProcessForInjection(pid);
+
+	if (process.IsProcess64Bits() != Utils::Win32::Process::Current().IsProcess64Bits()) {
+		RunProgram(Utils::Win32::Process::Current().PathOf().parent_path() / (process.IsProcess64Bits() ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW)
+			, std::format(L"{}-a {} {}",
+				argparse::details::repr(g_parameters.m_action),
+				g_parameters.m_quiet ? L"-q " : L"",
+				process.GetId()), true);
+		return;
+	}
+	
+	void* rpModule = process.AddressOf(dllPath, Utils::Win32::Process::ModuleNameCompareMode::FullPath, false);
+	const auto path = process.PathOf();
 
 	auto loaderAction = g_parameters.m_action;
 	if (loaderAction == LoaderAction::Ask || loaderAction == LoaderAction::Auto) {
@@ -327,46 +367,22 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 	if (loaderAction == LoaderAction::Unload && !rpModule)
 		return;
 
-	const auto hModule = Utils::Win32::InjectedModule(std::move(hProcess), dllPath);
+	const auto injectedModule = Utils::Win32::InjectedModule(std::move(process), dllPath);
 	auto unloadRequired = false;
-	const auto cleanup = Utils::CallOnDestruction([&hModule, &unloadRequired]() {
+	const auto cleanup = Utils::CallOnDestruction([&injectedModule, &unloadRequired]() {
 		if (unloadRequired)
-			hModule.Call("EnableXivAlexander", 0, "EnableXivAlexander(0)");
+			injectedModule.Call("EnableXivAlexander", 0, "EnableXivAlexander(0)");
 		});
 
 	if (loaderAction == LoaderAction::Load) {
 		unloadRequired = true;
-		if (const auto loadResult = hModule.Call("EnableXivAlexander", reinterpret_cast<void*>(1), "EnableXivAlexander(1)"); loadResult != 0)
+		if (const auto loadResult = injectedModule.Call("EnableXivAlexander", reinterpret_cast<void*>(1), "EnableXivAlexander(1)"); loadResult != 0)
 			throw std::runtime_error(std::format("Failed to start the addon: exit code {}", loadResult));
 		else
 			unloadRequired = false;
 	} else if (loaderAction == LoaderAction::Unload) {
 		unloadRequired = true;
 	}
-}
-
-bool RequiresAdminAccess(const std::set<DWORD>& pids) {
-	try {
-		for (const auto pid : pids)
-			OpenProcessForInjection(pid);
-	} catch (const Utils::Win32::Error& e) {
-		if (e.Code() == ERROR_ACCESS_DENIED)
-			return true;
-	}
-	return false;
-}
-
-extern "C" __declspec(dllimport) int __stdcall EnableInjectOnCreateProcess(size_t bEnable);
-
-int RunProgram(const std::filesystem::path& path) {
-	STARTUPINFOW si{};
-	si.cb = sizeof si;
-	PROCESS_INFORMATION pi;
-	if (!CreateProcessW(path.c_str(), nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi))
-		throw Utils::Win32::Error("CreateProcessW({})", path);
-	CloseHandle(pi.hProcess);
-	CloseHandle(pi.hThread);
-	return 0;
 }
 
 int RunLauncher() {
