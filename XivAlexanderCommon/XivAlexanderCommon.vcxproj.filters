@@ -27,7 +27,7 @@
     <ClInclude Include="include\XivAlexanderCommon.h">
       <Filter>Exported</Filter>
     </ClInclude>
-    <ClInclude Include="Utils_Win32_Modules.h">
+    <ClInclude Include="Utils_Win32_InjectedModule.h">
       <Filter>Implementation\Win32</Filter>
     </ClInclude>
     <ClInclude Include="Utils_Win32.h">
@@ -60,6 +60,9 @@
     <ClInclude Include="CustomFormatter.h">
       <Filter>Implementation</Filter>
     </ClInclude>
+    <ClInclude Include="Utils_Win32_Process.h">
+      <Filter>Implementation\Win32</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -68,7 +71,7 @@
     <ClCompile Include="Utils_Win32.cpp">
       <Filter>Implementation\Win32</Filter>
     </ClCompile>
-    <ClCompile Include="Utils_Win32_Modules.cpp">
+    <ClCompile Include="Utils_Win32_InjectedModule.cpp">
       <Filter>Implementation\Win32</Filter>
     </ClCompile>
     <ClCompile Include="Utils_CallOnDestruction.cpp">
@@ -88,6 +91,12 @@
     </ClCompile>
     <ClCompile Include="Utils__Misc.cpp">
       <Filter>Implementation\Root</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils_Win32_Closeable.cpp">
+      <Filter>Implementation\Win32</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils_Win32_Process.cpp">
+      <Filter>Implementation\Win32</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

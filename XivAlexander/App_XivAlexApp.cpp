@@ -214,7 +214,7 @@ App::XivAlexApp::XivAlexApp()
 
 	auto bLibraryLoaded = false;
 	try {
-		LoadLibraryW(Utils::Win32::Modules::PathFromModule(g_hInstance).c_str());
+		LoadLibraryW(Utils::Win32::Process::Current().PathOf(g_hInstance).c_str());
 		bLibraryLoaded = true;
 
 		m_customMessageLoop = std::thread([this]() {

@@ -3,125 +3,8 @@
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_Hooks.h"
 #include "App_XivAlexApp.h"
-
-static const uint8_t EntryPointThunkTemplate[]{
-	/* 00 */ 0xFF, 0x15, 0x02, 0x00, 0x00, 0x00, 0xCC, 0xCC,
-	/* 08 */ 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
-	
-	/*
-	thunk:
-	call QWORD PTR [rip+trampoline_address]
-	int 3
-	int 3
-
-	trampoline_address:
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	 */
-};
-
-static const uint8_t TrampolineTemplate[]{
-	/* 00 */ 0x59, 0x48, 0x83, 0xE9, 0x06, 0x51, 0x48, 0x81,
-	/* 08 */ 0xEC, 0x80, 0x00, 0x00, 0x00, 0x48, 0x8B, 0x05,
-	/* 10 */ 0x3C, 0x00, 0x00, 0x00, 0x48, 0x89, 0x01, 0x48,
-	/* 18 */ 0x8B, 0x05, 0x3A, 0x00, 0x00, 0x00, 0x48, 0x89,
-	/* 20 */ 0x41, 0x08, 0xE8, 0x21, 0x00, 0x00, 0x00, 0x48,
-	/* 28 */ 0x83, 0xC1, 0x49, 0xFF, 0x15, 0x37, 0x00, 0x00,
-	/* 30 */ 0x00, 0x48, 0x81, 0xC4, 0x80, 0x00, 0x00, 0x00,
-	/* 38 */ 0xE8, 0x0B, 0x00, 0x00, 0x00, 0x48, 0x89, 0xCA,
-	/* 40 */ 0x59, 0x51, 0xFF, 0x25, 0x18, 0x00, 0x00, 0x00,
-	/* 48 */ 0x48, 0x8B, 0x0C, 0x24, 0xC3, 0xCC, 0xCC, 0xCC,
-	/* 50 */ 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
-	/* 58 */ 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
-	/* 60 */ 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
-	/* 68 */ 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
-	
-	/*
-	restore:
-	pop rcx
-	sub rcx, 6
-	push rcx
-
-	sub rsp, 128
-	mov rax, QWORD PTR [rip+OriginalEntryPoint]
-	mov QWORD PTR [rcx], rax
-	mov rax, QWORD PTR [rip+OriginalEntryPoint+8]
-	mov QWORD PTR [rcx+8], rax
-
-	execute:
-	call get_eip
-	add rcx, 0x49
-	call QWORD PTR [rip+LoadLibraryW]
-
-	add rsp, 128
-
-	call get_eip
-	mov rdx, rcx
-	pop rcx
-	push rcx
-	jmp QWORD PTR [rip+EntryImplFromDll]
-
-	get_eip:
-	mov rcx, [rsp]
-	ret
-
-	int 3
-	int 3
-	int 3
-
-	OriginalEntryPoint:
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-
-	EntryImplFromDll:
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-
-	LoadLibraryW:
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-	int 3
-
-	LoadLibraryW_Param1_wsz:
-	int 3
-	 */
-};
-static const auto TrampolineTemplateOriginalEntryPointOffset = 0x50;
-static const auto TrampolineTemplateEntryImplFromDllOffset = 0x60;
-static const auto TrampolineTemplateLoadLibraryWOffset = 0x68;
-
-extern "C" __declspec(dllexport) void __stdcall InjectEntryPoint(void* originalEntryPoint, void* thunkAddress);
+#include "App_InjectOnCreateProcessApp_x64.h"
+#include "App_InjectOnCreateProcessApp_x86.h"
 
 class App::InjectOnCreateProcessApp::Implementation {
 
@@ -152,7 +35,7 @@ class App::InjectOnCreateProcessApp::Implementation {
 
 public:
 	Implementation()
-		: m_module(LoadLibraryW(Utils::Win32::Modules::PathFromModule(g_hInstance).c_str()), nullptr) {
+		: m_module(LoadLibraryW(Utils::Win32::Process::Current().PathOf(g_hInstance).c_str()), nullptr) {
 		m_cleanup += CreateProcessW.SetHook([this](_In_opt_ LPCWSTR lpApplicationName, _Inout_opt_ LPWSTR lpCommandLine, _In_opt_ LPSECURITY_ATTRIBUTES lpProcessAttributes, _In_opt_ LPSECURITY_ATTRIBUTES lpThreadAttributes, _In_ BOOL bInheritHandles, _In_ DWORD dwCreationFlags, _In_opt_ LPVOID lpEnvironment, _In_opt_ LPCWSTR lpCurrentDirectory, _In_ LPSTARTUPINFOW lpStartupInfo, _Out_ LPPROCESS_INFORMATION lpProcessInformation) -> BOOL {
 			const bool noOperation = dwCreationFlags & (DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS);
 			const auto result = CreateProcessW.bridge(
@@ -167,7 +50,7 @@ public:
 				lpStartupInfo,
 				lpProcessInformation);
 			if (result && !noOperation)
-				PostProcessExecution(lpCommandLine ? lpCommandLine : (lpApplicationName ? lpApplicationName : L""), dwCreationFlags, lpProcessInformation);
+				PostProcessExecution(dwCreationFlags, lpProcessInformation);
 			return result;
 			});
 		m_cleanup += CreateProcessA.SetHook([this](_In_opt_ LPCSTR lpApplicationName, _Inout_opt_ LPSTR lpCommandLine, _In_opt_ LPSECURITY_ATTRIBUTES lpProcessAttributes, _In_opt_ LPSECURITY_ATTRIBUTES lpThreadAttributes, _In_ BOOL bInheritHandles, _In_ DWORD dwCreationFlags, _In_opt_ LPVOID lpEnvironment, _In_opt_ LPCSTR lpCurrentDirectory, _In_ LPSTARTUPINFOA lpStartupInfo, _Out_ LPPROCESS_INFORMATION lpProcessInformation) -> BOOL {
@@ -184,99 +67,90 @@ public:
 				lpStartupInfo,
 				lpProcessInformation);
 			if (result && !noOperation)
-				PostProcessExecution(Utils::FromOem(lpCommandLine ? lpCommandLine : (lpApplicationName ? lpApplicationName : "")), dwCreationFlags, lpProcessInformation);
+				PostProcessExecution(dwCreationFlags, lpProcessInformation);
 			return result;
 			});
 	}
 
 	~Implementation() = default;
 
-	void PostProcessExecution(const std::wstring& commandLine, DWORD dwCreationFlags, LPPROCESS_INFORMATION lpProcessInformation) {
-		const auto hProcess = lpProcessInformation->hProcess;
-
-		std::wstringstream log;
-		
+	void PostProcessExecution(DWORD dwCreationFlags, LPPROCESS_INFORMATION lpProcessInformation) {
+		const auto process = Utils::Win32::Process(lpProcessInformation->hProcess, false);
+		auto isXiv = false;
 		try {
-			int argc = 0;
-			LPWSTR* argv = CommandLineToArgvW(&commandLine[0], &argc);
-			if (!argv)
-				throw Utils::Win32::Error("CommandLineToArgvW");
-			const auto path = std::filesystem::path(argv[0]);
-			LocalFree(argv);
 
-			auto pardir = path.parent_path();
-			bool isXiv = false;
+			isXiv = true;  // TODO: DEBUG
+
+			auto pardir = process.PathOf().parent_path();
 
 			// check whether it's FFXIVQuickLauncher directory
 			isXiv |= exists(pardir / "XIVLauncher.exe");
 
 			// check 3 parent directories to determine whether it might have anything to do with FFXIV
 			for (int i = 0; i < 3 && !isXiv; ++i) {
-				isXiv = exists(pardir / "game" / XivAlex::GameExecutableName);
+				isXiv = exists(pardir / L"game" / XivAlex::GameExecutableNameW);
 				pardir = pardir.parent_path();
 			}
 
 			if (isXiv) {
-				const auto ntpath = Utils::Win32::ToNativePath(path);
-				const auto ntpathw = ntpath.wstring();
+				if (process.IsProcess64Bits() == Utils::Win32::Process::Current().IsProcess64Bits()) {
+					PatchEntryPointForInjection(process);
+					
+				} else {
+					const auto companion = Utils::Win32::Process::Current().PathOf(g_hInstance).parent_path() / (process.IsProcess64Bits() ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW);
+					if (!exists(companion))
+						throw std::runtime_error("loader not found");
 
-				std::vector<MEMORY_BASIC_INFORMATION> regions;
-				for (MEMORY_BASIC_INFORMATION mbi{};
-					VirtualQueryEx(hProcess, mbi.BaseAddress, &mbi, sizeof mbi);
-					mbi.BaseAddress = static_cast<char*>(mbi.BaseAddress) + mbi.RegionSize) {
-					if (!(mbi.State & MEM_COMMIT) || mbi.Type != MEM_IMAGE)
-						continue;
-					if (Utils::Win32::GetMappedImageNativePath(hProcess, mbi.BaseAddress).wstring() == ntpathw)
-						regions.emplace_back(mbi);
+					Utils::Win32::Closeable::Handle hInheritableTargetProcessHandle;
+					if (HANDLE h; !DuplicateHandle(GetCurrentProcess(), process, GetCurrentProcess(), &h, 0, TRUE, DUPLICATE_SAME_ACCESS))
+						throw Utils::Win32::Error("DuplicateHandle1");
+					else
+						hInheritableTargetProcessHandle.Attach(h, true);
+
+					Utils::Win32::Closeable::Handle hStdinRead, hStdinWrite;
+					if (HANDLE r, w; !CreatePipe(&r, &w, nullptr, 0))
+						throw Utils::Win32::Error("CreatePipe");
+					else {
+						hStdinRead.Attach(r, true);
+						hStdinWrite.Attach(w, true);
+					}
+
+					Utils::Win32::Closeable::Handle hInheritableStdinRead;
+					if (HANDLE h; !DuplicateHandle(GetCurrentProcess(), hStdinRead, GetCurrentProcess(), &h, 0, TRUE, DUPLICATE_SAME_ACCESS))
+						throw Utils::Win32::Error("DuplicateHandle2");
+					else
+						hInheritableStdinRead.Attach(h, true);
+
+					Utils::Win32::Closeable::Handle companionProcess;
+					{
+						STARTUPINFOW si{};
+						PROCESS_INFORMATION pi{};
+
+						si.cb = sizeof si;
+						si.dwFlags = STARTF_USESTDHANDLES;
+						si.hStdInput = hInheritableStdinRead;
+						si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+						si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+
+						auto args = std::format(L"\"{}\" --inject-into-stdin-handle", companion);
+						if (!CreateProcessW.bridge(companion.c_str(), &args[0], nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi))
+							throw Utils::Win32::Error("CreateProcess");
+
+						assert(pi.hProcess);
+						assert(pi.hThread);
+
+						companionProcess = Utils::Win32::Closeable::Handle(pi.hProcess, true);
+						CloseHandle(pi.hThread);
+					}
+
+					const auto handleNumber = static_cast<uint64_t>(reinterpret_cast<size_t>(static_cast<HANDLE>(hInheritableTargetProcessHandle)));
+					static_assert(sizeof handleNumber == 8);
+					DWORD written;
+					if (!WriteFile(hStdinWrite, &handleNumber, sizeof handleNumber, &written, nullptr) || written != sizeof handleNumber)
+						throw Utils::Win32::Error("WriteFile");
+
+					WaitForSingleObject(companionProcess, INFINITE);
 				}
-
-				const auto base = static_cast<char*>(regions.front().BaseAddress);
-
-				IMAGE_DOS_HEADER dos;
-				if (!ReadProcessMemory(hProcess, base, &dos, sizeof dos, nullptr))
-					throw Utils::Win32::Error("ReadProcessMemory1");
-
-				IMAGE_NT_HEADERS nt;
-				if (!ReadProcessMemory(hProcess, base + dos.e_lfanew, &nt, sizeof nt, nullptr))
-					throw Utils::Win32::Error("ReadProcessMemory2");
-
-				std::vector trampolineTemplate(TrampolineTemplate, TrampolineTemplate + sizeof TrampolineTemplate);
-				if (!ReadProcessMemory(hProcess, base + nt.OptionalHeader.AddressOfEntryPoint, &trampolineTemplate[TrampolineTemplateOriginalEntryPointOffset], 16, nullptr))
-					throw Utils::Win32::Error("ReadProcessMemory3");
-
-				for (size_t i = 0; i < 16; i++)
-					log << std::format(L"{:02x} ", trampolineTemplate[TrampolineTemplateOriginalEntryPointOffset + i]);
-				log << L"\n";
-
-				log << std::format(L"EntryPoint: {:16x}\n", reinterpret_cast<size_t>(base + nt.OptionalHeader.AddressOfEntryPoint));
-				*reinterpret_cast<void**>(&trampolineTemplate[TrampolineTemplateEntryImplFromDllOffset]) = InjectEntryPoint;
-				log << std::format(L"InjectEntryPoint: {:16x}\n", reinterpret_cast<size_t>(InjectEntryPoint));
-				*reinterpret_cast<void**>(&trampolineTemplate[TrampolineTemplateLoadLibraryWOffset]) = LoadLibraryW;
-				log << std::format(L"LoadLibraryW: {:16x}\n", reinterpret_cast<size_t>(LoadLibraryW));
-				const auto dllPath = Utils::Win32::Modules::PathFromModule(g_hInstance).wstring();
-				const auto dllPathByteBuffer = std::span(reinterpret_cast<const uint8_t*>(dllPath.c_str()), dllPath.size() * 2);
-				trampolineTemplate.insert(trampolineTemplate.end(), dllPathByteBuffer.begin(), dllPathByteBuffer.end());
-				trampolineTemplate.resize(trampolineTemplate.size() + 16, 0);  // null terminate
-
-				const auto preferredAddress = static_cast<char*>(regions.back().BaseAddress) + regions.back().RegionSize;
-				void* trampolineAddress = preferredAddress;
-				for (size_t i = 0; i < 0x10000000; i += 0x10000)
-					if ((trampolineAddress = VirtualAllocEx(hProcess, preferredAddress + i, trampolineTemplate.size(), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE)))
-						break;
-				if (!trampolineAddress)
-					throw Utils::Win32::Error("VirtualAllocEx");
-				if (!WriteProcessMemory(hProcess, trampolineAddress, &trampolineTemplate[0], trampolineTemplate.size(), nullptr))
-					throw Utils::Win32::Error("WriteProcessMemory");
-
-				std::vector entryThunk(EntryPointThunkTemplate, EntryPointThunkTemplate + sizeof EntryPointThunkTemplate);
-				*reinterpret_cast<void**>(&entryThunk[0x08]) = trampolineAddress;
-				log << std::format(L"trampolineAddress: {:16x}\n", reinterpret_cast<size_t>(trampolineAddress));
-
-				DWORD dummy;
-				if (!VirtualProtectEx(hProcess, base + nt.OptionalHeader.AddressOfEntryPoint, 16, PAGE_EXECUTE_READWRITE, &dummy))
-					throw Utils::Win32::Error("VirtualProtectEx");
-				if (!WriteProcessMemory(hProcess, base + nt.OptionalHeader.AddressOfEntryPoint, &entryThunk[0], entryThunk.size(), nullptr))
-					throw Utils::Win32::Error("WriteProcessMemory");
 			}
 		} catch (std::exception& e) {
 			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, L"XivAlexander",
@@ -284,7 +158,20 @@ public:
 				L"Process ID: {}",
 				e.what(), lpProcessInformation->dwProcessId);
 		}
-		
+#ifdef _DEBUG
+		Utils::Win32::MessageBoxF(
+			nullptr, MB_OK,
+			L"XivAlexander",
+			L"IsXiv={}\n"
+			L"Self: PID={}, Platform={}, Path={}\n"
+			L"Target: PID={}, Platform={}, Path={}\n",
+			isXiv,
+			Utils::Win32::Process::Current().GetId(),
+			Utils::Win32::Process::Current().IsProcess64Bits() ? L"x64" : L"x86",
+			Utils::Win32::Process::Current().PathOf(),
+			process.GetId(), process.IsProcess64Bits() ? L"x64" : L"x86", process.PathOf()
+		);
+#endif
 		if (!(dwCreationFlags & CREATE_SUSPENDED))
 			ResumeThread(lpProcessInformation->hThread);
 	}
@@ -312,7 +199,7 @@ extern "C" __declspec(dllexport) int __stdcall EnableInjectOnCreateProcess(size_
 }
 
 static void RunBeforeAppInit() {
-	auto filename = Utils::Win32::Modules::PathFromModule().filename().wstring();
+	auto filename = Utils::Win32::Process::Current().PathOf().filename().wstring();
 	CharLowerW(&filename[0]);
 	if (filename == XivAlex::GameExecutableNameW) {
 		std::thread([]() {
@@ -350,18 +237,84 @@ static void RunBeforeAppInit() {
 		s_injectOnCreateProcessApp = std::make_unique<App::InjectOnCreateProcessApp>();
 }
 
-extern "C" __declspec(dllexport) void __stdcall InjectEntryPoint(void* originalEntryPoint, void* thunkAddress) {
-	DWORD dummy;
-	FlushInstructionCache(GetCurrentProcess(), originalEntryPoint, 16);
-	VirtualProtect(originalEntryPoint, 16, PAGE_EXECUTE_READ, &dummy);
-	VirtualFree(thunkAddress, 0, MEM_RELEASE);
-	
-	// not going to allocate stack or something yet, so must use the minimum; run stuff on thread
-	const auto h = CreateThread(nullptr, 0, [](void*) -> DWORD {
+extern "C" __declspec(dllexport) void __stdcall InjectEntryPoint(InjectEntryPointParameters * p) {
+	// conjecture: not going to allocate stack or something yet, so must use the minimum; run stuff on thread
+	// maybe figure out why won't it work if the work isn't done on a separate thread (with a separate stack)
+	const auto h = CreateThread(nullptr, 0, [](void* param_) -> DWORD {
+		// create copy, since we are going to do VirtualFree on the address containing param soon
+		const InjectEntryPointParameters param = *static_cast<InjectEntryPointParameters*>(param_);
+
+		DWORD dummy;
+		memcpy(param.EntryPoint, param.EntryPointOriginalBytes, param.EntryPointOriginalLength);
+		FlushInstructionCache(GetCurrentProcess(), param.EntryPoint, param.EntryPointOriginalLength);
+		VirtualProtect(param.EntryPoint, param.EntryPointOriginalLength, PAGE_EXECUTE_READ, &dummy);
+		VirtualFree(param.TrampolineAddress, 0, MEM_RELEASE);
+
 		RunBeforeAppInit();
 		FreeLibraryAndExitThread(g_hInstance, 0);
-	}, nullptr, 0, nullptr);
+		}, p, 0, nullptr);
 	assert(h);
 	WaitForSingleObject(h, INFINITE);
 	CloseHandle(h);
+}
+
+extern "C" __declspec(dllexport) int __stdcall PatchEntryPointForInjection(HANDLE hProcess) {
+	const auto process = Utils::Win32::Process(hProcess, false);
+
+	try {
+		const auto regions = process.GetCommittedImageAllocation();
+		if (regions.empty())
+			throw std::runtime_error("Could not find memory region of the program.");
+
+		auto& mem = process.GetModuleMemoryBlockManager(static_cast<HMODULE>(regions.front().BaseAddress));
+
+		auto path = Utils::Win32::Process::Current().PathOf(g_hInstance).wstring();
+		path.resize(path.size() + 1);  // add null character
+		const auto pathBytes = std::span(reinterpret_cast<const uint8_t*>(path.c_str()), path.size() * sizeof path[0]);
+
+		std::vector<uint8_t> trampolineBuffer;
+		TrampolineTemplate* trampoline;
+		std::span<uint8_t> pathBytesTarget;
+		{
+			constexpr auto trampolineLength = (sizeof TrampolineTemplate + sizeof size_t - 1) / sizeof size_t * sizeof size_t;
+			trampolineBuffer.resize(0
+				+ trampolineLength
+				+ pathBytes.size_bytes()
+			);
+			trampoline = new (&trampolineBuffer[0]) TrampolineTemplate();
+			pathBytesTarget = { &trampolineBuffer[trampolineLength], pathBytes.size_bytes() };
+		}
+
+		std::copy_n(pathBytes.begin(), pathBytesTarget.size_bytes(), pathBytesTarget.begin());
+		process.ReadMemory(mem.CurrentModule, mem.NtHeaders.OptionalHeader.AddressOfEntryPoint,
+			std::span(trampoline->buf_EntryPointBackup, sizeof trampoline->buf_EntryPointBackup));
+
+		const auto pRemote = process.VirtualAlloc<char>(nullptr, trampolineBuffer.size(), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+
+		trampoline->parameters = {
+			.EntryPoint = reinterpret_cast<char*>(mem.CurrentModule) + mem.NtHeaders.OptionalHeader.AddressOfEntryPoint,
+			.EntryPointOriginalBytes = pRemote + offsetof(TrampolineTemplate, buf_EntryPointBackup),
+			.EntryPointOriginalLength = sizeof trampoline->buf_EntryPointBackup,
+			.TrampolineAddress = pRemote,
+		};
+		trampoline->CallLoadLibrary.lpLibFileName.val = pRemote + (&pathBytesTarget[0] - &trampolineBuffer[0]);
+		trampoline->CallLoadLibrary.fn.ptr = LoadLibraryW;
+		trampoline->CallGetProcAddress.lpProcName.val = pRemote + offsetof(TrampolineTemplate, buf_CallGetProcAddress_lpProcName);
+		trampoline->CallGetProcAddress.fn.ptr = GetProcAddress;
+		trampoline->CallInjectEntryPoint.param.val = pRemote + offsetof(TrampolineTemplate, parameters);
+
+		process.WriteMemory(pRemote, 0, std::span(trampolineBuffer));
+
+		EntryPointThunkTemplate thunk{};
+		thunk.CallTrampoline.fn.ptr = pRemote;
+		process.VirtualProtect(mem.CurrentModule, mem.NtHeaders.OptionalHeader.AddressOfEntryPoint, sizeof thunk, PAGE_EXECUTE_READWRITE);
+		process.WriteMemory(mem.CurrentModule, mem.NtHeaders.OptionalHeader.AddressOfEntryPoint, thunk);
+		return 0;
+	} catch (std::exception& e) {
+		Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, L"XivAlexander",
+			L"Failed to load XivAlexander into child process: {}\n\n"
+			L"Process ID: {}",
+			e.what(), GetProcessId(process));
+		return -1;
+	}
 }

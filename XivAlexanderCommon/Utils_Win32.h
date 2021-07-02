@@ -12,6 +12,11 @@ namespace Utils::Win32 {
 	}
 
 	template <typename ... Args>
+	void DebugPrint(const wchar_t* format, Args ... args) {
+		OutputDebugStringW(std::format(format, std::forward<Args>(args)...).c_str());
+	}
+
+	template <typename ... Args>
 	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const wchar_t* format, Args ... args) {
 		return MessageBoxW(hWnd, std::format(format, std::forward<Args>(args)...).c_str(), lpCaption, uType);
 	}
@@ -24,13 +29,13 @@ namespace Utils::Win32 {
 	std::pair<std::string, std::string> FormatModuleVersionString(HMODULE hModule);
 
 	bool EnableTokenPrivilege(HANDLE hToken, LPCTSTR Privilege, bool bEnablePrivilege);
-
 	void AddDebugPrivilege();
-
 	bool IsUserAnAdmin();
 
 	std::filesystem::path GetMappedImageNativePath(HANDLE hProcess, void* lpMem);
 	std::filesystem::path ToNativePath(const std::filesystem::path& path);
+
+	std::vector<DWORD> GetProcessList();
 	
 	class Error : public std::runtime_error {
 		const int m_nErrorCode;
@@ -40,7 +45,7 @@ namespace Utils::Win32 {
 		explicit Error(const std::string& msg);
 
 		template<typename ... Args>
-		explicit Error(const char* format, Args...args)
+		Error(const char* format, Args...args)
 			: Error(std::format(format, std::forward<Args>(args)...)) {
 		}
 		template<typename ... Args>

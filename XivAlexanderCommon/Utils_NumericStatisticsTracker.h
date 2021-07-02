@@ -5,7 +5,7 @@
 namespace Utils {
 	class NumericStatisticsTracker {
 		const size_t m_trackCount;
-		const size_t m_emptyValue;
+		const int64_t m_emptyValue;
 		const uint64_t m_maxAge;
 		mutable std::deque<int64_t> m_values;
 		mutable std::deque<uint64_t> m_expiryTimestamp;

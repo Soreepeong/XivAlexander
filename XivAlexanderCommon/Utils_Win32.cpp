@@ -203,6 +203,17 @@ std::filesystem::path Utils::Win32::ToNativePath(const std::filesystem::path& pa
 	return L"\\\\?" + result;
 }
 
+std::vector<DWORD> Utils::Win32::GetProcessList() {
+	std::vector<DWORD> res;
+	DWORD cb = 0;
+	do {
+		res.resize(res.size() + 1024);
+		EnumProcesses(&res[0], static_cast<DWORD>(sizeof res[0] * res.size()), &cb);
+	} while (cb == sizeof res[0] * res.size());
+	res.resize(cb / sizeof res[0]);
+	return res;
+}
+
 Utils::Win32::Error::Error(int errorCode, const std::string& msg)
 	: std::runtime_error(FormatWindowsErrorMessage(errorCode) + ": " + msg)
 	, m_nErrorCode(errorCode) {

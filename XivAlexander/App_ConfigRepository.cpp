@@ -46,7 +46,7 @@ void App::Config::BaseRepository::Reload(bool announceChange) {
 
 App::Config& App::Config::Instance() {
 	if (!s_pInstance) {
-		const auto dllDir = Utils::Win32::Modules::PathFromModule(g_hInstance).parent_path();
+		const auto dllDir = Utils::Win32::Process::Current().PathOf(g_hInstance).parent_path();
 		const auto regionAndVersion = XivAlex::ResolveGameReleaseRegion();
 		
 		s_pInstance = std::make_unique<Config>(

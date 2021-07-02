@@ -2,7 +2,7 @@
 
 const auto MsgboxTitle = L"XivAlexander Loader";
 
-namespace W32Modules = Utils::Win32::Modules;
+extern "C" __declspec(dllimport) int __stdcall PatchEntryPointForInjection(HANDLE hProcess);
 
 static
 void CheckDllVersion(HMODULE hModule) {
@@ -23,6 +23,7 @@ enum class LoaderAction : int {
 	Ask,
 	Load,
 	Unload,
+	Launcher,
 	Count_,  // for internal use only
 };
 
@@ -32,10 +33,12 @@ std::string argparse::details::repr(LoaderAction const& val) {
 		case LoaderAction::Ask: return "ask";
 		case LoaderAction::Load: return "load";
 		case LoaderAction::Unload: return "unload";
+		case LoaderAction::Launcher: return "launcher";
 		case LoaderAction::Auto: return "auto";
 	}
 	return std::format("({})", static_cast<int>(val));
 }
+
 LoaderAction ParseLoaderAction(std::string val) {
 	auto valw = Utils::FromUtf8(val);
 	CharLowerW(&valw[0]);
@@ -52,15 +55,55 @@ LoaderAction ParseLoaderAction(std::string val) {
 	throw std::runtime_error("Invalid action");
 }
 
+enum class LauncherType : int {
+	Auto,
+	International,
+	Korean,
+	Chinese,
+	Count_,  // for internal use only
+};
+
+template <>
+std::string argparse::details::repr(LauncherType const& val) {
+	switch (val) {
+		case LauncherType::Auto: return "auto";
+		case LauncherType::International: return "international";
+		case LauncherType::Korean: return "korean";
+		case LauncherType::Chinese: return "chinese";
+	}
+	return std::format("({})", static_cast<int>(val));
+}
+
+LauncherType ParseLauncherType(std::string val) {
+	auto valw = Utils::FromUtf8(val);
+	CharLowerW(&valw[0]);
+	val = Utils::ToUtf8(valw);
+	for (size_t i = 0; i < static_cast<size_t>(LauncherType::Count_); ++i) {
+		const auto compare = argparse::details::repr(static_cast<LauncherType>(i));
+		auto equal = true;
+		for (size_t j = 0; equal && j < val.length() && j < compare.length(); ++j) {
+			equal = val[j] == compare[j];
+		}
+		if (equal)
+			return static_cast<LauncherType>(i);
+	}
+	if (val[0] == 'e' || val[0] == 'd' || val[0] == 'g' || val[0] == 'f' || val[0] == 'j')
+		return LauncherType::International;
+
+	throw std::runtime_error("Invalid launcher type");
+}
+
 class XivAlexanderLoaderParameter {
 public:
 	argparse::ArgumentParser argp;
 
 	LoaderAction m_action = LoaderAction::Auto;
+	LauncherType m_launcherType = LauncherType::Auto;
 	bool m_quiet = false;
 	bool m_help = false;
 	bool m_web = false;
 	bool m_disableAutoRunAs = true;
+	bool m_injectIntoStdinHandle = false;
 	std::set<DWORD> m_targetPids{};
 	std::set<std::wstring> m_targetSuffix{};
 	std::wstring m_runProgram;
@@ -69,11 +112,17 @@ public:
 		: argp("XivAlexanderLoader") {
 
 		argp.add_argument("-a", "--action")
-			.help("specify action (possible values: auto, ask, load, unload)")
+			.help("specify action (possible values: auto, ask, load, unload, launcher)")
 			.required()
 			.nargs(1)
 			.default_value(LoaderAction::Auto)
 			.action([](const std::string& val) { return ParseLoaderAction(val); });
+		argp.add_argument("-l", "--launcher")
+			.help("specify launcher (possible values: auto, international, korean, chinese)")
+			.required()
+			.nargs(1)
+			.default_value(LauncherType::Auto)
+			.action([](const std::string& val) { return ParseLauncherType(val); });
 		argp.add_argument("-q", "--quiet")
 			.help("disable error messages")
 			.default_value(false)
@@ -86,8 +135,11 @@ public:
 			.help("open github repository at https://github.com/Soreepeong/XivAlexander and exit")
 			.default_value(false)
 			.implicit_value(true);
+		argp.add_argument("--inject-into-stdin-handle")
+			.default_value(false)
+			.implicit_value(true);
 		argp.add_argument("targets")
-			.help("list of target process ID or path suffix.")
+			.help("List of target process ID or path suffix if injecting. Path to program to execute if launching.")
 			.default_value(std::vector<std::string>())
 			.remaining();
 	}
@@ -95,7 +147,7 @@ public:
 	void Parse(LPWSTR lpCmdLine) {
 		std::vector<std::string> args;
 
-		args.push_back(Utils::ToUtf8(W32Modules::PathFromModule()));
+		args.push_back(Utils::ToUtf8(Utils::Win32::Process::Current().PathOf()));
 
 		if (wcslen(lpCmdLine) > 0) {
 			int nArgs;
@@ -115,33 +167,31 @@ public:
 		argp.parse_args(args);
 
 		m_action = argp.get<LoaderAction>("-a");
+		m_launcherType = argp.get<LauncherType>("-l");
 		m_quiet = argp.get<bool>("-q");
 		m_web = argp.get<bool>("--web");
 		m_disableAutoRunAs = argp.get<bool>("-d");
+		m_injectIntoStdinHandle = argp.get<bool>("--inject-into-stdin-handle");
 
-		switch (m_action) {
-		case LoaderAction::Ask:
-		case LoaderAction::Load:
-		case LoaderAction::Unload:
-			for (const auto& target : argp.get<std::vector<std::string>>("targets")) {
-				size_t idx = 0;
-				DWORD pid = 0;
+		for (const auto& target : argp.get<std::vector<std::string>>("targets")) {
+			m_runProgram += Utils::FromUtf8(target + " ");
+			
+			size_t idx = 0;
+			DWORD pid = 0;
 
-				try {
-					pid = std::stoi(target, &idx);
-				} catch (std::invalid_argument&) {
-					// empty
-				} catch (std::out_of_range&) {
-					// empty
-				}
-				if (idx != target.length()) {
-					auto buf = Utils::FromUtf8(target);
-					CharLowerW(&buf[0]);
-					m_targetSuffix.emplace(std::move(buf));
-				} else
-					m_targetPids.insert(pid);
+			try {
+				pid = std::stoi(target, &idx);
+			} catch (std::invalid_argument&) {
+				// empty
+			} catch (std::out_of_range&) {
+				// empty
 			}
-			break;
+			if (idx != target.length()) {
+				auto buf = Utils::FromUtf8(target);
+				CharLowerW(&buf[0]);
+				m_targetSuffix.emplace(std::move(buf));
+			} else
+				m_targetPids.insert(pid);
 		}
 	}
 
@@ -155,30 +205,38 @@ public:
 static std::set<DWORD> GetTargetPidList() {
 	std::set<DWORD> pids;
 	if (!g_parameters.m_targetPids.empty()) {
-		const auto list = W32Modules::GetProcessList();
+		const auto list = Utils::Win32::GetProcessList();
 		std::set_intersection(list.begin(), list.end(), g_parameters.m_targetPids.begin(), g_parameters.m_targetPids.end(), std::inserter(pids, pids.end()));
 		pids.insert(g_parameters.m_targetPids.begin(), g_parameters.m_targetPids.end());
 	} else if (g_parameters.m_targetSuffix.empty()) {
 		g_parameters.m_targetSuffix.emplace(XivAlex::GameExecutableNameW);
 	}
 	if (!g_parameters.m_targetSuffix.empty()) {
-		for (const auto pid : W32Modules::GetProcessList()) {
+		for (const auto pid : Utils::Win32::GetProcessList()) {
+			Utils::Win32::Process hProcess;
 			try {
-				auto hProcess = Utils::Win32::Closeable::Handle(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid),
-					Utils::Win32::Closeable::Handle::Null,
-					"OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, {})", pid);
-				const auto path = W32Modules::PathFromModule(nullptr, hProcess);
-				auto buf = path.wstring();
+				hProcess = Utils::Win32::Process(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+			} catch (std::runtime_error&) {
+				// some processes only allow PROCESS_QUERY_INFORMATION,
+				// while denying PROCESS_QUERY_LIMITED_INFORMATION.
+				try {
+					hProcess = Utils::Win32::Process(PROCESS_QUERY_INFORMATION, false, pid);
+				} catch (std::runtime_error&) {
+					continue;
+				}
+			}
+			try {
+				auto pathbuf = hProcess.PathOf().wstring();
 				auto suffixFound = false;
-				CharLowerW(&buf[0]);
+				CharLowerW(&pathbuf[0]);
 				for (const auto& suffix : g_parameters.m_targetSuffix) {
-					if ((suffixFound = buf.ends_with(suffix)))
+					if ((suffixFound = pathbuf.ends_with(suffix)))
 						break;
 				}
 				if (suffixFound)
 					pids.insert(pid);
-			} catch (std::runtime_error&) {
-				// uninterested
+			} catch (std::runtime_error& e) {
+				OutputDebugStringW(std::format(L"Error for PID {}: {}\n", pid, Utils::FromUtf8(e.what())).c_str());
 			}
 		}
 	}
@@ -186,15 +244,13 @@ static std::set<DWORD> GetTargetPidList() {
 }
 
 auto OpenProcessForInjection(DWORD pid) {
-	return Utils::Win32::Closeable::Handle(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, pid),
-		Utils::Win32::Closeable::Handle::Null,
-		"OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, {})", pid);
+	return Utils::Win32::Process(PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, pid);
 }
 
 void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesystem::path& dllPath) {
-	const auto hProcess = OpenProcessForInjection(pid);
-	void* rpModule = W32Modules::FindModuleAddress(hProcess, dllPath);
-	const auto path = W32Modules::PathFromModule(nullptr, hProcess);
+	auto hProcess = OpenProcessForInjection(pid);
+	void* rpModule = hProcess.AddressOf(dllPath, Utils::Win32::Process::ModuleNameCompareMode::FullPath, false);
+	const auto path = hProcess.PathOf();
 
 	auto loaderAction = g_parameters.m_action;
 	if (loaderAction == LoaderAction::Ask || loaderAction == LoaderAction::Auto) {
@@ -271,7 +327,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 	if (loaderAction == LoaderAction::Unload && !rpModule)
 		return;
 
-	const auto hModule = W32Modules::InjectedModule(hProcess, dllPath);
+	const auto hModule = Utils::Win32::InjectedModule(std::move(hProcess), dllPath);
 	auto unloadRequired = false;
 	const auto cleanup = Utils::CallOnDestruction([&hModule, &unloadRequired]() {
 		if (unloadRequired)
@@ -302,6 +358,69 @@ bool RequiresAdminAccess(const std::set<DWORD>& pids) {
 
 extern "C" __declspec(dllimport) int __stdcall EnableInjectOnCreateProcess(size_t bEnable);
 
+int RunProgram(const std::filesystem::path& path) {
+	STARTUPINFOW si{};
+	si.cb = sizeof si;
+	PROCESS_INFORMATION pi;
+	if (!CreateProcessW(path.c_str(), nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi))
+		throw Utils::Win32::Error("CreateProcessW({})", path);
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
+	return 0;
+}
+
+int RunLauncher() {
+	try {
+		EnableInjectOnCreateProcess(1);
+
+		if (!g_parameters.m_runProgram.empty())
+			return RunProgram(g_parameters.m_runProgram);
+		
+		const auto launchers = XivAlex::FindGameLaunchers();
+		switch (g_parameters.m_launcherType) {
+			case LauncherType::Auto:
+				for (const auto& it : launchers) {
+					for (const auto& it2 : it.second.AlternativeBoots)
+						return RunProgram(it2.second);
+					return RunProgram(it.second.BootApp);
+				}
+				throw std::runtime_error("No suitable ffxiv installation detected. Please specify path.");
+
+			case LauncherType::International:
+			{
+				const auto launcher = launchers.at(XivAlex::GameRegion::International);
+				for (const auto& it : launcher.AlternativeBoots)
+					return RunProgram(it.second);
+				return RunProgram(launcher.BootApp);
+			}
+			case LauncherType::Korean:
+			{
+				const auto launcher = launchers.at(XivAlex::GameRegion::Korean);
+				SetEnvironmentVariableW(L"__COMPAT_LAYER", L"RunAsInvoker");
+				return RunProgram(launcher.BootApp);
+			}
+			case LauncherType::Chinese:
+			{
+				const auto launcher = launchers.at(XivAlex::GameRegion::Chinese);
+				SetEnvironmentVariableW(L"__COMPAT_LAYER", L"RunAsInvoker");
+				return RunProgram(launcher.BootApp);
+			}
+		}
+	} catch (std::out_of_range&) {
+		if (g_parameters.m_action == LoaderAction::Auto)
+			MessageBoxW(nullptr, L"No running FFXIV process or installation detected.", MsgboxTitle, MB_OK | MB_ICONINFORMATION);
+		else
+			MessageBoxW(nullptr, L"No FFXIV installation cold be detected. Please specify launcher path.", MsgboxTitle, MB_OK | MB_ICONINFORMATION);
+		return -1;
+		
+	} catch (std::exception& e) {
+		if (!g_parameters.m_quiet)
+			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"Error occurred: {}", e.what());
+		return -1;
+	}
+	return 0;
+}
+
 int WINAPI wWinMain(
 	_In_ HINSTANCE hInstance,
 	_In_opt_ HINSTANCE hPrevInstance,
@@ -322,9 +441,9 @@ int WINAPI wWinMain(
 		ShellExecuteW(nullptr, L"open", L"https://github.com/Soreepeong/XivAlexander", nullptr, nullptr, SW_SHOW);
 		return 0;
 	}
-		
-	const auto dllDir = W32Modules::PathFromModule().parent_path();
-	const auto dllPath = dllDir / L"XivAlexander.dll";
+
+	const auto dllDir = Utils::Win32::Process::Current().PathOf().parent_path();
+	const auto dllPath = dllDir / XivAlex::XivAlexDllNameW;
 	Utils::Win32::Closeable::LoadedModule hModule;
 
 	try {
@@ -340,6 +459,27 @@ int WINAPI wWinMain(
 		return -1;
 	}
 
+	if (g_parameters.m_injectIntoStdinHandle) {
+		DWORD read;
+		uint64_t val;
+		try {
+			if (!ReadFile(GetStdHandle(STD_INPUT_HANDLE), &val, sizeof val, &read, nullptr) || read != sizeof val)
+				throw Utils::Win32::Error("ReadFile");
+			auto process = Utils::Win32::Process();
+			process.Attach(reinterpret_cast<HANDLE>(static_cast<size_t>(val)), true);
+			return PatchEntryPointForInjection(process);
+		} catch (const std::exception& e) {
+			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"Error occurred: {}", e.what());
+			return -1;
+		}
+	}
+	
+	EnableInjectOnCreateProcess(1);
+	return RunProgram(LR"(C:\Users\SP\AppData\Local\XIVLauncher\app-5.5.8\XIVLauncher.exe)");
+
+	if (g_parameters.m_action == LoaderAction::Launcher)
+		return RunLauncher();
+
 	std::string debugPrivilegeError = "OK.";
 	try {
 		Utils::Win32::AddDebugPrivilege();
@@ -351,37 +491,7 @@ int WINAPI wWinMain(
 
 	if (pids.empty()) {
 		if (g_parameters.m_action == LoaderAction::Auto) {
-			const auto launchers = XivAlex::FindGameLaunchers();
-			std::filesystem::path gamePath;
-			if (auto it = launchers.find(XivAlex::GameRegion::International); it == launchers.end()) {
-				MessageBoxW(nullptr, L"No running FFXIV process or installation detected.", MsgboxTitle, MB_OK | MB_ICONINFORMATION);
-				return -1;
-			} else
-				gamePath = it->second.RootPath;
-
-			EnableInjectOnCreateProcess(1);
-			try {
-				// const auto bootPathStr = (gamePath / L"boot" / L"ffxivboot64.exe").wstring();
-				const auto bootPathStr = launchers.at(XivAlex::GameRegion::International).AlternativeBoots.begin()->second.wstring();
-
-				PROCESS_INFORMATION pi{};
-				STARTUPINFOW psi{};
-				psi.cb = sizeof psi;
-				CreateProcessW(bootPathStr.c_str(), nullptr, nullptr, nullptr, false, 0, nullptr, nullptr, &psi, &pi);
-				
-				SHELLEXECUTEINFOW si{};
-				si.cbSize = sizeof si;
-				si.lpVerb = L"open";
-				si.lpFile = bootPathStr.c_str();
-				si.nShow = SW_SHOW;
-				if (!ShellExecuteExW(&si))
-					throw Utils::Win32::Error("ShellExecuteW({})", bootPathStr);
-			} catch (std::exception& e) {
-				if (!g_parameters.m_quiet)
-					Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"Error occurred: {}", e.what());
-				return -1;
-			}
-			return 0;
+			return RunLauncher();
 		}
 		if (!g_parameters.m_quiet) {
 			std::wstring errors;
@@ -393,10 +503,10 @@ int WINAPI wWinMain(
 		}
 		return -1;
 	}
-	
+
 	if (!g_parameters.m_disableAutoRunAs && !Utils::Win32::IsUserAnAdmin() && RequiresAdminAccess(pids)) {
 		SHELLEXECUTEINFOW si = {};
-		const auto path = Utils::Win32::Modules::PathFromModule();
+		const auto path = Utils::Win32::Process::Current().PathOf();
 		si.cbSize = sizeof si;
 		si.lpVerb = L"runas";
 		si.lpFile = path.c_str();

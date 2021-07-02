@@ -25,13 +25,14 @@
       <DeploymentContent>true</DeploymentContent>
     </ClInclude>
     <ClInclude Include="Utils_ListenerManager.h" />
+    <ClInclude Include="Utils_Win32_Process.h" />
     <ClInclude Include="Utils__Misc.h" />
     <ClInclude Include="Utils__String.h" />
     <ClInclude Include="Utils_NumericStatisticsTracker.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Utils_Win32.h" />
     <ClInclude Include="Utils_Win32_Closeable.h" />
-    <ClInclude Include="Utils_Win32_Modules.h" />
+    <ClInclude Include="Utils_Win32_InjectedModule.h" />
     <ClInclude Include="Utils__Zlib.h" />
     <ClInclude Include="XivAlex.h" />
   </ItemGroup>
@@ -43,11 +44,13 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Utils_Win32_Closeable.cpp" />
+    <ClCompile Include="Utils_Win32_Process.cpp" />
     <ClCompile Include="Utils__Misc.cpp" />
     <ClCompile Include="Utils__String.cpp" />
     <ClCompile Include="Utils_NumericStatisticsTracker.cpp" />
     <ClCompile Include="Utils_Win32.cpp" />
-    <ClCompile Include="Utils_Win32_Modules.cpp" />
+    <ClCompile Include="Utils_Win32_InjectedModule.cpp" />
     <ClCompile Include="Utils__Zlib.cpp" />
     <ClCompile Include="XivAlex.cpp" />
   </ItemGroup>
@@ -113,51 +116,55 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(SolutionDir)build\$(Platform)_$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)build\$(Platform)_$(Configuration)\Temp\$(ProjectName)\</IntDir>
+    <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <IncludePath>$(IncludePath)</IncludePath>
+    <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(SolutionDir)build\$(Platform)_$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)build\$(Platform)_$(Configuration)\Temp\$(ProjectName)\</IntDir>
+    <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <IncludePath>$(IncludePath)</IncludePath>
+    <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)build\$(Platform)_$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)build\$(Platform)_$(Configuration)\Temp\$(ProjectName)\</IntDir>
+    <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <IncludePath>$(IncludePath)</IncludePath>
+    <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)build\$(Platform)_$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)build\$(Platform)_$(Configuration)\Temp\$(ProjectName)\</IntDir>
+    <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <IncludePath>$(IncludePath)</IncludePath>
+    <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <VcpkgInstalledDir>$(ProjectDir)vcpkg</VcpkgInstalledDir>
+    <VcpkgInstalledDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</VcpkgInstalledDir>
     <VcpkgAdditionalInstallOptions>--feature-flags=versions</VcpkgAdditionalInstallOptions>
     <VcpkgUseStatic>true</VcpkgUseStatic>
     <VcpkgTriplet>x64-windows-static</VcpkgTriplet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Vcpkg">
-    <VcpkgInstalledDir>$(ProjectDir)vcpkg</VcpkgInstalledDir>
+    <VcpkgInstalledDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</VcpkgInstalledDir>
     <VcpkgAdditionalInstallOptions>--feature-flags=versions</VcpkgAdditionalInstallOptions>
     <VcpkgUseStatic>true</VcpkgUseStatic>
     <VcpkgTriplet>x86-windows-static</VcpkgTriplet>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <VcpkgInstalledDir>$(ProjectDir)vcpkg</VcpkgInstalledDir>
+    <VcpkgInstalledDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</VcpkgInstalledDir>
     <VcpkgAdditionalInstallOptions>--feature-flags=versions</VcpkgAdditionalInstallOptions>
     <VcpkgUseStatic>true</VcpkgUseStatic>
     <VcpkgTriplet>x64-windows-static</VcpkgTriplet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Vcpkg">
-    <VcpkgInstalledDir>$(ProjectDir)vcpkg</VcpkgInstalledDir>
+    <VcpkgInstalledDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</VcpkgInstalledDir>
     <VcpkgAdditionalInstallOptions>--feature-flags=versions</VcpkgAdditionalInstallOptions>
     <VcpkgUseStatic>true</VcpkgUseStatic>
     <VcpkgTriplet>x86-windows-static</VcpkgTriplet>

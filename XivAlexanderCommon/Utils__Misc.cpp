@@ -159,3 +159,8 @@ std::vector<std::pair<uint32_t, uint32_t>> Utils::ParsePortRange(const std::stri
 		result.clear();
 	return result;
 }
+
+void Utils::BoundaryCheck(size_t value, size_t offset, size_t length, const char* description) {
+	if (value < offset || value > offset + length)
+		throw std::out_of_range(description ? std::format("out of boundary ({})", description) : "out of boundary");
+}

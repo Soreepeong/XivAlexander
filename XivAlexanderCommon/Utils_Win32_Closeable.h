@@ -1,6 +1,10 @@
 #pragma once
 
+#include <span>
 #include <windef.h>
+
+#include "Utils_Win32.h"
+#include "Utils__Misc.h"
 #include "Utils__String.h"
 
 namespace Utils::Win32::Closeable {
@@ -9,71 +13,105 @@ namespace Utils::Win32::Closeable {
 	public:
 		static constexpr T Null = reinterpret_cast<T>(nullptr);
 
-	private:
-		T m_hBase;
+	protected:
+		T m_object = Null;
+		bool m_bOwnership = true;
 
 	public:
-		Base() : m_hBase(nullptr) {}
+		Base() {}
 
-		Base(T Base, T invalidValue) :
-			m_hBase(Base == invalidValue ? nullptr : Base) {
+		Base(T Base, bool ownership = false)
+			: m_object(Base)
+			, m_bOwnership(ownership) {
 		}
 
-		Base(T Base, T invalidValue, const std::string& errorMessage) :
-			m_hBase(Base) {
+		Base(T Base, T invalidValue)
+			: m_object(Base == invalidValue ? nullptr : Base) {
+		}
+
+		Base(T Base, T invalidValue, const std::string& errorMessage)
+			: m_object(Base) {
 			if (Base == invalidValue)
 				throw Error(errorMessage);
 		}
 
 		template <typename ... Args>
-		Base(T Base, T invalidValue, const char* errorMessageFormat, Args ... args) :
-			Base(Base, invalidValue, std::format(errorMessageFormat, std::forward<Args>(args)...)) {
+		Base(T Base, T invalidValue, const char* errorMessageFormat, Args ... args)
+			: Base(Base, invalidValue, std::format(errorMessageFormat, std::forward<Args>(args)...)) {
 		}
 
 		template <typename ... Args>
-		Base(T Base, T invalidValue, const wchar_t* errorMessageFormat, Args ... args) :
-			Base(Base, invalidValue, Utils::ToUtf8(std::format(errorMessageFormat, std::forward<Args>(args)...))) {
+		Base(T Base, T invalidValue, const wchar_t* errorMessageFormat, Args ... args)
+			: Base(Base, invalidValue, Utils::ToUtf8(std::format(errorMessageFormat, std::forward<Args>(args)...))) {
 		}
 
 		Base(Base&& r) noexcept {
-			m_hBase = r.m_hBase;
-			r.m_hBase = nullptr;
+			Attach(r.m_object, r.m_bOwnership);
+			r.Detach();
 		}
 
-		Base& operator = (Base&& r) noexcept {
-			m_hBase = r.m_hBase;
-			r.m_hBase = nullptr;
+		virtual Base& operator=(Base&& r) noexcept {
+			Attach(r.m_object, r.m_bOwnership);
+			r.Detach();
 			return *this;
 		}
 
-		Base& operator = (nullptr_t) {
-			if (m_hBase)
-				CloserFunction(m_hBase);
-			m_hBase = nullptr;
+		virtual Base& operator=(nullptr_t) {
+			Clear();
 			return *this;
 		}
 
 		Base(const Base&) = delete;
-		Base& operator = (const Base&) = delete;
+		virtual Base& operator=(const Base&) = delete;
 
-		void Detach() {
-			m_hBase = nullptr;
+		virtual ~Base() {
+			ClearInternal();
 		}
 
-		~Base() {
-			if (m_hBase)
-				CloserFunction(m_hBase);
+		void Attach(T r, bool ownership) {
+			Clear();
+			m_object = r;
+			m_bOwnership = ownership;
+		}
+
+		virtual void Detach() {
+			m_object = nullptr;
+			m_bOwnership = true;
+		}
+
+		virtual void Clear() {
+			ClearInternal();
 		}
 
 		operator T() const {
-			return m_hBase;
+			return m_object;
+		}
+
+	private:
+		void ClearInternal() {
+			if (m_object && m_bOwnership)
+				CloserFunction(m_object);
+			m_object = nullptr;
+			m_bOwnership = true;
 		}
 	};
 
-	using Handle = Base<HANDLE, CloseHandle>;
+	class Handle : public Base<HANDLE, CloseHandle> {
+
+		static HANDLE DuplicateHandleNullable(HANDLE src);
+
+	public:
+		using Base<HANDLE, CloseHandle>::Base;
+		Handle(Handle&& r) noexcept : Base(std::move(r)){}
+		Handle(const Handle& r);
+		Handle& operator=(Handle&& r) noexcept;
+		Handle& operator =(const Handle& r);
+	};
+	
 	using Icon = Base<HICON, DestroyIcon>;
 	using GlobalResource = Base<HGLOBAL, FreeResource>;
 	using CreatedDC = Base<HDC, DeleteDC>;
 	using LoadedModule = Base<HMODULE, FreeLibrary>;
 	using FindFile = Base<HANDLE, FindClose>;
 }
+

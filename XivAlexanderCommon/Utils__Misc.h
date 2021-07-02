@@ -19,6 +19,14 @@ namespace Utils {
 
 	template<typename T>
 	T Clamp(T v, T min, T max) {
-		return std::min(max, std::min(max, v));
+		return std::min(max, std::max(min, v));
+	}
+
+	void BoundaryCheck(size_t value, size_t offset, size_t length, const char* description = nullptr);
+	
+	template<typename T, typename = std::enable_if_t<std::is_pod_v<T>>>
+	void WriteToUnalignedPtr(T val, void* to) {
+		for (size_t i = 0; i < sizeof T; ++i)
+			static_cast<char*>(to)[i] = reinterpret_cast<const char*>(&val)[i];
 	}
 }

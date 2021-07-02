@@ -155,6 +155,12 @@
     <ClInclude Include="App_InjectOnCreateProcessApp.h">
       <Filter>App\Apps</Filter>
     </ClInclude>
+    <ClInclude Include="App_InjectOnCreateProcessApp_x64.h">
+      <Filter>App\Apps</Filter>
+    </ClInclude>
+    <ClInclude Include="App_InjectOnCreateProcessApp_x86.h">
+      <Filter>App\Apps</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\Graphics\Icon.ico">

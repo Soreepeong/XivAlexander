@@ -4,20 +4,6 @@
 #include "Utils_Win32.h"
 #include "Utils_Win32_Closeable.h"
 
-#if INTPTR_MAX == INT32_MAX
-
-const char* const XivAlex::GameExecutableName = "ffxiv.exe";
-const wchar_t* const XivAlex::GameExecutableNameW = L"ffxiv.exe";
-
-#elif INTPTR_MAX == INT64_MAX
-
-const char* const XivAlex::GameExecutableName = "ffxiv_dx11.exe";
-const wchar_t* const XivAlex::GameExecutableNameW = L"ffxiv_dx11.exe";
-
-#else
-#error "Environment not x86 or x64."
-#endif
-
 
 std::tuple<std::wstring, std::wstring> XivAlex::ResolveGameReleaseRegion() {
 	std::wstring path(PATHCCH_MAX_CCH, L'\0');
@@ -218,7 +204,15 @@ std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLauncher
 		GameRegionInfo info{
 			GameRegion::International,
 			std::filesystem::path(reg).parent_path().parent_path(),
+#if INTPTR_MAX == INT32_MAX
+
+			info.RootPath / L"boot" / L"ffxivboot.exe",
+
+#elif INTPTR_MAX == INT64_MAX
+
 			info.RootPath / L"boot" / L"ffxivboot64.exe",
+
+#endif
 			{
 				info.RootPath / L"boot" / L"ffxivboot.exe",
 				info.RootPath / L"boot" / L"ffxivboot64.exe",

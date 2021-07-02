@@ -36,6 +36,22 @@ namespace XivAlex {
 
 	std::map<GameRegion, GameRegionInfo> FindGameLaunchers();
 
-	extern const char* const GameExecutableName;
-	extern const wchar_t* const GameExecutableNameW;
+
+#if INTPTR_MAX == INT32_MAX
+
+	const wchar_t GameExecutableNameW[] = L"ffxiv.exe";
+	const wchar_t XivAlexDllNameW[] = L"XivAlexander32.dll";
+	const char XivAlexDllName[] = "XivAlexander32.dll";
+
+#elif INTPTR_MAX == INT64_MAX
+
+	const wchar_t GameExecutableNameW[] = L"ffxiv_dx11.exe";
+	const wchar_t XivAlexDllNameW[] = L"XivAlexander64.dll";
+	const char XivAlexDllName[] = "XivAlexander64.dll";
+
+#else
+#error "Environment not x86 or x64."
+#endif
+	const wchar_t XivAlexLoader32NameW[] = L"XivAlexanderLoader32.exe";
+	const wchar_t XivAlexLoader64NameW[] = L"XivAlexanderLoader64.exe";
 }

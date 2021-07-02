@@ -35,7 +35,7 @@ App::Window::Main::Main(XivAlexApp *pApp, std::function<void()> unloadFunction)
 	, m_pApp(pApp)
 	, m_triggerUnload(std::move(unloadFunction))
 	, m_uTaskbarRestartMessage(RegisterWindowMessage(TEXT("TaskbarCreated")))
-	, m_path(Utils::Win32::Modules::PathFromModule()) {
+	, m_path(Utils::Win32::Process::Current().PathOf()) {
 
 	std::tie(m_sRegion, m_sVersion) = XivAlex::ResolveGameReleaseRegion();
 	
