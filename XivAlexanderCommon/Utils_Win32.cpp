@@ -39,18 +39,10 @@ std::string Utils::Win32::FormatWindowsErrorMessage(unsigned int errorCode) {
 	return res;
 }
 
-std::pair<std::string, std::string> Utils::Win32::FormatModuleVersionString(HMODULE hModule) {
-	const auto hDllVersion = FindResourceW(hModule, MAKEINTRESOURCE(VS_VERSION_INFO), RT_VERSION);
-	if (hDllVersion == nullptr)
-		throw std::runtime_error("Failed to find version resource.");
-	const auto hVersionResource = Closeable::GlobalResource(LoadResource(hModule, hDllVersion),
-	                                                        nullptr,
-	                                                        "FormatModuleVersionString: Failed to load version resource.");
-	const auto lpVersionInfo = LockResource(hVersionResource);  // no need to "UnlockResource"
-
+std::pair<std::string, std::string> Utils::Win32::FormatModuleVersionString(void* pBlock) {
 	UINT size = 0;
 	LPVOID lpBuffer = nullptr;
-	if (!VerQueryValueW(lpVersionInfo, L"\\", &lpBuffer, &size))
+	if (!VerQueryValueW(pBlock, L"\\", &lpBuffer, &size))
 		throw std::runtime_error("Failed to query version information.");
 	const VS_FIXEDFILEINFO& versionInfo = *static_cast<const VS_FIXEDFILEINFO*>(lpBuffer);
 	if (versionInfo.dwSignature != 0xfeef04bd)
@@ -66,6 +58,29 @@ std::pair<std::string, std::string> Utils::Win32::FormatModuleVersionString(HMOD
 		             (versionInfo.dwProductVersionMS >> 0) & 0xFFFF,
 		             (versionInfo.dwProductVersionLS >> 16) & 0xFFFF,
 		             (versionInfo.dwProductVersionLS >> 0) & 0xFFFF));
+}
+
+std::pair<std::string, std::string> Utils::Win32::FormatModuleVersionString(const std::filesystem::path& path) {
+	const auto pathw = path.wstring();
+	DWORD verHandle = 0;
+	std::vector<BYTE> buf;
+	buf.resize(GetFileVersionInfoSizeW(pathw.c_str(), &verHandle));
+	if (buf.empty())
+		throw Error("GetFileVersionInfoSizeW");
+	if (!GetFileVersionInfoW(pathw.c_str(), 0, static_cast<DWORD>(buf.size()), &buf[0]))
+		throw Error("GetFileVersionInfoW");
+	return FormatModuleVersionString(&buf[0]);
+}
+
+std::pair<std::string, std::string> Utils::Win32::FormatModuleVersionString(HMODULE hModule) {
+	const auto hDllVersion = FindResourceW(hModule, MAKEINTRESOURCE(VS_VERSION_INFO), RT_VERSION);
+	if (hDllVersion == nullptr)
+		throw std::runtime_error("Failed to find version resource.");
+	const auto hVersionResource = Closeable::GlobalResource(LoadResource(hModule, hDllVersion),
+	                                                        nullptr,
+	                                                        "FormatModuleVersionString: Failed to load version resource.");
+	const auto lpVersionInfo = LockResource(hVersionResource);  // no need to "UnlockResource"
+	return FormatModuleVersionString(lpVersionInfo);
 }
 
 bool Utils::Win32::EnableTokenPrivilege(HANDLE hToken, LPCTSTR Privilege, bool bEnablePrivilege) {

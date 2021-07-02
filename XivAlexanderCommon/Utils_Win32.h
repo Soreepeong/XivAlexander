@@ -26,6 +26,8 @@ namespace Utils::Win32 {
 
 	std::string FormatWindowsErrorMessage(unsigned int errorCode);
 
+	std::pair<std::string, std::string> FormatModuleVersionString(void* pBlock);
+	std::pair<std::string, std::string> FormatModuleVersionString(const std::filesystem::path& path);
 	std::pair<std::string, std::string> FormatModuleVersionString(HMODULE hModule);
 
 	bool EnableTokenPrivilege(HANDLE hToken, LPCTSTR Privilege, bool bEnablePrivilege);

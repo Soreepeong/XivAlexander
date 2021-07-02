@@ -3,19 +3,21 @@
 const auto MsgboxTitle = L"XivAlexander Loader";
 
 extern "C" __declspec(dllimport) int __stdcall PatchEntryPointForInjection(HANDLE hProcess);
+extern "C" __declspec(dllimport) int __stdcall EnableInjectOnCreateProcess(size_t bEnable);
 
 static
-void CheckDllVersion(HMODULE hModule) {
-	auto [dllFileVersion, dllProductVersion] = Utils::Win32::FormatModuleVersionString(hModule);
-	auto [selfFileVersion, selfProductVersion] = Utils::Win32::FormatModuleVersionString(GetModuleHandleW(nullptr));
-
-	if (dllFileVersion != selfFileVersion)
-		throw std::runtime_error(std::format("File versions do not match. (XivAlexanderLoader.exe: {}, XivAlexander.dll: {})",
-			selfFileVersion, dllFileVersion));
-
-	if (dllProductVersion != selfProductVersion)
-		throw std::runtime_error(std::format("Product versions do not match. (XivAlexanderLoader.exe: {}, XivAlexander.dll: {})",
-			selfProductVersion, selfFileVersion));
+void CheckPackageVersions() {
+	const auto dir = Utils::Win32::Process::Current().PathOf().parent_path();
+	const auto modules = std::vector{
+		Utils::Win32::FormatModuleVersionString(dir / XivAlex::XivAlexLoader32NameW),
+		Utils::Win32::FormatModuleVersionString(dir / XivAlex::XivAlexLoader64NameW),
+		Utils::Win32::FormatModuleVersionString(dir / XivAlex::XivAlexDll32NameW),
+		Utils::Win32::FormatModuleVersionString(dir / XivAlex::XivAlexDll64NameW),
+	};
+	for (size_t i = 1; i < modules.size(); ++i) {
+		if (modules[0].first != modules[i].first || modules[0].second != modules[i].second)
+			throw std::runtime_error("Inconsistent files.");
+	}
 }
 
 enum class LoaderAction : int {
@@ -260,8 +262,6 @@ bool RequiresAdminAccess(const std::set<DWORD>& pids) {
 	return false;
 }
 
-extern "C" __declspec(dllimport) int __stdcall EnableInjectOnCreateProcess(size_t bEnable);
-
 int RunProgram(const std::filesystem::path& path, std::wstring args = L"", bool wait = false) {
 	STARTUPINFOW si{};
 	si.cb = sizeof si;
@@ -463,8 +463,7 @@ int WINAPI wWinMain(
 	Utils::Win32::Closeable::LoadedModule hModule;
 
 	try {
-		hModule = Utils::Win32::Closeable::LoadedModule(LoadLibraryW(dllPath.c_str()), nullptr, "Failed to load XivAlexander.dll");
-		CheckDllVersion(hModule);
+		CheckPackageVersions();
 	} catch (std::exception& e) {
 		if (Utils::Win32::MessageBoxF(nullptr, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON1, MsgboxTitle,
 			L"Failed to verify XivAlexander.dll and XivAlexanderLoader.exe have the matching versions ({}).\n\nDo you want to download again from Github?",
