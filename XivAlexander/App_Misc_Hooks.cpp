@@ -40,8 +40,10 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 						relativeAddressHandled = false;
 				}
 			} else if (operand.type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-				if (operand.imm.is_relative)
+				if (operand.imm.is_relative){
 					relativeAddressHandled = false;
+					DebugBreak();
+				}
 			}
 		}
 
@@ -95,15 +97,14 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 				}
 				break;
 			}
-
+			
 			case ZYDIS_CATEGORY_RET:
+			case ZYDIS_CATEGORY_UNCOND_BR:
 				funclen = offset + instruction.length;
 				break;
 		}
-		if (!relativeAddressHandled) {
-			
+		if (!relativeAddressHandled)
 			throw std::runtime_error("Could not handle relative address while thunking");
-		}
 		if (append)
 			body.insert(body.end(), source + offset, source + offset + instruction.length);
 		offset += instruction.length;

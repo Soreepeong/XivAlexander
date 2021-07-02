@@ -473,9 +473,6 @@ int WINAPI wWinMain(
 			return -1;
 		}
 	}
-	
-	EnableInjectOnCreateProcess(1);
-	return RunProgram(LR"(C:\Users\SP\AppData\Local\XIVLauncher\app-5.5.8\XIVLauncher.exe)");
 
 	if (g_parameters.m_action == LoaderAction::Launcher)
 		return RunLauncher();

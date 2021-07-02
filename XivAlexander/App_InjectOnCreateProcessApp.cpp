@@ -78,12 +78,10 @@ public:
 		const auto process = Utils::Win32::Process(lpProcessInformation->hProcess, false);
 		auto isXiv = false;
 		try {
-			isXiv = true;  // TODO: DEBUG
-
 			auto pardir = process.PathOf().parent_path();
 
-			// check whether it's FFXIVQuickLauncher directory
-			isXiv |= exists(pardir / "XIVLauncher.exe");
+			// // check whether it's FFXIVQuickLauncher directory
+			// isXiv |= exists(pardir / "XIVLauncher.exe");
 
 			// check 3 parent directories to determine whether it might have anything to do with FFXIV
 			for (int i = 0; i < 3 && !isXiv; ++i) {
