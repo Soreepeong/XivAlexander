@@ -56,7 +56,7 @@ namespace Utils::Win32 {
 
 		template<typename T>
 		size_t ReadMemory(void* lpBase, size_t offset, std::span<T> buf, bool readFull = true) const {
-			return ReadMemory(lpBase, offset, buf.data(), buf.size_bytes(), readFull);
+			return ReadMemory(lpBase, offset, buf.data(), buf.size_bytes(), readFull) / sizeof T;
 		}
 
 		template<typename T>
@@ -99,7 +99,13 @@ namespace Utils::Win32 {
 		const Process CurrentProcess;
 		const HMODULE CurrentModule;
 		const IMAGE_DOS_HEADER DosHeader;
-		const IMAGE_NT_HEADERS NtHeaders;
+		const IMAGE_FILE_HEADER FileHeader;
+		union {
+			const WORD OptionalHeaderMagic;
+			const IMAGE_OPTIONAL_HEADER32 OptionalHeader32;
+			const IMAGE_OPTIONAL_HEADER64 OptionalHeader64;
+			char OptionalHeaderRaw[sizeof IMAGE_OPTIONAL_HEADER64];
+		};
 		const std::vector<IMAGE_SECTION_HEADER> SectionHeaders;
 
 	private:
@@ -125,7 +131,9 @@ namespace Utils::Win32 {
 	
 		template<typename T>
 		std::span<T> ReadDataDirectory(int index) {
-			return ReadAligned<T>(NtHeaders.OptionalHeader.DataDirectory[index].VirtualAddress);
+			return ReadAligned<T>(OptionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC
+				? OptionalHeader32.DataDirectory[index].VirtualAddress
+				: OptionalHeader64.DataDirectory[index].VirtualAddress);
 		}
 	};
 }

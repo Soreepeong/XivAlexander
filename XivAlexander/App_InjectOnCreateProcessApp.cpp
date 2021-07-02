@@ -78,7 +78,6 @@ public:
 		const auto process = Utils::Win32::Process(lpProcessInformation->hProcess, false);
 		auto isXiv = false;
 		try {
-
 			isXiv = true;  // TODO: DEBUG
 
 			auto pardir = process.PathOf().parent_path();
@@ -285,14 +284,16 @@ extern "C" __declspec(dllexport) int __stdcall PatchEntryPointForInjection(HANDL
 			pathBytesTarget = { &trampolineBuffer[trampolineLength], pathBytes.size_bytes() };
 		}
 
+		const auto rvaEntryPoint = mem.OptionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC ? mem.OptionalHeader32.AddressOfEntryPoint : mem.OptionalHeader64.AddressOfEntryPoint;
+
 		std::copy_n(pathBytes.begin(), pathBytesTarget.size_bytes(), pathBytesTarget.begin());
-		process.ReadMemory(mem.CurrentModule, mem.NtHeaders.OptionalHeader.AddressOfEntryPoint,
+		process.ReadMemory(mem.CurrentModule, rvaEntryPoint,
 			std::span(trampoline->buf_EntryPointBackup, sizeof trampoline->buf_EntryPointBackup));
 
 		const auto pRemote = process.VirtualAlloc<char>(nullptr, trampolineBuffer.size(), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 
 		trampoline->parameters = {
-			.EntryPoint = reinterpret_cast<char*>(mem.CurrentModule) + mem.NtHeaders.OptionalHeader.AddressOfEntryPoint,
+			.EntryPoint = reinterpret_cast<char*>(mem.CurrentModule) + rvaEntryPoint,
 			.EntryPointOriginalBytes = pRemote + offsetof(TrampolineTemplate, buf_EntryPointBackup),
 			.EntryPointOriginalLength = sizeof trampoline->buf_EntryPointBackup,
 			.TrampolineAddress = pRemote,
@@ -307,8 +308,8 @@ extern "C" __declspec(dllexport) int __stdcall PatchEntryPointForInjection(HANDL
 
 		EntryPointThunkTemplate thunk{};
 		thunk.CallTrampoline.fn.ptr = pRemote;
-		process.VirtualProtect(mem.CurrentModule, mem.NtHeaders.OptionalHeader.AddressOfEntryPoint, sizeof thunk, PAGE_EXECUTE_READWRITE);
-		process.WriteMemory(mem.CurrentModule, mem.NtHeaders.OptionalHeader.AddressOfEntryPoint, thunk);
+		process.VirtualProtect(mem.CurrentModule, rvaEntryPoint, sizeof thunk, PAGE_EXECUTE_READWRITE);
+		process.WriteMemory(mem.CurrentModule, rvaEntryPoint, thunk);
 		return 0;
 	} catch (std::exception& e) {
 		Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, L"XivAlexander",

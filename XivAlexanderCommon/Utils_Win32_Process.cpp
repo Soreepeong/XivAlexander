@@ -357,16 +357,30 @@ Utils::Win32::ModuleMemoryBlocks::ModuleMemoryBlocks(Process process, HMODULE hM
 	, CurrentModule(hModule)
 	, DosHeader(CurrentProcess.ReadMemory<IMAGE_DOS_HEADER>(CurrentModule,
 		0))
-	, NtHeaders(CurrentProcess.ReadMemory<IMAGE_NT_HEADERS>(CurrentModule, 
-		DosHeader.e_lfanew))
-	, SectionHeaders(CurrentProcess.ReadMemory<IMAGE_SECTION_HEADER>(CurrentModule, 
-		DosHeader.e_lfanew + sizeof NtHeaders, std::min<size_t>(64, NtHeaders.FileHeader.NumberOfSections))) {
+	, FileHeader(CurrentProcess.ReadMemory<IMAGE_FILE_HEADER>(CurrentModule,
+		DosHeader.e_lfanew + offsetof(IMAGE_NT_HEADERS32, FileHeader)))
+	, OptionalHeaderMagic(CurrentProcess.ReadMemory<WORD>(CurrentModule,
+		DosHeader.e_lfanew + offsetof(IMAGE_NT_HEADERS32, OptionalHeader)))
+	, SectionHeaders(CurrentProcess.ReadMemory<IMAGE_SECTION_HEADER>(CurrentModule,
+		DosHeader.e_lfanew + offsetof(IMAGE_NT_HEADERS32, OptionalHeader) + FileHeader.SizeOfOptionalHeader
+		, std::min<size_t>(64, FileHeader.NumberOfSections))) {
+
+	if (const auto optionalHeaderLength = std::min<size_t>(FileHeader.SizeOfOptionalHeader, 
+		OptionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC
+		? sizeof IMAGE_OPTIONAL_HEADER32
+		: (OptionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR64_MAGIC ? sizeof IMAGE_OPTIONAL_HEADER64 : 0)))
+		CurrentProcess.ReadMemory<char>(CurrentModule,
+			DosHeader.e_lfanew + offsetof(IMAGE_NT_HEADERS32, OptionalHeader),
+			std::span(OptionalHeaderRaw, optionalHeaderLength)
+			);
 }
 
 Utils::Win32::ModuleMemoryBlocks::~ModuleMemoryBlocks() = default;
 
 bool Utils::Win32::ModuleMemoryBlocks::AddressInDataDirectory(size_t rva, int directoryIndex) {
-	const auto& dir = NtHeaders.OptionalHeader.DataDirectory[directoryIndex];
+	const auto& dir = OptionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC
+		? OptionalHeader32.DataDirectory[directoryIndex]
+		: OptionalHeader64.DataDirectory[directoryIndex];
 	return dir.VirtualAddress <= rva && rva < dir.VirtualAddress + dir.Size;
 }
 
@@ -374,7 +388,10 @@ std::span<uint8_t> Utils::Win32::ModuleMemoryBlocks::Read(size_t rva, size_t max
 	if (!rva)  // treat as empty
 		return {};
 
-	for (const auto& dir : NtHeaders.OptionalHeader.DataDirectory) {
+	const auto& dirs = OptionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC
+		? OptionalHeader32.DataDirectory
+		: OptionalHeader64.DataDirectory;
+	for (const auto& dir : dirs) {
 		if (dir.VirtualAddress > rva || rva >= dir.VirtualAddress + dir.Size)
 			continue;
 		if (dir.Size > 0x4000000)

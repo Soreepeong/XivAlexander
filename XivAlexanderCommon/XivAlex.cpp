@@ -225,6 +225,7 @@ std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLauncher
 			},
 		};
 
+		/*  Enable this after figuring out how to inject to AnyCPU CLR process on entry.
 		std::wstring localAppData(PATHCCH_MAX_CCH, 0);
 		localAppData.resize(GetEnvironmentVariableW(L"LOCALAPPDATA", &localAppData[0], PATHCCH_MAX_CCH));
 		if (!localAppData.empty()) {
@@ -236,6 +237,7 @@ std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLauncher
 				info.RelatedApps.insert(info.RootPath / "Update.exe");
 			}
 		}
+		//*/
 
 		result.emplace(GameRegion::International, info);
 	}
