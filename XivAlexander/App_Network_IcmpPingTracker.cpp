@@ -52,7 +52,12 @@ public:
 
 				unsigned char sendBuf[32]{};
 				unsigned char replyBuf[sizeof(ICMP_ECHO_REPLY) + sizeof sendBuf + 8]{};
-
+				
+				logger->Format(LogCategory::SocketHook,
+					"Ping {} -> {}: track start",
+					Utils::ToString(m_pair.Source),
+					Utils::ToString(m_pair.Destination));
+				size_t consecutiveFailureCount = 0;
 				do {
 					const auto interval = std::max<DWORD>(1000, static_cast<DWORD>(std::min<uint64_t>(INT32_MAX, Tracker->NextBlankIn())));
 					const auto startTime = Utils::GetHighPerformanceCounter();
@@ -61,29 +66,30 @@ public:
 					const auto latency = endTime - startTime;
 					const auto waitTime = static_cast<DWORD>(interval - latency);
 					if (ok) {
+						consecutiveFailureCount = 0;
 						Tracker->AddValue(latency);
-						logger->Format(LogCategory::SocketHook,
-							"Ping {} -> {}: {}ms, mean={}+{}ms, median={}ms ({}ms ~ {}ms), next check in {}ms",
-							Utils::ToString(m_pair.Source),
-							Utils::ToString(m_pair.Destination),
-							latency, Tracker->Mean(), Tracker->Deviation(), Tracker->Median(), Tracker->Min(), Tracker->Max(), waitTime);
 					} else
+						consecutiveFailureCount++;
+					
+					if (WaitForSingleObject(m_hExitEvent, waitTime) != WAIT_TIMEOUT) {
 						logger->Format(LogCategory::SocketHook,
-							"Ping {} -> {}: failure, next check in {}ms",
+							"Ping {} -> {}: track end",
 							Utils::ToString(m_pair.Source),
-							Utils::ToString(m_pair.Destination),
-							waitTime);
-					if (WaitForSingleObject(m_hExitEvent, waitTime) != WAIT_TIMEOUT)
+							Utils::ToString(m_pair.Destination));
 						break;
+					}
+
+					if (consecutiveFailureCount >= 10) {
+						logger->Format<LogLevel::Warning>(LogCategory::SocketHook,
+							"Ping {} -> {}: track end due to 10 consecutive ping failures",
+							Utils::ToString(m_pair.Source),
+							Utils::ToString(m_pair.Destination));
+						break;
+					}
 				} while (true);
-				
-				logger->Format(LogCategory::SocketHook,
-					"Ping {} -> {}: track end",
-					Utils::ToString(m_pair.Source),
-					Utils::ToString(m_pair.Destination));
 			} catch (const std::exception& e) {
 				logger->Format<LogLevel::Error>(LogCategory::SocketHook,
-					"Ping {} -> {}: track end due to error: %s",
+					"Ping {} -> {}: track end due to error: {}",
 					Utils::ToString(m_pair.Source),
 					Utils::ToString(m_pair.Destination),
 					e.what());
