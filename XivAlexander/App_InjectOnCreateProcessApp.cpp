@@ -282,10 +282,11 @@ extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(Inj
 		VirtualProtect(param.EntryPoint, param.EntryPointOriginalLength, PAGE_EXECUTE_READ, &dummy);
 		VirtualFree(param.TrampolineAddress, 0, MEM_RELEASE);
 
-		RunBeforeAppInit();
 #ifdef _DEBUG
-		MessageBoxW(nullptr, Utils::Win32::Process::Current().PathOf().wstring().c_str(), L"Injected EntryPoint", MB_OK);
+		const auto process = Utils::Win32::Process::Current();
+		MessageBoxW(nullptr, std::format(L"PID: {}\nPath: {}\nCommand Line: {}", process.GetId(), process.PathOf().wstring(), GetCommandLineW()).c_str(), L"Injected EntryPoint", MB_OK);
 #endif
+		RunBeforeAppInit();
 		FreeLibraryAndExitThread(g_hInstance, 0);
 		}, p, 0, nullptr);
 	assert(h);
