@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "App_ConfigRepository.h"
 
-std::unique_ptr<App::Config> App::Config::s_pInstance;
+std::weak_ptr<App::Config> App::Config::s_instance;
 
 App::Config::BaseRepository::BaseRepository(Config* pConfig, std::filesystem::path path)
 	: m_pConfig(pConfig)
@@ -44,25 +44,35 @@ void App::Config::BaseRepository::Reload(bool announceChange) {
 		Save();
 }
 
-App::Config& App::Config::Instance() {
-	if (!s_pInstance) {
-		const auto dllDir = Utils::Win32::Process::Current().PathOf(g_hInstance).parent_path();
-		const auto regionAndVersion = XivAlex::ResolveGameReleaseRegion();
-		
-		s_pInstance = std::make_unique<Config>(
-			dllDir / "config.runtime.json",
-			dllDir / std::format(L"game.{}.{}.json",
-				std::get<0>(regionAndVersion),
-				std::get<1>(regionAndVersion))
-			);
+class App::Config::ConfigCreator : public Config {
+public:
+	ConfigCreator(std::wstring runtimeConfigPath, std::wstring gameInfoPath)
+		: Config(std::move(runtimeConfigPath), std::move(gameInfoPath)) {
 	}
-	return *s_pInstance;
-}
+	~ConfigCreator() override = default;
+};
 
-void App::Config::DestroyInstance() {
-	s_pInstance = nullptr;
-}
+std::shared_ptr<App::Config> App::Config::Acquire() {
+	
+	auto r = s_instance.lock();
+	if (!r) {
+		static std::mutex mtx;
+		std::lock_guard lock(mtx);
 
+		r = s_instance.lock();
+		if (!r) {
+			const auto dllDir = Utils::Win32::Process::Current().PathOf(g_hInstance).parent_path();
+			const auto regionAndVersion = XivAlex::ResolveGameReleaseRegion();
+			s_instance = r = std::make_shared<ConfigCreator>(
+				dllDir / "config.runtime.json",
+				dllDir / std::format(L"game.{}.{}.json",
+					std::get<0>(regionAndVersion),
+					std::get<1>(regionAndVersion))
+			);
+		}
+	}
+	return r;
+}
 
 App::Config::Config(std::wstring runtimeConfigPath, std::wstring gameInfoPath)
 	: Runtime(this, std::move(runtimeConfigPath))

@@ -342,9 +342,9 @@ public:
 };
 
 class App::Network::SocketHook::Implementation {
-	SocketHook* this_;
-
 public:
+	const std::shared_ptr<Config> m_config;
+	SocketHook* const this_;
 	XivAlexApp* const m_pApp;
 	DWORD const m_dwGameMainThreadId;
 	IcmpPingTracker m_pingTracker;
@@ -356,27 +356,28 @@ public:
 	Utils::CallOnDestruction::Multiple m_cleanupList;
 
 	Implementation(SocketHook* this_, XivAlexApp* pApp)
-		: this_(this_)
+		: m_config(Config::Acquire())
+		, this_(this_)
 		, m_pApp(pApp)
 		, m_dwGameMainThreadId(GetWindowThreadProcessId(pApp->GetGameWindowHandle(), nullptr)) {
 		auto reparse = [this](Config::ItemBase&) {
 			ParseTakeOverAddresses();
 			this->this_->ReleaseSockets();
 		};
-		m_cleanupList += Config::Instance().Game.Server_IpRange.OnChangeListener(reparse);
-		m_cleanupList += Config::Instance().Game.Server_PortRange.OnChangeListener(reparse);
-		m_cleanupList += Config::Instance().Runtime.TakeOverAllAddresses.OnChangeListener(reparse);
-		m_cleanupList += Config::Instance().Runtime.TakeOverPrivateAddresses.OnChangeListener(reparse);
-		m_cleanupList += Config::Instance().Runtime.TakeOverLoopbackAddresses.OnChangeListener(reparse);
-		m_cleanupList += Config::Instance().Runtime.TakeOverAllPorts.OnChangeListener(reparse);
+		m_cleanupList += m_config->Game.Server_IpRange.OnChangeListener(reparse);
+		m_cleanupList += m_config->Game.Server_PortRange.OnChangeListener(reparse);
+		m_cleanupList += m_config->Runtime.TakeOverAllAddresses.OnChangeListener(reparse);
+		m_cleanupList += m_config->Runtime.TakeOverPrivateAddresses.OnChangeListener(reparse);
+		m_cleanupList += m_config->Runtime.TakeOverLoopbackAddresses.OnChangeListener(reparse);
+		m_cleanupList += m_config->Runtime.TakeOverAllPorts.OnChangeListener(reparse);
 		ParseTakeOverAddresses();
 	}
 
 	~Implementation() = default;
 
 	void ParseTakeOverAddresses() {
-		const auto& game = Config::Instance().Game;
-		const auto& runtime = Config::Instance().Runtime;
+		const auto& game = m_config->Game;
+		const auto& runtime = m_config->Runtime;
 		try {
 			m_allowedIpRange = Utils::ParseIpRange(game.Server_IpRange, runtime.TakeOverAllAddresses, runtime.TakeOverPrivateAddresses, runtime.TakeOverLoopbackAddresses);
 		} catch (std::exception& e) {
@@ -482,7 +483,7 @@ void App::Network::SingleConnection::Implementation::ResolveAddresses() {
 		m_logger->Format(LogCategory::SocketHook, "{:x}: Local={}", m_socket, Utils::ToString(local));
 
 		// Set TCP delay here because SIO_TCP_SET_ACK_FREQUENCY seems to work only when localAddress is not 0.0.0.0.
-		if (Config::Instance().Runtime.ReducePacketDelay && reinterpret_cast<sockaddr_in*>(&local)->sin_addr.s_addr != INADDR_ANY) {
+		if (hook_->m_pImpl->m_config->Runtime.ReducePacketDelay && reinterpret_cast<sockaddr_in*>(&local)->sin_addr.s_addr != INADDR_ANY) {
 			SetTCPDelay();
 		}
 	}

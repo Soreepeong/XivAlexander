@@ -134,13 +134,15 @@ void Utils::Win32::SetThreadDescription(HANDLE hThread, const std::wstring& desc
 		);
 	SetThreadDescriptionT pfnSetThreadDescription = nullptr;
 
-	if (const auto hMod = Closeable::LoadedModule(LoadLibraryExW(L"kernel32.dll", Closeable::Handle::Null, LOAD_LIBRARY_SEARCH_SYSTEM32), nullptr))
+	if (const auto hMod = Closeable::LoadedModule(L"kernel32.dll", LOAD_LIBRARY_SEARCH_SYSTEM32, false))
 		pfnSetThreadDescription = reinterpret_cast<SetThreadDescriptionT>(GetProcAddress(hMod, "SetThreadDescription"));
-	else if (const auto hMod = Closeable::LoadedModule(LoadLibraryExW(L"KernelBase.dll", Closeable::Handle::Null, LOAD_LIBRARY_SEARCH_SYSTEM32), nullptr))
+	else if (const auto hMod = Closeable::LoadedModule(L"KernelBase.dll", LOAD_LIBRARY_SEARCH_SYSTEM32, false))
 		pfnSetThreadDescription = reinterpret_cast<SetThreadDescriptionT>(GetProcAddress(hMod, "SetThreadDescription"));
-
+	
 	if (pfnSetThreadDescription)
 		pfnSetThreadDescription(hThread, description.data());
+	else
+		DebugPrint(L"SetThreadDescription not supported");
 }
 
 void Utils::Win32::SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked) {

@@ -80,6 +80,7 @@ App::Misc::Logger::Logger()
 		std::lock_guard lock(m_pImpl->m_itemLock);
 		std::for_each(m_pImpl->m_items.begin(), m_pImpl->m_items.end(), [&cb](LogItem& item) { cb(item); });
 		}) {
+	Utils::Win32::DebugPrint(L"Logger: New");
 }
 
 std::shared_ptr<App::Misc::Logger> App::Misc::Logger::Acquire() {
@@ -95,14 +96,16 @@ std::shared_ptr<App::Misc::Logger> App::Misc::Logger::Acquire() {
 	return r;
 }
 
-App::Misc::Logger::~Logger() = default;
+App::Misc::Logger::~Logger() {
+	Utils::Win32::DebugPrint(L"Logger: Destroy");
+}
 
 void App::Misc::Logger::Log(LogCategory category, const char* s, LogLevel level) {
-	Log(category, std::string(s));
+	Log(category, std::string(s), level);
 }
 
 void App::Misc::Logger::Log(LogCategory category, const char8_t* s, LogLevel level) {
-	Log(category, reinterpret_cast<const char*>(s));
+	Log(category, reinterpret_cast<const char*>(s), level);
 }
 
 void App::Misc::Logger::Log(LogCategory category, const std::string & s, LogLevel level) {

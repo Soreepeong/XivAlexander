@@ -138,7 +138,6 @@ bool Utils::Win32::Process::IsCurrentProcessPseudoHandle() const {
 }
 
 bool Utils::Win32::Process::IsProcess64Bits() const {
-	DebugPrint(L"PID: {}\n", GetProcessId(m_object));
 	BOOL res;
 	if (IsWow64Process(m_object, &res) && res) {
 		return false;
@@ -350,6 +349,11 @@ DWORD Utils::Win32::Process::VirtualProtect(void* lpBase, size_t offset, size_t 
 	if (!VirtualProtectEx(m_object, static_cast<char*>(lpBase) + offset, length, value, &old))
 		throw Error("VirtualProtectEx");
 	return old;
+}
+
+void Utils::Win32::Process::FlushInstructionsCache(void* lpBase, size_t size) const {
+	if (!FlushInstructionCache(m_object, lpBase, size))
+		throw Error("FlushInstructionsCache");
 }
 
 Utils::Win32::ModuleMemoryBlocks::ModuleMemoryBlocks(Process process, HMODULE hModule)

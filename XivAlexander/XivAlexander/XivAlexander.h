@@ -29,11 +29,17 @@ namespace XivAlexDll {
 		void* EntryPointOriginalBytes;
 		size_t EntryPointOriginalLength;
 		void* TrampolineAddress;
+
+		struct {
+			HANDLE hContinuableEvent;
+			HANDLE hWorkerThread;
+		} Internal;
 	};
 
-	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall InjectEntryPoint(InjectEntryPointParameters* param);
+	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall InjectEntryPoint(InjectEntryPointParameters* pParam__);
 	extern "C" XIVALEXANDER_DLLEXPORT int __stdcall EnableXivAlexander(size_t bEnable);
 	extern "C" XIVALEXANDER_DLLEXPORT int __stdcall ReloadConfiguration(void* lpReserved);
+	extern "C" XIVALEXANDER_DLLEXPORT int __stdcall DisableAllApps(void* lpReserved);
 	extern "C" XIVALEXANDER_DLLEXPORT int __stdcall CallFreeLibrary(void*);
 
 }

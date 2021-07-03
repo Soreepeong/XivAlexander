@@ -55,7 +55,9 @@ App::Window::BaseWindow::BaseWindow(const WNDCLASSEXW& wndclassex,
 	_In_ int nHeight,
 	_In_opt_ HWND hWndParent,
 	_In_opt_ HMENU hMenu)
-	: m_logger(Misc::Logger::Acquire())
+	: m_hShCore(L"Shcore.dll", LOAD_LIBRARY_SEARCH_SYSTEM32, false)
+	, m_config(Config::Acquire())
+	, m_logger(Misc::Logger::Acquire())
 	, m_windowClass(wndclassex)
 	, m_hWnd(InternalCreateWindow(wndclassex, lpWindowName, dwStyle, dwExStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, this)) {
 }
@@ -102,9 +104,8 @@ double App::Window::BaseWindow::GetZoom() const {
 		UINT newDpiY = 96;
 
 		bool fallback = false;
-		const auto hShcore = Utils::Win32::Closeable::LoadedModule(LoadLibraryExW(L"Shcore.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32), nullptr);
-		if (hShcore) {
-			const auto pGetDpiForMonitor = reinterpret_cast<decltype(GetDpiForMonitor)*>(GetProcAddress(hShcore, "GetDpiForMonitor"));
+		if (m_hShCore) {
+			const auto pGetDpiForMonitor = m_hShCore.GetProcAddress<decltype(GetDpiForMonitor)>("GetDpiForMonitor");
 			if (!pGetDpiForMonitor || FAILED(pGetDpiForMonitor(hMonitor, MONITOR_DPI_TYPE::MDT_EFFECTIVE_DPI, &newDpiX, &newDpiY)))
 				fallback = true;
 		}

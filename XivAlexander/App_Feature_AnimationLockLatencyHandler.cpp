@@ -20,6 +20,8 @@ public:
 
 	class SingleConnectionHandler {
 
+		const std::shared_ptr<Config> m_config;
+
 		struct PendingAction {
 			uint32_t ActionId;
 			uint32_t Sequence;
@@ -60,12 +62,13 @@ public:
 		Implementation* m_pImpl;
 		Network::SingleConnection& conn;
 		SingleConnectionHandler(Implementation* pImpl, Network::SingleConnection& conn)
-			: m_pImpl(pImpl)
+			: m_config(Config::Acquire())
+			, m_pImpl(pImpl)
 			, conn(conn) {
 			using namespace Network::Structures;
 
-			const auto& gameConfig = Config::Instance().Game;
-			const auto& runtimeConfig = Config::Instance().Runtime;
+			const auto& gameConfig = m_config->Game;
+			const auto& runtimeConfig = m_config->Runtime;
 
 			conn.AddOutgoingFFXIVMessageHandler(this, [&](FFXIVMessage* pMessage, std::vector<uint8_t>&) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
@@ -286,7 +289,7 @@ public:
 		}
 
 		int64_t ResolveAdjustedExtraDelay(const int64_t rtt, std::stringstream& description) {
-			const auto& runtimeConfig = Config::Instance().Runtime;
+			const auto& runtimeConfig = m_config->Runtime;
 			const auto pingTracker = conn.GetPingLatencyTracker();
 
 			const auto socketLatency = conn.FetchSocketLatency();

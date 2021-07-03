@@ -11,10 +11,14 @@ namespace App {
 		class DebuggerDetectionDisabler;
 		class Logger;
 	}
+
+	class Config;
 	
 	class XivAlexApp {
+		const Utils::Win32::Closeable::LoadedModule m_module;
 		const std::shared_ptr<Misc::DebuggerDetectionDisabler> m_detectionDisabler;
 		const std::shared_ptr<Misc::Logger> m_logger;
+		const std::shared_ptr<Config> m_config;
 		
 		class Implementation;
 		friend class Implementation;

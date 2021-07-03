@@ -379,6 +379,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 	const auto cleanup = Utils::CallOnDestruction([&injectedModule, &unloadRequired]() {
 		if (unloadRequired)
 			injectedModule.Call("EnableXivAlexander", 0, "EnableXivAlexander(0)");
+		// injectedModule.Call("CallFreeLibrary", injectedModule.Address(), "CallFreeLibrary");
 		});
 
 	if (loaderAction == LoaderAction::Load) {
@@ -467,7 +468,6 @@ int WINAPI wWinMain(
 
 	const auto dllDir = Utils::Win32::Process::Current().PathOf().parent_path();
 	const auto dllPath = dllDir / XivAlex::XivAlexDllNameW;
-	Utils::Win32::Closeable::LoadedModule hModule;
 
 	try {
 		CheckPackageVersions();

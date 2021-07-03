@@ -92,6 +92,7 @@ namespace Utils::Win32 {
 		}
 		void* VirtualAlloc(void* lpBase, size_t size, DWORD flAllocType, DWORD flProtect) const;
 		DWORD VirtualProtect(void* lpBase, size_t offset, size_t length, DWORD value) const;
+		void FlushInstructionsCache(void* lpBase, size_t size) const;
 	};
 
 	class ModuleMemoryBlocks {

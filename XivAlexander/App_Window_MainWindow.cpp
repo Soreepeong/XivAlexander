@@ -50,10 +50,10 @@ App::Window::Main::Main(XivAlexApp *pApp, std::function<void()> unloadFunction)
 
 	SetTimer(m_hWnd, TimerIdRepaint, 1000, nullptr);
 
-	m_cleanup += App::Config::Instance().Runtime.ShowControlWindow.OnChangeListener([this](App::Config::ItemBase&) {
-		ShowWindow(m_hWnd, App::Config::Instance().Runtime.ShowControlWindow ? SW_SHOW : SW_HIDE);
+	m_cleanup += m_config->Runtime.ShowControlWindow.OnChangeListener([this](App::Config::ItemBase&) {
+		ShowWindow(m_hWnd, m_config->Runtime.ShowControlWindow ? SW_SHOW : SW_HIDE);
 	});
-	if (App::Config::Instance().Runtime.ShowControlWindow)
+	if (m_config->Runtime.ShowControlWindow)
 		ShowWindow(m_hWnd, SW_SHOW);
 
 	m_cleanup += m_pApp->GetSocketHook()->OnSocketFound([this](Network::SingleConnection&) {
@@ -71,14 +71,16 @@ App::Window::Main::~Main() {
 
 LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	if (uMsg == WM_CLOSE) {
-		if (!lParam && MessageBoxW(m_hWnd, L"Closing this window will unload XivAlexander. Disable \"Show Control Window\" from the menu to hide this window. Proceed?", L"XivAlexander", MB_YESNO | MB_ICONQUESTION) == IDNO) {
-			return 0;
-		}
+		if (lParam)
+			DestroyWindow(m_hWnd);
+		else if (MessageBoxW(m_hWnd, L"Closing this window will unload XivAlexander. Disable \"Show Control Window\" from the menu to hide this window. Proceed?", L"XivAlexander", MB_YESNO | MB_ICONQUESTION) == IDYES)
+			m_triggerUnload();
+		return 0;
 	} else if (uMsg == WM_INITMENUPOPUP) {
 		RepopulateMenu(GetMenu(m_hWnd));
 	} else if (uMsg == WM_COMMAND) {
 		if (!lParam) {
-			auto& config = App::Config::Instance().Runtime;
+			auto& config = m_config->Runtime;
 			switch (LOWORD(wParam)) {
 				
 				case ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP:
@@ -161,14 +163,14 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					if (m_runtimeConfigEditor && !m_runtimeConfigEditor->IsDestroyed())
 						SetFocus(m_runtimeConfigEditor->GetHandle());
 					else
-						m_runtimeConfigEditor = std::make_unique<Config>(&App::Config::Instance().Runtime);
+						m_runtimeConfigEditor = std::make_unique<Config>(&m_config->Runtime);
 					return 0;
 
 				case ID_TRAYMENU_EDITOPCODECONFIGURATION:
 					if (m_gameConfigEditor && !m_gameConfigEditor->IsDestroyed())
 						SetFocus(m_gameConfigEditor->GetHandle());
 					else
-						m_gameConfigEditor = std::make_unique<Config>(&App::Config::Instance().Game);
+						m_gameConfigEditor = std::make_unique<Config>(&m_config->Game);
 					return 0;
 
 					/***************************************************************/
@@ -293,7 +295,7 @@ void App::Window::Main::OnDestroy() {
 }
 
 void App::Window::Main::RepopulateMenu(HMENU hMenu) {
-	const auto& config = App::Config::Instance().Runtime;
+	const auto& config = m_config->Runtime;
 
 	Utils::Win32::SetMenuState(hMenu, ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST);
 	

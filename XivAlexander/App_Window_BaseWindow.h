@@ -16,7 +16,9 @@ namespace App::Window {
         bool m_bDestroyed = false;
 
     protected:
-        std::shared_ptr<Misc::Logger> const m_logger;
+		const Utils::Win32::Closeable::LoadedModule m_hShCore;
+		const std::shared_ptr<Config> m_config;
+        const std::shared_ptr<Misc::Logger> m_logger;
         const WNDCLASSEXW m_windowClass;
         HWND m_hWnd;
 

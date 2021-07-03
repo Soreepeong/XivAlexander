@@ -15,7 +15,7 @@ namespace Utils::Win32 {
 
 	template <typename ... Args>
 	void DebugPrint(const wchar_t* format, Args ... args) {
-		OutputDebugStringW(std::format(format, std::forward<Args>(args)...).c_str());
+		OutputDebugStringW(std::format(L"{}\n", std::format(format, std::forward<Args>(args)...)).c_str());
 	}
 
 	template <typename ... Args>
@@ -59,6 +59,6 @@ namespace Utils::Win32 {
 			: Error(errorCode, std::format(format, std::forward<Args>(args)...)) {
 		}
 
-		int Code() const;
+		[[nodiscard]] int Code() const;
 	};
 }

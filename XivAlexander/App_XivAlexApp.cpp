@@ -73,7 +73,7 @@ public:
 				this->this_->m_bInterrnalUnloadInitiated = true;
 				this->this_->m_bMainWindowDestroyed = true;
 
-				XivAlexDll::EnableXivAlexander(0);
+				XivAlexDll::DisableAllApps(nullptr);
 
 				return bridger->bridge(hwnd, msg, wParam, lParam);
 			}
@@ -100,14 +100,11 @@ public:
 			}
 
 			this->this_->m_bInterrnalUnloadInitiated = true;
-			Utils::Win32::Closeable::Handle unloader(
-				CreateThread(nullptr, 0, [](void*) -> DWORD {
-					XivAlexDll::EnableXivAlexander(0);
-					FreeLibraryAndExitThread(g_hInstance, 0);
-				}, nullptr, 0, nullptr),
-				Utils::Win32::Closeable::Handle::Null,
-				"Failed to create unloader");
+			Utils::Win32::Closeable::LoadedModule::From(g_hInstance).FreeAfterRunInNewThread([]() {
+				XivAlexDll::DisableAllApps(nullptr);
+				return 0U;
 			});
+		});
 	}
 
 	Implementation(XivAlexApp* this_)
@@ -117,14 +114,10 @@ public:
 	}
 
 	~Implementation() {
-		Config::Instance().SetQuitting();
 		m_cleanup.Clear();
 	}
 
 	void Load() {
-		Config::Instance();
-		m_cleanup += []() { Config::DestroyInstance(); };
-
 		Scintilla_RegisterClasses(g_hInstance);
 		m_cleanup += []() { Scintilla_ReleaseResources(); };
 
@@ -143,7 +136,7 @@ public:
 		SetupTrayWindow();
 		m_cleanup += [this]() { m_trayWindow = nullptr; };
 
-		auto& config = Config::Instance().Runtime;
+		auto& config = this_->m_config->Runtime;
 
 		if (config.AlwaysOnTop)
 			SetWindowPos(m_hGameMainWindow, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
@@ -215,7 +208,7 @@ public:
 				SendMessage(this->m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
 			WaitForSingleObject(this->this_->m_hCustomMessageLoop, INFINITE);
 			
-			XivAlexDll::EnableXivAlexander(0);
+			XivAlexDll::DisableAllApps(nullptr);
 
 			// hook is released, and "this" should be invalid at this point.
 			::ExitProcess(exitCode);
@@ -224,15 +217,13 @@ public:
 };
 
 App::XivAlexApp::XivAlexApp()
-	: m_detectionDisabler(Misc::DebuggerDetectionDisabler::Acquire())
+	: m_module(Utils::Win32::Closeable::LoadedModule::From(g_hInstance))
+	, m_detectionDisabler(Misc::DebuggerDetectionDisabler::Acquire())
 	, m_logger(Misc::Logger::Acquire())
+	, m_config(Config::Acquire())
 	, m_pImpl(std::make_unique<Implementation>(this)) {
 
-	auto bLibraryLoaded = false;
 	try {
-		LoadLibraryW(Utils::Win32::Process::Current().PathOf(g_hInstance).c_str());
-		bLibraryLoaded = true;
-
 		m_hCustomMessageLoop = Utils::Win32::Closeable::Handle(
 			CreateThread(nullptr, 0, [](void* pThis) {
 				return static_cast<XivAlexApp*>(pThis)->CustomMessageLoopBody();
@@ -240,8 +231,6 @@ App::XivAlexApp::XivAlexApp()
 			Utils::Win32::Closeable::Handle::Null, "XivAlexApp::CreateThread(CustomMessageLoop)"
 		);
 	} catch (...) {
-		if (bLibraryLoaded)
-			FreeLibrary(g_hInstance);
 		throw;
 	}
 }
@@ -421,9 +410,9 @@ extern "C" __declspec(dllexport) int __stdcall XivAlexDll::EnableXivAlexander(si
 
 extern "C" __declspec(dllexport) int __stdcall XivAlexDll::ReloadConfiguration(void* lpReserved) {
 	if (s_xivAlexApp) {
-		App::Config::Instance().Runtime.Reload(true);
-		App::Config::Instance().Game.Reload(true);
+		const auto config = App::Config::Acquire();
+		config->Runtime.Reload(true);
+		config->Game.Reload(true);
 	}
 	return 0;
 }
-

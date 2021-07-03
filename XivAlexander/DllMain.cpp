@@ -17,6 +17,12 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 	return TRUE;
 }
 
+extern "C" __declspec(dllexport) int __stdcall XivAlexDll::DisableAllApps(void*) {
+	EnableXivAlexander(0);
+	EnableInjectOnCreateProcess(0);
+	return 0;
+}
+
 extern "C" __declspec(dllexport) int __stdcall XivAlexDll::CallFreeLibrary(void*) {
 	FreeLibraryAndExitThread(g_hInstance, 0);
 }

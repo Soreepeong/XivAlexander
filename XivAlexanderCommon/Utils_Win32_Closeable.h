@@ -1,6 +1,8 @@
 #pragma once
 
 #include <span>
+#include <functional>
+
 #include <windef.h>
 
 #include "Utils_Win32.h"
@@ -95,6 +97,11 @@ namespace Utils::Win32::Closeable {
 			m_bOwnership = true;
 		}
 	};
+	
+	using Icon = Base<HICON, DestroyIcon>;
+	using GlobalResource = Base<HGLOBAL, FreeResource>;
+	using CreatedDC = Base<HDC, DeleteDC>;
+	using FindFile = Base<HANDLE, FindClose>;
 
 	class Handle : public Base<HANDLE, CloseHandle> {
 
@@ -106,12 +113,23 @@ namespace Utils::Win32::Closeable {
 		Handle(const Handle& r);
 		Handle& operator=(Handle&& r) noexcept;
 		Handle& operator =(const Handle& r);
+		
+		Handle& DuplicateFrom(HANDLE hProcess, HANDLE hSourceHandle, bool bInheritable = false);
+		Handle& DuplicateFrom(HANDLE hSourceHandle, bool bInheritable = false);
 	};
 	
-	using Icon = Base<HICON, DestroyIcon>;
-	using GlobalResource = Base<HGLOBAL, FreeResource>;
-	using CreatedDC = Base<HDC, DeleteDC>;
-	using LoadedModule = Base<HMODULE, FreeLibrary>;
-	using FindFile = Base<HANDLE, FindClose>;
+	class LoadedModule : public Base<HMODULE, FreeLibrary> {
+	public:
+		using Base<HMODULE, FreeLibrary>::Base;
+		explicit LoadedModule(const wchar_t* pwszFileName, DWORD dwFlags = 0, bool bRequire = true);
+		static LoadedModule From(HINSTANCE hInstance);
+		
+		void FreeAfterRunInNewThread(std::function<DWORD()>);
+		template<typename T>
+		T* GetProcAddress(const char* szName) const {
+			return reinterpret_cast<T*>(::GetProcAddress(m_object, szName));
+		}
+
+	};
 }
 

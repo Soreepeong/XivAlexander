@@ -10,6 +10,8 @@ namespace App {
 		template<typename T>
 		class Item;
 
+		class ConfigCreator;
+
 		class ItemBase {
 			friend class BaseRepository;
 			template<typename T>
@@ -175,20 +177,20 @@ namespace App {
 			};
 		};
 
-	private:
-		static std::unique_ptr<Config> s_pInstance;
+	protected:
+		static std::weak_ptr<Config> s_instance;
 		bool m_bSuppressSave = false;
+		
+		Config(std::wstring runtimeConfigPath, std::wstring gameInfoPath);
 
 	public:
 		Runtime Runtime;
 		Game Game;
 
-		Config(std::wstring runtimeConfigPath, std::wstring gameInfoPath);
-		~Config();
+		virtual ~Config();
 
 		void SetQuitting();
 
-		static Config& Instance();
-		static void DestroyInstance();
+		static std::shared_ptr<Config> Acquire();
 	};
 }

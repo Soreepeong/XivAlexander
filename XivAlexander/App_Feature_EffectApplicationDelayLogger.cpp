@@ -7,15 +7,18 @@ class App::Feature::EffectApplicationDelayLogger::Implementation {
 public:
 	
 	class SingleConnectionHandler {
+		const std::shared_ptr<Config> m_config;
+	
 	public:
 		Implementation* m_pImpl;
 		Network::SingleConnection& conn;
 		SingleConnectionHandler(Implementation* pImpl, Network::SingleConnection& conn)
-			: m_pImpl(pImpl)
+			: m_config(Config::Acquire())
+			, m_pImpl(pImpl)
 			, conn(conn) {
 			using namespace Network::Structures;
 
-			const auto& config = Config::Instance().Game;
+			const auto& config = m_config->Game;
 
 			conn.AddIncomingFFXIVMessageHandler(this, [&](FFXIVMessage* pMessage, std::vector<uint8_t>& additionalMessages) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {

@@ -83,7 +83,6 @@ namespace App::Misc::Hooks {
 				if (*m_destructed)
 					return;
 				
-				OutputDebugStringA(std::format("{}\n", this->m_sName).c_str());
 				HookDisable();
 				m_detour = nullptr;
 				});
@@ -125,15 +124,13 @@ namespace App::Misc::Hooks {
 		}
 	};
 
-	const void* FindImportAddressTableItem(const char* szDllName, const char* szFunctionName, uint32_t hintOrOrdinal);
-
 	template<typename R, typename ...Args>
 	class ImportedFunction : public Function<R, Args...> {
 		using Function<R, Args...>::FunctionType;
 
 	public:
 		ImportedFunction(const char* szName, const char* szDllName, const char* szFunctionName, uint32_t hintOrOrdinal = 0)
-			: Function<R, Args...>(szName, reinterpret_cast<FunctionType>(FindImportAddressTableItem(szDllName, szFunctionName, hintOrOrdinal))) {
+			: Function<R, Args...>(szName, reinterpret_cast<FunctionType>(Utils::Win32::Process::Current().FindImportedFunction(GetModuleHandleW(nullptr), szDllName, szFunctionName, hintOrOrdinal).first)) {
 			this->m_bridge = static_cast<FunctionType>(*reinterpret_cast<void**>(this->m_pAddress));
 		}
 

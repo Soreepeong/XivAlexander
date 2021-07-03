@@ -225,7 +225,7 @@ LRESULT App::Window::Log::OnNotify(const LPNMHDR nmhdr) {
 }
 
 void App::Window::Log::OnDestroy() {
-	Config::Instance().Runtime.ShowLoggingWindow = false;
+	m_config->Runtime.ShowLoggingWindow = false;
 }
 
 void App::Window::Log::ResizeMargin() {

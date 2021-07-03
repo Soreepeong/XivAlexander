@@ -33,16 +33,14 @@ class App::InjectOnCreateProcessApp::Implementation {
 		LPCSTR,
 		LPSTARTUPINFOA,
 		LPPROCESS_INFORMATION> CreateProcessA{ "CreateProcessA", ::CreateProcessA };
-
-	Utils::Win32::Closeable::LoadedModule m_module;
+	
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
 public:
 	bool InjectAll = false;
 	bool InjectGameOnly = false;
 	
-	Implementation()
-		: m_module(LoadLibraryW(Utils::Win32::Process::Current().PathOf(g_hInstance).c_str()), nullptr) {
+	Implementation() {
 		m_cleanup += CreateProcessW.SetHook([this](_In_opt_ LPCWSTR lpApplicationName, _Inout_opt_ LPWSTR lpCommandLine, _In_opt_ LPSECURITY_ATTRIBUTES lpProcessAttributes, _In_opt_ LPSECURITY_ATTRIBUTES lpThreadAttributes, _In_ BOOL bInheritHandles, _In_ DWORD dwCreationFlags, _In_opt_ LPVOID lpEnvironment, _In_opt_ LPCWSTR lpCurrentDirectory, _In_ LPSTARTUPINFOW lpStartupInfo, _Out_ LPPROCESS_INFORMATION lpProcessInformation) -> BOOL {
 			const bool noOperation = dwCreationFlags & (DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS);
 			const auto result = CreateProcessW.bridge(
@@ -195,7 +193,8 @@ public:
 };
 
 App::InjectOnCreateProcessApp::InjectOnCreateProcessApp()
-	: m_detectionDisabler(Misc::DebuggerDetectionDisabler::Acquire())
+	: m_module(Utils::Win32::Closeable::LoadedModule::From(g_hInstance))
+	, m_detectionDisabler(Misc::DebuggerDetectionDisabler::Acquire())
 	, m_pImpl(std::make_unique<Implementation>()) {
 }
 
@@ -226,72 +225,83 @@ extern "C" __declspec(dllexport) int __stdcall XivAlexDll::EnableInjectOnCreateP
 	}
 }
 
-static void RunBeforeAppInit() {
-	auto filename = Utils::Win32::Process::Current().PathOf().filename().wstring();
+static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
+	const auto process = Utils::Win32::Process::Current();	auto filename = process.PathOf().filename().wstring();
 	CharLowerW(&filename[0]);
 	s_injectOnCreateProcessApp = std::make_unique<App::InjectOnCreateProcessApp>();
-	if (filename == XivAlex::GameExecutableNameW) {
 
-		// the game might restart itself
-		s_injectOnCreateProcessApp->SetFlags(XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly);
+	if (filename != XivAlex::GameExecutableNameW)
+		return; // not the game process; don't load XivAlex app
 
-		std::thread([]() {
-			try {
-				if (WaitForInputIdle(GetCurrentProcess(), 10000) == WAIT_TIMEOUT)
-					throw std::runtime_error("Timed out waiting for the game to run.");
+	// the game might restart itself for whatever reason.
+	s_injectOnCreateProcessApp->SetFlags(XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly);
 
-				HWND hwnd = nullptr;
-				while (WaitForSingleObject(GetCurrentProcess(), 100) == WAIT_TIMEOUT) {
-					hwnd = nullptr;
-					while ((hwnd = FindWindowExW(nullptr, hwnd, L"FFXIVGAME", nullptr))) {
-						DWORD pid;
-						GetWindowThreadProcessId(hwnd, &pid);
-						if (pid == GetCurrentProcessId())
-							break;
-					}
-					if (hwnd && IsWindowVisible(hwnd))
-						break;
-				}
-				if (!hwnd)
-					throw std::runtime_error("Game process exited before initialization.");
+	// let original entry point continue execution.
+	SetEvent(hContinuableEvent);
 
-				XivAlexDll::EnableXivAlexander(1);
+	try {
+		if (WaitForInputIdle(GetCurrentProcess(), 10000) == WAIT_TIMEOUT)
+			throw std::runtime_error("Timed out waiting for the game to run.");
 
-			} catch (std::exception& e) {
-				Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, L"XivAlexander",
-					L"Failed to load XivAlexander into the game process: {}\n\n"
-					L"Process ID: {}",
-					e.what(), GetCurrentProcessId());
+		HWND hwnd = nullptr;
+		while (WaitForSingleObject(GetCurrentProcess(), 100) == WAIT_TIMEOUT) {
+			hwnd = nullptr;
+			while ((hwnd = FindWindowExW(nullptr, hwnd, L"FFXIVGAME", nullptr))) {
+				DWORD pid;
+				GetWindowThreadProcessId(hwnd, &pid);
+				if (pid == GetCurrentProcessId())
+					break;
 			}
+			if (hwnd && IsWindowVisible(hwnd))
+				break;
+		}
+		if (!hwnd)
+			throw std::runtime_error("Game process exited before initialization.");
+		XivAlexDll::EnableXivAlexander(1);
 
-			return 0;
-			}).detach();
+	} catch (std::exception& e) {
+		Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, L"XivAlexander",
+			L"Failed to load XivAlexander into the game process: {}\n\n"
+			L"Process ID: {}",
+			e.what(), GetCurrentProcessId());
 	}
 }
 
-extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters * p) {
-	// conjecture: not going to allocate stack or something yet, so must use the minimum; run stuff on thread
-	// maybe figure out why won't it work if the work isn't done on a separate thread (with a separate stack)
-	const auto h = CreateThread(nullptr, 0, [](void* param_) -> DWORD {
-		// create copy, since we are going to do VirtualFree on the address containing param soon
-		const InjectEntryPointParameters param = *static_cast<InjectEntryPointParameters*>(param_);
-
-		DWORD dummy;
-		memcpy(param.EntryPoint, param.EntryPointOriginalBytes, param.EntryPointOriginalLength);
-		FlushInstructionCache(GetCurrentProcess(), param.EntryPoint, param.EntryPointOriginalLength);
-		VirtualProtect(param.EntryPoint, param.EntryPointOriginalLength, PAGE_EXECUTE_READ, &dummy);
-		VirtualFree(param.TrampolineAddress, 0, MEM_RELEASE);
-
-#ifdef _DEBUG
+extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters* pParam__) {
+	pParam__->Internal.hContinuableEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+	pParam__->Internal.hWorkerThread = CreateThread(nullptr, 0, [](void* pParam_) -> DWORD {
 		const auto process = Utils::Win32::Process::Current();
-		MessageBoxW(nullptr, std::format(L"PID: {}\nPath: {}\nCommand Line: {}", process.GetId(), process.PathOf().wstring(), GetCommandLineW()).c_str(), L"Injected EntryPoint", MB_OK);
-#endif
-		RunBeforeAppInit();
+		try {
+			const auto pParam = static_cast<InjectEntryPointParameters*>(pParam_);
+			Utils::Win32::Closeable::Handle hContinueNotify;
+			hContinueNotify.DuplicateFrom(pParam->Internal.hContinuableEvent);
+			process.WriteMemory(pParam->EntryPoint, pParam->EntryPointOriginalBytes, pParam->EntryPointOriginalLength);
+			process.FlushInstructionsCache(pParam->EntryPoint, pParam->EntryPointOriginalLength);
+			process.VirtualProtect(pParam->EntryPoint, 0, pParam->EntryPointOriginalLength, PAGE_EXECUTE_READ);
+
+	#ifdef _DEBUG
+			MessageBoxW(nullptr, std::format(L"PID: {}\nPath: {}\nCommand Line: {}", process.GetId(), process.PathOf().wstring(), GetCommandLineW()).c_str(), L"Injected EntryPoint", MB_OK);
+	#endif
+				
+			InitializeBeforeOriginalEntryPoint(hContinueNotify);
+			SetEvent(hContinueNotify);
+		} catch (std::exception& e) {
+			MessageBoxW(nullptr, std::format(
+				L"Could not load this process.\nError: {}\n\nPID: {}\nPath: {}\nCommand Line: {}", e.what(),
+				process.GetId(), process.PathOf().wstring(), GetCommandLineW()
+			).c_str(), L"XivAlexander Loader", MB_OK | MB_ICONERROR);
+			TerminateProcess(GetCurrentProcess(), 1);
+		}
 		FreeLibraryAndExitThread(g_hInstance, 0);
-		}, p, 0, nullptr);
-	assert(h);
-	WaitForSingleObject(h, INFINITE);
-	CloseHandle(h);
+	}, pParam__, 0, nullptr);
+	assert(pParam__->Internal.hContinuableEvent);
+	assert(pParam__->Internal.hWorkerThread);
+	WaitForSingleObject(pParam__->Internal.hContinuableEvent, INFINITE);
+	CloseHandle(pParam__->Internal.hContinuableEvent);
+	CloseHandle(pParam__->Internal.hWorkerThread);
+
+	// this invalidates "p" too
+	VirtualFree(pParam__->TrampolineAddress, 0, MEM_RELEASE);
 }
 
 extern "C" __declspec(dllexport) int __stdcall XivAlexDll::PatchEntryPointForInjection(HANDLE hProcess) {

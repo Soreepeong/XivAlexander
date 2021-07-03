@@ -8,10 +8,13 @@ class App::Misc::DebuggerDetectionDisabler::Implementation {
 
 public:
 	Implementation() {
+		Utils::Win32::DebugPrint(L"DebuggerDetectionDisabler: New");
 		m_cleanup += IsDebuggerPresent.SetHook([]() {return FALSE; });
 	}
 
-	~Implementation() = default;
+	~Implementation() {
+		Utils::Win32::DebugPrint(L"DebuggerDetectionDisabler: Destroy");
+	}
 };
 
 class App::Misc::DebuggerDetectionDisabler::DebuggerDetectionDisablerCreator : public DebuggerDetectionDisabler {
