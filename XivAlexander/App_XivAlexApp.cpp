@@ -50,6 +50,8 @@ public:
 
 	std::shared_ptr<Misc::Hooks::WndProcFunction> m_gameWindowSubclass;
 
+	Misc::Hooks::ImportedFunction<void, UINT> ExitProcess{"ExitProcess", "kernel32.dll", "ExitProcess"};
+
 	LRESULT CALLBACK SubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 		m_mainThreadId = GetCurrentThreadId();
 		if (m_nWndProcDepth == 0) {
@@ -205,6 +207,19 @@ public:
 			});
 		m_cleanup += [this]() { m_logWindow = nullptr; };
 
+		m_cleanup += ExitProcess.SetHook([this](UINT exitCode) {
+			this->this_->m_bInterrnalUnloadInitiated = true;
+			this->this_->m_bMainWindowDestroyed = true;
+					
+			if (this->m_trayWindow)
+				SendMessage(this->m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
+			WaitForSingleObject(this->this_->m_hCustomMessageLoop, INFINITE);
+			
+			XivAlexDll::EnableXivAlexander(0);
+
+			// hook is released, and "this" should be invalid at this point.
+			::ExitProcess(exitCode);
+		});
 	}
 };
 
@@ -218,45 +233,12 @@ App::XivAlexApp::XivAlexApp()
 		LoadLibraryW(Utils::Win32::Process::Current().PathOf(g_hInstance).c_str());
 		bLibraryLoaded = true;
 
-		m_customMessageLoop = std::thread([this]() {
-			m_pImpl->Load();
-			
-			m_logger->Log(LogCategory::General, u8"XivAlexander initialized.");
-
-			try {
-				Misc::FreeGameMutex::FreeGameMutex();
-			} catch (std::exception& e) {
-				m_logger->Format<LogLevel::Warning>(LogCategory::General, "Failed to free game mutex: {}", e.what());
-			}
-
-			MSG msg;
-			while (GetMessageW(&msg, nullptr, 0, 0)) {
-				bool dispatchMessage = true;
-				
-				for (const auto pWindow : {
-					static_cast<Window::BaseWindow*>(m_pImpl->m_logWindow.get()),
-					static_cast<Window::BaseWindow*>(m_pImpl->m_trayWindow.get()),
-				}) {
-					if (!pWindow)
-						continue;
-					const auto hWnd = pWindow->GetHandle();
-					const auto hAccel = pWindow->GetAcceleratorTable();
-					if (hAccel && (hWnd == msg.hwnd || IsChild(hWnd, msg.hwnd))) {
-						if (TranslateAcceleratorW(hWnd, hAccel, &msg)) {
-							dispatchMessage = false;
-							break;
-						}
-					}
-				}
-				if (IsDialogMessageW(msg.hwnd, &msg))
-					dispatchMessage = false;
-				
-				if (dispatchMessage) {
-					TranslateMessage(&msg);
-					DispatchMessageW(&msg);
-				}
-			}
-			});
+		m_hCustomMessageLoop = Utils::Win32::Closeable::Handle(
+			CreateThread(nullptr, 0, [](void* pThis) {
+				return static_cast<XivAlexApp*>(pThis)->CustomMessageLoopBody();
+			}, this, 0, nullptr),
+			Utils::Win32::Closeable::Handle::Null, "XivAlexApp::CreateThread(CustomMessageLoop)"
+		);
 	} catch (...) {
 		if (bLibraryLoaded)
 			FreeLibrary(g_hInstance);
@@ -270,8 +252,8 @@ App::XivAlexApp::~XivAlexApp() {
 
 	if (m_pImpl->m_trayWindow)
 		SendMessage(m_pImpl->m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
-	
-	m_customMessageLoop.join();
+
+	WaitForSingleObject(m_hCustomMessageLoop, INFINITE);
 
 	if (!m_bInterrnalUnloadInitiated) {
 		// Being destructed from DllMain(Process detach).
@@ -279,6 +261,49 @@ App::XivAlexApp::~XivAlexApp() {
 		// so the only thing possible is to force quit, or an error message will appear.
 		TerminateProcess(GetCurrentProcess(), 0);
 	}
+
+	m_pImpl->m_cleanup.Clear();
+}
+
+DWORD App::XivAlexApp::CustomMessageLoopBody() {
+	m_pImpl->Load();
+	
+	m_logger->Log(LogCategory::General, u8"XivAlexander initialized.");
+
+	try {
+		Misc::FreeGameMutex::FreeGameMutex();
+	} catch (std::exception& e) {
+		m_logger->Format<LogLevel::Warning>(LogCategory::General, "Failed to free game mutex: {}", e.what());
+	}
+
+	MSG msg;
+	while (GetMessageW(&msg, nullptr, 0, 0)) {
+		bool dispatchMessage = true;
+		
+		for (const auto pWindow : {
+			static_cast<Window::BaseWindow*>(m_pImpl->m_logWindow.get()),
+			static_cast<Window::BaseWindow*>(m_pImpl->m_trayWindow.get()),
+		}) {
+			if (!pWindow)
+				continue;
+			const auto hWnd = pWindow->GetHandle();
+			const auto hAccel = pWindow->GetAcceleratorTable();
+			if (hAccel && (hWnd == msg.hwnd || IsChild(hWnd, msg.hwnd))) {
+				if (TranslateAcceleratorW(hWnd, hAccel, &msg)) {
+					dispatchMessage = false;
+					break;
+				}
+			}
+		}
+		if (IsDialogMessageW(msg.hwnd, &msg))
+			dispatchMessage = false;
+		
+		if (dispatchMessage) {
+			TranslateMessage(&msg);
+			DispatchMessageW(&msg);
+		}
+	}
+	return 0;
 }
 
 HWND App::XivAlexApp::GetGameWindowHandle() const {

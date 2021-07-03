@@ -22,12 +22,16 @@ namespace App {
 
 		bool m_bInterrnalUnloadInitiated = false;
 		bool m_bMainWindowDestroyed = false;
-		std::thread m_customMessageLoop;
+		Utils::Win32::Closeable::Handle m_hCustomMessageLoop;
 
 	public:
 		XivAlexApp();
 		~XivAlexApp();
 
+	private:
+		DWORD CustomMessageLoopBody();
+
+	public:
 		[[nodiscard]] HWND GetGameWindowHandle() const;
 
 		void RunOnGameLoop(std::function<void()> f);
