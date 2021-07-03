@@ -407,7 +407,7 @@ void App::XivAlexApp::CheckUpdates(bool silent) {
 
 static std::unique_ptr<App::XivAlexApp> s_xivAlexApp;
 
-extern "C" __declspec(dllexport) int __stdcall EnableXivAlexander(size_t bEnable) {
+extern "C" __declspec(dllexport) int __stdcall XivAlexDll::EnableXivAlexander(size_t bEnable) {
 	if (!!bEnable == !!s_xivAlexApp)
 		return 0;
 	try {
@@ -419,7 +419,7 @@ extern "C" __declspec(dllexport) int __stdcall EnableXivAlexander(size_t bEnable
 	}
 }
 
-extern "C" __declspec(dllexport) int __stdcall ReloadConfiguration(void* lpReserved) {
+extern "C" __declspec(dllexport) int __stdcall XivAlexDll::ReloadConfiguration(void* lpReserved) {
 	if (s_xivAlexApp) {
 		App::Config::Instance().Runtime.Reload(true);
 		App::Config::Instance().Game.Reload(true);

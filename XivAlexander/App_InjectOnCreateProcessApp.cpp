@@ -208,7 +208,7 @@ void App::InjectOnCreateProcessApp::SetFlags(size_t flags) {
 
 static std::unique_ptr<App::InjectOnCreateProcessApp> s_injectOnCreateProcessApp;
 
-extern "C" __declspec(dllexport) int __stdcall EnableInjectOnCreateProcess(size_t flags) {
+extern "C" __declspec(dllexport) int __stdcall XivAlexDll::EnableInjectOnCreateProcess(size_t flags) {
 	const bool use = flags & XivAlexDll::InjectOnCreateProcessAppFlags::Use;
 	if (use == !!s_injectOnCreateProcessApp){
 		if (s_injectOnCreateProcessApp)
@@ -234,7 +234,7 @@ static void RunBeforeAppInit() {
 
 		// the game might restart itself
 		s_injectOnCreateProcessApp->SetFlags(XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly);
-		
+
 		std::thread([]() {
 			try {
 				if (WaitForInputIdle(GetCurrentProcess(), 10000) == WAIT_TIMEOUT)
@@ -294,7 +294,7 @@ extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(Inj
 	CloseHandle(h);
 }
 
-extern "C" __declspec(dllexport) int __stdcall PatchEntryPointForInjection(HANDLE hProcess) {
+extern "C" __declspec(dllexport) int __stdcall XivAlexDll::PatchEntryPointForInjection(HANDLE hProcess) {
 	const auto process = Utils::Win32::Process(hProcess, false);
 
 	try {

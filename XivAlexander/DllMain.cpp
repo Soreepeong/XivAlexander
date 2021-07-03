@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "XivAlexander/XivAlexander.h"
 
 HINSTANCE g_hInstance;
 
@@ -16,6 +17,6 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 	return TRUE;
 }
 
-extern "C" __declspec(dllexport) int __stdcall CallFreeLibrary(void*) {
+extern "C" __declspec(dllexport) int __stdcall XivAlexDll::CallFreeLibrary(void*) {
 	FreeLibraryAndExitThread(g_hInstance, 0);
 }
