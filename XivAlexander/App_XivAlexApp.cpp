@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "XivAlexander/XivAlexander.h"
 #include "App_XivAlexApp.h"
 #include "App_Misc_Hooks.h"
 #include "App_Network_SocketHook.h"
@@ -70,7 +71,7 @@ public:
 				this->this_->m_bInterrnalUnloadInitiated = true;
 				this->this_->m_bMainWindowDestroyed = true;
 
-				EnableXivAlexander(0);
+				XivAlexDll::EnableXivAlexander(0);
 
 				return bridger->bridge(hwnd, msg, wParam, lParam);
 			}
@@ -99,7 +100,7 @@ public:
 			this->this_->m_bInterrnalUnloadInitiated = true;
 			Utils::Win32::Closeable::Handle unloader(
 				CreateThread(nullptr, 0, [](void*) -> DWORD {
-					EnableXivAlexander(0);
+					XivAlexDll::EnableXivAlexander(0);
 					FreeLibraryAndExitThread(g_hInstance, 0);
 				}, nullptr, 0, nullptr),
 				Utils::Win32::Closeable::Handle::Null,

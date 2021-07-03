@@ -1,5 +1,7 @@
 #pragma once
 
+#include <span>
+#include <vector>
 #include <windef.h>
 
 namespace Utils::Win32 {
@@ -36,6 +38,8 @@ namespace Utils::Win32 {
 
 	std::filesystem::path GetMappedImageNativePath(HANDLE hProcess, void* lpMem);
 	std::filesystem::path ToNativePath(const std::filesystem::path& path);
+
+	std::wstring ReverseCommandLineToArgvW(const std::span<const std::string>& argv);
 
 	std::vector<DWORD> GetProcessList();
 	

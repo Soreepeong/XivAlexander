@@ -2,9 +2,6 @@
 
 const auto MsgboxTitle = L"XivAlexander Loader";
 
-extern "C" __declspec(dllimport) int __stdcall PatchEntryPointForInjection(HANDLE hProcess);
-extern "C" __declspec(dllimport) int __stdcall EnableInjectOnCreateProcess(size_t bEnable);
-
 static
 void CheckPackageVersions() {
 	const auto dir = Utils::Win32::Process::Current().PathOf().parent_path();
@@ -109,6 +106,7 @@ public:
 	std::set<DWORD> m_targetPids{};
 	std::set<std::wstring> m_targetSuffix{};
 	std::wstring m_runProgram;
+	std::wstring m_runProgramArgs;
 
 	XivAlexanderLoaderParameter()
 		: argp("XivAlexanderLoader") {
@@ -146,16 +144,12 @@ public:
 			.remaining();
 	}
 
-	void Parse(LPWSTR lpCmdLine) {
+	void Parse() {
 		std::vector<std::string> args;
 
-		args.push_back(Utils::ToUtf8(Utils::Win32::Process::Current().PathOf()));
-
-		if (wcslen(lpCmdLine) > 0) {
-			int nArgs;
-			LPWSTR* szArgList = CommandLineToArgvW(lpCmdLine, &nArgs);
+		if (int nArgs; LPWSTR * szArgList = CommandLineToArgvW(GetCommandLineW(), &nArgs)) {
 			for (int i = 0; i < nArgs; i++)
-				args.push_back(Utils::ToUtf8(szArgList[i]));
+				args.emplace_back(Utils::ToUtf8(szArgList[i]));
 			LocalFree(szArgList);
 		}
 
@@ -175,9 +169,13 @@ public:
 		m_disableAutoRunAs = argp.get<bool>("-d");
 		m_injectIntoStdinHandle = argp.get<bool>("--inject-into-stdin-handle");
 
-		for (const auto& target : argp.get<std::vector<std::string>>("targets")) {
-			m_runProgram += Utils::FromUtf8(target + " ");
-			
+		const auto targets = argp.get<std::vector<std::string>>("targets");
+		if (!targets.empty()) {
+			m_runProgram = Utils::FromUtf8(targets[0]);
+			m_runProgramArgs = Utils::Win32::ReverseCommandLineToArgvW(std::span(targets.begin() + 1, targets.end()));
+		}
+
+		for (const auto& target : targets) {
 			size_t idx = 0;
 			DWORD pid = 0;
 
@@ -262,11 +260,20 @@ bool RequiresAdminAccess(const std::set<DWORD>& pids) {
 	return false;
 }
 
-int RunProgram(const std::filesystem::path& path, std::wstring args = L"", bool wait = false) {
+int RunProgram(std::filesystem::path path, std::wstring args = L"", bool wait = false) {
+	if (!exists(path)) {
+		std::wstring buf;
+		buf.resize(PATHCCH_MAX_CCH);
+		buf.resize(SearchPathW(nullptr, path.c_str(), L".exe", static_cast<DWORD>(buf.size()), &buf[0], nullptr));
+		if (buf.empty())
+			throw Utils::Win32::Error("SearchPath");
+		path = buf;
+	}
+
 	STARTUPINFOW si{};
 	si.cb = sizeof si;
 	PROCESS_INFORMATION pi;
-	const auto wd= path.parent_path().wstring();
+	const auto wd = path.parent_path().wstring();
 	args = args.empty() ? std::format(L"\"{}\"", path) : std::format(L"\"{}\" {}", path, args);
 	if (!CreateProcessW(path.c_str(), &args[0], nullptr, nullptr, FALSE, 0, nullptr, &wd[0], &si, &pi))
 		throw Utils::Win32::Error("CreateProcessW({})", path);
@@ -288,7 +295,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 				process.GetId()), true);
 		return;
 	}
-	
+
 	void* rpModule = process.AddressOf(dllPath, Utils::Win32::Process::ModuleNameCompareMode::FullPath, false);
 	const auto path = process.PathOf();
 
@@ -387,11 +394,11 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 
 int RunLauncher() {
 	try {
-		EnableInjectOnCreateProcess(1);
+		XivAlexDll::EnableInjectOnCreateProcess(XivAlexDll::InjectOnCreateProcessAppFlags::Use | XivAlexDll::InjectOnCreateProcessAppFlags::InjectAll);
 
 		if (!g_parameters.m_runProgram.empty())
-			return RunProgram(g_parameters.m_runProgram);
-		
+			return RunProgram(g_parameters.m_runProgram, g_parameters.m_runProgramArgs);
+
 		const auto launchers = XivAlex::FindGameLaunchers();
 		switch (g_parameters.m_launcherType) {
 			case LauncherType::Auto:
@@ -428,7 +435,7 @@ int RunLauncher() {
 		else
 			MessageBoxW(nullptr, L"No FFXIV installation cold be detected. Please specify launcher path.", MsgboxTitle, MB_OK | MB_ICONINFORMATION);
 		return -1;
-		
+
 	} catch (std::exception& e) {
 		if (!g_parameters.m_quiet)
 			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"Error occurred: {}", e.what());
@@ -444,7 +451,7 @@ int WINAPI wWinMain(
 	_In_ int nShowCmd
 ) {
 	try {
-		g_parameters.Parse(lpCmdLine);
+		g_parameters.Parse();
 	} catch (std::exception& err) {
 		Utils::Win32::MessageBoxF(nullptr, MB_ICONWARNING, MsgboxTitle, L"Faild to parse command line arguments.\n\n{}\n\n{}", err.what(), g_parameters.GetHelpMessage());
 		return -1;
@@ -482,7 +489,7 @@ int WINAPI wWinMain(
 				throw Utils::Win32::Error("ReadFile");
 			auto process = Utils::Win32::Process();
 			process.Attach(reinterpret_cast<HANDLE>(static_cast<size_t>(val)), true);
-			return PatchEntryPointForInjection(process);
+			return XivAlexDll::PatchEntryPointForInjection(process);
 		} catch (const std::exception& e) {
 			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"Error occurred: {}", e.what());
 			return -1;

@@ -77,28 +77,28 @@
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>$(SolutionDir)\XivAlexanderCommon\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)\XivAlexanderCommon\XivAlexanderCommon;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>$(SolutionDir)\XivAlexanderCommon\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)\XivAlexanderCommon\XivAlexanderCommon;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>$(SolutionDir)\XivAlexanderCommon\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)\XivAlexanderCommon\XivAlexanderCommon;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>$(SolutionDir)\XivAlexanderCommon\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)\XivAlexanderCommon\XivAlexanderCommon;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">
@@ -140,6 +140,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <PreprocessorDefinitions>XIVALEXANDER_DLLEXPORT_SET;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -172,6 +173,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <PreprocessorDefinitions>XIVALEXANDER_DLLEXPORT_SET;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -206,6 +208,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <PreprocessorDefinitions>XIVALEXANDER_DLLEXPORT_SET;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -242,6 +245,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <PreprocessorDefinitions>XIVALEXANDER_DLLEXPORT_SET;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -316,6 +320,7 @@
     <ClInclude Include="App_Window_MainWindow.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="XivAlexander\XivAlexander.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="XivAlexander.rc" />

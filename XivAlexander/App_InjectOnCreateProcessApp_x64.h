@@ -1,5 +1,7 @@
 #pragma once
 
+#include "XivAlexander/XivAlexander.h"
+
 #if INTPTR_MAX == INT64_MAX
 #include <cstdint>
 
@@ -81,7 +83,7 @@ struct TrampolineTemplate {
 	uint8_t buf_EntryPointBackup[sizeof EntryPointThunkTemplate]{};
 	
 #pragma pack(push, 8)
-	InjectEntryPointParameters parameters{};
+	XivAlexDll::InjectEntryPointParameters parameters{};
 #pragma pack(pop)
 };
 #pragma pack(pop)

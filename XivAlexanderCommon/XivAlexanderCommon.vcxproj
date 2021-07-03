@@ -21,9 +21,6 @@
   <ItemGroup>
     <ClInclude Include="CustomFormatter.h" />
     <ClInclude Include="Utils_CallOnDestruction.h" />
-    <ClInclude Include="include\XivAlexanderCommon.h">
-      <DeploymentContent>true</DeploymentContent>
-    </ClInclude>
     <ClInclude Include="Utils_ListenerManager.h" />
     <ClInclude Include="Utils_Win32_Process.h" />
     <ClInclude Include="Utils__Misc.h" />
@@ -35,6 +32,7 @@
     <ClInclude Include="Utils_Win32_InjectedModule.h" />
     <ClInclude Include="Utils__Zlib.h" />
     <ClInclude Include="XivAlex.h" />
+    <ClInclude Include="XivAlexanderCommon\XivAlexanderCommon.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Utils_CallOnDestruction.cpp" />

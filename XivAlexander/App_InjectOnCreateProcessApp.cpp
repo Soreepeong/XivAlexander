@@ -2,9 +2,13 @@
 #include "App_InjectOnCreateProcessApp.h"
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_Hooks.h"
-#include "App_XivAlexApp.h"
+#include "XivAlexander/XivAlexander.h"
+
+#if INTPTR_MAX == INT64_MAX
 #include "App_InjectOnCreateProcessApp_x64.h"
+#elif INTPTR_MAX == INT32_MAX
 #include "App_InjectOnCreateProcessApp_x86.h"
+#endif 
 
 class App::InjectOnCreateProcessApp::Implementation {
 
@@ -34,6 +38,9 @@ class App::InjectOnCreateProcessApp::Implementation {
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
 public:
+	bool InjectAll = false;
+	bool InjectGameOnly = false;
+	
 	Implementation()
 		: m_module(LoadLibraryW(Utils::Win32::Process::Current().PathOf(g_hInstance).c_str()), nullptr) {
 		m_cleanup += CreateProcessW.SetHook([this](_In_opt_ LPCWSTR lpApplicationName, _Inout_opt_ LPWSTR lpCommandLine, _In_opt_ LPSECURITY_ATTRIBUTES lpProcessAttributes, _In_opt_ LPSECURITY_ATTRIBUTES lpThreadAttributes, _In_ BOOL bInheritHandles, _In_ DWORD dwCreationFlags, _In_opt_ LPVOID lpEnvironment, _In_opt_ LPCWSTR lpCurrentDirectory, _In_ LPSTARTUPINFOW lpStartupInfo, _Out_ LPPROCESS_INFORMATION lpProcessInformation) -> BOOL {
@@ -74,24 +81,37 @@ public:
 
 	~Implementation() = default;
 
+	[[nodiscard]] bool IsInjectTarget(const Utils::Win32::Process& process) const {
+		if (InjectAll)
+			return true;
+
+		if (InjectGameOnly) {
+			auto filename = process.PathOf().filename().wstring();
+			CharLowerW(&filename[0]);
+			return filename == XivAlex::GameExecutable32NameW || filename == XivAlex::GameExecutable64NameW;
+		}
+		
+		auto pardir = process.PathOf().parent_path();
+
+		// // check whether it's FFXIVQuickLauncher directory
+		// isXiv |= exists(pardir / "XIVLauncher.exe");
+
+		// check 3 parent directories to determine whether it might have anything to do with FFXIV
+		for (int i = 0; i < 3; ++i) {
+			if (exists(pardir / L"game" / XivAlex::GameExecutableNameW))
+				return true;
+			pardir = pardir.parent_path();
+		}
+		return false;
+	}
+	
 	void PostProcessExecution(DWORD dwCreationFlags, LPPROCESS_INFORMATION lpProcessInformation) {
 		const auto process = Utils::Win32::Process(lpProcessInformation->hProcess, false);
-		auto isXiv = false;
+		const auto isTarget = IsInjectTarget(process);
 		try {
-			auto pardir = process.PathOf().parent_path();
-
-			// // check whether it's FFXIVQuickLauncher directory
-			// isXiv |= exists(pardir / "XIVLauncher.exe");
-
-			// check 3 parent directories to determine whether it might have anything to do with FFXIV
-			for (int i = 0; i < 3 && !isXiv; ++i) {
-				isXiv = exists(pardir / L"game" / XivAlex::GameExecutableNameW);
-				pardir = pardir.parent_path();
-			}
-
-			if (isXiv) {
+			if (isTarget) {
 				if (process.IsProcess64Bits() == Utils::Win32::Process::Current().IsProcess64Bits()) {
-					PatchEntryPointForInjection(process);
+					XivAlexDll::PatchEntryPointForInjection(process);
 					
 				} else {
 					const auto companion = Utils::Win32::Process::Current().PathOf(g_hInstance).parent_path() / (process.IsProcess64Bits() ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW);
@@ -159,10 +179,10 @@ public:
 		Utils::Win32::MessageBoxF(
 			nullptr, MB_OK,
 			L"XivAlexander",
-			L"IsXiv={}\n"
+			L"isTarget={}\n"
 			L"Self: PID={}, Platform={}, Path={}\n"
 			L"Target: PID={}, Platform={}, Path={}\n",
-			isXiv,
+			isTarget,
 			Utils::Win32::Process::Current().GetId(),
 			Utils::Win32::Process::Current().IsProcess64Bits() ? L"x64" : L"x86",
 			Utils::Win32::Process::Current().PathOf(),
@@ -181,13 +201,24 @@ App::InjectOnCreateProcessApp::InjectOnCreateProcessApp()
 
 App::InjectOnCreateProcessApp::~InjectOnCreateProcessApp() = default;
 
+void App::InjectOnCreateProcessApp::SetFlags(size_t flags) {
+	m_pImpl->InjectAll = flags & XivAlexDll::InjectOnCreateProcessAppFlags::InjectAll;
+	m_pImpl->InjectGameOnly = flags & XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly;
+}
+
 static std::unique_ptr<App::InjectOnCreateProcessApp> s_injectOnCreateProcessApp;
 
-extern "C" __declspec(dllexport) int __stdcall EnableInjectOnCreateProcess(size_t bEnable) {
-	if (!!bEnable == !!s_injectOnCreateProcessApp)
+extern "C" __declspec(dllexport) int __stdcall EnableInjectOnCreateProcess(size_t flags) {
+	const bool use = flags & XivAlexDll::InjectOnCreateProcessAppFlags::Use;
+	if (use == !!s_injectOnCreateProcessApp){
+		if (s_injectOnCreateProcessApp)
+			s_injectOnCreateProcessApp->SetFlags(flags);
 		return 0;
+	}
 	try {
-		s_injectOnCreateProcessApp = bEnable ? std::make_unique<App::InjectOnCreateProcessApp>() : nullptr;
+		s_injectOnCreateProcessApp = use ? std::make_unique<App::InjectOnCreateProcessApp>() : nullptr;
+		if (use)
+			s_injectOnCreateProcessApp->SetFlags(flags);
 		return 0;
 	} catch (const std::exception& e) {
 		OutputDebugStringA(std::format("EnableInjectOnCreateProcessApp error: {}\n", e.what()).c_str());
@@ -198,7 +229,12 @@ extern "C" __declspec(dllexport) int __stdcall EnableInjectOnCreateProcess(size_
 static void RunBeforeAppInit() {
 	auto filename = Utils::Win32::Process::Current().PathOf().filename().wstring();
 	CharLowerW(&filename[0]);
+	s_injectOnCreateProcessApp = std::make_unique<App::InjectOnCreateProcessApp>();
 	if (filename == XivAlex::GameExecutableNameW) {
+
+		// the game might restart itself
+		s_injectOnCreateProcessApp->SetFlags(XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly);
+		
 		std::thread([]() {
 			try {
 				if (WaitForInputIdle(GetCurrentProcess(), 10000) == WAIT_TIMEOUT)
@@ -219,7 +255,7 @@ static void RunBeforeAppInit() {
 				if (!hwnd)
 					throw std::runtime_error("Game process exited before initialization.");
 
-				EnableXivAlexander(1);
+				XivAlexDll::EnableXivAlexander(1);
 
 			} catch (std::exception& e) {
 				Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, L"XivAlexander",
@@ -230,11 +266,10 @@ static void RunBeforeAppInit() {
 
 			return 0;
 			}).detach();
-	} else
-		s_injectOnCreateProcessApp = std::make_unique<App::InjectOnCreateProcessApp>();
+	}
 }
 
-extern "C" __declspec(dllexport) void __stdcall InjectEntryPoint(InjectEntryPointParameters * p) {
+extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters * p) {
 	// conjecture: not going to allocate stack or something yet, so must use the minimum; run stuff on thread
 	// maybe figure out why won't it work if the work isn't done on a separate thread (with a separate stack)
 	const auto h = CreateThread(nullptr, 0, [](void* param_) -> DWORD {

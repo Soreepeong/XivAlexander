@@ -218,6 +218,34 @@ std::filesystem::path Utils::Win32::ToNativePath(const std::filesystem::path& pa
 	return L"\\\\?" + result;
 }
 
+std::wstring Utils::Win32::ReverseCommandLineToArgvW(const std::span<const std::string>& argv) {
+	std::wostringstream ss;
+	for (const auto& arg : argv) {
+		const auto argw = FromUtf8(arg);
+		if (ss.tellp())
+			ss << L" ";
+		
+		if (argw.find_first_of(L"\" ") != std::wstring::npos) {
+			ss << L"\"";
+			for (size_t pos = 0; pos < argw.size();) {
+				const auto special = argw.find_first_of(L"\\\"", pos);
+				if (special == std::wstring::npos){
+					ss << argw.substr(pos);
+					break;
+				} else {
+					ss << argw.substr(pos, special - pos) << L"\\" << argw[special];
+					pos = special + 1;
+				}
+			}
+			ss << L"\"";
+			
+		} else {
+			ss << argw;
+		}
+	}
+	return ss.str();
+}
+
 std::vector<DWORD> Utils::Win32::GetProcessList() {
 	std::vector<DWORD> res;
 	DWORD cb = 0;

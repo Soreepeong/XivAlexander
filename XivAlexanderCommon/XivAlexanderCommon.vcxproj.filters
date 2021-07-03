@@ -24,9 +24,6 @@
     <ClInclude Include="pch.h">
       <Filter>Project Items</Filter>
     </ClInclude>
-    <ClInclude Include="include\XivAlexanderCommon.h">
-      <Filter>Exported</Filter>
-    </ClInclude>
     <ClInclude Include="Utils_Win32_InjectedModule.h">
       <Filter>Implementation\Win32</Filter>
     </ClInclude>
@@ -62,6 +59,9 @@
     </ClInclude>
     <ClInclude Include="Utils_Win32_Process.h">
       <Filter>Implementation\Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="XivAlexanderCommon\XivAlexanderCommon.h">
+      <Filter>Exported</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

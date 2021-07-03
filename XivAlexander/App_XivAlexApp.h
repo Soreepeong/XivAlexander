@@ -38,5 +38,3 @@ namespace App {
 		void CheckUpdates(bool silent = true);
 	};
 }
-
-extern "C" __declspec(dllexport) int __stdcall EnableXivAlexander(size_t bEnable);

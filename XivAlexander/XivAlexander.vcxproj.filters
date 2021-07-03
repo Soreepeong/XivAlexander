@@ -25,6 +25,9 @@
     <Filter Include="App\Apps">
       <UniqueIdentifier>{8558bf64-2138-4a68-bf1e-d9fec57dafa5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Exported">
+      <UniqueIdentifier>{63c1eeff-8175-4675-b10d-e45dd16885bb}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -160,6 +163,9 @@
     </ClInclude>
     <ClInclude Include="App_InjectOnCreateProcessApp_x86.h">
       <Filter>App\Apps</Filter>
+    </ClInclude>
+    <ClInclude Include="XivAlexander\XivAlexander.h">
+      <Filter>Exported</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

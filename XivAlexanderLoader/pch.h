@@ -22,6 +22,7 @@
 #include <Shlwapi.h>
 
 #include <XivAlexanderCommon.h>
+#include <XivAlexander.h>
 
 #include <argparse/argparse.hpp>
 #include <nlohmann/json.hpp>
