@@ -6,9 +6,8 @@ namespace App::Window {
 	
 	class Main : public BaseWindow {
 		XivAlexApp* m_pApp;
-		GUID m_guid{};
 		const std::function<void()> m_triggerUnload;
-		const int m_uTaskbarRestartMessage;
+		const uint32_t m_uTaskbarRestartMessage;
 
 		std::unique_ptr<Config> m_runtimeConfigEditor{ nullptr };
 		std::unique_ptr<Config> m_gameConfigEditor{ nullptr };

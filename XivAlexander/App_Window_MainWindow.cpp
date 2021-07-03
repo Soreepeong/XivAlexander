@@ -39,13 +39,6 @@ App::Window::Main::Main(XivAlexApp *pApp, std::function<void()> unloadFunction)
 
 	std::tie(m_sRegion, m_sVersion) = XivAlex::ResolveGameReleaseRegion();
 	
-	{
-		std::vector<uint8_t> hashSourceData{ 0x95, 0xf8, 0x89, 0x5c, 0x59, 0x94, 0x44, 0xf2, 0x9d, 0xda, 0xa6, 0x9a, 0x91, 0xb4, 0xe8, 0x51 };
-		auto buf = m_path.wstring();
-		hashSourceData.insert(hashSourceData.begin(), reinterpret_cast<const uint8_t*>(&buf[0]), reinterpret_cast<const uint8_t*>(&buf[buf.size()]));
-		HashData(hashSourceData.data(), static_cast<DWORD>(hashSourceData.size()), reinterpret_cast<BYTE*>(&m_guid.Data1), static_cast<DWORD>(sizeof GUID));
-	}
-	
 	const auto title = std::format(L"XivAlexander: {}, {}, {}", GetCurrentProcessId(), m_sRegion, m_sVersion);
 	SetWindowTextW(m_hWnd, title.c_str());
 	ModifyMenu(GetMenu(m_hWnd), ID_TRAYMENU_CURRENTINFO, MF_BYCOMMAND | MF_DISABLED, ID_TRAYMENU_CURRENTINFO, title.c_str());
@@ -291,7 +284,6 @@ void App::Window::Main::OnDestroy() {
 	m_runtimeConfigEditor = nullptr;
 	m_gameConfigEditor = nullptr;
 	NOTIFYICONDATAW nid = { sizeof(NOTIFYICONDATAW) };
-	nid.guidItem = m_guid;
 	nid.uID = TrayItemId;
 	nid.hWnd = m_hWnd;
 	nid.uFlags = NIF_GUID;
@@ -330,7 +322,6 @@ void App::Window::Main::RegisterTrayIcon() {
 		"Failed to load app icon.");
 	NOTIFYICONDATAW nid = { sizeof(NOTIFYICONDATAW) };
 	nid.uVersion = NOTIFYICON_VERSION_4;
-	nid.guidItem = m_guid;
 	nid.uID = TrayItemId;
 	nid.hWnd = this->m_hWnd;
 	nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP | NIF_GUID;
