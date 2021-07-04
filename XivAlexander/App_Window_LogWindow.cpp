@@ -130,8 +130,9 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					pDataT->buf.resize(pDataT->buf.length() - 1);
 
 					Utils::Win32::Closeable::Handle hThread(CreateThread(nullptr, 0, [](void* pDataRaw) -> DWORD {
-						auto pDataT = static_cast<DataT*>(pDataRaw);
-						Utils::CallOnDestruction freeDataT([pDataT]() { delete pDataT; });
+						const DataT data = std::move(*static_cast<DataT*>(pDataRaw));
+						delete static_cast<DataT*>(pDataRaw);
+						
 						static const COMDLG_FILTERSPEC saveFileTypes[] = {
 							{L"Log Files (*.log)",		L"*.log"},
 							{L"All Documents (*.*)",	L"*.*"}
@@ -141,7 +142,7 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 								_com_raise_error(val);
 						};
 
-						Utils::Win32::SetThreadDescription(GetCurrentThread(), L"XivAlexander::Window::Log::WndProc::FileSaveThread({:p})", reinterpret_cast<size_t>(pDataT->hWnd));
+						Utils::Win32::SetThreadDescription(GetCurrentThread(), L"XivAlexander::Window::Log::WndProc::FileSaveThread({:p})", reinterpret_cast<size_t>(data.hWnd));
 
 						try {
 							IFileSaveDialogPtr pDialog;
@@ -152,31 +153,30 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 							throw_on_error(pDialog->SetDefaultExtension(L"log"));
 							throw_on_error(pDialog->GetOptions(&dwFlags));
 							throw_on_error(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
-							if (SUCCEEDED(pDialog->Show(pDataT->hWnd))) {
+							
+							throw_on_error(pDialog->Show(data.hWnd));
+							
+							std::filesystem::path newFileName;
+							{
 								IShellItemPtr pResult;
 								PWSTR pszNewFileName;
 								throw_on_error(pDialog->GetResult(&pResult));
 								throw_on_error(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszNewFileName));
 								if (!pszNewFileName)
 									throw std::runtime_error("The selected file does not have a filesystem path.");
-
-								Utils::CallOnDestruction freeFileName([pszNewFileName]() { CoTaskMemFree(pszNewFileName); });
-								{
-									const Utils::Win32::Closeable::Handle hFile(CreateFile(pszNewFileName, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr),
-										INVALID_HANDLE_VALUE,
-										L"Failed to open file: {}", pszNewFileName);
-									DWORD written;
-									WriteFile(hFile, pDataT->buf.data(), static_cast<DWORD>(pDataT->buf.length()), &written, nullptr);
-									if (written != pDataT->buf.length())
-										throw std::runtime_error("Failed to fully write the log file.");
-								}
-
-								Utils::Win32::MessageBoxF(pDataT->hWnd, MB_ICONINFORMATION, L"XivAlexander", L"Log saved to: {}", pszNewFileName);
+								newFileName = pszNewFileName;
 							}
+							
+							std::ofstream f(newFileName);
+							f << data.buf;
+							Utils::Win32::MessageBoxF(data.hWnd, MB_ICONINFORMATION, L"XivAlexander", L"Log saved to: {}", newFileName);
+							
 						} catch (std::exception& e) {
-							Utils::Win32::MessageBoxF(pDataT->hWnd, MB_ICONERROR, L"XivAlexander", L"Unable to save: {}", Utils::FromUtf8(e.what()));
+							Utils::Win32::MessageBoxF(data.hWnd, MB_ICONERROR, L"XivAlexander", L"Unable to save: {}", Utils::FromUtf8(e.what()));
 						} catch (_com_error& e) {
-							Utils::Win32::MessageBoxF(pDataT->hWnd, MB_ICONERROR, L"XivAlexander", L"Unable to save: {}", static_cast<const wchar_t*>(e.Description()));
+							if (e.Error() == HRESULT_FROM_WIN32(ERROR_CANCELLED))
+								return 0;
+							Utils::Win32::MessageBoxF(data.hWnd, MB_ICONERROR, L"XivAlexander", L"Unable to save: {}", static_cast<const wchar_t*>(e.Description()));
 						}
 						return 0;
 						}, pDataT, 0, nullptr),
