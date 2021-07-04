@@ -39,7 +39,26 @@ namespace Utils::Win32 {
 	std::filesystem::path GetMappedImageNativePath(HANDLE hProcess, void* lpMem);
 	std::filesystem::path ToNativePath(const std::filesystem::path& path);
 
+	struct RunProgramParams {
+		enum ElevateMode {
+			Normal,
+			Force,
+			Never,
+			CancelIfRequired,
+			NoElevationIfDenied,
+		};
+		
+		std::filesystem::path path;
+		std::filesystem::path dir;
+		std::wstring args;
+		bool wait = false;
+		ElevateMode elevateMode = Normal;
+		bool throwOnCancel = false;
+	};
+	bool RunProgram(RunProgramParams params);
+
 	std::wstring ReverseCommandLineToArgvW(const std::span<const std::string>& argv);
+	std::wstring ReverseCommandLineToArgvW(const std::initializer_list<const std::string>& argv);
 
 	std::vector<DWORD> GetProcessList();
 	

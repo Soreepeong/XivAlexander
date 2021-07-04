@@ -3,6 +3,7 @@
 
 #include "Utils_CallOnDestruction.h"
 #include "Utils_Win32_Closeable.h"
+#include "Utils_Win32_Process.h"
 
 std::string Utils::Win32::FormatWindowsErrorMessage(unsigned int errorCode) {
 	std::set<std::string> messages;
@@ -220,6 +221,100 @@ std::filesystem::path Utils::Win32::ToNativePath(const std::filesystem::path& pa
 	return L"\\\\?" + result;
 }
 
+bool Utils::Win32::RunProgram(RunProgramParams params) {
+	if (params.path.empty())
+		params.path = Process::Current().PathOf();
+	if (params.dir.empty())
+		params.dir = params.path.parent_path().wstring();
+
+	switch (params.elevateMode) {
+	case RunProgramParams::Normal:
+	case RunProgramParams::Force:
+	case RunProgramParams::Never:
+	{
+		CallOnDestruction::Multiple cleanup;
+		if (params.elevateMode == RunProgramParams::Never) {
+			static const auto NeverElevateEnvKey = L"__COMPAT_LAYER";
+			static const auto NeverElevateEnvVal = L"RunAsInvoker";
+			
+			std::wstring env;
+			env.resize(32768);
+			env.resize(GetEnvironmentVariableW(NeverElevateEnvKey, &env[0], static_cast<DWORD>(env.size())));
+			const auto envNone = env.empty() && GetLastError() == ERROR_ENVVAR_NOT_FOUND;
+			if (!envNone && env.empty())
+				throw Error("GetEnvrionmentVariableW");
+			if (!SetEnvironmentVariableW(NeverElevateEnvKey, NeverElevateEnvVal))
+				throw Error("SetEnvironmentVariableW");
+			cleanup += [env = std::move(env), envNone]() {
+				SetEnvironmentVariableW(NeverElevateEnvKey, envNone ? nullptr : &env[0]);
+			};
+		}
+		
+		SHELLEXECUTEINFOW sei{};
+		sei.cbSize = sizeof sei;
+		sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+		sei.lpVerb = params.elevateMode == RunProgramParams::Force ? L"runas" : L"open";
+		sei.lpFile = params.path.c_str();
+		sei.lpParameters = params.args.c_str();
+		sei.lpDirectory = params.dir.c_str();
+		if (!ShellExecuteExW(&sei)) {
+			const auto err = GetLastError();
+			if (err == ERROR_CANCELLED && !params.throwOnCancel)
+				return false;
+
+			throw Error(err, "ShellExecuteExW");
+		}
+		if (!sei.hProcess)  // should not happen, unless registry is messed up.
+			throw std::runtime_error("Failed to execute a new program.");
+		if (!params.wait)
+			WaitForSingleObject(sei.hProcess, INFINITE);
+		CloseHandle(sei.hProcess);
+		return true;
+	}
+		
+	case RunProgramParams::CancelIfRequired:
+	case RunProgramParams::NoElevationIfDenied: {
+		if (!exists(params.path)) {
+			std::wstring buf;
+			buf.resize(PATHCCH_MAX_CCH);
+			buf.resize(SearchPathW(nullptr, params.path.c_str(), L".exe", static_cast<DWORD>(buf.size()), &buf[0], nullptr));
+			if (buf.empty())
+				throw Error("SearchPath");
+			params.path = buf;
+		}
+
+		STARTUPINFOW si{};
+		si.cb = sizeof si;
+		PROCESS_INFORMATION pi;
+		const auto wd = params.path.parent_path().wstring();
+		auto args = params.args.empty() ? std::format(L"\"{}\"", params.path) : std::format(L"\"{}\" {}", params.path, params.args);
+		if (!CreateProcessW(params.path.c_str(), &args[0], nullptr, nullptr, FALSE, 0, nullptr, &wd[0], &si, &pi)) {
+			const auto err = GetLastError();
+			if (err == ERROR_ELEVATION_REQUIRED) {
+				if (params.elevateMode == RunProgramParams::CancelIfRequired && !params.throwOnCancel)
+					return false;
+				else if (params.elevateMode == RunProgramParams::NoElevationIfDenied) {
+					params.elevateMode = RunProgramParams::Normal;
+					params.throwOnCancel = false;
+					if (RunProgram(params))
+						return true;
+					
+					params.elevateMode = RunProgramParams::Never;
+					return RunProgram(params);
+				}
+			}
+			throw Error(err, "CreateProcessW({})", params.args);
+		}
+		if (params.wait)
+			WaitForSingleObject(pi.hProcess, INFINITE);
+		CloseHandle(pi.hProcess);
+		CloseHandle(pi.hThread);
+		return true;
+	}
+	}
+	throw std::out_of_range("invalid elevateMode");
+}
+
 std::wstring Utils::Win32::ReverseCommandLineToArgvW(const std::span<const std::string>& argv) {
 	std::wostringstream ss;
 	for (const auto& arg : argv) {
@@ -246,6 +341,10 @@ std::wstring Utils::Win32::ReverseCommandLineToArgvW(const std::span<const std::
 		}
 	}
 	return ss.str();
+}
+
+std::wstring Utils::Win32::ReverseCommandLineToArgvW(const std::initializer_list<const std::string>& argv) {
+	return ReverseCommandLineToArgvW({argv.begin(), argv.end()});
 }
 
 std::vector<DWORD> Utils::Win32::GetProcessList() {

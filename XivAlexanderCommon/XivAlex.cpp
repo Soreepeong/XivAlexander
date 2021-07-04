@@ -202,18 +202,19 @@ std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLauncher
 		L"DisplayIcon"
 	); !reg.empty()) {
 		GameRegionInfo info{
-			GameRegion::International,
-			std::filesystem::path(reg).parent_path().parent_path(),
+			.Type = GameRegion::International,
+			.RootPath = std::filesystem::path(reg).parent_path().parent_path(),
 #if INTPTR_MAX == INT32_MAX
 
-			info.RootPath / L"boot" / L"ffxivboot.exe",
+			.BootApp = info.RootPath / L"boot" / L"ffxivboot.exe",
 
 #elif INTPTR_MAX == INT64_MAX
 
-			info.RootPath / L"boot" / L"ffxivboot64.exe",
+			.BootApp = info.RootPath / L"boot" / L"ffxivboot64.exe",
 
 #endif
-			{
+			.BootAppRequiresAdmin = false,
+			.RelatedApps = {
 				info.RootPath / L"boot" / L"ffxivboot.exe",
 				info.RootPath / L"boot" / L"ffxivboot64.exe",
 				info.RootPath / L"boot" / L"ffxivconfig.exe",
@@ -224,21 +225,7 @@ std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLauncher
 				info.RootPath / L"boot" / L"ffxivupdater.exe",
 			},
 		};
-
-		/*  Enable this after figuring out how to inject to AnyCPU CLR process on entry.
-		std::wstring localAppData(PATHCCH_MAX_CCH, 0);
-		localAppData.resize(GetEnvironmentVariableW(L"LOCALAPPDATA", &localAppData[0], PATHCCH_MAX_CCH));
-		if (!localAppData.empty()) {
-			const auto path = std::filesystem::path(localAppData) / L"XIVLauncher" / L"XIVLauncher.exe";
-			if (exists(path)) {
-				info.AlternativeBoots["FFXIVQuickLauncher"] = path;
-				info.RelatedApps.insert(info.RootPath / "XIVLauncher.PatchInstaller.exe");
-				info.RelatedApps.insert(info.RootPath / "XIVLauncher.exe");
-				info.RelatedApps.insert(info.RootPath / "Update.exe");
-			}
-		}
-		//*/
-
+		
 		result.emplace(GameRegion::International, info);
 	}
 
@@ -256,10 +243,11 @@ std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLauncher
 			return {};
 
 		GameRegionInfo info{
-			GameRegion::Korean,
-			std::filesystem::path(argv[0]).parent_path().parent_path(),
-			info.RootPath / L"boot" / L"FFXIV_Boot.exe",
-			{
+			.Type = GameRegion::Korean,
+			.RootPath = std::filesystem::path(argv[0]).parent_path().parent_path(),
+			.BootApp = info.RootPath / L"boot" / L"FFXIV_Boot.exe",
+			.BootAppRequiresAdmin = true,
+			.RelatedApps = {
 				info.RootPath / L"boot" / L"FFXIV_Boot.exe",
 				info.RootPath / L"boot" / L"FFXIV_Launcher.exe",
 			},
@@ -272,10 +260,11 @@ std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLauncher
 		L"DisplayIcon"
 	); !reg.empty()) {
 		GameRegionInfo info{
-			GameRegion::Chinese,
-			std::filesystem::path(reg).parent_path(),
-			info.RootPath / L"FFXIVBoot.exe",
-			{
+			.Type = GameRegion::Chinese,
+			.RootPath = std::filesystem::path(reg).parent_path(),
+			.BootApp = info.RootPath / L"FFXIVBoot.exe",
+			.BootAppRequiresAdmin = true,
+			.RelatedApps = {
 				info.RootPath / "LauncherUpdate" / "LauncherUpdater.exe",
 				info.RootPath / "FFXIVBoot.exe",
 				info.RootPath / "sdo" / "sdologin" / "sdologin.exe",

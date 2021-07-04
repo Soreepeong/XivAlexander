@@ -1,7 +1,6 @@
 #include "pch.h"
 
 const auto MsgboxTitle = L"XivAlexander Loader";
-LPCWSTR g_lpCmdLine;
 
 static
 void CheckPackageVersions() {
@@ -57,6 +56,7 @@ LoaderAction ParseLoaderAction(std::string val) {
 
 enum class LauncherType : int {
 	Auto,
+	Select,
 	International,
 	Korean,
 	Chinese,
@@ -67,6 +67,7 @@ template <>
 std::string argparse::details::repr(LauncherType const& val) {
 	switch (val) {
 		case LauncherType::Auto: return "auto";
+		case LauncherType::Select: return "select";
 		case LauncherType::International: return "international";
 		case LauncherType::Korean: return "korean";
 		case LauncherType::Chinese: return "chinese";
@@ -74,20 +75,30 @@ std::string argparse::details::repr(LauncherType const& val) {
 	return std::format("({})", static_cast<int>(val));
 }
 
-LauncherType ParseLauncherType(std::string val) {
-	auto valw = Utils::FromUtf8(val);
-	CharLowerW(&valw[0]);
-	val = Utils::ToUtf8(valw);
+template <>
+std::string argparse::details::repr(XivAlex::GameRegion const& val) {
+	switch (val) {
+		case XivAlex::GameRegion::International: return "International";
+		case XivAlex::GameRegion::Korean: return "Korean";
+		case XivAlex::GameRegion::Chinese: return "Chinese";
+	}
+	return std::format("({})", static_cast<int>(val));
+}
+
+LauncherType ParseLauncherType(const std::string& val_) {
+	auto val = Utils::FromUtf8(val_);
+	CharLowerW(&val[0]);
 	for (size_t i = 0; i < static_cast<size_t>(LauncherType::Count_); ++i) {
-		const auto compare = argparse::details::repr(static_cast<LauncherType>(i));
+		auto compare = Utils::FromUtf8(argparse::details::repr(static_cast<LauncherType>(i)));
+		CharLowerW(&compare[0]);
+
 		auto equal = true;
-		for (size_t j = 0; equal && j < val.length() && j < compare.length(); ++j) {
+		for (size_t j = 0; equal && j < val.length() && j < compare.length(); ++j)
 			equal = val[j] == compare[j];
-		}
 		if (equal)
 			return static_cast<LauncherType>(i);
 	}
-	if (val[0] == 'e' || val[0] == 'd' || val[0] == 'g' || val[0] == 'f' || val[0] == 'j')
+	if (val[0] == L'e' || val[0] == L'd' || val[0] == L'g' || val[0] == L'f' || val[0] == L'j')
 		return LauncherType::International;
 
 	throw std::runtime_error("Invalid launcher type");
@@ -119,7 +130,7 @@ public:
 			.default_value(LoaderAction::Auto)
 			.action([](const std::string& val) { return ParseLoaderAction(val); });
 		argp.add_argument("-l", "--launcher")
-			.help("specify launcher (possible values: auto, international, korean, chinese)")
+			.help("specify launcher (possible values: auto, select, international, korean, chinese)")
 			.required()
 			.nargs(1)
 			.default_value(LauncherType::Auto)
@@ -261,62 +272,18 @@ bool RequiresAdminAccess(const std::set<DWORD>& pids) {
 	return false;
 }
 
-void RestartElevated(bool wait) {
-	const auto selfPath = Utils::Win32::Process::Current().PathOf().wstring();
-	SHELLEXECUTEINFOW sei{};
-	sei.cbSize = sizeof sei;
-	sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-	sei.lpVerb = L"runas";
-	sei.lpFile = selfPath.c_str();
-	sei.lpParameters = g_lpCmdLine;
-	if (!ShellExecuteExW(&sei))
-		throw Utils::Win32::Error("ShellExecuteExW");
-	if (!sei.hProcess)  // should not happen, unless registry is messed up.
-		throw std::runtime_error("Failed to execute a new program.");
-	if (!wait)
-		WaitForSingleObject(sei.hProcess, INFINITE);
-	CloseHandle(sei.hProcess);
-}
-
-int RunProgram(std::filesystem::path path, std::wstring args = L"", bool wait = false) {
-	if (!exists(path)) {
-		std::wstring buf;
-		buf.resize(PATHCCH_MAX_CCH);
-		buf.resize(SearchPathW(nullptr, path.c_str(), L".exe", static_cast<DWORD>(buf.size()), &buf[0], nullptr));
-		if (buf.empty())
-			throw Utils::Win32::Error("SearchPath");
-		path = buf;
-	}
-
-	STARTUPINFOW si{};
-	si.cb = sizeof si;
-	PROCESS_INFORMATION pi;
-	const auto wd = path.parent_path().wstring();
-	args = args.empty() ? std::format(L"\"{}\"", path) : std::format(L"\"{}\" {}", path, args);
-	if (!CreateProcessW(path.c_str(), &args[0], nullptr, nullptr, FALSE, 0, nullptr, &wd[0], &si, &pi)) {
-		const auto err = GetLastError();
-		if (err == ERROR_ELEVATION_REQUIRED && !Utils::Win32::IsUserAnAdmin()) {
-			RestartElevated(wait);
-			return 0;
-		}
-		throw Utils::Win32::Error("CreateProcessW({})", path);
-	}
-	if (wait)
-		WaitForSingleObject(pi.hProcess, INFINITE);
-	CloseHandle(pi.hProcess);
-	CloseHandle(pi.hThread);
-	return 0;
-}
-
 void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesystem::path& dllPath) {
 	auto process = OpenProcessForInjection(pid);
 
 	if (process.IsProcess64Bits() != Utils::Win32::Process::Current().IsProcess64Bits()) {
-		RunProgram(Utils::Win32::Process::Current().PathOf().parent_path() / (process.IsProcess64Bits() ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW)
-			, std::format(L"{}-a {} {}",
+		Utils::Win32::RunProgram({
+			.path = Utils::Win32::Process::Current().PathOf().parent_path() / (process.IsProcess64Bits() ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW),
+			.args = std::format(L"{}-a {} {}",
 				argparse::details::repr(g_parameters.m_action),
 				g_parameters.m_quiet ? L"-q " : L"",
-				process.GetId()), true);
+				process.GetId()),
+			.wait = true
+			});
 		return;
 	}
 
@@ -417,48 +384,129 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 	}
 }
 
+int SelectAndRunLauncher() {
+	if (!g_parameters.m_runProgram.empty()) {
+		Utils::Win32::MessageBoxF(nullptr, MB_OK, L"test", L"{} {}", g_parameters.m_runProgram, g_parameters.m_runProgramArgs);
+		return Utils::Win32::RunProgram({
+			.path = g_parameters.m_runProgram,
+			.args = g_parameters.m_runProgramArgs,
+		}) ? 0 : 1;
+	}
+
+	try {
+		auto throw_on_error = [](HRESULT val) {
+			if (!SUCCEEDED(val))
+				_com_raise_error(val);
+		};
+
+		IFileOpenDialogPtr pDialog;
+		DWORD dwFlags;
+		static const COMDLG_FILTERSPEC fileTypes[] = {
+			{L"FFXIV Boot Files (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe)", L"ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe"},
+			{L"Executable Files (*.exe)", L"*.exe"},
+		};
+		throw_on_error(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
+		throw_on_error(pDialog->SetFileTypes(ARRAYSIZE(fileTypes), fileTypes));
+		throw_on_error(pDialog->SetFileTypeIndex(0));
+		throw_on_error(pDialog->SetDefaultExtension(L"exe"));
+		throw_on_error(pDialog->SetTitle(L"Select FFXIV Boot program"));
+		throw_on_error(pDialog->GetOptions(&dwFlags));
+		throw_on_error(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
+		throw_on_error(pDialog->Show(nullptr));
+
+		std::wstring fileName;
+		{
+			IShellItemPtr pResult;
+			PWSTR pszFileName;
+			throw_on_error(pDialog->GetResult(&pResult));
+			throw_on_error(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
+			if (!pszFileName)
+				throw std::runtime_error("The selected file does not have a filesystem path.");
+			fileName = pszFileName;
+			CoTaskMemFree(pszFileName);
+		}
+		
+		return Utils::Win32::RunProgram({
+			.path = fileName,
+		}) ? 0 : 1;
+	} catch (std::exception& e) {
+		Utils::Win32::MessageBoxF(nullptr, MB_ICONERROR, MsgboxTitle, L"Unable to continue: {}", e.what() ? Utils::FromUtf8(e.what()) : L"Unknown");
+	} catch (_com_error& e) {
+		if (e.Error() == HRESULT_FROM_WIN32(ERROR_CANCELLED))
+			return 1;
+		const auto err = static_cast<const wchar_t*>(e.Description());
+		throw std::runtime_error(err ? Utils::ToUtf8(err) : "unknown error");
+	}
+	return 0;
+}
+
 int RunLauncher() {
 	try {
 		XivAlexDll::EnableInjectOnCreateProcess(XivAlexDll::InjectOnCreateProcessAppFlags::Use | XivAlexDll::InjectOnCreateProcessAppFlags::InjectAll);
 
 		if (!g_parameters.m_runProgram.empty())
-			return RunProgram(g_parameters.m_runProgram, g_parameters.m_runProgramArgs);
+			return Utils::Win32::RunProgram({
+				.path = g_parameters.m_runProgram,
+				.args = g_parameters.m_runProgramArgs,
+			}) ? 0 : 1;
 
 		const auto launchers = XivAlex::FindGameLaunchers();
 		switch (g_parameters.m_launcherType) {
 			case LauncherType::Auto:
-				for (const auto& it : launchers) {
-					for (const auto& it2 : it.second.AlternativeBoots)
-						return RunProgram(it2.second);
-					return RunProgram(it.second.BootApp);
+			{
+				if (launchers.empty())
+					return SelectAndRunLauncher();
+				else if (launchers.size() == 1)
+					return Utils::Win32::RunProgram({ 
+						.path = launchers.begin()->second.BootApp,
+					}) ? 0 : 1;
+				else {
+					for (const auto& it : launchers) {
+						if (Utils::Win32::MessageBoxF(nullptr, MB_OKCANCEL | MB_ICONQUESTION, MsgboxTitle,
+							L"Launch {} version of the game?\n\nInstallation path: {}",
+							argparse::details::repr(it.first), it.second.RootPath) == IDOK)
+							Utils::Win32::RunProgram({
+								.path = it.second.BootApp,
+								.elevateMode = Utils::Win32::RunProgramParams::NoElevationIfDenied
+							});
+					}
 				}
-				throw std::runtime_error("No suitable ffxiv installation detected. Please specify path.");
+				return 0;
+			}
+
+			case LauncherType::Select:
+				return SelectAndRunLauncher();
 
 			case LauncherType::International:
 			{
-				const auto launcher = launchers.at(XivAlex::GameRegion::International);
-				for (const auto& it : launcher.AlternativeBoots)
-					return RunProgram(it.second);
-				return RunProgram(launcher.BootApp);
+				return Utils::Win32::RunProgram({
+					.path = launchers.at(XivAlex::GameRegion::International).BootApp,
+					.elevateMode = Utils::Win32::RunProgramParams::NoElevationIfDenied
+				}) ? 0 : 1;
 			}
 			case LauncherType::Korean:
 			{
-				const auto launcher = launchers.at(XivAlex::GameRegion::Korean);
-				SetEnvironmentVariableW(L"__COMPAT_LAYER", L"RunAsInvoker");
-				return RunProgram(launcher.BootApp);
+				return Utils::Win32::RunProgram({
+					.path = launchers.at(XivAlex::GameRegion::Korean).BootApp,
+					.elevateMode = Utils::Win32::RunProgramParams::NoElevationIfDenied
+				}) ? 0 : 1;
 			}
 			case LauncherType::Chinese:
 			{
-				const auto launcher = launchers.at(XivAlex::GameRegion::Chinese);
-				SetEnvironmentVariableW(L"__COMPAT_LAYER", L"RunAsInvoker");
-				return RunProgram(launcher.BootApp);
+				return Utils::Win32::RunProgram({
+					.path = launchers.at(XivAlex::GameRegion::Chinese).BootApp,
+					.elevateMode = Utils::Win32::RunProgramParams::NoElevationIfDenied
+				}) ? 0 : 1;
 			}
 		}
 	} catch (std::out_of_range&) {
-		if (g_parameters.m_action == LoaderAction::Auto)
-			MessageBoxW(nullptr, L"No running FFXIV process or installation detected.", MsgboxTitle, MB_OK | MB_ICONINFORMATION);
-		else
+		if (g_parameters.m_action == LoaderAction::Auto) {
+			if (!g_parameters.m_quiet)
+				SelectAndRunLauncher();
+
+		} else if (!g_parameters.m_quiet) {
 			MessageBoxW(nullptr, L"No FFXIV installation cold be detected. Please specify launcher path.", MsgboxTitle, MB_OK | MB_ICONINFORMATION);
+		}
 		return -1;
 
 	} catch (std::exception& e) {
@@ -475,8 +523,9 @@ int WINAPI wWinMain(
 	_In_ LPWSTR lpCmdLine,
 	_In_ int nShowCmd
 ) {
-	g_lpCmdLine = lpCmdLine;
-	
+	if (!SUCCEEDED(CoInitializeEx(nullptr, COINIT_MULTITHREADED)))
+		std::abort();
+
 	try {
 		g_parameters.Parse();
 	} catch (std::exception& err) {
@@ -551,7 +600,11 @@ int WINAPI wWinMain(
 
 	if (!g_parameters.m_disableAutoRunAs && !Utils::Win32::IsUserAnAdmin() && RequiresAdminAccess(pids)) {
 		try {
-			RestartElevated(true);
+			return Utils::Win32::RunProgram({
+				.args = lpCmdLine,
+				.wait = true,
+				.elevateMode = Utils::Win32::RunProgramParams::NoElevationIfDenied,
+			});
 		} catch (std::exception& e) {
 			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"Failed to restart as admin: {}", e.what());
 		}

@@ -20,11 +20,16 @@
 #include <PathCch.h>
 #include <shellapi.h>
 #include <Shlwapi.h>
+#include <ShObjIdl_core.h>
+#include <comdef.h>
 
 #include <XivAlexanderCommon.h>
 #include <XivAlexander.h>
 
 #include <argparse/argparse.hpp>
 #include <nlohmann/json.hpp>
+
+_COM_SMARTPTR_TYPEDEF(IFileOpenDialog, __uuidof(IFileOpenDialog));
+_COM_SMARTPTR_TYPEDEF(IShellItem, __uuidof(IShellItem));
 
 #endif //PCH_H
