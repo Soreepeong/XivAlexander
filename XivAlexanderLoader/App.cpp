@@ -1,6 +1,7 @@
 #include "pch.h"
 
 const auto MsgboxTitle = L"XivAlexander Loader";
+LPCWSTR g_lpCmdLine;
 
 static
 void CheckPackageVersions() {
@@ -260,6 +261,23 @@ bool RequiresAdminAccess(const std::set<DWORD>& pids) {
 	return false;
 }
 
+void RestartElevated(bool wait) {
+	const auto selfPath = Utils::Win32::Process::Current().PathOf().wstring();
+	SHELLEXECUTEINFOW sei{};
+	sei.cbSize = sizeof sei;
+	sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+	sei.lpVerb = L"runas";
+	sei.lpFile = selfPath.c_str();
+	sei.lpParameters = g_lpCmdLine;
+	if (!ShellExecuteExW(&sei))
+		throw Utils::Win32::Error("ShellExecuteExW");
+	if (!sei.hProcess)  // should not happen, unless registry is messed up.
+		throw std::runtime_error("Failed to execute a new program.");
+	if (!wait)
+		WaitForSingleObject(sei.hProcess, INFINITE);
+	CloseHandle(sei.hProcess);
+}
+
 int RunProgram(std::filesystem::path path, std::wstring args = L"", bool wait = false) {
 	if (!exists(path)) {
 		std::wstring buf;
@@ -275,8 +293,14 @@ int RunProgram(std::filesystem::path path, std::wstring args = L"", bool wait = 
 	PROCESS_INFORMATION pi;
 	const auto wd = path.parent_path().wstring();
 	args = args.empty() ? std::format(L"\"{}\"", path) : std::format(L"\"{}\" {}", path, args);
-	if (!CreateProcessW(path.c_str(), &args[0], nullptr, nullptr, FALSE, 0, nullptr, &wd[0], &si, &pi))
+	if (!CreateProcessW(path.c_str(), &args[0], nullptr, nullptr, FALSE, 0, nullptr, &wd[0], &si, &pi)) {
+		const auto err = GetLastError();
+		if (err == ERROR_ELEVATION_REQUIRED && !Utils::Win32::IsUserAnAdmin()) {
+			RestartElevated(wait);
+			return 0;
+		}
 		throw Utils::Win32::Error("CreateProcessW({})", path);
+	}
 	if (wait)
 		WaitForSingleObject(pi.hProcess, INFINITE);
 	CloseHandle(pi.hProcess);
@@ -451,6 +475,8 @@ int WINAPI wWinMain(
 	_In_ LPWSTR lpCmdLine,
 	_In_ int nShowCmd
 ) {
+	g_lpCmdLine = lpCmdLine;
+	
 	try {
 		g_parameters.Parse();
 	} catch (std::exception& err) {
@@ -524,15 +550,12 @@ int WINAPI wWinMain(
 	}
 
 	if (!g_parameters.m_disableAutoRunAs && !Utils::Win32::IsUserAnAdmin() && RequiresAdminAccess(pids)) {
-		SHELLEXECUTEINFOW si = {};
-		const auto path = Utils::Win32::Process::Current().PathOf();
-		si.cbSize = sizeof si;
-		si.lpVerb = L"runas";
-		si.lpFile = path.c_str();
-		si.lpParameters = lpCmdLine;
-		si.nShow = nShowCmd;
-		if (ShellExecuteExW(&si))
-			return 0;
+		try {
+			RestartElevated(true);
+		} catch (std::exception& e) {
+			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"Failed to restart as admin: {}", e.what());
+		}
+		return 0;
 	}
 
 	for (const auto pid : pids) {

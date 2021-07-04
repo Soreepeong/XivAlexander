@@ -257,7 +257,7 @@ std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLauncher
 
 		GameRegionInfo info{
 			GameRegion::Korean,
-			std::filesystem::path(reg).parent_path().parent_path(),
+			std::filesystem::path(argv[0]).parent_path().parent_path(),
 			info.RootPath / L"boot" / L"FFXIV_Boot.exe",
 			{
 				info.RootPath / L"boot" / L"FFXIV_Boot.exe",
