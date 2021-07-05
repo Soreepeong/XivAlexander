@@ -508,23 +508,10 @@ int RunLauncher() {
 }
 
 static bool RequiresElevationForUpdate(std::vector<DWORD> excludedPid) {
-	// step 1. test if DLL files are writable
-	auto requiresNextTest = false;
-	for (const auto target : {XivAlex::XivAlexLoader32NameW, XivAlex::XivAlexLoader64NameW, XivAlex::XivAlexDll32NameW, XivAlex::XivAlexDll64NameW}) {
-		const auto hDllFile = Utils::Win32::Handle(CreateFileW(target, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr),
-			INVALID_HANDLE_VALUE);
-		if (!hDllFile) {
-			requiresNextTest = true;
-			break;
-		}
-	}
-	if (!requiresNextTest)
-		return false;
-
-	// step 2. check if other ffxiv processes else than excludedPid exists, and if they're inaccessible.
+	// check if other ffxiv processes else than excludedPid exists, and if they're inaccessible.
 	for (const auto pid : GetTargetPidList()) {
 		try {
-			if (std::find(excludedPid.begin(), excludedPid.end(), pid) != excludedPid.end())
+			if (std::find(excludedPid.begin(), excludedPid.end(), pid) == excludedPid.end())
 				OpenProcessForInjection(pid);
 		} catch (...) {
 			return true;

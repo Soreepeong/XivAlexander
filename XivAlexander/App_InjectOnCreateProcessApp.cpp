@@ -91,7 +91,7 @@ public:
 			return true;
 
 		if (InjectGameOnly)
-			return equivalent(filename, XivAlex::GameExecutable32NameW) || equivalent(filename, XivAlex::GameExecutable64NameW);
+			return filename == XivAlex::GameExecutable32NameW || filename == XivAlex::GameExecutable64NameW;
 
 		// check 3 parent directories to determine whether it might have anything to do with FFXIV
 		for (int i = 0; i < 3; ++i) {
