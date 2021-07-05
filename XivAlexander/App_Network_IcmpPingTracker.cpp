@@ -28,7 +28,9 @@ public:
 	private:
 		const Utils::Win32::Closeable::Handle m_hExitEvent;
 		const ConnectionPair m_pair;
-		std::thread m_workerThread;
+
+		// needs to be last, as "this" needs to be done initializing
+		const Utils::Win32::Closeable::Thread m_hWorkerThread;
 
 	public:
 		SingleTracker(IcmpPingTracker* icmpPingTracker, const ConnectionPair& pair)
@@ -36,12 +38,15 @@ public:
 			, Tracker(std::make_shared<Utils::NumericStatisticsTracker>(8, INT64_MAX, 60 * 1000))
 			, m_hExitEvent(CreateEventW(nullptr, true, false, nullptr), nullptr)
 			, m_pair(pair)
-			, m_workerThread([this]() {Run(); }) {
+			, m_hWorkerThread(std::format(L"XivAlexander::App::Network::IcmpPingTracker({:x})::SingleTracker({:x}: {} <-> {})",
+				reinterpret_cast<size_t>(icmpPingTracker), reinterpret_cast<size_t>(this), 
+				Utils::ToString(pair.Source), Utils::ToString(pair.Destination)
+			), [this]() { Run(); }) {
 		}
 
 		~SingleTracker() {
 			SetEvent(m_hExitEvent);
-			m_workerThread.join();
+			m_hWorkerThread.Wait();
 		}
 
 	private:

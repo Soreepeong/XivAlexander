@@ -66,7 +66,7 @@ void App::Window::Config::Revert() {
 		m_originalConfig = config.dump(1, '\t');
 		m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(m_originalConfig.data()));
 	} catch (std::exception& e) {
-		Utils::Win32::MessageBoxF(m_hWnd, MB_ICONERROR, L"XivAlexander", L"Failed to reload previous configuration file: {}", Utils::FromUtf8(e.what()));
+		Utils::Win32::MessageBoxF(m_hWnd, MB_ICONERROR, L"XivAlexander", L"Failed to reload previous configuration file: {}", e.what());
 		DestroyWindow(m_hWnd);
 	}
 }
@@ -78,14 +78,14 @@ bool App::Window::Config::TrySave() {
 	try {
 		buf = nlohmann::json::parse(buf).dump(1, '\t');
 	} catch (nlohmann::json::exception& e) {
-		Utils::Win32::MessageBoxF(m_hWnd, MB_ICONERROR, L"XivAlexander", L"Invalid JSON: {}", Utils::FromUtf8(e.what()));
+		Utils::Win32::MessageBoxF(m_hWnd, MB_ICONERROR, L"XivAlexander", L"Invalid JSON: {}", e.what());
 		return false;
 	}
 	try {
 		std::ofstream out(m_pRepository->GetConfigPath());
 		out << buf;
 	} catch (std::exception& e) {
-		Utils::Win32::MessageBoxF(m_hWnd, MB_OK, L"XivAlexander", L"Failed to save new configuration file: {}", Utils::FromUtf8(e.what()));
+		Utils::Win32::MessageBoxF(m_hWnd, MB_OK, L"XivAlexander", L"Failed to save new configuration file: {}", e.what());
 		return false;
 	}
 	m_originalConfig = std::move(buf);
@@ -117,7 +117,7 @@ LRESULT App::Window::Config::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(&buf[0]));
 			buf.resize(buf.length() - 1);
 			if (buf != m_originalConfig) {
-				switch (MessageBoxW(m_hWnd, L"Apply changed configuration?", L"XivAlexander", MB_YESNOCANCEL | MB_ICONQUESTION)) {
+				switch (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNOCANCEL | MB_ICONQUESTION, L"XivAlexander", L"Apply changed configuration?")) {
 					case IDCANCEL:
 						return 0;
 					case IDYES:

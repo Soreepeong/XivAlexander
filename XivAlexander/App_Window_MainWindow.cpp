@@ -73,8 +73,20 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	if (uMsg == WM_CLOSE) {
 		if (lParam)
 			DestroyWindow(m_hWnd);
-		else if (MessageBoxW(m_hWnd, L"Closing this window will unload XivAlexander. Disable \"Show Control Window\" from the menu to hide this window. Proceed?", L"XivAlexander", MB_YESNO | MB_ICONQUESTION) == IDYES)
-			m_triggerUnload();
+		else {
+			switch (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNOCANCEL | MB_ICONQUESTION, L"XivAlexander", 
+				L"Do you want to unload XivAlexander?\n\n"
+				L"Press Yes to unload XivAlexander.\n"
+				L"Press No to hide this window.\n"
+				L"Press Cancel to do nothing.")) {
+				case IDYES:
+					m_triggerUnload();
+					break;
+				case IDNO:
+					m_config->Runtime.ShowControlWindow = false;
+					break;
+			}
+		}
 		return 0;
 	} else if (uMsg == WM_INITMENUPOPUP) {
 		RepopulateMenu(GetMenu(m_hWnd));

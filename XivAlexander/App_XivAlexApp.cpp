@@ -100,7 +100,7 @@ public:
 			}
 
 			this->this_->m_bInterrnalUnloadInitiated = true;
-			Utils::Win32::Closeable::Thread(L"XivAlexUnloader", [](){
+			Utils::Win32::Closeable::Thread::WithReference(L"XivAlexander::App::XivAlexApp::Implementation::SetupTrayWindow::XivAlexUnloader", [](){
 				XivAlexDll::DisableAllApps(nullptr);
 			}, g_hInstance);
 		});
@@ -220,18 +220,8 @@ App::XivAlexApp::XivAlexApp()
 	, m_detectionDisabler(Misc::DebuggerDetectionDisabler::Acquire())
 	, m_logger(Misc::Logger::Acquire())
 	, m_config(Config::Acquire())
-	, m_pImpl(std::make_unique<Implementation>(this)) {
-
-	try {
-		m_hCustomMessageLoop = Utils::Win32::Closeable::Handle(
-			CreateThread(nullptr, 0, [](void* pThis) {
-				return static_cast<XivAlexApp*>(pThis)->CustomMessageLoopBody();
-			}, this, 0, nullptr),
-			Utils::Win32::Closeable::Handle::Null, "XivAlexApp::CreateThread(CustomMessageLoop)"
-		);
-	} catch (...) {
-		throw;
-	}
+	, m_pImpl(std::make_unique<Implementation>(this))
+	, m_hCustomMessageLoop(L"XivAlexander::App::XivAlexApp::CustomMessageLoopBody", [this]() { CustomMessageLoopBody(); }) {
 }
 
 App::XivAlexApp::~XivAlexApp() {
@@ -239,9 +229,9 @@ App::XivAlexApp::~XivAlexApp() {
 		std::abort();
 
 	if (m_pImpl->m_trayWindow)
-		SendMessage(m_pImpl->m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
+		SendMessageW(m_pImpl->m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
 
-	WaitForSingleObject(m_hCustomMessageLoop, INFINITE);
+	m_hCustomMessageLoop.Wait();
 
 	if (!m_bInterrnalUnloadInitiated) {
 		// Being destructed from DllMain(Process detach).
@@ -253,7 +243,9 @@ App::XivAlexApp::~XivAlexApp() {
 	m_pImpl->m_cleanup.Clear();
 }
 
-DWORD App::XivAlexApp::CustomMessageLoopBody() {
+void App::XivAlexApp::CustomMessageLoopBody() {
+	const auto activationContextCleanup = g_hActivationContext.With();
+	
 	m_pImpl->Load();
 	
 	m_logger->Log(LogCategory::General, u8"XivAlexander initialized.");
@@ -291,7 +283,6 @@ DWORD App::XivAlexApp::CustomMessageLoopBody() {
 			DispatchMessageW(&msg);
 		}
 	}
-	return 0;
 }
 
 HWND App::XivAlexApp::GetGameWindowHandle() const {
@@ -362,12 +353,12 @@ void App::XivAlexApp::CheckUpdates(bool silent) {
 				local[0], local[1], local[2], local[3], remote[0], remote[1], remote[2], remote[3], up.PublishDate);
 			m_logger->Log(LogCategory::General, s);
 			if (!silent)
-				MessageBoxW(nullptr, Utils::FromUtf8(s).c_str(), L"XivAlexander", MB_OK);
+				Utils::Win32::MessageBoxF(nullptr, MB_OK, L"XivAlexander", s);
 		} else if (local == remote) {
 			const auto s = std::format("No updates available; you have the most recent version {}.{}.{}.{}, released at {:%Ec}", local[0], local[1], local[2], local[3], up.PublishDate);
 			m_logger->Log(LogCategory::General, s);
 			if (!silent)
-				MessageBoxW(nullptr, Utils::FromUtf8(s).c_str(), L"XivAlexander", MB_OK);
+				Utils::Win32::MessageBoxF(nullptr, MB_OK, L"XivAlexander", s);
 		} else {
 			const auto s = std::format("New version {}.{}.{}.{}, released at {:%Ec}, is available. Local version is {}.{}.{}.{}", remote[0], remote[1], remote[2], remote[3], up.PublishDate, local[0], local[1], local[2], local[3]);
 			m_logger->Log(LogCategory::General, s);
@@ -399,10 +390,16 @@ extern "C" __declspec(dllexport) int __stdcall XivAlexDll::EnableXivAlexander(si
 	if (!!bEnable == !!s_xivAlexApp)
 		return 0;
 	try {
+		if (s_xivAlexApp && !bEnable) {
+			if (const auto reason = s_xivAlexApp->IsUnloadable(); !reason.empty()) {
+				Utils::Win32::DebugPrint(L"Cannot unload: {}", reason);
+				return -2;
+			}
+		}
 		s_xivAlexApp = bEnable ? std::make_unique<App::XivAlexApp>() : nullptr;
 		return 0;
 	} catch (const std::exception& e) {
-		OutputDebugStringA(std::format("LoadXivAlexander error: {}\n", e.what()).c_str());
+		Utils::Win32::DebugPrint(L"LoadXivAlexander error: {}\n", e.what());
 		return -1;
 	}
 }

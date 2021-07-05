@@ -26,14 +26,16 @@ namespace App {
 
 		bool m_bInterrnalUnloadInitiated = false;
 		bool m_bMainWindowDestroyed = false;
-		Utils::Win32::Closeable::Handle m_hCustomMessageLoop;
+		
+		// needs to be last, as "this" needs to be done initializing
+		Utils::Win32::Closeable::Thread m_hCustomMessageLoop;
 
 	public:
 		XivAlexApp();
 		~XivAlexApp();
 
 	private:
-		DWORD CustomMessageLoopBody();
+		void CustomMessageLoopBody();
 
 	public:
 		[[nodiscard]] HWND GetGameWindowHandle() const;

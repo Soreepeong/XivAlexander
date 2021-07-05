@@ -181,4 +181,9 @@
       <Filter>Project Items</Filter>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="DummyAssemblyIdentity.manifest">
+      <Filter>Resources</Filter>
+    </Manifest>
+  </ItemGroup>
 </Project>

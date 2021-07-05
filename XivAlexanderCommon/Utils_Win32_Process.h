@@ -26,6 +26,7 @@ namespace Utils::Win32 {
 
 		static Process& Current();
 
+		Process& Attach(HANDLE r, bool ownership, const std::string& errorMessage);
 		HANDLE Detach() override;
 
 		void Clear() override;

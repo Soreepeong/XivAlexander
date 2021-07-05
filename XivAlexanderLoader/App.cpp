@@ -279,8 +279,8 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 		Utils::Win32::RunProgram({
 			.path = Utils::Win32::Process::Current().PathOf().parent_path() / (process.IsProcess64Bits() ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW),
 			.args = std::format(L"{}-a {} {}",
-				argparse::details::repr(g_parameters.m_action),
 				g_parameters.m_quiet ? L"-q " : L"",
+				argparse::details::repr(g_parameters.m_action),
 				process.GetId()),
 			.wait = true
 			});
@@ -488,7 +488,7 @@ int RunLauncher() {
 				SelectAndRunLauncher();
 
 		} else if (!g_parameters.m_quiet) {
-			MessageBoxW(nullptr, L"No FFXIV installation cold be detected. Please specify launcher path.", MsgboxTitle, MB_OK | MB_ICONINFORMATION);
+			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONINFORMATION, MsgboxTitle, L"No FFXIV installation cold be detected. Please specify launcher path.");
 		}
 		return -1;
 
@@ -516,7 +516,7 @@ int WINAPI wWinMain(
 		return -1;
 	}
 	if (g_parameters.m_help) {
-		MessageBoxW(nullptr, g_parameters.GetHelpMessage().c_str(), MsgboxTitle, MB_OK);
+		Utils::Win32::MessageBoxF(nullptr, MB_OK, MsgboxTitle, g_parameters.GetHelpMessage().c_str());
 		return 0;
 	}
 	if (g_parameters.m_web) {
@@ -545,9 +545,9 @@ int WINAPI wWinMain(
 		try {
 			if (!ReadFile(GetStdHandle(STD_INPUT_HANDLE), &val, sizeof val, &read, nullptr) || read != sizeof val)
 				throw Utils::Win32::Error("ReadFile");
-			auto process = Utils::Win32::Process();
-			process.Attach(reinterpret_cast<HANDLE>(static_cast<size_t>(val)), Utils::Win32::Process::Null, true, "null handle is invalid");
-			return XivAlexDll::PatchEntryPointForInjection(process);
+
+			XivAlexDll::PatchEntryPointForInjection(Utils::Win32::Process().Attach(reinterpret_cast<HANDLE>(static_cast<size_t>(val)), true, "null handle is invalid"));
+			return 0;
 		} catch (const std::exception& e) {
 			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"Error occurred: {}", e.what());
 			return -1;
@@ -576,7 +576,7 @@ int WINAPI wWinMain(
 				errors = std::format(L"{} not found. Run the game first, and then try again.", XivAlex::GameExecutableNameW);
 			else
 				errors = L"No matching process found.";
-			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"{}", errors);
+			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, errors);
 		}
 		return -1;
 	}

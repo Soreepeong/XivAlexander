@@ -16,22 +16,23 @@ public:
 	std::deque<LogItem> m_items, m_pendingItems;
 
 	// needs to be last, as "this" needs to be done initializing
-	const Utils::Win32::Closeable::Thread m_hLogDispatcherThread;
+	const Utils::Win32::Closeable::Thread m_hDispatcherThread;
 
 	Implementation(Logger& logger)
 		: logger(logger)
-		, m_hLogDispatcherThread(L"XivAlexander::App::Misc::Logger::Implementation", [this]() { return ThreadWorker(); }) {
-		ResumeThread(m_hLogDispatcherThread);
+		, m_hDispatcherThread(std::format(L"XivAlexander::App::Misc::Logger({:x})::Implementation({:x}::DispatcherThreadBody",
+			reinterpret_cast<size_t>(&logger), reinterpret_cast<size_t>(this)
+			), [this]() { return DispatcherThreadBody(); }) {
+		ResumeThread(m_hDispatcherThread);
 	}
 
 	~Implementation() {
 		m_bQuitting = true;
 		m_threadTrigger.notify_all();
-		WaitForSingleObject(m_hLogDispatcherThread, INFINITE);
+		WaitForSingleObject(m_hDispatcherThread, INFINITE);
 	}
 
-	void ThreadWorker() {
-		Utils::Win32::SetThreadDescription(GetCurrentThread(), L"XivAlexander::Misc::Logger::Implementation::ThreadWorker");
+	void DispatcherThreadBody() {
 		while (true) {
 			std::deque<LogItem> pendingItems;
 			{

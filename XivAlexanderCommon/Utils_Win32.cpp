@@ -15,15 +15,15 @@ std::string Utils::Win32::FormatWindowsErrorMessage(unsigned int errorCode) {
 		MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN),
 #endif
 		}) {
-		LPTSTR errorText = nullptr;
-		FormatMessage(
+		LPWSTR errorText = nullptr;
+		FormatMessageW(
 			FORMAT_MESSAGE_FROM_SYSTEM
 			| FORMAT_MESSAGE_ALLOCATE_BUFFER
 			| FORMAT_MESSAGE_IGNORE_INSERTS,
 			nullptr,
 			errorCode,
 			langId,
-			reinterpret_cast<LPTSTR>(&errorText), // output 
+			reinterpret_cast<LPWSTR>(&errorText), // output 
 			0, // minimum size for output buffer
 			nullptr); // arguments - see note 
 		if (nullptr != errorText) {
@@ -144,6 +144,22 @@ void Utils::Win32::SetThreadDescription(HANDLE hThread, const std::wstring& desc
 		pfnSetThreadDescription(hThread, description.data());
 	else
 		DebugPrint(L"SetThreadDescription not supported");
+}
+
+int Utils::Win32::MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const std::wstring& text) {
+	return MessageBoxF(hWnd, uType, lpCaption, text.c_str());
+}
+
+int Utils::Win32::MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const std::string& text) {
+	return MessageBoxF(hWnd, uType, lpCaption, FromUtf8(text));
+}
+
+int Utils::Win32::MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const wchar_t* text) {
+	return MessageBoxW(hWnd, text, lpCaption, uType);
+}
+
+int Utils::Win32::MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const char* text) {
+	return MessageBoxF(hWnd, uType, lpCaption, FromUtf8(text));
 }
 
 void Utils::Win32::SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked) {

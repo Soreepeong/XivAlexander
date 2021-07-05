@@ -118,70 +118,54 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		case WM_COMMAND: {
 			switch (LOWORD(wParam)) {
 				case ID_FILE_SAVE: {
-					struct DataT {
-						HWND hWnd;
-						std::string buf;
+					const auto hWnd = m_hWnd;
+					std::string buf(m_direct(m_directPtr, SCI_GETLENGTH, 0, 0) + 1, '\0');
+					m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(&buf[0]));
+					buf.resize(buf.length() - 1);
+					
+					static const COMDLG_FILTERSPEC saveFileTypes[] = {
+						{L"Log Files (*.log)",		L"*.log"},
+						{L"All Documents (*.*)",	L"*.*"}
+					};
+					auto throw_on_error = [](HRESULT val) {
+						if (!SUCCEEDED(val))
+							_com_raise_error(val);
 					};
 
-					auto pDataT = new DataT();
-					pDataT->hWnd = m_hWnd;
-					pDataT->buf = std::string(m_direct(m_directPtr, SCI_GETLENGTH, 0, 0) + 1, '\0');
-					m_direct(m_directPtr, SCI_GETTEXT, pDataT->buf.length(), reinterpret_cast<sptr_t>(&pDataT->buf[0]));
-					pDataT->buf.resize(pDataT->buf.length() - 1);
-
-					Utils::Win32::Closeable::Handle hThread(CreateThread(nullptr, 0, [](void* pDataRaw) -> DWORD {
-						const DataT data = std::move(*static_cast<DataT*>(pDataRaw));
-						delete static_cast<DataT*>(pDataRaw);
+					try {
+						IFileSaveDialogPtr pDialog;
+						DWORD dwFlags;
+						throw_on_error(pDialog.CreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER));
+						throw_on_error(pDialog->SetFileTypes(ARRAYSIZE(saveFileTypes), saveFileTypes));
+						throw_on_error(pDialog->SetFileTypeIndex(0));
+						throw_on_error(pDialog->SetDefaultExtension(L"log"));
+						throw_on_error(pDialog->GetOptions(&dwFlags));
+						throw_on_error(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
 						
-						static const COMDLG_FILTERSPEC saveFileTypes[] = {
-							{L"Log Files (*.log)",		L"*.log"},
-							{L"All Documents (*.*)",	L"*.*"}
-						};
-						auto throw_on_error = [](HRESULT val) {
-							if (!SUCCEEDED(val))
-								_com_raise_error(val);
-						};
-
-						Utils::Win32::SetThreadDescription(GetCurrentThread(), L"XivAlexander::Window::Log::WndProc::FileSaveThread({:p})", reinterpret_cast<size_t>(data.hWnd));
-
-						try {
-							IFileSaveDialogPtr pDialog;
-							DWORD dwFlags;
-							throw_on_error(pDialog.CreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER));
-							throw_on_error(pDialog->SetFileTypes(ARRAYSIZE(saveFileTypes), saveFileTypes));
-							throw_on_error(pDialog->SetFileTypeIndex(0));
-							throw_on_error(pDialog->SetDefaultExtension(L"log"));
-							throw_on_error(pDialog->GetOptions(&dwFlags));
-							throw_on_error(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
-							
-							throw_on_error(pDialog->Show(data.hWnd));
-							
-							std::filesystem::path newFileName;
-							{
-								IShellItemPtr pResult;
-								PWSTR pszNewFileName;
-								throw_on_error(pDialog->GetResult(&pResult));
-								throw_on_error(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszNewFileName));
-								if (!pszNewFileName)
-									throw std::runtime_error("The selected file does not have a filesystem path.");
-								newFileName = pszNewFileName;
-							}
-							
-							std::ofstream f(newFileName);
-							f << data.buf;
-							Utils::Win32::MessageBoxF(data.hWnd, MB_ICONINFORMATION, L"XivAlexander", L"Log saved to: {}", newFileName);
-							
-						} catch (std::exception& e) {
-							Utils::Win32::MessageBoxF(data.hWnd, MB_ICONERROR, L"XivAlexander", L"Unable to save: {}", Utils::FromUtf8(e.what()));
-						} catch (_com_error& e) {
-							if (e.Error() == HRESULT_FROM_WIN32(ERROR_CANCELLED))
-								return 0;
-							Utils::Win32::MessageBoxF(data.hWnd, MB_ICONERROR, L"XivAlexander", L"Unable to save: {}", static_cast<const wchar_t*>(e.Description()));
+						throw_on_error(pDialog->Show(hWnd));
+						
+						std::filesystem::path newFileName;
+						{
+							IShellItemPtr pResult;
+							PWSTR pszNewFileName;
+							throw_on_error(pDialog->GetResult(&pResult));
+							throw_on_error(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszNewFileName));
+							if (!pszNewFileName)
+								throw std::runtime_error("The selected file does not have a filesystem path.");
+							newFileName = pszNewFileName;
 						}
-						return 0;
-						}, pDataT, 0, nullptr),
-						Utils::Win32::Closeable::Handle::Null,
-							"Failed to start FileSaveThread.");
+						
+						std::ofstream f(newFileName);
+						f << buf;
+						Utils::Win32::MessageBoxF(hWnd, MB_ICONINFORMATION, L"XivAlexander", L"Log saved to: {}", newFileName);
+						
+					} catch (std::exception& e) {
+						Utils::Win32::MessageBoxF(hWnd, MB_ICONERROR, L"XivAlexander", L"Unable to save: {}", e.what());
+					} catch (_com_error& e) {
+						if (e.Error() == HRESULT_FROM_WIN32(ERROR_CANCELLED))
+							return 0;
+						Utils::Win32::MessageBoxF(hWnd, MB_ICONERROR, L"XivAlexander", L"Unable to save: {}", static_cast<const wchar_t*>(e.Description()));
+					}
 					return 0;
 				}
 

@@ -56,7 +56,7 @@ App::Window::BaseWindow::BaseWindow(const WNDCLASSEXW& wndclassex,
 	_In_opt_ HWND hWndParent,
 	_In_opt_ HMENU hMenu)
 	: m_hShCore(L"Shcore.dll", LOAD_LIBRARY_SEARCH_SYSTEM32, false)
-	, m_config(Config::Acquire())
+	, m_config(App::Config::Acquire())
 	, m_logger(Misc::Logger::Acquire())
 	, m_windowClass(wndclassex)
 	, m_hWnd(InternalCreateWindow(wndclassex, lpWindowName, dwStyle, dwExStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, this)) {

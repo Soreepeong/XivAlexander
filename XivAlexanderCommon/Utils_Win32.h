@@ -17,10 +17,20 @@ namespace Utils::Win32 {
 	void DebugPrint(const wchar_t* format, Args ... args) {
 		OutputDebugStringW(std::format(L"{}\n", std::format(format, std::forward<Args>(args)...)).c_str());
 	}
-
+	
+	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const std::wstring& text);
+	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const std::string& text);
+	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const wchar_t* text);
+	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const char* text);
+	
 	template <typename ... Args>
 	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const wchar_t* format, Args ... args) {
-		return MessageBoxW(hWnd, std::format(format, std::forward<Args>(args)...).c_str(), lpCaption, uType);
+		return MessageBoxF(hWnd, uType, lpCaption, std::format(format, std::forward<Args>(args)...).c_str());
+	}
+	
+	template <typename ... Args>
+	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const char* format, Args ... args) {
+		return MessageBoxF(hWnd, uType, lpCaption, FromUtf8(std::format(format, std::forward<Args>(args)...)).c_str());
 	}
 
 	void SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked);

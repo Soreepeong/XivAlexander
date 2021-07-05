@@ -5,12 +5,13 @@
 
 #include <windef.h>
 
+#include "Utils_CallOnDestruction.h"
 #include "Utils_Win32.h"
 #include "Utils__Misc.h"
 #include "Utils__String.h"
 
 namespace Utils::Win32::Closeable {
-	template <typename T, BOOL(WINAPI* CloserFunction)(T)>
+	template <typename T, auto CloserFunction>
 	class Base {
 	public:
 		static constexpr T Null = reinterpret_cast<T>(nullptr);
@@ -74,13 +75,14 @@ namespace Utils::Win32::Closeable {
 			ClearInternal();
 		}
 
-		void Attach(T r, T invalidValue, bool ownership, const std::string& errorMessage) {
+		virtual Base& Attach(T r, T invalidValue, bool ownership, const std::string& errorMessage) {
 			if (r == invalidValue)
 				throw Error(errorMessage);
 			
 			Clear();
 			m_object = r;
 			m_bOwnership = ownership;
+			return *this;
 		}
 
 		virtual T Detach() {
@@ -130,6 +132,14 @@ namespace Utils::Win32::Closeable {
 		Handle& DuplicateFrom(HANDLE hProcess, HANDLE hSourceHandle, bool bInheritable = false);
 		Handle& DuplicateFrom(HANDLE hSourceHandle, bool bInheritable = false);
 	};
+
+	class ActivationContext : public Base<HANDLE, ReleaseActCtx> {
+	public:
+		using Base<HANDLE, ReleaseActCtx>::Base;
+		explicit ActivationContext(const ACTCTXW& actctx);
+
+		CallOnDestruction With() const;
+	};
 	
 	class LoadedModule : public Base<HMODULE, FreeLibrary> {
 	public:
@@ -152,9 +162,10 @@ namespace Utils::Win32::Closeable {
 	public:
 		Thread(std::wstring name, std::function<DWORD()> body, LoadedModule hLibraryToFreeAfterExecution = nullptr);
 		Thread(std::wstring name, std::function<void()> body, LoadedModule hLibraryToFreeAfterExecution = nullptr);
-		Thread(std::wstring name, std::function<DWORD()> body, HMODULE hModule);
-		Thread(std::wstring name, std::function<void()> body, HMODULE hModule);
 		~Thread() override;
+		
+		static Thread WithReference(std::wstring name, std::function<DWORD()> body, HINSTANCE hModule);
+		static Thread WithReference(std::wstring name, std::function<void()> body, HINSTANCE hModule);
 
 		[[nodiscard]] DWORD GetId() const;
 

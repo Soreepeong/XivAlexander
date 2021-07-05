@@ -58,6 +58,11 @@ Utils::Win32::Process& Utils::Win32::Process::Current() {
 	return current;
 }
 
+Utils::Win32::Process& Utils::Win32::Process::Attach(HANDLE r, bool ownership, const std::string& errorMessage) {
+	Base::Attach(r, Null, ownership, errorMessage);
+	return *this;
+}
+
 HANDLE Utils::Win32::Process::Detach() {
 	m_moduleMemory.clear();
 	return Handle::Detach();

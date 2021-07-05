@@ -12,7 +12,7 @@
 
 namespace XivAlexDll {
 
-	extern "C" XIVALEXANDER_DLLEXPORT int __stdcall PatchEntryPointForInjection(HANDLE hProcess);
+	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall PatchEntryPointForInjection(HANDLE hProcess);
 	
 	class InjectOnCreateProcessAppFlags {
 	public:

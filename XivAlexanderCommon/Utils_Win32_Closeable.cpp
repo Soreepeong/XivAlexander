@@ -52,6 +52,19 @@ Utils::Win32::Closeable::Handle& Utils::Win32::Closeable::Handle::DuplicateFrom(
 	return DuplicateFrom(GetCurrentProcess(), hSourceHandle, bInheritable);
 }
 
+Utils::Win32::Closeable::ActivationContext::ActivationContext(const ACTCTXW& actctx)
+	: Base<HANDLE, ReleaseActCtx>(CreateActCtxW(&actctx), INVALID_HANDLE_VALUE, "CreateActCtxW") {
+}
+
+Utils::CallOnDestruction Utils::Win32::Closeable::ActivationContext::With() const {
+	ULONG_PTR cookie;
+	if (!ActivateActCtx(m_object, &cookie))
+		throw Error("ActivateActCtx");
+	return CallOnDestruction([cookie]() {
+		DeactivateActCtx(DEACTIVATE_ACTCTX_FLAG_FORCE_EARLY_DEACTIVATION, cookie);
+	});
+}
+
 Utils::Win32::Closeable::LoadedModule::LoadedModule(const wchar_t* pwszFileName, DWORD dwFlags, bool bRequire)
 	: Base<HMODULE, FreeLibrary>(LoadLibraryExW(pwszFileName, nullptr, dwFlags), Null) {
 	if (!m_object && bRequire)
@@ -115,6 +128,8 @@ Utils::Win32::Closeable::Thread::Thread(std::wstring name, std::function<DWORD()
 				delete static_cast<InnerBodyFunctionType*>(pThisFunction);
 				FreeLibraryAndExitThread(hModule, res);
 			}
+			
+			delete static_cast<InnerBodyFunctionType*>(pThisFunction);
 			return res;
 		});
 	const auto hThread = CreateThread(nullptr, 0, [](void* lpParameter) -> DWORD {
@@ -131,15 +146,15 @@ Utils::Win32::Closeable::Thread::Thread(std::wstring name, std::function<void()>
 	: Thread(std::move(name), std::function([body = std::move(body)]() -> DWORD { body(); return 0; }), std::move(hLibraryToFreeAfterExecution)) {
 }
 
-Utils::Win32::Closeable::Thread::Thread(std::wstring name, std::function<DWORD()> body, HMODULE hModule)
-	: Thread(std::move(name), std::move(body), LoadedModule::From(hModule)) {
-}
-
-Utils::Win32::Closeable::Thread::Thread(std::wstring name, std::function<void()> body, HMODULE hModule)
-	: Thread(std::move(name), std::move(body), LoadedModule::From(hModule)) {
-}
-
 Utils::Win32::Closeable::Thread::~Thread() = default;
+
+Utils::Win32::Closeable::Thread Utils::Win32::Closeable::Thread::WithReference(std::wstring name, std::function<DWORD()> body, HINSTANCE hModule) {
+	return Thread(std::move(name), std::move(body), LoadedModule::From(hModule));
+}
+
+Utils::Win32::Closeable::Thread Utils::Win32::Closeable::Thread::WithReference(std::wstring name, std::function<void()> body, HINSTANCE hModule) {
+	return Thread(std::move(name), std::move(body), LoadedModule::From(hModule));
+}
 
 DWORD Utils::Win32::Closeable::Thread::GetId() const {
 	return GetThreadId(m_object);

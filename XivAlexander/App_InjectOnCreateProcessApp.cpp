@@ -104,6 +104,8 @@ public:
 	}
 
 	void PostProcessExecution(DWORD dwCreationFlags, LPPROCESS_INFORMATION lpProcessInformation) {
+		const auto activationContextCleanup = g_hActivationContext.With();
+	
 		const auto process = Utils::Win32::Process(lpProcessInformation->hProcess, false);
 		const auto isTarget = IsInjectTarget(process);
 		try {
@@ -177,9 +179,7 @@ public:
 				e.what(), lpProcessInformation->dwProcessId);
 		}
 #ifdef _DEBUG
-		Utils::Win32::MessageBoxF(
-			nullptr, MB_OK,
-			L"XivAlexander",
+		Utils::Win32::MessageBoxF(nullptr, MB_OK, L"XivAlexander",
 			L"isTarget={}\n"
 			L"Self: PID={}, Platform={}, Path={}\n"
 			L"Target: PID={}, Platform={}, Path={}\n",
@@ -223,13 +223,14 @@ extern "C" __declspec(dllexport) int __stdcall XivAlexDll::EnableInjectOnCreateP
 			s_injectOnCreateProcessApp->SetFlags(flags);
 		return 0;
 	} catch (const std::exception& e) {
-		OutputDebugStringA(std::format("EnableInjectOnCreateProcessApp error: {}\n", e.what()).c_str());
+		Utils::Win32::DebugPrint(L"EnableInjectOnCreateProcessApp error: {}\n", e.what());
 		return -1;
 	}
 }
 
 static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
-	const auto process = Utils::Win32::Process::Current();	auto filename = process.PathOf().filename().wstring();
+	const auto process = Utils::Win32::Process::Current();
+	auto filename = process.PathOf().filename().wstring();
 	CharLowerW(&filename[0]);
 	s_injectOnCreateProcessApp = std::make_unique<App::InjectOnCreateProcessApp>();
 
@@ -242,54 +243,48 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
 	// let original entry point continue execution.
 	SetEvent(hContinuableEvent);
 
-	try {
-		if (WaitForInputIdle(GetCurrentProcess(), 10000) == WAIT_TIMEOUT)
-			throw std::runtime_error("Timed out waiting for the game to run.");
+	if (WaitForInputIdle(GetCurrentProcess(), 10000) == WAIT_TIMEOUT)
+		throw std::runtime_error("Timed out waiting for the game to run.");
 
-		HWND hwnd = nullptr;
-		while (WaitForSingleObject(GetCurrentProcess(), 100) == WAIT_TIMEOUT) {
-			hwnd = nullptr;
-			while ((hwnd = FindWindowExW(nullptr, hwnd, L"FFXIVGAME", nullptr))) {
-				DWORD pid;
-				GetWindowThreadProcessId(hwnd, &pid);
-				if (pid == GetCurrentProcessId())
-					break;
-			}
-			if (hwnd && IsWindowVisible(hwnd))
+	HWND hwnd = nullptr;
+	while (WaitForSingleObject(GetCurrentProcess(), 100) == WAIT_TIMEOUT) {
+		hwnd = nullptr;
+		while ((hwnd = FindWindowExW(nullptr, hwnd, L"FFXIVGAME", nullptr))) {
+			DWORD pid;
+			GetWindowThreadProcessId(hwnd, &pid);
+			if (pid == GetCurrentProcessId())
 				break;
 		}
-		if (!hwnd)
-			throw std::runtime_error("Game process exited before initialization.");
-		XivAlexDll::EnableXivAlexander(1);
-
-	} catch (std::exception& e) {
-		Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, L"XivAlexander",
-			L"Failed to load XivAlexander into the game process: {}\n\n"
-			L"Process ID: {}",
-			e.what(), GetCurrentProcessId());
+		if (hwnd && IsWindowVisible(hwnd))
+			break;
 	}
+	if (!hwnd)
+		throw std::runtime_error("Game process exited before initialization.");
+	XivAlexDll::EnableXivAlexander(1);
 }
 
 extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters * pParam) {
 	pParam->Internal.hContinuableEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
 	pParam->Internal.hWorkerThread = CreateThread(nullptr, 0, [](void* pParam) -> DWORD {
 		const auto process = Utils::Win32::Process::Current();
+		const auto activationContextCleanup = g_hActivationContext.With();
 		try {
 			const auto p = static_cast<InjectEntryPointParameters*>(pParam);
 			const Utils::Win32::Closeable::Handle hContinueNotify = Utils::Win32::Closeable::Handle().DuplicateFrom(p->Internal.hContinuableEvent);
 			process.WriteMemory(p->EntryPoint, p->EntryPointOriginalBytes, p->EntryPointOriginalLength, true);
 
 #ifdef _DEBUG
-			MessageBoxW(nullptr, std::format(L"PID: {}\nPath: {}\nCommand Line: {}", process.GetId(), process.PathOf().wstring(), GetCommandLineW()).c_str(), L"Injected EntryPoint", MB_OK);
+
+			Utils::Win32::MessageBoxF(MB_OK, MB_OK, L"XivAlexander",
+				L"PID: {}\nPath: {}\nCommand Line: {}", process.GetId(), process.PathOf().wstring(), GetCommandLineW());
 #endif
 
 			InitializeBeforeOriginalEntryPoint(hContinueNotify);
 			SetEvent(hContinueNotify);
 		} catch (std::exception& e) {
-			MessageBoxW(nullptr, std::format(
-				L"Could not load this process.\nError: {}\n\nPID: {}\nPath: {}\nCommand Line: {}", e.what(),
-				process.GetId(), process.PathOf().wstring(), GetCommandLineW()
-			).c_str(), L"XivAlexander Loader", MB_OK | MB_ICONERROR);
+			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, L"XivAlexander",
+				L"Could not load this process.\nError: {}\n\nPID: {}\nPath: {}\nCommand Line: {}", 
+				e.what(), process.GetId(), process.PathOf().wstring(), GetCommandLineW());
 			TerminateProcess(GetCurrentProcess(), 1);
 		}
 		FreeLibraryAndExitThread(g_hInstance, 0);
@@ -304,66 +299,56 @@ extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(Inj
 	VirtualFree(pParam->TrampolineAddress, 0, MEM_RELEASE);
 }
 
-extern "C" __declspec(dllexport) int __stdcall XivAlexDll::PatchEntryPointForInjection(HANDLE hProcess) {
+extern "C" __declspec(dllexport) void __stdcall XivAlexDll::PatchEntryPointForInjection(HANDLE hProcess) {
 	const auto process = Utils::Win32::Process(hProcess, false);
+	
+	const auto regions = process.GetCommittedImageAllocation();
+	if (regions.empty())
+		throw std::runtime_error("Could not find memory region of the program.");
 
-	try {
-		const auto regions = process.GetCommittedImageAllocation();
-		if (regions.empty())
-			throw std::runtime_error("Could not find memory region of the program.");
+	auto& mem = process.GetModuleMemoryBlockManager(static_cast<HMODULE>(regions.front().BaseAddress));
 
-		auto& mem = process.GetModuleMemoryBlockManager(static_cast<HMODULE>(regions.front().BaseAddress));
+	auto path = Utils::Win32::Process::Current().PathOf(g_hInstance).wstring();
+	path.resize(path.size() + 1);  // add null character
+	const auto pathBytes = std::span(reinterpret_cast<const uint8_t*>(path.c_str()), path.size() * sizeof path[0]);
 
-		auto path = Utils::Win32::Process::Current().PathOf(g_hInstance).wstring();
-		path.resize(path.size() + 1);  // add null character
-		const auto pathBytes = std::span(reinterpret_cast<const uint8_t*>(path.c_str()), path.size() * sizeof path[0]);
-
-		std::vector<uint8_t> trampolineBuffer;
-		TrampolineTemplate* trampoline;
-		std::span<uint8_t> pathBytesTarget;
-		{
-			constexpr auto trampolineLength = (sizeof TrampolineTemplate + sizeof size_t - 1) / sizeof size_t * sizeof size_t;
-			trampolineBuffer.resize(0
-				+ trampolineLength
-				+ pathBytes.size_bytes()
-			);
-			trampoline = new (&trampolineBuffer[0]) TrampolineTemplate();
-			pathBytesTarget = { &trampolineBuffer[trampolineLength], pathBytes.size_bytes() };
-		}
-
-		const auto rvaEntryPoint = mem.OptionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC ? mem.OptionalHeader32.AddressOfEntryPoint : mem.OptionalHeader64.AddressOfEntryPoint;
-
-		std::copy_n(pathBytes.begin(), pathBytesTarget.size_bytes(), pathBytesTarget.begin());
-		process.ReadMemory(mem.CurrentModule, rvaEntryPoint,
-			std::span(trampoline->buf_EntryPointBackup, sizeof trampoline->buf_EntryPointBackup));
-
-		const auto pRemote = process.VirtualAlloc<char>(nullptr, trampolineBuffer.size(), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-
-		trampoline->parameters = {
-			.EntryPoint = reinterpret_cast<char*>(mem.CurrentModule) + rvaEntryPoint,
-			.EntryPointOriginalBytes = pRemote + offsetof(TrampolineTemplate, buf_EntryPointBackup),
-			.EntryPointOriginalLength = sizeof trampoline->buf_EntryPointBackup,
-			.TrampolineAddress = pRemote,
-		};
-		trampoline->CallLoadLibrary.lpLibFileName.val = pRemote + (&pathBytesTarget[0] - &trampolineBuffer[0]);
-		trampoline->CallLoadLibrary.fn.ptr = LoadLibraryW;
-		trampoline->CallGetProcAddress.lpProcName.val = pRemote + offsetof(TrampolineTemplate, buf_CallGetProcAddress_lpProcName);
-		trampoline->CallGetProcAddress.fn.ptr = GetProcAddress;
-		trampoline->CallInjectEntryPoint.param.val = pRemote + offsetof(TrampolineTemplate, parameters);
-
-		process.WriteMemory(pRemote, 0, std::span(trampolineBuffer));
-
-		EntryPointThunkTemplate thunk{};
-		thunk.CallTrampoline.fn.ptr = pRemote;
-
-		process.WriteMemory(mem.CurrentModule, rvaEntryPoint, thunk, true);
-		
-		return 0;
-	} catch (std::exception& e) {
-		Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, L"XivAlexander",
-			L"Failed to load XivAlexander into child process: {}\n\n"
-			L"Process ID: {}",
-			e.what(), GetProcessId(process));
-		return -1;
+	std::vector<uint8_t> trampolineBuffer;
+	TrampolineTemplate* trampoline;
+	std::span<uint8_t> pathBytesTarget;
+	{
+		constexpr auto trampolineLength = (sizeof TrampolineTemplate + sizeof size_t - 1) / sizeof size_t * sizeof size_t;
+		trampolineBuffer.resize(0
+			+ trampolineLength
+			+ pathBytes.size_bytes()
+		);
+		trampoline = new (&trampolineBuffer[0]) TrampolineTemplate();
+		pathBytesTarget = { &trampolineBuffer[trampolineLength], pathBytes.size_bytes() };
 	}
+
+	const auto rvaEntryPoint = mem.OptionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC ? mem.OptionalHeader32.AddressOfEntryPoint : mem.OptionalHeader64.AddressOfEntryPoint;
+
+	std::copy_n(pathBytes.begin(), pathBytesTarget.size_bytes(), pathBytesTarget.begin());
+	process.ReadMemory(mem.CurrentModule, rvaEntryPoint,
+		std::span(trampoline->buf_EntryPointBackup, sizeof trampoline->buf_EntryPointBackup));
+
+	const auto pRemote = process.VirtualAlloc<char>(nullptr, trampolineBuffer.size(), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+
+	trampoline->parameters = {
+		.EntryPoint = reinterpret_cast<char*>(mem.CurrentModule) + rvaEntryPoint,
+		.EntryPointOriginalBytes = pRemote + offsetof(TrampolineTemplate, buf_EntryPointBackup),
+		.EntryPointOriginalLength = sizeof trampoline->buf_EntryPointBackup,
+		.TrampolineAddress = pRemote,
+	};
+	trampoline->CallLoadLibrary.lpLibFileName.val = pRemote + (&pathBytesTarget[0] - &trampolineBuffer[0]);
+	trampoline->CallLoadLibrary.fn.ptr = LoadLibraryW;
+	trampoline->CallGetProcAddress.lpProcName.val = pRemote + offsetof(TrampolineTemplate, buf_CallGetProcAddress_lpProcName);
+	trampoline->CallGetProcAddress.fn.ptr = GetProcAddress;
+	trampoline->CallInjectEntryPoint.param.val = pRemote + offsetof(TrampolineTemplate, parameters);
+
+	process.WriteMemory(pRemote, 0, std::span(trampolineBuffer));
+
+	EntryPointThunkTemplate thunk{};
+	thunk.CallTrampoline.fn.ptr = pRemote;
+
+	process.WriteMemory(mem.CurrentModule, rvaEntryPoint, thunk, true);
 }
