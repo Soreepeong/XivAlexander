@@ -69,9 +69,6 @@
     <ClCompile Include="App_Feature_AllIpcMessageLogger.cpp">
       <Filter>App\Feature</Filter>
     </ClCompile>
-    <ClCompile Include="DllMain.cpp">
-      <Filter>App</Filter>
-    </ClCompile>
     <ClCompile Include="App_ConfigRepository.cpp">
       <Filter>App</Filter>
     </ClCompile>
@@ -93,6 +90,7 @@
     <ClCompile Include="App_InjectOnCreateProcessApp.cpp">
       <Filter>App\Apps</Filter>
     </ClCompile>
+    <ClCompile Include="DllMain.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">

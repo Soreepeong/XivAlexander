@@ -266,7 +266,7 @@ bool Utils::Win32::RunProgram(RunProgramParams params) {
 		}
 		if (!sei.hProcess)  // should not happen, unless registry is messed up.
 			throw std::runtime_error("Failed to execute a new program.");
-		if (!params.wait)
+		if (params.wait)
 			WaitForSingleObject(sei.hProcess, INFINITE);
 		CloseHandle(sei.hProcess);
 		return true;
