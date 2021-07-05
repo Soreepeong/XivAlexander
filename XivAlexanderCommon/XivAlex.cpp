@@ -151,7 +151,10 @@ XivAlex::VersionInformation XivAlex::CheckUpdates() {
 	req.setOpt(curlpp::options::UserAgent("Mozilla/5.0"));
 	os << req;
 	const auto parsed = nlohmann::json::parse(os.str());
-	const auto item = parsed.at("assets")[0];
+	const auto assets = parsed.at("assets");
+	if (assets.empty())
+		throw std::runtime_error("Could not detect updates. Please try again at a later time.");
+	const auto item = assets[0];
 
 	std::istringstream in(parsed.at("published_at").get<std::string>());
 	std::chrono::sys_seconds tp;
