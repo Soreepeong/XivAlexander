@@ -601,9 +601,9 @@ int WINAPI wWinMain(
 	if (!g_parameters.m_disableAutoRunAs && !Utils::Win32::IsUserAnAdmin() && RequiresAdminAccess(pids)) {
 		try {
 			return Utils::Win32::RunProgram({
-				.args = lpCmdLine,
+				.args = std::format(L"--disable-runas {}", lpCmdLine),
 				.wait = true,
-				.elevateMode = Utils::Win32::RunProgramParams::NoElevationIfDenied,
+				.elevateMode = Utils::Win32::RunProgramParams::Force,
 			});
 		} catch (std::exception& e) {
 			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"Failed to restart as admin: {}", e.what());
