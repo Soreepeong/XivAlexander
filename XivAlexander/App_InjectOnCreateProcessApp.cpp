@@ -117,24 +117,27 @@ public:
 						throw std::runtime_error("loader not found");
 
 					Utils::Win32::Closeable::Handle hInheritableTargetProcessHandle;
-					if (HANDLE h; !DuplicateHandle(GetCurrentProcess(), process, GetCurrentProcess(), &h, 0, TRUE, DUPLICATE_SAME_ACCESS))
-						throw Utils::Win32::Error("DuplicateHandle1");
+					if (auto h = INVALID_HANDLE_VALUE;
+						!DuplicateHandle(GetCurrentProcess(), process, GetCurrentProcess(), &h, 0, TRUE, DUPLICATE_SAME_ACCESS))
+						throw Utils::Win32::Error("DuplicateHandle(hProcess)");
 					else
-						hInheritableTargetProcessHandle.Attach(h, true);
+						hInheritableTargetProcessHandle.Attach(h, INVALID_HANDLE_VALUE, true, "DuplicateHandle(hProcess.2)");
 
 					Utils::Win32::Closeable::Handle hStdinRead, hStdinWrite;
-					if (HANDLE r, w; !CreatePipe(&r, &w, nullptr, 0))
+					if (auto r = INVALID_HANDLE_VALUE, w = INVALID_HANDLE_VALUE;
+						!CreatePipe(&r, &w, nullptr, 0))
 						throw Utils::Win32::Error("CreatePipe");
 					else {
-						hStdinRead.Attach(r, true);
-						hStdinWrite.Attach(w, true);
+						hStdinRead.Attach(r, INVALID_HANDLE_VALUE, true, "CreatePipe(Read)");
+						hStdinWrite.Attach(w, INVALID_HANDLE_VALUE, true, "CreatePipe(Write)");
 					}
 
 					Utils::Win32::Closeable::Handle hInheritableStdinRead;
-					if (HANDLE h; !DuplicateHandle(GetCurrentProcess(), hStdinRead, GetCurrentProcess(), &h, 0, TRUE, DUPLICATE_SAME_ACCESS))
-						throw Utils::Win32::Error("DuplicateHandle2");
+					if (auto h = INVALID_HANDLE_VALUE;
+						!DuplicateHandle(GetCurrentProcess(), hStdinRead, GetCurrentProcess(), &h, 0, TRUE, DUPLICATE_SAME_ACCESS))
+						throw Utils::Win32::Error("DuplicateHandle(hStdinRead)");
 					else
-						hInheritableStdinRead.Attach(h, true);
+						hInheritableStdinRead.Attach(h, INVALID_HANDLE_VALUE, true, "DuplicateHandle(hStdinRead.2)");
 
 					Utils::Win32::Closeable::Handle companionProcess;
 					{
@@ -208,7 +211,7 @@ void App::InjectOnCreateProcessApp::SetFlags(size_t flags) {
 static std::unique_ptr<App::InjectOnCreateProcessApp> s_injectOnCreateProcessApp;
 
 extern "C" __declspec(dllexport) int __stdcall XivAlexDll::EnableInjectOnCreateProcess(size_t flags) {
-	const bool use = flags & XivAlexDll::InjectOnCreateProcessAppFlags::Use;
+	const bool use = flags & InjectOnCreateProcessAppFlags::Use;
 	if (use == !!s_injectOnCreateProcessApp) {
 		if (s_injectOnCreateProcessApp)
 			s_injectOnCreateProcessApp->SetFlags(flags);
@@ -267,17 +270,14 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
 	}
 }
 
-extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters * pParam__) {
-	pParam__->Internal.hContinuableEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-	pParam__->Internal.hWorkerThread = CreateThread(nullptr, 0, [](void* pParam_) -> DWORD {
+extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters * pParam) {
+	pParam->Internal.hContinuableEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+	pParam->Internal.hWorkerThread = CreateThread(nullptr, 0, [](void* pParam) -> DWORD {
 		const auto process = Utils::Win32::Process::Current();
 		try {
-			const auto pParam = static_cast<InjectEntryPointParameters*>(pParam_);
-			Utils::Win32::Closeable::Handle hContinueNotify;
-			hContinueNotify.DuplicateFrom(pParam->Internal.hContinuableEvent);
-			process.WriteMemory(pParam->EntryPoint, pParam->EntryPointOriginalBytes, pParam->EntryPointOriginalLength);
-			process.FlushInstructionsCache(pParam->EntryPoint, pParam->EntryPointOriginalLength);
-			process.VirtualProtect(pParam->EntryPoint, 0, pParam->EntryPointOriginalLength, PAGE_EXECUTE_READ);
+			const auto p = static_cast<InjectEntryPointParameters*>(pParam);
+			const Utils::Win32::Closeable::Handle hContinueNotify = Utils::Win32::Closeable::Handle().DuplicateFrom(p->Internal.hContinuableEvent);
+			process.WriteMemory(p->EntryPoint, p->EntryPointOriginalBytes, p->EntryPointOriginalLength, true);
 
 #ifdef _DEBUG
 			MessageBoxW(nullptr, std::format(L"PID: {}\nPath: {}\nCommand Line: {}", process.GetId(), process.PathOf().wstring(), GetCommandLineW()).c_str(), L"Injected EntryPoint", MB_OK);
@@ -293,15 +293,15 @@ extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(Inj
 			TerminateProcess(GetCurrentProcess(), 1);
 		}
 		FreeLibraryAndExitThread(g_hInstance, 0);
-		}, pParam__, 0, nullptr);
-	assert(pParam__->Internal.hContinuableEvent);
-	assert(pParam__->Internal.hWorkerThread);
-	WaitForSingleObject(pParam__->Internal.hContinuableEvent, INFINITE);
-	CloseHandle(pParam__->Internal.hContinuableEvent);
-	CloseHandle(pParam__->Internal.hWorkerThread);
+		}, pParam, 0, nullptr);
+	assert(pParam->Internal.hContinuableEvent);
+	assert(pParam->Internal.hWorkerThread);
+	WaitForSingleObject(pParam->Internal.hContinuableEvent, INFINITE);
+	CloseHandle(pParam->Internal.hContinuableEvent);
+	CloseHandle(pParam->Internal.hWorkerThread);
 
 	// this invalidates "p" too
-	VirtualFree(pParam__->TrampolineAddress, 0, MEM_RELEASE);
+	VirtualFree(pParam->TrampolineAddress, 0, MEM_RELEASE);
 }
 
 extern "C" __declspec(dllexport) int __stdcall XivAlexDll::PatchEntryPointForInjection(HANDLE hProcess) {
@@ -355,8 +355,9 @@ extern "C" __declspec(dllexport) int __stdcall XivAlexDll::PatchEntryPointForInj
 
 		EntryPointThunkTemplate thunk{};
 		thunk.CallTrampoline.fn.ptr = pRemote;
-		process.VirtualProtect(mem.CurrentModule, rvaEntryPoint, sizeof thunk, PAGE_EXECUTE_READWRITE);
-		process.WriteMemory(mem.CurrentModule, rvaEntryPoint, thunk);
+
+		process.WriteMemory(mem.CurrentModule, rvaEntryPoint, thunk, true);
+		
 		return 0;
 	} catch (std::exception& e) {
 		Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, L"XivAlexander",

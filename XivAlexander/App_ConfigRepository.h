@@ -71,7 +71,7 @@ namespace App {
 		public:
 			~Item() override = default;
 			
-			const T& operator =(const T& rv) {
+			const T& operator=(const T& rv) {
 				if (m_value == rv)
 					return m_value;
 

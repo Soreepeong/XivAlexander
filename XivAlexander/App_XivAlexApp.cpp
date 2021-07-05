@@ -100,10 +100,9 @@ public:
 			}
 
 			this->this_->m_bInterrnalUnloadInitiated = true;
-			Utils::Win32::Closeable::LoadedModule::From(g_hInstance).FreeAfterRunInNewThread([]() {
+			Utils::Win32::Closeable::Thread(L"XivAlexUnloader", [](){
 				XivAlexDll::DisableAllApps(nullptr);
-				return 0U;
-			});
+			}, g_hInstance);
 		});
 	}
 

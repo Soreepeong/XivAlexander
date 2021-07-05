@@ -3,6 +3,7 @@
 #include <map>
 #include <mutex>
 
+#include "Utils_CallOnDestruction.h"
 #include "Utils_Win32_Closeable.h"
 
 namespace Utils::Win32 {
@@ -25,7 +26,7 @@ namespace Utils::Win32 {
 
 		static Process& Current();
 
-		void Detach() override;
+		HANDLE Detach() override;
 
 		void Clear() override;
 
@@ -74,24 +75,43 @@ namespace Utils::Win32 {
 			return buf;
 		}
 
-		void WriteMemory(void* lpTarget, const void* lpSource, size_t len) const;
+		void WriteMemory(void* lpTarget, const void* lpSource, size_t len, bool forceWrite = false) const;
 
 		template<typename T>
-		void WriteMemory(void* lpTarget, size_t offset, const T& data) const {
-			WriteMemory(static_cast<char*>(lpTarget) + offset, &data, sizeof data);
+		void WriteMemory(void* lpTarget, size_t offset, const T& data, bool makeWritableAsRequired = false) const {
+			WriteMemory(static_cast<char*>(lpTarget) + offset, &data, sizeof data, makeWritableAsRequired);
 		}
 
 		template<typename T>
-		void WriteMemory(void* lpTarget, size_t offset, const std::span<T>& data) const {
-			WriteMemory(static_cast<char*>(lpTarget) + offset, data.data(), data.size_bytes());
+		void WriteMemory(void* lpTarget, size_t offset, const std::span<T>& data, bool makeWritableAsRequired = false) const {
+			WriteMemory(static_cast<char*>(lpTarget) + offset, data.data(), data.size_bytes(), makeWritableAsRequired);
+		}
+
+		void* VirtualAlloc(void* lpBase, size_t size, DWORD flAllocType, DWORD flProtect, const void* lpSourceData = nullptr, size_t sourceDataSize = 0) const;
+		template<typename T>
+		T* VirtualAlloc(void* lpBase, size_t size, DWORD flAllocType, DWORD flProtect, const T* lpSourceData = nullptr, size_t sourceDataSize = 0) const {
+			return static_cast<T*>(VirtualAlloc(lpBase, size, flAllocType, flProtect, static_cast<const void*>(lpSourceData), sourceDataSize));
+		}
+		
+		template<typename T>
+		T* VirtualAlloc(void* lpBase, DWORD flAllocType, DWORD flProtect, const std::span<T>& lpSourceData = nullptr) const {
+			return static_cast<T*>(VirtualAlloc(lpBase, lpSourceData.size_bytes(), flAllocType, flProtect, lpSourceData.data(), lpSourceData.size_bytes()));
 		}
 
 		template<typename T>
-		T* VirtualAlloc(T* lpBase, size_t count, DWORD flAllocType, DWORD flProtect) const {
-			return static_cast<T*>(VirtualAlloc(static_cast<void*>(lpBase), count * sizeof T, flAllocType, flProtect));
+		CallOnDestructionWithValue<T*> WithVirtualAlloc(void* lpBase, DWORD flAllocType, DWORD flProtect, const std::span<T>& lpSourceData = nullptr) const {
+			const auto lpAddress = VirtualAlloc(lpBase, flAllocType, flProtect, lpSourceData);
+			return CallOnDestructionWithValue(lpAddress, [this, lpAddress]() {
+				VirtualFree(lpAddress);
+			});
 		}
-		void* VirtualAlloc(void* lpBase, size_t size, DWORD flAllocType, DWORD flProtect) const;
-		DWORD VirtualProtect(void* lpBase, size_t offset, size_t length, DWORD value) const;
+		
+		void VirtualFree(void* lpBase, size_t size = 0, DWORD dwFreeType = MEM_RELEASE) const;
+
+		DWORD VirtualProtect(void* lpBase, size_t offset, size_t length, DWORD newProtect) const;
+		
+		CallOnDestructionWithValue<DWORD> WithVirtualProtect(void* lpBase, size_t offset, size_t length, DWORD newProtect) const;
+		
 		void FlushInstructionsCache(void* lpBase, size_t size) const;
 	};
 

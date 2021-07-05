@@ -43,8 +43,8 @@ namespace App::Window {
             _In_opt_ HMENU hMenu);
         BaseWindow(BaseWindow&&) = delete;
         BaseWindow(const BaseWindow&) = delete;
-        BaseWindow operator =(BaseWindow&&) = delete;
-        BaseWindow operator =(const BaseWindow&) = delete;
+        BaseWindow operator=(BaseWindow&&) = delete;
+        BaseWindow operator=(const BaseWindow&) = delete;
 		virtual ~BaseWindow();
 
         HWND GetHandle() const;

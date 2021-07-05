@@ -58,14 +58,14 @@ Utils::Win32::Process& Utils::Win32::Process::Current() {
 	return current;
 }
 
-void Utils::Win32::Process::Detach() {
-	Handle::Detach();
+HANDLE Utils::Win32::Process::Detach() {
 	m_moduleMemory.clear();
+	return Handle::Detach();
 }
 
 void Utils::Win32::Process::Clear() {
-	Handle::Clear();
 	m_moduleMemory.clear();
+	Handle::Clear();
 }
 
 HMODULE Utils::Win32::Process::AddressOf(std::filesystem::path path, ModuleNameCompareMode compareMode, bool require) const {
@@ -209,7 +209,8 @@ std::pair<void*, void*> Utils::Win32::Process::FindImportedFunction(HMODULE hMod
 
 void* Utils::Win32::Process::FindExportedFunction(HMODULE hModule, const char* pszFunctionName, USHORT ordinal, bool require) const {
 	auto& mem = GetModuleMemoryBlockManager(hModule);
-	const auto pExportTable = mem.ReadDataDirectory<IMAGE_EXPORT_DIRECTORY>(IMAGE_DIRECTORY_ENTRY_EXPORT).data();
+	const auto dataDirectoryBuffer = mem.ReadDataDirectory<IMAGE_EXPORT_DIRECTORY>(IMAGE_DIRECTORY_ENTRY_EXPORT);
+	const auto pExportTable = dataDirectoryBuffer.data();
 	const auto pNames = mem.ReadAligned<DWORD>(pExportTable->AddressOfNames, pExportTable->NumberOfNames);
 	const auto pOrdinals = mem.ReadAligned<WORD>(pExportTable->AddressOfNameOrdinals, pExportTable->NumberOfNames);
 	const auto pFunctions = mem.ReadAligned<DWORD>(pExportTable->AddressOfFunctions, pExportTable->NumberOfFunctions);
@@ -258,28 +259,13 @@ void* Utils::Win32::Process::FindExportedFunction(HMODULE hModule, const char* p
 }
 
 HMODULE Utils::Win32::Process::LoadModule(const std::filesystem::path & path) const {
-	auto buf = path.wstring();
-	buf.resize(buf.size() + 1);
-
-	const auto nNumberOfBytes = buf.size() * sizeof buf[0];
-
-	void* rpszDllPath = VirtualAllocEx(m_object, nullptr, nNumberOfBytes, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-	if (!rpszDllPath)
-		throw Error(GetLastError(), "VirtualAllocEx(pid {}, nullptr, {}, MEM_COMMIT, PAGE_EXECUTE_READWRITE)", GetProcessId(m_object), nNumberOfBytes);
-
-	const auto releaseRemoteAllocation = CallOnDestruction([&]() {
-		VirtualFreeEx(m_object, rpszDllPath, 0, MEM_RELEASE);
-		});
-
-	if (!WriteProcessMemory(m_object, rpszDllPath, &buf[0], nNumberOfBytes, nullptr))
-		throw Error(GetLastError(), "WriteProcessMemory(pid {}, {:p}, {}, {}, nullptr)", GetProcessId(m_object), rpszDllPath, ToUtf8(buf), nNumberOfBytes);
-
+	auto pathBuf = path.wstring();
+	pathBuf.resize(pathBuf.size() + 1, L'\0');  // ensure null terminated
+	
+	const auto rpszDllPath = WithVirtualAlloc(nullptr, MEM_COMMIT | MEM_RESERVE, PAGE_READONLY, std::span(pathBuf));
 	CallRemoteFunction(LoadLibraryW, rpszDllPath, "LoadLibraryW");
 	OutputDebugStringW(L"LoadLibraryW\n");
-	const auto res = AddressOf(path);
-	if (!res)
-		throw std::runtime_error("InjectDll failure");
-	return res;
+	return AddressOf(path);
 }
 
 int Utils::Win32::Process::UnloadModule(HMODULE hModule) const {
@@ -331,24 +317,84 @@ size_t Utils::Win32::Process::ReadMemory(void* lpBase, size_t offset, void* buf,
 	throw Error(err, "Process::ReadMemory");
 }
 
-void Utils::Win32::Process::WriteMemory(void* lpTarget, const void* lpSource, size_t len) const {
+void Utils::Win32::Process::WriteMemory(void* lpTarget, const void* lpSource, size_t len, bool forceWrite) const {
+	CallOnDestructionWithValue<DWORD> protect;
+	if (forceWrite)
+		protect = WithVirtualProtect(lpTarget, 0, len, PAGE_EXECUTE_READWRITE);
+	
 	SIZE_T written;
 	if (!WriteProcessMemory(m_object, lpTarget, lpSource, len, &written) || written != len)
 		throw Error("Process::WriteMemory");
+
+	if ((protect & PAGE_EXECUTE)
+		|| (protect & PAGE_EXECUTE_READ)
+		|| (protect & PAGE_EXECUTE_READWRITE)
+		|| (protect & PAGE_EXECUTE_WRITECOPY))
+		FlushInstructionsCache(lpTarget, len);
 }
 
-void* Utils::Win32::Process::VirtualAlloc(void* lpBase, size_t size, DWORD flAllocType, DWORD flProtect) const {
-	void* lpAddress = VirtualAllocEx(m_object, lpBase, size, flAllocType, flProtect);
+void* Utils::Win32::Process::VirtualAlloc(void* lpBase, size_t size, DWORD flAllocType, DWORD flProtect, const void* lpSourceData, size_t sourceDataSize) const {
+	auto flProtectInitial = flProtect;
+	if (lpSourceData) {
+		if (!sourceDataSize)
+			lpSourceData = nullptr;
+		else {
+			if (sourceDataSize > size)
+				throw std::invalid_argument("sourceDataSize cannot be greater than size");
+			
+			if (flProtect != PAGE_EXECUTE_READWRITE && flProtect != PAGE_READWRITE)
+				flProtectInitial = PAGE_READWRITE;
+
+			if (!(flAllocType & MEM_COMMIT))
+				throw std::invalid_argument("lpSourceData cannot be set if MEM_COMMIT is not specified");
+		}
+	}
+	
+	void* lpAddress = VirtualAllocEx(m_object, lpBase, size, flAllocType, flProtectInitial);
 	if (!lpAddress)
 		throw Error("VirtualAllocEx");
+	
+	try {
+		if (lpSourceData)
+			WriteMemory(lpAddress, lpSourceData, sourceDataSize);
+
+		if (flProtect != flProtectInitial)
+			VirtualProtect(lpAddress, 0, size, flProtect);
+		
+	} catch (...) {
+		VirtualFree(lpAddress, 0, MEM_RELEASE);
+		throw;
+	}
+	
 	return lpAddress;
 }
 
-DWORD Utils::Win32::Process::VirtualProtect(void* lpBase, size_t offset, size_t length, DWORD value) const {
+void Utils::Win32::Process::VirtualFree(void* lpBase, size_t size, DWORD dwFreeType) const {
+	if (!VirtualFreeEx(m_object, lpBase, size, dwFreeType))
+		throw Error("VirtualFree");
+}
+
+DWORD Utils::Win32::Process::VirtualProtect(void* lpBase, size_t offset, size_t length, DWORD newProtect) const {
 	DWORD old;
-	if (!VirtualProtectEx(m_object, static_cast<char*>(lpBase) + offset, length, value, &old))
+	if (!VirtualProtectEx(m_object, static_cast<char*>(lpBase) + offset, length, newProtect, &old))
 		throw Error("VirtualProtectEx");
 	return old;
+}
+
+Utils::CallOnDestructionWithValue<DWORD> Utils::Win32::Process::WithVirtualProtect(void* lpBase, size_t offset, size_t length, DWORD newProtect) const {
+	const auto previousProtect = VirtualProtect(lpBase, offset, length, newProtect);
+	const auto lpAddress = static_cast<char*>(lpBase) + offset;
+	return CallOnDestructionWithValue(previousProtect, [this, lpAddress, length, newProtect, previousProtect]() {
+		if (DWORD protectBeforeRestoration;
+			!VirtualProtectEx(m_object, lpAddress, length, previousProtect, &protectBeforeRestoration)
+			|| protectBeforeRestoration != newProtect) {
+			DebugPrint(L"Problem restoring memory protect for PID {} at address 0x{:x}(length 0x{:x}): "
+				L"original 0x{:x} => newProtect 0x{:x} => protectBeforeRestoration 0x{:x} => \"restored\" 0x{:x}",
+				GetId(), reinterpret_cast<size_t>(lpAddress), length,
+				previousProtect, newProtect, protectBeforeRestoration, previousProtect
+				);
+		}
+	});
 }
 
 void Utils::Win32::Process::FlushInstructionsCache(void* lpBase, size_t size) const {
@@ -398,8 +444,6 @@ std::span<uint8_t> Utils::Win32::ModuleMemoryBlocks::Read(size_t rva, size_t max
 	for (const auto& dir : dirs) {
 		if (dir.VirtualAddress > rva || rva >= dir.VirtualAddress + dir.Size)
 			continue;
-		if (dir.Size > 0x4000000)
-			throw std::runtime_error("section too big");
 		auto it = m_readMemoryBlocks.find(dir.VirtualAddress);
 		if (it == m_readMemoryBlocks.end())
 			it = m_readMemoryBlocks.emplace(dir.VirtualAddress, CurrentProcess.ReadMemory<char>(CurrentModule, dir.VirtualAddress, dir.Size)).first;
@@ -411,8 +455,6 @@ std::span<uint8_t> Utils::Win32::ModuleMemoryBlocks::Read(size_t rva, size_t max
 	for (const auto& sectionHeader : SectionHeaders) {
 		if (sectionHeader.VirtualAddress > rva || rva >= sectionHeader.VirtualAddress + sectionHeader.SizeOfRawData)
 			continue;
-		if (sectionHeader.SizeOfRawData > 0x4000000)
-			throw std::runtime_error("section too big");
 		auto it = m_readMemoryBlocks.find(sectionHeader.VirtualAddress);
 		if (it == m_readMemoryBlocks.end())
 			it = m_readMemoryBlocks.emplace(sectionHeader.VirtualAddress, CurrentProcess.ReadMemory<char>(CurrentModule, sectionHeader.VirtualAddress, sectionHeader.SizeOfRawData)).first;

@@ -36,7 +36,7 @@ namespace XivAlexDll {
 		} Internal;
 	};
 
-	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall InjectEntryPoint(InjectEntryPointParameters* pParam__);
+	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall InjectEntryPoint(InjectEntryPointParameters* pParam);
 	extern "C" XIVALEXANDER_DLLEXPORT int __stdcall EnableXivAlexander(size_t bEnable);
 	extern "C" XIVALEXANDER_DLLEXPORT int __stdcall ReloadConfiguration(void* lpReserved);
 	extern "C" XIVALEXANDER_DLLEXPORT int __stdcall DisableAllApps(void* lpReserved);

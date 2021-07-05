@@ -3,12 +3,11 @@
 
 std::weak_ptr<App::Misc::Logger> App::Misc::Logger::s_instance;
 
-class App::Misc::Logger::Implementation {
+class App::Misc::Logger::Implementation final {
 	static const int MaxLogCount = 8192;
 
 public:
 	Logger& logger;
-	const Utils::Win32::Closeable::Handle m_hLogDispatcherThread;
 	std::condition_variable m_threadTrigger;
 
 	bool m_bQuitting = false;
@@ -16,11 +15,12 @@ public:
 	std::mutex m_itemLock;
 	std::deque<LogItem> m_items, m_pendingItems;
 
+	// needs to be last, as "this" needs to be done initializing
+	const Utils::Win32::Closeable::Thread m_hLogDispatcherThread;
+
 	Implementation(Logger& logger)
 		: logger(logger)
-		, m_hLogDispatcherThread(CreateThread(nullptr, 0, [](PVOID p) -> DWORD { return static_cast<Implementation*>(p)->ThreadWorker(); }, this, CREATE_SUSPENDED, nullptr),
-			Utils::Win32::Closeable::Handle::Null,
-			"Logger::CreateThread(ThreadWorker)") {
+		, m_hLogDispatcherThread(L"XivAlexander::App::Misc::Logger::Implementation", [this]() { return ThreadWorker(); }) {
 		ResumeThread(m_hLogDispatcherThread);
 	}
 
@@ -30,7 +30,7 @@ public:
 		WaitForSingleObject(m_hLogDispatcherThread, INFINITE);
 	}
 
-	DWORD ThreadWorker() {
+	void ThreadWorker() {
 		Utils::Win32::SetThreadDescription(GetCurrentThread(), L"XivAlexander::Misc::Logger::Implementation::ThreadWorker");
 		while (true) {
 			std::deque<LogItem> pendingItems;
@@ -39,7 +39,7 @@ public:
 				if (m_pendingItems.empty()) {
 					m_threadTrigger.wait(lock);
 					if (m_bQuitting)
-						return 0;
+						return;
 				}
 				pendingItems = std::move(m_pendingItems);
 			}
@@ -77,8 +77,8 @@ public:
 App::Misc::Logger::Logger()
 	: m_pImpl(std::make_unique<Implementation>(*this))
 	, OnNewLogItem([this](const auto& cb) {
-		std::lock_guard lock(m_pImpl->m_itemLock);
-		std::for_each(m_pImpl->m_items.begin(), m_pImpl->m_items.end(), [&cb](LogItem& item) { cb(item); });
+	std::lock_guard lock(m_pImpl->m_itemLock);
+	std::for_each(m_pImpl->m_items.begin(), m_pImpl->m_items.end(), [&cb](LogItem& item) { cb(item); });
 		}) {
 	Utils::Win32::DebugPrint(L"Logger: New");
 }
@@ -108,7 +108,7 @@ void App::Misc::Logger::Log(LogCategory category, const char8_t* s, LogLevel lev
 	Log(category, reinterpret_cast<const char*>(s), level);
 }
 
-void App::Misc::Logger::Log(LogCategory category, const std::string & s, LogLevel level) {
+void App::Misc::Logger::Log(LogCategory category, const std::string& s, LogLevel level) {
 	m_pImpl->AddLogItem(LogItem{
 		category,
 		std::chrono::system_clock::now(),

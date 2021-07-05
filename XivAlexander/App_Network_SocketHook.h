@@ -64,8 +64,8 @@ namespace App::Network {
 		SocketHook(XivAlexApp* pApp);
 		SocketHook(const SocketHook&) = delete;
 		SocketHook(SocketHook&&) = delete;
-		SocketHook& operator =(const SocketHook&) = delete;
-		SocketHook& operator =(SocketHook&&) = delete;
+		SocketHook& operator=(const SocketHook&) = delete;
+		SocketHook& operator=(SocketHook&&) = delete;
 		~SocketHook();
 		
 		[[nodiscard]] bool IsUnloadable() const;

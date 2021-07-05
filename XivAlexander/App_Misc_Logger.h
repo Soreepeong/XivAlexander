@@ -43,8 +43,8 @@ namespace App::Misc {
 		
 		Logger(Logger&&) = delete;
 		Logger(const Logger&) = delete;
-		Logger operator =(Logger&&) = delete;
-		Logger operator =(const Logger&) = delete;
+		Logger operator=(Logger&&) = delete;
+		Logger operator=(const Logger&) = delete;
 		virtual ~Logger();
 
 		void Log(LogCategory category, const char* s, LogLevel level = LogLevel::Info);

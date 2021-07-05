@@ -563,7 +563,7 @@ int WINAPI wWinMain(
 			if (!ReadFile(GetStdHandle(STD_INPUT_HANDLE), &val, sizeof val, &read, nullptr) || read != sizeof val)
 				throw Utils::Win32::Error("ReadFile");
 			auto process = Utils::Win32::Process();
-			process.Attach(reinterpret_cast<HANDLE>(static_cast<size_t>(val)), true);
+			process.Attach(reinterpret_cast<HANDLE>(static_cast<size_t>(val)), Utils::Win32::Process::Null, true, "null handle is invalid");
 			return XivAlexDll::PatchEntryPointForInjection(process);
 		} catch (const std::exception& e) {
 			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"Error occurred: {}", e.what());

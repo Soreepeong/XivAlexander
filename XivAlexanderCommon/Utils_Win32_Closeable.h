@@ -20,9 +20,11 @@ namespace Utils::Win32::Closeable {
 		bool m_bOwnership = true;
 
 	public:
-		Base() {}
+		Base() = default;
 
-		Base(T Base, bool ownership = false)
+		Base(std::nullptr_t) {}
+
+		explicit Base(T Base, bool ownership = false)
 			: m_object(Base)
 			, m_bOwnership(ownership) {
 		}
@@ -48,12 +50,14 @@ namespace Utils::Win32::Closeable {
 		}
 
 		Base(Base&& r) noexcept {
-			Attach(r.m_object, r.m_bOwnership);
+			m_object = r.m_object;
+			m_bOwnership = r.m_bOwnership;
 			r.Detach();
 		}
 
-		virtual Base& operator=(Base&& r) noexcept {
-			Attach(r.m_object, r.m_bOwnership);
+		Base& operator=(Base&& r) noexcept {
+			m_object = r.m_object;
+			m_bOwnership = r.m_bOwnership;
 			r.Detach();
 			return *this;
 		}
@@ -70,15 +74,20 @@ namespace Utils::Win32::Closeable {
 			ClearInternal();
 		}
 
-		void Attach(T r, bool ownership) {
+		void Attach(T r, T invalidValue, bool ownership, const std::string& errorMessage) {
+			if (r == invalidValue)
+				throw Error(errorMessage);
+			
 			Clear();
 			m_object = r;
 			m_bOwnership = ownership;
 		}
 
-		virtual void Detach() {
+		virtual T Detach() {
+			const auto prev = m_object;
 			m_object = nullptr;
 			m_bOwnership = true;
+			return prev;
 		}
 
 		virtual void Clear() {
@@ -87,6 +96,10 @@ namespace Utils::Win32::Closeable {
 
 		operator T() const {
 			return m_object;
+		}
+
+		bool HasOwnership() const {
+			return m_object && m_bOwnership;
 		}
 
 	private:
@@ -104,15 +117,15 @@ namespace Utils::Win32::Closeable {
 	using FindFile = Base<HANDLE, FindClose>;
 
 	class Handle : public Base<HANDLE, CloseHandle> {
-
 		static HANDLE DuplicateHandleNullable(HANDLE src);
 
 	public:
 		using Base<HANDLE, CloseHandle>::Base;
-		Handle(Handle&& r) noexcept : Base(std::move(r)){}
+		Handle() = default;
+		Handle(Handle&& r) noexcept : Base(std::move(r)) {}
 		Handle(const Handle& r);
 		Handle& operator=(Handle&& r) noexcept;
-		Handle& operator =(const Handle& r);
+		Handle& operator=(const Handle& r);
 		
 		Handle& DuplicateFrom(HANDLE hProcess, HANDLE hSourceHandle, bool bInheritable = false);
 		Handle& DuplicateFrom(HANDLE hSourceHandle, bool bInheritable = false);
@@ -122,14 +135,30 @@ namespace Utils::Win32::Closeable {
 	public:
 		using Base<HMODULE, FreeLibrary>::Base;
 		explicit LoadedModule(const wchar_t* pwszFileName, DWORD dwFlags = 0, bool bRequire = true);
+		LoadedModule(LoadedModule&& r) noexcept;
+		LoadedModule(const LoadedModule& r);
+		LoadedModule& operator=(LoadedModule&& r) noexcept;
+		LoadedModule& operator=(const LoadedModule& r);
+		LoadedModule& operator=(std::nullptr_t) override;
 		static LoadedModule From(HINSTANCE hInstance);
 		
-		void FreeAfterRunInNewThread(std::function<DWORD()>);
 		template<typename T>
 		T* GetProcAddress(const char* szName) const {
 			return reinterpret_cast<T*>(::GetProcAddress(m_object, szName));
 		}
+	};
 
+	class Thread : public Handle {
+	public:
+		Thread(std::wstring name, std::function<DWORD()> body, LoadedModule hLibraryToFreeAfterExecution = nullptr);
+		Thread(std::wstring name, std::function<void()> body, LoadedModule hLibraryToFreeAfterExecution = nullptr);
+		Thread(std::wstring name, std::function<DWORD()> body, HMODULE hModule);
+		Thread(std::wstring name, std::function<void()> body, HMODULE hModule);
+		~Thread() override;
+
+		[[nodiscard]] DWORD GetId() const;
+
+		void Wait() const;
+		[[nodiscard]] DWORD Wait(DWORD duration) const;
 	};
 }
-
