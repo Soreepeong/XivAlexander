@@ -51,13 +51,15 @@
 #define ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS 40061
 #define ID_MENU_CHECKFORUPDATES         40062
 #define ID_TRAYMENU_CHECKFORUPDATES     40063
+#define ID_MENU_QUITGAME                40064
+#define ID_TRAYMENU_EXITGAME            40065
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        109
-#define _APS_NEXT_COMMAND_VALUE         40064
+#define _APS_NEXT_COMMAND_VALUE         40066
 #define _APS_NEXT_CONTROL_VALUE         1001
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

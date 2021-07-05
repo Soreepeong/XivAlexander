@@ -17,6 +17,8 @@ namespace App::Window {
 		std::filesystem::path m_path;
 		std::wstring m_sRegion, m_sVersion;
 
+		uint64_t m_lastTrayIconLeftButtonUp = 0;
+
 	public:
 		Main(XivAlexApp* pApp, std::function<void()> unloadFunction);
 		~Main() override;
@@ -27,5 +29,8 @@ namespace App::Window {
 
 		void RepopulateMenu(HMENU hMenu);
 		void RegisterTrayIcon();
+		void RemoveTrayIcon();
+
+		Utils::CallOnDestruction WithTemporaryFocus();
 	};
 };

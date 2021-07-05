@@ -109,6 +109,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Check for U&pdates",          ID_TRAYMENU_CHECKFORUPDATES
         MENUITEM "&Unload XivAlexander",        ID_TRAYMENU_UNLOADXIVALEXANDER
+        MENUITEM "E&xit Game",                  ID_TRAYMENU_EXITGAME
     END
     POPUP "View"
     BEGIN

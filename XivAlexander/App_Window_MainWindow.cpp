@@ -30,7 +30,7 @@ static WNDCLASSEXW WindowClass() {
 	return wcex;
 }
 
-App::Window::Main::Main(XivAlexApp *pApp, std::function<void()> unloadFunction)
+App::Window::Main::Main(XivAlexApp* pApp, std::function<void()> unloadFunction)
 	: BaseWindow(WindowClass(), L"XivAlexander", WS_OVERLAPPEDWINDOW, WS_EX_TOPMOST, CW_USEDEFAULT, CW_USEDEFAULT, 480, 160, nullptr, nullptr)
 	, m_pApp(pApp)
 	, m_triggerUnload(std::move(unloadFunction))
@@ -38,7 +38,7 @@ App::Window::Main::Main(XivAlexApp *pApp, std::function<void()> unloadFunction)
 	, m_path(Utils::Win32::Process::Current().PathOf()) {
 
 	std::tie(m_sRegion, m_sVersion) = XivAlex::ResolveGameReleaseRegion();
-	
+
 	const auto title = std::format(L"XivAlexander: {}, {}, {}", GetCurrentProcessId(), m_sRegion, m_sVersion);
 	SetWindowTextW(m_hWnd, title.c_str());
 	ModifyMenu(GetMenu(m_hWnd), ID_TRAYMENU_CURRENTINFO, MF_BYCOMMAND | MF_DISABLED, ID_TRAYMENU_CURRENTINFO, title.c_str());
@@ -52,7 +52,7 @@ App::Window::Main::Main(XivAlexApp *pApp, std::function<void()> unloadFunction)
 
 	m_cleanup += m_config->Runtime.ShowControlWindow.OnChangeListener([this](App::Config::ItemBase&) {
 		ShowWindow(m_hWnd, m_config->Runtime.ShowControlWindow ? SW_SHOW : SW_HIDE);
-	});
+		});
 	if (m_config->Runtime.ShowControlWindow)
 		ShowWindow(m_hWnd, SW_SHOW);
 
@@ -74,7 +74,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		if (lParam)
 			DestroyWindow(m_hWnd);
 		else {
-			switch (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNOCANCEL | MB_ICONQUESTION, L"XivAlexander", 
+			switch (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNOCANCEL | MB_ICONQUESTION, L"XivAlexander",
 				L"Do you want to unload XivAlexander?\n\n"
 				L"Press Yes to unload XivAlexander.\n"
 				L"Press No to hide this window.\n"
@@ -94,7 +94,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		if (!lParam) {
 			auto& config = m_config->Runtime;
 			switch (LOWORD(wParam)) {
-				
+
 				case ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP:
 					config.AlwaysOnTop = !config.AlwaysOnTop;
 					return 0;
@@ -142,11 +142,11 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 				case ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS:
 					m_pApp->RunOnGameLoop([this]() {
 						m_pApp->GetSocketHook()->ReleaseSockets();
-					});
+						});
 					return 0;
 
 					/***************************************************************/
-					
+
 				case ID_TRAYMENU_USEALLIPCMESSAGELOGGER:
 					config.UseAllIpcMessageLogger = !config.UseAllIpcMessageLogger;
 					return 0;
@@ -169,18 +169,19 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
 				case ID_TRAYMENU_SHOWCONTROLWINDOW:
 					config.ShowControlWindow = !config.ShowControlWindow;
+					SetForegroundWindow(m_hWnd);
 					return 0;
 
 				case ID_TRAYMENU_EDITRUNTIMECONFIGURATION:
 					if (m_runtimeConfigEditor && !m_runtimeConfigEditor->IsDestroyed())
-						SetFocus(m_runtimeConfigEditor->GetHandle());
+						SetForegroundWindow(m_runtimeConfigEditor->GetHandle());
 					else
 						m_runtimeConfigEditor = std::make_unique<Config>(&m_config->Runtime);
 					return 0;
 
 				case ID_TRAYMENU_EDITOPCODECONFIGURATION:
 					if (m_gameConfigEditor && !m_gameConfigEditor->IsDestroyed())
-						SetFocus(m_gameConfigEditor->GetHandle());
+						SetForegroundWindow(m_gameConfigEditor->GetHandle());
 					else
 						m_gameConfigEditor = std::make_unique<Config>(&m_config->Game);
 					return 0;
@@ -195,6 +196,13 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					m_triggerUnload();
 					return 0;
 
+				case ID_TRAYMENU_EXITGAME:
+					if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, L"XivAlexander", L"Exit game?") == IDYES) {
+						RemoveTrayIcon();
+						ExitProcess(0);
+					}
+					return 0;
+
 					/***************************************************************/
 
 				case ID_VIEW_ALWAYSONTOP:
@@ -204,7 +212,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					} else {
 						SetWindowPos(m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 					}
-					Utils::Win32::SetMenuState(m_hWnd, ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE)& WS_EX_TOPMOST);
+					Utils::Win32::SetMenuState(m_hWnd, ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST);
 					return 0;
 				}
 			}
@@ -218,18 +226,40 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			RepopulateMenu(hSubMenu);
 			POINT curPoint;
 			GetCursorPos(&curPoint);
-			const auto result = TrackPopupMenu(
-				GetSubMenu(GetMenu(m_hWnd), 0),
-				TPM_RETURNCMD | TPM_NONOTIFY,
-				curPoint.x,
-				curPoint.y,
-				0,
-				m_hWnd,
-				nullptr
-			);
+
+			BOOL result;
+
+			{
+				const auto temporaryFocus = WithTemporaryFocus();
+				result = TrackPopupMenu(
+					GetSubMenu(GetMenu(m_hWnd), 0),
+					TPM_RETURNCMD | TPM_NONOTIFY,
+					curPoint.x,
+					curPoint.y,
+					0,
+					m_hWnd,
+					nullptr
+				);
+			}
 
 			if (result)
-				SendMessage(m_hWnd, WM_COMMAND, MAKEWPARAM(result, 0), 0);
+				SendMessageW(m_hWnd, WM_COMMAND, MAKEWPARAM(result, 0), 0);
+		} else if (eventId == WM_LBUTTONUP) {
+			const auto now = GetTickCount64();
+			auto willShowControlWindow = false;
+			if (m_lastTrayIconLeftButtonUp + GetDoubleClickTime() > now) {
+				if ((m_config->Runtime.ShowControlWindow = !m_config->Runtime.ShowControlWindow))
+					willShowControlWindow = true;
+				m_lastTrayIconLeftButtonUp = 0;
+			} else
+				m_lastTrayIconLeftButtonUp = now;
+			
+			if (!willShowControlWindow) {
+				const auto temporaryFocus = WithTemporaryFocus();
+				SetForegroundWindow(m_pApp->GetGameWindowHandle());
+			} else {
+				SetForegroundWindow(m_hWnd);
+			}
 		}
 	} else if (uMsg == m_uTaskbarRestartMessage) {
 		RegisterTrayIcon();
@@ -243,18 +273,18 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		PAINTSTRUCT ps{};
 		RECT rect{};
 		const auto hdc = BeginPaint(m_hWnd, &ps);
-		
+
 		const auto zoom = GetZoom();
 		NONCLIENTMETRICSW ncm = { sizeof(NONCLIENTMETRICSW) };
 		SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof ncm, &ncm, 0);
-		
+
 		GetClientRect(m_hWnd, &rect);
 		const auto backdc = CreateCompatibleDC(hdc);
-		
+
 		std::vector<HGDIOBJ> gdiRestoreStack;
 		gdiRestoreStack.emplace_back(SelectObject(backdc, CreateCompatibleBitmap(hdc, rect.right - rect.left, rect.bottom - rect.top)));
 		gdiRestoreStack.emplace_back(SelectObject(backdc, CreateFontIndirectW(&ncm.lfMessageFont)));
-		
+
 		FillRect(backdc, &rect, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
 		const auto str = std::format(
 			L"Process ID: {}\n"
@@ -297,11 +327,7 @@ void App::Window::Main::OnDestroy() {
 
 	m_runtimeConfigEditor = nullptr;
 	m_gameConfigEditor = nullptr;
-	NOTIFYICONDATAW nid = { sizeof(NOTIFYICONDATAW) };
-	nid.uID = TrayItemId;
-	nid.hWnd = m_hWnd;
-	nid.uFlags = NIF_GUID;
-	Shell_NotifyIconW(NIM_DELETE, &nid);
+	RemoveTrayIcon();
 	BaseWindow::OnDestroy();
 	PostQuitMessage(0);
 }
@@ -310,7 +336,7 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) {
 	const auto& config = m_config->Runtime;
 
 	Utils::Win32::SetMenuState(hMenu, ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST);
-	
+
 	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP, config.AlwaysOnTop);
 	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE, config.UseHighLatencyMitigation);
 	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION, config.UseAutoAdjustingExtraDelay);
@@ -322,7 +348,7 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) {
 	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERPRIVATEADDRESSES, config.TakeOverPrivateAddresses);
 	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERALLADDRESSES, config.TakeOverAllAddresses);
 	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS, config.TakeOverAllPorts);
-	
+
 	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_USEIPCTYPEFINDER, config.UseOpcodeFinder);
 	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_USEALLIPCMESSAGELOGGER, config.UseAllIpcMessageLogger);
 	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER, config.UseEffectApplicationDelayLogger);
@@ -344,4 +370,31 @@ void App::Window::Main::RegisterTrayIcon() {
 	wcscpy_s(nid.szTip, std::format(L"XivAlexander({})", GetCurrentProcessId()).c_str());
 	Shell_NotifyIconW(NIM_ADD, &nid);
 	Shell_NotifyIconW(NIM_SETVERSION, &nid);
+}
+
+void App::Window::Main::RemoveTrayIcon() {
+	NOTIFYICONDATAW nid = { sizeof(NOTIFYICONDATAW) };
+	nid.uID = TrayItemId;
+	nid.hWnd = m_hWnd;
+	nid.uFlags = NIF_GUID;
+	Shell_NotifyIconW(NIM_DELETE, &nid);
+}
+
+Utils::CallOnDestruction App::Window::Main::WithTemporaryFocus() {
+	if (m_config->Runtime.ShowControlWindow) {
+		SetForegroundWindow(m_hWnd);
+		return {};
+	}
+	
+	LONG_PTR prevExStyle = SetWindowLongPtrW(m_hWnd, GWL_EXSTYLE, WS_EX_TOOLWINDOW | WS_EX_LAYERED);
+	SetLayeredWindowAttributes(m_hWnd, 0, 0, LWA_ALPHA);
+	LONG_PTR prevStyle = SetWindowLongPtrW(m_hWnd, GWL_STYLE, WS_VISIBLE);
+	
+	SetForegroundWindow(m_hWnd);
+
+	return { [this, prevStyle, prevExStyle]() {
+		SetWindowLongPtrW(m_hWnd, GWL_STYLE, prevStyle);
+		SetLayeredWindowAttributes(m_hWnd, 0, 255, LWA_ALPHA);
+		SetWindowLongPtrW(m_hWnd, GWL_EXSTYLE, prevExStyle);
+	} };
 }
