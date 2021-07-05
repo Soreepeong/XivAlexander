@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 
 const auto MsgboxTitle = L"XivAlexander Loader";
 
@@ -23,6 +23,12 @@ enum class LoaderAction : int {
 	Load,
 	Unload,
 	Launcher,
+	UpdateCheck,
+	UpdateContinue,
+	UpdateCleanup,
+	StdinInjectEntryPoint,
+	StdinInjectImmediate,
+	StdinCleanup,
 	Count_,  // for internal use only
 };
 
@@ -33,6 +39,12 @@ std::string argparse::details::repr(LoaderAction const& val) {
 		case LoaderAction::Load: return "load";
 		case LoaderAction::Unload: return "unload";
 		case LoaderAction::Launcher: return "launcher";
+		case LoaderAction::UpdateCheck: return "update-check";
+		case LoaderAction::UpdateContinue: return "update-continue";
+		case LoaderAction::UpdateCleanup: return "update-cleanup";
+		case LoaderAction::StdinInjectEntryPoint: return "stdin-inject-entry-point";
+		case LoaderAction::StdinInjectImmediate: return "stdin-inject-immediate";
+		case LoaderAction::StdinCleanup: return "stdin-cleanup";
 		case LoaderAction::Auto: return "auto";
 	}
 	return std::format("({})", static_cast<int>(val));
@@ -75,38 +87,6 @@ std::string argparse::details::repr(LauncherType const& val) {
 	return std::format("({})", static_cast<int>(val));
 }
 
-enum class StdinProcessHandleType : int {
-	None,
-	Inject,
-	CheckUpdate,
-};
-
-template <>
-std::string argparse::details::repr(StdinProcessHandleType const& val) {
-	switch (val) {
-		case StdinProcessHandleType::None: return "none";
-		case StdinProcessHandleType::Inject: return "inject";
-		case StdinProcessHandleType::CheckUpdate: return "checkupdate";
-	}
-	return std::format("({})", static_cast<int>(val));
-}
-
-StdinProcessHandleType ParseStdinProcessHandleType(std::string val) {
-	auto valw = Utils::FromUtf8(val);
-	CharLowerW(&valw[0]);
-	val = Utils::ToUtf8(valw);
-	for (size_t i = 0; i < static_cast<size_t>(LoaderAction::Count_); ++i) {
-		const auto compare = argparse::details::repr(static_cast<LoaderAction>(i));
-		auto equal = true;
-		for (size_t j = 0; equal && j < val.length() && j < compare.length(); ++j) {
-			equal = val[j] == compare[j];
-		}
-		if (equal)
-			return static_cast<StdinProcessHandleType>(i);
-	}
-	throw std::runtime_error("Invalid stdin-process-handle");
-}
-
 template <>
 std::string argparse::details::repr(XivAlex::GameRegion const& val) {
 	switch (val) {
@@ -146,7 +126,6 @@ public:
 	bool m_help = false;
 	bool m_web = false;
 	bool m_disableAutoRunAs = true;
-	StdinProcessHandleType m_stdinProcessHandleType = StdinProcessHandleType::None;
 	std::set<DWORD> m_targetPids{};
 	std::set<std::wstring> m_targetSuffix{};
 	std::wstring m_runProgram;
@@ -156,7 +135,7 @@ public:
 		: argp("XivAlexanderLoader") {
 
 		argp.add_argument("-a", "--action")
-			.help("specify action (possible values: auto, ask, load, unload, launcher)")
+			.help("specify action (possible values: auto, ask, load, unload, launcher, updatecheck)")
 			.required()
 			.nargs(1)
 			.default_value(LoaderAction::Auto)
@@ -179,11 +158,6 @@ public:
 			.help("open github repository at https://github.com/Soreepeong/XivAlexander and exit")
 			.default_value(false)
 			.implicit_value(true);
-		argp.add_argument("--stdin-process-handle")
-			.required()
-			.nargs(1)
-			.default_value(StdinProcessHandleType::None)
-			.action([](const std::string& val) { return ParseStdinProcessHandleType(val); });
 		argp.add_argument("targets")
 			.help("List of target process ID or path suffix if injecting. Path to program to execute if launching.")
 			.default_value(std::vector<std::string>())
@@ -213,7 +187,6 @@ public:
 		m_quiet = argp.get<bool>("-q");
 		m_web = argp.get<bool>("--web");
 		m_disableAutoRunAs = argp.get<bool>("-d");
-		m_stdinProcessHandleType = argp.get<StdinProcessHandleType>("--stdin-process-handle");
 
 		const auto targets = argp.get<std::vector<std::string>>("targets");
 		if (!targets.empty()) {
@@ -317,7 +290,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 				argparse::details::repr(g_parameters.m_action),
 				process.GetId()),
 			.wait = true
-			});
+		});
 		return;
 	}
 
@@ -534,13 +507,167 @@ int RunLauncher() {
 	return 0;
 }
 
-static void PerformUpdate(Utils::Win32::Process prevProcess, const std::string& url) {
+static bool RequiresElevationForUpdate(std::vector<DWORD> excludedPid) {
+	// step 1. test if DLL files are writable
+	auto requiresNextTest = false;
+	for (const auto target : {XivAlex::XivAlexLoader32NameW, XivAlex::XivAlexLoader64NameW, XivAlex::XivAlexDll32NameW, XivAlex::XivAlexDll64NameW}) {
+		const auto hDllFile = Utils::Win32::Handle(CreateFileW(target, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr),
+			INVALID_HANDLE_VALUE);
+		if (!hDllFile) {
+			requiresNextTest = true;
+			break;
+		}
+	}
+	if (!requiresNextTest)
+		return false;
+
+	// step 2. check if other ffxiv processes else than excludedPid exists, and if they're inaccessible.
+	for (const auto pid : GetTargetPidList()) {
+		try {
+			if (std::find(excludedPid.begin(), excludedPid.end(), pid) != excludedPid.end())
+				OpenProcessForInjection(pid);
+		} catch (...) {
+			return true;
+		}
+	}
+	return false;
 }
 
-static void CheckForUpdates(Utils::Win32::Process prevProcess = nullptr) {
+static void PerformUpdateAndExitIfSuccessful(std::vector<Utils::Win32::Process> gameProcesses, const std::string& url, const std::filesystem::path& updateZip) {
+	std::vector<DWORD> prevProcessIds;
+	std::transform(gameProcesses.begin(), gameProcesses.end(), std::back_inserter(prevProcessIds), [](const Utils::Win32::Process& k) { return k.GetId(); });
+	const auto launcherDir = Utils::Win32::Process::Current().PathOf().parent_path();
+	const auto tempExtractionDir = launcherDir / L"__UPDATE__";
+	const auto launcherPath32 = launcherDir / XivAlex::XivAlexLoader32NameW;
+	const auto launcherPath64 = launcherDir / XivAlex::XivAlexLoader64NameW;
+
+	try {
+		for (int i = 0; i < 2; ++i) {
+			try {
+				if (!exists(updateZip) || i == 1) {
+					std::ofstream f(updateZip, std::ios::binary);
+					curlpp::Easy req;
+					req.setOpt(curlpp::options::Url(url));
+					req.setOpt(curlpp::options::UserAgent("Mozilla/5.0"));
+					req.setOpt(curlpp::options::FollowLocation(true));
+					f << req;
+				}
+				
+				remove_all(tempExtractionDir);
+
+				const auto hFile = Utils::Win32::Handle(CreateFileW(updateZip.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr),
+					INVALID_HANDLE_VALUE, "Failed to open download file.");
+				LARGE_INTEGER fileSize;
+				if (!GetFileSizeEx(hFile, &fileSize))
+					throw Utils::Win32::Error("GetFileSizeEx");
+				if (fileSize.QuadPart > 128 * 1024 * 1024)
+					throw Utils::Win32::Error("File too big");
+				const auto hMapFile = Utils::Win32::Handle(CreateFileMappingW(hFile, nullptr, PAGE_READONLY, fileSize.HighPart, fileSize.LowPart, nullptr), nullptr, "CreateFileMappingW");
+				const auto pMapped = Utils::Win32::Closeable<void*, UnmapViewOfFile>(MapViewOfFile(hMapFile, FILE_MAP_READ, 0, 0, fileSize.LowPart));
+				
+				const auto pArc = libzippp::ZipArchive::fromBuffer(pMapped, fileSize.LowPart);
+				const auto freeArc = Utils::CallOnDestruction([pArc](){ pArc->close(); delete pArc; });
+				for (const auto& entry : pArc->getEntries()) {
+					const auto pData = static_cast<char*>(entry.readAsBinary());
+					const auto freeData = Utils::CallOnDestruction([pData]() { delete[] pData; });
+					const auto targetPath = launcherDir / tempExtractionDir / entry.getName();
+					create_directories(targetPath.parent_path());
+					std::ofstream f(targetPath, std::ios::binary);
+					f.write(pData, entry.getSize());
+				}
+				break;
+			} catch (...) {
+				if (url.empty())
+					return;
+				
+				if (i == 1)
+					throw;
+			}
+		}
+	} catch (const std::exception&) {
+		remove_all(tempExtractionDir);
+		remove(updateZip);
+		throw;
+	}
+
+	// TODO: ask user to quit all FFXIV related processes, except the game itself.
+	
+	if (RequiresElevationForUpdate(prevProcessIds)) {
+		Utils::Win32::RunProgram({
+			.args = L"--action update-check",
+			.elevateMode = Utils::Win32::RunProgramParams::Force,
+		});
+		return;
+	}
+
+	std::vector unloadTargets = gameProcesses;
+	for (const auto pid : Utils::Win32::GetProcessList()) {
+		if (pid == GetCurrentProcessId() || std::find(prevProcessIds.begin(), prevProcessIds.end(), pid) != prevProcessIds.end())
+			continue;
+
+		std::filesystem::path processPath;
+		
+		try {
+			processPath = Utils::Win32::Process(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).PathOf();
+		} catch (const std::exception&) {
+			try {
+				processPath = Utils::Win32::Process(PROCESS_QUERY_INFORMATION, false, pid).PathOf();
+			} catch (const std::exception&) {
+				// ¯\_(ツ)_/¯
+				// unlikely that we can't access information of process that has anything to do with xiv,
+				// unless it's antivirus, in which case we can't do anything, which will result in failure anyway.
+				continue;
+			}
+		}
+		if (processPath == launcherPath32 || processPath == launcherPath64) {
+			while (true) {
+				try {
+					const auto hProcess = Utils::Win32::Process(PROCESS_TERMINATE | SYNCHRONIZE, false, pid);
+					if (hProcess.Wait(0) != WAIT_TIMEOUT)
+						break;
+					hProcess.Terminate(0);
+				} catch (const Utils::Win32::Error& e) {
+					if (e.Code() == ERROR_INVALID_PARAMETER)  // this process already gone
+						break;
+					if (Utils::Win32::MessageBoxF(nullptr, MB_OKCANCEL, MsgboxTitle, L"Failed to termiante PID {}: {}.\n\nTerminate process manually to continue.", pid, e.what()) == IDCANCEL)
+						return;
+				}
+			}
+			
+		} else if (processPath.filename() == XivAlex::GameExecutable64NameW || processPath.filename() == XivAlex::GameExecutable32NameW) {
+			auto process = OpenProcessForInjection(pid);
+			gameProcesses.emplace_back(process);
+			unloadTargets.emplace_back(std::move(process));
+		} else {
+			try {
+				auto process = OpenProcessForInjection(pid);
+				const auto is64 = process.IsProcess64Bits();
+				const auto modulePath = launcherDir / (is64 ? XivAlex::XivAlexDll64NameW : XivAlex::XivAlexDll32NameW);
+				if (process.AddressOf(modulePath, Utils::Win32::Process::ModuleNameCompareMode::FullPath, false))
+					unloadTargets.emplace_back(std::move(process));
+			} catch (...) {
+			}
+		}
+	}
+	
+	std::vector<HANDLE> handles;
+	std::transform(unloadTargets.begin(), unloadTargets.end(), std::back_inserter(handles), [](const auto&x) { return static_cast<HANDLE>(x); });
+	XivAlexDll::LaunchXivAlexLoaderWithStdinHandle(handles, L"stdin-cleanup", true);
+	
+	handles = {GetCurrentProcess()};
+	std::transform(gameProcesses.begin(), gameProcesses.end(), std::back_inserter(handles), [](const auto& x) { return static_cast<HANDLE>(x); });
+	XivAlexDll::LaunchXivAlexLoaderWithStdinHandle(handles, L"update-continue", false, (tempExtractionDir / XivAlex::XivAlexLoader64NameW).c_str());
+	ExitProcess(0);
+}
+
+static void CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses) {
+	const auto updateZip = Utils::Win32::Process::Current().PathOf().parent_path() / "update.zip";
+	if (exists(updateZip))
+		PerformUpdateAndExitIfSuccessful(prevProcesses, "", updateZip);
+	
 	try {
 		const auto [selfFileVersion, selfProductVersion] = Utils::Win32::FormatModuleVersionString(GetModuleHandleW(nullptr));
-		const auto up = XivAlex::CheckUpdates();
+		const auto up = XivAlex::CheckUpdates();		
 		const auto remoteS = Utils::StringSplit(up.Name.substr(1), ".");
 		const auto localS = Utils::StringSplit(selfProductVersion, ".");
 		std::vector<int> remote, local;
@@ -576,12 +703,25 @@ static void CheckForUpdates(Utils::Win32::Process prevProcess = nullptr) {
 				break;
 			
 			case IDNO:
-				PerformUpdate(prevProcess, up.DownloadLink);
+				PerformUpdateAndExitIfSuccessful(std::move(prevProcesses), up.DownloadLink, updateZip);
 				break;
 		}
 	} catch (const std::exception& e) {
 		Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, "Failed to check for updates: {}", e.what());
 	}
+}
+
+static
+std::vector<Utils::Win32::Process> ProcessHandleFromStdin() {
+	std::vector<Utils::Win32::Process> result;
+	try {
+		DWORD read;
+		uint64_t val;
+		while (ReadFile(GetStdHandle(STD_INPUT_HANDLE), &val, sizeof val, &read, nullptr) && read == sizeof val)
+			result.emplace_back(reinterpret_cast<HANDLE>(static_cast<size_t>(val)), true);
+	} catch(...) {
+	}
+	return result;
 }
 
 int WINAPI wWinMain(
@@ -608,6 +748,13 @@ int WINAPI wWinMain(
 		return 0;
 	}
 
+	std::string debugPrivilegeError = "OK.";
+	try {
+		Utils::Win32::AddDebugPrivilege();
+	} catch (const std::exception& err) {
+		debugPrivilegeError = std::format("Failed to obtain.\n* Try running this program as Administrator.\n* {}", err.what());
+	}
+
 	const auto dllDir = Utils::Win32::Process::Current().PathOf().parent_path();
 	const auto dllPath = dllDir / XivAlex::XivAlexDllNameW;
 
@@ -622,41 +769,122 @@ int WINAPI wWinMain(
 		}
 		return -1;
 	}
-
-	if (g_parameters.m_stdinProcessHandleType != StdinProcessHandleType::None) {
-		DWORD read;
-		uint64_t val;
-		try {
-			if (!ReadFile(GetStdHandle(STD_INPUT_HANDLE), &val, sizeof val, &read, nullptr) || read != sizeof val)
-				throw Utils::Win32::Error("ReadFile");
-
-			auto process = Utils::Win32::Process(reinterpret_cast<HANDLE>(static_cast<size_t>(val)), true);
+	
+	try {
+#ifdef _DEBUG
+		Utils::Win32::MessageBoxF(nullptr, MB_OK, MsgboxTitle, L"Action: {}", argparse::details::repr(g_parameters.m_action));
+#endif
+		if (g_parameters.m_action == LoaderAction::StdinInjectEntryPoint) {
+			for (const auto& x : ProcessHandleFromStdin())
+				XivAlexDll::PatchEntryPointForInjection(x);
+			return 0;
 			
-			switch (g_parameters.m_stdinProcessHandleType) {
-			case StdinProcessHandleType::Inject:
-				XivAlexDll::PatchEntryPointForInjection(std::move(process));
-				break;
-				
-			case StdinProcessHandleType::CheckUpdate:
-				CheckForUpdates(std::move(process));
-				break;
+		} else if (g_parameters.m_action == LoaderAction::StdinInjectImmediate || g_parameters.m_action == LoaderAction::StdinCleanup) {
+			std::vector<Utils::Win32::Process> mine, defer;
+			for (auto& process : ProcessHandleFromStdin()) {
+				if (process.IsProcess64Bits() == (INT64_MAX == INTPTR_MAX))
+					mine.emplace_back(std::move(process));
+				else
+					defer.emplace_back(std::move(process));
+			}
+			for (auto& process : mine) {
+				try {
+					const auto m = Utils::Win32::InjectedModule(std::move(process), dllPath);
+					if (g_parameters.m_action == LoaderAction::StdinInjectImmediate)
+						m.Call("EnableXivAlexander", reinterpret_cast<void*>(1), "EnableXivAlexander(1)");
+					else
+						m.Call("DisableAllApps", nullptr, "DisableAllApps(0)");
+				} catch (...) {
+					// pass
+				}
+			}
+
+			if (!defer.empty()) {
+				std::vector<HANDLE> handles;
+				std::transform(defer.begin(), defer.end(), std::back_inserter(handles), [](const auto&x) { return static_cast<HANDLE>(x); });
+				XivAlexDll::LaunchXivAlexLoaderWithStdinHandle(handles, Utils::FromUtf8(argparse::details::repr(g_parameters.m_action)).c_str(), true,
+					(Utils::Win32::Process::Current().PathOf().parent_path() / (INT64_MAX == INTPTR_MAX ? XivAlex::XivAlexLoader32NameW : XivAlex::XivAlexLoader64NameW)).c_str()
+				);
 			}
 			return 0;
-		} catch (const std::exception& e) {
-			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"Error occurred: {}", e.what());
-			return -1;
+			
+		} else if (g_parameters.m_action == LoaderAction::UpdateCheck) {
+			if (!Utils::Win32::Process::Current().IsProcess64Bits()) {
+				SYSTEM_INFO si;
+				GetNativeSystemInfo(&si);
+				if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) {
+					const auto processes = ProcessHandleFromStdin();
+					std::vector<HANDLE> handles;
+					std::transform(processes.begin(), processes.end(), std::back_inserter(handles), [](const auto&x) { return static_cast<HANDLE>(x); });
+					XivAlexDll::LaunchXivAlexLoaderWithStdinHandle(handles, L"update-check", false, (Utils::Win32::Process::Current().PathOf().parent_path() / XivAlex::XivAlexLoader64NameW).c_str());
+					return 0;
+				}
+			}
+			
+			CheckForUpdates(ProcessHandleFromStdin());
+			return 0;
+			
+		} else if (g_parameters.m_action == LoaderAction::UpdateContinue) {
+			auto processes = ProcessHandleFromStdin();
+			if (processes.empty())
+				throw std::runtime_error("cannot update outside of update process");
+			{
+				const auto previousProcess = std::move(*processes.begin());
+				processes.erase(processes.begin());
+				previousProcess.Wait();
+			}
+			const auto temporaryUpdatePath = Utils::Win32::Process::Current().PathOf().parent_path();
+			const auto targetUpdatePath = temporaryUpdatePath.parent_path();
+			if (temporaryUpdatePath.filename() != L"__UPDATE__")
+				throw std::runtime_error("cannot update outside of update process");
+			copy(
+				temporaryUpdatePath,
+				targetUpdatePath,
+				std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing
+			);
+			std::vector handles{ GetCurrentProcess() };
+			std::transform(processes.begin(), processes.end(), std::back_inserter(handles), [](const auto&x) { return static_cast<HANDLE>(x); });
+			XivAlexDll::LaunchXivAlexLoaderWithStdinHandle(handles, L"update-cleanup", false, (targetUpdatePath / XivAlex::XivAlexLoader64NameW).c_str());
+			return 0;
+			
+		} else if (g_parameters.m_action == LoaderAction::UpdateCleanup) {
+			remove_all(Utils::Win32::Process::Current().PathOf().parent_path() / L"__UPDATE__");
+			remove(Utils::Win32::Process::Current().PathOf().parent_path() / L"update.zip");
+			auto processes = ProcessHandleFromStdin();
+			if (processes.empty())
+				throw std::runtime_error("cannot update outside of update process");
+			{
+				const auto previousProcess = std::move(*processes.begin());
+				processes.erase(processes.begin());
+				previousProcess.Wait();
+			}
+			auto pids = GetTargetPidList();
+			for (const auto& process : processes)
+				pids.erase(process.GetId());
+			if (!processes.empty()) {
+				std::vector<HANDLE> handles;
+				std::transform(processes.begin(), processes.end(), std::back_inserter(handles), [](const auto&x) { return static_cast<HANDLE>(x); });
+				XivAlexDll::LaunchXivAlexLoaderWithStdinHandle(handles, L"stdin-inject-immediate", false);
+			}
+			if (!pids.empty()) {
+				for (const auto& pid : pids) {
+					g_parameters.m_action = LoaderAction::Load;
+					g_parameters.m_quiet = true;
+					try {
+						DoPidTask(pid, dllDir, dllPath);
+					} catch (...) {
+					}
+				}
+			}
+			return 0;
 		}
+	} catch (const std::exception& e) {
+		Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"Error occurred: {}", e.what());
+		return -1;
 	}
 
 	if (g_parameters.m_action == LoaderAction::Launcher)
 		return RunLauncher();
-
-	std::string debugPrivilegeError = "OK.";
-	try {
-		Utils::Win32::AddDebugPrivilege();
-	} catch (const std::exception& err) {
-		debugPrivilegeError = std::format("Failed to obtain.\n* Try running this program as Administrator.\n* {}", err.what());
-	}
 
 	const auto pids = GetTargetPidList();
 

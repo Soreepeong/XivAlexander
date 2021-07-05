@@ -112,7 +112,7 @@ public:
 				if (process.IsProcess64Bits() == Utils::Win32::Process::Current().IsProcess64Bits()) {
 					XivAlexDll::PatchEntryPointForInjection(process);
 				} else {
-					XivAlexDll::LaunchXivAlexLoaderWithStdinHandle(process, L"inject", true);
+					XivAlexDll::LaunchXivAlexLoaderWithStdinHandle({ process }, L"stdin-inject-entry-point", true);
 				}
 			}
 		} catch (std::exception& e) {

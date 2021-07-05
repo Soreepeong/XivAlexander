@@ -12,7 +12,7 @@
 
 namespace XivAlexDll {
 
-	XIVALEXANDER_DLLEXPORT void LaunchXivAlexLoaderWithStdinHandle(HANDLE hSource, const wchar_t* mode, bool wait);
+	XIVALEXANDER_DLLEXPORT DWORD LaunchXivAlexLoaderWithStdinHandle(const std::vector<HANDLE>& hSources, const wchar_t* mode, bool wait, const wchar_t* loaderName = nullptr);
 	XIVALEXANDER_DLLEXPORT void PatchEntryPointForInjection(HANDLE hProcess);
 
 	//
