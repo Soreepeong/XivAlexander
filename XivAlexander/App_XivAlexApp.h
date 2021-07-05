@@ -15,7 +15,7 @@ namespace App {
 	class Config;
 	
 	class XivAlexApp {
-		const Utils::Win32::Closeable::LoadedModule m_module;
+		const Utils::Win32::LoadedModule m_module;
 		const std::shared_ptr<Misc::DebuggerDetectionDisabler> m_detectionDisabler;
 		const std::shared_ptr<Misc::Logger> m_logger;
 		const std::shared_ptr<Config> m_config;
@@ -25,10 +25,9 @@ namespace App {
 		std::unique_ptr<Implementation> m_pImpl;
 
 		bool m_bInterrnalUnloadInitiated = false;
-		bool m_bMainWindowDestroyed = false;
 		
 		// needs to be last, as "this" needs to be done initializing
-		Utils::Win32::Closeable::Thread m_hCustomMessageLoop;
+		Utils::Win32::Thread m_hCustomMessageLoop;
 
 	public:
 		XivAlexApp();
@@ -44,7 +43,5 @@ namespace App {
 		[[nodiscard]] std::string IsUnloadable() const;
 		
 		[[nodiscard]] Network::SocketHook* GetSocketHook();
-
-		void CheckUpdates(bool silent = true);
 	};
 }

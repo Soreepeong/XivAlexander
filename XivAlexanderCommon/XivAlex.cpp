@@ -3,7 +3,7 @@
 #include "Utils_CallOnDestruction.h"
 #include "Utils_Win32.h"
 #include "Utils_Win32_Closeable.h"
-
+#include "Utils_Win32_Handle.h"
 
 std::tuple<std::wstring, std::wstring> XivAlex::ResolveGameReleaseRegion() {
 	std::wstring path(PATHCCH_MAX_CCH, L'\0');
@@ -77,7 +77,7 @@ std::tuple<std::wstring, std::wstring> XivAlex::ResolveGameReleaseRegion(const s
 
 	std::wstring gameVer;
 	{
-		const Utils::Win32::Closeable::Handle hGameVer(
+		const Utils::Win32::Handle hGameVer(
 			CreateFileW(gameVerPath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr),
 			INVALID_HANDLE_VALUE,
 			L"ResolveGameReleaseRegion: Failed to open game version file({})",
@@ -109,7 +109,7 @@ std::tuple<std::wstring, std::wstring> XivAlex::ResolveGameReleaseRegion(const s
 		installationDir / L"sdo" / L"sdologinentry.dll",
 		}) {
 		WIN32_FIND_DATAW data{};
-		const auto hFindFile = Utils::Win32::Closeable::FindFile(
+		const auto hFindFile = Utils::Win32::FindFile(
 			FindFirstFileW(possibleRegionSpecificFilesDir.c_str(), &data),
 			INVALID_HANDLE_VALUE);
 		if (!hFindFile)

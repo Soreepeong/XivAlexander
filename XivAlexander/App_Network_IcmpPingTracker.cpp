@@ -26,17 +26,17 @@ public:
 		const std::shared_ptr<Utils::NumericStatisticsTracker> Tracker;
 
 	private:
-		const Utils::Win32::Closeable::Handle m_hExitEvent;
+		const Utils::Win32::Event m_hExitEvent;
 		const ConnectionPair m_pair;
 
 		// needs to be last, as "this" needs to be done initializing
-		const Utils::Win32::Closeable::Thread m_hWorkerThread;
+		const Utils::Win32::Thread m_hWorkerThread;
 
 	public:
 		SingleTracker(IcmpPingTracker* icmpPingTracker, const ConnectionPair& pair)
 			: m_icmpPingTracker(icmpPingTracker)
 			, Tracker(std::make_shared<Utils::NumericStatisticsTracker>(8, INT64_MAX, 60 * 1000))
-			, m_hExitEvent(CreateEventW(nullptr, true, false, nullptr), nullptr)
+			, m_hExitEvent(Utils::Win32::Event::Create())
 			, m_pair(pair)
 			, m_hWorkerThread(std::format(L"XivAlexander::App::Network::IcmpPingTracker({:x})::SingleTracker({:x}: {} <-> {})",
 				reinterpret_cast<size_t>(icmpPingTracker), reinterpret_cast<size_t>(this), 
@@ -45,7 +45,7 @@ public:
 		}
 
 		~SingleTracker() {
-			SetEvent(m_hExitEvent);
+			m_hExitEvent.Set();
 			m_hWorkerThread.Wait();
 		}
 
@@ -53,7 +53,7 @@ public:
 		void Run() {
 			const auto& logger = m_icmpPingTracker->m_pImpl->m_logger;
 			try {
-				const Utils::Win32::Closeable::Base<HANDLE, IcmpCloseHandle> hIcmp(IcmpCreateFile(), INVALID_HANDLE_VALUE);
+				const auto hIcmp = Utils::Win32::Icmp(IcmpCreateFile(), INVALID_HANDLE_VALUE);
 
 				unsigned char sendBuf[32]{};
 				unsigned char replyBuf[sizeof(ICMP_ECHO_REPLY) + sizeof sendBuf + 8]{};
@@ -76,7 +76,7 @@ public:
 					} else
 						consecutiveFailureCount++;
 					
-					if (WaitForSingleObject(m_hExitEvent, waitTime) != WAIT_TIMEOUT) {
+					if (m_hExitEvent.Wait(waitTime) != WAIT_TIMEOUT) {
 						logger->Format(LogCategory::SocketHook,
 							"Ping {} -> {}: track end",
 							Utils::ToString(m_pair.Source),

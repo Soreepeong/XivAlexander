@@ -37,9 +37,9 @@ HWND App::Window::BaseWindow::InternalCreateWindow(const WNDCLASSEXW& wndclassex
 	if (!RegisterClassExW(&c) && GetLastError() != ERROR_CLASS_ALREADY_EXISTS)
 		throw std::runtime_error("RegisterClass failed");
 
-	const auto hWnd = CreateWindowExW(dwExStyle, c.lpszClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, g_hInstance, pBase);
+	const auto hWnd = CreateWindowExW(dwExStyle, c.lpszClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, Dll::Module(), pBase);
 	if (!hWnd) {
-		UnregisterClassW(c.lpszClassName, g_hInstance);
+		UnregisterClassW(c.lpszClassName, Dll::Module());
 		throw std::runtime_error("CreateWindow failed");
 	}
 	return hWnd;
@@ -64,7 +64,7 @@ App::Window::BaseWindow::BaseWindow(const WNDCLASSEXW& wndclassex,
 
 App::Window::BaseWindow::~BaseWindow() {
 	Destroy();
-	UnregisterClassW(m_windowClass.lpszClassName, g_hInstance);
+	UnregisterClassW(m_windowClass.lpszClassName, Dll::Module());
 }
 
 HWND App::Window::BaseWindow::GetHandle() const {
@@ -80,7 +80,7 @@ HACCEL App::Window::BaseWindow::GetAcceleratorTable() const {
 }
 
 LRESULT App::Window::BaseWindow::RunOnUiThreadWait(const std::function<LRESULT()>& fn) {
-	return SendMessage(m_hWnd, AppMessageRunOnUiThread, 0, reinterpret_cast<LPARAM>(&fn));
+	return SendMessageW(m_hWnd, AppMessageRunOnUiThread, 0, reinterpret_cast<LPARAM>(&fn));
 }
 
 auto App::Window::BaseWindow::RunOnUiThread(std::function<void()> fn, bool immediateIfNoWindow) -> bool {
@@ -112,7 +112,7 @@ double App::Window::BaseWindow::GetZoom() const {
 		if (fallback) {
 			MONITORINFOEXW mi{ sizeof(MONITORINFOEXW) };
 			GetMonitorInfoW(hMonitor, &mi);
-			const auto hdc = Utils::Win32::Closeable::CreatedDC(CreateDCW(L"DISPLAY", mi.szDevice, nullptr, nullptr), 
+			const auto hdc = Utils::Win32::CreatedDC(CreateDCW(L"DISPLAY", mi.szDevice, nullptr, nullptr), 
 				nullptr, 
 				L"Failed to create display \"{}\" for zoom determination purposes.", mi.szDevice);
 			newDpiX = GetDeviceCaps(hdc, LOGPIXELSX);
@@ -192,4 +192,23 @@ void App::Window::BaseWindow::Destroy() {
 		return;
 	m_bDestroyed = true;
 	DestroyWindow(m_hWnd);
+}
+
+Utils::CallOnDestruction App::Window::BaseWindow::WithTemporaryFocus() {
+	if (IsWindowVisible(m_hWnd)) {
+		SetForegroundWindow(m_hWnd);
+		return {};
+	}
+
+	LONG_PTR prevExStyle = SetWindowLongPtrW(m_hWnd, GWL_EXSTYLE, WS_EX_TOOLWINDOW | WS_EX_LAYERED);
+	SetLayeredWindowAttributes(m_hWnd, 0, 0, LWA_ALPHA);
+	LONG_PTR prevStyle = SetWindowLongPtrW(m_hWnd, GWL_STYLE, WS_VISIBLE);
+
+	SetForegroundWindow(m_hWnd);
+
+	return { [this, prevStyle, prevExStyle]() {
+		SetWindowLongPtrW(m_hWnd, GWL_STYLE, prevStyle);
+		SetLayeredWindowAttributes(m_hWnd, 0, 255, LWA_ALPHA);
+		SetWindowLongPtrW(m_hWnd, GWL_EXSTYLE, prevExStyle);
+	} };
 }

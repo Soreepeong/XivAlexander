@@ -48,12 +48,14 @@ namespace XivAlex {
 	const wchar_t GameExecutableNameW[] = L"ffxiv.exe";
 	const wchar_t XivAlexDllNameW[] = L"XivAlexander32.dll";
 	const char XivAlexDllName[] = "XivAlexander32.dll";
+	const wchar_t XivAlexLoaderNameW[] = L"XivAlexanderLoader32.exe";
 
 #elif INTPTR_MAX == INT64_MAX
 
 	const wchar_t GameExecutableNameW[] = L"ffxiv_dx11.exe";
 	const wchar_t XivAlexDllNameW[] = L"XivAlexander64.dll";
 	const char XivAlexDllName[] = "XivAlexander64.dll";
+	const wchar_t XivAlexLoaderNameW[] = L"XivAlexanderLoader64.exe";
 
 #else
 #error "Environment not x86 or x64."

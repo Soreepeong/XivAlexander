@@ -61,7 +61,7 @@ std::shared_ptr<App::Config> App::Config::Acquire() {
 
 		r = s_instance.lock();
 		if (!r) {
-			const auto dllDir = Utils::Win32::Process::Current().PathOf(g_hInstance).parent_path();
+			const auto dllDir = Dll::Module().PathOf().parent_path();
 			const auto regionAndVersion = XivAlex::ResolveGameReleaseRegion();
 			s_instance = r = std::make_shared<ConfigCreator>(
 				dllDir / "config.runtime.json",

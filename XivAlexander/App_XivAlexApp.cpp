@@ -71,7 +71,6 @@ public:
 			{
 				const auto bridger = std::move(m_gameWindowSubclass);
 				this->this_->m_bInterrnalUnloadInitiated = true;
-				this->this_->m_bMainWindowDestroyed = true;
 
 				XivAlexDll::DisableAllApps(nullptr);
 
@@ -100,9 +99,9 @@ public:
 			}
 
 			this->this_->m_bInterrnalUnloadInitiated = true;
-			Utils::Win32::Closeable::Thread::WithReference(L"XivAlexander::App::XivAlexApp::Implementation::SetupTrayWindow::XivAlexUnloader", [](){
+			void(Utils::Win32::Thread(L"XivAlexander::App::XivAlexApp::Implementation::SetupTrayWindow::XivAlexUnloader", [](){
 				XivAlexDll::DisableAllApps(nullptr);
-			}, g_hInstance);
+			}, Utils::Win32::LoadedModule::LoadMore(Dll::Module())));
 		});
 	}
 
@@ -117,7 +116,7 @@ public:
 	}
 
 	void Load() {
-		Scintilla_RegisterClasses(g_hInstance);
+		Scintilla_RegisterClasses(Dll::Module());
 		m_cleanup += []() { Scintilla_ReleaseResources(); };
 
 		if (!m_hGameMainWindow)
@@ -201,10 +200,9 @@ public:
 
 		m_cleanup += ExitProcess.SetHook([this](UINT exitCode) {
 			this->this_->m_bInterrnalUnloadInitiated = true;
-			this->this_->m_bMainWindowDestroyed = true;
 					
 			if (this->m_trayWindow)
-				SendMessage(this->m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
+				SendMessageW(this->m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
 			WaitForSingleObject(this->this_->m_hCustomMessageLoop, INFINITE);
 			
 			XivAlexDll::DisableAllApps(nullptr);
@@ -216,7 +214,7 @@ public:
 };
 
 App::XivAlexApp::XivAlexApp()
-	: m_module(Utils::Win32::Closeable::LoadedModule::From(g_hInstance))
+	: m_module(Utils::Win32::LoadedModule::LoadMore(Dll::Module()))
 	, m_detectionDisabler(Misc::DebuggerDetectionDisabler::Acquire())
 	, m_logger(Misc::Logger::Acquire())
 	, m_config(Config::Acquire())
@@ -244,7 +242,7 @@ App::XivAlexApp::~XivAlexApp() {
 }
 
 void App::XivAlexApp::CustomMessageLoopBody() {
-	const auto activationContextCleanup = g_hActivationContext.With();
+	const auto activationContextCleanup = Dll::ActivationContext().With();
 	
 	m_pImpl->Load();
 	
@@ -290,14 +288,12 @@ HWND App::XivAlexApp::GetGameWindowHandle() const {
 }
 
 void App::XivAlexApp::RunOnGameLoop(std::function<void()> f) {
-	if (m_bMainWindowDestroyed) {
+	if (m_bInterrnalUnloadInitiated) {
 		f();
 		return;
 	}
-	
-	const Utils::Win32::Closeable::Handle hEvent(CreateEventW(nullptr, true, false, nullptr),
-		INVALID_HANDLE_VALUE,
-		"XivAlexApp::RunOnGameLoop/CreateEventW");
+
+	const auto hEvent = Utils::Win32::Event::Create();
 	{
 		std::lock_guard _lock(m_pImpl->m_runInMessageLoopLock);
 		m_pImpl->m_qRunInMessageLoop.emplace([this, &f, &hEvent]() {
@@ -311,11 +307,11 @@ void App::XivAlexApp::RunOnGameLoop(std::function<void()> f) {
 			} catch (...) {
 				m_logger->Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred");
 			}
-			SetEvent(hEvent);
+			hEvent.Set();
 			});
 	}
 	SendMessageW(m_pImpl->m_hGameMainWindow, WM_NULL, 0, 0);
-	WaitForSingleObject(hEvent, INFINITE);
+	hEvent.Wait();
 }
 
 std::string App::XivAlexApp::IsUnloadable() const {
@@ -333,55 +329,6 @@ std::string App::XivAlexApp::IsUnloadable() const {
 
 App::Network::SocketHook* App::XivAlexApp::GetSocketHook() {
 	return m_pImpl->m_socketHook.get();
-}
-
-void App::XivAlexApp::CheckUpdates(bool silent) {
-	try {
-		const auto [selfFileVersion, selfProductVersion] = Utils::Win32::FormatModuleVersionString(g_hInstance);
-		const auto up = XivAlex::CheckUpdates();
-		const auto remoteS = Utils::StringSplit(up.Name.substr(1), ".");
-		const auto localS = Utils::StringSplit(selfProductVersion, ".");
-		std::vector<int> remote, local;
-		for (const auto& s : remoteS)
-			remote.emplace_back(std::stoi(s));
-		for (const auto& s : localS)
-			local.emplace_back(std::stoi(s));
-		if (local.size() != 4 || remote.size() != 4)
-			throw std::runtime_error("Invalid format specification");
-		if (local > remote) {
-			const auto s = std::format("No updates available; you have the most recent version {}.{}.{}.{}; server version is {}.{}.{}.{} released at {:%Ec}",
-				local[0], local[1], local[2], local[3], remote[0], remote[1], remote[2], remote[3], up.PublishDate);
-			m_logger->Log(LogCategory::General, s);
-			if (!silent)
-				Utils::Win32::MessageBoxF(nullptr, MB_OK, L"XivAlexander", s);
-		} else if (local == remote) {
-			const auto s = std::format("No updates available; you have the most recent version {}.{}.{}.{}, released at {:%Ec}", local[0], local[1], local[2], local[3], up.PublishDate);
-			m_logger->Log(LogCategory::General, s);
-			if (!silent)
-				Utils::Win32::MessageBoxF(nullptr, MB_OK, L"XivAlexander", s);
-		} else {
-			const auto s = std::format("New version {}.{}.{}.{}, released at {:%Ec}, is available. Local version is {}.{}.{}.{}", remote[0], remote[1], remote[2], remote[3], up.PublishDate, local[0], local[1], local[2], local[3]);
-			m_logger->Log(LogCategory::General, s);
-			if (!silent) {
-				switch (Utils::Win32::MessageBoxF(nullptr, MB_YESNOCANCEL, L"XivAlexander", std::format(
-					L"{}\n\n"
-					L"Press Yes to check out the changelog,\n"
-					L"Press No to download the file right now, or\n"
-					L"Press Cancel to do nothing.",
-					s
-				).c_str())) {
-					case IDYES:
-						ShellExecuteW(nullptr, L"open", L"https://github.com/Soreepeong/XivAlexander/releases", nullptr, nullptr, SW_SHOW);
-						break;
-					case IDNO:
-						ShellExecuteW(nullptr, L"open", Utils::FromUtf8(up.DownloadLink).c_str(), nullptr, nullptr, SW_SHOW);
-						break;
-				}
-			}
-		}
-	} catch (const std::exception& e) {
-		m_logger->Format<LogLevel::Error>(LogCategory::General, "Failed to check for updates: {}", e.what());
-	}
 }
 
 static std::unique_ptr<App::XivAlexApp> s_xivAlexApp;

@@ -5,8 +5,8 @@
 constexpr int BaseFontSize = 11;
 
 static WNDCLASSEXW WindowClass() {
-	const auto hIcon = Utils::Win32::Closeable::Icon(
-		LoadIconW(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)),
+	const auto hIcon = Utils::Win32::Icon(
+		LoadIconW(Dll::Module(), MAKEINTRESOURCEW(IDI_TRAY_ICON)),
 		nullptr,
 		"Failed to load app icon.");
 	WNDCLASSEXW wcex;
@@ -15,7 +15,7 @@ static WNDCLASSEXW WindowClass() {
 	wcex.style = CS_HREDRAW | CS_VREDRAW;
 	wcex.cbClsExtra = 0;
 	wcex.cbWndExtra = 0;
-	wcex.hInstance = g_hInstance;
+	wcex.hInstance = Dll::Module();
 	wcex.hIcon = hIcon;
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
 	wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
@@ -29,7 +29,7 @@ App::Window::Config::Config(App::Config::BaseRepository* pRepository)
 	: BaseWindow(WindowClass(), L"Config", WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr)
 	, m_pRepository(pRepository) {
 	m_hScintilla = CreateWindowExW(0, TEXT("Scintilla"), TEXT(""), WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
-		0, 0, 0, 0, m_hWnd, nullptr, g_hInstance, nullptr);
+		0, 0, 0, 0, m_hWnd, nullptr, Dll::Module(), nullptr);
 	m_direct = reinterpret_cast<SciFnDirect>(SendMessageW(m_hScintilla, SCI_GETDIRECTFUNCTION, 0, 0));
 	m_directPtr = SendMessageW(m_hScintilla, SCI_GETDIRECTPOINTER, 0, 0);
 	m_direct(m_directPtr, SCI_STYLESETSIZE, STYLE_DEFAULT, static_cast<int>(BaseFontSize * GetZoom()));

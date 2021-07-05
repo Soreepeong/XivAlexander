@@ -18,7 +18,7 @@ namespace App::Window {
         bool m_bDestroyed = false;
 
     protected:
-		const Utils::Win32::Closeable::LoadedModule m_hShCore;
+		const Utils::Win32::LoadedModule m_hShCore;
 		const std::shared_ptr<App::Config> m_config;
         const std::shared_ptr<Misc::Logger> m_logger;
         const WNDCLASSEXW m_windowClass;
@@ -68,5 +68,7 @@ namespace App::Window {
         virtual LRESULT OnSysCommand(WPARAM commandId, short xPos, short yPos);
         virtual void OnDestroy();
         void Destroy();
+		
+		Utils::CallOnDestruction WithTemporaryFocus();
 	};
 }

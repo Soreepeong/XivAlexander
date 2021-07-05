@@ -56,9 +56,7 @@
 _COM_SMARTPTR_TYPEDEF(IFileSaveDialog, __uuidof(IFileSaveDialog));
 _COM_SMARTPTR_TYPEDEF(IShellItem, __uuidof(IShellItem));
 
-extern Utils::Win32::Closeable::LoadedModule g_hInstance;
-extern Utils::Win32::Closeable::ActivationContext g_hActivationContext;
-
+#include "DllMain.h"
 #include "App_ConfigRepository.h"
 #include "App_Misc_Logger.h"
 

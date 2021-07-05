@@ -165,6 +165,7 @@
     <ClInclude Include="XivAlexander\XivAlexander.h">
       <Filter>Exported</Filter>
     </ClInclude>
+    <ClInclude Include="DllMain.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\Graphics\Icon.ico">

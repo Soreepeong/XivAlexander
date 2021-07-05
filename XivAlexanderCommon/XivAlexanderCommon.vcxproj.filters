@@ -63,6 +63,12 @@
     <ClInclude Include="XivAlexanderCommon\XivAlexanderCommon.h">
       <Filter>Exported</Filter>
     </ClInclude>
+    <ClInclude Include="Utils_Win32_Handle.h">
+      <Filter>Implementation\Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils_Win32_LoadedModule.h">
+      <Filter>Implementation\Win32</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -92,10 +98,13 @@
     <ClCompile Include="Utils__Misc.cpp">
       <Filter>Implementation\Root</Filter>
     </ClCompile>
-    <ClCompile Include="Utils_Win32_Closeable.cpp">
+    <ClCompile Include="Utils_Win32_LoadedModule.cpp">
       <Filter>Implementation\Win32</Filter>
     </ClCompile>
     <ClCompile Include="Utils_Win32_Process.cpp">
+      <Filter>Implementation\Win32</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils_Win32_Handle.cpp">
       <Filter>Implementation\Win32</Filter>
     </ClCompile>
   </ItemGroup>

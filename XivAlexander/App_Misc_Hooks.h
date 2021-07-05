@@ -21,9 +21,6 @@ namespace App::Misc::Hooks {
 #endif
 
 	private:
-		static HANDLE s_hHeap;
-		static std::mutex s_hHeapMutex;
-
 		void* m_pAddress = nullptr;
 		Utils::CallOnDestruction::Multiple m_cleanup;
 

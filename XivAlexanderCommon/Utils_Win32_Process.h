@@ -5,15 +5,17 @@
 
 #include "Utils_CallOnDestruction.h"
 #include "Utils_Win32_Closeable.h"
+#include "Utils_Win32_Handle.h"
 
 namespace Utils::Win32 {
 	class ModuleMemoryBlocks;
-	class Process : public Closeable::Handle {
+	class Process : public Handle {
 		mutable std::mutex m_moduleMemoryMutex;
 		mutable std::map<HMODULE, std::shared_ptr<ModuleMemoryBlocks>> m_moduleMemory;
 
 	public:
 		Process();
+		Process(std::nullptr_t);
 		Process(HANDLE hProcess, bool ownership);
 		Process(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId);
 		Process(Process&& r) noexcept;
@@ -41,6 +43,8 @@ namespace Utils::Win32 {
 		[[nodiscard]] bool IsCurrentProcessPseudoHandle() const;
 		[[nodiscard]] bool IsProcess64Bits() const;
 		DWORD GetId() const;
+
+		void Terminate(DWORD dwExitCode) const;
 
 		int CallRemoteFunction(void* rpfn, void* rpParam, const char* pcszDescription) const;
 

@@ -684,7 +684,7 @@ App::Network::SocketHook::~SocketHook() {
 	}
 
 	// Let it process main message loop first to ensure that no socket operation is in progress
-	SendMessage(m_pImpl->m_pApp->GetGameWindowHandle(), WM_NULL, 0, 0);
+	SendMessageW(m_pImpl->m_pApp->GetGameWindowHandle(), WM_NULL, 0, 0);
 	m_pImpl->m_cleanupList.Clear();
 }
 

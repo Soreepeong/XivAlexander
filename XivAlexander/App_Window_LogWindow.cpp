@@ -21,7 +21,7 @@ static const std::map<App::LogCategory, const char*> LogCategoryNames{
 };
 
 static WNDCLASSEXW WindowClass() {
-	const auto hIcon = Utils::Win32::Closeable::Icon(LoadIconW(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)),
+	const auto hIcon = Utils::Win32::Icon(LoadIconW(Dll::Module(), MAKEINTRESOURCEW(IDI_TRAY_ICON)),
 		nullptr,
 		"Failed to load app icon.");
 	WNDCLASSEXW wcex;
@@ -30,7 +30,7 @@ static WNDCLASSEXW WindowClass() {
 	wcex.style = CS_HREDRAW | CS_VREDRAW;
 	wcex.cbClsExtra = 0;
 	wcex.cbWndExtra = 0;
-	wcex.hInstance = g_hInstance;
+	wcex.hInstance = Dll::Module();
 	wcex.hIcon = hIcon;
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
 	wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
@@ -47,7 +47,7 @@ App::Window::Log::Log()
 	SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
 
 	m_hScintilla = CreateWindowExW(0, TEXT("Scintilla"), TEXT(""), WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
-		0, 0, 0, 0, m_hWnd, nullptr, g_hInstance, nullptr);
+		0, 0, 0, 0, m_hWnd, nullptr, Dll::Module(), nullptr);
 	m_direct = reinterpret_cast<SciFnDirect>(SendMessageW(m_hScintilla, SCI_GETDIRECTFUNCTION, 0, 0));
 	m_directPtr = SendMessageW(m_hScintilla, SCI_GETDIRECTPOINTER, 0, 0);
 	m_direct(m_directPtr, SCI_STYLESETSIZE, STYLE_DEFAULT, static_cast<int>(BaseFontSize * GetZoom()));
@@ -70,7 +70,7 @@ App::Window::Log::Log()
 			LogCategoryNames.at(item.category),
 			item.log);
 		RunOnUiThreadWait([&]() {
-			SendMessage(m_hScintilla, WM_SETREDRAW, FALSE, 0);
+			SendMessageW(m_hScintilla, WM_SETREDRAW, FALSE, 0);
 			m_direct(m_directPtr, SCI_SETREADONLY, FALSE, 0);
 			auto nPos = m_direct(m_directPtr, SCI_GETLENGTH, 0, 0);
 			auto nLineCount = m_direct(m_directPtr, SCI_GETLINECOUNT, 0, 0) - 1;
@@ -91,7 +91,7 @@ App::Window::Log::Log()
 				m_direct(m_directPtr, SCI_SETFIRSTVISIBLELINE, INT_MAX, 0);
 			}
 			m_direct(m_directPtr, SCI_SETREADONLY, TRUE, 0);
-			SendMessage(m_hScintilla, WM_SETREDRAW, TRUE, 0);
+			SendMessageW(m_hScintilla, WM_SETREDRAW, TRUE, 0);
 			InvalidateRect(m_hScintilla, nullptr, FALSE);
 			return 0;
 			});

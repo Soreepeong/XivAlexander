@@ -16,7 +16,7 @@ public:
 	std::deque<LogItem> m_items, m_pendingItems;
 
 	// needs to be last, as "this" needs to be done initializing
-	const Utils::Win32::Closeable::Thread m_hDispatcherThread;
+	const Utils::Win32::Thread m_hDispatcherThread;
 
 	Implementation(Logger& logger)
 		: logger(logger)

@@ -75,6 +75,38 @@ std::string argparse::details::repr(LauncherType const& val) {
 	return std::format("({})", static_cast<int>(val));
 }
 
+enum class StdinProcessHandleType : int {
+	None,
+	Inject,
+	CheckUpdate,
+};
+
+template <>
+std::string argparse::details::repr(StdinProcessHandleType const& val) {
+	switch (val) {
+		case StdinProcessHandleType::None: return "none";
+		case StdinProcessHandleType::Inject: return "inject";
+		case StdinProcessHandleType::CheckUpdate: return "checkupdate";
+	}
+	return std::format("({})", static_cast<int>(val));
+}
+
+StdinProcessHandleType ParseStdinProcessHandleType(std::string val) {
+	auto valw = Utils::FromUtf8(val);
+	CharLowerW(&valw[0]);
+	val = Utils::ToUtf8(valw);
+	for (size_t i = 0; i < static_cast<size_t>(LoaderAction::Count_); ++i) {
+		const auto compare = argparse::details::repr(static_cast<LoaderAction>(i));
+		auto equal = true;
+		for (size_t j = 0; equal && j < val.length() && j < compare.length(); ++j) {
+			equal = val[j] == compare[j];
+		}
+		if (equal)
+			return static_cast<StdinProcessHandleType>(i);
+	}
+	throw std::runtime_error("Invalid stdin-process-handle");
+}
+
 template <>
 std::string argparse::details::repr(XivAlex::GameRegion const& val) {
 	switch (val) {
@@ -114,7 +146,7 @@ public:
 	bool m_help = false;
 	bool m_web = false;
 	bool m_disableAutoRunAs = true;
-	bool m_injectIntoStdinHandle = false;
+	StdinProcessHandleType m_stdinProcessHandleType = StdinProcessHandleType::None;
 	std::set<DWORD> m_targetPids{};
 	std::set<std::wstring> m_targetSuffix{};
 	std::wstring m_runProgram;
@@ -147,9 +179,11 @@ public:
 			.help("open github repository at https://github.com/Soreepeong/XivAlexander and exit")
 			.default_value(false)
 			.implicit_value(true);
-		argp.add_argument("--inject-into-stdin-handle")
-			.default_value(false)
-			.implicit_value(true);
+		argp.add_argument("--stdin-process-handle")
+			.required()
+			.nargs(1)
+			.default_value(StdinProcessHandleType::None)
+			.action([](const std::string& val) { return ParseStdinProcessHandleType(val); });
 		argp.add_argument("targets")
 			.help("List of target process ID or path suffix if injecting. Path to program to execute if launching.")
 			.default_value(std::vector<std::string>())
@@ -179,7 +213,7 @@ public:
 		m_quiet = argp.get<bool>("-q");
 		m_web = argp.get<bool>("--web");
 		m_disableAutoRunAs = argp.get<bool>("-d");
-		m_injectIntoStdinHandle = argp.get<bool>("--inject-into-stdin-handle");
+		m_stdinProcessHandleType = argp.get<StdinProcessHandleType>("--stdin-process-handle");
 
 		const auto targets = argp.get<std::vector<std::string>>("targets");
 		if (!targets.empty()) {
@@ -208,7 +242,7 @@ public:
 	}
 
 	[[nodiscard]] std::wstring GetHelpMessage() const {
-		return std::format(L"XivAlexanderLoader: loads XivAlexander into game process (DirectX 11 version, x64 only).\n\n{}",
+		return std::format(L"XivAlexanderLoader: loads XivAlexander into game process\n\n{}",
 			Utils::FromUtf8(argp.help().str())
 		);
 	}
@@ -500,6 +534,56 @@ int RunLauncher() {
 	return 0;
 }
 
+static void PerformUpdate(Utils::Win32::Process prevProcess, const std::string& url) {
+}
+
+static void CheckForUpdates(Utils::Win32::Process prevProcess = nullptr) {
+	try {
+		const auto [selfFileVersion, selfProductVersion] = Utils::Win32::FormatModuleVersionString(GetModuleHandleW(nullptr));
+		const auto up = XivAlex::CheckUpdates();
+		const auto remoteS = Utils::StringSplit(up.Name.substr(1), ".");
+		const auto localS = Utils::StringSplit(selfProductVersion, ".");
+		std::vector<int> remote, local;
+		for (const auto& s : remoteS)
+			remote.emplace_back(std::stoi(s));
+		for (const auto& s : localS)
+			local.emplace_back(std::stoi(s));
+		if (local.size() != 4 || remote.size() != 4)
+			throw std::runtime_error("Invalid format specification");
+		if (local > remote) {
+			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONINFORMATION, MsgboxTitle, 
+				"No updates available; you have the most recent version {}.{}.{}.{}; server version is {}.{}.{}.{} released at {:%Ec}",
+				local[0], local[1], local[2], local[3], remote[0], remote[1], remote[2], remote[3], up.PublishDate);
+			return;
+			
+		} else if (local == remote) {
+			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONINFORMATION, MsgboxTitle,
+				"No updates available; you have the most recent version {}.{}.{}.{}, released at {:%Ec}", 
+				local[0], local[1], local[2], local[3], up.PublishDate);
+			return;
+		}
+	
+		switch (Utils::Win32::MessageBoxF(nullptr, MB_YESNOCANCEL, MsgboxTitle, std::format(
+			L"New version {}.{}.{}.{}, released at {:%Ec}, is available. Local version is {}.{}.{}.{}\n\n"
+			L"Press Yes to check out the changelog,\n"
+			L"Press No to update right now, or\n"
+			L"Press Cancel to do nothing.\n\n"
+			L"Security note: Do NOT download right away if your internet connection to GitHub cannot be trusted.",
+			remote[0], remote[1], remote[2], remote[3], up.PublishDate, local[0], local[1], local[2], local[3]
+		).c_str())) {
+			case IDYES:
+				ShellExecuteW(nullptr, L"open", L"https://github.com/Soreepeong/XivAlexander/releases", nullptr, nullptr, SW_SHOW);
+				break;
+			
+			case IDNO:
+				PerformUpdate(prevProcess, up.DownloadLink);
+				break;
+		}
+	} catch (const std::exception& e) {
+		Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, "Failed to check for updates: {}", e.what());
+	}
+}
+
 int WINAPI wWinMain(
 	_In_ HINSTANCE hInstance,
 	_In_opt_ HINSTANCE hPrevInstance,
@@ -539,14 +623,24 @@ int WINAPI wWinMain(
 		return -1;
 	}
 
-	if (g_parameters.m_injectIntoStdinHandle) {
+	if (g_parameters.m_stdinProcessHandleType != StdinProcessHandleType::None) {
 		DWORD read;
 		uint64_t val;
 		try {
 			if (!ReadFile(GetStdHandle(STD_INPUT_HANDLE), &val, sizeof val, &read, nullptr) || read != sizeof val)
 				throw Utils::Win32::Error("ReadFile");
 
-			XivAlexDll::PatchEntryPointForInjection(Utils::Win32::Process().Attach(reinterpret_cast<HANDLE>(static_cast<size_t>(val)), true, "null handle is invalid"));
+			auto process = Utils::Win32::Process(reinterpret_cast<HANDLE>(static_cast<size_t>(val)), true);
+			
+			switch (g_parameters.m_stdinProcessHandleType) {
+			case StdinProcessHandleType::Inject:
+				XivAlexDll::PatchEntryPointForInjection(std::move(process));
+				break;
+				
+			case StdinProcessHandleType::CheckUpdate:
+				CheckForUpdates(std::move(process));
+				break;
+			}
 			return 0;
 		} catch (const std::exception& e) {
 			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, L"Error occurred: {}", e.what());

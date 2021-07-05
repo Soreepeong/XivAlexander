@@ -3,6 +3,7 @@
 
 #include "Utils_CallOnDestruction.h"
 #include "Utils_Win32_Closeable.h"
+#include "Utils_Win32_Handle.h"
 #include "Utils_Win32_Process.h"
 
 std::string Utils::Win32::FormatWindowsErrorMessage(unsigned int errorCode) {
@@ -77,7 +78,7 @@ std::pair<std::string, std::string> Utils::Win32::FormatModuleVersionString(HMOD
 	const auto hDllVersion = FindResourceW(hModule, MAKEINTRESOURCE(VS_VERSION_INFO), RT_VERSION);
 	if (hDllVersion == nullptr)
 		throw std::runtime_error("Failed to find version resource.");
-	const auto hVersionResource = Closeable::GlobalResource(LoadResource(hModule, hDllVersion),
+	const auto hVersionResource = GlobalResource(LoadResource(hModule, hDllVersion),
 	                                                        nullptr,
 	                                                        "FormatModuleVersionString: Failed to load version resource.");
 	const auto lpVersionInfo = LockResource(hVersionResource);  // no need to "UnlockResource"
@@ -135,9 +136,9 @@ void Utils::Win32::SetThreadDescription(HANDLE hThread, const std::wstring& desc
 		);
 	SetThreadDescriptionT pfnSetThreadDescription = nullptr;
 
-	if (const auto hMod = Closeable::LoadedModule(L"kernel32.dll", LOAD_LIBRARY_SEARCH_SYSTEM32, false))
+	if (const auto hMod = LoadedModule(L"kernel32.dll", LOAD_LIBRARY_SEARCH_SYSTEM32, false))
 		pfnSetThreadDescription = reinterpret_cast<SetThreadDescriptionT>(GetProcAddress(hMod, "SetThreadDescription"));
-	else if (const auto hMod = Closeable::LoadedModule(L"KernelBase.dll", LOAD_LIBRARY_SEARCH_SYSTEM32, false))
+	else if (const auto hMod = LoadedModule(L"KernelBase.dll", LOAD_LIBRARY_SEARCH_SYSTEM32, false))
 		pfnSetThreadDescription = reinterpret_cast<SetThreadDescriptionT>(GetProcAddress(hMod, "SetThreadDescription"));
 	
 	if (pfnSetThreadDescription)
@@ -179,7 +180,7 @@ void Utils::Win32::SetMenuState(HWND hWnd, DWORD nMenuId, bool bChecked) {
 }
 
 void Utils::Win32::AddDebugPrivilege() {
-	Closeable::Handle token;
+	Handle token;
 	{
 		HANDLE hToken;
 		if (!OpenThreadToken(GetCurrentThread(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, FALSE, &hToken)) {
@@ -192,7 +193,7 @@ void Utils::Win32::AddDebugPrivilege() {
 			} else
 				throw Error("AddDebugPrivilege: OpenThreadToken#1");
 		}
-		token = Closeable::Handle(hToken, INVALID_HANDLE_VALUE, "AddDebugPrivilege: Invalid");
+		token = Handle(hToken, INVALID_HANDLE_VALUE, "AddDebugPrivilege: Invalid");
 	}
 
 	if (!EnableTokenPrivilege(token, SE_DEBUG_NAME, TRUE))
@@ -225,7 +226,7 @@ std::filesystem::path Utils::Win32::GetMappedImageNativePath(HANDLE hProcess, vo
 }
 
 std::filesystem::path Utils::Win32::ToNativePath(const std::filesystem::path& path) {
-	const auto hFile = Closeable::Handle(CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr),
+	const auto hFile = Handle(CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr),
 		INVALID_HANDLE_VALUE, "CreateFileW");
 
 	std::wstring result;
@@ -237,34 +238,47 @@ std::filesystem::path Utils::Win32::ToNativePath(const std::filesystem::path& pa
 	return L"\\\\?" + result;
 }
 
+static Utils::CallOnDestruction WithRunAsInvoker() {
+	static const auto NeverElevateEnvKey = L"__COMPAT_LAYER";
+	static const auto NeverElevateEnvVal = L"RunAsInvoker";
+	
+	std::wstring env;
+	env.resize(32768);
+	env.resize(GetEnvironmentVariableW(NeverElevateEnvKey, &env[0], static_cast<DWORD>(env.size())));
+	const auto envNone = env.empty() && GetLastError() == ERROR_ENVVAR_NOT_FOUND;
+	if (!envNone && env.empty())
+		throw Utils::Win32::Error("GetEnvrionmentVariableW");
+	if (!SetEnvironmentVariableW(NeverElevateEnvKey, NeverElevateEnvVal))
+		throw Utils::Win32::Error("SetEnvironmentVariableW");
+	return {[env = std::move(env), envNone]() {
+		SetEnvironmentVariableW(NeverElevateEnvKey, envNone ? nullptr : &env[0]);
+	}};
+}
+
 bool Utils::Win32::RunProgram(RunProgramParams params) {
+	CallOnDestruction::Multiple cleanup;
+	
 	if (params.path.empty())
 		params.path = Process::Current().PathOf();
+	else if (!exists(params.path)) {
+		std::wstring buf;
+		buf.resize(PATHCCH_MAX_CCH);
+		buf.resize(SearchPathW(nullptr, params.path.c_str(), L".exe", static_cast<DWORD>(buf.size()), &buf[0], nullptr));
+		if (buf.empty())
+			throw Error("SearchPath");
+		params.path = buf;
+	}
+	
 	if (params.dir.empty())
 		params.dir = params.path.parent_path().wstring();
-
+	
 	switch (params.elevateMode) {
 	case RunProgramParams::Normal:
 	case RunProgramParams::Force:
-	case RunProgramParams::Never:
+	case RunProgramParams::NeverUnlessAlreadyElevated:
 	{
-		CallOnDestruction::Multiple cleanup;
-		if (params.elevateMode == RunProgramParams::Never) {
-			static const auto NeverElevateEnvKey = L"__COMPAT_LAYER";
-			static const auto NeverElevateEnvVal = L"RunAsInvoker";
-			
-			std::wstring env;
-			env.resize(32768);
-			env.resize(GetEnvironmentVariableW(NeverElevateEnvKey, &env[0], static_cast<DWORD>(env.size())));
-			const auto envNone = env.empty() && GetLastError() == ERROR_ENVVAR_NOT_FOUND;
-			if (!envNone && env.empty())
-				throw Error("GetEnvrionmentVariableW");
-			if (!SetEnvironmentVariableW(NeverElevateEnvKey, NeverElevateEnvVal))
-				throw Error("SetEnvironmentVariableW");
-			cleanup += [env = std::move(env), envNone]() {
-				SetEnvironmentVariableW(NeverElevateEnvKey, envNone ? nullptr : &env[0]);
-			};
-		}
+		if (params.elevateMode == RunProgramParams::NeverUnlessAlreadyElevated)
+			cleanup += WithRunAsInvoker();
 		
 		SHELLEXECUTEINFOW sei{};
 		sei.cbSize = sizeof sei;
@@ -273,6 +287,7 @@ bool Utils::Win32::RunProgram(RunProgramParams params) {
 		sei.lpFile = params.path.c_str();
 		sei.lpParameters = params.args.c_str();
 		sei.lpDirectory = params.dir.c_str();
+		sei.nShow = SW_SHOW;
 		if (!ShellExecuteExW(&sei)) {
 			const auto err = GetLastError();
 			if (err == ERROR_CANCELLED && !params.throwOnCancel)
@@ -287,24 +302,56 @@ bool Utils::Win32::RunProgram(RunProgramParams params) {
 		CloseHandle(sei.hProcess);
 		return true;
 	}
-		
+
+	case RunProgramParams::NeverUnlessShellIsElevated:
 	case RunProgramParams::CancelIfRequired:
 	case RunProgramParams::NoElevationIfDenied: {
-		if (!exists(params.path)) {
-			std::wstring buf;
-			buf.resize(PATHCCH_MAX_CCH);
-			buf.resize(SearchPathW(nullptr, params.path.c_str(), L".exe", static_cast<DWORD>(buf.size()), &buf[0], nullptr));
-			if (buf.empty())
-				throw Error("SearchPath");
-			params.path = buf;
+		if (params.elevateMode == RunProgramParams::NeverUnlessShellIsElevated) {
+			if (!IsUserAnAdmin()) {
+				params.elevateMode = RunProgramParams::NeverUnlessAlreadyElevated;
+				return RunProgram(params);
+			}
+			cleanup += WithRunAsInvoker();
 		}
 
-		STARTUPINFOW si{};
-		si.cb = sizeof si;
+		STARTUPINFOEXW siex{};
+		const auto hWndShell = GetShellWindow();
+		Process shellProcess;
+		HANDLE hShellProcess;
+		std::vector<char> attributeListBuf;
+		if (hWndShell && params.elevateMode == RunProgramParams::NeverUnlessShellIsElevated) {
+			siex.StartupInfo.cb = sizeof siex;
+			
+			DWORD pid;
+			if (!GetWindowThreadProcessId(hWndShell, &pid))
+				throw Error("GetWindowThreadProcessId(GetShellWindow())");
+			shellProcess = Process(PROCESS_CREATE_PROCESS, FALSE, pid);
+
+			SIZE_T size;
+			if (!InitializeProcThreadAttributeList(nullptr, 1, 0, &size)) {
+				const auto err = GetLastError();
+				if (err != ERROR_INSUFFICIENT_BUFFER)
+					throw Error(err, "InitializeProcThreadAttributeList.1");
+			}
+			attributeListBuf.resize(size);
+			
+			auto p = reinterpret_cast<PPROC_THREAD_ATTRIBUTE_LIST>(&attributeListBuf[0]);
+			if (!InitializeProcThreadAttributeList(p, 1, 0, &size))
+				throw Error("InitializeProcThreadAttributeList.2");
+
+			hShellProcess = static_cast<HANDLE>(shellProcess);
+			if (!UpdateProcThreadAttribute(p,0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &hShellProcess, sizeof hShellProcess, nullptr, nullptr))
+				throw Error("UpdateProcThreadAttribute.2");
+			
+			siex.lpAttributeList = p;
+		} else {
+			siex.StartupInfo.cb = sizeof siex.StartupInfo;
+		}
+		
 		PROCESS_INFORMATION pi;
 		const auto wd = params.path.parent_path().wstring();
 		auto args = params.args.empty() ? std::format(L"\"{}\"", params.path) : std::format(L"\"{}\" {}", params.path, params.args);
-		if (!CreateProcessW(params.path.c_str(), &args[0], nullptr, nullptr, FALSE, 0, nullptr, &wd[0], &si, &pi)) {
+		if (!CreateProcessW(params.path.c_str(), &args[0], nullptr, nullptr, FALSE, siex.lpAttributeList ? EXTENDED_STARTUPINFO_PRESENT : 0, nullptr, &wd[0], &siex.StartupInfo, &pi)) {
 			const auto err = GetLastError();
 			if (err == ERROR_ELEVATION_REQUIRED) {
 				if (params.elevateMode == RunProgramParams::CancelIfRequired && !params.throwOnCancel)
@@ -315,7 +362,7 @@ bool Utils::Win32::RunProgram(RunProgramParams params) {
 					if (RunProgram(params))
 						return true;
 					
-					params.elevateMode = RunProgramParams::Never;
+					params.elevateMode = RunProgramParams::NeverUnlessAlreadyElevated;
 					return RunProgram(params);
 				}
 			}

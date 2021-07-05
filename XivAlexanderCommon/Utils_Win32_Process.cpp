@@ -5,6 +5,10 @@
 Utils::Win32::Process::Process() : Handle() {
 }
 
+Utils::Win32::Process::Process(std::nullptr_t)
+	: Process() {
+}
+
 Utils::Win32::Process::Process(HANDLE hProcess, bool ownership)
 	: Handle(hProcess, ownership) {
 }
@@ -59,7 +63,7 @@ Utils::Win32::Process& Utils::Win32::Process::Current() {
 }
 
 Utils::Win32::Process& Utils::Win32::Process::Attach(HANDLE r, bool ownership, const std::string& errorMessage) {
-	Base::Attach(r, Null, ownership, errorMessage);
+	Handle::Attach(r, Null, ownership, errorMessage);
 	return *this;
 }
 
@@ -154,6 +158,11 @@ bool Utils::Win32::Process::IsProcess64Bits() const {
 
 DWORD Utils::Win32::Process::GetId() const {
 	return GetProcessId(m_object);
+}
+
+void Utils::Win32::Process::Terminate(DWORD dwExitCode) const {
+	if (!TerminateProcess(m_object, dwExitCode))
+		throw Error("TerminateProcess");
 }
 
 int Utils::Win32::Process::CallRemoteFunction(void* rpfn, void* rpParam, const char* pcszDescription) const {

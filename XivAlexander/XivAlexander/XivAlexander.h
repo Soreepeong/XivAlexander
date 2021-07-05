@@ -12,7 +12,12 @@
 
 namespace XivAlexDll {
 
-	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall PatchEntryPointForInjection(HANDLE hProcess);
+	XIVALEXANDER_DLLEXPORT void LaunchXivAlexLoaderWithStdinHandle(HANDLE hSource, const wchar_t* mode, bool wait);
+	XIVALEXANDER_DLLEXPORT void PatchEntryPointForInjection(HANDLE hProcess);
+
+	//
+	// Everything declared below must be able to be called from CreateRemoteProcess.
+	//
 	
 	class InjectOnCreateProcessAppFlags {
 	public:
@@ -41,7 +46,6 @@ namespace XivAlexDll {
 	extern "C" XIVALEXANDER_DLLEXPORT int __stdcall ReloadConfiguration(void* lpReserved);
 	extern "C" XIVALEXANDER_DLLEXPORT int __stdcall DisableAllApps(void* lpReserved);
 	extern "C" XIVALEXANDER_DLLEXPORT int __stdcall CallFreeLibrary(void*);
-
 }
 
 #endif

@@ -8,7 +8,7 @@ namespace App {
 	}
 
 	class InjectOnCreateProcessApp {
-		const Utils::Win32::Closeable::LoadedModule m_module;
+		const Utils::Win32::LoadedModule m_module;
 		const std::shared_ptr<Misc::DebuggerDetectionDisabler> m_detectionDisabler;
 
 		class Implementation;

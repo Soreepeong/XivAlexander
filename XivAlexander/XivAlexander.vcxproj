@@ -326,6 +326,7 @@
     <ClInclude Include="App_Window_ConfigWindow.h" />
     <ClInclude Include="App_Window_LogWindow.h" />
     <ClInclude Include="App_Window_MainWindow.h" />
+    <ClInclude Include="DllMain.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="XivAlexander\XivAlexander.h" />

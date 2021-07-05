@@ -53,7 +53,8 @@ namespace Utils::Win32 {
 		enum ElevateMode {
 			Normal,
 			Force,
-			Never,
+			NeverUnlessAlreadyElevated,
+			NeverUnlessShellIsElevated,
 			CancelIfRequired,
 			NoElevationIfDenied,
 		};

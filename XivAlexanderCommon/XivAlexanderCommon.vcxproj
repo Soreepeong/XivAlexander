@@ -22,6 +22,8 @@
     <ClInclude Include="CustomFormatter.h" />
     <ClInclude Include="Utils_CallOnDestruction.h" />
     <ClInclude Include="Utils_ListenerManager.h" />
+    <ClInclude Include="Utils_Win32_Handle.h" />
+    <ClInclude Include="Utils_Win32_LoadedModule.h" />
     <ClInclude Include="Utils_Win32_Process.h" />
     <ClInclude Include="Utils__Misc.h" />
     <ClInclude Include="Utils__String.h" />
@@ -42,7 +44,8 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Utils_Win32_Closeable.cpp" />
+    <ClCompile Include="Utils_Win32_LoadedModule.cpp" />
+    <ClCompile Include="Utils_Win32_Handle.cpp" />
     <ClCompile Include="Utils_Win32_Process.cpp" />
     <ClCompile Include="Utils__Misc.cpp" />
     <ClCompile Include="Utils__String.cpp" />

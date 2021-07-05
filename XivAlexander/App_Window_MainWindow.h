@@ -30,7 +30,5 @@ namespace App::Window {
 		void RepopulateMenu(HMENU hMenu);
 		void RegisterTrayIcon();
 		void RemoveTrayIcon();
-
-		Utils::CallOnDestruction WithTemporaryFocus();
 	};
 };

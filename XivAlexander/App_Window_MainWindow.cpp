@@ -4,6 +4,7 @@
 #include "App_Window_ConfigWindow.h"
 #include "App_Window_MainWindow.h"
 #include "App_Network_SocketHook.h"
+#include "XivAlexander/XivAlexander.h"
 
 static const auto WmTrayCallback = WM_APP + 1;
 static const int TrayItemId = 1;
@@ -11,7 +12,7 @@ static const int TimerIdReregisterTrayIcon = 100;
 static const int TimerIdRepaint = 101;
 
 static WNDCLASSEXW WindowClass() {
-	const auto hIcon = Utils::Win32::Closeable::Icon(LoadIconW(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)),
+	const auto hIcon = Utils::Win32::Icon(LoadIconW(Dll::Module(), MAKEINTRESOURCEW(IDI_TRAY_ICON)),
 		nullptr,
 		"Failed to load app icon.");
 	WNDCLASSEXW wcex;
@@ -20,7 +21,7 @@ static WNDCLASSEXW WindowClass() {
 	wcex.style = CS_HREDRAW | CS_VREDRAW;
 	wcex.cbClsExtra = 0;
 	wcex.cbWndExtra = 0;
-	wcex.hInstance = g_hInstance;
+	wcex.hInstance = Dll::Module();
 	wcex.hIcon = hIcon;
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
 	wcex.hbrBackground = static_cast<HBRUSH>(GetStockObject(HOLLOW_BRUSH));
@@ -34,7 +35,7 @@ App::Window::Main::Main(XivAlexApp* pApp, std::function<void()> unloadFunction)
 	: BaseWindow(WindowClass(), L"XivAlexander", WS_OVERLAPPEDWINDOW, WS_EX_TOPMOST, CW_USEDEFAULT, CW_USEDEFAULT, 480, 160, nullptr, nullptr)
 	, m_pApp(pApp)
 	, m_triggerUnload(std::move(unloadFunction))
-	, m_uTaskbarRestartMessage(RegisterWindowMessage(TEXT("TaskbarCreated")))
+	, m_uTaskbarRestartMessage(RegisterWindowMessageW(L"TaskbarCreated"))
 	, m_path(Utils::Win32::Process::Current().PathOf()) {
 
 	std::tie(m_sRegion, m_sVersion) = XivAlex::ResolveGameReleaseRegion();
@@ -189,7 +190,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					/***************************************************************/
 
 				case ID_TRAYMENU_CHECKFORUPDATES:
-					m_pApp->CheckUpdates(false);
+					XivAlexDll::LaunchXivAlexLoaderWithStdinHandle(GetCurrentProcess(), L"checkupdate", false);
 					return 0;
 
 				case ID_TRAYMENU_UNLOADXIVALEXANDER:
@@ -253,7 +254,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 				m_lastTrayIconLeftButtonUp = 0;
 			} else
 				m_lastTrayIconLeftButtonUp = now;
-			
+
 			if (!willShowControlWindow) {
 				const auto temporaryFocus = WithTemporaryFocus();
 				SetForegroundWindow(m_pApp->GetGameWindowHandle());
@@ -357,7 +358,7 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) {
 }
 
 void App::Window::Main::RegisterTrayIcon() {
-	const auto hIcon = Utils::Win32::Closeable::Icon(LoadIconW(g_hInstance, MAKEINTRESOURCEW(IDI_TRAY_ICON)),
+	const auto hIcon = Utils::Win32::Icon(LoadIconW(Dll::Module(), MAKEINTRESOURCEW(IDI_TRAY_ICON)),
 		nullptr,
 		"Failed to load app icon.");
 	NOTIFYICONDATAW nid = { sizeof(NOTIFYICONDATAW) };
@@ -378,23 +379,4 @@ void App::Window::Main::RemoveTrayIcon() {
 	nid.hWnd = m_hWnd;
 	nid.uFlags = NIF_GUID;
 	Shell_NotifyIconW(NIM_DELETE, &nid);
-}
-
-Utils::CallOnDestruction App::Window::Main::WithTemporaryFocus() {
-	if (m_config->Runtime.ShowControlWindow) {
-		SetForegroundWindow(m_hWnd);
-		return {};
-	}
-	
-	LONG_PTR prevExStyle = SetWindowLongPtrW(m_hWnd, GWL_EXSTYLE, WS_EX_TOOLWINDOW | WS_EX_LAYERED);
-	SetLayeredWindowAttributes(m_hWnd, 0, 0, LWA_ALPHA);
-	LONG_PTR prevStyle = SetWindowLongPtrW(m_hWnd, GWL_STYLE, WS_VISIBLE);
-	
-	SetForegroundWindow(m_hWnd);
-
-	return { [this, prevStyle, prevExStyle]() {
-		SetWindowLongPtrW(m_hWnd, GWL_STYLE, prevStyle);
-		SetLayeredWindowAttributes(m_hWnd, 0, 255, LWA_ALPHA);
-		SetWindowLongPtrW(m_hWnd, GWL_EXSTYLE, prevExStyle);
-	} };
 }

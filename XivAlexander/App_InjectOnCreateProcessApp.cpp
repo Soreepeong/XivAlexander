@@ -80,19 +80,18 @@ public:
 	~Implementation() = default;
 
 	[[nodiscard]] bool IsInjectTarget(const Utils::Win32::Process& process) const {
+		const auto path = process.PathOf();
+		auto pardir = path.parent_path();
+		const auto filename = path.filename();
+		if (equivalent(pardir, Dll::Module().PathOf().parent_path())
+			&& (filename == XivAlex::XivAlexLoader32NameW || filename == XivAlex::XivAlexLoader64NameW))
+			return false;
+
 		if (InjectAll)
 			return true;
 
-		if (InjectGameOnly) {
-			auto filename = process.PathOf().filename().wstring();
-			CharLowerW(&filename[0]);
-			return filename == XivAlex::GameExecutable32NameW || filename == XivAlex::GameExecutable64NameW;
-		}
-
-		auto pardir = process.PathOf().parent_path();
-
-		// // check whether it's FFXIVQuickLauncher directory
-		// isXiv |= exists(pardir / "XIVLauncher.exe");
+		if (InjectGameOnly)
+			return equivalent(filename, XivAlex::GameExecutable32NameW) || equivalent(filename, XivAlex::GameExecutable64NameW);
 
 		// check 3 parent directories to determine whether it might have anything to do with FFXIV
 		for (int i = 0; i < 3; ++i) {
@@ -104,72 +103,16 @@ public:
 	}
 
 	void PostProcessExecution(DWORD dwCreationFlags, LPPROCESS_INFORMATION lpProcessInformation) {
-		const auto activationContextCleanup = g_hActivationContext.With();
-	
+		const auto activationContextCleanup = Dll::ActivationContext().With();
+
 		const auto process = Utils::Win32::Process(lpProcessInformation->hProcess, false);
-		const auto isTarget = IsInjectTarget(process);
+		auto isTarget = false;
 		try {
-			if (isTarget) {
+			if ((isTarget = IsInjectTarget(process))) {
 				if (process.IsProcess64Bits() == Utils::Win32::Process::Current().IsProcess64Bits()) {
 					XivAlexDll::PatchEntryPointForInjection(process);
-
 				} else {
-					const auto companion = Utils::Win32::Process::Current().PathOf(g_hInstance).parent_path() / (process.IsProcess64Bits() ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW);
-					if (!exists(companion))
-						throw std::runtime_error("loader not found");
-
-					Utils::Win32::Closeable::Handle hInheritableTargetProcessHandle;
-					if (auto h = INVALID_HANDLE_VALUE;
-						!DuplicateHandle(GetCurrentProcess(), process, GetCurrentProcess(), &h, 0, TRUE, DUPLICATE_SAME_ACCESS))
-						throw Utils::Win32::Error("DuplicateHandle(hProcess)");
-					else
-						hInheritableTargetProcessHandle.Attach(h, INVALID_HANDLE_VALUE, true, "DuplicateHandle(hProcess.2)");
-
-					Utils::Win32::Closeable::Handle hStdinRead, hStdinWrite;
-					if (auto r = INVALID_HANDLE_VALUE, w = INVALID_HANDLE_VALUE;
-						!CreatePipe(&r, &w, nullptr, 0))
-						throw Utils::Win32::Error("CreatePipe");
-					else {
-						hStdinRead.Attach(r, INVALID_HANDLE_VALUE, true, "CreatePipe(Read)");
-						hStdinWrite.Attach(w, INVALID_HANDLE_VALUE, true, "CreatePipe(Write)");
-					}
-
-					Utils::Win32::Closeable::Handle hInheritableStdinRead;
-					if (auto h = INVALID_HANDLE_VALUE;
-						!DuplicateHandle(GetCurrentProcess(), hStdinRead, GetCurrentProcess(), &h, 0, TRUE, DUPLICATE_SAME_ACCESS))
-						throw Utils::Win32::Error("DuplicateHandle(hStdinRead)");
-					else
-						hInheritableStdinRead.Attach(h, INVALID_HANDLE_VALUE, true, "DuplicateHandle(hStdinRead.2)");
-
-					Utils::Win32::Closeable::Handle companionProcess;
-					{
-						STARTUPINFOW si{};
-						PROCESS_INFORMATION pi{};
-
-						si.cb = sizeof si;
-						si.dwFlags = STARTF_USESTDHANDLES;
-						si.hStdInput = hInheritableStdinRead;
-						si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-						si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
-
-						auto args = std::format(L"\"{}\" --inject-into-stdin-handle", companion);
-						if (!CreateProcessW.bridge(companion.c_str(), &args[0], nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi))
-							throw Utils::Win32::Error("CreateProcess");
-
-						assert(pi.hProcess);
-						assert(pi.hThread);
-
-						companionProcess = Utils::Win32::Closeable::Handle(pi.hProcess, true);
-						CloseHandle(pi.hThread);
-					}
-
-					const auto handleNumber = static_cast<uint64_t>(reinterpret_cast<size_t>(static_cast<HANDLE>(hInheritableTargetProcessHandle)));
-					static_assert(sizeof handleNumber == 8);
-					DWORD written;
-					if (!WriteFile(hStdinWrite, &handleNumber, sizeof handleNumber, &written, nullptr) || written != sizeof handleNumber)
-						throw Utils::Win32::Error("WriteFile");
-
-					WaitForSingleObject(companionProcess, INFINITE);
+					XivAlexDll::LaunchXivAlexLoaderWithStdinHandle(process, L"inject", true);
 				}
 			}
 		} catch (std::exception& e) {
@@ -196,7 +139,7 @@ public:
 };
 
 App::InjectOnCreateProcessApp::InjectOnCreateProcessApp()
-	: m_module(Utils::Win32::Closeable::LoadedModule::From(g_hInstance))
+	: m_module(Utils::Win32::LoadedModule::LoadMore(Dll::Module()))
 	, m_detectionDisabler(Misc::DebuggerDetectionDisabler::Acquire())
 	, m_pImpl(std::make_unique<Implementation>()) {
 }
@@ -258,23 +201,25 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
 		if (hwnd && IsWindowVisible(hwnd))
 			break;
 	}
+
 	if (!hwnd)
-		throw std::runtime_error("Game process exited before initialization.");
+		return;
+	
 	XivAlexDll::EnableXivAlexander(1);
+    XivAlexDll::EnableInjectOnCreateProcess(0);
 }
 
 extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters * pParam) {
 	pParam->Internal.hContinuableEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
 	pParam->Internal.hWorkerThread = CreateThread(nullptr, 0, [](void* pParam) -> DWORD {
 		const auto process = Utils::Win32::Process::Current();
-		const auto activationContextCleanup = g_hActivationContext.With();
+		const auto activationContextCleanup = Dll::ActivationContext().With();
 		try {
 			const auto p = static_cast<InjectEntryPointParameters*>(pParam);
-			const Utils::Win32::Closeable::Handle hContinueNotify = Utils::Win32::Closeable::Handle().DuplicateFrom(p->Internal.hContinuableEvent);
+			const auto hContinueNotify = Utils::Win32::Handle::DuplicateFrom(p->Internal.hContinuableEvent);
 			process.WriteMemory(p->EntryPoint, p->EntryPointOriginalBytes, p->EntryPointOriginalLength, true);
 
 #ifdef _DEBUG
-
 			Utils::Win32::MessageBoxF(MB_OK, MB_OK, L"XivAlexander",
 				L"PID: {}\nPath: {}\nCommand Line: {}", process.GetId(), process.PathOf().wstring(), GetCommandLineW());
 #endif
@@ -283,11 +228,11 @@ extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(Inj
 			SetEvent(hContinueNotify);
 		} catch (std::exception& e) {
 			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, L"XivAlexander",
-				L"Could not load this process.\nError: {}\n\nPID: {}\nPath: {}\nCommand Line: {}", 
+				L"Could not load this process.\nError: {}\n\nPID: {}\nPath: {}\nCommand Line: {}",
 				e.what(), process.GetId(), process.PathOf().wstring(), GetCommandLineW());
 			TerminateProcess(GetCurrentProcess(), 1);
 		}
-		FreeLibraryAndExitThread(g_hInstance, 0);
+		FreeLibraryAndExitThread(Dll::Module(), 0);
 		}, pParam, 0, nullptr);
 	assert(pParam->Internal.hContinuableEvent);
 	assert(pParam->Internal.hWorkerThread);
@@ -299,16 +244,16 @@ extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(Inj
 	VirtualFree(pParam->TrampolineAddress, 0, MEM_RELEASE);
 }
 
-extern "C" __declspec(dllexport) void __stdcall XivAlexDll::PatchEntryPointForInjection(HANDLE hProcess) {
+XIVALEXANDER_DLLEXPORT void XivAlexDll::PatchEntryPointForInjection(HANDLE hProcess) {
 	const auto process = Utils::Win32::Process(hProcess, false);
-	
+
 	const auto regions = process.GetCommittedImageAllocation();
 	if (regions.empty())
 		throw std::runtime_error("Could not find memory region of the program.");
 
 	auto& mem = process.GetModuleMemoryBlockManager(static_cast<HMODULE>(regions.front().BaseAddress));
 
-	auto path = Utils::Win32::Process::Current().PathOf(g_hInstance).wstring();
+	auto path = Dll::Module().PathOf().wstring();
 	path.resize(path.size() + 1);  // add null character
 	const auto pathBytes = std::span(reinterpret_cast<const uint8_t*>(path.c_str()), path.size() * sizeof path[0]);
 

@@ -1,10 +1,9 @@
 #include "pch.h"
 #include "App_Misc_Hooks.h"
 
-HANDLE App::Misc::Hooks::Binder::s_hHeap = nullptr;
-std::mutex App::Misc::Hooks::Binder::s_hHeapMutex;
-
 App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
+	static HANDLE s_hHeap;
+	static std::mutex s_hHeapMutex;
 	auto source = static_cast<const char*>(templateMethod);
 
 	/*
@@ -128,6 +127,7 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 			throw Utils::Win32::Error("HeapCreate");
 	}
 	m_cleanup += [this, size = body.size()]() {
+		std::lock_guard lock(s_hHeapMutex);
 #ifdef _DEBUG
 		memset(m_pAddress, 0xCC, size);
 #endif
@@ -140,6 +140,7 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 		if (const auto err = GetLastError(); err != ERROR_NO_MORE_ITEMS)
 			OutputDebugStringW(std::format(L"HeapWalk failure: {}\n", err).c_str());
 		HeapDestroy(s_hHeap);
+		s_hHeap = nullptr;
 	};
 
 	m_pAddress = HeapAlloc(s_hHeap, 0, body.size());
