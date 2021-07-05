@@ -455,7 +455,7 @@ int RunLauncher() {
 		switch (g_parameters.m_launcherType) {
 			case LauncherType::Auto:
 			{
-				if (launchers.empty())
+				if (launchers.empty() || !g_parameters.m_runProgram.empty())
 					return SelectAndRunLauncher();
 				else if (launchers.size() == 1)
 					return RunProgramRetryAfterElevatingSelfAsNecessary(launchers.begin()->second.BootApp);
