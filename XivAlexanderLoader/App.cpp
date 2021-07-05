@@ -384,13 +384,22 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 	}
 }
 
+int RunProgramRetryAfterElevatingSelfAsNecessary(const std::filesystem::path& path, const std::wstring& args = L"") {
+	if (Utils::Win32::RunProgram({
+		.path = path,
+		.args = args,
+		.elevateMode = Utils::Win32::RunProgramParams::CancelIfRequired,
+	}))
+		return 0;
+	return Utils::Win32::RunProgram({
+		.args = Utils::Win32::ReverseCommandLineToArgvW({"--disable-runas", "-a", "launcher", "-l", "select", path.string()}) + (args.empty() ? L"" : L" " + args),
+		.elevateMode = Utils::Win32::RunProgramParams::Force,
+	}) ? 0 : 1;
+}
+
 int SelectAndRunLauncher() {
 	if (!g_parameters.m_runProgram.empty()) {
-		Utils::Win32::MessageBoxF(nullptr, MB_OK, L"test", L"{} {}", g_parameters.m_runProgram, g_parameters.m_runProgramArgs);
-		return Utils::Win32::RunProgram({
-			.path = g_parameters.m_runProgram,
-			.args = g_parameters.m_runProgramArgs,
-		}) ? 0 : 1;
+		return RunProgramRetryAfterElevatingSelfAsNecessary(g_parameters.m_runProgram, g_parameters.m_runProgramArgs);
 	}
 
 	try {
@@ -426,9 +435,7 @@ int SelectAndRunLauncher() {
 			CoTaskMemFree(pszFileName);
 		}
 		
-		return Utils::Win32::RunProgram({
-			.path = fileName,
-		}) ? 0 : 1;
+		return RunProgramRetryAfterElevatingSelfAsNecessary(fileName);
 	} catch (std::exception& e) {
 		Utils::Win32::MessageBoxF(nullptr, MB_ICONERROR, MsgboxTitle, L"Unable to continue: {}", e.what() ? Utils::FromUtf8(e.what()) : L"Unknown");
 	} catch (_com_error& e) {
@@ -443,13 +450,7 @@ int SelectAndRunLauncher() {
 int RunLauncher() {
 	try {
 		XivAlexDll::EnableInjectOnCreateProcess(XivAlexDll::InjectOnCreateProcessAppFlags::Use | XivAlexDll::InjectOnCreateProcessAppFlags::InjectAll);
-
-		if (!g_parameters.m_runProgram.empty())
-			return Utils::Win32::RunProgram({
-				.path = g_parameters.m_runProgram,
-				.args = g_parameters.m_runProgramArgs,
-			}) ? 0 : 1;
-
+		
 		const auto launchers = XivAlex::FindGameLaunchers();
 		switch (g_parameters.m_launcherType) {
 			case LauncherType::Auto:
@@ -457,18 +458,13 @@ int RunLauncher() {
 				if (launchers.empty())
 					return SelectAndRunLauncher();
 				else if (launchers.size() == 1)
-					return Utils::Win32::RunProgram({ 
-						.path = launchers.begin()->second.BootApp,
-					}) ? 0 : 1;
+					return RunProgramRetryAfterElevatingSelfAsNecessary(launchers.begin()->second.BootApp);
 				else {
 					for (const auto& it : launchers) {
-						if (Utils::Win32::MessageBoxF(nullptr, MB_OKCANCEL | MB_ICONQUESTION, MsgboxTitle,
+						if (Utils::Win32::MessageBoxF(nullptr, MB_YESNO | MB_ICONQUESTION, MsgboxTitle,
 							L"Launch {} version of the game?\n\nInstallation path: {}",
-							argparse::details::repr(it.first), it.second.RootPath) == IDOK)
-							Utils::Win32::RunProgram({
-								.path = it.second.BootApp,
-								.elevateMode = Utils::Win32::RunProgramParams::NoElevationIfDenied
-							});
+							argparse::details::repr(it.first), it.second.RootPath) == IDYES)
+							RunProgramRetryAfterElevatingSelfAsNecessary(it.second.BootApp, L"");
 					}
 				}
 				return 0;
@@ -478,26 +474,13 @@ int RunLauncher() {
 				return SelectAndRunLauncher();
 
 			case LauncherType::International:
-			{
-				return Utils::Win32::RunProgram({
-					.path = launchers.at(XivAlex::GameRegion::International).BootApp,
-					.elevateMode = Utils::Win32::RunProgramParams::NoElevationIfDenied
-				}) ? 0 : 1;
-			}
+				return RunProgramRetryAfterElevatingSelfAsNecessary(launchers.at(XivAlex::GameRegion::International).BootApp);
+			
 			case LauncherType::Korean:
-			{
-				return Utils::Win32::RunProgram({
-					.path = launchers.at(XivAlex::GameRegion::Korean).BootApp,
-					.elevateMode = Utils::Win32::RunProgramParams::NoElevationIfDenied
-				}) ? 0 : 1;
-			}
+				return RunProgramRetryAfterElevatingSelfAsNecessary(launchers.at(XivAlex::GameRegion::Korean).BootApp);
+			
 			case LauncherType::Chinese:
-			{
-				return Utils::Win32::RunProgram({
-					.path = launchers.at(XivAlex::GameRegion::Chinese).BootApp,
-					.elevateMode = Utils::Win32::RunProgramParams::NoElevationIfDenied
-				}) ? 0 : 1;
-			}
+				return RunProgramRetryAfterElevatingSelfAsNecessary(launchers.at(XivAlex::GameRegion::Chinese).BootApp);
 		}
 	} catch (std::out_of_range&) {
 		if (g_parameters.m_action == LoaderAction::Auto) {
