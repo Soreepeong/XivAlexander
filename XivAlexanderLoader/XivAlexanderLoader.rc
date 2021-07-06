@@ -71,8 +71,8 @@ IDI_ICON1               ICON                    "..\\Graphics\\Icon.ico"
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,14,8,4
- PRODUCTVERSION 1,14,8,4
+ FILEVERSION 1,14,8,5
+ PRODUCTVERSION 1,14,8,5
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -89,12 +89,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Soreepeong"
             VALUE "FileDescription", "Loader program for XivAlexander."
-            VALUE "FileVersion", "1.14.8.4"
+            VALUE "FileVersion", "1.14.8.5"
             VALUE "InternalName", "XivAlexanderLoader.exe"
             VALUE "LegalCopyright", "Copyright (C) 2021"
             VALUE "OriginalFilename", "XivAlexanderLoader.exe"
             VALUE "ProductName", "XivAlexander"
-            VALUE "ProductVersion", "1.14.8.4"
+            VALUE "ProductVersion", "1.14.8.5"
         END
     END
     BLOCK "VarFileInfo"
