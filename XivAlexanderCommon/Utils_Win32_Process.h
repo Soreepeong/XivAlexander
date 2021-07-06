@@ -44,7 +44,7 @@ namespace Utils::Win32 {
 		[[nodiscard]] bool IsProcess64Bits() const;
 		DWORD GetId() const;
 
-		void Terminate(DWORD dwExitCode) const;
+		void Terminate(DWORD dwExitCode, bool errorIfAlreadyTerminated = false) const;
 
 		int CallRemoteFunction(void* rpfn, void* rpParam, const char* pcszDescription) const;
 

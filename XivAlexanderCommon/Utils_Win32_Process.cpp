@@ -160,9 +160,13 @@ DWORD Utils::Win32::Process::GetId() const {
 	return GetProcessId(m_object);
 }
 
-void Utils::Win32::Process::Terminate(DWORD dwExitCode) const {
-	if (!TerminateProcess(m_object, dwExitCode))
-		throw Error("TerminateProcess");
+void Utils::Win32::Process::Terminate(DWORD dwExitCode = 0, bool errorIfAlreadyTerminated) const {
+	if (TerminateProcess(m_object, dwExitCode))
+		return;
+	const auto err = GetLastError();
+	if (!errorIfAlreadyTerminated && Wait(0) != WAIT_TIMEOUT)
+		return;
+	throw Error(err, "TerminateProcess");
 }
 
 int Utils::Win32::Process::CallRemoteFunction(void* rpfn, void* rpParam, const char* pcszDescription) const {

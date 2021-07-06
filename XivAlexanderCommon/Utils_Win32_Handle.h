@@ -45,6 +45,7 @@ namespace Utils::Win32 {
 		~Thread() override;
 		
 		[[nodiscard]] DWORD GetId() const;
+		void Terminate(DWORD dwExitCode = 0, bool errorIfAlreadyTerminated = false) const;
 	};
 
 	class Event : public Handle {

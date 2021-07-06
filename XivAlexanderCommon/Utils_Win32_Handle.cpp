@@ -95,6 +95,8 @@ Utils::Win32::Thread::Thread(std::wstring name, std::function<DWORD()> body, Loa
 		delete pInnerBodyFunction;
 		throw Error(err, "CreateThread");
 	}
+	m_bOwnership = true;
+	m_object = hThread;
 }
 
 Utils::Win32::Thread::Thread(std::wstring name, std::function<void()> body, LoadedModule hLibraryToFreeAfterExecution)
@@ -105,6 +107,15 @@ Utils::Win32::Thread::~Thread() = default;
 
 DWORD Utils::Win32::Thread::GetId() const {
 	return GetThreadId(m_object);
+}
+
+void Utils::Win32::Thread::Terminate(DWORD dwExitCode, bool errorIfAlreadyTerminated) const {
+	if (TerminateThread(m_object, dwExitCode))
+		return;
+	const auto err = GetLastError();
+	if (!errorIfAlreadyTerminated && Wait(0) != WAIT_TIMEOUT)
+		return;
+	throw Error(err, "TerminateThread");
 }
 
 Utils::Win32::Event::~Event() = default;
