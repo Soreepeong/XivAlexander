@@ -236,7 +236,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					/***************************************************************/
 
 				case ID_TRAYMENU_CHECKFORUPDATES:
-					XivAlexDll::LaunchXivAlexLoaderWithStdinHandle({ GetCurrentProcess() }, L"update-check", false);
+					XivAlexDll::LaunchXivAlexLoaderWithTargetHandles({Utils::Win32::Process::Current()}, XivAlexDll::LoaderAction::UpdateCheck, false);
 					return 0;
 
 				case ID_TRAYMENU_UNLOADXIVALEXANDER:

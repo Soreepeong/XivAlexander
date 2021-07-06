@@ -19,8 +19,21 @@ namespace Utils::Win32 {
 		Handle& operator=(const Handle& r);
 		~Handle() override;
 		
-		static Handle DuplicateFrom(HANDLE hProcess, HANDLE hSourceHandle, bool bInheritable = false);
-		static Handle DuplicateFrom(HANDLE hSourceHandle, bool bInheritable = false);
+		template<typename T>
+		static T DuplicateFrom(HANDLE hProcess, HANDLE hSourceHandle, bool bInheritable = false) {
+			HANDLE h;
+			if (!DuplicateHandle(hProcess, hSourceHandle, GetCurrentProcess(), &h, 0, bInheritable ? TRUE : FALSE, DUPLICATE_SAME_ACCESS))
+				throw Error("DuplicateHandle");
+
+			T result;
+			result.m_object = h;
+			result.m_bOwnership = true;
+			return result;
+		}
+		template<typename T>
+		static T DuplicateFrom(HANDLE hSourceHandle, bool bInheritable = false) {
+			return DuplicateFrom<T>(GetCurrentProcess(), hSourceHandle, bInheritable);
+		}
 		
 		void Wait() const;
 		[[nodiscard]] DWORD Wait(DWORD duration) const;
@@ -39,9 +52,13 @@ namespace Utils::Win32 {
 
 	class Thread : public Handle {
 	public:
-		using Handle::Handle;
+		Thread();
 		Thread(std::wstring name, std::function<DWORD()> body, LoadedModule hLibraryToFreeAfterExecution = nullptr);
 		Thread(std::wstring name, std::function<void()> body, LoadedModule hLibraryToFreeAfterExecution = nullptr);
+		Thread(Thread&& r) noexcept;
+		Thread(const Thread& r);
+		Thread& operator =(Thread&& r) noexcept;
+		Thread& operator =(const Thread& r);
 		~Thread() override;
 		
 		[[nodiscard]] DWORD GetId() const;

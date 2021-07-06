@@ -12,7 +12,31 @@
 
 namespace XivAlexDll {
 
-	XIVALEXANDER_DLLEXPORT DWORD LaunchXivAlexLoaderWithStdinHandle(const std::vector<HANDLE>& hSources, const wchar_t* mode, bool wait, const wchar_t* loaderName = nullptr);
+	enum class LoaderAction : int {
+		Auto,
+		Ask,
+		Load,
+		Unload,
+		Launcher,
+		UpdateCheck,
+		Internal_Update_Step2_ReplaceFiles,
+		Internal_Update_Step3_CleanupFiles,
+		Internal_Inject_HookEntryPoint,
+		Internal_Inject_LoadXivAlexanderImmediately,
+		Internal_Cleanup_Handle,
+		Count_,  // for internal use only
+	};
+
+	XIVALEXANDER_DLLEXPORT const char* LoaderActionToString(LoaderAction val);
+	
+	XIVALEXANDER_DLLEXPORT LoaderAction ParseLoaderAction(std::string val);
+
+	XIVALEXANDER_DLLEXPORT DWORD LaunchXivAlexLoaderWithTargetHandles(
+		const std::vector<Utils::Win32::Process>& hSources, 
+		LoaderAction action, 
+		bool wait,
+		const std::filesystem::path& launcherPath = L"",
+		const Utils::Win32::Process& waitFor = nullptr);
 	XIVALEXANDER_DLLEXPORT void PatchEntryPointForInjection(HANDLE hProcess);
 
 	//

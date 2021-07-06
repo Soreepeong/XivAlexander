@@ -14,22 +14,51 @@ const Utils::Win32::ActivationContext& Dll::ActivationContext() {
 	return s_hActivationContext;
 }
 
-XIVALEXANDER_DLLEXPORT DWORD XivAlexDll::LaunchXivAlexLoaderWithStdinHandle(const std::vector<HANDLE>& hSources, const wchar_t* mode, bool wait, const wchar_t* loaderName) {
-	const auto companion = loaderName ? loaderName : Dll::Module().PathOf().parent_path() / XivAlex::XivAlexLoaderNameW;
-	if (!exists(companion))
-		throw std::runtime_error("loader not found");
-	
-	Utils::Win32::Handle companionProcess;
-	{
-		std::vector<Utils::Win32::Handle> hInheritableTargetProcessHandles;
-		for (const auto hSource : hSources) {
-			if (auto h = INVALID_HANDLE_VALUE;
-				!DuplicateHandle(GetCurrentProcess(), hSource, GetCurrentProcess(), &h, 0, TRUE, DUPLICATE_SAME_ACCESS))
-				throw Utils::Win32::Error("DuplicateHandle(hProcess)");
-			else
-				hInheritableTargetProcessHandles.emplace_back(h, INVALID_HANDLE_VALUE, "DuplicateHandle(hProcess.2)");
-		}
+const char* XivAlexDll::LoaderActionToString(LoaderAction val) {
+	switch (val) {
+	case LoaderAction::Auto: return "auto";
+	case LoaderAction::Ask: return "ask";
+	case LoaderAction::Load: return "load";
+	case LoaderAction::Unload: return "unload";
+	case LoaderAction::Launcher: return "launcher";
+	case LoaderAction::UpdateCheck: return "update-check";
+	case LoaderAction::Internal_Update_Step2_ReplaceFiles: return "_internal_update_step2_replacefiles";
+	case LoaderAction::Internal_Update_Step3_CleanupFiles: return "_internal_update_step3_cleanupfiles";
+	case LoaderAction::Internal_Inject_HookEntryPoint: return "_internal_inject_hookentrypoint";
+	case LoaderAction::Internal_Inject_LoadXivAlexanderImmediately: return "_internal_inject_loadxivalexanderimmediately";
+	case LoaderAction::Internal_Cleanup_Handle: return "_internal_cleanup_handle";
+	}
+	return "<invalid>";
+}
 
+XivAlexDll::LoaderAction XivAlexDll::ParseLoaderAction(std::string val) {
+	auto valw = Utils::FromUtf8(val);
+	CharLowerW(&valw[0]);
+	val = Utils::ToUtf8(valw);
+	for (size_t i = 0; i < static_cast<size_t>(LoaderAction::Count_); ++i) {
+		const auto compare = std::string(LoaderActionToString(static_cast<LoaderAction>(i)));
+		auto equal = true;
+		for (size_t j = 0; equal && j < val.length() && j < compare.length(); ++j) {
+			equal = val[j] == compare[j];
+		}
+		if (equal)
+			return static_cast<LoaderAction>(i);
+	}
+	throw std::runtime_error("invalid LoaderAction");
+}
+
+XIVALEXANDER_DLLEXPORT DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
+		const std::vector<Utils::Win32::Process>& hSources,
+		LoaderAction action,
+		bool wait,
+		const std::filesystem::path& launcherPath,
+		const Utils::Win32::Process& waitFor) {
+	const auto companion = launcherPath.empty() ? Dll::Module().PathOf().parent_path() / XivAlex::XivAlexLoaderNameW : launcherPath;
+	if (!exists(companion))
+		throw std::runtime_error(std::format("loader not found: {}", companion));
+	
+	Utils::Win32::Process companionProcess;
+	{
 		Utils::Win32::Handle hStdinRead, hStdinWrite;
 		if (auto r = INVALID_HANDLE_VALUE, w = INVALID_HANDLE_VALUE;
 			!CreatePipe(&r, &w, nullptr, 0))
@@ -55,36 +84,41 @@ XIVALEXANDER_DLLEXPORT DWORD XivAlexDll::LaunchXivAlexLoaderWithStdinHandle(cons
 			si.hStdInput = hInheritableStdinRead;
 			si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
 			si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+			si.wShowWindow = SW_SHOW;
 
-			auto args = std::format(L"\"{}\" --action {}", companion, mode);
+			auto args = std::format(L"\"{}\" --handle-instead-of-pid --action {}", companion, LoaderActionToString(action));
+			std::vector<Utils::Win32::Process> duplicatedHandles;
+			if (waitFor) {
+				auto d = Utils::Win32::Process::DuplicateFrom<Utils::Win32::Process>(waitFor, true);
+				args += std::format(L" --wait-process {}", d.Value());
+				duplicatedHandles.emplace_back(std::move(d));
+			}
+			for (const auto& h : hSources) {
+				auto d = Utils::Win32::Process::DuplicateFrom<Utils::Win32::Process>(h, true);
+				args += std::format(L" {}", d.Value());
+				duplicatedHandles.emplace_back(std::move(d));
+			}
+			
 			if (!CreateProcessW(companion.c_str(), &args[0], nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi))
 				throw Utils::Win32::Error("CreateProcess");
-
-			assert(pi.hProcess);
+			
 			assert(pi.hThread);
-
-			companionProcess = Utils::Win32::Handle(pi.hProcess, true);
+			assert(pi.hProcess);
+			
 			CloseHandle(pi.hThread);
-		}
-
-		for (const auto& hInheritableTargetProcessHandle : hInheritableTargetProcessHandles) {
-			const auto handleNumber = static_cast<uint64_t>(reinterpret_cast<size_t>(static_cast<HANDLE>(hInheritableTargetProcessHandle)));
-			static_assert(sizeof handleNumber == 8);
-			DWORD written;
-			if (!WriteFile(hStdinWrite, &handleNumber, sizeof handleNumber, &written, nullptr) || written != sizeof handleNumber)
-				throw Utils::Win32::Error("WriteFile");
+			companionProcess.Attach(pi.hProcess, true, "CreateProcess");
 		}
 	}
-
-	DWORD retCode = 0;
-
-	if (wait) {
+	
+	if (!wait) 
+		return 0;
+	else {
+		DWORD retCode = 0;
 		companionProcess.Wait();
 		if (!GetExitCodeProcess(companionProcess, &retCode))
 			throw Utils::Win32::Error("GetExitCodeProcess");
+		return retCode;
 	}
-
-	return retCode;
 }
 
 BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {	

@@ -107,32 +107,36 @@ public:
 
 		const auto process = Utils::Win32::Process(lpProcessInformation->hProcess, false);
 		auto isTarget = false;
+		std::wstring error;
 		try {
 			if ((isTarget = IsInjectTarget(process))) {
 				if (process.IsProcess64Bits() == Utils::Win32::Process::Current().IsProcess64Bits()) {
 					XivAlexDll::PatchEntryPointForInjection(process);
 				} else {
-					XivAlexDll::LaunchXivAlexLoaderWithStdinHandle({ process }, L"stdin-inject-entry-point", true);
+					LaunchXivAlexLoaderWithTargetHandles({ process }, XivAlexDll::LoaderAction::Internal_Inject_HookEntryPoint, true, 
+						Dll::Module().PathOf().parent_path() / XivAlex::XivAlexLoaderOppositeNameW);
 				}
 			}
 		} catch (std::exception& e) {
-			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, L"XivAlexander",
-				L"Failed to load XivAlexander into child process: {}\n\n"
-				L"Process ID: {}",
-				e.what(), lpProcessInformation->dwProcessId);
+			error = Utils::FromUtf8(e.what());
 		}
+		
 #ifdef _DEBUG
-		Utils::Win32::MessageBoxF(nullptr, MB_OK, L"XivAlexander",
-			L"isTarget={}\n"
-			L"Self: PID={}, Platform={}, Path={}\n"
-			L"Target: PID={}, Platform={}, Path={}\n",
-			isTarget,
-			Utils::Win32::Process::Current().GetId(),
-			Utils::Win32::Process::Current().IsProcess64Bits() ? L"x64" : L"x86",
-			Utils::Win32::Process::Current().PathOf(),
-			process.GetId(), process.IsProcess64Bits() ? L"x64" : L"x86", process.PathOf()
-		);
+		error += L" _DEBUG";
 #endif
+		if (!error.empty()) {
+			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, L"XivAlexander",
+				L"Error: {}\n\n"
+				L"isTarget={}\n"
+				L"Self: PID={}, Platform={}, Path={}\n"
+				L"Target: PID={}, Platform={}, Path={}\n",
+				error, isTarget,
+				Utils::Win32::Process::Current().GetId(),
+				Utils::Win32::Process::Current().IsProcess64Bits() ? L"x64" : L"x86",
+				Utils::Win32::Process::Current().PathOf(),
+				process.GetId(), process.IsProcess64Bits() ? L"x64" : L"x86", process.PathOf()
+			);
+		}
 		if (!(dwCreationFlags & CREATE_SUSPENDED))
 			ResumeThread(lpProcessInformation->hThread);
 	}
@@ -243,7 +247,7 @@ extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(Inj
 		const auto activationContextCleanup = Dll::ActivationContext().With();
 		try {
 			const auto p = static_cast<InjectEntryPointParameters*>(pParam);
-			const auto hContinueNotify = Utils::Win32::Handle::DuplicateFrom(p->Internal.hContinuableEvent);
+			const auto hContinueNotify = Utils::Win32::Handle::DuplicateFrom<Utils::Win32::Event>(p->Internal.hContinuableEvent);
 			process.WriteMemory(p->EntryPoint, p->EntryPointOriginalBytes, p->EntryPointOriginalLength, true);
 
 #ifdef _DEBUG

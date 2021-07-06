@@ -4,7 +4,11 @@
 HANDLE Utils::Win32::Handle::DuplicateHandleNullable(HANDLE src) {
 	if (!src)
 		return nullptr;
-	if (HANDLE dst; DuplicateHandle(GetCurrentProcess(), src, GetCurrentProcess(), &dst, 0, FALSE, DUPLICATE_SAME_ACCESS))
+	DWORD flags;
+	if (!GetHandleInformation(src, &flags))
+		throw Error("GetHandleInformation");
+	const auto bInherit = (flags & HANDLE_FLAG_INHERIT) ? TRUE : FALSE;
+	if (HANDLE dst; DuplicateHandle(GetCurrentProcess(), src, GetCurrentProcess(), &dst, 0, bInherit, DUPLICATE_SAME_ACCESS))
 		return dst;
 	throw Error("DuplicateHandle");
 }
@@ -42,17 +46,6 @@ Utils::Win32::Handle& Utils::Win32::Handle::operator=(const Handle& r) {
 
 Utils::Win32::Handle::~Handle() = default;
 
-Utils::Win32::Handle Utils::Win32::Handle::DuplicateFrom(HANDLE hProcess, HANDLE hSourceHandle, bool bInheritable) {
-	HANDLE h;
-	if (!DuplicateHandle(hProcess, hSourceHandle, GetCurrentProcess(), &h, 0, bInheritable ? TRUE : FALSE, DUPLICATE_SAME_ACCESS))
-		throw Error("DuplicateHandle");
-	return Handle{h, Null, "DuplicateHandle"};
-}
-
-Utils::Win32::Handle Utils::Win32::Handle::DuplicateFrom(HANDLE hSourceHandle, bool bInheritable) {
-	return DuplicateFrom(GetCurrentProcess(), hSourceHandle, bInheritable);
-}
-
 Utils::Win32::ActivationContext::ActivationContext(const ACTCTXW& actctx)
 	: Closeable<HANDLE, ReleaseActCtx>(CreateActCtxW(&actctx), INVALID_HANDLE_VALUE, "CreateActCtxW") {
 }
@@ -66,6 +59,10 @@ Utils::CallOnDestruction Utils::Win32::ActivationContext::With() const {
 	return CallOnDestruction([cookie]() {
 		DeactivateActCtx(DEACTIVATE_ACTCTX_FLAG_FORCE_EARLY_DEACTIVATION, cookie);
 	});
+}
+
+Utils::Win32::Thread::Thread()
+	: Handle() {
 }
 
 Utils::Win32::Thread::Thread(std::wstring name, std::function<DWORD()> body, LoadedModule hLibraryToFreeAfterExecution) {
@@ -101,6 +98,34 @@ Utils::Win32::Thread::Thread(std::wstring name, std::function<DWORD()> body, Loa
 
 Utils::Win32::Thread::Thread(std::wstring name, std::function<void()> body, LoadedModule hLibraryToFreeAfterExecution)
 	: Thread(std::move(name), std::function([body = std::move(body)]() -> DWORD { body(); return 0; }), std::move(hLibraryToFreeAfterExecution)) {
+}
+
+Utils::Win32::Thread::Thread(Thread&& r) noexcept
+	: Handle(r.m_object, r.m_bOwnership) {
+	r.m_object = nullptr;
+	r.m_bOwnership = false;
+}
+
+Utils::Win32::Thread::Thread(const Thread& r)
+	: Handle(r) {
+}
+
+Utils::Win32::Thread& Utils::Win32::Thread::operator=(Thread&& r) noexcept {
+	if (&r == this)
+		return *this;
+
+	m_object = r.m_object;
+	m_bOwnership = r.m_bOwnership;
+	r.Detach();
+	return *this;
+}
+
+Utils::Win32::Thread& Utils::Win32::Thread::operator=(const Thread & r) {
+	if (&r == this)
+		return *this;
+
+	Handle::operator=(r);
+	return *this;
 }
 
 Utils::Win32::Thread::~Thread() = default;

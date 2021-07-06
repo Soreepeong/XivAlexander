@@ -341,6 +341,7 @@ bool Utils::Win32::RunProgram(RunProgramParams params) {
 		} else {
 			siex.StartupInfo.cb = sizeof siex.StartupInfo;
 		}
+		siex.StartupInfo.wShowWindow = SW_SHOW;
 		
 		PROCESS_INFORMATION pi;
 		const auto wd = params.path.parent_path().wstring();
