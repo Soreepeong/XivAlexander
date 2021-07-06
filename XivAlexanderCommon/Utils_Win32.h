@@ -33,8 +33,7 @@ namespace Utils::Win32 {
 		return MessageBoxF(hWnd, uType, lpCaption, FromUtf8(std::format(format, std::forward<Args>(args)...)).c_str());
 	}
 
-	void SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked);
-	void SetMenuState(HWND hWnd, DWORD nMenuId, bool bChecked);
+	void SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked, bool bEnabled);
 
 	std::string FormatWindowsErrorMessage(unsigned int errorCode);
 
@@ -68,6 +67,7 @@ namespace Utils::Win32 {
 	};
 	bool RunProgram(RunProgramParams params);
 
+	std::wstring GetCommandLineWithoutProgramName();
 	std::wstring ReverseCommandLineToArgvW(const std::span<const std::string>& argv);
 	std::wstring ReverseCommandLineToArgvW(const std::initializer_list<const std::string>& argv);
 

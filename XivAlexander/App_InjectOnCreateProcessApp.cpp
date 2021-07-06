@@ -183,6 +183,33 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
 	// the game might restart itself for whatever reason.
 	s_injectOnCreateProcessApp->SetFlags(XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly);
 
+	try {
+		bool wasObfuscated;
+		const auto pairs = XivAlex::ParseGameCommandLine(Utils::ToUtf8(Utils::Win32::GetCommandLineWithoutProgramName()), &wasObfuscated);
+		if (wasObfuscated) {
+			for (const auto& [k, v] : pairs) {
+				if (k == "T") {
+					const auto time = std::strtol(&v[0], nullptr, 10);
+					const auto now = static_cast<decltype(time)>(GetTickCount64());
+					if (now - time > 20000) {
+						// if UAC dialog took a long time, then execute again
+						if (Utils::Win32::RunProgram({
+							.path = process.PathOf(),
+							.args = Utils::FromUtf8(XivAlex::CreateGameCommandLine(pairs, true)),
+						})) {
+#ifdef _DEBUG
+							Utils::Win32::MessageBoxF(nullptr, MB_OK, L"XivAlexander", L"Restarting due to tick count difference of {} between encryption timestamp and now.", now - time);
+#endif
+							TerminateProcess(GetCurrentProcess(), 0);
+						}
+					}
+				}
+			}
+		}
+	} catch (...) {
+		// do nothing
+	}
+
 	// let original entry point continue execution.
 	SetEvent(hContinuableEvent);
 

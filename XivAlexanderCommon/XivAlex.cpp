@@ -5,6 +5,12 @@
 #include "Utils_Win32_Closeable.h"
 #include "Utils_Win32_Handle.h"
 
+#include <cryptopp/base64.h>
+#include <cryptopp/blowfish.h>
+#include <cryptopp/modes.h>
+
+const std::string XivAlex::SqexChecksumTable = "fX1pGtdS5CAP4_VL";
+
 std::tuple<std::wstring, std::wstring> XivAlex::ResolveGameReleaseRegion() {
 	std::wstring path(PATHCCH_MAX_CCH, L'\0');
 	path.resize(GetModuleFileNameW(nullptr, &path[0], static_cast<DWORD>(path.size())));
@@ -279,4 +285,161 @@ std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLauncher
 		result.emplace(GameRegion::Chinese, info);
 	}
 	return result;
+}
+
+std::vector<std::pair<std::string, std::string>> XivAlex::ParseGameCommandLine(std::string source, bool* wasObfuscated) {
+	std::vector<std::pair<std::string, std::string>> res;
+	
+	if (source.starts_with("//**sqex0003") && source.ends_with("**//") && source.size() >= 17) {
+		const auto chksum = SqexChecksumTable.find(source[source.size() - 5]);
+		{
+			CryptoPP::Base64URLDecoder b64decoder;
+			b64decoder.Put(reinterpret_cast<const uint8_t*>(&source[12]), source.size() - 17);
+			b64decoder.MessageEnd();
+			source.resize(static_cast<size_t>(b64decoder.MaxRetrievable()));
+			b64decoder.Get(reinterpret_cast<uint8_t*>(&source[0]), source.size());
+			SqexBlowfishModifier(source);
+		}
+		
+		FILETIME ct, xt, kt, ut, nft;
+		if (!GetProcessTimes(GetCurrentProcess(), &ct, &xt, &kt, &ut))
+			throw Utils::Win32::Error("GetProcessTimes(GetCurrentProcess(), ...)");
+		GetSystemTimeAsFileTime(&nft);
+		const auto creationTickCount = GetTickCount64() - (ULARGE_INTEGER{{ nft.dwLowDateTime, nft.dwHighDateTime}}.QuadPart - ULARGE_INTEGER{{ct.dwLowDateTime, ct.dwHighDateTime}}.QuadPart) / 10000;
+		
+		CryptoPP::ECB_Mode<CryptoPP::Blowfish>::Decryption dec;
+		for (auto [val, count] : {
+			std::make_pair(chksum << 16 | creationTickCount & 0xFF000000, 16),
+			std::make_pair(chksum << 16 | 0ULL, 0xFFF),
+		}) {
+			for (; --count; val += 0x100000) {
+				const auto key = std::format("{:08x}", val & 0xFFFF0000);
+				
+				std::string decrypted = source;
+				dec.SetKey(reinterpret_cast<const uint8_t*>(&key[0]), key.size());
+				dec.ProcessString(reinterpret_cast<uint8_t*>(&decrypted[0]), decrypted.size());
+				if (!decrypted.starts_with("= T ") && !decrypted.starts_with(" T/ "))
+					continue;
+				
+				SqexBlowfishModifier(decrypted);
+				source.clear();
+
+				for (const auto& item : SqexSplit(decrypted, '/', SIZE_MAX)) {
+					const auto keyValue = SqexSplit(item, '=', 1);
+					if (keyValue.size() == 1)
+						res.emplace_back(Utils::StringReplaceAll(keyValue[0], "  ", " "), "");
+					else
+						res.emplace_back(Utils::StringReplaceAll(keyValue[0], "  ", " "),
+							Utils::StringReplaceAll(keyValue[1], "  ", " "));
+				}
+				if (wasObfuscated)
+					*wasObfuscated = true;
+				return res;
+			}
+		}
+		throw std::invalid_argument("bad encoded string");
+		
+	} else {
+		if (int nArgs; LPWSTR* szArgList = CommandLineToArgvW(std::format(L"test.exe {}", source).c_str(), &nArgs)) {
+			const auto cleanup = Utils::CallOnDestruction([szArgList](){ LocalFree(szArgList); });
+			for (int i = 1; i < nArgs; i++) {
+				const auto arg = Utils::ToUtf8(szArgList[i]);
+				const auto eq = arg.find_first_of("=");
+				if (eq == std::string::npos)
+					res.emplace_back(arg, "");
+				else
+					res.emplace_back(arg.substr(0, eq), arg.substr(eq + 1));
+			}
+		}
+		if (wasObfuscated)
+			*wasObfuscated = false;
+		return res;
+	}
+}
+
+std::string XivAlex::CreateGameCommandLine(const std::vector<std::pair<std::string, std::string>>& map, bool obfuscate) {
+	if (obfuscate) {
+		const auto tick = static_cast<DWORD>(GetTickCount64() & 0xFFFFFFFF);  // Practically GetTickCount, but silencing the warning
+		const auto key = std::format("{:08x}", tick & 0xFFFF0000);
+		const auto chksum = SqexChecksumTable[(tick >> 16) & 0xF];
+
+		std::string encrypted;
+		{
+			std::ostringstream plain;
+			plain << " T =" << tick;
+			for (const auto& [k, v] : map) {
+				if (k == "T")
+					continue;
+				
+				plain << " /" << Utils::StringReplaceAll(k, " ", "  ")
+					<< " =" << Utils::StringReplaceAll(v, " ", "  ");
+			}
+			encrypted = plain.str();
+		}
+		encrypted.resize((encrypted.size() + 7) / 8 * 8, '\0');
+		{
+			CryptoPP::ECB_Mode<CryptoPP::Blowfish>::Encryption enc;
+			enc.SetKey(reinterpret_cast<const uint8_t*>(&key[0]), key.size());
+			SqexBlowfishModifier(encrypted);
+			enc.ProcessString(reinterpret_cast<uint8_t*>(&encrypted[0]), encrypted.size());
+			SqexBlowfishModifier(encrypted);
+		}
+		{
+			CryptoPP::Base64URLEncoder b64encoder;
+			b64encoder.Put(reinterpret_cast<const uint8_t*>(&encrypted[0]), encrypted.size());
+			b64encoder.MessageEnd();
+			encrypted.resize(static_cast<size_t>(b64encoder.MaxRetrievable()));
+			b64encoder.Get(reinterpret_cast<uint8_t*>(&encrypted[0]), encrypted.size());
+		}
+
+		return std::format("//**sqex0003{}{}**//", encrypted, chksum);
+		
+	} else {
+		std::vector<std::string> args;
+		for (const auto& [k, v] : map) {
+			if (k == "T")
+				continue;
+			args.emplace_back(std::format("{}={}", k, v));
+		}
+		return Utils::ToUtf8(Utils::Win32::ReverseCommandLineToArgvW(args));
+	}
+}
+
+void XivAlex::SqexBlowfishModifier(std::string& s) {
+	if (s.size() % 4)
+		throw std::invalid_argument("string length % 4 != 0");
+	for (auto& i : std::span(reinterpret_cast<uint32_t*>(&s[0]), s.size() / 4))
+		i = _byteswap_ulong(i);
+}
+
+std::vector<std::string> XivAlex::SqexSplit(const std::string& source, char delim, size_t maxc) {
+	std::vector<std::string> split;
+	split.resize(1);
+	auto begin = false;
+	for (const auto c : source) {
+		if (c != ' ')
+			begin = true;
+		else if (!begin)
+			continue;
+
+		if (c == delim)
+			split.emplace_back(&c, 1);
+		else
+			split.back() += c;
+	}
+	for (size_t i = 1; i < split.size();) {
+		const auto nonspace = split[i - 1].find_last_not_of(' ');
+		if (i > maxc || nonspace == std::string::npos || (split[i - 1].size() - nonspace - 1) % 2 == 0) {
+			split[i - 1] += split[i];
+			split.erase(split.begin() + i);
+		} else {
+			++i;
+		}
+	}
+	for (auto& s : split) {
+		const auto off = !s.empty() && s.front() == delim ? 1 : 0;
+		const auto to = !s.empty() && s.back() == ' ' ? s.size() - 1 : s.size();
+		s = s.substr(off, to - off);
+	}
+	return split;
 }

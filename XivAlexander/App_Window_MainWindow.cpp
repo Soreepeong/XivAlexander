@@ -36,7 +36,16 @@ App::Window::Main::Main(XivAlexApp* pApp, std::function<void()> unloadFunction)
 	, m_pApp(pApp)
 	, m_triggerUnload(std::move(unloadFunction))
 	, m_uTaskbarRestartMessage(RegisterWindowMessageW(L"TaskbarCreated"))
-	, m_path(Utils::Win32::Process::Current().PathOf()) {
+	, m_path(Utils::Win32::Process::Current().PathOf())
+	, m_bUseElevation(Utils::Win32::IsUserAnAdmin())
+	, m_launchParameters([this]() -> decltype(m_launchParameters) {
+		try {
+			return XivAlex::ParseGameCommandLine(Utils::ToUtf8(Utils::Win32::GetCommandLineWithoutProgramName()), &m_bUseParameterObfuscation);
+		} catch (const std::exception& e) {
+			m_logger->Format<LogLevel::Warning>(LogCategory::General, "Could not resolve game launch parameters. Restart feature will be disabled. ({})", e.what());
+			return {};
+		}
+	}()) {
 
 	std::tie(m_sRegion, m_sVersion) = XivAlex::ResolveGameReleaseRegion();
 
@@ -51,16 +60,16 @@ App::Window::Main::Main(XivAlexApp* pApp, std::function<void()> unloadFunction)
 
 	SetTimer(m_hWnd, TimerIdRepaint, 1000, nullptr);
 
-	m_cleanup += m_config->Runtime.ShowControlWindow.OnChangeListener([this](App::Config::ItemBase&) {
+	m_cleanup += m_config->Runtime.ShowControlWindow.OnChangeListener([this](auto&) {
 		ShowWindow(m_hWnd, m_config->Runtime.ShowControlWindow ? SW_SHOW : SW_HIDE);
 		});
 	if (m_config->Runtime.ShowControlWindow)
 		ShowWindow(m_hWnd, SW_SHOW);
 
-	m_cleanup += m_pApp->GetSocketHook()->OnSocketFound([this](Network::SingleConnection&) {
+	m_cleanup += m_pApp->GetSocketHook()->OnSocketFound([this](auto&) {
 		InvalidateRect(m_hWnd, nullptr, false);
 		});
-	m_cleanup += m_pApp->GetSocketHook()->OnSocketGone([this](Network::SingleConnection&) {
+	m_cleanup += m_pApp->GetSocketHook()->OnSocketGone([this](auto&) {
 		InvalidateRect(m_hWnd, nullptr, false);
 		});
 }
@@ -189,19 +198,49 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
 					/***************************************************************/
 
+				case ID_TRAYMENU_RESTARTGAME_RESTART:
+					AskRestartGame();
+					return 0;
+				
+				case ID_TRAYMENU_RESTARTGAME_USEDIRECTX11: 
+					m_bUseDirectX11 = !m_bUseDirectX11;
+					if ((GetKeyState(VK_CONTROL) & 0x8000) || (GetKeyState(VK_SHIFT) & 0x8000))
+						AskRestartGame();
+					return 0;
+				
+				case ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER:
+					m_bUseXivAlexander = !m_bUseXivAlexander;
+					if ((GetKeyState(VK_CONTROL) & 0x8000) || (GetKeyState(VK_SHIFT) & 0x8000))
+						AskRestartGame();
+					return 0;
+				
+				case ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION:
+					m_bUseParameterObfuscation = !m_bUseParameterObfuscation;
+					if ((GetKeyState(VK_CONTROL) & 0x8000) || (GetKeyState(VK_SHIFT) & 0x8000))
+						AskRestartGame();
+					return 0;
+				
+				case ID_TRAYMENU_RESTARTGAME_USEELEVATION:
+					m_bUseElevation = !m_bUseElevation;
+					if ((GetKeyState(VK_CONTROL) & 0x8000) || (GetKeyState(VK_SHIFT) & 0x8000))
+						AskRestartGame();
+					return 0;
+					
+				case ID_TRAYMENU_EXITGAME:
+					if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, L"XivAlexander", L"Exit game?") == IDYES) {
+						RemoveTrayIcon();
+						ExitProcess(0);
+					}
+					return 0;
+
+					/***************************************************************/
+
 				case ID_TRAYMENU_CHECKFORUPDATES:
 					XivAlexDll::LaunchXivAlexLoaderWithStdinHandle({ GetCurrentProcess() }, L"update-check", false);
 					return 0;
 
 				case ID_TRAYMENU_UNLOADXIVALEXANDER:
 					m_triggerUnload();
-					return 0;
-
-				case ID_TRAYMENU_EXITGAME:
-					if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, L"XivAlexander", L"Exit game?") == IDYES) {
-						RemoveTrayIcon();
-						ExitProcess(0);
-					}
 					return 0;
 
 					/***************************************************************/
@@ -213,7 +252,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					} else {
 						SetWindowPos(m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 					}
-					Utils::Win32::SetMenuState(m_hWnd, ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST);
+					Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST, true);
 					return 0;
 				}
 			}
@@ -335,26 +374,33 @@ void App::Window::Main::OnDestroy() {
 
 void App::Window::Main::RepopulateMenu(HMENU hMenu) {
 	const auto& config = m_config->Runtime;
+	const auto Set = Utils::Win32::SetMenuState;
 
-	Utils::Win32::SetMenuState(hMenu, ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST);
-
-	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP, config.AlwaysOnTop);
-	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE, config.UseHighLatencyMitigation);
-	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION, config.UseAutoAdjustingExtraDelay);
-	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION, config.UseLatencyCorrection);
-	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING, config.UseHighLatencyMitigationLogging);
-
-	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY, config.ReducePacketDelay);
-	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES, config.TakeOverLoopbackAddresses);
-	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERPRIVATEADDRESSES, config.TakeOverPrivateAddresses);
-	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERALLADDRESSES, config.TakeOverAllAddresses);
-	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS, config.TakeOverAllPorts);
-
-	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_USEIPCTYPEFINDER, config.UseOpcodeFinder);
-	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_USEALLIPCMESSAGELOGGER, config.UseAllIpcMessageLogger);
-	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER, config.UseEffectApplicationDelayLogger);
-	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_SHOWCONTROLWINDOW, config.ShowControlWindow);
-	Utils::Win32::SetMenuState(hMenu, ID_TRAYMENU_SHOWLOGGINGWINDOW, config.ShowLoggingWindow);
+	Set(hMenu, ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST, true);
+	
+	Set(hMenu, ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP, config.AlwaysOnTop, true);
+	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE, config.UseHighLatencyMitigation, true);
+	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION, config.UseAutoAdjustingExtraDelay, true);
+	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION, config.UseLatencyCorrection, true);
+	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING, config.UseHighLatencyMitigationLogging, true);
+	
+	Set(hMenu, ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY, config.ReducePacketDelay, true);
+	Set(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES, config.TakeOverLoopbackAddresses, true);
+	Set(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERPRIVATEADDRESSES, config.TakeOverPrivateAddresses, true);
+	Set(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERALLADDRESSES, config.TakeOverAllAddresses, true);
+	Set(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS, config.TakeOverAllPorts, true);
+	
+	Set(hMenu, ID_TRAYMENU_USEIPCTYPEFINDER, config.UseOpcodeFinder, true);
+	Set(hMenu, ID_TRAYMENU_USEALLIPCMESSAGELOGGER, config.UseAllIpcMessageLogger, true);
+	Set(hMenu, ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER, config.UseEffectApplicationDelayLogger, true);
+	Set(hMenu, ID_TRAYMENU_SHOWCONTROLWINDOW, config.ShowControlWindow, true);
+	Set(hMenu, ID_TRAYMENU_SHOWLOGGINGWINDOW, config.ShowLoggingWindow, true);
+	
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_RESTART, false, !m_launchParameters.empty());
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEDIRECTX11, m_bUseDirectX11, !m_launchParameters.empty());
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER, m_bUseXivAlexander, !m_launchParameters.empty());
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION, m_bUseParameterObfuscation, !m_launchParameters.empty());
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEELEVATION, m_bUseElevation, !m_launchParameters.empty());
 }
 
 void App::Window::Main::RegisterTrayIcon() {
@@ -379,4 +425,47 @@ void App::Window::Main::RemoveTrayIcon() {
 	nid.hWnd = m_hWnd;
 	nid.uFlags = NIF_GUID;
 	Shell_NotifyIconW(NIM_DELETE, &nid);
+}
+
+void App::Window::Main::AskRestartGame() {
+	if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, L"XivAlexander", 
+		L"Restart game?\n\n"
+		L"Use DirectX 11: {}\n"
+		L"Use XivAlexander: {}\n"
+		L"Use Parameter Obfuscation: {}\n"
+		L"Use Elevation (Run as Administrator): {}\n",
+		m_bUseDirectX11 ? "Yes" : "No",
+		m_bUseXivAlexander ? "Yes" : "No",
+		m_bUseParameterObfuscation ? "Yes" : "No",
+		m_bUseElevation ? "Yes" : "No"
+	) == IDYES) {
+		const auto process = Utils::Win32::Process::Current();
+		try {
+			const auto game = process.PathOf().parent_path() / (m_bUseDirectX11 ? XivAlex::GameExecutable64NameW : XivAlex::GameExecutable32NameW);
+			
+			XivAlexDll::EnableInjectOnCreateProcess(0);
+			bool ok;
+			if (m_bUseXivAlexander)
+				ok = Utils::Win32::RunProgram({
+					.path = Dll::Module().PathOf().parent_path() / (m_bUseDirectX11 ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW),
+					.args = std::format(L"-a launcher -l select \"{}\" {}", game, XivAlex::CreateGameCommandLine(m_launchParameters, m_bUseParameterObfuscation)),
+					.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
+				});
+			else
+				ok = Utils::Win32::RunProgram({
+					.path = game,
+					.args = Utils::FromUtf8(XivAlex::CreateGameCommandLine(m_launchParameters, m_bUseParameterObfuscation)),
+					.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
+				});
+
+			if (ok) {
+				RemoveTrayIcon();
+				process.Terminate(0);
+			}
+			
+		} catch (const std::exception& e) {
+			Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, L"XivAlexander", L"Failed to restart: {}", e.what());
+		}
+		XivAlexDll::EnableInjectOnCreateProcess(XivAlexDll::InjectOnCreateProcessAppFlags::Use | XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly);
+	}
 }

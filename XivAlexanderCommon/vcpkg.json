@@ -5,6 +5,7 @@
   "dependencies": [
     "zlib",
     "nlohmann-json",
-    "curlpp"
+    "curlpp",
+    "cryptopp"
   ]
 }

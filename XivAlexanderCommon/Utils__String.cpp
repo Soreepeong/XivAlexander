@@ -85,3 +85,20 @@ std::string Utils::StringTrim(const std::string& str, bool leftTrim, bool rightT
 			right--;
 	return str.substr(left, right + 1 - left);
 }
+
+std::string Utils::StringReplaceAll(const std::string& source, const std::string& from, const std::string& to) {
+	std::string s;
+	s.reserve(source.length());
+
+	size_t last = 0;
+	size_t pos;
+
+	while (std::string::npos != (pos = source.find(from, last))) {
+		s.append(&source[last], &source[pos]);
+		s += to;
+		last = pos + from.length();
+	}
+	
+	s += source.substr(last);
+	return s;
+}

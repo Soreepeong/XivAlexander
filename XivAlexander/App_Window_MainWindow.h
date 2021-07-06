@@ -19,6 +19,12 @@ namespace App::Window {
 
 		uint64_t m_lastTrayIconLeftButtonUp = 0;
 
+		bool m_bUseDirectX11 = INTPTR_MAX == INT64_MAX;
+		bool m_bUseXivAlexander = true;
+		bool m_bUseParameterObfuscation = false;
+		bool m_bUseElevation;
+		std::vector<std::pair<std::string, std::string>> m_launchParameters;
+
 	public:
 		Main(XivAlexApp* pApp, std::function<void()> unloadFunction);
 		~Main() override;
@@ -30,5 +36,7 @@ namespace App::Window {
 		void RepopulateMenu(HMENU hMenu);
 		void RegisterTrayIcon();
 		void RemoveTrayIcon();
+
+		void AskRestartGame();
 	};
 };

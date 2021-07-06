@@ -19,4 +19,7 @@ namespace Utils {
 
 	[[nodiscard]]
 	std::string StringTrim(const std::string& str, bool leftTrim = true, bool rightTrim = true);
+
+	[[nodiscard]]
+	std::string StringReplaceAll(const std::string& source, const std::string& from, const std::string& to);
 }

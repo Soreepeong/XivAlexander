@@ -163,20 +163,14 @@ int Utils::Win32::MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, c
 	return MessageBoxF(hWnd, uType, lpCaption, FromUtf8(text));
 }
 
-void Utils::Win32::SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked) {
+void Utils::Win32::SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked, bool bEnabled) {
 	MENUITEMINFOW mii = { sizeof(MENUITEMINFOW) };
 	mii.fMask = MIIM_STATE;
 
 	GetMenuItemInfoW(hMenu, nMenuId, false, &mii);
-	if (bChecked)
-		mii.fState |= MFS_CHECKED;
-	else
-		mii.fState &= ~MFS_CHECKED;
+	mii.fState &= ~(MFS_CHECKED | MFS_ENABLED | MFS_DISABLED);
+	mii.fState |= (bChecked ? MFS_CHECKED : 0) | (bEnabled ? MFS_ENABLED : MFS_DISABLED);
 	SetMenuItemInfoW(hMenu, nMenuId, false, &mii);
-}
-
-void Utils::Win32::SetMenuState(HWND hWnd, DWORD nMenuId, bool bChecked) {
-	SetMenuState(GetMenu(hWnd), nMenuId, bChecked);
 }
 
 void Utils::Win32::AddDebugPrivilege() {
@@ -376,6 +370,19 @@ bool Utils::Win32::RunProgram(RunProgramParams params) {
 	}
 	}
 	throw std::out_of_range("invalid elevateMode");
+}
+
+std::wstring Utils::Win32::GetCommandLineWithoutProgramName() {
+	const auto lpCmdLine = GetCommandLineW();
+	auto inQuote = false;
+	auto ptr = lpCmdLine;
+	for (; *ptr && ((*ptr != L' ' && *ptr != L'\t') || inQuote); ++ptr) {
+		if (*ptr == L'\"')
+			inQuote = !inQuote;
+	}
+	if (*ptr)
+		++ptr;
+	return ptr;
 }
 
 std::wstring Utils::Win32::ReverseCommandLineToArgvW(const std::span<const std::string>& argv) {

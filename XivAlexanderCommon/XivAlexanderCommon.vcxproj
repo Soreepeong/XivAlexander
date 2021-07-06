@@ -147,25 +147,25 @@
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <VcpkgInstalledDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</VcpkgInstalledDir>
+    <VcpkgInstalledDir>$(SolutionDir)build\vcpkg_$(Platform)_$(ProjectName)\</VcpkgInstalledDir>
     <VcpkgAdditionalInstallOptions>--feature-flags=versions</VcpkgAdditionalInstallOptions>
     <VcpkgUseStatic>true</VcpkgUseStatic>
     <VcpkgTriplet>x64-windows-static</VcpkgTriplet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Vcpkg">
-    <VcpkgInstalledDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</VcpkgInstalledDir>
+    <VcpkgInstalledDir>$(SolutionDir)build\vcpkg_$(Platform)_$(ProjectName)\</VcpkgInstalledDir>
     <VcpkgAdditionalInstallOptions>--feature-flags=versions</VcpkgAdditionalInstallOptions>
     <VcpkgUseStatic>true</VcpkgUseStatic>
     <VcpkgTriplet>x86-windows-static</VcpkgTriplet>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <VcpkgInstalledDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</VcpkgInstalledDir>
+    <VcpkgInstalledDir>$(SolutionDir)build\vcpkg_$(Platform)_$(ProjectName)\</VcpkgInstalledDir>
     <VcpkgAdditionalInstallOptions>--feature-flags=versions</VcpkgAdditionalInstallOptions>
     <VcpkgUseStatic>true</VcpkgUseStatic>
     <VcpkgTriplet>x64-windows-static</VcpkgTriplet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Vcpkg">
-    <VcpkgInstalledDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</VcpkgInstalledDir>
+    <VcpkgInstalledDir>$(SolutionDir)build\vcpkg_$(Platform)_$(ProjectName)\</VcpkgInstalledDir>
     <VcpkgAdditionalInstallOptions>--feature-flags=versions</VcpkgAdditionalInstallOptions>
     <VcpkgUseStatic>true</VcpkgUseStatic>
     <VcpkgTriplet>x86-windows-static</VcpkgTriplet>

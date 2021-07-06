@@ -10,6 +10,7 @@
     "nlohmann-json",
     "minhook",
     "curlpp",
-    "zydis"
+    "zydis",
+    "cryptopp"
   ]
 }
