@@ -694,8 +694,8 @@ static void CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses) {
 	if (exists(updateZip))
 		PerformUpdateAndExitIfSuccessful(prevProcesses, "", updateZip);
 	
-	const auto checking = s_progressWindow.ShowScoped(true, L"Checking for updates...");
 	try {
+		auto checking = s_progressWindow.ShowScoped(true, L"Checking for updates...");
 		const auto [selfFileVersion, selfProductVersion] = Utils::Win32::FormatModuleVersionString(GetModuleHandleW(nullptr));
 		const auto up = XivAlex::CheckUpdates();		
 		const auto remoteS = Utils::StringSplit(up.Name.substr(1), ".");
@@ -719,22 +719,29 @@ static void CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses) {
 				local[0], local[1], local[2], local[3], up.PublishDate);
 			return;
 		}
-	
-		switch (Utils::Win32::MessageBoxF(nullptr, MB_YESNOCANCEL, MsgboxTitle, std::format(
-			L"New version {}.{}.{}.{}, released at {:%Ec}, is available. Local version is {}.{}.{}.{}\n\n"
-			L"Press Yes to check out the changelog,\n"
-			L"Press No to update right now, or\n"
-			L"Press Cancel to do nothing.\n\n"
-			L"Security note: Do NOT download right away if your internet connection to GitHub cannot be trusted.",
-			remote[0], remote[1], remote[2], remote[3], up.PublishDate, local[0], local[1], local[2], local[3]
-		).c_str())) {
-			case IDYES:
-				ShellExecuteW(nullptr, L"open", L"https://github.com/Soreepeong/XivAlexander/releases", nullptr, nullptr, SW_SHOW);
-				break;
-			
-			case IDNO:
-				PerformUpdateAndExitIfSuccessful(std::move(prevProcesses), up.DownloadLink, updateZip);
-				break;
+
+		checking.Clear();
+		
+		while (true) {
+			switch (Utils::Win32::MessageBoxF(nullptr, MB_YESNOCANCEL, MsgboxTitle, std::format(
+				L"New version {}.{}.{}.{}, released at {:%Ec}, is available. Local version is {}.{}.{}.{}\n\n"
+				L"Press Yes to check out the changelog,\n"
+				L"Press No to update right now, or\n"
+				L"Press Cancel to do nothing.\n\n"
+				L"Security note: Do NOT download right away if your internet connection to GitHub cannot be trusted. This includes public VPNs and proxies.",
+				remote[0], remote[1], remote[2], remote[3], up.PublishDate, local[0], local[1], local[2], local[3]
+			).c_str())) {
+				case IDYES:
+					ShellExecuteW(nullptr, L"open", L"https://github.com/Soreepeong/XivAlexander/releases", nullptr, nullptr, SW_SHOW);
+					break;
+				
+				case IDNO:
+					PerformUpdateAndExitIfSuccessful(std::move(prevProcesses), up.DownloadLink, updateZip);
+					return;
+
+				case IDCANCEL:
+					return;
+			}	
 		}
 	} catch (const std::exception& e) {
 		Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, "Failed to check for updates: {}", e.what());

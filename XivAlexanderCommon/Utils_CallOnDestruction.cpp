@@ -27,10 +27,7 @@ Utils::CallOnDestruction& Utils::CallOnDestruction::operator=(CallOnDestruction 
 
 /// Null assignment operator
 Utils::CallOnDestruction& Utils::CallOnDestruction::operator=(std::nullptr_t) noexcept {
-	if (!m_fn)
-		return *this;
-	m_fn();
-	m_fn = nullptr;
+	Clear();
 	return *this;
 }
 
@@ -58,6 +55,14 @@ Utils::CallOnDestruction& Utils::CallOnDestruction::Wrap(std::function<void(std:
 Utils::CallOnDestruction::~CallOnDestruction() {
 	if (m_fn)
 		m_fn();
+}
+
+Utils::CallOnDestruction& Utils::CallOnDestruction::Clear() {
+	if (m_fn) {
+		m_fn();
+		m_fn = nullptr;
+	}
+	return *this;
 }
 
 Utils::CallOnDestruction::operator bool() const {

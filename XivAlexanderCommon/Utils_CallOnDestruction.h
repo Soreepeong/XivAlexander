@@ -28,6 +28,8 @@ namespace Utils {
 
 		virtual ~CallOnDestruction();
 
+		CallOnDestruction& Clear();
+
 		operator bool() const;
 
 		class Multiple {
