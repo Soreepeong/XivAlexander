@@ -16,30 +16,62 @@ This add-on will make double (or triple, depending on your skill/spell speed) we
 No more low DPS output just because you are on high latency network.
 
 ## Usage
-Run the game if it isn't already running, run `XivAlexanderLoader.exe`, and follow the instructions.
+Run the game if it isn't already running, run `XivAlexanderLoader32/64.exe`, and follow the instructions.
 Try running as Administrator if it fails to load.
 
 **As it uses DLL injection, your anti-virus software might flag this add-on.**
-You might have to add both `XivAlexander.dll` and `XivAlexanderLoader.exe` to exclusion list.
+You might have to add both `XivAlexander32/64.dll` and `XivAlexanderLoader32/64.exe` to exclusion list.
 Refer to your anti-virus software manual for instructions.
 
 **[Find opcodes](https://github.com/Soreepeong/XivAlexander/wiki/How-to-find-opcodes)** after game updates.
 This add-on will break whenever ACT FFXIV Plugin breaks.
 
 ### Command line arguments
-Usage: XivAlexanderLoader [options] targets
+Usage: `XivAlexanderLoader(32/64) [-h] [-a ACTION] [-l LAUNCHER] [-q] [-d] [--web] [PID or exe_suffix.exe]...`
+
+* All other arguments are for internal use only.
 
 #### Positional arguments
-* targets: list of target process ID or path suffix.
+* `TARGETS`
+  * List of target process ID or path suffix if loading XivAlexander.
+  * Path and argument of program to execute if launching game launcher.
 
 #### Optional arguments
-* -h (--help): show this help message and exit
-* -a (--action): specifies default action for each process (possible values: ask, load, unload)
-* -q (--quiet): disables error messages
+* `-h` (`--help`): show help message and exit
+* `-a` (`--action`): specify action (default: auto)
+  * `auto`: If game instances are running, then ask whether to load to those processes. Otherwise, ask whether to 
+    launch detected game installations.
+  * `ask`: Ask whether to load XivAlexander to detected game processes.
+  * `load`: Load XivAlexander to all the detected game processes.
+  * `unload`: Unload XivAlexander from all the detected game processes.
+  * `launcher`: Launch game launcher if detected.
+  * `update-check`: Check for update.
+* `-l` (`--launcher`): specify launcher to launch (default: auto)
+  * `auto`: Ask which game installations to run. Open file selection dialog if no installation is detected, or program
+    to run is given.
+  * `select`: Open file selection dialog, and use that program as launcher. Load XivAlexanderLoader when game is ran
+    as a descendant. Current limitations include being unable to load if there was a AnyCPU binary in-between.
+  * `international`, `korean`, `chinese`
+* `-q` (`--quiet`): disable error messages
+* `-d` (`--disable-runas`): do not try to run as administrator in any case
+* `--web`: open GitHub repository at https://github.com/Soreepeong/XivAlexander and exit
 
 #### Example:
-* `XivAlexanderLoader.exe -a load 16844`: Loads XivAlexander into process ID 16844.
-* `XivAlexanderLoader.exe -q -a unload ffxiv_dx11.exe`: Unloads XivAlexander from every process with its path ending with `ffxiv_dx11.exe`, and suppress all error messages.
+* `XivAlexanderLoader32.exe -a load 16844`
+  * Load XivAlexander into process ID 16844.
+* `XivAlexanderLoader64.exe -q -a unload ffxiv_dx11.exe`
+  * Unload XivAlexander from every process with its path ending with `ffxiv_dx11.exe`, and suppress all error messages.
+* `XivAlexanderLoader64.exe -a launcher -l select`
+  * Open file selection dialog to choose a program to run, and load XivAlexander into the game when the game runs
+    as a descendant.
+* `XivAlexanderLoader32.exe -a la -l i`
+  * Run official international game client launcher (if installed), and load XivAlexander into the game when the game
+    runs as a descendant.
+  * Since there is 1 possible launcher option starting with `i`, abbreviation is possible.
+  * Since there is 1 possible action option starting with `la`, abbreviation is possible.
+* `XivAlexanderLoader32 -a la python -c "import subprocess; subprocess.Popen('\"C:\\Program Files(x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\boot\\ffxivboot64.exe\"').wait()"`
+  * Run `python`, and load XivAlexander into the game ran from game boot loaded from `subprocess.Popen`, 
+    and wait for game boot to exit. 
 
 ### Description on options
 * `High Latency Mitigation`: The purpose of this program.
