@@ -401,7 +401,7 @@ std::string XivAlex::CreateGameCommandLine(const std::vector<std::pair<std::stri
 				continue;
 			args.emplace_back(std::format("{}={}", k, v));
 		}
-		return Utils::ToUtf8(Utils::Win32::ReverseCommandLineToArgvW(args));
+		return Utils::Win32::ReverseCommandLineToArgv(args);
 	}
 }
 

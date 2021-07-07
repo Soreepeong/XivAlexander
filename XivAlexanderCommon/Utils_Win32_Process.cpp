@@ -62,6 +62,190 @@ Utils::Win32::Process& Utils::Win32::Process::Current() {
 	return current;
 }
 
+Utils::Win32::ProcessBuilder::ProcessBuilder() = default;
+
+Utils::Win32::ProcessBuilder::ProcessBuilder(ProcessBuilder&&) noexcept = default;
+
+Utils::Win32::ProcessBuilder::ProcessBuilder(const ProcessBuilder& r) {
+	*this = r;
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::operator=(ProcessBuilder&&) noexcept = default;
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::operator=(const ProcessBuilder& r) {
+	m_path = r.m_path;
+	m_dir = r.m_dir;
+	m_args = r.m_args;
+	m_inheritedHandles.reserve(r.m_inheritedHandles.size());
+	std::transform(r.m_inheritedHandles.begin(), r.m_inheritedHandles.end(),
+		std::back_inserter(m_args), [](const Handle& h) {
+			return Handle::DuplicateFrom<Handle>(h, true);
+		});
+	return *this;
+}
+
+Utils::Win32::ProcessBuilder::~ProcessBuilder() = default;
+
+std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuilder::Run() {
+	const auto MaxLengthOfProcThreadAttributeList = 2UL;
+	STARTUPINFOEXW siex{};
+	PROCESS_INFORMATION pi{};
+	siex.StartupInfo.cb = sizeof siex;
+	
+	if (m_bUseSize) {
+		siex.StartupInfo.dwFlags |= STARTF_USESIZE;
+		siex.StartupInfo.dwXSize = m_dwWidth;
+		siex.StartupInfo.dwYSize = m_dwHeight;
+	}
+	if (m_bUsePosition) {
+		siex.StartupInfo.dwFlags |= STARTF_USEPOSITION;
+		siex.StartupInfo.dwX = m_dwX;
+		siex.StartupInfo.dwY = m_dwY;
+	}
+	if (m_bUseShowWindow) {
+		siex.StartupInfo.dwFlags |= STARTF_USESHOWWINDOW;
+		siex.StartupInfo.wShowWindow = m_wShowWindow;
+	}
+
+	std::vector<char> attributeListBuf;
+	
+	if (SIZE_T size = 0; !InitializeProcThreadAttributeList(nullptr, MaxLengthOfProcThreadAttributeList, 0, &size)) {
+		const auto err = GetLastError();
+		if (err != ERROR_INSUFFICIENT_BUFFER)
+			throw Error(err, "InitializeProcThreadAttributeList.1");
+		attributeListBuf.resize(size);
+	}
+	
+	siex.lpAttributeList = reinterpret_cast<PPROC_THREAD_ATTRIBUTE_LIST>(&attributeListBuf[0]);
+	if (SIZE_T size; !InitializeProcThreadAttributeList(siex.lpAttributeList, MaxLengthOfProcThreadAttributeList, 0, &size))
+		throw Error("InitializeProcThreadAttributeList.2");
+	const auto cleanAttributeList = CallOnDestruction([&siex]() {
+		DeleteProcThreadAttributeList(siex.lpAttributeList);
+	});
+
+	if (!m_inheritedHandles.empty()) {
+		std::vector<HANDLE> handles;
+		handles.reserve(m_inheritedHandles.size());
+		std::transform(m_inheritedHandles.begin(), m_inheritedHandles.end(), std::back_inserter(handles), [](auto& v){ return static_cast<HANDLE>(v); });
+		if (!UpdateProcThreadAttribute(siex.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, &handles[0], handles.size() * sizeof handles[0], nullptr, nullptr))
+			throw Error("UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_HANDLE_LIST)");
+	}
+
+	if (m_parentProcess) {
+		auto hParentProcess = static_cast<HANDLE>(m_parentProcess);
+		if (!UpdateProcThreadAttribute(siex.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &hParentProcess, sizeof hParentProcess, nullptr, nullptr))
+			throw Error("UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS)");
+	}
+
+	std::wstring args;
+	if (m_bPrependPathToArgument) {
+		args = ReverseCommandLineToArgv(m_path.wstring());
+		if (!m_args.empty()) {
+			args += L" ";
+			args += m_args;
+		}
+	} else
+		args = m_args;
+	
+	if (!CreateProcessW(m_path.c_str(), &args[0], nullptr, nullptr, TRUE, EXTENDED_STARTUPINFO_PRESENT, nullptr, m_dir.empty() ? nullptr : m_dir.c_str(), &siex.StartupInfo, &pi))
+		throw Error("CreateProcess");
+	
+	assert(pi.hThread);
+	assert(pi.hProcess);
+
+	return {
+		Process(pi.hProcess, true),
+		Thread(pi.hThread, true)
+	};
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithParent(HWND hWnd) {
+	if (!hWnd) {
+		m_parentProcess.Clear();
+		return *this;
+	}
+	
+	DWORD pid;
+	if (!GetWindowThreadProcessId(hWnd, &pid))
+		throw Error("GetWindowThreadProcessId({})", reinterpret_cast<size_t>(static_cast<void*>(hWnd)));
+	return WithParent({PROCESS_CREATE_PROCESS, FALSE, pid});
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithParent(Process h) {
+	m_parentProcess = std::move(h);
+	return *this;
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithPath(std::filesystem::path path) {
+	m_path = std::move(path);
+	return *this;
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithWorkingDirectory(std::filesystem::path dir) {
+	m_dir = std::move(dir);
+	return *this;
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithArgument(bool prependPathToArgument, const std::string& s) {
+	return WithArgument(prependPathToArgument, FromUtf8(s));
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithArgument(bool prependPathToArgument, std::wstring args) {
+	m_bPrependPathToArgument = prependPathToArgument;
+	m_args = std::move(args);
+	return *this;
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithAppendArgument(const std::string& s) {
+	return WithAppendArgument(FromUtf8(s));
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithAppendArgument(const std::wstring& s) {
+	if (!m_args.empty())
+		m_args += L" ";
+	m_args += ReverseCommandLineToArgv(s);
+	return *this;
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithSize(DWORD width, DWORD height, bool use) {
+	m_dwWidth = use ? width : 0;
+	m_dwHeight = use ? height : 0;
+	m_bUseSize = use;
+	return *this;
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithUnspecifiedSize() {
+	return WithSize(0, 0, false);
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithPosition(DWORD x, DWORD y, bool use) {
+	m_dwX = use ? x : 0;
+	m_dwY = use ? y : 0;
+	m_bUsePosition = use;
+	return *this;
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithUnspecifiedPosition() {
+	return WithPosition(0, 0, false);
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithShow(WORD show, bool use) {
+	m_wShowWindow = use ? show : 0;
+	m_bUseShowWindow = use;
+	return *this;
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithUnspecifiedShow() {
+	return WithShow(0, false);
+}
+
+Utils::Win32::Handle Utils::Win32::ProcessBuilder::Inherit(HANDLE hSource) {
+	auto h = Handle::DuplicateFrom<Handle>(hSource, true);
+	auto ret = Handle(h, false);
+	m_inheritedHandles.emplace_back(std::move(h));
+	return ret;
+}
+
 Utils::Win32::Process& Utils::Win32::Process::Attach(HANDLE r, bool ownership, const std::string& errorMessage) {
 	Handle::Attach(r, Null, ownership, errorMessage);
 	return *this;

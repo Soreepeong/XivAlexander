@@ -68,8 +68,12 @@ namespace Utils::Win32 {
 	bool RunProgram(RunProgramParams params);
 
 	std::wstring GetCommandLineWithoutProgramName();
-	std::wstring ReverseCommandLineToArgvW(const std::span<const std::string>& argv);
-	std::wstring ReverseCommandLineToArgvW(const std::initializer_list<const std::string>& argv);
+	std::wstring ReverseCommandLineToArgv(const std::wstring& argv);
+	std::wstring ReverseCommandLineToArgv(const std::span<const std::wstring>& argv);
+	std::wstring ReverseCommandLineToArgv(const std::initializer_list<const std::wstring>& argv);
+	std::string ReverseCommandLineToArgv(const std::string& argv);
+	std::string ReverseCommandLineToArgv(const std::span<const std::string>& argv);
+	std::string ReverseCommandLineToArgv(const std::initializer_list<const std::string>& argv);
 
 	std::vector<DWORD> GetProcessList();
 	

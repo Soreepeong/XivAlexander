@@ -75,7 +75,7 @@ namespace Utils::Win32 {
 			ClearInternal();
 		}
 
-		virtual Closeable& Attach(T r, T invalidValue, bool ownership, const std::string& errorMessage) {
+		Closeable& Attach(T r, T invalidValue, bool ownership, const std::string& errorMessage) {
 			if (r == invalidValue)
 				throw Error(errorMessage);
 			
@@ -103,7 +103,7 @@ namespace Utils::Win32 {
 		[[nodiscard]] operator T() const {
 			return m_object;
 		}
-
+		
 		template<typename = std::enable_if_t<std::is_pointer_v<T>>>
 		[[nodiscard]] uint64_t Value64() const {
 			return static_cast<uint64_t>(Value());

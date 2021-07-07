@@ -171,7 +171,7 @@ public:
 			} else {
 				if (!targets.empty()) {
 					m_runProgram = Utils::FromUtf8(targets[0]);
-					m_runProgramArgs = Utils::Win32::ReverseCommandLineToArgvW(std::span(targets.begin() + 1, targets.end()));
+					m_runProgramArgs = Utils::FromUtf8(Utils::Win32::ReverseCommandLineToArgv(std::span(targets.begin() + 1, targets.end())));
 				}
 
 				for (const auto& target : targets) {
@@ -360,7 +360,6 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 	const auto cleanup = Utils::CallOnDestruction([&injectedModule, &unloadRequired]() {
 		if (unloadRequired)
 			injectedModule.Call("EnableXivAlexander", 0, "EnableXivAlexander(0)");
-		// injectedModule.Call("CallFreeLibrary", injectedModule.Address(), "CallFreeLibrary");
 		});
 
 	if (loaderAction == XivAlexDll::LoaderAction::Load) {
@@ -382,7 +381,12 @@ int RunProgramRetryAfterElevatingSelfAsNecessary(const std::filesystem::path& pa
 	}))
 		return 0;
 	return Utils::Win32::RunProgram({
-		.args = Utils::Win32::ReverseCommandLineToArgvW({"--disable-runas", "-a", LoaderActionToString(XivAlexDll::LoaderAction::Launcher), "-l", "select", path.string()}) + (args.empty() ? L"" : L" " + args),
+		.args = Utils::FromUtf8(Utils::Win32::ReverseCommandLineToArgv({
+			"--disable-runas",
+			"-a", LoaderActionToString(XivAlexDll::LoaderAction::Launcher),
+			"-l", "select",
+			path.string()
+		})) + (args.empty() ? L"" : L" " + args),
 		.elevateMode = Utils::Win32::RunProgramParams::Force,
 	}) ? 0 : 1;
 }

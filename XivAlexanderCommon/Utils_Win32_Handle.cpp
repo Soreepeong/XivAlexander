@@ -65,6 +65,10 @@ Utils::Win32::Thread::Thread()
 	: Handle() {
 }
 
+Utils::Win32::Thread::Thread(HANDLE hThread, bool ownership)
+	: Handle(hThread, ownership) {
+}
+
 Utils::Win32::Thread::Thread(std::wstring name, std::function<DWORD()> body, LoadedModule hLibraryToFreeAfterExecution) {
 	typedef std::function<DWORD(void*)> InnerBodyFunctionType;
 	const auto pInnerBodyFunction = new InnerBodyFunctionType(

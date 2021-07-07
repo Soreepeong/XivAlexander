@@ -53,6 +53,7 @@ namespace Utils::Win32 {
 	class Thread : public Handle {
 	public:
 		Thread();
+		Thread(HANDLE hThread, bool ownership);
 		Thread(std::wstring name, std::function<DWORD()> body, LoadedModule hLibraryToFreeAfterExecution = nullptr);
 		Thread(std::wstring name, std::function<void()> body, LoadedModule hLibraryToFreeAfterExecution = nullptr);
 		Thread(Thread&& r) noexcept;

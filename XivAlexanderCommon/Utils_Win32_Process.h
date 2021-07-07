@@ -119,6 +119,63 @@ namespace Utils::Win32 {
 		
 		void FlushInstructionsCache(void* lpBase, size_t size) const;
 	};
+	
+	class ProcessBuilder {
+		bool m_bPrependPathToArgument = true;
+		bool m_bUseShowWindow = false;
+		bool m_bUseSize = false;
+		bool m_bUsePosition = false;
+		WORD m_wShowWindow = 0;
+		DWORD m_dwWidth = 0;
+		DWORD m_dwHeight = 0;
+		DWORD m_dwX = 0;
+		DWORD m_dwY = 0;
+		
+		std::filesystem::path m_path;
+		std::filesystem::path m_dir;
+		std::wstring m_args;
+		std::vector<Handle> m_inheritedHandles;
+		Process m_parentProcess;
+
+	public:
+		ProcessBuilder();
+		ProcessBuilder(ProcessBuilder&&) noexcept;
+		ProcessBuilder(const ProcessBuilder&);
+		ProcessBuilder& operator=(ProcessBuilder&&) noexcept;
+		ProcessBuilder& operator=(const ProcessBuilder&);
+		~ProcessBuilder();
+
+		std::pair<Process, Thread> Run();
+		
+		ProcessBuilder& WithParent(HWND hWnd);
+		ProcessBuilder& WithParent(Process h);
+		ProcessBuilder& WithPath(std::filesystem::path);
+		ProcessBuilder& WithWorkingDirectory(std::filesystem::path);
+		ProcessBuilder& WithArgument(bool prependPathToArgument, const std::string&);
+		ProcessBuilder& WithArgument(bool prependPathToArgument, std::wstring);
+		ProcessBuilder& WithAppendArgument(const std::string&);
+		ProcessBuilder& WithAppendArgument(const std::wstring&);
+		template<typename ... Args>
+		ProcessBuilder& WithAppendArgument(const char* format, Args ... args) {
+			return WithAppendArgument(std::format(format, std::forward<Args>(args)...));
+		}
+		template<typename ... Args>
+		ProcessBuilder& WithAppendArgument(const wchar_t* format, Args ... args) {
+			return WithAppendArgument(std::format(format, std::forward<Args>(args)...));
+		}
+		ProcessBuilder& WithSize(DWORD width, DWORD height, bool use = true);
+		ProcessBuilder& WithUnspecifiedSize();
+		ProcessBuilder& WithPosition(DWORD x, DWORD y, bool use = true);
+		ProcessBuilder& WithUnspecifiedPosition();
+		ProcessBuilder& WithShow(WORD show, bool use = true);
+		ProcessBuilder& WithUnspecifiedShow();
+		
+		Handle Inherit(HANDLE hSource);
+		template<typename T, typename = std::is_base_of<T, Handle>>
+		T Inherit(T source) {
+			return T(Inherit(static_cast<HANDLE>(source)), false);
+		}
+	};
 
 	class ModuleMemoryBlocks {
 	public:

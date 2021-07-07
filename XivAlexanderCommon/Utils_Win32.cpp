@@ -263,9 +263,6 @@ bool Utils::Win32::RunProgram(RunProgramParams params) {
 		params.path = buf;
 	}
 	
-	if (params.dir.empty())
-		params.dir = params.path.parent_path().wstring();
-	
 	switch (params.elevateMode) {
 	case RunProgramParams::Normal:
 	case RunProgramParams::Force:
@@ -280,7 +277,7 @@ bool Utils::Win32::RunProgram(RunProgramParams params) {
 		sei.lpVerb = params.elevateMode == RunProgramParams::Force ? L"runas" : L"open";
 		sei.lpFile = params.path.c_str();
 		sei.lpParameters = params.args.c_str();
-		sei.lpDirectory = params.dir.c_str();
+		sei.lpDirectory = params.dir.empty() ? nullptr : params.dir.c_str();
 		sei.nShow = SW_SHOW;
 		if (!ShellExecuteExW(&sei)) {
 			const auto err = GetLastError();
@@ -308,47 +305,18 @@ bool Utils::Win32::RunProgram(RunProgramParams params) {
 			cleanup += WithRunAsInvoker();
 		}
 
-		STARTUPINFOEXW siex{};
-		const auto hWndShell = GetShellWindow();
-		Process shellProcess;
-		HANDLE hShellProcess;
-		std::vector<char> attributeListBuf;
-		if (hWndShell && params.elevateMode == RunProgramParams::NeverUnlessShellIsElevated) {
-			siex.StartupInfo.cb = sizeof siex;
+		try {
+			const auto [process, thread] = ProcessBuilder()
+				.WithPath(params.path)
+				.WithParent(params.elevateMode == RunProgramParams::NeverUnlessShellIsElevated ? GetShellWindow() : nullptr)
+				.WithWorkingDirectory(params.dir)
+				.WithArgument(true, params.args)
+				.Run();
+			if (params.wait)
+				process.Wait();
 			
-			DWORD pid;
-			if (!GetWindowThreadProcessId(hWndShell, &pid))
-				throw Error("GetWindowThreadProcessId(GetShellWindow())");
-			shellProcess = Process(PROCESS_CREATE_PROCESS, FALSE, pid);
-
-			SIZE_T size;
-			if (!InitializeProcThreadAttributeList(nullptr, 1, 0, &size)) {
-				const auto err = GetLastError();
-				if (err != ERROR_INSUFFICIENT_BUFFER)
-					throw Error(err, "InitializeProcThreadAttributeList.1");
-			}
-			attributeListBuf.resize(size);
-			
-			auto p = reinterpret_cast<PPROC_THREAD_ATTRIBUTE_LIST>(&attributeListBuf[0]);
-			if (!InitializeProcThreadAttributeList(p, 1, 0, &size))
-				throw Error("InitializeProcThreadAttributeList.2");
-
-			hShellProcess = static_cast<HANDLE>(shellProcess);
-			if (!UpdateProcThreadAttribute(p,0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &hShellProcess, sizeof hShellProcess, nullptr, nullptr))
-				throw Error("UpdateProcThreadAttribute.2");
-			
-			siex.lpAttributeList = p;
-		} else {
-			siex.StartupInfo.cb = sizeof siex.StartupInfo;
-		}
-		siex.StartupInfo.wShowWindow = SW_SHOW;
-		
-		PROCESS_INFORMATION pi;
-		const auto wd = params.path.parent_path().wstring();
-		auto args = params.args.empty() ? std::format(L"\"{}\"", params.path) : std::format(L"\"{}\" {}", params.path, params.args);
-		if (!CreateProcessW(params.path.c_str(), &args[0], nullptr, nullptr, FALSE, siex.lpAttributeList ? EXTENDED_STARTUPINFO_PRESENT : 0, nullptr, &wd[0], &siex.StartupInfo, &pi)) {
-			const auto err = GetLastError();
-			if (err == ERROR_ELEVATION_REQUIRED) {
+		} catch (const Error& e) {
+			if (e.Code() == ERROR_ELEVATION_REQUIRED) {
 				if (params.elevateMode == RunProgramParams::CancelIfRequired && !params.throwOnCancel)
 					return false;
 				else if (params.elevateMode == RunProgramParams::NoElevationIfDenied) {
@@ -361,12 +329,8 @@ bool Utils::Win32::RunProgram(RunProgramParams params) {
 					return RunProgram(params);
 				}
 			}
-			throw Error(err, "CreateProcessW({})", params.args);
+			throw;
 		}
-		if (params.wait)
-			WaitForSingleObject(pi.hProcess, INFINITE);
-		CloseHandle(pi.hProcess);
-		CloseHandle(pi.hThread);
 		return true;
 	}
 	}
@@ -386,36 +350,78 @@ std::wstring Utils::Win32::GetCommandLineWithoutProgramName() {
 	return ptr;
 }
 
-std::wstring Utils::Win32::ReverseCommandLineToArgvW(const std::span<const std::string>& argv) {
+std::wstring Utils::Win32::ReverseCommandLineToArgv(const std::wstring& arg) {
+	if (arg.find_first_of(L"\" ") != std::wstring::npos) {
+		std::wostringstream ss;
+		ss << L"\"";
+		for (size_t pos = 0; pos < arg.size();) {
+			const auto special = arg.find_first_of(L"\\\"", pos);
+			if (special == std::wstring::npos){
+				ss << arg.substr(pos);
+				break;
+			} else {
+				ss << arg.substr(pos, special - pos) << L"\\" << arg[special];
+				pos = special + 1;
+			}
+		}
+		ss << L"\"";
+		return ss.str();
+		
+	} else {
+		return arg;
+	}
+}
+
+std::wstring Utils::Win32::ReverseCommandLineToArgv(const std::span<const std::wstring>& argv) {
 	std::wostringstream ss;
 	for (const auto& arg : argv) {
-		const auto argw = FromUtf8(arg);
 		if (ss.tellp())
 			ss << L" ";
 		
-		if (argw.find_first_of(L"\" ") != std::wstring::npos) {
-			ss << L"\"";
-			for (size_t pos = 0; pos < argw.size();) {
-				const auto special = argw.find_first_of(L"\\\"", pos);
-				if (special == std::wstring::npos){
-					ss << argw.substr(pos);
-					break;
-				} else {
-					ss << argw.substr(pos, special - pos) << L"\\" << argw[special];
-					pos = special + 1;
-				}
-			}
-			ss << L"\"";
-			
-		} else {
-			ss << argw;
-		}
+		ss << ReverseCommandLineToArgv(arg);
 	}
 	return ss.str();
 }
 
-std::wstring Utils::Win32::ReverseCommandLineToArgvW(const std::initializer_list<const std::string>& argv) {
-	return ReverseCommandLineToArgvW({argv.begin(), argv.end()});
+std::wstring Utils::Win32::ReverseCommandLineToArgv(const std::initializer_list<const std::wstring>& argv) {
+	return ReverseCommandLineToArgv(std::vector(argv.begin(), argv.end()));
+}
+
+std::string Utils::Win32::ReverseCommandLineToArgv(const std::string& arg) {
+	if (arg.find_first_of("\" ") != std::wstring::npos) {
+		std::ostringstream ss;
+		ss << "\"";
+		for (size_t pos = 0; pos < arg.size();) {
+			const auto special = arg.find_first_of("\\\"", pos);
+			if (special == std::wstring::npos){
+				ss << arg.substr(pos);
+				break;
+			} else {
+				ss << arg.substr(pos, special - pos) << "\\" << arg[special];
+				pos = special + 1;
+			}
+		}
+		ss << "\"";
+		return ss.str();
+		
+	} else {
+		return arg;
+	}
+}
+
+std::string Utils::Win32::ReverseCommandLineToArgv(const std::span<const std::string>& argv) {
+	std::ostringstream ss;
+	for (const auto& arg : argv) {
+		if (ss.tellp())
+			ss << " ";
+		
+		ss << ReverseCommandLineToArgv(arg);
+	}
+	return ss.str();
+}
+
+std::string Utils::Win32::ReverseCommandLineToArgv(const std::initializer_list<const std::string>& argv) {
+	return ReverseCommandLineToArgv(std::vector(argv.begin(), argv.end()));
 }
 
 std::vector<DWORD> Utils::Win32::GetProcessList() {

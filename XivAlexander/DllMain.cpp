@@ -59,55 +59,20 @@ XIVALEXANDER_DLLEXPORT DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 	
 	Utils::Win32::Process companionProcess;
 	{
-		Utils::Win32::Handle hStdinRead, hStdinWrite;
-		if (auto r = INVALID_HANDLE_VALUE, w = INVALID_HANDLE_VALUE;
-			!CreatePipe(&r, &w, nullptr, 0))
-			throw Utils::Win32::Error("CreatePipe");
-		else {
-			hStdinRead.Attach(r, INVALID_HANDLE_VALUE, true, "CreatePipe(Read)");
-			hStdinWrite.Attach(w, INVALID_HANDLE_VALUE, true, "CreatePipe(Write)");
-		}
+		Utils::Win32::ProcessBuilder creator;
+		creator.WithPath(companion)
+			.WithArgument(true, L"")
+			.WithAppendArgument(L"--handle-instead-of-pid")
+			.WithAppendArgument(L"--action")
+			.WithAppendArgument(LoaderActionToString(action));
+		
+		if (waitFor)
+			creator.WithAppendArgument("--wait-process")
+				.WithAppendArgument("{}", creator.Inherit(waitFor).Value());
+		for (const auto& h : hSources)
+			creator.WithAppendArgument("{}", creator.Inherit(h).Value());
 
-		Utils::Win32::Handle hInheritableStdinRead;
-		if (auto h = INVALID_HANDLE_VALUE;
-			!DuplicateHandle(GetCurrentProcess(), hStdinRead, GetCurrentProcess(), &h, 0, TRUE, DUPLICATE_SAME_ACCESS))
-			throw Utils::Win32::Error("DuplicateHandle(hStdinRead)");
-		else
-			hInheritableStdinRead.Attach(h, INVALID_HANDLE_VALUE, true, "DuplicateHandle(hStdinRead.2)");
-
-		{
-			STARTUPINFOW si{};
-			PROCESS_INFORMATION pi{};
-
-			si.cb = sizeof si;
-			si.dwFlags = STARTF_USESTDHANDLES;
-			si.hStdInput = hInheritableStdinRead;
-			si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-			si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
-			si.wShowWindow = SW_SHOW;
-
-			auto args = std::format(L"\"{}\" --handle-instead-of-pid --action {}", companion, LoaderActionToString(action));
-			std::vector<Utils::Win32::Process> duplicatedHandles;
-			if (waitFor) {
-				auto d = Utils::Win32::Process::DuplicateFrom<Utils::Win32::Process>(waitFor, true);
-				args += std::format(L" --wait-process {}", d.Value());
-				duplicatedHandles.emplace_back(std::move(d));
-			}
-			for (const auto& h : hSources) {
-				auto d = Utils::Win32::Process::DuplicateFrom<Utils::Win32::Process>(h, true);
-				args += std::format(L" {}", d.Value());
-				duplicatedHandles.emplace_back(std::move(d));
-			}
-			
-			if (!CreateProcessW(companion.c_str(), &args[0], nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi))
-				throw Utils::Win32::Error("CreateProcess");
-			
-			assert(pi.hThread);
-			assert(pi.hProcess);
-			
-			CloseHandle(pi.hThread);
-			companionProcess.Attach(pi.hProcess, true, "CreateProcess");
-		}
+		companionProcess = creator.Run().first;
 	}
 	
 	if (!wait) 
