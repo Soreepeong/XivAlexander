@@ -79,7 +79,8 @@ public:
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
 	Implementation(Network::SocketHook* socketHook)
-		: m_socketHook(socketHook) {
+		: m_logger(Misc::Logger::Acquire())
+		, m_socketHook(socketHook) {
 		m_cleanup += m_socketHook->OnSocketFound([&](Network::SingleConnection& conn) {
 			m_handlers.emplace(&conn, std::make_unique<SingleConnectionHandler>(this, conn));
 			});
