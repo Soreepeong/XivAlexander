@@ -108,13 +108,9 @@ Example:
 Changing temporal constants in code below the limit means you're effectively claiming that your latency is below zero,
 which is just impossible. Do NOT modify temporal constants in code, or you ARE cheating. You have been warned.**
 
-## Third-party Libraries
-This project uses [vcpkg](https://github.com/microsoft/vcpkg) to import dependencies.
-
-* https://github.com/TsudaKageyu/minhook
-* https://github.com/madler/zlib
-* https://github.com/mirror/scintilla
-* https://github.com/nlohmann/json
+## Building
+* This project uses [vcpkg](https://github.com/microsoft/vcpkg) to import dependencies.
+* Make `Certificate.pfx` and `CertificatePassword.txt` in `Build` directory.
 
 ## License
 Apache License 2.0
