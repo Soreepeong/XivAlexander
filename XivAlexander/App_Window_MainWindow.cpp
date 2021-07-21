@@ -127,6 +127,10 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					config.UseHighLatencyMitigationLogging = !config.UseHighLatencyMitigationLogging;
 					return 0;
 
+				case ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWINLOGONLY:
+					config.UsePreviewInLogOnly = !config.UsePreviewInLogOnly;
+					return 0;
+
 					/***************************************************************/
 
 				case ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY:
@@ -383,6 +387,7 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) {
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION, config.UseAutoAdjustingExtraDelay, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION, config.UseLatencyCorrection, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING, config.UseHighLatencyMitigationLogging, true);
+	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWINLOGONLY, config.UsePreviewInLogOnly, true);
 	
 	Set(hMenu, ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY, config.ReducePacketDelay, true);
 	Set(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES, config.TakeOverLoopbackAddresses, true);

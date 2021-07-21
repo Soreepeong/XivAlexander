@@ -15,7 +15,7 @@ public:
 			, conn(conn) {
 			using namespace Network::Structures;
 
-			conn.AddIncomingFFXIVMessageHandler(this, [&](FFXIVMessage* pMessage, std::vector<uint8_t>&) {
+			conn.AddIncomingFFXIVMessageHandler(this, [&](auto pBundle, auto pMessage, auto&) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					const char* pszPossibleMessageType;
 					switch (pMessage->Length) {
@@ -37,7 +37,7 @@ public:
 				}
 				return true;
 				});
-			conn.AddOutgoingFFXIVMessageHandler(this, [&](FFXIVMessage* pMessage, std::vector<uint8_t>&) {
+			conn.AddOutgoingFFXIVMessageHandler(this, [&](auto pBundle, auto pMessage, auto&) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					const char* pszPossibleMessageType;
 					switch (pMessage->Length) {

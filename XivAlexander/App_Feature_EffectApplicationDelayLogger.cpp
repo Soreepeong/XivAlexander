@@ -20,7 +20,7 @@ public:
 
 			const auto& config = m_config->Game;
 
-			conn.AddIncomingFFXIVMessageHandler(this, [&](FFXIVMessage* pMessage, std::vector<uint8_t>& additionalMessages) {
+			conn.AddIncomingFFXIVMessageHandler(this, [&](auto pBundle, auto pMessage, auto&) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					if (config.S2C_ActionEffects[0] == pMessage->Data.IPC.SubType
 						|| config.S2C_ActionEffects[1] == pMessage->Data.IPC.SubType

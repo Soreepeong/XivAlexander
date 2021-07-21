@@ -15,7 +15,7 @@ public:
 			, conn(conn) {
 			using namespace Network::Structures;
 
-			conn.AddIncomingFFXIVMessageHandler(this, [&](FFXIVMessage* pMessage, std::vector<uint8_t>&) {
+			conn.AddIncomingFFXIVMessageHandler(this, [&](auto pBundle, auto pMessage, auto&) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					if (pMessage->CurrentActor == pMessage->SourceActor) {
 						if (pMessage->Length == 0x9c ||
@@ -141,7 +141,7 @@ public:
 				}
 				return true;
 				});
-			conn.AddOutgoingFFXIVMessageHandler(this, [&](FFXIVMessage* pMessage, std::vector<uint8_t>&) {
+			conn.AddOutgoingFFXIVMessageHandler(this, [&](auto pBundle, auto pMessage, auto&) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					if (pMessage->Length == 0x40) {
 						// Test ActionRequest

@@ -132,6 +132,7 @@ namespace App {
 			Item<bool> UseAutoAdjustingExtraDelay = CreateConfigItem(this, "UseAutoAdjustingExtraDelay", true);
 			Item<bool> UseLatencyCorrection = CreateConfigItem(this, "UseLatencyCorrection", true);
 			Item<bool> UseHighLatencyMitigationLogging = CreateConfigItem(this, "UseHighLatencyMitigationLogging", true);
+			Item<bool> UsePreviewInLogOnly = CreateConfigItem(this, "UsePreviewInLogOnly", false);
 
 			Item<bool> ReducePacketDelay = CreateConfigItem(this, "ReducePacketDelay", true);
 			Item<bool> TakeOverLoopbackAddresses = CreateConfigItem(this, "TakeOverLoopback", false);

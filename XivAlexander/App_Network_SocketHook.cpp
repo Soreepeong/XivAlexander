@@ -110,8 +110,8 @@ public:
 	const SOCKET m_socket;
 	bool m_unloading = false;
 
-	std::map<size_t, std::vector<std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)>>> m_incomingHandlers;
-	std::map<size_t, std::vector<std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)>>> m_outgoingHandlers;
+	std::map<size_t, std::vector<std::function<bool(Structures::FFXIVBundle*, Structures::FFXIVMessage*, std::vector<uint8_t>&)>>> m_incomingHandlers;
+	std::map<size_t, std::vector<std::function<bool(Structures::FFXIVBundle*, Structures::FFXIVMessage*, std::vector<uint8_t>&)>>> m_outgoingHandlers;
 
 	std::deque<uint64_t> m_keepAliveRequestTimestamps;
 	std::deque<uint64_t> m_observedServerResponseList;
@@ -248,7 +248,7 @@ public:
 					for (const auto& cbs : m_incomingHandlers) {
 						for (const auto& cb : cbs.second) {
 							std::vector<uint8_t> buf;
-							use &= cb(pMessage, buf);
+							use &= cb(pHeader, pMessage, buf);
 							if (!buf.empty())
 								data.insert(data.end(), buf.begin(), buf.end());
 						}
@@ -303,7 +303,7 @@ public:
 					for (const auto& cbs : m_outgoingHandlers) {
 						for (const auto& cb : cbs.second) {
 							std::vector<uint8_t> buf;
-							use &= cb(pMessage, buf);
+							use &= cb(pHeader, pMessage, buf);
 							if (!buf.empty())
 								data.insert(data.end(), buf.begin(), buf.end());
 						}
@@ -508,11 +508,11 @@ App::Network::SingleConnection::SingleConnection(SocketHook* hook, SOCKET s)
 }
 App::Network::SingleConnection::~SingleConnection() = default;
 
-void App::Network::SingleConnection::AddIncomingFFXIVMessageHandler(void* token, std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb) {
+void App::Network::SingleConnection::AddIncomingFFXIVMessageHandler(void* token, std::function<bool(Structures::FFXIVBundle*, Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb) {
 	this->m_pImpl->m_incomingHandlers[reinterpret_cast<size_t>(token)].emplace_back(std::move(cb));
 }
 
-void App::Network::SingleConnection::AddOutgoingFFXIVMessageHandler(void* token, std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb) {
+void App::Network::SingleConnection::AddOutgoingFFXIVMessageHandler(void* token, std::function<bool(Structures::FFXIVBundle*, Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb) {
 	this->m_pImpl->m_outgoingHandlers[reinterpret_cast<size_t>(token)].emplace_back(std::move(cb));
 }
 

@@ -70,7 +70,7 @@ public:
 			const auto& gameConfig = m_config->Game;
 			const auto& runtimeConfig = m_config->Runtime;
 
-			conn.AddOutgoingFFXIVMessageHandler(this, [&](FFXIVMessage* pMessage, std::vector<uint8_t>&) {
+			conn.AddOutgoingFFXIVMessageHandler(this, [&](auto pBundle, auto pMessage, auto&) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					if (pMessage->Data.IPC.SubType == gameConfig.C2S_ActionRequest[0]
 						|| pMessage->Data.IPC.SubType == gameConfig.C2S_ActionRequest[1]) {
@@ -107,7 +107,7 @@ public:
 				}
 				return true;
 				});
-			conn.AddIncomingFFXIVMessageHandler(this, [&](FFXIVMessage* pMessage, std::vector<uint8_t>& additionalMessages) {
+			conn.AddIncomingFFXIVMessageHandler(this, [&](FFXIVBundle* pBundle, FFXIVMessage* pMessage, std::vector<uint8_t>& additionalMessages) {
 				const auto now = PendingAction::Now();
 
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::CustomType) {
@@ -187,11 +187,13 @@ public:
 							}
 							
 							if (waitTime < 0) {
-								actionEffect.AnimationLockDuration = 0;
+								if (!runtimeConfig.UsePreviewInLogOnly)
+									actionEffect.AnimationLockDuration = 0;
 								description << std::format(" wait={}ms->{}ms->0ms (ping/jitter too high)",
 									originalWaitTime, waitTime);
 							} else if (waitTime != originalWaitTime) {
-								actionEffect.AnimationLockDuration = waitTime / 1000.f;
+								if (!runtimeConfig.UsePreviewInLogOnly)
+									actionEffect.AnimationLockDuration = waitTime / 1000.f;
 								description << std::format(" wait={}ms->{}ms", originalWaitTime, waitTime);
 							} else
 								description << std::format(" wait={}ms", originalWaitTime);

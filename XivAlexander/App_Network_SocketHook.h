@@ -8,6 +8,7 @@ namespace App {
 
 namespace App::Network {
 	namespace Structures {
+		struct FFXIVBundle;
 		struct FFXIVMessage;
 	}
 
@@ -23,8 +24,8 @@ namespace App::Network {
 		SingleConnection(SocketHook* hook, SOCKET s);
 		~SingleConnection();
 
-		void AddIncomingFFXIVMessageHandler(void* token, std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb);
-		void AddOutgoingFFXIVMessageHandler(void* token, std::function<bool(Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb);
+		void AddIncomingFFXIVMessageHandler(void* token, std::function<bool(Structures::FFXIVBundle*, Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb);
+		void AddOutgoingFFXIVMessageHandler(void* token, std::function<bool(Structures::FFXIVBundle*, Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb);
 		void RemoveMessageHandlers(void* token);
 		void ResolveAddresses();
 		
