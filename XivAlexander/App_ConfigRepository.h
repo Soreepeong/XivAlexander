@@ -131,6 +131,7 @@ namespace App {
 			Item<bool> UseHighLatencyMitigation = CreateConfigItem(this, "UseHighLatencyMitigation", true);
 			Item<bool> UseAutoAdjustingExtraDelay = CreateConfigItem(this, "UseAutoAdjustingExtraDelay", true);
 			Item<bool> UseLatencyCorrection = CreateConfigItem(this, "UseLatencyCorrection", true);
+			Item<bool> UseEarlyPenalty = CreateConfigItem(this, "UseEarlyPenalty", false);
 			Item<bool> UseHighLatencyMitigationLogging = CreateConfigItem(this, "UseHighLatencyMitigationLogging", true);
 			Item<bool> UsePreviewInLogOnly = CreateConfigItem(this, "UsePreviewInLogOnly", false);
 

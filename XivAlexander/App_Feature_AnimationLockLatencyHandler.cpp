@@ -29,6 +29,7 @@ public:
 			uint64_t ResponseTimestamp = 0;
 			bool CastFlag = false;
 			int64_t OriginalWaitTime = 0;
+			int64_t WaitTimeAdjustment = 0;
 
 			PendingAction()
 				: ActionId(0)
@@ -80,12 +81,14 @@ public:
 						const auto delay = static_cast<int64_t>(m_pendingActions.back().RequestTimestamp - m_lastAnimationLockEndsAt);
 
 						if (delay < 0) {
-							// If somehow latest action request has been made before last animation lock end time,
-							// penalize by forcing the next action to be usable after the early duration passes.
-							m_lastAnimationLockEndsAt -= delay;
+							if (runtimeConfig.UseEarlyPenalty) {
+								// If somehow latest action request has been made before last animation lock end time,
+								// penalize by forcing the next action to be usable after the early duration passes.
+								m_lastAnimationLockEndsAt -= delay;
 
-							// Record how early did the game let the user user action, and reflect that when deciding next extraDelay.
-							m_earlyRequestsDuration.AddValue(-delay);
+								// Record how early did the game let the user user action, and reflect that when deciding next extraDelay.
+								m_earlyRequestsDuration.AddValue(-delay);
+							}
 							
 						} else {
 							// Otherwise, if there was no action queued to begin with before the current one, update the base lock time to now.
@@ -96,11 +99,13 @@ public:
 						if (runtimeConfig.UseHighLatencyMitigationLogging)
 							m_pImpl->m_logger->Format(
 								LogCategory::AnimationLockLatencyHandler,
-								"{:x}: C2S_ActionRequest({:04x}): actionId={:04x} sequence={:04x} delay={}ms{}",
+								"{:x}: C2S_ActionRequest({:04x}): actionId={:04x} sequence={:04x} delay={}{:+}ms prevNextRelative={}ms{}",
 								conn.GetSocket(),
 								pMessage->Data.IPC.SubType,
 								actionRequest.ActionId,
 								actionRequest.Sequence,
+								m_latestSuccessfulRequest.OriginalWaitTime,
+								m_pendingActions.back().RequestTimestamp - m_latestSuccessfulRequest.RequestTimestamp - m_latestSuccessfulRequest.OriginalWaitTime,
 								std::min<int64_t>(10000, delay),
 								delay >= 10000 ? "+" : "");
 					}
@@ -187,13 +192,17 @@ public:
 							}
 							
 							if (waitTime < 0) {
-								if (!runtimeConfig.UsePreviewInLogOnly)
+								if (!runtimeConfig.UsePreviewInLogOnly) {
 									actionEffect.AnimationLockDuration = 0;
+									m_latestSuccessfulRequest.WaitTimeAdjustment = -m_latestSuccessfulRequest.OriginalWaitTime;
+								}
 								description << std::format(" wait={}ms->{}ms->0ms (ping/jitter too high)",
 									originalWaitTime, waitTime);
 							} else if (waitTime != originalWaitTime) {
-								if (!runtimeConfig.UsePreviewInLogOnly)
+								if (!runtimeConfig.UsePreviewInLogOnly) {
 									actionEffect.AnimationLockDuration = waitTime / 1000.f;
+									m_latestSuccessfulRequest.WaitTimeAdjustment = waitTime - originalWaitTime;
+								}
 								description << std::format(" wait={}ms->{}ms", originalWaitTime, waitTime);
 							} else
 								description << std::format(" wait={}ms", originalWaitTime);
@@ -341,8 +350,8 @@ public:
 						// Correct latency value based on estimate if server response time is stable.
 						latencyAdjusted = std::max(latencyEstimate, latencyAdjusted);
 					}
-
-					const auto earlyPenalty = m_earlyRequestsDuration.Max();
+					
+					const auto earlyPenalty = runtimeConfig.UseEarlyPenalty ? m_earlyRequestsDuration.Max() : 0;
 					if (earlyPenalty) {
 						description << std::format(" earlyPenalty={}ms", earlyPenalty);
 					}

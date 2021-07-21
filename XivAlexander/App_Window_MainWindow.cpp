@@ -123,6 +123,10 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					config.UseLatencyCorrection = !config.UseLatencyCorrection;
 					return 0;
 
+				case ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY:
+					config.UseEarlyPenalty = !config.UseEarlyPenalty;
+					return 0;
+
 				case ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING:
 					config.UseHighLatencyMitigationLogging = !config.UseHighLatencyMitigationLogging;
 					return 0;
@@ -340,7 +344,10 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			L"* Turn off \"Use Delay Detection\" and \"Use Latency Correction\" if any of the following is true.\n"
 			L"  * You're using a VPN software and your latency is being displayed below 10ms when it shouldn't be.\n"
 			L"  * Your ping is above 200ms.\n"
-			L"  * You can't double weave comfortably.",
+			L"  * You can't double weave comfortably.\n"
+			L"* Keep \"Use Early Penalty\" off, unless you believe that you should not be allowed to use action before instructed animation lock expires.\n"
+			L"  * Depending on your FPS, the game will let your action go through 1 frame before the animation lock expires.\n"
+			L"  * Expect 16ms early animation lock expiry if you're playing on 60FPS, 33ms if 30FPS, and so on.",
 			GetCurrentProcessId(), m_path, m_sVersion, m_sRegion,
 			m_pApp->GetSocketHook()->Describe());
 		const auto pad = static_cast<int>(8 * zoom);
@@ -386,6 +393,7 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) {
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE, config.UseHighLatencyMitigation, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION, config.UseAutoAdjustingExtraDelay, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION, config.UseLatencyCorrection, true);
+	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY, config.UseEarlyPenalty, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING, config.UseHighLatencyMitigationLogging, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWINLOGONLY, config.UsePreviewInLogOnly, true);
 	
