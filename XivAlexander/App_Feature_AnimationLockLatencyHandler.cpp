@@ -192,14 +192,14 @@ public:
 							}
 							
 							if (waitTime < 0) {
-								if (!runtimeConfig.UsePreviewInLogOnly) {
+								if (!runtimeConfig.UseHighLatencyMitigationPreviewMode) {
 									actionEffect.AnimationLockDuration = 0;
 									m_latestSuccessfulRequest.WaitTimeAdjustment = -m_latestSuccessfulRequest.OriginalWaitTime;
 								}
 								description << std::format(" wait={}ms->{}ms->0ms (ping/jitter too high)",
 									originalWaitTime, waitTime);
 							} else if (waitTime != originalWaitTime) {
-								if (!runtimeConfig.UsePreviewInLogOnly) {
+								if (!runtimeConfig.UseHighLatencyMitigationPreviewMode) {
 									actionEffect.AnimationLockDuration = waitTime / 1000.f;
 									m_latestSuccessfulRequest.WaitTimeAdjustment = waitTime - originalWaitTime;
 								}

@@ -131,8 +131,8 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					config.UseHighLatencyMitigationLogging = !config.UseHighLatencyMitigationLogging;
 					return 0;
 
-				case ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWINLOGONLY:
-					config.UsePreviewInLogOnly = !config.UsePreviewInLogOnly;
+				case ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE:
+					config.UseHighLatencyMitigationPreviewMode = !config.UseHighLatencyMitigationPreviewMode;
 					return 0;
 
 					/***************************************************************/
@@ -395,7 +395,7 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) {
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION, config.UseLatencyCorrection, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY, config.UseEarlyPenalty, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING, config.UseHighLatencyMitigationLogging, true);
-	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWINLOGONLY, config.UsePreviewInLogOnly, true);
+	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE, config.UseHighLatencyMitigationPreviewMode, true);
 	
 	Set(hMenu, ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY, config.ReducePacketDelay, true);
 	Set(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES, config.TakeOverLoopbackAddresses, true);

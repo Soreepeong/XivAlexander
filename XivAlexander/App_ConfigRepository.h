@@ -133,7 +133,7 @@ namespace App {
 			Item<bool> UseLatencyCorrection = CreateConfigItem(this, "UseLatencyCorrection", true);
 			Item<bool> UseEarlyPenalty = CreateConfigItem(this, "UseEarlyPenalty", false);
 			Item<bool> UseHighLatencyMitigationLogging = CreateConfigItem(this, "UseHighLatencyMitigationLogging", true);
-			Item<bool> UsePreviewInLogOnly = CreateConfigItem(this, "UsePreviewInLogOnly", false);
+			Item<bool> UseHighLatencyMitigationPreviewMode = CreateConfigItem(this, "UseHighLatencyMitigationPreviewMode", false);
 
 			Item<bool> ReducePacketDelay = CreateConfigItem(this, "ReducePacketDelay", true);
 			Item<bool> TakeOverLoopbackAddresses = CreateConfigItem(this, "TakeOverLoopback", false);
