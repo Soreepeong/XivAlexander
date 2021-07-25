@@ -475,16 +475,20 @@ int Utils::Win32::Process::UnloadModule(HMODULE hModule) const {
 }
 
 std::vector<MEMORY_BASIC_INFORMATION> Utils::Win32::Process::GetCommittedImageAllocation(const std::filesystem::path & path) const {
-	const auto ntpath = ToNativePath(path);
-	const auto ntpathw = ntpath.wstring();
-
 	std::vector<MEMORY_BASIC_INFORMATION> regions;
 	for (MEMORY_BASIC_INFORMATION mbi{};
 		VirtualQueryEx(m_object, mbi.BaseAddress, &mbi, sizeof mbi);
 		mbi.BaseAddress = static_cast<char*>(mbi.BaseAddress) + mbi.RegionSize) {
 		if (!(mbi.State & MEM_COMMIT) || mbi.Type != MEM_IMAGE)
 			continue;
-		if (GetMappedImageNativePath(m_object, mbi.BaseAddress).wstring() == ntpathw)
+
+		std::filesystem::path imagePath;
+		try {
+			imagePath = GetMappedImageNativePath(m_object, mbi.BaseAddress);
+		} catch (const std::filesystem::filesystem_error&) {
+			continue;
+		}
+		if (equivalent(imagePath, path))
 			regions.emplace_back(mbi);
 	}
 	return regions;

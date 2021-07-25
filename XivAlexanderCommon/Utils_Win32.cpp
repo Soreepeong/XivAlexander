@@ -213,10 +213,12 @@ bool Utils::Win32::IsUserAnAdmin() {
 }
 
 std::filesystem::path Utils::Win32::GetMappedImageNativePath(HANDLE hProcess, void* lpMem) {
-	std::wstring fn;
-	fn.resize(PATHCCH_MAX_CCH);
-	fn.resize(GetMappedFileNameW(hProcess, lpMem, &fn[0], static_cast<DWORD>(fn.size())));
-	return L"\\\\?" + fn;
+	std::wstring result;
+	result.resize(PATHCCH_MAX_CCH);
+	result.resize(GetMappedFileNameW(hProcess, lpMem, &result[0], static_cast<DWORD>(result.size())));
+	if (result.starts_with(LR"(\Device\)"))
+		return LR"(\\?\)" + result.substr(8);
+	throw std::runtime_error(std::format("Path unprocessable: {}", result));
 }
 
 std::filesystem::path Utils::Win32::ToNativePath(const std::filesystem::path& path) {
@@ -228,8 +230,9 @@ std::filesystem::path Utils::Win32::ToNativePath(const std::filesystem::path& pa
 	result.resize(GetFinalPathNameByHandleW(hFile, &result[0], static_cast<DWORD>(result.size()), VOLUME_NAME_NT));
 	if (result.empty())
 		throw Error("GetFinalPathNameByHandleW");
-
-	return L"\\\\?" + result;
+	if (result.starts_with(LR"(\Device\)"))
+		return LR"(\\?\)" + result.substr(8);
+	throw std::runtime_error(std::format("Path unprocessable: {}", result));
 }
 
 static Utils::CallOnDestruction WithRunAsInvoker() {
