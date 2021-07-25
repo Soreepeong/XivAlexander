@@ -244,7 +244,11 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					/***************************************************************/
 
 				case ID_TRAYMENU_CHECKFORUPDATES:
-					XivAlexDll::LaunchXivAlexLoaderWithTargetHandles({Utils::Win32::Process::Current()}, XivAlexDll::LoaderAction::UpdateCheck, false);
+					try {
+						LaunchXivAlexLoaderWithTargetHandles({ Utils::Win32::Process::Current() }, XivAlexDll::LoaderAction::UpdateCheck, false);
+					} catch (const std::exception& e) {
+						Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, L"XivAlexander", L"Failed to launch update checker: {}", e.what());
+					}
 					return 0;
 
 				case ID_TRAYMENU_UNLOADXIVALEXANDER:
