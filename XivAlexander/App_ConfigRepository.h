@@ -123,6 +123,7 @@ namespace App {
 			SystemDefault,
 			English,
 			Korean,
+			Japanese,
 		};
 
 		class Runtime : public BaseRepository {

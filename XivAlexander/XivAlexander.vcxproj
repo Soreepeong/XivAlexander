@@ -340,6 +340,7 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="resource1.h" />
+    <ClInclude Include="resource2.h" />
     <ClInclude Include="XivAlexander\XivAlexander.h" />
   </ItemGroup>
   <ItemGroup>
@@ -357,6 +358,7 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
       <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</NullTerminateStrings>
       <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</NullTerminateStrings>
     </ResourceCompile>
+    <ResourceCompile Include="XivAlexander_ja.rc" />
     <ResourceCompile Include="XivAlexander_ko.rc">
       <Culture Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">0x0412</Culture>
       <Culture Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">0x0412</Culture>
