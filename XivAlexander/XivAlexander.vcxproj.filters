@@ -166,6 +166,9 @@
       <Filter>Exported</Filter>
     </ClInclude>
     <ClInclude Include="DllMain.h" />
+    <ClInclude Include="resource1.h">
+      <Filter>Resources</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\Graphics\Icon.ico">
@@ -174,6 +177,9 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="XivAlexander.rc">
+      <Filter>Resources</Filter>
+    </ResourceCompile>
+    <ResourceCompile Include="XivAlexander_ko.rc">
       <Filter>Resources</Filter>
     </ResourceCompile>
   </ItemGroup>

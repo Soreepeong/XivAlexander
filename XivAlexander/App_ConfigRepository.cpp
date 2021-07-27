@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "App_ConfigRepository.h"
+#include "resource.h"
 
 std::weak_ptr<App::Config> App::Config::s_instance;
 
@@ -27,11 +28,13 @@ void App::Config::BaseRepository::Reload(bool announceChange) {
 			std::ifstream in(m_sConfigPath);
 			in >> config;
 		} catch (std::exception& e) {
-			m_logger->Format<LogLevel::Warning>(LogCategory::General, "Failed to load configuration file: {}", e.what());
+			m_logger->FormatDefaultLanguage<LogLevel::Warning>(LogCategory::General,
+				IDS_ERROR_CONFIGURATION_LOAD,
+				e.what());
 		}
 	} else {
 		changed = true;
-		m_logger->Format(LogCategory::General, "Creating new config file: {}", Utils::ToUtf8(m_sConfigPath));
+		m_logger->FormatDefaultLanguage(LogCategory::General, IDS_LOG_NEW_CONFIG, Utils::ToUtf8(m_sConfigPath));
 	}
 
 	m_destructionCallbacks.clear();
@@ -74,6 +77,23 @@ std::shared_ptr<App::Config> App::Config::Acquire() {
 	return r;
 }
 
+WORD App::Config::Runtime::GetLangId() const {
+	switch (Language) {
+	case Language::SystemDefault:
+		return MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL);
+	case Language::English:
+		return MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
+	case Language::Korean:
+		return MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN);
+	}
+
+	return MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL);
+}
+
+LPCWSTR App::Config::Runtime::GetStringRes(UINT uId) const {
+	return FindStringResourceEx(Dll::Module(), uId, GetLangId()) + 1;
+}
+
 App::Config::Config(std::wstring runtimeConfigPath, std::wstring gameInfoPath)
 	: Runtime(this, std::move(runtimeConfigPath))
 	, Game(this, std::move(gameInfoPath)) {
@@ -99,14 +119,16 @@ void App::Config::BaseRepository::Save() {
 		std::ofstream out(m_sConfigPath);
 		out << config.dump(1, '\t');
 	} catch (std::exception& e) {
-		m_logger->Format<LogLevel::Error>(LogCategory::General, "JSON Config save error: {}", e.what());
+		m_logger->FormatDefaultLanguage<LogLevel::Error>(LogCategory::General, IDS_ERROR_CONFIGURATION_SAVE, e.what());
 	}
 }
 
 bool App::Config::Item<uint16_t>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
 	if (const auto it = data.find(Name()); it != data.end()) {
 		uint16_t newValue;
+		std::string strVal;
 		try {
+			strVal = it->get<std::string>();
 			if (it->is_string())
 				newValue = static_cast<uint16_t>(std::stoi(it->get<std::string>(), nullptr, 0));
 			else if (it->is_number_integer())
@@ -114,7 +136,7 @@ bool App::Config::Item<uint16_t>::LoadFrom(const nlohmann::json & data, bool ann
 			else
 				return false;
 		} catch (std::exception& e) {
-			m_pBaseRepository->m_logger->Format(LogCategory::General, "Config value parse error: {}", e.what());
+			m_pBaseRepository->m_logger->FormatDefaultLanguage(LogCategory::General, IDS_ERROR_CONFIGURATION_PARSE_VALUE, strVal, e.what());
 		}
 		if (announceChanged)
 			this->operator=(newValue);
@@ -126,6 +148,36 @@ bool App::Config::Item<uint16_t>::LoadFrom(const nlohmann::json & data, bool ann
 
 void App::Config::Item<uint16_t>::SaveTo(nlohmann::json & data) const {
 	data[Name()] = std::format("0x{:04x}", m_value);
+}
+
+bool App::Config::Item<App::Config::Language>::LoadFrom(const nlohmann::json& data, bool announceChanged) {
+	if (const auto it = data.find(Name()); it != data.end()) {
+		auto newValueString = Utils::FromUtf8(it->get<std::string>());
+		CharLowerW(&newValueString[0]);
+		
+		auto newValue = Language::SystemDefault;
+		if (newValueString.size() > 0) {
+			if (newValueString.substr(0, std::min<size_t>(7, newValueString.size())) == L"english")
+				newValue = Language::English;
+			else if (newValueString.substr(0, std::min<size_t>(6, newValueString.size())) == L"korean")
+				newValue = Language::Korean;
+		}
+		
+		if (announceChanged)
+			this->operator=(newValue);
+		else
+			Assign(newValue);
+	}
+	return false;
+}
+
+void App::Config::Item<App::Config::Language>::SaveTo(nlohmann::json& data) const {
+	if (m_value == Language::SystemDefault)
+		data[Name()] = "SystemDefault";
+	else if (m_value == Language::English)
+		data[Name()] = "English";
+	else if (m_value == Language::Korean)
+		data[Name()] = "Korean";
 }
 
 template<typename T>

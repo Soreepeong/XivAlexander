@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "App_Network_IcmpPingTracker.h"
+#include "resource.h"
 
 struct ConnectionPair {
 	in_addr Source;
@@ -14,8 +15,9 @@ struct ConnectionPair {
 class App::Network::IcmpPingTracker::Implementation {
 public:
 	class SingleTracker;
-
+	
 	const std::shared_ptr<Misc::Logger> m_logger;
+	const std::shared_ptr<Config> m_config;
 
 	std::mutex m_trackersMapLock;
 	std::map<ConnectionPair, std::shared_ptr<SingleTracker>> m_trackersByAddress;
@@ -52,6 +54,7 @@ public:
 	private:
 		void Run() {
 			const auto& logger = m_icmpPingTracker->m_pImpl->m_logger;
+			const auto& config = m_icmpPingTracker->m_pImpl->m_config;
 			try {
 				const auto hIcmp = Utils::Win32::Icmp(IcmpCreateFile(), INVALID_HANDLE_VALUE);
 
@@ -59,7 +62,8 @@ public:
 				unsigned char replyBuf[sizeof(ICMP_ECHO_REPLY) + sizeof sendBuf + 8]{};
 				
 				logger->Format(LogCategory::SocketHook,
-					"Ping {} -> {}: track start",
+					config->Runtime.GetLangId(),
+					IDS_PINGTRACKER_START,
 					Utils::ToString(m_pair.Source),
 					Utils::ToString(m_pair.Destination));
 				size_t consecutiveFailureCount = 0;
@@ -78,7 +82,8 @@ public:
 					
 					if (m_hExitEvent.Wait(waitTime) != WAIT_TIMEOUT) {
 						logger->Format(LogCategory::SocketHook,
-							"Ping {} -> {}: track end",
+							config->Runtime.GetLangId(),
+							IDS_PINGTRACKER_END,
 							Utils::ToString(m_pair.Source),
 							Utils::ToString(m_pair.Destination));
 						break;
@@ -86,15 +91,18 @@ public:
 
 					if (consecutiveFailureCount >= 10) {
 						logger->Format<LogLevel::Warning>(LogCategory::SocketHook,
-							"Ping {} -> {}: track end due to 10 consecutive ping failures",
+							config->Runtime.GetLangId(),
+							IDS_PINGTRACKER_END_FAILURE_COUNT,
 							Utils::ToString(m_pair.Source),
-							Utils::ToString(m_pair.Destination));
+							Utils::ToString(m_pair.Destination),
+							10);
 						break;
 					}
 				} while (true);
 			} catch (const std::exception& e) {
 				logger->Format<LogLevel::Error>(LogCategory::SocketHook,
-					"Ping {} -> {}: track end due to error: {}",
+					config->Runtime.GetLangId(),
+					IDS_PINGTRACKER_END_ERROR,
 					Utils::ToString(m_pair.Source),
 					Utils::ToString(m_pair.Destination),
 					e.what());
@@ -103,7 +111,8 @@ public:
 	};
 
 	Implementation()
-		: m_logger(Misc::Logger::Acquire()) {
+		: m_logger(Misc::Logger::Acquire())
+		, m_config(Config::Acquire()) {
 	}
 };
 

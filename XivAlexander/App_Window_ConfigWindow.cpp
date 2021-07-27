@@ -8,16 +8,15 @@ static WNDCLASSEXW WindowClass() {
 	const auto hIcon = Utils::Win32::Icon(
 		LoadIconW(Dll::Module(), MAKEINTRESOURCEW(IDI_TRAY_ICON)),
 		nullptr,
-		"Failed to load app icon.");
-	WNDCLASSEXW wcex;
-	ZeroMemory(&wcex, sizeof wcex);
+		"LoadIconW");
+	WNDCLASSEXW wcex{};
 	wcex.cbSize = sizeof(WNDCLASSEX);
 	wcex.style = CS_HREDRAW | CS_VREDRAW;
 	wcex.cbClsExtra = 0;
 	wcex.cbWndExtra = 0;
 	wcex.hInstance = Dll::Module();
 	wcex.hIcon = hIcon;
-	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
+	wcex.hCursor = LoadCursorW(nullptr, IDC_ARROW);
 	wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
 	wcex.lpszMenuName = MAKEINTRESOURCE(IDR_CONFIG_EDITOR_MENU);
 	wcex.lpszClassName = L"XivAlexander::Window::Config";
@@ -25,9 +24,11 @@ static WNDCLASSEXW WindowClass() {
 	return wcex;
 }
 
-App::Window::Config::Config(App::Config::BaseRepository* pRepository)
-	: BaseWindow(WindowClass(), L"Config", WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr)
-	, m_pRepository(pRepository) {
+App::Window::Config::Config(UINT nTitleStringResourceId, App::Config::BaseRepository* pRepository)
+	: BaseWindow(WindowClass(), nullptr, WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr)
+	, m_pRepository(pRepository)
+	, m_nTitleStringResourceId(nTitleStringResourceId) {
+	
 	m_hScintilla = CreateWindowExW(0, L"Scintilla", L"", WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
 		0, 0, 0, 0, m_hWnd, nullptr, Dll::Module(), nullptr);
 	m_direct = reinterpret_cast<SciFnDirect>(SendMessageW(m_hScintilla, SCI_GETDIRECTFUNCTION, 0, 0));
@@ -40,6 +41,7 @@ App::Window::Config::Config(App::Config::BaseRepository* pRepository)
 	m_direct(m_directPtr, SCI_SETLEXERLANGUAGE, 0, reinterpret_cast<sptr_t>("json"));
 
 	Revert();
+	ApplyLanguage(m_config->Runtime.GetLangId());
 	ShowWindow(m_hWnd, SW_SHOW);
 }
 
@@ -73,7 +75,7 @@ void App::Window::Config::Revert() {
 		}
 		buffer = nlohmann::json::parse(buffer).dump(1, '\t');
 	} catch (std::exception& e) {
-		m_logger->Format(LogCategory::General, "Failed to reload previous configuration file: {}", e.what());
+		m_logger->Format(LogCategory::General, m_config->Runtime.GetLangId(), IDS_ERROR_CONFIGURATION_LOAD, e.what());
 	}
 	m_originalConfig = std::move(buffer);
 	m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(&m_originalConfig[0]));
@@ -86,14 +88,16 @@ bool App::Window::Config::TrySave() {
 	try {
 		buf = nlohmann::json::parse(buf).dump(1, '\t');
 	} catch (nlohmann::json::exception& e) {
-		Utils::Win32::MessageBoxF(m_hWnd, MB_ICONERROR, L"XivAlexander", L"Invalid JSON: {}", e.what());
+		Utils::Win32::MessageBoxF(m_hWnd, MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+			m_config->Runtime.FormatStringRes(IDS_ERROR_CONFIGURATION_SAVE, e.what()));
 		return false;
 	}
 	try {
 		std::ofstream out(m_pRepository->GetConfigPath());
 		out << buf;
 	} catch (std::exception& e) {
-		Utils::Win32::MessageBoxF(m_hWnd, MB_OK, L"XivAlexander", L"Failed to save new configuration file: {}", e.what());
+		Utils::Win32::MessageBoxF(m_hWnd, MB_OK, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+			m_config->Runtime.FormatStringRes(IDS_ERROR_CONFIGURATION_SAVE, e.what()));
 		return false;
 	}
 	m_originalConfig = std::move(buf);
@@ -106,16 +110,37 @@ App::Config::BaseRepository* App::Window::Config::GetRepository() const {
 	return m_pRepository;
 }
 
-LRESULT App::Window::Config::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
+void App::Window::Config::ApplyLanguage(WORD languageId) {
+	m_hAcceleratorWindow = { Dll::Module(), RT_ACCELERATOR, MAKEINTRESOURCE(IDR_CONFIG_EDITOR_ACCELERATOR), languageId };
+	SetWindowTextW(m_hWnd, m_config->Runtime.GetStringRes(m_nTitleStringResourceId));
+	Utils::Win32::Menu(Dll::Module(), RT_MENU, MAKEINTRESOURCE(IDR_CONFIG_EDITOR_MENU), languageId).AttachAndSwap(m_hWnd);
+}
+
+LRESULT App::Window::Config::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
-		case WM_COMMAND:
-		{
+		case WM_INITMENUPOPUP: {
+			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST, true);
+			break;
+		}
+		case WM_COMMAND: {
 			switch (LOWORD(wParam)) {
-				case ID_FILE_APPLY:
+				case ID_FILE_SAVE:
 					TrySave();
 					return 0;
+				
 				case ID_FILE_REVERT:
 					Revert();
+					return 0;
+
+				case ID_FILE_CLOSE:
+					SendMessageW(m_hWnd, WM_CLOSE, 0, 0);
+					return 0;
+
+				case ID_VIEW_ALWAYSONTOP:
+					if (GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST)
+						SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+					else
+						SetWindowPos(m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 					return 0;
 			}
 			break;
@@ -125,7 +150,8 @@ LRESULT App::Window::Config::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(&buf[0]));
 			buf.resize(buf.length() - 1);
 			if (buf != m_originalConfig) {
-				switch (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNOCANCEL | MB_ICONQUESTION, L"XivAlexander", L"Apply changed configuration?")) {
+				switch (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNOCANCEL | MB_ICONQUESTION, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+					m_config->Runtime.GetStringRes(IDS_CONFIRM_CONFIG_WINDOW_CLOSE))) {
 					case IDCANCEL:
 						return 0;
 					case IDYES:
@@ -135,7 +161,7 @@ LRESULT App::Window::Config::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			}
 			break;
 	}
-	return BaseWindow::WndProc(uMsg, wParam, lParam);
+	return BaseWindow::WndProc(hwnd, uMsg, wParam, lParam);
 }
 
 void App::Window::Config::OnLayout(double zoom, double width, double height) {

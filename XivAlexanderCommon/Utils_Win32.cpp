@@ -5,6 +5,7 @@
 #include "Utils_Win32_Closeable.h"
 #include "Utils_Win32_Handle.h"
 #include "Utils_Win32_Process.h"
+#include "Utils_Win32_Resource.h"
 
 std::string Utils::Win32::FormatWindowsErrorMessage(unsigned int errorCode) {
 	std::set<std::string> messages;
@@ -36,7 +37,7 @@ std::string Utils::Win32::FormatWindowsErrorMessage(unsigned int errorCode) {
 	for (const auto& message : messages) {
 		if (!res.empty())
 			res += " / ";
-		res += message;
+		res += StringTrim(message);
 	}
 	return res;
 }

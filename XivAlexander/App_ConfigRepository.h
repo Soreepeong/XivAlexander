@@ -119,6 +119,12 @@ namespace App {
 			}
 		};
 
+		enum class Language {
+			SystemDefault,
+			English,
+			Korean,
+		};
+
 		class Runtime : public BaseRepository {
 			friend class Config;
 			using BaseRepository::BaseRepository;
@@ -146,6 +152,15 @@ namespace App {
 			Item<bool> ShowLoggingWindow = CreateConfigItem(this, "ShowLoggingWindow", true);
 			Item<bool> ShowControlWindow = CreateConfigItem(this, "ShowControlWindow", true);
 			Item<bool> UseAllIpcMessageLogger = CreateConfigItem(this, "UseAllIpcMessageLogger", false);
+
+			Item<Language> Language = CreateConfigItem(this, "Language", Language::SystemDefault);
+
+			[[nodiscard]] WORD GetLangId() const;
+			[[nodiscard]] LPCWSTR GetStringRes(UINT uId) const;
+			template <typename ... Args>
+			[[nodiscard]] std::wstring FormatStringRes(UINT uId, Args ... args) const {
+				return std::format(GetStringRes(uId), std::forward<Args>(args)...);
+			}
 		};
 
 		class Game : public BaseRepository {

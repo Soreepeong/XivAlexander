@@ -14,9 +14,8 @@ static const int TimerIdRepaint = 101;
 static WNDCLASSEXW WindowClass() {
 	const auto hIcon = Utils::Win32::Icon(LoadIconW(Dll::Module(), MAKEINTRESOURCEW(IDI_TRAY_ICON)),
 		nullptr,
-		"Failed to load app icon.");
-	WNDCLASSEXW wcex;
-	ZeroMemory(&wcex, sizeof wcex);
+		"LoadIconW");
+	WNDCLASSEXW wcex{};
 	wcex.cbSize = sizeof(WNDCLASSEX);
 	wcex.style = CS_HREDRAW | CS_VREDRAW;
 	wcex.cbClsExtra = 0;
@@ -25,14 +24,13 @@ static WNDCLASSEXW WindowClass() {
 	wcex.hIcon = hIcon;
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
 	wcex.hbrBackground = static_cast<HBRUSH>(GetStockObject(HOLLOW_BRUSH));
-	wcex.lpszMenuName = MAKEINTRESOURCE(IDR_TRAY_MENU);
 	wcex.lpszClassName = L"XivAlexander::Window::Main";
 	wcex.hIconSm = hIcon;
 	return wcex;
 }
 
 App::Window::Main::Main(XivAlexApp* pApp, std::function<void()> unloadFunction)
-	: BaseWindow(WindowClass(), L"XivAlexander", WS_OVERLAPPEDWINDOW, WS_EX_TOPMOST, CW_USEDEFAULT, CW_USEDEFAULT, 480, 160, nullptr, nullptr)
+	: BaseWindow(WindowClass(), nullptr, WS_OVERLAPPEDWINDOW, WS_EX_TOPMOST, CW_USEDEFAULT, CW_USEDEFAULT, 480, 160, nullptr, nullptr)
 	, m_pApp(pApp)
 	, m_triggerUnload(std::move(unloadFunction))
 	, m_uTaskbarRestartMessage(RegisterWindowMessageW(L"TaskbarCreated"))
@@ -42,16 +40,12 @@ App::Window::Main::Main(XivAlexApp* pApp, std::function<void()> unloadFunction)
 		try {
 			return XivAlex::ParseGameCommandLine(Utils::ToUtf8(Utils::Win32::GetCommandLineWithoutProgramName()), &m_bUseParameterObfuscation);
 		} catch (const std::exception& e) {
-			m_logger->Format<LogLevel::Warning>(LogCategory::General, "Could not resolve game launch parameters. Restart feature will be disabled. ({})", e.what());
+			m_logger->Format<LogLevel::Warning>(LogCategory::General, m_config->Runtime.GetLangId(), IDS_WARNING_GAME_PARAMETER_PARSE, e.what());
 			return {};
 		}
 	}()) {
 
 	std::tie(m_sRegion, m_sVersion) = XivAlex::ResolveGameReleaseRegion();
-
-	const auto title = std::format(L"XivAlexander: {}, {}, {}", GetCurrentProcessId(), m_sRegion, m_sVersion);
-	SetWindowTextW(m_hWnd, title.c_str());
-	ModifyMenu(GetMenu(m_hWnd), ID_TRAYMENU_CURRENTINFO, MF_BYCOMMAND | MF_DISABLED, ID_TRAYMENU_CURRENTINFO, title.c_str());
 
 	RegisterTrayIcon();
 
@@ -72,6 +66,7 @@ App::Window::Main::Main(XivAlexApp* pApp, std::function<void()> unloadFunction)
 	m_cleanup += m_pApp->GetSocketHook()->OnSocketGone([this](auto&) {
 		InvalidateRect(m_hWnd, nullptr, false);
 		});
+	ApplyLanguage(m_config->Runtime.GetLangId());
 }
 
 App::Window::Main::~Main() {
@@ -79,16 +74,58 @@ App::Window::Main::~Main() {
 	Destroy();
 }
 
-LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
+void App::Window::Main::ShowContextMenu(const BaseWindow* parent) const {
+	if (!parent)
+		parent = this;
+	
+	const auto hMenu = GetMenu(m_hWnd);
+	const auto hSubMenu = GetSubMenu(hMenu, 0);
+	RepopulateMenu(hSubMenu);
+	POINT curPoint;
+	GetCursorPos(&curPoint);
+
+	BOOL result;
+
+	{
+		const auto temporaryFocus = parent->WithTemporaryFocus();
+		result = TrackPopupMenu(
+			GetSubMenu(GetMenu(m_hWnd), 0),
+			TPM_RETURNCMD | TPM_NONOTIFY,
+			curPoint.x,
+			curPoint.y,
+			0,
+			parent->GetHandle(),
+			nullptr
+		);
+	}
+
+	if (result)
+		SendMessageW(m_hWnd, WM_COMMAND, MAKEWPARAM(result, 0), 0);
+}
+
+void App::Window::Main::ApplyLanguage(WORD languageId) {
+	m_hAcceleratorWindow = { Dll::Module(), RT_ACCELERATOR, MAKEINTRESOURCE(IDR_TRAY_ACCELERATOR), languageId };
+	m_hAcceleratorThread = { Dll::Module(), RT_ACCELERATOR, MAKEINTRESOURCE(IDR_TRAY_GLOBAL_ACCELERATOR), languageId };
+	Utils::Win32::Menu(Dll::Module(), RT_MENU, MAKEINTRESOURCE(IDR_TRAY_MENU), m_config->Runtime.GetLangId()).AttachAndSwap(m_hWnd);
+
+	const auto title = std::format(L"{}: {}, {}, {}",
+		m_config->Runtime.GetStringRes(IDS_APP_NAME), GetCurrentProcessId(), m_sRegion, m_sVersion);
+	SetWindowTextW(m_hWnd, title.c_str());
+	ModifyMenuW(GetMenu(m_hWnd), ID_TRAYMENU_CURRENTINFO, MF_BYCOMMAND | MF_DISABLED, ID_TRAYMENU_CURRENTINFO, title.c_str());
+	InvalidateRect(m_hWnd, nullptr, FALSE);
+}
+
+LRESULT App::Window::Main::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	if (uMsg == WM_CLOSE) {
 		if (lParam)
 			DestroyWindow(m_hWnd);
 		else {
-			switch (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNOCANCEL | MB_ICONQUESTION, L"XivAlexander",
-				L"Do you want to unload XivAlexander?\n\n"
-				L"Press Yes to unload XivAlexander.\n"
-				L"Press No to hide this window.\n"
-				L"Press Cancel to do nothing.")) {
+			switch (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNOCANCEL | MB_ICONQUESTION, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+				m_config->Runtime.FormatStringRes(IDS_CONFIRM_MAIN_WINDOW_CLOSE,
+					Utils::Win32::MB_GetString(IDYES - 1),
+					Utils::Win32::MB_GetString(IDNO - 1),
+					Utils::Win32::MB_GetString(IDCANCEL - 1)
+					))) {
 				case IDYES:
 					m_triggerUnload();
 					break;
@@ -104,6 +141,12 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		if (!lParam) {
 			auto& config = m_config->Runtime;
 			switch (LOWORD(wParam)) {
+
+				case ID_GLOBAL_SHOW_TRAYMENU:
+					for (const auto& w : BaseWindow::All())
+						if (w->GetHandle() == GetForegroundWindow())
+							ShowContextMenu(w);
+					return 0;
 
 				case ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP:
 					config.AlwaysOnTop = !config.AlwaysOnTop;
@@ -177,31 +220,43 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					config.UseEffectApplicationDelayLogger = !config.UseEffectApplicationDelayLogger;
 					return 0;
 
-				case ID_TRAYMENU_RELOADCONFIGURATION:
-					config.Reload();
-					return 0;
-
-				case ID_TRAYMENU_SHOWLOGGINGWINDOW:
+				case ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW:
 					config.ShowLoggingWindow = !config.ShowLoggingWindow;
 					return 0;
 
-				case ID_TRAYMENU_SHOWCONTROLWINDOW:
+				case ID_TRAYMENU_CONFIGURATION_SHOWCONTROLWINDOW:
 					config.ShowControlWindow = !config.ShowControlWindow;
 					SetForegroundWindow(m_hWnd);
 					return 0;
 
-				case ID_TRAYMENU_EDITRUNTIMECONFIGURATION:
+				case ID_TRAYMENU_CONFIGURATION_EDITRUNTIMECONFIGURATION:
 					if (m_runtimeConfigEditor && !m_runtimeConfigEditor->IsDestroyed())
 						SetForegroundWindow(m_runtimeConfigEditor->GetHandle());
 					else
-						m_runtimeConfigEditor = std::make_unique<Config>(&m_config->Runtime);
+						m_runtimeConfigEditor = std::make_unique<Config>(IDS_WINDOW_RUNTIME_CONFIG_EDITOR, &m_config->Runtime);
 					return 0;
 
-				case ID_TRAYMENU_EDITOPCODECONFIGURATION:
+				case ID_TRAYMENU_CONFIGURATION_EDITOPCODECONFIGURATION:
 					if (m_gameConfigEditor && !m_gameConfigEditor->IsDestroyed())
 						SetForegroundWindow(m_gameConfigEditor->GetHandle());
 					else
-						m_gameConfigEditor = std::make_unique<Config>(&m_config->Game);
+						m_gameConfigEditor = std::make_unique<Config>(IDS_WINDOW_OPCODE_CONFIG_EDITOR, &m_config->Game);
+					return 0;
+
+				case ID_TRAYMENU_CONFIGURATION_LANGUAGE_SYSTEMDEFAULT:
+					config.Language = App::Config::Language::SystemDefault;
+					return 0;
+
+				case ID_TRAYMENU_CONFIGURATION_LANGUAGE_ENGLISH:
+					config.Language = App::Config::Language::English;
+					return 0;
+
+				case ID_TRAYMENU_CONFIGURATION_LANGUAGE_KOREAN:
+					config.Language = App::Config::Language::Korean;
+					return 0;
+
+				case ID_TRAYMENU_CONFIGURATION_RELOAD:
+					config.Reload();
 					return 0;
 
 					/***************************************************************/
@@ -235,7 +290,8 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					return 0;
 					
 				case ID_TRAYMENU_EXITGAME:
-					if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, L"XivAlexander", L"Exit game?") == IDYES) {
+					if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+						m_config->Runtime.GetStringRes(IDS_CONFIRM_EXIT_GAME)) == IDYES) {
 						RemoveTrayIcon();
 						ExitProcess(0);
 					}
@@ -247,7 +303,8 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					try {
 						LaunchXivAlexLoaderWithTargetHandles({ Utils::Win32::Process::Current() }, XivAlexDll::LoaderAction::UpdateCheck, false);
 					} catch (const std::exception& e) {
-						Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, L"XivAlexander", L"Failed to launch update checker: {}", e.what());
+						Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+							m_config->Runtime.FormatStringRes(IDS_ERROR_UPDATE_CHECK_LAUNCH, e.what()));
 					}
 					return 0;
 
@@ -273,29 +330,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		const auto iconId = HIWORD(lParam);
 		const auto eventId = LOWORD(lParam);
 		if (eventId == WM_CONTEXTMENU) {
-			HMENU hMenu = GetMenu(m_hWnd);
-			HMENU hSubMenu = GetSubMenu(hMenu, 0);
-			RepopulateMenu(hSubMenu);
-			POINT curPoint;
-			GetCursorPos(&curPoint);
-
-			BOOL result;
-
-			{
-				const auto temporaryFocus = WithTemporaryFocus();
-				result = TrackPopupMenu(
-					GetSubMenu(GetMenu(m_hWnd), 0),
-					TPM_RETURNCMD | TPM_NONOTIFY,
-					curPoint.x,
-					curPoint.y,
-					0,
-					m_hWnd,
-					nullptr
-				);
-			}
-
-			if (result)
-				SendMessageW(m_hWnd, WM_COMMAND, MAKEWPARAM(result, 0), 0);
+			ShowContextMenu();
 		} else if (eventId == WM_LBUTTONUP) {
 			const auto now = GetTickCount64();
 			auto willShowControlWindow = false;
@@ -338,20 +373,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		gdiRestoreStack.emplace_back(SelectObject(backdc, CreateFontIndirectW(&ncm.lfMessageFont)));
 
 		FillRect(backdc, &rect, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
-		const auto str = std::format(
-			L"Process ID: {}\n"
-			L"Game Path: {}\n"
-			L"Game Release: {} ({})\n"
-			L"\n"
-			L"{}\n"
-			L"Tips:\n"
-			L"* Turn off \"Use Delay Detection\" and \"Use Latency Correction\" if any of the following is true.\n"
-			L"  * You're using a VPN software and your latency is being displayed below 10ms when it shouldn't be.\n"
-			L"  * Your ping is above 200ms.\n"
-			L"  * You can't double weave comfortably.\n"
-			L"* Keep \"Use Early Penalty\" off, unless you believe that you should not be allowed to use action before instructed animation lock expires.\n"
-			L"  * Depending on your FPS, the game will let your action go through 1 frame before the animation lock expires.\n"
-			L"  * Expect 16ms early animation lock expiry if you're playing on 60FPS, 33ms if 30FPS, and so on.",
+		const auto str = m_config->Runtime.FormatStringRes(IDS_FAQ,
 			GetCurrentProcessId(), m_path, m_sVersion, m_sRegion,
 			m_pApp->GetSocketHook()->Describe());
 		const auto pad = static_cast<int>(8 * zoom);
@@ -374,7 +396,7 @@ LRESULT App::Window::Main::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		EndPaint(m_hWnd, &ps);
 		return 0;
 	}
-	return BaseWindow::WndProc(uMsg, wParam, lParam);
+	return BaseWindow::WndProc(hwnd, uMsg, wParam, lParam);
 }
 
 void App::Window::Main::OnDestroy() {
@@ -387,7 +409,7 @@ void App::Window::Main::OnDestroy() {
 	PostQuitMessage(0);
 }
 
-void App::Window::Main::RepopulateMenu(HMENU hMenu) {
+void App::Window::Main::RepopulateMenu(HMENU hMenu) const {
 	const auto& config = m_config->Runtime;
 	const auto Set = Utils::Win32::SetMenuState;
 
@@ -410,8 +432,12 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) {
 	Set(hMenu, ID_TRAYMENU_USEIPCTYPEFINDER, config.UseOpcodeFinder, true);
 	Set(hMenu, ID_TRAYMENU_USEALLIPCMESSAGELOGGER, config.UseAllIpcMessageLogger, true);
 	Set(hMenu, ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER, config.UseEffectApplicationDelayLogger, true);
-	Set(hMenu, ID_TRAYMENU_SHOWCONTROLWINDOW, config.ShowControlWindow, true);
-	Set(hMenu, ID_TRAYMENU_SHOWLOGGINGWINDOW, config.ShowLoggingWindow, true);
+	
+	Set(hMenu, ID_TRAYMENU_CONFIGURATION_SHOWCONTROLWINDOW, config.ShowControlWindow, true);
+	Set(hMenu, ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW, config.ShowLoggingWindow, true);
+	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_SYSTEMDEFAULT, config.Language == App::Config::Language::SystemDefault, true);
+	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_ENGLISH, config.Language == App::Config::Language::English, true);
+	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_KOREAN, config.Language == App::Config::Language::Korean, true);
 	
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_RESTART, false, !m_launchParameters.empty());
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEDIRECTX11, m_bUseDirectX11, !m_launchParameters.empty());
@@ -423,7 +449,7 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) {
 void App::Window::Main::RegisterTrayIcon() {
 	const auto hIcon = Utils::Win32::Icon(LoadIconW(Dll::Module(), MAKEINTRESOURCEW(IDI_TRAY_ICON)),
 		nullptr,
-		"Failed to load app icon.");
+		"LoadIconW");
 	NOTIFYICONDATAW nid = { sizeof(NOTIFYICONDATAW) };
 	nid.uVersion = NOTIFYICON_VERSION_4;
 	nid.uID = TrayItemId;
@@ -445,17 +471,15 @@ void App::Window::Main::RemoveTrayIcon() {
 }
 
 void App::Window::Main::AskRestartGame() {
-	if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, L"XivAlexander", 
-		L"Restart game?\n\n"
-		L"Use DirectX 11: {}\n"
-		L"Use XivAlexander: {}\n"
-		L"Use Parameter Obfuscation: {}\n"
-		L"Use Elevation (Run as Administrator): {}\n",
-		m_bUseDirectX11 ? "Yes" : "No",
-		m_bUseXivAlexander ? "Yes" : "No",
-		m_bUseParameterObfuscation ? "Yes" : "No",
-		m_bUseElevation ? "Yes" : "No"
-	) == IDYES) {
+	const auto yes = Utils::Win32::MB_GetString(IDYES - 1);
+	const auto no = Utils::Win32::MB_GetString(IDNO - 1);
+	if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, m_config->Runtime.GetStringRes(IDS_APP_NAME), m_config->Runtime.FormatStringRes(
+		IDS_CONFIRM_RESTART_GAME,
+		m_bUseDirectX11 ? yes : no,
+		m_bUseXivAlexander ? yes : no,
+		m_bUseParameterObfuscation ? yes : no,
+		m_bUseElevation ? yes : no
+	)) == IDYES) {
 		const auto process = Utils::Win32::Process::Current();
 		try {
 			const auto game = process.PathOf().parent_path() / (m_bUseDirectX11 ? XivAlex::GameExecutable64NameW : XivAlex::GameExecutable32NameW);
@@ -481,7 +505,8 @@ void App::Window::Main::AskRestartGame() {
 			}
 			
 		} catch (const std::exception& e) {
-			Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, L"XivAlexander", L"Failed to restart: {}", e.what());
+			Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+				m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
 		}
 		XivAlexDll::EnableInjectOnCreateProcess(XivAlexDll::InjectOnCreateProcessAppFlags::Use | XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly);
 	}

@@ -16,22 +16,22 @@ HWND App::Window::BaseWindow::InternalCreateWindow(const WNDCLASSEXW& wndclassex
 	if (c.lpfnWndProc)
 		throw std::runtime_error("lpfnWndProc cannot be not null");
 
-	c.lpfnWndProc = [](HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT {
+	c.lpfnWndProc = [](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT {
 		BaseWindow* pBase;
 
 		if (uMsg == WM_NCCREATE) {
 			const auto cs = reinterpret_cast<LPCREATESTRUCTW>(lParam);
 			pBase = static_cast<BaseWindow*>(cs->lpCreateParams);
-			pBase->m_hWnd = hWnd;
-			SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(cs->lpCreateParams));
+			pBase->m_hWnd = hwnd;
+			SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(cs->lpCreateParams));
 		} else {
-			pBase = reinterpret_cast<BaseWindow*>(GetWindowLongPtrW(hWnd, GWLP_USERDATA));
+			pBase = reinterpret_cast<BaseWindow*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
 		}
 
 		if (!pBase)
-			return DefWindowProcW(hWnd, uMsg, wParam, lParam);
+			return DefWindowProcW(hwnd, uMsg, wParam, lParam);
 
-		return pBase->WndProc(uMsg, wParam, lParam);
+		return pBase->WndProc(hwnd, uMsg, wParam, lParam);
 	};
 
 	if (!RegisterClassExW(&c) && GetLastError() != ERROR_CLASS_ALREADY_EXISTS)
@@ -44,6 +44,8 @@ HWND App::Window::BaseWindow::InternalCreateWindow(const WNDCLASSEXW& wndclassex
 	}
 	return hWnd;
 }
+
+std::set<const App::Window::BaseWindow*> s_allBaseWindows;
 
 App::Window::BaseWindow::BaseWindow(const WNDCLASSEXW& wndclassex,
 	_In_opt_ LPCWSTR lpWindowName,
@@ -60,11 +62,21 @@ App::Window::BaseWindow::BaseWindow(const WNDCLASSEXW& wndclassex,
 	, m_logger(Misc::Logger::Acquire())
 	, m_windowClass(wndclassex)
 	, m_hWnd(InternalCreateWindow(wndclassex, lpWindowName, dwStyle, dwExStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, this)) {
+
+	s_allBaseWindows.insert(this);
+	m_cleanup += [this]() { s_allBaseWindows.erase(this); };
+	m_cleanup += m_config->Runtime.Language.OnChangeListener([this](const auto&) {
+		this->ApplyLanguage(m_config->Runtime.GetLangId());
+		});
 }
 
 App::Window::BaseWindow::~BaseWindow() {
 	Destroy();
 	UnregisterClassW(m_windowClass.lpszClassName, Dll::Module());
+}
+
+const std::set<const App::Window::BaseWindow*>& App::Window::BaseWindow::All() {
+	return s_allBaseWindows;
 }
 
 HWND App::Window::BaseWindow::GetHandle() const {
@@ -75,8 +87,16 @@ bool App::Window::BaseWindow::IsDestroyed() const {
 	return m_bDestroyed;
 }
 
-HACCEL App::Window::BaseWindow::GetAcceleratorTable() const {
-	return NULL;
+bool App::Window::BaseWindow::IsDialogLike() const {
+	return false;
+}
+
+HACCEL App::Window::BaseWindow::GetWindowAcceleratorTable() const {
+	return m_hAcceleratorWindow;
+}
+
+HACCEL App::Window::BaseWindow::GetThreadAcceleratorTable() const {
+	return m_hAcceleratorThread;
 }
 
 LRESULT App::Window::BaseWindow::RunOnUiThreadWait(const std::function<LRESULT()>& fn) {
@@ -125,7 +145,9 @@ double App::Window::BaseWindow::GetZoom() const {
 	}
 }
 
-LRESULT App::Window::BaseWindow::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
+void App::Window::BaseWindow::ApplyLanguage(WORD languageId) {}
+
+LRESULT App::Window::BaseWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
 		case AppMessageRunOnUiThread:
 		{
@@ -194,7 +216,7 @@ void App::Window::BaseWindow::Destroy() {
 	DestroyWindow(m_hWnd);
 }
 
-Utils::CallOnDestruction App::Window::BaseWindow::WithTemporaryFocus() {
+Utils::CallOnDestruction App::Window::BaseWindow::WithTemporaryFocus() const {
 	if (IsWindowVisible(m_hWnd)) {
 		SetForegroundWindow(m_hWnd);
 		return {};

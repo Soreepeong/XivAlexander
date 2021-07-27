@@ -29,11 +29,15 @@ namespace App::Window {
 		Main(XivAlexApp* pApp, std::function<void()> unloadFunction);
 		~Main() override;
 
+		void ShowContextMenu(const BaseWindow* parent = nullptr) const;
+
 	protected:
-		LRESULT WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
+		void ApplyLanguage(WORD languageId) final;
+		
+		LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 		void OnDestroy() override;
 
-		void RepopulateMenu(HMENU hMenu);
+		void RepopulateMenu(HMENU hMenu) const;
 		void RegisterTrayIcon();
 		void RemoveTrayIcon();
 

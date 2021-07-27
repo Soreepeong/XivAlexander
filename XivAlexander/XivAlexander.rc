@@ -72,70 +72,67 @@ IDI_TRAY_ICON           ICON                    "..\\Graphics\\Icon.ico"
 
 IDR_TRAY_MENU MENU
 BEGIN
-    POPUP "Menu"
+    POPUP "&Features (F1)"
     BEGIN
         MENUITEM "(Current Process Information)", ID_TRAYMENU_CURRENTINFO, INACTIVE
         MENUITEM SEPARATOR
-        MENUITEM "Keep Game Window Always on &Top", ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP
-        MENUITEM SEPARATOR
         POPUP "High Latency &Mitigation"
         BEGIN
-            MENUITEM "&Enable",                     ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE
+            MENUITEM "&Enable\t(Ctrl+Shift+)H",     ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE
             MENUITEM SEPARATOR
-            MENUITEM "Use &Delay Detection",        ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION
-            MENUITEM "Use La&tency Correction",     ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION
-            MENUITEM "Use &Early Penalty",          ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY
+            MENUITEM "Use &Delay Detection\tCtrl+(Alt+)D", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION
+            MENUITEM "Use Latency &Correction\tCtrl+(Alt+)C", ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION
+            MENUITEM "Use &Early Penalty\tCtrl+(Alt+)E", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY
             MENUITEM SEPARATOR
-            MENUITEM "Use &Logging",                ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING
-            MENUITEM "&Preview Mode",               ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE
+            MENUITEM "Use &Logging\tCtrl+(Alt+)L",  ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING
+            MENUITEM "&Preview Mode\tCtrl+(Alt+)P", ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE
         END
         POPUP "&Networking"
         BEGIN
-            MENUITEM "&Reduce Packet Delay",        ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY
+            MENUITEM "&Reduce Packet Delay\t(Ctrl+Shift+)F1", ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY
             MENUITEM SEPARATOR
-            MENUITEM "Take Over &Loopback Addresses (127.0.0.0/8)", ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES
-            MENUITEM "Take Over &Private Addresses (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)", ID_TRAYMENU_NETWORKING_TAKEOVERPRIVATEADDRESSES
-            MENUITEM "Take Over &All Addresses (0.0.0.0/0)", ID_TRAYMENU_NETWORKING_TAKEOVERALLADDRESSES
-            MENUITEM "Take Over All &Ports",        ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS
+            MENUITEM "Take Over &Loopback Addresses (127.0.0.0/8)\t(Ctrl+Shift+)1", ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES
+            MENUITEM "Take Over &Private Addresses (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\t(Ctrl+Shift+)2", ID_TRAYMENU_NETWORKING_TAKEOVERPRIVATEADDRESSES
+            MENUITEM "Take Over &All Addresses (0.0.0.0/0)\t(Ctrl+Shift+)3", ID_TRAYMENU_NETWORKING_TAKEOVERALLADDRESSES
+            MENUITEM "Take Over All &Ports\t(Ctrl+Shift+)4", ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS
             MENUITEM SEPARATOR
-            MENUITEM "R&elease All Connections",    ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS
+            MENUITEM "R&elease All Connections\t(Ctrl+Shift+)F2", ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS
         END
-        MENUITEM "Use IPC Type &Finder",        ID_TRAYMENU_USEIPCTYPEFINDER
-        MENUITEM "Use &All IPC Message Logger", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
-        MENUITEM "Use &Effect Application Delay Logger", 40036
+        MENUITEM "Use IPC Type &Finder\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
+        MENUITEM "Use All IPC &Message Logger\t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
+        MENUITEM "Use &Effect Application Delay Logger\t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
         MENUITEM SEPARATOR
-        MENUITEM "Show &Logging Window",        ID_TRAYMENU_SHOWLOGGINGWINDOW
-        MENUITEM "Show C&ontrol Window",        ID_TRAYMENU_SHOWCONTROLWINDOW
-        MENUITEM "Edit R&untime Configuration", ID_TRAYMENU_EDITRUNTIMECONFIGURATION
-        MENUITEM "Edit &Opcode Configuration",  ID_TRAYMENU_EDITOPCODECONFIGURATION
-        MENUITEM "&Reload Configuration",       ID_TRAYMENU_RELOADCONFIGURATION
-        MENUITEM SEPARATOR
-        POPUP "Re&start Game"
+        MENUITEM "Game Window Always on &Top\tCtrl+Shift+T", ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP
+        POPUP "Force Re&start Game"
         BEGIN
-            MENUITEM "&Restart",                    ID_TRAYMENU_RESTARTGAME_RESTART
+            MENUITEM "&Restart\tCtrl+Shift+R",      ID_TRAYMENU_RESTARTGAME_RESTART
             MENUITEM SEPARATOR
-            MENUITEM "Use &DirectX 11",             ID_TRAYMENU_RESTARTGAME_USEDIRECTX11
-            MENUITEM "Use &XivAlexander",           ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER
-            MENUITEM "Use &Parameter Obfuscation",  ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION
-            MENUITEM "Use &Elevation (Run as Administrator)", ID_TRAYMENU_RESTARTGAME_USEELEVATION
+            MENUITEM "Use &DirectX 11\t(Ctrl+Shift+)D", ID_TRAYMENU_RESTARTGAME_USEDIRECTX11
+            MENUITEM "Use &XivAlexander\t(Ctrl+Shift+)X", ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER
+            MENUITEM "Use &Parameter Obfuscation\t(Ctrl+Shift+)P", ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION
+            MENUITEM "Use &Elevation (Run as Administrator)\t(Ctrl+Shift+)A", ID_TRAYMENU_RESTARTGAME_USEELEVATION
         END
-        MENUITEM "E&xit Game",                  ID_TRAYMENU_EXITGAME
+        MENUITEM "Force E&xit Game\tCtrl+Shift+Q", ID_TRAYMENU_EXITGAME
         MENUITEM SEPARATOR
-        MENUITEM "Check for U&pdates",          ID_TRAYMENU_CHECKFORUPDATES
-        MENUITEM "&Unload XivAlexander",        ID_TRAYMENU_UNLOADXIVALEXANDER
+        POPUP "&Configuration"
+        BEGIN
+            MENUITEM "Show &Logging Window\t(Ctrl+Alt+)L", ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW
+            MENUITEM "Show &Control Window\tCtrl+(Alt+)W", ID_TRAYMENU_CONFIGURATION_SHOWCONTROLWINDOW
+            MENUITEM "Edit &Runtime Configuration\t(Ctrl+Alt+)R", ID_TRAYMENU_CONFIGURATION_EDITRUNTIMECONFIGURATION
+            MENUITEM "Edit &Opcode Configuration\t(Ctrl+Alt+)O", ID_TRAYMENU_CONFIGURATION_EDITOPCODECONFIGURATION
+            MENUITEM SEPARATOR
+            MENUITEM "Language: System Default (&S)", ID_TRAYMENU_CONFIGURATION_LANGUAGE_SYSTEMDEFAULT
+            MENUITEM "Language: English (&E)",      ID_TRAYMENU_CONFIGURATION_LANGUAGE_ENGLISH
+            MENUITEM "Language: Korean (&K)",       ID_TRAYMENU_CONFIGURATION_LANGUAGE_KOREAN
+            MENUITEM SEPARATOR
+            MENUITEM "Reload (&Z)\t(Ctrl+Shift+)F5", ID_TRAYMENU_CONFIGURATION_RELOAD
+        END
+        MENUITEM "Check for U&pdates\tCtrl+(Alt+)U", ID_TRAYMENU_CHECKFORUPDATES
+        MENUITEM "&Unload XivAlexander\tCtrl+(Alt+)Q", ID_TRAYMENU_UNLOADXIVALEXANDER
     END
-    POPUP "View"
+    POPUP "&View"
     BEGIN
-        MENUITEM "Always on &Top",              ID_VIEW_ALWAYSONTOP
-    END
-END
-
-IDR_CONFIG_EDITOR_MENU MENU
-BEGIN
-    POPUP "&File"
-    BEGIN
-        MENUITEM "&Apply",                      ID_FILE_APPLY
-        MENUITEM "&Revert",                     ID_FILE_REVERT
+        MENUITEM "Always on &Top\tCtrl+T",      ID_VIEW_ALWAYSONTOP
     END
 END
 
@@ -143,13 +140,29 @@ IDR_LOG_MENU MENU
 BEGIN
     POPUP "&File"
     BEGIN
-        MENUITEM "&Save",                       ID_FILE_SAVE
+        MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
+        MENUITEM "&Empty\tCtrl+E",              ID_FILE_CLEAR
         MENUITEM SEPARATOR
-        MENUITEM "&Clear",                      ID_FILE_CLEAR
+        MENUITEM "Close (&W)\tCtrl+W",          ID_FILE_CLOSE
     END
     POPUP "&View"
     BEGIN
-        MENUITEM "Always on &Top",              ID_VIEW_ALWAYSONTOP
+        MENUITEM "Always on &Top\tCtrl+T",      ID_VIEW_ALWAYSONTOP
+    END
+END
+
+IDR_CONFIG_EDITOR_MENU MENU
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
+        MENUITEM "&Revert\tCtrl+R",             ID_FILE_REVERT
+        MENUITEM SEPARATOR
+        MENUITEM "Close (&W)\tCtrl+W",          ID_FILE_CLOSE
+    END
+    POPUP "&View"
+    BEGIN
+        MENUITEM "Always on &Top\tCtrl+T",      ID_VIEW_ALWAYSONTOP
     END
 END
 
@@ -199,6 +212,173 @@ END
 //
 
 IDR_RT_MANIFEST_LATE_ACTIVATION RT_MANIFEST             "DummyAssemblyIdentity.manifest"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Accelerator
+//
+
+IDR_CONFIG_EDITOR_ACCELERATOR ACCELERATORS
+BEGIN
+    "W",            ID_FILE_CLOSE,          VIRTKEY, CONTROL, NOINVERT
+    "R",            ID_FILE_REVERT,         VIRTKEY, CONTROL, NOINVERT
+    "S",            ID_FILE_SAVE,           VIRTKEY, CONTROL, NOINVERT
+    "T",            ID_VIEW_ALWAYSONTOP,    VIRTKEY, CONTROL, NOINVERT
+END
+
+IDR_LOG_ACCELERATOR ACCELERATORS
+BEGIN
+    "E",            ID_FILE_CLEAR,          VIRTKEY, CONTROL, NOINVERT
+    "W",            ID_FILE_CLOSE,          VIRTKEY, CONTROL, NOINVERT
+    "S",            ID_FILE_SAVE,           VIRTKEY, CONTROL, NOINVERT
+    "T",            ID_VIEW_ALWAYSONTOP,    VIRTKEY, CONTROL, NOINVERT
+END
+
+IDR_TRAY_ACCELERATOR ACCELERATORS
+BEGIN
+    "O",            ID_TRAYMENU_CONFIGURATION_EDITOPCODECONFIGURATION, VIRTKEY, NOINVERT
+    "R",            ID_TRAYMENU_CONFIGURATION_EDITRUNTIMECONFIGURATION, VIRTKEY, NOINVERT
+    VK_F5,          ID_TRAYMENU_CONFIGURATION_RELOAD, VIRTKEY, NOINVERT
+    "L",            ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW, VIRTKEY, NOINVERT
+    "H",            ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE, VIRTKEY, NOINVERT
+    VK_F1,          ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY, VIRTKEY, NOINVERT
+    VK_F2,          ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS, VIRTKEY, NOINVERT
+    "3",            ID_TRAYMENU_NETWORKING_TAKEOVERALLADDRESSES, VIRTKEY, NOINVERT
+    "4",            ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS, VIRTKEY, NOINVERT
+    "1",            ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES, VIRTKEY, NOINVERT
+    "2",            ID_TRAYMENU_NETWORKING_TAKEOVERPRIVATEADDRESSES, VIRTKEY, NOINVERT
+    "D",            ID_TRAYMENU_RESTARTGAME_USEDIRECTX11, VIRTKEY, NOINVERT
+    "A",            ID_TRAYMENU_RESTARTGAME_USEELEVATION, VIRTKEY, NOINVERT
+    "P",            ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION, VIRTKEY, NOINVERT
+    "X",            ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER, VIRTKEY, NOINVERT
+    "M",            ID_TRAYMENU_USEALLIPCMESSAGELOGGER, VIRTKEY, NOINVERT
+    "E",            ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER, VIRTKEY, NOINVERT
+    "F",            ID_TRAYMENU_USEIPCTYPEFINDER, VIRTKEY, NOINVERT
+    "U",            ID_TRAYMENU_CHECKFORUPDATES, VIRTKEY, CONTROL, NOINVERT
+    "W",            ID_TRAYMENU_CONFIGURATION_SHOWCONTROLWINDOW, VIRTKEY, CONTROL, NOINVERT
+    "P",            ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE, VIRTKEY, CONTROL, NOINVERT
+    "D",            ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION, VIRTKEY, CONTROL, NOINVERT
+    "C",            ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION, VIRTKEY, CONTROL, NOINVERT
+    "E",            ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY, VIRTKEY, CONTROL, NOINVERT
+    "L",            ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING, VIRTKEY, CONTROL, NOINVERT
+    "Q",            ID_TRAYMENU_UNLOADXIVALEXANDER, VIRTKEY, CONTROL, NOINVERT
+    "T",            ID_VIEW_ALWAYSONTOP,    VIRTKEY, CONTROL, NOINVERT
+END
+
+IDR_TRAY_GLOBAL_ACCELERATOR ACCELERATORS
+BEGIN
+    "U",            ID_TRAYMENU_CHECKFORUPDATES, VIRTKEY, CONTROL, ALT, NOINVERT
+    "O",            ID_TRAYMENU_CONFIGURATION_EDITOPCODECONFIGURATION, VIRTKEY, CONTROL, ALT, NOINVERT
+    "R",            ID_TRAYMENU_CONFIGURATION_EDITRUNTIMECONFIGURATION, VIRTKEY, CONTROL, ALT, NOINVERT
+    VK_F5,          ID_TRAYMENU_CONFIGURATION_RELOAD, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "W",            ID_TRAYMENU_CONFIGURATION_SHOWCONTROLWINDOW, VIRTKEY, CONTROL, ALT, NOINVERT
+    "L",            ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "Q",            ID_TRAYMENU_EXITGAME,   VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "H",            ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "P",            ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE, VIRTKEY, CONTROL, ALT, NOINVERT
+    "D",            ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION, VIRTKEY, CONTROL, ALT, NOINVERT
+    "E",            ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY, VIRTKEY, CONTROL, ALT, NOINVERT
+    "C",            ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION, VIRTKEY, CONTROL, ALT, NOINVERT
+    "L",            ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING, VIRTKEY, CONTROL, ALT, NOINVERT
+    "T",            ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    VK_F1,          ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    VK_F2,          ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "3",            ID_TRAYMENU_NETWORKING_TAKEOVERALLADDRESSES, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "4",            ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "1",            ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "2",            ID_TRAYMENU_NETWORKING_TAKEOVERPRIVATEADDRESSES, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "R",            ID_TRAYMENU_RESTARTGAME_RESTART, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "D",            ID_TRAYMENU_RESTARTGAME_USEDIRECTX11, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "A",            ID_TRAYMENU_RESTARTGAME_USEELEVATION, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "P",            ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "X",            ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "Q",            ID_TRAYMENU_UNLOADXIVALEXANDER, VIRTKEY, CONTROL, ALT, NOINVERT
+    "M",            ID_TRAYMENU_USEALLIPCMESSAGELOGGER, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "E",            ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "F",            ID_TRAYMENU_USEIPCTYPEFINDER, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    VK_F1,          ID_GLOBAL_SHOW_TRAYMENU, VIRTKEY, NOINVERT
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_LOADER_NOT_FOUND "XivAlexander Loader could not be found at {}."
+    IDS_ERROR_CONFIGURATION_LOAD "Failed to load configuration file. ({})"
+    IDS_LOG_NEW_CONFIG      "Creating new configuration file at {}."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_CONFIGURATION_SAVE "Failed to save configuration file. ({})"
+    IDS_ERROR_CONFIGURATION_PARSE_VALUE 
+                            "Failed to parse configuration value ""{}"". ({})"
+    IDS_ERROR_GAME_WINDOW_NOT_FOUND "Failed to find the main window of game."
+    IDS_ERROR_UNLOAD_XIVALEXANDER "Failed to unload XivAlexander. ({})"
+    IDS_LOG_XIVALEXANDER_INITIALIZED "XivAlexander initialized."
+    IDS_ERROR_FREEGAMEMUTEX "Failed to free multiple game run preventer. ({})"
+    IDS_ERROR_UNEXPECTED    "Unexpected error occurred. ({})"
+    IDS_ERROR_UNLOAD_SOCKET "Another module has hooked socket functions over XivAlexander. Try unloading that other module first."
+    IDS_ERROR_UNLOAD_WNDPROC 
+                            "Another module has hooked window procedure over XivAlexander. Try unloading that other module first."
+    IDS_ERROR_INJECT        "Failed to initialize this process.\nError: {}\nPID: {}\nPath: {}\nCommand Line: {}"
+    IDS_WARNING_ZEROPING    "rtt={} but latency={}; your VPN or network might be reporting 0 ping. Unchecking ""Use Delay Detection"" is recommended."
+    IDS_ERROR_FREEGAMEMUTEX_CLOSEHANDLE 
+                            "Failed to process handle {:p}(type {:2x}): {}"
+    IDS_PINGTRACKER_START   "Ping {} -> {}: Start tracking."
+    IDS_PINGTRACKER_END     "Ping {} -> {}: End tracking."
+    IDS_PINGTRACKER_END_FAILURE_COUNT 
+                            "Ping {} -> {}: End tracking due to {} consecutive ping failures."
+    IDS_PINGTRACKER_END_ERROR "Ping {} -> {}: End tracking due to error. ({})"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SOCKETHOOK_SOCKET_FOUND "{:x}: Found"
+    IDS_SOCKETHOOK_SOCKET_IGNORED_NOT_IPV4 "{:x}: Mark ignored (Not IPv4)"
+    IDS_SOCKETHOOK_SOCKET_IGNORED_IP 
+                            "{:x}: Mark ignored (Remote IP address {} not accepted according to rules)"
+    IDS_SOCKETHOOK_SOCKET_IGNORED_PORT 
+                            "{:x}: Mark ignored (Remote port {} not accepted according to rules))"
+    IDS_SOCKETHOOK_SOCKET_DETACH "{:x}: Detaching"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_TITLE "Connection {:x} ({} -> {})\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY 
+                            "* Socket Latency: last {}ms, median {}ms, average {}+{}ms\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY_FAILURE 
+                            "* Socket Latency: failed to resolve\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY 
+                            "* Ping Latency: last {}ms, median {}ms, average {}+{}ms\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY_FAILURE 
+                            "* Ping Latency: failed to resolve\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_RESPONSE_DELAY 
+                            "* Response Delay: median {}ms, average {}+{}ms\n\n"
+    IDS_CONFIRM_CONFIG_WINDOW_CLOSE 
+                            "Do you want to apply the new configuration?"
+    IDS_LOG_SAVED           "Log file has been saved to: {}"
+    IDS_ERROR_LOG_SAVE      "Failed to save log file to: {} ({})"
+    IDS_WARNING_GAME_PARAMETER_PARSE 
+                            "Could not resolve game launch parameters. Restart feature will be disabled. ({})"
+    IDS_CONFIRM_MAIN_WINDOW_CLOSE 
+                            "Do you want to unload XivAlexander?\n\nPress {} to unload XivAlexander.\nPress {} to hide this window.\nPress {} to do nothing."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_CONFIRM_EXIT_GAME   "Do you want to force quit the game?"
+    IDS_ERROR_UPDATE_CHECK_LAUNCH "Failed to launch update checker. ({})"
+    IDS_CONFIRM_RESTART_GAME 
+                            "Do you want to force restart the game?\n\nUse DirectX 11: {}\nUse XivAlexander: {}\nUse Parameter Obfuscation: {}\nUse Elevation (Run as Administrator): {}"
+    IDS_FAQ                 "Process ID: {}\nGame Path: {}\nGame Release: {} ({})\n\n{}\nTips and FAQs:\n* Turn off ""Use Delay Detection"" and ""Use Latency Correction"" if any of the following is true.\n  * You're using a VPN software and your latency is being displayed below 10ms when it shouldn't be.\n  * Your ping is above 200ms.\n  * You can't double weave comfortably.\n* Keep ""Use Early Penalty"" off, unless you believe that you should not be allowed to use action before instructed animation lock expires.\n  * Depending on your FPS, the game will let your action go through 1 frame before the animation lock expires.\n  * Expect 16ms early animation lock expiry if you're playing on 60FPS, 33ms if 30FPS, and so on.\n* FFLogs may show less-than-600ms weaves. This is normal due to discrepancies between client input times and server response times.\n  * Actions following less-than-600ms weaves will result in longer animation locks from parser logs.\n* If your ping is too high, you may be allowed to do 500ms weaves. This is by game design."
+    IDS_APP_NAME            "XivAlexander"
+    IDS_WINDOW_RUNTIME_CONFIG_EDITOR "Runtime Configuration Editor"
+    IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcode Configuration Editor"
+    IDS_WINDOW_LOG          "Log Viewer"
+END
 
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////

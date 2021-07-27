@@ -49,20 +49,38 @@ namespace App::Misc {
 
 		void Log(LogCategory category, const char* s, LogLevel level = LogLevel::Info);
 		void Log(LogCategory category, const char8_t* s, LogLevel level = LogLevel::Info);
+		void Log(LogCategory category, const wchar_t* s, LogLevel level = LogLevel::Info);
 		void Log(LogCategory category, const std::string& s, LogLevel level = LogLevel::Info);
+		void Log(LogCategory category, const std::wstring& s, LogLevel level = LogLevel::Info);
+		void Log(LogCategory category, WORD wLanguage, UINT uStringResId, LogLevel level = LogLevel::Info);
 		void Clear();
 
 		[[nodiscard]] std::deque<const LogItem*> GetLogs() const;
 		Utils::ListenerManager<Logger, void, const LogItem&> OnNewLogItem;
-
+		
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
 		void Format(LogCategory category, const char* format, Args ... args) {
 			Log(category, std::format(format, std::forward<Args>(args)...), Level);
 		}
 
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
+		void Format(LogCategory category, const wchar_t* format, Args ... args) {
+			Log(category, std::format(format, std::forward<Args>(args)...), Level);
+		}
+
+		template <LogLevel Level = LogLevel::Info, typename ... Args>
 		void Format(LogCategory category, const char8_t* format, Args ... args) {
 			Log(category, std::format(reinterpret_cast<const char*>(format), std::forward<Args>(args)...), Level);
+		}
+
+		template <LogLevel Level = LogLevel::Info, typename ... Args>
+		void Format(LogCategory category, WORD wLanguage, UINT uStringResFormatId, Args ... args) {
+			Log(category, std::format(FindStringResourceEx(Dll::Module(), uStringResFormatId, wLanguage) + 1, std::forward<Args>(args)...), Level);
+		}
+
+		template <LogLevel Level = LogLevel::Info, typename ... Args>
+		void FormatDefaultLanguage(LogCategory category, UINT uStringResFormatId, Args ... args) {
+			Log(category, std::format(FindStringResourceEx(Dll::Module(), uStringResFormatId) + 1, std::forward<Args>(args)...), Level);
 		}
 	};
 }

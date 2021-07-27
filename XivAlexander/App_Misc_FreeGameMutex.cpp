@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "App_Misc_FreeGameMutex.h"
+#include "resource.h"
 
 static bool NtSuccess(NTSTATUS x) {
 	return x >= 0;
@@ -90,7 +91,7 @@ static const auto NtQuerySystemInformation_ = GetLibraryProcAddress<NtQuerySyste
 
 static std::vector<SYSTEM_HANDLE> EnumerateLocalHandles() {
 	if (!NtQuerySystemInformation_)
-		throw std::runtime_error("Failed to find ntdll.dll!NtQuerySystemInformation_");
+		throw std::runtime_error("ntdll.dll!NtQuerySystemInformation = null");
 
 	NTSTATUS status;
 	std::vector<SYSTEM_HANDLE> result;
@@ -103,7 +104,7 @@ static std::vector<SYSTEM_HANDLE> EnumerateLocalHandles() {
 
 	// NtQuerySystemInformation_ stopped giving us STATUS_INFO_LENGTH_MISMATCH.
 	if (!NtSuccess(status))
-		throw std::runtime_error(std::format("NtQuerySystemInformation_ returned {}.", status));
+		throw std::runtime_error(std::format("NtQuerySystemInformation(SystemHandleInformation) = {}", status));
 
 	const auto pHandleInfo = reinterpret_cast<SYSTEM_HANDLE_INFORMATION*>(handleInfoBuffer.data());
 	for (size_t i = 0; i < pHandleInfo->HandleCount; i++)
@@ -114,7 +115,7 @@ static std::vector<SYSTEM_HANDLE> EnumerateLocalHandles() {
 
 static std::wstring GetHandleObjectName(HANDLE hHandle) {
 	if (!NtQueryObject_)
-		throw std::runtime_error("Failed to find ntdll.dll!NtQueryObject_");
+		throw std::runtime_error("ntdll.dll!NtQueryObject = null");
 
 	ULONG returnLength = 0;
 	if (NtSuccess(NtQueryObject_(hHandle, NtObjectInformationClass::ObjectNameInformation, nullptr, 0, &returnLength)))
@@ -122,8 +123,8 @@ static std::wstring GetHandleObjectName(HANDLE hHandle) {
 
 	std::vector<char> objectNameInfo;
 	objectNameInfo.resize(returnLength);
-	if (!NtSuccess(NtQueryObject_(hHandle, NtObjectInformationClass::ObjectNameInformation, &objectNameInfo[0], returnLength, NULL)))
-		throw std::runtime_error(std::format("Failed to get object name for handle {:p}", hHandle));
+	if (const auto status = NtQueryObject_(hHandle, NtObjectInformationClass::ObjectNameInformation, &objectNameInfo[0], returnLength, NULL); !NtSuccess(status))
+		throw std::runtime_error(std::format("NtQueryObject({:p}, ObjectNameInformation) = {}", hHandle, status));
 
 	const auto pObjectName = reinterpret_cast<UNICODE_STRING*>(objectNameInfo.data());
 	if (pObjectName->Length)
@@ -150,6 +151,7 @@ void App::Misc::FreeGameMutex::FreeGameMutex() {
 		}
 	}
 
+	const auto config = Config::Acquire();
 	const auto logger = Logger::Acquire();
 
 	for (const auto& handle : allHandles) {
@@ -176,7 +178,8 @@ void App::Misc::FreeGameMutex::FreeGameMutex() {
 		} catch (std::exception& e) {
 			logger->Format(
 				LogCategory::General,
-				"Failed to process handle {:p}(type {:2x}): {}",
+				config->Runtime.GetLangId(),
+				IDS_ERROR_FREEGAMEMUTEX_CLOSEHANDLE,
 				hObject, handle.ObjectTypeNumber, e.what());
 		}
 	}

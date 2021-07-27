@@ -25,6 +25,7 @@
     <ClInclude Include="Utils_Win32_Handle.h" />
     <ClInclude Include="Utils_Win32_LoadedModule.h" />
     <ClInclude Include="Utils_Win32_Process.h" />
+    <ClInclude Include="Utils_Win32_Resource.h" />
     <ClInclude Include="Utils__Misc.h" />
     <ClInclude Include="Utils__String.h" />
     <ClInclude Include="Utils_NumericStatisticsTracker.h" />
@@ -47,6 +48,7 @@
     <ClCompile Include="Utils_Win32_LoadedModule.cpp" />
     <ClCompile Include="Utils_Win32_Handle.cpp" />
     <ClCompile Include="Utils_Win32_Process.cpp" />
+    <ClCompile Include="Utils_Win32_Resource.cpp" />
     <ClCompile Include="Utils__Misc.cpp" />
     <ClCompile Include="Utils__String.cpp" />
     <ClCompile Include="Utils_NumericStatisticsTracker.cpp" />

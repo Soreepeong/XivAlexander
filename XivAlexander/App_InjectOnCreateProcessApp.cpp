@@ -3,6 +3,7 @@
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_Hooks.h"
 #include "XivAlexander/XivAlexander.h"
+#include "resource.h"
 
 #if INTPTR_MAX == INT64_MAX
 #include "App_InjectOnCreateProcessApp_x64.h"
@@ -125,7 +126,8 @@ public:
 		error += L" _DEBUG";
 #endif
 		if (!error.empty()) {
-			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, L"XivAlexander",
+			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR,
+				FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
 				L"Error: {}\n\n"
 				L"isTarget={}\n"
 				L"Self: PID={}, Platform={}, Path={}\n"
@@ -175,7 +177,7 @@ extern "C" __declspec(dllexport) int __stdcall XivAlexDll::EnableInjectOnCreateP
 	}
 }
 
-static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
+static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent, HANDLE hMainThread) {
 	const auto process = Utils::Win32::Process::Current();
 	auto filename = process.PathOf().filename().wstring();
 	CharLowerW(&filename[0]);
@@ -202,7 +204,7 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
 							.args = Utils::FromUtf8(XivAlex::CreateGameCommandLine(pairs, true)),
 						})) {
 #ifdef _DEBUG
-							Utils::Win32::MessageBoxF(nullptr, MB_OK, L"XivAlexander", L"Restarting due to tick count difference of {} between encryption timestamp and now.", now - time);
+							Utils::Win32::MessageBoxF(nullptr, MB_OK, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1, L"DEBUG: Restarting due to tick count difference of {} between encryption timestamp and now.", now - time);
 #endif
 							TerminateProcess(GetCurrentProcess(), 0);
 						}
@@ -216,9 +218,11 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
 
 	// let original entry point continue execution.
 	SetEvent(hContinuableEvent);
-
-	if (WaitForInputIdle(GetCurrentProcess(), 10000) == WAIT_TIMEOUT)
-		throw std::runtime_error("Timed out waiting for the game to run.");
+	
+	while (WaitForInputIdle(GetCurrentProcess(), 10000) == WAIT_TIMEOUT) {
+		if (WaitForSingleObject(hMainThread, 0) != WAIT_TIMEOUT)
+			return;  // main thread has exited.
+	}
 
 	HWND hwnd = nullptr;
 	while (WaitForSingleObject(GetCurrentProcess(), 100) == WAIT_TIMEOUT) {
@@ -241,6 +245,7 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
 }
 
 extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters * pParam) {
+	DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &pParam->Internal.hMainThread, 0, FALSE, DUPLICATE_SAME_ACCESS);
 	pParam->Internal.hContinuableEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
 	pParam->Internal.hWorkerThread = CreateThread(nullptr, 0, [](void* pParam) -> DWORD {
 		const auto process = Utils::Win32::Process::Current();
@@ -248,18 +253,19 @@ extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(Inj
 		try {
 			const auto p = static_cast<InjectEntryPointParameters*>(pParam);
 			const auto hContinueNotify = Utils::Win32::Handle::DuplicateFrom<Utils::Win32::Event>(p->Internal.hContinuableEvent);
+			const auto hMainThread = Utils::Win32::Thread(p->Internal.hMainThread, true);
 			process.WriteMemory(p->EntryPoint, p->EntryPointOriginalBytes, p->EntryPointOriginalLength, true);
 
 #ifdef _DEBUG
-			Utils::Win32::MessageBoxF(MB_OK, MB_OK, L"XivAlexander",
+			Utils::Win32::MessageBoxF(MB_OK, MB_OK, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
 				L"PID: {}\nPath: {}\nCommand Line: {}", process.GetId(), process.PathOf().wstring(), GetCommandLineW());
 #endif
 
-			InitializeBeforeOriginalEntryPoint(hContinueNotify);
+			InitializeBeforeOriginalEntryPoint(hContinueNotify, hMainThread);
 			SetEvent(hContinueNotify);
 		} catch (std::exception& e) {
-			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, L"XivAlexander",
-				L"Could not load this process.\nError: {}\n\nPID: {}\nPath: {}\nCommand Line: {}",
+			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
+				FindStringResourceEx(Dll::Module(), IDS_ERROR_INJECT),
 				e.what(), process.GetId(), process.PathOf().wstring(), GetCommandLineW());
 			TerminateProcess(GetCurrentProcess(), 1);
 		}
@@ -280,7 +286,7 @@ XIVALEXANDER_DLLEXPORT void XivAlexDll::PatchEntryPointForInjection(HANDLE hProc
 
 	const auto regions = process.GetCommittedImageAllocation();
 	if (regions.empty())
-		throw std::runtime_error("Could not find memory region of the program.");
+		throw std::runtime_error("GetCommittedImageAllocation");
 
 	auto& mem = process.GetModuleMemoryBlockManager(static_cast<HMODULE>(regions.front().BaseAddress));
 

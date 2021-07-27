@@ -62,6 +62,7 @@ namespace XivAlexDll {
 		struct {
 			HANDLE hContinuableEvent;
 			HANDLE hWorkerThread;
+			HANDLE hMainThread;
 		} Internal;
 	};
 

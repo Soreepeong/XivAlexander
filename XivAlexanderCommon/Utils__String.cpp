@@ -78,10 +78,10 @@ std::vector<std::string> Utils::StringSplit(const std::string& str, const std::s
 std::string Utils::StringTrim(const std::string& str, bool leftTrim, bool rightTrim) {
 	size_t left = 0, right = str.length() - 1;
 	if (leftTrim)
-		while (left < str.length() && std::isspace(str[left]))
+		while (left < str.length() && std::isspace(static_cast<uint8_t>(str[left])))
 			left++;
 	if (rightTrim)
-		while (right != SIZE_MAX && std::isspace(str[right]))
+		while (right != SIZE_MAX && std::isspace(static_cast<uint8_t>(str[right])))
 			right--;
 	return str.substr(left, right + 1 - left);
 }

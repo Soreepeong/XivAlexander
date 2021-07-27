@@ -102,7 +102,7 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 				break;
 		}
 		if (!relativeAddressHandled)
-			throw std::runtime_error("Could not handle relative address while thunking");
+			throw std::runtime_error("Assertion failure: Could not handle relative address while thunking");
 		if (append)
 			body.insert(body.end(), source + offset, source + offset + instruction.length);
 		offset += instruction.length;
@@ -138,7 +138,7 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 				return;
 		}
 		if (const auto err = GetLastError(); err != ERROR_NO_MORE_ITEMS)
-			OutputDebugStringW(std::format(L"HeapWalk failure: {}\n", err).c_str());
+			Utils::Win32::DebugPrint(L"HeapWalk failure: {}\n", err);
 		HeapDestroy(s_hHeap);
 		s_hHeap = nullptr;
 	};
@@ -191,7 +191,7 @@ void App::Misc::Hooks::WndProcFunction::HookDisable() {
 		return;
 	
 	if (!IsDisableable())
-		throw std::runtime_error("Cannot disable hook");
+		throw std::runtime_error("App::Misc::Hooks::WndProcFunction::HookDisable(!IsDisableable)");
 	
 	SetWindowLongPtrW(m_hWnd, GWLP_WNDPROC, m_prevProc);
 }

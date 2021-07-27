@@ -10,6 +10,7 @@
 #include "../Utils_Win32_Process.h"
 #include "../Utils_Win32_InjectedModule.h"
 #include "../Utils_Win32_LoadedModule.h"
+#include "../Utils_Win32_Resource.h"
 #include "../Utils_NumericStatisticsTracker.h"
 #include "../Utils_ListenerManager.h"
 #include "../Utils_CallOnDestruction.h"

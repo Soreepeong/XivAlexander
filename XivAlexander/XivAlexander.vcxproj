@@ -339,10 +339,42 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
     <ClInclude Include="DllMain.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="resource1.h" />
     <ClInclude Include="XivAlexander\XivAlexander.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="XivAlexander.rc" />
+    <ResourceCompile Include="XivAlexander.rc">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </AdditionalOptions>
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</NullTerminateStrings>
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</NullTerminateStrings>
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</NullTerminateStrings>
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</NullTerminateStrings>
+    </ResourceCompile>
+    <ResourceCompile Include="XivAlexander_ko.rc">
+      <Culture Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">0x0412</Culture>
+      <Culture Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">0x0412</Culture>
+      <Culture Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">0x0412</Culture>
+      <Culture Condition="'$(Configuration)|$(Platform)'=='Release|x64'">0x0412</Culture>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </AdditionalOptions>
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</NullTerminateStrings>
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</NullTerminateStrings>
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</NullTerminateStrings>
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</NullTerminateStrings>
+    </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\Graphics\Icon.ico" />

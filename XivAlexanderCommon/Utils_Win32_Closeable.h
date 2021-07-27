@@ -133,7 +133,6 @@ namespace Utils::Win32 {
 	};
 
 	using Icon = Closeable<HICON, DestroyIcon>;
-	using GlobalResource = Closeable<HGLOBAL, FreeResource>;
 	using CreatedDC = Closeable<HDC, DeleteDC>;
 	using FindFile = Closeable<HANDLE, FindClose>;
 	using Icmp = Closeable<HANDLE, IcmpCloseHandle>;

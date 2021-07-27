@@ -11,6 +11,7 @@
 #include "App_Misc_FreeGameMutex.h"
 #include "App_Window_LogWindow.h"
 #include "App_Window_MainWindow.h"
+#include "resource.h"
 
 static HWND FindGameMainWindow() {
 	HWND hwnd = nullptr;
@@ -22,7 +23,7 @@ static HWND FindGameMainWindow() {
 			break;
 	}
 	if (hwnd == nullptr)
-		throw std::runtime_error("Game window not found");
+		throw std::runtime_error(Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_ERROR_GAME_WINDOW_NOT_FOUND) + 1));
 	return hwnd;
 }
 
@@ -94,7 +95,8 @@ public:
 				return;
 			
 			if (const auto err = this_->IsUnloadable(); !err.empty()) {
-				Utils::Win32::MessageBoxF(m_trayWindow->GetHandle(), MB_ICONERROR, L"XivAlexander", L"Unable to unload XivAlexander: {}", err);
+				Utils::Win32::MessageBoxF(m_trayWindow->GetHandle(), MB_ICONERROR, this->this_->m_config->Runtime.GetStringRes(IDS_APP_NAME),
+					this->this_->m_config->Runtime.FormatStringRes(IDS_ERROR_UNLOAD_XIVALEXANDER, err));
 				return;
 			}
 
@@ -118,9 +120,6 @@ public:
 	void Load() {
 		Scintilla_RegisterClasses(Dll::Module());
 		m_cleanup += []() { Scintilla_ReleaseResources(); };
-
-		if (!m_hGameMainWindow)
-			throw std::runtime_error("Game main window not found!");
 
 		m_cleanup += m_gameWindowSubclass->SetHook([this](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 			return SubclassProc(hwnd, msg, wParam, lParam);
@@ -246,37 +245,46 @@ void App::XivAlexApp::CustomMessageLoopBody() {
 	
 	m_pImpl->Load();
 	
-	m_logger->Log(LogCategory::General, u8"XivAlexander initialized.");
+	m_logger->Log(LogCategory::General, m_config->Runtime.GetLangId(), IDS_LOG_XIVALEXANDER_INITIALIZED);
 
 	try {
 		Misc::FreeGameMutex::FreeGameMutex();
 	} catch (std::exception& e) {
-		m_logger->Format<LogLevel::Warning>(LogCategory::General, "Failed to free game mutex: {}", e.what());
+		m_logger->Format<LogLevel::Warning>(LogCategory::General, m_config->Runtime.GetLangId(), IDS_ERROR_FREEGAMEMUTEX, e.what());
 	}
 
 	MSG msg;
 	while (GetMessageW(&msg, nullptr, 0, 0)) {
-		bool dispatchMessage = true;
+		auto processed = false;
 		
-		for (const auto pWindow : {
-			static_cast<Window::BaseWindow*>(m_pImpl->m_logWindow.get()),
-			static_cast<Window::BaseWindow*>(m_pImpl->m_trayWindow.get()),
-		}) {
-			if (!pWindow)
+		for (const auto pWindow : Window::BaseWindow::All()) {
+			if (!pWindow || pWindow->IsDestroyed())
 				continue;
+			
 			const auto hWnd = pWindow->GetHandle();
-			const auto hAccel = pWindow->GetAcceleratorTable();
-			if (hAccel && (hWnd == msg.hwnd || IsChild(hWnd, msg.hwnd))) {
+
+			if (const auto hAccel = pWindow->GetThreadAcceleratorTable()) {
 				if (TranslateAcceleratorW(hWnd, hAccel, &msg)) {
-					dispatchMessage = false;
+					processed = true;
 					break;
 				}
 			}
+			
+			if (hWnd != msg.hwnd && !IsChild(hWnd, msg.hwnd))
+				continue;
+
+			if (const auto hAccel = pWindow->GetWindowAcceleratorTable()) {
+				if (TranslateAcceleratorW(hWnd, hAccel, &msg)) {
+					processed = true;
+					break;
+				}
+			}
+
+			if (pWindow->IsDialogLike() && ((processed = IsDialogMessageW(msg.hwnd, &msg))))
+				break;
 		}
-		if (IsDialogMessageW(msg.hwnd, &msg))
-			dispatchMessage = false;
 		
-		if (dispatchMessage) {
+		if (!processed) {
 			TranslateMessage(&msg);
 			DispatchMessageW(&msg);
 		}
@@ -300,12 +308,11 @@ void App::XivAlexApp::RunOnGameLoop(std::function<void()> f) {
 			try {
 				f();
 			} catch (const std::exception& e) {
-				m_logger->Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred: {}", e.what());
+				m_logger->Log(LogCategory::General, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()), LogLevel::Error);
 			} catch (const _com_error& e) {
-				m_logger->Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred: {}",
-					Utils::ToUtf8(static_cast<const wchar_t*>(e.Description())));
+				m_logger->Log(LogCategory::General, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, static_cast<const wchar_t*>(e.Description())), LogLevel::Error);
 			} catch (...) {
-				m_logger->Format<LogLevel::Error>(LogCategory::General, "Unexpected error occurred");
+				m_logger->Log(LogCategory::General, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, L"?"), LogLevel::Error);
 			}
 			hEvent.Set();
 			});
@@ -319,10 +326,10 @@ std::string App::XivAlexApp::IsUnloadable() const {
 		return "";
 
 	if (m_pImpl->m_socketHook && !m_pImpl->m_socketHook->IsUnloadable())
-		return "Another module has hooked socket functions over XivAlexander. Try unloading that other module first.";
+		return Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_UNLOAD_SOCKET));
 	
 	if (!m_pImpl->m_gameWindowSubclass->IsDisableable())
-		return "Another module has hooked window procedure over XivAlexander. Try unloading that other module first.";
+		return Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_UNLOAD_WNDPROC));
 
 	return "";
 }

@@ -109,6 +109,10 @@ void App::Misc::Logger::Log(LogCategory category, const char8_t* s, LogLevel lev
 	Log(category, reinterpret_cast<const char*>(s), level);
 }
 
+void App::Misc::Logger::Log(LogCategory category, const wchar_t* s, LogLevel level) {
+	Log(category, Utils::ToUtf8(s), level);
+}
+
 void App::Misc::Logger::Log(LogCategory category, const std::string& s, LogLevel level) {
 	m_pImpl->AddLogItem(LogItem{
 		category,
@@ -116,6 +120,14 @@ void App::Misc::Logger::Log(LogCategory category, const std::string& s, LogLevel
 		level,
 		s,
 		});
+}
+
+void App::Misc::Logger::Log(LogCategory category, const std::wstring& s, LogLevel level) {
+	Log(category, Utils::ToUtf8(s), level);
+}
+
+void App::Misc::Logger::Log(LogCategory category, WORD wLanguage, UINT uStringResId, LogLevel level) {
+	Log(category, FindStringResourceEx(Dll::Module(), uStringResId, wLanguage) + 1, level);
 }
 
 void App::Misc::Logger::Clear() {

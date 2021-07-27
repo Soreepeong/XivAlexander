@@ -54,8 +54,9 @@ XIVALEXANDER_DLLEXPORT DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 		const std::filesystem::path& launcherPath,
 		const Utils::Win32::Process& waitFor) {
 	const auto companion = launcherPath.empty() ? Dll::Module().PathOf().parent_path() / XivAlex::XivAlexLoaderNameW : launcherPath;
+	
 	if (!exists(companion))
-		throw std::runtime_error(std::format("loader not found: {}", companion));
+		throw std::runtime_error(Utils::ToUtf8(std::format(FindStringResourceEx(Dll::Module(), IDS_ERROR_LOADER_NOT_FOUND) + 1, companion)));
 	
 	Utils::Win32::Process companionProcess;
 	{

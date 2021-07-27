@@ -23,9 +23,8 @@ static const std::map<App::LogCategory, const char*> LogCategoryNames{
 static WNDCLASSEXW WindowClass() {
 	const auto hIcon = Utils::Win32::Icon(LoadIconW(Dll::Module(), MAKEINTRESOURCEW(IDI_TRAY_ICON)),
 		nullptr,
-		"Failed to load app icon.");
-	WNDCLASSEXW wcex;
-	ZeroMemory(&wcex, sizeof wcex);
+		"LoadIconW");
+	WNDCLASSEXW wcex{};
 	wcex.cbSize = sizeof(WNDCLASSEX);
 	wcex.style = CS_HREDRAW | CS_VREDRAW;
 	wcex.cbClsExtra = 0;
@@ -34,17 +33,16 @@ static WNDCLASSEXW WindowClass() {
 	wcex.hIcon = hIcon;
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
 	wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
-	wcex.lpszMenuName = MAKEINTRESOURCE(IDR_LOG_MENU);
 	wcex.lpszClassName = L"XivAlexander::Window::Log";
 	wcex.hIconSm = hIcon;
 	return wcex;
 }
 
 App::Window::Log::Log()
-	: BaseWindow(WindowClass(), L"Log", WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr) {
-
+	: BaseWindow(WindowClass(), nullptr, WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr) {
+	
 	NONCLIENTMETRICS ncm = { sizeof(NONCLIENTMETRICS) };
-	SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
+	SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
 
 	m_hScintilla = CreateWindowExW(0, L"Scintilla", L"", WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
 		0, 0, 0, 0, m_hWnd, nullptr, Dll::Module(), nullptr);
@@ -99,8 +97,9 @@ App::Window::Log::Log()
 	
 	for (const auto item : m_logger->GetLogs())
 		addLogFn(*item);
-	m_callbackHandle = m_logger->OnNewLogItem(addLogFn);
+	m_cleanup += m_logger->OnNewLogItem(addLogFn);
 
+	ApplyLanguage(m_config->Runtime.GetLangId());
 	ShowWindow(m_hWnd, SW_SHOW);
 }
 
@@ -108,13 +107,23 @@ App::Window::Log::~Log() {
 	Destroy();
 }
 
+void App::Window::Log::ApplyLanguage(WORD languageId) {
+	m_hAcceleratorWindow = { Dll::Module(), RT_ACCELERATOR, MAKEINTRESOURCE(IDR_LOG_ACCELERATOR), languageId };
+	SetWindowTextW(m_hWnd, m_config->Runtime.GetStringRes(IDS_WINDOW_LOG));
+	Utils::Win32::Menu(Dll::Module(), RT_MENU, MAKEINTRESOURCE(IDR_LOG_MENU), languageId).AttachAndSwap(m_hWnd);
+}
+
 void App::Window::Log::OnLayout(double zoom, double width, double height) {
 	SetWindowPos(m_hScintilla, nullptr, 0, 0, static_cast<int>(width), static_cast<int>(height), 0);
 	ResizeMargin();
 }
 
-LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
+LRESULT App::Window::Log::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
+		case WM_INITMENUPOPUP: {
+			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST, true);
+			break;
+		}
 		case WM_COMMAND: {
 			switch (LOWORD(wParam)) {
 				case ID_FILE_SAVE: {
@@ -151,20 +160,23 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 							throw_on_error(pDialog->GetResult(&pResult));
 							throw_on_error(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszNewFileName));
 							if (!pszNewFileName)
-								throw std::runtime_error("The selected file does not have a filesystem path.");
+								throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
 							newFileName = pszNewFileName;
 						}
 						
 						std::ofstream f(newFileName);
 						f << buf;
-						Utils::Win32::MessageBoxF(hWnd, MB_ICONINFORMATION, L"XivAlexander", L"Log saved to: {}", newFileName);
+						Utils::Win32::MessageBoxF(hWnd, MB_ICONINFORMATION, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+							m_config->Runtime.FormatStringRes(IDS_LOG_SAVED, newFileName));
 						
 					} catch (std::exception& e) {
-						Utils::Win32::MessageBoxF(hWnd, MB_ICONERROR, L"XivAlexander", L"Unable to save: {}", e.what());
+						Utils::Win32::MessageBoxF(hWnd, MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME), 
+							m_config->Runtime.FormatStringRes(IDS_ERROR_LOG_SAVE, e.what()));
 					} catch (_com_error& e) {
 						if (e.Error() == HRESULT_FROM_WIN32(ERROR_CANCELLED))
 							return 0;
-						Utils::Win32::MessageBoxF(hWnd, MB_ICONERROR, L"XivAlexander", L"Unable to save: {}", static_cast<const wchar_t*>(e.Description()));
+						Utils::Win32::MessageBoxF(hWnd, MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+							m_config->Runtime.FormatStringRes(IDS_ERROR_LOG_SAVE, static_cast<const wchar_t*>(e.Description())));
 					}
 					return 0;
 				}
@@ -177,25 +189,23 @@ LRESULT App::Window::Log::WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					return 0;
 				}
 
+				case ID_FILE_CLOSE: {
+					SendMessageW(m_hWnd, WM_CLOSE, 0, 0);
+					return 0;
+				}
+
 				case ID_VIEW_ALWAYSONTOP: {
-					const auto hMenu = GetMenu(m_hWnd);
-					MENUITEMINFOW menuInfo = { sizeof(MENUITEMINFOW) };
-					menuInfo.fMask = MIIM_STATE;
-					GetMenuItemInfo(hMenu, ID_VIEW_ALWAYSONTOP, FALSE, &menuInfo);
 					if (GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST) {
 						SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-						menuInfo.fState &= ~MFS_CHECKED;
 					} else {
 						SetWindowPos(m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-						menuInfo.fState |= MFS_CHECKED;
 					}
-					SetMenuItemInfoW(hMenu, ID_VIEW_ALWAYSONTOP, FALSE, &menuInfo);
 				}
 			}
 			break;
 		}
 	}
-	return BaseWindow::WndProc(uMsg, wParam, lParam);
+	return BaseWindow::WndProc(hwnd, uMsg, wParam, lParam);
 }
 
 LRESULT App::Window::Log::OnNotify(const LPNMHDR nmhdr) {

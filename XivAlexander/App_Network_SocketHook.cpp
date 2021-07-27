@@ -3,6 +3,7 @@
 #include "App_Network_SocketHook.h"
 #include "App_Network_IcmpPingTracker.h"
 #include "App_Network_Structures.h"
+#include "resource.h"
 
 class SingleStream {
 public:
@@ -105,6 +106,7 @@ class App::Network::SingleConnection::Implementation {
 	friend class SocketHook;
 public:
 	std::shared_ptr<Misc::Logger> const m_logger;
+	std::shared_ptr<Config> const m_config;
 	SingleConnection* const this_;
 	SocketHook* const hook_;
 	const SOCKET m_socket;
@@ -132,12 +134,13 @@ public:
 	uint64_t m_nextTcpDelaySetAttempt = 0;
 
 	Implementation(SingleConnection* this_, SocketHook* hook_, SOCKET s)
-		: m_logger(App::Misc::Logger::Acquire())
+		: m_logger(Misc::Logger::Acquire())
+		, m_config(Config::Acquire())
 		, this_(this_)
 		, hook_(hook_)
 		, m_socket(s) {
 
-		m_logger->Format(LogCategory::SocketHook, "{:x}: Found", m_socket);
+		m_logger->Format(LogCategory::SocketHook, m_config->Runtime.GetLangId(), IDS_SOCKETHOOK_SOCKET_FOUND, m_socket);
 		ResolveAddresses();
 	}
 
@@ -147,7 +150,6 @@ public:
 
 		DWORD buf = 0, cb = 0;
 
-		// SIO_TCP_SET_ACK_FREQUENCY: Controls ACK delay every x ACK. Default delay is 40 or 200ms. Default value is 2 ACKs, set to 1 to disable ACK delay.
 		// SIO_TCP_SET_ACK_FREQUENCY: Controls ACK delay every x ACK. Default delay is 40 or 200ms. Default value is 2 ACKs, set to 1 to disable ACK delay.
 		int freq = 1;
 		if (SOCKET_ERROR == WSAIoctl(m_socket, SIO_TCP_SET_ACK_FREQUENCY, &freq, sizeof freq, &buf, sizeof buf, &cb, nullptr, nullptr)) {
@@ -403,7 +405,7 @@ public:
 			return TestRemoteAddressResult::Pass; // Not interested if not connected yet
 
 		if (addr.sin_family != AF_INET) {
-			this_->m_logger->Format(LogCategory::SocketHook, "{:x}: Mark ignored; not IPv4", s);
+			this_->m_logger->Format(LogCategory::SocketHook, m_config->Runtime.GetLangId(), IDS_SOCKETHOOK_SOCKET_IGNORED_NOT_IPV4, s);
 			m_nonGameSockets.emplace(s);
 			return TestRemoteAddressResult::RegisterIgnore;
 		}
@@ -418,7 +420,7 @@ public:
 				}
 			}
 			if (!pass) {
-				this_->m_logger->Format(LogCategory::SocketHook, "{:x}: Mark ignored; remote={}; IP address not accepted", s, Utils::ToString(addr));
+				this_->m_logger->Format(LogCategory::SocketHook, m_config->Runtime.GetLangId(), IDS_SOCKETHOOK_SOCKET_IGNORED_IP, s, Utils::ToString(addr));
 				return TestRemoteAddressResult::RegisterIgnore;
 			}
 		}
@@ -431,7 +433,7 @@ public:
 				}
 			}
 			if (!pass) {
-				this_->m_logger->Format(LogCategory::SocketHook, "{:x}: Mark ignored; remote={}; port not accepted", s, Utils::ToString(addr));
+				this_->m_logger->Format(LogCategory::SocketHook, m_config->Runtime.GetLangId(), IDS_SOCKETHOOK_SOCKET_IGNORED_PORT, s, Utils::ToString(addr));
 				return TestRemoteAddressResult::RegisterIgnore;
 			}
 		}
@@ -536,7 +538,9 @@ int64_t App::Network::SingleConnection::FetchSocketLatency() {
 	TCP_INFO_v0 info{};
 	DWORD tcpInfoVersion = 0, cb = 0;
 	if (0 != WSAIoctl(m_pImpl->m_socket, SIO_TCP_INFO, &tcpInfoVersion, sizeof tcpInfoVersion, &info, sizeof info, &cb, nullptr, nullptr)) {
-		m_pImpl->m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0 failed: {:08x}", m_pImpl->m_socket, WSAGetLastError());
+		const auto err = WSAGetLastError();
+		m_pImpl->m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0: {:08x} ({})", m_pImpl->m_socket,
+			err, Utils::Win32::FormatWindowsErrorMessage(err));
 		m_pImpl->m_nIoctlTcpInfoFailureCount++;
 		return INT64_MAX;
 	} else if (cb != sizeof info) {
@@ -572,7 +576,7 @@ App::Network::SocketHook::SocketHook(XivAlexApp* pApp)
 		m_pImpl->m_cleanupList += std::move(socket.SetHook([&](_In_ int af, _In_ int type, _In_ int protocol) {
 			const auto result = socket.bridge(af, type, protocol);
 			if (GetCurrentThreadId() == m_pImpl->m_dwGameMainThreadId) {
-				m_logger->Format(LogCategory::SocketHook, "{:x}: New", result);
+				m_logger->Format(LogCategory::SocketHook, "{:x}: API(socket)", result);
 				m_pImpl->FindOrCreateSingleConnection(result);
 			}
 			return result;
@@ -583,7 +587,7 @@ App::Network::SocketHook::SocketHook(XivAlexApp* pApp)
 				return closesocket.bridge(s);
 
 			m_pImpl->CleanupSocket(s);
-			m_logger->Format(LogCategory::SocketHook, "{:x}: Close", s);
+			m_logger->Format(LogCategory::SocketHook, "{:x}: API(closesocket)", s);
 			m_pImpl->m_nonGameSockets.erase(s);
 			return closesocket.bridge(s);
 			}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
@@ -669,7 +673,7 @@ App::Network::SocketHook::SocketHook(XivAlexApp* pApp)
 				return connect.bridge(s, name, namelen);
 
 			const auto result = connect.bridge(s, name, namelen);
-			m_logger->Format(LogCategory::SocketHook, "{:x}: Connect: {}", s, Utils::ToString(*name));
+			m_logger->Format(LogCategory::SocketHook, "{:x}: API(connect): {}", s, Utils::ToString(*name));
 			return result;
 			}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
 
@@ -702,7 +706,7 @@ void App::Network::SocketHook::ReleaseSockets() {
 		if (con->m_pImpl->m_unloading)
 			continue;
 		
-		m_logger->Format(LogCategory::SocketHook, "{:x}: Detaching", s);
+		m_logger->Format(LogCategory::SocketHook, m_pImpl->m_config->Runtime.GetLangId(), IDS_SOCKETHOOK_SOCKET_DETACH, s);
 		con->m_pImpl->Unload();
 	}
 	m_pImpl->m_nonGameSockets.clear();
@@ -713,24 +717,24 @@ std::wstring App::Network::SocketHook::Describe() const {
 		try {
 			std::wstring result;
 			for (const auto& [s, conn] : m_pImpl->m_sockets) {
-				result += std::format(L"Connection {:x} ({} -> {})\n",
+				result += m_pImpl->m_config->Runtime.FormatStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_TITLE,
 					s,
 					Utils::FromUtf8(Utils::ToString(conn->m_pImpl->m_localAddress)),
 					Utils::FromUtf8(Utils::ToString(conn->m_pImpl->m_remoteAddress)));
 				
-				if (const auto latency = conn->FetchSocketLatency()) {
-					result += std::format(L"* Socket Latency: last {}ms, med {}ms, avg {}+{}ms\n",
+				if (const auto latency = conn->FetchSocketLatency())
+					result += m_pImpl->m_config->Runtime.FormatStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY,
 						latency, conn->SocketLatency.Median(), conn->SocketLatency.Mean(), conn->SocketLatency.Deviation());
-				} else
-					result += L"* Socket Latency: failed to resolve\n";
+				else
+					result += m_pImpl->m_config->Runtime.GetStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY_FAILURE);
 				
-				if (const auto tracker = conn->GetPingLatencyTracker(); tracker && tracker->Count()) {
-					result += std::format(L"* Ping Latency: last {}ms, med {}ms, avg {}+{}ms\n",
+				if (const auto tracker = conn->GetPingLatencyTracker(); tracker && tracker->Count())
+					result += m_pImpl->m_config->Runtime.FormatStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY,
 						tracker->Latest(), tracker->Median(), tracker->Mean(), tracker->Deviation());
-				} else
-					result += L"* Ping Latency: failed to resolve\n";
-				
-				result += std::format(L"* Response Delay: med {}ms, avg {}ms, dev {}ms\n\n",
+				else
+					result += m_pImpl->m_config->Runtime.GetStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY_FAILURE);
+
+				result += m_pImpl->m_config->Runtime.FormatStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_RESPONSE_DELAY,
 					conn->ApplicationLatency.Median(), conn->ApplicationLatency.Mean(), conn->ApplicationLatency.Deviation());
 			}
 			return result;

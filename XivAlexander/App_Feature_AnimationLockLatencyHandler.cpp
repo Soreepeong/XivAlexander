@@ -2,6 +2,7 @@
 #include "App_Feature_AnimationLockLatencyHandler.h"
 #include "App_Network_SocketHook.h"
 #include "App_Network_Structures.h"
+#include "resource.h"
 
 class App::Feature::AnimationLockLatencyHandler::Implementation {
 public:
@@ -366,15 +367,14 @@ public:
 					if (rtt > 100 && latency < 5) {
 						m_pImpl->m_logger->Format<LogLevel::Warning>(
 							LogCategory::AnimationLockLatencyHandler,
-							u8"\t┎ rtt={} but latency={}; your VPN or network might be reporting 0 ping. "
-							u8"Disabling <Delay Detection> is recommended",
+							m_config->Runtime.GetLangId(), IDS_WARNING_ZEROPING,
 							rtt, latency);
 					}
 					return delay;
 				} else
 					description << std::format(" delay={}ms", DefaultDelay);
 			} else
-				description << " latency=unavailable";
+				description << " latency=?";
 			return DefaultDelay;
 		}
 	};

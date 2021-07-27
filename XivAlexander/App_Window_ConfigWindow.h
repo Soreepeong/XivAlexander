@@ -11,9 +11,10 @@ namespace App::Window {
 		std::string m_originalConfig;
 
 		Utils::CallOnDestruction m_callbackHandle;
+		const UINT m_nTitleStringResourceId;
 
 	public:
-		explicit Config(::App::Config::BaseRepository* pRepository);
+		Config(UINT nTitleStringResourceId, App::Config::BaseRepository* pRepository);
 		~Config() override;
 
 		void Revert();
@@ -23,7 +24,9 @@ namespace App::Window {
 		::App::Config::BaseRepository* GetRepository() const;
 		
 	protected:
-		LRESULT WndProc(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
+		void ApplyLanguage(WORD languageId) final;
+		
+		LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 		void OnLayout(double zoom, double width, double height) override;
 		LRESULT OnNotify(const LPNMHDR nmhdr) override;
 
