@@ -85,6 +85,8 @@ WORD App::Config::Runtime::GetLangId() const {
 		return MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
 	case Language::Korean:
 		return MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN);
+	case Language::Japanese:
+		return MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN);
 	}
 
 	return MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL);
@@ -161,6 +163,8 @@ bool App::Config::Item<App::Config::Language>::LoadFrom(const nlohmann::json& da
 				newValue = Language::English;
 			else if (newValueString.substr(0, std::min<size_t>(6, newValueString.size())) == L"korean")
 				newValue = Language::Korean;
+			else if (newValueString.substr(0, std::min<size_t>(8, newValueString.size())) == L"japanese")
+				newValue = Language::Japanese;
 		}
 		
 		if (announceChanged)
@@ -178,6 +182,8 @@ void App::Config::Item<App::Config::Language>::SaveTo(nlohmann::json& data) cons
 		data[Name()] = "English";
 	else if (m_value == Language::Korean)
 		data[Name()] = "Korean";
+	else if (m_value == Language::Japanese)
+		data[Name()] = "Japanese";
 }
 
 template<typename T>

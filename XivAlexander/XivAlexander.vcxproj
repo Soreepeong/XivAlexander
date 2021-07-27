@@ -358,7 +358,12 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
       <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</NullTerminateStrings>
       <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</NullTerminateStrings>
     </ResourceCompile>
-    <ResourceCompile Include="XivAlexander_ja.rc" />
+    <ResourceCompile Include="XivAlexander_ja.rc">
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</NullTerminateStrings>
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</NullTerminateStrings>
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</NullTerminateStrings>
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</NullTerminateStrings>
+    </ResourceCompile>
     <ResourceCompile Include="XivAlexander_ko.rc">
       <Culture Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">0x0412</Culture>
       <Culture Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">0x0412</Culture>

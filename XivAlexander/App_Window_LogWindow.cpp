@@ -101,6 +101,7 @@ App::Window::Log::Log()
 
 	ApplyLanguage(m_config->Runtime.GetLangId());
 	ShowWindow(m_hWnd, SW_SHOW);
+	SetFocus(m_hScintilla);
 }
 
 App::Window::Log::~Log() {
@@ -124,6 +125,9 @@ LRESULT App::Window::Log::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
 			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST, true);
 			break;
 		}
+		case WM_ACTIVATE:
+			SetFocus(m_hScintilla);
+			break;
 		case WM_COMMAND: {
 			switch (LOWORD(wParam)) {
 				case ID_FILE_SAVE: {

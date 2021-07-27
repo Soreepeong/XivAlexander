@@ -98,6 +98,7 @@ public:
 	XivAlexanderLoaderParameter()
 		: argp("XivAlexanderLoader") {
 		// SetThreadUILanguage(MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN));
+		// SetThreadUILanguage(MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN));
 
 		argp.add_argument("-a", "--action")
 			.help(Utils::ToUtf8(Utils::Win32::FindStringResourceEx(nullptr, IDS_HELP_ACTION) + 1))
