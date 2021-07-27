@@ -255,6 +255,10 @@ LRESULT App::Window::Main::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 					config.Language = App::Config::Language::Korean;
 					return 0;
 
+				case ID_TRAYMENU_CONFIGURATION_LANGUAGE_JAPANESE:
+					config.Language = App::Config::Language::Japanese;
+					return 0;
+
 				case ID_TRAYMENU_CONFIGURATION_RELOAD:
 					config.Reload();
 					return 0;
@@ -438,6 +442,7 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) const {
 	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_SYSTEMDEFAULT, config.Language == App::Config::Language::SystemDefault, true);
 	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_ENGLISH, config.Language == App::Config::Language::English, true);
 	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_KOREAN, config.Language == App::Config::Language::Korean, true);
+	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_JAPANESE, config.Language == App::Config::Language::Japanese, true);
 	
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_RESTART, false, !m_launchParameters.empty());
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEDIRECTX11, m_bUseDirectX11, !m_launchParameters.empty());

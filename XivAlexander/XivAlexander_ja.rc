@@ -1,0 +1,237 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource2.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "winres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// Japanese (Japan) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_JPN)
+LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
+#pragma code_page(932)
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource2.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""winres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_TRAY_MENU MENU
+BEGIN
+    POPUP "動作(&F, F1)"
+    BEGIN
+        MENUITEM "(現在のプロセスの状況)",                ID_TRAYMENU_CURRENTINFO, INACTIVE
+        MENUITEM SEPARATOR
+        POPUP "遅延の解消(&M)"
+        BEGIN
+            MENUITEM "有効化(&E)\t(Ctrl+Shift+)H",     ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE
+            MENUITEM SEPARATOR
+            MENUITEM "サーバーの遅延を考慮(&D)\tCtrl+(Alt+)D", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION
+            MENUITEM "レイテンシの平均値を使用(&A)\tCtrl+(Alt+)A", ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION
+            MENUITEM "アクションの拙速な使用の防止(&E)\tCtrl+(Alt+)E", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY
+            MENUITEM SEPARATOR
+            MENUITEM "ログを有効にする(&L)\tCtrl+(Alt+)L",  ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING
+            MENUITEM "作動のシミュレーション (ログに記録) (&P)\tCtrl+(Alt+)P", ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE
+        END
+        POPUP "ネットワーク(&N)"
+        BEGIN
+            MENUITEM "パケット遅延の軽減(&R)\t(Ctrl+Shift+)F1", ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY
+            MENUITEM SEPARATOR
+            MENUITEM "ループバックアドレスの処理(127.0.0.0/8)(&L)\t(Ctrl+Shift+)1", ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES
+            MENUITEM "ローカルアドレスの処理(10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)(&P)\t(Ctrl+Shift+)2", ID_TRAYMENU_NETWORKING_TAKEOVERPRIVATEADDRESSES
+            MENUITEM "すべてのアドレスの処理(0.0.0.0/0)(&A)\t(Ctrl+Shift+)3", ID_TRAYMENU_NETWORKING_TAKEOVERALLADDRESSES
+            MENUITEM "すべてのポートの処理(&P)\t(Ctrl+Shift+)4", ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS
+            MENUITEM SEPARATOR
+            MENUITEM "すべての接続の処理を解除(&E)\t(Ctrl+Shift+)F2", ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS
+        END
+        MENUITEM "IPCタイプファインダーの使用(&F)\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
+        MENUITEM "すべてのIPCメッセージをログに記録(&A)\t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
+        MENUITEM "AddStatusEffectの遅延をログに記録(&E)\t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
+        MENUITEM SEPARATOR
+        MENUITEM "ゲームウィンドウを常に手前に表示(&T)\tCtrl+Shift+T", ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP
+        POPUP "ゲームの強制再起動(&S)"
+        BEGIN
+            MENUITEM "再起動(&R)\tCtrl+Shift+R",       ID_TRAYMENU_RESTARTGAME_RESTART
+            MENUITEM SEPARATOR
+            MENUITEM "DirectX11を使用(&D)\t(Ctrl+Shift+)D", ID_TRAYMENU_RESTARTGAME_USEDIRECTX11
+            MENUITEM "XivAlexanderを使用(&X)\t(Ctrl+Shift+)X", ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER
+            MENUITEM "コマンドラインの難読化を使用(&P)\t(Ctrl+Shift+)P", ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION
+            MENUITEM "管理者権限で実行(&E)\t(Ctrl+Shift+)A", ID_TRAYMENU_RESTARTGAME_USEELEVATION
+        END
+        MENUITEM "ゲームの強制終了(&X)\tCtrl+Shift+Q",  ID_TRAYMENU_EXITGAME
+        MENUITEM SEPARATOR
+        POPUP "設定(&C)"
+        BEGIN
+            MENUITEM "ログウィンドウの表示(&L)\t(Ctrl+Alt+)L", ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW
+            MENUITEM "コントロールウィンドウの表示(&C)\tCtrl+(Alt+)W", ID_TRAYMENU_CONFIGURATION_SHOWCONTROLWINDOW
+            MENUITEM "環境設定(&R)\t(Ctrl+Alt+)R",      ID_TRAYMENU_CONFIGURATION_EDITRUNTIMECONFIGURATION
+            MENUITEM "Opcodeの設定(&O)\t(Ctrl+Alt+)O", ID_TRAYMENU_CONFIGURATION_EDITOPCODECONFIGURATION
+            MENUITEM SEPARATOR
+            MENUITEM "システム言語を使用(&S)\t",             ID_TRAYMENU_CONFIGURATION_LANGUAGE_SYSTEMDEFAULT
+            MENUITEM "言語：英語(&E)\t",                 ID_TRAYMENU_CONFIGURATION_LANGUAGE_ENGLISH
+            MENUITEM "言語：韓国語(&K)\t",                ID_TRAYMENU_CONFIGURATION_LANGUAGE_KOREAN
+            MENUITEM "言語：日本語(&J)",                  ID_TRAYMENU_CONFIGURATION_LANGUAGE_JAPANESE
+            MENUITEM SEPARATOR
+            MENUITEM "設定の再読み込み(&Z)\t(Ctrl+Shift+)F5", ID_TRAYMENU_CONFIGURATION_RELOAD
+        END
+        MENUITEM "アップデートの確認(&P)\tCtrl+(Alt+)U", ID_TRAYMENU_CHECKFORUPDATES
+        MENUITEM "XivAlexanderの終了(&U)\tCtrl+(Alt+)Q", ID_TRAYMENU_UNLOADXIVALEXANDER
+    END
+    POPUP "表示(&V)"
+    BEGIN
+        MENUITEM "常に手前に表示(&T)\tCtrl+T",         ID_VIEW_ALWAYSONTOP
+    END
+END
+
+IDR_LOG_MENU MENU
+BEGIN
+    POPUP "ファイル(&F)"
+    BEGIN
+        MENUITEM "保存(&S)\tCtrl+S",              ID_FILE_SAVE
+        MENUITEM "空にする(&E)\tCtrl+E",            ID_FILE_CLEAR
+        MENUITEM SEPARATOR
+        MENUITEM "閉じる(&W)\tCtrl+W",             ID_FILE_CLOSE
+    END
+    POPUP "表示(&V)"
+    BEGIN
+        MENUITEM "常に手前に表示(&T)\tCtrl+T",         ID_VIEW_ALWAYSONTOP
+    END
+END
+
+IDR_CONFIG_EDITOR_MENU MENU
+BEGIN
+    POPUP "ファイル(&F)"
+    BEGIN
+        MENUITEM "保存(&S)\tCtrl+S",              ID_FILE_SAVE
+        MENUITEM "元に戻す(&R)\tCtrl+R",            ID_FILE_REVERT
+        MENUITEM SEPARATOR
+        MENUITEM "閉じる(&W)\tCtrl+W",             ID_FILE_CLOSE
+    END
+    POPUP "表示(&V)"
+    BEGIN
+        MENUITEM "常に手前に表示(&T)\tCtrl+T",         ID_VIEW_ALWAYSONTOP
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_LOADER_NOT_FOUND "{}でXivAlexanderLoaderを見つけることができませんでした。"
+    IDS_ERROR_CONFIGURATION_LOAD "設定ファイルの読み込みに失敗しました。({})"
+    IDS_LOG_NEW_CONFIG      "新たな設定ファイルを{}に作成します。"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_CONFIGURATION_SAVE "設定ファイルの保存に失敗しました。({})"
+    IDS_ERROR_CONFIGURATION_PARSE_VALUE "設定値(""{}"")の読み込みに失敗しました。({})"
+    IDS_ERROR_GAME_WINDOW_NOT_FOUND "ゲームのメインウィンドウを見つけることができませんでした。"
+    IDS_ERROR_UNLOAD_XIVALEXANDER "XivAlexanderの終了に失敗しました。({})"
+    IDS_LOG_XIVALEXANDER_INITIALIZED "XivAlexanderの初期化に成功"
+    IDS_ERROR_FREEGAMEMUTEX "ゲームの多重起動防止解除に失敗しました。({})"
+    IDS_ERROR_UNEXPECTED    "予想しないエラーが発生しました。({})"
+    IDS_ERROR_UNLOAD_SOCKET "他のプログラムにソケット関数を割り込まれました。先に競合のプログラムを終了してください。"
+    IDS_ERROR_UNLOAD_WNDPROC 
+                            "他のプログラムにウィンドウのプロシージャを割り込まれました。先に競合のプログラムを終了してください。"
+    IDS_ERROR_INJECT        "このプログラムの初期化に失敗しました。\nエラー：{}\nPID：{}\nパス：{}\nコマンドライン：{}"
+    IDS_WARNING_ZEROPING    "rtt={}, latency={}; VPNまたはネットワークから0msの遅延が報告されているため、「サーバーの遅延を考慮」の無効化をおすすめします。"
+    IDS_ERROR_FREEGAMEMUTEX_CLOSEHANDLE 
+                            "ハンドルの取得に失敗しました。({:p}(type {:2x}): {})"
+    IDS_PINGTRACKER_START   "{} -> {}: 遅延の測定を開始します。"
+    IDS_PINGTRACKER_END     "{} -> {}: 遅延の測定を中止します。"
+    IDS_PINGTRACKER_END_FAILURE_COUNT "{} -> {}: {}回連続で遅延の測定に失敗し、測定を中止します。"
+    IDS_PINGTRACKER_END_ERROR "{} -> {}: エラーが発生したため遅延の測定を中止します。({})"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SOCKETHOOK_SOCKET_FOUND "{:x}: 処理開始"
+    IDS_SOCKETHOOK_SOCKET_IGNORED_NOT_IPV4 "{:x}: 除外 (IPv4アドレスではないため)"
+    IDS_SOCKETHOOK_SOCKET_IGNORED_IP "{:x}: 除外 (リモートアドレス{}に該当するルールがないため)"
+    IDS_SOCKETHOOK_SOCKET_IGNORED_PORT "{:x}: 除外 (リモートポート{}に該当するルールがないため)"
+    IDS_SOCKETHOOK_SOCKET_DETACH "{:x}: 処理終了"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_TITLE "接続先 {:x} ({} -> {})\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY 
+                            "* ソケット遅延: 最終値 {}ms, 中央値 {}ms, 平均 {}+{}ms\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY_FAILURE "* ソケット遅延: 測定失敗\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY 
+                            "* 測定遅延: 最終値 {}ms, 中央値 {}ms, 平均 {}+{}ms\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY_FAILURE "* 測定遅延: 測定失敗\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_RESPONSE_DELAY 
+                            "* 応答遅延: 中央値 {}ms, 平均 {}+{}ms\n\n"
+    IDS_CONFIRM_CONFIG_WINDOW_CLOSE "設定を保存しますか？"
+    IDS_LOG_SAVED           "ログファイルを次の場所に保存しました：{}"
+    IDS_ERROR_LOG_SAVE      "ログファイルを次の場所に保存することに失敗しました：{} ({})"
+    IDS_WARNING_GAME_PARAMETER_PARSE 
+                            "ゲームの起動時のコマンドラインの解読に失敗しました。ゲームの再起動関連の機能を利用できません。({})"
+    IDS_CONFIRM_MAIN_WINDOW_CLOSE 
+                            "XivAlexanderを終了しますか？\n\n終了したい場合{}のボタンを、\nこのウィンドウだけ閉じたい場合{}のボタンを、\n取り消す場合{}のボタンを押してください。"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_CONFIRM_EXIT_GAME   "ゲームを強制終了しますか？"
+    IDS_ERROR_UPDATE_CHECK_LAUNCH "アップデートの確認に失敗しました。({})"
+    IDS_CONFIRM_RESTART_GAME 
+                            "ゲームを強制的に再起動しますか？\n\nDirectX11の使用：{}\nXivAlexanderの使用：{}\nコマンドラインの難読化の使用：{}\n管理者権限で実行：{}"
+    IDS_FAQ                 "PID: {}\nゲームのインストール先: {}\nゲームのバージョン: {} ({})\n\n{}\nよくある質問：\n・次の項目のいずれかに該当するものがある場合「サーバーの遅延を考慮」の無効化をお勧めします。\n　・VPNを導入していて遅延が極めて低く表示されている場合\n　・200ms以上の遅延を経験している場合\n　・二つのアビリティを一回のGCDに挟むことができない場合\n・一般的な場合「アクションの拙速な使用の防止」は無効のままにしてください。\n　・エフェクトの終了後に限り次のアクションを使用することができると判断される場合にだけ有効にしてください。\n　・ゲームの仕様上フレームレートに応じてアクションエフェクトの終了前1フレームに次のアクションを使用することができます。\n  ・例えば60FPSの場合エフェクトの終了前16ms、30FPSの場合33msの間次のアクションを使用することができます。\n・FFLogsやACTでは一つのアクションとその前のアクションの間隔が600ms未満だと記録される場合があります。これはクライアントでの入力の間隔とサーバーの応答の間隔が一致しないことから生じる現象です。\n　・アクションの使用間隔が600ms未満の場合次のアクションはその分遅延後に使用されたこととして記録されます。\n・遅延が極めて長い場合ゲームの仕様上500ms毎にアクションを使用できるようになります。"
+    IDS_APP_NAME            "XivAlexander"
+    IDS_WINDOW_RUNTIME_CONFIG_EDITOR "環境設定"
+    IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcodeの設定"
+    IDS_WINDOW_LOG          "ログの表示"
+END
+
+#endif    // Japanese (Japan) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

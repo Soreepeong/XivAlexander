@@ -80,12 +80,12 @@ BEGIN
         BEGIN
             MENUITEM "&Enable\t(Ctrl+Shift+)H",     ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE
             MENUITEM SEPARATOR
-            MENUITEM "Use &Delay Detection\tCtrl+(Alt+)D", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION
-            MENUITEM "Use Latency &Correction\tCtrl+(Alt+)C", ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION
-            MENUITEM "Use &Early Penalty\tCtrl+(Alt+)E", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY
+            MENUITEM "Integrate Server &Delay\tCtrl+(Alt+)D", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION
+            MENUITEM "Latency Sample &Attenuation\tCtrl+(Alt+)A", ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION
+            MENUITEM "Prevent &Early Firing\tCtrl+(Alt+)E", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY
             MENUITEM SEPARATOR
             MENUITEM "Use &Logging\tCtrl+(Alt+)L",  ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING
-            MENUITEM "&Preview Mode\tCtrl+(Alt+)P", ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE
+            MENUITEM "&Preview Mode (Dry Run)\tCtrl+(Alt+)P", ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE
         END
         POPUP "&Networking"
         BEGIN
@@ -99,10 +99,10 @@ BEGIN
             MENUITEM "R&elease All Connections\t(Ctrl+Shift+)F2", ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS
         END
         MENUITEM "Use IPC Type &Finder\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
-        MENUITEM "Use All IPC &Message Logger\t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
-        MENUITEM "Use &Effect Application Delay Logger\t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
+        MENUITEM "Log All IPC &Message \t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
+        MENUITEM "Log &Effect Application Delay \t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
         MENUITEM SEPARATOR
-        MENUITEM "Game Window Always on &Top\tCtrl+Shift+T", ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP
+        MENUITEM "Always Put Game Window on &Top\tCtrl+Shift+T", ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP
         POPUP "Force Re&start Game"
         BEGIN
             MENUITEM "&Restart\tCtrl+Shift+R",      ID_TRAYMENU_RESTARTGAME_RESTART
@@ -121,9 +121,10 @@ BEGIN
             MENUITEM "Edit &Runtime Configuration\t(Ctrl+Alt+)R", ID_TRAYMENU_CONFIGURATION_EDITRUNTIMECONFIGURATION
             MENUITEM "Edit &Opcode Configuration\t(Ctrl+Alt+)O", ID_TRAYMENU_CONFIGURATION_EDITOPCODECONFIGURATION
             MENUITEM SEPARATOR
-            MENUITEM "Language: System Default (&S)", ID_TRAYMENU_CONFIGURATION_LANGUAGE_SYSTEMDEFAULT
-            MENUITEM "Language: English (&E)",      ID_TRAYMENU_CONFIGURATION_LANGUAGE_ENGLISH
-            MENUITEM "Language: Korean (&K)",       ID_TRAYMENU_CONFIGURATION_LANGUAGE_KOREAN
+            MENUITEM "Use &System Default Language", ID_TRAYMENU_CONFIGURATION_LANGUAGE_SYSTEMDEFAULT
+            MENUITEM "Language: &English",          ID_TRAYMENU_CONFIGURATION_LANGUAGE_ENGLISH
+            MENUITEM "Language: &Korean",           ID_TRAYMENU_CONFIGURATION_LANGUAGE_KOREAN
+            MENUITEM "Language: &Japanese",         ID_TRAYMENU_CONFIGURATION_LANGUAGE_JAPANESE
             MENUITEM SEPARATOR
             MENUITEM "Reload (&Z)\t(Ctrl+Shift+)F5", ID_TRAYMENU_CONFIGURATION_RELOAD
         END
@@ -308,7 +309,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_ERROR_LOADER_NOT_FOUND "XivAlexander Loader could not be found at {}."
+    IDS_ERROR_LOADER_NOT_FOUND "XivAlexanderLoader could not be found at {}."
     IDS_ERROR_CONFIGURATION_LOAD "Failed to load configuration file. ({})"
     IDS_LOG_NEW_CONFIG      "Creating new configuration file at {}."
 END
