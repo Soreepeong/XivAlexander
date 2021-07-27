@@ -26,97 +26,97 @@ LANGUAGE LANG_KOREAN, SUBLANG_DEFAULT
 
 IDR_TRAY_MENU MENU
 BEGIN
-    POPUP "기능 (&F, F1)"
+    POPUP "기능(&F, F1)"
     BEGIN
         MENUITEM "(현재 프로세스 정보)",                ID_TRAYMENU_CURRENTINFO, INACTIVE
         MENUITEM SEPARATOR
-        POPUP "높은 지연 시간 처리 (&M)"
+        POPUP "지연 해소(&M)"
         BEGIN
-            MENUITEM "사용 (&E)\t(Ctrl+Shift+)H",     ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE
+            MENUITEM "사용(&E)\t(Ctrl+Shift+)H",      ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE
             MENUITEM SEPARATOR
-            MENUITEM "계산에 지연 시간 참조 (&D)\tCtrl+(Alt+)D", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION
-            MENUITEM "지연 시간 평균값 사용 (&T)\tCtrl+(Alt+)C", ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION
-            MENUITEM "이른 기술 시전 방지 (&E)\tCtrl+(Alt+)E", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY
+            MENUITEM "서버 지연 포함(&D)\tCtrl+(Alt+)D",  ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION
+            MENUITEM "지연 시간 평균값 사용(&A)\tCtrl+(Alt+)A", ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION
+            MENUITEM "이른 기술 시전 방지(&E)\tCtrl+(Alt+)E", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY
             MENUITEM SEPARATOR
-            MENUITEM "로그 사용 (&L)\tCtrl+(Alt+)L",    ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING
-            MENUITEM "로그로만 미리보기 (&P)\tCtrl+(Alt+)P", ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE
+            MENUITEM "로그 사용(&L)\tCtrl+(Alt+)L",     ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING
+            MENUITEM "모의 작동 (로그에서 미리 보기)(&P)\tCtrl+(Alt+)P", ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE
         END
-        POPUP "네트워크 (&N)"
+        POPUP "네트워크(&N)"
         BEGIN
-            MENUITEM "패킷 딜레이 감소 (&R)\t(Ctrl+Shift+)F1", ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY
+            MENUITEM "패킷 딜레이 감소(&R)\t(Ctrl+Shift+)F1", ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY
             MENUITEM SEPARATOR
-            MENUITEM "루프백 주소 처리 (127.0.0.0/8) (&L)\t(Ctrl+Shift+)1", ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES
-            MENUITEM "사설 주소 처리 (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24) (&P)\t(Ctrl+Shift+)2", ID_TRAYMENU_NETWORKING_TAKEOVERPRIVATEADDRESSES
-            MENUITEM "모든 주소 처리 (0.0.0.0/0) (&A)\t(Ctrl+Shift+)3", ID_TRAYMENU_NETWORKING_TAKEOVERALLADDRESSES
-            MENUITEM "모든 포트 처리 (&P)\t(Ctrl+Shift+)4", ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS
+            MENUITEM "루프백 주소 처리 (127.0.0.0/8)(&L)\t(Ctrl+Shift+)1", ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES
+            MENUITEM "사설 주소 처리 (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)(&P)\t(Ctrl+Shift+)2", ID_TRAYMENU_NETWORKING_TAKEOVERPRIVATEADDRESSES
+            MENUITEM "모든 주소 처리 (0.0.0.0/0)(&A)\t(Ctrl+Shift+)3", ID_TRAYMENU_NETWORKING_TAKEOVERALLADDRESSES
+            MENUITEM "모든 포트 처리(&P)\t(Ctrl+Shift+)4", ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS
             MENUITEM SEPARATOR
-            MENUITEM "모든 연결 처리 해제 (&E)\t(Ctrl+Shift+)F2", ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS
+            MENUITEM "모든 연결 처리 해제(&E)\t(Ctrl+Shift+)F2", ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS
         END
-        MENUITEM "IPC 검색 도우미 사용 (&F)\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
-        MENUITEM "모든 IPC 메시지 로그 사용 (&A)\t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
-        MENUITEM "기술 효과 적용 지연 로그 사용 (&E)\t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
+        MENUITEM "IPC 검색 도우미 사용(&F)\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
+        MENUITEM "모든 IPC 메시지 로그 사용(&A)\t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
+        MENUITEM "기술 효과 적용 지연 로그 사용(&E)\t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
         MENUITEM SEPARATOR
-        MENUITEM "게임 창 항상 최상단에 띄우기 (&T)\tCtrl+Shift+T", ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP
-        POPUP "게임 강제 재시작 (&S)"
+        MENUITEM "게임 창을 항상 위에 표시(&T)\tCtrl+Shift+T", ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP
+        POPUP "게임 강제 재시작(&S)"
         BEGIN
-            MENUITEM "재시작하기 (&R)\tCtrl+Shift+R",    ID_TRAYMENU_RESTARTGAME_RESTART
+            MENUITEM "재시작하기(&R)\tCtrl+Shift+R",     ID_TRAYMENU_RESTARTGAME_RESTART
             MENUITEM SEPARATOR
-            MENUITEM "DirectX 11 사용 (&D)\t(Ctrl+Shift+)D", ID_TRAYMENU_RESTARTGAME_USEDIRECTX11
-            MENUITEM "XivAlexander 사용 (&X)\t(Ctrl+Shift+)X", ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER
-            MENUITEM "명령줄 난독화 사용 (&P)\t(Ctrl+Shift+)P", ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION
-            MENUITEM "관리자 권한으로 실행 (&E)\t(Ctrl+Shift+)A", ID_TRAYMENU_RESTARTGAME_USEELEVATION
+            MENUITEM "DirectX 11 사용(&D)\t(Ctrl+Shift+)D", ID_TRAYMENU_RESTARTGAME_USEDIRECTX11
+            MENUITEM "XivAlexander 사용(&X)\t(Ctrl+Shift+)X", ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER
+            MENUITEM "명령줄 난독화 사용(&P)\t(Ctrl+Shift+)P", ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION
+            MENUITEM "관리자 권한으로 실행(&E)\t(Ctrl+Shift+)A", ID_TRAYMENU_RESTARTGAME_USEELEVATION
         END
-        MENUITEM "게임 강제 종료 (&X)\tCtrl+Shift+Q", ID_TRAYMENU_EXITGAME
+        MENUITEM "게임 강제 종료(&X)\tCtrl+Shift+Q",  ID_TRAYMENU_EXITGAME
         MENUITEM SEPARATOR
-        POPUP "설정 (&C)"
+        POPUP "설정(&C)"
         BEGIN
-            MENUITEM "로그 창 보이기 (&L)\t(Ctrl+Alt+)L", ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW
-            MENUITEM "관리 창 보이기 (&C)\tCtrl+(Alt+)W", ID_TRAYMENU_CONFIGURATION_SHOWCONTROLWINDOW
-            MENUITEM "프로그램 설정 변경 (&R)\t(Ctrl+Alt+)R", ID_TRAYMENU_CONFIGURATION_EDITRUNTIMECONFIGURATION
-            MENUITEM "옵코드 설정 변경 (&O)\t(Ctrl+Alt+)O", ID_TRAYMENU_CONFIGURATION_EDITOPCODECONFIGURATION
+            MENUITEM "로그 창 보이기(&L)\t(Ctrl+Alt+)L",  ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW
+            MENUITEM "관리 창 보이기(&C)\tCtrl+(Alt+)W",  ID_TRAYMENU_CONFIGURATION_SHOWCONTROLWINDOW
+            MENUITEM "프로그램 설정 변경(&R)\t(Ctrl+Alt+)R", ID_TRAYMENU_CONFIGURATION_EDITRUNTIMECONFIGURATION
+            MENUITEM "옵코드 설정 변경(&O)\t(Ctrl+Alt+)O", ID_TRAYMENU_CONFIGURATION_EDITOPCODECONFIGURATION
             MENUITEM SEPARATOR
             MENUITEM "언어: 시스템 기본 (&S)\t",           ID_TRAYMENU_CONFIGURATION_LANGUAGE_SYSTEMDEFAULT
             MENUITEM "언어: 영어 (&E)\t",               ID_TRAYMENU_CONFIGURATION_LANGUAGE_ENGLISH
             MENUITEM "언어: 한국어 (&K)\t",              ID_TRAYMENU_CONFIGURATION_LANGUAGE_KOREAN
             MENUITEM SEPARATOR
-            MENUITEM "설정 다시 읽기 (&Z)\t(Ctrl+Shift+)F5", ID_TRAYMENU_CONFIGURATION_RELOAD
+            MENUITEM "설정 다시 읽어오기(&Z)\t(Ctrl+Shift+)F5", ID_TRAYMENU_CONFIGURATION_RELOAD
         END
-        MENUITEM "업데이트 확인 (&P)\tCtrl+(Alt+)U",  ID_TRAYMENU_CHECKFORUPDATES
-        MENUITEM "XivAlexander 종료 (&U)\tCtrl+(Alt+)Q", ID_TRAYMENU_UNLOADXIVALEXANDER
+        MENUITEM "업데이트 확인(&P)\tCtrl+(Alt+)U",   ID_TRAYMENU_CHECKFORUPDATES
+        MENUITEM "XivAlexander 종료(&U)\tCtrl+(Alt+)Q", ID_TRAYMENU_UNLOADXIVALEXANDER
     END
-    POPUP "보기 (&V)"
+    POPUP "보기(&V)"
     BEGIN
-        MENUITEM "항상 최상단에 띄우기 (&T)\tCtrl+T",    ID_VIEW_ALWAYSONTOP
+        MENUITEM "항상 위에 표시(&T)\tCtrl+T",        ID_VIEW_ALWAYSONTOP
     END
 END
 
 IDR_LOG_MENU MENU
 BEGIN
-    POPUP "파일 (&F)"
+    POPUP "파일(&F)"
     BEGIN
-        MENUITEM "저장 (&S)\tCtrl+S",             ID_FILE_SAVE
-        MENUITEM "비우기 (&E)\tCtrl+E",            ID_FILE_CLEAR
+        MENUITEM "저장(&S)\tCtrl+S",              ID_FILE_SAVE
+        MENUITEM "비우기(&E)\tCtrl+E",             ID_FILE_CLEAR
         MENUITEM SEPARATOR
-        MENUITEM "닫기 (&W)\tCtrl+W",             ID_FILE_CLOSE
+        MENUITEM "닫기(&W)\tCtrl+W",              ID_FILE_CLOSE
     END
-    POPUP "보기 (&V)"
+    POPUP "보기(&V)"
     BEGIN
-        MENUITEM "항상 최상단에 띄우기 (&T)\tCtrl+T",    ID_VIEW_ALWAYSONTOP
+        MENUITEM "항상 위에 표시(&T)\tCtrl+T",        ID_VIEW_ALWAYSONTOP
     END
 END
 
 IDR_CONFIG_EDITOR_MENU MENU
 BEGIN
-    POPUP "파일 (&F)"
+    POPUP "파일(&F)"
     BEGIN
-        MENUITEM "저장 (&S)\tCtrl+S",             ID_FILE_SAVE
-        MENUITEM "되돌리기 (&R)\tCtrl+R",           ID_FILE_REVERT
+        MENUITEM "저장(&S)\tCtrl+S",              ID_FILE_SAVE
+        MENUITEM "되돌리기(&R)\tCtrl+R",            ID_FILE_REVERT
         MENUITEM SEPARATOR
-        MENUITEM "닫기 (&W)\tCtrl+W",             ID_FILE_CLOSE
+        MENUITEM "닫기(&W)\tCtrl+W",              ID_FILE_CLOSE
     END
-    POPUP "보기 (&V)"
+    POPUP "보기(&V)"
     BEGIN
-        MENUITEM "항상 최상단에 띄우기 (&T)\tCtrl+T",    ID_VIEW_ALWAYSONTOP
+        MENUITEM "항상 위에 표시(&T)\tCtrl+T",        ID_VIEW_ALWAYSONTOP
     END
 END
 
@@ -154,8 +154,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_ERROR_LOADER_NOT_FOUND 
-                            "{}에 있어야 하는 XivAlexander Loader를 찾을 수 없어 계속할 수 없습니다."
+    IDS_ERROR_LOADER_NOT_FOUND "XivAlexanderLoader를 {}에서 발견할 수 없었습니다."
     IDS_ERROR_CONFIGURATION_LOAD "설정 파일을 불러오지 못했습니다. ({})"
     IDS_LOG_NEW_CONFIG      "새 설정 파일을 {}에 생성합니다."
 END
@@ -174,7 +173,7 @@ BEGIN
     IDS_ERROR_INJECT        "이 프로그램을 초기화하지 못했습니다.\n오류: {}\nPID: {}\n경로: {}\n명령줄: {}"
     IDS_WARNING_ZEROPING    "rtt={}, latency={}; VPN 또는 네트워크에서 핑이 0ms라고 보고하고 있습니다. ""계산에 지연 시간 참조""를 끄는 것을 권장합니다."
     IDS_ERROR_FREEGAMEMUTEX_CLOSEHANDLE 
-                            "게임 중복 실행 방지 해제에 실패했습니다. ({:p}(type {:2x}): {})"
+                            "핸들 처리에 실패했습니다. ({:p}(type {:2x}): {})"
     IDS_PINGTRACKER_START   "{} -> {}: 지연 시간 측정을 시작합니다."
     IDS_PINGTRACKER_END     "{} -> {}: 지연 시간 측정을 중지합니다."
     IDS_PINGTRACKER_END_FAILURE_COUNT 
@@ -213,7 +212,7 @@ BEGIN
     IDS_ERROR_UPDATE_CHECK_LAUNCH "업데이트를 확인할 수 없었습니다. ({})"
     IDS_CONFIRM_RESTART_GAME 
                             "게임을 강제로 재시작하시겠습니까?\n\nDirectX 11 사용: {}\nXivAlexander 사용: {}\n명령줄 난독화 사용: {}\n관리자 권한으로 실행: {}"
-    IDS_FAQ                 "PID: {}\n게임 경로: {}\n게임 버전: {} ({})\n\n{}\n자주 묻는 질문:\n* 다음 조건 중 하나라도 맞다면 ""계산에 지연 시간 참조"" 기능을 사용하지 않는 것을 추천합니다.\n  * VPN을 쓰고 있으며, 지연 시간이 너무 낮게 나올 경우\n  * 지연 시간이 200ms를 넘어갈 경우\n  * 2개 기술을 글쿨이 밀리지 않게 사용할 수 없을 경우\n* ""이른 기술 시전 방지""는 꺼 두는 것이 좋습니다.\n  * 애니메이션이 종료된 이후에만 기술 시전이 가능하다고 생각하는 경우에만 켜세요.\n  * 게임이 만들어진 바에 따르면 FPS에 따라서 애니메이션 종료 1프레임 직전에 다음 기술을 사용할 수 있습니다.\n  * 예를 들어, 60FPS에서는 16ms 이르게, 30FPS에서는 33ms 이르게 다음 기술을 사용할 수 있습니다.\n* FFLogs/ACT에서는 600ms보다 짧게 다음 기술을 시전했다는 기록이 남을 수 있습니다. 이는 클라이언트 입력 간격과 서버 응답 간격이 일정하지 않아 발생합니다.\n  * 600ms보다 이르게 기술이 사용된 경우, 다음 기술은 그만큼 지연되어 사용된 것으로 기록이 남게 됩니다.\n* 지연 시간이 너무 높을 경우, 500ms 단위로 기술을 사용할 수 있게 되며, 이는 게임이 만들어진 바에 따르면 정상입니다."
+    IDS_FAQ                 "PID: {}\n게임 경로: {}\n게임 버전: {} ({})\n\n{}\n자주 묻는 질문:\n* 다음 조건 중 하나라도 해당하면 ""계산에 지연 시간 참조"" 기능을 사용하지 않는 것을 추천합니다.\n  * VPN을 쓰고 있으며, 지연 시간이 너무 낮게 나올 경우\n  * 지연 시간이 200ms를 넘어갈 경우\n  * 2개 기술을 글쿨이 밀리지 않게 사용할 수 없을 경우\n* ""이른 기술 시전 방지""는 꺼 두는 것이 좋습니다.\n  * 애니메이션이 종료된 이후에만 기술 시전이 가능하다고 생각하는 경우에만 켜세요.\n  * 게임 사양상 FPS에 따라서 애니메이션 종료 1프레임 직전에 다음 기술을 사용할 수 있습니다.\n  * 예를 들어, 60FPS에서는 16ms 이르게, 30FPS에서는 33ms 이르게 다음 기술을 사용할 수 있습니다.\n* FFLogs/ACT에서는 600ms보다 짧게 다음 기술을 시전했다는 기록이 남을 수 있습니다. 이는 클라이언트 입력 간격과 서버 응답 간격이 일정하지 않아 발생합니다.\n  * 600ms보다 이르게 기술이 사용된 경우, 다음 기술은 그만큼 지연되어 사용된 것으로 기록이 남게 됩니다.\n* 게임 사양상, 지연 시간이 너무 높을 경우 500ms 단위로 기술을 사용할 수 있게 됩니다."
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "프로그램 설정 편집"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "옵코드 설정 편집"
