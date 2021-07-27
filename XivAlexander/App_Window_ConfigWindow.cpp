@@ -28,7 +28,7 @@ static WNDCLASSEXW WindowClass() {
 App::Window::Config::Config(App::Config::BaseRepository* pRepository)
 	: BaseWindow(WindowClass(), L"Config", WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr)
 	, m_pRepository(pRepository) {
-	m_hScintilla = CreateWindowExW(0, TEXT("Scintilla"), TEXT(""), WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
+	m_hScintilla = CreateWindowExW(0, L"Scintilla", L"", WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
 		0, 0, 0, 0, m_hWnd, nullptr, Dll::Module(), nullptr);
 	m_direct = reinterpret_cast<SciFnDirect>(SendMessageW(m_hScintilla, SCI_GETDIRECTFUNCTION, 0, 0));
 	m_directPtr = SendMessageW(m_hScintilla, SCI_GETDIRECTPOINTER, 0, 0);
@@ -59,16 +59,24 @@ LRESULT App::Window::Config::OnNotify(const LPNMHDR nmhdr) {
 
 void App::Window::Config::Revert() {
 	m_pRepository->Save();
-	nlohmann::json config;
+	std::string buffer;
 	try {
-		std::ifstream in(m_pRepository->GetConfigPath());
-		in >> config;
-		m_originalConfig = config.dump(1, '\t');
-		m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(m_originalConfig.data()));
+		try {
+			std::ifstream in(m_pRepository->GetConfigPath());
+			in.seekg(0, std::ios::end);
+			const auto len = static_cast<size_t>(in.tellg());
+			buffer.resize(len, 0);
+			in.seekg(0);
+			in.read(&buffer[0], buffer.size());
+		} catch (...) {
+			buffer = "{}";
+		}
+		buffer = nlohmann::json::parse(buffer).dump(1, '\t');
 	} catch (std::exception& e) {
-		Utils::Win32::MessageBoxF(m_hWnd, MB_ICONERROR, L"XivAlexander", L"Failed to reload previous configuration file: {}", e.what());
-		DestroyWindow(m_hWnd);
+		m_logger->Format(LogCategory::General, "Failed to reload previous configuration file: {}", e.what());
 	}
+	m_originalConfig = std::move(buffer);
+	m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(&m_originalConfig[0]));
 }
 
 bool App::Window::Config::TrySave() {
