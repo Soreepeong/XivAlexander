@@ -17,6 +17,7 @@ const Utils::Win32::ActivationContext& Dll::ActivationContext() {
 const char* XivAlexDll::LoaderActionToString(LoaderAction val) {
 	switch (val) {
 	case LoaderAction::Auto: return "auto";
+	case LoaderAction::Web: return "web";
 	case LoaderAction::Ask: return "ask";
 	case LoaderAction::Load: return "load";
 	case LoaderAction::Unload: return "unload";

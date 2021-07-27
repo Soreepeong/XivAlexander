@@ -13,6 +13,7 @@
     <ClInclude Include="resource.h">
       <Filter>Resources</Filter>
     </ClInclude>
+    <ClInclude Include="resource1.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Project Items">
@@ -34,6 +35,9 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="XivAlexanderLoader.rc">
+      <Filter>Resources</Filter>
+    </ResourceCompile>
+    <ResourceCompile Include="XivAlexanderLoader_ko.rc">
       <Filter>Resources</Filter>
     </ResourceCompile>
   </ItemGroup>

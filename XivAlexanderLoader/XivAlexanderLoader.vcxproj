@@ -258,6 +258,7 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="resource1.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -269,7 +270,18 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
     <ClCompile Include="App.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="XivAlexanderLoader.rc" />
+    <ResourceCompile Include="XivAlexanderLoader.rc">
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</NullTerminateStrings>
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</NullTerminateStrings>
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</NullTerminateStrings>
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</NullTerminateStrings>
+    </ResourceCompile>
+    <ResourceCompile Include="XivAlexanderLoader_ko.rc">
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</NullTerminateStrings>
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</NullTerminateStrings>
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</NullTerminateStrings>
+      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</NullTerminateStrings>
+    </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\Graphics\Icon.ico" />

@@ -14,6 +14,7 @@ namespace XivAlexDll {
 
 	enum class LoaderAction : int {
 		Auto,
+		Web,
 		Ask,
 		Load,
 		Unload,
