@@ -44,15 +44,15 @@ public:
 				}
 				pendingItems = std::move(m_pendingItems);
 			}
-			for (auto& item : pendingItems) {
-				{
-					std::lock_guard lock(m_itemLock);
+			{
+				std::lock_guard lock(m_itemLock);
+				for (auto& item : pendingItems) {
 					m_items.push_back(item);
 					if (m_items.size() > MaxLogCount)
 						m_items.pop_front();
 				}
-				logger.OnNewLogItem(m_items.back());
 			}
+			logger.OnNewLogItem(pendingItems);
 		}
 	}
 
@@ -78,9 +78,9 @@ public:
 App::Misc::Logger::Logger()
 	: m_pImpl(std::make_unique<Implementation>(*this))
 	, OnNewLogItem([this](const auto& cb) {
-	std::lock_guard lock(m_pImpl->m_itemLock);
-	std::for_each(m_pImpl->m_items.begin(), m_pImpl->m_items.end(), [&cb](LogItem& item) { cb(item); });
-		}) {
+		std::lock_guard lock(m_pImpl->m_itemLock);
+		cb(m_pImpl->m_items);
+	}) {
 	Utils::Win32::DebugPrint(L"Logger: New");
 }
 
@@ -137,9 +137,7 @@ void App::Misc::Logger::Clear() {
 	m_pImpl->m_pendingItems.clear();
 }
 
-std::deque<const App::Misc::Logger::LogItem*> App::Misc::Logger::GetLogs() const {
-	std::deque<const LogItem*> res;
+void App::Misc::Logger::WithLogs(const std::function<void(const std::deque<LogItem>& items)>& cb) const {
 	std::lock_guard lock(m_pImpl->m_itemLock);
-	std::for_each(m_pImpl->m_items.begin(), m_pImpl->m_items.end(), [&res](LogItem& item) { res.push_back(&item); });
-	return res;
+	cb(m_pImpl->m_items);
 }

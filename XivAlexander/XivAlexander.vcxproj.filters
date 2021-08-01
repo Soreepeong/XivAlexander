@@ -91,6 +91,9 @@
       <Filter>App\Apps</Filter>
     </ClCompile>
     <ClCompile Include="DllMain.cpp" />
+    <ClCompile Include="App_Feature_HashTracker.cpp">
+      <Filter>App\Feature</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -169,7 +172,12 @@
     <ClInclude Include="resource1.h">
       <Filter>Resources</Filter>
     </ClInclude>
-    <ClInclude Include="resource2.h" />
+    <ClInclude Include="App_Feature_HashTracker.h">
+      <Filter>App\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="resource2.h">
+      <Filter>Resources</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\Graphics\Icon.ico">

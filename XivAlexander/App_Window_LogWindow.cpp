@@ -18,6 +18,7 @@ static const std::map<App::LogCategory, const char*> LogCategoryNames{
 	{App::LogCategory::AnimationLockLatencyHandler, "AnimationLockLatencyHandler"},
 	{App::LogCategory::EffectApplicationDelayLogger, "EffectApplicationDelayLogger"},
 	{App::LogCategory::IpcTypeFinder, "IpcTypeFinder"},
+	{App::LogCategory::HashTracker, "HashTracker"},
 };
 
 static WNDCLASSEXW WindowClass() {
@@ -59,44 +60,30 @@ App::Window::Log::Log()
 	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Warning), RGB(160, 160, 0));
 	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Error), RGB(255, 80, 80));
 
-	const auto addLogFn = [&](const Misc::Logger::LogItem& item) {
-		const auto st = item.TimestampAsLocalSystemTime();
-		const auto logstr = std::format("{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}\t{}\t{}\n",
-			st.wYear, st.wMonth, st.wDay,
-			st.wHour, st.wMinute, st.wSecond,
-			st.wMilliseconds,
-			LogCategoryNames.at(item.category),
-			item.log);
-		RunOnUiThreadWait([&]() {
-			SendMessageW(m_hScintilla, WM_SETREDRAW, FALSE, 0);
-			m_direct(m_directPtr, SCI_SETREADONLY, FALSE, 0);
-			auto nPos = m_direct(m_directPtr, SCI_GETLENGTH, 0, 0);
-			auto nLineCount = m_direct(m_directPtr, SCI_GETLINECOUNT, 0, 0) - 1;
-			const auto nFirstLine = m_direct(m_directPtr, SCI_GETFIRSTVISIBLELINE, 0, 0);
-			const auto nLinesOnScreen = m_direct(m_directPtr, SCI_LINESONSCREEN, 0, 0);
-			const auto atBottom = nFirstLine >= nLineCount - nLinesOnScreen && m_direct(m_directPtr, SCI_GETSELECTIONEMPTY, 0, 0);
-			m_direct(m_directPtr, SCI_STARTSTYLING, nPos, 0);
-
-			m_direct(m_directPtr, SCI_APPENDTEXT, logstr.length(), reinterpret_cast<sptr_t>(logstr.data()));
-			m_direct(m_directPtr, SCI_SETSTYLING, logstr.length(), LogLevelStyleMap.at(item.level));
-			nPos += logstr.length();
-			nLineCount++;
-			if (nLineCount > 32768) {
-				const auto deleteTo = m_direct(m_directPtr, SCI_POSITIONFROMLINE, nLineCount - 32768, 0);
-				m_direct(m_directPtr, SCI_DELETERANGE, 0, deleteTo);
+	const auto addLogFn = [&](const std::deque<Misc::Logger::LogItem>& items) {
+		std::stringstream o;
+		auto level = LogLevel::Unset;
+		for (const auto& item : items) {
+			if (level != item.level) {
+				if (o.tellp())
+					FlushLog(o.str(), level);
+				o.clear();
+				level = item.level;
 			}
-			if (atBottom) {
-				m_direct(m_directPtr, SCI_SETFIRSTVISIBLELINE, INT_MAX, 0);
-			}
-			m_direct(m_directPtr, SCI_SETREADONLY, TRUE, 0);
-			SendMessageW(m_hScintilla, WM_SETREDRAW, TRUE, 0);
-			InvalidateRect(m_hScintilla, nullptr, FALSE);
-			return 0;
-			});
+			const auto st = item.TimestampAsLocalSystemTime();
+			const auto logstr = std::format("{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}\t{}\t{}\n",
+				st.wYear, st.wMonth, st.wDay,
+				st.wHour, st.wMinute, st.wSecond,
+				st.wMilliseconds,
+				LogCategoryNames.at(item.category),
+				item.log);
+			o << logstr;
+		}
+		if (o.tellp())
+			FlushLog(o.str(), level);
 	};
-	
-	for (const auto item : m_logger->GetLogs())
-		addLogFn(*item);
+
+	m_logger->WithLogs([&](const auto& logs) { addLogFn(logs); });
 	m_cleanup += m_logger->OnNewLogItem(addLogFn);
 
 	ApplyLanguage(m_config->Runtime.GetLangId());
@@ -228,4 +215,33 @@ void App::Window::Log::OnDestroy() {
 
 void App::Window::Log::ResizeMargin() {
 	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 0, static_cast<int>(m_direct(m_directPtr, SCI_TEXTWIDTH, static_cast<uptr_t>(STYLE_LINENUMBER), reinterpret_cast<sptr_t>("999999"))));
+}
+
+void App::Window::Log::FlushLog(const std::string& logstr, LogLevel level) {
+	RunOnUiThreadWait([&]() {
+		SendMessageW(m_hScintilla, WM_SETREDRAW, FALSE, 0);
+		m_direct(m_directPtr, SCI_SETREADONLY, FALSE, 0);
+		auto nPos = m_direct(m_directPtr, SCI_GETLENGTH, 0, 0);
+		auto nLineCount = m_direct(m_directPtr, SCI_GETLINECOUNT, 0, 0) - 1;
+		const auto nFirstLine = m_direct(m_directPtr, SCI_GETFIRSTVISIBLELINE, 0, 0);
+		const auto nLinesOnScreen = m_direct(m_directPtr, SCI_LINESONSCREEN, 0, 0);
+		const auto atBottom = nFirstLine >= nLineCount - nLinesOnScreen && m_direct(m_directPtr, SCI_GETSELECTIONEMPTY, 0, 0);
+		m_direct(m_directPtr, SCI_STARTSTYLING, nPos, 0);
+
+		m_direct(m_directPtr, SCI_APPENDTEXT, logstr.length(), reinterpret_cast<sptr_t>(logstr.data()));
+		m_direct(m_directPtr, SCI_SETSTYLING, logstr.length(), LogLevelStyleMap.at(level));
+		nPos += logstr.length();
+		nLineCount++;
+		if (nLineCount > 32768) {
+			const auto deleteTo = m_direct(m_directPtr, SCI_POSITIONFROMLINE, nLineCount - 32768, 0);
+			m_direct(m_directPtr, SCI_DELETERANGE, 0, deleteTo);
+		}
+		if (atBottom) {
+			m_direct(m_directPtr, SCI_SETFIRSTVISIBLELINE, INT_MAX, 0);
+		}
+		m_direct(m_directPtr, SCI_SETREADONLY, TRUE, 0);
+		SendMessageW(m_hScintilla, WM_SETREDRAW, TRUE, 0);
+		InvalidateRect(m_hScintilla, nullptr, FALSE);
+		return 0;
+		});
 }

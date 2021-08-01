@@ -55,6 +55,7 @@ BEGIN
         MENUITEM "IPC 검색 도우미 사용(&F)\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
         MENUITEM "모든 IPC 메시지 로그 사용(&A)\t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
         MENUITEM "기술 효과 적용 지연 로그 사용(&E)\t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
+        MENUITEM "해시 키 추적 사용(x64 전용)(&K)\t(Ctrl+Shift+)K", 40141
         MENUITEM SEPARATOR
         MENUITEM "게임 창을 항상 위에 표시(&T)\tCtrl+Shift+T", ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP
         POPUP "게임 강제 재시작(&S)"

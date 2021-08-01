@@ -81,6 +81,7 @@ BEGIN
         MENUITEM "IPCタイプファインダーの使用(&F)\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
         MENUITEM "すべてのIPCメッセージをログに記録(&A)\t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
         MENUITEM "AddStatusEffectの遅延をログに記録(&E)\t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
+        MENUITEM "ハッシュされたキーをログに記録(x64専用)(&K)\t(Ctrl+Shift+)K", 40141
         MENUITEM SEPARATOR
         MENUITEM "ゲームウィンドウを常に手前に表示(&T)\tCtrl+Shift+T", ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP
         POPUP "ゲームの強制再起動(&S)"

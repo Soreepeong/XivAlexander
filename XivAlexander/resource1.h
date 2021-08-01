@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by XivAlexander_ko.rc
+// Used by XivAlexander.rc
 //
 #define IDI_TRAY_ICON                   104
 #define IDR_TRAY_MENU                   105
@@ -136,13 +136,15 @@
 #define ID_GLOBAL_SHOW_TRAYMENU         40138
 #define ID_CONFIGURATION_LANGUAGE40139  40139
 #define ID_TRAYMENU_CONFIGURATION_LANGUAGE_JAPANESE 40140
+#define ID_Menu40141                    40141
+#define ID_TRAYMENU_HASHKEYMANIPULATION_ENABLE      40142
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        114
-#define _APS_NEXT_COMMAND_VALUE         40141
+#define _APS_NEXT_COMMAND_VALUE         40145
 #define _APS_NEXT_CONTROL_VALUE         1001
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

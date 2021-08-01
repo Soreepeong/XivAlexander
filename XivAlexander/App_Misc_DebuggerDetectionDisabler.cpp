@@ -3,10 +3,10 @@
 #include "App_Misc_Hooks.h"
 
 class App::Misc::DebuggerDetectionDisabler::Implementation {
+public:
 	Hooks::PointerFunction<BOOL> IsDebuggerPresent{ "DebuggerDetectionDisabler::IsDebuggerPresent", ::IsDebuggerPresent };
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
-public:
 	Implementation() {
 		Utils::Win32::DebugPrint(L"DebuggerDetectionDisabler: New");
 		m_cleanup += IsDebuggerPresent.SetHook([]() {return FALSE; });
@@ -35,6 +35,21 @@ std::shared_ptr<App::Misc::DebuggerDetectionDisabler> App::Misc::DebuggerDetecti
 	}
 	return r;
 }
+
+bool App::Misc::DebuggerDetectionDisabler::IsDebuggerActuallyPresent() const {
+	return m_pImpl->IsDebuggerPresent.bridge();
+}
+
+void App::Misc::DebuggerDetectionDisabler::BreakIfDebugged() const {
+	if (m_pImpl->IsDebuggerPresent.bridge()) {
+		__try {
+			__debugbreak();
+		} __except (EXCEPTION_CONTINUE_EXECUTION) {
+			// do nothing
+		}
+	}
+}
+
 std::weak_ptr<App::Misc::DebuggerDetectionDisabler> App::Misc::DebuggerDetectionDisabler::s_instance;
 
 App::Misc::DebuggerDetectionDisabler::DebuggerDetectionDisabler()

@@ -7,6 +7,7 @@
 #include "App_Feature_IpcTypeFinder.h"
 #include "App_Feature_AllIpcMessageLogger.h"
 #include "App_Feature_EffectApplicationDelayLogger.h"
+#include "App_Feature_HashTracker.h"
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_FreeGameMutex.h"
 #include "App_Window_LogWindow.h"
@@ -42,6 +43,7 @@ public:
 	std::unique_ptr<Feature::IpcTypeFinder> m_ipcTypeFinder;
 	std::unique_ptr<Feature::AllIpcMessageLogger> m_allIpcMessageLogger;
 	std::unique_ptr<Feature::EffectApplicationDelayLogger> m_effectApplicationDelayLogger;
+	std::unique_ptr<Feature::HashTracker> m_hashTracker;
 
 	std::unique_ptr<Window::Log> m_logWindow;
 	std::unique_ptr<Window::Main> m_trayWindow;
@@ -186,6 +188,16 @@ public:
 				m_effectApplicationDelayLogger = nullptr;
 			});
 		m_cleanup += [this]() { m_effectApplicationDelayLogger = nullptr; };
+
+		if (config.UseHashTracker)
+			m_hashTracker = std::make_unique<Feature::HashTracker>();
+		m_cleanup += config.UseHashTracker.OnChangeListener([&](Config::ItemBase&) {
+			if (config.UseHashTracker)
+				m_hashTracker = std::make_unique<Feature::HashTracker>();
+			else
+				m_hashTracker = nullptr;
+			});
+		m_cleanup += [this]() { m_hashTracker = nullptr; };
 
 		if (config.ShowLoggingWindow)
 			m_logWindow = std::make_unique<Window::Log>();

@@ -220,6 +220,42 @@ LRESULT App::Window::Main::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 					config.UseEffectApplicationDelayLogger = !config.UseEffectApplicationDelayLogger;
 					return 0;
 
+				case ID_TRAYMENU_HASHKEYMANIPULATION_ENABLE:
+					config.UseHashTracker = !config.UseHashTracker;
+					return 0;
+				
+				case ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS:
+					config.UseHashTrackerKeyLogging = !config.UseHashTrackerKeyLogging;
+					return 0;
+				
+				case ID_TRAYMENU_HASHKEYMANIPULATION_NONE:
+					config.HashTrackerLanguageOverride = App::Config::GameLanguage::Unspecified;
+					return 0;
+				
+				case ID_TRAYMENU_HASHKEYMANIPULATION_ENGLISH:
+					config.HashTrackerLanguageOverride = App::Config::GameLanguage::English;
+					return 0;
+				
+				case ID_TRAYMENU_HASHKEYMANIPULATION_GERMAN:
+					config.HashTrackerLanguageOverride = App::Config::GameLanguage::German;
+					return 0;
+				
+				case ID_TRAYMENU_HASHKEYMANIPULATION_FRENCH:
+					config.HashTrackerLanguageOverride = App::Config::GameLanguage::French;
+					return 0;
+				
+				case ID_TRAYMENU_HASHKEYMANIPULATION_JAPANESE:
+					config.HashTrackerLanguageOverride = App::Config::GameLanguage::Japanese;
+					return 0;
+				
+				case ID_TRAYMENU_HASHKEYMANIPULATION_SIMPLIFIEDCHINESE:
+					config.HashTrackerLanguageOverride = App::Config::GameLanguage::ChineseSimplified;
+					return 0;
+				
+				case ID_TRAYMENU_HASHKEYMANIPULATION_KOREAN:
+					config.HashTrackerLanguageOverride = App::Config::GameLanguage::Korean;
+					return 0;
+
 				case ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW:
 					config.ShowLoggingWindow = !config.ShowLoggingWindow;
 					return 0;
@@ -436,6 +472,16 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) const {
 	Set(hMenu, ID_TRAYMENU_USEIPCTYPEFINDER, config.UseOpcodeFinder, true);
 	Set(hMenu, ID_TRAYMENU_USEALLIPCMESSAGELOGGER, config.UseAllIpcMessageLogger, true);
 	Set(hMenu, ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER, config.UseEffectApplicationDelayLogger, true);
+	
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_ENABLE, config.UseHashTracker, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS, config.UseHashTrackerKeyLogging, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_NONE, config.HashTrackerLanguageOverride == App::Config::GameLanguage::Unspecified, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_ENGLISH, config.HashTrackerLanguageOverride == App::Config::GameLanguage::English, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_GERMAN, config.HashTrackerLanguageOverride == App::Config::GameLanguage::German, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_FRENCH, config.HashTrackerLanguageOverride == App::Config::GameLanguage::French, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_JAPANESE, config.HashTrackerLanguageOverride == App::Config::GameLanguage::Japanese, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_SIMPLIFIEDCHINESE, config.HashTrackerLanguageOverride == App::Config::GameLanguage::ChineseSimplified, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_KOREAN, config.HashTrackerLanguageOverride == App::Config::GameLanguage::Korean, true);
 	
 	Set(hMenu, ID_TRAYMENU_CONFIGURATION_SHOWCONTROLWINDOW, config.ShowControlWindow, true);
 	Set(hMenu, ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW, config.ShowLoggingWindow, true);

@@ -1,10 +1,13 @@
 #pragma once
+#include <vector>
+
 namespace App::Misc::Signatures {
 
 	typedef bool (*SectionFilter)(const IMAGE_SECTION_HEADER&);
 	bool SectionFilterTextOnly(const IMAGE_SECTION_HEADER& pSectionHeader);
 
-	void* LookupForData(SectionFilter lookupInSection, const char* sPattern, const char* szMask, const std::vector<size_t>& nextOffsets);
+	[[nodiscard]]
+	std::vector<void*> LookupForData(SectionFilter lookupInSection, const char* sPattern, const char* sMask, size_t length, const std::vector<size_t>& nextOffsets);
 
 	template<typename T>
 	class Signature {
@@ -29,8 +32,8 @@ namespace App::Misc::Signatures {
 	template<typename T>
 	class DataSignature : public Signature<T> {
 	public:
-		DataSignature(const char* szName, SectionFilter sectionFilter, const char* sPattern, const char* szMask, std::vector<size_t> nextOffsets = {})
-			: Signature(szName, LookupForData(sectionFilter, sPattern, szMask, nextOffsets)) {
+		DataSignature(const char* szName, SectionFilter sectionFilter, const char* sPattern, const char* sMask, size_t length, std::vector<size_t> nextOffsets = {})
+			: Signature(szName, LookupForData(sectionFilter, sPattern, sMask, length, nextOffsets)) {
 		}
 	};
 }

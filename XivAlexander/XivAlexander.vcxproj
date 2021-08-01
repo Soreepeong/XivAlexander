@@ -287,6 +287,7 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="App_Feature_HashTracker.cpp" />
     <ClCompile Include="App_InjectOnCreateProcessApp.cpp" />
     <ClCompile Include="App_Misc_DebuggerDetectionDisabler.cpp" />
     <ClCompile Include="App_Network_IcmpPingTracker.cpp" />
@@ -315,6 +316,7 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="App_Feature_HashTracker.h" />
     <ClInclude Include="App_InjectOnCreateProcessApp.h" />
     <ClInclude Include="App_InjectOnCreateProcessApp_x64.h" />
     <ClInclude Include="App_InjectOnCreateProcessApp_x86.h" />

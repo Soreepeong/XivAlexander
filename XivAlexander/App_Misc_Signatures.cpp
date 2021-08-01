@@ -7,9 +7,10 @@ namespace App::Misc::Signatures {
 		return 0 == strncmp(reinterpret_cast<const char*>(pSectionHeader.Name), ".text", 6);
 	}
 
-	void* LookupForData(SectionFilter lookupInSection, const char* sPattern, const char* szMask, const std::vector<size_t> &nextOffsets) {
-		const std::string_view mask(szMask, strlen(szMask));
-		const std::string_view pattern(sPattern, mask.length());
+	std::vector<void*> LookupForData(SectionFilter lookupInSection, const char* sPattern, const char* sMask, size_t length, const std::vector<size_t> &nextOffsets) {
+		std::vector<void*> result;
+		const std::string_view mask(sMask, length);
+		const std::string_view pattern(sPattern, length);
 
 		const auto pBaseAddress = reinterpret_cast<const char*>(GetModuleHandleW(nullptr));
 		const auto pDosHeader = reinterpret_cast<const IMAGE_DOS_HEADER*>(pBaseAddress);
@@ -25,11 +26,11 @@ namespace App::Misc::Signatures {
 						if ((section[i + j] & mask[j]) != (pattern[j] & mask[j]))
 							goto next_char;
 					}
-					return const_cast<char*>(section.data()) + i;
+					result.push_back(const_cast<char*>(section.data()) + i);
 				next_char:;
 				}
 			}
 		}
-		return nullptr;
+		return result;
 	}
 }

@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "App_InjectOnCreateProcessApp.h"
+
+#include "App_Feature_HashTracker.h"
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_Hooks.h"
 #include "XivAlexander/XivAlexander.h"
@@ -216,6 +218,8 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent, HANDLE 
 		// do nothing
 	}
 
+	App::Feature::HashTracker hashTrackerPreload;
+
 	// let original entry point continue execution.
 	SetEvent(hContinuableEvent);
 	
@@ -242,6 +246,8 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent, HANDLE 
 	
 	XivAlexDll::EnableXivAlexander(1);
     XivAlexDll::EnableInjectOnCreateProcess(0);
+
+	Sleep(5000);
 }
 
 extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters * pParam) {

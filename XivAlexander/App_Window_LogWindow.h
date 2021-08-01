@@ -22,5 +22,7 @@ namespace App::Window {
 		void OnDestroy() override;
 
 		void ResizeMargin();
+
+		void FlushLog(const std::string& logstr, LogLevel level);
 	};
 };

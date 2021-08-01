@@ -2,6 +2,7 @@
 
 namespace App {
 	enum class LogLevel {
+		Unset = 0,
 		Debug = 10,
 		Info = 20,
 		Warning = 30,
@@ -14,6 +15,7 @@ namespace App {
 		AnimationLockLatencyHandler,
 		EffectApplicationDelayLogger,
 		IpcTypeFinder,
+		HashTracker,
 	};
 }
 namespace App::Misc {
@@ -55,8 +57,8 @@ namespace App::Misc {
 		void Log(LogCategory category, WORD wLanguage, UINT uStringResId, LogLevel level = LogLevel::Info);
 		void Clear();
 
-		[[nodiscard]] std::deque<const LogItem*> GetLogs() const;
-		Utils::ListenerManager<Logger, void, const LogItem&> OnNewLogItem;
+		void WithLogs(const std::function<void(const std::deque<LogItem>& items)>& cb) const;
+		Utils::ListenerManager<Logger, void, const std::deque<LogItem>&> OnNewLogItem;
 		
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
 		void Format(LogCategory category, const char* format, Args ... args) {

@@ -126,6 +126,18 @@ namespace App {
 			Japanese,
 		};
 
+		// when used as game launch parameter, subtract by one.
+		enum class GameLanguage {
+			Unspecified = 0,
+			Japanese = 1,
+			English = 2,
+			German = 3,
+			French = 4,
+			ChineseSimplified = 5,
+			ChineseTraditional = 6,
+			Korean = 7,
+		};
+
 		class Runtime : public BaseRepository {
 			friend class Config;
 			using BaseRepository::BaseRepository;
@@ -153,6 +165,10 @@ namespace App {
 			Item<bool> ShowLoggingWindow = CreateConfigItem(this, "ShowLoggingWindow", true);
 			Item<bool> ShowControlWindow = CreateConfigItem(this, "ShowControlWindow", true);
 			Item<bool> UseAllIpcMessageLogger = CreateConfigItem(this, "UseAllIpcMessageLogger", false);
+			
+			Item<bool> UseHashTracker = CreateConfigItem(this, "UseHashTracker", false);
+			Item<bool> UseHashTrackerKeyLogging = CreateConfigItem(this, "UseHashTrackerKeyLogging", false);
+			Item<GameLanguage> HashTrackerLanguageOverride = CreateConfigItem(this, "HashTrackerLanguageOverride", GameLanguage::Unspecified);
 
 			Item<Language> Language = CreateConfigItem(this, "Language", Language::SystemDefault);
 

@@ -186,6 +186,58 @@ void App::Config::Item<App::Config::Language>::SaveTo(nlohmann::json& data) cons
 		data[Name()] = "Japanese";
 }
 
+bool App::Config::Item<App::Config::GameLanguage>::LoadFrom(const nlohmann::json& data, bool announceChanged) {
+	if (const auto it = data.find(Name()); it != data.end()) {
+		auto newValueString = Utils::FromUtf8(it->get<std::string>());
+		CharLowerW(&newValueString[0]);
+
+		auto newValue = GameLanguage::Unspecified;
+		if (newValueString.size() > 0) {
+			if (newValueString.substr(0, std::min<size_t>(8, newValueString.size())) == L"japanese")
+				newValue = GameLanguage::Japanese;
+			else if (newValueString.substr(0, std::min<size_t>(7, newValueString.size())) == L"english")
+				newValue = GameLanguage::English;
+			else if (newValueString.substr(0, std::min<size_t>(6, newValueString.size())) == L"german")
+				newValue = GameLanguage::German;
+			else if (newValueString.substr(0, std::min<size_t>(8, newValueString.size())) == L"deutsche")
+				newValue = GameLanguage::German;
+			else if (newValueString.substr(0, std::min<size_t>(6, newValueString.size())) == L"french")
+				newValue = GameLanguage::French;
+			else if (newValueString.substr(0, std::min<size_t>(17, newValueString.size())) == L"chinesesimplified")
+				newValue = GameLanguage::ChineseSimplified;
+			else if (newValueString.substr(0, std::min<size_t>(18, newValueString.size())) == L"chinesetraditional")
+				newValue = GameLanguage::ChineseTraditional;
+			else if (newValueString.substr(0, std::min<size_t>(6, newValueString.size())) == L"korean")
+				newValue = GameLanguage::Korean;
+		}
+
+		if (announceChanged)
+			this->operator=(newValue);
+		else
+			Assign(newValue);
+	}
+	return false;
+}
+
+void App::Config::Item<App::Config::GameLanguage>::SaveTo(nlohmann::json& data) const {
+	if (m_value == GameLanguage::Unspecified)
+		data[Name()] = "Unspecified";
+	else if (m_value == GameLanguage::Japanese)
+		data[Name()] = "Japanese";
+	else if (m_value == GameLanguage::English)
+		data[Name()] = "English";
+	else if (m_value == GameLanguage::German)
+		data[Name()] = "German";
+	else if (m_value == GameLanguage::French)
+		data[Name()] = "French";
+	else if (m_value == GameLanguage::ChineseSimplified)
+		data[Name()] = "ChineseSimplified";
+	else if (m_value == GameLanguage::ChineseTraditional)
+		data[Name()] = "ChineseTraditional";
+	else if (m_value == GameLanguage::Korean)
+		data[Name()] = "Korean";
+}
+
 template<typename T>
 bool App::Config::Item<T>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
 	if (auto i = data.find(Name()); i != data.end()) {
