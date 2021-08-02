@@ -101,21 +101,19 @@ BEGIN
         MENUITEM "Use IPC Type &Finder\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
         MENUITEM "Log All IPC &Message \t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
         MENUITEM "Log &Effect Application Delay \t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
-        POPUP "&Hash Key Manipulation (x64 only)"
+        POPUP "Resource &Hash Manipulation (x64 only)"
         BEGIN
             MENUITEM "&Enable\t(Ctrl+Shift+)K",     ID_TRAYMENU_HASHKEYMANIPULATION_ENABLE
             MENUITEM SEPARATOR
-            MENUITEM "&Log All Hash Keys",          ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS
+            MENUITEM "&Log All Plaintext Before Hash", ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS
             MENUITEM SEPARATOR
-            MENUITEM "&No Language Override",       ID_TRAYMENU_HASHKEYMANIPULATION_NONE
-            MENUITEM "Override Language: &English", ID_TRAYMENU_HASHKEYMANIPULATION_ENGLISH
-            MENUITEM "Override Language: &German",  ID_TRAYMENU_HASHKEYMANIPULATION_GERMAN
-            MENUITEM "Override Language: &French",  ID_TRAYMENU_HASHKEYMANIPULATION_FRENCH
-            MENUITEM "Override Language: &Japanese", ID_TRAYMENU_HASHKEYMANIPULATION_JAPANESE
-            MENUITEM "Override Language: Simplified &Chinese", ID_TRAYMENU_HASHKEYMANIPULATION_SIMPLIFIEDCHINESE
-            MENUITEM "Override Language: &Korean",  ID_TRAYMENU_HASHKEYMANIPULATION_KOREAN
-            MENUITEM SEPARATOR
-            MENUITEM "The game will crash if the language is unsupported!", ID_HASHKEYSMANIPULATION_THEGAMEWILLCRASHIFTHELANGUAEISUNSUPPORTED, INACTIVE
+            MENUITEM "&No Language Override",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE
+            MENUITEM "Override Game Resource Language: &Japanese", ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE
+            MENUITEM "Override Game Resource Language: &English", ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH
+            MENUITEM "Override Game Resource Language: &German", ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_GERMAN
+            MENUITEM "Override Game Resource Language: &French", ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_FRENCH
+            MENUITEM "Override Game Resource Language: &Chinese(Simplified)", ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE
+            MENUITEM "Override Game Resource Language: &Korean", ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN
         END
         MENUITEM SEPARATOR
         MENUITEM "Always Put Game Window on &Top\tCtrl+Shift+T", ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP
@@ -397,6 +395,8 @@ BEGIN
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "Runtime Configuration Editor"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcode Configuration Editor"
     IDS_WINDOW_LOG          "Log Viewer"
+    IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE 
+                            "The language you selected is probably unsupported from the game client you're currently using, and the game will probably crash. Do you want to continue?\n\nChange the configuration and use ""Force Restart Game"" if the game crashes, showing an error message."
 END
 
 #endif    // English (United States) resources

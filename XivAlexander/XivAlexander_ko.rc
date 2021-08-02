@@ -1,6 +1,6 @@
 // Microsoft Visual C++ generated resource script.
 //
-#include "resource1.h"
+#include "resource_ko.h"
 
 #define APSTUDIO_READONLY_SYMBOLS
 /////////////////////////////////////////////////////////////////////////////
@@ -55,7 +55,20 @@ BEGIN
         MENUITEM "IPC 검색 도우미 사용(&F)\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
         MENUITEM "모든 IPC 메시지 로그 사용(&A)\t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
         MENUITEM "기술 효과 적용 지연 로그 사용(&E)\t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
-        MENUITEM "해시 키 추적 사용(x64 전용)(&K)\t(Ctrl+Shift+)K", 40141
+        POPUP "리소스 해시 조작(x64 전용)(&H)"
+        BEGIN
+            MENUITEM "사용(&E)\t(Ctrl+Shift+)K",      ID_TRAYMENU_HASHKEYMANIPULATION_ENABLE
+            MENUITEM SEPARATOR
+            MENUITEM "모든 해시 전 문자열 로그 사용(&L)",       ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS
+            MENUITEM SEPARATOR
+            MENUITEM "게임 리소스 언어 변경하지 않음(&N)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE
+            MENUITEM "게임 리소스 언어 변경: 일본어(&J)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE
+            MENUITEM "게임 리소스 언어 변경: 영어(&E)",        ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH
+            MENUITEM "게임 리소스 언어 변경: 독일어(&D)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_GERMAN
+            MENUITEM "게임 리소스 언어 변경: 프랑스어(&F)",      ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_FRENCH
+            MENUITEM "게임 리소스 언어 변경: 중국어(간체)(&C)",   ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE
+            MENUITEM "게임 리소스 언어 변경: 한국어(&K)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN
+        END
         MENUITEM SEPARATOR
         MENUITEM "게임 창을 항상 위에 표시(&T)\tCtrl+Shift+T", ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP
         POPUP "게임 강제 재시작(&S)"
@@ -131,7 +144,7 @@ END
 
 1 TEXTINCLUDE 
 BEGIN
-    "resource1.h\0"
+    "resource_ko.h\0"
 END
 
 2 TEXTINCLUDE 
@@ -219,6 +232,8 @@ BEGIN
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "프로그램 설정 편집"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "옵코드 설정 편집"
     IDS_WINDOW_LOG          "로그 보기"
+    IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE 
+                            "선택한 언어는 해당 게임 클라이언트에서 지원하지 않아 오류를 발생시킬 가능성이 높습니다. 계속하시겠습니까?\n\n오류 메시지가 뜬다면 설정을 바꾸고 ""게임 강제 재시작"" 기능을 이용해 주세요."
 END
 
 #endif    // Korean (Korea) resources

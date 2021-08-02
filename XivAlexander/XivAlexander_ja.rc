@@ -1,6 +1,6 @@
 // Microsoft Visual C++ generated resource script.
 //
-#include "resource2.h"
+#include "resource_ja.h"
 
 #define APSTUDIO_READONLY_SYMBOLS
 /////////////////////////////////////////////////////////////////////////////
@@ -27,7 +27,7 @@ LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
 
 1 TEXTINCLUDE 
 BEGIN
-    "resource2.h\0"
+    "resource_ja.h\0"
 END
 
 2 TEXTINCLUDE 
@@ -81,7 +81,20 @@ BEGIN
         MENUITEM "IPCタイプファインダーの使用(&F)\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
         MENUITEM "すべてのIPCメッセージをログに記録(&A)\t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
         MENUITEM "AddStatusEffectの遅延をログに記録(&E)\t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
-        MENUITEM "ハッシュされたキーをログに記録(x64専用)(&K)\t(Ctrl+Shift+)K", 40141
+        POPUP "リソースのハッシュの操作(x64専用)(&H)"
+        BEGIN
+            MENUITEM "有効化(&E)\t(Ctrl+Shift+)K",     ID_TRAYMENU_HASHKEYMANIPULATION_ENABLE
+            MENUITEM SEPARATOR
+            MENUITEM "すべてのハッシュの前の平文をログに記録(&L)",     ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS
+            MENUITEM SEPARATOR
+            MENUITEM "ゲームのリソースの言語の変更：使用しない(&N)",    ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE
+            MENUITEM "ゲームのリソースの言語の変更：日本語(&J)",      ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE
+            MENUITEM "ゲームのリソースの言語の変更：英語(&E)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH
+            MENUITEM "ゲームのリソースの言語の変更：ドイツ語(&D)",     ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_GERMAN
+            MENUITEM "ゲームのリソースの言語の変更：フランス語(&F)",    ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_FRENCH
+            MENUITEM "ゲームのリソースの言語の変更：中国語(簡体字)(&C)", ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE
+            MENUITEM "ゲームのリソースの言語の変更：韓国語(&K)",      ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN
+        END
         MENUITEM SEPARATOR
         MENUITEM "ゲームウィンドウを常に手前に表示(&T)\tCtrl+Shift+T", ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP
         POPUP "ゲームの強制再起動(&S)"
@@ -219,6 +232,8 @@ BEGIN
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "環境設定"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcodeの設定"
     IDS_WINDOW_LOG          "ログの表示"
+    IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE 
+                            "選択した言語はこのゲームのクライアントが対応していないからクラッシュする可能性が高いです。続けますか？\n\nゲームがクラッシュしたらこの設定を変えて「ゲームの強制再起動」をしてください。"
 END
 
 #endif    // Japanese (Japan) resources
