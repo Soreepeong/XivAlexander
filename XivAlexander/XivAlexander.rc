@@ -80,8 +80,8 @@ BEGIN
         BEGIN
             MENUITEM "&Enable\t(Ctrl+Shift+)H",     ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE
             MENUITEM SEPARATOR
-            MENUITEM "Integrate Server &Delay\tCtrl+(Alt+)D", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION
-            MENUITEM "Latency Sample &Attenuation\tCtrl+(Alt+)A", ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION
+            MENUITEM "Compensate for Server &Delay\tCtrl+(Alt+)D", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION
+            MENUITEM "Compensate for Latency &Spike\tCtrl+(Alt+)S", ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION
             MENUITEM "Prevent &Early Firing\tCtrl+(Alt+)E", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY
             MENUITEM SEPARATOR
             MENUITEM "Use &Logging\tCtrl+(Alt+)L",  ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING
@@ -262,7 +262,7 @@ BEGIN
     "P",            ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE, VIRTKEY, CONTROL, NOINVERT
     "D",            ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION, VIRTKEY, CONTROL, NOINVERT
     "E",            ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY, VIRTKEY, CONTROL, NOINVERT
-    "A",            ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION, VIRTKEY, CONTROL, NOINVERT
+    "S",            ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION, VIRTKEY, CONTROL, NOINVERT
     "L",            ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING, VIRTKEY, CONTROL, NOINVERT
     VK_F1,          ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY, VIRTKEY, NOINVERT
     VK_F2,          ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS, VIRTKEY, NOINVERT
@@ -277,9 +277,9 @@ BEGIN
     "Q",            ID_TRAYMENU_UNLOADXIVALEXANDER, VIRTKEY, CONTROL, NOINVERT
     "M",            ID_TRAYMENU_USEALLIPCMESSAGELOGGER, VIRTKEY, NOINVERT
     "E",            ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER, VIRTKEY, NOINVERT
+    "K",            ID_TRAYMENU_USEHASHTRACKER, VIRTKEY, NOINVERT
     "F",            ID_TRAYMENU_USEIPCTYPEFINDER, VIRTKEY, NOINVERT
     "T",            ID_VIEW_ALWAYSONTOP,    VIRTKEY, CONTROL, NOINVERT
-    "K",            ID_TRAYMENU_USEHASHTRACKER, VIRTKEY, NOINVERT
 END
 
 IDR_TRAY_GLOBAL_ACCELERATOR ACCELERATORS
@@ -296,7 +296,7 @@ BEGIN
     "P",            ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE, VIRTKEY, CONTROL, ALT, NOINVERT
     "D",            ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION, VIRTKEY, CONTROL, ALT, NOINVERT
     "E",            ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY, VIRTKEY, CONTROL, ALT, NOINVERT
-    "A",            ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION, VIRTKEY, CONTROL, ALT, NOINVERT
+    "S",            ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION, VIRTKEY, CONTROL, ALT, NOINVERT
     "L",            ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING, VIRTKEY, CONTROL, ALT, NOINVERT
     "T",            ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP, VIRTKEY, SHIFT, CONTROL, NOINVERT
     VK_F1,          ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY, VIRTKEY, SHIFT, CONTROL, NOINVERT
@@ -313,8 +313,8 @@ BEGIN
     "Q",            ID_TRAYMENU_UNLOADXIVALEXANDER, VIRTKEY, CONTROL, ALT, NOINVERT
     "M",            ID_TRAYMENU_USEALLIPCMESSAGELOGGER, VIRTKEY, SHIFT, CONTROL, NOINVERT
     "E",            ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "F",            ID_TRAYMENU_USEIPCTYPEFINDER, VIRTKEY, SHIFT, CONTROL, NOINVERT
     "K",            ID_TRAYMENU_USEHASHTRACKER, VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "F",            ID_TRAYMENU_USEIPCTYPEFINDER, VIRTKEY, SHIFT, CONTROL, NOINVERT
 END
 
 
@@ -344,7 +344,7 @@ BEGIN
     IDS_ERROR_UNLOAD_WNDPROC 
                             "Another module has hooked window procedure over XivAlexander. Try unloading that other module first."
     IDS_ERROR_INJECT        "Failed to initialize this process.\nError: {}\nPID: {}\nPath: {}\nCommand Line: {}"
-    IDS_WARNING_ZEROPING    "rtt={} but latency={}; your VPN or network might be reporting 0 ping. Unchecking ""Integrate Server Delay"" is recommended."
+    IDS_WARNING_ZEROPING    "rtt={} but latency={}; your VPN or network might be reporting 0 ping. Unchecking ""Compensate for Server Delay"" is recommended."
     IDS_ERROR_FREEGAMEMUTEX_CLOSEHANDLE 
                             "Failed to process handle {:p}(type {:2x}): {}"
     IDS_PINGTRACKER_START   "Ping {} -> {}: Start tracking."
@@ -390,7 +390,7 @@ BEGIN
     IDS_ERROR_UPDATE_CHECK_LAUNCH "Failed to launch update checker. ({})"
     IDS_CONFIRM_RESTART_GAME 
                             "Do you want to force restart the game?\n\nUse DirectX 11: {}\nUse XivAlexander: {}\nUse Parameter Obfuscation: {}\nUse Elevation (Run as Administrator): {}"
-    IDS_FAQ                 "Process ID: {}\nGame Path: {}\nGame Release: {} ({})\n\n{}\nTips and FAQs:\n* Turn off ""Integrate Server Delay"" and ""Latency Sample Attenuation"" if any of the following is true.\n  * You're using a VPN software and your latency is being displayed below 10ms when it shouldn't be.\n  * Your ping is above 200ms.\n  * You can't double weave comfortably.\n* Keep ""Prevent Early Firing"" off, unless you believe that you should not be allowed to use action before instructed animation lock expires.\n  * Depending on your FPS, the game will let your action go through 1 frame before the animation lock expires.\n  * Expect 16ms early animation lock expiry if you're playing on 60FPS, 33ms if 30FPS, and so on.\n* FFLogs may show less-than-600ms weaves. This is normal due to discrepancies between client input times and server response times.\n  * Actions following less-than-600ms weaves will result in longer animation locks from parser logs.\n* If your ping is too high, you may be allowed to do 500ms weaves. This is by game design."
+    IDS_FAQ                 "Process ID: {}\nGame Path: {}\nGame Release: {} ({})\n\n{}\nTips and FAQs:\n* Turn off ""Compensate for Server Delay"" and ""Compensate for Latency Spikes"" if any of the following is true.\n  * You're using a VPN software and your latency is being displayed below 10ms when it shouldn't be.\n  * Your ping is above 200ms.\n  * You can't double weave comfortably.\n* Keep ""Prevent Early Firing"" off, unless you believe that you should not be allowed to use action before instructed animation lock expires.\n  * Depending on your FPS, the game will let your action go through 1 frame before the animation lock expires.\n  * Expect 16ms early animation lock expiry if you're playing on 60FPS, 33ms if 30FPS, and so on.\n* FFLogs may show less-than-600ms weaves. This is normal due to discrepancies between client input times and server response times.\n  * Actions following less-than-600ms weaves will result in longer animation locks from parser logs.\n* If your ping is too high, you may be allowed to do 500ms weaves. This is by game design."
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "Runtime Configuration Editor"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcode Configuration Editor"
