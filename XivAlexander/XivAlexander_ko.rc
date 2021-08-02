@@ -34,8 +34,8 @@ BEGIN
         BEGIN
             MENUITEM "사용(&E)\t(Ctrl+Shift+)H",      ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE
             MENUITEM SEPARATOR
-            MENUITEM "서버 지연 포함(&D)\tCtrl+(Alt+)D",  ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION
-            MENUITEM "지연 시간 평균값 사용(&A)\tCtrl+(Alt+)A", ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION
+            MENUITEM "서버 지연 보정(&D)\tCtrl+(Alt+)D",  ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION
+            MENUITEM "핑 튐 보정 (지연 평균값 사용)(&S)\tCtrl+(Alt+)S", ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION
             MENUITEM "이른 기술 시전 방지(&E)\tCtrl+(Alt+)E", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY
             MENUITEM SEPARATOR
             MENUITEM "로그 사용(&L)\tCtrl+(Alt+)L",     ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING
@@ -55,11 +55,11 @@ BEGIN
         MENUITEM "IPC 검색 도우미 사용(&F)\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
         MENUITEM "모든 IPC 메시지 로그 사용(&A)\t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
         MENUITEM "기술 효과 적용 지연 로그 사용(&E)\t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
-        POPUP "리소스 해시 조작(x64 전용)(&H)"
+        POPUP "리소스 해시 조작 (x64 전용)(&H)"
         BEGIN
             MENUITEM "사용(&E)\t(Ctrl+Shift+)K",      ID_TRAYMENU_HASHKEYMANIPULATION_ENABLE
             MENUITEM SEPARATOR
-            MENUITEM "모든 해시 전 문자열 로그 사용(&L)",       ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS
+            MENUITEM "모든 해시 처리 전 문자열 로그 사용(&L)",    ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS
             MENUITEM SEPARATOR
             MENUITEM "게임 리소스 언어 변경하지 않음(&N)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE
             MENUITEM "게임 리소스 언어 변경: 일본어(&J)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE
@@ -186,7 +186,7 @@ BEGIN
     IDS_ERROR_UNLOAD_SOCKET "다른 프로그램이 소켓 함수를 가로챘습니다. 다른 프로그램을 먼저 종료해 주세요."
     IDS_ERROR_UNLOAD_WNDPROC "다른 프로그램이 창 프로시저를 가로챘습니다. 다른 프로그램을 먼저 종료해 주세요."
     IDS_ERROR_INJECT        "이 프로그램을 초기화하지 못했습니다.\n오류: {}\nPID: {}\n경로: {}\n명령줄: {}"
-    IDS_WARNING_ZEROPING    "rtt={}, latency={}; VPN 또는 네트워크에서 핑이 0ms라고 보고하고 있습니다. ""계산에 지연 시간 참조""를 끄는 것을 권장합니다."
+    IDS_WARNING_ZEROPING    "rtt={}, latency={}; VPN 또는 네트워크에서 핑이 0ms라고 보고하고 있습니다. ""서버 지연 보정""를 끄는 것을 권장합니다."
     IDS_ERROR_FREEGAMEMUTEX_CLOSEHANDLE 
                             "핸들 처리에 실패했습니다. ({:p}(type {:2x}): {})"
     IDS_PINGTRACKER_START   "{} -> {}: 지연 시간 측정을 시작합니다."
@@ -227,13 +227,13 @@ BEGIN
     IDS_ERROR_UPDATE_CHECK_LAUNCH "업데이트를 확인할 수 없었습니다. ({})"
     IDS_CONFIRM_RESTART_GAME 
                             "게임을 강제로 재시작하시겠습니까?\n\nDirectX 11 사용: {}\nXivAlexander 사용: {}\n명령줄 난독화 사용: {}\n관리자 권한으로 실행: {}"
-    IDS_FAQ                 "PID: {}\n게임 경로: {}\n게임 버전: {} ({})\n\n{}\n자주 묻는 질문:\n* 다음 조건 중 하나라도 해당하면 ""계산에 지연 시간 참조"" 기능을 사용하지 않는 것을 추천합니다.\n  * VPN을 쓰고 있으며, 지연 시간이 너무 낮게 나올 경우\n  * 지연 시간이 200ms를 넘어갈 경우\n  * 2개 기술을 글쿨이 밀리지 않게 사용할 수 없을 경우\n* ""이른 기술 시전 방지""는 꺼 두는 것이 좋습니다.\n  * 애니메이션이 종료된 이후에만 기술 시전이 가능하다고 생각하는 경우에만 켜세요.\n  * 게임 사양상 FPS에 따라서 애니메이션 종료 1프레임 직전에 다음 기술을 사용할 수 있습니다.\n  * 예를 들어, 60FPS에서는 16ms 이르게, 30FPS에서는 33ms 이르게 다음 기술을 사용할 수 있습니다.\n* FFLogs/ACT에서는 600ms보다 짧게 다음 기술을 시전했다는 기록이 남을 수 있습니다. 이는 클라이언트 입력 간격과 서버 응답 간격이 일정하지 않아 발생합니다.\n  * 600ms보다 이르게 기술이 사용된 경우, 다음 기술은 그만큼 지연되어 사용된 것으로 기록이 남게 됩니다.\n* 게임 사양상, 지연 시간이 너무 높을 경우 500ms 단위로 기술을 사용할 수 있게 됩니다."
+    IDS_FAQ                 "PID: {}\n게임 경로: {}\n게임 버전: {} ({})\n\n{}\n자주 묻는 질문:\n* 다음 조건 중 하나라도 해당하면 ""서버 지연 보정"" 기능 및 ""핑 튐 보정"" 기능을 사용하지 않는 것을 추천합니다.\n  * VPN을 쓰고 있으며, 지연 시간이 너무 낮게 나올 경우\n  * 지연 시간이 200ms를 넘어갈 경우\n  * 2개 기술을 글쿨이 밀리지 않게 사용할 수 없을 경우\n* ""이른 기술 시전 방지""는 꺼 두는 것이 좋습니다.\n  * 애니메이션이 종료된 이후에만 기술 시전이 가능하다고 생각하는 경우에만 켜세요.\n  * 게임 사양상 FPS에 따라서 애니메이션 종료 1프레임 직전에 다음 기술을 사용할 수 있습니다.\n  * 예를 들어, 60FPS에서는 16ms 이르게, 30FPS에서는 33ms 이르게 다음 기술을 사용할 수 있습니다.\n* FFLogs/ACT에서는 600ms보다 짧게 다음 기술을 시전했다는 기록이 남을 수 있습니다. 이는 클라이언트 입력 간격과 서버 응답 간격이 일정하지 않아 발생합니다.\n  * 600ms보다 이르게 기술이 사용된 경우, 다음 기술은 그만큼 지연되어 사용된 것으로 기록이 남게 됩니다.\n* 게임 사양상, 지연 시간이 너무 높을 경우 500ms 단위로 기술을 사용할 수 있게 됩니다."
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "프로그램 설정 편집"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "옵코드 설정 편집"
     IDS_WINDOW_LOG          "로그 보기"
     IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE 
-                            "선택한 언어는 해당 게임 클라이언트에서 지원하지 않아 오류를 발생시킬 가능성이 높습니다. 계속하시겠습니까?\n\n오류 메시지가 뜬다면 설정을 바꾸고 ""게임 강제 재시작"" 기능을 이용해 주세요."
+                            "선택한 언어는 해당 게임 클라이언트에서 지원하지 않아 오류를 발생시킬 가능성이 높습니다. 계속하시겠습니까?\n\n오류 메시지가 뜬다면 설정을 원상복귀하고 ""게임 강제 재시작"" 기능을 이용해 주세요."
 END
 
 #endif    // Korean (Korea) resources

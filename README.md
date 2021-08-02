@@ -76,9 +76,9 @@ Usage: `XivAlexanderLoader(32/64) [-h] [-a ACTION] [-l LAUNCHER] [-q] [-d] [--we
 ### Description on options
 * `High Latency Mitigation`: The purpose of this program.
   * `Enable`: Turn this off when you're looking for updated opcodes.
-  * `Use Delay Detection`: When checked, the program will try to detect how much time does the server spend to process your action requests.
+  * `Compensate for Server Delay`: When checked, the program will try to detect how much time does the server spend to process your action requests.
     * When unchecked, the program will assume the server always take 75ms to process your action requests.
-  * Turn both `Use Delay Detection` and `Use Latency Correction` off if...
+  * Turn both `Compensate for Server Delay` and `Compensate for Latency Spikes` off if...
     * ...your ping is above 200ms.
     * ...your VPN gives a fake ping of 0ms (&lt;1ms).
 * `Reduce Packet Delay`: When checked, following additional socket options are set or changed. 

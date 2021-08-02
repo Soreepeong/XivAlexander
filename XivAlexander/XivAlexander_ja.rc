@@ -60,12 +60,12 @@ BEGIN
         BEGIN
             MENUITEM "有効化(&E)\t(Ctrl+Shift+)H",     ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE
             MENUITEM SEPARATOR
-            MENUITEM "サーバーの遅延を考慮(&D)\tCtrl+(Alt+)D", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION
-            MENUITEM "レイテンシの平均値を使用(&A)\tCtrl+(Alt+)A", ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION
+            MENUITEM "サーバーの遅延を補正(&D)\tCtrl+(Alt+)D", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION
+            MENUITEM "レイテンシの変動を補正(平均値の使用)(&S)\tCtrl+(Alt+)S", ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION
             MENUITEM "アクションの拙速な使用の防止(&E)\tCtrl+(Alt+)E", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY
             MENUITEM SEPARATOR
             MENUITEM "ログを有効にする(&L)\tCtrl+(Alt+)L",  ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING
-            MENUITEM "作動のシミュレーション (ログに記録) (&P)\tCtrl+(Alt+)P", ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE
+            MENUITEM "作動のシミュレーション(ログに記録)(&P)\tCtrl+(Alt+)P", ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE
         END
         POPUP "ネットワーク(&N)"
         BEGIN
@@ -85,15 +85,15 @@ BEGIN
         BEGIN
             MENUITEM "有効化(&E)\t(Ctrl+Shift+)K",     ID_TRAYMENU_HASHKEYMANIPULATION_ENABLE
             MENUITEM SEPARATOR
-            MENUITEM "すべてのハッシュの前の平文をログに記録(&L)",     ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS
+            MENUITEM "ハッシュ化する前の文字列をすべてログに記録(&L)",   ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS
             MENUITEM SEPARATOR
-            MENUITEM "ゲームのリソースの言語の変更：使用しない(&N)",    ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE
-            MENUITEM "ゲームのリソースの言語の変更：日本語(&J)",      ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE
-            MENUITEM "ゲームのリソースの言語の変更：英語(&E)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH
-            MENUITEM "ゲームのリソースの言語の変更：ドイツ語(&D)",     ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_GERMAN
-            MENUITEM "ゲームのリソースの言語の変更：フランス語(&F)",    ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_FRENCH
-            MENUITEM "ゲームのリソースの言語の変更：中国語(簡体字)(&C)", ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE
-            MENUITEM "ゲームのリソースの言語の変更：韓国語(&K)",      ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN
+            MENUITEM "ゲームリソースの言語の変更：使用しない(&N)",     ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE
+            MENUITEM "ゲームリソースの言語の変更：日本語(&J)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE
+            MENUITEM "ゲームリソースの言語の変更：英語(&E)",        ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH
+            MENUITEM "ゲームリソースの言語の変更：ドイツ語(&D)",      ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_GERMAN
+            MENUITEM "ゲームリソースの言語の変更：フランス語(&F)",     ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_FRENCH
+            MENUITEM "ゲームリソースの言語の変更：中国語(簡体字)(&C)",  ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE
+            MENUITEM "ゲームリソースの言語の変更：韓国語(&K)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN
         END
         MENUITEM SEPARATOR
         MENUITEM "ゲームウィンドウを常に手前に表示(&T)\tCtrl+Shift+T", ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP
@@ -187,7 +187,7 @@ BEGIN
     IDS_ERROR_UNLOAD_WNDPROC 
                             "他のプログラムにウィンドウのプロシージャを割り込まれました。先に競合のプログラムを終了してください。"
     IDS_ERROR_INJECT        "このプログラムの初期化に失敗しました。\nエラー：{}\nPID：{}\nパス：{}\nコマンドライン：{}"
-    IDS_WARNING_ZEROPING    "rtt={}, latency={}; VPNまたはネットワークから0msの遅延が報告されているため、「サーバーの遅延を考慮」の無効化をおすすめします。"
+    IDS_WARNING_ZEROPING    "rtt={}, latency={}; VPNまたはネットワークから0msの遅延が報告されているため、「サーバーの遅延を補正」の無効化をおすすめします。"
     IDS_ERROR_FREEGAMEMUTEX_CLOSEHANDLE 
                             "ハンドルの取得に失敗しました。({:p}(type {:2x}): {})"
     IDS_PINGTRACKER_START   "{} -> {}: 遅延の測定を開始します。"
@@ -227,13 +227,13 @@ BEGIN
     IDS_ERROR_UPDATE_CHECK_LAUNCH "アップデートの確認に失敗しました。({})"
     IDS_CONFIRM_RESTART_GAME 
                             "ゲームを強制的に再起動しますか？\n\nDirectX11の使用：{}\nXivAlexanderの使用：{}\nコマンドラインの難読化の使用：{}\n管理者権限で実行：{}"
-    IDS_FAQ                 "PID: {}\nゲームのインストール先: {}\nゲームのバージョン: {} ({})\n\n{}\nよくある質問：\n・次の項目のいずれかに該当するものがある場合「サーバーの遅延を考慮」の無効化をお勧めします。\n　・VPNを導入していて遅延が極めて低く表示されている場合\n　・200ms以上の遅延を経験している場合\n　・二つのアビリティを一回のGCDに挟むことができない場合\n・一般的な場合「アクションの拙速な使用の防止」は無効のままにしてください。\n　・エフェクトの終了後に限り次のアクションを使用することができると判断される場合にだけ有効にしてください。\n　・ゲームの仕様上フレームレートに応じてアクションエフェクトの終了前1フレームに次のアクションを使用することができます。\n  ・例えば60FPSの場合エフェクトの終了前16ms、30FPSの場合33msの間次のアクションを使用することができます。\n・FFLogsやACTでは一つのアクションとその前のアクションの間隔が600ms未満だと記録される場合があります。これはクライアントでの入力の間隔とサーバーの応答の間隔が一致しないことから生じる現象です。\n　・アクションの使用間隔が600ms未満の場合次のアクションはその分遅延後に使用されたこととして記録されます。\n・遅延が極めて長い場合ゲームの仕様上500ms毎にアクションを使用できるようになります。"
+    IDS_FAQ                 "PID: {}\nゲームのインストール先: {}\nゲームのバージョン: {} ({})\n\n{}\nよくある質問：\n・次の項目のいずれかに該当するものがある場合「サーバーの遅延を補正」および「レイテンシの変動を補正」の無効化をお勧めします。\n　・VPNを導入していて遅延が極めて低く表示されている場合\n　・200ms以上の遅延を経験している場合\n　・二つのアビリティを一回のGCDに挟むことができない場合\n・一般的な場合「アクションの拙速な使用の防止」は無効のままにしてください。\n　・エフェクトの終了後に限り次のアクションを使用することができると判断される場合にだけ有効にしてください。\n　・ゲームの仕様上フレームレートに応じてアクションエフェクトの終了前1フレームに次のアクションを使用することができます。\n  ・例えば60FPSの場合エフェクトの終了前16ms、30FPSの場合33msの間次のアクションを使用することができます。\n・FFLogsやACTでは一つのアクションとその前のアクションの間隔が600ms未満だと記録される場合があります。これはクライアントでの入力の間隔とサーバーの応答の間隔が一致しないことから生じる現象です。\n　・アクションの使用間隔が600ms未満の場合次のアクションはその分遅延後に使用されたこととして記録されます。\n・遅延が極めて長い場合ゲームの仕様上500ms毎にアクションを使用できるようになります。"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "環境設定"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcodeの設定"
     IDS_WINDOW_LOG          "ログの表示"
     IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE 
-                            "選択した言語はこのゲームのクライアントが対応していないからクラッシュする可能性が高いです。続けますか？\n\nゲームがクラッシュしたらこの設定を変えて「ゲームの強制再起動」をしてください。"
+                            "ご利用のクライアントは選択した言語に対応していないためクラッシュの可能性が高いです。続けますか？\n\nゲームがクラッシュした場合、設定を戻し「ゲームの強制再起動」を行ってください。"
 END
 
 #endif    // Japanese (Japan) resources
