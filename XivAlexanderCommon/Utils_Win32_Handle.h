@@ -7,7 +7,7 @@
 #include "Utils_Win32_LoadedModule.h"
 
 namespace Utils::Win32 {
-	
+
 	class Handle : public Closeable<HANDLE, CloseHandle> {
 		static HANDLE DuplicateHandleNullable(HANDLE src);
 
@@ -18,7 +18,7 @@ namespace Utils::Win32 {
 		Handle& operator=(Handle&& r) noexcept;
 		Handle& operator=(const Handle& r);
 		~Handle() override;
-		
+
 		template<typename T>
 		static T DuplicateFrom(HANDLE hProcess, HANDLE hSourceHandle, bool bInheritable = false) {
 			HANDLE h;
@@ -34,7 +34,7 @@ namespace Utils::Win32 {
 		static T DuplicateFrom(HANDLE hSourceHandle, bool bInheritable = false) {
 			return DuplicateFrom<T>(GetCurrentProcess(), hSourceHandle, bInheritable);
 		}
-		
+
 		void Wait() const;
 		[[nodiscard]] DWORD Wait(DWORD duration) const;
 	};
@@ -61,7 +61,7 @@ namespace Utils::Win32 {
 		Thread& operator =(Thread&& r) noexcept;
 		Thread& operator =(const Thread& r);
 		~Thread() override;
-		
+
 		[[nodiscard]] DWORD GetId() const;
 		void Terminate(DWORD dwExitCode = 0, bool errorIfAlreadyTerminated = false) const;
 	};
@@ -69,7 +69,7 @@ namespace Utils::Win32 {
 	class Event : public Handle {
 	public:
 		using Handle::Handle;
-		~Event () override;
+		~Event() override;
 
 		static Event Create(
 			_In_opt_ LPSECURITY_ATTRIBUTES lpEventAttributes = nullptr,

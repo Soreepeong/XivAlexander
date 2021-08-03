@@ -5,8 +5,7 @@ namespace App::Network::Structures {
 	struct FFXIVBundle {
 		uint8_t Magic[16];
 		uint64_t Timestamp;		// 16 ~ 23
-		uint16_t TotalLength;	// 24 ~ 25
-		uint16_t Unknown1;		// 26 ~ 27
+		uint32_t TotalLength;	// 24 ~ 27
 		uint16_t ConnType;		// 28 ~ 29
 		uint16_t MessageCount;	// 30 ~ 31
 		uint8_t Encoding;		// 32
@@ -17,7 +16,7 @@ namespace App::Network::Structures {
 
 		static const uint8_t MagicConstant1[sizeof Magic];
 		static const uint8_t MagicConstant2[sizeof Magic];
-		[[nodiscard]] static size_t FindPossibleBundleIndex(const void* buf, size_t len);
+		[[nodiscard]] static std::span<const uint8_t> ExtractFrontTrash(const std::span<const uint8_t>& buf);
 
 		void DebugPrint(LogCategory logCategory, const char* head) const;
 
@@ -32,7 +31,7 @@ namespace App::Network::Structures {
 		ClientKeepAlive = 7,
 		ServerKeepAlive = 8,
 	};
-	
+
 	enum class IpcType : uint16_t {
 		InterestedType = 0x0014,
 		CustomType = 0x0e852,
@@ -77,7 +76,7 @@ namespace App::Network::Structures {
 			uint8_t DamageShield;
 			uint8_t EffectCount;
 			uint16_t Unknown2;
-			
+
 			struct Effect {
 				uint8_t EffectIndex;
 				uint8_t Unknown1;
@@ -200,7 +199,7 @@ namespace App::Network::Structures {
 			float OriginalWaitTime;
 		};
 	};
-	
+
 	struct IPCMessageData {
 		IpcType Type;
 		uint16_t SubType;

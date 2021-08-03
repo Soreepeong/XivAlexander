@@ -18,7 +18,7 @@ namespace App {
 	public:
 		InjectOnCreateProcessApp();
 		~InjectOnCreateProcessApp();
-		
+
 		void SetFlags(size_t flags);
 	};
 }

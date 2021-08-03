@@ -37,13 +37,13 @@ App::Window::Main::Main(XivAlexApp* pApp, std::function<void()> unloadFunction)
 	, m_path(Utils::Win32::Process::Current().PathOf())
 	, m_bUseElevation(Utils::Win32::IsUserAnAdmin())
 	, m_launchParameters([this]() -> decltype(m_launchParameters) {
-		try {
-			return XivAlex::ParseGameCommandLine(Utils::ToUtf8(Utils::Win32::GetCommandLineWithoutProgramName()), &m_bUseParameterObfuscation);
-		} catch (const std::exception& e) {
-			m_logger->Format<LogLevel::Warning>(LogCategory::General, m_config->Runtime.GetLangId(), IDS_WARNING_GAME_PARAMETER_PARSE, e.what());
-			return {};
-		}
-	}()) {
+	try {
+		return XivAlex::ParseGameCommandLine(Utils::ToUtf8(Utils::Win32::GetCommandLineWithoutProgramName()), &m_bUseParameterObfuscation);
+	} catch (const std::exception& e) {
+		m_logger->Format<LogLevel::Warning>(LogCategory::General, m_config->Runtime.GetLangId(), IDS_WARNING_GAME_PARAMETER_PARSE, e.what());
+		return {};
+	}
+}()) {
 
 	std::tie(m_sRegion, m_sVersion) = XivAlex::ResolveGameReleaseRegion();
 
@@ -56,16 +56,16 @@ App::Window::Main::Main(XivAlexApp* pApp, std::function<void()> unloadFunction)
 
 	m_cleanup += m_config->Runtime.ShowControlWindow.OnChangeListener([this](auto&) {
 		ShowWindow(m_hWnd, m_config->Runtime.ShowControlWindow ? SW_SHOW : SW_HIDE);
-		});
+	});
 	if (m_config->Runtime.ShowControlWindow)
 		ShowWindow(m_hWnd, SW_SHOW);
 
 	m_cleanup += m_pApp->GetSocketHook()->OnSocketFound([this](auto&) {
 		InvalidateRect(m_hWnd, nullptr, false);
-		});
+	});
 	m_cleanup += m_pApp->GetSocketHook()->OnSocketGone([this](auto&) {
 		InvalidateRect(m_hWnd, nullptr, false);
-		});
+	});
 	ApplyLanguage(m_config->Runtime.GetLangId());
 }
 
@@ -77,7 +77,7 @@ App::Window::Main::~Main() {
 void App::Window::Main::ShowContextMenu(const BaseWindow* parent) const {
 	if (!parent)
 		parent = this;
-	
+
 	const auto hMenu = GetMenu(m_hWnd);
 	const auto hSubMenu = GetSubMenu(hMenu, 0);
 	RepopulateMenu(hSubMenu);
@@ -125,7 +125,7 @@ LRESULT App::Window::Main::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 					Utils::Win32::MB_GetString(IDYES - 1),
 					Utils::Win32::MB_GetString(IDNO - 1),
 					Utils::Win32::MB_GetString(IDCANCEL - 1)
-					))) {
+				))) {
 				case IDYES:
 					m_triggerUnload();
 					break;
@@ -203,7 +203,7 @@ LRESULT App::Window::Main::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 				case ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS:
 					m_pApp->RunOnGameLoop([this]() {
 						m_pApp->GetSocketHook()->ReleaseSockets();
-						});
+					});
 					return 0;
 
 					/***************************************************************/
@@ -223,45 +223,45 @@ LRESULT App::Window::Main::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 				case ID_TRAYMENU_HASHKEYMANIPULATION_ENABLE:
 					config.UseHashTracker = !config.UseHashTracker;
 					return 0;
-				
+
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS:
 					config.UseHashTrackerKeyLogging = !config.UseHashTrackerKeyLogging;
 					return 0;
-				
+
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE:
 					config.HashTrackerLanguageOverride = App::Config::GameLanguage::Unspecified;
 					return 0;
-				
+
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH:
 					if (m_sRegion != L"JP" && Utils::Win32::MessageBoxF(m_hWnd, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2, L"XivAlexander", m_config->Runtime.GetStringRes(IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE)) != IDYES)
 						return 0;
 					config.HashTrackerLanguageOverride = App::Config::GameLanguage::English;
 					return 0;
-				
+
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_GERMAN:
 					if (m_sRegion != L"JP" && Utils::Win32::MessageBoxF(m_hWnd, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2, L"XivAlexander", m_config->Runtime.GetStringRes(IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE)) != IDYES)
 						return 0;
 					config.HashTrackerLanguageOverride = App::Config::GameLanguage::German;
 					return 0;
-				
+
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_FRENCH:
 					if (m_sRegion != L"JP" && Utils::Win32::MessageBoxF(m_hWnd, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2, L"XivAlexander", m_config->Runtime.GetStringRes(IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE)) != IDYES)
 						return 0;
 					config.HashTrackerLanguageOverride = App::Config::GameLanguage::French;
 					return 0;
-				
+
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE:
 					if (m_sRegion != L"JP" && Utils::Win32::MessageBoxF(m_hWnd, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2, L"XivAlexander", m_config->Runtime.GetStringRes(IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE)) != IDYES)
 						return 0;
 					config.HashTrackerLanguageOverride = App::Config::GameLanguage::Japanese;
 					return 0;
-				
+
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE:
 					if (m_sRegion != L"CN" && Utils::Win32::MessageBoxF(m_hWnd, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2, L"XivAlexander", m_config->Runtime.GetStringRes(IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE)) != IDYES)
 						return 0;
 					config.HashTrackerLanguageOverride = App::Config::GameLanguage::ChineseSimplified;
 					return 0;
-				
+
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN:
 					if (m_sRegion != L"KR" && Utils::Win32::MessageBoxF(m_hWnd, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2, L"XivAlexander", m_config->Runtime.GetStringRes(IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE)) != IDYES)
 						return 0;
@@ -316,31 +316,31 @@ LRESULT App::Window::Main::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 				case ID_TRAYMENU_RESTARTGAME_RESTART:
 					AskRestartGame();
 					return 0;
-				
-				case ID_TRAYMENU_RESTARTGAME_USEDIRECTX11: 
+
+				case ID_TRAYMENU_RESTARTGAME_USEDIRECTX11:
 					m_bUseDirectX11 = !m_bUseDirectX11;
 					if ((GetKeyState(VK_CONTROL) & 0x8000) || (GetKeyState(VK_SHIFT) & 0x8000))
 						AskRestartGame();
 					return 0;
-				
+
 				case ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER:
 					m_bUseXivAlexander = !m_bUseXivAlexander;
 					if ((GetKeyState(VK_CONTROL) & 0x8000) || (GetKeyState(VK_SHIFT) & 0x8000))
 						AskRestartGame();
 					return 0;
-				
+
 				case ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION:
 					m_bUseParameterObfuscation = !m_bUseParameterObfuscation;
 					if ((GetKeyState(VK_CONTROL) & 0x8000) || (GetKeyState(VK_SHIFT) & 0x8000))
 						AskRestartGame();
 					return 0;
-				
+
 				case ID_TRAYMENU_RESTARTGAME_USEELEVATION:
 					m_bUseElevation = !m_bUseElevation;
 					if ((GetKeyState(VK_CONTROL) & 0x8000) || (GetKeyState(VK_SHIFT) & 0x8000))
 						AskRestartGame();
 					return 0;
-					
+
 				case ID_TRAYMENU_EXITGAME:
 					if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 						m_config->Runtime.GetStringRes(IDS_CONFIRM_EXIT_GAME)) == IDYES) {
@@ -466,7 +466,7 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) const {
 	const auto Set = Utils::Win32::SetMenuState;
 
 	Set(hMenu, ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST, true);
-	
+
 	Set(hMenu, ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP, config.AlwaysOnTop, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE, config.UseHighLatencyMitigation, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION, config.UseAutoAdjustingExtraDelay, true);
@@ -474,17 +474,17 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) const {
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY, config.UseEarlyPenalty, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING, config.UseHighLatencyMitigationLogging, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE, config.UseHighLatencyMitigationPreviewMode, true);
-	
+
 	Set(hMenu, ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY, config.ReducePacketDelay, true);
 	Set(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES, config.TakeOverLoopbackAddresses, true);
 	Set(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERPRIVATEADDRESSES, config.TakeOverPrivateAddresses, true);
 	Set(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERALLADDRESSES, config.TakeOverAllAddresses, true);
 	Set(hMenu, ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS, config.TakeOverAllPorts, true);
-	
+
 	Set(hMenu, ID_TRAYMENU_USEIPCTYPEFINDER, config.UseOpcodeFinder, true);
 	Set(hMenu, ID_TRAYMENU_USEALLIPCMESSAGELOGGER, config.UseAllIpcMessageLogger, true);
 	Set(hMenu, ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER, config.UseEffectApplicationDelayLogger, true);
-	
+
 	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_ENABLE, config.UseHashTracker, true);
 	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS, config.UseHashTrackerKeyLogging, true);
 	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE, config.HashTrackerLanguageOverride == App::Config::GameLanguage::Unspecified, true);
@@ -494,14 +494,14 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) const {
 	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE, config.HashTrackerLanguageOverride == App::Config::GameLanguage::Japanese, true);
 	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE, config.HashTrackerLanguageOverride == App::Config::GameLanguage::ChineseSimplified, true);
 	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN, config.HashTrackerLanguageOverride == App::Config::GameLanguage::Korean, true);
-	
+
 	Set(hMenu, ID_TRAYMENU_CONFIGURATION_SHOWCONTROLWINDOW, config.ShowControlWindow, true);
 	Set(hMenu, ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW, config.ShowLoggingWindow, true);
 	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_SYSTEMDEFAULT, config.Language == App::Config::Language::SystemDefault, true);
 	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_ENGLISH, config.Language == App::Config::Language::English, true);
 	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_KOREAN, config.Language == App::Config::Language::Korean, true);
 	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_JAPANESE, config.Language == App::Config::Language::Japanese, true);
-	
+
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_RESTART, false, !m_launchParameters.empty());
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEDIRECTX11, m_bUseDirectX11, !m_launchParameters.empty());
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER, m_bUseXivAlexander, !m_launchParameters.empty());
@@ -546,7 +546,7 @@ void App::Window::Main::AskRestartGame() {
 		const auto process = Utils::Win32::Process::Current();
 		try {
 			const auto game = process.PathOf().parent_path() / (m_bUseDirectX11 ? XivAlex::GameExecutable64NameW : XivAlex::GameExecutable32NameW);
-			
+
 			XivAlexDll::EnableInjectOnCreateProcess(0);
 			bool ok;
 			if (m_bUseXivAlexander)
@@ -554,19 +554,19 @@ void App::Window::Main::AskRestartGame() {
 					.path = Dll::Module().PathOf().parent_path() / (m_bUseDirectX11 ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW),
 					.args = std::format(L"-a launcher -l select \"{}\" {}", game, XivAlex::CreateGameCommandLine(m_launchParameters, m_bUseParameterObfuscation)),
 					.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
-				});
+					});
 			else
 				ok = Utils::Win32::RunProgram({
 					.path = game,
 					.args = Utils::FromUtf8(XivAlex::CreateGameCommandLine(m_launchParameters, m_bUseParameterObfuscation)),
 					.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
-				});
+					});
 
 			if (ok) {
 				RemoveTrayIcon();
 				process.Terminate(0);
 			}
-			
+
 		} catch (const std::exception& e) {
 			Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 				m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));

@@ -79,7 +79,7 @@ void Utils::Win32::InjectedModule::Clear() {
 			} catch (std::out_of_range&) {
 				m_hProcess.UnloadModule(m_rpModule);
 			}
-		} catch(std::exception&) {
+		} catch (std::exception&) {
 
 			// suppress error if the process is already dead
 			if (WaitForSingleObject(m_hProcess, 0) == WAIT_TIMEOUT)

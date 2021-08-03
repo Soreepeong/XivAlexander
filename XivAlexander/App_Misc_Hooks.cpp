@@ -39,7 +39,7 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 						relativeAddressHandled = false;
 				}
 			} else if (operand.type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-				if (operand.imm.is_relative){
+				if (operand.imm.is_relative) {
 					relativeAddressHandled = false;
 				}
 			}
@@ -77,7 +77,7 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 					body.push_back('\xE8');
 					replacementJumps[body.size()] = static_cast<size_t>(resultAddress);
 					body.resize(body.size() + 4, '\0');
-					
+
 #elif INTPTR_MAX == INT64_MAX
 					// call QWORD PTR [rip+0x00000000]
 					// FF 15 00 00 00 00
@@ -85,7 +85,7 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 					body.push_back('\x15');
 					replacementJumps[body.size()] = resultAddress;
 					body.resize(body.size() + 4, '\0');
-					
+
 #else
 #error "Environment not x86 or x64."
 #endif
@@ -95,7 +95,7 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 				}
 				break;
 			}
-			
+
 			case ZYDIS_CATEGORY_RET:
 			case ZYDIS_CATEGORY_UNCOND_BR:
 				funclen = offset + instruction.length;
@@ -182,17 +182,17 @@ LRESULT App::Misc::Hooks::WndProcFunction::bridge(HWND hwnd, UINT msg, WPARAM wP
 void App::Misc::Hooks::WndProcFunction::HookEnable() {
 	if (m_windowDestroyed)
 		return;
-	
+
 	m_prevProc = SetWindowLongPtrW(m_hWnd, GWLP_WNDPROC, m_binder.GetBinder<LONG_PTR>());
 }
 
 void App::Misc::Hooks::WndProcFunction::HookDisable() {
 	if (m_windowDestroyed)
 		return;
-	
+
 	if (!IsDisableable())
 		throw std::runtime_error("App::Misc::Hooks::WndProcFunction::HookDisable(!IsDisableable)");
-	
+
 	SetWindowLongPtrW(m_hWnd, GWLP_WNDPROC, m_prevProc);
 }
 

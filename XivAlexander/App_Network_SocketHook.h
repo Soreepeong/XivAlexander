@@ -24,17 +24,18 @@ namespace App::Network {
 		SingleConnection(SocketHook* hook, SOCKET s);
 		~SingleConnection();
 
-		void AddIncomingFFXIVMessageHandler(void* token, std::function<bool(Structures::FFXIVBundle*, Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb);
-		void AddOutgoingFFXIVMessageHandler(void* token, std::function<bool(Structures::FFXIVBundle*, Structures::FFXIVMessage*, std::vector<uint8_t>&)> cb);
+		typedef std::function<bool(Structures::FFXIVMessage*)> MessageMangler;
+		void AddIncomingFFXIVMessageHandler(void* token, MessageMangler cb);
+		void AddOutgoingFFXIVMessageHandler(void* token, MessageMangler cb);
 		void RemoveMessageHandlers(void* token);
 		void ResolveAddresses();
-		
+
 		[[nodiscard]]
 		SOCKET GetSocket() const;
 
 		[[nodiscard]]
 		int64_t FetchSocketLatency();
-		
+
 		Utils::NumericStatisticsTracker SocketLatency{ 10, 0 };
 		Utils::NumericStatisticsTracker ApplicationLatency{ 10, 0 };
 		Utils::NumericStatisticsTracker ExaggeratedNetworkLatency{ 10, INT64_MAX, 30000 };
@@ -45,7 +46,7 @@ namespace App::Network {
 		class Implementation;
 		friend class SingleConnection;
 		friend class SingleConnection::Implementation;
-	
+
 	public:
 		std::shared_ptr<Misc::Logger> const m_logger;
 		Utils::ListenerManager<Implementation, void, SingleConnection&> OnSocketFound;
@@ -60,7 +61,7 @@ namespace App::Network {
 		Misc::Hooks::ImportedFunction<int, SOCKET, char*, int, int> recv{ "socket::recv", "ws2_32.dll", "recv", 16 };
 		Misc::Hooks::ImportedFunction<int, SOCKET, const char*, int, int> send{ "socket::send", "ws2_32.dll", "send", 19 };
 		Misc::Hooks::ImportedFunction<int, SOCKET> closesocket{ "socket::closesocket", "ws2_32.dll", "closesocket", 3 };
-		
+
 	public:
 		SocketHook(XivAlexApp* pApp);
 		SocketHook(const SocketHook&) = delete;
@@ -68,9 +69,9 @@ namespace App::Network {
 		SocketHook& operator=(const SocketHook&) = delete;
 		SocketHook& operator=(SocketHook&&) = delete;
 		~SocketHook();
-		
+
 		[[nodiscard]] bool IsUnloadable() const;
-		
+
 		void ReleaseSockets();
 
 		[[nodiscard]] std::wstring Describe() const;

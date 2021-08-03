@@ -1,7 +1,6 @@
 #pragma once
 
 #include <span>
-
 #include <windef.h>
 
 #include "Utils_Win32_Closeable.h"
@@ -17,9 +16,9 @@ namespace Utils::Win32 {
 		LoadedModule& operator=(const LoadedModule& r);
 		LoadedModule& operator=(std::nullptr_t) override;
 		~LoadedModule() override;
-		
+
 		static LoadedModule LoadMore(const LoadedModule& module);
-		
+
 		template<typename T>
 		T* GetProcAddress(const char* szName) const {
 			return reinterpret_cast<T*>(::GetProcAddress(m_object, szName));

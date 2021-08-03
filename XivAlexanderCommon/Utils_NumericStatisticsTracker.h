@@ -31,4 +31,3 @@ namespace Utils {
 		[[nodiscard]] uint64_t NextBlankIn() const;
 	};
 }
-

@@ -161,6 +161,7 @@ LRESULT App::Window::BaseWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 			}
 			break;
 		}
+
 		case WM_ACTIVATE:
 			if (wParam == WA_INACTIVE)
 				m_hWndLastFocus = GetFocus();

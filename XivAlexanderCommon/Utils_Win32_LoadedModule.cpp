@@ -13,7 +13,7 @@ Utils::Win32::LoadedModule::LoadedModule(LoadedModule&& r) noexcept
 }
 
 Utils::Win32::LoadedModule::LoadedModule(const LoadedModule& r)
-	: Closeable(r.m_bOwnership && r.m_object ? LoadLibraryW(Process::Current().PathOf(r.m_object).c_str()) : r.m_object,
+	: Closeable(r.m_bOwnership&& r.m_object ? LoadLibraryW(Process::Current().PathOf(r.m_object).c_str()) : r.m_object,
 		r.m_bOwnership) {
 	if (r.m_object && !m_object)
 		throw Error("LoadLibraryW");
@@ -48,7 +48,7 @@ Utils::Win32::LoadedModule& Utils::Win32::LoadedModule::operator=(std::nullptr_t
 
 Utils::Win32::LoadedModule::~LoadedModule() = default;
 
-Utils::Win32::LoadedModule Utils::Win32::LoadedModule::LoadMore(const LoadedModule& module) {
+Utils::Win32::LoadedModule Utils::Win32::LoadedModule::LoadMore(const LoadedModule & module) {
 	return LoadedModule(module.PathOf().c_str(), 0, true);
 }
 

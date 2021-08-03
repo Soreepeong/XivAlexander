@@ -6,7 +6,7 @@ Utils::Win32::GlobalResource::GlobalResource(HINSTANCE hInstance, LPCWSTR lpType
 	if (!hRes) {
 		if (!fallbackToDefault || wLanguage == MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL))
 			throw Error("FindResourceExW");
-		
+
 		hRes = FindResourceExW(hInstance, lpType, lpName, MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL));
 		if (!hRes)
 			throw Error("FindResourceExW(Fallback)");
@@ -39,7 +39,7 @@ Utils::Win32::Accelerator::Accelerator(HINSTANCE hInstance, LPCWSTR lpType, LPCW
 		uint64_t pad;
 	};
 	const auto hRes = GlobalResource(hInstance, lpType, lpName, wLanguage, fallbackToDefault);
-	
+
 	std::vector<ACCEL> accels;
 	for (auto pAccel = static_cast<const ACCELRES*>(hRes.GetData()); ; pAccel++) {
 		accels.emplace_back(pAccel->accel);
@@ -57,15 +57,15 @@ LPCWSTR Utils::Win32::FindStringResourceEx(HINSTANCE hInstance, UINT uId, WORD w
 			pwsz = pwsz + 1 + static_cast<UINT>(*pwsz);
 		return pwsz;
 	}
-	
+
 	if (wLanguage != MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL))
 		return FindStringResourceEx(hInstance, uId);
-	
+
 	throw std::runtime_error("FindStringResourceEx");
 }
 
 std::wstring Utils::Win32::MB_GetString(int i) {
-	static LPCWSTR(WINAPI* MB_GetString)(int) = nullptr;
+	static LPCWSTR(WINAPI * MB_GetString)(int) = nullptr;
 	if (!MB_GetString) {
 		const auto pUser32 = LoadLibraryW(L"user32.dll");
 		assert(pUser32);

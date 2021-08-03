@@ -20,7 +20,7 @@ namespace Utils {
 
 		CallOnDestruction(std::nullptr_t) noexcept;
 		CallOnDestruction& operator=(std::nullptr_t) noexcept;
-		
+
 		CallOnDestruction& operator=(std::function<void()>&& fn) noexcept;
 		CallOnDestruction& operator=(const std::function<void()>& fn);
 
@@ -34,7 +34,7 @@ namespace Utils {
 
 		class Multiple {
 			std::vector<CallOnDestruction> m_list;
-			
+
 		public:
 			Multiple();
 
@@ -59,7 +59,7 @@ namespace Utils {
 			: CallOnDestruction(fn)
 			, m_value(std::move(value)) {
 		}
-		
+
 		template<typename = std::enable_if_t<std::is_default_constructible_v<T>>>
 		CallOnDestructionWithValue() noexcept
 			: CallOnDestruction(nullptr)
@@ -73,7 +73,7 @@ namespace Utils {
 			if constexpr (std::is_trivial_v<T>)
 				r.m_value = {};
 		}
-		
+
 		template<typename = std::enable_if_t<std::is_default_constructible_v<T>>>
 		CallOnDestructionWithValue& operator=(CallOnDestructionWithValue&& r) noexcept {
 			m_value = std::move(r.m_value);
@@ -82,23 +82,23 @@ namespace Utils {
 				r.m_value = {};
 			return *this;
 		}
-		
+
 		template<typename = std::enable_if_t<std::is_default_constructible_v<T>>>
 		CallOnDestructionWithValue(std::nullptr_t) noexcept : CallOnDestruction() {}
-		
+
 		template<typename = std::enable_if_t<std::is_default_constructible_v<T>>>
 		CallOnDestructionWithValue& operator=(std::nullptr_t) noexcept {
 			CallOnDestruction::operator=(nullptr);
 			return *this;
 		}
-		
+
 		~CallOnDestructionWithValue() override = default;
 
-		operator T&() {
+		operator T& () {
 			return m_value;
 		}
 
-		operator const T&() const {
+		operator const T& () const {
 			return m_value;
 		}
 	};

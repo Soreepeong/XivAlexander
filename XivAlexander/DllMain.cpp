@@ -16,18 +16,18 @@ const Utils::Win32::ActivationContext& Dll::ActivationContext() {
 
 const char* XivAlexDll::LoaderActionToString(LoaderAction val) {
 	switch (val) {
-	case LoaderAction::Auto: return "auto";
-	case LoaderAction::Web: return "web";
-	case LoaderAction::Ask: return "ask";
-	case LoaderAction::Load: return "load";
-	case LoaderAction::Unload: return "unload";
-	case LoaderAction::Launcher: return "launcher";
-	case LoaderAction::UpdateCheck: return "update-check";
-	case LoaderAction::Internal_Update_Step2_ReplaceFiles: return "_internal_update_step2_replacefiles";
-	case LoaderAction::Internal_Update_Step3_CleanupFiles: return "_internal_update_step3_cleanupfiles";
-	case LoaderAction::Internal_Inject_HookEntryPoint: return "_internal_inject_hookentrypoint";
-	case LoaderAction::Internal_Inject_LoadXivAlexanderImmediately: return "_internal_inject_loadxivalexanderimmediately";
-	case LoaderAction::Internal_Cleanup_Handle: return "_internal_cleanup_handle";
+		case LoaderAction::Auto: return "auto";
+		case LoaderAction::Web: return "web";
+		case LoaderAction::Ask: return "ask";
+		case LoaderAction::Load: return "load";
+		case LoaderAction::Unload: return "unload";
+		case LoaderAction::Launcher: return "launcher";
+		case LoaderAction::UpdateCheck: return "update-check";
+		case LoaderAction::Internal_Update_Step2_ReplaceFiles: return "_internal_update_step2_replacefiles";
+		case LoaderAction::Internal_Update_Step3_CleanupFiles: return "_internal_update_step3_cleanupfiles";
+		case LoaderAction::Internal_Inject_HookEntryPoint: return "_internal_inject_hookentrypoint";
+		case LoaderAction::Internal_Inject_LoadXivAlexanderImmediately: return "_internal_inject_loadxivalexanderimmediately";
+		case LoaderAction::Internal_Cleanup_Handle: return "_internal_cleanup_handle";
 	}
 	return "<invalid>";
 }
@@ -49,16 +49,16 @@ XivAlexDll::LoaderAction XivAlexDll::ParseLoaderAction(std::string val) {
 }
 
 XIVALEXANDER_DLLEXPORT DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
-		const std::vector<Utils::Win32::Process>& hSources,
-		LoaderAction action,
-		bool wait,
-		const std::filesystem::path& launcherPath,
-		const Utils::Win32::Process& waitFor) {
+	const std::vector<Utils::Win32::Process>& hSources,
+	LoaderAction action,
+	bool wait,
+	const std::filesystem::path& launcherPath,
+	const Utils::Win32::Process& waitFor) {
 	const auto companion = launcherPath.empty() ? Dll::Module().PathOf().parent_path() / XivAlex::XivAlexLoaderNameW : launcherPath;
-	
+
 	if (!exists(companion))
 		throw std::runtime_error(Utils::ToUtf8(std::format(FindStringResourceEx(Dll::Module(), IDS_ERROR_LOADER_NOT_FOUND) + 1, companion)));
-	
+
 	Utils::Win32::Process companionProcess;
 	{
 		Utils::Win32::ProcessBuilder creator;
@@ -67,17 +67,17 @@ XIVALEXANDER_DLLEXPORT DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 			.WithAppendArgument(L"--handle-instead-of-pid")
 			.WithAppendArgument(L"--action")
 			.WithAppendArgument(LoaderActionToString(action));
-		
+
 		if (waitFor)
 			creator.WithAppendArgument("--wait-process")
-				.WithAppendArgument("{}", creator.Inherit(waitFor).Value());
+			.WithAppendArgument("{}", creator.Inherit(waitFor).Value());
 		for (const auto& h : hSources)
 			creator.WithAppendArgument("{}", creator.Inherit(h).Value());
 
 		companionProcess = creator.Run().first;
 	}
-	
-	if (!wait) 
+
+	if (!wait)
 		return 0;
 	else {
 		DWORD retCode = 0;
@@ -88,18 +88,18 @@ XIVALEXANDER_DLLEXPORT DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 	}
 }
 
-BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {	
+BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 	switch (fdwReason) {
 		case DLL_PROCESS_ATTACH:
 		{
 			try {
 				s_hModule.Attach(hInstance, Utils::Win32::LoadedModule::Null, false, "Instance attach failed <cannot happen>");
-				s_hActivationContext = Utils::Win32::ActivationContext(ACTCTXW {
+				s_hActivationContext = Utils::Win32::ActivationContext(ACTCTXW{
 					.cbSize = sizeof ACTCTXW,
 					.dwFlags = ACTCTX_FLAG_HMODULE_VALID | ACTCTX_FLAG_RESOURCE_NAME_VALID,
 					.lpResourceName = MAKEINTRESOURCE(IDR_RT_MANIFEST_LATE_ACTIVATION),
 					.hModule = Dll::Module(),
-				});
+					});
 				MH_Initialize();
 			} catch (const std::exception& e) {
 				Utils::Win32::DebugPrint(L"DllMain({:x}, DLL_PROCESS_ATTACH, {}) Error: {}",

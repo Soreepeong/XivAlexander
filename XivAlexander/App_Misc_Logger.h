@@ -30,7 +30,7 @@ namespace App::Misc {
 
 			SYSTEMTIME TimestampAsLocalSystemTime() const;
 		};
-		
+
 	protected:
 		class Implementation;
 		const std::unique_ptr<Implementation> m_pImpl;
@@ -42,7 +42,7 @@ namespace App::Misc {
 
 	public:
 		static std::shared_ptr<Logger> Acquire();
-		
+
 		Logger(Logger&&) = delete;
 		Logger(const Logger&) = delete;
 		Logger operator=(Logger&&) = delete;
@@ -59,7 +59,7 @@ namespace App::Misc {
 
 		void WithLogs(const std::function<void(const std::deque<LogItem>& items)>& cb) const;
 		Utils::ListenerManager<Logger, void, const std::deque<LogItem>&> OnNewLogItem;
-		
+
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
 		void Format(LogCategory category, const char* format, Args ... args) {
 			Log(category, std::format(format, std::forward<Args>(args)...), Level);

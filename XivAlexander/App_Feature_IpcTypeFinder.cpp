@@ -15,7 +15,7 @@ public:
 			, conn(conn) {
 			using namespace Network::Structures;
 
-			conn.AddIncomingFFXIVMessageHandler(this, [&](auto pBundle, auto pMessage, auto&) {
+			conn.AddIncomingFFXIVMessageHandler(this, [&](auto pMessage) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					if (pMessage->CurrentActor == pMessage->SourceActor) {
 						if (pMessage->Length == 0x9c ||
@@ -28,7 +28,7 @@ public:
 							int expectedCount = 0;
 							if (pMessage->Length == 0x9c)
 								expectedCount = 1;
-							else if(pMessage->Length == 0x29c)
+							else if (pMessage->Length == 0x29c)
 								expectedCount = 8;
 							else if (pMessage->Length == 0x4dc)
 								expectedCount = 16;
@@ -140,8 +140,8 @@ public:
 					}
 				}
 				return true;
-				});
-			conn.AddOutgoingFFXIVMessageHandler(this, [&](auto pBundle, auto pMessage, auto&) {
+			});
+			conn.AddOutgoingFFXIVMessageHandler(this, [&](auto pMessage) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					if (pMessage->Length == 0x40) {
 						// Test ActionRequest
@@ -156,13 +156,13 @@ public:
 					}
 				}
 				return true;
-				});
+			});
 		}
 		~SingleConnectionHandler() {
 			conn.RemoveMessageHandlers(this);
 		}
 	};
-	
+
 	const std::shared_ptr<Misc::Logger> m_logger;
 	Network::SocketHook* const m_socketHook;
 	std::map<Network::SingleConnection*, std::unique_ptr<SingleConnectionHandler>> m_handlers;
@@ -173,10 +173,10 @@ public:
 		, m_socketHook(socketHook) {
 		m_cleanup += m_socketHook->OnSocketFound([&](Network::SingleConnection& conn) {
 			m_handlers.emplace(&conn, std::make_unique<SingleConnectionHandler>(this, conn));
-			});
+		});
 		m_cleanup += m_socketHook->OnSocketGone([&](Network::SingleConnection& conn) {
 			m_handlers.erase(&conn);
-			});
+		});
 	}
 
 	~Implementation() {
@@ -185,7 +185,7 @@ public:
 };
 
 App::Feature::IpcTypeFinder::IpcTypeFinder(Network::SocketHook* socketHook)
-	: m_pImpl(std::make_unique<Implementation>(socketHook)){
+	: m_pImpl(std::make_unique<Implementation>(socketHook)) {
 }
 
 App::Feature::IpcTypeFinder::~IpcTypeFinder() = default;

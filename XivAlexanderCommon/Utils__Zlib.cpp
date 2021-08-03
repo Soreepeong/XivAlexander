@@ -1,10 +1,8 @@
 #include "pch.h"
 #include "Utils__Zlib.h"
-#include "Utils__String.h"
 
 std::vector<uint8_t> Utils::ZlibDecompress(const uint8_t* src, size_t length) {
-	z_stream stream;
-	memset(&stream, 0, sizeof(stream));
+	z_stream stream{};
 	stream.next_in = src;
 	stream.avail_in = static_cast<uInt>(length);
 	if (const auto res = inflateInit(&stream); res != Z_OK)
@@ -34,8 +32,7 @@ std::vector<uint8_t> Utils::ZlibDecompress(const uint8_t* src, size_t length) {
 }
 
 std::vector<uint8_t> Utils::ZlibCompress(const uint8_t* src, size_t length) {
-	z_stream stream;
-	memset(&stream, 0, sizeof(stream));
+	z_stream stream{};
 	stream.next_in = src;
 	stream.avail_in = static_cast<uInt>(length);
 	if (const auto res = deflateInit(&stream, Z_DEFAULT_COMPRESSION); res != Z_OK)
@@ -65,7 +62,7 @@ std::vector<uint8_t> Utils::ZlibCompress(const uint8_t* src, size_t length) {
 }
 
 std::string Utils::ZlibError::DescribeReturnCode(int code) {
-	switch (code ) {
+	switch (code) {
 		case Z_OK: return "OK";
 		case Z_STREAM_END: return "Stream end";
 		case Z_NEED_DICT: return "Need dict";

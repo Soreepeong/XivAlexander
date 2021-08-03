@@ -1,12 +1,10 @@
 #include "pch.h"
 #include "App_InjectOnCreateProcessApp.h"
-
 #include "App_Feature_HashTracker.h"
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_Hooks.h"
 #include "XivAlexander/XivAlexander.h"
 #include "resource.h"
-
 #if INTPTR_MAX == INT64_MAX
 #include "App_InjectOnCreateProcessApp_x64.h"
 #elif INTPTR_MAX == INT32_MAX
@@ -60,7 +58,7 @@ public:
 			if (result && !noOperation)
 				PostProcessExecution(dwCreationFlags, lpProcessInformation);
 			return result;
-			});
+		});
 		m_cleanup += CreateProcessA.SetHook([this](_In_opt_ LPCSTR lpApplicationName, _Inout_opt_ LPSTR lpCommandLine, _In_opt_ LPSECURITY_ATTRIBUTES lpProcessAttributes, _In_opt_ LPSECURITY_ATTRIBUTES lpThreadAttributes, _In_ BOOL bInheritHandles, _In_ DWORD dwCreationFlags, _In_opt_ LPVOID lpEnvironment, _In_opt_ LPCSTR lpCurrentDirectory, _In_ LPSTARTUPINFOA lpStartupInfo, _Out_ LPPROCESS_INFORMATION lpProcessInformation) -> BOOL {
 			const bool noOperation = dwCreationFlags & (DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS);
 			const auto result = CreateProcessA.bridge(
@@ -77,7 +75,7 @@ public:
 			if (result && !noOperation)
 				PostProcessExecution(dwCreationFlags, lpProcessInformation);
 			return result;
-			});
+		});
 	}
 
 	~Implementation() = default;
@@ -116,14 +114,14 @@ public:
 				if (process.IsProcess64Bits() == Utils::Win32::Process::Current().IsProcess64Bits()) {
 					XivAlexDll::PatchEntryPointForInjection(process);
 				} else {
-					LaunchXivAlexLoaderWithTargetHandles({ process }, XivAlexDll::LoaderAction::Internal_Inject_HookEntryPoint, true, 
+					LaunchXivAlexLoaderWithTargetHandles({ process }, XivAlexDll::LoaderAction::Internal_Inject_HookEntryPoint, true,
 						Dll::Module().PathOf().parent_path() / XivAlex::XivAlexLoaderOppositeNameW);
 				}
 			}
 		} catch (std::exception& e) {
 			error = Utils::FromUtf8(e.what());
 		}
-		
+
 #ifdef _DEBUG
 		error += L" _DEBUG";
 #endif
@@ -204,7 +202,7 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent, HANDLE 
 						if (Utils::Win32::RunProgram({
 							.path = process.PathOf(),
 							.args = Utils::FromUtf8(XivAlex::CreateGameCommandLine(pairs, true)),
-						})) {
+							})) {
 #ifdef _DEBUG
 							Utils::Win32::MessageBoxF(nullptr, MB_OK, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1, L"DEBUG: Restarting due to tick count difference of {} between encryption timestamp and now.", now - time);
 #endif
@@ -222,7 +220,7 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent, HANDLE 
 
 	// let original entry point continue execution.
 	SetEvent(hContinuableEvent);
-	
+
 	while (WaitForInputIdle(GetCurrentProcess(), 10000) == WAIT_TIMEOUT) {
 		if (WaitForSingleObject(hMainThread, 0) != WAIT_TIMEOUT)
 			return;  // main thread has exited.
@@ -243,9 +241,9 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent, HANDLE 
 
 	if (!hwnd)
 		return;
-	
+
 	XivAlexDll::EnableXivAlexander(1);
-    XivAlexDll::EnableInjectOnCreateProcess(0);
+	XivAlexDll::EnableInjectOnCreateProcess(0);
 
 	Sleep(5000);
 }
@@ -276,7 +274,7 @@ extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(Inj
 			TerminateProcess(GetCurrentProcess(), 1);
 		}
 		FreeLibraryAndExitThread(Dll::Module(), 0);
-		}, pParam, 0, nullptr);
+	}, pParam, 0, nullptr);
 	assert(pParam->Internal.hContinuableEvent);
 	assert(pParam->Internal.hWorkerThread);
 	WaitForSingleObject(pParam->Internal.hContinuableEvent, INFINITE);

@@ -98,7 +98,7 @@ std::string Utils::StringReplaceAll(const std::string& source, const std::string
 		s += to;
 		last = pos + from.length();
 	}
-	
+
 	s += source.substr(last);
 	return s;
 }

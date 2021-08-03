@@ -20,15 +20,15 @@ public:
 		, m_debugger(Misc::DebuggerDetectionDisabler::Acquire()) {
 		for (auto ptr : Misc::Signatures::LookupForData([](const IMAGE_SECTION_HEADER& p) {
 			return strncmp(reinterpret_cast<const char*>(p.Name), ".text", 5) == 0;
-			},
+		},
 			"\x40\x57\x48\x8d\x3d\x00\x00\x00\x00\x00\x8b\xd8\x4c\x8b\xd2\xf7\xd1\x00\x85\xc0\x74\x25\x41\xf6\xc2\x03\x74\x1f\x41\x0f\xb6\x12\x8b\xc1",
-				"\xFF\xFF\xFF\xFF\xFF\x00\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF",
-				34,
-			{}
-				)) {
+			"\xFF\xFF\xFF\xFF\xFF\x00\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF",
+			34,
+		{}
+			)) {
 			fns.emplace_back(std::make_unique<Misc::Hooks::PointerFunction<uint32_t, uint32_t, const char*, size_t>>(
 				"FFXIV::GeneralHashCalcFn",
-				static_cast<uint32_t(__stdcall *)(uint32_t, const char*, size_t)>(ptr)
+				static_cast<uint32_t(__stdcall*)(uint32_t, const char*, size_t)>(ptr)
 				));
 			m_cleanup += fns.back()->SetHook([this, ptr, self = fns.back().get()](uint32_t initVal, const char* str, size_t len) {
 				if (!str || !*str || !m_config->Runtime.UseHashTracker)
@@ -60,27 +60,27 @@ public:
 					}
 					if (appendLanguageCode) {
 						switch (m_config->Runtime.HashTrackerLanguageOverride) {
-						case Config::GameLanguage::Japanese:
-							name += "_ja";
-							break;
-						case Config::GameLanguage::English:
-							name += "_en";
-							break;
-						case Config::GameLanguage::German:
-							name += "_de";
-							break;
-						case Config::GameLanguage::French:
-							name += "_fr";
-							break;
-						case Config::GameLanguage::ChineseSimplified:
-							name += "_chs";
-							break;
-						case Config::GameLanguage::ChineseTraditional:
-							name += "_cht";
-							break;
-						case Config::GameLanguage::Korean:
-							name += "_ko";
-							break;
+							case Config::GameLanguage::Japanese:
+								name += "_ja";
+								break;
+							case Config::GameLanguage::English:
+								name += "_en";
+								break;
+							case Config::GameLanguage::German:
+								name += "_de";
+								break;
+							case Config::GameLanguage::French:
+								name += "_fr";
+								break;
+							case Config::GameLanguage::ChineseSimplified:
+								name += "_chs";
+								break;
+							case Config::GameLanguage::ChineseTraditional:
+								name += "_cht";
+								break;
+							case Config::GameLanguage::Korean:
+								name += "_ko";
+								break;
 						}
 
 						const auto newStr = name + ext + rest;
@@ -92,7 +92,7 @@ public:
 					}
 				}
 				const auto res = self->bridge(initVal, str, len);
-				
+
 				if (m_config->Runtime.UseHashTrackerKeyLogging) {
 					if (m_alreadyLogged.find(name) == m_alreadyLogged.end()) {
 						m_alreadyLogged.emplace(name);

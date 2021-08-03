@@ -5,7 +5,7 @@
 namespace App::Misc::Hooks {
 
 	using namespace Signatures;
-	
+
 	class Binder {
 	public:
 #if INTPTR_MAX == INT32_MAX
@@ -35,9 +35,9 @@ namespace App::Misc::Hooks {
 	};
 
 	template<typename R, typename ...Args>
-	class Function : public Signature<R(_stdcall *)(Args...)> {
+	class Function : public Signature<R(_stdcall*)(Args...)> {
 	protected:
-		typedef R(__stdcall *FunctionType)(Args...);
+		typedef R(__stdcall* FunctionType)(Args...);
 
 		FunctionType m_bridge = nullptr;
 		std::function<std::remove_pointer_t<FunctionType>> m_detour = nullptr;
@@ -56,10 +56,10 @@ namespace App::Misc::Hooks {
 		~Function() override {
 			if (m_detour)
 				std::abort();
-			
+
 			*m_destructed = true;
 		}
-		
+
 		virtual R bridge(Args ...args) {
 			return m_bridge(std::forward<Args>(args)...);
 		}
@@ -76,13 +76,13 @@ namespace App::Misc::Hooks {
 			m_detour = std::move(pfnDetour);
 			HookEnable();
 
-			return Utils::CallOnDestruction([this, m_destructed=m_destructed]() {
+			return Utils::CallOnDestruction([this, m_destructed = m_destructed]() {
 				if (*m_destructed)
 					return;
-				
+
 				HookDisable();
 				m_detour = nullptr;
-				});
+			});
 		}
 
 	protected:
@@ -92,7 +92,7 @@ namespace App::Misc::Hooks {
 			else
 				return bridge(std::forward<Args>(args)...);
 		}
-		
+
 		virtual void HookEnable() = 0;
 		virtual void HookDisable() = 0;
 	};
@@ -153,7 +153,7 @@ namespace App::Misc::Hooks {
 			VirtualProtect(mbi.BaseAddress, mbi.RegionSize, mbi.Protect, &mbi.Protect);
 		}
 	};
-	
+
 	class WndProcFunction : public Function<LRESULT, HWND, UINT, WPARAM, LPARAM> {
 		using Super = Function<LRESULT, HWND, UINT, WPARAM, LPARAM>;
 
@@ -167,7 +167,7 @@ namespace App::Misc::Hooks {
 		~WndProcFunction() override;
 
 		[[nodiscard]] bool IsDisableable() const final;
-		
+
 		LRESULT bridge(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) final;
 
 	protected:

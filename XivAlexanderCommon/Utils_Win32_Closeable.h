@@ -1,8 +1,6 @@
 #pragma once
 
 #include <windef.h>
-#include <ipexport.h>
-#include <IcmpAPI.h>
 
 #include "Utils_Win32.h"
 #include "Utils__Misc.h"
@@ -40,7 +38,10 @@ namespace Utils::Win32 {
 
 		template <typename ... Args>
 		Closeable(T object, T invalidValue, const char* errorMessageFormat, Args ... args)
-			: Closeable(object, invalidValue, std::format(errorMessageFormat, std::forward<Args>(args)...)) {
+			: m_object(object == invalidValue ? nullptr : object)
+			, m_bOwnership(object != invalidValue) {
+			if (object == invalidValue)
+				throw Error(std::format(errorMessageFormat, std::forward<Args>(args)...));
 		}
 
 		template <typename ... Args>
@@ -135,5 +136,4 @@ namespace Utils::Win32 {
 	using Icon = Closeable<HICON, DestroyIcon>;
 	using CreatedDC = Closeable<HDC, DeleteDC>;
 	using FindFile = Closeable<HANDLE, FindClose>;
-	using Icmp = Closeable<HANDLE, IcmpCloseHandle>;
 }

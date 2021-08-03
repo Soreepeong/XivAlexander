@@ -41,7 +41,7 @@ static WNDCLASSEXW WindowClass() {
 
 App::Window::Log::Log()
 	: BaseWindow(WindowClass(), nullptr, WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr) {
-	
+
 	NONCLIENTMETRICS ncm = { sizeof(NONCLIENTMETRICS) };
 	SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
 
@@ -108,21 +108,24 @@ void App::Window::Log::OnLayout(double zoom, double width, double height) {
 
 LRESULT App::Window::Log::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
-		case WM_INITMENUPOPUP: {
+		case WM_INITMENUPOPUP:
+		{
 			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST, true);
 			break;
 		}
 		case WM_ACTIVATE:
 			SetFocus(m_hScintilla);
 			break;
-		case WM_COMMAND: {
+		case WM_COMMAND:
+		{
 			switch (LOWORD(wParam)) {
-				case ID_FILE_SAVE: {
+				case ID_FILE_SAVE:
+				{
 					const auto hWnd = m_hWnd;
 					std::string buf(m_direct(m_directPtr, SCI_GETLENGTH, 0, 0) + 1, '\0');
 					m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(&buf[0]));
 					buf.resize(buf.length() - 1);
-					
+
 					static const COMDLG_FILTERSPEC saveFileTypes[] = {
 						{L"Log Files (*.log)",		L"*.log"},
 						{L"All Documents (*.*)",	L"*.*"}
@@ -141,9 +144,9 @@ LRESULT App::Window::Log::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
 						throw_on_error(pDialog->SetDefaultExtension(L"log"));
 						throw_on_error(pDialog->GetOptions(&dwFlags));
 						throw_on_error(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
-						
+
 						throw_on_error(pDialog->Show(hWnd));
-						
+
 						std::filesystem::path newFileName;
 						{
 							IShellItemPtr pResult;
@@ -154,14 +157,14 @@ LRESULT App::Window::Log::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
 								throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
 							newFileName = pszNewFileName;
 						}
-						
+
 						std::ofstream f(newFileName);
 						f << buf;
 						Utils::Win32::MessageBoxF(hWnd, MB_ICONINFORMATION, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 							m_config->Runtime.FormatStringRes(IDS_LOG_SAVED, newFileName));
-						
+
 					} catch (std::exception& e) {
-						Utils::Win32::MessageBoxF(hWnd, MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME), 
+						Utils::Win32::MessageBoxF(hWnd, MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 							m_config->Runtime.FormatStringRes(IDS_ERROR_LOG_SAVE, e.what()));
 					} catch (_com_error& e) {
 						if (e.Error() == HRESULT_FROM_WIN32(ERROR_CANCELLED))
@@ -172,7 +175,8 @@ LRESULT App::Window::Log::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
 					return 0;
 				}
 
-				case ID_FILE_CLEAR: {
+				case ID_FILE_CLEAR:
+				{
 					m_logger->Clear();
 					m_direct(m_directPtr, SCI_SETREADONLY, FALSE, 0);
 					m_direct(m_directPtr, SCI_CLEARALL, 0, 0);
@@ -180,12 +184,14 @@ LRESULT App::Window::Log::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
 					return 0;
 				}
 
-				case ID_FILE_CLOSE: {
+				case ID_FILE_CLOSE:
+				{
 					SendMessageW(m_hWnd, WM_CLOSE, 0, 0);
 					return 0;
 				}
 
-				case ID_VIEW_ALWAYSONTOP: {
+				case ID_VIEW_ALWAYSONTOP:
+				{
 					if (GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST) {
 						SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 					} else {
@@ -243,5 +249,5 @@ void App::Window::Log::FlushLog(const std::string& logstr, LogLevel level) {
 		SendMessageW(m_hScintilla, WM_SETREDRAW, TRUE, 0);
 		InvalidateRect(m_hScintilla, nullptr, FALSE);
 		return 0;
-		});
+	});
 }

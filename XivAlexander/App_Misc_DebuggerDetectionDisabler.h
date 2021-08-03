@@ -9,14 +9,14 @@ namespace App::Misc {
 		friend class DebuggerDetectionDisablerCreator;
 		DebuggerDetectionDisabler();
 		static std::weak_ptr<DebuggerDetectionDisabler> s_instance;
-	
+
 	public:
 		static std::shared_ptr<DebuggerDetectionDisabler> Acquire();
 
 		[[nodiscard]]
 		bool IsDebuggerActuallyPresent() const;
 		void BreakIfDebugged() const;
-		
+
 		virtual ~DebuggerDetectionDisabler();
 	};
 }

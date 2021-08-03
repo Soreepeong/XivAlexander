@@ -38,7 +38,6 @@ namespace XivAlex {
 
 	std::vector<std::pair<std::string, std::string>> ParseGameCommandLine(std::string source, bool* wasObfuscated = nullptr);
 	std::string CreateGameCommandLine(const std::vector<std::pair<std::string, std::string>>& map, bool obfuscate);
-	std::string RefreshGameCommandLineArguments(std::string source, bool obfuscate);
 
 	extern const std::string SqexChecksumTable;
 	void SqexBlowfishModifier(std::string& s);
@@ -63,7 +62,7 @@ namespace XivAlex {
 	const wchar_t XivAlexLoaderOppositeNameW[] = L"XivAlexanderLoader64.exe";
 
 #elif INTPTR_MAX == INT64_MAX
-	
+
 	const wchar_t GameExecutableNameW[] = L"ffxiv_dx11.exe";
 	const wchar_t XivAlexDllNameW[] = L"XivAlexander64.dll";
 	const char XivAlexDllName[] = "XivAlexander64.dll";

@@ -29,7 +29,7 @@ namespace Utils {
 		ListenerManagerImplBase_(std::function<void(const CallbackType&)> onNewCallback = nullptr)
 			: m_onNewCallback(onNewCallback) {
 		}
-		
+
 		virtual ~ListenerManagerImplBase_() {
 			std::lock_guard lock(*m_lock);
 			m_callbacks.clear();
@@ -44,7 +44,7 @@ namespace Utils {
 			if (m_onNewCallback)
 				m_onNewCallback(fn);
 			m_callbacks.emplace(callbackId, std::move(fn));
-			
+
 			return CallOnDestruction([destructed = m_destructed, mutex = m_lock, callbackId, this]() {
 				std::lock_guard lock(*mutex);
 
@@ -85,7 +85,7 @@ namespace Utils {
 
 	public:
 		using ListenerManagerImplBase_<R, T...>::ListenerManagerImplBase_;
-		
+
 		/// \brief Adds a callback function to call when an event has been fired.
 		/// \returns An object that will remove the callback when destructed.
 		[[nodiscard]] CallOnDestruction operator() (std::function<R(T ...)> fn) override {

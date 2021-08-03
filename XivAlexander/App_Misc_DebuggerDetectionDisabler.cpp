@@ -53,7 +53,7 @@ void App::Misc::DebuggerDetectionDisabler::BreakIfDebugged() const {
 std::weak_ptr<App::Misc::DebuggerDetectionDisabler> App::Misc::DebuggerDetectionDisabler::s_instance;
 
 App::Misc::DebuggerDetectionDisabler::DebuggerDetectionDisabler()
-	: m_pImpl(std::make_unique<Implementation>()){
+	: m_pImpl(std::make_unique<Implementation>()) {
 }
 
 App::Misc::DebuggerDetectionDisabler::~DebuggerDetectionDisabler() = default;

@@ -17,17 +17,17 @@ namespace Utils::Win32 {
 	void DebugPrint(const wchar_t* format, Args ... args) {
 		OutputDebugStringW(std::format(L"{}\n", std::format(format, std::forward<Args>(args)...)).c_str());
 	}
-	
+
 	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const std::wstring& text);
 	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const std::string& text);
 	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const wchar_t* text);
 	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const char* text);
-	
+
 	template <typename ... Args>
 	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const wchar_t* format, Args ... args) {
 		return MessageBoxF(hWnd, uType, lpCaption, std::format(format, std::forward<Args>(args)...).c_str());
 	}
-	
+
 	template <typename ... Args>
 	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const char* format, Args ... args) {
 		return MessageBoxF(hWnd, uType, lpCaption, FromUtf8(std::format(format, std::forward<Args>(args)...)).c_str());
@@ -57,7 +57,7 @@ namespace Utils::Win32 {
 			CancelIfRequired,
 			NoElevationIfDenied,
 		};
-		
+
 		std::filesystem::path path;
 		std::filesystem::path dir;
 		std::wstring args;
@@ -76,7 +76,7 @@ namespace Utils::Win32 {
 	std::string ReverseCommandLineToArgv(const std::initializer_list<const std::string>& argv);
 
 	std::vector<DWORD> GetProcessList();
-	
+
 	class Error : public std::runtime_error {
 		const int m_nErrorCode;
 

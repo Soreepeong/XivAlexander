@@ -13,7 +13,7 @@ namespace Utils {
 	std::string ToString(const struct sockaddr_in6& sa);
 	std::string ToString(const struct sockaddr& sa);
 	std::string ToString(const struct sockaddr_storage& sa);
-	
+
 	[[nodiscard]]
 	std::vector<std::string> StringSplit(const std::string& str, const std::string& delimiter);
 

@@ -1,7 +1,5 @@
 #include "pch.h"
 #include "Utils_Win32.h"
-
-#include "Utils_CallOnDestruction.h"
 #include "Utils_Win32_Closeable.h"
 #include "Utils_Win32_Handle.h"
 #include "Utils_Win32_Process.h"
@@ -52,15 +50,15 @@ std::pair<std::string, std::string> Utils::Win32::FormatModuleVersionString(void
 		throw std::runtime_error("Invalid version info found.");
 	return std::make_pair<>(
 		std::format("{}.{}.{}.{}",
-		             (versionInfo.dwFileVersionMS >> 16) & 0xFFFF,
-		             (versionInfo.dwFileVersionMS >> 0) & 0xFFFF,
-		             (versionInfo.dwFileVersionLS >> 16) & 0xFFFF,
-		             (versionInfo.dwFileVersionLS >> 0) & 0xFFFF),
+			(versionInfo.dwFileVersionMS >> 16) & 0xFFFF,
+			(versionInfo.dwFileVersionMS >> 0) & 0xFFFF,
+			(versionInfo.dwFileVersionLS >> 16) & 0xFFFF,
+			(versionInfo.dwFileVersionLS >> 0) & 0xFFFF),
 		std::format("{}.{}.{}.{}",
-		             (versionInfo.dwProductVersionMS >> 16) & 0xFFFF,
-		             (versionInfo.dwProductVersionMS >> 0) & 0xFFFF,
-		             (versionInfo.dwProductVersionLS >> 16) & 0xFFFF,
-		             (versionInfo.dwProductVersionLS >> 0) & 0xFFFF));
+			(versionInfo.dwProductVersionMS >> 16) & 0xFFFF,
+			(versionInfo.dwProductVersionMS >> 0) & 0xFFFF,
+			(versionInfo.dwProductVersionLS >> 16) & 0xFFFF,
+			(versionInfo.dwProductVersionLS >> 0) & 0xFFFF));
 }
 
 std::pair<std::string, std::string> Utils::Win32::FormatModuleVersionString(const std::filesystem::path& path) {
@@ -80,8 +78,8 @@ std::pair<std::string, std::string> Utils::Win32::FormatModuleVersionString(HMOD
 	if (hDllVersion == nullptr)
 		throw std::runtime_error("Failed to find version resource.");
 	const auto hVersionResource = GlobalResource(LoadResource(hModule, hDllVersion),
-	                                                        nullptr,
-	                                                        "FormatModuleVersionString: Failed to load version resource.");
+		nullptr,
+		"FormatModuleVersionString: Failed to load version resource.");
 	const auto lpVersionInfo = LockResource(hVersionResource);  // no need to "UnlockResource"
 	return FormatModuleVersionString(lpVersionInfo);
 }
@@ -141,7 +139,7 @@ void Utils::Win32::SetThreadDescription(HANDLE hThread, const std::wstring& desc
 		pfnSetThreadDescription = reinterpret_cast<SetThreadDescriptionT>(GetProcAddress(hMod, "SetThreadDescription"));
 	else if (const auto hMod = LoadedModule(L"KernelBase.dll", LOAD_LIBRARY_SEARCH_SYSTEM32, false))
 		pfnSetThreadDescription = reinterpret_cast<SetThreadDescriptionT>(GetProcAddress(hMod, "SetThreadDescription"));
-	
+
 	if (pfnSetThreadDescription)
 		pfnSetThreadDescription(hThread, description.data());
 	else
@@ -207,7 +205,7 @@ bool Utils::Win32::IsUserAnAdmin() {
 		&adminGroup))
 		return false;
 	const auto cleanup = CallOnDestruction([adminGroup]() {FreeSid(adminGroup); });
-	
+
 	if (BOOL b = FALSE; CheckTokenMembership(nullptr, adminGroup, &b) && b)
 		return true;
 	return false;
@@ -239,7 +237,7 @@ std::filesystem::path Utils::Win32::ToNativePath(const std::filesystem::path& pa
 static Utils::CallOnDestruction WithRunAsInvoker() {
 	static const auto NeverElevateEnvKey = L"__COMPAT_LAYER";
 	static const auto NeverElevateEnvVal = L"RunAsInvoker";
-	
+
 	std::wstring env;
 	env.resize(32768);
 	env.resize(GetEnvironmentVariableW(NeverElevateEnvKey, &env[0], static_cast<DWORD>(env.size())));
@@ -248,14 +246,14 @@ static Utils::CallOnDestruction WithRunAsInvoker() {
 		throw Utils::Win32::Error("GetEnvrionmentVariableW");
 	if (!SetEnvironmentVariableW(NeverElevateEnvKey, NeverElevateEnvVal))
 		throw Utils::Win32::Error("SetEnvironmentVariableW");
-	return {[env = std::move(env), envNone]() {
+	return { [env = std::move(env), envNone] () {
 		SetEnvironmentVariableW(NeverElevateEnvKey, envNone ? nullptr : &env[0]);
-	}};
+	} };
 }
 
 bool Utils::Win32::RunProgram(RunProgramParams params) {
 	CallOnDestruction::Multiple cleanup;
-	
+
 	if (params.path.empty())
 		params.path = Process::Current().PathOf();
 	else if (!exists(params.path)) {
@@ -266,77 +264,78 @@ bool Utils::Win32::RunProgram(RunProgramParams params) {
 			throw Error("SearchPath");
 		params.path = buf;
 	}
-	
+
 	switch (params.elevateMode) {
-	case RunProgramParams::Normal:
-	case RunProgramParams::Force:
-	case RunProgramParams::NeverUnlessAlreadyElevated:
-	{
-		if (params.elevateMode == RunProgramParams::NeverUnlessAlreadyElevated)
-			cleanup += WithRunAsInvoker();
-		
-		SHELLEXECUTEINFOW sei{};
-		sei.cbSize = sizeof sei;
-		sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-		sei.lpVerb = params.elevateMode == RunProgramParams::Force ? L"runas" : L"open";
-		sei.lpFile = params.path.c_str();
-		sei.lpParameters = params.args.c_str();
-		sei.lpDirectory = params.dir.empty() ? nullptr : params.dir.c_str();
-		sei.nShow = SW_SHOW;
-		if (!ShellExecuteExW(&sei)) {
-			const auto err = GetLastError();
-			if (err == ERROR_CANCELLED && !params.throwOnCancel)
-				return false;
+		case RunProgramParams::Normal:
+		case RunProgramParams::Force:
+		case RunProgramParams::NeverUnlessAlreadyElevated:
+		{
+			if (params.elevateMode == RunProgramParams::NeverUnlessAlreadyElevated)
+				cleanup += WithRunAsInvoker();
 
-			throw Error(err, "ShellExecuteExW");
-		}
-		if (!sei.hProcess)  // should not happen, unless registry is messed up.
-			throw std::runtime_error("Failed to execute a new program.");
-		if (params.wait)
-			WaitForSingleObject(sei.hProcess, INFINITE);
-		CloseHandle(sei.hProcess);
-		return true;
-	}
-
-	case RunProgramParams::NeverUnlessShellIsElevated:
-	case RunProgramParams::CancelIfRequired:
-	case RunProgramParams::NoElevationIfDenied: {
-		if (params.elevateMode == RunProgramParams::NeverUnlessShellIsElevated) {
-			if (!IsUserAnAdmin()) {
-				params.elevateMode = RunProgramParams::NeverUnlessAlreadyElevated;
-				return RunProgram(params);
-			}
-			cleanup += WithRunAsInvoker();
-		}
-
-		try {
-			const auto [process, thread] = ProcessBuilder()
-				.WithPath(params.path)
-				.WithParent(params.elevateMode == RunProgramParams::NeverUnlessShellIsElevated ? GetShellWindow() : nullptr)
-				.WithWorkingDirectory(params.dir)
-				.WithArgument(true, params.args)
-				.Run();
-			if (params.wait)
-				process.Wait();
-			
-		} catch (const Error& e) {
-			if (e.Code() == ERROR_ELEVATION_REQUIRED) {
-				if (params.elevateMode == RunProgramParams::CancelIfRequired && !params.throwOnCancel)
+			SHELLEXECUTEINFOW sei{};
+			sei.cbSize = sizeof sei;
+			sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+			sei.lpVerb = params.elevateMode == RunProgramParams::Force ? L"runas" : L"open";
+			sei.lpFile = params.path.c_str();
+			sei.lpParameters = params.args.c_str();
+			sei.lpDirectory = params.dir.empty() ? nullptr : params.dir.c_str();
+			sei.nShow = SW_SHOW;
+			if (!ShellExecuteExW(&sei)) {
+				const auto err = GetLastError();
+				if (err == ERROR_CANCELLED && !params.throwOnCancel)
 					return false;
-				else if (params.elevateMode == RunProgramParams::NoElevationIfDenied) {
-					params.elevateMode = RunProgramParams::Normal;
-					params.throwOnCancel = false;
-					if (RunProgram(params))
-						return true;
-					
+
+				throw Error(err, "ShellExecuteExW");
+			}
+			if (!sei.hProcess)  // should not happen, unless registry is messed up.
+				throw std::runtime_error("Failed to execute a new program.");
+			if (params.wait)
+				WaitForSingleObject(sei.hProcess, INFINITE);
+			CloseHandle(sei.hProcess);
+			return true;
+		}
+
+		case RunProgramParams::NeverUnlessShellIsElevated:
+		case RunProgramParams::CancelIfRequired:
+		case RunProgramParams::NoElevationIfDenied:
+		{
+			if (params.elevateMode == RunProgramParams::NeverUnlessShellIsElevated) {
+				if (!IsUserAnAdmin()) {
 					params.elevateMode = RunProgramParams::NeverUnlessAlreadyElevated;
 					return RunProgram(params);
 				}
+				cleanup += WithRunAsInvoker();
 			}
-			throw;
+
+			try {
+				const auto [process, thread] = ProcessBuilder()
+					.WithPath(params.path)
+					.WithParent(params.elevateMode == RunProgramParams::NeverUnlessShellIsElevated ? GetShellWindow() : nullptr)
+					.WithWorkingDirectory(params.dir)
+					.WithArgument(true, params.args)
+					.Run();
+				if (params.wait)
+					process.Wait();
+
+			} catch (const Error& e) {
+				if (e.Code() == ERROR_ELEVATION_REQUIRED) {
+					if (params.elevateMode == RunProgramParams::CancelIfRequired && !params.throwOnCancel)
+						return false;
+					else if (params.elevateMode == RunProgramParams::NoElevationIfDenied) {
+						params.elevateMode = RunProgramParams::Normal;
+						params.throwOnCancel = false;
+						if (RunProgram(params))
+							return true;
+
+						params.elevateMode = RunProgramParams::NeverUnlessAlreadyElevated;
+						return RunProgram(params);
+					}
+				}
+				throw;
+			}
+			return true;
 		}
-		return true;
-	}
 	}
 	throw std::out_of_range("invalid elevateMode");
 }
@@ -360,7 +359,7 @@ std::wstring Utils::Win32::ReverseCommandLineToArgv(const std::wstring& arg) {
 		ss << L"\"";
 		for (size_t pos = 0; pos < arg.size();) {
 			const auto special = arg.find_first_of(L"\\\"", pos);
-			if (special == std::wstring::npos){
+			if (special == std::wstring::npos) {
 				ss << arg.substr(pos);
 				break;
 			} else {
@@ -370,7 +369,7 @@ std::wstring Utils::Win32::ReverseCommandLineToArgv(const std::wstring& arg) {
 		}
 		ss << L"\"";
 		return ss.str();
-		
+
 	} else {
 		return arg;
 	}
@@ -381,7 +380,7 @@ std::wstring Utils::Win32::ReverseCommandLineToArgv(const std::span<const std::w
 	for (const auto& arg : argv) {
 		if (ss.tellp())
 			ss << L" ";
-		
+
 		ss << ReverseCommandLineToArgv(arg);
 	}
 	return ss.str();
@@ -397,7 +396,7 @@ std::string Utils::Win32::ReverseCommandLineToArgv(const std::string& arg) {
 		ss << "\"";
 		for (size_t pos = 0; pos < arg.size();) {
 			const auto special = arg.find_first_of("\\\"", pos);
-			if (special == std::wstring::npos){
+			if (special == std::wstring::npos) {
 				ss << arg.substr(pos);
 				break;
 			} else {
@@ -407,7 +406,7 @@ std::string Utils::Win32::ReverseCommandLineToArgv(const std::string& arg) {
 		}
 		ss << "\"";
 		return ss.str();
-		
+
 	} else {
 		return arg;
 	}
@@ -418,7 +417,7 @@ std::string Utils::Win32::ReverseCommandLineToArgv(const std::span<const std::st
 	for (const auto& arg : argv) {
 		if (ss.tellp())
 			ss << " ";
-		
+
 		ss << ReverseCommandLineToArgv(arg);
 	}
 	return ss.str();

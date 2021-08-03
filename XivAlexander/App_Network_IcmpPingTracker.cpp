@@ -2,6 +2,10 @@
 #include "App_Network_IcmpPingTracker.h"
 #include "resource.h"
 
+namespace Utils::Win32 {
+	using Icmp = Closeable<HANDLE, IcmpCloseHandle>;
+}
+
 struct ConnectionPair {
 	in_addr Source;
 	in_addr Destination;
@@ -15,7 +19,7 @@ struct ConnectionPair {
 class App::Network::IcmpPingTracker::Implementation {
 public:
 	class SingleTracker;
-	
+
 	const std::shared_ptr<Misc::Logger> m_logger;
 	const std::shared_ptr<Config> m_config;
 
@@ -41,7 +45,7 @@ public:
 			, m_hExitEvent(Utils::Win32::Event::Create())
 			, m_pair(pair)
 			, m_hWorkerThread(std::format(L"XivAlexander::App::Network::IcmpPingTracker({:x})::SingleTracker({:x}: {} <-> {})",
-				reinterpret_cast<size_t>(icmpPingTracker), reinterpret_cast<size_t>(this), 
+				reinterpret_cast<size_t>(icmpPingTracker), reinterpret_cast<size_t>(this),
 				Utils::ToString(pair.Source), Utils::ToString(pair.Destination)
 			), [this]() { Run(); }) {
 		}
@@ -60,7 +64,7 @@ public:
 
 				unsigned char sendBuf[32]{};
 				unsigned char replyBuf[sizeof(ICMP_ECHO_REPLY) + sizeof sendBuf + 8]{};
-				
+
 				logger->Format(LogCategory::SocketHook,
 					config->Runtime.GetLangId(),
 					IDS_PINGTRACKER_START,
@@ -79,7 +83,7 @@ public:
 						Tracker->AddValue(latency);
 					} else
 						consecutiveFailureCount++;
-					
+
 					if (m_hExitEvent.Wait(waitTime) != WAIT_TIMEOUT) {
 						logger->Format(LogCategory::SocketHook,
 							config->Runtime.GetLangId(),
@@ -122,17 +126,17 @@ App::Network::IcmpPingTracker::IcmpPingTracker()
 
 App::Network::IcmpPingTracker::~IcmpPingTracker() = default;
 
-Utils::CallOnDestruction App::Network::IcmpPingTracker::Track(const in_addr& source, const in_addr& destination) {
+Utils::CallOnDestruction App::Network::IcmpPingTracker::Track(const in_addr & source, const in_addr & destination) {
 	const auto pair = ConnectionPair{ source, destination };
 	std::lock_guard _lock(m_pImpl->m_trackersMapLock);
 	if (const auto it = m_pImpl->m_trackersByAddress.find(pair); it == m_pImpl->m_trackersByAddress.end())
 		m_pImpl->m_trackersByAddress.emplace(pair, std::make_shared<Implementation::SingleTracker>(this, pair));
 	return Utils::CallOnDestruction([this, pair]() {
 		m_pImpl->m_trackersByAddress.erase(pair);
-		});
+	});
 }
 
-const Utils::NumericStatisticsTracker* App::Network::IcmpPingTracker::GetTracker(const in_addr& source, const in_addr& destination) const {
+const Utils::NumericStatisticsTracker* App::Network::IcmpPingTracker::GetTracker(const in_addr & source, const in_addr & destination) const {
 	const auto pair = ConnectionPair{ source, destination };
 	if (const auto it = m_pImpl->m_trackersByAddress.find(pair); it != m_pImpl->m_trackersByAddress.end())
 		return it->second->Tracker.get();

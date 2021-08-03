@@ -3,7 +3,7 @@
 
 namespace App::Window {
 	class Config;
-	
+
 	class Main : public BaseWindow {
 		XivAlexApp* m_pApp;
 		const std::function<void()> m_triggerUnload;
@@ -33,7 +33,7 @@ namespace App::Window {
 
 	protected:
 		void ApplyLanguage(WORD languageId) final;
-		
+
 		LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 		void OnDestroy() override;
 
@@ -43,4 +43,4 @@ namespace App::Window {
 
 		void AskRestartGame();
 	};
-};
+}

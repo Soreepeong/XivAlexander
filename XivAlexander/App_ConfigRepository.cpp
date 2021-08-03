@@ -56,7 +56,7 @@ public:
 };
 
 std::shared_ptr<App::Config> App::Config::Acquire() {
-	
+
 	auto r = s_instance.lock();
 	if (!r) {
 		static std::mutex mtx;
@@ -71,7 +71,7 @@ std::shared_ptr<App::Config> App::Config::Acquire() {
 				dllDir / std::format(L"game.{}.{}.json",
 					std::get<0>(regionAndVersion),
 					std::get<1>(regionAndVersion))
-			);
+				);
 		}
 	}
 	return r;
@@ -79,14 +79,14 @@ std::shared_ptr<App::Config> App::Config::Acquire() {
 
 WORD App::Config::Runtime::GetLangId() const {
 	switch (Language) {
-	case Language::SystemDefault:
-		return MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL);
-	case Language::English:
-		return MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
-	case Language::Korean:
-		return MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN);
-	case Language::Japanese:
-		return MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN);
+		case Language::SystemDefault:
+			return MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL);
+		case Language::English:
+			return MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
+		case Language::Korean:
+			return MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN);
+		case Language::Japanese:
+			return MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN);
 	}
 
 	return MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL);
@@ -152,11 +152,11 @@ void App::Config::Item<uint16_t>::SaveTo(nlohmann::json & data) const {
 	data[Name()] = std::format("0x{:04x}", m_value);
 }
 
-bool App::Config::Item<App::Config::Language>::LoadFrom(const nlohmann::json& data, bool announceChanged) {
+bool App::Config::Item<App::Config::Language>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
 	if (const auto it = data.find(Name()); it != data.end()) {
 		auto newValueString = Utils::FromUtf8(it->get<std::string>());
 		CharLowerW(&newValueString[0]);
-		
+
 		auto newValue = Language::SystemDefault;
 		if (newValueString.size() > 0) {
 			if (newValueString.substr(0, std::min<size_t>(7, newValueString.size())) == L"english")
@@ -166,7 +166,7 @@ bool App::Config::Item<App::Config::Language>::LoadFrom(const nlohmann::json& da
 			else if (newValueString.substr(0, std::min<size_t>(8, newValueString.size())) == L"japanese")
 				newValue = Language::Japanese;
 		}
-		
+
 		if (announceChanged)
 			this->operator=(newValue);
 		else
@@ -175,7 +175,7 @@ bool App::Config::Item<App::Config::Language>::LoadFrom(const nlohmann::json& da
 	return false;
 }
 
-void App::Config::Item<App::Config::Language>::SaveTo(nlohmann::json& data) const {
+void App::Config::Item<App::Config::Language>::SaveTo(nlohmann::json & data) const {
 	if (m_value == Language::SystemDefault)
 		data[Name()] = "SystemDefault";
 	else if (m_value == Language::English)
@@ -186,7 +186,7 @@ void App::Config::Item<App::Config::Language>::SaveTo(nlohmann::json& data) cons
 		data[Name()] = "Japanese";
 }
 
-bool App::Config::Item<App::Config::GameLanguage>::LoadFrom(const nlohmann::json& data, bool announceChanged) {
+bool App::Config::Item<App::Config::GameLanguage>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
 	if (const auto it = data.find(Name()); it != data.end()) {
 		auto newValueString = Utils::FromUtf8(it->get<std::string>());
 		CharLowerW(&newValueString[0]);
@@ -219,7 +219,7 @@ bool App::Config::Item<App::Config::GameLanguage>::LoadFrom(const nlohmann::json
 	return false;
 }
 
-void App::Config::Item<App::Config::GameLanguage>::SaveTo(nlohmann::json& data) const {
+void App::Config::Item<App::Config::GameLanguage>::SaveTo(nlohmann::json & data) const {
 	if (m_value == GameLanguage::Unspecified)
 		data[Name()] = "Unspecified";
 	else if (m_value == GameLanguage::Japanese)

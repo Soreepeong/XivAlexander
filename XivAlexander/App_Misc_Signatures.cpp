@@ -7,7 +7,7 @@ namespace App::Misc::Signatures {
 		return 0 == strncmp(reinterpret_cast<const char*>(pSectionHeader.Name), ".text", 6);
 	}
 
-	std::vector<void*> LookupForData(SectionFilter lookupInSection, const char* sPattern, const char* sMask, size_t length, const std::vector<size_t> &nextOffsets) {
+	std::vector<void*> LookupForData(SectionFilter lookupInSection, const char* sPattern, const char* sMask, size_t length, const std::vector<size_t>& nextOffsets) {
 		std::vector<void*> result;
 		const std::string_view mask(sMask, length);
 		const std::string_view pattern(sPattern, length);

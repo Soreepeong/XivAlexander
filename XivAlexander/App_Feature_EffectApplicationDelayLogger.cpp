@@ -5,10 +5,10 @@
 
 class App::Feature::EffectApplicationDelayLogger::Implementation {
 public:
-	
+
 	class SingleConnectionHandler {
 		const std::shared_ptr<Config> m_config;
-	
+
 	public:
 		Implementation* m_pImpl;
 		Network::SingleConnection& conn;
@@ -20,7 +20,7 @@ public:
 
 			const auto& config = m_config->Game;
 
-			conn.AddIncomingFFXIVMessageHandler(this, [&](auto pBundle, auto pMessage, auto&) {
+			conn.AddIncomingFFXIVMessageHandler(this, [&](auto pMessage) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					if (config.S2C_ActionEffects[0] == pMessage->Data.IPC.SubType
 						|| config.S2C_ActionEffects[1] == pMessage->Data.IPC.SubType
@@ -38,8 +38,7 @@ public:
 							actionEffect.SourceSequence,
 							static_cast<int>(1000 * actionEffect.AnimationLockDuration));
 
-					}
-					else if (pMessage->Data.IPC.SubType == config.S2C_AddStatusEffect) {
+					} else if (pMessage->Data.IPC.SubType == config.S2C_AddStatusEffect) {
 						const auto& addStatusEffect = pMessage->Data.IPC.Data.S2C_AddStatusEffect;
 						std::string effects;
 						for (int i = 0; i < addStatusEffect.EffectCount; ++i) {
@@ -66,7 +65,7 @@ public:
 					}
 				}
 				return true;
-				});
+			});
 		}
 		~SingleConnectionHandler() {
 			conn.RemoveMessageHandlers(this);
@@ -83,10 +82,10 @@ public:
 		, m_socketHook(socketHook) {
 		m_cleanup += m_socketHook->OnSocketFound([&](Network::SingleConnection& conn) {
 			m_handlers.emplace(&conn, std::make_unique<SingleConnectionHandler>(this, conn));
-			});
+		});
 		m_cleanup += m_socketHook->OnSocketGone([&](Network::SingleConnection& conn) {
 			m_handlers.erase(&conn);
-			});
+		});
 	}
 
 	~Implementation() {

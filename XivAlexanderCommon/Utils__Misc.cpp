@@ -18,7 +18,7 @@ SYSTEMTIME Utils::EpochToLocalSystemTime(uint64_t epochMilliseconds) {
 	return st;
 }
 
-uint64_t Utils::GetHighPerformanceCounter(int32_t multiplier) {
+int64_t Utils::GetHighPerformanceCounter(int32_t multiplier) {
 	LARGE_INTEGER time, freq;
 	QueryPerformanceFrequency(&freq);
 	QueryPerformanceCounter(&time);

@@ -72,7 +72,7 @@ public:
 			const auto& gameConfig = m_config->Game;
 			const auto& runtimeConfig = m_config->Runtime;
 
-			conn.AddOutgoingFFXIVMessageHandler(this, [&](auto pBundle, auto pMessage, auto&) {
+			conn.AddOutgoingFFXIVMessageHandler(this, [&](auto pMessage) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					if (pMessage->Data.IPC.SubType == gameConfig.C2S_ActionRequest[0]
 						|| pMessage->Data.IPC.SubType == gameConfig.C2S_ActionRequest[1]) {
@@ -90,7 +90,7 @@ public:
 								// Record how early did the game let the user user action, and reflect that when deciding next extraDelay.
 								m_earlyRequestsDuration.AddValue(-delay);
 							}
-							
+
 						} else {
 							// Otherwise, if there was no action queued to begin with before the current one, update the base lock time to now.
 							if (m_pendingActions.size() == 1)
@@ -112,8 +112,8 @@ public:
 					}
 				}
 				return true;
-				});
-			conn.AddIncomingFFXIVMessageHandler(this, [&](FFXIVBundle* pBundle, FFXIVMessage* pMessage, std::vector<uint8_t>& additionalMessages) {
+			});
+			conn.AddIncomingFFXIVMessageHandler(this, [&](auto pMessage) {
 				const auto now = PendingAction::Now();
 
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::CustomType) {
@@ -191,7 +191,7 @@ public:
 									m_pendingActions.pop_front();
 								}
 							}
-							
+
 							if (waitTime < 0) {
 								if (!runtimeConfig.UseHighLatencyMitigationPreviewMode) {
 									actionEffect.AnimationLockDuration = 0;
@@ -293,9 +293,9 @@ public:
 					}
 				}
 				return true;
-				});
+			});
 		}
-		
+
 		~SingleConnectionHandler() {
 			conn.RemoveMessageHandlers(this);
 		}
@@ -351,7 +351,7 @@ public:
 						// Correct latency value based on estimate if server response time is stable.
 						latencyAdjusted = std::max(latencyEstimate, latencyAdjusted);
 					}
-					
+
 					const auto earlyPenalty = runtimeConfig.UseEarlyPenalty ? m_earlyRequestsDuration.Max() : 0;
 					if (earlyPenalty) {
 						description << std::format(" earlyPenalty={}ms", earlyPenalty);
@@ -389,10 +389,10 @@ public:
 		, m_socketHook(socketHook) {
 		m_cleanup += m_socketHook->OnSocketFound([&](Network::SingleConnection& conn) {
 			m_handlers.emplace(&conn, std::make_unique<SingleConnectionHandler>(this, conn));
-			});
+		});
 		m_cleanup += m_socketHook->OnSocketGone([&](Network::SingleConnection& conn) {
 			m_handlers.erase(&conn);
-			});
+		});
 	}
 
 	~Implementation() {

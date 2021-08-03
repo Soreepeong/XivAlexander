@@ -24,7 +24,7 @@ Utils::Win32::Handle::Handle(const Handle& r)
 Utils::Win32::Handle& Utils::Win32::Handle::operator=(Handle&& r) noexcept {
 	if (&r == this)
 		return *this;
-	
+
 	Clear();
 	m_object = r.m_object;
 	m_bOwnership = r.m_bOwnership;
@@ -35,7 +35,7 @@ Utils::Win32::Handle& Utils::Win32::Handle::operator=(Handle&& r) noexcept {
 Utils::Win32::Handle& Utils::Win32::Handle::operator=(const Handle& r) {
 	if (&r == this)
 		return *this;
-	
+
 	const auto newHandle = r.m_bOwnership ? DuplicateHandleNullable(r.m_object) : r.m_object;
 	if (m_object)
 		CloseHandle(m_object);
@@ -46,7 +46,7 @@ Utils::Win32::Handle& Utils::Win32::Handle::operator=(const Handle& r) {
 
 Utils::Win32::Handle::~Handle() = default;
 
-Utils::Win32::ActivationContext::ActivationContext(const ACTCTXW& actctx)
+Utils::Win32::ActivationContext::ActivationContext(const ACTCTXW & actctx)
 	: Closeable<HANDLE, ReleaseActCtx>(CreateActCtxW(&actctx), INVALID_HANDLE_VALUE, "CreateActCtxW") {
 }
 
@@ -77,17 +77,17 @@ Utils::Win32::Thread::Thread(std::wstring name, std::function<DWORD()> body, Loa
 			body = std::move(body),
 			hLibraryToFreeAfterExecution = std::move(hLibraryToFreeAfterExecution)
 		](void* pThisFunction) mutable {
-			SetThreadDescription(GetCurrentThread(), name);
-			const auto res = body();
-			if (hLibraryToFreeAfterExecution.HasOwnership()) {
-				const auto hModule = hLibraryToFreeAfterExecution.Detach();
-				delete static_cast<InnerBodyFunctionType*>(pThisFunction);
-				FreeLibraryAndExitThread(hModule, res);
-			}
-			
+		SetThreadDescription(GetCurrentThread(), name);
+		const auto res = body();
+		if (hLibraryToFreeAfterExecution.HasOwnership()) {
+			const auto hModule = hLibraryToFreeAfterExecution.Detach();
 			delete static_cast<InnerBodyFunctionType*>(pThisFunction);
-			return res;
-		});
+			FreeLibraryAndExitThread(hModule, res);
+		}
+
+		delete static_cast<InnerBodyFunctionType*>(pThisFunction);
+		return res;
+	});
 	const auto hThread = CreateThread(nullptr, 0, [](void* lpParameter) -> DWORD {
 		return (*static_cast<decltype(pInnerBodyFunction)>(lpParameter))(lpParameter);
 	}, pInnerBodyFunction, 0, nullptr);
@@ -101,20 +101,20 @@ Utils::Win32::Thread::Thread(std::wstring name, std::function<DWORD()> body, Loa
 }
 
 Utils::Win32::Thread::Thread(std::wstring name, std::function<void()> body, LoadedModule hLibraryToFreeAfterExecution)
-	: Thread(std::move(name), std::function([body = std::move(body)]() -> DWORD { body(); return 0; }), std::move(hLibraryToFreeAfterExecution)) {
+	: Thread(std::move(name), std::function([body = std::move(body)]()->DWORD { body(); return 0; }), std::move(hLibraryToFreeAfterExecution)) {
 }
 
-Utils::Win32::Thread::Thread(Thread&& r) noexcept
+Utils::Win32::Thread::Thread(Thread && r) noexcept
 	: Handle(r.m_object, r.m_bOwnership) {
 	r.m_object = nullptr;
 	r.m_bOwnership = false;
 }
 
-Utils::Win32::Thread::Thread(const Thread& r)
+Utils::Win32::Thread::Thread(const Thread & r)
 	: Handle(r) {
 }
 
-Utils::Win32::Thread& Utils::Win32::Thread::operator=(Thread&& r) noexcept {
+Utils::Win32::Thread& Utils::Win32::Thread::operator=(Thread && r) noexcept {
 	if (&r == this)
 		return *this;
 
@@ -157,11 +157,11 @@ DWORD Utils::Win32::Handle::Wait(DWORD duration) const {
 	return WaitForSingleObject(m_object, duration);
 }
 
-Utils::Win32::ActivationContext::ActivationContext(ActivationContext&& r) noexcept
+Utils::Win32::ActivationContext::ActivationContext(ActivationContext && r) noexcept
 	: Closeable(std::move(r)) {
 }
 
-Utils::Win32::ActivationContext& Utils::Win32::ActivationContext::operator=(ActivationContext&& r) noexcept {
+Utils::Win32::ActivationContext& Utils::Win32::ActivationContext::operator=(ActivationContext && r) noexcept {
 	Closeable<HANDLE, ReleaseActCtx>::operator=(std::move(r));
 	return *this;
 }

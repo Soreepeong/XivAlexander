@@ -66,21 +66,21 @@ Utils::Win32::ProcessBuilder::ProcessBuilder() = default;
 
 Utils::Win32::ProcessBuilder::ProcessBuilder(ProcessBuilder&&) noexcept = default;
 
-Utils::Win32::ProcessBuilder::ProcessBuilder(const ProcessBuilder& r) {
+Utils::Win32::ProcessBuilder::ProcessBuilder(const ProcessBuilder & r) {
 	*this = r;
 }
 
 Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::operator=(ProcessBuilder&&) noexcept = default;
 
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::operator=(const ProcessBuilder& r) {
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::operator=(const ProcessBuilder & r) {
 	m_path = r.m_path;
 	m_dir = r.m_dir;
 	m_args = r.m_args;
 	m_inheritedHandles.reserve(r.m_inheritedHandles.size());
 	std::transform(r.m_inheritedHandles.begin(), r.m_inheritedHandles.end(),
 		std::back_inserter(m_args), [](const Handle& h) {
-			return Handle::DuplicateFrom<Handle>(h, true);
-		});
+		return Handle::DuplicateFrom<Handle>(h, true);
+	});
 	return *this;
 }
 
@@ -91,7 +91,7 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 	STARTUPINFOEXW siex{};
 	PROCESS_INFORMATION pi{};
 	siex.StartupInfo.cb = sizeof siex;
-	
+
 	if (m_bUseSize) {
 		siex.StartupInfo.dwFlags |= STARTF_USESIZE;
 		siex.StartupInfo.dwXSize = m_dwWidth;
@@ -108,14 +108,14 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 	}
 
 	std::vector<char> attributeListBuf;
-	
+
 	if (SIZE_T size = 0; !InitializeProcThreadAttributeList(nullptr, MaxLengthOfProcThreadAttributeList, 0, &size)) {
 		const auto err = GetLastError();
 		if (err != ERROR_INSUFFICIENT_BUFFER)
 			throw Error(err, "InitializeProcThreadAttributeList.1");
 		attributeListBuf.resize(size);
 	}
-	
+
 	siex.lpAttributeList = reinterpret_cast<PPROC_THREAD_ATTRIBUTE_LIST>(&attributeListBuf[0]);
 	if (SIZE_T size; !InitializeProcThreadAttributeList(siex.lpAttributeList, MaxLengthOfProcThreadAttributeList, 0, &size))
 		throw Error("InitializeProcThreadAttributeList.2");
@@ -126,7 +126,7 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 	if (!m_inheritedHandles.empty()) {
 		std::vector<HANDLE> handles;
 		handles.reserve(m_inheritedHandles.size());
-		std::transform(m_inheritedHandles.begin(), m_inheritedHandles.end(), std::back_inserter(handles), [](auto& v){ return static_cast<HANDLE>(v); });
+		std::transform(m_inheritedHandles.begin(), m_inheritedHandles.end(), std::back_inserter(handles), [](auto& v) { return static_cast<HANDLE>(v); });
 		if (!UpdateProcThreadAttribute(siex.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, &handles[0], handles.size() * sizeof handles[0], nullptr, nullptr))
 			throw Error("UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_HANDLE_LIST)");
 	}
@@ -146,10 +146,10 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 		}
 	} else
 		args = m_args;
-	
+
 	if (!CreateProcessW(m_path.c_str(), &args[0], nullptr, nullptr, TRUE, EXTENDED_STARTUPINFO_PRESENT, nullptr, m_dir.empty() ? nullptr : m_dir.c_str(), &siex.StartupInfo, &pi))
 		throw Error("CreateProcess");
-	
+
 	assert(pi.hThread);
 	assert(pi.hProcess);
 
@@ -164,11 +164,11 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithParent(HWND hWnd
 		m_parentProcess.Clear();
 		return *this;
 	}
-	
+
 	DWORD pid;
 	if (!GetWindowThreadProcessId(hWnd, &pid))
 		throw Error("GetWindowThreadProcessId({})", reinterpret_cast<size_t>(static_cast<void*>(hWnd)));
-	return WithParent({PROCESS_CREATE_PROCESS, FALSE, pid});
+	return WithParent({ PROCESS_CREATE_PROCESS, FALSE, pid });
 }
 
 Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithParent(Process h) {
@@ -186,7 +186,7 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithWorkingDirectory
 	return *this;
 }
 
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithArgument(bool prependPathToArgument, const std::string& s) {
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithArgument(bool prependPathToArgument, const std::string & s) {
 	return WithArgument(prependPathToArgument, FromUtf8(s));
 }
 
@@ -196,11 +196,11 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithArgument(bool pr
 	return *this;
 }
 
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithAppendArgument(const std::string& s) {
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithAppendArgument(const std::string & s) {
 	return WithAppendArgument(FromUtf8(s));
 }
 
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithAppendArgument(const std::wstring& s) {
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithAppendArgument(const std::wstring & s) {
 	if (!m_args.empty())
 		m_args += L" ";
 	m_args += ReverseCommandLineToArgv(s);
@@ -246,7 +246,7 @@ Utils::Win32::Handle Utils::Win32::ProcessBuilder::Inherit(HANDLE hSource) {
 	return ret;
 }
 
-Utils::Win32::Process& Utils::Win32::Process::Attach(HANDLE r, bool ownership, const std::string& errorMessage) {
+Utils::Win32::Process& Utils::Win32::Process::Attach(HANDLE r, bool ownership, const std::string & errorMessage) {
 	Handle::Attach(r, Null, ownership, errorMessage);
 	return *this;
 }
@@ -463,7 +463,7 @@ void* Utils::Win32::Process::FindExportedFunction(HMODULE hModule, const char* p
 HMODULE Utils::Win32::Process::LoadModule(const std::filesystem::path & path) const {
 	auto pathBuf = path.wstring();
 	pathBuf.resize(pathBuf.size() + 1, L'\0');  // ensure null terminated
-	
+
 	const auto rpszDllPath = WithVirtualAlloc(nullptr, MEM_COMMIT | MEM_RESERVE, PAGE_READONLY, std::span(pathBuf));
 	CallRemoteFunction(LoadLibraryW, rpszDllPath, "LoadLibraryW");
 	OutputDebugStringW(L"LoadLibraryW\n");
@@ -527,7 +527,7 @@ void Utils::Win32::Process::WriteMemory(void* lpTarget, const void* lpSource, si
 	CallOnDestructionWithValue<DWORD> protect;
 	if (forceWrite)
 		protect = WithVirtualProtect(lpTarget, 0, len, PAGE_EXECUTE_READWRITE);
-	
+
 	SIZE_T written;
 	if (!WriteProcessMemory(m_object, lpTarget, lpSource, len, &written) || written != len)
 		throw Error("Process::WriteMemory");
@@ -547,7 +547,7 @@ void* Utils::Win32::Process::VirtualAlloc(void* lpBase, size_t size, DWORD flAll
 		else {
 			if (sourceDataSize > size)
 				throw std::invalid_argument("sourceDataSize cannot be greater than size");
-			
+
 			if (flProtect != PAGE_EXECUTE_READWRITE && flProtect != PAGE_READWRITE)
 				flProtectInitial = PAGE_READWRITE;
 
@@ -555,23 +555,23 @@ void* Utils::Win32::Process::VirtualAlloc(void* lpBase, size_t size, DWORD flAll
 				throw std::invalid_argument("lpSourceData cannot be set if MEM_COMMIT is not specified");
 		}
 	}
-	
+
 	void* lpAddress = VirtualAllocEx(m_object, lpBase, size, flAllocType, flProtectInitial);
 	if (!lpAddress)
 		throw Error("VirtualAllocEx");
-	
+
 	try {
 		if (lpSourceData)
 			WriteMemory(lpAddress, lpSourceData, sourceDataSize);
 
 		if (flProtect != flProtectInitial)
 			VirtualProtect(lpAddress, 0, size, flProtect);
-		
+
 	} catch (...) {
 		VirtualFree(lpAddress, 0, MEM_RELEASE);
 		throw;
 	}
-	
+
 	return lpAddress;
 }
 
@@ -598,7 +598,7 @@ Utils::CallOnDestructionWithValue<DWORD> Utils::Win32::Process::WithVirtualProte
 				L"original 0x{:x} => newProtect 0x{:x} => protectBeforeRestoration 0x{:x} => \"restored\" 0x{:x}",
 				GetId(), reinterpret_cast<size_t>(lpAddress), length,
 				previousProtect, newProtect, protectBeforeRestoration, previousProtect
-				);
+			);
 		}
 	});
 }
@@ -621,7 +621,7 @@ Utils::Win32::ModuleMemoryBlocks::ModuleMemoryBlocks(Process process, HMODULE hM
 		DosHeader.e_lfanew + offsetof(IMAGE_NT_HEADERS32, OptionalHeader) + FileHeader.SizeOfOptionalHeader
 		, std::min<size_t>(64, FileHeader.NumberOfSections))) {
 
-	if (const auto optionalHeaderLength = std::min<size_t>(FileHeader.SizeOfOptionalHeader, 
+	if (const auto optionalHeaderLength = std::min<size_t>(FileHeader.SizeOfOptionalHeader,
 		OptionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC
 		? sizeof IMAGE_OPTIONAL_HEADER32
 		: (OptionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR64_MAGIC ? sizeof IMAGE_OPTIONAL_HEADER64 : 0)))

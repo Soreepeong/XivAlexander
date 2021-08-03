@@ -28,7 +28,7 @@ App::Window::Config::Config(UINT nTitleStringResourceId, App::Config::BaseReposi
 	: BaseWindow(WindowClass(), nullptr, WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr)
 	, m_pRepository(pRepository)
 	, m_nTitleStringResourceId(nTitleStringResourceId) {
-	
+
 	m_hScintilla = CreateWindowExW(0, L"Scintilla", L"", WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
 		0, 0, 0, 0, m_hWnd, nullptr, Dll::Module(), nullptr);
 	m_direct = reinterpret_cast<SciFnDirect>(SendMessageW(m_hScintilla, SCI_GETDIRECTFUNCTION, 0, 0));
@@ -119,19 +119,23 @@ void App::Window::Config::ApplyLanguage(WORD languageId) {
 
 LRESULT App::Window::Config::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
-		case WM_INITMENUPOPUP: {
+		case WM_INITMENUPOPUP:
+		{
 			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST, true);
 			break;
 		}
+
 		case WM_ACTIVATE:
-			 SetFocus(m_hScintilla);
-			 break;
-		case WM_COMMAND: {
+			SetFocus(m_hScintilla);
+			break;
+
+		case WM_COMMAND:
+		{
 			switch (LOWORD(wParam)) {
 				case ID_FILE_SAVE:
 					TrySave();
 					return 0;
-				
+
 				case ID_FILE_REVERT:
 					Revert();
 					return 0;
@@ -149,6 +153,7 @@ LRESULT App::Window::Config::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 			}
 			break;
 		}
+
 		case WM_CLOSE:
 			std::string buf(m_direct(m_directPtr, SCI_GETLENGTH, 0, 0) + 1, '\0');
 			m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(&buf[0]));

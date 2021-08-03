@@ -234,7 +234,7 @@ std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLauncher
 				info.RootPath / L"boot" / L"ffxivupdater.exe",
 			},
 		};
-		
+
 		result.emplace(GameRegion::International, info);
 	}
 
@@ -289,7 +289,7 @@ std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLauncher
 
 std::vector<std::pair<std::string, std::string>> XivAlex::ParseGameCommandLine(std::string source, bool* wasObfuscated) {
 	std::vector<std::pair<std::string, std::string>> res;
-	
+
 	if (source.starts_with("//**sqex0003") && source.ends_with("**//") && source.size() >= 17) {
 		const auto chksum = SqexChecksumTable.find(source[source.size() - 5]);
 		{
@@ -300,27 +300,27 @@ std::vector<std::pair<std::string, std::string>> XivAlex::ParseGameCommandLine(s
 			b64decoder.Get(reinterpret_cast<uint8_t*>(&source[0]), source.size());
 			SqexBlowfishModifier(source);
 		}
-		
+
 		FILETIME ct, xt, kt, ut, nft;
 		if (!GetProcessTimes(GetCurrentProcess(), &ct, &xt, &kt, &ut))
 			throw Utils::Win32::Error("GetProcessTimes(GetCurrentProcess(), ...)");
 		GetSystemTimeAsFileTime(&nft);
-		const auto creationTickCount = GetTickCount64() - (ULARGE_INTEGER{{ nft.dwLowDateTime, nft.dwHighDateTime}}.QuadPart - ULARGE_INTEGER{{ct.dwLowDateTime, ct.dwHighDateTime}}.QuadPart) / 10000;
-		
+		const auto creationTickCount = GetTickCount64() - (ULARGE_INTEGER{ { nft.dwLowDateTime, nft.dwHighDateTime} }.QuadPart - ULARGE_INTEGER{ {ct.dwLowDateTime, ct.dwHighDateTime} }.QuadPart) / 10000;
+
 		CryptoPP::ECB_Mode<CryptoPP::Blowfish>::Decryption dec;
 		for (auto [val, count] : {
 			std::make_pair(chksum << 16 | creationTickCount & 0xFF000000, 16),
 			std::make_pair(chksum << 16 | 0ULL, 0xFFF),
-		}) {
+			}) {
 			for (; --count; val += 0x100000) {
 				const auto key = std::format("{:08x}", val & 0xFFFF0000);
-				
+
 				std::string decrypted = source;
 				dec.SetKey(reinterpret_cast<const uint8_t*>(&key[0]), key.size());
 				dec.ProcessString(reinterpret_cast<uint8_t*>(&decrypted[0]), decrypted.size());
 				if (!decrypted.starts_with("= T ") && !decrypted.starts_with(" T/ "))
 					continue;
-				
+
 				SqexBlowfishModifier(decrypted);
 				source.clear();
 
@@ -338,10 +338,10 @@ std::vector<std::pair<std::string, std::string>> XivAlex::ParseGameCommandLine(s
 			}
 		}
 		throw std::invalid_argument("bad encoded string");
-		
+
 	} else {
-		if (int nArgs; LPWSTR* szArgList = CommandLineToArgvW(std::format(L"test.exe {}", source).c_str(), &nArgs)) {
-			const auto cleanup = Utils::CallOnDestruction([szArgList](){ LocalFree(szArgList); });
+		if (int nArgs; LPWSTR * szArgList = CommandLineToArgvW(std::format(L"test.exe {}", source).c_str(), &nArgs)) {
+			const auto cleanup = Utils::CallOnDestruction([szArgList]() { LocalFree(szArgList); });
 			for (int i = 1; i < nArgs; i++) {
 				const auto arg = Utils::ToUtf8(szArgList[i]);
 				const auto eq = arg.find_first_of("=");
@@ -370,7 +370,7 @@ std::string XivAlex::CreateGameCommandLine(const std::vector<std::pair<std::stri
 			for (const auto& [k, v] : map) {
 				if (k == "T")
 					continue;
-				
+
 				plain << " /" << Utils::StringReplaceAll(k, " ", "  ")
 					<< " =" << Utils::StringReplaceAll(v, " ", "  ");
 			}
@@ -393,7 +393,7 @@ std::string XivAlex::CreateGameCommandLine(const std::vector<std::pair<std::stri
 		}
 
 		return std::format("//**sqex0003{}{}**//", encrypted, chksum);
-		
+
 	} else {
 		std::vector<std::string> args;
 		for (const auto& [k, v] : map) {

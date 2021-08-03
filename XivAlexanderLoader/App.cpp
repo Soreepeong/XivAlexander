@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 #include "resource.h"
 
-const auto MsgboxTitle = L"XivAlexander Loader";
+constexpr auto MsgboxTitle = L"XivAlexander Loader";
 
 static
 void CheckPackageVersions() {
@@ -133,9 +133,9 @@ public:
 			.nargs(1)
 			.default_value(Utils::Win32::Process())
 			.action([](const std::string& val) {
-				return Utils::Win32::Process(reinterpret_cast<HANDLE>(std::stoull(val, nullptr, 0)), true);
-			});
-		
+			return Utils::Win32::Process(reinterpret_cast<HANDLE>(std::stoull(val, nullptr, 0)), true);
+		});
+
 		argp.add_argument("targets")
 			.help(Utils::ToUtf8(Utils::Win32::FindStringResourceEx(nullptr, IDS_HELP_TARGETS) + 1))
 			.remaining();
@@ -172,7 +172,7 @@ public:
 				for (const auto& target : targets) {
 					m_targetProcessHandles.emplace_back(reinterpret_cast<HANDLE>(std::stoull(target, nullptr, 0)), true);
 				}
-				
+
 			} else {
 				if (!targets.empty()) {
 					m_runProgram = Utils::FromUtf8(targets[0]);
@@ -279,7 +279,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 				LoaderActionToString(g_parameters.m_action),
 				process.GetId()),
 			.wait = true
-		});
+			});
 		return;
 	}
 
@@ -295,7 +295,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 				Utils::Win32::MB_GetString(IDYES - 1),
 				Utils::Win32::MB_GetString(IDNO - 1),
 				Utils::Win32::MB_GetString(IDCANCEL - 1)
-				)) {
+			)) {
 				case IDYES:
 					loaderAction = XivAlexDll::LoaderAction::Load;
 					break;
@@ -311,7 +311,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 				std::get<0>(regionAndVersion),
 				std::get<1>(regionAndVersion));
 			const auto gameConfigPath = dllDir / gameConfigFilename;
-		
+
 			switch (Utils::Win32::MessageBoxF(nullptr, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON1, MsgboxTitle,
 				Utils::Win32::FindStringResourceEx(nullptr, IDS_CONFIRM_INJECT) + 1,
 				pid, path, gameConfigPath)) {
@@ -335,7 +335,7 @@ void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std::filesy
 	const auto cleanup = Utils::CallOnDestruction([&injectedModule, &unloadRequired]() {
 		if (unloadRequired)
 			injectedModule.Call("EnableXivAlexander", 0, "EnableXivAlexander(0)");
-		});
+	});
 
 	if (loaderAction == XivAlexDll::LoaderAction::Load) {
 		unloadRequired = true;
@@ -353,7 +353,7 @@ int RunProgramRetryAfterElevatingSelfAsNecessary(const std::filesystem::path& pa
 		.path = path,
 		.args = args,
 		.elevateMode = Utils::Win32::RunProgramParams::CancelIfRequired,
-	}))
+		}))
 		return 0;
 	return Utils::Win32::RunProgram({
 		.args = Utils::FromUtf8(Utils::Win32::ReverseCommandLineToArgv({
@@ -363,7 +363,7 @@ int RunProgramRetryAfterElevatingSelfAsNecessary(const std::filesystem::path& pa
 			path.string()
 		})) + (args.empty() ? L"" : L" " + args),
 		.elevateMode = Utils::Win32::RunProgramParams::Force,
-	}) ? 0 : 1;
+		}) ? 0 : 1;
 }
 
 int SelectAndRunLauncher() {
@@ -403,10 +403,10 @@ int SelectAndRunLauncher() {
 			fileName = pszFileName;
 			CoTaskMemFree(pszFileName);
 		}
-		
+
 		return RunProgramRetryAfterElevatingSelfAsNecessary(fileName);
 	} catch (std::exception& e) {
-		Utils::Win32::MessageBoxF(nullptr, MB_ICONERROR, MsgboxTitle,  Utils::Win32::FindStringResourceEx(nullptr, IDS_ERROR_UNEXPECTED), e.what() ? Utils::FromUtf8(e.what()) : L"Unknown");
+		Utils::Win32::MessageBoxF(nullptr, MB_ICONERROR, MsgboxTitle, Utils::Win32::FindStringResourceEx(nullptr, IDS_ERROR_UNEXPECTED), e.what() ? Utils::FromUtf8(e.what()) : L"Unknown");
 	} catch (_com_error& e) {
 		if (e.Error() == HRESULT_FROM_WIN32(ERROR_CANCELLED))
 			return 1;
@@ -419,7 +419,7 @@ int SelectAndRunLauncher() {
 int RunLauncher() {
 	try {
 		XivAlexDll::EnableInjectOnCreateProcess(XivAlexDll::InjectOnCreateProcessAppFlags::Use | XivAlexDll::InjectOnCreateProcessAppFlags::InjectAll);
-		
+
 		const auto launchers = XivAlex::FindGameLaunchers();
 		switch (g_parameters.m_launcherType) {
 			case LauncherType::Auto:
@@ -444,10 +444,10 @@ int RunLauncher() {
 
 			case LauncherType::International:
 				return RunProgramRetryAfterElevatingSelfAsNecessary(launchers.at(XivAlex::GameRegion::International).BootApp);
-			
+
 			case LauncherType::Korean:
 				return RunProgramRetryAfterElevatingSelfAsNecessary(launchers.at(XivAlex::GameRegion::Korean).BootApp);
-			
+
 			case LauncherType::Chinese:
 				return RunProgramRetryAfterElevatingSelfAsNecessary(launchers.at(XivAlex::GameRegion::Chinese).BootApp);
 		}
@@ -497,12 +497,12 @@ Utils::CallOnDestruction ShowLazyProgress(bool explicitCancel, const UINT nForma
 			}
 		}
 	});
-	return { [t = std::move(t), cont = std::move(cont)]() {
+	return { [t = std::move(t), cont = std::move(cont)] () {
 		*cont = false;
 		const auto tid = t.GetId();
 		while (t.Wait(100) == WAIT_TIMEOUT) {
 			HWND hwnd = nullptr;
-			while ( (hwnd = FindWindowExW(nullptr, hwnd, nullptr, nullptr))) {
+			while ((hwnd = FindWindowExW(nullptr, hwnd, nullptr, nullptr))) {
 				const auto hwndThreadId = GetWindowThreadProcessId(hwnd, nullptr);
 				if (tid == hwndThreadId) {
 					SendMessageW(hwnd, WM_CLOSE, 0, 0);
@@ -548,7 +548,7 @@ static void PerformUpdateAndExitIfSuccessful(std::vector<Utils::Win32::Process> 
 							f << req;
 						}
 					}
-					
+
 					remove_all(tempExtractionDir);
 
 					const auto hFile = Utils::Win32::Handle(CreateFileW(updateZip.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr),
@@ -560,22 +560,22 @@ static void PerformUpdateAndExitIfSuccessful(std::vector<Utils::Win32::Process> 
 						throw Utils::Win32::Error(Utils::ToUtf8(Utils::Win32::FindStringResourceEx(nullptr, IDS_UPDATE_FILE_TOO_BIG) + 1));
 					const auto hMapFile = Utils::Win32::Handle(CreateFileMappingW(hFile, nullptr, PAGE_READONLY, fileSize.HighPart, fileSize.LowPart, nullptr), nullptr, "CreateFileMappingW");
 					const auto pMapped = Utils::Win32::Closeable<void*, UnmapViewOfFile>(MapViewOfFile(hMapFile, FILE_MAP_READ, 0, 0, fileSize.LowPart));
-					
+
 					const auto pArc = libzippp::ZipArchive::fromBuffer(pMapped, fileSize.LowPart);
-					const auto freeArc = Utils::CallOnDestruction([pArc](){ pArc->close(); delete pArc; });
+					const auto freeArc = Utils::CallOnDestruction([pArc]() { pArc->close(); delete pArc; });
 					for (const auto& entry : pArc->getEntries()) {
 						const auto pData = static_cast<char*>(entry.readAsBinary());
 						const auto freeData = Utils::CallOnDestruction([pData]() { delete[] pData; });
 						const auto targetPath = launcherDir / tempExtractionDir / entry.getName();
 						create_directories(targetPath.parent_path());
 						std::ofstream f(targetPath, std::ios::binary);
-						f.write(pData, entry.getSize());
+						f.write(pData, static_cast<std::streamsize>(entry.getSize()));
 					}
 					break;
 				} catch (...) {
 					if (url.empty())
 						return;
-					
+
 					if (i == 1)
 						throw;
 				}
@@ -587,15 +587,15 @@ static void PerformUpdateAndExitIfSuccessful(std::vector<Utils::Win32::Process> 
 		}
 	}
 	// TODO: ask user to quit all FFXIV related processes, except the game itself.
-	
+
 	if (RequiresElevationForUpdate(prevProcessIds)) {
 		Utils::Win32::RunProgram({
 			.args = std::format(L"--action {}", LoaderActionToString(XivAlexDll::LoaderAction::UpdateCheck)),
 			.elevateMode = Utils::Win32::RunProgramParams::Force,
-		});
+			});
 		return;
 	}
-	
+
 	{
 		const auto progress = ShowLazyProgress(true, IDS_UPDATE_PROGRESS_PREPARING_FILES);
 
@@ -605,7 +605,7 @@ static void PerformUpdateAndExitIfSuccessful(std::vector<Utils::Win32::Process> 
 				continue;
 
 			std::filesystem::path processPath;
-			
+
 			try {
 				processPath = Utils::Win32::Process(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).PathOf();
 			} catch (const std::exception&) {
@@ -632,7 +632,7 @@ static void PerformUpdateAndExitIfSuccessful(std::vector<Utils::Win32::Process> 
 							return;
 					}
 				}
-				
+
 			} else if (processPath.filename() == XivAlex::GameExecutable64NameW || processPath.filename() == XivAlex::GameExecutable32NameW) {
 				auto process = OpenProcessForInjection(pid);
 				gameProcesses.emplace_back(process);
@@ -648,10 +648,10 @@ static void PerformUpdateAndExitIfSuccessful(std::vector<Utils::Win32::Process> 
 				}
 			}
 		}
-		
+
 		LaunchXivAlexLoaderWithTargetHandles(unloadTargets, XivAlexDll::LoaderAction::Internal_Cleanup_Handle, true);
 		LaunchXivAlexLoaderWithTargetHandles(gameProcesses, XivAlexDll::LoaderAction::Internal_Update_Step2_ReplaceFiles, false, (tempExtractionDir / XivAlex::XivAlexLoader64NameW).c_str(), currentProcess);
-		
+
 		currentProcess.Terminate(0);
 	}
 }
@@ -660,17 +660,17 @@ static void CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses) {
 	const auto updateZip = Utils::Win32::Process::Current().PathOf().parent_path() / "update.zip";
 	if (exists(updateZip))
 		PerformUpdateAndExitIfSuccessful(prevProcesses, "", updateZip);
-	
+
 	try {
 		std::vector<int> remote, local;
 		XivAlex::VersionInformation up;
 		if (g_parameters.m_debugUpdate) {
-			local = {0, 0, 0, 0};
-			remote = {0, 0, 0, 1};
+			local = { 0, 0, 0, 0 };
+			remote = { 0, 0, 0, 1 };
 		} else {
 			const auto checking = ShowLazyProgress(true, IDS_UPDATE_PROGRESS_CHECKING);
 			const auto [selfFileVersion, selfProductVersion] = Utils::Win32::FormatModuleVersionString(GetModuleHandleW(nullptr));
-			up = XivAlex::CheckUpdates();		
+			up = XivAlex::CheckUpdates();
 			const auto remoteS = Utils::StringSplit(up.Name.substr(1), ".");
 			const auto localS = Utils::StringSplit(selfProductVersion, ".");
 			for (const auto& s : remoteS)
@@ -681,12 +681,12 @@ static void CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses) {
 		if (local.size() != 4 || remote.size() != 4)
 			throw std::runtime_error(Utils::ToUtf8(Utils::Win32::FindStringResourceEx(nullptr, IDS_UPDATE_FILE_TOO_BIG) + 1));
 		if (local >= remote) {
-			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONINFORMATION, MsgboxTitle, 
+			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONINFORMATION, MsgboxTitle,
 				Utils::Win32::FindStringResourceEx(nullptr, IDS_UPDATE_UNAVAILABLE) + 1,
 				local[0], local[1], local[2], local[3], remote[0], remote[1], remote[2], remote[3], up.PublishDate);
 			return;
 		}
-		
+
 		while (true) {
 			switch (Utils::Win32::MessageBoxF(nullptr, MB_YESNOCANCEL, MsgboxTitle, std::format(
 				Utils::Win32::FindStringResourceEx(nullptr, IDS_UPDATE_CONFIRM) + 1,
@@ -698,14 +698,14 @@ static void CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses) {
 				case IDYES:
 					ShellExecuteW(nullptr, L"open", Utils::Win32::FindStringResourceEx(nullptr, IDS_URL_RELEASES) + 1, nullptr, nullptr, SW_SHOW);
 					break;
-				
+
 				case IDNO:
 					PerformUpdateAndExitIfSuccessful(std::move(prevProcesses), up.DownloadLink, updateZip);
 					return;
 
 				case IDCANCEL:
 					return;
-			}	
+			}
 		}
 	} catch (const std::exception& e) {
 		Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, Utils::Win32::FindStringResourceEx(nullptr, IDS_ERROR_UNEXPECTED) + 1, e.what());
@@ -758,7 +758,7 @@ int WINAPI wWinMain(
 		}
 		return -1;
 	}
-	
+
 	try {
 #ifdef _DEBUG
 		Utils::Win32::MessageBoxF(nullptr, MB_OK, MsgboxTitle, L"Action: {}", argparse::details::repr(g_parameters.m_action));
@@ -767,7 +767,7 @@ int WINAPI wWinMain(
 			for (const auto& x : g_parameters.m_targetProcessHandles)
 				XivAlexDll::PatchEntryPointForInjection(x);
 			return 0;
-			
+
 		} else if (g_parameters.m_action == XivAlexDll::LoaderAction::Internal_Inject_LoadXivAlexanderImmediately || g_parameters.m_action == XivAlexDll::LoaderAction::Internal_Cleanup_Handle) {
 			std::vector<Utils::Win32::Process> mine, defer;
 			for (auto& process : g_parameters.m_targetProcessHandles) {
@@ -792,7 +792,7 @@ int WINAPI wWinMain(
 				LaunchXivAlexLoaderWithTargetHandles(defer, g_parameters.m_action, true, (dllDir / XivAlex::XivAlexLoaderOppositeNameW).c_str());
 			}
 			return 0;
-			
+
 		} else if (g_parameters.m_action == XivAlexDll::LoaderAction::UpdateCheck) {
 			if (!Utils::Win32::Process::Current().IsProcess64Bits()) {
 				SYSTEM_INFO si;
@@ -803,10 +803,10 @@ int WINAPI wWinMain(
 					return 0;
 				}
 			}
-			
+
 			CheckForUpdates(std::move(g_parameters.m_targetProcessHandles));
 			return 0;
-			
+
 		} else if (g_parameters.m_action == XivAlexDll::LoaderAction::Internal_Update_Step2_ReplaceFiles) {
 			const auto checking = ShowLazyProgress(true, IDS_UPDATE_PROGRESS_UPDATING_FILES);
 			const auto temporaryUpdatePath = Utils::Win32::Process::Current().PathOf().parent_path();
@@ -820,7 +820,7 @@ int WINAPI wWinMain(
 			);
 			LaunchXivAlexLoaderWithTargetHandles(g_parameters.m_targetProcessHandles, XivAlexDll::LoaderAction::Internal_Update_Step3_CleanupFiles, false, (targetUpdatePath / XivAlex::XivAlexLoader64NameW).c_str(), currentProcess);
 			return 0;
-			
+
 		} else if (g_parameters.m_action == XivAlexDll::LoaderAction::Internal_Update_Step3_CleanupFiles) {
 			std::vector<Utils::Win32::Process> processes;
 			{
@@ -833,10 +833,10 @@ int WINAPI wWinMain(
 				auto pids = GetTargetPidList();
 				for (const auto& process : processes)
 					pids.erase(process.GetId());
-				
+
 				if (!g_parameters.m_targetProcessHandles.empty())
 					LaunchXivAlexLoaderWithTargetHandles(g_parameters.m_targetProcessHandles, XivAlexDll::LoaderAction::Internal_Inject_LoadXivAlexanderImmediately, true);
-				
+
 				if (!pids.empty()) {
 					for (const auto& pid : pids) {
 						g_parameters.m_action = XivAlexDll::LoaderAction::Load;
@@ -886,7 +886,7 @@ int WINAPI wWinMain(
 				.args = std::format(L"--disable-runas {}", lpCmdLine),
 				.wait = true,
 				.elevateMode = Utils::Win32::RunProgramParams::Force,
-			});
+				});
 		} catch (std::exception& e) {
 			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, Utils::Win32::FindStringResourceEx(nullptr, IDS_ERROR_RESTART_ADMIN) + 1, e.what());
 		}

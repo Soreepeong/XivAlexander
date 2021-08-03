@@ -97,7 +97,7 @@ namespace Utils::Win32 {
 		T* VirtualAlloc(void* lpBase, size_t size, DWORD flAllocType, DWORD flProtect, const T* lpSourceData = nullptr, size_t sourceDataSize = 0) const {
 			return static_cast<T*>(VirtualAlloc(lpBase, size, flAllocType, flProtect, static_cast<const void*>(lpSourceData), sourceDataSize));
 		}
-		
+
 		template<typename T>
 		T* VirtualAlloc(void* lpBase, DWORD flAllocType, DWORD flProtect, const std::span<T>& lpSourceData = nullptr) const {
 			return static_cast<T*>(VirtualAlloc(lpBase, lpSourceData.size_bytes(), flAllocType, flProtect, lpSourceData.data(), lpSourceData.size_bytes()));
@@ -110,16 +110,16 @@ namespace Utils::Win32 {
 				VirtualFree(lpAddress);
 			});
 		}
-		
+
 		void VirtualFree(void* lpBase, size_t size = 0, DWORD dwFreeType = MEM_RELEASE) const;
 
 		DWORD VirtualProtect(void* lpBase, size_t offset, size_t length, DWORD newProtect) const;
-		
+
 		CallOnDestructionWithValue<DWORD> WithVirtualProtect(void* lpBase, size_t offset, size_t length, DWORD newProtect) const;
-		
+
 		void FlushInstructionsCache(void* lpBase, size_t size) const;
 	};
-	
+
 	class ProcessBuilder {
 		bool m_bPrependPathToArgument = true;
 		bool m_bUseShowWindow = false;
@@ -130,7 +130,7 @@ namespace Utils::Win32 {
 		DWORD m_dwHeight = 0;
 		DWORD m_dwX = 0;
 		DWORD m_dwY = 0;
-		
+
 		std::filesystem::path m_path;
 		std::filesystem::path m_dir;
 		std::wstring m_args;
@@ -146,7 +146,7 @@ namespace Utils::Win32 {
 		~ProcessBuilder();
 
 		std::pair<Process, Thread> Run();
-		
+
 		ProcessBuilder& WithParent(HWND hWnd);
 		ProcessBuilder& WithParent(Process h);
 		ProcessBuilder& WithPath(std::filesystem::path);
@@ -169,7 +169,7 @@ namespace Utils::Win32 {
 		ProcessBuilder& WithUnspecifiedPosition();
 		ProcessBuilder& WithShow(WORD show, bool use = true);
 		ProcessBuilder& WithUnspecifiedShow();
-		
+
 		Handle Inherit(HANDLE hSource);
 		template<typename T, typename = std::is_base_of<T, Handle>>
 		T Inherit(T source) {
@@ -212,7 +212,7 @@ namespace Utils::Win32 {
 			memcpy(&res[0], &r[0], res.size() * sizeof T);
 			return res;
 		}
-	
+
 		template<typename T>
 		std::vector<T> ReadDataDirectory(int index) {
 			return ReadAligned<T>(OptionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC

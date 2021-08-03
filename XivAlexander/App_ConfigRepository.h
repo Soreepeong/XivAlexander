@@ -20,19 +20,19 @@ namespace App {
 
 		protected:
 			BaseRepository* const m_pBaseRepository;
-			
+
 			ItemBase(BaseRepository* pRepository, const char* pszName);
 
 			virtual bool LoadFrom(const nlohmann::json&, bool announceChanged = false) = 0;
 			virtual void SaveTo(nlohmann::json&) const = 0;
-			
+
 			void AnnounceChanged() {
 				OnChangeListener(*this);
 			}
 
 		public:
 			virtual ~ItemBase() = default;
-			
+
 			[[nodiscard]]
 			const char* Name() const;
 
@@ -70,7 +70,7 @@ namespace App {
 
 		public:
 			~Item() override = default;
-			
+
 			const T& operator=(const T& rv) {
 				if (m_value == rv)
 					return m_value;
@@ -92,7 +92,7 @@ namespace App {
 
 			const Config* m_pConfig;
 			const std::filesystem::path m_sConfigPath;
-			
+
 			const std::shared_ptr<Misc::Logger> m_logger;
 
 			std::vector<ItemBase*> m_allItems;
@@ -141,12 +141,12 @@ namespace App {
 		class Runtime : public BaseRepository {
 			friend class Config;
 			using BaseRepository::BaseRepository;
-		
+
 		public:
-			
+
 			// Miscellaneous configuration
 			Item<bool> AlwaysOnTop = CreateConfigItem(this, "AlwaysOnTop", false);
-			
+
 			Item<bool> UseHighLatencyMitigation = CreateConfigItem(this, "UseHighLatencyMitigation", true);
 			Item<bool> UseAutoAdjustingExtraDelay = CreateConfigItem(this, "UseAutoAdjustingExtraDelay", true);
 			Item<bool> UseLatencyCorrection = CreateConfigItem(this, "UseLatencyCorrection", true);
@@ -159,13 +159,13 @@ namespace App {
 			Item<bool> TakeOverPrivateAddresses = CreateConfigItem(this, "TakeOverPrivateAddresses", false);
 			Item<bool> TakeOverAllAddresses = CreateConfigItem(this, "TakeOverAllAddresses", false);
 			Item<bool> TakeOverAllPorts = CreateConfigItem(this, "TakeOverAllPorts", false);
-			
+
 			Item<bool> UseOpcodeFinder = CreateConfigItem(this, "UseOpcodeFinder", false);
 			Item<bool> UseEffectApplicationDelayLogger = CreateConfigItem(this, "UseEffectApplicationDelayLogger", false);
 			Item<bool> ShowLoggingWindow = CreateConfigItem(this, "ShowLoggingWindow", true);
 			Item<bool> ShowControlWindow = CreateConfigItem(this, "ShowControlWindow", true);
 			Item<bool> UseAllIpcMessageLogger = CreateConfigItem(this, "UseAllIpcMessageLogger", false);
-			
+
 			Item<bool> UseHashTracker = CreateConfigItem(this, "UseHashTracker", false);
 			Item<bool> UseHashTrackerKeyLogging = CreateConfigItem(this, "UseHashTrackerKeyLogging", false);
 			Item<GameLanguage> HashTrackerLanguageOverride = CreateConfigItem(this, "HashTrackerLanguageOverride", GameLanguage::Unspecified);
@@ -190,7 +190,7 @@ namespace App {
 			// Make the program consume all network connections by default.
 			Item<std::string> Server_IpRange = CreateConfigItem(this, "Server_IpRange", std::string("0.0.0.0/0"));
 			Item<std::string> Server_PortRange = CreateConfigItem(this, "Server_PortRange", std::string("1-65535"));
-			
+
 			// Set defaults so that the values will never be a valid IPC code.
 			// Assumes structure doesn't change too often.
 			// Will be loaded from configuration file on initialization.
@@ -214,7 +214,7 @@ namespace App {
 	protected:
 		static std::weak_ptr<Config> s_instance;
 		bool m_bSuppressSave = false;
-		
+
 		Config(std::wstring runtimeConfigPath, std::wstring gameInfoPath);
 
 	public:

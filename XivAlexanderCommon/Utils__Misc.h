@@ -7,7 +7,7 @@
 
 namespace Utils {
 	SYSTEMTIME EpochToLocalSystemTime(uint64_t epochMilliseconds);
-	uint64_t GetHighPerformanceCounter(int32_t multiplier = 1000);
+	int64_t GetHighPerformanceCounter(int32_t multiplier = 1000);
 
 	int CompareSockaddr(const void* x, const void* y);
 
@@ -23,7 +23,7 @@ namespace Utils {
 	}
 
 	void BoundaryCheck(size_t value, size_t offset, size_t length, const char* description = nullptr);
-	
+
 	template<typename T, typename = std::enable_if_t<std::is_pod_v<T>>>
 	void WriteToUnalignedPtr(T val, void* to) {
 		for (size_t i = 0; i < sizeof T; ++i)

@@ -15,7 +15,7 @@ public:
 			, conn(conn) {
 			using namespace Network::Structures;
 
-			conn.AddIncomingFFXIVMessageHandler(this, [&](auto pBundle, auto pMessage, auto&) {
+			conn.AddIncomingFFXIVMessageHandler(this, [&](auto pMessage) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					const char* pszPossibleMessageType;
 					switch (pMessage->Length) {
@@ -36,8 +36,8 @@ public:
 						pszPossibleMessageType ? pszPossibleMessageType : "");
 				}
 				return true;
-				});
-			conn.AddOutgoingFFXIVMessageHandler(this, [&](auto pBundle, auto pMessage, auto&) {
+			});
+			conn.AddOutgoingFFXIVMessageHandler(this, [&](auto pMessage) {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					const char* pszPossibleMessageType;
 					switch (pMessage->Length) {
@@ -52,7 +52,7 @@ public:
 						pszPossibleMessageType ? pszPossibleMessageType : "");
 				}
 				return true;
-				});
+			});
 		}
 		~SingleConnectionHandler() {
 			conn.RemoveMessageHandlers(this);
@@ -69,10 +69,10 @@ public:
 		, m_socketHook(socketHook) {
 		m_cleanup += m_socketHook->OnSocketFound([&](Network::SingleConnection& conn) {
 			m_handlers.emplace(&conn, std::make_unique<SingleConnectionHandler>(this, conn));
-			});
+		});
 		m_cleanup += m_socketHook->OnSocketGone([&](Network::SingleConnection& conn) {
 			m_handlers.erase(&conn);
-			});
+		});
 	}
 
 	~Implementation() {
@@ -81,7 +81,7 @@ public:
 };
 
 App::Feature::AllIpcMessageLogger::AllIpcMessageLogger(Network::SocketHook* socketHook)
-: m_pImpl(std::make_unique<Implementation>(socketHook)){
+	: m_pImpl(std::make_unique<Implementation>(socketHook)) {
 }
 
 App::Feature::AllIpcMessageLogger::~AllIpcMessageLogger() = default;

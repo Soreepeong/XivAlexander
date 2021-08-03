@@ -9,7 +9,7 @@ namespace Utils::Win32 {
 
 		[[nodiscard]] void* GetData() const;
 	};
-	
+
 	class Menu : public Closeable<HMENU, DestroyMenu> {
 	public:
 		using Closeable<HMENU, DestroyMenu>::Closeable;
