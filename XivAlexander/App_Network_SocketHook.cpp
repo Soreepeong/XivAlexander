@@ -467,7 +467,11 @@ void App::Network::SingleConnection::Implementation::ResolveAddresses() {
 
 		// Set TCP delay here because SIO_TCP_SET_ACK_FREQUENCY seems to work only when localAddress is not 0.0.0.0.
 		if (hook_->m_pImpl->m_config->Runtime.ReducePacketDelay && reinterpret_cast<sockaddr_in*>(&local)->sin_addr.s_addr != INADDR_ANY) {
-			SetTCPDelay();
+			try {
+				SetTCPDelay();
+			} catch (const Utils::Win32::Error&) {
+				// don't print error
+			}
 		}
 	}
 	addrlen = sizeof remote;
