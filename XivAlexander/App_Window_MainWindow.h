@@ -23,6 +23,8 @@ namespace App::Window {
 		bool m_bUseXivAlexander = true;
 		bool m_bUseParameterObfuscation = false;
 		bool m_bUseElevation;
+		App::Config::GameLanguage m_gameLanguage = App::Config::GameLanguage::Unspecified;
+		App::Config::GameRegion m_gameRegion = App::Config::GameRegion::Unspecified;
 		std::vector<std::pair<std::string, std::string>> m_launchParameters;
 
 	public:
@@ -41,6 +43,8 @@ namespace App::Window {
 		void RegisterTrayIcon();
 		void RemoveTrayIcon();
 
-		void AskRestartGame();
+		[[nodiscard]] bool LanguageRegionModifiable() const;
+		void AskRestartGame(bool onlyOnModifier = false);
+		[[nodiscard]] bool AskUpdateGameLanguageOverride(App::Config::GameLanguage language) const;
 	};
 }

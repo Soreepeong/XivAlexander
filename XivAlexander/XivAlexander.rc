@@ -124,7 +124,18 @@ BEGIN
             MENUITEM "Use &DirectX 11\t(Ctrl+Shift+)D", ID_TRAYMENU_RESTARTGAME_USEDIRECTX11
             MENUITEM "Use &XivAlexander\t(Ctrl+Shift+)X", ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER
             MENUITEM "Use &Parameter Obfuscation\t(Ctrl+Shift+)P", ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION
-            MENUITEM "Use &Elevation (Run as Administrator)\t(Ctrl+Shift+)A", ID_TRAYMENU_RESTARTGAME_USEELEVATION
+            MENUITEM "Use Elevation (Run as &Administrator)\t(Ctrl+Shift+)A", ID_TRAYMENU_RESTARTGAME_USEELEVATION
+            MENUITEM SEPARATOR
+            MENUITEM "Language: &Japanese",         ID_TRAYMENU_RESTARTGAME_LANGUAGE_JAPANESE
+            MENUITEM "Language: &English",          ID_TRAYMENU_RESTARTGAME_LANGUAGE_ENGLISH
+            MENUITEM "Language: &German",           ID_TRAYMENU_RESTARTGAME_LANGUAGE_GERMAN
+            MENUITEM "Language: &French",           ID_TRAYMENU_RESTARTGAME_LANGUAGE_FRENCH
+            MENUITEM "Language: &Chinese(Simplified)", ID_TRAYMENU_RESTARTGAME_LANGUAGE_SIMPLIFIEDCHINESE
+            MENUITEM "Language: &Korean",           ID_TRAYMENU_RESTARTGAME_LANGUAGE_KOREAN
+            MENUITEM SEPARATOR
+            MENUITEM "Region: Japan (&1)",          ID_TRAYMENU_RESTARTGAME_REGION_JAPAN
+            MENUITEM "Region: North America (&2)",  ID_TRAYMENU_RESTARTGAME_REGION_NORTH_AMERICA
+            MENUITEM "Region: Europe (&3)",         ID_TRAYMENU_RESTARTGAME_REGION_EUROPE
         END
         MENUITEM "Force E&xit Game\tCtrl+Shift+Q", ID_TRAYMENU_EXITGAME
         MENUITEM SEPARATOR
@@ -389,14 +400,32 @@ BEGIN
     IDS_CONFIRM_EXIT_GAME   "Do you want to force quit the game?"
     IDS_ERROR_UPDATE_CHECK_LAUNCH "Failed to launch update checker. ({})"
     IDS_CONFIRM_RESTART_GAME 
-                            "Do you want to force restart the game?\n\nUse DirectX 11: {}\nUse XivAlexander: {}\nUse Parameter Obfuscation: {}\nUse Elevation (Run as Administrator): {}"
+                            "Do you want to force restart the game?\n\nUse DirectX 11: {}\nUse XivAlexander: {}\nUse Parameter Obfuscation: {}\nUse Elevation (Run as Administrator): {}\nGame Language: {}\nRegion: {}"
     IDS_FAQ                 "Process ID: {}\nGame Path: {}\nGame Release: {} ({})\n\n{}\nTips and FAQs:\n* Turn off ""Compensate for Server Delay"" and ""Compensate for Latency Spikes"" if any of the following is true.\n  * You're using a VPN software and your latency is being displayed below 10ms when it shouldn't be.\n  * Your ping is above 200ms.\n  * You can't double weave comfortably.\n* Keep ""Prevent Early Firing"" off, unless you believe that you should not be allowed to use action before instructed animation lock expires.\n  * Depending on your FPS, the game will let your action go through 1 frame before the animation lock expires.\n  * Expect 16ms early animation lock expiry if you're playing on 60FPS, 33ms if 30FPS, and so on.\n* FFLogs may show less-than-600ms weaves. This is normal due to discrepancies between client input times and server response times.\n  * Actions following less-than-600ms weaves will result in longer animation locks from parser logs.\n* If your ping is too high, you may be allowed to do 500ms weaves. This is by game design."
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "Runtime Configuration Editor"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcode Configuration Editor"
     IDS_WINDOW_LOG          "Log Viewer"
     IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE 
-                            "The language you selected is probably unsupported from the game client you're currently using, and the game will probably crash. Do you want to continue?\n\nChange the configuration and use ""Force Restart Game"" if the game crashes, showing an error message."
+                            "The language you selected({}) is probably unsupported from the game client you're currently using, and the game will probably crash. Do you want to continue?\n\nChange the configuration and use ""Force Restart Game"" if the game crashes, showing an error message."
+    IDS_LANGUAGE_NAME_ENGLISH "English"
+    IDS_LANGUAGE_NAME_JAPANESE "Japanese"
+    IDS_LANGUAGE_NAME_GERMAN "German"
+    IDS_LANGUAGE_NAME_FRENCH "French"
+    IDS_LANGUAGE_NAME_KOREAN "Korean"
+    IDS_LANGUAGE_NAME_CHINESE_SIMPLIFIED "Chinese (Simplified)"
+    IDS_LANGUAGE_NAME_UNSPECIFIED "(Language Unspecified)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LANGUAGE_NAME_CHINESE_TRADITIONAL "Chinese (Traditional)"
+    IDS_REGION_NAME_UNSPECIFIED "(Region Unspecified)"
+    IDS_REGION_NAME_JAPAN   "Japan"
+    IDS_REGION_NAME_NORTH_AMERICA "North America"
+    IDS_REGION_NAME_EUROPE  "Europe"
+    IDS_REGION_NAME_CHINA   "China"
+    IDS_REGION_NAME_KOREA   "Korea"
 END
 
 #endif    // English (United States) resources

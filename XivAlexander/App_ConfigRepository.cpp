@@ -3,6 +3,40 @@
 #include "resource.h"
 
 std::weak_ptr<App::Config> App::Config::s_instance;
+const std::map<App::Config::Language, WORD> App::Config::LanguageIdMap{
+	{Language::SystemDefault, MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL)},
+	{Language::Japanese, MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN)},
+	{Language::English, MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US)},
+	{Language::Korean, MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN)},
+};
+const std::map<App::Config::GameLanguage, WORD> App::Config::GameLanguageIdMap{
+	{GameLanguage::Unspecified, MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL)},
+	{GameLanguage::Japanese, MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN)},
+	{GameLanguage::English, MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US)},
+	{GameLanguage::German, MAKELANGID(LANG_GERMAN, SUBLANG_GERMAN)},
+	{GameLanguage::French, MAKELANGID(LANG_FRENCH, SUBLANG_FRENCH)},
+	{GameLanguage::ChineseSimplified, MAKELANGID(LANG_CHINESE_SIMPLIFIED, SUBLANG_CHINESE_SIMPLIFIED)},
+	{GameLanguage::ChineseTraditional, MAKELANGID(LANG_CHINESE_TRADITIONAL, SUBLANG_CHINESE_TRADITIONAL)},
+	{GameLanguage::Korean, MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN)},
+};
+const std::map<WORD, int> App::Config::LanguageIdNameResourceIdMap{
+	{MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), IDS_LANGUAGE_NAME_UNSPECIFIED},
+	{MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN), IDS_LANGUAGE_NAME_JAPANESE},
+	{MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), IDS_LANGUAGE_NAME_ENGLISH},
+	{MAKELANGID(LANG_GERMAN, SUBLANG_GERMAN), IDS_LANGUAGE_NAME_GERMAN},
+	{MAKELANGID(LANG_FRENCH, SUBLANG_FRENCH), IDS_LANGUAGE_NAME_FRENCH},
+	{MAKELANGID(LANG_CHINESE_SIMPLIFIED, SUBLANG_CHINESE_SIMPLIFIED), IDS_LANGUAGE_NAME_CHINESE_SIMPLIFIED},
+	{MAKELANGID(LANG_CHINESE_TRADITIONAL, SUBLANG_CHINESE_TRADITIONAL), IDS_LANGUAGE_NAME_CHINESE_TRADITIONAL},
+	{MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN), IDS_LANGUAGE_NAME_KOREAN},
+};
+const std::map<App::Config::GameRegion, int> App::Config::RegionResourceIdMap{
+	{GameRegion::Unspecified, IDS_REGION_NAME_UNSPECIFIED},
+	{GameRegion::Japan, IDS_REGION_NAME_JAPAN},
+	{GameRegion::NorthAmerica, IDS_REGION_NAME_NORTH_AMERICA},
+	{GameRegion::Europe, IDS_REGION_NAME_EUROPE},
+	{GameRegion::China, IDS_REGION_NAME_CHINA},
+	{GameRegion::Korea, IDS_REGION_NAME_KOREA},
+};
 
 App::Config::BaseRepository::BaseRepository(Config* pConfig, std::filesystem::path path)
 	: m_pConfig(pConfig)
@@ -78,22 +112,27 @@ std::shared_ptr<App::Config> App::Config::Acquire() {
 }
 
 WORD App::Config::Runtime::GetLangId() const {
-	switch (Language) {
-		case Language::SystemDefault:
-			return MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL);
-		case Language::English:
-			return MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
-		case Language::Korean:
-			return MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN);
-		case Language::Japanese:
-			return MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN);
-	}
+	if (const auto i = LanguageIdMap.find(Language); i != LanguageIdMap.end())
+		return i->second;
 
 	return MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL);
 }
 
 LPCWSTR App::Config::Runtime::GetStringRes(UINT uId) const {
 	return FindStringResourceEx(Dll::Module(), uId, GetLangId()) + 1;
+}
+
+std::wstring App::Config::Runtime::GetLanguageNameLocalized(GameLanguage gameLanguage) const {
+	const auto langNameInUserLang = std::wstring(GetStringRes(LanguageIdNameResourceIdMap.at(GameLanguageIdMap.at(gameLanguage))));
+	const auto langNameInGameLang = std::wstring(FindStringResourceEx(Dll::Module(), LanguageIdNameResourceIdMap.at(GameLanguageIdMap.at(gameLanguage)), GameLanguageIdMap.at(gameLanguage)) + 1);
+	if (langNameInUserLang == langNameInGameLang)
+		return langNameInGameLang;
+	else
+		return std::format(L"{} ({})", langNameInUserLang, langNameInGameLang);
+}
+
+std::wstring App::Config::Runtime::GetRegionNameLocalized(GameRegion gameRegion) const {
+	return GetStringRes(RegionResourceIdMap.at(gameRegion));
 }
 
 App::Config::Config(std::wstring runtimeConfigPath, std::wstring gameInfoPath)

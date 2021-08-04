@@ -83,12 +83,15 @@ public:
 								break;
 						}
 
-						const auto newStr = name + ext + rest;
-						Utils::Win32::Process::Current().WriteMemory(const_cast<char*>(str), newStr.c_str(), newStr.size() + 1, true);
+						const auto newStr = std::format("{}{}{}", name, ext, rest);
 
 						if (!m_config->Runtime.UseHashTrackerKeyLogging) {
-							m_logger->Format(LogCategory::HashTracker, "{:x}: Loading {} instead", reinterpret_cast<size_t>(ptr), str);
+							if (m_alreadyLogged.find(name) == m_alreadyLogged.end()) {
+								m_alreadyLogged.emplace(name);
+								m_logger->Format(LogCategory::HashTracker, "{:x}: {} => {}", reinterpret_cast<size_t>(ptr), str, newStr);
+							}
 						}
+						Utils::Win32::Process::Current().WriteMemory(const_cast<char*>(str), newStr.c_str(), newStr.size() + 1, true);
 					}
 				}
 				const auto res = self->bridge(initVal, str, len);
@@ -98,8 +101,7 @@ public:
 						m_alreadyLogged.emplace(name);
 						m_logger->Format(LogCategory::HashTracker, "{:x}: {},{},{} => {:08x}", reinterpret_cast<size_t>(ptr), name, ext, rest, res);
 					}
-				} else
-					m_alreadyLogged.clear();
+				}
 
 				return res;
 			});

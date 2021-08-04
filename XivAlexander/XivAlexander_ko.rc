@@ -79,6 +79,17 @@ BEGIN
             MENUITEM "XivAlexander 사용(&X)\t(Ctrl+Shift+)X", ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER
             MENUITEM "명령줄 난독화 사용(&P)\t(Ctrl+Shift+)P", ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION
             MENUITEM "관리자 권한으로 실행(&E)\t(Ctrl+Shift+)A", ID_TRAYMENU_RESTARTGAME_USEELEVATION
+            MENUITEM SEPARATOR
+            MENUITEM "언어: 일본어(&J)",    ID_TRAYMENU_RESTARTGAME_LANGUAGE_JAPANESE
+            MENUITEM "언어: 영어(&E)",     ID_TRAYMENU_RESTARTGAME_LANGUAGE_ENGLISH
+            MENUITEM "언어: 독일어(&D)",    ID_TRAYMENU_RESTARTGAME_LANGUAGE_GERMAN
+            MENUITEM "언어: 프랑스어(&F)",   ID_TRAYMENU_RESTARTGAME_LANGUAGE_FRENCH
+            MENUITEM "언어: 중국어(간체)(&C)", ID_TRAYMENU_RESTARTGAME_LANGUAGE_SIMPLIFIEDCHINESE
+            MENUITEM "언어: 한국어(&K)",    ID_TRAYMENU_RESTARTGAME_LANGUAGE_KOREAN
+            MENUITEM SEPARATOR
+            MENUITEM "지역: 일본(&1)",          ID_TRAYMENU_RESTARTGAME_REGION_JAPAN
+            MENUITEM "지역: 북미(&2)",  ID_TRAYMENU_RESTARTGAME_REGION_NORTH_AMERICA
+            MENUITEM "지역: 유럽(&3)",         ID_TRAYMENU_RESTARTGAME_REGION_EUROPE
         END
         MENUITEM "게임 강제 종료(&X)\tCtrl+Shift+Q",  ID_TRAYMENU_EXITGAME
         MENUITEM SEPARATOR
@@ -226,14 +237,32 @@ BEGIN
     IDS_CONFIRM_EXIT_GAME   "게임을 강제로 종료하시겠습니까?"
     IDS_ERROR_UPDATE_CHECK_LAUNCH "업데이트를 확인할 수 없었습니다. ({})"
     IDS_CONFIRM_RESTART_GAME 
-                            "게임을 강제로 재시작하시겠습니까?\n\nDirectX 11 사용: {}\nXivAlexander 사용: {}\n명령줄 난독화 사용: {}\n관리자 권한으로 실행: {}"
+                            "게임을 강제로 재시작하시겠습니까?\n\nDirectX 11 사용: {}\nXivAlexander 사용: {}\n명령줄 난독화 사용: {}\n관리자 권한으로 실행: {}\n언어: {}\n지역: {}"
     IDS_FAQ                 "PID: {}\n게임 경로: {}\n게임 버전: {} ({})\n\n{}\n자주 묻는 질문:\n* 다음 조건 중 하나라도 해당하면 ""서버 지연 보정"" 기능 및 ""핑 튐 보정"" 기능을 사용하지 않는 것을 추천합니다.\n  * VPN을 쓰고 있으며, 지연 시간이 너무 낮게 나올 경우\n  * 지연 시간이 200ms를 넘어갈 경우\n  * 2개 기술을 글쿨이 밀리지 않게 사용할 수 없을 경우\n* ""이른 기술 시전 방지""는 꺼 두는 것이 좋습니다.\n  * 애니메이션이 종료된 이후에만 기술 시전이 가능하다고 생각하는 경우에만 켜세요.\n  * 게임 사양상 FPS에 따라서 애니메이션 종료 1프레임 직전에 다음 기술을 사용할 수 있습니다.\n  * 예를 들어, 60FPS에서는 16ms 이르게, 30FPS에서는 33ms 이르게 다음 기술을 사용할 수 있습니다.\n* FFLogs/ACT에서는 600ms보다 짧게 다음 기술을 시전했다는 기록이 남을 수 있습니다. 이는 클라이언트 입력 간격과 서버 응답 간격이 일정하지 않아 발생합니다.\n  * 600ms보다 이르게 기술이 사용된 경우, 다음 기술은 그만큼 지연되어 사용된 것으로 기록이 남게 됩니다.\n* 게임 사양상, 지연 시간이 너무 높을 경우 500ms 단위로 기술을 사용할 수 있게 됩니다."
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "프로그램 설정 편집"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "옵코드 설정 편집"
     IDS_WINDOW_LOG          "로그 보기"
     IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE 
-                            "선택한 언어는 해당 게임 클라이언트에서 지원하지 않아 오류를 발생시킬 가능성이 높습니다. 계속하시겠습니까?\n\n오류 메시지가 뜬다면 설정을 원상복귀하고 ""게임 강제 재시작"" 기능을 이용해 주세요."
+                            "선택한 언어({})는 해당 게임 클라이언트에서 지원하지 않아 오류를 발생시킬 가능성이 높습니다. 계속하시겠습니까?\n\n오류 메시지가 뜬다면 설정을 원상복귀하고 ""게임 강제 재시작"" 기능을 이용해 주세요."
+    IDS_LANGUAGE_NAME_ENGLISH "영어"
+    IDS_LANGUAGE_NAME_JAPANESE "일본어"
+    IDS_LANGUAGE_NAME_GERMAN "독일어"
+    IDS_LANGUAGE_NAME_FRENCH "프랑스어"
+    IDS_LANGUAGE_NAME_KOREAN "한국어"
+    IDS_LANGUAGE_NAME_CHINESE_SIMPLIFIED "중국어(간체자)"
+    IDS_LANGUAGE_NAME_UNSPECIFIED "(언어 미지정)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LANGUAGE_NAME_CHINESE_TRADITIONAL "중국어(정체자)"
+    IDS_REGION_NAME_UNSPECIFIED "(지역 미지정)"
+    IDS_REGION_NAME_JAPAN   "일본"
+    IDS_REGION_NAME_NORTH_AMERICA "북미"
+    IDS_REGION_NAME_EUROPE  "유럽"
+    IDS_REGION_NAME_CHINA   "중국"
+    IDS_REGION_NAME_KOREA   "한국"
 END
 
 #endif    // Korean (Korea) resources

@@ -47,6 +47,23 @@ App::Window::Main::Main(XivAlexApp* pApp, std::function<void()> unloadFunction)
 
 	std::tie(m_sRegion, m_sVersion) = XivAlex::ResolveGameReleaseRegion();
 
+	if (m_sRegion == L"JP" && !m_launchParameters.empty()) {
+		m_gameLanguage = App::Config::GameLanguage::English;
+		m_gameRegion = App::Config::GameRegion::Japan;
+		for (const auto& pair : m_launchParameters) {
+			if (pair.first == "language")
+				m_gameLanguage = static_cast<App::Config::GameLanguage>(1 + std::strtol(pair.second.c_str(), nullptr, 0));
+			else if (pair.first == "SYS.Region")
+				m_gameRegion = static_cast<App::Config::GameRegion>(std::strtol(pair.second.c_str(), nullptr, 0));
+		}
+	} else if (m_sRegion == L"CN") {
+		m_gameLanguage = App::Config::GameLanguage::ChineseSimplified;
+		m_gameRegion = App::Config::GameRegion::China;
+	} else if (m_sRegion == L"KR") {
+		m_gameLanguage = App::Config::GameLanguage::Korean;
+		m_gameRegion = App::Config::GameRegion::Korea;
+	}
+
 	RegisterTrayIcon();
 
 	// Try to restore tray icon every 5 seconds in case things go wrong
@@ -233,39 +250,33 @@ LRESULT App::Window::Main::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH:
-					if (m_sRegion != L"JP" && Utils::Win32::MessageBoxF(m_hWnd, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2, L"XivAlexander", m_config->Runtime.GetStringRes(IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE)) != IDYES)
-						return 0;
-					config.HashTrackerLanguageOverride = App::Config::GameLanguage::English;
+					if (AskUpdateGameLanguageOverride(App::Config::GameLanguage::English))
+						config.HashTrackerLanguageOverride = App::Config::GameLanguage::English;
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_GERMAN:
-					if (m_sRegion != L"JP" && Utils::Win32::MessageBoxF(m_hWnd, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2, L"XivAlexander", m_config->Runtime.GetStringRes(IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE)) != IDYES)
-						return 0;
-					config.HashTrackerLanguageOverride = App::Config::GameLanguage::German;
+					if (AskUpdateGameLanguageOverride(App::Config::GameLanguage::German))
+						config.HashTrackerLanguageOverride = App::Config::GameLanguage::German;
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_FRENCH:
-					if (m_sRegion != L"JP" && Utils::Win32::MessageBoxF(m_hWnd, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2, L"XivAlexander", m_config->Runtime.GetStringRes(IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE)) != IDYES)
-						return 0;
-					config.HashTrackerLanguageOverride = App::Config::GameLanguage::French;
+					if (AskUpdateGameLanguageOverride(App::Config::GameLanguage::French))
+						config.HashTrackerLanguageOverride = App::Config::GameLanguage::French;
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE:
-					if (m_sRegion != L"JP" && Utils::Win32::MessageBoxF(m_hWnd, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2, L"XivAlexander", m_config->Runtime.GetStringRes(IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE)) != IDYES)
-						return 0;
-					config.HashTrackerLanguageOverride = App::Config::GameLanguage::Japanese;
+					if (AskUpdateGameLanguageOverride(App::Config::GameLanguage::Japanese))
+						config.HashTrackerLanguageOverride = App::Config::GameLanguage::Japanese;
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE:
-					if (m_sRegion != L"CN" && Utils::Win32::MessageBoxF(m_hWnd, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2, L"XivAlexander", m_config->Runtime.GetStringRes(IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE)) != IDYES)
-						return 0;
-					config.HashTrackerLanguageOverride = App::Config::GameLanguage::ChineseSimplified;
+					if (AskUpdateGameLanguageOverride(App::Config::GameLanguage::ChineseSimplified))
+						config.HashTrackerLanguageOverride = App::Config::GameLanguage::ChineseSimplified;
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN:
-					if (m_sRegion != L"KR" && Utils::Win32::MessageBoxF(m_hWnd, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2, L"XivAlexander", m_config->Runtime.GetStringRes(IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE)) != IDYES)
-						return 0;
-					config.HashTrackerLanguageOverride = App::Config::GameLanguage::Korean;
+					if (AskUpdateGameLanguageOverride(App::Config::GameLanguage::Korean))
+						config.HashTrackerLanguageOverride = App::Config::GameLanguage::Korean;
 					return 0;
 
 				case ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW:
@@ -319,26 +330,79 @@ LRESULT App::Window::Main::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
 				case ID_TRAYMENU_RESTARTGAME_USEDIRECTX11:
 					m_bUseDirectX11 = !m_bUseDirectX11;
-					if ((GetKeyState(VK_CONTROL) & 0x8000) || (GetKeyState(VK_SHIFT) & 0x8000))
-						AskRestartGame();
+					AskRestartGame(true);
 					return 0;
 
 				case ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER:
 					m_bUseXivAlexander = !m_bUseXivAlexander;
-					if ((GetKeyState(VK_CONTROL) & 0x8000) || (GetKeyState(VK_SHIFT) & 0x8000))
-						AskRestartGame();
+					AskRestartGame(true);
 					return 0;
 
 				case ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION:
 					m_bUseParameterObfuscation = !m_bUseParameterObfuscation;
-					if ((GetKeyState(VK_CONTROL) & 0x8000) || (GetKeyState(VK_SHIFT) & 0x8000))
-						AskRestartGame();
+					AskRestartGame(true);
 					return 0;
 
 				case ID_TRAYMENU_RESTARTGAME_USEELEVATION:
 					m_bUseElevation = !m_bUseElevation;
-					if ((GetKeyState(VK_CONTROL) & 0x8000) || (GetKeyState(VK_SHIFT) & 0x8000))
-						AskRestartGame();
+					AskRestartGame(true);
+					return 0;
+
+				case ID_TRAYMENU_RESTARTGAME_LANGUAGE_ENGLISH:
+					if (AskUpdateGameLanguageOverride(App::Config::GameLanguage::English)) {
+						m_gameLanguage = App::Config::GameLanguage::English;
+						AskRestartGame(true);
+					}
+					return 0;
+
+				case ID_TRAYMENU_RESTARTGAME_LANGUAGE_GERMAN:
+					if (AskUpdateGameLanguageOverride(App::Config::GameLanguage::German)) {
+						m_gameLanguage = App::Config::GameLanguage::German;
+						AskRestartGame(true);
+					}
+					return 0;
+
+				case ID_TRAYMENU_RESTARTGAME_LANGUAGE_FRENCH:
+					if (AskUpdateGameLanguageOverride(App::Config::GameLanguage::French)) {
+						m_gameLanguage = App::Config::GameLanguage::French;
+						AskRestartGame(true);
+					}
+					return 0;
+
+				case ID_TRAYMENU_RESTARTGAME_LANGUAGE_JAPANESE:
+					if (AskUpdateGameLanguageOverride(App::Config::GameLanguage::Japanese)) {
+						m_gameLanguage = App::Config::GameLanguage::Japanese;
+						AskRestartGame(true);
+					}
+					return 0;
+
+				case ID_TRAYMENU_RESTARTGAME_LANGUAGE_SIMPLIFIEDCHINESE:
+					if (AskUpdateGameLanguageOverride(App::Config::GameLanguage::ChineseSimplified)) {
+						m_gameLanguage = App::Config::GameLanguage::ChineseSimplified;
+						AskRestartGame(true);
+					}
+					return 0;
+
+				case ID_TRAYMENU_RESTARTGAME_LANGUAGE_KOREAN:
+					if (AskUpdateGameLanguageOverride(App::Config::GameLanguage::Korean)) {
+						m_gameLanguage = App::Config::GameLanguage::Korean;
+						AskRestartGame(true);
+					}
+					return 0;
+
+				case ID_TRAYMENU_RESTARTGAME_REGION_JAPAN:
+					m_gameRegion = App::Config::GameRegion::Japan;
+					AskRestartGame(true);
+					return 0;
+
+				case ID_TRAYMENU_RESTARTGAME_REGION_NORTH_AMERICA:
+					m_gameRegion = App::Config::GameRegion::NorthAmerica;
+					AskRestartGame(true);
+					return 0;
+
+				case ID_TRAYMENU_RESTARTGAME_REGION_EUROPE:
+					m_gameRegion = App::Config::GameRegion::Europe;
+					AskRestartGame(true);
 					return 0;
 
 				case ID_TRAYMENU_EXITGAME:
@@ -507,6 +571,16 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) const {
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER, m_bUseXivAlexander, !m_launchParameters.empty());
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION, m_bUseParameterObfuscation, !m_launchParameters.empty());
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEELEVATION, m_bUseElevation, !m_launchParameters.empty());
+	const auto languageRegionModifiable = LanguageRegionModifiable();
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_LANGUAGE_ENGLISH, m_gameLanguage == App::Config::GameLanguage::English, languageRegionModifiable);
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_LANGUAGE_GERMAN, m_gameLanguage == App::Config::GameLanguage::German, languageRegionModifiable);
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_LANGUAGE_FRENCH, m_gameLanguage == App::Config::GameLanguage::French, languageRegionModifiable);
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_LANGUAGE_JAPANESE, m_gameLanguage == App::Config::GameLanguage::Japanese, languageRegionModifiable);
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_LANGUAGE_SIMPLIFIEDCHINESE, m_gameLanguage == App::Config::GameLanguage::ChineseSimplified, languageRegionModifiable);
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_LANGUAGE_KOREAN, m_gameLanguage == App::Config::GameLanguage::Korean, languageRegionModifiable);
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_REGION_JAPAN, m_gameRegion == App::Config::GameRegion::Japan, languageRegionModifiable);
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_REGION_NORTH_AMERICA, m_gameRegion == App::Config::GameRegion::NorthAmerica, languageRegionModifiable);
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_REGION_EUROPE, m_gameRegion == App::Config::GameRegion::Europe, languageRegionModifiable);
 }
 
 void App::Window::Main::RegisterTrayIcon() {
@@ -533,7 +607,16 @@ void App::Window::Main::RemoveTrayIcon() {
 	Shell_NotifyIconW(NIM_DELETE, &nid);
 }
 
-void App::Window::Main::AskRestartGame() {
+bool App::Window::Main::LanguageRegionModifiable() const {
+	return m_gameRegion == App::Config::GameRegion::Japan
+		|| m_gameRegion == App::Config::GameRegion::NorthAmerica
+		|| m_gameRegion == App::Config::GameRegion::Europe;
+}
+
+void App::Window::Main::AskRestartGame(bool onlyOnModifer) {
+	if (onlyOnModifer && !((GetKeyState(VK_CONTROL) & 0x8000) || (GetKeyState(VK_SHIFT) & 0x8000))) {
+		return;
+	}
 	const auto yes = Utils::Win32::MB_GetString(IDYES - 1);
 	const auto no = Utils::Win32::MB_GetString(IDNO - 1);
 	if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, m_config->Runtime.GetStringRes(IDS_APP_NAME), m_config->Runtime.FormatStringRes(
@@ -541,24 +624,51 @@ void App::Window::Main::AskRestartGame() {
 		m_bUseDirectX11 ? yes : no,
 		m_bUseXivAlexander ? yes : no,
 		m_bUseParameterObfuscation ? yes : no,
-		m_bUseElevation ? yes : no
+		m_bUseElevation ? yes : no,
+		m_config->Runtime.GetLanguageNameLocalized(m_gameLanguage),
+		m_config->Runtime.GetRegionNameLocalized(m_gameRegion)
 	)) == IDYES) {
 		const auto process = Utils::Win32::Process::Current();
 		try {
 			const auto game = process.PathOf().parent_path() / (m_bUseDirectX11 ? XivAlex::GameExecutable64NameW : XivAlex::GameExecutable32NameW);
+
+			auto params = m_launchParameters;
+			if (LanguageRegionModifiable()) {
+				auto found = false;
+				for (auto& pair : params) {
+					if (pair.first == "language") {
+						pair.second = std::format("{}", static_cast<int>(m_gameLanguage) - 1);
+						found = true;
+						break;
+					}
+				}
+				if (!found)
+					params.emplace_back("language", std::format("{}", static_cast<int>(m_gameLanguage) - 1));
+
+				found = false;
+				for (auto& pair : params) {
+					if (pair.first == "SYS.Region") {
+						pair.second = std::format("{}", static_cast<int>(m_gameRegion));
+						found = true;
+						break;
+					}
+				}
+				if (!found)
+					params.emplace_back("SYS.Region", std::format("{}", static_cast<int>(m_gameRegion)));
+			}
 
 			XivAlexDll::EnableInjectOnCreateProcess(0);
 			bool ok;
 			if (m_bUseXivAlexander)
 				ok = Utils::Win32::RunProgram({
 					.path = Dll::Module().PathOf().parent_path() / (m_bUseDirectX11 ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW),
-					.args = std::format(L"-a launcher -l select \"{}\" {}", game, XivAlex::CreateGameCommandLine(m_launchParameters, m_bUseParameterObfuscation)),
+					.args = std::format(L"-a launcher -l select \"{}\" {}", game, XivAlex::CreateGameCommandLine(params, m_bUseParameterObfuscation)),
 					.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
 					});
 			else
 				ok = Utils::Win32::RunProgram({
 					.path = game,
-					.args = Utils::FromUtf8(XivAlex::CreateGameCommandLine(m_launchParameters, m_bUseParameterObfuscation)),
+					.args = Utils::FromUtf8(XivAlex::CreateGameCommandLine(params, m_bUseParameterObfuscation)),
 					.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
 					});
 
@@ -573,4 +683,35 @@ void App::Window::Main::AskRestartGame() {
 		}
 		XivAlexDll::EnableInjectOnCreateProcess(XivAlexDll::InjectOnCreateProcessAppFlags::Use | XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly);
 	}
+}
+
+bool App::Window::Main::AskUpdateGameLanguageOverride(App::Config::GameLanguage language) const {
+	switch (language) {
+		case App::Config::GameLanguage::Unspecified:
+			return true;
+
+		case App::Config::GameLanguage::Japanese:
+		case App::Config::GameLanguage::English:
+		case App::Config::GameLanguage::German:
+		case App::Config::GameLanguage::French:
+			if (m_sRegion == L"JP")
+				return true;
+			break;
+
+		case App::Config::GameLanguage::ChineseSimplified:
+			if (m_sRegion == L"CN")
+				return true;
+			break;
+
+		case App::Config::GameLanguage::ChineseTraditional:
+			// should not reach here
+			return false;
+
+		case App::Config::GameLanguage::Korean:
+			if (m_sRegion == L"KR")
+				return true;
+	}
+	return Utils::Win32::MessageBoxF(m_hWnd, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2, L"XivAlexander",
+		m_config->Runtime.GetStringRes(IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE),
+		m_config->Runtime.GetLanguageNameLocalized(language)) == IDYES;
 }

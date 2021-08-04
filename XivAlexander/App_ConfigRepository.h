@@ -138,6 +138,20 @@ namespace App {
 			Korean = 7,
 		};
 
+		enum class GameRegion {
+			Unspecified = 0,
+			Japan = 1,
+			NorthAmerica = 2,
+			Europe = 3,
+			China = 100001,
+			Korea = 100002,
+		};
+
+		static const std::map<Language, WORD> LanguageIdMap;
+		static const std::map<GameLanguage, WORD> GameLanguageIdMap;
+		static const std::map<WORD, int> LanguageIdNameResourceIdMap;
+		static const std::map<GameRegion, int> RegionResourceIdMap;
+
 		class Runtime : public BaseRepository {
 			friend class Config;
 			using BaseRepository::BaseRepository;
@@ -178,6 +192,8 @@ namespace App {
 			[[nodiscard]] std::wstring FormatStringRes(UINT uId, Args ... args) const {
 				return std::format(GetStringRes(uId), std::forward<Args>(args)...);
 			}
+			[[nodiscard]] std::wstring GetLanguageNameLocalized(GameLanguage gameLanguage) const;
+			[[nodiscard]] std::wstring GetRegionNameLocalized(GameRegion gameRegion) const;
 		};
 
 		class Game : public BaseRepository {

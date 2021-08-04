@@ -105,6 +105,17 @@ BEGIN
             MENUITEM "XivAlexanderを使用(&X)\t(Ctrl+Shift+)X", ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER
             MENUITEM "コマンドラインの難読化を使用(&P)\t(Ctrl+Shift+)P", ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION
             MENUITEM "管理者権限で実行(&E)\t(Ctrl+Shift+)A", ID_TRAYMENU_RESTARTGAME_USEELEVATION
+            MENUITEM SEPARATOR
+            MENUITEM "言語：日本語(&J)",        ID_TRAYMENU_RESTARTGAME_LANGUAGE_JAPANESE
+            MENUITEM "言語：英語(&E)",          ID_TRAYMENU_RESTARTGAME_LANGUAGE_ENGLISH
+            MENUITEM "言語：ドイツ語(&D)",      ID_TRAYMENU_RESTARTGAME_LANGUAGE_GERMAN
+            MENUITEM "言語：フランス語(&F)",    ID_TRAYMENU_RESTARTGAME_LANGUAGE_FRENCH
+            MENUITEM "言語：中国語(簡体字)(&C)", ID_TRAYMENU_RESTARTGAME_LANGUAGE_SIMPLIFIEDCHINESE
+            MENUITEM "言語：韓国語(&K)",         ID_TRAYMENU_RESTARTGAME_LANGUAGE_KOREAN
+            MENUITEM SEPARATOR
+            MENUITEM "地域：日本(&1)",          ID_TRAYMENU_RESTARTGAME_REGION_JAPAN
+            MENUITEM "地域：北米(&2)",  ID_TRAYMENU_RESTARTGAME_REGION_NORTH_AMERICA
+            MENUITEM "地域：欧州(&3)",         ID_TRAYMENU_RESTARTGAME_REGION_EUROPE
         END
         MENUITEM "ゲームの強制終了(&X)\tCtrl+Shift+Q",  ID_TRAYMENU_EXITGAME
         MENUITEM SEPARATOR
@@ -226,14 +237,32 @@ BEGIN
     IDS_CONFIRM_EXIT_GAME   "ゲームを強制終了しますか？"
     IDS_ERROR_UPDATE_CHECK_LAUNCH "アップデートの確認に失敗しました。({})"
     IDS_CONFIRM_RESTART_GAME 
-                            "ゲームを強制的に再起動しますか？\n\nDirectX11の使用：{}\nXivAlexanderの使用：{}\nコマンドラインの難読化の使用：{}\n管理者権限で実行：{}"
+                            "ゲームを強制的に再起動しますか？\n\nDirectX11の使用：{}\nXivAlexanderの使用：{}\nコマンドラインの難読化の使用：{}\n管理者権限で実行：{}\n言語：{}\n地域：{}"
     IDS_FAQ                 "PID: {}\nゲームのインストール先: {}\nゲームのバージョン: {} ({})\n\n{}\nよくある質問：\n・次の項目のいずれかに該当するものがある場合「サーバーの遅延を補正」および「レイテンシの変動を補正」の無効化をお勧めします。\n　・VPNを導入していて遅延が極めて低く表示されている場合\n　・200ms以上の遅延を経験している場合\n　・二つのアビリティを一回のGCDに挟むことができない場合\n・一般的な場合「アクションの拙速な使用の防止」は無効のままにしてください。\n　・エフェクトの終了後に限り次のアクションを使用することができると判断される場合にだけ有効にしてください。\n　・ゲームの仕様上フレームレートに応じてアクションエフェクトの終了前1フレームに次のアクションを使用することができます。\n  ・例えば60FPSの場合エフェクトの終了前16ms、30FPSの場合33msの間次のアクションを使用することができます。\n・FFLogsやACTでは一つのアクションとその前のアクションの間隔が600ms未満だと記録される場合があります。これはクライアントでの入力の間隔とサーバーの応答の間隔が一致しないことから生じる現象です。\n　・アクションの使用間隔が600ms未満の場合次のアクションはその分遅延後に使用されたこととして記録されます。\n・遅延が極めて長い場合ゲームの仕様上500ms毎にアクションを使用できるようになります。"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "環境設定"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcodeの設定"
     IDS_WINDOW_LOG          "ログの表示"
     IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE 
-                            "ご利用のクライアントは選択した言語に対応していないためクラッシュの可能性が高いです。続けますか？\n\nゲームがクラッシュした場合、設定を戻し「ゲームの強制再起動」を行ってください。"
+                            "ご利用のクライアントは選択した言語({})に対応していないためクラッシュの可能性が高いです。続けますか？\n\nゲームがクラッシュした場合、設定を戻し「ゲームの強制再起動」を行ってください。"
+    IDS_LANGUAGE_NAME_ENGLISH "英語"
+    IDS_LANGUAGE_NAME_JAPANESE "日本語"
+    IDS_LANGUAGE_NAME_GERMAN "ドイツ語"
+    IDS_LANGUAGE_NAME_FRENCH "フランス語"
+    IDS_LANGUAGE_NAME_KOREAN "韓国語"
+    IDS_LANGUAGE_NAME_CHINESE_SIMPLIFIED "中国語(簡体字)"
+    IDS_LANGUAGE_NAME_UNSPECIFIED "(言語未規定)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LANGUAGE_NAME_CHINESE_TRADITIONAL "中国語(正体字)"
+    IDS_REGION_NAME_UNSPECIFIED "(地域未規定)"
+    IDS_REGION_NAME_JAPAN   "日本"
+    IDS_REGION_NAME_NORTH_AMERICA "北米"
+    IDS_REGION_NAME_EUROPE  "欧州"
+    IDS_REGION_NAME_CHINA   "中国"
+    IDS_REGION_NAME_KOREA   "韓国"
 END
 
 #endif    // Japanese (Japan) resources
