@@ -72,6 +72,9 @@
     <ClInclude Include="Utils_Win32_Resource.h">
       <Filter>Implementation\Win32</Filter>
     </ClInclude>
+    <ClInclude Include="Utils_Win32_HeapAllocator.h">
+      <Filter>Implementation\Win32</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">

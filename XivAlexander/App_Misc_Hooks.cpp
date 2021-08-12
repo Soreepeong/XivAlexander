@@ -1,10 +1,10 @@
 #include "pch.h"
 #include "App_Misc_Hooks.h"
 
-App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
-	static HANDLE s_hHeap;
-	static std::mutex s_hHeapMutex;
-	auto source = static_cast<const char*>(templateMethod);
+std::vector<char, Utils::Win32::HeapAllocator<char>> App::Misc::Hooks::Binder::CreateThunkBody(void* this_, void* templateMethod) {
+	static Utils::Win32::HeapAllocator<char> allocator(HEAP_CREATE_ENABLE_EXECUTE);
+
+	const auto source = static_cast<const char*>(templateMethod);
 
 	/*
 	 * Extremely compiler implementation specific! May break anytime. Shouldn't be too difficult to fix though.
@@ -20,8 +20,10 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 	ZydisDecoder decoder;
 	ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64);
 
-	std::vector<char> body;
+	std::vector<char, Utils::Win32::HeapAllocator<char>> body(allocator);
 	std::map<size_t, size_t> replacementJumps;
+
+	static_assert(sizeof std::vector<char, Utils::Win32::HeapAllocator<char>>::size_type == sizeof size_t);
 
 	ZydisDecodedInstruction instruction;
 	for (size_t offset = 0, funclen = 32768;
@@ -108,62 +110,40 @@ App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod) {
 		offset += instruction.length;
 	}
 
-	*reinterpret_cast<void**>(std::search(
+	memcpy(std::search(
 		&body[0], &body[0] + body.size(),
-		reinterpret_cast<const char*>(&DummyAddress), reinterpret_cast<const char*>(&DummyAddress + 1)
-	)) = this_;
+		reinterpret_cast<const char*>(&Binder::DummyAddress), reinterpret_cast<const char*>(&Binder::DummyAddress + 1)
+	), &this_, sizeof this_);
 
 #if INTPTR_MAX == INT64_MAX
 	for (const auto& [pos, ptr] : replacementJumps) {
-		*reinterpret_cast<uint32_t*>(&body[pos]) = static_cast<uint32_t>(body.size() - 4 - pos);
+		const auto displacement = static_cast<uint32_t>(body.size() - 4 - pos);
+		static_assert(sizeof displacement == 4);
+		memcpy(&body[pos], &displacement, sizeof displacement);
 		body.insert(body.end(), reinterpret_cast<const char*>(&ptr), reinterpret_cast<const char*>(&ptr + 1));
 	}
-#endif
 
-	std::lock_guard lock(s_hHeapMutex);
-	if (s_hHeap == nullptr) {
-		s_hHeap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE, 0, 0);
-		if (!s_hHeap)
-			throw Utils::Win32::Error("HeapCreate");
-	}
-	m_cleanup += [this, size = body.size()]() {
-		std::lock_guard lock(s_hHeapMutex);
-#ifdef _DEBUG
-		memset(m_pAddress, 0xCC, size);
-#endif
-		HeapFree(s_hHeap, 0, m_pAddress);
-		PROCESS_HEAP_ENTRY entry{};
-		while (HeapWalk(s_hHeap, &entry)) {
-			if (entry.wFlags & PROCESS_HEAP_ENTRY_BUSY)
-				return;
-		}
-		if (const auto err = GetLastError(); err != ERROR_NO_MORE_ITEMS)
-			Utils::Win32::DebugPrint(L"HeapWalk failure: {}\n", err);
-		HeapDestroy(s_hHeap);
-		s_hHeap = nullptr;
-	};
-
-	m_pAddress = HeapAlloc(s_hHeap, 0, body.size());
-	if (!m_pAddress)
-		throw Utils::Win32::Error("HeapAlloc");
-
-#if INTPTR_MAX == INT32_MAX
+#elif INTPTR_MAX == INT32_MAX
 	for (const auto& [pos, ptr] : replacementJumps) {
-		// From (m_pAddress+pos+5) to ptr 
-		*reinterpret_cast<uint32_t*>(&body[pos]) = ptr - pos - 4 - reinterpret_cast<size_t>(m_pAddress);
+		const auto displacement = ptr - pos - 4 - reinterpret_cast<size_t>(&body[0]);
+		static_assert(sizeof displacement == 4);
+		memcpy(&body[pos], &displacement, sizeof displacement);
 	}
 #endif
 
-	memcpy(m_pAddress, &body[0], body.size());
+	return body;
 }
 
-App::Misc::Hooks::Binder::~Binder() {
-	m_cleanup.Clear();
+App::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod)
+	: m_impl(CreateThunkBody(this_, templateMethod)) {
 }
+
+App::Misc::Hooks::Binder::~Binder() = default;
 
 App::Misc::Hooks::WndProcFunction::WndProcFunction(const char* szName, HWND hWnd)
 	: Super(szName, reinterpret_cast<WNDPROC>(GetWindowLongPtrW(hWnd, GWLP_WNDPROC)))
-	, m_hWnd(hWnd) {
+	, m_hWnd(hWnd)
+	, m_prevProc(0) {
 }
 
 App::Misc::Hooks::WndProcFunction::~WndProcFunction() = default;

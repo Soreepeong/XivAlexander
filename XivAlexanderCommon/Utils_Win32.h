@@ -2,6 +2,7 @@
 
 #include <span>
 #include <vector>
+#include <string>
 #include <windef.h>
 
 namespace Utils::Win32 {

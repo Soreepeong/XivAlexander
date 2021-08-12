@@ -21,8 +21,9 @@ namespace App::Misc::Hooks {
 #endif
 
 	private:
-		void* m_pAddress = nullptr;
-		Utils::CallOnDestruction::Multiple m_cleanup;
+		static std::vector<char, Utils::Win32::HeapAllocator<char>> CreateThunkBody(void* this_, void* templateMethod);
+
+		const std::vector<char, Utils::Win32::HeapAllocator<char>> m_impl;
 
 	public:
 		Binder(void* this_, void* templateMethod);
@@ -30,7 +31,7 @@ namespace App::Misc::Hooks {
 
 		template<typename F = void*>
 		[[nodiscard]] F GetBinder() const {
-			return reinterpret_cast<F>(m_pAddress);
+			return reinterpret_cast<F>(const_cast<void*>(reinterpret_cast<const void*>(&m_impl[0])));
 		}
 	};
 

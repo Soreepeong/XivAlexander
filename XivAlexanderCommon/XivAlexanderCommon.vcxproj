@@ -23,6 +23,7 @@
     <ClInclude Include="Utils_CallOnDestruction.h" />
     <ClInclude Include="Utils_ListenerManager.h" />
     <ClInclude Include="Utils_Win32_Handle.h" />
+    <ClInclude Include="Utils_Win32_HeapAllocator.h" />
     <ClInclude Include="Utils_Win32_LoadedModule.h" />
     <ClInclude Include="Utils_Win32_Process.h" />
     <ClInclude Include="Utils_Win32_Resource.h" />
