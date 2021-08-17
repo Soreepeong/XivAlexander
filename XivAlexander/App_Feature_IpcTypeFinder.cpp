@@ -104,7 +104,6 @@ public:
 									"{:x}: S2C_ActorControl(0x{:04x}): CancelCast: actionId={:04x}",
 									conn.GetSocket(),
 									pMessage->Data.IPC.SubType,
-									pMessage->Length,
 									cancelCast.ActionId);
 								pMessage->DebugPrint(LogCategory::IpcTypeFinder, "IpcTypeFinder", true);
 							}
