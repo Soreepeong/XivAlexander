@@ -11,6 +11,7 @@
 #include <set>
 #include <algorithm>
 #include <fstream>
+#include <format>
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX

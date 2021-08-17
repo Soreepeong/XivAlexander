@@ -99,7 +99,7 @@ namespace App {
 			std::vector<Utils::CallOnDestruction> m_destructionCallbacks;
 
 		public:
-			BaseRepository(Config* pConfig, std::filesystem::path path);
+			BaseRepository(const Config* pConfig, std::filesystem::path path);
 
 			void Save();
 			void Reload(bool announceChange = false);
@@ -147,6 +147,12 @@ namespace App {
 			Korea = 100002,
 		};
 
+		enum class HighLatencyMitigationMode {
+			SubtractLatency,
+			SimulateRtt,
+			SimulateNormalizedRttAndLatency,
+		};
+
 		static const std::map<Language, WORD> LanguageIdMap;
 		static const std::map<GameLanguage, WORD> GameLanguageIdMap;
 		static const std::map<WORD, int> LanguageIdNameResourceIdMap;
@@ -162,8 +168,7 @@ namespace App {
 			Item<bool> AlwaysOnTop = CreateConfigItem(this, "AlwaysOnTop", false);
 
 			Item<bool> UseHighLatencyMitigation = CreateConfigItem(this, "UseHighLatencyMitigation", true);
-			Item<bool> UseAutoAdjustingExtraDelay = CreateConfigItem(this, "UseAutoAdjustingExtraDelay", true);
-			Item<bool> UseLatencyCorrection = CreateConfigItem(this, "UseLatencyCorrection", true);
+			Item<HighLatencyMitigationMode> HighLatencyMitigationMode = CreateConfigItem(this, "HighLatencyMitigationMode", HighLatencyMitigationMode::SimulateNormalizedRttAndLatency);
 			Item<bool> UseEarlyPenalty = CreateConfigItem(this, "UseEarlyPenalty", false);
 			Item<bool> UseHighLatencyMitigationLogging = CreateConfigItem(this, "UseHighLatencyMitigationLogging", true);
 			Item<bool> UseHighLatencyMitigationPreviewMode = CreateConfigItem(this, "UseHighLatencyMitigationPreviewMode", false);

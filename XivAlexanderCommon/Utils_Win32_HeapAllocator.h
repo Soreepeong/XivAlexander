@@ -15,6 +15,9 @@ namespace Utils::Win32 {
 
 	template<typename T>
 	class HeapAllocator {
+		template<typename U>
+		friend class HeapAllocator;
+
 	public:
 		typedef T value_type;
 

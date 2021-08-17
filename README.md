@@ -76,11 +76,9 @@ Usage: `XivAlexanderLoader(32/64) [-h] [-a ACTION] [-l LAUNCHER] [-q] [-d] [--we
 ### Description on options
 * `High Latency Mitigation`: The purpose of this program.
   * `Enable`: Turn this off when you're looking for updated opcodes.
-  * `Compensate for Server Delay`: When checked, the program will try to detect how much time does the server spend to process your action requests.
-    * When unchecked, the program will assume the server always take 75ms to process your action requests.
-  * Turn both `Compensate for Server Delay` and `Compensate for Latency Spikes` off if...
-    * ...your ping is above 200ms.
-    * ...your VPN gives a fake ping of 0ms (&lt;1ms).
+  * `Mode 1. Subtract Latency`: The program will reduce latency from server instructed animation lock time.
+  * `Mode 2. Simulate RTT (75ms)`: The program will assume the server always take 75ms to process your action requests.
+  * `Mode 3. Simulate Normalized RTT and Latency`: The program will try to detect how much time does the server spend to process your action requests, and take that into account when deciding supposed time taken for the server to process your action requests.
 * `Reduce Packet Delay`: When checked, following additional socket options are set or changed. 
   * `TCP_NODELAY`: If enabled, sends packets as soon as possible instead of waiting for ACK or large packet.
   * `SIO_TCP_SET_ACK_FREQUENCY`: Controls ACK delay every x ACK. Default delay is 40 or 200ms. Default value is 2 ACKs, set to 1 to disable ACK delay.

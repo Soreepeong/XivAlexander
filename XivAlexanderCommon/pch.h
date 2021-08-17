@@ -16,6 +16,7 @@
 #include <set>
 #include <stdexcept>
 #include <chrono>
+#include <format>
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX

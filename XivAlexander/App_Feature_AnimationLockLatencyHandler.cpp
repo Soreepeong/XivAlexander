@@ -185,7 +185,7 @@ public:
 										const auto rtt = static_cast<int64_t>(now - m_latestSuccessfulRequest.RequestTimestamp);
 										conn.ApplicationLatency.AddValue(rtt);
 										description << std::format(" rtt={}ms", rtt);
-										m_lastAnimationLockEndsAt += originalWaitTime + ResolveAdjustedExtraDelay(rtt, description);
+										m_lastAnimationLockEndsAt = ResolveNextAnimationLockEndTime(m_lastAnimationLockEndsAt, now, originalWaitTime, rtt, description);
 										waitTime = m_lastAnimationLockEndsAt - now;
 									}
 									m_pendingActions.pop_front();
@@ -300,17 +300,20 @@ public:
 			conn.RemoveMessageHandlers(this);
 		}
 
-		int64_t ResolveAdjustedExtraDelay(const int64_t rtt, std::stringstream& description) {
+		int64_t ResolveNextAnimationLockEndTime(const int64_t lastAnimationLockEndsAt, const int64_t now, const int64_t originalWaitTime, const int64_t rtt, std::stringstream& description) {
 			const auto& runtimeConfig = m_config->Runtime;
 			const auto pingTracker = conn.GetPingLatencyTracker();
 
 			const auto socketLatency = conn.FetchSocketLatency();
 			const auto pingLatency = pingTracker ? pingTracker->Latest() : INT64_MAX;
+			auto latency = std::min(pingLatency, socketLatency);
 
-			if (auto latency = std::min(pingLatency, socketLatency); latency != INT64_MAX) {
-				// latency = 0;  // emulate VPNs that reports zero ping
-				// latency = 300;  // test bad ping measurements
+			auto mode = runtimeConfig.HighLatencyMitigationMode;
 
+			if (latency == INT64_MAX) {
+				mode = Config::HighLatencyMitigationMode::SimulateRtt;
+				description << " latencyUnavailable";
+			} else {
 				if (latency > rtt)
 					conn.ExaggeratedNetworkLatency.AddValue(latency - rtt);
 
@@ -328,34 +331,35 @@ public:
 					else
 						description << std::format(" socketLatency={}ms", latency);
 				}
+			}
 
-				if (runtimeConfig.UseAutoAdjustingExtraDelay) {
-					auto rttAdjusted = rtt;
-					auto latencyAdjusted = latency;
+			switch (mode) {
+				case Config::HighLatencyMitigationMode::SubtractLatency:
+					description << std::format(" delay={}ms", DefaultDelay);
+					return now + originalWaitTime - latency;
 
-					if (runtimeConfig.UseLatencyCorrection) {
-						const auto rttMin = conn.ApplicationLatency.Min();
-						const auto rttMean = conn.ApplicationLatency.Mean();
-						const auto rttDeviation = conn.ApplicationLatency.Deviation();
-						const auto latencyMean = pingLatency > socketLatency ? conn.SocketLatency.Mean() : pingTracker->Mean();
-						const auto latencyDeviation = pingLatency > socketLatency ? conn.SocketLatency.Deviation() : pingTracker->Deviation();
+				case Config::HighLatencyMitigationMode::SimulateNormalizedRttAndLatency:
+				{
+					const auto rttMin = conn.ApplicationLatency.Min();
+					const auto rttMean = conn.ApplicationLatency.Mean();
+					const auto rttDeviation = conn.ApplicationLatency.Deviation();
+					const auto latencyMean = !pingTracker || pingLatency > socketLatency ? conn.SocketLatency.Mean() : pingTracker->Mean();
+					const auto latencyDeviation = !pingTracker || pingLatency > socketLatency ? conn.SocketLatency.Deviation() : pingTracker->Deviation();
 
-						// Correct latency and server response time values in case of outliers.
-						latencyAdjusted = Utils::Clamp(latencyAdjusted, latencyMean - latencyDeviation, latencyMean + latencyDeviation);
-						rttAdjusted = Utils::Clamp(rttAdjusted, rttMean - rttDeviation, rttMean + rttDeviation);
+					// Correct latency and server response time values in case of outliers.
+					const auto latencyAdjustedImmediate = Utils::Clamp(latency, latencyMean - latencyDeviation, latencyMean + latencyDeviation);
+					const auto rttAdjusted = Utils::Clamp(rtt, rttMean - rttDeviation, rttMean + rttDeviation);
 
-						// Estimate latency based on server response time statistics.
-						const auto latencyEstimate = (rttAdjusted + rttMin + rttMean) / 3 - rttDeviation;
-						description << std::format(" latencyEstimate={}ms", latencyEstimate);
+					// Estimate latency based on server response time statistics.
+					const auto latencyEstimate = (rttAdjusted + rttMin + rttMean) / 3 - rttDeviation;
+					description << std::format(" latencyEstimate={}ms", latencyEstimate);
 
-						// Correct latency value based on estimate if server response time is stable.
-						latencyAdjusted = std::max(latencyEstimate, latencyAdjusted);
-					}
+					// Correct latency value based on estimate if server response time is stable.
+					const auto latencyAdjusted = std::max(latencyEstimate, latencyAdjustedImmediate);
 
 					const auto earlyPenalty = runtimeConfig.UseEarlyPenalty ? m_earlyRequestsDuration.Max() : 0;
-					if (earlyPenalty) {
+					if (earlyPenalty)
 						description << std::format(" earlyPenalty={}ms", earlyPenalty);
-					}
 
 					// This delay is based on server's processing time.
 					// If the server is busy, everyone should feel the same effect.
@@ -370,12 +374,12 @@ public:
 							m_config->Runtime.GetLangId(), IDS_WARNING_ZEROPING,
 							rtt, latency);
 					}
-					return delay;
-				} else
-					description << std::format(" delay={}ms", DefaultDelay);
-			} else
-				description << " latency=?";
-			return DefaultDelay;
+					return lastAnimationLockEndsAt + originalWaitTime + delay;
+				}
+			}
+
+			description << std::format(" delay={}ms", DefaultDelay);
+			return lastAnimationLockEndsAt + originalWaitTime + DefaultDelay;
 		}
 	};
 

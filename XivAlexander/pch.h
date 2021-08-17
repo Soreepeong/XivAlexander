@@ -25,6 +25,7 @@
 #include <fstream>
 #include <span>
 #include <new>
+#include <format>
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX

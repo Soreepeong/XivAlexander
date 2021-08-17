@@ -77,10 +77,17 @@ public:
 					const auto ok = IcmpSendEcho2Ex(hIcmp, nullptr, nullptr, nullptr, m_pair.Source.s_addr, m_pair.Destination.s_addr, sendBuf, sizeof sendBuf, nullptr, replyBuf, sizeof replyBuf, interval);
 					const auto endTime = Utils::GetHighPerformanceCounter();
 					const auto latency = endTime - startTime;
-					const auto waitTime = static_cast<DWORD>(interval - latency);
+					auto waitTime = static_cast<DWORD>(interval - latency);
+
 					if (ok) {
 						consecutiveFailureCount = 0;
+
+						const auto latest = Tracker->Latest();
 						Tracker->AddValue(latency);
+
+						// if ping changes by more than 10%, then ping again to confirm
+						if (100 * std::abs(latest - latency) / latency >= 10)
+							waitTime = 1;
 					} else
 						consecutiveFailureCount++;
 

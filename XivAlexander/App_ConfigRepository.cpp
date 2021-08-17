@@ -38,7 +38,7 @@ const std::map<App::Config::GameRegion, int> App::Config::RegionResourceIdMap{
 	{GameRegion::Korea, IDS_REGION_NAME_KOREA},
 };
 
-App::Config::BaseRepository::BaseRepository(Config* pConfig, std::filesystem::path path)
+App::Config::BaseRepository::BaseRepository(const Config* pConfig, std::filesystem::path path)
 	: m_pConfig(pConfig)
 	, m_sConfigPath(std::move(path))
 	, m_logger(Misc::Logger::Acquire()) {
@@ -72,7 +72,7 @@ void App::Config::BaseRepository::Reload(bool announceChange) {
 	}
 
 	m_destructionCallbacks.clear();
-	for (auto& item : m_allItems) {
+	for (const auto& item : m_allItems) {
 		changed |= item->LoadFrom(config, announceChange);
 		m_destructionCallbacks.push_back(item->OnChangeListener([this](ItemBase& item) { Save(); }));
 	}
@@ -124,7 +124,7 @@ LPCWSTR App::Config::Runtime::GetStringRes(UINT uId) const {
 
 std::wstring App::Config::Runtime::GetLanguageNameLocalized(GameLanguage gameLanguage) const {
 	const auto langNameInUserLang = std::wstring(GetStringRes(LanguageIdNameResourceIdMap.at(GameLanguageIdMap.at(gameLanguage))));
-	const auto langNameInGameLang = std::wstring(FindStringResourceEx(Dll::Module(), LanguageIdNameResourceIdMap.at(GameLanguageIdMap.at(gameLanguage)), GameLanguageIdMap.at(gameLanguage)) + 1);
+	auto langNameInGameLang = std::wstring(FindStringResourceEx(Dll::Module(), LanguageIdNameResourceIdMap.at(GameLanguageIdMap.at(gameLanguage)), GameLanguageIdMap.at(gameLanguage)) + 1);
 	if (langNameInUserLang == langNameInGameLang)
 		return langNameInGameLang;
 	else
@@ -153,7 +153,7 @@ void App::Config::BaseRepository::Save() {
 		return;
 
 	nlohmann::json config;
-	for (auto& item : m_allItems)
+	for (const auto& item : m_allItems)
 		item->SaveTo(config);
 
 	try {
@@ -197,7 +197,7 @@ bool App::Config::Item<App::Config::Language>::LoadFrom(const nlohmann::json & d
 		CharLowerW(&newValueString[0]);
 
 		auto newValue = Language::SystemDefault;
-		if (newValueString.size() > 0) {
+		if (!newValueString.empty()) {
 			if (newValueString.substr(0, std::min<size_t>(7, newValueString.size())) == L"english")
 				newValue = Language::English;
 			else if (newValueString.substr(0, std::min<size_t>(6, newValueString.size())) == L"korean")
@@ -225,13 +225,45 @@ void App::Config::Item<App::Config::Language>::SaveTo(nlohmann::json & data) con
 		data[Name()] = "Japanese";
 }
 
+bool App::Config::Item<App::Config::HighLatencyMitigationMode>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
+	if (const auto it = data.find(Name()); it != data.end()) {
+		auto newValueString = Utils::FromUtf8(it->get<std::string>());
+		CharLowerW(&newValueString[0]);
+
+		auto newValue = HighLatencyMitigationMode::SimulateNormalizedRttAndLatency;
+		if (!newValueString.empty()) {
+			if (newValueString.substr(0, std::min<size_t>(31, newValueString.size())) == L"subtractnormalizedrttandlatency")
+				newValue = HighLatencyMitigationMode::SimulateNormalizedRttAndLatency;
+			else if (newValueString.substr(0, std::min<size_t>(11, newValueString.size())) == L"simulatertt")
+				newValue = HighLatencyMitigationMode::SimulateRtt;
+			else if (newValueString.substr(0, std::min<size_t>(16, newValueString.size())) == L"subtractlatency")
+				newValue = HighLatencyMitigationMode::SubtractLatency;
+		}
+
+		if (announceChanged)
+			this->operator=(newValue);
+		else
+			Assign(newValue);
+	}
+	return false;
+}
+
+void App::Config::Item<App::Config::HighLatencyMitigationMode>::SaveTo(nlohmann::json & data) const {
+	if (m_value == HighLatencyMitigationMode::SimulateNormalizedRttAndLatency)
+		data[Name()] = "SimulateNormalizedRttAndLatency";
+	else if (m_value == HighLatencyMitigationMode::SimulateRtt)
+		data[Name()] = "SimulateRtt";
+	else if (m_value == HighLatencyMitigationMode::SubtractLatency)
+		data[Name()] = "SubtractLatency";
+}
+
 bool App::Config::Item<App::Config::GameLanguage>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
 	if (const auto it = data.find(Name()); it != data.end()) {
 		auto newValueString = Utils::FromUtf8(it->get<std::string>());
 		CharLowerW(&newValueString[0]);
 
 		auto newValue = GameLanguage::Unspecified;
-		if (newValueString.size() > 0) {
+		if (!newValueString.empty()) {
 			if (newValueString.substr(0, std::min<size_t>(8, newValueString.size())) == L"japanese")
 				newValue = GameLanguage::Japanese;
 			else if (newValueString.substr(0, std::min<size_t>(7, newValueString.size())) == L"english")

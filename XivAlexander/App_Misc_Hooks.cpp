@@ -4,7 +4,7 @@
 std::vector<char, Utils::Win32::HeapAllocator<char>> App::Misc::Hooks::Binder::CreateThunkBody(void* this_, void* templateMethod) {
 	static Utils::Win32::HeapAllocator<char> allocator(HEAP_CREATE_ENABLE_EXECUTE);
 
-	const auto source = static_cast<const char*>(templateMethod);
+	auto source = static_cast<const char*>(templateMethod);
 
 	/*
 	 * Extremely compiler implementation specific! May break anytime. Shouldn't be too difficult to fix though.

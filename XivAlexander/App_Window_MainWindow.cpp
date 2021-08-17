@@ -171,16 +171,16 @@ LRESULT App::Window::Main::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
 					/***************************************************************/
 
-				case ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE:
-					config.UseHighLatencyMitigation = !config.UseHighLatencyMitigation;
+				case ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_1:
+					config.HighLatencyMitigationMode = App::Config::HighLatencyMitigationMode::SubtractLatency;
 					return 0;
 
-				case ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION:
-					config.UseAutoAdjustingExtraDelay = !config.UseAutoAdjustingExtraDelay;
+				case ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_2:
+					config.HighLatencyMitigationMode = App::Config::HighLatencyMitigationMode::SimulateRtt;
 					return 0;
 
-				case ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION:
-					config.UseLatencyCorrection = !config.UseLatencyCorrection;
+				case ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_3:
+					config.HighLatencyMitigationMode = App::Config::HighLatencyMitigationMode::SimulateNormalizedRttAndLatency;
 					return 0;
 
 				case ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY:
@@ -533,8 +533,9 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) const {
 
 	Set(hMenu, ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP, config.AlwaysOnTop, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE, config.UseHighLatencyMitigation, true);
-	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USEDELAYDETECTION, config.UseAutoAdjustingExtraDelay, true);
-	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELATENCYCORRECTION, config.UseLatencyCorrection, true);
+	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_1, config.HighLatencyMitigationMode == App::Config::HighLatencyMitigationMode::SubtractLatency, true);
+	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_2, config.HighLatencyMitigationMode == App::Config::HighLatencyMitigationMode::SimulateRtt, true);
+	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_3, config.HighLatencyMitigationMode == App::Config::HighLatencyMitigationMode::SimulateNormalizedRttAndLatency, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY, config.UseEarlyPenalty, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING, config.UseHighLatencyMitigationLogging, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE, config.UseHighLatencyMitigationPreviewMode, true);
