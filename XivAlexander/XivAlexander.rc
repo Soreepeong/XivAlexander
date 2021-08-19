@@ -162,6 +162,12 @@ BEGIN
     BEGIN
         MENUITEM "Always on &Top\tCtrl+T",      ID_VIEW_ALWAYSONTOP
     END
+    POPUP "&Help"
+    BEGIN
+        MENUITEM "Open Help &Webpage",          ID_HELP_OPENHELPWEBPAGE
+        MENUITEM SEPARATOR
+        MENUITEM "Open &Homepage",              ID_HELP_OPENHOMEPAGE
+    END
 END
 
 IDR_LOG_MENU MENU
@@ -401,7 +407,7 @@ BEGIN
     IDS_ERROR_UPDATE_CHECK_LAUNCH "Failed to launch update checker. ({})"
     IDS_CONFIRM_RESTART_GAME 
                             "Do you want to force restart the game?\n\nUse DirectX 11: {}\nUse XivAlexander: {}\nUse Parameter Obfuscation: {}\nUse Elevation (Run as Administrator): {}\nGame Language: {}\nRegion: {}"
-    IDS_FAQ                 "Process ID: {}\nGame Path: {}\nGame Release: {} ({})\n\n{}\nTips and FAQs:\n* Turn off ""Compensate for Server Delay"" and ""Compensate for Latency Spikes"" if any of the following is true.\n  * You're using a VPN software and your latency is being displayed below 10ms when it shouldn't be.\n  * Your ping is above 200ms.\n  * You can't double weave comfortably.\n* Keep ""Prevent Early Firing"" off, unless you believe that you should not be allowed to use action before instructed animation lock expires.\n  * Depending on your FPS, the game will let your action go through 1 frame before the animation lock expires.\n  * Expect 16ms early animation lock expiry if you're playing on 60FPS, 33ms if 30FPS, and so on.\n* FFLogs may show less-than-600ms weaves. This is normal due to discrepancies between client input times and server response times.\n  * Actions following less-than-600ms weaves will result in longer animation locks from parser logs.\n* If your ping is too high, you may be allowed to do 500ms weaves. This is by game design."
+    IDS_MAIN_TEXT           "Process ID: {}\nGame Path: {}\nGame Release: {} ({})\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "Runtime Configuration Editor"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcode Configuration Editor"
@@ -426,6 +432,8 @@ BEGIN
     IDS_REGION_NAME_EUROPE  "Europe"
     IDS_REGION_NAME_CHINA   "China"
     IDS_REGION_NAME_KOREA   "Korea"
+    IDS_URL_HOMEPAGE        "https://github.com/Soreepeong/XivAlexander"
+    IDS_URL_HELP            "https://github.com/Soreepeong/XivAlexander/wiki/XivAlexander-Help"
 END
 
 #endif    // English (United States) resources

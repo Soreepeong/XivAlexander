@@ -142,6 +142,12 @@ BEGIN
     BEGIN
         MENUITEM "常に手前に表示(&T)\tCtrl+T",         ID_VIEW_ALWAYSONTOP
     END
+    POPUP "ヘルプ(&H)"
+    BEGIN
+        MENUITEM "ヘルプウェーブページを表示(&W)",           ID_HELP_OPENHELPWEBPAGE
+        MENUITEM SEPARATOR
+        MENUITEM "ホームページを表示(&H)",               ID_HELP_OPENHOMEPAGE
+    END
 END
 
 IDR_LOG_MENU MENU
@@ -240,7 +246,7 @@ BEGIN
     IDS_ERROR_UPDATE_CHECK_LAUNCH "アップデートの確認に失敗しました。({})"
     IDS_CONFIRM_RESTART_GAME 
                             "ゲームを強制的に再起動しますか？\n\nDirectX11の使用：{}\nXivAlexanderの使用：{}\nコマンドラインの難読化の使用：{}\n管理者権限で実行：{}\n言語：{}\n地域：{}"
-    IDS_FAQ                 "PID: {}\nゲームのインストール先: {}\nゲームのバージョン: {} ({})\n\n{}\nよくある質問：\n・次の項目のいずれかに該当するものがある場合「サーバーの遅延を補正」および「レイテンシの変動を補正」の無効化をお勧めします。\n　・VPNを導入していて遅延が極めて低く表示されている場合\n　・200ms以上の遅延を経験している場合\n　・二つのアビリティを一回のGCDに挟むことができない場合\n・一般的な場合「アクションの拙速な使用の防止」は無効のままにしてください。\n　・エフェクトの終了後に限り次のアクションを使用することができると判断される場合にだけ有効にしてください。\n　・ゲームの仕様上フレームレートに応じてアクションエフェクトの終了前1フレームに次のアクションを使用することができます。\n  ・例えば60FPSの場合エフェクトの終了前16ms、30FPSの場合33msの間次のアクションを使用することができます。\n・FFLogsやACTでは一つのアクションとその前のアクションの間隔が600ms未満だと記録される場合があります。これはクライアントでの入力の間隔とサーバーの応答の間隔が一致しないことから生じる現象です。\n　・アクションの使用間隔が600ms未満の場合次のアクションはその分遅延後に使用されたこととして記録されます。\n・遅延が極めて長い場合ゲームの仕様上500ms毎にアクションを使用できるようになります。"
+    IDS_MAIN_TEXT           "PID: {}\nゲームのインストール先: {}\nゲームのバージョン: {} ({})\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "環境設定"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcodeの設定"

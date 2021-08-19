@@ -157,7 +157,8 @@ LRESULT App::Window::Main::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 	} else if (uMsg == WM_COMMAND) {
 		if (!lParam) {
 			auto& config = m_config->Runtime;
-			switch (LOWORD(wParam)) {
+			const auto menuId = LOWORD(wParam);
+			switch (menuId) {
 
 				case ID_GLOBAL_SHOW_TRAYMENU:
 					for (const auto& w : BaseWindow::All())
@@ -440,6 +441,22 @@ LRESULT App::Window::Main::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 					Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST, true);
 					return 0;
 				}
+
+				/***************************************************************/
+
+				case ID_HELP_OPENHELPWEBPAGE:
+				case ID_HELP_OPENHOMEPAGE:
+				{
+					SHELLEXECUTEINFOW shex{};
+					shex.cbSize = sizeof shex;
+					shex.nShow = SW_SHOW;
+					shex.lpFile = m_config->Runtime.GetStringRes(menuId == ID_HELP_OPENHELPWEBPAGE ? IDS_URL_HELP : IDS_URL_HOMEPAGE);
+					if (!ShellExecuteExW(&shex)) {
+						Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+							m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, Utils::Win32::FormatWindowsErrorMessage(GetLastError())));
+					}
+					return 0;
+				}
 			}
 		}
 	} else if (uMsg == WmTrayCallback) {
@@ -489,7 +506,7 @@ LRESULT App::Window::Main::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 		gdiRestoreStack.emplace_back(SelectObject(backdc, CreateFontIndirectW(&ncm.lfMessageFont)));
 
 		FillRect(backdc, &rect, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
-		const auto str = m_config->Runtime.FormatStringRes(IDS_FAQ,
+		const auto str = m_config->Runtime.FormatStringRes(IDS_MAIN_TEXT,
 			GetCurrentProcessId(), m_path, m_sVersion, m_sRegion,
 			m_pApp->GetSocketHook()->Describe());
 		const auto pad = static_cast<int>(8 * zoom);
