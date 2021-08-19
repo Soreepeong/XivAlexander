@@ -86,7 +86,7 @@ public:
 						Tracker->AddValue(latency);
 
 						// if ping changes by more than 10%, then ping again to confirm
-						if (100 * std::abs(latest - latency) / latency >= 10)
+						if (latency > 0 && 100 * std::abs(latest - latency) / latency >= 10)
 							waitTime = 1;
 					} else
 						consecutiveFailureCount++;
