@@ -1,0 +1,13 @@
+{
+  "name": "xivalexander-scratch-project",
+  "version-string": "1.10",
+  "builtin-baseline": "751fc199af8d33eb300af5edbd9e3b77c48f0bca",
+  "dependencies": [
+    "zlib",
+    "argparse",
+    "nlohmann-json",
+    "curlpp",
+    "libzippp",
+    "cryptopp"
+  ]
+}

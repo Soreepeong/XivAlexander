@@ -221,17 +221,7 @@ std::filesystem::path Utils::Win32::GetMappedImageNativePath(HANDLE hProcess, vo
 }
 
 std::filesystem::path Utils::Win32::ToNativePath(const std::filesystem::path& path) {
-	const auto hFile = Handle(CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr),
-		INVALID_HANDLE_VALUE, "CreateFileW");
-
-	std::wstring result;
-	result.resize(PATHCCH_MAX_CCH);
-	result.resize(GetFinalPathNameByHandleW(hFile, &result[0], static_cast<DWORD>(result.size()), VOLUME_NAME_NT));
-	if (result.empty())
-		throw Error("GetFinalPathNameByHandleW");
-	if (result.starts_with(LR"(\Device\)"))
-		return LR"(\\?\)" + result.substr(8);
-	throw std::runtime_error(std::format("Path unprocessable: {}", result));
+	return File::Create(path.wstring().c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0).ResolveName(false, true);
 }
 
 static Utils::CallOnDestruction WithRunAsInvoker() {
@@ -438,7 +428,7 @@ std::vector<DWORD> Utils::Win32::GetProcessList() {
 	return res;
 }
 
-Utils::Win32::Error::Error(int errorCode, const std::string& msg)
+Utils::Win32::Error::Error(DWORD errorCode, const std::string& msg)
 	: std::runtime_error(FormatWindowsErrorMessage(errorCode) + ": " + msg)
 	, m_nErrorCode(errorCode) {
 }

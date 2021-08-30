@@ -4,7 +4,7 @@
 std::weak_ptr<App::Misc::Logger> App::Misc::Logger::s_instance;
 
 class App::Misc::Logger::Implementation final {
-	static const int MaxLogCount = 8192;
+	static const int MaxLogCount = 128 * 1024;
 
 public:
 	Logger& logger;

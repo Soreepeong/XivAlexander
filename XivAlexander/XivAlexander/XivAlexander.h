@@ -30,8 +30,6 @@ namespace XivAlexDll {
 
 	XIVALEXANDER_DLLEXPORT const char* LoaderActionToString(LoaderAction val);
 	
-	XIVALEXANDER_DLLEXPORT LoaderAction ParseLoaderAction(std::string val);
-
 	XIVALEXANDER_DLLEXPORT DWORD LaunchXivAlexLoaderWithTargetHandles(
 		const std::vector<Utils::Win32::Process>& hSources, 
 		LoaderAction action, 

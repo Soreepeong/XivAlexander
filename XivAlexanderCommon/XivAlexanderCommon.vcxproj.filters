@@ -75,6 +75,9 @@
     <ClInclude Include="Utils_Win32_HeapAllocator.h">
       <Filter>Implementation\Win32</Filter>
     </ClInclude>
+    <ClInclude Include="XivAlex_SqexDef.h">
+      <Filter>Implementation</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -115,6 +118,9 @@
     </ClCompile>
     <ClCompile Include="Utils_Win32_Resource.cpp">
       <Filter>Implementation\Win32</Filter>
+    </ClCompile>
+    <ClCompile Include="XivAlex_SqexDef.cpp">
+      <Filter>Implementation</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

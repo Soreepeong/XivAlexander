@@ -37,6 +37,7 @@
     <ClInclude Include="Utils__Zlib.h" />
     <ClInclude Include="XivAlex.h" />
     <ClInclude Include="XivAlexanderCommon\XivAlexanderCommon.h" />
+    <ClInclude Include="XivAlex_SqexDef.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Utils_CallOnDestruction.cpp" />
@@ -57,6 +58,7 @@
     <ClCompile Include="Utils_Win32_InjectedModule.cpp" />
     <ClCompile Include="Utils__Zlib.cpp" />
     <ClCompile Include="XivAlex.cpp" />
+    <ClCompile Include="XivAlex_SqexDef.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />

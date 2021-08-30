@@ -79,19 +79,19 @@ namespace Utils::Win32 {
 	std::vector<DWORD> GetProcessList();
 
 	class Error : public std::runtime_error {
-		const int m_nErrorCode;
+		const DWORD m_nErrorCode;
 
 	public:
-		Error(int errorCode, const std::string& msg);
+		Error(DWORD errorCode, const std::string& msg);
 		explicit Error(const std::string& msg);
 
-		template<typename ... Args>
-		Error(const char* format, Args...args)
-			: Error(std::format(format, std::forward<Args>(args)...)) {
+		template<typename Arg, typename ... Args>
+		Error(const char* format, Arg arg1, Args...args)
+			: Error(std::format(format, std::move(arg1), std::forward<Args>(args)...)) {
 		}
-		template<typename ... Args>
-		Error(int errorCode, const char* format, Args...args)
-			: Error(errorCode, std::format(format, std::forward<Args>(args)...)) {
+		template<typename Arg, typename ... Args>
+		Error(DWORD errorCode, const char* format, Arg arg1, Args...args)
+			: Error(errorCode, std::format(format, std::move(arg1), std::forward<Args>(args)...)) {
 		}
 
 		[[nodiscard]] int Code() const;

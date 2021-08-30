@@ -1,0 +1,568 @@
+// ReSharper disable CppNonExplicitConversionOperator
+// ReSharper disable CppNonExplicitConvertingConstructor
+// ReSharper disable CppClangTidyCppcoreguidelinesProTypeMemberInit
+#pragma once
+
+#include <algorithm>
+#include <stdexcept>
+#include <span>
+#include "Utils_Win32_Handle.h"
+
+#pragma warning(push)
+#pragma warning(disable: 26495)
+
+namespace XivAlex::SqexDef {
+
+	enum class SqexLanguage {
+		Undefined = 0,
+		Japanese = 1,
+		English = 2,
+		German = 3,
+		French = 4,
+		ChineseSimplified = 5,
+		ChineseTraditional = 6,
+		Korean = 7,
+	};
+
+	template<typename T>
+	union LE {
+	private:
+		T value;
+
+	public:
+		LE() = default;
+
+		LE(T defaultValue)
+			: value(defaultValue) {
+		}
+
+		operator T() const {
+			return Value();
+		}
+
+		LE<T>& operator= (T newValue) {
+			value = std::move(newValue);
+			return *this;
+		}
+
+		T Value() const {
+			return value;
+		}
+	};
+
+	template<typename T>
+	union BE {
+	private:
+		T value;
+		char buf[sizeof T];
+
+	public:
+		BE() = default;
+
+		BE(T defaultValue)
+			: value(defaultValue) {
+			std::reverse(buf, buf + sizeof T);
+		}
+
+		operator T() const {
+			return Value();
+		}
+
+		BE<T>& operator= (T newValue) {
+			value = std::move(newValue);
+			std::reverse(buf, buf + sizeof buf);
+			return *this;
+		}
+
+		T Value() const {
+			union {
+				T localval;
+				char localbuf[sizeof T];
+			};
+			memcpy(localbuf, buf, sizeof T);
+			std::reverse(localbuf, localbuf + sizeof T);
+			return localval;
+		}
+	};
+
+	constexpr static auto EnableShaVerification = false;
+	constexpr static auto EnableSqDataFileLengthVerification = false;
+
+	template<typename T, size_t C>
+	bool IsAllSameValue(T(&arr)[C], std::remove_cv_t<T> supposedValue = 0) {
+		for (size_t i = 0; i < C; ++i) {
+			if (arr[i] != supposedValue)
+				return false;
+		}
+		return true;
+	}
+
+	template<typename T>
+	bool IsAllSameValue(const std::span<T>& arr, std::remove_cv_t<T> supposedValue = 0) {
+		for (const auto& v : arr)
+			if (v != supposedValue)
+				return true;
+		return true;
+	}
+
+	void CalculateSha1(char(&result)[20], const void* data, size_t cb);
+
+	template<typename T>
+	void CalculateSha1(char(&result)[20], const std::span<T>& data) {
+		CalculateSha1(result, data.data(), data.size_bytes());
+	}
+
+	template<typename T>
+	void VerifySha1(const char(&compareWith)[20], const std::span<T>& data, const char* throwMessage) {
+		if constexpr (!EnableShaVerification)
+			return;
+
+		char result[20];
+		CalculateSha1(result, data);
+		if (memcmp(result, compareWith, 20) != 0) {
+			if (data.empty() && IsAllSameValue(compareWith))
+				return;
+			throw std::runtime_error(throwMessage);
+		}
+	}
+
+	enum class SqpackType : uint32_t {
+		SqDatabase = 0,
+		SqData = 1,
+		SqIndex = 2,
+	};
+
+	struct SqpackHeader {
+		static constexpr uint32_t Unknown1_Value = 1;
+		static constexpr uint32_t Unknown2_Value = 0xFFFFFFFFUL;
+
+		char Signature[12]{};
+		LE<uint32_t> HeaderLength;
+		LE<uint32_t> Unknown1;  // 1
+		LE<SqpackType> Type;
+		LE<uint32_t> YYYYMMDD;
+		LE<uint32_t> Time;
+		LE<uint32_t> Unknown2; // Intl: 0xFFFFFFFF, KR/CN: 1
+		char Padding_0x024[0x3c0 - 0x024];
+		char Sha1[20];
+		char Padding_0x3D4[0x2c];
+
+		void VerifySqpackHeader();
+	};
+	static_assert(offsetof(SqpackHeader, Sha1) == 0x3c0, "Bad SqpackHeader definition");
+	static_assert(sizeof(SqpackHeader) == 1024);
+
+	namespace SqIndex {
+		struct SegmentDescriptor {
+			LE<uint32_t> Count;
+			LE<uint32_t> Offset;
+			LE<uint32_t> Size;
+			char Sha1[20];
+			char Padding_0x020[0x28];
+		};
+		static_assert(sizeof SegmentDescriptor == 0x48);
+
+		/*
+		 * Segment 1
+		 * * Stands for files
+		 * * Descriptor.Count = 1
+		 *
+		 * Segment 2
+		 * * Descriptor.Count stands for number of .dat files
+		 * * Descriptor.Size is always 0x100
+		 * * Data is always 8x00s, 4xFFs, and the rest is 0x00s
+		 *
+		 * Segment 3
+		 * * Descriptor.Count = 0
+		 *
+		 * Segment 4
+		 * * Stands for folders
+		 * * Descriptor.Count = 0
+		 */
+
+		struct Header {
+			LE<uint32_t> HeaderLength;
+			SegmentDescriptor FileSegment;
+			char Padding_0x04C[4];
+			SegmentDescriptor DataFilesSegment;  // Size is always 0x100
+			SegmentDescriptor UnknownSegment3;
+			SegmentDescriptor FolderSegment;
+			char Padding_0x128[4];
+			uint32_t IndexType;  // 0 for normal, 2 for Index2
+			char Padding_0x130[0x3c0 - 0x130];
+			char Sha1[20];
+			char Padding_0x3D4[0x2c];
+
+			void VerifySqpackIndexHeader();
+
+			void VerifyDataFileSegment(const std::vector<char>& DataFileSegment);
+
+		};
+		static_assert(sizeof(Header) == 1024);
+
+		struct FileSegmentEntry {
+			LE<uint32_t> NameHash;
+			LE<uint32_t> PathHash;
+			LE<uint32_t> Offset;
+			LE<uint32_t> Padding;
+
+			[[nodiscard]] uint32_t DatIndex() const;
+
+			[[nodiscard]] uint64_t DatOffset() const;
+
+			uint32_t DatIndex(uint32_t value);
+
+			uint64_t DatOffset(uint64_t value);
+		};
+
+		struct FileSegmentEntry2 {
+			LE<uint32_t> FullPathHash;
+			LE<uint32_t> Offset;
+
+			[[nodiscard]] uint32_t DatIndex() const;
+
+			[[nodiscard]] uint64_t DatOffset() const;
+
+			uint32_t DatIndex(uint32_t value);
+
+			uint64_t DatOffset(uint64_t value);
+		};
+
+		struct Segment3Entry {
+			LE<uint32_t> Unknown1;
+			LE<uint32_t> Unknown2;
+			LE<uint32_t> Unknown3;
+			LE<uint32_t> Unknown4;
+		};
+
+		struct FolderSegmentEntry {
+			LE<uint32_t> NameHash;
+			LE<uint32_t> FileSegmentOffset;
+			LE<uint32_t> FileSegmentSize;
+			LE<uint32_t> Padding;
+		};
+	}
+
+	namespace SqData {
+		struct Header {
+			static constexpr int MaxFileSize_Value = 0x77359400;  // 2GB
+			static constexpr int Unknown1_Value = 0x10;
+
+			LE<uint32_t> HeaderLength;
+			LE<uint32_t> Null1;
+			LE<uint32_t> Unknown1;
+			union DataSizeDivBy8Type {
+				LE<uint32_t> RawValue;
+
+				DataSizeDivBy8Type& operator=(uint64_t value) {
+					if (value % 128)
+						throw std::invalid_argument("Value must be a multiple of 8.");
+					if (value / 128ULL > UINT32_MAX)
+						throw std::invalid_argument("Value too big.");
+					RawValue = static_cast<uint32_t>(value / 128ULL);
+					return *this;
+				}
+
+				operator uint64_t() const {
+					return Value();
+				}
+
+				[[nodiscard]] uint64_t Value() const {
+					return RawValue * 128ULL;
+				}
+			} DataSize;  // From end of this header to EOF
+			LE<uint32_t> SpanIndex;  // 0x01 = .dat0, 0x02 = .dat1, 0x03 = .dat2, ...
+			LE<uint32_t> Null2;
+			LE<uint32_t> MaxFileSize;
+			LE<uint32_t> Null3;
+			char DataSha1[20];  // From end of this header to EOF
+			char Unknown2[0x3c0 - 0x034];
+			char Sha1[20];
+			char Padding4[0x2c];
+		};
+		static_assert(offsetof(Header, Sha1) == 0x3c0, "Bad SqDataHeader definition");
+
+		enum class FileEntryType {
+			Empty = 1,
+			Binary = 2,
+			Model = 3,
+			Texture = 4,
+		};
+
+		struct FileEntryHeader {
+			LE<uint32_t> HeaderLength;
+			LE<FileEntryType> Type;
+			LE<uint32_t> DecompressedSize;
+			LE<uint32_t> Unknown1;
+			LE<uint32_t> BlockBufferSize;
+			LE<uint32_t> BlockCount;
+		};
+
+		struct BlockHeaderLocator {
+			LE<uint32_t> Offset;
+			LE<uint16_t> BlockSize;
+			LE<uint16_t> DecompressedDataSize;
+		};
+
+		struct BlockHeader {
+			static constexpr uint32_t CompressedSizeNotCompressed = 32000;
+			LE<uint32_t> HeaderLength;
+			LE<uint32_t> Version;
+			LE<uint32_t> CompressedSize;
+			LE<uint32_t> DecompressedSize;
+		};
+
+		struct TextureBlockHeaderLocator {
+			LE<uint32_t> FirstBlockOffset;
+			LE<uint32_t> TotalSize;
+			LE<uint32_t> DecompressedSize;
+			LE<uint32_t> FirstSubBlockIndex;
+			LE<uint32_t> SubBlockCount;
+		};
+
+		struct TexHeader {
+			LE<uint16_t> Unknown1;
+			LE<uint16_t> HeaderLength;
+			LE<uint32_t> CompressionType;
+			LE<uint16_t> DecompressedWidth;
+			LE<uint16_t> DecompressedHeight;
+			LE<uint16_t> Depth;
+			LE<uint16_t> MipmapCount;
+			char Unknown2[0xb];
+		};
+	}
+
+	extern const uint32_t SqexHashTable[4][256];
+	uint32_t SqexHash(const char* ptr, size_t len);
+	uint32_t SqexHash(const std::string& text);
+	uint32_t SqexHash(const std::string_view& text);
+
+	class FileSystemSqPack {
+
+	public:
+		struct SqDataEntry {
+			SqIndex::FileSegmentEntry IndexEntry;
+			SqIndex::FileSegmentEntry2 Index2Entry;
+			uint32_t DataFileIndex;
+			uint64_t DataEntryOffset;
+			uint32_t DataEntryLength = UINT32_MAX;
+		};
+
+		struct SqIndex {
+			SqpackHeader Header{};
+			SqexDef::SqIndex::Header IndexHeader{};
+			std::vector<SqexDef::SqIndex::FolderSegmentEntry> Folders;
+			std::map<uint32_t, std::vector<SqexDef::SqIndex::FileSegmentEntry>> Files;
+			std::vector<char> DataFileSegment;
+			std::vector<SqexDef::SqIndex::Segment3Entry> Segment3;
+
+		private:
+			friend class FileSystemSqPack;
+			SqIndex(const Utils::Win32::File& hFile);
+		};
+
+		struct SqIndex2 {
+			SqpackHeader Header{};
+			SqexDef::SqIndex::Header IndexHeader{};
+			std::vector<SqexDef::SqIndex::FolderSegmentEntry> Folders;
+			std::vector<SqexDef::SqIndex::FileSegmentEntry2> Files;
+			std::vector<char> DataFileSegment;
+			std::vector<SqexDef::SqIndex::Segment3Entry> Segment3;
+
+		private:
+			friend class FileSystemSqPack;
+			SqIndex2(const Utils::Win32::File& hFile);
+		};
+
+		struct SqData {
+			SqpackHeader Header{};
+			SqexDef::SqData::Header DataHeader{};
+			Utils::Win32::File FileOnDisk;
+
+		private:
+			friend class FileSystemSqPack;
+			SqData(Utils::Win32::File hFile, uint32_t datIndex, std::vector<SqDataEntry>& dataEntries);
+		};
+
+		SqIndex Index;
+		SqIndex2 Index2;
+		std::vector<SqDataEntry> Files;
+		std::vector<SqData> Data;
+
+		FileSystemSqPack(const std::filesystem::path& indexFile);
+	};
+
+	class VirtualSqPack {
+
+		class Implementation;
+
+		static constexpr uint32_t EntryAlignment = 128;
+
+		class EntryProvider {
+		public:
+			virtual ~EntryProvider() = default;
+			[[nodiscard]] virtual uint32_t Size() const = 0;
+			virtual size_t Read(uint64_t offset, void* buf, uint64_t length) const = 0;
+		};
+
+		class EmptyEntryProvider : public EntryProvider {
+		public:
+			[[nodiscard]] uint32_t Size() const override;
+			size_t Read(uint64_t offset, void* buf, uint64_t length) const override;
+		};
+
+		class FileOnDiskEntryProvider : public EntryProvider {
+			Utils::Win32::File m_file;
+			const uint64_t m_offset;
+			const uint32_t m_length;
+
+		public:
+			FileOnDiskEntryProvider(Utils::Win32::File file, uint64_t offset, uint32_t length);
+
+			[[nodiscard]] uint32_t Size() const override;
+			size_t Read(uint64_t offset, void* buf, uint64_t length) const override;
+		};
+
+		class OnTheFlyBinaryEntryProvider : public EntryProvider {
+			static constexpr uint16_t ChunkDataSize = 16000;
+			static constexpr uint16_t PaddedChunkSize = (ChunkDataSize + sizeof SqData::BlockHeader + EntryAlignment - 1) / EntryAlignment * EntryAlignment;
+			static constexpr uint16_t ChunkPadSize = PaddedChunkSize - ChunkDataSize - sizeof SqData::BlockHeader;
+			const std::filesystem::path m_path;
+			SqData::FileEntryHeader m_header{};
+
+			uint32_t m_padBeforeData = 0;
+
+			mutable Utils::Win32::File m_hFile;
+
+		public:
+			OnTheFlyBinaryEntryProvider(std::filesystem::path path);
+			~OnTheFlyBinaryEntryProvider() override;
+
+			[[nodiscard]] uint32_t Size() const override;
+			size_t Read(uint64_t offset, void* buf, uint64_t length) const override;
+		};
+
+		class MemoryBinaryEntryProvider : public EntryProvider {
+			static constexpr uint16_t ChunkSize = 16000;
+
+			std::vector<char> m_data;
+
+		public:
+			MemoryBinaryEntryProvider(const std::filesystem::path& path);
+			~MemoryBinaryEntryProvider() override = default;
+
+			[[nodiscard]] uint32_t Size() const override;
+			size_t Read(uint64_t offset, void* buf, uint64_t length) const override;
+		};
+
+		class TextureEntryProvider : public EntryProvider {
+			/*
+			 * [MergedHeader]
+			 * - [FileEntryHeader]
+			 * - [TextureBlockHeaderLocator] * FileEntryHeader.BlockCount
+			 * - SubBlockSize: [uint16_t] * TextureBlockHeaderLocator.SubBlockCount * FileEntryHeader.BlockCount
+			 * - [TexHeaderBytes]
+			 * - - [TexHeader]
+			 * - - MipmapOffset: [uint32_t] * TexHeader.MipmapCount
+			 * - - [ExtraHeader]
+			 * [BlockHeader, Data] * TextureBlockHeaderLocator.SubBlockCount * TexHeader.MipmapCount
+			 */
+
+			static constexpr uint16_t ChunkSize = 16000;
+			const std::filesystem::path m_path;
+			Utils::Win32::File m_hFile;
+
+			std::vector<SqData::TextureBlockHeaderLocator> m_blockLocators;
+			std::vector<uint16_t> m_subBlockSizes;
+			std::vector<uint8_t> m_texHeaderBytes;
+
+			std::vector<uint8_t> m_mergedHeader;
+
+			std::vector<uint32_t> m_mipmapSizes;
+			size_t m_size = 0;
+
+			[[nodiscard]] const SqData::TexHeader& AsTexHeader() const;
+			[[nodiscard]] std::span<const uint32_t> AsMipmapOffsets() const;
+
+		public:
+			TextureEntryProvider(std::filesystem::path path);
+
+			[[nodiscard]] uint32_t Size() const override;
+			size_t Read(uint64_t offset, void* buf, uint64_t length) const override;
+		};
+
+		struct Entry {
+			static constexpr auto NoEntryHash = 0xFFFFFFFF;
+
+			uint32_t PathHash;
+			uint32_t NameHash;
+			uint32_t FullPathHash;
+
+			uint32_t DataFileIndex;
+			uint32_t Length;
+			uint32_t PaddedLength;
+			uint64_t Offset;
+
+			std::unique_ptr<EntryProvider> Provider;
+		};
+
+		std::vector<std::unique_ptr<Entry>> m_entries;
+		std::map<std::pair<uint32_t, uint32_t>, Entry*> m_pathNameTupleEntryPointerMap;
+		std::map<uint32_t, Entry*> m_fullPathEntryPointerMap;
+
+		std::vector<SqIndex::FileSegmentEntry> m_fileEntries1;
+		std::vector<SqIndex::FileSegmentEntry2> m_fileEntries2;
+		std::vector<SqIndex::FolderSegmentEntry> m_folderEntries;
+
+		bool m_frozen = false;
+
+		std::vector<Utils::Win32::File> m_openFiles;
+
+		SqpackHeader m_sqpackIndexHeader{};
+		SqIndex::Header m_sqpackIndexSubHeader{};
+		std::vector<char> m_sqpackIndexSegment2;
+		std::vector<SqIndex::Segment3Entry> m_sqpackIndexSegment3;
+
+		SqpackHeader m_sqpackIndex2Header{};
+		SqIndex::Header m_sqpackIndex2SubHeader{};
+		std::vector<char> m_sqpackIndex2Segment2;
+		std::vector<SqIndex::Segment3Entry> m_sqpackIndex2Segment3;
+
+		SqpackHeader m_sqpackDataHeader{};
+		std::vector<SqData::Header> m_sqpackDataSubHeaders;
+
+	public:
+		VirtualSqPack();
+		~VirtualSqPack() = default;
+
+		struct AddEntryResult {
+			size_t AddedCount;
+			size_t ReplacedCount;
+
+			AddEntryResult& operator+=(const AddEntryResult& r);
+		};
+
+	private:
+		AddEntryResult AddEntry(uint32_t PathHash, uint32_t NameHash, uint32_t FullPathHash, std::unique_ptr<EntryProvider> provider);
+
+	public:
+		AddEntryResult AddEntriesFromSqPack(const std::filesystem::path& indexPath, bool overwriteUnknownSegments = false);
+		AddEntryResult AddEntryFromFile(uint32_t PathHash, uint32_t NameHash, uint32_t FullPathHash, const std::filesystem::path& path);
+
+		[[nodiscard]]
+		size_t NumOfDataFiles() const;
+
+		void Freeze();
+
+		size_t ReadIndex1(uint64_t offset, void* buf, uint64_t length) const;
+		size_t ReadIndex2(uint64_t offset, void* buf, uint64_t length) const;
+		size_t ReadData(uint32_t datIndex, uint64_t offset, void* buf, uint64_t length) const;
+
+		[[nodiscard]] uint64_t SizeIndex1() const;
+		[[nodiscard]] uint64_t SizeIndex2() const;
+		[[nodiscard]] uint64_t SizeData(uint32_t datIndex) const;
+	};
+
+}
+
+#pragma warning(pop)

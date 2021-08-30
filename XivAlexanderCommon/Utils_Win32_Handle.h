@@ -81,4 +81,66 @@ namespace Utils::Win32 {
 		void Set() const;
 		void Reset() const;
 	};
+
+	class File : public Handle {
+	public:
+		File();
+		File(HANDLE hFile, bool ownership);
+		File(File&& r) noexcept;
+		File(const File& r);
+		File& operator =(File&& r) noexcept;
+		File& operator =(const File& r);
+		~File() override;
+
+		void Seek(int64_t offset, DWORD dwMoveMethod) const;
+
+		static File Create(
+			_In_ const std::filesystem::path& path,
+			_In_ DWORD dwDesiredAccess,
+			_In_ DWORD dwShareMode,
+			_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+			_In_ DWORD dwCreationDisposition,
+			_In_ DWORD dwFlagsAndAttributes,
+			_In_opt_ HANDLE hTemplateFile = nullptr
+		);
+
+		enum class PartialIoMode {
+			AlwaysFull,
+			AllowPartial,
+			AllowPartialButRaiseEOF,
+		};
+
+		size_t Read(uint64_t offset, void* buf, size_t len, PartialIoMode readMode = PartialIoMode::AlwaysFull) const;
+
+		template<typename T>
+		size_t Read(uint64_t offset, std::span<T> buf, PartialIoMode readMode = PartialIoMode::AlwaysFull) const {
+			return Read(offset, buf.data(), buf.size_bytes(), readMode) / sizeof T;
+		}
+
+		template<typename T>
+		std::vector<T> Read(uint64_t offset, size_t count, PartialIoMode readMode = PartialIoMode::AlwaysFull) const {
+			std::vector<T> buf;
+			buf.resize(count);
+			buf.resize(Read(offset, std::span(buf), readMode));
+			return buf;
+		}
+
+		template<typename T>
+		T Read(uint64_t offset) const {
+			T buf;
+			Read(offset, std::span(&buf, &buf + 1));
+			return buf;
+		}
+
+		size_t Write(uint64_t offset, const void* buf, size_t len, PartialIoMode writeMode = PartialIoMode::AlwaysFull) const;
+
+		template<typename T>
+		size_t Write(uint64_t offset, std::span<T> buf, PartialIoMode writeMode = PartialIoMode::AlwaysFull) const {
+			return Write(offset, buf.data(), buf.size_bytes(), writeMode) / sizeof T;
+		}
+
+		[[nodiscard]] uint64_t Length() const;
+
+		[[nodiscard]] std::filesystem::path ResolveName(bool bOpenedPath = false, bool bNtPath = false) const;
+	};
 }

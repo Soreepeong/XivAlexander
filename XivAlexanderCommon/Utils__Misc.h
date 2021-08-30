@@ -29,4 +29,15 @@ namespace Utils {
 		for (size_t i = 0; i < sizeof T; ++i)
 			static_cast<char*>(to)[i] = reinterpret_cast<const char*>(&val)[i];
 	}
+
+	template<typename T>
+	void ClearStdContainer(T& c) {
+		T().swap(c);
+	}
+
+	template<typename T, typename ... Args>
+	void ClearStdContainer(T& c, Args ... args) {
+		T().swap(c);
+		ClearStdContainer(std::forward<Args>(args)...);
+	}
 }

@@ -31,11 +31,12 @@ std::vector<uint8_t> Utils::ZlibDecompress(const uint8_t* src, size_t length) {
 	}
 }
 
-std::vector<uint8_t> Utils::ZlibCompress(const uint8_t* src, size_t length) {
+std::vector<uint8_t> Utils::ZlibCompress(const uint8_t* src, size_t length,
+	int level, int method, int windowBits, int memLevel, int strategy) {
 	z_stream stream{};
 	stream.next_in = src;
 	stream.avail_in = static_cast<uInt>(length);
-	if (const auto res = deflateInit(&stream, Z_DEFAULT_COMPRESSION); res != Z_OK)
+	if (const auto res = deflateInit2(&stream, level, method, windowBits, memLevel, strategy); res != Z_OK)
 		throw ZlibError(res);
 
 	try {

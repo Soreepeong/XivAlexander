@@ -24,6 +24,24 @@ void CheckPackageVersions() {
 	}
 }
 
+XivAlexDll::LoaderAction ParseLoaderAction(std::string val) {
+	if (val.empty())
+		return XivAlexDll::LoaderAction::Auto;
+	auto valw = Utils::FromUtf8(val);
+	CharLowerW(&valw[0]);
+	val = Utils::ToUtf8(valw);
+	for (size_t i = 0; i < static_cast<size_t>(XivAlexDll::LoaderAction::Count_); ++i) {
+		const auto compare = std::string(LoaderActionToString(static_cast<XivAlexDll::LoaderAction>(i)));
+		auto equal = true;
+		for (size_t j = 0; equal && j < val.length() && j < compare.length(); ++j) {
+			equal = val[j] == compare[j];
+		}
+		if (equal)
+			return static_cast<XivAlexDll::LoaderAction>(i);
+	}
+	throw std::runtime_error("invalid LoaderAction");
+}
+
 template <>
 std::string argparse::details::repr(XivAlexDll::LoaderAction const& val) {
 	return LoaderActionToString(val);
@@ -105,7 +123,7 @@ public:
 			.required()
 			.nargs(1)
 			.default_value(XivAlexDll::LoaderAction::Auto)
-			.action([](const std::string& val) { return XivAlexDll::ParseLoaderAction(val); });
+			.action([](const std::string& val) { return ParseLoaderAction(val); });
 		argp.add_argument("-l", "--launcher")
 			.help(Utils::ToUtf8(Utils::Win32::FindStringResourceEx(nullptr, IDS_HELP_LAUNCHER) + 1))
 			.required()

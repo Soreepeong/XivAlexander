@@ -32,22 +32,6 @@ const char* XivAlexDll::LoaderActionToString(LoaderAction val) {
 	return "<invalid>";
 }
 
-XivAlexDll::LoaderAction XivAlexDll::ParseLoaderAction(std::string val) {
-	auto valw = Utils::FromUtf8(val);
-	CharLowerW(&valw[0]);
-	val = Utils::ToUtf8(valw);
-	for (size_t i = 0; i < static_cast<size_t>(LoaderAction::Count_); ++i) {
-		const auto compare = std::string(LoaderActionToString(static_cast<LoaderAction>(i)));
-		auto equal = true;
-		for (size_t j = 0; equal && j < val.length() && j < compare.length(); ++j) {
-			equal = val[j] == compare[j];
-		}
-		if (equal)
-			return static_cast<LoaderAction>(i);
-	}
-	throw std::runtime_error("invalid LoaderAction");
-}
-
 XIVALEXANDER_DLLEXPORT DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 	const std::vector<Utils::Win32::Process>& hSources,
 	LoaderAction action,

@@ -18,6 +18,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XivAlexanderLoader", "XivAl
 		{0EABCDC9-5A49-43AE-9B77-EB3FE9D48804} = {0EABCDC9-5A49-43AE-9B77-EB3FE9D48804}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ScratchProject", "ScratchProject\ScratchProject.vcxproj", "{B6C2672B-F7A3-4C79-94B9-34F6B165F751}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -64,6 +66,18 @@ Global
 		{AE08AFB8-15BE-44E2-9705-FE74DB52C953}.ReleaseWithoutAsm|Win32.Build.0 = Release|Win32
 		{AE08AFB8-15BE-44E2-9705-FE74DB52C953}.ReleaseWithoutAsm|x64.ActiveCfg = Release|x64
 		{AE08AFB8-15BE-44E2-9705-FE74DB52C953}.ReleaseWithoutAsm|x64.Build.0 = Release|x64
+		{B6C2672B-F7A3-4C79-94B9-34F6B165F751}.Debug|Win32.ActiveCfg = Debug|Win32
+		{B6C2672B-F7A3-4C79-94B9-34F6B165F751}.Debug|Win32.Build.0 = Debug|Win32
+		{B6C2672B-F7A3-4C79-94B9-34F6B165F751}.Debug|x64.ActiveCfg = Debug|x64
+		{B6C2672B-F7A3-4C79-94B9-34F6B165F751}.Debug|x64.Build.0 = Debug|x64
+		{B6C2672B-F7A3-4C79-94B9-34F6B165F751}.Release|Win32.ActiveCfg = Release|Win32
+		{B6C2672B-F7A3-4C79-94B9-34F6B165F751}.Release|Win32.Build.0 = Release|Win32
+		{B6C2672B-F7A3-4C79-94B9-34F6B165F751}.Release|x64.ActiveCfg = Release|x64
+		{B6C2672B-F7A3-4C79-94B9-34F6B165F751}.Release|x64.Build.0 = Release|x64
+		{B6C2672B-F7A3-4C79-94B9-34F6B165F751}.ReleaseWithoutAsm|Win32.ActiveCfg = Release|Win32
+		{B6C2672B-F7A3-4C79-94B9-34F6B165F751}.ReleaseWithoutAsm|Win32.Build.0 = Release|Win32
+		{B6C2672B-F7A3-4C79-94B9-34F6B165F751}.ReleaseWithoutAsm|x64.ActiveCfg = Release|x64
+		{B6C2672B-F7A3-4C79-94B9-34F6B165F751}.ReleaseWithoutAsm|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
