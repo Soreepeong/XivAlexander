@@ -338,8 +338,11 @@ void App::XivAlexApp::RunOnGameLoop(std::function<void()> f) {
 }
 
 std::string App::XivAlexApp::IsUnloadable() const {
-	if (const auto pszDisabledReason = XivAlexDll::GetUnloadDisabledReason())
+	if (const auto pszDisabledReason = Dll::GetUnloadDisabledReason())
 		return pszDisabledReason;
+
+	if (Dll::IsLoadedAsDependency())
+		return "Loaded as dependency";  // TODO: create string resource
 
 	if (m_pImpl == nullptr)
 		return "";
@@ -359,7 +362,7 @@ App::Network::SocketHook* App::XivAlexApp::GetSocketHook() {
 
 static std::unique_ptr<App::XivAlexApp> s_xivAlexApp;
 
-extern "C" __declspec(dllexport) size_t __stdcall XivAlexDll::EnableXivAlexander(size_t bEnable) {
+size_t __stdcall XivAlexDll::EnableXivAlexander(size_t bEnable) {
 	if (!!bEnable == !!s_xivAlexApp)
 		return 0;
 	try {
@@ -377,7 +380,7 @@ extern "C" __declspec(dllexport) size_t __stdcall XivAlexDll::EnableXivAlexander
 	}
 }
 
-extern "C" __declspec(dllexport) size_t __stdcall XivAlexDll::ReloadConfiguration(void* lpReserved) {
+size_t __stdcall XivAlexDll::ReloadConfiguration(void* lpReserved) {
 	if (s_xivAlexApp) {
 		const auto config = App::Config::Acquire();
 		config->Runtime.Reload(true);

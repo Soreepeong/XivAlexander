@@ -21,6 +21,7 @@ namespace XivAlexDll {
 		Unload,
 		Launcher,
 		UpdateCheck,
+		Internal_Update_DependencyDllMode,
 		Internal_Update_Step2_ReplaceFiles,
 		Internal_Update_Step3_CleanupFiles,
 		Internal_Inject_HookEntryPoint,
@@ -71,8 +72,14 @@ namespace XivAlexDll {
 	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall ReloadConfiguration(void* lpReserved);
 	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall DisableAllApps(void* lpReserved);
 	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall CallFreeLibrary(void*);
-	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall DisableUnloading(const char* pszReason);
-	extern "C" XIVALEXANDER_DLLEXPORT const char* __stdcall GetUnloadDisabledReason();
+
+	enum class CheckPackageVersionResult {
+		OK = 0,
+		MissingFiles = 1,
+		VersionMismatch = 2,
+	};
+	
+	XIVALEXANDER_DLLEXPORT [[nodiscard]]  CheckPackageVersionResult CheckPackageVersion();
 }
 
 #endif

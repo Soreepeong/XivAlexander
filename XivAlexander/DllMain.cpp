@@ -5,6 +5,8 @@
 
 static Utils::Win32::LoadedModule s_hModule;
 static Utils::Win32::ActivationContext s_hActivationContext;
+static std::string s_dllUnloadDisableReason;
+static bool s_bLoadedAsDependency = false;
 
 const Utils::Win32::LoadedModule& Dll::Module() {
 	return s_hModule;
@@ -23,6 +25,7 @@ const char* XivAlexDll::LoaderActionToString(LoaderAction val) {
 		case LoaderAction::Unload: return "unload";
 		case LoaderAction::Launcher: return "launcher";
 		case LoaderAction::UpdateCheck: return "update-check";
+		case LoaderAction::Internal_Update_DependencyDllMode: return "_internal_update_dependencydllmode";
 		case LoaderAction::Internal_Update_Step2_ReplaceFiles: return "_internal_update_step2_replacefiles";
 		case LoaderAction::Internal_Update_Step3_CleanupFiles: return "_internal_update_step3_cleanupfiles";
 		case LoaderAction::Internal_Inject_HookEntryPoint: return "_internal_inject_hookentrypoint";
@@ -32,7 +35,7 @@ const char* XivAlexDll::LoaderActionToString(LoaderAction val) {
 	return "<invalid>";
 }
 
-XIVALEXANDER_DLLEXPORT DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
+DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 	const std::vector<Utils::Win32::Process>& hSources,
 	LoaderAction action,
 	bool wait,
@@ -76,6 +79,8 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 	switch (fdwReason) {
 		case DLL_PROCESS_ATTACH:
 		{
+			s_bLoadedAsDependency = !!lpReserved;  // non-null for static loads
+
 			try {
 				s_hModule.Attach(hInstance, Utils::Win32::LoadedModule::Null, false, "Instance attach failed <cannot happen>");
 				s_hActivationContext = Utils::Win32::ActivationContext(ACTCTXW{
@@ -108,24 +113,49 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 	return TRUE;
 }
 
-extern "C" __declspec(dllexport) size_t __stdcall XivAlexDll::DisableAllApps(void*) {
+size_t __stdcall XivAlexDll::DisableAllApps(void*) {
 	EnableXivAlexander(0);
 	EnableInjectOnCreateProcess(0);
 	return 0;
 }
 
-extern "C" __declspec(dllexport) void __stdcall XivAlexDll::CallFreeLibrary(void*) {
+void __stdcall XivAlexDll::CallFreeLibrary(void*) {
 	FreeLibraryAndExitThread(Dll::Module(), 0);
 }
 
-static std::string s_dllUnloadDisableReason;
+[[nodiscard]]
+XivAlexDll::CheckPackageVersionResult XivAlexDll::CheckPackageVersion() {
+	const auto dir = Utils::Win32::Process::Current().PathOf().parent_path();
+	std::vector<std::pair<std::string, std::string>> modules;
+	try {
+		modules = {
+			Utils::Win32::FormatModuleVersionString(dir / XivAlex::XivAlexLoader32NameW),
+			Utils::Win32::FormatModuleVersionString(dir / XivAlex::XivAlexLoader64NameW),
+			Utils::Win32::FormatModuleVersionString(dir / XivAlex::XivAlexDll32NameW),
+			Utils::Win32::FormatModuleVersionString(dir / XivAlex::XivAlexDll64NameW),
+		};
+	} catch (const Utils::Win32::Error& e) {
+		if (e.Code() == ERROR_FILE_NOT_FOUND)
+			return CheckPackageVersionResult::MissingFiles;
+		throw;
+	}
+	for (size_t i = 1; i < modules.size(); ++i) {
+		if (modules[0].first != modules[i].first || modules[0].second != modules[i].second)
+			return CheckPackageVersionResult::VersionMismatch;
+	}
+	return CheckPackageVersionResult::OK;
+}
 
-size_t __stdcall XivAlexDll::DisableUnloading(const char* pszReason) {
+size_t Dll::DisableUnloading(const char* pszReason) {
 	s_dllUnloadDisableReason = pszReason ? pszReason : "(reason not specified)";
-	Dll::Module().Pin();
+	Module().Pin();
 	return 0;
 }
 
-const char* __stdcall XivAlexDll::GetUnloadDisabledReason() {
+const char* Dll::GetUnloadDisabledReason() {
 	return s_dllUnloadDisableReason.empty() ? nullptr : s_dllUnloadDisableReason.c_str();
+}
+
+bool Dll::IsLoadedAsDependency() {
+	return s_bLoadedAsDependency;
 }

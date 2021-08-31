@@ -418,7 +418,9 @@ LRESULT App::Window::Main::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
 				case ID_TRAYMENU_CHECKFORUPDATES:
 					try {
-						LaunchXivAlexLoaderWithTargetHandles({ Utils::Win32::Process::Current() }, XivAlexDll::LoaderAction::UpdateCheck, false);
+						LaunchXivAlexLoaderWithTargetHandles({ Utils::Win32::Process::Current() },
+							Dll::IsLoadedAsDependency() ? XivAlexDll::LoaderAction::Internal_Update_DependencyDllMode : XivAlexDll::LoaderAction::UpdateCheck,
+							false);
 					} catch (const std::exception& e) {
 						Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 							m_config->Runtime.FormatStringRes(IDS_ERROR_UPDATE_CHECK_LAUNCH, e.what()));
@@ -586,7 +588,7 @@ void App::Window::Main::RepopulateMenu(HMENU hMenu) const {
 
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_RESTART, false, !m_launchParameters.empty());
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEDIRECTX11, m_bUseDirectX11, !m_launchParameters.empty());
-	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER, m_bUseXivAlexander, !m_launchParameters.empty());
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER, Dll::IsLoadedAsDependency() || m_bUseXivAlexander, !m_launchParameters.empty() && !Dll::IsLoadedAsDependency());
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION, m_bUseParameterObfuscation, !m_launchParameters.empty());
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEELEVATION, m_bUseElevation, !m_launchParameters.empty());
 	const auto languageRegionModifiable = LanguageRegionModifiable();
@@ -637,10 +639,11 @@ void App::Window::Main::AskRestartGame(bool onlyOnModifer) {
 	}
 	const auto yes = Utils::Win32::MB_GetString(IDYES - 1);
 	const auto no = Utils::Win32::MB_GetString(IDNO - 1);
+	const bool useXivAlexander = m_bUseXivAlexander || Dll::IsLoadedAsDependency();
 	if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, m_config->Runtime.GetStringRes(IDS_APP_NAME), m_config->Runtime.FormatStringRes(
 		IDS_CONFIRM_RESTART_GAME,
 		m_bUseDirectX11 ? yes : no,
-		m_bUseXivAlexander ? yes : no,
+		useXivAlexander ? yes : no,
 		m_bUseParameterObfuscation ? yes : no,
 		m_bUseElevation ? yes : no,
 		m_config->Runtime.GetLanguageNameLocalized(m_gameLanguage),
@@ -677,7 +680,7 @@ void App::Window::Main::AskRestartGame(bool onlyOnModifer) {
 
 			XivAlexDll::EnableInjectOnCreateProcess(0);
 			bool ok;
-			if (m_bUseXivAlexander)
+			if (useXivAlexander)
 				ok = Utils::Win32::RunProgram({
 					.path = Dll::Module().PathOf().parent_path() / (m_bUseDirectX11 ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW),
 					.args = std::format(L"-a launcher -l select \"{}\" {}", game, XivAlex::CreateGameCommandLine(params, m_bUseParameterObfuscation)),

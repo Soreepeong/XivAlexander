@@ -3,27 +3,6 @@
 
 constexpr auto MsgboxTitle = L"XivAlexander Loader";
 
-static
-void CheckPackageVersions() {
-	const auto dir = Utils::Win32::Process::Current().PathOf().parent_path();
-	std::vector<std::pair<std::string, std::string>> modules;
-	try {
-		modules = {
-			Utils::Win32::FormatModuleVersionString(dir / XivAlex::XivAlexLoader32NameW),
-			Utils::Win32::FormatModuleVersionString(dir / XivAlex::XivAlexLoader64NameW),
-			Utils::Win32::FormatModuleVersionString(dir / XivAlex::XivAlexDll32NameW),
-			Utils::Win32::FormatModuleVersionString(dir / XivAlex::XivAlexDll64NameW),
-		};
-	} catch (const Utils::Win32::Error& e) {
-		if (e.Code() == ERROR_FILE_NOT_FOUND)
-			throw std::runtime_error(Utils::ToUtf8(Utils::Win32::FindStringResourceEx(nullptr, IDS_ERROR_MISSING_FILES) + 1));
-	}
-	for (size_t i = 1; i < modules.size(); ++i) {
-		if (modules[0].first != modules[i].first || modules[0].second != modules[i].second)
-			throw std::runtime_error(Utils::ToUtf8(Utils::Win32::FindStringResourceEx(nullptr, IDS_ERROR_INCONSISTENT_FILES) + 1));
-	}
-}
-
 XivAlexDll::LoaderAction ParseLoaderAction(std::string val) {
 	if (val.empty())
 		return XivAlexDll::LoaderAction::Auto;
@@ -674,7 +653,7 @@ static void PerformUpdateAndExitIfSuccessful(std::vector<Utils::Win32::Process> 
 	}
 }
 
-static void CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses) {
+static void CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses, bool offerAutomaticUpdate) {
 	const auto updateZip = Utils::Win32::Process::Current().PathOf().parent_path() / "update.zip";
 	if (exists(updateZip))
 		PerformUpdateAndExitIfSuccessful(prevProcesses, "", updateZip);
@@ -704,26 +683,30 @@ static void CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses) {
 				local[0], local[1], local[2], local[3], remote[0], remote[1], remote[2], remote[3], up.PublishDate);
 			return;
 		}
+		if (offerAutomaticUpdate) {
+			while (true) {
+				switch (Utils::Win32::MessageBoxF(nullptr, MB_YESNOCANCEL, MsgboxTitle, std::format(
+					Utils::Win32::FindStringResourceEx(nullptr, IDS_UPDATE_CONFIRM) + 1,
+					remote[0], remote[1], remote[2], remote[3], up.PublishDate, local[0], local[1], local[2], local[3],
+					Utils::Win32::MB_GetString(IDYES - 1),
+					Utils::Win32::MB_GetString(IDNO - 1),
+					Utils::Win32::MB_GetString(IDCANCEL - 1)
+				).c_str())) {
+					case IDYES:
+						ShellExecuteW(nullptr, L"open", Utils::Win32::FindStringResourceEx(nullptr, IDS_URL_RELEASES) + 1, nullptr, nullptr, SW_SHOW);
+						break;
 
-		while (true) {
-			switch (Utils::Win32::MessageBoxF(nullptr, MB_YESNOCANCEL, MsgboxTitle, std::format(
-				Utils::Win32::FindStringResourceEx(nullptr, IDS_UPDATE_CONFIRM) + 1,
-				remote[0], remote[1], remote[2], remote[3], up.PublishDate, local[0], local[1], local[2], local[3],
-				Utils::Win32::MB_GetString(IDYES - 1),
-				Utils::Win32::MB_GetString(IDNO - 1),
-				Utils::Win32::MB_GetString(IDCANCEL - 1)
-			).c_str())) {
-				case IDYES:
-					ShellExecuteW(nullptr, L"open", Utils::Win32::FindStringResourceEx(nullptr, IDS_URL_RELEASES) + 1, nullptr, nullptr, SW_SHOW);
-					break;
+					case IDNO:
+						PerformUpdateAndExitIfSuccessful(std::move(prevProcesses), up.DownloadLink, updateZip);
+						return;
 
-				case IDNO:
-					PerformUpdateAndExitIfSuccessful(std::move(prevProcesses), up.DownloadLink, updateZip);
-					return;
-
-				case IDCANCEL:
-					return;
+					case IDCANCEL:
+						return;
+				}
 			}
+		} else {
+			// TODO: create string resource: New update is available, cannot autoupdate because being called as dll, etc etc.
+			ShellExecuteW(nullptr, L"open", Utils::Win32::FindStringResourceEx(nullptr, IDS_URL_RELEASES) + 1, nullptr, nullptr, SW_SHOW);
 		}
 	} catch (const std::exception& e) {
 		Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, Utils::Win32::FindStringResourceEx(nullptr, IDS_ERROR_UNEXPECTED) + 1, e.what());
@@ -766,7 +749,16 @@ int WINAPI wWinMain(
 	const auto dllPath = dllDir / XivAlex::XivAlexDllNameW;
 
 	try {
-		CheckPackageVersions();
+		switch (XivAlexDll::CheckPackageVersion()) {
+			case XivAlexDll::CheckPackageVersionResult::OK:
+				break;
+
+			case XivAlexDll::CheckPackageVersionResult::MissingFiles:
+				throw std::runtime_error(Utils::ToUtf8(Utils::Win32::FindStringResourceEx(nullptr, IDS_ERROR_MISSING_FILES) + 1));
+
+			case XivAlexDll::CheckPackageVersionResult::VersionMismatch:
+				throw std::runtime_error(Utils::ToUtf8(Utils::Win32::FindStringResourceEx(nullptr, IDS_ERROR_INCONSISTENT_FILES) + 1));
+		}
 	} catch (std::exception& e) {
 		if (Utils::Win32::MessageBoxF(nullptr, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON1, MsgboxTitle,
 			Utils::Win32::FindStringResourceEx(nullptr, IDS_ERROR_COMPONENTS) + 1,
@@ -811,18 +803,20 @@ int WINAPI wWinMain(
 			}
 			return 0;
 
-		} else if (g_parameters.m_action == XivAlexDll::LoaderAction::UpdateCheck) {
+		} else if (g_parameters.m_action == XivAlexDll::LoaderAction::UpdateCheck ||
+			g_parameters.m_action == XivAlexDll::LoaderAction::Internal_Update_DependencyDllMode) {
 			if (!Utils::Win32::Process::Current().IsProcess64Bits()) {
 				SYSTEM_INFO si;
 				GetNativeSystemInfo(&si);
 				if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) {
 					std::vector<HANDLE> handles;
-					LaunchXivAlexLoaderWithTargetHandles(g_parameters.m_targetProcessHandles, XivAlexDll::LoaderAction::UpdateCheck, false, (dllDir / XivAlex::XivAlexLoader64NameW).c_str());
+					LaunchXivAlexLoaderWithTargetHandles(g_parameters.m_targetProcessHandles, g_parameters.m_action, false, (dllDir / XivAlex::XivAlexLoader64NameW).c_str());
 					return 0;
 				}
 			}
 
-			CheckForUpdates(std::move(g_parameters.m_targetProcessHandles));
+			CheckForUpdates(std::move(g_parameters.m_targetProcessHandles),
+				g_parameters.m_action == XivAlexDll::LoaderAction::UpdateCheck);
 			return 0;
 
 		} else if (g_parameters.m_action == XivAlexDll::LoaderAction::Internal_Update_Step2_ReplaceFiles) {

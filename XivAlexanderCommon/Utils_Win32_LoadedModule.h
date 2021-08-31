@@ -20,8 +20,11 @@ namespace Utils::Win32 {
 		static LoadedModule LoadMore(const LoadedModule& module);
 
 		template<typename T>
-		T* GetProcAddress(const char* szName) const {
-			return reinterpret_cast<T*>(::GetProcAddress(m_object, szName));
+		T* GetProcAddress(const char* szName, bool throwIfNotFound = false) const {
+			const auto result = reinterpret_cast<T*>(::GetProcAddress(m_object, szName));
+			if (throwIfNotFound && !result)
+				throw std::runtime_error(std::format("Function \"{}\" not found", szName));
+			return result;
 		}
 
 		[[nodiscard]] std::filesystem::path PathOf() const;

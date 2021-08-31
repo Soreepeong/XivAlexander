@@ -159,7 +159,7 @@ void App::InjectOnCreateProcessApp::SetFlags(size_t flags) {
 
 static std::unique_ptr<App::InjectOnCreateProcessApp> s_injectOnCreateProcessApp;
 
-extern "C" __declspec(dllexport) size_t __stdcall XivAlexDll::EnableInjectOnCreateProcess(size_t flags) {
+size_t __stdcall XivAlexDll::EnableInjectOnCreateProcess(size_t flags) {
 	const bool use = flags & InjectOnCreateProcessAppFlags::Use;
 	if (use == !!s_injectOnCreateProcessApp) {
 		if (s_injectOnCreateProcessApp)
@@ -248,7 +248,7 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent, HANDLE 
 	Sleep(5000);
 }
 
-extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters * pParam) {
+void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters * pParam) {
 	DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &pParam->Internal.hMainThread, 0, FALSE, DUPLICATE_SAME_ACCESS);
 	pParam->Internal.hContinuableEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
 	pParam->Internal.hWorkerThread = CreateThread(nullptr, 0, [](void* pParam) -> DWORD {
@@ -290,7 +290,7 @@ extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(Inj
 	VirtualFree(pParam->TrampolineAddress, 0, MEM_RELEASE);
 }
 
-XIVALEXANDER_DLLEXPORT XivAlexDll::InjectEntryPointParameters* XivAlexDll::PatchEntryPointForInjection(HANDLE hProcess) {
+XivAlexDll::InjectEntryPointParameters* XivAlexDll::PatchEntryPointForInjection(HANDLE hProcess) {
 	const auto process = Utils::Win32::Process(hProcess, false);
 
 	void* pBaseAddress;
