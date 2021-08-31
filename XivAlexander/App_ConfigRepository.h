@@ -232,6 +232,24 @@ namespace App {
 			};
 		};
 
+		class DllLoader : public BaseRepository {
+			friend class Config;
+			using BaseRepository::BaseRepository;
+
+		public:
+			// Relative paths are relative to game installation directory.
+
+			// If not set, defaults to %APPDATA%/XivAlexander
+			Item<std::string> FixedConfigurationFolderPath = CreateConfigItem(this, "FixedConfigurationFolderPath", std::string(""));
+
+			// If not set, defaults to files in System32 (SysWOW64) in %WINDIR% (GetSystemDirectory)
+			// If set but invalid, will cause errors.
+			Item<std::string> ChainLoadPath_d3d11 = CreateConfigItem(this, "ChainLoadPath_d3d11", std::string(""));
+			Item<std::string> ChainLoadPath_dxgi = CreateConfigItem(this, "ChainLoadPath_dxgi", std::string(""));
+			Item<std::string> ChainLoadPath_d3d9= CreateConfigItem(this, "ChainLoadPath_d3d9", std::string(""));
+			Item<std::string> ChainLoadPath_dinput8= CreateConfigItem(this, "ChainLoadPath_dinput8", std::string(""));
+		};
+
 	protected:
 		static std::weak_ptr<Config> s_instance;
 		bool m_bSuppressSave = false;

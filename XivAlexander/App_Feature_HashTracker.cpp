@@ -116,7 +116,7 @@ public:
 					const auto recreatedFilePath = m_baseSqpackDir / fileToOpen.parent_path().filename() / fileToOpen.filename();
 					const auto indexFile = std::filesystem::path(recreatedFilePath).replace_extension(L".index");
 					const auto index2File = std::filesystem::path(recreatedFilePath).replace_extension(L".index2");
-					if (exists(indexFile) && exists(index2File) && indexFile.filename().wstring() == L"000000.win32.index") {
+					if (exists(indexFile) && exists(index2File)) {
 						int pathType = VirtualPath::PathTypeInvalid;
 
 						if (fileToOpen == indexFile) {

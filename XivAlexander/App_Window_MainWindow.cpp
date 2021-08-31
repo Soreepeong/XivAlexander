@@ -639,11 +639,10 @@ void App::Window::Main::AskRestartGame(bool onlyOnModifer) {
 	}
 	const auto yes = Utils::Win32::MB_GetString(IDYES - 1);
 	const auto no = Utils::Win32::MB_GetString(IDNO - 1);
-	const bool useXivAlexander = m_bUseXivAlexander || Dll::IsLoadedAsDependency();
 	if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, m_config->Runtime.GetStringRes(IDS_APP_NAME), m_config->Runtime.FormatStringRes(
 		IDS_CONFIRM_RESTART_GAME,
 		m_bUseDirectX11 ? yes : no,
-		useXivAlexander ? yes : no,
+		Dll::IsLoadedAsDependency() || m_bUseXivAlexander ? yes : no,
 		m_bUseParameterObfuscation ? yes : no,
 		m_bUseElevation ? yes : no,
 		m_config->Runtime.GetLanguageNameLocalized(m_gameLanguage),
@@ -680,7 +679,7 @@ void App::Window::Main::AskRestartGame(bool onlyOnModifer) {
 
 			XivAlexDll::EnableInjectOnCreateProcess(0);
 			bool ok;
-			if (useXivAlexander)
+			if (!Dll::IsLoadedAsDependency() && m_bUseXivAlexander)
 				ok = Utils::Win32::RunProgram({
 					.path = Dll::Module().PathOf().parent_path() / (m_bUseDirectX11 ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW),
 					.args = std::format(L"-a launcher -l select \"{}\" {}", game, XivAlex::CreateGameCommandLine(params, m_bUseParameterObfuscation)),
