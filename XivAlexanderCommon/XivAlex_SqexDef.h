@@ -25,9 +25,11 @@ namespace XivAlex::SqexDef {
 	};
 
 	template<typename T>
-	union LE {
+	struct LE {
 	private:
-		T value;
+		union {
+			T value;
+		};
 
 	public:
 		LE() = default;
@@ -41,20 +43,26 @@ namespace XivAlex::SqexDef {
 		}
 
 		LE<T>& operator= (T newValue) {
-			value = std::move(newValue);
+			Value(std::move(newValue));
 			return *this;
 		}
 
 		T Value() const {
 			return value;
 		}
+
+		void Value(T newValue) {
+			value = std::move(newValue);
+		}
 	};
 
 	template<typename T>
-	union BE {
+	struct BE {
 	private:
-		T value;
-		char buf[sizeof T];
+		union {
+			T value;
+			char buf[sizeof T];
+		};
 
 	public:
 		BE() = default;
@@ -63,14 +71,13 @@ namespace XivAlex::SqexDef {
 			: value(defaultValue) {
 			std::reverse(buf, buf + sizeof T);
 		}
-
+		
 		operator T() const {
 			return Value();
 		}
 
 		BE<T>& operator= (T newValue) {
-			value = std::move(newValue);
-			std::reverse(buf, buf + sizeof buf);
+			Value(std::move(newValue));
 			return *this;
 		}
 
@@ -83,50 +90,20 @@ namespace XivAlex::SqexDef {
 			std::reverse(localbuf, localbuf + sizeof T);
 			return localval;
 		}
+
+		void Value(T newValue) {
+			value = std::move(newValue);
+			std::reverse(buf, buf + sizeof buf);
+		}
 	};
 
-	constexpr static auto EnableShaVerification = false;
-	constexpr static auto EnableSqDataFileLengthVerification = false;
-
-	template<typename T, size_t C>
-	bool IsAllSameValue(T(&arr)[C], std::remove_cv_t<T> supposedValue = 0) {
-		for (size_t i = 0; i < C; ++i) {
-			if (arr[i] != supposedValue)
-				return false;
-		}
-		return true;
-	}
-
-	template<typename T>
-	bool IsAllSameValue(const std::span<T>& arr, std::remove_cv_t<T> supposedValue = 0) {
-		for (const auto& v : arr)
-			if (v != supposedValue)
-				return true;
-		return true;
-	}
-
-	void CalculateSha1(char(&result)[20], const void* data, size_t cb);
-
-	template<typename T>
-	void CalculateSha1(char(&result)[20], const std::span<T>& data) {
-		CalculateSha1(result, data.data(), data.size_bytes());
-	}
-
-	template<typename T>
-	void VerifySha1(const char(&compareWith)[20], const std::span<T>& data, const char* throwMessage) {
-		if constexpr (!EnableShaVerification)
-			return;
-
-		char result[20];
-		CalculateSha1(result, data);
-		if (memcmp(result, compareWith, 20) != 0) {
-			if (data.empty() && IsAllSameValue(compareWith))
-				return;
-			throw std::runtime_error(throwMessage);
-		}
-	}
+	class InvalidSqpackException : public std::runtime_error {
+	public:
+		using std::runtime_error::runtime_error;
+	};
 
 	enum class SqpackType : uint32_t {
+		Unspecified = UINT32_MAX,
 		SqDatabase = 0,
 		SqData = 1,
 		SqIndex = 2,
@@ -135,6 +112,7 @@ namespace XivAlex::SqexDef {
 	struct SqpackHeader {
 		static constexpr uint32_t Unknown1_Value = 1;
 		static constexpr uint32_t Unknown2_Value = 0xFFFFFFFFUL;
+		static const char Signature_Value[12];
 
 		char Signature[12]{};
 		LE<uint32_t> HeaderLength;
@@ -147,7 +125,7 @@ namespace XivAlex::SqexDef {
 		char Sha1[20];
 		char Padding_0x3D4[0x2c];
 
-		void VerifySqpackHeader();
+		void VerifySqpackHeader(SqpackType supposedType);
 	};
 	static_assert(offsetof(SqpackHeader, Sha1) == 0x3c0, "Bad SqpackHeader definition");
 	static_assert(sizeof(SqpackHeader) == 1024);
@@ -181,6 +159,12 @@ namespace XivAlex::SqexDef {
 		 */
 
 		struct Header {
+			enum class IndexType : uint32_t {
+				Unspecified = UINT32_MAX,
+				Index = 0,
+				Index2 = 2,
+			};
+
 			LE<uint32_t> HeaderLength;
 			SegmentDescriptor FileSegment;
 			char Padding_0x04C[4];
@@ -188,44 +172,35 @@ namespace XivAlex::SqexDef {
 			SegmentDescriptor UnknownSegment3;
 			SegmentDescriptor FolderSegment;
 			char Padding_0x128[4];
-			uint32_t IndexType;  // 0 for normal, 2 for Index2
+			LE<IndexType> Type;
 			char Padding_0x130[0x3c0 - 0x130];
 			char Sha1[20];
 			char Padding_0x3D4[0x2c];
 
-			void VerifySqpackIndexHeader();
+			void VerifySqpackIndexHeader(IndexType expectedIndexType);
 
 			void VerifyDataFileSegment(const std::vector<char>& DataFileSegment);
 
 		};
 		static_assert(sizeof(Header) == 1024);
 
+		struct LEDataLocator : LE<uint32_t> {
+			[[nodiscard]] uint32_t Index() const;
+			[[nodiscard]] uint64_t Offset() const;
+			uint32_t Index(uint32_t value);
+			uint64_t Offset(uint64_t value);
+		};
+
 		struct FileSegmentEntry {
 			LE<uint32_t> NameHash;
 			LE<uint32_t> PathHash;
-			LE<uint32_t> Offset;
+			LEDataLocator DatFile;
 			LE<uint32_t> Padding;
-
-			[[nodiscard]] uint32_t DatIndex() const;
-
-			[[nodiscard]] uint64_t DatOffset() const;
-
-			uint32_t DatIndex(uint32_t value);
-
-			uint64_t DatOffset(uint64_t value);
 		};
 
 		struct FileSegmentEntry2 {
 			LE<uint32_t> FullPathHash;
-			LE<uint32_t> Offset;
-
-			[[nodiscard]] uint32_t DatIndex() const;
-
-			[[nodiscard]] uint64_t DatOffset() const;
-
-			uint32_t DatIndex(uint32_t value);
-
-			uint64_t DatOffset(uint64_t value);
+			LEDataLocator DatFile;
 		};
 
 		struct Segment3Entry {
@@ -240,13 +215,16 @@ namespace XivAlex::SqexDef {
 			LE<uint32_t> FileSegmentOffset;
 			LE<uint32_t> FileSegmentSize;
 			LE<uint32_t> Padding;
+
+			void Verify() const;
 		};
 	}
 
 	namespace SqData {
 		struct Header {
-			static constexpr int MaxFileSize_Value = 0x77359400;  // 2GB
-			static constexpr int Unknown1_Value = 0x10;
+			static constexpr uint32_t MaxFileSize_Value = 0x77359400;  // 2GB
+			static constexpr uint64_t MaxFileSize_MaxValue = 0x800000000ULL;  // Max addressable via how Offset works
+			static constexpr uint32_t Unknown1_Value = 0x10;
 
 			LE<uint32_t> HeaderLength;
 			LE<uint32_t> Null1;
@@ -273,12 +251,13 @@ namespace XivAlex::SqexDef {
 			} DataSize;  // From end of this header to EOF
 			LE<uint32_t> SpanIndex;  // 0x01 = .dat0, 0x02 = .dat1, 0x03 = .dat2, ...
 			LE<uint32_t> Null2;
-			LE<uint32_t> MaxFileSize;
-			LE<uint32_t> Null3;
+			LE<uint64_t> MaxFileSize;
 			char DataSha1[20];  // From end of this header to EOF
-			char Unknown2[0x3c0 - 0x034];
+			char Padding_0x034[0x3c0 - 0x034];
 			char Sha1[20];
-			char Padding4[0x2c];
+			char Padding_0x3D4[0x2c];
+			
+			void Verify(uint32_t expectedSpanIndex) const;
 		};
 		static_assert(offsetof(Header, Sha1) == 0x3c0, "Bad SqDataHeader definition");
 
@@ -358,7 +337,7 @@ namespace XivAlex::SqexDef {
 
 		private:
 			friend class FileSystemSqPack;
-			SqIndex(const Utils::Win32::File& hFile);
+			SqIndex(const Utils::Win32::File& hFile, bool strictVerify);
 		};
 
 		struct SqIndex2 {
@@ -371,7 +350,7 @@ namespace XivAlex::SqexDef {
 
 		private:
 			friend class FileSystemSqPack;
-			SqIndex2(const Utils::Win32::File& hFile);
+			SqIndex2(const Utils::Win32::File& hFile, bool strictVerify);
 		};
 
 		struct SqData {
@@ -381,7 +360,7 @@ namespace XivAlex::SqexDef {
 
 		private:
 			friend class FileSystemSqPack;
-			SqData(Utils::Win32::File hFile, uint32_t datIndex, std::vector<SqDataEntry>& dataEntries);
+			SqData(Utils::Win32::File hFile, uint32_t datIndex, std::vector<SqDataEntry>& dataEntries, bool strictVerify);
 		};
 
 		SqIndex Index;
@@ -389,7 +368,7 @@ namespace XivAlex::SqexDef {
 		std::vector<SqDataEntry> Files;
 		std::vector<SqData> Data;
 
-		FileSystemSqPack(const std::filesystem::path& indexFile);
+		FileSystemSqPack(const std::filesystem::path& indexFile, bool strictVerify);
 	};
 
 	class VirtualSqPack {
@@ -552,7 +531,7 @@ namespace XivAlex::SqexDef {
 		[[nodiscard]]
 		size_t NumOfDataFiles() const;
 
-		void Freeze();
+		void Freeze(bool strict);
 
 		size_t ReadIndex1(uint64_t offset, void* buf, uint64_t length) const;
 		size_t ReadIndex2(uint64_t offset, void* buf, uint64_t length) const;

@@ -214,7 +214,7 @@ public:
 										}
 									}
 
-									vpath->VirtualSqPack->Freeze();
+									vpath->VirtualSqPack->Freeze(false);
 								}
 							}
 

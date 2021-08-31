@@ -5,93 +5,49 @@
 
 #include "Utils__Zlib.h"
 
-void XivAlex::SqexDef::SqIndex::Header::VerifySqpackIndexHeader() {
-	if (HeaderLength != sizeof Header)
-		throw std::runtime_error("sizeof IndexHeader != 0x400");
-	VerifySha1(Sha1, std::span(reinterpret_cast<const char*>(this), offsetof(SqexDef::SqIndex::Header, Sha1)), "IndexHeader SHA-1");
-	if (!IsAllSameValue(Padding_0x04C))
-		throw std::runtime_error("Padding_0x04C");
-	if (!IsAllSameValue(Padding_0x128))
-		throw std::runtime_error("Padding_0x128");
-	if (!IsAllSameValue(Padding_0x130))
-		throw std::runtime_error("Padding_0x130");
-	if (!IsAllSameValue(Padding_0x3D4))
-		throw std::runtime_error("Padding_0x3D4");
-	if (!IsAllSameValue(FileSegment.Padding_0x020))
-		throw std::runtime_error("FileSegment.Padding_0x020");
-	if (!IsAllSameValue(DataFilesSegment.Padding_0x020))
-		throw std::runtime_error("DataFilesSegment.Padding_0x020");
-	if (!IsAllSameValue(UnknownSegment3.Padding_0x020))
-		throw std::runtime_error("UnknownSegment3.Padding_0x020");
-	if (!IsAllSameValue(FolderSegment.Padding_0x020))
-		throw std::runtime_error("FolderSegment.Padding_0x020");
-	if (FileSegment.Count != 1)
-		throw std::runtime_error("Segment1.Count == 1");
-	if (UnknownSegment3.Count != 0)
-		throw std::runtime_error("Segment3.Count == 0");
-	if (FolderSegment.Count != 0)
-		throw std::runtime_error("Segment4.Count == 0");
+const char XivAlex::SqexDef::SqpackHeader::Signature_Value[12] = {
+	'S', 'q', 'P', 'a', 'c', 'k', 0, 0, 0, 0, 0, 0,
+};
+
+template<typename T, size_t C>
+static bool IsAllSameValue(T(&arr)[C], std::remove_cv_t<T> supposedValue = 0) {
+	for (size_t i = 0; i < C; ++i) {
+		if (arr[i] != supposedValue)
+			return false;
+	}
+	return true;
 }
 
-void XivAlex::SqexDef::SqIndex::Header::VerifyDataFileSegment(const std::vector<char>& DataFileSegment) {
-	if (DataFilesSegment.Size == 0x100) {
-		if (!IsAllSameValue(std::span(&DataFileSegment[16], DataFileSegment.size() - 16), '\xff')) throw std::runtime_error("DataFileSegment.0-7");
-		if (!IsAllSameValue(std::span(&DataFileSegment[16], DataFileSegment.size() - 16))) throw std::runtime_error("DataFileSegment.8-11");
-		if (!IsAllSameValue(std::span(&DataFileSegment[16], DataFileSegment.size() - 16), '\xff')) throw std::runtime_error("DataFileSegment.12-15");
-		if (!IsAllSameValue(std::span(&DataFileSegment[16], DataFileSegment.size() - 16))) throw std::runtime_error("DataFileSegment.16+");
+template<typename T>
+static bool IsAllSameValue(const std::span<T>& arr, std::remove_cv_t<T> supposedValue = 0) {
+	for (const auto& v : arr)
+		if (v != supposedValue)
+			return true;
+	return true;
+}
+
+static void CalculateSha1(char(&result)[20], const void* data, size_t cb) {
+	CryptoPP::SHA1 sha1;
+	if (cb)
+		sha1.Update(static_cast<const byte*>(data), cb);
+	sha1.Final(reinterpret_cast<byte*>(result));
+}
+
+template<typename T>
+static void CalculateSha1(char(&result)[20], const std::span<T>& data) {
+	CalculateSha1(result, data.data(), data.size_bytes());
+}
+
+template<typename T>
+static void VerifySha1(const char(&compareWith)[20], const std::span<T>& data, const char* throwMessage) {
+	char result[20];
+	CalculateSha1(result, data);
+	if (memcmp(result, compareWith, 20) != 0) {
+		if (data.empty() && IsAllSameValue(compareWith))
+			return;
+		throw XivAlex::SqexDef::InvalidSqpackException(throwMessage);
 	}
 }
-
-uint32_t XivAlex::SqexDef::SqIndex::FileSegmentEntry::DatIndex() const {
-	return (Offset & 0xF) / 2;
-}
-
-uint64_t XivAlex::SqexDef::SqIndex::FileSegmentEntry::DatOffset() const {
-	return (Offset & 0xFFFFFFF0UL) * 8ULL;
-}
-
-uint32_t XivAlex::SqexDef::SqIndex::FileSegmentEntry::DatIndex(const uint32_t value) {
-	if (value >= 8)
-		throw std::invalid_argument("DatIndex must be between 0 and 7.");
-	Offset = (Offset & ~0x0F) | (value * 2);
-	return value;
-}
-
-uint64_t XivAlex::SqexDef::SqIndex::FileSegmentEntry::DatOffset(const uint64_t value) {
-	if (value % 128)
-		throw std::invalid_argument("DatOffset must be a multiple of 128.");
-	const auto divValue = value / 8;
-	if (divValue > UINT32_MAX)
-		throw std::invalid_argument("Value too big.");
-	Offset = (Offset & 0x0F) | static_cast<uint32_t>(divValue);
-	return value;
-}
-
-uint32_t XivAlex::SqexDef::SqIndex::FileSegmentEntry2::DatIndex() const {
-	return (Offset & 0xF) / 2;
-}
-
-uint64_t XivAlex::SqexDef::SqIndex::FileSegmentEntry2::DatOffset() const {
-	return (Offset & 0xFFFFFFF0UL) * 8ULL;
-}
-
-uint32_t XivAlex::SqexDef::SqIndex::FileSegmentEntry2::DatIndex(const uint32_t value) {
-	if (value >= 8)
-		throw std::invalid_argument("DatIndex must be between 0 and 7.");
-	Offset = (Offset & ~0x0F) | (value * 2);
-	return value;
-}
-
-uint64_t XivAlex::SqexDef::SqIndex::FileSegmentEntry2::DatOffset(const uint64_t value) {
-	if (value % 128)
-		throw std::invalid_argument("DatOffset must be a multiple of 128.");
-	const auto divValue = value / 8;
-	if (divValue > UINT32_MAX)
-		throw std::invalid_argument("Value too big.");
-	Offset = (Offset & 0x0F) | static_cast<uint32_t>(divValue);
-	return value;
-}
-
 const uint32_t XivAlex::SqexDef::SqexHashTable[4][256] = {
 	{0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706AF48F, 0xE963A535, 0x9E6495A3, 0x0EDB8832,
 	 0x79DCB8A4, 0xE0D5E91E, 0x97D2D988, 0x09B64C2B, 0x7EB17CBD, 0xE7B82D07, 0x90BF1D91, 0x1DB71064, 0x6AB020F2,
@@ -211,23 +167,127 @@ const uint32_t XivAlex::SqexDef::SqexHashTable[4][256] = {
 	 0xCCB0A91F, 0x740CCE7A, 0x66B96194, 0xDE0506F1},
 };
 
-void XivAlex::SqexDef::CalculateSha1(char(& result)[20], const void* data, size_t cb) {
-	CryptoPP::SHA1 sha1;
-	if (cb)
-		sha1.Update(static_cast<const byte*>(data), cb);
-	sha1.Final(reinterpret_cast<byte*>(result));
-}
-
-void XivAlex::SqexDef::SqpackHeader::VerifySqpackHeader() {
+void XivAlex::SqexDef::SqpackHeader::VerifySqpackHeader(SqpackType supposedType) {
 	if (HeaderLength != sizeof SqpackHeader)
-		throw std::runtime_error("sizeof Header != 0x400");
-	if (memcmp(Signature, "SqPack\0\0\0\0\0\0", sizeof Signature) != 0)
-		throw std::runtime_error("Invalid SqPack signature");
+		throw InvalidSqpackException("sizeof Header != 0x400");
+	if (memcmp(Signature, Signature_Value, sizeof Signature) != 0)
+		throw InvalidSqpackException("Invalid SqPack signature");
 	VerifySha1(Sha1, std::span(reinterpret_cast<const char*>(this), offsetof(SqexDef::SqpackHeader, Sha1)), "Header SHA-1");
 	if (!IsAllSameValue(Padding_0x024))
-		throw std::runtime_error("Padding_0x024");
+		throw InvalidSqpackException("Padding_0x024 != 0");
 	if (!IsAllSameValue(Padding_0x3D4))
-		throw std::runtime_error("Padding_0x3D4");
+		throw InvalidSqpackException("Padding_0x3D4 != 0");
+	if (supposedType != SqpackType::Unspecified && supposedType != Type)
+		throw InvalidSqpackException(std::format("Invalid SqpackType (expected {}, file is {})",
+			static_cast<uint32_t>(supposedType),
+			static_cast<uint32_t>(Type.Value())));
+}
+
+
+void XivAlex::SqexDef::SqIndex::Header::VerifySqpackIndexHeader(IndexType expectedIndexType) {
+	if (HeaderLength != sizeof Header)
+		throw InvalidSqpackException("sizeof IndexHeader != 0x400");
+	if (expectedIndexType != IndexType::Unspecified && expectedIndexType != Type)
+		throw InvalidSqpackException(std::format("Invalid SqpackType (expected {}, file is {})",
+			static_cast<uint32_t>(expectedIndexType),
+			static_cast<uint32_t>(Type.Value())));
+	VerifySha1(Sha1, std::span(reinterpret_cast<const char*>(this), offsetof(SqexDef::SqIndex::Header, Sha1)), "IndexHeader SHA-1");
+	if (!IsAllSameValue(Padding_0x04C))
+		throw InvalidSqpackException("Padding_0x04C");
+	if (!IsAllSameValue(Padding_0x128))
+		throw InvalidSqpackException("Padding_0x128");
+	if (!IsAllSameValue(Padding_0x130))
+		throw InvalidSqpackException("Padding_0x130");
+	if (!IsAllSameValue(Padding_0x3D4))
+		throw InvalidSqpackException("Padding_0x3D4");
+
+	if (!IsAllSameValue(FileSegment.Padding_0x020))
+		throw InvalidSqpackException("FileSegment.Padding_0x020");
+	if (!IsAllSameValue(DataFilesSegment.Padding_0x020))
+		throw InvalidSqpackException("DataFilesSegment.Padding_0x020");
+	if (!IsAllSameValue(UnknownSegment3.Padding_0x020))
+		throw InvalidSqpackException("UnknownSegment3.Padding_0x020");
+	if (!IsAllSameValue(FolderSegment.Padding_0x020))
+		throw InvalidSqpackException("FolderSegment.Padding_0x020");
+
+	if (Type == IndexType::Index && FileSegment.Size % sizeof FileSegmentEntry)
+		throw InvalidSqpackException("FileSegment.size % sizeof FileSegmentEntry != 0");
+	else if (Type == IndexType::Index2 && FileSegment.Size % sizeof FileSegmentEntry2)
+		throw InvalidSqpackException("FileSegment.size % sizeof FileSegmentEntry2 != 0");
+	if (UnknownSegment3.Size % sizeof Segment3Entry)
+		throw InvalidSqpackException("UnknownSegment3.size % sizeof Segment3Entry != 0");
+	if (FolderSegment.Size % sizeof FolderSegmentEntry)
+		throw InvalidSqpackException("FolderSegment.size % sizeof FolderSegmentEntry != 0");
+
+	if (FileSegment.Count != 1)
+		throw InvalidSqpackException("Segment1.Count == 1");
+	if (UnknownSegment3.Count != 0)
+		throw InvalidSqpackException("Segment3.Count == 0");
+	if (FolderSegment.Count != 0)
+		throw InvalidSqpackException("Segment4.Count == 0");
+}
+
+void XivAlex::SqexDef::SqIndex::Header::VerifyDataFileSegment(const std::vector<char>& DataFileSegment) {
+	if (DataFilesSegment.Size == 0x100) {
+		if (!IsAllSameValue(std::span(&DataFileSegment[16], DataFileSegment.size() - 16), '\xff'))
+			throw InvalidSqpackException("DataFileSegment.0-7 != 0xFF");
+		if (!IsAllSameValue(std::span(&DataFileSegment[16], DataFileSegment.size() - 16)))
+			throw InvalidSqpackException("DataFileSegment.8-11 != 0");
+		if (!IsAllSameValue(std::span(&DataFileSegment[16], DataFileSegment.size() - 16), '\xff'))
+			throw InvalidSqpackException("DataFileSegment.12-15 != 0xFF");
+		if (!IsAllSameValue(std::span(&DataFileSegment[16], DataFileSegment.size() - 16)))
+			throw InvalidSqpackException("DataFileSegment.16+ != 0x00");
+	}
+}
+
+uint32_t XivAlex::SqexDef::SqIndex::LEDataLocator::Index() const {
+	return (Value() & 0xF) / 2;
+}
+
+uint64_t XivAlex::SqexDef::SqIndex::LEDataLocator::Offset() const {
+	return (Value() & 0xFFFFFFF0UL) * 8ULL;
+}
+
+uint32_t XivAlex::SqexDef::SqIndex::LEDataLocator::Index(const uint32_t value) {
+	if (value >= 8)
+		throw std::invalid_argument("Index must be between 0 and 7.");
+	Value((Value() & ~0x0F) | (value * 2));
+	return value;
+}
+
+uint64_t XivAlex::SqexDef::SqIndex::LEDataLocator::Offset(const uint64_t value) {
+	if (value % 128)
+		throw std::invalid_argument("Offset must be a multiple of 128.");
+	const auto divValue = value / 8;
+	if (divValue > UINT32_MAX)
+		throw std::invalid_argument("Value too big.");
+	Value((Value() & 0x0F) | static_cast<uint32_t>(divValue));
+	return value;
+}
+
+void XivAlex::SqexDef::SqIndex::FolderSegmentEntry::Verify() const {
+	if (FileSegmentSize % sizeof(FileSegmentEntry))
+		throw InvalidSqpackException("FolderSegmentEntry.FileSegmentSize % sizeof FileSegmentEntry != 0");
+}
+
+void XivAlex::SqexDef::SqData::Header::Verify(uint32_t expectedSpanIndex) const {
+	if (HeaderLength != sizeof Header)
+		throw InvalidSqpackException("sizeof IndexHeader != 0x400");
+	VerifySha1(Sha1, std::span(reinterpret_cast<const char*>(this), offsetof(SqexDef::SqData::Header, Sha1)), "IndexHeader SHA-1");
+	if (Null1.Value())
+		throw InvalidSqpackException("Null1 != 0");
+	if (Unknown1 != Unknown1_Value)
+		throw InvalidSqpackException(std::format("Unknown1({:x}) != Unknown1_Value({:x})", Unknown1.Value(), Unknown1_Value));
+	if (SpanIndex != expectedSpanIndex)
+		throw InvalidSqpackException(std::format("SpanIndex({}) != ExpectedSpanIndex({})", SpanIndex.Value(), expectedSpanIndex));
+	if (Null2.Value())
+		throw InvalidSqpackException("Null2 != 0");
+	if (MaxFileSize > MaxFileSize_MaxValue)
+		throw InvalidSqpackException(std::format("MaxFileSize({:x}) != MaxFileSize_MaxValue({:x})", MaxFileSize.Value(), MaxFileSize_MaxValue));
+	if (!IsAllSameValue(Padding_0x034))
+		throw InvalidSqpackException("Padding_0x034 != 0");
+	if (!IsAllSameValue(Padding_0x3D4))
+		throw InvalidSqpackException("Padding_0x3D4 != 0");
 }
 
 uint32_t XivAlex::SqexDef::SqexHash(const char* data, size_t len) {
@@ -262,67 +322,64 @@ uint32_t XivAlex::SqexDef::SqexHash(const std::string_view& text) {
 	return SqexHash(text.data(), text.size());
 }
 
-XivAlex::SqexDef::FileSystemSqPack::SqIndex::SqIndex(const Utils::Win32::File& hFile) {
+XivAlex::SqexDef::FileSystemSqPack::SqIndex::SqIndex(const Utils::Win32::File& hFile, bool strictVerify) {
 	std::vector<std::pair<size_t, size_t>> accesses;
 
 	hFile.Read(0, &Header, sizeof SqpackHeader);
-	accesses.emplace_back(0, Header.HeaderLength);
-	Header.VerifySqpackHeader();
-	if (Header.Type != SqpackType::SqIndex)
-		throw std::runtime_error("Header.Type != SqIndex");
+	if (strictVerify) {
+		accesses.emplace_back(0, Header.HeaderLength);
+		Header.VerifySqpackHeader(SqpackType::SqIndex);
+	}
 
 	hFile.Read(Header.HeaderLength, &IndexHeader, sizeof SqexDef::SqIndex::Header);
-	accesses.emplace_back(Header.HeaderLength, IndexHeader.HeaderLength);
-	IndexHeader.VerifySqpackIndexHeader();
-	if (IndexHeader.IndexType != 0)
-		throw std::runtime_error("IndexHeader.IndexType != 0");
+	if (strictVerify) {
+		accesses.emplace_back(Header.HeaderLength, IndexHeader.HeaderLength);
+		IndexHeader.VerifySqpackIndexHeader(SqexDef::SqIndex::Header::IndexType::Index);
+	}
 
 	DataFileSegment.resize(IndexHeader.DataFilesSegment.Size);
 	hFile.Read(IndexHeader.DataFilesSegment.Offset, std::span(DataFileSegment));
-	VerifySha1(IndexHeader.DataFilesSegment.Sha1, std::span(DataFileSegment), "DataFilesSegment Data SHA-1");
-	if (IndexHeader.DataFilesSegment.Size)
+	if (strictVerify) {
 		accesses.emplace_back(IndexHeader.DataFilesSegment.Offset, IndexHeader.DataFilesSegment.Size);
-	IndexHeader.VerifyDataFileSegment(DataFileSegment);
+		VerifySha1(IndexHeader.DataFilesSegment.Sha1, std::span(DataFileSegment), "DataFilesSegment Data SHA-1");
+		IndexHeader.VerifyDataFileSegment(DataFileSegment);
+	}
 
 	Segment3.resize(IndexHeader.UnknownSegment3.Size / sizeof(SqexDef::SqIndex::Segment3Entry));
-	if (IndexHeader.UnknownSegment3.Size % sizeof(SqexDef::SqIndex::Segment3Entry))
-		throw std::runtime_error("IndexHeader.UnknownSegment3.Size % sizeof(SqexDef::SqIndex::Segment3Entry) != 0");
 	hFile.Read(IndexHeader.UnknownSegment3.Offset, std::span(Segment3));
-	VerifySha1(IndexHeader.UnknownSegment3.Sha1, std::span(Segment3), "UnknownSegment3 Data SHA-1");
-	if (IndexHeader.UnknownSegment3.Size)
+	if (strictVerify) {
 		accesses.emplace_back(IndexHeader.UnknownSegment3.Offset, IndexHeader.UnknownSegment3.Size);
+		VerifySha1(IndexHeader.UnknownSegment3.Sha1, std::span(Segment3), "UnknownSegment3 Data SHA-1");
+	}
 
 	Folders.resize(IndexHeader.FolderSegment.Size / sizeof(SqexDef::SqIndex::FolderSegmentEntry));
-	if (IndexHeader.FolderSegment.Size % sizeof(SqexDef::SqIndex::FolderSegmentEntry))
-		throw std::runtime_error("IndexHeader.FolderSegment.Size % sizeof(SqexDef::SqIndex::FolderSegmentEntry) != 0");
 	hFile.Read(IndexHeader.FolderSegment.Offset, std::span(Folders));
-	VerifySha1(IndexHeader.FolderSegment.Sha1, std::span(Folders), "FolderSegment Data SHA-1");
-	if (IndexHeader.FolderSegment.Size)
+	if (strictVerify) {
 		accesses.emplace_back(IndexHeader.FolderSegment.Offset, IndexHeader.FolderSegment.Size);
+		VerifySha1(IndexHeader.FolderSegment.Sha1, std::span(Folders), "FolderSegment Data SHA-1");
+	}
 
 	{
 		uint32_t lastEnd = IndexHeader.FileSegment.Offset;
-		CryptoPP::SHA1 sha1;
 		for (const auto& folder : Folders) {
+			if (strictVerify)
+				folder.Verify();
+
 			auto& filesInFolder = Files[folder.NameHash];
-			if (folder.FileSegmentSize % sizeof(SqexDef::SqIndex::FileSegmentEntry))
-				throw std::runtime_error("file segment size is not a multiple of size of file segment entry");
 			filesInFolder.resize(folder.FileSegmentSize / sizeof(SqexDef::SqIndex::FileSegmentEntry));
 			hFile.Read(folder.FileSegmentOffset, std::span(filesInFolder));
 
 			if (folder.FileSegmentOffset >= IndexHeader.FileSegment.Offset &&
 				folder.FileSegmentOffset < IndexHeader.FileSegment.Offset + IndexHeader.FileSegment.Size) {
-				if (folder.FileSegmentSize)
+				if (strictVerify) {
 					accesses.emplace_back(folder.FileSegmentOffset, folder.FileSegmentSize);
-				if (lastEnd != folder.FileSegmentOffset)
-					throw std::runtime_error("last directory listing end != new directory listing start");
-				for (const auto& file : filesInFolder)
-					if (file.PathHash != folder.NameHash)
-						throw std::runtime_error("file path hash != folder name hash");
+					if (lastEnd != folder.FileSegmentOffset)
+						throw InvalidSqpackException("last directory listing end != new directory listing start");
+					for (const auto& file : filesInFolder)
+						if (file.PathHash != folder.NameHash)
+							throw InvalidSqpackException("file path hash != folder name hash");
+				}
 				lastEnd += folder.FileSegmentSize;
-
-				if (EnableShaVerification)
-					sha1.Update(reinterpret_cast<const byte*>(&filesInFolder[0]), folder.FileSegmentSize);
 			} else if (folder.FileSegmentOffset >= IndexHeader.DataFilesSegment.Offset &&
 				folder.FileSegmentOffset < IndexHeader.DataFilesSegment.Offset + IndexHeader.DataFilesSegment.Size) {
 				Files.erase(folder.NameHash);
@@ -333,141 +390,154 @@ XivAlex::SqexDef::FileSystemSqPack::SqIndex::SqIndex(const Utils::Win32::File& h
 				// ignore for now
 			}
 		}
-		if (lastEnd != IndexHeader.FileSegment.Offset + IndexHeader.FileSegment.Size)
-			throw std::runtime_error("last directory listing end != end of file segment");
 
-		if (EnableShaVerification) {
+		if (strictVerify) {
+			if (lastEnd != IndexHeader.FileSegment.Offset + IndexHeader.FileSegment.Size)
+				throw InvalidSqpackException("last directory listing end != end of file segment");
+
 			char result[20];
+			CryptoPP::SHA1 sha1;
+			for (const auto& [_, files] : Files)
+				sha1.Update(reinterpret_cast<const byte*>(&files[0]), std::span(files).size_bytes());
 			sha1.Final(reinterpret_cast<byte*>(result));
 			if (memcmp(result, IndexHeader.FileSegment.Sha1, 20) != 0) {
 				if (IndexHeader.FileSegment.Size == 0 && IsAllSameValue(IndexHeader.FileSegment.Sha1)) {
 					// pass
 				} else
-					throw std::runtime_error("FileSegment Data SHA-1");
+					throw InvalidSqpackException("FileSegment Data SHA-1");
 			}
 		}
 	}
 
-	std::sort(accesses.begin(), accesses.end());
-	size_t ptr = accesses[0].first;
-	for (const auto& [accessPointer, accessSize] : accesses) {
-		if (ptr != accessPointer)
-			throw std::runtime_error("Middle unread region found");
-		ptr += accessSize;
+	if (strictVerify) {
+		std::sort(accesses.begin(), accesses.end());
+		size_t ptr = accesses[0].first;
+		for (const auto& [accessPointer, accessSize] : accesses) {
+			if (ptr > accessPointer)
+				throw InvalidSqpackException("Unread region found");
+			else if (ptr < accessPointer)
+				throw InvalidSqpackException("Overlapping region found");
+			ptr += accessSize;
+		}
+		if (ptr != hFile.Length())
+			throw InvalidSqpackException("Trailing region found");
 	}
-	if (ptr != hFile.Length())
-		throw std::runtime_error("Trailing unread region found");
 }
 
-XivAlex::SqexDef::FileSystemSqPack::SqIndex2::SqIndex2(const Utils::Win32::File& hFile) {
+XivAlex::SqexDef::FileSystemSqPack::SqIndex2::SqIndex2(const Utils::Win32::File& hFile, bool strictVerify) {
 	std::vector<std::pair<size_t, size_t>> accesses;
 
 	hFile.Read(0, &Header, sizeof SqpackHeader);
-	accesses.emplace_back(0, Header.HeaderLength);
-	Header.VerifySqpackHeader();
-	if (Header.Type != SqpackType::SqIndex)
-		throw std::runtime_error("Header.Type != SqIndex");
+	if (strictVerify) {
+		accesses.emplace_back(0, Header.HeaderLength);
+		Header.VerifySqpackHeader(SqpackType::SqIndex);
+	}
 
 	hFile.Read(Header.HeaderLength, &IndexHeader, sizeof SqexDef::SqIndex::Header);
 	accesses.emplace_back(Header.HeaderLength, IndexHeader.HeaderLength);
-	IndexHeader.VerifySqpackIndexHeader();
-	if (IndexHeader.IndexType != 2)
-		throw std::runtime_error("IndexHeader.IndexType != 2");
+	if (strictVerify)
+		IndexHeader.VerifySqpackIndexHeader(SqexDef::SqIndex::Header::IndexType::Index2);
 
 	DataFileSegment.resize(IndexHeader.DataFilesSegment.Size);
 	hFile.Read(IndexHeader.DataFilesSegment.Offset, std::span(DataFileSegment));
-	VerifySha1(IndexHeader.DataFilesSegment.Sha1, std::span(DataFileSegment), "DataFilesSegment Data SHA-1");
-	if (IndexHeader.DataFilesSegment.Size)
+	if (strictVerify) {
 		accesses.emplace_back(IndexHeader.DataFilesSegment.Offset, IndexHeader.DataFilesSegment.Size);
-	IndexHeader.VerifyDataFileSegment(DataFileSegment);
+		VerifySha1(IndexHeader.DataFilesSegment.Sha1, std::span(DataFileSegment), "DataFilesSegment Data SHA-1");
+		IndexHeader.VerifyDataFileSegment(DataFileSegment);
+	}
 
 	Segment3.resize(IndexHeader.UnknownSegment3.Size / sizeof(SqexDef::SqIndex::Segment3Entry));
-	if (IndexHeader.UnknownSegment3.Size % sizeof(SqexDef::SqIndex::Segment3Entry))
-		throw std::runtime_error("IndexHeader.UnknownSegment3.Size % sizeof(SqexDef::SqIndex::Segment3Entry) != 0");
 	hFile.Read(IndexHeader.UnknownSegment3.Offset, std::span(Segment3));
-	VerifySha1(IndexHeader.UnknownSegment3.Sha1, std::span(Segment3), "UnknownSegment3 Data SHA-1");
-	if (IndexHeader.UnknownSegment3.Size)
+	if (strictVerify) {
 		accesses.emplace_back(IndexHeader.UnknownSegment3.Offset, IndexHeader.UnknownSegment3.Size);
+		VerifySha1(IndexHeader.UnknownSegment3.Sha1, std::span(Segment3), "UnknownSegment3 Data SHA-1");
+	}
 
 	Folders.resize(IndexHeader.FolderSegment.Size / sizeof(SqexDef::SqIndex::FolderSegmentEntry));
-	if (IndexHeader.FolderSegment.Size % sizeof(SqexDef::SqIndex::FolderSegmentEntry))
-		throw std::runtime_error("IndexHeader.FolderSegment.Size % sizeof(SqexDef::SqIndex::FolderSegmentEntry) != 0");
 	hFile.Read(IndexHeader.FolderSegment.Offset, std::span(Folders));
-	VerifySha1(IndexHeader.FolderSegment.Sha1, std::span(Folders), "FolderSegment Data SHA-1");
-	if (IndexHeader.FolderSegment.Size)
+	if (strictVerify) {
 		accesses.emplace_back(IndexHeader.FolderSegment.Offset, IndexHeader.FolderSegment.Size);
+		VerifySha1(IndexHeader.FolderSegment.Sha1, std::span(Folders), "FolderSegment Data SHA-1");
+	}
 
 	Files.resize(IndexHeader.FileSegment.Size / sizeof(SqexDef::SqIndex::FileSegmentEntry2));
-	if (IndexHeader.FileSegment.Size % sizeof(SqexDef::SqIndex::FileSegmentEntry2))
-		throw std::runtime_error("IndexHeader.FileSegment.Size % sizeof(SqexDef::SqIndex::FileSegmentEntry2) != 0");
 	hFile.Read(IndexHeader.FileSegment.Offset, std::span(Files));
-	VerifySha1(IndexHeader.FileSegment.Sha1, std::span(Files), "FolderSegment Data SHA-1");
-	if (IndexHeader.FileSegment.Size)
+	if (strictVerify) {
 		accesses.emplace_back(IndexHeader.FileSegment.Offset, IndexHeader.FileSegment.Size);
-
-	std::sort(accesses.begin(), accesses.end());
-	size_t ptr = accesses[0].first;
-	for (const auto& [accessPointer, accessSize] : accesses) {
-		if (ptr != accessPointer)
-			throw std::runtime_error("Middle unread region found");
-		ptr += accessSize;
+		VerifySha1(IndexHeader.FileSegment.Sha1, std::span(Files), "FolderSegment Data SHA-1");
 	}
-	if (ptr != hFile.Length())
-		throw std::runtime_error("Trailing unread region found");
+
+	if (strictVerify) {
+		std::sort(accesses.begin(), accesses.end());
+		size_t ptr = accesses[0].first;
+		for (const auto& [accessPointer, accessSize] : accesses) {
+			if (ptr > accessPointer)
+				throw InvalidSqpackException("Unread region found");
+			else if (ptr < accessPointer)
+				throw InvalidSqpackException("Overlapping region found");
+			ptr += accessSize;
+		}
+		if (ptr != hFile.Length())
+			throw InvalidSqpackException("Trailing region found");
+	}
 }
 
-XivAlex::SqexDef::FileSystemSqPack::SqData::SqData(Utils::Win32::File hFile, const uint32_t datIndex, std::vector<SqDataEntry>& dataEntries) : FileOnDisk(std::move(hFile)) {
+XivAlex::SqexDef::FileSystemSqPack::SqData::SqData(Utils::Win32::File hFile, const uint32_t datIndex, std::vector<SqDataEntry>& dataEntries, bool strictVerify)
+	: FileOnDisk(std::move(hFile)) {
 	std::vector<std::pair<size_t, size_t>> accesses;
 
 	FileOnDisk.Read(0, &Header, sizeof SqpackHeader);
-	if (datIndex == 0) {
-		Header.VerifySqpackHeader();
-		if (Header.Type != SqpackType::SqData)
-			throw std::runtime_error("Header.Type != SqData");
-		VerifySha1(Header.Sha1, std::span(reinterpret_cast<const char*>(&Header), offsetof(SqexDef::SqpackHeader, Sha1)), "Header SHA-1");
+	if (strictVerify) {
+		if (datIndex == 0)
+			Header.VerifySqpackHeader(SqpackType::SqData);
+		accesses.emplace_back(0, sizeof SqpackHeader);
 	}
-	accesses.emplace_back(0, sizeof SqpackHeader);
 
 	FileOnDisk.Read(sizeof SqpackHeader, &DataHeader, sizeof SqexDef::SqData::Header);
-	if (DataHeader.HeaderLength != sizeof SqexDef::SqData::Header)
-		throw std::runtime_error("sizeof IndexHeader != 0x400");
-	VerifySha1(DataHeader.Sha1, std::span(reinterpret_cast<const char*>(&DataHeader), offsetof(SqexDef::SqData::Header, Sha1)), "IndexHeader SHA-1");
-	accesses.emplace_back(sizeof SqpackHeader, sizeof SqexDef::SqData::Header);
+	if (strictVerify) {
+		DataHeader.Verify(datIndex + 1);
+		accesses.emplace_back(sizeof SqpackHeader, sizeof SqexDef::SqData::Header);
+	}
 
-	const auto length = FileOnDisk.Length();
-	if (EnableSqDataFileLengthVerification && length != 2048 + DataHeader.DataSize.Value())
-		throw std::runtime_error("Invalid file size");
+	const auto dataFileLength = FileOnDisk.Length();
+	if (strictVerify) {
+		if (dataFileLength != 0ULL + Header.HeaderLength + DataHeader.HeaderLength + DataHeader.DataSize)
+			throw InvalidSqpackException("Invalid file size");
+	}
 
 	std::map<uint64_t, SqDataEntry*> offsetToEntryMap;
 	for (auto& file : dataEntries) {
-		if (file.IndexEntry.DatIndex() != datIndex)
+		if (file.IndexEntry.DatFile.Index() != datIndex)
 			continue;
-		offsetToEntryMap.insert_or_assign(file.IndexEntry.DatOffset(), &file);
+		offsetToEntryMap.insert_or_assign(file.IndexEntry.DatFile.Offset(), &file);
 	}
 
 	SqDataEntry* prevEntry = nullptr;
 	for (const auto& [begin, entry] : offsetToEntryMap) {
 		if (prevEntry)
-			prevEntry->DataEntryLength = static_cast<uint32_t>(begin - prevEntry->IndexEntry.DatOffset());
+			prevEntry->DataEntryLength = static_cast<uint32_t>(begin - prevEntry->IndexEntry.DatFile.Offset());
 		prevEntry = entry;
 	}
 	if (prevEntry)
-		prevEntry->DataEntryLength = static_cast<uint32_t>(length - prevEntry->IndexEntry.DatOffset());
+		prevEntry->DataEntryLength = static_cast<uint32_t>(dataFileLength - prevEntry->IndexEntry.DatFile.Offset());
 }
 
-XivAlex::SqexDef::FileSystemSqPack::FileSystemSqPack(const std::filesystem::path& indexFile) : Index(Utils::Win32::File::Create(std::filesystem::path(indexFile).replace_extension(".index"), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0))
-, Index2(Utils::Win32::File::Create(std::filesystem::path(indexFile).replace_extension(".index2"), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)) {
+XivAlex::SqexDef::FileSystemSqPack::FileSystemSqPack(const std::filesystem::path& indexFile, bool strictVerify)
+	: Index(Utils::Win32::File::Create(std::filesystem::path(indexFile).replace_extension(".index"), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0), strictVerify)
+	, Index2(Utils::Win32::File::Create(std::filesystem::path(indexFile).replace_extension(".index2"), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0), strictVerify) {
+
 	std::map<uint64_t, SqDataEntry*> offsetToEntryMap;
+
 	Files.reserve(Index2.Files.size());
 	for (const auto& entry : Index2.Files) {
-		Files.emplace_back(SqDataEntry{ .Index2Entry = entry, .DataFileIndex = entry.DatIndex(), .DataEntryOffset = entry.DatOffset() });
-		offsetToEntryMap[entry.Offset] = &Files.back();
+		Files.emplace_back(SqDataEntry{ .Index2Entry = entry, .DataFileIndex = entry.DatFile.Index(), .DataEntryOffset = entry.DatFile.Offset() });
+		offsetToEntryMap[entry.DatFile] = &Files.back();
 	}
 
 	std::vector<SqexDef::SqIndex::FileSegmentEntry*> newEntries;
 	for (auto& [path, files] : Index.Files) {
 		for (auto& entry : files) {
-			const auto ptr = offsetToEntryMap[entry.Offset];
+			const auto ptr = offsetToEntryMap[entry.DatFile];
 			if (!ptr)
 				newEntries.push_back(&entry);
 			else
@@ -475,7 +545,7 @@ XivAlex::SqexDef::FileSystemSqPack::FileSystemSqPack(const std::filesystem::path
 		}
 	}
 	for (const auto entry : newEntries)
-		Files.emplace_back(SqDataEntry{ .IndexEntry = *entry, .DataFileIndex = entry->DatIndex(), .DataEntryOffset = entry->DatOffset() });
+		Files.emplace_back(SqDataEntry{ .IndexEntry = *entry, .DataFileIndex = entry->DatFile.Index(), .DataEntryOffset = entry->DatFile.Offset() });
 
 	Data.reserve(Index.IndexHeader.DataFilesSegment.Count);
 	for (uint32_t i = 0; i < Index.IndexHeader.DataFilesSegment.Count; ++i) {
@@ -483,6 +553,7 @@ XivAlex::SqexDef::FileSystemSqPack::FileSystemSqPack(const std::filesystem::path
 			Utils::Win32::File::Create(std::filesystem::path(indexFile).replace_extension(std::format(".dat{}", i)), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0),
 			i,
 			Files,
+			strictVerify,
 			});
 	}
 }
@@ -526,7 +597,8 @@ size_t XivAlex::SqexDef::VirtualSqPack::FileOnDiskEntryProvider::Read(uint64_t o
 	return m_file.Read(m_offset + offset, buf, std::min<uint64_t>(length, m_length - offset));
 }
 
-XivAlex::SqexDef::VirtualSqPack::OnTheFlyBinaryEntryProvider::OnTheFlyBinaryEntryProvider(std::filesystem::path path) : m_path(std::move(path)) {
+XivAlex::SqexDef::VirtualSqPack::OnTheFlyBinaryEntryProvider::OnTheFlyBinaryEntryProvider(std::filesystem::path path)
+: m_path(std::move(path)) {
 	const auto rawSize = static_cast<uint32_t>(file_size(m_path));
 	const auto blockCount = (rawSize + ChunkDataSize - 1) / ChunkDataSize;
 	m_header = {
@@ -712,7 +784,7 @@ XivAlex::SqexDef::VirtualSqPack::TextureEntryProvider::TextureEntryProvider(std:
 
 	m_texHeaderBytes.resize(sizeof SqData::TexHeader);
 	m_hFile.Read(0, std::span(m_texHeaderBytes));
-	entryHeader.BlockCount = AsTexHeader().MipmapCount.Value();
+	entryHeader.BlockCount = AsTexHeader().MipmapCount;
 
 	m_texHeaderBytes.resize(sizeof SqData::TexHeader + AsTexHeader().MipmapCount * sizeof uint32_t);
 	m_hFile.Read(sizeof SqData::TexHeader, std::span(
@@ -754,14 +826,13 @@ XivAlex::SqexDef::VirtualSqPack::TextureEntryProvider::TextureEntryProvider(std:
 	}
 	for (auto& loc : m_blockLocators) {
 		loc.FirstBlockOffset = loc.FirstBlockOffset + static_cast<uint32_t>(
-			// std::span(m_blockLocators).size_bytes() +
-			// std::span(m_subBlockSizes).size_bytes() +
-			std::span(m_texHeaderBytes).size_bytes());
+			std::span(m_texHeaderBytes).size_bytes()
+			);
 	}
 
 	entryHeader.HeaderLength = entryHeader.HeaderLength + static_cast<uint32_t>(
-		std::span(m_blockLocators).size_bytes()
-		+ std::span(m_subBlockSizes).size_bytes()
+		std::span(m_blockLocators).size_bytes() +
+		std::span(m_subBlockSizes).size_bytes()
 		);
 
 	m_mergedHeader.insert(m_mergedHeader.end(),
@@ -803,10 +874,10 @@ size_t XivAlex::SqexDef::VirtualSqPack::TextureEntryProvider::Read(const uint64_
 		relativeOffset -= std::span(m_blockLocators).size_bytes();
 		relativeOffset -= std::span(m_subBlockSizes).size_bytes();
 		auto it = std::lower_bound(m_blockLocators.begin(), m_blockLocators.end(),
-		                           SqData::TextureBlockHeaderLocator{ .FirstBlockOffset = static_cast<uint32_t>(relativeOffset) },
-		                           [&](const SqData::TextureBlockHeaderLocator& l, const SqData::TextureBlockHeaderLocator& r) {
-			                           return l.FirstBlockOffset < r.FirstBlockOffset;
-		                           });
+			SqData::TextureBlockHeaderLocator{ .FirstBlockOffset = static_cast<uint32_t>(relativeOffset) },
+			[&](const SqData::TextureBlockHeaderLocator& l, const SqData::TextureBlockHeaderLocator& r) {
+			return l.FirstBlockOffset < r.FirstBlockOffset;
+		});
 
 		if (it == m_blockLocators.end()) {
 			--it;
@@ -851,59 +922,18 @@ size_t XivAlex::SqexDef::VirtualSqPack::TextureEntryProvider::Read(const uint64_
 	return 0;
 }
 
-XivAlex::SqexDef::VirtualSqPack::VirtualSqPack() {
-	/////////////
-	// .index  //
-	/////////////
-	memcpy(m_sqpackIndexHeader.Signature, "SqPack\0\0\0\0\0\0", 12);
-	m_sqpackIndexHeader.HeaderLength = sizeof SqpackHeader;
-	m_sqpackIndexHeader.Unknown1 = SqpackHeader::Unknown1_Value;
-	m_sqpackIndexHeader.Type = SqpackType::SqIndex;
-	m_sqpackIndexHeader.Unknown2 = SqpackHeader::Unknown2_Value;
-	// CalculateSha1(m_sqpackIndexHeader.Sha1, std::span(&m_sqpackIndexHeader, 1));
+XivAlex::SqexDef::VirtualSqPack::VirtualSqPack() = default;
 
-	m_sqpackIndexSubHeader.HeaderLength = sizeof SqIndex::Header;
-	m_sqpackIndexSubHeader.IndexType = 0;
-	m_sqpackIndexSubHeader.FileSegment.Count = 1;
-	m_sqpackIndexSubHeader.UnknownSegment3.Count = 0;
-	m_sqpackIndexSubHeader.FolderSegment.Count = 0;
-	// CalculateSha1(m_sqpackIndexSubHeader.Sha1, std::span(&m_sqpackIndexSubHeader, 1));
-
-	/////////////
-	// .index2 //
-	/////////////
-	memcpy(m_sqpackIndex2Header.Signature, "SqPack\0\0\0\0\0\0", 12);
-	m_sqpackIndex2Header.HeaderLength = sizeof SqpackHeader;
-	m_sqpackIndex2Header.Unknown1 = SqpackHeader::Unknown1_Value;
-	m_sqpackIndex2Header.Type = SqpackType::SqIndex;
-	m_sqpackIndex2Header.Unknown2 = SqpackHeader::Unknown2_Value;
-	// CalculateSha1(m_sqpackIndex2Header.Sha1, std::span(&m_sqpackIndex2Header, 1));
-
-	m_sqpackIndex2SubHeader.HeaderLength = sizeof SqIndex::Header;
-	m_sqpackIndex2SubHeader.IndexType = 2;
-	m_sqpackIndex2SubHeader.FileSegment.Count = 1;
-	m_sqpackIndex2SubHeader.UnknownSegment3.Count = 0;
-	m_sqpackIndex2SubHeader.FolderSegment.Count = 0;
-	// CalculateSha1(m_sqpackIndex2SubHeader.Sha1, std::span(&m_sqpackIndex2SubHeader, 1));
-
-	/////////////
-	//  .dat#  //
-	/////////////
-	memcpy(m_sqpackDataHeader.Signature, "SqPack\0\0\0\0\0\0", 12);
-	m_sqpackDataHeader.HeaderLength = sizeof SqpackHeader;
-	m_sqpackDataHeader.Unknown1 = SqpackHeader::Unknown1_Value;
-	m_sqpackDataHeader.Type = SqpackType::SqData;
-	m_sqpackDataHeader.Unknown2 = SqpackHeader::Unknown2_Value;
-	// CalculateSha1(m_sqpackDataHeader.Sha1, std::span(&m_sqpackDataHeader, 1));
-}
-
-XivAlex::SqexDef::VirtualSqPack::AddEntryResult& XivAlex::SqexDef::VirtualSqPack::AddEntryResult::operator+=(const AddEntryResult& r) {
+XivAlex::SqexDef::VirtualSqPack::AddEntryResult& XivAlex::SqexDef::VirtualSqPack::AddEntryResult::operator+=(const AddEntryResult & r) {
 	AddedCount += r.AddedCount;
 	ReplacedCount += r.ReplacedCount;
 	return *this;
 }
 
 XivAlex::SqexDef::VirtualSqPack::AddEntryResult XivAlex::SqexDef::VirtualSqPack::AddEntry(uint32_t PathHash, uint32_t NameHash, uint32_t FullPathHash, std::unique_ptr<EntryProvider> provider) {
+	if (m_frozen)
+		throw std::runtime_error("Trying to operate on a frozen VirtualSqPack");
+
 	if (PathHash != Entry::NoEntryHash || NameHash != Entry::NoEntryHash) {
 		const auto it = m_pathNameTupleEntryPointerMap.find(std::make_pair(PathHash, NameHash));
 		if (it != m_pathNameTupleEntryPointerMap.end()) {
@@ -919,6 +949,9 @@ XivAlex::SqexDef::VirtualSqPack::AddEntryResult XivAlex::SqexDef::VirtualSqPack:
 	if (FullPathHash != Entry::NoEntryHash) {
 		const auto it = m_fullPathEntryPointerMap.find(FullPathHash);
 		if (it != m_fullPathEntryPointerMap.end()) {
+			MessageBoxW(nullptr, std::format(L"PH={:x}, NH={:x}, FPH={:x}",
+				PathHash, NameHash, FullPathHash).c_str(), L"", MB_OK);
+			__debugbreak();
 			it->second->Provider = std::move(provider);
 			if (PathHash != Entry::NoEntryHash || NameHash != Entry::NoEntryHash) {
 				m_pathNameTupleEntryPointerMap.erase(std::make_pair(it->second->PathHash, it->second->NameHash));
@@ -940,8 +973,11 @@ XivAlex::SqexDef::VirtualSqPack::AddEntryResult XivAlex::SqexDef::VirtualSqPack:
 	return { 1, 0 };
 }
 
-XivAlex::SqexDef::VirtualSqPack::AddEntryResult XivAlex::SqexDef::VirtualSqPack::AddEntriesFromSqPack(const std::filesystem::path& indexPath, bool overwriteUnknownSegments) {
-	FileSystemSqPack m_original{ indexPath };
+XivAlex::SqexDef::VirtualSqPack::AddEntryResult XivAlex::SqexDef::VirtualSqPack::AddEntriesFromSqPack(const std::filesystem::path & indexPath, bool overwriteUnknownSegments) {
+	if (m_frozen)
+		throw std::runtime_error("Trying to operate on a frozen VirtualSqPack");
+
+	FileSystemSqPack m_original{ indexPath, false };
 
 	AddEntryResult result{};
 
@@ -951,12 +987,12 @@ XivAlex::SqexDef::VirtualSqPack::AddEntryResult XivAlex::SqexDef::VirtualSqPack:
 		m_sqpackIndex2Segment2 = std::move(m_original.Index2.DataFileSegment);
 		m_sqpackIndex2Segment3 = std::move(m_original.Index2.Segment3);
 	}
-	
+
 	std::vector<size_t> openFileIndexMap;
 	for (auto& f : m_original.Data) {
 		const auto curItemPath = f.FileOnDisk.ResolveName();
 		size_t found;
-		for (found = 0; found < m_openFiles.size(); ++found){
+		for (found = 0; found < m_openFiles.size(); ++found) {
 			if (equivalent(m_openFiles[found].ResolveName(), curItemPath)) {
 				break;
 			}
@@ -970,14 +1006,17 @@ XivAlex::SqexDef::VirtualSqPack::AddEntryResult XivAlex::SqexDef::VirtualSqPack:
 	for (const auto& entry : m_original.Files) {
 		result += AddEntry(entry.IndexEntry.PathHash, entry.IndexEntry.NameHash, entry.Index2Entry.FullPathHash,
 			std::make_unique<FileOnDiskEntryProvider>(
-				Utils::Win32::File{ m_openFiles[openFileIndexMap[entry.DataFileIndex]], false }, 
+				Utils::Win32::File{ m_openFiles[openFileIndexMap[entry.DataFileIndex]], false },
 				entry.DataEntryOffset, entry.DataEntryLength));
 	}
 
 	return result;
 }
 
-XivAlex::SqexDef::VirtualSqPack::AddEntryResult XivAlex::SqexDef::VirtualSqPack::AddEntryFromFile(uint32_t PathHash, uint32_t NameHash, uint32_t FullPathHash, const std::filesystem::path& path) {
+XivAlex::SqexDef::VirtualSqPack::AddEntryResult XivAlex::SqexDef::VirtualSqPack::AddEntryFromFile(uint32_t PathHash, uint32_t NameHash, uint32_t FullPathHash, const std::filesystem::path & path) {
+	if (m_frozen)
+		throw std::runtime_error("Trying to operate on a frozen VirtualSqPack");
+
 	if (file_size(path) == 0) {
 		return AddEntry(PathHash, NameHash, FullPathHash, std::make_unique<EmptyEntryProvider>());
 	} else if (path.extension() == ".tex") {
@@ -993,22 +1032,23 @@ size_t XivAlex::SqexDef::VirtualSqPack::NumOfDataFiles() const {
 	return m_sqpackDataSubHeaders.size();
 }
 
-void XivAlex::SqexDef::VirtualSqPack::Freeze() {
+void XivAlex::SqexDef::VirtualSqPack::Freeze(bool strict) {
 	if (m_frozen)
-		return;
+		throw std::runtime_error("Cannot freeze again");
 
 	m_fileEntries1.clear();
 	m_fileEntries2.clear();
 
-	uint32_t offset = 2048;
+	uint64_t currentDataFilePointer = 2048;
 
 	SqData::Header sqDataHeader{};
 	sqDataHeader.HeaderLength = sizeof sqDataHeader;
-	sqDataHeader.Unknown1 = SqData::Header::Unknown1_Value;
-	sqDataHeader.SpanIndex = 1;
-	sqDataHeader.MaxFileSize = SqData::Header::MaxFileSize_Value;
 	sqDataHeader.DataSize = 0;
-	// CalculateSha1(sqDataHeader.Sha1, std::span(&sqDataHeader, 1));
+	sqDataHeader.SpanIndex = 1;
+	sqDataHeader.Unknown1 = SqData::Header::Unknown1_Value;
+	sqDataHeader.MaxFileSize = SqData::Header::MaxFileSize_MaxValue;
+	if (strict)
+		CalculateSha1(sqDataHeader.Sha1, std::span(&sqDataHeader, 1));
 	m_sqpackDataSubHeaders.emplace_back(sqDataHeader);
 
 	m_sqpackIndexSubHeader.DataFilesSegment.Count = 1;
@@ -1021,25 +1061,23 @@ void XivAlex::SqexDef::VirtualSqPack::Freeze() {
 		entry->Length = entry->Provider->Size();
 		entry->PaddedLength = (entry->Length + EntryAlignment - 1) / EntryAlignment * EntryAlignment;
 
-		if (offset + entry->Length >= SqData::Header::MaxFileSize_Value) {
-			offset = 2048;
+		if (currentDataFilePointer + entry->Length >= sqDataHeader.MaxFileSize) {
+			currentDataFilePointer = 2048;
 			sqDataHeader.SpanIndex = sqDataHeader.SpanIndex + 1;
-			// CalculateSha1(sqDataHeader.Sha1, std::span(&sqDataHeader, 1));
+			if (strict)
+				CalculateSha1(sqDataHeader.Sha1, std::span(&sqDataHeader, 1));
 			m_sqpackDataSubHeaders.emplace_back(sqDataHeader);
-
-			m_sqpackIndexSubHeader.DataFilesSegment.Count = m_sqpackIndexSubHeader.DataFilesSegment.Count + 1;
-			m_sqpackIndex2SubHeader.DataFilesSegment.Count = m_sqpackIndex2SubHeader.DataFilesSegment.Count + 1;
 		}
 		entry->DataFileIndex = static_cast<uint32_t>(m_sqpackDataSubHeaders.size() - 1);
-		entry->Offset = offset - 2048;
+		entry->Offset = currentDataFilePointer - 2048;
 
-		entry1.DatOffset(offset);
-		entry1.DatIndex(entry->DataFileIndex);
+		entry1.DatFile.Offset(currentDataFilePointer);
+		entry1.DatFile.Index(entry->DataFileIndex);
 
-		entry2.DatOffset(offset);
-		entry2.DatIndex(entry->DataFileIndex);
+		entry2.DatFile.Offset(currentDataFilePointer);
+		entry2.DatFile.Index(entry->DataFileIndex);
 
-		offset += entry->PaddedLength;
+		currentDataFilePointer += entry->PaddedLength;
 		m_sqpackDataSubHeaders.back().DataSize = m_sqpackDataSubHeaders.back().DataSize + entry->PaddedLength;
 
 		m_fileEntries1.emplace_back(entry1);
@@ -1055,25 +1093,28 @@ void XivAlex::SqexDef::VirtualSqPack::Freeze() {
 	std::sort(m_fileEntries2.begin(), m_fileEntries2.end(), [](const SqIndex::FileSegmentEntry2& l, const SqIndex::FileSegmentEntry2& r) {
 		return l.FullPathHash < r.FullPathHash;
 	});
+	
+	memcpy(m_sqpackIndexHeader.Signature, SqpackHeader::Signature_Value, sizeof SqpackHeader::Signature_Value);
+	m_sqpackIndexHeader.HeaderLength = sizeof SqpackHeader;
+	m_sqpackIndexHeader.Unknown1 = SqpackHeader::Unknown1_Value;
+	m_sqpackIndexHeader.Type = SqpackType::SqIndex;
+	m_sqpackIndexHeader.Unknown2 = SqpackHeader::Unknown2_Value;
+	if (strict)
+		CalculateSha1(m_sqpackIndexHeader.Sha1, std::span(&m_sqpackIndexHeader, 1));
 
+	m_sqpackIndexSubHeader.HeaderLength = sizeof SqIndex::Header;
+	m_sqpackIndexSubHeader.Type = SqIndex::Header::IndexType::Index;
+	m_sqpackIndexSubHeader.FileSegment.Count = 1;
 	m_sqpackIndexSubHeader.FileSegment.Offset = m_sqpackIndexHeader.HeaderLength + m_sqpackIndexSubHeader.HeaderLength;
-	m_sqpackIndex2SubHeader.FileSegment.Offset = m_sqpackIndex2Header.HeaderLength + m_sqpackIndex2SubHeader.HeaderLength;
 	m_sqpackIndexSubHeader.FileSegment.Size = static_cast<uint32_t>(std::span(m_fileEntries1).size_bytes());
-	m_sqpackIndex2SubHeader.FileSegment.Size = static_cast<uint32_t>(std::span(m_fileEntries2).size_bytes());
-
+	m_sqpackIndexSubHeader.DataFilesSegment.Count = static_cast<uint32_t>(m_sqpackDataSubHeaders.size());
 	m_sqpackIndexSubHeader.DataFilesSegment.Offset = m_sqpackIndexSubHeader.FileSegment.Offset + m_sqpackIndexSubHeader.FileSegment.Size;
-	m_sqpackIndex2SubHeader.DataFilesSegment.Offset = m_sqpackIndex2SubHeader.FileSegment.Offset + m_sqpackIndex2SubHeader.FileSegment.Size;
 	m_sqpackIndexSubHeader.DataFilesSegment.Size = static_cast<uint32_t>(std::span(m_sqpackIndexSegment2).size_bytes());
-	m_sqpackIndex2SubHeader.DataFilesSegment.Size = static_cast<uint32_t>(std::span(m_sqpackIndex2Segment2).size_bytes());
-
+	m_sqpackIndexSubHeader.UnknownSegment3.Count = 0;
 	m_sqpackIndexSubHeader.UnknownSegment3.Offset = m_sqpackIndexSubHeader.DataFilesSegment.Offset + m_sqpackIndexSubHeader.DataFilesSegment.Size;
-	m_sqpackIndex2SubHeader.UnknownSegment3.Offset = m_sqpackIndex2SubHeader.DataFilesSegment.Offset + m_sqpackIndex2SubHeader.DataFilesSegment.Size;
 	m_sqpackIndexSubHeader.UnknownSegment3.Size = static_cast<uint32_t>(std::span(m_sqpackIndexSegment3).size_bytes());
-	m_sqpackIndex2SubHeader.UnknownSegment3.Size = static_cast<uint32_t>(std::span(m_sqpackIndex2Segment3).size_bytes());
-
+	m_sqpackIndexSubHeader.FolderSegment.Count = 0;
 	m_sqpackIndexSubHeader.FolderSegment.Offset = m_sqpackIndexSubHeader.UnknownSegment3.Offset + m_sqpackIndexSubHeader.UnknownSegment3.Size;
-	m_sqpackIndex2SubHeader.FolderSegment.Offset = m_sqpackIndex2SubHeader.UnknownSegment3.Offset + m_sqpackIndex2SubHeader.UnknownSegment3.Size;
-
 	for (size_t i = 0; i < m_fileEntries1.size(); ++i) {
 		const auto& entry = m_fileEntries1[i];
 		if (m_folderEntries.empty() || m_folderEntries.back().NameHash != entry.PathHash) {
@@ -1087,12 +1128,49 @@ void XivAlex::SqexDef::VirtualSqPack::Freeze() {
 		}
 	}
 	m_sqpackIndexSubHeader.FolderSegment.Size = static_cast<uint32_t>(std::span(m_folderEntries).size_bytes());
+	if (strict)
+		CalculateSha1(m_sqpackIndexSubHeader.Sha1, std::span(&m_sqpackIndexSubHeader, 1));
+	
+	memcpy(m_sqpackIndex2Header.Signature, SqpackHeader::Signature_Value, sizeof SqpackHeader::Signature_Value);
+	m_sqpackIndex2Header.HeaderLength = sizeof SqpackHeader;
+	m_sqpackIndex2Header.Unknown1 = SqpackHeader::Unknown1_Value;
+	m_sqpackIndex2Header.Type = SqpackType::SqIndex;
+	m_sqpackIndex2Header.Unknown2 = SqpackHeader::Unknown2_Value;
+	if (strict)
+		CalculateSha1(m_sqpackIndex2Header.Sha1, std::span(&m_sqpackIndex2Header, 1));
+
+	m_sqpackIndex2SubHeader.HeaderLength = sizeof SqIndex::Header;
+	m_sqpackIndex2SubHeader.Type = SqIndex::Header::IndexType::Index2;
+	m_sqpackIndex2SubHeader.FileSegment.Count = 1;
+	m_sqpackIndex2SubHeader.FileSegment.Offset = m_sqpackIndex2Header.HeaderLength + m_sqpackIndex2SubHeader.HeaderLength;
+	m_sqpackIndex2SubHeader.FileSegment.Size = static_cast<uint32_t>(std::span(m_fileEntries2).size_bytes());
+	m_sqpackIndex2SubHeader.DataFilesSegment.Count = static_cast<uint32_t>(m_sqpackDataSubHeaders.size());
+	m_sqpackIndex2SubHeader.DataFilesSegment.Offset = m_sqpackIndex2SubHeader.FileSegment.Offset + m_sqpackIndex2SubHeader.FileSegment.Size;
+	m_sqpackIndex2SubHeader.DataFilesSegment.Size = static_cast<uint32_t>(std::span(m_sqpackIndex2Segment2).size_bytes());
+	m_sqpackIndex2SubHeader.UnknownSegment3.Count = 0;
+	m_sqpackIndex2SubHeader.UnknownSegment3.Offset = m_sqpackIndex2SubHeader.DataFilesSegment.Offset + m_sqpackIndex2SubHeader.DataFilesSegment.Size;
+	m_sqpackIndex2SubHeader.UnknownSegment3.Size = static_cast<uint32_t>(std::span(m_sqpackIndex2Segment3).size_bytes());
+	m_sqpackIndex2SubHeader.FolderSegment.Count = 0;
+	m_sqpackIndex2SubHeader.FolderSegment.Offset = m_sqpackIndex2SubHeader.UnknownSegment3.Offset + m_sqpackIndex2SubHeader.UnknownSegment3.Size;
 	m_sqpackIndex2SubHeader.FolderSegment.Size = 0;
+	if (strict)
+		CalculateSha1(m_sqpackIndex2SubHeader.Sha1, std::span(&m_sqpackIndex2SubHeader, 1));
+	
+	memcpy(m_sqpackDataHeader.Signature, SqpackHeader::Signature_Value, sizeof SqpackHeader::Signature_Value);
+	m_sqpackDataHeader.HeaderLength = sizeof SqpackHeader;
+	m_sqpackDataHeader.Unknown1 = SqpackHeader::Unknown1_Value;
+	m_sqpackDataHeader.Type = SqpackType::SqData;
+	m_sqpackDataHeader.Unknown2 = SqpackHeader::Unknown2_Value;
+	if (strict)
+		CalculateSha1(m_sqpackDataHeader.Sha1, std::span(&m_sqpackDataHeader, 1));
 
 	m_frozen = true;
 }
 
 size_t XivAlex::SqexDef::VirtualSqPack::ReadIndex1(const uint64_t offset, void* buf, const uint64_t length) const {
+	if (!m_frozen)
+		throw std::runtime_error("Trying to operate on a non frozen VirtualSqPack");
+
 	if (!length)
 		return 0;
 
@@ -1152,6 +1230,9 @@ size_t XivAlex::SqexDef::VirtualSqPack::ReadIndex1(const uint64_t offset, void* 
 }
 
 size_t XivAlex::SqexDef::VirtualSqPack::ReadIndex2(const uint64_t offset, void* buf, const uint64_t length) const {
+	if (!m_frozen)
+		throw std::runtime_error("Trying to operate on a non frozen VirtualSqPack");
+
 	if (!length)
 		return 0;
 
@@ -1211,6 +1292,9 @@ size_t XivAlex::SqexDef::VirtualSqPack::ReadIndex2(const uint64_t offset, void* 
 }
 
 size_t XivAlex::SqexDef::VirtualSqPack::ReadData(uint32_t datIndex, const uint64_t offset, void* buf, const uint64_t length) const {
+	if (!m_frozen)
+		throw std::runtime_error("Trying to operate on a non frozen VirtualSqPack");
+
 	if (!length)
 		return 0;
 
@@ -1236,13 +1320,13 @@ size_t XivAlex::SqexDef::VirtualSqPack::ReadData(uint32_t datIndex, const uint64
 		return 0;
 
 	auto it = std::lower_bound(m_entries.begin(), m_entries.end(), std::make_unique<Entry>(
-		                           0, 0, 0, datIndex, 0, 0, relativeOffset, nullptr
-	                           ), [&](const std::unique_ptr<Entry>& l, const std::unique_ptr<Entry>& r) {
-		                           if (l->DataFileIndex == r->DataFileIndex)
-			                           return l->Offset < r->Offset;
-		                           else
-			                           return l->DataFileIndex < r->DataFileIndex;
-	                           });
+		0, 0, 0, datIndex, 0, 0, relativeOffset, nullptr
+		), [&](const std::unique_ptr<Entry>& l, const std::unique_ptr<Entry>& r) {
+		if (l->DataFileIndex == r->DataFileIndex)
+			return l->Offset < r->Offset;
+		else
+			return l->DataFileIndex < r->DataFileIndex;
+	});
 
 	if (it == m_entries.end()) {
 		--it;
@@ -1280,10 +1364,10 @@ size_t XivAlex::SqexDef::VirtualSqPack::ReadData(uint32_t datIndex, const uint64
 uint64_t XivAlex::SqexDef::VirtualSqPack::SizeIndex1() const {
 	return 0ULL +
 		m_sqpackIndexHeader.HeaderLength +
-		m_sqpackIndexSubHeader.HeaderLength+
-		m_sqpackIndexSubHeader.FileSegment.Size+
-		m_sqpackIndexSubHeader.DataFilesSegment.Size+
-		m_sqpackIndexSubHeader.UnknownSegment3.Size+
+		m_sqpackIndexSubHeader.HeaderLength +
+		m_sqpackIndexSubHeader.FileSegment.Size +
+		m_sqpackIndexSubHeader.DataFilesSegment.Size +
+		m_sqpackIndexSubHeader.UnknownSegment3.Size +
 		m_sqpackIndexSubHeader.FolderSegment.Size;
 }
 

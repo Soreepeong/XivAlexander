@@ -43,7 +43,7 @@ int main() {
 							currPath
 						);
 					}
-					vpack.Freeze();
+					vpack.Freeze(false);
 
 					std::cout << "Writing index..." << std::endl;
 					const auto targetIndexPath = std::filesystem::path(std::format(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\{})", path.filename().replace_extension(".index")));
