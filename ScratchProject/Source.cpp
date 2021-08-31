@@ -1,8 +1,9 @@
 #include "pch.h"
 
 int main() {
+	const auto targetBasePath = LR"(Z:\scratch\t2)";
 	for (const auto& rootDir : {
-		std::filesystem::path(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv)"),
+		std::filesystem::path(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack)"),
 		// std::filesystem::path(LR"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game\sqpack)"),
 		// std::filesystem::path(LR"(D:\Program Files (x86)\SNDA\FFXIV\game\sqpack)"),
 		}) {
@@ -10,7 +11,7 @@ int main() {
 		for (const auto& entry1 : std::filesystem::directory_iterator(rootDir)) {
 			if (!entry1.is_directory())
 				continue;
-			if (entry1.path().filename().wstring() != L"backup")
+			if (entry1.path().filename().wstring() != L"ffxiv")
 				continue;
 			for (const auto& entry2 : std::filesystem::directory_iterator(entry1)) {
 				const auto path = entry2.path();
@@ -46,7 +47,7 @@ int main() {
 					vpack.Freeze(false);
 
 					std::cout << "Writing index..." << std::endl;
-					const auto targetIndexPath = std::filesystem::path(std::format(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\{})", path.filename().replace_extension(".index")));
+					const auto targetIndexPath = std::filesystem::path(std::format(LR"({}\{})", targetBasePath, path.filename().replace_extension(".index")));
 					{
 						const auto f1 = Utils::Win32::File::Create(
 							targetIndexPath,
@@ -63,7 +64,7 @@ int main() {
 					std::cout << "Writing index2..." << std::endl;
 					{
 						const auto f1 = Utils::Win32::File::Create(
-							std::format(R"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\{})", path.filename().replace_extension(".index2")),
+							std::format(R"({}\{})", targetBasePath, path.filename().replace_extension(".index2")),
 							GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0);
 						char buf[65536];
 						size_t pos = 0;
@@ -77,7 +78,7 @@ int main() {
 					for (uint32_t i = 0; i < vpack.NumOfDataFiles(); ++i) {
 						std::cout << "Writing dat" << i << "..." << std::endl;
 						const auto f1 = Utils::Win32::File::Create(
-							std::format(R"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\{})", path.filename().replace_extension(std::format(".dat{}", i))),
+							std::format(R"({}\{})", targetBasePath, path.filename().replace_extension(std::format(".dat{}", i))),
 							GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0);
 						char buf[65536];
 						size_t pos = 0;

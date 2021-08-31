@@ -240,6 +240,12 @@ void XivAlex::SqexDef::SqIndex::Header::VerifyDataFileSegment(const std::vector<
 	}
 }
 
+XivAlex::SqexDef::SqIndex::LEDataLocator::LEDataLocator(uint32_t index, uint64_t offset)
+	: LE<uint32_t>(0) {
+	Index(index);
+	Offset(offset);
+}
+
 uint32_t XivAlex::SqexDef::SqIndex::LEDataLocator::Index() const {
 	return (Value() & 0xF) / 2;
 }
@@ -598,7 +604,7 @@ size_t XivAlex::SqexDef::VirtualSqPack::FileOnDiskEntryProvider::Read(uint64_t o
 }
 
 XivAlex::SqexDef::VirtualSqPack::OnTheFlyBinaryEntryProvider::OnTheFlyBinaryEntryProvider(std::filesystem::path path)
-: m_path(std::move(path)) {
+	: m_path(std::move(path)) {
 	const auto rawSize = static_cast<uint32_t>(file_size(m_path));
 	const auto blockCount = (rawSize + ChunkDataSize - 1) / ChunkDataSize;
 	m_header = {
@@ -949,9 +955,6 @@ XivAlex::SqexDef::VirtualSqPack::AddEntryResult XivAlex::SqexDef::VirtualSqPack:
 	if (FullPathHash != Entry::NoEntryHash) {
 		const auto it = m_fullPathEntryPointerMap.find(FullPathHash);
 		if (it != m_fullPathEntryPointerMap.end()) {
-			MessageBoxW(nullptr, std::format(L"PH={:x}, NH={:x}, FPH={:x}",
-				PathHash, NameHash, FullPathHash).c_str(), L"", MB_OK);
-			__debugbreak();
 			it->second->Provider = std::move(provider);
 			if (PathHash != Entry::NoEntryHash || NameHash != Entry::NoEntryHash) {
 				m_pathNameTupleEntryPointerMap.erase(std::make_pair(it->second->PathHash, it->second->NameHash));
@@ -1032,6 +1035,23 @@ size_t XivAlex::SqexDef::VirtualSqPack::NumOfDataFiles() const {
 	return m_sqpackDataSubHeaders.size();
 }
 
+XivAlex::SqexDef::SqData::Header& XivAlex::SqexDef::VirtualSqPack::AllocateDataSpace(size_t length, bool strict) {
+	if (m_sqpackDataSubHeaders.empty() ||
+		sizeof SqpackHeader + sizeof SqData::Header + m_sqpackDataSubHeaders.back().DataSize + length > m_sqpackDataSubHeaders.back().MaxFileSize) {
+		if (strict && !m_sqpackDataSubHeaders.empty()) {
+			CalculateSha1(m_sqpackDataSubHeaders.back().Sha1, std::span(&m_sqpackDataSubHeaders.back(), 1));
+		}
+		m_sqpackDataSubHeaders.emplace_back(SqData::Header{
+			.HeaderLength = sizeof SqData::Header,
+			.Unknown1 = SqData::Header::Unknown1_Value,
+			.DataSize = 0,
+			.SpanIndex = static_cast<uint32_t>(m_sqpackDataSubHeaders.size()),
+			.MaxFileSize = SqData::Header::MaxFileSize_MaxValue,
+			});
+	}
+	return m_sqpackDataSubHeaders.back();
+}
+
 void XivAlex::SqexDef::VirtualSqPack::Freeze(bool strict) {
 	if (m_frozen)
 		throw std::runtime_error("Cannot freeze again");
@@ -1039,49 +1059,25 @@ void XivAlex::SqexDef::VirtualSqPack::Freeze(bool strict) {
 	m_fileEntries1.clear();
 	m_fileEntries2.clear();
 
-	uint64_t currentDataFilePointer = 2048;
-
-	SqData::Header sqDataHeader{};
-	sqDataHeader.HeaderLength = sizeof sqDataHeader;
-	sqDataHeader.DataSize = 0;
-	sqDataHeader.SpanIndex = 1;
-	sqDataHeader.Unknown1 = SqData::Header::Unknown1_Value;
-	sqDataHeader.MaxFileSize = SqData::Header::MaxFileSize_MaxValue;
-	if (strict)
-		CalculateSha1(sqDataHeader.Sha1, std::span(&sqDataHeader, 1));
-	m_sqpackDataSubHeaders.emplace_back(sqDataHeader);
-
 	m_sqpackIndexSubHeader.DataFilesSegment.Count = 1;
 	m_sqpackIndex2SubHeader.DataFilesSegment.Count = 1;
 
 	for (const auto& entry : m_entries) {
-		SqIndex::FileSegmentEntry entry1{ .NameHash = entry->NameHash, .PathHash = entry->PathHash };
-		SqIndex::FileSegmentEntry2 entry2{ .FullPathHash = entry->FullPathHash };
-
 		entry->Length = entry->Provider->Size();
-		entry->PaddedLength = (entry->Length + EntryAlignment - 1) / EntryAlignment * EntryAlignment;
+		entry->PadLength = (entry->Length + EntryAlignment - 1) / EntryAlignment * EntryAlignment - entry->Length;
 
-		if (currentDataFilePointer + entry->Length >= sqDataHeader.MaxFileSize) {
-			currentDataFilePointer = 2048;
-			sqDataHeader.SpanIndex = sqDataHeader.SpanIndex + 1;
-			if (strict)
-				CalculateSha1(sqDataHeader.Sha1, std::span(&sqDataHeader, 1));
-			m_sqpackDataSubHeaders.emplace_back(sqDataHeader);
-		}
+		auto& dataSubHeader = AllocateDataSpace(0ULL + entry->Length + entry->PadLength, strict);
 		entry->DataFileIndex = static_cast<uint32_t>(m_sqpackDataSubHeaders.size() - 1);
-		entry->Offset = currentDataFilePointer - 2048;
+		entry->Offset = dataSubHeader.DataSize;
 
-		entry1.DatFile.Offset(currentDataFilePointer);
-		entry1.DatFile.Index(entry->DataFileIndex);
+		dataSubHeader.DataSize = dataSubHeader.DataSize + entry->Length + entry->PadLength;
 
-		entry2.DatFile.Offset(currentDataFilePointer);
-		entry2.DatFile.Index(entry->DataFileIndex);
-
-		currentDataFilePointer += entry->PaddedLength;
-		m_sqpackDataSubHeaders.back().DataSize = m_sqpackDataSubHeaders.back().DataSize + entry->PaddedLength;
-
-		m_fileEntries1.emplace_back(entry1);
-		m_fileEntries2.emplace_back(entry2);
+		const auto dataLocator = SqIndex::LEDataLocator{
+			entry->DataFileIndex,
+			sizeof SqpackHeader + sizeof SqData::Header + entry->Offset,
+		};
+		m_fileEntries1.emplace_back(SqIndex::FileSegmentEntry{ entry->NameHash, entry->PathHash, dataLocator, 0 });
+		m_fileEntries2.emplace_back(SqIndex::FileSegmentEntry2{ entry->FullPathHash, dataLocator });
 	}
 
 	std::sort(m_fileEntries1.begin(), m_fileEntries1.end(), [](const SqIndex::FileSegmentEntry& l, const SqIndex::FileSegmentEntry& r) {
@@ -1093,7 +1089,7 @@ void XivAlex::SqexDef::VirtualSqPack::Freeze(bool strict) {
 	std::sort(m_fileEntries2.begin(), m_fileEntries2.end(), [](const SqIndex::FileSegmentEntry2& l, const SqIndex::FileSegmentEntry2& r) {
 		return l.FullPathHash < r.FullPathHash;
 	});
-	
+
 	memcpy(m_sqpackIndexHeader.Signature, SqpackHeader::Signature_Value, sizeof SqpackHeader::Signature_Value);
 	m_sqpackIndexHeader.HeaderLength = sizeof SqpackHeader;
 	m_sqpackIndexHeader.Unknown1 = SqpackHeader::Unknown1_Value;
@@ -1130,7 +1126,7 @@ void XivAlex::SqexDef::VirtualSqPack::Freeze(bool strict) {
 	m_sqpackIndexSubHeader.FolderSegment.Size = static_cast<uint32_t>(std::span(m_folderEntries).size_bytes());
 	if (strict)
 		CalculateSha1(m_sqpackIndexSubHeader.Sha1, std::span(&m_sqpackIndexSubHeader, 1));
-	
+
 	memcpy(m_sqpackIndex2Header.Signature, SqpackHeader::Signature_Value, sizeof SqpackHeader::Signature_Value);
 	m_sqpackIndex2Header.HeaderLength = sizeof SqpackHeader;
 	m_sqpackIndex2Header.Unknown1 = SqpackHeader::Unknown1_Value;
@@ -1155,7 +1151,7 @@ void XivAlex::SqexDef::VirtualSqPack::Freeze(bool strict) {
 	m_sqpackIndex2SubHeader.FolderSegment.Size = 0;
 	if (strict)
 		CalculateSha1(m_sqpackIndex2SubHeader.Sha1, std::span(&m_sqpackIndex2SubHeader, 1));
-	
+
 	memcpy(m_sqpackDataHeader.Signature, SqpackHeader::Signature_Value, sizeof SqpackHeader::Signature_Value);
 	m_sqpackDataHeader.HeaderLength = sizeof SqpackHeader;
 	m_sqpackDataHeader.Unknown1 = SqpackHeader::Unknown1_Value;
@@ -1167,198 +1163,133 @@ void XivAlex::SqexDef::VirtualSqPack::Freeze(bool strict) {
 	m_frozen = true;
 }
 
-size_t XivAlex::SqexDef::VirtualSqPack::ReadIndex1(const uint64_t offset, void* buf, const uint64_t length) const {
+size_t XivAlex::SqexDef::VirtualSqPack::ReadIndex1(const uint64_t offset, void* const buf, const uint64_t length) const {
 	if (!m_frozen)
 		throw std::runtime_error("Trying to operate on a non frozen VirtualSqPack");
-
 	if (!length)
 		return 0;
 
 	auto relativeOffset = offset;
+	auto out = std::span(static_cast<char*>(buf), length);
 
-	if (relativeOffset < m_sqpackIndexHeader.HeaderLength) {
-		const auto src = std::span(reinterpret_cast<const char*>(&m_sqpackIndexHeader), m_sqpackIndexHeader.HeaderLength);
-		const auto available = std::min(length, src.size_bytes() - relativeOffset);
-		memcpy(buf, &src[relativeOffset], available);
-		return available + ReadIndex1(offset + available, static_cast<char*>(buf) + available, length - available);
-	}
-	relativeOffset -= m_sqpackIndexHeader.HeaderLength;
+	for (const auto& [ptr, cb] : std::initializer_list<std::tuple<const void*, size_t>>{
+		{&m_sqpackIndexHeader, sizeof m_sqpackIndexHeader},
+		{&m_sqpackIndexSubHeader, sizeof m_sqpackIndexSubHeader},
+		{m_fileEntries1.data(), std::span(m_fileEntries1).size_bytes()},
+		{m_sqpackIndexSegment2.data(), std::span(m_sqpackIndexSegment2).size_bytes()},
+		{m_sqpackIndexSegment3.data(), std::span(m_sqpackIndexSegment3).size_bytes()},
+		{m_folderEntries.data(), std::span(m_folderEntries).size_bytes()},
+		}) {
+		if (relativeOffset < cb) {
+			const auto available = std::min(out.size_bytes(), cb - relativeOffset);
+			std::copy_n(static_cast<const char*>(ptr), available, out.begin());
+			out = out.subspan(available);
+			relativeOffset = 0;
+		} else
+			relativeOffset -= cb;
 
-	if (relativeOffset < sizeof SqIndex::Header) {
-		const auto src = std::span(reinterpret_cast<const char*>(&m_sqpackIndexSubHeader), m_sqpackIndexSubHeader.HeaderLength);
-		const auto available = std::min(length, src.size_bytes() - relativeOffset);
-		memcpy(buf, &src[relativeOffset], available);
-		return available + ReadIndex1(offset + available, static_cast<char*>(buf) + available, length - available);
-	}
-	relativeOffset -= m_sqpackIndexSubHeader.HeaderLength;
-
-	if (relativeOffset < m_sqpackIndexSubHeader.FileSegment.Size) {
-		const auto srcTyped = std::span(m_fileEntries1);
-		const auto src = std::span(reinterpret_cast<const char*>(srcTyped.data()), srcTyped.size_bytes());
-		const auto available = std::min(length, src.size_bytes() - relativeOffset);
-		memcpy(buf, &src[relativeOffset], available);
-		return available + ReadIndex1(offset + available, static_cast<char*>(buf) + available, length - available);
-	}
-	relativeOffset -= m_sqpackIndexSubHeader.FileSegment.Size;
-
-	if (relativeOffset < m_sqpackIndexSubHeader.DataFilesSegment.Size) {
-		const auto src = std::span(m_sqpackIndexSegment2);
-		const auto available = std::min(length, src.size_bytes() - relativeOffset);
-		memcpy(buf, &src[relativeOffset], available);
-		return available + ReadIndex1(offset + available, static_cast<char*>(buf) + available, length - available);
-	}
-	relativeOffset -= m_sqpackIndexSubHeader.DataFilesSegment.Size;
-
-	if (relativeOffset < m_sqpackIndexSubHeader.UnknownSegment3.Size) {
-		const auto srcTyped = std::span(m_sqpackIndexSegment3);
-		const auto src = std::span(reinterpret_cast<const char*>(srcTyped.data()), srcTyped.size_bytes());
-		const auto available = std::min(length, src.size_bytes() - relativeOffset);
-		memcpy(buf, &src[relativeOffset], available);
-		return available + ReadIndex1(offset + available, static_cast<char*>(buf) + available, length - available);
-	}
-	relativeOffset -= m_sqpackIndexSubHeader.UnknownSegment3.Size;
-
-	if (relativeOffset < m_sqpackIndexSubHeader.FolderSegment.Size) {
-		const auto srcTyped = std::span(m_folderEntries);
-		const auto src = std::span(reinterpret_cast<const char*>(srcTyped.data()), srcTyped.size_bytes());
-		const auto available = std::min(length, src.size_bytes() - relativeOffset);
-		memcpy(buf, &src[relativeOffset], available);
-		return available + ReadIndex1(offset + available, static_cast<char*>(buf) + available, length - available);
+		if (out.empty())
+			return length - out.size_bytes();
 	}
 
-	return 0;
+	return length - out.size_bytes();
 }
 
-size_t XivAlex::SqexDef::VirtualSqPack::ReadIndex2(const uint64_t offset, void* buf, const uint64_t length) const {
+size_t XivAlex::SqexDef::VirtualSqPack::ReadIndex2(const uint64_t offset, void* const buf, const uint64_t length) const {
 	if (!m_frozen)
 		throw std::runtime_error("Trying to operate on a non frozen VirtualSqPack");
-
 	if (!length)
 		return 0;
 
 	auto relativeOffset = offset;
+	auto out = std::span(static_cast<char*>(buf), length);
 
-	if (relativeOffset < m_sqpackIndex2Header.HeaderLength) {
-		const auto src = std::span(reinterpret_cast<const char*>(&m_sqpackIndex2Header), m_sqpackIndex2Header.HeaderLength);
-		const auto available = std::min(length, src.size_bytes() - relativeOffset);
-		memcpy(buf, &src[relativeOffset], available);
-		return available + ReadIndex2(offset + available, static_cast<char*>(buf) + available, length - available);
-	}
-	relativeOffset -= m_sqpackIndex2Header.HeaderLength;
+	for (const auto& [ptr, cb] : std::initializer_list<std::tuple<const void*, size_t>>{
+		{&m_sqpackIndex2Header, sizeof m_sqpackIndex2Header},
+		{&m_sqpackIndex2SubHeader, sizeof m_sqpackIndex2SubHeader},
+		{m_fileEntries2.data(), std::span(m_fileEntries2).size_bytes()},
+		{m_sqpackIndex2Segment2.data(), std::span(m_sqpackIndex2Segment2).size_bytes()},
+		{m_sqpackIndex2Segment3.data(), std::span(m_sqpackIndex2Segment3).size_bytes()},
+		}) {
+		if (relativeOffset < cb) {
+			const auto available = std::min(out.size_bytes(), cb - relativeOffset);
+			std::copy_n(static_cast<const char*>(ptr), available, out.begin());
+			out = out.subspan(available);
+			relativeOffset = 0;
+		} else
+			relativeOffset -= cb;
 
-	if (relativeOffset < sizeof SqIndex::Header) {
-		const auto src = std::span(reinterpret_cast<const char*>(&m_sqpackIndex2SubHeader), m_sqpackIndex2SubHeader.HeaderLength);
-		const auto available = std::min(length, src.size_bytes() - relativeOffset);
-		memcpy(buf, &src[relativeOffset], available);
-		return available + ReadIndex2(offset + available, static_cast<char*>(buf) + available, length - available);
-	}
-	relativeOffset -= m_sqpackIndex2SubHeader.HeaderLength;
-
-	if (relativeOffset < m_sqpackIndex2SubHeader.FileSegment.Size) {
-		const auto srcTyped = std::span(m_fileEntries2);
-		const auto src = std::span(reinterpret_cast<const char*>(srcTyped.data()), srcTyped.size_bytes());
-		const auto available = std::min(length, src.size_bytes() - relativeOffset);
-		memcpy(buf, &src[relativeOffset], available);
-		return available + ReadIndex2(offset + available, static_cast<char*>(buf) + available, length - available);
-	}
-	relativeOffset -= m_sqpackIndex2SubHeader.FileSegment.Size;
-
-	if (relativeOffset < m_sqpackIndex2SubHeader.DataFilesSegment.Size) {
-		const auto src = std::span(m_sqpackIndex2Segment2);
-		const auto available = std::min(length, src.size_bytes() - relativeOffset);
-		memcpy(buf, &src[relativeOffset], available);
-		return available + ReadIndex2(offset + available, static_cast<char*>(buf) + available, length - available);
-	}
-	relativeOffset -= m_sqpackIndex2SubHeader.DataFilesSegment.Size;
-
-	if (relativeOffset < m_sqpackIndex2SubHeader.UnknownSegment3.Size) {
-		const auto srcTyped = std::span(m_sqpackIndex2Segment3);
-		const auto src = std::span(reinterpret_cast<const char*>(srcTyped.data()), srcTyped.size_bytes());
-		const auto available = std::min(length, src.size_bytes() - relativeOffset);
-		memcpy(buf, &src[relativeOffset], available);
-		return available + ReadIndex2(offset + available, static_cast<char*>(buf) + available, length - available);
-	}
-	relativeOffset -= m_sqpackIndex2SubHeader.UnknownSegment3.Size;
-
-	if (relativeOffset < m_sqpackIndex2SubHeader.FolderSegment.Size) {
-		const auto srcTyped = std::span(m_folderEntries);
-		const auto src = std::span(reinterpret_cast<const char*>(srcTyped.data()), srcTyped.size_bytes());
-		const auto available = std::min(length, src.size_bytes() - relativeOffset);
-		memcpy(buf, &src[relativeOffset], available);
-		return available + ReadIndex2(offset + available, static_cast<char*>(buf) + available, length - available);
+		if (out.empty())
+			return length - out.size_bytes();
 	}
 
-	return 0;
+	return length - out.size_bytes();
 }
 
-size_t XivAlex::SqexDef::VirtualSqPack::ReadData(uint32_t datIndex, const uint64_t offset, void* buf, const uint64_t length) const {
+size_t XivAlex::SqexDef::VirtualSqPack::ReadData(uint32_t datIndex, const uint64_t offset, void* const buf, const uint64_t length) const {
 	if (!m_frozen)
 		throw std::runtime_error("Trying to operate on a non frozen VirtualSqPack");
-
 	if (!length)
 		return 0;
 
 	auto relativeOffset = offset;
+	auto out = std::span(static_cast<char*>(buf), length);
 
-	if (relativeOffset < m_sqpackDataHeader.HeaderLength) {
-		const auto src = std::span(reinterpret_cast<const char*>(&m_sqpackDataHeader), m_sqpackDataHeader.HeaderLength);
-		const auto available = std::min(length, src.size_bytes() - relativeOffset);
-		memcpy(buf, &src[relativeOffset], available);
-		return available + ReadData(datIndex, offset + available, static_cast<char*>(buf) + available, length - available);
+	for (const auto& [ptr, cb] : std::initializer_list<std::tuple<const void*, size_t>>{
+		{&m_sqpackDataHeader, sizeof m_sqpackDataHeader},
+		{&m_sqpackDataSubHeaders[datIndex], sizeof m_sqpackDataSubHeaders[datIndex]},
+		}) {
+		if (relativeOffset < cb) {
+			const auto available = std::min(out.size_bytes(), cb - relativeOffset);
+			std::copy_n(static_cast<const char*>(ptr), available, out.begin());
+			out = out.subspan(available);
+			relativeOffset = 0;
+		} else
+			relativeOffset -= cb;
+
+		if (out.empty())
+			return length - out.size_bytes();
 	}
-	relativeOffset -= m_sqpackDataHeader.HeaderLength;
 
-	if (relativeOffset < sizeof SqIndex::Header) {
-		const auto src = std::span(reinterpret_cast<const char*>(&m_sqpackDataSubHeaders[datIndex]), m_sqpackDataSubHeaders[datIndex].HeaderLength);
-		const auto available = std::min(length, src.size_bytes() - relativeOffset);
-		memcpy(buf, &src[relativeOffset], available);
-		return available + ReadData(datIndex, offset + available, static_cast<char*>(buf) + available, length - available);
-	}
-	relativeOffset -= m_sqpackDataSubHeaders[datIndex].HeaderLength;
-
-	if (m_entries.empty())
-		return 0;
-
-	auto it = std::lower_bound(m_entries.begin(), m_entries.end(), std::make_unique<Entry>(
-		0, 0, 0, datIndex, 0, 0, relativeOffset, nullptr
-		), [&](const std::unique_ptr<Entry>& l, const std::unique_ptr<Entry>& r) {
-		if (l->DataFileIndex == r->DataFileIndex)
-			return l->Offset < r->Offset;
-		else
-			return l->DataFileIndex < r->DataFileIndex;
+	auto it = std::lower_bound(m_entries.begin(), m_entries.end(), nullptr, [&](const std::unique_ptr<Entry>& l, const std::unique_ptr<Entry>& r) {
+		const auto ldfi = l ? l->DataFileIndex : datIndex;
+		const auto rdfi = r ? r->DataFileIndex : datIndex;
+		if (ldfi == rdfi) {
+			const auto lo = l ? l->Offset : relativeOffset;
+			const auto ro = r ? r->Offset : relativeOffset;
+			return lo < ro;
+		} else
+			return ldfi < rdfi;
 	});
-
-	if (it == m_entries.end()) {
+	if (it != m_entries.begin())
 		--it;
-		if (relativeOffset >= it->get()->Offset + it->get()->PaddedLength) {
-			const auto totalLen = m_sqpackDataSubHeaders[datIndex].DataSize;
-			if (relativeOffset < totalLen) {
-				const auto available = std::min(totalLen - relativeOffset, length);
-				memset(buf, 0, available);
-				return available;
-			}
-			return 0;
+	if (it != m_entries.end()) {
+		relativeOffset -= it->get()->Offset;
+
+		for (; it < m_entries.end(); ++it) {
+			const auto& entry = *it->get();
+
+			if (relativeOffset < entry.Length) {
+				const auto available = std::min(out.size_bytes(), entry.Length - relativeOffset);
+				out = out.subspan(entry.Provider->Read(relativeOffset, out.data(), available));
+				relativeOffset = 0;
+			} else
+				relativeOffset -= entry.Length;
+
+			if (relativeOffset < entry.PadLength) {
+				const auto available = std::min(out.size_bytes(), entry.Length - relativeOffset);
+				std::fill_n(out.begin(), available, 0);
+				out = out.subspan(available);
+				relativeOffset = 0;
+			} else
+				relativeOffset -= entry.PadLength;
+
+			if (out.empty())
+				break;
 		}
-		if (it->get()->DataFileIndex != datIndex)
-			return 0;
-	} else if (it->get()->Offset > relativeOffset) {
-		if (it == m_entries.begin() || (it - 1)->get()->DataFileIndex != datIndex)  // Not even there
-			return 0;
-		--it;
 	}
 
-	const auto& entry = *it->get();
-	relativeOffset -= entry.Offset;
-
-	uint64_t available = 0;
-	if (relativeOffset < entry.Length) {
-		available = std::min(length, entry.Length - relativeOffset);
-		entry.Provider->Read(relativeOffset, buf, available);
-	} else if (relativeOffset < entry.PaddedLength) {
-		available = std::min(length, entry.PaddedLength - relativeOffset);
-		memset(buf, 0, available);
-	}
-	return available + ReadData(datIndex, offset + available, static_cast<char*>(buf) + available, length - available);
+	return length - out.size_bytes();
 }
 
 uint64_t XivAlex::SqexDef::VirtualSqPack::SizeIndex1() const {

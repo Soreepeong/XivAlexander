@@ -185,6 +185,9 @@ namespace XivAlex::SqexDef {
 		static_assert(sizeof(Header) == 1024);
 
 		struct LEDataLocator : LE<uint32_t> {
+			using LE<uint32_t>::LE;
+			LEDataLocator(uint32_t index, uint64_t offset);
+
 			[[nodiscard]] uint32_t Index() const;
 			[[nodiscard]] uint64_t Offset() const;
 			uint32_t Index(uint32_t value);
@@ -312,7 +315,7 @@ namespace XivAlex::SqexDef {
 	}
 
 	extern const uint32_t SqexHashTable[4][256];
-	uint32_t SqexHash(const char* ptr, size_t len);
+	uint32_t SqexHash(const char* data, size_t len);
 	uint32_t SqexHash(const std::string& text);
 	uint32_t SqexHash(const std::string_view& text);
 
@@ -479,7 +482,7 @@ namespace XivAlex::SqexDef {
 
 			uint32_t DataFileIndex;
 			uint32_t Length;
-			uint32_t PaddedLength;
+			uint32_t PadLength;
 			uint64_t Offset;
 
 			std::unique_ptr<EntryProvider> Provider;
@@ -531,6 +534,10 @@ namespace XivAlex::SqexDef {
 		[[nodiscard]]
 		size_t NumOfDataFiles() const;
 
+	private:
+		SqData::Header& AllocateDataSpace(size_t length, bool strict);
+
+	public:
 		void Freeze(bool strict);
 
 		size_t ReadIndex1(uint64_t offset, void* buf, uint64_t length) const;

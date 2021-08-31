@@ -116,20 +116,17 @@ public:
 					const auto recreatedFilePath = m_baseSqpackDir / fileToOpen.parent_path().filename() / fileToOpen.filename();
 					const auto indexFile = std::filesystem::path(recreatedFilePath).replace_extension(L".index");
 					const auto index2File = std::filesystem::path(recreatedFilePath).replace_extension(L".index2");
-					if (// indexFile.filename().wstring() == L"000000.win32.index" &&
-						exists(indexFile) &&
-						exists(index2File) &&
-						equivalent(fileToOpen, recreatedFilePath)) {
+					if (exists(indexFile) && exists(index2File) && indexFile.filename().wstring() == L"000000.win32.index") {
 						int pathType = VirtualPath::PathTypeInvalid;
 
-						if (equivalent(fileToOpen, indexFile)) {
+						if (fileToOpen == indexFile) {
 							pathType = VirtualPath::PathTypeIndex;
-						} else if (equivalent(fileToOpen, index2File)) {
+						} else if (fileToOpen == index2File) {
 							pathType = VirtualPath::PathTypeIndex2;
 						} else {
 							for (auto i = 0; i < 8; ++i) {
 								const auto datFile = std::filesystem::path(recreatedFilePath).replace_extension(std::format(L".dat{}", i));
-								if (equivalent(fileToOpen, datFile)) {
+								if (fileToOpen == datFile) {
 									pathType = i;
 									break;
 								}
@@ -183,7 +180,7 @@ public:
 									}
 
 									for (const auto& replacementDirPath : {
-										std::filesystem::path(recreatedFilePath).replace_extension(".replacements"),
+										std::filesystem::path(indexFile).replace_extension(""),
 										}) {
 										if (!exists(replacementDirPath))
 											continue;
@@ -220,14 +217,14 @@ public:
 
 							const auto key = static_cast<HANDLE>(vpath->IdentifierHandle);
 							m_virtualPathMap.insert_or_assign(key, std::move(vpath));
+							SetLastError(0);
 							return key;
 						}
 					}
 				} catch (const Utils::Win32::Error& e) {
-					Utils::Win32::MessageBoxF(nullptr, MB_OK, L"CreateFileW hook error", L"File: {}, Message: {}", lpFileName, e.what());
-					SetLastError(e.Code());
+					m_logger->Format<LogLevel::Warning>(LogCategory::HashTracker, L"CreateFileW: {}, Message: {}", lpFileName, e.what());
 				} catch (const std::exception& e) {
-					Utils::Win32::MessageBoxF(nullptr, MB_OK, L"CreateFileW hook error", L"File: {}, Message: {}", lpFileName, e.what());
+					m_logger->Format<LogLevel::Warning>(LogCategory::HashTracker, "CreateFileW: {}, Message: {}", lpFileName, e.what());
 				}
 			}
 
@@ -253,52 +250,55 @@ public:
 
 			AtomicIntEnter implUseLock(m_stk);
 
-			if (const auto lock = ReEnterPreventer::Lock(m_repReadFile); lock) {
+			VirtualPath* pvpath = nullptr;
+			{
+				std::lock_guard lock(m_virtualPathMapMutex);
+				const auto vpit = m_virtualPathMap.find(hFile);
+				if (vpit != m_virtualPathMap.end())
+					pvpath = vpit->second.get();
+			}
+
+			if (const auto lock = ReEnterPreventer::Lock(m_repReadFile); pvpath && lock) {
+				auto& vpath = *pvpath;
 				try {
-					VirtualPath* pvpath = nullptr;
-					{
-						std::lock_guard lock(m_virtualPathMapMutex);
-						const auto vpit = m_virtualPathMap.find(hFile);
-						if (vpit != m_virtualPathMap.end())
-							pvpath = vpit->second.get();
-					}
-					if (pvpath) {
-						auto& vpath = *pvpath;
+					const auto fp = lpOverlapped ? ((static_cast<uint64_t>(lpOverlapped->OffsetHigh) << 32) | lpOverlapped->Offset) : vpath.FilePointer.QuadPart;
+					size_t read;
+					if (vpath.PassthroughFile)
+						read = vpath.PassthroughFile.Read(fp, lpBuffer, nNumberOfBytesToRead, Utils::Win32::File::PartialIoMode::AllowPartial);
+					else if (vpath.PathType == VirtualPath::PathTypeIndex)
+						read = vpath.VirtualSqPack->ReadIndex1(fp, lpBuffer, nNumberOfBytesToRead);
+					else if (vpath.PathType == VirtualPath::PathTypeIndex2)
+						read = vpath.VirtualSqPack->ReadIndex2(fp, lpBuffer, nNumberOfBytesToRead);
+					else
+						read = vpath.VirtualSqPack->ReadData(vpath.PathType, fp, lpBuffer, nNumberOfBytesToRead);
 
-						const auto fp = lpOverlapped ? ((static_cast<uint64_t>(lpOverlapped->OffsetHigh) << 32) | lpOverlapped->Offset) : vpath.FilePointer.QuadPart;
-						size_t read;
-						if (vpath.PassthroughFile)
-							read = vpath.PassthroughFile.Read(fp, lpBuffer, nNumberOfBytesToRead, Utils::Win32::File::PartialIoMode::AllowPartial);
-						else if (vpath.PathType == VirtualPath::PathTypeIndex)
-							read = vpath.VirtualSqPack->ReadIndex1(fp, lpBuffer, nNumberOfBytesToRead);
-						else if (vpath.PathType == VirtualPath::PathTypeIndex2)
-							read = vpath.VirtualSqPack->ReadIndex2(fp, lpBuffer, nNumberOfBytesToRead);
-						else
-							read = vpath.VirtualSqPack->ReadData(vpath.PathType, fp, lpBuffer, nNumberOfBytesToRead);
+					if (lpNumberOfBytesRead)
+						*lpNumberOfBytesRead = static_cast<DWORD>(read);
 
-						if (lpNumberOfBytesRead)
-							*lpNumberOfBytesRead = static_cast<DWORD>(read);
+					if (lpOverlapped) {
+						if (lpOverlapped->hEvent)
+							SetEvent(lpOverlapped->hEvent);
+						lpOverlapped->Internal = 0;
+						lpOverlapped->InternalHigh = static_cast<DWORD>(read);
+					} else
+						vpath.FilePointer.QuadPart = fp + read;
 
-						if (lpOverlapped) {
-							if (lpOverlapped->hEvent)
-								SetEvent(lpOverlapped->hEvent);
-							lpOverlapped->Internal = 0;
-							lpOverlapped->InternalHigh = static_cast<DWORD>(read);
-						} else
-							vpath.FilePointer.QuadPart = fp + read;
-						return TRUE;
-					}
+					return TRUE;
+
 				} catch (const Utils::Win32::Error& e) {
 					if (e.Code() != ERROR_IO_PENDING)
-						Utils::Win32::MessageBoxF(nullptr, MB_OK, L"ReadFile hook error", L"Message: {}", e.what());
+						m_logger->Format<LogLevel::Warning>(LogCategory::HashTracker, L"ReadFile: {}({}), Message: {}",
+							vpath.IndexPath.filename(), vpath.PathType, e.what());
 					SetLastError(e.Code());
 					return FALSE;
+
 				} catch (const std::exception& e) {
-					Utils::Win32::MessageBoxF(nullptr, MB_OK, L"ReadFile hook error", L"Message: {}", e.what());
+					m_logger->Format<LogLevel::Warning>(LogCategory::HashTracker, L"ReadFile: {}({}), Message: {}",
+						vpath.IndexPath.filename(), vpath.PathType, e.what());
+					SetLastError(ERROR_READ_FAULT);
 					return FALSE;
 				}
 			}
-
 			return ReadFile.bridge(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
 		});
 
@@ -319,8 +319,8 @@ public:
 			if (!pvpath)
 				return SetFilePointerEx.bridge(hFile, liDistanceToMove, lpNewFilePointer, dwMoveMethod);
 
+			auto& vpath = *pvpath;
 			try {
-				auto& vpath = *pvpath;
 				uint64_t len;
 				if (vpath.PassthroughFile)
 					len = vpath.PassthroughFile.Length();
@@ -348,8 +348,17 @@ public:
 				if (lpNewFilePointer)
 					*lpNewFilePointer = vpath.FilePointer;
 
+			} catch (const Utils::Win32::Error& e) {
+				m_logger->Format<LogLevel::Warning>(LogCategory::HashTracker, L"SetFilePointerEx: {}({}), Message: {}",
+					vpath.IndexPath.filename(), vpath.PathType, e.what());
+				SetLastError(e.Code());
+				return FALSE;
+
 			} catch (const std::exception& e) {
-				MessageBoxW(nullptr, Utils::FromUtf8(e.what()).c_str(), L"TEST", MB_OK);
+				m_logger->Format<LogLevel::Warning>(LogCategory::HashTracker, L"ReadFile: {}({}), Message: {}",
+					vpath.IndexPath.filename(), vpath.PathType, e.what());
+				SetLastError(ERROR_READ_FAULT);
+				return FALSE;
 			}
 
 			return TRUE;
