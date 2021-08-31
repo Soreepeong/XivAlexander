@@ -224,6 +224,15 @@ std::filesystem::path Utils::Win32::ToNativePath(const std::filesystem::path& pa
 	return File::Create(path.wstring().c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0).ResolveName(false, true);
 }
 
+std::filesystem::path Utils::Win32::GetSystem32Path() {
+	std::wstring sysDir;
+	sysDir.resize(PATHCCH_MAX_CCH);  // assume
+	sysDir.resize(GetSystemDirectoryW(&sysDir[0], static_cast<UINT>(sysDir.size())));
+	if (sysDir.empty())
+		throw Error("GetSystemWindowsDirectoryW");
+	return sysDir;
+}
+
 static Utils::CallOnDestruction WithRunAsInvoker() {
 	static const auto NeverElevateEnvKey = L"__COMPAT_LAYER";
 	static const auto NeverElevateEnvVal = L"RunAsInvoker";

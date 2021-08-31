@@ -48,6 +48,7 @@ namespace Utils::Win32 {
 
 	std::filesystem::path GetMappedImageNativePath(HANDLE hProcess, void* lpMem);
 	std::filesystem::path ToNativePath(const std::filesystem::path& path);
+	std::filesystem::path GetSystem32Path();
 
 	struct RunProgramParams {
 		enum ElevateMode {

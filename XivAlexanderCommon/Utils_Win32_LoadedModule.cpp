@@ -55,3 +55,13 @@ Utils::Win32::LoadedModule Utils::Win32::LoadedModule::LoadMore(const LoadedModu
 std::filesystem::path Utils::Win32::LoadedModule::PathOf() const {
 	return Process::Current().PathOf(*this);
 }
+
+void Utils::Win32::LoadedModule::Pin() const {
+	const auto pModuleHandleAsPsz = reinterpret_cast<LPCWSTR>(m_object);
+	HMODULE dummy;
+	if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+		pModuleHandleAsPsz, &dummy))
+		throw Error(
+			"GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, 0x{:x})",
+			reinterpret_cast<size_t>(pModuleHandleAsPsz));
+}

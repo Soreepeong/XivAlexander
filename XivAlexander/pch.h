@@ -36,7 +36,6 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <mstcpip.h>
-#include <d3d11.h>
 #include <bcrypt.h>
 #include <ShellScalingApi.h>
 #include <iphlpapi.h>

@@ -263,7 +263,7 @@ uint32_t XivAlex::SqexDef::SqIndex::LEDataLocator::Index(const uint32_t value) {
 
 uint64_t XivAlex::SqexDef::SqIndex::LEDataLocator::Offset(const uint64_t value) {
 	if (value % 128)
-		throw std::invalid_argument("Offset must be a multiple of 128.");
+		throw std::invalid_argument("OffsetAfterHeaders must be a multiple of 128.");
 	const auto divValue = value / 8;
 	if (divValue > UINT32_MAX)
 		throw std::invalid_argument("Value too big.");
@@ -568,7 +568,7 @@ uint32_t XivAlex::SqexDef::VirtualSqPack::EmptyEntryProvider::Size() const {
 	return sizeof SqData::FileEntryHeader;
 }
 
-size_t XivAlex::SqexDef::VirtualSqPack::EmptyEntryProvider::Read(uint64_t offset, void* buf, uint64_t length) const {
+size_t XivAlex::SqexDef::VirtualSqPack::EmptyEntryProvider::Read(const uint64_t offset, void* const buf, const size_t length) const {
 	if (offset < sizeof SqData::FileEntryHeader) {
 		const auto header = SqData::FileEntryHeader{
 			.HeaderLength = sizeof SqData::FileEntryHeader,
@@ -578,9 +578,11 @@ size_t XivAlex::SqexDef::VirtualSqPack::EmptyEntryProvider::Read(uint64_t offset
 			.BlockBufferSize = 0,
 			.BlockCount = 0,
 		};
-		const auto src = std::span(reinterpret_cast<const char*>(&header), header.HeaderLength);
-		const auto available = static_cast<size_t>(std::min(length, src.size_bytes() - offset));
-		memcpy(buf, &src[offset], available);
+		const auto out = std::span(static_cast<char*>(buf), length);
+		const auto src = std::span(reinterpret_cast<const char*>(&header), header.HeaderLength)
+			.subspan(static_cast<size_t>(offset));
+		const auto available = std::min(out.size_bytes(), src.size_bytes());
+		std::copy_n(src.begin(), available, out.begin());
 		return available;
 	}
 
@@ -596,11 +598,11 @@ uint32_t XivAlex::SqexDef::VirtualSqPack::FileOnDiskEntryProvider::Size() const 
 	return m_length;
 }
 
-size_t XivAlex::SqexDef::VirtualSqPack::FileOnDiskEntryProvider::Read(uint64_t offset, void* buf, uint64_t length) const {
+size_t XivAlex::SqexDef::VirtualSqPack::FileOnDiskEntryProvider::Read(uint64_t offset, void* buf, size_t length) const {
 	if (offset >= m_length)
 		return 0;
 
-	return m_file.Read(m_offset + offset, buf, std::min<uint64_t>(length, m_length - offset));
+	return m_file.Read(m_offset + offset, buf, std::min(length, static_cast<size_t>(m_length - offset)));
 }
 
 XivAlex::SqexDef::VirtualSqPack::OnTheFlyBinaryEntryProvider::OnTheFlyBinaryEntryProvider(std::filesystem::path path)
@@ -615,88 +617,134 @@ XivAlex::SqexDef::VirtualSqPack::OnTheFlyBinaryEntryProvider::OnTheFlyBinaryEntr
 		.BlockBufferSize = PaddedChunkSize,
 		.BlockCount = blockCount,
 	};
-	m_padBeforeData = (m_header.HeaderLength + EntryAlignment - 1) / EntryAlignment * EntryAlignment - m_header.HeaderLength;
+	m_padBeforeData = (EntryAlignment - m_header.HeaderLength) % EntryAlignment;
 	m_header.HeaderLength = m_header.HeaderLength + m_padBeforeData;
 }
 
 XivAlex::SqexDef::VirtualSqPack::OnTheFlyBinaryEntryProvider::~OnTheFlyBinaryEntryProvider() = default;
 
 uint32_t XivAlex::SqexDef::VirtualSqPack::OnTheFlyBinaryEntryProvider::Size() const {
-	return m_header.HeaderLength + m_header.BlockCount * PaddedChunkSize;
+	if (!m_header.BlockCount)
+		return m_header.HeaderLength;
+
+	return m_header.HeaderLength +
+		m_header.DecompressedSize +
+		(m_header.BlockCount - 1) * ChunkPadSize +
+		(EntryAlignment - m_header.DecompressedSize % ChunkDataSize) % EntryAlignment;
 }
 
-size_t XivAlex::SqexDef::VirtualSqPack::OnTheFlyBinaryEntryProvider::Read(const uint64_t offset, void* const buf, const uint64_t length) const {
-	auto relativeOffset = offset;
+size_t XivAlex::SqexDef::VirtualSqPack::OnTheFlyBinaryEntryProvider::Read(const uint64_t offset, void* const buf, const size_t length) const {
 	if (!length)
 		return 0;
+	
+	auto relativeOffset = offset;
+	auto out = std::span(static_cast<char*>(buf), length);
 
 	if (relativeOffset < sizeof m_header) {
-		const auto src = std::span(reinterpret_cast<const char*>(&m_header), sizeof m_header);
-		const auto available = std::min(length, src.size_bytes() - relativeOffset);
-		memcpy(buf, &src[relativeOffset], available);
-		return available + Read(offset + available, static_cast<char*>(buf) + available, length - available);
-	}
-	relativeOffset -= sizeof m_header;
+		const auto src = std::span(reinterpret_cast<const char*>(&m_header), sizeof m_header)
+			.subspan(static_cast<size_t>(relativeOffset));
+		const auto available = std::min(out.size_bytes(), src.size_bytes());
+		std::copy_n(src.begin(), available, out.begin());
+		out = out.subspan(available);
+		relativeOffset = 0;
+
+		if (out.empty())
+			return length - out.size_bytes();
+	} else
+		relativeOffset -= sizeof m_header;
 
 	if (relativeOffset < m_header.BlockCount * sizeof SqData::BlockHeaderLocator) {
-		const auto i = relativeOffset / sizeof SqData::BlockHeaderLocator;
+		auto i = relativeOffset / sizeof SqData::BlockHeaderLocator;
 		relativeOffset -= i * sizeof SqData::BlockHeaderLocator;
-		const auto decompressedDataSize = i == m_header.BlockCount - 1 ? m_header.DecompressedSize % ChunkDataSize : ChunkDataSize;
-		const auto locator = SqData::BlockHeaderLocator{
-			static_cast<uint32_t>(i * PaddedChunkSize),
-			static_cast<uint16_t>(PaddedChunkSize),
-			static_cast<uint16_t>(decompressedDataSize)
-		};
-		const auto src = std::span(reinterpret_cast<const char*>(&locator), sizeof locator);
-		const auto available = std::min(length, src.size_bytes() - relativeOffset);
-		memcpy(buf, &src[relativeOffset], available);
-		return available + Read(offset + available, static_cast<char*>(buf) + available, length - available);
-	}
-	relativeOffset -= m_header.BlockCount * sizeof SqData::BlockHeaderLocator;
+		for (; i < m_header.BlockCount; ++i) {
+			const auto decompressedDataSize = i == m_header.BlockCount - 1 ? m_header.DecompressedSize % ChunkDataSize : ChunkDataSize;
+			const auto locator = SqData::BlockHeaderLocator{
+				static_cast<uint32_t>(i * PaddedChunkSize),
+				static_cast<uint16_t>(PaddedChunkSize),
+				static_cast<uint16_t>(decompressedDataSize)
+			};
+
+			if (relativeOffset < sizeof locator) {
+				const auto src = std::span(reinterpret_cast<const char*>(&locator), sizeof locator)
+					.subspan(static_cast<size_t>(relativeOffset));
+				const auto available = std::min(out.size_bytes(), src.size_bytes());
+				std::copy_n(src.begin(), available, out.begin());
+				out = out.subspan(available);
+				relativeOffset = 0;
+
+				if (out.empty())
+					return length - out.size_bytes();
+			} else
+				relativeOffset -= sizeof locator;
+		}
+	} else
+		relativeOffset -= m_header.BlockCount * sizeof SqData::BlockHeaderLocator;
 
 	if (relativeOffset < m_padBeforeData) {
-		const auto available = std::min(length, m_padBeforeData - relativeOffset);
-		memset(buf, 0, available);
-		return available + Read(offset + available, static_cast<char*>(buf) + available, length - available);
-	}
-	relativeOffset -= m_padBeforeData;
+		const auto available = std::min(out.size_bytes(), static_cast<size_t>(m_padBeforeData - relativeOffset));
+		std::fill_n(out.begin(), available, 0);
+		out = out.subspan(available);
+		relativeOffset = 0;
+
+		if (out.empty())
+			return length - out.size_bytes();
+	} else
+		relativeOffset -= m_padBeforeData;
 
 	if (static_cast<uint32_t>(relativeOffset) < m_header.BlockCount * PaddedChunkSize) {
-		const auto i = relativeOffset / PaddedChunkSize;
+		auto i = relativeOffset / PaddedChunkSize;
 		relativeOffset -= i * PaddedChunkSize;
-		const auto decompressedSize = i == m_header.BlockCount - 1 ? m_header.DecompressedSize % ChunkDataSize : ChunkDataSize;
-		if (relativeOffset < sizeof SqData::BlockHeader) {
-			const auto header = SqData::BlockHeader{
-				.HeaderLength = sizeof SqData::BlockHeader,
-				.Version = 0,
-				.CompressedSize = SqData::BlockHeader::CompressedSizeNotCompressed,
-				.DecompressedSize = decompressedSize,
-			};
-			const auto src = std::span(reinterpret_cast<const char*>(&header), sizeof header);
-			const auto available = std::min(length, src.size_bytes() - relativeOffset);
-			memcpy(buf, &src[relativeOffset], available);
-			return available + Read(offset + available, static_cast<char*>(buf) + available, length - available);
-		}
-		relativeOffset -= sizeof SqData::BlockHeader;
+		for (; i < m_header.BlockCount; ++i) {
+			const auto decompressedSize = i == m_header.BlockCount - 1 ? m_header.DecompressedSize % ChunkDataSize : ChunkDataSize;
 
-		if (relativeOffset < ChunkDataSize && relativeOffset < decompressedSize) {
-			if (!m_hFile)
-				m_hFile = Utils::Win32::File::Create(m_path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+			if (relativeOffset < sizeof SqData::BlockHeader) {
+				const auto header = SqData::BlockHeader{
+					.HeaderLength = sizeof SqData::BlockHeader,
+					.Version = 0,
+					.CompressedSize = SqData::BlockHeader::CompressedSizeNotCompressed,
+					.DecompressedSize = decompressedSize,
+				};
+				const auto src = std::span(reinterpret_cast<const char*>(&header), sizeof header)
+					.subspan(static_cast<size_t>(relativeOffset));
+				const auto available = std::min(out.size_bytes(), src.size_bytes());
+				std::copy_n(src.begin(), available, out.begin());
+				out = out.subspan(available);
+				relativeOffset = 0;
 
-			const auto available = std::min(length, decompressedSize - relativeOffset);
-			m_hFile.Read(i * ChunkDataSize + relativeOffset, buf, available);
-			return available + Read(offset + available, static_cast<char*>(buf) + available, length - available);
-		}
-		relativeOffset -= std::min<uint64_t>(ChunkDataSize, decompressedSize);
+				if (out.empty())
+					return length - out.size_bytes();
+			} else
+				relativeOffset -= sizeof SqData::BlockHeader;
+			
+			if (relativeOffset < decompressedSize) {
+				if (!m_hFile)
+					m_hFile = Utils::Win32::File::Create(m_path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
 
-		if (relativeOffset < ChunkPadSize) {
-			const auto available = std::min<uint64_t>(length, ChunkPadSize);
-			memset(buf, 0, available);
-			return available + Read(offset + available, static_cast<char*>(buf) + available, length - available);
+				const auto available = std::min(out.size_bytes(), static_cast<size_t>(decompressedSize - relativeOffset));
+				m_hFile.Read(i * ChunkDataSize + relativeOffset, &out[0], available);
+				out = out.subspan(available);
+				relativeOffset = 0;
+
+				if (out.empty())
+					return length - out.size_bytes();
+			} else
+				relativeOffset -= decompressedSize;
+			
+			const auto padSize = (EntryAlignment - (decompressedSize + sizeof SqData::BlockHeader)) % EntryAlignment;
+			if (relativeOffset < padSize) {
+				const auto available = std::min(out.size_bytes(), static_cast<size_t>(padSize - relativeOffset));
+				std::fill_n(out.begin(), available, 0);
+				out = out.subspan(static_cast<size_t>(available));
+				relativeOffset = 0;
+
+				if (out.empty())
+					return length - out.size_bytes();
+			} else
+				relativeOffset -= padSize;
 		}
 	}
 
-	return 0;
+	return length - out.size_bytes();
 }
 
 XivAlex::SqexDef::VirtualSqPack::MemoryBinaryEntryProvider::MemoryBinaryEntryProvider(const std::filesystem::path & path) {
@@ -726,7 +774,7 @@ XivAlex::SqexDef::VirtualSqPack::MemoryBinaryEntryProvider::MemoryBinaryEntryPro
 			.CompressedSize = static_cast<uint32_t>(compressed.size()),
 			.DecompressedSize = len,
 		};
-		const auto pad = static_cast<uint32_t>((EntryAlignment - ((sizeof header + compressed.size()) % EntryAlignment)) % EntryAlignment);
+		const auto pad = (EntryAlignment - (sizeof header + compressed.size()) % EntryAlignment) % EntryAlignment;
 
 		locators.emplace_back(SqData::BlockHeaderLocator{
 			locators.empty() ? 0 : locators.back().BlockSize + locators.back().Offset,
@@ -756,27 +804,27 @@ uint32_t XivAlex::SqexDef::VirtualSqPack::MemoryBinaryEntryProvider::Size() cons
 	return static_cast<uint32_t>(m_data.size());
 }
 
-size_t XivAlex::SqexDef::VirtualSqPack::MemoryBinaryEntryProvider::Read(const uint64_t offset, void* const buf, const uint64_t length) const {
-	const auto available = std::min(length, m_data.size() - offset);
+size_t XivAlex::SqexDef::VirtualSqPack::MemoryBinaryEntryProvider::Read(const uint64_t offset, void* const buf, const size_t length) const {
+	const auto available = std::min(length, static_cast<size_t>(m_data.size() - offset));
 	if (!available)
 		return 0;
 
-	memcpy(buf, &m_data[offset], available);
+	memcpy(buf, &m_data[static_cast<size_t>(offset)], available);
 	return available;
 }
 
-const XivAlex::SqexDef::SqData::TexHeader& XivAlex::SqexDef::VirtualSqPack::TextureEntryProvider::AsTexHeader() const {
+const XivAlex::SqexDef::SqData::TexHeader& XivAlex::SqexDef::VirtualSqPack::OnTheFlyTextureEntryProvider::AsTexHeader() const {
 	return *reinterpret_cast<const SqData::TexHeader*>(&m_texHeaderBytes[0]);
 }
 
-std::span<const uint32_t> XivAlex::SqexDef::VirtualSqPack::TextureEntryProvider::AsMipmapOffsets() const {
+std::span<const uint32_t> XivAlex::SqexDef::VirtualSqPack::OnTheFlyTextureEntryProvider::AsMipmapOffsets() const {
 	return std::span(
 		reinterpret_cast<const uint32_t*>(&m_texHeaderBytes[sizeof SqData::TexHeader]),
 		AsTexHeader().MipmapCount
 	);
 }
 
-XivAlex::SqexDef::VirtualSqPack::TextureEntryProvider::TextureEntryProvider(std::filesystem::path path)
+XivAlex::SqexDef::VirtualSqPack::OnTheFlyTextureEntryProvider::OnTheFlyTextureEntryProvider(std::filesystem::path path)
 	: m_path(std::move(path))
 	, m_hFile(Utils::Win32::File::Create(m_path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)) {
 
@@ -815,7 +863,7 @@ XivAlex::SqexDef::VirtualSqPack::TextureEntryProvider::TextureEntryProvider(std:
 		const auto subBlockCount = (mipmapSize + ChunkSize - 1) / ChunkSize;
 		SqData::TextureBlockHeaderLocator loc{
 			blockOffsetCounter,
-			static_cast<uint32_t>(subBlockCount * sizeof SqData::BlockHeader + mipmapSize),
+			(subBlockCount * sizeof SqData::BlockHeader + mipmapSize),
 			mipmapSize,
 			i == 0 ? 0 : m_blockLocators.back().FirstSubBlockIndex + m_blockLocators.back().SubBlockCount,
 			subBlockCount,
@@ -825,21 +873,18 @@ XivAlex::SqexDef::VirtualSqPack::TextureEntryProvider::TextureEntryProvider(std:
 				sizeof SqData::BlockHeader +
 				(j == subBlockCount - 1 ? mipmapSize % ChunkSize : ChunkSize)
 			);
-			blockOffsetCounter += static_cast<uint32_t>(sizeof SqData::BlockHeader + m_subBlockSizes.back());
+			blockOffsetCounter += sizeof SqData::BlockHeader + m_subBlockSizes.back();
 		}
 
 		m_blockLocators.emplace_back(loc);
 	}
 	for (auto& loc : m_blockLocators) {
-		loc.FirstBlockOffset = loc.FirstBlockOffset + static_cast<uint32_t>(
-			std::span(m_texHeaderBytes).size_bytes()
-			);
+		loc.FirstBlockOffset = loc.FirstBlockOffset + static_cast<uint32_t>(std::span(m_texHeaderBytes).size_bytes());
 	}
 
 	entryHeader.HeaderLength = entryHeader.HeaderLength + static_cast<uint32_t>(
 		std::span(m_blockLocators).size_bytes() +
-		std::span(m_subBlockSizes).size_bytes()
-		);
+		std::span(m_subBlockSizes).size_bytes());
 
 	m_mergedHeader.insert(m_mergedHeader.end(),
 		reinterpret_cast<char*>(&entryHeader),
@@ -860,25 +905,32 @@ XivAlex::SqexDef::VirtualSqPack::TextureEntryProvider::TextureEntryProvider(std:
 	}
 }
 
-uint32_t XivAlex::SqexDef::VirtualSqPack::TextureEntryProvider::Size() const {
+uint32_t XivAlex::SqexDef::VirtualSqPack::OnTheFlyTextureEntryProvider::Size() const {
 	return static_cast<uint32_t>(m_size);
 }
 
-size_t XivAlex::SqexDef::VirtualSqPack::TextureEntryProvider::Read(const uint64_t offset, void* const buf, const uint64_t length) const {
-	auto relativeOffset = offset;
+size_t XivAlex::SqexDef::VirtualSqPack::OnTheFlyTextureEntryProvider::Read(const uint64_t offset, void* const buf, const size_t length) const {
 	if (!length)
 		return 0;
 
+	auto relativeOffset = offset;
+	auto out = std::span(static_cast<char*>(buf), length);
+
 	if (relativeOffset < m_mergedHeader.size()) {
-		const auto available = std::min(length, m_mergedHeader.size() - relativeOffset);
-		memcpy(buf, &m_mergedHeader[relativeOffset], available);
-		return available + Read(offset + available, static_cast<char*>(buf) + available, length - available);
-	}
+		const auto src = std::span(m_mergedHeader)
+			.subspan(static_cast<size_t>(relativeOffset));
+		const auto available = std::min(out.size_bytes(), src.size_bytes());
+		std::copy_n(src.begin(), available, out.begin());
+		out = out.subspan(available);
+		relativeOffset = 0;
+
+		if (out.empty())
+			return length - out.size_bytes();
+	} else
+		relativeOffset -= m_mergedHeader.size();
 
 	if (relativeOffset < m_size) {
-		relativeOffset -= sizeof SqData::FileEntryHeader;
-		relativeOffset -= std::span(m_blockLocators).size_bytes();
-		relativeOffset -= std::span(m_subBlockSizes).size_bytes();
+		relativeOffset += std::span(m_texHeaderBytes).size_bytes();
 		auto it = std::lower_bound(m_blockLocators.begin(), m_blockLocators.end(),
 			SqData::TextureBlockHeaderLocator{ .FirstBlockOffset = static_cast<uint32_t>(relativeOffset) },
 			[&](const SqData::TextureBlockHeaderLocator& l, const SqData::TextureBlockHeaderLocator& r) {
@@ -887,11 +939,9 @@ size_t XivAlex::SqexDef::VirtualSqPack::TextureEntryProvider::Read(const uint64_
 
 		if (it == m_blockLocators.end()) {
 			--it;
-			if (relativeOffset >= static_cast<uint64_t>(it->FirstBlockOffset) + it->TotalSize)
-				return 0;
 		} else if (it->FirstBlockOffset > relativeOffset) {
 			if (it == m_blockLocators.begin())  // Not even there
-				return 0;
+				return length - out.size_bytes();
 			--it;
 		}
 
@@ -911,21 +961,33 @@ size_t XivAlex::SqexDef::VirtualSqPack::TextureEntryProvider::Read(const uint64_
 						.CompressedSize = SqData::BlockHeader::CompressedSizeNotCompressed,
 						.DecompressedSize = decompressedSize,
 					};
-					const auto src = std::span(reinterpret_cast<const char*>(&header), sizeof header);
-					const auto available = std::min(length, src.size_bytes() - relativeOffset);
-					memcpy(buf, &src[relativeOffset], available);
-					return available + Read(offset + available, static_cast<char*>(buf) + available, length - available);
-				}
-				relativeOffset -= sizeof SqData::BlockHeader;
+					const auto src = std::span(reinterpret_cast<const char*>(&header), sizeof header)
+						.subspan(static_cast<size_t>(relativeOffset));
+					const auto available = std::min(out.size_bytes(), src.size_bytes());
+					std::copy_n(src.begin(), available, out.begin());
+					out = out.subspan(available);
+					relativeOffset = 0;
 
-				const auto available = std::min(length, decompressedSize - relativeOffset);
-				m_hFile.Read(AsMipmapOffsets()[blockIndex] + j * ChunkSize + relativeOffset, buf, available);
-				return available + Read(offset + available, static_cast<char*>(buf) + available, length - available);
+					if (out.empty())
+						return length - out.size_bytes();
+				} else
+					relativeOffset -= sizeof SqData::BlockHeader;
+
+				if (relativeOffset < decompressedSize) {
+					const auto available = std::min(out.size_bytes(), static_cast<size_t>(decompressedSize - relativeOffset));
+					m_hFile.Read(AsMipmapOffsets()[blockIndex] + j * ChunkSize + relativeOffset, &out[0], available);
+					out = out.subspan(available);
+					relativeOffset = 0;
+
+					if (out.empty())
+						return length - out.size_bytes();
+				} else
+					relativeOffset -= decompressedSize;
 			}
 		}
 	}
 
-	return 0;
+	return length - out.size_bytes();
 }
 
 XivAlex::SqexDef::VirtualSqPack::VirtualSqPack() = default;
@@ -966,7 +1028,7 @@ XivAlex::SqexDef::VirtualSqPack::AddEntryResult XivAlex::SqexDef::VirtualSqPack:
 		}
 	}
 
-	auto entry = std::make_unique<Entry>(PathHash, NameHash, FullPathHash, 0, 0, 0, 0, std::move(provider));
+	auto entry = std::make_unique<Entry>(PathHash, NameHash, FullPathHash, 0, 0, 0, 0, SqIndex::LEDataLocator{ 0, 0 }, std::move(provider));
 	const auto ptr = entry.get();
 	m_entries.emplace_back(std::move(entry));
 	if (FullPathHash != Entry::NoEntryHash)
@@ -1023,11 +1085,12 @@ XivAlex::SqexDef::VirtualSqPack::AddEntryResult XivAlex::SqexDef::VirtualSqPack:
 	if (file_size(path) == 0) {
 		return AddEntry(PathHash, NameHash, FullPathHash, std::make_unique<EmptyEntryProvider>());
 	} else if (path.extension() == ".tex") {
-		return AddEntry(PathHash, NameHash, FullPathHash, std::make_unique<TextureEntryProvider>(path));
+		return AddEntry(PathHash, NameHash, FullPathHash, std::make_unique<OnTheFlyTextureEntryProvider>(path));
 	} else if (path.extension() == ".mdl") {
 		throw std::runtime_error("Not implemented");
 	} else {
-		return AddEntry(PathHash, NameHash, FullPathHash, std::make_unique<MemoryBinaryEntryProvider>(path));
+		// return AddEntry(PathHash, NameHash, FullPathHash, std::make_unique<MemoryBinaryEntryProvider>(path));
+		return AddEntry(PathHash, NameHash, FullPathHash, std::make_unique<OnTheFlyBinaryEntryProvider>(path));
 	}
 }
 
@@ -1068,14 +1131,15 @@ void XivAlex::SqexDef::VirtualSqPack::Freeze(bool strict) {
 
 		auto& dataSubHeader = AllocateDataSpace(0ULL + entry->Length + entry->PadLength, strict);
 		entry->DataFileIndex = static_cast<uint32_t>(m_sqpackDataSubHeaders.size() - 1);
-		entry->Offset = dataSubHeader.DataSize;
+		entry->OffsetAfterHeaders = dataSubHeader.DataSize;
 
 		dataSubHeader.DataSize = dataSubHeader.DataSize + entry->Length + entry->PadLength;
 
 		const auto dataLocator = SqIndex::LEDataLocator{
 			entry->DataFileIndex,
-			sizeof SqpackHeader + sizeof SqData::Header + entry->Offset,
+			sizeof SqpackHeader + sizeof SqData::Header + entry->OffsetAfterHeaders,
 		};
+		entry->Locator = dataLocator;
 		m_fileEntries1.emplace_back(SqIndex::FileSegmentEntry{ entry->NameHash, entry->PathHash, dataLocator, 0 });
 		m_fileEntries2.emplace_back(SqIndex::FileSegmentEntry2{ entry->FullPathHash, dataLocator });
 	}
@@ -1116,11 +1180,11 @@ void XivAlex::SqexDef::VirtualSqPack::Freeze(bool strict) {
 		if (m_folderEntries.empty() || m_folderEntries.back().NameHash != entry.PathHash) {
 			m_folderEntries.emplace_back(
 				entry.PathHash,
-				m_sqpackIndexSubHeader.FileSegment.Offset + static_cast<uint32_t>(i * sizeof entry),
+				static_cast<uint32_t>(m_sqpackIndexSubHeader.FileSegment.Offset + i * sizeof entry),
 				static_cast<uint32_t>(sizeof entry),
 				0);
 		} else {
-			m_folderEntries.back().FileSegmentSize = m_folderEntries.back().FileSegmentSize + static_cast<uint32_t>(sizeof entry);
+			m_folderEntries.back().FileSegmentSize = m_folderEntries.back().FileSegmentSize + sizeof entry;
 		}
 	}
 	m_sqpackIndexSubHeader.FolderSegment.Size = static_cast<uint32_t>(std::span(m_folderEntries).size_bytes());
@@ -1163,7 +1227,7 @@ void XivAlex::SqexDef::VirtualSqPack::Freeze(bool strict) {
 	m_frozen = true;
 }
 
-size_t XivAlex::SqexDef::VirtualSqPack::ReadIndex1(const uint64_t offset, void* const buf, const uint64_t length) const {
+size_t XivAlex::SqexDef::VirtualSqPack::ReadIndex1(const uint64_t offset, void* const buf, const size_t length) const {
 	if (!m_frozen)
 		throw std::runtime_error("Trying to operate on a non frozen VirtualSqPack");
 	if (!length)
@@ -1181,8 +1245,10 @@ size_t XivAlex::SqexDef::VirtualSqPack::ReadIndex1(const uint64_t offset, void* 
 		{m_folderEntries.data(), std::span(m_folderEntries).size_bytes()},
 		}) {
 		if (relativeOffset < cb) {
-			const auto available = std::min(out.size_bytes(), cb - relativeOffset);
-			std::copy_n(static_cast<const char*>(ptr), available, out.begin());
+			const auto src = std::span(static_cast<const char*>(ptr), cb)
+				.subspan(static_cast<size_t>(relativeOffset));
+			const auto available = std::min(out.size_bytes(), src.size_bytes());
+			std::copy_n(src.begin(), available, out.begin());
 			out = out.subspan(available);
 			relativeOffset = 0;
 		} else
@@ -1195,7 +1261,7 @@ size_t XivAlex::SqexDef::VirtualSqPack::ReadIndex1(const uint64_t offset, void* 
 	return length - out.size_bytes();
 }
 
-size_t XivAlex::SqexDef::VirtualSqPack::ReadIndex2(const uint64_t offset, void* const buf, const uint64_t length) const {
+size_t XivAlex::SqexDef::VirtualSqPack::ReadIndex2(const uint64_t offset, void* const buf, const size_t length) const {
 	if (!m_frozen)
 		throw std::runtime_error("Trying to operate on a non frozen VirtualSqPack");
 	if (!length)
@@ -1212,8 +1278,10 @@ size_t XivAlex::SqexDef::VirtualSqPack::ReadIndex2(const uint64_t offset, void* 
 		{m_sqpackIndex2Segment3.data(), std::span(m_sqpackIndex2Segment3).size_bytes()},
 		}) {
 		if (relativeOffset < cb) {
-			const auto available = std::min(out.size_bytes(), cb - relativeOffset);
-			std::copy_n(static_cast<const char*>(ptr), available, out.begin());
+			const auto src = std::span(static_cast<const char*>(ptr), cb)
+				.subspan(static_cast<size_t>(relativeOffset));
+			const auto available = std::min(out.size_bytes(), src.size_bytes());
+			std::copy_n(src.begin(), available, out.begin());
 			out = out.subspan(available);
 			relativeOffset = 0;
 		} else
@@ -1226,7 +1294,7 @@ size_t XivAlex::SqexDef::VirtualSqPack::ReadIndex2(const uint64_t offset, void* 
 	return length - out.size_bytes();
 }
 
-size_t XivAlex::SqexDef::VirtualSqPack::ReadData(uint32_t datIndex, const uint64_t offset, void* const buf, const uint64_t length) const {
+size_t XivAlex::SqexDef::VirtualSqPack::ReadData(uint32_t datIndex, const uint64_t offset, void* const buf, const size_t length) const {
 	if (!m_frozen)
 		throw std::runtime_error("Trying to operate on a non frozen VirtualSqPack");
 	if (!length)
@@ -1240,8 +1308,10 @@ size_t XivAlex::SqexDef::VirtualSqPack::ReadData(uint32_t datIndex, const uint64
 		{&m_sqpackDataSubHeaders[datIndex], sizeof m_sqpackDataSubHeaders[datIndex]},
 		}) {
 		if (relativeOffset < cb) {
-			const auto available = std::min(out.size_bytes(), cb - relativeOffset);
-			std::copy_n(static_cast<const char*>(ptr), available, out.begin());
+			const auto src = std::span(static_cast<const char*>(ptr), cb)
+				.subspan(static_cast<size_t>(relativeOffset));
+			const auto available = std::min(out.size_bytes(), src.size_bytes());
+			std::copy_n(src.begin(), available, out.begin());
 			out = out.subspan(available);
 			relativeOffset = 0;
 		} else
@@ -1255,8 +1325,8 @@ size_t XivAlex::SqexDef::VirtualSqPack::ReadData(uint32_t datIndex, const uint64
 		const auto ldfi = l ? l->DataFileIndex : datIndex;
 		const auto rdfi = r ? r->DataFileIndex : datIndex;
 		if (ldfi == rdfi) {
-			const auto lo = l ? l->Offset : relativeOffset;
-			const auto ro = r ? r->Offset : relativeOffset;
+			const auto lo = l ? l->OffsetAfterHeaders : relativeOffset;
+			const auto ro = r ? r->OffsetAfterHeaders : relativeOffset;
 			return lo < ro;
 		} else
 			return ldfi < rdfi;
@@ -1264,28 +1334,40 @@ size_t XivAlex::SqexDef::VirtualSqPack::ReadData(uint32_t datIndex, const uint64
 	if (it != m_entries.begin())
 		--it;
 	if (it != m_entries.end()) {
-		relativeOffset -= it->get()->Offset;
+		relativeOffset -= it->get()->OffsetAfterHeaders;
+		if (relativeOffset >= INT32_MAX)
+			__debugbreak();
 
 		for (; it < m_entries.end(); ++it) {
 			const auto& entry = *it->get();
 
+			if (entry.Locator.Value() == 4569456 && IsDebuggerPresent())
+				__debugbreak();
+
 			if (relativeOffset < entry.Length) {
-				const auto available = std::min(out.size_bytes(), entry.Length - relativeOffset);
-				out = out.subspan(entry.Provider->Read(relativeOffset, out.data(), available));
+				const auto available = std::min(out.size_bytes(), static_cast<size_t>(entry.Length - relativeOffset));
+				const auto read = entry.Provider->Read(relativeOffset, out.data(), available);
+				if (read != available)
+					throw std::runtime_error("VirtualSqPack::ReadData: read != available");
+
+				out = out.subspan(read);
 				relativeOffset = 0;
+
+				if (out.empty())
+					break;
 			} else
 				relativeOffset -= entry.Length;
 
 			if (relativeOffset < entry.PadLength) {
-				const auto available = std::min(out.size_bytes(), entry.Length - relativeOffset);
+				const auto available = std::min(out.size_bytes(), static_cast<size_t>(entry.PadLength - relativeOffset));
 				std::fill_n(out.begin(), available, 0);
 				out = out.subspan(available);
 				relativeOffset = 0;
+
+				if (out.empty())
+					break;
 			} else
 				relativeOffset -= entry.PadLength;
-
-			if (out.empty())
-				break;
 		}
 	}
 

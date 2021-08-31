@@ -22,7 +22,7 @@ int main() {
 					std::cout << "Working on " << path << "..." << std::endl;
 					auto vpack = XivAlex::SqexDef::VirtualSqPack();
 					vpack.AddEntriesFromSqPack(path, true);
-					const auto replBase = std::filesystem::path(path).replace_extension(".replacements");
+					const auto replBase = std::filesystem::path(path).replace_extension("");
 					for (const auto& entry3 : std::filesystem::recursive_directory_iterator(replBase)) {
 						const auto& currPath = entry3.path();
 						if (is_directory(currPath))
@@ -45,6 +45,21 @@ int main() {
 						);
 					}
 					vpack.Freeze(false);
+
+					std::cout << "Testing..." << std::endl;
+					{
+						char buf[65536];
+						size_t pos = 0;
+						for (uint32_t i = 0; i < vpack.NumOfDataFiles(); ++i) {
+							pos = 0;
+							while (true) {
+								const auto w = vpack.ReadData(i, pos, buf, sizeof buf);;
+								if (!w)
+									break;
+								pos += w;
+							}
+						}
+					}
 
 					std::cout << "Writing index..." << std::endl;
 					const auto targetIndexPath = std::filesystem::path(std::format(LR"({}\{})", targetBasePath, path.filename().replace_extension(".index")));
@@ -77,14 +92,12 @@ int main() {
 					}
 					for (uint32_t i = 0; i < vpack.NumOfDataFiles(); ++i) {
 						std::cout << "Writing dat" << i << "..." << std::endl;
+						char buf[65536];
+						size_t pos = 0;
 						const auto f1 = Utils::Win32::File::Create(
 							std::format(R"({}\{})", targetBasePath, path.filename().replace_extension(std::format(".dat{}", i))),
 							GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0);
-						char buf[65536];
-						size_t pos = 0;
 						while (true) {
-							if (pos == 2560)
-								__debugbreak();
 							const auto w = vpack.ReadData(i, pos, buf, sizeof buf);
 							if (!w)
 								break;
@@ -93,8 +106,9 @@ int main() {
 					}
 					std::cout << "OK" << std::endl;
 					return 0;
-				} catch (const std::runtime_error& e) {
+				} catch (const std::invalid_argument& e) {
 					std::cout << e.what() << std::endl;
+					throw;
 				}
 
 			}

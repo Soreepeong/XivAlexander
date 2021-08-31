@@ -108,12 +108,24 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 	return TRUE;
 }
 
-extern "C" __declspec(dllexport) int __stdcall XivAlexDll::DisableAllApps(void*) {
+extern "C" __declspec(dllexport) size_t __stdcall XivAlexDll::DisableAllApps(void*) {
 	EnableXivAlexander(0);
 	EnableInjectOnCreateProcess(0);
 	return 0;
 }
 
-extern "C" __declspec(dllexport) int __stdcall XivAlexDll::CallFreeLibrary(void*) {
+extern "C" __declspec(dllexport) void __stdcall XivAlexDll::CallFreeLibrary(void*) {
 	FreeLibraryAndExitThread(Dll::Module(), 0);
+}
+
+static std::string s_dllUnloadDisableReason;
+
+size_t __stdcall XivAlexDll::DisableUnloading(const char* pszReason) {
+	s_dllUnloadDisableReason = pszReason ? pszReason : "(reason not specified)";
+	Dll::Module().Pin();
+	return 0;
+}
+
+const char* __stdcall XivAlexDll::GetUnloadDisabledReason() {
+	return s_dllUnloadDisableReason.empty() ? nullptr : s_dllUnloadDisableReason.c_str();
 }

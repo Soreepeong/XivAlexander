@@ -141,13 +141,13 @@
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <PreprocessorDefinitions>XIVALEXANDER_DLLEXPORT_SET;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>26812</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <AdditionalDependencies>Imm32.lib;Msimg32.lib;Comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
-      <ModuleDefinitionFile>
-      </ModuleDefinitionFile>
+      <ModuleDefinitionFile>Exports_x64.def</ModuleDefinitionFile>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
     </Link>
@@ -156,7 +156,13 @@
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)"</Command>
+      <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)"
+copy /y "$(TargetDir)XivAlexander32.dll" "$(TargetDir)d3d9.dll"
+copy /y "$(TargetDir)XivAlexander64.dll" "$(TargetDir)d3d11.dll"
+copy /y "$(TargetDir)XivAlexander32.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d9.dll"
+copy /y "$(TargetDir)XivAlexander64.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d11.dll"
+cmd /c "exit /b 0"
+</Command>
     </PostBuildEvent>
     <CustomBuildStep>
       <Command>set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
@@ -178,13 +184,13 @@
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <PreprocessorDefinitions>XIVALEXANDER_DLLEXPORT_SET;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>26812</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <AdditionalDependencies>Imm32.lib;Msimg32.lib;Comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
-      <ModuleDefinitionFile>
-      </ModuleDefinitionFile>
+      <ModuleDefinitionFile>Exports_x86.def</ModuleDefinitionFile>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
     </Link>
@@ -193,7 +199,13 @@
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)"</Command>
+      <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)"
+copy /y "$(TargetDir)XivAlexander32.dll" "$(TargetDir)d3d9.dll"
+copy /y "$(TargetDir)XivAlexander64.dll" "$(TargetDir)d3d11.dll"
+copy /y "$(TargetDir)XivAlexander32.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d9.dll"
+copy /y "$(TargetDir)XivAlexander64.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d11.dll"
+cmd /c "exit /b 0"
+</Command>
     </PostBuildEvent>
     <CustomBuildStep>
       <Command>set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
@@ -217,6 +229,7 @@
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <PreprocessorDefinitions>XIVALEXANDER_DLLEXPORT_SET;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>26812</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -224,8 +237,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Imm32.lib;Msimg32.lib;Comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
-      <ModuleDefinitionFile>
-      </ModuleDefinitionFile>
+      <ModuleDefinitionFile>Exports_x64.def</ModuleDefinitionFile>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
     </Link>
@@ -234,7 +246,13 @@
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)"</Command>
+      <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)"
+copy /y "$(TargetDir)XivAlexander32.dll" "$(TargetDir)d3d9.dll"
+copy /y "$(TargetDir)XivAlexander64.dll" "$(TargetDir)d3d11.dll"
+copy /y "$(TargetDir)XivAlexander32.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d9.dll"
+copy /y "$(TargetDir)XivAlexander64.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d11.dll"
+cmd /c "exit /b 0"
+</Command>
     </PostBuildEvent>
     <CustomBuildStep>
       <Command>IF EXIST "$(TargetPath).sign.txt" ( DEL $(TargetPath).sign.txt )
@@ -259,6 +277,7 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <PreprocessorDefinitions>XIVALEXANDER_DLLEXPORT_SET;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>26812</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -266,8 +285,7 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Imm32.lib;Msimg32.lib;Comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
-      <ModuleDefinitionFile>
-      </ModuleDefinitionFile>
+      <ModuleDefinitionFile>Exports_x86.def</ModuleDefinitionFile>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
     </Link>
@@ -276,7 +294,13 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)"</Command>
+      <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)"
+copy /y "$(TargetDir)XivAlexander32.dll" "$(TargetDir)d3d9.dll"
+copy /y "$(TargetDir)XivAlexander64.dll" "$(TargetDir)d3d11.dll"
+copy /y "$(TargetDir)XivAlexander32.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d9.dll"
+copy /y "$(TargetDir)XivAlexander64.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d11.dll"
+cmd /c "exit /b 0"
+</Command>
     </PostBuildEvent>
     <CustomBuildStep>
       <Command>IF EXIST "$(TargetPath).sign.txt" ( DEL $(TargetPath).sign.txt )
@@ -291,6 +315,7 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
     <ClCompile Include="App_InjectOnCreateProcessApp.cpp" />
     <ClCompile Include="App_Misc_DebuggerDetectionDisabler.cpp" />
     <ClCompile Include="App_Network_IcmpPingTracker.cpp" />
+    <ClCompile Include="AutoLoadAsDependencyModule.cpp" />
     <ClCompile Include="DllMain.cpp" />
     <ClCompile Include="App_XivAlexApp.cpp" />
     <ClCompile Include="App_ConfigRepository.cpp" />
@@ -389,6 +414,14 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
     <Image Include="..\Graphics\Icon.ico" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Exports_x64.def">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </None>
+    <None Include="Exports_x86.def">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </None>
     <None Include="vcpkg.json" />
   </ItemGroup>
   <ItemGroup>

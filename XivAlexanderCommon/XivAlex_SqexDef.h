@@ -226,7 +226,7 @@ namespace XivAlex::SqexDef {
 	namespace SqData {
 		struct Header {
 			static constexpr uint32_t MaxFileSize_Value = 0x77359400;  // 2GB
-			static constexpr uint64_t MaxFileSize_MaxValue = 0x800000000ULL;  // Max addressable via how Offset works
+			static constexpr uint64_t MaxFileSize_MaxValue = 0x800000000ULL;  // Max addressable via how OffsetAfterHeaders works
 			static constexpr uint32_t Unknown1_Value = 0x10;
 
 			LE<uint32_t> HeaderLength;
@@ -384,13 +384,13 @@ namespace XivAlex::SqexDef {
 		public:
 			virtual ~EntryProvider() = default;
 			[[nodiscard]] virtual uint32_t Size() const = 0;
-			virtual size_t Read(uint64_t offset, void* buf, uint64_t length) const = 0;
+			virtual size_t Read(uint64_t offset, void* buf, size_t length) const = 0;
 		};
 
 		class EmptyEntryProvider : public EntryProvider {
 		public:
 			[[nodiscard]] uint32_t Size() const override;
-			size_t Read(uint64_t offset, void* buf, uint64_t length) const override;
+			size_t Read(uint64_t offset, void* buf, size_t length) const override;
 		};
 
 		class FileOnDiskEntryProvider : public EntryProvider {
@@ -402,13 +402,14 @@ namespace XivAlex::SqexDef {
 			FileOnDiskEntryProvider(Utils::Win32::File file, uint64_t offset, uint32_t length);
 
 			[[nodiscard]] uint32_t Size() const override;
-			size_t Read(uint64_t offset, void* buf, uint64_t length) const override;
+			size_t Read(uint64_t offset, void* buf, size_t length) const override;
 		};
 
 		class OnTheFlyBinaryEntryProvider : public EntryProvider {
 			static constexpr uint16_t ChunkDataSize = 16000;
-			static constexpr uint16_t PaddedChunkSize = (ChunkDataSize + sizeof SqData::BlockHeader + EntryAlignment - 1) / EntryAlignment * EntryAlignment;
-			static constexpr uint16_t ChunkPadSize = PaddedChunkSize - ChunkDataSize - sizeof SqData::BlockHeader;
+			static constexpr uint16_t ChunkSize = ChunkDataSize + sizeof SqData::BlockHeader;
+			static constexpr uint16_t ChunkPadSize = (EntryAlignment - ChunkSize) % EntryAlignment;
+			static constexpr uint16_t PaddedChunkSize = ChunkSize + ChunkPadSize;
 			const std::filesystem::path m_path;
 			SqData::FileEntryHeader m_header{};
 
@@ -421,7 +422,7 @@ namespace XivAlex::SqexDef {
 			~OnTheFlyBinaryEntryProvider() override;
 
 			[[nodiscard]] uint32_t Size() const override;
-			size_t Read(uint64_t offset, void* buf, uint64_t length) const override;
+			size_t Read(uint64_t offset, void* buf, size_t length) const override;
 		};
 
 		class MemoryBinaryEntryProvider : public EntryProvider {
@@ -434,10 +435,10 @@ namespace XivAlex::SqexDef {
 			~MemoryBinaryEntryProvider() override = default;
 
 			[[nodiscard]] uint32_t Size() const override;
-			size_t Read(uint64_t offset, void* buf, uint64_t length) const override;
+			size_t Read(uint64_t offset, void* buf, size_t length) const override;
 		};
 
-		class TextureEntryProvider : public EntryProvider {
+		class OnTheFlyTextureEntryProvider : public EntryProvider {
 			/*
 			 * [MergedHeader]
 			 * - [FileEntryHeader]
@@ -467,10 +468,10 @@ namespace XivAlex::SqexDef {
 			[[nodiscard]] std::span<const uint32_t> AsMipmapOffsets() const;
 
 		public:
-			TextureEntryProvider(std::filesystem::path path);
+			OnTheFlyTextureEntryProvider(std::filesystem::path path);
 
 			[[nodiscard]] uint32_t Size() const override;
-			size_t Read(uint64_t offset, void* buf, uint64_t length) const override;
+			size_t Read(uint64_t offset, void* buf, size_t length) const override;
 		};
 
 		struct Entry {
@@ -483,7 +484,9 @@ namespace XivAlex::SqexDef {
 			uint32_t DataFileIndex;
 			uint32_t Length;
 			uint32_t PadLength;
-			uint64_t Offset;
+			uint64_t OffsetAfterHeaders;
+
+			SqIndex::LEDataLocator Locator;
 
 			std::unique_ptr<EntryProvider> Provider;
 		};
@@ -540,9 +543,9 @@ namespace XivAlex::SqexDef {
 	public:
 		void Freeze(bool strict);
 
-		size_t ReadIndex1(uint64_t offset, void* buf, uint64_t length) const;
-		size_t ReadIndex2(uint64_t offset, void* buf, uint64_t length) const;
-		size_t ReadData(uint32_t datIndex, uint64_t offset, void* buf, uint64_t length) const;
+		size_t ReadIndex1(uint64_t offset, void* buf, size_t length) const;
+		size_t ReadIndex2(uint64_t offset, void* buf, size_t length) const;
+		size_t ReadData(uint32_t datIndex, uint64_t offset, void* buf, size_t length) const;
 
 		[[nodiscard]] uint64_t SizeIndex1() const;
 		[[nodiscard]] uint64_t SizeIndex2() const;

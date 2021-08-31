@@ -159,7 +159,7 @@ void App::InjectOnCreateProcessApp::SetFlags(size_t flags) {
 
 static std::unique_ptr<App::InjectOnCreateProcessApp> s_injectOnCreateProcessApp;
 
-extern "C" __declspec(dllexport) int __stdcall XivAlexDll::EnableInjectOnCreateProcess(size_t flags) {
+extern "C" __declspec(dllexport) size_t __stdcall XivAlexDll::EnableInjectOnCreateProcess(size_t flags) {
 	const bool use = flags & InjectOnCreateProcessAppFlags::Use;
 	if (use == !!s_injectOnCreateProcessApp) {
 		if (s_injectOnCreateProcessApp)
@@ -258,20 +258,25 @@ extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(Inj
 			const auto p = static_cast<InjectEntryPointParameters*>(pParam);
 			const auto hContinueNotify = Utils::Win32::Handle::DuplicateFrom<Utils::Win32::Event>(p->Internal.hContinuableEvent);
 			const auto hMainThread = Utils::Win32::Thread(p->Internal.hMainThread, true);
-			process.WriteMemory(p->EntryPoint, p->EntryPointOriginalBytes, p->EntryPointOriginalLength, true);
 
 #ifdef _DEBUG
 			Utils::Win32::MessageBoxF(MB_OK, MB_OK, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
 				L"PID: {}\nPath: {}\nCommand Line: {}", process.GetId(), process.PathOf().wstring(), GetCommandLineW());
 #endif
 
+			process.WriteMemory(p->EntryPoint, p->EntryPointOriginalBytes, p->EntryPointOriginalLength, true);
 			InitializeBeforeOriginalEntryPoint(hContinueNotify, hMainThread);
 			SetEvent(hContinueNotify);
 		} catch (std::exception& e) {
 			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
-				FindStringResourceEx(Dll::Module(), IDS_ERROR_INJECT),
+				1 + FindStringResourceEx(Dll::Module(), IDS_ERROR_INJECT),
 				e.what(), process.GetId(), process.PathOf().wstring(), GetCommandLineW());
+
+#ifdef _DEBUG
+			throw;
+#else
 			TerminateProcess(GetCurrentProcess(), 1);
+#endif
 		}
 		FreeLibraryAndExitThread(Dll::Module(), 0);
 	}, pParam, 0, nullptr);
@@ -285,14 +290,21 @@ extern "C" __declspec(dllexport) void __stdcall XivAlexDll::InjectEntryPoint(Inj
 	VirtualFree(pParam->TrampolineAddress, 0, MEM_RELEASE);
 }
 
-XIVALEXANDER_DLLEXPORT void XivAlexDll::PatchEntryPointForInjection(HANDLE hProcess) {
+XIVALEXANDER_DLLEXPORT XivAlexDll::InjectEntryPointParameters* XivAlexDll::PatchEntryPointForInjection(HANDLE hProcess) {
 	const auto process = Utils::Win32::Process(hProcess, false);
 
-	const auto regions = process.GetCommittedImageAllocation();
-	if (regions.empty())
-		throw std::runtime_error("GetCommittedImageAllocation");
+	void* pBaseAddress;
 
-	auto& mem = process.GetModuleMemoryBlockManager(static_cast<HMODULE>(regions.front().BaseAddress));
+	if (GetCurrentProcessId() == GetProcessId(hProcess))
+		pBaseAddress = GetModuleHandleW(nullptr);
+	else {
+		const auto regions = process.GetCommittedImageAllocation();
+		if (regions.empty())
+			throw std::runtime_error("GetCommittedImageAllocation");
+		pBaseAddress = regions.front().BaseAddress;
+	}
+	
+	auto& mem = process.GetModuleMemoryBlockManager(static_cast<HMODULE>(pBaseAddress));
 
 	auto path = Dll::Module().PathOf().wstring();
 	path.resize(path.size() + 1);  // add null character
@@ -337,4 +349,5 @@ XIVALEXANDER_DLLEXPORT void XivAlexDll::PatchEntryPointForInjection(HANDLE hProc
 	thunk.CallTrampoline.fn.ptr = pRemote;
 
 	process.WriteMemory(mem.CurrentModule, rvaEntryPoint, thunk, true);
+	return &reinterpret_cast<TrampolineTemplate*>(pRemote)->parameters;
 }

@@ -11,6 +11,7 @@
 #endif
 
 namespace XivAlexDll {
+	struct InjectEntryPointParameters;
 
 	enum class LoaderAction : int {
 		Auto,
@@ -36,7 +37,7 @@ namespace XivAlexDll {
 		bool wait,
 		const std::filesystem::path& launcherPath = L"",
 		const Utils::Win32::Process& waitFor = nullptr);
-	XIVALEXANDER_DLLEXPORT void PatchEntryPointForInjection(HANDLE hProcess);
+	XIVALEXANDER_DLLEXPORT InjectEntryPointParameters* PatchEntryPointForInjection(HANDLE hProcess);
 
 	//
 	// Everything declared below must be able to be called from CreateRemoteProcess.
@@ -50,7 +51,7 @@ namespace XivAlexDll {
 			InjectGameOnly = 1 << 2,
 		};
 	};
-	extern "C" XIVALEXANDER_DLLEXPORT int __stdcall EnableInjectOnCreateProcess(size_t flags);
+	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall EnableInjectOnCreateProcess(size_t flags);
 
 	struct InjectEntryPointParameters {
 		void* EntryPoint;
@@ -66,10 +67,12 @@ namespace XivAlexDll {
 	};
 
 	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall InjectEntryPoint(InjectEntryPointParameters* pParam);
-	extern "C" XIVALEXANDER_DLLEXPORT int __stdcall EnableXivAlexander(size_t bEnable);
-	extern "C" XIVALEXANDER_DLLEXPORT int __stdcall ReloadConfiguration(void* lpReserved);
-	extern "C" XIVALEXANDER_DLLEXPORT int __stdcall DisableAllApps(void* lpReserved);
-	extern "C" XIVALEXANDER_DLLEXPORT int __stdcall CallFreeLibrary(void*);
+	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall EnableXivAlexander(size_t bEnable);
+	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall ReloadConfiguration(void* lpReserved);
+	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall DisableAllApps(void* lpReserved);
+	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall CallFreeLibrary(void*);
+	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall DisableUnloading(const char* pszReason);
+	extern "C" XIVALEXANDER_DLLEXPORT const char* __stdcall GetUnloadDisabledReason();
 }
 
 #endif

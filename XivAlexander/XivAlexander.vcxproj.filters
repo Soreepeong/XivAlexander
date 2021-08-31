@@ -94,6 +94,7 @@
     <ClCompile Include="App_Feature_HashTracker.cpp">
       <Filter>App\Feature</Filter>
     </ClCompile>
+    <ClCompile Include="AutoLoadAsDependencyModule.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -197,6 +198,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json">
+      <Filter>Project Items</Filter>
+    </None>
+    <None Include="Exports_x86.def">
+      <Filter>Project Items</Filter>
+    </None>
+    <None Include="Exports_x64.def">
       <Filter>Project Items</Filter>
     </None>
   </ItemGroup>

@@ -234,8 +234,12 @@ App::XivAlexApp::XivAlexApp()
 }
 
 App::XivAlexApp::~XivAlexApp() {
-	if (!IsUnloadable().empty())
-		std::abort();
+	if (!IsUnloadable().empty()) {
+		// Unloading despite IsUnloadable being set.
+		// Either process is terminating to begin with, or something went wrong,
+		// so terminating self is the right choice.
+		TerminateProcess(GetCurrentProcess(), 0);
+	}
 
 	if (m_pImpl->m_trayWindow)
 		SendMessageW(m_pImpl->m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
@@ -334,6 +338,9 @@ void App::XivAlexApp::RunOnGameLoop(std::function<void()> f) {
 }
 
 std::string App::XivAlexApp::IsUnloadable() const {
+	if (const auto pszDisabledReason = XivAlexDll::GetUnloadDisabledReason())
+		return pszDisabledReason;
+
 	if (m_pImpl == nullptr)
 		return "";
 
@@ -352,7 +359,7 @@ App::Network::SocketHook* App::XivAlexApp::GetSocketHook() {
 
 static std::unique_ptr<App::XivAlexApp> s_xivAlexApp;
 
-extern "C" __declspec(dllexport) int __stdcall XivAlexDll::EnableXivAlexander(size_t bEnable) {
+extern "C" __declspec(dllexport) size_t __stdcall XivAlexDll::EnableXivAlexander(size_t bEnable) {
 	if (!!bEnable == !!s_xivAlexApp)
 		return 0;
 	try {
@@ -370,7 +377,7 @@ extern "C" __declspec(dllexport) int __stdcall XivAlexDll::EnableXivAlexander(si
 	}
 }
 
-extern "C" __declspec(dllexport) int __stdcall XivAlexDll::ReloadConfiguration(void* lpReserved) {
+extern "C" __declspec(dllexport) size_t __stdcall XivAlexDll::ReloadConfiguration(void* lpReserved) {
 	if (s_xivAlexApp) {
 		const auto config = App::Config::Acquire();
 		config->Runtime.Reload(true);
