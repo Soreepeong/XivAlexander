@@ -252,8 +252,8 @@ namespace App {
 			// If set but invalid, will cause errors.
 			Item<std::string> ChainLoadPath_d3d11 = CreateConfigItem(this, "ChainLoadPath_d3d11", std::string(""));
 			Item<std::string> ChainLoadPath_dxgi = CreateConfigItem(this, "ChainLoadPath_dxgi", std::string(""));
-			Item<std::string> ChainLoadPath_d3d9= CreateConfigItem(this, "ChainLoadPath_d3d9", std::string(""));
-			Item<std::string> ChainLoadPath_dinput8= CreateConfigItem(this, "ChainLoadPath_dinput8", std::string(""));
+			Item<std::string> ChainLoadPath_d3d9 = CreateConfigItem(this, "ChainLoadPath_d3d9", std::string(""));
+			Item<std::string> ChainLoadPath_dinput8 = CreateConfigItem(this, "ChainLoadPath_dinput8", std::string(""));
 
 			std::filesystem::path ResolveConfigStorageDirectoryPath();
 			std::filesystem::path ResolveRuntimeConfigPath();
