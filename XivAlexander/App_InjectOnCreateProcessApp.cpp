@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "App_InjectOnCreateProcessApp.h"
-#include "App_Feature_HashTracker.h"
+#include "App_Feature_GameResourceOverrider.h"
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_Hooks.h"
 #include "XivAlexander/XivAlexander.h"
@@ -216,7 +216,7 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent, HANDLE 
 		// do nothing
 	}
 
-	App::Feature::HashTracker hashTrackerPreload;
+	App::Feature::GameResourceOverrider hashTrackerPreload;
 
 	// let original entry point continue execution.
 	SetEvent(hContinuableEvent);

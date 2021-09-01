@@ -15,7 +15,7 @@ namespace App {
 		AnimationLockLatencyHandler,
 		EffectApplicationDelayLogger,
 		IpcTypeFinder,
-		HashTracker,
+		GameResourceOverrider,
 	};
 }
 namespace App::Misc {

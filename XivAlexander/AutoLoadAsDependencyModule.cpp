@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "XivAlexander/XivAlexander.h"
-#include "App_Feature_HashTracker.h"
+#include "App_Feature_GameResourceOverrider.h"
 #include "resource.h"
 #include <dinput.h>
 
@@ -148,7 +148,7 @@ static Utils::Win32::LoadedModule EnsureOriginalDependencyModule(const char* szD
 
 void AutoLoadAsDependencyModule() {
 	static std::mutex s_singleRunMutex;
-	static App::Feature::HashTracker s_pinnedHashTracker;
+	static App::Feature::GameResourceOverrider s_pinnedHashTracker;
 	static bool s_loaded = false;
 
 	if (s_loaded)

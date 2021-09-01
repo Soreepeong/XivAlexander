@@ -1,11 +1,11 @@
 #include "pch.h"
-#include "App_Feature_HashTracker.h"
+#include "App_Feature_GameResourceOverrider.h"
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_Hooks.h"
 
 static constexpr bool DebugFlag_PassthroughFileApi = false;
 
-std::weak_ptr<App::Feature::HashTracker::Implementation> App::Feature::HashTracker::s_pImpl;
+std::weak_ptr<App::Feature::GameResourceOverrider::Implementation> App::Feature::GameResourceOverrider::s_pImpl;
 
 class ReEnterPreventer {
 	std::mutex m_lock;
@@ -45,7 +45,7 @@ public:
 	};
 };
 
-class App::Feature::HashTracker::Implementation {
+class App::Feature::GameResourceOverrider::Implementation {
 public:
 	const std::shared_ptr<Config> m_config;
 	const std::shared_ptr<Misc::Logger> m_logger;
@@ -78,6 +78,7 @@ public:
 
 	std::mutex m_virtualPathMapMutex;
 	std::map<HANDLE, std::unique_ptr<VirtualPath>> m_virtualPathMap;
+	std::set<std::filesystem::path> m_ignoredIndexFiles;
 	std::atomic<int> m_stk;
 
 	class AtomicIntEnter {
@@ -116,7 +117,7 @@ public:
 					const auto recreatedFilePath = m_baseSqpackDir / fileToOpen.parent_path().filename() / fileToOpen.filename();
 					const auto indexFile = std::filesystem::path(recreatedFilePath).replace_extension(L".index");
 					const auto index2File = std::filesystem::path(recreatedFilePath).replace_extension(L".index2");
-					if (exists(indexFile) && exists(index2File)) {
+					if (exists(indexFile) && exists(index2File) && m_ignoredIndexFiles.find(indexFile) == m_ignoredIndexFiles.end()) {
 						int pathType = VirtualPath::PathTypeInvalid;
 
 						if (fileToOpen == indexFile) {
@@ -157,7 +158,7 @@ public:
 								break;
 							}
 
-							m_logger->Format<LogLevel::Info>(LogCategory::HashTracker,
+							m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
 								"Taking control of {}/{} (parent: {}/{}, type: {})",
 								recreatedFilePath.parent_path().filename(), recreatedFilePath.filename(),
 								indexFile.parent_path().filename(), indexFile.filename(),
@@ -174,11 +175,12 @@ public:
 									vpath->VirtualSqPack = std::make_shared<XivAlex::SqexDef::VirtualSqPack>();
 									{
 										const auto result = vpath->VirtualSqPack->AddEntriesFromSqPack(indexFile, true);
-										m_logger->Format<LogLevel::Info>(LogCategory::HashTracker,
+										m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
 											"=> Processed SqPack {}: Added {}, replaced {}",
 											indexFile, result.AddedCount, result.ReplacedCount);
 									}
 
+									auto additionalEntriesFound = false;
 									for (const auto& replacementDirPath : {
 										std::filesystem::path(indexFile).replace_extension(""),
 										}) {
@@ -194,21 +196,30 @@ public:
 													const auto pathHash = XivAlex::SqexDef::SqexHash(relativePath.parent_path().string());
 													const auto fullPathHash = XivAlex::SqexDef::SqexHash(relativePath.string());
 													const auto result = vpath->VirtualSqPack->AddEntryFromFile(pathHash, nameHash, fullPathHash, replacementItem);
-													m_logger->Format<LogLevel::Info>(LogCategory::HashTracker,
+													m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
 														"=> {} file {}: (nameHash={:08x}, pathHash={:08x}, fullPathHash={:08x})",
 														result.AddedCount ? "Added" : "Replaced",
 														replacementItem.path(), nameHash, pathHash, fullPathHash);
+													additionalEntriesFound = true;
 												} catch (const std::exception& e) {
-													m_logger->Format<LogLevel::Warning>(LogCategory::HashTracker,
+													m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
 														"=> Failed to add file {}: {}",
 														replacementItem.path(), e.what());
 												}
 											}
 										} catch (const std::exception& e) {
-											m_logger->Format<LogLevel::Warning>(LogCategory::HashTracker,
+											m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
 												"=> Failed to list items in {}: {}",
 												replacementDirPath, e.what());
 										}
+									}
+
+									// Nothing to override, 
+									if (!additionalEntriesFound) {
+										m_ignoredIndexFiles.insert(indexFile);
+										m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
+											"=> Founding no resources to override, releasing control.");
+										return CreateFileW.bridge(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 									}
 
 									vpath->VirtualSqPack->Freeze(false);
@@ -222,9 +233,9 @@ public:
 						}
 					}
 				} catch (const Utils::Win32::Error& e) {
-					m_logger->Format<LogLevel::Warning>(LogCategory::HashTracker, L"CreateFileW: {}, Message: {}", lpFileName, e.what());
+					m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"CreateFileW: {}, Message: {}", lpFileName, e.what());
 				} catch (const std::exception& e) {
-					m_logger->Format<LogLevel::Warning>(LogCategory::HashTracker, "CreateFileW: {}, Message: {}", lpFileName, e.what());
+					m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "CreateFileW: {}, Message: {}", lpFileName, e.what());
 				}
 			}
 
@@ -287,13 +298,13 @@ public:
 
 				} catch (const Utils::Win32::Error& e) {
 					if (e.Code() != ERROR_IO_PENDING)
-						m_logger->Format<LogLevel::Warning>(LogCategory::HashTracker, L"ReadFile: {}({}), Message: {}",
+						m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}({}), Message: {}",
 							vpath.IndexPath.filename(), vpath.PathType, e.what());
 					SetLastError(e.Code());
 					return FALSE;
 
 				} catch (const std::exception& e) {
-					m_logger->Format<LogLevel::Warning>(LogCategory::HashTracker, L"ReadFile: {}({}), Message: {}",
+					m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}({}), Message: {}",
 						vpath.IndexPath.filename(), vpath.PathType, e.what());
 					SetLastError(ERROR_READ_FAULT);
 					return FALSE;
@@ -349,13 +360,13 @@ public:
 					*lpNewFilePointer = vpath.FilePointer;
 
 			} catch (const Utils::Win32::Error& e) {
-				m_logger->Format<LogLevel::Warning>(LogCategory::HashTracker, L"SetFilePointerEx: {}({}), Message: {}",
+				m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"SetFilePointerEx: {}({}), Message: {}",
 					vpath.IndexPath.filename(), vpath.PathType, e.what());
 				SetLastError(e.Code());
 				return FALSE;
 
 			} catch (const std::exception& e) {
-				m_logger->Format<LogLevel::Warning>(LogCategory::HashTracker, L"ReadFile: {}({}), Message: {}",
+				m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}({}), Message: {}",
 					vpath.IndexPath.filename(), vpath.PathType, e.what());
 				SetLastError(ERROR_READ_FAULT);
 				return FALSE;
@@ -435,7 +446,7 @@ public:
 						if (!m_config->Runtime.UseHashTrackerKeyLogging) {
 							if (m_alreadyLogged.find(name) == m_alreadyLogged.end()) {
 								m_alreadyLogged.emplace(name);
-								m_logger->Format(LogCategory::HashTracker, "{:x}: {} => {}", reinterpret_cast<size_t>(ptr), str, newStr);
+								m_logger->Format(LogCategory::GameResourceOverrider, "{:x}: {} => {}", reinterpret_cast<size_t>(ptr), str, newStr);
 							}
 						}
 						Utils::Win32::Process::Current().WriteMemory(const_cast<char*>(str), newStr.c_str(), newStr.size() + 1, true);
@@ -446,7 +457,7 @@ public:
 				if (m_config->Runtime.UseHashTrackerKeyLogging) {
 					if (m_alreadyLogged.find(name) == m_alreadyLogged.end()) {
 						m_alreadyLogged.emplace(name);
-						m_logger->Format(LogCategory::HashTracker, "{:x}: {},{},{} => {:08x}", reinterpret_cast<size_t>(ptr), name, ext, rest, res);
+						m_logger->Format(LogCategory::GameResourceOverrider, "{:x}: {},{},{} => {:08x}", reinterpret_cast<size_t>(ptr), name, ext, rest, res);
 					}
 				}
 
@@ -465,7 +476,7 @@ public:
 	}
 };
 
-App::Feature::HashTracker::HashTracker() {
+App::Feature::GameResourceOverrider::GameResourceOverrider() {
 	static std::mutex mtx;
 	m_pImpl = s_pImpl.lock();
 	if (!m_pImpl) {
@@ -476,6 +487,6 @@ App::Feature::HashTracker::HashTracker() {
 	}
 }
 
-App::Feature::HashTracker::~HashTracker() {
+App::Feature::GameResourceOverrider::~GameResourceOverrider() {
 	m_pImpl = nullptr;
 }

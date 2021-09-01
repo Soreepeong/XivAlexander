@@ -18,7 +18,7 @@ static const std::map<App::LogCategory, const char*> LogCategoryNames{
 	{App::LogCategory::AnimationLockLatencyHandler, "AnimationLockLatencyHandler"},
 	{App::LogCategory::EffectApplicationDelayLogger, "EffectApplicationDelayLogger"},
 	{App::LogCategory::IpcTypeFinder, "IpcTypeFinder"},
-	{App::LogCategory::HashTracker, "HashTracker"},
+	{App::LogCategory::GameResourceOverrider, "GameResourceOverrider"},
 };
 
 static WNDCLASSEXW WindowClass() {
