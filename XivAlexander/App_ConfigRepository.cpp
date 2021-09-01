@@ -64,17 +64,22 @@ void App::Config::BaseRepository::Reload(bool announceChange) {
 		try {
 			std::ifstream in(m_sConfigPath);
 			in >> totalConfig;
+			if (totalConfig.type() != nlohmann::detail::value_t::object)
+				throw std::runtime_error("Root must be an object.");  // TODO: string resource
 		} catch (std::exception& e) {
+			totalConfig = nlohmann::json::object();
+			changed = true;
 			m_logger->FormatDefaultLanguage<LogLevel::Warning>(LogCategory::General,
 				IDS_ERROR_CONFIGURATION_LOAD,
 				e.what());
 		}
 	} else {
+		totalConfig = nlohmann::json::object();
 		changed = true;
 		m_logger->FormatDefaultLanguage(LogCategory::General, IDS_LOG_NEW_CONFIG, Utils::ToUtf8(m_sConfigPath));
 	}
 	
-	const auto& currentConfig = m_parentKey.empty() ? totalConfig : (totalConfig[m_parentKey] = nlohmann::json::object());
+	const auto& currentConfig = m_parentKey.empty() ? totalConfig : totalConfig[m_parentKey];
 
 	m_destructionCallbacks.clear();
 	for (const auto& item : m_allItems) {
@@ -135,8 +140,6 @@ std::wstring App::Config::Runtime::GetRegionNameLocalized(GameRegion gameRegion)
 }
 
 std::filesystem::path App::Config::InitializationConfig::ResolveConfigStorageDirectoryPath() {
-	MessageBoxW(nullptr, L"", L"", MB_OK);
-	
 	if (!Loaded())
 		Reload();
 
@@ -183,7 +186,7 @@ std::filesystem::path App::Config::TranslatePath(const std::string& s, bool dont
 
 	auto path = std::filesystem::path(buf);
 	if (path.is_relative())
-		path = Dll::Module().PathOf() / path;
+		path = Dll::Module().PathOf().parent_path() / path;
 	return path;
 }
 
@@ -209,11 +212,13 @@ void App::Config::BaseRepository::Save() {
 	try {
 		std::ifstream in(m_sConfigPath);
 		in >> totalConfig;
-	} catch (...) {
-		// ignore
+		if (totalConfig.type() != nlohmann::detail::value_t::object)
+			throw std::runtime_error("Root must be an object.");  // TODO: string resource
+	} catch (const std::exception&) {
+		totalConfig = nlohmann::json::object();
 	}
-
-	nlohmann::json& currentConfig = m_parentKey.empty() ? totalConfig : (totalConfig[m_parentKey] = nlohmann::json::object());
+	
+	nlohmann::json& currentConfig = m_parentKey.empty() ? totalConfig : totalConfig[m_parentKey];
 	for (const auto& item : m_allItems)
 		item->SaveTo(currentConfig);
 
