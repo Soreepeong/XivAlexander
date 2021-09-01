@@ -64,6 +64,9 @@ App::Window::Log::Log()
 		std::stringstream o;
 		auto level = LogLevel::Unset;
 		for (const auto& item : items) {
+			if (item.id <= m_lastDisplayedLogId)
+				continue;
+			m_lastDisplayedLogId = item.id;
 			if (level != item.level) {
 				if (o.tellp())
 					FlushLog(o.str(), level);

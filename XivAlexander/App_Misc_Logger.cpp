@@ -14,6 +14,7 @@ public:
 	std::mutex m_pendingItemLock;
 	std::mutex m_itemLock;
 	std::deque<LogItem> m_items, m_pendingItems;
+	uint64_t m_logIdCounter = 1;
 
 	// needs to be last, as "this" needs to be done initializing
 	const Utils::Win32::Thread m_hDispatcherThread;
@@ -58,6 +59,7 @@ public:
 
 	void AddLogItem(LogItem item) {
 		std::lock_guard lock(m_pendingItemLock);
+		item.id = m_logIdCounter++;
 		m_pendingItems.push_back(std::move(item));
 		while (m_pendingItems.size() > MaxLogCount)
 			m_pendingItems.pop_front();
@@ -115,6 +117,7 @@ void App::Misc::Logger::Log(LogCategory category, const wchar_t* s, LogLevel lev
 
 void App::Misc::Logger::Log(LogCategory category, const std::string& s, LogLevel level) {
 	m_pImpl->AddLogItem(LogItem{
+		0,
 		category,
 		std::chrono::system_clock::now(),
 		level,

@@ -23,6 +23,7 @@ namespace App::Misc {
 	public:
 
 		struct LogItem {
+			uint64_t id;
 			LogCategory category;
 			std::chrono::system_clock::time_point timestamp;
 			LogLevel level;

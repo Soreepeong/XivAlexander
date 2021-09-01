@@ -8,6 +8,7 @@ namespace App::Window {
 		sptr_t m_directPtr = 0;
 
 		Utils::CallOnDestruction::Multiple m_cleanup;
+		uint64_t m_lastDisplayedLogId = 0;
 
 	public:
 		Log();
