@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <span>
+#include <type_traits>
 #include "Utils_Win32_Handle.h"
 
 #pragma warning(push)
@@ -46,11 +47,11 @@ namespace XivAlex::SqexDef {
 			Value(std::move(newValue));
 			return *this;
 		}
-
+		
 		T Value() const {
 			return value;
 		}
-
+		
 		void Value(T newValue) {
 			value = std::move(newValue);
 		}
@@ -71,14 +72,9 @@ namespace XivAlex::SqexDef {
 			: value(defaultValue) {
 			std::reverse(buf, buf + sizeof T);
 		}
-		
+
 		operator T() const {
 			return Value();
-		}
-
-		BE<T>& operator= (T newValue) {
-			Value(std::move(newValue));
-			return *this;
 		}
 
 		T Value() const {
@@ -90,6 +86,14 @@ namespace XivAlex::SqexDef {
 			std::reverse(localbuf, localbuf + sizeof T);
 			return localval;
 		}
+
+		template<std::enable_if_t<std::is_enum_v<T>>>
+		void Value(T newValue) {
+			value = std::move(newValue);
+			std::reverse(buf, buf + sizeof buf);
+		}
+
+		template<std::enable_if_t<!std::is_enum_v<T>>>
 
 		void Value(T newValue) {
 			value = std::move(newValue);
@@ -115,7 +119,7 @@ namespace XivAlex::SqexDef {
 		static const char Signature_Value[12];
 
 		char Signature[12]{};
-		LE<uint32_t> HeaderLength;
+		LE<uint32_t> HeaderSize;
 		LE<uint32_t> Unknown1;  // 1
 		LE<SqpackType> Type;
 		LE<uint32_t> YYYYMMDD;
@@ -129,6 +133,8 @@ namespace XivAlex::SqexDef {
 	};
 	static_assert(offsetof(SqpackHeader, Sha1) == 0x3c0, "Bad SqpackHeader definition");
 	static_assert(sizeof(SqpackHeader) == 1024);
+
+	static constexpr uint32_t EntryAlignment = 128;
 
 	namespace SqIndex {
 		struct SegmentDescriptor {
@@ -165,7 +171,7 @@ namespace XivAlex::SqexDef {
 				Index2 = 2,
 			};
 
-			LE<uint32_t> HeaderLength;
+			LE<uint32_t> HeaderSize;
 			SegmentDescriptor FileSegment;
 			char Padding_0x04C[4];
 			SegmentDescriptor DataFilesSegment;  // Size is always 0x100
@@ -229,7 +235,7 @@ namespace XivAlex::SqexDef {
 			static constexpr uint64_t MaxFileSize_MaxValue = 0x800000000ULL;  // Max addressable via how OffsetAfterHeaders works
 			static constexpr uint32_t Unknown1_Value = 0x10;
 
-			LE<uint32_t> HeaderLength;
+			LE<uint32_t> HeaderSize;
 			LE<uint32_t> Null1;
 			LE<uint32_t> Unknown1;
 			union DataSizeDivBy8Type {
@@ -259,7 +265,7 @@ namespace XivAlex::SqexDef {
 			char Padding_0x034[0x3c0 - 0x034];
 			char Sha1[20];
 			char Padding_0x3D4[0x2c];
-			
+
 			void Verify(uint32_t expectedSpanIndex) const;
 		};
 		static_assert(offsetof(Header, Sha1) == 0x3c0, "Bad SqDataHeader definition");
@@ -271,15 +277,6 @@ namespace XivAlex::SqexDef {
 			Texture = 4,
 		};
 
-		struct FileEntryHeader {
-			LE<uint32_t> HeaderLength;
-			LE<FileEntryType> Type;
-			LE<uint32_t> DecompressedSize;
-			LE<uint32_t> Unknown1;
-			LE<uint32_t> BlockBufferSize;
-			LE<uint32_t> BlockCount;
-		};
-
 		struct BlockHeaderLocator {
 			LE<uint32_t> Offset;
 			LE<uint16_t> BlockSize;
@@ -288,10 +285,22 @@ namespace XivAlex::SqexDef {
 
 		struct BlockHeader {
 			static constexpr uint32_t CompressedSizeNotCompressed = 32000;
-			LE<uint32_t> HeaderLength;
+			LE<uint32_t> HeaderSize;
 			LE<uint32_t> Version;
 			LE<uint32_t> CompressedSize;
 			LE<uint32_t> DecompressedSize;
+		};
+
+		struct FileEntryHeader {
+			LE<uint32_t> HeaderSize;
+			LE<FileEntryType> Type;
+			LE<uint32_t> DecompressedSize;
+			LE<uint32_t> Unknown1;
+			LE<uint32_t> BlockBufferSize;
+			union {
+				LE<uint32_t> BlockCount;  // Valid for Type 1, 2, 4
+				LE<uint32_t> Version;  // Valid for Type 3
+			};
 		};
 
 		struct TextureBlockHeaderLocator {
@@ -304,13 +313,55 @@ namespace XivAlex::SqexDef {
 
 		struct TexHeader {
 			LE<uint16_t> Unknown1;
-			LE<uint16_t> HeaderLength;
+			LE<uint16_t> HeaderSize;
 			LE<uint32_t> CompressionType;
 			LE<uint16_t> DecompressedWidth;
 			LE<uint16_t> DecompressedHeight;
 			LE<uint16_t> Depth;
 			LE<uint16_t> MipmapCount;
 			char Unknown2[0xb];
+		};
+
+		struct ModelBlockLocator {
+			template<typename T>
+			struct ChunkInfo {
+				T Stack;
+				T Runtime;
+				T Vertex[3];
+				T EdgeGeometryVertex[3];
+				T Index[3];
+			};
+
+			ChunkInfo<LE<uint32_t>> DecompressedSizes;
+			ChunkInfo<LE<uint32_t>> ChunkSizes;
+			ChunkInfo<LE<uint32_t>> FirstBlockOffsets;
+			ChunkInfo<LE<uint16_t>> FirstBlockIndices;
+			ChunkInfo<LE<uint16_t>> BlockCount;
+			LE<uint16_t> VertexDeclarationCount;
+			LE<uint16_t> MaterialCount;
+			LE<uint8_t> LodCount;
+			LE<uint8_t> EnableIndexBufferStreaming;
+			LE<uint8_t> EnableEdgeGeometry;
+			LE<uint8_t> Padding;
+		};
+		static_assert(sizeof ModelBlockLocator == 184);
+
+		struct ModelHeader {
+			LE<uint32_t> Version;
+			LE<uint32_t> StackSize;
+			LE<uint32_t> RuntimeSize;
+			LE<uint16_t> VertexDeclarationCount;
+			LE<uint16_t> MaterialCount;
+			
+			LE<uint32_t> VertexOffset[3];
+			LE<uint32_t> IndexOffset[3];
+			LE<uint32_t> VertexSize[3];
+			LE<uint32_t> IndexSize[3];
+			
+			LE<uint8_t> LodCount;
+			LE<uint8_t> EnableIndexBufferStreaming;
+			LE<uint8_t> EnableEdgeGeometry;
+			LE<uint8_t> Padding;
 		};
 	}
 
@@ -319,15 +370,38 @@ namespace XivAlex::SqexDef {
 	uint32_t SqexHash(const std::string& text);
 	uint32_t SqexHash(const std::string_view& text);
 
+	template<typename T, typename CountT = T>
+	struct AlignResult {
+		CountT Count;
+		T Alloc;
+		T Pad;
+
+		operator T() const {
+			return Alloc;
+		}
+	};
+
+	template<typename T, typename CountT = T>
+	AlignResult<T, CountT> Align(T value, T by = static_cast<T>(EntryAlignment)) {
+		const auto count = (value + by - 1) / by;
+		const auto alloc = count * by;
+		const auto pad = alloc - value;
+		return {
+			.Count = static_cast<CountT>(count),
+			.Alloc = static_cast<T>(alloc),
+			.Pad = static_cast<T>(pad),
+		};
+	}
+
 	class FileSystemSqPack {
 
 	public:
 		struct SqDataEntry {
 			SqIndex::FileSegmentEntry IndexEntry;
 			SqIndex::FileSegmentEntry2 Index2Entry;
-			uint32_t DataFileIndex;
 			uint64_t DataEntryOffset;
-			uint32_t DataEntryLength = UINT32_MAX;
+			uint32_t DataEntrySize = UINT32_MAX;
+			uint32_t DataFileIndex;
 		};
 
 		struct SqIndex {
@@ -375,10 +449,12 @@ namespace XivAlex::SqexDef {
 	};
 
 	class VirtualSqPack {
+		static constexpr uint16_t BlockDataSize = 16000;
+		static constexpr uint16_t BlockValidSize = BlockDataSize + sizeof SqData::BlockHeader;
+		static constexpr uint16_t BlockPadSize = (EntryAlignment - BlockValidSize) % EntryAlignment;
+		static constexpr uint16_t BlockSize = BlockValidSize + BlockPadSize;
 
 		class Implementation;
-
-		static constexpr uint32_t EntryAlignment = 128;
 
 		class EntryProvider {
 		public:
@@ -396,20 +472,17 @@ namespace XivAlex::SqexDef {
 		class FileOnDiskEntryProvider : public EntryProvider {
 			Utils::Win32::File m_file;
 			const uint64_t m_offset;
-			const uint32_t m_length;
+			const uint32_t m_size;
 
 		public:
 			FileOnDiskEntryProvider(Utils::Win32::File file, uint64_t offset, uint32_t length);
+			~FileOnDiskEntryProvider() override;
 
 			[[nodiscard]] uint32_t Size() const override;
 			size_t Read(uint64_t offset, void* buf, size_t length) const override;
 		};
 
 		class OnTheFlyBinaryEntryProvider : public EntryProvider {
-			static constexpr uint16_t ChunkDataSize = 16000;
-			static constexpr uint16_t ChunkSize = ChunkDataSize + sizeof SqData::BlockHeader;
-			static constexpr uint16_t ChunkPadSize = (EntryAlignment - ChunkSize) % EntryAlignment;
-			static constexpr uint16_t PaddedChunkSize = ChunkSize + ChunkPadSize;
 			const std::filesystem::path m_path;
 			SqData::FileEntryHeader m_header{};
 
@@ -426,14 +499,39 @@ namespace XivAlex::SqexDef {
 		};
 
 		class MemoryBinaryEntryProvider : public EntryProvider {
-			static constexpr uint16_t ChunkSize = 16000;
-
 			std::vector<char> m_data;
 
 		public:
 			MemoryBinaryEntryProvider(const std::filesystem::path& path);
-			~MemoryBinaryEntryProvider() override = default;
+			~MemoryBinaryEntryProvider() override;
 
+			[[nodiscard]] uint32_t Size() const override;
+			size_t Read(uint64_t offset, void* buf, size_t length) const override;
+		};
+
+		class OnTheFlyModelEntryProvider : public EntryProvider {
+			const Utils::Win32::File m_hFile;
+
+			struct ModelEntryHeader {
+				SqData::FileEntryHeader Entry;
+				SqData::ModelBlockLocator Model;
+			};
+
+			ModelEntryHeader m_header{};
+			std::vector<uint32_t> m_blockOffsets;
+			std::vector<uint16_t> m_blockDataSizes;
+			std::vector<uint16_t> m_paddedBlockSizes;
+			std::vector<uint32_t> m_actualFileOffsets;
+
+		public:
+			OnTheFlyModelEntryProvider(const std::filesystem::path& path);
+			~OnTheFlyModelEntryProvider() override;
+
+		private:
+			[[nodiscard]] AlignResult<uint32_t> AlignEntry() const;
+			[[nodiscard]] uint32_t NextBlockOffset() const;
+
+		public:
 			[[nodiscard]] uint32_t Size() const override;
 			size_t Read(uint64_t offset, void* buf, size_t length) const override;
 		};
@@ -450,10 +548,7 @@ namespace XivAlex::SqexDef {
 			 * - - [ExtraHeader]
 			 * [BlockHeader, Data] * TextureBlockHeaderLocator.SubBlockCount * TexHeader.MipmapCount
 			 */
-
-			static constexpr uint16_t ChunkSize = 16000;
-			const std::filesystem::path m_path;
-			Utils::Win32::File m_hFile;
+			const Utils::Win32::File m_hFile;
 
 			std::vector<SqData::TextureBlockHeaderLocator> m_blockLocators;
 			std::vector<uint16_t> m_subBlockSizes;
@@ -469,6 +564,7 @@ namespace XivAlex::SqexDef {
 
 		public:
 			OnTheFlyTextureEntryProvider(std::filesystem::path path);
+			~OnTheFlyTextureEntryProvider() override;
 
 			[[nodiscard]] uint32_t Size() const override;
 			size_t Read(uint64_t offset, void* buf, size_t length) const override;
@@ -482,8 +578,8 @@ namespace XivAlex::SqexDef {
 			uint32_t FullPathHash;
 
 			uint32_t DataFileIndex;
-			uint32_t Length;
-			uint32_t PadLength;
+			uint32_t BlockSize;
+			uint32_t PadSize;
 			uint64_t OffsetAfterHeaders;
 
 			SqIndex::LEDataLocator Locator;
