@@ -40,7 +40,8 @@
 #include <ShellScalingApi.h>
 #include <iphlpapi.h>
 #include <comdef.h>
-#include <ShObjIdl_core.h>
+#include <Shlobj.h>
+#include <ShObjIdl.h>
 #include <IcmpAPI.h>
 #include <winternl.h>
 #include <Psapi.h>

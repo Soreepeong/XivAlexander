@@ -38,9 +38,10 @@ const std::map<App::Config::GameRegion, int> App::Config::RegionResourceIdMap{
 	{GameRegion::Korea, IDS_REGION_NAME_KOREA},
 };
 
-App::Config::BaseRepository::BaseRepository(const Config* pConfig, std::filesystem::path path)
+App::Config::BaseRepository::BaseRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey)
 	: m_pConfig(pConfig)
 	, m_sConfigPath(std::move(path))
+	, m_parentKey(parentKey)
 	, m_logger(Misc::Logger::Acquire()) {
 }
 
@@ -55,12 +56,14 @@ const char* App::Config::ItemBase::Name() const {
 }
 
 void App::Config::BaseRepository::Reload(bool announceChange) {
+	m_loaded = true;
+
 	bool changed = false;
-	nlohmann::json config;
+	nlohmann::json totalConfig;
 	if (exists(m_sConfigPath)) {
 		try {
 			std::ifstream in(m_sConfigPath);
-			in >> config;
+			in >> totalConfig;
 		} catch (std::exception& e) {
 			m_logger->FormatDefaultLanguage<LogLevel::Warning>(LogCategory::General,
 				IDS_ERROR_CONFIGURATION_LOAD,
@@ -70,11 +73,13 @@ void App::Config::BaseRepository::Reload(bool announceChange) {
 		changed = true;
 		m_logger->FormatDefaultLanguage(LogCategory::General, IDS_LOG_NEW_CONFIG, Utils::ToUtf8(m_sConfigPath));
 	}
+	
+	const auto& currentConfig = m_parentKey.empty() ? totalConfig : (totalConfig[m_parentKey] = nlohmann::json::object());
 
 	m_destructionCallbacks.clear();
 	for (const auto& item : m_allItems) {
-		changed |= item->LoadFrom(config, announceChange);
-		m_destructionCallbacks.push_back(item->OnChangeListener([this](ItemBase& item) { Save(); }));
+		changed |= item->LoadFrom(currentConfig, announceChange);
+		m_destructionCallbacks.push_back(item->OnChangeListener([this](ItemBase&) { Save(); }));
 	}
 
 	if (changed)
@@ -83,8 +88,8 @@ void App::Config::BaseRepository::Reload(bool announceChange) {
 
 class App::Config::ConfigCreator : public Config {
 public:
-	ConfigCreator(std::wstring runtimeConfigPath, std::wstring gameInfoPath)
-		: Config(std::move(runtimeConfigPath), std::move(gameInfoPath)) {
+	ConfigCreator(std::filesystem::path initializationConfigPath)
+		: Config(std::move(initializationConfigPath)) {
 	}
 	~ConfigCreator() override = default;
 };
@@ -99,13 +104,7 @@ std::shared_ptr<App::Config> App::Config::Acquire() {
 		r = s_instance.lock();
 		if (!r) {
 			const auto dllDir = Dll::Module().PathOf().parent_path();
-			const auto regionAndVersion = XivAlex::ResolveGameReleaseRegion();
-			s_instance = r = std::make_shared<ConfigCreator>(
-				dllDir / "config.runtime.json",
-				dllDir / std::format(L"game.{}.{}.json",
-					std::get<0>(regionAndVersion),
-					std::get<1>(regionAndVersion))
-				);
+			s_instance = r = std::make_shared<ConfigCreator>(dllDir / "config.xivalexinit.json");
 		}
 	}
 	return r;
@@ -135,9 +134,63 @@ std::wstring App::Config::Runtime::GetRegionNameLocalized(GameRegion gameRegion)
 	return GetStringRes(RegionResourceIdMap.at(gameRegion));
 }
 
-App::Config::Config(std::wstring runtimeConfigPath, std::wstring gameInfoPath)
-	: Runtime(this, std::move(runtimeConfigPath))
-	, Game(this, std::move(gameInfoPath)) {
+std::filesystem::path App::Config::InitializationConfig::ResolveConfigStorageDirectoryPath() {
+	MessageBoxW(nullptr, L"", L"", MB_OK);
+	
+	if (!Loaded())
+		Reload();
+
+	std::filesystem::path path;
+	if (!static_cast<std::string>(FixedConfigurationFolderPath).empty()){
+		path = TranslatePath(FixedConfigurationFolderPath);
+	} else {
+		PWSTR pszPath;
+		const auto result = SHGetKnownFolderPath(FOLDERID_RoamingAppData, KF_FLAG_CREATE | KF_FLAG_INIT, nullptr, &pszPath);
+		if (result != S_OK)
+			throw std::runtime_error(std::format("Failed to resolve %APPDATA%", _com_error(result).ErrorMessage()));
+		path = std::filesystem::path(pszPath) / L"XivAlexander";
+		CoTaskMemFree(pszPath);
+	}
+	if (!is_directory(path)) {
+		if (const auto res = SHCreateDirectoryExW(nullptr, path.c_str(), nullptr);
+			res != ERROR_SUCCESS && res != ERROR_ALREADY_EXISTS)
+			throw Utils::Win32::Error(res, "SHCreateDirectoryExW");
+		if (!is_directory(path))
+			throw std::runtime_error(std::format("Path \"{}\" is not a directory", path));
+	}
+	return path;
+}
+
+std::filesystem::path App::Config::InitializationConfig::ResolveRuntimeConfigPath() {
+	return ResolveConfigStorageDirectoryPath() / "config.runtime.json";
+}
+
+std::filesystem::path App::Config::InitializationConfig::ResolveGameOpcodeConfigPath() {
+	const auto regionAndVersion = XivAlex::ResolveGameReleaseRegion();
+	return ResolveConfigStorageDirectoryPath() / std::format(L"game.{}.{}.json",
+		std::get<0>(regionAndVersion),
+		std::get<1>(regionAndVersion));
+}
+
+std::filesystem::path App::Config::TranslatePath(const std::string& s, bool dontTranslateEmpty) {
+	if (dontTranslateEmpty && s.empty())
+		return "";
+	std::wstring buf;
+	buf.resize(PATHCCH_MAX_CCH);
+	buf.resize(ExpandEnvironmentStringsW(Utils::FromUtf8(s).c_str(), &buf[0], PATHCCH_MAX_CCH));
+	if (!buf.empty())
+		buf.resize(buf.size() - 1);
+
+	auto path = std::filesystem::path(buf);
+	if (path.is_relative())
+		path = Dll::Module().PathOf() / path;
+	return path;
+}
+
+App::Config::Config(std::filesystem::path initializationConfigPath)
+	: Init(this, std::move(initializationConfigPath), "")
+	, Runtime(this, Init.ResolveRuntimeConfigPath(), Utils::ToUtf8(Utils::Win32::Process::Current().PathOf().wstring()))
+	, Game(this, Init.ResolveGameOpcodeConfigPath(), "") {
 	Runtime.Reload();
 	Game.Reload();
 }
@@ -149,16 +202,24 @@ void App::Config::SetQuitting() {
 }
 
 void App::Config::BaseRepository::Save() {
-	if (m_pConfig->m_bSuppressSave)
+	if (m_pConfig && m_pConfig->m_bSuppressSave)
 		return;
 
-	nlohmann::json config;
+	nlohmann::json totalConfig;
+	try {
+		std::ifstream in(m_sConfigPath);
+		in >> totalConfig;
+	} catch (...) {
+		// ignore
+	}
+
+	nlohmann::json& currentConfig = m_parentKey.empty() ? totalConfig : (totalConfig[m_parentKey] = nlohmann::json::object());
 	for (const auto& item : m_allItems)
-		item->SaveTo(config);
+		item->SaveTo(currentConfig);
 
 	try {
 		std::ofstream out(m_sConfigPath);
-		out << config.dump(1, '\t');
+		out << totalConfig.dump(1, '\t');
 	} catch (std::exception& e) {
 		m_logger->FormatDefaultLanguage<LogLevel::Error>(LogCategory::General, IDS_ERROR_CONFIGURATION_SAVE, e.what());
 	}

@@ -90,8 +90,11 @@ namespace App {
 			template<typename T>
 			friend class Item;
 
+			bool m_loaded = false;
+
 			const Config* m_pConfig;
 			const std::filesystem::path m_sConfigPath;
+			const std::string m_parentKey;
 
 			const std::shared_ptr<Misc::Logger> m_logger;
 
@@ -99,7 +102,9 @@ namespace App {
 			std::vector<Utils::CallOnDestruction> m_destructionCallbacks;
 
 		public:
-			BaseRepository(const Config* pConfig, std::filesystem::path path);
+			BaseRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
+
+			[[nodiscard]] bool Loaded() const { return m_loaded; }
 
 			void Save();
 			void Reload(bool announceChange = false);
@@ -232,12 +237,13 @@ namespace App {
 			};
 		};
 
-		class DllLoader : public BaseRepository {
+		class InitializationConfig : public BaseRepository {
 			friend class Config;
 			using BaseRepository::BaseRepository;
 
 		public:
-			// Relative paths are relative to game installation directory.
+			// Relative paths are relative to the directory of the DLL.
+			// All items accept relative paths.
 
 			// If not set, defaults to %APPDATA%/XivAlexander
 			Item<std::string> FixedConfigurationFolderPath = CreateConfigItem(this, "FixedConfigurationFolderPath", std::string(""));
@@ -248,15 +254,22 @@ namespace App {
 			Item<std::string> ChainLoadPath_dxgi = CreateConfigItem(this, "ChainLoadPath_dxgi", std::string(""));
 			Item<std::string> ChainLoadPath_d3d9= CreateConfigItem(this, "ChainLoadPath_d3d9", std::string(""));
 			Item<std::string> ChainLoadPath_dinput8= CreateConfigItem(this, "ChainLoadPath_dinput8", std::string(""));
+
+			std::filesystem::path ResolveConfigStorageDirectoryPath();
+			std::filesystem::path ResolveRuntimeConfigPath();
+			std::filesystem::path ResolveGameOpcodeConfigPath();
 		};
+
+		static std::filesystem::path TranslatePath(const std::string&, bool dontTranslateEmpty = true);
 
 	protected:
 		static std::weak_ptr<Config> s_instance;
 		bool m_bSuppressSave = false;
 
-		Config(std::wstring runtimeConfigPath, std::wstring gameInfoPath);
+		Config(std::filesystem::path initializationConfigPath);
 
 	public:
+		InitializationConfig Init;
 		Runtime Runtime;
 		Game Game;
 

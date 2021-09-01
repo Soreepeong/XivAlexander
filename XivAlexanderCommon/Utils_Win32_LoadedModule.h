@@ -10,6 +10,7 @@ namespace Utils::Win32 {
 	public:
 		using Closeable<HMODULE, FreeLibrary>::Closeable;
 		explicit LoadedModule(const wchar_t* pwszFileName, DWORD dwFlags = 0, bool bRequire = true);
+		explicit LoadedModule(const std::filesystem::path& path, DWORD dwFlags = 0, bool bRequire = true);
 		LoadedModule(LoadedModule&& r) noexcept;
 		LoadedModule(const LoadedModule& r);
 		LoadedModule& operator=(LoadedModule&& r) noexcept;
