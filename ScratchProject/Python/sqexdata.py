@@ -907,11 +907,15 @@ class ImageDecoding:
 class ImageEncoding:
     @staticmethod
     def rgba4444(img: PIL.Image.Image):
-        res = bytearray()
         data = img.tobytes("raw", "RGBA")
-        for b1, b2 in zip(data[::2], data[1::2]):
-            res.append((round(b1 / 17) << 0) | (round(b2 / 17) << 4))
+        res = bytearray(len(data) // 2)
+        for b1, b2, i in zip(data[::2], data[1::2], range(len(res))):
+            res[i] = (b1 >> 4) | (b2 & 0xF0)
         return bytes(res)
+
+    @staticmethod
+    def bgra(img: PIL.Image.Image):
+        return img.tobytes("raw", "BGRA")
 
 
 def parse_fdt(path: str):
