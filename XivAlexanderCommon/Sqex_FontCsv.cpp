@@ -300,8 +300,6 @@ void Sqex::FontCsv::FontCsvData::AddFontEntry(char32_t c, uint16_t textureIndex,
 }
 
 void Sqex::FontCsv::FontCsvData::AddKerning(char32_t l, char32_t r, int rightOffset) {
-	if (!rightOffset)
-		return;
 	auto entry = KerningEntry();
 	entry.Left(l);
 	entry.Right(r);
@@ -313,8 +311,11 @@ void Sqex::FontCsv::FontCsvData::AddKerning(char32_t l, char32_t r, int rightOff
 			return l.RightUtf8Value < r.RightUtf8Value;
 		return l.LeftUtf8Value < r.LeftUtf8Value;
 	});
-	if (it->LeftUtf8Value == entry.LeftUtf8Value && it->RightUtf8Value == entry.RightUtf8Value)
-		it->RightOffset = rightOffset;
-	else
+	if (it->LeftUtf8Value == entry.LeftUtf8Value && it->RightUtf8Value == entry.RightUtf8Value) {
+		if (rightOffset)
+			it->RightOffset = rightOffset;
+		else
+			m_kerningEntries.erase(it);
+	} else if (rightOffset)
 		m_kerningEntries.insert(it, entry);
 }

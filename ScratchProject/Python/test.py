@@ -167,10 +167,10 @@ class SqexFont(Font):
                 raise TypeError
 
         self._glyph_map: typing.Dict[str, sqexdata.FdtGlyphEntry] = {
-            x.getchar(): x for x in self._fdt.fthd_header.glyphs
+            x.char: x for x in self._fdt.fthd_header.glyphs
         }
         self._kern_map: typing.Dict[str, int] = {
-            f"{x.getchar1()}{x.getchar2()}": x.offset_x for x in self._fdt.knhd_header.entries
+            f"{x.char1}{x.char2}": x.offset_x for x in self._fdt.knhd_header.entries
         }
         self._max_glyph_text_length = max(len(x) for x in self._glyph_map.keys())
 
@@ -180,6 +180,10 @@ class SqexFont(Font):
     def getcharwidth(self, char: str) -> int:
         g = self._glyph_map[char]
         return g.width + g.offset_x
+
+    @functools.cached_property
+    def __min_offset_x(self):
+        return min(x.offset_x for x in self._glyph_map.values())
 
     def __draw_single_glyph(self, canvas: typing.Optional[Canvas], x: int, y: int,
                             glyph: sqexdata.FdtGlyphEntry,
@@ -247,7 +251,8 @@ class SqexFont(Font):
                 last_char = ""
                 continue
 
-            current_char = glyph.getchar()
+            current_char = glyph.char
+            print(current_char, glyph.width, glyph.offset_x)
 
             kerning = self._kern_map.get(last_char + current_char, 0)
             now_l, now_t, now_r, now_b = self.__draw_single_glyph(canvas, cur_x, cur_y, glyph, kerning)
@@ -343,8 +348,8 @@ class FreeTypeFont(Font):
         for kern_table in data.kernTables:
             for (glyph1_name, glyph2_name), distance in kern_table.kernTable.items():
                 distance = round(distance
-                            * float(self._size)
-                            / self._ttfont['head'].unitsPerEm)
+                                 * float(self._size)
+                                 / self._ttfont['head'].unitsPerEm)
                 for glyph1_char in self._name_to_ords.get(glyph1_name, []):
                     for glyph2_char in self._name_to_ords.get(glyph2_name, []):
                         result[f"{glyph1_char}{glyph2_char}"] = distance
@@ -357,7 +362,8 @@ def create_fdt(font_mix: typing.Dict[str, typing.List[Font]],
                canvases: typing.List[Canvas],
                image_width: int,
                image_height: int,
-               kerning_treat_same_font_characters: str = " "
+               kerning_treat_same_font_characters: str = " ",
+               distance_between_glyphs: int = 1
                ):
     # key: font_index, glyph_name
     # value: image_index, x, y
@@ -365,11 +371,10 @@ def create_fdt(font_mix: typing.Dict[str, typing.List[Font]],
 
     result: typing.Dict[str, bytes] = {}
 
-    for font_index, (new_font_name, font_list) in enumerate(font_mix.items()):
-        print(f"[{font_index + 1}/{len(font_mix)}] {new_font_name}...")
+    for new_font_index, (new_font_name, font_list) in enumerate(font_mix.items()):
+        print(f"[{new_font_index + 1}/{len(font_mix)}] {new_font_name}...")
         font_table_header = sqexdata.FdtFontTableHeader()
         font_table_header.signature = sqexdata.FdtFontTableHeader.SIGNATURE
-        font_table_header.unknown_2 = 0
         font_table_header.null_1 = 0
         font_table_header.image_width = image_width
         font_table_header.image_height = image_height
@@ -391,6 +396,15 @@ def create_fdt(font_mix: typing.Dict[str, typing.List[Font]],
         charmap = {x: charmap[x] for x in sorted(charmap.keys())}
         font_table_header.glyph_count = len(charmap)
 
+        left_offset = 0
+        max_pad_y = 0
+        for text, font_index in charmap.items():
+            font = font_list[font_index]
+            actual_render_text = '.' if text == '\n' else text
+            shift_x, *_ = font.getbbox(actual_render_text)
+            left_offset = max(-shift_x, left_offset)
+            max_pad_y = max(max_pad_y, max_ascent - font.font_ascent)
+
         # key: text
         glyphs: typing.Dict[str, sqexdata.FdtGlyphEntry] = {}
 
@@ -398,18 +412,15 @@ def create_fdt(font_mix: typing.Dict[str, typing.List[Font]],
             font = font_list[font_index]
 
             glyph = sqexdata.FdtGlyphEntry()
-            for i, b in zip(range(4), bytes(reversed(text.encode("utf-8"))) + b"\0\0\0\0"):
-                glyph.char[i] = b
-            glyph.simple_char = ord('A')  # assume that this is not used in game
-            glyph.simple_char_class = 0
+            glyph.char = text
 
             actual_render_text = '.' if text == '\n' else text
 
             pad_y = max_ascent - font.font_ascent
-            shift_x, glyph.offset_y, glyph.width, glyph.height = font.getbbox(actual_render_text)
-            glyph.width -= shift_x
-            glyph.height -= glyph.offset_y
-            current_line_height = glyph.height - min(0, glyph.offset_y)
+            shift_x, _1, glyph.width, _2 = font.getbbox(actual_render_text)
+            glyph.width = glyph.width - shift_x + left_offset
+            glyph.offset_x = font.getcharwidth(text) - glyph.width
+            glyph.height = font_table_header.font_height + pad_y
 
             if rendered := first_rendered_glyphs.get((font, text), None):
                 glyph.image_index, glyph.x, glyph.y = rendered
@@ -417,27 +428,29 @@ def create_fdt(font_mix: typing.Dict[str, typing.List[Font]],
                 new_canvas = False
                 if not canvases:
                     new_canvas = True
-                elif canvases[-1].x - shift_x + glyph.width >= canvases[-1].image.width:
-                    canvases[-1].x = 0
-                    canvases[-1].y += canvases[-1].line_height
-                    canvases[-1].line_height = 0
-                    if canvases[-1].y + current_line_height >= canvases[-1].image.height:
+                elif canvases[-1].x + glyph.width >= canvases[-1].image.width - distance_between_glyphs:
+                    canvases[-1].x = distance_between_glyphs
+                    canvases[-1].y += canvases[-1].line_height + distance_between_glyphs
+                    if (canvases[-1].y + canvases[-1].line_height + distance_between_glyphs
+                            >= canvases[-1].image.height - distance_between_glyphs):
                         new_canvas = True
 
                 if new_canvas:
                     canvases.append(Canvas(image_width, image_height))
+                    canvases[-1].x = canvases[-1].y = distance_between_glyphs
                     print(f"Canvas #{len(canvases)}")
 
                 glyph.image_index = len(canvases) - 1
 
                 glyph.x, glyph.y = canvases[-1].x, canvases[-1].y
-                font.draw(canvases[-1], glyph.x - shift_x, glyph.y - glyph.offset_y, actual_render_text)
+                font.draw(canvases[-1],
+                          glyph.x + left_offset,
+                          glyph.y,
+                          actual_render_text)
 
-                canvases[-1].line_height = max(canvases[-1].line_height, current_line_height)
-                canvases[-1].x += glyph.width
+                canvases[-1].x += glyph.width + distance_between_glyphs
+                canvases[-1].line_height = max(canvases[-1].line_height, glyph.height)
 
-            glyph.offset_x = font.getcharwidth(text) - glyph.width
-            glyph.offset_y = glyph.offset_y + pad_y - font.delta_y
             glyphs[text] = glyph
             first_rendered_glyphs[font, text] = glyph.image_index, glyph.x, glyph.y
 
@@ -453,13 +466,16 @@ def create_fdt(font_mix: typing.Dict[str, typing.List[Font]],
                                      + len(glyphs) * ctypes.sizeof(sqexdata.FdtGlyphEntry))
 
         filtered_kerning_data = {}
-        for font in font_list:
+        for i, font in enumerate(font_list):
             for kerning_str, offset_x in font.kerning_info.items():
                 if len(kerning_str) != 2:
                     # Unsupported
                     continue
 
                 c1, c2 = kerning_str
+                if charmap[c1] != i and charmap[c2] != i:
+                    # Completely unrelated; ignore
+                    continue
                 if charmap[c1] != charmap[c2]:
                     if c1 not in kerning_treat_same_font_characters and c2 not in kerning_treat_same_font_characters:
                         # Different font; ignore
@@ -469,14 +485,11 @@ def create_fdt(font_mix: typing.Dict[str, typing.List[Font]],
         kernings = []
         filtered_kerning_data = {x: filtered_kerning_data[x]
                                  for x in sorted(filtered_kerning_data.keys())}
-        kerning_header.count = len(filtered_kerning_data)
+        font_table_header.kerning_entry_count = kerning_header.count = len(filtered_kerning_data)
         for (c1, c2), offset_x in filtered_kerning_data.items():
             entry = sqexdata.FdtKerningEntry()
-            for target, source in ((entry.char1, c1), (entry.char2, c2)):
-                for i, b in zip(range(4), bytes(reversed(source.encode("utf-8"))) + b"\0\0\0\0"):
-                    target[i] = b
-            entry.simple_char1 = ord('A')  # assume that this is not used in game
-            entry.simple_char2 = ord('A')  # assume that this is not used in game
+            entry.char1 = c1
+            entry.char2 = c2
             entry.offset_x = offset_x
             kernings.append(entry)
 
@@ -499,23 +512,33 @@ def render_text2(font: Font, txt: str):
     w = r - l
     h = b - t
 
-    canvas = Canvas(w, h)
-    font.draw(canvas, -l, -t, txt)
+    font.draw(canvas := Canvas(w, h), -l, -t, txt)
     return canvas.image
 
 
-def __main__():
-    # constan = FreeTypeFont(r"C:\Windows\Fonts\constan.ttf", 0, 20)
-    # gulim = FreeTypeFont(r"C:\Windows\Fonts\gulim.ttc", 0, 16)
-    # times = FreeTypeFont(r"C:\Windows\Fonts\Times.ttf", 0, 20)
-    # comic = FreeTypeFont(r"C:\Windows\Fonts\comic.ttf", 0, 18)
+def render_char(font: Font, char: str, on: PIL.Image.Image, on_x, on_y):
+    l, t, r, b = font.getbbox(char)
+    w = r - l
+    h = b - t
+
+    font.draw(canvas := Canvas(w, h), -l, -t, char)
+    draw = PIL.ImageDraw.Draw(on)
+    # draw.line((on_x + r + font.last_offset_x, on_y, on_x + r + font.last_offset_x, on_y + b), fill=(255, 0, 0), width=1)
+    draw.rectangle((on_x + l, on_y + t, on_x + r, on_y + b), outline=(0, 0, 255))
+    draw.rectangle((on_x, on_y, on_x + r, on_y + b), outline=(0, 255, 0))
+
+    on.paste(
+        PIL.Image.new("RGB", canvas.image.size, (255, 255, 255)),
+        (on_x + l, on_y + t),
+        canvas.image
+    )
+    return on_x + w
+
+
+def transform_sqex(orig_tex):
     lobby_sizes = [10, 12, 14, 16, 18, 20, 23, 34, 45]
     comics = {}
     notos = {}
-    orig_tex = [
-        fr"Z:\scratch\g\ffxiv\000000\common\font\font{i}.tex"
-        for i in range(1, 8)
-    ]
     new_font_def = {}
     for fn in os.listdir(r"Z:\scratch\g\ffxiv\000000\common\font"):
         if fn.endswith(".fdt"):
@@ -524,7 +547,10 @@ def __main__():
                 size = 10  # 9.6 actually
             if size not in comics:
                 comics[size] = FreeTypeFont(
-                    r"C:\Windows\Fonts\comic.ttf", 0, size)
+                    # r"C:\Windows\Fonts\comic.ttf",
+                    r"C:\Windows\Fonts\PAPYRUS.TTF",
+                    # r"C:\Users\SP\AppData\Local\Microsoft\Windows\Fonts\ElliotSix.ttf",
+                    0, size)
             d = [
                 comics[size],
                 SqexFont(rf"Z:\scratch\g\ffxiv\000000\common\font\{fn.replace('_lobby', '')}", orig_tex),
@@ -535,10 +561,50 @@ def __main__():
                         r"F:\Downloads\SourceHanSans-VF\Variable\TTF\Subset\SourceHanSansKR-VF.ttf", 0, size)
                 d.append(notos[size])
             new_font_def[fn[:-4]] = d
+    return new_font_def
 
-    pass
 
+def __main__():
+    # dpa = r"C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\000000.win32\common\font"
+    # for p in os.listdir(dpa):
+    #     if p[-4:] == '.fdt':
+    #         with open(f"{dpa}\\{p}", "a+b") as fp:
+    #             fp.seek(0, os.SEEK_SET)
+    #             h1 = sqexdata.FdtHeader()
+    #             fp.readinto(h1)
+    #             h2 = sqexdata.FdtFontTableHeader()
+    #             fp.readinto(h2)
+    #             h2.left_offset = 0
+    #             fp.seek(ctypes.sizeof(h1))
+    #             fp.write(h2)
+    # return 0
+    orig_tex = [
+        fr"Z:\scratch\g\ffxiv\000000\common\font\font{i}.tex"
+        for i in range(1, 8)
+    ]
+    canvas_w = canvas_h = 4096
+    new_font_def = transform_sqex(orig_tex)
+
+    # constan = FreeTypeFont(r"C:\Windows\Fonts\constan.ttf", 0, 20)
+    # gulim = FreeTypeFont(r"C:\Windows\Fonts\gulim.ttc", 0, 16)
+    # times = FreeTypeFont(r"C:\Windows\Fonts\Times.ttf", 0, 20)
+    # comic = FreeTypeFont(r"C:\Windows\Fonts\comic.ttf", 0, 18)
+    # papy = FreeTypeFont(r"C:\Windows\Fonts\PAPYRUS.TTF", 0, 36)
+    # ax36 = SqexFont(rf"Z:\scratch\g\ffxiv\000000\common\font\AXIS_36.fdt", orig_tex)
+    # trndr = SqexFont(r"C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\000000.win32\common\font\AXIS_36.fdt",
+    #                  [x for x in [
+    #     fr"C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\000000.win32\common\font\font_lobby{i}.tex"
+    #     for i in range(1, 8)
+    # ] if os.path.exists(x)])
+    # img = PIL.Image.new("RGB", (1024, 1024))
+    # nx = 10
+    # for i, c in enumerate("Sometimes I question"):
+    #     nx = render_char(trndr, c, img, nx, 10) + 5
+    # exit(img.show())
+    # exit(render_text2(ax36, "Sometimes I question").show())
+    # canvas_w = canvas_h = 1024
     # new_font_def = {
+    #     "Papyrus36": [papy, ax36],
     #     "AxisRecreation": [axis],
     #     "Constantia": [constan],
     #     "Times": [times],
@@ -569,12 +635,12 @@ def __main__():
     #     ],
     # }
 
-    canvas_w = canvas_h = 4096
     if True:
         canvases = []
+        fdts = create_fdt(new_font_def, canvases, canvas_w, canvas_h)
+
         shutil.rmtree("t/", ignore_errors=True)
         os.makedirs("t", exist_ok=True)
-        fdts = create_fdt(new_font_def, canvases, canvas_w, canvas_h)
         for font_name, font_bytes in fdts.items():
             with open(f"t/{font_name}.fdt", "wb") as fp:
                 fp.write(font_bytes)
@@ -599,6 +665,10 @@ def __main__():
                 fp.write(b"\x50")
                 fp.seek(0x50, os.SEEK_SET)
                 fp.write(img_bytes)
+        return 0
+
+        for i, c in enumerate(canvases):
+            c.image.save(f"t/z_{i}.png")
 
         # render_text2(axis, f"AXIS_18.fdt\n\n{SHOWCASE_TEXT}").save(f"t/test.AXIS_18.png")
 
@@ -611,7 +681,9 @@ def __main__():
 
     for fontname in new_font_def.keys():
         new_font = SqexFont(f"t/{fontname}.fdt", tex_paths)
-        render_text2(new_font, f"t/{fontname}.fdt\n\n{SHOWCASE_TEXT}").save(f"t/test.{fontname}.png")
+        rtext = f"t/{fontname}.fdt\n\n{SHOWCASE_TEXT}"
+        # rtext = "ojajejijoju"
+        render_text2(new_font, rtext).save(f"t/test.{fontname}.png")
     return 0
 
 

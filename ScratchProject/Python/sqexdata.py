@@ -12,7 +12,6 @@ import zlib
 import PIL.Image
 import PIL.ImageDraw
 
-
 hash_table = (
     (0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706AF48F, 0xE963A535, 0x9E6495A3, 0x0EDB8832,
      0x79DCB8A4, 0xE0D5E91E, 0x97D2D988, 0x09B64C2B, 0x7EB17CBD, 0xE7B82D07, 0x90BF1D91, 0x1DB71064, 0x6AB020F2,
@@ -218,6 +217,7 @@ class BlockHeader(ctypes.LittleEndianStructure):
         if self.is_compressed():
             self.data = fp.read(self.compressed_size)
             self.data = zlib.decompress(self.data, -zlib.MAX_WBITS)
+            assert self.decompressed_size == len(self.data)
         else:
             self.data = fp.read(self.decompressed_size)
         return self
@@ -454,7 +454,7 @@ class FileSegmentItem(ctypes.LittleEndianStructure):
             return self.read_data_texture(fp)
         else:
             raise ValueError
-    
+
     def read_data_binary(self, fp: io.RawIOBase) -> bytes:
         block_tables = [DataBlock() for _ in range(self.data_entry_header.num_blocks)]
 
@@ -500,7 +500,7 @@ class FileSegmentItem(ctypes.LittleEndianStructure):
             fp_file.write(block)
 
         return fp_file.getvalue()
-    
+
     def read_data_texture(self, fp: io.RawIOBase) -> bytes:
         block_tables = [Type4BlockTable() for _ in range(self.data_entry_header.num_blocks)]
 
@@ -593,50 +593,84 @@ class FileSegmentItem(ctypes.LittleEndianStructure):
         model_header.enable_index_buffer_streaming = header.enable_index_buffer_streaming
         model_header.enable_edge_geometry = header.enable_edge_geometry
 
-        fp_file.seek(0x44)
+        assert (ctypes.sizeof(model_header) == 0x44)
+        fp_file.seek(ctypes.sizeof(model_header))
         block_index = 0
         assert block_offsets[0] == header.stack_memory_offset
+        assert block_index == header.stack_data_block_index
+        comps = 0
         for _ in range(header.stack_data_block_num):
-            data = BlockHeader.from_fp(self, block_offsets[block_index], fp).data
-            fp_file.write(data)
-            model_header.stack_memory_size += len(data)
+            bhdr = BlockHeader.from_fp(self, block_offsets[block_index], fp)
+            comps += bhdr.compressed_size
+            fp_file.write(bhdr.data)
+            model_header.stack_memory_size += len(bhdr.data)
             block_index += 1
+        assert (model_header.stack_memory_size + 127) // 128 * 128 == header.stack_memory_size
+        assert sum(block_sizes[header.stack_data_block_index + i] for i in
+                   range(header.stack_data_block_num)) == header.compressed_stack_memory_size
 
         assert block_offsets[block_index] == header.runtime_memory_offset
+        assert block_index == header.runtime_data_block_index
+        comps = 0
         for _ in range(header.runtime_data_block_num):
-            data = BlockHeader.from_fp(self, block_offsets[block_index], fp).data
-            fp_file.write(data)
-            model_header.runtime_memory_size += len(data)
+            bhdr = BlockHeader.from_fp(self, block_offsets[block_index], fp)
+            comps += bhdr.compressed_size
+            fp_file.write(bhdr.data)
+            model_header.runtime_memory_size += len(bhdr.data)
             block_index += 1
-        
+        assert (model_header.runtime_memory_size + 127) // 128 * 128 == header.runtime_memory_size
+        assert sum(block_sizes[header.runtime_data_block_index + i] for i in
+                   range(header.runtime_data_block_num)) == header.compressed_runtime_memory_size
+
         for i in range(3):
             if header.vertex_data_block_num[i] != 0:
                 assert header.vertex_buffer_offset[i] == block_offsets[block_index]
-                model_header.vertex_data_offset[i] = block_offsets[block_index]
+                assert header.vertex_data_block_index[i] == block_index
+                model_header.vertex_data_offset[i] = fp_file.tell()
 
+                comps = 0
                 for _ in range(header.vertex_data_block_num[i]):
-                    data = BlockHeader.from_fp(self, block_offsets[block_index], fp).data
-                    fp_file.write(data)
-                    model_header.vertex_buffer_size[i] += len(data)
+                    bhdr = BlockHeader.from_fp(self, block_offsets[block_index], fp)
+                    comps += bhdr.compressed_size
+                    fp_file.write(bhdr.data)
+                    model_header.vertex_buffer_size[i] += len(bhdr.data)
                     block_index += 1
+                assert (model_header.vertex_buffer_size[i] + 127) // 128 * 128 == header.vertex_buffer_size[i]
+                assert sum(block_sizes[header.vertex_data_block_index[i] + j] for j in
+                           range(header.vertex_data_block_num[i])) == header.compressed_vertex_buffer_size[i]
 
             if header.edge_geometry_vertex_data_block_num[i] != 0:
                 assert header.edge_geometry_vertex_buffer_offset[i] == block_offsets[block_index]
+                assert header.edge_geometry_vertex_data_block_index[i] == block_index
+                evbs = 0
+                comps = 0
                 for _ in range(header.edge_geometry_vertex_data_block_num[i]):
-                    data = BlockHeader.from_fp(self, block_offsets[block_index], fp).data
-                    fp_file.write(data)
+                    bhdr = BlockHeader.from_fp(self, block_offsets[block_index], fp)
+                    comps += bhdr.compressed_size
+                    fp_file.write(bhdr.data)
+                    evbs += len(bhdr.data)
                     block_index += 1
+                assert (evbs + 127) // 128 * 128 == header.edge_geometry_vertex_buffer_size[i]
+                assert sum(block_sizes[header.edge_geometry_vertex_data_block_index[i] + j] for j in
+                           range(header.edge_geometry_vertex_data_block_num[i])) == \
+                       header.compressed_edge_geometry_vertex_buffer_size[i]
 
             if header.index_buffer_data_block_num[i] != 0:
                 assert header.index_buffer_offset[i] == block_offsets[block_index]
-                model_header.index_data_offset[i] = block_offsets[block_index]
+                assert header.index_buffer_data_block_index[i] == block_index
+                model_header.index_data_offset[i] = fp_file.tell()
 
                 for _ in range(header.index_buffer_data_block_num[i]):
-                    data = BlockHeader.from_fp(self, block_offsets[block_index], fp).data
-                    fp_file.write(data)
-                    model_header.index_buffer_size[i] += len(data)
+                    bhdr = BlockHeader.from_fp(self, block_offsets[block_index], fp)
+                    comps += bhdr.compressed_size
+                    fp_file.write(bhdr.data)
+                    model_header.index_buffer_size[i] += len(bhdr.data)
                     block_index += 1
+                assert (model_header.index_buffer_size[i] + 127) // 128 * 128 == header.index_buffer_size[i]
+                assert sum(block_sizes[header.index_buffer_data_block_index[i] + j] for j in
+                           range(header.index_buffer_data_block_num[i])) == header.compressed_index_buffer_size[i]
 
+        assert self.data_entry_header.decompressed_size == fp_file.tell()
         fp_file.seek(0)
         fp_file.write(model_header)
         return fp_file.getvalue()
@@ -738,7 +772,7 @@ class FdtFontTableHeader(ctypes.LittleEndianStructure):
     _fields_ = (
         ("signature", ctypes.c_uint32),
         ("glyph_count", ctypes.c_uint32),
-        ("unknown_2", ctypes.c_uint32),
+        ("kerning_entry_count", ctypes.c_int32),
         ("null_1", ctypes.c_uint32),
         ("image_width", ctypes.c_uint16),
         ("image_height", ctypes.c_uint16),
@@ -751,7 +785,7 @@ class FdtFontTableHeader(ctypes.LittleEndianStructure):
 
     signature: int
     glyph_count: int
-    unknown_2: int
+    kerning_entry_count: int
     null_1: int
     image_width: int
     image_height: int
@@ -763,15 +797,27 @@ class FdtFontTableHeader(ctypes.LittleEndianStructure):
 
     def glyph_map(self) -> typing.Dict[str, 'FdtGlyphEntry']:
         return {
-            x.getchar(): x for x in self.glyphs
+            x.char: x for x in self.glyphs
         }
+
+
+def sqex_str_from_int(val: int, encoding: str = "utf-8") -> str:
+    return struct.pack(">I", val).decode(encoding).rsplit("\0", 1)[-1] or "\0"
+
+
+def sqex_int_from_str(new_char: str) -> typing.Tuple[int, int]:
+    if len(new_char) != 1:
+        raise ValueError
+    u8, sjis = struct.unpack(">IH",
+                             f"\0\0\0{new_char}".encode("utf-8")[-4:] +
+                             f"\0{new_char}".encode("shift_jis", errors="replace")[-2:])
+    return u8, sjis
 
 
 class FdtGlyphEntry(ctypes.LittleEndianStructure):
     _fields_ = (
-        ("char", ctypes.c_uint8 * 4),
-        ("simple_char", ctypes.c_uint8),
-        ("simple_char_class", ctypes.c_int8),
+        ("char_utf8", ctypes.c_uint32),
+        ("char_sjis", ctypes.c_uint16),
         ("image_index", ctypes.c_uint16),
         ("x", ctypes.c_uint16),
         ("y", ctypes.c_uint16),
@@ -781,9 +827,8 @@ class FdtGlyphEntry(ctypes.LittleEndianStructure):
         ("offset_y", ctypes.c_int8),
     )
 
-    char: typing.List[int]
-    simple_char: int
-    simple_char_class: int
+    char_utf8: int
+    char_sjis: int
     image_index: int
     x: int
     y: int
@@ -792,8 +837,13 @@ class FdtGlyphEntry(ctypes.LittleEndianStructure):
     offset_x: int
     offset_y: int
 
-    def getchar(self) -> str:
-        return bytes(reversed(self.char)).decode().rsplit("\0", 1)[-1] or "\0"
+    @property
+    def char(self) -> str:
+        return sqex_str_from_int(self.char_utf8)
+
+    @char.setter
+    def char(self, new_char: str):
+        self.char_utf8, self.char_sjis = sqex_int_from_str(new_char)
 
 
 class FdtKerningHeader(ctypes.LittleEndianStructure):
@@ -814,24 +864,34 @@ class FdtKerningHeader(ctypes.LittleEndianStructure):
 
 class FdtKerningEntry(ctypes.LittleEndianStructure):
     _fields_ = (
-        ("char1", ctypes.c_uint8 * 4),
-        ("char2", ctypes.c_uint8 * 4),
-        ("simple_char1", ctypes.c_uint16),
-        ("simple_char2", ctypes.c_uint16),
+        ("char1_utf8", ctypes.c_uint32),
+        ("char2_utf8", ctypes.c_uint32),
+        ("char1_sjis", ctypes.c_uint16),
+        ("char2_sjis", ctypes.c_uint16),
         ("offset_x", ctypes.c_int32),
     )
 
-    char1: typing.List[int]
-    char2: typing.List[int]
-    simple_char1: int
-    simple_char2: int
+    char1_utf8: int
+    char2_utf8: int
+    char1_sjis: int
+    char2_sjis: int
     offset_x: int
 
-    def getchar1(self) -> str:
-        return bytes(reversed(self.char1)).decode().rsplit("\0", 1)[-1] or "\0"
+    @property
+    def char1(self) -> str:
+        return sqex_str_from_int(self.char1_utf8)
 
-    def getchar2(self) -> str:
-        return bytes(reversed(self.char2)).decode().rsplit("\0", 1)[-1] or "\0"
+    @char1.setter
+    def char1(self, new_char1: str):
+        self.char1_utf8, self.char1_sjis = sqex_int_from_str(new_char1)
+
+    @property
+    def char2(self) -> str:
+        return sqex_str_from_int(self.char2_utf8)
+
+    @char2.setter
+    def char2(self, new_char2: str):
+        self.char2_utf8, self.char2_sjis = sqex_int_from_str(new_char2)
 
 
 class ImageDecoding:
@@ -893,7 +953,7 @@ def write_fdt(fp: typing.Union[typing.BinaryIO, io.RawIOBase], fdt_header: FdtHe
 
     fdt_header.fthd_header.signature = FdtFontTableHeader.SIGNATURE
     fdt_header.fthd_header.glyph_count = len(fdt_header.fthd_header.glyphs)
-    fdt_header.fthd_header.unknown_2 = 0  # TODO
+    fdt_header.fthd_header.kerning_entry_count = 0  # TODO
     fdt_header.fthd_header.null_1 = 0
 
     fdt_header.knhd_header.signature = FdtKerningHeader.SIGNATURE
@@ -932,7 +992,10 @@ def parse_exh(data: bytes):
     return exh_header
 
 
-def extract(sqpack: str, xiv_file: str, target_dir: str):
+def extract(sqpack: str, xiv_file: str, target_dir: str,
+            paths: typing.Optional[typing.List[typing.Tuple[int, str]]] = None):
+    if paths:
+        paths = set(sqexhash(x) if isinstance(x, str) else x for x in paths)
     # https://github.com/goaaats/ffxiv-explorer-fork/blob/develop/src/main/java/com/fragmenterworks/ffxivextract/models/SqPack_DatFile.java
     fp_index: io.RawIOBase
     fp_datas = []
@@ -963,6 +1026,9 @@ def extract(sqpack: str, xiv_file: str, target_dir: str):
             item = FileSegmentItem()
             fp_index.readinto(item)
             files[sh.segment1.offset + i] = item
+
+            if paths and item.path_hash not in paths:
+                continue
 
             item.data_entry_header = DataEntryHeader()
             fp_data = fp_datas[item.dat_index]
@@ -1125,6 +1191,54 @@ def merge_exd(target_file, target_original_file, source_file, target_lang, sourc
                     f"{target_file[:-4]}_{page.start_id}{lang_prefix[target_lang]}.exd")
 
 
+def dump_fdts(fns: typing.List[str]):
+    fp = io.StringIO(newline="")
+    fpcsv = csv.writer(fp)
+    fpcsv.writerow([
+        "Name",
+        "FDT.signature",
+        "FDT.version",
+        "FDT.glyph_header_offset",
+        "FDT.knhd_header_offset",
+        "FDT.null_1",
+        "FTHD.signature",
+        "FTHD.glyph_count",
+        "FTHD.kerning_entry_count",
+        "FTHD.null_1",
+        "FTHD.image_width",
+        "FTHD.image_height",
+        "FTHD.size",
+        "FTHD.font_height",
+        "FTHD.font_ascent",
+        "KNHD.signature",
+        "KNHD.count",
+        "KNHD.null_1",
+    ])
+    for fn in fns:
+        fdt = parse_fdt(fn)
+        fpcsv.writerow([
+            os.path.basename(fn),
+            f"0x{fdt.signature:08x}",
+            f"0x{fdt.version:x}",
+            f"0x{fdt.glyph_header_offset:x}",
+            f"0x{fdt.knhd_header_offset:x}",
+            f"{' '.join(f'{x:02x}' for x in fdt.null_1)}",
+            f"0x{fdt.fthd_header.signature:08x}",
+            f"{fdt.fthd_header.glyph_count}",
+            f"{fdt.fthd_header.kerning_entry_count}",
+            f"{fdt.fthd_header.null_1}",
+            f"{fdt.fthd_header.image_width}",
+            f"{fdt.fthd_header.image_height}",
+            f"{fdt.fthd_header.size}",
+            f"{fdt.fthd_header.font_height}",
+            f"{fdt.fthd_header.font_ascent}",
+            f"0x{fdt.knhd_header.signature:08x}",
+            f"{fdt.knhd_header.count}",
+            f"{fdt.knhd_header.null_1}",
+        ])
+    return fp.getvalue()
+
+
 def dump_fdt(fn: str):
     fdt = parse_fdt(fn)
     with open(f"{fn}.info.txt", "w") as fp:
@@ -1136,7 +1250,7 @@ def dump_fdt(fn: str):
                  "\n"
                  f"FTHD.signature=0x{fdt.fthd_header.signature:08x}\n"
                  f"FTHD.glyph_count={fdt.fthd_header.glyph_count}\n"
-                 f"FTHD.unknown_2={fdt.fthd_header.unknown_2}\n"
+                 f"FTHD.kerning_entry_count={fdt.fthd_header.kerning_entry_count}\n"
                  f"FTHD.null_1={fdt.fthd_header.null_1}\n"
                  f"FTHD.image_width={fdt.fthd_header.image_width}\n"
                  f"FTHD.image_height={fdt.fthd_header.image_height}\n"
@@ -1152,44 +1266,37 @@ def dump_fdt(fn: str):
         with open(f"{fn}.glyph.csv", "w", newline="", encoding="utf-8") as fp:
             fp.write("\ufeff")
             writer = csv.writer(fp)
-            writer.writerow(("char", "simple_char", "simple_char_chr", "simple_char_class",
-                             "image_index", "x", "y", "width", "height", "offset_x", "offset_y"))
+            writer.writerow(("char", "image_index", "x", "y", "width", "height", "offset_x", "offset_y"))
             for glyph in fdt.fthd_header.glyphs:
                 writer.writerow((
-                    glyph.getchar(),
-                    glyph.simple_char,
-                    chr(glyph.simple_char),
-                    glyph.simple_char_class,
+                    glyph.char,
                     glyph.image_index,
-                    glyph.x,
-                    glyph.y,
-                    glyph.width,
-                    glyph.height,
-                    glyph.offset_x,
-                    glyph.offset_y,
+                    glyph.x, glyph.y,
+                    glyph.width, glyph.height,
+                    glyph.offset_x, glyph.offset_y,
                 ))
 
     if fdt.knhd_header.entries:
         with open(f"{fn}.knhd.csv", "w", newline="", encoding="utf-8") as fp:
             fp.write("\ufeff")
             writer = csv.writer(fp)
-            writer.writerow(("char1", "char2", "simple_char1", "simple_char2",
-                             "simple_char1_chr", "simple_char2_chr",
-                             "offset_x"))
+            writer.writerow(("char1", "char2", "offset_x"))
             for entry in fdt.knhd_header.entries:
                 writer.writerow((
-                    entry.getchar1(),
-                    entry.getchar2(),
-                    entry.simple_char1,
-                    entry.simple_char2,
-                    chr(entry.simple_char1),
-                    chr(entry.simple_char2),
-                    entry.offset_x,
+                    entry.char1, entry.char2, entry.offset_x,
                 ))
 
 
 def __main__():
-    return extract(r"Z:\scratch\t2", r"000000", r"t\000000")
+    # return extract(r"Z:\scratch\t2", r"000000", r"t\000000")
+    # return extract(r"C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv",
+    #                r"040000",
+    #                r"g\ffxiv\040000",
+    #                paths=["chara/equipment/e0100",
+    #                       "chara/equipment/e0100/material/v0001",
+    #                       "chara/equipment/e0100/material/v0002",
+    #                       "chara/equipment/e0100/model",
+    #                       "chara/equipment/e0100/texture"])
     # return extract(r"C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv", r"000000", r"g\ffxiv\000000")
     # return extract(r"C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\backup", r"000000", r"g\ffxiv\000000")
     # return extract(r"D:\scratch", r"000000", r"t\000000")
@@ -1215,8 +1322,8 @@ def __main__():
     #             continue
     #         with open(os.path.join("testres", fn), "wb") as fp:
     #             for i, glyph in enumerate(d[fn].fthd_header.glyphs):
-    #                 if 'A' <= glyph.getchar().upper() <= 'Z':
-    #                     d[fn].fthd_header.glyphs[i] = axis96_glyph_map[glyph.getchar()]
+    #                 if 'A' <= glyph.char.upper() <= 'Z':
+    #                     d[fn].fthd_header.glyphs[i] = axis96_glyph_map[glyph.char]
     #             write_fdt(fp, d[fn])
     # return
     #
@@ -1224,12 +1331,16 @@ def __main__():
     #     # "k": r"Z:\scratch\k\ffxiv\000000\common\font",
     #     "g": r"Z:\scratch\g\ffxiv\000000\common\font",
     # }.items():
+    #     fns = []
     #     for fn in os.listdir(basedir):
     #         ffn = os.path.join(basedir, fn)
     #         try:
     #             dump_fdt(ffn)
+    #             fns.append(ffn)
     #         except Exception as e:
     #             print(ffn, e)
+    #     with open("summary.csv", "w") as fp:
+    #         fp.write(dump_fdts(fns))
     # return
 
     for rpfx, basedir in {
@@ -1269,10 +1380,11 @@ def __main__():
                 continue
             f: FdtHeader
             fthd = f.fthd_header
-            print(f"{fn:<28}", f"s={fthd.size:6.3f} s1={fthd.font_height:3} s2={fthd.font_ascent:3} u2={fthd.unknown_2}")
+            print(f"{fn:<28}",
+                  f"s={fthd.size:6.3f} s1={fthd.font_height:3} s2={fthd.font_ascent:3} u2={fthd.kerning_entry_count}")
 
             # for entry in f.knhd_header.entries:
-            #     print(entry.getchar1(), entry.getchar2(), chr(entry.unknown_3), chr(entry.unknown_4),
+            #     print(entry.char1, entry.char2, chr(entry.unknown_3), chr(entry.unknown_4),
             #           entry.unknown_5, entry.unknown_6, entry.unknown_7, entry.unknown_8)
 
             if fn.startswith("Krn"):
@@ -1280,8 +1392,9 @@ def __main__():
             else:
                 ctex = texs[""]
 
-            glyph_map: typing.Dict[str, FdtGlyphEntry] = {x.getchar(): x for x in fthd.glyphs}
-            kern_map: typing.Dict[str, FdtKerningEntry] = {f"{x.getchar1()}{x.getchar2()}": x for x in f.knhd_header.entries}
+            glyph_map: typing.Dict[str, FdtGlyphEntry] = {x.char: x for x in fthd.glyphs}
+            kern_map: typing.Dict[str, FdtKerningEntry] = {f"{x.char1}{x.char2}": x for x in
+                                                           f.knhd_header.entries}
             txt = (f"{fn}\n\n"
                    "Uppercase: ABCDEFGHIJKLMNOPQRSTUVWXYZ\n"
                    "Lowercase: abcdefghijklmnopqrstuvwxyz\n"
