@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Sqex.h"
 
 int main() {
 	const auto targetBasePath = LR"(Z:\scratch\t2)";
@@ -20,8 +21,8 @@ int main() {
 
 				try {
 					std::cout << "Working on " << path << "..." << std::endl;
-					auto vpack = XivAlex::SqexDef::VirtualSqPack();
-					vpack.AddEntriesFromSqPack(path, true);
+					auto vpack = Sqex::Sqpack::VirtualSqPack();
+					vpack.AddEntriesFromSqPack(path, true, true);
 					const auto replBase = std::filesystem::path(path).replace_extension("");
 					for (const auto& entry3 : std::filesystem::recursive_directory_iterator(replBase)) {
 						const auto& currPath = entry3.path();
@@ -38,9 +39,9 @@ int main() {
 						CharLowerA(&nameComponent[0]);
 						const auto fullPath = std::format("{}/{}", pathComponent, nameComponent);
 						vpack.AddEntryFromFile(
-							XivAlex::SqexDef::SqexHash(pathComponent),
-							XivAlex::SqexDef::SqexHash(nameComponent),
-							XivAlex::SqexDef::SqexHash(fullPath),
+							Sqex::Sqpack::SqexHash(pathComponent),
+							Sqex::Sqpack::SqexHash(nameComponent),
+							Sqex::Sqpack::SqexHash(fullPath),
 							currPath
 						);
 					}

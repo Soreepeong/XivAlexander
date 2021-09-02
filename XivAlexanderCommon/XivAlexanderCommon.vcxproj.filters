@@ -19,6 +19,9 @@
     <Filter Include="Implementation\Win32">
       <UniqueIdentifier>{0410d4d2-87ce-4c44-ab8d-6f291e90fa04}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Implementation\Sqex">
+      <UniqueIdentifier>{168fc05a-7df1-4d84-a1d5-5f17ef42040e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -75,8 +78,23 @@
     <ClInclude Include="Utils_Win32_HeapAllocator.h">
       <Filter>Implementation\Win32</Filter>
     </ClInclude>
-    <ClInclude Include="XivAlex_SqexDef.h">
-      <Filter>Implementation</Filter>
+    <ClInclude Include="Sqex_Common.h">
+      <Filter>Implementation\Sqex</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex_FontCsv.h">
+      <Filter>Implementation\Sqex</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex_Sqpack.h">
+      <Filter>Implementation\Sqex</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex_Sqpack_Reader.h">
+      <Filter>Implementation\Sqex</Filter>
+    </ClInclude>
+    <ClInclude Include="XivAlexanderCommon\Sqex.h">
+      <Filter>Exported</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex_Sqpack_Virtual.h">
+      <Filter>Implementation\Sqex</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -119,8 +137,20 @@
     <ClCompile Include="Utils_Win32_Resource.cpp">
       <Filter>Implementation\Win32</Filter>
     </ClCompile>
-    <ClCompile Include="XivAlex_SqexDef.cpp">
-      <Filter>Implementation</Filter>
+    <ClCompile Include="Sqex_FontCsv.cpp">
+      <Filter>Implementation\Sqex</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Sqpack.cpp">
+      <Filter>Implementation\Sqex</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Sqpack_Reader.cpp">
+      <Filter>Implementation\Sqex</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Sqpack_Virtual.cpp">
+      <Filter>Implementation\Sqex</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Common.cpp">
+      <Filter>Implementation\Sqex</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <chrono>
 #include <format>
+#include <ranges>
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -36,6 +37,7 @@
 #include <curlpp/cURLpp.hpp>
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
+#include <cryptopp/sha.h>
 
 #include "CustomFormatter.h"
 

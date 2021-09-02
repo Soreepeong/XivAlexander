@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Sqex.h"
 #include "App_Feature_GameResourceOverrider.h"
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_Hooks.h"
@@ -70,7 +71,7 @@ public:
 
 		Utils::Win32::Event IdentifierHandle;
 		std::filesystem::path IndexPath;
-		std::shared_ptr<XivAlex::SqexDef::VirtualSqPack> VirtualSqPack;
+		std::shared_ptr<Sqex::Sqpack::VirtualSqPack> VirtualSqPack;
 		Utils::Win32::File PassthroughFile;
 		int PathType;
 		LARGE_INTEGER FilePointer;
@@ -172,9 +173,9 @@ public:
 								}
 							} else {
 								if (!vpath->VirtualSqPack) {
-									vpath->VirtualSqPack = std::make_shared<XivAlex::SqexDef::VirtualSqPack>();
+									vpath->VirtualSqPack = std::make_shared<Sqex::Sqpack::VirtualSqPack>();
 									{
-										const auto result = vpath->VirtualSqPack->AddEntriesFromSqPack(indexFile, true);
+										const auto result = vpath->VirtualSqPack->AddEntriesFromSqPack(indexFile, true, true);
 										m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
 											"=> Processed SqPack {}: Added {}, replaced {}",
 											indexFile, result.AddedCount, result.ReplacedCount);
@@ -192,9 +193,9 @@ public:
 													continue;
 												try {
 													const auto relativePath = relative(replacementItem, replacementDirPath);
-													const auto nameHash = XivAlex::SqexDef::SqexHash(relativePath.filename().string());
-													const auto pathHash = XivAlex::SqexDef::SqexHash(relativePath.parent_path().string());
-													const auto fullPathHash = XivAlex::SqexDef::SqexHash(relativePath.string());
+													const auto nameHash = Sqex::Sqpack::SqexHash(relativePath.filename().string());
+													const auto pathHash = Sqex::Sqpack::SqexHash(relativePath.parent_path().string());
+													const auto fullPathHash = Sqex::Sqpack::SqexHash(relativePath.string());
 													const auto result = vpath->VirtualSqPack->AddEntryFromFile(pathHash, nameHash, fullPathHash, replacementItem);
 													m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
 														"=> {} file {}: (nameHash={:08x}, pathHash={:08x}, fullPathHash={:08x})",
