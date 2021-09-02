@@ -673,22 +673,30 @@ Sqex::Sqpack::SqData::FileEntryType Sqex::Sqpack::VirtualSqPack::OnTheFlyTexture
 	return SqData::FileEntryType::Texture;
 }
 
-Sqex::Sqpack::VirtualSqPack::StreamEntryProvider::StreamEntryProvider(std::shared_ptr<RandomAccessStream> stream)
-	: m_stream(std::move(stream))
-	, m_entryType(m_stream->ReadStream<SqData::FileEntryHeader>(0).Type) {
+Sqex::Sqpack::VirtualSqPack::PartialFileViewEntryProvider::PartialFileViewEntryProvider(Utils::Win32::File file, uint64_t offset, uint32_t length)
+	: m_file(std::move(file))
+	, m_offset(offset)
+	, m_size(length) {
 }
 
-Sqex::Sqpack::VirtualSqPack::StreamEntryProvider::~StreamEntryProvider() = default;
+Sqex::Sqpack::VirtualSqPack::PartialFileViewEntryProvider::~PartialFileViewEntryProvider() = default;
 
-uint32_t Sqex::Sqpack::VirtualSqPack::StreamEntryProvider::StreamSize() const {
-	return m_stream->StreamSize();
+uint32_t Sqex::Sqpack::VirtualSqPack::PartialFileViewEntryProvider::StreamSize() const {
+	return m_size;
 }
 
-size_t Sqex::Sqpack::VirtualSqPack::StreamEntryProvider::ReadStreamPartial(uint64_t offset, void* buf, size_t length) const {
-	return m_stream->ReadStreamPartial(offset, buf, length);
+size_t Sqex::Sqpack::VirtualSqPack::PartialFileViewEntryProvider::ReadStreamPartial(uint64_t offset, void* buf, size_t length) const {
+	if (offset >= m_size)
+		return 0;
+
+	return m_file.Read(m_offset + offset, buf, std::min(length, static_cast<size_t>(m_size - offset)));
 }
 
-Sqex::Sqpack::SqData::FileEntryType Sqex::Sqpack::VirtualSqPack::StreamEntryProvider::EntryType() const {
+Sqex::Sqpack::SqData::FileEntryType Sqex::Sqpack::VirtualSqPack::PartialFileViewEntryProvider::EntryType() const {
+	if (!m_entryTypeFetched) {
+		m_entryType = m_file.Read<SqData::FileEntryHeader>(m_offset).Type;
+		m_entryTypeFetched = true;
+	}
 	return m_entryType;
 }
 
@@ -700,7 +708,7 @@ Sqex::Sqpack::VirtualSqPack::AddEntryResult& Sqex::Sqpack::VirtualSqPack::AddEnt
 	return *this;
 }
 
-Sqex::Sqpack::VirtualSqPack::AddEntryResult Sqex::Sqpack::VirtualSqPack::AddEntry(uint32_t PathHash, uint32_t NameHash, uint32_t FullPathHash, std::unique_ptr<EntryProvider> provider, bool overwriteExisting = true) {
+Sqex::Sqpack::VirtualSqPack::AddEntryResult Sqex::Sqpack::VirtualSqPack::AddEntry(uint32_t PathHash, uint32_t NameHash, uint32_t FullPathHash, std::unique_ptr<EntryProvider> provider, bool overwriteExisting) {
 	if (m_frozen)
 		throw std::runtime_error("Trying to operate on a frozen VirtualSqPack");
 
@@ -776,9 +784,10 @@ Sqex::Sqpack::VirtualSqPack::AddEntryResult Sqex::Sqpack::VirtualSqPack::AddEntr
 
 	for (const auto& entry : m_original.Files) {
 		result += AddEntry(entry.IndexEntry.PathHash, entry.IndexEntry.NameHash, entry.Index2Entry.FullPathHash,
-			std::make_unique<StreamEntryProvider>(std::make_unique<FileRandomAccessStream>(
+			std::make_unique<PartialFileViewEntryProvider>(
 				Utils::Win32::File{ m_openFiles[openFileIndexMap[entry.DataFileIndex]], false },
-				entry.DataEntryOffset, entry.DataEntrySize)), overwriteExisting);
+				entry.DataEntryOffset, entry.DataEntrySize),
+			overwriteExisting);
 	}
 
 	return result;

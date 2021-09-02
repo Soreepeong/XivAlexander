@@ -219,7 +219,7 @@ public:
 									if (!additionalEntriesFound) {
 										m_ignoredIndexFiles.insert(indexFile);
 										m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-											"=> Founding no resources to override, releasing control.");
+											"=> Found no resources to override, releasing control.");
 										return CreateFileW.bridge(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 									}
 

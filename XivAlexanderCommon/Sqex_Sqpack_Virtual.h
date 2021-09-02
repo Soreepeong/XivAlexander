@@ -119,13 +119,17 @@ namespace Sqex::Sqpack {
 			[[nodiscard]] SqData::FileEntryType EntryType() const override;
 		};
 
-		class StreamEntryProvider : public EntryProvider {
-			const std::shared_ptr<RandomAccessStream> m_stream;
-			const SqData::FileEntryType m_entryType;
+		class PartialFileViewEntryProvider : public EntryProvider {
+			const Utils::Win32::File m_file;
+			const uint64_t m_offset;
+			const uint32_t m_size;
+
+			mutable bool m_entryTypeFetched = false;
+			mutable SqData::FileEntryType m_entryType = SqData::FileEntryType::Empty;
 
 		public:
-			StreamEntryProvider(std::shared_ptr<RandomAccessStream> stream);
-			~StreamEntryProvider() override;
+			PartialFileViewEntryProvider(Utils::Win32::File file, uint64_t offset, uint32_t length);
+			~PartialFileViewEntryProvider() override;
 
 			[[nodiscard]] uint32_t StreamSize() const override;
 			size_t ReadStreamPartial(uint64_t offset, void* buf, size_t length) const override;
@@ -181,7 +185,7 @@ namespace Sqex::Sqpack {
 		struct AddEntryResult {
 			size_t AddedCount;
 			size_t ReplacedCount;
-			size_t SkippedCount;
+			size_t SkippedExistCount;
 
 			AddEntryResult& operator+=(const AddEntryResult& r);
 		};
