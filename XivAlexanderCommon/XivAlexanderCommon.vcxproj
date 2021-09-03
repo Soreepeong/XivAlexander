@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Texture_ModifiableTextureStream.h" />
     <ClInclude Include="includes\XivAlexanderCommon\XaFormat.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_CommandLine.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex.h" />
@@ -53,6 +54,7 @@
     <ClCompile Include="Sqex_Sqpack_Reader.cpp" />
     <ClCompile Include="Sqex_FontCsv.cpp" />
     <ClCompile Include="Sqex_Sqpack.cpp" />
+    <ClCompile Include="Sqex_Texture_ModifiableTextureStream.cpp" />
     <ClCompile Include="Utils_CallOnDestruction.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
