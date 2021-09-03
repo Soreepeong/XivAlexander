@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Utils_Win32_Process.h"
+
 #include "Utils_CallOnDestruction.h"
 
 Utils::Win32::Process::Process() : Handle() {

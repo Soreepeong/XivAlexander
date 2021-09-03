@@ -1,6 +1,18 @@
 #include "pch.h"
 #include "Sqex_Sqpack_Reader.h"
 
+Sqex::Sqpack::FileSystemSqPack::SqDataEntry::SqDataEntry(const SqIndex::FileSegmentEntry& entry)
+	: Index(entry)
+	, Offset(entry.DatFile.Offset())
+	, DataFileIndex(entry.DatFile.Index()) {
+}
+
+Sqex::Sqpack::FileSystemSqPack::SqDataEntry::SqDataEntry(const SqIndex::FileSegmentEntry2& entry)
+	: Index2(entry)
+	, Offset(entry.DatFile.Offset())
+	, DataFileIndex(entry.DatFile.Index()) {
+}
+
 Sqex::Sqpack::FileSystemSqPack::SqIndexType::SqIndexType(const Utils::Win32::File& hFile, bool strictVerify) {
 	std::vector<std::pair<size_t, size_t>> accesses;
 
@@ -10,10 +22,10 @@ Sqex::Sqpack::FileSystemSqPack::SqIndexType::SqIndexType(const Utils::Win32::Fil
 		Header.VerifySqpackHeader(SqpackType::SqIndex);
 	}
 
-	hFile.Read(Header.HeaderSize, &IndexHeader, sizeof Sqpack::SqIndex::Header);
+	hFile.Read(Header.HeaderSize, &IndexHeader, sizeof SqIndex::Header);
 	if (strictVerify) {
 		accesses.emplace_back(Header.HeaderSize, IndexHeader.HeaderSize);
-		IndexHeader.VerifySqpackIndexHeader(Sqpack::SqIndex::Header::IndexType::Index);
+		IndexHeader.VerifySqpackIndexHeader(SqIndex::Header::IndexType::Index);
 	}
 
 	DataFileSegment.resize(IndexHeader.DataFilesSegment.Size);
@@ -24,14 +36,14 @@ Sqex::Sqpack::FileSystemSqPack::SqIndexType::SqIndexType(const Utils::Win32::Fil
 		IndexHeader.VerifyDataFileSegment(DataFileSegment);
 	}
 
-	Segment3.resize(IndexHeader.UnknownSegment3.Size / sizeof(Sqpack::SqIndex::Segment3Entry));
+	Segment3.resize(IndexHeader.UnknownSegment3.Size / sizeof(SqIndex::Segment3Entry));
 	hFile.Read(IndexHeader.UnknownSegment3.Offset, std::span(Segment3));
 	if (strictVerify) {
 		accesses.emplace_back(IndexHeader.UnknownSegment3.Offset, IndexHeader.UnknownSegment3.Size);
 		IndexHeader.UnknownSegment3.Sha1.Verify(std::span(Segment3), "UnknownSegment3 Data SHA-1");
 	}
 
-	Folders.resize(IndexHeader.FolderSegment.Size / sizeof(Sqpack::SqIndex::FolderSegmentEntry));
+	Folders.resize(IndexHeader.FolderSegment.Size / sizeof(SqIndex::FolderSegmentEntry));
 	hFile.Read(IndexHeader.FolderSegment.Offset, std::span(Folders));
 	if (strictVerify) {
 		accesses.emplace_back(IndexHeader.FolderSegment.Offset, IndexHeader.FolderSegment.Size);
@@ -45,7 +57,7 @@ Sqex::Sqpack::FileSystemSqPack::SqIndexType::SqIndexType(const Utils::Win32::Fil
 				folder.Verify();
 
 			auto& filesInFolder = Files[folder.NameHash];
-			filesInFolder.resize(folder.FileSegmentSize / sizeof(Sqpack::SqIndex::FileSegmentEntry));
+			filesInFolder.resize(folder.FileSegmentSize / sizeof(SqIndex::FileSegmentEntry));
 			hFile.Read(folder.FileSegmentOffset, std::span(filesInFolder));
 
 			if (folder.FileSegmentOffset >= IndexHeader.FileSegment.Offset &&
@@ -112,10 +124,10 @@ Sqex::Sqpack::FileSystemSqPack::SqIndex2Type::SqIndex2Type(const Utils::Win32::F
 		Header.VerifySqpackHeader(SqpackType::SqIndex);
 	}
 
-	hFile.Read(Header.HeaderSize, &IndexHeader, sizeof Sqpack::SqIndex::Header);
+	hFile.Read(Header.HeaderSize, &IndexHeader, sizeof SqIndex::Header);
 	accesses.emplace_back(Header.HeaderSize, IndexHeader.HeaderSize);
 	if (strictVerify)
-		IndexHeader.VerifySqpackIndexHeader(Sqpack::SqIndex::Header::IndexType::Index2);
+		IndexHeader.VerifySqpackIndexHeader(SqIndex::Header::IndexType::Index2);
 
 	DataFileSegment.resize(IndexHeader.DataFilesSegment.Size);
 	hFile.Read(IndexHeader.DataFilesSegment.Offset, std::span(DataFileSegment));
@@ -125,21 +137,21 @@ Sqex::Sqpack::FileSystemSqPack::SqIndex2Type::SqIndex2Type(const Utils::Win32::F
 		IndexHeader.VerifyDataFileSegment(DataFileSegment);
 	}
 
-	Segment3.resize(IndexHeader.UnknownSegment3.Size / sizeof(Sqpack::SqIndex::Segment3Entry));
+	Segment3.resize(IndexHeader.UnknownSegment3.Size / sizeof(SqIndex::Segment3Entry));
 	hFile.Read(IndexHeader.UnknownSegment3.Offset, std::span(Segment3));
 	if (strictVerify) {
 		accesses.emplace_back(IndexHeader.UnknownSegment3.Offset, IndexHeader.UnknownSegment3.Size);
 		IndexHeader.UnknownSegment3.Sha1.Verify(std::span(Segment3), "UnknownSegment3 Data SHA-1");
 	}
 
-	Folders.resize(IndexHeader.FolderSegment.Size / sizeof(Sqpack::SqIndex::FolderSegmentEntry));
+	Folders.resize(IndexHeader.FolderSegment.Size / sizeof(SqIndex::FolderSegmentEntry));
 	hFile.Read(IndexHeader.FolderSegment.Offset, std::span(Folders));
 	if (strictVerify) {
 		accesses.emplace_back(IndexHeader.FolderSegment.Offset, IndexHeader.FolderSegment.Size);
 		IndexHeader.FolderSegment.Sha1.Verify(std::span(Folders), "FolderSegment Data SHA-1");
 	}
 
-	Files.resize(IndexHeader.FileSegment.Size / sizeof(Sqpack::SqIndex::FileSegmentEntry2));
+	Files.resize(IndexHeader.FileSegment.Size / sizeof(SqIndex::FileSegmentEntry2));
 	hFile.Read(IndexHeader.FileSegment.Offset, std::span(Files));
 	if (strictVerify) {
 		accesses.emplace_back(IndexHeader.FileSegment.Offset, IndexHeader.FileSegment.Size);
@@ -172,10 +184,10 @@ Sqex::Sqpack::FileSystemSqPack::SqDataType::SqDataType(Utils::Win32::File hFile,
 		accesses.emplace_back(0, sizeof SqpackHeader);
 	}
 
-	FileOnDisk.Read(sizeof SqpackHeader, &DataHeader, sizeof Sqpack::SqData::Header);
+	FileOnDisk.Read(sizeof SqpackHeader, &DataHeader, sizeof SqData::Header);
 	if (strictVerify) {
 		DataHeader.Verify(datIndex + 1);
-		accesses.emplace_back(sizeof SqpackHeader, sizeof Sqpack::SqData::Header);
+		accesses.emplace_back(sizeof SqpackHeader, sizeof SqData::Header);
 	}
 
 	const auto dataFileLength = FileOnDisk.Length();
@@ -186,19 +198,19 @@ Sqex::Sqpack::FileSystemSqPack::SqDataType::SqDataType(Utils::Win32::File hFile,
 
 	std::map<uint64_t, SqDataEntry*> offsetToEntryMap;
 	for (auto& file : dataEntries) {
-		if (file.IndexEntry.DatFile.Index() != datIndex)
+		if (file.Index.DatFile.Index() != datIndex)
 			continue;
-		offsetToEntryMap.insert_or_assign(file.IndexEntry.DatFile.Offset(), &file);
+		offsetToEntryMap.insert_or_assign(file.Index.DatFile.Offset(), &file);
 	}
 
 	SqDataEntry* prevEntry = nullptr;
 	for (const auto& [begin, entry] : offsetToEntryMap) {
 		if (prevEntry)
-			prevEntry->DataEntrySize = static_cast<uint32_t>(begin - prevEntry->IndexEntry.DatFile.Offset());
+			prevEntry->Size = static_cast<uint32_t>(begin - prevEntry->Index.DatFile.Offset());
 		prevEntry = entry;
 	}
 	if (prevEntry)
-		prevEntry->DataEntrySize = static_cast<uint32_t>(dataFileLength - prevEntry->IndexEntry.DatFile.Offset());
+		prevEntry->Size = static_cast<uint32_t>(dataFileLength - prevEntry->Index.DatFile.Offset());
 }
 
 Sqex::Sqpack::FileSystemSqPack::FileSystemSqPack(const std::filesystem::path& indexFile, bool strictVerify)
@@ -209,30 +221,22 @@ Sqex::Sqpack::FileSystemSqPack::FileSystemSqPack(const std::filesystem::path& in
 
 	Files.reserve(Index2.Files.size());
 	for (const auto& entry : Index2.Files) {
-		Files.emplace_back(SqDataEntry{
-			.Index2Entry = entry,
-			.DataEntryOffset = entry.DatFile.Offset(),
-			.DataFileIndex = entry.DatFile.Index(),
-			});
+		Files.emplace_back(entry);
 		offsetToEntryMap[entry.DatFile] = &Files.back();
 	}
 
-	std::vector<Sqpack::SqIndex::FileSegmentEntry*> newEntries;
+	std::vector<SqIndex::FileSegmentEntry*> newEntries;
 	for (auto& files : Index.Files | std::views::values) {
 		for (auto& entry : files) {
 			const auto ptr = offsetToEntryMap[entry.DatFile];
 			if (!ptr)
 				newEntries.push_back(&entry);
 			else
-				ptr->IndexEntry = entry;
+				ptr->Index = entry;
 		}
 	}
 	for (const auto entry : newEntries)
-		Files.emplace_back(SqDataEntry{
-			.IndexEntry = *entry,
-			.DataEntryOffset = entry->DatFile.Offset(),
-			.DataFileIndex = entry->DatFile.Index(),
-			});
+		Files.emplace_back(*entry);
 
 	Data.reserve(Index.IndexHeader.DataFilesSegment.Count);
 	for (uint32_t i = 0; i < Index.IndexHeader.DataFilesSegment.Count; ++i) {

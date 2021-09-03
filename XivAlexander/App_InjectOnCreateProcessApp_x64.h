@@ -1,9 +1,8 @@
 #pragma once
 
-#include "XivAlexander/XivAlexander.h"
-
 #if INTPTR_MAX == INT64_MAX
 #include <cstdint>
+#include <XivAlexander/XivAlexander.h>
 
 #pragma pack(push, 1)
 struct EntryPointThunkTemplate {

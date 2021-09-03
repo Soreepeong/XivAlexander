@@ -1,5 +1,6 @@
 #pragma once
-#include "Sqex_Common.h"
+
+#include "Sqex.h"
 
 namespace Sqex::Sqpack {
 	static constexpr uint32_t EntryAlignment = 128;
@@ -258,18 +259,7 @@ namespace Sqex::Sqpack {
 			LE<uint32_t> FirstSubBlockIndex;
 			LE<uint32_t> SubBlockCount;
 		};
-
-		struct TexHeader {
-			LE<uint16_t> Unknown1;
-			LE<uint16_t> HeaderSize;
-			LE<uint32_t> CompressionType;
-			LE<uint16_t> DecompressedWidth;
-			LE<uint16_t> DecompressedHeight;
-			LE<uint16_t> Depth;
-			LE<uint16_t> MipmapCount;
-			char Unknown2[0xb]{};
-		};
-
+		
 		struct ModelBlockLocator {
 			template<typename T>
 			struct ChunkInfo {
@@ -293,29 +283,10 @@ namespace Sqex::Sqpack {
 			LE<uint8_t> Padding;
 		};
 		static_assert(sizeof ModelBlockLocator == 184);
-
-		struct ModelHeader {
-			LE<uint32_t> Version;
-			LE<uint32_t> StackSize;
-			LE<uint32_t> RuntimeSize;
-			LE<uint16_t> VertexDeclarationCount;
-			LE<uint16_t> MaterialCount;
-
-			LE<uint32_t> VertexOffset[3];
-			LE<uint32_t> IndexOffset[3];
-			LE<uint32_t> VertexSize[3];
-			LE<uint32_t> IndexSize[3];
-
-			LE<uint8_t> LodCount;
-			LE<uint8_t> EnableIndexBufferStreaming;
-			LE<uint8_t> EnableEdgeGeometry;
-			LE<uint8_t> Padding;
-		};
 	}
 
 	extern const uint32_t SqexHashTable[4][256];
 	uint32_t SqexHash(const char* data, size_t len);
 	uint32_t SqexHash(const std::string& text);
 	uint32_t SqexHash(const std::string_view& text);
-};
-
+}

@@ -19,33 +19,37 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CustomFormatter.h" />
-    <ClInclude Include="Sqex_Common.h" />
-    <ClInclude Include="Sqex_Sqpack_Reader.h" />
-    <ClInclude Include="Sqex_FontCsv.h" />
-    <ClInclude Include="Sqex_Sqpack.h" />
-    <ClInclude Include="Utils_CallOnDestruction.h" />
-    <ClInclude Include="Utils_ListenerManager.h" />
-    <ClInclude Include="Utils_Win32_Handle.h" />
-    <ClInclude Include="Utils_Win32_HeapAllocator.h" />
-    <ClInclude Include="Utils_Win32_LoadedModule.h" />
-    <ClInclude Include="Utils_Win32_Process.h" />
-    <ClInclude Include="Utils_Win32_Resource.h" />
-    <ClInclude Include="Utils__Misc.h" />
-    <ClInclude Include="Utils__String.h" />
-    <ClInclude Include="Utils_NumericStatisticsTracker.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\XaFormat.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_CommandLine.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_ModifiableFontCsvStream.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Model.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_Reader.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_Virtual.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Texture.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_CallOnDestruction.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_ListenerManager.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_NumericStatisticsTracker.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_Closeable.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_Handle.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_HeapAllocator.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_InjectedModule.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_LoadedModule.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_Process.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_Resource.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\XaMisc.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\XaStrings.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\XaZlib.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\XivAlex.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="Utils_Win32.h" />
-    <ClInclude Include="Utils_Win32_Closeable.h" />
-    <ClInclude Include="Utils_Win32_InjectedModule.h" />
-    <ClInclude Include="Utils__Zlib.h" />
-    <ClInclude Include="XivAlex.h" />
-    <ClInclude Include="XivAlexanderCommon\Sqex.h" />
-    <ClInclude Include="XivAlexanderCommon\XivAlexanderCommon.h" />
-    <ClInclude Include="Sqex_Sqpack_Virtual.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Sqex_Common.cpp" />
+    <ClCompile Include="Sqex_CommandLine.cpp" />
+    <ClCompile Include="Sqex.cpp" />
+    <ClCompile Include="Sqex_FontCsv_ModifiableFontCsvStream.cpp" />
     <ClCompile Include="Sqex_Sqpack_Reader.cpp" />
     <ClCompile Include="Sqex_FontCsv.cpp" />
     <ClCompile Include="Sqex_Sqpack.cpp" />
@@ -60,12 +64,12 @@
     <ClCompile Include="Utils_Win32_Handle.cpp" />
     <ClCompile Include="Utils_Win32_Process.cpp" />
     <ClCompile Include="Utils_Win32_Resource.cpp" />
-    <ClCompile Include="Utils__Misc.cpp" />
-    <ClCompile Include="Utils__String.cpp" />
+    <ClCompile Include="XaMisc.cpp" />
+    <ClCompile Include="XaStrings.cpp" />
     <ClCompile Include="Utils_NumericStatisticsTracker.cpp" />
     <ClCompile Include="Utils_Win32.cpp" />
     <ClCompile Include="Utils_Win32_InjectedModule.cpp" />
-    <ClCompile Include="Utils__Zlib.cpp" />
+    <ClCompile Include="XaZlib.cpp" />
     <ClCompile Include="XivAlex.cpp" />
     <ClCompile Include="Sqex_Sqpack_Virtual.cpp" />
   </ItemGroup>
@@ -133,28 +137,28 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
-    <IncludePath>$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)includes\XivAlexanderCommon;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
-    <IncludePath>$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)includes\XivAlexanderCommon;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
-    <IncludePath>$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)includes\XivAlexanderCommon;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
-    <IncludePath>$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)includes\XivAlexanderCommon;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">

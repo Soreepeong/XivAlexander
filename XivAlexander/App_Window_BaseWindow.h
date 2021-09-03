@@ -1,6 +1,20 @@
 #pragma once
-namespace App::Window {
+
+#include <XivAlexanderCommon/Utils_CallOnDestruction.h>
+#include <XivAlexanderCommon/Utils_ListenerManager.h>
+#include <XivAlexanderCommon/Utils_Win32_LoadedModule.h>
+#include <XivAlexanderCommon/Utils_Win32_Resource.h>
+
+namespace App {
+	namespace Misc {
+		class Logger;
+	}
+
 	class Config;
+}
+
+namespace App::Window {
+	class ConfigWindow;
 
 	class BaseWindow {
 		static HWND InternalCreateWindow(const WNDCLASSEXW& wndclassex,
@@ -20,7 +34,7 @@ namespace App::Window {
 
 	protected:
 		const Utils::Win32::LoadedModule m_hShCore;
-		const std::shared_ptr<App::Config> m_config;
+		const std::shared_ptr<Config> m_config;
 		const std::shared_ptr<Misc::Logger> m_logger;
 		const WNDCLASSEXW m_windowClass;
 		HWND m_hWnd;
@@ -58,7 +72,7 @@ namespace App::Window {
 
 		[[nodiscard]] HWND GetHandle() const;
 		[[nodiscard]] bool IsDestroyed() const;
-		[[nodiscard]] bool IsDialogLike() const;
+		[[nodiscard]] virtual bool IsDialogLike() const;
 		[[nodiscard]] HACCEL GetWindowAcceleratorTable() const;
 		[[nodiscard]] HACCEL GetThreadAcceleratorTable() const;
 

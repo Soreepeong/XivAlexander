@@ -1,4 +1,5 @@
 #pragma once
+
 namespace App {
 	namespace Network {
 		class SocketHook;
@@ -7,7 +8,7 @@ namespace App {
 
 namespace App::Feature {
 	class AllIpcMessageLogger {
-		class Implementation;
+		struct Implementation;
 		std::unique_ptr<Implementation> m_pImpl;
 
 	public:

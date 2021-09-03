@@ -2,8 +2,7 @@
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_Hooks.h"
 
-class App::Misc::DebuggerDetectionDisabler::Implementation {
-public:
+struct App::Misc::DebuggerDetectionDisabler::Implementation {
 	Hooks::PointerFunction<BOOL> IsDebuggerPresent{ "DebuggerDetectionDisabler::IsDebuggerPresent", ::IsDebuggerPresent };
 	Utils::CallOnDestruction::Multiple m_cleanup;
 

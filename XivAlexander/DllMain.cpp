@@ -1,7 +1,11 @@
 #include "pch.h"
 #include "DllMain.h"
+
+#include <XivAlexander/XivAlexander.h>
+#include <XivAlexanderCommon/Utils_Win32_Resource.h>
+#include <XivAlexanderCommon/XivAlex.h>
+
 #include "resource.h"
-#include "XivAlexander/XivAlexander.h"
 
 static Utils::Win32::LoadedModule s_hModule;
 static Utils::Win32::ActivationContext s_hActivationContext;
@@ -123,8 +127,7 @@ void __stdcall XivAlexDll::CallFreeLibrary(void*) {
 	FreeLibraryAndExitThread(Dll::Module(), 0);
 }
 
-[[nodiscard]]
-XivAlexDll::CheckPackageVersionResult XivAlexDll::CheckPackageVersion() {
+[[nodiscard]] XivAlexDll::CheckPackageVersionResult XivAlexDll::CheckPackageVersion() {
 	const auto dir = Utils::Win32::Process::Current().PathOf().parent_path();
 	std::vector<std::pair<std::string, std::string>> modules;
 	try {

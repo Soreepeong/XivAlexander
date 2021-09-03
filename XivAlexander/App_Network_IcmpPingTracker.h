@@ -1,8 +1,14 @@
 #pragma once
+#include "XivAlexanderCommon/Utils_CallOnDestruction.h"
+
+namespace Utils {
+	class NumericStatisticsTracker;
+}
+
 namespace App::Network {
 	class IcmpPingTracker {
-		class Implementation;
-		friend class Implementation;
+		struct Implementation;
+		friend struct Implementation;
 
 		std::unique_ptr<Implementation> const m_pImpl;
 

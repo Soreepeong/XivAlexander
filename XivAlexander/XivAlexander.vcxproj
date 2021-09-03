@@ -77,28 +77,28 @@
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>$(SolutionDir)\XivAlexanderCommon\XivAlexanderCommon;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)XivAlexanderCommon\includes;$(ProjectDir)includes;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>$(SolutionDir)\XivAlexanderCommon\XivAlexanderCommon;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)XivAlexanderCommon\includes;$(ProjectDir)includes;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>$(SolutionDir)\XivAlexanderCommon\XivAlexanderCommon;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)XivAlexanderCommon\includes;$(ProjectDir)includes;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>$(SolutionDir)\XivAlexanderCommon\XivAlexanderCommon;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)XivAlexanderCommon\includes;$(ProjectDir)includes;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">
@@ -376,11 +376,11 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
     <ClInclude Include="App_Window_LogWindow.h" />
     <ClInclude Include="App_Window_MainWindow.h" />
     <ClInclude Include="DllMain.h" />
+    <ClInclude Include="includes\XivAlexander\XivAlexander.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="resource_ja.h" />
     <ClInclude Include="resource_ko.h" />
-    <ClInclude Include="XivAlexander\XivAlexander.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="XivAlexander.rc">

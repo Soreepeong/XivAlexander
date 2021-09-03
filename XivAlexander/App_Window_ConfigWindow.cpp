@@ -1,6 +1,12 @@
 #include "pch.h"
 #include "App_Window_ConfigWindow.h"
+
+#include <XivAlexanderCommon/Utils_Win32_Closeable.h>
+
+#include "App_Misc_Logger.h"
+#include "DllMain.h"
 #include "resource.h"
+#include "XivAlexanderCommon/Utils_Win32_Resource.h"
 
 constexpr int BaseFontSize = 11;
 
@@ -19,12 +25,12 @@ static WNDCLASSEXW WindowClass() {
 	wcex.hCursor = LoadCursorW(nullptr, IDC_ARROW);
 	wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
 	wcex.lpszMenuName = MAKEINTRESOURCE(IDR_CONFIG_EDITOR_MENU);
-	wcex.lpszClassName = L"XivAlexander::Window::Config";
+	wcex.lpszClassName = L"XivAlexander::Window::ConfigWindow";
 	wcex.hIconSm = hIcon;
 	return wcex;
 }
 
-App::Window::Config::Config(UINT nTitleStringResourceId, App::Config::BaseRepository* pRepository)
+App::Window::ConfigWindow::ConfigWindow(UINT nTitleStringResourceId, Config::BaseRepository* pRepository)
 	: BaseWindow(WindowClass(), nullptr, WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr)
 	, m_pRepository(pRepository)
 	, m_nTitleStringResourceId(nTitleStringResourceId) {
@@ -46,11 +52,11 @@ App::Window::Config::Config(UINT nTitleStringResourceId, App::Config::BaseReposi
 	SetFocus(m_hScintilla);
 }
 
-App::Window::Config::~Config() {
+App::Window::ConfigWindow::~ConfigWindow() {
 	Destroy();
 }
 
-LRESULT App::Window::Config::OnNotify(const LPNMHDR nmhdr) {
+LRESULT App::Window::ConfigWindow::OnNotify(const LPNMHDR nmhdr) {
 	if (nmhdr->hwndFrom == m_hScintilla) {
 		const auto nm = reinterpret_cast<SCNotification*>(nmhdr);
 		if (nmhdr->code == SCN_ZOOM) {
@@ -60,7 +66,7 @@ LRESULT App::Window::Config::OnNotify(const LPNMHDR nmhdr) {
 	return BaseWindow::OnNotify(nmhdr);
 }
 
-void App::Window::Config::Revert() {
+void App::Window::ConfigWindow::Revert() {
 	m_pRepository->Save();
 	std::string buffer;
 	try {
@@ -82,7 +88,7 @@ void App::Window::Config::Revert() {
 	m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(&m_originalConfig[0]));
 }
 
-bool App::Window::Config::TrySave() {
+bool App::Window::ConfigWindow::TrySave() {
 	std::string buf(m_direct(m_directPtr, SCI_GETLENGTH, 0, 0) + 1, '\0');
 	m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(&buf[0]));
 	buf.resize(buf.length() - 1);
@@ -107,17 +113,17 @@ bool App::Window::Config::TrySave() {
 	return true;
 }
 
-App::Config::BaseRepository* App::Window::Config::GetRepository() const {
+App::Config::BaseRepository* App::Window::ConfigWindow::GetRepository() const {
 	return m_pRepository;
 }
 
-void App::Window::Config::ApplyLanguage(WORD languageId) {
+void App::Window::ConfigWindow::ApplyLanguage(WORD languageId) {
 	m_hAcceleratorWindow = { Dll::Module(), RT_ACCELERATOR, MAKEINTRESOURCE(IDR_CONFIG_EDITOR_ACCELERATOR), languageId };
 	SetWindowTextW(m_hWnd, m_config->Runtime.GetStringRes(m_nTitleStringResourceId));
 	Utils::Win32::Menu(Dll::Module(), RT_MENU, MAKEINTRESOURCE(IDR_CONFIG_EDITOR_MENU), languageId).AttachAndSwap(m_hWnd);
 }
 
-LRESULT App::Window::Config::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+LRESULT App::Window::ConfigWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
 		case WM_INITMENUPOPUP:
 		{
@@ -173,11 +179,11 @@ LRESULT App::Window::Config::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 	return BaseWindow::WndProc(hwnd, uMsg, wParam, lParam);
 }
 
-void App::Window::Config::OnLayout(double zoom, double width, double height) {
+void App::Window::ConfigWindow::OnLayout(double zoom, double width, double height) {
 	SetWindowPos(m_hScintilla, nullptr, 0, 0, static_cast<int>(width), static_cast<int>(height), 0);
 	ResizeMargin();
 }
 
-void App::Window::Config::ResizeMargin() {
+void App::Window::ConfigWindow::ResizeMargin() {
 	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 0, static_cast<int>(m_direct(m_directPtr, SCI_TEXTWIDTH, uptr_t(STYLE_LINENUMBER), reinterpret_cast<sptr_t>("999999"))));
 }

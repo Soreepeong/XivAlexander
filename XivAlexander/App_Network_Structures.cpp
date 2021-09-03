@@ -1,6 +1,11 @@
 #include "pch.h"
 #include "App_Network_Structures.h"
 
+#include <XivAlexanderCommon/XaMisc.h>
+#include <XivAlexanderCommon/XaZlib.h>
+
+#include "App_Misc_Logger.h"
+
 const uint8_t App::Network::Structures::FFXIVBundle::MagicConstant1[]{
 	0x52, 0x52, 0xa0, 0x41,
 	0xff, 0x5d, 0x46, 0xe2,
@@ -65,7 +70,7 @@ std::vector<std::vector<uint8_t>> App::Network::Structures::FFXIVBundle::GetMess
 void App::Network::Structures::FFXIVMessage::DebugPrint(LogCategory logCategory, const char* head, bool dump) const {
 	std::string dumpstr;
 	if (Type == SegmentType::ClientKeepAlive || Type == SegmentType::ServerKeepAlive) {
-		const auto st = Utils::EpochToLocalSystemTime(Data.KeepAlive.Epoch * 1000ULL);
+		const auto st = Utils::EpochToLocalSystemTime(Data.KeepAlive.Epoch * 1000LL);
 		dumpstr += std::format(
 			"\n\tFFXIVMessage {:04}-{:02}-{:02} {:02}:{:02}:{:02} ID={}",
 			st.wYear, st.wMonth, st.wDay,
@@ -73,7 +78,7 @@ void App::Network::Structures::FFXIVMessage::DebugPrint(LogCategory logCategory,
 			Data.KeepAlive.Id
 		);
 	} else if (Type == SegmentType::IPC) {
-		const auto st = Utils::EpochToLocalSystemTime(Data.IPC.Epoch * 1000ULL);
+		const auto st = Utils::EpochToLocalSystemTime(Data.IPC.Epoch * 1000LL);
 		dumpstr += std::format(
 			"\n\tFFXIVMessage {:04}-{:02}-{:02} {:02}:{:02}:{:02} Type={:04x} SubType={:04x} Unknown1={:04x} SeqId={:04x} Unknown2={:08x}",
 			st.wYear, st.wMonth, st.wDay,

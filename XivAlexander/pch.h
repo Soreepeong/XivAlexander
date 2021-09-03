@@ -4,61 +4,73 @@
 // However, files listed here are ALL re-compiled if any one of them is updated between builds.
 // Do not add files here that you will be updating frequently as this negates the performance advantage.
 
+// ReSharper disable CppClangTidyClangDiagnosticReservedIdMacro
+// ReSharper disable CppClangTidyBugproneReservedIdentifier
+
+#pragma once
+
 #ifndef PCH_H
 #define PCH_H
 
-#define _CRT_SECURE_NO_WARNINGS
-
-#include <memory>
+// C++ standard library
 #include <algorithm>
+#include <cassert>
+#include <filesystem>
+#include <format>
+#include <fstream>
 #include <functional>
-#include <string>
+#include <locale>
 #include <map>
-#include <set>
+#include <memory>
 #include <mutex>
-#include <functional>
+#include <new>
 #include <numeric>
 #include <queue>
-#include <type_traits>
-#include <cassert>
-#include <locale>
-#include <fstream>
+#include <set>
 #include <span>
-#include <new>
-#include <format>
+#include <string>
+#include <type_traits>
 
-#define WIN32_LEAN_AND_MEAN
+// Windows API, part 1
 #define NOMINMAX
+#define _WINSOCKAPI_   // Prevent <winsock.h> from being included
 #include <Windows.h>
+#include <winternl.h>
+
+// Windows API, part 2
+#include <iphlpapi.h>
+#include <mstcpip.h>
+#include <PathCch.h>
+#include <Psapi.h>
 #include <shellapi.h>
+#include <ShellScalingApi.h>
+#include <ShlObj.h>
 #include <Shlwapi.h>
+#include <ShObjIdl.h>
 #include <windowsx.h>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
-#include <mstcpip.h>
-#include <bcrypt.h>
-#include <ShellScalingApi.h>
-#include <iphlpapi.h>
-#include <comdef.h>
-#include <Shlobj.h>
-#include <ShObjIdl.h>
+
+// Windows API, part 3
 #include <IcmpAPI.h>
-#include <winternl.h>
-#include <Psapi.h>
-#include <PathCch.h>
 
-#include <XivAlexanderCommon.h>
-
+// vcpkg dependencies
+#pragma warning(push)
+#pragma warning(disable: 26495)  // Variable is uninitialized. Always initialize a member variable (type.6).
+#pragma warning(disable: 26819)  // Unannotated fallthrough between switch labels (es.78).
 #include <MinHook.h>
-#include <scintilla/Scintilla.h>
+#include <freetype/freetype.h>
 #include <nlohmann/json.hpp>
+#include <scintilla/Scintilla.h>
 #include <Zydis/Zydis.h>
+#pragma warning(pop)
 
+// COM smart pointer definitions
+#include <comdef.h>
 _COM_SMARTPTR_TYPEDEF(IFileSaveDialog, __uuidof(IFileSaveDialog));
 _COM_SMARTPTR_TYPEDEF(IShellItem, __uuidof(IShellItem));
 
-#include "DllMain.h"
-#include "App_ConfigRepository.h"
-#include "App_Misc_Logger.h"
+// Infrequently changed utility headers
+#include <XivAlexanderCommon/XaFormat.h>
 
 #endif //PCH_H

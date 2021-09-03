@@ -1,5 +1,10 @@
 #include "pch.h"
 #include "App_Misc_FreeGameMutex.h"
+
+#include <XivAlexanderCommon/Utils_Win32_Handle.h>
+
+#include "App_ConfigRepository.h"
+#include "App_Misc_Logger.h"
 #include "resource.h"
 
 static bool NtSuccess(NTSTATUS x) {

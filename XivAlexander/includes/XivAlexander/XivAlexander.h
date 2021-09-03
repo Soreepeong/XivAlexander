@@ -3,6 +3,7 @@
 #ifndef XIVALEXANDER_DLLEXPORT
 
 #include <minwindef.h>
+#include <XivAlexanderCommon/Utils_Win32_Process.h>
 
 #ifdef XIVALEXANDER_DLLEXPORT_SET
 #define XIVALEXANDER_DLLEXPORT __declspec(dllexport)
@@ -31,10 +32,10 @@ namespace XivAlexDll {
 	};
 
 	XIVALEXANDER_DLLEXPORT const char* LoaderActionToString(LoaderAction val);
-	
+
 	XIVALEXANDER_DLLEXPORT DWORD LaunchXivAlexLoaderWithTargetHandles(
-		const std::vector<Utils::Win32::Process>& hSources, 
-		LoaderAction action, 
+		const std::vector<Utils::Win32::Process>& hSources,
+		LoaderAction action,
 		bool wait,
 		const std::filesystem::path& launcherPath = L"",
 		const Utils::Win32::Process& waitFor = nullptr);
@@ -43,7 +44,7 @@ namespace XivAlexDll {
 	//
 	// Everything declared below must be able to be called from CreateRemoteProcess.
 	//
-	
+
 	class InjectOnCreateProcessAppFlags {
 	public:
 		enum : size_t {
@@ -67,7 +68,7 @@ namespace XivAlexDll {
 		} Internal;
 	};
 
-	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall InjectEntryPoint(InjectEntryPointParameters* pParam);
+	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall InjectEntryPoint(InjectEntryPointParameters * pParam);
 	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall EnableXivAlexander(size_t bEnable);
 	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall ReloadConfiguration(void* lpReserved);
 	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall DisableAllApps(void* lpReserved);
@@ -78,8 +79,8 @@ namespace XivAlexDll {
 		MissingFiles = 1,
 		VersionMismatch = 2,
 	};
-	
-	XIVALEXANDER_DLLEXPORT [[nodiscard]]  CheckPackageVersionResult CheckPackageVersion();
+
+	XIVALEXANDER_DLLEXPORT [[nodiscard]] CheckPackageVersionResult CheckPackageVersion();
 }
 
 #endif

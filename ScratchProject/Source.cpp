@@ -1,5 +1,6 @@
 #include "pch.h"
-#include "Sqex.h"
+#include <XivAlexanderCommon/Sqex_Sqpack.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_Virtual.h>
 
 int main() {
 	const auto targetBasePath = LR"(Z:\scratch\t2)";
@@ -15,7 +16,7 @@ int main() {
 			if (entry1.path().filename().wstring() != L"ffxiv")
 				continue;
 			for (const auto& entry2 : std::filesystem::directory_iterator(entry1)) {
-				const auto path = entry2.path();
+				const auto& path = entry2.path();
 				if (path.extension() != ".index")
 					continue;
 

@@ -14,12 +14,9 @@ namespace Utils {
 	std::string ToString(const struct sockaddr& sa);
 	std::string ToString(const struct sockaddr_storage& sa);
 
-	[[nodiscard]]
-	std::vector<std::string> StringSplit(const std::string& str, const std::string& delimiter);
+	[[nodiscard]] std::vector<std::string> StringSplit(const std::string& str, const std::string& delimiter);
 
-	[[nodiscard]]
-	std::string StringTrim(const std::string& str, bool leftTrim = true, bool rightTrim = true);
+	[[nodiscard]] std::string StringTrim(const std::string& str, bool leftTrim = true, bool rightTrim = true);
 
-	[[nodiscard]]
-	std::string StringReplaceAll(const std::string& source, const std::string& from, const std::string& to);
+	[[nodiscard]] std::string StringReplaceAll(const std::string& source, const std::string& from, const std::string& to);
 }

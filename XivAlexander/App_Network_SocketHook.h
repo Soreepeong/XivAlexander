@@ -1,8 +1,15 @@
 #pragma once
 
+#include <XivAlexanderCommon/Utils_ListenerManager.h>
+#include <XivAlexanderCommon/Utils_NumericStatisticsTracker.h>
+
 #include "App_Misc_Hooks.h"
 
 namespace App {
+	namespace Misc {
+		class Logger;
+	}
+
 	class XivAlexApp;
 }
 
@@ -17,7 +24,7 @@ namespace App::Network {
 	class SingleConnection {
 		friend class SocketHook;
 
-		class Implementation;
+		struct Implementation;
 		const std::unique_ptr<Implementation> m_pImpl;
 
 	public:
@@ -30,11 +37,9 @@ namespace App::Network {
 		void RemoveMessageHandlers(void* token);
 		void ResolveAddresses();
 
-		[[nodiscard]]
-		SOCKET GetSocket() const;
+		[[nodiscard]] SOCKET GetSocket() const;
 
-		[[nodiscard]]
-		int64_t FetchSocketLatency();
+		[[nodiscard]] int64_t FetchSocketLatency();
 
 		Utils::NumericStatisticsTracker SocketLatency{ 10, 0 };
 		Utils::NumericStatisticsTracker ApplicationLatency{ 10, 0 };
@@ -43,9 +48,9 @@ namespace App::Network {
 	};
 
 	class SocketHook {
-		class Implementation;
+		struct Implementation;
 		friend class SingleConnection;
-		friend class SingleConnection::Implementation;
+		friend struct SingleConnection::Implementation;
 
 	public:
 		std::shared_ptr<Misc::Logger> const m_logger;

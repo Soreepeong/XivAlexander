@@ -1,8 +1,16 @@
 #include "pch.h"
 #include "App_Window_LogWindow.h"
+
+#include <XivAlexanderCommon/Utils_Win32_Closeable.h>
+#include <XivAlexanderCommon/Utils_Win32_Resource.h>
+
+#include "App_ConfigRepository.h"
+#include "App_Misc_Logger.h"
+#include "DllMain.h"
 #include "resource.h"
 
 constexpr int BaseFontSize = 9;
+constexpr auto MaxDisplayedLines = 32768;
 
 static const std::map<App::LogLevel, int> LogLevelStyleMap{
 	{App::LogLevel::Debug, STYLE_LASTPREDEFINED + 0},
@@ -34,12 +42,12 @@ static WNDCLASSEXW WindowClass() {
 	wcex.hIcon = hIcon;
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
 	wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
-	wcex.lpszClassName = L"XivAlexander::Window::Log";
+	wcex.lpszClassName = L"XivAlexander::Window::LogWindow";
 	wcex.hIconSm = hIcon;
 	return wcex;
 }
 
-App::Window::Log::Log()
+App::Window::LogWindow::LogWindow()
 	: BaseWindow(WindowClass(), nullptr, WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr) {
 
 	NONCLIENTMETRICS ncm = { sizeof(NONCLIENTMETRICS) };
@@ -94,22 +102,22 @@ App::Window::Log::Log()
 	SetFocus(m_hScintilla);
 }
 
-App::Window::Log::~Log() {
+App::Window::LogWindow::~LogWindow() {
 	Destroy();
 }
 
-void App::Window::Log::ApplyLanguage(WORD languageId) {
+void App::Window::LogWindow::ApplyLanguage(WORD languageId) {
 	m_hAcceleratorWindow = { Dll::Module(), RT_ACCELERATOR, MAKEINTRESOURCE(IDR_LOG_ACCELERATOR), languageId };
 	SetWindowTextW(m_hWnd, m_config->Runtime.GetStringRes(IDS_WINDOW_LOG));
 	Utils::Win32::Menu(Dll::Module(), RT_MENU, MAKEINTRESOURCE(IDR_LOG_MENU), languageId).AttachAndSwap(m_hWnd);
 }
 
-void App::Window::Log::OnLayout(double zoom, double width, double height) {
+void App::Window::LogWindow::OnLayout(double zoom, double width, double height) {
 	SetWindowPos(m_hScintilla, nullptr, 0, 0, static_cast<int>(width), static_cast<int>(height), 0);
 	ResizeMargin();
 }
 
-LRESULT App::Window::Log::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+LRESULT App::Window::LogWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
 		case WM_INITMENUPOPUP:
 		{
@@ -208,7 +216,7 @@ LRESULT App::Window::Log::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
 	return BaseWindow::WndProc(hwnd, uMsg, wParam, lParam);
 }
 
-LRESULT App::Window::Log::OnNotify(const LPNMHDR nmhdr) {
+LRESULT App::Window::LogWindow::OnNotify(const LPNMHDR nmhdr) {
 	if (nmhdr->hwndFrom == m_hScintilla) {
 		const auto nm = reinterpret_cast<SCNotification*>(nmhdr);
 		if (nmhdr->code == SCN_ZOOM) {
@@ -218,19 +226,19 @@ LRESULT App::Window::Log::OnNotify(const LPNMHDR nmhdr) {
 	return BaseWindow::OnNotify(nmhdr);
 }
 
-void App::Window::Log::OnDestroy() {
+void App::Window::LogWindow::OnDestroy() {
 	m_config->Runtime.ShowLoggingWindow = false;
 }
 
-void App::Window::Log::ResizeMargin() {
+void App::Window::LogWindow::ResizeMargin() {
 	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 0, static_cast<int>(m_direct(m_directPtr, SCI_TEXTWIDTH, static_cast<uptr_t>(STYLE_LINENUMBER), reinterpret_cast<sptr_t>("999999"))));
 }
 
-void App::Window::Log::FlushLog(const std::string& logstr, LogLevel level) {
+void App::Window::LogWindow::FlushLog(const std::string& logstr, LogLevel level) {
 	RunOnUiThreadWait([&]() {
 		SendMessageW(m_hScintilla, WM_SETREDRAW, FALSE, 0);
 		m_direct(m_directPtr, SCI_SETREADONLY, FALSE, 0);
-		auto nPos = m_direct(m_directPtr, SCI_GETLENGTH, 0, 0);
+		const auto nPos = m_direct(m_directPtr, SCI_GETLENGTH, 0, 0);
 		auto nLineCount = m_direct(m_directPtr, SCI_GETLINECOUNT, 0, 0) - 1;
 		const auto nFirstLine = m_direct(m_directPtr, SCI_GETFIRSTVISIBLELINE, 0, 0);
 		const auto nLinesOnScreen = m_direct(m_directPtr, SCI_LINESONSCREEN, 0, 0);
@@ -239,9 +247,8 @@ void App::Window::Log::FlushLog(const std::string& logstr, LogLevel level) {
 
 		m_direct(m_directPtr, SCI_APPENDTEXT, logstr.length(), reinterpret_cast<sptr_t>(logstr.data()));
 		m_direct(m_directPtr, SCI_SETSTYLING, logstr.length(), LogLevelStyleMap.at(level));
-		nPos += logstr.length();
 		nLineCount++;
-		if (nLineCount > 32768) {
+		if (nLineCount > MaxDisplayedLines) {
 			const auto deleteTo = m_direct(m_directPtr, SCI_POSITIONFROMLINE, nLineCount - 32768, 0);
 			m_direct(m_directPtr, SCI_DELETERANGE, 0, deleteTo);
 		}

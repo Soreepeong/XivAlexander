@@ -175,4 +175,3 @@ void App::Misc::Hooks::WndProcFunction::HookDisable() {
 
 	SetWindowLongPtrW(m_hWnd, GWLP_WNDPROC, m_prevProc);
 }
-

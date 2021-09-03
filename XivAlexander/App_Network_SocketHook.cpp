@@ -1,8 +1,11 @@
 #include "pch.h"
-#include "App_XivAlexApp.h"
 #include "App_Network_SocketHook.h"
+
+#include "App_ConfigRepository.h"
+#include "App_Misc_Logger.h"
 #include "App_Network_IcmpPingTracker.h"
 #include "App_Network_Structures.h"
+#include "App_XivAlexApp.h"
 #include "resource.h"
 
 class SingleStream {
@@ -10,8 +13,8 @@ public:
 	bool m_ending = false;
 	bool m_closed = false;
 
-	std::vector<uint8_t> m_pending;
-	std::vector<size_t> m_reservedOffset;
+	std::vector<uint8_t> m_pending{};
+	std::vector<size_t> m_reservedOffset{};
 	size_t m_pendingStartPos = 0;
 
 	class SingleStreamWriter {
@@ -159,9 +162,7 @@ public:
 	}
 };
 
-class App::Network::SingleConnection::Implementation {
-	friend class SocketHook;
-public:
+struct App::Network::SingleConnection::Implementation {
 	std::shared_ptr<Misc::Logger> const m_logger;
 	std::shared_ptr<Config> const m_config;
 	SingleConnection* const this_;
@@ -169,12 +170,12 @@ public:
 	const SOCKET m_socket;
 	bool m_unloading = false;
 
-	std::map<size_t, std::vector<MessageMangler>> m_incomingHandlers;
-	std::map<size_t, std::vector<MessageMangler>> m_outgoingHandlers;
+	std::map<size_t, std::vector<MessageMangler>> m_incomingHandlers{};
+	std::map<size_t, std::vector<MessageMangler>> m_outgoingHandlers{};
 
-	std::deque<uint64_t> m_keepAliveRequestTimestamps;
-	std::deque<uint64_t> m_observedServerResponseList;
-	std::deque<int64_t> m_observedConnectionLatencyList;
+	std::deque<uint64_t> m_keepAliveRequestTimestamps{};
+	std::deque<uint64_t> m_observedServerResponseList{};
+	std::deque<int64_t> m_observedConnectionLatencyList{};
 
 	SingleStream m_recvRaw;
 	SingleStream m_recvProcessed;
@@ -324,18 +325,17 @@ public:
 	}
 };
 
-class App::Network::SocketHook::Implementation {
-public:
+struct App::Network::SocketHook::Implementation {
 	const std::shared_ptr<Config> m_config;
 	SocketHook* const this_;
 	XivAlexApp* const m_pApp;
 	DWORD const m_dwGameMainThreadId;
 	IcmpPingTracker m_pingTracker;
-	std::map<SOCKET, std::unique_ptr<SingleConnection>> m_sockets;
-	std::set<SOCKET> m_nonGameSockets;
+	std::map<SOCKET, std::unique_ptr<SingleConnection>> m_sockets{};
+	std::set<SOCKET> m_nonGameSockets{};
 	bool m_unloading = false;
-	std::vector<std::pair<uint32_t, uint32_t>> m_allowedIpRange;
-	std::vector<std::pair<uint32_t, uint32_t>> m_allowedPortRange;
+	std::vector<std::pair<uint32_t, uint32_t>> m_allowedIpRange{};
+	std::vector<std::pair<uint32_t, uint32_t>> m_allowedPortRange{};
 	Utils::CallOnDestruction::Multiple m_cleanupList;
 
 	Implementation(SocketHook* this_, XivAlexApp* pApp)

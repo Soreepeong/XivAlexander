@@ -4,43 +4,56 @@
 // However, files listed here are ALL re-compiled if any one of them is updated between builds.
 // Do not add files here that you will be updating frequently as this negates the performance advantage.
 
+// ReSharper disable CppClangTidyClangDiagnosticReservedIdMacro
+// ReSharper disable CppClangTidyBugproneReservedIdentifier
+
+#pragma once
+
 #ifndef PCH_H
 #define PCH_H
 
-#include <string>
 #include <algorithm>
-#include <vector>
-#include <functional>
-#include <numeric>
-#include <map>
-#include <set>
-#include <stdexcept>
 #include <chrono>
 #include <format>
+#include <functional>
+#include <map>
+#include <numeric>
 #include <ranges>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
-#define WIN32_LEAN_AND_MEAN
+// Windows API, part 1
 #define NOMINMAX
+#define _WINSOCKAPI_   // Prevent <winsock.h> from being included
 #include <Windows.h>
-#include <WS2tcpip.h>
+
+// Windows API, part 2
 #include <PathCch.h>
+#include <Psapi.h>
+#include <shellapi.h>
+#include <Shlwapi.h>
+#include <TlHelp32.h>
 #include <wincrypt.h>
 #include <WinTrust.h>
-#include <Shlwapi.h>
-#include <Psapi.h>
-#include <TlHelp32.h>
-#include <shellapi.h>
+#include <WS2tcpip.h>
 
+#pragma warning(push)
+#pragma warning(disable: 26495)  // Variable is uninitialized. Always initialize a member variable (type.6).
+#pragma warning(disable: 26819)  // Unannotated fallthrough between switch labels (es.78).
 #define ZLIB_CONST
 #include <zlib.h>
-#include <nlohmann/json.hpp>
+#include <cryptopp/base64.h>
+#include <cryptopp/blowfish.h>
+#include <cryptopp/modes.h>
+#include <cryptopp/sha.h>
 #include <curlpp/cURLpp.hpp>
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
-#include <cryptopp/sha.h>
+#include <nlohmann/json.hpp>
+#pragma warning(pop)
 
-#include "CustomFormatter.h"
-
-static DECLSPEC_NORETURN void mark_unreachable_code() {}
+#include "XaFormat.h"
 
 #endif //PCH_H

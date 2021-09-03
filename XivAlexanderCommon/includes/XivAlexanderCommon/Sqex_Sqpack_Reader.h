@@ -4,15 +4,16 @@
 #include "Utils_Win32_Handle.h"
 
 namespace Sqex::Sqpack {
-	class FileSystemSqPack {
-
-	public:
+	struct FileSystemSqPack {
 		struct SqDataEntry {
-			SqIndex::FileSegmentEntry IndexEntry;
-			SqIndex::FileSegmentEntry2 Index2Entry;
-			uint64_t DataEntryOffset;
-			uint32_t DataEntrySize = UINT32_MAX;
+			SqIndex::FileSegmentEntry Index;
+			SqIndex::FileSegmentEntry2 Index2;
+			uint64_t Offset;
+			uint32_t Size = UINT32_MAX;
 			uint32_t DataFileIndex;
+			
+			SqDataEntry(const SqIndex::FileSegmentEntry& entry);
+			SqDataEntry(const SqIndex::FileSegmentEntry2& entry);
 		};
 
 		struct SqIndexType {
@@ -24,7 +25,7 @@ namespace Sqex::Sqpack {
 			std::vector<SqIndex::Segment3Entry> Segment3;
 
 		private:
-			friend class FileSystemSqPack;
+			friend struct FileSystemSqPack;
 			SqIndexType(const Utils::Win32::File& hFile, bool strictVerify);
 		};
 
@@ -37,7 +38,7 @@ namespace Sqex::Sqpack {
 			std::vector<SqIndex::Segment3Entry> Segment3;
 
 		private:
-			friend class FileSystemSqPack;
+			friend struct FileSystemSqPack;
 			SqIndex2Type(const Utils::Win32::File& hFile, bool strictVerify);
 		};
 
@@ -47,7 +48,7 @@ namespace Sqex::Sqpack {
 			Utils::Win32::File FileOnDisk;
 
 		private:
-			friend class FileSystemSqPack;
+			friend struct FileSystemSqPack;
 			SqDataType(Utils::Win32::File hFile, uint32_t datIndex, std::vector<SqDataEntry>& dataEntries, bool strictVerify);
 		};
 
@@ -58,5 +59,4 @@ namespace Sqex::Sqpack {
 
 		FileSystemSqPack(const std::filesystem::path& indexFile, bool strictVerify);
 	};
-
 }

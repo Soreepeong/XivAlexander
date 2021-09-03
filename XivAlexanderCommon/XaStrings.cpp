@@ -1,5 +1,6 @@
 #include "pch.h"
-#include "Utils__String.h"
+#include "XaStrings.h"
+
 #include "Utils_Win32.h"
 
 std::wstring Utils::FromUtf8(const std::string& in) {

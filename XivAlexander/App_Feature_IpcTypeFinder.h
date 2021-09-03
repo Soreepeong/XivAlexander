@@ -1,4 +1,5 @@
 #pragma once
+
 namespace App {
 	namespace Network {
 		class SocketHook;
@@ -7,8 +8,8 @@ namespace App {
 
 namespace App::Feature {
 	class IpcTypeFinder {
-		class Implementation;
-		std::unique_ptr<Implementation> m_pImpl;
+		struct Implementation;
+		const std::unique_ptr<Implementation> m_pImpl;
 
 	public:
 		IpcTypeFinder(Network::SocketHook* socketHook);

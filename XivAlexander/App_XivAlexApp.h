@@ -1,6 +1,9 @@
 #pragma once
 
 #include <memory>
+#include <XivAlexanderCommon/Utils_Win32.h>
+#include <XivAlexanderCommon/Utils_Win32_Handle.h>
+#include <XivAlexanderCommon/Utils_Win32_LoadedModule.h>
 
 namespace App {
 	namespace Network {
@@ -20,8 +23,8 @@ namespace App {
 		const std::shared_ptr<Misc::Logger> m_logger;
 		const std::shared_ptr<Config> m_config;
 
-		class Implementation;
-		friend class Implementation;
+		struct Implementation;
+		friend struct Implementation;
 		std::unique_ptr<Implementation> m_pImpl;
 
 		bool m_bInterrnalUnloadInitiated = false;

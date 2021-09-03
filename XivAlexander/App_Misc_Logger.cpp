@@ -1,12 +1,15 @@
 #include "pch.h"
 #include "App_Misc_Logger.h"
 
+#include <XivAlexanderCommon/Utils_Win32_Handle.h>
+#include <XivAlexanderCommon/Utils_Win32_Resource.h>
+
+#include "DllMain.h"
+
 std::weak_ptr<App::Misc::Logger> App::Misc::Logger::s_instance;
 
-class App::Misc::Logger::Implementation final {
+struct App::Misc::Logger::Implementation final {
 	static const int MaxLogCount = 128 * 1024;
-
-public:
 	Logger& logger;
 	std::condition_variable m_threadTrigger;
 
@@ -143,4 +146,8 @@ void App::Misc::Logger::Clear() {
 void App::Misc::Logger::WithLogs(const std::function<void(const std::deque<LogItem>& items)>& cb) const {
 	std::lock_guard lock(m_pImpl->m_itemLock);
 	cb(m_pImpl->m_items);
+}
+
+const wchar_t* App::Misc::Logger::GetStringResource(UINT uStringResFormatId, WORD wLanguage) {
+	return FindStringResourceEx(Dll::Module(), uStringResFormatId, wLanguage) + 1;
 }

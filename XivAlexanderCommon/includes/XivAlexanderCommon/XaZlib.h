@@ -1,8 +1,7 @@
 #pragma once
 
-#include <vector>
 #include <stdexcept>
-
+#include <vector>
 #include <zlib.h>
 
 namespace Utils {

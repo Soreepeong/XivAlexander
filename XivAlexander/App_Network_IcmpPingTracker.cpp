@@ -1,6 +1,13 @@
 #include "pch.h"
 #include "App_Network_IcmpPingTracker.h"
+
+#include <XivAlexanderCommon/Utils_Win32_Closeable.h>
+
+#include "App_ConfigRepository.h"
+#include "App_Misc_Logger.h"
 #include "resource.h"
+#include "XivAlexanderCommon/Utils_NumericStatisticsTracker.h"
+#include "XivAlexanderCommon/Utils_Win32_Handle.h"
 
 namespace Utils::Win32 {
 	using Icmp = Closeable<HANDLE, IcmpCloseHandle>;
@@ -16,15 +23,14 @@ struct ConnectionPair {
 	}
 };
 
-class App::Network::IcmpPingTracker::Implementation {
-public:
+struct App::Network::IcmpPingTracker::Implementation {
 	class SingleTracker;
 
 	const std::shared_ptr<Misc::Logger> m_logger;
 	const std::shared_ptr<Config> m_config;
 
 	std::mutex m_trackersMapLock;
-	std::map<ConnectionPair, std::shared_ptr<SingleTracker>> m_trackersByAddress;
+	std::map<ConnectionPair, std::shared_ptr<SingleTracker>> m_trackersByAddress{};
 
 	class SingleTracker {
 		IcmpPingTracker* const m_icmpPingTracker;

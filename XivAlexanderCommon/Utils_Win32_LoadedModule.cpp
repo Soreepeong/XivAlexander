@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Utils_Win32_LoadedModule.h"
+
 #include "Utils_Win32_Process.h"
 
 Utils::Win32::LoadedModule::LoadedModule(const wchar_t* pwszFileName, DWORD dwFlags, bool bRequire)

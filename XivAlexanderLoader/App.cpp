@@ -1,4 +1,10 @@
 ﻿#include "pch.h"
+
+#include <XivAlexander/XivAlexander.h>
+#include <XivAlexanderCommon/Utils_Win32_InjectedModule.h>
+#include <XivAlexanderCommon/Utils_Win32_Resource.h>
+#include <XivAlexanderCommon/XivAlex.h>
+
 #include "resource.h"
 
 constexpr auto MsgboxTitle = L"XivAlexander Loader";

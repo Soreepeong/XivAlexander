@@ -1,9 +1,11 @@
 #pragma once
+
+#include "App_ConfigRepository.h"
 #include "App_Window_BaseWindow.h"
 
 namespace App::Window {
-	class Config : public BaseWindow {
-		::App::Config::BaseRepository* const m_pRepository;
+	class ConfigWindow : public BaseWindow {
+		Config::BaseRepository* const m_pRepository;
 
 		HWND m_hScintilla = nullptr;
 		SciFnDirect m_direct = nullptr;
@@ -14,21 +16,20 @@ namespace App::Window {
 		const UINT m_nTitleStringResourceId;
 
 	public:
-		Config(UINT nTitleStringResourceId, App::Config::BaseRepository* pRepository);
-		~Config() override;
+		ConfigWindow(UINT nTitleStringResourceId, Config::BaseRepository* pRepository);
+		~ConfigWindow() override;
 
 		void Revert();
 		bool TrySave();
 
-		[[nodiscard]]
-		::App::Config::BaseRepository* GetRepository() const;
+		[[nodiscard]] Config::BaseRepository* GetRepository() const;
 
 	protected:
 		void ApplyLanguage(WORD languageId) final;
 
 		LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 		void OnLayout(double zoom, double width, double height) override;
-		LRESULT OnNotify(const LPNMHDR nmhdr) override;
+		LRESULT OnNotify(LPNMHDR nmhdr) override;
 
 		void ResizeMargin();
 	};

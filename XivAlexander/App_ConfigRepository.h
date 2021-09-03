@@ -1,4 +1,7 @@
 #pragma once
+
+#include <XivAlexanderCommon/Utils_ListenerManager.h>
+
 namespace App {
 	namespace Misc {
 		class Logger;
@@ -33,8 +36,7 @@ namespace App {
 		public:
 			virtual ~ItemBase() = default;
 
-			[[nodiscard]]
-			const char* Name() const;
+			[[nodiscard]] const char* Name() const;
 
 			Utils::ListenerManager<ItemBase, void, ItemBase&> OnChangeListener;
 		};
@@ -46,15 +48,15 @@ namespace App {
 			const std::function<T(const T&)> m_fnValidator;
 
 		protected:
-			Item(BaseRepository* pRepository, const char* pszName, T defaultValue)
+			Item(BaseRepository* pRepository, const char* pszName, const T& defaultValue)
 				: ItemBase(pRepository, pszName)
-				, m_value(defaultValue)
+				, m_value(std::move(defaultValue))
 				, m_fnValidator(nullptr) {
 			}
 
-			Item(BaseRepository* pRepository, const char* pszName, T defaultValue, std::function<T(const T&)> validator)
+			Item(BaseRepository* pRepository, const char* pszName, const T& defaultValue, std::function<T(const T&)> validator)
 				: ItemBase(pRepository, pszName)
-				, m_value(defaultValue)
+				, m_value(std::move(defaultValue))
 				, m_fnValidator(validator) {
 			}
 
@@ -71,13 +73,13 @@ namespace App {
 		public:
 			~Item() override = default;
 
-			const T& operator=(const T& rv) {
+			Item<T>& operator=(const T& rv) {
 				if (m_value == rv)
-					return m_value;
+					return *this;
 
 				m_value = rv;
 				AnnounceChanged();
-				return m_value;
+				return *this;
 			}
 
 			operator T() const& {

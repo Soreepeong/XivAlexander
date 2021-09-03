@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Utils_Win32.h"
+
 #include "Utils_Win32_Closeable.h"
 #include "Utils_Win32_Handle.h"
 #include "Utils_Win32_Process.h"
@@ -40,7 +41,7 @@ std::string Utils::Win32::FormatWindowsErrorMessage(unsigned int errorCode) {
 	return res;
 }
 
-std::pair<std::string, std::string> Utils::Win32::FormatModuleVersionString(void* pBlock) {
+std::pair<std::string, std::string> Utils::Win32::FormatModuleVersionString(const void* pBlock) {
 	UINT size = 0;
 	LPVOID lpBuffer = nullptr;
 	if (!VerQueryValueW(pBlock, L"\\", &lpBuffer, &size))
@@ -129,16 +130,12 @@ bool Utils::Win32::EnableTokenPrivilege(HANDLE hToken, LPCTSTR Privilege, bool b
 }
 
 void Utils::Win32::SetThreadDescription(HANDLE hThread, const std::wstring& description) {
-	typedef HRESULT(WINAPI* SetThreadDescriptionT)(
-		_In_ HANDLE hThread,
-		_In_ PCWSTR lpThreadDescription
-		);
-	SetThreadDescriptionT pfnSetThreadDescription = nullptr;
+	decltype(&::SetThreadDescription) pfnSetThreadDescription = nullptr;
 
 	if (const auto hMod = LoadedModule(L"kernel32.dll", LOAD_LIBRARY_SEARCH_SYSTEM32, false))
-		pfnSetThreadDescription = reinterpret_cast<SetThreadDescriptionT>(GetProcAddress(hMod, "SetThreadDescription"));
+		pfnSetThreadDescription = hMod.GetProcAddress<decltype(pfnSetThreadDescription)>("SetThreadDescription");
 	else if (const auto hMod = LoadedModule(L"KernelBase.dll", LOAD_LIBRARY_SEARCH_SYSTEM32, false))
-		pfnSetThreadDescription = reinterpret_cast<SetThreadDescriptionT>(GetProcAddress(hMod, "SetThreadDescription"));
+		pfnSetThreadDescription = hMod.GetProcAddress<decltype(pfnSetThreadDescription)>("SetThreadDescription");
 
 	if (pfnSetThreadDescription)
 		pfnSetThreadDescription(hThread, description.data());
@@ -230,7 +227,7 @@ std::filesystem::path Utils::Win32::GetSystem32Path() {
 	sysDir.resize(GetSystemDirectoryW(&sysDir[0], static_cast<UINT>(sysDir.size())));
 	if (sysDir.empty())
 		throw Error("GetSystemWindowsDirectoryW");
-	return sysDir;
+	return { std::move(sysDir) };
 }
 
 static Utils::CallOnDestruction WithRunAsInvoker() {
@@ -445,6 +442,6 @@ Utils::Win32::Error::Error(DWORD errorCode, const std::string& msg)
 Utils::Win32::Error::Error(const std::string& msg) : Error(GetLastError(), msg) {
 }
 
-int Utils::Win32::Error::Code() const {
+DWORD Utils::Win32::Error::Code() const {
 	return m_nErrorCode;
 }

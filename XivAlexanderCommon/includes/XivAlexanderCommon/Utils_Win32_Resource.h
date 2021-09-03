@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Utils_Win32_Closeable.h"
 
 namespace Utils::Win32 {

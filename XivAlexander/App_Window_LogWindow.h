@@ -1,8 +1,15 @@
 #pragma once
+
+#include <XivAlexanderCommon/Utils_CallOnDestruction.h>
+
 #include "App_Window_BaseWindow.h"
 
+namespace App {
+	enum class LogLevel;
+}
+
 namespace App::Window {
-	class Log : public BaseWindow {
+	class LogWindow : public BaseWindow {
 		HWND m_hScintilla = nullptr;
 		SciFnDirect m_direct = nullptr;
 		sptr_t m_directPtr = 0;
@@ -11,8 +18,8 @@ namespace App::Window {
 		uint64_t m_lastDisplayedLogId = 0;
 
 	public:
-		Log();
-		~Log() override;
+		LogWindow();
+		~LogWindow() override;
 
 	protected:
 		void ApplyLanguage(WORD languageId) final;
@@ -26,4 +33,4 @@ namespace App::Window {
 
 		void FlushLog(const std::string& logstr, LogLevel level);
 	};
-};
+}

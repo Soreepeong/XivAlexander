@@ -1,10 +1,8 @@
 #pragma once
 
-#include <windef.h>
-
 #include "Utils_Win32.h"
-#include "Utils__Misc.h"
-#include "Utils__String.h"
+#include "XaMisc.h"
+#include "XaStrings.h"
 
 namespace Utils::Win32 {
 	template <typename T, auto CloserFunction>
@@ -101,7 +99,7 @@ namespace Utils::Win32 {
 			return !!m_object;
 		}
 
-		[[nodiscard]] operator T() const {
+		[[nodiscard]] virtual operator T() const {
 			return m_object;
 		}
 		

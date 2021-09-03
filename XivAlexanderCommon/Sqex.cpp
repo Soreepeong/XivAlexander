@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Sqex_Common.h"
+#include "Sqex.h"
 
 Sqex::RandomAccessStream::RandomAccessStream() = default;
 

@@ -1,4 +1,5 @@
 #pragma once
+
 #include <algorithm>
 #include <span>
 #include <type_traits>
@@ -6,7 +7,6 @@
 #include "Utils_Win32_Handle.h"
 
 namespace Sqex {
-
 	enum class SqexLanguage {
 		Undefined = 0,
 		Japanese = 1,

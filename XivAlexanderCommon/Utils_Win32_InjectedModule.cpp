@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Utils_Win32_InjectedModule.h"
+
 #include "Utils_Win32_Process.h"
 
 Utils::Win32::InjectedModule::InjectedModule()

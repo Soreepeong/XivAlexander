@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Utils_Win32_Resource.h"
 
+#include "Utils_Win32_LoadedModule.h"
+
 Utils::Win32::GlobalResource::GlobalResource(HINSTANCE hInstance, LPCWSTR lpType, LPCWSTR lpName, WORD wLanguage, bool fallbackToDefault) {
 	auto hRes = FindResourceExW(hInstance, lpType, lpName, wLanguage);
 	if (!hRes) {
@@ -67,8 +69,8 @@ LPCWSTR Utils::Win32::FindStringResourceEx(HINSTANCE hInstance, UINT uId, WORD w
 std::wstring Utils::Win32::MB_GetString(int i) {
 	static LPCWSTR(WINAPI * MB_GetString)(int) = nullptr;
 	if (!MB_GetString) {
-		const auto pUser32 = LoadLibraryW(L"user32.dll");
-		assert(pUser32);
+		const auto pUser32 = LoadedModule(L"user32.dll");
+		pUser32.Pin();
 		MB_GetString = reinterpret_cast<decltype(MB_GetString)>(GetProcAddress(pUser32, "MB_GetString"));
 	}
 

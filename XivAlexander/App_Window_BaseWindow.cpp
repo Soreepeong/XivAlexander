@@ -1,7 +1,12 @@
 #include "pch.h"
 #include "App_Window_BaseWindow.h"
 
-HWND App::Window::BaseWindow::InternalCreateWindow(const WNDCLASSEXW& wndclassex,
+#include "App_ConfigRepository.h"
+#include "App_Misc_Logger.h"
+#include "DllMain.h"
+
+HWND App::Window::BaseWindow::InternalCreateWindow(
+	const WNDCLASSEXW& wndclassex,
 	_In_opt_ LPCWSTR lpWindowName,
 	_In_ DWORD dwStyle,
 	_In_ DWORD dwExStyle,
@@ -58,7 +63,7 @@ App::Window::BaseWindow::BaseWindow(const WNDCLASSEXW& wndclassex,
 	_In_opt_ HWND hWndParent,
 	_In_opt_ HMENU hMenu)
 	: m_hShCore(L"Shcore.dll", LOAD_LIBRARY_SEARCH_SYSTEM32, false)
-	, m_config(App::Config::Acquire())
+	, m_config(Config::Acquire())
 	, m_logger(Misc::Logger::Acquire())
 	, m_windowClass(wndclassex)
 	, m_hWnd(InternalCreateWindow(wndclassex, lpWindowName, dwStyle, dwExStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, this)) {
@@ -67,7 +72,7 @@ App::Window::BaseWindow::BaseWindow(const WNDCLASSEXW& wndclassex,
 	m_cleanup += [this]() { s_allBaseWindows.erase(this); };
 	m_cleanup += m_config->Runtime.Language.OnChangeListener([this](const auto&) {
 		this->ApplyLanguage(m_config->Runtime.GetLangId());
-		});
+	});
 }
 
 App::Window::BaseWindow::~BaseWindow() {
@@ -125,15 +130,16 @@ double App::Window::BaseWindow::GetZoom() const {
 
 		bool fallback = false;
 		if (m_hShCore) {
-			const auto pGetDpiForMonitor = m_hShCore.GetProcAddress<decltype(GetDpiForMonitor)>("GetDpiForMonitor");
+			const auto pGetDpiForMonitor = m_hShCore.GetProcAddress<decltype(&GetDpiForMonitor)>("GetDpiForMonitor");
 			if (!pGetDpiForMonitor || FAILED(pGetDpiForMonitor(hMonitor, MONITOR_DPI_TYPE::MDT_EFFECTIVE_DPI, &newDpiX, &newDpiY)))
 				fallback = true;
 		}
 		if (fallback) {
-			MONITORINFOEXW mi{ sizeof(MONITORINFOEXW) };
+			MONITORINFOEXW mi{};
+			mi.cbSize = static_cast<DWORD>(sizeof MONITORINFOEXW);
 			GetMonitorInfoW(hMonitor, &mi);
-			const auto hdc = Utils::Win32::CreatedDC(CreateDCW(L"DISPLAY", mi.szDevice, nullptr, nullptr), 
-				nullptr, 
+			const auto hdc = Utils::Win32::CreatedDC(CreateDCW(L"DISPLAY", mi.szDevice, nullptr, nullptr),
+				nullptr,
 				L"Failed to create display \"{}\" for zoom determination purposes.", mi.szDevice);
 			newDpiX = GetDeviceCaps(hdc, LOGPIXELSX);
 			newDpiY = GetDeviceCaps(hdc, LOGPIXELSY);

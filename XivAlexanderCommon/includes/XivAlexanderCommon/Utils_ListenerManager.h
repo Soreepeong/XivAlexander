@@ -1,8 +1,8 @@
 #pragma once
 
 #include <functional>
-#include <memory>
 #include <map>
+#include <memory>
 #include <mutex>
 #include "Utils_CallOnDestruction.h"
 

@@ -1,16 +1,22 @@
 #pragma once
+
+#include "App_ConfigRepository.h"
 #include "App_Window_BaseWindow.h"
 
-namespace App::Window {
-	class Config;
+namespace App {
+	class XivAlexApp;
+}
 
-	class Main : public BaseWindow {
+namespace App::Window {
+	class ConfigWindow;
+
+	class MainWindow : public BaseWindow {
 		XivAlexApp* m_pApp;
 		const std::function<void()> m_triggerUnload;
 		const uint32_t m_uTaskbarRestartMessage;
 
-		std::unique_ptr<Config> m_runtimeConfigEditor{ nullptr };
-		std::unique_ptr<Config> m_gameConfigEditor{ nullptr };
+		std::unique_ptr<ConfigWindow> m_runtimeConfigEditor{ nullptr };
+		std::unique_ptr<ConfigWindow> m_gameConfigEditor{ nullptr };
 
 		Utils::CallOnDestruction::Multiple m_cleanup;
 
@@ -23,13 +29,13 @@ namespace App::Window {
 		bool m_bUseXivAlexander = true;
 		bool m_bUseParameterObfuscation = false;
 		bool m_bUseElevation;
-		App::Config::GameLanguage m_gameLanguage = App::Config::GameLanguage::Unspecified;
-		App::Config::GameRegion m_gameRegion = App::Config::GameRegion::Unspecified;
+		Config::GameLanguage m_gameLanguage = Config::GameLanguage::Unspecified;
+		Config::GameRegion m_gameRegion = Config::GameRegion::Unspecified;
 		std::vector<std::pair<std::string, std::string>> m_launchParameters;
 
 	public:
-		Main(XivAlexApp* pApp, std::function<void()> unloadFunction);
-		~Main() override;
+		MainWindow(XivAlexApp* pApp, std::function<void()> unloadFunction);
+		~MainWindow() override;
 
 		void ShowContextMenu(const BaseWindow* parent = nullptr) const;
 
@@ -45,6 +51,6 @@ namespace App::Window {
 
 		[[nodiscard]] bool LanguageRegionModifiable() const;
 		void AskRestartGame(bool onlyOnModifier = false);
-		[[nodiscard]] bool AskUpdateGameLanguageOverride(App::Config::GameLanguage language) const;
+		[[nodiscard]] bool AskUpdateGameLanguageOverride(Config::GameLanguage language) const;
 	};
 }

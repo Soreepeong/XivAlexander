@@ -1,17 +1,23 @@
 #include "pch.h"
-#include "XivAlexander/XivAlexander.h"
 #include "App_XivAlexApp.h"
-#include "App_Misc_Hooks.h"
-#include "App_Network_SocketHook.h"
-#include "App_Feature_AnimationLockLatencyHandler.h"
-#include "App_Feature_IpcTypeFinder.h"
+
+#include <XivAlexander/XivAlexander.h>
+#include <XivAlexanderCommon/Utils_Win32_Resource.h>
+
+#include "App_ConfigRepository.h"
 #include "App_Feature_AllIpcMessageLogger.h"
+#include "App_Feature_AnimationLockLatencyHandler.h"
 #include "App_Feature_EffectApplicationDelayLogger.h"
 #include "App_Feature_GameResourceOverrider.h"
+#include "App_Feature_IpcTypeFinder.h"
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_FreeGameMutex.h"
+#include "App_Misc_Hooks.h"
+#include "App_Misc_Logger.h"
+#include "App_Network_SocketHook.h"
 #include "App_Window_LogWindow.h"
 #include "App_Window_MainWindow.h"
+#include "DllMain.h"
 #include "resource.h"
 
 static HWND FindGameMainWindow() {
@@ -28,25 +34,24 @@ static HWND FindGameMainWindow() {
 	return hwnd;
 }
 
-class App::XivAlexApp::Implementation {
+struct App::XivAlexApp::Implementation {
 	XivAlexApp* const this_;
 
-public:
 	const HWND m_hGameMainWindow;
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
 	std::mutex m_runInMessageLoopLock;
-	std::queue<std::function<void()>> m_qRunInMessageLoop;
+	std::queue<std::function<void()>> m_qRunInMessageLoop{};
 
-	std::unique_ptr<Network::SocketHook> m_socketHook;
-	std::unique_ptr<Feature::AnimationLockLatencyHandler> m_animationLockLatencyHandler;
-	std::unique_ptr<Feature::IpcTypeFinder> m_ipcTypeFinder;
-	std::unique_ptr<Feature::AllIpcMessageLogger> m_allIpcMessageLogger;
-	std::unique_ptr<Feature::EffectApplicationDelayLogger> m_effectApplicationDelayLogger;
-	std::unique_ptr<Feature::GameResourceOverrider> m_hashTracker;
+	std::unique_ptr<Network::SocketHook> m_socketHook{};
+	std::unique_ptr<Feature::AnimationLockLatencyHandler> m_animationLockLatencyHandler{};
+	std::unique_ptr<Feature::IpcTypeFinder> m_ipcTypeFinder{};
+	std::unique_ptr<Feature::AllIpcMessageLogger> m_allIpcMessageLogger{};
+	std::unique_ptr<Feature::EffectApplicationDelayLogger> m_effectApplicationDelayLogger{};
+	std::unique_ptr<Feature::GameResourceOverrider> m_hashTracker{};
 
-	std::unique_ptr<Window::Log> m_logWindow;
-	std::unique_ptr<Window::Main> m_trayWindow;
+	std::unique_ptr<Window::LogWindow> m_logWindow{};
+	std::unique_ptr<Window::MainWindow> m_trayWindow{};
 
 	DWORD m_mainThreadId = -1;
 	int m_nWndProcDepth = 0;
@@ -92,7 +97,7 @@ public:
 		if (m_trayWindow)
 			return;
 
-		m_trayWindow = std::make_unique<Window::Main>(this_, [this]() {
+		m_trayWindow = std::make_unique<Window::MainWindow>(this_, [this]() {
 			if (this->this_->m_bInterrnalUnloadInitiated)
 				return;
 
@@ -115,9 +120,7 @@ public:
 		, m_gameWindowSubclass(std::make_shared<Misc::Hooks::WndProcFunction>("GameMainWindow", m_hGameMainWindow)) {
 	}
 
-	~Implementation() {
-		m_cleanup.Clear();
-	}
+	~Implementation();
 
 	void Load() {
 		Scintilla_RegisterClasses(Dll::Module());
@@ -200,10 +203,10 @@ public:
 		m_cleanup += [this]() { m_hashTracker = nullptr; };
 
 		if (config.ShowLoggingWindow)
-			m_logWindow = std::make_unique<Window::Log>();
+			m_logWindow = std::make_unique<Window::LogWindow>();
 		m_cleanup += config.ShowLoggingWindow.OnChangeListener([&](Config::ItemBase&) {
 			if (config.ShowLoggingWindow)
-				m_logWindow = std::make_unique<Window::Log>();
+				m_logWindow = std::make_unique<Window::LogWindow>();
 			else
 				m_logWindow = nullptr;
 		});
@@ -223,6 +226,10 @@ public:
 		});
 	}
 };
+
+App::XivAlexApp::Implementation::~Implementation() {
+	m_cleanup.Clear();
+}
 
 App::XivAlexApp::XivAlexApp()
 	: m_module(Utils::Win32::LoadedModule::LoadMore(Dll::Module()))

@@ -1,7 +1,8 @@
 #pragma once
+
 namespace App::Misc {
 	class DebuggerDetectionDisabler {
-		class Implementation;
+		struct Implementation;
 		std::unique_ptr<Implementation> m_pImpl;
 
 	protected:
@@ -13,8 +14,7 @@ namespace App::Misc {
 	public:
 		static std::shared_ptr<DebuggerDetectionDisabler> Acquire();
 
-		[[nodiscard]]
-		bool IsDebuggerActuallyPresent() const;
+		[[nodiscard]] bool IsDebuggerActuallyPresent() const;
 		void BreakIfDebugged() const;
 
 		virtual ~DebuggerDetectionDisabler();

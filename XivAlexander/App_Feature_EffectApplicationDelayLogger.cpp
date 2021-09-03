@@ -1,11 +1,12 @@
 #include "pch.h"
 #include "App_Feature_EffectApplicationDelayLogger.h"
+
+#include "App_ConfigRepository.h"
+#include "App_Misc_Logger.h"
 #include "App_Network_SocketHook.h"
 #include "App_Network_Structures.h"
 
-class App::Feature::EffectApplicationDelayLogger::Implementation {
-public:
-
+struct App::Feature::EffectApplicationDelayLogger::Implementation {
 	class SingleConnectionHandler {
 		const std::shared_ptr<Config> m_config;
 
@@ -74,7 +75,7 @@ public:
 
 	const std::shared_ptr<Misc::Logger> m_logger;
 	Network::SocketHook* const m_socketHook;
-	std::map<Network::SingleConnection*, std::unique_ptr<SingleConnectionHandler>> m_handlers;
+	std::map<Network::SingleConnection*, std::unique_ptr<SingleConnectionHandler>> m_handlers{};
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
 	Implementation(Network::SocketHook* socketHook)

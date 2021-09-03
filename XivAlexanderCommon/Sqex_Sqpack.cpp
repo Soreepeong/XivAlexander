@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "Sqex_Sqpack.h"
-#include <cryptopp/sha.h>
 
 const char Sqex::Sqpack::SqpackHeader::Signature_Value[12] = {
 	'S', 'q', 'P', 'a', 'c', 'k', 0, 0, 0, 0, 0, 0,

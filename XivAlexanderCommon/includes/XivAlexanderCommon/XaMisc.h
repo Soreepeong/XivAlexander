@@ -1,12 +1,12 @@
 #pragma once
 
 #include <cinttypes>
-#include <minwinbase.h>
 #include <inaddr.h>
+#include <minwinbase.h>
 #include <string>
 
 namespace Utils {
-	SYSTEMTIME EpochToLocalSystemTime(uint64_t epochMilliseconds);
+	SYSTEMTIME EpochToLocalSystemTime(int64_t epochMilliseconds);
 	int64_t GetHighPerformanceCounter(int32_t multiplier = 1000);
 
 	int CompareSockaddr(const void* x, const void* y);

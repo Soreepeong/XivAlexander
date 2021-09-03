@@ -1,17 +1,26 @@
 #include "pch.h"
 #include "App_InjectOnCreateProcessApp.h"
+
+#include <XivAlexander/XivAlexander.h>
+#include <XivAlexanderCommon/Utils_CallOnDestruction.h>
+#include <XivAlexanderCommon/Utils_Win32.h>
+#include <XivAlexanderCommon/Utils_Win32_Process.h>
+#include <XivAlexanderCommon/Utils_Win32_Resource.h>
+#include <XivAlexanderCommon/XivAlex.h>
+
 #include "App_Feature_GameResourceOverrider.h"
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_Hooks.h"
-#include "XivAlexander/XivAlexander.h"
+#include "DllMain.h"
 #include "resource.h"
+#include "XivAlexanderCommon/Sqex_CommandLine.h"
 #if INTPTR_MAX == INT64_MAX
 #include "App_InjectOnCreateProcessApp_x64.h"
 #elif INTPTR_MAX == INT32_MAX
 #include "App_InjectOnCreateProcessApp_x86.h"
 #endif 
 
-class App::InjectOnCreateProcessApp::Implementation {
+struct App::InjectOnCreateProcessApp::Implementation {
 
 	Misc::Hooks::PointerFunction<BOOL, LPCWSTR,
 		LPWSTR,
@@ -41,44 +50,8 @@ public:
 	bool InjectAll = false;
 	bool InjectGameOnly = false;
 
-	Implementation() {
-		m_cleanup += CreateProcessW.SetHook([this](_In_opt_ LPCWSTR lpApplicationName, _Inout_opt_ LPWSTR lpCommandLine, _In_opt_ LPSECURITY_ATTRIBUTES lpProcessAttributes, _In_opt_ LPSECURITY_ATTRIBUTES lpThreadAttributes, _In_ BOOL bInheritHandles, _In_ DWORD dwCreationFlags, _In_opt_ LPVOID lpEnvironment, _In_opt_ LPCWSTR lpCurrentDirectory, _In_ LPSTARTUPINFOW lpStartupInfo, _Out_ LPPROCESS_INFORMATION lpProcessInformation) -> BOOL {
-			const bool noOperation = dwCreationFlags & (DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS);
-			const auto result = CreateProcessW.bridge(
-				lpApplicationName,
-				lpCommandLine,
-				lpProcessAttributes,
-				lpThreadAttributes,
-				bInheritHandles,
-				dwCreationFlags | (noOperation ? 0 : CREATE_SUSPENDED),
-				lpEnvironment,
-				lpCurrentDirectory,
-				lpStartupInfo,
-				lpProcessInformation);
-			if (result && !noOperation)
-				PostProcessExecution(dwCreationFlags, lpProcessInformation);
-			return result;
-		});
-		m_cleanup += CreateProcessA.SetHook([this](_In_opt_ LPCSTR lpApplicationName, _Inout_opt_ LPSTR lpCommandLine, _In_opt_ LPSECURITY_ATTRIBUTES lpProcessAttributes, _In_opt_ LPSECURITY_ATTRIBUTES lpThreadAttributes, _In_ BOOL bInheritHandles, _In_ DWORD dwCreationFlags, _In_opt_ LPVOID lpEnvironment, _In_opt_ LPCSTR lpCurrentDirectory, _In_ LPSTARTUPINFOA lpStartupInfo, _Out_ LPPROCESS_INFORMATION lpProcessInformation) -> BOOL {
-			const bool noOperation = dwCreationFlags & (DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS);
-			const auto result = CreateProcessA.bridge(
-				lpApplicationName,
-				lpCommandLine,
-				lpProcessAttributes,
-				lpThreadAttributes,
-				bInheritHandles,
-				dwCreationFlags | (noOperation ? 0 : CREATE_SUSPENDED),
-				lpEnvironment,
-				lpCurrentDirectory,
-				lpStartupInfo,
-				lpProcessInformation);
-			if (result && !noOperation)
-				PostProcessExecution(dwCreationFlags, lpProcessInformation);
-			return result;
-		});
-	}
-
-	~Implementation() = default;
+	Implementation();
+	~Implementation();
 
 	[[nodiscard]] bool IsInjectTarget(const Utils::Win32::Process& process) const {
 		const auto path = process.PathOf();
@@ -127,7 +100,7 @@ public:
 #endif
 		if (!error.empty()) {
 			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR,
-				FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
+			                          FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
 				L"Error: {}\n\n"
 				L"isTarget={}\n"
 				L"Self: PID={}, Platform={}, Path={}\n"
@@ -143,6 +116,45 @@ public:
 			ResumeThread(lpProcessInformation->hThread);
 	}
 };
+
+App::InjectOnCreateProcessApp::Implementation::Implementation() {
+	m_cleanup += CreateProcessW.SetHook([this](_In_opt_ LPCWSTR lpApplicationName, _Inout_opt_ LPWSTR lpCommandLine, _In_opt_ LPSECURITY_ATTRIBUTES lpProcessAttributes, _In_opt_ LPSECURITY_ATTRIBUTES lpThreadAttributes, _In_ BOOL bInheritHandles, _In_ DWORD dwCreationFlags, _In_opt_ LPVOID lpEnvironment, _In_opt_ LPCWSTR lpCurrentDirectory, _In_ LPSTARTUPINFOW lpStartupInfo, _Out_ LPPROCESS_INFORMATION lpProcessInformation) -> BOOL {
+		const bool noOperation = dwCreationFlags & (DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS);
+		const auto result = CreateProcessW.bridge(
+			lpApplicationName,
+			lpCommandLine,
+			lpProcessAttributes,
+			lpThreadAttributes,
+			bInheritHandles,
+			dwCreationFlags | (noOperation ? 0 : CREATE_SUSPENDED),
+			lpEnvironment,
+			lpCurrentDirectory,
+			lpStartupInfo,
+			lpProcessInformation);
+		if (result && !noOperation)
+			PostProcessExecution(dwCreationFlags, lpProcessInformation);
+		return result;
+	});
+	m_cleanup += CreateProcessA.SetHook([this](_In_opt_ LPCSTR lpApplicationName, _Inout_opt_ LPSTR lpCommandLine, _In_opt_ LPSECURITY_ATTRIBUTES lpProcessAttributes, _In_opt_ LPSECURITY_ATTRIBUTES lpThreadAttributes, _In_ BOOL bInheritHandles, _In_ DWORD dwCreationFlags, _In_opt_ LPVOID lpEnvironment, _In_opt_ LPCSTR lpCurrentDirectory, _In_ LPSTARTUPINFOA lpStartupInfo, _Out_ LPPROCESS_INFORMATION lpProcessInformation) -> BOOL {
+		const bool noOperation = dwCreationFlags & (DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS);
+		const auto result = CreateProcessA.bridge(
+			lpApplicationName,
+			lpCommandLine,
+			lpProcessAttributes,
+			lpThreadAttributes,
+			bInheritHandles,
+			dwCreationFlags | (noOperation ? 0 : CREATE_SUSPENDED),
+			lpEnvironment,
+			lpCurrentDirectory,
+			lpStartupInfo,
+			lpProcessInformation);
+		if (result && !noOperation)
+			PostProcessExecution(dwCreationFlags, lpProcessInformation);
+		return result;
+	});
+}
+
+App::InjectOnCreateProcessApp::Implementation::~Implementation() = default;
 
 App::InjectOnCreateProcessApp::InjectOnCreateProcessApp()
 	: m_module(Utils::Win32::LoadedModule::LoadMore(Dll::Module()))
@@ -191,7 +203,7 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent, HANDLE 
 
 	try {
 		bool wasObfuscated;
-		const auto pairs = XivAlex::ParseGameCommandLine(Utils::ToUtf8(Utils::Win32::GetCommandLineWithoutProgramName()), &wasObfuscated);
+		const auto pairs = Sqex::CommandLine::FromString(Utils::ToUtf8(Utils::Win32::GetCommandLineWithoutProgramName()), &wasObfuscated);
 		if (wasObfuscated) {
 			for (const auto& [k, v] : pairs) {
 				if (k == "T") {
@@ -201,7 +213,7 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent, HANDLE 
 						// if UAC dialog took a long time, then execute again
 						if (Utils::Win32::RunProgram({
 							.path = process.PathOf(),
-							.args = Utils::FromUtf8(XivAlex::CreateGameCommandLine(pairs, true)),
+							.args = Utils::FromUtf8(Sqex::CommandLine::ToString(pairs, true)),
 							})) {
 #ifdef _DEBUG
 							Utils::Win32::MessageBoxF(nullptr, MB_OK, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1, L"DEBUG: Restarting due to tick count difference of {} between encryption timestamp and now.", now - time);

@@ -1,15 +1,13 @@
 #pragma once
 
-#include <string>
-#include <filesystem>
 #include <chrono>
+#include <filesystem>
 #include <set>
+#include <string>
 
 namespace XivAlex {
-	[[nodiscard]]
-	std::tuple<std::wstring, std::wstring> ResolveGameReleaseRegion();
-	[[nodiscard]]
-	std::tuple<std::wstring, std::wstring> ResolveGameReleaseRegion(const std::filesystem::path& path);
+	[[nodiscard]] std::tuple<std::wstring, std::wstring> ResolveGameReleaseRegion();
+	[[nodiscard]] std::tuple<std::wstring, std::wstring> ResolveGameReleaseRegion(const std::filesystem::path& path);
 
 	struct VersionInformation {
 		std::string Name;
@@ -35,13 +33,6 @@ namespace XivAlex {
 	};
 
 	std::map<GameRegion, GameRegionInfo> FindGameLaunchers();
-
-	std::vector<std::pair<std::string, std::string>> ParseGameCommandLine(std::string source, bool* wasObfuscated = nullptr);
-	std::string CreateGameCommandLine(const std::vector<std::pair<std::string, std::string>>& map, bool obfuscate);
-
-	extern const std::string SqexChecksumTable;
-	void SqexBlowfishModifier(std::string& s);
-	std::vector<std::string> SqexSplit(const std::string& source, char delim, size_t maxc);
 
 	const wchar_t GameExecutable32NameW[] = L"ffxiv.exe";
 	const wchar_t GameExecutable64NameW[] = L"ffxiv_dx11.exe";

@@ -1,10 +1,14 @@
 #pragma once
 
+namespace App {
+	enum class LogCategory;
+}
+
 namespace App::Network::Structures {
 
 	struct FFXIVBundle {
 		uint8_t Magic[16];
-		uint64_t Timestamp;		// 16 ~ 23
+		int64_t Timestamp;		// 16 ~ 23
 		uint32_t TotalLength;	// 24 ~ 27
 		uint16_t ConnType;		// 28 ~ 29
 		uint16_t MessageCount;	// 30 ~ 31
@@ -59,7 +63,7 @@ namespace App::Network::Structures {
 
 	struct KeepAliveMessageData {
 		uint32_t Id;
-		uint32_t Epoch;
+		int32_t Epoch;
 	};
 
 	namespace IPCMessageDataType {
@@ -205,7 +209,7 @@ namespace App::Network::Structures {
 		uint16_t SubType;
 		uint16_t Unknown1;
 		uint16_t ServerId;
-		uint32_t Epoch;
+		int32_t Epoch;
 		uint32_t Unknown2;
 		union {
 			uint8_t Raw[1];

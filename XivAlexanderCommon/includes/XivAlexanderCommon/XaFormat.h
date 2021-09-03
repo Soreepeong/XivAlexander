@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <string>
 
-#include "Utils__String.h"
+#include "XaStrings.h"
 
 template<class CharT>
 struct std::formatter<std::filesystem::path, CharT> : std::formatter<std::basic_string<CharT>, CharT> {

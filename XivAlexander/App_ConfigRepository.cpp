@@ -1,5 +1,12 @@
 #include "pch.h"
 #include "App_ConfigRepository.h"
+
+#include <XivAlexanderCommon/Utils_Win32_Process.h>
+#include <XivAlexanderCommon/Utils_Win32_Resource.h>
+#include <XivAlexanderCommon/XivAlex.h>
+
+#include "App_Misc_Logger.h"
+#include "DllMain.h"
 #include "resource.h"
 
 std::weak_ptr<App::Config> App::Config::s_instance;
@@ -41,7 +48,7 @@ const std::map<App::Config::GameRegion, int> App::Config::RegionResourceIdMap{
 App::Config::BaseRepository::BaseRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey)
 	: m_pConfig(pConfig)
 	, m_sConfigPath(std::move(path))
-	, m_parentKey(parentKey)
+	, m_parentKey(std::move(parentKey))
 	, m_logger(Misc::Logger::Acquire()) {
 }
 

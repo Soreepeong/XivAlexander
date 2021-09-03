@@ -4,154 +4,171 @@
     <Filter Include="Project Items">
       <UniqueIdentifier>{5414d1f9-ea36-49e7-9889-80e52683e767}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Exported">
-      <UniqueIdentifier>{23942193-c486-4e9b-b2fa-c1c26b2fb77a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Implementation">
-      <UniqueIdentifier>{a4f3a325-f8b4-4316-b70a-af3928520783}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Implementation\Root">
-      <UniqueIdentifier>{b7e5751c-b37d-4bf8-892b-e263b03e9cd3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Implementation\UtilityClasses">
-      <UniqueIdentifier>{fb3faa0c-99de-4bc7-a260-a0e96bdf543a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Implementation\Win32">
+    <Filter Include="Windows API Wrappers">
       <UniqueIdentifier>{0410d4d2-87ce-4c44-ab8d-6f291e90fa04}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Implementation\Sqex">
+    <Filter Include="Utility Classes">
+      <UniqueIdentifier>{fb3faa0c-99de-4bc7-a260-a0e96bdf543a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Square Enix Definitions">
       <UniqueIdentifier>{168fc05a-7df1-4d84-a1d5-5f17ef42040e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utility Functions">
+      <UniqueIdentifier>{b7e5751c-b37d-4bf8-892b-e263b03e9cd3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Square Enix Definitions\Game Resource Files">
+      <UniqueIdentifier>{ade84eab-1151-42fb-a0df-f3904367280b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Square Enix Definitions\Game Resource Files\Texture %28.tex%29">
+      <UniqueIdentifier>{af403510-02b3-40bc-8446-bf5c09b85738}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29">
+      <UniqueIdentifier>{8b7c10fb-b24b-45bd-9692-9cdb1b369eab}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Square Enix Definitions\Game Resource Files\Model %28.mdl%29">
+      <UniqueIdentifier>{8c4c35c7-a38b-4b9b-989c-62c79f7856db}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29">
+      <UniqueIdentifier>{2e64594b-fceb-4f41-a5d7-476d2263bcb3}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
       <Filter>Project Items</Filter>
     </ClInclude>
-    <ClInclude Include="Utils_Win32_InjectedModule.h">
-      <Filter>Implementation\Win32</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex.h">
+      <Filter>Square Enix Definitions</Filter>
     </ClInclude>
-    <ClInclude Include="Utils_Win32.h">
-      <Filter>Implementation\Win32</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\XaMisc.h">
+      <Filter>Utility Functions</Filter>
     </ClInclude>
-    <ClInclude Include="Utils_Win32_Closeable.h">
-      <Filter>Implementation\Win32</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\XaStrings.h">
+      <Filter>Utility Functions</Filter>
     </ClInclude>
-    <ClInclude Include="Utils_ListenerManager.h">
-      <Filter>Implementation\UtilityClasses</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\XaZlib.h">
+      <Filter>Utility Functions</Filter>
     </ClInclude>
-    <ClInclude Include="Utils_NumericStatisticsTracker.h">
-      <Filter>Implementation\UtilityClasses</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_CallOnDestruction.h">
+      <Filter>Utility Classes</Filter>
     </ClInclude>
-    <ClInclude Include="Utils_CallOnDestruction.h">
-      <Filter>Implementation\UtilityClasses</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_ListenerManager.h">
+      <Filter>Utility Classes</Filter>
     </ClInclude>
-    <ClInclude Include="XivAlex.h">
-      <Filter>Implementation</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_NumericStatisticsTracker.h">
+      <Filter>Utility Classes</Filter>
     </ClInclude>
-    <ClInclude Include="Utils__Zlib.h">
-      <Filter>Implementation\Root</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32.h">
+      <Filter>Windows API Wrappers</Filter>
     </ClInclude>
-    <ClInclude Include="Utils__Misc.h">
-      <Filter>Implementation\Root</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_Closeable.h">
+      <Filter>Windows API Wrappers</Filter>
     </ClInclude>
-    <ClInclude Include="Utils__String.h">
-      <Filter>Implementation\Root</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_Handle.h">
+      <Filter>Windows API Wrappers</Filter>
     </ClInclude>
-    <ClInclude Include="CustomFormatter.h">
-      <Filter>Implementation</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_HeapAllocator.h">
+      <Filter>Windows API Wrappers</Filter>
     </ClInclude>
-    <ClInclude Include="Utils_Win32_Process.h">
-      <Filter>Implementation\Win32</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_InjectedModule.h">
+      <Filter>Windows API Wrappers</Filter>
     </ClInclude>
-    <ClInclude Include="XivAlexanderCommon\XivAlexanderCommon.h">
-      <Filter>Exported</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_LoadedModule.h">
+      <Filter>Windows API Wrappers</Filter>
     </ClInclude>
-    <ClInclude Include="Utils_Win32_Handle.h">
-      <Filter>Implementation\Win32</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_Process.h">
+      <Filter>Windows API Wrappers</Filter>
     </ClInclude>
-    <ClInclude Include="Utils_Win32_LoadedModule.h">
-      <Filter>Implementation\Win32</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_Resource.h">
+      <Filter>Windows API Wrappers</Filter>
     </ClInclude>
-    <ClInclude Include="Utils_Win32_Resource.h">
-      <Filter>Implementation\Win32</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_CommandLine.h">
+      <Filter>Square Enix Definitions</Filter>
     </ClInclude>
-    <ClInclude Include="Utils_Win32_HeapAllocator.h">
-      <Filter>Implementation\Win32</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv.h">
+      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex_Common.h">
-      <Filter>Implementation\Sqex</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_ModifiableFontCsvStream.h">
+      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex_FontCsv.h">
-      <Filter>Implementation\Sqex</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_Virtual.h">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex_Sqpack.h">
-      <Filter>Implementation\Sqex</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack.h">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex_Sqpack_Reader.h">
-      <Filter>Implementation\Sqex</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_Reader.h">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClInclude>
-    <ClInclude Include="XivAlexanderCommon\Sqex.h">
-      <Filter>Exported</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Model.h">
+      <Filter>Square Enix Definitions\Game Resource Files\Model %28.mdl%29</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex_Sqpack_Virtual.h">
-      <Filter>Implementation\Sqex</Filter>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Texture.h">
+      <Filter>Square Enix Definitions\Game Resource Files\Texture %28.tex%29</Filter>
     </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\XaFormat.h">
+      <Filter>Utility Functions</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\XivAlex.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
       <Filter>Project Items</Filter>
     </ClCompile>
     <ClCompile Include="Utils_Win32.cpp">
-      <Filter>Implementation\Win32</Filter>
+      <Filter>Windows API Wrappers</Filter>
     </ClCompile>
     <ClCompile Include="Utils_Win32_InjectedModule.cpp">
-      <Filter>Implementation\Win32</Filter>
+      <Filter>Windows API Wrappers</Filter>
     </ClCompile>
     <ClCompile Include="Utils_CallOnDestruction.cpp">
-      <Filter>Implementation\UtilityClasses</Filter>
+      <Filter>Utility Classes</Filter>
     </ClCompile>
     <ClCompile Include="Utils_NumericStatisticsTracker.cpp">
-      <Filter>Implementation\UtilityClasses</Filter>
+      <Filter>Utility Classes</Filter>
     </ClCompile>
-    <ClCompile Include="XivAlex.cpp">
-      <Filter>Implementation</Filter>
+    <ClCompile Include="XaStrings.cpp">
+      <Filter>Utility Functions</Filter>
     </ClCompile>
-    <ClCompile Include="Utils__String.cpp">
-      <Filter>Implementation\Root</Filter>
+    <ClCompile Include="XaZlib.cpp">
+      <Filter>Utility Functions</Filter>
     </ClCompile>
-    <ClCompile Include="Utils__Zlib.cpp">
-      <Filter>Implementation\Root</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils__Misc.cpp">
-      <Filter>Implementation\Root</Filter>
+    <ClCompile Include="XaMisc.cpp">
+      <Filter>Utility Functions</Filter>
     </ClCompile>
     <ClCompile Include="Utils_Win32_LoadedModule.cpp">
-      <Filter>Implementation\Win32</Filter>
+      <Filter>Windows API Wrappers</Filter>
     </ClCompile>
     <ClCompile Include="Utils_Win32_Process.cpp">
-      <Filter>Implementation\Win32</Filter>
+      <Filter>Windows API Wrappers</Filter>
     </ClCompile>
     <ClCompile Include="Utils_Win32_Handle.cpp">
-      <Filter>Implementation\Win32</Filter>
+      <Filter>Windows API Wrappers</Filter>
     </ClCompile>
     <ClCompile Include="Utils_Win32_Resource.cpp">
-      <Filter>Implementation\Win32</Filter>
+      <Filter>Windows API Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex.cpp">
+      <Filter>Square Enix Definitions</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_CommandLine.cpp">
+      <Filter>Square Enix Definitions</Filter>
     </ClCompile>
     <ClCompile Include="Sqex_FontCsv.cpp">
-      <Filter>Implementation\Sqex</Filter>
+      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sqpack.cpp">
-      <Filter>Implementation\Sqex</Filter>
+    <ClCompile Include="Sqex_FontCsv_ModifiableFontCsvStream.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
     <ClCompile Include="Sqex_Sqpack_Reader.cpp">
-      <Filter>Implementation\Sqex</Filter>
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClCompile>
     <ClCompile Include="Sqex_Sqpack_Virtual.cpp">
-      <Filter>Implementation\Sqex</Filter>
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Common.cpp">
-      <Filter>Implementation\Sqex</Filter>
+    <ClCompile Include="Sqex_Sqpack.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClCompile>
+    <ClCompile Include="XivAlex.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json">

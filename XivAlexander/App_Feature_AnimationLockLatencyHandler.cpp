@@ -1,11 +1,15 @@
 ﻿#include "pch.h"
 #include "App_Feature_AnimationLockLatencyHandler.h"
+
+#include <XivAlexanderCommon/XaMisc.h>
+
+#include "App_ConfigRepository.h"
+#include "App_Misc_Logger.h"
 #include "App_Network_SocketHook.h"
 #include "App_Network_Structures.h"
 #include "resource.h"
 
-class App::Feature::AnimationLockLatencyHandler::Implementation {
-public:
+struct App::Feature::AnimationLockLatencyHandler::Implementation {
 	// Server responses have been usually taking between 50ms and 100ms on below-1ms
 	// latency to server, so 75ms is a good average.
 	// The server will do sanity check on the frequency of action use requests,
@@ -26,8 +30,8 @@ public:
 		struct PendingAction {
 			uint32_t ActionId;
 			uint32_t Sequence;
-			uint64_t RequestTimestamp;
-			uint64_t ResponseTimestamp = 0;
+			int64_t RequestTimestamp;
+			int64_t ResponseTimestamp = 0;
 			bool CastFlag = false;
 			int64_t OriginalWaitTime = 0;
 			int64_t WaitTimeAdjustment = 0;
@@ -38,9 +42,8 @@ public:
 				, RequestTimestamp(0) {
 			}
 
-			static uint64_t Now() {
-				// return Utils::GetHighPerformanceCounter();
-				return GetTickCount64();
+			static int64_t Now() {
+				return static_cast<int64_t>(GetTickCount64());
 			}
 
 			explicit PendingAction(const Network::Structures::IPCMessageDataType::C2S_ActionRequest& request)
@@ -55,10 +58,10 @@ public:
 		// This will result in cancellation of following actions, so to prevent this, we keep track of outgoing action
 		// request timestamps, and stack up required animation lock time responses from server.
 		// The game will only process the latest animation lock duration information.
-		std::deque<PendingAction> m_pendingActions;
+		std::deque<PendingAction> m_pendingActions{};
 		PendingAction m_latestSuccessfulRequest;
-		uint64_t m_lastAnimationLockEndsAt = 0;
-		std::map<int, uint64_t> m_originalWaitTimeMap;
+		int64_t m_lastAnimationLockEndsAt = 0;
+		std::map<int, int64_t> m_originalWaitTimeMap{};
 		Utils::NumericStatisticsTracker m_earlyRequestsDuration{ 32, 0 };
 
 		Implementation* m_pImpl;
@@ -79,7 +82,7 @@ public:
 						const auto& actionRequest = pMessage->Data.IPC.Data.C2S_ActionRequest;
 						m_pendingActions.emplace_back(actionRequest);
 
-						const auto delay = static_cast<int64_t>(m_pendingActions.back().RequestTimestamp - m_lastAnimationLockEndsAt);
+						const auto delay = m_pendingActions.back().RequestTimestamp - m_lastAnimationLockEndsAt;
 
 						if (delay < 0) {
 							if (runtimeConfig.UseEarlyPenalty) {
@@ -201,7 +204,7 @@ public:
 									originalWaitTime, waitTime);
 							} else if (waitTime != originalWaitTime) {
 								if (!runtimeConfig.UseHighLatencyMitigationPreviewMode) {
-									actionEffect.AnimationLockDuration = waitTime / 1000.f;
+									actionEffect.AnimationLockDuration = static_cast<float>(waitTime) / 1000.f;
 									m_latestSuccessfulRequest.WaitTimeAdjustment = waitTime - originalWaitTime;
 								}
 								description << std::format(" wait={}ms->{}ms", originalWaitTime, waitTime);
@@ -385,7 +388,7 @@ public:
 
 	const std::shared_ptr<Misc::Logger> m_logger;
 	Network::SocketHook* const m_socketHook;
-	std::map<Network::SingleConnection*, std::unique_ptr<SingleConnectionHandler>> m_handlers;
+	std::map<Network::SingleConnection*, std::unique_ptr<SingleConnectionHandler>> m_handlers{};
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
 	Implementation(Network::SocketHook* socketHook)

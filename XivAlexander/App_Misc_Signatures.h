@@ -1,4 +1,5 @@
 #pragma once
+
 #include <vector>
 
 namespace App::Misc::Signatures {
@@ -6,8 +7,7 @@ namespace App::Misc::Signatures {
 	typedef bool (*SectionFilter)(const IMAGE_SECTION_HEADER&);
 	bool SectionFilterTextOnly(const IMAGE_SECTION_HEADER& pSectionHeader);
 
-	[[nodiscard]]
-	std::vector<void*> LookupForData(SectionFilter lookupInSection, const char* sPattern, const char* sMask, size_t length, const std::vector<size_t>& nextOffsets);
+	[[nodiscard]] std::vector<void*> LookupForData(SectionFilter lookupInSection, const char* sPattern, const char* sMask, size_t length, const std::vector<size_t>& nextOffsets);
 
 	template<typename T>
 	class Signature {

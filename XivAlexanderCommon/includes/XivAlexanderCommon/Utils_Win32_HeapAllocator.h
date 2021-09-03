@@ -1,12 +1,7 @@
-// ReSharper disable CppClangTidyCppcoreguidelinesSpecialMemberFunctions
-// ReSharper disable CppNonExplicitConvertingConstructor
 #pragma once
 
+#include <heapapi.h>
 #include <memory>
-
-#define NOMINMAX
-#include <Windows.h>
-
 #include "Utils_Win32_Closeable.h"
 
 namespace Utils::Win32 {

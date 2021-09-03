@@ -1,18 +1,18 @@
 #include "pch.h"
-#include "Utils__Misc.h"
+#include "XaMisc.h"
 
 #include "Utils_Win32.h"
-#include "Utils__String.h"
+#include "XaStrings.h"
 
-SYSTEMTIME Utils::EpochToLocalSystemTime(uint64_t epochMilliseconds) {
+SYSTEMTIME Utils::EpochToLocalSystemTime(int64_t epochMilliseconds) {
 	union {
-		FILETIME ft;
+		FILETIME ft{};
 		LARGE_INTEGER li;
 	};
 	FILETIME lft;
 	SYSTEMTIME st;
 
-	li.QuadPart = epochMilliseconds * 10 * 1000ULL + 116444736000000000ULL;
+	li.QuadPart = epochMilliseconds * 10 * 1000 + 116444736000000000LL;
 	FileTimeToLocalFileTime(&ft, &lft);
 	FileTimeToSystemTime(&lft, &st);
 	return st;
@@ -25,13 +25,15 @@ int64_t Utils::GetHighPerformanceCounter(int32_t multiplier) {
 	return time.QuadPart * multiplier / freq.QuadPart;
 }
 
-static int sockaddr_cmp_helper(int x, int y) {
+template<typename T>
+int sockaddr_cmp_helper(T x, T y) {
 	if (x < y)
 		return -1;
 	else if (x > y)
 		return 1;
 	return 0;
 }
+
 static int sockaddr_cmp_helper(int x) {
 	return x;
 }
@@ -59,7 +61,7 @@ int Utils::CompareSockaddr(const void* x, const void* y) {
 
 in_addr Utils::ParseIp(const std::string& s) {
 	in_addr addr{};
-	switch (inet_pton(AF_INET, &s[0], &addr)) {
+	switch (const auto res = inet_pton(AF_INET, &s[0], &addr); res) {
 		case 1:
 			return addr;
 		case 0:
@@ -67,7 +69,7 @@ in_addr Utils::ParseIp(const std::string& s) {
 		case -1:
 			throw Win32::Error(WSAGetLastError(), "Failed to parse IP address \"{}\".", s);
 		default:
-			mark_unreachable_code();
+			throw std::runtime_error(std::format("Invalid result from inet_pton: {}", res));
 	}
 }
 

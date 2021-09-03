@@ -1,8 +1,5 @@
 #pragma once
 
-#include <span>
-#include <windef.h>
-
 #include "Utils_Win32_Closeable.h"
 
 namespace Utils::Win32 {
@@ -21,15 +18,18 @@ namespace Utils::Win32 {
 		static LoadedModule LoadMore(const LoadedModule& module);
 
 		template<typename T>
-		T* GetProcAddress(const char* szName, bool throwIfNotFound = false) const {
-			const auto result = reinterpret_cast<T*>(::GetProcAddress(m_object, szName));
+		T GetProcAddress(const char* szName, bool throwIfNotFound = false) const {
+#pragma warning(push)
+#pragma warning(disable: 4191)
+			const auto result = reinterpret_cast<T>(::GetProcAddress(m_object, szName));
+#pragma warning(pop)
 			if (throwIfNotFound && !result)
 				throw std::runtime_error(std::format("Function \"{}\" not found", szName));
 			return result;
 		}
 
 		[[nodiscard]] std::filesystem::path PathOf() const;
-
+		
 		void Pin() const;
 	};
 }

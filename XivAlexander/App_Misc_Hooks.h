@@ -1,5 +1,8 @@
 #pragma once
 
+#include <XivAlexanderCommon/Utils_CallOnDestruction.h>
+#include <XivAlexanderCommon/Utils_Win32_HeapAllocator.h>
+#include <XivAlexanderCommon/Utils_Win32_Process.h>
 #include "App_Misc_Signatures.h"
 
 namespace App::Misc::Hooks {

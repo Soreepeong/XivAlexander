@@ -166,9 +166,6 @@
     <ClInclude Include="App_InjectOnCreateProcessApp_x86.h">
       <Filter>App\Apps</Filter>
     </ClInclude>
-    <ClInclude Include="XivAlexander\XivAlexander.h">
-      <Filter>Exported</Filter>
-    </ClInclude>
     <ClInclude Include="DllMain.h" />
     <ClInclude Include="App_Feature_GameResourceOverrider.h">
       <Filter>App\Feature</Filter>
@@ -178,6 +175,9 @@
     </ClInclude>
     <ClInclude Include="resource_ja.h">
       <Filter>Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\XivAlexander\XivAlexander.h">
+      <Filter>Exported</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -11,6 +11,7 @@
     "minhook",
     "curlpp",
     "zydis",
-    "cryptopp"
+    "cryptopp",
+    "freetype"
   ]
 }

@@ -1,8 +1,9 @@
 #pragma once
 
+#include <filesystem>
 #include <span>
-#include <vector>
 #include <string>
+#include <vector>
 #include <windef.h>
 
 namespace Utils::Win32 {
@@ -38,7 +39,7 @@ namespace Utils::Win32 {
 
 	std::string FormatWindowsErrorMessage(unsigned int errorCode);
 
-	std::pair<std::string, std::string> FormatModuleVersionString(void* pBlock);
+	std::pair<std::string, std::string> FormatModuleVersionString(const void* pBlock);
 	std::pair<std::string, std::string> FormatModuleVersionString(const std::filesystem::path& path);
 	std::pair<std::string, std::string> FormatModuleVersionString(HMODULE hModule);
 
@@ -95,6 +96,6 @@ namespace Utils::Win32 {
 			: Error(errorCode, std::format(format, std::move(arg1), std::forward<Args>(args)...)) {
 		}
 
-		[[nodiscard]] int Code() const;
+		[[nodiscard]] DWORD Code() const;
 	};
 }

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <XivAlexanderCommon/Utils_ListenerManager.h>
+#include <XivAlexanderCommon/Utils_Win32_Resource.h>
+
 namespace App {
 	enum class LogLevel {
 		Unset = 0,
@@ -18,6 +21,7 @@ namespace App {
 		GameResourceOverrider,
 	};
 }
+
 namespace App::Misc {
 	class Logger {
 	public:
@@ -29,11 +33,11 @@ namespace App::Misc {
 			LogLevel level;
 			std::string log;
 
-			SYSTEMTIME TimestampAsLocalSystemTime() const;
+			[[nodiscard]] SYSTEMTIME TimestampAsLocalSystemTime() const;
 		};
 
 	protected:
-		class Implementation;
+		struct Implementation;
 		const std::unique_ptr<Implementation> m_pImpl;
 
 		class LoggerCreator;
@@ -76,14 +80,18 @@ namespace App::Misc {
 			Log(category, std::format(reinterpret_cast<const char*>(format), std::forward<Args>(args)...), Level);
 		}
 
+	private:
+		static const wchar_t* GetStringResource(UINT uStringResFormatId, WORD wLanguage = MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL));
+
+	public:
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
 		void Format(LogCategory category, WORD wLanguage, UINT uStringResFormatId, Args ... args) {
-			Log(category, std::format(FindStringResourceEx(Dll::Module(), uStringResFormatId, wLanguage) + 1, std::forward<Args>(args)...), Level);
+			Log(category, std::format(GetStringResource(uStringResFormatId, wLanguage), std::forward<Args>(args)...), Level);
 		}
 
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
 		void FormatDefaultLanguage(LogCategory category, UINT uStringResFormatId, Args ... args) {
-			Log(category, std::format(FindStringResourceEx(Dll::Module(), uStringResFormatId) + 1, std::forward<Args>(args)...), Level);
+			Log(category, std::format(GetStringResource(uStringResFormatId), std::forward<Args>(args)...), Level);
 		}
 	};
 }

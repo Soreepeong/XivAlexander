@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Utils__Zlib.h"
+#include "XaZlib.h"
 
 std::vector<uint8_t> Utils::ZlibDecompress(const uint8_t* src, size_t length) {
 	z_stream stream{};

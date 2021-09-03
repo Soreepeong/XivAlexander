@@ -1,8 +1,14 @@
 #include "pch.h"
-#include "Sqex.h"
 #include "App_Feature_GameResourceOverrider.h"
+
+#include <XivAlexanderCommon/Sqex_Sqpack.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_Virtual.h>
+#include <XivAlexanderCommon/Utils_Win32_Process.h>
+
+#include "App_ConfigRepository.h"
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_Hooks.h"
+#include "App_Misc_Logger.h"
 
 static constexpr bool DebugFlag_PassthroughFileApi = false;
 
@@ -46,13 +52,12 @@ public:
 	};
 };
 
-class App::Feature::GameResourceOverrider::Implementation {
-public:
+struct App::Feature::GameResourceOverrider::Implementation {
 	const std::shared_ptr<Config> m_config;
 	const std::shared_ptr<Misc::Logger> m_logger;
 	const std::shared_ptr<Misc::DebuggerDetectionDisabler> m_debugger;
-	std::vector<std::unique_ptr<Misc::Hooks::PointerFunction<uint32_t, uint32_t, const char*, size_t>>> fns;
-	std::set<std::string> m_alreadyLogged;
+	std::vector<std::unique_ptr<Misc::Hooks::PointerFunction<uint32_t, uint32_t, const char*, size_t>>> fns{};
+	std::set<std::string> m_alreadyLogged{};
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
 	Misc::Hooks::ImportedFunction<HANDLE, LPCWSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE> CreateFileW{ "kernel32::CreateFileW", "kernel32.dll", "CreateFileW" };
@@ -78,8 +83,8 @@ public:
 	};
 
 	std::mutex m_virtualPathMapMutex;
-	std::map<HANDLE, std::unique_ptr<VirtualPath>> m_virtualPathMap;
-	std::set<std::filesystem::path> m_ignoredIndexFiles;
+	std::map<HANDLE, std::unique_ptr<VirtualPath>> m_virtualPathMap{};
+	std::set<std::filesystem::path> m_ignoredIndexFiles{};
 	std::atomic<int> m_stk;
 
 	class AtomicIntEnter {
@@ -477,17 +482,20 @@ public:
 	}
 };
 
-App::Feature::GameResourceOverrider::GameResourceOverrider() {
+std::shared_ptr<App::Feature::GameResourceOverrider::Implementation> App::Feature::GameResourceOverrider::AcquireImplementation() {
 	static std::mutex mtx;
-	m_pImpl = s_pImpl.lock();
+	auto m_pImpl = s_pImpl.lock();
 	if (!m_pImpl) {
 		std::lock_guard lock(mtx);
 		m_pImpl = s_pImpl.lock();
 		if (!m_pImpl)
 			s_pImpl = m_pImpl = std::make_unique<Implementation>();
 	}
+	return m_pImpl;
 }
 
-App::Feature::GameResourceOverrider::~GameResourceOverrider() {
-	m_pImpl = nullptr;
+App::Feature::GameResourceOverrider::GameResourceOverrider()
+	: m_pImpl(AcquireImplementation()) {
 }
+
+App::Feature::GameResourceOverrider::~GameResourceOverrider() = default;

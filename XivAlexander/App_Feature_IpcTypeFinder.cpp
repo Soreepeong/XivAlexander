@@ -1,11 +1,11 @@
 #include "pch.h"
 #include "App_Feature_IpcTypeFinder.h"
+
+#include "App_Misc_Logger.h"
 #include "App_Network_SocketHook.h"
 #include "App_Network_Structures.h"
 
-class App::Feature::IpcTypeFinder::Implementation {
-public:
-
+struct App::Feature::IpcTypeFinder::Implementation {
 	class SingleConnectionHandler {
 	public:
 		Implementation* m_pImpl;

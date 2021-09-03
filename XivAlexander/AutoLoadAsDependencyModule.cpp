@@ -1,8 +1,16 @@
 #include "pch.h"
-#include "XivAlexander/XivAlexander.h"
-#include "App_Feature_GameResourceOverrider.h"
-#include "resource.h"
+
+#define DIRECTINPUT_VERSION 0x0800
+
 #include <dinput.h>
+#include <XivAlexander/XivAlexander.h>
+#include <XivAlexanderCommon/Utils_Win32.h>
+#include <XivAlexanderCommon/Utils_Win32_Resource.h>
+
+#include "App_ConfigRepository.h"
+#include "App_Feature_GameResourceOverrider.h"
+#include "DllMain.h"
+#include "resource.h"
 
 static Utils::Win32::LoadedModule EnsureOriginalDependencyModule(const char* szDllName, std::filesystem::path originalDllPath);
 static void AutoLoadAsDependencyModule();
@@ -13,7 +21,6 @@ static void AutoLoadAsDependencyModuleError(const std::runtime_error& e);
 #if INTPTR_MAX == INT64_MAX
 
 #include <d3d11.h>
-#include <dxgi.h>
 #include <dxgi1_3.h>
 
 HRESULT WINAPI FORWARDER_D3D11CreateDevice(
@@ -30,10 +37,10 @@ HRESULT WINAPI FORWARDER_D3D11CreateDevice(
 ) {
 	try {
 		AutoLoadAsDependencyModule();
-		
+
 		static auto pOriginalFunction =
 			EnsureOriginalDependencyModule("d3d11.dll", App::Config::Config::TranslatePath(App::Config::Acquire()->Init.ChainLoadPath_d3d11))
-			.GetProcAddress<decltype(D3D11CreateDevice)>("D3D11CreateDevice", true);
+			.GetProcAddress<decltype(&D3D11CreateDevice)>("D3D11CreateDevice", true);
 		return pOriginalFunction(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
 	} catch (const std::runtime_error& e) {
 		AutoLoadAsDependencyModuleError(e);
@@ -48,7 +55,7 @@ HRESULT WINAPI FORWARDER_CreateDXGIFactory(
 		AutoLoadAsDependencyModule();
 		static auto pOriginalFunction =
 			EnsureOriginalDependencyModule("dxgi.dll", App::Config::Config::TranslatePath(App::Config::Acquire()->Init.ChainLoadPath_dxgi))
-			.GetProcAddress<decltype(CreateDXGIFactory)>("CreateDXGIFactory", true);
+			.GetProcAddress<decltype(&CreateDXGIFactory)>("CreateDXGIFactory", true);
 		return pOriginalFunction(riid, ppFactory);
 	} catch (const std::runtime_error& e) {
 		AutoLoadAsDependencyModuleError(e);
@@ -63,7 +70,7 @@ HRESULT WINAPI FORWARDER_CreateDXGIFactory1(
 		AutoLoadAsDependencyModule();
 		static auto pOriginalFunction =
 			EnsureOriginalDependencyModule("dxgi.dll", App::Config::Config::TranslatePath(App::Config::Acquire()->Init.ChainLoadPath_dxgi))
-			.GetProcAddress<decltype(CreateDXGIFactory1)>("CreateDXGIFactory1", true);
+			.GetProcAddress<decltype(&CreateDXGIFactory1)>("CreateDXGIFactory1", true);
 		return pOriginalFunction(riid, ppFactory);
 	} catch (const std::runtime_error& e) {
 		AutoLoadAsDependencyModuleError(e);
@@ -79,7 +86,7 @@ HRESULT WINAPI FORWARDER_CreateDXGIFactory2(
 		AutoLoadAsDependencyModule();
 		static auto pOriginalFunction =
 			EnsureOriginalDependencyModule("dxgi.dll", App::Config::Config::TranslatePath(App::Config::Acquire()->Init.ChainLoadPath_dxgi))
-			.GetProcAddress<decltype(CreateDXGIFactory2)>("CreateDXGIFactory2", true);
+			.GetProcAddress<decltype(&CreateDXGIFactory2)>("CreateDXGIFactory2", true);
 		return pOriginalFunction(Flags, riid, ppFactory);
 	} catch (const std::runtime_error& e) {
 		AutoLoadAsDependencyModuleError(e);
@@ -95,7 +102,7 @@ void WINAPI FORWARDER_D3DPERF_SetOptions(DWORD dwOptions) {
 		AutoLoadAsDependencyModule();
 		static auto pOriginalFunction =
 			EnsureOriginalDependencyModule("d3d9.dll", App::Config::Config::TranslatePath(App::Config::Acquire()->Init.ChainLoadPath_d3d9))
-			.GetProcAddress<decltype(D3DPERF_SetOptions)>("D3DPERF_SetOptions", true);
+			.GetProcAddress<decltype(&D3DPERF_SetOptions)>("D3DPERF_SetOptions", true);
 		return pOriginalFunction(dwOptions);
 	} catch (const std::runtime_error& e) {
 		AutoLoadAsDependencyModuleError(e);
@@ -107,7 +114,7 @@ IDirect3D9* WINAPI FORWARDER_Direct3DCreate9(UINT SDKVersion) {
 		AutoLoadAsDependencyModule();
 		static auto pOriginalFunction =
 			EnsureOriginalDependencyModule("d3d9.dll", App::Config::Config::TranslatePath(App::Config::Acquire()->Init.ChainLoadPath_d3d9))
-			.GetProcAddress<decltype(Direct3DCreate9)>("Direct3DCreate9", true);
+			.GetProcAddress<decltype(&Direct3DCreate9)>("Direct3DCreate9", true);
 		return pOriginalFunction(SDKVersion);
 	} catch (const std::runtime_error& e) {
 		AutoLoadAsDependencyModuleError(e);
@@ -127,7 +134,7 @@ HRESULT WINAPI FORWARDER_DirectInput8Create(
 		AutoLoadAsDependencyModule();
 		static auto pOriginalFunction =
 			EnsureOriginalDependencyModule("dinput8.dll", App::Config::Config::TranslatePath(App::Config::Acquire()->Init.ChainLoadPath_dinput8))
-			.GetProcAddress<decltype(DirectInput8Create)>("DirectInput8Create", true);
+			.GetProcAddress<decltype(&DirectInput8Create)>("DirectInput8Create", true);
 		return pOriginalFunction(hinst, dwVersion, riidltf, ppvOut, punkOuter);
 	} catch (const std::runtime_error& e) {
 		AutoLoadAsDependencyModuleError(e);
