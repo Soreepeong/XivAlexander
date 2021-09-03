@@ -61,7 +61,7 @@ std::filesystem::path Utils::Win32::LoadedModule::PathOf() const {
 	return Process::Current().PathOf(*this);
 }
 
-void Utils::Win32::LoadedModule::Pin() const {
+void Utils::Win32::LoadedModule::SetPinned() const {
 	const auto pModuleHandleAsPsz = reinterpret_cast<LPCWSTR>(m_object);
 	HMODULE dummy;
 	if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,

@@ -84,24 +84,8 @@ const std::set<const App::Window::BaseWindow*>& App::Window::BaseWindow::All() {
 	return s_allBaseWindows;
 }
 
-HWND App::Window::BaseWindow::GetHandle() const {
-	return m_hWnd;
-}
-
-bool App::Window::BaseWindow::IsDestroyed() const {
-	return m_bDestroyed;
-}
-
 bool App::Window::BaseWindow::IsDialogLike() const {
 	return false;
-}
-
-HACCEL App::Window::BaseWindow::GetWindowAcceleratorTable() const {
-	return m_hAcceleratorWindow;
-}
-
-HACCEL App::Window::BaseWindow::GetThreadAcceleratorTable() const {
-	return m_hAcceleratorThread;
 }
 
 LRESULT App::Window::BaseWindow::RunOnUiThreadWait(const std::function<LRESULT()>& fn) {

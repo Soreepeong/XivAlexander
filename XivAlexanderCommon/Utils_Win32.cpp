@@ -441,7 +441,3 @@ Utils::Win32::Error::Error(DWORD errorCode, const std::string& msg)
 
 Utils::Win32::Error::Error(const std::string& msg) : Error(GetLastError(), msg) {
 }
-
-DWORD Utils::Win32::Error::Code() const {
-	return m_nErrorCode;
-}

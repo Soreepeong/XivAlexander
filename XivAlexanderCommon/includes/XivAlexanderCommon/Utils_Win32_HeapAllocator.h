@@ -71,9 +71,7 @@ namespace Utils::Win32 {
 			HeapFree(GetHeap(), 0, p);
 		}
 
-		[[nodiscard]] HANDLE GetHeap() const {
-			return m_heap ? *m_heap : GetProcessHeap();
-		}
+		[[nodiscard]] auto GetHeap() const { return m_heap ? *m_heap : GetProcessHeap(); }
 	};
 
 	template<typename T, typename U>

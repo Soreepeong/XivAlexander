@@ -33,7 +33,7 @@ struct App::Feature::EffectApplicationDelayLogger::Implementation {
 						m_pImpl->m_logger->Format(
 							LogCategory::EffectApplicationDelayLogger,
 							"{:x}: S2C_ActionEffect({:04x}): actionId={:04x} sourceSequence={:04x} wait={}ms",
-							conn.GetSocket(),
+							conn.Socket(),
 							pMessage->Data.IPC.SubType,
 							actionEffect.ActionId,
 							actionEffect.SourceSequence,
@@ -54,7 +54,7 @@ struct App::Feature::EffectApplicationDelayLogger::Implementation {
 						m_pImpl->m_logger->Format(
 							LogCategory::EffectApplicationDelayLogger,
 							"{:x}: S2C_AddStatusEffect: relatedActionSequence={:08x} actorId={:08x} HP={}/{} MP={} shield={}{}",
-							conn.GetSocket(),
+							conn.Socket(),
 							addStatusEffect.RelatedActionSequence,
 							addStatusEffect.ActorId,
 							addStatusEffect.CurrentHp,

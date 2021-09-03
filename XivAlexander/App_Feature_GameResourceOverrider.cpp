@@ -340,7 +340,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			try {
 				uint64_t len;
 				if (vpath.PassthroughFile)
-					len = vpath.PassthroughFile.Length();
+					len = vpath.PassthroughFile.GetLength();
 				else if (vpath.PathType == VirtualPath::PathTypeIndex)
 					len = vpath.VirtualSqPack->SizeIndex1();
 				else if (vpath.PathType == VirtualPath::PathTypeIndex2)

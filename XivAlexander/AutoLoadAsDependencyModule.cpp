@@ -149,7 +149,7 @@ static Utils::Win32::LoadedModule EnsureOriginalDependencyModule(const char* szD
 		originalDllPath = Utils::Win32::GetSystem32Path() / szDllName;
 
 	auto mod = Utils::Win32::LoadedModule(originalDllPath);
-	mod.Pin();
+	mod.SetPinned();
 	return mod;
 }
 

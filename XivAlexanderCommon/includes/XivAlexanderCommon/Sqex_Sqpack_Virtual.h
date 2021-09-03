@@ -1,16 +1,31 @@
 #pragma once
 
+#include "Sqex_Sqpack.h"
 #include "Utils_Win32_Handle.h"
 
 namespace Sqex::Sqpack {
-
 	class VirtualSqPack {
 		struct Implementation;
+
+		const uint64_t m_maxFileSize;
+
+		SqpackHeader m_sqpackIndexHeader{};
+		SqIndex::Header m_sqpackIndexSubHeader{};
+		std::vector<char> m_sqpackIndexSegment2;
+		std::vector<SqIndex::Segment3Entry> m_sqpackIndexSegment3;
+
+		SqpackHeader m_sqpackIndex2Header{};
+		SqIndex::Header m_sqpackIndex2SubHeader{};
+		std::vector<char> m_sqpackIndex2Segment2;
+		std::vector<SqIndex::Segment3Entry> m_sqpackIndex2Segment3;
+
+		SqpackHeader m_sqpackDataHeader{};
+		std::vector<SqData::Header> m_sqpackDataSubHeaders;
 
 		const std::unique_ptr<Implementation> m_pImpl;
 
 	public:
-		VirtualSqPack();
+		VirtualSqPack(uint64_t maxFileSize = SqData::Header::MaxFileSize_MaxValue);
 		~VirtualSqPack();
 
 		struct AddEntryResult {

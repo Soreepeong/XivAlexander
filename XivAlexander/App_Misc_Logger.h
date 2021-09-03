@@ -33,7 +33,9 @@ namespace App::Misc {
 			LogLevel level;
 			std::string log;
 
-			[[nodiscard]] SYSTEMTIME TimestampAsLocalSystemTime() const;
+			[[nodiscard]] auto TimestampAsLocalSystemTime() const {
+				return Utils::EpochToLocalSystemTime(std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count());
+			}
 		};
 
 	protected:

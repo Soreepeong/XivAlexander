@@ -30,6 +30,6 @@ namespace Utils::Win32 {
 
 		[[nodiscard]] std::filesystem::path PathOf() const;
 		
-		void Pin() const;
+		void SetPinned() const;
 	};
 }

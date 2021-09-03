@@ -104,7 +104,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 							m_pImpl->m_logger->Format(
 								LogCategory::AnimationLockLatencyHandler,
 								"{:x}: C2S_ActionRequest({:04x}): actionId={:04x} sequence={:04x} delay={}{:+}ms prevNextRelative={}ms{}",
-								conn.GetSocket(),
+								conn.Socket(),
 								pMessage->Data.IPC.SubType,
 								actionRequest.ActionId,
 								actionRequest.Sequence,
@@ -143,7 +143,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 
 							std::stringstream description;
 							description << std::format("{:x}: S2C_ActionEffect({:04x}): actionId={:04x} sourceSequence={:04x}",
-								conn.GetSocket(),
+								conn.Socket(),
 								pMessage->Data.IPC.SubType,
 								actionEffect.ActionId,
 								actionEffect.SourceSequence);
@@ -243,7 +243,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 									m_pImpl->m_logger->Format(
 										LogCategory::AnimationLockLatencyHandler,
 										"{:x}: S2C_ActorControlSelf/ActionRejected: actionId={:04x} sourceSequence={:04x}",
-										conn.GetSocket(),
+										conn.Socket(),
 										rollback.ActionId,
 										rollback.SourceSequence);
 							}
@@ -272,7 +272,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 									m_pImpl->m_logger->Format(
 										LogCategory::AnimationLockLatencyHandler,
 										"{:x}: S2C_ActorControl/CancelCast: actionId={:04x}",
-										conn.GetSocket(),
+										conn.Socket(),
 										cancelCast.ActionId);
 							}
 
@@ -288,7 +288,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 								m_pImpl->m_logger->Format(
 									LogCategory::AnimationLockLatencyHandler,
 									"{:x}: S2C_ActorCast: actionId={:04x} time={:.3f} target={:08x}",
-									conn.GetSocket(),
+									conn.Socket(),
 									actorCast.ActionId,
 									actorCast.CastTime,
 									actorCast.TargetId);

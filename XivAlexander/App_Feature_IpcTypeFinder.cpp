@@ -42,7 +42,7 @@ struct App::Feature::IpcTypeFinder::Implementation {
 							m_pImpl->m_logger->Format(
 								LogCategory::IpcTypeFinder,
 								"{:x}: S2C_ActionEffect{:02}(0x{:04x}) length={:x} actionId={:04x} sequence={:04x} wait={:.3f}",
-								conn.GetSocket(),
+								conn.Socket(),
 								expectedCount,
 								pMessage->Data.IPC.SubType,
 								pMessage->Length,
@@ -63,7 +63,7 @@ struct App::Feature::IpcTypeFinder::Implementation {
 								m_pImpl->m_logger->Format(
 									LogCategory::IpcTypeFinder,
 									"{:x}: S2C_ActorControlSelf(0x{:04x}): Cooldown: actionId={:04x} duration={}",
-									conn.GetSocket(),
+									conn.Socket(),
 									pMessage->Data.IPC.SubType,
 									cooldown.ActionId,
 									cooldown.Duration);
@@ -74,7 +74,7 @@ struct App::Feature::IpcTypeFinder::Implementation {
 								m_pImpl->m_logger->Format(
 									LogCategory::IpcTypeFinder,
 									"{:x}: S2C_ActorControlSelf(0x{:04x}): Rollback: actionId={:04x} sourceSequence={:04x}",
-									conn.GetSocket(),
+									conn.Socket(),
 									pMessage->Data.IPC.SubType,
 									rollback.ActionId,
 									rollback.SourceSequence);
@@ -87,7 +87,7 @@ struct App::Feature::IpcTypeFinder::Implementation {
 							m_pImpl->m_logger->Format(
 								LogCategory::IpcTypeFinder,
 								"{:x}: S2C_ActorCast(0x{:04x}): actionId={:04x} time={:.3f} target={:08x}",
-								conn.GetSocket(),
+								conn.Socket(),
 								pMessage->Data.IPC.SubType,
 								pMessage->Data.IPC.Data.S2C_ActorCast.ActionId,
 								pMessage->Data.IPC.Data.S2C_ActorCast.CastTime,
@@ -102,7 +102,7 @@ struct App::Feature::IpcTypeFinder::Implementation {
 								m_pImpl->m_logger->Format(
 									LogCategory::IpcTypeFinder,
 									"{:x}: S2C_ActorControl(0x{:04x}): CancelCast: actionId={:04x}",
-									conn.GetSocket(),
+									conn.Socket(),
 									pMessage->Data.IPC.SubType,
 									cancelCast.ActionId);
 								pMessage->DebugPrint(LogCategory::IpcTypeFinder, "IpcTypeFinder", true);
@@ -126,7 +126,7 @@ struct App::Feature::IpcTypeFinder::Implementation {
 						m_pImpl->m_logger->Format(
 							LogCategory::IpcTypeFinder,
 							"{:x}: S2C_AddStatusEffect(0x{:04x}): relatedActionSequence={:08x} actorId={:08x} HP={}/{} MP={} shield={}{}",
-							conn.GetSocket(),
+							conn.Socket(),
 							pMessage->Data.IPC.SubType,
 							addStatusEffect.RelatedActionSequence,
 							addStatusEffect.ActorId,
@@ -148,7 +148,7 @@ struct App::Feature::IpcTypeFinder::Implementation {
 						m_pImpl->m_logger->Format(
 							LogCategory::IpcTypeFinder,
 							"{:x}: C2S_ActionRequest/GroundTargeted(0x{:04x}): actionId={:04x} sequence={:04x}",
-							conn.GetSocket(),
+							conn.Socket(),
 							pMessage->Data.IPC.SubType,
 							actionRequest.ActionId, actionRequest.Sequence);
 						pMessage->DebugPrint(LogCategory::IpcTypeFinder, "IpcTypeFinder", true);

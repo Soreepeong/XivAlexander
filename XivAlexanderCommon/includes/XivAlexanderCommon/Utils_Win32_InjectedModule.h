@@ -19,7 +19,7 @@ namespace Utils::Win32 {
 		InjectedModule& operator=(InjectedModule&&) noexcept;
 		~InjectedModule();
 
-		HMODULE Address() const;
+		auto Address() const { return m_rpModule; }
 
 		int Call(void* rpfn, void* rpParam, const char* pcszDescription) const;
 		int Call(const char* name, void* rpParam, const char* pcszDescription) const;

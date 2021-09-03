@@ -70,10 +70,6 @@ struct App::Misc::Logger::Implementation final {
 	}
 };
 
-SYSTEMTIME App::Misc::Logger::LogItem::TimestampAsLocalSystemTime() const {
-	return Utils::EpochToLocalSystemTime(std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count());
-}
-
 class App::Misc::Logger::LoggerCreator : public Logger {
 public:
 	LoggerCreator() = default;

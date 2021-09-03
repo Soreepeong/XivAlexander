@@ -51,6 +51,7 @@
 #include <curlpp/cURLpp.hpp>
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
+#include <freetype/freetype.h>
 #include <nlohmann/json.hpp>
 #pragma warning(pop)
 

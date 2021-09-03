@@ -53,10 +53,6 @@ Utils::Win32::InjectedModule::~InjectedModule() {
 	Clear();
 }
 
-HMODULE Utils::Win32::InjectedModule::Address() const {
-	return m_rpModule;
-}
-
 int Utils::Win32::InjectedModule::Call(void* rpfn, void* rpParam, const char* pcszDescription) const {
 	return m_hProcess.CallRemoteFunction(rpfn, rpParam, pcszDescription);
 }

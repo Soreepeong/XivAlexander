@@ -167,7 +167,6 @@ struct App::Network::SingleConnection::Implementation {
 	std::shared_ptr<Config> const m_config;
 	SingleConnection* const this_;
 	SocketHook* const hook_;
-	const SOCKET m_socket;
 	bool m_unloading = false;
 
 	std::map<size_t, std::vector<MessageMangler>> m_incomingHandlers{};
@@ -191,14 +190,13 @@ struct App::Network::SingleConnection::Implementation {
 
 	uint64_t m_nextTcpDelaySetAttempt = 0;
 
-	Implementation(SingleConnection* this_, SocketHook* hook_, SOCKET s)
+	Implementation(SingleConnection* this_, SocketHook* hook_)
 		: m_logger(Misc::Logger::Acquire())
 		, m_config(Config::Acquire())
 		, this_(this_)
-		, hook_(hook_)
-		, m_socket(s) {
+		, hook_(hook_) {
 
-		m_logger->Format(LogCategory::SocketHook, m_config->Runtime.GetLangId(), IDS_SOCKETHOOK_SOCKET_FOUND, m_socket);
+		m_logger->Format(LogCategory::SocketHook, m_config->Runtime.GetLangId(), IDS_SOCKETHOOK_SOCKET_FOUND, this_->m_socket);
 		ResolveAddresses();
 	}
 
@@ -210,14 +208,14 @@ struct App::Network::SingleConnection::Implementation {
 
 		// SIO_TCP_SET_ACK_FREQUENCY: Controls ACK delay every x ACK. Default delay is 40 or 200ms. Default value is 2 ACKs, set to 1 to disable ACK delay.
 		int freq = 1;
-		if (SOCKET_ERROR == WSAIoctl(m_socket, SIO_TCP_SET_ACK_FREQUENCY, &freq, sizeof freq, &buf, sizeof buf, &cb, nullptr, nullptr)) {
+		if (SOCKET_ERROR == WSAIoctl(this_->m_socket, SIO_TCP_SET_ACK_FREQUENCY, &freq, sizeof freq, &buf, sizeof buf, &cb, nullptr, nullptr)) {
 			m_nextTcpDelaySetAttempt = GetTickCount64() + 1000;
 			throw Utils::Win32::Error(WSAGetLastError(), "WSAIoctl(SIO_TCP_SET_ACK_FREQUENCY, 1, 0)");
 		}
 
 		// TCP_NODELAY: if enabled, sends packets as soon as possible instead of waiting for ACK or large packet.
 		int optval = 1;
-		if (SOCKET_ERROR == setsockopt(m_socket, SOL_SOCKET, TCP_NODELAY, reinterpret_cast<char*>(&optval), sizeof optval)) {
+		if (SOCKET_ERROR == setsockopt(this_->m_socket, SOL_SOCKET, TCP_NODELAY, reinterpret_cast<char*>(&optval), sizeof optval)) {
 			m_nextTcpDelaySetAttempt = GetTickCount64() + 1000;
 			throw Utils::Win32::Error(WSAGetLastError(), "setsockopt(TCP_NODELAY, 1)");
 		}
@@ -237,7 +235,7 @@ struct App::Network::SingleConnection::Implementation {
 
 	void AttemptReceive() {
 		if (auto write = m_recvRaw.Write();
-			!write.Write(std::max(0, hook_->recv.bridge(m_socket, write.Allocate<char>(65536), 65536, 0))))
+			!write.Write(std::max(0, hook_->recv.bridge(this_->m_socket, write.Allocate<char>(65536), 65536, 0))))
 			return;
 
 		ProcessRecvData();
@@ -248,7 +246,7 @@ struct App::Network::SingleConnection::Implementation {
 		if (data.empty())
 			return;
 
-		const auto sent = hook_->send.bridge(m_socket, data.data(), static_cast<int>(data.size_bytes()), 0);
+		const auto sent = hook_->send.bridge(this_->m_socket, data.data(), static_cast<int>(data.size_bytes()), 0);
 		if (sent == SOCKET_ERROR)
 			return;
 
@@ -461,9 +459,9 @@ struct App::Network::SocketHook::Implementation {
 void App::Network::SingleConnection::Implementation::ResolveAddresses() {
 	sockaddr_storage local{}, remote{};
 	socklen_t addrlen = sizeof local;
-	if (0 == getsockname(m_socket, reinterpret_cast<sockaddr*>(&local), &addrlen) && Utils::CompareSockaddr(&m_localAddress, &local)) {
+	if (0 == getsockname(this_->m_socket, reinterpret_cast<sockaddr*>(&local), &addrlen) && Utils::CompareSockaddr(&m_localAddress, &local)) {
 		m_localAddress = local;
-		m_logger->Format(LogCategory::SocketHook, "{:x}: Local={}", m_socket, Utils::ToString(local));
+		m_logger->Format(LogCategory::SocketHook, "{:x}: Local={}", this_->m_socket, Utils::ToString(local));
 
 		// Set TCP delay here because SIO_TCP_SET_ACK_FREQUENCY seems to work only when localAddress is not 0.0.0.0.
 		if (hook_->m_pImpl->m_config->Runtime.ReducePacketDelay && reinterpret_cast<sockaddr_in*>(&local)->sin_addr.s_addr != INADDR_ANY) {
@@ -475,9 +473,9 @@ void App::Network::SingleConnection::Implementation::ResolveAddresses() {
 		}
 	}
 	addrlen = sizeof remote;
-	if (0 == getpeername(m_socket, reinterpret_cast<sockaddr*>(&remote), &addrlen) && Utils::CompareSockaddr(&m_remoteAddress, &remote)) {
+	if (0 == getpeername(this_->m_socket, reinterpret_cast<sockaddr*>(&remote), &addrlen) && Utils::CompareSockaddr(&m_remoteAddress, &remote)) {
 		m_remoteAddress = remote;
-		m_logger->Format(LogCategory::SocketHook, "{:x}: Remote={}", m_socket, Utils::ToString(remote));
+		m_logger->Format(LogCategory::SocketHook, "{:x}: Remote={}", this_->m_socket, Utils::ToString(remote));
 	}
 
 	const auto& local4 = *reinterpret_cast<const sockaddr_in*>(&m_localAddress);
@@ -490,7 +488,8 @@ void App::Network::SingleConnection::Implementation::ResolveAddresses() {
 }
 
 App::Network::SingleConnection::SingleConnection(SocketHook* hook, SOCKET s)
-	: m_pImpl(std::make_unique<Implementation>(this, hook, s)) {
+	: m_socket(s)
+	, m_pImpl(std::make_unique<Implementation>(this, hook)) {
 
 }
 App::Network::SingleConnection::~SingleConnection() = default;
@@ -507,11 +506,6 @@ void App::Network::SingleConnection::RemoveMessageHandlers(void* token) {
 	this->m_pImpl->m_incomingHandlers.erase(reinterpret_cast<size_t>(token));
 	this->m_pImpl->m_outgoingHandlers.erase(reinterpret_cast<size_t>(token));
 }
-
-SOCKET App::Network::SingleConnection::GetSocket() const {
-	return m_pImpl->m_socket;
-}
-
 void App::Network::SingleConnection::ResolveAddresses() {
 	m_pImpl->ResolveAddresses();
 }
@@ -522,14 +516,14 @@ int64_t App::Network::SingleConnection::FetchSocketLatency() {
 
 	TCP_INFO_v0 info{};
 	DWORD tcpInfoVersion = 0, cb = 0;
-	if (0 != WSAIoctl(m_pImpl->m_socket, SIO_TCP_INFO, &tcpInfoVersion, sizeof tcpInfoVersion, &info, sizeof info, &cb, nullptr, nullptr)) {
+	if (0 != WSAIoctl(m_socket, SIO_TCP_INFO, &tcpInfoVersion, sizeof tcpInfoVersion, &info, sizeof info, &cb, nullptr, nullptr)) {
 		const auto err = WSAGetLastError();
-		m_pImpl->m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0: {:08x} ({})", m_pImpl->m_socket,
+		m_pImpl->m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0: {:08x} ({})", m_socket,
 			err, Utils::Win32::FormatWindowsErrorMessage(err));
 		m_pImpl->m_nIoctlTcpInfoFailureCount++;
 		return INT64_MAX;
 	} else if (cb != sizeof info) {
-		m_pImpl->m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0: buffer size mismatch ({} != {})", m_pImpl->m_socket, cb, sizeof info);
+		m_pImpl->m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0: buffer size mismatch ({} != {})", m_socket, cb, sizeof info);
 		m_pImpl->m_nIoctlTcpInfoFailureCount++;
 		return INT64_MAX;
 	} else {

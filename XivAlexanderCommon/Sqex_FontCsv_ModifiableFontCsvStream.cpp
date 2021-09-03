@@ -159,14 +159,6 @@ int Sqex::FontCsv::ModifiableFontCsvStream::GetKerningDistance(char32_t l, char3
 	return it->RightOffset;
 }
 
-const std::vector<Sqex::FontCsv::FontTableEntry>& Sqex::FontCsv::ModifiableFontCsvStream::GetFontTableEntries() const {
-	return m_fontTableEntries;
-}
-
-const std::vector<Sqex::FontCsv::KerningEntry>& Sqex::FontCsv::ModifiableFontCsvStream::GetKerningEntries() const {
-	return m_kerningEntries;
-}
-
 void Sqex::FontCsv::ModifiableFontCsvStream::AddFontEntry(char32_t c, uint16_t textureIndex, uint16_t textureOffsetX, uint16_t textureOffsetY, uint8_t boundingWidth, uint8_t boundingHeight, uint8_t nextOffsetX, uint8_t currentOffsetY) {
 	const auto val = UnicodeCodePointToUtf8Uint32(c);
 	auto it = std::lower_bound(m_fontTableEntries.begin(), m_fontTableEntries.end(), val,

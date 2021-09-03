@@ -118,7 +118,7 @@ void App::Window::MainWindow::ShowContextMenu(const BaseWindow* parent) const {
 			curPoint.x,
 			curPoint.y,
 			0,
-			parent->GetHandle(),
+			parent->Handle(),
 			nullptr
 		);
 	}
@@ -169,7 +169,7 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 
 				case ID_GLOBAL_SHOW_TRAYMENU:
 					for (const auto& w : All())
-						if (w->GetHandle() == GetForegroundWindow())
+						if (w->Handle() == GetForegroundWindow())
 							ShowContextMenu(w);
 					return 0;
 
@@ -298,14 +298,14 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 
 				case ID_TRAYMENU_CONFIGURATION_EDITRUNTIMECONFIGURATION:
 					if (m_runtimeConfigEditor && !m_runtimeConfigEditor->IsDestroyed())
-						SetForegroundWindow(m_runtimeConfigEditor->GetHandle());
+						SetForegroundWindow(m_runtimeConfigEditor->Handle());
 					else
 						m_runtimeConfigEditor = std::make_unique<ConfigWindow>(IDS_WINDOW_RUNTIME_CONFIG_EDITOR, &m_config->Runtime);
 					return 0;
 
 				case ID_TRAYMENU_CONFIGURATION_EDITOPCODECONFIGURATION:
 					if (m_gameConfigEditor && !m_gameConfigEditor->IsDestroyed())
-						SetForegroundWindow(m_gameConfigEditor->GetHandle());
+						SetForegroundWindow(m_gameConfigEditor->Handle());
 					else
 						m_gameConfigEditor = std::make_unique<ConfigWindow>(IDS_WINDOW_OPCODE_CONFIG_EDITOR, &m_config->Game);
 					return 0;

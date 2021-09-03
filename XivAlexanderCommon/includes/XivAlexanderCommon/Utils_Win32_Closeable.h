@@ -95,32 +95,20 @@ namespace Utils::Win32 {
 			ClearInternal();
 		}
 
-		[[nodiscard]] operator bool() const {
-			return !!m_object;
-		}
+		[[nodiscard]] operator bool() const { return !!m_object; }
 
-		[[nodiscard]] virtual operator T() const {
-			return m_object;
-		}
+		[[nodiscard]] virtual operator T() const { return m_object; }
 		
 		template<typename = std::enable_if_t<std::is_pointer_v<T>>>
-		[[nodiscard]] uint64_t Value64() const {
-			return static_cast<uint64_t>(Value());
-		}
+		[[nodiscard]] auto Value64() const { return static_cast<uint64_t>(Value()); }
 
 		template<typename = std::enable_if_t<std::is_pointer_v<T>>>
-		[[nodiscard]] uint64_t Value32() const {
-			return static_cast<uint32_t>(Value());
-		}
+		[[nodiscard]] auto Value32() const { return static_cast<uint32_t>(Value()); }
 		
 		template<typename = std::enable_if_t<std::is_pointer_v<T>>>
-		[[nodiscard]] size_t Value() const {
-			return reinterpret_cast<size_t>(m_object);
-		}
+		[[nodiscard]] auto Value() const { return reinterpret_cast<size_t>(m_object); }
 
-		[[nodiscard]] bool HasOwnership() const {
-			return m_object && m_bOwnership;
-		}
+		[[nodiscard]] bool HasOwnership() const { return m_object && m_bOwnership; }
 
 	private:
 		void ClearInternal() {

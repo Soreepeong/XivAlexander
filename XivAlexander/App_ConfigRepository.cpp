@@ -58,10 +58,6 @@ App::Config::ItemBase::ItemBase(BaseRepository* pRepository, const char* pszName
 	pRepository->m_allItems.push_back(this);
 }
 
-const char* App::Config::ItemBase::Name() const {
-	return m_pszName;
-}
-
 void App::Config::BaseRepository::Reload(bool announceChange) {
 	m_loaded = true;
 

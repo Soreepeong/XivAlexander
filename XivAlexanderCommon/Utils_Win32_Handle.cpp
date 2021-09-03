@@ -295,7 +295,7 @@ size_t Utils::Win32::File::Write(uint64_t offset, const void* buf, size_t len, P
 	}
 }
 
-uint64_t Utils::Win32::File::Length() const {
+uint64_t Utils::Win32::File::GetLength() const {
 	LARGE_INTEGER fs;
 	if (!GetFileSizeEx(m_object, &fs))
 		throw Error("GetFileSizeEx");

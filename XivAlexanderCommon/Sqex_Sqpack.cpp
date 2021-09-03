@@ -238,14 +238,6 @@ Sqex::Sqpack::SqIndex::LEDataLocator::LEDataLocator(uint32_t index, uint64_t off
 	Offset(offset);
 }
 
-uint32_t Sqex::Sqpack::SqIndex::LEDataLocator::Index() const {
-	return (Value() & 0xF) / 2;
-}
-
-uint64_t Sqex::Sqpack::SqIndex::LEDataLocator::Offset() const {
-	return (Value() & 0xFFFFFFF0UL) * 8ULL;
-}
-
 uint32_t Sqex::Sqpack::SqIndex::LEDataLocator::Index(const uint32_t value) {
 	if (value >= 8)
 		throw std::invalid_argument("Index must be between 0 and 7.");

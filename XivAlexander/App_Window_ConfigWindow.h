@@ -22,7 +22,7 @@ namespace App::Window {
 		void Revert();
 		bool TrySave();
 
-		[[nodiscard]] Config::BaseRepository* GetRepository() const;
+		[[nodiscard]] auto Repository() const { return m_pRepository; }
 
 	protected:
 		void ApplyLanguage(WORD languageId) final;

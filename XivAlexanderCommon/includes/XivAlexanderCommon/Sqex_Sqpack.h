@@ -146,8 +146,8 @@ namespace Sqex::Sqpack {
 			using LE<uint32_t>::LE;
 			LEDataLocator(uint32_t index, uint64_t offset);
 
-			[[nodiscard]] uint32_t Index() const;
-			[[nodiscard]] uint64_t Offset() const;
+			[[nodiscard]] uint32_t Index() const { return (Value() & 0xF) / 2; }
+			[[nodiscard]] uint64_t Offset() const { return (Value() & 0xFFFFFFF0UL) * 8ULL; }
 			uint32_t Index(uint32_t value);
 			uint64_t Offset(uint64_t value);
 		};
@@ -184,7 +184,7 @@ namespace Sqex::Sqpack {
 	namespace SqData {
 		struct Header {
 			static constexpr uint32_t MaxFileSize_Value = 0x77359400;  // 2GB
-			static constexpr uint64_t MaxFileSize_MaxValue = 0x800000000ULL;  // Max addressable via how OffsetAfterHeaders works
+			static constexpr uint64_t MaxFileSize_MaxValue = 0x800000000ULL;  // 32GiB, maximum addressable via how LEDataLocator works
 			static constexpr uint32_t Unknown1_Value = 0x10;
 
 			LE<uint32_t> HeaderSize;

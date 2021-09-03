@@ -139,7 +139,7 @@ namespace Utils::Win32 {
 			return Write(offset, buf.data(), buf.size_bytes(), writeMode) / sizeof T;
 		}
 
-		[[nodiscard]] uint64_t Length() const;
+		[[nodiscard]] uint64_t GetLength() const;
 
 		[[nodiscard]] std::filesystem::path ResolveName(bool bOpenedPath = false, bool bNtPath = false) const;
 	};

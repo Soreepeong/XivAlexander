@@ -105,8 +105,8 @@ struct Sqex::Sqpack::VirtualSqPack::Implementation {
 		std::vector<uint32_t> m_mipmapSizes;
 		size_t m_size = 0;
 
-		[[nodiscard]] const Texture::Header& AsTexHeader() const;
-		[[nodiscard]] std::span<const uint32_t> AsMipmapOffsets() const;
+		[[nodiscard]] auto AsTexHeader() const { return *reinterpret_cast<const Texture::Header*>(&m_texHeaderBytes[0]); }
+		[[nodiscard]] auto AsMipmapOffsets() const { return std::span(reinterpret_cast<const uint32_t*>(&m_texHeaderBytes[sizeof Texture::Header]), AsTexHeader().MipmapCount); }
 
 	public:
 		OnTheFlyTextureEntryProvider(const std::filesystem::path& path);
@@ -151,6 +151,8 @@ struct Sqex::Sqpack::VirtualSqPack::Implementation {
 		std::unique_ptr<EntryProvider> Provider;
 	};
 
+	VirtualSqPack* const this_;
+
 	std::vector<std::unique_ptr<Entry>> m_entries;
 	std::map<std::pair<uint32_t, uint32_t>, Entry*> m_pathNameTupleEntryPointerMap;
 	std::map<uint32_t, Entry*> m_fullPathEntryPointerMap;
@@ -163,18 +165,9 @@ struct Sqex::Sqpack::VirtualSqPack::Implementation {
 
 	std::vector<Utils::Win32::File> m_openFiles;
 
-	SqpackHeader m_sqpackIndexHeader{};
-	SqIndex::Header m_sqpackIndexSubHeader{};
-	std::vector<char> m_sqpackIndexSegment2;
-	std::vector<SqIndex::Segment3Entry> m_sqpackIndexSegment3;
-
-	SqpackHeader m_sqpackIndex2Header{};
-	SqIndex::Header m_sqpackIndex2SubHeader{};
-	std::vector<char> m_sqpackIndex2Segment2;
-	std::vector<SqIndex::Segment3Entry> m_sqpackIndex2Segment3;
-
-	SqpackHeader m_sqpackDataHeader{};
-	std::vector<SqData::Header> m_sqpackDataSubHeaders;
+	Implementation(VirtualSqPack* this_)
+		: this_(this_) {
+	}
 
 	SqData::Header& AllocateDataSpace(size_t length, bool strict);
 };
@@ -358,7 +351,7 @@ Sqex::Sqpack::SqData::FileEntryType Sqex::Sqpack::VirtualSqPack::Implementation:
 Sqex::Sqpack::VirtualSqPack::Implementation::MemoryBinaryEntryProvider::MemoryBinaryEntryProvider(const std::filesystem::path & path) {
 	const auto file = Utils::Win32::File::Create(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
 
-	const auto rawSize = static_cast<uint32_t>(file.Length());
+	const auto rawSize = static_cast<uint32_t>(file.GetLength());
 	SqData::FileEntryHeader entryHeader = {
 		.HeaderSize = sizeof entryHeader,
 		.Type = SqData::FileEntryType::Binary,
@@ -432,7 +425,7 @@ Sqex::Sqpack::VirtualSqPack::Implementation::OnTheFlyModelEntryProvider::OnTheFl
 	const auto fileHeader = m_hFile.Read<Model::Header>(0);
 	auto baseFileOffset = static_cast<uint32_t>(sizeof fileHeader);
 	m_header.Entry.Type = SqData::FileEntryType::Model;
-	m_header.Entry.DecompressedSize = static_cast<uint32_t>(m_hFile.Length());
+	m_header.Entry.DecompressedSize = static_cast<uint32_t>(m_hFile.GetLength());
 	m_header.Entry.Unknown1 = 0;
 	m_header.Entry.BlockBufferSize = BlockSize;
 	m_header.Entry.BlockCountOrVersion = fileHeader.Version;
@@ -659,24 +652,13 @@ Sqex::Sqpack::SqData::FileEntryType Sqex::Sqpack::VirtualSqPack::Implementation:
 	return SqData::FileEntryType::Model;
 }
 
-const Sqex::Texture::Header& Sqex::Sqpack::VirtualSqPack::Implementation::OnTheFlyTextureEntryProvider::AsTexHeader() const {
-	return *reinterpret_cast<const Texture::Header*>(&m_texHeaderBytes[0]);
-}
-
-std::span<const uint32_t> Sqex::Sqpack::VirtualSqPack::Implementation::OnTheFlyTextureEntryProvider::AsMipmapOffsets() const {
-	return std::span(
-		reinterpret_cast<const uint32_t*>(&m_texHeaderBytes[sizeof Texture::Header]),
-		AsTexHeader().MipmapCount
-	);
-}
-
 Sqex::Sqpack::VirtualSqPack::Implementation::OnTheFlyTextureEntryProvider::OnTheFlyTextureEntryProvider(const std::filesystem::path& path)
 	: m_hFile(Utils::Win32::File::Create(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)) {
 
 	auto entryHeader = SqData::FileEntryHeader{
 		.HeaderSize = sizeof SqData::FileEntryHeader,
 		.Type = SqData::FileEntryType::Texture,
-		.DecompressedSize = static_cast<uint32_t>(m_hFile.Length()),
+		.DecompressedSize = static_cast<uint32_t>(m_hFile.GetLength()),
 		.Unknown1 = 0,
 		.BlockBufferSize = BlockSize,
 	};
@@ -876,8 +858,11 @@ Sqex::Sqpack::SqData::FileEntryType Sqex::Sqpack::VirtualSqPack::Implementation:
 	return m_entryType;
 }
 
-Sqex::Sqpack::VirtualSqPack::VirtualSqPack()
-	: m_pImpl(std::make_unique<Implementation>()) {
+Sqex::Sqpack::VirtualSqPack::VirtualSqPack(uint64_t maxFileSize)
+	: m_maxFileSize(maxFileSize)
+	, m_pImpl(std::make_unique<Implementation>(this)) {
+	if (maxFileSize > SqData::Header::MaxFileSize_MaxValue)
+		throw std::invalid_argument("MaxFileSize cannot be more than 32GiB.");
 }
 
 Sqex::Sqpack::VirtualSqPack::~VirtualSqPack() = default;
@@ -941,10 +926,10 @@ Sqex::Sqpack::VirtualSqPack::AddEntryResult Sqex::Sqpack::VirtualSqPack::AddEntr
 	AddEntryResult result{};
 
 	if (overwriteUnknownSegments) {
-		m_pImpl->m_sqpackIndexSegment2 = std::move(m_original.Index.DataFileSegment);
-		m_pImpl->m_sqpackIndexSegment3 = std::move(m_original.Index.Segment3);
-		m_pImpl->m_sqpackIndex2Segment2 = std::move(m_original.Index2.DataFileSegment);
-		m_pImpl->m_sqpackIndex2Segment3 = std::move(m_original.Index2.Segment3);
+		m_sqpackIndexSegment2 = std::move(m_original.Index.DataFileSegment);
+		m_sqpackIndexSegment3 = std::move(m_original.Index.Segment3);
+		m_sqpackIndex2Segment2 = std::move(m_original.Index2.DataFileSegment);
+		m_sqpackIndex2Segment3 = std::move(m_original.Index2.Segment3);
 	}
 
 	std::vector<size_t> openFileIndexMap;
@@ -990,23 +975,23 @@ Sqex::Sqpack::VirtualSqPack::AddEntryResult Sqex::Sqpack::VirtualSqPack::AddEntr
 }
 
 size_t Sqex::Sqpack::VirtualSqPack::NumOfDataFiles() const {
-	return m_pImpl->m_sqpackDataSubHeaders.size();
+	return m_sqpackDataSubHeaders.size();
 }
 
 Sqex::Sqpack::SqData::Header& Sqex::Sqpack::VirtualSqPack::Implementation::AllocateDataSpace(size_t length, bool strict) {
-	if (m_sqpackDataSubHeaders.empty() ||
-		sizeof SqpackHeader + sizeof SqData::Header + m_sqpackDataSubHeaders.back().DataSize + length > m_sqpackDataSubHeaders.back().MaxFileSize) {
-		if (strict && !m_sqpackDataSubHeaders.empty())
-			m_sqpackDataSubHeaders.back().Sha1.SetFromSpan(&m_sqpackDataSubHeaders.back(), 1);
-		m_sqpackDataSubHeaders.emplace_back(SqData::Header{
+	if (this_->m_sqpackDataSubHeaders.empty() ||
+		sizeof SqpackHeader + sizeof SqData::Header + this_->m_sqpackDataSubHeaders.back().DataSize + length > this_->m_sqpackDataSubHeaders.back().MaxFileSize) {
+		if (strict && !this_->m_sqpackDataSubHeaders.empty())
+			this_->m_sqpackDataSubHeaders.back().Sha1.SetFromSpan(&this_->m_sqpackDataSubHeaders.back(), 1);
+		this_->m_sqpackDataSubHeaders.emplace_back(SqData::Header{
 			.HeaderSize = sizeof SqData::Header,
 			.Unknown1 = SqData::Header::Unknown1_Value,
 			.DataSize = 0,
-			.SpanIndex = static_cast<uint32_t>(m_sqpackDataSubHeaders.size()),
-			.MaxFileSize = SqData::Header::MaxFileSize_MaxValue,
+			.SpanIndex = static_cast<uint32_t>(this_->m_sqpackDataSubHeaders.size()),
+			.MaxFileSize = this_->m_maxFileSize,
 			});
 	}
-	return m_sqpackDataSubHeaders.back();
+	return this_->m_sqpackDataSubHeaders.back();
 }
 
 void Sqex::Sqpack::VirtualSqPack::Freeze(bool strict) {
@@ -1016,15 +1001,15 @@ void Sqex::Sqpack::VirtualSqPack::Freeze(bool strict) {
 	m_pImpl->m_fileEntries1.clear();
 	m_pImpl->m_fileEntries2.clear();
 
-	m_pImpl->m_sqpackIndexSubHeader.DataFilesSegment.Count = 1;
-	m_pImpl->m_sqpackIndex2SubHeader.DataFilesSegment.Count = 1;
+	m_sqpackIndexSubHeader.DataFilesSegment.Count = 1;
+	m_sqpackIndex2SubHeader.DataFilesSegment.Count = 1;
 
 	for (const auto& entry : m_pImpl->m_entries) {
 		entry->BlockSize = entry->Provider->StreamSize();
 		entry->PadSize = Align(entry->BlockSize).Pad;
 
 		auto& dataSubHeader = m_pImpl->AllocateDataSpace(0ULL + entry->BlockSize + entry->PadSize, strict);
-		entry->DataFileIndex = static_cast<uint32_t>(m_pImpl->m_sqpackDataSubHeaders.size() - 1);
+		entry->DataFileIndex = static_cast<uint32_t>(m_sqpackDataSubHeaders.size() - 1);
 		entry->OffsetAfterHeaders = dataSubHeader.DataSize;
 
 		dataSubHeader.DataSize = dataSubHeader.DataSize + entry->BlockSize + entry->PadSize;
@@ -1048,75 +1033,75 @@ void Sqex::Sqpack::VirtualSqPack::Freeze(bool strict) {
 		return l.FullPathHash < r.FullPathHash;
 	});
 
-	memcpy(m_pImpl->m_sqpackIndexHeader.Signature, SqpackHeader::Signature_Value, sizeof SqpackHeader::Signature_Value);
-	m_pImpl->m_sqpackIndexHeader.HeaderSize = sizeof SqpackHeader;
-	m_pImpl->m_sqpackIndexHeader.Unknown1 = SqpackHeader::Unknown1_Value;
-	m_pImpl->m_sqpackIndexHeader.Type = SqpackType::SqIndex;
-	m_pImpl->m_sqpackIndexHeader.Unknown2 = SqpackHeader::Unknown2_Value;
+	memcpy(m_sqpackIndexHeader.Signature, SqpackHeader::Signature_Value, sizeof SqpackHeader::Signature_Value);
+	m_sqpackIndexHeader.HeaderSize = sizeof SqpackHeader;
+	m_sqpackIndexHeader.Unknown1 = SqpackHeader::Unknown1_Value;
+	m_sqpackIndexHeader.Type = SqpackType::SqIndex;
+	m_sqpackIndexHeader.Unknown2 = SqpackHeader::Unknown2_Value;
 	if (strict)
-		m_pImpl->m_sqpackIndexHeader.Sha1.SetFromSpan(&m_pImpl->m_sqpackIndexHeader, 1);
+		m_sqpackIndexHeader.Sha1.SetFromSpan(&m_sqpackIndexHeader, 1);
 
-	m_pImpl->m_sqpackIndexSubHeader.HeaderSize = sizeof SqIndex::Header;
-	m_pImpl->m_sqpackIndexSubHeader.Type = SqIndex::Header::IndexType::Index;
-	m_pImpl->m_sqpackIndexSubHeader.FileSegment.Count = 1;
-	m_pImpl->m_sqpackIndexSubHeader.FileSegment.Offset = m_pImpl->m_sqpackIndexHeader.HeaderSize + m_pImpl->m_sqpackIndexSubHeader.HeaderSize;
-	m_pImpl->m_sqpackIndexSubHeader.FileSegment.Size = static_cast<uint32_t>(std::span(m_pImpl->m_fileEntries1).size_bytes());
-	m_pImpl->m_sqpackIndexSubHeader.DataFilesSegment.Count = static_cast<uint32_t>(m_pImpl->m_sqpackDataSubHeaders.size());
-	m_pImpl->m_sqpackIndexSubHeader.DataFilesSegment.Offset = m_pImpl->m_sqpackIndexSubHeader.FileSegment.Offset + m_pImpl->m_sqpackIndexSubHeader.FileSegment.Size;
-	m_pImpl->m_sqpackIndexSubHeader.DataFilesSegment.Size = static_cast<uint32_t>(std::span(m_pImpl->m_sqpackIndexSegment2).size_bytes());
-	m_pImpl->m_sqpackIndexSubHeader.UnknownSegment3.Count = 0;
-	m_pImpl->m_sqpackIndexSubHeader.UnknownSegment3.Offset = m_pImpl->m_sqpackIndexSubHeader.DataFilesSegment.Offset + m_pImpl->m_sqpackIndexSubHeader.DataFilesSegment.Size;
-	m_pImpl->m_sqpackIndexSubHeader.UnknownSegment3.Size = static_cast<uint32_t>(std::span(m_pImpl->m_sqpackIndexSegment3).size_bytes());
-	m_pImpl->m_sqpackIndexSubHeader.FolderSegment.Count = 0;
-	m_pImpl->m_sqpackIndexSubHeader.FolderSegment.Offset = m_pImpl->m_sqpackIndexSubHeader.UnknownSegment3.Offset + m_pImpl->m_sqpackIndexSubHeader.UnknownSegment3.Size;
+	m_sqpackIndexSubHeader.HeaderSize = sizeof SqIndex::Header;
+	m_sqpackIndexSubHeader.Type = SqIndex::Header::IndexType::Index;
+	m_sqpackIndexSubHeader.FileSegment.Count = 1;
+	m_sqpackIndexSubHeader.FileSegment.Offset = m_sqpackIndexHeader.HeaderSize + m_sqpackIndexSubHeader.HeaderSize;
+	m_sqpackIndexSubHeader.FileSegment.Size = static_cast<uint32_t>(std::span(m_pImpl->m_fileEntries1).size_bytes());
+	m_sqpackIndexSubHeader.DataFilesSegment.Count = static_cast<uint32_t>(m_sqpackDataSubHeaders.size());
+	m_sqpackIndexSubHeader.DataFilesSegment.Offset = m_sqpackIndexSubHeader.FileSegment.Offset + m_sqpackIndexSubHeader.FileSegment.Size;
+	m_sqpackIndexSubHeader.DataFilesSegment.Size = static_cast<uint32_t>(std::span(m_sqpackIndexSegment2).size_bytes());
+	m_sqpackIndexSubHeader.UnknownSegment3.Count = 0;
+	m_sqpackIndexSubHeader.UnknownSegment3.Offset = m_sqpackIndexSubHeader.DataFilesSegment.Offset + m_sqpackIndexSubHeader.DataFilesSegment.Size;
+	m_sqpackIndexSubHeader.UnknownSegment3.Size = static_cast<uint32_t>(std::span(m_sqpackIndexSegment3).size_bytes());
+	m_sqpackIndexSubHeader.FolderSegment.Count = 0;
+	m_sqpackIndexSubHeader.FolderSegment.Offset = m_sqpackIndexSubHeader.UnknownSegment3.Offset + m_sqpackIndexSubHeader.UnknownSegment3.Size;
 	for (size_t i = 0; i < m_pImpl->m_fileEntries1.size(); ++i) {
 		const auto& entry = m_pImpl->m_fileEntries1[i];
 		if (m_pImpl->m_folderEntries.empty() || m_pImpl->m_folderEntries.back().NameHash != entry.PathHash) {
 			m_pImpl->m_folderEntries.emplace_back(
 				entry.PathHash,
-				static_cast<uint32_t>(m_pImpl->m_sqpackIndexSubHeader.FileSegment.Offset + i * sizeof entry),
+				static_cast<uint32_t>(m_sqpackIndexSubHeader.FileSegment.Offset + i * sizeof entry),
 				static_cast<uint32_t>(sizeof entry),
 				0);
 		} else {
 			m_pImpl->m_folderEntries.back().FileSegmentSize = m_pImpl->m_folderEntries.back().FileSegmentSize + sizeof entry;
 		}
 	}
-	m_pImpl->m_sqpackIndexSubHeader.FolderSegment.Size = static_cast<uint32_t>(std::span(m_pImpl->m_folderEntries).size_bytes());
+	m_sqpackIndexSubHeader.FolderSegment.Size = static_cast<uint32_t>(std::span(m_pImpl->m_folderEntries).size_bytes());
 	if (strict)
-		m_pImpl->m_sqpackIndexSubHeader.Sha1.SetFromSpan(&m_pImpl->m_sqpackIndexSubHeader, 1);
+		m_sqpackIndexSubHeader.Sha1.SetFromSpan(&m_sqpackIndexSubHeader, 1);
 
-	memcpy(m_pImpl->m_sqpackIndex2Header.Signature, SqpackHeader::Signature_Value, sizeof SqpackHeader::Signature_Value);
-	m_pImpl->m_sqpackIndex2Header.HeaderSize = sizeof SqpackHeader;
-	m_pImpl->m_sqpackIndex2Header.Unknown1 = SqpackHeader::Unknown1_Value;
-	m_pImpl->m_sqpackIndex2Header.Type = SqpackType::SqIndex;
-	m_pImpl->m_sqpackIndex2Header.Unknown2 = SqpackHeader::Unknown2_Value;
+	memcpy(m_sqpackIndex2Header.Signature, SqpackHeader::Signature_Value, sizeof SqpackHeader::Signature_Value);
+	m_sqpackIndex2Header.HeaderSize = sizeof SqpackHeader;
+	m_sqpackIndex2Header.Unknown1 = SqpackHeader::Unknown1_Value;
+	m_sqpackIndex2Header.Type = SqpackType::SqIndex;
+	m_sqpackIndex2Header.Unknown2 = SqpackHeader::Unknown2_Value;
 	if (strict)
-		m_pImpl->m_sqpackIndex2Header.Sha1.SetFromSpan(&m_pImpl->m_sqpackIndex2Header, 1);
+		m_sqpackIndex2Header.Sha1.SetFromSpan(&m_sqpackIndex2Header, 1);
 
-	m_pImpl->m_sqpackIndex2SubHeader.HeaderSize = sizeof SqIndex::Header;
-	m_pImpl->m_sqpackIndex2SubHeader.Type = SqIndex::Header::IndexType::Index2;
-	m_pImpl->m_sqpackIndex2SubHeader.FileSegment.Count = 1;
-	m_pImpl->m_sqpackIndex2SubHeader.FileSegment.Offset = m_pImpl->m_sqpackIndex2Header.HeaderSize + m_pImpl->m_sqpackIndex2SubHeader.HeaderSize;
-	m_pImpl->m_sqpackIndex2SubHeader.FileSegment.Size = static_cast<uint32_t>(std::span(m_pImpl->m_fileEntries2).size_bytes());
-	m_pImpl->m_sqpackIndex2SubHeader.DataFilesSegment.Count = static_cast<uint32_t>(m_pImpl->m_sqpackDataSubHeaders.size());
-	m_pImpl->m_sqpackIndex2SubHeader.DataFilesSegment.Offset = m_pImpl->m_sqpackIndex2SubHeader.FileSegment.Offset + m_pImpl->m_sqpackIndex2SubHeader.FileSegment.Size;
-	m_pImpl->m_sqpackIndex2SubHeader.DataFilesSegment.Size = static_cast<uint32_t>(std::span(m_pImpl->m_sqpackIndex2Segment2).size_bytes());
-	m_pImpl->m_sqpackIndex2SubHeader.UnknownSegment3.Count = 0;
-	m_pImpl->m_sqpackIndex2SubHeader.UnknownSegment3.Offset = m_pImpl->m_sqpackIndex2SubHeader.DataFilesSegment.Offset + m_pImpl->m_sqpackIndex2SubHeader.DataFilesSegment.Size;
-	m_pImpl->m_sqpackIndex2SubHeader.UnknownSegment3.Size = static_cast<uint32_t>(std::span(m_pImpl->m_sqpackIndex2Segment3).size_bytes());
-	m_pImpl->m_sqpackIndex2SubHeader.FolderSegment.Count = 0;
-	m_pImpl->m_sqpackIndex2SubHeader.FolderSegment.Offset = m_pImpl->m_sqpackIndex2SubHeader.UnknownSegment3.Offset + m_pImpl->m_sqpackIndex2SubHeader.UnknownSegment3.Size;
-	m_pImpl->m_sqpackIndex2SubHeader.FolderSegment.Size = 0;
+	m_sqpackIndex2SubHeader.HeaderSize = sizeof SqIndex::Header;
+	m_sqpackIndex2SubHeader.Type = SqIndex::Header::IndexType::Index2;
+	m_sqpackIndex2SubHeader.FileSegment.Count = 1;
+	m_sqpackIndex2SubHeader.FileSegment.Offset = m_sqpackIndex2Header.HeaderSize + m_sqpackIndex2SubHeader.HeaderSize;
+	m_sqpackIndex2SubHeader.FileSegment.Size = static_cast<uint32_t>(std::span(m_pImpl->m_fileEntries2).size_bytes());
+	m_sqpackIndex2SubHeader.DataFilesSegment.Count = static_cast<uint32_t>(m_sqpackDataSubHeaders.size());
+	m_sqpackIndex2SubHeader.DataFilesSegment.Offset = m_sqpackIndex2SubHeader.FileSegment.Offset + m_sqpackIndex2SubHeader.FileSegment.Size;
+	m_sqpackIndex2SubHeader.DataFilesSegment.Size = static_cast<uint32_t>(std::span(m_sqpackIndex2Segment2).size_bytes());
+	m_sqpackIndex2SubHeader.UnknownSegment3.Count = 0;
+	m_sqpackIndex2SubHeader.UnknownSegment3.Offset = m_sqpackIndex2SubHeader.DataFilesSegment.Offset + m_sqpackIndex2SubHeader.DataFilesSegment.Size;
+	m_sqpackIndex2SubHeader.UnknownSegment3.Size = static_cast<uint32_t>(std::span(m_sqpackIndex2Segment3).size_bytes());
+	m_sqpackIndex2SubHeader.FolderSegment.Count = 0;
+	m_sqpackIndex2SubHeader.FolderSegment.Offset = m_sqpackIndex2SubHeader.UnknownSegment3.Offset + m_sqpackIndex2SubHeader.UnknownSegment3.Size;
+	m_sqpackIndex2SubHeader.FolderSegment.Size = 0;
 	if (strict)
-		m_pImpl->m_sqpackIndex2SubHeader.Sha1.SetFromSpan(&m_pImpl->m_sqpackIndex2SubHeader, 1);
+		m_sqpackIndex2SubHeader.Sha1.SetFromSpan(&m_sqpackIndex2SubHeader, 1);
 
-	memcpy(m_pImpl->m_sqpackDataHeader.Signature, SqpackHeader::Signature_Value, sizeof SqpackHeader::Signature_Value);
-	m_pImpl->m_sqpackDataHeader.HeaderSize = sizeof SqpackHeader;
-	m_pImpl->m_sqpackDataHeader.Unknown1 = SqpackHeader::Unknown1_Value;
-	m_pImpl->m_sqpackDataHeader.Type = SqpackType::SqData;
-	m_pImpl->m_sqpackDataHeader.Unknown2 = SqpackHeader::Unknown2_Value;
+	memcpy(m_sqpackDataHeader.Signature, SqpackHeader::Signature_Value, sizeof SqpackHeader::Signature_Value);
+	m_sqpackDataHeader.HeaderSize = sizeof SqpackHeader;
+	m_sqpackDataHeader.Unknown1 = SqpackHeader::Unknown1_Value;
+	m_sqpackDataHeader.Type = SqpackType::SqData;
+	m_sqpackDataHeader.Unknown2 = SqpackHeader::Unknown2_Value;
 	if (strict)
-		m_pImpl->m_sqpackDataHeader.Sha1.SetFromSpan(&m_pImpl->m_sqpackDataHeader, 1);
+		m_sqpackDataHeader.Sha1.SetFromSpan(&m_sqpackDataHeader, 1);
 
 	m_pImpl->m_frozen = true;
 }
@@ -1131,11 +1116,11 @@ size_t Sqex::Sqpack::VirtualSqPack::ReadIndex1(const uint64_t offset, void* cons
 	auto out = std::span(static_cast<char*>(buf), length);
 
 	for (const auto& [ptr, cb] : std::initializer_list<std::tuple<const void*, size_t>>{
-		{&m_pImpl->m_sqpackIndexHeader, sizeof m_pImpl->m_sqpackIndexHeader},
-		{&m_pImpl->m_sqpackIndexSubHeader, sizeof m_pImpl->m_sqpackIndexSubHeader},
+		{&m_sqpackIndexHeader, sizeof m_sqpackIndexHeader},
+		{&m_sqpackIndexSubHeader, sizeof m_sqpackIndexSubHeader},
 		{m_pImpl->m_fileEntries1.data(), std::span(m_pImpl->m_fileEntries1).size_bytes()},
-		{m_pImpl->m_sqpackIndexSegment2.data(), std::span(m_pImpl->m_sqpackIndexSegment2).size_bytes()},
-		{m_pImpl->m_sqpackIndexSegment3.data(), std::span(m_pImpl->m_sqpackIndexSegment3).size_bytes()},
+		{m_sqpackIndexSegment2.data(), std::span(m_sqpackIndexSegment2).size_bytes()},
+		{m_sqpackIndexSegment3.data(), std::span(m_sqpackIndexSegment3).size_bytes()},
 		{m_pImpl->m_folderEntries.data(), std::span(m_pImpl->m_folderEntries).size_bytes()},
 		}) {
 		if (relativeOffset < cb) {
@@ -1165,11 +1150,11 @@ size_t Sqex::Sqpack::VirtualSqPack::ReadIndex2(const uint64_t offset, void* cons
 	auto out = std::span(static_cast<char*>(buf), length);
 
 	for (const auto& [ptr, cb] : std::initializer_list<std::tuple<const void*, size_t>>{
-		{&m_pImpl->m_sqpackIndex2Header, sizeof m_pImpl->m_sqpackIndex2Header},
-		{&m_pImpl->m_sqpackIndex2SubHeader, sizeof m_pImpl->m_sqpackIndex2SubHeader},
+		{&m_sqpackIndex2Header, sizeof m_sqpackIndex2Header},
+		{&m_sqpackIndex2SubHeader, sizeof m_sqpackIndex2SubHeader},
 		{m_pImpl->m_fileEntries2.data(), std::span(m_pImpl->m_fileEntries2).size_bytes()},
-		{m_pImpl->m_sqpackIndex2Segment2.data(), std::span(m_pImpl->m_sqpackIndex2Segment2).size_bytes()},
-		{m_pImpl->m_sqpackIndex2Segment3.data(), std::span(m_pImpl->m_sqpackIndex2Segment3).size_bytes()},
+		{m_sqpackIndex2Segment2.data(), std::span(m_sqpackIndex2Segment2).size_bytes()},
+		{m_sqpackIndex2Segment3.data(), std::span(m_sqpackIndex2Segment3).size_bytes()},
 		}) {
 		if (relativeOffset < cb) {
 			const auto src = std::span(static_cast<const char*>(ptr), cb)
@@ -1198,8 +1183,8 @@ size_t Sqex::Sqpack::VirtualSqPack::ReadData(uint32_t datIndex, const uint64_t o
 	auto out = std::span(static_cast<char*>(buf), length);
 
 	for (const auto& [ptr, cb] : std::initializer_list<std::tuple<const void*, size_t>>{
-		{&m_pImpl->m_sqpackDataHeader, sizeof m_pImpl->m_sqpackDataHeader},
-		{&m_pImpl->m_sqpackDataSubHeaders[datIndex], sizeof m_pImpl->m_sqpackDataSubHeaders[datIndex]},
+		{&m_sqpackDataHeader, sizeof m_sqpackDataHeader},
+		{&m_sqpackDataSubHeaders[datIndex], sizeof m_sqpackDataSubHeaders[datIndex]},
 		}) {
 		if (relativeOffset < cb) {
 			const auto src = std::span(static_cast<const char*>(ptr), cb)
@@ -1264,30 +1249,30 @@ size_t Sqex::Sqpack::VirtualSqPack::ReadData(uint32_t datIndex, const uint64_t o
 
 uint64_t Sqex::Sqpack::VirtualSqPack::SizeIndex1() const {
 	return 0ULL +
-		m_pImpl->m_sqpackIndexHeader.HeaderSize +
-		m_pImpl->m_sqpackIndexSubHeader.HeaderSize +
-		m_pImpl->m_sqpackIndexSubHeader.FileSegment.Size +
-		m_pImpl->m_sqpackIndexSubHeader.DataFilesSegment.Size +
-		m_pImpl->m_sqpackIndexSubHeader.UnknownSegment3.Size +
-		m_pImpl->m_sqpackIndexSubHeader.FolderSegment.Size;
+		m_sqpackIndexHeader.HeaderSize +
+		m_sqpackIndexSubHeader.HeaderSize +
+		m_sqpackIndexSubHeader.FileSegment.Size +
+		m_sqpackIndexSubHeader.DataFilesSegment.Size +
+		m_sqpackIndexSubHeader.UnknownSegment3.Size +
+		m_sqpackIndexSubHeader.FolderSegment.Size;
 }
 
 uint64_t Sqex::Sqpack::VirtualSqPack::SizeIndex2() const {
 	return 0ULL +
-		m_pImpl->m_sqpackIndex2Header.HeaderSize +
-		m_pImpl->m_sqpackIndex2SubHeader.HeaderSize +
-		m_pImpl->m_sqpackIndex2SubHeader.FileSegment.Size +
-		m_pImpl->m_sqpackIndex2SubHeader.DataFilesSegment.Size +
-		m_pImpl->m_sqpackIndex2SubHeader.UnknownSegment3.Size +
-		m_pImpl->m_sqpackIndex2SubHeader.FolderSegment.Size;
+		m_sqpackIndex2Header.HeaderSize +
+		m_sqpackIndex2SubHeader.HeaderSize +
+		m_sqpackIndex2SubHeader.FileSegment.Size +
+		m_sqpackIndex2SubHeader.DataFilesSegment.Size +
+		m_sqpackIndex2SubHeader.UnknownSegment3.Size +
+		m_sqpackIndex2SubHeader.FolderSegment.Size;
 }
 
 uint64_t Sqex::Sqpack::VirtualSqPack::SizeData(uint32_t datIndex) const {
-	if (datIndex >= m_pImpl->m_sqpackDataSubHeaders.size())
+	if (datIndex >= m_sqpackDataSubHeaders.size())
 		return 0;
 
 	return 0ULL +
-		m_pImpl->m_sqpackDataHeader.HeaderSize +
-		m_pImpl->m_sqpackDataSubHeaders[datIndex].HeaderSize +
-		m_pImpl->m_sqpackDataSubHeaders[datIndex].DataSize;
+		m_sqpackDataHeader.HeaderSize +
+		m_sqpackDataSubHeaders[datIndex].HeaderSize +
+		m_sqpackDataSubHeaders[datIndex].DataSize;
 }

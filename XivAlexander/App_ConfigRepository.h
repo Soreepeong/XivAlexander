@@ -36,7 +36,7 @@ namespace App {
 		public:
 			virtual ~ItemBase() = default;
 
-			[[nodiscard]] const char* Name() const;
+			[[nodiscard]] auto Name() const { return m_pszName; }
 
 			Utils::ListenerManager<ItemBase, void, ItemBase&> OnChangeListener;
 		};
@@ -106,14 +106,12 @@ namespace App {
 		public:
 			BaseRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
 
-			[[nodiscard]] bool Loaded() const { return m_loaded; }
+			[[nodiscard]] auto Loaded() const { return m_loaded; }
 
 			void Save();
 			void Reload(bool announceChange = false);
 
-			[[nodiscard]] const std::filesystem::path& GetConfigPath() const {
-				return m_sConfigPath;
-			}
+			[[nodiscard]] auto GetConfigPath() const { return m_sConfigPath; }
 
 		protected:
 			template<typename T>

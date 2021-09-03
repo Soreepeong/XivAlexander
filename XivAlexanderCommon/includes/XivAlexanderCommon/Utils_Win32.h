@@ -96,6 +96,6 @@ namespace Utils::Win32 {
 			: Error(errorCode, std::format(format, std::move(arg1), std::forward<Args>(args)...)) {
 		}
 
-		[[nodiscard]] DWORD Code() const;
+		[[nodiscard]] auto Code() const { return m_nErrorCode; }
 	};
 }

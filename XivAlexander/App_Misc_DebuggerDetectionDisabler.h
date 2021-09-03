@@ -15,7 +15,15 @@ namespace App::Misc {
 		static std::shared_ptr<DebuggerDetectionDisabler> Acquire();
 
 		[[nodiscard]] bool IsDebuggerActuallyPresent() const;
-		void BreakIfDebugged() const;
+		void BreakIfDebugged() const {
+			if (IsDebuggerActuallyPresent()) {
+				__try {
+					__debugbreak();
+				} __except (EXCEPTION_CONTINUE_EXECUTION) {
+					// do nothing
+				}
+			}
+		}
 
 		virtual ~DebuggerDetectionDisabler();
 	};

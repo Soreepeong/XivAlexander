@@ -39,16 +39,6 @@ bool App::Misc::DebuggerDetectionDisabler::IsDebuggerActuallyPresent() const {
 	return m_pImpl->IsDebuggerPresent.bridge();
 }
 
-void App::Misc::DebuggerDetectionDisabler::BreakIfDebugged() const {
-	if (m_pImpl->IsDebuggerPresent.bridge()) {
-		__try {
-			__debugbreak();
-		} __except (EXCEPTION_CONTINUE_EXECUTION) {
-			// do nothing
-		}
-	}
-}
-
 std::weak_ptr<App::Misc::DebuggerDetectionDisabler> App::Misc::DebuggerDetectionDisabler::s_instance;
 
 App::Misc::DebuggerDetectionDisabler::DebuggerDetectionDisabler()

@@ -151,7 +151,7 @@ void __stdcall XivAlexDll::CallFreeLibrary(void*) {
 
 size_t Dll::DisableUnloading(const char* pszReason) {
 	s_dllUnloadDisableReason = pszReason ? pszReason : "(reason not specified)";
-	Module().Pin();
+	Module().SetPinned();
 	return 0;
 }
 

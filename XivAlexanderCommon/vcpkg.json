@@ -6,6 +6,7 @@
     "zlib",
     "nlohmann-json",
     "curlpp",
-    "cryptopp"
+    "cryptopp",
+    "freetype"
   ]
 }

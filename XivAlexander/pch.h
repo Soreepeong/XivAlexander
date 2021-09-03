@@ -59,7 +59,6 @@
 #pragma warning(disable: 26495)  // Variable is uninitialized. Always initialize a member variable (type.6).
 #pragma warning(disable: 26819)  // Unannotated fallthrough between switch labels (es.78).
 #include <MinHook.h>
-#include <freetype/freetype.h>
 #include <nlohmann/json.hpp>
 #include <scintilla/Scintilla.h>
 #include <Zydis/Zydis.h>

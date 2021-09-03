@@ -110,7 +110,7 @@ Sqex::Sqpack::FileSystemSqPack::SqIndexType::SqIndexType(const Utils::Win32::Fil
 				throw CorruptDataException("Overlapping region found");
 			ptr += accessSize;
 		}
-		if (ptr != hFile.Length())
+		if (ptr != hFile.GetLength())
 			throw CorruptDataException("Trailing region found");
 	}
 }
@@ -168,7 +168,7 @@ Sqex::Sqpack::FileSystemSqPack::SqIndex2Type::SqIndex2Type(const Utils::Win32::F
 				throw CorruptDataException("Overlapping region found");
 			ptr += accessSize;
 		}
-		if (ptr != hFile.Length())
+		if (ptr != hFile.GetLength())
 			throw CorruptDataException("Trailing region found");
 	}
 }
@@ -190,7 +190,7 @@ Sqex::Sqpack::FileSystemSqPack::SqDataType::SqDataType(Utils::Win32::File hFile,
 		accesses.emplace_back(sizeof SqpackHeader, sizeof SqData::Header);
 	}
 
-	const auto dataFileLength = FileOnDisk.Length();
+	const auto dataFileLength = FileOnDisk.GetLength();
 	if (strictVerify) {
 		if (dataFileLength != 0ULL + Header.HeaderSize + DataHeader.HeaderSize + DataHeader.DataSize)
 			throw CorruptDataException("Invalid file size");

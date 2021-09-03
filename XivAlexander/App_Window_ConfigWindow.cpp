@@ -113,10 +113,6 @@ bool App::Window::ConfigWindow::TrySave() {
 	return true;
 }
 
-App::Config::BaseRepository* App::Window::ConfigWindow::GetRepository() const {
-	return m_pRepository;
-}
-
 void App::Window::ConfigWindow::ApplyLanguage(WORD languageId) {
 	m_hAcceleratorWindow = { Dll::Module(), RT_ACCELERATOR, MAKEINTRESOURCE(IDR_CONFIG_EDITOR_ACCELERATOR), languageId };
 	SetWindowTextW(m_hWnd, m_config->Runtime.GetStringRes(m_nTitleStringResourceId));

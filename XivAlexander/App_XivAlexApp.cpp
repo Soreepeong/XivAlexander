@@ -102,7 +102,7 @@ struct App::XivAlexApp::Implementation {
 				return;
 
 			if (const auto err = this_->IsUnloadable(); !err.empty()) {
-				Utils::Win32::MessageBoxF(m_trayWindow->GetHandle(), MB_ICONERROR, this->this_->m_config->Runtime.GetStringRes(IDS_APP_NAME),
+				Utils::Win32::MessageBoxF(m_trayWindow->Handle(), MB_ICONERROR, this->this_->m_config->Runtime.GetStringRes(IDS_APP_NAME),
 					this->this_->m_config->Runtime.FormatStringRes(IDS_ERROR_UNLOAD_XIVALEXANDER, err));
 				return;
 			}
@@ -216,7 +216,7 @@ struct App::XivAlexApp::Implementation {
 			this->this_->m_bInterrnalUnloadInitiated = true;
 
 			if (this->m_trayWindow)
-				SendMessageW(this->m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
+				SendMessageW(this->m_trayWindow->Handle(), WM_CLOSE, 0, 1);
 			WaitForSingleObject(this->this_->m_hCustomMessageLoop, INFINITE);
 
 			XivAlexDll::DisableAllApps(nullptr);
@@ -249,7 +249,7 @@ App::XivAlexApp::~XivAlexApp() {
 	}
 
 	if (m_pImpl->m_trayWindow)
-		SendMessageW(m_pImpl->m_trayWindow->GetHandle(), WM_CLOSE, 0, 1);
+		SendMessageW(m_pImpl->m_trayWindow->Handle(), WM_CLOSE, 0, 1);
 
 	m_hCustomMessageLoop.Wait();
 
@@ -284,7 +284,7 @@ void App::XivAlexApp::CustomMessageLoopBody() {
 			if (!pWindow || pWindow->IsDestroyed())
 				continue;
 
-			const auto hWnd = pWindow->GetHandle();
+			const auto hWnd = pWindow->Handle();
 
 			if (const auto hAccel = pWindow->GetThreadAcceleratorTable()) {
 				if (TranslateAcceleratorW(hWnd, hAccel, &msg)) {

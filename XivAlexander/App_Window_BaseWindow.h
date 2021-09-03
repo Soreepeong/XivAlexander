@@ -70,11 +70,11 @@ namespace App::Window {
 
 		static const std::set<const BaseWindow*>& All();
 
-		[[nodiscard]] HWND GetHandle() const;
-		[[nodiscard]] bool IsDestroyed() const;
+		[[nodiscard]] auto Handle() const { return m_hWnd; }
+		[[nodiscard]] auto IsDestroyed() const { return m_bDestroyed; }
 		[[nodiscard]] virtual bool IsDialogLike() const;
-		[[nodiscard]] HACCEL GetWindowAcceleratorTable() const;
-		[[nodiscard]] HACCEL GetThreadAcceleratorTable() const;
+		[[nodiscard]] auto GetWindowAcceleratorTable() const { return static_cast<HACCEL>(m_hAcceleratorWindow); }
+		[[nodiscard]] auto GetThreadAcceleratorTable() const { return static_cast<HACCEL>(m_hAcceleratorThread); }
 
 		Utils::ListenerManager<BaseWindow, void> OnDestroyListener;
 

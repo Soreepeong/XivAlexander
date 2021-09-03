@@ -70,7 +70,7 @@ std::wstring Utils::Win32::MB_GetString(int i) {
 	static LPCWSTR(WINAPI * MB_GetString)(int) = nullptr;
 	if (!MB_GetString) {
 		const auto pUser32 = LoadedModule(L"user32.dll");
-		pUser32.Pin();
+		pUser32.SetPinned();
 		MB_GetString = reinterpret_cast<decltype(MB_GetString)>(GetProcAddress(pUser32, "MB_GetString"));
 	}
 

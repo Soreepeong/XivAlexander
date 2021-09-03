@@ -24,6 +24,8 @@ namespace App::Network {
 	class SingleConnection {
 		friend class SocketHook;
 
+		const SOCKET m_socket;
+
 		struct Implementation;
 		const std::unique_ptr<Implementation> m_pImpl;
 
@@ -37,7 +39,7 @@ namespace App::Network {
 		void RemoveMessageHandlers(void* token);
 		void ResolveAddresses();
 
-		[[nodiscard]] SOCKET GetSocket() const;
+		[[nodiscard]] auto Socket() const { return m_socket; }
 
 		[[nodiscard]] int64_t FetchSocketLatency();
 
