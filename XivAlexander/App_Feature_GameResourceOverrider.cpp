@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "App_Feature_GameResourceOverrider.h"
 
-#include <XivAlexanderCommon/Sqex_Sqpack.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Virtual.h>
 #include <XivAlexanderCommon/Utils_Win32_Process.h>
 
@@ -52,6 +51,12 @@ public:
 	};
 };
 
+static std::map<void*, size_t>* s_TestVal;
+
+__declspec(dllexport) std::map<void*, size_t>* GetHeapTracker() {
+	return s_TestVal;
+}
+
 struct App::Feature::GameResourceOverrider::Implementation {
 	const std::shared_ptr<Config> m_config;
 	const std::shared_ptr<Misc::Logger> m_logger;
@@ -64,6 +69,9 @@ struct App::Feature::GameResourceOverrider::Implementation {
 	Misc::Hooks::ImportedFunction<BOOL, HANDLE> CloseHandle{ "kernel32::CloseHandle", "kernel32.dll", "CloseHandle" };
 	Misc::Hooks::ImportedFunction<BOOL, HANDLE, LPVOID, DWORD, LPDWORD, LPOVERLAPPED> ReadFile{ "kernel32::ReadFile", "kernel32.dll", "ReadFile" };
 	Misc::Hooks::ImportedFunction<BOOL, HANDLE, LARGE_INTEGER, PLARGE_INTEGER, DWORD> SetFilePointerEx{ "kernel32::SetFilePointerEx", "kernel32.dll", "SetFilePointerEx" };
+
+	Misc::Hooks::ImportedFunction<LPVOID, HANDLE, DWORD, SIZE_T> HeapAlloc{ "kernel32.dll::HeapAlloc", "kernel32.dll", "HeapAlloc" };
+	Misc::Hooks::ImportedFunction<BOOL, HANDLE, DWORD, LPVOID> HeapFree{ "kernel32.dll::HeapFree", "kernel32.dll", "HeapFree" };
 
 	ReEnterPreventer m_repCreateFileW, m_repReadFile;
 
@@ -87,6 +95,9 @@ struct App::Feature::GameResourceOverrider::Implementation {
 	std::set<std::filesystem::path> m_ignoredIndexFiles{};
 	std::atomic<int> m_stk;
 
+	std::mutex m_processHeapAllocationTrackerMutex;
+	std::map<void*, size_t> m_processHeapAllocations;
+
 	class AtomicIntEnter {
 		std::atomic<int>& v;
 	public:
@@ -104,7 +115,27 @@ struct App::Feature::GameResourceOverrider::Implementation {
 		, m_logger(Misc::Logger::Acquire())
 		, m_debugger(Misc::DebuggerDetectionDisabler::Acquire()) {
 
-		m_cleanup += CreateFileW.SetHook([&](_In_ LPCWSTR lpFileName,
+		const auto hDefaultHeap = GetProcessHeap();
+
+		m_cleanup += HeapAlloc.SetHook([this, hDefaultHeap](HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes) {
+			const auto res = HeapAlloc.bridge(hHeap, dwFlags, dwBytes);
+			if (res && hHeap == hDefaultHeap) {
+				std::lock_guard lock(m_processHeapAllocationTrackerMutex);
+				m_processHeapAllocations[res] = dwBytes;
+			}
+			return res;
+		});
+
+		m_cleanup += HeapFree.SetHook([this, hDefaultHeap](HANDLE hHeap, DWORD dwFlags, LPVOID lpMem) {
+			const auto res = HeapFree.bridge(hHeap, dwFlags, lpMem);
+			if (res && hHeap == hDefaultHeap) {
+				std::lock_guard lock(m_processHeapAllocationTrackerMutex);
+				m_processHeapAllocations.erase(hHeap);
+			}
+			return res;
+		});
+
+		m_cleanup += CreateFileW.SetHook([this](_In_ LPCWSTR lpFileName,
 			_In_ DWORD dwDesiredAccess,
 			_In_ DWORD dwShareMode,
 			_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
@@ -197,15 +228,14 @@ struct App::Feature::GameResourceOverrider::Implementation {
 												if (is_directory(replacementItem))
 													continue;
 												try {
-													const auto relativePath = relative(replacementItem, replacementDirPath);
-													const auto nameHash = Sqex::Sqpack::SqexHash(relativePath.filename().string());
-													const auto pathHash = Sqex::Sqpack::SqexHash(relativePath.parent_path().string());
-													const auto fullPathHash = Sqex::Sqpack::SqexHash(relativePath.string());
-													const auto result = vpath->VirtualSqPack->AddEntryFromFile(pathHash, nameHash, fullPathHash, replacementItem);
+													const auto result = vpath->VirtualSqPack->AddEntryFromFile(relative(replacementItem, replacementDirPath), replacementItem);
 													m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
 														"=> {} file {}: (nameHash={:08x}, pathHash={:08x}, fullPathHash={:08x})",
 														result.AddedCount ? "Added" : "Replaced",
-														replacementItem.path(), nameHash, pathHash, fullPathHash);
+														result.MostRecentPathSpec.Original,
+														result.MostRecentPathSpec.NameHash,
+														result.MostRecentPathSpec.PathHash,
+														result.MostRecentPathSpec.FullPathHash);
 													additionalEntriesFound = true;
 												} catch (const std::exception& e) {
 													m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
@@ -248,7 +278,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			return CreateFileW.bridge(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 		});
 
-		m_cleanup += CloseHandle.SetHook([&](HANDLE handle) {
+		m_cleanup += CloseHandle.SetHook([this](HANDLE handle) {
 
 			AtomicIntEnter implUseLock(m_stk);
 
@@ -259,7 +289,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			return CloseHandle.bridge(handle);
 		});
 
-		m_cleanup += ReadFile.SetHook([&](_In_ HANDLE hFile,
+		m_cleanup += ReadFile.SetHook([this](_In_ HANDLE hFile,
 			_Out_writes_bytes_to_opt_(nNumberOfBytesToRead, *lpNumberOfBytesRead) __out_data_source(FILE) LPVOID lpBuffer,
 			_In_ DWORD nNumberOfBytesToRead,
 			_Out_opt_ LPDWORD lpNumberOfBytesRead,
@@ -319,7 +349,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			return ReadFile.bridge(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
 		});
 
-		m_cleanup += SetFilePointerEx.SetHook([&](_In_ HANDLE hFile,
+		m_cleanup += SetFilePointerEx.SetHook([this](_In_ HANDLE hFile,
 			_In_ LARGE_INTEGER liDistanceToMove,
 			_Out_opt_ PLARGE_INTEGER lpNewFilePointer,
 			_In_ DWORD dwMoveMethod) {

@@ -2,9 +2,10 @@
 
 #include "Sqex_Sqpack.h"
 #include "Utils_Win32_Handle.h"
+#include "Sqex_Sqpack_EntryProvider.h"
 
 namespace Sqex::Sqpack {
-	struct FileSystemSqPack {
+	struct Reader {
 		struct SqDataEntry {
 			SqIndex::FileSegmentEntry Index;
 			SqIndex::FileSegmentEntry2 Index2;
@@ -25,7 +26,7 @@ namespace Sqex::Sqpack {
 			std::vector<SqIndex::Segment3Entry> Segment3;
 
 		private:
-			friend struct FileSystemSqPack;
+			friend struct Reader;
 			SqIndexType(const Utils::Win32::File& hFile, bool strictVerify);
 		};
 
@@ -38,7 +39,7 @@ namespace Sqex::Sqpack {
 			std::vector<SqIndex::Segment3Entry> Segment3;
 
 		private:
-			friend struct FileSystemSqPack;
+			friend struct Reader;
 			SqIndex2Type(const Utils::Win32::File& hFile, bool strictVerify);
 		};
 
@@ -48,7 +49,7 @@ namespace Sqex::Sqpack {
 			Utils::Win32::File FileOnDisk;
 
 		private:
-			friend struct FileSystemSqPack;
+			friend struct Reader;
 			SqDataType(Utils::Win32::File hFile, uint32_t datIndex, std::vector<SqDataEntry>& dataEntries, bool strictVerify);
 		};
 
@@ -57,6 +58,8 @@ namespace Sqex::Sqpack {
 		std::vector<SqDataEntry> Files;
 		std::vector<SqDataType> Data;
 
-		FileSystemSqPack(const std::filesystem::path& indexFile, bool strictVerify);
+		Reader(const std::filesystem::path& indexFile, bool strictVerify);
+
+		[[nodiscard]] std::shared_ptr<EntryProvider> GetEntryProvider(const SqDataEntry& entry, Utils::Win32::File handle = {}) const;
 	};
 }

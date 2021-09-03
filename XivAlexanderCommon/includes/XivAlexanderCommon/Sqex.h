@@ -75,7 +75,7 @@ namespace Sqex {
 		return true;
 	}
 
-	class RandomAccessStream {
+	class RandomAccessStream : public std::enable_shared_from_this<RandomAccessStream> {
 	public:
 		RandomAccessStream();
 		RandomAccessStream(RandomAccessStream&&) = delete;

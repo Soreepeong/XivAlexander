@@ -14,11 +14,25 @@ namespace Sqex::Texture {
 			, m_height(height)
 			, m_type(type) {
 		}
-		~MipmapStream() override = default;
 
 		[[nodiscard]] auto Width() const { return m_width; }
 		[[nodiscard]] auto Height() const { return m_height; }
 		[[nodiscard]] auto Type() const { return m_type; }
+
+		std::shared_ptr<const MipmapStream> ViewARGB8888(CompressionType type = CompressionType::ARGB_1) const;
+	};
+
+	class WrappedMipmapStream : public MipmapStream {
+		std::shared_ptr<const MipmapStream> m_underlying;
+
+	public:
+		WrappedMipmapStream(uint16_t width, uint16_t height, CompressionType type, std::shared_ptr<const MipmapStream> underlying)
+			: MipmapStream(width, height, type)
+			, m_underlying(std::move(underlying)) {
+		}
+
+		[[nodiscard]] uint32_t StreamSize() const override { return m_underlying->StreamSize(); }
+		size_t ReadStreamPartial(uint64_t offset, void* buf, size_t length) const override { return m_underlying->ReadStreamPartial(offset, buf, length); }
 	};
 
 	class MemoryBackedMipmap : public MipmapStream {
@@ -29,22 +43,26 @@ namespace Sqex::Texture {
 			: MipmapStream(width, height, type)
 			, m_data(std::move(data)) {
 		}
-		~MemoryBackedMipmap() override = default;
+
+		static std::shared_ptr<MemoryBackedMipmap> NewARGB8888From(const MipmapStream* stream, CompressionType type = CompressionType::ARGB_1);
+
+		[[nodiscard]] uint32_t StreamSize() const override { return static_cast<uint32_t>(m_data.size());  }
+		size_t ReadStreamPartial(uint64_t offset, void* buf, size_t length) const override;
+
+		[[nodiscard]] auto& View() { return m_data; }
+		[[nodiscard]] const auto& View() const { return m_data; }
 	};
 
 	class FileBackedReadOnlyMipmap : public MipmapStream {
-		
-	};
-
-	class ModifiableTextureStream : public RandomAccessStream {
-		Header m_header;
+		const Utils::Win32::File m_file;
 
 	public:
-		ModifiableTextureStream(uint16_t width, uint16_t height);
-		ModifiableTextureStream(const RandomAccessStream& stream, bool strict = false);
+		FileBackedReadOnlyMipmap(uint16_t width, uint16_t height, CompressionType type, Utils::Win32::File file)
+			: MipmapStream(width, height, type)
+			, m_file(std::move(file)) {
+		}
 
-		[[nodiscard]] uint32_t StreamSize() const override;
-		size_t ReadStreamPartial(uint64_t offset, void* buf, size_t length) const override;
-		
+		[[nodiscard]] uint32_t StreamSize() const override { return static_cast<uint32_t>(m_file.GetLength()); }
+		size_t ReadStreamPartial(uint64_t offset, void* buf, size_t length) const override { return m_file.Read(offset, buf, length); }
 	};
 }

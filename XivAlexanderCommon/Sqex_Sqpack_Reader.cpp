@@ -1,19 +1,19 @@
 #include "pch.h"
 #include "Sqex_Sqpack_Reader.h"
 
-Sqex::Sqpack::FileSystemSqPack::SqDataEntry::SqDataEntry(const SqIndex::FileSegmentEntry& entry)
+Sqex::Sqpack::Reader::SqDataEntry::SqDataEntry(const SqIndex::FileSegmentEntry& entry)
 	: Index(entry)
 	, Offset(entry.DatFile.Offset())
 	, DataFileIndex(entry.DatFile.Index()) {
 }
 
-Sqex::Sqpack::FileSystemSqPack::SqDataEntry::SqDataEntry(const SqIndex::FileSegmentEntry2& entry)
+Sqex::Sqpack::Reader::SqDataEntry::SqDataEntry(const SqIndex::FileSegmentEntry2& entry)
 	: Index2(entry)
 	, Offset(entry.DatFile.Offset())
 	, DataFileIndex(entry.DatFile.Index()) {
 }
 
-Sqex::Sqpack::FileSystemSqPack::SqIndexType::SqIndexType(const Utils::Win32::File& hFile, bool strictVerify) {
+Sqex::Sqpack::Reader::SqIndexType::SqIndexType(const Utils::Win32::File& hFile, bool strictVerify) {
 	std::vector<std::pair<size_t, size_t>> accesses;
 
 	hFile.Read(0, &Header, sizeof SqpackHeader);
@@ -115,7 +115,7 @@ Sqex::Sqpack::FileSystemSqPack::SqIndexType::SqIndexType(const Utils::Win32::Fil
 	}
 }
 
-Sqex::Sqpack::FileSystemSqPack::SqIndex2Type::SqIndex2Type(const Utils::Win32::File& hFile, bool strictVerify) {
+Sqex::Sqpack::Reader::SqIndex2Type::SqIndex2Type(const Utils::Win32::File& hFile, bool strictVerify) {
 	std::vector<std::pair<size_t, size_t>> accesses;
 
 	hFile.Read(0, &Header, sizeof SqpackHeader);
@@ -173,7 +173,7 @@ Sqex::Sqpack::FileSystemSqPack::SqIndex2Type::SqIndex2Type(const Utils::Win32::F
 	}
 }
 
-Sqex::Sqpack::FileSystemSqPack::SqDataType::SqDataType(Utils::Win32::File hFile, const uint32_t datIndex, std::vector<SqDataEntry>& dataEntries, bool strictVerify)
+Sqex::Sqpack::Reader::SqDataType::SqDataType(Utils::Win32::File hFile, const uint32_t datIndex, std::vector<SqDataEntry>& dataEntries, bool strictVerify)
 	: FileOnDisk(std::move(hFile)) {
 	std::vector<std::pair<size_t, size_t>> accesses;
 
@@ -213,7 +213,7 @@ Sqex::Sqpack::FileSystemSqPack::SqDataType::SqDataType(Utils::Win32::File hFile,
 		prevEntry->Size = static_cast<uint32_t>(dataFileLength - prevEntry->Index.DatFile.Offset());
 }
 
-Sqex::Sqpack::FileSystemSqPack::FileSystemSqPack(const std::filesystem::path& indexFile, bool strictVerify)
+Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strictVerify)
 	: Index(Utils::Win32::File::Create(std::filesystem::path(indexFile).replace_extension(".index"), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN), strictVerify)
 	, Index2(Utils::Win32::File::Create(std::filesystem::path(indexFile).replace_extension(".index2"), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN), strictVerify) {
 
@@ -247,4 +247,13 @@ Sqex::Sqpack::FileSystemSqPack::FileSystemSqPack(const std::filesystem::path& in
 			strictVerify,
 			});
 	}
+}
+
+std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvider(const SqDataEntry& entry, Utils::Win32::File handle) const {
+	if (!handle)
+		handle = { Data[entry.DataFileIndex].FileOnDisk, false };
+
+	return std::make_shared<PartialFileViewEntryProvider>(
+		EntryPathSpec(entry.Index.PathHash, entry.Index.NameHash, entry.Index2.FullPathHash),
+		std::move(handle), entry.Offset, entry.Size);
 }

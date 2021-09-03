@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Sqex_Sqpack.h"
+#include "Sqex_Sqpack_EntryProvider.h"
 #include "Utils_Win32_Handle.h"
 
 namespace Sqex::Sqpack {
@@ -33,10 +34,12 @@ namespace Sqex::Sqpack {
 			size_t ReplacedCount;
 			size_t SkippedExistCount;
 
+			EntryPathSpec MostRecentPathSpec;
+
 			AddEntryResult& operator+=(const AddEntryResult& r);
 		};
 		AddEntryResult AddEntriesFromSqPack(const std::filesystem::path& indexPath, bool overwriteExisting = true, bool overwriteUnknownSegments = false);
-		AddEntryResult AddEntryFromFile(uint32_t PathHash, uint32_t NameHash, uint32_t FullPathHash, const std::filesystem::path& path, bool overwriteExisting = true);
+		AddEntryResult AddEntryFromFile(EntryPathSpec pathSpec, const std::filesystem::path& path, bool overwriteExisting = true);
 
 		[[nodiscard]] size_t NumOfDataFiles() const;
 

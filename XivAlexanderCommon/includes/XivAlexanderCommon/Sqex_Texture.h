@@ -14,8 +14,8 @@ namespace Sqex::Texture {
 		// Full color with alpha channel
 		RGBA4444 = 0x1440,  // 2 bytes (LE binary[16]: aaaaRRRRggggBBBB) per pixel
 		RGBA5551 = 0x1441,  // 2 bytes (LE binary[16]: aRRRRRgggggBBBBB) per pixel
-		RGBA_1 = 0x1450,    // 4 bytes (LE binary[32]: aaaaaaaaRRRRRRRRggggggggBBBBBBBB) per pixel
-		RGBA_2 = 0x1451,    // same with above
+		ARGB_1 = 0x1450,    // 4 bytes (LE binary[32]: aaaaaaaaRRRRRRRRggggggggBBBBBBBB) per pixel
+		ARGB_2 = 0x1451,    // same with above
 		RGBAF = 0x2460,     // 8 bytes (LE half[4]: r, g, b, a)
 		//                     ^ TODO: check if it's rgba or abgr
 

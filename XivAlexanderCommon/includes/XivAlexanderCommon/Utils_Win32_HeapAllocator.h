@@ -57,21 +57,37 @@ namespace Utils::Win32 {
 
 		~HeapAllocator() = default;
 
+		[[nodiscard]] T* allocate_nothrow(std::size_t n) noexcept {
+			if (n > std::numeric_limits<std::size_t>::max() / sizeof(T))
+				return nullptr;
+
+			if (auto p = static_cast<T*>(HeapAlloc(GetCurrentAllocatorHeap(), 0, n * sizeof(T))))
+				return p;
+
+			return nullptr;
+		}
+
 		[[nodiscard]] T* allocate(std::size_t n) {
 			if (n > std::numeric_limits<std::size_t>::max() / sizeof(T))
 				throw std::bad_array_new_length();
 
-			if (auto p = static_cast<T*>(HeapAlloc(GetHeap(), 0, n * sizeof(T))))
+			if (auto p = static_cast<T*>(HeapAlloc(GetCurrentAllocatorHeap(), 0, n * sizeof(T))))
 				return p;
 
 			throw std::bad_alloc();
 		}
 
 		void deallocate(T* p, std::size_t) noexcept {
-			HeapFree(GetHeap(), 0, p);
+			HeapFree(GetCurrentAllocatorHeap(), 0, p);
 		}
 
-		[[nodiscard]] auto GetHeap() const { return m_heap ? *m_heap : GetProcessHeap(); }
+		[[nodiscard]] auto GetCurrentAllocatorHeap() const {
+			if (m_heap)
+				return static_cast<HANDLE>(*m_heap);
+			if (g_hDefaultHeap)
+				return g_hDefaultHeap;
+			return GetProcessHeap();
+		}
 	};
 
 	template<typename T, typename U>

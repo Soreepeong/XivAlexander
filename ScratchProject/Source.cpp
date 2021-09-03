@@ -1,8 +1,9 @@
 #include "pch.h"
 #include <XivAlexanderCommon/Sqex_Sqpack.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Virtual.h>
 
-int main() {
+int test_convert() {
 	const auto targetBasePath = LR"(Z:\scratch\t2)";
 	for (const auto& rootDir : {
 		std::filesystem::path(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack)"),
@@ -17,6 +18,8 @@ int main() {
 				continue;
 			for (const auto& entry2 : std::filesystem::directory_iterator(entry1)) {
 				const auto& path = entry2.path();
+				if (path.filename().wstring() != L"000000.win32.index")
+					continue;
 				if (path.extension() != ".index")
 					continue;
 
@@ -39,23 +42,23 @@ int main() {
 						CharLowerA(&pathComponent[0]);
 						CharLowerA(&nameComponent[0]);
 						const auto fullPath = std::format("{}/{}", pathComponent, nameComponent);
-						vpack.AddEntryFromFile(
-							Sqex::Sqpack::SqexHash(pathComponent),
-							Sqex::Sqpack::SqexHash(nameComponent),
-							Sqex::Sqpack::SqexHash(fullPath),
-							currPath
-						);
+						vpack.AddEntryFromFile(fullPath, currPath);
+						std::cout << "Added " << fullPath << std::endl;
 					}
 					vpack.Freeze(false);
 
 					std::cout << "Testing..." << std::endl;
 					{
-						char buf[65536];
+						std::vector<char> buf(1048576);
+						// vpack.ReadData(0, 121296256, &buf[0], 123152);
+						vpack.ReadData(0, 121296256, &buf[0], 128);
+						vpack.ReadData(0, 121296256 + 128, &buf[128], 123152 - 128);
+						// vpack.ReadData(0, 121296256 + 120000, &buf[0], 123152 - 120000);
 						size_t pos = 0;
 						for (uint32_t i = 0; i < vpack.NumOfDataFiles(); ++i) {
 							pos = 0;
 							while (true) {
-								const auto w = vpack.ReadData(i, pos, buf, sizeof buf);;
+								const auto w = vpack.ReadData(i, pos, &buf[0], buf.size());
 								if (!w)
 									break;
 								pos += w;
@@ -117,5 +120,18 @@ int main() {
 		}
 	}
 
+	return 0;
+}
+
+int test_tex() {
+	// const auto reader = Sqex::Sqpack::Reader(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\000000.win32.index)", true);
+	// TODO
+
+	return 0;
+}
+
+int main() {
+	// test_tex();
+	test_convert();
 	return 0;
 }

@@ -6,6 +6,8 @@
 #include "Utils_Win32_Process.h"
 #include "Utils_Win32_Resource.h"
 
+HANDLE Utils::Win32::g_hDefaultHeap = 0;
+
 std::string Utils::Win32::FormatWindowsErrorMessage(unsigned int errorCode) {
 	std::set<std::string> messages;
 	for (const auto langId : {

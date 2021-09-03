@@ -19,7 +19,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_EntryProvider.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Texture_ModifiableTextureStream.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\XaDxtDecompression.h" />
     <ClInclude Include="includes\XivAlexanderCommon\XaFormat.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_CommandLine.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex.h" />
@@ -48,9 +50,11 @@
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="XivAlexDefaultHeapAllocator.cpp" />
     <ClCompile Include="Sqex_CommandLine.cpp" />
     <ClCompile Include="Sqex.cpp" />
     <ClCompile Include="Sqex_FontCsv_ModifiableFontCsvStream.cpp" />
+    <ClCompile Include="Sqex_Sqpack_EntryProvider.cpp" />
     <ClCompile Include="Sqex_Sqpack_Reader.cpp" />
     <ClCompile Include="Sqex_FontCsv.cpp" />
     <ClCompile Include="Sqex_Sqpack.cpp" />
@@ -66,6 +70,7 @@
     <ClCompile Include="Utils_Win32_Handle.cpp" />
     <ClCompile Include="Utils_Win32_Process.cpp" />
     <ClCompile Include="Utils_Win32_Resource.cpp" />
+    <ClCompile Include="XaDxtDecompression.cpp" />
     <ClCompile Include="XaMisc.cpp" />
     <ClCompile Include="XaStrings.cpp" />
     <ClCompile Include="Utils_NumericStatisticsTracker.cpp" />

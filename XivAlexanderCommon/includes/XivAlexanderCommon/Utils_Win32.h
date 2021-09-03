@@ -80,6 +80,8 @@ namespace Utils::Win32 {
 
 	std::vector<DWORD> GetProcessList();
 
+	extern HANDLE g_hDefaultHeap;
+
 	class Error : public std::runtime_error {
 		const DWORD m_nErrorCode;
 
