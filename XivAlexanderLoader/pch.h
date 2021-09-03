@@ -34,6 +34,7 @@
 #include <WinSock2.h>
 
 #pragma warning(push)
+#pragma warning(disable: 26439)  // This kind of function may not throw. Declare it 'noexcept' (f.6).
 #pragma warning(disable: 26495)  // Variable is uninitialized. Always initialize a member variable (type.6).
 #pragma warning(disable: 26819)  // Unannotated fallthrough between switch labels (es.78).
 // vcpkg dependencies
