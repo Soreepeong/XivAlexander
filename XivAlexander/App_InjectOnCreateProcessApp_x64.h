@@ -78,7 +78,7 @@ struct TrampolineTemplate {
 		const uint8_t op_jmp_rdi[2]{ 0xff, 0xe7 };
 	} CallInjectEntryPoint;
 
-	const char buf_CallGetProcAddress_lpProcName[17] = "InjectEntryPoint";
+	const char buf_CallGetProcAddress_lpProcName[20] = "XA_InjectEntryPoint";
 	uint8_t buf_EntryPointBackup[sizeof EntryPointThunkTemplate]{};
 
 #pragma pack(push, 8)

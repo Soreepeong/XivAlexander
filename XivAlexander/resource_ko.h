@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by XivAlexander.rc
+// Used by XivAlexander_ko.rc
 //
 #define IDI_TRAY_ICON                   104
 #define IDR_TRAY_MENU                   105

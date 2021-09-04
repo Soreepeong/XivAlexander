@@ -4,19 +4,13 @@
 #include "Utils_CallOnDestruction.h"
 #include "Utils_Win32.h"
 
-const char Sqex::CommandLine::ChecksumTable[16] = {
-	'f', 'X', '1', 'p', 'G', 't', 'd', 'S', '5', 'C', 'A', 'P', '4', '_', 'V', 'L',
-};
-const char Sqex::CommandLine::ObfuscationHead[12] = {
-	'/', '/', '*', '*', 's', 'q', 'e', 'x', '0', '0', '0', '3',
-};
-const char Sqex::CommandLine::ObfuscationTail[4] = {
-	'*', '*', '/', '/',
-};
+const char Sqex::CommandLine::ChecksumTable[17] = "fX1pGtdS5CAP4_VL";
+const char Sqex::CommandLine::ObfuscationHead[13] = "//**sqex0003";
+const char Sqex::CommandLine::ObfuscationTail[5] = "**//";
 
 std::vector<std::pair<std::string, std::string>> Sqex::CommandLine::FromString(std::string source, bool* wasObfuscated) {
 	std::vector<std::pair<std::string, std::string>> res;
-
+	
 	if (source.starts_with(ObfuscationHead) && source.ends_with(ObfuscationTail) && source.size() >= 17) {
 		const auto chksum = std::find(ChecksumTable, ChecksumTable + sizeof ChecksumTable, source[source.size() - 5]) - ChecksumTable;
 		

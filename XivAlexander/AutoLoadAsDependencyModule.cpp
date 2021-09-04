@@ -11,6 +11,7 @@
 #include "App_Feature_GameResourceOverrider.h"
 #include "DllMain.h"
 #include "resource.h"
+#include "XivAlexanderCommon/XivAlex.h"
 
 static Utils::Win32::LoadedModule EnsureOriginalDependencyModule(const char* szDllName, std::filesystem::path originalDllPath);
 static void AutoLoadAsDependencyModule();
@@ -155,7 +156,6 @@ static Utils::Win32::LoadedModule EnsureOriginalDependencyModule(const char* szD
 
 void AutoLoadAsDependencyModule() {
 	static std::mutex s_singleRunMutex;
-	static App::Feature::GameResourceOverrider s_pinnedHashTracker;
 	static bool s_loaded = false;
 
 	if (s_loaded)
@@ -165,26 +165,22 @@ void AutoLoadAsDependencyModule() {
 	if (s_loaded)
 		return;
 
-	switch (XivAlexDll::CheckPackageVersion()) {
-		case XivAlexDll::CheckPackageVersionResult::OK:
-			break;
-
-		case XivAlexDll::CheckPackageVersionResult::MissingFiles:
-			throw std::runtime_error("Missing files");
-
-		case XivAlexDll::CheckPackageVersionResult::VersionMismatch:
-			throw std::runtime_error("Version mismatch");
-	}
-
 	Dll::DisableUnloading(std::format("Loaded as DLL dependency in place of {}", Dll::Module().PathOf().filename()).c_str());
-	InjectEntryPoint(XivAlexDll::PatchEntryPointForInjection(GetCurrentProcess()));
-
+	
+	const auto conf = App::Config::Acquire();
+	const auto loadPath = conf->Init.ResolveXivAlexInstallationPath() / XivAlex::XivAlexDllNameW;
+	const auto loadTarget = Utils::Win32::LoadedModule(loadPath);
+	const auto params = XivAlexDll::PatchEntryPointForInjection(GetCurrentProcess());
+	params->SkipFree = true;
+	loadTarget.SetPinned();
+	loadTarget.GetProcAddress<decltype(&XivAlexDll::InjectEntryPoint)>("XA_InjectEntryPoint")(params);
+	
 	s_loaded = true;
 }
 
 DECLSPEC_NORETURN
 void AutoLoadAsDependencyModuleError(const std::runtime_error& e) {
 	Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
-		L"Failed to load: {}\n\nAll 4 files must be present, other than this file.", e.what());
+		L"Failed to load: {}", e.what());
 	TerminateProcess(GetCurrentProcess(), -1);
 }

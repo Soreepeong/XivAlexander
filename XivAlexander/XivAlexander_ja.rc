@@ -83,10 +83,8 @@ BEGIN
         MENUITEM "IPCタイプファインダーの使用(&F)\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
         MENUITEM "すべてのIPCメッセージをログに記録(&A)\t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
         MENUITEM "AddStatusEffectの遅延をログに記録(&E)\t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
-        POPUP "リソースのハッシュの操作(x64専用)(&H)"
+        POPUP "リソースの操作(x64専用)(&H)"
         BEGIN
-            MENUITEM "有効化(&E)\t(Ctrl+Shift+)K",     ID_TRAYMENU_HASHKEYMANIPULATION_ENABLE
-            MENUITEM SEPARATOR
             MENUITEM "ハッシュ化する前の文字列をすべてログに記録(&L)",   ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS
             MENUITEM SEPARATOR
             MENUITEM "ゲームリソースの言語の変更：使用しない(&N)",     ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE

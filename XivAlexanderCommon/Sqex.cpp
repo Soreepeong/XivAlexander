@@ -35,24 +35,25 @@ void Sqex::from_json(const nlohmann::json& j, Language& newValue) {
 	CharLowerW(&newValueString[0]);
 
 	newValue = Language::Unspecified;
-	if (!newValueString.empty()) {
-		if (newValueString.substr(0, std::min<size_t>(8, newValueString.size())) == L"japanese")
-			newValue = Language::Japanese;
-		else if (newValueString.substr(0, std::min<size_t>(7, newValueString.size())) == L"english")
-			newValue = Language::English;
-		else if (newValueString.substr(0, std::min<size_t>(6, newValueString.size())) == L"german")
-			newValue = Language::German;
-		else if (newValueString.substr(0, std::min<size_t>(8, newValueString.size())) == L"deutsche")
-			newValue = Language::German;
-		else if (newValueString.substr(0, std::min<size_t>(6, newValueString.size())) == L"french")
-			newValue = Language::French;
-		else if (newValueString.substr(0, std::min<size_t>(17, newValueString.size())) == L"chinesesimplified")
-			newValue = Language::ChineseSimplified;
-		else if (newValueString.substr(0, std::min<size_t>(18, newValueString.size())) == L"chinesetraditional")
-			newValue = Language::ChineseTraditional;
-		else if (newValueString.substr(0, std::min<size_t>(6, newValueString.size())) == L"korean")
-			newValue = Language::Korean;
-	}
+	if (newValueString.empty())
+		return;
+
+	if (newValueString.substr(0, std::min<size_t>(8, newValueString.size())) == L"japanese")
+		newValue = Language::Japanese;
+	else if (newValueString.substr(0, std::min<size_t>(7, newValueString.size())) == L"english")
+		newValue = Language::English;
+	else if (newValueString.substr(0, std::min<size_t>(6, newValueString.size())) == L"german")
+		newValue = Language::German;
+	else if (newValueString.substr(0, std::min<size_t>(8, newValueString.size())) == L"deutsche")
+		newValue = Language::German;
+	else if (newValueString.substr(0, std::min<size_t>(6, newValueString.size())) == L"french")
+		newValue = Language::French;
+	else if (newValueString.substr(0, std::min<size_t>(17, newValueString.size())) == L"chinesesimplified")
+		newValue = Language::ChineseSimplified;
+	else if (newValueString.substr(0, std::min<size_t>(18, newValueString.size())) == L"chinesetraditional")
+		newValue = Language::ChineseTraditional;
+	else if (newValueString.substr(0, std::min<size_t>(6, newValueString.size())) == L"korean")
+		newValue = Language::Korean;
 }
 
 void Sqex::to_json(nlohmann::json& j, const Region& value) {

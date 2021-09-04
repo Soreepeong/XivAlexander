@@ -91,10 +91,10 @@
       <Filter>App\Apps</Filter>
     </ClCompile>
     <ClCompile Include="DllMain.cpp" />
+    <ClCompile Include="AutoLoadAsDependencyModule.cpp" />
     <ClCompile Include="App_Feature_GameResourceOverrider.cpp">
       <Filter>App\Feature</Filter>
     </ClCompile>
-    <ClCompile Include="AutoLoadAsDependencyModule.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -167,9 +167,6 @@
       <Filter>App\Apps</Filter>
     </ClInclude>
     <ClInclude Include="DllMain.h" />
-    <ClInclude Include="App_Feature_GameResourceOverrider.h">
-      <Filter>App\Feature</Filter>
-    </ClInclude>
     <ClInclude Include="resource_ko.h">
       <Filter>Resources</Filter>
     </ClInclude>
@@ -178,6 +175,9 @@
     </ClInclude>
     <ClInclude Include="includes\XivAlexander\XivAlexander.h">
       <Filter>Exported</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Feature_GameResourceOverrider.h">
+      <Filter>App\Feature</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -11,5 +11,7 @@ namespace App::Feature {
 	public:
 		GameResourceOverrider();
 		~GameResourceOverrider();
+
+		bool CanUnload() const;
 	};
 }

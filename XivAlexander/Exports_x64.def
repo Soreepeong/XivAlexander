@@ -5,3 +5,5 @@ EXPORTS
 	CreateDXGIFactory=FORWARDER_CreateDXGIFactory		@10
 	CreateDXGIFactory1=FORWARDER_CreateDXGIFactory1		@11
 	CreateDXGIFactory2=FORWARDER_CreateDXGIFactory2		@12
+	
+	XA_InjectEntryPoint=InjectEntryPoint				@100

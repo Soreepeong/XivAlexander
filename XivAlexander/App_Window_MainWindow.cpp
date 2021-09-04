@@ -245,10 +245,6 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					config.UseEffectApplicationDelayLogger = !config.UseEffectApplicationDelayLogger;
 					return 0;
 
-				case ID_TRAYMENU_HASHKEYMANIPULATION_ENABLE:
-					config.UseHashTracker = !config.UseHashTracker;
-					return 0;
-
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS:
 					config.UseHashTrackerKeyLogging = !config.UseHashTrackerKeyLogging;
 					return 0;
@@ -576,7 +572,6 @@ void App::Window::MainWindow::RepopulateMenu(HMENU hMenu) const {
 	Set(hMenu, ID_TRAYMENU_USEALLIPCMESSAGELOGGER, config.UseAllIpcMessageLogger, true);
 	Set(hMenu, ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER, config.UseEffectApplicationDelayLogger, true);
 
-	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_ENABLE, config.UseHashTracker, true);
 	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS, config.UseHashTrackerKeyLogging, true);
 	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE, config.HashTrackerLanguageOverride == Sqex::Language::Unspecified, true);
 	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH, config.HashTrackerLanguageOverride == Sqex::Language::English, true);

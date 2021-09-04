@@ -3,3 +3,5 @@ EXPORTS
 	DirectInput8Create=FORWARDER_DirectInput8Create		@1
 	D3DPERF_SetOptions=FORWARDER_D3DPERF_SetOptions		@32
 	Direct3DCreate9=FORWARDER_Direct3DCreate9			@37
+	
+	XA_InjectEntryPoint=InjectEntryPoint				@100

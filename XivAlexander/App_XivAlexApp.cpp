@@ -48,7 +48,7 @@ struct App::XivAlexApp::Implementation {
 	std::unique_ptr<Feature::IpcTypeFinder> m_ipcTypeFinder{};
 	std::unique_ptr<Feature::AllIpcMessageLogger> m_allIpcMessageLogger{};
 	std::unique_ptr<Feature::EffectApplicationDelayLogger> m_effectApplicationDelayLogger{};
-	std::unique_ptr<Feature::GameResourceOverrider> m_hashTracker{};
+	std::unique_ptr<Feature::GameResourceOverrider> m_gameResourceOverrider{};
 
 	std::unique_ptr<Window::LogWindow> m_logWindow{};
 	std::unique_ptr<Window::MainWindow> m_trayWindow{};
@@ -192,15 +192,8 @@ struct App::XivAlexApp::Implementation {
 		});
 		m_cleanup += [this]() { m_effectApplicationDelayLogger = nullptr; };
 
-		if (config.UseHashTracker)
-			m_hashTracker = std::make_unique<Feature::GameResourceOverrider>();
-		m_cleanup += config.UseHashTracker.OnChangeListener([&](Config::ItemBase&) {
-			if (config.UseHashTracker)
-				m_hashTracker = std::make_unique<Feature::GameResourceOverrider>();
-			else
-				m_hashTracker = nullptr;
-		});
-		m_cleanup += [this]() { m_hashTracker = nullptr; };
+		m_gameResourceOverrider = std::make_unique<Feature::GameResourceOverrider>();
+		m_cleanup += [this]() { m_gameResourceOverrider = nullptr; };
 
 		if (config.ShowLoggingWindow)
 			m_logWindow = std::make_unique<Window::LogWindow>();
@@ -237,10 +230,14 @@ App::XivAlexApp::XivAlexApp()
 	, m_logger(Misc::Logger::Acquire())
 	, m_config(Config::Acquire())
 	, m_pImpl(std::make_unique<Implementation>(this))
-	, m_hCustomMessageLoop(L"XivAlexander::App::XivAlexApp::CustomMessageLoopBody", [this]() { CustomMessageLoopBody(); }) {
+	, m_loadCompleteEvent(Utils::Win32::Event::Create())
+	, m_hCustomMessageLoop(L"XivAlexander::App::XivAlexApp::CustomMessageLoopBody", [this]() { CustomMessageLoopBody(); }){
+	m_loadCompleteEvent.Wait();
 }
 
 App::XivAlexApp::~XivAlexApp() {
+	m_loadCompleteEvent.Set();
+
 	if (!IsUnloadable().empty()) {
 		// Unloading despite IsUnloadable being set.
 		// Either process is terminating to begin with, or something went wrong,
@@ -275,6 +272,8 @@ void App::XivAlexApp::CustomMessageLoopBody() {
 	} catch (std::exception& e) {
 		m_logger->Format<LogLevel::Warning>(LogCategory::General, m_config->Runtime.GetLangId(), IDS_ERROR_FREEGAMEMUTEX, e.what());
 	}
+
+	m_loadCompleteEvent.Set();
 
 	MSG msg;
 	while (GetMessageW(&msg, nullptr, 0, 0)) {
@@ -353,6 +352,9 @@ std::string App::XivAlexApp::IsUnloadable() const {
 
 	if (m_pImpl == nullptr)
 		return "";
+
+	if (!m_pImpl->m_gameResourceOverrider->CanUnload())
+		return "Cannot unload when overlaying game resources";  // TODO: create string resource
 
 	if (m_pImpl->m_socketHook && !m_pImpl->m_socketHook->IsUnloadable())
 		return Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_UNLOAD_SOCKET));

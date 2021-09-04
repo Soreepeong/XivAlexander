@@ -103,10 +103,8 @@ BEGIN
         MENUITEM "Use IPC Type &Finder\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
         MENUITEM "Log All IPC &Message \t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
         MENUITEM "Log &Effect Application Delay \t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
-        POPUP "Resource &Hash Manipulation (x64 only)"
+        POPUP "&Resource Manipulation (x64 only)"
         BEGIN
-            MENUITEM "&Enable\t(Ctrl+Shift+)K",     ID_TRAYMENU_HASHKEYMANIPULATION_ENABLE
-            MENUITEM SEPARATOR
             MENUITEM "&Log All Plaintext Before Hash", ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS
             MENUITEM SEPARATOR
             MENUITEM "&No Language Override",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE

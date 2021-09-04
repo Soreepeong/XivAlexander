@@ -4,9 +4,9 @@
 #include <string>
 
 namespace Sqex::CommandLine {
-	extern const char ChecksumTable[16];
-	extern const char ObfuscationHead[12];
-	extern const char ObfuscationTail[4];
+	extern const char ChecksumTable[17];
+	extern const char ObfuscationHead[13];
+	extern const char ObfuscationTail[5];
 
 	std::vector<std::pair<std::string, std::string>> FromString(std::string source, bool* wasObfuscated = nullptr);
 	std::string ToString(const std::vector<std::pair<std::string, std::string>>& map, bool obfuscate);

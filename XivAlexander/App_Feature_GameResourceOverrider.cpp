@@ -335,8 +335,9 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				static_cast<uint32_t(__stdcall*)(uint32_t, const char*, size_t)>(ptr)
 				));
 			m_cleanup += fns.back()->SetHook([this, ptr, self = fns.back().get()](uint32_t initVal, const char* str, size_t len) {
-				if (!str || !*str || !m_config->Runtime.UseHashTracker)
+				if (!str || !*str)
 					return self->bridge(initVal, str, len);
+
 				auto name = std::string(str);
 				std::string ext, rest;
 				if (const auto i1 = name.find_first_of('.'); i1 != std::string::npos) {
@@ -626,3 +627,7 @@ App::Feature::GameResourceOverrider::GameResourceOverrider()
 }
 
 App::Feature::GameResourceOverrider::~GameResourceOverrider() = default;
+
+bool App::Feature::GameResourceOverrider::CanUnload() const {
+	return m_pImpl->m_virtualPathMap.empty();
+}

@@ -1,6 +1,9 @@
 // ReSharper disable CppParameterNamesMismatch
 #include "pch.h"
 
+// Enable this block when trying to figure out stuff about heap allocation from game
+#if false
+
 #include "Utils_Win32.h"
 
 #pragma warning(disable: 28251)  // Inconsistent annotation
@@ -71,3 +74,5 @@ void operator delete(void* ptr, const std::nothrow_t&) noexcept {
 void operator delete[](void* ptr, const std::nothrow_t&) noexcept {
 	DeallocateAndDecreaseCounter(ptr);
 }
+
+#endif

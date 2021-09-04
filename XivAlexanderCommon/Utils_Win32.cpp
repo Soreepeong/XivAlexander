@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "Utils_Win32.h"
 
+#include <comdef.h>
+#include <shlobj_core.h>
+
 #include "Utils_Win32_Closeable.h"
 #include "Utils_Win32_Handle.h"
 #include "Utils_Win32_Process.h"
@@ -230,6 +233,16 @@ std::filesystem::path Utils::Win32::GetSystem32Path() {
 	if (sysDir.empty())
 		throw Error("GetSystemWindowsDirectoryW");
 	return { std::move(sysDir) };
+}
+
+std::filesystem::path Utils::Win32::EnsureKnownFolderPath(const KNOWNFOLDERID& rfid) {
+	PWSTR pszPath;
+	const auto result = SHGetKnownFolderPath(rfid, KF_FLAG_CREATE | KF_FLAG_INIT, nullptr, &pszPath);
+	if (result != S_OK)
+		throw std::runtime_error(std::format("Failed to resolve %APPDATA%", _com_error(result).ErrorMessage()));
+
+	const auto freepath = CallOnDestruction([pszPath]() { CoTaskMemFree(pszPath); });
+	return std::filesystem::path(pszPath);
 }
 
 static Utils::CallOnDestruction WithRunAsInvoker() {

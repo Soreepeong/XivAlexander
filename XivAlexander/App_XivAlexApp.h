@@ -29,6 +29,8 @@ namespace App {
 
 		bool m_bInterrnalUnloadInitiated = false;
 
+		const Utils::Win32::Event m_loadCompleteEvent;
+
 		// needs to be last, as "this" needs to be done initializing
 		Utils::Win32::Thread m_hCustomMessageLoop;
 

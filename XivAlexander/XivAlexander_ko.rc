@@ -57,10 +57,8 @@ BEGIN
         MENUITEM "IPC 검색 도우미 사용(&F)\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
         MENUITEM "모든 IPC 메시지 로그 사용(&A)\t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
         MENUITEM "기술 효과 적용 지연 로그 사용(&E)\t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
-        POPUP "리소스 해시 조작 (x64 전용)(&H)"
+        POPUP "리소스 조작 (x64 전용)(&H)"
         BEGIN
-            MENUITEM "사용(&E)\t(Ctrl+Shift+)K",      ID_TRAYMENU_HASHKEYMANIPULATION_ENABLE
-            MENUITEM SEPARATOR
             MENUITEM "모든 해시 처리 전 문자열 로그 사용(&L)",    ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS
             MENUITEM SEPARATOR
             MENUITEM "게임 리소스 언어 변경하지 않음(&N)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE

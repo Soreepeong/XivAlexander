@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <windef.h>
+#include <shtypes.h>
 
 namespace Utils::Win32 {
 
@@ -50,6 +51,7 @@ namespace Utils::Win32 {
 	std::filesystem::path GetMappedImageNativePath(HANDLE hProcess, void* lpMem);
 	std::filesystem::path ToNativePath(const std::filesystem::path& path);
 	std::filesystem::path GetSystem32Path();
+	std::filesystem::path EnsureKnownFolderPath(_In_ REFKNOWNFOLDERID rfid);
 
 	struct RunProgramParams {
 		enum ElevateMode {

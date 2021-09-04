@@ -45,8 +45,7 @@ struct App::InjectOnCreateProcessApp::Implementation {
 		LPPROCESS_INFORMATION> CreateProcessA{ "CreateProcessA", ::CreateProcessA };
 
 	Utils::CallOnDestruction::Multiple m_cleanup;
-
-public:
+	
 	bool InjectAll = false;
 	bool InjectGameOnly = false;
 
@@ -256,41 +255,50 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent, HANDLE 
 
 	XivAlexDll::EnableXivAlexander(1);
 	XivAlexDll::EnableInjectOnCreateProcess(0);
-
-	Sleep(5000);
 }
 
 void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters * pParam) {
 	DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &pParam->Internal.hMainThread, 0, FALSE, DUPLICATE_SAME_ACCESS);
 	pParam->Internal.hContinuableEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
 	pParam->Internal.hWorkerThread = CreateThread(nullptr, 0, [](void* pParam) -> DWORD {
-		const auto process = Utils::Win32::Process::Current();
-		const auto activationContextCleanup = Dll::ActivationContext().With();
-		try {
-			const auto p = static_cast<InjectEntryPointParameters*>(pParam);
-			const auto hContinueNotify = Utils::Win32::Handle::DuplicateFrom<Utils::Win32::Event>(p->Internal.hContinuableEvent);
-			const auto hMainThread = Utils::Win32::Thread(p->Internal.hMainThread, true);
+		bool skipFree;
+		{
+			const auto process = Utils::Win32::Process::Current();
+
+			try {
+				const auto activationContextCleanup = Dll::ActivationContext().With();
+				const auto p = static_cast<InjectEntryPointParameters*>(pParam);
+				const auto hContinueNotify = Utils::Win32::Handle::DuplicateFrom<Utils::Win32::Event>(p->Internal.hContinuableEvent);
+				const auto hMainThread = Utils::Win32::Thread(p->Internal.hMainThread, true);
+
+				skipFree = p->SkipFree;
 
 #ifdef _DEBUG
-			Utils::Win32::MessageBoxF(MB_OK, MB_OK, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
-				L"PID: {}\nPath: {}\nCommand Line: {}", process.GetId(), process.PathOf().wstring(), GetCommandLineW());
+				Utils::Win32::MessageBoxF(MB_OK, MB_OK, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
+					L"PID: {}\nPath: {}\nCommand Line: {}", process.GetId(), process.PathOf().wstring(), GetCommandLineW());
 #endif
 
-			process.WriteMemory(p->EntryPoint, p->EntryPointOriginalBytes, p->EntryPointOriginalLength, true);
-			InitializeBeforeOriginalEntryPoint(hContinueNotify, hMainThread);
-			SetEvent(hContinueNotify);
-		} catch (std::exception& e) {
-			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
-				1 + FindStringResourceEx(Dll::Module(), IDS_ERROR_INJECT),
-				e.what(), process.GetId(), process.PathOf().wstring(), GetCommandLineW());
+				process.WriteMemory(p->EntryPoint, p->EntryPointOriginalBytes, p->EntryPointOriginalLength, true);
+				InitializeBeforeOriginalEntryPoint(hContinueNotify, hMainThread);
+				SetEvent(hContinueNotify);
+			} catch (std::exception& e) {
+				Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
+					1 + FindStringResourceEx(Dll::Module(), IDS_ERROR_INJECT),
+					e.what(), process.GetId(), process.PathOf().wstring(), GetCommandLineW());
 
 #ifdef _DEBUG
-			throw;
+				throw;
 #else
-			TerminateProcess(GetCurrentProcess(), 1);
+				TerminateProcess(GetCurrentProcess(), 1);
 #endif
+			}
 		}
-		FreeLibraryAndExitThread(Dll::Module(), 0);
+
+		if (!skipFree) {
+			// All stack allocated objects must be gone at this point
+			FreeLibraryAndExitThread(Dll::Module(), 0);
+		}
+		return 0;
 	}, pParam, 0, nullptr);
 	assert(pParam->Internal.hContinuableEvent);
 	assert(pParam->Internal.hWorkerThread);
@@ -316,7 +324,7 @@ XivAlexDll::InjectEntryPointParameters* XivAlexDll::PatchEntryPointForInjection(
 		pBaseAddress = regions.front().BaseAddress;
 	}
 	
-	auto& mem = process.GetModuleMemoryBlockManager(static_cast<HMODULE>(pBaseAddress));
+	const auto& mem = process.GetModuleMemoryBlockManager(static_cast<HMODULE>(pBaseAddress));
 
 	auto path = Dll::Module().PathOf().wstring();
 	path.resize(path.size() + 1);  // add null character

@@ -162,8 +162,8 @@ copy /y "$(TargetDir)XivAlexander64.dll" "$(TargetDir)d3d11.dll"
 copy /y "$(TargetDir)XivAlexander64.dll" "$(TargetDir)dxgi.dll"
 copy /y "$(TargetDir)XivAlexander32.dll" "$(TargetDir)dinput8.32.dll"
 copy /y "$(TargetDir)XivAlexander64.dll" "$(TargetDir)dinput8.64.dll"
-copy /y "$(TargetDir)XivAlexander32.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d9.dll"
-copy /y "$(TargetDir)XivAlexander64.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d11.dll"
+REM copy /y "$(TargetDir)XivAlexander32.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d9.dll"
+REM copy /y "$(TargetDir)XivAlexander64.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d11.dll"
 cmd /c "exit /b 0"
 </Command>
     </PostBuildEvent>
@@ -208,8 +208,8 @@ copy /y "$(TargetDir)XivAlexander64.dll" "$(TargetDir)d3d11.dll"
 copy /y "$(TargetDir)XivAlexander64.dll" "$(TargetDir)dxgi.dll"
 copy /y "$(TargetDir)XivAlexander32.dll" "$(TargetDir)dinput8.32.dll"
 copy /y "$(TargetDir)XivAlexander64.dll" "$(TargetDir)dinput8.64.dll"
-copy /y "$(TargetDir)XivAlexander32.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d9.dll"
-copy /y "$(TargetDir)XivAlexander64.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d11.dll"
+REM copy /y "$(TargetDir)XivAlexander32.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d9.dll"
+REM copy /y "$(TargetDir)XivAlexander64.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d11.dll"
 cmd /c "exit /b 0"
 </Command>
     </PostBuildEvent>
@@ -258,8 +258,8 @@ copy /y "$(TargetDir)XivAlexander64.dll" "$(TargetDir)d3d11.dll"
 copy /y "$(TargetDir)XivAlexander64.dll" "$(TargetDir)dxgi.dll"
 copy /y "$(TargetDir)XivAlexander32.dll" "$(TargetDir)dinput8.32.dll"
 copy /y "$(TargetDir)XivAlexander64.dll" "$(TargetDir)dinput8.64.dll"
-copy /y "$(TargetDir)XivAlexander32.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d9.dll"
-copy /y "$(TargetDir)XivAlexander64.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d11.dll"
+REM copy /y "$(TargetDir)XivAlexander32.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d9.dll"
+REM copy /y "$(TargetDir)XivAlexander64.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d11.dll"
 cmd /c "exit /b 0"
 </Command>
     </PostBuildEvent>
@@ -309,8 +309,8 @@ copy /y "$(TargetDir)XivAlexander64.dll" "$(TargetDir)d3d11.dll"
 copy /y "$(TargetDir)XivAlexander64.dll" "$(TargetDir)dxgi.dll"
 copy /y "$(TargetDir)XivAlexander32.dll" "$(TargetDir)dinput8.32.dll"
 copy /y "$(TargetDir)XivAlexander64.dll" "$(TargetDir)dinput8.64.dll"
-copy /y "$(TargetDir)XivAlexander32.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d9.dll"
-copy /y "$(TargetDir)XivAlexander64.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d11.dll"
+REM copy /y "$(TargetDir)XivAlexander32.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d9.dll"
+REM copy /y "$(TargetDir)XivAlexander64.dll" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d11.dll"
 cmd /c "exit /b 0"
 </Command>
     </PostBuildEvent>

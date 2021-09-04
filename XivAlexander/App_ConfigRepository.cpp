@@ -144,26 +144,21 @@ std::wstring App::Config::Runtime::GetRegionNameLocalized(Sqex::Region gameRegio
 std::filesystem::path App::Config::InitializationConfig::ResolveConfigStorageDirectoryPath() {
 	if (!Loaded())
 		Reload();
+	
+	if (!FixedConfigurationFolderPath.Value().empty())
+		return EnsureDirectory(TranslatePath(FixedConfigurationFolderPath.Value()));
+	else
+		return EnsureDirectory(Utils::Win32::EnsureKnownFolderPath(FOLDERID_RoamingAppData) / L"XivAlexander");
+}
 
-	std::filesystem::path path;
-	if (!FixedConfigurationFolderPath.Value().empty()) {
-		path = TranslatePath(FixedConfigurationFolderPath.Value());
-	} else {
-		PWSTR pszPath;
-		const auto result = SHGetKnownFolderPath(FOLDERID_RoamingAppData, KF_FLAG_CREATE | KF_FLAG_INIT, nullptr, &pszPath);
-		if (result != S_OK)
-			throw std::runtime_error(std::format("Failed to resolve %APPDATA%", _com_error(result).ErrorMessage()));
-		path = std::filesystem::path(pszPath) / L"XivAlexander";
-		CoTaskMemFree(pszPath);
-	}
-	if (!is_directory(path)) {
-		if (const auto res = SHCreateDirectoryExW(nullptr, path.c_str(), nullptr);
-			res != ERROR_SUCCESS && res != ERROR_ALREADY_EXISTS)
-			throw Utils::Win32::Error(res, "SHCreateDirectoryExW");
-		if (!is_directory(path))
-			throw std::runtime_error(std::format("Path \"{}\" is not a directory", path));
-	}
-	return path;
+std::filesystem::path App::Config::InitializationConfig::ResolveXivAlexInstallationPath() {
+	if (!Loaded())
+		Reload();
+
+	if (!XivAlexFolderPath.Value().empty())
+		return EnsureDirectory(TranslatePath(XivAlexFolderPath.Value()));
+	else
+		return EnsureDirectory(Utils::Win32::EnsureKnownFolderPath(FOLDERID_LocalAppData) / L"XivAlexander");
 }
 
 std::filesystem::path App::Config::InitializationConfig::ResolveRuntimeConfigPath() {
@@ -190,6 +185,17 @@ std::filesystem::path App::Config::TranslatePath(const std::filesystem::path& s,
 	if (path.is_relative())
 		path = Dll::Module().PathOf().parent_path() / path;
 	return path;
+}
+
+std::filesystem::path App::Config::EnsureDirectory(const std::filesystem::path& path) {
+	if (!is_directory(path)) {
+		if (const auto res = SHCreateDirectoryExW(nullptr, path.c_str(), nullptr);
+			res != ERROR_SUCCESS && res != ERROR_ALREADY_EXISTS)
+			throw Utils::Win32::Error(res, "SHCreateDirectoryExW");
+		if (!is_directory(path))
+			throw std::runtime_error(std::format("Path \"{}\" is not a directory", path));
+	}
+	return canonical(path);
 }
 
 App::Config::Config(std::filesystem::path initializationConfigPath)
@@ -332,10 +338,14 @@ bool App::Config::Item<T>::LoadFrom(const nlohmann::json & data, bool announceCh
 	if (const auto it = data.find(Name()); it != data.end()) {
 		T newValue;
 		try {
-			const auto newValue = it->template get<T>();
+			newValue = it->template get<T>();
 		} catch (...) {
+			MessageBoxW(nullptr, L"", L"", MB_OK);
 			// do nothing for now
 			// TODO: show how the value is invalid
+#ifdef _DEBUG
+			throw;
+#endif
 		}
 		if (announceChanged)
 			this->operator=(newValue);

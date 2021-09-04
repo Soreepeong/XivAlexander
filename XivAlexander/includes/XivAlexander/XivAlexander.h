@@ -60,6 +60,7 @@ namespace XivAlexDll {
 		void* EntryPointOriginalBytes;
 		size_t EntryPointOriginalLength;
 		void* TrampolineAddress;
+		bool SkipFree;
 
 		struct {
 			HANDLE hContinuableEvent;

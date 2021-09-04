@@ -182,8 +182,7 @@ namespace App {
 			Item<bool> ShowLoggingWindow = CreateConfigItem(this, "ShowLoggingWindow", true);
 			Item<bool> ShowControlWindow = CreateConfigItem(this, "ShowControlWindow", true);
 			Item<bool> UseAllIpcMessageLogger = CreateConfigItem(this, "UseAllIpcMessageLogger", false);
-
-			Item<bool> UseHashTracker = CreateConfigItem(this, "UseHashTracker", false);
+			
 			Item<bool> UseHashTrackerKeyLogging = CreateConfigItem(this, "UseHashTrackerKeyLogging", false);
 			Item<Sqex::Language> HashTrackerLanguageOverride = CreateConfigItem(this, "HashTrackerLanguageOverride", Sqex::Language::Unspecified);
 
@@ -250,14 +249,25 @@ namespace App {
 			using BaseRepository::BaseRepository;
 
 		public:
-			Item<std::filesystem::path> FixedConfigurationFolderPath = CreateConfigItem(this, "FixedConfigurationFolderPath", std::filesystem::path("%APPDATA%/XivAlexander"));
+			// Default value if empty: %APPDATA%/XivAlexander
+			Item<std::filesystem::path> FixedConfigurationFolderPath = CreateConfigItem(this, "FixedConfigurationFolderPath", std::filesystem::path());
+			// Default value if empty: %LOCALAPPDATA%/XivAlexander
+			Item<std::filesystem::path> XivAlexFolderPath = CreateConfigItem(this,
+#ifdef _DEBUG
+				"XivAlexFolderPath_DEBUG"
+#else
+				"XivAlexFolderPath"
+#endif
+				, std::filesystem::path());
 
 			std::filesystem::path ResolveConfigStorageDirectoryPath();
+			std::filesystem::path ResolveXivAlexInstallationPath();
 			std::filesystem::path ResolveRuntimeConfigPath();
 			std::filesystem::path ResolveGameOpcodeConfigPath();
 		};
 
 		static std::filesystem::path TranslatePath(const std::filesystem::path&, bool dontTranslateEmpty = true);
+		static std::filesystem::path EnsureDirectory(const std::filesystem::path&);
 
 	protected:
 		static std::weak_ptr<Config> s_instance;
