@@ -162,3 +162,17 @@ const char* Dll::GetUnloadDisabledReason() {
 bool Dll::IsLoadedAsDependency() {
 	return s_bLoadedAsDependency;
 }
+
+HWND Dll::FindGameMainWindow(bool throwOnError) {
+	HWND hwnd = nullptr;
+	while ((hwnd = FindWindowExW(nullptr, hwnd, L"FFXIVGAME", nullptr))) {
+		DWORD pid;
+		GetWindowThreadProcessId(hwnd, &pid);
+
+		if (pid == GetCurrentProcessId())
+			break;
+	}
+	if (hwnd == nullptr && throwOnError)
+		throw std::runtime_error(Utils::ToUtf8(FindStringResourceEx(Module(), IDS_ERROR_GAME_WINDOW_NOT_FOUND) + 1));
+	return hwnd;
+}

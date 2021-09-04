@@ -152,10 +152,10 @@ namespace App {
 				return Item<T>(pRepository, pszName, defaultValue, std::forward<Args...>(args));
 			}
 		};
-		
+
 		// Relative paths are relative to the directory of the DLL.
 		// All items accept relative paths.
-		
+
 		class Runtime : public BaseRepository {
 			friend class Config;
 			using BaseRepository::BaseRepository;
@@ -182,7 +182,7 @@ namespace App {
 			Item<bool> ShowLoggingWindow = CreateConfigItem(this, "ShowLoggingWindow", true);
 			Item<bool> ShowControlWindow = CreateConfigItem(this, "ShowControlWindow", true);
 			Item<bool> UseAllIpcMessageLogger = CreateConfigItem(this, "UseAllIpcMessageLogger", false);
-			
+
 			Item<bool> UseHashTrackerKeyLogging = CreateConfigItem(this, "UseHashTrackerKeyLogging", false);
 			Item<Sqex::Language> HashTrackerLanguageOverride = CreateConfigItem(this, "HashTrackerLanguageOverride", Sqex::Language::Unspecified);
 
@@ -190,18 +190,18 @@ namespace App {
 
 			// If not set, default to files in System32 (SysWOW64) in %WINDIR% (GetSystemDirectory)
 			// If set but invalid, show errors.
-			Item<std::filesystem::path> ChainLoadPath_d3d11 = CreateConfigItem(this, "ChainLoadPath_d3d11", std::filesystem::path(""));
-			Item<std::filesystem::path> ChainLoadPath_dxgi = CreateConfigItem(this, "ChainLoadPath_dxgi", std::filesystem::path(""));
-			Item<std::filesystem::path> ChainLoadPath_d3d9 = CreateConfigItem(this, "ChainLoadPath_d3d9", std::filesystem::path(""));
-			Item<std::filesystem::path> ChainLoadPath_dinput8 = CreateConfigItem(this, "ChainLoadPath_dinput8", std::filesystem::path(""));
+			Item<std::vector<std::filesystem::path>> ChainLoadPath_d3d11 = CreateConfigItem<std::vector<std::filesystem::path>>(this, "ChainLoadPath_d3d11");
+			Item<std::vector<std::filesystem::path>> ChainLoadPath_dxgi = CreateConfigItem<std::vector<std::filesystem::path>>(this, "ChainLoadPath_dxgi");
+			Item<std::vector<std::filesystem::path>> ChainLoadPath_d3d9 = CreateConfigItem<std::vector<std::filesystem::path>>(this, "ChainLoadPath_d3d9");
+			Item<std::vector<std::filesystem::path>> ChainLoadPath_dinput8 = CreateConfigItem<std::vector<std::filesystem::path>>(this, "ChainLoadPath_dinput8");
 
 			Item<bool> UseResourceOverriding = CreateConfigItem(this, "UseResourceOverriding", true);
 			Item<bool> UseDefaultTexToolsModPackSearchDirectory = CreateConfigItem(this, "UseDefaultTexToolsModPackSearchDirectory", true);
 			Item<std::vector<std::filesystem::path>> AdditionalTexToolsModPackSearchDirectories =
-				CreateConfigItem(this, "AdditionalTexToolsModPackSearchDirectories", std::vector<std::filesystem::path>{});
+				CreateConfigItem<std::vector<std::filesystem::path>>(this, "AdditionalTexToolsModPackSearchDirectories");
 			Item<bool> UseDefaultGameResourceFileEntryRootDirectory = CreateConfigItem(this, "UseDefaultGameResourceFileEntryRootDirectory", true);
 			Item<std::vector<std::filesystem::path>> AdditionalGameResourceFileEntryRootDirectories =
-				CreateConfigItem(this, "AdditionalGameResourceFileEntryRootDirectories", std::vector<std::filesystem::path>{});
+				CreateConfigItem<std::vector<std::filesystem::path>>(this, "AdditionalGameResourceFileEntryRootDirectories");
 
 			[[nodiscard]] WORD GetLangId() const;
 			[[nodiscard]] LPCWSTR GetStringRes(UINT uId) const;

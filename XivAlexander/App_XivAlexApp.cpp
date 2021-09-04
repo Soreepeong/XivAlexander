@@ -20,20 +20,6 @@
 #include "DllMain.h"
 #include "resource.h"
 
-static HWND FindGameMainWindow() {
-	HWND hwnd = nullptr;
-	while ((hwnd = FindWindowExW(nullptr, hwnd, L"FFXIVGAME", nullptr))) {
-		DWORD pid;
-		GetWindowThreadProcessId(hwnd, &pid);
-
-		if (pid == GetCurrentProcessId())
-			break;
-	}
-	if (hwnd == nullptr)
-		throw std::runtime_error(Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_ERROR_GAME_WINDOW_NOT_FOUND) + 1));
-	return hwnd;
-}
-
 struct App::XivAlexApp::Implementation {
 	XivAlexApp* const this_;
 
@@ -116,7 +102,7 @@ struct App::XivAlexApp::Implementation {
 
 	Implementation(XivAlexApp* this_)
 		: this_(this_)
-		, m_hGameMainWindow(FindGameMainWindow())
+		, m_hGameMainWindow(Dll::FindGameMainWindow())
 		, m_gameWindowSubclass(std::make_shared<Misc::Hooks::WndProcFunction>("GameMainWindow", m_hGameMainWindow)) {
 	}
 
