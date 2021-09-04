@@ -172,19 +172,19 @@ std::filesystem::path App::Config::InitializationConfig::ResolveGameOpcodeConfig
 		std::get<1>(regionAndVersion));
 }
 
-std::filesystem::path App::Config::TranslatePath(const std::filesystem::path& s, bool dontTranslateEmpty) {
-	if (dontTranslateEmpty && s.empty())
+std::filesystem::path App::Config::TranslatePath(const std::filesystem::path& path, const std::filesystem::path& relativeTo) {
+	if (path.empty())
 		return {};
 	std::wstring buf;
 	buf.resize(PATHCCH_MAX_CCH);
-	buf.resize(ExpandEnvironmentStringsW(s.wstring().c_str(), &buf[0], PATHCCH_MAX_CCH));
+	buf.resize(ExpandEnvironmentStringsW(path.wstring().c_str(), &buf[0], PATHCCH_MAX_CCH));
 	if (!buf.empty())
 		buf.resize(buf.size() - 1);
 
-	auto path = std::filesystem::path(buf);
-	if (path.is_relative())
-		path = Dll::Module().PathOf().parent_path() / path;
-	return path;
+	auto pathbuf = std::filesystem::path(buf);
+	if (pathbuf.is_relative())
+		pathbuf = (relativeTo.empty() ? Dll::Module().PathOf().parent_path() : relativeTo) / pathbuf;
+	return pathbuf.lexically_normal();
 }
 
 std::filesystem::path App::Config::EnsureDirectory(const std::filesystem::path& path) {

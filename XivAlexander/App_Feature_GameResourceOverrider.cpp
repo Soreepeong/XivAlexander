@@ -503,11 +503,13 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			dirs.emplace_back(m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods");
 		}
 
-		for (const auto& dir : m_config->Runtime.AdditionalTexToolsModPackSearchDirectories.Value())
-			dirs.emplace_back(Config::TranslatePath(dir, false));
-
+		for (const auto& dir : m_config->Runtime.AdditionalTexToolsModPackSearchDirectories.Value()) {
+			if (!dir.empty())
+				dirs.emplace_back(Config::TranslatePath(dir));
+		}
+		
 		for (const auto& dir : dirs) {
-			if (!is_directory(dir))
+			if (dir.empty() || !is_directory(dir))
 				continue;
 
 			std::vector<std::filesystem::path> files;
@@ -555,15 +557,17 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			dirs.emplace_back(m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries");
 		}
 
-		for (const auto& dir : m_config->Runtime.AdditionalGameResourceFileEntryRootDirectories.Value())
-			dirs.emplace_back(Config::TranslatePath(dir, false));
+		for (const auto& dir : m_config->Runtime.AdditionalGameResourceFileEntryRootDirectories.Value()) {
+			if (!dir.empty())
+				dirs.emplace_back(Config::TranslatePath(dir));
+		}
 
 		for (size_t i = 0, i_ = dirs.size(); i < i_; ++i) {
 			dirs.emplace_back(dirs[i] / std::format("{}.win32", vpath.VirtualSqPack->DatExpac) / vpath.VirtualSqPack->DatName);
 			dirs[i] = dirs[i] / vpath.VirtualSqPack->DatExpac / vpath.VirtualSqPack->DatName;
 		}
 
-		for (auto dir : dirs) {
+		for (const auto& dir : dirs) {
 			if (!is_directory(dir))
 				continue;
 

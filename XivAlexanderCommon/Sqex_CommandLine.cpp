@@ -11,12 +11,17 @@ const char Sqex::CommandLine::ObfuscationTail[5] = "**//";
 std::vector<std::pair<std::string, std::string>> Sqex::CommandLine::FromString(std::string source, bool* wasObfuscated) {
 	std::vector<std::pair<std::string, std::string>> res;
 	
-	if (source.starts_with(ObfuscationHead) && source.ends_with(ObfuscationTail) && source.size() >= 17) {
-		const auto chksum = std::find(ChecksumTable, ChecksumTable + sizeof ChecksumTable, source[source.size() - 5]) - ChecksumTable;
+	if (source.starts_with(ObfuscationHead) && source.size() >= 17) {
+		auto endPos = source.find_first_of(ObfuscationTail);
+		if (endPos == std::string::npos)
+			throw std::invalid_argument("bad encoded string");
+		source = source.substr(sizeof ObfuscationHead - 1, endPos - (sizeof ObfuscationHead - 1));
+
+		const auto chksum = std::find(ChecksumTable, ChecksumTable + sizeof ChecksumTable, source.back()) - ChecksumTable;
 		
 		{
 			CryptoPP::Base64URLDecoder b64decoder;
-			b64decoder.Put(reinterpret_cast<const uint8_t*>(&source[12]), source.size() - 17);
+			b64decoder.Put(reinterpret_cast<const uint8_t*>(&source), source.size());
 			b64decoder.MessageEnd();
 			source.resize(static_cast<size_t>(b64decoder.MaxRetrievable()));
 			b64decoder.Get(reinterpret_cast<uint8_t*>(&source[0]), source.size());

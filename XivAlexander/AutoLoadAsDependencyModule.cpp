@@ -4,6 +4,7 @@
 
 #include <dinput.h>
 #include <XivAlexander/XivAlexander.h>
+#include <XivAlexanderCommon/Sqex_CommandLine.h>
 #include <XivAlexanderCommon/Utils_Win32.h>
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
 #include <XivAlexanderCommon/XivAlex.h>
@@ -18,7 +19,7 @@ static Utils::Win32::LoadedModule EnsureOriginalDependencyModule(const char* szD
 static void AutoLoadAsDependencyModule();
 
 static std::set<std::filesystem::path> s_ignoreDlls;
-bool s_useSystemDll = false;
+static bool s_useSystemDll = false;
 
 template<typename T_Fn, typename Ret>
 Ret ChainCall(const char* szDllName, const char* szFunctionName, std::vector<std::filesystem::path> chainLoadDlls, std::function<Ret(T_Fn, bool discardImmediately)> cb) {
@@ -29,8 +30,11 @@ Ret ChainCall(const char* szDllName, const char* szFunctionName, std::vector<std
 	if (s_useSystemDll) {
 		chainLoadDlls.clear();
 	} else {
-		for (auto& path : chainLoadDlls)
-			path = App::Config::Config::TranslatePath(path);
+		std::vector<std::filesystem::path> temp;
+		for (auto& path : temp)
+			if (!path.empty())
+				temp.emplace_back(App::Config::Config::TranslatePath(path));
+		chainLoadDlls = std::move(temp);
 	}
 
 	if (chainLoadDlls.empty())
@@ -213,6 +217,8 @@ static Utils::Win32::LoadedModule EnsureOriginalDependencyModule(const char* szD
 	return mod;
 }
 
+void LoadDalamud();
+
 void AutoLoadAsDependencyModule() {
 	static std::mutex s_singleRunMutex;
 	static bool s_loaded = false;
@@ -228,9 +234,7 @@ void AutoLoadAsDependencyModule() {
 
 	std::filesystem::path loadPath;
 	try {
-		const auto conf = App::Config::Acquire();
-		s_wLanguage = conf->Runtime.GetLangId();
-
+		std::shared_ptr<App::Config> conf = App::Config::Acquire();
 		loadPath = conf->Init.ResolveXivAlexInstallationPath() / XivAlex::XivAlexDllNameW;
 		const auto loadTarget = Utils::Win32::LoadedModule(loadPath);
 		const auto params = XivAlexDll::PatchEntryPointForInjection(GetCurrentProcess());
@@ -273,6 +277,77 @@ void AutoLoadAsDependencyModule() {
 			}
 		}
 	}
+
+	//if (conf && conf->Runtime.ChainLoadDalamud_Enable) {
+	//	if (conf->Runtime.ChainLoadDalamud_WaitMs) {
+	//		Utils::Win32::Thread(L"Dalamud Loader", LoadDalamud);
+	//	} else
+	//		LoadDalamud();
+	//}
 	
 	s_loaded = true;
 }
+
+//void LoadDalamud() {
+//	try {
+//		const auto conf = App::Config::Acquire();
+//		Sleep(conf->Runtime.ChainLoadDalamud_WaitMs);
+//
+//		auto workingDirectory = conf->Runtime.ChainLoadDalamud_WorkingDirectory.Value();
+//		if (workingDirectory.empty())
+//			workingDirectory = Utils::Win32::EnsureKnownFolderPath(FOLDERID_RoamingAppData) / L"XIVLauncher";
+//		else
+//			workingDirectory = App::Config::Config::TranslatePath(workingDirectory);
+//
+//		const auto dalamudDllPath = workingDirectory / L"addon" / L"Hooks" / L"dev" / L"Dalamud.dll";
+//		const auto dalamud = Utils::Win32::LoadedModule(dalamudDllPath);
+//		dalamud.SetPinned();
+//
+//		auto configurationPath = App::Config::Config::TranslatePath(conf->Runtime.ChainLoadDalamud_ConfigurationPath.Value(), workingDirectory);
+//		auto pluginDirectory = App::Config::Config::TranslatePath(conf->Runtime.ChainLoadDalamud_PluginDirectory.Value(), workingDirectory);
+//		auto defaultPluginDirectory = App::Config::Config::TranslatePath(conf->Runtime.ChainLoadDalamud_DefaultPluginDirectory.Value(), workingDirectory);
+//		auto assetDirectory = App::Config::Config::TranslatePath(conf->Runtime.ChainLoadDalamud_ConfigurationPath.Value(), workingDirectory);
+//		if (configurationPath.empty())
+//			configurationPath = workingDirectory / L"dalamudConfig.json";
+//		if (pluginDirectory.empty())
+//			pluginDirectory = workingDirectory / L"installedPlugins";
+//		if (defaultPluginDirectory.empty())
+//			defaultPluginDirectory = workingDirectory / L"devPlugins";
+//		if (assetDirectory.empty())
+//			assetDirectory = workingDirectory / L"dalamudAssets";
+//
+//		std::string gameVersion;
+//		int language = static_cast<int>(Sqex::Language::English) - 1;
+//		auto pairs = Sqex::CommandLine::FromString(Utils::ToUtf8(Utils::Win32::GetCommandLineWithoutProgramName()));
+//		for (auto& [k, v] : pairs) {
+//			if (k == "ver")
+//				gameVersion = std::move(v);
+//			else if (k == "language") {
+//				language = strtol(v.c_str(), nullptr, 10);
+//			}
+//		}
+//		if (gameVersion.empty())
+//			gameVersion = (std::stringstream() << std::ifstream(Utils::Win32::Process::Current().PathOf().parent_path() / L"ffxivgame.ver").rdbuf()).str();
+//		auto optOutMbCollection = conf->Runtime.ChainLoadDalamud_OptOutMbCollection.Value();
+//
+//		// https://github.com/goatcorp/Dalamud/blob/master/Dalamud.Injector/EntryPoint.cs
+//		auto json = nlohmann::json::object({
+//			{"WorkingDirectory", workingDirectory},
+//			{"ConfigurationPath", configurationPath},
+//			{"PluginDirectory", pluginDirectory},
+//			{"DefaultPluginDirectory",defaultPluginDirectory},
+//			{"AssetDirectory", assetDirectory},
+//			{"Langauge", language},
+//			{"GameVersion", gameVersion},
+//			{"OptOutMbCollection", optOutMbCollection },
+//			}).dump(4, ' ');
+//
+//		MessageBoxA(nullptr, json.c_str(), "", MB_OK);
+//		dalamud.GetProcAddress<DWORD(WINAPI*)(LPVOID)>("Initialize", true)(&json[0]);
+//	} catch (const std::runtime_error& e) {
+//		Utils::Win32::MessageBoxF(
+//			Dll::FindGameMainWindow(false), MB_ICONWARNING,
+//			FindStringResourceEx(Dll::Module(), IDS_APP_NAME, s_wLanguage) + 1,
+//			L"Failed to load Dalamud.\nReason: {}", e.what());
+//	}
+//}
