@@ -6,12 +6,12 @@
 int test_convert() {
 	const auto targetBasePath = LR"(Z:\scratch\t2)";
 	for (const auto& rootDir : {
-		std::filesystem::path(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack)"),
-		// std::filesystem::path(LR"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game\sqpack)"),
-		// std::filesystem::path(LR"(D:\Program Files (x86)\SNDA\FFXIV\game\sqpack)"),
+		std::filesystem::path(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game)"),
+		// std::filesystem::path(LR"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game)"),
+		// std::filesystem::path(LR"(D:\Program Files (x86)\SNDA\FFXIV\game)"),
 		}) {
 
-		for (const auto& entry1 : std::filesystem::directory_iterator(rootDir)) {
+		for (const auto& entry1 : std::filesystem::directory_iterator(rootDir / "sqpack")) {
 			if (!entry1.is_directory())
 				continue;
 			if (entry1.path().filename().wstring() != L"ffxiv")
@@ -25,26 +25,39 @@ int test_convert() {
 
 				try {
 					std::cout << "Working on " << path << "..." << std::endl;
-					auto vpack = Sqex::Sqpack::VirtualSqPack();
-					vpack.AddEntriesFromSqPack(path, true, true);
-					const auto replBase = std::filesystem::path(path).replace_extension("");
-					for (const auto& entry3 : std::filesystem::recursive_directory_iterator(replBase)) {
-						const auto& currPath = entry3.path();
-						if (is_directory(currPath))
-							continue;
-
-						const auto relPath = proximate(currPath, replBase);
-						auto pathComponent = relPath.parent_path().string();
-						auto nameComponent = relPath.filename().string();
-						for (auto& c : pathComponent)
-							if (c == '\\')
-								c = '/';
-						CharLowerA(&pathComponent[0]);
-						CharLowerA(&nameComponent[0]);
-						const auto fullPath = std::format("{}/{}", pathComponent, nameComponent);
-						vpack.AddEntryFromFile(fullPath, currPath);
-						std::cout << "Added " << fullPath << std::endl;
+					auto vpack = Sqex::Sqpack::VirtualSqPack("ffxiv", "040000");
+					{
+						const auto addResult = vpack.AddEntriesFromSqPack(path, true, true);
+						std::cout << std::format("Added {}, replaced {}, skipped {}\n",
+							addResult.Added.size(), addResult.Replaced.size(), addResult.SkippedExisting.size());
 					}
+
+					
+					if (const auto replBase = std::filesystem::path(path).replace_extension(""); 
+						is_directory(replBase)) {
+						for (const auto& entry3 : std::filesystem::recursive_directory_iterator(replBase)) {
+							const auto& currPath = entry3.path();
+							if (is_directory(currPath))
+								continue;
+
+							const auto p = vpack.AddEntryFromFile(proximate(currPath, replBase), currPath).AnyItem();
+							if (!p)
+								continue;
+							std::cout << std::format("Added {}\n", p->PathSpec().Original);
+						}
+					}
+
+					if (const auto ttmd = rootDir / "TexToolsMods";
+						is_directory(ttmd)) {
+						for (const auto& entry3 : std::filesystem::recursive_directory_iterator(ttmd)) {
+							if (entry3.path().filename() != "TTMPL.mpl") continue;
+							std::cout << std::format("Processing {}\n", entry3.path().filename());
+							for (const auto p : vpack.AddEntriesFromTTMP(entry3.path().parent_path()).AllEntries()) {
+								std::cout << std::format("=> Added {}\n", p->PathSpec().Original);
+							}
+						}
+					}
+
 					vpack.Freeze(false);
 
 					std::cout << "Testing..." << std::endl;

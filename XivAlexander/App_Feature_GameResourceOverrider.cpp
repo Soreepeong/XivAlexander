@@ -209,15 +209,50 @@ struct App::Feature::GameResourceOverrider::Implementation {
 								}
 							} else {
 								if (!vpath->VirtualSqPack) {
-									vpath->VirtualSqPack = std::make_shared<Sqex::Sqpack::VirtualSqPack>();
+									vpath->VirtualSqPack = std::make_shared<Sqex::Sqpack::VirtualSqPack>(
+										indexFile.parent_path().filename().string(),
+										indexFile.filename().replace_extension().replace_extension().string()
+										);
 									{
 										const auto result = vpath->VirtualSqPack->AddEntriesFromSqPack(indexFile, true, true);
 										m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-											"=> Processed SqPack {}: Added {}, replaced {}",
-											indexFile, result.AddedCount, result.ReplacedCount);
+											"=> Processed SqPack {}/{}: Added {}, replaced {}",
+											vpath->VirtualSqPack->DatExpac, vpath->VirtualSqPack->DatName,
+											result.Added.size(), result.Replaced.size());
 									}
 
 									auto additionalEntriesFound = false;
+
+									if (const auto ttmd = indexFile.parent_path().parent_path().parent_path() / "TexToolsMods";
+										is_directory(ttmd)) {
+										
+										std::vector<std::filesystem::path> files;
+										for (const auto& iter : std::filesystem::recursive_directory_iterator(ttmd)) {
+											if (iter.path().filename() != "TTMPL.mpl") continue;
+											files.emplace_back(iter);
+										}
+
+										std::sort(files.begin(), files.end());
+										for (const auto& path : files) {
+											m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, "Processing {}", path);
+
+											if (exists(path.parent_path() / "disable")) {
+												m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, "=> Disabled because \"disable\" file exists");
+												continue;
+											}
+											try {
+												const auto logCacher = vpath->VirtualSqPack->Log([&](std::string s) {
+													m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, "=> {}", s);
+												});
+												const auto result = vpath->VirtualSqPack->AddEntriesFromTTMP(path.parent_path());
+												if (!result.Added.empty() || !result.Replaced.empty())
+													additionalEntriesFound = true;
+											} catch (const std::exception& e) {
+												m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "=> Error: {}", e.what());
+											}
+										}
+									}
+
 									for (const auto& replacementDirPath : {
 										std::filesystem::path(indexFile).replace_extension(""),
 										}) {
@@ -229,13 +264,16 @@ struct App::Feature::GameResourceOverrider::Implementation {
 													continue;
 												try {
 													const auto result = vpath->VirtualSqPack->AddEntryFromFile(relative(replacementItem, replacementDirPath), replacementItem);
+													const auto item = result.AnyItem();
+													if (!item)
+														throw std::runtime_error("Unexpected error");
 													m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
 														"=> {} file {}: (nameHash={:08x}, pathHash={:08x}, fullPathHash={:08x})",
-														result.AddedCount ? "Added" : "Replaced",
-														result.MostRecentPathSpec.Original,
-														result.MostRecentPathSpec.NameHash,
-														result.MostRecentPathSpec.PathHash,
-														result.MostRecentPathSpec.FullPathHash);
+														result.Added.size() ? "Added" : "Replaced",
+														item->PathSpec().Original,
+														item->PathSpec().NameHash,
+														item->PathSpec().PathHash,
+														item->PathSpec().FullPathHash);
 													additionalEntriesFound = true;
 												} catch (const std::exception& e) {
 													m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,

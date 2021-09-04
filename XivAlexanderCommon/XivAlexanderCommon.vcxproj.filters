@@ -31,6 +31,12 @@
     <Filter Include="Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29">
       <UniqueIdentifier>{2e64594b-fceb-4f41-a5d7-476d2263bcb3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Square Enix Definitions\Third Party Formats">
+      <UniqueIdentifier>{9552314c-ee3c-4b6c-bca7-a02e07d81a53}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Square Enix Definitions\Third Party Formats\TexTools">
+      <UniqueIdentifier>{682c3f75-f414-4d2b-b327-59a9c52a5b1f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -118,6 +124,9 @@
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_EntryProvider.h">
       <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_ThirdParty_TexTools.h">
+      <Filter>Square Enix Definitions\Third Party Formats\TexTools</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -188,6 +197,9 @@
       <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClCompile>
     <ClCompile Include="XivAlexDefaultHeapAllocator.cpp" />
+    <ClCompile Include="Sqex_ThirdParty_TexTools.cpp">
+      <Filter>Square Enix Definitions\Third Party Formats\TexTools</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json">

@@ -90,13 +90,21 @@ namespace Sqex::Sqpack {
 			return *this;
 		}
 
+		bool HasFullPathHash() const {
+			return FullPathHash != EmptyHashValue;
+		}
+
+		bool HasComponentHash() const {
+			return PathHash != EmptyHashValue || NameHash != EmptyHashValue;
+		}
+
 		[[nodiscard]] bool empty() const {
 			return PathHash == EmptyHashValue && NameHash == EmptyHashValue && FullPathHash == EmptyHashValue;
 		}
 
 		bool operator==(const EntryPathSpec& r) const {
-			return (PathHash == r.PathHash && NameHash == r.NameHash && (NameHash != EmptyHashValue || PathHash != EmptyHashValue))
-				|| (FullPathHash == r.FullPathHash && FullPathHash != EmptyHashValue)
+			return (HasComponentHash() && PathHash == r.PathHash && NameHash == r.NameHash)
+				|| (HasFullPathHash() && FullPathHash == r.FullPathHash)
 				|| (empty() && r.empty());
 		}
 
@@ -106,11 +114,28 @@ namespace Sqex::Sqpack {
 	};
 
 	class EntryProvider : public RandomAccessStream {
+		EntryPathSpec m_pathSpec;
+
 	public:
-		const EntryPathSpec PathSpec;
 
 		EntryProvider(EntryPathSpec pathSpec)
-			: PathSpec(std::move(pathSpec)) {
+			: m_pathSpec(std::move(pathSpec)) {
+		}
+		
+		bool UpdatePathSpec(const EntryPathSpec& r) {
+			if (m_pathSpec != r)
+				return false;
+			if (!m_pathSpec.HasFullPathHash())
+				m_pathSpec.FullPathHash = r.FullPathHash;
+			if (!m_pathSpec.HasComponentHash()) {
+				m_pathSpec.PathHash = r.PathHash;
+				m_pathSpec.NameHash = r.NameHash;
+			}
+			return true;
+		}
+
+		const EntryPathSpec& PathSpec() const {
+			return m_pathSpec;
 		}
 
 		[[nodiscard]] virtual SqData::FileEntryType EntryType() const = 0;
@@ -120,11 +145,11 @@ namespace Sqex::Sqpack {
 	public:
 		using EntryProvider::EntryProvider;
 
-		[[nodiscard]] uint32_t StreamSize() const override {
+		[[nodiscard]] uint64_t StreamSize() const override {
 			return sizeof SqData::FileEntryHeader;
 		}
 
-		size_t ReadStreamPartial(uint64_t offset, void* buf, size_t length) const override;
+		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
 
 		[[nodiscard]] SqData::FileEntryType EntryType() const override {
 			return SqData::FileEntryType::Empty;
@@ -143,9 +168,9 @@ namespace Sqex::Sqpack {
 	public:
 		OnTheFlyBinaryEntryProvider(EntryPathSpec, std::filesystem::path path);
 
-		[[nodiscard]] uint32_t StreamSize() const override;
+		[[nodiscard]] uint64_t StreamSize() const override;
 
-		size_t ReadStreamPartial(uint64_t offset, void* buf, size_t length) const override;
+		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
 
 		[[nodiscard]] SqData::FileEntryType EntryType() const override {
 			return SqData::FileEntryType::Binary;
@@ -158,11 +183,11 @@ namespace Sqex::Sqpack {
 	public:
 		MemoryBinaryEntryProvider(EntryPathSpec, const std::filesystem::path& path);
 
-		[[nodiscard]] uint32_t StreamSize() const override {
+		[[nodiscard]] uint64_t StreamSize() const override {
 			return static_cast<uint32_t>(m_data.size());
 		}
 
-		size_t ReadStreamPartial(uint64_t offset, void* buf, size_t length) const override;
+		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
 
 		[[nodiscard]] SqData::FileEntryType EntryType() const override {
 			return SqData::FileEntryType::Binary;
@@ -196,11 +221,12 @@ namespace Sqex::Sqpack {
 		}
 
 	public:
-		[[nodiscard]] uint32_t StreamSize() const override {
+		[[nodiscard]] uint64_t StreamSize() const override {
 			return AlignEntry();
 
 		}
-		size_t ReadStreamPartial(uint64_t offset, void* buf, size_t length) const override;
+
+		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
 
 		[[nodiscard]] SqData::FileEntryType EntryType() const override {
 			return SqData::FileEntryType::Model;
@@ -236,11 +262,11 @@ namespace Sqex::Sqpack {
 	public:
 		OnTheFlyTextureEntryProvider(EntryPathSpec, const std::filesystem::path& path);
 
-		[[nodiscard]] uint32_t StreamSize() const override {
+		[[nodiscard]] uint64_t StreamSize() const override {
 			return static_cast<uint32_t>(m_size);
 		}
 
-		size_t ReadStreamPartial(uint64_t offset, void* buf, size_t length) const override;
+		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
 
 		[[nodiscard]] SqData::FileEntryType EntryType() const override {
 			return SqData::FileEntryType::Texture;
@@ -250,28 +276,28 @@ namespace Sqex::Sqpack {
 	class PartialFileViewEntryProvider : public EntryProvider {
 		const Utils::Win32::File m_file;
 		const uint64_t m_offset;
-		const uint32_t m_size;
+		const uint64_t m_size;
 
 		mutable bool m_entryTypeFetched = false;
 		mutable SqData::FileEntryType m_entryType = SqData::FileEntryType::Empty;
 
 	public:
-		PartialFileViewEntryProvider(EntryPathSpec pathSpec, Utils::Win32::File file, uint64_t offset, uint32_t length)
+		PartialFileViewEntryProvider(EntryPathSpec pathSpec, Utils::Win32::File file, uint64_t offset, uint64_t length)
 			: EntryProvider(std::move(pathSpec))
 			, m_file(std::move(file))
 			, m_offset(offset)
 			, m_size(length) {
 		}
 
-		[[nodiscard]] uint32_t StreamSize() const override {
+		[[nodiscard]] uint64_t StreamSize() const override {
 			return m_size;
 		}
 
-		size_t ReadStreamPartial(uint64_t offset, void* buf, size_t length) const override {
+		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override {
 			if (offset >= m_size)
 				return 0;
 
-			return m_file.Read(m_offset + offset, buf, std::min(length, static_cast<size_t>(m_size - offset)));
+			return m_file.Read(m_offset + offset, buf, static_cast<size_t>(std::min(length, m_size - offset)));
 		}
 
 		[[nodiscard]] SqData::FileEntryType EntryType() const override {

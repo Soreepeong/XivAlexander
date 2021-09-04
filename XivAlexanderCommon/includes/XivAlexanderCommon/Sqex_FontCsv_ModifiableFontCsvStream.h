@@ -14,8 +14,8 @@ namespace Sqex::FontCsv {
 		ModifiableFontCsvStream(float pt, uint16_t textureWidth, uint16_t textureHeight);
 		ModifiableFontCsvStream(const RandomAccessStream& stream, bool strict = false);
 		
-		[[nodiscard]] uint32_t StreamSize() const override;
-		size_t ReadStreamPartial(uint64_t offset, void* buf, size_t length) const override;
+		[[nodiscard]] uint64_t StreamSize() const override;
+		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
 
 		[[nodiscard]] const FontTableEntry* GetFontEntry(char32_t c) const;
 		[[nodiscard]] int GetKerningDistance(char32_t l, char32_t r) const;

@@ -55,11 +55,6 @@ namespace Sqex::Sqpack {
 		[[nodiscard]] bool IsZero() const;
 	};
 
-	class CorruptDataException : public std::runtime_error {
-	public:
-		using std::runtime_error::runtime_error;
-	};
-
 	enum class SqpackType : uint32_t {
 		Unspecified = UINT32_MAX,
 		SqDatabase = 0,

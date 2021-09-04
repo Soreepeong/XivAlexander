@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_EntryProvider.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Texture_ModifiableTextureStream.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_ThirdParty_TexTools.h" />
     <ClInclude Include="includes\XivAlexanderCommon\XaDxtDecompression.h" />
     <ClInclude Include="includes\XivAlexanderCommon\XaFormat.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_CommandLine.h" />
@@ -50,6 +51,7 @@
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Sqex_ThirdParty_TexTools.cpp" />
     <ClCompile Include="XivAlexDefaultHeapAllocator.cpp" />
     <ClCompile Include="Sqex_CommandLine.cpp" />
     <ClCompile Include="Sqex.cpp" />

@@ -31,8 +31,8 @@ namespace Sqex::Texture {
 			, m_underlying(std::move(underlying)) {
 		}
 
-		[[nodiscard]] uint32_t StreamSize() const override { return m_underlying->StreamSize(); }
-		size_t ReadStreamPartial(uint64_t offset, void* buf, size_t length) const override { return m_underlying->ReadStreamPartial(offset, buf, length); }
+		[[nodiscard]] uint64_t StreamSize() const override { return m_underlying->StreamSize(); }
+		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override { return m_underlying->ReadStreamPartial(offset, buf, length); }
 	};
 
 	class MemoryBackedMipmap : public MipmapStream {
@@ -46,8 +46,8 @@ namespace Sqex::Texture {
 
 		static std::shared_ptr<MemoryBackedMipmap> NewARGB8888From(const MipmapStream* stream, CompressionType type = CompressionType::ARGB_1);
 
-		[[nodiscard]] uint32_t StreamSize() const override { return static_cast<uint32_t>(m_data.size());  }
-		size_t ReadStreamPartial(uint64_t offset, void* buf, size_t length) const override;
+		[[nodiscard]] uint64_t StreamSize() const override { return static_cast<uint32_t>(m_data.size());  }
+		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
 
 		[[nodiscard]] auto& View() { return m_data; }
 		[[nodiscard]] const auto& View() const { return m_data; }
@@ -62,7 +62,7 @@ namespace Sqex::Texture {
 			, m_file(std::move(file)) {
 		}
 
-		[[nodiscard]] uint32_t StreamSize() const override { return static_cast<uint32_t>(m_file.GetLength()); }
-		size_t ReadStreamPartial(uint64_t offset, void* buf, size_t length) const override { return m_file.Read(offset, buf, length); }
+		[[nodiscard]] uint64_t StreamSize() const override { return static_cast<uint32_t>(m_file.GetLength()); }
+		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override { return m_file.Read(offset, buf, static_cast<size_t>(length)); }
 	};
 }

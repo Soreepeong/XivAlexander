@@ -18,6 +18,11 @@ namespace Sqex {
 		Korean = 7,
 	};
 
+	class CorruptDataException : public std::runtime_error {
+	public:
+		using std::runtime_error::runtime_error;
+	};
+
 	template<typename T, T DefaultValue = static_cast<T>(0)>
 	struct LE {
 	private:
@@ -75,6 +80,9 @@ namespace Sqex {
 		return true;
 	}
 
+	template<typename T>
+	class RandomAccessStreamIterator;
+
 	class RandomAccessStream : public std::enable_shared_from_this<RandomAccessStream> {
 	public:
 		RandomAccessStream();
@@ -84,10 +92,10 @@ namespace Sqex {
 		RandomAccessStream& operator=(const RandomAccessStream&) = delete;
 		virtual ~RandomAccessStream();
 
-		[[nodiscard]] virtual uint32_t StreamSize() const = 0;
-		virtual size_t ReadStreamPartial(uint64_t offset, void* buf, size_t length) const = 0;
+		[[nodiscard]] virtual uint64_t StreamSize() const = 0;
+		virtual uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const = 0;
 
-		void ReadStream(uint64_t offset, void* buf, size_t length) const;
+		void ReadStream(uint64_t offset, void* buf, uint64_t length) const;
 
 		template<typename T>
 		T ReadStream(uint64_t offset) const {
@@ -107,18 +115,22 @@ namespace Sqex {
 			ReadStream(offset, std::span(result));
 			return result;
 		}
+		template<typename T>
+		RandomAccessStreamIterator<T> Iterator() const {
+			return RandomAccessStreamIterator<T>(*this);
+		}
 	};
 
 	class FileRandomAccessStream : public RandomAccessStream {
 		Utils::Win32::File m_file;
 		const uint64_t m_offset;
-		const uint32_t m_size;
+		const uint64_t m_size;
 
 	public:
-		FileRandomAccessStream(Utils::Win32::File file, uint64_t offset, uint32_t length);
+		FileRandomAccessStream(Utils::Win32::File file, uint64_t offset = 0, uint64_t length = UINT64_MAX);
 		~FileRandomAccessStream() override;
 
-		[[nodiscard]] uint32_t StreamSize() const override;
-		size_t ReadStreamPartial(uint64_t offset, void* buf, size_t length) const override;
+		[[nodiscard]] uint64_t StreamSize() const override;
+		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
 	};
 }

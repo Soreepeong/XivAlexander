@@ -2,6 +2,7 @@
 
 #include "Sqex_Sqpack.h"
 #include "Sqex_Sqpack_EntryProvider.h"
+#include "Utils_ListenerManager.h"
 #include "Utils_Win32_Handle.h"
 
 namespace Sqex::Sqpack {
@@ -22,24 +23,38 @@ namespace Sqex::Sqpack {
 
 		SqpackHeader m_sqpackDataHeader{};
 		std::vector<SqData::Header> m_sqpackDataSubHeaders;
+		
+	public:
+		const std::string DatExpac;
+		const std::string DatName;
 
+	private:
 		const std::unique_ptr<Implementation> m_pImpl;
 
 	public:
-		VirtualSqPack(uint64_t maxFileSize = SqData::Header::MaxFileSize_MaxValue);
+		VirtualSqPack(std::string ex, std::string name, uint64_t maxFileSize = SqData::Header::MaxFileSize_MaxValue);
 		~VirtualSqPack();
 
-		struct AddEntryResult {
-			size_t AddedCount;
-			size_t ReplacedCount;
-			size_t SkippedExistCount;
+	private:
+		Utils::Win32::File OpenFile(
+			_In_opt_ std::filesystem::path curItemPath,
+			_In_opt_ Utils::Win32::File alreadyOpenedFile = {});
 
-			EntryPathSpec MostRecentPathSpec;
+	public:
+		Utils::ListenerManager<Implementation, void, std::string> Log;
+
+		struct AddEntryResult {
+			std::vector<EntryProvider*> Added;
+			std::vector<EntryProvider*> Replaced;
+			std::vector<EntryProvider*> SkippedExisting;
 
 			AddEntryResult& operator+=(const AddEntryResult& r);
+			[[nodiscard]] _Maybenull_ EntryProvider* AnyItem() const;
+			[[nodiscard]] std::vector<EntryProvider*> AllEntries() const;
 		};
 		AddEntryResult AddEntriesFromSqPack(const std::filesystem::path& indexPath, bool overwriteExisting = true, bool overwriteUnknownSegments = false);
 		AddEntryResult AddEntryFromFile(EntryPathSpec pathSpec, const std::filesystem::path& path, bool overwriteExisting = true);
+		AddEntryResult AddEntriesFromTTMP(const std::filesystem::path& extractedDir, bool overwriteExisting = true);
 
 		[[nodiscard]] size_t NumOfDataFiles() const;
 

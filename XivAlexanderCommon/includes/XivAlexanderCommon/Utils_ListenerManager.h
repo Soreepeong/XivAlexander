@@ -36,6 +36,10 @@ namespace Utils {
 			*m_destructed = true;
 		}
 
+		bool Empty() const {
+			return m_callbacks.empty();
+		}
+
 		/// \brief Adds a callback function to call when an event has been fired.
 		/// \returns An object that will remove the callback when destructed.
 		[[nodiscard]] virtual CallOnDestruction operator() (std::function<R(T ...)> fn) {

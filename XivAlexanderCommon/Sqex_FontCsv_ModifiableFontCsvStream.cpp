@@ -21,21 +21,21 @@ Sqex::FontCsv::ModifiableFontCsvStream::ModifiableFontCsvStream(const RandomAcce
 	, m_kerningEntries(stream.ReadStreamIntoVector<KerningEntry>(m_fcsv.KerningHeaderOffset + sizeof m_knhd, std::min(m_knhd.EntryCount, m_fthd.KerningEntryCount), 0x1000000)) {
 	if (strict) {
 		if (0 != memcmp(m_fcsv.Signature, FontCsvHeader::Signature_Value, sizeof m_fcsv.Signature))
-			throw Sqpack::CorruptDataException("fcsv.Signature != \"fcsv0100\"");
+			throw CorruptDataException("fcsv.Signature != \"fcsv0100\"");
 		if (m_fcsv.FontTableHeaderOffset != sizeof FontCsvHeader)
-			throw Sqpack::CorruptDataException("FontTableHeaderOffset != sizeof FontCsvHeader");
+			throw CorruptDataException("FontTableHeaderOffset != sizeof FontCsvHeader");
 		if (!IsAllSameValue(m_fcsv.Padding_0x10))
-			throw Sqpack::CorruptDataException("fcsv.Padding_0x10 != 0");
+			throw CorruptDataException("fcsv.Padding_0x10 != 0");
 
 		if (0 != memcmp(m_fthd.Signature, FontTableHeader::Signature_Value, sizeof m_fthd.Signature))
-			throw Sqpack::CorruptDataException("fthd.Signature != \"fthd\"");
+			throw CorruptDataException("fthd.Signature != \"fthd\"");
 		if (!IsAllSameValue(m_fthd.Padding_0x0C))
-			throw Sqpack::CorruptDataException("fthd.Padding_0x0C != 0");
+			throw CorruptDataException("fthd.Padding_0x0C != 0");
 
 		if (0 != memcmp(m_knhd.Signature, KerningHeader::Signature_Value, sizeof m_knhd.Signature))
-			throw Sqpack::CorruptDataException("knhd.Signature != \"knhd\"");
+			throw CorruptDataException("knhd.Signature != \"knhd\"");
 		if (!IsAllSameValue(m_knhd.Padding_0x08))
-			throw Sqpack::CorruptDataException("knhd.Padding_0x08 != 0");
+			throw CorruptDataException("knhd.Padding_0x08 != 0");
 
 		if (m_knhd.EntryCount != m_fthd.KerningEntryCount)
 			throw std::runtime_error("knhd.EntryCount != fthd.KerningEntryCount");
@@ -50,7 +50,7 @@ Sqex::FontCsv::ModifiableFontCsvStream::ModifiableFontCsvStream(const RandomAcce
 	});
 }
 
-uint32_t Sqex::FontCsv::ModifiableFontCsvStream::StreamSize() const {
+uint64_t Sqex::FontCsv::ModifiableFontCsvStream::StreamSize() const {
 	return static_cast<uint32_t>(
 		sizeof m_fcsv
 		+ sizeof m_fthd
@@ -60,12 +60,12 @@ uint32_t Sqex::FontCsv::ModifiableFontCsvStream::StreamSize() const {
 		);
 }
 
-size_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offset, void* buf, size_t length) const {
+uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {
 	if (!length)
 		return 0;
 
 	auto relativeOffset = offset;
-	auto out = std::span(static_cast<char*>(buf), length);
+	auto out = std::span(static_cast<char*>(buf), static_cast<size_t>(length));
 
 	if (relativeOffset < sizeof m_fcsv) {
 		const auto src = std::span(reinterpret_cast<const char*>(&m_fcsv), sizeof m_fcsv)

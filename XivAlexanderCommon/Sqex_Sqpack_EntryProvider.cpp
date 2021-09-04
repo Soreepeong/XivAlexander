@@ -4,7 +4,7 @@
 #include "Sqex_Model.h"
 #include "XaZlib.h"
 
-size_t Sqex::Sqpack::EmptyEntryProvider::ReadStreamPartial(uint64_t offset, void* buf, size_t length) const {
+uint64_t Sqex::Sqpack::EmptyEntryProvider::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {
 	if (offset < sizeof SqData::FileEntryHeader) {
 		const auto header = SqData::FileEntryHeader{
 			.HeaderSize = sizeof SqData::FileEntryHeader,
@@ -14,7 +14,7 @@ size_t Sqex::Sqpack::EmptyEntryProvider::ReadStreamPartial(uint64_t offset, void
 			.BlockBufferSize = 0,
 			.BlockCountOrVersion = 0,
 		};
-		const auto out = std::span(static_cast<char*>(buf), length);
+		const auto out = std::span(static_cast<char*>(buf), static_cast<size_t>(length));
 		const auto src = std::span(reinterpret_cast<const char*>(&header), header.HeaderSize)
 			.subspan(static_cast<size_t>(offset));
 		const auto available = std::min(out.size_bytes(), src.size_bytes());
@@ -53,16 +53,16 @@ Sqex::Sqpack::OnTheFlyBinaryEntryProvider::OnTheFlyBinaryEntryProvider(EntryPath
 	}
 }
 
-uint32_t Sqex::Sqpack::OnTheFlyBinaryEntryProvider::StreamSize() const {
+uint64_t Sqex::Sqpack::OnTheFlyBinaryEntryProvider::StreamSize() const {
 	return m_size;
 }
 
-size_t Sqex::Sqpack::OnTheFlyBinaryEntryProvider::ReadStreamPartial(uint64_t offset, void* buf, size_t length) const {
+uint64_t Sqex::Sqpack::OnTheFlyBinaryEntryProvider::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {
 	if (!length)
 		return 0;
 
 	auto relativeOffset = offset;
-	auto out = std::span(static_cast<char*>(buf), length);
+	auto out = std::span(static_cast<char*>(buf), static_cast<size_t>(length));
 
 	if (relativeOffset < sizeof m_header) {
 		const auto src = std::span(reinterpret_cast<const char*>(&m_header), sizeof m_header)
@@ -102,7 +102,7 @@ size_t Sqex::Sqpack::OnTheFlyBinaryEntryProvider::ReadStreamPartial(uint64_t off
 				relativeOffset -= sizeof locator;
 		}
 	} else
-		relativeOffset -= m_header.BlockCountOrVersion * sizeof SqData::BlockHeaderLocator;
+		relativeOffset -= 1ULL * m_header.BlockCountOrVersion * sizeof SqData::BlockHeaderLocator;
 
 	if (relativeOffset < m_padBeforeData) {
 		const auto available = std::min(out.size_bytes(), static_cast<size_t>(m_padBeforeData - relativeOffset));
@@ -225,8 +225,8 @@ Sqex::Sqpack::MemoryBinaryEntryProvider::MemoryBinaryEntryProvider(EntryPathSpec
 		m_data.resize(entryHeader.HeaderSize, 0);
 }
 
-size_t Sqex::Sqpack::MemoryBinaryEntryProvider::ReadStreamPartial(uint64_t offset, void* buf, size_t length) const {
-	const auto available = std::min(length, static_cast<size_t>(m_data.size() - offset));
+uint64_t Sqex::Sqpack::MemoryBinaryEntryProvider::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {
+	const auto available = static_cast<size_t>(std::min(length, m_data.size() - offset));
 	if (!available)
 		return 0;
 
@@ -326,12 +326,12 @@ Sqex::Sqpack::OnTheFlyModelEntryProvider::OnTheFlyModelEntryProvider(EntryPathSp
 	m_header.Entry.HeaderSize = Align(static_cast<uint32_t>(sizeof ModelEntryHeader + std::span(m_blockDataSizes).size_bytes()));
 }
 
-size_t Sqex::Sqpack::OnTheFlyModelEntryProvider::ReadStreamPartial(uint64_t offset, void* buf, size_t length) const {
+uint64_t Sqex::Sqpack::OnTheFlyModelEntryProvider::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {
 	if (!length)
 		return 0;
 
 	auto relativeOffset = offset;
-	auto out = std::span(static_cast<char*>(buf), length);
+	auto out = std::span(static_cast<char*>(buf), static_cast<size_t>(length));
 
 	if (relativeOffset < sizeof m_header) {
 		const auto src = std::span(reinterpret_cast<const char*>(&m_header), sizeof m_header)
@@ -531,12 +531,12 @@ Sqex::Sqpack::OnTheFlyTextureEntryProvider::OnTheFlyTextureEntryProvider(EntryPa
 	}
 }
 
-size_t Sqex::Sqpack::OnTheFlyTextureEntryProvider::ReadStreamPartial(uint64_t offset, void* buf, size_t length) const {
+uint64_t Sqex::Sqpack::OnTheFlyTextureEntryProvider::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {
 	if (!length)
 		return 0;
 
 	auto relativeOffset = offset;
-	auto out = std::span(static_cast<char*>(buf), length);
+	auto out = std::span(static_cast<char*>(buf), static_cast<size_t>(length));
 
 	if (relativeOffset < m_mergedHeader.size()) {
 		const auto src = std::span(m_mergedHeader)
