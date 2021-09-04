@@ -41,7 +41,7 @@ namespace Sqex::Sqpack {
 			_In_opt_ Utils::Win32::File alreadyOpenedFile = {});
 
 	public:
-		Utils::ListenerManager<Implementation, void, std::string> Log;
+		Utils::ListenerManager<Implementation, void, const std::string&> Log;
 
 		struct AddEntryResult {
 			std::vector<EntryProvider*> Added;

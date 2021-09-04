@@ -115,265 +115,198 @@ struct App::Feature::GameResourceOverrider::Implementation {
 		, m_logger(Misc::Logger::Acquire())
 		, m_debugger(Misc::DebuggerDetectionDisabler::Acquire()) {
 
-		const auto hDefaultHeap = GetProcessHeap();
+		if (m_config->Runtime.UseResourceOverriding) {
+			const auto hDefaultHeap = GetProcessHeap();
 
-		m_cleanup += HeapAlloc.SetHook([this, hDefaultHeap](HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes) {
-			const auto res = HeapAlloc.bridge(hHeap, dwFlags, dwBytes);
-			if (res && hHeap == hDefaultHeap) {
-				std::lock_guard lock(m_processHeapAllocationTrackerMutex);
-				m_processHeapAllocations[res] = dwBytes;
-			}
-			return res;
-		});
-
-		m_cleanup += HeapFree.SetHook([this, hDefaultHeap](HANDLE hHeap, DWORD dwFlags, LPVOID lpMem) {
-			const auto res = HeapFree.bridge(hHeap, dwFlags, lpMem);
-			if (res && hHeap == hDefaultHeap) {
-				std::lock_guard lock(m_processHeapAllocationTrackerMutex);
-				m_processHeapAllocations.erase(hHeap);
-			}
-			return res;
-		});
-
-		m_cleanup += CreateFileW.SetHook([this](_In_ LPCWSTR lpFileName,
-			_In_ DWORD dwDesiredAccess,
-			_In_ DWORD dwShareMode,
-			_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-			_In_ DWORD dwCreationDisposition,
-			_In_ DWORD dwFlagsAndAttributes,
-			_In_opt_ HANDLE hTemplateFile) {
-
-			AtomicIntEnter implUseLock(m_stk);
-
-			if (const auto lock = ReEnterPreventer::Lock(m_repCreateFileW); lock &&
-				!(dwDesiredAccess & GENERIC_WRITE) &&
-				dwCreationDisposition == OPEN_EXISTING &&
-				!hTemplateFile) {
-				try {
-					const auto fileToOpen = std::filesystem::absolute(lpFileName);
-					const auto recreatedFilePath = m_baseSqpackDir / fileToOpen.parent_path().filename() / fileToOpen.filename();
-					const auto indexFile = std::filesystem::path(recreatedFilePath).replace_extension(L".index");
-					const auto index2File = std::filesystem::path(recreatedFilePath).replace_extension(L".index2");
-					if (exists(indexFile) && exists(index2File) && m_ignoredIndexFiles.find(indexFile) == m_ignoredIndexFiles.end()) {
-						int pathType = VirtualPath::PathTypeInvalid;
-
-						if (fileToOpen == indexFile) {
-							pathType = VirtualPath::PathTypeIndex;
-						} else if (fileToOpen == index2File) {
-							pathType = VirtualPath::PathTypeIndex2;
-						} else {
-							for (auto i = 0; i < 8; ++i) {
-								const auto datFile = std::filesystem::path(recreatedFilePath).replace_extension(std::format(L".dat{}", i));
-								if (fileToOpen == datFile) {
-									pathType = i;
-									break;
-								}
-							}
-						}
-
-						if (pathType != VirtualPath::PathTypeInvalid) {
-							auto vpath = std::make_unique<VirtualPath>(
-								Utils::Win32::Event::Create(),
-								indexFile,
-								nullptr,
-								Utils::Win32::File{},
-								pathType,
-								LARGE_INTEGER{}
-							);
-
-							std::lock_guard lock(m_virtualPathMapMutex);
-							for (const auto& [_, vp] : m_virtualPathMap) {
-								if constexpr (DebugFlag_PassthroughFileApi) {
-									if (equivalent(vp->PassthroughFile.ResolveName(false, true), fileToOpen))
-										continue;
-								} else {
-									if (!equivalent(vp->IndexPath, indexFile))
-										continue;
-								}
-								vpath->VirtualSqPack = vp->VirtualSqPack;
-								vpath->PassthroughFile = vp->PassthroughFile;
-								break;
-							}
-
-							m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-								"Taking control of {}/{} (parent: {}/{}, type: {})",
-								recreatedFilePath.parent_path().filename(), recreatedFilePath.filename(),
-								indexFile.parent_path().filename(), indexFile.filename(),
-								pathType);
-
-							if constexpr (DebugFlag_PassthroughFileApi) {
-								if (!vpath->PassthroughFile) {
-									vpath->PassthroughFile = Utils::Win32::File::Create(
-										fileToOpen, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0
-									);
-								}
-							} else {
-								if (!vpath->VirtualSqPack) {
-									vpath->VirtualSqPack = std::make_shared<Sqex::Sqpack::VirtualSqPack>(
-										indexFile.parent_path().filename().string(),
-										indexFile.filename().replace_extension().replace_extension().string()
-										);
-									{
-										const auto result = vpath->VirtualSqPack->AddEntriesFromSqPack(indexFile, true, true);
-										m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-											"=> Processed SqPack {}/{}: Added {}, replaced {}",
-											vpath->VirtualSqPack->DatExpac, vpath->VirtualSqPack->DatName,
-											result.Added.size(), result.Replaced.size());
-									}
-
-									auto additionalEntriesFound = false;
-
-									if (const auto ttmd = indexFile.parent_path().parent_path().parent_path() / "TexToolsMods";
-										is_directory(ttmd)) {
-										
-										std::vector<std::filesystem::path> files;
-										for (const auto& iter : std::filesystem::recursive_directory_iterator(ttmd)) {
-											if (iter.path().filename() != "TTMPL.mpl") continue;
-											files.emplace_back(iter);
-										}
-
-										std::sort(files.begin(), files.end());
-										for (const auto& path : files) {
-											m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, "Processing {}", path);
-
-											if (exists(path.parent_path() / "disable")) {
-												m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, "=> Disabled because \"disable\" file exists");
-												continue;
-											}
-											try {
-												const auto logCacher = vpath->VirtualSqPack->Log([&](std::string s) {
-													m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, "=> {}", s);
-												});
-												const auto result = vpath->VirtualSqPack->AddEntriesFromTTMP(path.parent_path());
-												if (!result.Added.empty() || !result.Replaced.empty())
-													additionalEntriesFound = true;
-											} catch (const std::exception& e) {
-												m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "=> Error: {}", e.what());
-											}
-										}
-									}
-
-									for (const auto& replacementDirPath : {
-										std::filesystem::path(indexFile).replace_extension(""),
-										}) {
-										if (!exists(replacementDirPath))
-											continue;
-										try {
-											for (const auto& replacementItem : std::filesystem::recursive_directory_iterator(replacementDirPath)) {
-												if (is_directory(replacementItem))
-													continue;
-												try {
-													const auto result = vpath->VirtualSqPack->AddEntryFromFile(relative(replacementItem, replacementDirPath), replacementItem);
-													const auto item = result.AnyItem();
-													if (!item)
-														throw std::runtime_error("Unexpected error");
-													m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-														"=> {} file {}: (nameHash={:08x}, pathHash={:08x}, fullPathHash={:08x})",
-														result.Added.size() ? "Added" : "Replaced",
-														item->PathSpec().Original,
-														item->PathSpec().NameHash,
-														item->PathSpec().PathHash,
-														item->PathSpec().FullPathHash);
-													additionalEntriesFound = true;
-												} catch (const std::exception& e) {
-													m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
-														"=> Failed to add file {}: {}",
-														replacementItem.path(), e.what());
-												}
-											}
-										} catch (const std::exception& e) {
-											m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
-												"=> Failed to list items in {}: {}",
-												replacementDirPath, e.what());
-										}
-									}
-
-									// Nothing to override, 
-									if (!additionalEntriesFound) {
-										m_ignoredIndexFiles.insert(indexFile);
-										m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-											"=> Found no resources to override, releasing control.");
-										return CreateFileW.bridge(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
-									}
-
-									vpath->VirtualSqPack->Freeze(false);
-								}
-							}
-
-							const auto key = static_cast<HANDLE>(vpath->IdentifierHandle);
-							m_virtualPathMap.insert_or_assign(key, std::move(vpath));
-							SetLastError(0);
-							return key;
-						}
-					}
-				} catch (const Utils::Win32::Error& e) {
-					m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"CreateFileW: {}, Message: {}", lpFileName, e.what());
-				} catch (const std::exception& e) {
-					m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "CreateFileW: {}, Message: {}", lpFileName, e.what());
+			m_cleanup += HeapAlloc.SetHook([this, hDefaultHeap](HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes) {
+				const auto res = HeapAlloc.bridge(hHeap, dwFlags, dwBytes);
+				if (res && hHeap == hDefaultHeap) {
+					std::lock_guard lock(m_processHeapAllocationTrackerMutex);
+					m_processHeapAllocations[res] = dwBytes;
 				}
-			}
+				return res;
+			});
 
-			return CreateFileW.bridge(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
-		});
+			m_cleanup += HeapFree.SetHook([this, hDefaultHeap](HANDLE hHeap, DWORD dwFlags, LPVOID lpMem) {
+				const auto res = HeapFree.bridge(hHeap, dwFlags, lpMem);
+				if (res && hHeap == hDefaultHeap) {
+					std::lock_guard lock(m_processHeapAllocationTrackerMutex);
+					m_processHeapAllocations.erase(hHeap);
+				}
+				return res;
+			});
 
-		m_cleanup += CloseHandle.SetHook([this](HANDLE handle) {
+			m_cleanup += CreateFileW.SetHook([this](_In_ LPCWSTR lpFileName,
+				_In_ DWORD dwDesiredAccess,
+				_In_ DWORD dwShareMode,
+				_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+				_In_ DWORD dwCreationDisposition,
+				_In_ DWORD dwFlagsAndAttributes,
+				_In_opt_ HANDLE hTemplateFile) {
 
-			AtomicIntEnter implUseLock(m_stk);
+				AtomicIntEnter implUseLock(m_stk);
 
-			std::unique_lock lock(m_virtualPathMapMutex);
-			if (m_virtualPathMap.erase(handle))
-				return 0;
+				if (const auto lock = ReEnterPreventer::Lock(m_repCreateFileW); lock &&
+					!(dwDesiredAccess & GENERIC_WRITE) &&
+					dwCreationDisposition == OPEN_EXISTING &&
+					!hTemplateFile) {
+					try {
+						const auto fileToOpen = std::filesystem::absolute(lpFileName);
+						const auto recreatedFilePath = m_baseSqpackDir / fileToOpen.parent_path().filename() / fileToOpen.filename();
+						const auto indexFile = std::filesystem::path(recreatedFilePath).replace_extension(L".index");
+						const auto index2File = std::filesystem::path(recreatedFilePath).replace_extension(L".index2");
+						if (exists(indexFile) && exists(index2File) && m_ignoredIndexFiles.find(indexFile) == m_ignoredIndexFiles.end()) {
+							int pathType = VirtualPath::PathTypeInvalid;
 
-			return CloseHandle.bridge(handle);
-		});
+							if (fileToOpen == indexFile) {
+								pathType = VirtualPath::PathTypeIndex;
+							} else if (fileToOpen == index2File) {
+								pathType = VirtualPath::PathTypeIndex2;
+							} else {
+								for (auto i = 0; i < 8; ++i) {
+									const auto datFile = std::filesystem::path(recreatedFilePath).replace_extension(std::format(L".dat{}", i));
+									if (fileToOpen == datFile) {
+										pathType = i;
+										break;
+									}
+								}
+							}
 
-		m_cleanup += ReadFile.SetHook([this](_In_ HANDLE hFile,
-			_Out_writes_bytes_to_opt_(nNumberOfBytesToRead, *lpNumberOfBytesRead) __out_data_source(FILE) LPVOID lpBuffer,
-			_In_ DWORD nNumberOfBytesToRead,
-			_Out_opt_ LPDWORD lpNumberOfBytesRead,
-			_Inout_opt_ LPOVERLAPPED lpOverlapped) {
+							if (pathType != VirtualPath::PathTypeInvalid) {
+								if (const auto res = SetUpVirtualFile(fileToOpen, indexFile, pathType))
+									return res;
+							}
+						}
+					} catch (const Utils::Win32::Error& e) {
+						m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"CreateFileW: {}, Message: {}", lpFileName, e.what());
+					} catch (const std::exception& e) {
+						m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "CreateFileW: {}, Message: {}", lpFileName, e.what());
+					}
+				}
 
-			AtomicIntEnter implUseLock(m_stk);
+				return CreateFileW.bridge(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+			});
 
-			VirtualPath* pvpath = nullptr;
-			{
-				std::lock_guard lock(m_virtualPathMapMutex);
-				const auto vpit = m_virtualPathMap.find(hFile);
-				if (vpit != m_virtualPathMap.end())
-					pvpath = vpit->second.get();
-			}
+			m_cleanup += CloseHandle.SetHook([this](HANDLE handle) {
 
-			if (const auto lock = ReEnterPreventer::Lock(m_repReadFile); pvpath && lock) {
-				auto& vpath = *pvpath;
-				try {
-					const auto fp = lpOverlapped ? ((static_cast<uint64_t>(lpOverlapped->OffsetHigh) << 32) | lpOverlapped->Offset) : vpath.FilePointer.QuadPart;
-					size_t read;
-					if (vpath.PassthroughFile)
-						read = vpath.PassthroughFile.Read(fp, lpBuffer, nNumberOfBytesToRead, Utils::Win32::File::PartialIoMode::AllowPartial);
-					else if (vpath.PathType == VirtualPath::PathTypeIndex)
-						read = vpath.VirtualSqPack->ReadIndex1(fp, lpBuffer, nNumberOfBytesToRead);
-					else if (vpath.PathType == VirtualPath::PathTypeIndex2)
-						read = vpath.VirtualSqPack->ReadIndex2(fp, lpBuffer, nNumberOfBytesToRead);
-					else
-						read = vpath.VirtualSqPack->ReadData(vpath.PathType, fp, lpBuffer, nNumberOfBytesToRead);
+				AtomicIntEnter implUseLock(m_stk);
 
-					if (lpNumberOfBytesRead)
-						*lpNumberOfBytesRead = static_cast<DWORD>(read);
+				std::unique_lock lock(m_virtualPathMapMutex);
+				if (m_virtualPathMap.erase(handle))
+					return 0;
 
-					if (lpOverlapped) {
-						if (lpOverlapped->hEvent)
-							SetEvent(lpOverlapped->hEvent);
-						lpOverlapped->Internal = 0;
-						lpOverlapped->InternalHigh = static_cast<DWORD>(read);
-					} else
-						vpath.FilePointer.QuadPart = fp + read;
+				return CloseHandle.bridge(handle);
+			});
 
-					return TRUE;
+			m_cleanup += ReadFile.SetHook([this](_In_ HANDLE hFile,
+				_Out_writes_bytes_to_opt_(nNumberOfBytesToRead, *lpNumberOfBytesRead) __out_data_source(FILE) LPVOID lpBuffer,
+				_In_ DWORD nNumberOfBytesToRead,
+				_Out_opt_ LPDWORD lpNumberOfBytesRead,
+				_Inout_opt_ LPOVERLAPPED lpOverlapped) {
 
-				} catch (const Utils::Win32::Error& e) {
-					if (e.Code() != ERROR_IO_PENDING)
+				AtomicIntEnter implUseLock(m_stk);
+
+				VirtualPath* pvpath = nullptr;
+				{
+					std::lock_guard lock(m_virtualPathMapMutex);
+					const auto vpit = m_virtualPathMap.find(hFile);
+					if (vpit != m_virtualPathMap.end())
+						pvpath = vpit->second.get();
+				}
+
+				if (const auto lock = ReEnterPreventer::Lock(m_repReadFile); pvpath && lock) {
+					auto& vpath = *pvpath;
+					try {
+						const auto fp = lpOverlapped ? ((static_cast<uint64_t>(lpOverlapped->OffsetHigh) << 32) | lpOverlapped->Offset) : vpath.FilePointer.QuadPart;
+						size_t read;
+						if (vpath.PassthroughFile)
+							read = vpath.PassthroughFile.Read(fp, lpBuffer, nNumberOfBytesToRead, Utils::Win32::File::PartialIoMode::AllowPartial);
+						else if (vpath.PathType == VirtualPath::PathTypeIndex)
+							read = vpath.VirtualSqPack->ReadIndex1(fp, lpBuffer, nNumberOfBytesToRead);
+						else if (vpath.PathType == VirtualPath::PathTypeIndex2)
+							read = vpath.VirtualSqPack->ReadIndex2(fp, lpBuffer, nNumberOfBytesToRead);
+						else
+							read = vpath.VirtualSqPack->ReadData(vpath.PathType, fp, lpBuffer, nNumberOfBytesToRead);
+
+						if (lpNumberOfBytesRead)
+							*lpNumberOfBytesRead = static_cast<DWORD>(read);
+
+						if (lpOverlapped) {
+							if (lpOverlapped->hEvent)
+								SetEvent(lpOverlapped->hEvent);
+							lpOverlapped->Internal = 0;
+							lpOverlapped->InternalHigh = static_cast<DWORD>(read);
+						} else
+							vpath.FilePointer.QuadPart = fp + read;
+
+						return TRUE;
+
+					} catch (const Utils::Win32::Error& e) {
+						if (e.Code() != ERROR_IO_PENDING)
+							m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}({}), Message: {}",
+								vpath.IndexPath.filename(), vpath.PathType, e.what());
+						SetLastError(e.Code());
+						return FALSE;
+
+					} catch (const std::exception& e) {
 						m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}({}), Message: {}",
 							vpath.IndexPath.filename(), vpath.PathType, e.what());
+						SetLastError(ERROR_READ_FAULT);
+						return FALSE;
+					}
+				}
+				return ReadFile.bridge(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
+			});
+
+			m_cleanup += SetFilePointerEx.SetHook([this](_In_ HANDLE hFile,
+				_In_ LARGE_INTEGER liDistanceToMove,
+				_Out_opt_ PLARGE_INTEGER lpNewFilePointer,
+				_In_ DWORD dwMoveMethod) {
+
+				AtomicIntEnter implUseLock(m_stk);
+
+				VirtualPath* pvpath = nullptr;
+				{
+					std::lock_guard lock(m_virtualPathMapMutex);
+					const auto vpit = m_virtualPathMap.find(hFile);
+					if (vpit != m_virtualPathMap.end())
+						pvpath = vpit->second.get();
+				}
+				if (!pvpath)
+					return SetFilePointerEx.bridge(hFile, liDistanceToMove, lpNewFilePointer, dwMoveMethod);
+
+				auto& vpath = *pvpath;
+				try {
+					uint64_t len;
+					if (vpath.PassthroughFile)
+						len = vpath.PassthroughFile.GetLength();
+					else if (vpath.PathType == VirtualPath::PathTypeIndex)
+						len = vpath.VirtualSqPack->SizeIndex1();
+					else if (vpath.PathType == VirtualPath::PathTypeIndex2)
+						len = vpath.VirtualSqPack->SizeIndex2();
+					else
+						len = vpath.VirtualSqPack->SizeData(vpath.PathType);
+
+					if (dwMoveMethod == FILE_BEGIN)
+						vpath.FilePointer.QuadPart = liDistanceToMove.QuadPart;
+					else if (dwMoveMethod == FILE_CURRENT)
+						vpath.FilePointer.QuadPart += liDistanceToMove.QuadPart;
+					else if (dwMoveMethod == FILE_END)
+						vpath.FilePointer.QuadPart = len - liDistanceToMove.QuadPart;
+					else {
+						SetLastError(ERROR_INVALID_PARAMETER);
+						return FALSE;
+					}
+
+					if (vpath.FilePointer.QuadPart > static_cast<int64_t>(len))
+						vpath.FilePointer.QuadPart = static_cast<int64_t>(len);
+
+					if (lpNewFilePointer)
+						*lpNewFilePointer = vpath.FilePointer;
+
+				} catch (const Utils::Win32::Error& e) {
+					m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"SetFilePointerEx: {}({}), Message: {}",
+						vpath.IndexPath.filename(), vpath.PathType, e.what());
 					SetLastError(e.Code());
 					return FALSE;
 
@@ -383,72 +316,11 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					SetLastError(ERROR_READ_FAULT);
 					return FALSE;
 				}
-			}
-			return ReadFile.bridge(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
-		});
 
-		m_cleanup += SetFilePointerEx.SetHook([this](_In_ HANDLE hFile,
-			_In_ LARGE_INTEGER liDistanceToMove,
-			_Out_opt_ PLARGE_INTEGER lpNewFilePointer,
-			_In_ DWORD dwMoveMethod) {
+				return TRUE;
 
-			AtomicIntEnter implUseLock(m_stk);
-
-			VirtualPath* pvpath = nullptr;
-			{
-				std::lock_guard lock(m_virtualPathMapMutex);
-				const auto vpit = m_virtualPathMap.find(hFile);
-				if (vpit != m_virtualPathMap.end())
-					pvpath = vpit->second.get();
-			}
-			if (!pvpath)
-				return SetFilePointerEx.bridge(hFile, liDistanceToMove, lpNewFilePointer, dwMoveMethod);
-
-			auto& vpath = *pvpath;
-			try {
-				uint64_t len;
-				if (vpath.PassthroughFile)
-					len = vpath.PassthroughFile.GetLength();
-				else if (vpath.PathType == VirtualPath::PathTypeIndex)
-					len = vpath.VirtualSqPack->SizeIndex1();
-				else if (vpath.PathType == VirtualPath::PathTypeIndex2)
-					len = vpath.VirtualSqPack->SizeIndex2();
-				else
-					len = vpath.VirtualSqPack->SizeData(vpath.PathType);
-
-				if (dwMoveMethod == FILE_BEGIN)
-					vpath.FilePointer.QuadPart = liDistanceToMove.QuadPart;
-				else if (dwMoveMethod == FILE_CURRENT)
-					vpath.FilePointer.QuadPart += liDistanceToMove.QuadPart;
-				else if (dwMoveMethod == FILE_END)
-					vpath.FilePointer.QuadPart = len - liDistanceToMove.QuadPart;
-				else {
-					SetLastError(ERROR_INVALID_PARAMETER);
-					return FALSE;
-				}
-
-				if (vpath.FilePointer.QuadPart > static_cast<int64_t>(len))
-					vpath.FilePointer.QuadPart = static_cast<int64_t>(len);
-
-				if (lpNewFilePointer)
-					*lpNewFilePointer = vpath.FilePointer;
-
-			} catch (const Utils::Win32::Error& e) {
-				m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"SetFilePointerEx: {}({}), Message: {}",
-					vpath.IndexPath.filename(), vpath.PathType, e.what());
-				SetLastError(e.Code());
-				return FALSE;
-
-			} catch (const std::exception& e) {
-				m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}({}), Message: {}",
-					vpath.IndexPath.filename(), vpath.PathType, e.what());
-				SetLastError(ERROR_READ_FAULT);
-				return FALSE;
-			}
-
-			return TRUE;
-
-		});
+			});
+		}
 
 		for (auto ptr : Misc::Signatures::LookupForData([](const IMAGE_SECTION_HEADER& p) {
 			return strncmp(reinterpret_cast<const char*>(p.Name), ".text", 5) == 0;
@@ -476,7 +348,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					}
 				}
 
-				if (m_config->Runtime.HashTrackerLanguageOverride != Config::GameLanguage::Unspecified) {
+				if (m_config->Runtime.HashTrackerLanguageOverride != Sqex::Language::Unspecified) {
 					auto appendLanguageCode = false;
 					if (name.ends_with("_ja")
 						|| name.ends_with("_en")
@@ -492,25 +364,25 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					}
 					if (appendLanguageCode) {
 						switch (m_config->Runtime.HashTrackerLanguageOverride) {
-							case Config::GameLanguage::Japanese:
+							case Sqex::Language::Japanese:
 								name += "_ja";
 								break;
-							case Config::GameLanguage::English:
+							case Sqex::Language::English:
 								name += "_en";
 								break;
-							case Config::GameLanguage::German:
+							case Sqex::Language::German:
 								name += "_de";
 								break;
-							case Config::GameLanguage::French:
+							case Sqex::Language::French:
 								name += "_fr";
 								break;
-							case Config::GameLanguage::ChineseSimplified:
+							case Sqex::Language::ChineseSimplified:
 								name += "_chs";
 								break;
-							case Config::GameLanguage::ChineseTraditional:
+							case Sqex::Language::ChineseTraditional:
 								name += "_cht";
 								break;
-							case Config::GameLanguage::Korean:
+							case Sqex::Language::Korean:
 								name += "_ko";
 								break;
 						}
@@ -547,6 +419,193 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			Sleep(1);
 		}
 		Sleep(1);
+	}
+
+	HANDLE SetUpVirtualFile(const std::filesystem::path& fileToOpen, const std::filesystem::path& indexFile, int pathType) {
+		auto vpath = std::make_unique<VirtualPath>(
+			Utils::Win32::Event::Create(),
+			indexFile,
+			nullptr,
+			Utils::Win32::File{},
+			pathType,
+			LARGE_INTEGER{}
+		);
+
+		std::lock_guard lock(m_virtualPathMapMutex);
+		for (const auto& vp : m_virtualPathMap | std::views::values) {
+			if constexpr (DebugFlag_PassthroughFileApi) {
+				if (equivalent(vp->PassthroughFile.ResolveName(false, true), fileToOpen))
+					continue;
+			} else {
+				if (!equivalent(vp->IndexPath, indexFile))
+					continue;
+			}
+			vpath->VirtualSqPack = vp->VirtualSqPack;
+			vpath->PassthroughFile = vp->PassthroughFile;
+			break;
+		}
+
+		m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
+			"Taking control of {}/{} (parent: {}/{}, type: {})",
+			fileToOpen.parent_path().filename(), fileToOpen.filename(),
+			indexFile.parent_path().filename(), indexFile.filename(),
+			pathType);
+
+		if constexpr (DebugFlag_PassthroughFileApi) {
+			if (!vpath->PassthroughFile) {
+				vpath->PassthroughFile = Utils::Win32::File::Create(
+					fileToOpen, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0
+				);
+			}
+		} else {
+			if (!vpath->VirtualSqPack) {
+				vpath->VirtualSqPack = std::make_shared<Sqex::Sqpack::VirtualSqPack>(
+					indexFile.parent_path().filename().string(),
+					indexFile.filename().replace_extension().replace_extension().string()
+					);
+				{
+					const auto result = vpath->VirtualSqPack->AddEntriesFromSqPack(indexFile, true, true);
+					m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
+						"=> Processed SqPack {}/{}: Added {}, replaced {}",
+						vpath->VirtualSqPack->DatExpac, vpath->VirtualSqPack->DatName,
+						result.Added.size(), result.Replaced.size());
+				}
+
+				auto additionalEntriesFound = false;
+				additionalEntriesFound |= SetUpVirtualFileFromTexToolsModPacks(*vpath);
+				additionalEntriesFound |= SetUpVirtualFileFromFileEntries(*vpath);
+
+				// Nothing to override, 
+				if (!additionalEntriesFound) {
+					m_ignoredIndexFiles.insert(indexFile);
+					m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
+						"=> Found no resources to override, releasing control.");
+					return nullptr;
+				}
+
+				vpath->VirtualSqPack->Freeze(false);
+			}
+		}
+
+		const auto key = static_cast<HANDLE>(vpath->IdentifierHandle);
+		m_virtualPathMap.insert_or_assign(key, std::move(vpath));
+		SetLastError(0);
+		return key;
+	}
+
+	bool SetUpVirtualFileFromTexToolsModPacks(const VirtualPath& vpath) {
+		auto additionalEntriesFound = false;
+		std::vector<std::filesystem::path> dirs;
+
+		if (m_config->Runtime.UseDefaultTexToolsModPackSearchDirectory) {
+			dirs.emplace_back(vpath.IndexPath.parent_path().parent_path().parent_path() / "TexToolsMods");
+			dirs.emplace_back(m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods");
+		}
+
+		for (const auto& dir : m_config->Runtime.AdditionalTexToolsModPackSearchDirectories.Value())
+			dirs.emplace_back(Config::TranslatePath(dir, false));
+
+		for (const auto& dir : dirs) {
+			if (!is_directory(dir))
+				continue;
+
+			std::vector<std::filesystem::path> files;
+			try {
+				for (const auto& iter : std::filesystem::recursive_directory_iterator(dir)) {
+					if (iter.path().filename() != "TTMPL.mpl") continue;
+					files.emplace_back(iter);
+				}
+			} catch (const std::exception& e) {
+				m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
+					"=> Failed to list items in {}: {}",
+					dir, e.what());
+				continue;
+			}
+
+			std::sort(files.begin(), files.end());
+			for (const auto& file : files) {
+				m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, "Processing {}", file);
+
+				if (exists(file.parent_path() / "disable")) {
+					m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, "=> Disabled because \"disable\" file exists");
+					continue;
+				}
+				try {
+					const auto logCacher = vpath.VirtualSqPack->Log([&](const auto& s) {
+						m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, "=> {}", s);
+					});
+					const auto result = vpath.VirtualSqPack->AddEntriesFromTTMP(file.parent_path());
+					if (!result.Added.empty() || !result.Replaced.empty())
+						additionalEntriesFound = true;
+				} catch (const std::exception& e) {
+					m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "=> Error: {}", e.what());
+				}
+			}
+		}
+		return additionalEntriesFound;
+	}
+
+	bool SetUpVirtualFileFromFileEntries(const VirtualPath& vpath) {
+		auto additionalEntriesFound = false;
+		std::vector<std::filesystem::path> dirs;
+
+		if (m_config->Runtime.UseDefaultGameResourceFileEntryRootDirectory) {
+			dirs.emplace_back(vpath.IndexPath.parent_path().parent_path());
+			dirs.emplace_back(m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries");
+		}
+
+		for (const auto& dir : m_config->Runtime.AdditionalGameResourceFileEntryRootDirectories.Value())
+			dirs.emplace_back(Config::TranslatePath(dir, false));
+
+		for (size_t i = 0, i_ = dirs.size(); i < i_; ++i) {
+			dirs.emplace_back(dirs[i] / std::format("{}.win32", vpath.VirtualSqPack->DatExpac) / vpath.VirtualSqPack->DatName);
+			dirs[i] = dirs[i] / vpath.VirtualSqPack->DatExpac / vpath.VirtualSqPack->DatName;
+		}
+
+		for (auto dir : dirs) {
+			if (!is_directory(dir))
+				continue;
+
+			std::vector<std::filesystem::path> files;
+
+			try {
+				for (const auto& iter : std::filesystem::recursive_directory_iterator(dir)) {
+					if (is_directory(iter)) continue;
+					files.emplace_back(iter);
+				}
+			} catch (const std::exception& e) {
+				m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
+					"=> Failed to list items in {}: {}",
+					dir, e.what());
+				continue;
+			}
+
+			std::sort(files.begin(), files.end());
+			for (const auto& file : files) {
+				if (is_directory(file))
+					continue;
+
+				try {
+					const auto result = vpath.VirtualSqPack->AddEntryFromFile(relative(file, dir), file);
+					const auto item = result.AnyItem();
+					if (!item)
+						throw std::runtime_error("Unexpected error");
+					m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
+						"=> {} file {}: (nameHash={:08x}, pathHash={:08x}, fullPathHash={:08x})",
+						result.Added.empty() ? "Replaced" : "Added",
+						item->PathSpec().Original,
+						item->PathSpec().NameHash,
+						item->PathSpec().PathHash,
+						item->PathSpec().FullPathHash);
+					additionalEntriesFound = true;
+				} catch (const std::exception& e) {
+					m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
+						"=> Failed to add file {}: {}",
+						file, e.what());
+				}
+			}
+		}
+		return additionalEntriesFound;
 	}
 };
 

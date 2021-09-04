@@ -7,8 +7,9 @@
 #include "Utils_Win32_Handle.h"
 
 namespace Sqex {
-	enum class SqexLanguage {
-		Undefined = 0,
+	// when used as game launch parameter, subtract by one.
+	enum class Language {
+		Unspecified = 0,
 		Japanese = 1,
 		English = 2,
 		German = 3,
@@ -17,6 +18,22 @@ namespace Sqex {
 		ChineseTraditional = 6,
 		Korean = 7,
 	};
+	void to_json(nlohmann::json&, const Language&);
+	void from_json(const nlohmann::json&, Language&);
+
+
+	enum class Region {
+		Unspecified = 0,
+		Japan = 1,
+		NorthAmerica = 2,
+		Europe = 3,
+
+		// Following 2 are only for sentinel purpoess.
+		China = 100001,
+		Korea = 100002,
+	};
+	void to_json(nlohmann::json&, const Region&);
+	void from_json(const nlohmann::json&, Region&);
 
 	class CorruptDataException : public std::runtime_error {
 	public:

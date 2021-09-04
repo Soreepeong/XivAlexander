@@ -10,23 +10,23 @@
 #include "resource.h"
 
 std::weak_ptr<App::Config> App::Config::s_instance;
-const std::map<App::Config::Language, WORD> App::Config::LanguageIdMap{
-	{Language::SystemDefault, MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL)},
-	{Language::Japanese, MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN)},
-	{Language::English, MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US)},
-	{Language::Korean, MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN)},
+static const std::map<App::Language, WORD> LanguageIdMap{
+	{App::Language::SystemDefault, MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL)},
+	{App::Language::Japanese, MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN)},
+	{App::Language::English, MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US)},
+	{App::Language::Korean, MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN)},
 };
-const std::map<App::Config::GameLanguage, WORD> App::Config::GameLanguageIdMap{
-	{GameLanguage::Unspecified, MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL)},
-	{GameLanguage::Japanese, MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN)},
-	{GameLanguage::English, MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US)},
-	{GameLanguage::German, MAKELANGID(LANG_GERMAN, SUBLANG_GERMAN)},
-	{GameLanguage::French, MAKELANGID(LANG_FRENCH, SUBLANG_FRENCH)},
-	{GameLanguage::ChineseSimplified, MAKELANGID(LANG_CHINESE_SIMPLIFIED, SUBLANG_CHINESE_SIMPLIFIED)},
-	{GameLanguage::ChineseTraditional, MAKELANGID(LANG_CHINESE_TRADITIONAL, SUBLANG_CHINESE_TRADITIONAL)},
-	{GameLanguage::Korean, MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN)},
+static const std::map<Sqex::Language, WORD> GameLanguageIdMap{
+	{Sqex::Language::Unspecified, MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL)},
+	{Sqex::Language::Japanese, MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN)},
+	{Sqex::Language::English, MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US)},
+	{Sqex::Language::German, MAKELANGID(LANG_GERMAN, SUBLANG_GERMAN)},
+	{Sqex::Language::French, MAKELANGID(LANG_FRENCH, SUBLANG_FRENCH)},
+	{Sqex::Language::ChineseSimplified, MAKELANGID(LANG_CHINESE_SIMPLIFIED, SUBLANG_CHINESE_SIMPLIFIED)},
+	{Sqex::Language::ChineseTraditional, MAKELANGID(LANG_CHINESE_TRADITIONAL, SUBLANG_CHINESE_TRADITIONAL)},
+	{Sqex::Language::Korean, MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN)},
 };
-const std::map<WORD, int> App::Config::LanguageIdNameResourceIdMap{
+static const std::map<WORD, int> LanguageIdNameResourceIdMap{
 	{MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), IDS_LANGUAGE_NAME_UNSPECIFIED},
 	{MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN), IDS_LANGUAGE_NAME_JAPANESE},
 	{MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), IDS_LANGUAGE_NAME_ENGLISH},
@@ -36,13 +36,13 @@ const std::map<WORD, int> App::Config::LanguageIdNameResourceIdMap{
 	{MAKELANGID(LANG_CHINESE_TRADITIONAL, SUBLANG_CHINESE_TRADITIONAL), IDS_LANGUAGE_NAME_CHINESE_TRADITIONAL},
 	{MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN), IDS_LANGUAGE_NAME_KOREAN},
 };
-const std::map<App::Config::GameRegion, int> App::Config::RegionResourceIdMap{
-	{GameRegion::Unspecified, IDS_REGION_NAME_UNSPECIFIED},
-	{GameRegion::Japan, IDS_REGION_NAME_JAPAN},
-	{GameRegion::NorthAmerica, IDS_REGION_NAME_NORTH_AMERICA},
-	{GameRegion::Europe, IDS_REGION_NAME_EUROPE},
-	{GameRegion::China, IDS_REGION_NAME_CHINA},
-	{GameRegion::Korea, IDS_REGION_NAME_KOREA},
+static const std::map<Sqex::Region, int> RegionResourceIdMap{
+	{Sqex::Region::Unspecified, IDS_REGION_NAME_UNSPECIFIED},
+	{Sqex::Region::Japan, IDS_REGION_NAME_JAPAN},
+	{Sqex::Region::NorthAmerica, IDS_REGION_NAME_NORTH_AMERICA},
+	{Sqex::Region::Europe, IDS_REGION_NAME_EUROPE},
+	{Sqex::Region::China, IDS_REGION_NAME_CHINA},
+	{Sqex::Region::Korea, IDS_REGION_NAME_KOREA},
 };
 
 App::Config::BaseRepository::BaseRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey)
@@ -81,7 +81,7 @@ void App::Config::BaseRepository::Reload(bool announceChange) {
 		changed = true;
 		m_logger->FormatDefaultLanguage(LogCategory::General, IDS_LOG_NEW_CONFIG, Utils::ToUtf8(m_sConfigPath));
 	}
-	
+
 	const auto& currentConfig = m_parentKey.empty() ? totalConfig : totalConfig[m_parentKey];
 
 	m_destructionCallbacks.clear();
@@ -103,7 +103,6 @@ public:
 };
 
 std::shared_ptr<App::Config> App::Config::Acquire() {
-
 	auto r = s_instance.lock();
 	if (!r) {
 		static std::mutex mtx;
@@ -129,7 +128,7 @@ LPCWSTR App::Config::Runtime::GetStringRes(UINT uId) const {
 	return FindStringResourceEx(Dll::Module(), uId, GetLangId()) + 1;
 }
 
-std::wstring App::Config::Runtime::GetLanguageNameLocalized(GameLanguage gameLanguage) const {
+std::wstring App::Config::Runtime::GetLanguageNameLocalized(Sqex::Language gameLanguage) const {
 	const auto langNameInUserLang = std::wstring(GetStringRes(LanguageIdNameResourceIdMap.at(GameLanguageIdMap.at(gameLanguage))));
 	auto langNameInGameLang = std::wstring(FindStringResourceEx(Dll::Module(), LanguageIdNameResourceIdMap.at(GameLanguageIdMap.at(gameLanguage)), GameLanguageIdMap.at(gameLanguage)) + 1);
 	if (langNameInUserLang == langNameInGameLang)
@@ -138,7 +137,7 @@ std::wstring App::Config::Runtime::GetLanguageNameLocalized(GameLanguage gameLan
 		return std::format(L"{} ({})", langNameInUserLang, langNameInGameLang);
 }
 
-std::wstring App::Config::Runtime::GetRegionNameLocalized(GameRegion gameRegion) const {
+std::wstring App::Config::Runtime::GetRegionNameLocalized(Sqex::Region gameRegion) const {
 	return GetStringRes(RegionResourceIdMap.at(gameRegion));
 }
 
@@ -147,8 +146,8 @@ std::filesystem::path App::Config::InitializationConfig::ResolveConfigStorageDir
 		Reload();
 
 	std::filesystem::path path;
-	if (!static_cast<std::string>(FixedConfigurationFolderPath).empty()){
-		path = TranslatePath(FixedConfigurationFolderPath);
+	if (!FixedConfigurationFolderPath.Value().empty()) {
+		path = TranslatePath(FixedConfigurationFolderPath.Value());
 	} else {
 		PWSTR pszPath;
 		const auto result = SHGetKnownFolderPath(FOLDERID_RoamingAppData, KF_FLAG_CREATE | KF_FLAG_INIT, nullptr, &pszPath);
@@ -178,12 +177,12 @@ std::filesystem::path App::Config::InitializationConfig::ResolveGameOpcodeConfig
 		std::get<1>(regionAndVersion));
 }
 
-std::filesystem::path App::Config::TranslatePath(const std::string& s, bool dontTranslateEmpty) {
+std::filesystem::path App::Config::TranslatePath(const std::filesystem::path& s, bool dontTranslateEmpty) {
 	if (dontTranslateEmpty && s.empty())
-		return "";
+		return {};
 	std::wstring buf;
 	buf.resize(PATHCCH_MAX_CCH);
-	buf.resize(ExpandEnvironmentStringsW(Utils::FromUtf8(s).c_str(), &buf[0], PATHCCH_MAX_CCH));
+	buf.resize(ExpandEnvironmentStringsW(s.wstring().c_str(), &buf[0], PATHCCH_MAX_CCH));
 	if (!buf.empty())
 		buf.resize(buf.size() - 1);
 
@@ -220,7 +219,7 @@ void App::Config::BaseRepository::Save() {
 	} catch (const std::exception&) {
 		totalConfig = nlohmann::json::object();
 	}
-	
+
 	nlohmann::json& currentConfig = m_parentKey.empty() ? totalConfig : totalConfig[m_parentKey];
 	for (const auto& item : m_allItems)
 		item->SaveTo(currentConfig);
@@ -260,128 +259,84 @@ void App::Config::Item<uint16_t>::SaveTo(nlohmann::json & data) const {
 	data[Name()] = std::format("0x{:04x}", m_value);
 }
 
-bool App::Config::Item<App::Config::Language>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
-	if (const auto it = data.find(Name()); it != data.end()) {
-		auto newValueString = Utils::FromUtf8(it->get<std::string>());
-		CharLowerW(&newValueString[0]);
+void App::to_json(nlohmann::json & j, const Language & value) {
+	switch (value) {
+		case Language::English:
+			j = "English";
+			break;
 
-		auto newValue = Language::SystemDefault;
-		if (!newValueString.empty()) {
-			if (newValueString.substr(0, std::min<size_t>(7, newValueString.size())) == L"english")
-				newValue = Language::English;
-			else if (newValueString.substr(0, std::min<size_t>(6, newValueString.size())) == L"korean")
-				newValue = Language::Korean;
-			else if (newValueString.substr(0, std::min<size_t>(8, newValueString.size())) == L"japanese")
-				newValue = Language::Japanese;
-		}
+		case Language::Korean:
+			j = "Korean";
+			break;
 
-		if (announceChanged)
-			this->operator=(newValue);
-		else
-			Assign(newValue);
+		case Language::Japanese:
+			j = "Japanese";
+			break;
+
+		case Language::SystemDefault:
+		default:
+			j = "SystemDefault";
 	}
-	return false;
 }
 
-void App::Config::Item<App::Config::Language>::SaveTo(nlohmann::json & data) const {
-	if (m_value == Language::SystemDefault)
-		data[Name()] = "SystemDefault";
-	else if (m_value == Language::English)
-		data[Name()] = "English";
-	else if (m_value == Language::Korean)
-		data[Name()] = "Korean";
-	else if (m_value == Language::Japanese)
-		data[Name()] = "Japanese";
+void App::from_json(const nlohmann::json & it, Language & value) {
+	auto newValueString = Utils::FromUtf8(it.get<std::string>());
+	CharLowerW(&newValueString[0]);
+
+	value = Language::SystemDefault;
+	if (newValueString.empty())
+		return;
+
+	if (newValueString.substr(0, std::min<size_t>(7, newValueString.size())) == L"english")
+		value = Language::English;
+	else if (newValueString.substr(0, std::min<size_t>(6, newValueString.size())) == L"korean")
+		value = Language::Korean;
+	else if (newValueString.substr(0, std::min<size_t>(8, newValueString.size())) == L"japanese")
+		value = Language::Japanese;
 }
 
-bool App::Config::Item<App::Config::HighLatencyMitigationMode>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
-	if (const auto it = data.find(Name()); it != data.end()) {
-		auto newValueString = Utils::FromUtf8(it->get<std::string>());
-		CharLowerW(&newValueString[0]);
+void App::to_json(nlohmann::json & j, const HighLatencyMitigationMode & value) {
+	switch (value) {
+		case HighLatencyMitigationMode::SubtractLatency:
+			j = "SubtractLatency";
+			break;
 
-		auto newValue = HighLatencyMitigationMode::SimulateNormalizedRttAndLatency;
-		if (!newValueString.empty()) {
-			if (newValueString.substr(0, std::min<size_t>(31, newValueString.size())) == L"subtractnormalizedrttandlatency")
-				newValue = HighLatencyMitigationMode::SimulateNormalizedRttAndLatency;
-			else if (newValueString.substr(0, std::min<size_t>(11, newValueString.size())) == L"simulatertt")
-				newValue = HighLatencyMitigationMode::SimulateRtt;
-			else if (newValueString.substr(0, std::min<size_t>(16, newValueString.size())) == L"subtractlatency")
-				newValue = HighLatencyMitigationMode::SubtractLatency;
-		}
+		case HighLatencyMitigationMode::SimulateRtt:
+			j = "SimulateRtt";
+			break;
 
-		if (announceChanged)
-			this->operator=(newValue);
-		else
-			Assign(newValue);
+		case HighLatencyMitigationMode::SimulateNormalizedRttAndLatency:
+		default:
+			j = "SimulateNormalizedRttAndLatency";
 	}
-	return false;
 }
 
-void App::Config::Item<App::Config::HighLatencyMitigationMode>::SaveTo(nlohmann::json & data) const {
-	if (m_value == HighLatencyMitigationMode::SimulateNormalizedRttAndLatency)
-		data[Name()] = "SimulateNormalizedRttAndLatency";
-	else if (m_value == HighLatencyMitigationMode::SimulateRtt)
-		data[Name()] = "SimulateRtt";
-	else if (m_value == HighLatencyMitigationMode::SubtractLatency)
-		data[Name()] = "SubtractLatency";
-}
+void App::from_json(const nlohmann::json & it, HighLatencyMitigationMode & value) {
+	auto newValueString = Utils::FromUtf8(it.get<std::string>());
+	CharLowerW(&newValueString[0]);
 
-bool App::Config::Item<App::Config::GameLanguage>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
-	if (const auto it = data.find(Name()); it != data.end()) {
-		auto newValueString = Utils::FromUtf8(it->get<std::string>());
-		CharLowerW(&newValueString[0]);
+	value = HighLatencyMitigationMode::SimulateNormalizedRttAndLatency;
+	if (newValueString.empty())
+		return;
 
-		auto newValue = GameLanguage::Unspecified;
-		if (!newValueString.empty()) {
-			if (newValueString.substr(0, std::min<size_t>(8, newValueString.size())) == L"japanese")
-				newValue = GameLanguage::Japanese;
-			else if (newValueString.substr(0, std::min<size_t>(7, newValueString.size())) == L"english")
-				newValue = GameLanguage::English;
-			else if (newValueString.substr(0, std::min<size_t>(6, newValueString.size())) == L"german")
-				newValue = GameLanguage::German;
-			else if (newValueString.substr(0, std::min<size_t>(8, newValueString.size())) == L"deutsche")
-				newValue = GameLanguage::German;
-			else if (newValueString.substr(0, std::min<size_t>(6, newValueString.size())) == L"french")
-				newValue = GameLanguage::French;
-			else if (newValueString.substr(0, std::min<size_t>(17, newValueString.size())) == L"chinesesimplified")
-				newValue = GameLanguage::ChineseSimplified;
-			else if (newValueString.substr(0, std::min<size_t>(18, newValueString.size())) == L"chinesetraditional")
-				newValue = GameLanguage::ChineseTraditional;
-			else if (newValueString.substr(0, std::min<size_t>(6, newValueString.size())) == L"korean")
-				newValue = GameLanguage::Korean;
-		}
-
-		if (announceChanged)
-			this->operator=(newValue);
-		else
-			Assign(newValue);
-	}
-	return false;
-}
-
-void App::Config::Item<App::Config::GameLanguage>::SaveTo(nlohmann::json & data) const {
-	if (m_value == GameLanguage::Unspecified)
-		data[Name()] = "Unspecified";
-	else if (m_value == GameLanguage::Japanese)
-		data[Name()] = "Japanese";
-	else if (m_value == GameLanguage::English)
-		data[Name()] = "English";
-	else if (m_value == GameLanguage::German)
-		data[Name()] = "German";
-	else if (m_value == GameLanguage::French)
-		data[Name()] = "French";
-	else if (m_value == GameLanguage::ChineseSimplified)
-		data[Name()] = "ChineseSimplified";
-	else if (m_value == GameLanguage::ChineseTraditional)
-		data[Name()] = "ChineseTraditional";
-	else if (m_value == GameLanguage::Korean)
-		data[Name()] = "Korean";
+	if (newValueString.substr(0, std::min<size_t>(31, newValueString.size())) == L"subtractnormalizedrttandlatency")
+		value = HighLatencyMitigationMode::SimulateNormalizedRttAndLatency;
+	else if (newValueString.substr(0, std::min<size_t>(11, newValueString.size())) == L"simulatertt")
+		value = HighLatencyMitigationMode::SimulateRtt;
+	else if (newValueString.substr(0, std::min<size_t>(16, newValueString.size())) == L"subtractlatency")
+		value = HighLatencyMitigationMode::SubtractLatency;
 }
 
 template<typename T>
 bool App::Config::Item<T>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
-	if (auto i = data.find(Name()); i != data.end()) {
-		const auto newValue = i->get<T>();
+	if (const auto it = data.find(Name()); it != data.end()) {
+		T newValue;
+		try {
+			const auto newValue = it->template get<T>();
+		} catch (...) {
+			// do nothing for now
+			// TODO: show how the value is invalid
+		}
 		if (announceChanged)
 			this->operator=(newValue);
 		else

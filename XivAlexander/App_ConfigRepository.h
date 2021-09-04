@@ -1,11 +1,30 @@
 #pragma once
 
+#include <XivAlexanderCommon/Sqex.h>
 #include <XivAlexanderCommon/Utils_ListenerManager.h>
 
 namespace App {
 	namespace Misc {
 		class Logger;
 	}
+
+	enum class Language {
+		SystemDefault,
+		English,
+		Korean,
+		Japanese,
+	};
+
+	enum class HighLatencyMitigationMode {
+		SubtractLatency,
+		SimulateRtt,
+		SimulateNormalizedRttAndLatency,
+	};
+
+	void to_json(nlohmann::json&, const Language&);
+	void from_json(const nlohmann::json&, Language&);
+	void to_json(nlohmann::json&, const HighLatencyMitigationMode&);
+	void from_json(const nlohmann::json&, HighLatencyMitigationMode&);
 
 	class Config {
 	public:
@@ -82,7 +101,11 @@ namespace App {
 				return *this;
 			}
 
-			operator T() const& {
+			[[nodiscard]] operator T() const& {
+				return m_value;
+			}
+
+			[[nodiscard]] const T& Value() const {
 				return m_value;
 			}
 		};
@@ -115,54 +138,24 @@ namespace App {
 
 		protected:
 			template<typename T>
+			static Item<T> CreateConfigItem(BaseRepository* pRepository, const char* pszName) {
+				return Item<T>(pRepository, pszName, T{});
+			}
+
+			template<typename T>
 			static Item<T> CreateConfigItem(BaseRepository* pRepository, const char* pszName, T defaultValue) {
 				return Item<T>(pRepository, pszName, defaultValue);
 			}
+
 			template<typename T, typename ... Args>
 			static Item<T> CreateConfigItem(BaseRepository* pRepository, const char* pszName, T defaultValue, Args...args) {
 				return Item<T>(pRepository, pszName, defaultValue, std::forward<Args...>(args));
 			}
 		};
-
-		enum class Language {
-			SystemDefault,
-			English,
-			Korean,
-			Japanese,
-		};
-
-		// when used as game launch parameter, subtract by one.
-		enum class GameLanguage {
-			Unspecified = 0,
-			Japanese = 1,
-			English = 2,
-			German = 3,
-			French = 4,
-			ChineseSimplified = 5,
-			ChineseTraditional = 6,
-			Korean = 7,
-		};
-
-		enum class GameRegion {
-			Unspecified = 0,
-			Japan = 1,
-			NorthAmerica = 2,
-			Europe = 3,
-			China = 100001,
-			Korea = 100002,
-		};
-
-		enum class HighLatencyMitigationMode {
-			SubtractLatency,
-			SimulateRtt,
-			SimulateNormalizedRttAndLatency,
-		};
-
-		static const std::map<Language, WORD> LanguageIdMap;
-		static const std::map<GameLanguage, WORD> GameLanguageIdMap;
-		static const std::map<WORD, int> LanguageIdNameResourceIdMap;
-		static const std::map<GameRegion, int> RegionResourceIdMap;
-
+		
+		// Relative paths are relative to the directory of the DLL.
+		// All items accept relative paths.
+		
 		class Runtime : public BaseRepository {
 			friend class Config;
 			using BaseRepository::BaseRepository;
@@ -192,9 +185,24 @@ namespace App {
 
 			Item<bool> UseHashTracker = CreateConfigItem(this, "UseHashTracker", false);
 			Item<bool> UseHashTrackerKeyLogging = CreateConfigItem(this, "UseHashTrackerKeyLogging", false);
-			Item<GameLanguage> HashTrackerLanguageOverride = CreateConfigItem(this, "HashTrackerLanguageOverride", GameLanguage::Unspecified);
+			Item<Sqex::Language> HashTrackerLanguageOverride = CreateConfigItem(this, "HashTrackerLanguageOverride", Sqex::Language::Unspecified);
 
 			Item<Language> Language = CreateConfigItem(this, "Language", Language::SystemDefault);
+
+			// If not set, default to files in System32 (SysWOW64) in %WINDIR% (GetSystemDirectory)
+			// If set but invalid, show errors.
+			Item<std::filesystem::path> ChainLoadPath_d3d11 = CreateConfigItem(this, "ChainLoadPath_d3d11", std::filesystem::path(""));
+			Item<std::filesystem::path> ChainLoadPath_dxgi = CreateConfigItem(this, "ChainLoadPath_dxgi", std::filesystem::path(""));
+			Item<std::filesystem::path> ChainLoadPath_d3d9 = CreateConfigItem(this, "ChainLoadPath_d3d9", std::filesystem::path(""));
+			Item<std::filesystem::path> ChainLoadPath_dinput8 = CreateConfigItem(this, "ChainLoadPath_dinput8", std::filesystem::path(""));
+
+			Item<bool> UseResourceOverriding = CreateConfigItem(this, "UseResourceOverriding", true);
+			Item<bool> UseDefaultTexToolsModPackSearchDirectory = CreateConfigItem(this, "UseDefaultTexToolsModPackSearchDirectory", true);
+			Item<std::vector<std::filesystem::path>> AdditionalTexToolsModPackSearchDirectories =
+				CreateConfigItem(this, "AdditionalTexToolsModPackSearchDirectories", std::vector<std::filesystem::path>{});
+			Item<bool> UseDefaultGameResourceFileEntryRootDirectory = CreateConfigItem(this, "UseDefaultGameResourceFileEntryRootDirectory", true);
+			Item<std::vector<std::filesystem::path>> AdditionalGameResourceFileEntryRootDirectories =
+				CreateConfigItem(this, "AdditionalGameResourceFileEntryRootDirectories", std::vector<std::filesystem::path>{});
 
 			[[nodiscard]] WORD GetLangId() const;
 			[[nodiscard]] LPCWSTR GetStringRes(UINT uId) const;
@@ -202,8 +210,8 @@ namespace App {
 			[[nodiscard]] std::wstring FormatStringRes(UINT uId, Args ... args) const {
 				return std::format(GetStringRes(uId), std::forward<Args>(args)...);
 			}
-			[[nodiscard]] std::wstring GetLanguageNameLocalized(GameLanguage gameLanguage) const;
-			[[nodiscard]] std::wstring GetRegionNameLocalized(GameRegion gameRegion) const;
+			[[nodiscard]] std::wstring GetLanguageNameLocalized(Sqex::Language gameLanguage) const;
+			[[nodiscard]] std::wstring GetRegionNameLocalized(Sqex::Region gameRegion) const;
 		};
 
 		class Game : public BaseRepository {
@@ -242,25 +250,14 @@ namespace App {
 			using BaseRepository::BaseRepository;
 
 		public:
-			// Relative paths are relative to the directory of the DLL.
-			// All items accept relative paths.
-
-			// If not set, defaults to %APPDATA%/XivAlexander
-			Item<std::string> FixedConfigurationFolderPath = CreateConfigItem(this, "FixedConfigurationFolderPath", std::string(""));
-
-			// If not set, defaults to files in System32 (SysWOW64) in %WINDIR% (GetSystemDirectory)
-			// If set but invalid, will cause errors.
-			Item<std::string> ChainLoadPath_d3d11 = CreateConfigItem(this, "ChainLoadPath_d3d11", std::string(""));
-			Item<std::string> ChainLoadPath_dxgi = CreateConfigItem(this, "ChainLoadPath_dxgi", std::string(""));
-			Item<std::string> ChainLoadPath_d3d9 = CreateConfigItem(this, "ChainLoadPath_d3d9", std::string(""));
-			Item<std::string> ChainLoadPath_dinput8 = CreateConfigItem(this, "ChainLoadPath_dinput8", std::string(""));
+			Item<std::filesystem::path> FixedConfigurationFolderPath = CreateConfigItem(this, "FixedConfigurationFolderPath", std::filesystem::path("%APPDATA%/XivAlexander"));
 
 			std::filesystem::path ResolveConfigStorageDirectoryPath();
 			std::filesystem::path ResolveRuntimeConfigPath();
 			std::filesystem::path ResolveGameOpcodeConfigPath();
 		};
 
-		static std::filesystem::path TranslatePath(const std::string&, bool dontTranslateEmpty = true);
+		static std::filesystem::path TranslatePath(const std::filesystem::path&, bool dontTranslateEmpty = true);
 
 	protected:
 		static std::weak_ptr<Config> s_instance;

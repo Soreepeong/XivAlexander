@@ -314,7 +314,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 			auto mode = runtimeConfig.HighLatencyMitigationMode;
 
 			if (latency == INT64_MAX) {
-				mode = Config::HighLatencyMitigationMode::SimulateRtt;
+				mode = HighLatencyMitigationMode::SimulateRtt;
 				description << " latencyUnavailable";
 			} else {
 				if (latency > rtt)
@@ -337,11 +337,11 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 			}
 
 			switch (mode) {
-				case Config::HighLatencyMitigationMode::SubtractLatency:
+				case HighLatencyMitigationMode::SubtractLatency:
 					description << std::format(" delay={}ms", DefaultDelay);
 					return now + originalWaitTime - latency;
 
-				case Config::HighLatencyMitigationMode::SimulateNormalizedRttAndLatency:
+				case HighLatencyMitigationMode::SimulateNormalizedRttAndLatency:
 				{
 					const auto rttMin = conn.ApplicationLatency.Min();
 					const auto rttMean = conn.ApplicationLatency.Mean();

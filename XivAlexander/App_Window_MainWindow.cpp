@@ -55,20 +55,20 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 	std::tie(m_sRegion, m_sVersion) = XivAlex::ResolveGameReleaseRegion();
 
 	if (m_sRegion == L"JP" && !m_launchParameters.empty()) {
-		m_gameLanguage = Config::GameLanguage::English;
-		m_gameRegion = Config::GameRegion::Japan;
+		m_gameLanguage = Sqex::Language::English;
+		m_gameRegion = Sqex::Region::Japan;
 		for (const auto& pair : m_launchParameters) {
 			if (pair.first == "language")
-				m_gameLanguage = static_cast<Config::GameLanguage>(1 + std::strtol(pair.second.c_str(), nullptr, 0));
+				m_gameLanguage = static_cast<Sqex::Language>(1 + std::strtol(pair.second.c_str(), nullptr, 0));
 			else if (pair.first == "SYS.Region")
-				m_gameRegion = static_cast<Config::GameRegion>(std::strtol(pair.second.c_str(), nullptr, 0));
+				m_gameRegion = static_cast<Sqex::Region>(std::strtol(pair.second.c_str(), nullptr, 0));
 		}
 	} else if (m_sRegion == L"CN") {
-		m_gameLanguage = Config::GameLanguage::ChineseSimplified;
-		m_gameRegion = Config::GameRegion::China;
+		m_gameLanguage = Sqex::Language::ChineseSimplified;
+		m_gameRegion = Sqex::Region::China;
 	} else if (m_sRegion == L"KR") {
-		m_gameLanguage = Config::GameLanguage::Korean;
-		m_gameRegion = Config::GameRegion::Korea;
+		m_gameLanguage = Sqex::Language::Korean;
+		m_gameRegion = Sqex::Region::Korea;
 	}
 
 	RegisterTrayIcon();
@@ -180,15 +180,15 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					/***************************************************************/
 
 				case ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_1:
-					config.HighLatencyMitigationMode = Config::HighLatencyMitigationMode::SubtractLatency;
+					config.HighLatencyMitigationMode = HighLatencyMitigationMode::SubtractLatency;
 					return 0;
 
 				case ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_2:
-					config.HighLatencyMitigationMode = Config::HighLatencyMitigationMode::SimulateRtt;
+					config.HighLatencyMitigationMode = HighLatencyMitigationMode::SimulateRtt;
 					return 0;
 
 				case ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_3:
-					config.HighLatencyMitigationMode = Config::HighLatencyMitigationMode::SimulateNormalizedRttAndLatency;
+					config.HighLatencyMitigationMode = HighLatencyMitigationMode::SimulateNormalizedRttAndLatency;
 					return 0;
 
 				case ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY:
@@ -254,37 +254,37 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE:
-					config.HashTrackerLanguageOverride = Config::GameLanguage::Unspecified;
+					config.HashTrackerLanguageOverride = Sqex::Language::Unspecified;
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH:
-					if (AskUpdateGameLanguageOverride(Config::GameLanguage::English))
-						config.HashTrackerLanguageOverride = Config::GameLanguage::English;
+					if (AskUpdateGameLanguageOverride(Sqex::Language::English))
+						config.HashTrackerLanguageOverride = Sqex::Language::English;
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_GERMAN:
-					if (AskUpdateGameLanguageOverride(Config::GameLanguage::German))
-						config.HashTrackerLanguageOverride = Config::GameLanguage::German;
+					if (AskUpdateGameLanguageOverride(Sqex::Language::German))
+						config.HashTrackerLanguageOverride = Sqex::Language::German;
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_FRENCH:
-					if (AskUpdateGameLanguageOverride(Config::GameLanguage::French))
-						config.HashTrackerLanguageOverride = Config::GameLanguage::French;
+					if (AskUpdateGameLanguageOverride(Sqex::Language::French))
+						config.HashTrackerLanguageOverride = Sqex::Language::French;
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE:
-					if (AskUpdateGameLanguageOverride(Config::GameLanguage::Japanese))
-						config.HashTrackerLanguageOverride = Config::GameLanguage::Japanese;
+					if (AskUpdateGameLanguageOverride(Sqex::Language::Japanese))
+						config.HashTrackerLanguageOverride = Sqex::Language::Japanese;
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE:
-					if (AskUpdateGameLanguageOverride(Config::GameLanguage::ChineseSimplified))
-						config.HashTrackerLanguageOverride = Config::GameLanguage::ChineseSimplified;
+					if (AskUpdateGameLanguageOverride(Sqex::Language::ChineseSimplified))
+						config.HashTrackerLanguageOverride = Sqex::Language::ChineseSimplified;
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN:
-					if (AskUpdateGameLanguageOverride(Config::GameLanguage::Korean))
-						config.HashTrackerLanguageOverride = Config::GameLanguage::Korean;
+					if (AskUpdateGameLanguageOverride(Sqex::Language::Korean))
+						config.HashTrackerLanguageOverride = Sqex::Language::Korean;
 					return 0;
 
 				case ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW:
@@ -311,19 +311,19 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					return 0;
 
 				case ID_TRAYMENU_CONFIGURATION_LANGUAGE_SYSTEMDEFAULT:
-					config.Language = Config::Language::SystemDefault;
+					config.Language = Language::SystemDefault;
 					return 0;
 
 				case ID_TRAYMENU_CONFIGURATION_LANGUAGE_ENGLISH:
-					config.Language = Config::Language::English;
+					config.Language = Language::English;
 					return 0;
 
 				case ID_TRAYMENU_CONFIGURATION_LANGUAGE_KOREAN:
-					config.Language = Config::Language::Korean;
+					config.Language = Language::Korean;
 					return 0;
 
 				case ID_TRAYMENU_CONFIGURATION_LANGUAGE_JAPANESE:
-					config.Language = Config::Language::Japanese;
+					config.Language = Language::Japanese;
 					return 0;
 
 				case ID_TRAYMENU_CONFIGURATION_RELOAD:
@@ -357,59 +357,59 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					return 0;
 
 				case ID_TRAYMENU_RESTARTGAME_LANGUAGE_ENGLISH:
-					if (AskUpdateGameLanguageOverride(Config::GameLanguage::English)) {
-						m_gameLanguage = Config::GameLanguage::English;
+					if (AskUpdateGameLanguageOverride(Sqex::Language::English)) {
+						m_gameLanguage = Sqex::Language::English;
 						AskRestartGame(true);
 					}
 					return 0;
 
 				case ID_TRAYMENU_RESTARTGAME_LANGUAGE_GERMAN:
-					if (AskUpdateGameLanguageOverride(Config::GameLanguage::German)) {
-						m_gameLanguage = Config::GameLanguage::German;
+					if (AskUpdateGameLanguageOverride(Sqex::Language::German)) {
+						m_gameLanguage = Sqex::Language::German;
 						AskRestartGame(true);
 					}
 					return 0;
 
 				case ID_TRAYMENU_RESTARTGAME_LANGUAGE_FRENCH:
-					if (AskUpdateGameLanguageOverride(Config::GameLanguage::French)) {
-						m_gameLanguage = Config::GameLanguage::French;
+					if (AskUpdateGameLanguageOverride(Sqex::Language::French)) {
+						m_gameLanguage = Sqex::Language::French;
 						AskRestartGame(true);
 					}
 					return 0;
 
 				case ID_TRAYMENU_RESTARTGAME_LANGUAGE_JAPANESE:
-					if (AskUpdateGameLanguageOverride(Config::GameLanguage::Japanese)) {
-						m_gameLanguage = Config::GameLanguage::Japanese;
+					if (AskUpdateGameLanguageOverride(Sqex::Language::Japanese)) {
+						m_gameLanguage = Sqex::Language::Japanese;
 						AskRestartGame(true);
 					}
 					return 0;
 
 				case ID_TRAYMENU_RESTARTGAME_LANGUAGE_SIMPLIFIEDCHINESE:
-					if (AskUpdateGameLanguageOverride(Config::GameLanguage::ChineseSimplified)) {
-						m_gameLanguage = Config::GameLanguage::ChineseSimplified;
+					if (AskUpdateGameLanguageOverride(Sqex::Language::ChineseSimplified)) {
+						m_gameLanguage = Sqex::Language::ChineseSimplified;
 						AskRestartGame(true);
 					}
 					return 0;
 
 				case ID_TRAYMENU_RESTARTGAME_LANGUAGE_KOREAN:
-					if (AskUpdateGameLanguageOverride(Config::GameLanguage::Korean)) {
-						m_gameLanguage = Config::GameLanguage::Korean;
+					if (AskUpdateGameLanguageOverride(Sqex::Language::Korean)) {
+						m_gameLanguage = Sqex::Language::Korean;
 						AskRestartGame(true);
 					}
 					return 0;
 
 				case ID_TRAYMENU_RESTARTGAME_REGION_JAPAN:
-					m_gameRegion = Config::GameRegion::Japan;
+					m_gameRegion = Sqex::Region::Japan;
 					AskRestartGame(true);
 					return 0;
 
 				case ID_TRAYMENU_RESTARTGAME_REGION_NORTH_AMERICA:
-					m_gameRegion = Config::GameRegion::NorthAmerica;
+					m_gameRegion = Sqex::Region::NorthAmerica;
 					AskRestartGame(true);
 					return 0;
 
 				case ID_TRAYMENU_RESTARTGAME_REGION_EUROPE:
-					m_gameRegion = Config::GameRegion::Europe;
+					m_gameRegion = Sqex::Region::Europe;
 					AskRestartGame(true);
 					return 0;
 
@@ -559,9 +559,9 @@ void App::Window::MainWindow::RepopulateMenu(HMENU hMenu) const {
 
 	Set(hMenu, ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP, config.AlwaysOnTop, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE, config.UseHighLatencyMitigation, true);
-	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_1, config.HighLatencyMitigationMode == Config::HighLatencyMitigationMode::SubtractLatency, true);
-	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_2, config.HighLatencyMitigationMode == Config::HighLatencyMitigationMode::SimulateRtt, true);
-	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_3, config.HighLatencyMitigationMode == Config::HighLatencyMitigationMode::SimulateNormalizedRttAndLatency, true);
+	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_1, config.HighLatencyMitigationMode == HighLatencyMitigationMode::SubtractLatency, true);
+	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_2, config.HighLatencyMitigationMode == HighLatencyMitigationMode::SimulateRtt, true);
+	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_3, config.HighLatencyMitigationMode == HighLatencyMitigationMode::SimulateNormalizedRttAndLatency, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY, config.UseEarlyPenalty, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING, config.UseHighLatencyMitigationLogging, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE, config.UseHighLatencyMitigationPreviewMode, true);
@@ -578,20 +578,20 @@ void App::Window::MainWindow::RepopulateMenu(HMENU hMenu) const {
 
 	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_ENABLE, config.UseHashTracker, true);
 	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS, config.UseHashTrackerKeyLogging, true);
-	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE, config.HashTrackerLanguageOverride == Config::GameLanguage::Unspecified, true);
-	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH, config.HashTrackerLanguageOverride == Config::GameLanguage::English, true);
-	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_GERMAN, config.HashTrackerLanguageOverride == Config::GameLanguage::German, true);
-	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_FRENCH, config.HashTrackerLanguageOverride == Config::GameLanguage::French, true);
-	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE, config.HashTrackerLanguageOverride == Config::GameLanguage::Japanese, true);
-	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE, config.HashTrackerLanguageOverride == Config::GameLanguage::ChineseSimplified, true);
-	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN, config.HashTrackerLanguageOverride == Config::GameLanguage::Korean, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE, config.HashTrackerLanguageOverride == Sqex::Language::Unspecified, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH, config.HashTrackerLanguageOverride == Sqex::Language::English, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_GERMAN, config.HashTrackerLanguageOverride == Sqex::Language::German, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_FRENCH, config.HashTrackerLanguageOverride == Sqex::Language::French, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE, config.HashTrackerLanguageOverride == Sqex::Language::Japanese, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE, config.HashTrackerLanguageOverride == Sqex::Language::ChineseSimplified, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN, config.HashTrackerLanguageOverride == Sqex::Language::Korean, true);
 
 	Set(hMenu, ID_TRAYMENU_CONFIGURATION_SHOWCONTROLWINDOW, config.ShowControlWindow, true);
 	Set(hMenu, ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW, config.ShowLoggingWindow, true);
-	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_SYSTEMDEFAULT, config.Language == Config::Language::SystemDefault, true);
-	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_ENGLISH, config.Language == Config::Language::English, true);
-	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_KOREAN, config.Language == Config::Language::Korean, true);
-	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_JAPANESE, config.Language == Config::Language::Japanese, true);
+	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_SYSTEMDEFAULT, config.Language == Language::SystemDefault, true);
+	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_ENGLISH, config.Language == Language::English, true);
+	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_KOREAN, config.Language == Language::Korean, true);
+	Set(hMenu, ID_TRAYMENU_CONFIGURATION_LANGUAGE_JAPANESE, config.Language == Language::Japanese, true);
 
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_RESTART, false, !m_launchParameters.empty());
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEDIRECTX11, m_bUseDirectX11, !m_launchParameters.empty());
@@ -599,15 +599,15 @@ void App::Window::MainWindow::RepopulateMenu(HMENU hMenu) const {
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION, m_bUseParameterObfuscation, !m_launchParameters.empty());
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_USEELEVATION, m_bUseElevation, !m_launchParameters.empty());
 	const auto languageRegionModifiable = LanguageRegionModifiable();
-	Set(hMenu, ID_TRAYMENU_RESTARTGAME_LANGUAGE_ENGLISH, m_gameLanguage == Config::GameLanguage::English, languageRegionModifiable);
-	Set(hMenu, ID_TRAYMENU_RESTARTGAME_LANGUAGE_GERMAN, m_gameLanguage == Config::GameLanguage::German, languageRegionModifiable);
-	Set(hMenu, ID_TRAYMENU_RESTARTGAME_LANGUAGE_FRENCH, m_gameLanguage == Config::GameLanguage::French, languageRegionModifiable);
-	Set(hMenu, ID_TRAYMENU_RESTARTGAME_LANGUAGE_JAPANESE, m_gameLanguage == Config::GameLanguage::Japanese, languageRegionModifiable);
-	Set(hMenu, ID_TRAYMENU_RESTARTGAME_LANGUAGE_SIMPLIFIEDCHINESE, m_gameLanguage == Config::GameLanguage::ChineseSimplified, languageRegionModifiable);
-	Set(hMenu, ID_TRAYMENU_RESTARTGAME_LANGUAGE_KOREAN, m_gameLanguage == Config::GameLanguage::Korean, languageRegionModifiable);
-	Set(hMenu, ID_TRAYMENU_RESTARTGAME_REGION_JAPAN, m_gameRegion == Config::GameRegion::Japan, languageRegionModifiable);
-	Set(hMenu, ID_TRAYMENU_RESTARTGAME_REGION_NORTH_AMERICA, m_gameRegion == Config::GameRegion::NorthAmerica, languageRegionModifiable);
-	Set(hMenu, ID_TRAYMENU_RESTARTGAME_REGION_EUROPE, m_gameRegion == Config::GameRegion::Europe, languageRegionModifiable);
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_LANGUAGE_ENGLISH, m_gameLanguage == Sqex::Language::English, languageRegionModifiable);
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_LANGUAGE_GERMAN, m_gameLanguage == Sqex::Language::German, languageRegionModifiable);
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_LANGUAGE_FRENCH, m_gameLanguage == Sqex::Language::French, languageRegionModifiable);
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_LANGUAGE_JAPANESE, m_gameLanguage == Sqex::Language::Japanese, languageRegionModifiable);
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_LANGUAGE_SIMPLIFIEDCHINESE, m_gameLanguage == Sqex::Language::ChineseSimplified, languageRegionModifiable);
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_LANGUAGE_KOREAN, m_gameLanguage == Sqex::Language::Korean, languageRegionModifiable);
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_REGION_JAPAN, m_gameRegion == Sqex::Region::Japan, languageRegionModifiable);
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_REGION_NORTH_AMERICA, m_gameRegion == Sqex::Region::NorthAmerica, languageRegionModifiable);
+	Set(hMenu, ID_TRAYMENU_RESTARTGAME_REGION_EUROPE, m_gameRegion == Sqex::Region::Europe, languageRegionModifiable);
 }
 
 void App::Window::MainWindow::RegisterTrayIcon() {
@@ -635,9 +635,9 @@ void App::Window::MainWindow::RemoveTrayIcon() {
 }
 
 bool App::Window::MainWindow::LanguageRegionModifiable() const {
-	return m_gameRegion == Config::GameRegion::Japan
-		|| m_gameRegion == Config::GameRegion::NorthAmerica
-		|| m_gameRegion == Config::GameRegion::Europe;
+	return m_gameRegion == Sqex::Region::Japan
+		|| m_gameRegion == Sqex::Region::NorthAmerica
+		|| m_gameRegion == Sqex::Region::Europe;
 }
 
 void App::Window::MainWindow::AskRestartGame(bool onlyOnModifier) {
@@ -712,29 +712,29 @@ void App::Window::MainWindow::AskRestartGame(bool onlyOnModifier) {
 	}
 }
 
-bool App::Window::MainWindow::AskUpdateGameLanguageOverride(Config::GameLanguage language) const {
+bool App::Window::MainWindow::AskUpdateGameLanguageOverride(Sqex::Language language) const {
 	switch (language) {
-		case Config::GameLanguage::Unspecified:
+		case Sqex::Language::Unspecified:
 			return true;
 
-		case Config::GameLanguage::Japanese:
-		case Config::GameLanguage::English:
-		case Config::GameLanguage::German:
-		case Config::GameLanguage::French:
+		case Sqex::Language::Japanese:
+		case Sqex::Language::English:
+		case Sqex::Language::German:
+		case Sqex::Language::French:
 			if (m_sRegion == L"JP")
 				return true;
 			break;
 
-		case Config::GameLanguage::ChineseSimplified:
+		case Sqex::Language::ChineseSimplified:
 			if (m_sRegion == L"CN")
 				return true;
 			break;
 
-		case Config::GameLanguage::ChineseTraditional:
+		case Sqex::Language::ChineseTraditional:
 			// should not reach here
 			return false;
 
-		case Config::GameLanguage::Korean:
+		case Sqex::Language::Korean:
 			if (m_sRegion == L"KR")
 				return true;
 	}

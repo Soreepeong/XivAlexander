@@ -166,3 +166,12 @@ void Utils::BoundaryCheck(size_t value, size_t offset, size_t length, const char
 	if (value < offset || value > offset + length)
 		throw std::out_of_range(description ? std::format("out of boundary ({})", description) : "out of boundary");
 }
+
+void std::filesystem::to_json(nlohmann::json& j, const path& value) {
+	j = Utils::ToUtf8(value.wstring());
+}
+
+void std::filesystem::from_json(const nlohmann::json& j, path& value) {
+	value = path(Utils::FromUtf8(j.get<std::string>()));
+}
+

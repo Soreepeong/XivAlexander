@@ -4,6 +4,7 @@
 #include <inaddr.h>
 #include <minwinbase.h>
 #include <string>
+#include <nlohmann/json.hpp>
 
 namespace Utils {
 	SYSTEMTIME EpochToLocalSystemTime(int64_t epochMilliseconds);
@@ -40,4 +41,9 @@ namespace Utils {
 		T().swap(c);
 		ClearStdContainer(std::forward<Args>(args)...);
 	}
+}
+
+namespace std::filesystem {
+	void to_json(nlohmann::json&, const path&);
+	void from_json(const nlohmann::json&, path&);
 }

@@ -29,8 +29,8 @@ namespace App::Window {
 		bool m_bUseXivAlexander = true;
 		bool m_bUseParameterObfuscation = false;
 		bool m_bUseElevation;
-		Config::GameLanguage m_gameLanguage = Config::GameLanguage::Unspecified;
-		Config::GameRegion m_gameRegion = Config::GameRegion::Unspecified;
+		Sqex::Language m_gameLanguage = Sqex::Language::Unspecified;
+		Sqex::Region m_gameRegion = Sqex::Region::Unspecified;
 		std::vector<std::pair<std::string, std::string>> m_launchParameters;
 
 	public:
@@ -51,6 +51,6 @@ namespace App::Window {
 
 		[[nodiscard]] bool LanguageRegionModifiable() const;
 		void AskRestartGame(bool onlyOnModifier = false);
-		[[nodiscard]] bool AskUpdateGameLanguageOverride(Config::GameLanguage language) const;
+		[[nodiscard]] bool AskUpdateGameLanguageOverride(Sqex::Language language) const;
 	};
 }
