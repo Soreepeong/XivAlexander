@@ -127,6 +127,9 @@
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_ThirdParty_TexTools.h">
       <Filter>Square Enix Definitions\Third Party Formats\TexTools</Filter>
     </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_EntryRawStream.h">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -199,6 +202,9 @@
     <ClCompile Include="XivAlexDefaultHeapAllocator.cpp" />
     <ClCompile Include="Sqex_ThirdParty_TexTools.cpp">
       <Filter>Square Enix Definitions\Third Party Formats\TexTools</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Sqpack_EntryRawStream.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

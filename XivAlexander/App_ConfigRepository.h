@@ -207,7 +207,7 @@ namespace App {
 			//Item<bool> ChainLoadDalamud_OptOutMbCollection = CreateConfigItem<bool>(this, "ChainLoadDalamud_OptOutMbCollection", true);
 			// ^ TODO: this doesn't work at the moment - see also AutoLoadAsDependencyModule.cpp
 
-			Item<bool> UseResourceOverriding = CreateConfigItem(this, "UseResourceOverriding", true);
+			Item<bool> UseResourceOverriding = CreateConfigItem(this, "UseResourceOverriding", false);
 			Item<bool> UseDefaultTexToolsModPackSearchDirectory = CreateConfigItem(this, "UseDefaultTexToolsModPackSearchDirectory", true);
 			Item<std::vector<std::filesystem::path>> AdditionalTexToolsModPackSearchDirectories =
 				CreateConfigItem<std::vector<std::filesystem::path>>(this, "AdditionalTexToolsModPackSearchDirectories");

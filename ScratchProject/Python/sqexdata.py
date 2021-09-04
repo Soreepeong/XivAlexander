@@ -1292,7 +1292,7 @@ def dump_fdt(fn: str):
 
 
 def __main__():
-    # return extract(r"Z:\scratch\t2", r"000000", r"t\000000")
+    return extract(r"Z:\scratch\t2", r"000000", r"t\000000")
     # return extract(r"C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv",
     #                r"040000",
     #                r"g\ffxiv\040000",
@@ -1302,13 +1302,8 @@ def __main__():
     #                       "chara/equipment/e0100/model",
     #                       "chara/equipment/e0100/texture"])
     # return extract(r"C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv", r"000000", r"g\ffxiv\000000")
-    # return extract(r"C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\backup", r"000000", r"g\ffxiv\000000")
     # return extract(r"D:\scratch", r"000000", r"t\000000")
-    # return extract(
-    #     r"C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game\sqpack",
-    #     r"ffxiv\010000",
-    #     r"k\ffxiv\010000",
-    # )
+    # return extract(r"C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game\sqpack", r"ffxiv\000000", r"k\ffxiv\000000")
     #
     # axis96 = parse_fdt(r"Z:\scratch\k\ffxiv\000000\common\font\AXIS_96.fdt")
     # axis96_glyph_map = axis96.fthd_header.glyph_map()

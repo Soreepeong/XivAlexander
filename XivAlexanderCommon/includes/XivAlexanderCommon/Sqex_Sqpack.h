@@ -285,4 +285,114 @@ namespace Sqex::Sqpack {
 	uint32_t SqexHash(const std::string& text);
 	uint32_t SqexHash(const std::string_view& text);
 	uint32_t SqexHash(const std::filesystem::path& path);
+
+	struct EntryPathSpec {
+		static constexpr auto EmptyHashValue = 0xFFFFFFFF;
+
+		std::filesystem::path Original;
+
+		uint32_t PathHash;
+		uint32_t NameHash;
+		uint32_t FullPathHash;
+
+		EntryPathSpec()
+			: PathHash(EmptyHashValue)
+			, NameHash(EmptyHashValue)
+			, FullPathHash(EmptyHashValue) {
+		}
+
+		EntryPathSpec(uint32_t pathHash, uint32_t nameHash, uint32_t fullPathHash)
+			: PathHash(pathHash)
+			, NameHash(nameHash)
+			, FullPathHash(fullPathHash) {
+		}
+
+		EntryPathSpec(uint32_t pathHash, uint32_t nameHash)
+			: PathHash(pathHash)
+			, NameHash(nameHash)
+			, FullPathHash(EmptyHashValue) {
+		}
+
+		EntryPathSpec(uint32_t fullPathHash)
+			: PathHash(EmptyHashValue)
+			, NameHash(EmptyHashValue)
+			, FullPathHash(fullPathHash) {
+		}
+
+		EntryPathSpec(const std::filesystem::path& fullPath)
+			: Original(fullPath.lexically_normal())
+			, PathHash(SqexHash(Original.parent_path()))
+			, NameHash(SqexHash(Original.filename()))
+			, FullPathHash(SqexHash(Original)) {
+		}
+
+		template<class Elem, class Traits = std::char_traits<Elem>, class Alloc = std::allocator<Elem>>
+		EntryPathSpec(const std::basic_string<Elem, Traits, Alloc>& fullPath)
+			: Original(std::filesystem::path(fullPath).lexically_normal())
+			, PathHash(SqexHash(Original.parent_path()))
+			, NameHash(SqexHash(Original.filename()))
+			, FullPathHash(SqexHash(Original)) {
+		}
+
+		EntryPathSpec(const char* fullPath)
+			: Original(std::filesystem::path(fullPath).lexically_normal())
+			, PathHash(SqexHash(Original.parent_path()))
+			, NameHash(SqexHash(Original.filename()))
+			, FullPathHash(SqexHash(Original)) {
+		}
+
+		EntryPathSpec(const std::filesystem::path& path, const std::filesystem::path& name)
+			: Original((path / name).lexically_normal())
+			, PathHash(SqexHash(path))
+			, NameHash(SqexHash(name))
+			, FullPathHash(SqexHash(Original)) {
+		}
+
+		EntryPathSpec& operator=(const std::filesystem::path& fullPath) {
+			Original = fullPath.lexically_normal();
+			PathHash = SqexHash(Original.parent_path());
+			NameHash = SqexHash(Original.filename());
+			FullPathHash = SqexHash(Original);
+			return *this;
+		}
+
+		template<class Elem, class Traits = std::char_traits<Elem>, class Alloc = std::allocator<Elem>>
+		EntryPathSpec& operator=(const std::basic_string<Elem, Traits, Alloc>& fullPath) {
+			Original = std::filesystem::path(fullPath).lexically_normal();
+			PathHash = SqexHash(Original.parent_path());
+			NameHash = SqexHash(Original.filename());
+			FullPathHash = SqexHash(Original);
+			return *this;
+		}
+
+		EntryPathSpec& operator=(uint32_t fullPathHash) {
+			Original.clear();
+			PathHash = EmptyHashValue;
+			NameHash = EmptyHashValue;
+			FullPathHash = fullPathHash;
+			return *this;
+		}
+
+		bool HasFullPathHash() const {
+			return FullPathHash != EmptyHashValue;
+		}
+
+		bool HasComponentHash() const {
+			return PathHash != EmptyHashValue || NameHash != EmptyHashValue;
+		}
+
+		[[nodiscard]] bool empty() const {
+			return PathHash == EmptyHashValue && NameHash == EmptyHashValue && FullPathHash == EmptyHashValue;
+		}
+
+		bool operator==(const EntryPathSpec& r) const {
+			return (HasComponentHash() && PathHash == r.PathHash && NameHash == r.NameHash)
+				|| (HasFullPathHash() && FullPathHash == r.FullPathHash)
+				|| (empty() && r.empty());
+		}
+
+		bool operator!=(const EntryPathSpec& r) const {
+			return !this->operator==(r);
+		}
+	};
 }

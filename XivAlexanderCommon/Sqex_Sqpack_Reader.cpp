@@ -213,9 +213,22 @@ Sqex::Sqpack::Reader::SqDataType::SqDataType(Utils::Win32::File hFile, const uin
 		prevEntry->Size = static_cast<uint32_t>(dataFileLength - prevEntry->Index.DatFile.Offset());
 }
 
-Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strictVerify)
+Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strictVerify, bool sort)
 	: Index(Utils::Win32::File::Create(std::filesystem::path(indexFile).replace_extension(".index"), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN), strictVerify)
-	, Index2(Utils::Win32::File::Create(std::filesystem::path(indexFile).replace_extension(".index2"), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN), strictVerify) {
+	, Index2(Utils::Win32::File::Create(std::filesystem::path(indexFile).replace_extension(".index2"), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN), strictVerify)
+	, Sorted(sort) {
+
+	if (sort) {
+		std::sort(Index.Files.begin(), Index.Files.end(), [](const SqIndex::FileSegmentEntry& l, const SqIndex::FileSegmentEntry& r) {
+			if (l.PathHash == r.PathHash)
+				return l.NameHash < r.NameHash;
+			else
+				return l.PathHash < r.PathHash;
+		});
+		std::sort(Index2.Files.begin(), Index2.Files.end(), [](const SqIndex::FileSegmentEntry2& l, const SqIndex::FileSegmentEntry2& r) {
+			return l.FullPathHash < r.FullPathHash;
+		});
+	}
 
 	std::map<uint64_t, SqDataEntry*> offsetToEntryMap;
 
@@ -247,6 +260,22 @@ Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strict
 			strictVerify,
 			});
 	}
+}
+
+std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvider(const EntryPathSpec& pathSpec, Utils::Win32::File handle) const {
+	if (pathSpec.HasComponentHash()) {
+		for (const auto& entry : Files) {
+			if (entry.Index.PathHash == pathSpec.PathHash && entry.Index.NameHash == pathSpec.NameHash)
+				return GetEntryProvider(entry, std::move(handle));
+		}
+	}
+	if (pathSpec.HasFullPathHash()) {
+		for (const auto& entry : Files) {
+			if (entry.Index2.FullPathHash == pathSpec.FullPathHash)
+				return GetEntryProvider(entry, std::move(handle));
+		}
+	}
+	return nullptr;
 }
 
 std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvider(const SqDataEntry& entry, Utils::Win32::File handle) const {

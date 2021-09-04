@@ -1,11 +1,15 @@
 import ctypes
+import dataclasses
 import functools
 import io
 import itertools
+import json
 import math
 import os
+import re
 import shutil
 import struct
+import time
 import typing
 
 import PIL.Image
@@ -14,10 +18,6 @@ import PIL.ImageFont
 import fontTools.ttLib.ttFont as ttf
 
 import sqexdata
-
-# https://docs.microsoft.com/en-us/typography/opentype/spec/features_ko
-# kern, dist
-
 
 SHOWCASE_TEXT = ("Uppercase: ABCDEFGHIJKLMNOPQRSTUVWXYZ\n"
                  "Lowercase: abcdefghijklmnopqrstuvwxyz\n"
@@ -54,14 +54,33 @@ SHOWCASE_TEXT = ("Uppercase: ABCDEFGHIJKLMNOPQRSTUVWXYZ\n"
                  "\n"
                  "finish"
                  ).replace("\0", "\u200c")
+HANGUL_CHARS_IN_UNICODE_BLOCKS = set(chr(x) for x in itertools.chain(
+    range(0x1100, 0x1200),  # Hangul Jamo
+    # range(0x3000, 0x3040),  # CJK Symbols and Punctuation
+    range(0x3130, 0x3190),  # Hangul Compatibility Jamo
+    # range(0x3200, 0x3300),  # Enclosed CJK Letters and Months
+    # range(0x3400, 0x4DC0),  # CJK Unified Ideographs Extensions A
+    # range(0x4E00, 0xA000),  # CJK Unified Ideographs
+    range(0xA960, 0xA97F),  # Hangul Jamo Extended-A
+    range(0xAC00, 0xD7B0),  # Hangul Syllables
+    range(0xD7B0, 0xD800),  # Hangul Jamo Extended-B
+    # range(0xF900, 0xFB00),  # CJK Compatibility Ideographs
+    # range(0xFF00, 0xFFF0),  # Halfwidth and Fullwidth Forms
+    # range(0x20000, 0x2A6E0),  # CJK Unified Ideographs Extensions B
+    # range(0x2A700, 0x2B740),  # CJK Unified Ideographs Extensions C
+    # range(0x2B740, 0x2B820),  # CJK Unified Ideographs Extensions D
+    # range(0x2B820, 0x2CEB0),  # CJK Unified Ideographs Extensions E
+    # range(0x2CEB0, 0x2EBF0),  # CJK Unified Ideographs Extensions F
+    # range(0x2F800, 0x2FA20),  # CJK Compatibility Ideographs Supplement
+))
 
 
 class Canvas:
     _image: PIL.Image.Image
     _draw: PIL.ImageDraw.Draw
 
-    def __init__(self, width: int, height: int):
-        self._image = PIL.Image.new("L", (width, height))
+    def __init__(self, width: int, height: int, pix_fmt: str = "L"):
+        self._image = PIL.Image.new(pix_fmt, (width, height))
         self._draw = PIL.ImageDraw.Draw(self._image)
 
         self.x = self.y = 0
@@ -83,7 +102,11 @@ class Font:
     def getcharwidth(self, char: str) -> int:
         raise NotImplementedError
 
-    def draw(self, canvas: Canvas, x: int, y: int, text: str):
+    def draw(self, canvas: Canvas, x: int, y: int, text: str, color: int = 255):
+        raise NotImplementedError
+
+    @property
+    def name(self) -> str:
         raise NotImplementedError
 
     @property
@@ -124,12 +147,23 @@ class Font:
     def kerning_info(self) -> typing.Dict[str, int]:
         raise NotImplementedError
 
+    def draw_to_new_image(self, txt: str) -> PIL.Image.Image:
+        l, t, r, b = self.getbbox(txt)
+        w = r - l
+        h = b - t
+
+        canvas = Canvas(w, h, "RGB")
+        canvas.draw.rectangle((-l, -t, w, h), outline=(0, 255, 0))
+        self.draw(canvas, -l, -t, txt)
+        return canvas.image
+
 
 class SqexFont(Font):
     NEWLINE_SENTINEL = object()
     NONJOINER_SENTINEL = object
 
     def __init__(self, fdt_path: str, bitmap_paths: typing.List[typing.Union[PIL.Image.Image, str]]):
+        self._fdt_path = fdt_path
         self._fdt = sqexdata.parse_fdt(fdt_path)
         self._bitmaps = []
         for path in bitmap_paths:
@@ -177,6 +211,14 @@ class SqexFont(Font):
         }
         self._max_glyph_text_length = max(len(x) for x in self._glyph_map.keys())
 
+    @property
+    def name(self) -> str:
+        return os.path.basename(self._fdt_path).split(".")[0]
+
+    @property
+    def bitmaps(self):
+        return self._bitmaps
+
     def getbbox(self, text: str) -> typing.Tuple[int, int, int, int]:
         return self.__draw(None, 0, 0, text)
 
@@ -190,13 +232,13 @@ class SqexFont(Font):
 
     def __draw_single_glyph(self, canvas: typing.Optional[Canvas], x: int, y: int,
                             glyph: sqexdata.FdtGlyphEntry,
-                            kerning: int):
+                            kerning: int, color: int = 255):
         x += kerning
         y += glyph.offset_y
         if canvas is not None:
             alpha = self._bitmaps[glyph.image_index].crop(
                 (glyph.x, glyph.y, glyph.x + glyph.width, glyph.y + glyph.height))
-            color = PIL.Image.new("L", alpha.size, 255)
+            color = PIL.Image.new("L", alpha.size, color)
             canvas.image.paste(
                 color,
                 (x, y),
@@ -204,7 +246,7 @@ class SqexFont(Font):
             )
         return x, y, x + glyph.width, y + glyph.height
 
-    def __draw(self, canvas: typing.Optional[Canvas], x: int, y: int, text: str):
+    def __draw(self, canvas: typing.Optional[Canvas], x: int, y: int, text: str, color: int = 255):
         split = []
         pos = 0
         while pos < len(text):
@@ -237,7 +279,7 @@ class SqexFont(Font):
         if len(split) == 1:
             if split[0] in (SqexFont.NONJOINER_SENTINEL, SqexFont.NEWLINE_SENTINEL):
                 return x, y, x, y
-            return self.__draw_single_glyph(canvas, x, y, split[0], 0)
+            return self.__draw_single_glyph(canvas, x, y, split[0], 0, color)
 
         last_char = ""
         left, top, right, bottom = x, y, x, y + self.font_height
@@ -257,7 +299,7 @@ class SqexFont(Font):
             current_char = glyph.char
 
             kerning = self._kern_map.get(last_char + current_char, 0)
-            now_l, now_t, now_r, now_b = self.__draw_single_glyph(canvas, cur_x, cur_y, glyph, kerning)
+            now_l, now_t, now_r, now_b = self.__draw_single_glyph(canvas, cur_x, cur_y, glyph, kerning, color)
 
             left = min(left, now_l)
             right = max(right, now_r)
@@ -267,8 +309,8 @@ class SqexFont(Font):
 
         return left, top, right, bottom
 
-    def draw(self, canvas: Canvas, x: int, y: int, text: str):
-        self.__draw(canvas, x, y, text)
+    def draw(self, canvas: Canvas, x: int, y: int, text: str, color: int = 255):
+        self.__draw(canvas, x, y, text, color)
 
     @property
     def size_pt(self) -> int:
@@ -278,6 +320,10 @@ class SqexFont(Font):
     @functools.cache
     def characters(self) -> typing.List[str]:
         return list(sorted(self._glyph_map.keys()))
+
+    @property
+    def font_height(self) -> int:
+        return self._fdt.fthd_header.font_height
 
     @property
     def font_ascent(self) -> int:
@@ -321,8 +367,12 @@ class FreeTypeFont(Font):
                      * float(self._size)
                      / self._ttfont['head'].unitsPerEm)
 
-    def draw(self, canvas: Canvas, x: int, y: int, text: str):
-        canvas.draw.text((x, y), text, font=self._pilfont, fill=255, anchor="la")
+    def draw(self, canvas: Canvas, x: int, y: int, text: str, color: int = 255):
+        canvas.draw.text((x, y), text, font=self._pilfont, fill=color, anchor="la")
+
+    @property
+    def name(self) -> str:
+        return str(self._ttfont["name"].names[1])
 
     @property
     def size_pt(self) -> int:
@@ -332,6 +382,10 @@ class FreeTypeFont(Font):
     @functools.cache
     def characters(self) -> typing.List[str]:
         return list(sorted(self._character_map.keys()))
+
+    @property
+    def font_height(self) -> int:
+        return self._pilfont.font.ascent + self._pilfont.font.descent
 
     @property
     def font_ascent(self) -> int:
@@ -362,392 +416,416 @@ class FreeTypeFont(Font):
         return result
 
 
-def create_fdt(font_mix: typing.Dict[str, typing.Tuple[typing.List[Font], typing.Optional[typing.Sequence[str]]]],
-               canvases: typing.List[Canvas],
-               image_width: int,
-               image_height: int,
-               kerning_treat_same_font_characters: str = " ",
-               distance_between_glyphs: int = 0,
-               maintain_full_height: bool = True
-               ):
-    # key: font_index, glyph_name
-    # value: image_index, x, y
-    first_rendered_glyphs: typing.Dict[typing.Tuple[Font, str], typing.Tuple[int, int, int]] = {}
+def create_fdt(plan: 'FontTransformPlan') -> bytes:
+    use_chars = set(plan.chars)
 
-    result: typing.Dict[str, bytes] = {}
+    font_table_header = sqexdata.FdtFontTableHeader()
+    font_table_header.signature = sqexdata.FdtFontTableHeader.SIGNATURE
+    font_table_header.null_1 = 0
+    font_table_header.image_width = plan.canvas_width
+    font_table_header.image_height = plan.canvas_height
+    font_table_header.size = plan.source_font.size_pt
+    font_table_header.font_ascent = plan.source_font.font_ascent
+    font_table_header.font_height = plan.source_font.font_height
 
-    for new_font_index, (new_font_name, (font_list, use_chars)) in enumerate(font_mix.items()):
-        if not isinstance(use_chars, set):
-            use_chars = set() if use_chars is None else set(use_chars)
-        print(f"[{new_font_index + 1}/{len(font_mix)}] {new_font_name}...")
-        font_table_header = sqexdata.FdtFontTableHeader()
-        font_table_header.signature = sqexdata.FdtFontTableHeader.SIGNATURE
-        font_table_header.null_1 = 0
-        font_table_header.image_width = image_width
-        font_table_header.image_height = image_height
-        font_table_header.size = max(x.size_pt for x in font_list)
+    charmap: typing.Dict[str, Font] = {}
+    for i, f in enumerate(plan.fonts):
+        for text in f.characters:
+            if text not in charmap and (use_chars is None or text in use_chars):
+                charmap[text] = f
+    charmap = {x: charmap[x] for x in sorted(charmap.keys())}
+    font_table_header.glyph_count = len(charmap)
 
-        max_descent = max_ascent = 0
-        for f in font_list:
-            max_ascent = max(max_ascent, f.font_ascent)
-            max_descent = max(max_descent, f.font_descent)
-        font_table_header.font_height = max_descent + max_ascent
-        font_table_header.font_ascent = max_ascent
+    left_offset = 0
+    min_shift_y = 0
+    for text, font in charmap.items():
+        actual_render_text = '.' if text == '\n' else text
+        shift_x, shift_y, *_ = font.getbbox(actual_render_text)
+        left_offset = max(-shift_x, left_offset)
+        min_shift_y = min(min_shift_y, shift_y)
 
-        charmap: typing.Dict[str, int] = {}
-        for i, f in enumerate(font_list):
-            for text in f.characters:
-                if text not in charmap and (use_chars is None or text in use_chars):
-                    charmap[text] = i
-        charmap = {x: charmap[x] for x in sorted(charmap.keys())}
-        font_table_header.glyph_count = len(charmap)
+    left_offset = max(min(left_offset, plan.source_font.size_pt // 4, plan.max_left_offset), plan.min_left_offset)
 
-        left_offset = 0
-        max_pad_y = 0
-        for text, font_index in charmap.items():
-            font = font_list[font_index]
-            actual_render_text = '.' if text == '\n' else text
-            shift_x, *_ = font.getbbox(actual_render_text)
-            left_offset = max(-shift_x, left_offset)
-            max_pad_y = max(max_pad_y, max_ascent - font.font_ascent)
+    """
+    keep distance between mid and ascent consistent.
+    """
 
-        # key: text
-        glyphs: typing.Dict[str, sqexdata.FdtGlyphEntry] = {}
+    # key: text
+    glyphs: typing.Dict[str, sqexdata.FdtGlyphEntry] = {}
 
-        for text_index, (text, font_index) in enumerate(charmap.items()):
-            font = font_list[font_index]
+    last_print = 0
+    for text_index, (text, font) in enumerate(charmap.items()):
+        now = time.time()
+        if now - last_print > 0.1:
+            print(f"\rCanvas #{len(plan.canvases)}: [{text_index + 1}/{len(charmap)}] {text}...", end="")
+            last_print = now
 
-            if text_index % 2048 == 0:
-                print(
-                    f"[{new_font_index + 1}/{len(font_mix)}] {new_font_name} [{text_index + 1}/{len(charmap)}] {text}...")
+        glyph = sqexdata.FdtGlyphEntry()
+        glyph.char = text
 
-            glyph = sqexdata.FdtGlyphEntry()
-            glyph.char = text
+        actual_render_text = '.' if text == '\n' else text
 
-            actual_render_text = '.' if text == '\n' else text
+        shift_x, _, glyph.width, bottom = font.getbbox(actual_render_text)
+        glyph.width = glyph.width - shift_x + left_offset
+        glyph.height = max(font_table_header.font_height, font.font_height) - min_shift_y
+        glyph.offset_x = font.getcharwidth(text) - glyph.width
+        glyph.offset_y = (round(font_table_header.font_height / 2 - font.font_height / 2)
+                          + min_shift_y
+                          + plan.global_offset_y_modifier)
+        line_height = glyph.height
 
-            shift_x, shift_y, glyph.width, bottom = font.getbbox(actual_render_text)
-            glyph.width = glyph.width - shift_x + left_offset
-            glyph.offset_x = font.getcharwidth(text) - glyph.width
-
-            if maintain_full_height:
-                shift_y = 0
-                pad_y = 0  # max_ascent - font.font_ascent
-                glyph.height = font_table_header.font_height + pad_y
-            else:
-                glyph.height = bottom - shift_y
-                glyph.offset_y = shift_y
-
-            if rendered := first_rendered_glyphs.get((font, text), None):
-                glyph.image_index, glyph.x, glyph.y = rendered
-            else:
-                new_canvas = False
-                if not canvases:
+        if rendered := plan.rendered_glyphs.get((font.name, font.size_pt, text), None):
+            glyph.image_index, glyph.x, glyph.y = rendered
+        else:
+            new_canvas = False
+            if not plan.canvases:
+                new_canvas = True
+            elif plan.canvases[-1].x + glyph.width >= plan.canvases[-1].image.width - plan.distance_between_glyphs:
+                plan.canvases[-1].x = plan.distance_between_glyphs
+                plan.canvases[-1].y += plan.canvases[-1].line_height + plan.distance_between_glyphs
+                plan.canvases[-1].line_height = 0
+                if plan.canvases[-1].y + line_height + plan.distance_between_glyphs >= plan.canvases[-1].image.height:
                     new_canvas = True
-                elif canvases[-1].x + glyph.width >= canvases[-1].image.width - distance_between_glyphs:
-                    canvases[-1].x = distance_between_glyphs
-                    canvases[-1].y += canvases[-1].line_height + distance_between_glyphs
-                    canvases[-1].line_height = 0
-                    if canvases[-1].y + glyph.height + distance_between_glyphs >= canvases[-1].image.height:
-                        new_canvas = True
 
-                if new_canvas:
-                    canvases.append(Canvas(image_width, image_height))
-                    canvases[-1].x = canvases[-1].y = distance_between_glyphs
-                    print(f"Canvas #{len(canvases)}")
+            if new_canvas:
+                plan.canvases.append(Canvas(plan.canvas_width, plan.canvas_height))
+                plan.canvases[-1].x = plan.canvases[-1].y = plan.distance_between_glyphs
 
-                glyph.image_index = len(canvases) - 1
+            glyph.image_index = len(plan.canvases) - 1
 
-                glyph.x, glyph.y = canvases[-1].x, canvases[-1].y
-                font.draw(canvases[-1],
-                          glyph.x + left_offset,
-                          glyph.y - shift_y,
-                          actual_render_text)
+            glyph.x, glyph.y = plan.canvases[-1].x, plan.canvases[-1].y
+            font.draw(plan.canvases[-1],
+                      glyph.x + left_offset,
+                      glyph.y - min_shift_y,
+                      actual_render_text)
 
-                canvases[-1].x += glyph.width + distance_between_glyphs
-                canvases[-1].line_height = max(canvases[-1].line_height, glyph.height)
+            plan.canvases[-1].x += glyph.width + plan.distance_between_glyphs
+            plan.canvases[-1].line_height = max(plan.canvases[-1].line_height, line_height)
 
-            glyphs[text] = glyph
-            first_rendered_glyphs[font, text] = glyph.image_index, glyph.x, glyph.y
+        glyphs[text] = glyph
+        plan.rendered_glyphs[font, font.size_pt, text] = glyph.image_index, glyph.x, glyph.y
 
-        kerning_header = sqexdata.FdtKerningHeader()
-        kerning_header.signature = sqexdata.FdtKerningHeader.SIGNATURE
+    kerning_header = sqexdata.FdtKerningHeader()
+    kerning_header.signature = sqexdata.FdtKerningHeader.SIGNATURE
 
-        header = sqexdata.FdtHeader()
-        header.signature = sqexdata.FdtHeader.SIGNATURE
-        header.version = sqexdata.FdtHeader.VERSION
-        header.glyph_header_offset = ctypes.sizeof(header)
-        header.knhd_header_offset = (ctypes.sizeof(header)
-                                     + ctypes.sizeof(font_table_header)
-                                     + len(glyphs) * ctypes.sizeof(sqexdata.FdtGlyphEntry))
+    header = sqexdata.FdtHeader()
+    header.signature = sqexdata.FdtHeader.SIGNATURE
+    header.version = sqexdata.FdtHeader.VERSION
+    header.glyph_header_offset = ctypes.sizeof(header)
+    header.knhd_header_offset = (ctypes.sizeof(header)
+                                 + ctypes.sizeof(font_table_header)
+                                 + len(glyphs) * ctypes.sizeof(sqexdata.FdtGlyphEntry))
 
-        filtered_kerning_data = {}
-        for i, font in enumerate(font_list):
-            for kerning_str, offset_x in font.kerning_info.items():
-                offset_x = round(offset_x)
-                if len(kerning_str) != 2:
-                    # Unsupported
+    filtered_kerning_data = {}
+    for i, font in enumerate(plan.fonts):
+        for kerning_str, offset_x in font.kerning_info.items():
+            offset_x = round(offset_x)
+            if len(kerning_str) != 2:
+                # Unsupported
+                continue
+
+            c1, c2 = kerning_str
+            if c1 not in charmap or c2 not in charmap:
+                continue
+            if charmap[c1] != i and charmap[c2] != i:
+                # Completely unrelated; ignore
+                continue
+            if charmap[c1] != charmap[c2]:
+                if (c1 not in plan.kerning_treat_same_font_characters
+                        and c2 not in plan.kerning_treat_same_font_characters):
+                    # Different font; ignore
                     continue
+            filtered_kerning_data[c1, c2] = offset_x
 
-                c1, c2 = kerning_str
-                if c1 not in charmap or c2 not in charmap:
-                    continue
-                if charmap[c1] != i and charmap[c2] != i:
-                    # Completely unrelated; ignore
-                    continue
-                if charmap[c1] != charmap[c2]:
-                    if c1 not in kerning_treat_same_font_characters and c2 not in kerning_treat_same_font_characters:
-                        # Different font; ignore
-                        continue
-                filtered_kerning_data[c1, c2] = offset_x
+    kernings = []
+    filtered_kerning_data = {x: filtered_kerning_data[x]
+                             for x in sorted(filtered_kerning_data.keys())}
+    font_table_header.kerning_entry_count = kerning_header.count = len(filtered_kerning_data)
+    for (c1, c2), offset_x in filtered_kerning_data.items():
+        entry = sqexdata.FdtKerningEntry()
+        entry.char1 = c1
+        entry.char2 = c2
+        entry.offset_x = offset_x
+        kernings.append(entry)
 
-        kernings = []
-        filtered_kerning_data = {x: filtered_kerning_data[x]
-                                 for x in sorted(filtered_kerning_data.keys())}
-        font_table_header.kerning_entry_count = kerning_header.count = len(filtered_kerning_data)
-        for (c1, c2), offset_x in filtered_kerning_data.items():
-            entry = sqexdata.FdtKerningEntry()
-            entry.char1 = c1
-            entry.char2 = c2
-            entry.offset_x = offset_x
-            kernings.append(entry)
+    fp = io.BytesIO()
+    fp.write(header)
+    fp.write(font_table_header)
+    for entry in glyphs.values():
+        fp.write(entry)
+    fp.write(kerning_header)
+    for entry in kernings:
+        fp.write(entry)
 
-        fp = io.BytesIO()
-        fp.write(header)
-        fp.write(font_table_header)
-        for entry in glyphs.values():
-            fp.write(entry)
-        fp.write(kerning_header)
-        for entry in kernings:
-            fp.write(entry)
-
-        result[new_font_name] = fp.getvalue()
-
-    return result
+    print()
+    return fp.getvalue()
 
 
-def render_text2(font: Font, txt: str):
-    l, t, r, b = font.getbbox(txt)
-    w = r - l
-    h = b - t
-
-    font.draw(canvas := Canvas(w, h), -l, -t, txt)
-    return canvas.image
-
-
-def render_char(font: Font, char: str, on: PIL.Image.Image, on_x, on_y):
-    l, t, r, b = font.getbbox(char)
-    w = r - l
-    h = b - t
-
-    font.draw(canvas := Canvas(w, h), -l, -t, char)
-    draw = PIL.ImageDraw.Draw(on)
-    # draw.line((on_x + r + font.last_offset_x, on_y, on_x + r + font.last_offset_x, on_y + b), fill=(255, 0, 0), width=1)
-    draw.rectangle((on_x + l, on_y + t, on_x + r, on_y + b), outline=(0, 0, 255))
-    draw.rectangle((on_x, on_y, on_x + r, on_y + b), outline=(0, 255, 0))
-
-    on.paste(
-        PIL.Image.new("RGB", canvas.image.size, (255, 255, 255)),
-        (on_x + l, on_y + t),
-        canvas.image
-    )
-    return on_x + w
+@dataclasses.dataclass
+class SqFontSet:
+    fdt_filename_pattern: re.Pattern
+    tex_filename_left: str
+    tex_filename_right: str
+    fdt_files: typing.List[str] = dataclasses.field(default_factory=list)
+    tex_files: typing.List[str] = dataclasses.field(default_factory=list)
+    fonts: typing.Dict[str, SqexFont] = dataclasses.field(default_factory=dict)
+    bitmaps: typing.Optional[typing.List[PIL.Image.Image]] = None
+    result_canvases: typing.List[Canvas] = dataclasses.field(default_factory=list)
 
 
-def transform_sqex(orig_tex_normal, orig_tex_lobby):
-    comics = {}
-    notos = {}
-    new_font_def_lobby = {}
-    new_font_def_normal = {}
+@dataclasses.dataclass
+class FontChainConfig:
+    add_hangul: bool = True
+    add_chars: str = ""
+    chain: typing.List[str] = dataclasses.field(default_factory=lambda: [None])
 
-    hangul_range = set(chr(x) for x in itertools.chain(
-        range(0x1100, 0x1200),  # Hangul Jamo
-        # range(0x3000, 0x3040),  # CJK Symbols and Punctuation
-        range(0x3130, 0x3190),  # Hangul Compatibility Jamo
-        # range(0x3200, 0x3300),  # Enclosed CJK Letters and Months
-        # range(0x3400, 0x4DC0),  # CJK Unified Ideographs Extensions A
-        # range(0x4E00, 0xA000),  # CJK Unified Ideographs
-        # range(0xA960, 0xA97F),  # Hangul Jamo Extended-A
-        range(0xAC00, 0xD7B0),  # Hangul Syllables
-        # range(0xD7B0, 0xD800),  # Hangul Jamo Extended-B
-        # range(0xF900, 0xFB00),  # CJK Compatibility Ideographs
-        # range(0xFF00, 0xFFF0),  # Halfwidth and Fullwidth Forms
-        # range(0x20000, 0x2A6E0),  # CJK Unified Ideographs Extensions B
-        # range(0x2A700, 0x2B740),  # CJK Unified Ideographs Extensions C
-        # range(0x2B740, 0x2B820),  # CJK Unified Ideographs Extensions D
-        # range(0x2B820, 0x2CEB0),  # CJK Unified Ideographs Extensions E
-        # range(0x2CEB0, 0x2EBF0),  # CJK Unified Ideographs Extensions F
-        # range(0x2F800, 0x2FA20),  # CJK Compatibility Ideographs Supplement
+
+@dataclasses.dataclass
+class SqFontTransformConfig:
+    root_dir: str
+    texture_width: int = 4096
+    texture_height: int = 4096
+    full_height_every_char: bool = True
+    external_freetype_fonts: typing.Dict[str, typing.Tuple[str, int]] = dataclasses.field(default_factory=lambda: {
+        "gulim": (r"C:\Windows\Fonts\gulim.ttc", 0),
+        "gungsuh": (r"C:\Windows\Fonts\batang.ttc", 2),
+        "times": (r"C:\Windows\Fonts\times.ttf", 0),
+        "times bold": (r"C:\Windows\Fonts\timesbd.ttf", 0),
+        "comic": (r"C:\Windows\Fonts\comic.ttf", 0),
+        "papyrus": (r"C:\Windows\Fonts\PAPYRUS.TTF", 0),
+        "impact": (r"C:\Windows\Fonts\impact.ttf", 0),
+        "wide latin": (r"C:\Windows\Fonts\LATINWD.TTF", 0),
+        "chiller": (r"C:\Windows\Fonts\CHILLER.TTF", 0),
+        "elliotsix": (r"fonts\ElliotSix.ttf", 0),
+        "noto medium": (r"fonts\NotoSansCJKkr-hinted\NotoSansCJKkr-Medium.otf", 0),
+        "noto regular": (r"fonts\NotoSansCJKkr-hinted\NotoSansCJKkr-Regular.otf", 0),
+        "source medium": (r"fonts\SourceHanSansKorean\SourceHanSansK-Medium.otf", 0),
+        "source normal": (r"fonts\SourceHanSansKorean\SourceHanSansK-Normal.otf", 0),
+        "source regular": (r"fonts\SourceHanSansKorean\SourceHanSansK-Regular.otf", 0),
+    })
+    fallback_fonts: typing.List[str] = dataclasses.field(default_factory=lambda: [
+        "gungsuh",
+        "source medium",
+    ])
+
+    axis: FontChainConfig = dataclasses.field(default_factory=lambda: FontChainConfig(
+        chain=["comic", "gungsuh", None],
+        add_hangul=True,
+    ))
+    jupiter_latin: FontChainConfig = dataclasses.field(default_factory=lambda: FontChainConfig(
+        chain=["comic", "gungsuh", None],
+        add_hangul=True,
+    ))
+    jupiter_number: FontChainConfig = dataclasses.field(default_factory=lambda: FontChainConfig(
+        chain=["comic", "gungsuh", None],
+        add_hangul=False,
+    ))
+    miedingermid: FontChainConfig = dataclasses.field(default_factory=lambda: FontChainConfig(
+        chain=["comic", "gungsuh", None],
+        add_hangul=True,
+    ))
+    meidinger: FontChainConfig = dataclasses.field(default_factory=lambda: FontChainConfig(
+        chain=["comic", "gungsuh", None],
+        add_hangul=False,
+    ))
+    trumpgothic: FontChainConfig = dataclasses.field(default_factory=lambda: FontChainConfig(
+        chain=["comic", "gungsuh", None],
+        add_hangul=True,
     ))
 
-    for fn in os.listdir(r"Z:\scratch\g\ffxiv\000000\common\font"):
-        if fn.endswith(".fdt"):
-            size = int(fn.split("_")[1][:2])
-            if fn.endswith("_lobby.fdt"):
-                texs = orig_tex_lobby
-                defdict = new_font_def_lobby
+
+@dataclasses.dataclass
+class FontTransformPlan:
+    source_font: SqexFont
+
+    canvases: typing.List[Canvas]
+
+    # (component font name, size, glyph): (image index, x, y)
+    rendered_glyphs: typing.Dict[typing.Tuple[str, int, str], typing.Tuple[int, int, int]]
+
+    fonts: typing.List[Font]
+
+    chars: typing.List[str]
+
+    canvas_width: int
+    canvas_height: int
+    kerning_treat_same_font_characters: str = " "
+    distance_between_glyphs: int = 1
+    global_offset_y_modifier: int = -1
+    min_left_offset: int = 0
+    max_left_offset: int = 4
+
+
+opened_freetype_fonts = {}
+
+
+def open_freetype_font(path_and_index: typing.Tuple[str, int], size: int):
+    key = *path_and_index, size
+    font = opened_freetype_fonts.get(key, None)
+    if font is None:
+        font = FreeTypeFont(path_and_index[0], path_and_index[1], size)
+        opened_freetype_fonts[key] = font
+    return font
+
+
+def transform_sqex(config: SqFontTransformConfig,
+                   preview_characters_per_line: int = 128):
+    """
+    * AXIS: default font
+    * KrnAXIS: default font for Korean clients only
+    * Jupiter: Serif font
+        * 16, 20, 23, 46: Latin characters
+            * Data center selection
+                * Server names (ex. Adamantoise)
+                * Data center group names (ex. North American Data Center)
+            * Job names
+        * 45, 90: Damage numbers (0123456789!)
+    * MiedingerMid: Wide font
+        * Login menu text (ex. START)
+    * Meidinger (sic): Numeric stats (!%+-./0123456789?)
+    * TrumpGothic: Narrow font
+        * Data center selection
+            * Data center names (ex. Aether)
+        * Window titles
+    """
+
+    source_fonts = {
+        "lobby": SqFontSet(re.compile(r".*_lobby\.fdt", re.IGNORECASE), "font_lobby", ".tex"),
+        "krn": SqFontSet(re.compile(r"KrnAXIS_.*\.fdt", re.IGNORECASE), "font_krn_", ".tex"),
+        "common": SqFontSet(re.compile(r".*\.fdt", re.IGNORECASE), "font", ".tex"),
+    }
+    root_dir = os.path.realpath(config.root_dir)
+    for filename in sorted(os.listdir(os.path.join(root_dir, "source"))):
+        full_path = os.path.join(root_dir, "source", filename)
+        if os.stat(full_path).st_size == 0:  # placeholder entry
+            continue
+        for font_set in source_fonts.values():
+            if font_set.fdt_filename_pattern.fullmatch(filename):
+                font_set.fdt_files.append(full_path)
+                break
+            if (filename.startswith(font_set.tex_filename_left) and filename.endswith(font_set.tex_filename_right)
+                    and filename[len(font_set.tex_filename_left):-len(font_set.tex_filename_right)].isdecimal()):
+                font_set.tex_files.append(full_path)
+                break
+
+    for font_group, font_set in source_fonts.items():
+        preview_dir = os.path.join(root_dir, f"preview_{font_group}")
+        os.makedirs(preview_dir, exist_ok=True)
+        for fdt_file in font_set.fdt_files:
+            font = SqexFont(fdt_file, font_set.bitmaps or font_set.tex_files)
+            font_set.fonts[font.name] = font
+            font_set.bitmaps = font.bitmaps
+            preview_path = os.path.join(preview_dir, f"{font.name}.png")
+            if not os.path.exists(preview_path):
+                preview_text = "\n".join("".join(font.characters[i:i + preview_characters_per_line])
+                                         for i in range(0, len(font.characters), preview_characters_per_line))
+                preview = font.draw_to_new_image(preview_text)
+                preview.save(preview_path)
+
+    result_dir = os.path.join(root_dir, f"result")
+    shutil.rmtree(result_dir, ignore_errors=True)
+    os.makedirs(result_dir, exist_ok=True)
+    for font_group, font_set in source_fonts.items():
+        rendered_glyphs = {}
+        result_fdts = []
+        preview_dir = os.path.join(root_dir, f"preview_{font_group}_result")
+        shutil.rmtree(preview_dir, ignore_errors=True)
+        os.makedirs(preview_dir, exist_ok=True)
+        for i, source_font in enumerate(font_set.fonts.values()):
+            print(f"[{i}/{len(font_set.fonts)}] Working on {font_group} > {source_font.name}...")
+            plan = FontTransformPlan(
+                source_font=source_font,
+                canvases=font_set.result_canvases,
+                rendered_glyphs=rendered_glyphs,
+                fonts=[],
+                chars=list(source_font.characters),
+                canvas_width=config.texture_width,
+                canvas_height=config.texture_height,
+            )
+            if "axis" in source_font.name.lower():
+                config2 = config.axis
+            elif any(x in source_font.name.lower() for x in (
+                    "jupiter_16",
+                    "jupiter_20",
+                    "jupiter_23",
+                    "jupiter_46",
+            )):
+                config2 = config.jupiter_latin
+            elif any(x in source_font.name.lower() for x in (
+                    "jupiter_45",
+                    "jupiter_90",
+            )):
+                config2 = config.jupiter_number
+            elif "meidinger" in source_font.name.lower():
+                config2 = config.meidinger
+            elif "miedingermid" in source_font.name.lower():
+                config2 = config.miedingermid
+            elif "trumpgothic" in source_font.name.lower():
+                config2 = config.trumpgothic
             else:
-                texs = orig_tex_normal
-                defdict = new_font_def_normal
+                print("Skipping", source_font.name)
+                continue
+            already = set()
+            for font_name in [*config2.chain, *config.fallback_fonts]:
+                if font_name in already:
+                    continue
+                already.add(font_name)
+                plan.fonts.append(
+                    source_font
+                    if font_name is None else
+                    open_freetype_font(config.external_freetype_fonts[font_name], round(source_font.size_pt)))
+            if None not in already:
+                plan.fonts.append(source_font)
+            if config2.add_hangul:
+                plan.chars.extend(HANGUL_CHARS_IN_UNICODE_BLOCKS)
+            plan.chars.extend(config2.add_chars)
+            result_fdt = os.path.join(result_dir, f"{source_font.name}.fdt")
+            result_fdts.append(result_fdt)
+            with open(result_fdt, "wb") as fp:
+                fp.write(create_fdt(plan))
 
-            if size == 96:
-                size = 10  # 9.6 actually
-            if size not in comics:
-                comics[size] = FreeTypeFont(
-                    r"C:\Windows\Fonts\comic.ttf",
-                    # r"C:\Windows\Fonts\PAPYRUS.TTF",
-                    # r"C:\Users\SP\AppData\Local\Microsoft\Windows\Fonts\ElliotSix.ttf",
-                    0, size)
-            base_font = SqexFont(rf"Z:\scratch\g\ffxiv\000000\common\font\{fn}", texs)
-            d = [
-                # comics[size],
-                FreeTypeFont(r"C:\windows\fonts\gulim.ttc", 0, size),
-                base_font,
-            ]
-            use_chars = set(base_font.characters)
-            if 'axis' in fn.lower() and False:
-                if size not in notos:
-                    # notos[size] = FreeTypeFont(r"F:\Downloads\SourceHanSans\OTF\Korean\SourceHanSansK-Medium.otf", 0, size)
-                    notos[size] = FreeTypeFont(r"C:\windows\fonts\gulim.ttc", 0, size)
-                # d.append(notos[size])
-                d.insert(len(d) - 1, notos[size])
-                # use_chars.update(hangul_range)
+        print("Saving texture files...")
+        for _ in range(len(font_set.result_canvases), (len(font_set.result_canvases) + 3) // 4 * 4):
+            font_set.result_canvases.append(Canvas(config.texture_width, config.texture_height))
 
-            defdict[fn[:-4]] = (d, use_chars)
+        tex_header = sqexdata.TexHeader()
+        tex_header.header_size = 0x80
+        tex_header.compression_type = 0x1440
+        tex_header.decompressed_width = config.texture_width
+        tex_header.decompressed_height = config.texture_height
+        tex_header.depth = 1
+        tex_header.num_mipmaps = 1
 
-    return new_font_def_normal, new_font_def_lobby
+        for i in range(0, len(font_set.result_canvases), 4):
+            b, g, r, a = tuple(x.image for x in font_set.result_canvases[i:i + 4])
+            img: PIL.Image.Image = PIL.Image.merge("RGBA", (r, g, b, a))
+            img_bytes = sqexdata.ImageEncoding.rgba4444(img)
+            # img_bytes = sqexdata.ImageEncoding.bgra(img)
+            tex_filename = f"{font_set.tex_filename_left}{1 + (i // 4)}{font_set.tex_filename_right}"
+            with open(os.path.join(result_dir, tex_filename), "wb") as fp:
+                fp: typing.Union[typing.BinaryIO, io.RawIOBase]
+                fp.write(tex_header)
+                fp.write(b"\x50")
+                fp.seek(0x50, os.SEEK_SET)
+                fp.write(img_bytes)
+
+        print("Generating previews...")
+        for i, c in enumerate(font_set.result_canvases):
+            c.image.save(os.path.join(preview_dir, f"texture_{i}.png"))
+
+        for result_fdt in result_fdts:
+            font = SqexFont(result_fdt, [x.image for x in font_set.result_canvases])
+            preview_path = os.path.join(preview_dir, f"{font.name}.png")
+            if not os.path.exists(preview_path):
+                preview_text = "\n".join("".join(font.characters[i:i + preview_characters_per_line])
+                                         for i in range(0, len(font.characters), preview_characters_per_line))
+                preview = font.draw_to_new_image(preview_text)
+                preview.save(preview_path)
 
 
 def __main__():
-    # dpa = r"C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\000000.win32\common\font"
-    # for p in os.listdir(dpa):
-    #     if p[-4:] == '.fdt':
-    #         with open(f"{dpa}\\{p}", "a+b") as fp:
-    #             fp.seek(0, os.SEEK_SET)
-    #             h1 = sqexdata.FdtHeader()
-    #             fp.readinto(h1)
-    #             h2 = sqexdata.FdtFontTableHeader()
-    #             fp.readinto(h2)
-    #             h2.left_offset = 0
-    #             fp.seek(ctypes.sizeof(h1))
-    #             fp.write(h2)
-    # return 0
-    orig_tex = [
-        fr"Z:\scratch\g\ffxiv\000000\common\font\font{i}.tex"
-        for i in range(1, 8)
-    ]
-    orig_tex_lobby = [
-        fr"Z:\scratch\g\ffxiv\000000\common\font\font_lobby{i}.tex"
-        for i in range(1, 3)
-    ]
-    canvas_w = canvas_h = 1024
-    new_font_def_normal, new_font_def_lobby = transform_sqex(orig_tex, orig_tex_lobby)
-
-    # constan = FreeTypeFont(r"C:\Windows\Fonts\constan.ttf", 0, 20)
-    # gulim = FreeTypeFont(r"C:\Windows\Fonts\gulim.ttc", 0, 16)
-    # times = FreeTypeFont(r"C:\Windows\Fonts\Times.ttf", 0, 20)
-    # comic = FreeTypeFont(r"C:\Windows\Fonts\comic.ttf", 0, 18)
-    # papy = FreeTypeFont(r"C:\Windows\Fonts\PAPYRUS.TTF", 0, 36)
-    # ax36 = SqexFont(rf"Z:\scratch\g\ffxiv\000000\common\font\AXIS_36.fdt", orig_tex)
-    # trndr = SqexFont(r"C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\000000.win32\common\font\AXIS_36.fdt",
-    #                  [x for x in [
-    #     fr"C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\000000.win32\common\font\font_lobby{i}.tex"
-    #     for i in range(1, 8)
-    # ] if os.path.exists(x)])
-    # img = PIL.Image.new("RGB", (1024, 1024))
-    # nx = 10
-    # for i, c in enumerate("Sometimes I question"):
-    #     nx = render_char(trndr, c, img, nx, 10) + 5
-    # exit(img.show())
-    # exit(render_text2(ax36, "Sometimes I question").show())
-    # canvas_w = canvas_h = 1024
-    # new_font_def = {
-    #     "Papyrus36": ([papy, ax36], None),
-    #     "AxisRecreation": ([axis], None),
-    #     "Constantia": ([constan], None),
-    #     "Times": ([times], None),
-    #     "Gulim": ([gulim], None),
-    #     "ComicGulim": ([
-    #         comic,
-    #         gulim,
-    #     ], None),
-    #     "ComicGulimAxis": ([
-    #         comic,
-    #         gulim,
-    #         axis,
-    #     ], None),
-    #     "TimesGulim": ([
-    #         times,
-    #         gulim,
-    #     ], None),
-    #     "TimesGulimAxis": ([
-    #         times,
-    #         gulim,
-    #         axis,
-    #     ], None),
-    #     "ConstantiaExtra": ([
-    #         constan,
-    #         comic,
-    #         gulim,
-    #         axis
-    #     ], None),
-    # }
-
-    if True:
-        shutil.rmtree("t/", ignore_errors=True)
-        os.makedirs("t", exist_ok=True)
-        for is_lobby, new_font_def in enumerate((new_font_def_normal, new_font_def_lobby)):
-            canvases = []
-            fdts = create_fdt(new_font_def, canvases, canvas_w, canvas_h)
-
-            for font_name, font_bytes in fdts.items():
-                with open(f"t/{font_name}.fdt", "wb") as fp:
-                    fp.write(font_bytes)
-            for _ in range(len(canvases), (len(canvases) + 3) // 4 * 4):
-                canvases.append(Canvas(canvas_w, canvas_h))
-
-            tex_header = sqexdata.TexHeader()
-            tex_header.header_size = 0x80
-            tex_header.compression_type = 0x1440
-            tex_header.decompressed_width = canvas_w
-            tex_header.decompressed_height = canvas_h
-            tex_header.depth = 1
-            tex_header.num_mipmaps = 1
-
-            for i in range(0, len(canvases), 4):
-                b, g, r, a = tuple(x.image for x in canvases[i:i + 4])
-                img: PIL.Image.Image = PIL.Image.merge("RGBA", (r, g, b, a))
-                img_bytes = sqexdata.ImageEncoding.rgba4444(img)
-                # img_bytes = sqexdata.ImageEncoding.bgra(img)
-                with open(f"t/font{'_lobby' if is_lobby else ''}{1 + (i // 4)}.tex", "wb") as fp:
-                    fp: typing.Union[typing.BinaryIO, io.RawIOBase]
-                    fp.write(tex_header)
-                    fp.write(b"\x50")
-                    fp.seek(0x50, os.SEEK_SET)
-                    fp.write(img_bytes)
-
-            for i, c in enumerate(canvases):
-                c.image.save(f"t/z_1_{is_lobby}_{i}.png")
-
-    tex_paths_normal = [
-        fr"t\font{i}.tex"
-        for i in range(1, 8)
-    ]
-    tex_paths_lobby = [
-        fr"t\font_lobby{i}.tex"
-        for i in range(1, 3)
-    ]
-
-    for is_lobby, (new_font_def, tex_paths) in enumerate((
-            (new_font_def_normal, tex_paths_normal),
-            (new_font_def_lobby, tex_paths_lobby))
-    ):
-        for fontname in new_font_def.keys():
-            new_font = SqexFont(f"t/{fontname}.fdt", [x for x in tex_paths if os.path.exists(x)])
-            rtext = f"t/{fontname}.fdt\n\n{SHOWCASE_TEXT}"
-            # rtext = "ojajejijoju"
-            render_text2(new_font, rtext).save(f"t/z_2_{is_lobby}_{fontname}.png")
-    return 0
+    root_dir = r"z:\scratch\sqex_fonts"
+    return transform_sqex(SqFontTransformConfig(root_dir=root_dir))
 
 
 if __name__ == "__main__":

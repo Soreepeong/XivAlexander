@@ -55,11 +55,13 @@ namespace Sqex::Sqpack {
 
 		SqIndexType Index;
 		SqIndex2Type Index2;
+		bool Sorted;
 		std::vector<SqDataEntry> Files;
 		std::vector<SqDataType> Data;
 
-		Reader(const std::filesystem::path& indexFile, bool strictVerify);
+		Reader(const std::filesystem::path& indexFile, bool strictVerify = false, bool sort = false);
 
+		[[nodiscard]] std::shared_ptr<EntryProvider> GetEntryProvider(const EntryPathSpec& pathSpec, Utils::Win32::File handle = {}) const;
 		[[nodiscard]] std::shared_ptr<EntryProvider> GetEntryProvider(const SqDataEntry& entry, Utils::Win32::File handle = {}) const;
 	};
 }
