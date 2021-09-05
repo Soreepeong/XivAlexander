@@ -188,7 +188,7 @@ size_t __stdcall XivAlexDll::EnableInjectOnCreateProcess(size_t flags) {
 	}
 }
 
-static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent, HANDLE hMainThread) {
+static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
 	const auto process = Utils::Win32::Process::Current();
 	auto filename = process.PathOf().filename().wstring();
 	CharLowerW(&filename[0]);
@@ -227,32 +227,11 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent, HANDLE 
 		// do nothing
 	}
 
-	App::Feature::GameResourceOverrider hashTrackerPreload;
+	// Load game resource overrider before the game starts to load files.
+	static App::Feature::GameResourceOverrider gameResourceOverriderPreload;
 
-	// let original entry point continue execution.
+	// Let the original entry point continue execution.
 	SetEvent(hContinuableEvent);
-
-	while (WaitForInputIdle(GetCurrentProcess(), 10000) == WAIT_TIMEOUT) {
-		if (WaitForSingleObject(hMainThread, 0) != WAIT_TIMEOUT)
-			return;  // main thread has exited.
-	}
-
-	HWND hwnd = nullptr;
-	while (WaitForSingleObject(GetCurrentProcess(), 100) == WAIT_TIMEOUT) {
-		hwnd = nullptr;
-		while ((hwnd = FindWindowExW(nullptr, hwnd, L"FFXIVGAME", nullptr))) {
-			DWORD pid;
-			GetWindowThreadProcessId(hwnd, &pid);
-			if (pid == GetCurrentProcessId())
-				break;
-		}
-		if (hwnd && IsWindowVisible(hwnd))
-			break;
-	}
-
-	if (!hwnd)
-		return;
-
 	XivAlexDll::EnableXivAlexander(1);
 	XivAlexDll::EnableInjectOnCreateProcess(0);
 }
@@ -261,7 +240,7 @@ void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters * pParam)
 	DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &pParam->Internal.hMainThread, 0, FALSE, DUPLICATE_SAME_ACCESS);
 	pParam->Internal.hContinuableEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
 	pParam->Internal.hWorkerThread = CreateThread(nullptr, 0, [](void* pParam) -> DWORD {
-		bool skipFree;
+		auto skipFree = false;
 		{
 			const auto process = Utils::Win32::Process::Current();
 
@@ -279,7 +258,7 @@ void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters * pParam)
 #endif
 
 				process.WriteMemory(p->EntryPoint, p->EntryPointOriginalBytes, p->EntryPointOriginalLength, true);
-				InitializeBeforeOriginalEntryPoint(hContinueNotify, hMainThread);
+				InitializeBeforeOriginalEntryPoint(hContinueNotify);
 				SetEvent(hContinueNotify);
 			} catch (std::exception& e) {
 				Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,

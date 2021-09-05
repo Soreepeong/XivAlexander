@@ -27,6 +27,10 @@ namespace App {
 		friend struct Implementation;
 		std::unique_ptr<Implementation> m_pImpl;
 
+		struct Implementation_GameWindow;
+		friend struct Implementation_GameWindow;
+		std::unique_ptr<Implementation_GameWindow> m_pGameWindow;
+
 		bool m_bInterrnalUnloadInitiated = false;
 
 		const Utils::Win32::Event m_loadCompleteEvent;
@@ -42,7 +46,7 @@ namespace App {
 		void CustomMessageLoopBody();
 
 	public:
-		[[nodiscard]] HWND GetGameWindowHandle() const;
+		[[nodiscard]] _Maybenull_ HWND GetGameWindowHandle() const;
 
 		void RunOnGameLoop(std::function<void()> f);
 		[[nodiscard]] std::string IsUnloadable() const;

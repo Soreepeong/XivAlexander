@@ -200,10 +200,8 @@ Utils::Win32::File Utils::Win32::File::Create(
 	_In_opt_ HANDLE hTemplateFile
 ) {
 	const auto hFile = CreateFileW(path.wstring().c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
-	if (hFile == INVALID_HANDLE_VALUE) {
-		__debugbreak();
+	if (hFile == INVALID_HANDLE_VALUE)
 		throw Error("CreateFileW");
-	}
 	return { hFile, true };
 }
 
@@ -326,11 +324,25 @@ std::filesystem::path Utils::Win32::File::ResolveName(bool bOpenedPath, bool bNt
 Utils::Win32::Event::~Event() = default;
 
 void Utils::Win32::Handle::Wait() const {
-	WaitForSingleObject(m_object, INFINITE);
+	const auto res = WaitForSingleObject(m_object, INFINITE);
+	if (res == WAIT_FAILED)
+		throw Error("WaitForSingleObject");
 }
 
-DWORD Utils::Win32::Handle::Wait(DWORD duration) const {
-	return WaitForSingleObject(m_object, duration);
+DWORD Utils::Win32::Handle::Wait(DWORD dwMilliseconds) const {
+	const auto res = WaitForSingleObject(m_object, dwMilliseconds);
+	if (res == WAIT_FAILED)
+		throw Error("WaitForSingleObject");
+	return res;
+}
+
+DWORD Utils::Win32::Handle::Wait(bool bWaitAll, std::initializer_list<HANDLE> waitWith, DWORD dwMilliseconds, bool bAlertable) const {
+	std::vector handles{ m_object };
+	handles.insert(handles.end(), waitWith.begin(), waitWith.end());
+	const auto res = WaitForMultipleObjectsEx(static_cast<DWORD>(handles.size()), handles.data(), bWaitAll, dwMilliseconds, bAlertable);
+	if (res == WAIT_FAILED)
+		throw Error("WaitForMultipleObjectsEx");
+	return res;
 }
 
 Utils::Win32::ActivationContext::ActivationContext(ActivationContext && r) noexcept

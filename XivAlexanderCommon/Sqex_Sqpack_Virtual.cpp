@@ -507,12 +507,11 @@ size_t Sqex::Sqpack::VirtualSqPack::ReadData(uint32_t datIndex, const uint64_t o
 		} else
 			return ldfi < rdfi;
 	});
-	if (it != m_pImpl->m_entries.begin())
+	if (it != m_pImpl->m_entries.begin() && it != m_pImpl->m_entries.end())
 		--it;
+
 	if (it != m_pImpl->m_entries.end()) {
 		relativeOffset -= it->get()->OffsetAfterHeaders;
-		if (relativeOffset >= INT32_MAX)
-			__debugbreak();
 
 		for (; it < m_pImpl->m_entries.end(); ++it) {
 			const auto& entry = *it->get();

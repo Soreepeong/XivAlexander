@@ -545,11 +545,8 @@ const Utils::NumericStatisticsTracker* App::Network::SingleConnection::GetPingLa
 
 App::Network::SocketHook::SocketHook(XivAlexApp * pApp)
 	: m_logger(Misc::Logger::Acquire())
-	, OnSocketFound([this](const auto& cb) {
-	for (const auto& item : this->m_pImpl->m_sockets)
-		cb(*item.second);
-})
-, m_pImpl(std::make_unique<Implementation>(this, pApp)) {
+	, OnSocketFound([this](const auto& cb) { for (const auto& val : this->m_pImpl->m_sockets | std::views::values) cb(*val); })
+	, m_pImpl(std::make_unique<Implementation>(this, pApp)) {
 
 	pApp->RunOnGameLoop([&]() {
 		m_pImpl->m_cleanupList += std::move(socket.SetHook([&](_In_ int af, _In_ int type, _In_ int protocol) {

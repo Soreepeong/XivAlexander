@@ -36,7 +36,8 @@ namespace Utils::Win32 {
 		}
 
 		void Wait() const;
-		[[nodiscard]] DWORD Wait(DWORD duration) const;
+		[[nodiscard]] DWORD Wait(DWORD dwMilliseconds) const;
+		[[nodiscard]] DWORD Wait(bool bWaitAll, std::initializer_list<HANDLE> waitWith, DWORD dwMilliseconds = INFINITE, bool bAlertable = false) const;
 	};
 
 	class ActivationContext : public Closeable<HANDLE, ReleaseActCtx> {
