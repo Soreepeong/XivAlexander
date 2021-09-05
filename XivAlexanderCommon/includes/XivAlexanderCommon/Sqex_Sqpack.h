@@ -256,6 +256,8 @@ namespace Sqex::Sqpack {
 		};
 		
 		struct ModelBlockLocator {
+			static const size_t EntryIndexMap[11];
+
 			template<typename T>
 			struct ChunkInfo {
 				T Stack;
@@ -263,9 +265,16 @@ namespace Sqex::Sqpack {
 				T Vertex[3];
 				T EdgeGeometryVertex[3];
 				T Index[3];
+
+				[[nodiscard]] const T& EntryAt(size_t i) const {
+					return (&Stack)[EntryIndexMap[i]];
+				}
+				T& EntryAt(size_t i) {
+					return (&Stack)[EntryIndexMap[i]];
+				}
 			};
 
-			ChunkInfo<LE<uint32_t>> DecompressedSizes;
+			ChunkInfo<LE<uint32_t>> AlignedDecompressedSizes;
 			ChunkInfo<LE<uint32_t>> ChunkSizes;
 			ChunkInfo<LE<uint32_t>> FirstBlockOffsets;
 			ChunkInfo<LE<uint16_t>> FirstBlockIndices;

@@ -276,7 +276,7 @@ void Sqex::Sqpack::OnTheFlyModelEntryProvider::Initialize(const RandomAccessStre
 	m_header.Model.EnableIndexBufferStreaming = fileHeader.EnableIndexBufferStreaming;
 	m_header.Model.EnableEdgeGeometry = fileHeader.EnableEdgeGeometry;
 
-	m_header.Model.DecompressedSizes.Stack = Align(fileHeader.StackSize);
+	m_header.Model.AlignedDecompressedSizes.Stack = Align(fileHeader.StackSize);
 	m_header.Model.FirstBlockOffsets.Stack = NextBlockOffset();
 	m_header.Model.FirstBlockIndices.Stack = static_cast<uint16_t>(m_blockOffsets.size());
 	m_header.Model.BlockCount.Stack = Align<uint32_t, uint16_t>(fileHeader.StackSize.Value(), BlockDataSize).Count;
@@ -289,7 +289,7 @@ void Sqex::Sqpack::OnTheFlyModelEntryProvider::Initialize(const RandomAccessStre
 	m_header.Model.ChunkSizes.Stack = NextBlockOffset() - m_header.Model.FirstBlockOffsets.Stack;
 	baseFileOffset += fileHeader.StackSize;
 
-	m_header.Model.DecompressedSizes.Runtime = Align(fileHeader.RuntimeSize);
+	m_header.Model.AlignedDecompressedSizes.Runtime = Align(fileHeader.RuntimeSize);
 	m_header.Model.FirstBlockOffsets.Runtime = NextBlockOffset();
 	m_header.Model.FirstBlockIndices.Runtime = static_cast<uint16_t>(m_blockOffsets.size());
 	m_header.Model.BlockCount.Runtime = Align<uint32_t, uint16_t>(fileHeader.RuntimeSize.Value(), BlockDataSize).Count;
@@ -303,7 +303,7 @@ void Sqex::Sqpack::OnTheFlyModelEntryProvider::Initialize(const RandomAccessStre
 	baseFileOffset += fileHeader.RuntimeSize;
 
 	for (size_t i = 0; i < 3; i++) {
-		m_header.Model.DecompressedSizes.Vertex[i] = Align(fileHeader.VertexSize[i]);
+		m_header.Model.AlignedDecompressedSizes.Vertex[i] = Align(fileHeader.VertexSize[i]);
 		m_header.Model.FirstBlockOffsets.Vertex[i] = NextBlockOffset();
 		m_header.Model.FirstBlockIndices.Vertex[i] = static_cast<uint16_t>(m_blockOffsets.size());
 		m_header.Model.BlockCount.Vertex[i] = Align<uint32_t, uint16_t>(fileHeader.VertexSize[i].Value(), BlockDataSize).Count;
@@ -317,7 +317,7 @@ void Sqex::Sqpack::OnTheFlyModelEntryProvider::Initialize(const RandomAccessStre
 		baseFileOffset += fileHeader.VertexSize[i];
 
 		const auto edgeGeometryVertexSize = fileHeader.IndexOffset[i] - baseFileOffset;
-		m_header.Model.DecompressedSizes.EdgeGeometryVertex[i] = Align(edgeGeometryVertexSize);
+		m_header.Model.AlignedDecompressedSizes.EdgeGeometryVertex[i] = Align(edgeGeometryVertexSize);
 		m_header.Model.FirstBlockOffsets.EdgeGeometryVertex[i] = NextBlockOffset();
 		m_header.Model.FirstBlockIndices.EdgeGeometryVertex[i] = static_cast<uint16_t>(m_blockOffsets.size());
 		m_header.Model.BlockCount.EdgeGeometryVertex[i] = Align<uint32_t, uint16_t>(edgeGeometryVertexSize, BlockDataSize).Count;
@@ -330,7 +330,7 @@ void Sqex::Sqpack::OnTheFlyModelEntryProvider::Initialize(const RandomAccessStre
 		m_header.Model.ChunkSizes.EdgeGeometryVertex[i] = NextBlockOffset() - m_header.Model.FirstBlockOffsets.EdgeGeometryVertex[i];
 		baseFileOffset += edgeGeometryVertexSize;
 
-		m_header.Model.DecompressedSizes.Index[i] = Align(fileHeader.IndexSize[i]);
+		m_header.Model.AlignedDecompressedSizes.Index[i] = Align(fileHeader.IndexSize[i]);
 		m_header.Model.FirstBlockOffsets.Index[i] = NextBlockOffset();
 		m_header.Model.FirstBlockIndices.Index[i] = static_cast<uint16_t>(m_blockOffsets.size());
 		m_header.Model.BlockCount.Index[i] = Align<uint32_t, uint16_t>(fileHeader.IndexSize[i].Value(), BlockDataSize).Count;

@@ -124,6 +124,10 @@ const uint32_t Sqex::Sqpack::SqexHashTable[4][256] = {
 	 0xCCB0A91F, 0x740CCE7A, 0x66B96194, 0xDE0506F1},
 };
 
+const size_t Sqex::Sqpack::SqData::ModelBlockLocator::EntryIndexMap[11] = {
+	0, 1, 2, 5, 8, 3, 6, 9, 4, 7, 10,
+};
+
 void Sqex::Sqpack::Sha1Value::Verify(const void* data, size_t size, const char* errorMessage) const {
 	Sha1Value t;
 	t.SetFromPointer(data, size);
@@ -268,8 +272,8 @@ void Sqex::Sqpack::SqData::Header::Verify(uint32_t expectedSpanIndex) const {
 		throw CorruptDataException("Null1 != 0");
 	if (Unknown1 != Unknown1_Value)
 		throw CorruptDataException(std::format("Unknown1({:x}) != Unknown1_Value({:x})", Unknown1.Value(), Unknown1_Value));
-	if (SpanIndex != expectedSpanIndex)
-		throw CorruptDataException(std::format("SpanIndex({}) != ExpectedSpanIndex({})", SpanIndex.Value(), expectedSpanIndex));
+	//if (SpanIndex != expectedSpanIndex)
+	//	throw CorruptDataException(std::format("SpanIndex({}) != ExpectedSpanIndex({})", SpanIndex.Value(), expectedSpanIndex));
 	if (Null2.Value())
 		throw CorruptDataException("Null2 != 0");
 	if (MaxFileSize > MaxFileSize_MaxValue)

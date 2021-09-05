@@ -82,6 +82,8 @@ namespace Sqex::Sqpack {
 
 	public:
 		using LazyFileOpeningEntryProvider::LazyFileOpeningEntryProvider;
+		using LazyFileOpeningEntryProvider::StreamSize;
+		using LazyFileOpeningEntryProvider::ReadStreamPartial;
 		[[nodiscard]] SqData::FileEntryType EntryType() const override { return SqData::FileEntryType::Binary; }
 
 	protected:
@@ -95,6 +97,8 @@ namespace Sqex::Sqpack {
 
 	public:
 		using LazyFileOpeningEntryProvider::LazyFileOpeningEntryProvider;
+		using LazyFileOpeningEntryProvider::StreamSize;
+		using LazyFileOpeningEntryProvider::ReadStreamPartial;
 		[[nodiscard]] SqData::FileEntryType EntryType() const override { return SqData::FileEntryType::Binary; }
 
 	protected:
@@ -115,6 +119,8 @@ namespace Sqex::Sqpack {
 
 	public:
 		using LazyFileOpeningEntryProvider::LazyFileOpeningEntryProvider;
+		using LazyFileOpeningEntryProvider::StreamSize;
+		using LazyFileOpeningEntryProvider::ReadStreamPartial;
 		[[nodiscard]] SqData::FileEntryType EntryType() const override { return SqData::FileEntryType::Model; }
 
 	private:

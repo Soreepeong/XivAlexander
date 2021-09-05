@@ -186,14 +186,17 @@ Sqex::Sqpack::Reader::SqDataType::SqDataType(Utils::Win32::File hFile, const uin
 
 	FileOnDisk.Read(sizeof SqpackHeader, &DataHeader, sizeof SqData::Header);
 	if (strictVerify) {
-		DataHeader.Verify(datIndex + 1);
+		if (datIndex == 0)
+			DataHeader.Verify(datIndex + 1);
 		accesses.emplace_back(sizeof SqpackHeader, sizeof SqData::Header);
 	}
 
 	const auto dataFileLength = FileOnDisk.GetLength();
 	if (strictVerify) {
-		if (dataFileLength != 0ULL + Header.HeaderSize + DataHeader.HeaderSize + DataHeader.DataSize)
-			throw CorruptDataException("Invalid file size");
+		if (datIndex == 0) {
+			if (dataFileLength != 0ULL + Header.HeaderSize + DataHeader.HeaderSize + DataHeader.DataSize)
+				throw CorruptDataException("Invalid file size");
+		}
 	}
 
 	std::map<uint64_t, SqDataEntry*> offsetToEntryMap;

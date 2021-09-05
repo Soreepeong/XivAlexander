@@ -138,21 +138,49 @@
 //	return 0;
 //}
 
-int test_tex() {
-	const auto reader = Sqex::Sqpack::Reader(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\000000.win32.index)", true, true);
-
-	const auto fcsv = std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(Sqex::Sqpack::EntryRawStream(reader.GetEntryProvider("common/font/AXIS_36.fdt")), true);
+void verifyTex(const Sqex::Sqpack::Reader& reader, int offset = 0) {
 	const auto tex1 = std::make_shared<Sqex::Sqpack::EntryRawStream>(reader.GetEntryProvider("common/font/font1.tex"));
 	const auto tex1e = std::make_shared<Sqex::Sqpack::OnTheFlyTextureEntryProvider>("test", tex1);
-	const auto tex2 = std::make_shared<Sqex::Sqpack::EntryRawStream>(tex1e);
-	const auto tex1d = tex1->ReadStreamIntoVector<char>(0, tex1->StreamSize());
-	const auto tex2d = tex2->ReadStreamIntoVector<char>(0, tex1->StreamSize());
-	const auto e = tex1d == tex2d;
+	const auto tex2 = std::make_shared<Sqex::Sqpack::EntryRawStream>(reader.GetEntryProvider("common/font/font1.tex"));
+	const auto tex3 = std::make_shared<Sqex::Sqpack::EntryRawStream>(tex1e);
+	const auto tex1d = tex1->ReadStreamIntoVector<uint8_t>(0, tex1->StreamSize());
+	const auto tex2d = tex2->ReadStreamIntoVector<uint8_t>(offset, tex2->StreamSize() - offset);
+	const auto tex3d = tex2->ReadStreamIntoVector<uint8_t>(offset, tex3->StreamSize() - offset);
+	if (memcmp(&tex1d[offset], &tex2d[0], tex2d.size()) != 0)
+		throw std::runtime_error("tex1d != tex2d");
+	if (memcmp(&tex1d[offset], &tex3d[0], tex3d.size()) != 0)
+		throw std::runtime_error("tex1d != tex3d");
+}
+
+int verifyMdl(const Sqex::Sqpack::Reader& reader, int offset = 0) {
+	const auto mdl1 = std::make_shared<Sqex::Sqpack::EntryRawStream>(reader.GetEntryProvider("chara/equipment/e0100/model/c0101e0100_met.mdl"));
+	const auto mdl1e = std::make_shared<Sqex::Sqpack::OnTheFlyModelEntryProvider>("test", mdl1);
+	const auto mdl2 = std::make_shared<Sqex::Sqpack::EntryRawStream>(reader.GetEntryProvider("chara/equipment/e0100/model/c0101e0100_met.mdl"));
+	const auto mdl3 = std::make_shared<Sqex::Sqpack::EntryRawStream>(mdl1e);
+	const auto mdl1d = mdl1->ReadStreamIntoVector<char>(0, mdl1->StreamSize());
+	const auto mdl2d = mdl2->ReadStreamIntoVector<char>(offset, mdl2->StreamSize() - offset);
+	const auto mdl3d = mdl3->ReadStreamIntoVector<char>(offset, mdl3->StreamSize() - offset);
+	// Utils::Win32::File::Create(R"(Z:\mdl2d.mdl)", GENERIC_WRITE, FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, 0).Write(0, std::span(mdl2d));
+	// Utils::Win32::File::Create(R"(Z:\mdl3d.mdl)", GENERIC_WRITE, FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, 0).Write(0, std::span(mdl3d));
+
+	if (memcmp(&mdl1d[offset], &mdl2d[0], mdl2d.size()) != 0)
+		throw std::runtime_error("mdl1d != mdl2d");
+	if (memcmp(&mdl1d[offset], &mdl3d[0], mdl3d.size()) != 0)
+		throw std::runtime_error("mdl1d != mdl3d");
 	return 0;
 }
 
 int main() {
-	test_tex();
+	const auto reader000000 = Sqex::Sqpack::Reader(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\000000.win32.index)", true, true);
+	const auto reader040000 = Sqex::Sqpack::Reader(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\040000.win32.index)", true, true);
+	for (int i = 0; i < 60000; i += 1527) {
+		verifyTex(reader000000, i);
+	}
+	for (int i = 0; i < 60000; i += 1527) {
+		verifyMdl(reader040000, i);
+	}
+
+	const auto fcsv = std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(Sqex::Sqpack::EntryRawStream(reader000000.GetEntryProvider("common/font/AXIS_36.fdt")), true);
 	// test_convert();
 	return 0;
 }
