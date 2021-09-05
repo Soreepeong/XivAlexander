@@ -56,10 +56,10 @@ uint64_t Sqex::Sqpack::EntryRawStream::BinaryStreamDecoder::ReadStreamPartial(ui
 	std::vector<uint8_t> blockBuffer(MaxBlockSize);
 	std::vector<uint8_t> rawBuffer;
 	for (const auto blockOffset : std::span(m_blockOffsets).subspan(std::distance(m_offsets.begin(), it))) {
-		const auto read = std::span(&blockBuffer[0], Underlying().ReadStreamPartial(blockOffset, &blockBuffer[0], blockBuffer.size()));
+		const auto read = std::span(&blockBuffer[0], static_cast<size_t>(Underlying().ReadStreamPartial(blockOffset, &blockBuffer[0], blockBuffer.size())));
 		const auto& blockHeader = *reinterpret_cast<const SqData::BlockHeader*>(&blockBuffer[0]);
 
-		auto decompressionTarget = out.subspan(0, std::min<size_t>(out.size_bytes(), blockHeader.DecompressedSize - relativeOffset));
+		auto decompressionTarget = out.subspan(0, std::min(out.size_bytes(), static_cast<size_t>(blockHeader.DecompressedSize - relativeOffset)));
 		if (blockHeader.CompressedSize == SqData::BlockHeader::CompressedSizeNotCompressed) {
 			std::copy_n(&read[sizeof blockHeader], decompressionTarget.size(), decompressionTarget.begin());
 		} else {
@@ -75,7 +75,9 @@ uint64_t Sqex::Sqpack::EntryRawStream::BinaryStreamDecoder::ReadStreamPartial(ui
 			Decompress(std::span(&read[sizeof blockHeader], blockHeader.CompressedSize), decompressionTarget);
 
 			if (relativeOffset)
-				std::copy_n(&decompressionTarget[relativeOffset], decompressionTarget.size_bytes(), &out[0]);
+				std::copy_n(&decompressionTarget[static_cast<size_t>(relativeOffset)],
+					decompressionTarget.size_bytes(),
+					&out[0]);
 		}
 		out = out.subspan(decompressionTarget.size_bytes());
 
