@@ -5,24 +5,39 @@
 namespace Sqex::Sqpack {
 	class EntryRawStream : public RandomAccessStream {
 		struct StreamDecoder {
-			EntryRawStream* const stream;
+		private:
+			const EntryRawStream* const m_stream;
 
-			StreamDecoder(EntryRawStream* stream) : stream(stream) {}
+		public:
+			StreamDecoder(const EntryRawStream* stream)
+				: m_stream(stream) {
+			}
 
 			virtual uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) = 0;
 			virtual ~StreamDecoder() = default;
+
+		protected:
+			[[nodiscard]] const auto& Underlying() const { return *m_stream->m_provider; }
+			[[nodiscard]] const auto& EntryHeader() const { return m_stream->m_entryHeader; }
 		};
 		friend struct StreamDecoder;
 
 		struct BinaryStreamDecoder : StreamDecoder {
+			std::vector<uint32_t> m_offsets;
+			std::vector<uint32_t> m_blockOffsets;
+			uint16_t MaxBlockSize;
+
+			BinaryStreamDecoder(const EntryRawStream* stream);
 			uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) override;
 		};
 
 		struct TextureStreamDecoder : StreamDecoder {
+			TextureStreamDecoder(const EntryRawStream* stream);
 			uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) override;
 		};
 
 		struct ModelStreamDecoder : StreamDecoder {
+			ModelStreamDecoder(const EntryRawStream* stream);
 			uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) override;
 		};
 

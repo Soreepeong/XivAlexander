@@ -200,8 +200,10 @@ Utils::Win32::File Utils::Win32::File::Create(
 	_In_opt_ HANDLE hTemplateFile
 ) {
 	const auto hFile = CreateFileW(path.wstring().c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
-	if (hFile == INVALID_HANDLE_VALUE)
+	if (hFile == INVALID_HANDLE_VALUE) {
+		__debugbreak();
 		throw Error("CreateFileW");
+	}
 	return { hFile, true };
 }
 

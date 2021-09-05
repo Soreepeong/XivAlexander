@@ -118,6 +118,14 @@ Sqex::FileRandomAccessStream::FileRandomAccessStream(Utils::Win32::File file, ui
 	, m_size(length == UINT64_MAX ? m_file.GetLength() - m_offset : length) {
 }
 
+Sqex::FileRandomAccessStream::FileRandomAccessStream(std::filesystem::path path, uint64_t offset, uint64_t length, bool openImmediately)
+	: m_path(std::move(path))
+	, m_initializationMutex(openImmediately ? nullptr : std::make_shared<std::mutex>())
+	, m_file(openImmediately ? Utils::Win32::File::Create(m_path, GENERIC_READ, FILE_SHARE_READ, nullptr, GENERIC_READ, 0) : Utils::Win32::File())
+	, m_offset(offset)
+	, m_size(length == UINT64_MAX ? file_size(m_path) - m_offset : length) {
+}
+
 Sqex::FileRandomAccessStream::~FileRandomAccessStream() = default;
 
 uint64_t Sqex::FileRandomAccessStream::StreamSize() const {
@@ -127,6 +135,16 @@ uint64_t Sqex::FileRandomAccessStream::StreamSize() const {
 uint64_t Sqex::FileRandomAccessStream::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {
 	if (offset >= m_size)
 		return 0;
+
+	if (m_initializationMutex) {
+		if (const auto mtx = m_initializationMutex) {
+			const auto lock = std::lock_guard(*mtx);
+			if (m_initializationMutex) {
+				m_file = Utils::Win32::File::Create(m_path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+				m_initializationMutex = nullptr;
+			}
+		}
+	}
 
 	return m_file.Read(m_offset + offset, buf, static_cast<size_t>(std::min(length, m_size - offset)));
 }

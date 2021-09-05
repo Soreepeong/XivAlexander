@@ -219,12 +219,14 @@ Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strict
 	, Sorted(sort) {
 
 	if (sort) {
-		std::sort(Index.Files.begin(), Index.Files.end(), [](const SqIndex::FileSegmentEntry& l, const SqIndex::FileSegmentEntry& r) {
-			if (l.PathHash == r.PathHash)
-				return l.NameHash < r.NameHash;
-			else
-				return l.PathHash < r.PathHash;
-		});
+		for (auto& filesInFolder : Index.Files | std::views::values) {
+			std::sort(filesInFolder.begin(), filesInFolder.end(), [](const SqIndex::FileSegmentEntry& l, const SqIndex::FileSegmentEntry& r) {
+				if (l.PathHash == r.PathHash)
+					return l.NameHash < r.NameHash;
+				else
+					return l.PathHash < r.PathHash;
+			});
+		}
 		std::sort(Index2.Files.begin(), Index2.Files.end(), [](const SqIndex::FileSegmentEntry2& l, const SqIndex::FileSegmentEntry2& r) {
 			return l.FullPathHash < r.FullPathHash;
 		});
@@ -282,7 +284,7 @@ std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvi
 	if (!handle)
 		handle = { Data[entry.DataFileIndex].FileOnDisk, false };
 
-	return std::make_shared<PartialFileViewEntryProvider>(
+	return std::make_shared<RandomAccessStreamAsEntryProviderView>(
 		EntryPathSpec(entry.Index.PathHash, entry.Index.NameHash, entry.Index2.FullPathHash),
-		std::move(handle), entry.Offset, entry.Size);
+		std::make_shared<FileRandomAccessStream>(std::move(handle), entry.Offset, entry.Size));
 }

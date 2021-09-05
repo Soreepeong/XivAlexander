@@ -241,11 +241,9 @@ Sqex::Sqpack::VirtualSqPack::AddEntryResult Sqex::Sqpack::VirtualSqPack::AddEntr
 		if (!ttmpd)
 			ttmpd = OpenFile(ttmpdPath);
 
-		addEntryResult += m_pImpl->AddEntry(std::make_shared<PartialFileViewEntryProvider>(
+		addEntryResult += m_pImpl->AddEntry(std::make_shared<RandomAccessStreamAsEntryProviderView>(
 			entry.FullPath,
-			ttmpd,
-			entry.ModOffset,
-			entry.ModSize
+			std::make_shared<FileRandomAccessStream>(ttmpd, entry.ModOffset, entry.ModSize)
 			), overwriteExisting);
 
 		m_pImpl->Log("{}: {} (Name: {} > {})",
@@ -271,11 +269,9 @@ Sqex::Sqpack::VirtualSqPack::AddEntryResult Sqex::Sqpack::VirtualSqPack::AddEntr
 				if (!ttmpd)
 					ttmpd = OpenFile(ttmpdPath);
 
-				addEntryResult += m_pImpl->AddEntry(std::make_shared<PartialFileViewEntryProvider>(
+				addEntryResult += m_pImpl->AddEntry(std::make_shared<RandomAccessStreamAsEntryProviderView>(
 					entry.FullPath,
-					ttmpd,
-					entry.ModOffset,
-					entry.ModSize
+					std::make_shared<FileRandomAccessStream>(ttmpd, entry.ModOffset, entry.ModSize)
 					), overwriteExisting);
 
 				m_pImpl->Log("{}: {} (Name: {} > {}({}) > {}({}) > {})",
@@ -437,8 +433,7 @@ size_t Sqex::Sqpack::VirtualSqPack::ReadIndex1(const uint64_t offset, void* cons
 		} else
 			relativeOffset -= cb;
 
-		if (out.empty())
-			return length - out.size_bytes();
+		if (out.empty()) return length;
 	}
 
 	return length - out.size_bytes();
@@ -470,8 +465,7 @@ size_t Sqex::Sqpack::VirtualSqPack::ReadIndex2(const uint64_t offset, void* cons
 		} else
 			relativeOffset -= cb;
 
-		if (out.empty())
-			return length - out.size_bytes();
+		if (out.empty()) return length;
 	}
 
 	return length - out.size_bytes();
@@ -500,8 +494,7 @@ size_t Sqex::Sqpack::VirtualSqPack::ReadData(uint32_t datIndex, const uint64_t o
 		} else
 			relativeOffset -= cb;
 
-		if (out.empty())
-			return length - out.size_bytes();
+		if (out.empty()) return length;
 	}
 
 	auto it = std::lower_bound(m_pImpl->m_entries.begin(), m_pImpl->m_entries.end(), nullptr, [&](const std::unique_ptr<Implementation::Entry>& l, const std::unique_ptr<Implementation::Entry>& r) {

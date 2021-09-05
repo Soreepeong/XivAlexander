@@ -75,8 +75,7 @@ uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offs
 		out = out.subspan(available);
 		relativeOffset = 0;
 
-		if (out.empty())
-			return length - out.size_bytes();
+		if (out.empty()) return length;
 	} else
 		relativeOffset -= sizeof m_fcsv;
 
@@ -88,8 +87,7 @@ uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offs
 		out = out.subspan(available);
 		relativeOffset = 0;
 
-		if (out.empty())
-			return length - out.size_bytes();
+		if (out.empty()) return length;
 	} else
 		relativeOffset -= sizeof m_fthd;
 
@@ -102,8 +100,7 @@ uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offs
 		out = out.subspan(available);
 		relativeOffset = 0;
 
-		if (out.empty())
-			return length - out.size_bytes();
+		if (out.empty()) return length;
 	} else
 		relativeOffset -= srcTyped.size_bytes();
 
@@ -115,8 +112,7 @@ uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offs
 		out = out.subspan(available);
 		relativeOffset = 0;
 
-		if (out.empty())
-			return length - out.size_bytes();
+		if (out.empty()) return length;
 	} else
 		relativeOffset -= sizeof m_knhd;
 
@@ -128,8 +124,7 @@ uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offs
 		std::copy_n(src.begin(), available, out.begin());
 		out = out.subspan(available);
 
-		if (out.empty())
-			return length - out.size_bytes();
+		if (out.empty()) return length;
 	}
 
 	return length - out.size_bytes();
