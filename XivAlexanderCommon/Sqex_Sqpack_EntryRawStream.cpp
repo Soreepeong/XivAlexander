@@ -48,9 +48,9 @@ uint64_t Sqex::Sqpack::EntryRawStream::BinaryStreamDecoder::ReadStreamPartial(ui
 	auto out = std::span(static_cast<uint8_t*>(buf), static_cast<size_t>(length));
 
 	auto it = std::lower_bound(m_offsets.begin(), m_offsets.end(), static_cast<uint32_t>(offset));
-	if (it != m_offsets.end() && *it > offset)
+	if (it == m_offsets.end() || (it != m_offsets.end() && *it > offset))
 		--it;
-
+	
 	relativeOffset -= *it;
 
 	std::vector<uint8_t> blockBuffer(MaxBlockSize);
@@ -59,10 +59,16 @@ uint64_t Sqex::Sqpack::EntryRawStream::BinaryStreamDecoder::ReadStreamPartial(ui
 		const auto read = std::span(&blockBuffer[0], static_cast<size_t>(Underlying().ReadStreamPartial(blockOffset, &blockBuffer[0], blockBuffer.size())));
 		const auto& blockHeader = *reinterpret_cast<const SqData::BlockHeader*>(&blockBuffer[0]);
 
-		auto decompressionTarget = out.subspan(0, std::min(out.size_bytes(), static_cast<size_t>(blockHeader.DecompressedSize - relativeOffset)));
+		if (relativeOffset >= blockHeader.DecompressedSize) {
+			relativeOffset -= blockHeader.DecompressedSize;
+			continue;
+		}
+
+		auto target = out.subspan(0, std::min(out.size_bytes(), static_cast<size_t>(blockHeader.DecompressedSize - relativeOffset)));
 		if (blockHeader.CompressedSize == SqData::BlockHeader::CompressedSizeNotCompressed) {
-			std::copy_n(&read[sizeof blockHeader], decompressionTarget.size(), decompressionTarget.begin());
+			std::copy_n(&read[sizeof blockHeader], target.size(), target.begin());
 		} else {
+			auto decompressionTarget = target;
 			if (relativeOffset) {
 				rawBuffer.resize(blockHeader.DecompressedSize);
 				decompressionTarget = std::span(rawBuffer);
@@ -76,10 +82,10 @@ uint64_t Sqex::Sqpack::EntryRawStream::BinaryStreamDecoder::ReadStreamPartial(ui
 
 			if (relativeOffset)
 				std::copy_n(&decompressionTarget[static_cast<size_t>(relativeOffset)],
-					decompressionTarget.size_bytes(),
-					&out[0]);
+					target.size_bytes(),
+					target.begin());
 		}
-		out = out.subspan(decompressionTarget.size_bytes());
+		out = out.subspan(target.size_bytes());
 
 		if (out.empty())
 			return length;

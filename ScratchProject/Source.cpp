@@ -1,4 +1,5 @@
 #include "pch.h"
+#include <XivAlexanderCommon/Sqex_FontCsv_ModifiableFontCsvStream.h>
 #include <XivAlexanderCommon/Sqex_Sqpack.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_EntryRawStream.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
@@ -142,13 +143,7 @@ int test_tex() {
 
 	const auto entry = reader.GetEntryProvider("common/font/AXIS_36.fdt");
 	const auto raw = std::make_shared<Sqex::Sqpack::EntryRawStream>(entry);
-	const auto res = raw->ReadStreamIntoVector<char>(0, raw->StreamSize());
-
-	const auto pack1 = std::make_shared<Sqex::Sqpack::OnTheFlyBinaryEntryProvider>("test", raw);
-	const auto raw2 = std::make_shared<Sqex::Sqpack::EntryRawStream>(pack1);
-	const auto res2 = raw2->ReadStreamIntoVector<char>(0, raw2->StreamSize());
-
-	const auto cmp = res == res2;
+	const auto fcsv = std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(*raw, true);
 	return 0;
 }
 
