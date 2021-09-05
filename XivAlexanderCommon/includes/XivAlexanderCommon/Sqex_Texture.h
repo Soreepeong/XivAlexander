@@ -33,6 +33,6 @@ namespace Sqex::Texture {
 		LE<uint16_t> Height;
 		LE<uint16_t> Depth;
 		LE<uint16_t> MipmapCount;
-		char Unknown2[0xb]{};
+		char Unknown2[0xC]{};
 	};
 }

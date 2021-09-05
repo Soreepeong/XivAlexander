@@ -32,6 +32,18 @@ namespace Sqex::Sqpack {
 		};
 
 		struct TextureStreamDecoder : StreamDecoder {
+			struct BlockInfo {
+				uint32_t RequestOffset;
+				uint32_t BlockOffset;
+				uint16_t MipmapIndex;
+				uint32_t RemainingBlocksSize;
+				uint32_t RemainingDecompressedSize;
+				std::vector<uint16_t> RemainingBlockSizes;
+			};
+			std::vector<uint8_t> Header;
+			std::vector<BlockInfo> Blocks;
+			uint16_t MaxBlockSize;
+
 			TextureStreamDecoder(const EntryRawStream* stream);
 			uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) override;
 		};

@@ -109,7 +109,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 	const auto pixelCount = static_cast<size_t>(width) * height;
 	const auto cbSource = stream->StreamSize();
 
-	std::vector<uint8_t> result(width * height * sizeof RGBA8888);
+	std::vector<uint8_t> result(pixelCount * sizeof RGBA8888);
 	const auto rgba8888view = std::span(reinterpret_cast<RGBA8888*>(&result[0]), result.size() / sizeof RGBA8888);
 	uint32_t pos = 0;
 	uint8_t buf8[8192];

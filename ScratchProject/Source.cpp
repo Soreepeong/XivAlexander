@@ -141,9 +141,13 @@
 int test_tex() {
 	const auto reader = Sqex::Sqpack::Reader(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\000000.win32.index)", true, true);
 
-	const auto entry = reader.GetEntryProvider("common/font/AXIS_36.fdt");
-	const auto raw = std::make_shared<Sqex::Sqpack::EntryRawStream>(entry);
-	const auto fcsv = std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(*raw, true);
+	const auto fcsv = std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(Sqex::Sqpack::EntryRawStream(reader.GetEntryProvider("common/font/AXIS_36.fdt")), true);
+	const auto tex1 = std::make_shared<Sqex::Sqpack::EntryRawStream>(reader.GetEntryProvider("common/font/font1.tex"));
+	const auto tex1e = std::make_shared<Sqex::Sqpack::OnTheFlyTextureEntryProvider>("test", tex1);
+	const auto tex2 = std::make_shared<Sqex::Sqpack::EntryRawStream>(tex1e);
+	const auto tex1d = tex1->ReadStreamIntoVector<char>(0, tex1->StreamSize());
+	const auto tex2d = tex2->ReadStreamIntoVector<char>(0, tex1->StreamSize());
+	const auto e = tex1d == tex2d;
 	return 0;
 }
 
