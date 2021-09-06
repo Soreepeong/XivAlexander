@@ -54,13 +54,6 @@ int main() {
 	//}
 	const auto common = Sqex::Sqpack::Reader(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\000000.win32.index)", true, true);
 	
-	//const auto fcsv = std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
-	//	Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/AXIS_36.fdt")),
-	//	true);
-	const auto fcsv = std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
-		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/TrumpGothic_68.fdt")),
-		true);
-
 	std::vector<std::shared_ptr<const Sqex::Texture::MipmapStream>> texs;
 	for (int i = 1; i <= 7; ++i) {
 		auto s = common.GetEntryProvider(std::format("common/font/font{}.tex", i));
@@ -69,16 +62,28 @@ int main() {
 		texs.emplace_back(Sqex::Texture::MipmapStream::FromTexture(std::make_shared<Sqex::Sqpack::EntryRawStream>(std::move(s)), 0));
 	}
 
+	const auto axis36 = std::make_shared<Sqex::FontCsv::SeFont>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
+		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/AXIS_36.fdt")),
+		true), texs);
+	const auto trump68 = std::make_shared<Sqex::FontCsv::SeFont>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
+		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/TrumpGothic_68.fdt")),
+		true), texs);
+	const auto jupiter90 = std::make_shared<Sqex::FontCsv::SeFont>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
+		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/Jupiter_90.fdt")),
+		true), texs);
+	const auto font = std::make_shared<Sqex::FontCsv::CascadingFont>(std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleFont>>{ jupiter90, trump68, axis36 });
+	// const auto font = trump68;
+
+	// const auto pszTestString = reinterpret_cast<const char*>(u8"WA\nW\u200cA");
 	const auto color = Sqex::Texture::RGBA8888(255, 200, 150);
-	const auto font = Sqex::FontCsv::SeFont(fcsv, std::move(texs));
-	const auto bbox = font.MeasureAndDraw(nullptr, 0, 0, pszTestString, color);
+	const auto bbox = font->MeasureAndDraw(nullptr, 0, 0, pszTestString, color);
 	const auto targetMipmap = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(
 		static_cast<uint16_t>(bbox.right - bbox.left),
 		static_cast<uint16_t>(bbox.bottom - bbox.top),
 		Sqex::Texture::CompressionType::ARGB_1,
 		std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * (size_t() + bbox.right - bbox.left) * (size_t() + bbox.bottom - bbox.top))
 		);
-	font.MeasureAndDraw(targetMipmap.get(), 0, 0, pszTestString, color);
+	font->MeasureAndDraw(targetMipmap.get(), 0, 0, pszTestString, color);
 
 	targetMipmap->Show();
 	return 0;

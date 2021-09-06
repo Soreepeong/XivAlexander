@@ -50,7 +50,11 @@ Sqex::FontCsv::SeFont::SeFont(std::shared_ptr<const ModifiableFontCsvStream> str
 
 Sqex::FontCsv::SeFont::~SeFont() = default;
 
-RECT Sqex::FontCsv::SeFont::GetBoundingBox(const FontTableEntry& entry, int offsetX, int offsetY) {
+bool Sqex::FontCsv::SeFont::HasCharacter(char32_t c) const {
+	return m_pImpl->m_stream->GetFontEntry(c);
+}
+
+RECT Sqex::FontCsv::SeFont::GetBoundingBox(const FontTableEntry & entry, int offsetX, int offsetY) {
 	return {
 		.left = offsetX,
 		.top = offsetY + entry.CurrentOffsetY,
@@ -62,7 +66,7 @@ RECT Sqex::FontCsv::SeFont::GetBoundingBox(const FontTableEntry& entry, int offs
 RECT Sqex::FontCsv::SeFont::GetBoundingBox(char32_t c, int offsetX, int offsetY) const {
 	const auto entry = m_pImpl->m_stream->GetFontEntry(c);
 	if (!entry)
-		return {};
+		return {offsetX, offsetY, offsetX, offsetY};
 
 	return GetBoundingBox(*entry, offsetX, offsetY);
 }
@@ -101,15 +105,17 @@ uint32_t Sqex::FontCsv::SeFont::Descent() const {
 const std::map<std::pair<char32_t, char32_t>, int>& Sqex::FontCsv::SeFont::GetKerningTable() const {
 	if (!m_pImpl->m_kerningDiscovered) {
 		std::map<std::pair<char32_t, char32_t>, int> result;
-		for (const auto& k : m_pImpl->m_stream->GetKerningEntries())
-			result.emplace(std::make_pair(k.Left(), k.Right()), k.RightOffset);
+		for (const auto& k : m_pImpl->m_stream->GetKerningEntries()) {
+			if (k.RightOffset)
+				result.emplace(std::make_pair(k.Left(), k.Right()), k.RightOffset);
+		}
 		m_pImpl->m_kerningMap = std::move(result);
 		m_pImpl->m_kerningDiscovered = true;
 	}
 	return m_pImpl->m_kerningMap;
 }
 
-static void AdjustRectBoundaries(RECT& src, RECT& dest, int srcWidth, int srcHeight, int destWidth, int destHeight) {
+static void AdjustRectBoundaries(RECT & src, RECT & dest, int srcWidth, int srcHeight, int destWidth, int destHeight) {
 	if (src.left < 0) {
 		dest.left -= src.left;
 		src.left = 0;
@@ -144,10 +150,8 @@ static void AdjustRectBoundaries(RECT& src, RECT& dest, int srcWidth, int srcHei
 	}
 }
 
-RECT Sqex::FontCsv::SeFont::MeasureAndDraw(Texture::MemoryBackedMipmap* to, int x, int y, const std::string& s, Texture::RGBA8888 color) const {
-	// ReSharper disable once CppDeprecatedEntity
-	const auto u32 = std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>().from_bytes(s);
-	if (u32.empty())
+RECT Sqex::FontCsv::SeFont::MeasureAndDraw(Texture::MemoryBackedMipmap * to, int x, int y, const std::u32string & s, Texture::RGBA8888 color) const {
+	if (s.empty())
 		return {};
 
 	char32_t lastChar = 0;
@@ -156,7 +160,7 @@ RECT Sqex::FontCsv::SeFont::MeasureAndDraw(Texture::MemoryBackedMipmap* to, int 
 	RECT result = { LONG_MAX, LONG_MAX, LONG_MIN, LONG_MIN };
 	POINT current{ x, y };
 
-	for (const auto currChar : u32) {
+	for (const auto currChar : s) {
 		if (currChar == u'\r') {
 			continue;
 		} else if (currChar == u'\n') {
@@ -196,7 +200,7 @@ RECT Sqex::FontCsv::SeFont::MeasureAndDraw(Texture::MemoryBackedMipmap* to, int 
 				};
 				RECT dest = currBbox;
 				AdjustRectBoundaries(src, dest, srcWidth, srcHeight, destWidth, destHeight);
-				
+
 				for (auto srcY = src.top, destY = dest.top; srcY < src.bottom; ++srcY, ++destY) {
 					auto destPtr = &destBuf[static_cast<size_t>(1) * destY * destWidth + dest.left];
 					auto srcPtr = &srcBuf[static_cast<size_t>(1) * srcY * srcWidth + src.left];
@@ -218,6 +222,158 @@ RECT Sqex::FontCsv::SeFont::MeasureAndDraw(Texture::MemoryBackedMipmap* to, int 
 		result.right = std::max(result.right, currBbox.right);
 		result.bottom = std::max(result.bottom, currBbox.bottom);
 		current.x = currBbox.right + entry->NextOffsetX;
+		lastChar = currChar;
+	}
+	if (result.right == LONG_MIN)
+		return { x, y, x, y };
+	return result;
+}
+
+struct Sqex::FontCsv::CascadingFont::Implementation {
+	const std::vector<std::shared_ptr<SeCompatibleFont>> m_fontList;
+	const float m_size;
+	const uint32_t m_ascent;
+	const uint32_t m_descent;
+
+	mutable bool m_kerningDiscovered = false;
+	mutable std::map<std::pair<char32_t, char32_t>, int> m_kerningMap;
+
+	mutable bool m_characterListDiscovered = false;
+	mutable std::vector<char32_t> m_characterList;
+
+	Implementation(std::vector<std::shared_ptr<SeCompatibleFont>> fontList, float normalizedSize, uint32_t ascent, uint32_t descent)
+		: m_fontList(std::move(fontList))
+		, m_size(static_cast<bool>(normalizedSize) ? normalizedSize : std::ranges::max(m_fontList, {}, [](const auto& r) {return r->Size();  })->Size())
+		, m_ascent(ascent != UINT32_MAX ? ascent : std::ranges::max(m_fontList, {}, [](const auto& r) {return r->Ascent();  })->Ascent())
+		, m_descent(descent != UINT32_MAX ? descent : std::ranges::max(m_fontList, {}, [](const auto& r) {return r->Descent();  })->Descent()) {
+	}
+
+	size_t GetCharacterOwnerIndex(char32_t c) const {
+		for (size_t i = 0; i < m_fontList.size(); ++i)
+			if (m_fontList[i]->HasCharacter(c))
+				return i;
+		return SIZE_MAX;
+	}
+};
+
+Sqex::FontCsv::CascadingFont::CascadingFont(std::vector<std::shared_ptr<SeCompatibleFont>> fontList)
+	: m_pImpl(std::make_unique<Implementation>(std::move(fontList), 0.f, UINT32_MAX, UINT32_MAX)) {
+}
+
+Sqex::FontCsv::CascadingFont::CascadingFont(std::vector<std::shared_ptr<SeCompatibleFont>> fontList, float normalizedSize, uint32_t ascent, uint32_t descent)
+	: m_pImpl(std::make_unique<Implementation>(std::move(fontList), normalizedSize, ascent, descent)) {
+}
+
+Sqex::FontCsv::CascadingFont::~CascadingFont() = default;
+
+bool Sqex::FontCsv::CascadingFont::HasCharacter(char32_t c) const {
+	return std::ranges::any_of(m_pImpl->m_fontList, [c](const auto& f) { return f->HasCharacter(c); });
+}
+
+RECT Sqex::FontCsv::CascadingFont::GetBoundingBox(char32_t c, int offsetX, int offsetY) const {
+	for (const auto& f : m_pImpl->m_fontList)
+		if (const auto bbox = f->GetBoundingBox(c, offsetX, offsetY); bbox.left || bbox.right || bbox.top || bbox.bottom)
+			return bbox;
+	return {};
+}
+
+int Sqex::FontCsv::CascadingFont::GetCharacterWidth(char32_t c) const {
+	for (const auto& f : m_pImpl->m_fontList)
+		if (const auto w = f->GetCharacterWidth(c))
+			return w;
+	return 0;
+}
+
+float Sqex::FontCsv::CascadingFont::Size() const {
+	return m_pImpl->m_size;
+}
+
+const std::vector<char32_t>& Sqex::FontCsv::CascadingFont::GetAllCharacters() const {
+	if (!m_pImpl->m_characterListDiscovered) {
+		std::set<char32_t> result;
+		for (const auto& f : m_pImpl->m_fontList)
+			for (const auto& c : f->GetAllCharacters())
+				result.insert(c);
+		m_pImpl->m_characterList.insert(m_pImpl->m_characterList.end(), result.begin(), result.end());
+		return m_pImpl->m_characterList;
+	}
+	return m_pImpl->m_characterList;
+}
+
+uint32_t Sqex::FontCsv::CascadingFont::Ascent() const {
+	return m_pImpl->m_ascent;
+}
+
+uint32_t Sqex::FontCsv::CascadingFont::Descent() const {
+	return m_pImpl->m_descent;
+}
+
+const std::map<std::pair<char32_t, char32_t>, int>& Sqex::FontCsv::CascadingFont::GetKerningTable() const {
+	if (!m_pImpl->m_kerningDiscovered) {
+		std::map<std::pair<char32_t, char32_t>, int> result;
+		for (size_t i = 0; i < m_pImpl->m_fontList.size();++i) {
+			for (const auto& k : m_pImpl->m_fontList[i]->GetKerningTable()) {
+				if (!k.second)
+					continue;
+				const auto owner1 = m_pImpl->GetCharacterOwnerIndex(k.first.first);
+				const auto owner2 = m_pImpl->GetCharacterOwnerIndex(k.first.second);
+
+				if (owner1 == i && owner2 == i) {
+					// pass
+				} else if (k.first.first == u' ' && owner2 == i) {
+					// pass
+				} else if (k.first.second == u' ' && owner1 == i) {
+					// pass
+				} else
+					continue;
+				
+				result.emplace(k);
+			}
+		}
+		m_pImpl->m_kerningMap = std::move(result);
+		m_pImpl->m_kerningDiscovered = true;
+	}
+	return m_pImpl->m_kerningMap;
+}
+
+RECT Sqex::FontCsv::CascadingFont::MeasureAndDraw(Texture::MemoryBackedMipmap* to, int x, int y, const std::u32string& s, Texture::RGBA8888 color) const {
+	if (s.empty())
+		return {};
+
+	char32_t lastChar = 0;
+	const auto iHeight = static_cast<int>(Height());
+
+	RECT result = { LONG_MAX, LONG_MAX, LONG_MIN, LONG_MIN };
+	POINT current{ x, y };
+
+	for (const auto currChar : s) {
+		if (currChar == u'\r') {
+			continue;
+		} else if (currChar == u'\n') {
+			current.x = 0;
+			current.y += iHeight;
+			lastChar = 0;
+			continue;
+		} else if (currChar == u'\u200c') {  // unicode non-joiner
+			lastChar = 0;
+			continue;
+		}
+
+		const auto kerning = GetKerning(lastChar, currChar);
+
+		for (const auto& f : m_pImpl->m_fontList) {
+			if (!f->HasCharacter(currChar))
+				continue;
+
+			const auto currBbox = f->MeasureAndDraw(to, current.x + kerning, current.y + m_pImpl->m_ascent - f->Ascent(), std::u32string{ currChar }, color);
+			result.left = std::min(result.left, currBbox.left);
+			result.top = std::min(result.top, currBbox.top);
+			result.right = std::max(result.right, currBbox.right);
+			result.bottom = std::max(result.bottom, currBbox.bottom);
+			current.x += f->GetCharacterWidth(currChar);
+			break;
+		}
+
 		lastChar = currChar;
 	}
 	return result;

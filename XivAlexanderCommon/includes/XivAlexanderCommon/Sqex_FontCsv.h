@@ -6,6 +6,7 @@ namespace Sqex::FontCsv {
 	char32_t Utf8Uint32ToUnicodeCodePoint(uint32_t n);
 	uint32_t UnicodeCodePointToUtf8Uint32(char32_t codepoint);
 	uint16_t UnicodeCodePointToShiftJisUint16(char32_t codepoint);
+	std::u32string ToU32(const std::string& s);
 
 	struct FontCsvHeader {
 		static const char Signature_Value[8];

@@ -63,6 +63,7 @@ void Sqex::Texture::MipmapStream::Show() const {
 
 		int downX;
 		int downY;
+		POINT downOrig;
 		bool dragging;
 		bool isLeft;
 		bool dragMoved;
@@ -119,6 +120,7 @@ void Sqex::Texture::MipmapStream::Show() const {
 			renderOffset.y = static_cast<int>(my - oy * GetZoom());
 
 			ClipPan();
+			UpdateTitle();
 		}
 
 		void ClipPan() {
@@ -214,9 +216,11 @@ void Sqex::Texture::MipmapStream::Show() const {
 						state.dragging = true;
 						state.dragMoved = false;
 						state.isLeft = msg == WM_LBUTTONDOWN;
-						state.downX = GET_X_LPARAM(lParam);
-						state.downY = GET_Y_LPARAM(lParam);
-
+						state.downOrig = { GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam) };
+						ClientToScreen(hwnd, &state.downOrig);
+						SetCursorPos(state.downX = GetSystemMetrics(SM_CXSCREEN) / 2,
+							state.downY = GetSystemMetrics(SM_CYSCREEN) / 2);
+						ShowCursor(FALSE);
 						SetCapture(hwnd);
 					}
 					return 0;
@@ -227,14 +231,17 @@ void Sqex::Texture::MipmapStream::Show() const {
 					if (state.dragging) {
 						RECT rt;
 						GetClientRect(hwnd, &rt);
-						auto displaceX = GET_X_LPARAM(lParam) - state.downX;
-						auto displaceY = GET_Y_LPARAM(lParam) - state.downY;
+
+						POINT screenCursorPos = { GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam) };
+						ClientToScreen(hwnd, &screenCursorPos);
+
+						auto displaceX = screenCursorPos.x - state.downX;
+						auto displaceY = screenCursorPos.y - state.downY;
 						const auto speed = (state.isLeft ? 1 : 4);
 						if (!state.dragMoved) {
 							if (!displaceX && !displaceY)
 								return 0;
 							state.dragMoved = true;
-							ShowCursor(FALSE);
 						}
 						const auto zwidth = static_cast<int>(state.stream->Width() * state.GetZoom());
 						const auto zheight = static_cast<int>(state.stream->Height() * state.GetZoom());
@@ -247,9 +254,7 @@ void Sqex::Texture::MipmapStream::Show() const {
 						if (state.renderOffset.y + displaceY * speed > Margin)
 							displaceY = (Margin - state.renderOffset.y) / speed;
 
-						POINT screenCursorPos = { state.downX, state.downY };
-						ClientToScreen(hwnd, &screenCursorPos);
-						SetCursorPos(screenCursorPos.x, screenCursorPos.y);
+						SetCursorPos(state.downX, state.downY);
 						state.renderOffset.x += displaceX * speed;
 						state.renderOffset.y += displaceY * speed;
 						InvalidateRect(hwnd, nullptr, FALSE);
@@ -263,11 +268,11 @@ void Sqex::Texture::MipmapStream::Show() const {
 					if (!state.dragging || state.isLeft != (msg == WM_LBUTTONUP))
 						return false;
 					ReleaseCapture();
+					SetCursorPos(state.downOrig.x, state.downOrig.y);
+					ShowCursor(TRUE);
 
 					state.dragging = false;
-					if (state.dragMoved)
-						ShowCursor(TRUE);
-					else {
+					if (!state.dragMoved)  {
 						if (state.isLeft) {
 							state.showmode = (state.showmode + 1) % 5;
 							switch (state.showmode) {

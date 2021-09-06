@@ -84,6 +84,10 @@ uint16_t Sqex::FontCsv::UnicodeCodePointToShiftJisUint16(char32_t codepoint) {
 	}
 }
 
+std::u32string Sqex::FontCsv::ToU32(const std::string& s) {
+	return std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>().from_bytes(s);
+}
+
 char32_t Sqex::FontCsv::FontTableEntry::Char() const {
 	return Utf8Uint32ToUnicodeCodePoint(Utf8Value);
 }
