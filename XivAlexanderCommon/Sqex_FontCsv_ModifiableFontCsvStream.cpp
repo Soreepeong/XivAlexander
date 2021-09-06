@@ -3,14 +3,11 @@
 
 #include "Sqex_Sqpack.h"
 
-Sqex::FontCsv::ModifiableFontCsvStream::ModifiableFontCsvStream(float pt, uint16_t textureWidth, uint16_t textureHeight) {
+Sqex::FontCsv::ModifiableFontCsvStream::ModifiableFontCsvStream() {
 	memcpy(m_fcsv.Signature, FontCsvHeader::Signature_Value, sizeof m_fcsv.Signature);
 	memcpy(m_fthd.Signature, FontTableHeader::Signature_Value, sizeof m_fthd.Signature);
 	memcpy(m_knhd.Signature, KerningHeader::Signature_Value, sizeof m_knhd.Signature);
 	m_fcsv.FontTableHeaderOffset = static_cast<uint32_t>(sizeof m_fcsv);
-	m_fthd.Points = pt;
-	m_fthd.TextureWidth = textureWidth;
-	m_fthd.TextureHeight = textureHeight;
 }
 
 Sqex::FontCsv::ModifiableFontCsvStream::ModifiableFontCsvStream(const RandomAccessStream& stream, bool strict)

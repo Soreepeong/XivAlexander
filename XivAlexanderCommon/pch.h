@@ -12,8 +12,11 @@
 #ifndef PCH_H
 #define PCH_H
 
+#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
+
 #include <algorithm>
 #include <chrono>
+#include <codecvt>
 #include <format>
 #include <functional>
 #include <map>
@@ -36,6 +39,7 @@
 #include <Shlwapi.h>
 #include <TlHelp32.h>
 #include <wincrypt.h>
+#include <windowsx.h>
 #include <WinTrust.h>
 #include <WS2tcpip.h>
 

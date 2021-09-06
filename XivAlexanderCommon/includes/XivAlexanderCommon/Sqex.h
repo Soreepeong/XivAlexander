@@ -126,9 +126,11 @@ namespace Sqex {
 			ReadStream(offset, buf.data(), buf.size_bytes());
 		}
 		template<typename T>
-		std::vector<T> ReadStreamIntoVector(uint64_t offset, size_t count, size_t maxCount = SIZE_MAX) const {
+		std::vector<T> ReadStreamIntoVector(uint64_t offset, size_t count = SIZE_MAX, size_t maxCount = SIZE_MAX) const {
 			if (count > maxCount)
 				throw std::runtime_error("trying to read too many");
+			if (count == SIZE_MAX)
+				count = StreamSize() / sizeof T;
 			std::vector<T> result(count);
 			ReadStream(offset, std::span(result));
 			return result;
@@ -136,6 +138,27 @@ namespace Sqex {
 		template<typename T>
 		RandomAccessStreamIterator<T> Iterator() const {
 			return RandomAccessStreamIterator<T>(*this);
+		}
+	};
+
+	class RandomAccessStreamPartialView : public RandomAccessStream {
+		const std::shared_ptr<RandomAccessStream> m_stream;
+		const uint64_t m_offset;
+		const uint64_t m_length;
+
+	public:
+		RandomAccessStreamPartialView(std::shared_ptr<RandomAccessStream> stream, uint64_t offset = 0, uint64_t length = UINT64_MAX)
+			: m_stream(std::move(stream))
+			, m_offset(offset)
+			, m_length(std::min(length, m_stream->StreamSize() - offset)) {
+		}
+
+		[[nodiscard]] uint64_t StreamSize() const override { return m_length; }
+		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override {
+			if (offset >= m_length)
+				return 0;
+			length = std::min(length, m_length - offset);
+			return m_stream->ReadStreamPartial(m_offset + offset, buf, length);
 		}
 	};
 

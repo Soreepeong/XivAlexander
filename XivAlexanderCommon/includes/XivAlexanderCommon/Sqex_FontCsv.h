@@ -38,8 +38,8 @@ namespace Sqex::FontCsv {
 		LE<uint16_t> TextureOffsetY;
 		LE<uint8_t> BoundingWidth;
 		LE<uint8_t> BoundingHeight;
-		LE<uint8_t> NextOffsetX;
-		LE<uint8_t> CurrentOffsetY;
+		LE<int8_t> NextOffsetX;
+		LE<int8_t> CurrentOffsetY;
 		
 		[[nodiscard]] char32_t Char() const;
 		char32_t Char(char32_t newValue);

@@ -25,6 +25,101 @@ namespace Sqex::Texture {
 		DXT5 = 0x3431,
 	};
 
+	struct RGBA4444 {
+		uint8_t R : 4;
+		uint8_t G : 4;
+		uint8_t B : 4;
+		uint8_t A : 4;
+	};
+
+	struct RGBA5551 {
+		uint8_t R : 5;
+		uint8_t G : 5;
+		uint8_t B : 5;
+		uint8_t A : 1;
+	};
+
+	union RGBAHHHH {
+		union Float {
+			float Value;
+			uint32_t UintValue;
+			struct {
+				uint32_t Sign : 1;
+				uint32_t Exponent : 8;
+				uint32_t Mantissa : 23;
+			} Bits;
+			struct {
+				uint32_t Sign : 1;
+				uint32_t Exponent : 8;
+				uint32_t Mantissa : 10;
+				uint32_t MantissaPad : 13;
+			} HalfCompatibleBits;
+		};
+
+		union Half {
+			uint16_t UintValue;
+			struct {
+				uint16_t Sign : 1;
+				uint16_t Exponent : 5;
+				uint16_t Mantissa : 10;
+			} Bits;
+
+			operator float() const {
+				const auto v1 = Float{ .UintValue = (((UintValue & 0x8000U) << 16)
+							| (((UintValue & 0x7c00U) + 0x1C000U) << 13)
+							| ((UintValue & 0x03FFU) << 13)) }.Value;
+				const auto v2 = Float{ .HalfCompatibleBits = {Bits.Sign, Bits.Exponent - 15U + 127U, Bits.Mantissa, 0} }.Value;
+				if (v1 != v2)
+					throw std::runtime_error("test");
+				return v2;
+			}
+		};
+
+		Half R;
+		Half G;
+		Half B;
+		Half A;
+	};
+
+	union RGBA8888 {
+		uint32_t Value;
+		struct {
+			uint32_t R : 8;
+			uint32_t G : 8;
+			uint32_t B : 8;
+			uint32_t A : 8;
+		};
+
+		RGBA8888() : Value(0) {}
+		RGBA8888(uint32_t value) : Value(value) {}
+		RGBA8888(uint32_t r, uint32_t g, uint32_t b, uint32_t a = 255) {
+			SetFrom(r, g, b, a);
+		}
+
+		void SetFrom(uint32_t r, uint32_t g, uint32_t b) {
+			R = r;
+			G = g;
+			B = b;
+		}
+
+		void SetFrom(uint32_t r, uint32_t g, uint32_t b, uint32_t a) {
+			R = r;
+			G = g;
+			B = b;
+			A = a;
+		}
+
+		template<typename RGBABits = RGBAHHHH>
+		void SetFromF(const RGBABits& v) {
+			R = static_cast<uint32_t>(Utils::Clamp(255.f * v.R, 0.f, 255.f));
+			G = static_cast<uint32_t>(Utils::Clamp(255.f * v.G, 0.f, 255.f));
+			B = static_cast<uint32_t>(Utils::Clamp(255.f * v.B, 0.f, 255.f));
+			A = static_cast<uint32_t>(Utils::Clamp(255.f * v.A, 0.f, 255.f));
+		}
+	};
+
+	size_t RawDataLength(CompressionType type, size_t width, size_t height);
+
 	struct Header {
 		LE<uint16_t> Unknown1;
 		LE<uint16_t> HeaderSize;

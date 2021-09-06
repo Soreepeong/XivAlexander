@@ -1,186 +1,85 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include <XivAlexanderCommon/Sqex_FontCsv_ModifiableFontCsvStream.h>
 #include <XivAlexanderCommon/Sqex_Sqpack.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_Creator.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_EntryRawStream.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_Creator.h>
+#include <XivAlexanderCommon/Sqex_Texture_Mipmap.h>
 
-//int test_convert() {
-//	const auto targetBasePath = LR"(Z:\scratch\t2)";
-//	for (const auto& rootDir : {
-//		std::filesystem::path(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game)"),
-//		// std::filesystem::path(LR"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game)"),
-//		// std::filesystem::path(LR"(D:\Program Files (x86)\SNDA\FFXIV\game)"),
-//		}) {
-//
-//		for (const auto& entry1 : std::filesystem::directory_iterator(rootDir / "sqpack")) {
-//			if (!entry1.is_directory())
-//				continue;
-//			if (entry1.path().filename().wstring() != L"ffxiv")
-//				continue;
-//			for (const auto& entry2 : std::filesystem::directory_iterator(entry1)) {
-//				const auto& path = entry2.path();
-//				if (path.filename().wstring() != L"000000.win32.index")
-//					continue;
-//				if (path.extension() != ".index")
-//					continue;
-//
-//				try {
-//					std::cout << "Working on " << path << "..." << std::endl;
-//					auto vpack = Sqex::Sqpack::Creator("ffxiv", "040000");
-//					{
-//						const auto addResult = vpack.AddEntriesFromSqPack(path, true, true);
-//						std::cout << std::format("Added {}, replaced {}, skipped {}\n",
-//							addResult.Added.size(), addResult.Replaced.size(), addResult.SkippedExisting.size());
-//					}
-//
-//					
-//					if (const auto replBase = std::filesystem::path(path).replace_extension(""); 
-//						is_directory(replBase)) {
-//						for (const auto& entry3 : std::filesystem::recursive_directory_iterator(replBase)) {
-//							const auto& currPath = entry3.path();
-//							if (is_directory(currPath))
-//								continue;
-//
-//							const auto p = vpack.AddEntryFromFile(proximate(currPath, replBase), currPath).AnyItem();
-//							if (!p)
-//								continue;
-//							std::cout << std::format("Added {}\n", p->PathSpec().Original);
-//						}
-//					}
-//
-//					if (const auto ttmd = rootDir / "TexToolsMods";
-//						is_directory(ttmd)) {
-//						for (const auto& entry3 : std::filesystem::recursive_directory_iterator(ttmd)) {
-//							if (entry3.path().filename() != "TTMPL.mpl") continue;
-//							std::cout << std::format("Processing {}\n", entry3.path().filename());
-//							for (const auto p : vpack.AddEntriesFromTTMP(entry3.path().parent_path()).AllEntries()) {
-//								std::cout << std::format("=> Added {}\n", p->PathSpec().Original);
-//							}
-//						}
-//					}
-//
-//					vpack.AsViews(false);
-//
-//					std::cout << "Testing..." << std::endl;
-//					{
-//						std::vector<char> buf(1048576);
-//						// vpack.ReadData(0, 121296256, &buf[0], 123152);
-//						vpack.ReadData(0, 121296256, &buf[0], 128);
-//						vpack.ReadData(0, 121296256 + 128, &buf[128], 123152 - 128);
-//						// vpack.ReadData(0, 121296256 + 120000, &buf[0], 123152 - 120000);
-//						size_t pos = 0;
-//						for (uint32_t i = 0; i < vpack.NumOfDataFiles(); ++i) {
-//							pos = 0;
-//							while (true) {
-//								const auto w = vpack.ReadData(i, pos, &buf[0], buf.size());
-//								if (!w)
-//									break;
-//								pos += w;
-//							}
-//						}
-//					}
-//
-//					std::cout << "Writing index..." << std::endl;
-//					const auto targetIndexPath = std::filesystem::path(std::format(LR"({}\{})", targetBasePath, path.filename().replace_extension(".index")));
-//					{
-//						const auto f1 = Utils::Win32::File::Create(
-//							targetIndexPath,
-//							GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0);
-//						char buf[65536];
-//						size_t pos = 0;
-//						while (true) {
-//							const auto w = vpack.ReadIndex1(pos, buf, sizeof buf);
-//							if (!w)
-//								break;
-//							pos += f1.Write(pos, buf, w);
-//						}
-//					}
-//					std::cout << "Writing index2..." << std::endl;
-//					{
-//						const auto f1 = Utils::Win32::File::Create(
-//							std::format(R"({}\{})", targetBasePath, path.filename().replace_extension(".index2")),
-//							GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0);
-//						char buf[65536];
-//						size_t pos = 0;
-//						while (true) {
-//							const auto w = vpack.ReadIndex2(pos, buf, sizeof buf);
-//							if (!w)
-//								break;
-//							pos += f1.Write(pos, buf, w);
-//						}
-//					}
-//					for (uint32_t i = 0; i < vpack.NumOfDataFiles(); ++i) {
-//						std::cout << "Writing dat" << i << "..." << std::endl;
-//						char buf[65536];
-//						size_t pos = 0;
-//						const auto f1 = Utils::Win32::File::Create(
-//							std::format(R"({}\{})", targetBasePath, path.filename().replace_extension(std::format(".dat{}", i))),
-//							GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0);
-//						while (true) {
-//							const auto w = vpack.ReadData(i, pos, buf, sizeof buf);
-//							if (!w)
-//								break;
-//							pos += f1.Write(pos, buf, w);
-//						}
-//					}
-//					std::cout << "OK" << std::endl;
-//					return 0;
-//				} catch (const std::invalid_argument& e) {
-//					std::cout << e.what() << std::endl;
-//					throw;
-//				}
-//
-//			}
-//		}
-//	}
-//
-//	return 0;
-//}
+#include "XivAlexanderCommon/Sqex_FontCsv_Render.h"
 
-void verifyTex(const Sqex::Sqpack::Reader& reader, int offset = 0) {
-	const auto tex1 = std::make_shared<Sqex::Sqpack::EntryRawStream>(reader.GetEntryProvider("common/font/font1.tex"));
-	const auto tex1e = std::make_shared<Sqex::Sqpack::OnTheFlyTextureEntryProvider>("test", tex1);
-	const auto tex2 = std::make_shared<Sqex::Sqpack::EntryRawStream>(reader.GetEntryProvider("common/font/font1.tex"));
-	const auto tex3 = std::make_shared<Sqex::Sqpack::EntryRawStream>(tex1e);
-	const auto tex1d = tex1->ReadStreamIntoVector<uint8_t>(0, tex1->StreamSize());
-	const auto tex2d = tex2->ReadStreamIntoVector<uint8_t>(offset, tex2->StreamSize() - offset);
-	const auto tex3d = tex2->ReadStreamIntoVector<uint8_t>(offset, tex3->StreamSize() - offset);
-	if (memcmp(&tex1d[offset], &tex2d[0], tex2d.size()) != 0)
-		throw std::runtime_error("tex1d != tex2d");
-	if (memcmp(&tex1d[offset], &tex3d[0], tex3d.size()) != 0)
-		throw std::runtime_error("tex1d != tex3d");
-}
-
-int verifyMdl(const Sqex::Sqpack::Reader& reader, int offset = 0) {
-	const auto mdl1 = std::make_shared<Sqex::Sqpack::EntryRawStream>(reader.GetEntryProvider("chara/equipment/e0100/model/c0101e0100_met.mdl"));
-	const auto mdl1e = std::make_shared<Sqex::Sqpack::OnTheFlyModelEntryProvider>("test", mdl1);
-	const auto mdl2 = std::make_shared<Sqex::Sqpack::EntryRawStream>(reader.GetEntryProvider("chara/equipment/e0100/model/c0101e0100_met.mdl"));
-	const auto mdl3 = std::make_shared<Sqex::Sqpack::EntryRawStream>(mdl1e);
-	const auto mdl1d = mdl1->ReadStreamIntoVector<char>(0, mdl1->StreamSize());
-	const auto mdl2d = mdl2->ReadStreamIntoVector<char>(offset, mdl2->StreamSize() - offset);
-	const auto mdl3d = mdl3->ReadStreamIntoVector<char>(offset, mdl3->StreamSize() - offset);
-	// Utils::Win32::File::Create(R"(Z:\mdl2d.mdl)", GENERIC_WRITE, FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, 0).Write(0, std::span(mdl2d));
-	// Utils::Win32::File::Create(R"(Z:\mdl3d.mdl)", GENERIC_WRITE, FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, 0).Write(0, std::span(mdl3d));
-
-	if (memcmp(&mdl1d[offset], &mdl2d[0], mdl2d.size()) != 0)
-		throw std::runtime_error("mdl1d != mdl2d");
-	if (memcmp(&mdl1d[offset], &mdl3d[0], mdl3d.size()) != 0)
-		throw std::runtime_error("mdl1d != mdl3d");
-	return 0;
-}
+static const auto* const pszTestString = reinterpret_cast<const char*>(
+	u8"Uppercase: ABCDEFGHIJKLMNOPQRSTUVWXYZ\n"
+	u8"Lowercase: abcdefghijklmnopqrstuvwxyz\n"
+	u8"Numbers: 0123456789 ０１２３４５６７８９\n"
+	u8"SymbolsH: `~!@#$%^&*()_+-=[]{}\\|;':\",./<>?\n"
+	u8"SymbolsF: ｀～！＠＃＄％＾＆＊（）＿＋－＝［］｛｝￦｜；＇：＂，．／＜＞？\n"
+	u8"Hiragana: あかさたなはまやらわ\n"
+	u8"KatakanaH: ｱｶｻﾀﾅﾊﾏﾔﾗﾜ\n"
+	u8"KatakanaF: アカサタナハマヤラワ\n"
+	u8"Hangul: 가나다라마바사ㅇㅈㅊㅋㅌㅍㅎ\n"
+	u8"\n"
+	u8"<<SupportedUnicode>>\n"
+	u8"π™′＾¿¿‰øØ×∞∩£¥¢Ð€ªº†‡¤ ŒœŠšŸÅωψ↑↓→←⇔⇒♂♀♪¶§±＜＞≥≤≡÷½¼¾©®ª¹²³\n"
+	u8"※⇔｢｣«»≪≫《》【】℉℃‡。·••‥…¨°º‰╲╳╱☁☀☃♭♯✓〃¹²³\n"
+	u8"●◎○■□▲△▼▽∇♥♡★☆◆◇♦♦♣♠♤♧¶αß∇ΘΦΩδ∂∃∀∈∋∑√∝∞∠∟∥∪∩∨∧∫∮∬\n"
+	u8"∴∵∽≒≠≦≤≥≧⊂⊃⊆⊇⊥⊿⌒─━│┃│¦┗┓└┏┐┌┘┛├┝┠┣┤┥┫┬┯┰┳┴┷┸┻╋┿╂┼￢￣，－．／：；＜＝＞［＼］＿｀｛｜｝～＠\n"
+	u8"⑴⑵⑶⑷⑸⑹⑺⑻⑼⑽⑾⑿⒀⒁⒂⒃⒄⒅⒆⒇⓪①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳\n"
+	u8"₀₁₂₃₄₅₆₇₈₉№ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅰⅱⅲⅳⅴⅵⅶⅷⅸⅹ０１２３４５６７８９！？＂＃＄％＆＇（）＊＋￠￤￥\n"
+	u8"ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ\n"
+	u8"\n"
+	u8"<<GameSpecific>>\n"
+	u8" \n"
+	u8"\n"
+	u8"\n"
+	u8"\n"
+	u8"\n"
+	u8"<<Kerning>>\n"
+	u8"AC AG AT AV AW AY LT LV LW LY TA Ta Tc Td Te Tg To VA Va Vc Vd Ve Vg Vm Vo Vp Vq Vu\n"
+	u8"A\u200cC A\u200cG A\u200cT A\u200cV A\u200cW A\u200cY L\u200cT L\u200cV L\u200cW L\u200cY T\u200cA T\u200ca T\u200cc T\u200cd T\u200ce T\u200cg T\u200co V\u200cA V\u200ca V\u200cc V\u200cd V\u200ce V\u200cg V\u200cm V\u200co V\u200cp V\u200cq V\u200cu\n"
+	u8"WA We Wq YA Ya Yc Yd Ye Yg Ym Yn Yo Yp Yq Yr Yu eT oT\n"
+	u8"W\u200cA W\u200ce W\u200cq Y\u200cA Y\u200ca Y\u200cc Y\u200cd Y\u200ce Y\u200cg Y\u200cm Y\u200cn Y\u200co Y\u200cp Y\u200cq Y\u200cr Y\u200cu e\u200cT o\u200cT\n"
+	u8"Az Fv Fw Fy TV TW TY Tv Tw Ty VT WT YT tv tw ty vt wt yt\n"
+	u8"A\u200cz F\u200cv F\u200cw F\u200cy T\u200cV T\u200cW T\u200cY T\u200cv T\u200cw T\u200cy V\u200cT W\u200cT Y\u200cT t\u200cv t\u200cw t\u200cy v\u200ct w\u200ct y\u200ct\n"
+	u8"\n"
+	u8"finish"
+	);
 
 int main() {
-	const auto reader000000 = Sqex::Sqpack::Reader(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\000000.win32.index)", true, true);
-	const auto reader040000 = Sqex::Sqpack::Reader(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\040000.win32.index)", true, true);
-	for (int i = 0; i < 60000; i += 1527) {
-		verifyTex(reader000000, i);
-	}
-	for (int i = 0; i < 60000; i += 1527) {
-		verifyMdl(reader040000, i);
+	//for (const auto& it : std::filesystem::recursive_directory_iterator(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack)")) {
+	//	if (it.path().extension() == ".index") {
+	//		std::cout << std::format("Verifying {}...\n", it.path());
+	//		Sqex::Sqpack::Reader(it, true, true);
+	//	}
+	//}
+	const auto common = Sqex::Sqpack::Reader(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\000000.win32.index)", true, true);
+	
+	//const auto fcsv = std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
+	//	Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/AXIS_36.fdt")),
+	//	true);
+	const auto fcsv = std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
+		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/TrumpGothic_68.fdt")),
+		true);
+
+	std::vector<std::shared_ptr<const Sqex::Texture::MipmapStream>> texs;
+	for (int i = 1; i <= 7; ++i) {
+		auto s = common.GetEntryProvider(std::format("common/font/font{}.tex", i));
+		if (!s)
+			break;
+		texs.emplace_back(Sqex::Texture::MipmapStream::FromTexture(std::make_shared<Sqex::Sqpack::EntryRawStream>(std::move(s)), 0));
 	}
 
-	const auto fcsv = std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(Sqex::Sqpack::EntryRawStream(reader000000.GetEntryProvider("common/font/AXIS_36.fdt")), true);
-	// test_convert();
+	const auto color = Sqex::Texture::RGBA8888(255, 200, 150);
+	const auto font = Sqex::FontCsv::SeFont(fcsv, std::move(texs));
+	const auto bbox = font.MeasureAndDraw(nullptr, 0, 0, pszTestString, color);
+	const auto targetMipmap = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(
+		static_cast<uint16_t>(bbox.right - bbox.left),
+		static_cast<uint16_t>(bbox.bottom - bbox.top),
+		Sqex::Texture::CompressionType::ARGB_1,
+		std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * (size_t() + bbox.right - bbox.left) * (size_t() + bbox.bottom - bbox.top))
+		);
+	font.MeasureAndDraw(targetMipmap.get(), 0, 0, pszTestString, color);
+
+	targetMipmap->Show();
 	return 0;
 }

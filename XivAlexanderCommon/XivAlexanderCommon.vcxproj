@@ -19,9 +19,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_Render.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_EntryProvider.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_EntryRawStream.h" />
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Texture_ModifiableTextureStream.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Texture_Mipmap.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_ThirdParty_TexTools.h" />
     <ClInclude Include="includes\XivAlexanderCommon\XaDxtDecompression.h" />
     <ClInclude Include="includes\XivAlexanderCommon\XaFormat.h" />
@@ -52,7 +53,9 @@
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Sqex_FontCsv_Render.cpp" />
     <ClCompile Include="Sqex_Sqpack_EntryRawStream.cpp" />
+    <ClCompile Include="Sqex_Texture.cpp" />
     <ClCompile Include="Sqex_ThirdParty_TexTools.cpp" />
     <ClCompile Include="XivAlexDefaultHeapAllocator.cpp" />
     <ClCompile Include="Sqex_CommandLine.cpp" />
@@ -62,7 +65,7 @@
     <ClCompile Include="Sqex_Sqpack_Reader.cpp" />
     <ClCompile Include="Sqex_FontCsv.cpp" />
     <ClCompile Include="Sqex_Sqpack.cpp" />
-    <ClCompile Include="Sqex_Texture_ModifiableTextureStream.cpp" />
+    <ClCompile Include="Sqex_Texture_Mipmap.cpp" />
     <ClCompile Include="Utils_CallOnDestruction.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

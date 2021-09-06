@@ -19,14 +19,18 @@ namespace Sqex::Texture {
 		[[nodiscard]] auto Height() const { return m_height; }
 		[[nodiscard]] auto Type() const { return m_type; }
 
-		std::shared_ptr<const MipmapStream> ViewARGB8888(CompressionType type = CompressionType::ARGB_1) const;
+		std::shared_ptr<const MipmapStream> ViewARGB8888(CompressionType type = CompressionType::Unknown) const;
+
+		static std::shared_ptr<MipmapStream> FromTexture(std::shared_ptr<RandomAccessStream> stream, size_t mipmapIndex);
+
+		void Show() const;
 	};
 
 	class WrappedMipmapStream : public MipmapStream {
-		std::shared_ptr<const MipmapStream> m_underlying;
+		std::shared_ptr<const RandomAccessStream> m_underlying;
 
 	public:
-		WrappedMipmapStream(uint16_t width, uint16_t height, CompressionType type, std::shared_ptr<const MipmapStream> underlying)
+		WrappedMipmapStream(uint16_t width, uint16_t height, CompressionType type, std::shared_ptr<const RandomAccessStream> underlying)
 			: MipmapStream(width, height, type)
 			, m_underlying(std::move(underlying)) {
 		}
@@ -49,8 +53,14 @@ namespace Sqex::Texture {
 		[[nodiscard]] uint64_t StreamSize() const override { return static_cast<uint32_t>(m_data.size());  }
 		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
 
-		[[nodiscard]] auto& View() { return m_data; }
-		[[nodiscard]] const auto& View() const { return m_data; }
+		template<typename T>
+		[[nodiscard]] auto View() {
+			return std::span(reinterpret_cast<T*>(&m_data[0]), m_data.size() / sizeof T);
+		}
+		template<typename T>
+		[[nodiscard]] auto View() const {
+			return std::span(reinterpret_cast<T*>(&m_data[0]), m_data.size() / sizeof T);
+		}
 	};
 
 	class FileBackedReadOnlyMipmap : public MipmapStream {

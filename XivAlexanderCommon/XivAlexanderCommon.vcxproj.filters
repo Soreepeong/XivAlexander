@@ -115,7 +115,7 @@
       <Filter>Utility Functions</Filter>
     </ClInclude>
     <ClInclude Include="includes\XivAlexanderCommon\XivAlex.h" />
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Texture_ModifiableTextureStream.h">
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Texture_Mipmap.h">
       <Filter>Square Enix Definitions\Game Resource Files\Texture %28.tex%29</Filter>
     </ClInclude>
     <ClInclude Include="includes\XivAlexanderCommon\XaDxtDecompression.h">
@@ -129,6 +129,9 @@
     </ClInclude>
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_EntryRawStream.h">
       <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_Render.h">
+      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -190,7 +193,7 @@
       <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClCompile>
     <ClCompile Include="XivAlex.cpp" />
-    <ClCompile Include="Sqex_Texture_ModifiableTextureStream.cpp">
+    <ClCompile Include="Sqex_Texture_Mipmap.cpp">
       <Filter>Square Enix Definitions\Game Resource Files\Texture %28.tex%29</Filter>
     </ClCompile>
     <ClCompile Include="XaDxtDecompression.cpp">
@@ -205,6 +208,12 @@
     </ClCompile>
     <ClCompile Include="Sqex_Sqpack_EntryRawStream.cpp">
       <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Texture.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\Texture %28.tex%29</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_FontCsv_Render.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
