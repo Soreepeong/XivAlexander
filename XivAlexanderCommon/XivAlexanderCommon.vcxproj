@@ -32,7 +32,7 @@
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Model.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_Reader.h" />
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_Virtual.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_Creator.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Texture.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Utils_CallOnDestruction.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Utils_ListenerManager.h" />
@@ -82,7 +82,7 @@
     <ClCompile Include="Utils_Win32_InjectedModule.cpp" />
     <ClCompile Include="XaZlib.cpp" />
     <ClCompile Include="XivAlex.cpp" />
-    <ClCompile Include="Sqex_Sqpack_Virtual.cpp" />
+    <ClCompile Include="Sqex_Sqpack_Creator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />

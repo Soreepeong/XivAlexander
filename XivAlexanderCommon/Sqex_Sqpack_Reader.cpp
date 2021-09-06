@@ -3,14 +3,14 @@
 
 Sqex::Sqpack::Reader::SqDataEntry::SqDataEntry(const SqIndex::FileSegmentEntry& entry)
 	: Index(entry)
-	, Offset(entry.DatFile.Offset())
-	, DataFileIndex(entry.DatFile.Index()) {
+	, Offset(entry.Locator.Offset())
+	, DataFileIndex(entry.Locator.Index()) {
 }
 
 Sqex::Sqpack::Reader::SqDataEntry::SqDataEntry(const SqIndex::FileSegmentEntry2& entry)
 	: Index2(entry)
-	, Offset(entry.DatFile.Offset())
-	, DataFileIndex(entry.DatFile.Index()) {
+	, Offset(entry.Locator.Offset())
+	, DataFileIndex(entry.Locator.Index()) {
 }
 
 Sqex::Sqpack::Reader::SqIndexType::SqIndexType(const Utils::Win32::File& hFile, bool strictVerify) {
@@ -201,19 +201,19 @@ Sqex::Sqpack::Reader::SqDataType::SqDataType(Utils::Win32::File hFile, const uin
 
 	std::map<uint64_t, SqDataEntry*> offsetToEntryMap;
 	for (auto& file : dataEntries) {
-		if (file.Index.DatFile.Index() != datIndex)
+		if (file.Index.Locator.Index() != datIndex)
 			continue;
-		offsetToEntryMap.insert_or_assign(file.Index.DatFile.Offset(), &file);
+		offsetToEntryMap.insert_or_assign(file.Index.Locator.Offset(), &file);
 	}
 
 	SqDataEntry* prevEntry = nullptr;
 	for (const auto& [begin, entry] : offsetToEntryMap) {
 		if (prevEntry)
-			prevEntry->Size = static_cast<uint32_t>(begin - prevEntry->Index.DatFile.Offset());
+			prevEntry->Size = static_cast<uint32_t>(begin - prevEntry->Index.Locator.Offset());
 		prevEntry = entry;
 	}
 	if (prevEntry)
-		prevEntry->Size = static_cast<uint32_t>(dataFileLength - prevEntry->Index.DatFile.Offset());
+		prevEntry->Size = static_cast<uint32_t>(dataFileLength - prevEntry->Index.Locator.Offset());
 }
 
 Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strictVerify, bool sort)
@@ -240,13 +240,13 @@ Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strict
 	Files.reserve(Index2.Files.size());
 	for (const auto& entry : Index2.Files) {
 		Files.emplace_back(entry);
-		offsetToEntryMap[entry.DatFile] = &Files.back();
+		offsetToEntryMap[entry.Locator] = &Files.back();
 	}
 
 	std::vector<SqIndex::FileSegmentEntry*> newEntries;
 	for (auto& files : Index.Files | std::views::values) {
 		for (auto& entry : files) {
-			const auto ptr = offsetToEntryMap[entry.DatFile];
+			const auto ptr = offsetToEntryMap[entry.Locator];
 			if (!ptr)
 				newEntries.push_back(&entry);
 			else

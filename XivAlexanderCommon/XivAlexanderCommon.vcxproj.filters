@@ -96,7 +96,7 @@
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_ModifiableFontCsvStream.h">
       <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_Virtual.h">
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_Creator.h">
       <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClInclude>
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack.h">
@@ -183,7 +183,7 @@
     <ClCompile Include="Sqex_Sqpack_Reader.cpp">
       <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sqpack_Virtual.cpp">
+    <ClCompile Include="Sqex_Sqpack_Creator.cpp">
       <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClCompile>
     <ClCompile Include="Sqex_Sqpack.cpp">

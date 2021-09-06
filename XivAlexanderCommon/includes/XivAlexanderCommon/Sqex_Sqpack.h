@@ -150,13 +150,24 @@ namespace Sqex::Sqpack {
 		struct FileSegmentEntry {
 			LE<uint32_t> NameHash;
 			LE<uint32_t> PathHash;
-			LEDataLocator DatFile;
+			LEDataLocator Locator;
 			LE<uint32_t> Padding;
+
+			bool operator<(const FileSegmentEntry& r) const {
+				if (PathHash == r.PathHash)
+					return NameHash < r.NameHash;
+				else
+					return PathHash < r.PathHash;
+			}
 		};
 
 		struct FileSegmentEntry2 {
 			LE<uint32_t> FullPathHash;
-			LEDataLocator DatFile;
+			LEDataLocator Locator;
+
+			bool operator<(const FileSegmentEntry2& r) const {
+				return FullPathHash < r.FullPathHash;
+			}
 		};
 
 		struct Segment3Entry {

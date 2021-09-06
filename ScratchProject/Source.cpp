@@ -3,7 +3,7 @@
 #include <XivAlexanderCommon/Sqex_Sqpack.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_EntryRawStream.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_Virtual.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_Creator.h>
 
 //int test_convert() {
 //	const auto targetBasePath = LR"(Z:\scratch\t2)";
@@ -27,7 +27,7 @@
 //
 //				try {
 //					std::cout << "Working on " << path << "..." << std::endl;
-//					auto vpack = Sqex::Sqpack::VirtualSqPack("ffxiv", "040000");
+//					auto vpack = Sqex::Sqpack::Creator("ffxiv", "040000");
 //					{
 //						const auto addResult = vpack.AddEntriesFromSqPack(path, true, true);
 //						std::cout << std::format("Added {}, replaced {}, skipped {}\n",
@@ -60,7 +60,7 @@
 //						}
 //					}
 //
-//					vpack.Freeze(false);
+//					vpack.AsViews(false);
 //
 //					std::cout << "Testing..." << std::endl;
 //					{
