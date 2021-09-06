@@ -33,7 +33,7 @@ Sqex::Sqpack::Reader::SqIndexType::SqIndexType(const Utils::Win32::File& hFile, 
 	if (strictVerify) {
 		accesses.emplace_back(IndexHeader.DataFilesSegment.Offset, IndexHeader.DataFilesSegment.Size);
 		IndexHeader.DataFilesSegment.Sha1.Verify(std::span(DataFileSegment), "DataFilesSegment Data SHA-1");
-		IndexHeader.VerifyDataFileSegment(DataFileSegment);
+		IndexHeader.VerifyDataFileSegment(DataFileSegment, 1);
 	}
 
 	Segment3.resize(IndexHeader.UnknownSegment3.Size / sizeof(SqIndex::Segment3Entry));
@@ -134,7 +134,7 @@ Sqex::Sqpack::Reader::SqIndex2Type::SqIndex2Type(const Utils::Win32::File& hFile
 	if (strictVerify) {
 		accesses.emplace_back(IndexHeader.DataFilesSegment.Offset, IndexHeader.DataFilesSegment.Size);
 		IndexHeader.DataFilesSegment.Sha1.Verify(std::span(DataFileSegment), "DataFilesSegment Data SHA-1");
-		IndexHeader.VerifyDataFileSegment(DataFileSegment);
+		IndexHeader.VerifyDataFileSegment(DataFileSegment, 2);
 	}
 
 	Segment3.resize(IndexHeader.UnknownSegment3.Size / sizeof(SqIndex::Segment3Entry));

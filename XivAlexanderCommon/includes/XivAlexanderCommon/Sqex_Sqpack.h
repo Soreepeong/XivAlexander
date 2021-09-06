@@ -132,7 +132,7 @@ namespace Sqex::Sqpack {
 
 			void VerifySqpackIndexHeader(IndexType expectedIndexType) const;
 
-			void VerifyDataFileSegment(const std::vector<char>& DataFileSegment) const;
+			void VerifyDataFileSegment(const std::vector<char>& DataFileSegment, int type) const;
 
 		};
 		static_assert(sizeof(Header) == 1024);
