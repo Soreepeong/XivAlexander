@@ -15,85 +15,142 @@ Sqex::Sqpack::EntryRawStream::BinaryStreamDecoder::BinaryStreamDecoder(const Ent
 		m_offsets.emplace_back(rawFileOffset);
 		m_blockOffsets.emplace_back(EntryHeader().HeaderSize + locator.Offset);
 		rawFileOffset += locator.DecompressedDataSize;
-		MaxBlockSize = std::max(MaxBlockSize, locator.BlockSize.Value());
+		MaxBlockSize = std::max<size_t>(MaxBlockSize, locator.BlockSize.Value());
 	}
 
 	if (rawFileOffset < EntryHeader().DecompressedSize)
 		throw CorruptDataException("Data truncated (sum(BlockHeaderLocator.DecompressedDataSize) < FileEntryHeader.DecompresedSize)");
 }
 
-static void Decompress(std::span<uint8_t> data, std::span<uint8_t> buffer) {
-	z_stream stream{};
-	stream.next_in = &data[0];
-	stream.avail_in = static_cast<uInt>(data.size_bytes());
-	if (const auto res = inflateInit2(&stream, -15); res != Z_OK)
-		throw Utils::ZlibError(res);
-	const auto inflateCleanup = Utils::CallOnDestruction([&stream]() { inflateEnd(&stream);  });
+struct Sqex::Sqpack::EntryRawStream::StreamDecoder::ReadStreamState {
+	const RandomAccessStream& Underlying;
+	std::span<uint8_t> destination;
+	std::vector<uint8_t> readBuffer;
+	std::vector<uint8_t> zlibBuffer;
+	uint64_t relativeOffset = 0;
+	uint32_t requestOffsetVerify = 0;
+	bool zstreamInitialized = false;
+	z_stream zstream{};
 
-	stream.avail_out = static_cast<uInt>(buffer.size());
-	stream.next_out = &buffer[0];
-	const auto res = inflate(&stream, Z_FINISH);
-	if (res != Z_OK && res != Z_BUF_ERROR && res != Z_STREAM_END)
-		throw Utils::ZlibError(res);
-	if (stream.avail_out)
-		throw Sqex::CorruptDataException("Not enough data produced");
-	inflateEnd(&stream);
-}
+	[[nodiscard]] const auto& AsHeader() const {
+		return *reinterpret_cast<const SqData::BlockHeader*>(&readBuffer[0]);
+	}
+
+	void InitializeZlib() {
+		int res;
+		if (!zstreamInitialized)
+			res = inflateInit2(&zstream, -15);
+		else
+			res = inflateReset2(&zstream, -15);
+		if (res != Z_OK)
+			throw Utils::ZlibError(res);
+	}
+
+	~ReadStreamState() {
+		if (zstreamInitialized)
+			inflateEnd(&zstream);
+	}
+
+private:
+	void AttemptSatisfyRequestOffset(const uint32_t requestOffset) {
+		if (requestOffsetVerify < requestOffset) {
+			const auto padding = requestOffset - requestOffsetVerify;
+			if (relativeOffset < padding) {
+				const auto available = std::min<size_t>(destination.size_bytes(), padding);
+				std::fill_n(destination.begin(), available, 0);
+				destination = destination.subspan(available);
+				relativeOffset = 0;
+
+			} else
+				relativeOffset -= padding;
+
+		} else if (requestOffsetVerify > requestOffset)
+			throw CorruptDataException("Duplicate read on same region");
+	}
+	
+public:
+	void Progress(
+		const uint32_t requestOffset,
+		uint32_t blockOffset
+	) {
+		const auto read = std::span(&readBuffer[0], static_cast<size_t>(Underlying.ReadStreamPartial(blockOffset, &readBuffer[0], readBuffer.size())));
+		const auto& blockHeader = *reinterpret_cast<const SqData::BlockHeader*>(&readBuffer[0]);
+
+		if (readBuffer.size() < sizeof blockHeader + blockHeader.CompressedSize) {
+			readBuffer.resize(static_cast<uint16_t>(sizeof blockHeader + blockHeader.CompressedSize));
+			Progress(requestOffset, blockOffset);
+			return;
+		}
+
+		AttemptSatisfyRequestOffset(requestOffset);
+		if (destination.empty())
+			return;
+
+		requestOffsetVerify += blockHeader.DecompressedSize;
+
+		if (relativeOffset < blockHeader.DecompressedSize) {
+			auto target = destination.subspan(0, std::min(destination.size_bytes(), static_cast<size_t>(blockHeader.DecompressedSize - relativeOffset)));
+			if (blockHeader.CompressedSize == SqData::BlockHeader::CompressedSizeNotCompressed) {
+				std::copy_n(&read[static_cast<size_t>(sizeof blockHeader + relativeOffset)], target.size(), target.begin());
+			} else {
+				auto decompressionTarget = target;
+				if (relativeOffset) {
+					zlibBuffer.resize(blockHeader.DecompressedSize);
+					decompressionTarget = std::span(zlibBuffer);
+				}
+
+				if (sizeof blockHeader + blockHeader.CompressedSize > read.size_bytes())
+					throw CorruptDataException("Failed to read block");
+
+				InitializeZlib();
+				zstream.next_in = &read[sizeof blockHeader];
+				zstream.avail_in = blockHeader.CompressedSize;
+				zstream.next_out = &decompressionTarget[0];
+				zstream.avail_out = static_cast<uInt>(decompressionTarget.size());
+
+				if (const auto res = inflate(&zstream, Z_FINISH);
+					res != Z_OK && res != Z_BUF_ERROR && res != Z_STREAM_END)
+					throw Utils::ZlibError(res);
+				if (zstream.avail_out)
+					throw CorruptDataException("Not enough data produced");
+
+				if (relativeOffset)
+					std::copy_n(&decompressionTarget[static_cast<size_t>(relativeOffset)],
+						target.size_bytes(),
+						target.begin());
+			}
+			destination = destination.subspan(target.size_bytes());
+
+			relativeOffset = 0;
+		} else
+			relativeOffset -= blockHeader.DecompressedSize;
+	}
+};
 
 uint64_t Sqex::Sqpack::EntryRawStream::BinaryStreamDecoder::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) {
 	if (!length)
 		return 0;
 
-	auto relativeOffset = offset;
-	auto out = std::span(static_cast<uint8_t*>(buf), static_cast<size_t>(length));
-
-	auto it = std::lower_bound(m_offsets.begin(), m_offsets.end(), static_cast<uint32_t>(offset));
-	if (it == m_offsets.end() || (it != m_offsets.end() && *it > offset))
+	auto it = static_cast<size_t>(std::distance(m_offsets.begin(), std::lower_bound(m_offsets.begin(), m_offsets.end(), static_cast<uint32_t>(offset))));
+	if (it == m_offsets.size() || (it != m_offsets.size() && m_offsets[it] > offset))
 		--it;
 
-	relativeOffset -= *it;
+	ReadStreamState info{
+		.Underlying = Underlying(),
+		.destination = std::span(static_cast<uint8_t*>(buf), static_cast<size_t>(length)),
+		.readBuffer = std::vector<uint8_t>(MaxBlockSize),
+		.relativeOffset = offset - m_offsets[it],
+		.requestOffsetVerify = m_offsets[it],
+	};
 
-	std::vector<uint8_t> blockBuffer(MaxBlockSize);
-	std::vector<uint8_t> rawBuffer;
-	for (const auto blockOffset : std::span(m_blockOffsets).subspan(std::distance(m_offsets.begin(), it))) {
-		const auto read = std::span(&blockBuffer[0], static_cast<size_t>(Underlying().ReadStreamPartial(blockOffset, &blockBuffer[0], blockBuffer.size())));
-		const auto& blockHeader = *reinterpret_cast<const SqData::BlockHeader*>(&blockBuffer[0]);
-
-		if (relativeOffset >= blockHeader.DecompressedSize) {
-			relativeOffset -= blockHeader.DecompressedSize;
-			continue;
-		}
-
-		auto target = out.subspan(0, std::min(out.size_bytes(), static_cast<size_t>(blockHeader.DecompressedSize - relativeOffset)));
-		if (blockHeader.CompressedSize == SqData::BlockHeader::CompressedSizeNotCompressed) {
-			std::copy_n(&read[static_cast<size_t>(sizeof blockHeader + relativeOffset)], target.size(), target.begin());
-		} else {
-			auto decompressionTarget = target;
-			if (relativeOffset) {
-				rawBuffer.resize(blockHeader.DecompressedSize);
-				decompressionTarget = std::span(rawBuffer);
-			}
-
-			rawBuffer.resize(blockHeader.DecompressedSize);
-			if (sizeof blockHeader + blockHeader.CompressedSize > read.size_bytes())
-				throw CorruptDataException("Failed to read block");
-
-			Decompress(std::span(&read[sizeof blockHeader], blockHeader.CompressedSize), decompressionTarget);
-
-			if (relativeOffset)
-				std::copy_n(&decompressionTarget[static_cast<size_t>(relativeOffset)],
-					target.size_bytes(),
-					target.begin());
-		}
-		out = out.subspan(target.size_bytes());
-
-		if (out.empty())
-			return length;
-
-		relativeOffset = 0;
+	for (; it < m_offsets.size(); ++it) {
+		info.Progress(m_offsets[it], m_blockOffsets[it]);
+		if (info.destination.empty())
+			break;
 	}
 
-	return length - out.size_bytes();
+	MaxBlockSize = info.readBuffer.size();
+	return length - info.destination.size_bytes();
 }
 
 Sqex::Sqpack::EntryRawStream::TextureStreamDecoder::TextureStreamDecoder(const EntryRawStream* stream)
@@ -107,7 +164,6 @@ Sqex::Sqpack::EntryRawStream::TextureStreamDecoder::TextureStreamDecoder(const E
 			.RequestOffset = 0,
 			.BlockOffset = EntryHeader().HeaderSize + locator.FirstBlockOffset,
 			.MipmapIndex = static_cast<uint16_t>(Blocks.size()),
-			.RemainingBlocksSize = locator.TotalSize,
 			.RemainingDecompressedSize = locator.DecompressedSize,
 			.RemainingBlockSizes = Underlying().ReadStreamIntoVector<uint16_t>(readOffset, locator.SubBlockCount),
 			});
@@ -144,106 +200,57 @@ uint64_t Sqex::Sqpack::EntryRawStream::TextureStreamDecoder::ReadStreamPartial(u
 	if (!length)
 		return 0;
 
-	auto relativeOffset = offset;
-	auto out = std::span(static_cast<uint8_t*>(buf), static_cast<size_t>(length));
+	ReadStreamState info{
+		.Underlying = Underlying(),
+		.destination = std::span(static_cast<uint8_t*>(buf), static_cast<size_t>(length)),
+		.readBuffer = std::vector<uint8_t>(MaxBlockSize),
+		.relativeOffset = offset,
+	};
 
-	if (relativeOffset < Head.size()) {
-		const auto available = std::min(out.size_bytes(), static_cast<size_t>(Head.size() - relativeOffset));
-		const auto src = std::span(Head).subspan(static_cast<size_t>(relativeOffset), available);
-		std::copy_n(src.begin(), available, out.begin());
-		out = out.subspan(available);
-		relativeOffset = 0;
+	if (info.relativeOffset < Head.size()) {
+		const auto available = std::min(info.destination.size_bytes(), static_cast<size_t>(Head.size() - info.relativeOffset));
+		const auto src = std::span(Head).subspan(static_cast<size_t>(info.relativeOffset), available);
+		std::copy_n(src.begin(), available, info.destination.begin());
+		info.destination = info.destination.subspan(available);
+		info.relativeOffset = 0;
 	} else
-		relativeOffset -= Head.size();
+		info.relativeOffset -= Head.size();
 
-	if (out.empty() || Blocks.empty())
-		return length - out.size_bytes();
+	if (info.destination.empty() || Blocks.empty())
+		return length - info.destination.size_bytes();
 
-	auto it = std::lower_bound(Blocks.begin(), Blocks.end(), static_cast<uint32_t>(relativeOffset), [&](const BlockInfo& l, uint32_t r) {
+	auto it = std::lower_bound(Blocks.begin(), Blocks.end(), static_cast<uint32_t>(info.relativeOffset), [&](const BlockInfo& l, uint32_t r) {
 		return l.RequestOffset < r;
 	});
-	if (it == Blocks.end() || (it != Blocks.end() && it != Blocks.begin() && it->RequestOffset > relativeOffset))
+	if (it == Blocks.end() || (it != Blocks.end() && it != Blocks.begin() && it->RequestOffset > info.relativeOffset))
 		--it;
 
-	auto currentRequestOffset = it->RequestOffset;
-	relativeOffset -= currentRequestOffset;
+	info.requestOffsetVerify = it->RequestOffset;
+	info.relativeOffset -= info.requestOffsetVerify;
 
-	std::vector<uint8_t> blockBuffer(MaxBlockSize);
-	std::vector<uint8_t> rawBuffer;
 	while (it != Blocks.end()) {
-		const auto read = std::span(&blockBuffer[0], static_cast<size_t>(Underlying().ReadStreamPartial(it->BlockOffset, &blockBuffer[0], blockBuffer.size())));
-		const auto& blockHeader = *reinterpret_cast<const SqData::BlockHeader*>(&blockBuffer[0]);
-		const auto blockDataSize = blockHeader.CompressedSize == SqData::BlockHeader::CompressedSizeNotCompressed ? blockHeader.DecompressedSize : blockHeader.CompressedSize;
-
-		if (MaxBlockSize < sizeof blockHeader + blockHeader.CompressedSize) {
-			MaxBlockSize = static_cast<uint16_t>(sizeof blockHeader + blockHeader.CompressedSize);
-			blockBuffer.resize(MaxBlockSize);
-			continue;
-		}
-
-		if (currentRequestOffset < it->RequestOffset) {
-			const auto padding = it->RequestOffset - currentRequestOffset;
-			if (relativeOffset < padding) {
-				const auto available = std::min<size_t>(out.size_bytes(), padding);
-				std::fill_n(out.begin(), available, 0);
-				out = out.subspan(available);
-				relativeOffset = 0;
-			} else
-				relativeOffset -= padding;
-
-		} else if (currentRequestOffset > it->RequestOffset)
-			throw CorruptDataException("Duplicate read on same region");
-		currentRequestOffset += blockHeader.DecompressedSize;
-
-		if (relativeOffset < blockHeader.DecompressedSize) {
-			auto target = out.subspan(0, std::min(out.size_bytes(), static_cast<size_t>(blockHeader.DecompressedSize - relativeOffset)));
-			if (!target.empty()) {
-				if (blockHeader.CompressedSize == SqData::BlockHeader::CompressedSizeNotCompressed) {
-					std::copy_n(&read[static_cast<size_t>(sizeof blockHeader + relativeOffset)], target.size(), target.begin());
-				} else {
-					auto decompressionTarget = target;
-					if (relativeOffset) {
-						rawBuffer.resize(blockHeader.DecompressedSize);
-						decompressionTarget = std::span(rawBuffer);
-					}
-
-					rawBuffer.resize(blockHeader.DecompressedSize);
-					if (sizeof blockHeader + blockHeader.CompressedSize > read.size_bytes())
-						throw CorruptDataException("Failed to read block");
-
-					Decompress(std::span(&read[sizeof blockHeader], blockHeader.CompressedSize), decompressionTarget);
-
-					if (relativeOffset)
-						std::copy_n(&decompressionTarget[static_cast<size_t>(relativeOffset)],
-							target.size_bytes(),
-							target.begin());
-				}
-			}
-			out = out.subspan(target.size_bytes());
-
-			relativeOffset = 0;
-		} else
-			relativeOffset -= blockHeader.DecompressedSize;
+		info.Progress(it->RequestOffset, it->BlockOffset);
 
 		if (it->RemainingBlockSizes.empty()) {
 			++it;
 		} else {
+			const auto& blockHeader = info.AsHeader();
 			it = Blocks.emplace(++it, BlockInfo{
 				.RequestOffset = it->RequestOffset + blockHeader.DecompressedSize,
 				.BlockOffset = it->BlockOffset + it->RemainingBlockSizes.front(),
 				.MipmapIndex = it->MipmapIndex,
-				.RemainingBlocksSize = static_cast<uint32_t>(it->RemainingBlocksSize - sizeof blockHeader - blockDataSize),
 				.RemainingDecompressedSize = it->RemainingDecompressedSize - blockHeader.DecompressedSize,
 				.RemainingBlockSizes = std::move(it->RemainingBlockSizes),
 				});
 			it->RemainingBlockSizes.erase(it->RemainingBlockSizes.begin());
 		}
 
-		if (out.empty())
-			return length;
+		if (info.destination.empty())
+			break;
 	}
 
-	return length - out.size_bytes();
+	MaxBlockSize = info.readBuffer.size();
+	return length - info.destination.size_bytes();
 }
 
 Sqex::Sqpack::EntryRawStream::ModelStreamDecoder::ModelStreamDecoder(const EntryRawStream* stream)
@@ -266,14 +273,8 @@ Sqex::Sqpack::EntryRawStream::ModelStreamDecoder::ModelStreamDecoder(const Entry
 	Head.resize(sizeof Model::Header);
 	AsHeader() = {
 		.Version = EntryHeader().BlockCountOrVersion,
-		// .StackSize = locator.AlignedDecompressedSizes.Stack,
-		// .RuntimeSize = locator.AlignedDecompressedSizes.Runtime,
 		.VertexDeclarationCount = locator.VertexDeclarationCount,
 		.MaterialCount = locator.MaterialCount,
-		// .VertexOffset = {locator.FirstBlockOffsets.Vertex[0], locator.FirstBlockOffsets.Vertex[1], locator.FirstBlockOffsets.Vertex[2]},
-		// .IndexOffset = {locator.FirstBlockOffsets.Index[0], locator.FirstBlockOffsets.Index[1], locator.FirstBlockOffsets.Index[2]},
-		// .VertexSize = {locator.AlignedDecompressedSizes.Vertex[0], locator.AlignedDecompressedSizes.Vertex[1], locator.AlignedDecompressedSizes.Vertex[2]},
-		// .IndexSize = {locator.AlignedDecompressedSizes.Index[0], locator.AlignedDecompressedSizes.Index[1], locator.AlignedDecompressedSizes.Index[2]},
 		.LodCount = locator.LodCount,
 		.EnableIndexBufferStreaming = locator.EnableIndexBufferStreaming,
 		.EnableEdgeGeometry = locator.EnableEdgeGeometry,
@@ -334,95 +335,42 @@ uint64_t Sqex::Sqpack::EntryRawStream::ModelStreamDecoder::ReadStreamPartial(uin
 	if (!length)
 		return 0;
 
-	auto relativeOffset = offset;
-	auto out = std::span(static_cast<uint8_t*>(buf), static_cast<size_t>(length));
+	ReadStreamState info{
+		.Underlying = Underlying(),
+		.destination = std::span(static_cast<uint8_t*>(buf), static_cast<size_t>(length)),
+		.readBuffer = std::vector<uint8_t>(MaxBlockSize),
+		.relativeOffset = offset,
+	};
 
-	if (relativeOffset < Head.size()) {
-		const auto available = std::min(out.size_bytes(), static_cast<size_t>(Head.size() - relativeOffset));
-		const auto src = std::span(Head).subspan(relativeOffset, available);
-		std::copy_n(src.begin(), available, out.begin());
-		out = out.subspan(available);
-		relativeOffset = 0;
+	if (info.relativeOffset < Head.size()) {
+		const auto available = std::min(info.destination.size_bytes(), static_cast<size_t>(Head.size() - info.relativeOffset));
+		const auto src = std::span(Head).subspan(info.relativeOffset, available);
+		std::copy_n(src.begin(), available, info.destination.begin());
+		info.destination = info.destination.subspan(available);
+		info.relativeOffset = 0;
 	} else
-		relativeOffset -= Head.size();
+		info.relativeOffset -= Head.size();
 
-	if (out.empty() || Blocks.empty())
-		return length - out.size_bytes();
+	if (info.destination.empty() || Blocks.empty())
+		return length - info.destination.size_bytes();
 
-	auto it = std::lower_bound(Blocks.begin(), Blocks.end(), static_cast<uint32_t>(relativeOffset), [&](const BlockInfo& l, uint32_t r) {
+	auto it = std::lower_bound(Blocks.begin(), Blocks.end(), static_cast<uint32_t>(info.relativeOffset), [&](const BlockInfo& l, uint32_t r) {
 		return l.RequestOffset < r;
 	});
-	if (it == Blocks.end() || (it != Blocks.end() && it != Blocks.begin() && it->RequestOffset > relativeOffset))
+	if (it == Blocks.end() || (it != Blocks.end() && it != Blocks.begin() && it->RequestOffset > info.relativeOffset))
 		--it;
 
-	auto currentRequestOffset = it->RequestOffset;
-	relativeOffset -= currentRequestOffset;
+	info.requestOffsetVerify = it->RequestOffset;
+	info.relativeOffset -= info.requestOffsetVerify;
 
-	std::vector<uint8_t> blockBuffer(MaxBlockSize);
-	std::vector<uint8_t> rawBuffer;
-	while (it != Blocks.end()) {
-		const auto read = std::span(&blockBuffer[0], static_cast<size_t>(Underlying().ReadStreamPartial(it->BlockOffset, &blockBuffer[0], blockBuffer.size())));
-		const auto& blockHeader = *reinterpret_cast<const SqData::BlockHeader*>(&blockBuffer[0]);
-
-		if (MaxBlockSize < sizeof blockHeader + blockHeader.CompressedSize) {
-			MaxBlockSize = static_cast<uint16_t>(sizeof blockHeader + blockHeader.CompressedSize);
-			blockBuffer.resize(MaxBlockSize);
-			continue;
-		}
-
-		if (currentRequestOffset < it->RequestOffset) {
-			const auto padding = it->RequestOffset - currentRequestOffset;
-			if (relativeOffset < padding) {
-				const auto available = std::min<size_t>(out.size_bytes(), padding);
-				std::fill_n(out.begin(), available, 0);
-				out = out.subspan(available);
-				relativeOffset = 0;
-
-				if (out.empty())
-					return length;
-			} else
-				relativeOffset -= padding;
-
-		} else if (currentRequestOffset > it->RequestOffset)
-			throw CorruptDataException("Duplicate read on same region");
-		currentRequestOffset += blockHeader.DecompressedSize;
-
-		if (relativeOffset < blockHeader.DecompressedSize) {
-			auto target = out.subspan(0, std::min(out.size_bytes(), static_cast<size_t>(blockHeader.DecompressedSize - relativeOffset)));
-			if (!target.empty()) {
-				if (blockHeader.CompressedSize == SqData::BlockHeader::CompressedSizeNotCompressed) {
-					std::copy_n(&read[static_cast<size_t>(sizeof blockHeader + relativeOffset)], target.size(), target.begin());
-				} else {
-					auto decompressionTarget = target;
-					if (relativeOffset) {
-						rawBuffer.resize(blockHeader.DecompressedSize);
-						decompressionTarget = std::span(rawBuffer);
-					}
-
-					rawBuffer.resize(blockHeader.DecompressedSize);
-					if (sizeof blockHeader + blockHeader.CompressedSize > read.size_bytes())
-						throw CorruptDataException("Failed to read block");
-
-					Decompress(std::span(&read[sizeof blockHeader], blockHeader.CompressedSize), decompressionTarget);
-
-					if (relativeOffset)
-						std::copy_n(&decompressionTarget[static_cast<size_t>(relativeOffset)],
-							target.size_bytes(),
-							target.begin());
-				}
-			}
-			out = out.subspan(target.size_bytes());
-			if (out.empty())
-				return length;
-
-			relativeOffset = 0;
-		} else
-			relativeOffset -= blockHeader.DecompressedSize;
-
-		++it;
+	for (; it != Blocks.end(); ++it) {
+		info.Progress(it->RequestOffset, it->BlockOffset);
+		if (info.destination.empty())
+			break;
 	}
 
-	return length - out.size_bytes();
+	MaxBlockSize = info.readBuffer.size();
+	return length - info.destination.size_bytes();
 }
 
 Sqex::Sqpack::EntryRawStream::EntryRawStream(std::shared_ptr<EntryProvider> provider)

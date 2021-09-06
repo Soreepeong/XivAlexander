@@ -9,9 +9,15 @@ namespace Sqex::Sqpack {
 		private:
 			const EntryRawStream* const m_stream;
 
+		protected:
+			struct ReadStreamState;
+
+			size_t MaxBlockSize{};
+
 		public:
 			StreamDecoder(const EntryRawStream* stream)
-				: m_stream(stream) {
+				: m_stream(stream)
+				, MaxBlockSize(sizeof SqData::BlockHeader) {
 			}
 
 			virtual uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) = 0;
@@ -26,7 +32,6 @@ namespace Sqex::Sqpack {
 		struct BinaryStreamDecoder : StreamDecoder {
 			std::vector<uint32_t> m_offsets;
 			std::vector<uint32_t> m_blockOffsets;
-			uint16_t MaxBlockSize = sizeof SqData::BlockHeader;
 
 			BinaryStreamDecoder(const EntryRawStream* stream);
 			uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) override;
@@ -37,13 +42,11 @@ namespace Sqex::Sqpack {
 				uint32_t RequestOffset;
 				uint32_t BlockOffset;
 				uint16_t MipmapIndex;
-				uint32_t RemainingBlocksSize;
 				uint32_t RemainingDecompressedSize;
 				std::vector<uint16_t> RemainingBlockSizes;
 			};
 			std::vector<uint8_t> Head;
 			std::vector<BlockInfo> Blocks;
-			uint16_t MaxBlockSize = sizeof SqData::BlockHeader;
 
 			TextureStreamDecoder(const EntryRawStream* stream);
 			uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) override;
@@ -60,7 +63,6 @@ namespace Sqex::Sqpack {
 			};
 			std::vector<uint8_t> Head;
 			std::vector<BlockInfo> Blocks;
-			uint16_t MaxBlockSize = sizeof SqData::BlockHeader;
 
 			ModelStreamDecoder(const EntryRawStream* stream);
 			uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) override;
