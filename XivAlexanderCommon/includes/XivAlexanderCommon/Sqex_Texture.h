@@ -6,7 +6,7 @@ namespace Sqex::Texture {
 		Unknown = 0,
 
 		// https://github.com/goaaats/ffxiv-explorer-fork/blob/develop/src/main/java/com/fragmenterworks/ffxivextract/models/Texture_File.java
-		
+
 		// Grayscale
 		L8_1 = 0x1130,      // 1 byte (L8) per pixel
 		L8_2 = 0x1131,      // same with above
@@ -26,17 +26,29 @@ namespace Sqex::Texture {
 	};
 
 	struct RGBA4444 {
+		static constexpr size_t ChannelCount = 4;
+		static constexpr uint8_t MaxR = 15;
+		static constexpr uint8_t MaxG = 15;
+		static constexpr uint8_t MaxB = 15;
+		static constexpr uint8_t MaxA = 15;
+
 		uint8_t R : 4;
 		uint8_t G : 4;
 		uint8_t B : 4;
-		uint8_t A : 4;
+		uint8_t A : 4;  // Actually opacity
 	};
 
 	struct RGBA5551 {
+		static constexpr size_t ChannelCount = 4;
+		static constexpr uint8_t MaxR = 31;
+		static constexpr uint8_t MaxG = 31;
+		static constexpr uint8_t MaxB = 31;
+		static constexpr uint8_t MaxA = 1;
+
 		uint8_t R : 5;
 		uint8_t G : 5;
 		uint8_t B : 5;
-		uint8_t A : 1;
+		uint8_t A : 1;  // Actually opacity
 	};
 
 	union RGBAHHHH {
@@ -75,19 +87,31 @@ namespace Sqex::Texture {
 			}
 		};
 
+		static constexpr size_t ChannelCount = 4;
+		static constexpr float MaxR = 1.f;
+		static constexpr float MaxG = 1.f;
+		static constexpr float MaxB = 1.f;
+		static constexpr float MaxA = 1.f;
+
 		Half R;
 		Half G;
 		Half B;
-		Half A;
+		Half A;  // Actually opacity
 	};
 
 	union RGBA8888 {
+		static constexpr size_t ChannelCount = 4;
+		static constexpr uint32_t MaxR = 255;
+		static constexpr uint32_t MaxG = 255;
+		static constexpr uint32_t MaxB = 255;
+		static constexpr uint32_t MaxA = 255;
+
 		uint32_t Value;
 		struct {
 			uint32_t R : 8;
 			uint32_t G : 8;
 			uint32_t B : 8;
-			uint32_t A : 8;
+			uint32_t A : 8;  // Actually opacity
 		};
 
 		RGBA8888() : Value(0) {}

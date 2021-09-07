@@ -54,6 +54,7 @@ void Sqex::Texture::MipmapStream::Show() const {
 		};
 		int showmode;
 		std::vector<uint8_t> buf;
+		std::vector<uint8_t> transparent;
 		bool closed;
 		const MipmapStream* stream;
 
@@ -61,8 +62,7 @@ void Sqex::Texture::MipmapStream::Show() const {
 
 		POINT renderOffset;
 
-		int downX;
-		int downY;
+		POINT down;
 		POINT downOrig;
 		bool dragging;
 		bool isLeft;
@@ -84,9 +84,9 @@ void Sqex::Texture::MipmapStream::Show() const {
 			const auto dh = static_cast<int>(stream->Height() * zoom);
 			IntersectClipRect(hdc, clip.left, clip.top, clip.right, clip.bottom);
 			if (showmode == 0)
-				SetStretchBltMode(hdc, HALFTONE);
+				SetStretchBltMode(hdc, zoomFactor < 0 ? HALFTONE : COLORONCOLOR);
 			SetBrushOrgEx(hdc, renderOffset.x, renderOffset.y, nullptr);
-			StretchDIBits(hdc, renderOffset.x, renderOffset.y, dw, dh, 0, 0, stream->Width(), stream->Height(), &buf[0], &bmi, DIB_RGB_COLORS, SRCCOPY);
+			StretchDIBits(hdc, renderOffset.x, renderOffset.y, dw, dh, 0, 0, stream->Width(), stream->Height(), showmode == 0 ? &transparent[0] : &buf[0], &bmi, DIB_RGB_COLORS, SRCCOPY);
 			if (renderOffset.x > 0) {
 				const auto rt = RECT{ 0, clip.top, renderOffset.x, clip.bottom };
 				FillRect(hdc, &rt, GetStockBrush(WHITE_BRUSH));
@@ -163,6 +163,21 @@ void Sqex::Texture::MipmapStream::Show() const {
 	} state{};
 
 	state.buf = ViewARGB8888()->ReadStreamIntoVector<uint8_t>(0);
+	{
+		state.transparent = state.buf;
+		const auto w = static_cast<size_t>(Width());
+		const auto h = static_cast<size_t>(Height());
+		const auto view = std::span(reinterpret_cast<RGBA8888*>(&state.transparent[0]), w * h);
+		for (size_t i = 0; i < h; ++i) {
+			for (size_t j = 0; j < w; ++j) {
+				auto& v = view[i * w + j];
+				auto bg = (i / 8 + j / 8) % 2 ? RGBA8888(255, 255, 255,255) : RGBA8888(150, 150, 150, 255);
+				v.R = (v.R * v.A + bg.R * (255U - v.A)) / 255U;
+				v.G = (v.G * v.A + bg.G * (255U - v.A)) / 255U;
+				v.B = (v.B * v.A + bg.B * (255U - v.A)) / 255U;
+			}
+		}
+	}
 	state.stream = this;
 
 	state.bmih.biSize = sizeof state.bmih;
@@ -208,6 +223,29 @@ void Sqex::Texture::MipmapStream::Show() const {
 					EndPaint(hwnd, &ps);
 					return 0;
 				}
+				case WM_KEYDOWN: {
+					if (wParam == VK_ESCAPE) {
+						DestroyWindow(hwnd);
+						return 0;
+					} else if (wParam == VK_LEFT) {
+						state.renderOffset.x += 8;
+						state.ClipPan();
+						return 0;
+					} else if (wParam == VK_RIGHT) {
+						state.renderOffset.x -= 8;
+						state.ClipPan();
+						return 0;
+					} else if (wParam == VK_UP) {
+						state.renderOffset.y += 8;
+						state.ClipPan();
+						return 0;
+					} else if (wParam == VK_DOWN) {
+						state.renderOffset.y -= 8;
+						state.ClipPan();
+						return 0;
+					}
+					break;
+				}
 
 				case WM_LBUTTONDOWN:
 				case WM_RBUTTONDOWN:
@@ -218,8 +256,12 @@ void Sqex::Texture::MipmapStream::Show() const {
 						state.isLeft = msg == WM_LBUTTONDOWN;
 						state.downOrig = { GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam) };
 						ClientToScreen(hwnd, &state.downOrig);
-						SetCursorPos(state.downX = GetSystemMetrics(SM_CXSCREEN) / 2,
-							state.downY = GetSystemMetrics(SM_CYSCREEN) / 2);
+						if (state.isLeft) {
+							SetCursorPos(state.down.x = GetSystemMetrics(SM_CXSCREEN) / 2,
+								state.down.y = GetSystemMetrics(SM_CYSCREEN) / 2);
+						} else {
+							state.down = state.downOrig;
+						}
 						ShowCursor(FALSE);
 						SetCapture(hwnd);
 					}
@@ -235,8 +277,8 @@ void Sqex::Texture::MipmapStream::Show() const {
 						POINT screenCursorPos = { GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam) };
 						ClientToScreen(hwnd, &screenCursorPos);
 
-						auto displaceX = screenCursorPos.x - state.downX;
-						auto displaceY = screenCursorPos.y - state.downY;
+						auto displaceX = screenCursorPos.x - state.down.x;
+						auto displaceY = screenCursorPos.y - state.down.y;
 						const auto speed = (state.isLeft ? 1 : 4);
 						if (!state.dragMoved) {
 							if (!displaceX && !displaceY)
@@ -254,7 +296,12 @@ void Sqex::Texture::MipmapStream::Show() const {
 						if (state.renderOffset.y + displaceY * speed > Margin)
 							displaceY = (Margin - state.renderOffset.y) / speed;
 
-						SetCursorPos(state.downX, state.downY);
+						if (state.isLeft)
+							SetCursorPos(state.down.x, state.down.y);
+						else {
+							state.down.x += displaceX;
+							state.down.y += displaceY;
+						}
 						state.renderOffset.x += displaceX * speed;
 						state.renderOffset.y += displaceY * speed;
 						InvalidateRect(hwnd, nullptr, FALSE);
@@ -338,7 +385,7 @@ void Sqex::Texture::MipmapStream::Show() const {
 
 	MSG msg{};
 	while (!state.closed && GetMessageW(&msg, nullptr, 0, 0)) {
-		if (IsDialogMessageW(msg.hwnd, &msg))
+		if (msg.hwnd != state.hwnd && IsDialogMessageW(msg.hwnd, &msg))
 			continue;
 		TranslateMessage(&msg);
 		DispatchMessageW(&msg);
@@ -370,7 +417,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 				stream->ReadStream(read, buf8, len);
 				read += len;
 				for (size_t i = 0; i < len; ++pos, ++i) {
-					rgba8888view[pos].Value = buf8[i] * 0x1010101UL;
+					rgba8888view[pos].Value = buf8[i] * 0x10101UL | 0xFF000000UL;
 					// result[pos].R = result[pos].G = result[pos].B = result[pos].A = buf8[i];
 				}
 			}
