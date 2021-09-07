@@ -136,6 +136,9 @@
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_SeCompatibleDrawableFont.h">
       <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_Creator.h">
+      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -216,6 +219,9 @@
       <Filter>Square Enix Definitions\Game Resource Files\Texture %28.tex%29</Filter>
     </ClCompile>
     <ClCompile Include="Sqex_FontCsv_SeCompatibleFont.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_FontCsv_Creator.cpp">
       <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
   </ItemGroup>

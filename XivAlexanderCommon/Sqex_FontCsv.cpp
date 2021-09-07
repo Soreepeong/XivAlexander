@@ -20,21 +20,21 @@ char32_t Sqex::FontCsv::Utf8Uint32ToUnicodeCodePoint(uint32_t n) {
 		return static_cast<char32_t>(n & 0x7F);
 	else if ((n & 0xFFFFE0C0) == 0xC080)
 		return static_cast<char32_t>(
-			((n >> 0x08) & 0x1F) |
-			((n >> 0x00) & 0x3F)
+			(((n >> 0x08) & 0x1F) << 6) |
+			(((n >> 0x00) & 0x3F) << 0)
 		);
 	else if ((n & 0xF0C0C0) == 0xE08080)
 		return static_cast<char32_t>(
-			((n >> 0x10) & 0x0F) |
-			((n >> 0x08) & 0x3F) |
-			((n >> 0x00) & 0x3F)
+			(((n >> 0x10) & 0x0F) << 12) |
+			(((n >> 0x08) & 0x3F) << 6) |
+			(((n >> 0x00) & 0x3F) << 0)
 		);
 	else if ((n & 0xF8C0C0C0) == 0xF0808080)
 		return static_cast<char32_t>(
-			((n >> 0x18) & 0x07) |
-			((n >> 0x10) & 0x3F) |
-			((n >> 0x08) & 0x3F) |
-			((n >> 0x00) & 0x3F)
+			(((n >> 0x18) & 0x07) << 18) |
+			(((n >> 0x10) & 0x3F) << 12) |
+			(((n >> 0x08) & 0x3F) << 6) |
+			(((n >> 0x00) & 0x3F) << 0)
 		);
 	else
 		return 0xFFFF;  // Guaranteed non-unicode

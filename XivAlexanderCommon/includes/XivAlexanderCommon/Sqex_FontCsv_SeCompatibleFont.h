@@ -36,52 +36,8 @@ namespace Sqex::FontCsv {
 		[[nodiscard]] virtual SSIZE_T GetKerning(char32_t l, char32_t r, SSIZE_T defaultOffset = 0) const;
 
 		[[nodiscard]] virtual GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const = 0;
-		[[nodiscard]] virtual GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, const std::u32string& s) const {
-			if (s.empty())
-				return {};
+		[[nodiscard]] virtual GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, const std::u32string& s) const;
 
-			char32_t lastChar = 0;
-			const auto iHeight = static_cast<SSIZE_T>(Height());
-
-			GlyphMeasurement result{};
-			SSIZE_T currX = x, currY = y;
-
-			for (const auto currChar : s) {
-				if (currChar == u'\r') {
-					continue;
-				} else if (currChar == u'\n') {
-					currX = x;
-					currY += iHeight;
-					lastChar = 0;
-					continue;
-				} else if (currChar == u'\u200c') {  // unicode non-joiner
-					lastChar = 0;
-					continue;
-				}
-
-				const auto kerning = GetKerning(lastChar, currChar);
-				const auto currBbox = Measure(currX + kerning, currY, currChar);
-				if (!currBbox.empty) {
-					if (result.empty) {
-						result = currBbox;
-						result.offsetX = result.right + result.offsetX;
-					} else {
-						result.left = std::min(result.left, currBbox.left);
-						result.top = std::min(result.top, currBbox.top);
-						result.right = std::max(result.right, currBbox.right);
-						result.bottom = std::max(result.bottom, currBbox.bottom);
-						result.offsetX = std::max(result.offsetX, currBbox.right + currBbox.offsetX);
-					}
-					currX = currBbox.right + currBbox.offsetX;
-				}
-				lastChar = currChar;
-			}
-			if (result.empty)
-				return { true };
-
-			result.offsetX -= result.right;
-			return result;
-		}
 		[[nodiscard]] virtual GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, const std::string& s) const {
 			return Measure(x, y, ToU32(s));
 		}

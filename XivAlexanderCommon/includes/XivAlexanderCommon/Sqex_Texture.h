@@ -36,6 +36,19 @@ namespace Sqex::Texture {
 		uint8_t G : 4;
 		uint8_t B : 4;
 		uint8_t A : 4;  // Actually opacity
+
+		void SetFrom(uint32_t r, uint32_t g, uint32_t b) {
+			R = r;
+			G = g;
+			B = b;
+		}
+
+		void SetFrom(uint32_t r, uint32_t g, uint32_t b, uint32_t a) {
+			R = r;
+			G = g;
+			B = b;
+			A = a;
+		}
 	};
 
 	struct RGBA5551 {
@@ -49,6 +62,19 @@ namespace Sqex::Texture {
 		uint8_t G : 5;
 		uint8_t B : 5;
 		uint8_t A : 1;  // Actually opacity
+
+		void SetFrom(uint32_t r, uint32_t g, uint32_t b) {
+			R = r;
+			G = g;
+			B = b;
+		}
+
+		void SetFrom(uint32_t r, uint32_t g, uint32_t b, uint32_t a) {
+			R = r;
+			G = g;
+			B = b;
+			A = a;
+		}
 	};
 
 	union RGBAHHHH {

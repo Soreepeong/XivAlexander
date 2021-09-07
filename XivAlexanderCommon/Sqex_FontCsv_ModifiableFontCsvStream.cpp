@@ -184,7 +184,7 @@ void Sqex::FontCsv::ModifiableFontCsvStream::AddKerning(char32_t l, char32_t r, 
 			return l.RightUtf8Value < r.RightUtf8Value;
 		return l.LeftUtf8Value < r.LeftUtf8Value;
 	});
-	if (it->LeftUtf8Value == entry.LeftUtf8Value && it->RightUtf8Value == entry.RightUtf8Value) {
+	if (it != m_kerningEntries.end() && it->LeftUtf8Value == entry.LeftUtf8Value && it->RightUtf8Value == entry.RightUtf8Value) {
 		if (rightOffset)
 			it->RightOffset = rightOffset;
 		else

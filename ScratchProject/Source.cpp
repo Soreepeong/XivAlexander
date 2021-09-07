@@ -6,6 +6,7 @@
 #include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
 #include <XivAlexanderCommon/Sqex_Texture_Mipmap.h>
 
+#include "XivAlexanderCommon/Sqex_FontCsv_Creator.h"
 #include "XivAlexanderCommon/Sqex_FontCsv_SeCompatibleDrawableFont.h"
 #include "XivAlexanderCommon/Sqex_FontCsv_SeCompatibleFont.h"
 
@@ -47,43 +48,6 @@ static const auto* const pszTestString = reinterpret_cast<const char*>(
 	);
 
 int main() {
-	// const auto pszTestString = reinterpret_cast<const char*>(u8"breh\n\n\n\n\n\n\nnTTTTT");
-	//
-	//for (const auto& it : std::filesystem::recursive_directory_iterator(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack)")) {
-	//	if (it.path().extension() == ".index") {
-	//		std::cout << std::format("Verifying {}...\n", it.path());
-	//		Sqex::Sqpack::Reader(it, true, true);
-	//	}
-	//}
-	const auto comic36 = std::make_shared<Sqex::FontCsv::GdiDrawingFont<>>(LOGFONTW{
-		.lfHeight = -MulDiv(36, GetDeviceCaps(GetDC(0), LOGPIXELSY), 72),
-		.lfCharSet = DEFAULT_CHARSET,
-		.lfQuality = CLEARTYPE_NATURAL_QUALITY,
-		.lfFaceName = L"Comic Sans MS",
-		});
-	const auto comic36l = std::make_shared<Sqex::FontCsv::GdiDrawingFont<uint8_t>>(LOGFONTW{
-		.lfHeight = -MulDiv(36, GetDeviceCaps(GetDC(0), LOGPIXELSY), 72),
-		.lfCharSet = DEFAULT_CHARSET,
-		.lfQuality = CLEARTYPE_NATURAL_QUALITY,
-		.lfFaceName = L"Comic Sans MS",
-		});
-	//{
-
-	//	const auto bbox = comic36->Measure(0, 0, pszTestString);
-
-	//	auto w = static_cast<uint16_t>(bbox.right - bbox.left);
-	//	auto h = static_cast<uint16_t>(bbox.bottom - bbox.top);
-	//	const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(
-	//		w,
-	//		h,
-	//		Sqex::Texture::CompressionType::ARGB_1,
-	//		std::vector<uint8_t>((size_t() + w) * (size_t() + h) * 4)
-	//		);
-	//	comic36->Draw(mm32.get(), 0, 0, pszTestString, 0xffffffff, 0xff000000);
-	//	mm32->Show();
-	//	//return 0;
-	//}
-
 	auto t = GetTickCount64();
 	const auto common = Sqex::Sqpack::Reader(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\000000.win32.index)", true, true);
 	std::cout << std::format("Sqpack::Reader {}\n", GetTickCount64() - t);
@@ -99,6 +63,12 @@ int main() {
 	std::cout << std::format("Read 7 textures {}\n", GetTickCount64() - t);
 	t = GetTickCount64();
 
+	const auto comic36 = std::make_shared<Sqex::FontCsv::GdiDrawingFont<>>(LOGFONTW{
+		.lfHeight = -MulDiv(36, GetDeviceCaps(GetDC(0), LOGPIXELSY), 72),
+		.lfCharSet = DEFAULT_CHARSET,
+		.lfQuality = CLEARTYPE_NATURAL_QUALITY,
+		.lfFaceName = L"Comic Sans MS",
+		});
 	const auto axis36 = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
 		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/AXIS_36.fdt")),
 		true), texs);
@@ -113,6 +83,18 @@ int main() {
 	, 36.f, axis36->Ascent(), axis36->Descent()
 		);
 
+	const auto comic36l = std::make_shared<Sqex::FontCsv::GdiDrawingFont<uint8_t>>(LOGFONTW{
+		.lfHeight = -MulDiv(36, GetDeviceCaps(GetDC(0), LOGPIXELSY), 72),
+		.lfCharSet = DEFAULT_CHARSET,
+		.lfQuality = CLEARTYPE_NATURAL_QUALITY,
+		.lfFaceName = L"Comic Sans MS",
+		});
+	const auto gulim36l = std::make_shared<Sqex::FontCsv::GdiDrawingFont<uint8_t>>(LOGFONTW{
+		.lfHeight = -MulDiv(36, GetDeviceCaps(GetDC(0), LOGPIXELSY), 72),
+		.lfCharSet = DEFAULT_CHARSET,
+		.lfQuality = CLEARTYPE_NATURAL_QUALITY,
+		.lfFaceName = L"Gulim",
+		});
 	const auto axis36l = std::make_shared<Sqex::FontCsv::SeDrawableFont<Sqex::Texture::RGBA4444, uint8_t>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
 		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/AXIS_36.fdt")),
 		true), texs);
@@ -144,6 +126,7 @@ int main() {
 	font->Draw(mm32.get(), 0, 0, pszTestString,
 		Sqex::Texture::RGBA8888(200, 200, 255), Sqex::Texture::RGBA8888(0, 0, 0, 0));
 	std::cout << std::format("Draw32: {}\n", GetTickCount64() - t);
+	mm32->Show();
 
 	t = GetTickCount64();
 	const auto mm8 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(
@@ -154,8 +137,33 @@ int main() {
 		);
 	fontl->Draw(mm8.get(), 0, 0, pszTestString, 255, 0, 255, 0);
 	std::cout << std::format("Draw8: {}\n", GetTickCount64() - t);
+	mm8->Show();
+	
+	auto creator = Sqex::FontCsv::Creator();
+	creator.Points = 36;
+	creator.Ascent = axis36l->Ascent();
+	creator.Descent = axis36l->Descent();
+	std::cout << "adding characters...\n";
+	creator.AddCharacter(comic36l);
+	creator.AddCharacter(axis36l);
+	creator.AddCharacter(gulim36l);
+	creator.AddKerning(comic36l->GetKerningTable());
+	creator.AddKerning(axis36l->GetKerningTable());
+	creator.AddKerning(gulim36l->GetKerningTable());
+
+	Sqex::FontCsv::Creator::RenderTarget target(4096, 4096);
+	std::cout << "compiling...\n";
+	const auto newFont = creator.Compile(target);
+	std::cout << "finalizing...\n";
+	target.Finalize();
+
+	const auto newFontMipmaps = target.AsMipmapStreamVector();
+	std::cout << std::format("done: {} mipmaps\n", newFontMipmaps.size());
+
+	const auto testfont = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(newFont, newFontMipmaps);
+	testfont->Draw(mm32.get(), 5, 5, pszTestString,
+		Sqex::Texture::RGBA8888(200, 255, 0, 150), Sqex::Texture::RGBA8888(0, 0, 0, 0));
 
 	mm32->Show();
-	mm8->Show();
 	return 0;
 }

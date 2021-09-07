@@ -374,8 +374,8 @@ void Sqex::Texture::MipmapStream::Show() const {
 	AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
 	state.hwnd = CreateWindowExW(0, wcex.lpszClassName, L"Preview", WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, CW_USEDEFAULT,
-		std::max(128L, std::min(1600L, rc.right - rc.left)),
-		std::max(128L, std::min(900L, rc.bottom - rc.top)),
+		std::max(128L, std::min(1920L, rc.right - rc.left)),
+		std::max(128L, std::min(1080L, rc.bottom - rc.top)),
 		nullptr, nullptr, nullptr, nullptr);
 	if (!state.hwnd)
 		throw Utils::Win32::Error("CreateWindowExW");

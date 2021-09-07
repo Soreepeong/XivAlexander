@@ -70,6 +70,53 @@ SSIZE_T Sqex::FontCsv::SeCompatibleFont::GetKerning(char32_t l, char32_t r, SSIZ
 	return it->second;
 }
 
+Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeCompatibleFont::Measure(SSIZE_T x, SSIZE_T y, const std::u32string& s) const {
+	if (s.empty())
+		return {};
+
+	char32_t lastChar = 0;
+	const auto iHeight = static_cast<SSIZE_T>(Height());
+
+	GlyphMeasurement result{};
+	SSIZE_T currX = x, currY = y;
+
+	for (const auto currChar : s) {
+		if (currChar == u'\r') {
+			continue;
+		} else if (currChar == u'\n') {
+			currX = x;
+			currY += iHeight;
+			lastChar = 0;
+			continue;
+		} else if (currChar == u'\u200c') {  // unicode non-joiner
+			lastChar = 0;
+			continue;
+		}
+
+		const auto kerning = GetKerning(lastChar, currChar);
+		const auto currBbox = Measure(currX + kerning, currY, currChar);
+		if (!currBbox.empty) {
+			if (result.empty) {
+				result = currBbox;
+				result.offsetX = result.right + result.offsetX;
+			} else {
+				result.left = std::min(result.left, currBbox.left);
+				result.top = std::min(result.top, currBbox.top);
+				result.right = std::max(result.right, currBbox.right);
+				result.bottom = std::max(result.bottom, currBbox.bottom);
+				result.offsetX = std::max(result.offsetX, currBbox.right + currBbox.offsetX);
+			}
+			currX = currBbox.right + currBbox.offsetX;
+		}
+		lastChar = currChar;
+	}
+	if (result.empty)
+		return { true };
+
+	result.offsetX -= result.right;
+	return result;
+}
+
 struct Sqex::FontCsv::SeFont::Implementation {
 	const std::shared_ptr<const ModifiableFontCsvStream> m_stream;
 
@@ -355,7 +402,10 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::GdiFont::GetBoundingBox(char32_t 
 SSIZE_T Sqex::FontCsv::GdiFont::GetCharacterWidth(char32_t c) const {
 	ABCFLOAT w;
 	GetCharABCWidthsFloatW(m_pImpl->m_hdc, c, c, &w);
-	return static_cast<SSIZE_T>(static_cast<double>(w.abcfA) + w.abcfB);
+	if (c == ' ')
+		return static_cast<SSIZE_T>(static_cast<double>(w.abcfA) + w.abcfB + w.abcfC);
+	else
+		return static_cast<SSIZE_T>(static_cast<double>(w.abcfA) + w.abcfB);
 }
 
 float Sqex::FontCsv::GdiFont::Size() const {

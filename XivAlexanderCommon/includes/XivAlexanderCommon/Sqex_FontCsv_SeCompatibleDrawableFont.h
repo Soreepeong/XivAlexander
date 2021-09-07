@@ -3,9 +3,9 @@
 
 #include "Sqex_FontCsv_SeCompatibleFont.h"
 #include "Sqex_Texture.h"
+#include "Sqex_Texture_Mipmap.h"
 
 namespace Sqex::FontCsv {
-	
 	template<
 		typename SrcPixFmt,
 		uint32_t ResolverFunction(const SrcPixFmt&),
@@ -350,7 +350,7 @@ namespace Sqex::FontCsv {
 		mutable struct BitmapInfoWithColorSpecContainer {
 			BITMAPINFO bmi;
 			DWORD dummy[2];
-		} m_bmi;
+		} m_bmi{};
 		mutable std::vector<Texture::RGBA8888> m_srcBuf;
 		
 		static uint32_t GetEffectiveOpacity(const Texture::RGBA8888& src) {
