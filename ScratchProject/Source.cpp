@@ -55,6 +55,35 @@ int main() {
 	//		Sqex::Sqpack::Reader(it, true, true);
 	//	}
 	//}
+	const auto comic36 = std::make_shared<Sqex::FontCsv::GdiDrawingFont<>>(LOGFONTW{
+		.lfHeight = -MulDiv(36, GetDeviceCaps(GetDC(0), LOGPIXELSY), 72),
+		.lfCharSet = DEFAULT_CHARSET,
+		.lfQuality = CLEARTYPE_NATURAL_QUALITY,
+		.lfFaceName = L"Comic Sans MS",
+		});
+	const auto comic36l = std::make_shared<Sqex::FontCsv::GdiDrawingFont<uint8_t>>(LOGFONTW{
+		.lfHeight = -MulDiv(36, GetDeviceCaps(GetDC(0), LOGPIXELSY), 72),
+		.lfCharSet = DEFAULT_CHARSET,
+		.lfQuality = CLEARTYPE_NATURAL_QUALITY,
+		.lfFaceName = L"Comic Sans MS",
+		});
+	//{
+
+	//	const auto bbox = comic36->Measure(0, 0, pszTestString);
+
+	//	auto w = static_cast<uint16_t>(bbox.right - bbox.left);
+	//	auto h = static_cast<uint16_t>(bbox.bottom - bbox.top);
+	//	const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(
+	//		w,
+	//		h,
+	//		Sqex::Texture::CompressionType::ARGB_1,
+	//		std::vector<uint8_t>((size_t() + w) * (size_t() + h) * 4)
+	//		);
+	//	comic36->Draw(mm32.get(), 0, 0, pszTestString, 0xffffffff, 0xff000000);
+	//	mm32->Show();
+	//	//return 0;
+	//}
+
 	auto t = GetTickCount64();
 	const auto common = Sqex::Sqpack::Reader(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\000000.win32.index)", true, true);
 	std::cout << std::format("Sqpack::Reader {}\n", GetTickCount64() - t);
@@ -80,8 +109,9 @@ int main() {
 		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/Jupiter_90.fdt")),
 		true), texs);
 	const auto font = std::make_shared<Sqex::FontCsv::CascadingDrawableFont<>>(
-		std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<>>>{ jupiter90, axis36, },
-		36.f, axis36->Ascent(), axis36->Descent());
+		std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<>>>{ jupiter90, comic36, axis36, }
+	, 36.f, axis36->Ascent(), axis36->Descent()
+		);
 
 	const auto axis36l = std::make_shared<Sqex::FontCsv::SeDrawableFont<Sqex::Texture::RGBA4444, uint8_t>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
 		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/AXIS_36.fdt")),
@@ -93,8 +123,9 @@ int main() {
 		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/Jupiter_90.fdt")),
 		true), texs);
 	const auto fontl = std::make_shared<Sqex::FontCsv::CascadingDrawableFont<uint8_t>>(
-		std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<uint8_t>>>{ jupiter90l, axis36l, },
-		36.f, axis36->Ascent(), axis36->Descent());
+		std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<uint8_t>>>{ jupiter90l, comic36l, axis36l, }
+	, 36.f, axis36->Ascent(), axis36->Descent()
+		);
 
 	std::cout << std::format("Read 3 fdt files {}\n", GetTickCount64() - t);
 
@@ -109,20 +140,10 @@ int main() {
 		Sqex::Texture::CompressionType::ARGB_1,
 		std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * (size_t() + bbox.right - bbox.left) * (size_t() + bbox.bottom - bbox.top))
 		);
-	axis36->Draw(mm32.get(), 0, 0, pszTestString,
-		Sqex::Texture::RGBA8888(0, 0, 180), Sqex::Texture::RGBA8888(0, 0, 0, 0));
+	std::fill(mm32->View<uint32_t>().begin(), mm32->View<uint32_t>().end(), 0xFF000000);
+	font->Draw(mm32.get(), 0, 0, pszTestString,
+		Sqex::Texture::RGBA8888(200, 200, 255), Sqex::Texture::RGBA8888(0, 0, 0, 0));
 	std::cout << std::format("Draw32: {}\n", GetTickCount64() - t);
-
-	if constexpr (false) {
-		SSIZE_T x = 30;
-		for (int i = 0; i <= 255; i += 15) {
-			const auto m = trump68->Draw(mm32.get(), x, 30, "Hello!",
-				Sqex::Texture::RGBA8888(0, 255, 0, 255 - i), Sqex::Texture::RGBA8888(255, 0, 0, i));
-			trump68->Draw(mm32.get(), x, 120, "Hello!",
-				Sqex::Texture::RGBA8888(255, 0, 0, i), Sqex::Texture::RGBA8888(0, 255, 0, 255 - i));
-			x = m.right + m.offsetX;
-		}
-	}
 
 	t = GetTickCount64();
 	const auto mm8 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(
@@ -131,7 +152,7 @@ int main() {
 		Sqex::Texture::CompressionType::L8_1,
 		std::vector<uint8_t>((size_t() + bbox.right - bbox.left) * (size_t() + bbox.bottom - bbox.top))
 		);
-	axis36l->Draw(mm8.get(), 0, 0, pszTestString, 255, 0, 255, 0);
+	fontl->Draw(mm8.get(), 0, 0, pszTestString, 255, 0, 255, 0);
 	std::cout << std::format("Draw8: {}\n", GetTickCount64() - t);
 
 	mm32->Show();

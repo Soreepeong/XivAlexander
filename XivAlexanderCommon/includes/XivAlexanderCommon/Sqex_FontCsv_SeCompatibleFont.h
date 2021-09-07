@@ -137,4 +137,30 @@ namespace Sqex::FontCsv {
 	protected:
 		[[nodiscard]] const std::vector<std::shared_ptr<SeCompatibleFont>>& GetFontList() const;
 	};
+
+	class GdiFont : public virtual SeCompatibleFont {
+		struct Implementation;
+		const std::unique_ptr<Implementation> m_pImpl;
+
+	public:
+		GdiFont(const LOGFONTW&);
+		~GdiFont() override;
+
+		[[nodiscard]] bool HasCharacter(char32_t) const override;
+		[[nodiscard]] GlyphMeasurement GetBoundingBox(char32_t c, SSIZE_T offsetX, SSIZE_T offsetY) const override;
+		[[nodiscard]] SSIZE_T GetCharacterWidth(char32_t c) const override;
+		[[nodiscard]] float Size() const override;
+		[[nodiscard]] const std::vector<char32_t>& GetAllCharacters() const override;
+		[[nodiscard]] uint32_t Ascent() const override;
+		[[nodiscard]] uint32_t Descent() const override;
+		[[nodiscard]] const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& GetKerningTable() const override;
+
+		using SeCompatibleFont::Measure;
+		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const override;
+		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, const std::u32string& s) const override;
+
+	protected:
+		HDC GetDC() const;
+		const TEXTMETRICW& GetMetrics() const;
+	};
 }
