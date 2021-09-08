@@ -24,7 +24,6 @@ namespace Sqex::FontCsv {
 		virtual ~SeCompatibleFont() = default;
 
 		[[nodiscard]] virtual bool HasCharacter(char32_t) const = 0;
-		[[nodiscard]] virtual GlyphMeasurement GetBoundingBox(char32_t c, SSIZE_T offsetX = 0, SSIZE_T offsetY = 0) const = 0;
 		[[nodiscard]] virtual SSIZE_T GetCharacterWidth(char32_t c) const = 0;
 		[[nodiscard]] virtual float Size() const = 0;
 		[[nodiscard]] virtual const std::vector<char32_t>& GetAllCharacters() const = 0;
@@ -37,7 +36,6 @@ namespace Sqex::FontCsv {
 
 		[[nodiscard]] virtual GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const = 0;
 		[[nodiscard]] virtual GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, const std::u32string& s) const;
-
 		[[nodiscard]] virtual GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, const std::string& s) const {
 			return Measure(x, y, ToU32(s));
 		}
@@ -52,8 +50,6 @@ namespace Sqex::FontCsv {
 		~SeFont() override;
 
 		[[nodiscard]] bool HasCharacter(char32_t) const override;
-		[[nodiscard]] static GlyphMeasurement GetBoundingBox(const FontTableEntry& entry, SSIZE_T offsetX = 0, SSIZE_T offsetY = 0);
-		[[nodiscard]] GlyphMeasurement GetBoundingBox(char32_t c, SSIZE_T offsetX = 0, SSIZE_T offsetY = 0) const override;
 		[[nodiscard]] SSIZE_T GetCharacterWidth(char32_t c) const override;
 		[[nodiscard]] float Size() const override;
 		[[nodiscard]] const std::vector<char32_t>& GetAllCharacters() const override;
@@ -62,7 +58,7 @@ namespace Sqex::FontCsv {
 		[[nodiscard]] const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& GetKerningTable() const override;
 
 		using SeCompatibleFont::Measure;
-		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, const FontTableEntry& entry) const;
+		[[nodiscard]] static GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, const FontTableEntry& entry);
 		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const override;
 
 	protected:
@@ -79,7 +75,6 @@ namespace Sqex::FontCsv {
 		~CascadingFont() override;
 
 		[[nodiscard]] bool HasCharacter(char32_t) const override;
-		[[nodiscard]] GlyphMeasurement GetBoundingBox(char32_t c, SSIZE_T offsetX = 0, SSIZE_T offsetY = 0) const override;
 		[[nodiscard]] SSIZE_T GetCharacterWidth(char32_t c) const override;
 		[[nodiscard]] float Size() const override;
 		[[nodiscard]] const std::vector<char32_t>& GetAllCharacters() const override;
@@ -89,6 +84,7 @@ namespace Sqex::FontCsv {
 
 		using SeCompatibleFont::Measure;
 		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const override;
+		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, const std::u32string& s) const override;
 
 	protected:
 		[[nodiscard]] const std::vector<std::shared_ptr<SeCompatibleFont>>& GetFontList() const;
@@ -103,7 +99,6 @@ namespace Sqex::FontCsv {
 		~GdiFont() override;
 
 		[[nodiscard]] bool HasCharacter(char32_t) const override;
-		[[nodiscard]] GlyphMeasurement GetBoundingBox(char32_t c, SSIZE_T offsetX, SSIZE_T offsetY) const override;
 		[[nodiscard]] SSIZE_T GetCharacterWidth(char32_t c) const override;
 		[[nodiscard]] float Size() const override;
 		[[nodiscard]] const std::vector<char32_t>& GetAllCharacters() const override;
@@ -113,7 +108,6 @@ namespace Sqex::FontCsv {
 
 		using SeCompatibleFont::Measure;
 		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const override;
-		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, const std::u32string& s) const override;
 
 	protected:
 		HDC GetDC() const;

@@ -23,14 +23,15 @@ namespace Sqex::FontCsv {
 		uint16_t GlobalOffsetYModifier = -1;
 		int MaxLeftOffset = 4;
 		std::set<char32_t> AlwaysApplyKerningCharacters = { U' ' };
+		bool AlignToBaseline = true;
 
 		Creator();
 		~Creator();
 
-		void AddCharacter(char32_t codePoint, std::shared_ptr<SeCompatibleDrawableFont<uint8_t>> font, bool replace = false);
-		void AddCharacter(const std::shared_ptr<SeCompatibleDrawableFont<uint8_t>>& font, bool replace = false);
-		void AddKerning(char32_t left, char32_t right, int distance, bool replace = false);
-		void AddKerning(const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& table, bool replace = false);
+		void AddCharacter(char32_t codePoint, std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>> font, bool replace = false);
+		void AddCharacter(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, bool replace = false);
+		void AddKerning(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, char32_t left, char32_t right, int distance, bool replace = false);
+		void AddKerning(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, bool replace = false);
 
 		class RenderTarget {
 			const uint16_t m_textureWidth;

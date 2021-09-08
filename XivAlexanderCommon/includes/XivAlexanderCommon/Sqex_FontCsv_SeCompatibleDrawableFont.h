@@ -262,7 +262,7 @@ namespace Sqex::FontCsv {
 
 		using SeCompatibleDrawableFont<DestPixFmt>::Draw;
 		GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, const FontTableEntry& entry, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity = MaxOpacity, OpacityType bgOpacity = MaxOpacity) const {
-			const auto bbox = GetBoundingBox(entry, x, y);
+			const auto bbox = Measure(x, y, entry);
 			if (to) {
 				const auto destWidth = static_cast<SSIZE_T>(to->Width());
 				const auto destHeight = static_cast<SSIZE_T>(to->Height());
@@ -376,7 +376,7 @@ namespace Sqex::FontCsv {
 
 		using SeCompatibleDrawableFont<DestPixFmt, OpacityType>::Draw;
 		GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, char32_t c, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity, OpacityType bgOpacity) const override {
-			const auto zeroBbox = GetBoundingBox(c, 0, 0);
+			const auto zeroBbox = Measure(0, 0, c);
 			if (zeroBbox.empty)
 				return { true };
 

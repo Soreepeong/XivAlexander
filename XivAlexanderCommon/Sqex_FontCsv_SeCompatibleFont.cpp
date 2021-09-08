@@ -46,7 +46,7 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeCompatibleFont::MaxBoundingBox(
 		return m_maxBoundingBox;
 	GlyphMeasurement res{ false, INT_MAX, INT_MAX, INT_MIN, INT_MIN, INT_MIN };
 	for (const auto& c : GetAllCharacters()) {
-		GlyphMeasurement cur = GetBoundingBox(c);
+		GlyphMeasurement cur = Measure(0, 0, c);
 		if (cur.empty)
 			throw std::runtime_error("Character found from GetAllCharacters but GetBoundingBox returned empty");
 		res.left = std::min(res.left, cur.left);
@@ -141,25 +141,6 @@ bool Sqex::FontCsv::SeFont::HasCharacter(char32_t c) const {
 	return m_pImpl->m_stream->GetFontEntry(c);
 }
 
-Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeFont::GetBoundingBox(const FontTableEntry & entry, SSIZE_T offsetX, SSIZE_T offsetY) {
-	return {
-		.empty = false,
-		.left = offsetX,
-		.top = offsetY + entry.CurrentOffsetY,
-		.right = offsetX + entry.BoundingWidth,
-		.bottom = offsetY + entry.CurrentOffsetY + entry.BoundingHeight,
-		.offsetX = entry.NextOffsetX,
-	};
-}
-
-Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeFont::GetBoundingBox(char32_t c, SSIZE_T offsetX, SSIZE_T offsetY) const {
-	const auto entry = m_pImpl->m_stream->GetFontEntry(c);
-	if (!entry)
-		return { true };
-
-	return GetBoundingBox(*entry, offsetX, offsetY);
-}
-
 SSIZE_T Sqex::FontCsv::SeFont::GetCharacterWidth(char32_t c) const {
 	const auto entry = m_pImpl->m_stream->GetFontEntry(c);
 	if (!entry)
@@ -204,8 +185,15 @@ const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& Sqex::FontCsv::SeFont::G
 	return m_pImpl->m_kerningMap;
 }
 
-Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeFont::Measure(SSIZE_T x, SSIZE_T y, const FontTableEntry & entry) const {
-	return GetBoundingBox(entry, x, y);
+Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeFont::Measure(SSIZE_T x, SSIZE_T y, const FontTableEntry & entry) {
+	return {
+		.empty = false,
+		.left = x,
+		.top = y + entry.CurrentOffsetY,
+		.right = x + entry.BoundingWidth,
+		.bottom = y + entry.CurrentOffsetY + entry.BoundingHeight,
+		.offsetX = entry.NextOffsetX,
+	};
 }
 
 Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeFont::Measure(SSIZE_T x, SSIZE_T y, const char32_t c) const {
@@ -230,7 +218,7 @@ struct Sqex::FontCsv::CascadingFont::Implementation {
 
 	mutable bool m_characterListDiscovered = false;
 	mutable std::vector<char32_t> m_characterList;
-
+	
 	Implementation(std::vector<std::shared_ptr<SeCompatibleFont>> fontList, float normalizedSize, uint32_t ascent, uint32_t descent)
 		: m_fontList(std::move(fontList))
 		, m_size(static_cast<bool>(normalizedSize) ? normalizedSize : std::ranges::max(m_fontList, {}, [](const auto& r) {return r->Size();  })->Size())
@@ -258,13 +246,6 @@ Sqex::FontCsv::CascadingFont::~CascadingFont() = default;
 
 bool Sqex::FontCsv::CascadingFont::HasCharacter(char32_t c) const {
 	return std::ranges::any_of(m_pImpl->m_fontList, [c](const auto& f) { return f->HasCharacter(c); });
-}
-
-Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::CascadingFont::GetBoundingBox(char32_t c, SSIZE_T offsetX, SSIZE_T offsetY) const {
-	for (const auto& f : m_pImpl->m_fontList)
-		if (const auto bbox = f->GetBoundingBox(c, offsetX, offsetY); bbox.left || bbox.right || bbox.top || bbox.bottom)
-			return bbox;
-	return {};
 }
 
 SSIZE_T Sqex::FontCsv::CascadingFont::GetCharacterWidth(char32_t c) const {
@@ -330,9 +311,56 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::CascadingFont::Measure(SSIZE_T x,
 	for (const auto& f : GetFontList()) {
 		const auto currBbox = f->Measure(x, y + Ascent() - f->Ascent(), c);
 		if (!currBbox.empty)
-			return currBbox;
+			return { false, currBbox.left, currBbox.top, currBbox.right, currBbox.bottom, currBbox.offsetX };
 	}
 	return { true };
+}
+
+Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::CascadingFont::Measure(SSIZE_T x, SSIZE_T y, const std::u32string& s) const {
+	if (s.empty())
+		return {};
+
+	char32_t lastChar = 0;
+	const auto iHeight = static_cast<SSIZE_T>(Height());
+
+	GlyphMeasurement result{};
+	SSIZE_T currX = x, currY = y;
+
+	for (const auto currChar : s) {
+		if (currChar == u'\r') {
+			continue;
+		} else if (currChar == u'\n') {
+			currX = x;
+			currY += iHeight;
+			lastChar = 0;
+			continue;
+		} else if (currChar == u'\u200c') {  // unicode non-joiner
+			lastChar = 0;
+			continue;
+		}
+
+		const auto kerning = GetKerning(lastChar, currChar);
+		const auto currBbox = Measure(currX + kerning, currY, currChar);
+		if (!currBbox.empty) {
+			if (result.empty) {
+				result = currBbox;
+				result.offsetX = result.right + result.offsetX;
+			} else {
+				result.left = std::min(result.left, currBbox.left);
+				result.top = std::min(result.top, currBbox.top);
+				result.right = std::max(result.right, currBbox.right);
+				result.bottom = std::max(result.bottom, currBbox.bottom);
+				result.offsetX = std::max(result.offsetX, currBbox.right + currBbox.offsetX);
+			}
+			currX = currBbox.right + currBbox.offsetX;
+		}
+		lastChar = currChar;
+	}
+	if (result.empty)
+		return { true };
+
+	result.offsetX -= result.right;
+	return result;
 }
 
 const std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleFont>>& Sqex::FontCsv::CascadingFont::GetFontList() const {
@@ -382,30 +410,12 @@ bool Sqex::FontCsv::GdiFont::HasCharacter(char32_t c) const {
 	return it != chars.end() && *it == c ;
 }
 
-Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::GdiFont::GetBoundingBox(char32_t c, SSIZE_T offsetX, SSIZE_T offsetY) const {
-	if (!HasCharacter(c))
-		return { true };
-	RECT r{
-		static_cast<LONG>(offsetX),
-		static_cast<LONG>(offsetY),
-		static_cast<LONG>(offsetX),
-		static_cast<LONG>(offsetY),
-	};
-	DrawTextW(m_pImpl->m_hdc, ToU16(ToU8({ c })).c_str(), -1, &r, DT_CALCRECT);
-	return {
-		false,
-		r.left, r.top, r.right, r.bottom,
-		GetCharacterWidth(c) - (SSIZE_T() + r.right - r.left)
-	};
-}
-
 SSIZE_T Sqex::FontCsv::GdiFont::GetCharacterWidth(char32_t c) const {
 	ABCFLOAT w;
 	GetCharABCWidthsFloatW(m_pImpl->m_hdc, c, c, &w);
-	if (c == ' ')
-		return static_cast<SSIZE_T>(static_cast<double>(w.abcfA) + w.abcfB + w.abcfC);
-	else
-		return static_cast<SSIZE_T>(static_cast<double>(w.abcfA) + w.abcfB);
+	const auto tw = w.abcfA + w.abcfB + w.abcfC;
+	const auto tw2 = w.abcfA + w.abcfB;
+	return static_cast<SSIZE_T>(static_cast<double>(c == ' ' ? tw : tw2));
 }
 
 float Sqex::FontCsv::GdiFont::Size() const {
@@ -457,21 +467,19 @@ const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& Sqex::FontCsv::GdiFont::
 }
 
 Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::GdiFont::Measure(SSIZE_T x, SSIZE_T y, char32_t c) const {
-	return GetBoundingBox(c, x, y);
-}
-
-Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::GdiFont::Measure(SSIZE_T x, SSIZE_T y, const std::u32string& s) const {
+	if (!HasCharacter(c))
+		return { true };
 	RECT r{
 		static_cast<LONG>(x),
 		static_cast<LONG>(y),
 		static_cast<LONG>(x),
 		static_cast<LONG>(y),
 	};
-	DrawTextW(m_pImpl->m_hdc, ToU16(ToU8(s)).c_str(), -1, &r, DT_CALCRECT);
-	// auto t = SeCompatibleFont::Measure(x, y, s);
+	DrawTextW(m_pImpl->m_hdc, ToU16(ToU8({ c })).c_str(), -1, &r, DT_CALCRECT);
 	return {
 		false,
-		r.left, r.top, r.right, r.bottom,0
+		r.left, r.top, r.right, r.bottom,
+		GetCharacterWidth(c) - (SSIZE_T() + r.right - r.left)
 	};
 }
 
