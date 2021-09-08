@@ -58,22 +58,24 @@ namespace Sqex::Sqpack {
 
 	class LazyFileOpeningEntryProvider : public EntryProvider {
 		const std::filesystem::path m_path;
-
-		mutable std::shared_ptr<std::mutex> m_initializationMutex;
 		const std::shared_ptr<RandomAccessStream> m_stream;
+		mutable std::shared_ptr<std::mutex> m_initializationMutex;
+
+	protected:
+		const uint64_t m_originalSize;
 
 	public:
 		LazyFileOpeningEntryProvider(EntryPathSpec, std::filesystem::path, bool openImmediately = false);
 		LazyFileOpeningEntryProvider(EntryPathSpec, std::shared_ptr<RandomAccessStream>);
 
 		[[nodiscard]] uint64_t StreamSize() const final;
-
 		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const final;
 
 		void Resolve();
 
 	protected:
 		virtual void Initialize(const RandomAccessStream& stream) = 0;
+		virtual uint64_t MaxPossibleStreamSize() const { return UINT64_MAX; }
 		virtual [[nodiscard]] uint64_t StreamSize(const RandomAccessStream& stream) const = 0;
 		virtual uint64_t ReadStreamPartial(const RandomAccessStream& stream, uint64_t offset, void* buf, uint64_t length) const = 0;
 	};
@@ -82,19 +84,20 @@ namespace Sqex::Sqpack {
 		SqData::FileEntryHeader m_header{};
 
 		uint32_t m_padBeforeData = 0;
-		uint32_t m_size;
 
 	public:
 		using LazyFileOpeningEntryProvider::LazyFileOpeningEntryProvider;
 		using LazyFileOpeningEntryProvider::StreamSize;
 		using LazyFileOpeningEntryProvider::ReadStreamPartial;
+
 		[[nodiscard]] SqData::FileEntryType EntryType() const override { return SqData::FileEntryType::Binary; }
 
 		std::string DescribeState() const override { return "OnTheFlyBinaryEntryProvider"; }
 
 	protected:
 		void Initialize(const RandomAccessStream& stream) override;
-		[[nodiscard]] uint64_t StreamSize(const RandomAccessStream& stream) const override { return m_size; }
+		[[nodiscard]] uint64_t MaxPossibleStreamSize() const override;
+		[[nodiscard]] uint64_t StreamSize(const RandomAccessStream& stream) const override { return MaxPossibleStreamSize(); }
 		uint64_t ReadStreamPartial(const RandomAccessStream& stream, uint64_t offset, void* buf, uint64_t length) const override;
 	};
 
@@ -105,6 +108,7 @@ namespace Sqex::Sqpack {
 		using LazyFileOpeningEntryProvider::LazyFileOpeningEntryProvider;
 		using LazyFileOpeningEntryProvider::StreamSize;
 		using LazyFileOpeningEntryProvider::ReadStreamPartial;
+
 		[[nodiscard]] SqData::FileEntryType EntryType() const override { return SqData::FileEntryType::Binary; }
 
 		std::string DescribeState() const override { return "MemoryBinaryEntryProvider"; }
@@ -129,26 +133,25 @@ namespace Sqex::Sqpack {
 		using LazyFileOpeningEntryProvider::LazyFileOpeningEntryProvider;
 		using LazyFileOpeningEntryProvider::StreamSize;
 		using LazyFileOpeningEntryProvider::ReadStreamPartial;
+
 		[[nodiscard]] SqData::FileEntryType EntryType() const override { return SqData::FileEntryType::Model; }
 
 		std::string DescribeState() const override { return "OnTheFlyModelEntryProvider"; }
 
 	private:
-		[[nodiscard]] AlignResult<uint32_t> AlignEntry() const {
-			return Align(m_header.Entry.HeaderSize + (m_paddedBlockSizes.empty() ? 0 : m_blockOffsets.back() + m_paddedBlockSizes.back()));
-		}
-
 		[[nodiscard]] uint32_t NextBlockOffset() const {
 			return m_paddedBlockSizes.empty() ? 0U : Align(m_blockOffsets.back() + m_paddedBlockSizes.back());
 		}
 
 	protected:
 		void Initialize(const RandomAccessStream&) override;
-		[[nodiscard]] uint64_t StreamSize(const RandomAccessStream&) const override { return AlignEntry(); }
+		[[nodiscard]] uint64_t MaxPossibleStreamSize() const override;
+		[[nodiscard]] uint64_t StreamSize(const RandomAccessStream&) const override { return MaxPossibleStreamSize(); }
 		uint64_t ReadStreamPartial(const RandomAccessStream& , uint64_t offset, void* buf, uint64_t length) const override;
 	};
 
 	class OnTheFlyTextureEntryProvider : public LazyFileOpeningEntryProvider {
+		static constexpr auto MaxMipmapCountPerTexture = 16;
 		/*
 		 * [MergedHeader]
 		 * - [FileEntryHeader]
@@ -174,12 +177,16 @@ namespace Sqex::Sqpack {
 
 	public:
 		using LazyFileOpeningEntryProvider::LazyFileOpeningEntryProvider;
+		using LazyFileOpeningEntryProvider::StreamSize;
+		using LazyFileOpeningEntryProvider::ReadStreamPartial;
+
 		[[nodiscard]] SqData::FileEntryType EntryType() const override { return SqData::FileEntryType::Texture; }
 
 		std::string DescribeState() const override { return "OnTheFlyTextureEntryProvider"; }
 
 	protected:
 		void Initialize(const RandomAccessStream&) override;
+		[[nodiscard]] uint64_t MaxPossibleStreamSize() const override;
 		[[nodiscard]] uint64_t StreamSize(const RandomAccessStream&) const override { return static_cast<uint32_t>(m_size); }
 		uint64_t ReadStreamPartial(const RandomAccessStream&, uint64_t offset, void* buf, uint64_t length) const override;
 	};
