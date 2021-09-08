@@ -98,57 +98,61 @@ std::vector<std::shared_ptr<const Sqex::Texture::MipmapStream>> Sqex::FontCsv::C
 	return res;
 }
 
-Sqex::FontCsv::Creator::RenderTarget::AllocatedSpace Sqex::FontCsv::Creator::RenderTarget::AllocateSpace(uint16_t boundingWidth, uint16_t boundingHeight) {
-	auto newTargetRequired = false;
-	if (m_mipmaps.empty())
-		newTargetRequired = true;
-	else {
-		if (static_cast<size_t>(0) + m_currentX + boundingWidth + m_glyphGap >= m_textureWidth) {
-			m_currentX = m_glyphGap;
-			m_currentY += m_currentLineHeight + m_glyphGap;
+Sqex::FontCsv::Creator::RenderTarget::AllocatedSpace& Sqex::FontCsv::Creator::RenderTarget::Draw(char32_t c, const SeCompatibleDrawableFont<uint8_t>* font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint16_t boundingWidth, uint16_t boundingHeight) {
+	const auto [it, isNewEntry] = m_drawnGlyphs.emplace(std::make_tuple(c, font), AllocatedSpace{});
+	if (isNewEntry) {
+		auto newTargetRequired = false;
+		if (m_mipmaps.empty())
+			newTargetRequired = true;
+		else {
+			if (static_cast<size_t>(0) + m_currentX + boundingWidth + m_glyphGap >= m_textureWidth) {
+				m_currentX = m_glyphGap;
+				m_currentY += m_currentLineHeight + m_glyphGap;
+				m_currentLineHeight = 0;
+			}
+			if (m_currentY + boundingHeight + m_glyphGap >= m_textureHeight)
+				newTargetRequired = true;
+		}
+		if (newTargetRequired) {
+			m_mipmaps.emplace_back(std::make_shared<Texture::MemoryBackedMipmap>(
+				m_textureWidth, m_textureHeight,
+				Texture::CompressionType::L8_1,
+				std::vector<uint8_t>(static_cast<size_t>(m_textureWidth) * m_textureHeight)));
+			m_currentX = m_currentY = m_glyphGap;
 			m_currentLineHeight = 0;
 		}
-		if (m_currentY + boundingHeight + m_glyphGap >= m_textureHeight)
-			newTargetRequired = true;
+
+		it->second = AllocatedSpace{
+			.Index = static_cast<uint16_t>(m_mipmaps.size() - 1),
+			.X = m_currentX,
+			.Y = m_currentY,
+			.Mipmap = m_mipmaps.back().get(),
+		};
+		
+		font->Draw(it->second.Mipmap, it->second.X + drawOffsetX, it->second.Y + drawOffsetY, c, 0xFF, 0x00);
+
+		m_currentX += boundingWidth + m_glyphGap;
+		m_currentLineHeight = std::max<uint16_t>(m_currentLineHeight, boundingHeight);
 	}
-	if (newTargetRequired) {
-		m_mipmaps.emplace_back(std::make_shared<Texture::MemoryBackedMipmap>(
-			m_textureWidth, m_textureHeight,
-			Texture::CompressionType::L8_1,
-			std::vector<uint8_t>(static_cast<size_t>(m_textureWidth) * m_textureHeight)));
-		m_currentX = m_currentY = m_glyphGap;
-		m_currentLineHeight = 0;
-	}
-
-	const auto res = AllocatedSpace{
-		.Index = static_cast<uint16_t>(m_mipmaps.size() - 1),
-		.X = m_currentX,
-		.Y = m_currentY,
-		.Mipmap = m_mipmaps.back().get(),
-	};
-
-	m_currentX += boundingWidth + m_glyphGap;
-	m_currentLineHeight = std::max<uint16_t>(m_currentLineHeight, boundingHeight);
-
-	return res;
+	return it->second;
 }
 
 std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::Creator::Compile(RenderTarget & renderTarget) const {
 	auto result = std::make_shared<ModifiableFontCsvStream>();
 	result->TextureWidth(renderTarget.TextureWidth());
 	result->TextureHeight(renderTarget.TextureHeight());
-	result->Points(Points);
-	result->Ascent(Ascent);
-	result->LineHeight(Ascent + Descent);
+	result->Points(SizePoints);
+	result->Ascent(AscentPixels);
+	result->LineHeight(AscentPixels + DescentPixels);
 
-	SSIZE_T globalLeftOffset = 0;
-	SSIZE_T minShiftY = 0;
+	SSIZE_T globalOffsetX = 0;
+	SSIZE_T globalOffsetY = 0;
 	for (const auto& plan : m_pImpl->m_characters | std::views::values) {
 		const auto& bbox = plan.GetBbox();
-		globalLeftOffset = std::max<SSIZE_T>(globalLeftOffset, -static_cast<int>(bbox.left));
-		minShiftY = std::max<SSIZE_T>(minShiftY, -static_cast<int>(bbox.top));
+		globalOffsetX = std::max<SSIZE_T>(globalOffsetX, -static_cast<int>(bbox.left));
+		globalOffsetY = std::max<SSIZE_T>(globalOffsetY, -static_cast<int>(bbox.top));
 	}
-	globalLeftOffset = std::min<SSIZE_T>(globalLeftOffset, MaxLeftOffset);
+	globalOffsetX = std::min<SSIZE_T>(globalOffsetX, MaxGlobalOffsetX);
 
 	result->ReserveStorage(m_pImpl->m_characters.size(), m_pImpl->m_kernings.size());
 
@@ -157,19 +161,16 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::Creator::
 		if (bbox.empty)
 			continue;
 
-		const auto boundingWidth = static_cast<uint8_t>(bbox.right - bbox.left + globalLeftOffset);
-		const auto boundingHeight = static_cast<uint8_t>(std::max(result->LineHeight(), plan.Font->Height()) + minShiftY);
+		const auto boundingWidth = static_cast<uint8_t>(bbox.right - bbox.left + globalOffsetX);
+		const auto boundingHeight = static_cast<uint8_t>(std::max(result->LineHeight(), plan.Font->Height()) + globalOffsetY);
 		const auto nextOffsetX = static_cast<uint8_t>(bbox.offsetX);
 		const auto currentOffsetY = static_cast<uint8_t>(
 			(AlignToBaseline ? result->Ascent() - plan.Font->Ascent() : (0LL + result->LineHeight() - plan.Font->Height()) / 2)
-			- minShiftY
+			- globalOffsetY
 			+ GlobalOffsetYModifier
 			);
-		const auto space = renderTarget.AllocateSpace(boundingWidth, boundingHeight);
 
-		// ReSharper disable once CppExpressionWithoutSideEffects
-		plan.Font->Draw(space.Mipmap, space.X + globalLeftOffset, space.Y - minShiftY, plan.Character, 0xFF, 0x00);
-
+		const auto space = renderTarget.Draw(plan.Character, plan.Font.get(), globalOffsetX, globalOffsetY, boundingWidth, boundingHeight);
 		result->AddFontEntry(plan.Character, space.Index, space.X, space.Y, boundingWidth, boundingHeight, nextOffsetX, currentOffsetY);
 	}
 

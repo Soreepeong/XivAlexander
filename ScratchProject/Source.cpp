@@ -81,11 +81,11 @@ int main() {
 	const auto trump68 = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
 		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/TrumpGothic_68.fdt")),
 		true), texs);
-	const auto jupiter90 = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
-		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/Jupiter_90.fdt")),
+	const auto jupiter45 = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
+		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/Jupiter_45.fdt")),
 		true), texs);
 	const auto font = std::make_shared<Sqex::FontCsv::CascadingDrawableFont<>>(
-		std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<>>>{ jupiter90, comic36, axis36, gulim36 }
+		std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<>>>{ jupiter45, comic36, axis36, gulim36 }
 	, 36.f, axis36->Ascent(), axis36->Descent()
 		);
 
@@ -107,11 +107,11 @@ int main() {
 	const auto trump68l = std::make_shared<Sqex::FontCsv::SeDrawableFont<Sqex::Texture::RGBA4444, uint8_t>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
 		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/TrumpGothic_68.fdt")),
 		true), texs);
-	const auto jupiter90l = std::make_shared<Sqex::FontCsv::SeDrawableFont<Sqex::Texture::RGBA4444, uint8_t>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
-		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/Jupiter_90.fdt")),
+	const auto jupiter45l = std::make_shared<Sqex::FontCsv::SeDrawableFont<Sqex::Texture::RGBA4444, uint8_t>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
+		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/Jupiter_45.fdt")),
 		true), texs);
 	const auto fontl = std::make_shared<Sqex::FontCsv::CascadingDrawableFont<uint8_t>>(
-		std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<uint8_t>>>{ jupiter90l, comic36l, axis36l, gulim36l }
+		std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<uint8_t>>>{ jupiter45l, comic36l, axis36l, gulim36l }
 	, 36.f, axis36->Ascent(), axis36->Descent()
 		);
 
@@ -146,15 +146,19 @@ int main() {
 	mm8->Show();
 	
 	auto creator = Sqex::FontCsv::Creator();
-	creator.Points = 36;
-	creator.Ascent = axis36l->Ascent();
-	creator.Descent = axis36l->Descent();
+	creator.SizePoints = axis36l->Size();
+	creator.AscentPixels = axis36l->Ascent();
+	creator.DescentPixels = axis36l->Descent();
 	std::cout << "adding characters...\n";
-	creator.AddCharacter(jupiter90l);
-	creator.AddCharacter(comic36l);
+	for (auto i = '0'; i <= '9'; ++i)
+		creator.AddCharacter(i, jupiter45l);
+	for (auto i = 'A'; i <= 'Z'; ++i)
+		creator.AddCharacter(i, comic36l);
+	for (auto i = 'a'; i <= 'z'; ++i)
+		creator.AddCharacter(i, comic36l);
 	creator.AddCharacter(axis36l);
 	creator.AddCharacter(gulim36l);
-	creator.AddKerning(jupiter90l);
+	creator.AddKerning(jupiter45l);
 	creator.AddKerning(comic36l);
 	creator.AddKerning(axis36l);
 	creator.AddKerning(gulim36l);
