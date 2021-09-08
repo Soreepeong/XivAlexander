@@ -443,6 +443,13 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			pathType);
 
 		if (!overlayedHandle->Stream) {
+			if (pathType != PathTypeIndex && pathType != PathTypeIndex2) {
+				m_ignoredIndexFiles.insert(indexFile);
+				m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
+					"=> Ignoring, because the game is accessing dat file without accessing either index or index2 file.");
+				return nullptr;
+			}
+
 			auto creator = Sqex::Sqpack::Creator(
 				indexFile.parent_path().filename().string(),
 				indexFile.filename().replace_extension().replace_extension().string()
