@@ -35,6 +35,8 @@ namespace Sqex::Sqpack {
 		}
 
 		[[nodiscard]] virtual SqData::FileEntryType EntryType() const = 0;
+
+		std::string DescribeState() const override { return std::format("EntryProvider({})", m_pathSpec); }
 	};
 
 	class EmptyEntryProvider : public EntryProvider {
@@ -50,6 +52,8 @@ namespace Sqex::Sqpack {
 		[[nodiscard]] SqData::FileEntryType EntryType() const override {
 			return SqData::FileEntryType::Empty;
 		}
+
+		std::string DescribeState() const override { return "EmptyEntryProvider"; }
 	};
 
 	class LazyFileOpeningEntryProvider : public EntryProvider {
@@ -86,6 +90,8 @@ namespace Sqex::Sqpack {
 		using LazyFileOpeningEntryProvider::ReadStreamPartial;
 		[[nodiscard]] SqData::FileEntryType EntryType() const override { return SqData::FileEntryType::Binary; }
 
+		std::string DescribeState() const override { return "OnTheFlyBinaryEntryProvider"; }
+
 	protected:
 		void Initialize(const RandomAccessStream& stream) override;
 		[[nodiscard]] uint64_t StreamSize(const RandomAccessStream& stream) const override { return m_size; }
@@ -100,6 +106,8 @@ namespace Sqex::Sqpack {
 		using LazyFileOpeningEntryProvider::StreamSize;
 		using LazyFileOpeningEntryProvider::ReadStreamPartial;
 		[[nodiscard]] SqData::FileEntryType EntryType() const override { return SqData::FileEntryType::Binary; }
+
+		std::string DescribeState() const override { return "MemoryBinaryEntryProvider"; }
 
 	protected:
 		void Initialize(const RandomAccessStream& stream) override;
@@ -122,6 +130,8 @@ namespace Sqex::Sqpack {
 		using LazyFileOpeningEntryProvider::StreamSize;
 		using LazyFileOpeningEntryProvider::ReadStreamPartial;
 		[[nodiscard]] SqData::FileEntryType EntryType() const override { return SqData::FileEntryType::Model; }
+
+		std::string DescribeState() const override { return "OnTheFlyModelEntryProvider"; }
 
 	private:
 		[[nodiscard]] AlignResult<uint32_t> AlignEntry() const {
@@ -166,6 +176,8 @@ namespace Sqex::Sqpack {
 		using LazyFileOpeningEntryProvider::LazyFileOpeningEntryProvider;
 		[[nodiscard]] SqData::FileEntryType EntryType() const override { return SqData::FileEntryType::Texture; }
 
+		std::string DescribeState() const override { return "OnTheFlyTextureEntryProvider"; }
+
 	protected:
 		void Initialize(const RandomAccessStream&) override;
 		[[nodiscard]] uint64_t StreamSize(const RandomAccessStream&) const override { return static_cast<uint32_t>(m_size); }
@@ -173,7 +185,7 @@ namespace Sqex::Sqpack {
 	};
 
 	class RandomAccessStreamAsEntryProviderView : public EntryProvider {
-		const std::shared_ptr<RandomAccessStream> m_stream;
+		const std::shared_ptr<const RandomAccessStream> m_stream;
 		const uint64_t m_offset;
 		const uint64_t m_size;
 
@@ -181,11 +193,13 @@ namespace Sqex::Sqpack {
 		mutable SqData::FileEntryType m_entryType = SqData::FileEntryType::Empty;
 
 	public:
-		RandomAccessStreamAsEntryProviderView(EntryPathSpec pathSpec, std::shared_ptr<RandomAccessStream> stream, uint64_t offset = 0, uint64_t length = UINT64_MAX)
+		RandomAccessStreamAsEntryProviderView(EntryPathSpec pathSpec, std::shared_ptr<const RandomAccessStream> stream, uint64_t offset = 0, uint64_t length = UINT64_MAX)
 			: EntryProvider(std::move(pathSpec))
 			, m_stream(std::move(stream))
 			, m_offset(offset)
-			, m_size(length == UINT64_MAX ? m_stream->StreamSize() : length) {
+			, m_size(length == UINT64_MAX ? m_stream->StreamSize() - m_offset : length) {
+			if (m_offset + m_size > m_stream->StreamSize())
+				throw std::invalid_argument(std::format("offset({}) + size({}) > file size({} from {})", m_offset, m_size, m_stream->StreamSize(), m_stream->DescribeState()));
 		}
 
 		[[nodiscard]] uint64_t StreamSize() const override {
@@ -206,6 +220,10 @@ namespace Sqex::Sqpack {
 				m_entryTypeFetched = true;
 			}
 			return m_entryType;
+		}
+
+		std::string DescribeState() const override {
+			return std::format("RandomAccessStreamAsEntryProviderView({}, {}, {})", m_stream->DescribeState(), m_offset, m_size);
 		}
 	};
 }

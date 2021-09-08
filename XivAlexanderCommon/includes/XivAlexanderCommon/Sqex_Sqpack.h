@@ -1,5 +1,7 @@
 #pragma once
 
+#include <format>
+
 #include "Sqex.h"
 
 namespace Sqex::Sqpack {
@@ -393,11 +395,11 @@ namespace Sqex::Sqpack {
 			return *this;
 		}
 
-		bool HasFullPathHash() const {
+		[[nodiscard]] bool HasFullPathHash() const {
 			return FullPathHash != EmptyHashValue;
 		}
 
-		bool HasComponentHash() const {
+		[[nodiscard]] bool HasComponentHash() const {
 			return PathHash != EmptyHashValue || NameHash != EmptyHashValue;
 		}
 
@@ -414,5 +416,34 @@ namespace Sqex::Sqpack {
 		bool operator!=(const EntryPathSpec& r) const {
 			return !this->operator==(r);
 		}
+
+		bool operator<(const EntryPathSpec& r) const {
+			if (FullPathHash != r.FullPathHash)
+				return FullPathHash < r.FullPathHash;
+			if (PathHash != r.PathHash)
+				return PathHash < r.PathHash;
+			if (NameHash != r.NameHash)
+				return NameHash < r.NameHash;
+			return false;
+		}
+
+		bool operator>(const EntryPathSpec& r) const {
+			if (FullPathHash != r.FullPathHash)
+				return FullPathHash > r.FullPathHash;
+			if (PathHash != r.PathHash)
+				return PathHash > r.PathHash;
+			if (NameHash != r.NameHash)
+				return NameHash > r.NameHash;
+			return false;
+		}
 	};
+
 }
+
+template<>
+struct std::formatter<Sqex::Sqpack::EntryPathSpec, char> : std::formatter<std::basic_string<char>, char> {
+	template<class FormatContext>
+	auto format(const Sqex::Sqpack::EntryPathSpec& t, FormatContext& fc) {
+		return std::formatter<std::basic_string<char>, char>::format(std::format("{}({:8x}/{:8x}, {:8x})", t.Original.wstring(), t.PathHash, t.NameHash, t.FullPathHash), fc);
+	}
+};

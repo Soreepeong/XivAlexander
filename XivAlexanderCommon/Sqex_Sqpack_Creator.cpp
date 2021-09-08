@@ -48,7 +48,7 @@ struct Sqex::Sqpack::Creator::Implementation {
 
 		this_->Log(std::format(std::forward<Args>(args)...));
 	}
-	
+
 	size_t OpenFile(
 		_In_opt_ std::filesystem::path curItemPath,
 		_In_opt_ Utils::Win32::File alreadyOpenedFile = {});
@@ -100,10 +100,20 @@ Sqex::Sqpack::Creator::AddEntryResult& Sqex::Sqpack::Creator::AddEntryResult::op
 	Added.insert(Added.end(), r.Added.begin(), r.Added.end());
 	Replaced.insert(Replaced.end(), r.Replaced.begin(), r.Replaced.end());
 	SkippedExisting.insert(SkippedExisting.end(), r.SkippedExisting.begin(), r.SkippedExisting.end());
+	Error.insert(r.Error.begin(), r.Error.end());
 	return *this;
 }
 
-Sqex::Sqpack::EntryProvider* Sqex::Sqpack::Creator::AddEntryResult::AnyItem() const {
+Sqex::Sqpack::Creator::AddEntryResult& Sqex::Sqpack::Creator::AddEntryResult::operator+=(AddEntryResult && r) {
+	auto& k = r.Added;
+	Added.insert(Added.end(), r.Added.begin(), r.Added.end());
+	Replaced.insert(Replaced.end(), r.Replaced.begin(), r.Replaced.end());
+	SkippedExisting.insert(SkippedExisting.end(), r.SkippedExisting.begin(), r.SkippedExisting.end());
+	Error.merge(r.Error);
+	return *this;
+}
+
+_Maybenull_ Sqex::Sqpack::EntryProvider* Sqex::Sqpack::Creator::AddEntryResult::AnyItem() const {
 	if (!Added.empty())
 		return Added[0];
 	if (!Replaced.empty())
@@ -113,7 +123,7 @@ Sqex::Sqpack::EntryProvider* Sqex::Sqpack::Creator::AddEntryResult::AnyItem() co
 	return nullptr;
 }
 
-std::vector<Sqex::Sqpack::EntryProvider*> Sqex::Sqpack::Creator::AddEntryResult::AllEntries() const {
+std::vector<Sqex::Sqpack::EntryProvider*> Sqex::Sqpack::Creator::AddEntryResult::AllSuccessfulEntries() const {
 	std::vector<EntryProvider*> res;
 	res.insert(res.end(), Added.begin(), Added.end());
 	res.insert(res.end(), Replaced.begin(), Replaced.end());
@@ -122,39 +132,43 @@ std::vector<Sqex::Sqpack::EntryProvider*> Sqex::Sqpack::Creator::AddEntryResult:
 }
 
 Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::Implementation::AddEntry(std::shared_ptr<EntryProvider> provider, size_t underlyingFileIndex, bool overwriteExisting) {
-	if (provider->PathSpec().HasComponentHash()) {
-		const auto it = m_pathNameTupleEntryPointerMap.find(std::make_pair(provider->PathSpec().PathHash, provider->PathSpec().NameHash));
-		if (it != m_pathNameTupleEntryPointerMap.end()) {
-			if (!overwriteExisting) {
-				it->second->Provider->UpdatePathSpec(provider->PathSpec());
-				return { .SkippedExisting = {it->second->Provider.get()} };
+	try {
+		if (provider->PathSpec().HasComponentHash()) {
+			const auto it = m_pathNameTupleEntryPointerMap.find(std::make_pair(provider->PathSpec().PathHash, provider->PathSpec().NameHash));
+			if (it != m_pathNameTupleEntryPointerMap.end()) {
+				if (!overwriteExisting) {
+					it->second->Provider->UpdatePathSpec(provider->PathSpec());
+					return { .SkippedExisting = {it->second->Provider.get()} };
+				}
+				it->second->Provider = std::move(provider);
+				it->second->UnderlyingFileIndex = underlyingFileIndex;
+				return { .Replaced = {it->second->Provider.get()} };
 			}
-			it->second->Provider = std::move(provider);
-			it->second->UnderlyingFileIndex = underlyingFileIndex;
-			return { .Replaced = {it->second->Provider.get()} };
 		}
-	}
-	if (provider->PathSpec().FullPathHash != EntryPathSpec::EmptyHashValue) {
-		const auto it = m_fullPathEntryPointerMap.find(provider->PathSpec().FullPathHash);
-		if (it != m_fullPathEntryPointerMap.end()) {
-			if (!overwriteExisting) {
-				it->second->Provider->UpdatePathSpec(provider->PathSpec());
-				return { .SkippedExisting = {it->second->Provider.get()} };
+		if (provider->PathSpec().FullPathHash != EntryPathSpec::EmptyHashValue) {
+			const auto it = m_fullPathEntryPointerMap.find(provider->PathSpec().FullPathHash);
+			if (it != m_fullPathEntryPointerMap.end()) {
+				if (!overwriteExisting) {
+					it->second->Provider->UpdatePathSpec(provider->PathSpec());
+					return { .SkippedExisting = {it->second->Provider.get()} };
+				}
+				it->second->Provider = std::move(provider);
+				it->second->UnderlyingFileIndex = underlyingFileIndex;
+				return { .Replaced = {it->second->Provider.get()} };
 			}
-			it->second->Provider = std::move(provider);
-			it->second->UnderlyingFileIndex = underlyingFileIndex;
-			return { .Replaced = {it->second->Provider.get()} };
 		}
-	}
 
-	const auto pProvider = provider.get();
-	auto entry = std::make_unique<Entry>(0, 0, 0, 0, SqIndex::LEDataLocator{ 0, 0 }, std::move(provider), underlyingFileIndex);
-	if (entry->Provider->PathSpec().HasFullPathHash())
-		m_fullPathEntryPointerMap.insert_or_assign(entry->Provider->PathSpec().FullPathHash, entry.get());
-	if (entry->Provider->PathSpec().HasComponentHash())
-		m_pathNameTupleEntryPointerMap.insert_or_assign(std::make_pair(entry->Provider->PathSpec().PathHash, entry->Provider->PathSpec().NameHash), entry.get());
-	m_entries.emplace_back(std::move(entry));
-	return { .Added = {pProvider} };
+		const auto pProvider = provider.get();
+		auto entry = std::make_unique<Entry>(0, 0, 0, 0, SqIndex::LEDataLocator{ 0, 0 }, std::move(provider), underlyingFileIndex);
+		if (entry->Provider->PathSpec().HasFullPathHash())
+			m_fullPathEntryPointerMap.insert_or_assign(entry->Provider->PathSpec().FullPathHash, entry.get());
+		if (entry->Provider->PathSpec().HasComponentHash())
+			m_pathNameTupleEntryPointerMap.insert_or_assign(std::make_pair(entry->Provider->PathSpec().PathHash, entry->Provider->PathSpec().NameHash), entry.get());
+		m_entries.emplace_back(std::move(entry));
+		return { .Added = {pProvider} };
+	} catch (const std::exception& e) {
+		return { .Error = {{provider->PathSpec(), std::string(e.what())}} };
+	}
 }
 
 Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromSqPack(const std::filesystem::path & indexPath, bool overwriteExisting, bool overwriteUnknownSegments) {
@@ -174,10 +188,14 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromSqPac
 		dataFileIndexToOpenFileIndex.emplace_back(m_pImpl->OpenFile("", std::move(f.FileOnDisk)));
 
 	for (const auto& entry : m_original.Files) {
-		result += m_pImpl->AddEntry(
-			m_original.GetEntryProvider(entry, Utils::Win32::File{ m_pImpl->m_openFiles[dataFileIndexToOpenFileIndex[entry.DataFileIndex]], false }),
-			dataFileIndexToOpenFileIndex[entry.DataFileIndex],
-			overwriteExisting);
+		try {
+			result += m_pImpl->AddEntry(
+				m_original.GetEntryProvider(entry, Utils::Win32::File{ m_pImpl->m_openFiles[dataFileIndexToOpenFileIndex[entry.DataFileIndex]], false }),
+				dataFileIndexToOpenFileIndex[entry.DataFileIndex],
+				overwriteExisting);
+		} catch (const std::exception& e) {
+			result.Error.emplace(EntryPathSpec{ entry.Index.PathHash, entry.Index.NameHash, entry.Index2.FullPathHash }, std::string(e.what()));
+		}
 	}
 
 	return result;
@@ -222,15 +240,20 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 		if (ttmpd == SIZE_MAX)
 			ttmpd = m_pImpl->OpenFile(ttmpdPath);
 
-		addEntryResult += m_pImpl->AddEntry(std::make_shared<RandomAccessStreamAsEntryProviderView>(
-			entry.FullPath,
-			std::make_shared<FileRandomAccessStream>(Utils::Win32::File{ m_pImpl->m_openFiles[ttmpd], false }, entry.ModOffset, entry.ModSize)
-			), ttmpd, overwriteExisting);
+		try {
+			addEntryResult += m_pImpl->AddEntry(std::make_shared<RandomAccessStreamAsEntryProviderView>(
+				entry.FullPath,
+				std::make_shared<FileRandomAccessStream>(Utils::Win32::File{ m_pImpl->m_openFiles[ttmpd], false }, entry.ModOffset, entry.ModSize)
+				), ttmpd, overwriteExisting);
+			m_pImpl->Log("{}: {} (Name: {} > {})",
+				!addEntryResult.Added.empty() ? "Added" : !addEntryResult.Replaced.empty() ? "Replaced" : "Ignored",
+				entry.FullPath, ttmpl.Name, entry.Name
+			);
+		} catch (const std::exception& e) {
+			addEntryResult.Error.emplace(EntryPathSpec{ entry.FullPath }, std::string(e.what()));
+			m_pImpl->Log("Error: {} (Name: {} > {})", entry.FullPath, ttmpl.Name, entry.Name);
+		}
 
-		m_pImpl->Log("{}: {} (Name: {} > {})",
-			!addEntryResult.Added.empty() ? "Added" : !addEntryResult.Replaced.empty() ? "Replaced" : "Ignored",
-			entry.FullPath, ttmpl.Name, entry.Name
-		);
 	}
 	for (size_t pageObjectIndex = 0; pageObjectIndex < ttmpl.ModPackPages.size(); ++pageObjectIndex) {
 		const auto& modGroups = ttmpl.ModPackPages[pageObjectIndex].ModGroups;
@@ -250,19 +273,24 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 				if (ttmpd == SIZE_MAX)
 					ttmpd = m_pImpl->OpenFile(ttmpdPath);
 
-				addEntryResult += m_pImpl->AddEntry(std::make_shared<RandomAccessStreamAsEntryProviderView>(
-					entry.FullPath,
-					std::make_shared<FileRandomAccessStream>(Utils::Win32::File{ m_pImpl->m_openFiles[ttmpd], false }, entry.ModOffset, entry.ModSize)
-					), ttmpd, overwriteExisting);
+				try {
+					addEntryResult += m_pImpl->AddEntry(std::make_shared<RandomAccessStreamAsEntryProviderView>(
+						entry.FullPath,
+						std::make_shared<FileRandomAccessStream>(Utils::Win32::File{ m_pImpl->m_openFiles[ttmpd], false }, entry.ModOffset, entry.ModSize)
+						), ttmpd, overwriteExisting);
 
-				m_pImpl->Log("{}: {} (Name: {} > {}({}) > {}({}) > {})",
-					!addEntryResult.Added.empty() ? "Added" : !addEntryResult.Replaced.empty() ? "Replaced" : "Ignored",
-					entry.FullPath,
-					ttmpl.Name,
-					modGroup.GroupName, modGroupIndex,
-					option.Name, choice,
-					entry.Name
-				);
+					m_pImpl->Log("{}: {} (Name: {} > {}({}) > {}({}) > {})",
+						!addEntryResult.Added.empty() ? "Added" : !addEntryResult.Replaced.empty() ? "Replaced" : "Ignored",
+						entry.FullPath,
+						ttmpl.Name,
+						modGroup.GroupName, modGroupIndex,
+						option.Name, choice,
+						entry.Name
+					);
+				} catch (const std::exception& e) {
+					addEntryResult.Error.emplace(EntryPathSpec{ entry.FullPath }, std::string(e.what()));
+					m_pImpl->Log("Error: {} (Name: {} > {})", entry.FullPath, ttmpl.Name, entry.Name);
+				}
 			}
 		}
 	}
@@ -363,8 +391,8 @@ public:
 
 class Sqex::Sqpack::Creator::DataView : public RandomAccessStream {
 	const std::vector<uint8_t> m_header;
-	const std::vector<std::unique_ptr<Implementation::Entry>> m_entries;
-	const std::vector<std::shared_ptr<Utils::Win32::File>> m_openFiles;
+	const std::vector<std::unique_ptr<const Implementation::Entry>> m_entries;
+	const std::vector<std::shared_ptr<const Utils::Win32::File>> m_openFiles;
 
 	const SqData::Header& SubHeader() const {
 		return *reinterpret_cast<const SqData::Header*>(&m_header[sizeof SqpackHeader]);
@@ -378,14 +406,22 @@ class Sqex::Sqpack::Creator::DataView : public RandomAccessStream {
 		return buffer;
 	}
 
+	mutable uint64_t m_nLastRequestedOffset = 0;
+	mutable uint64_t m_nLastRequestedSize = 0;
+	mutable uint64_t m_nLastTranslatedOffset = 0;
+	mutable uint64_t m_nLastTranslatedSize = 0;
+	mutable EntryProvider* m_pLastEntryProvider = nullptr;
+
 public:
-	DataView(const SqpackHeader& header, const SqData::Header& subheader, std::vector<std::unique_ptr<Implementation::Entry>> entries, std::vector<std::shared_ptr<Utils::Win32::File>> openFiles)
+	DataView(const SqpackHeader& header, const SqData::Header& subheader, std::vector<std::unique_ptr<const Implementation::Entry>> entries, std::vector<std::shared_ptr<const Utils::Win32::File>> openFiles)
 		: m_header(Concat(header, subheader))
 		, m_entries(std::move(entries))
 		, m_openFiles(std::move(openFiles)) {
 	}
 
 	uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override {
+		m_nLastRequestedOffset = offset;
+		m_nLastRequestedSize = length;
 		if (!length)
 			return 0;
 
@@ -403,12 +439,12 @@ public:
 
 		if (out.empty()) return length;
 
-		auto it = std::lower_bound(m_entries.begin(), m_entries.end(), nullptr, [&](const std::unique_ptr<Implementation::Entry>& l, const std::unique_ptr<Implementation::Entry>& r) {
+		auto it = std::lower_bound(m_entries.begin(), m_entries.end(), nullptr, [&](const std::unique_ptr<const Implementation::Entry>& l, const std::unique_ptr<const Implementation::Entry>& r) {
 			const auto lo = l ? l->OffsetAfterHeaders : relativeOffset;
 			const auto ro = r ? r->OffsetAfterHeaders : relativeOffset;
 			return lo < ro;
 		});
-		if (it != m_entries.begin() && it != m_entries.end())
+		if (it != m_entries.begin() && (it == m_entries.end() || it->get()->OffsetAfterHeaders > relativeOffset))
 			--it;
 
 		if (it != m_entries.end()) {
@@ -419,7 +455,10 @@ public:
 
 				if (relativeOffset < entry.BlockSize) {
 					const auto available = std::min(out.size_bytes(), static_cast<size_t>(entry.BlockSize - relativeOffset));
+					m_nLastTranslatedOffset = relativeOffset;
+					m_nLastTranslatedSize = available;
 					entry.Provider->ReadStream(relativeOffset, out.data(), available);
+					m_pLastEntryProvider = entry.Provider.get();
 					out = out.subspan(available);
 					relativeOffset = 0;
 
@@ -441,11 +480,18 @@ public:
 			}
 		}
 
+		if (!out.empty())
+			__debugbreak();
+
 		return length - out.size_bytes();
 	}
 
 	uint64_t StreamSize() const override {
 		return m_header.size() + SubHeader().HeaderSize + SubHeader().DataSize;
+	}
+
+	std::string DescribeState() const override {
+		return std::format("Sqpack::Creator::DataView({}->{}: {} {}->{})", m_nLastRequestedOffset, m_nLastRequestedSize, m_pLastEntryProvider ? m_pLastEntryProvider->DescribeState() : std::string(), m_nLastTranslatedOffset, m_nLastTranslatedSize);
 	}
 };
 
@@ -454,15 +500,15 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 	std::vector<SqIndex::FileSegmentEntry2> fileEntries2;
 	std::vector<SqIndex::FolderSegmentEntry> folderEntries;
 
-	std::vector<std::shared_ptr<Utils::Win32::File>> openFiles;
+	std::vector<std::shared_ptr<const Utils::Win32::File>> openFiles;
 
 	for (auto& f : m_pImpl->m_openFiles)
-		openFiles.emplace_back(std::make_shared<Utils::Win32::File>(std::move(f)));
+		openFiles.emplace_back(std::make_shared<const Utils::Win32::File>(std::move(f)));
 	m_pImpl->m_openFiles.clear();
 
 	SqpackHeader dataHeader{};
 	std::vector<SqData::Header> dataSubheaders;
-	std::vector<std::vector<std::unique_ptr<Implementation::Entry>>> dataEntries;
+	std::vector<std::vector<std::unique_ptr<const Implementation::Entry>>> dataEntries;
 	std::vector<std::set<size_t>> dataOpenFileIndices;
 
 	for (auto& entry : m_pImpl->m_entries) {
@@ -517,9 +563,9 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 		.Index = std::make_shared<IndexView<SqIndex::Header::IndexType::Index>>(dataSubheaders.size(), std::move(fileEntries1), m_pImpl->m_sqpackIndexSegment2, m_pImpl->m_sqpackIndexSegment3, std::vector<SqIndex::FolderSegmentEntry>(), strict),
 		.Index2 = std::make_shared<IndexView<SqIndex::Header::IndexType::Index2>>(dataSubheaders.size(), std::move(fileEntries2), m_pImpl->m_sqpackIndexSegment2, m_pImpl->m_sqpackIndexSegment3, std::vector<SqIndex::FolderSegmentEntry>(), strict),
 	};
-	
+
 	for (size_t i = 0; i < dataSubheaders.size(); ++i) {
-		std::vector<std::shared_ptr<Utils::Win32::File>> dataOpenFiles;
+		std::vector<std::shared_ptr<const Utils::Win32::File>> dataOpenFiles;
 		for (const auto j : dataOpenFileIndices[i])
 			dataOpenFiles.emplace_back(openFiles[j]);
 

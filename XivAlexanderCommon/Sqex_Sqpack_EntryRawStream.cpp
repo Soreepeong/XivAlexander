@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Sqex_Sqpack_EntryRawStream.h"
-#include "Sqex_Texture.h"
 
+#include "Sqex_Texture.h"
 #include "XaZlib.h"
 
 Sqex::Sqpack::EntryRawStream::BinaryStreamDecoder::BinaryStreamDecoder(const EntryRawStream* stream)
@@ -67,7 +67,7 @@ private:
 		} else if (requestOffsetVerify > requestOffset)
 			throw CorruptDataException("Duplicate read on same region");
 	}
-	
+
 public:
 	void Progress(
 		const uint32_t requestOffset,

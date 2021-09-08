@@ -151,7 +151,7 @@ int main() {
 	creator.AddKerning(axis36l->GetKerningTable());
 	creator.AddKerning(gulim36l->GetKerningTable());
 
-	Sqex::FontCsv::Creator::RenderTarget target(4096, 4096);
+	Sqex::FontCsv::Creator::RenderTarget target(4096, 4096, 1);
 	std::cout << "compiling...\n";
 	const auto newFont = creator.Compile(target);
 	std::cout << "finalizing...\n";

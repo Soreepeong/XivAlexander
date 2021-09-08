@@ -237,6 +237,11 @@ struct App::Feature::GameResourceOverrider::Implementation {
 						if (lpNumberOfBytesRead)
 							*lpNumberOfBytesRead = static_cast<DWORD>(read);
 
+						if (read != nNumberOfBytesToRead) {
+							m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, requested {} bytes, read {} bytes; state: {}",
+								vpath.Path.filename(), nNumberOfBytesToRead, read, vpath.Stream->DescribeState());
+						}
+
 						if (lpOverlapped) {
 							if (lpOverlapped->hEvent)
 								SetEvent(lpOverlapped->hEvent);
@@ -445,9 +450,13 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			if (const auto result = creator.AddEntriesFromSqPack(indexFile, true, true);
 				!result.Added.empty() || !result.Replaced.empty()) {
 				m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-					"=> Processed SqPack {}/{}: Added {}, replaced {}",
+					"=> Processed SqPack {}/{}: Added {}, replaced {}, ignored {}, error {}",
 					creator.DatExpac, creator.DatName,
-					result.Added.size(), result.Replaced.size());
+					result.Added.size(), result.Replaced.size(), result.SkippedExisting.size(), result.Error.size());
+				for (const auto& [pathSpec, errorMessage] : result.Error) {
+					m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
+						"=> Error processing {}: {}", pathSpec, errorMessage);
+				}
 			}
 
 			auto additionalEntriesFound = false;

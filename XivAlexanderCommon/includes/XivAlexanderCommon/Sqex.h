@@ -139,26 +139,32 @@ namespace Sqex {
 		RandomAccessStreamIterator<T> Iterator() const {
 			return RandomAccessStreamIterator<T>(*this);
 		}
+
+		virtual std::string DescribeState() const { return {}; }
 	};
 
 	class RandomAccessStreamPartialView : public RandomAccessStream {
 		const std::shared_ptr<RandomAccessStream> m_stream;
 		const uint64_t m_offset;
-		const uint64_t m_length;
+		const uint64_t m_size;
 
 	public:
 		RandomAccessStreamPartialView(std::shared_ptr<RandomAccessStream> stream, uint64_t offset = 0, uint64_t length = UINT64_MAX)
 			: m_stream(std::move(stream))
 			, m_offset(offset)
-			, m_length(std::min(length, m_stream->StreamSize() - offset)) {
+			, m_size(std::min(length, m_stream->StreamSize() - offset)) {
 		}
 
-		[[nodiscard]] uint64_t StreamSize() const override { return m_length; }
+		[[nodiscard]] uint64_t StreamSize() const override { return m_size; }
 		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override {
-			if (offset >= m_length)
+			if (offset >= m_size)
 				return 0;
-			length = std::min(length, m_length - offset);
+			length = std::min(length, m_size - offset);
 			return m_stream->ReadStreamPartial(m_offset + offset, buf, length);
+		}
+
+		std::string DescribeState() const override {
+			return std::format("RandomAccessStreamPartialView({}, {}, {})", m_stream->DescribeState(), m_offset, m_size);
 		}
 	};
 
@@ -176,5 +182,9 @@ namespace Sqex {
 
 		[[nodiscard]] uint64_t StreamSize() const override;
 		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
+
+		std::string DescribeState() const override {
+			return std::format("FileRandomAccessStream({}, {}, {})", m_file.ResolveName(), m_offset, m_size);
+		}
 	};
 }

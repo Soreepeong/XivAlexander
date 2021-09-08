@@ -27,10 +27,12 @@ namespace Sqex::Sqpack {
 			std::vector<EntryProvider*> Added;
 			std::vector<EntryProvider*> Replaced;
 			std::vector<EntryProvider*> SkippedExisting;
+			std::map<EntryPathSpec, std::string> Error;
 
 			AddEntryResult& operator+=(const AddEntryResult& r);
+			AddEntryResult& operator+=(AddEntryResult&& r);
 			[[nodiscard]] _Maybenull_ EntryProvider* AnyItem() const;
-			[[nodiscard]] std::vector<EntryProvider*> AllEntries() const;
+			[[nodiscard]] std::vector<EntryProvider*> AllSuccessfulEntries() const;
 		};
 		AddEntryResult AddEntriesFromSqPack(const std::filesystem::path& indexPath, bool overwriteExisting = true, bool overwriteUnknownSegments = false);
 		AddEntryResult AddEntryFromFile(EntryPathSpec pathSpec, const std::filesystem::path& path, bool overwriteExisting = true);

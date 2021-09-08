@@ -38,16 +38,16 @@ namespace Sqex::Texture {
 		uint8_t A : 4;  // Actually opacity
 
 		void SetFrom(uint32_t r, uint32_t g, uint32_t b) {
-			R = r;
-			G = g;
-			B = b;
+			R = static_cast<uint8_t>(r);
+			G = static_cast<uint8_t>(g);
+			B = static_cast<uint8_t>(b);
 		}
 
 		void SetFrom(uint32_t r, uint32_t g, uint32_t b, uint32_t a) {
-			R = r;
-			G = g;
-			B = b;
-			A = a;
+			R = static_cast<uint8_t>(r);
+			G = static_cast<uint8_t>(g);
+			B = static_cast<uint8_t>(b);
+			A = static_cast<uint8_t>(a);
 		}
 	};
 
@@ -64,16 +64,16 @@ namespace Sqex::Texture {
 		uint8_t A : 1;  // Actually opacity
 
 		void SetFrom(uint32_t r, uint32_t g, uint32_t b) {
-			R = r;
-			G = g;
-			B = b;
+			R = static_cast<uint8_t>(r);
+			G = static_cast<uint8_t>(g);
+			B = static_cast<uint8_t>(b);
 		}
 
 		void SetFrom(uint32_t r, uint32_t g, uint32_t b, uint32_t a) {
-			R = r;
-			G = g;
-			B = b;
-			A = a;
+			R = static_cast<uint8_t>(r);
+			G = static_cast<uint8_t>(g);
+			B = static_cast<uint8_t>(b);
+			A = static_cast<uint8_t>(a);
 		}
 	};
 
