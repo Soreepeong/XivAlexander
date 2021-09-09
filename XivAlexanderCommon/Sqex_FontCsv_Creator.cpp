@@ -26,6 +26,9 @@ Sqex::FontCsv::Creator::Creator()
 Sqex::FontCsv::Creator::~Creator() = default;
 
 void Sqex::FontCsv::Creator::AddCharacter(char32_t codePoint, std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>> font, bool replace) {
+	if (!font->HasCharacter(codePoint))
+		return;
+
 	auto plan = Implementation::CharacterPlan{
 		.Character = codePoint,
 		.Font = std::move(font),
