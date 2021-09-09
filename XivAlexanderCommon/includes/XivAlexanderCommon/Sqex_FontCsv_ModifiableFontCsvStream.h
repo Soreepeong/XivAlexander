@@ -10,6 +10,9 @@ namespace Sqex::FontCsv {
 		KerningHeader m_knhd;
 		std::vector<KerningEntry> m_kerningEntries;
 
+		std::mutex m_fontEntryMtx;
+		std::mutex m_kernEntryMtx;
+
 	public:
 		ModifiableFontCsvStream();
 		ModifiableFontCsvStream(const RandomAccessStream& stream, bool strict = false);
@@ -23,7 +26,7 @@ namespace Sqex::FontCsv {
 		[[nodiscard]] auto& GetKerningEntries() const { return m_kerningEntries; }
 
 		void ReserveStorage(size_t fontEntryCount, size_t kerningEntryCount);
-		void AddFontEntry(char32_t c, uint16_t textureIndex, uint16_t textureOffsetX, uint16_t textureOffsetY, uint8_t boundingWidth, uint8_t boundingHeight, uint8_t nextOffsetX, uint8_t currentOffsetY);
+		void AddFontEntry(char32_t c, uint16_t textureIndex, uint16_t textureOffsetX, uint16_t textureOffsetY, uint8_t boundingWidth, uint8_t boundingHeight, int8_t nextOffsetX, int8_t currentOffsetY);
 		void AddKerning(char32_t l, char32_t r, int rightOffset);
 
 		[[nodiscard]] uint16_t TextureWidth() const { return m_fthd.TextureWidth; }

@@ -75,17 +75,23 @@ int main() {
 		.lfQuality = CLEARTYPE_NATURAL_QUALITY,
 		.lfFaceName = L"Gulim",
 		});
+	const auto sourcek36 = std::make_shared<Sqex::FontCsv::GdiDrawingFont<>>(LOGFONTW{
+		.lfHeight = -MulDiv(36, GetDeviceCaps(GetDC(0), LOGPIXELSY), 72),
+		.lfCharSet = DEFAULT_CHARSET,
+		.lfQuality = CLEARTYPE_NATURAL_QUALITY,
+		.lfFaceName = L"Source Han Sans K",
+		});
 	const auto axis36 = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
 		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/AXIS_36.fdt")),
 		true), texs);
 	const auto trump68 = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
 		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/TrumpGothic_68.fdt")),
 		true), texs);
-	const auto jupiter45 = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
-		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/Jupiter_45.fdt")),
+	const auto jupiter90 = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
+		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/Jupiter_90.fdt")),
 		true), texs);
 	const auto font = std::make_shared<Sqex::FontCsv::CascadingDrawableFont<>>(
-		std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<>>>{ jupiter45, comic36, axis36, gulim36 }
+		std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<>>>{ axis36, sourcek36 }
 	, 36.f, axis36->Ascent(), axis36->Descent()
 		);
 
@@ -101,19 +107,21 @@ int main() {
 		.lfQuality = CLEARTYPE_NATURAL_QUALITY,
 		.lfFaceName = L"Gulim",
 		});
+	const auto sourcek36l = std::make_shared<Sqex::FontCsv::GdiDrawingFont<uint8_t>>(LOGFONTW{
+		.lfHeight = -MulDiv(36, GetDeviceCaps(GetDC(0), LOGPIXELSY), 72),
+		.lfCharSet = DEFAULT_CHARSET,
+		.lfQuality = CLEARTYPE_NATURAL_QUALITY,
+		.lfFaceName = L"Source Han Sans K",
+		});
 	const auto axis36l = std::make_shared<Sqex::FontCsv::SeDrawableFont<Sqex::Texture::RGBA4444, uint8_t>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
 		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/AXIS_36.fdt")),
 		true), texs);
 	const auto trump68l = std::make_shared<Sqex::FontCsv::SeDrawableFont<Sqex::Texture::RGBA4444, uint8_t>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
 		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/TrumpGothic_68.fdt")),
 		true), texs);
-	const auto jupiter45l = std::make_shared<Sqex::FontCsv::SeDrawableFont<Sqex::Texture::RGBA4444, uint8_t>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
-		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/Jupiter_45.fdt")),
+	const auto jupiter90l = std::make_shared<Sqex::FontCsv::SeDrawableFont<Sqex::Texture::RGBA4444, uint8_t>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
+		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/Jupiter_90.fdt")),
 		true), texs);
-	const auto fontl = std::make_shared<Sqex::FontCsv::CascadingDrawableFont<uint8_t>>(
-		std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<uint8_t>>>{ jupiter45l, comic36l, axis36l, gulim36l }
-	, 36.f, axis36->Ascent(), axis36->Descent()
-		);
 
 	std::cout << std::format("Read 3 fdt files {}\n", GetTickCount64() - t);
 
@@ -133,32 +141,18 @@ int main() {
 		Sqex::Texture::RGBA8888(0, 0, 255), Sqex::Texture::RGBA8888(0, 0, 0, 0));
 	std::cout << std::format("Draw32: {}\n", GetTickCount64() - t);
 	mm32->Show();
-
-	t = GetTickCount64();
-	const auto mm8 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(
-		static_cast<uint16_t>(bbox.right - bbox.left),
-		static_cast<uint16_t>(bbox.bottom - bbox.top),
-		Sqex::Texture::CompressionType::L8_1,
-		std::vector<uint8_t>((size_t() + bbox.right - bbox.left) * (size_t() + bbox.bottom - bbox.top))
-		);
-	fontl->Draw(mm8.get(), 0, 0, pszTestString, 255, 0, 255, 0);
-	std::cout << std::format("Draw8: {}\n", GetTickCount64() - t);
-	mm8->Show();
 	
+	// comic36l->GetAllCharacters(); gulim36l->GetAllCharacters();
 	auto creator = Sqex::FontCsv::Creator();
 	creator.SizePoints = axis36l->Size();
 	creator.AscentPixels = axis36l->Ascent();
 	creator.DescentPixels = axis36l->Descent();
 	std::cout << "adding characters...\n";
-	for (auto i = '0'; i <= '9'; ++i)
-		creator.AddCharacter(i, jupiter45l);
-	for (auto i = 'A'; i <= 'Z'; ++i)
-		creator.AddCharacter(i, comic36l);
-	for (auto i = 'a'; i <= 'z'; ++i)
-		creator.AddCharacter(i, comic36l);
+	//creator.AddCharacter(jupiter90l);
+	//creator.AddCharacter(comic36l);
 	creator.AddCharacter(axis36l);
-	creator.AddCharacter(gulim36l);
-	creator.AddKerning(jupiter45l);
+	creator.AddCharacter(sourcek36l);
+	creator.AddKerning(jupiter90l);
 	creator.AddKerning(comic36l);
 	creator.AddKerning(axis36l);
 	creator.AddKerning(gulim36l);
@@ -173,7 +167,7 @@ int main() {
 	std::cout << std::format("done: {} mipmaps\n", newFontMipmaps.size());
 
 	const auto testfont = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(newFont, newFontMipmaps);
-	testfont->Draw(mm32.get(), 2, 2, pszTestString,
+	testfont->Draw(mm32.get(), 0, 0, pszTestString,
 		Sqex::Texture::RGBA8888(0, 255, 0, 255), Sqex::Texture::RGBA8888(0, 0, 0, 0));
 
 	mm32->Show();

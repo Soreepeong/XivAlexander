@@ -14,6 +14,8 @@ namespace Sqex::FontCsv {
 		SSIZE_T offsetX = 0;
 
 		void AdjustToIntersection(GlyphMeasurement& r, SSIZE_T srcWidth, SSIZE_T srcHeight, SSIZE_T destWidth, SSIZE_T destHeight);
+		SSIZE_T Width() const { return right - left; }
+		SSIZE_T Height() const { return bottom - top; }
 	};
 
 	class SeCompatibleFont {
@@ -110,7 +112,65 @@ namespace Sqex::FontCsv {
 		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const override;
 
 	protected:
-		HDC GetDC() const;
-		const TEXTMETRICW& GetMetrics() const;
+		class DeviceContextWrapper {
+			const HDC m_hdc;
+			const Utils::CallOnDestruction m_hdcRelease;
+
+			const HFONT m_hFont;
+			const Utils::CallOnDestruction m_fontRelease;
+			const HFONT m_hPrevFont;
+			const Utils::CallOnDestruction m_prevFontRevert;
+			
+			std::vector<uint8_t> m_readBuffer;
+
+		public:
+			const TEXTMETRICW Metrics;
+			DeviceContextWrapper(const LOGFONTW& logfont);
+			~DeviceContextWrapper();
+
+			[[nodiscard]] HDC GetDC() const { return m_hdc; }
+			[[nodiscard]] SSIZE_T GetCharacterWidth(char32_t c) const;
+			[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const;
+
+			std::pair<const std::vector<uint8_t>*, GlyphMeasurement> Draw(SSIZE_T x, SSIZE_T y, char32_t c);
+		};
+
+		class DeviceContextWrapperContext {
+			const GdiFont* m_font;
+			std::unique_ptr<DeviceContextWrapper> m_wrapper;
+
+		public:
+			DeviceContextWrapperContext() :
+				m_font(nullptr), m_wrapper(nullptr){}
+			DeviceContextWrapperContext(const GdiFont* font, std::unique_ptr<DeviceContextWrapper> wrapper)
+				: m_font(font)
+				, m_wrapper(std::move(wrapper)) {
+			}
+			DeviceContextWrapperContext(const DeviceContextWrapperContext&) = delete;
+			DeviceContextWrapperContext(DeviceContextWrapperContext&& r) noexcept
+				: m_font(r.m_font)
+				, m_wrapper(std::move(r.m_wrapper)) {
+				r.m_font = nullptr;
+			}
+			DeviceContextWrapperContext& operator=(const DeviceContextWrapperContext&) = delete;
+			DeviceContextWrapperContext& operator=(DeviceContextWrapperContext&& r) noexcept {
+				m_font = r.m_font;
+				m_wrapper = std::move(r.m_wrapper);
+				r.m_font = nullptr;
+				return *this;
+			}
+
+			DeviceContextWrapper* operator->() const {
+				return m_wrapper.get();
+			}
+
+			~DeviceContextWrapperContext() {
+				if (m_wrapper)
+					m_font->FreeDeviceContext(std::move(m_wrapper));
+			}
+		};
+
+		DeviceContextWrapperContext AllocateDeviceContext() const;
+		void FreeDeviceContext(std::unique_ptr<DeviceContextWrapper> wrapper) const;
 	};
 }

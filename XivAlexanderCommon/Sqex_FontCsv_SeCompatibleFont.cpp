@@ -159,6 +159,7 @@ const std::vector<char32_t>& Sqex::FontCsv::SeFont::GetAllCharacters() const {
 		for (const auto& c : m_pImpl->m_stream->GetFontTableEntries())
 			result.push_back(c.Char());
 		m_pImpl->m_characterList = std::move(result);
+		m_pImpl->m_characterListDiscovered = true;
 		return m_pImpl->m_characterList;
 	}
 	return m_pImpl->m_characterList;
@@ -218,7 +219,7 @@ struct Sqex::FontCsv::CascadingFont::Implementation {
 
 	mutable bool m_characterListDiscovered = false;
 	mutable std::vector<char32_t> m_characterList;
-	
+
 	Implementation(std::vector<std::shared_ptr<SeCompatibleFont>> fontList, float normalizedSize, uint32_t ascent, uint32_t descent)
 		: m_fontList(std::move(fontList))
 		, m_size(static_cast<bool>(normalizedSize) ? normalizedSize : std::ranges::max(m_fontList, {}, [](const auto& r) {return r->Size();  })->Size())
@@ -266,6 +267,7 @@ const std::vector<char32_t>& Sqex::FontCsv::CascadingFont::GetAllCharacters() co
 			for (const auto& c : f->GetAllCharacters())
 				result.insert(c);
 		m_pImpl->m_characterList.insert(m_pImpl->m_characterList.end(), result.begin(), result.end());
+		m_pImpl->m_characterListDiscovered = true;
 		return m_pImpl->m_characterList;
 	}
 	return m_pImpl->m_characterList;
@@ -316,7 +318,7 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::CascadingFont::Measure(SSIZE_T x,
 	return { true };
 }
 
-Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::CascadingFont::Measure(SSIZE_T x, SSIZE_T y, const std::u32string& s) const {
+Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::CascadingFont::Measure(SSIZE_T x, SSIZE_T y, const std::u32string & s) const {
 	if (s.empty())
 		return {};
 
@@ -342,6 +344,8 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::CascadingFont::Measure(SSIZE_T x,
 		const auto kerning = GetKerning(lastChar, currChar);
 		const auto currBbox = Measure(currX + kerning, currY, currChar);
 		if (!currBbox.empty) {
+			if (currBbox.offsetX > 100000)
+				__debugbreak();
 			if (result.empty) {
 				result = currBbox;
 				result.offsetX = result.right + result.offsetX;
@@ -368,16 +372,14 @@ const std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleFont>>& Sqex::FontC
 }
 
 struct Sqex::FontCsv::GdiFont::Implementation {
-	const HFONT m_hFont;
-	const HDC m_hdc;
-	const HFONT m_hPrevFont;
+	GdiFont& this_;
+	const LOGFONTW m_logfont;
+	mutable std::mutex m_wrapperMtx;
+	mutable std::vector<std::unique_ptr<DeviceContextWrapper>> m_wrappers;
 	const TEXTMETRICW m_textMetric;
 
-	mutable bool m_kerningDiscovered = false;
-	mutable std::map<std::pair<char32_t, char32_t>, SSIZE_T> m_kerningMap;
-
-	mutable bool m_characterListDiscovered = false;
-	mutable std::vector<char32_t> m_characterList;
+	std::map<std::pair<char32_t, char32_t>, SSIZE_T> m_kerningMap;
+	std::vector<char32_t> m_characterList;
 
 	static TEXTMETRICW GetTextMetricsW(HDC hdc) {
 		TEXTMETRICW result;
@@ -385,21 +387,45 @@ struct Sqex::FontCsv::GdiFont::Implementation {
 		return result;
 	}
 
-	Implementation(const LOGFONTW& logfont)
-		: m_hFont(CreateFontIndirectW(&logfont))
-		, m_hdc(CreateCompatibleDC(nullptr))
-		, m_hPrevFont(SelectFont(m_hdc, m_hFont))
-		, m_textMetric(GetTextMetricsW(m_hdc)) {
-	}
+	Implementation(GdiFont& this_, const LOGFONTW& logfont)
+		: this_(this_)
+		, m_logfont(logfont)
+		, m_wrappers([&logfont]() { std::vector<std::unique_ptr<DeviceContextWrapper>> w; w.emplace_back(std::make_unique<DeviceContextWrapper>(logfont)); return w; }())
+		, m_textMetric(m_wrappers[0]->Metrics) {
 
-	~Implementation() {
-		DeleteObject(SelectObject(m_hdc, m_hPrevFont));
-		DeleteDC(m_hdc);
+		SYSTEM_INFO si;
+		GetNativeSystemInfo(&si);
+		m_wrappers.resize(si.dwNumberOfProcessors);
+
+		const auto& ctx = m_wrappers[0];
+		{
+			std::vector<uint8_t> buffer(GetFontUnicodeRanges(ctx->GetDC(), nullptr));
+			auto& glyphset = *reinterpret_cast<GLYPHSET*>(&buffer[0]);
+			glyphset.cbThis = static_cast<DWORD>(buffer.size());
+			if (!GetFontUnicodeRanges(ctx->GetDC(), &glyphset))
+				throw std::runtime_error("a");
+			for (DWORD i = 0; i < glyphset.cRanges; ++i) {
+				for (USHORT j = 0; j < glyphset.ranges[i].cGlyphs; ++j) {
+					const auto c = static_cast<char32_t>(glyphset.ranges[i].wcLow + j);
+					m_characterList.push_back(c);
+				}
+			}
+		}
+		{
+			std::vector<KERNINGPAIR> pairs(GetKerningPairsW(ctx->GetDC(), 0, nullptr));
+			if (!pairs.empty() && !GetKerningPairsW(ctx->GetDC(), static_cast<DWORD>(pairs.size()), &pairs[0]))
+				throw std::runtime_error("a");
+			for (const auto& p : pairs) {
+				if (p.iKernAmount)
+					m_kerningMap.emplace(std::make_pair(p.wFirst, p.wSecond), p.iKernAmount);
+			}
+		}
+
 	}
 };
 
 Sqex::FontCsv::GdiFont::GdiFont(const LOGFONTW & logfont)
-	: m_pImpl(std::make_unique<Implementation>(logfont)) {
+	: m_pImpl(std::make_unique<Implementation>(*this, logfont)) {
 }
 
 Sqex::FontCsv::GdiFont::~GdiFont() = default;
@@ -407,15 +433,13 @@ Sqex::FontCsv::GdiFont::~GdiFont() = default;
 bool Sqex::FontCsv::GdiFont::HasCharacter(char32_t c) const {
 	const auto& chars = GetAllCharacters();
 	const auto it = std::lower_bound(chars.begin(), chars.end(), c);
-	return it != chars.end() && *it == c ;
+	return it != chars.end() && *it == c;
 }
 
 SSIZE_T Sqex::FontCsv::GdiFont::GetCharacterWidth(char32_t c) const {
-	ABCFLOAT w;
-	GetCharABCWidthsFloatW(m_pImpl->m_hdc, c, c, &w);
-	const auto tw = w.abcfA + w.abcfB + w.abcfC;
-	const auto tw2 = w.abcfA + w.abcfB;
-	return static_cast<SSIZE_T>(static_cast<double>(c == ' ' ? tw : tw2));
+	if (!HasCharacter(c))
+		return 0;
+	return AllocateDeviceContext()->GetCharacterWidth(c);
 }
 
 float Sqex::FontCsv::GdiFont::Size() const {
@@ -423,22 +447,6 @@ float Sqex::FontCsv::GdiFont::Size() const {
 }
 
 const std::vector<char32_t>& Sqex::FontCsv::GdiFont::GetAllCharacters() const {
-	if (!m_pImpl->m_characterListDiscovered) {
-		std::vector<char32_t> result;
-		std::vector<uint8_t> buffer(GetFontUnicodeRanges(m_pImpl->m_hdc, nullptr));
-		auto& glyphset = *reinterpret_cast<GLYPHSET*>(&buffer[0]);
-		glyphset.cbThis = static_cast<DWORD>(buffer.size());
-		if (!GetFontUnicodeRanges(m_pImpl->m_hdc, &glyphset))
-			throw std::runtime_error("a");
-		for (DWORD i = 0; i < glyphset.cRanges; ++i) {
-			for (USHORT j = 0; j < glyphset.ranges[i].cGlyphs; ++j) {
-				const auto c = static_cast<char32_t>(glyphset.ranges[i].wcLow + j);
-				result.push_back(c);
-			}
-		}
-		m_pImpl->m_characterList = std::move(result);
-		return m_pImpl->m_characterList;
-	}
 	return m_pImpl->m_characterList;
 }
 
@@ -451,42 +459,95 @@ uint32_t Sqex::FontCsv::GdiFont::Descent() const {
 }
 
 const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& Sqex::FontCsv::GdiFont::GetKerningTable() const {
-	if (!m_pImpl->m_kerningDiscovered) {
-		std::map<std::pair<char32_t, char32_t>, SSIZE_T> result;
-		std::vector<KERNINGPAIR> pairs(GetKerningPairsW(m_pImpl->m_hdc, 0, nullptr));
-		if (!pairs.empty() && !GetKerningPairsW(m_pImpl->m_hdc, static_cast<DWORD>(pairs.size()), &pairs[0]))
-			throw std::runtime_error("a");
-		for (const auto& p : pairs) {
-			if (p.iKernAmount)
-				result.emplace(std::make_pair(p.wFirst, p.wSecond), p.iKernAmount);
-		}
-		m_pImpl->m_kerningMap = std::move(result);
-		m_pImpl->m_kerningDiscovered = true;
-	}
 	return m_pImpl->m_kerningMap;
 }
 
 Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::GdiFont::Measure(SSIZE_T x, SSIZE_T y, char32_t c) const {
 	if (!HasCharacter(c))
 		return { true };
-	RECT r{
-		static_cast<LONG>(x),
-		static_cast<LONG>(y),
-		static_cast<LONG>(x),
-		static_cast<LONG>(y),
-	};
-	DrawTextW(m_pImpl->m_hdc, ToU16(ToU8({ c })).c_str(), -1, &r, DT_CALCRECT);
+	return AllocateDeviceContext()->Measure(x, y, c);
+}
+
+Sqex::FontCsv::GdiFont::DeviceContextWrapper::DeviceContextWrapper(const LOGFONTW & logfont)
+	: m_hdc(CreateCompatibleDC(nullptr))
+	, m_hdcRelease([this]() { DeleteDC(m_hdc); })
+
+	, m_hFont(CreateFontIndirectW(&logfont))
+	, m_fontRelease([this]() { DeleteFont(m_hFont); })
+	, m_hPrevFont(SelectFont(m_hdc, m_hFont))
+	, m_prevFontRevert([this]() { SelectFont(m_hdc, m_hPrevFont); })
+	, Metrics([this]() {
+		TEXTMETRICW metrics;
+		if (!::GetTextMetricsW(m_hdc, &metrics))
+			throw std::runtime_error("GetTextMetricsW failed");
+		return metrics;
+	}()) {
+}
+
+Sqex::FontCsv::GdiFont::DeviceContextWrapper::~DeviceContextWrapper() = default;
+
+SSIZE_T Sqex::FontCsv::GdiFont::DeviceContextWrapper::GetCharacterWidth(char32_t c) const {
+	ABCFLOAT w;
+	GetCharABCWidthsFloatW(m_hdc, c, c, &w);
+	const auto tw = w.abcfA + w.abcfB + w.abcfC;
+	const auto tw2 = w.abcfA + w.abcfB;
+	return static_cast<SSIZE_T>(static_cast<double>(c == ' ' ? tw : tw2));
+}
+
+Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::GdiFont::DeviceContextWrapper::Measure(SSIZE_T x, SSIZE_T y, char32_t c) const {
+	GLYPHMETRICS gm{};
+	static const MAT2 mat{ {0, 1},{0,0},{0,0},{0,1} };
+
+	if (GDI_ERROR == GetGlyphOutlineW(m_hdc, c, GGO_METRICS, &gm, 0, nullptr, &mat))
+		return { true };
+
+	ABCFLOAT w;
+	GetCharABCWidthsFloatW(m_hdc, c, c, &w);
 	return {
 		false,
-		r.left, r.top, r.right, r.bottom,
-		GetCharacterWidth(c) - (SSIZE_T() + r.right - r.left)
+		x + gm.gmptGlyphOrigin.x,
+		y + Metrics.tmAscent - gm.gmptGlyphOrigin.y,
+		x + gm.gmptGlyphOrigin.x + gm.gmBlackBoxX,
+		y + Metrics.tmAscent - gm.gmptGlyphOrigin.y + gm.gmBlackBoxY,
+		static_cast<SSIZE_T>(gm.gmCellIncX) - static_cast<SSIZE_T>(gm.gmBlackBoxX) - gm.gmptGlyphOrigin.x,
 	};
 }
 
-HDC Sqex::FontCsv::GdiFont::GetDC() const {
-	return m_pImpl->m_hdc;
+std::pair<const std::vector<uint8_t>*, Sqex::FontCsv::GlyphMeasurement> Sqex::FontCsv::GdiFont::DeviceContextWrapper::Draw(SSIZE_T x, SSIZE_T y, char32_t c) {
+	GLYPHMETRICS gm{};
+	static const MAT2 mat{ {0, 1},{0,0},{0,0},{0,1} };
+
+	m_readBuffer.resize(GetGlyphOutlineW(m_hdc, c, GGO_GRAY8_BITMAP, &gm, 0, nullptr, &mat));
+	if (!m_readBuffer.empty())
+		GetGlyphOutlineW(m_hdc, c, GGO_GRAY8_BITMAP, &gm, static_cast<DWORD>(m_readBuffer.size()), &m_readBuffer[0], &mat);;
+
+	return std::make_pair(&m_readBuffer, GlyphMeasurement{
+		false,
+		x + gm.gmptGlyphOrigin.x,
+		y + Metrics.tmAscent - gm.gmptGlyphOrigin.y,
+		x + gm.gmptGlyphOrigin.x + gm.gmBlackBoxX,
+		y + Metrics.tmAscent - gm.gmptGlyphOrigin.y + gm.gmBlackBoxY,
+		static_cast<SSIZE_T>(gm.gmCellIncX) - static_cast<SSIZE_T>(gm.gmBlackBoxX) - gm.gmptGlyphOrigin.x,
+		});
 }
 
-const TEXTMETRICW& Sqex::FontCsv::GdiFont::GetMetrics() const {
-	return m_pImpl->m_textMetric;
+Sqex::FontCsv::GdiFont::DeviceContextWrapperContext Sqex::FontCsv::GdiFont::AllocateDeviceContext() const {
+	{
+		const auto lock = std::lock_guard(m_pImpl->m_wrapperMtx);
+		for (auto& i : m_pImpl->m_wrappers) {
+			if (i)
+				return { this, std::move(i) };
+		}
+	}
+	return { this, std::make_unique<DeviceContextWrapper>(m_pImpl->m_logfont) };
+}
+
+void Sqex::FontCsv::GdiFont::FreeDeviceContext(std::unique_ptr<DeviceContextWrapper> wrapper) const {
+	const auto lock = std::lock_guard(m_pImpl->m_wrapperMtx);
+	for (auto& i : m_pImpl->m_wrappers) {
+		if (!i) {
+			i = std::move(wrapper);
+			return;
+		}
+	}
 }
