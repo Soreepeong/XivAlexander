@@ -26,6 +26,7 @@
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_EntryRawStream.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Texture_Mipmap.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_ThirdParty_TexTools.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_ThreadPool.h" />
     <ClInclude Include="includes\XivAlexanderCommon\XaDxtDecompression.h" />
     <ClInclude Include="includes\XivAlexanderCommon\XaFormat.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_CommandLine.h" />

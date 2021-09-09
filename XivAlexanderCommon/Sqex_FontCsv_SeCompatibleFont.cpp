@@ -159,6 +159,7 @@ const std::vector<char32_t>& Sqex::FontCsv::SeFont::GetAllCharacters() const {
 		for (const auto& c : m_pImpl->m_stream->GetFontTableEntries())
 			result.push_back(c.Char());
 		m_pImpl->m_characterList = std::move(result);
+		m_pImpl->m_characterListDiscovered = true;
 		return m_pImpl->m_characterList;
 	}
 	return m_pImpl->m_characterList;
@@ -266,6 +267,7 @@ const std::vector<char32_t>& Sqex::FontCsv::CascadingFont::GetAllCharacters() co
 			for (const auto& c : f->GetAllCharacters())
 				result.insert(c);
 		m_pImpl->m_characterList.insert(m_pImpl->m_characterList.end(), result.begin(), result.end());
+		m_pImpl->m_characterListDiscovered = true;
 		return m_pImpl->m_characterList;
 	}
 	return m_pImpl->m_characterList;
@@ -437,6 +439,7 @@ const std::vector<char32_t>& Sqex::FontCsv::GdiFont::GetAllCharacters() const {
 			}
 		}
 		m_pImpl->m_characterList = std::move(result);
+		m_pImpl->m_characterListDiscovered = true;
 		return m_pImpl->m_characterList;
 	}
 	return m_pImpl->m_characterList;

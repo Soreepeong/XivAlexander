@@ -344,7 +344,7 @@ uint64_t Sqex::Sqpack::EntryRawStream::ModelStreamDecoder::ReadStreamPartial(uin
 
 	if (info.relativeOffset < Head.size()) {
 		const auto available = std::min(info.destination.size_bytes(), static_cast<size_t>(Head.size() - info.relativeOffset));
-		const auto src = std::span(Head).subspan(info.relativeOffset, available);
+		const auto src = std::span(Head).subspan(info.relativeOffset, static_cast<size_t>(available));
 		std::copy_n(src.begin(), available, info.destination.begin());
 		info.destination = info.destination.subspan(available);
 		info.relativeOffset = 0;

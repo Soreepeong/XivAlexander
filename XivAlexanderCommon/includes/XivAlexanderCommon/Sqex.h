@@ -130,7 +130,7 @@ namespace Sqex {
 			if (count > maxCount)
 				throw std::runtime_error("trying to read too many");
 			if (count == SIZE_MAX)
-				count = StreamSize() / sizeof T;
+				count = static_cast<size_t>(StreamSize() / sizeof T);
 			std::vector<T> result(count);
 			ReadStream(offset, std::span(result));
 			return result;

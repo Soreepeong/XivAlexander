@@ -426,7 +426,7 @@ public:
 			return 0;
 
 		auto relativeOffset = offset;
-		auto out = std::span(static_cast<char*>(buf), length);
+		auto out = std::span(static_cast<char*>(buf), static_cast<size_t>(length));
 
 		if (relativeOffset < m_header.size()) {
 			const auto src = std::span(m_header).subspan(static_cast<size_t>(relativeOffset));

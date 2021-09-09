@@ -139,6 +139,9 @@
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_Creator.h">
       <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_ThreadPool.h">
+      <Filter>Windows API Wrappers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">

@@ -110,10 +110,6 @@ int main() {
 	const auto jupiter45l = std::make_shared<Sqex::FontCsv::SeDrawableFont<Sqex::Texture::RGBA4444, uint8_t>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
 		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider("common/font/Jupiter_45.fdt")),
 		true), texs);
-	const auto fontl = std::make_shared<Sqex::FontCsv::CascadingDrawableFont<uint8_t>>(
-		std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<uint8_t>>>{ jupiter45l, comic36l, axis36l, gulim36l }
-	, 36.f, axis36->Ascent(), axis36->Descent()
-		);
 
 	std::cout << std::format("Read 3 fdt files {}\n", GetTickCount64() - t);
 
@@ -132,19 +128,9 @@ int main() {
 	font->Draw(mm32.get(), 0, 0, pszTestString,
 		Sqex::Texture::RGBA8888(0, 0, 255), Sqex::Texture::RGBA8888(0, 0, 0, 0));
 	std::cout << std::format("Draw32: {}\n", GetTickCount64() - t);
-	mm32->Show();
-
-	t = GetTickCount64();
-	const auto mm8 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(
-		static_cast<uint16_t>(bbox.right - bbox.left),
-		static_cast<uint16_t>(bbox.bottom - bbox.top),
-		Sqex::Texture::CompressionType::L8_1,
-		std::vector<uint8_t>((size_t() + bbox.right - bbox.left) * (size_t() + bbox.bottom - bbox.top))
-		);
-	fontl->Draw(mm8.get(), 0, 0, pszTestString, 255, 0, 255, 0);
-	std::cout << std::format("Draw8: {}\n", GetTickCount64() - t);
-	mm8->Show();
+	// mm32->Show();
 	
+	// comic36l->GetAllCharacters(); gulim36l->GetAllCharacters();
 	auto creator = Sqex::FontCsv::Creator();
 	creator.SizePoints = axis36l->Size();
 	creator.AscentPixels = axis36l->Ascent();

@@ -38,6 +38,8 @@ namespace Sqex::FontCsv {
 			const uint16_t m_textureHeight;
 			const uint16_t m_glyphGap;
 
+			std::mutex m_mtx;
+
 		public:
 			struct AllocatedSpace {
 				uint16_t Index;
@@ -60,7 +62,7 @@ namespace Sqex::FontCsv {
 			void Finalize();
 			[[nodiscard]] std::vector<std::shared_ptr<const Texture::MipmapStream>> AsMipmapStreamVector() const;
 
-			AllocatedSpace& Draw(char32_t c, const SeCompatibleDrawableFont<uint8_t>* font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint16_t boundingWidth, uint16_t boundingHeight);
+			AllocatedSpace Draw(char32_t c, const SeCompatibleDrawableFont<uint8_t>* font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint16_t boundingWidth, uint16_t boundingHeight);
 
 			[[nodiscard]] uint16_t TextureWidth() const { return m_textureWidth; }
 			[[nodiscard]] uint16_t TextureHeight() const { return m_textureHeight; }

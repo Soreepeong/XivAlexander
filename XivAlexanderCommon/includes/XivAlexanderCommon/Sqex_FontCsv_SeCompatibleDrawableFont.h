@@ -249,6 +249,8 @@ namespace Sqex::FontCsv {
 				std::abort();  // Cannot reach
 		}
 
+		mutable std::mutex m_mipmapBuffersMtx;
+
 	public:
 		using SeCompatibleDrawableFont<DestPixFmt, OpacityType>::MaxOpacity;
 
@@ -271,8 +273,12 @@ namespace Sqex::FontCsv {
 
 				auto destBuf = to->View<DestPixFmt>();
 				auto& srcBuf = m_mipmapBuffers[entry.TextureIndex / SrcPixFmt::ChannelCount];
-				if (srcBuf.empty())
-					srcBuf = m_mipmaps[entry.TextureIndex / SrcPixFmt::ChannelCount]->template ReadStreamIntoVector<SrcPixFmt>(0);
+				if (srcBuf.empty()) {
+					const auto lock = std::lock_guard(m_mipmapBuffersMtx);
+					if (srcBuf.empty()) {
+						srcBuf = m_mipmaps[entry.TextureIndex / SrcPixFmt::ChannelCount]->template ReadStreamIntoVector<SrcPixFmt>(0);
+					}
+				}
 				const auto channelIndex = entry.TextureIndex % 4;
 
 				GlyphMeasurement src = {
@@ -345,14 +351,86 @@ namespace Sqex::FontCsv {
 
 	template<typename DestPixFmt = Texture::RGBA8888, typename OpacityType = uint8_t>
 	class GdiDrawingFont : public GdiFont, public SeCompatibleDrawableFont<DestPixFmt, OpacityType> {
-		const HBITMAP m_hBitmap;
-		const HBITMAP m_hPrevBitmap;
-		mutable struct BitmapInfoWithColorSpecContainer {
-			BITMAPINFO bmi;
-			DWORD dummy[2];
-		} m_bmi{};
-		mutable std::vector<Texture::RGBA8888> m_srcBuf;
-		
+		const LOGFONTW m_logfont;
+
+		class DrawBuffer {
+			const GdiDrawingFont<DestPixFmt, OpacityType>& m_font;
+			const HDC m_hdc;
+			const Utils::CallOnDestruction m_hdcRelease;
+
+			const HFONT m_hFont;
+			const Utils::CallOnDestruction m_fontRelease;
+			const HFONT m_hPrevFont;
+			const Utils::CallOnDestruction m_prevFontRevert;
+
+			const HBITMAP m_hBitmap;
+			const Utils::CallOnDestruction m_bitmapRelease;
+			const HBITMAP m_hPrevBitmap;
+			const Utils::CallOnDestruction m_prevBitmapRevert;
+
+			std::vector<Texture::RGBA8888> m_readBuffer;
+			BITMAPINFO m_bmi[2];
+
+		public:
+			DrawBuffer(const GdiDrawingFont<DestPixFmt, OpacityType>& font)
+				: m_font(font)
+				, m_hdc(CreateCompatibleDC(0))
+				, m_hdcRelease([this]() { DeleteDC(m_hdc); })
+
+				, m_hFont(CreateFontIndirectW(&font.m_logfont))
+				, m_fontRelease([this]() { DeleteFont(m_hFont); })
+				, m_hPrevFont(SelectFont(m_hdc, m_hFont))
+				, m_prevFontRevert([this]() { SelectFont(m_hdc, m_hPrevFont); })
+
+				, m_hBitmap([this]() { TEXTMETRICW result; GetTextMetricsW(m_hdc, &result); return CreateBitmap(result.tmMaxCharWidth, result.tmHeight, 1, 32, nullptr); }())
+				, m_bitmapRelease([this]() { DeleteBitmap(m_hBitmap); })
+				, m_hPrevBitmap(SelectBitmap(m_hdc, m_hBitmap))
+				, m_prevBitmapRevert([this]() { SelectBitmap(m_hdc, m_hPrevBitmap); }) {
+
+				SetTextColor(m_hdc, 0xFFFFFF);
+				SetBkColor(m_hdc, 0x0);
+
+				m_bmi[0].bmiHeader.biSize = sizeof m_bmi[0].bmiHeader;
+				GetDIBits(m_hdc, m_hBitmap, 0, 0, nullptr, m_bmi, DIB_RGB_COLORS);
+				m_readBuffer.resize(m_bmi[0].bmiHeader.biSizeImage / 4);
+			}
+
+			const std::vector<Texture::RGBA8888>& Draw(SSIZE_T x, SSIZE_T y, char32_t c) {
+				RECT r{ static_cast<int>(x), static_cast<int>(y), 0, 0 };
+				DrawTextW(m_hdc, ToU16(ToU8({ c })).c_str(), -1, &r, DT_NOCLIP);
+				GetDIBits(m_hdc, m_hBitmap, 0, m_bmi[0].bmiHeader.biHeight, &m_readBuffer[0], m_bmi, DIB_RGB_COLORS);
+				return m_readBuffer;
+			}
+
+			SSIZE_T GetCharacterWidth(char32_t c) const {
+				ABCFLOAT w;
+				GetCharABCWidthsFloatW(m_hdc, c, c, &w);
+				const auto tw = w.abcfA + w.abcfB + w.abcfC;
+				const auto tw2 = w.abcfA + w.abcfB;
+				return static_cast<SSIZE_T>(static_cast<double>(c == ' ' ? tw : tw2));
+			}
+
+			GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const {
+				RECT r{
+					static_cast<LONG>(x),
+					static_cast<LONG>(y),
+					static_cast<LONG>(x),
+					static_cast<LONG>(y),
+				};
+				DrawTextW(m_hdc, ToU16(ToU8({ c })).c_str(), -1, &r, DT_CALCRECT);
+				return {
+					false,
+					r.left, r.top, r.right, r.bottom,
+					GetCharacterWidth(c) - (SSIZE_T() + r.right - r.left)
+				};
+			}
+
+			SSIZE_T Width() const { return m_bmi->bmiHeader.biWidth; }
+			SSIZE_T Height() const { return m_bmi->bmiHeader.biHeight; }
+
+			const GdiDrawingFont<DestPixFmt, OpacityType>& GetFont() const { return m_font; }
+		};
+
 		static uint32_t GetEffectiveOpacity(const Texture::RGBA8888& src) {
 			return src.R;
 		}
@@ -360,65 +438,45 @@ namespace Sqex::FontCsv {
 	public:
 		GdiDrawingFont(const LOGFONTW& f)
 			: GdiFont(f)
-			, m_hBitmap(CreateBitmap(GetMetrics().tmMaxCharWidth, GetMetrics().tmHeight, 1, 32, nullptr))
-			, m_hPrevBitmap(SelectBitmap(GetDC(), m_hBitmap)) {
-			SetTextColor(GetDC(), 0xFFFFFF);
-			SetBkColor(GetDC(), 0x0);
-
-			m_bmi.bmi.bmiHeader.biSize = sizeof m_bmi.bmi.bmiHeader;
-			GetDIBits(GetDC(), m_hBitmap, 0, 0, nullptr, &m_bmi.bmi, DIB_RGB_COLORS);
-			m_srcBuf.resize(m_bmi.bmi.bmiHeader.biSizeImage / 4);
-		}
-
-		~GdiDrawingFont() override {
-			DeleteObject(SelectObject(GetDC(), m_hPrevBitmap));
+			, m_logfont(f) {
 		}
 
 		using SeCompatibleDrawableFont<DestPixFmt, OpacityType>::Draw;
 		GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, char32_t c, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity, OpacityType bgOpacity) const override {
-			const auto zeroBbox = Measure(0, 0, c);
-			if (zeroBbox.empty)
+			if (!HasCharacter(c))
 				return { true };
 
-			const auto bbox = GlyphMeasurement{
-				false,
-				zeroBbox.left + x,
-				zeroBbox.top + y,
-				zeroBbox.right + x,
-				zeroBbox.bottom + y,
-				zeroBbox.offsetX,
-			};
-
-			RECT r{
-				static_cast<int>(-zeroBbox.left),
-				static_cast<int>(-zeroBbox.top),
-				0,
-				0,
-			};
-			DrawTextW(GetDC(), ToU16(ToU8({ c })).c_str(), -1, &r, DT_NOCLIP);
-			GetDIBits(GetDC(), m_hBitmap, 0, m_bmi.bmi.bmiHeader.biHeight, &m_srcBuf[0], &m_bmi.bmi, DIB_RGB_COLORS);
+			const auto buffer = AcquireBuffer();
+			const auto bbox = buffer->Measure(x, y, c);
+			auto& srcBuf = buffer->Draw(x- bbox.left, y- bbox.top, c);
 
 			const auto destWidth = static_cast<SSIZE_T>(to->Width());
 			const auto destHeight = static_cast<SSIZE_T>(to->Height());
-			const auto srcWidth = static_cast<SSIZE_T>(m_bmi.bmi.bmiHeader.biWidth);
-			const auto srcHeight = static_cast<SSIZE_T>(m_bmi.bmi.bmiHeader.biHeight);
+			const auto srcWidth = static_cast<SSIZE_T>(buffer->Width());
+			const auto srcHeight = static_cast<SSIZE_T>(buffer->Height());
 
-			GlyphMeasurement src = {
-				false,
-				r.left + zeroBbox.left,
-				r.top + zeroBbox.top,
-				r.left + zeroBbox.right,
-				r.top + zeroBbox.bottom,
-			};
+			GlyphMeasurement src = {false, 0, 0, bbox.right - bbox.left, bbox.bottom - bbox.top};
 			auto dest = bbox;
 			src.AdjustToIntersection(dest, srcWidth, srcHeight, destWidth, destHeight);
 
 			if (!src.empty && !dest.empty) {
 				auto destBuf = to->View<DestPixFmt>();
-				RgbBitmapCopy<Texture::RGBA8888, GetEffectiveOpacity, DestPixFmt, OpacityType, -1>::CopyTo(src, dest, &m_srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity);
+				RgbBitmapCopy<Texture::RGBA8888, GetEffectiveOpacity, DestPixFmt, OpacityType, -1>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity);
 			}
 
 			return bbox;
+		}
+
+	private:
+		mutable std::mutex m_drawBufferPoolMtx;
+		mutable std::map<DWORD, std::unique_ptr<DrawBuffer>> m_drawBufferPool;
+
+		DrawBuffer* AcquireBuffer() const {
+			const auto lock = std::lock_guard(m_drawBufferPoolMtx);
+			auto& slot = m_drawBufferPool[GetCurrentThreadId()];
+			if (!slot)
+				slot = std::make_unique<DrawBuffer>(*this);
+			return slot.get();
 		}
 	};
 #pragma warning(pop)
