@@ -179,7 +179,11 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::Creator::
 				return;
 			
 			const auto boundingWidth = static_cast<uint8_t>(bbox.right + globalOffsetX);
-			const auto boundingHeight = static_cast<uint8_t>(std::max<SSIZE_T>({ bbox.bottom - bbox.top, result->LineHeight(), plan.Font->Height() }) + globalOffsetY);
+			const auto boundingHeight = static_cast<uint8_t>(std::max({
+				bbox.bottom - bbox.top,
+				static_cast<SSIZE_T>(result->LineHeight()),
+				static_cast<SSIZE_T>(plan.Font->Height()),
+				}) + globalOffsetY);
 			const auto nextOffsetX = static_cast<int8_t>(bbox.offsetX - globalOffsetX);
 			const auto currentOffsetY = static_cast<int8_t>(
 				(AlignToBaseline ? result->Ascent() - plan.Font->Ascent() : (0LL + result->LineHeight() - plan.Font->Height()) / 2)

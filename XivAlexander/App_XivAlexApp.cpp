@@ -31,12 +31,14 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
+	const Utils::Win32::Event m_windowFoundEvent;
 	const Utils::Win32::Event m_stopEvent;
 	const Utils::Win32::Thread m_initThread;  // Must be the last member variable
 
 	Implementation_GameWindow(XivAlexApp* this_)
 		: this_(this_)
 		, m_hWnd(nullptr)
+		, m_windowFoundEvent(Utils::Win32::Event::Create())
 		, m_stopEvent(Utils::Win32::Event::Create())
 		, m_initThread(Utils::Win32::Thread(L"XivAlexApp::Implementation_GameWindow::Initializer", [this]() { InitializeThreadBody(); })) {
 	}
@@ -44,34 +46,12 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 	~Implementation_GameWindow();
 
 	void InitializeThreadBody() {
-		m_hWnd = Dll::FindGameMainWindow(false);
-
-		if (!m_hWnd) {
-			const auto foundEvent = Utils::Win32::Event::Create();
-			Misc::Hooks::ImportedFunction<HWND, DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID> CreateWindowExA{ "user32::CreateWindowExA", "user32.dll", "CreateWindowExA" };
-			Misc::Hooks::ImportedFunction<HWND, DWORD, LPCWSTR, LPCWSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID> CreateWindowExW{ "user32::CreateWindowExW", "user32.dll", "CreateWindowExW" };
-			const auto a = CreateWindowExA.SetHook([this, &CreateWindowExA, &foundEvent](DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam) {
-				const auto hWnd = CreateWindowExA.bridge(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
-				if (hWnd && strncmp(lpClassName, "FFXIVGAME", 10) == 0) {
-					m_hWnd = hWnd;
-					foundEvent.Set();
-				}
-				return hWnd;
-			});
-			const auto w = CreateWindowExW.SetHook([this, &CreateWindowExW, &foundEvent](DWORD dwExStyle, LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam) {
-				const auto hWnd = CreateWindowExW.bridge(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
-				if (hWnd && wcsncmp(lpClassName, L"FFXIVGAME", 10) == 0) {
-					m_hWnd = hWnd;
-					foundEvent.Set();
-				}
-				return hWnd;
-			});
-
-			// Just in case CreateWindowEx got called since last search attempt but before we actually set up hooks.
-			m_hWnd = Dll::FindGameMainWindow(false);
-			if (!m_hWnd || m_stopEvent.Wait(false, {foundEvent}) == WAIT_OBJECT_0)
+		do {
+			if (m_stopEvent.Wait(100) == WAIT_OBJECT_0)
 				return;
-		}
+			m_hWnd = Dll::FindGameMainWindow(false);
+		} while (!m_hWnd);
+		m_windowFoundEvent.Set();
 
 		m_subclassHook = std::make_shared<Misc::Hooks::WndProcFunction>("GameMainWindow", m_hWnd);
 
@@ -91,6 +71,12 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 				SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 		});
 		m_cleanup += [this]() { SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE); };
+	}
+
+	HWND GetHwnd() const {
+		if (m_windowFoundEvent.Wait(false, { m_stopEvent }) == WAIT_OBJECT_0 + 1)
+			return nullptr;
+		return m_hWnd;
 	}
 
 	void RunOnGameLoop(std::function<void()> f) {
@@ -364,7 +350,7 @@ void App::XivAlexApp::CustomMessageLoopBody() {
 }
 
 HWND App::XivAlexApp::GetGameWindowHandle() const {
-	return m_pGameWindow->m_hWnd;
+	return m_pGameWindow->GetHwnd();
 }
 
 void App::XivAlexApp::RunOnGameLoop(std::function<void()> f) {
@@ -387,7 +373,7 @@ std::string App::XivAlexApp::IsUnloadable() const {
 	if (m_pImpl->m_socketHook && !m_pImpl->m_socketHook->IsUnloadable())
 		return Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_UNLOAD_SOCKET));
 
-	if (!m_pGameWindow->m_subclassHook->IsDisableable())
+	if (m_pGameWindow->m_subclassHook && !m_pGameWindow->m_subclassHook->IsDisableable())
 		return Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_UNLOAD_WNDPROC));
 
 	return "";

@@ -507,8 +507,8 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::GdiFont::DeviceContextWrapper::Me
 		false,
 		x + gm.gmptGlyphOrigin.x,
 		y + Metrics.tmAscent - gm.gmptGlyphOrigin.y,
-		x + gm.gmptGlyphOrigin.x + gm.gmBlackBoxX,
-		y + Metrics.tmAscent - gm.gmptGlyphOrigin.y + gm.gmBlackBoxY,
+		x + gm.gmptGlyphOrigin.x + static_cast<SSIZE_T>(gm.gmBlackBoxX),
+		y + Metrics.tmAscent - gm.gmptGlyphOrigin.y + static_cast<SSIZE_T>(gm.gmBlackBoxY),
 		static_cast<SSIZE_T>(gm.gmCellIncX) - static_cast<SSIZE_T>(gm.gmBlackBoxX) - gm.gmptGlyphOrigin.x,
 	};
 }
@@ -525,8 +525,8 @@ std::pair<const std::vector<uint8_t>*, Sqex::FontCsv::GlyphMeasurement> Sqex::Fo
 		false,
 		x + gm.gmptGlyphOrigin.x,
 		y + Metrics.tmAscent - gm.gmptGlyphOrigin.y,
-		x + gm.gmptGlyphOrigin.x + gm.gmBlackBoxX,
-		y + Metrics.tmAscent - gm.gmptGlyphOrigin.y + gm.gmBlackBoxY,
+		x + gm.gmptGlyphOrigin.x + static_cast<SSIZE_T>(gm.gmBlackBoxX),
+		y + Metrics.tmAscent - gm.gmptGlyphOrigin.y + static_cast<SSIZE_T>(gm.gmBlackBoxY),
 		static_cast<SSIZE_T>(gm.gmCellIncX) - static_cast<SSIZE_T>(gm.gmBlackBoxX) - gm.gmptGlyphOrigin.x,
 		});
 }

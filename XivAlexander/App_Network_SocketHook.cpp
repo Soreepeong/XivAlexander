@@ -549,6 +549,7 @@ App::Network::SocketHook::SocketHook(XivAlexApp * pApp)
 	, m_pImpl(std::make_unique<Implementation>(this, pApp)) {
 
 	pApp->RunOnGameLoop([&]() {
+		MessageBoxW(nullptr, L"", L"sh", MB_OK);
 		m_pImpl->m_cleanupList += std::move(socket.SetHook([&](_In_ int af, _In_ int type, _In_ int protocol) {
 			const auto result = socket.bridge(af, type, protocol);
 			if (GetCurrentThreadId() == m_pImpl->m_dwGameMainThreadId) {

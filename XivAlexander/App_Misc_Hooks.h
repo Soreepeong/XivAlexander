@@ -132,12 +132,17 @@ namespace App::Misc::Hooks {
 	public:
 		ImportedFunction(const char* szName, const char* szDllName, const char* szFunctionName, uint32_t hintOrOrdinal = 0)
 			: Function<R, Args...>(szName, reinterpret_cast<FunctionType>(Utils::Win32::Process::Current().FindImportedFunction(GetModuleHandleW(nullptr), szDllName, szFunctionName, hintOrOrdinal).first)) {
-			this->m_bridge = static_cast<FunctionType>(*reinterpret_cast<void**>(this->m_pAddress));
+			if (this->m_pAddress)
+				this->m_bridge = static_cast<FunctionType>(*reinterpret_cast<void**>(this->m_pAddress));
 		}
 
 		[[nodiscard]] bool IsDisableable() const final {
 			return *reinterpret_cast<void**>(this->m_pAddress) == this->m_binder.GetBinder()
 				|| *reinterpret_cast<void**>(this->m_pAddress) == this->m_bridge;
+		}
+
+		operator bool() const {
+			return this->m_pAddress;
 		}
 
 	protected:
