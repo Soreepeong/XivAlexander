@@ -14,7 +14,10 @@
           "properties": {
             "indexFile": {
               "description": "Path to index file. If unspecified or null, uses the current installation's 000000.sqpack.index",
-              "type": ["string", "null"]
+              "type": [
+                "string",
+                "null"
+              ]
             },
             "fdtPath": {
               "description": "Inner path to fdt file associated with this font.",
@@ -82,7 +85,10 @@
               "default": "DWRITE_FONT_STYLE_NORMAL"
             }
           },
-          "required": ["familyName", "height"]
+          "required": [
+            "familyName",
+            "height"
+          ]
         },
         "^gdi:": {
           "type": "object",
@@ -102,7 +108,10 @@
             "pitchAndFamily": {},
             "faceName": {}
           },
-          "required": ["faceName", "height"]
+          "required": [
+            "faceName",
+            "height"
+          ]
         }
       }
     },
@@ -121,7 +130,10 @@
               "minItems": 1,
               "maxItems": 2,
               "items": {
-                "type": ["string", "integer"],
+                "type": [
+                  "string",
+                  "integer"
+                ],
                 "pattern": "^(?:(?:[Uu]\\+|0x)[0-9A-Fa-f]+|[0-9]+)"
               }
             }
@@ -130,74 +142,99 @@
       }
     },
     "targets": {
-      "description": "Defines maps of the relationships of tex and fdt files to be generated. Use {} as a placeholder for texture index in keys.",
+      "description": "Defines maps of the relationships of tex and fdt files to be generated. Use {} as a placeholder for texture index in filenames(keys).",
       "type": "object",
       "patternProperties": {
         "": {
-          "description": "Defines a font.",
+          "description": "Defines fonts to be stored in this set of tex files. Specify filename including .fdt extension as keys.",
           "type": "object",
-          "properties": {
-            "height": {
-              "type": "number",
-              "minimumExclusive": 0
-            },
-            "ascent": {
-              "description": "Ascent of the font. If null is given, the maximum ascent will be used. If string is given, ascent of specified font from sources will be used.",
-              "type": ["integer", "string", "null"],
-              "minimum": 0,
-              "maximum": 255,
-              "default": null
-            },
-            "descent": {
-              "description": "Descent of the font. If null is given, the maximum descent will be used. If string is given, descent of specified font from sources will be used.",
-              "type": ["integer", "string", "null"],
-              "minimum": 0,
-              "maximum": 255,
-              "default": null
-            },
-            "maxGlobalOffsetX": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 255,
-              "default": 4
-            },
-            "globalOffsetY": {
-              "type": "integer",
-              "default": 0,
-              "maximum": 255
-            },
-            "charactersToKernAcrossFonts": {
-              "type": "string",
-              "default": " "
-            },
-            "alignToBaseline": {
-              "type": "boolean",
-              "default": true
-            },
-            "sources": {
-              "type": "array",
-              "minItems": 1,
-              "items": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "ranges": {
-                    "description": "If unspecified or null, every characters will be applied.",
-                    "type": ["array", "null"],
-                    "default": null
-                  },
-                  "replace": {
-                    "type": "boolean",
-                    "default": false
-                  }
+          "patternProperties": {
+            "": {
+              "description": "Defines a font.",
+              "type": "object",
+              "properties": {
+                "height": {
+                  "type": "number",
+                  "minimumExclusive": 0
                 },
-                "required": ["name"]
-              }
+                "ascent": {
+                  "description": "Ascent of the font. If null is given, the maximum ascent will be used. If string is given, ascent of specified font from sources will be used.",
+                  "type": [
+                    "integer",
+                    "string",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 255,
+                  "default": null
+                },
+                "descent": {
+                  "description": "Descent of the font. If null is given, the maximum descent will be used. If string is given, descent of specified font from sources will be used.",
+                  "type": [
+                    "integer",
+                    "string",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 255,
+                  "default": null
+                },
+                "maxGlobalOffsetX": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255,
+                  "default": 4
+                },
+                "globalOffsetY": {
+                  "type": "integer",
+                  "default": 0,
+                  "maximum": 255
+                },
+                "charactersToKernAcrossFonts": {
+                  "type": "string",
+                  "default": " "
+                },
+                "alignToBaseline": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "sources": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "ranges": {
+                        "description": "If unspecified or null, every characters will be applied.",
+                        "type": [
+                          "array",
+                          "null"
+                        ],
+                        "default": null,
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "replace": {
+                        "type": "boolean",
+                        "default": false
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "height",
+                "sources"
+              ]
             }
-          },
-          "required": ["height", "sources"]
+          }
         }
       }
     }
