@@ -4,6 +4,7 @@
 #include <set>
 #include "Sqex_FontCsv_SeCompatibleDrawableFont.h"
 #include "Sqex_Texture_Mipmap.h"
+#include "Sqex_Texture_ModifiableTextureStream.h"
 
 namespace Sqex {
 	namespace Texture {
@@ -23,6 +24,7 @@ namespace Sqex::FontCsv {
 		uint32_t AscentPixels = 0;
 		uint32_t DescentPixels = 0;
 		uint16_t GlobalOffsetYModifier = 0;
+		int MinGlobalOffsetX = 0;
 		int MaxGlobalOffsetX = 4;
 		std::set<char32_t> AlwaysApplyKerningCharacters = { U' ' };
 		bool AlignToBaseline = true;
@@ -30,11 +32,11 @@ namespace Sqex::FontCsv {
 		Creator();
 		~Creator();
 
-		void AddCharacter(char32_t codePoint, std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>> font, bool replace = false);
-		void AddCharacter(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, bool replace = false);
+		void AddCharacter(char32_t codePoint, std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>> font, bool replace = false, bool extendRange = true);
+		void AddCharacter(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, bool replace = false, bool extendRange = true);
 		void AddKerning(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, char32_t left, char32_t right, int distance, bool replace = false);
 		void AddKerning(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, bool replace = false);
-		void AddFont(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, bool replace = false);
+		void AddFont(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, bool replace = false, bool extendRange = true);
 
 		class RenderTarget {
 			const uint16_t m_textureWidth;
@@ -64,6 +66,7 @@ namespace Sqex::FontCsv {
 
 			void Finalize();
 			[[nodiscard]] std::vector<std::shared_ptr<const Texture::MipmapStream>> AsMipmapStreamVector() const;
+			[[nodiscard]] std::vector<std::shared_ptr<Texture::ModifiableTextureStream>> AsTextureStreamVector() const;
 
 			AllocatedSpace Draw(char32_t c, const SeCompatibleDrawableFont<uint8_t>* font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint8_t boundingWidth, uint8_t boundingHeight);
 

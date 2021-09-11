@@ -112,34 +112,70 @@
       "texturePath": "common/font/font{}.tex",
       "textureCount": 7
     },
-    "dwrite:SourceHanSansK:9.6": {
-      "familyName": "Source Han Sans K",
+    "dwrite:Gulim:9.6": {
+      "familyName": "Gulim",
       "height": 9.6,
-      "weight": 400
+      "weight": 400,
+      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
     },
-    "dwrite:SourceHanSansK:12": {
-      "familyName": "Source Han Sans K",
+    "dwrite:Gulim:12": {
+      "familyName": "Gulim",
       "height": 12,
-      "weight": 400
+      "weight": 400,
+      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
     },
-    "dwrite:SourceHanSansK:14": {
-      "familyName": "Source Han Sans K",
+    "dwrite:Gulim:14": {
+      "familyName": "Gulim",
       "height": 14,
-      "weight": 400
+      "weight": 400,
+      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
     },
-    "dwrite:SourceHanSansK:18": {
-      "familyName": "Source Han Sans K",
+    "dwrite:Gulim:16": {
+      "familyName": "Gulim",
+      "height": 16,
+      "weight": 400,
+      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
+    },
+    "dwrite:Gulim:18": {
+      "familyName": "Gulim",
       "height": 18,
-      "weight": 400
+      "weight": 400,
+      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
     },
-    "dwrite:SourceHanSansK:24": {
-      "familyName": "Source Han Sans K",
+    "dwrite:Gulim:20": {
+      "familyName": "Gulim",
+      "height": 20,
+      "weight": 400,
+      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
+    },
+    "dwrite:Gulim:24": {
+      "familyName": "Gulim",
       "height": 24,
       "weight": 400
     },
-    "dwrite:SourceHanSansK:36": {
-      "familyName": "Source Han Sans K",
+    "dwrite:Gulim:36": {
+      "familyName": "Gulim",
       "height": 36,
+      "weight": 400
+    },
+    "dwrite:Gulim:40": {
+      "familyName": "Gulim",
+      "height": 36,
+      "weight": 400
+    },
+    "dwrite:Gulim:45": {
+      "familyName": "Gulim",
+      "height": 45,
+      "weight": 400
+    },
+    "dwrite:Gulim:68": {
+      "familyName": "Gulim",
+      "height": 68,
+      "weight": 400
+    },
+    "dwrite:Gulim:90": {
+      "familyName": "Gulim",
+      "height": 90,
       "weight": 400
     }
   },
@@ -208,7 +244,12 @@
             "name": "game:AXIS_96"
           },
           {
-            "name": "dwrite:SourceHanSansK:9.6",
+            "name": "dwrite:Gulim:9.6",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:9.6",
             "ranges": [
               "HangulMinimum"
             ]
@@ -224,7 +265,12 @@
             "name": "game:AXIS_12"
           },
           {
-            "name": "dwrite:SourceHanSansK:12",
+            "name": "dwrite:Gulim:12",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:12",
             "ranges": [
               "HangulMinimum"
             ]
@@ -240,7 +286,12 @@
             "name": "game:AXIS_14"
           },
           {
-            "name": "dwrite:SourceHanSansK:14",
+            "name": "dwrite:Gulim:14",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:14",
             "ranges": [
               "HangulMinimum"
             ]
@@ -256,7 +307,12 @@
             "name": "game:AXIS_18"
           },
           {
-            "name": "dwrite:SourceHanSansK:18",
+            "name": "dwrite:Gulim:18",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:18",
             "ranges": [
               "HangulMinimum"
             ]
@@ -272,7 +328,12 @@
             "name": "game:AXIS_36"
           },
           {
-            "name": "dwrite:SourceHanSansK:36",
+            "name": "dwrite:Gulim:36",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:36",
             "ranges": [
               "HangulMinimum"
             ]
@@ -288,7 +349,12 @@
             "name": "game:Jupiter_16"
           },
           {
-            "name": "dwrite:SourceHanSansK:18",
+            "name": "dwrite:Gulim:18",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:18",
             "ranges": [
               "HangulMinimum"
             ]
@@ -304,7 +370,12 @@
             "name": "game:Jupiter_20"
           },
           {
-            "name": "dwrite:SourceHanSansK:24",
+            "name": "dwrite:Gulim:24",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:24",
             "ranges": [
               "HangulMinimum"
             ]
@@ -320,7 +391,12 @@
             "name": "game:Jupiter_23"
           },
           {
-            "name": "dwrite:SourceHanSansK:24",
+            "name": "dwrite:Gulim:24",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:24",
             "ranges": [
               "HangulMinimum"
             ]
@@ -334,6 +410,11 @@
         "sources": [
           {
             "name": "game:Jupiter_45"
+          },
+          {
+            "name": "dwrite:Gulim:45",
+            "extendRange": false,
+            "replace": true
           }
         ]
       },
@@ -346,7 +427,12 @@
             "name": "game:Jupiter_46"
           },
           {
-            "name": "dwrite:SourceHanSansK:36",
+            "name": "dwrite:Gulim:45",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:45",
             "ranges": [
               "HangulMinimum"
             ]
@@ -360,6 +446,11 @@
         "sources": [
           {
             "name": "game:Jupiter_90"
+          },
+          {
+            "name": "dwrite:Gulim:90",
+            "extendRange": false,
+            "replace": true
           }
         ]
       },
@@ -370,6 +461,11 @@
         "sources": [
           {
             "name": "game:Meidinger_16"
+          },
+          {
+            "name": "dwrite:Gulim:16",
+            "extendRange": false,
+            "replace": true
           }
         ]
       },
@@ -380,6 +476,11 @@
         "sources": [
           {
             "name": "game:Meidinger_20"
+          },
+          {
+            "name": "dwrite:Gulim:20",
+            "extendRange": false,
+            "replace": true
           }
         ]
       },
@@ -390,6 +491,11 @@
         "sources": [
           {
             "name": "game:Meidinger_40"
+          },
+          {
+            "name": "dwrite:Gulim:40",
+            "extendRange": false,
+            "replace": true
           }
         ]
       },
@@ -402,7 +508,12 @@
             "name": "game:MiedingerMid_10"
           },
           {
-            "name": "dwrite:SourceHanSansK:9.6",
+            "name": "dwrite:Gulim:9.6",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:9.6",
             "ranges": [
               "HangulMinimum"
             ]
@@ -418,7 +529,12 @@
             "name": "game:MiedingerMid_12"
           },
           {
-            "name": "dwrite:SourceHanSansK:12",
+            "name": "dwrite:Gulim:12",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:12",
             "ranges": [
               "HangulMinimum"
             ]
@@ -434,7 +550,12 @@
             "name": "game:MiedingerMid_14"
           },
           {
-            "name": "dwrite:SourceHanSansK:14",
+            "name": "dwrite:Gulim:14",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:14",
             "ranges": [
               "HangulMinimum"
             ]
@@ -450,7 +571,12 @@
             "name": "game:MiedingerMid_18"
           },
           {
-            "name": "dwrite:SourceHanSansK:18",
+            "name": "dwrite:Gulim:18",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:18",
             "ranges": [
               "HangulMinimum"
             ]
@@ -466,7 +592,12 @@
             "name": "game:TrumpGothic_184"
           },
           {
-            "name": "dwrite:SourceHanSansK:18",
+            "name": "dwrite:Gulim:18",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:18",
             "ranges": [
               "HangulMinimum"
             ]
@@ -482,7 +613,12 @@
             "name": "game:TrumpGothic_23"
           },
           {
-            "name": "dwrite:SourceHanSansK:24",
+            "name": "dwrite:Gulim:24",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:24",
             "ranges": [
               "HangulMinimum"
             ]
@@ -498,7 +634,12 @@
             "name": "game:TrumpGothic_34"
           },
           {
-            "name": "dwrite:SourceHanSansK:36",
+            "name": "dwrite:Gulim:36",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:36",
             "ranges": [
               "HangulMinimum"
             ]
@@ -514,7 +655,12 @@
             "name": "game:TrumpGothic_68"
           },
           {
-            "name": "dwrite:SourceHanSansK:36",
+            "name": "dwrite:Gulim:68",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:68",
             "ranges": [
               "HangulMinimum"
             ]
@@ -532,7 +678,12 @@
             "name": "game:AXIS_12"
           },
           {
-            "name": "dwrite:SourceHanSansK:12",
+            "name": "dwrite:Gulim:12",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:12",
             "ranges": [
               "HangulMinimum"
             ]
@@ -548,7 +699,12 @@
             "name": "game:AXIS_14"
           },
           {
-            "name": "dwrite:SourceHanSansK:14",
+            "name": "dwrite:Gulim:14",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:14",
             "ranges": [
               "HangulMinimum"
             ]
@@ -564,7 +720,12 @@
             "name": "game:AXIS_18"
           },
           {
-            "name": "dwrite:SourceHanSansK:18",
+            "name": "dwrite:Gulim:18",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:18",
             "ranges": [
               "HangulMinimum"
             ]
@@ -580,7 +741,12 @@
             "name": "game:Jupiter_16"
           },
           {
-            "name": "dwrite:SourceHanSansK:18",
+            "name": "dwrite:Gulim:18",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:18",
             "ranges": [
               "HangulMinimum"
             ]
@@ -596,7 +762,12 @@
             "name": "game:Jupiter_20"
           },
           {
-            "name": "dwrite:SourceHanSansK:24",
+            "name": "dwrite:Gulim:24",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:24",
             "ranges": [
               "HangulMinimum"
             ]
@@ -612,7 +783,12 @@
             "name": "game:Jupiter_23"
           },
           {
-            "name": "dwrite:SourceHanSansK:24",
+            "name": "dwrite:Gulim:24",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:24",
             "ranges": [
               "HangulMinimum"
             ]
@@ -626,6 +802,11 @@
         "sources": [
           {
             "name": "game:Jupiter_45"
+          },
+          {
+            "name": "dwrite:Gulim:45",
+            "extendRange": false,
+            "replace": true
           }
         ]
       },
@@ -636,6 +817,11 @@
         "sources": [
           {
             "name": "game:Meidinger_16"
+          },
+          {
+            "name": "dwrite:Gulim:16",
+            "extendRange": false,
+            "replace": true
           }
         ]
       },
@@ -646,6 +832,11 @@
         "sources": [
           {
             "name": "game:Meidinger_20"
+          },
+          {
+            "name": "dwrite:Gulim:20",
+            "extendRange": false,
+            "replace": true
           }
         ]
       },
@@ -658,7 +849,12 @@
             "name": "game:MiedingerMid_10"
           },
           {
-            "name": "dwrite:SourceHanSansK:9.6",
+            "name": "dwrite:Gulim:9.6",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:9.6",
             "ranges": [
               "HangulMinimum"
             ]
@@ -674,7 +870,12 @@
             "name": "game:MiedingerMid_12"
           },
           {
-            "name": "dwrite:SourceHanSansK:12",
+            "name": "dwrite:Gulim:12",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:12",
             "ranges": [
               "HangulMinimum"
             ]
@@ -690,7 +891,12 @@
             "name": "game:MiedingerMid_14"
           },
           {
-            "name": "dwrite:SourceHanSansK:14",
+            "name": "dwrite:Gulim:14",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:14",
             "ranges": [
               "HangulMinimum"
             ]
@@ -706,7 +912,12 @@
             "name": "game:MiedingerMid_18"
           },
           {
-            "name": "dwrite:SourceHanSansK:18",
+            "name": "dwrite:Gulim:18",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:18",
             "ranges": [
               "HangulMinimum"
             ]
@@ -722,7 +933,12 @@
             "name": "game:TrumpGothic_184"
           },
           {
-            "name": "dwrite:SourceHanSansK:18",
+            "name": "dwrite:Gulim:18",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:18",
             "ranges": [
               "HangulMinimum"
             ]
@@ -738,7 +954,12 @@
             "name": "game:TrumpGothic_23"
           },
           {
-            "name": "dwrite:SourceHanSansK:24",
+            "name": "dwrite:Gulim:24",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:24",
             "ranges": [
               "HangulMinimum"
             ]
@@ -754,7 +975,12 @@
             "name": "game:TrumpGothic_34"
           },
           {
-            "name": "dwrite:SourceHanSansK:36",
+            "name": "dwrite:Gulim:36",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:36",
             "ranges": [
               "HangulMinimum"
             ]

@@ -343,8 +343,6 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::CascadingFont::Measure(SSIZE_T x,
 		const auto kerning = GetKerning(lastChar, currChar);
 		const auto currBbox = Measure(currX + kerning, currY, currChar);
 		if (!currBbox.empty) {
-			if (currBbox.offsetX > 100000)
-				__debugbreak();
 			if (result.empty) {
 				result = currBbox;
 				result.offsetX = result.right + result.offsetX;

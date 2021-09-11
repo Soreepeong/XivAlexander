@@ -318,6 +318,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const SingleTargetC
 		{"name", o.name},
 		{"ranges", o.ranges},
 		{"replace", o.replace},
+		{"extendRange", o.extendRange},
 		});
 }
 
@@ -325,6 +326,7 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, SingleTarge
 	o.name = j.at("name").get<std::string>();
 	o.ranges = j.value("ranges", std::vector<std::string>());
 	o.replace = j.value("replace", false);
+	o.extendRange = j.value("extendRange", true);
 }
 
 void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const SingleFontTarget& o) {
@@ -333,6 +335,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const SingleFontTar
 		{"ascent", nullptr},
 		{"descent", nullptr},
 		{"maxGlobalOffsetX", o.maxGlobalOffsetX},
+		{"minGlobalOffsetX", o.minGlobalOffsetX},
 		{"globalOffsetY", o.globalOffsetY},
 		{"charactersToKernAcrossFonts", o.charactersToKernAcrossFonts},
 		{"alignToBaseline", o.alignToBaseline},
@@ -362,7 +365,8 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, SingleFontT
 		o.autoDescent = true;
 	else
 		throw std::invalid_argument("invalid descent value given");
-	o.maxGlobalOffsetX = j.value<uint8_t>("maxGlobalOffsetX", 4);
+	o.maxGlobalOffsetX = j.value<uint8_t>("maxGlobalOffsetX", 6);
+	o.minGlobalOffsetX = j.value<uint8_t>("minGlobalOffsetX", 0);
 	o.globalOffsetY = j.value<uint8_t>("globalOffsetY", 0);
 	o.charactersToKernAcrossFonts = ToU32(j.value("charactersToKernAcrossFonts", std::string(" ")));
 	o.alignToBaseline = j.value("alignToBaseline", true);

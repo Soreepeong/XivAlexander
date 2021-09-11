@@ -57,6 +57,7 @@ namespace Sqex::FontCsv::CreateConfig {
 		std::string name;
 		std::vector<std::string> ranges;
 		bool replace;
+		bool extendRange;
 	};
 	void to_json(nlohmann::json& j, const SingleTargetComponent& o);
 	void from_json(const nlohmann::json& j, SingleTargetComponent& o);
@@ -73,6 +74,7 @@ namespace Sqex::FontCsv::CreateConfig {
 		bool autoDescent;
 
 		uint8_t maxGlobalOffsetX;
+		uint8_t minGlobalOffsetX;
 		uint8_t globalOffsetY;
 		std::u32string charactersToKernAcrossFonts;
 		bool alignToBaseline;

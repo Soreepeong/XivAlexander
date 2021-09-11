@@ -8,6 +8,7 @@ Sqex::FontCsv::ModifiableFontCsvStream::ModifiableFontCsvStream() {
 	memcpy(m_fthd.Signature, FontTableHeader::Signature_Value, sizeof m_fthd.Signature);
 	memcpy(m_knhd.Signature, KerningHeader::Signature_Value, sizeof m_knhd.Signature);
 	m_fcsv.FontTableHeaderOffset = static_cast<uint32_t>(sizeof m_fcsv);
+	m_fcsv.KerningHeaderOffset = static_cast<uint32_t>(sizeof m_fcsv + sizeof m_fthd);
 }
 
 Sqex::FontCsv::ModifiableFontCsvStream::ModifiableFontCsvStream(const RandomAccessStream& stream, bool strict)
@@ -167,7 +168,8 @@ void Sqex::FontCsv::ModifiableFontCsvStream::AddFontEntry(char32_t c, uint16_t t
 		auto entry = FontTableEntry();
 		entry.Utf8Value = val;
 		it = m_fontTableEntries.insert(it, entry);
-		m_fcsv.FontTableHeaderOffset += sizeof entry;
+		m_fcsv.KerningHeaderOffset += sizeof entry;
+		m_fthd.FontTableEntryCount += 1;
 	}
 	it->TextureIndex = textureIndex;
 	it->TextureOffsetX = textureOffsetX;
@@ -198,4 +200,5 @@ void Sqex::FontCsv::ModifiableFontCsvStream::AddKerning(char32_t l, char32_t r, 
 			m_kerningEntries.erase(it);
 	} else if (rightOffset)
 		m_kerningEntries.insert(it, entry);
+	m_fthd.KerningEntryCount = m_knhd.EntryCount = static_cast<uint32_t>(m_kerningEntries.size());
 }

@@ -403,9 +403,9 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::DirectWriteFont::DrawCharacter(ch
 			});
 	}
 
-	if (glyphMetrics.rightSideBearing < 0) {
+	/*if (glyphMetrics.rightSideBearing < 0) {
 		bbox.right -= m_pImpl->ConvVal(glyphMetrics.rightSideBearing);
-	}
+	}*/
 	bbox.offsetX = m_pImpl->ConvVal(glyphMetrics.rightSideBearing);
 	if (draw) {
 		buf.resize(bbox.Area());

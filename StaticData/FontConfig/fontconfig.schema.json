@@ -253,6 +253,11 @@
                       "replace": {
                         "type": "boolean",
                         "default": false
+                      },
+                      "extendRange": {
+                        "description": "Whether to extend the character coverage of this font. If false, then will only replace font if replace is true. If replace is false and this is true, then this entry will do nothing.",
+                        "type": "boolean",
+                        "default": true
                       }
                     },
                     "required": [

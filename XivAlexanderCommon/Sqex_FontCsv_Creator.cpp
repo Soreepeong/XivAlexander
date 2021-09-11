@@ -25,7 +25,7 @@ Sqex::FontCsv::Creator::Creator()
 
 Sqex::FontCsv::Creator::~Creator() = default;
 
-void Sqex::FontCsv::Creator::AddCharacter(char32_t codePoint, std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>> font, bool replace) {
+void Sqex::FontCsv::Creator::AddCharacter(char32_t codePoint, std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>> font, bool replace, bool extendRange) {
 	if (!font->HasCharacter(codePoint))
 		return;
 
@@ -34,15 +34,20 @@ void Sqex::FontCsv::Creator::AddCharacter(char32_t codePoint, std::shared_ptr<co
 		.Font = std::move(font),
 	};
 
+	if (!extendRange) {
+		if (m_pImpl->m_characters.find(codePoint) == m_pImpl->m_characters.end())
+			return;
+	}
+
 	if (replace)
 		m_pImpl->m_characters.insert_or_assign(codePoint, std::move(plan));
 	else
 		m_pImpl->m_characters.emplace(codePoint, std::move(plan));
 }
 
-void Sqex::FontCsv::Creator::AddCharacter(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>&font, bool replace) {
+void Sqex::FontCsv::Creator::AddCharacter(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>&font, bool replace, bool extendRange) {
 	for (const auto c : font->GetAllCharacters())
-		AddCharacter(c, font, replace);
+		AddCharacter(c, font, replace, extendRange);
 }
 
 void Sqex::FontCsv::Creator::AddKerning(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>&font, char32_t left, char32_t right, int distance, bool replace) {
@@ -62,9 +67,9 @@ void Sqex::FontCsv::Creator::AddKerning(const std::shared_ptr<const SeCompatible
 		AddKerning(font, pair.first, pair.second, static_cast<int>(distance), replace);
 }
 
-void Sqex::FontCsv::Creator::AddFont(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, bool replace) {
+void Sqex::FontCsv::Creator::AddFont(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, bool replace, bool extendRange) {
 	for (const auto c : font->GetAllCharacters())
-		AddCharacter(c, font, replace);
+		AddCharacter(c, font, replace, extendRange);
 	for (const auto& [pair, distance] : font->GetKerningTable())
 		AddKerning(font, pair.first, pair.second, static_cast<int>(distance), replace);
 }
@@ -109,6 +114,16 @@ std::vector<std::shared_ptr<const Sqex::Texture::MipmapStream>> Sqex::FontCsv::C
 	return res;
 }
 
+std::vector<std::shared_ptr<Sqex::Texture::ModifiableTextureStream>> Sqex::FontCsv::Creator::RenderTarget::AsTextureStreamVector() const {
+	std::vector<std::shared_ptr<Texture::ModifiableTextureStream>> res;
+	for (const auto& i : m_mipmaps) {
+		auto texture = std::make_shared<Texture::ModifiableTextureStream>(i->Type(), i->Width(), i->Height());
+		texture->AppendMipmap(i);
+		res.emplace_back(std::move(texture));
+	}
+	return res;
+}
+
 Sqex::FontCsv::Creator::RenderTarget::AllocatedSpace Sqex::FontCsv::Creator::RenderTarget::Draw(char32_t c, const SeCompatibleDrawableFont<uint8_t>*font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint8_t boundingWidth, uint8_t boundingHeight) {
 	AllocatedSpace space;
 	decltype(m_mipmaps.back().get()) mipmap;
@@ -124,10 +139,10 @@ Sqex::FontCsv::Creator::RenderTarget::AllocatedSpace Sqex::FontCsv::Creator::Ren
 		else {
 			if (static_cast<size_t>(0) + m_currentX + boundingWidth + m_glyphGap >= m_textureWidth) {
 				m_currentX = m_glyphGap;
-				m_currentY += m_currentLineHeight + m_glyphGap;
+				m_currentY += m_currentLineHeight + m_glyphGap + 1;  // Account for rounding errors
 				m_currentLineHeight = 0;
 			}
-			if (m_currentY + boundingHeight + m_glyphGap >= m_textureHeight)
+			if (m_currentY + boundingHeight + m_glyphGap + 1 >= m_textureHeight)
 				newTargetRequired = true;
 		}
 		if (newTargetRequired) {
@@ -194,7 +209,8 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::Creator::
 		for (const auto& n : maxDescents)
 			maxDescent = std::max(n, maxDescent);
 	}
-	const auto globalOffsetX = std::min<SSIZE_T>(MaxGlobalOffsetX, std::max<SSIZE_T>(0, -maxBbox.left));
+	const auto globalOffsetX = std::max<SSIZE_T>(MinGlobalOffsetX, std::min<SSIZE_T>(MaxGlobalOffsetX, std::max<SSIZE_T>(0, -maxBbox.left)));
+	const auto boundingHeight = static_cast<uint8_t>(maxBbox.Height());
 
 	if (AscentPixels == AutoAscentDescent)
 		result->Ascent(maxAscent);
@@ -216,14 +232,14 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::Creator::
 				if (bbox.empty)
 					return;
 
-				const auto boundingWidth = static_cast<uint8_t>(bbox.right - bbox.left + globalOffsetX);
-				const auto boundingHeight = static_cast<uint8_t>(maxBbox.Height());
+				const auto constrainedOffsetXModifier = std::max<SSIZE_T>(0, -bbox.left - globalOffsetX);
+				const auto boundingWidth = static_cast<uint8_t>(bbox.right + globalOffsetX + constrainedOffsetXModifier);
 				const auto nextOffsetX = static_cast<int8_t>(bbox.offsetX - globalOffsetX);
 				const auto currentOffsetY = static_cast<int8_t>(
 					(AlignToBaseline ? result->Ascent() - plan.Font->Ascent() : (0LL + result->LineHeight() - plan.Font->Height()) / 2)
 					+ GlobalOffsetYModifier
 					);
-				const auto space = renderTarget.Draw(plan.Character, plan.Font.get(), -bbox.left, 0, boundingWidth, boundingHeight);
+				const auto space = renderTarget.Draw(plan.Character, plan.Font.get(), globalOffsetX + constrainedOffsetXModifier, 0, boundingWidth, boundingHeight);
 				result->AddFontEntry(plan.Character, space.Index, space.X, space.Y, boundingWidth, std::min(space.BoundingHeight, boundingHeight), nextOffsetX, currentOffsetY);
 			});
 		}
