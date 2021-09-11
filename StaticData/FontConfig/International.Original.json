@@ -1,4 +1,6 @@
 {
+  "textureWidth": 2048,
+  "textureHeight": 2048,
   "sources": {
     "game:AXIS_96": {
       "fdtPath": "common/font/AXIS_96.fdt",
@@ -87,6 +89,11 @@
     },
     "game:MiedingerMid_18": {
       "fdtPath": "common/font/MiedingerMid_18.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:MiedingerMid_36": {
+      "fdtPath": "common/font/MiedingerMid_36.fdt",
       "texturePath": "common/font/font{}.tex",
       "textureCount": 7
     },
@@ -262,6 +269,14 @@
         "sources": [
           {
             "name": "game:MiedingerMid_18"
+          }
+        ]
+      },
+      "MiedingerMid_36.fdt": {"height": 36, "ascent": "game:MiedingerMid_36",
+        "descent": "game:MiedingerMid_36",
+        "sources": [
+          {
+            "name": "game:MiedingerMid_36"
           }
         ]
       },

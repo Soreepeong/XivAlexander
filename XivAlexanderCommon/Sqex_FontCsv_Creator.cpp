@@ -155,6 +155,8 @@ Sqex::FontCsv::Creator::RenderTarget::AllocatedSpace Sqex::FontCsv::Creator::Ren
 		}
 
 		space = it->second = AllocatedSpace{
+			.drawOffsetX = drawOffsetX,
+			.drawOffsetY = drawOffsetY,
 			.Index = static_cast<uint16_t>(m_mipmaps.size() - 1),
 			.X = m_currentX,
 			.Y = m_currentY,
@@ -167,7 +169,7 @@ Sqex::FontCsv::Creator::RenderTarget::AllocatedSpace Sqex::FontCsv::Creator::Ren
 	}
 
 	font->Draw(mipmap, space.X + drawOffsetX, space.Y + drawOffsetY, c, 0xFF, 0x00);
-
+	
 	return space;
 }
 
@@ -240,7 +242,10 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::Creator::
 					+ GlobalOffsetYModifier
 					);
 				const auto space = renderTarget.Draw(plan.Character, plan.Font.get(), globalOffsetX + constrainedOffsetXModifier, 0, boundingWidth, boundingHeight);
-				result->AddFontEntry(plan.Character, space.Index, space.X, space.Y, boundingWidth, std::min(space.BoundingHeight, boundingHeight), nextOffsetX, currentOffsetY);
+
+				const auto resultingX = static_cast<uint16_t>(space.X - space.drawOffsetX + globalOffsetX + constrainedOffsetXModifier);
+				const auto resultingY = static_cast<uint16_t>(space.Y - space.drawOffsetY);
+				result->AddFontEntry(plan.Character, space.Index, resultingX, resultingY, boundingWidth, std::min(space.BoundingHeight, boundingHeight), nextOffsetX, currentOffsetY);
 			});
 		}
 		tpEnv.WaitOutstanding();

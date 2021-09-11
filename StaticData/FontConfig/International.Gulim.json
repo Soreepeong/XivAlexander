@@ -92,6 +92,11 @@
       "texturePath": "common/font/font{}.tex",
       "textureCount": 7
     },
+    "game:MiedingerMid_36": {
+      "fdtPath": "common/font/MiedingerMid_36.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
     "game:TrumpGothic_184": {
       "fdtPath": "common/font/TrumpGothic_184.fdt",
       "texturePath": "common/font/font{}.tex",
@@ -160,7 +165,7 @@
     },
     "dwrite:Gulim:40": {
       "familyName": "Gulim",
-      "height": 36,
+      "height": 40,
       "weight": 400
     },
     "dwrite:Gulim:45": {
@@ -577,6 +582,27 @@
           },
           {
             "name": "dwrite:Gulim:18",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "MiedingerMid_36.fdt": {
+        "height": 36,
+        "ascent": "game:MiedingerMid_36",
+        "descent": "game:MiedingerMid_36",
+        "sources": [
+          {
+            "name": "game:MiedingerMid_36"
+          },
+          {
+            "name": "dwrite:Gulim:36",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "dwrite:Gulim:36",
             "ranges": [
               "HangulMinimum"
             ]

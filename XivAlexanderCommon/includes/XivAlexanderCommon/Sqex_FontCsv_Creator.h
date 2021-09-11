@@ -47,6 +47,8 @@ namespace Sqex::FontCsv {
 
 		public:
 			struct AllocatedSpace {
+				SSIZE_T drawOffsetX;
+				SSIZE_T drawOffsetY;
 				uint16_t Index;
 				uint16_t X;
 				uint16_t Y;
