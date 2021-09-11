@@ -41,7 +41,7 @@ std::string Utils::Win32::FormatWindowsErrorMessage(unsigned int errorCode) {
 	for (const auto& message : messages) {
 		if (!res.empty())
 			res += " / ";
-		res += StringTrim(message);
+		res += StringTrim<std::string>(message);
 	}
 	return res;
 }

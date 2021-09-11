@@ -85,7 +85,7 @@ uint16_t Utils::ParsePort(const std::string& s) {
 
 std::vector<std::pair<uint32_t, uint32_t>> Utils::ParseIpRange(const std::string& s, bool allowAll, bool allowPrivate, bool allowLoopback) {
 	std::vector<std::pair<uint32_t, uint32_t>> result;
-	for (auto& range : StringSplit(s, ",")) {
+	for (auto& range : StringSplit<std::string>(s, ",")) {
 		try {
 			range = StringTrim(range);
 			if (range.empty())
@@ -102,7 +102,7 @@ std::vector<std::pair<uint32_t, uint32_t>> Utils::ParseIpRange(const std::string
 					endIp = (((endIp >> (32 - subnet)) + 1) << (32 - subnet)) - 1;
 				}
 			} else {
-				auto ips = StringSplit(range, "-");
+				auto ips = StringSplit<std::string>(range, "-");
 				if (ips.size() > 2)
 					throw std::format_error("Too many items in range specification.");
 				startIp = ntohl(ParseIp(ips[0]).s_addr);
@@ -137,12 +137,12 @@ std::vector<std::pair<uint32_t, uint32_t>> Utils::ParseIpRange(const std::string
 
 std::vector<std::pair<uint32_t, uint32_t>> Utils::ParsePortRange(const std::string& s, bool allowAll) {
 	std::vector<std::pair<uint32_t, uint32_t>> result;
-	for (auto range : StringSplit(s, ",")) {
+	for (auto range : StringSplit<std::string>(s, ",")) {
 		try {
 			range = StringTrim(range);
 			if (range.empty())
 				continue;
-			auto ports = StringSplit(range, "-");
+			auto ports = StringSplit<std::string>(range, "-");
 			if (ports.size() > 2)
 				throw std::format_error("Too many items in range specification.");
 			uint32_t start = ParsePort(ports[0]);

@@ -14,8 +14,82 @@ namespace Sqex::FontCsv {
 		SSIZE_T offsetX = 0;
 
 		void AdjustToIntersection(GlyphMeasurement& r, SSIZE_T srcWidth, SSIZE_T srcHeight, SSIZE_T destWidth, SSIZE_T destHeight);
-		SSIZE_T Width() const { return right - left; }
-		SSIZE_T Height() const { return bottom - top; }
+		[[nodiscard]] SSIZE_T Width() const { return right - left; }
+		[[nodiscard]] SSIZE_T Height() const { return bottom - top; }
+		[[nodiscard]] SSIZE_T Area() const { return Width() * Height(); }
+		[[nodiscard]] bool EffectivelyEmpty() const { return empty || (left == right && top == bottom); }
+
+		GlyphMeasurement& SetFrom(const RECT& r) {
+			*this = {
+				!r.left && !r.top && !r.right && !r.bottom,
+				r.left, r. top, r.right, r.bottom, 0
+			};
+			return *this;
+		}
+
+		operator bool() const {
+			return !empty;
+		}
+
+		operator RECT() const {
+			return { static_cast<LONG>(left), static_cast<LONG>(top), static_cast<LONG>(right), static_cast<LONG>(bottom) };
+		}
+
+		struct AsMutableRectPtrType {
+			GlyphMeasurement& m;
+			RECT r;
+			operator RECT* () {
+				return &r;
+			}
+
+			AsMutableRectPtrType(GlyphMeasurement& m) : m(m), r(m) {}
+			~AsMutableRectPtrType() { m.SetFrom(r); }
+		} AsMutableRectPtr() {
+			return AsMutableRectPtrType(*this);
+		}
+
+		[[nodiscard]] struct AsConstRectPtrType {
+			RECT r;
+			operator RECT* () { return &r; }
+			AsConstRectPtrType(const GlyphMeasurement& m) : r(m) {}
+		} AsConstRectPtr() const {
+			return AsConstRectPtrType(*this);
+		}
+
+		template<typename Mul, typename Div>
+		GlyphMeasurement& Scale(Mul mul, Div div) {
+			if constexpr (std::is_floating_point_v<Mul> || std::is_floating_point_v<Div>) {
+				left = static_cast<decltype(left)>(static_cast<double>(left) * mul / div);
+				top = static_cast<decltype(top)>(static_cast<double>(top) * mul / div);
+				right = static_cast<decltype(right)>(static_cast<double>(right) * mul / div);
+				bottom = static_cast<decltype(bottom)>(static_cast<double>(bottom) * mul / div);
+				offsetX = static_cast<decltype(offsetX)>(static_cast<double>(offsetX) * mul / div);
+			} else {
+				static_assert(std::is_integral_v<Mul> && std::is_integral_v<Div>);
+				left = static_cast<decltype(left)>(left * static_cast<SSIZE_T>(mul) / div);
+				top = static_cast<decltype(top)>(top * static_cast<SSIZE_T>(mul) / div);
+				right = static_cast<decltype(right)>(right * static_cast<SSIZE_T>(mul) / div);
+				bottom = static_cast<decltype(bottom)>(bottom * static_cast<SSIZE_T>(mul) / div);
+				offsetX = static_cast<decltype(offsetX)>(offsetX * static_cast<SSIZE_T>(mul) / div);
+			}
+			return *this;
+		}
+
+		GlyphMeasurement& Translate(SSIZE_T x, SSIZE_T y) {
+			left += x;
+			right += x;
+			top += y;
+			bottom += y;
+			return *this;
+		}
+
+		GlyphMeasurement& ExpandToFit(const GlyphMeasurement& r) {
+			left = std::min(left, r.left);
+			top = std::min(top, r.top);
+			right = std::max(right, r.right);
+			bottom = std::max(bottom, r.bottom);
+			return *this;
+		}
 	};
 
 	class SeCompatibleFont {
@@ -90,87 +164,5 @@ namespace Sqex::FontCsv {
 
 	protected:
 		[[nodiscard]] const std::vector<std::shared_ptr<SeCompatibleFont>>& GetFontList() const;
-	};
-
-	class GdiFont : public virtual SeCompatibleFont {
-		struct Implementation;
-		const std::unique_ptr<Implementation> m_pImpl;
-
-	public:
-		GdiFont(const LOGFONTW&);
-		~GdiFont() override;
-
-		[[nodiscard]] bool HasCharacter(char32_t) const override;
-		[[nodiscard]] SSIZE_T GetCharacterWidth(char32_t c) const override;
-		[[nodiscard]] float Size() const override;
-		[[nodiscard]] const std::vector<char32_t>& GetAllCharacters() const override;
-		[[nodiscard]] uint32_t Ascent() const override;
-		[[nodiscard]] uint32_t Descent() const override;
-		[[nodiscard]] const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& GetKerningTable() const override;
-
-		using SeCompatibleFont::Measure;
-		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const override;
-
-	protected:
-		class DeviceContextWrapper {
-			const HDC m_hdc;
-			const Utils::CallOnDestruction m_hdcRelease;
-
-			const HFONT m_hFont;
-			const Utils::CallOnDestruction m_fontRelease;
-			const HFONT m_hPrevFont;
-			const Utils::CallOnDestruction m_prevFontRevert;
-			
-			std::vector<uint8_t> m_readBuffer;
-
-		public:
-			const TEXTMETRICW Metrics;
-			DeviceContextWrapper(const LOGFONTW& logfont);
-			~DeviceContextWrapper();
-
-			[[nodiscard]] HDC GetDC() const { return m_hdc; }
-			[[nodiscard]] SSIZE_T GetCharacterWidth(char32_t c) const;
-			[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const;
-
-			std::pair<const std::vector<uint8_t>*, GlyphMeasurement> Draw(SSIZE_T x, SSIZE_T y, char32_t c);
-		};
-
-		class DeviceContextWrapperContext {
-			const GdiFont* m_font;
-			std::unique_ptr<DeviceContextWrapper> m_wrapper;
-
-		public:
-			DeviceContextWrapperContext() :
-				m_font(nullptr), m_wrapper(nullptr){}
-			DeviceContextWrapperContext(const GdiFont* font, std::unique_ptr<DeviceContextWrapper> wrapper)
-				: m_font(font)
-				, m_wrapper(std::move(wrapper)) {
-			}
-			DeviceContextWrapperContext(const DeviceContextWrapperContext&) = delete;
-			DeviceContextWrapperContext(DeviceContextWrapperContext&& r) noexcept
-				: m_font(r.m_font)
-				, m_wrapper(std::move(r.m_wrapper)) {
-				r.m_font = nullptr;
-			}
-			DeviceContextWrapperContext& operator=(const DeviceContextWrapperContext&) = delete;
-			DeviceContextWrapperContext& operator=(DeviceContextWrapperContext&& r) noexcept {
-				m_font = r.m_font;
-				m_wrapper = std::move(r.m_wrapper);
-				r.m_font = nullptr;
-				return *this;
-			}
-
-			DeviceContextWrapper* operator->() const {
-				return m_wrapper.get();
-			}
-
-			~DeviceContextWrapperContext() {
-				if (m_wrapper)
-					m_font->FreeDeviceContext(std::move(m_wrapper));
-			}
-		};
-
-		DeviceContextWrapperContext AllocateDeviceContext() const;
-		void FreeDeviceContext(std::unique_ptr<DeviceContextWrapper> wrapper) const;
 	};
 }

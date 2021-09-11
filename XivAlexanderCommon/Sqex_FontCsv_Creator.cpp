@@ -155,44 +155,40 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::Creator::
 	result->Points(SizePoints);
 	result->Ascent(AscentPixels);
 	result->LineHeight(AscentPixels + DescentPixels);
-
-	SSIZE_T globalOffsetX = 0;
-	SSIZE_T globalOffsetY = 0;
 	
-	Utils::Win32::TpEnvironment tpEnv;
-	for (auto& plan : m_pImpl->m_characters | std::views::values)
-		tpEnv.SubmitWork([&plan]() { void(plan.GetBbox()); });
-	tpEnv.WaitOutstanding();
-
+	GlyphMeasurement maxBbox;
 	for (const auto& plan : m_pImpl->m_characters | std::views::values) {
-		const auto& bbox = plan.GetBbox();
-		globalOffsetX = std::max<SSIZE_T>(globalOffsetX, -static_cast<int>(bbox.left));
-		globalOffsetY = std::max<SSIZE_T>(globalOffsetY, -static_cast<int>(bbox.top));
+		if (!maxBbox)
+			maxBbox = plan.Font->Measure(0, 0, plan.Character);
+		else
+			maxBbox.ExpandToFit(plan.Font->Measure(0, 0, plan.Character));
 	}
-	globalOffsetX = std::min<SSIZE_T>(globalOffsetX, MaxGlobalOffsetX);
+	const auto globalOffsetX = std::min<SSIZE_T>(std::max<SSIZE_T>(0, -maxBbox.left), MaxGlobalOffsetX);
+	const auto globalOffsetY = std::max<SSIZE_T>(0, -maxBbox.top);
 
 	result->ReserveStorage(m_pImpl->m_characters.size(), m_pImpl->m_kernings.size());
-	for (auto& plan : m_pImpl->m_characters | std::views::values) {
-		tpEnv.SubmitWork([&]() {
-			const auto& bbox = plan.GetBbox();
-			if (bbox.empty)
-				return;
-			
-			const auto boundingWidth = static_cast<uint8_t>(bbox.right + globalOffsetX);
-			const auto boundingHeight = static_cast<uint8_t>(std::max({
-				bbox.bottom - bbox.top,
-				static_cast<SSIZE_T>(result->LineHeight()),
-				static_cast<SSIZE_T>(plan.Font->Height()),
-				}) + globalOffsetY);
-			const auto nextOffsetX = static_cast<int8_t>(bbox.offsetX - globalOffsetX);
-			const auto currentOffsetY = static_cast<int8_t>(
-				(AlignToBaseline ? result->Ascent() - plan.Font->Ascent() : (0LL + result->LineHeight() - plan.Font->Height()) / 2)
-				- globalOffsetY
-				+ GlobalOffsetYModifier
-				);
-			const auto space = renderTarget.Draw(plan.Character, plan.Font.get(), 0, 0, boundingWidth, boundingHeight);
-			result->AddFontEntry(plan.Character, space.Index, space.X, space.Y, boundingWidth, boundingHeight, nextOffsetX, currentOffsetY);
-		});
+
+	{
+		Utils::Win32::TpEnvironment tpEnv;
+		for (auto& plan : m_pImpl->m_characters | std::views::values) {
+			tpEnv.SubmitWork([&]() {
+				const auto& bbox = plan.GetBbox();
+				if (bbox.empty)
+					return;
+
+				const auto boundingWidth = static_cast<uint8_t>(bbox.right + globalOffsetX);
+				const auto boundingHeight = static_cast<uint8_t>(maxBbox.Height());
+				const auto nextOffsetX = static_cast<int8_t>(bbox.offsetX - globalOffsetX);
+				const auto currentOffsetY = static_cast<int8_t>(
+					(AlignToBaseline ? result->Ascent() - plan.Font->Ascent() : (0LL + result->LineHeight() - plan.Font->Height()) / 2)
+					- globalOffsetY
+					+ GlobalOffsetYModifier
+					);
+				const auto space = renderTarget.Draw(plan.Character, plan.Font.get(), 0, 0, boundingWidth, boundingHeight);
+				result->AddFontEntry(plan.Character, space.Index, space.X, space.Y, boundingWidth, boundingHeight, nextOffsetX, currentOffsetY);
+			});
+		}
+		tpEnv.WaitOutstanding();
 	}
 
 	for (const auto& [pair, distance] : m_pImpl->m_kernings) {
@@ -210,6 +206,5 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::Creator::
 		result->AddKerning(c1, c2, distance);
 	}
 
-	tpEnv.WaitOutstanding();
 	return result;
 }

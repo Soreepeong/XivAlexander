@@ -54,10 +54,10 @@ std::vector<std::pair<std::string, std::string>> Sqex::CommandLine::FromString(s
 				for (const auto& item : Split(decrypted, '/', SIZE_MAX)) {
 					const auto keyValue = Split(item, '=', 1);
 					if (keyValue.size() == 1)
-						res.emplace_back(Utils::StringReplaceAll(keyValue[0], "  ", " "), "");
+						res.emplace_back(Utils::StringReplaceAll<std::string>(keyValue[0], "  ", " "), "");
 					else
-						res.emplace_back(Utils::StringReplaceAll(keyValue[0], "  ", " "),
-							Utils::StringReplaceAll(keyValue[1], "  ", " "));
+						res.emplace_back(Utils::StringReplaceAll<std::string>(keyValue[0], "  ", " "),
+							Utils::StringReplaceAll<std::string>(keyValue[1], "  ", " "));
 				}
 				if (wasObfuscated)
 					*wasObfuscated = true;
@@ -98,8 +98,8 @@ std::string Sqex::CommandLine::ToString(const std::vector<std::pair<std::string,
 				if (k == "T")
 					continue;
 
-				plain << " /" << Utils::StringReplaceAll(k, " ", "  ")
-					<< " =" << Utils::StringReplaceAll(v, " ", "  ");
+				plain << " /" << Utils::StringReplaceAll<std::string>(k, " ", "  ")
+					<< " =" << Utils::StringReplaceAll<std::string>(v, " ", "  ");
 			}
 			encrypted = plain.str();
 		}

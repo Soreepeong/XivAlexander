@@ -11,7 +11,7 @@ namespace Utils::Win32 {
 		SYSTEM_INFO m_systemInfo;
 
 	public:
-		TpEnvironment()
+		TpEnvironment(DWORD maxCores = 0)
 			: m_pool(CreateThreadpool(nullptr))
 			, m_group(CreateThreadpoolCleanupGroup()) {
 
@@ -30,7 +30,8 @@ namespace Utils::Win32 {
 				});
 
 			GetNativeSystemInfo(&m_systemInfo);
-			m_systemInfo.dwNumberOfProcessors = 1;
+			if (maxCores)
+				m_systemInfo.dwNumberOfProcessors = maxCores;
 			SetThreadpoolThreadMaximum(m_pool, m_systemInfo.dwNumberOfProcessors);
 		}
 

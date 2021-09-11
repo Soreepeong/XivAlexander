@@ -44,9 +44,7 @@ namespace Sqex {
 	template<typename T, T DefaultValue = static_cast<T>(0)>
 	struct LE {
 	private:
-		union {
-			T value;
-		};
+		T value;
 
 	public:
 		LE(T defaultValue = DefaultValue)
@@ -78,6 +76,59 @@ namespace Sqex {
 
 		void Value(T newValue) {
 			value = std::move(newValue);
+		}
+	};
+
+	template<typename T, T DefaultValue = static_cast<T>(0)>
+	struct BE {
+	private:
+		union {
+			T value;
+			char buf[sizeof T];
+		};
+
+	public:
+		BE(T defaultValue = DefaultValue)
+			: value(defaultValue) {
+		}
+
+		operator T() const {
+			return Value();
+		}
+
+		BE<T, DefaultValue>& operator= (T newValue) {
+			Value(std::move(newValue));
+			return *this;
+		}
+
+		BE<T, DefaultValue>& operator+= (T newValue) {
+			Value(Value() + std::move(newValue));
+			return *this;
+		}
+
+		BE<T, DefaultValue>& operator-= (T newValue) {
+			Value(Value() - std::move(newValue));
+			return *this;
+		}
+
+		T Value() const {
+			union {
+				char tmp[sizeof T];
+				T tval;
+			};
+			memcpy(tmp, buf, sizeof T);
+			std::reverse(tmp, tmp + sizeof T);
+			return tval;
+		}
+
+		void Value(T newValue) {
+			union {
+				char tmp[sizeof T];
+				T tval;
+			};
+			tval = newValue;
+			std::reverse(tmp, tmp + sizeof T);
+			memcpy(buf, tmp, sizeof T);
 		}
 	};
 

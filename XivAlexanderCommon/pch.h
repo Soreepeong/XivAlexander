@@ -43,6 +43,10 @@
 #include <WinTrust.h>
 #include <WS2tcpip.h>
 
+// COM APIs
+#include <comdef.h>
+#include <dwrite_3.h>
+
 #pragma warning(push)
 #pragma warning(disable: 26439)  // This kind of function may not throw. Declare it 'noexcept' (f.6).
 #pragma warning(disable: 26495)  // Variable is uninitialized. Always initialize a member variable (type.6).

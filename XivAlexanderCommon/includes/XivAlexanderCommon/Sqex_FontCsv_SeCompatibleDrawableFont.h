@@ -348,53 +348,5 @@ namespace Sqex::FontCsv {
 			return { true };
 		}
 	};
-
-	template<typename DestPixFmt = Texture::RGBA8888, typename OpacityType = uint8_t>
-	class GdiDrawingFont : public GdiFont, public SeCompatibleDrawableFont<DestPixFmt, OpacityType> {
-
-		static uint32_t GetEffectiveOpacity(const uint8_t& src) {
-			return src * 255 / 65;
-		}
-
-		DeviceContextWrapperContext buffer;
-
-	public:
-		GdiDrawingFont(const LOGFONTW& f)
-			: GdiFont(f) {
-		}
-
-		using SeCompatibleDrawableFont<DestPixFmt, OpacityType>::Draw;
-		GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, char32_t c, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity, OpacityType bgOpacity) const override {
-			if (!HasCharacter(c))
-				return { true };
-
-			const auto buffer = AllocateDeviceContext();
-			const auto [pSrcBuf, bbox] = buffer->Draw(x, y, c);
-			const auto& srcBuf = *pSrcBuf;
-			if (srcBuf.empty())
-				return { true };
-
-			const auto destWidth = static_cast<SSIZE_T>(to->Width());
-			const auto destHeight = static_cast<SSIZE_T>(to->Height());
-			const auto srcWidth = Sqpack::Align<SSIZE_T>(bbox.Width(), 4).Alloc;
-			const auto srcHeight = bbox.Height();
-
-			GlyphMeasurement src = { false, 0, 0, srcWidth, srcHeight };
-			auto dest = bbox; /* GlyphMeasurement{
-				false,
-				x,
-				bbox.top,
-				x + bbox.right - bbox.left,
-				bbox.bottom,
-			};*/
-			src.AdjustToIntersection(dest, srcWidth, srcHeight, destWidth, destHeight);
-
-			if (!src.empty && !dest.empty) {
-				auto destBuf = to->View<DestPixFmt>();
-				RgbBitmapCopy<uint8_t, GetEffectiveOpacity, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity);
-			}
-			return bbox;
-		}
-	};
 #pragma warning(pop)
 }
