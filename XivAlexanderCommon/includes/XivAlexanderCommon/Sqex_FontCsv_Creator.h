@@ -17,6 +17,8 @@ namespace Sqex::FontCsv {
 		const std::unique_ptr<Implementation> m_pImpl;
 
 	public:
+		static constexpr uint32_t AutoAscentDescent = UINT32_MAX;
+
 		float SizePoints = 0;
 		uint32_t AscentPixels = 0;
 		uint32_t DescentPixels = 0;
@@ -46,7 +48,7 @@ namespace Sqex::FontCsv {
 				uint16_t Index;
 				uint16_t X;
 				uint16_t Y;
-				Texture::MemoryBackedMipmap* Mipmap;
+				uint8_t BoundingHeight;
 			};
 			
 		private:
@@ -63,7 +65,7 @@ namespace Sqex::FontCsv {
 			void Finalize();
 			[[nodiscard]] std::vector<std::shared_ptr<const Texture::MipmapStream>> AsMipmapStreamVector() const;
 
-			AllocatedSpace Draw(char32_t c, const SeCompatibleDrawableFont<uint8_t>* font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint16_t boundingWidth, uint16_t boundingHeight);
+			AllocatedSpace Draw(char32_t c, const SeCompatibleDrawableFont<uint8_t>* font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint8_t boundingWidth, uint8_t boundingHeight);
 
 			[[nodiscard]] uint16_t TextureWidth() const { return m_textureWidth; }
 			[[nodiscard]] uint16_t TextureHeight() const { return m_textureHeight; }

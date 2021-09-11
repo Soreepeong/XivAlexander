@@ -41,7 +41,7 @@ std::shared_ptr<Sqex::Texture::MipmapStream> Sqex::Texture::MipmapStream::FromTe
 		);
 }
 
-void Sqex::Texture::MipmapStream::Show() const {
+void Sqex::Texture::MipmapStream::Show(std::string title) const {
 	static constexpr int Margin = 0;
 
 	struct State {
@@ -52,6 +52,7 @@ void Sqex::Texture::MipmapStream::Show() const {
 			};
 			BITMAPINFO bmi{};
 		};
+		std::wstring title;
 		int showmode;
 		std::vector<uint8_t> buf;
 		std::vector<uint8_t> transparent;
@@ -108,7 +109,7 @@ void Sqex::Texture::MipmapStream::Show() const {
 		}
 
 		void ChangeZoom(int newZoomFactor, int nmx, int nmy) {
-			POINT nm = {nmx, nmy};
+			POINT nm = { nmx, nmy };
 			ScreenToClient(hwnd, &nm);
 			const double mx = nm.x, my = nm.y;
 			const auto ox = (mx - renderOffset.x) / GetZoom();
@@ -140,8 +141,8 @@ void Sqex::Texture::MipmapStream::Show() const {
 		}
 
 		void UpdateTitle() {
-			auto w = std::format(L"Preview: {:.2f}%", 100. * GetZoom());
-			switch(showmode) {
+			auto w = std::format(L"{}: {:.2f}%", title, 100. * GetZoom());
+			switch (showmode) {
 				case 0:
 					w += L" (All channels)";
 					break;
@@ -162,6 +163,7 @@ void Sqex::Texture::MipmapStream::Show() const {
 		}
 	} state{};
 
+	state.title = Utils::FromUtf8(title);
 	state.buf = ViewARGB8888()->ReadStreamIntoVector<uint8_t>(0);
 	{
 		state.transparent = state.buf;
@@ -171,7 +173,7 @@ void Sqex::Texture::MipmapStream::Show() const {
 		for (size_t i = 0; i < h; ++i) {
 			for (size_t j = 0; j < w; ++j) {
 				auto& v = view[i * w + j];
-				auto bg = (i / 8 + j / 8) % 2 ? RGBA8888(255, 255, 255,255) : RGBA8888(150, 150, 150, 255);
+				auto bg = (i / 8 + j / 8) % 2 ? RGBA8888(255, 255, 255, 255) : RGBA8888(150, 150, 150, 255);
 				v.R = (v.R * v.A + bg.R * (255U - v.A)) / 255U;
 				v.G = (v.G * v.A + bg.G * (255U - v.A)) / 255U;
 				v.B = (v.B * v.A + bg.B * (255U - v.A)) / 255U;
@@ -223,7 +225,8 @@ void Sqex::Texture::MipmapStream::Show() const {
 					EndPaint(hwnd, &ps);
 					return 0;
 				}
-				case WM_KEYDOWN: {
+				case WM_KEYDOWN:
+				{
 					if (wParam == VK_ESCAPE) {
 						DestroyWindow(hwnd);
 						return 0;
@@ -319,7 +322,7 @@ void Sqex::Texture::MipmapStream::Show() const {
 					ShowCursor(TRUE);
 
 					state.dragging = false;
-					if (!state.dragMoved)  {
+					if (!state.dragMoved) {
 						if (state.isLeft) {
 							state.showmode = (state.showmode + 1) % 5;
 							switch (state.showmode) {
@@ -351,7 +354,8 @@ void Sqex::Texture::MipmapStream::Show() const {
 					return 0;
 				}
 
-				case WM_SIZE: {
+				case WM_SIZE:
+				{
 					state.ClipPan();
 					return 0;
 				}
@@ -372,7 +376,7 @@ void Sqex::Texture::MipmapStream::Show() const {
 
 	RECT rc{ 0, 0, Width(), Height() };
 	AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
-	state.hwnd = CreateWindowExW(0, wcex.lpszClassName, L"Preview", WS_OVERLAPPEDWINDOW,
+	state.hwnd = CreateWindowExW(0, wcex.lpszClassName, state.title.c_str(), WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, CW_USEDEFAULT,
 		std::max(128L, std::min(1920L, rc.right - rc.left)),
 		std::max(128L, std::min(1080L, rc.bottom - rc.top)),

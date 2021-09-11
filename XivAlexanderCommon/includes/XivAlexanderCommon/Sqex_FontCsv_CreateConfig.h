@@ -7,10 +7,10 @@
 
 namespace Sqex::FontCsv::CreateConfig {
 	struct GameSource {
-		std::string indexFile;
-		std::string fdtPath;
-		std::string texturePath;
-		int textureCount;
+		std::filesystem::path indexFile;
+		std::filesystem::path fdtPath;
+		std::filesystem::path texturePath;
+		size_t textureCount;
 	};
 	void to_json(nlohmann::json& j, const GameSource& o);
 	void from_json(const nlohmann::json& j, GameSource& o);
@@ -21,6 +21,7 @@ namespace Sqex::FontCsv::CreateConfig {
 		int weight;
 		DWRITE_RENDERING_MODE renderMode;
 		DWRITE_FONT_STYLE style;
+		DWRITE_FONT_STRETCH stretch;
 	};
 	void to_json(nlohmann::json& j, const DirectWriteSource& o);
 	void from_json(const nlohmann::json& j, DirectWriteSource& o);
@@ -31,12 +32,13 @@ namespace Sqex::FontCsv::CreateConfig {
 	void from_json(const nlohmann::json& j, GdiSource& o);
 
 	struct InputFontSource {
+		bool isGameSource = false;
+		bool isDirectWriteSource = false;
+		bool isGdiSource = false;
 		GameSource gameSource;
 		DirectWriteSource directWriteSource;
 		GdiSource gdiSource;
 	};
-	void to_json(nlohmann::json& j, const InputFontSource& o);
-	void from_json(const nlohmann::json& j, InputFontSource& o);
 
 	struct SingleRange {
 		char32_t from;
@@ -61,8 +63,15 @@ namespace Sqex::FontCsv::CreateConfig {
 
 	struct SingleFontTarget {
 		double height;
+
 		uint8_t ascent;
+		std::string ascentFrom;
+		bool autoAscent;
+
 		uint8_t descent;
+		std::string descentFrom;
+		bool autoDescent;
+
 		uint8_t maxGlobalOffsetX;
 		uint8_t globalOffsetY;
 		std::u32string charactersToKernAcrossFonts;
@@ -79,6 +88,9 @@ namespace Sqex::FontCsv::CreateConfig {
 	void from_json(const nlohmann::json& j, SingleTextureTarget& o);
 
 	struct FontCreateConfig {
+		uint16_t glyphGap;
+		uint16_t textureWidth;
+		uint16_t textureHeight;
 		std::map<std::string, InputFontSource> sources;
 		std::map<std::string, RangeSet> ranges;
 		std::map<std::string, SingleTextureTarget> targets;

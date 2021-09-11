@@ -5,6 +5,19 @@
   "description": "Describe how to generate fdt and tex files that will be used to replace the game's font.",
   "type": "object",
   "properties": {
+    "glyphGap": {
+      "type": "integer",
+      "default": 1,
+      "minimum": 0
+    },
+    "textureWidth": {
+      "type": "integer",
+      "default": 1024
+    },
+    "textureHeight": {
+      "type": "integer",
+      "default": 1024
+    },
     "sources": {
       "description": "Defines font to be used when generating fdt and tex files.",
       "type": "object",
@@ -29,7 +42,8 @@
             },
             "textureCount": {
               "description": "Number of tex files associated with this font.",
-              "type": "integer"
+              "type": "integer",
+              "minimum": 1
             }
           },
           "required": [
@@ -52,10 +66,11 @@
             },
             "weight": {
               "description": "Weight of font, between 1 and 1000.",
-              "type": "integer",
+              "type": ["integer", "string"],
               "default": 400,
               "minimum": 1,
-              "maximum": 1000
+              "maximum": 1000,
+              "enum": ["thin", "extralight", "ultralight", "light", "semilight", "normal", "regular", "medium", "semibold", "demibold", "bold", "extrabold", "ultrabold", "heavy", "black", "extrablack", "ultrablack"]
             },
             "renderMode": {
               "description": "DirectWrite render mode. Refer to https://docs.microsoft.com/en-us/windows/win32/api/dwrite/ne-dwrite-dwrite_rendering_mode",
@@ -83,6 +98,22 @@
                 "DWRITE_FONT_STYLE_ITALIC"
               ],
               "default": "DWRITE_FONT_STYLE_NORMAL"
+            },
+            "stretch": {
+              "description": "Stretch of the font.",
+              "type": "string",
+              "enum": [
+                "DWRITE_FONT_STRETCH_ULTRA_CONDENSED",
+                "DWRITE_FONT_STRETCH_EXTRA_CONDENSED",
+                "DWRITE_FONT_STRETCH_CONDENSED",
+                "DWRITE_FONT_STRETCH_SEMI_CONDENSED",
+                "DWRITE_FONT_STRETCH_NORMAL",
+                "DWRITE_FONT_STRETCH_MEDIUM",
+                "DWRITE_FONT_STRETCH_SEMI_EXPANDED",
+                "DWRITE_FONT_STRETCH_EXPANDED",
+                "DWRITE_FONT_STRETCH_EXTRA_EXPANDED",
+                "DWRITE_FONT_STRETCH_ULTRA_EXPANDED"
+              ]
             }
           },
           "required": [
@@ -126,7 +157,7 @@
           "patternProperties": {
             "": {
               "description": "Defines a character or an endpoint inclusive range of characters. You may use U+#### or 0x#### notation as string.",
-              "type": "array",
+              "type": ["string", "integer", "array"],
               "minItems": 1,
               "maxItems": 2,
               "items": {
@@ -135,7 +166,8 @@
                   "integer"
                 ],
                 "pattern": "^(?:(?:[Uu]\\+|0x)[0-9A-Fa-f]+|[0-9]+)"
-              }
+              },
+              "pattern": "^(?:(?:[Uu]\\+|0x)[0-9A-Fa-f]+|[0-9]+)"
             }
           }
         }

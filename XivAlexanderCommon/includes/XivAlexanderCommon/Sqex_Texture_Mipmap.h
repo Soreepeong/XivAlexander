@@ -23,7 +23,7 @@ namespace Sqex::Texture {
 
 		static std::shared_ptr<MipmapStream> FromTexture(std::shared_ptr<RandomAccessStream> stream, size_t mipmapIndex);
 
-		void Show() const;
+		void Show(std::string title = std::string("Preview")) const;
 	};
 
 	class WrappedMipmapStream : public MipmapStream {

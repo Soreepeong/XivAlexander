@@ -2,10 +2,12 @@
 
 #include <filesystem>
 #include <vector>
+#include <ranges>
 #include <span>
 #include <cstdio>
 #include <format>
 #include <iostream>
+#include <fstream>
 
 #define NOMINMAX
 #include <Windows.h>

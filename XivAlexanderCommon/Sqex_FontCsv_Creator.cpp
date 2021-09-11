@@ -109,8 +109,9 @@ std::vector<std::shared_ptr<const Sqex::Texture::MipmapStream>> Sqex::FontCsv::C
 	return res;
 }
 
-Sqex::FontCsv::Creator::RenderTarget::AllocatedSpace Sqex::FontCsv::Creator::RenderTarget::Draw(char32_t c, const SeCompatibleDrawableFont<uint8_t>*font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint16_t boundingWidth, uint16_t boundingHeight) {
+Sqex::FontCsv::Creator::RenderTarget::AllocatedSpace Sqex::FontCsv::Creator::RenderTarget::Draw(char32_t c, const SeCompatibleDrawableFont<uint8_t>*font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint8_t boundingWidth, uint8_t boundingHeight) {
 	AllocatedSpace space;
+	decltype(m_mipmaps.back().get()) mipmap;
 	{
 		const auto lock = std::lock_guard(m_mtx);
 		const auto [it, isNewEntry] = m_drawnGlyphs.emplace(std::make_tuple(c, font), AllocatedSpace{});
@@ -142,14 +143,15 @@ Sqex::FontCsv::Creator::RenderTarget::AllocatedSpace Sqex::FontCsv::Creator::Ren
 			.Index = static_cast<uint16_t>(m_mipmaps.size() - 1),
 			.X = m_currentX,
 			.Y = m_currentY,
-			.Mipmap = m_mipmaps.back().get(),
+			.BoundingHeight = boundingHeight,
 		};
+		mipmap = m_mipmaps.back().get();
 
 		m_currentX += boundingWidth + m_glyphGap;
 		m_currentLineHeight = std::max<uint16_t>(m_currentLineHeight, boundingHeight);
 	}
 
-	font->Draw(space.Mipmap, space.X + drawOffsetX, space.Y + drawOffsetY, c, 0xFF, 0x00);
+	font->Draw(mipmap, space.X + drawOffsetX, space.Y + drawOffsetY, c, 0xFF, 0x00);
 
 	return space;
 }
@@ -160,30 +162,49 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::Creator::
 	result->TextureWidth(renderTarget.TextureWidth());
 	result->TextureHeight(renderTarget.TextureHeight());
 	result->Points(SizePoints);
-	result->Ascent(AscentPixels);
-	result->LineHeight(AscentPixels + DescentPixels);
 
 	std::vector<Implementation::CharacterPlan> planList;
 	planList.reserve(m_pImpl->m_characters.size());
 	std::transform(m_pImpl->m_characters.begin(), m_pImpl->m_characters.end(), std::back_inserter(planList), [](const auto& k) { return k.second; });
 
 	GlyphMeasurement maxBbox;
+	uint32_t maxAscent = 0, maxDescent = 0;
 	{
 		Utils::Win32::TpEnvironment tpEnv;
 		std::vector<GlyphMeasurement> maxBboxes(tpEnv.ThreadCount());
+		std::vector<uint32_t> maxAscents(tpEnv.ThreadCount());
+		std::vector<uint32_t> maxDescents(tpEnv.ThreadCount());
 		for (size_t i = 0; i < tpEnv.ThreadCount(); ++i) {
-			tpEnv.SubmitWork([this, &planList, &maxBboxes, startI = i]() {
+			tpEnv.SubmitWork([this, &planList, &maxBboxes, &maxAscents, &maxDescents, startI = i]() {
 				auto& box = maxBboxes[startI];
+				auto& ascent = maxAscents[startI];
+				auto& descent = maxDescents[startI];
 				for (auto i = startI; i < planList.size(); i += maxBboxes.size()) {
 					box.ExpandToFit(planList[i].GetBbox());
+					ascent = std::max(ascent, planList[i].Font->Ascent());
+					descent = std::max(descent, planList[i].Font->Descent());
 				}
 			});
 		}
 		tpEnv.WaitOutstanding();
 		for (const auto& bbox : maxBboxes)
 			maxBbox.ExpandToFit(bbox);
+		for (const auto& n : maxAscents)
+			maxAscent = std::max(n, maxAscent);
+		for (const auto& n : maxDescents)
+			maxDescent = std::max(n, maxDescent);
 	}
 	const auto globalOffsetX = std::min<SSIZE_T>(MaxGlobalOffsetX, std::max<SSIZE_T>(0, -maxBbox.left));
+
+	if (AscentPixels == AutoAscentDescent)
+		result->Ascent(maxAscent);
+	else
+		result->Ascent(AscentPixels);
+
+	if (DescentPixels == AutoAscentDescent)
+		result->LineHeight(result->Ascent() + maxDescent);
+	else
+		result->LineHeight(result->Ascent() + DescentPixels);
 
 	result->ReserveStorage(m_pImpl->m_characters.size(), m_pImpl->m_kernings.size());
 
@@ -203,7 +224,7 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::Creator::
 					+ GlobalOffsetYModifier
 					);
 				const auto space = renderTarget.Draw(plan.Character, plan.Font.get(), -bbox.left, 0, boundingWidth, boundingHeight);
-				result->AddFontEntry(plan.Character, space.Index, space.X, space.Y, boundingWidth, boundingHeight, nextOffsetX, currentOffsetY);
+				result->AddFontEntry(plan.Character, space.Index, space.X, space.Y, boundingWidth, std::min(space.BoundingHeight, boundingHeight), nextOffsetX, currentOffsetY);
 			});
 		}
 		tpEnv.WaitOutstanding();

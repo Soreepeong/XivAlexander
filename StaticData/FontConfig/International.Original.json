@@ -55,26 +55,6 @@
       "texturePath": "common/font/font{}.tex",
       "textureCount": 7
     },
-    "game:KrnAXIS_120": {
-      "fdtPath": "common/font/KrnAXIS_120.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
-    },
-    "game:KrnAXIS_140": {
-      "fdtPath": "common/font/KrnAXIS_140.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
-    },
-    "game:KrnAXIS_180": {
-      "fdtPath": "common/font/KrnAXIS_180.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
-    },
-    "game:KrnAXIS_360": {
-      "fdtPath": "common/font/KrnAXIS_360.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
-    },
     "game:Meidinger_16": {
       "fdtPath": "common/font/Meidinger_16.fdt",
       "texturePath": "common/font/font{}.tex",
