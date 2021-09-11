@@ -84,10 +84,18 @@ namespace Sqex::FontCsv {
 		}
 
 		GlyphMeasurement& ExpandToFit(const GlyphMeasurement& r) {
-			left = std::min(left, r.left);
-			top = std::min(top, r.top);
-			right = std::max(right, r.right);
-			bottom = std::max(bottom, r.bottom);
+			if (empty) {
+				left = r.left;
+				top = r.top;
+				right = r.right;
+				bottom = r.bottom;
+				empty = false;
+			} else {
+				left = std::min(left, r.left);
+				top = std::min(top, r.top);
+				right = std::max(right, r.right);
+				bottom = std::max(bottom, r.bottom);
+			}
 			return *this;
 		}
 	};
@@ -115,6 +123,8 @@ namespace Sqex::FontCsv {
 		[[nodiscard]] virtual GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, const std::string& s) const {
 			return Measure(x, y, ToU32(s));
 		}
+
+		[[nodiscard]] virtual SSIZE_T GetOffsetX(char32_t c) const { return Measure(0, 0, c).offsetX; }
 	};
 
 	class SeFont : public virtual SeCompatibleFont {

@@ -42,7 +42,7 @@ void Sqex::FontCsv::Creator::AddCharacter(char32_t codePoint, std::shared_ptr<co
 
 void Sqex::FontCsv::Creator::AddCharacter(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>&font, bool replace) {
 	for (const auto c : font->GetAllCharacters())
-		AddCharacter(c, font);
+		AddCharacter(c, font, replace);
 }
 
 void Sqex::FontCsv::Creator::AddKerning(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>&font, char32_t left, char32_t right, int distance, bool replace) {
@@ -58,6 +58,13 @@ void Sqex::FontCsv::Creator::AddKerning(const std::shared_ptr<const SeCompatible
 }
 
 void Sqex::FontCsv::Creator::AddKerning(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>&font, bool replace) {
+	for (const auto& [pair, distance] : font->GetKerningTable())
+		AddKerning(font, pair.first, pair.second, static_cast<int>(distance), replace);
+}
+
+void Sqex::FontCsv::Creator::AddFont(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, bool replace) {
+	for (const auto c : font->GetAllCharacters())
+		AddCharacter(c, font, replace);
 	for (const auto& [pair, distance] : font->GetKerningTable())
 		AddKerning(font, pair.first, pair.second, static_cast<int>(distance), replace);
 }
@@ -141,7 +148,7 @@ Sqex::FontCsv::Creator::RenderTarget::AllocatedSpace Sqex::FontCsv::Creator::Ren
 		m_currentX += boundingWidth + m_glyphGap;
 		m_currentLineHeight = std::max<uint16_t>(m_currentLineHeight, boundingHeight);
 	}
-	
+
 	font->Draw(space.Mipmap, space.X + drawOffsetX, space.Y + drawOffsetY, c, 0xFF, 0x00);
 
 	return space;
@@ -155,16 +162,28 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::Creator::
 	result->Points(SizePoints);
 	result->Ascent(AscentPixels);
 	result->LineHeight(AscentPixels + DescentPixels);
-	
+
+	std::vector<Implementation::CharacterPlan> planList;
+	planList.reserve(m_pImpl->m_characters.size());
+	std::transform(m_pImpl->m_characters.begin(), m_pImpl->m_characters.end(), std::back_inserter(planList), [](const auto& k) { return k.second; });
+
 	GlyphMeasurement maxBbox;
-	for (const auto& plan : m_pImpl->m_characters | std::views::values) {
-		if (!maxBbox)
-			maxBbox = plan.Font->Measure(0, 0, plan.Character);
-		else
-			maxBbox.ExpandToFit(plan.Font->Measure(0, 0, plan.Character));
+	{
+		Utils::Win32::TpEnvironment tpEnv;
+		std::vector<GlyphMeasurement> maxBboxes(tpEnv.ThreadCount());
+		for (size_t i = 0; i < tpEnv.ThreadCount(); ++i) {
+			tpEnv.SubmitWork([this, &planList, &maxBboxes, startI = i]() {
+				auto& box = maxBboxes[startI];
+				for (auto i = startI; i < planList.size(); i += maxBboxes.size()) {
+					box.ExpandToFit(planList[i].GetBbox());
+				}
+			});
+		}
+		tpEnv.WaitOutstanding();
+		for (const auto& bbox : maxBboxes)
+			maxBbox.ExpandToFit(bbox);
 	}
-	const auto globalOffsetX = std::min<SSIZE_T>(std::max<SSIZE_T>(0, -maxBbox.left), MaxGlobalOffsetX);
-	const auto globalOffsetY = std::max<SSIZE_T>(0, -maxBbox.top);
+	const auto globalOffsetX = std::min<SSIZE_T>(MaxGlobalOffsetX, std::max<SSIZE_T>(0, -maxBbox.left));
 
 	result->ReserveStorage(m_pImpl->m_characters.size(), m_pImpl->m_kernings.size());
 
@@ -176,15 +195,14 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::Creator::
 				if (bbox.empty)
 					return;
 
-				const auto boundingWidth = static_cast<uint8_t>(bbox.right + globalOffsetX);
+				const auto boundingWidth = static_cast<uint8_t>(bbox.right - bbox.left + globalOffsetX);
 				const auto boundingHeight = static_cast<uint8_t>(maxBbox.Height());
 				const auto nextOffsetX = static_cast<int8_t>(bbox.offsetX - globalOffsetX);
 				const auto currentOffsetY = static_cast<int8_t>(
 					(AlignToBaseline ? result->Ascent() - plan.Font->Ascent() : (0LL + result->LineHeight() - plan.Font->Height()) / 2)
-					- globalOffsetY
 					+ GlobalOffsetYModifier
 					);
-				const auto space = renderTarget.Draw(plan.Character, plan.Font.get(), 0, 0, boundingWidth, boundingHeight);
+				const auto space = renderTarget.Draw(plan.Character, plan.Font.get(), -bbox.left, 0, boundingWidth, boundingHeight);
 				result->AddFontEntry(plan.Character, space.Index, space.X, space.Y, boundingWidth, boundingHeight, nextOffsetX, currentOffsetY);
 			});
 		}

@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://xivalexander/fontconfig.schema.json",
+  "title": "Font Generation Configuration",
+  "description": "Describe how to generate fdt and tex files that will be used to replace the game's font.",
+  "type": "object",
+  "properties": {
+    "sources": {
+      "description": "Defines font to be used when generating fdt and tex files.",
+      "type": "object",
+      "patternProperties": {
+        "^game:": {
+          "type": "object",
+          "properties": {
+            "indexFile": {
+              "description": "Path to index file. If unspecified or null, uses the current installation's 000000.sqpack.index",
+              "type": ["string", "null"]
+            },
+            "fdtPath": {
+              "description": "Inner path to fdt file associated with this font.",
+              "type": "string"
+            },
+            "texturePath": {
+              "description": "Pattern of inner path to tex files associated with this font. Use {} as a placeholder for a number between 1 and textureCount.",
+              "type": "string"
+            },
+            "textureCount": {
+              "description": "Number of tex files associated with this font.",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "fdtPath",
+            "texturePath",
+            "textureCount"
+          ]
+        },
+        "^dwrite:": {
+          "type": "object",
+          "properties": {
+            "familyName": {
+              "description": "Name of font installed on your system.",
+              "type": "string"
+            },
+            "height": {
+              "description": "Height of font, in pixels.",
+              "type": "number",
+              "minimumExclusive": 0
+            },
+            "weight": {
+              "description": "Weight of font, between 1 and 1000.",
+              "type": "integer",
+              "default": 400,
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "renderMode": {
+              "description": "DirectWrite render mode. Refer to https://docs.microsoft.com/en-us/windows/win32/api/dwrite/ne-dwrite-dwrite_rendering_mode",
+              "type": "string",
+              "enum": [
+                "DWRITE_RENDERING_MODE_ALIASED",
+                "DWRITE_RENDERING_MODE_GDI_CLASSIC",
+                "DWRITE_RENDERING_MODE_GDI_NATURAL",
+                "DWRITE_RENDERING_MODE_NATURAL",
+                "DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC",
+                "DWRITE_RENDERING_MODE_OUTLINE",
+                "DWRITE_RENDERING_MODE_CLEARTYPE_GDI_CLASSIC",
+                "DWRITE_RENDERING_MODE_CLEARTYPE_GDI_NATURAL",
+                "DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL",
+                "DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC"
+              ],
+              "default": "DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC"
+            },
+            "style": {
+              "description": "Style of the font.",
+              "type": "string",
+              "enum": [
+                "DWRITE_FONT_STYLE_NORMAL",
+                "DWRITE_FONT_STYLE_OBLIQUE",
+                "DWRITE_FONT_STYLE_ITALIC"
+              ],
+              "default": "DWRITE_FONT_STYLE_NORMAL"
+            }
+          },
+          "required": ["familyName", "height"]
+        },
+        "^gdi:": {
+          "type": "object",
+          "properties": {
+            "height": {},
+            "width": {},
+            "escapement": {},
+            "orientation": {},
+            "weight": {},
+            "italic": {},
+            "underline": {},
+            "strikeOut": {},
+            "charSet": {},
+            "outPrecision": {},
+            "clipPrecision": {},
+            "quality": {},
+            "pitchAndFamily": {},
+            "faceName": {}
+          },
+          "required": ["faceName", "height"]
+        }
+      }
+    },
+    "ranges": {
+      "description": "Defines sets of character ranges to be included (when specified).",
+      "type": "object",
+      "default": {},
+      "patternProperties": {
+        "": {
+          "description": "Defines a set of character ranges.",
+          "type": "object",
+          "patternProperties": {
+            "": {
+              "description": "Defines a character or an endpoint inclusive range of characters. You may use U+#### or 0x#### notation as string.",
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 2,
+              "items": {
+                "type": ["string", "integer"],
+                "pattern": "^(?:(?:[Uu]\\+|0x)[0-9A-Fa-f]+|[0-9]+)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "targets": {
+      "description": "Defines maps of the relationships of tex and fdt files to be generated. Use {} as a placeholder for texture index in keys.",
+      "type": "object",
+      "patternProperties": {
+        "": {
+          "description": "Defines a font.",
+          "type": "object",
+          "properties": {
+            "height": {
+              "type": "number",
+              "minimumExclusive": 0
+            },
+            "ascent": {
+              "description": "Ascent of the font. If null is given, the maximum ascent will be used. If string is given, ascent of specified font from sources will be used.",
+              "type": ["integer", "string", "null"],
+              "minimum": 0,
+              "maximum": 255,
+              "default": null
+            },
+            "descent": {
+              "description": "Descent of the font. If null is given, the maximum descent will be used. If string is given, descent of specified font from sources will be used.",
+              "type": ["integer", "string", "null"],
+              "minimum": 0,
+              "maximum": 255,
+              "default": null
+            },
+            "maxGlobalOffsetX": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255,
+              "default": 4
+            },
+            "globalOffsetY": {
+              "type": "integer",
+              "default": 0,
+              "maximum": 255
+            },
+            "charactersToKernAcrossFonts": {
+              "type": "string",
+              "default": " "
+            },
+            "alignToBaseline": {
+              "type": "boolean",
+              "default": true
+            },
+            "sources": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "ranges": {
+                    "description": "If unspecified or null, every characters will be applied.",
+                    "type": ["array", "null"],
+                    "default": null
+                  },
+                  "replace": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                },
+                "required": ["name"]
+              }
+            }
+          },
+          "required": ["height", "sources"]
+        }
+      }
+    }
+  },
+  "required": [
+    "sources",
+    "targets"
+  ]
+}

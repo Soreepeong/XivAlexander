@@ -11,7 +11,8 @@ namespace Sqex::FontCsv {
 			float size,
 			DWRITE_FONT_WEIGHT weight = DWRITE_FONT_WEIGHT::DWRITE_FONT_WEIGHT_REGULAR,
 			DWRITE_FONT_STRETCH stretch = DWRITE_FONT_STRETCH::DWRITE_FONT_STRETCH_NORMAL,
-			DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE::DWRITE_FONT_STYLE_NORMAL);
+			DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE::DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_RENDERING_MODE renderMode = DWRITE_RENDERING_MODE::DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC);
 		~DirectWriteFont() override;
 
 		[[nodiscard]] bool HasCharacter(char32_t) const override;
@@ -26,6 +27,7 @@ namespace Sqex::FontCsv {
 
 		using SeCompatibleFont::Measure;
 		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const override;
+		[[nodiscard]] SSIZE_T GetOffsetX(char32_t c) const override;
 
 		GlyphMeasurement DrawCharacter(char32_t c, std::vector<uint8_t>& buf, bool draw) const;
 

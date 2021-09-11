@@ -130,9 +130,7 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::GdiFont::DeviceContextWrapper::Me
 
 	if (GDI_ERROR == GetGlyphOutlineW(m_hdc, c, GGO_METRICS, &gm, 0, nullptr, &mat))
 		return { true };
-
-	ABCFLOAT w;
-	GetCharABCWidthsFloatW(m_hdc, c, c, &w);
+	
 	return {
 		false,
 		x + gm.gmptGlyphOrigin.x,

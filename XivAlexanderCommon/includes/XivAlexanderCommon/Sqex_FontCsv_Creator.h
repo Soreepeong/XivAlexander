@@ -32,6 +32,7 @@ namespace Sqex::FontCsv {
 		void AddCharacter(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, bool replace = false);
 		void AddKerning(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, char32_t left, char32_t right, int distance, bool replace = false);
 		void AddKerning(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, bool replace = false);
+		void AddFont(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, bool replace = false);
 
 		class RenderTarget {
 			const uint16_t m_textureWidth;
