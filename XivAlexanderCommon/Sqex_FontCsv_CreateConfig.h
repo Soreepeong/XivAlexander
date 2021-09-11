@@ -12,6 +12,8 @@ namespace Sqex::FontCsv::CreateConfig {
 		std::string texturePath;
 		int textureCount;
 	};
+	void to_json(nlohmann::json& j, const GameSource& o);
+	void from_json(const nlohmann::json& j, GameSource& o);
 
 	struct DirectWriteSource {
 		std::string familyName;
@@ -20,22 +22,44 @@ namespace Sqex::FontCsv::CreateConfig {
 		DWRITE_RENDERING_MODE renderMode;
 		DWRITE_FONT_STYLE style;
 	};
+	void to_json(nlohmann::json& j, const DirectWriteSource& o);
+	void from_json(const nlohmann::json& j, DirectWriteSource& o);
 
 	struct GdiSource : LOGFONTW {
 	};
+	void to_json(nlohmann::json& j, const GdiSource& o);
+	void from_json(const nlohmann::json& j, GdiSource& o);
+
+	struct InputFontSource {
+		GameSource gameSource;
+		DirectWriteSource directWriteSource;
+		GdiSource gdiSource;
+	};
+	void to_json(nlohmann::json& j, const InputFontSource& o);
+	void from_json(const nlohmann::json& j, InputFontSource& o);
 
 	struct SingleRange {
 		char32_t from;
 		char32_t to;
 	};
+	void to_json(nlohmann::json& j, const SingleRange& o);
+	void from_json(const nlohmann::json& j, SingleRange& o);
 
-	struct SingleTarget {
-		struct Source {
-			std::string name;
-			std::vector<std::string> ranges;
-			bool replace;
-		};
+	struct RangeSet {
+		std::map<std::string, SingleRange> ranges;
+	};
+	void to_json(nlohmann::json& j, const RangeSet& o);
+	void from_json(const nlohmann::json& j, RangeSet& o);
 
+	struct SingleTargetComponent {
+		std::string name;
+		std::vector<std::string> ranges;
+		bool replace;
+	};
+	void to_json(nlohmann::json& j, const SingleTargetComponent& o);
+	void from_json(const nlohmann::json& j, SingleTargetComponent& o);
+
+	struct SingleFontTarget {
 		double height;
 		uint8_t ascent;
 		uint8_t descent;
@@ -43,11 +67,22 @@ namespace Sqex::FontCsv::CreateConfig {
 		uint8_t globalOffsetY;
 		std::u32string charactersToKernAcrossFonts;
 		bool alignToBaseline;
+		std::vector<SingleTargetComponent> sources;
 	};
+	void to_json(nlohmann::json& j, const SingleFontTarget& o);
+	void from_json(const nlohmann::json& j, SingleFontTarget& o);
+
+	struct SingleTextureTarget {
+		std::map<std::string, SingleFontTarget> fontTargets;
+	};
+	void to_json(nlohmann::json& j, const SingleTextureTarget& o);
+	void from_json(const nlohmann::json& j, SingleTextureTarget& o);
 
 	struct FontCreateConfig {
-		std::map<std::string, GameSource> sources;
-		std::map<std::string, SingleRange> ranges;
-		std::map<std::string, std::map<std::string, SingleTarget>> targets;
+		std::map<std::string, InputFontSource> sources;
+		std::map<std::string, RangeSet> ranges;
+		std::map<std::string, SingleTextureTarget> targets;
 	};
+	void to_json(nlohmann::json& j, const FontCreateConfig& o);
+	void from_json(const nlohmann::json& j, FontCreateConfig& o);
 }

@@ -22,7 +22,6 @@ namespace Sqex {
 	void to_json(nlohmann::json&, const Language&);
 	void from_json(const nlohmann::json&, Language&);
 
-
 	enum class Region {
 		Unspecified = 0,
 		Japan = 1,
