@@ -377,13 +377,13 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::DirectWriteFont::DrawCharacter(ch
 			false,
 			a,
 			a,
-			a + glyphMetrics.advanceWidth,
-			a + Height(),
-			glyphMetrics.advanceWidth,
+			static_cast<SSIZE_T>(a + glyphMetrics.advanceWidth),
+			static_cast<SSIZE_T>(a + Height()),
+			static_cast<SSIZE_T>(glyphMetrics.advanceWidth),
 			});
 	}
 	
-	bbox.advanceX = m_pImpl->ConvVal(glyphMetrics.advanceWidth);
+	bbox.advanceX = m_pImpl->ConvVal<UINT32, SSIZE_T>(glyphMetrics.advanceWidth);
 
 	if (draw) {
 		buf.resize(bbox.Area());
