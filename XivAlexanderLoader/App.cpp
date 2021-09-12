@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 
 namespace XivAlexDll {
-	extern "C" __declspec(dllimport) int XA_LoaderApp(LPWSTR lpCmdLine);
+	extern "C" __declspec(dllimport) int __stdcall XA_LoaderApp(LPWSTR lpCmdLine);
 }
 
 

@@ -721,7 +721,7 @@ static void CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses, bo
 	}
 }
 
-int XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
+int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 	if (!SUCCEEDED(CoInitializeEx(nullptr, COINIT_MULTITHREADED)))
 		std::abort();
 

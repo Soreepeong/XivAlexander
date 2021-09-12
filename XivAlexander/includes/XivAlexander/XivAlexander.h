@@ -74,6 +74,7 @@ namespace XivAlexDll {
 	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall ReloadConfiguration(void* lpReserved);
 	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall DisableAllApps(void* lpReserved);
 	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall CallFreeLibrary(void*);
+	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall SetLoadedAsDependency(void*);
 
 	enum class CheckPackageVersionResult {
 		OK = 0,
@@ -83,7 +84,7 @@ namespace XivAlexDll {
 
 	XIVALEXANDER_DLLEXPORT [[nodiscard]] CheckPackageVersionResult CheckPackageVersion();
 
-	extern "C" XIVALEXANDER_DLLEXPORT int XA_LoaderApp(LPWSTR lpCmdLine);
+	extern "C" XIVALEXANDER_DLLEXPORT int __stdcall XA_LoaderApp(LPWSTR lpCmdLine);
 }
 
 #endif

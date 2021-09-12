@@ -126,6 +126,9 @@ size_t __stdcall XivAlexDll::DisableAllApps(void*) {
 void __stdcall XivAlexDll::CallFreeLibrary(void*) {
 	FreeLibraryAndExitThread(Dll::Module(), 0);
 }
+void __stdcall XivAlexDll::SetLoadedAsDependency(void*) {
+	s_bLoadedAsDependency = true;
+}
 
 [[nodiscard]] XivAlexDll::CheckPackageVersionResult XivAlexDll::CheckPackageVersion() {
 	const auto dir = Utils::Win32::Process::Current().PathOf().parent_path();

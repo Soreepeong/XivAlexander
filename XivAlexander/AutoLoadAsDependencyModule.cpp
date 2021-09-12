@@ -217,7 +217,7 @@ static Utils::Win32::LoadedModule EnsureOriginalDependencyModule(const char* szD
 	return mod;
 }
 
-void LoadDalamud();
+// void LoadDalamud();
 
 void AutoLoadAsDependencyModule() {
 	static std::mutex s_singleRunMutex;
@@ -240,6 +240,7 @@ void AutoLoadAsDependencyModule() {
 		const auto params = XivAlexDll::PatchEntryPointForInjection(GetCurrentProcess());
 		params->SkipFree = true;
 		loadTarget.SetPinned();
+		loadTarget.GetProcAddress<decltype(&XivAlexDll::SetLoadedAsDependency)>("XA_SetLoadedAsDependency")(nullptr);
 		loadTarget.GetProcAddress<decltype(&XivAlexDll::InjectEntryPoint)>("XA_InjectEntryPoint")(params);
 
 	} catch (const std::runtime_error& e) {
