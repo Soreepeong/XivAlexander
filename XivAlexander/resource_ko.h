@@ -1,12 +1,19 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by XivAlexander_ko.rc
+// Used by XivAlexander.rc
 //
+#define IDS_ERROR_INCONSISTENT_FILES    102
+#define IDS_ERROR_MISSING_FILES         103
 #define IDI_TRAY_ICON                   104
+#define IDS_ERROR_INVALID_LAUNCHER_TYPE 104
 #define IDR_TRAY_MENU                   105
+#define IDS_APP_DESCRIPTION             105
 #define IDR_CONFIG_EDITOR_MENU          106
+#define IDS_ERROR_LOAD                  106
 #define IDR_LOG_MENU                    107
+#define IDS_TITLE_SELECT_BOOT           107
 #define IDR_RT_MANIFEST_LATE_ACTIVATION 108
+#define IDS_ERROR_UNEXPECTED2           108
 #define IDS_ERROR_LOADER_NOT_FOUND      109
 #define IDS_ERROR_CONFIGURATION_LOAD    110
 #define IDR_CONFIG_EDITOR_ACCELERATOR   110
@@ -71,6 +78,39 @@
 #define IDS_REGION_NAME_KOREA           166
 #define IDS_URL_HOMEPAGE                167
 #define IDS_URL_HELP                    168
+#define IDS_CLIENT_INTERNATIONAL        169
+#define IDS_CLIENT_KOREAN               170
+#define IDS_CLIENT_CHINESE              171
+#define IDS_CONFIRM_LAUNCH              172
+#define IDS_ERROR_NOT_FOUND             173
+#define IDS_ERROR_COMMAND_LINE          174
+#define IDS_ERROR_SEDEBUGPRIVILEGE      175
+#define IDS_ERROR_COMPONENTS            176
+#define IDS_URL_RELEASES                177
+#define IDS_ERROR_NO_FFXIV_PROCESS      178
+#define IDS_ERROR_NO_MATCHING_PROCESS   179
+#define IDS_ERROR_RESTART_ADMIN         180
+#define IDS_UPDATE_PROGRESS_DOWNLOADING_FILES 181
+#define IDS_UPDATE_PROGRESS_PREPARING_FILES 182
+#define IDS_UPDATE_PROGRESS_CHECKING    183
+#define IDS_URL_MAIN                    184
+#define IDS_UPDATE_PROGRESS_UPDATING_FILES 185
+#define IDS_UPDATE_CLEANUP_UPDATE       186
+#define IDS_UPDATE_RELOADING_XIVALEXANDER 187
+#define IDS_UPDATE_COMPLETE             188
+#define IDS_UPDATE_PROCESS_KILL_FAILURE 189
+#define IDS_UPDATE_UNAVAILABLE          190
+#define IDS_UPDATE_CONFIRM              191
+#define IDS_CONFIRM_INJECT_AGAIN        192
+#define IDS_CONFIRM_INJECT              193
+#define IDS_UPDATE_FILE_TOO_BIG         194
+#define IDS_UPDATE_INVALID_VERSION      195
+#define IDS_HELP_ACTION                 196
+#define IDS_HELP_LAUNCHER               197
+#define IDS_HELP_QUIET                  198
+#define IDS_HELP_DISABLE_RUNAS          199
+#define IDS_HELP_INTERNAL_USE_ONLY      200
+#define IDS_HELP_TARGETS                201
 #define ID_TRAYMENU_USEIPCTYPEFINDER    40003
 #define ID_TRAYMENU_UNLOADXIVALEXANDER  40006
 #define ID_FILE_REVERT                  40012

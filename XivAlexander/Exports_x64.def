@@ -7,3 +7,4 @@ EXPORTS
 	CreateDXGIFactory2=FORWARDER_CreateDXGIFactory2		@12
 	
 	XA_InjectEntryPoint=InjectEntryPoint				@100
+	XA_LoaderApp=XA_LoaderApp							@101

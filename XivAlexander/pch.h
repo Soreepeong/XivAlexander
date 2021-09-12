@@ -64,11 +64,17 @@
 #include <nlohmann/json.hpp>
 #include <scintilla/Scintilla.h>
 #include <Zydis/Zydis.h>
+#include <argparse/argparse.hpp>
+#include <curlpp/cURLpp.hpp>
+#include <curlpp/Easy.hpp>
+#include <curlpp/Options.hpp>
+#include <libzippp/libzippp.h>
 #pragma warning(pop)
 
 // COM smart pointer definitions
 #include <comdef.h>
 _COM_SMARTPTR_TYPEDEF(IFileSaveDialog, __uuidof(IFileSaveDialog));
+_COM_SMARTPTR_TYPEDEF(IFileOpenDialog, __uuidof(IFileOpenDialog));
 _COM_SMARTPTR_TYPEDEF(IShellItem, __uuidof(IShellItem));
 
 // Infrequently changed utility headers

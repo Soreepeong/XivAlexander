@@ -11,6 +11,8 @@
     "minhook",
     "curlpp",
     "zydis",
-    "cryptopp"
+    "cryptopp",
+    "argparse",
+    "libzippp"
   ]
 }

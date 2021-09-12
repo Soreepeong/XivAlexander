@@ -79,36 +79,34 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)XivAlexanderCommon\includes;$(SolutionDir)\XivAlexander\includes;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)\XivAlexander\includes;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
     <LibraryPath>$(OutDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>$(SolutionDir)XivAlexanderCommon\includes;$(SolutionDir)\XivAlexander\includes;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)\XivAlexander\includes;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
     <LibraryPath>$(OutDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(SolutionDir)XivAlexanderCommon\includes;$(SolutionDir)\XivAlexander\includes;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)\XivAlexander\includes;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
     <LibraryPath>$(OutDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>$(SolutionDir)XivAlexanderCommon\includes;$(SolutionDir)\XivAlexander\includes;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)\XivAlexander\includes;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
     <LibraryPath>$(OutDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
-  <PropertyGroup Label="Vcpkg">
-    <VcpkgEnableManifest>true</VcpkgEnableManifest>
-  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" />
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <VcpkgInstalledDir>$(SolutionDir)build\vcpkg_$(Platform)_$(ProjectName)\</VcpkgInstalledDir>
     <VcpkgAdditionalInstallOptions>--feature-flags=versions</VcpkgAdditionalInstallOptions>
@@ -262,7 +260,6 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="resource1.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -274,39 +271,15 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
     <ClCompile Include="App.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="XivAlexanderLoader.rc">
-      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</NullTerminateStrings>
-      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</NullTerminateStrings>
-      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</NullTerminateStrings>
-      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</NullTerminateStrings>
-    </ResourceCompile>
-    <ResourceCompile Include="XivAlexanderLoader_ja.rc">
-      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</NullTerminateStrings>
-      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</NullTerminateStrings>
-      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</NullTerminateStrings>
-      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</NullTerminateStrings>
-    </ResourceCompile>
-    <ResourceCompile Include="XivAlexanderLoader_ko.rc">
-      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</NullTerminateStrings>
-      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</NullTerminateStrings>
-      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</NullTerminateStrings>
-      <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</NullTerminateStrings>
-      <Culture Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">0x0412</Culture>
-      <Culture Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">0x0412</Culture>
-      <Culture Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">0x0412</Culture>
-      <Culture Condition="'$(Configuration)|$(Platform)'=='Release|x64'">0x0412</Culture>
-    </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
     <Image Include="..\Graphics\Icon.ico" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="vcpkg.json" />
+    <ProjectReference Include="..\XivAlexander\XivAlexander.vcxproj">
+      <Project>{0eabcdc9-5a49-43ae-9b77-eb3fe9d48804}</Project>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\XivAlexanderCommon\XivAlexanderCommon.vcxproj">
-      <Project>{58daddf6-5733-40e0-855c-cc3b4bf235eb}</Project>
-    </ProjectReference>
+    <ResourceCompile Include="XivAlexanderLoader.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

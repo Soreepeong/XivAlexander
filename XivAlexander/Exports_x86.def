@@ -5,3 +5,4 @@ EXPORTS
 	Direct3DCreate9=FORWARDER_Direct3DCreate9			@37
 	
 	XA_InjectEntryPoint=InjectEntryPoint				@100
+	XA_LoaderApp=XA_LoaderApp							@101

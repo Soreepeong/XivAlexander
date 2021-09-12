@@ -297,6 +297,7 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
   <ItemGroup>
     <ClCompile Include="App_Feature_GameResourceOverrider.cpp" />
     <ClCompile Include="App_InjectOnCreateProcessApp.cpp" />
+    <ClCompile Include="App_Loader.cpp" />
     <ClCompile Include="App_Misc_DebuggerDetectionDisabler.cpp" />
     <ClCompile Include="App_Network_IcmpPingTracker.cpp" />
     <ClCompile Include="AutoLoadAsDependencyModule.cpp" />

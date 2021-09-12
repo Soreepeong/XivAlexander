@@ -186,6 +186,13 @@ END
 
 STRINGTABLE
 BEGIN
+    IDS_ERROR_INCONSISTENT_FILES "コンポーネントファイルのバージョンが一致していません。"
+    IDS_ERROR_MISSING_FILES "コンポーネントファイルを見つけません。"
+    IDS_ERROR_INVALID_LAUNCHER_TYPE "ランチャーの指定が正しくありません。"
+    IDS_APP_DESCRIPTION     "XivAlexanderLoader: XivAlexanderをゲームのプロセスにロードします。\n\n{}"
+    IDS_ERROR_LOAD          "XivAlexanderをプロセスにロードすることに失敗しました。 (エラーコード: {})"
+    IDS_TITLE_SELECT_BOOT   "FFXIV Bootプログラムの選択"
+    IDS_ERROR_UNEXPECTED2   "予想しないエラーが発生しました。{}"
     IDS_ERROR_LOADER_NOT_FOUND "{}でXivAlexanderLoaderを見つけることができませんでした。"
     IDS_ERROR_CONFIGURATION_LOAD "設定ファイルの読み込みに失敗しました。({})"
     IDS_LOG_NEW_CONFIG      "新たな設定ファイルを{}に作成します。"
@@ -269,6 +276,48 @@ BEGIN
     IDS_REGION_NAME_EUROPE  "欧州"
     IDS_REGION_NAME_CHINA   "中国"
     IDS_REGION_NAME_KOREA   "韓国"
+    IDS_CLIENT_INTERNATIONAL "グローバル"
+    IDS_CLIENT_KOREAN       "韓国"
+    IDS_CLIENT_CHINESE      "中国"
+    IDS_CONFIRM_LAUNCH      "{1}の{0}バージョンのゲームを起動しますか？"
+    IDS_ERROR_NOT_FOUND     "ゲームのインストール先を見つけることができませんでした。手動で指定してください。"
+    IDS_ERROR_COMMAND_LINE  "コマンドラインの解読に失敗しました。\nエラー：{}\n\n{}"
+    IDS_ERROR_SEDEBUGPRIVILEGE "権限の取得に失敗しました。\n・管理者権限で起動し直してみてください。\n・{}"
+    IDS_ERROR_COMPONENTS    "次の一部またはすべてのファイルの検証に失敗しました。\n・XivAlexander32.dll\n・XivAlexander64.dll\n・XivAlexanderLoader32.dll\n・XivAlexanderLoader64.dll\n\nプログラムの再ダウンロード試みますか？"
+    IDS_URL_RELEASES        "https://github.com/Soreepeong/XivAlexander/releases"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_NO_FFXIV_PROCESS "{} プロセスを見つけませんでした。ゲームを起動しているか確認してください。"
+    IDS_ERROR_NO_MATCHING_PROCESS "指定の条件に一致するプロセスを見つけることができませんでした。"
+    IDS_ERROR_RESTART_ADMIN "管理者権限で実行に失敗しました。{}"
+    IDS_UPDATE_PROGRESS_DOWNLOADING_FILES "アップデートファイルをダウンロードしています・・・"
+    IDS_UPDATE_PROGRESS_PREPARING_FILES "アップデートファイルを準備しています・・・"
+    IDS_UPDATE_PROGRESS_CHECKING "アップデートを確認しています・・・"
+    IDS_URL_MAIN            "https://github.com/Soreepeong/XivAlexander"
+    IDS_UPDATE_PROGRESS_UPDATING_FILES "コンポーネントをアップデートしています・・・"
+    IDS_UPDATE_CLEANUP_UPDATE "アップデートの一時ファイルを削除しています・・・"
+    IDS_UPDATE_RELOADING_XIVALEXANDER "起動中のふぇーむにXivAlexanderをロードしています・・・"
+    IDS_UPDATE_COMPLETE     "アップデートに成功しました。\n\n３秒後に消えます。"
+    IDS_UPDATE_PROCESS_KILL_FAILURE "プロセスID {}の終了に失敗しました。\n\n続くには手動で終了してください。"
+    IDS_UPDATE_UNAVAILABLE  "新しいアップデートがありません。現在のバージョンは{0}.{1}.{2}.{3}で、最新のバージョンは{8:%Ec}にリリーズされた{4}.{5}.{6}.{7}です。"
+    IDS_UPDATE_CONFIRM      "新しいアップデートがあります。新規のバージョンは{4:%Ec}にリリーズされた{0}.{1}.{2}.{3}で、現在のバージョンは{5}.{6}.{7}.{8}です。\n\n{9}のボタンを押しリリーズノートを確認するか、\n{10}のボタンを押し今すぐアップデートするか、または\n{11}ボタンを押し取り消します。\n\nセキュリティーに関する大事なお知らせ：GitHubに安全に接続できない環境ではダウンロードしないでください。安全ではない環境には共用のVPNやプロキシ―も含まれます。"
+    IDS_CONFIRM_INJECT_AGAIN 
+                            "起動中のゲームのプロセス({}:{})にすでにXivAlexanderがロードされています。\n\n{}のボタンを押し再びロードするか、\n{}のボタンで終了するか、\n{}のボタンでスキップします。"
+    IDS_CONFIRM_INJECT      "ゲームのプロセスを見つけました。\n・PID：{}\n・パス：{}\n・Opcode定義ファイル：{}\nこのプロセスにXivAlexanderをロードしますか？"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_UPDATE_FILE_TOO_BIG "アップデートのファイルサイズのがが大きすぎます。アップデートファイルの無欠性を信頼できる場合、手動でファイルを取り換えアップデートしてください。"
+    IDS_UPDATE_INVALID_VERSION "バージョン情報の検証に失敗しました。手動でアップデートを確認した後、続けてください。"
+    IDS_HELP_ACTION         "作業を指定します。\n\t・auto: すでにゲームが起動中の場合起動中のプロセスにロードし、起動していない場合ゲームを起動して起動したプロセスにロードします。\n\t・ask: ゲームプロセス毎に行う作業を確認します。\n\t・load: ゲームプロセスにXivAlexanderをロードします。\n\t・unload: ゲームプロセスからXivAlexanderを終了します。\n\t・launcher: 指定のゲームランチャーを起動し、起動したゲームにXivAlexanderをロードします。\n\t・update-check: アップデートを確認します。\n\t・web: 配布サイト (https://github.com/Soreepeong/XivAlexander) を開きます。"
+    IDS_HELP_LAUNCHER       "ランチャーを指定します。有効な値はauto（自動）、select（毎回確認）、international（グローバル版）、korean（韓国版）、chinese（中国版）です。"
+    IDS_HELP_QUIET          "エラーメッセージを表示しません。"
+    IDS_HELP_DISABLE_RUNAS  "どの場合でも管理者権限で実行しません。"
+    IDS_HELP_INTERNAL_USE_ONLY "内部使用のみ（使用禁止）"
+    IDS_HELP_TARGETS        "ロードまたは終了の場合プロセスIDまたはプロセスパスのサフィックス、起動の場合起動するプロセスのパスです。"
 END
 
 #endif    // Japanese (Japan) resources

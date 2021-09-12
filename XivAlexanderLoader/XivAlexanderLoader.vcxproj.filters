@@ -13,9 +13,6 @@
     <ClInclude Include="resource.h">
       <Filter>Resources</Filter>
     </ClInclude>
-    <ClInclude Include="resource1.h">
-      <Filter>Resources</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Project Items">
@@ -26,23 +23,12 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="vcpkg.json">
-      <Filter>Project Items</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <Image Include="..\Graphics\Icon.ico">
       <Filter>Resources</Filter>
     </Image>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="XivAlexanderLoader.rc">
-      <Filter>Resources</Filter>
-    </ResourceCompile>
-    <ResourceCompile Include="XivAlexanderLoader_ko.rc">
-      <Filter>Resources</Filter>
-    </ResourceCompile>
-    <ResourceCompile Include="XivAlexanderLoader_ja.rc">
       <Filter>Resources</Filter>
     </ResourceCompile>
   </ItemGroup>

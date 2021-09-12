@@ -95,6 +95,9 @@
     <ClCompile Include="App_Feature_GameResourceOverrider.cpp">
       <Filter>App\Feature</Filter>
     </ClCompile>
+    <ClCompile Include="App_Loader.cpp">
+      <Filter>App\Apps</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
