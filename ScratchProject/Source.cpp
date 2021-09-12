@@ -238,18 +238,19 @@ void test_create() {
 
 void compile() {
 	Sqex::FontCsv::FontSetsCreator::ResultFontSets result;
-	{
+	try {
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Original.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.dwrite.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.gdi.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.ComicGulim.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.PapyrusGungsuh.json)");
-		std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.WithMinimalHangul.json)");
+		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.WithMinimalHangul.json)");
+		std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\Korean.18to36.json)");
 		nlohmann::json j;
 		fin >> j;
 		auto cfg = j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
 
-		Sqex::FontCsv::FontSetsCreator creator(cfg);
+		Sqex::FontCsv::FontSetsCreator creator(cfg, R"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game\)");
 		while (!creator.Wait(100)) {
 			const auto progress = creator.GetProgress();
 			std::cout << progress.Indeterminate << " " << progress.Scale(100.) << "%     \r";
@@ -260,6 +261,8 @@ void compile() {
 		for (const auto& [t, f] : result.Result) {
 			std::cout << std::format("\t=> {}: {} files\n", t, f.Textures.size());
 		}
+	} catch (const std::exception& e) {
+		std::cout << e.what() << std::endl;
 	}
 
 	for (const auto& [fileName, stream] : result.GetAllStreams()) {

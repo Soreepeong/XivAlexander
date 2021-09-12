@@ -63,16 +63,6 @@
       "texturePath": "common/font/font{}.tex",
       "textureCount": 7
     },
-    "game:Jupiter_46": {
-      "fdtPath": "common/font/Jupiter_46.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
-    },
-    "game:Jupiter_90": {
-      "fdtPath": "common/font/Jupiter_90.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
-    },
     "game:Meidinger_16": {
       "fdtPath": "common/font/Meidinger_16.fdt",
       "texturePath": "common/font/font{}.tex",
@@ -80,11 +70,6 @@
     },
     "game:Meidinger_20": {
       "fdtPath": "common/font/Meidinger_20.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
-    },
-    "game:Meidinger_40": {
-      "fdtPath": "common/font/Meidinger_40.fdt",
       "texturePath": "common/font/font{}.tex",
       "textureCount": 7
     },
@@ -108,11 +93,6 @@
       "texturePath": "common/font/font{}.tex",
       "textureCount": 7
     },
-    "game:MiedingerMid_36": {
-      "fdtPath": "common/font/MiedingerMid_36.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
-    },
     "game:TrumpGothic_184": {
       "fdtPath": "common/font/TrumpGothic_184.fdt",
       "texturePath": "common/font/font{}.tex",
@@ -125,11 +105,6 @@
     },
     "game:TrumpGothic_34": {
       "fdtPath": "common/font/TrumpGothic_34.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
-    },
-    "game:TrumpGothic_68": {
-      "fdtPath": "common/font/TrumpGothic_68.fdt",
       "texturePath": "common/font/font{}.tex",
       "textureCount": 7
     }
@@ -227,26 +202,6 @@
           }
         ]
       },
-      "Jupiter_46.fdt": {
-        "height": 46,
-        "ascent": "game:Jupiter_46",
-        "descent": "game:Jupiter_46",
-        "sources": [
-          {
-            "name": "game:Jupiter_46"
-          }
-        ]
-      },
-      "Jupiter_90.fdt": {
-        "height": 90,
-        "ascent": "game:Jupiter_90",
-        "descent": "game:Jupiter_90",
-        "sources": [
-          {
-            "name": "game:Jupiter_90"
-          }
-        ]
-      },
       "Meidinger_16.fdt": {
         "height": 16,
         "ascent": "game:Meidinger_16",
@@ -264,16 +219,6 @@
         "sources": [
           {
             "name": "game:Meidinger_20"
-          }
-        ]
-      },
-      "Meidinger_40.fdt": {
-        "height": 40,
-        "ascent": "game:Meidinger_40",
-        "descent": "game:Meidinger_40",
-        "sources": [
-          {
-            "name": "game:Meidinger_40"
           }
         ]
       },
@@ -317,16 +262,6 @@
           }
         ]
       },
-      "MiedingerMid_36.fdt": {
-        "height": 36,
-        "ascent": "game:MiedingerMid_36",
-        "descent": "game:MiedingerMid_36",
-        "sources": [
-          {
-            "name": "game:MiedingerMid_36"
-          }
-        ]
-      },
       "TrumpGothic_184.fdt": {
         "height": 184,
         "ascent": "game:TrumpGothic_184",
@@ -354,16 +289,6 @@
         "sources": [
           {
             "name": "game:TrumpGothic_34"
-          }
-        ]
-      },
-      "TrumpGothic_68.fdt": {
-        "height": 68,
-        "ascent": "game:TrumpGothic_68",
-        "descent": "game:TrumpGothic_68",
-        "sources": [
-          {
-            "name": "game:TrumpGothic_68"
           }
         ]
       }

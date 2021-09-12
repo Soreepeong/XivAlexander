@@ -7,6 +7,7 @@
 #include "Sqex_FontCsv_SeCompatibleDrawableFont.h"
 #include "Sqex_Texture_Mipmap.h"
 #include "Sqex_Texture_ModifiableTextureStream.h"
+#include "Utils_ListenerManager.h"
 
 namespace Sqex {
 	namespace Texture {
@@ -62,6 +63,8 @@ namespace Sqex::FontCsv {
 
 		[[nodiscard]] const FontCreationProgress& GetProgress() const;
 
+		Utils::ListenerManager<FontCsvCreator, void, const std::exception&> OnError;
+
 		void Cancel();
 
 		class RenderTarget {
@@ -101,7 +104,7 @@ namespace Sqex::FontCsv {
 			[[nodiscard]] uint16_t TextureWidth() const { return m_textureWidth; }
 			[[nodiscard]] uint16_t TextureHeight() const { return m_textureHeight; }
 		};
-		std::shared_ptr<ModifiableFontCsvStream> Compile(RenderTarget& renderTarget) const;
+		std::shared_ptr<ModifiableFontCsvStream> Compile(RenderTarget& renderTarget);
 	};
 
 	class FontSetsCreator {
@@ -109,7 +112,7 @@ namespace Sqex::FontCsv {
 		const std::unique_ptr<Implementation> m_pImpl;
 
 	public:
-		FontSetsCreator(CreateConfig::FontCreateConfig config, LONG maxCoreCount = 0);
+		FontSetsCreator(CreateConfig::FontCreateConfig config, std::filesystem::path gamePath, LONG maxCoreCount = 0);
 		~FontSetsCreator();
 
 		struct ResultFontSet {
@@ -126,6 +129,8 @@ namespace Sqex::FontCsv {
 		[[nodiscard]] const ResultFontSets& GetResult() const;
 
 		bool Wait(DWORD timeout = INFINITE) const;
+
+		const std::string& GetError() const;
 
 		[[nodiscard]] FontCreationProgress GetProgress() const;
 

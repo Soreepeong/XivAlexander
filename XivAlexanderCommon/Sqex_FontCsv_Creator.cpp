@@ -209,131 +209,151 @@ Sqex::FontCsv::FontCsvCreator::RenderTarget::AllocatedSpace Sqex::FontCsv::FontC
 }
 
 
-std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::FontCsvCreator::Compile(RenderTarget & renderTarget) const {
+std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::FontCsvCreator::Compile(RenderTarget & renderTarget) {
 	// arbitary numbers
 	constexpr static auto ProgressWeight_Bbox = 5;
 	constexpr static auto ProgressWeight_Draw = 30;
 	constexpr static auto ProgressWeight_Kerning = 1;
 
-	auto result = std::make_shared<ModifiableFontCsvStream>();
-	result->TextureWidth(renderTarget.TextureWidth());
-	result->TextureHeight(renderTarget.TextureHeight());
-	result->Points(SizePoints);
+	try {
+		auto result = std::make_shared<ModifiableFontCsvStream>();
+		result->TextureWidth(renderTarget.TextureWidth());
+		result->TextureHeight(renderTarget.TextureHeight());
+		result->Points(SizePoints);
 
-	std::vector<Implementation::CharacterPlan> planList;
-	planList.reserve(m_pImpl->CharacterPlans.size());
-	std::transform(m_pImpl->CharacterPlans.begin(), m_pImpl->CharacterPlans.end(), std::back_inserter(planList), [](const auto& k) { return k.second; });
+		std::vector<Implementation::CharacterPlan> planList;
+		planList.reserve(m_pImpl->CharacterPlans.size());
+		std::transform(m_pImpl->CharacterPlans.begin(), m_pImpl->CharacterPlans.end(), std::back_inserter(planList), [](const auto& k) { return k.second; });
 
-	GlyphMeasurement maxBbox;
-	uint32_t maxAscent = 0, maxDescent = 0;
+		GlyphMeasurement maxBbox;
+		uint32_t maxAscent = 0, maxDescent = 0;
 
-	m_pImpl->Progress.Max = planList.size() * (ProgressWeight_Bbox + ProgressWeight_Draw) + m_pImpl->Kernings.size() * ProgressWeight_Kerning;
-	m_pImpl->Progress.Indeterminate = 0;
+		m_pImpl->Progress.Max = planList.size() * (ProgressWeight_Bbox + ProgressWeight_Draw) + m_pImpl->Kernings.size() * ProgressWeight_Kerning;
+		m_pImpl->Progress.Indeterminate = 0;
 
-	{
-		std::vector<GlyphMeasurement> maxBboxes(m_pImpl->WorkPool.ThreadCount());
-		std::vector<uint32_t> maxAscents(m_pImpl->WorkPool.ThreadCount());
-		std::vector<uint32_t> maxDescents(m_pImpl->WorkPool.ThreadCount());
-		for (size_t i = 0; i < m_pImpl->WorkPool.ThreadCount(); ++i) {
-			m_pImpl->WorkPool.SubmitWork([this, &planList, &maxBboxes, &maxAscents, &maxDescents, startI = i]() {
-				const auto waitRelease = m_pImpl->WaitSemaphore();
-				auto& box = maxBboxes[startI];
-				auto& ascent = maxAscents[startI];
-				auto& descent = maxDescents[startI];
-				for (auto i = startI; i < planList.size(); i += maxBboxes.size()) {
-					if (m_pImpl->Cancelled)
-						return;
+		{
+			std::vector<GlyphMeasurement> maxBboxes(m_pImpl->WorkPool.ThreadCount());
+			std::vector<uint32_t> maxAscents(m_pImpl->WorkPool.ThreadCount());
+			std::vector<uint32_t> maxDescents(m_pImpl->WorkPool.ThreadCount());
+			for (size_t i = 0; i < m_pImpl->WorkPool.ThreadCount(); ++i) {
+				m_pImpl->WorkPool.SubmitWork([this, &planList, &maxBboxes, &maxAscents, &maxDescents, startI = i]() {
+					try {
+						const auto waitRelease = m_pImpl->WaitSemaphore();
+						auto& box = maxBboxes[startI];
+						auto& ascent = maxAscents[startI];
+						auto& descent = maxDescents[startI];
+						for (auto i = startI; i < planList.size(); i += maxBboxes.size()) {
+							if (m_pImpl->Cancelled)
+								return;
 
-					m_pImpl->Progress.Progress += ProgressWeight_Bbox;
+							m_pImpl->Progress.Progress += ProgressWeight_Bbox;
 
-					box.ExpandToFit(planList[i].GetBbox());
-					ascent = std::max(ascent, planList[i].Font->Ascent());
-					descent = std::max(descent, planList[i].Font->Descent());
-				}
-			});
+							box.ExpandToFit(planList[i].GetBbox());
+							ascent = std::max(ascent, planList[i].Font->Ascent());
+							descent = std::max(descent, planList[i].Font->Descent());
+						}
+					} catch (const std::exception& e) {
+						OnError(e);
+#ifdef _DEBUG
+						throw;
+#endif
+					}
+				});
+			}
+			m_pImpl->WorkPool.WaitOutstanding();
+			if (m_pImpl->Cancelled)
+				return nullptr;
+
+			for (const auto& bbox : maxBboxes)
+				maxBbox.ExpandToFit(bbox);
+			for (const auto& n : maxAscents)
+				maxAscent = std::max(n, maxAscent);
+			for (const auto& n : maxDescents)
+				maxDescent = std::max(n, maxDescent);
 		}
-		m_pImpl->WorkPool.WaitOutstanding();
-		if (m_pImpl->Cancelled)
-			return nullptr;
+		const auto globalOffsetX = std::max<SSIZE_T>(MinGlobalOffsetX, std::min<SSIZE_T>(MaxGlobalOffsetX, std::max<SSIZE_T>(0, -maxBbox.left)));
+		const auto boundingHeight = static_cast<uint8_t>(maxBbox.Height());
 
-		for (const auto& bbox : maxBboxes)
-			maxBbox.ExpandToFit(bbox);
-		for (const auto& n : maxAscents)
-			maxAscent = std::max(n, maxAscent);
-		for (const auto& n : maxDescents)
-			maxDescent = std::max(n, maxDescent);
-	}
-	const auto globalOffsetX = std::max<SSIZE_T>(MinGlobalOffsetX, std::min<SSIZE_T>(MaxGlobalOffsetX, std::max<SSIZE_T>(0, -maxBbox.left)));
-	const auto boundingHeight = static_cast<uint8_t>(maxBbox.Height());
+		if (AscentPixels == AutoAscentDescent)
+			result->Ascent(maxAscent);
+		else
+			result->Ascent(AscentPixels);
 
-	if (AscentPixels == AutoAscentDescent)
-		result->Ascent(maxAscent);
-	else
-		result->Ascent(AscentPixels);
+		if (DescentPixels == AutoAscentDescent)
+			result->LineHeight(result->Ascent() + maxDescent);
+		else
+			result->LineHeight(result->Ascent() + DescentPixels);
 
-	if (DescentPixels == AutoAscentDescent)
-		result->LineHeight(result->Ascent() + maxDescent);
-	else
-		result->LineHeight(result->Ascent() + DescentPixels);
+		result->ReserveStorage(m_pImpl->CharacterPlans.size(), m_pImpl->Kernings.size());
 
-	result->ReserveStorage(m_pImpl->CharacterPlans.size(), m_pImpl->Kernings.size());
+		{
+			for (auto& plan : m_pImpl->CharacterPlans | std::views::values) {
+				m_pImpl->WorkPool.SubmitWork([&]() {
+					try {
+						if (m_pImpl->Cancelled)
+							return;
+						const auto waitRelease = m_pImpl->WaitSemaphore();
 
-	{
-		for (auto& plan : m_pImpl->CharacterPlans | std::views::values) {
-			m_pImpl->WorkPool.SubmitWork([&]() {
-				if (m_pImpl->Cancelled)
-					return;
-				const auto waitRelease = m_pImpl->WaitSemaphore();
+						m_pImpl->Progress.Progress += ProgressWeight_Draw;
 
-				m_pImpl->Progress.Progress += ProgressWeight_Draw;
+						const auto& bbox = plan.GetBbox();
+						if (bbox.empty)
+							return;
 
-				const auto& bbox = plan.GetBbox();
-				if (bbox.empty)
-					return;
+						const auto leftExtension = std::max<SSIZE_T>(-bbox.left, globalOffsetX);
+						const auto boundingWidth = static_cast<uint8_t>(leftExtension + bbox.right);
+						const auto nextOffsetX = static_cast<int8_t>(bbox.advanceX - bbox.right - globalOffsetX);
+						const auto currentOffsetY = static_cast<int8_t>(
+							(AlignToBaseline ? result->Ascent() - plan.Font->Ascent() : (0LL + result->LineHeight() - plan.Font->Height()) / 2)
+							+ GlobalOffsetYModifier
+							);
+						const auto space = renderTarget.Draw(plan.Character, plan.Font, leftExtension, 0, boundingWidth, boundingHeight);
 
-				const auto leftExtension = std::max<SSIZE_T>(-bbox.left, globalOffsetX);
-				const auto boundingWidth = static_cast<uint8_t>(leftExtension + bbox.right);
-				const auto nextOffsetX = static_cast<int8_t>(bbox.advanceX - bbox.right - globalOffsetX);
-				const auto currentOffsetY = static_cast<int8_t>(
-					(AlignToBaseline ? result->Ascent() - plan.Font->Ascent() : (0LL + result->LineHeight() - plan.Font->Height()) / 2)
-					+ GlobalOffsetYModifier
-					);
-				const auto space = renderTarget.Draw(plan.Character, plan.Font, leftExtension, 0, boundingWidth, boundingHeight);
-
-				const auto resultingX = static_cast<uint16_t>(space.X - space.drawOffsetX + leftExtension);
-				const auto resultingY = static_cast<uint16_t>(space.Y - space.drawOffsetY);
-				result->AddFontEntry(plan.Character, space.Index, resultingX, resultingY, boundingWidth, std::min(space.BoundingHeight, boundingHeight), nextOffsetX, currentOffsetY);
-			});
+						const auto resultingX = static_cast<uint16_t>(space.X - space.drawOffsetX + leftExtension);
+						const auto resultingY = static_cast<uint16_t>(space.Y - space.drawOffsetY);
+						result->AddFontEntry(plan.Character, space.Index, resultingX, resultingY, boundingWidth, std::min(space.BoundingHeight, boundingHeight), nextOffsetX, currentOffsetY);
+					} catch (const std::exception& e) {
+						OnError(e);
+#ifdef _DEBUG
+						throw;
+#endif
+					}
+				});
+			}
+			m_pImpl->WorkPool.WaitOutstanding();
+			if (m_pImpl->Cancelled)
+				return nullptr;
 		}
-		m_pImpl->WorkPool.WaitOutstanding();
-		if (m_pImpl->Cancelled)
-			return nullptr;
+
+		for (const auto& [pair, distance] : m_pImpl->Kernings) {
+			m_pImpl->Progress.Progress += ProgressWeight_Kerning;
+
+			const auto [font, c1, c2] = pair;
+			const auto f1 = m_pImpl->CharacterPlans.at(c1).Font;
+			const auto f2 = m_pImpl->CharacterPlans.at(c2).Font;
+			if (f1 != font && f2 != font)
+				continue;
+			if (f1 != f2
+				&& AlwaysApplyKerningCharacters.find(c1) == AlwaysApplyKerningCharacters.end()
+				&& AlwaysApplyKerningCharacters.find(c2) == AlwaysApplyKerningCharacters.end())
+				continue;
+			if (!distance)
+				continue;
+			result->AddKerning(c1, c2, distance);
+		}
+
+		m_pImpl->Progress.Finished = true;
+
+		return result;
+	} catch (const std::exception& e) {
+		OnError(e);
+		return {};
 	}
-
-	for (const auto& [pair, distance] : m_pImpl->Kernings) {
-		m_pImpl->Progress.Progress += ProgressWeight_Kerning;
-
-		const auto [font, c1, c2] = pair;
-		const auto f1 = m_pImpl->CharacterPlans.at(c1).Font;
-		const auto f2 = m_pImpl->CharacterPlans.at(c2).Font;
-		if (f1 != font && f2 != font)
-			continue;
-		if (f1 != f2
-			&& AlwaysApplyKerningCharacters.find(c1) == AlwaysApplyKerningCharacters.end()
-			&& AlwaysApplyKerningCharacters.find(c2) == AlwaysApplyKerningCharacters.end())
-			continue;
-		if (!distance)
-			continue;
-		result->AddKerning(c1, c2, distance);
-	}
-
-	m_pImpl->Progress.Finished = true;
-
-	return result;
 }
 
 struct Sqex::FontCsv::FontSetsCreator::Implementation {
 	const CreateConfig::FontCreateConfig Config;
+	const std::filesystem::path GamePath;
 	const Utils::Win32::Event CancelEvent = Utils::Win32::Event::Create();
 	bool Cancelled = false;
 	Utils::Win32::Thread WorkerThread;
@@ -348,12 +368,19 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 	std::map<std::string, std::map<std::string, std::unique_ptr<FontCsvCreator>>> ResultWork;
 
 	Utils::Win32::TpEnvironment WorkPool;
-
 	Utils::Win32::Semaphore CoreLimitSemaphore;
+	std::string LastErrorMessage;
 
-	Implementation(CreateConfig::FontCreateConfig config, LONG maxCoreCount)
+	Utils::CallOnDestruction::Multiple Cleanup;
+
+	Implementation(CreateConfig::FontCreateConfig config, std::filesystem::path gamePath, LONG maxCoreCount)
 		: Config(std::move(config))
+		, GamePath(std::move(gamePath))
 		, CoreLimitSemaphore(maxCoreCount ? Utils::Win32::Semaphore::Create(nullptr, maxCoreCount, maxCoreCount) : nullptr) {
+	}
+
+	~Implementation() {
+		Cleanup.Clear();
 	}
 
 	Utils::CallOnDestruction WaitSemaphore() {
@@ -385,7 +412,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 			std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>> newFont;
 			const auto& inputFontSource = Config.sources.at(name);
 			if (const auto& source = inputFontSource.gameSource; inputFontSource.isGameSource) {
-				auto indexFilePath = source.indexFile.empty() ? std::filesystem::path(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\000000.win32.index)") : std::filesystem::path(source.indexFile);
+				auto indexFilePath = source.indexFile.empty() ? GamePath / LR"(sqpack\ffxiv\000000.win32.index)" : std::filesystem::path(source.indexFile);
 				indexFilePath = canonical(indexFilePath);
 
 				auto reader = SqpackReaders.find(indexFilePath);
@@ -433,8 +460,19 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 			renderTargets.emplace(textureGroupFilenamePattern, std::make_unique<FontCsvCreator::RenderTarget>(Config.textureWidth, Config.textureHeight, Config.glyphGap));
 			Result.Result.emplace(textureGroupFilenamePattern, ResultFontSet{});
 			auto& remainingFonts = ResultWork.emplace(textureGroupFilenamePattern, std::map<std::string, std::unique_ptr<FontCsvCreator>>()).first->second;
-			for (const auto& fontName : fonts.fontTargets | std::views::keys)
-				remainingFonts.emplace(fontName, std::make_unique<FontCsvCreator>());
+			for (const auto& fontName : fonts.fontTargets | std::views::keys) {
+				auto creator = std::make_unique<FontCsvCreator>();
+				Cleanup += creator->OnError([this](const std::exception& e) {
+					if (LastErrorMessage.empty()) {
+						if (e.what() && *e.what())
+							LastErrorMessage = e.what();
+						else
+							LastErrorMessage = "Unknown error";
+						Utils::Win32::Thread(L"Canceller", [this]() { Cancel(false); });
+					}
+				});
+				remainingFonts.emplace(fontName, std::move(creator));
+			}
 		}
 
 		for (const auto& [textureGroupFilenamePattern, fonts] : Config.targets) {
@@ -454,71 +492,81 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				auto& creator = *remainingFonts.at(fontName);
 
 				WorkPool.SubmitWork([&, fontName = fontName]() {
-					if (Cancelled)
-						return;
-					const auto waitRelease = WaitSemaphore();
-
-					creator.SizePoints = static_cast<float>(plan.height);
-					if (plan.autoAscent)
-						creator.AscentPixels = FontCsvCreator::AutoAscentDescent;
-					else if (!plan.ascentFrom.empty())
-						creator.AscentPixels = GetSourceFont(plan.ascentFrom).Ascent();
-					else
-						creator.AscentPixels = 0;
-					if (plan.autoDescent)
-						creator.DescentPixels = FontCsvCreator::AutoAscentDescent;
-					else if (!plan.ascentFrom.empty())
-						creator.DescentPixels = GetSourceFont(plan.descentFrom).Descent();
-					else
-						creator.DescentPixels = 0;
-					creator.MinGlobalOffsetX = plan.minGlobalOffsetX;
-					creator.MaxGlobalOffsetX = plan.maxGlobalOffsetX;
-					creator.GlobalOffsetYModifier = plan.globalOffsetY;
-					creator.AlwaysApplyKerningCharacters.insert(plan.charactersToKernAcrossFonts.begin(), plan.charactersToKernAcrossFonts.end());
-					creator.AlignToBaseline = plan.alignToBaseline;
-
-					for (const auto& source : plan.sources) {
-						const auto& sourceFont = GetSourceFont(source.name);
-						if (source.ranges.empty()) {
-							creator.AddFont(&sourceFont, source.replace, source.extendRange);
-						} else {
-							for (const auto& rangeName : source.ranges) {
-								for (const auto& range : Config.ranges.at(rangeName).ranges | std::views::values) {
-									for (auto i = range.from; i < range.to; ++i)
-										creator.AddCharacter(i, &sourceFont, source.replace, source.extendRange);
-									if (range.from != range.to)  // separate line to prevent overflow
-										creator.AddCharacter(range.to, &sourceFont, source.replace, source.extendRange);
-
-									if (Cancelled)
-										return;
-								}
-							}
-						}
-						creator.AddKerning(&sourceFont, source.replace);
-
+					try {
 						if (Cancelled)
 							return;
-					}
+						const auto waitRelease = WaitSemaphore();
 
-					auto compileResult = creator.Compile(target);
-					if (Cancelled)
-						return;
+						creator.SizePoints = static_cast<float>(plan.height);
+						if (plan.autoAscent)
+							creator.AscentPixels = FontCsvCreator::AutoAscentDescent;
+						else if (!plan.ascentFrom.empty())
+							creator.AscentPixels = GetSourceFont(plan.ascentFrom).Ascent();
+						else
+							creator.AscentPixels = 0;
+						if (plan.autoDescent)
+							creator.DescentPixels = FontCsvCreator::AutoAscentDescent;
+						else if (!plan.ascentFrom.empty())
+							creator.DescentPixels = GetSourceFont(plan.descentFrom).Descent();
+						else
+							creator.DescentPixels = 0;
+						creator.MinGlobalOffsetX = plan.minGlobalOffsetX;
+						creator.MaxGlobalOffsetX = plan.maxGlobalOffsetX;
+						creator.GlobalOffsetYModifier = plan.globalOffsetY;
+						creator.AlwaysApplyKerningCharacters.insert(plan.charactersToKernAcrossFonts.begin(), plan.charactersToKernAcrossFonts.end());
+						creator.AlignToBaseline = plan.alignToBaseline;
 
-					{
-						const auto lock = std::lock_guard(ResultMtx);
-						resultSet.Fonts.emplace(fontName, std::move(compileResult));
+						for (const auto& source : plan.sources) {
+							const auto& sourceFont = GetSourceFont(source.name);
+							if (source.ranges.empty()) {
+								creator.AddFont(&sourceFont, source.replace, source.extendRange);
+							} else {
+								for (const auto& rangeName : source.ranges) {
+									for (const auto& range : Config.ranges.at(rangeName).ranges | std::views::values) {
+										for (auto i = range.from; i < range.to; ++i)
+											creator.AddCharacter(i, &sourceFont, source.replace, source.extendRange);
+										if (range.from != range.to)  // separate line to prevent overflow
+											creator.AddCharacter(range.to, &sourceFont, source.replace, source.extendRange);
 
-						auto allFinished = true;
-						for (const auto& c : remainingFonts | std::views::values)
-							allFinished &= c->GetProgress().Finished;
-						if (!allFinished)
+										if (Cancelled)
+											return;
+									}
+								}
+							}
+							creator.AddKerning(&sourceFont, source.replace);
+
+							if (Cancelled)
+								return;
+						}
+
+						auto compileResult = creator.Compile(target);
+						if (Cancelled)
 							return;
-					}
-					if (Cancelled)
-						return;
 
-					target.Finalize();
-					resultSet.Textures = target.AsTextureStreamVector();
+						{
+							const auto lock = std::lock_guard(ResultMtx);
+							resultSet.Fonts.emplace(fontName, std::move(compileResult));
+
+							auto allFinished = true;
+							for (const auto& c : remainingFonts | std::views::values)
+								allFinished &= c->GetProgress().Finished;
+							if (!allFinished)
+								return;
+						}
+						if (Cancelled)
+							return;
+
+						target.Finalize();
+						resultSet.Textures = target.AsTextureStreamVector();
+					} catch (const std::exception& e) {
+						if (LastErrorMessage.empty()) {
+							LastErrorMessage = e.what() && *e.what() ? e.what() : "Unknwon error";
+							void(Utils::Win32::Thread(L"Canceller", [this]() { Cancel(false); }));
+						}
+#ifdef _DEBUG
+						throw;
+#endif
+					}
 				});
 			}
 		}
@@ -526,7 +574,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 		WorkPool.WaitOutstanding();
 	}
 
-	void Cancel() {
+	void Cancel(bool wait = true) {
 		Cancelled = true;
 		CancelEvent.Set();
 		WorkPool.Cancel();
@@ -536,12 +584,13 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				v2->Cancel();
 			}
 		}
-		WorkerThread.Wait();
+		if (wait)
+			WorkerThread.Wait();
 	}
 };
 
-Sqex::FontCsv::FontSetsCreator::FontSetsCreator(CreateConfig::FontCreateConfig config, LONG maxCoreCount)
-	: m_pImpl(std::make_unique<Implementation>(std::move(config), maxCoreCount ? maxCoreCount : []() { SYSTEM_INFO si{}; GetSystemInfo(&si); return si.dwNumberOfProcessors; }())) {
+Sqex::FontCsv::FontSetsCreator::FontSetsCreator(CreateConfig::FontCreateConfig config, std::filesystem::path path, LONG maxCoreCount)
+	: m_pImpl(std::make_unique<Implementation>(std::move(config), std::move(path), maxCoreCount ? maxCoreCount : []() { SYSTEM_INFO si{}; GetSystemInfo(&si); return si.dwNumberOfProcessors; }())) {
 	m_pImpl->WorkerThread = Utils::Win32::Thread(L"FontSetsCreator", [this]() { m_pImpl->Compile(); });
 }
 
@@ -565,7 +614,7 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::shared_ptr<const Sqex::RandomAccessSt
 
 const Sqex::FontCsv::FontSetsCreator::ResultFontSets& Sqex::FontCsv::FontSetsCreator::GetResult() const {
 	if (m_pImpl->Cancelled)
-		throw std::runtime_error("Cancelled");
+		throw std::runtime_error(m_pImpl->LastErrorMessage.empty() ? "Cancelled" :m_pImpl->LastErrorMessage.c_str());
 	if (m_pImpl->WorkerThread.Wait(0) == WAIT_TIMEOUT)
 		throw std::runtime_error("not finished");
 
@@ -578,7 +627,11 @@ bool Sqex::FontCsv::FontSetsCreator::Wait(DWORD timeout) const {
 		return false;
 	if (res == WAIT_OBJECT_0)
 		return true;
-	throw std::runtime_error("Cancelled");
+	throw std::runtime_error(m_pImpl->LastErrorMessage.empty() ? "Cancelled" : m_pImpl->LastErrorMessage.c_str());
+}
+
+const std::string& Sqex::FontCsv::FontSetsCreator::GetError() const {
+	return m_pImpl->LastErrorMessage;
 }
 
 Sqex::FontCsv::FontCreationProgress Sqex::FontCsv::FontSetsCreator::GetProgress() const {

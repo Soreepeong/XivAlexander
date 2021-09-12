@@ -628,13 +628,15 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				fin >> j;
 				auto cfg = j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
 
-				Sqex::FontCsv::FontSetsCreator fontCreator(cfg);
+				Sqex::FontCsv::FontSetsCreator fontCreator(cfg, Utils::Win32::Process::Current().PathOf().parent_path());
 				while (!fontCreator.Wait(1000)) {
 					const auto progress = fontCreator.GetProgress();
 					m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
 						"=> Creating font... ({:.2f}% and {} task(s))",
 						progress.Scale(100.), progress.Indeterminate);
 				}
+				if (!fontCreator.GetError().empty())
+					throw std::runtime_error(fontCreator.GetError());
 				const auto& result = fontCreator.GetResult();
 				for (const auto& [entryPath, stream] : result.GetAllStreams()) {
 					std::shared_ptr<Sqex::Sqpack::EntryProvider> provider;

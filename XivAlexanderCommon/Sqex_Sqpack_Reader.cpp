@@ -280,7 +280,8 @@ std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvi
 				return GetEntryProvider(entry, std::move(handle));
 		}
 	}
-	return nullptr;
+
+	throw std::invalid_argument(std::format("Entry {} not found", pathSpec));
 }
 
 std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvider(const SqDataEntry& entry, Utils::Win32::File handle) const {

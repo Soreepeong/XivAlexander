@@ -10,6 +10,10 @@ namespace Utils::Win32 {
 		PTP_WORK m_lastWork = nullptr;
 		SYSTEM_INFO m_systemInfo;
 
+		std::mutex m_workMtx;
+
+		bool m_cancelling = false;
+
 	public:
 		TpEnvironment(DWORD maxCores = 0)
 			: m_pool(CreateThreadpool(nullptr))
@@ -47,6 +51,10 @@ namespace Utils::Win32 {
 		}
 
 		void SubmitWork(std::function<void()> cb) {
+			if (m_cancelling)
+				return;
+
+			const auto lock = std::lock_guard(m_workMtx);
 			const auto obj = new std::function(std::move(cb));
 			const auto work = CreateThreadpoolWork([](PTP_CALLBACK_INSTANCE, void* objectCtx, PTP_WORK) {
 				(*static_cast<std::function<void()>*>(objectCtx))();
@@ -61,19 +69,34 @@ namespace Utils::Win32 {
 		}
 
 		void WaitOutstanding() {
-			if (!m_lastWork)
+			if (m_cancelling)
 				return;
-			WaitForThreadpoolWorkCallbacks(m_lastWork, FALSE);
-			CloseThreadpoolCleanupGroupMembers(m_group, TRUE, this);
+
+			const auto lastWork = m_lastWork;
+			if (!lastWork)
+				return;
+			WaitForThreadpoolWorkCallbacks(lastWork, FALSE);
+
 			m_lastWork = nullptr;
+			const auto lock = std::lock_guard(m_workMtx);
+			CloseThreadpoolCleanupGroupMembers(m_group, TRUE, this);
 		}
 
 		void Cancel() {
-			if (!m_lastWork)
+			if (m_cancelling)
 				return;
-			WaitForThreadpoolWorkCallbacks(m_lastWork, TRUE);
-			CloseThreadpoolCleanupGroupMembers(m_group, TRUE, this);
+
+			const auto lock = std::lock_guard(m_workMtx);
+			m_cancelling = true;
+
+			const auto lastWork = m_lastWork;
+			if (lastWork)
+				WaitForThreadpoolWorkCallbacks(lastWork, TRUE);
+
 			m_lastWork = nullptr;
+			CloseThreadpoolCleanupGroupMembers(m_group, TRUE, this);
+
+			m_cancelling = false;
 		}
 	};
 }
