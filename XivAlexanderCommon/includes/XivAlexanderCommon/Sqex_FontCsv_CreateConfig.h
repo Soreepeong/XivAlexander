@@ -4,6 +4,7 @@
 #include <map>
 #include <vector>
 #include <dwrite_3.h>
+#include <nlohmann/json.hpp>
 
 namespace Sqex::FontCsv::CreateConfig {
 	struct GameSource {

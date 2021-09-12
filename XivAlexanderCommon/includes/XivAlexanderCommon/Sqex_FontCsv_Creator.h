@@ -2,6 +2,8 @@
 
 #include <memory>
 #include <set>
+#include "Sqex_FontCsv_CreateConfig.h"
+
 #include "Sqex_FontCsv_SeCompatibleDrawableFont.h"
 #include "Sqex_Texture_Mipmap.h"
 #include "Sqex_Texture_ModifiableTextureStream.h"
@@ -13,7 +15,27 @@ namespace Sqex {
 }
 
 namespace Sqex::FontCsv {
-	class Creator {
+	struct FontCreationProgress {
+		size_t Progress;
+		size_t Max;
+		bool Finished;
+		int Indeterminate;
+
+		FontCreationProgress& operator+=(const FontCreationProgress& p) {
+			Finished &= p.Finished;
+			Indeterminate += p.Indeterminate;
+			Max += p.Max;
+			Progress += p.Progress;
+			return *this;
+		}
+
+		template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+		[[nodiscard]] T Scale(T max) const {
+			return static_cast<T>(static_cast<double>(Progress) / static_cast<double>(Max) * static_cast<double>(max));
+		}
+	};
+
+	class FontCsvCreator {
 		struct Implementation;
 		const std::unique_ptr<Implementation> m_pImpl;
 
@@ -29,14 +51,16 @@ namespace Sqex::FontCsv {
 		std::set<char32_t> AlwaysApplyKerningCharacters = { U' ' };
 		bool AlignToBaseline = true;
 
-		Creator();
-		~Creator();
+		FontCsvCreator();
+		~FontCsvCreator();
 
-		void AddCharacter(char32_t codePoint, std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>> font, bool replace = false, bool extendRange = true);
-		void AddCharacter(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, bool replace = false, bool extendRange = true);
-		void AddKerning(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, char32_t left, char32_t right, int distance, bool replace = false);
-		void AddKerning(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, bool replace = false);
-		void AddFont(const std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>& font, bool replace = false, bool extendRange = true);
+		void AddCharacter(char32_t codePoint, const SeCompatibleDrawableFont<uint8_t>* font, bool replace = false, bool extendRange = true);
+		void AddCharacter(const SeCompatibleDrawableFont<uint8_t>* font, bool replace = false, bool extendRange = true);
+		void AddKerning(const SeCompatibleDrawableFont<uint8_t>* font, char32_t left, char32_t right, int distance, bool replace = false);
+		void AddKerning(const SeCompatibleDrawableFont<uint8_t>* font, bool replace = false);
+		void AddFont(const SeCompatibleDrawableFont<uint8_t>* font, bool replace = false, bool extendRange = true);
+
+		[[nodiscard]] const FontCreationProgress& GetProgress() const;
 
 		class RenderTarget {
 			const uint16_t m_textureWidth;
@@ -54,7 +78,7 @@ namespace Sqex::FontCsv {
 				uint16_t Y;
 				uint8_t BoundingHeight;
 			};
-			
+
 		private:
 			std::vector<std::shared_ptr<Texture::MemoryBackedMipmap>> m_mipmaps;
 			std::map<std::tuple<char32_t, const SeCompatibleDrawableFont<uint8_t>*>, AllocatedSpace> m_drawnGlyphs;
@@ -76,5 +100,32 @@ namespace Sqex::FontCsv {
 			[[nodiscard]] uint16_t TextureHeight() const { return m_textureHeight; }
 		};
 		std::shared_ptr<ModifiableFontCsvStream> Compile(RenderTarget& renderTarget) const;
+	};
+
+	class FontSetsCreator {
+		struct Implementation;
+		const std::unique_ptr<Implementation> m_pImpl;
+
+	public:
+		FontSetsCreator(CreateConfig::FontCreateConfig config);
+		~FontSetsCreator();
+
+		struct ResultFontSet {
+			std::map<std::string, std::shared_ptr<ModifiableFontCsvStream>> Fonts;
+			std::vector<std::shared_ptr<Texture::ModifiableTextureStream>> Textures;
+		};
+
+		struct ResultFontSets {
+			std::map<std::string, ResultFontSet> Result;
+
+			[[nodiscard]] std::map<Sqpack::EntryPathSpec, std::shared_ptr<const RandomAccessStream>> GetAllStreams() const;
+		};
+
+		[[nodiscard]] const ResultFontSets& GetResult() const;
+
+		bool Wait(DWORD timeout = INFINITE) const;
+
+		[[nodiscard]] FontCreationProgress GetProgress() const;
+
 	};
 }
