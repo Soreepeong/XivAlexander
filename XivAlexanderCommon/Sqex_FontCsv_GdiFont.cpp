@@ -131,14 +131,16 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::GdiFont::DeviceContextWrapper::Me
 	if (GDI_ERROR == GetGlyphOutlineW(m_hdc, c, GGO_METRICS, &gm, 0, nullptr, &mat))
 		return { true };
 	
-	return {
+	auto res = GlyphMeasurement{
 		false,
-		x + gm.gmptGlyphOrigin.x,
-		y + Metrics.tmAscent - gm.gmptGlyphOrigin.y,
-		x + gm.gmptGlyphOrigin.x + static_cast<SSIZE_T>(gm.gmBlackBoxX),
-		y + Metrics.tmAscent - gm.gmptGlyphOrigin.y + static_cast<SSIZE_T>(gm.gmBlackBoxY),
-		static_cast<SSIZE_T>(gm.gmCellIncX) - static_cast<SSIZE_T>(gm.gmBlackBoxX) - gm.gmptGlyphOrigin.x,
+		0,
+		0,
+		static_cast<SSIZE_T>(gm.gmBlackBoxX),
+		static_cast<SSIZE_T>(gm.gmBlackBoxY),
 	};
+	res.advanceX = static_cast<SSIZE_T>(gm.gmCellIncX);
+	res.Translate(x + gm.gmptGlyphOrigin.x, y + Metrics.tmAscent - gm.gmptGlyphOrigin.y);
+	return res;
 }
 
 std::pair<const std::vector<uint8_t>*, Sqex::FontCsv::GlyphMeasurement> Sqex::FontCsv::GdiFont::DeviceContextWrapper::Draw(SSIZE_T x, SSIZE_T y, char32_t c) {
@@ -148,15 +150,17 @@ std::pair<const std::vector<uint8_t>*, Sqex::FontCsv::GlyphMeasurement> Sqex::Fo
 	m_readBuffer.resize(GetGlyphOutlineW(m_hdc, c, GGO_GRAY8_BITMAP, &gm, 0, nullptr, &mat));
 	if (!m_readBuffer.empty())
 		GetGlyphOutlineW(m_hdc, c, GGO_GRAY8_BITMAP, &gm, static_cast<DWORD>(m_readBuffer.size()), &m_readBuffer[0], &mat);;
-
-	return std::make_pair(&m_readBuffer, GlyphMeasurement{
+	
+	auto res = GlyphMeasurement{
 		false,
-		x + gm.gmptGlyphOrigin.x,
-		y + Metrics.tmAscent - gm.gmptGlyphOrigin.y,
-		x + gm.gmptGlyphOrigin.x + static_cast<SSIZE_T>(gm.gmBlackBoxX),
-		y + Metrics.tmAscent - gm.gmptGlyphOrigin.y + static_cast<SSIZE_T>(gm.gmBlackBoxY),
-		static_cast<SSIZE_T>(gm.gmCellIncX) - static_cast<SSIZE_T>(gm.gmBlackBoxX) - gm.gmptGlyphOrigin.x,
-		});
+		0,
+		0,
+		static_cast<SSIZE_T>(gm.gmBlackBoxX),
+		static_cast<SSIZE_T>(gm.gmBlackBoxY),
+	};
+	res.advanceX = static_cast<SSIZE_T>(gm.gmCellIncX);
+	res.Translate(x + gm.gmptGlyphOrigin.x, y + Metrics.tmAscent - gm.gmptGlyphOrigin.y);
+	return std::make_pair(&m_readBuffer, res);
 }
 
 Sqex::FontCsv::GdiFont::DeviceContextWrapperContext Sqex::FontCsv::GdiFont::AllocateDeviceContext() const {

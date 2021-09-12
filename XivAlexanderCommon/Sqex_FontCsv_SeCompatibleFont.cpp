@@ -44,7 +44,7 @@ void Sqex::FontCsv::GlyphMeasurement::AdjustToIntersection(GlyphMeasurement& r, 
 Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeCompatibleFont::MaxBoundingBox() const {
 	if (!m_maxBoundingBox.empty)
 		return m_maxBoundingBox;
-	GlyphMeasurement res{ false, INT_MAX, INT_MAX, INT_MIN, INT_MIN, INT_MIN };
+	GlyphMeasurement res{ false, INT_MAX, INT_MAX, INT_MIN, INT_MIN, 0 };
 	for (const auto& c : GetAllCharacters()) {
 		GlyphMeasurement cur = Measure(0, 0, c);
 		if (cur.empty)
@@ -53,7 +53,6 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeCompatibleFont::MaxBoundingBox(
 		res.top = std::min(res.top, cur.top);
 		res.right = std::max(res.right, cur.right);
 		res.bottom = std::max(res.bottom, cur.bottom);
-		res.offsetX = std::max(res.offsetX, cur.offsetX);
 	}
 	m_maxBoundingBox = res;
 	return res;
@@ -79,6 +78,7 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeCompatibleFont::Measure(SSIZE_T
 
 	GlyphMeasurement result{};
 	SSIZE_T currX = x, currY = y;
+	SSIZE_T rightmostOriginX = x;
 
 	for (const auto currChar : s) {
 		if (currChar == u'\r') {
@@ -96,24 +96,16 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeCompatibleFont::Measure(SSIZE_T
 		const auto kerning = GetKerning(lastChar, currChar);
 		const auto currBbox = Measure(currX + kerning, currY, currChar);
 		if (!currBbox.empty) {
-			if (result.empty) {
-				result = currBbox;
-				result.offsetX = result.right + result.offsetX;
-			} else {
-				result.left = std::min(result.left, currBbox.left);
-				result.top = std::min(result.top, currBbox.top);
-				result.right = std::max(result.right, currBbox.right);
-				result.bottom = std::max(result.bottom, currBbox.bottom);
-				result.offsetX = std::max(result.offsetX, currBbox.right + currBbox.offsetX);
-			}
-			currX = currBbox.right + currBbox.offsetX;
+			currX += kerning + currBbox.advanceX;
+			rightmostOriginX = std::max(rightmostOriginX, currX);
+			result.ExpandToFit(currBbox);
 		}
 		lastChar = currChar;
 	}
 	if (result.empty)
 		return { true };
 
-	result.offsetX -= result.right;
+	result.advanceX = rightmostOriginX - result.right;
 	return result;
 }
 
@@ -192,7 +184,7 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeFont::Measure(SSIZE_T x, SSIZE_
 		.top = y + entry.CurrentOffsetY,
 		.right = x + entry.BoundingWidth,
 		.bottom = y + entry.CurrentOffsetY + entry.BoundingHeight,
-		.offsetX = entry.NextOffsetX,
+		.advanceX = entry.BoundingWidth + entry.NextOffsetX,
 	};
 }
 
@@ -312,56 +304,9 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::CascadingFont::Measure(SSIZE_T x,
 	for (const auto& f : GetFontList()) {
 		const auto currBbox = f->Measure(x, y + Ascent() - f->Ascent(), c);
 		if (!currBbox.empty)
-			return { false, currBbox.left, currBbox.top, currBbox.right, currBbox.bottom, currBbox.offsetX };
+			return currBbox;
 	}
 	return { true };
-}
-
-Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::CascadingFont::Measure(SSIZE_T x, SSIZE_T y, const std::u32string & s) const {
-	if (s.empty())
-		return {};
-
-	char32_t lastChar = 0;
-	const auto iHeight = static_cast<SSIZE_T>(Height());
-
-	GlyphMeasurement result{};
-	SSIZE_T currX = x, currY = y;
-
-	for (const auto currChar : s) {
-		if (currChar == u'\r') {
-			continue;
-		} else if (currChar == u'\n') {
-			currX = x;
-			currY += iHeight;
-			lastChar = 0;
-			continue;
-		} else if (currChar == u'\u200c') {  // unicode non-joiner
-			lastChar = 0;
-			continue;
-		}
-
-		const auto kerning = GetKerning(lastChar, currChar);
-		const auto currBbox = Measure(currX + kerning, currY, currChar);
-		if (!currBbox.empty) {
-			if (result.empty) {
-				result = currBbox;
-				result.offsetX = result.right + result.offsetX;
-			} else {
-				result.left = std::min(result.left, currBbox.left);
-				result.top = std::min(result.top, currBbox.top);
-				result.right = std::max(result.right, currBbox.right);
-				result.bottom = std::max(result.bottom, currBbox.bottom);
-				result.offsetX = std::max(result.offsetX, currBbox.right + currBbox.offsetX);
-			}
-			currX = currBbox.right + currBbox.offsetX;
-		}
-		lastChar = currChar;
-	}
-	if (result.empty)
-		return { true };
-
-	result.offsetX -= result.right;
-	return result;
 }
 
 const std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleFont>>& Sqex::FontCsv::CascadingFont::GetFontList() const {

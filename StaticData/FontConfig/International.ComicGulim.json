@@ -200,9 +200,21 @@
         "U+1100",
         "U+11FF"
       ],
+      "Hangul Compatibility Jamo": [
+        "U+3130",
+        "U+318F"
+      ],
+      "Hangul Jamo Extended-A": [
+        "U+A960",
+        "U+A97F"
+      ],
       "Hangul Syllables": [
         "U+AC00",
         "U+D7AF"
+      ],
+      "Hangul Jamo Extended-B": [
+        "U+D7B0",
+        "U+D7FF"
       ]
     },
     "Hangul": {

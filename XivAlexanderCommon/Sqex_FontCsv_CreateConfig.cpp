@@ -365,7 +365,7 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, SingleFontT
 		o.autoDescent = true;
 	else
 		throw std::invalid_argument("invalid descent value given");
-	o.maxGlobalOffsetX = j.value<uint8_t>("maxGlobalOffsetX", 6);
+	o.maxGlobalOffsetX = j.value<uint8_t>("maxGlobalOffsetX", 255);
 	o.minGlobalOffsetX = j.value<uint8_t>("minGlobalOffsetX", 0);
 	o.globalOffsetY = j.value<uint8_t>("globalOffsetY", 0);
 	o.charactersToKernAcrossFonts = ToU32(j.value("charactersToKernAcrossFonts", std::string(" ")));

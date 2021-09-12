@@ -25,7 +25,7 @@ namespace Sqex::FontCsv {
 		uint32_t DescentPixels = 0;
 		uint16_t GlobalOffsetYModifier = 0;
 		int MinGlobalOffsetX = 0;
-		int MaxGlobalOffsetX = 4;
+		int MaxGlobalOffsetX = 255;
 		std::set<char32_t> AlwaysApplyKerningCharacters = { U' ' };
 		bool AlignToBaseline = true;
 

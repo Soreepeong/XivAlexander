@@ -11,7 +11,7 @@ namespace Sqex::FontCsv {
 		SSIZE_T top = 0;
 		SSIZE_T right = 0;
 		SSIZE_T bottom = 0;
-		SSIZE_T offsetX = 0;
+		SSIZE_T advanceX = 0;
 
 		void AdjustToIntersection(GlyphMeasurement& r, SSIZE_T srcWidth, SSIZE_T srcHeight, SSIZE_T destWidth, SSIZE_T destHeight);
 		[[nodiscard]] SSIZE_T Width() const { return right - left; }
@@ -19,11 +19,18 @@ namespace Sqex::FontCsv {
 		[[nodiscard]] SSIZE_T Area() const { return Width() * Height(); }
 		[[nodiscard]] bool EffectivelyEmpty() const { return empty || (left == right && top == bottom); }
 
-		GlyphMeasurement& SetFrom(const RECT& r) {
-			*this = {
-				!r.left && !r.top && !r.right && !r.bottom,
-				r.left, r. top, r.right, r.bottom, 0
-			};
+		GlyphMeasurement& SetFrom(const RECT& r, bool keepAdvanceXIfNotEmpty = true) {
+			empty = !r.left && !r.top && !r.right && !r.bottom;
+			if (!empty) {
+				left = r.left;
+				top = r.top;
+				right = r.right;
+				bottom = r.bottom;
+				if (!keepAdvanceXIfNotEmpty)
+					advanceX = 0;
+			} else {
+				left = top = right = bottom = advanceX = 0;
+			}
 			return *this;
 		}
 
@@ -38,14 +45,20 @@ namespace Sqex::FontCsv {
 		struct AsMutableRectPtrType {
 			GlyphMeasurement& m;
 			RECT r;
+			const bool keepAdvanceXIfNotEmpty;
 			operator RECT* () {
 				return &r;
 			}
 
-			AsMutableRectPtrType(GlyphMeasurement& m) : m(m), r(m) {}
-			~AsMutableRectPtrType() { m.SetFrom(r); }
-		} AsMutableRectPtr() {
-			return AsMutableRectPtrType(*this);
+			AsMutableRectPtrType(GlyphMeasurement& m, bool keepAdvanceXIfNotEmpty)
+			: m(m)
+			, r(m)
+			, keepAdvanceXIfNotEmpty(keepAdvanceXIfNotEmpty) {
+				
+			}
+			~AsMutableRectPtrType() { m.SetFrom(r, keepAdvanceXIfNotEmpty); }
+		} AsMutableRectPtr(bool keepAdvanceXIfNotEmpty = true) {
+			return AsMutableRectPtrType(*this, keepAdvanceXIfNotEmpty);
 		}
 
 		[[nodiscard]] struct AsConstRectPtrType {
@@ -63,14 +76,14 @@ namespace Sqex::FontCsv {
 				top = static_cast<decltype(top)>(static_cast<double>(top) * mul / div);
 				right = static_cast<decltype(right)>(static_cast<double>(right) * mul / div);
 				bottom = static_cast<decltype(bottom)>(static_cast<double>(bottom) * mul / div);
-				offsetX = static_cast<decltype(offsetX)>(static_cast<double>(offsetX) * mul / div);
+				advanceX = static_cast<decltype(advanceX)>(static_cast<double>(advanceX) * mul / div);
 			} else {
 				static_assert(std::is_integral_v<Mul> && std::is_integral_v<Div>);
 				left = static_cast<decltype(left)>(left * static_cast<SSIZE_T>(mul) / div);
 				top = static_cast<decltype(top)>(top * static_cast<SSIZE_T>(mul) / div);
 				right = static_cast<decltype(right)>(right * static_cast<SSIZE_T>(mul) / div);
 				bottom = static_cast<decltype(bottom)>(bottom * static_cast<SSIZE_T>(mul) / div);
-				offsetX = static_cast<decltype(offsetX)>(offsetX * static_cast<SSIZE_T>(mul) / div);
+				advanceX = static_cast<decltype(advanceX)>(advanceX * static_cast<SSIZE_T>(mul) / div);
 			}
 			return *this;
 		}
@@ -123,8 +136,6 @@ namespace Sqex::FontCsv {
 		[[nodiscard]] virtual GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, const std::string& s) const {
 			return Measure(x, y, ToU32(s));
 		}
-
-		[[nodiscard]] virtual SSIZE_T GetOffsetX(char32_t c) const { return Measure(0, 0, c).offsetX; }
 	};
 
 	class SeFont : public virtual SeCompatibleFont {
@@ -170,7 +181,6 @@ namespace Sqex::FontCsv {
 
 		using SeCompatibleFont::Measure;
 		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const override;
-		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, const std::u32string& s) const override;
 
 	protected:
 		[[nodiscard]] const std::vector<std::shared_ptr<SeCompatibleFont>>& GetFontList() const;

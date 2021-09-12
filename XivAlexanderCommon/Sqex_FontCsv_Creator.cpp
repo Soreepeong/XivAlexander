@@ -169,7 +169,8 @@ Sqex::FontCsv::Creator::RenderTarget::AllocatedSpace Sqex::FontCsv::Creator::Ren
 	}
 
 	font->Draw(mipmap, space.X + drawOffsetX, space.Y + drawOffsetY, c, 0xFF, 0x00);
-	
+	std::cout << ToU8(std::vector<char32_t>{c, 0}.data());
+
 	return space;
 }
 
@@ -234,16 +235,16 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::Creator::
 				if (bbox.empty)
 					return;
 
-				const auto constrainedOffsetXModifier = std::max<SSIZE_T>(0, -bbox.left - globalOffsetX);
-				const auto boundingWidth = static_cast<uint8_t>(bbox.right + globalOffsetX + constrainedOffsetXModifier);
-				const auto nextOffsetX = static_cast<int8_t>(bbox.offsetX - globalOffsetX);
+				const auto leftExtension = std::max<SSIZE_T>(-bbox.left, globalOffsetX);
+				const auto boundingWidth = static_cast<uint8_t>(leftExtension + bbox.right);
+				const auto nextOffsetX = static_cast<int8_t>(bbox.advanceX - bbox.right - globalOffsetX);
 				const auto currentOffsetY = static_cast<int8_t>(
 					(AlignToBaseline ? result->Ascent() - plan.Font->Ascent() : (0LL + result->LineHeight() - plan.Font->Height()) / 2)
 					+ GlobalOffsetYModifier
 					);
-				const auto space = renderTarget.Draw(plan.Character, plan.Font.get(), globalOffsetX + constrainedOffsetXModifier, 0, boundingWidth, boundingHeight);
+				const auto space = renderTarget.Draw(plan.Character, plan.Font.get(), leftExtension, 0, boundingWidth, boundingHeight);
 
-				const auto resultingX = static_cast<uint16_t>(space.X - space.drawOffsetX + globalOffsetX + constrainedOffsetXModifier);
+				const auto resultingX = static_cast<uint16_t>(space.X - space.drawOffsetX + leftExtension);
 				const auto resultingY = static_cast<uint16_t>(space.Y - space.drawOffsetY);
 				result->AddFontEntry(plan.Character, space.Index, resultingX, resultingY, boundingWidth, std::min(space.BoundingHeight, boundingHeight), nextOffsetX, currentOffsetY);
 			});

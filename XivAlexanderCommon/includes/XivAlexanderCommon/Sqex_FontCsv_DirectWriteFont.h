@@ -27,7 +27,6 @@ namespace Sqex::FontCsv {
 
 		using SeCompatibleFont::Measure;
 		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const override;
-		[[nodiscard]] SSIZE_T GetOffsetX(char32_t c) const override;
 
 		GlyphMeasurement DrawCharacter(char32_t c, std::vector<uint8_t>& buf, bool draw) const;
 

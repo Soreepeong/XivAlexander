@@ -186,6 +186,7 @@ namespace Sqex::FontCsv {
 
 			GlyphMeasurement result{};
 			SSIZE_T currX = x, currY = y;
+			SSIZE_T rightmostOriginX = x;
 
 			for (const auto currChar : s) {
 				if (currChar == u'\r') {
@@ -203,24 +204,16 @@ namespace Sqex::FontCsv {
 				const auto kerning = GetKerning(lastChar, currChar);
 				const auto currBbox = Draw(to, currX + kerning, currY, currChar, fgColor, bgColor, fgOpacity, bgOpacity);
 				if (!currBbox.empty) {
-					if (result.empty) {
-						result = currBbox;
-						result.offsetX = result.right + result.offsetX;
-					} else {
-						result.left = std::min(result.left, currBbox.left);
-						result.top = std::min(result.top, currBbox.top);
-						result.right = std::max(result.right, currBbox.right);
-						result.bottom = std::max(result.bottom, currBbox.bottom);
-						result.offsetX = std::max(result.offsetX, currBbox.right + currBbox.offsetX);
-					}
-					currX = currBbox.right + currBbox.offsetX;
+					currX += kerning + currBbox.advanceX;
+					rightmostOriginX = std::max(rightmostOriginX, currX);
+					result.ExpandToFit(currBbox);
 				}
 				lastChar = currChar;
 			}
 			if (result.empty)
 				return { true };
 
-			result.offsetX -= result.right;
+			result.advanceX = rightmostOriginX - result.right;
 			return result;
 		}
 		virtual GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, const std::string& s, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity = MaxOpacity, OpacityType bgOpacity = MaxOpacity) const {

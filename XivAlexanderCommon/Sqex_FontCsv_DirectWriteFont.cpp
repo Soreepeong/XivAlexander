@@ -216,8 +216,9 @@ struct Sqex::FontCsv::DirectWriteFont::Implementation {
 		}
 	}
 
-	SSIZE_T ConvVal(double f) {
-		return static_cast<SSIZE_T>(std::round(f * static_cast<double>(Size) / Metrics.designUnitsPerEm));
+	template<typename From, typename To = SSIZE_T, typename = std::enable_if_t<std::is_arithmetic_v<From>&& std::is_arithmetic_v<To>>>
+	To ConvVal(From f) {
+		return static_cast<To>(std::floor(static_cast<double>(f) * static_cast<double>(Size) / static_cast<double>(Metrics.designUnitsPerEm)));
 	}
 
 	GlyphMeasurement ScaleMeasurement(GlyphMeasurement gm) {
@@ -334,17 +335,6 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::DirectWriteFont::Measure(SSIZE_T 
 	return DrawCharacter(c, u, false).Translate(x, y);
 }
 
-SSIZE_T Sqex::FontCsv::DirectWriteFont::GetOffsetX(char32_t c) const {
-	uint16_t glyphIndex;
-	Succ(m_pImpl->Face->GetGlyphIndicesW(reinterpret_cast<UINT32 const*>(&c), 1, &glyphIndex));
-	if (!glyphIndex)
-		return 0;
-
-	DWRITE_GLYPH_METRICS glyphMetrics;
-	Succ(m_pImpl->Face->GetDesignGlyphMetrics(&glyphIndex, 1, &glyphMetrics));
-	return m_pImpl->ConvVal(glyphMetrics.rightSideBearing);
-}
-
 Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::DirectWriteFont::DrawCharacter(char32_t c, std::vector<uint8_t>&buf, bool draw) const {
 	uint16_t glyphIndex;
 	Succ(m_pImpl->Face->GetGlyphIndicesW(reinterpret_cast<UINT32 const*>(&c), 1, &glyphIndex));
@@ -368,16 +358,6 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::DirectWriteFont::DrawCharacter(ch
 	};
 
 	IDWriteGlyphRunAnalysisPtr analysis;
-	//Succ(m_pImpl->Factory->CreateGlyphRunAnalysis(
-	//	&run,
-	//	nullptr,
-	//	DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC,
-	//	DWRITE_MEASURING_MODE_GDI_NATURAL,
-	//	DWRITE_GRID_FIT_MODE_ENABLED,
-	//	DWRITE_TEXT_ANTIALIAS_MODE_GRAYSCALE,
-	//	0,
-	//	static_cast<float>(std::round(m_pImpl->Metrics.ascent * static_cast<double>(m_pImpl->Size) / m_pImpl->Metrics.designUnitsPerEm)),
-	//	&analysis));
 	Succ(m_pImpl->Factory->CreateGlyphRunAnalysis(
 		&run,
 		nullptr,
@@ -386,7 +366,7 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::DirectWriteFont::DrawCharacter(ch
 		DWRITE_GRID_FIT_MODE_ENABLED,
 		DWRITE_TEXT_ANTIALIAS_MODE_GRAYSCALE,
 		0,
-		static_cast<float>(std::round(m_pImpl->Metrics.ascent * static_cast<double>(m_pImpl->Size) / m_pImpl->Metrics.designUnitsPerEm)),
+		static_cast<float>(m_pImpl->ConvVal(m_pImpl->Metrics.ascent)),
 		&analysis));
 
 	GlyphMeasurement bbox;
@@ -399,17 +379,15 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::DirectWriteFont::DrawCharacter(ch
 			a,
 			a + glyphMetrics.advanceWidth,
 			a + Height(),
-			a,
+			glyphMetrics.advanceWidth,
 			});
 	}
+	
+	bbox.advanceX = m_pImpl->ConvVal(glyphMetrics.advanceWidth);
 
-	/*if (glyphMetrics.rightSideBearing < 0) {
-		bbox.right -= m_pImpl->ConvVal(glyphMetrics.rightSideBearing);
-	}*/
-	bbox.offsetX = m_pImpl->ConvVal(glyphMetrics.rightSideBearing);
 	if (draw) {
 		buf.resize(bbox.Area());
-		Succ(analysis->CreateAlphaTexture(DWRITE_TEXTURE_ALIASED_1x1, bbox.AsConstRectPtr(), &buf[0], static_cast<uint32_t>(buf.size())));
+		Succ(analysis->CreateAlphaTexture(DWRITE_TEXTURE_ALIASED_1x1, bbox.AsMutableRectPtr(), &buf[0], static_cast<uint32_t>(buf.size())));
 	}
 
 	return bbox;
