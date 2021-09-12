@@ -557,7 +557,7 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::shared_ptr<const Sqex::RandomAccessSt
 			result.emplace(std::format("common/font/{}", std::format(textureFilenameFormat, i + 1)), fontSet.Textures[i]);
 
 		for (const auto& [fontName, newFontCsv] : fontSet.Fonts)
-			result.emplace(std::format("common/fonts/{}", fontName), newFontCsv);
+			result.emplace(std::format("common/font/{}", fontName), newFontCsv);
 	}
 
 	return result;

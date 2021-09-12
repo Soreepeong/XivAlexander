@@ -33,7 +33,7 @@ Sqex::Sqpack::LazyFileOpeningEntryProvider::LazyFileOpeningEntryProvider(EntryPa
 	, m_originalSize(m_stream->StreamSize()) {
 }
 
-Sqex::Sqpack::LazyFileOpeningEntryProvider::LazyFileOpeningEntryProvider(EntryPathSpec spec, std::shared_ptr<RandomAccessStream> stream)
+Sqex::Sqpack::LazyFileOpeningEntryProvider::LazyFileOpeningEntryProvider(EntryPathSpec spec, std::shared_ptr<const RandomAccessStream> stream)
 	: EntryProvider(std::move(spec))
 	, m_path()
 	, m_stream(std::move(stream))

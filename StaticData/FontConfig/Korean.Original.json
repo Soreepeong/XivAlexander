@@ -1,7 +1,7 @@
 {
-  "name": "Papyrus/Gungsuh (International Client)",
-  "textureWidth": 4096,
-  "textureHeight": 4096,
+  "name": "Original (Korean Client)",
+  "textureWidth": 2048,
+  "textureHeight": 2048,
   "sources": {
     "game:AXIS_96": {
       "fdtPath": "common/font/AXIS_96.fdt",
@@ -22,6 +22,21 @@
       "fdtPath": "common/font/AXIS_18.fdt",
       "texturePath": "common/font/font{}.tex",
       "textureCount": 7
+    },
+    "game:KrnAXIS_120": {
+      "fdtPath": "common/font/KrnAXIS_120.fdt",
+      "texturePath": "common/font/font_krn_{}.tex",
+      "textureCount": 3
+    },
+    "game:KrnAXIS_140": {
+      "fdtPath": "common/font/KrnAXIS_140.fdt",
+      "texturePath": "common/font/font_krn_{}.tex",
+      "textureCount": 3
+    },
+    "game:KrnAXIS_180": {
+      "fdtPath": "common/font/KrnAXIS_180.fdt",
+      "texturePath": "common/font/font_krn_{}.tex",
+      "textureCount": 3
     },
     "game:AXIS_36": {
       "fdtPath": "common/font/AXIS_36.fdt",
@@ -117,138 +132,9 @@
       "fdtPath": "common/font/TrumpGothic_68.fdt",
       "texturePath": "common/font/font{}.tex",
       "textureCount": 7
-    },
-    "dwrite:Gungsuh:9.6": {
-      "familyName": "Gungsuh",
-      "height": 9.6,
-      "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
-    },
-    "dwrite:Gungsuh:12": {
-      "familyName": "Gungsuh",
-      "height": 12,
-      "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
-    },
-    "dwrite:Gungsuh:14": {
-      "familyName": "Gungsuh",
-      "height": 14,
-      "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
-    },
-    "dwrite:Gungsuh:18": {
-      "familyName": "Gungsuh",
-      "height": 18,
-      "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
-    },
-    "dwrite:Gungsuh:24": {
-      "familyName": "Gungsuh",
-      "height": 24,
-      "weight": 400
-    },
-    "dwrite:Gungsuh:36": {
-      "familyName": "Gungsuh",
-      "height": 36,
-      "weight": 400
-    },
-    "dwrite:Papyrus:9.6": {
-      "familyName": "Papyrus",
-      "height": 9.6,
-      "weight": 400
-    },
-    "dwrite:Papyrus:12": {
-      "familyName": "Papyrus",
-      "height": 12,
-      "weight": 400
-    },
-    "dwrite:Papyrus:14": {
-      "familyName": "Papyrus",
-      "height": 14,
-      "weight": 400
-    },
-    "dwrite:Papyrus:18": {
-      "familyName": "Papyrus",
-      "height": 18,
-      "weight": 400
-    },
-    "dwrite:Papyrus:24": {
-      "familyName": "Papyrus",
-      "height": 24,
-      "weight": 400
-    },
-    "dwrite:Papyrus:36": {
-      "familyName": "Papyrus",
-      "height": 36,
-      "weight": 400
     }
   },
-  "ranges": {
-    "HangulMinimum": {
-      "Hangul Jamo": [
-        "U+1100",
-        "U+11FF"
-      ],
-      "Hangul Compatibility Jamo": [
-        "U+3130",
-        "U+318F"
-      ],
-      "Hangul Jamo Extended-A": [
-        "U+A960",
-        "U+A97F"
-      ],
-      "Hangul Syllables": [
-        "U+AC00",
-        "U+D7AF"
-      ],
-      "Hangul Jamo Extended-B": [
-        "U+D7B0",
-        "U+D7FF"
-      ]
-    },
-    "Hangul": {
-      "Hangul Jamo": [
-        "U+1100",
-        "U+11FF"
-      ],
-      "CJK Symbols and Punctuation": [
-        "U+3000",
-        "U+303F"
-      ],
-      "Hangul Compatibility Jamo": [
-        "U+3130",
-        "U+318F"
-      ],
-      "Enclosed CJK Letters and Months": [
-        "U+3200",
-        "U+32FF"
-      ],
-      "CJK Unified Ideographs Extension A": [
-        "U+3400",
-        "U+4DBF"
-      ],
-      "CJK Unified Ideographs": [
-        "U+4E00",
-        "U+9FFF"
-      ],
-      "Hangul Jamo Extended-A": [
-        "U+A960",
-        "U+A97F"
-      ],
-      "Hangul Syllables": [
-        "U+AC00",
-        "U+D7AF"
-      ],
-      "Hangul Jamo Extended-B": [
-        "U+D7B0",
-        "U+D7FF"
-      ],
-      "CJK Compatibility Ideographs": [
-        "U+F900",
-        "U+FAFF"
-      ]
-    }
-  },
+  "ranges": {},
   "targets": {
     "font{}.tex": {
       "AXIS_96.fdt": {
@@ -258,17 +144,6 @@
         "sources": [
           {
             "name": "game:AXIS_96"
-          },
-          {
-            "name": "dwrite:Papyrus:9.6",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:9.6",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -279,17 +154,6 @@
         "sources": [
           {
             "name": "game:AXIS_12"
-          },
-          {
-            "name": "dwrite:Papyrus:12",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:12",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -300,17 +164,6 @@
         "sources": [
           {
             "name": "game:AXIS_14"
-          },
-          {
-            "name": "dwrite:Papyrus:14",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:14",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -321,17 +174,6 @@
         "sources": [
           {
             "name": "game:AXIS_18"
-          },
-          {
-            "name": "dwrite:Papyrus:18",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:18",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -342,17 +184,6 @@
         "sources": [
           {
             "name": "game:AXIS_36"
-          },
-          {
-            "name": "dwrite:Papyrus:36",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:36",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -363,17 +194,6 @@
         "sources": [
           {
             "name": "game:Jupiter_16"
-          },
-          {
-            "name": "dwrite:Papyrus:18",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:18",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -384,17 +204,6 @@
         "sources": [
           {
             "name": "game:Jupiter_20"
-          },
-          {
-            "name": "dwrite:Papyrus:24",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:24",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -405,17 +214,6 @@
         "sources": [
           {
             "name": "game:Jupiter_23"
-          },
-          {
-            "name": "dwrite:Papyrus:24",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:24",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -436,17 +234,6 @@
         "sources": [
           {
             "name": "game:Jupiter_46"
-          },
-          {
-            "name": "dwrite:Papyrus:36",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:36",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -497,17 +284,6 @@
         "sources": [
           {
             "name": "game:MiedingerMid_10"
-          },
-          {
-            "name": "dwrite:Papyrus:9.6",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:9.6",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -518,17 +294,6 @@
         "sources": [
           {
             "name": "game:MiedingerMid_12"
-          },
-          {
-            "name": "dwrite:Papyrus:12",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:12",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -539,17 +304,6 @@
         "sources": [
           {
             "name": "game:MiedingerMid_14"
-          },
-          {
-            "name": "dwrite:Papyrus:14",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:14",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -560,17 +314,6 @@
         "sources": [
           {
             "name": "game:MiedingerMid_18"
-          },
-          {
-            "name": "dwrite:Papyrus:18",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:18",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -581,38 +324,16 @@
         "sources": [
           {
             "name": "game:MiedingerMid_36"
-          },
-          {
-            "name": "dwrite:Papyrus:36",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:36",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
       "TrumpGothic_184.fdt": {
-        "height": 18.4,
+        "height": 184,
         "ascent": "game:TrumpGothic_184",
         "descent": "game:TrumpGothic_184",
         "sources": [
           {
             "name": "game:TrumpGothic_184"
-          },
-          {
-            "name": "dwrite:Papyrus:18",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:18",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -623,17 +344,6 @@
         "sources": [
           {
             "name": "game:TrumpGothic_23"
-          },
-          {
-            "name": "dwrite:Papyrus:24",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:24",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -644,17 +354,6 @@
         "sources": [
           {
             "name": "game:TrumpGothic_34"
-          },
-          {
-            "name": "dwrite:Papyrus:36",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:36",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -665,17 +364,6 @@
         "sources": [
           {
             "name": "game:TrumpGothic_68"
-          },
-          {
-            "name": "dwrite:Papyrus:36",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:36",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       }
@@ -688,17 +376,6 @@
         "sources": [
           {
             "name": "game:AXIS_12"
-          },
-          {
-            "name": "dwrite:Papyrus:12",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:12",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -709,17 +386,6 @@
         "sources": [
           {
             "name": "game:AXIS_14"
-          },
-          {
-            "name": "dwrite:Papyrus:14",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:14",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -730,17 +396,6 @@
         "sources": [
           {
             "name": "game:AXIS_18"
-          },
-          {
-            "name": "dwrite:Papyrus:18",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:18",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -751,17 +406,6 @@
         "sources": [
           {
             "name": "game:Jupiter_16"
-          },
-          {
-            "name": "dwrite:Papyrus:18",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:18",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -772,17 +416,6 @@
         "sources": [
           {
             "name": "game:Jupiter_20"
-          },
-          {
-            "name": "dwrite:Papyrus:24",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:24",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -793,17 +426,6 @@
         "sources": [
           {
             "name": "game:Jupiter_23"
-          },
-          {
-            "name": "dwrite:Papyrus:24",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:24",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -844,17 +466,6 @@
         "sources": [
           {
             "name": "game:MiedingerMid_10"
-          },
-          {
-            "name": "dwrite:Papyrus:9.6",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:9.6",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -865,17 +476,6 @@
         "sources": [
           {
             "name": "game:MiedingerMid_12"
-          },
-          {
-            "name": "dwrite:Papyrus:12",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:12",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -886,17 +486,6 @@
         "sources": [
           {
             "name": "game:MiedingerMid_14"
-          },
-          {
-            "name": "dwrite:Papyrus:14",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:14",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -907,38 +496,16 @@
         "sources": [
           {
             "name": "game:MiedingerMid_18"
-          },
-          {
-            "name": "dwrite:Papyrus:18",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:18",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
       "TrumpGothic_184_lobby.fdt": {
-        "height": 18.4,
+        "height": 184,
         "ascent": "game:TrumpGothic_184",
         "descent": "game:TrumpGothic_184",
         "sources": [
           {
             "name": "game:TrumpGothic_184"
-          },
-          {
-            "name": "dwrite:Papyrus:18",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:18",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -949,17 +516,6 @@
         "sources": [
           {
             "name": "game:TrumpGothic_23"
-          },
-          {
-            "name": "dwrite:Papyrus:24",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:24",
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -970,17 +526,38 @@
         "sources": [
           {
             "name": "game:TrumpGothic_34"
-          },
+          }
+        ]
+      }
+    },
+    "font_krn_{}.tex": {
+      "KrnAXIS_120.fdt": {
+        "height": 12,
+        "ascent": "game:KrnAXIS_120",
+        "descent": "game:KrnAXIS_120",
+        "sources": [
           {
-            "name": "dwrite:Papyrus:36",
-            "extendRange": false,
-            "replace": true
-          },
+            "name": "game:KrnAXIS_120"
+          }
+        ]
+      },
+      "KrnAXIS_140.fdt": {
+        "height": 14,
+        "ascent": "game:KrnAXIS_140",
+        "descent": "game:KrnAXIS_140",
+        "sources": [
           {
-            "name": "dwrite:Gungsuh:36",
-            "ranges": [
-              "HangulMinimum"
-            ]
+            "name": "game:KrnAXIS_140"
+          }
+        ]
+      },
+      "KrnAXIS_180.fdt": {
+        "height": 18,
+        "ascent": "game:KrnAXIS_180",
+        "descent": "game:KrnAXIS_180",
+        "sources": [
+          {
+            "name": "game:KrnAXIS_180"
           }
         ]
       }

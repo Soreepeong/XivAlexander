@@ -5,6 +5,17 @@
   "description": "Describe how to generate fdt and tex files that will be used to replace the game's font.",
   "type": "object",
   "properties": {
+    "name": {
+      "type": "string"
+    },
+    "revision": {
+      "type": "integer",
+      "default": 1,
+      "minimum": 1
+    },
+    "description": {
+      "type": "string"
+    },
     "glyphGap": {
       "type": "integer",
       "default": 1,
@@ -277,6 +288,7 @@
     }
   },
   "required": [
+    "name",
     "sources",
     "targets"
   ]

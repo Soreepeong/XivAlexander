@@ -297,6 +297,10 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 	return addEntryResult;
 }
 
+Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntry(std::shared_ptr<EntryProvider> provider, bool overwriteExisting) {
+	return m_pImpl->AddEntry(std::move(provider), SIZE_MAX, overwriteExisting);
+}
+
 template<Sqex::Sqpack::SqIndex::Header::IndexType IndexType, typename FileEntryType, bool UseFolders>
 class Sqex::Sqpack::Creator::IndexViewBase : public RandomAccessStream {
 	std::vector<uint8_t> m_data;
@@ -406,9 +410,11 @@ class Sqex::Sqpack::Creator::DataView : public RandomAccessStream {
 		return buffer;
 	}
 
+#ifdef _DEBUG
 	mutable uint64_t m_nLastRequestedOffset = 0;
 	mutable uint64_t m_nLastRequestedSize = 0;
 	mutable std::vector<std::tuple<EntryProvider*, uint64_t, uint64_t>> m_pLastEntryProviders;
+#endif
 
 public:
 	DataView(const SqpackHeader& header, const SqData::Header& subheader, std::vector<std::unique_ptr<const Implementation::Entry>> entries, std::vector<std::shared_ptr<const Utils::Win32::File>> openFiles)
@@ -544,7 +550,8 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 		if (entry->Provider->PathSpec().HasFullPathHash())
 			fileEntries2.emplace_back(SqIndex::FileSegmentEntry2{ entry->Provider->PathSpec().FullPathHash, entry->Locator });
 
-		dataOpenFileIndices.back().insert(entry->UnderlyingFileIndex);
+		if (entry->UnderlyingFileIndex != SIZE_MAX)
+			dataOpenFileIndices.back().insert(entry->UnderlyingFileIndex);
 
 		dataSubheaders.back().DataSize = dataSubheaders.back().DataSize + entry->BlockSize + entry->PadSize;
 		dataEntries.back().emplace_back(std::move(entry));

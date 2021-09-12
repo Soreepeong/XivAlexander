@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "App_Feature_GameResourceOverrider.h"
 
+#include <XivAlexanderCommon/Sqex_FontCsv_CreateConfig.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Creator.h>
 #include <XivAlexanderCommon/Utils_Win32_Process.h>
 
@@ -8,6 +9,7 @@
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_Hooks.h"
 #include "App_Misc_Logger.h"
+#include "XivAlexanderCommon/Sqex_FontCsv_Creator.h"
 
 std::weak_ptr<App::Feature::GameResourceOverrider::Implementation> App::Feature::GameResourceOverrider::s_pImpl;
 
@@ -469,6 +471,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			auto additionalEntriesFound = false;
 			additionalEntriesFound |= SetUpVirtualFileFromTexToolsModPacks(creator, indexFile);
 			additionalEntriesFound |= SetUpVirtualFileFromFileEntries(creator, indexFile);
+			additionalEntriesFound |= SetUpVirtualFileFromFontConfig(creator, indexFile);
 
 			// Nothing to override, 
 			if (!additionalEntriesFound) {
@@ -606,6 +609,60 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			}
 		}
 		return additionalEntriesFound;
+	}
+
+	bool SetUpVirtualFileFromFontConfig(Sqex::Sqpack::Creator& creator, const std::filesystem::path& indexPath) {
+		if (indexPath.filename() != L"000000.win32.index")
+			return false;
+		if (const auto fontConfigPathStr = m_config->Runtime.OverrideFontConfig.Value(); !fontConfigPathStr.empty()) {
+			const auto fontConfigPath = Config::TranslatePath(fontConfigPathStr);
+			try {
+				if (!exists(fontConfigPath))
+					throw std::runtime_error(std::format("=> Font config file was not found: ", fontConfigPathStr));
+				m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
+					"=> Generating font per file: {}",
+					fontConfigPathStr);
+
+				std::ifstream fin(fontConfigPath);
+				nlohmann::json j;
+				fin >> j;
+				auto cfg = j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
+
+				Sqex::FontCsv::FontSetsCreator fontCreator(cfg);
+				while (!fontCreator.Wait(1000)) {
+					const auto progress = fontCreator.GetProgress();
+					m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
+						"=> Creating font... ({:.2f}% and {} task(s))",
+						progress.Scale(100.), progress.Indeterminate);
+				}
+				const auto& result = fontCreator.GetResult();
+				for (const auto& [entryPath, stream] : result.GetAllStreams()) {
+					std::shared_ptr<Sqex::Sqpack::EntryProvider> provider;
+					auto extension = entryPath.Original.extension().wstring();
+					CharLowerW(&extension[0]);
+					if (extension == L".tex")
+						provider = std::make_shared<Sqex::Sqpack::OnTheFlyTextureEntryProvider>(entryPath, stream);
+					else
+						provider = std::make_shared<Sqex::Sqpack::OnTheFlyBinaryEntryProvider>(entryPath, stream);
+					const auto addEntryResult = creator.AddEntry(std::move(provider));
+
+					const auto item = addEntryResult.AnyItem();
+					if (!item)
+						throw std::runtime_error("Unexpected error");
+					m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
+						"=> {} file {}: (nameHash={:08x}, pathHash={:08x}, fullPathHash={:08x})",
+						addEntryResult.Added.empty() ? "Replaced" : "Added",
+						item->PathSpec().Original,
+						item->PathSpec().NameHash,
+						item->PathSpec().PathHash,
+						item->PathSpec().FullPathHash);
+				}
+				return true;
+			} catch (const std::runtime_error& e) {
+				m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, e.what());
+			}
+		}
+		return false;
 	}
 };
 

@@ -58,7 +58,7 @@ namespace Sqex::Sqpack {
 
 	class LazyFileOpeningEntryProvider : public EntryProvider {
 		const std::filesystem::path m_path;
-		const std::shared_ptr<RandomAccessStream> m_stream;
+		const std::shared_ptr<const RandomAccessStream> m_stream;
 		mutable std::shared_ptr<std::mutex> m_initializationMutex;
 
 	protected:
@@ -66,7 +66,7 @@ namespace Sqex::Sqpack {
 
 	public:
 		LazyFileOpeningEntryProvider(EntryPathSpec, std::filesystem::path, bool openImmediately = false);
-		LazyFileOpeningEntryProvider(EntryPathSpec, std::shared_ptr<RandomAccessStream>);
+		LazyFileOpeningEntryProvider(EntryPathSpec, std::shared_ptr<const RandomAccessStream>);
 
 		[[nodiscard]] uint64_t StreamSize() const final;
 		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const final;

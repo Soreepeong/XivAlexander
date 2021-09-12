@@ -83,8 +83,15 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 		if (this_->m_bInterrnalUnloadInitiated)
 			return f();
 
-		if (!m_hWnd && !Dll::FindGameMainWindow(false))
+		if (!m_hWnd)
 			return f();
+
+		{
+			// If the game window is hung, "just do it"
+			DWORD_PTR result;
+			if (!SendMessageTimeoutW(m_hWnd, WM_NULL, 0, 0, SMTO_ABORTIFHUNG | SMTO_BLOCK, 500, &result))
+				return f();
+		}
 
 		m_initThread.Wait();
 		const auto hEvent = Utils::Win32::Event::Create();

@@ -240,10 +240,11 @@ void compile() {
 	Sqex::FontCsv::FontSetsCreator::ResultFontSets result;
 	{
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Original.json)");
-		std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.dwrite.json)");
+		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.dwrite.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.gdi.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.ComicGulim.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.PapyrusGungsuh.json)");
+		std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.WithMinimalHangul.json)");
 		nlohmann::json j;
 		fin >> j;
 		auto cfg = j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();

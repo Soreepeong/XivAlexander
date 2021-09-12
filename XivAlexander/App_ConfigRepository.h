@@ -215,6 +215,8 @@ namespace App {
 			Item<std::vector<std::filesystem::path>> AdditionalGameResourceFileEntryRootDirectories =
 				CreateConfigItem<std::vector<std::filesystem::path>>(this, "AdditionalGameResourceFileEntryRootDirectories");
 
+			Item<std::string> OverrideFontConfig = CreateConfigItem(this, "OverrideFontConfig", std::string());
+
 			[[nodiscard]] WORD GetLangId() const;
 			[[nodiscard]] LPCWSTR GetStringRes(UINT uId) const;
 			template <typename ... Args>
