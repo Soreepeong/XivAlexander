@@ -237,23 +237,30 @@ void test_create() {
 }
 
 void compile() {
-	// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Original.json)");
-	std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.dwrite.json)");
-	// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.gdi.json)");
-	// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.ComicGulim.json)");
-	// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.PapyrusGungsuh.json)");
-	nlohmann::json j;
-	fin >> j;
-	auto cfg = j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
-	
-	Sqex::FontCsv::FontSetsCreator creator(cfg);
-	while (!creator.Wait(100)) {
-		const auto progress = creator.GetProgress();
-		std::cout << progress.Indeterminate << " " << progress.Scale(100.) << "%\r";
-	}
-	std::cout << "Done!                 \n";
+	Sqex::FontCsv::FontSetsCreator::ResultFontSets result;
+	{
+		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Original.json)");
+		std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.dwrite.json)");
+		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.gdi.json)");
+		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.ComicGulim.json)");
+		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.PapyrusGungsuh.json)");
+		nlohmann::json j;
+		fin >> j;
+		auto cfg = j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
 
-	const auto result = creator.GetResult();
+		Sqex::FontCsv::FontSetsCreator creator(cfg);
+		while (!creator.Wait(100)) {
+			const auto progress = creator.GetProgress();
+			std::cout << progress.Indeterminate << " " << progress.Scale(100.) << "%     \r";
+		}
+		result = creator.GetResult();
+
+		std::cout << "Done!                 \n";
+		for (const auto& [t, f] : result.Result) {
+			std::cout << std::format("\t=> {}: {} files\n", t, f.Textures.size());
+		}
+	}
+
 	for (const auto& [fileName, stream] : result.GetAllStreams()) {
 		auto buf = stream->ReadStreamIntoVector<uint8_t>(0);
 		Utils::Win32::File::Create(

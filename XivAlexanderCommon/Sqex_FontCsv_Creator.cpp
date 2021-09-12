@@ -10,6 +10,7 @@
 struct Sqex::FontCsv::FontCsvCreator::Implementation {
 	Utils::Win32::TpEnvironment WorkPool;
 	bool Cancelled = false;
+	Utils::Win32::Semaphore CoreLimitSemaphore;
 
 	struct CharacterPlan {
 		mutable GlyphMeasurement m_bbox;
@@ -30,10 +31,21 @@ struct Sqex::FontCsv::FontCsvCreator::Implementation {
 	FontCreationProgress Progress{
 		.Indeterminate = 1,
 	};
+
+	Utils::CallOnDestruction WaitSemaphore() {
+		if (!CoreLimitSemaphore)
+			return {};
+		if (CoreLimitSemaphore.Wait(INFINITE) != WAIT_OBJECT_0)
+			throw std::runtime_error("wait != WAIT_OBJECT_0");
+		return Utils::CallOnDestruction([this]() {
+			void(CoreLimitSemaphore.Release(1));
+		});
+	}
 };
 
-Sqex::FontCsv::FontCsvCreator::FontCsvCreator()
+Sqex::FontCsv::FontCsvCreator::FontCsvCreator(Utils::Win32::Semaphore semaphore)
 	: m_pImpl(std::make_unique<Implementation>()) {
+	m_pImpl->CoreLimitSemaphore = std::move(semaphore);
 }
 
 Sqex::FontCsv::FontCsvCreator::~FontCsvCreator() = default;
@@ -224,6 +236,7 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::FontCsvCr
 		std::vector<uint32_t> maxDescents(m_pImpl->WorkPool.ThreadCount());
 		for (size_t i = 0; i < m_pImpl->WorkPool.ThreadCount(); ++i) {
 			m_pImpl->WorkPool.SubmitWork([this, &planList, &maxBboxes, &maxAscents, &maxDescents, startI = i]() {
+				const auto waitRelease = m_pImpl->WaitSemaphore();
 				auto& box = maxBboxes[startI];
 				auto& ascent = maxAscents[startI];
 				auto& descent = maxDescents[startI];
@@ -270,6 +283,7 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::FontCsvCr
 			m_pImpl->WorkPool.SubmitWork([&]() {
 				if (m_pImpl->Cancelled)
 					return;
+				const auto waitRelease = m_pImpl->WaitSemaphore();
 
 				m_pImpl->Progress.Progress += ProgressWeight_Draw;
 
@@ -334,6 +348,23 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 	std::map<std::string, std::map<std::string, std::unique_ptr<FontCsvCreator>>> ResultWork;
 
 	Utils::Win32::TpEnvironment WorkPool;
+
+	Utils::Win32::Semaphore CoreLimitSemaphore;
+
+	Implementation(CreateConfig::FontCreateConfig config, LONG maxCoreCount)
+		: Config(std::move(config))
+		, CoreLimitSemaphore(maxCoreCount ? Utils::Win32::Semaphore::Create(nullptr, maxCoreCount, maxCoreCount) : nullptr) {
+	}
+
+	Utils::CallOnDestruction WaitSemaphore() {
+		if (!CoreLimitSemaphore)
+			return {};
+		if (CoreLimitSemaphore.Wait(INFINITE) != WAIT_OBJECT_0)
+			throw std::runtime_error("wait != WAIT_OBJECT_0");
+		return Utils::CallOnDestruction([this]() {
+			void(CoreLimitSemaphore.Release(1));
+		});
+	}
 
 	const SeCompatibleDrawableFont<uint8_t>& GetSourceFont(const std::string& name) {
 		{
@@ -425,6 +456,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				WorkPool.SubmitWork([&, fontName = fontName]() {
 					if (Cancelled)
 						return;
+					const auto waitRelease = WaitSemaphore();
 
 					creator.SizePoints = static_cast<float>(plan.height);
 					if (plan.autoAscent)
@@ -508,8 +540,8 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 	}
 };
 
-Sqex::FontCsv::FontSetsCreator::FontSetsCreator(CreateConfig::FontCreateConfig config)
-	: m_pImpl(std::make_unique<Implementation>(std::move(config))) {
+Sqex::FontCsv::FontSetsCreator::FontSetsCreator(CreateConfig::FontCreateConfig config, LONG maxCoreCount)
+	: m_pImpl(std::make_unique<Implementation>(std::move(config), maxCoreCount ? maxCoreCount : []() { SYSTEM_INFO si{}; GetSystemInfo(&si); return si.dwNumberOfProcessors; }())) {
 	m_pImpl->WorkerThread = Utils::Win32::Thread(L"FontSetsCreator", [this]() { m_pImpl->Compile(); });
 }
 

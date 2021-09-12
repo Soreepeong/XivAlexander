@@ -147,6 +147,17 @@ void Utils::Win32::Thread::Terminate(DWORD dwExitCode, bool errorIfAlreadyTermin
 	throw Error(err, "TerminateThread");
 }
 
+Utils::Win32::Semaphore Utils::Win32::Semaphore::Create(LPSECURITY_ATTRIBUTES lpSemaphoreAttributes, LONG lInitialCount, LONG lMaximumCount, LPCWSTR lpName, DWORD dwFlags, DWORD dwDesiredAccess) {
+	return Semaphore(CreateSemaphoreExW(lpSemaphoreAttributes, lInitialCount, lMaximumCount, lpName, dwFlags, dwDesiredAccess), Null, "CreateSemaphoreExW");
+}
+
+LONG Utils::Win32::Semaphore::Release(LONG count) const {
+	LONG prevCount = 0;
+	if (!ReleaseSemaphore(m_object, count, &prevCount))
+		throw Error("ReleaseSemaphore");
+	return prevCount;
+}
+
 Utils::Win32::File::File()
 	: Handle() {
 }
@@ -360,7 +371,7 @@ Utils::Win32::Event Utils::Win32::Event::Create(
 	_In_ BOOL bInitialState,
 	_In_opt_ LPCWSTR lpName
 ) {
-	return Event(CreateEventW(lpEventAttributes, bManualReset, bInitialState, lpName), INVALID_HANDLE_VALUE, "CreateEventW");
+	return Event(CreateEventW(lpEventAttributes, bManualReset, bInitialState, lpName), Null, "CreateEventW");
 }
 
 void Utils::Win32::Event::Set() const {
@@ -372,3 +383,5 @@ void Utils::Win32::Event::Reset() const {
 	if (!ResetEvent(m_object))
 		throw Error("ResetEvent");
 }
+
+Utils::Win32::Semaphore::~Semaphore() = default;

@@ -83,6 +83,23 @@ namespace Utils::Win32 {
 		void Reset() const;
 	};
 
+	class Semaphore : public Handle {
+	public:
+		using Handle::Handle;
+		~Semaphore() override;
+
+		static Semaphore Create(
+			LPSECURITY_ATTRIBUTES lpSemaphoreAttributes,
+			LONG                  lInitialCount,
+			LONG                  lMaximumCount,
+			LPCWSTR               lpName = nullptr,
+			DWORD                 dwFlags = 0,
+			DWORD                 dwDesiredAccess = SEMAPHORE_ALL_ACCESS
+		);
+
+		LONG Release(LONG count) const;
+	};
+
 	class File : public Handle {
 	public:
 		File();

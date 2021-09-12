@@ -51,7 +51,7 @@ namespace Sqex::FontCsv {
 		std::set<char32_t> AlwaysApplyKerningCharacters = { U' ' };
 		bool AlignToBaseline = true;
 
-		FontCsvCreator();
+		FontCsvCreator(Utils::Win32::Semaphore semaphore = nullptr);
 		~FontCsvCreator();
 
 		void AddCharacter(char32_t codePoint, const SeCompatibleDrawableFont<uint8_t>* font, bool replace = false, bool extendRange = true);
@@ -109,7 +109,7 @@ namespace Sqex::FontCsv {
 		const std::unique_ptr<Implementation> m_pImpl;
 
 	public:
-		FontSetsCreator(CreateConfig::FontCreateConfig config);
+		FontSetsCreator(CreateConfig::FontCreateConfig config, LONG maxCoreCount = 0);
 		~FontSetsCreator();
 
 		struct ResultFontSet {
