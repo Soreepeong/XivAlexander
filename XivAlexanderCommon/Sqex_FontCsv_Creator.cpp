@@ -8,6 +8,9 @@
 #include "Utils_Win32_ThreadPool.h"
 
 struct Sqex::FontCsv::FontCsvCreator::Implementation {
+	Utils::Win32::TpEnvironment WorkPool;
+	bool Cancelled = false;
+
 	struct CharacterPlan {
 		mutable GlyphMeasurement m_bbox;
 
@@ -86,6 +89,11 @@ void Sqex::FontCsv::FontCsvCreator::AddFont(const  SeCompatibleDrawableFont<uint
 
 const Sqex::FontCsv::FontCreationProgress& Sqex::FontCsv::FontCsvCreator::GetProgress() const {
 	return m_pImpl->Progress;
+}
+
+void Sqex::FontCsv::FontCsvCreator::Cancel() {
+	m_pImpl->Cancelled = true;
+	m_pImpl->WorkPool.Cancel();
 }
 
 
@@ -211,16 +219,18 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::FontCsvCr
 	m_pImpl->Progress.Indeterminate = 0;
 
 	{
-		Utils::Win32::TpEnvironment tpEnv;
-		std::vector<GlyphMeasurement> maxBboxes(tpEnv.ThreadCount());
-		std::vector<uint32_t> maxAscents(tpEnv.ThreadCount());
-		std::vector<uint32_t> maxDescents(tpEnv.ThreadCount());
-		for (size_t i = 0; i < tpEnv.ThreadCount(); ++i) {
-			tpEnv.SubmitWork([this, &planList, &maxBboxes, &maxAscents, &maxDescents, startI = i]() {
+		std::vector<GlyphMeasurement> maxBboxes(m_pImpl->WorkPool.ThreadCount());
+		std::vector<uint32_t> maxAscents(m_pImpl->WorkPool.ThreadCount());
+		std::vector<uint32_t> maxDescents(m_pImpl->WorkPool.ThreadCount());
+		for (size_t i = 0; i < m_pImpl->WorkPool.ThreadCount(); ++i) {
+			m_pImpl->WorkPool.SubmitWork([this, &planList, &maxBboxes, &maxAscents, &maxDescents, startI = i]() {
 				auto& box = maxBboxes[startI];
 				auto& ascent = maxAscents[startI];
 				auto& descent = maxDescents[startI];
 				for (auto i = startI; i < planList.size(); i += maxBboxes.size()) {
+					if (m_pImpl->Cancelled)
+						return;
+
 					m_pImpl->Progress.Progress += ProgressWeight_Bbox;
 
 					box.ExpandToFit(planList[i].GetBbox());
@@ -229,7 +239,10 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::FontCsvCr
 				}
 			});
 		}
-		tpEnv.WaitOutstanding();
+		m_pImpl->WorkPool.WaitOutstanding();
+		if (m_pImpl->Cancelled)
+			return nullptr;
+
 		for (const auto& bbox : maxBboxes)
 			maxBbox.ExpandToFit(bbox);
 		for (const auto& n : maxAscents)
@@ -253,9 +266,11 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::FontCsvCr
 	result->ReserveStorage(m_pImpl->CharacterPlans.size(), m_pImpl->Kernings.size());
 
 	{
-		Utils::Win32::TpEnvironment tpEnv;
 		for (auto& plan : m_pImpl->CharacterPlans | std::views::values) {
-			tpEnv.SubmitWork([&]() {
+			m_pImpl->WorkPool.SubmitWork([&]() {
+				if (m_pImpl->Cancelled)
+					return;
+
 				m_pImpl->Progress.Progress += ProgressWeight_Draw;
 
 				const auto& bbox = plan.GetBbox();
@@ -276,7 +291,9 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::FontCsvCr
 				result->AddFontEntry(plan.Character, space.Index, resultingX, resultingY, boundingWidth, std::min(space.BoundingHeight, boundingHeight), nextOffsetX, currentOffsetY);
 			});
 		}
-		tpEnv.WaitOutstanding();
+		m_pImpl->WorkPool.WaitOutstanding();
+		if (m_pImpl->Cancelled)
+			return nullptr;
 	}
 
 	for (const auto& [pair, distance] : m_pImpl->Kernings) {
@@ -304,6 +321,7 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::FontCsvCr
 struct Sqex::FontCsv::FontSetsCreator::Implementation {
 	const CreateConfig::FontCreateConfig Config;
 	const Utils::Win32::Event CancelEvent = Utils::Win32::Event::Create();
+	bool Cancelled = false;
 	Utils::Win32::Thread WorkerThread;
 
 	std::mutex SourceFontMapAccessMtx, SourceFontLoadMtx;
@@ -314,6 +332,8 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 	ResultFontSets Result;
 	std::mutex ResultMtx;
 	std::map<std::string, std::map<std::string, std::unique_ptr<FontCsvCreator>>> ResultWork;
+
+	Utils::Win32::TpEnvironment WorkPool;
 
 	const SeCompatibleDrawableFont<uint8_t>& GetSourceFont(const std::string& name) {
 		{
@@ -377,8 +397,6 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 	}
 
 	void Compile() {
-		Utils::Win32::TpEnvironment pool;
-
 		std::map<std::string, std::unique_ptr<FontCsvCreator::RenderTarget>> renderTargets;
 		for (const auto& [textureGroupFilenamePattern, fonts] : Config.targets) {
 			renderTargets.emplace(textureGroupFilenamePattern, std::make_unique<FontCsvCreator::RenderTarget>(Config.textureWidth, Config.textureHeight, Config.glyphGap));
@@ -404,7 +422,10 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				auto& plan = fonts.fontTargets.at(fontName);
 				auto& creator = *remainingFonts.at(fontName);
 
-				pool.SubmitWork([&, fontName = fontName]() {
+				WorkPool.SubmitWork([&, fontName = fontName]() {
+					if (Cancelled)
+						return;
+
 					creator.SizePoints = static_cast<float>(plan.height);
 					if (plan.autoAscent)
 						creator.AscentPixels = FontCsvCreator::AutoAscentDescent;
@@ -435,13 +456,22 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 										creator.AddCharacter(i, &sourceFont, source.replace, source.extendRange);
 									if (range.from != range.to)  // separate line to prevent overflow
 										creator.AddCharacter(range.to, &sourceFont, source.replace, source.extendRange);
+
+									if (Cancelled)
+										return;
 								}
 							}
 						}
 						creator.AddKerning(&sourceFont, source.replace);
+
+						if (Cancelled)
+							return;
 					}
 
 					auto compileResult = creator.Compile(target);
+					if (Cancelled)
+						return;
+
 					{
 						const auto lock = std::lock_guard(ResultMtx);
 						resultSet.Fonts.emplace(fontName, std::move(compileResult));
@@ -452,13 +482,29 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 						if (!allFinished)
 							return;
 					}
+					if (Cancelled)
+						return;
+
 					target.Finalize();
 					resultSet.Textures = target.AsTextureStreamVector();
 				});
 			}
 		}
 
-		pool.WaitOutstanding();
+		WorkPool.WaitOutstanding();
+	}
+
+	void Cancel() {
+		Cancelled = true;
+		CancelEvent.Set();
+		WorkPool.Cancel();
+		const auto lock = std::lock_guard(ResultMtx);
+		for (const auto& v1 : ResultWork | std::views::values) {
+			for (const auto& v2 : v1 | std::views::values) {
+				v2->Cancel();
+			}
+		}
+		WorkerThread.Wait();
 	}
 };
 
@@ -468,8 +514,7 @@ Sqex::FontCsv::FontSetsCreator::FontSetsCreator(CreateConfig::FontCreateConfig c
 }
 
 Sqex::FontCsv::FontSetsCreator::~FontSetsCreator() {
-	m_pImpl->CancelEvent.Set();
-	m_pImpl->WorkerThread.Wait();
+	m_pImpl->Cancel();
 }
 
 std::map<Sqex::Sqpack::EntryPathSpec, std::shared_ptr<const Sqex::RandomAccessStream>> Sqex::FontCsv::FontSetsCreator::ResultFontSets::GetAllStreams() const {
@@ -487,6 +532,8 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::shared_ptr<const Sqex::RandomAccessSt
 }
 
 const Sqex::FontCsv::FontSetsCreator::ResultFontSets& Sqex::FontCsv::FontSetsCreator::GetResult() const {
+	if (m_pImpl->Cancelled)
+		throw std::runtime_error("Cancelled");
 	if (m_pImpl->WorkerThread.Wait(0) == WAIT_TIMEOUT)
 		throw std::runtime_error("not finished");
 

@@ -62,6 +62,8 @@ namespace Sqex::FontCsv {
 
 		[[nodiscard]] const FontCreationProgress& GetProgress() const;
 
+		void Cancel();
+
 		class RenderTarget {
 			const uint16_t m_textureWidth;
 			const uint16_t m_textureHeight;

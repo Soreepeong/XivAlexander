@@ -36,7 +36,7 @@ namespace Utils::Win32 {
 		}
 
 		~TpEnvironment() {
-			CloseThreadpoolCleanupGroupMembers(m_group, true, this);
+			Cancel();
 			CloseThreadpoolCleanupGroup(m_group);
 			CloseThreadpool(m_pool);
 			DestroyThreadpoolEnvironment(&m_environ);
@@ -56,16 +56,23 @@ namespace Utils::Win32 {
 				delete obj;
 				throw Error(error, "CreateThreadpoolWork");
 			}
-			m_lastWork = work;
 			SubmitThreadpoolWork(work);
+			m_lastWork = work;
 		}
 
 		void WaitOutstanding() {
 			if (!m_lastWork)
 				return;
 			WaitForThreadpoolWorkCallbacks(m_lastWork, FALSE);
-			CloseThreadpoolWork(m_lastWork);
-			CloseThreadpoolCleanupGroupMembers(m_group, true, this);
+			CloseThreadpoolCleanupGroupMembers(m_group, TRUE, this);
+			m_lastWork = nullptr;
+		}
+
+		void Cancel() {
+			if (!m_lastWork)
+				return;
+			WaitForThreadpoolWorkCallbacks(m_lastWork, TRUE);
+			CloseThreadpoolCleanupGroupMembers(m_group, TRUE, this);
 			m_lastWork = nullptr;
 		}
 	};

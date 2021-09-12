@@ -245,12 +245,13 @@ void compile() {
 	nlohmann::json j;
 	fin >> j;
 	auto cfg = j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
-
+	
 	Sqex::FontCsv::FontSetsCreator creator(cfg);
 	while (!creator.Wait(100)) {
 		const auto progress = creator.GetProgress();
-		std::cout << progress.Indeterminate << " " << progress.Scale(100.) << "%\n";
+		std::cout << progress.Indeterminate << " " << progress.Scale(100.) << "%\r";
 	}
+	std::cout << "Done!                 \n";
 
 	const auto result = creator.GetResult();
 	for (const auto& [fileName, stream] : result.GetAllStreams()) {
