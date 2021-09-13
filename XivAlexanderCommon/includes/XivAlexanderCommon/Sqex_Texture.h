@@ -12,10 +12,10 @@ namespace Sqex::Texture {
 		L8_2 = 0x1131,      // same with above
 
 		// Full color with alpha channel
-		RGBA4444 = 0x1440,  // 2 bytes (LE binary[16]: aaaaRRRRggggBBBB) per pixel
-		RGBA5551 = 0x1441,  // 2 bytes (LE binary[16]: aRRRRRgggggBBBBB) per pixel
-		ARGB_1 = 0x1450,    // 4 bytes (LE binary[32]: aaaaaaaaRRRRRRRRggggggggBBBBBBBB) per pixel
-		ARGB_2 = 0x1451,    // same with above
+		RGBA4444 = 0x1440,  // 2 bytes (LE binary[16]: aaaaBBBBggggRRRR) per pixel
+		RGBA5551 = 0x1441,  // 2 bytes (LE binary[16]: aBBBBBgggggRRRRR) per pixel
+		RGBA_1 = 0x1450,    // 4 bytes (LE binary[32]: aaaaaaaaBBBBBBBBggggggggRRRRRRRR) per pixel
+		RGBA_2 = 0x1451,    // same with above
 		RGBAF = 0x2460,     // 8 bytes (LE half[4]: r, g, b, a)
 		//                     ^ TODO: check if it's rgba or abgr
 
@@ -24,6 +24,9 @@ namespace Sqex::Texture {
 		DXT3 = 0x3430,
 		DXT5 = 0x3431,
 	};
+
+	void to_json(nlohmann::json& j, const CompressionType& o);
+	void from_json(const nlohmann::json& j, CompressionType& o);
 
 	struct RGBA4444 {
 		static constexpr size_t ChannelCount = 4;

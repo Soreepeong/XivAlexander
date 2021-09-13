@@ -173,7 +173,7 @@ void test_direct() {
 				const auto size = fs->Measure(0, 0, testStr);
 				const auto cw = static_cast<uint16_t>(size.Width() + 10);
 				const auto ch = static_cast<uint16_t>(size.Height() + 10);
-				const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::CompressionType::ARGB_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
+				const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::CompressionType::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
 				const auto yptr = 5 - size.top;
 				std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width() * mm32->Height(), 0xFF000000);
 
@@ -224,7 +224,7 @@ void test_create() {
 				const auto size = fs->Measure(0, 0, pszTestString);
 				const auto cw = static_cast<uint16_t>(size.Width() + 10);
 				const auto ch = static_cast<uint16_t>(size.Height() + 10);
-				const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::CompressionType::ARGB_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
+				const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::CompressionType::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
 				const auto yptr = std::max<SSIZE_T>(0, 5 - size.top);
 				std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width() * mm32->Height(), 0xFF000000);
 
@@ -292,7 +292,7 @@ void compile() {
 				const auto lines = Utils::StringSplit<std::string>(pszTestString, "\n");
 				const auto cw = static_cast<uint16_t>(newFont->Measure(5, 5, pszTestString).Width() + 10);
 				const auto ch = static_cast<uint16_t>(5 * (lines.size() + 1) + newFont->Height() * lines.size());
-				const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::CompressionType::ARGB_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
+				const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::CompressionType::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
 				std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width() * mm32->Height(), 0xFF000000);
 
 				SSIZE_T yptr = 5;

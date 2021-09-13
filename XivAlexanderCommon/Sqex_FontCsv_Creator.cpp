@@ -121,28 +121,6 @@ Sqex::FontCsv::FontCsvCreator::RenderTarget::RenderTarget(uint16_t textureWidth,
 
 Sqex::FontCsv::FontCsvCreator::RenderTarget::~RenderTarget() = default;
 
-void Sqex::FontCsv::FontCsvCreator::RenderTarget::Finalize() {
-	auto mipmaps = std::move(m_mipmaps);
-	while (mipmaps.size() % 4)
-		mipmaps.push_back(std::make_shared<Texture::MemoryBackedMipmap>(
-			mipmaps[0]->Width(), mipmaps[0]->Height(), Texture::CompressionType::L8_1,
-			std::vector<uint8_t>(static_cast<size_t>(mipmaps[0]->Width()) * mipmaps[0]->Height())));
-
-	for (size_t i = 0; i < mipmaps.size() / 4; ++i) {
-		m_mipmaps.push_back(std::make_shared<Texture::MemoryBackedMipmap>(
-			mipmaps[0]->Width(), mipmaps[0]->Height(), Texture::CompressionType::RGBA4444,
-			std::vector<uint8_t>(sizeof Texture::RGBA4444 * mipmaps[0]->Width() * mipmaps[0]->Height())));
-
-		const auto target = m_mipmaps.back()->View<Texture::RGBA4444>();
-		const auto b = mipmaps[i * 4 + 0]->View<uint8_t>();
-		const auto g = mipmaps[i * 4 + 1]->View<uint8_t>();
-		const auto r = mipmaps[i * 4 + 2]->View<uint8_t>();
-		const auto a = mipmaps[i * 4 + 3]->View<uint8_t>();
-		for (size_t j = 0; j < target.size(); ++j)
-			target[j].SetFrom(r[j] >> 4, g[j] >> 4, b[j] >> 4, a[j] >> 4);
-	}
-}
-
 std::vector<std::shared_ptr<const Sqex::Texture::MipmapStream>> Sqex::FontCsv::FontCsvCreator::RenderTarget::AsMipmapStreamVector() const {
 	std::vector<std::shared_ptr<const Texture::MipmapStream>> res;
 	for (const auto& i : m_mipmaps)
@@ -576,7 +554,15 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 						if (Cancelled)
 							return;
 
-						target.Finalize();
+						if (Config.textureType == Texture::CompressionType::RGBA4444)
+							target.Finalize<Texture::RGBA4444, Texture::CompressionType::RGBA4444>();
+						else if (Config.textureType == Texture::CompressionType::RGBA_1)
+							target.Finalize<Texture::RGBA8888, Texture::CompressionType::RGBA_1>();
+						else if (Config.textureType == Texture::CompressionType::RGBA_2)
+							target.Finalize<Texture::RGBA8888, Texture::CompressionType::RGBA_2>();
+						else
+							throw std::invalid_argument("Unsupported textureType for font generation");
+
 						resultSet.Textures = target.AsTextureStreamVector();
 					} catch (const std::exception& e) {
 						if (LastErrorMessage.empty()) {

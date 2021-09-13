@@ -351,6 +351,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const FontCreateCon
 		{"glyphGap", o.glyphGap},
 		{"textureWidth", o.textureWidth},
 		{"textureHeight", o.textureHeight},
+		{"textureType", o.textureType},
 		{"sources", nlohmann::json::object()},
 		{"ranges", o.ranges},
 		{"targets", o.targets},
@@ -372,6 +373,9 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, FontCreateC
 	o.glyphGap = j.value<uint16_t>("glyphGap", 1);
 	o.textureWidth = j.value<uint16_t>("textureWidth", 1024);
 	o.textureHeight = j.value<uint16_t>("textureHeight", 1024);
+	o.textureType = j.value("textureType", Texture::CompressionType::RGBA4444);
+	if (o.textureType != Texture::CompressionType::RGBA4444 && o.textureType != Texture::CompressionType::RGBA_1 && o.textureType != Texture::CompressionType::RGBA_2)
+		throw std::invalid_argument("Only RGBA4444 and RGBA8888 are supported");
 	for (const auto& [key, value] : j.at("sources").items()) {
 		if (key.starts_with("gdi:")) {
 			GdiSource source;

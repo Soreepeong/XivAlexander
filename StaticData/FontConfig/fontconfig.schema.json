@@ -29,6 +29,12 @@
       "type": "integer",
       "default": 1024
     },
+    "textureType": {
+      "description": "Use high-quality texture for text.",
+      "type": "string",
+      "default": "RGBA4444",
+      "enum": ["RGBA4444", "RGBA8888"]
+    },
     "sources": {
       "description": "Defines font to be used when generating fdt and tex files.",
       "type": "object",

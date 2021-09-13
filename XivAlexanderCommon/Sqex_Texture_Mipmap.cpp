@@ -4,10 +4,10 @@
 #include "XaDxtDecompression.h"
 
 std::shared_ptr<const Sqex::Texture::MipmapStream> Sqex::Texture::MipmapStream::ViewARGB8888(CompressionType type) const {
-	if (type != CompressionType::ARGB_1 && type != CompressionType::ARGB_2 && type != CompressionType::Unknown)
+	if (type != CompressionType::RGBA_1 && type != CompressionType::RGBA_2 && type != CompressionType::Unknown)
 		throw std::invalid_argument("invalid argb8888 compression type");
 
-	if (m_type == CompressionType::ARGB_1 || m_type == CompressionType::ARGB_2) {
+	if (m_type == CompressionType::RGBA_1 || m_type == CompressionType::RGBA_2) {
 		auto res = std::static_pointer_cast<const MipmapStream>(shared_from_this());
 		if (m_type == type || type == CompressionType::Unknown)
 			return res;
@@ -16,7 +16,7 @@ std::shared_ptr<const Sqex::Texture::MipmapStream> Sqex::Texture::MipmapStream::
 	}
 
 	if (type == CompressionType::Unknown)
-		return MemoryBackedMipmap::NewARGB8888From(this, CompressionType::ARGB_1);
+		return MemoryBackedMipmap::NewARGB8888From(this, CompressionType::RGBA_1);
 	else
 		return MemoryBackedMipmap::NewARGB8888From(this, type);
 }
@@ -399,7 +399,7 @@ void Sqex::Texture::MipmapStream::Show(std::string title) const {
 }
 
 std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMipmap::NewARGB8888From(const MipmapStream* stream, CompressionType type) {
-	if (type != CompressionType::ARGB_1 && type != CompressionType::ARGB_2)
+	if (type != CompressionType::RGBA_1 && type != CompressionType::RGBA_2)
 		throw std::invalid_argument("invalid argb8888 compression type");
 
 	const auto width = stream->Width();
@@ -456,8 +456,8 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 			break;
 		}
 
-		case CompressionType::ARGB_1:
-		case CompressionType::ARGB_2:
+		case CompressionType::RGBA_1:
+		case CompressionType::RGBA_2:
 			if (cbSource < pixelCount * sizeof RGBA8888)
 				throw std::runtime_error("Truncated data detected");
 			stream->ReadStream(0, std::span(rgba8888view));

@@ -2,18 +2,12 @@
 
 #include <memory>
 #include <set>
-#include "Sqex_FontCsv_CreateConfig.h"
 
+#include "Sqex_FontCsv_CreateConfig.h"
 #include "Sqex_FontCsv_SeCompatibleDrawableFont.h"
 #include "Sqex_Texture_Mipmap.h"
 #include "Sqex_Texture_ModifiableTextureStream.h"
 #include "Utils_ListenerManager.h"
-
-namespace Sqex {
-	namespace Texture {
-		struct RGBA4444;
-	}
-}
 
 namespace Sqex::FontCsv {
 	struct FontCreationProgress {
@@ -95,7 +89,33 @@ namespace Sqex::FontCsv {
 			RenderTarget(uint16_t textureWidth, uint16_t textureHeight, uint16_t glyphGap);
 			~RenderTarget();
 
-			void Finalize();
+			template<typename TextureTypeSupportingRGBA = Texture::RGBA4444, Texture::CompressionType CompressionType = Texture::CompressionType::RGBA4444>
+			void Finalize() {
+				auto mipmaps = std::move(m_mipmaps);
+				while (mipmaps.size() % 4)
+					mipmaps.push_back(std::make_shared<Texture::MemoryBackedMipmap>(
+						mipmaps[0]->Width(), mipmaps[0]->Height(), Texture::CompressionType::L8_1,
+						std::vector<uint8_t>(static_cast<size_t>(mipmaps[0]->Width()) * mipmaps[0]->Height())));
+
+				for (size_t i = 0; i < mipmaps.size() / 4; ++i) {
+					m_mipmaps.push_back(std::make_shared<Texture::MemoryBackedMipmap>(
+						mipmaps[0]->Width(), mipmaps[0]->Height(), CompressionType,
+						std::vector<uint8_t>(sizeof TextureTypeSupportingRGBA * mipmaps[0]->Width() * mipmaps[0]->Height())));
+
+					const auto target = m_mipmaps.back()->View<TextureTypeSupportingRGBA>();
+					const auto b = mipmaps[i * 4 + 0]->View<uint8_t>();
+					const auto g = mipmaps[i * 4 + 1]->View<uint8_t>();
+					const auto r = mipmaps[i * 4 + 2]->View<uint8_t>();
+					const auto a = mipmaps[i * 4 + 3]->View<uint8_t>();
+					for (size_t j = 0; j < target.size(); ++j)
+						target[j].SetFrom(
+							r[j] * TextureTypeSupportingRGBA::MaxR / 255, 
+							g[j] * TextureTypeSupportingRGBA::MaxG / 255,
+							b[j] * TextureTypeSupportingRGBA::MaxB / 255,
+							a[j] * TextureTypeSupportingRGBA::MaxA / 255
+						);
+				}
+			}
 			[[nodiscard]] std::vector<std::shared_ptr<const Texture::MipmapStream>> AsMipmapStreamVector() const;
 			[[nodiscard]] std::vector<std::shared_ptr<Texture::ModifiableTextureStream>> AsTextureStreamVector() const;
 

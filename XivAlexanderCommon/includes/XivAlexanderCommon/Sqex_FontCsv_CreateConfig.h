@@ -6,6 +6,8 @@
 #include <dwrite_3.h>
 #include <nlohmann/json.hpp>
 
+#include "Sqex_Texture.h"
+
 namespace Sqex::FontCsv::CreateConfig {
 	struct GameSource {
 		std::filesystem::path indexFile;
@@ -111,6 +113,7 @@ namespace Sqex::FontCsv::CreateConfig {
 		uint16_t glyphGap;
 		uint16_t textureWidth;
 		uint16_t textureHeight;
+		Texture::CompressionType textureType;
 		std::map<std::string, InputFontSource> sources;
 		std::map<std::string, RangeSet> ranges;
 		std::map<std::string, SingleTextureTarget> targets;

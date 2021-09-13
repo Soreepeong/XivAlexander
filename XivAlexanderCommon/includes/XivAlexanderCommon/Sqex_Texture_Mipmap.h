@@ -48,7 +48,7 @@ namespace Sqex::Texture {
 			, m_data(std::move(data)) {
 		}
 
-		static std::shared_ptr<MemoryBackedMipmap> NewARGB8888From(const MipmapStream* stream, CompressionType type = CompressionType::ARGB_1);
+		static std::shared_ptr<MemoryBackedMipmap> NewARGB8888From(const MipmapStream* stream, CompressionType type = CompressionType::RGBA_1);
 
 		[[nodiscard]] uint64_t StreamSize() const override { return static_cast<uint32_t>(m_data.size());  }
 		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
