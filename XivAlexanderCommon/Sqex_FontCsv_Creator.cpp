@@ -138,12 +138,17 @@ std::vector<std::shared_ptr<Sqex::Texture::ModifiableTextureStream>> Sqex::FontC
 	return res;
 }
 
-Sqex::FontCsv::FontCsvCreator::RenderTarget::AllocatedSpace Sqex::FontCsv::FontCsvCreator::RenderTarget::Draw(char32_t c, const SeCompatibleDrawableFont<uint8_t>*font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint8_t boundingWidth, uint8_t boundingHeight) {
+Sqex::FontCsv::FontCsvCreator::RenderTarget::AllocatedSpace Sqex::FontCsv::FontCsvCreator::RenderTarget::Draw(char32_t c, const SeCompatibleDrawableFont<uint8_t>*font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint8_t boundingWidth, uint8_t boundingHeight, uint8_t borderThickness, uint8_t borderOpacity) {
+	if (!borderThickness)
+		borderOpacity = 0;
+
+	const auto actualGlyphGap = static_cast<uint16_t>(m_glyphGap + borderThickness);
+
 	AllocatedSpace space;
 	decltype(m_mipmaps.back().get()) mipmap;
 	{
 		const auto lock = std::lock_guard(m_mtx);
-		const auto [it, isNewEntry] = m_drawnGlyphs.emplace(std::make_tuple(c, font), AllocatedSpace{});
+		const auto [it, isNewEntry] = m_drawnGlyphs.emplace(std::make_tuple(c, font, borderThickness, borderOpacity), AllocatedSpace{});
 		if (!isNewEntry)
 			return it->second;
 
@@ -151,12 +156,12 @@ Sqex::FontCsv::FontCsvCreator::RenderTarget::AllocatedSpace Sqex::FontCsv::FontC
 		if (m_mipmaps.empty())
 			newTargetRequired = true;
 		else {
-			if (static_cast<size_t>(0) + m_currentX + boundingWidth + m_glyphGap >= m_textureWidth) {
-				m_currentX = m_glyphGap;
-				m_currentY += m_currentLineHeight + m_glyphGap + 1;  // Account for rounding errors
+			if (static_cast<size_t>(0) + m_currentX + boundingWidth + actualGlyphGap >= m_textureWidth) {
+				m_currentX = actualGlyphGap;
+				m_currentY += m_currentLineHeight + actualGlyphGap + 1;  // Account for rounding errors
 				m_currentLineHeight = 0;
 			}
-			if (m_currentY + boundingHeight + m_glyphGap + 1 >= m_textureHeight)
+			if (m_currentY + boundingHeight + actualGlyphGap + 1 >= m_textureHeight)
 				newTargetRequired = true;
 		}
 		if (newTargetRequired) {
@@ -167,6 +172,11 @@ Sqex::FontCsv::FontCsvCreator::RenderTarget::AllocatedSpace Sqex::FontCsv::FontC
 			m_currentX = m_currentY = m_glyphGap;
 			m_currentLineHeight = 0;
 		}
+
+		if (m_currentX < actualGlyphGap)
+			m_currentX = actualGlyphGap;
+		if (m_currentY < actualGlyphGap)
+			m_currentY = actualGlyphGap;
 
 		space = it->second = AllocatedSpace{
 			.drawOffsetX = drawOffsetX,
@@ -182,7 +192,13 @@ Sqex::FontCsv::FontCsvCreator::RenderTarget::AllocatedSpace Sqex::FontCsv::FontC
 		m_currentLineHeight = std::max<uint16_t>(m_currentLineHeight, boundingHeight);
 	}
 
-	font->Draw(mipmap, space.X + drawOffsetX, space.Y + drawOffsetY, c, 0xFF, 0x00);
+	if (borderThickness) {
+		for (auto i = 0; i <= 2 * borderThickness; ++i)
+			for (auto j = 0; j <= 2 * borderThickness; ++j)
+				font->Draw(mipmap, space.X + drawOffsetX + i, space.Y + drawOffsetY + j, c, borderOpacity, 0, 0xFF, 0);
+		font->Draw(mipmap, space.X + drawOffsetX + borderThickness, space.Y + drawOffsetY + borderThickness, c, 0xFF, 0, 0xFF, 0);
+	} else
+		font->Draw(mipmap, space.X + drawOffsetX, space.Y + drawOffsetY, c, 0xFF, 0x00);
 
 	return space;
 }
@@ -250,18 +266,20 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::FontCsvCr
 			for (const auto& n : maxDescents)
 				maxDescent = std::max(n, maxDescent);
 		}
-		const auto globalOffsetX = std::max<SSIZE_T>(MinGlobalOffsetX, std::min<SSIZE_T>(MaxGlobalOffsetX, std::max<SSIZE_T>(0, -maxBbox.left)));
-		const auto boundingHeight = static_cast<uint8_t>(maxBbox.Height());
+		const auto globalOffsetX = std::max<SSIZE_T>(MinGlobalOffsetX,
+			std::min<SSIZE_T>(MaxGlobalOffsetX,
+				std::max<SSIZE_T>(0, -maxBbox.left)));
+		const auto boundingHeight = static_cast<uint8_t>(maxBbox.Height() + static_cast<SSIZE_T>(2) * BorderThickness);
 
 		if (AscentPixels == AutoAscentDescent)
-			result->Ascent(maxAscent);
+			result->Ascent(maxAscent + BorderThickness);
 		else
-			result->Ascent(AscentPixels);
+			result->Ascent(AscentPixels + BorderThickness);
 
 		if (DescentPixels == AutoAscentDescent)
-			result->LineHeight(result->Ascent() + maxDescent);
+			result->LineHeight(result->Ascent() + maxDescent + BorderThickness);
 		else
-			result->LineHeight(result->Ascent() + DescentPixels);
+			result->LineHeight(result->Ascent() + DescentPixels + BorderThickness);
 
 		result->ReserveStorage(m_pImpl->CharacterPlans.size(), m_pImpl->Kernings.size());
 
@@ -280,13 +298,16 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::FontCsvCr
 							return;
 
 						const auto leftExtension = std::max<SSIZE_T>(-bbox.left, globalOffsetX);
-						const auto boundingWidth = static_cast<uint8_t>(leftExtension + bbox.right);
-						const auto nextOffsetX = static_cast<int8_t>(bbox.advanceX - bbox.right - globalOffsetX);
+						const auto boundingWidth = static_cast<uint8_t>(leftExtension + bbox.right + BorderThickness + BorderThickness);
+						const auto nextOffsetX = static_cast<int8_t>(bbox.advanceX + leftExtension - boundingWidth - globalOffsetX);
 						const auto currentOffsetY = static_cast<int8_t>(
 							(AlignToBaseline ? result->Ascent() - plan.Font->Ascent() : (0LL + result->LineHeight() - plan.Font->Height()) / 2)
 							+ GlobalOffsetYModifier
+							- BorderThickness
 							);
-						const auto space = renderTarget.Draw(plan.Character, plan.Font, leftExtension, 0, boundingWidth, boundingHeight);
+						const auto space = renderTarget.Draw(plan.Character, plan.Font, 
+							leftExtension, 0,
+							boundingWidth, boundingHeight, BorderThickness, BorderOpacity);
 
 						const auto resultingX = static_cast<uint16_t>(space.X - space.drawOffsetX + leftExtension);
 						const auto resultingY = static_cast<uint16_t>(space.Y - space.drawOffsetY);
@@ -482,7 +503,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 			for (const auto& i : fonts.fontTargets | std::views::keys)
 				sortedRemainingFontList.emplace_back(i);
 			std::sort(sortedRemainingFontList.begin(), sortedRemainingFontList.end(), [&](const auto& l, const auto& r) {
-				return fonts.fontTargets.at(l).height > fonts.fontTargets.at(r).height;
+				return fonts.fontTargets.at(l).height < fonts.fontTargets.at(r).height;
 			});
 
 			for (const auto& fontName : sortedRemainingFontList) {
@@ -513,6 +534,8 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 						creator.GlobalOffsetYModifier = plan.globalOffsetY;
 						creator.AlwaysApplyKerningCharacters.insert(plan.charactersToKernAcrossFonts.begin(), plan.charactersToKernAcrossFonts.end());
 						creator.AlignToBaseline = plan.alignToBaseline;
+						creator.BorderThickness = plan.borderThickness;
+						creator.BorderOpacity = plan.borderOpacity;
 
 						for (const auto& source : plan.sources) {
 							const auto& sourceFont = GetSourceFont(source.name);

@@ -96,6 +96,10 @@ namespace Sqex::FontCsv::CreateConfig {
 		uint8_t maxGlobalOffsetX;
 		uint8_t minGlobalOffsetX;
 		uint8_t globalOffsetY;
+
+		uint8_t borderThickness;
+		uint8_t borderOpacity;
+
 		std::u32string charactersToKernAcrossFonts;
 		bool alignToBaseline;
 		std::vector<SingleTargetComponent> sources;

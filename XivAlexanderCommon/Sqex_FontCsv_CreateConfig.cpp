@@ -304,6 +304,8 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const SingleFontTar
 		{"globalOffsetY", o.globalOffsetY},
 		{"charactersToKernAcrossFonts", o.charactersToKernAcrossFonts},
 		{"alignToBaseline", o.alignToBaseline},
+		{"borderThickness" ,o.borderThickness},
+		{"borderOpacity" ,o.borderOpacity},
 		{"sources", o.sources},
 		});
 }
@@ -335,6 +337,8 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, SingleFontT
 	o.globalOffsetY = j.value<uint8_t>("globalOffsetY", 0);
 	o.charactersToKernAcrossFonts = ToU32(j.value("charactersToKernAcrossFonts", std::string(" ")));
 	o.alignToBaseline = j.value("alignToBaseline", true);
+	o.borderThickness = j.value<uint8_t>("borderThickness", 0);
+	o.borderOpacity = j.value<uint8_t>("borderOpacity", 0);
 	o.sources = j.at("sources").get<decltype(o.sources)>();
 }
 

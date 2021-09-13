@@ -45,6 +45,8 @@ namespace Sqex::FontCsv {
 		int MaxGlobalOffsetX = 255;
 		std::set<char32_t> AlwaysApplyKerningCharacters = { U' ' };
 		bool AlignToBaseline = true;
+		uint8_t BorderThickness = 0;
+		uint8_t BorderOpacity = 0;
 
 		FontCsvCreator(const Utils::Win32::Semaphore& semaphore = nullptr);
 		~FontCsvCreator();
@@ -57,7 +59,7 @@ namespace Sqex::FontCsv {
 
 		[[nodiscard]] const FontCreationProgress& GetProgress() const;
 
-		Utils::ListenerManager<FontCsvCreator, void, const std::exception&> OnError;
+		ListenerManager<FontCsvCreator, void, const std::exception&> OnError;
 
 		void Cancel();
 
@@ -80,7 +82,7 @@ namespace Sqex::FontCsv {
 
 		private:
 			std::vector<std::shared_ptr<Texture::MemoryBackedMipmap>> m_mipmaps;
-			std::map<std::tuple<char32_t, const SeCompatibleDrawableFont<uint8_t>*>, AllocatedSpace> m_drawnGlyphs;
+			std::map<std::tuple<char32_t, const SeCompatibleDrawableFont<uint8_t>*, uint8_t, uint8_t>, AllocatedSpace> m_drawnGlyphs;
 			uint16_t m_currentX;
 			uint16_t m_currentY;
 			uint16_t m_currentLineHeight;
@@ -119,7 +121,7 @@ namespace Sqex::FontCsv {
 			[[nodiscard]] std::vector<std::shared_ptr<const Texture::MipmapStream>> AsMipmapStreamVector() const;
 			[[nodiscard]] std::vector<std::shared_ptr<Texture::ModifiableTextureStream>> AsTextureStreamVector() const;
 
-			AllocatedSpace Draw(char32_t c, const SeCompatibleDrawableFont<uint8_t>* font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint8_t boundingWidth, uint8_t boundingHeight);
+			AllocatedSpace Draw(char32_t c, const SeCompatibleDrawableFont<uint8_t>* font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint8_t boundingWidth, uint8_t boundingHeight, uint8_t borderThickness, uint8_t borderOpacity);
 
 			[[nodiscard]] uint16_t TextureWidth() const { return m_textureWidth; }
 			[[nodiscard]] uint16_t TextureHeight() const { return m_textureHeight; }

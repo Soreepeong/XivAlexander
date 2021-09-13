@@ -248,8 +248,9 @@ void compile() {
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Original.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.dwrite.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.gdi.json)");
-		std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulimche.dwrite_file.json)");
+		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulimche.dwrite_file.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.ComicGulim.json)");
+		std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.ComicSans.freetype.border.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.PapyrusGungsuh.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.WithMinimalHangul.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\Korean.18to36.json)");
@@ -283,8 +284,11 @@ void compile() {
 
 	for (const auto& [textureGroupFilenamePattern, fontSet] : result.Result) {
 		std::vector<std::shared_ptr<const Sqex::Texture::MipmapStream>> newMipmaps;
-		for (const auto& texture : fontSet.Textures)
-			newMipmaps.emplace_back(Sqex::Texture::MipmapStream::FromTexture(texture, 0));
+		for (const auto& texture : fontSet.Textures) {
+			auto mipmap = Sqex::Texture::MipmapStream::FromTexture(texture, 0);
+			mipmap->Show();
+			newMipmaps.emplace_back(std::move(mipmap));
+		}
 
 		for (const auto& [fontName, newFontCsv] : fontSet.Fonts) {
 			const auto newFont = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(newFontCsv, newMipmaps);
