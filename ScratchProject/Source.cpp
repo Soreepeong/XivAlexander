@@ -311,10 +311,75 @@ void compile() {
 	}
 }
 
+void freetype_test() {
+	FT_Library library;
+	if (const auto err = FT_Init_FreeType(&library))
+		return;
+	
+	static FT_Face face;
+	if (const auto err = FT_New_Face(library, R"(C:\windows\fonts\gulim.ttc)", 0, &face))
+		return;
+
+	if (const auto err = FT_Set_Char_Size(face, 0, 12 * 64, 96, 96))
+		return;
+
+	const auto glyphIndex = FT_Get_Char_Index(face, U'w');
+
+	if (const auto err = FT_Load_Glyph(face, glyphIndex, FT_LOAD_DEFAULT))
+		return;
+
+	const auto w = face->glyph->bitmap.width;
+	const auto h = face->glyph->bitmap.rows;
+	const auto mm8 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(
+		w,
+		h,
+		Sqex::Texture::CompressionType::L8_1,
+		std::vector<uint8_t>(w * h));
+
+	// FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
+
+	if (face->glyph->format == FT_GLYPH_FORMAT_OUTLINE) {
+		FT_Outline outline;
+		FT_Outline_New(library, 0xFFFF, 0xFFFF, &outline);
+
+		FT_Raster_Params rasterParams{
+			.flags = FT_RASTER_FLAG_DIRECT | FT_RASTER_FLAG_AA,
+			.gray_spans = [](int y, int count, const FT_Span* spans, void* user) {
+				const auto mm8 = static_cast<Sqex::Texture::MemoryBackedMipmap*>(user);
+				const auto buf = mm8->View<uint8_t>();
+				for (const auto& span : std::span(spans, spans + count)) {
+					std::fill_n(&buf[mm8->Width() * (face->glyph->bitmap_top - y - 1) + span.x - face->glyph->bitmap_left], span.len, span.coverage);
+				}
+			},
+			.user = mm8.get(),
+		};
+		if (const auto err = FT_Outline_Render(library, &face->glyph->outline, &rasterParams))
+			return;
+	} else if (face->glyph->format == FT_GLYPH_FORMAT_BITMAP) {
+		FT_Bitmap target;
+		if (face->glyph->bitmap.pitch != 8) {
+			FT_Bitmap_Init(&target);
+			if (const auto err = FT_Bitmap_Convert(library, &face->glyph->bitmap, &target, 1))
+				return;
+		} else
+			target = face->glyph->bitmap;
+
+		const auto buf = mm8->View<uint8_t>();
+		for (size_t y = 0; y < target.rows; y++) {
+			for (size_t x = 0; x < target.width; ++x) {
+				buf[mm8->Width() * y + x] = target.buffer[target.width * y + x] * 255 / (face->glyph->bitmap.num_grays - 1);
+			}
+		}
+	}
+	
+	mm8->Show();
+}
+
 int main() {
 	system("chcp 65001");
+	freetype_test();
 	// test_create();
 	// test_direct();
-	compile();
+	// compile();
 	return 0;
 }

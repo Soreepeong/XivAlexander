@@ -8,6 +8,7 @@
     "nlohmann-json",
     "curlpp",
     "libzippp",
-    "cryptopp"
+    "cryptopp",
+    "freetype"
   ]
 }
