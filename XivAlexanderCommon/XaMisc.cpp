@@ -167,6 +167,156 @@ void Utils::BoundaryCheck(size_t value, size_t offset, size_t length, const char
 		throw std::out_of_range(description ? std::format("out of boundary ({})", description) : "out of boundary");
 }
 
+
+
+std::map<std::pair<char32_t, char32_t>, SSIZE_T> Utils::ParseKerningTable(
+	std::span<const char> data,
+	const std::map<uint16_t, char32_t>& GlyphIndexToCharCodeMap
+) {
+	struct KernFormat0 {
+		BE<uint16_t> nPairs;
+		BE<uint16_t> searchRange;
+		BE<uint16_t> entrySelector;
+		BE<uint16_t> rangeShift;
+	};
+	struct KernFormat0Pair {
+		BE<uint16_t> left;
+		BE<uint16_t> right;
+		BE<int16_t> value;
+	};
+
+	// https://docs.microsoft.com/en-us/typography/opentype/spec/kern
+	struct KernHeaderV0 {
+		BE<uint16_t> version;
+		BE<uint16_t> nTables;
+	};
+	struct KernSubtableHeaderV0 {
+		BE<uint16_t> version;
+		BE<uint16_t> length;
+		struct CoverageV0 {
+			BE<uint8_t> format;
+			uint8_t horizontal : 1;
+			uint8_t minimum : 1;
+			uint8_t crossStream : 1;
+			uint8_t override : 1;
+			uint8_t reserved1 : 4;
+		} coverage;
+	};
+
+	if (data.size_bytes() < sizeof KernHeaderV0)
+		return {};  // invalid kern table
+
+	std::map<std::pair<char32_t, char32_t>, SSIZE_T> result;
+
+	const auto& kernHeaderV0 = *reinterpret_cast<const KernHeaderV0*>(data.data());
+	if (kernHeaderV0.version == 1 && data.size_bytes() >= 4) {
+		// https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6kern.html
+
+		// TODO: see if this works lol
+
+		struct KernHeaderV1 {
+			BE<uint32_t> version;
+			BE<uint32_t> nTables;
+		};
+		struct KernSubtableHeaderV1 {
+			BE<uint32_t> length;
+			struct CoverageV1 {
+				BE<uint8_t> format;
+				uint8_t vertical : 1;
+				uint8_t crossStream : 1;
+				uint8_t variation : 1;
+				uint8_t reserved1 : 5;
+			} coverage;
+		};
+
+		if (data.size_bytes() < sizeof KernHeaderV1)
+			return {};  // invalid kern table
+
+		const auto& kernHeader = *reinterpret_cast<const KernHeaderV1*>(data.data());
+		if (kernHeader.version == 0x10000 && data.size_bytes() >= 8) {
+			data = data.subspan(sizeof kernHeader);
+			for (size_t i = 0; i < kernHeader.nTables; ++i) {
+				if (data.size_bytes() < sizeof KernSubtableHeaderV1)
+					return {};  // invalid kern table
+
+				const auto& kernSubtableHeader = *reinterpret_cast<const KernSubtableHeaderV1*>(data.data());
+				if (data.size_bytes() < kernSubtableHeader.length)
+					return {};  // invalid kern table
+
+				if (!kernSubtableHeader.coverage.vertical
+					&& kernSubtableHeader.coverage.format == 0) {
+
+					auto format0Ptr = data.subspan(sizeof kernSubtableHeader);
+					if (format0Ptr.size_bytes() < sizeof KernFormat0)
+						return {};  // invalid kern table
+
+					const auto& kernFormat0 = *reinterpret_cast<const KernFormat0*>(format0Ptr.data());
+					format0Ptr = format0Ptr.subspan(sizeof kernFormat0);
+
+					const auto pairs = std::span(reinterpret_cast<const KernFormat0Pair*>(format0Ptr.data()), kernFormat0.nPairs);
+					if (pairs.size_bytes() > format0Ptr.size_bytes())
+						return {};  // invalid kern table
+
+					for (const auto& pair : pairs) {
+						const auto advPx = static_cast<SSIZE_T>(pair.value);
+						if (!advPx)
+							continue;
+
+						const auto key = std::make_pair(GlyphIndexToCharCodeMap.at(pair.left), GlyphIndexToCharCodeMap.at(pair.right));
+						result[key] += advPx;
+					}
+
+					data = data.subspan(kernSubtableHeader.length);
+				} else
+					data = data.subspan(kernSubtableHeader.length);
+			}
+		}
+
+	} else if (kernHeaderV0.version == 0) {
+		data = data.subspan(sizeof kernHeaderV0);
+		for (size_t i = 0; i < kernHeaderV0.nTables; ++i) {
+			if (data.size_bytes() < sizeof KernSubtableHeaderV0)
+				return {};  // invalid kern table
+
+			const auto& kernSubtableHeader = *reinterpret_cast<const KernSubtableHeaderV0*>(data.data());
+			if (data.size_bytes() < kernSubtableHeader.length)
+				return {};  // invalid kern table
+
+			if (kernSubtableHeader.version == 0
+				&& kernSubtableHeader.coverage.horizontal
+				&& kernSubtableHeader.coverage.format == 0) {
+
+				auto format0Ptr = data.subspan(sizeof kernSubtableHeader);
+				if (format0Ptr.size_bytes() < sizeof KernFormat0)
+					return {};  // invalid kern table
+
+				const auto& kernFormat0 = *reinterpret_cast<const KernFormat0*>(format0Ptr.data());
+				format0Ptr = format0Ptr.subspan(sizeof kernFormat0);
+
+				const auto pairs = std::span(reinterpret_cast<const KernFormat0Pair*>(format0Ptr.data()), kernFormat0.nPairs);
+				if (pairs.size_bytes() > format0Ptr.size_bytes())
+					return {};  // invalid kern table
+
+				for (const auto& pair : pairs) {
+					const auto advPx = static_cast<SSIZE_T>(pair.value);
+					if (!advPx)
+						continue;
+
+					const auto key = std::make_pair(GlyphIndexToCharCodeMap.at(pair.left), GlyphIndexToCharCodeMap.at(pair.right));
+					if (kernSubtableHeader.coverage.override)
+						result[key] = advPx;
+					else
+						result[key] += advPx;
+				}
+
+				data = data.subspan(kernSubtableHeader.length);
+			} else
+				data = data.subspan(kernSubtableHeader.length);
+		}
+	}
+	return result;
+}
+
 void std::filesystem::to_json(nlohmann::json& j, const path& value) {
 	j = Utils::ToUtf8(value.wstring());
 }

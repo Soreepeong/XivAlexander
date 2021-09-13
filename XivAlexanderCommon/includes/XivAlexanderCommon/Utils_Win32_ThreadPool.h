@@ -5,6 +5,7 @@
 namespace Utils::Win32 {
 	class TpEnvironment {
 		TP_CALLBACK_ENVIRON m_environ{};
+		int m_threadPriority;
 		PTP_POOL m_pool;
 		PTP_CLEANUP_GROUP m_group;
 		PTP_WORK m_lastWork = nullptr;
@@ -15,8 +16,9 @@ namespace Utils::Win32 {
 		bool m_cancelling = false;
 
 	public:
-		TpEnvironment(DWORD maxCores = 0)
-			: m_pool(CreateThreadpool(nullptr))
+		TpEnvironment(DWORD maxCores = 0, int threadPriority = THREAD_PRIORITY_BELOW_NORMAL)
+			: m_threadPriority(threadPriority)
+			, m_pool(CreateThreadpool(nullptr))
 			, m_group(CreateThreadpoolCleanupGroup()) {
 
 			if (!m_pool || !m_group) {
@@ -31,7 +33,7 @@ namespace Utils::Win32 {
 			SetThreadpoolCallbackPool(&m_environ, m_pool);
 			SetThreadpoolCallbackCleanupGroup(&m_environ, m_group, [](void* objectCtx, void* cleanupCtx) {
 				delete static_cast<std::function<void()>*>(objectCtx);
-				});
+			});
 
 			GetNativeSystemInfo(&m_systemInfo);
 			if (maxCores)
@@ -55,10 +57,13 @@ namespace Utils::Win32 {
 				return;
 
 			const auto lock = std::lock_guard(m_workMtx);
-			const auto obj = new std::function(std::move(cb));
+			const auto obj = new std::function([this, cb = std::move(cb)]() {
+				SetThreadPriority(GetCurrentThread(), m_threadPriority);
+				cb();
+			});
 			const auto work = CreateThreadpoolWork([](PTP_CALLBACK_INSTANCE, void* objectCtx, PTP_WORK) {
 				(*static_cast<std::function<void()>*>(objectCtx))();
-				}, obj, &m_environ);
+			}, obj, &m_environ);
 			if (!work) {
 				const auto error = GetLastError();
 				delete obj;

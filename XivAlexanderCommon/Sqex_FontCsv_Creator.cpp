@@ -2,15 +2,16 @@
 #include "Sqex_FontCsv_Creator.h"
 
 #include "Sqex_FontCsv_DirectWriteFont.h"
+#include "Sqex_FontCsv_FreeTypeFont.h"
 #include "Sqex_FontCsv_GdiFont.h"
 #include "Sqex_Sqpack_EntryRawStream.h"
 #include "Sqex_Sqpack_Reader.h"
 #include "Utils_Win32_ThreadPool.h"
 
 struct Sqex::FontCsv::FontCsvCreator::Implementation {
-	Utils::Win32::TpEnvironment WorkPool;
+	Win32::TpEnvironment WorkPool;
 	bool Cancelled = false;
-	Utils::Win32::Semaphore CoreLimitSemaphore;
+	Win32::Semaphore CoreLimitSemaphore;
 
 	struct CharacterPlan {
 		mutable GlyphMeasurement m_bbox;
@@ -32,20 +33,20 @@ struct Sqex::FontCsv::FontCsvCreator::Implementation {
 		.Indeterminate = 1,
 	};
 
-	Utils::CallOnDestruction WaitSemaphore() {
+	CallOnDestruction WaitSemaphore() {
 		if (!CoreLimitSemaphore)
 			return {};
 		if (CoreLimitSemaphore.Wait(INFINITE) != WAIT_OBJECT_0)
 			throw std::runtime_error("wait != WAIT_OBJECT_0");
-		return Utils::CallOnDestruction([this]() {
+		return CallOnDestruction([this]() {
 			void(CoreLimitSemaphore.Release(1));
 		});
 	}
 };
 
-Sqex::FontCsv::FontCsvCreator::FontCsvCreator(Utils::Win32::Semaphore semaphore)
+Sqex::FontCsv::FontCsvCreator::FontCsvCreator(const Win32::Semaphore& semaphore)
 	: m_pImpl(std::make_unique<Implementation>()) {
-	m_pImpl->CoreLimitSemaphore = std::move(semaphore);
+	m_pImpl->CoreLimitSemaphore = semaphore;
 }
 
 Sqex::FontCsv::FontCsvCreator::~FontCsvCreator() = default;
@@ -354,9 +355,9 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::FontCsvCr
 struct Sqex::FontCsv::FontSetsCreator::Implementation {
 	const CreateConfig::FontCreateConfig Config;
 	const std::filesystem::path GamePath;
-	const Utils::Win32::Event CancelEvent = Utils::Win32::Event::Create();
+	const Win32::Event CancelEvent = Win32::Event::Create();
 	bool Cancelled = false;
-	Utils::Win32::Thread WorkerThread;
+	Win32::Thread WorkerThread;
 
 	std::mutex SourceFontMapAccessMtx, SourceFontLoadMtx;
 	std::map<std::filesystem::path, std::unique_ptr<Sqpack::Reader>> SqpackReaders;
@@ -367,28 +368,28 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 	std::mutex ResultMtx;
 	std::map<std::string, std::map<std::string, std::unique_ptr<FontCsvCreator>>> ResultWork;
 
-	Utils::Win32::TpEnvironment WorkPool;
-	Utils::Win32::Semaphore CoreLimitSemaphore;
+	Win32::TpEnvironment WorkPool;
+	Win32::Semaphore CoreLimitSemaphore;
 	std::string LastErrorMessage;
 
-	Utils::CallOnDestruction::Multiple Cleanup;
+	CallOnDestruction::Multiple Cleanup;
 
 	Implementation(CreateConfig::FontCreateConfig config, std::filesystem::path gamePath, LONG maxCoreCount)
 		: Config(std::move(config))
 		, GamePath(std::move(gamePath))
-		, CoreLimitSemaphore(maxCoreCount ? Utils::Win32::Semaphore::Create(nullptr, maxCoreCount, maxCoreCount) : nullptr) {
+		, CoreLimitSemaphore(maxCoreCount ? Win32::Semaphore::Create(nullptr, maxCoreCount, maxCoreCount) : nullptr) {
 	}
 
 	~Implementation() {
 		Cleanup.Clear();
 	}
 
-	Utils::CallOnDestruction WaitSemaphore() {
+	CallOnDestruction WaitSemaphore() {
 		if (!CoreLimitSemaphore)
 			return {};
 		if (CoreLimitSemaphore.Wait(INFINITE) != WAIT_OBJECT_0)
 			throw std::runtime_error("wait != WAIT_OBJECT_0");
-		return Utils::CallOnDestruction([this]() {
+		return CallOnDestruction([this]() {
 			void(CoreLimitSemaphore.Release(1));
 		});
 	}
@@ -438,10 +439,29 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 			} else if (const auto& source = inputFontSource.gdiSource; inputFontSource.isGdiSource) {
 				newFont = std::make_shared<GdiDrawingFont<uint8_t>>(source);
 			} else if (const auto& source = inputFontSource.directWriteSource; inputFontSource.isDirectWriteSource) {
-				newFont = std::make_shared<DirectWriteDrawingFont<uint8_t>>(
-					Utils::FromUtf8(source.familyName).c_str(), static_cast<float>(source.height), static_cast<DWRITE_FONT_WEIGHT>(source.weight), source.stretch, source.style, source.renderMode
-					);
-			}
+				if (!source.fontFile.empty())
+					newFont = std::make_shared<DirectWriteDrawingFont<uint8_t>>(
+						source.fontFile, source.faceIndex, static_cast<float>(source.height), source.renderMode
+						);
+				else if (!source.familyName.empty())
+					newFont = std::make_shared<DirectWriteDrawingFont<uint8_t>>(
+						FromUtf8(source.familyName).c_str(), static_cast<float>(source.height), static_cast<DWRITE_FONT_WEIGHT>(source.weight), source.stretch, source.style, source.renderMode
+						);
+				else
+					throw std::invalid_argument("Neither of fontFile nor familyName was specified.");
+			} else if (const auto& source = inputFontSource.freeTypeSource; inputFontSource.isFreeTypeSource) {
+				if (!source.fontFile.empty())
+					newFont = std::make_shared<FreeTypeDrawingFont<uint8_t>>(
+						source.fontFile, source.faceIndex, static_cast<float>(source.height), source.loadFlags
+						);
+				else if (!source.familyName.empty())
+					newFont = std::make_shared<FreeTypeDrawingFont<uint8_t>>(
+						FromUtf8(source.familyName).c_str(), static_cast<float>(source.height), static_cast<DWRITE_FONT_WEIGHT>(source.weight), source.stretch, source.style, source.loadFlags
+						);
+				else
+					throw std::invalid_argument("Neither of fontFile nor familyName was specified.");
+			} else
+				throw std::invalid_argument("Could not identify which font to load.");
 
 			// preload for multithreading
 			void(newFont->GetAllCharacters());
@@ -468,7 +488,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 							LastErrorMessage = e.what();
 						else
 							LastErrorMessage = "Unknown error";
-						Utils::Win32::Thread(L"Canceller", [this]() { Cancel(false); });
+						void(Win32::Thread(L"Canceller", [this]() { Cancel(false); }));
 					}
 				});
 				remainingFonts.emplace(fontName, std::move(creator));
@@ -561,7 +581,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 					} catch (const std::exception& e) {
 						if (LastErrorMessage.empty()) {
 							LastErrorMessage = e.what() && *e.what() ? e.what() : "Unknwon error";
-							void(Utils::Win32::Thread(L"Canceller", [this]() { Cancel(false); }));
+							void(Win32::Thread(L"Canceller", [this]() { Cancel(false); }));
 						}
 #ifdef _DEBUG
 						throw;
@@ -591,7 +611,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 
 Sqex::FontCsv::FontSetsCreator::FontSetsCreator(CreateConfig::FontCreateConfig config, std::filesystem::path path, LONG maxCoreCount)
 	: m_pImpl(std::make_unique<Implementation>(std::move(config), std::move(path), maxCoreCount ? maxCoreCount : []() { SYSTEM_INFO si{}; GetSystemInfo(&si); return si.dwNumberOfProcessors; }())) {
-	m_pImpl->WorkerThread = Utils::Win32::Thread(L"FontSetsCreator", [this]() { m_pImpl->Compile(); });
+	m_pImpl->WorkerThread = Win32::Thread(L"FontSetsCreator", [this]() { m_pImpl->Compile(); });
 }
 
 Sqex::FontCsv::FontSetsCreator::~FontSetsCreator() {

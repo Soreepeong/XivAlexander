@@ -13,6 +13,10 @@ namespace Sqex::FontCsv {
 			DWRITE_FONT_STRETCH stretch = DWRITE_FONT_STRETCH::DWRITE_FONT_STRETCH_NORMAL,
 			DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE::DWRITE_FONT_STYLE_NORMAL,
 			DWRITE_RENDERING_MODE renderMode = DWRITE_RENDERING_MODE::DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC);
+		DirectWriteFont(const std::filesystem::path& path,
+			uint32_t faceIndex,
+			float size,
+			DWRITE_RENDERING_MODE renderMode = DWRITE_RENDERING_MODE::DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC);
 		~DirectWriteFont() override;
 
 		[[nodiscard]] bool HasCharacter(char32_t) const override;
@@ -29,6 +33,8 @@ namespace Sqex::FontCsv {
 		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const override;
 
 		GlyphMeasurement DrawCharacter(char32_t c, std::vector<uint8_t>& buf, bool draw) const;
+
+		std::tuple<std::filesystem::path, int> GetFontFile() const;
 
 	protected:
 		class BufferContext {
@@ -94,7 +100,7 @@ namespace Sqex::FontCsv {
 				const auto destHeight = static_cast<SSIZE_T>(to->Height());
 				const auto srcWidth = bbox.Width();
 				const auto srcHeight = bbox.Height();
-				
+
 				GlyphMeasurement src = { false, 0, 0, srcWidth, srcHeight };
 				auto dest = bbox;
 				src.AdjustToIntersection(dest, srcWidth, srcHeight, destWidth, destHeight);

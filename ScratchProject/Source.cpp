@@ -13,6 +13,8 @@
 #include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
 #include <XivAlexanderCommon/Sqex_Texture_Mipmap.h>
 
+#include "XivAlexanderCommon/Sqex_FontCsv_FreeTypeFont.h"
+
 static const auto* const pszTestString = reinterpret_cast<const char*>(
 	u8"Uppercase: ABCDEFGHIJKLMNOPQRSTUVWXYZ\n"
 	u8"Lowercase: abcdefghijklmnopqrstuvwxyz\n"
@@ -52,7 +54,7 @@ static const auto* const pszTestString = reinterpret_cast<const char*>(
 	u8"ㅌㅅㅌ nj\n"
 	);
 
-const auto testString = U"opqrs";
+const auto testString = U"Hello world!";
 const auto testWeight = 400;
 
 auto test(const Sqex::Sqpack::Reader& common, const std::vector<std::shared_ptr<const Sqex::Texture::MipmapStream>>& texs, float size, const char* sizestr) {
@@ -148,8 +150,8 @@ auto test3(float size) {
 }
 
 void test_direct() {
-	for (const auto fsize : { 12, 36 }) {
-		for (const auto fname : { L"Gulim", L"Papyrus", L"Comic Sans MS" }) {
+	for (const auto fsize : { 12, 36, 72 }) {
+		for (const auto fname : { L"Gulim" /*L"Papyrus", L"Comic Sans MS"*/}) {
 			auto lf = LOGFONTW{
 				.lfHeight = -static_cast<int>(std::round(fsize)),
 				.lfWeight = 400,
@@ -162,9 +164,13 @@ void test_direct() {
 
 			for (const auto& fs : std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<T>>>{
 				// std::make_shared<Sqex::FontCsv::GdiDrawingFont<T>>(lf),
-				std::make_shared<Sqex::FontCsv::DirectWriteDrawingFont<T>>(fname, fsize, DWRITE_FONT_WEIGHT_REGULAR, DWRITE_FONT_STRETCH_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_RENDERING_MODE_NATURAL),
+				// std::make_shared<Sqex::FontCsv::DirectWriteDrawingFont<T>>(fname, fsize, DWRITE_FONT_WEIGHT_REGULAR, DWRITE_FONT_STRETCH_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_RENDERING_MODE_NATURAL),
+				std::make_shared<Sqex::FontCsv::FreeTypeDrawingFont<T>>(LR"(C:\Windows\Fonts\gulim.ttc)", 0, fsize)
 				}) {
-				const auto size = fs->Measure(0, 0, pszTestString);
+				// const auto testStr = pszTestString;
+				const auto testStr = "j";
+
+				const auto size = fs->Measure(0, 0, testStr);
 				const auto cw = static_cast<uint16_t>(size.Width() + 10);
 				const auto ch = static_cast<uint16_t>(size.Height() + 10);
 				const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::CompressionType::ARGB_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
@@ -178,7 +184,7 @@ void test_direct() {
 				}
 				for (int i = 0; i < cw; ++i)
 					mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + fs->Height()) + i].SetFrom(0, 0, 255, 255);
-				void(fs->Draw(mm32.get(), 5, yptr, pszTestString, 0xFFFFFFFF, 0));
+				void(fs->Draw(mm32.get(), 5, yptr, testStr, 0xFFFFFFFF, 0));
 				mm32->Show();
 			}
 		}
@@ -242,15 +248,17 @@ void compile() {
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Original.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.dwrite.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.gdi.json)");
+		std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulimche.dwrite_file.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.ComicGulim.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.PapyrusGungsuh.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.WithMinimalHangul.json)");
-		std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\Korean.18to36.json)");
+		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\Korean.18to36.json)");
 		nlohmann::json j;
 		fin >> j;
 		auto cfg = j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
 
-		Sqex::FontCsv::FontSetsCreator creator(cfg, R"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game\)");
+		// Sqex::FontCsv::FontSetsCreator creator(cfg, R"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game\)");
+		Sqex::FontCsv::FontSetsCreator creator(cfg, R"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game)");
 		while (!creator.Wait(100)) {
 			const auto progress = creator.GetProgress();
 			std::cout << progress.Indeterminate << " " << progress.Scale(100.) << "%     \r";
@@ -377,9 +385,9 @@ void freetype_test() {
 
 int main() {
 	system("chcp 65001");
-	freetype_test();
+	// freetype_test();
 	// test_create();
 	// test_direct();
-	// compile();
+	compile();
 	return 0;
 }

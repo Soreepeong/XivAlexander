@@ -1,0 +1,1025 @@
+{
+  "name": "Gulim (FreeType) (International Client)",
+  "textureWidth": 4096,
+  "textureHeight": 4096,
+  "sources": {
+    "game:AXIS_96": {
+      "fdtPath": "common/font/AXIS_96.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:AXIS_12": {
+      "fdtPath": "common/font/AXIS_12.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:AXIS_14": {
+      "fdtPath": "common/font/AXIS_14.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:AXIS_18": {
+      "fdtPath": "common/font/AXIS_18.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:AXIS_36": {
+      "fdtPath": "common/font/AXIS_36.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:Jupiter_16": {
+      "fdtPath": "common/font/Jupiter_16.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:Jupiter_20": {
+      "fdtPath": "common/font/Jupiter_20.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:Jupiter_23": {
+      "fdtPath": "common/font/Jupiter_23.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:Jupiter_45": {
+      "fdtPath": "common/font/Jupiter_45.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:Jupiter_46": {
+      "fdtPath": "common/font/Jupiter_46.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:Jupiter_90": {
+      "fdtPath": "common/font/Jupiter_90.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:Meidinger_16": {
+      "fdtPath": "common/font/Meidinger_16.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:Meidinger_20": {
+      "fdtPath": "common/font/Meidinger_20.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:Meidinger_40": {
+      "fdtPath": "common/font/Meidinger_40.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:MiedingerMid_10": {
+      "fdtPath": "common/font/MiedingerMid_10.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:MiedingerMid_12": {
+      "fdtPath": "common/font/MiedingerMid_12.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:MiedingerMid_14": {
+      "fdtPath": "common/font/MiedingerMid_14.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:MiedingerMid_18": {
+      "fdtPath": "common/font/MiedingerMid_18.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:MiedingerMid_36": {
+      "fdtPath": "common/font/MiedingerMid_36.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:TrumpGothic_184": {
+      "fdtPath": "common/font/TrumpGothic_184.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:TrumpGothic_23": {
+      "fdtPath": "common/font/TrumpGothic_23.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:TrumpGothic_34": {
+      "fdtPath": "common/font/TrumpGothic_34.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "game:TrumpGothic_68": {
+      "fdtPath": "common/font/TrumpGothic_68.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
+    "freetype:Gulim:9.6": {
+      "familyName": "Gulim",
+      "height": 9.6,
+      "weight": 400
+    },
+    "freetype:Gulim:12": {
+      "familyName": "Gulim",
+      "height": 12,
+      "weight": 400
+    },
+    "freetype:Gulim:14": {
+      "familyName": "Gulim",
+      "height": 14,
+      "weight": 400
+    },
+    "freetype:Gulim:16": {
+      "familyName": "Gulim",
+      "height": 16,
+      "weight": 400
+    },
+    "freetype:Gulim:18": {
+      "familyName": "Gulim",
+      "height": 18,
+      "weight": 400
+    },
+    "freetype:Gulim:20": {
+      "familyName": "Gulim",
+      "height": 20,
+      "weight": 400
+    },
+    "freetype:Gulim:24": {
+      "familyName": "Gulim",
+      "height": 24,
+      "weight": 400
+    },
+    "freetype:Gulim:36": {
+      "familyName": "Gulim",
+      "height": 36,
+      "weight": 400
+    },
+    "freetype:Gulim:40": {
+      "familyName": "Gulim",
+      "height": 40,
+      "weight": 400
+    },
+    "freetype:Gulim:45": {
+      "familyName": "Gulim",
+      "height": 45,
+      "weight": 400
+    },
+    "freetype:Gulim:68": {
+      "familyName": "Gulim",
+      "height": 68,
+      "weight": 400
+    },
+    "freetype:Gulim:90": {
+      "familyName": "Gulim",
+      "height": 90,
+      "weight": 400
+    }
+  },
+  "ranges": {
+    "HangulMinimum": {
+      "Hangul Jamo": [
+        "U+1100",
+        "U+11FF"
+      ],
+      "Hangul Compatibility Jamo": [
+        "U+3130",
+        "U+318F"
+      ],
+      "Hangul Jamo Extended-A": [
+        "U+A960",
+        "U+A97F"
+      ],
+      "Hangul Syllables": [
+        "U+AC00",
+        "U+D7AF"
+      ],
+      "Hangul Jamo Extended-B": [
+        "U+D7B0",
+        "U+D7FF"
+      ]
+    },
+    "Hangul": {
+      "Hangul Jamo": [
+        "U+1100",
+        "U+11FF"
+      ],
+      "CJK Symbols and Punctuation": [
+        "U+3000",
+        "U+303F"
+      ],
+      "Hangul Compatibility Jamo": [
+        "U+3130",
+        "U+318F"
+      ],
+      "Enclosed CJK Letters and Months": [
+        "U+3200",
+        "U+32FF"
+      ],
+      "CJK Unified Ideographs Extension A": [
+        "U+3400",
+        "U+4DBF"
+      ],
+      "CJK Unified Ideographs": [
+        "U+4E00",
+        "U+9FFF"
+      ],
+      "Hangul Jamo Extended-A": [
+        "U+A960",
+        "U+A97F"
+      ],
+      "Hangul Syllables": [
+        "U+AC00",
+        "U+D7AF"
+      ],
+      "Hangul Jamo Extended-B": [
+        "U+D7B0",
+        "U+D7FF"
+      ],
+      "CJK Compatibility Ideographs": [
+        "U+F900",
+        "U+FAFF"
+      ]
+    }
+  },
+  "targets": {
+    "font{}.tex": {
+      "AXIS_96.fdt": {
+        "height": 9.6,
+        "ascent": "game:AXIS_96",
+        "descent": "game:AXIS_96",
+        "sources": [
+          {
+            "name": "game:AXIS_96"
+          },
+          {
+            "name": "freetype:Gulim:9.6",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:9.6",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "AXIS_12.fdt": {
+        "height": 12,
+        "ascent": "game:AXIS_12",
+        "descent": "game:AXIS_12",
+        "sources": [
+          {
+            "name": "game:AXIS_12"
+          },
+          {
+            "name": "freetype:Gulim:12",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:12",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "AXIS_14.fdt": {
+        "height": 14,
+        "ascent": "game:AXIS_14",
+        "descent": "game:AXIS_14",
+        "sources": [
+          {
+            "name": "game:AXIS_14"
+          },
+          {
+            "name": "freetype:Gulim:14",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:14",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "AXIS_18.fdt": {
+        "height": 18,
+        "ascent": "game:AXIS_18",
+        "descent": "game:AXIS_18",
+        "sources": [
+          {
+            "name": "game:AXIS_18"
+          },
+          {
+            "name": "freetype:Gulim:18",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:18",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "AXIS_36.fdt": {
+        "height": 36,
+        "ascent": "game:AXIS_36",
+        "descent": "game:AXIS_36",
+        "sources": [
+          {
+            "name": "game:AXIS_36"
+          },
+          {
+            "name": "freetype:Gulim:36",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:36",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "Jupiter_16.fdt": {
+        "height": 16,
+        "ascent": "game:Jupiter_16",
+        "descent": "game:Jupiter_16",
+        "sources": [
+          {
+            "name": "game:Jupiter_16"
+          },
+          {
+            "name": "freetype:Gulim:18",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:18",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "Jupiter_20.fdt": {
+        "height": 20,
+        "ascent": "game:Jupiter_20",
+        "descent": "game:Jupiter_20",
+        "sources": [
+          {
+            "name": "game:Jupiter_20"
+          },
+          {
+            "name": "freetype:Gulim:24",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:24",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "Jupiter_23.fdt": {
+        "height": 23,
+        "ascent": "game:Jupiter_23",
+        "descent": "game:Jupiter_23",
+        "sources": [
+          {
+            "name": "game:Jupiter_23"
+          },
+          {
+            "name": "freetype:Gulim:24",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:24",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "Jupiter_45.fdt": {
+        "height": 45,
+        "ascent": "game:Jupiter_45",
+        "descent": "game:Jupiter_45",
+        "sources": [
+          {
+            "name": "game:Jupiter_45"
+          },
+          {
+            "name": "freetype:Gulim:45",
+            "extendRange": false,
+            "replace": true
+          }
+        ]
+      },
+      "Jupiter_46.fdt": {
+        "height": 46,
+        "ascent": "game:Jupiter_46",
+        "descent": "game:Jupiter_46",
+        "sources": [
+          {
+            "name": "game:Jupiter_46"
+          },
+          {
+            "name": "freetype:Gulim:45",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:45",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "Jupiter_90.fdt": {
+        "height": 90,
+        "ascent": "game:Jupiter_90",
+        "descent": "game:Jupiter_90",
+        "sources": [
+          {
+            "name": "game:Jupiter_90"
+          },
+          {
+            "name": "freetype:Gulim:90",
+            "extendRange": false,
+            "replace": true
+          }
+        ]
+      },
+      "Meidinger_16.fdt": {
+        "height": 16,
+        "ascent": "game:Meidinger_16",
+        "descent": "game:Meidinger_16",
+        "sources": [
+          {
+            "name": "game:Meidinger_16"
+          },
+          {
+            "name": "freetype:Gulim:16",
+            "extendRange": false,
+            "replace": true
+          }
+        ]
+      },
+      "Meidinger_20.fdt": {
+        "height": 20,
+        "ascent": "game:Meidinger_20",
+        "descent": "game:Meidinger_20",
+        "sources": [
+          {
+            "name": "game:Meidinger_20"
+          },
+          {
+            "name": "freetype:Gulim:20",
+            "extendRange": false,
+            "replace": true
+          }
+        ]
+      },
+      "Meidinger_40.fdt": {
+        "height": 40,
+        "ascent": "game:Meidinger_40",
+        "descent": "game:Meidinger_40",
+        "sources": [
+          {
+            "name": "game:Meidinger_40"
+          },
+          {
+            "name": "freetype:Gulim:40",
+            "extendRange": false,
+            "replace": true
+          }
+        ]
+      },
+      "MiedingerMid_10.fdt": {
+        "height": 10,
+        "ascent": "game:MiedingerMid_10",
+        "descent": "game:MiedingerMid_10",
+        "sources": [
+          {
+            "name": "game:MiedingerMid_10"
+          },
+          {
+            "name": "freetype:Gulim:9.6",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:9.6",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "MiedingerMid_12.fdt": {
+        "height": 12,
+        "ascent": "game:MiedingerMid_12",
+        "descent": "game:MiedingerMid_12",
+        "sources": [
+          {
+            "name": "game:MiedingerMid_12"
+          },
+          {
+            "name": "freetype:Gulim:12",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:12",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "MiedingerMid_14.fdt": {
+        "height": 14,
+        "ascent": "game:MiedingerMid_14",
+        "descent": "game:MiedingerMid_14",
+        "sources": [
+          {
+            "name": "game:MiedingerMid_14"
+          },
+          {
+            "name": "freetype:Gulim:14",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:14",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "MiedingerMid_18.fdt": {
+        "height": 18,
+        "ascent": "game:MiedingerMid_18",
+        "descent": "game:MiedingerMid_18",
+        "sources": [
+          {
+            "name": "game:MiedingerMid_18"
+          },
+          {
+            "name": "freetype:Gulim:18",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:18",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "MiedingerMid_36.fdt": {
+        "height": 36,
+        "ascent": "game:MiedingerMid_36",
+        "descent": "game:MiedingerMid_36",
+        "sources": [
+          {
+            "name": "game:MiedingerMid_36"
+          },
+          {
+            "name": "freetype:Gulim:36",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:36",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "TrumpGothic_184.fdt": {
+        "height": 18.4,
+        "ascent": "game:TrumpGothic_184",
+        "descent": "game:TrumpGothic_184",
+        "sources": [
+          {
+            "name": "game:TrumpGothic_184"
+          },
+          {
+            "name": "freetype:Gulim:18",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:18",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "TrumpGothic_23.fdt": {
+        "height": 23,
+        "ascent": "game:TrumpGothic_23",
+        "descent": "game:TrumpGothic_23",
+        "sources": [
+          {
+            "name": "game:TrumpGothic_23"
+          },
+          {
+            "name": "freetype:Gulim:24",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:24",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "TrumpGothic_34.fdt": {
+        "height": 34,
+        "ascent": "game:TrumpGothic_34",
+        "descent": "game:TrumpGothic_34",
+        "sources": [
+          {
+            "name": "game:TrumpGothic_34"
+          },
+          {
+            "name": "freetype:Gulim:36",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:36",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "TrumpGothic_68.fdt": {
+        "height": 68,
+        "ascent": "game:TrumpGothic_68",
+        "descent": "game:TrumpGothic_68",
+        "sources": [
+          {
+            "name": "game:TrumpGothic_68"
+          },
+          {
+            "name": "freetype:Gulim:68",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:68",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      }
+    },
+    "font_lobby{}.tex": {
+      "AXIS_12_lobby.fdt": {
+        "height": 12,
+        "ascent": "game:AXIS_12",
+        "descent": "game:AXIS_12",
+        "sources": [
+          {
+            "name": "game:AXIS_12"
+          },
+          {
+            "name": "freetype:Gulim:12",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:12",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "AXIS_14_lobby.fdt": {
+        "height": 14,
+        "ascent": "game:AXIS_14",
+        "descent": "game:AXIS_14",
+        "sources": [
+          {
+            "name": "game:AXIS_14"
+          },
+          {
+            "name": "freetype:Gulim:14",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:14",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "AXIS_18_lobby.fdt": {
+        "height": 18,
+        "ascent": "game:AXIS_18",
+        "descent": "game:AXIS_18",
+        "sources": [
+          {
+            "name": "game:AXIS_18"
+          },
+          {
+            "name": "freetype:Gulim:18",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:18",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "Jupiter_16_lobby.fdt": {
+        "height": 16,
+        "ascent": "game:Jupiter_16",
+        "descent": "game:Jupiter_16",
+        "sources": [
+          {
+            "name": "game:Jupiter_16"
+          },
+          {
+            "name": "freetype:Gulim:18",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:18",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "Jupiter_20_lobby.fdt": {
+        "height": 20,
+        "ascent": "game:Jupiter_20",
+        "descent": "game:Jupiter_20",
+        "sources": [
+          {
+            "name": "game:Jupiter_20"
+          },
+          {
+            "name": "freetype:Gulim:24",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:24",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "Jupiter_23_lobby.fdt": {
+        "height": 23,
+        "ascent": "game:Jupiter_23",
+        "descent": "game:Jupiter_23",
+        "sources": [
+          {
+            "name": "game:Jupiter_23"
+          },
+          {
+            "name": "freetype:Gulim:24",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:24",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "Jupiter_45_lobby.fdt": {
+        "height": 45,
+        "ascent": "game:Jupiter_45",
+        "descent": "game:Jupiter_45",
+        "sources": [
+          {
+            "name": "game:Jupiter_45"
+          },
+          {
+            "name": "freetype:Gulim:45",
+            "extendRange": false,
+            "replace": true
+          }
+        ]
+      },
+      "Meidinger_16_lobby.fdt": {
+        "height": 16,
+        "ascent": "game:Meidinger_16",
+        "descent": "game:Meidinger_16",
+        "sources": [
+          {
+            "name": "game:Meidinger_16"
+          },
+          {
+            "name": "freetype:Gulim:16",
+            "extendRange": false,
+            "replace": true
+          }
+        ]
+      },
+      "Meidinger_20_lobby.fdt": {
+        "height": 20,
+        "ascent": "game:Meidinger_20",
+        "descent": "game:Meidinger_20",
+        "sources": [
+          {
+            "name": "game:Meidinger_20"
+          },
+          {
+            "name": "freetype:Gulim:20",
+            "extendRange": false,
+            "replace": true
+          }
+        ]
+      },
+      "MiedingerMid_10_lobby.fdt": {
+        "height": 10,
+        "ascent": "game:MiedingerMid_10",
+        "descent": "game:MiedingerMid_10",
+        "sources": [
+          {
+            "name": "game:MiedingerMid_10"
+          },
+          {
+            "name": "freetype:Gulim:9.6",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:9.6",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "MiedingerMid_12_lobby.fdt": {
+        "height": 12,
+        "ascent": "game:MiedingerMid_12",
+        "descent": "game:MiedingerMid_12",
+        "sources": [
+          {
+            "name": "game:MiedingerMid_12"
+          },
+          {
+            "name": "freetype:Gulim:12",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:12",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "MiedingerMid_14_lobby.fdt": {
+        "height": 14,
+        "ascent": "game:MiedingerMid_14",
+        "descent": "game:MiedingerMid_14",
+        "sources": [
+          {
+            "name": "game:MiedingerMid_14"
+          },
+          {
+            "name": "freetype:Gulim:14",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:14",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "MiedingerMid_18_lobby.fdt": {
+        "height": 18,
+        "ascent": "game:MiedingerMid_18",
+        "descent": "game:MiedingerMid_18",
+        "sources": [
+          {
+            "name": "game:MiedingerMid_18"
+          },
+          {
+            "name": "freetype:Gulim:18",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:18",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "TrumpGothic_184_lobby.fdt": {
+        "height": 18.4,
+        "ascent": "game:TrumpGothic_184",
+        "descent": "game:TrumpGothic_184",
+        "sources": [
+          {
+            "name": "game:TrumpGothic_184"
+          },
+          {
+            "name": "freetype:Gulim:18",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:18",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "TrumpGothic_23_lobby.fdt": {
+        "height": 23,
+        "ascent": "game:TrumpGothic_23",
+        "descent": "game:TrumpGothic_23",
+        "sources": [
+          {
+            "name": "game:TrumpGothic_23"
+          },
+          {
+            "name": "freetype:Gulim:24",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:24",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "TrumpGothic_34_lobby.fdt": {
+        "height": 34,
+        "ascent": "game:TrumpGothic_34",
+        "descent": "game:TrumpGothic_34",
+        "sources": [
+          {
+            "name": "game:TrumpGothic_34"
+          },
+          {
+            "name": "freetype:Gulim:36",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:36",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

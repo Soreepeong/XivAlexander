@@ -19,8 +19,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_CreateConfig.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_Creator.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_DirectWriteFont.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_FreeTypeFont.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_GdiFont.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_SeCompatibleDrawableFont.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_SeCompatibleFont.h" />
@@ -57,12 +59,12 @@
     <ClInclude Include="includes\XivAlexanderCommon\XaZlib.h" />
     <ClInclude Include="includes\XivAlexanderCommon\XivAlex.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="Sqex_FontCsv_CreateConfig.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Sqex_FontCsv_CreateConfig.cpp" />
     <ClCompile Include="Sqex_FontCsv_Creator.cpp" />
     <ClCompile Include="Sqex_FontCsv_DirectWriteFont.cpp" />
+    <ClCompile Include="Sqex_FontCsv_FreeTypeFont.cpp" />
     <ClCompile Include="Sqex_FontCsv_GdiFont.cpp" />
     <ClCompile Include="Sqex_FontCsv_SeCompatibleFont.cpp" />
     <ClCompile Include="Sqex_Sqpack_EntryRawStream.cpp" />

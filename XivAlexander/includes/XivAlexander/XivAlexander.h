@@ -84,7 +84,7 @@ namespace XivAlexDll {
 
 	XIVALEXANDER_DLLEXPORT [[nodiscard]] CheckPackageVersionResult CheckPackageVersion();
 
-	extern "C" XIVALEXANDER_DLLEXPORT int __stdcall XA_LoaderApp(LPWSTR lpCmdLine);
+	extern "C" int __stdcall XA_LoaderApp(LPWSTR lpCmdLine);
 }
 
 #endif

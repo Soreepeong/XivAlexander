@@ -17,6 +17,8 @@ namespace Sqex::FontCsv::CreateConfig {
 	void from_json(const nlohmann::json& j, GameSource& o);
 
 	struct DirectWriteSource {
+		std::filesystem::path fontFile;
+		uint32_t faceIndex;
 		std::string familyName;
 		double height;
 		int weight;
@@ -27,6 +29,19 @@ namespace Sqex::FontCsv::CreateConfig {
 	void to_json(nlohmann::json& j, const DirectWriteSource& o);
 	void from_json(const nlohmann::json& j, DirectWriteSource& o);
 
+	struct FreeTypeSource {
+		std::filesystem::path fontFile;
+		uint32_t faceIndex;
+		std::string familyName;
+		double height;
+		int weight;
+		DWRITE_FONT_STYLE style;
+		DWRITE_FONT_STRETCH stretch;
+		uint32_t loadFlags;
+	};
+	void to_json(nlohmann::json& j, const FreeTypeSource& o);
+	void from_json(const nlohmann::json& j, FreeTypeSource& o);
+
 	struct GdiSource : LOGFONTW {
 	};
 	void to_json(nlohmann::json& j, const GdiSource& o);
@@ -36,9 +51,11 @@ namespace Sqex::FontCsv::CreateConfig {
 		bool isGameSource = false;
 		bool isDirectWriteSource = false;
 		bool isGdiSource = false;
+		bool isFreeTypeSource = false;
 		GameSource gameSource;
 		DirectWriteSource directWriteSource;
 		GdiSource gdiSource;
+		FreeTypeSource freeTypeSource;
 	};
 
 	struct SingleRange {
@@ -101,3 +118,11 @@ namespace Sqex::FontCsv::CreateConfig {
 	void to_json(nlohmann::json& j, const FontCreateConfig& o);
 	void from_json(const nlohmann::json& j, FontCreateConfig& o);
 }
+
+void to_json(nlohmann::json& j, const DWRITE_RENDERING_MODE& o);
+void from_json(const nlohmann::json& j, DWRITE_RENDERING_MODE& o);
+
+void to_json(nlohmann::json& j, const DWRITE_FONT_STYLE& o);
+void from_json(const nlohmann::json& j, DWRITE_FONT_STYLE& o);
+void to_json(nlohmann::json& j, const DWRITE_FONT_STRETCH& o);
+void from_json(const nlohmann::json& j, DWRITE_FONT_STRETCH& o);

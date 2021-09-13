@@ -63,6 +63,14 @@
 #include <curlpp/Options.hpp>
 #include <freetype/freetype.h>
 #include <nlohmann/json.hpp>
+
+// FreeType
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#include FT_BITMAP_H
+#include FT_GLYPH_H
+#include FT_OUTLINE_H
+
 #pragma warning(pop)
 
 #include "XaFormat.h"

@@ -7,6 +7,98 @@
 #include <nlohmann/json.hpp>
 
 namespace Utils {
+
+	template<typename T, T DefaultValue = static_cast<T>(0)>
+	struct LE {
+	private:
+		T value;
+
+	public:
+		LE(T defaultValue = DefaultValue)
+			: value(defaultValue) {
+		}
+
+		operator T() const {
+			return Value();
+		}
+
+		LE<T, DefaultValue>& operator= (T newValue) {
+			Value(std::move(newValue));
+			return *this;
+		}
+
+		LE<T, DefaultValue>& operator+= (T newValue) {
+			Value(Value() + std::move(newValue));
+			return *this;
+		}
+
+		LE<T, DefaultValue>& operator-= (T newValue) {
+			Value(Value() - std::move(newValue));
+			return *this;
+		}
+
+		T Value() const {
+			return value;
+		}
+
+		void Value(T newValue) {
+			value = std::move(newValue);
+		}
+	};
+
+	template<typename T, T DefaultValue = static_cast<T>(0)>
+	struct BE {
+	private:
+		union {
+			T value;
+			char buf[sizeof T];
+		};
+
+	public:
+		BE(T defaultValue = DefaultValue)
+			: value(defaultValue) {
+		}
+
+		operator T() const {
+			return Value();
+		}
+
+		BE<T, DefaultValue>& operator= (T newValue) {
+			Value(std::move(newValue));
+			return *this;
+		}
+
+		BE<T, DefaultValue>& operator+= (T newValue) {
+			Value(Value() + std::move(newValue));
+			return *this;
+		}
+
+		BE<T, DefaultValue>& operator-= (T newValue) {
+			Value(Value() - std::move(newValue));
+			return *this;
+		}
+
+		T Value() const {
+			union {
+				char tmp[sizeof T];
+				T tval;
+			};
+			memcpy(tmp, buf, sizeof T);
+			std::reverse(tmp, tmp + sizeof T);
+			return tval;
+		}
+
+		void Value(T newValue) {
+			union {
+				char tmp[sizeof T];
+				T tval;
+			};
+			tval = newValue;
+			std::reverse(tmp, tmp + sizeof T);
+			memcpy(buf, tmp, sizeof T);
+		}
+	};
+
 	SYSTEMTIME EpochToLocalSystemTime(int64_t epochMilliseconds);
 	int64_t GetHighPerformanceCounter(int32_t multiplier = 1000);
 
@@ -41,6 +133,8 @@ namespace Utils {
 		T().swap(c);
 		ClearStdContainer(std::forward<Args>(args)...);
 	}
+
+	std::map<std::pair<char32_t, char32_t>, SSIZE_T> ParseKerningTable(std::span<const char> data, const std::map<uint16_t, char32_t>& GlyphIndexToCharCodeMap);
 }
 
 namespace std::filesystem {
