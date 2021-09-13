@@ -52,6 +52,7 @@ static const auto* const pszTestString = reinterpret_cast<const char*>(
 	u8"\n"
 	u8"테스트 finish\n"
 	u8"ㅌㅅㅌ nj\n"
+	u8"“elemental”"
 	);
 
 const auto testString = U"Hello world!";
@@ -150,8 +151,8 @@ auto test3(float size) {
 }
 
 void test_direct() {
-	for (const auto fsize : { 12, 36, 72 }) {
-		for (const auto fname : { L"Gulim" /*L"Papyrus", L"Comic Sans MS"*/}) {
+	for (const auto fsize : { 14 }) {
+		for (const auto fname : { L"Comic Sans MS"}) {
 			auto lf = LOGFONTW{
 				.lfHeight = -static_cast<int>(std::round(fsize)),
 				.lfWeight = 400,
@@ -165,10 +166,10 @@ void test_direct() {
 			for (const auto& fs : std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<T>>>{
 				// std::make_shared<Sqex::FontCsv::GdiDrawingFont<T>>(lf),
 				// std::make_shared<Sqex::FontCsv::DirectWriteDrawingFont<T>>(fname, fsize, DWRITE_FONT_WEIGHT_REGULAR, DWRITE_FONT_STRETCH_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_RENDERING_MODE_NATURAL),
-				std::make_shared<Sqex::FontCsv::FreeTypeDrawingFont<T>>(LR"(C:\Windows\Fonts\gulim.ttc)", 0, fsize)
+				std::make_shared<Sqex::FontCsv::FreeTypeDrawingFont<T>>(LR"(C:\Windows\Fonts\comic.ttf)", 0, fsize)
 				}) {
-				// const auto testStr = pszTestString;
-				const auto testStr = "j";
+				const auto testStr = pszTestString;
+				// const auto testStr = "j";
 
 				const auto size = fs->Measure(0, 0, testStr);
 				const auto cw = static_cast<uint16_t>(size.Width() + 10);
@@ -177,13 +178,13 @@ void test_direct() {
 				const auto yptr = 5 - size.top;
 				std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width() * mm32->Height(), 0xFF000000);
 
-				for (int i = 0; i < cw; ++i) {
+				/*for (int i = 0; i < cw; ++i) {
 					mm32->View<Sqex::Texture::RGBA8888>()[cw * yptr + i].SetFrom(255, 0, 0, 255);
 					mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + fs->Ascent()) + i].SetFrom(0, 255, 0, 255);
 					mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + fs->Ascent() + fs->Descent()) + i].SetFrom(0, 255, 0, 255);
 				}
 				for (int i = 0; i < cw; ++i)
-					mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + fs->Height()) + i].SetFrom(0, 0, 255, 255);
+					mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + fs->Height()) + i].SetFrom(0, 0, 255, 255);*/
 				void(fs->Draw(mm32.get(), 5, yptr, testStr, 0xFFFFFFFF, 0));
 				mm32->Show();
 			}
@@ -192,8 +193,8 @@ void test_direct() {
 }
 
 void test_create() {
-	for (const auto fsize : { 12, 36 }) {
-		for (const auto fname : { L"Gulim", L"Papyrus", L"Comic Sans MS" }) {
+	for (const auto fsize : { 14 }) {
+		for (const auto fname : { L"Comic Sans MS" }) {
 			auto lf = LOGFONTW{
 				.lfHeight = -static_cast<int>(std::round(fsize)),
 				.lfWeight = 400,
@@ -205,13 +206,16 @@ void test_create() {
 			using T = uint8_t;
 
 			for (const auto& fs : std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<T>>>{
-				std::make_shared<Sqex::FontCsv::GdiDrawingFont<T>>(lf),
-				std::make_shared<Sqex::FontCsv::DirectWriteDrawingFont<T>>(fname, fsize, DWRITE_FONT_WEIGHT_REGULAR, DWRITE_FONT_STRETCH_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_RENDERING_MODE_NATURAL),
+				// std::make_shared<Sqex::FontCsv::GdiDrawingFont<T>>(lf),
+				// std::make_shared<Sqex::FontCsv::DirectWriteDrawingFont<T>>(fname, fsize, DWRITE_FONT_WEIGHT_REGULAR, DWRITE_FONT_STRETCH_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_RENDERING_MODE_NATURAL),
+				std::make_shared<Sqex::FontCsv::FreeTypeDrawingFont<T>>(fname, fsize)
 				}) {
 				auto creator = Sqex::FontCsv::FontCsvCreator();
 				creator.SizePoints = fs->Size();
 				creator.AscentPixels = fs->Ascent();
 				creator.DescentPixels = fs->Descent();
+				creator.BorderOpacity = 0x80;
+				creator.BorderThickness = 2;
 				for (const auto c : Sqex::FontCsv::ToU32(pszTestString))
 					creator.AddCharacter(c, fs.get());
 				Sqex::FontCsv::FontCsvCreator::RenderTarget target(4096, 4096, 1);
@@ -250,9 +254,10 @@ void compile() {
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.gdi.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulimche.dwrite_file.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.ComicGulim.json)");
-		std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.ComicSans.freetype.border.json)");
+		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.ComicSans.freetype.border.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.PapyrusGungsuh.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.WithMinimalHangul.json)");
+		std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.WithMinimalHangul.Border.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\Korean.18to36.json)");
 		nlohmann::json j;
 		fin >> j;

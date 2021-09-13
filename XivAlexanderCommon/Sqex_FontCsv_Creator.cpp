@@ -138,7 +138,13 @@ std::vector<std::shared_ptr<Sqex::Texture::ModifiableTextureStream>> Sqex::FontC
 	return res;
 }
 
-Sqex::FontCsv::FontCsvCreator::RenderTarget::AllocatedSpace Sqex::FontCsv::FontCsvCreator::RenderTarget::Draw(char32_t c, const SeCompatibleDrawableFont<uint8_t>*font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint8_t boundingWidth, uint8_t boundingHeight, uint8_t borderThickness, uint8_t borderOpacity) {
+Sqex::FontCsv::FontCsvCreator::RenderTarget::AllocatedSpace Sqex::FontCsv::FontCsvCreator::RenderTarget::Draw(
+	char32_t c, 
+	const SeCompatibleDrawableFont<uint8_t>*font, 
+	SSIZE_T drawOffsetX, SSIZE_T drawOffsetY,
+	uint8_t boundingWidth, uint8_t boundingHeight,
+	uint8_t borderThickness, uint8_t borderOpacity
+) {
 	if (!borderThickness)
 		borderOpacity = 0;
 
@@ -178,7 +184,7 @@ Sqex::FontCsv::FontCsvCreator::RenderTarget::AllocatedSpace Sqex::FontCsv::FontC
 		if (m_currentY < actualGlyphGap)
 			m_currentY = actualGlyphGap;
 
-		space = it->second = AllocatedSpace{
+		it->second = space = AllocatedSpace{
 			.drawOffsetX = drawOffsetX,
 			.drawOffsetY = drawOffsetY,
 			.Index = static_cast<uint16_t>(m_mipmaps.size() - 1),
@@ -309,8 +315,8 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::FontCsvCr
 							leftExtension, 0,
 							boundingWidth, boundingHeight, BorderThickness, BorderOpacity);
 
-						const auto resultingX = static_cast<uint16_t>(space.X - space.drawOffsetX + leftExtension);
-						const auto resultingY = static_cast<uint16_t>(space.Y - space.drawOffsetY);
+						const auto resultingX = static_cast<uint16_t>(space.X + space.drawOffsetX - leftExtension);
+						const auto resultingY = static_cast<uint16_t>(space.Y + space.drawOffsetY);
 						result->AddFontEntry(plan.Character, space.Index, resultingX, resultingY, boundingWidth, std::min(space.BoundingHeight, boundingHeight), nextOffsetX, currentOffsetY);
 					} catch (const std::exception& e) {
 						OnError(e);

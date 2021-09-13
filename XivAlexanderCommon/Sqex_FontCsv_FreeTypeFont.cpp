@@ -131,7 +131,7 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::FreeTypeFont::Measure(SSIZE_T x, 
 		face->size->metrics.ascender / 64 - face->glyph->bitmap_top,
 		static_cast<SSIZE_T>(0) + face->glyph->bitmap_left + face->glyph->bitmap.width,
 		static_cast<SSIZE_T>(0) + face->size->metrics.ascender / 64 - face->glyph->bitmap_top + face->glyph->bitmap.rows,
-		face->glyph->advance.x >> 6,
+		(face->glyph->advance.x + 63) / 64,
 	}.Translate(x, y);
 }
 
