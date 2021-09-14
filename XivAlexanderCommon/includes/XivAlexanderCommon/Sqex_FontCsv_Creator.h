@@ -50,6 +50,7 @@ namespace Sqex::FontCsv {
 		bool AlignToBaseline = true;
 		uint8_t BorderThickness = 0;
 		uint8_t BorderOpacity = 0;
+		bool CompactLayout = false;
 
 		FontCsvCreator(const Win32::Semaphore& semaphore = nullptr);
 		~FontCsvCreator();
@@ -82,8 +83,6 @@ namespace Sqex::FontCsv {
 
 		protected:
 			struct AllocatedSpace {
-				SSIZE_T DrawOffsetX;
-				SSIZE_T DrawOffsetY;
 				uint16_t Index;
 				uint16_t X;
 				uint16_t Y;

@@ -10,7 +10,7 @@
 
 inline void DebugThrowError(const std::exception& e) {
 #ifdef _DEBUG
-	if (Win32::MessageBoxF(nullptr, MB_ICONERROR | MB_YESNO, L"Sqex::FontCsv::FontCsvCreator::Compile::Work",
+	if (Utils::Win32::MessageBoxF(nullptr, MB_ICONERROR | MB_YESNO, L"Sqex::FontCsv::FontCsvCreator::Compile::Work",
 		L"Error: {}\n\nDebug?", e.what()) == IDYES)
 		throw;
 #endif
@@ -192,7 +192,7 @@ struct Sqex::FontCsv::FontCsvCreator::RenderTarget::Implementation {
 	uint16_t m_currentLineHeight;
 
 	std::vector<std::shared_ptr<Texture::MemoryBackedMipmap>> m_mipmaps;
-	std::map<std::tuple<char32_t, const SeCompatibleDrawableFont<uint8_t>*, uint8_t, uint8_t>, AllocatedSpace> m_drawnGlyphs;
+	std::map<std::tuple<char32_t, const SeCompatibleDrawableFont<uint8_t>*, uint8_t, uint8_t, uint8_t, uint8_t>, AllocatedSpace> m_drawnGlyphs;
 
 	struct WorkItem {
 		Texture::MemoryBackedMipmap* mipmap;
@@ -220,7 +220,7 @@ struct Sqex::FontCsv::FontCsvCreator::RenderTarget::Implementation {
 	std::pair<AllocatedSpace, bool> AllocateSpace(char32_t c, const SeCompatibleDrawableFont<uint8_t>* font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint8_t boundingWidth, uint8_t boundingHeight, uint8_t borderThickness, uint8_t borderOpacity) {
 		const auto actualGlyphGap = static_cast<uint16_t>(m_glyphGap + borderThickness);
 
-		const auto [it, isNewEntry] = m_drawnGlyphs.emplace(std::make_tuple(c, font, borderThickness, borderOpacity), AllocatedSpace{});
+		const auto [it, isNewEntry] = m_drawnGlyphs.emplace(std::make_tuple(c, font, borderThickness, borderOpacity, boundingWidth, boundingHeight), AllocatedSpace{});
 		if (isNewEntry) {
 			auto newTargetRequired = false;
 			if (m_mipmaps.empty())
@@ -250,8 +250,6 @@ struct Sqex::FontCsv::FontCsvCreator::RenderTarget::Implementation {
 				m_currentY = actualGlyphGap;
 
 			it->second = AllocatedSpace{
-				.DrawOffsetX = drawOffsetX,
-				.DrawOffsetY = drawOffsetY,
 				.Index = static_cast<uint16_t>(m_mipmaps.size() - 1),
 				.X = m_currentX,
 				.Y = m_currentY,
@@ -424,8 +422,8 @@ void Sqex::FontCsv::FontCsvCreator::Step1_CalcBbox() {
 		.globalOffsetX = std::max<SSIZE_T>(MinGlobalOffsetX,
 			std::min<SSIZE_T>(MaxGlobalOffsetX,
 				std::max<SSIZE_T>(0, -maxBbox.left))),
-		.globalOffsetY = GlobalOffsetYModifier - borderThickness + std::min<SSIZE_T>(maxBbox.top, 0),
-		.boundingHeight = static_cast<uint8_t>(maxBbox.bottom + std::max<SSIZE_T>(-maxBbox.top, 0) + static_cast<SSIZE_T>(2) * borderThickness),
+		.globalOffsetY = std::min<SSIZE_T>(maxBbox.top, 0),
+		.boundingHeight = static_cast<uint8_t>(maxBbox.bottom + std::max<SSIZE_T>(-maxBbox.top, 0)),
 	};
 }
 
@@ -459,18 +457,29 @@ void Sqex::FontCsv::FontCsvCreator::Step2_Layout(RenderTarget & renderTarget) {
 			const auto leftExtension = std::max<SSIZE_T>(-bbox.left, m_pImpl->Step0Result.globalOffsetX);
 			const auto boundingWidth = static_cast<uint8_t>(leftExtension + bbox.right + borderThickness + borderThickness);
 			const auto nextOffsetX = static_cast<int8_t>(bbox.advanceX + leftExtension - boundingWidth - m_pImpl->Step0Result.globalOffsetX);
-			const auto currentOffsetY = static_cast<int8_t>(
+			auto currentOffsetY = static_cast<int8_t>(
 				(AlignToBaseline ? m_pImpl->Result->Ascent() - plan.Font->Ascent() : (0LL + m_pImpl->Result->LineHeight() - plan.Font->LineHeight()) / 2)
 				+ m_pImpl->Step0Result.globalOffsetY
+				+ GlobalOffsetYModifier
+				- borderThickness
 				);
 
-			const auto space = renderTarget.QueueDraw(plan.Character(), plan.Font,
-				leftExtension, 0,
-				boundingWidth, m_pImpl->Step0Result.boundingHeight, borderThickness, borderOpacity);
+			auto boundingHeight = m_pImpl->Step0Result.boundingHeight;
+			auto drawOffsetY = 0;
 
-			const auto resultingX = static_cast<uint16_t>(space.X + space.DrawOffsetX - leftExtension);
-			const auto resultingY = static_cast<uint16_t>(space.Y + space.DrawOffsetY);
-			m_pImpl->Result->AddFontEntry(plan.Character(), space.Index, resultingX, resultingY, boundingWidth, std::min(space.BoundingHeight, m_pImpl->Step0Result.boundingHeight), nextOffsetX, currentOffsetY);
+			if (CompactLayout) {
+				drawOffsetY = -static_cast<int8_t>(bbox.top);
+				currentOffsetY += static_cast<int8_t>(bbox.top - m_pImpl->Step0Result.globalOffsetY);
+				boundingHeight = static_cast<uint8_t>(bbox.Height());
+			}
+
+			boundingHeight += static_cast<SSIZE_T>(2) * borderThickness;
+			const auto space = renderTarget.QueueDraw(plan.Character(), plan.Font,
+				leftExtension, drawOffsetY,
+				boundingWidth, boundingHeight, borderThickness, borderOpacity);
+			
+			boundingHeight = std::min(space.BoundingHeight, boundingHeight);
+			m_pImpl->Result->AddFontEntry(plan.Character(), space.Index, space.X, space.Y, boundingWidth, boundingHeight, nextOffsetX, currentOffsetY);
 		}
 	} catch (const std::exception& e) {
 		OnError(e);
@@ -727,6 +736,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 						creator.AlignToBaseline = plan.alignToBaseline;
 						creator.BorderThickness = plan.borderThickness;
 						creator.BorderOpacity = plan.borderOpacity;
+						creator.CompactLayout = plan.compactLayout == CreateConfig::SingleFontTarget::CompactLayout_NoOverride ? Config.compactLayout : (plan.compactLayout == CreateConfig::SingleFontTarget::CompactLayout_Override_Enable);
 
 						for (const auto& source : plan.sources) {
 							const auto& sourceFont = GetSourceFont(source.name);

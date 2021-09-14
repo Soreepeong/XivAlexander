@@ -21,6 +21,11 @@
       "default": 1,
       "minimum": 0
     },
+    "compactLayout": {
+      "description": "Let each glyph have different height to save space.",
+      "type": "boolean",
+      "default": false
+    },
     "textureWidth": {
       "type": "integer",
       "default": 1024
@@ -246,6 +251,11 @@
                 "alignToBaseline": {
                   "type": "boolean",
                   "default": true
+                },
+                "compactLayout": {
+                  "description": "Let each glyph have different height to save space. If set, overrides global config.",
+                  "type": ["boolean", "null"],
+                  "default": null
                 },
                 "sources": {
                   "type": "array",

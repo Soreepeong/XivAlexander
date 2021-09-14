@@ -82,25 +82,30 @@ namespace Sqex::FontCsv::CreateConfig {
 	void from_json(const nlohmann::json& j, SingleTargetComponent& o);
 
 	struct SingleFontTarget {
+		static constexpr int CompactLayout_NoOverride = 0;
+		static constexpr int CompactLayout_Override_Enable = 1;
+		static constexpr int CompactLayout_Override_Disable = 2;
+
 		double height;
 
-		uint8_t ascent;
 		std::string ascentFrom;
-		bool autoAscent;
-
-		uint8_t lineHeight;
 		std::string lineHeightFrom;
+
+		uint8_t ascent;
+		bool autoAscent;
+		uint8_t lineHeight;
 		bool autoLineHeight;
 
 		uint8_t maxGlobalOffsetX;
 		uint8_t minGlobalOffsetX;
 		uint8_t globalOffsetY;
+		int compactLayout;
 
 		uint8_t borderThickness;
 		uint8_t borderOpacity;
+		bool alignToBaseline;
 
 		std::u32string charactersToKernAcrossFonts;
-		bool alignToBaseline;
 		std::vector<SingleTargetComponent> sources;
 	};
 	void to_json(nlohmann::json& j, const SingleFontTarget& o);
@@ -114,6 +119,7 @@ namespace Sqex::FontCsv::CreateConfig {
 
 	struct FontCreateConfig {
 		uint16_t glyphGap;
+		bool compactLayout;
 		uint16_t textureWidth;
 		uint16_t textureHeight;
 		Texture::CompressionType textureType;

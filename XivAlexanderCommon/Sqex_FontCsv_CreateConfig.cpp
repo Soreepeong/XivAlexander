@@ -298,12 +298,21 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const SingleFontTar
 		{"maxGlobalOffsetX", o.maxGlobalOffsetX},
 		{"minGlobalOffsetX", o.minGlobalOffsetX},
 		{"globalOffsetY", o.globalOffsetY},
+		{"compactLayout", nullptr},
 		{"charactersToKernAcrossFonts", o.charactersToKernAcrossFonts},
 		{"alignToBaseline", o.alignToBaseline},
 		{"borderThickness" ,o.borderThickness},
 		{"borderOpacity" ,o.borderOpacity},
 		{"sources", o.sources},
 		});
+	switch (o.compactLayout) {
+		case SingleFontTarget::CompactLayout_Override_Enable:
+			j["compactLayout"] = true;
+			break;
+		case SingleFontTarget::CompactLayout_Override_Disable:
+			j["compactLayout"] = false;
+			break;
+	}
 }
 
 void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, SingleFontTarget& o) {
@@ -336,6 +345,11 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, SingleFontT
 	o.borderThickness = j.value<uint8_t>("borderThickness", 0);
 	o.borderOpacity = j.value<uint8_t>("borderOpacity", 0);
 	o.sources = j.at("sources").get<decltype(o.sources)>();
+
+	if (const auto it = j.find("compactLayout"); it != j.end())
+		o.compactLayout = it->is_null() ? SingleFontTarget::CompactLayout_NoOverride : (it->get<bool>() ? SingleFontTarget::CompactLayout_Override_Enable : SingleFontTarget::CompactLayout_Override_Disable);
+	else
+		o.compactLayout = SingleFontTarget::CompactLayout_NoOverride;
 }
 
 void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const SingleTextureTarget& o) {
@@ -349,6 +363,7 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, SingleTextu
 void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const FontCreateConfig& o) {
 	j = nlohmann::json::object({
 		{"glyphGap", o.glyphGap},
+		{"compactLayout", o.compactLayout},
 		{"textureWidth", o.textureWidth},
 		{"textureHeight", o.textureHeight},
 		{"textureType", o.textureType},
@@ -371,6 +386,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const FontCreateCon
 
 void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, FontCreateConfig& o) {
 	o.glyphGap = j.value<uint16_t>("glyphGap", 1);
+	o.compactLayout = j.value("compactLayout", false);
 	o.textureWidth = j.value<uint16_t>("textureWidth", 1024);
 	o.textureHeight = j.value<uint16_t>("textureHeight", 1024);
 	o.textureType = j.value("textureType", Texture::CompressionType::RGBA4444);
