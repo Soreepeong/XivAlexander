@@ -23,6 +23,11 @@
       "texturePath": "common/font/font{}.tex",
       "textureCount": 7
     },
+    "game:AXIS_36": {
+      "fdtPath": "common/font/AXIS_36.fdt",
+      "texturePath": "common/font/font{}.tex",
+      "textureCount": 7
+    },
     "game:KrnAXIS_120": {
       "fdtPath": "common/font/KrnAXIS_120.fdt",
       "texturePath": "common/font/font_krn_{}.tex",
@@ -37,11 +42,6 @@
       "fdtPath": "common/font/KrnAXIS_180.fdt",
       "texturePath": "common/font/font_krn_{}.tex",
       "textureCount": 3
-    },
-    "game:AXIS_36": {
-      "fdtPath": "common/font/AXIS_36.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
     },
     "game:Jupiter_16": {
       "fdtPath": "common/font/Jupiter_16.fdt",

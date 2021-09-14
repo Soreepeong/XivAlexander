@@ -259,6 +259,16 @@ namespace Sqex::FontCsv {
 				const auto srcWidth = static_cast<SSIZE_T>(GetStream().TextureWidth());
 				const auto srcHeight = static_cast<SSIZE_T>(GetStream().TextureHeight());
 
+				if (entry.TextureIndex / SrcPixFmt::ChannelCount >= m_mipmaps.size()) {
+					throw std::invalid_argument(std::format(
+						"Character {} requires font texture #{} channel {}, but only {} textures given",
+						ToU8({ entry.Char() }),
+						entry.TextureIndex / SrcPixFmt::ChannelCount + 1,
+						entry.TextureIndex % SrcPixFmt::ChannelCount,
+						m_mipmaps.size()
+					));
+				}
+
 				auto destBuf = to->View<DestPixFmt>();
 				auto& srcBuf = m_mipmapBuffers[entry.TextureIndex / SrcPixFmt::ChannelCount];
 				if (srcBuf.empty()) {

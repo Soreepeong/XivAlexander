@@ -329,7 +329,9 @@ std::shared_ptr<Sqex::FontCsv::ModifiableFontCsvStream> Sqex::FontCsv::FontCsvCr
 					} catch (const std::exception& e) {
 						OnError(e);
 #ifdef _DEBUG
-						throw;
+						if (Win32::MessageBoxF(nullptr, MB_ICONERROR | MB_YESNO, L"Sqex::FontCsv::FontCsvCreator::Compile::Work",
+							L"Error: {}\n\nDebug?", e.what()) == IDYES)
+							throw;
 #endif
 					}
 				});
