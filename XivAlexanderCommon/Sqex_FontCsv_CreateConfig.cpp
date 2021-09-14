@@ -7,7 +7,6 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const GameSource& o
 	j = nlohmann::json::object({
 		{"fdtPath", o.fdtPath},
 		{"texturePath", o.texturePath},
-		{"textureCount" ,o.textureCount},
 		});
 	if (!o.indexFile.empty())
 		j.emplace("indexFile", o.indexFile);
@@ -22,9 +21,6 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, GameSource&
 
 	o.fdtPath = j.at("fdtPath").get<std::filesystem::path>();
 	o.texturePath = j.at("texturePath").get<std::filesystem::path>();
-	o.textureCount = j.at("textureCount").get<size_t>();
-	if (o.textureCount < 1)
-		throw std::invalid_argument("textureCount must be >0");
 }
 
 static int ParseFontWeight(const nlohmann::json& j) {

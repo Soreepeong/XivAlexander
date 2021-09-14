@@ -440,13 +440,20 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				if (textures == GameTextures.end())
 					textures = GameTextures.emplace(textureKey, std::vector<std::shared_ptr<const Texture::MipmapStream>>()).first;
 
-				for (size_t i = textures->second.size(); i < source.textureCount; ++i) {
-					auto mipmap = Texture::MipmapStream::FromTexture(std::make_shared<Sqpack::EntryRawStream>(reader->second->GetEntryProvider(std::format(source.texturePath.string(), i + 1))), 0);
+				for (size_t i = textures->second.size(); ; ++i) {
+					try {
+						const auto texturePath = std::format(source.texturePath.string(), i + 1);
+						auto provider = reader->second->GetEntryProvider(texturePath);
+						auto rawTextureStream = std::make_shared<Sqpack::EntryRawStream>(std::move(provider));
+						auto mipmap = Texture::MipmapStream::FromTexture(std::move(rawTextureStream), 0);
 
-					// preload sqex entry layout so that we can process stuff multithreaded later
-					void(mipmap->ReadStreamIntoVector<char>(0));
+						// preload sqex entry layout so that we can process stuff multithreaded later
+						void(mipmap->ReadStreamIntoVector<char>(0));
 
-					textures->second.emplace_back(std::move(mipmap));
+						textures->second.emplace_back(std::move(mipmap));
+					} catch (const Sqpack::Reader::EntryNotFoundError&){
+						break;
+					}
 				}
 
 				newFont = std::make_shared<SeDrawableFont<Texture::RGBA4444, uint8_t>>(

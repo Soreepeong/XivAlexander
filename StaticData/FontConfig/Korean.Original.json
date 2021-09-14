@@ -5,138 +5,111 @@
   "sources": {
     "game:AXIS_96": {
       "fdtPath": "common/font/AXIS_96.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:AXIS_12": {
       "fdtPath": "common/font/AXIS_12.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:AXIS_14": {
       "fdtPath": "common/font/AXIS_14.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:AXIS_18": {
       "fdtPath": "common/font/AXIS_18.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:AXIS_36": {
       "fdtPath": "common/font/AXIS_36.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:KrnAXIS_120": {
       "fdtPath": "common/font/KrnAXIS_120.fdt",
-      "texturePath": "common/font/font_krn_{}.tex",
-      "textureCount": 9
+      "texturePath": "common/font/font_krn_{}.tex"
     },
     "game:KrnAXIS_140": {
       "fdtPath": "common/font/KrnAXIS_140.fdt",
-      "texturePath": "common/font/font_krn_{}.tex",
-      "textureCount": 9
+      "texturePath": "common/font/font_krn_{}.tex"
     },
     "game:KrnAXIS_180": {
       "fdtPath": "common/font/KrnAXIS_180.fdt",
-      "texturePath": "common/font/font_krn_{}.tex",
-      "textureCount": 9
+      "texturePath": "common/font/font_krn_{}.tex"
     },
     "game:KrnAXIS_360": {
       "fdtPath": "common/font/KrnAXIS_360.fdt",
-      "texturePath": "common/font/font_krn_{}.tex",
-      "textureCount": 9
+      "texturePath": "common/font/font_krn_{}.tex"
     },
     "game:Jupiter_16": {
       "fdtPath": "common/font/Jupiter_16.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:Jupiter_20": {
       "fdtPath": "common/font/Jupiter_20.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:Jupiter_23": {
       "fdtPath": "common/font/Jupiter_23.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:Jupiter_45": {
       "fdtPath": "common/font/Jupiter_45.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:Jupiter_46": {
       "fdtPath": "common/font/Jupiter_46.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:Jupiter_90": {
       "fdtPath": "common/font/Jupiter_90.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:Meidinger_16": {
       "fdtPath": "common/font/Meidinger_16.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:Meidinger_20": {
       "fdtPath": "common/font/Meidinger_20.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:Meidinger_40": {
       "fdtPath": "common/font/Meidinger_40.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:MiedingerMid_10": {
       "fdtPath": "common/font/MiedingerMid_10.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:MiedingerMid_12": {
       "fdtPath": "common/font/MiedingerMid_12.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:MiedingerMid_14": {
       "fdtPath": "common/font/MiedingerMid_14.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:MiedingerMid_18": {
       "fdtPath": "common/font/MiedingerMid_18.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:MiedingerMid_36": {
       "fdtPath": "common/font/MiedingerMid_36.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:TrumpGothic_184": {
       "fdtPath": "common/font/TrumpGothic_184.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:TrumpGothic_23": {
       "fdtPath": "common/font/TrumpGothic_23.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:TrumpGothic_34": {
       "fdtPath": "common/font/TrumpGothic_34.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     },
     "game:TrumpGothic_68": {
       "fdtPath": "common/font/TrumpGothic_68.fdt",
-      "texturePath": "common/font/font{}.tex",
-      "textureCount": 7
+      "texturePath": "common/font/font{}.tex"
     }
   },
   "ranges": {},

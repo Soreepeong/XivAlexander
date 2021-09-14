@@ -6,6 +6,11 @@
 
 namespace Sqex::Sqpack {
 	struct Reader {
+		class EntryNotFoundError : public std::invalid_argument {
+		public:
+			using std::invalid_argument::invalid_argument;
+		};
+
 		struct SqDataEntry {
 			SqIndex::FileSegmentEntry Index;
 			SqIndex::FileSegmentEntry2 Index2;

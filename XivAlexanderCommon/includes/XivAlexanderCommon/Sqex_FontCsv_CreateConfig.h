@@ -13,7 +13,6 @@ namespace Sqex::FontCsv::CreateConfig {
 		std::filesystem::path indexFile;
 		std::filesystem::path fdtPath;
 		std::filesystem::path texturePath;
-		size_t textureCount;
 	};
 	void to_json(nlohmann::json& j, const GameSource& o);
 	void from_json(const nlohmann::json& j, GameSource& o);

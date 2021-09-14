@@ -281,7 +281,7 @@ std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvi
 		}
 	}
 
-	throw std::invalid_argument(std::format("Entry {} not found", pathSpec));
+	throw EntryNotFoundError(std::format("Entry {} not found", pathSpec));
 }
 
 std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvider(const SqDataEntry& entry, Win32::File handle) const {
