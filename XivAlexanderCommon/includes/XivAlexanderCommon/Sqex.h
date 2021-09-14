@@ -133,12 +133,12 @@ namespace Sqex {
 	class FileRandomAccessStream : public RandomAccessStream {
 		const std::filesystem::path m_path;
 		mutable std::shared_ptr<std::mutex> m_initializationMutex;
-		mutable Utils::Win32::File m_file;
+		mutable Win32::File m_file;
 		const uint64_t m_offset;
 		const uint64_t m_size;
 
 	public:
-		FileRandomAccessStream(Utils::Win32::File file, uint64_t offset = 0, uint64_t length = UINT64_MAX);
+		FileRandomAccessStream(Win32::File file, uint64_t offset = 0, uint64_t length = UINT64_MAX);
 		FileRandomAccessStream(std::filesystem::path path, uint64_t offset = 0, uint64_t length = UINT64_MAX, bool openImmediately = true);
 		~FileRandomAccessStream() override;
 

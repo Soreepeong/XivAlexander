@@ -215,7 +215,7 @@ void Sqex::Sqpack::MemoryBinaryEntryProvider::Initialize(const RandomAccessStrea
 		uint8_t buf[BlockDataSize];
 		const auto len = std::min<uint32_t>(BlockDataSize, rawSize - i);
 		stream.ReadStream(i, buf, len);
-		auto compressed = Utils::ZlibCompress(buf, len, Z_BEST_COMPRESSION, Z_DEFLATED, -15);
+		auto compressed = ZlibCompress(buf, len, Z_BEST_COMPRESSION, Z_DEFLATED, -15);
 
 		SqData::BlockHeader header{
 			.HeaderSize = sizeof SqData::BlockHeader,

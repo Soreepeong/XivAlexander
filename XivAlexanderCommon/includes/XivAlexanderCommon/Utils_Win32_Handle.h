@@ -30,6 +30,7 @@ namespace Utils::Win32 {
 			result.m_bOwnership = true;
 			return result;
 		}
+
 		template<typename T>
 		static T DuplicateFrom(HANDLE hSourceHandle, bool bInheritable = false) {
 			return DuplicateFrom<T>(GetCurrentProcess(), hSourceHandle, bInheritable);
@@ -90,14 +91,14 @@ namespace Utils::Win32 {
 
 		static Semaphore Create(
 			LPSECURITY_ATTRIBUTES lpSemaphoreAttributes,
-			LONG                  lInitialCount,
-			LONG                  lMaximumCount,
-			LPCWSTR               lpName = nullptr,
-			DWORD                 dwFlags = 0,
-			DWORD                 dwDesiredAccess = SEMAPHORE_ALL_ACCESS
+			LONG lInitialCount,
+			LONG lMaximumCount,
+			LPCWSTR lpName = nullptr,
+			DWORD dwFlags = 0,
+			DWORD dwDesiredAccess = SEMAPHORE_ALL_ACCESS
 		);
 
-		LONG Release(LONG count) const;
+		LONG Release(LONG count) const;  // NOLINT(modernize-use-nodiscard)
 	};
 
 	class File : public Handle {
@@ -160,5 +161,47 @@ namespace Utils::Win32 {
 		[[nodiscard]] uint64_t GetLength() const;
 
 		[[nodiscard]] std::filesystem::path ResolveName(bool bOpenedPath = false, bool bNtPath = false) const;
+	};
+
+	class FileMapping : public Handle {
+	public:
+		using Handle::Handle;
+
+		static FileMapping Create(const File& file, LPSECURITY_ATTRIBUTES lpFileMappingAttributes = nullptr, DWORD flProtect = PAGE_READONLY, uint64_t maximumSize = 0, LPCWSTR lpName = nullptr) {
+			return FileMapping(CreateFileMappingW(file, lpFileMappingAttributes, flProtect, static_cast<DWORD>(maximumSize >> 32), static_cast<DWORD>(maximumSize), lpName), Null, "CreateFileMappingW");
+		}
+
+		class View : public Closeable<void*, UnmapViewOfFile> {
+		public:
+			using Closeable<void*, UnmapViewOfFile>::Closeable;
+			View(const Closeable<void*, UnmapViewOfFile>&) = delete;
+
+			using Closeable<void*, UnmapViewOfFile>::operator=;
+			View& operator=(const Closeable<void*, UnmapViewOfFile>&) override = delete;
+
+			static View Create(const FileMapping& mapping, DWORD dwDesiredAccess = FILE_MAP_READ, uint64_t fileOffset = 0, SIZE_T dwNumberOfBytesToMap = 0) {	
+				return View(MapViewOfFile(mapping, dwDesiredAccess, static_cast<DWORD>(fileOffset >> 32), static_cast<DWORD>(fileOffset), dwNumberOfBytesToMap), nullptr, "MapViewOfFile");
+			}
+
+			[[nodiscard]] size_t Size() const {
+				MEMORY_BASIC_INFORMATION mbi{};
+				if (const auto res = VirtualQuery(m_object, &mbi, sizeof mbi);
+					!res)
+					throw Error("VirtualQuery");
+				else if (res != sizeof mbi)
+					throw std::runtime_error("VirtualQuery returned not enough bytes");
+				return mbi.RegionSize;
+			}
+			
+			template<typename T>
+			[[nodiscard]] std::span<T> AsSpan(size_t truncateAt = SIZE_MAX) {
+				return {static_cast<T*>(m_object), std::min(truncateAt, Size() / sizeof T)};
+			}
+
+			template<typename T>
+			[[nodiscard]] std::span<const T> AsSpan(size_t truncateAt = SIZE_MAX) const {
+				return {static_cast<const T*>(m_object), std::min(truncateAt, Size() / sizeof T)};
+			}
+		};
 	};
 }

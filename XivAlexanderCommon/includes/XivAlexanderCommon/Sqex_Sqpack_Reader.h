@@ -27,7 +27,7 @@ namespace Sqex::Sqpack {
 
 		private:
 			friend struct Reader;
-			SqIndexType(const Utils::Win32::File& hFile, bool strictVerify);
+			SqIndexType(const Win32::File& hFile, bool strictVerify);
 		};
 
 		struct SqIndex2Type {
@@ -40,17 +40,17 @@ namespace Sqex::Sqpack {
 
 		private:
 			friend struct Reader;
-			SqIndex2Type(const Utils::Win32::File& hFile, bool strictVerify);
+			SqIndex2Type(const Win32::File& hFile, bool strictVerify);
 		};
 
 		struct SqDataType {
 			SqpackHeader Header{};
 			SqData::Header DataHeader{};
-			Utils::Win32::File FileOnDisk;
+			Win32::File FileOnDisk;
 
 		private:
 			friend struct Reader;
-			SqDataType(Utils::Win32::File hFile, uint32_t datIndex, std::vector<SqDataEntry>& dataEntries, bool strictVerify);
+			SqDataType(Win32::File hFile, uint32_t datIndex, std::vector<SqDataEntry>& dataEntries, bool strictVerify);
 		};
 
 		SqIndexType Index;
@@ -61,7 +61,7 @@ namespace Sqex::Sqpack {
 
 		Reader(const std::filesystem::path& indexFile, bool strictVerify = false, bool sort = false);
 
-		[[nodiscard]] std::shared_ptr<EntryProvider> GetEntryProvider(const EntryPathSpec& pathSpec, Utils::Win32::File handle = {}) const;
-		[[nodiscard]] std::shared_ptr<EntryProvider> GetEntryProvider(const SqDataEntry& entry, Utils::Win32::File handle = {}) const;
+		[[nodiscard]] std::shared_ptr<EntryProvider> GetEntryProvider(const EntryPathSpec& pathSpec, Win32::File handle = {}) const;
+		[[nodiscard]] std::shared_ptr<EntryProvider> GetEntryProvider(const SqDataEntry& entry, Win32::File handle = {}) const;
 	};
 }

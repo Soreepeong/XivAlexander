@@ -12,11 +12,10 @@ namespace Sqex::FontCsv {
 		~GdiFont() override;
 
 		[[nodiscard]] bool HasCharacter(char32_t) const override;
-		[[nodiscard]] SSIZE_T GetCharacterWidth(char32_t c) const override;
 		[[nodiscard]] float Size() const override;
 		[[nodiscard]] const std::vector<char32_t>& GetAllCharacters() const override;
 		[[nodiscard]] uint32_t Ascent() const override;
-		[[nodiscard]] uint32_t Descent() const override;
+		[[nodiscard]] uint32_t LineHeight() const override;
 		[[nodiscard]] const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& GetKerningTable() const override;
 
 		using SeCompatibleFont::Measure;
@@ -25,14 +24,23 @@ namespace Sqex::FontCsv {
 	protected:
 		class DeviceContextWrapper {
 			const HDC m_hdc;
-			const Utils::CallOnDestruction m_hdcRelease;
+			const CallOnDestruction m_hdcRelease;
 
 			const HFONT m_hFont;
-			const Utils::CallOnDestruction m_fontRelease;
+			const CallOnDestruction m_fontRelease;
 			const HFONT m_hPrevFont;
-			const Utils::CallOnDestruction m_prevFontRevert;
+			const CallOnDestruction m_prevFontRevert;
+			
+			HBITMAP m_hBitmap = nullptr;
+			CallOnDestruction m_bitmapRelease;
+			HBITMAP m_hPrevBitmap = nullptr;
+			CallOnDestruction m_prevBitmapRevert;
+			struct BitmapInfoWithColorSpecContainer {
+				BITMAPINFO bmi;
+				DWORD dummy[2];
+			} m_bmi{};
 
-			std::vector<uint8_t> m_readBuffer;
+			std::vector<Texture::RGBA8888> m_readBuffer;
 
 		public:
 			const TEXTMETRICW Metrics;
@@ -40,10 +48,15 @@ namespace Sqex::FontCsv {
 			~DeviceContextWrapper();
 
 			[[nodiscard]] HDC GetDC() const { return m_hdc; }
-			[[nodiscard]] SSIZE_T GetCharacterWidth(char32_t c) const;
 			[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const;
 
-			std::pair<const std::vector<uint8_t>*, GlyphMeasurement> Draw(SSIZE_T x, SSIZE_T y, char32_t c);
+			struct DrawResult {
+				const std::vector<Texture::RGBA8888>* Buffer = nullptr;
+				GlyphMeasurement Measurement;
+				SSIZE_T BufferWidth = 0;
+				SSIZE_T BufferHeight = 0;
+			};
+			DrawResult Draw(SSIZE_T x, SSIZE_T y, char32_t c);
 		};
 
 		class DeviceContextWrapperContext {
@@ -91,8 +104,8 @@ namespace Sqex::FontCsv {
 	template<typename DestPixFmt = Texture::RGBA8888, typename OpacityType = uint8_t>
 	class GdiDrawingFont : public GdiFont, public SeCompatibleDrawableFont<DestPixFmt, OpacityType> {
 
-		static uint32_t GetEffectiveOpacity(const uint8_t& src) {
-			return src * 255 / 65;
+		static uint32_t GetEffectiveOpacity(const Texture::RGBA8888& src) {
+			return src.R;
 		}
 
 		DeviceContextWrapperContext buffer;
@@ -106,29 +119,21 @@ namespace Sqex::FontCsv {
 				return { true };
 
 			const auto buffer = AllocateDeviceContext();
-			const auto [pSrcBuf, bbox] = buffer->Draw(x, y, c);
+			const auto [pSrcBuf, bbox, srcWidth, srcHeight] = buffer->Draw(x, y, c);
 			const auto& srcBuf = *pSrcBuf;
 			if (srcBuf.empty())
 				return { true };
 
 			const auto destWidth = static_cast<SSIZE_T>(to->Width());
 			const auto destHeight = static_cast<SSIZE_T>(to->Height());
-			const auto srcWidth = Sqpack::Align<SSIZE_T>(bbox.Width(), 4).Alloc;
-			const auto srcHeight = bbox.Height();
 
-			GlyphMeasurement src = { false, 0, 0, srcWidth, srcHeight };
-			auto dest = bbox; /* GlyphMeasurement{
-				false,
-				x,
-				bbox.top,
-				x + bbox.right - bbox.left,
-				bbox.bottom,
-			};*/
+			GlyphMeasurement src = { false, 0, 0, bbox.Width(), bbox.Height() };
+			auto dest = bbox;
 			src.AdjustToIntersection(dest, srcWidth, srcHeight, destWidth, destHeight);
 
 			if (!src.empty && !dest.empty) {
 				auto destBuf = to->View<DestPixFmt>();
-				RgbBitmapCopy<uint8_t, GetEffectiveOpacity, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity);
+				RgbBitmapCopy<Texture::RGBA8888, GetEffectiveOpacity, DestPixFmt, OpacityType, -1>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity);
 			}
 			return bbox;
 		}

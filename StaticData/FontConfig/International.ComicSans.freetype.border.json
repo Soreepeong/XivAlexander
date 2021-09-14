@@ -196,7 +196,7 @@
       "AXIS_96.fdt": {
         "height": 9.6,
         "ascent": "game:AXIS_96",
-        "descent": "game:AXIS_96",
+        "lineHeight": "game:AXIS_96",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -213,7 +213,7 @@
       "AXIS_12.fdt": {
         "height": 12,
         "ascent": "game:AXIS_12",
-        "descent": "game:AXIS_12",
+        "lineHeight": "game:AXIS_12",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -230,7 +230,7 @@
       "AXIS_14.fdt": {
         "height": 14,
         "ascent": "game:AXIS_14",
-        "descent": "game:AXIS_14",
+        "lineHeight": "game:AXIS_14",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -247,7 +247,7 @@
       "AXIS_18.fdt": {
         "height": 18,
         "ascent": "game:AXIS_18",
-        "descent": "game:AXIS_18",
+        "lineHeight": "game:AXIS_18",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -264,7 +264,7 @@
       "AXIS_36.fdt": {
         "height": 36,
         "ascent": "game:AXIS_36",
-        "descent": "game:AXIS_36",
+        "lineHeight": "game:AXIS_36",
         "borderThickness": 6,
         "borderOpacity": 17,
         "sources": [
@@ -281,7 +281,7 @@
       "Jupiter_16.fdt": {
         "height": 16,
         "ascent": "game:Jupiter_16",
-        "descent": "game:Jupiter_16",
+        "lineHeight": "game:Jupiter_16",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -298,7 +298,7 @@
       "Jupiter_20.fdt": {
         "height": 20,
         "ascent": "game:Jupiter_20",
-        "descent": "game:Jupiter_20",
+        "lineHeight": "game:Jupiter_20",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -315,7 +315,7 @@
       "Jupiter_23.fdt": {
         "height": 23,
         "ascent": "game:Jupiter_23",
-        "descent": "game:Jupiter_23",
+        "lineHeight": "game:Jupiter_23",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -332,7 +332,7 @@
       "Jupiter_45.fdt": {
         "height": 45,
         "ascent": "game:Jupiter_45",
-        "descent": "game:Jupiter_45",
+        "lineHeight": "game:Jupiter_45",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -349,7 +349,7 @@
       "Jupiter_46.fdt": {
         "height": 46,
         "ascent": "game:Jupiter_46",
-        "descent": "game:Jupiter_46",
+        "lineHeight": "game:Jupiter_46",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -366,7 +366,7 @@
       "Jupiter_90.fdt": {
         "height": 90,
         "ascent": "game:Jupiter_90",
-        "descent": "game:Jupiter_90",
+        "lineHeight": "game:Jupiter_90",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -383,7 +383,7 @@
       "Meidinger_16.fdt": {
         "height": 16,
         "ascent": "game:Meidinger_16",
-        "descent": "game:Meidinger_16",
+        "lineHeight": "game:Meidinger_16",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -400,7 +400,7 @@
       "Meidinger_20.fdt": {
         "height": 20,
         "ascent": "game:Meidinger_20",
-        "descent": "game:Meidinger_20",
+        "lineHeight": "game:Meidinger_20",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -417,7 +417,7 @@
       "Meidinger_40.fdt": {
         "height": 40,
         "ascent": "game:Meidinger_40",
-        "descent": "game:Meidinger_40",
+        "lineHeight": "game:Meidinger_40",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -434,7 +434,7 @@
       "MiedingerMid_10.fdt": {
         "height": 10,
         "ascent": "game:MiedingerMid_10",
-        "descent": "game:MiedingerMid_10",
+        "lineHeight": "game:MiedingerMid_10",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -451,7 +451,7 @@
       "MiedingerMid_12.fdt": {
         "height": 12,
         "ascent": "game:MiedingerMid_12",
-        "descent": "game:MiedingerMid_12",
+        "lineHeight": "game:MiedingerMid_12",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -468,7 +468,7 @@
       "MiedingerMid_14.fdt": {
         "height": 14,
         "ascent": "game:MiedingerMid_14",
-        "descent": "game:MiedingerMid_14",
+        "lineHeight": "game:MiedingerMid_14",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -485,7 +485,7 @@
       "MiedingerMid_18.fdt": {
         "height": 18,
         "ascent": "game:MiedingerMid_18",
-        "descent": "game:MiedingerMid_18",
+        "lineHeight": "game:MiedingerMid_18",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -502,7 +502,7 @@
       "MiedingerMid_36.fdt": {
         "height": 36,
         "ascent": "game:MiedingerMid_36",
-        "descent": "game:MiedingerMid_36",
+        "lineHeight": "game:MiedingerMid_36",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -519,7 +519,7 @@
       "TrumpGothic_184.fdt": {
         "height": 18.4,
         "ascent": "game:TrumpGothic_184",
-        "descent": "game:TrumpGothic_184",
+        "lineHeight": "game:TrumpGothic_184",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -536,7 +536,7 @@
       "TrumpGothic_23.fdt": {
         "height": 23,
         "ascent": "game:TrumpGothic_23",
-        "descent": "game:TrumpGothic_23",
+        "lineHeight": "game:TrumpGothic_23",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -553,7 +553,7 @@
       "TrumpGothic_34.fdt": {
         "height": 34,
         "ascent": "game:TrumpGothic_34",
-        "descent": "game:TrumpGothic_34",
+        "lineHeight": "game:TrumpGothic_34",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -570,7 +570,7 @@
       "TrumpGothic_68.fdt": {
         "height": 68,
         "ascent": "game:TrumpGothic_68",
-        "descent": "game:TrumpGothic_68",
+        "lineHeight": "game:TrumpGothic_68",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -589,7 +589,7 @@
       "AXIS_12_lobby.fdt": {
         "height": 12,
         "ascent": "game:AXIS_12",
-        "descent": "game:AXIS_12",
+        "lineHeight": "game:AXIS_12",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -606,7 +606,7 @@
       "AXIS_14_lobby.fdt": {
         "height": 14,
         "ascent": "game:AXIS_14",
-        "descent": "game:AXIS_14",
+        "lineHeight": "game:AXIS_14",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -623,7 +623,7 @@
       "AXIS_18_lobby.fdt": {
         "height": 18,
         "ascent": "game:AXIS_18",
-        "descent": "game:AXIS_18",
+        "lineHeight": "game:AXIS_18",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -640,7 +640,7 @@
       "Jupiter_16_lobby.fdt": {
         "height": 16,
         "ascent": "game:Jupiter_16",
-        "descent": "game:Jupiter_16",
+        "lineHeight": "game:Jupiter_16",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -657,7 +657,7 @@
       "Jupiter_20_lobby.fdt": {
         "height": 20,
         "ascent": "game:Jupiter_20",
-        "descent": "game:Jupiter_20",
+        "lineHeight": "game:Jupiter_20",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -674,7 +674,7 @@
       "Jupiter_23_lobby.fdt": {
         "height": 23,
         "ascent": "game:Jupiter_23",
-        "descent": "game:Jupiter_23",
+        "lineHeight": "game:Jupiter_23",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -691,7 +691,7 @@
       "Jupiter_45_lobby.fdt": {
         "height": 45,
         "ascent": "game:Jupiter_45",
-        "descent": "game:Jupiter_45",
+        "lineHeight": "game:Jupiter_45",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -703,7 +703,7 @@
       "Meidinger_16_lobby.fdt": {
         "height": 16,
         "ascent": "game:Meidinger_16",
-        "descent": "game:Meidinger_16",
+        "lineHeight": "game:Meidinger_16",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -715,7 +715,7 @@
       "Meidinger_20_lobby.fdt": {
         "height": 20,
         "ascent": "game:Meidinger_20",
-        "descent": "game:Meidinger_20",
+        "lineHeight": "game:Meidinger_20",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -727,7 +727,7 @@
       "MiedingerMid_10_lobby.fdt": {
         "height": 10,
         "ascent": "game:MiedingerMid_10",
-        "descent": "game:MiedingerMid_10",
+        "lineHeight": "game:MiedingerMid_10",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -744,7 +744,7 @@
       "MiedingerMid_12_lobby.fdt": {
         "height": 12,
         "ascent": "game:MiedingerMid_12",
-        "descent": "game:MiedingerMid_12",
+        "lineHeight": "game:MiedingerMid_12",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -761,7 +761,7 @@
       "MiedingerMid_14_lobby.fdt": {
         "height": 14,
         "ascent": "game:MiedingerMid_14",
-        "descent": "game:MiedingerMid_14",
+        "lineHeight": "game:MiedingerMid_14",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -778,7 +778,7 @@
       "MiedingerMid_18_lobby.fdt": {
         "height": 18,
         "ascent": "game:MiedingerMid_18",
-        "descent": "game:MiedingerMid_18",
+        "lineHeight": "game:MiedingerMid_18",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -795,7 +795,7 @@
       "TrumpGothic_184_lobby.fdt": {
         "height": 18.4,
         "ascent": "game:TrumpGothic_184",
-        "descent": "game:TrumpGothic_184",
+        "lineHeight": "game:TrumpGothic_184",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -812,7 +812,7 @@
       "TrumpGothic_23_lobby.fdt": {
         "height": 23,
         "ascent": "game:TrumpGothic_23",
-        "descent": "game:TrumpGothic_23",
+        "lineHeight": "game:TrumpGothic_23",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [
@@ -829,7 +829,7 @@
       "TrumpGothic_34_lobby.fdt": {
         "height": 34,
         "ascent": "game:TrumpGothic_34",
-        "descent": "game:TrumpGothic_34",
+        "lineHeight": "game:TrumpGothic_34",
         "borderThickness": 3,
         "borderOpacity": 17,
         "sources": [

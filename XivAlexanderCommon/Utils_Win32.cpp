@@ -246,8 +246,8 @@ std::filesystem::path Utils::Win32::EnsureKnownFolderPath(const KNOWNFOLDERID& r
 }
 
 static Utils::CallOnDestruction WithRunAsInvoker() {
-	static const auto NeverElevateEnvKey = L"__COMPAT_LAYER";
-	static const auto NeverElevateEnvVal = L"RunAsInvoker";
+	static constexpr auto NeverElevateEnvKey = L"__COMPAT_LAYER";
+	static constexpr auto NeverElevateEnvVal = L"RunAsInvoker";
 
 	std::wstring env;
 	env.resize(32768);

@@ -163,7 +163,7 @@ void Sqex::Texture::MipmapStream::Show(std::string title) const {
 		}
 	} state{};
 
-	state.title = Utils::FromUtf8(title);
+	state.title = FromUtf8(title);
 	state.buf = ViewARGB8888()->ReadStreamIntoVector<uint8_t>(0);
 	{
 		state.transparent = state.buf;
@@ -370,7 +370,7 @@ void Sqex::Texture::MipmapStream::Show(std::string title) const {
 	};
 	RegisterClassExW(&wcex);
 
-	const auto unreg = Utils::CallOnDestruction([&]() {
+	const auto unreg = CallOnDestruction([&]() {
 		UnregisterClassW(wcex.lpszClassName, wcex.hInstance);
 	});
 
@@ -382,7 +382,7 @@ void Sqex::Texture::MipmapStream::Show(std::string title) const {
 		std::max(128L, std::min(1080L, rc.bottom - rc.top)),
 		nullptr, nullptr, nullptr, nullptr);
 	if (!state.hwnd)
-		throw Utils::Win32::Error("CreateWindowExW");
+		throw Win32::Error("CreateWindowExW");
 	SetWindowLongPtrW(state.hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(&state));
 
 	ShowWindow(state.hwnd, SW_SHOW);
@@ -486,7 +486,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 				stream->ReadStream(read, buf8, len);
 				read += len;
 				for (size_t i = 0, count = len; i < count; i += 8, pos += 8) {
-					Utils::DecompressBlockDXT1(
+					DecompressBlockDXT1(
 						pos / 2 % width,
 						pos / 2 / width * 4,
 						width, &buf8[i], reinterpret_cast<uint32_t*>(&rgba8888view[0]));
@@ -503,7 +503,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 				stream->ReadStream(read, buf8, len);
 				read += len;
 				for (size_t i = 0, count = len; i < count; i += 16, pos += 16) {
-					Utils::DecompressBlockDXT1(
+					DecompressBlockDXT1(
 						pos / 4 % width,
 						pos / 4 / width * 4,
 						width, &buf8[i], reinterpret_cast<uint32_t*>(&rgba8888view[0]));
@@ -526,7 +526,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 				stream->ReadStream(read, buf8, len);
 				read += len;
 				for (size_t i = 0, count = len; i < count; i += 16, pos += 16) {
-					Utils::DecompressBlockDXT5(
+					DecompressBlockDXT5(
 						pos / 4 % width,
 						pos / 4 / width * 4,
 						width, &buf8[i], reinterpret_cast<uint32_t*>(&rgba8888view[0]));

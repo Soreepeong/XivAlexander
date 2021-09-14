@@ -94,10 +94,12 @@ namespace Utils::Win32 {
 		virtual void Clear() {
 			ClearInternal();
 		}
+		
+		T operator*() const { return m_object; }
 
-		[[nodiscard]] operator bool() const { return !!m_object; }
+		operator bool() const { return !!m_object; }
 
-		[[nodiscard]] virtual operator T() const { return m_object; }
+		virtual operator T() const { return m_object; }
 		
 		template<typename = std::enable_if_t<std::is_pointer_v<T>>>
 		[[nodiscard]] auto Value64() const { return static_cast<uint64_t>(Value()); }

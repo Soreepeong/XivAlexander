@@ -329,5 +329,5 @@ uint32_t Sqex::Sqpack::SqexHash(const std::string_view& text) {
 }
 
 uint32_t Sqex::Sqpack::SqexHash(const std::filesystem::path& path) {
-	return SqexHash(Utils::ToUtf8(path.lexically_normal()));
+	return SqexHash(ToUtf8(path.lexically_normal()));
 }

@@ -202,7 +202,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const GdiSource& o)
 		{"lfClipPrecision", o.lfClipPrecision},
 		{"lfQuality", o.lfQuality},
 		{"lfPitchAndFamily", o.lfPitchAndFamily},
-		{"faceName", Utils::ToUtf8(o.lfFaceName)},
+		{"faceName", ToUtf8(o.lfFaceName)},
 		});
 }
 
@@ -220,7 +220,7 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, GdiSource& 
 	o.lfClipPrecision = j.value<BYTE>("lfClipPrecision", CLIP_DEFAULT_PRECIS);
 	o.lfQuality = j.value<BYTE>("lfQuality", CLEARTYPE_NATURAL_QUALITY);
 	o.lfPitchAndFamily = j.value<BYTE>("lfPitchAndFamily", FF_DONTCARE | DEFAULT_PITCH);
-	const auto faceName = Utils::FromUtf8(j.at("faceName").get<std::string>());
+	const auto faceName = FromUtf8(j.at("faceName").get<std::string>());
 	wcsncpy_s(o.lfFaceName, &faceName[0], faceName.size());
 }
 
@@ -298,7 +298,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const SingleFontTar
 	j = nlohmann::json::object({
 		{"height", o.height},
 		{"ascent", nullptr},
-		{"descent", nullptr},
+		{"lineHeight", nullptr},
 		{"maxGlobalOffsetX", o.maxGlobalOffsetX},
 		{"minGlobalOffsetX", o.minGlobalOffsetX},
 		{"globalOffsetY", o.globalOffsetY},
@@ -322,16 +322,16 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, SingleFontT
 		o.autoAscent = true;
 	else
 		throw std::invalid_argument("invalid ascent value given");
-	if (const auto it = j.find("descent"); it == j.end())
-		o.autoDescent = true;
+	if (const auto it = j.find("lineHeight"); it == j.end())
+		o.autoLineHeight = true;
 	else if (it->is_number())
-		o.descent = it->get<uint8_t>();
+		o.lineHeight = it->get<uint8_t>();
 	else if (it->is_string())
-		o.descentFrom = it->get<std::string>();
+		o.lineHeightFrom = it->get<std::string>();
 	else if (it->is_null())
-		o.autoDescent = true;
+		o.autoLineHeight = true;
 	else
-		throw std::invalid_argument("invalid descent value given");
+		throw std::invalid_argument("invalid lineHeight value given");
 	o.maxGlobalOffsetX = j.value<uint8_t>("maxGlobalOffsetX", 255);
 	o.minGlobalOffsetX = j.value<uint8_t>("minGlobalOffsetX", 0);
 	o.globalOffsetY = j.value<uint8_t>("globalOffsetY", 0);

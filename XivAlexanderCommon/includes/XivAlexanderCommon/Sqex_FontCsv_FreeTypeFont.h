@@ -5,14 +5,23 @@
 #include "Sqex_Texture.h"
 
 namespace Sqex::FontCsv {
-	inline void FTSucc(FT_Error error) {
-		if (error)
-			throw std::runtime_error(std::format("FreeType Error: {}", error));
-	}
 
 	class FreeTypeFont : public virtual SeCompatibleFont {
 	protected:
 		const FT_Int32 m_loadFlags;
+
+		static void Succ(FT_Error error) {
+			if (error)
+				throw std::runtime_error(std::format("FreeType Error: {:x}", error));
+		}
+
+		__declspec(noreturn)
+		static void ShowFreeTypeErrorAndTerminate(FT_Error error);
+
+		static void Must(FT_Error error) noexcept {
+			if (error)
+				ShowFreeTypeErrorAndTerminate(error);
+		}
 
 	private:
 		struct Implementation;
@@ -22,42 +31,84 @@ namespace Sqex::FontCsv {
 		FreeTypeFont(std::filesystem::path path, int faceIndex, float size, FT_Int32 loadFlags = FT_LOAD_DEFAULT);
 		FreeTypeFont(const wchar_t* fontName,
 			float size,
-			DWRITE_FONT_WEIGHT weight = DWRITE_FONT_WEIGHT::DWRITE_FONT_WEIGHT_REGULAR,
-			DWRITE_FONT_STRETCH stretch = DWRITE_FONT_STRETCH::DWRITE_FONT_STRETCH_NORMAL,
-			DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE::DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_WEIGHT weight = DWRITE_FONT_WEIGHT_REGULAR,
+			DWRITE_FONT_STRETCH stretch = DWRITE_FONT_STRETCH_NORMAL,
+			DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE_NORMAL,
 			FT_Int32 loadFlags = FT_LOAD_DEFAULT);
 		~FreeTypeFont() override;
 
 		[[nodiscard]] bool HasCharacter(char32_t) const override;
-		[[nodiscard]] SSIZE_T GetCharacterWidth(char32_t c) const override;
 		[[nodiscard]] float Size() const override;
 		[[nodiscard]] const std::vector<char32_t>& GetAllCharacters() const override;
 		[[nodiscard]] uint32_t Ascent() const override;
-		[[nodiscard]] uint32_t Descent() const override;
+		[[nodiscard]] uint32_t LineHeight() const override;
 		[[nodiscard]] const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& GetKerningTable() const override;
 		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const override;
 
 	protected:
-		class FtFaceContextMgr {
-			const FreeTypeFont& m_owner;
+		class FtFaceCtxMgr {
+			Implementation* m_pImpl;
 			FT_Face m_face;
 
 		public:
-			FtFaceContextMgr(const FreeTypeFont& owner, FT_Face face);
-			~FtFaceContextMgr();
+			FtFaceCtxMgr(Implementation* impl, FT_Face face);
 
-			FT_Library GetLibrary() const;
+			FtFaceCtxMgr(FtFaceCtxMgr&& r) noexcept
+				: m_pImpl(r.m_pImpl)
+				, m_face(r.m_face) {
+				r.m_face = nullptr;
+				r.m_pImpl = nullptr;
+			}
+
+			FtFaceCtxMgr& operator=(FtFaceCtxMgr&& r) noexcept {
+				m_face = r.m_face;
+				m_pImpl = r.m_pImpl;
+				r.m_face = nullptr;
+				r.m_pImpl = nullptr;
+				return *this;
+			}
+
+			~FtFaceCtxMgr();
+
+			[[nodiscard]] FT_Library GetLibraryUnprotected() const;
 
 			FT_Face& operator*() {
 				return m_face;
 			}
 
-			FT_Face operator->() {
+			const FT_Face& operator*() const {
 				return m_face;
+			}
+
+			FT_Face operator->() const {
+				return m_face;
+			}
+
+			[[nodiscard]] uint32_t Ascent() const {
+				return m_face->size->metrics.ascender / 64;
+			}
+
+			[[nodiscard]] uint32_t LineHeight() const {
+				return m_face->size->metrics.height / 64;
+			}
+
+			[[nodiscard]] GlyphMeasurement ToMeasurement(SSIZE_T x, SSIZE_T y) const {
+				if (m_face->glyph->glyph_index == 0)
+					return {true};
+
+				constexpr auto a = SSIZE_T();
+				return GlyphMeasurement{
+					.empty = false,
+					.left = a + m_face->glyph->bitmap_left,
+					.top = a + Ascent() - m_face->glyph->bitmap_top,
+					.right = a + m_face->glyph->bitmap_left + m_face->glyph->bitmap.width,
+					.bottom = a + Ascent() - m_face->glyph->bitmap_top + m_face->glyph->bitmap.rows,
+					.advanceX = m_face->glyph->advance.x / 64,
+				}.Translate(x, y);
 			}
 		};
 
-		FtFaceContextMgr GetFace() const;
+		FtFaceCtxMgr GetFace(char32_t c = std::numeric_limits<char32_t>::max(), FT_Int32 additionalFlags = 0) const;
 	};
 
 	template<uint32_t Levels>
@@ -81,44 +132,35 @@ namespace Sqex::FontCsv {
 		using FreeTypeFont::FreeTypeFont;
 
 		using SeCompatibleDrawableFont<DestPixFmt, OpacityType>::Draw;
-		GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, char32_t c, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity, OpacityType bgOpacity) const override {
-			auto face = GetFace();
-			FTSucc(FT_Load_Char(*face, c, m_loadFlags | FT_LOAD_RENDER));
 
-			if (face->glyph->glyph_index == 0)
-				return { true };
+		GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, char32_t c, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity, OpacityType bgOpacity) const override {
+			const auto face = GetFace(c, FT_LOAD_RENDER);
+			const auto bbox = face.ToMeasurement(x, y);
+			if (bbox.empty)
+				return bbox;
 
 			FT_Bitmap target;
 			auto temporaryTarget = false;
 			const auto targetCleanup = CallOnDestruction([&face, &target, &temporaryTarget]() {
 				if (temporaryTarget)
-					FTSucc(FT_Bitmap_Done(face.GetLibrary(), &target));
+					Succ(FT_Bitmap_Done(face.GetLibraryUnprotected(), &target));
 			});
 			if (face->glyph->bitmap.width != face->glyph->bitmap.pitch) {
 				FT_Bitmap_Init(&target);
-				FTSucc(FT_Bitmap_Convert(face.GetLibrary(), &face->glyph->bitmap, &target, 1));
+				Succ(FT_Bitmap_Convert(face.GetLibraryUnprotected(), &face->glyph->bitmap, &target, 1));
 				temporaryTarget = true;
 			} else
 				target = face->glyph->bitmap;
 
-			const auto ascent = static_cast<SSIZE_T>(face->size->metrics.ascender) / 64;
-			const auto bbox = GlyphMeasurement{
-				false,
-				face->glyph->bitmap_left,
-				ascent - face->glyph->bitmap_top,
-				static_cast<SSIZE_T>(0) + face->glyph->bitmap_left + target.width,
-				ascent - face->glyph->bitmap_top + target.rows,
-				face->glyph->advance.x >> 6,
-			}.Translate(x, y);
 			const auto srcBuf = std::span(target.buffer, bbox.Area());
-			
+
 			if (!srcBuf.empty()) {
 				const auto destWidth = static_cast<SSIZE_T>(to->Width());
 				const auto destHeight = static_cast<SSIZE_T>(to->Height());
 				const auto srcWidth = bbox.Width();
 				const auto srcHeight = bbox.Height();
 
-				GlyphMeasurement src = { false, 0, 0, srcWidth, srcHeight };
+				GlyphMeasurement src = {false, 0, 0, srcWidth, srcHeight};
 				auto dest = bbox;
 				src.AdjustToIntersection(dest, srcWidth, srcHeight, destWidth, destHeight);
 

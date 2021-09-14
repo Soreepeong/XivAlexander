@@ -3,16 +3,6 @@
 
 #pragma comment(lib, "dwrite.lib")
 
-inline void Succ(HRESULT hr) {
-	if (!SUCCEEDED(hr)) {
-		const auto err = _com_error(hr);
-		throw std::runtime_error(std::format("Error 0x{:08x}: {}",
-			static_cast<uint32_t>(err.Error()),
-			err.ErrorMessage()
-		));
-	}
-}
-
 _COM_SMARTPTR_TYPEDEF(IDWriteFactory, __uuidof(IDWriteFactory));
 _COM_SMARTPTR_TYPEDEF(IDWriteFactory3, __uuidof(IDWriteFactory3));
 _COM_SMARTPTR_TYPEDEF(IDWriteFont, __uuidof(IDWriteFont));
@@ -30,11 +20,12 @@ _COM_SMARTPTR_TYPEDEF(IDWriteGlyphRunAnalysis, __uuidof(IDWriteGlyphRunAnalysis)
 _COM_SMARTPTR_TYPEDEF(IDWriteLocalFontFileLoader, __uuidof(IDWriteLocalFontFileLoader));
 
 struct Sqex::FontCsv::DirectWriteFont::Implementation {
-	float Size;
-	IDWriteFactory3Ptr Factory;
-	IDWriteFontFace1Ptr Face1;
-	IDWriteFontFace3Ptr Face3;
-	DWRITE_FONT_METRICS1 Metrics;
+	const float Size;
+	const IDWriteFactory3Ptr Factory;
+	const IDWriteFontFace1Ptr Face1;
+	const IDWriteFontFace3Ptr Face3;
+	const DWRITE_FONT_METRICS1 Metrics;
+	const DWRITE_RENDERING_MODE RenderMode;
 
 	std::mutex DiscoveryMtx;
 
@@ -47,7 +38,6 @@ struct Sqex::FontCsv::DirectWriteFont::Implementation {
 
 	std::mutex BuffersMtx;
 	std::vector<std::unique_ptr<std::vector<uint8_t>>> Buffers;
-	DWRITE_RENDERING_MODE RenderMode;
 
 	void LoadCharacterList() {
 		if (CharacterListDiscovered)
@@ -72,108 +62,107 @@ struct Sqex::FontCsv::DirectWriteFont::Implementation {
 		CharacterListDiscovered = true;
 	}
 
-	struct KernFormat0 {
-		BE<uint16_t> nPairs;
-		BE<uint16_t> searchRange;
-		BE<uint16_t> entrySelector;
-		BE<uint16_t> rangeShift;
-	};
-	struct KernFormat0Pair {
-		BE<uint16_t> left;
-		BE<uint16_t> right;
-		BE<int16_t> value;
-	};
-
-	template<typename From, typename To = SSIZE_T, typename = std::enable_if_t<std::is_arithmetic_v<From>&& std::is_arithmetic_v<To>>>
+	template<typename From, typename To = SSIZE_T, typename = std::enable_if_t<std::is_arithmetic_v<From> && std::is_arithmetic_v<To>>>
 	To ConvVal(From f) {
 		return static_cast<To>(std::floor(static_cast<double>(f) * static_cast<double>(Size) / static_cast<double>(Metrics.designUnitsPerEm)));
 	}
 
-	GlyphMeasurement ScaleMeasurement(GlyphMeasurement gm) {
+	[[nodiscard]] GlyphMeasurement ScaleMeasurement(GlyphMeasurement gm) const {
 		return gm.Scale(Size, Metrics.designUnitsPerEm);
 	}
 };
 
 Sqex::FontCsv::DirectWriteFont::DirectWriteFont(const wchar_t* fontName, float size, DWRITE_FONT_WEIGHT weight, DWRITE_FONT_STRETCH stretch, DWRITE_FONT_STYLE style, DWRITE_RENDERING_MODE renderMode)
-	: m_pImpl(std::make_unique<Implementation>()) {
-	m_pImpl->Size = size;
-	m_pImpl->RenderMode = renderMode;
+	: m_pImpl([fontName, size, weight, stretch, style, renderMode]() {
+		IDWriteFactory3Ptr factory;
+		Succ(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), reinterpret_cast<IUnknown**>(&factory)));
 
-	Succ(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), reinterpret_cast<IUnknown**>(&m_pImpl->Factory)));
+		IDWriteFontCollectionPtr coll;
+		Succ(factory->GetSystemFontCollection(&coll));
 
-	IDWriteFontCollectionPtr coll;
-	Succ(m_pImpl->Factory->GetSystemFontCollection(&coll));
+		uint32_t index;
+		BOOL exists;
+		Succ(coll->FindFamilyName(fontName, &index, &exists));
+		if (!exists)
+			throw std::invalid_argument("Font not found");
 
-	uint32_t index;
-	BOOL exists;
-	Succ(coll->FindFamilyName(fontName, &index, &exists));
-	if (!exists)
-		throw std::invalid_argument("Font not found");
+		IDWriteFontFamilyPtr family;
+		Succ(coll->GetFontFamily(index, &family));
 
-	IDWriteFontFamilyPtr family;
-	Succ(coll->GetFontFamily(index, &family));
+		IDWriteFontPtr font;
+		Succ(family->GetFirstMatchingFont(weight, stretch, style, &font));
 
-	IDWriteFontPtr font;
-	Succ(family->GetFirstMatchingFont(weight, stretch, style, &font));
+		IDWriteFontFacePtr fontFace;
+		Succ(font->CreateFontFace(&fontFace));
 
-	IDWriteFontFacePtr fontFace;
-	Succ(font->CreateFontFace(&fontFace));
-	Succ(fontFace.QueryInterface(decltype(m_pImpl->Face1)::GetIID(), &m_pImpl->Face1));
-	m_pImpl->Face1->GetMetrics(&m_pImpl->Metrics);
+		IDWriteFontFace1Ptr fontFace1;
+		Succ(fontFace.QueryInterface(decltype(fontFace1)::GetIID(), &fontFace1));
 
-	// Face3 is optional
-	fontFace.QueryInterface(decltype(m_pImpl->Face3)::GetIID(), &m_pImpl->Face3);
+		DWRITE_FONT_METRICS1 metrics{};
+		fontFace1->GetMetrics(&metrics);
+
+		// Face3 is optional
+		IDWriteFontFace3Ptr fontFace3;
+		fontFace.QueryInterface(decltype(fontFace3)::GetIID(), &fontFace3);
+
+		return std::make_unique<Implementation>(
+			size,
+			factory,
+			fontFace1,
+			fontFace3,
+			metrics,
+			renderMode
+		);
+	}()) {
 }
 
-Sqex::FontCsv::DirectWriteFont::DirectWriteFont(const std::filesystem::path& path,
-	uint32_t faceIndex,
-	float size,
-	DWRITE_RENDERING_MODE renderMode)
-	: m_pImpl(std::make_unique<Implementation>()) {
+Sqex::FontCsv::DirectWriteFont::DirectWriteFont(const std::filesystem::path& path, uint32_t faceIndex, float size, DWRITE_RENDERING_MODE renderMode)
+	: m_pImpl([&path, faceIndex, size, renderMode]() {
+		IDWriteFactory3Ptr factory;
+		Succ(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), reinterpret_cast<IUnknown**>(&factory)));
 
-	m_pImpl->Size = size;
-	m_pImpl->RenderMode = renderMode;
+		IDWriteFontSetBuilderPtr builder;
+		Succ(factory->CreateFontSetBuilder(&builder));
 
-	Succ(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), reinterpret_cast<IUnknown**>(&m_pImpl->Factory)));
+		IDWriteFontFilePtr fontFile;
+		Succ(factory->CreateFontFileReference(path.wstring().c_str(), nullptr, &fontFile));
 
-	IDWriteFontSetBuilderPtr builder;
-	Succ(m_pImpl->Factory->CreateFontSetBuilder(&builder));
+		BOOL isSupported;
+		DWRITE_FONT_FILE_TYPE fileType;
+		UINT32 numberOfFonts;
+		Succ(fontFile->Analyze(&isSupported, &fileType, nullptr, &numberOfFonts));
 
-	IDWriteFontFilePtr fontFile;
-	Succ(m_pImpl->Factory->CreateFontFileReference(path.wstring().c_str(), nullptr, &fontFile));
+		if (!isSupported)
+			throw std::invalid_argument("Font type not supported");
 
-	BOOL isSupported;
-	DWRITE_FONT_FILE_TYPE fileType;
-	UINT32 numberOfFonts;
-	Succ(fontFile->Analyze(&isSupported, &fileType, nullptr, &numberOfFonts));
+		IDWriteFontFaceReferencePtr fontFaceReference;
+		Succ(factory->CreateFontFaceReference(fontFile, faceIndex, DWRITE_FONT_SIMULATIONS_NONE, &fontFaceReference));
 
-	if (!isSupported)
-		throw std::invalid_argument("Font type not supported");
+		IDWriteFontFace3Ptr fontFace3;
+		Succ(fontFaceReference->CreateFontFace(&fontFace3));
 
-	IDWriteFontFaceReferencePtr fontFaceReference;
-	Succ(m_pImpl->Factory->CreateFontFaceReference(fontFile, faceIndex, DWRITE_FONT_SIMULATIONS_NONE, &fontFaceReference));
-	Succ(fontFaceReference->CreateFontFace(&m_pImpl->Face3));
-	Succ(m_pImpl->Face3.QueryInterface(decltype(m_pImpl->Face1)::GetIID(), &m_pImpl->Face1));
-	m_pImpl->Face1->GetMetrics(&m_pImpl->Metrics);
+		IDWriteFontFace1Ptr fontFace1;
+		Succ(fontFace3.QueryInterface(decltype(fontFace1)::GetIID(), &fontFace1));
+
+		DWRITE_FONT_METRICS1 metrics{};
+		fontFace1->GetMetrics(&metrics);
+
+		return std::make_unique<Implementation>(
+			size,
+			factory,
+			fontFace1,
+			fontFace3,
+			metrics,
+			renderMode
+		);
+	}()) {
 }
 
 Sqex::FontCsv::DirectWriteFont::~DirectWriteFont() = default;
 
 bool Sqex::FontCsv::DirectWriteFont::HasCharacter(char32_t c) const {
 	const auto& all = GetAllCharacters();
-	return std::find(all.begin(), all.end(), c) != all.end();
-}
-
-SSIZE_T Sqex::FontCsv::DirectWriteFont::GetCharacterWidth(char32_t c) const {
-	uint16_t glyphIndex;
-	Succ(m_pImpl->Face1->GetGlyphIndicesW(reinterpret_cast<UINT32 const*>(&c), 1, &glyphIndex));
-	if (!glyphIndex)
-		return 0;
-
-	DWRITE_GLYPH_METRICS glyphMetrics;
-	Succ(m_pImpl->Face1->GetDesignGlyphMetrics(&glyphIndex, 1, &glyphMetrics));
-
-	return (glyphMetrics.leftSideBearing + glyphMetrics.advanceWidth) / m_pImpl->Metrics.designUnitsPerEm;
+	return std::ranges::find(all, c) != all.end();
 }
 
 float Sqex::FontCsv::DirectWriteFont::Size() const {
@@ -189,7 +178,7 @@ const std::vector<char32_t>& Sqex::FontCsv::DirectWriteFont::GetAllCharacters() 
 }
 
 Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::DirectWriteFont::MaxBoundingBox() const {
-	const auto a = static_cast<SSIZE_T>(0);
+	constexpr auto a = static_cast<SSIZE_T>(0);
 	return GlyphMeasurement{
 		false,
 		m_pImpl->Metrics.glyphBoxLeft,
@@ -201,15 +190,11 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::DirectWriteFont::MaxBoundingBox()
 }
 
 uint32_t Sqex::FontCsv::DirectWriteFont::Ascent() const {
-	return static_cast<uint32_t>(std::round(m_pImpl->Size * static_cast<float>(m_pImpl->Metrics.ascent) / static_cast<float>(m_pImpl->Metrics.designUnitsPerEm)));
+	return static_cast<uint32_t>(std::ceil(m_pImpl->Size * static_cast<float>(m_pImpl->Metrics.ascent) / static_cast<float>(m_pImpl->Metrics.designUnitsPerEm)));
 }
 
-uint32_t Sqex::FontCsv::DirectWriteFont::Descent() const {
-	return static_cast<uint32_t>(std::round(m_pImpl->Size * static_cast<float>(m_pImpl->Metrics.descent) / static_cast<float>(m_pImpl->Metrics.designUnitsPerEm)));
-}
-
-uint32_t Sqex::FontCsv::DirectWriteFont::Height() const {
-	return SeCompatibleFont::Height();
+uint32_t Sqex::FontCsv::DirectWriteFont::LineHeight() const {
+	return static_cast<uint32_t>(std::ceil(m_pImpl->Size * static_cast<float>(m_pImpl->Metrics.ascent + m_pImpl->Metrics.descent + m_pImpl->Metrics.lineGap) / static_cast<float>(m_pImpl->Metrics.designUnitsPerEm)));
 }
 
 const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& Sqex::FontCsv::DirectWriteFont::GetKerningTable() const {
@@ -239,13 +224,13 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::DirectWriteFont::Measure(SSIZE_T 
 	return DrawCharacter(c, u, false).Translate(x, y);
 }
 
-Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::DirectWriteFont::DrawCharacter(char32_t c, std::vector<uint8_t>&buf, bool draw) const {
+Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::DirectWriteFont::DrawCharacter(char32_t c, std::vector<uint8_t>& buf, bool draw) const {
 	uint16_t glyphIndex;
 	Succ(m_pImpl->Face1->GetGlyphIndicesW(reinterpret_cast<UINT32 const*>(&c), 1, &glyphIndex));
 	if (!glyphIndex)
-		return { true };
+		return {true};
 
-	DWRITE_GLYPH_METRICS glyphMetrics;
+	DWRITE_GLYPH_METRICS glyphMetrics{};
 	Succ(m_pImpl->Face1->GetDesignGlyphMetrics(&glyphIndex, 1, &glyphMetrics));
 
 	float glyphAdvance = 0;
@@ -275,21 +260,8 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::DirectWriteFont::DrawCharacter(ch
 
 	GlyphMeasurement bbox;
 	Succ(analysis->GetAlphaTextureBounds(DWRITE_TEXTURE_ALIASED_1x1, bbox.AsMutableRectPtr()));
-	if (bbox.EffectivelyEmpty()) {
-		constexpr SSIZE_T a = 0;
-		return m_pImpl->ScaleMeasurement({
-			false,
-			a,
-			a,
-			static_cast<SSIZE_T>(a + glyphMetrics.advanceWidth),
-			static_cast<SSIZE_T>(a + Height()),
-			static_cast<SSIZE_T>(glyphMetrics.advanceWidth),
-			});
-	}
-
 	bbox.advanceX = m_pImpl->ConvVal<UINT32, SSIZE_T>(glyphMetrics.advanceWidth);
-
-	if (draw) {
+	if (!bbox.EffectivelyEmpty() && draw) {
 		buf.resize(bbox.Area());
 		Succ(analysis->CreateAlphaTexture(DWRITE_TEXTURE_ALIASED_1x1, bbox.AsMutableRectPtr(), &buf[0], static_cast<uint32_t>(buf.size())));
 	}
@@ -323,26 +295,28 @@ std::tuple<std::filesystem::path, int> Sqex::FontCsv::DirectWriteFont::GetFontFi
 	std::wstring buf(bufLen + 1, L'\0');
 	Succ(localFileLoader->GetFilePathFromKey(refKey, refKeySize, &buf[0], bufLen + 1));
 
-	return { buf, ref->GetFontFaceIndex() };
+	return {buf, ref->GetFontFaceIndex()};
 }
 
-Sqex::FontCsv::DirectWriteFont::BufferContext Sqex::FontCsv::DirectWriteFont::AllocateBuffer() const {
+Sqex::FontCsv::DirectWriteFont::DwriteRenderBufferCtxMgr::~DwriteRenderBufferCtxMgr() {
+	if (m_wrapper) {
+		const auto lock = std::lock_guard(m_pImpl->BuffersMtx);
+		for (auto& i : m_pImpl->Buffers) {
+			if (!i) {
+				i = std::move(m_wrapper);
+				return;
+			}
+		}
+	}
+}
+
+Sqex::FontCsv::DirectWriteFont::DwriteRenderBufferCtxMgr Sqex::FontCsv::DirectWriteFont::AllocateBuffer() const {
 	{
 		const auto lock = std::lock_guard(m_pImpl->BuffersMtx);
 		for (auto& i : m_pImpl->Buffers) {
 			if (i)
-				return { this, std::move(i) };
+				return DwriteRenderBufferCtxMgr(m_pImpl.get(), std::move(i));
 		}
 	}
-	return { this, std::make_unique<std::vector<uint8_t>>() };
-}
-
-void Sqex::FontCsv::DirectWriteFont::FreeBuffer(std::unique_ptr<std::vector<uint8_t>> wrapper) const {
-	const auto lock = std::lock_guard(m_pImpl->BuffersMtx);
-	for (auto& i : m_pImpl->Buffers) {
-		if (!i) {
-			i = std::move(wrapper);
-			return;
-		}
-	}
+	return DwriteRenderBufferCtxMgr(m_pImpl.get(), std::make_unique<std::vector<uint8_t>>());
 }

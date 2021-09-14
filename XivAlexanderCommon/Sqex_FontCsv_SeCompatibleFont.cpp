@@ -44,7 +44,7 @@ void Sqex::FontCsv::GlyphMeasurement::AdjustToIntersection(GlyphMeasurement& r, 
 Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeCompatibleFont::MaxBoundingBox() const {
 	if (!m_maxBoundingBox.empty)
 		return m_maxBoundingBox;
-	GlyphMeasurement res{ false, INT_MAX, INT_MAX, INT_MIN, INT_MIN, 0 };
+	GlyphMeasurement res{false, INT_MAX, INT_MAX, INT_MIN, INT_MIN, 0};
 	for (const auto& c : GetAllCharacters()) {
 		GlyphMeasurement cur = Measure(0, 0, c);
 		if (cur.empty)
@@ -74,11 +74,10 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeCompatibleFont::Measure(SSIZE_T
 		return {};
 
 	char32_t lastChar = 0;
-	const auto iHeight = static_cast<SSIZE_T>(Height());
+	const auto iHeight = static_cast<SSIZE_T>(LineHeight());
 
 	GlyphMeasurement result{};
 	SSIZE_T currX = x, currY = y;
-	SSIZE_T rightmostOriginX = x;
 
 	for (const auto currChar : s) {
 		if (currChar == u'\r') {
@@ -88,24 +87,21 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeCompatibleFont::Measure(SSIZE_T
 			currY += iHeight;
 			lastChar = 0;
 			continue;
-		} else if (currChar == u'\u200c') {  // unicode non-joiner
+		} else if (currChar == u'\u200c') {
+			// unicode non-joiner
 			lastChar = 0;
 			continue;
 		}
 
 		const auto kerning = GetKerning(lastChar, currChar);
 		const auto currBbox = Measure(currX + kerning, currY, currChar);
-		if (!currBbox.empty) {
-			currX += kerning + currBbox.advanceX;
-			rightmostOriginX = std::max(rightmostOriginX, currX);
-			result.ExpandToFit(currBbox);
-		}
+		currX += kerning + currBbox.advanceX;
+		result.ExpandToFit(currBbox);
 		lastChar = currChar;
 	}
 	if (result.empty)
-		return { true };
+		return {true};
 
-	result.advanceX = rightmostOriginX - result.right;
 	return result;
 }
 
@@ -133,14 +129,6 @@ bool Sqex::FontCsv::SeFont::HasCharacter(char32_t c) const {
 	return m_pImpl->m_stream->GetFontEntry(c);
 }
 
-SSIZE_T Sqex::FontCsv::SeFont::GetCharacterWidth(char32_t c) const {
-	const auto entry = m_pImpl->m_stream->GetFontEntry(c);
-	if (!entry)
-		return {};
-
-	return static_cast<SSIZE_T>(0) + entry->BoundingWidth + entry->NextOffsetX;
-}
-
 float Sqex::FontCsv::SeFont::Size() const {
 	return m_pImpl->m_stream->Points();
 }
@@ -160,8 +148,8 @@ uint32_t Sqex::FontCsv::SeFont::Ascent() const {
 	return m_pImpl->m_stream->Ascent();
 }
 
-uint32_t Sqex::FontCsv::SeFont::Descent() const {
-	return m_pImpl->m_stream->LineHeight() - m_pImpl->m_stream->Ascent();
+uint32_t Sqex::FontCsv::SeFont::LineHeight() const {
+	return m_pImpl->m_stream->LineHeight();
 }
 
 const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& Sqex::FontCsv::SeFont::GetKerningTable() const {
@@ -177,7 +165,7 @@ const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& Sqex::FontCsv::SeFont::G
 	return m_pImpl->m_kerningMap;
 }
 
-Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeFont::Measure(SSIZE_T x, SSIZE_T y, const FontTableEntry & entry) {
+Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeFont::Measure(SSIZE_T x, SSIZE_T y, const FontTableEntry& entry) {
 	return {
 		.empty = false,
 		.left = x,
@@ -190,7 +178,7 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeFont::Measure(SSIZE_T x, SSIZE_
 
 Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeFont::Measure(SSIZE_T x, SSIZE_T y, const char32_t c) const {
 	const auto entry = GetStream().GetFontEntry(c);
-	if (!entry)  // skip missing characters
+	if (!entry) // skip missing characters
 		return {};
 	return this->Measure(x, y, *entry);
 }
@@ -203,7 +191,7 @@ struct Sqex::FontCsv::CascadingFont::Implementation {
 	const std::vector<std::shared_ptr<SeCompatibleFont>> m_fontList;
 	const float m_size;
 	const uint32_t m_ascent;
-	const uint32_t m_descent;
+	const uint32_t m_lineHeight;
 
 	mutable bool m_kerningDiscovered = false;
 	mutable std::map<std::pair<char32_t, char32_t>, SSIZE_T> m_kerningMap;
@@ -211,11 +199,11 @@ struct Sqex::FontCsv::CascadingFont::Implementation {
 	mutable bool m_characterListDiscovered = false;
 	mutable std::vector<char32_t> m_characterList;
 
-	Implementation(std::vector<std::shared_ptr<SeCompatibleFont>> fontList, float normalizedSize, uint32_t ascent, uint32_t descent)
+	Implementation(std::vector<std::shared_ptr<SeCompatibleFont>> fontList, float normalizedSize, uint32_t ascent, uint32_t lineHeight)
 		: m_fontList(std::move(fontList))
-		, m_size(static_cast<bool>(normalizedSize) ? normalizedSize : std::ranges::max(m_fontList, {}, [](const auto& r) {return r->Size();  })->Size())
-		, m_ascent(ascent != UINT32_MAX ? ascent : std::ranges::max(m_fontList, {}, [](const auto& r) {return r->Ascent();  })->Ascent())
-		, m_descent(descent != UINT32_MAX ? descent : std::ranges::max(m_fontList, {}, [](const auto& r) {return r->Descent();  })->Descent()) {
+		, m_size(static_cast<bool>(normalizedSize) ? normalizedSize : std::ranges::max(m_fontList, {}, [](const auto& r) { return r->Size(); })->Size())
+		, m_ascent(ascent != UINT32_MAX ? ascent : std::ranges::max(m_fontList, {}, [](const auto& r) { return r->Ascent(); })->Ascent())
+		, m_lineHeight(lineHeight != UINT32_MAX ? lineHeight : std::ranges::max(m_fontList, {}, [](const auto& r) { return r->LineHeight(); })->LineHeight()) {
 	}
 
 	size_t GetCharacterOwnerIndex(char32_t c) const {
@@ -230,21 +218,14 @@ Sqex::FontCsv::CascadingFont::CascadingFont(std::vector<std::shared_ptr<SeCompat
 	: m_pImpl(std::make_unique<Implementation>(std::move(fontList), 0.f, UINT32_MAX, UINT32_MAX)) {
 }
 
-Sqex::FontCsv::CascadingFont::CascadingFont(std::vector<std::shared_ptr<SeCompatibleFont>> fontList, float normalizedSize, uint32_t ascent, uint32_t descent)
-	: m_pImpl(std::make_unique<Implementation>(std::move(fontList), normalizedSize, ascent, descent)) {
+Sqex::FontCsv::CascadingFont::CascadingFont(std::vector<std::shared_ptr<SeCompatibleFont>> fontList, float normalizedSize, uint32_t ascent, uint32_t lineHeight)
+	: m_pImpl(std::make_unique<Implementation>(std::move(fontList), normalizedSize, ascent, lineHeight)) {
 }
 
 Sqex::FontCsv::CascadingFont::~CascadingFont() = default;
 
 bool Sqex::FontCsv::CascadingFont::HasCharacter(char32_t c) const {
 	return std::ranges::any_of(m_pImpl->m_fontList, [c](const auto& f) { return f->HasCharacter(c); });
-}
-
-SSIZE_T Sqex::FontCsv::CascadingFont::GetCharacterWidth(char32_t c) const {
-	for (const auto& f : m_pImpl->m_fontList)
-		if (const auto w = f->GetCharacterWidth(c))
-			return w;
-	return 0;
 }
 
 float Sqex::FontCsv::CascadingFont::Size() const {
@@ -268,8 +249,8 @@ uint32_t Sqex::FontCsv::CascadingFont::Ascent() const {
 	return m_pImpl->m_ascent;
 }
 
-uint32_t Sqex::FontCsv::CascadingFont::Descent() const {
-	return m_pImpl->m_descent;
+uint32_t Sqex::FontCsv::CascadingFont::LineHeight() const {
+	return m_pImpl->m_lineHeight;
 }
 
 const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& Sqex::FontCsv::CascadingFont::GetKerningTable() const {
@@ -282,11 +263,10 @@ const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& Sqex::FontCsv::Cascading
 				const auto owner1 = m_pImpl->GetCharacterOwnerIndex(k.first.first);
 				const auto owner2 = m_pImpl->GetCharacterOwnerIndex(k.first.second);
 
-				if (owner1 == i && owner2 == i) {
-					// pass
-				} else if (k.first.first == u' ' && owner2 == i) {
-					// pass
-				} else if (k.first.second == u' ' && owner1 == i) {
+				if ((owner1 == i && owner2 == i)
+					|| (k.first.first == u' ' && owner2 == i)
+					|| (k.first.second == u' ' && owner1 == i)
+				) {
 					// pass
 				} else
 					continue;
@@ -306,7 +286,7 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::CascadingFont::Measure(SSIZE_T x,
 		if (!currBbox.empty)
 			return currBbox;
 	}
-	return { true };
+	return {true};
 }
 
 const std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleFont>>& Sqex::FontCsv::CascadingFont::GetFontList() const {

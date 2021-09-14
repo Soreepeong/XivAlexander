@@ -6,27 +6,36 @@ namespace Sqex::FontCsv {
 		struct Implementation;
 		const std::unique_ptr<Implementation> m_pImpl;
 
+	protected:
+		static void Succ(HRESULT hr) {
+			if (!SUCCEEDED(hr)) {
+				const auto err = _com_error(hr);
+				throw std::runtime_error(std::format("Error 0x{:08x}: {}",
+					static_cast<uint32_t>(err.Error()),
+					err.ErrorMessage()
+				));
+			}
+		}
+
 	public:
 		DirectWriteFont(const wchar_t* fontName,
 			float size,
-			DWRITE_FONT_WEIGHT weight = DWRITE_FONT_WEIGHT::DWRITE_FONT_WEIGHT_REGULAR,
-			DWRITE_FONT_STRETCH stretch = DWRITE_FONT_STRETCH::DWRITE_FONT_STRETCH_NORMAL,
-			DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE::DWRITE_FONT_STYLE_NORMAL,
-			DWRITE_RENDERING_MODE renderMode = DWRITE_RENDERING_MODE::DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC);
+			DWRITE_FONT_WEIGHT weight = DWRITE_FONT_WEIGHT_REGULAR,
+			DWRITE_FONT_STRETCH stretch = DWRITE_FONT_STRETCH_NORMAL,
+			DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_RENDERING_MODE renderMode = DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC);
 		DirectWriteFont(const std::filesystem::path& path,
 			uint32_t faceIndex,
 			float size,
-			DWRITE_RENDERING_MODE renderMode = DWRITE_RENDERING_MODE::DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC);
+			DWRITE_RENDERING_MODE renderMode = DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC);
 		~DirectWriteFont() override;
 
 		[[nodiscard]] bool HasCharacter(char32_t) const override;
-		[[nodiscard]] SSIZE_T GetCharacterWidth(char32_t c) const override;
 		[[nodiscard]] float Size() const override;
 		[[nodiscard]] const std::vector<char32_t>& GetAllCharacters() const override;
 		[[nodiscard]] GlyphMeasurement MaxBoundingBox() const override;
 		[[nodiscard]] uint32_t Ascent() const override;
-		[[nodiscard]] uint32_t Descent() const override;
-		[[nodiscard]] uint32_t Height() const override;
+		[[nodiscard]] uint32_t LineHeight() const override;
 		[[nodiscard]] const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& GetKerningTable() const override;
 
 		using SeCompatibleFont::Measure;
@@ -37,29 +46,26 @@ namespace Sqex::FontCsv {
 		std::tuple<std::filesystem::path, int> GetFontFile() const;
 
 	protected:
-		class BufferContext {
-			const DirectWriteFont* m_font;
+		class DwriteRenderBufferCtxMgr {
+			Implementation* m_pImpl;
 			std::unique_ptr<std::vector<uint8_t>> m_wrapper;
 
 		public:
-			BufferContext() :
-				m_font(nullptr), m_wrapper(nullptr) {
-			}
-			BufferContext(const DirectWriteFont* font, std::unique_ptr<std::vector<uint8_t>> wrapper)
-				: m_font(font)
+			DwriteRenderBufferCtxMgr(Implementation* impl, std::unique_ptr<std::vector<uint8_t>> wrapper)
+				: m_pImpl(impl)
 				, m_wrapper(std::move(wrapper)) {
 			}
-			BufferContext(const BufferContext&) = delete;
-			BufferContext(BufferContext&& r) noexcept
-				: m_font(r.m_font)
+
+			DwriteRenderBufferCtxMgr(DwriteRenderBufferCtxMgr&& r) noexcept
+				: m_pImpl(r.m_pImpl)
 				, m_wrapper(std::move(r.m_wrapper)) {
-				r.m_font = nullptr;
+				r.m_pImpl = nullptr;
 			}
-			BufferContext& operator=(const BufferContext&) = delete;
-			BufferContext& operator=(BufferContext&& r) noexcept {
-				m_font = r.m_font;
+
+			DwriteRenderBufferCtxMgr& operator=(DwriteRenderBufferCtxMgr&& r) noexcept {
 				m_wrapper = std::move(r.m_wrapper);
-				r.m_font = nullptr;
+				m_pImpl = r.m_pImpl;
+				r.m_pImpl = nullptr;
 				return *this;
 			}
 
@@ -67,14 +73,10 @@ namespace Sqex::FontCsv {
 				return *m_wrapper;
 			}
 
-			~BufferContext() {
-				if (m_wrapper)
-					m_font->FreeBuffer(std::move(m_wrapper));
-			}
+			~DwriteRenderBufferCtxMgr();
 		};
 
-		BufferContext AllocateBuffer() const;
-		void FreeBuffer(std::unique_ptr<std::vector<uint8_t>> wrapper) const;
+		DwriteRenderBufferCtxMgr AllocateBuffer() const;
 	};
 
 #pragma warning(push)
@@ -90,6 +92,7 @@ namespace Sqex::FontCsv {
 		using DirectWriteFont::DirectWriteFont;
 
 		using SeCompatibleDrawableFont<DestPixFmt, OpacityType>::Draw;
+
 		GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, char32_t c, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity, OpacityType bgOpacity) const override {
 			const auto srcBufCtx = AllocateBuffer();
 			auto& srcBuf = *srcBufCtx;
@@ -101,7 +104,7 @@ namespace Sqex::FontCsv {
 				const auto srcWidth = bbox.Width();
 				const auto srcHeight = bbox.Height();
 
-				GlyphMeasurement src = { false, 0, 0, srcWidth, srcHeight };
+				GlyphMeasurement src = {false, 0, 0, srcWidth, srcHeight};
 				auto dest = bbox;
 				src.AdjustToIntersection(dest, srcWidth, srcHeight, destWidth, destHeight);
 

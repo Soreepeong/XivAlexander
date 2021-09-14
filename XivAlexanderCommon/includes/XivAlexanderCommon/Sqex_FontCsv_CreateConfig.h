@@ -89,9 +89,9 @@ namespace Sqex::FontCsv::CreateConfig {
 		std::string ascentFrom;
 		bool autoAscent;
 
-		uint8_t descent;
-		std::string descentFrom;
-		bool autoDescent;
+		uint8_t lineHeight;
+		std::string lineHeightFrom;
+		bool autoLineHeight;
 
 		uint8_t maxGlobalOffsetX;
 		uint8_t minGlobalOffsetX;

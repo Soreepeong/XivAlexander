@@ -31,7 +31,7 @@ void Sqex::to_json(nlohmann::json& j, const Language& value) {
 }
 
 void Sqex::from_json(const nlohmann::json& j, Language& newValue) {
-	auto newValueString = Utils::FromUtf8(j.get<std::string>());
+	auto newValueString = FromUtf8(j.get<std::string>());
 	CharLowerW(&newValueString[0]);
 
 	newValue = Language::Unspecified;
@@ -80,7 +80,7 @@ void Sqex::to_json(nlohmann::json& j, const Region& value) {
 }
 
 void Sqex::from_json(const nlohmann::json& j, Region& newValue) {
-	auto newValueString = Utils::FromUtf8(j.get<std::string>());
+	auto newValueString = FromUtf8(j.get<std::string>());
 	CharLowerW(&newValueString[0]);
 
 	newValue = Region::Unspecified;
@@ -112,7 +112,7 @@ void Sqex::RandomAccessStream::ReadStream(uint64_t offset, void* buf, uint64_t l
 		throw std::runtime_error("Reached end of stream before reading all of the requested data.");
 }
 
-Sqex::FileRandomAccessStream::FileRandomAccessStream(Utils::Win32::File file, uint64_t offset, uint64_t length)
+Sqex::FileRandomAccessStream::FileRandomAccessStream(Win32::File file, uint64_t offset, uint64_t length)
 	: m_file(std::move(file))
 	, m_offset(offset)
 	, m_size(length == UINT64_MAX ? m_file.GetLength() - m_offset : length) {
@@ -124,7 +124,7 @@ Sqex::FileRandomAccessStream::FileRandomAccessStream(Utils::Win32::File file, ui
 Sqex::FileRandomAccessStream::FileRandomAccessStream(std::filesystem::path path, uint64_t offset, uint64_t length, bool openImmediately)
 	: m_path(std::move(path))
 	, m_initializationMutex(openImmediately ? nullptr : std::make_shared<std::mutex>())
-	, m_file(openImmediately ? Utils::Win32::File::Create(m_path, GENERIC_READ, FILE_SHARE_READ, nullptr, GENERIC_READ, 0) : Utils::Win32::File())
+	, m_file(openImmediately ? Win32::File::Create(m_path, GENERIC_READ, FILE_SHARE_READ, nullptr, GENERIC_READ, 0) : Win32::File())
 	, m_offset(offset)
 	, m_size(length == UINT64_MAX ? file_size(m_path) - m_offset : length) {
 	if (const auto filelen = file_size(m_path); m_offset + m_size > filelen) {
@@ -146,12 +146,12 @@ uint64_t Sqex::FileRandomAccessStream::ReadStreamPartial(uint64_t offset, void* 
 		if (const auto mtx = m_initializationMutex) {
 			const auto lock = std::lock_guard(*mtx);
 			if (m_initializationMutex) {
-				m_file = Utils::Win32::File::Create(m_path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+				m_file = Win32::File::Create(m_path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
 				m_initializationMutex = nullptr;
 			}
 		}
 	}
 
 	const auto available = static_cast<size_t>(std::min(length, m_size - offset));
-	return m_file.Read(m_offset + offset, buf, available, Utils::Win32::File::PartialIoMode::AllowPartial);
+	return m_file.Read(m_offset + offset, buf, available, Win32::File::PartialIoMode::AllowPartial);
 }

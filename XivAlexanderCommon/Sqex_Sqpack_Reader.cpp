@@ -13,7 +13,7 @@ Sqex::Sqpack::Reader::SqDataEntry::SqDataEntry(const SqIndex::FileSegmentEntry2&
 	, DataFileIndex(entry.Locator.Index()) {
 }
 
-Sqex::Sqpack::Reader::SqIndexType::SqIndexType(const Utils::Win32::File& hFile, bool strictVerify) {
+Sqex::Sqpack::Reader::SqIndexType::SqIndexType(const Win32::File& hFile, bool strictVerify) {
 	std::vector<std::pair<size_t, size_t>> accesses;
 
 	hFile.Read(0, &Header, sizeof SqpackHeader);
@@ -115,7 +115,7 @@ Sqex::Sqpack::Reader::SqIndexType::SqIndexType(const Utils::Win32::File& hFile, 
 	}
 }
 
-Sqex::Sqpack::Reader::SqIndex2Type::SqIndex2Type(const Utils::Win32::File& hFile, bool strictVerify) {
+Sqex::Sqpack::Reader::SqIndex2Type::SqIndex2Type(const Win32::File& hFile, bool strictVerify) {
 	std::vector<std::pair<size_t, size_t>> accesses;
 
 	hFile.Read(0, &Header, sizeof SqpackHeader);
@@ -173,7 +173,7 @@ Sqex::Sqpack::Reader::SqIndex2Type::SqIndex2Type(const Utils::Win32::File& hFile
 	}
 }
 
-Sqex::Sqpack::Reader::SqDataType::SqDataType(Utils::Win32::File hFile, const uint32_t datIndex, std::vector<SqDataEntry>& dataEntries, bool strictVerify)
+Sqex::Sqpack::Reader::SqDataType::SqDataType(Win32::File hFile, const uint32_t datIndex, std::vector<SqDataEntry>& dataEntries, bool strictVerify)
 	: FileOnDisk(std::move(hFile)) {
 	std::vector<std::pair<size_t, size_t>> accesses;
 
@@ -217,8 +217,8 @@ Sqex::Sqpack::Reader::SqDataType::SqDataType(Utils::Win32::File hFile, const uin
 }
 
 Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strictVerify, bool sort)
-	: Index(Utils::Win32::File::Create(std::filesystem::path(indexFile).replace_extension(".index"), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN), strictVerify)
-	, Index2(Utils::Win32::File::Create(std::filesystem::path(indexFile).replace_extension(".index2"), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN), strictVerify)
+	: Index(Win32::File::Create(std::filesystem::path(indexFile).replace_extension(".index"), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN), strictVerify)
+	, Index2(Win32::File::Create(std::filesystem::path(indexFile).replace_extension(".index2"), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN), strictVerify)
 	, Sorted(sort) {
 
 	if (sort) {
@@ -259,7 +259,7 @@ Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strict
 	Data.reserve(Index.IndexHeader.DataFilesSegment.Count);
 	for (uint32_t i = 0; i < Index.IndexHeader.DataFilesSegment.Count; ++i) {
 		Data.emplace_back(SqDataType{
-			Utils::Win32::File::Create(std::filesystem::path(indexFile).replace_extension(std::format(".dat{}", i)), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0),
+			Win32::File::Create(std::filesystem::path(indexFile).replace_extension(std::format(".dat{}", i)), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0),
 			i,
 			Files,
 			strictVerify,
@@ -267,7 +267,7 @@ Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strict
 	}
 }
 
-std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvider(const EntryPathSpec& pathSpec, Utils::Win32::File handle) const {
+std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvider(const EntryPathSpec& pathSpec, Win32::File handle) const {
 	if (pathSpec.HasComponentHash()) {
 		for (const auto& entry : Files) {
 			if (entry.Index.PathHash == pathSpec.PathHash && entry.Index.NameHash == pathSpec.NameHash)
@@ -284,7 +284,7 @@ std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvi
 	throw std::invalid_argument(std::format("Entry {} not found", pathSpec));
 }
 
-std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvider(const SqDataEntry& entry, Utils::Win32::File handle) const {
+std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvider(const SqDataEntry& entry, Win32::File handle) const {
 	if (!handle)
 		handle = { Data[entry.DataFileIndex].FileOnDisk, false };
 

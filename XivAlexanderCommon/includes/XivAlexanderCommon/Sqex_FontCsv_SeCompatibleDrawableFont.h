@@ -182,11 +182,10 @@ namespace Sqex::FontCsv {
 				return {};
 
 			char32_t lastChar = 0;
-			const auto iHeight = static_cast<SSIZE_T>(Height());
+			const auto iHeight = static_cast<SSIZE_T>(LineHeight());
 
 			GlyphMeasurement result{};
 			SSIZE_T currX = x, currY = y;
-			SSIZE_T rightmostOriginX = x;
 
 			for (const auto currChar : s) {
 				if (currChar == u'\r') {
@@ -203,17 +202,13 @@ namespace Sqex::FontCsv {
 
 				const auto kerning = GetKerning(lastChar, currChar);
 				const auto currBbox = Draw(to, currX + kerning, currY, currChar, fgColor, bgColor, fgOpacity, bgOpacity);
-				if (!currBbox.empty) {
-					currX += kerning + currBbox.advanceX;
-					rightmostOriginX = std::max(rightmostOriginX, currX);
-					result.ExpandToFit(currBbox);
-				}
+				currX += kerning + currBbox.advanceX;
+				result.ExpandToFit(currBbox);
 				lastChar = currChar;
 			}
 			if (result.empty)
 				return { true };
-
-			result.advanceX = rightmostOriginX - result.right;
+			
 			return result;
 		}
 		virtual GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, const std::string& s, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity = MaxOpacity, OpacityType bgOpacity = MaxOpacity) const {
@@ -324,8 +319,8 @@ namespace Sqex::FontCsv {
 			: CascadingFont(ConvertVector(std::move(fontList)))
 			, SeCompatibleDrawableFont<DestPixFmt>() {
 		}
-		CascadingDrawableFont(std::vector<std::shared_ptr<SeCompatibleDrawableFont<DestPixFmt>>> fontList, float normalizedSize, uint32_t ascent, uint32_t descent)
-			: CascadingFont(ConvertVector(std::move(fontList)), normalizedSize, ascent, descent)
+		CascadingDrawableFont(std::vector<std::shared_ptr<SeCompatibleDrawableFont<DestPixFmt>>> fontList, float normalizedSize, uint32_t ascent, uint32_t lineHeight)
+			: CascadingFont(ConvertVector(std::move(fontList)), normalizedSize, ascent, lineHeight)
 			, SeCompatibleDrawableFont<DestPixFmt>() {
 		}
 		~CascadingDrawableFont() override = default;

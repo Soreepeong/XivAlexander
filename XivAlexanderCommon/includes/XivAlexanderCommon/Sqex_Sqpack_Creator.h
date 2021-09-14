@@ -20,8 +20,8 @@ namespace Sqex::Sqpack {
 	public:
 		Creator(std::string ex, std::string name, uint64_t maxFileSize = SqData::Header::MaxFileSize_MaxValue);
 		~Creator();
-		
-		Utils::ListenerManager<Implementation, void, const std::string&> Log;
+
+		ListenerManager<Implementation, void, const std::string&> Log;
 
 		struct AddEntryResult {
 			std::vector<EntryProvider*> Added;

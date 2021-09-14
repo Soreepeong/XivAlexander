@@ -11,10 +11,10 @@
 
 namespace Sqex::FontCsv {
 	struct FontCreationProgress {
-		size_t Progress;
-		size_t Max;
-		bool Finished;
-		int Indeterminate;
+		size_t Progress = 0;
+		size_t Max = 0;
+		bool Finished = false;
+		int Indeterminate = true;
 
 		FontCreationProgress& operator+=(const FontCreationProgress& p) {
 			Finished &= p.Finished;
@@ -26,6 +26,8 @@ namespace Sqex::FontCsv {
 
 		template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
 		[[nodiscard]] T Scale(T max) const {
+			if (Max == 0)
+				return 0;
 			return static_cast<T>(static_cast<double>(Progress) / static_cast<double>(Max) * static_cast<double>(max));
 		}
 	};
@@ -35,11 +37,11 @@ namespace Sqex::FontCsv {
 		const std::unique_ptr<Implementation> m_pImpl;
 
 	public:
-		static constexpr uint32_t AutoAscentDescent = UINT32_MAX;
+		static constexpr uint32_t AutoVerticalValues = UINT32_MAX;
 
 		float SizePoints = 0;
 		uint32_t AscentPixels = 0;
-		uint32_t DescentPixels = 0;
+		uint32_t LineHeightPixels = 0;
 		uint16_t GlobalOffsetYModifier = 0;
 		int MinGlobalOffsetX = 0;
 		int MaxGlobalOffsetX = 255;
@@ -48,7 +50,7 @@ namespace Sqex::FontCsv {
 		uint8_t BorderThickness = 0;
 		uint8_t BorderOpacity = 0;
 
-		FontCsvCreator(const Utils::Win32::Semaphore& semaphore = nullptr);
+		FontCsvCreator(const Win32::Semaphore& semaphore = nullptr);
 		~FontCsvCreator();
 
 		void AddCharacter(char32_t codePoint, const SeCompatibleDrawableFont<uint8_t>* font, bool replace = false, bool extendRange = true);
@@ -121,6 +123,7 @@ namespace Sqex::FontCsv {
 			[[nodiscard]] std::vector<std::shared_ptr<const Texture::MipmapStream>> AsMipmapStreamVector() const;
 			[[nodiscard]] std::vector<std::shared_ptr<Texture::ModifiableTextureStream>> AsTextureStreamVector() const;
 
+			std::pair<AllocatedSpace, bool> AllocateSpace(char32_t c, const SeCompatibleDrawableFont<uint8_t>* font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint8_t boundingWidth, uint8_t boundingHeight, uint8_t borderThickness, uint8_t borderOpacity);
 			AllocatedSpace Draw(char32_t c, const SeCompatibleDrawableFont<uint8_t>* font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint8_t boundingWidth, uint8_t boundingHeight, uint8_t borderThickness, uint8_t borderOpacity);
 
 			[[nodiscard]] uint16_t TextureWidth() const { return m_textureWidth; }

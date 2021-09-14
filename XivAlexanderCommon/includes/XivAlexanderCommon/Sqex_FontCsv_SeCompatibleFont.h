@@ -97,17 +97,25 @@ namespace Sqex::FontCsv {
 		}
 
 		GlyphMeasurement& ExpandToFit(const GlyphMeasurement& r) {
+			if (r.empty)
+				return *this;
 			if (empty) {
 				left = r.left;
 				top = r.top;
 				right = r.right;
 				bottom = r.bottom;
+				advanceX = r.advanceX;
 				empty = false;
 			} else {
+				const auto prevLeft = left;
 				left = std::min(left, r.left);
 				top = std::min(top, r.top);
 				right = std::max(right, r.right);
 				bottom = std::max(bottom, r.bottom);
+				if (prevLeft + advanceX > r.left + r.advanceX)
+					advanceX = prevLeft + advanceX - left;
+				else
+					advanceX = r.left + advanceX - left;
 			}
 			return *this;
 		}
@@ -121,13 +129,11 @@ namespace Sqex::FontCsv {
 		virtual ~SeCompatibleFont() = default;
 
 		[[nodiscard]] virtual bool HasCharacter(char32_t) const = 0;
-		[[nodiscard]] virtual SSIZE_T GetCharacterWidth(char32_t c) const = 0;
 		[[nodiscard]] virtual float Size() const = 0;
 		[[nodiscard]] virtual const std::vector<char32_t>& GetAllCharacters() const = 0;
 		[[nodiscard]] virtual GlyphMeasurement MaxBoundingBox() const;
 		[[nodiscard]] virtual uint32_t Ascent() const = 0;
-		[[nodiscard]] virtual uint32_t Descent() const = 0;
-		[[nodiscard]] virtual uint32_t Height() const { return Ascent() + Descent(); }
+		[[nodiscard]] virtual uint32_t LineHeight() const = 0;
 		[[nodiscard]] virtual const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& GetKerningTable() const = 0;
 		[[nodiscard]] virtual SSIZE_T GetKerning(char32_t l, char32_t r, SSIZE_T defaultOffset = 0) const;
 
@@ -147,11 +153,10 @@ namespace Sqex::FontCsv {
 		~SeFont() override;
 
 		[[nodiscard]] bool HasCharacter(char32_t) const override;
-		[[nodiscard]] SSIZE_T GetCharacterWidth(char32_t c) const override;
 		[[nodiscard]] float Size() const override;
 		[[nodiscard]] const std::vector<char32_t>& GetAllCharacters() const override;
 		[[nodiscard]] uint32_t Ascent() const override;
-		[[nodiscard]] uint32_t Descent() const override;
+		[[nodiscard]] uint32_t LineHeight() const override;
 		[[nodiscard]] const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& GetKerningTable() const override;
 
 		using SeCompatibleFont::Measure;
@@ -168,15 +173,14 @@ namespace Sqex::FontCsv {
 
 	public:
 		CascadingFont(std::vector<std::shared_ptr<SeCompatibleFont>> fontList);
-		CascadingFont(std::vector<std::shared_ptr<SeCompatibleFont>> fontList, float normalizedSize, uint32_t ascent, uint32_t descent);
+		CascadingFont(std::vector<std::shared_ptr<SeCompatibleFont>> fontList, float normalizedSize, uint32_t ascent, uint32_t lineHeight);
 		~CascadingFont() override;
 
 		[[nodiscard]] bool HasCharacter(char32_t) const override;
-		[[nodiscard]] SSIZE_T GetCharacterWidth(char32_t c) const override;
 		[[nodiscard]] float Size() const override;
 		[[nodiscard]] const std::vector<char32_t>& GetAllCharacters() const override;
 		[[nodiscard]] uint32_t Ascent() const override;
-		[[nodiscard]] uint32_t Descent() const override;
+		[[nodiscard]] uint32_t LineHeight() const override;
 		[[nodiscard]] const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& GetKerningTable() const override;
 
 		using SeCompatibleFont::Measure;

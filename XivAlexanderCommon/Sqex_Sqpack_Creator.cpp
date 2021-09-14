@@ -28,7 +28,7 @@ struct Sqex::Sqpack::Creator::Implementation {
 	std::map<std::pair<uint32_t, uint32_t>, Entry*> m_pathNameTupleEntryPointerMap;
 	std::map<uint32_t, Entry*> m_fullPathEntryPointerMap;
 
-	std::vector<Utils::Win32::File> m_openFiles;
+	std::vector<Win32::File> m_openFiles;
 
 	std::vector<char> m_sqpackIndexSegment2;
 	std::vector<SqIndex::Segment3Entry> m_sqpackIndexSegment3;
@@ -51,7 +51,7 @@ struct Sqex::Sqpack::Creator::Implementation {
 
 	size_t OpenFile(
 		_In_opt_ std::filesystem::path curItemPath,
-		_In_opt_ Utils::Win32::File alreadyOpenedFile = {});
+		_In_opt_ Win32::File alreadyOpenedFile = {});
 };
 
 Sqex::Sqpack::Creator::Creator(std::string ex, std::string name, uint64_t maxFileSize)
@@ -67,7 +67,7 @@ Sqex::Sqpack::Creator::~Creator() = default;
 
 size_t Sqex::Sqpack::Creator::Implementation::OpenFile(
 	_In_opt_ std::filesystem::path curItemPath,
-	_In_opt_ Utils::Win32::File alreadyOpenedFile
+	_In_opt_ Win32::File alreadyOpenedFile
 ) {
 	if (curItemPath.empty()) {
 		if (!alreadyOpenedFile)
@@ -85,9 +85,9 @@ size_t Sqex::Sqpack::Creator::Implementation::OpenFile(
 	if (found == m_openFiles.size()) {
 		if (alreadyOpenedFile) {
 			if (!alreadyOpenedFile.HasOwnership())
-				alreadyOpenedFile = Utils::Win32::File::DuplicateFrom<Utils::Win32::File>(alreadyOpenedFile);
+				alreadyOpenedFile = Win32::File::DuplicateFrom<Win32::File>(alreadyOpenedFile);
 		} else
-			alreadyOpenedFile = Utils::Win32::File::Create(curItemPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+			alreadyOpenedFile = Win32::File::Create(curItemPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
 
 		m_openFiles.emplace_back(std::move(alreadyOpenedFile));
 	}
@@ -190,7 +190,7 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromSqPac
 	for (const auto& entry : m_original.Files) {
 		try {
 			result += m_pImpl->AddEntry(
-				m_original.GetEntryProvider(entry, Utils::Win32::File{ m_pImpl->m_openFiles[dataFileIndexToOpenFileIndex[entry.DataFileIndex]], false }),
+				m_original.GetEntryProvider(entry, Win32::File{ m_pImpl->m_openFiles[dataFileIndexToOpenFileIndex[entry.DataFileIndex]], false }),
 				dataFileIndexToOpenFileIndex[entry.DataFileIndex],
 				overwriteExisting);
 		} catch (const std::exception& e) {
@@ -221,7 +221,8 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 	nlohmann::json conf;
 	const auto ttmpdPath = extractedDir / "TTMPD.mpd";
 	size_t ttmpd = SIZE_MAX;
-	const auto ttmpl = ThirdParty::TexTools::TTMPL::FromStream(FileRandomAccessStream{ Utils::Win32::File::Create(
+	const auto ttmpl = ThirdParty::TexTools::TTMPL::FromStream(FileRandomAccessStream{
+		Win32::File::Create(
 		extractedDir / "TTMPL.mpl", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0
 	) });
 
@@ -243,7 +244,7 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 		try {
 			addEntryResult += m_pImpl->AddEntry(std::make_shared<RandomAccessStreamAsEntryProviderView>(
 				entry.FullPath,
-				std::make_shared<FileRandomAccessStream>(Utils::Win32::File{ m_pImpl->m_openFiles[ttmpd], false }, entry.ModOffset, entry.ModSize)
+				std::make_shared<FileRandomAccessStream>(Win32::File{ m_pImpl->m_openFiles[ttmpd], false }, entry.ModOffset, entry.ModSize)
 				), ttmpd, overwriteExisting);
 			m_pImpl->Log("{}: {} (Name: {} > {})",
 				!addEntryResult.Added.empty() ? "Added" : !addEntryResult.Replaced.empty() ? "Replaced" : "Ignored",
@@ -276,7 +277,7 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 				try {
 					addEntryResult += m_pImpl->AddEntry(std::make_shared<RandomAccessStreamAsEntryProviderView>(
 						entry.FullPath,
-						std::make_shared<FileRandomAccessStream>(Utils::Win32::File{ m_pImpl->m_openFiles[ttmpd], false }, entry.ModOffset, entry.ModSize)
+						std::make_shared<FileRandomAccessStream>(Win32::File{ m_pImpl->m_openFiles[ttmpd], false }, entry.ModOffset, entry.ModSize)
 						), ttmpd, overwriteExisting);
 
 					m_pImpl->Log("{}: {} (Name: {} > {}({}) > {}({}) > {})",
@@ -396,7 +397,7 @@ public:
 class Sqex::Sqpack::Creator::DataView : public RandomAccessStream {
 	const std::vector<uint8_t> m_header;
 	const std::vector<std::unique_ptr<const Implementation::Entry>> m_entries;
-	const std::vector<std::shared_ptr<const Utils::Win32::File>> m_openFiles;
+	const std::vector<std::shared_ptr<const Win32::File>> m_openFiles;
 
 	const SqData::Header& SubHeader() const {
 		return *reinterpret_cast<const SqData::Header*>(&m_header[sizeof SqpackHeader]);
@@ -417,7 +418,7 @@ class Sqex::Sqpack::Creator::DataView : public RandomAccessStream {
 #endif
 
 public:
-	DataView(const SqpackHeader& header, const SqData::Header& subheader, std::vector<std::unique_ptr<const Implementation::Entry>> entries, std::vector<std::shared_ptr<const Utils::Win32::File>> openFiles)
+	DataView(const SqpackHeader& header, const SqData::Header& subheader, std::vector<std::unique_ptr<const Implementation::Entry>> entries, std::vector<std::shared_ptr<const Win32::File>> openFiles)
 		: m_header(Concat(header, subheader))
 		, m_entries(std::move(entries))
 		, m_openFiles(std::move(openFiles)) {
@@ -512,10 +513,10 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 	std::vector<SqIndex::FileSegmentEntry2> fileEntries2;
 	std::vector<SqIndex::FolderSegmentEntry> folderEntries;
 
-	std::vector<std::shared_ptr<const Utils::Win32::File>> openFiles;
+	std::vector<std::shared_ptr<const Win32::File>> openFiles;
 
 	for (auto& f : m_pImpl->m_openFiles)
-		openFiles.emplace_back(std::make_shared<const Utils::Win32::File>(std::move(f)));
+		openFiles.emplace_back(std::make_shared<const Win32::File>(std::move(f)));
 	m_pImpl->m_openFiles.clear();
 
 	SqpackHeader dataHeader{};
@@ -578,7 +579,7 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 	};
 
 	for (size_t i = 0; i < dataSubheaders.size(); ++i) {
-		std::vector<std::shared_ptr<const Utils::Win32::File>> dataOpenFiles;
+		std::vector<std::shared_ptr<const Win32::File>> dataOpenFiles;
 		for (const auto j : dataOpenFileIndices[i])
 			dataOpenFiles.emplace_back(openFiles[j]);
 

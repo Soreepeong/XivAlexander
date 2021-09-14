@@ -53,195 +53,77 @@ static const auto* const pszTestString = reinterpret_cast<const char*>(
 	u8"테스트 finish\n"
 	u8"ㅌㅅㅌ nj\n"
 	u8"“elemental”"
-	);
+);
 
-const auto testString = U"Hello world!";
-const auto testWeight = 400;
+template<bool Create>
+void test_showcase(const char* testString = nullptr) {
+	if (!testString)
+		testString = pszTestString;
 
-auto test(const Sqex::Sqpack::Reader& common, const std::vector<std::shared_ptr<const Sqex::Texture::MipmapStream>>& texs, float size, const char* sizestr) {
-	const auto sourcek = std::make_shared<Sqex::FontCsv::DirectWriteDrawingFont<uint8_t>>(
-		L"Source Han Sans K", size, static_cast<DWRITE_FONT_WEIGHT>(testWeight)
-		);
-	const auto axis = std::make_shared<Sqex::FontCsv::SeDrawableFont<Sqex::Texture::RGBA4444, uint8_t>>(std::make_shared<Sqex::FontCsv::ModifiableFontCsvStream>(
-		Sqex::Sqpack::EntryRawStream(common.GetEntryProvider(std::format("common/font/{}.fdt", sizestr))),
-		true), texs);
+	const auto cw = 1024, ch = 1024;
 
-	auto creator = Sqex::FontCsv::FontCsvCreator();
-	creator.SizePoints = axis->Size();
-	creator.AscentPixels = axis->Ascent();
-	creator.DescentPixels = axis->Descent();
-	for (const auto c : std::u32string(testString)) {
-		creator.AddCharacter(c, axis.get());
-		creator.AddCharacter(c, sourcek.get());
-	}
-	creator.AddKerning(axis.get());
-	creator.AddKerning(sourcek.get());
-
-	Sqex::FontCsv::FontCsvCreator::RenderTarget target(4096, 4096, 1);
-	const auto newFont = creator.Compile(target);
-	target.Finalize();
-
-	const auto newFontMipmaps = target.AsMipmapStreamVector();
-
-	return std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(newFont, newFontMipmaps);
-}
-
-auto test2(float size) {
-	const auto sourcek = std::make_shared<Sqex::FontCsv::GdiDrawingFont<uint8_t>>(LOGFONTW{
-		.lfHeight = -static_cast<int>(std::round(size)),
-		.lfWeight = testWeight,
-		.lfCharSet = DEFAULT_CHARSET,
-		.lfQuality = CLEARTYPE_NATURAL_QUALITY,
-		.lfFaceName = L"Source Han Sans K",
-		});
-	const auto axis = std::make_shared<Sqex::FontCsv::GdiDrawingFont<uint8_t>>(LOGFONTW{
-		.lfHeight = -static_cast<int>(std::round(size)),
-		.lfWeight = testWeight,
-		.lfCharSet = DEFAULT_CHARSET,
-		.lfQuality = CLEARTYPE_NATURAL_QUALITY,
-		.lfFaceName = L"AXIS Basic ProN R",
-		});
-
-	auto creator = Sqex::FontCsv::FontCsvCreator();
-	creator.SizePoints = axis->Size();
-	creator.AscentPixels = axis->Ascent();
-	creator.DescentPixels = axis->Descent();
-	for (const auto c : std::u32string(testString)) {
-		creator.AddCharacter(c, axis.get());
-		creator.AddCharacter(c, sourcek.get());
-	}
-	creator.AddKerning(axis.get());
-	creator.AddKerning(sourcek.get());
-
-	Sqex::FontCsv::FontCsvCreator::RenderTarget target(4096, 4096, 1);
-	const auto newFont = creator.Compile(target);
-	target.Finalize();
-
-	const auto newFontMipmaps = target.AsMipmapStreamVector();
-
-	return std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(newFont, newFontMipmaps);
-}
-
-auto test3(float size) {
-	const auto sourcek = std::make_shared<Sqex::FontCsv::DirectWriteDrawingFont<uint8_t>>(
-		L"Source Han Sans K", size, static_cast<DWRITE_FONT_WEIGHT>(testWeight)
-		);
-	const auto axis = std::make_shared<Sqex::FontCsv::DirectWriteDrawingFont<uint8_t>>(
-		L"AXIS Basic ProN", size, static_cast<DWRITE_FONT_WEIGHT>(testWeight)
-		);
-
-	auto creator = Sqex::FontCsv::FontCsvCreator();
-	creator.SizePoints = axis->Size();
-	creator.AscentPixels = axis->Ascent();
-	creator.DescentPixels = axis->Descent();
-	for (const auto c : std::u32string(testString)) {
-		creator.AddCharacter(c, axis.get());
-		creator.AddCharacter(c, sourcek.get());
-	}
-	creator.AddKerning(axis.get());
-	creator.AddKerning(sourcek.get());
-
-	Sqex::FontCsv::FontCsvCreator::RenderTarget target(4096, 4096, 1);
-	const auto newFont = creator.Compile(target);
-	target.Finalize();
-
-	const auto newFontMipmaps = target.AsMipmapStreamVector();
-
-	return std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(newFont, newFontMipmaps);
-}
-
-void test_direct() {
-	for (const auto fsize : { 14 }) {
-		for (const auto fname : { L"Comic Sans MS"}) {
+	for (const auto fsize : {12}) {
+		for (const auto fname : {L"Gulim"}) {
 			auto lf = LOGFONTW{
 				.lfHeight = -static_cast<int>(std::round(fsize)),
-				.lfWeight = 400,
 				.lfCharSet = DEFAULT_CHARSET,
-				.lfQuality = CLEARTYPE_NATURAL_QUALITY,
 			};
 			wcsncpy_s(lf.lfFaceName, fname, 8);
+			using T = std::conditional_t<Create, uint8_t, Sqex::Texture::RGBA8888>;
 
-			using T = Sqex::Texture::RGBA8888;
+			std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> mm32a = nullptr;
 
-			for (const auto& fs : std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<T>>>{
-				// std::make_shared<Sqex::FontCsv::GdiDrawingFont<T>>(lf),
-				// std::make_shared<Sqex::FontCsv::DirectWriteDrawingFont<T>>(fname, fsize, DWRITE_FONT_WEIGHT_REGULAR, DWRITE_FONT_STRETCH_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_RENDERING_MODE_NATURAL),
-				std::make_shared<Sqex::FontCsv::FreeTypeDrawingFont<T>>(LR"(C:\Windows\Fonts\comic.ttf)", 0, fsize)
+			for (const auto& [desc, fs, color] : std::vector<std::tuple<std::string, std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<T>>, Sqex::Texture::RGBA8888>>{
+					std::make_tuple("FreeType", std::make_shared<Sqex::FontCsv::FreeTypeDrawingFont<T>>(fname, fsize), Sqex::Texture::RGBA8888(255, 0, 0, 255)),
+					std::make_tuple("GDI", std::make_shared<Sqex::FontCsv::GdiDrawingFont<T>>(lf), Sqex::Texture::RGBA8888(0, 255, 0, 255)),
+					std::make_tuple("DirectWrite", std::make_shared<Sqex::FontCsv::DirectWriteDrawingFont<T>>(fname, fsize, DWRITE_FONT_WEIGHT_REGULAR, DWRITE_FONT_STRETCH_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_RENDERING_MODE_NATURAL), Sqex::Texture::RGBA8888(0, 0, 255, 255)),
 				}) {
-				const auto testStr = pszTestString;
-				// const auto testStr = "j";
+				std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<>> f;
+				if constexpr (Create) {
+					auto creator = Sqex::FontCsv::FontCsvCreator(Utils::Win32::Semaphore::Create(nullptr, 4, 4));
+					creator.SizePoints = fs->Size();
+					creator.AscentPixels = fs->Ascent();
+					creator.LineHeightPixels = fs->LineHeight();
+					creator.BorderOpacity = 0;
+					creator.BorderThickness = 0;
+					for (const auto c : Sqex::FontCsv::ToU32(testString))
+						creator.AddCharacter(c, fs.get());
+					Sqex::FontCsv::FontCsvCreator::RenderTarget target(4096, 4096, 1);
+					const auto newFontCsv = creator.Compile(target);
+					target.Finalize();
 
-				const auto size = fs->Measure(0, 0, testStr);
-				const auto cw = static_cast<uint16_t>(size.Width() + 10);
-				const auto ch = static_cast<uint16_t>(size.Height() + 10);
+					const auto newFontMipmaps = target.AsMipmapStreamVector();
+					f = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(newFontCsv, newFontMipmaps);
+				} else
+					f = fs;
+
+				const auto size = f->Measure(0, 0, testString);
+				/*const auto cw = static_cast<uint16_t>(size.Width() + 32);
+				const auto ch = static_cast<uint16_t>(size.Height() + 32);*/
 				const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::CompressionType::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
-				const auto yptr = 5 - size.top;
-				std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width() * mm32->Height(), 0xFF000000);
-
-				/*for (int i = 0; i < cw; ++i) {
-					mm32->View<Sqex::Texture::RGBA8888>()[cw * yptr + i].SetFrom(255, 0, 0, 255);
-					mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + fs->Ascent()) + i].SetFrom(0, 255, 0, 255);
-					mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + fs->Ascent() + fs->Descent()) + i].SetFrom(0, 255, 0, 255);
+				std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width() * mm32->Height(), 0x80000000);
+				for (auto i = 16; i < ch - 16; ++i)
+					for (auto j = 16; j < cw - 16; ++j)
+						mm32->View<uint32_t>()[i * cw + j] = 0xFF000000;
+				if (!mm32a) {
+					mm32a = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::CompressionType::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
+					std::fill_n(mm32a->View<uint32_t>().begin(), mm32a->Width() * mm32a->Height(), 0x80000000);
+					for (auto i = 16; i < ch - 16; ++i)
+						for (auto j = 16; j < cw - 16; ++j)
+							mm32a->View<uint32_t>()[i * cw + j] = 0xFF000000;
 				}
-				for (int i = 0; i < cw; ++i)
-					mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + fs->Height()) + i].SetFrom(0, 0, 255, 255);*/
-				void(fs->Draw(mm32.get(), 5, yptr, testStr, 0xFFFFFFFF, 0));
-				mm32->Show();
-			}
-		}
-	}
-}
 
-void test_create() {
-	for (const auto fsize : { 14 }) {
-		for (const auto fname : { L"Comic Sans MS" }) {
-			auto lf = LOGFONTW{
-				.lfHeight = -static_cast<int>(std::round(fsize)),
-				.lfWeight = 400,
-				.lfCharSet = DEFAULT_CHARSET,
-				.lfQuality = CLEARTYPE_NATURAL_QUALITY,
-			};
-			wcsncpy_s(lf.lfFaceName, fname, 8);
-
-			using T = uint8_t;
-
-			for (const auto& fs : std::vector<std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<T>>>{
-				// std::make_shared<Sqex::FontCsv::GdiDrawingFont<T>>(lf),
-				// std::make_shared<Sqex::FontCsv::DirectWriteDrawingFont<T>>(fname, fsize, DWRITE_FONT_WEIGHT_REGULAR, DWRITE_FONT_STRETCH_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_RENDERING_MODE_NATURAL),
-				std::make_shared<Sqex::FontCsv::FreeTypeDrawingFont<T>>(fname, fsize)
-				}) {
-				auto creator = Sqex::FontCsv::FontCsvCreator();
-				creator.SizePoints = fs->Size();
-				creator.AscentPixels = fs->Ascent();
-				creator.DescentPixels = fs->Descent();
-				creator.BorderOpacity = 0x80;
-				creator.BorderThickness = 2;
-				for (const auto c : Sqex::FontCsv::ToU32(pszTestString))
-					creator.AddCharacter(c, fs.get());
-				Sqex::FontCsv::FontCsvCreator::RenderTarget target(4096, 4096, 1);
-				const auto newFontCsv = creator.Compile(target);
-				target.Finalize();
-
-				const auto newFontMipmaps = target.AsMipmapStreamVector();
-				const auto f = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(newFontCsv, newFontMipmaps);
-
-				const auto size = fs->Measure(0, 0, pszTestString);
-				const auto cw = static_cast<uint16_t>(size.Width() + 10);
-				const auto ch = static_cast<uint16_t>(size.Height() + 10);
-				const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::CompressionType::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
-				const auto yptr = std::max<SSIZE_T>(0, 5 - size.top);
-				std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width() * mm32->Height(), 0xFF000000);
-
-				for (int i = 0; i < cw; ++i) {
-					mm32->View<Sqex::Texture::RGBA8888>()[cw * yptr + i].SetFrom(255, 0, 0, 255);
-					mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + f->Ascent()) + i].SetFrom(0, 255, 0, 255);
-					mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + f->Ascent() + f->Descent()) + i].SetFrom(0, 255, 0, 255);
+				void(f->Draw(mm32.get(), 16 - size.left, 16 - size.top, testString, 0xFFFFFFFF, 0));
+				{
+					const auto vt = mm32a->View<uint32_t>();
+					const auto vs = mm32->View<uint32_t>();
+					for (size_t i = 0; i < vt.size() && i < vs.size(); ++i) {
+						vt[i] = (vt[i] & ~color.Value) | (vs[i] & color.Value);
+					}
 				}
-				for (int i = 0; i < cw; ++i)
-					mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + f->Height()) + i].SetFrom(0, 0, 255, 255);
-				void(f->Draw(mm32.get(), 5, yptr, pszTestString, 0xFFFFFFFF, 0));
-				mm32->Show();
+				mm32->Show(std::format("{}, {}, {}", fname, fsize, desc));
 			}
+			mm32a->Show(std::format("{}, {}, All", fname, fsize));
 		}
 	}
 }
@@ -287,7 +169,7 @@ void compile() {
 		).Write(0, std::span(buf));
 	}
 
-	for (const auto& [textureGroupFilenamePattern, fontSet] : result.Result) {
+	for (const auto& fontSet : result.Result | std::views::values) {
 		std::vector<std::shared_ptr<const Sqex::Texture::MipmapStream>> newMipmaps;
 		for (const auto& texture : fontSet.Textures) {
 			auto mipmap = Sqex::Texture::MipmapStream::FromTexture(texture, 0);
@@ -300,7 +182,7 @@ void compile() {
 			{
 				const auto lines = Utils::StringSplit<std::string>(pszTestString, "\n");
 				const auto cw = static_cast<uint16_t>(newFont->Measure(5, 5, pszTestString).Width() + 10);
-				const auto ch = static_cast<uint16_t>(5 * (lines.size() + 1) + newFont->Height() * lines.size());
+				const auto ch = static_cast<uint16_t>(5 * (lines.size() + 1) + newFont->LineHeight() * lines.size());
 				const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::CompressionType::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
 				std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width() * mm32->Height(), 0xFF000000);
 
@@ -313,10 +195,10 @@ void compile() {
 					for (SSIZE_T i = 0; i < cw; ++i) {
 						mm32->View<Sqex::Texture::RGBA8888>()[cw * yptr + i].SetFrom(255, 0, 0, 255);
 						mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + newFont->Ascent()) + i].SetFrom(0, 255, 0, 255);
-						mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + newFont->Ascent() + newFont->Descent()) + i].SetFrom(0, 255, 0, 255);
+						mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + newFont->LineHeight()) + i].SetFrom(0, 255, 0, 255);
 					}
 					newFont->Draw(mm32.get(), 5, yptr, line, 0xFFFFFFFF, 0);
-					yptr += newFont->Height();
+					yptr += newFont->LineHeight();
 					for (SSIZE_T i = 0; i < cw; ++i)
 						mm32->View<Sqex::Texture::RGBA8888>()[cw * yptr + i].SetFrom(0, 0, 255, 255);
 					yptr += 5;
@@ -332,7 +214,7 @@ void freetype_test() {
 	FT_Library library;
 	if (const auto err = FT_Init_FreeType(&library))
 		return;
-	
+
 	static FT_Face face;
 	if (const auto err = FT_New_Face(library, R"(C:\windows\fonts\gulim.ttc)", 0, &face))
 		return;
@@ -388,15 +270,15 @@ void freetype_test() {
 			}
 		}
 	}
-	
+
 	mm8->Show();
 }
 
 int main() {
 	system("chcp 65001");
 	// freetype_test();
-	// test_create();
+	test_showcase<false>();
 	// test_direct();
-	compile();
+	// compile();
 	return 0;
 }

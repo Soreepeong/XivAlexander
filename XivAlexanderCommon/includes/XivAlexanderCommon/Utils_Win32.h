@@ -48,6 +48,12 @@ namespace Utils::Win32 {
 	void AddDebugPrivilege();
 	bool IsUserAnAdmin();
 
+	inline uint32_t GetCoreCount() noexcept {
+		SYSTEM_INFO si;
+		GetSystemInfo(&si);
+		return std::max<uint32_t>(1, si.dwNumberOfProcessors);
+	}
+
 	std::filesystem::path GetMappedImageNativePath(HANDLE hProcess, void* lpMem);
 	std::filesystem::path ToNativePath(const std::filesystem::path& path);
 	std::filesystem::path GetSystem32Path();

@@ -207,7 +207,7 @@
                   "minimumExclusive": 0
                 },
                 "ascent": {
-                  "description": "Ascent of the font. If null is given, the maximum ascent will be used. If string is given, ascent of specified font from sources will be used.",
+                  "description": "Ascent of the font. If null is given, the maximum ascent among the given sources will be used. If string is given, ascent of the specified font from sources will be used.",
                   "type": [
                     "integer",
                     "string",
@@ -217,8 +217,8 @@
                   "maximum": 255,
                   "default": null
                 },
-                "descent": {
-                  "description": "Descent of the font. If null is given, the maximum descent will be used. If string is given, descent of specified font from sources will be used.",
+                "lineHeight": {
+                  "description": "Line height (ascent + descent + lien gap(external leading)) of the font. If null is given, the maximum line height among the given sources will be used. If string is given, line height of the specified font from sources will be used.",
                   "type": [
                     "integer",
                     "string",

@@ -43,7 +43,7 @@ struct Sqex::Sqpack::EntryRawStream::StreamDecoder::ReadStreamState {
 		else
 			res = inflateReset2(&zstream, -15);
 		if (res != Z_OK)
-			throw Utils::ZlibError(res);
+			throw ZlibError(res);
 	}
 
 	~ReadStreamState() {
@@ -110,7 +110,7 @@ public:
 
 				if (const auto res = inflate(&zstream, Z_FINISH);
 					res != Z_OK && res != Z_BUF_ERROR && res != Z_STREAM_END)
-					throw Utils::ZlibError(res);
+					throw ZlibError(res);
 				if (zstream.avail_out)
 					throw CorruptDataException("Not enough data produced");
 
