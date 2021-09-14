@@ -110,16 +110,19 @@ Sqex::FontCsv::GdiFont::DeviceContextWrapper::DeviceContextWrapper(const LOGFONT
 Sqex::FontCsv::GdiFont::DeviceContextWrapper::~DeviceContextWrapper() = default;
 
 Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::GdiFont::DeviceContextWrapper::Measure(SSIZE_T x, SSIZE_T y, char32_t c) const {
-	GlyphMeasurement res;
-	if (!DrawTextW(m_hdc, ToU16(ToU8({c})).c_str(), -1, res.AsMutableRectPtr(), DT_CALCRECT | DT_NOPREFIX | DT_EXTERNALLEADING))
-		throw std::runtime_error("DrawTextW(1)");
+	static constexpr MAT2 IdentityMatrix = {{0, 1}, {0, 0}, {0, 0}, {0, 1}};
 
-	ABCFLOAT w;
-	GetCharABCWidthsFloatW(m_hdc, c, c, &w);
-	const auto totalWidthFloat = w.abcfA + w.abcfB + w.abcfC;
+	GLYPHMETRICS gm;
+	GetGlyphOutlineW(m_hdc, c, GGO_METRICS, &gm, 0, nullptr, &IdentityMatrix);
 
-	res.advanceX = static_cast<SSIZE_T>(totalWidthFloat);
-	return res.Translate(x, y);
+	return GlyphMeasurement{
+		.empty = false,
+		.left = gm.gmptGlyphOrigin.x,
+		.top = Metrics.tmAscent - gm.gmptGlyphOrigin.y,
+		.right = static_cast<SSIZE_T>(gm.gmptGlyphOrigin.x) + gm.gmBlackBoxX,
+		.bottom = static_cast<SSIZE_T>(Metrics.tmAscent) -gm.gmptGlyphOrigin.y + gm.gmBlackBoxY,
+		.advanceX = gm.gmCellIncX,
+	}.Translate(x, y);
 }
 
 Sqex::FontCsv::GdiFont::DeviceContextWrapper::DrawResult Sqex::FontCsv::GdiFont::DeviceContextWrapper::Draw(SSIZE_T x, SSIZE_T y, char32_t c) {
@@ -132,21 +135,16 @@ Sqex::FontCsv::GdiFont::DeviceContextWrapper::DrawResult Sqex::FontCsv::GdiFont:
 		m_prevBitmapRevert = [this]() { SelectBitmap(m_hdc, m_hPrevBitmap); };
 		m_bmi.bmi.bmiHeader.biSize = sizeof m_bmi.bmi.bmiHeader;
 		if (!GetDIBits(m_hdc, m_hBitmap, 0, 0, nullptr, &m_bmi.bmi, DIB_RGB_COLORS))
-			throw std::runtime_error("GetDIBits(2)");
+			throw std::runtime_error("GetDIBits(1)");
 		m_readBuffer.resize(m_bmi.bmi.bmiHeader.biSizeImage / 4);
 	}
 
 	GlyphMeasurement res = Measure(0, 0, c);
-	const auto offsetX = res.left, offsetY = res.top;
-	res.Translate(-offsetX, -offsetY);
-
-	if (!DrawTextW(m_hdc, ToU16(ToU8({c})).c_str(), -1, res.AsMutableRectPtr(), DT_NOCLIP | DT_NOPREFIX | DT_EXTERNALLEADING))
-		throw std::runtime_error("DrawTextW(2)");
+	ExtTextOutW(m_hdc, static_cast<int>(-res.left), static_cast<int>(-res.top), ETO_OPAQUE, nullptr, ToU16(ToU8({c})).c_str(), 1, nullptr);
 	if (!GetDIBits(m_hdc, m_hBitmap, 0, m_bmi.bmi.bmiHeader.biHeight, &m_readBuffer[0], &m_bmi.bmi, DIB_RGB_COLORS))
 		throw std::runtime_error("GetDIBits(2)");
 
-	res.Translate(x + offsetX, y + offsetY);
-	return {&m_readBuffer, res, m_bmi.bmi.bmiHeader.biWidth, m_bmi.bmi.bmiHeader.biHeight};
+	return {&m_readBuffer, res.Translate(x, y), m_bmi.bmi.bmiHeader.biWidth, m_bmi.bmi.bmiHeader.biHeight};
 }
 
 Sqex::FontCsv::GdiFont::DeviceContextWrapperContext Sqex::FontCsv::GdiFont::AllocateDeviceContext() const {
