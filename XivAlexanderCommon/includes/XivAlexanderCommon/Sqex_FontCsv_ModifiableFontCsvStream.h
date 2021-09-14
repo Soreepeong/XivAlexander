@@ -10,9 +10,6 @@ namespace Sqex::FontCsv {
 		KerningHeader m_knhd;
 		std::vector<KerningEntry> m_kerningEntries;
 
-		std::mutex m_fontEntryMtx;
-		std::mutex m_kernEntryMtx;
-
 	public:
 		ModifiableFontCsvStream();
 		ModifiableFontCsvStream(const RandomAccessStream& stream, bool strict = false);

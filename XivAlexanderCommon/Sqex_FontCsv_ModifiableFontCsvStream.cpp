@@ -159,7 +159,6 @@ void Sqex::FontCsv::ModifiableFontCsvStream::ReserveStorage(size_t fontEntryCoun
 
 void Sqex::FontCsv::ModifiableFontCsvStream::AddFontEntry(char32_t c, uint16_t textureIndex, uint16_t textureOffsetX, uint16_t textureOffsetY, uint8_t boundingWidth, uint8_t boundingHeight, int8_t nextOffsetX, int8_t currentOffsetY) {
 	const auto val = UnicodeCodePointToUtf8Uint32(c);
-	const auto lock = std::lock_guard(m_fontEntryMtx);
 	auto it = std::lower_bound(m_fontTableEntries.begin(), m_fontTableEntries.end(), val,
 		[](const FontTableEntry& l, uint32_t r) {
 		return l.Utf8Value < r;
@@ -185,8 +184,7 @@ void Sqex::FontCsv::ModifiableFontCsvStream::AddKerning(char32_t l, char32_t r, 
 	entry.Left(l);
 	entry.Right(r);
 	entry.RightOffset = rightOffset;
-
-	const auto lock = std::lock_guard(m_kernEntryMtx);
+	
 	const auto it = std::lower_bound(m_kerningEntries.begin(), m_kerningEntries.end(), entry,
 		[](const KerningEntry& l, const KerningEntry& r) {
 		if (l.LeftUtf8Value == r.LeftUtf8Value)

@@ -89,7 +89,9 @@ void test_showcase(const char* testString = nullptr) {
 					for (const auto c : Sqex::FontCsv::ToU32(testString))
 						creator.AddCharacter(c, fs.get());
 					Sqex::FontCsv::FontCsvCreator::RenderTarget target(4096, 4096, 1);
-					const auto newFontCsv = creator.Compile(target);
+					creator.Step2_Layout(target);
+					creator.Step3_Draw(target);
+					const auto newFontCsv = creator.GetResult();
 					target.Finalize();
 
 					const auto newFontMipmaps = target.AsMipmapStreamVector();
@@ -130,6 +132,7 @@ void test_showcase(const char* testString = nullptr) {
 
 void compile() {
 	Sqex::FontCsv::FontSetsCreator::ResultFontSets result;
+	bool isArgb32;
 	try {
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Original.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.dwrite.json)");
@@ -140,10 +143,12 @@ void compile() {
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.PapyrusGungsuh.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.WithMinimalHangul.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.WithMinimalHangul.Border.json)");
-		std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\Korean.Original.json)");
+		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\Korean.Original.json)");
+		std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\Korean.Border36.json)");
 		nlohmann::json j;
 		fin >> j;
 		auto cfg = j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
+		isArgb32 = cfg.textureType != Sqex::Texture::CompressionType::RGBA4444;
 
 		Sqex::FontCsv::FontSetsCreator creator(cfg, R"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game\)");
 		// Sqex::FontCsv::FontSetsCreator creator(cfg, R"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game)");
@@ -159,6 +164,7 @@ void compile() {
 		}
 	} catch (const std::exception& e) {
 		std::cout << e.what() << std::endl;
+		return;
 	}
 
 	for (const auto& [fileName, stream] : result.GetAllStreams()) {
@@ -177,106 +183,74 @@ void compile() {
 			newMipmaps.emplace_back(std::move(mipmap));
 		}
 
-		for (const auto& [fontName, newFontCsv] : fontSet.Fonts) {
-			const auto newFont = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(newFontCsv, newMipmaps);
-			{
-				const auto lines = Utils::StringSplit<std::string>(pszTestString, "\n");
-				const auto cw = static_cast<uint16_t>(newFont->Measure(5, 5, pszTestString).Width() + 10);
-				const auto ch = static_cast<uint16_t>(5 * (lines.size() + 1) + newFont->LineHeight() * lines.size());
-				const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::CompressionType::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
-				std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width() * mm32->Height(), 0xFF000000);
+		if (isArgb32) {
+			for (const auto& [fontName, newFontCsv] : fontSet.Fonts) {
+				const auto newFont = std::make_shared<Sqex::FontCsv::SeDrawableFont<Sqex::Texture::RGBA8888>>(newFontCsv, newMipmaps);
+				{
+					const auto lines = Utils::StringSplit<std::string>(pszTestString, "\n");
+					const auto cw = static_cast<uint16_t>(newFont->Measure(5, 5, pszTestString).Width() + 10);
+					const auto ch = static_cast<uint16_t>(5 * (lines.size() + 1) + newFont->LineHeight() * lines.size());
+					const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::CompressionType::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
+					std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width() * mm32->Height(), 0xFF000000);
 
-				SSIZE_T yptr = 5;
-				auto j = 0;
-				for (auto line : lines) {
-					++j;
-					if (line.empty())
-						line = " ";
-					for (SSIZE_T i = 0; i < cw; ++i) {
-						mm32->View<Sqex::Texture::RGBA8888>()[cw * yptr + i].SetFrom(255, 0, 0, 255);
-						mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + newFont->Ascent()) + i].SetFrom(0, 255, 0, 255);
-						mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + newFont->LineHeight()) + i].SetFrom(0, 255, 0, 255);
+					SSIZE_T yptr = 5;
+					auto j = 0;
+					for (auto line : lines) {
+						++j;
+						if (line.empty())
+							line = " ";
+						for (SSIZE_T i = 0; i < cw; ++i) {
+							mm32->View<Sqex::Texture::RGBA8888>()[cw * yptr + i].SetFrom(255, 0, 0, 255);
+							mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + newFont->Ascent()) + i].SetFrom(0, 255, 0, 255);
+							mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + newFont->LineHeight()) + i].SetFrom(0, 255, 0, 255);
+						}
+						newFont->Draw(mm32.get(), 5, yptr, line, 0xFFFFFFFF, 0);
+						yptr += newFont->LineHeight();
+						for (SSIZE_T i = 0; i < cw; ++i)
+							mm32->View<Sqex::Texture::RGBA8888>()[cw * yptr + i].SetFrom(0, 0, 255, 255);
+						yptr += 5;
 					}
-					newFont->Draw(mm32.get(), 5, yptr, line, 0xFFFFFFFF, 0);
-					yptr += newFont->LineHeight();
-					for (SSIZE_T i = 0; i < cw; ++i)
-						mm32->View<Sqex::Texture::RGBA8888>()[cw * yptr + i].SetFrom(0, 0, 255, 255);
-					yptr += 5;
-				}
 
-				mm32->Show(fontName);
+					mm32->Show(fontName);
+				}
+			}
+		} else {
+			for (const auto& [fontName, newFontCsv] : fontSet.Fonts) {
+				const auto newFont = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(newFontCsv, newMipmaps);
+				{
+					const auto lines = Utils::StringSplit<std::string>(pszTestString, "\n");
+					const auto cw = static_cast<uint16_t>(newFont->Measure(5, 5, pszTestString).Width() + 10);
+					const auto ch = static_cast<uint16_t>(5 * (lines.size() + 1) + newFont->LineHeight() * lines.size());
+					const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::CompressionType::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
+					std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width() * mm32->Height(), 0xFF000000);
+
+					SSIZE_T yptr = 5;
+					auto j = 0;
+					for (auto line : lines) {
+						++j;
+						if (line.empty())
+							line = " ";
+						for (SSIZE_T i = 0; i < cw; ++i) {
+							mm32->View<Sqex::Texture::RGBA8888>()[cw * yptr + i].SetFrom(255, 0, 0, 255);
+							mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + newFont->Ascent()) + i].SetFrom(0, 255, 0, 255);
+							mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + newFont->LineHeight()) + i].SetFrom(0, 255, 0, 255);
+						}
+						newFont->Draw(mm32.get(), 5, yptr, line, 0xFFFFFFFF, 0);
+						yptr += newFont->LineHeight();
+						for (SSIZE_T i = 0; i < cw; ++i)
+							mm32->View<Sqex::Texture::RGBA8888>()[cw * yptr + i].SetFrom(0, 0, 255, 255);
+						yptr += 5;
+					}
+
+					mm32->Show(fontName);
+				}
 			}
 		}
 	}
-}
-
-void freetype_test() {
-	FT_Library library;
-	if (const auto err = FT_Init_FreeType(&library))
-		return;
-
-	static FT_Face face;
-	if (const auto err = FT_New_Face(library, R"(C:\windows\fonts\gulim.ttc)", 0, &face))
-		return;
-
-	if (const auto err = FT_Set_Char_Size(face, 0, 12 * 64, 96, 96))
-		return;
-
-	const auto glyphIndex = FT_Get_Char_Index(face, U'w');
-
-	if (const auto err = FT_Load_Glyph(face, glyphIndex, FT_LOAD_DEFAULT))
-		return;
-
-	const auto w = face->glyph->bitmap.width;
-	const auto h = face->glyph->bitmap.rows;
-	const auto mm8 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(
-		w,
-		h,
-		Sqex::Texture::CompressionType::L8_1,
-		std::vector<uint8_t>(w * h));
-
-	// FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
-
-	if (face->glyph->format == FT_GLYPH_FORMAT_OUTLINE) {
-		FT_Outline outline;
-		FT_Outline_New(library, 0xFFFF, 0xFFFF, &outline);
-
-		FT_Raster_Params rasterParams{
-			.flags = FT_RASTER_FLAG_DIRECT | FT_RASTER_FLAG_AA,
-			.gray_spans = [](int y, int count, const FT_Span* spans, void* user) {
-				const auto mm8 = static_cast<Sqex::Texture::MemoryBackedMipmap*>(user);
-				const auto buf = mm8->View<uint8_t>();
-				for (const auto& span : std::span(spans, spans + count)) {
-					std::fill_n(&buf[mm8->Width() * (face->glyph->bitmap_top - y - 1) + span.x - face->glyph->bitmap_left], span.len, span.coverage);
-				}
-			},
-			.user = mm8.get(),
-		};
-		if (const auto err = FT_Outline_Render(library, &face->glyph->outline, &rasterParams))
-			return;
-	} else if (face->glyph->format == FT_GLYPH_FORMAT_BITMAP) {
-		FT_Bitmap target;
-		if (face->glyph->bitmap.pitch != 8) {
-			FT_Bitmap_Init(&target);
-			if (const auto err = FT_Bitmap_Convert(library, &face->glyph->bitmap, &target, 1))
-				return;
-		} else
-			target = face->glyph->bitmap;
-
-		const auto buf = mm8->View<uint8_t>();
-		for (size_t y = 0; y < target.rows; y++) {
-			for (size_t x = 0; x < target.width; ++x) {
-				buf[mm8->Width() * y + x] = target.buffer[target.width * y + x] * 255 / (face->glyph->bitmap.num_grays - 1);
-			}
-		}
-	}
-
-	mm8->Show();
 }
 
 int main() {
 	system("chcp 65001");
-	// freetype_test();
 	// test_showcase<false>();
 	// test_direct();
 	compile();
