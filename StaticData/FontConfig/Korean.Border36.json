@@ -2,6 +2,7 @@
   "name": "Original but with borders on 36px fonts (Korean Client)",
   "textureWidth": 2048,
   "textureHeight": 2048,
+  "textureType": "RGBA",
   "sources": {
     "game:AXIS_96": {
       "fdtPath": "common/font/AXIS_96.fdt",
