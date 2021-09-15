@@ -78,19 +78,19 @@ namespace App::Window {
 
 		Utils::ListenerManager<BaseWindow, void> OnDestroyListener;
 
-		Utils::CallOnDestruction WithTemporaryFocus() const;
+		[[nodiscard]] Utils::CallOnDestruction WithTemporaryFocus() const;
 
 	protected:
 
 		LRESULT RunOnUiThreadWait(const std::function<LRESULT()>&);
 		bool RunOnUiThread(std::function<void()>, bool immediateIfNoWindow = true);
 
-		double GetZoom() const;
+		[[nodiscard]] double GetZoom() const;
 
 		virtual void ApplyLanguage(WORD languageId);
 
 		virtual LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-		virtual void OnLayout(double zoom, double width, double height);
+		virtual void OnLayout(double zoom, double width, double height, int resizeType);
 		virtual LRESULT OnNotify(const LPNMHDR nmhdr);
 		virtual LRESULT OnSysCommand(WPARAM commandId, short xPos, short yPos);
 		virtual void OnDestroy();

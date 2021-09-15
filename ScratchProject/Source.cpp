@@ -138,7 +138,7 @@ void compile() {
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.dwrite.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.gdi.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulimche.dwrite_file.json)");
-		std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.ComicGulim.json)");
+		std::ifstream fin(R"(..\StaticData\FontConfig\International.ComicGulim.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.ComicSans.freetype.border.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.ComicSans.json)");
 		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.PapyrusGungsuh.json)");

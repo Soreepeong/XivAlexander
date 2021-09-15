@@ -889,6 +889,10 @@ bool Sqex::FontCsv::FontSetsCreator::Wait(DWORD timeout) const {
 	throw std::runtime_error(m_pImpl->LastErrorMessage.empty() ? "Cancelled" : m_pImpl->LastErrorMessage.c_str());
 }
 
+HANDLE Sqex::FontCsv::FontSetsCreator::GetWaitableObject() const {
+	return m_pImpl->WorkerThread;
+}
+
 const std::string& Sqex::FontCsv::FontSetsCreator::GetError() const {
 	return m_pImpl->LastErrorMessage;
 }

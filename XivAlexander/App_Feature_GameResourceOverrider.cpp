@@ -9,6 +9,8 @@
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_Hooks.h"
 #include "App_Misc_Logger.h"
+#include "App_Window_ProgressPopupWindow.h"
+#include "DllMain.h"
 
 std::weak_ptr<App::Feature::GameResourceOverrider::Implementation> App::Feature::GameResourceOverrider::s_pImpl;
 
@@ -208,7 +210,6 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			m_cleanup += CloseHandle.SetHook([this](
 				HANDLE handle
 			) {
-
 					AtomicIntEnter implUseLock(m_stk);
 
 					std::unique_lock lock(m_virtualPathMapMutex);
@@ -225,7 +226,6 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				_Out_opt_ LPDWORD lpNumberOfBytesRead,
 				_Inout_opt_ LPOVERLAPPED lpOverlapped
 			) {
-
 					AtomicIntEnter implUseLock(m_stk);
 
 					OverlayedHandleData* pvpath = nullptr;
@@ -282,7 +282,6 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				_In_ LARGE_INTEGER liDistanceToMove,
 				_Out_opt_ PLARGE_INTEGER lpNewFilePointer,
 				_In_ DWORD dwMoveMethod) {
-
 					AtomicIntEnter implUseLock(m_stk);
 
 					OverlayedHandleData* pvpath = nullptr;
@@ -628,6 +627,11 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			try {
 				if (!exists(fontConfigPath))
 					throw std::runtime_error(std::format("=> Font config file was not found: ", fontConfigPathStr));
+
+				const auto actCtx = Dll::ActivationContext().With();
+				Window::ProgressPopupWindow progressWindow(Dll::FindGameMainWindow(false));
+				const auto showProgressWindowAfter = static_cast<int64_t>(GetTickCount64()) + 500;
+
 				m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
 					"=> Generating font per file: {}",
 					fontConfigPathStr);
@@ -638,14 +642,21 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				auto cfg = j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
 
 				Sqex::FontCsv::FontSetsCreator fontCreator(cfg, Utils::Win32::Process::Current().PathOf().parent_path());
-				while (!fontCreator.Wait(1000)) {
+				while (true) {
+					const auto nextWait = std::max(static_cast<int64_t>(GetTickCount64()) - showProgressWindowAfter, 50LL);
+					if (WAIT_TIMEOUT != progressWindow.DoModalLoop(nextWait, {fontCreator.GetWaitableObject()}))
+						break;
+
 					const auto progress = fontCreator.GetProgress();
-					m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-						"=> Creating font... ({:.2f}% and {} task(s))",
-						progress.Scale(100.), progress.Indeterminate);
+					progressWindow.UpdateProgress(progress.Progress, progress.Max);
+					if (progress.Indeterminate)
+						progressWindow.UpdateMessage(std::format("and {} task(s)", progress.Indeterminate));
+					else
+						progressWindow.UpdateMessage("");
+
+					progressWindow.Show();
 				}
-				if (!fontCreator.GetError().empty())
-					throw std::runtime_error(fontCreator.GetError());
+
 				const auto& result = fontCreator.GetResult();
 				for (const auto& [entryPath, stream] : result.GetAllStreams()) {
 					std::shared_ptr<Sqex::Sqpack::EntryProvider> provider;

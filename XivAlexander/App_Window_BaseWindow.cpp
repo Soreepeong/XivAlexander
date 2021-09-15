@@ -166,7 +166,14 @@ LRESULT App::Window::BaseWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 		case WM_DPICHANGED: {
 			RECT rc;
 			GetClientRect(m_hWnd, &rc);
-			OnLayout(GetZoom(), rc.right - rc.left, rc.bottom - rc.top);
+			int resizeType;
+			if (IsZoomed(hwnd))
+				resizeType = SIZE_MAXIMIZED;
+			else if (IsIconic(hwnd))
+				resizeType = SIZE_MINIMIZED;
+			else
+				resizeType = SIZE_RESTORED;
+			OnLayout(GetZoom(), rc.right - rc.left, rc.bottom - rc.top, resizeType);
 			break;
 		}
 
@@ -183,7 +190,7 @@ LRESULT App::Window::BaseWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 	return DefWindowProcW(m_hWnd, uMsg, wParam, lParam);
 }
 
-void App::Window::BaseWindow::OnLayout(double zoom, double width, double height) {
+void App::Window::BaseWindow::OnLayout(double zoom, double width, double height, int resizeType) {
 }
 
 LRESULT App::Window::BaseWindow::OnNotify(const LPNMHDR nmhdr) {

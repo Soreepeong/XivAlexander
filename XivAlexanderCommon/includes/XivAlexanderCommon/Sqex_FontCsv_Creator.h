@@ -123,6 +123,7 @@ namespace Sqex::FontCsv {
 		};
 
 		bool Wait(DWORD timeout = INFINITE) const;
+		HANDLE GetWaitableObject() const;
 		[[nodiscard]] FontGenerateProcess GetProgress() const;
 		[[nodiscard]] const ResultFontSets& GetResult() const;
 		[[nodiscard]] const std::string& GetError() const;

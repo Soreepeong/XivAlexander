@@ -112,7 +112,7 @@ void App::Window::LogWindow::ApplyLanguage(WORD languageId) {
 	Utils::Win32::Menu(Dll::Module(), RT_MENU, MAKEINTRESOURCE(IDR_LOG_MENU), languageId).AttachAndSwap(m_hWnd);
 }
 
-void App::Window::LogWindow::OnLayout(double zoom, double width, double height) {
+void App::Window::LogWindow::OnLayout(double zoom, double width, double height, int resizeType) {
 	SetWindowPos(m_hScintilla, nullptr, 0, 0, static_cast<int>(width), static_cast<int>(height), 0);
 	ResizeMargin();
 }

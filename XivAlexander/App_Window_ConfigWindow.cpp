@@ -173,7 +173,7 @@ LRESULT App::Window::ConfigWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 	return BaseWindow::WndProc(hwnd, uMsg, wParam, lParam);
 }
 
-void App::Window::ConfigWindow::OnLayout(double zoom, double width, double height) {
+void App::Window::ConfigWindow::OnLayout(double zoom, double width, double height, int resizeType) {
 	SetWindowPos(m_hScintilla, nullptr, 0, 0, static_cast<int>(width), static_cast<int>(height), 0);
 	ResizeMargin();
 }

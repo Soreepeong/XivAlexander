@@ -28,7 +28,7 @@ namespace App::Window {
 		void ApplyLanguage(WORD languageId) final;
 
 		LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
-		void OnLayout(double zoom, double width, double height) override;
+		void OnLayout(double zoom, double width, double height, int resizeType) override;
 		LRESULT OnNotify(LPNMHDR nmhdr) override;
 
 		void ResizeMargin();

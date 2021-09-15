@@ -98,6 +98,9 @@
     <ClCompile Include="App_Loader.cpp">
       <Filter>App\Apps</Filter>
     </ClCompile>
+    <ClCompile Include="App_Window_ProgressPopupWindow.cpp">
+      <Filter>App\Window</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -181,6 +184,9 @@
     </ClInclude>
     <ClInclude Include="App_Feature_GameResourceOverrider.h">
       <Filter>App\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Window_ProgressPopupWindow.h">
+      <Filter>App\Window</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
