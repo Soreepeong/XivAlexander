@@ -18,7 +18,7 @@
 #include "App_InjectOnCreateProcessApp_x64.h"
 #elif INTPTR_MAX == INT32_MAX
 #include "App_InjectOnCreateProcessApp_x86.h"
-#endif 
+#endif
 
 struct App::InjectOnCreateProcessApp::Implementation {
 
@@ -31,7 +31,7 @@ struct App::InjectOnCreateProcessApp::Implementation {
 		LPVOID,
 		LPCWSTR,
 		LPSTARTUPINFOW,
-		LPPROCESS_INFORMATION> CreateProcessW{ "CreateProcessW", ::CreateProcessW };
+		LPPROCESS_INFORMATION> CreateProcessW{"CreateProcessW", ::CreateProcessW};
 
 	Misc::Hooks::PointerFunction<BOOL, LPCSTR,
 		LPSTR,
@@ -42,10 +42,10 @@ struct App::InjectOnCreateProcessApp::Implementation {
 		LPVOID,
 		LPCSTR,
 		LPSTARTUPINFOA,
-		LPPROCESS_INFORMATION> CreateProcessA{ "CreateProcessA", ::CreateProcessA };
+		LPPROCESS_INFORMATION> CreateProcessA{"CreateProcessA", ::CreateProcessA};
 
 	Utils::CallOnDestruction::Multiple m_cleanup;
-	
+
 	bool InjectAll = false;
 	bool InjectGameOnly = false;
 
@@ -86,7 +86,7 @@ struct App::InjectOnCreateProcessApp::Implementation {
 				if (process.IsProcess64Bits() == Utils::Win32::Process::Current().IsProcess64Bits()) {
 					XivAlexDll::PatchEntryPointForInjection(process);
 				} else {
-					LaunchXivAlexLoaderWithTargetHandles({ process }, XivAlexDll::LoaderAction::Internal_Inject_HookEntryPoint, true,
+					LaunchXivAlexLoaderWithTargetHandles({process}, XivAlexDll::LoaderAction::Internal_Inject_HookEntryPoint, true,
 						Dll::Module().PathOf().parent_path() / XivAlex::XivAlexLoaderOppositeNameW);
 				}
 			}
@@ -99,7 +99,7 @@ struct App::InjectOnCreateProcessApp::Implementation {
 #endif
 		if (!error.empty()) {
 			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR,
-			                          FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
+				FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
 				L"Error: {}\n\n"
 				L"isTarget={}\n"
 				L"Self: PID={}, Platform={}, Path={}\n"
@@ -213,7 +213,7 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
 						if (Utils::Win32::RunProgram({
 							.path = process.PathOf(),
 							.args = Utils::FromUtf8(Sqex::CommandLine::ToString(pairs, true)),
-							})) {
+						})) {
 #ifdef _DEBUG
 							Utils::Win32::MessageBoxF(nullptr, MB_OK, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1, L"DEBUG: Restarting due to tick count difference of {} between encryption timestamp and now.", now - time);
 #endif
@@ -236,10 +236,11 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
 	XivAlexDll::EnableInjectOnCreateProcess(0);
 }
 
-void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters * pParam) {
+void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters* pParam) {
 	DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &pParam->Internal.hMainThread, 0, FALSE, DUPLICATE_SAME_ACCESS);
 	pParam->Internal.hContinuableEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
 	pParam->Internal.hWorkerThread = CreateThread(nullptr, 0, [](void* pParam) -> DWORD {
+		// ReSharper disable once CppInitializedValueIsAlwaysRewritten
 		auto skipFree = false;
 		{
 			const auto process = Utils::Win32::Process::Current();
@@ -253,7 +254,7 @@ void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters * pParam)
 				skipFree = p->SkipFree;
 
 #ifdef _DEBUG
-				Utils::Win32::MessageBoxF(MB_OK, MB_OK, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
+				Utils::Win32::MessageBoxF(nullptr, MB_OK, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
 					L"PID: {}\nPath: {}\nCommand Line: {}", process.GetId(), process.PathOf().wstring(), GetCommandLineW());
 #endif
 
@@ -302,7 +303,7 @@ XivAlexDll::InjectEntryPointParameters* XivAlexDll::PatchEntryPointForInjection(
 			throw std::runtime_error("GetCommittedImageAllocation");
 		pBaseAddress = regions.front().BaseAddress;
 	}
-	
+
 	const auto& mem = process.GetModuleMemoryBlockManager(static_cast<HMODULE>(pBaseAddress));
 
 	auto path = Dll::Module().PathOf().wstring();
@@ -318,11 +319,13 @@ XivAlexDll::InjectEntryPointParameters* XivAlexDll::PatchEntryPointForInjection(
 			+ trampolineLength
 			+ pathBytes.size_bytes()
 		);
-		trampoline = new (&trampolineBuffer[0]) TrampolineTemplate();
-		pathBytesTarget = { &trampolineBuffer[trampolineLength], pathBytes.size_bytes() };
+		trampoline = new(&trampolineBuffer[0]) TrampolineTemplate();
+		pathBytesTarget = {&trampolineBuffer[trampolineLength], pathBytes.size_bytes()};
 	}
 
-	const auto rvaEntryPoint = mem.OptionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC ? mem.OptionalHeader32.AddressOfEntryPoint : mem.OptionalHeader64.AddressOfEntryPoint;
+	const auto rvaEntryPoint = mem.OptionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC
+		? mem.OptionalHeader32.AddressOfEntryPoint  // NOLINT(bugprone-branch-clone)
+		: mem.OptionalHeader64.AddressOfEntryPoint;
 
 	std::copy_n(pathBytes.begin(), pathBytesTarget.size_bytes(), pathBytesTarget.begin());
 	process.ReadMemory(mem.CurrentModule, rvaEntryPoint,

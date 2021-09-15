@@ -99,6 +99,7 @@ public:
 	ConfigCreator(std::filesystem::path initializationConfigPath)
 		: Config(std::move(initializationConfigPath)) {
 	}
+
 	~ConfigCreator() override = default;
 };
 
@@ -144,7 +145,7 @@ std::wstring App::Config::Runtime::GetRegionNameLocalized(Sqex::Region gameRegio
 std::filesystem::path App::Config::InitializationConfig::ResolveConfigStorageDirectoryPath() {
 	if (!Loaded())
 		Reload();
-	
+
 	if (!FixedConfigurationFolderPath.Value().empty())
 		return EnsureDirectory(TranslatePath(FixedConfigurationFolderPath.Value()));
 	else
@@ -238,7 +239,7 @@ void App::Config::BaseRepository::Save() {
 	}
 }
 
-bool App::Config::Item<uint16_t>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
+bool App::Config::Item<uint16_t>::LoadFrom(const nlohmann::json& data, bool announceChanged) {
 	if (const auto it = data.find(Name()); it != data.end()) {
 		uint16_t newValue;
 		std::string strVal;
@@ -261,11 +262,11 @@ bool App::Config::Item<uint16_t>::LoadFrom(const nlohmann::json & data, bool ann
 	return false;
 }
 
-void App::Config::Item<uint16_t>::SaveTo(nlohmann::json & data) const {
+void App::Config::Item<uint16_t>::SaveTo(nlohmann::json& data) const {
 	data[Name()] = std::format("0x{:04x}", m_value);
 }
 
-void App::to_json(nlohmann::json & j, const Language & value) {
+void App::to_json(nlohmann::json& j, const Language& value) {
 	switch (value) {
 		case Language::English:
 			j = "English";
@@ -285,7 +286,7 @@ void App::to_json(nlohmann::json & j, const Language & value) {
 	}
 }
 
-void App::from_json(const nlohmann::json & it, Language & value) {
+void App::from_json(const nlohmann::json& it, Language& value) {
 	auto newValueString = Utils::FromUtf8(it.get<std::string>());
 	CharLowerW(&newValueString[0]);
 
@@ -301,7 +302,7 @@ void App::from_json(const nlohmann::json & it, Language & value) {
 		value = Language::Japanese;
 }
 
-void App::to_json(nlohmann::json & j, const HighLatencyMitigationMode & value) {
+void App::to_json(nlohmann::json& j, const HighLatencyMitigationMode& value) {
 	switch (value) {
 		case HighLatencyMitigationMode::SubtractLatency:
 			j = "SubtractLatency";
@@ -317,7 +318,7 @@ void App::to_json(nlohmann::json & j, const HighLatencyMitigationMode & value) {
 	}
 }
 
-void App::from_json(const nlohmann::json & it, HighLatencyMitigationMode & value) {
+void App::from_json(const nlohmann::json& it, HighLatencyMitigationMode& value) {
 	auto newValueString = Utils::FromUtf8(it.get<std::string>());
 	CharLowerW(&newValueString[0]);
 
@@ -334,7 +335,7 @@ void App::from_json(const nlohmann::json & it, HighLatencyMitigationMode & value
 }
 
 template<typename T>
-bool App::Config::Item<T>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
+bool App::Config::Item<T>::LoadFrom(const nlohmann::json& data, bool announceChanged) {
 	if (const auto it = data.find(Name()); it != data.end()) {
 		T newValue;
 		try {
@@ -356,6 +357,6 @@ bool App::Config::Item<T>::LoadFrom(const nlohmann::json & data, bool announceCh
 }
 
 template<typename T>
-void App::Config::Item<T>::SaveTo(nlohmann::json & data) const {
+void App::Config::Item<T>::SaveTo(nlohmann::json& data) const {
 	data[Name()] = m_value;
 }

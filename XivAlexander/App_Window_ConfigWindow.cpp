@@ -114,15 +114,14 @@ bool App::Window::ConfigWindow::TrySave() {
 }
 
 void App::Window::ConfigWindow::ApplyLanguage(WORD languageId) {
-	m_hAcceleratorWindow = { Dll::Module(), RT_ACCELERATOR, MAKEINTRESOURCE(IDR_CONFIG_EDITOR_ACCELERATOR), languageId };
+	m_hAcceleratorWindow = {Dll::Module(), RT_ACCELERATOR, MAKEINTRESOURCE(IDR_CONFIG_EDITOR_ACCELERATOR), languageId};
 	SetWindowTextW(m_hWnd, m_config->Runtime.GetStringRes(m_nTitleStringResourceId));
 	Utils::Win32::Menu(Dll::Module(), RT_MENU, MAKEINTRESOURCE(IDR_CONFIG_EDITOR_MENU), languageId).AttachAndSwap(m_hWnd);
 }
 
 LRESULT App::Window::ConfigWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
-		case WM_INITMENUPOPUP:
-		{
+		case WM_INITMENUPOPUP: {
 			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST, true);
 			break;
 		}
@@ -131,8 +130,7 @@ LRESULT App::Window::ConfigWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 			SetFocus(m_hScintilla);
 			break;
 
-		case WM_COMMAND:
-		{
+		case WM_COMMAND: {
 			switch (LOWORD(wParam)) {
 				case ID_FILE_SAVE:
 					TrySave();

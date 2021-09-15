@@ -13,6 +13,7 @@ struct App::Feature::EffectApplicationDelayLogger::Implementation {
 	public:
 		Implementation* m_pImpl;
 		Network::SingleConnection& conn;
+
 		SingleConnectionHandler(Implementation* pImpl, Network::SingleConnection& conn)
 			: m_config(Config::Acquire())
 			, m_pImpl(pImpl)
@@ -68,6 +69,7 @@ struct App::Feature::EffectApplicationDelayLogger::Implementation {
 				return true;
 			});
 		}
+
 		~SingleConnectionHandler() {
 			conn.RemoveMessageHandlers(this);
 		}

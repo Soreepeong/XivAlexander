@@ -10,7 +10,7 @@ namespace Sqex::Texture {
 		std::vector<uint32_t> m_mipmapOffsets;
 
 	public:
-		ModifiableTextureStream(CompressionType type, uint16_t width, uint16_t height, uint16_t depth = 1);
+		ModifiableTextureStream(Format type, uint16_t width, uint16_t height, uint16_t depth = 1);
 		~ModifiableTextureStream() override;
 
 		void AppendMipmap(std::shared_ptr<MemoryBackedMipmap> mipmap);

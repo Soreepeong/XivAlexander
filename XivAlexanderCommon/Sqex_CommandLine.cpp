@@ -10,7 +10,7 @@ const char Sqex::CommandLine::ObfuscationTail[5] = "**//";
 
 std::vector<std::pair<std::string, std::string>> Sqex::CommandLine::FromString(std::string source, bool* wasObfuscated) {
 	std::vector<std::pair<std::string, std::string>> res;
-	
+
 	if (source.starts_with(ObfuscationHead) && source.size() >= 17) {
 		auto endPos = source.find_first_of(ObfuscationTail);
 		if (endPos == std::string::npos)
@@ -18,7 +18,7 @@ std::vector<std::pair<std::string, std::string>> Sqex::CommandLine::FromString(s
 		source = source.substr(sizeof ObfuscationHead - 1, endPos - (sizeof ObfuscationHead - 1));
 
 		const auto chksum = std::find(ChecksumTable, ChecksumTable + sizeof ChecksumTable, source.back()) - ChecksumTable;
-		
+
 		{
 			CryptoPP::Base64URLDecoder b64decoder;
 			b64decoder.Put(reinterpret_cast<const uint8_t*>(&source), source.size());
@@ -32,12 +32,12 @@ std::vector<std::pair<std::string, std::string>> Sqex::CommandLine::FromString(s
 		if (!GetProcessTimes(GetCurrentProcess(), &ct, &xt, &kt, &ut))
 			throw Utils::Win32::Error("GetProcessTimes(GetCurrentProcess(), ...)");
 		GetSystemTimeAsFileTime(&nft);
-		const auto creationTickCount = GetTickCount64() - (ULARGE_INTEGER{ { nft.dwLowDateTime, nft.dwHighDateTime} }.QuadPart - ULARGE_INTEGER{ {ct.dwLowDateTime, ct.dwHighDateTime} }.QuadPart) / 10000;
+		const auto creationTickCount = GetTickCount64() - (ULARGE_INTEGER{{nft.dwLowDateTime, nft.dwHighDateTime}}.QuadPart - ULARGE_INTEGER{{ct.dwLowDateTime, ct.dwHighDateTime}}.QuadPart) / 10000;
 
 		CryptoPP::ECB_Mode<CryptoPP::Blowfish>::Decryption dec;
 		for (auto [val, count] : {
-			std::make_pair(chksum << 16 | (creationTickCount & 0xFF000000), 16),
-			std::make_pair(chksum << 16 | 0ULL, 0xFFF),
+				std::make_pair(chksum << 16 | (creationTickCount & 0xFF000000), 16),
+				std::make_pair(chksum << 16 | 0ULL, 0xFFF),
 			}) {
 			for (; --count; val += 0x100000) {
 				const auto key = std::format("{:08x}", val & 0xFFFF0000);
@@ -67,7 +67,7 @@ std::vector<std::pair<std::string, std::string>> Sqex::CommandLine::FromString(s
 		throw std::invalid_argument("bad encoded string");
 
 	} else {
-		if (int nArgs; LPWSTR * szArgList = CommandLineToArgvW(std::format(L"test.exe {}", source).c_str(), &nArgs)) {
+		if (int nArgs; LPWSTR* szArgList = CommandLineToArgvW(std::format(L"test.exe {}", source).c_str(), &nArgs)) {
 			const auto cleanup = Utils::CallOnDestruction([szArgList]() { LocalFree(szArgList); });
 			for (int i = 1; i < nArgs; i++) {
 				const auto arg = Utils::ToUtf8(szArgList[i]);

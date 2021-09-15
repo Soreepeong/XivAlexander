@@ -3,12 +3,12 @@
 #include "App_Misc_Hooks.h"
 
 struct App::Misc::DebuggerDetectionDisabler::Implementation {
-	Hooks::PointerFunction<BOOL> IsDebuggerPresent{ "DebuggerDetectionDisabler::IsDebuggerPresent", ::IsDebuggerPresent };
+	Hooks::PointerFunction<BOOL> IsDebuggerPresent{"DebuggerDetectionDisabler::IsDebuggerPresent", ::IsDebuggerPresent};
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
 	Implementation() {
 		Utils::Win32::DebugPrint(L"DebuggerDetectionDisabler: New");
-		m_cleanup += IsDebuggerPresent.SetHook([]() {return FALSE; });
+		m_cleanup += IsDebuggerPresent.SetHook([]() { return FALSE; });
 	}
 
 	~Implementation() {

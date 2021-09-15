@@ -39,7 +39,7 @@ Ret ChainCall(const char* szDllName, const char* szFunctionName, std::vector<std
 
 	if (chainLoadDlls.empty())
 		chainLoadDlls.emplace_back(systemDll);
-	
+
 	for (size_t i = 0; i < chainLoadDlls.size(); ++i) {
 		const auto& dll = chainLoadDlls[i];
 		const auto isLast = i == chainLoadDlls.size() - 1;
@@ -53,7 +53,7 @@ Ret ChainCall(const char* szDllName, const char* szFunctionName, std::vector<std
 				EnsureOriginalDependencyModule(szDllName, dll).GetProcAddress<T_Fn>(szFunctionName, true);
 
 			mod.SetPinned();
-			
+
 			if (isLast)
 				return cb(pOriginalFunction, !isLast);
 			else
@@ -73,7 +73,7 @@ Ret ChainCall(const char* szDllName, const char* szFunctionName, std::vector<std
 
 				case IDIGNORE:
 					s_useSystemDll = true;
-					chainLoadDlls = { systemDll };
+					chainLoadDlls = {systemDll};
 					i = static_cast<size_t>(-1);
 					break;
 
@@ -82,10 +82,10 @@ Ret ChainCall(const char* szDllName, const char* szFunctionName, std::vector<std
 			}
 		}
 
-		if (isLast && std::find(chainLoadDlls.begin(), chainLoadDlls.end(), systemDll) == chainLoadDlls.end())
+		if (isLast && std::ranges::find(chainLoadDlls, systemDll) == chainLoadDlls.end())
 			chainLoadDlls.emplace_back(systemDll);
 	}
-	
+
 	const auto activationContextCleanup = Dll::ActivationContext().With();
 	Utils::Win32::MessageBoxF(
 		Dll::FindGameMainWindow(false), MB_ICONERROR,
@@ -153,7 +153,7 @@ HRESULT WINAPI FORWARDER_CreateDXGIFactory1(
 }
 
 HRESULT WINAPI FORWARDER_CreateDXGIFactory2(
-	UINT   Flags,
+	UINT Flags,
 	REFIID riid,
 	IDXGIFactory2** ppFactory
 ) {
@@ -254,8 +254,7 @@ void AutoLoadAsDependencyModule() {
 				loadPath.empty() ? L"Failed to resolve XivAlexander installation path." : std::format(L"Failed to load {}.", loadPath.wstring()),
 				e.what());
 			switch (choice) {
-				case IDRETRY:
-				{
+				case IDRETRY: {
 					SHELLEXECUTEINFOW shex{};
 					shex.cbSize = sizeof shex;
 					shex.nShow = SW_SHOW;
@@ -268,8 +267,7 @@ void AutoLoadAsDependencyModule() {
 					}
 					break;
 				}
-				case IDIGNORE:
-				{
+				case IDIGNORE: {
 					loop = false;
 					break;
 				}
@@ -285,7 +283,7 @@ void AutoLoadAsDependencyModule() {
 	//	} else
 	//		LoadDalamud();
 	//}
-	
+
 	s_loaded = true;
 }
 

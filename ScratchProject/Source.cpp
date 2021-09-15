@@ -102,13 +102,13 @@ void test_showcase(const char* testString = nullptr) {
 				const auto size = f->Measure(0, 0, testString);
 				/*const auto cw = static_cast<uint16_t>(size.Width() + 32);
 				const auto ch = static_cast<uint16_t>(size.Height() + 32);*/
-				const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::CompressionType::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
+				const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::Format::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
 				std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width() * mm32->Height(), 0x80000000);
 				for (auto i = 16; i < ch - 16; ++i)
 					for (auto j = 16; j < cw - 16; ++j)
 						mm32->View<uint32_t>()[i * cw + j] = 0xFF000000;
 				if (!mm32a) {
-					mm32a = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::CompressionType::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
+					mm32a = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::Format::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
 					std::fill_n(mm32a->View<uint32_t>().begin(), mm32a->Width() * mm32a->Height(), 0x80000000);
 					for (auto i = 16; i < ch - 16; ++i)
 						for (auto j = 16; j < cw - 16; ++j)
@@ -149,7 +149,7 @@ void compile() {
 		nlohmann::json j;
 		fin >> j;
 		auto cfg = j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
-		isArgb32 = cfg.textureType != Sqex::Texture::CompressionType::RGBA4444;
+		isArgb32 = cfg.textureFormat != Sqex::Texture::Format::RGBA4444;
 
 		Sqex::FontCsv::FontSetsCreator creator(cfg, R"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game\)");
 		// Sqex::FontCsv::FontSetsCreator creator(cfg, R"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game)");
@@ -191,7 +191,7 @@ void compile() {
 					const auto lines = Utils::StringSplit<std::string>(pszTestString, "\n");
 					const auto cw = static_cast<uint16_t>(newFont->Measure(5, 5, pszTestString).Width() + 10);
 					const auto ch = static_cast<uint16_t>(5 * (lines.size() + 1) + newFont->LineHeight() * lines.size());
-					const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::CompressionType::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
+					const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::Format::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
 					std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width() * mm32->Height(), 0xFF000000);
 
 					SSIZE_T yptr = 5;
@@ -222,7 +222,7 @@ void compile() {
 					const auto lines = Utils::StringSplit<std::string>(pszTestString, "\n");
 					const auto cw = static_cast<uint16_t>(newFont->Measure(5, 5, pszTestString).Width() + 10);
 					const auto ch = static_cast<uint16_t>(5 * (lines.size() + 1) + newFont->LineHeight() * lines.size());
-					const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::CompressionType::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
+					const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::Format::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
 					std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width() * mm32->Height(), 0xFF000000);
 
 					SSIZE_T yptr = 5;

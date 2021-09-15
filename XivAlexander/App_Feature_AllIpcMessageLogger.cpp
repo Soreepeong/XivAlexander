@@ -9,6 +9,7 @@ struct App::Feature::AllIpcMessageLogger::Implementation {
 	public:
 		Implementation* m_pImpl;
 		Network::SingleConnection& conn;
+
 		SingleConnectionHandler(Implementation* pImpl, Network::SingleConnection& conn)
 			: m_pImpl(pImpl)
 			, conn(conn) {
@@ -18,14 +19,22 @@ struct App::Feature::AllIpcMessageLogger::Implementation {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					const char* pszPossibleMessageType;
 					switch (pMessage->Length) {
-						case 0x09c: pszPossibleMessageType = "ActionEffect01"; break;
-						case 0x29c: pszPossibleMessageType = "ActionEffect08"; break;
-						case 0x4dc: pszPossibleMessageType = "ActionEffect16"; break;
-						case 0x71c: pszPossibleMessageType = "ActionEffect24"; break;
-						case 0x95c: pszPossibleMessageType = "ActionEffect32"; break;
-						case 0x040: pszPossibleMessageType = "ActorControlSelf, ActorCast"; break;
-						case 0x038: pszPossibleMessageType = "ActorControl"; break;
-						case 0x078: pszPossibleMessageType = "AddStatusEffect"; break;
+						case 0x09c: pszPossibleMessageType = "ActionEffect01";
+							break;
+						case 0x29c: pszPossibleMessageType = "ActionEffect08";
+							break;
+						case 0x4dc: pszPossibleMessageType = "ActionEffect16";
+							break;
+						case 0x71c: pszPossibleMessageType = "ActionEffect24";
+							break;
+						case 0x95c: pszPossibleMessageType = "ActionEffect32";
+							break;
+						case 0x040: pszPossibleMessageType = "ActorControlSelf, ActorCast";
+							break;
+						case 0x038: pszPossibleMessageType = "ActorControl";
+							break;
+						case 0x078: pszPossibleMessageType = "AddStatusEffect";
+							break;
 						default: pszPossibleMessageType = nullptr;
 					}
 					m_pImpl->m_logger->Format(LogCategory::AllIpcMessageLogger, "source={:08x} current={:08x} subtype={:04x} length={:x} (S2C{}{})",
@@ -40,8 +49,10 @@ struct App::Feature::AllIpcMessageLogger::Implementation {
 				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
 					const char* pszPossibleMessageType;
 					switch (pMessage->Length) {
-						case 0x038: pszPossibleMessageType = "PositionUpdate"; break;
-						case 0x040: pszPossibleMessageType = "ActionRequest, C2S_ActionRequestGroundTargeted, InteractTarget"; break;
+						case 0x038: pszPossibleMessageType = "PositionUpdate";
+							break;
+						case 0x040: pszPossibleMessageType = "ActionRequest, C2S_ActionRequestGroundTargeted, InteractTarget";
+							break;
 						default: pszPossibleMessageType = nullptr;
 					}
 					m_pImpl->m_logger->Format(LogCategory::AllIpcMessageLogger, "source={:08x} current={:08x} subtype={:04x} length={:x} (C2S{}{})",
@@ -53,6 +64,7 @@ struct App::Feature::AllIpcMessageLogger::Implementation {
 				return true;
 			});
 		}
+
 		~SingleConnectionHandler() {
 			conn.RemoveMessageHandlers(this);
 		}

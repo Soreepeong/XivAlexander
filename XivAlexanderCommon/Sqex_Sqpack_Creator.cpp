@@ -447,7 +447,7 @@ public:
 
 		if (out.empty()) return length;
 
-		auto it = std::lower_bound(m_entries.begin(), m_entries.end(), nullptr, [&](const std::unique_ptr<const Implementation::Entry>& l, const std::unique_ptr<const Implementation::Entry>& r) {
+		auto it = std::ranges::lower_bound(m_entries, nullptr, [&](const std::unique_ptr<const Implementation::Entry>& l, const std::unique_ptr<const Implementation::Entry>& r) {
 			const auto lo = l ? l->OffsetAfterHeaders : relativeOffset;
 			const auto ro = r ? r->OffsetAfterHeaders : relativeOffset;
 			return lo < ro;

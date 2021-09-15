@@ -101,7 +101,7 @@ Sqex::Sqpack::Reader::SqIndexType::SqIndexType(const Win32::File& hFile, bool st
 	}
 
 	if (strictVerify) {
-		std::sort(accesses.begin(), accesses.end());
+		std::ranges::sort(accesses);
 		auto ptr = accesses[0].first;
 		for (const auto& [accessPointer, accessSize] : accesses) {
 			if (ptr > accessPointer)
@@ -159,7 +159,7 @@ Sqex::Sqpack::Reader::SqIndex2Type::SqIndex2Type(const Win32::File& hFile, bool 
 	}
 
 	if (strictVerify) {
-		std::sort(accesses.begin(), accesses.end());
+		std::ranges::sort(accesses);
 		auto ptr = accesses[0].first;
 		for (const auto& [accessPointer, accessSize] : accesses) {
 			if (ptr > accessPointer)
@@ -223,14 +223,14 @@ Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strict
 
 	if (sort) {
 		for (auto& filesInFolder : Index.Files | std::views::values) {
-			std::sort(filesInFolder.begin(), filesInFolder.end(), [](const SqIndex::FileSegmentEntry& l, const SqIndex::FileSegmentEntry& r) {
+			std::ranges::sort(filesInFolder, [](const SqIndex::FileSegmentEntry& l, const SqIndex::FileSegmentEntry& r) {
 				if (l.PathHash == r.PathHash)
 					return l.NameHash < r.NameHash;
 				else
 					return l.PathHash < r.PathHash;
 			});
 		}
-		std::sort(Index2.Files.begin(), Index2.Files.end(), [](const SqIndex::FileSegmentEntry2& l, const SqIndex::FileSegmentEntry2& r) {
+		std::ranges::sort(Index2.Files, [](const SqIndex::FileSegmentEntry2& l, const SqIndex::FileSegmentEntry2& r) {
 			return l.FullPathHash < r.FullPathHash;
 		});
 	}

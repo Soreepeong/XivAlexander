@@ -120,7 +120,7 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::GdiFont::DeviceContextWrapper::Me
 		.left = gm.gmptGlyphOrigin.x,
 		.top = Metrics.tmAscent - gm.gmptGlyphOrigin.y,
 		.right = static_cast<SSIZE_T>(gm.gmptGlyphOrigin.x) + gm.gmBlackBoxX,
-		.bottom = static_cast<SSIZE_T>(Metrics.tmAscent) -gm.gmptGlyphOrigin.y + gm.gmBlackBoxY,
+		.bottom = static_cast<SSIZE_T>(Metrics.tmAscent) - gm.gmptGlyphOrigin.y + gm.gmBlackBoxY,
 		.advanceX = gm.gmCellIncX,
 	}.Translate(x, y);
 }

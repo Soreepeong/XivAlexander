@@ -1,0 +1,73 @@
+
+[*.{c,c++,cc,cginc,compute,cp,cpp,cu,cuh,cxx,h,hh,hlsl,hlsli,hlslinc,hpp,hxx,inc,inl,ino,ipp,mpp,mq4,mq5,mqh,tpp,usf,ush}]
+indent_style = tab
+indent_size = tab
+tab_width = 4
+
+[*.{appxmanifest,axaml,axml,build,config,csproj,dbml,discomap,dtd,jsproj,lsproj,njsproj,nuspec,paml,proj,props,resw,resx,StyleCop,targets,tasks,vbproj,xaml,xamlx,xml,xoml,xsd}]
+indent_style = space
+indent_size = 2
+tab_width = 2
+
+[*]
+
+# ReSharper properties
+resharper_align_multiline_argument = false
+resharper_align_multiline_calls_chain = false
+resharper_align_multiline_ctor_init = false
+resharper_align_multiline_extends_list = false
+resharper_align_multiline_parameter = false
+resharper_align_multiline_type_argument = false
+resharper_align_multiline_type_parameter = false
+resharper_align_multiple_declaration = false
+resharper_align_ternary = none
+resharper_anonymous_method_declaration_braces = end_of_line
+resharper_case_block_braces = end_of_line
+resharper_cpp_alignment_tab_fill_style = use_tabs_only
+resharper_cpp_int_align_fix_in_adjacent = false
+resharper_cpp_wrap_lines = false
+resharper_disable_space_changes_before_trailing_comment = true
+resharper_enforce_line_ending_style = true
+resharper_indent_aligned_ternary = false
+resharper_indent_switch_labels = true
+resharper_invocable_declaration_braces = end_of_line
+resharper_line_break_after_colon_in_member_initializer_lists = on_single_line
+resharper_line_break_before_comma_in_member_initializer_lists = true
+resharper_member_initializer_list_style = line_break
+resharper_namespace_declaration_braces = end_of_line
+resharper_new_line_before_catch = false
+resharper_new_line_before_else = false
+resharper_new_line_before_while = false
+resharper_other_braces = end_of_line
+resharper_requires_expression_braces = end_of_line
+resharper_show_autodetect_configure_formatting_tip = false
+resharper_space_before_template_params = false
+resharper_type_declaration_braces = end_of_line
+resharper_use_indent_from_vs = false
+resharper_wrap_enumeration_style = chop_always
+resharper_wrap_multiple_type_parameter_constraints_style = chop_always
+
+# ReSharper inspection severities
+resharper_cpp_clang_tidy_bugprone_narrowing_conversions_highlighting = hint
+resharper_cpp_clang_tidy_clang_diagnostic_exit_time_destructors_highlighting = hint
+resharper_cpp_clang_tidy_clang_diagnostic_language_extension_token_highlighting = none
+resharper_cpp_clang_tidy_clang_diagnostic_switch_enum_highlighting = hint
+resharper_cpp_clang_tidy_clang_diagnostic_switch_highlighting = hint
+resharper_cpp_clang_tidy_cppcoreguidelines_special_member_functions_highlighting = none
+resharper_cpp_clang_tidy_misc_misplaced_const_highlighting = none
+resharper_cpp_clang_tidy_modernize_use_equals_default_highlighting = hint
+resharper_cpp_declaration_hides_local_highlighting = hint
+resharper_cpp_declarator_never_used_highlighting = hint
+resharper_cpp_default_case_not_handled_in_switch_statement_highlighting = hint
+resharper_cpp_incomplete_switch_statement_highlighting = hint
+resharper_cpp_member_function_may_be_const_highlighting = none
+resharper_cpp_parameter_may_be_const_highlighting = none
+resharper_cpp_redundant_else_keyword_highlighting = none
+resharper_cpp_redundant_else_keyword_inside_compound_statement_highlighting = none
+resharper_cpp_too_wide_scope_highlighting = hint
+resharper_cpp_variable_can_be_made_constexpr_highlighting = hint
+
+[*.{appxmanifest,axaml,axml,build,c,c++,cc,cginc,compute,config,cp,cpp,csproj,cu,cuh,cxx,dbml,discomap,dtd,h,hh,hlsl,hlsli,hlslinc,hpp,hxx,inc,inl,ino,ipp,jsproj,lsproj,mpp,mq4,mq5,mqh,njsproj,nuspec,paml,proj,props,resw,resx,StyleCop,targets,tasks,tpp,usf,ush,vbproj,xaml,xamlx,xml,xoml,xsd}]
+indent_style = tab
+indent_size = tab
+tab_width = 4

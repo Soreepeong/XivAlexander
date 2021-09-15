@@ -74,7 +74,7 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 	}
 
 	HWND GetHwnd() const {
-		if (m_windowFoundEvent.Wait(false, { m_stopEvent }) == WAIT_OBJECT_0 + 1)
+		if (m_windowFoundEvent.Wait(false, {m_stopEvent}) == WAIT_OBJECT_0 + 1)
 			return nullptr;
 		return m_hWnd;
 	}
@@ -145,7 +145,7 @@ struct App::XivAlexApp::Implementation final {
 	std::unique_ptr<Window::LogWindow> m_logWindow{};
 	std::unique_ptr<Window::MainWindow> m_trayWindow{};
 
-	Misc::Hooks::ImportedFunction<void, UINT> ExitProcess{ "ExitProcess", "kernel32.dll", "ExitProcess" };
+	Misc::Hooks::ImportedFunction<void, UINT> ExitProcess{"ExitProcess", "kernel32.dll", "ExitProcess"};
 
 	void SetupTrayWindow() {
 		if (m_trayWindow)

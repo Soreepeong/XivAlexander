@@ -28,7 +28,7 @@ std::vector<char, Utils::Win32::HeapAllocator<char>> App::Misc::Hooks::Binder::C
 	ZydisDecodedInstruction instruction;
 	for (size_t offset = 0, funclen = 32768;
 		ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, source + offset, funclen - offset, &instruction));
-		) {
+	) {
 
 		auto relativeAddressHandled = true;
 		for (size_t i = 0; i < instruction.operand_count && relativeAddressHandled; ++i) {
@@ -67,8 +67,7 @@ std::vector<char, Utils::Win32::HeapAllocator<char>> App::Misc::Hooks::Binder::C
 
 		auto append = true;
 		switch (instruction.meta.category) {
-			case ZYDIS_CATEGORY_CALL:
-			{
+			case ZYDIS_CATEGORY_CALL: {
 				if (uint64_t resultAddress;
 					instruction.operand_count >= 1
 					&& ZYAN_STATUS_SUCCESS == ZydisCalcAbsoluteAddress(&instruction, &instruction.operands[0],

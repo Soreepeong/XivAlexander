@@ -10,30 +10,32 @@
 static bool NtSuccess(NTSTATUS x) {
 	return x >= 0;
 }
+
 static constexpr auto STATUS_INFO_LENGTH_MISMATCH = static_cast<NTSTATUS>(0xc0000004);
 
 enum class NtSystemInformationClass : ULONG {
 	SystemHandleInformation = 16
 };
+
 enum class NtObjectInformationClass : ULONG {
 	ObjectBasicInformation = 0,
 	ObjectNameInformation = 1,
 	ObjectTypeInformation = 2,
 };
 
-typedef NTSTATUS(NTAPI NtQuerySystemInformationType)(
+typedef NTSTATUS (NTAPI NtQuerySystemInformationType)(
 	NtSystemInformationClass SystemInformationClass,
 	PVOID SystemInformation,
 	ULONG SystemInformationLength,
 	PULONG ReturnLength
-	);
-typedef NTSTATUS(NTAPI NtQueryObjectType)(
+);
+typedef NTSTATUS (NTAPI NtQueryObjectType)(
 	HANDLE ObjectHandle,
 	NtObjectInformationClass ObjectInformationClass,
 	PVOID ObjectInformation,
 	ULONG ObjectInformationLength,
 	PULONG ReturnLength
-	);
+);
 
 struct SYSTEM_HANDLE {
 	ULONG ProcessId;
@@ -91,6 +93,7 @@ T* GetLibraryProcAddress(const wchar_t* szLibraryName, const char* szProcName) {
 		return nullptr;
 	return reinterpret_cast<T*>(GetProcAddress(hModule, szProcName));
 }
+
 static const auto NtQueryObject_ = GetLibraryProcAddress<NtQueryObjectType>(L"ntdll.dll", "NtQueryObject");
 static const auto NtQuerySystemInformation_ = GetLibraryProcAddress<NtQuerySystemInformationType>(L"ntdll.dll", "NtQuerySystemInformation");
 

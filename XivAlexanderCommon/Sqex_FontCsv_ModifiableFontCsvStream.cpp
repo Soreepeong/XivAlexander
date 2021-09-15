@@ -38,10 +38,10 @@ Sqex::FontCsv::ModifiableFontCsvStream::ModifiableFontCsvStream(const RandomAcce
 		if (m_knhd.EntryCount != m_fthd.KerningEntryCount)
 			throw std::runtime_error("knhd.EntryCount != fthd.KerningEntryCount");
 	}
-	std::sort(m_fontTableEntries.begin(), m_fontTableEntries.end(), [](const FontTableEntry& l, const FontTableEntry& r) {
+	std::ranges::sort(m_fontTableEntries, [](const FontTableEntry& l, const FontTableEntry& r) {
 		return l.Utf8Value < r.Utf8Value;
 	});
-	std::sort(m_kerningEntries.begin(), m_kerningEntries.end(), [](const KerningEntry& l, const KerningEntry& r) {
+	std::ranges::sort(m_kerningEntries, [](const KerningEntry& l, const KerningEntry& r) {
 		if (l.LeftUtf8Value == r.LeftUtf8Value)
 			return l.RightUtf8Value < r.RightUtf8Value;
 		return l.LeftUtf8Value < r.LeftUtf8Value;
@@ -55,7 +55,7 @@ uint64_t Sqex::FontCsv::ModifiableFontCsvStream::StreamSize() const {
 		+ std::span(m_fontTableEntries).size_bytes()
 		+ sizeof m_knhd
 		+ std::span(m_kerningEntries).size_bytes()
-		);
+	);
 }
 
 uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {
@@ -73,7 +73,8 @@ uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offs
 		out = out.subspan(available);
 		relativeOffset = 0;
 
-		if (out.empty()) return length;
+		if (out.empty())
+			return length;
 	} else
 		relativeOffset -= sizeof m_fcsv;
 
@@ -85,7 +86,8 @@ uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offs
 		out = out.subspan(available);
 		relativeOffset = 0;
 
-		if (out.empty()) return length;
+		if (out.empty())
+			return length;
 	} else
 		relativeOffset -= sizeof m_fthd;
 
@@ -98,7 +100,8 @@ uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offs
 		out = out.subspan(available);
 		relativeOffset = 0;
 
-		if (out.empty()) return length;
+		if (out.empty())
+			return length;
 	} else
 		relativeOffset -= srcTyped.size_bytes();
 
@@ -110,7 +113,8 @@ uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offs
 		out = out.subspan(available);
 		relativeOffset = 0;
 
-		if (out.empty()) return length;
+		if (out.empty())
+			return length;
 	} else
 		relativeOffset -= sizeof m_knhd;
 
@@ -122,7 +126,8 @@ uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offs
 		std::copy_n(src.begin(), available, out.begin());
 		out = out.subspan(available);
 
-		if (out.empty()) return length;
+		if (out.empty())
+			return length;
 	}
 
 	return length - out.size_bytes();
@@ -132,8 +137,8 @@ const Sqex::FontCsv::FontTableEntry* Sqex::FontCsv::ModifiableFontCsvStream::Get
 	const auto val = UnicodeCodePointToUtf8Uint32(c);
 	const auto it = std::lower_bound(m_fontTableEntries.begin(), m_fontTableEntries.end(), val,
 		[](const FontTableEntry& l, uint32_t r) {
-		return l.Utf8Value < r;
-	});
+			return l.Utf8Value < r;
+		});
 	if (it == m_fontTableEntries.end() || it->Utf8Value != val)
 		return nullptr;
 	return &*it;
@@ -143,10 +148,10 @@ int Sqex::FontCsv::ModifiableFontCsvStream::GetKerningDistance(char32_t l, char3
 	const auto pair = std::make_pair(UnicodeCodePointToUtf8Uint32(l), UnicodeCodePointToUtf8Uint32(r));
 	const auto it = std::lower_bound(m_kerningEntries.begin(), m_kerningEntries.end(), pair,
 		[](const KerningEntry& l, const std::pair<uint32_t, uint32_t>& r) {
-		if (l.LeftUtf8Value == r.first)
-			return l.RightUtf8Value < r.second;
-		return l.LeftUtf8Value < r.first;
-	});
+			if (l.LeftUtf8Value == r.first)
+				return l.RightUtf8Value < r.second;
+			return l.LeftUtf8Value < r.first;
+		});
 	if (it == m_kerningEntries.end() || it->LeftUtf8Value != pair.first || it->RightUtf8Value != pair.second)
 		return 0;
 	return it->RightOffset;
@@ -161,8 +166,8 @@ void Sqex::FontCsv::ModifiableFontCsvStream::AddFontEntry(char32_t c, uint16_t t
 	const auto val = UnicodeCodePointToUtf8Uint32(c);
 	auto it = std::lower_bound(m_fontTableEntries.begin(), m_fontTableEntries.end(), val,
 		[](const FontTableEntry& l, uint32_t r) {
-		return l.Utf8Value < r;
-	});
+			return l.Utf8Value < r;
+		});
 	if (it == m_fontTableEntries.end() || it->Utf8Value != val) {
 		auto entry = FontTableEntry();
 		entry.Utf8Value = val;
@@ -184,13 +189,13 @@ void Sqex::FontCsv::ModifiableFontCsvStream::AddKerning(char32_t l, char32_t r, 
 	entry.Left(l);
 	entry.Right(r);
 	entry.RightOffset = rightOffset;
-	
-	const auto it = std::lower_bound(m_kerningEntries.begin(), m_kerningEntries.end(), entry,
+
+	const auto it = std::ranges::lower_bound(m_kerningEntries, entry,
 		[](const KerningEntry& l, const KerningEntry& r) {
-		if (l.LeftUtf8Value == r.LeftUtf8Value)
-			return l.RightUtf8Value < r.RightUtf8Value;
-		return l.LeftUtf8Value < r.LeftUtf8Value;
-	});
+			if (l.LeftUtf8Value == r.LeftUtf8Value)
+				return l.RightUtf8Value < r.RightUtf8Value;
+			return l.LeftUtf8Value < r.LeftUtf8Value;
+		});
 	if (it != m_kerningEntries.end() && it->LeftUtf8Value == entry.LeftUtf8Value && it->RightUtf8Value == entry.RightUtf8Value) {
 		if (rightOffset)
 			it->RightOffset = rightOffset;

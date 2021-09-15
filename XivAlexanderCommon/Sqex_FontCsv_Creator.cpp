@@ -110,9 +110,9 @@ struct Sqex::FontCsv::FontCsvCreator::Implementation {
 	}
 
 	struct ResolvedExtremaInfo {
-		SSIZE_T globalOffsetX;
-		SSIZE_T globalOffsetY;
-		uint8_t boundingHeight;
+		SSIZE_T globalOffsetX = 0;
+		SSIZE_T globalOffsetY = 0;
+		uint8_t boundingHeight = 0;
 	} Step0Result;
 };
 
@@ -123,7 +123,7 @@ Sqex::FontCsv::FontCsvCreator::FontCsvCreator(const Win32::Semaphore& semaphore)
 
 Sqex::FontCsv::FontCsvCreator::~FontCsvCreator() = default;
 
-void Sqex::FontCsv::FontCsvCreator::AddCharacter(char32_t codePoint, const SeCompatibleDrawableFont<uint8_t>*font, bool replace, bool extendRange) {
+void Sqex::FontCsv::FontCsvCreator::AddCharacter(char32_t codePoint, const SeCompatibleDrawableFont<uint8_t>* font, bool replace, bool extendRange) {
 	if (!font->HasCharacter(codePoint))
 		return;
 
@@ -145,24 +145,24 @@ void Sqex::FontCsv::FontCsvCreator::AddCharacter(char32_t codePoint, const SeCom
 	m_pImpl->Plans.insert(pos, CharacterPlan(codePoint, font));
 }
 
-void Sqex::FontCsv::FontCsvCreator::AddCharacter(const SeCompatibleDrawableFont<uint8_t>*font, bool replace, bool extendRange) {
+void Sqex::FontCsv::FontCsvCreator::AddCharacter(const SeCompatibleDrawableFont<uint8_t>* font, bool replace, bool extendRange) {
 	for (const auto c : font->GetAllCharacters())
 		AddCharacter(c, font, replace, extendRange);
 }
 
-void Sqex::FontCsv::FontCsvCreator::AddKerning(const  SeCompatibleDrawableFont<uint8_t>*font, char32_t left, char32_t right, int distance, bool replace) {
+void Sqex::FontCsv::FontCsvCreator::AddKerning(const SeCompatibleDrawableFont<uint8_t>* font, char32_t left, char32_t right, int distance, bool replace) {
 	if (replace)
 		m_pImpl->Kernings.insert_or_assign(std::make_tuple(font, left, right), distance);
 	else
 		m_pImpl->Kernings.emplace(std::make_tuple(font, left, right), distance);
 }
 
-void Sqex::FontCsv::FontCsvCreator::AddKerning(const  SeCompatibleDrawableFont<uint8_t>*font, bool replace) {
+void Sqex::FontCsv::FontCsvCreator::AddKerning(const SeCompatibleDrawableFont<uint8_t>* font, bool replace) {
 	for (const auto& [pair, distance] : font->GetKerningTable())
 		AddKerning(font, pair.first, pair.second, static_cast<int>(distance), replace);
 }
 
-void Sqex::FontCsv::FontCsvCreator::AddFont(const  SeCompatibleDrawableFont<uint8_t>*font, bool replace, bool extendRange) {
+void Sqex::FontCsv::FontCsvCreator::AddFont(const SeCompatibleDrawableFont<uint8_t>* font, bool replace, bool extendRange) {
 	for (const auto c : font->GetAllCharacters())
 		AddCharacter(c, font, replace, extendRange);
 	for (const auto& [pair, distance] : font->GetKerningTable())
@@ -184,15 +184,15 @@ void Sqex::FontCsv::FontCsvCreator::Cancel() {
 }
 
 struct Sqex::FontCsv::FontCsvCreator::RenderTarget::Implementation {
-	const uint16_t m_textureWidth;
-	const uint16_t m_textureHeight;
-	const uint16_t m_glyphGap;
-	uint16_t m_currentX;
-	uint16_t m_currentY;
-	uint16_t m_currentLineHeight;
+	const uint16_t TextureWidth;
+	const uint16_t TextureHeight;
+	const uint16_t GlyphGap;
+	uint16_t CurrentX;
+	uint16_t CurrentY;
+	uint16_t CurrentLineHeight;
 
-	std::vector<std::shared_ptr<Texture::MemoryBackedMipmap>> m_mipmaps;
-	std::map<std::tuple<char32_t, const SeCompatibleDrawableFont<uint8_t>*, uint8_t, uint8_t, uint8_t, uint8_t>, AllocatedSpace> m_drawnGlyphs;
+	std::vector<std::shared_ptr<Texture::MemoryBackedMipmap>> Mipmaps;
+	std::map<std::tuple<char32_t, const SeCompatibleDrawableFont<uint8_t>*, uint8_t, uint8_t, uint8_t, uint8_t>, AllocatedSpace> DrawnGlyphs;
 
 	struct WorkItem {
 		Texture::MemoryBackedMipmap* mipmap;
@@ -214,69 +214,69 @@ struct Sqex::FontCsv::FontCsvCreator::RenderTarget::Implementation {
 		}
 	};
 
-	std::deque<WorkItem> m_workItems;
-	std::atomic_size_t m_processedWorkItemIndex;
+	std::deque<WorkItem> WorkItems;
+	std::atomic_size_t ProcessedWorkItemIndex;
 
-	std::pair<AllocatedSpace, bool> AllocateSpace(char32_t c, const SeCompatibleDrawableFont<uint8_t>* font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint8_t boundingWidth, uint8_t boundingHeight, uint8_t borderThickness, uint8_t borderOpacity) {
-		const auto actualGlyphGap = static_cast<uint16_t>(m_glyphGap + borderThickness);
+	std::pair<AllocatedSpace, bool> AllocateSpace(char32_t c, const SeCompatibleDrawableFont<uint8_t>* font, uint8_t boundingWidth, uint8_t boundingHeight, uint8_t borderThickness, uint8_t borderOpacity) {
+		const auto actualGlyphGap = static_cast<uint16_t>(GlyphGap + borderThickness);
 
-		const auto [it, isNewEntry] = m_drawnGlyphs.emplace(std::make_tuple(c, font, borderThickness, borderOpacity, boundingWidth, boundingHeight), AllocatedSpace{});
+		const auto [it, isNewEntry] = DrawnGlyphs.emplace(std::make_tuple(c, font, borderThickness, borderOpacity, boundingWidth, boundingHeight), AllocatedSpace{});
 		if (isNewEntry) {
 			auto newTargetRequired = false;
-			if (m_mipmaps.empty())
+			if (Mipmaps.empty())
 				newTargetRequired = true;
 			else {
-				if (static_cast<size_t>(0) + m_currentX + boundingWidth + actualGlyphGap >= m_textureWidth) {
-					m_currentX = actualGlyphGap;
-					m_currentY += m_currentLineHeight + actualGlyphGap + 1;  // Account for rounding errors
-					m_currentLineHeight = 0;
+				if (static_cast<size_t>(0) + CurrentX + boundingWidth + actualGlyphGap >= TextureWidth) {
+					CurrentX = actualGlyphGap;
+					CurrentY += CurrentLineHeight + actualGlyphGap + 1;  // Account for rounding errors
+					CurrentLineHeight = 0;
 				}
-				if (m_currentY + boundingHeight + actualGlyphGap + 1 >= m_textureHeight)
+				if (CurrentY + boundingHeight + actualGlyphGap + 1 >= TextureHeight)
 					newTargetRequired = true;
 			}
 
 			if (newTargetRequired) {
-				m_mipmaps.emplace_back(std::make_shared<Texture::MemoryBackedMipmap>(
-					m_textureWidth, m_textureHeight,
-					Texture::CompressionType::L8_1,
-					std::vector<uint8_t>(static_cast<size_t>(m_textureWidth) * m_textureHeight)));
-				m_currentX = m_currentY = m_glyphGap;
-				m_currentLineHeight = 0;
+				Mipmaps.emplace_back(std::make_shared<Texture::MemoryBackedMipmap>(
+					TextureWidth, TextureHeight,
+					Texture::Format::L8_1,
+					std::vector<uint8_t>(static_cast<size_t>(TextureWidth) * TextureHeight)));
+				CurrentX = CurrentY = GlyphGap;
+				CurrentLineHeight = 0;
 			}
 
-			if (m_currentX < actualGlyphGap)
-				m_currentX = actualGlyphGap;
-			if (m_currentY < actualGlyphGap)
-				m_currentY = actualGlyphGap;
+			if (CurrentX < actualGlyphGap)
+				CurrentX = actualGlyphGap;
+			if (CurrentY < actualGlyphGap)
+				CurrentY = actualGlyphGap;
 
 			it->second = AllocatedSpace{
-				.Index = static_cast<uint16_t>(m_mipmaps.size() - 1),
-				.X = m_currentX,
-				.Y = m_currentY,
+				.Index = static_cast<uint16_t>(Mipmaps.size() - 1),
+				.X = CurrentX,
+				.Y = CurrentY,
 				.BoundingHeight = boundingHeight,
 			};
 
-			m_currentX += boundingWidth + m_glyphGap;
-			m_currentLineHeight = std::max<uint16_t>(m_currentLineHeight, boundingHeight);
+			CurrentX += boundingWidth + GlyphGap;
+			CurrentLineHeight = std::max<uint16_t>(CurrentLineHeight, boundingHeight);
 		}
 
 		return std::make_pair(it->second, isNewEntry);
 	}
 
-	template<typename TextureTypeSupportingRGBA = Texture::RGBA4444, Texture::CompressionType CompressionType = Texture::CompressionType::RGBA4444>
+	template<typename TextureTypeSupportingRGBA = Texture::RGBA4444, Texture::Format TextureFormat = Texture::Format::RGBA4444>
 	void Finalize() {
-		auto mipmaps = std::move(m_mipmaps);
+		auto mipmaps = std::move(Mipmaps);
 		while (mipmaps.size() % 4)
 			mipmaps.push_back(std::make_shared<Texture::MemoryBackedMipmap>(
-				mipmaps[0]->Width(), mipmaps[0]->Height(), Texture::CompressionType::L8_1,
+				mipmaps[0]->Width(), mipmaps[0]->Height(), Texture::Format::L8_1,
 				std::vector<uint8_t>(static_cast<size_t>(mipmaps[0]->Width()) * mipmaps[0]->Height())));
 
 		for (size_t i = 0; i < mipmaps.size() / 4; ++i) {
-			m_mipmaps.push_back(std::make_shared<Texture::MemoryBackedMipmap>(
-				mipmaps[0]->Width(), mipmaps[0]->Height(), CompressionType,
+			Mipmaps.push_back(std::make_shared<Texture::MemoryBackedMipmap>(
+				mipmaps[0]->Width(), mipmaps[0]->Height(), TextureFormat,
 				std::vector<uint8_t>(sizeof TextureTypeSupportingRGBA * mipmaps[0]->Width() * mipmaps[0]->Height())));
 
-			const auto target = m_mipmaps.back()->View<TextureTypeSupportingRGBA>();
+			const auto target = Mipmaps.back()->View<TextureTypeSupportingRGBA>();
 			const auto b = mipmaps[i * 4 + 0]->View<uint8_t>();
 			const auto g = mipmaps[i * 4 + 1]->View<uint8_t>();
 			const auto r = mipmaps[i * 4 + 2]->View<uint8_t>();
@@ -298,16 +298,16 @@ Sqex::FontCsv::FontCsvCreator::RenderTarget::RenderTarget(uint16_t textureWidth,
 
 Sqex::FontCsv::FontCsvCreator::RenderTarget::~RenderTarget() = default;
 
-void Sqex::FontCsv::FontCsvCreator::RenderTarget::Finalize(Texture::CompressionType compressionType) {
-	switch (compressionType) {
-		case Texture::CompressionType::RGBA4444:
-			return m_pImpl->Finalize<Texture::RGBA4444, Texture::CompressionType::RGBA4444>();
+void Sqex::FontCsv::FontCsvCreator::RenderTarget::Finalize(Texture::Format textureFormat) {
+	switch (textureFormat) {
+		case Texture::Format::RGBA4444:
+			return m_pImpl->Finalize<Texture::RGBA4444, Texture::Format::RGBA4444>();
 
-		case Texture::CompressionType::RGBA_1:
-			return m_pImpl->Finalize<Texture::RGBA8888, Texture::CompressionType::RGBA_1>();
+		case Texture::Format::RGBA_1:
+			return m_pImpl->Finalize<Texture::RGBA8888, Texture::Format::RGBA_1>();
 
-		case Texture::CompressionType::RGBA_2:
-			return m_pImpl->Finalize<Texture::RGBA8888, Texture::CompressionType::RGBA_2>();
+		case Texture::Format::RGBA_2:
+			return m_pImpl->Finalize<Texture::RGBA8888, Texture::Format::RGBA_2>();
 
 		default:
 			throw std::invalid_argument("Unsupported texture type for generating font");
@@ -316,14 +316,14 @@ void Sqex::FontCsv::FontCsvCreator::RenderTarget::Finalize(Texture::CompressionT
 
 std::vector<std::shared_ptr<const Sqex::Texture::MipmapStream>> Sqex::FontCsv::FontCsvCreator::RenderTarget::AsMipmapStreamVector() const {
 	std::vector<std::shared_ptr<const Texture::MipmapStream>> res;
-	for (const auto& i : m_pImpl->m_mipmaps)
+	for (const auto& i : m_pImpl->Mipmaps)
 		res.emplace_back(i);
 	return res;
 }
 
 std::vector<std::shared_ptr<Sqex::Texture::ModifiableTextureStream>> Sqex::FontCsv::FontCsvCreator::RenderTarget::AsTextureStreamVector() const {
 	std::vector<std::shared_ptr<Texture::ModifiableTextureStream>> res;
-	for (const auto& i : m_pImpl->m_mipmaps) {
+	for (const auto& i : m_pImpl->Mipmaps) {
 		auto texture = std::make_shared<Texture::ModifiableTextureStream>(i->Type(), i->Width(), i->Height());
 		texture->AppendMipmap(i);
 		res.emplace_back(std::move(texture));
@@ -333,41 +333,41 @@ std::vector<std::shared_ptr<Sqex::Texture::ModifiableTextureStream>> Sqex::FontC
 
 Sqex::FontCsv::FontCsvCreator::RenderTarget::AllocatedSpace Sqex::FontCsv::FontCsvCreator::RenderTarget::QueueDraw(
 	char32_t c,
-	const SeCompatibleDrawableFont<uint8_t>*font,
+	const SeCompatibleDrawableFont<uint8_t>* font,
 	SSIZE_T drawOffsetX, SSIZE_T drawOffsetY,
 	uint8_t boundingWidth, uint8_t boundingHeight,
 	uint8_t borderThickness, uint8_t borderOpacity
 ) {
-	const auto [space, drawRequired] = m_pImpl->AllocateSpace(c, font, drawOffsetX, drawOffsetY, boundingWidth, boundingHeight, borderThickness, borderOpacity);
+	const auto [space, drawRequired] = m_pImpl->AllocateSpace(c, font, boundingWidth, boundingHeight, borderThickness, borderOpacity);
 
 	if (drawRequired) {
-		m_pImpl->m_workItems.emplace_back(Implementation::WorkItem{
-			.mipmap = m_pImpl->m_mipmaps[space.Index].get(),
+		m_pImpl->WorkItems.emplace_back(Implementation::WorkItem{
+			.mipmap = m_pImpl->Mipmaps[space.Index].get(),
 			.x = space.X + drawOffsetX,
 			.y = space.Y + drawOffsetY,
 			.c = c,
 			.font = font,
 			.borderThickness = borderThickness,
 			.borderOpacity = borderOpacity,
-			});
+		});
 	}
 
 	return space;
 }
 
 bool Sqex::FontCsv::FontCsvCreator::RenderTarget::WorkOnNextItem() {
-	const auto index = m_pImpl->m_processedWorkItemIndex++;
-	if (index >= m_pImpl->m_workItems.size())
+	const auto index = m_pImpl->ProcessedWorkItemIndex++;
+	if (index >= m_pImpl->WorkItems.size())
 		return false;
 
-	m_pImpl->m_workItems[index].Work();
+	m_pImpl->WorkItems[index].Work();
 
 	return true;
 }
 
 void Sqex::FontCsv::FontCsvCreator::Step0_CalcMax() {
 	m_pImpl->Progress.SetMax(
-		m_pImpl->Plans.size(), 
+		m_pImpl->Plans.size(),
 		m_pImpl->Kernings.size(),
 		this->BorderOpacity ? this->BorderThickness : 0);
 }
@@ -428,21 +428,21 @@ void Sqex::FontCsv::FontCsvCreator::Step1_CalcBbox() {
 }
 
 uint16_t Sqex::FontCsv::FontCsvCreator::RenderTarget::TextureWidth() const {
-	return m_pImpl->m_textureWidth;
+	return m_pImpl->TextureWidth;
 }
 
 uint16_t Sqex::FontCsv::FontCsvCreator::RenderTarget::TextureHeight() const {
-	return m_pImpl->m_textureHeight;
+	return m_pImpl->TextureHeight;
 }
 
-void Sqex::FontCsv::FontCsvCreator::Step2_Layout(RenderTarget & renderTarget) {
+void Sqex::FontCsv::FontCsvCreator::Step2_Layout(RenderTarget& renderTarget) {
 	try {
 		const auto borderThickness = static_cast<uint8_t>(this->BorderOpacity ? this->BorderThickness : 0);
 		const auto borderOpacity = static_cast<uint8_t>(this->BorderThickness ? this->BorderOpacity : 0);
 
 		m_pImpl->Result->TextureWidth(renderTarget.TextureWidth());
 		m_pImpl->Result->TextureHeight(renderTarget.TextureHeight());
-		m_pImpl->Result->Points(SizePoints);		
+		m_pImpl->Result->Points(SizePoints);
 		m_pImpl->Result->ReserveStorage(m_pImpl->Plans.size(), m_pImpl->Kernings.size());
 		for (auto& plan : m_pImpl->Plans) {
 			if (m_pImpl->Cancelled)
@@ -462,7 +462,7 @@ void Sqex::FontCsv::FontCsvCreator::Step2_Layout(RenderTarget & renderTarget) {
 				+ m_pImpl->Step0Result.globalOffsetY
 				+ GlobalOffsetYModifier
 				- borderThickness
-				);
+			);
 
 			auto boundingHeight = m_pImpl->Step0Result.boundingHeight;
 			auto drawOffsetY = 0;
@@ -477,7 +477,7 @@ void Sqex::FontCsv::FontCsvCreator::Step2_Layout(RenderTarget & renderTarget) {
 			const auto space = renderTarget.QueueDraw(plan.Character(), plan.Font,
 				leftExtension, drawOffsetY,
 				boundingWidth, boundingHeight, borderThickness, borderOpacity);
-			
+
 			boundingHeight = std::min(space.BoundingHeight, boundingHeight);
 			m_pImpl->Result->AddFontEntry(plan.Character(), space.Index, space.X, space.Y, boundingWidth, boundingHeight, nextOffsetX, currentOffsetY);
 		}
@@ -487,7 +487,7 @@ void Sqex::FontCsv::FontCsvCreator::Step2_Layout(RenderTarget & renderTarget) {
 	}
 }
 
-void Sqex::FontCsv::FontCsvCreator::Step3_Draw(RenderTarget & target) {
+void Sqex::FontCsv::FontCsvCreator::Step3_Draw(RenderTarget& target) {
 	try {
 		for (size_t i = 0; i < m_pImpl->WorkPool.ThreadCount(); ++i) {
 			m_pImpl->WorkPool.SubmitWork([&]() {
@@ -634,22 +634,22 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				if (!source.fontFile.empty())
 					newFont = std::make_shared<DirectWriteDrawingFont<uint8_t>>(
 						source.fontFile, source.faceIndex, static_cast<float>(source.height), source.renderMode
-						);
+					);
 				else if (!source.familyName.empty())
 					newFont = std::make_shared<DirectWriteDrawingFont<uint8_t>>(
 						FromUtf8(source.familyName).c_str(), static_cast<float>(source.height), static_cast<DWRITE_FONT_WEIGHT>(source.weight), source.stretch, source.style, source.renderMode
-						);
+					);
 				else
 					throw std::invalid_argument("Neither of fontFile nor familyName was specified.");
 			} else if (const auto& source = inputFontSource.freeTypeSource; inputFontSource.isFreeTypeSource) {
 				if (!source.fontFile.empty())
 					newFont = std::make_shared<FreeTypeDrawingFont<uint8_t>>(
 						source.fontFile, source.faceIndex, static_cast<float>(source.height), source.loadFlags
-						);
+					);
 				else if (!source.familyName.empty())
 					newFont = std::make_shared<FreeTypeDrawingFont<uint8_t>>(
 						FromUtf8(source.familyName).c_str(), static_cast<float>(source.height), static_cast<DWRITE_FONT_WEIGHT>(source.weight), source.stretch, source.style, source.loadFlags
-						);
+					);
 				else
 					throw std::invalid_argument("Neither of fontFile nor familyName was specified.");
 			} else
@@ -790,7 +790,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				for (const auto& fontName : sortedRemainingFontList) {
 					if (Cancelled)
 						return;
-					
+
 					textureGroupWorkPool.SubmitWork([&, fontName = fontName, &creator = *remainingFonts.at(fontName)]() {
 						const auto semaphoreHolder = WaitSemaphore();
 						if (Cancelled)
@@ -811,7 +811,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 							if (Cancelled)
 								return;
 
-							target.Finalize(Config.textureType);
+							target.Finalize(Config.textureFormat);
 
 							resultSet.Textures = target.AsTextureStreamVector();
 						} catch (const std::exception& e) {
@@ -881,7 +881,7 @@ const Sqex::FontCsv::FontSetsCreator::ResultFontSets& Sqex::FontCsv::FontSetsCre
 }
 
 bool Sqex::FontCsv::FontSetsCreator::Wait(DWORD timeout) const {
-	const auto res = m_pImpl->WorkerThread.Wait(false, { m_pImpl->CancelEvent }, timeout);
+	const auto res = m_pImpl->WorkerThread.Wait(false, {m_pImpl->CancelEvent}, timeout);
 	if (res == WAIT_TIMEOUT)
 		return false;
 	if (res == WAIT_OBJECT_0)

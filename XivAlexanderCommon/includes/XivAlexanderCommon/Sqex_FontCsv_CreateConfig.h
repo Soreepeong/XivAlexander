@@ -1,9 +1,9 @@
 #pragma once
 
-#include <string>
-#include <map>
-#include <vector>
 #include <dwrite_3.h>
+#include <map>
+#include <string>
+#include <vector>
 #include <nlohmann/json.hpp>
 
 #include "Sqex_Texture.h"
@@ -19,26 +19,26 @@ namespace Sqex::FontCsv::CreateConfig {
 
 	struct DirectWriteSource {
 		std::filesystem::path fontFile;
-		uint32_t faceIndex;
+		uint32_t faceIndex{};
 		std::string familyName;
-		double height;
-		int weight;
-		DWRITE_RENDERING_MODE renderMode;
-		DWRITE_FONT_STYLE style;
-		DWRITE_FONT_STRETCH stretch;
+		double height{};
+		int weight{};
+		DWRITE_RENDERING_MODE renderMode = DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC;
+		DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE_NORMAL;
+		DWRITE_FONT_STRETCH stretch = DWRITE_FONT_STRETCH_NORMAL;
 	};
 	void to_json(nlohmann::json& j, const DirectWriteSource& o);
 	void from_json(const nlohmann::json& j, DirectWriteSource& o);
 
 	struct FreeTypeSource {
 		std::filesystem::path fontFile;
-		uint32_t faceIndex;
+		uint32_t faceIndex{};
 		std::string familyName;
-		double height;
-		int weight;
-		DWRITE_FONT_STYLE style;
-		DWRITE_FONT_STRETCH stretch;
-		uint32_t loadFlags;
+		double height{};
+		int weight{};
+		DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE_NORMAL;
+		DWRITE_FONT_STRETCH stretch = DWRITE_FONT_STRETCH_NORMAL;
+		uint32_t loadFlags{};
 	};
 	void to_json(nlohmann::json& j, const FreeTypeSource& o);
 	void from_json(const nlohmann::json& j, FreeTypeSource& o);
@@ -75,8 +75,8 @@ namespace Sqex::FontCsv::CreateConfig {
 	struct SingleTargetComponent {
 		std::string name;
 		std::vector<std::string> ranges;
-		bool replace;
-		bool extendRange;
+		bool replace{};
+		bool extendRange{};
 	};
 	void to_json(nlohmann::json& j, const SingleTargetComponent& o);
 	void from_json(const nlohmann::json& j, SingleTargetComponent& o);
@@ -86,24 +86,24 @@ namespace Sqex::FontCsv::CreateConfig {
 		static constexpr int CompactLayout_Override_Enable = 1;
 		static constexpr int CompactLayout_Override_Disable = 2;
 
-		double height;
+		double height{};
 
 		std::string ascentFrom;
 		std::string lineHeightFrom;
 
-		uint8_t ascent;
-		bool autoAscent;
-		uint8_t lineHeight;
-		bool autoLineHeight;
+		uint8_t ascent{};
+		bool autoAscent{};
+		uint8_t lineHeight{};
+		bool autoLineHeight{};
 
-		uint8_t maxGlobalOffsetX;
-		uint8_t minGlobalOffsetX;
-		uint8_t globalOffsetY;
-		int compactLayout;
+		uint8_t maxGlobalOffsetX{};
+		uint8_t minGlobalOffsetX{};
+		uint8_t globalOffsetY{};
+		int compactLayout{};
 
-		uint8_t borderThickness;
-		uint8_t borderOpacity;
-		bool alignToBaseline;
+		uint8_t borderThickness{};
+		uint8_t borderOpacity{};
+		bool alignToBaseline{};
 
 		std::u32string charactersToKernAcrossFonts;
 		std::vector<SingleTargetComponent> sources;
@@ -122,7 +122,7 @@ namespace Sqex::FontCsv::CreateConfig {
 		bool compactLayout;
 		uint16_t textureWidth;
 		uint16_t textureHeight;
-		Texture::CompressionType textureType;
+		Texture::Format textureFormat;
 		std::map<std::string, InputFontSource> sources;
 		std::map<std::string, RangeSet> ranges;
 		std::map<std::string, SingleTextureTarget> targets;

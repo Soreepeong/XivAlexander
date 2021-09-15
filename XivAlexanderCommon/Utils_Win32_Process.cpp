@@ -78,7 +78,7 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::operator=(const Proc
 	m_dir = r.m_dir;
 	m_args = r.m_args;
 	m_inheritedHandles.reserve(r.m_inheritedHandles.size());
-	std::transform(r.m_inheritedHandles.begin(), r.m_inheritedHandles.end(),
+	std::ranges::transform(r.m_inheritedHandles,
 		std::back_inserter(m_args), [](const Handle& h) {
 		return Handle::DuplicateFrom<Handle>(h, true);
 	});
@@ -127,7 +127,7 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 	if (!m_inheritedHandles.empty()) {
 		std::vector<HANDLE> handles;
 		handles.reserve(m_inheritedHandles.size());
-		std::transform(m_inheritedHandles.begin(), m_inheritedHandles.end(), std::back_inserter(handles), [](auto& v) { return static_cast<HANDLE>(v); });
+		std::ranges::transform(m_inheritedHandles, std::back_inserter(handles), [](auto& v) { return static_cast<HANDLE>(v); });
 		if (!UpdateProcThreadAttribute(siex.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, &handles[0], handles.size() * sizeof handles[0], nullptr, nullptr))
 			throw Error("UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_HANDLE_LIST)");
 	}

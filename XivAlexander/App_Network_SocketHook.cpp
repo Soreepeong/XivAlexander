@@ -45,7 +45,7 @@ public:
 	};
 
 	SingleStreamWriter Write() {
-		return { *this };
+		return {*this};
 	}
 
 	void Write(const void* buf, size_t length) {
@@ -181,8 +181,8 @@ struct App::Network::SingleConnection::Implementation {
 	SingleStream m_sendRaw;
 	SingleStream m_sendProcessed;
 
-	sockaddr_storage m_localAddress = { AF_UNSPEC };
-	sockaddr_storage m_remoteAddress = { AF_UNSPEC };
+	sockaddr_storage m_localAddress = {AF_UNSPEC};
+	sockaddr_storage m_remoteAddress = {AF_UNSPEC};
 
 	Utils::CallOnDestruction m_pingTrackKeeper;
 
@@ -492,6 +492,7 @@ App::Network::SingleConnection::SingleConnection(SocketHook* hook, SOCKET s)
 	, m_pImpl(std::make_unique<Implementation>(this, hook)) {
 
 }
+
 App::Network::SingleConnection::~SingleConnection() = default;
 
 void App::Network::SingleConnection::AddIncomingFFXIVMessageHandler(void* token, MessageMangler cb) {
@@ -506,6 +507,7 @@ void App::Network::SingleConnection::RemoveMessageHandlers(void* token) {
 	this->m_pImpl->m_incomingHandlers.erase(reinterpret_cast<size_t>(token));
 	this->m_pImpl->m_outgoingHandlers.erase(reinterpret_cast<size_t>(token));
 }
+
 void App::Network::SingleConnection::ResolveAddresses() {
 	m_pImpl->ResolveAddresses();
 }
@@ -543,9 +545,12 @@ const Utils::NumericStatisticsTracker* App::Network::SingleConnection::GetPingLa
 	return m_pImpl->hook_->m_pImpl->m_pingTracker.GetTracker(local.sin_addr, remote.sin_addr);
 }
 
-App::Network::SocketHook::SocketHook(XivAlexApp * pApp)
+App::Network::SocketHook::SocketHook(XivAlexApp* pApp)
 	: m_logger(Misc::Logger::Acquire())
-	, OnSocketFound([this](const auto& cb) { for (const auto& val : this->m_pImpl->m_sockets | std::views::values) cb(*val); })
+	, OnSocketFound([this](const auto& cb) {
+		for (const auto& val : this->m_pImpl->m_sockets | std::views::values)
+			cb(*val);
+	})
 	, m_pImpl(std::make_unique<Implementation>(this, pApp)) {
 
 	pApp->RunOnGameLoop([&]() {
@@ -628,7 +633,7 @@ App::Network::SocketHook::SocketHook(XivAlexApp * pApp)
 					m_pImpl->CleanupSocket(s);
 			}
 
-			for (auto it = m_pImpl->m_sockets.begin(); it != m_pImpl->m_sockets.end(); ) {
+			for (auto it = m_pImpl->m_sockets.begin(); it != m_pImpl->m_sockets.end();) {
 				const auto& [s, conn] = *it;
 
 				conn->m_pImpl->AttemptSend();

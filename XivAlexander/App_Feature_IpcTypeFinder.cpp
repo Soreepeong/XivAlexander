@@ -10,6 +10,7 @@ struct App::Feature::IpcTypeFinder::Implementation {
 	public:
 		Implementation* m_pImpl;
 		Network::SingleConnection& conn;
+
 		SingleConnectionHandler(Implementation* pImpl, Network::SingleConnection& conn)
 			: m_pImpl(pImpl)
 			, conn(conn) {
@@ -157,6 +158,7 @@ struct App::Feature::IpcTypeFinder::Implementation {
 				return true;
 			});
 		}
+
 		~SingleConnectionHandler() {
 			conn.RemoveMessageHandlers(this);
 		}

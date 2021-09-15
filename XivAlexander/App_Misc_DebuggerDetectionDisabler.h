@@ -15,6 +15,7 @@ namespace App::Misc {
 		static std::shared_ptr<DebuggerDetectionDisabler> Acquire();
 
 		[[nodiscard]] bool IsDebuggerActuallyPresent() const;
+
 		void BreakIfDebugged() const {
 			if (IsDebuggerActuallyPresent()) {
 				__try {

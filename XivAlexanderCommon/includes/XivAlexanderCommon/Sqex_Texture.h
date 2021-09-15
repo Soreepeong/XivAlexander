@@ -2,7 +2,7 @@
 #include "Sqex.h"
 
 namespace Sqex::Texture {
-	enum class CompressionType : uint32_t {
+	enum class Format : uint32_t {
 		Unknown = 0,
 
 		// https://github.com/goaaats/ffxiv-explorer-fork/blob/develop/src/main/java/com/fragmenterworks/ffxivextract/models/Texture_File.java
@@ -25,8 +25,8 @@ namespace Sqex::Texture {
 		DXT5 = 0x3431,
 	};
 
-	void to_json(nlohmann::json& j, const CompressionType& o);
-	void from_json(const nlohmann::json& j, CompressionType& o);
+	void to_json(nlohmann::json& j, const Format& o);
+	void from_json(const nlohmann::json& j, Format& o);
 
 	struct RGBA4444 {
 		static constexpr size_t ChannelCount = 4;
@@ -171,12 +171,12 @@ namespace Sqex::Texture {
 		}
 	};
 
-	size_t RawDataLength(CompressionType type, size_t width, size_t height);
+	size_t RawDataLength(Format type, size_t width, size_t height);
 
 	struct Header {
 		LE<uint16_t> Unknown1;
 		LE<uint16_t> HeaderSize;
-		LE<CompressionType> Type;
+		LE<Format> Type;
 		LE<uint16_t> Width;
 		LE<uint16_t> Height;
 		LE<uint16_t> Depth;

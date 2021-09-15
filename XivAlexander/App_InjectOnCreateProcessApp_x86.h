@@ -29,7 +29,7 @@ struct TrampolineTemplate {
 
 		struct {
 			const uint8_t op_mov_edi_imm[1]{ 0xbf };
-			void* ptr = nullptr;
+			decltype(&LoadLibraryW) ptr = nullptr;
 		} fn;
 
 		const uint8_t op_call_edi[2]{ 0xff, 0xd7 };
@@ -45,7 +45,7 @@ struct TrampolineTemplate {
 
 		struct {
 			const uint8_t op_mov_edi_imm[1]{ 0xbf };
-			void* ptr = nullptr;
+			decltype(&GetProcAddress) ptr = nullptr;
 		} fn;
 
 		const uint8_t op_call_edi[2]{ 0xff, 0xd7 };

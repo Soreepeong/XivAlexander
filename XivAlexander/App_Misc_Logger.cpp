@@ -25,8 +25,8 @@ struct App::Misc::Logger::Implementation final {
 	Implementation(Logger& logger)
 		: logger(logger)
 		, m_hDispatcherThread(std::format(L"XivAlexander::App::Misc::Logger({:x})::Implementation({:x}::DispatcherThreadBody",
-			reinterpret_cast<size_t>(&logger), reinterpret_cast<size_t>(this)
-		), [this]() { return DispatcherThreadBody(); }) {
+				reinterpret_cast<size_t>(&logger), reinterpret_cast<size_t>(this)
+			), [this]() { return DispatcherThreadBody(); }) {
 		ResumeThread(m_hDispatcherThread);
 	}
 
@@ -79,9 +79,9 @@ public:
 App::Misc::Logger::Logger()
 	: m_pImpl(std::make_unique<Implementation>(*this))
 	, OnNewLogItem([this](const auto& cb) {
-	std::lock_guard lock(m_pImpl->m_itemLock);
-	cb(m_pImpl->m_items);
-}) {
+		std::lock_guard lock(m_pImpl->m_itemLock);
+		cb(m_pImpl->m_items);
+	}) {
 	Utils::Win32::DebugPrint(L"Logger: New");
 }
 
@@ -121,7 +121,7 @@ void App::Misc::Logger::Log(LogCategory category, const std::string& s, LogLevel
 		std::chrono::system_clock::now(),
 		level,
 		s,
-		});
+	});
 }
 
 void App::Misc::Logger::Log(LogCategory category, const std::wstring& s, LogLevel level) {

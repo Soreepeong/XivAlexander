@@ -62,10 +62,11 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 		PendingAction m_latestSuccessfulRequest;
 		int64_t m_lastAnimationLockEndsAt = 0;
 		std::map<int, int64_t> m_originalWaitTimeMap{};
-		Utils::NumericStatisticsTracker m_earlyRequestsDuration{ 32, 0 };
+		Utils::NumericStatisticsTracker m_earlyRequestsDuration{32, 0};
 
 		Implementation* m_pImpl;
 		Network::SingleConnection& conn;
+
 		SingleConnectionHandler(Implementation* pImpl, Network::SingleConnection& conn)
 			: m_config(Config::Acquire())
 			, m_pImpl(pImpl)
@@ -227,7 +228,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 										// Sometimes SourceSequence is empty, in which case, we use ActionId to judge.
 										(rollback.SourceSequence != 0 && m_pendingActions.front().Sequence != rollback.SourceSequence)
 										|| (rollback.SourceSequence == 0 && m_pendingActions.front().ActionId != rollback.ActionId)
-										)) {
+									)) {
 									const auto& item = m_pendingActions.front();
 									m_pImpl->m_logger->Format(
 										LogCategory::AnimationLockLatencyHandler,
@@ -341,8 +342,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 					description << std::format(" delay={}ms", DefaultDelay);
 					return now + originalWaitTime - latency;
 
-				case HighLatencyMitigationMode::SimulateNormalizedRttAndLatency:
-				{
+				case HighLatencyMitigationMode::SimulateNormalizedRttAndLatency: {
 					const auto rttMin = conn.ApplicationLatency.Min();
 					const auto rttMean = conn.ApplicationLatency.Mean();
 					const auto rttDeviation = conn.ApplicationLatency.Deviation();

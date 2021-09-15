@@ -7,7 +7,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const GameSource& o
 	j = nlohmann::json::object({
 		{"fdtPath", o.fdtPath},
 		{"texturePath", o.texturePath},
-		});
+	});
 	if (!o.indexFile.empty())
 		j.emplace("indexFile", o.indexFile);
 }
@@ -28,7 +28,7 @@ static int ParseFontWeight(const nlohmann::json& j) {
 		return 400;
 	else if (j.is_number_integer()) {
 		const auto w = j.get<int>();
-		if (w < 1 || w> 1000)
+		if (w < 1 || w > 1000)
 			throw std::invalid_argument(std::format("weight must be between 1 and 1000 inclusive, got {}", w));
 		return w;
 	} else if (j.is_string()) {
@@ -42,35 +42,24 @@ static int ParseFontWeight(const nlohmann::json& j) {
 
 		// https://docs.microsoft.com/en-us/windows/win32/api/dwrite/ne-dwrite-dwrite_font_weight
 		CharLowerA(&s[0]);
-		if (s == "thin")
-			return 100;
-		else if (s == "extralight" || s == "ultralight")
-			return 200;
-		else if (s == "light")
-			return 300;
-		else if (s == "semilight")
-			return 350;
-		else if (s == "normal" || s == "medium")
-			return 400;
-		else if (s == "medium")
-			return 500;
-		else if (s == "demibold" || s == "bold")
-			return 600;
-		else if (s == "bold")
-			return 700;
-		else if (s == "extrabold" || s == "ultrabold")
-			return 800;
-		else if (s == "black" || s == "heavy")
-			return 900;
-		else if (s == "extrablack" || s == "ultraheavy")
-			return 950;
-		else
-			throw std::invalid_argument(std::format("unrecognized weight name \"{}\"", j.get<std::string>()));
+		if (s == "thin") return 100;
+		else if (s == "extralight" || s == "ultralight") return 200;
+		else if (s == "light") return 300;
+		else if (s == "semilight") return 350;
+		else if (s == "normal" || s == "medium") return 400;
+		else if (s == "medium") return 500;
+		else if (s == "demibold" || s == "bold") return 600;
+		else if (s == "bold") return 700;
+		else if (s == "extrabold" || s == "ultrabold") return 800;
+		else if (s == "black" || s == "heavy") return 900;
+		else if (s == "extrablack" || s == "ultraheavy") return 950;
+		else throw std::invalid_argument(std::format("unrecognized weight name \"{}\"", j.get<std::string>()));
 	} else if (j.is_boolean())
 		return j.get<bool>() ? 700 : 400;
 	else
 		throw std::invalid_argument(std::format("Failed to interpret a value of type \"{}\" as a font weight", j.type_name()));
 }
+
 static int ParseFontWeight(const nlohmann::json& parent, const char* key) {
 	if (const auto it = parent.find(key); it != parent.end())
 		return ParseFontWeight(it.value());
@@ -87,7 +76,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const DirectWriteSo
 		{"renderMode", o.renderMode},
 		{"style", o.style},
 		{"stretch", o.stretch},
-		});
+	});
 }
 
 void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, DirectWriteSource& o) {
@@ -138,7 +127,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const FreeTypeSourc
 		{"renderMode", loadFlagsDescription},
 		{"style", o.style},
 		{"stretch", o.stretch},
-		});
+	});
 }
 
 void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, FreeTypeSource& o) {
@@ -158,24 +147,24 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, FreeTypeSou
 	for (auto& flag : StringSplit<std::string>(j.value("renderMode", ""), "|")) {
 		CharUpperA(&flag[0]);
 		flag = StringTrim(flag);
-		if (flag == "" || flag == "FT_LOAD_DEFAULT") void(0);
-		else if (flag == "FT_LOAD_NO_SCALE") o.loadFlags |= (1L << 0);
-		else if (flag == "FT_LOAD_NO_HINTING") o.loadFlags |= (1L << 1);
-		else if (flag == "FT_LOAD_RENDER") o.loadFlags |= (1L << 2);
-		else if (flag == "FT_LOAD_NO_BITMAP") o.loadFlags |= (1L << 3);
-		else if (flag == "FT_LOAD_VERTICAL_LAYOUT") o.loadFlags |= (1L << 4);
-		else if (flag == "FT_LOAD_FORCE_AUTOHINT") o.loadFlags |= (1L << 5);
-		else if (flag == "FT_LOAD_CROP_BITMAP") o.loadFlags |= (1L << 6);
-		else if (flag == "FT_LOAD_PEDANTIC") o.loadFlags |= (1L << 7);
-		else if (flag == "FT_LOAD_IGNORE_GLOBAL_ADVANCE_WIDTH") o.loadFlags |= (1L << 9);
-		else if (flag == "FT_LOAD_NO_RECURSE") o.loadFlags |= (1L << 10);
-		else if (flag == "FT_LOAD_IGNORE_TRANSFORM") o.loadFlags |= (1L << 11);
-		else if (flag == "FT_LOAD_MONOCHROME") o.loadFlags |= (1L << 12);
-		else if (flag == "FT_LOAD_LINEAR_DESIGN") o.loadFlags |= (1L << 13);
-		else if (flag == "FT_LOAD_NO_AUTOHINT") o.loadFlags |= (1L << 15);
-		else if (flag == "FT_LOAD_COLOR") o.loadFlags |= (1L << 20);
-		else if (flag == "FT_LOAD_COMPUTE_METRICS") o.loadFlags |= (1L << 21);
-		else if (flag == "FT_LOAD_BITMAP_METRICS_ONLY") o.loadFlags |= (1L << 22);
+		if (flag.empty() || flag == "FT_LOAD_DEFAULT") void(0);
+		else if (flag == "FT_LOAD_NO_SCALE") o.loadFlags |= 1L << 0;
+		else if (flag == "FT_LOAD_NO_HINTING") o.loadFlags |= 1L << 1;
+		else if (flag == "FT_LOAD_RENDER") o.loadFlags |= 1L << 2;
+		else if (flag == "FT_LOAD_NO_BITMAP") o.loadFlags |= 1L << 3;
+		else if (flag == "FT_LOAD_VERTICAL_LAYOUT") o.loadFlags |= 1L << 4;
+		else if (flag == "FT_LOAD_FORCE_AUTOHINT") o.loadFlags |= 1L << 5;
+		else if (flag == "FT_LOAD_CROP_BITMAP") o.loadFlags |= 1L << 6;
+		else if (flag == "FT_LOAD_PEDANTIC") o.loadFlags |= 1L << 7;
+		else if (flag == "FT_LOAD_IGNORE_GLOBAL_ADVANCE_WIDTH") o.loadFlags |= 1L << 9;
+		else if (flag == "FT_LOAD_NO_RECURSE") o.loadFlags |= 1L << 10;
+		else if (flag == "FT_LOAD_IGNORE_TRANSFORM") o.loadFlags |= 1L << 11;
+		else if (flag == "FT_LOAD_MONOCHROME") o.loadFlags |= 1L << 12;
+		else if (flag == "FT_LOAD_LINEAR_DESIGN") o.loadFlags |= 1L << 13;
+		else if (flag == "FT_LOAD_NO_AUTOHINT") o.loadFlags |= 1L << 15;
+		else if (flag == "FT_LOAD_COLOR") o.loadFlags |= 1L << 20;
+		else if (flag == "FT_LOAD_COMPUTE_METRICS") o.loadFlags |= 1L << 21;
+		else if (flag == "FT_LOAD_BITMAP_METRICS_ONLY") o.loadFlags |= 1L << 22;
 		else
 			throw std::invalid_argument(std::format("Unrecognized FreeType load flag \"{}\"", flag));
 	}
@@ -199,7 +188,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const GdiSource& o)
 		{"lfQuality", o.lfQuality},
 		{"lfPitchAndFamily", o.lfPitchAndFamily},
 		{"faceName", ToUtf8(o.lfFaceName)},
-		});
+	});
 }
 
 void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, GdiSource& o) {
@@ -225,7 +214,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const SingleRange& 
 		j = nlohmann::json::array({
 			std::format("U+{:04X}", static_cast<uint32_t>(o.from)),
 			std::format("U+{:04X}", static_cast<uint32_t>(o.to)),
-			});
+		});
 	else
 		j = std::format("U+{:04X}", static_cast<uint32_t>(o.from));
 }
@@ -280,7 +269,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const SingleTargetC
 		{"ranges", o.ranges},
 		{"replace", o.replace},
 		{"extendRange", o.extendRange},
-		});
+	});
 }
 
 void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, SingleTargetComponent& o) {
@@ -301,10 +290,10 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const SingleFontTar
 		{"compactLayout", nullptr},
 		{"charactersToKernAcrossFonts", o.charactersToKernAcrossFonts},
 		{"alignToBaseline", o.alignToBaseline},
-		{"borderThickness" ,o.borderThickness},
-		{"borderOpacity" ,o.borderOpacity},
+		{"borderThickness", o.borderThickness},
+		{"borderOpacity", o.borderOpacity},
 		{"sources", o.sources},
-		});
+	});
 	switch (o.compactLayout) {
 		case SingleFontTarget::CompactLayout_Override_Enable:
 			j["compactLayout"] = true;
@@ -317,26 +306,33 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const SingleFontTar
 
 void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, SingleFontTarget& o) {
 	o.height = j.at("height").get<double>();
-	if (const auto it = j.find("ascent"); it == j.end())
-		o.autoAscent = true;
-	else if (it->is_number())
-		o.ascent = it->get<uint8_t>();
-	else if (it->is_string())
-		o.ascentFrom = it->get<std::string>();
-	else if (it->is_null())
-		o.autoAscent = true;
-	else
-		throw std::invalid_argument("invalid ascent value given");
-	if (const auto it = j.find("lineHeight"); it == j.end())
-		o.autoLineHeight = true;
-	else if (it->is_number())
-		o.lineHeight = it->get<uint8_t>();
-	else if (it->is_string())
-		o.lineHeightFrom = it->get<std::string>();
-	else if (it->is_null())
-		o.autoLineHeight = true;
-	else
-		throw std::invalid_argument("invalid lineHeight value given");
+
+	o.autoAscent = o.autoLineHeight = true;
+	
+	for (const auto& [descentMode, possibleKeyName, autoTarget, valueTarget, fromTarget] : std::vector<std::tuple<bool, const char*, bool*, uint8_t*, std::string*>>{
+			{false, "ascent", &o.autoAscent, &o.ascent, &o.ascentFrom},
+			{false, "lineHeight", &o.autoLineHeight, &o.lineHeight, &o.lineHeightFrom},
+			{false, "descent", &o.autoLineHeight, &o.lineHeight, &o.lineHeightFrom},
+		}) {
+		const auto it = j.find(possibleKeyName);
+		if (it == j.end())
+			continue;
+
+		if (it->is_number()) {
+			*autoTarget = false;
+			*valueTarget = it->get<uint8_t>();
+			if (descentMode)
+				*valueTarget += o.ascent;
+		} else if (it->is_string()) {
+			*autoTarget = false;
+			*fromTarget = it->get<std::string>();
+		} else if (it->is_null()) {
+			*autoTarget = true;
+		} else {
+			throw std::invalid_argument(std::format("invalid {} value given", possibleKeyName));
+		}
+	}
+
 	o.maxGlobalOffsetX = j.value<uint8_t>("maxGlobalOffsetX", 255);
 	o.minGlobalOffsetX = j.value<uint8_t>("minGlobalOffsetX", 0);
 	o.globalOffsetY = j.value<uint8_t>("globalOffsetY", 0);
@@ -347,7 +343,7 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, SingleFontT
 	o.sources = j.at("sources").get<decltype(o.sources)>();
 
 	if (const auto it = j.find("compactLayout"); it != j.end())
-		o.compactLayout = it->is_null() ? SingleFontTarget::CompactLayout_NoOverride : (it->get<bool>() ? SingleFontTarget::CompactLayout_Override_Enable : SingleFontTarget::CompactLayout_Override_Disable);
+		o.compactLayout = it->is_null() ? SingleFontTarget::CompactLayout_NoOverride : it->get<bool>() ? SingleFontTarget::CompactLayout_Override_Enable : SingleFontTarget::CompactLayout_Override_Disable;
 	else
 		o.compactLayout = SingleFontTarget::CompactLayout_NoOverride;
 }
@@ -366,11 +362,11 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const FontCreateCon
 		{"compactLayout", o.compactLayout},
 		{"textureWidth", o.textureWidth},
 		{"textureHeight", o.textureHeight},
-		{"textureType", o.textureType},
+		{"textureFormat", o.textureFormat},
 		{"sources", nlohmann::json::object()},
 		{"ranges", o.ranges},
 		{"targets", o.targets},
-		});
+	});
 	auto& sources = j.at("sources");
 	for (const auto& [key, value] : o.sources) {
 		if (value.isGameSource)
@@ -389,29 +385,34 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, FontCreateC
 	o.compactLayout = j.value("compactLayout", false);
 	o.textureWidth = j.value<uint16_t>("textureWidth", 1024);
 	o.textureHeight = j.value<uint16_t>("textureHeight", 1024);
-	o.textureType = j.value("textureType", Texture::CompressionType::RGBA4444);
-	if (o.textureType != Texture::CompressionType::RGBA4444 && o.textureType != Texture::CompressionType::RGBA_1 && o.textureType != Texture::CompressionType::RGBA_2)
+	o.textureFormat = Texture::Format::RGBA4444;
+	for (const auto possibleKeyName : {"textureFormat", "textureType"}) {
+		if (const auto it = j.find(possibleKeyName); it != j.end()) {
+			o.textureFormat = it->get<decltype(o.textureFormat)>();
+		}
+	}
+	if (o.textureFormat != Texture::Format::RGBA4444 && o.textureFormat != Texture::Format::RGBA_1 && o.textureFormat != Texture::Format::RGBA_2)
 		throw std::invalid_argument("Only RGBA4444 and RGBA8888 are supported");
 	for (const auto& [key, value] : j.at("sources").items()) {
 		if (key.starts_with("gdi:")) {
 			GdiSource source;
 			from_json(value, source);
-			o.sources.emplace(key, InputFontSource{ .isGdiSource = true, .gdiSource = source });
+			o.sources.emplace(key, InputFontSource{.isGdiSource = true, .gdiSource = source});
 
 		} else if (key.starts_with("dwrite:")) {
 			DirectWriteSource source;
 			from_json(value, source);
-			o.sources.emplace(key, InputFontSource{ .isDirectWriteSource = true, .directWriteSource = source });
+			o.sources.emplace(key, InputFontSource{.isDirectWriteSource = true, .directWriteSource = source});
 
 		} else if (key.starts_with("freetype:")) {
 			FreeTypeSource source;
 			from_json(value, source);
-			o.sources.emplace(key, InputFontSource{ .isFreeTypeSource = true, .freeTypeSource = source });
+			o.sources.emplace(key, InputFontSource{.isFreeTypeSource = true, .freeTypeSource = source});
 
 		} else if (key.starts_with("game:")) {
 			GameSource source;
 			from_json(value, source);
-			o.sources.emplace(key, InputFontSource{ .isGameSource = true, .gameSource = source });
+			o.sources.emplace(key, InputFontSource{.isGameSource = true, .gameSource = source});
 
 		} else
 			throw std::invalid_argument(std::format("target font name \"{}\" has an unsupported prefix", key));
@@ -422,12 +423,18 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, FontCreateC
 
 void to_json(nlohmann::json& j, const DWRITE_RENDERING_MODE& o) {
 	switch (o) {
-		case DWRITE_RENDERING_MODE_ALIASED: j = "DWRITE_RENDERING_MODE_ALIASED"; break;
-		case DWRITE_RENDERING_MODE_GDI_CLASSIC: j = "DWRITE_RENDERING_MODE_GDI_CLASSIC"; break;
-		case DWRITE_RENDERING_MODE_GDI_NATURAL: j = "DWRITE_RENDERING_MODE_GDI_NATURAL"; break;
-		case DWRITE_RENDERING_MODE_NATURAL: j = "DWRITE_RENDERING_MODE_NATURAL"; break;
-		case DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC: j = "DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC"; break;
-		case DWRITE_RENDERING_MODE_OUTLINE: j = "DWRITE_RENDERING_MODE_OUTLINE"; break;
+		case DWRITE_RENDERING_MODE_ALIASED: j = "DWRITE_RENDERING_MODE_ALIASED";
+			break;
+		case DWRITE_RENDERING_MODE_GDI_CLASSIC: j = "DWRITE_RENDERING_MODE_GDI_CLASSIC";
+			break;
+		case DWRITE_RENDERING_MODE_GDI_NATURAL: j = "DWRITE_RENDERING_MODE_GDI_NATURAL";
+			break;
+		case DWRITE_RENDERING_MODE_NATURAL: j = "DWRITE_RENDERING_MODE_NATURAL";
+			break;
+		case DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC: j = "DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC";
+			break;
+		case DWRITE_RENDERING_MODE_OUTLINE: j = "DWRITE_RENDERING_MODE_OUTLINE";
+			break;
 	}
 }
 
@@ -437,35 +444,24 @@ void from_json(const nlohmann::json& j, DWRITE_RENDERING_MODE& o) {
 	else {
 		auto s = Utils::StringTrim(j.get<std::string>());
 		CharUpperA(&s[0]);
-
-		if (s == "DWRITE_RENDERING_MODE_ALIASED")
-			o = DWRITE_RENDERING_MODE_ALIASED;
-
-		else if (s == "DWRITE_RENDERING_MODE_GDI_CLASSIC")
-			o = DWRITE_RENDERING_MODE_GDI_CLASSIC;
-
-		else if (s == "DWRITE_RENDERING_MODE_GDI_NATURAL")
-			o = DWRITE_RENDERING_MODE_GDI_NATURAL;
-
-		else if (s == "DWRITE_RENDERING_MODE_NATURAL")
-			o = DWRITE_RENDERING_MODE_NATURAL;
-
-		else if (s == "DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC")
-			o = DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC;
-
-		else if (s == "DWRITE_RENDERING_MODE_OUTLINE")
-			o = DWRITE_RENDERING_MODE_OUTLINE;
-
-		else
-			throw std::invalid_argument(std::format("Unexpected value {} for renderMode", s));
+		if (s == "DWRITE_RENDERING_MODE_ALIASED") o = DWRITE_RENDERING_MODE_ALIASED;
+		else if (s == "DWRITE_RENDERING_MODE_GDI_CLASSIC") o = DWRITE_RENDERING_MODE_GDI_CLASSIC;
+		else if (s == "DWRITE_RENDERING_MODE_GDI_NATURAL") o = DWRITE_RENDERING_MODE_GDI_NATURAL;
+		else if (s == "DWRITE_RENDERING_MODE_NATURAL") o = DWRITE_RENDERING_MODE_NATURAL;
+		else if (s == "DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC") o = DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC;
+		else if (s == "DWRITE_RENDERING_MODE_OUTLINE") o = DWRITE_RENDERING_MODE_OUTLINE;
+		else throw std::invalid_argument(std::format("Unexpected value {} for renderMode", s));
 	}
 }
 
 void to_json(nlohmann::json& j, const DWRITE_FONT_STYLE& o) {
 	switch (o) {
-		case DWRITE_FONT_STYLE_NORMAL: j = "DWRITE_FONT_STYLE_NORMAL"; break;
-		case DWRITE_FONT_STYLE_OBLIQUE: j = "DWRITE_FONT_STYLE_OBLIQUE"; break;
-		case DWRITE_FONT_STYLE_ITALIC: j = "DWRITE_FONT_STYLE_ITALIC"; break;
+		case DWRITE_FONT_STYLE_NORMAL: j = "DWRITE_FONT_STYLE_NORMAL";
+			break;
+		case DWRITE_FONT_STYLE_OBLIQUE: j = "DWRITE_FONT_STYLE_OBLIQUE";
+			break;
+		case DWRITE_FONT_STYLE_ITALIC: j = "DWRITE_FONT_STYLE_ITALIC";
+			break;
 	}
 }
 
@@ -475,32 +471,33 @@ void from_json(const nlohmann::json& j, DWRITE_FONT_STYLE& o) {
 	else {
 		auto s = Utils::StringTrim(j.get<std::string>());
 		CharUpperA(&s[0]);
-
-		if (s == "DWRITE_FONT_STYLE_NORMAL")
-			o = DWRITE_FONT_STYLE_NORMAL;
-
-		else if (s == "DWRITE_FONT_STYLE_ITALIC")
-			o = DWRITE_FONT_STYLE_ITALIC;
-
-		else if (s == "DWRITE_FONT_STYLE_OBLIQUE")
-			o = DWRITE_FONT_STYLE_OBLIQUE;
-
-		else
-			throw std::invalid_argument(std::format("Unexpected value {} for style", s));
+		if (s == "DWRITE_FONT_STYLE_NORMAL") o = DWRITE_FONT_STYLE_NORMAL;
+		else if (s == "DWRITE_FONT_STYLE_ITALIC") o = DWRITE_FONT_STYLE_ITALIC;
+		else if (s == "DWRITE_FONT_STYLE_OBLIQUE") o = DWRITE_FONT_STYLE_OBLIQUE;
+		else throw std::invalid_argument(std::format("Unexpected value {} for style", s));
 	}
 }
 
 void to_json(nlohmann::json& j, const DWRITE_FONT_STRETCH& o) {
 	switch (o) {
-		case DWRITE_FONT_STRETCH_ULTRA_CONDENSED: j = "DWRITE_FONT_STRETCH_ULTRA_CONDENSED"; break;
-		case DWRITE_FONT_STRETCH_EXTRA_CONDENSED: j = "DWRITE_FONT_STRETCH_EXTRA_CONDENSED"; break;
-		case DWRITE_FONT_STRETCH_CONDENSED: j = "DWRITE_FONT_STRETCH_CONDENSED"; break;
-		case DWRITE_FONT_STRETCH_SEMI_CONDENSED: j = "DWRITE_FONT_STRETCH_SEMI_CONDENSED"; break;
-		case DWRITE_FONT_STRETCH_NORMAL: j = "DWRITE_FONT_STRETCH_NORMAL"; break;
-		case DWRITE_FONT_STRETCH_SEMI_EXPANDED: j = "DWRITE_FONT_STRETCH_SEMI_EXPANDED"; break;
-		case DWRITE_FONT_STRETCH_EXPANDED: j = "DWRITE_FONT_STRETCH_EXPANDED"; break;
-		case DWRITE_FONT_STRETCH_EXTRA_EXPANDED: j = "DWRITE_FONT_STRETCH_EXTRA_EXPANDED"; break;
-		case DWRITE_FONT_STRETCH_ULTRA_EXPANDED: j = "DWRITE_FONT_STRETCH_ULTRA_EXPANDED"; break;
+		case DWRITE_FONT_STRETCH_ULTRA_CONDENSED: j = "DWRITE_FONT_STRETCH_ULTRA_CONDENSED";
+			break;
+		case DWRITE_FONT_STRETCH_EXTRA_CONDENSED: j = "DWRITE_FONT_STRETCH_EXTRA_CONDENSED";
+			break;
+		case DWRITE_FONT_STRETCH_CONDENSED: j = "DWRITE_FONT_STRETCH_CONDENSED";
+			break;
+		case DWRITE_FONT_STRETCH_SEMI_CONDENSED: j = "DWRITE_FONT_STRETCH_SEMI_CONDENSED";
+			break;
+		case DWRITE_FONT_STRETCH_NORMAL: j = "DWRITE_FONT_STRETCH_NORMAL";
+			break;
+		case DWRITE_FONT_STRETCH_SEMI_EXPANDED: j = "DWRITE_FONT_STRETCH_SEMI_EXPANDED";
+			break;
+		case DWRITE_FONT_STRETCH_EXPANDED: j = "DWRITE_FONT_STRETCH_EXPANDED";
+			break;
+		case DWRITE_FONT_STRETCH_EXTRA_EXPANDED: j = "DWRITE_FONT_STRETCH_EXTRA_EXPANDED";
+			break;
+		case DWRITE_FONT_STRETCH_ULTRA_EXPANDED: j = "DWRITE_FONT_STRETCH_ULTRA_EXPANDED";
+			break;
 	}
 }
 
@@ -509,37 +506,16 @@ void from_json(const nlohmann::json& j, DWRITE_FONT_STRETCH& o) {
 		o = static_cast<DWRITE_FONT_STRETCH>(j.get<int>());
 	else {
 		const auto s = j.get<std::string>();
-		if (s == "DWRITE_FONT_STRETCH_ULTRA_CONDENSED")
-			o = DWRITE_FONT_STRETCH_ULTRA_CONDENSED;
-
-		else if (s == "DWRITE_FONT_STRETCH_EXTRA_CONDENSED")
-			o = DWRITE_FONT_STRETCH_EXTRA_CONDENSED;
-
-		else if (s == "DWRITE_FONT_STRETCH_CONDENSED")
-			o = DWRITE_FONT_STRETCH_CONDENSED;
-
-		else if (s == "DWRITE_FONT_STRETCH_SEMI_CONDENSED")
-			o = DWRITE_FONT_STRETCH_SEMI_CONDENSED;
-
-		else if (s == "DWRITE_FONT_STRETCH_NORMAL")
-			o = DWRITE_FONT_STRETCH_NORMAL;
-
-		else if (s == "DWRITE_FONT_STRETCH_MEDIUM")
-			o = DWRITE_FONT_STRETCH_MEDIUM;
-
-		else if (s == "DWRITE_FONT_STRETCH_SEMI_EXPANDED")
-			o = DWRITE_FONT_STRETCH_SEMI_EXPANDED;
-
-		else if (s == "DWRITE_FONT_STRETCH_EXPANDED")
-			o = DWRITE_FONT_STRETCH_EXPANDED;
-
-		else if (s == "DWRITE_FONT_STRETCH_EXTRA_EXPANDED")
-			o = DWRITE_FONT_STRETCH_EXTRA_EXPANDED;
-
-		else if (s == "DWRITE_FONT_STRETCH_ULTRA_EXPANDED")
-			o = DWRITE_FONT_STRETCH_ULTRA_EXPANDED;
-
-		else
-			throw std::invalid_argument(std::format("Unexpected value {} for stretch", s));
+		if (s == "DWRITE_FONT_STRETCH_ULTRA_CONDENSED") o = DWRITE_FONT_STRETCH_ULTRA_CONDENSED;
+		else if (s == "DWRITE_FONT_STRETCH_EXTRA_CONDENSED") o = DWRITE_FONT_STRETCH_EXTRA_CONDENSED;
+		else if (s == "DWRITE_FONT_STRETCH_CONDENSED") o = DWRITE_FONT_STRETCH_CONDENSED;
+		else if (s == "DWRITE_FONT_STRETCH_SEMI_CONDENSED") o = DWRITE_FONT_STRETCH_SEMI_CONDENSED;
+		else if (s == "DWRITE_FONT_STRETCH_NORMAL") o = DWRITE_FONT_STRETCH_NORMAL;
+		else if (s == "DWRITE_FONT_STRETCH_MEDIUM") o = DWRITE_FONT_STRETCH_MEDIUM;
+		else if (s == "DWRITE_FONT_STRETCH_SEMI_EXPANDED") o = DWRITE_FONT_STRETCH_SEMI_EXPANDED;
+		else if (s == "DWRITE_FONT_STRETCH_EXPANDED") o = DWRITE_FONT_STRETCH_EXPANDED;
+		else if (s == "DWRITE_FONT_STRETCH_EXTRA_EXPANDED") o = DWRITE_FONT_STRETCH_EXTRA_EXPANDED;
+		else if (s == "DWRITE_FONT_STRETCH_ULTRA_EXPANDED") o = DWRITE_FONT_STRETCH_ULTRA_EXPANDED;
+		else throw std::invalid_argument(std::format("Unexpected value {} for stretch", s));
 	}
 }

@@ -3,20 +3,20 @@
 
 #include "XaDxtDecompression.h"
 
-std::shared_ptr<const Sqex::Texture::MipmapStream> Sqex::Texture::MipmapStream::ViewARGB8888(CompressionType type) const {
-	if (type != CompressionType::RGBA_1 && type != CompressionType::RGBA_2 && type != CompressionType::Unknown)
+std::shared_ptr<const Sqex::Texture::MipmapStream> Sqex::Texture::MipmapStream::ViewARGB8888(Format type) const {
+	if (type != Format::RGBA_1 && type != Format::RGBA_2 && type != Format::Unknown)
 		throw std::invalid_argument("invalid argb8888 compression type");
 
-	if (m_type == CompressionType::RGBA_1 || m_type == CompressionType::RGBA_2) {
+	if (m_type == Format::RGBA_1 || m_type == Format::RGBA_2) {
 		auto res = std::static_pointer_cast<const MipmapStream>(shared_from_this());
-		if (m_type == type || type == CompressionType::Unknown)
+		if (m_type == type || type == Format::Unknown)
 			return res;
 		else
 			return std::make_shared<WrappedMipmapStream>(this->Width(), this->Height(), type, std::move(res));
 	}
 
-	if (type == CompressionType::Unknown)
-		return MemoryBackedMipmap::NewARGB8888From(this, CompressionType::RGBA_1);
+	if (type == Format::Unknown)
+		return MemoryBackedMipmap::NewARGB8888From(this, Format::RGBA_1);
 	else
 		return MemoryBackedMipmap::NewARGB8888From(this, type);
 }
@@ -398,8 +398,8 @@ void Sqex::Texture::MipmapStream::Show(std::string title) const {
 		PostQuitMessage(0);
 }
 
-std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMipmap::NewARGB8888From(const MipmapStream* stream, CompressionType type) {
-	if (type != CompressionType::RGBA_1 && type != CompressionType::RGBA_2)
+std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMipmap::NewARGB8888From(const MipmapStream* stream, Format type) {
+	if (type != Format::RGBA_1 && type != Format::RGBA_2)
 		throw std::invalid_argument("invalid argb8888 compression type");
 
 	const auto width = stream->Width();
@@ -412,8 +412,8 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 	uint32_t pos = 0, read = 0;
 	uint8_t buf8[8192];
 	switch (stream->Type()) {
-		case CompressionType::L8_1:
-		case CompressionType::L8_2:
+		case Format::L8_1:
+		case Format::L8_2:
 		{
 			if (cbSource < pixelCount)
 				throw std::runtime_error("Truncated data detected");
@@ -428,7 +428,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 			break;
 		}
 
-		case CompressionType::RGBA4444:
+		case Format::RGBA4444:
 		{
 			if (cbSource < pixelCount * sizeof RGBA4444)
 				throw std::runtime_error("Truncated data detected");
@@ -442,7 +442,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 			break;
 		}
 
-		case CompressionType::RGBA5551:
+		case Format::RGBA5551:
 		{
 			if (cbSource < pixelCount * sizeof RGBA5551)
 				throw std::runtime_error("Truncated data detected");
@@ -456,14 +456,14 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 			break;
 		}
 
-		case CompressionType::RGBA_1:
-		case CompressionType::RGBA_2:
+		case Format::RGBA_1:
+		case Format::RGBA_2:
 			if (cbSource < pixelCount * sizeof RGBA8888)
 				throw std::runtime_error("Truncated data detected");
 			stream->ReadStream(0, std::span(rgba8888view));
 			break;
 
-		case CompressionType::RGBAF:
+		case Format::RGBAF:
 		{
 			if (cbSource < pixelCount * sizeof RGBAHHHH)
 				throw std::runtime_error("Truncated data detected");
@@ -478,7 +478,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 			break;
 		}
 
-		case CompressionType::DXT1:
+		case Format::DXT1:
 		{
 			if (cbSource < pixelCount * 8)
 				throw std::runtime_error("Truncated data detected");
@@ -495,7 +495,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 			break;
 		}
 
-		case CompressionType::DXT3:
+		case Format::DXT3:
 		{
 			if (cbSource < pixelCount * 16)
 				throw std::runtime_error("Truncated data detected");
@@ -518,7 +518,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 			break;
 		}
 
-		case CompressionType::DXT5:
+		case Format::DXT5:
 		{
 			if (cbSource < pixelCount * 16)
 				throw std::runtime_error("Truncated data detected");
@@ -535,7 +535,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 			break;
 		}
 
-		case CompressionType::Unknown:
+		case Format::Unknown:
 		default:
 			throw std::runtime_error("Unsupported type");
 	}

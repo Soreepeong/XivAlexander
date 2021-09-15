@@ -51,9 +51,9 @@ struct App::Network::IcmpPingTracker::Implementation {
 			, m_hExitEvent(Utils::Win32::Event::Create())
 			, m_pair(pair)
 			, m_hWorkerThread(std::format(L"XivAlexander::App::Network::IcmpPingTracker({:x})::SingleTracker({:x}: {} <-> {})",
-				reinterpret_cast<size_t>(icmpPingTracker), reinterpret_cast<size_t>(this),
-				Utils::ToString(pair.Source), Utils::ToString(pair.Destination)
-			), [this]() { Run(); }) {
+					reinterpret_cast<size_t>(icmpPingTracker), reinterpret_cast<size_t>(this),
+					Utils::ToString(pair.Source), Utils::ToString(pair.Destination)
+				), [this]() { Run(); }) {
 		}
 
 		~SingleTracker() {
@@ -139,8 +139,8 @@ App::Network::IcmpPingTracker::IcmpPingTracker()
 
 App::Network::IcmpPingTracker::~IcmpPingTracker() = default;
 
-Utils::CallOnDestruction App::Network::IcmpPingTracker::Track(const in_addr & source, const in_addr & destination) {
-	const auto pair = ConnectionPair{ source, destination };
+Utils::CallOnDestruction App::Network::IcmpPingTracker::Track(const in_addr& source, const in_addr& destination) {
+	const auto pair = ConnectionPair{source, destination};
 	std::lock_guard _lock(m_pImpl->m_trackersMapLock);
 	if (const auto it = m_pImpl->m_trackersByAddress.find(pair); it == m_pImpl->m_trackersByAddress.end())
 		m_pImpl->m_trackersByAddress.emplace(pair, std::make_shared<Implementation::SingleTracker>(this, pair));
@@ -149,8 +149,8 @@ Utils::CallOnDestruction App::Network::IcmpPingTracker::Track(const in_addr & so
 	});
 }
 
-const Utils::NumericStatisticsTracker* App::Network::IcmpPingTracker::GetTracker(const in_addr & source, const in_addr & destination) const {
-	const auto pair = ConnectionPair{ source, destination };
+const Utils::NumericStatisticsTracker* App::Network::IcmpPingTracker::GetTracker(const in_addr& source, const in_addr& destination) const {
+	const auto pair = ConnectionPair{source, destination};
 	if (const auto it = m_pImpl->m_trackersByAddress.find(pair); it != m_pImpl->m_trackersByAddress.end())
 		return it->second->Tracker.get();
 	return nullptr;

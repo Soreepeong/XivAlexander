@@ -135,12 +135,12 @@ double App::Window::BaseWindow::GetZoom() const {
 	}
 }
 
-void App::Window::BaseWindow::ApplyLanguage(WORD languageId) {}
+void App::Window::BaseWindow::ApplyLanguage(WORD languageId) {
+}
 
 LRESULT App::Window::BaseWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
-		case AppMessageRunOnUiThread:
-		{
+		case AppMessageRunOnUiThread: {
 			if (wParam) {
 				const auto fn = reinterpret_cast<std::function<void()>*>(lParam);
 				(*fn)();
@@ -163,8 +163,7 @@ LRESULT App::Window::BaseWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 			break;
 
 		case WM_SIZE:
-		case WM_DPICHANGED:
-		{
+		case WM_DPICHANGED: {
 			RECT rc;
 			GetClientRect(m_hWnd, &rc);
 			OnLayout(GetZoom(), rc.right - rc.left, rc.bottom - rc.top);
@@ -219,9 +218,11 @@ Utils::CallOnDestruction App::Window::BaseWindow::WithTemporaryFocus() const {
 
 	SetForegroundWindow(m_hWnd);
 
-	return { [this, prevStyle, prevExStyle]() {
-		SetWindowLongPtrW(m_hWnd, GWL_STYLE, prevStyle);
-		SetLayeredWindowAttributes(m_hWnd, 0, 255, LWA_ALPHA);
-		SetWindowLongPtrW(m_hWnd, GWL_EXSTYLE, prevExStyle);
-	} };
+	return {
+		[this, prevStyle, prevExStyle]() {
+			SetWindowLongPtrW(m_hWnd, GWL_STYLE, prevStyle);
+			SetLayeredWindowAttributes(m_hWnd, 0, 255, LWA_ALPHA);
+			SetWindowLongPtrW(m_hWnd, GWL_EXSTYLE, prevExStyle);
+		}
+	};
 }

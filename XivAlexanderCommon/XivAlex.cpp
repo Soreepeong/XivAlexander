@@ -124,7 +124,7 @@ std::tuple<std::wstring, std::wstring> XivAlex::ResolveGameReleaseRegion(const s
 	}
 
 	if (!publisherCountries.empty()) {
-		auto maxElem = std::max_element(publisherCountries.begin(), publisherCountries.end());
+		auto maxElem = std::ranges::max_element(publisherCountries);
 		return std::make_tuple(
 			maxElem->first,
 			gameVer

@@ -50,7 +50,7 @@ static WNDCLASSEXW WindowClass() {
 App::Window::LogWindow::LogWindow()
 	: BaseWindow(WindowClass(), nullptr, WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr) {
 
-	NONCLIENTMETRICS ncm = { sizeof(NONCLIENTMETRICS) };
+	NONCLIENTMETRICS ncm = {sizeof(NONCLIENTMETRICS)};
 	SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
 
 	m_hScintilla = CreateWindowExW(0, L"Scintilla", L"", WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
@@ -107,7 +107,7 @@ App::Window::LogWindow::~LogWindow() {
 }
 
 void App::Window::LogWindow::ApplyLanguage(WORD languageId) {
-	m_hAcceleratorWindow = { Dll::Module(), RT_ACCELERATOR, MAKEINTRESOURCE(IDR_LOG_ACCELERATOR), languageId };
+	m_hAcceleratorWindow = {Dll::Module(), RT_ACCELERATOR, MAKEINTRESOURCE(IDR_LOG_ACCELERATOR), languageId};
 	SetWindowTextW(m_hWnd, m_config->Runtime.GetStringRes(IDS_WINDOW_LOG));
 	Utils::Win32::Menu(Dll::Module(), RT_MENU, MAKEINTRESOURCE(IDR_LOG_MENU), languageId).AttachAndSwap(m_hWnd);
 }
@@ -119,27 +119,24 @@ void App::Window::LogWindow::OnLayout(double zoom, double width, double height) 
 
 LRESULT App::Window::LogWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
-		case WM_INITMENUPOPUP:
-		{
+		case WM_INITMENUPOPUP: {
 			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST, true);
 			break;
 		}
 		case WM_ACTIVATE:
 			SetFocus(m_hScintilla);
 			break;
-		case WM_COMMAND:
-		{
+		case WM_COMMAND: {
 			switch (LOWORD(wParam)) {
-				case ID_FILE_SAVE:
-				{
+				case ID_FILE_SAVE: {
 					const auto hWnd = m_hWnd;
 					std::string buf(m_direct(m_directPtr, SCI_GETLENGTH, 0, 0) + 1, '\0');
 					m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(&buf[0]));
 					buf.resize(buf.length() - 1);
 
 					static const COMDLG_FILTERSPEC saveFileTypes[] = {
-						{L"Log Files (*.log)",		L"*.log"},
-						{L"All Documents (*.*)",	L"*.*"}
+						{L"Log Files (*.log)", L"*.log"},
+						{L"All Documents (*.*)", L"*.*"}
 					};
 					auto throw_on_error = [](HRESULT val) {
 						if (!SUCCEEDED(val))
@@ -186,8 +183,7 @@ LRESULT App::Window::LogWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
 					return 0;
 				}
 
-				case ID_FILE_CLEAR:
-				{
+				case ID_FILE_CLEAR: {
 					m_logger->Clear();
 					m_direct(m_directPtr, SCI_SETREADONLY, FALSE, 0);
 					m_direct(m_directPtr, SCI_CLEARALL, 0, 0);
@@ -195,14 +191,12 @@ LRESULT App::Window::LogWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
 					return 0;
 				}
 
-				case ID_FILE_CLOSE:
-				{
+				case ID_FILE_CLOSE: {
 					SendMessageW(m_hWnd, WM_CLOSE, 0, 0);
 					return 0;
 				}
 
-				case ID_VIEW_ALWAYSONTOP:
-				{
+				case ID_VIEW_ALWAYSONTOP: {
 					if (GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST) {
 						SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 					} else {

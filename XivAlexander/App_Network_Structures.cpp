@@ -40,13 +40,13 @@ void App::Network::Structures::FFXIVBundle::DebugPrint(LogCategory logCategory, 
 		st.wHour, st.wMinute, st.wSecond,
 		st.wMilliseconds,
 		TotalLength, ConnType, MessageCount, GzipCompressed
-		);
+	);
 }
 
 std::vector<std::vector<uint8_t>> App::Network::Structures::FFXIVBundle::SplitMessages(uint16_t expectedMessageCount, const std::span<const uint8_t>& buf) {
 	std::vector<std::vector<uint8_t>> result;
 	result.reserve(expectedMessageCount);
-	for (size_t i = 0; i < buf.size(); ) {
+	for (size_t i = 0; i < buf.size();) {
 		const auto& message = *reinterpret_cast<const FFXIVMessage*>(&buf[i]);
 		if (i + message.Length > buf.size() || !message.Length)
 			throw std::runtime_error("Could not parse game message (sum(message.length for each message) > total message length)");
@@ -101,5 +101,5 @@ void App::Network::Structures::FFXIVMessage::DebugPrint(LogCategory logCategory,
 		logCategory,
 		"[{}] Length={} Source={:08x} Current={:08x} Type={}{}",
 		head, Length, SourceActor, CurrentActor, static_cast<int>(Type), dumpstr
-		);
+	);
 }

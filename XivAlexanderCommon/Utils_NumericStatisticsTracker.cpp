@@ -42,14 +42,14 @@ int64_t Utils::NumericStatisticsTracker::Min() const {
 	const auto& vals = RemoveExpired();
 	if (vals.empty())
 		return m_emptyValue;
-	return *std::min_element(vals.begin(), vals.end());
+	return *std::ranges::min_element(vals);
 }
 
 int64_t Utils::NumericStatisticsTracker::Max() const {
 	const auto& vals = RemoveExpired();
 	if (vals.empty())
 		return m_emptyValue;
-	return *std::max_element(vals.begin(), vals.end());
+	return *std::ranges::max_element(vals);
 }
 
 int64_t Utils::NumericStatisticsTracker::Mean() const {
@@ -84,7 +84,7 @@ int64_t Utils::NumericStatisticsTracker::Deviation() const {
 	const auto mean = std::accumulate(vals.begin(), vals.end(), 0.0) / vals.size();
 
 	std::vector<double> diff(vals.size());
-	std::transform(vals.begin(), vals.end(), diff.begin(), [mean](int64_t x) { return static_cast<double>(x) - mean; });
+	std::ranges::transform(vals, diff.begin(), [mean](int64_t x) { return static_cast<double>(x) - mean; });
 	const auto sum2 = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
 	return static_cast<int64_t>(std::round(std::sqrt(sum2 / vals.size())));
 }

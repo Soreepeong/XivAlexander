@@ -3,7 +3,7 @@
 
 #include "Sqex_Sqpack.h"
 
-Sqex::Texture::ModifiableTextureStream::ModifiableTextureStream(CompressionType type, uint16_t width, uint16_t height, uint16_t depth)
+Sqex::Texture::ModifiableTextureStream::ModifiableTextureStream(Format type, uint16_t width, uint16_t height, uint16_t depth)
 	: m_header{
 		.Unknown1 = 0,
 		.HeaderSize = static_cast<uint16_t>(Sqpack::Align(sizeof m_header)),
@@ -13,7 +13,7 @@ Sqex::Texture::ModifiableTextureStream::ModifiableTextureStream(CompressionType 
 		.Depth = depth,
 		.MipmapCount = 0,
 		.Unknown2 = {}
-} {
+	} {
 }
 
 Sqex::Texture::ModifiableTextureStream::~ModifiableTextureStream() = default;
@@ -64,7 +64,8 @@ uint64_t Sqex::Texture::ModifiableTextureStream::ReadStreamPartial(uint64_t offs
 		out = out.subspan(available);
 		relativeOffset = 0;
 
-		if (out.empty()) return length;
+		if (out.empty())
+			return length;
 	} else
 		relativeOffset -= sizeof m_header;
 
@@ -77,7 +78,8 @@ uint64_t Sqex::Texture::ModifiableTextureStream::ReadStreamPartial(uint64_t offs
 		out = out.subspan(available);
 		relativeOffset = 0;
 
-		if (out.empty()) return length;
+		if (out.empty())
+			return length;
 	} else
 		relativeOffset -= srcTyped.size_bytes();
 
@@ -89,7 +91,8 @@ uint64_t Sqex::Texture::ModifiableTextureStream::ReadStreamPartial(uint64_t offs
 		out = out.subspan(static_cast<size_t>(available));
 		relativeOffset = 0;
 
-		if (out.empty()) return length;
+		if (out.empty())
+			return length;
 	} else
 		relativeOffset -= padSize;
 
@@ -98,11 +101,11 @@ uint64_t Sqex::Texture::ModifiableTextureStream::ReadStreamPartial(uint64_t offs
 	if (m_mipmaps.empty())
 		return length - out.size_bytes();
 
-	auto it = std::lower_bound(m_mipmapOffsets.begin(), m_mipmapOffsets.end(),
-	                           static_cast<uint32_t>(relativeOffset),
-	                           [&](uint32_t l, uint32_t r) {
-		                           return l < r;
-	                           });
+	auto it = std::ranges::lower_bound(m_mipmapOffsets,
+		static_cast<uint32_t>(relativeOffset),
+		[&](uint32_t l, uint32_t r) {
+			return l < r;
+		});
 
 	if (it == m_mipmapOffsets.end() || *it > relativeOffset)
 		--it;
@@ -119,7 +122,8 @@ uint64_t Sqex::Texture::ModifiableTextureStream::ReadStreamPartial(uint64_t offs
 			out = out.subspan(available);
 			relativeOffset = 0;
 
-			if (out.empty()) return length;
+			if (out.empty())
+				return length;
 		} else
 			relativeOffset -= view.size_bytes();
 
@@ -130,7 +134,8 @@ uint64_t Sqex::Texture::ModifiableTextureStream::ReadStreamPartial(uint64_t offs
 			out = out.subspan(static_cast<size_t>(available));
 			relativeOffset = 0;
 
-			if (out.empty()) return length;
+			if (out.empty())
+				return length;
 		} else
 			relativeOffset -= padSize;
 	}

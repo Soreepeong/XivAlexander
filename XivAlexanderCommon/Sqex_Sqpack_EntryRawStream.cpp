@@ -131,7 +131,7 @@ uint64_t Sqex::Sqpack::EntryRawStream::BinaryStreamDecoder::ReadStreamPartial(ui
 	if (!length)
 		return 0;
 
-	auto it = static_cast<size_t>(std::distance(m_offsets.begin(), std::lower_bound(m_offsets.begin(), m_offsets.end(), static_cast<uint32_t>(offset))));
+	auto it = static_cast<size_t>(std::distance(m_offsets.begin(), std::ranges::lower_bound(m_offsets, static_cast<uint32_t>(offset))));
 	if (it == m_offsets.size() || (it != m_offsets.size() && m_offsets[it] > offset))
 		--it;
 
@@ -166,7 +166,7 @@ Sqex::Sqpack::EntryRawStream::TextureStreamDecoder::TextureStreamDecoder(const E
 			.MipmapIndex = static_cast<uint16_t>(Blocks.size()),
 			.RemainingDecompressedSize = locator.DecompressedSize,
 			.RemainingBlockSizes = Underlying().ReadStreamIntoVector<uint16_t>(readOffset, locator.SubBlockCount),
-			});
+		});
 		readOffset += std::span(Blocks.back().RemainingBlockSizes).size_bytes();
 	}
 
@@ -241,7 +241,7 @@ uint64_t Sqex::Sqpack::EntryRawStream::TextureStreamDecoder::ReadStreamPartial(u
 				.MipmapIndex = it->MipmapIndex,
 				.RemainingDecompressedSize = it->RemainingDecompressedSize - blockHeader.DecompressedSize,
 				.RemainingBlockSizes = std::move(it->RemainingBlockSizes),
-				});
+			});
 			it->RemainingBlockSizes.erase(it->RemainingBlockSizes.begin());
 		}
 
@@ -267,7 +267,7 @@ Sqex::Sqpack::EntryRawStream::ModelStreamDecoder::ModelStreamDecoder(const Entry
 			.PaddedChunkSize = blockSize,
 			.GroupIndex = UINT16_MAX,
 			.GroupBlockIndex = 0,
-			});
+		});
 	}
 
 	Head.resize(sizeof Model::Header);
@@ -377,10 +377,6 @@ Sqex::Sqpack::EntryRawStream::EntryRawStream(std::shared_ptr<EntryProvider> prov
 	: m_provider(std::move(provider))
 	, m_entryHeader(m_provider->ReadStream<SqData::FileEntryHeader>(0))
 	, m_decoder(
-		m_entryHeader.Type == SqData::FileEntryType::Empty || m_entryHeader.DecompressedSize == 0 ? nullptr :
-		m_entryHeader.Type == SqData::FileEntryType::Binary ? static_cast<std::unique_ptr<StreamDecoder>>(std::make_unique<BinaryStreamDecoder>(this)) :
-		m_entryHeader.Type == SqData::FileEntryType::Texture ? static_cast<std::unique_ptr<StreamDecoder>>(std::make_unique<TextureStreamDecoder>(this)) :
-		m_entryHeader.Type == SqData::FileEntryType::Model ? static_cast<std::unique_ptr<StreamDecoder>>(std::make_unique<ModelStreamDecoder>(this)) :
-		nullptr
+		m_entryHeader.Type == SqData::FileEntryType::Empty || m_entryHeader.DecompressedSize == 0 ? nullptr : m_entryHeader.Type == SqData::FileEntryType::Binary ? static_cast<std::unique_ptr<StreamDecoder>>(std::make_unique<BinaryStreamDecoder>(this)) : m_entryHeader.Type == SqData::FileEntryType::Texture ? static_cast<std::unique_ptr<StreamDecoder>>(std::make_unique<TextureStreamDecoder>(this)) : m_entryHeader.Type == SqData::FileEntryType::Model ? static_cast<std::unique_ptr<StreamDecoder>>(std::make_unique<ModelStreamDecoder>(this)) : nullptr
 	) {
 }

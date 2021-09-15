@@ -61,7 +61,7 @@ DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 
 		if (waitFor)
 			creator.WithAppendArgument("--wait-process")
-			.WithAppendArgument("{}", creator.Inherit(waitFor).Value());
+				.WithAppendArgument("{}", creator.Inherit(waitFor).Value());
 		for (const auto& h : hSources)
 			creator.WithAppendArgument("{}", creator.Inherit(h).Value());
 
@@ -81,8 +81,7 @@ DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 
 BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 	switch (fdwReason) {
-		case DLL_PROCESS_ATTACH:
-		{
+		case DLL_PROCESS_ATTACH: {
 			s_bLoadedAsDependency = !!lpReserved;  // non-null for static loads
 
 			try {
@@ -92,7 +91,7 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 					.dwFlags = ACTCTX_FLAG_HMODULE_VALID | ACTCTX_FLAG_RESOURCE_NAME_VALID,
 					.lpResourceName = MAKEINTRESOURCE(IDR_RT_MANIFEST_LATE_ACTIVATION),
 					.hModule = Dll::Module(),
-					});
+				});
 				MH_Initialize();
 			} catch (const std::exception& e) {
 				Utils::Win32::DebugPrint(L"DllMain({:x}, DLL_PROCESS_ATTACH, {}) Error: {}",
@@ -102,8 +101,7 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 			return TRUE;
 		}
 
-		case DLL_PROCESS_DETACH:
-		{
+		case DLL_PROCESS_DETACH: {
 			auto fail = false;
 			if (const auto res = MH_Uninitialize(); res != MH_OK) {
 				fail = true;
@@ -126,6 +124,7 @@ size_t __stdcall XivAlexDll::DisableAllApps(void*) {
 void __stdcall XivAlexDll::CallFreeLibrary(void*) {
 	FreeLibraryAndExitThread(Dll::Module(), 0);
 }
+
 void __stdcall XivAlexDll::SetLoadedAsDependency(void*) {
 	s_bLoadedAsDependency = true;
 }

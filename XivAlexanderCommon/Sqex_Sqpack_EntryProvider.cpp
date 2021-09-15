@@ -399,7 +399,7 @@ uint64_t Sqex::Sqpack::OnTheFlyModelEntryProvider::ReadStreamPartial(const Rando
 	} else
 		relativeOffset -= padBeforeBlocks;
 
-	auto it = std::lower_bound(m_blockOffsets.begin(), m_blockOffsets.end(),
+	auto it = std::ranges::lower_bound(m_blockOffsets,
 		static_cast<uint32_t>(relativeOffset),
 		[&](uint32_t l, uint32_t r) {
 		return l < r;

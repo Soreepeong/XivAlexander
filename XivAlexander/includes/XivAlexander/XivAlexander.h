@@ -53,6 +53,7 @@ namespace XivAlexDll {
 			InjectGameOnly = 1 << 2,
 		};
 	};
+
 	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall EnableInjectOnCreateProcess(size_t flags);
 
 	struct InjectEntryPointParameters {
@@ -69,7 +70,7 @@ namespace XivAlexDll {
 		} Internal;
 	};
 
-	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall InjectEntryPoint(InjectEntryPointParameters * pParam);
+	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall InjectEntryPoint(InjectEntryPointParameters* pParam);
 	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall EnableXivAlexander(size_t bEnable);
 	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall ReloadConfiguration(void* lpReserved);
 	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall DisableAllApps(void* lpReserved);
