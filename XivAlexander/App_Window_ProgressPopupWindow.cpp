@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "App_Window_ProgressPopupWindow.h"
 
+#include "App_ConfigRepository.h"
 #include "DllMain.h"
 #include "resource.h"
 
@@ -29,9 +30,9 @@ static WNDCLASSEXW WindowClass() {
 App::Window::ProgressPopupWindow::ProgressPopupWindow(HWND hParentWindow)
 	: BaseWindow(WindowClass(), nullptr, WS_POPUPWINDOW | WS_CAPTION | WS_MINIMIZEBOX, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr)
 	, m_hParentWindow(hParentWindow)
+	, m_hMessage(CreateWindowExW(0, L"STATIC", nullptr, WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, m_hWnd, nullptr, Dll::Module(), nullptr))
 	, m_hProgressBar(CreateWindowExW(0, PROGRESS_CLASSW, nullptr, WS_CHILD | WS_VISIBLE | PBS_MARQUEE, 0, 0, 0, 0, m_hWnd, nullptr, Dll::Module(), nullptr))
-	, m_hMessage(CreateWindowExW(0, L"STATIC", nullptr, WS_CHILD | WS_VISIBLE | SS_CENTERIMAGE, 0, 0, 0, 0, m_hWnd, nullptr, Dll::Module(), nullptr))
-	, m_hCancelButton(CreateWindowExW(0, L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE | WS_TABSTOP, 0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(IDCANCEL), Dll::Module(), nullptr))
+	, m_hCancelButton(CreateWindowExW(0, L"BUTTON", Utils::Win32::MB_GetString(IDCANCEL).c_str(), WS_CHILD | WS_VISIBLE | WS_TABSTOP, 0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(IDCANCEL), Dll::Module(), nullptr))
 	, m_hCancelEvent(Utils::Win32::Event::Create()) {
 	SetWindowSubclass(m_hProgressBar, [](HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR) -> LRESULT {
 		if (uMsg == WM_NCHITTEST)
@@ -45,6 +46,8 @@ App::Window::ProgressPopupWindow::ProgressPopupWindow(HWND hParentWindow)
 	m_hFont = CreateFontIndirectW(&ncm.lfMessageFont);
 	SendMessageW(m_hMessage, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), TRUE);
 	SendMessageW(m_hCancelButton, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), TRUE);
+
+	ProgressPopupWindow::ApplyLanguage(m_config->Runtime.GetLangId());
 }
 
 App::Window::ProgressPopupWindow::~ProgressPopupWindow() {
@@ -70,7 +73,7 @@ void App::Window::ProgressPopupWindow::UpdateMessage(const std::string& message)
 }
 
 void App::Window::ProgressPopupWindow::Cancel() {
-	SendMessageW(m_hWnd, WM_CLOSE, 0, 1);
+	SendMessageW(m_hWnd, WM_CLOSE, 0, 0);
 }
 
 const Utils::Win32::Event& App::Window::ProgressPopupWindow::GetCancelEvent() const {
@@ -95,13 +98,9 @@ DWORD App::Window::ProgressPopupWindow::DoModalLoop(int ms, std::vector<HANDLE> 
 
 		} else if (which == WAIT_OBJECT_0 + events.size()) {
 			if (GetMessageW(&msg, nullptr, 0, 0)) {
-				if (msg.hwnd == m_hWnd || msg.hwnd == m_hProgressBar || msg.hwnd == m_hMessage || msg.hwnd == m_hCancelButton) {
-					if (msg.message == WM_KEYDOWN && (msg.wParam == VK_RETURN || msg.wParam == VK_ESCAPE)) {
-						msg.hwnd = m_hCancelButton;
-						msg.message = WM_COMMAND;
-						msg.wParam = MAKEWPARAM(IDCANCEL, BN_CLICKED);
-						msg.lParam = reinterpret_cast<LPARAM>(m_hCancelButton);
-					}
+				if (msg.hwnd == m_hWnd || GetParent(msg.hwnd) == m_hWnd) {
+					if (msg.message == WM_KEYDOWN && (msg.wParam == VK_RETURN || msg.wParam == VK_ESCAPE))
+						PostMessageW(m_hWnd, WM_COMMAND, MAKEWPARAM(IDCANCEL, BN_CLICKED), reinterpret_cast<LPARAM>(m_hCancelButton));
 				}
 				TranslateMessage(&msg);
 				DispatchMessageW(&msg);
@@ -124,7 +123,7 @@ void App::Window::ProgressPopupWindow::Show() {
 	else
 		parentRect = {0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)};
 
-	RECT targetRect = {0, 0, static_cast<int>(GetZoom() * 640), static_cast<int>(GetZoom() * (margin * 3 + elementHeight * 2))};
+	RECT targetRect = {0, 0, static_cast<int>(GetZoom() * 640), static_cast<int>(GetZoom() * (margin * 4 + elementHeight * 3))};
 	AdjustWindowRectEx(&targetRect, GetWindowLongW(m_hWnd, GWL_STYLE), FALSE, 0);
 	SetWindowPos(m_hWnd, nullptr,
 		parentRect.left + (parentRect.right - parentRect.left - targetRect.right - targetRect.left) / 2,
@@ -134,10 +133,11 @@ void App::Window::ProgressPopupWindow::Show() {
 		SWP_NOACTIVATE | SWP_NOREPOSITION | SWP_NOZORDER);
 	ShowWindow(m_hWnd, SW_SHOW);
 	SetFocus(m_hCancelButton);
+	SetForegroundWindow(m_hWnd);
 }
 
 void App::Window::ProgressPopupWindow::OnLayout(double zoom, double width, double height, int resizeType) {
-	if (m_hParentWindow) {
+	if (m_hParentWindow && IsWindowVisible(m_hParentWindow)) {
 		if (resizeType != SIZE_MINIMIZED && IsIconic(m_hParentWindow))
 			ShowWindowAsync(m_hParentWindow, SW_RESTORE);
 		else if (resizeType == SIZE_MINIMIZED && !IsIconic(m_hParentWindow))
@@ -153,9 +153,24 @@ void App::Window::ProgressPopupWindow::OnLayout(double zoom, double width, doubl
 		};
 
 		const auto targets = std::map<HWND, RECTLF>{
-			{m_hProgressBar, {margin, margin, width - margin, margin + elementHeight}},
-			{m_hCancelButton, {width - margin - buttonWidth, margin + elementHeight + margin, width - margin, margin + elementHeight + margin + elementHeight}},
-			{m_hMessage, {margin, margin + elementHeight + margin, width - margin - buttonWidth - margin, margin + elementHeight + margin + elementHeight}},
+			{m_hMessage, {
+				margin,
+				margin,
+				width - margin,
+				margin + elementHeight
+			}},
+			{m_hProgressBar, {
+				margin,
+				margin * 2 + elementHeight,
+				width - margin,
+				margin * 2 + elementHeight * 2
+			}},
+			{m_hCancelButton, {
+				width - margin - buttonWidth,
+				margin * 3 + elementHeight * 2,
+				width - margin,
+				margin * 3 + elementHeight * 3
+			}},
 		};
 
 		auto hdwp = BeginDeferWindowPos(static_cast<int>(targets.size()));
@@ -179,17 +194,9 @@ void App::Window::ProgressPopupWindow::OnDestroy() {
 
 LRESULT App::Window::ProgressPopupWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 	switch (msg) {
-		case WM_CLOSE: {
-			if (lParam == 0) {
-				if (Utils::Win32::MessageBoxF(hwnd, MB_YESNO | MB_DEFBUTTON2, L"XA", L"Cancel?") == IDNO)
-					return 0;
-			}
-			break;
-		}
-
 		case WM_COMMAND: {
 			if (wParam == IDCANCEL || wParam == IDOK)
-				SendMessageW(hwnd, WM_CLOSE, 0, 0);
+				Cancel();
 			break;
 		}
 
@@ -211,6 +218,7 @@ LRESULT App::Window::ProgressPopupWindow::WndProc(HWND hwnd, UINT msg, WPARAM wP
 				SetBkColor(hdcStatic, GetSysColor(COLOR_WINDOW));
 				return reinterpret_cast<LRESULT>(GetSysColorBrush(COLOR_WINDOW));
 			}
+			break;
 		}
 
 		case WM_NCHITTEST: {
@@ -218,4 +226,9 @@ LRESULT App::Window::ProgressPopupWindow::WndProc(HWND hwnd, UINT msg, WPARAM wP
 		}
 	}
 	return BaseWindow::WndProc(hwnd, msg, wParam, lParam);
+}
+
+void App::Window::ProgressPopupWindow::ApplyLanguage(WORD languageId) {
+	SetWindowTextW(m_hWnd, m_config->Runtime.GetStringRes(IDS_APP_NAME));
+	BaseWindow::ApplyLanguage(languageId);
 }

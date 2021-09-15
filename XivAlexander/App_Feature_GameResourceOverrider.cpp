@@ -650,9 +650,9 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					const auto progress = fontCreator.GetProgress();
 					progressWindow.UpdateProgress(progress.Progress, progress.Max);
 					if (progress.Indeterminate)
-						progressWindow.UpdateMessage(std::format("and {} task(s)", progress.Indeterminate));
+						progressWindow.UpdateMessage(std::format("Generating fonts... ({} task(s) yet to be started)", progress.Indeterminate));
 					else
-						progressWindow.UpdateMessage("");
+						progressWindow.UpdateMessage("Generating fonts...");
 
 					progressWindow.Show();
 				}
