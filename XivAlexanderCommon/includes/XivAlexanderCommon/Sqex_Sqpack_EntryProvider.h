@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utility>
+
 #include "Sqex_Sqpack.h"
 #include "Sqex_Texture.h"
 #include "Utils_Win32_Handle.h"
@@ -17,7 +19,7 @@ namespace Sqex::Sqpack {
 		EntryProvider(EntryPathSpec pathSpec)
 			: m_pathSpec(std::move(pathSpec)) {
 		}
-		
+
 		bool UpdatePathSpec(const EntryPathSpec& r) {
 			if (m_pathSpec != r)
 				return false;
@@ -147,7 +149,7 @@ namespace Sqex::Sqpack {
 		void Initialize(const RandomAccessStream&) override;
 		[[nodiscard]] uint64_t MaxPossibleStreamSize() const override;
 		[[nodiscard]] uint64_t StreamSize(const RandomAccessStream&) const override { return MaxPossibleStreamSize(); }
-		uint64_t ReadStreamPartial(const RandomAccessStream& , uint64_t offset, void* buf, uint64_t length) const override;
+		uint64_t ReadStreamPartial(const RandomAccessStream&, uint64_t offset, void* buf, uint64_t length) const override;
 	};
 
 	class OnTheFlyTextureEntryProvider : public LazyFileOpeningEntryProvider {
@@ -231,6 +233,36 @@ namespace Sqex::Sqpack {
 
 		std::string DescribeState() const override {
 			return std::format("RandomAccessStreamAsEntryProviderView({}, {}, {})", m_stream->DescribeState(), m_offset, m_size);
+		}
+	};
+
+	class HotSwappableEntryProvider : public EmptyEntryProvider {
+		const uint32_t m_reservedSize;
+		std::shared_ptr<const EntryProvider> m_stream;
+
+	public:
+		HotSwappableEntryProvider(const EntryPathSpec& pathSpec, uint32_t reservedSize, std::shared_ptr<const EntryProvider> stream = nullptr)
+			: EmptyEntryProvider(pathSpec)
+			, m_reservedSize(Align(reservedSize))
+			, m_stream(std::move(stream)) {
+			if (m_stream && m_stream->StreamSize() > m_reservedSize)
+				throw std::invalid_argument("Provided stream requires more space than reserved size");
+		}
+
+		void SwapStream(std::shared_ptr<const EntryProvider> newStream = nullptr) {
+			if (newStream && newStream->StreamSize() > m_reservedSize)
+				throw std::invalid_argument("Provided stream requires more space than reserved size");
+			m_stream = std::move(newStream);
+		}
+
+		[[nodiscard]] uint64_t StreamSize() const override {
+			return m_reservedSize;
+		}
+
+		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
+
+		[[nodiscard]] SqData::FileEntryType EntryType() const override {
+			return m_stream ? m_stream->EntryType() : EmptyEntryProvider::EntryType();
 		}
 	};
 }

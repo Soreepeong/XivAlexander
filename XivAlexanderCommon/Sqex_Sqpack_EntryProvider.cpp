@@ -652,3 +652,29 @@ uint64_t Sqex::Sqpack::OnTheFlyTextureEntryProvider::ReadStreamPartial(const Ran
 
 	return length - out.size_bytes();
 }
+
+uint64_t Sqex::Sqpack::HotSwappableEntryProvider::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {
+	if (offset >= m_reservedSize)
+		return 0;
+	if (offset + length > m_reservedSize)
+		length = m_reservedSize - offset;
+
+	const auto target = std::span(static_cast<uint8_t*>(buf), length);
+	const auto underlyingStreamLength = m_stream ? m_stream->StreamSize() : EmptyEntryProvider::StreamSize();
+	const auto dataLength = offset < underlyingStreamLength ? std::min(length, underlyingStreamLength - offset) : 0;
+
+	if (offset < underlyingStreamLength) {
+		const auto dataTarget = target.subspan(0, dataLength);
+		const auto readLength = m_stream
+			? m_stream->ReadStreamPartial(offset, &dataTarget[0], dataTarget.size_bytes())
+			: EmptyEntryProvider::ReadStreamPartial(offset, &dataTarget[0], dataTarget.size_bytes());
+
+		if (readLength != dataTarget.size_bytes())
+			throw std::logic_error("HotSwappableEntryProvider underlying data read fail");
+	}
+	if (offset + length > underlyingStreamLength) {
+		const auto padTarget = target.subspan(dataLength);
+		void(std::ranges::fill(padTarget, 0));
+	}
+	return length;
+}
