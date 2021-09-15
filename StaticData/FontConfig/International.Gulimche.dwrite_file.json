@@ -99,31 +99,36 @@
       "fontFile": "C:/Windows/Fonts/Gulim.ttc",
       "faceIndex": 1,
       "height": 9.6,
-      "weight": 400
+      "weight": 400,
+      "measureUsingFreeType": true
     },
     "dwrite:Gulim:12": {
       "fontFile": "C:/Windows/Fonts/Gulim.ttc",
       "faceIndex": 1,
       "height": 12,
-      "weight": 400
+      "weight": 400,
+      "measureUsingFreeType": true
     },
     "dwrite:Gulim:14": {
       "fontFile": "C:/Windows/Fonts/Gulim.ttc",
       "faceIndex": 1,
       "height": 14,
-      "weight": 400
+      "weight": 400,
+      "measureUsingFreeType": true
     },
     "dwrite:Gulim:16": {
       "fontFile": "C:/Windows/Fonts/Gulim.ttc",
       "faceIndex": 1,
       "height": 16,
-      "weight": 400
+      "weight": 400,
+      "measureUsingFreeType": true
     },
     "dwrite:Gulim:18": {
       "fontFile": "C:/Windows/Fonts/Gulim.ttc",
       "faceIndex": 1,
       "height": 18,
-      "weight": 400
+      "weight": 400,
+      "measureUsingFreeType": true
     },
     "dwrite:Gulim:20": {
       "fontFile": "C:/Windows/Fonts/Gulim.ttc",

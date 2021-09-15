@@ -631,16 +631,20 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 			} else if (const auto& source = inputFontSource.gdiSource; inputFontSource.isGdiSource) {
 				newFont = std::make_shared<GdiDrawingFont<uint8_t>>(source);
 			} else if (const auto& source = inputFontSource.directWriteSource; inputFontSource.isDirectWriteSource) {
+				std::shared_ptr<DirectWriteDrawingFont<uint8_t>> dfont;
 				if (!source.fontFile.empty())
-					newFont = std::make_shared<DirectWriteDrawingFont<uint8_t>>(
+					dfont = std::make_shared<DirectWriteDrawingFont<uint8_t>>(
 						source.fontFile, source.faceIndex, static_cast<float>(source.height), source.renderMode
 					);
 				else if (!source.familyName.empty())
-					newFont = std::make_shared<DirectWriteDrawingFont<uint8_t>>(
+					dfont = std::make_shared<DirectWriteDrawingFont<uint8_t>>(
 						FromUtf8(source.familyName).c_str(), static_cast<float>(source.height), static_cast<DWRITE_FONT_WEIGHT>(source.weight), source.stretch, source.style, source.renderMode
 					);
 				else
 					throw std::invalid_argument("Neither of fontFile nor familyName was specified.");
+				if (source.measureUsingFreeType)
+					dfont->SetMeasureWithFreeType();
+				newFont = std::move(dfont);
 			} else if (const auto& source = inputFontSource.freeTypeSource; inputFontSource.isFreeTypeSource) {
 				if (!source.fontFile.empty())
 					newFont = std::make_shared<FreeTypeDrawingFont<uint8_t>>(

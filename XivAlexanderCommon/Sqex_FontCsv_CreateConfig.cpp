@@ -76,6 +76,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const DirectWriteSo
 		{"renderMode", o.renderMode},
 		{"style", o.style},
 		{"stretch", o.stretch},
+		{"measureUsingFreeType", o.measureUsingFreeType},
 	});
 }
 
@@ -93,6 +94,7 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, DirectWrite
 	o.renderMode = j.value("renderMode", DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC);
 	o.style = j.value("style", DWRITE_FONT_STYLE_NORMAL);
 	o.stretch = j.value("stretch", DWRITE_FONT_STRETCH_NORMAL);
+	o.measureUsingFreeType = j.value("measureUsingFreeType", false);
 }
 
 void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const FreeTypeSource& o) {

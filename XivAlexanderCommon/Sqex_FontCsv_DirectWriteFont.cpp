@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Sqex_FontCsv_DirectWriteFont.h"
 
+#include "Sqex_FontCsv_FreeTypeFont.h"
+
 #pragma comment(lib, "dwrite.lib")
 
 _COM_SMARTPTR_TYPEDEF(IDWriteFactory, __uuidof(IDWriteFactory));
@@ -26,6 +28,8 @@ struct Sqex::FontCsv::DirectWriteFont::Implementation {
 	const IDWriteFontFace3Ptr Face3;
 	const DWRITE_FONT_METRICS1 Metrics;
 	const DWRITE_RENDERING_MODE RenderMode;
+
+	std::unique_ptr<FreeTypeFont> FreeTypeFont;
 
 	std::mutex DiscoveryMtx;
 
@@ -224,6 +228,11 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::DirectWriteFont::Measure(SSIZE_T 
 	return DrawCharacter(c, u, false).Translate(x, y);
 }
 
+void Sqex::FontCsv::DirectWriteFont::SetMeasureWithFreeType() {
+	auto [path, faceIndex] = GetFontFile();
+	m_pImpl->FreeTypeFont = std::make_unique<FreeTypeFont>(std::move(path), faceIndex, m_pImpl->Size);
+}
+
 Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::DirectWriteFont::DrawCharacter(char32_t c, std::vector<uint8_t>& buf, bool draw) const {
 	uint16_t glyphIndex;
 	Succ(m_pImpl->Face1->GetGlyphIndicesW(reinterpret_cast<UINT32 const*>(&c), 1, &glyphIndex));
@@ -260,7 +269,10 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::DirectWriteFont::DrawCharacter(ch
 
 	GlyphMeasurement bbox;
 	Succ(analysis->GetAlphaTextureBounds(DWRITE_TEXTURE_ALIASED_1x1, bbox.AsMutableRectPtr()));
-	bbox.advanceX = m_pImpl->ConvVal<UINT32, SSIZE_T>(glyphMetrics.advanceWidth);
+	if (m_pImpl->FreeTypeFont)
+		bbox.advanceX = m_pImpl->FreeTypeFont->Measure(0, 0, c).advanceX;
+	else
+		bbox.advanceX = m_pImpl->ConvVal<UINT32, SSIZE_T>(glyphMetrics.advanceWidth);
 	if (!bbox.EffectivelyEmpty() && draw) {
 		buf.resize(bbox.Area());
 		Succ(analysis->CreateAlphaTexture(DWRITE_TEXTURE_ALIASED_1x1, bbox.AsMutableRectPtr(), &buf[0], static_cast<uint32_t>(buf.size())));

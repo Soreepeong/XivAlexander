@@ -28,7 +28,7 @@ namespace Sqex::FontCsv {
 		const std::unique_ptr<Implementation> m_pImpl;
 
 	public:
-		FreeTypeFont(std::filesystem::path path, int faceIndex, float size, FT_Int32 loadFlags = FT_LOAD_DEFAULT);
+		FreeTypeFont(const std::filesystem::path& path, int faceIndex, float size, FT_Int32 loadFlags = FT_LOAD_DEFAULT);
 		FreeTypeFont(const wchar_t* fontName,
 			float size,
 			DWRITE_FONT_WEIGHT weight = DWRITE_FONT_WEIGHT_REGULAR,

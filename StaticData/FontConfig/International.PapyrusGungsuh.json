@@ -99,25 +99,29 @@
       "familyName": "Gungsuh",
       "height": 9.6,
       "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
+      "renderMode": "DWRITE_RENDERING_MODE_NATURAL",
+      "measureUsingFreeType": true
     },
     "dwrite:Gungsuh:12": {
       "familyName": "Gungsuh",
       "height": 12,
       "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
+      "renderMode": "DWRITE_RENDERING_MODE_NATURAL",
+      "measureUsingFreeType": true
     },
     "dwrite:Gungsuh:14": {
       "familyName": "Gungsuh",
       "height": 14,
       "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
+      "renderMode": "DWRITE_RENDERING_MODE_NATURAL",
+      "measureUsingFreeType": true
     },
     "dwrite:Gungsuh:18": {
       "familyName": "Gungsuh",
       "height": 18,
       "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
+      "renderMode": "DWRITE_RENDERING_MODE_NATURAL",
+      "measureUsingFreeType": true
     },
     "dwrite:Gungsuh:24": {
       "familyName": "Gungsuh",

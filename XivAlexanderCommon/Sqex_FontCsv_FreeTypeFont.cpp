@@ -113,7 +113,7 @@ void Sqex::FontCsv::FreeTypeFont::ShowFreeTypeErrorAndTerminate(FT_Error error) 
 	std::terminate();
 }
 
-Sqex::FontCsv::FreeTypeFont::FreeTypeFont(std::filesystem::path path, int faceIndex, float size, FT_Int32 loadFlags)
+Sqex::FontCsv::FreeTypeFont::FreeTypeFont(const std::filesystem::path& path, int faceIndex, float size, FT_Int32 loadFlags)
 	: m_loadFlags(loadFlags)
 	, m_pImpl(std::make_unique<Implementation>(path, faceIndex, size)) {
 }

@@ -99,31 +99,36 @@
       "familyName": "Gulim",
       "height": 9.6,
       "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
+      "renderMode": "DWRITE_RENDERING_MODE_NATURAL",
+      "measureUsingFreeType": true
     },
     "dwrite:Gulim:12": {
       "familyName": "Gulim",
       "height": 12,
       "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
+      "renderMode": "DWRITE_RENDERING_MODE_NATURAL",
+      "measureUsingFreeType": true
     },
     "dwrite:Gulim:14": {
       "familyName": "Gulim",
       "height": 14,
       "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
+      "renderMode": "DWRITE_RENDERING_MODE_NATURAL",
+      "measureUsingFreeType": true
     },
     "dwrite:Gulim:16": {
       "familyName": "Gulim",
       "height": 16,
       "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
+      "renderMode": "DWRITE_RENDERING_MODE_NATURAL",
+      "measureUsingFreeType": true
     },
     "dwrite:Gulim:18": {
       "familyName": "Gulim",
       "height": 18,
       "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL"
+      "renderMode": "DWRITE_RENDERING_MODE_NATURAL",
+      "measureUsingFreeType": true
     },
     "dwrite:Gulim:20": {
       "familyName": "Gulim",

@@ -134,18 +134,18 @@ void compile() {
 	Sqex::FontCsv::FontSetsCreator::ResultFontSets result;
 	bool isArgb32;
 	try {
-		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Original.json)");
-		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.dwrite.json)");
-		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulim.gdi.json)");
-		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.Gulimche.dwrite_file.json)");
-		std::ifstream fin(R"(..\StaticData\FontConfig\International.ComicGulim.json)");
-		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.ComicSans.freetype.border.json)");
-		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.ComicSans.json)");
-		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.PapyrusGungsuh.json)");
-		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.WithMinimalHangul.json)");
-		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\International.WithMinimalHangul.Border.json)");
-		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\Korean.Original.json)");
-		// std::ifstream fin(R"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\FontConfig\Korean.Border36.json)");
+		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Original.json)");
+		std::ifstream fin(R"(..\StaticData\FontConfig\International.Gulim.dwrite.json)");
+		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Gulim.gdi.json)");
+		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Gulimche.dwrite_file.json)");
+		// std::ifstream fin(R"(..\StaticData\FontConfig\International.ComicGulim.json)");
+		// std::ifstream fin(R"(..\StaticData\FontConfig\International.ComicSans.freetype.border.json)");
+		// std::ifstream fin(R"(..\StaticData\FontConfig\International.ComicSans.json)");
+		// std::ifstream fin(R"(..\StaticData\FontConfig\International.PapyrusGungsuh.json)");
+		// std::ifstream fin(R"(..\StaticData\FontConfig\International.WithMinimalHangul.json)");
+		// std::ifstream fin(R"(..\StaticData\FontConfig\International.WithMinimalHangul.Border.json)");
+		// std::ifstream fin(R"(..\StaticData\FontConfig\Korean.Original.json)");
+		// std::ifstream fin(R"(..\StaticData\FontConfig\Korean.Border36.json)");
 		nlohmann::json j;
 		fin >> j;
 		auto cfg = j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
@@ -166,14 +166,6 @@ void compile() {
 	} catch (const std::exception& e) {
 		std::cout << e.what() << std::endl;
 		return;
-	}
-
-	for (const auto& [fileName, stream] : result.GetAllStreams()) {
-		auto buf = stream->ReadStreamIntoVector<uint8_t>(0);
-		Utils::Win32::File::Create(
-			std::format(LR"(Z:\scratch\cfonts\{})", fileName.Original.filename()),
-			GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0
-		).Write(0, std::span(buf));
 	}
 
 	for (const auto& fontSet : result.Result | std::views::values) {

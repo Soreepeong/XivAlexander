@@ -23,6 +23,7 @@ namespace Sqex::FontCsv::CreateConfig {
 		std::string familyName;
 		double height{};
 		int weight{};
+		bool measureUsingFreeType{};
 		DWRITE_RENDERING_MODE renderMode = DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC;
 		DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE_NORMAL;
 		DWRITE_FONT_STRETCH stretch = DWRITE_FONT_STRETCH_NORMAL;
