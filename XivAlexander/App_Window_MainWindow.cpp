@@ -37,7 +37,7 @@ static WNDCLASSEXW WindowClass() {
 }
 
 App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unloadFunction)
-	: BaseWindow(WindowClass(), nullptr, WS_OVERLAPPEDWINDOW, WS_EX_TOPMOST, CW_USEDEFAULT, CW_USEDEFAULT, 480, 160, nullptr, nullptr)
+	: BaseWindow(WindowClass(), nullptr, WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, 480, 160, nullptr, nullptr)
 	, m_pApp(pApp)
 	, m_triggerUnload(std::move(unloadFunction))
 	, m_uTaskbarRestartMessage(RegisterWindowMessageW(L"TaskbarCreated"))
@@ -78,11 +78,19 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 
 	SetTimer(m_hWnd, TimerIdRepaint, 1000, nullptr);
 
+	m_cleanup += m_config->Runtime.AlwaysOnTop_XivAlexMainWindow.OnChangeListener([this](auto&) {
+		SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexMainWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+	});
+
 	m_cleanup += m_config->Runtime.ShowControlWindow.OnChangeListener([this](auto&) {
 		ShowWindow(m_hWnd, m_config->Runtime.ShowControlWindow ? SW_SHOW : SW_HIDE);
+		if (m_config->Runtime.ShowControlWindow)
+			SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexMainWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 	});
-	if (m_config->Runtime.ShowControlWindow)
+	if (m_config->Runtime.ShowControlWindow) {
 		ShowWindow(m_hWnd, SW_SHOW);
+		SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexMainWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+	}
 
 	m_cleanup += m_pApp->GetSocketHook()->OnSocketFound([this](auto&) {
 		InvalidateRect(m_hWnd, nullptr, false);
@@ -103,8 +111,7 @@ void App::Window::MainWindow::ShowContextMenu(const BaseWindow* parent) const {
 		parent = this;
 
 	const auto hMenu = GetMenu(m_hWnd);
-	const auto hSubMenu = GetSubMenu(hMenu, 0);
-	RepopulateMenu(hSubMenu);
+	RepopulateMenu(hMenu);
 	POINT curPoint;
 	GetCursorPos(&curPoint);
 
@@ -174,7 +181,7 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					return 0;
 
 				case ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP:
-					config.AlwaysOnTop = !config.AlwaysOnTop;
+					config.AlwaysOnTop_GameMainWindow = !config.AlwaysOnTop_GameMainWindow;
 					return 0;
 
 					/***************************************************************/
@@ -438,12 +445,7 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 
 				case ID_VIEW_ALWAYSONTOP:
 				{
-					if (GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST) {
-						SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-					} else {
-						SetWindowPos(m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-					}
-					Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST, true);
+					m_config->Runtime.AlwaysOnTop_XivAlexMainWindow = !m_config->Runtime.AlwaysOnTop_XivAlexMainWindow;
 					return 0;
 				}
 
@@ -553,7 +555,7 @@ void App::Window::MainWindow::RepopulateMenu(HMENU hMenu) const {
 
 	Set(hMenu, ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST, true);
 
-	Set(hMenu, ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP, config.AlwaysOnTop, true);
+	Set(hMenu, ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP, config.AlwaysOnTop_GameMainWindow, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE, config.UseHighLatencyMitigation, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_1, config.HighLatencyMitigationMode == HighLatencyMitigationMode::SubtractLatency, true);
 	Set(hMenu, ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_2, config.HighLatencyMitigationMode == HighLatencyMitigationMode::SimulateRtt, true);
@@ -603,6 +605,8 @@ void App::Window::MainWindow::RepopulateMenu(HMENU hMenu) const {
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_REGION_JAPAN, m_gameRegion == Sqex::Region::Japan, languageRegionModifiable);
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_REGION_NORTH_AMERICA, m_gameRegion == Sqex::Region::NorthAmerica, languageRegionModifiable);
 	Set(hMenu, ID_TRAYMENU_RESTARTGAME_REGION_EUROPE, m_gameRegion == Sqex::Region::Europe, languageRegionModifiable);
+
+	Set(hMenu, ID_VIEW_ALWAYSONTOP, config.AlwaysOnTop_XivAlexMainWindow, true);
 }
 
 void App::Window::MainWindow::RegisterTrayIcon() {

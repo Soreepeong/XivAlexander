@@ -644,15 +644,15 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				Sqex::FontCsv::FontSetsCreator fontCreator(cfg, Utils::Win32::Process::Current().PathOf().parent_path());
 				while (true) {
 					const auto nextWait = std::max(static_cast<int64_t>(GetTickCount64()) - showProgressWindowAfter, 50LL);
-					if (WAIT_TIMEOUT != progressWindow.DoModalLoop(nextWait, {fontCreator.GetWaitableObject()}))
+					if (WAIT_TIMEOUT != progressWindow.DoModalLoop(static_cast<int>(nextWait), {fontCreator.GetWaitableObject()}))
 						break;
 
 					const auto progress = fontCreator.GetProgress();
 					progressWindow.UpdateProgress(progress.Progress, progress.Max);
 					if (progress.Indeterminate)
-						progressWindow.UpdateMessage(std::format("and {} task(s)", progress.Indeterminate));
+						progressWindow.UpdateMessage(std::format("Generating fonts... ({} task(s) yet to be started)", progress.Indeterminate));
 					else
-						progressWindow.UpdateMessage("");
+						progressWindow.UpdateMessage("Generating fonts...");
 
 					progressWindow.Show();
 				}

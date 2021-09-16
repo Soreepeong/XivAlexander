@@ -7,8 +7,8 @@
 namespace App::Window {
 	class ProgressPopupWindow : public BaseWindow {
 		HWND const m_hParentWindow;
-		HWND m_hProgressBar = nullptr;
 		HWND m_hMessage = nullptr;
+		HWND m_hProgressBar = nullptr;
 		HWND m_hCancelButton = nullptr;
 		HFONT m_hFont = nullptr;
 
@@ -32,5 +32,7 @@ namespace App::Window {
 		void OnDestroy() override;
 
 		LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
+
+		void ApplyLanguage(WORD languageId) override;
 	};
 }

@@ -163,7 +163,9 @@ namespace App {
 		public:
 
 			// Miscellaneous configuration
-			Item<bool> AlwaysOnTop = CreateConfigItem(this, "AlwaysOnTop", false);
+			Item<bool> AlwaysOnTop_GameMainWindow = CreateConfigItem(this, "AlwaysOnTop_GameMainWindow", false);
+			Item<bool> AlwaysOnTop_XivAlexMainWindow = CreateConfigItem(this, "AlwaysOnTop_XivAlexMainWindow", true);
+			Item<bool> AlwaysOnTop_XivAlexLogWindow = CreateConfigItem(this, "AlwaysOnTop_XivAlexLogWindow", false);
 
 			Item<bool> UseHighLatencyMitigation = CreateConfigItem(this, "UseHighLatencyMitigation", true);
 			Item<HighLatencyMitigationMode> HighLatencyMitigationMode = CreateConfigItem(this, "HighLatencyMitigationMode", HighLatencyMitigationMode::SimulateNormalizedRttAndLatency);

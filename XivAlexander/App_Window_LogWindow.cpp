@@ -94,11 +94,16 @@ App::Window::LogWindow::LogWindow()
 			FlushLog(o.str(), level);
 	};
 
+	m_cleanup += m_config->Runtime.AlwaysOnTop_XivAlexLogWindow.OnChangeListener([this](auto&) {
+		SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexLogWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+	});
+
 	m_logger->WithLogs([&](const auto& logs) { addLogFn(logs); });
 	m_cleanup += m_logger->OnNewLogItem(addLogFn);
 
 	ApplyLanguage(m_config->Runtime.GetLangId());
 	ShowWindow(m_hWnd, SW_SHOW);
+	SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexLogWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 	SetFocus(m_hScintilla);
 }
 
@@ -120,7 +125,7 @@ void App::Window::LogWindow::OnLayout(double zoom, double width, double height, 
 LRESULT App::Window::LogWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
 		case WM_INITMENUPOPUP: {
-			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST, true);
+			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_ALWAYSONTOP, m_config->Runtime.AlwaysOnTop_XivAlexLogWindow, true);
 			break;
 		}
 		case WM_ACTIVATE:
@@ -197,11 +202,8 @@ LRESULT App::Window::LogWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
 				}
 
 				case ID_VIEW_ALWAYSONTOP: {
-					if (GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST) {
-						SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-					} else {
-						SetWindowPos(m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-					}
+					m_config->Runtime.AlwaysOnTop_XivAlexLogWindow = !m_config->Runtime.AlwaysOnTop_XivAlexLogWindow;
+					return 0;
 				}
 			}
 			break;

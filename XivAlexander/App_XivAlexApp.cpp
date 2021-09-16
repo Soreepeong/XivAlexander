@@ -60,12 +60,12 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 		});
 
 		auto& config = this->this_->m_config->Runtime;
-		if (config.AlwaysOnTop)
+		if (config.AlwaysOnTop_GameMainWindow)
 			SetWindowPos(m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 		else
 			SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-		m_cleanup += config.AlwaysOnTop.OnChangeListener([&](Config::ItemBase&) {
-			if (config.AlwaysOnTop)
+		m_cleanup += config.AlwaysOnTop_GameMainWindow.OnChangeListener([&](Config::ItemBase&) {
+			if (config.AlwaysOnTop_GameMainWindow)
 				SetWindowPos(m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 			else
 				SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
