@@ -38,9 +38,10 @@ struct Sqex::Sqpack::EntryRawStream::StreamDecoder::ReadStreamState {
 
 	void InitializeZlib() {
 		int res;
-		if (!zstreamInitialized)
+		if (!zstreamInitialized) {
 			res = inflateInit2(&zstream, -15);
-		else
+			zstreamInitialized = true;
+		} else
 			res = inflateReset2(&zstream, -15);
 		if (res != Z_OK)
 			throw ZlibError(res);
