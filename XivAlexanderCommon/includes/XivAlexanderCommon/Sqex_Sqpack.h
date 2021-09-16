@@ -5,31 +5,6 @@
 #include "Sqex.h"
 
 namespace Sqex::Sqpack {
-	static constexpr uint32_t EntryAlignment = 128;
-
-	template<typename T, typename CountT = T>
-	struct AlignResult {
-		CountT Count;
-		T Alloc;
-		T Pad;
-
-		operator T() const {
-			return Alloc;
-		}
-	};
-
-	template<typename T, typename CountT = T>
-	AlignResult<T, CountT> Align(T value, T by = static_cast<T>(EntryAlignment)) {
-		const auto count = (value + by - 1) / by;
-		const auto alloc = count * by;
-		const auto pad = alloc - value;
-		return {
-			.Count = static_cast<CountT>(count),
-			.Alloc = static_cast<T>(alloc),
-			.Pad = static_cast<T>(pad),
-		};
-	}
-
 	struct Sha1Value {
 		char Value[20]{};
 

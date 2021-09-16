@@ -129,7 +129,7 @@ Sqex::FontCsv::GdiFont::DeviceContextWrapper::DrawResult Sqex::FontCsv::GdiFont:
 	if (!m_hBitmap) {
 		SetTextColor(m_hdc, 0xFFFFFF);
 		SetBkColor(m_hdc, 0x0);
-		m_hBitmap = CreateBitmap(Sqpack::Align<int>(Metrics.tmMaxCharWidth, 4), Metrics.tmHeight, 1, 32, nullptr);
+		m_hBitmap = CreateBitmap(Align<int>(Metrics.tmMaxCharWidth, 4), Metrics.tmHeight, 1, 32, nullptr);
 		m_bitmapRelease = [this]() { DeleteBitmap(m_hBitmap); };
 		m_hPrevBitmap = SelectBitmap(m_hdc, m_hBitmap);
 		m_prevBitmapRevert = [this]() { SelectBitmap(m_hdc, m_hPrevBitmap); };

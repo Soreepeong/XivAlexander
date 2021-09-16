@@ -43,6 +43,32 @@ namespace Sqex {
 		using std::runtime_error::runtime_error;
 	};
 
+	static constexpr uint32_t EntryAlignment = 128;
+
+	template<typename T, typename CountT = T>
+	struct AlignResult {
+		CountT Count;
+		T Alloc;
+		T Pad;
+
+		operator T() const {
+			return Alloc;
+		}
+	};
+
+	template<typename T, typename CountT = T>
+	AlignResult<T, CountT> Align(T value, T by = static_cast<T>(EntryAlignment)) {
+		const auto count = (value + by - 1) / by;
+		const auto alloc = count * by;
+		const auto pad = alloc - value;
+		return {
+			.Count = static_cast<CountT>(count),
+			.Alloc = static_cast<T>(alloc),
+			.Pad = static_cast<T>(pad),
+		};
+	}
+
+
 	template<typename T, size_t C>
 	bool IsAllSameValue(T(&arr)[C], std::remove_cv_t<T> supposedValue = 0) {
 		for (size_t i = 0; i < C; ++i) {
@@ -96,6 +122,27 @@ namespace Sqex {
 		}
 
 		virtual std::string DescribeState() const { return {}; }
+	};
+
+	class BufferedRandomAccessStream : public RandomAccessStream {
+		const std::shared_ptr<RandomAccessStream> m_stream;
+		const size_t m_bufferSize;
+		const uint64_t m_streamSize;
+		mutable std::vector<void*> m_buffers;
+
+	public:
+		BufferedRandomAccessStream(std::shared_ptr<RandomAccessStream> stream, size_t bufferSize = 65536)
+			: m_stream(std::move(stream))
+			, m_bufferSize(bufferSize)
+			, m_streamSize(m_stream->StreamSize())
+			, m_buffers(Align(m_streamSize, m_bufferSize).Count) {
+		}
+
+		~BufferedRandomAccessStream() override;
+
+		[[nodiscard]] uint64_t StreamSize() const override { return m_streamSize; }
+
+		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
 	};
 
 	class RandomAccessStreamPartialView : public RandomAccessStream {

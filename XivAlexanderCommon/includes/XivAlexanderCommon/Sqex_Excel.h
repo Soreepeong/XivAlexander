@@ -40,50 +40,54 @@ namespace Sqex::Excel {
 			BE<uint32_t> RowCount;
 		};
 
-		enum Variant : uint8_t {
+		enum Depth : uint8_t {
 			Unknown = 0,
-			Default = 1,
-			SubRows = 2,
+			Level2 = 1,
+			Level3 = 2,
 		};
 
 		struct Header {
 			static const char Signature_Value[4];
+			static constexpr uint16_t Version_Value = 3;
 
 			char Signature[4]{};
-			BE<uint16_t> Unknown1;
-			BE<uint16_t> DataOffset;
+			BE<uint16_t> Version;
+			BE<uint16_t> FixedDataSize;
 			BE<uint16_t> ColumnCount;
 			BE<uint16_t> PageCount;
 			BE<uint16_t> LanguageCount;
 			BE<uint16_t> Unknown2;
-			BE<uint8_t> Unknown3;
-			BE<Variant> Variant;
-			BE<uint16_t> Unknown4;
+			BE<uint8_t> Padding_0x010;
+			BE<Depth> Depth;
+			BE<uint16_t> Padding_0x012;
 			BE<uint32_t> RowCount;
-			BE<uint32_t> Unknown5;
-			BE<uint32_t> Unknown6;
+			BE<uint64_t> Padding_0x018;
 		};
 	}
 
 	namespace Exd {
 		struct Header {
 			static const char Signature_Value[4];
+			static constexpr uint16_t Version_Value = 2;
 
 			char Signature[4]{};
 			BE<uint16_t> Version;
-			BE<uint16_t> Unknown1;
+			BE<uint16_t> Padding_0x006;
 			BE<uint32_t> IndexSize;
-			BE<uint32_t> Unknown2[5];
+			BE<uint32_t> DataSize;
+			BE<uint32_t> Padding_0x010[4];
 		};
 
 		struct RowLocator {
-			uint32_t RowId;
-			uint32_t Offset;
+			BE<uint32_t> RowId;
+			BE<uint32_t> Offset;
 		};
 
+#pragma pack(push, 2)
 		struct RowHeader {
-			uint32_t DataSize;
-			uint16_t RowCount;
+			BE<uint32_t> DataSize;
+			BE<uint16_t> SubRowCount;
 		};
+#pragma pack(pop)
 	}
 }

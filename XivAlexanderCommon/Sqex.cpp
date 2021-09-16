@@ -112,6 +112,43 @@ void Sqex::RandomAccessStream::ReadStream(uint64_t offset, void* buf, uint64_t l
 		throw std::runtime_error("Reached end of stream before reading all of the requested data.");
 }
 
+Sqex::BufferedRandomAccessStream::~BufferedRandomAccessStream() {
+	for (const auto addr : m_buffers)
+		if (addr)
+			VirtualFree(addr, 0, MEM_RELEASE);
+}
+
+uint64_t Sqex::BufferedRandomAccessStream::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {
+	const auto streamSize = StreamSize();
+
+	if (offset >= streamSize)
+		return 0;
+	if (offset + length > streamSize)
+		length = streamSize - offset;
+	
+	auto out = std::span(static_cast<uint8_t*>(buf), static_cast<size_t>(length));
+	auto relativeOffset = static_cast<size_t>(offset - offset / m_bufferSize * m_bufferSize);
+	for (auto i = offset / m_bufferSize * m_bufferSize; i < offset + length; i += m_bufferSize) {
+		auto& buffer = m_buffers[i / m_bufferSize];
+		if (!buffer) {
+			buffer = VirtualAlloc(nullptr, m_bufferSize, MEM_COMMIT, PAGE_READWRITE);
+			m_stream->ReadStreamPartial(i, buffer, m_bufferSize);
+		} else {
+			if (!VirtualAlloc(buffer, m_bufferSize, MEM_RESET_UNDO, PAGE_READWRITE))
+				m_stream->ReadStreamPartial(i, buffer, m_bufferSize);
+		}
+
+		const auto src = std::span(static_cast<uint8_t*>(buffer), std::min(m_bufferSize, static_cast<size_t>(offset + length - i))).subspan(relativeOffset);
+		const auto available = std::min(src.size_bytes(), out.size_bytes());
+		std::copy_n(&src[0], available, &out[0]);
+		out = out.subspan(available);
+		relativeOffset = 0;
+
+		VirtualAlloc(buffer, m_bufferSize, MEM_RESET, PAGE_READWRITE);
+	}
+	return length - out.size_bytes();
+}
+
 Sqex::FileRandomAccessStream::FileRandomAccessStream(Win32::File file, uint64_t offset, uint64_t length)
 	: m_file(std::move(file))
 	, m_offset(offset)

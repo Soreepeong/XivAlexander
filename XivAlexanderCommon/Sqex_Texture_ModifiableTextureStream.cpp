@@ -6,7 +6,7 @@
 Sqex::Texture::ModifiableTextureStream::ModifiableTextureStream(Format type, uint16_t width, uint16_t height, uint16_t depth)
 	: m_header{
 		.Unknown1 = 0,
-		.HeaderSize = static_cast<uint16_t>(Sqpack::Align(sizeof m_header)),
+		.HeaderSize = static_cast<uint16_t>(Align(sizeof m_header)),
 		.Type = type,
 		.Width = width,
 		.Height = height,
@@ -29,9 +29,9 @@ void Sqex::Texture::ModifiableTextureStream::AppendMipmap(std::shared_ptr<Memory
 	m_header.MipmapCount = static_cast<uint16_t>(m_mipmaps.size());
 
 	m_mipmapOffsets.clear();
-	m_mipmapOffsets.push_back(static_cast<uint32_t>(Sqpack::Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes())));
+	m_mipmapOffsets.push_back(static_cast<uint32_t>(Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes())));
 	for (size_t i = 0; i < m_mipmaps.size() - 1; ++i)
-		m_mipmapOffsets.push_back(static_cast<uint32_t>(m_mipmapOffsets[i] + Sqpack::Align(m_mipmaps[i]->StreamSize()).Alloc));
+		m_mipmapOffsets.push_back(static_cast<uint32_t>(m_mipmapOffsets[i] + Align(m_mipmaps[i]->StreamSize()).Alloc));
 }
 
 void Sqex::Texture::ModifiableTextureStream::TruncateMipmap(size_t count) {
@@ -43,9 +43,9 @@ void Sqex::Texture::ModifiableTextureStream::TruncateMipmap(size_t count) {
 }
 
 uint64_t Sqex::Texture::ModifiableTextureStream::StreamSize() const {
-	uint64_t res = Sqpack::Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes());
+	uint64_t res = Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes());
 	for (const auto& mipmap : m_mipmaps)
-		res += Sqpack::Align(mipmap->StreamSize());
+		res += Align(mipmap->StreamSize());
 	return res;
 }
 
@@ -83,7 +83,7 @@ uint64_t Sqex::Texture::ModifiableTextureStream::ReadStreamPartial(uint64_t offs
 	} else
 		relativeOffset -= srcTyped.size_bytes();
 
-	const auto headerPadInfo = Sqpack::Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes());
+	const auto headerPadInfo = Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes());
 	if (const auto padSize = headerPadInfo.Pad;
 		relativeOffset < padSize) {
 		const auto available = std::min(out.size_bytes(), static_cast<size_t>(padSize - relativeOffset));
@@ -114,7 +114,7 @@ uint64_t Sqex::Texture::ModifiableTextureStream::ReadStreamPartial(uint64_t offs
 
 	for (auto i = it - m_mipmapOffsets.begin(); it != m_mipmapOffsets.end(); ++it, ++i) {
 		const auto view = m_mipmaps[i]->View<uint8_t>();
-		const auto padInfo = Sqpack::Align(view.size_bytes());
+		const auto padInfo = Align(view.size_bytes());
 		if (relativeOffset < view.size_bytes()) {
 			const auto src = view.subspan(static_cast<size_t>(relativeOffset));
 			const auto available = std::min(out.size_bytes(), src.size_bytes());
