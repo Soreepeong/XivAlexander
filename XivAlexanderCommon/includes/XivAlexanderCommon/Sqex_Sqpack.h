@@ -444,6 +444,6 @@ template<>
 struct std::formatter<Sqex::Sqpack::EntryPathSpec, char> : std::formatter<std::basic_string<char>, char> {
 	template<class FormatContext>
 	auto format(const Sqex::Sqpack::EntryPathSpec& t, FormatContext& fc) {
-		return std::formatter<std::basic_string<char>, char>::format(std::format("{}({:8x}/{:8x}, {:8x})", t.Original.wstring(), t.PathHash, t.NameHash, t.FullPathHash), fc);
+		return std::formatter<std::basic_string<char>, char>::format(std::format("{}({:08x}/{:08x}, {:08x})", t.Original.wstring(), t.PathHash, t.NameHash, t.FullPathHash), fc);
 	}
 };

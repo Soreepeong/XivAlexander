@@ -4,8 +4,9 @@
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Source.cpp" />
+    <ClCompile Include="Test_Font.cpp" />
     <ClCompile Include="pch.cpp" />
+    <ClCompile Include="Test_Excel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />

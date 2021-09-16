@@ -12,7 +12,7 @@ namespace Sqex {
 	using namespace Utils;
 
 	// when used as game launch parameter, subtract by one.
-	enum class Language {
+	enum class Language : uint16_t {
 		Unspecified = 0,
 		Japanese = 1,
 		English = 2,
@@ -59,10 +59,7 @@ namespace Sqex {
 				return false;
 		return true;
 	}
-
-	template<typename T>
-	class RandomAccessStreamIterator;
-
+	
 	class RandomAccessStream : public std::enable_shared_from_this<RandomAccessStream> {
 	public:
 		RandomAccessStream();
@@ -96,10 +93,6 @@ namespace Sqex {
 			std::vector<T> result(count);
 			ReadStream(offset, std::span(result));
 			return result;
-		}
-		template<typename T>
-		RandomAccessStreamIterator<T> Iterator() const {
-			return RandomAccessStreamIterator<T>(*this);
 		}
 
 		virtual std::string DescribeState() const { return {}; }

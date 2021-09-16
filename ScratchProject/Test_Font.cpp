@@ -1,19 +1,18 @@
 ﻿#include "pch.h"
 
+#include <XivAlexanderCommon/Sqex_FontCsv_CreateConfig.h>
 #include <XivAlexanderCommon/Sqex_FontCsv_Creator.h>
 #include <XivAlexanderCommon/Sqex_FontCsv_DirectWriteFont.h>
+#include <XivAlexanderCommon/Sqex_FontCsv_FreeTypeFont.h>
 #include <XivAlexanderCommon/Sqex_FontCsv_GdiFont.h>
 #include <XivAlexanderCommon/Sqex_FontCsv_ModifiableFontCsvStream.h>
 #include <XivAlexanderCommon/Sqex_FontCsv_SeCompatibleDrawableFont.h>
 #include <XivAlexanderCommon/Sqex_FontCsv_SeCompatibleFont.h>
-#include <XivAlexanderCommon/Sqex_FontCsv_CreateConfig.h>
 #include <XivAlexanderCommon/Sqex_Sqpack.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Creator.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_EntryRawStream.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
 #include <XivAlexanderCommon/Sqex_Texture_Mipmap.h>
-
-#include "XivAlexanderCommon/Sqex_FontCsv_FreeTypeFont.h"
 
 static const auto* const pszTestString = reinterpret_cast<const char*>(
 	u8"Uppercase: ABCDEFGHIJKLMNOPQRSTUVWXYZ\n"

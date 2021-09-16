@@ -37,6 +37,9 @@
     <Filter Include="Square Enix Definitions\Third Party Formats\TexTools">
       <UniqueIdentifier>{682c3f75-f414-4d2b-b327-59a9c52a5b1f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29">
+      <UniqueIdentifier>{efb71632-499e-4880-875e-ddbd81be0ea3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -157,6 +160,9 @@
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_CreateConfig.h">
       <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Excel.h">
+      <Filter>Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -256,6 +262,9 @@
     </ClCompile>
     <ClCompile Include="Sqex_FontCsv_FreeTypeFont.cpp">
       <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Excel.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

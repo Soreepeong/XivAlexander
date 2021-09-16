@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Excel.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_CreateConfig.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_Creator.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_DirectWriteFont.h" />
@@ -61,6 +62,7 @@
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Sqex_Excel.cpp" />
     <ClCompile Include="Sqex_FontCsv_CreateConfig.cpp" />
     <ClCompile Include="Sqex_FontCsv_Creator.cpp" />
     <ClCompile Include="Sqex_FontCsv_DirectWriteFont.cpp" />

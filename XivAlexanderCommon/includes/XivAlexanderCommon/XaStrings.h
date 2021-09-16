@@ -15,16 +15,17 @@ namespace Utils {
 	std::string ToString(const struct sockaddr_storage& sa);
 
 	template<typename T = std::string>
-	[[nodiscard]] std::vector<T> StringSplit(const T& str, const T& delimiter) {
+	[[nodiscard]] std::vector<T> StringSplit(const T& str, const T& delimiter, size_t maxSplit = SIZE_MAX) {
 		std::vector<T> result;
 		if (delimiter.empty()) {
 			for (size_t i = 0; i < str.size(); ++i)
 				result.push_back(str.substr(i, 1));
 		} else {
 			size_t previousOffset = 0, offset;
-			while ((offset = str.find(delimiter, previousOffset)) != std::string::npos) {
+			while (maxSplit && (offset = str.find(delimiter, previousOffset)) != std::string::npos) {
 				result.push_back(str.substr(previousOffset, offset - previousOffset));
 				previousOffset = offset + delimiter.length();
+				--maxSplit;
 			}
 			result.push_back(str.substr(previousOffset));
 		}
