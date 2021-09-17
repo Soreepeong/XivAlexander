@@ -51,8 +51,11 @@ namespace Sqex::Sqpack {
 			std::shared_ptr<RandomAccessStream> Index;
 			std::shared_ptr<RandomAccessStream> Index2;
 			std::vector<std::shared_ptr<RandomAccessStream>> Data;
+			std::map<EntryPathSpec, uint64_t> EntryOffsets;
 		};
 		SqpackViews AsViews(bool strict);
+
+		std::shared_ptr<RandomAccessStream> operator[](const EntryPathSpec& pathSpec) const;
 	};
 
 }

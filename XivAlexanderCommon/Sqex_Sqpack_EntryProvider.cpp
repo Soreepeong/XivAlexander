@@ -249,6 +249,7 @@ void Sqex::Sqpack::MemoryBinaryEntryProvider::Initialize(const RandomAccessStrea
 	} else
 		m_data.resize(entryHeader.HeaderSize, 0);
 
+	m_data.resize(Align(m_data.size()));
 	reinterpret_cast<SqData::FileEntryHeader*>(&m_data[0])->AlignedUnitAllocationCount = Align<uint64_t, uint32_t>(m_data.size()).Count;
 }
 
@@ -262,7 +263,6 @@ uint64_t Sqex::Sqpack::MemoryBinaryEntryProvider::ReadStreamPartial(const Random
 }
 
 void Sqex::Sqpack::OnTheFlyModelEntryProvider::Initialize(const RandomAccessStream& stream) {
-
 	Model::Header fileHeader;
 	stream.ReadStream(0, &fileHeader, sizeof fileHeader);
 
@@ -526,7 +526,7 @@ void Sqex::Sqpack::OnTheFlyTextureEntryProvider::Initialize(const RandomAccessSt
 				sizeof SqData::BlockHeader +
 				(j == subBlockCount - 1 ? mipmapSize % BlockDataSize : BlockDataSize)
 			);
-			blockOffsetCounter += sizeof SqData::BlockHeader + m_subBlockSizes.back();
+			blockOffsetCounter += m_subBlockSizes.back();
 		}
 
 		m_blockLocators.emplace_back(loc);
@@ -656,6 +656,118 @@ uint64_t Sqex::Sqpack::OnTheFlyTextureEntryProvider::ReadStreamPartial(const Ran
 	}
 
 	return length - out.size_bytes();
+}
+
+void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStream& stream) {
+	std::vector<SqData::TextureBlockHeaderLocator> blockLocators;
+	std::vector<uint16_t> subBlockSizes;
+	std::vector<uint8_t> texHeaderBytes;
+
+	std::vector<uint32_t> m_mipmapSizes;
+
+	std::vector<std::vector<uint8_t>> blocks;
+
+	auto AsTexHeader = [&]() { return *reinterpret_cast<const Texture::Header*>(&texHeaderBytes[0]); };
+	auto AsMipmapOffsets = [&]() { return std::span(reinterpret_cast<const uint32_t*>(&texHeaderBytes[sizeof Texture::Header]), AsTexHeader().MipmapCount); };
+
+	auto entryHeader = SqData::FileEntryHeader{
+		.HeaderSize = sizeof SqData::FileEntryHeader,
+		.Type = SqData::FileEntryType::Texture,
+		.DecompressedSize = static_cast<uint32_t>(stream.StreamSize()),
+		.Unknown1 = 0,
+		.AlignedUnitAllocationCount = 0,
+	};
+
+	texHeaderBytes.resize(sizeof Texture::Header);
+	stream.ReadStream(0, std::span(texHeaderBytes));
+	entryHeader.BlockCountOrVersion = AsTexHeader().MipmapCount;
+
+	texHeaderBytes.resize(sizeof Texture::Header + AsTexHeader().MipmapCount * sizeof uint32_t);
+	stream.ReadStream(sizeof Texture::Header, std::span(
+		reinterpret_cast<uint32_t*>(&texHeaderBytes[sizeof Texture::Header]),
+		AsTexHeader().MipmapCount.Value()
+	));
+
+	texHeaderBytes.resize(AsMipmapOffsets()[0]);
+	stream.ReadStream(0, std::span(texHeaderBytes).subspan(0, AsMipmapOffsets()[0]));
+
+	const auto mipmapOffsets = AsMipmapOffsets();
+	for (const auto offset : mipmapOffsets) {
+		if (!m_mipmapSizes.empty())
+			m_mipmapSizes.back() = offset - m_mipmapSizes.back();
+		m_mipmapSizes.push_back(offset);
+	}
+	m_mipmapSizes.back() = entryHeader.DecompressedSize - m_mipmapSizes.back();
+
+	uint32_t blockOffsetCounter = 0;
+	for (size_t i = 0; i < mipmapOffsets.size(); ++i) {
+		const auto mipmapSize = m_mipmapSizes[i];
+		const auto subBlockCount = (mipmapSize + BlockDataSize - 1) / BlockDataSize;
+		SqData::TextureBlockHeaderLocator loc{
+			blockOffsetCounter,
+			(subBlockCount * sizeof SqData::BlockHeader + mipmapSize),
+			mipmapSize,
+			i == 0 ? 0 : blockLocators.back().FirstSubBlockIndex + blockLocators.back().SubBlockCount,
+			subBlockCount,
+		};
+		size_t offset = mipmapOffsets[i];
+		for (size_t j = 0; j < subBlockCount; ++j) {
+			const auto len = j == subBlockCount - 1 ? mipmapSize % BlockDataSize : BlockDataSize;
+			uint8_t buf[BlockDataSize];
+			stream.ReadStream(offset, buf, len);
+			offset += len;
+			auto compressed = ZlibCompress(buf, len, Z_BEST_COMPRESSION, Z_DEFLATED, -15);
+
+			SqData::BlockHeader header{
+				.HeaderSize = sizeof SqData::BlockHeader,
+				.Version = 0,
+				.CompressedSize = static_cast<uint32_t>(compressed.size()),
+				.DecompressedSize = len,
+			};
+
+			subBlockSizes.push_back(static_cast<uint16_t>(sizeof header + compressed.size()));
+			blockOffsetCounter += subBlockSizes.back();
+
+			blocks.emplace_back(std::vector<uint8_t>{ reinterpret_cast<uint8_t*>(&header), reinterpret_cast<uint8_t*>(&header + 1) });
+			blocks.emplace_back(std::move(compressed));
+		}
+
+		blockLocators.emplace_back(loc);
+	}
+	for (auto& loc : blockLocators) {
+		loc.FirstBlockOffset = loc.FirstBlockOffset + static_cast<uint32_t>(std::span(texHeaderBytes).size_bytes());
+	}
+
+	entryHeader.HeaderSize = entryHeader.HeaderSize + static_cast<uint32_t>(
+		std::span(blockLocators).size_bytes() +
+		std::span(subBlockSizes).size_bytes());
+
+	m_data.insert(m_data.end(),
+		reinterpret_cast<char*>(&entryHeader),
+		reinterpret_cast<char*>(&entryHeader + 1));
+	m_data.insert(m_data.end(),
+		reinterpret_cast<char*>(&blockLocators.front()),
+		reinterpret_cast<char*>(&blockLocators.back() + 1));
+	m_data.insert(m_data.end(),
+		reinterpret_cast<char*>(&subBlockSizes.front()),
+		reinterpret_cast<char*>(&subBlockSizes.back() + 1));
+	m_data.insert(m_data.end(),
+		texHeaderBytes.begin(),
+		texHeaderBytes.end());
+	for (const auto& block : blocks)
+		m_data.insert(m_data.end(), block.begin(), block.end());
+
+	m_data.resize(Align(m_data.size()));
+	reinterpret_cast<SqData::FileEntryHeader*>(&m_data[0])->AlignedUnitAllocationCount = Align<uint64_t, uint32_t>(m_data.size()).Count;
+}
+
+uint64_t Sqex::Sqpack::MemoryTextureEntryProvider::ReadStreamPartial(const RandomAccessStream& stream, uint64_t offset, void* buf, uint64_t length) const {
+	const auto available = static_cast<size_t>(std::min(length, m_data.size() - offset));
+	if (!available)
+		return 0;
+
+	memcpy(buf, &m_data[static_cast<size_t>(offset)], available);
+	return available;
 }
 
 uint64_t Sqex::Sqpack::HotSwappableEntryProvider::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {

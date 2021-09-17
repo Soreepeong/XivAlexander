@@ -161,7 +161,7 @@ Sqex::FileRandomAccessStream::FileRandomAccessStream(Win32::File file, uint64_t 
 Sqex::FileRandomAccessStream::FileRandomAccessStream(std::filesystem::path path, uint64_t offset, uint64_t length, bool openImmediately)
 	: m_path(std::move(path))
 	, m_initializationMutex(openImmediately ? nullptr : std::make_shared<std::mutex>())
-	, m_file(openImmediately ? Win32::File::Create(m_path, GENERIC_READ, FILE_SHARE_READ, nullptr, GENERIC_READ, 0) : Win32::File())
+	, m_file(openImmediately ? Win32::File::Create(m_path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0) : Win32::File())
 	, m_offset(offset)
 	, m_size(length == UINT64_MAX ? file_size(m_path) - m_offset : length) {
 	if (const auto filelen = file_size(m_path); m_offset + m_size > filelen) {

@@ -1,10 +1,14 @@
 #include "pch.h"
 #include "App_Feature_GameResourceOverrider.h"
 
+#include <XivAlexanderCommon/Sqex_Excel_Generator.h>
+#include <XivAlexanderCommon/Sqex_Excel_Reader.h>
 #include <XivAlexanderCommon/Sqex_FontCsv_CreateConfig.h>
 #include <XivAlexanderCommon/Sqex_FontCsv_Creator.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Creator.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
 #include <XivAlexanderCommon/Utils_Win32_Process.h>
+#include <XivAlexanderCommon/Utils_Win32_ThreadPool.h>
 #include "App_ConfigRepository.h"
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_Hooks.h"
@@ -361,53 +365,50 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				}
 
 				if (m_config->Runtime.HashTrackerLanguageOverride != Sqex::Language::Unspecified) {
-					auto appendLanguageCode = false;
-					if (name.ends_with("_ja")
-						|| name.ends_with("_en")
-						|| name.ends_with("_de")
-						|| name.ends_with("_fr")
-						|| name.ends_with("_ko")) {
-						name = name.substr(0, name.size() - 3);
-						appendLanguageCode = true;
-					} else if (name.ends_with("_chs")
-						|| name.ends_with("_cht")) {
-						name = name.substr(0, name.size() - 4);
-						appendLanguageCode = true;
-					}
-					if (appendLanguageCode) {
-						switch (m_config->Runtime.HashTrackerLanguageOverride) {
-							case Sqex::Language::Japanese:
-								name += "_ja";
+					const char* languageCodes[] = { "ja", "en", "de", "fr", "chs", "cht", "ko" };
+					const auto targetLanguageCode = languageCodes[static_cast<int>(m_config->Runtime.HashTrackerLanguageOverride.Value()) - 1];
+					
+					std::string nameLower = name;
+					std::ranges::transform(nameLower, nameLower.begin(), [](char c) {return static_cast<char>(std::tolower(c)); });
+					std::string newName;
+					if (nameLower.starts_with("ui/uld/logo")) {
+						// do nothing, as overriding this often freezes the game
+					} else {
+						for (const auto languageCode : languageCodes) {
+							char t[16];
+							sprintf_s(t, "_%s", languageCode);
+							if (nameLower.ends_with(t)) {
+								newName = name.substr(0, name.size() - strlen(languageCode)) + targetLanguageCode;
 								break;
-							case Sqex::Language::English:
-								name += "_en";
+							}
+							sprintf_s(t, "/%s/", languageCode);
+							if (const auto pos = nameLower.find(t); pos != std::string::npos) {
+								newName = std::format("{}/{}/{}", name.substr(0, pos), targetLanguageCode, name.substr(pos + strlen(t)));
 								break;
-							case Sqex::Language::German:
-								name += "_de";
-								break;
-							case Sqex::Language::French:
-								name += "_fr";
-								break;
-							case Sqex::Language::ChineseSimplified:
-								name += "_chs";
-								break;
-							case Sqex::Language::ChineseTraditional:
-								name += "_cht";
-								break;
-							case Sqex::Language::Korean:
-								name += "_ko";
-								break;
-						}
-
-						const auto newStr = std::format("{}{}{}", name, ext, rest);
-
-						if (!m_config->Runtime.UseHashTrackerKeyLogging) {
-							if (m_alreadyLogged.find(name) == m_alreadyLogged.end()) {
-								m_alreadyLogged.emplace(name);
-								m_logger->Format(LogCategory::GameResourceOverrider, "{:x}: {} => {}", reinterpret_cast<size_t>(ptr), str, newStr);
 							}
 						}
-						Utils::Win32::Process::Current().WriteMemory(const_cast<char*>(str), newStr.c_str(), newStr.size() + 1, true);
+					}
+					if (!newName.empty()) {
+						const auto verifyTarget = Sqex::Sqpack::EntryPathSpec(std::format("{}{}", newName, ext));
+						auto found = false;
+						for (const auto& t : m_sqpackViews | std::views::values) {
+							found = t.EntryOffsets.find(verifyTarget) != t.EntryOffsets.end();
+							if (found)
+								break;
+						}
+
+						if (found) {
+							name = newName;
+							const auto newStr = std::format("{}{}{}", name, ext, rest);
+							if (!m_config->Runtime.UseHashTrackerKeyLogging) {
+								if (m_alreadyLogged.find(name) == m_alreadyLogged.end()) {
+									m_alreadyLogged.emplace(name);
+									m_logger->Format(LogCategory::GameResourceOverrider, "{:x}: {} => {}", reinterpret_cast<size_t>(ptr), str, newStr);
+								}
+							}
+							Utils::Win32::Process::Current().WriteMemory(const_cast<char*>(str), newStr.c_str(), newStr.size() + 1, true);
+							len = newStr.size();
+						}
 					}
 				}
 				const auto res = self->bridge(initVal, str, len);
@@ -470,11 +471,12 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					result.Added.size(), result.Replaced.size(), result.SkippedExisting.size(), result.Error.size());
 				for (const auto& [pathSpec, errorMessage] : result.Error) {
 					m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
-						"=> Error processing {}: {}", pathSpec, errorMessage);
+						"\t=> Error processing {}: {}", pathSpec, errorMessage);
 				}
 			}
 
 			auto additionalEntriesFound = false;
+			additionalEntriesFound |= SetUpVirtualFileFromExternalSqpacks(creator, indexFile);
 			additionalEntriesFound |= SetUpVirtualFileFromTexToolsModPacks(creator, indexFile);
 			additionalEntriesFound |= SetUpVirtualFileFromFileEntries(creator, indexFile);
 			additionalEntriesFound |= SetUpVirtualFileFromFontConfig(creator, indexFile);
@@ -496,6 +498,248 @@ struct App::Feature::GameResourceOverrider::Implementation {
 		m_overlayedHandles.insert_or_assign(key, std::move(overlayedHandle));
 		SetLastError(0);
 		return key;
+	}
+
+	bool SetUpVirtualFileFromExternalSqpacks(Sqex::Sqpack::Creator& creator, const std::filesystem::path& indexFile) {
+		auto changed = false;
+
+		if (creator.DatName == "0a0000") {
+			const auto cachedDir = m_config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / creator.DatExpac / creator.DatName;
+			if (!(exists(cachedDir / "TTMPD.mpd") && exists(cachedDir / "TTMPL.mpl"))) {
+				
+				std::map<std::string, int> exhTable;
+				// maybe generate exl?
+
+				for (const auto& pair : Sqex::Excel::ExlReader(*creator["exd/root.exl"]))
+					exhTable.emplace(pair);
+
+				std::vector<std::unique_ptr<Sqex::Sqpack::Reader>> readers;
+
+				for (const auto& additionalSqpackRootDirectory : m_config->Runtime.AdditionalSqpackRootDirectories.Value()) {
+					const auto file = additionalSqpackRootDirectory / indexFile.parent_path().filename() / indexFile.filename();
+					if (!exists(file))
+						continue;
+
+					readers.emplace_back(std::make_unique<Sqex::Sqpack::Reader>(file));
+				}
+				if (readers.empty())
+					return false;
+
+				create_directories(cachedDir);
+
+				const auto actCtx = Dll::ActivationContext().With();
+				Window::ProgressPopupWindow progressWindow(Dll::FindGameMainWindow(false));
+				progressWindow.UpdateMessage("Generating merged exd files...");
+				progressWindow.Show();
+				Utils::Win32::TpEnvironment pool;
+
+				std::atomic_int64_t progress = 0;
+				static constexpr auto ProgressMaxPerTask = 1000;
+				std::atomic_int64_t maxProgress = exhTable.size() * ProgressMaxPerTask;
+
+				progressWindow.UpdateProgress(progress, maxProgress);
+				{
+					const auto ttmpl = Utils::Win32::File::Create(cachedDir / "TTMPL.mpl.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
+					const auto ttmpd = Utils::Win32::File::Create(cachedDir / "TTMPD.mpd.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
+					uint64_t ttmplPtr = 0, ttmpdPtr = 0;
+					std::mutex writeMtx;
+
+					const auto compressThread = Utils::Win32::Thread(L"CompressThread", [&]() {
+						for (const auto& exhName : exhTable | std::views::keys) {
+							pool.SubmitWork([&]() {
+								if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+									return;
+
+								size_t progressIndex = 0;
+								std::vector<uint64_t> progresses(readers.size() + 2);
+								uint64_t lastAddedProgress = 0;
+								const auto publishProgress = [&]() {
+									const auto addProgress = std::accumulate(progresses.begin(), progresses.end(), 0ULL) / (readers.size() + 2);
+									progress += addProgress - lastAddedProgress;
+									lastAddedProgress = addProgress;
+								};
+
+								const auto exhPath = Sqex::Sqpack::EntryPathSpec(std::format("exd/{}.exh", exhName));
+								std::unique_ptr<Sqex::Excel::Depth2ExhExdCreator> exCreator;
+								{
+									const auto exhReaderSource = Sqex::Excel::ExhReader(exhName, *creator[exhPath]);
+									if (exhReaderSource.Header.Depth != Sqex::Excel::Exh::Depth::Level2) {
+										progress += ProgressMaxPerTask;
+										return;
+									}
+
+									if (std::ranges::find(exhReaderSource.Languages, Sqex::Language::Unspecified) != exhReaderSource.Languages.end()) {
+										progress += ProgressMaxPerTask;
+										return;
+									}
+
+									m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
+										"=> Merging {}", exhName);
+
+									exCreator = std::make_unique<Sqex::Excel::Depth2ExhExdCreator>(exhName, *exhReaderSource.Columns, exhReaderSource.Header.SomeSortOfBufferSize);
+									exCreator->FillMissingLanguageFrom = Sqex::Language::English;  // TODO: make it into option
+
+									uint64_t localProgress = 0;
+									for (const auto language : exhReaderSource.Languages) {
+										for (const auto& page : exhReaderSource.Pages) {
+											progresses[progressIndex] = ProgressMaxPerTask * localProgress++ / (exhReaderSource.Languages.size() * exhReaderSource.Pages.size());
+											localProgress++;
+											publishProgress();
+
+											const auto exdPathSpec = exhReaderSource.GetDataPathSpec(page, language);
+											try {
+												const auto exdReader = Sqex::Excel::ExdReader(exhReaderSource, creator[exdPathSpec]);
+												exCreator->AddLanguage(language);
+												for (const auto i : exdReader.GetIds())
+													exCreator->SetRow(i, language, exdReader.ReadDepth2(i));
+											} catch (const std::out_of_range&) {
+												// pass
+											}
+										}
+									}
+									progresses[progressIndex++] = ProgressMaxPerTask;
+									publishProgress();
+								}
+
+								for (const auto& reader : readers) {
+									try {
+										const auto exhReaderCurrent = Sqex::Excel::ExhReader(exhName, *(*reader)[exhPath]);
+
+										uint64_t localProgress = 0;
+										for (const auto language : exhReaderCurrent.Languages) {
+											for (const auto& page : exhReaderCurrent.Pages) {
+												progresses[progressIndex] = ProgressMaxPerTask * localProgress++ / (exhReaderCurrent.Languages.size() * exhReaderCurrent.Pages.size());
+												localProgress++;
+												publishProgress();
+
+												const auto exdPathSpec = exhReaderCurrent.GetDataPathSpec(page, language);
+												try {
+													const auto exdReader = Sqex::Excel::ExdReader(exhReaderCurrent, (*reader)[exdPathSpec]);
+													exCreator->AddLanguage(language);
+													for (const auto i : exdReader.GetIds()) {
+														auto cols = exCreator->GetRow(i, Sqex::Language::Japanese);
+														auto colRef2 = exCreator->GetRow(i, Sqex::Language::English);
+														auto colRef3 = exCreator->GetRow(i, Sqex::Language::German);
+														auto cols2 = exdReader.ReadDepth2(i);
+														for (size_t j = 0; j < cols.size() && j < cols2.size(); ++j) {
+															if (cols[j].Type != Sqex::Excel::Exh::String)
+																continue;
+															if (cols[j].String == colRef2[j].String && cols[j].String == colRef3[j].String)
+																continue;
+															if (cols2[j].String.empty())
+																continue;
+															cols[j].String = cols2[j].String;
+														}
+														exCreator->SetRow(i, language, cols);
+														// exCreator->SetRow(i, Sqex::Language::Japanese, cols);
+													}
+												} catch (const std::out_of_range&) {
+													// pass
+												}
+											}
+										}
+									} catch (const std::out_of_range&) {
+										// pass
+									}
+									progresses[progressIndex++] = ProgressMaxPerTask;
+									publishProgress();
+								}
+
+								{
+									auto compiled = exCreator->Compile();
+									m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
+										"=> Saving {}", exhName);
+
+									uint64_t localProgress = 0;
+									for (auto& [entryPathSpec, data] : compiled) {
+										progresses[progressIndex] = ProgressMaxPerTask * localProgress / compiled.size();
+										publishProgress();
+
+										const auto targetPath = cachedDir / entryPathSpec.Original;
+
+										const auto provider = std::make_shared<Sqex::Sqpack::MemoryBinaryEntryProvider>(entryPathSpec, std::make_shared<Sqex::MemoryRandomAccessStream>(std::move(*reinterpret_cast<std::vector<uint8_t>*>(&data))));
+										const auto len = provider->StreamSize();
+										const auto dv = provider->ReadStreamIntoVector<char>(0, len);
+
+										if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+											return;
+										const auto lock = std::lock_guard(writeMtx);
+										const auto entryLine = std::format("{}\n", nlohmann::json::object({
+											{"FullPath", Utils::ToUtf8(entryPathSpec.Original.wstring())},
+											{"ModOffset", ttmpdPtr},
+											{"ModSize", len},
+											{"DatFile", "0a0000"},
+											}).dump());
+										ttmplPtr += ttmpl.Write(ttmplPtr, std::span(entryLine));
+										ttmpdPtr += ttmpd.Write(ttmpdPtr, std::span(dv));
+									}
+									progresses[progressIndex++] = ProgressMaxPerTask;
+									publishProgress();
+								}
+							});
+						}
+						pool.WaitOutstanding();
+					});
+					while (true) {
+						if (WAIT_TIMEOUT != progressWindow.DoModalLoop(100, { compressThread }))
+							break;
+
+						progressWindow.UpdateProgress(progress, maxProgress);
+					}
+					pool.Cancel();
+					compressThread.Wait();
+				}
+
+				if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0) {
+					try {
+						std::filesystem::remove(cachedDir / "TTMPL.mpl.tmp");
+					} catch (...) {
+						// whatever
+					}
+					try {
+						std::filesystem::remove(cachedDir / "TTMPD.mpd.tmp");
+					} catch (...) {
+						// whatever
+					}
+					return false;
+				}
+
+				std::filesystem::rename(cachedDir / "TTMPL.mpl.tmp", cachedDir / "TTMPL.mpl");
+				std::filesystem::rename(cachedDir / "TTMPD.mpd.tmp", cachedDir / "TTMPD.mpd");
+			}
+
+			try {
+				const auto logCacher = creator.Log([&](const auto& s) {
+					m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, "=> {}", s);
+				});
+				const auto result = creator.AddEntriesFromTTMP(cachedDir);
+				if (!result.Added.empty() || !result.Replaced.empty())
+					changed = true;
+			} catch (const std::exception& e) {
+				m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "=> Error: {}", e.what());
+			}
+		} else {
+			for (const auto& additionalSqpackRootDirectory : m_config->Runtime.AdditionalSqpackRootDirectories.Value()) {
+				const auto file = additionalSqpackRootDirectory / indexFile.parent_path().filename() / indexFile.filename();
+				if (!exists(file))
+					continue;
+				
+				const auto batchAddResult = creator.AddEntriesFromSqPack(file, false, false);
+
+				if (!batchAddResult.Added.empty()) {
+					changed = true;
+					m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
+						"=> Processed external SqPack {}: Added {}",
+						file, batchAddResult.Added.size());
+					for (const auto& [pathSpec, errorMessage] : batchAddResult.Error) {
+						m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
+							"\t=> Error processing {}: {}", pathSpec, errorMessage);
+					}
+				}
+			}
+		}
+
+		return changed;
 	}
 
 	bool SetUpVirtualFileFromTexToolsModPacks(Sqex::Sqpack::Creator& creator, const std::filesystem::path& indexPath) {
@@ -622,68 +866,136 @@ struct App::Feature::GameResourceOverrider::Implementation {
 	bool SetUpVirtualFileFromFontConfig(Sqex::Sqpack::Creator& creator, const std::filesystem::path& indexPath) {
 		if (indexPath.filename() != L"000000.win32.index")
 			return false;
+
 		if (const auto fontConfigPathStr = m_config->Runtime.OverrideFontConfig.Value(); !fontConfigPathStr.empty()) {
 			const auto fontConfigPath = Config::TranslatePath(fontConfigPathStr);
 			try {
 				if (!exists(fontConfigPath))
 					throw std::runtime_error(std::format("=> Font config file was not found: ", fontConfigPathStr));
 
-				const auto actCtx = Dll::ActivationContext().With();
-				Window::ProgressPopupWindow progressWindow(Dll::FindGameMainWindow(false));
-				const auto showProgressWindowAfter = static_cast<int64_t>(GetTickCount64()) + 500;
+				const auto cachedDir = m_config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / creator.DatExpac / creator.DatName;
+				if (!(exists(cachedDir / "TTMPD.mpd") && exists(cachedDir / "TTMPL.mpl"))) {
+					create_directories(cachedDir);
 
-				m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-					"=> Generating font per file: {}",
-					fontConfigPathStr);
-
-				std::ifstream fin(fontConfigPath);
-				nlohmann::json j;
-				fin >> j;
-				auto cfg = j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
-
-				Sqex::FontCsv::FontSetsCreator fontCreator(cfg, Utils::Win32::Process::Current().PathOf().parent_path());
-				while (true) {
-					const auto nextWait = std::max(static_cast<int64_t>(GetTickCount64()) - showProgressWindowAfter, 50LL);
-					if (WAIT_TIMEOUT != progressWindow.DoModalLoop(static_cast<int>(nextWait), {fontCreator.GetWaitableObject()}))
-						break;
-
-					const auto progress = fontCreator.GetProgress();
-					progressWindow.UpdateProgress(progress.Progress, progress.Max);
-					if (progress.Indeterminate)
-						progressWindow.UpdateMessage(std::format("Generating fonts... ({} task(s) yet to be started)", progress.Indeterminate));
-					else
-						progressWindow.UpdateMessage("Generating fonts...");
-
+					const auto actCtx = Dll::ActivationContext().With();
+					Window::ProgressPopupWindow progressWindow(Dll::FindGameMainWindow(false));
+					progressWindow.UpdateMessage("Generating fonts...");
 					progressWindow.Show();
-				}
 
-				const auto& result = fontCreator.GetResult();
-				for (const auto& [entryPath, stream] : result.GetAllStreams()) {
-					std::shared_ptr<Sqex::Sqpack::EntryProvider> provider;
-					auto extension = entryPath.Original.extension().wstring();
-					CharLowerW(&extension[0]);
-					if (extension == L".tex")
-						provider = std::make_shared<Sqex::Sqpack::OnTheFlyTextureEntryProvider>(entryPath, stream);
-					else
-						provider = std::make_shared<Sqex::Sqpack::OnTheFlyBinaryEntryProvider>(entryPath, stream);
-					const auto addEntryResult = creator.AddEntry(std::move(provider));
-
-					const auto item = addEntryResult.AnyItem();
-					if (!item)
-						throw std::runtime_error("Unexpected error");
 					m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-						"=> {} file {}: (nameHash={:08x}, pathHash={:08x}, fullPathHash={:08x})",
-						addEntryResult.Added.empty() ? "Replaced" : "Added",
-						item->PathSpec().Original,
-						item->PathSpec().NameHash,
-						item->PathSpec().PathHash,
-						item->PathSpec().FullPathHash);
+						"=> Generating font per file: {}",
+						fontConfigPathStr);
+
+					std::ifstream fin(fontConfigPath);
+					nlohmann::json j;
+					fin >> j;
+					auto cfg = j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
+
+					Sqex::FontCsv::FontSetsCreator fontCreator(cfg, Utils::Win32::Process::Current().PathOf().parent_path());
+					while (true) {
+						if (WAIT_TIMEOUT != progressWindow.DoModalLoop(100, { fontCreator.GetWaitableObject() }))
+							break;
+
+						const auto progress = fontCreator.GetProgress();
+						progressWindow.UpdateProgress(progress.Progress, progress.Max);
+						if (progress.Indeterminate)
+							progressWindow.UpdateMessage(std::format("Generating fonts... ({} task(s) yet to be started)", progress.Indeterminate));
+						else
+							progressWindow.UpdateMessage("Generating fonts...");
+					}
+					if (progressWindow.GetCancelEvent().Wait(0) != WAIT_OBJECT_0) {
+						progressWindow.UpdateMessage("Compressing data...");
+						Utils::Win32::TpEnvironment pool;
+						const auto streams = fontCreator.GetResult().GetAllStreams();
+
+						std::atomic_int64_t progress = 0;
+						uint64_t maxProgress = 0;
+						for (auto& stream : streams | std::views::values)
+							maxProgress += stream->StreamSize() * 2;
+						progressWindow.UpdateProgress(progress, maxProgress);
+
+						const auto ttmpl = Utils::Win32::File::Create(cachedDir / "TTMPL.mpl.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
+						const auto ttmpd = Utils::Win32::File::Create(cachedDir / "TTMPD.mpd.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
+						uint64_t ttmplPtr = 0, ttmpdPtr = 0;
+						std::mutex writeMtx;
+
+						const auto compressThread = Utils::Win32::Thread(L"CompressThread", [&]() {
+							for (auto& [entryPathSpec, stream] : streams) {
+								pool.SubmitWork([&]() {
+									if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+										return;
+
+									std::shared_ptr<Sqex::Sqpack::EntryProvider> provider;
+									auto extension = entryPathSpec.Original.extension().wstring();
+									CharLowerW(&extension[0]);
+									if (extension == L".tex")
+										provider = std::make_shared<Sqex::Sqpack::MemoryTextureEntryProvider>(entryPathSpec, stream);
+									else
+										provider = std::make_shared<Sqex::Sqpack::MemoryBinaryEntryProvider>(entryPathSpec, stream);
+									const auto len = provider->StreamSize();
+									const auto dv = provider->ReadStreamIntoVector<char>(0, len);
+									progress += stream->StreamSize();
+
+									if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+										return;
+									const auto lock = std::lock_guard(writeMtx);
+									const auto entryLine = std::format("{}\n", nlohmann::json::object({
+										{"FullPath", Utils::ToUtf8(entryPathSpec.Original.wstring())},
+										{"ModOffset", ttmpdPtr},
+										{"ModSize", len},
+										{"DatFile", "000000"},
+										}).dump());
+									ttmplPtr += ttmpl.Write(ttmplPtr, std::span(entryLine));
+									ttmpdPtr += ttmpd.Write(ttmpdPtr, std::span(dv));
+									progress += stream->StreamSize();
+								});
+							}
+							pool.WaitOutstanding();
+						});
+						
+						while (true) {
+							if (WAIT_TIMEOUT != progressWindow.DoModalLoop(100, { compressThread }))
+								break;
+
+							progressWindow.UpdateProgress(progress, maxProgress);
+						}
+						pool.Cancel();
+						compressThread.Wait();
+					}
+
+					if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0) {
+						try {
+							std::filesystem::remove(cachedDir / "TTMPL.mpl.tmp");
+						} catch (...) {
+							// whatever
+						}
+						try {
+							std::filesystem::remove(cachedDir / "TTMPD.mpd.tmp");
+						} catch (...) {
+							// whatever
+						}
+						return false;
+					}
+
+					std::filesystem::rename(cachedDir / "TTMPL.mpl.tmp", cachedDir / "TTMPL.mpl");
+					std::filesystem::rename(cachedDir / "TTMPD.mpd.tmp", cachedDir / "TTMPD.mpd");
 				}
-				return true;
+
+				try {
+					const auto logCacher = creator.Log([&](const auto& s) {
+						m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, "=> {}", s);
+					});
+					const auto result = creator.AddEntriesFromTTMP(cachedDir);
+					if (!result.Added.empty() || !result.Replaced.empty())
+						return true;
+				} catch (const std::exception& e) {
+					m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "=> Error: {}", e.what());
+				}
 			} catch (const std::runtime_error& e) {
 				m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, e.what());
 			}
 		}
+
 		return false;
 	}
 };

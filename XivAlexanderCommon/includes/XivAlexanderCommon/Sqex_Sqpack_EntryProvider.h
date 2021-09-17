@@ -193,6 +193,24 @@ namespace Sqex::Sqpack {
 		uint64_t ReadStreamPartial(const RandomAccessStream&, uint64_t offset, void* buf, uint64_t length) const override;
 	};
 
+	class MemoryTextureEntryProvider : public LazyFileOpeningEntryProvider {
+		std::vector<uint8_t> m_data;
+
+	public:
+		using LazyFileOpeningEntryProvider::LazyFileOpeningEntryProvider;
+		using LazyFileOpeningEntryProvider::StreamSize;
+		using LazyFileOpeningEntryProvider::ReadStreamPartial;
+
+		[[nodiscard]] SqData::FileEntryType EntryType() const override { return SqData::FileEntryType::Binary; }
+
+		std::string DescribeState() const override { return "MemoryTextureEntryProvider"; }
+
+	protected:
+		void Initialize(const RandomAccessStream& stream) override;
+		[[nodiscard]] uint64_t StreamSize(const RandomAccessStream& stream) const override { return static_cast<uint32_t>(m_data.size()); }
+		uint64_t ReadStreamPartial(const RandomAccessStream& stream, uint64_t offset, void* buf, uint64_t length) const override;
+	};
+
 	class RandomAccessStreamAsEntryProviderView : public EntryProvider {
 		const std::shared_ptr<const RandomAccessStream> m_stream;
 		const uint64_t m_offset;

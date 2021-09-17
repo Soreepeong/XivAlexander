@@ -56,7 +56,7 @@ namespace Sqex::Excel {
 			BE<uint16_t> ColumnCount;
 			BE<uint16_t> PageCount;
 			BE<uint16_t> LanguageCount;
-			BE<uint16_t> Unknown2;
+			BE<uint16_t> SomeSortOfBufferSize;
 			BE<uint8_t> Padding_0x010;
 			BE<Depth> Depth;
 			BE<uint16_t> Padding_0x012;
@@ -90,4 +90,25 @@ namespace Sqex::Excel {
 		};
 #pragma pack(pop)
 	}
+
+	struct ExdColumn {
+		Exh::ColumnDataType Type;
+		uint8_t ValidSize;
+
+		union {
+			uint8_t Buffer[8];
+			bool boolean;
+			int8_t int8;
+			uint8_t uint8;
+			int16_t int16;
+			uint16_t uint16;
+			int32_t int32;
+			uint32_t uint32;
+			float float32;
+			int64_t int64;
+			uint64_t uint64;
+		};
+
+		std::string String;
+	};
 }

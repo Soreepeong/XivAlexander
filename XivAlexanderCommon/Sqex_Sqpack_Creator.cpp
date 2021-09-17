@@ -5,6 +5,7 @@
 
 #include "Sqex_Model.h"
 #include "Sqex_Sqpack_EntryProvider.h"
+#include "Sqex_Sqpack_EntryRawStream.h"
 #include "Sqex_Sqpack_Reader.h"
 #include "Sqex_ThirdParty_TexTools.h"
 
@@ -172,25 +173,25 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::Implementation::Add
 }
 
 Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromSqPack(const std::filesystem::path & indexPath, bool overwriteExisting, bool overwriteUnknownSegments) {
-	Reader m_original{ indexPath, false };
+	Reader reader{ indexPath, false };
 
 	AddEntryResult result{};
 
 	if (overwriteUnknownSegments) {
-		m_pImpl->m_sqpackIndexSegment2 = std::move(m_original.Index.DataFileSegment);
-		m_pImpl->m_sqpackIndexSegment3 = std::move(m_original.Index.Segment3);
-		m_pImpl->m_sqpackIndex2Segment2 = std::move(m_original.Index2.DataFileSegment);
-		m_pImpl->m_sqpackIndex2Segment3 = std::move(m_original.Index2.Segment3);
+		m_pImpl->m_sqpackIndexSegment2 = std::move(reader.Index.DataFileSegment);
+		m_pImpl->m_sqpackIndexSegment3 = std::move(reader.Index.Segment3);
+		m_pImpl->m_sqpackIndex2Segment2 = std::move(reader.Index2.DataFileSegment);
+		m_pImpl->m_sqpackIndex2Segment3 = std::move(reader.Index2.Segment3);
 	}
 
 	std::vector<size_t> dataFileIndexToOpenFileIndex;
-	for (auto& f : m_original.Data)
+	for (auto& f : reader.Data)
 		dataFileIndexToOpenFileIndex.emplace_back(m_pImpl->OpenFile("", std::move(f.FileOnDisk)));
 
-	for (const auto& entry : m_original.Files) {
+	for (const auto& entry : reader.Files) {
 		try {
 			result += m_pImpl->AddEntry(
-				m_original.GetEntryProvider(entry, Win32::File{ m_pImpl->m_openFiles[dataFileIndexToOpenFileIndex[entry.DataFileIndex]], false }),
+				reader.GetEntryProvider(entry, Win32::File{ m_pImpl->m_openFiles[dataFileIndexToOpenFileIndex[entry.DataFileIndex]], false }),
 				dataFileIndexToOpenFileIndex[entry.DataFileIndex],
 				overwriteExisting);
 		} catch (const std::exception& e) {
@@ -523,6 +524,7 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 	std::vector<SqData::Header> dataSubheaders;
 	std::vector<std::vector<std::unique_ptr<const Implementation::Entry>>> dataEntries;
 	std::vector<std::set<size_t>> dataOpenFileIndices;
+	std::map<EntryPathSpec, uint64_t> entryOffsets;
 
 	for (auto& entry : m_pImpl->m_entries) {
 		entry->BlockSize = static_cast<uint32_t>(entry->Provider->StreamSize());
@@ -546,6 +548,7 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 		entry->DataFileIndex = static_cast<uint32_t>(dataSubheaders.size() - 1);
 		entry->OffsetAfterHeaders = dataSubheaders.back().DataSize;
 		entry->Locator = { entry->DataFileIndex, sizeof SqpackHeader + sizeof SqData::Header + entry->OffsetAfterHeaders };
+		entryOffsets.emplace(entry->Provider->PathSpec(), sizeof SqpackHeader + sizeof SqData::Header + entry->OffsetAfterHeaders);
 		if (entry->Provider->PathSpec().HasComponentHash())
 			fileEntries1.emplace_back(SqIndex::FileSegmentEntry{ entry->Provider->PathSpec().NameHash, entry->Provider->PathSpec().PathHash, entry->Locator, 0 });
 		if (entry->Provider->PathSpec().HasFullPathHash())
@@ -576,6 +579,7 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 	auto res = SqpackViews{
 		.Index = std::make_shared<IndexView<SqIndex::Header::IndexType::Index>>(dataSubheaders.size(), std::move(fileEntries1), m_pImpl->m_sqpackIndexSegment2, m_pImpl->m_sqpackIndexSegment3, std::vector<SqIndex::FolderSegmentEntry>(), strict),
 		.Index2 = std::make_shared<IndexView<SqIndex::Header::IndexType::Index2>>(dataSubheaders.size(), std::move(fileEntries2), m_pImpl->m_sqpackIndexSegment2, m_pImpl->m_sqpackIndexSegment3, std::vector<SqIndex::FolderSegmentEntry>(), strict),
+		.EntryOffsets = std::move(entryOffsets),
 	};
 
 	for (size_t i = 0; i < dataSubheaders.size(); ++i) {
@@ -587,4 +591,14 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 	}
 
 	return res;
+}
+
+std::shared_ptr<Sqex::RandomAccessStream> Sqex::Sqpack::Creator::operator[](const EntryPathSpec& pathSpec) const {
+	if (const auto it = m_pImpl->m_fullPathEntryPointerMap.find(pathSpec.FullPathHash);
+		it != m_pImpl->m_fullPathEntryPointerMap.end())
+		return std::make_shared<BufferedRandomAccessStream>(std::make_shared<EntryRawStream>(it->second->Provider));
+	if (const auto it = m_pImpl->m_pathNameTupleEntryPointerMap.find(std::make_pair(pathSpec.PathHash, pathSpec.NameHash));
+		it != m_pImpl->m_pathNameTupleEntryPointerMap.end())
+		return std::make_shared<BufferedRandomAccessStream>(std::make_shared<EntryRawStream>(it->second->Provider));
+	throw std::out_of_range("pathSpec not found");
 }

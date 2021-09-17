@@ -210,6 +210,8 @@ namespace App {
 			// ^ TODO: this doesn't work at the moment - see also AutoLoadAsDependencyModule.cpp
 
 			Item<bool> UseResourceOverriding = CreateConfigItem(this, "UseResourceOverriding", false);
+			Item<std::vector<std::filesystem::path>> AdditionalSqpackRootDirectories =
+				CreateConfigItem<std::vector<std::filesystem::path>>(this, "AdditionalSqpackRootDirectories");
 			Item<bool> UseDefaultTexToolsModPackSearchDirectory = CreateConfigItem(this, "UseDefaultTexToolsModPackSearchDirectory", true);
 			Item<std::vector<std::filesystem::path>> AdditionalTexToolsModPackSearchDirectories =
 				CreateConfigItem<std::vector<std::filesystem::path>>(this, "AdditionalTexToolsModPackSearchDirectories");

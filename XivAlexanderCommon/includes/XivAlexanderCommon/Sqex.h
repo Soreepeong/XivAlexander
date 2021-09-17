@@ -189,4 +189,25 @@ namespace Sqex {
 			return std::format("FileRandomAccessStream({}, {}, {})", m_file.ResolveName(), m_offset, m_size);
 		}
 	};
+
+	class MemoryRandomAccessStream : public RandomAccessStream {
+		std::vector<uint8_t> m_buffer;
+
+	public:
+		template<typename...Args>
+		MemoryRandomAccessStream(Args...args)
+			: m_buffer(std::forward<Args>(args)...) {
+		}
+
+		[[nodiscard]] uint64_t StreamSize() const override { return m_buffer.size(); }
+
+		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override {
+			if (offset >= m_buffer.size())
+				return 0;
+			if (offset + length > m_buffer.size())
+				length = m_buffer.size() - offset;
+			std::copy_n(&m_buffer[static_cast<size_t>(offset)], static_cast<size_t>(length), static_cast<char*>(buf));
+			return length;
+		}
+	};
 }

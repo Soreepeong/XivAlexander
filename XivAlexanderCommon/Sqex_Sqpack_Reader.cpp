@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Sqex_Sqpack_Reader.h"
 
+#include "Sqex_Sqpack_EntryRawStream.h"
+
 Sqex::Sqpack::Reader::SqDataEntry::SqDataEntry(const SqIndex::FileSegmentEntry& entry)
 	: Index(entry)
 	, Offset(entry.Locator.Offset())
@@ -281,7 +283,7 @@ std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvi
 		}
 	}
 
-	throw EntryNotFoundError(std::format("Entry {} not found", pathSpec));
+	throw std::out_of_range(std::format("Entry {} not found", pathSpec));
 }
 
 std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvider(const SqDataEntry& entry, Win32::File handle) const {
@@ -291,4 +293,12 @@ std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvi
 	return std::make_shared<RandomAccessStreamAsEntryProviderView>(
 		EntryPathSpec(entry.Index.PathHash, entry.Index.NameHash, entry.Index2.FullPathHash),
 		std::make_shared<FileRandomAccessStream>(std::move(handle), entry.Offset, entry.Size));
+}
+
+std::shared_ptr<Sqex::RandomAccessStream> Sqex::Sqpack::Reader::operator[](const EntryPathSpec& pathSpec) const {
+	return std::make_shared<BufferedRandomAccessStream>(std::make_shared<EntryRawStream>(GetEntryProvider(pathSpec)));
+}
+
+std::shared_ptr<Sqex::RandomAccessStream> Sqex::Sqpack::Reader::operator[](const SqDataEntry& entry) const {
+	return std::make_shared<BufferedRandomAccessStream>(std::make_shared<EntryRawStream>(GetEntryProvider(entry)));
 }

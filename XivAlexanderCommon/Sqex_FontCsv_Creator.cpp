@@ -621,7 +621,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 						void(mipmap->ReadStreamIntoVector<char>(0));
 
 						textures->second.emplace_back(std::move(mipmap));
-					} catch (const Sqpack::Reader::EntryNotFoundError&) {
+					} catch (const std::out_of_range&) {
 						break;
 					}
 				}

@@ -163,6 +163,12 @@
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Excel.h">
       <Filter>Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
     </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Excel_Reader.h">
+      <Filter>Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Excel_Generator.h">
+      <Filter>Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -264,6 +270,12 @@
       <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
     <ClCompile Include="Sqex_Excel.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Excel_Reader.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Excel_Generator.cpp">
       <Filter>Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
     </ClCompile>
   </ItemGroup>
