@@ -23,6 +23,7 @@ namespace Sqex::FontCsv {
 
 	protected:
 		class DeviceContextWrapper {
+			const GdiFont* const m_owner;
 			const HDC m_hdc;
 			const CallOnDestruction m_hdcRelease;
 
@@ -44,7 +45,7 @@ namespace Sqex::FontCsv {
 
 		public:
 			const TEXTMETRICW Metrics;
-			DeviceContextWrapper(const LOGFONTW& logfont);
+			DeviceContextWrapper(const GdiFont* owner, const LOGFONTW& logfont);
 			~DeviceContextWrapper();
 
 			[[nodiscard]] HDC GetDC() const { return m_hdc; }

@@ -556,7 +556,7 @@ public:
 			exhHeader.ColumnCount = static_cast<uint16_t>(Columns.size());
 			exhHeader.PageCount = static_cast<uint16_t>(pages.size());
 			exhHeader.LanguageCount = static_cast<uint16_t>(Languages.size());
-			exhHeader.Unknown2 = Unknown2;
+			exhHeader.Unknown2 =  0x4777;  // Unknown2;
 			exhHeader.Depth = Sqex::Excel::Exh::Level2;
 			exhHeader.RowCount = Data.empty() ? 0U : Data.rbegin()->first - Data.begin()->first + 1;  // some ids skip over
 

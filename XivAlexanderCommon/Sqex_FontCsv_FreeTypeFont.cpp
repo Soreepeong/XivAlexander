@@ -6,6 +6,7 @@
 struct Sqex::FontCsv::FreeTypeFont::Implementation {
 	class LibraryAccessor;
 
+	FreeTypeFont* const this_;
 	const Win32::File File;
 	const Win32::FileMapping FileMapping;
 	const Win32::FileMapping::View FileMappingView;
@@ -43,8 +44,9 @@ public:
 
 	CallOnDestruction::Multiple Cleanup;
 
-	Implementation(const std::filesystem::path& path, int faceIndex, float size)
-		: File(Win32::File::Create(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0))
+	Implementation(FreeTypeFont* this_, const std::filesystem::path& path, int faceIndex, float size)
+		: this_(this_)
+		, File(Win32::File::Create(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0))
 		, FileMapping(Win32::FileMapping::Create(File))
 		, FileMappingView(Win32::FileMapping::View::Create(FileMapping))
 		, FaceIndex(faceIndex)
@@ -85,7 +87,7 @@ public:
 
 			try {
 				Succ(FT_Set_Char_Size(face, 0, static_cast<FT_F26Dot6>(64 * m_pImpl->Size), 72, 72));
-				return FtFaceCtxMgr(m_pImpl, face);
+				return FtFaceCtxMgr(m_pImpl->this_, face);
 			} catch (...) {
 				Succ(FT_Done_Face(face));
 				throw;
@@ -115,14 +117,14 @@ void Sqex::FontCsv::FreeTypeFont::ShowFreeTypeErrorAndTerminate(FT_Error error) 
 
 Sqex::FontCsv::FreeTypeFont::FreeTypeFont(const std::filesystem::path& path, int faceIndex, float size, FT_Int32 loadFlags)
 	: m_loadFlags(loadFlags)
-	, m_pImpl(std::make_unique<Implementation>(path, faceIndex, size)) {
+	, m_pImpl(std::make_unique<Implementation>(this, path, faceIndex, size)) {
 }
 
 Sqex::FontCsv::FreeTypeFont::FreeTypeFont(const wchar_t* fontName, float size, DWRITE_FONT_WEIGHT weight, DWRITE_FONT_STRETCH stretch, DWRITE_FONT_STYLE style, FT_Int32 loadFlags)
 	: m_loadFlags(loadFlags)
 	, m_pImpl([&]() {
 		auto [path, faceIndex] = DirectWriteFont(fontName, size, weight, stretch, style).GetFontFile();
-		return std::make_unique<Implementation>(std::move(path), faceIndex, size);
+		return std::make_unique<Implementation>(this, std::move(path), faceIndex, size);
 	}()) {
 }
 
@@ -161,27 +163,27 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::FreeTypeFont::Measure(SSIZE_T x, 
 	return GetFace(c).ToMeasurement(x, y);
 }
 
-Sqex::FontCsv::FreeTypeFont::FtFaceCtxMgr::FtFaceCtxMgr(Implementation* impl, FT_Face face)
-	: m_pImpl(impl)
+Sqex::FontCsv::FreeTypeFont::FtFaceCtxMgr::FtFaceCtxMgr(const FreeTypeFont* impl, FT_Face face)
+	: m_owner(impl)
 	, m_face(face) {
 }
 
 Sqex::FontCsv::FreeTypeFont::FtFaceCtxMgr::~FtFaceCtxMgr() {
 	if (!m_face)
 		return;
-	for (const auto lock = std::lock_guard(m_pImpl->FaceSlotMtx);
-		auto& slot : m_pImpl->FaceSlots) {
+	for (const auto lock = std::lock_guard(m_owner->m_pImpl->FaceSlotMtx);
+		auto& slot : m_owner->m_pImpl->FaceSlots) {
 		if (!slot) {
 			slot = m_face;
 			return;
 		}
 	}
 
-	m_pImpl->GetLibrary().FreeFace(m_face);
+	m_owner->m_pImpl->GetLibrary().FreeFace(m_face);
 }
 
 FT_Library Sqex::FontCsv::FreeTypeFont::FtFaceCtxMgr::GetLibraryUnprotected() const {
-	return m_pImpl->GetLibraryUnprotected();
+	return m_owner->m_pImpl->GetLibraryUnprotected();
 }
 
 Sqex::FontCsv::FreeTypeFont::FtFaceCtxMgr Sqex::FontCsv::FreeTypeFont::GetFace(char32_t c, FT_Int32 additionalFlags) const {
@@ -192,7 +194,7 @@ Sqex::FontCsv::FreeTypeFont::FtFaceCtxMgr Sqex::FontCsv::FreeTypeFont::GetFace(c
 			if (c != std::numeric_limits<decltype(c)>::max())
 				Succ(FT_Load_Char(face, c, m_loadFlags | additionalFlags));
 			slot = nullptr;
-			return FtFaceCtxMgr(m_pImpl.get(), face);
+			return FtFaceCtxMgr(this, face);
 		}
 	}
 

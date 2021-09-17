@@ -7,6 +7,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const GameSource& o
 	j = nlohmann::json::object({
 		{"fdtPath", o.fdtPath},
 		{"texturePath", o.texturePath},
+		{"advanceWidthDelta", o.advanceWidthDelta},
 	});
 	if (!o.indexFile.empty())
 		j.emplace("indexFile", o.indexFile);
@@ -21,6 +22,7 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, GameSource&
 
 	o.fdtPath = j.at("fdtPath").get<std::filesystem::path>();
 	o.texturePath = j.at("texturePath").get<std::filesystem::path>();
+	o.advanceWidthDelta = j.value("advanceWidthDelta", 0);
 }
 
 static int ParseFontWeight(const nlohmann::json& j) {
@@ -77,6 +79,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const DirectWriteSo
 		{"style", o.style},
 		{"stretch", o.stretch},
 		{"measureUsingFreeType", o.measureUsingFreeType},
+		{"advanceWidthDelta", o.advanceWidthDelta},
 	});
 }
 
@@ -95,6 +98,7 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, DirectWrite
 	o.style = j.value("style", DWRITE_FONT_STYLE_NORMAL);
 	o.stretch = j.value("stretch", DWRITE_FONT_STRETCH_NORMAL);
 	o.measureUsingFreeType = j.value("measureUsingFreeType", false);
+	o.advanceWidthDelta = j.value("advanceWidthDelta", 0);
 }
 
 void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const FreeTypeSource& o) {
@@ -129,6 +133,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const FreeTypeSourc
 		{"renderMode", loadFlagsDescription},
 		{"style", o.style},
 		{"stretch", o.stretch},
+		{"advanceWidthDelta", o.advanceWidthDelta},
 	});
 }
 
@@ -145,6 +150,7 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, FreeTypeSou
 	o.weight = ParseFontWeight(j, "weight");
 	o.style = j.value("style", DWRITE_FONT_STYLE_NORMAL);
 	o.stretch = j.value("stretch", DWRITE_FONT_STRETCH_NORMAL);
+	o.advanceWidthDelta = j.value("advanceWidthDelta", 0);
 	o.loadFlags = 0;
 	for (auto& flag : StringSplit<std::string>(j.value("renderMode", ""), "|")) {
 		CharUpperA(&flag[0]);
@@ -190,6 +196,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const GdiSource& o)
 		{"lfQuality", o.lfQuality},
 		{"lfPitchAndFamily", o.lfPitchAndFamily},
 		{"faceName", ToUtf8(o.lfFaceName)},
+		{"advanceWidthDelta", o.advanceWidthDelta},
 	});
 }
 
@@ -209,6 +216,7 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, GdiSource& 
 	o.lfPitchAndFamily = j.value<BYTE>("lfPitchAndFamily", FF_DONTCARE | DEFAULT_PITCH);
 	const auto faceName = FromUtf8(j.at("faceName").get<std::string>());
 	wcsncpy_s(o.lfFaceName, &faceName[0], faceName.size());
+	o.advanceWidthDelta = j.value("advanceWidthDelta", 0);
 }
 
 void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const SingleRange& o) {

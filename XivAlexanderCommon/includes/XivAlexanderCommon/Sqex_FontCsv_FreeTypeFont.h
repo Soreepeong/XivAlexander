@@ -47,24 +47,24 @@ namespace Sqex::FontCsv {
 
 	protected:
 		class FtFaceCtxMgr {
-			Implementation* m_pImpl;
+			const FreeTypeFont* m_owner;
 			FT_Face m_face;
 
 		public:
-			FtFaceCtxMgr(Implementation* impl, FT_Face face);
+			FtFaceCtxMgr(const FreeTypeFont* impl, FT_Face face);
 
 			FtFaceCtxMgr(FtFaceCtxMgr&& r) noexcept
-				: m_pImpl(r.m_pImpl)
+				: m_owner(r.m_owner)
 				, m_face(r.m_face) {
 				r.m_face = nullptr;
-				r.m_pImpl = nullptr;
+				r.m_owner = nullptr;
 			}
 
 			FtFaceCtxMgr& operator=(FtFaceCtxMgr&& r) noexcept {
 				m_face = r.m_face;
-				m_pImpl = r.m_pImpl;
+				m_owner = r.m_owner;
 				r.m_face = nullptr;
-				r.m_pImpl = nullptr;
+				r.m_owner = nullptr;
 				return *this;
 			}
 
@@ -103,7 +103,7 @@ namespace Sqex::FontCsv {
 					.top = a + Ascent() - m_face->glyph->bitmap_top,
 					.right = a + m_face->glyph->bitmap_left + m_face->glyph->bitmap.width,
 					.bottom = a + Ascent() - m_face->glyph->bitmap_top + m_face->glyph->bitmap.rows,
-					.advanceX = m_face->glyph->advance.x / 64,
+					.advanceX = m_face->glyph->advance.x / 64 + m_owner->m_advanceWidthDelta,
 				}.Translate(x, y);
 			}
 		};

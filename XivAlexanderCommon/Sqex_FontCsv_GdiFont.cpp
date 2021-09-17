@@ -15,11 +15,11 @@ struct Sqex::FontCsv::GdiFont::Implementation {
 		return result;
 	}
 
-	Implementation(const LOGFONTW& logfont)
+	Implementation(const GdiFont* owner, const LOGFONTW& logfont)
 		: LogFont(logfont)
-		, Wrappers([&logfont]() {
+		, Wrappers([owner, &logfont]() {
 			std::vector<std::unique_ptr<DeviceContextWrapper>> w;
-			w.emplace_back(std::make_unique<DeviceContextWrapper>(logfont));
+			w.emplace_back(std::make_unique<DeviceContextWrapper>(owner, logfont));
 			return w;
 		}())
 		, TextMetric(Wrappers[0]->Metrics)
@@ -55,7 +55,7 @@ struct Sqex::FontCsv::GdiFont::Implementation {
 };
 
 Sqex::FontCsv::GdiFont::GdiFont(const LOGFONTW& logfont)
-	: m_pImpl(std::make_unique<Implementation>(logfont)) {
+	: m_pImpl(std::make_unique<Implementation>(this, logfont)) {
 }
 
 Sqex::FontCsv::GdiFont::~GdiFont() = default;
@@ -92,8 +92,9 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::GdiFont::Measure(SSIZE_T x, SSIZE
 	return AllocateDeviceContext()->Measure(x, y, c);
 }
 
-Sqex::FontCsv::GdiFont::DeviceContextWrapper::DeviceContextWrapper(const LOGFONTW& logfont)
-	: m_hdc(CreateCompatibleDC(nullptr))
+Sqex::FontCsv::GdiFont::DeviceContextWrapper::DeviceContextWrapper(const GdiFont* owner, const LOGFONTW& logfont)
+	: m_owner(owner)
+	, m_hdc(CreateCompatibleDC(nullptr))
 	, m_hdcRelease([this]() { DeleteDC(m_hdc); })
 	, m_hFont(CreateFontIndirectW(&logfont))
 	, m_fontRelease([this]() { DeleteFont(m_hFont); })
@@ -121,7 +122,7 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::GdiFont::DeviceContextWrapper::Me
 		.top = Metrics.tmAscent - gm.gmptGlyphOrigin.y,
 		.right = static_cast<SSIZE_T>(gm.gmptGlyphOrigin.x) + gm.gmBlackBoxX,
 		.bottom = static_cast<SSIZE_T>(Metrics.tmAscent) - gm.gmptGlyphOrigin.y + gm.gmBlackBoxY,
-		.advanceX = gm.gmCellIncX,
+		.advanceX = gm.gmCellIncX + m_owner->m_advanceWidthDelta,
 	}.Translate(x, y);
 }
 
@@ -155,7 +156,7 @@ Sqex::FontCsv::GdiFont::DeviceContextWrapperContext Sqex::FontCsv::GdiFont::Allo
 				return {this, std::move(i)};
 		}
 	}
-	return {this, std::make_unique<DeviceContextWrapper>(m_pImpl->LogFont)};
+	return {this, std::make_unique<DeviceContextWrapper>(this, m_pImpl->LogFont)};
 }
 
 void Sqex::FontCsv::GdiFont::FreeDeviceContext(std::unique_ptr<DeviceContextWrapper> wrapper) const {

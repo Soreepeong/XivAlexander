@@ -124,9 +124,15 @@ namespace Sqex::FontCsv {
 	class SeCompatibleFont {
 		mutable GlyphMeasurement m_maxBoundingBox = { true };
 
+	protected:
+		mutable int m_advanceWidthDelta = 0;
+
 	public:
 		SeCompatibleFont() = default;
 		virtual ~SeCompatibleFont() = default;
+
+		void AdvanceWidthDelta(int value) { m_advanceWidthDelta = value; }
+		int AdvanceWidthDelta() const { return m_advanceWidthDelta; }
 
 		[[nodiscard]] virtual bool HasCharacter(char32_t) const = 0;
 		[[nodiscard]] virtual float Size() const = 0;
@@ -160,7 +166,7 @@ namespace Sqex::FontCsv {
 		[[nodiscard]] const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& GetKerningTable() const override;
 
 		using SeCompatibleFont::Measure;
-		[[nodiscard]] static GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, const FontTableEntry& entry);
+		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, const FontTableEntry& entry) const;
 		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const override;
 
 	protected:

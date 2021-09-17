@@ -13,6 +13,7 @@ namespace Sqex::FontCsv::CreateConfig {
 		std::filesystem::path indexFile;
 		std::filesystem::path fdtPath;
 		std::filesystem::path texturePath;
+		int advanceWidthDelta{};
 	};
 	void to_json(nlohmann::json& j, const GameSource& o);
 	void from_json(const nlohmann::json& j, GameSource& o);
@@ -27,6 +28,7 @@ namespace Sqex::FontCsv::CreateConfig {
 		DWRITE_RENDERING_MODE renderMode = DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC;
 		DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE_NORMAL;
 		DWRITE_FONT_STRETCH stretch = DWRITE_FONT_STRETCH_NORMAL;
+		int advanceWidthDelta{};
 	};
 	void to_json(nlohmann::json& j, const DirectWriteSource& o);
 	void from_json(const nlohmann::json& j, DirectWriteSource& o);
@@ -40,11 +42,13 @@ namespace Sqex::FontCsv::CreateConfig {
 		DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE_NORMAL;
 		DWRITE_FONT_STRETCH stretch = DWRITE_FONT_STRETCH_NORMAL;
 		uint32_t loadFlags{};
+		int advanceWidthDelta{};
 	};
 	void to_json(nlohmann::json& j, const FreeTypeSource& o);
 	void from_json(const nlohmann::json& j, FreeTypeSource& o);
 
 	struct GdiSource : LOGFONTW {
+		int advanceWidthDelta{};
 	};
 	void to_json(nlohmann::json& j, const GdiSource& o);
 	void from_json(const nlohmann::json& j, GdiSource& o);

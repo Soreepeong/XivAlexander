@@ -273,6 +273,7 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::DirectWriteFont::DrawCharacter(ch
 		bbox.advanceX = m_pImpl->FreeTypeFont->Measure(0, 0, c).advanceX;
 	else
 		bbox.advanceX = m_pImpl->ConvVal<UINT32, SSIZE_T>(glyphMetrics.advanceWidth);
+	bbox.advanceX += m_advanceWidthDelta;
 	if (!bbox.EffectivelyEmpty() && draw) {
 		buf.resize(bbox.Area());
 		Succ(analysis->CreateAlphaTexture(DWRITE_TEXTURE_ALIASED_1x1, bbox.AsMutableRectPtr(), &buf[0], static_cast<uint32_t>(buf.size())));

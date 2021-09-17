@@ -595,7 +595,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 					return *it->second;
 			}
 
-			std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>> newFont;
+			std::shared_ptr<SeCompatibleDrawableFont<uint8_t>> newFont;
 			const auto& inputFontSource = Config.sources.at(name);
 			if (const auto& source = inputFontSource.gameSource; inputFontSource.isGameSource) {
 				auto indexFilePath = source.indexFile.empty() ? GamePath / LR"(sqpack\ffxiv\000000.win32.index)" : std::filesystem::path(source.indexFile);
@@ -628,8 +628,12 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 
 				newFont = std::make_shared<SeDrawableFont<Texture::RGBA4444, uint8_t>>(
 					std::make_shared<ModifiableFontCsvStream>(Sqpack::EntryRawStream(reader->second->GetEntryProvider(source.fdtPath))), textures->second);
+				newFont->AdvanceWidthDelta(source.advanceWidthDelta);
+
 			} else if (const auto& source = inputFontSource.gdiSource; inputFontSource.isGdiSource) {
 				newFont = std::make_shared<GdiDrawingFont<uint8_t>>(source);
+				newFont->AdvanceWidthDelta(source.advanceWidthDelta);
+
 			} else if (const auto& source = inputFontSource.directWriteSource; inputFontSource.isDirectWriteSource) {
 				std::shared_ptr<DirectWriteDrawingFont<uint8_t>> dfont;
 				if (!source.fontFile.empty())
@@ -645,6 +649,8 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				if (source.measureUsingFreeType)
 					dfont->SetMeasureWithFreeType();
 				newFont = std::move(dfont);
+				newFont->AdvanceWidthDelta(source.advanceWidthDelta);
+
 			} else if (const auto& source = inputFontSource.freeTypeSource; inputFontSource.isFreeTypeSource) {
 				if (!source.fontFile.empty())
 					newFont = std::make_shared<FreeTypeDrawingFont<uint8_t>>(
@@ -656,6 +662,8 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 					);
 				else
 					throw std::invalid_argument("Neither of fontFile nor familyName was specified.");
+
+				newFont->AdvanceWidthDelta(source.advanceWidthDelta);
 			} else
 				throw std::invalid_argument("Could not identify which font to load.");
 

@@ -165,14 +165,14 @@ const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& Sqex::FontCsv::SeFont::G
 	return m_pImpl->m_kerningMap;
 }
 
-Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeFont::Measure(SSIZE_T x, SSIZE_T y, const FontTableEntry& entry) {
+Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::SeFont::Measure(SSIZE_T x, SSIZE_T y, const FontTableEntry& entry) const {
 	return {
 		.empty = false,
 		.left = x,
 		.top = y + entry.CurrentOffsetY,
 		.right = x + entry.BoundingWidth,
 		.bottom = y + entry.CurrentOffsetY + entry.BoundingHeight,
-		.advanceX = entry.BoundingWidth + entry.NextOffsetX,
+		.advanceX = entry.BoundingWidth + entry.NextOffsetX + m_advanceWidthDelta,
 	};
 }
 
@@ -282,9 +282,11 @@ const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& Sqex::FontCsv::Cascading
 
 Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::CascadingFont::Measure(SSIZE_T x, SSIZE_T y, char32_t c) const {
 	for (const auto& f : GetFontList()) {
-		const auto currBbox = f->Measure(x, y + Ascent() - f->Ascent(), c);
-		if (!currBbox.empty)
+		auto currBbox = f->Measure(x, y + Ascent() - f->Ascent(), c);
+		if (!currBbox.empty) {
+			currBbox.advanceX += m_advanceWidthDelta;
 			return currBbox;
+		}
 	}
 	return {true};
 }
