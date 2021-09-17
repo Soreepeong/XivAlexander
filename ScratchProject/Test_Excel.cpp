@@ -71,6 +71,7 @@ class ExhReader;
 struct ExdColumn {
 	Sqex::Excel::Exh::ColumnDataType Type;
 	uint8_t ValidSize;
+
 	union {
 		uint8_t Buffer[8];
 		bool boolean;
@@ -84,6 +85,7 @@ struct ExdColumn {
 		int64_t int64;
 		uint64_t uint64;
 	};
+
 	std::string String;
 };
 
@@ -198,7 +200,7 @@ public:
 
 private:
 	ExdColumn TranslateColumn(const Sqex::Excel::Exh::Column& columnDefinition, std::span<const char> fixedData, std::span<const char> fullData) const {
-		ExdColumn column{ .Type = columnDefinition.Type };
+		ExdColumn column{.Type = columnDefinition.Type};
 		switch (column.Type) {
 			case Sqex::Excel::Exh::String: {
 				Sqex::BE<uint32_t> stringOffset;
@@ -250,7 +252,7 @@ private:
 		return column;
 	}
 
-	std::pair<Sqex::Excel::Exd::RowHeader, std::vector<char>> ReadRowRaw(uint32_t index) const {
+	[[nodiscard]] std::pair<Sqex::Excel::Exd::RowHeader, std::vector<char>> ReadRowRaw(uint32_t index) const {
 		const auto it = std::ranges::lower_bound(m_rowLocators, std::make_pair(index, 0U), [](const auto& l, const auto& r) {
 			return l.first < r.first;
 		});
@@ -310,13 +312,18 @@ class Depth2ExhExdCreator {
 public:
 	const std::string Name;
 	const std::vector<Sqex::Excel::Exh::Column> Columns;
+	const int Unknown2;
+	const size_t DivideUnit;
 	const uint32_t FixedDataSize;
 	std::map<uint32_t, std::map<Sqex::Language, std::vector<ExdColumn>>> Data;
+	std::vector<Sqex::Language> Languages;
 
-	Depth2ExhExdCreator(std::string name, std::vector<Sqex::Excel::Exh::Column> columns)
+	Depth2ExhExdCreator(std::string name, std::vector<Sqex::Excel::Exh::Column> columns, int unknown2, size_t divideUnit = SIZE_MAX)
 		: Name(std::move(name))
 		, Columns(std::move(columns))
-		, FixedDataSize([&columns = Columns]() -> uint32_t {
+		, Unknown2(unknown2)
+		, DivideUnit(divideUnit)
+		, FixedDataSize([&columns = Columns]() {
 			uint16_t size = 0;
 			for (const auto& col : columns) {
 				switch (col.Type) {
@@ -355,155 +362,220 @@ public:
 						throw std::invalid_argument(std::format("Invald column type {}", static_cast<uint32_t>(col.Type)));
 				}
 			}
-			return size;
+			return Sqex::Align<uint32_t>(size, 4).Alloc;
 		}()) {
 	}
 
-	void AddRow(uint32_t id, Sqex::Language language, std::vector<ExdColumn> row) {
-		Data[id][language] = std::move(row);
+	void AddLanguage(Sqex::Language language) {
+		if (const auto it = std::ranges::lower_bound(Languages, language);
+			it == Languages.end() || *it != language)
+			Languages.insert(it, language);
 	}
 
-	std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>> Compile() {
-		std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>> result;
+	void SetRow(uint32_t id, Sqex::Language language, std::vector<ExdColumn> row, bool replace = true) {
+		if (!row.empty() && row.size() != Columns.size())
+			throw std::invalid_argument("bad column data");
+		auto& target = Data[id][language];
+		if (target.empty() || replace)
+			target = std::move(row);
+	}
 
-		std::set<Sqex::Language> languages;
-		for (const auto& v1 : Data | std::views::values)
-			for (const auto& v2 : v1 | std::views::keys)
-				languages.insert(v2);
-
-		Sqex::Excel::Exh::Header exhHeader;
-		const auto exhHeaderSpan = std::span(reinterpret_cast<char*>(&exhHeader), sizeof exhHeader);
-		memcpy(exhHeader.Signature, Sqex::Excel::Exh::Header::Signature_Value, 4);
-		exhHeader.Version = Sqex::Excel::Exh::Header::Version_Value;
-		exhHeader.FixedDataSize = FixedDataSize;
-		exhHeader.ColumnCount = static_cast<uint16_t>(Columns.size());
-		exhHeader.PageCount = 1;
-		exhHeader.LanguageCount = static_cast<uint16_t>(languages.size());
-		exhHeader.Unknown2 = 0;  // TODO: ?
-		exhHeader.Depth = Sqex::Excel::Exh::Level2;
-
-		// TODO: which of the following is right?
-		exhHeader.RowCount = static_cast<uint32_t>(Data.size());
-		exhHeader.RowCount = Data.empty() ? 0U : Data.rbegin()->first;
-
+	std::pair<Sqex::Sqpack::EntryPathSpec, std::vector<char>> Flush(uint32_t startId, std::map<uint32_t, std::vector<char>> rows, Sqex::Language language) {
 		Sqex::Excel::Exd::Header exdHeader;
 		const auto exdHeaderSpan = std::span(reinterpret_cast<char*>(&exdHeader), sizeof exdHeader);
 		memcpy(exdHeader.Signature, Sqex::Excel::Exd::Header::Signature_Value, 4);
 		exdHeader.Version = Sqex::Excel::Exd::Header::Version_Value;
 
-		for (const auto language : languages) {
-			std::map<uint32_t, std::vector<char>> rows;
-			size_t dataSize = 0;
-			for (auto& [id, languageData] : Data) {
-				std::vector<char> row(FixedDataSize);
-				auto& columns = languageData.at(language);
-				for (size_t i = 0; i < columns.size(); ++i) {
-					auto& column = columns[i];
-					const auto& columnDefinition = Columns[i];
-					switch (columnDefinition.Type) {
-						case Sqex::Excel::Exh::String: {
-							const auto stringOffset = Sqex::BE(static_cast<uint32_t>(row.size()));
-							std::copy_n(reinterpret_cast<const char*>(&stringOffset), 4, &row[columnDefinition.Offset]);
-							row.insert(row.end(), column.String.begin(), column.String.end());
-							row.push_back(0);
-							column.ValidSize = 0;
-							break;
-						}
+		size_t dataSize = 0;
+		for (const auto& row : rows | std::views::values)
+			dataSize += row.size();
+		exdHeader.DataSize = static_cast<uint32_t>(dataSize);
 
-						case Sqex::Excel::Exh::Bool:
-						case Sqex::Excel::Exh::Int8:
-						case Sqex::Excel::Exh::UInt8:
-							column.ValidSize = 1;
-							break;
-
-						case Sqex::Excel::Exh::Int16:
-						case Sqex::Excel::Exh::UInt16:
-							column.ValidSize = 2;
-							break;
-
-						case Sqex::Excel::Exh::Int32:
-						case Sqex::Excel::Exh::UInt32:
-						case Sqex::Excel::Exh::Float32:
-							column.ValidSize = 4;
-							break;
-
-						case Sqex::Excel::Exh::Int64:
-						case Sqex::Excel::Exh::UInt64:
-							column.ValidSize = 8;
-							break;
-
-						case Sqex::Excel::Exh::PackedBool0:
-						case Sqex::Excel::Exh::PackedBool1:
-						case Sqex::Excel::Exh::PackedBool2:
-						case Sqex::Excel::Exh::PackedBool3:
-						case Sqex::Excel::Exh::PackedBool4:
-						case Sqex::Excel::Exh::PackedBool5:
-						case Sqex::Excel::Exh::PackedBool6:
-						case Sqex::Excel::Exh::PackedBool7:
-							column.ValidSize = 0;
-							if (column.boolean)
-								row[columnDefinition.Offset] |= (1 << (static_cast<int>(column.Type) - static_cast<int>(Sqex::Excel::Exh::PackedBool0)));
-							else
-								row[columnDefinition.Offset] &= ~((1 << (static_cast<int>(column.Type) - static_cast<int>(Sqex::Excel::Exh::PackedBool0))));
-							break;
-					}
-					if (column.ValidSize) {
-						std::copy_n(&column.Buffer[0] , column.ValidSize, &row[columnDefinition.Offset]);
-						std::reverse(&row[columnDefinition.Offset], &row[columnDefinition.Offset + column.ValidSize]);
-					}
-				}
-				dataSize += row.size();
-				rows.emplace(id, std::move(row));
-			}
-			exdHeader.DataSize = static_cast<uint32_t>(dataSize);
-
-			std::vector<Sqex::Excel::Exd::RowLocator> locators;
-			auto offsetAccumulator = static_cast<uint32_t>(sizeof exdHeader + rows.size() * sizeof Sqex::Excel::Exd::RowLocator);
-			for (const auto& [id, row] : rows) {
-				locators.emplace_back(id, offsetAccumulator);
-				offsetAccumulator += static_cast<uint32_t>(row.size());
-			}
-			const auto locatorSpan = std::span(reinterpret_cast<char*>(&locators[0]), std::span(locators).size_bytes());
-			exdHeader.IndexSize = static_cast<uint32_t>(locatorSpan.size_bytes());
-
-			std::vector<char> exdFile(offsetAccumulator);
-			auto ptr = &exdFile[0];
-			ptr = std::copy_n(&exdHeaderSpan[0], exdHeaderSpan.size_bytes(), ptr);
-			ptr = std::copy_n(&locatorSpan[0], locatorSpan.size_bytes(), ptr);
-			for (const auto& row : rows | std::views::values)
-				ptr = std::copy_n(&row[0], row.size(), ptr);
-
-			const auto* languageCode = "";
-			switch (language) {
-				case Sqex::Language::Unspecified:
-					break;
-				case Sqex::Language::Japanese:
-					languageCode = "_ja";
-					break;
-				case Sqex::Language::English:
-					languageCode = "_en";
-					break;
-				case Sqex::Language::German:
-					languageCode = "_de";
-					break;
-				case Sqex::Language::French:
-					languageCode = "_fr";
-					break;
-				case Sqex::Language::ChineseSimplified:
-					languageCode = "_chs";
-					break;
-				case Sqex::Language::ChineseTraditional:
-					languageCode = "_cht";
-					break;
-				case Sqex::Language::Korean:
-					languageCode = "_ko";
-					break;
-				default:
-					throw std::invalid_argument("Invalid language");
-			}
-			result.emplace(std::format("exd/{}_0{}.exd", Name, languageCode), std::move(exdFile));
-			// TODO: do something with "result"
+		std::vector<Sqex::Excel::Exd::RowLocator> locators;
+		auto offsetAccumulator = static_cast<uint32_t>(sizeof exdHeader + rows.size() * sizeof Sqex::Excel::Exd::RowLocator);
+		for (const auto& [id, row] : rows) {
+			locators.emplace_back(id, offsetAccumulator);
+			offsetAccumulator += static_cast<uint32_t>(row.size());
 		}
+		const auto locatorSpan = std::span(reinterpret_cast<char*>(&locators[0]), std::span(locators).size_bytes());
+		exdHeader.IndexSize = static_cast<uint32_t>(locatorSpan.size_bytes());
+
+		std::vector<char> exdFile;
+		exdFile.reserve(offsetAccumulator);
+		std::copy_n(&exdHeaderSpan[0], exdHeaderSpan.size_bytes(), std::back_inserter(exdFile));
+		std::copy_n(&locatorSpan[0], locatorSpan.size_bytes(), std::back_inserter(exdFile));
+		for (const auto& row : rows | std::views::values)
+			std::copy_n(&row[0], row.size(), std::back_inserter(exdFile));
+
+		const auto* languageCode = "";
+		switch (language) {
+			case Sqex::Language::Unspecified:
+				break;
+			case Sqex::Language::Japanese:
+				languageCode = "_ja";
+				break;
+			case Sqex::Language::English:
+				languageCode = "_en";
+				break;
+			case Sqex::Language::German:
+				languageCode = "_de";
+				break;
+			case Sqex::Language::French:
+				languageCode = "_fr";
+				break;
+			case Sqex::Language::ChineseSimplified:
+				languageCode = "_chs";
+				break;
+			case Sqex::Language::ChineseTraditional:
+				languageCode = "_cht";
+				break;
+			case Sqex::Language::Korean:
+				languageCode = "_ko";
+				break;
+			default:
+				throw std::invalid_argument("Invalid language");
+		}
+		return std::make_pair(
+			Sqex::Sqpack::EntryPathSpec(std::format("exd/{}_{}{}.exd", Name, startId, languageCode)),
+			std::move(exdFile)
+		);
+	}
+
+	std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>> Compile() {
+		std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>> result;
+
+		std::vector<std::pair<Sqex::Excel::Exh::Pagination, std::vector<uint32_t>>> pages;
+		for (const auto id : Data | std::views::keys) {
+			if (pages.empty()) {
+				pages.emplace_back();
+			} else if (pages.back().second.size() == DivideUnit) {
+				pages.back().first.RowCount = pages.back().second.back() - pages.back().second.front() + 1;
+				pages.emplace_back();
+			}
+
+			if (pages.back().second.empty())
+				pages.back().first.StartId = id;
+			pages.back().second.push_back(id);
+		}
+		pages.back().first.RowCount = pages.back().second.back() - pages.back().second.front() + 1;
+
+		for (const auto& [page, ids] : pages) {
+			for (const auto language : Languages) {
+				std::map<uint32_t, std::vector<char>> rows;
+				for (const auto id : ids) {
+					std::vector<char> row(sizeof Sqex::Excel::Exd::RowHeader + FixedDataSize);
+
+					const auto fixedDataOffset = sizeof Sqex::Excel::Exd::RowHeader;
+					const auto variableDataOffset = fixedDataOffset + FixedDataSize;
+
+					auto& rowSet = Data[id];
+					if (rowSet.find(language) == rowSet.end())
+						continue;
+
+					auto& columns = rowSet[language];
+					if (columns.empty())
+						continue;
+
+					for (size_t i = 0; i < columns.size(); ++i) {
+						auto& column = columns[i];
+						const auto& columnDefinition = Columns[i];
+						switch (columnDefinition.Type) {
+							case Sqex::Excel::Exh::String: {
+								const auto stringOffset = Sqex::BE(static_cast<uint32_t>(row.size() - variableDataOffset));
+								std::copy_n(reinterpret_cast<const char*>(&stringOffset), 4, &row[fixedDataOffset + columnDefinition.Offset]);
+								row.insert(row.end(), column.String.begin(), column.String.end());
+								row.push_back(0);
+								column.ValidSize = 0;
+								break;
+							}
+
+							case Sqex::Excel::Exh::Bool:
+							case Sqex::Excel::Exh::Int8:
+							case Sqex::Excel::Exh::UInt8:
+								column.ValidSize = 1;
+								break;
+
+							case Sqex::Excel::Exh::Int16:
+							case Sqex::Excel::Exh::UInt16:
+								column.ValidSize = 2;
+								break;
+
+							case Sqex::Excel::Exh::Int32:
+							case Sqex::Excel::Exh::UInt32:
+							case Sqex::Excel::Exh::Float32:
+								column.ValidSize = 4;
+								break;
+
+							case Sqex::Excel::Exh::Int64:
+							case Sqex::Excel::Exh::UInt64:
+								column.ValidSize = 8;
+								break;
+
+							case Sqex::Excel::Exh::PackedBool0:
+							case Sqex::Excel::Exh::PackedBool1:
+							case Sqex::Excel::Exh::PackedBool2:
+							case Sqex::Excel::Exh::PackedBool3:
+							case Sqex::Excel::Exh::PackedBool4:
+							case Sqex::Excel::Exh::PackedBool5:
+							case Sqex::Excel::Exh::PackedBool6:
+							case Sqex::Excel::Exh::PackedBool7:
+								column.ValidSize = 0;
+								if (column.boolean)
+									row[fixedDataOffset + columnDefinition.Offset] |= (1 << (static_cast<int>(column.Type) - static_cast<int>(Sqex::Excel::Exh::PackedBool0)));
+								else
+									row[fixedDataOffset + columnDefinition.Offset] &= ~((1 << (static_cast<int>(column.Type) - static_cast<int>(Sqex::Excel::Exh::PackedBool0))));
+								break;
+						}
+						if (column.ValidSize) {
+							const auto target = std::span(row).subspan(fixedDataOffset + columnDefinition.Offset, column.ValidSize);
+							std::copy_n(&column.Buffer[0], column.ValidSize, &target[0]);
+							// ReSharper disable once CppUseRangeAlgorithm
+							std::reverse(target.begin(), target.end());
+						}
+					}
+					row.resize(Sqex::Align<size_t>(row.size(), 4));
+
+					auto& rowHeader = *reinterpret_cast<Sqex::Excel::Exd::RowHeader*>(&row[0]);
+					rowHeader.DataSize = static_cast<uint32_t>(row.size() - sizeof rowHeader);
+					rowHeader.SubRowCount = 1;
+
+					rows.emplace(id, std::move(row));
+				}
+				if (rows.empty())
+					continue;
+				result.emplace(Flush(page.StartId, std::move(rows), language));
+			}
+		}
+
+		{
+			Sqex::Excel::Exh::Header exhHeader;
+			const auto exhHeaderSpan = std::span(reinterpret_cast<char*>(&exhHeader), sizeof exhHeader);
+			memcpy(exhHeader.Signature, Sqex::Excel::Exh::Header::Signature_Value, 4);
+			exhHeader.Version = Sqex::Excel::Exh::Header::Version_Value;
+			exhHeader.FixedDataSize = static_cast<uint16_t>(FixedDataSize);
+			exhHeader.ColumnCount = static_cast<uint16_t>(Columns.size());
+			exhHeader.PageCount = static_cast<uint16_t>(pages.size());
+			exhHeader.LanguageCount = static_cast<uint16_t>(Languages.size());
+			exhHeader.Unknown2 = Unknown2;
+			exhHeader.Depth = Sqex::Excel::Exh::Level2;
+			exhHeader.RowCount = Data.empty() ? 0U : Data.rbegin()->first - Data.begin()->first + 1;  // some ids skip over
+
+			const auto columnSpan = std::span(reinterpret_cast<const char*>(&Columns[0]), std::span(Columns).size_bytes());
+			std::vector<Sqex::Excel::Exh::Pagination> paginations;
+			for (const auto& pagination : pages | std::views::keys)
+				paginations.emplace_back(pagination);
+			const auto paginationSpan = std::span(reinterpret_cast<const char*>(&paginations[0]), std::span(paginations).size_bytes());
+			const auto languageSpan = std::span(reinterpret_cast<const char*>(&Languages[0]), std::span(Languages).size_bytes());
+
+			std::vector<char> exhFile;
+			exhFile.reserve(exhHeaderSpan.size_bytes() + columnSpan.size_bytes() + paginationSpan.size_bytes() + languageSpan.size_bytes());
+			std::copy_n(&exhHeaderSpan[0], exhHeaderSpan.size_bytes(), std::back_inserter(exhFile));
+			std::copy_n(&columnSpan[0], columnSpan.size_bytes(), std::back_inserter(exhFile));
+			std::copy_n(&paginationSpan[0], paginationSpan.size_bytes(), std::back_inserter(exhFile));
+			std::copy_n(&languageSpan[0], languageSpan.size_bytes(), std::back_inserter(exhFile));
+			result.emplace(std::format("exd/{}.exh", Name), std::move(exhFile));
+		}
+
 		return result;
 	}
 };
@@ -511,37 +583,89 @@ public:
 int main() {
 	system("chcp 65001");
 	const Sqex::Sqpack::Reader reader(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\0a0000.win32.index)");
+	const Sqex::Sqpack::Reader readerK(LR"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game\sqpack\ffxiv\0a0000.win32.index)");
 	const auto exl = ExlReader(Sqex::Sqpack::EntryRawStream(reader.GetEntryProvider("exd/root.exl")));
 	for (const auto& x : exl | std::views::keys) {
+		// if (x != "Action") continue;
+		// if (x != "Lobby") continue;
+		// if (x != "Item") continue;
+		// if (x != "Lobby" && x != "Item") continue;
+		// if (x.find('/') != std::string::npos) continue;
+
 		const auto exhProvider = reader.GetEntryProvider(std::format("exd/{}.exh", x));
 		const auto exhStream = Sqex::Sqpack::EntryRawStream(exhProvider);
 		const auto exh = ExhReader(x, exhStream);
 		if (exh.Header.Depth != Sqex::Excel::Exh::Depth::Level2)
 			continue;
 
-		Depth2ExhExdCreator creator(x, *exh.Columns);
+		// std::cout << std::format("{:04x}\t{:x}\t{:x}\t{:x}\t{}\n", exh.Header.Unknown2.Value(), exh.Header.PageCount.Value(), exh.Header.RowCount.Value(), exl[x], x); continue;
 
-		for (const auto language : exh.Languages) {
-			if (language != Sqex::Language::English && language != Sqex::Language::Japanese)
-				continue;
-			for (const auto& page : exh.Pages) {
-				const auto pathSpec = exh.GetDataPathSpec(page, language);
+		if (std::ranges::find(exh.Languages, Sqex::Language::Unspecified) != exh.Languages.end())
+			continue;
+
+		std::cout << std::format("Processing {} (id {}, unk2 0x{:04x})...\n", x, exl[x], exh.Header.Unknown2.Value());
+
+		Depth2ExhExdCreator creator(x, *exh.Columns, exh.Header.Unknown2);
+		for (const auto language : exh.Languages)
+			creator.AddLanguage(language);
+
+		for (const auto& page : exh.Pages) {
+			const auto englishPathSpec = exh.GetDataPathSpec(page, Sqex::Language::English);
+			const auto germanPathSpec = exh.GetDataPathSpec(page, Sqex::Language::German);
+			const auto japanesePathSpec = exh.GetDataPathSpec(page, Sqex::Language::Japanese);
+			const auto koreanPathSpec = exh.GetDataPathSpec(page, Sqex::Language::Korean);
+			try {
+				const auto englishExd = std::make_unique<ExdReader>(exh, std::make_shared<Sqex::BufferedRandomAccessStream>(std::make_shared<Sqex::Sqpack::EntryRawStream>(reader.GetEntryProvider(englishPathSpec))));
+				const auto germanExd = std::make_unique<ExdReader>(exh, std::make_shared<Sqex::BufferedRandomAccessStream>(std::make_shared<Sqex::Sqpack::EntryRawStream>(reader.GetEntryProvider(germanPathSpec))));
+				const auto japaneseExd = std::make_unique<ExdReader>(exh, std::make_shared<Sqex::BufferedRandomAccessStream>(std::make_shared<Sqex::Sqpack::EntryRawStream>(reader.GetEntryProvider(japanesePathSpec))));
+				std::unique_ptr<ExdReader> koreanExd;
 				try {
-					const auto entryStream = std::make_shared<Sqex::Sqpack::EntryRawStream>(reader.GetEntryProvider(pathSpec));
-					const auto bufferedStream = std::make_shared<Sqex::BufferedRandomAccessStream>(entryStream);
-					const auto exd = ExdReader(exh, bufferedStream);
-					for (const auto i : exd.GetIds())
-						creator.AddRow(i, language, exd.ReadDepth2(i));
+					koreanExd = std::make_unique<ExdReader>(exh, std::make_shared<Sqex::BufferedRandomAccessStream>(std::make_shared<Sqex::Sqpack::EntryRawStream>(readerK.GetEntryProvider(koreanPathSpec))));
 				} catch (const Sqex::Sqpack::Reader::EntryNotFoundError&) {
-					std::cout << std::format("Entry {} not found\n", pathSpec);
+					std::cout << std::format("Entry {} not found\n", koreanPathSpec);
 				}
+				for (const auto i : englishExd->GetIds()) {
+					auto englishRow = englishExd->ReadDepth2(i);
+					auto germanRow = germanExd->ReadDepth2(i);
+					auto japaneseRow = japaneseExd->ReadDepth2(i);
+					std::vector<ExdColumn> koreanRow;
+					if (koreanExd) {
+						try {
+							koreanRow = koreanExd->ReadDepth2(i);
+						} catch(const std::out_of_range&) {
+							// pass
+						}
+					}
+
+					for (size_t i = 0; i < japaneseRow.size(); ++i) {
+						if (japaneseRow[i].Type != Sqex::Excel::Exh::String)
+							continue;
+						if (germanRow[i].String == englishRow[i].String && japaneseRow[i].String == englishRow[i].String)
+							continue;
+
+						if (!koreanRow.empty() && !koreanRow[i].String.empty())
+							japaneseRow[i].String = koreanRow[i].String;
+						else
+							japaneseRow[i].String = englishRow[i].String;
+					}
+
+					creator.SetRow(i, Sqex::Language::Japanese, std::move(japaneseRow));
+				}
+			} catch (const Sqex::Sqpack::Reader::EntryNotFoundError&) {
+				std::cout << std::format("Entry {} not found\n", englishPathSpec);
 			}
 		}
 
 		if (creator.Data.empty())
 			continue;
 
-		creator.Compile();
+		for (const auto& [path, contents] : creator.Compile()) {
+			const auto targetPath = std::filesystem::path(LR"(Z:\scratch\exd)") / path.Original;
+			create_directories(targetPath.parent_path());
+
+			Utils::Win32::File::Create(targetPath, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0)
+				.Write(0, std::span(contents));
+		}
 	}
 
 	return 0;

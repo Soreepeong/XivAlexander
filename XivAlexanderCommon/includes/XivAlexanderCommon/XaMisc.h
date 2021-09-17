@@ -57,6 +57,7 @@ namespace Utils {
 	public:
 		BE(T defaultValue = DefaultValue)
 			: value(defaultValue) {
+			std::reverse(buf, buf + sizeof T);
 		}
 
 		operator T() const {

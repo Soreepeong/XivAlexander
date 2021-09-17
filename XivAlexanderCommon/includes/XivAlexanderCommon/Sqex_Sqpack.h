@@ -230,8 +230,13 @@ namespace Sqex::Sqpack {
 			LE<uint32_t> HeaderSize;
 			LE<FileEntryType> Type;
 			LE<uint32_t> DecompressedSize;
+			
+			// See: https://github.com/reusu/FFXIVChnTextPatch/blob/08826ee37acd7461fc7a90f829ac1faee1f68933/src/main/java/name/yumao/ffxiv/chn/builder/BinaryBlockBuilder.java#L78
+			// Unknown1 does contain a value in original sqpack files, but the game works nonetheless when 0 is given.
 			LE<uint32_t> Unknown1;
-			LE<uint32_t> BlockBufferSize;
+			// (sizeof (aligned size of this entry) - sizeof FileEntryHeader) / 128
+			LE<uint32_t> AlignedUnitAllocationCount;
+
 			LE<uint32_t> BlockCountOrVersion;
 		};
 
