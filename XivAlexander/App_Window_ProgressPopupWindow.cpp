@@ -32,7 +32,7 @@ App::Window::ProgressPopupWindow::ProgressPopupWindow(HWND hParentWindow)
 	, m_hParentWindow(hParentWindow)
 	, m_hMessage(CreateWindowExW(0, L"STATIC", nullptr, WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, m_hWnd, nullptr, Dll::Module(), nullptr))
 	, m_hProgressBar(CreateWindowExW(0, PROGRESS_CLASSW, nullptr, WS_CHILD | WS_VISIBLE | PBS_MARQUEE, 0, 0, 0, 0, m_hWnd, nullptr, Dll::Module(), nullptr))
-	, m_hCancelButton(CreateWindowExW(0, L"BUTTON", Utils::Win32::MB_GetString(IDCANCEL).c_str(), WS_CHILD | WS_VISIBLE | WS_TABSTOP, 0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(IDCANCEL), Dll::Module(), nullptr))
+	, m_hCancelButton(CreateWindowExW(0, L"BUTTON", Utils::Win32::MB_GetString(IDCANCEL - 1).c_str(), WS_CHILD | WS_VISIBLE | WS_TABSTOP, 0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(IDCANCEL), Dll::Module(), nullptr))
 	, m_hCancelEvent(Utils::Win32::Event::Create()) {
 	SetWindowSubclass(m_hProgressBar, [](HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR) -> LRESULT {
 		if (uMsg == WM_NCHITTEST)

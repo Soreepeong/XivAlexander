@@ -15,6 +15,7 @@
 #include "App_Misc_Logger.h"
 #include "App_Window_ProgressPopupWindow.h"
 #include "DllMain.h"
+#include "XivAlexanderCommon/XivAlex.h"
 
 std::weak_ptr<App::Feature::GameResourceOverrider::Implementation> App::Feature::GameResourceOverrider::s_pImpl;
 
@@ -503,8 +504,10 @@ struct App::Feature::GameResourceOverrider::Implementation {
 	bool SetUpVirtualFileFromExternalSqpacks(Sqex::Sqpack::Creator& creator, const std::filesystem::path& indexFile) {
 		auto changed = false;
 
+		const auto [region, _] = XivAlex::ResolveGameReleaseRegion();
+
 		if (creator.DatName == "0a0000") {
-			const auto cachedDir = m_config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / creator.DatExpac / creator.DatName;
+			const auto cachedDir = m_config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / region / creator.DatExpac / creator.DatName;
 			if (!(exists(cachedDir / "TTMPD.mpd") && exists(cachedDir / "TTMPL.mpl"))) {
 				
 				std::map<std::string, int> exhTable;
@@ -549,6 +552,11 @@ struct App::Feature::GameResourceOverrider::Implementation {
 							pool.SubmitWork([&]() {
 								if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 									return;
+
+								if (region == L"KR" && exhName == "Addon") {
+									progress += ProgressMaxPerTask;
+									return;
+								}
 
 								size_t progressIndex = 0;
 								std::vector<uint64_t> progresses(readers.size() + 2);
@@ -617,21 +625,48 @@ struct App::Feature::GameResourceOverrider::Implementation {
 													const auto exdReader = Sqex::Excel::ExdReader(exhReaderCurrent, (*reader)[exdPathSpec]);
 													exCreator->AddLanguage(language);
 													for (const auto i : exdReader.GetIds()) {
-														auto cols = exCreator->GetRow(i, Sqex::Language::Japanese);
-														auto colRef2 = exCreator->GetRow(i, Sqex::Language::English);
-														auto colRef3 = exCreator->GetRow(i, Sqex::Language::German);
-														auto cols2 = exdReader.ReadDepth2(i);
-														for (size_t j = 0; j < cols.size() && j < cols2.size(); ++j) {
-															if (cols[j].Type != Sqex::Excel::Exh::String)
-																continue;
-															if (cols[j].String == colRef2[j].String && cols[j].String == colRef3[j].String)
-																continue;
-															if (cols2[j].String.empty())
-																continue;
-															cols[j].String = cols2[j].String;
+														auto newCol = exdReader.ReadDepth2(i);
+														if (region == L"KR") {
+															auto cols = exCreator->GetRow(i, Sqex::Language::Korean);
+															for (size_t j = 0; j < cols.size() && j < newCol.size(); ++j) {
+																if (cols[j].Type != Sqex::Excel::Exh::String)
+																	continue;
+																if (newCol[j].String.empty())
+																	continue;
+																if (!std::ranges::any_of(Utils::FromUtf8(cols[j].String), [](const auto& c) {
+																	const auto uc = static_cast<uint32_t>(c);
+																	return 44032 <= uc && uc <= 55203;
+																}))
+																	continue;
+																cols[j].String = newCol[j].String;
+															}
+															exCreator->SetRow(i, language, cols);
+														} else if (region == L"JP") {
+															auto cols = exCreator->GetRow(i, Sqex::Language::Japanese);
+															auto colRef2 = exCreator->GetRow(i, Sqex::Language::English);
+															auto colRef3 = exCreator->GetRow(i, Sqex::Language::German);
+															for (size_t j = 0; j < cols.size() && j < newCol.size(); ++j) {
+																if (cols[j].Type != Sqex::Excel::Exh::String)
+																	continue;
+																if (exhName == "Addon") {
+																	cols[j].String = newCol[j].String;
+																	continue;
+																}
+																if (cols[j].String == colRef2[j].String && cols[j].String == colRef3[j].String && cols[j].String == newCol[j].String)
+																	continue;
+
+																if (colRef2[j].String == newCol[j].String)
+																	cols[j].String = colRef2[j].String;
+																else
+																	cols[j].String = std::format("{} | {}", newCol[j].String, colRef2[j].String);
+																//if (colRef2[j].String == cols2[j].String)
+																//	cols[j].String = std::format("({}.{}: {})", exhName, i, colRef2[j].String);
+																//else
+																//	cols[j].String = std::format("({}.{}: {} / {})", exhName, i, colRef2[j].String, cols2[j].String);
+															}
+															exCreator->SetRow(i, language, cols);
+															// exCreator->SetRow(i, Sqex::Language::Japanese, cols);
 														}
-														exCreator->SetRow(i, language, cols);
-														// exCreator->SetRow(i, Sqex::Language::Japanese, cols);
 													}
 												} catch (const std::out_of_range&) {
 													// pass
@@ -873,7 +908,9 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				if (!exists(fontConfigPath))
 					throw std::runtime_error(std::format("=> Font config file was not found: ", fontConfigPathStr));
 
-				const auto cachedDir = m_config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / creator.DatExpac / creator.DatName;
+				const auto [region, _] = XivAlex::ResolveGameReleaseRegion();
+
+				const auto cachedDir = m_config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / region / creator.DatExpac / creator.DatName;
 				if (!(exists(cachedDir / "TTMPD.mpd") && exists(cachedDir / "TTMPL.mpl"))) {
 					create_directories(cachedDir);
 
