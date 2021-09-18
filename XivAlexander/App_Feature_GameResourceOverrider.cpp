@@ -1023,7 +1023,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 
 											const auto provider = Sqex::Sqpack::MemoryBinaryEntryProvider(entryPathSpec, std::make_shared<Sqex::MemoryRandomAccessStream>(std::move(*reinterpret_cast<std::vector<uint8_t>*>(&data))));
 											const auto len = provider.StreamSize();
-											const auto dv = provider.ReadStreamIntoVector<char>(0, len);
+											const auto dv = provider.ReadStreamIntoVector<char>(0, static_cast<SSIZE_T>(len));
 
 											if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 												return;
@@ -1311,7 +1311,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 									else
 										provider = std::make_shared<Sqex::Sqpack::MemoryBinaryEntryProvider>(entryPathSpec, stream);
 									const auto len = provider->StreamSize();
-									const auto dv = provider->ReadStreamIntoVector<char>(0, len);
+									const auto dv = provider->ReadStreamIntoVector<char>(0, static_cast<SSIZE_T>(len));
 									progress += stream->StreamSize();
 
 									if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)

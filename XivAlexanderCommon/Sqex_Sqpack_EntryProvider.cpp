@@ -703,7 +703,7 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 	
 	ZlibReusableDeflater deflater(Z_BEST_COMPRESSION, Z_DEFLATED, -15);
 	std::vector<uint8_t> entryBody;
-	entryBody.reserve(stream.StreamSize());
+	entryBody.reserve(static_cast<SSIZE_T>(stream.StreamSize()));
 
 	uint32_t blockOffsetCounter = 0;
 	for (size_t i = 0; i < mipmapOffsets.size(); ++i) {
@@ -786,12 +786,12 @@ uint64_t Sqex::Sqpack::HotSwappableEntryProvider::ReadStreamPartial(uint64_t off
 	if (offset + length > m_reservedSize)
 		length = m_reservedSize - offset;
 
-	const auto target = std::span(static_cast<uint8_t*>(buf), length);
+	const auto target = std::span(static_cast<uint8_t*>(buf), static_cast<SSIZE_T>(length));
 	const auto underlyingStreamLength = m_stream ? m_stream->StreamSize() : EmptyEntryProvider::StreamSize();
 	const auto dataLength = offset < underlyingStreamLength ? std::min(length, underlyingStreamLength - offset) : 0;
 
 	if (offset < underlyingStreamLength) {
-		const auto dataTarget = target.subspan(0, dataLength);
+		const auto dataTarget = target.subspan(0, static_cast<SSIZE_T>(dataLength));
 		const auto readLength = m_stream
 			? m_stream->ReadStreamPartial(offset, &dataTarget[0], dataTarget.size_bytes())
 			: EmptyEntryProvider::ReadStreamPartial(offset, &dataTarget[0], dataTarget.size_bytes());
@@ -800,7 +800,7 @@ uint64_t Sqex::Sqpack::HotSwappableEntryProvider::ReadStreamPartial(uint64_t off
 			throw std::logic_error("HotSwappableEntryProvider underlying data read fail");
 	}
 	if (offset + length > underlyingStreamLength) {
-		const auto padTarget = target.subspan(dataLength);
+		const auto padTarget = target.subspan(static_cast<SSIZE_T>(dataLength));
 		void(std::ranges::fill(padTarget, 0));
 	}
 	return length;

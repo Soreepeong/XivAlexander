@@ -135,7 +135,7 @@ namespace Sqex {
 			: m_stream(std::move(stream))
 			, m_bufferSize(bufferSize)
 			, m_streamSize(m_stream->StreamSize())
-			, m_buffers(Align(m_streamSize, m_bufferSize).Count) {
+			, m_buffers(Align<uint64_t, size_t>(m_streamSize, m_bufferSize).Count) {
 		}
 
 		~BufferedRandomAccessStream() override;

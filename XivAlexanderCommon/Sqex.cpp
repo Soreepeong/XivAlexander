@@ -129,7 +129,7 @@ uint64_t Sqex::BufferedRandomAccessStream::ReadStreamPartial(uint64_t offset, vo
 	auto out = std::span(static_cast<uint8_t*>(buf), static_cast<size_t>(length));
 	auto relativeOffset = static_cast<size_t>(offset - offset / m_bufferSize * m_bufferSize);
 	for (auto i = offset / m_bufferSize * m_bufferSize; i < offset + length; i += m_bufferSize) {
-		auto& buffer = m_buffers[i / m_bufferSize];
+		auto& buffer = m_buffers[static_cast<size_t>(i / m_bufferSize)];
 		if (!buffer) {
 			buffer = VirtualAlloc(nullptr, m_bufferSize, MEM_COMMIT, PAGE_READWRITE);
 			m_stream->ReadStreamPartial(i, buffer, m_bufferSize);

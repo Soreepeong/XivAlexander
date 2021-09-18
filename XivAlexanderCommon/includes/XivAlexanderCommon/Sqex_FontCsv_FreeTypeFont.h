@@ -100,10 +100,10 @@ namespace Sqex::FontCsv {
 				return GlyphMeasurement{
 					.empty = false,
 					.left = a + m_face->glyph->bitmap_left,
-					.top = a + Ascent() - m_face->glyph->bitmap_top,
-					.right = a + m_face->glyph->bitmap_left + m_face->glyph->bitmap.width,
-					.bottom = a + Ascent() - m_face->glyph->bitmap_top + m_face->glyph->bitmap.rows,
-					.advanceX = m_face->glyph->advance.x / 64 + m_owner->m_advanceWidthDelta,
+					.top = static_cast<SSIZE_T>(a + Ascent() - m_face->glyph->bitmap_top),
+					.right = static_cast<SSIZE_T>(a + m_face->glyph->bitmap_left + m_face->glyph->bitmap.width),
+					.bottom = static_cast<SSIZE_T>(a + Ascent() - m_face->glyph->bitmap_top + m_face->glyph->bitmap.rows),
+					.advanceX = static_cast<SSIZE_T>(m_face->glyph->advance.x / 64 + m_owner->m_advanceWidthDelta),
 				}.Translate(x, y);
 			}
 		};

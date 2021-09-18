@@ -9,11 +9,13 @@ copy XivAlexander64.dll "%LOCALAPPDATA%\XivAlexander\"
 
 mkdir "%APPDATA%\XivAlexander"
 mkdir "%APPDATA%\XivAlexander\FontConfig"
+mkdir "%APPDATA%\XivAlexander\ExcelTransformConfig"
 mkdir "%APPDATA%\XivAlexander\ReplacementFileEntries"
 mkdir "%APPDATA%\XivAlexander\TexToolsMods"
 copy game.*.json "%APPDATA%\XivAlexander\"
 copy config.runtime.json "%APPDATA%\XivAlexander\"
 copy FontConfig\*.json "%APPDATA%\XivAlexander\FontConfig\"
+copy ExcelTransformConfig\*.json "%APPDATA%\XivAlexander\ExcelTransformConfig\"
 echo.
 echo All required files copied.
 echo.
