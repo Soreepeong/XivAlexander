@@ -290,6 +290,7 @@
           {
             "name": "dwrite:SourceHanSansK:9.6",
             "offsetXModifier": -1,
+            "offsetYModifier": 1,
             "ranges": [
               "HangulMinimum"
             ]
@@ -317,7 +318,8 @@
           },
           {
             "name": "game:KrnAXIS_120",
-            "offsetXModifier": -1
+            "offsetXModifier": -1,
+            "offsetYModifier": 1
           },
           {
             "name": "dwrite:SourceHanSansK:12",
@@ -873,7 +875,8 @@
           },
           {
             "name": "game:KrnAXIS_120",
-            "offsetXModifier": -1
+            "offsetXModifier": -1,
+            "offsetYModifier": 1
           },
           {
             "name": "dwrite:SourceHanSansK:12",
@@ -905,7 +908,8 @@
           },
           {
             "name": "game:KrnAXIS_140",
-            "offsetXModifier": -1
+            "offsetXModifier": -1,
+            "offsetYModifier": 1
           },
           {
             "name": "dwrite:SourceHanSansK:14",
@@ -936,7 +940,8 @@
           },
           {
             "name": "game:KrnAXIS_180",
-            "offsetXModifier": -1
+            "offsetXModifier": -1,
+            "offsetYModifier": 1
           },
           {
             "name": "dwrite:SourceHanSansK:18",

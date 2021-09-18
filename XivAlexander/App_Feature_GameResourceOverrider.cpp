@@ -532,8 +532,6 @@ struct App::Feature::GameResourceOverrider::Implementation {
 
 					readers.emplace_back(std::make_unique<Sqex::Sqpack::Reader>(file));
 				}
-				if (readers.empty())
-					return false;
 
 				create_directories(cachedDir);
 
@@ -581,6 +579,10 @@ struct App::Feature::GameResourceOverrider::Implementation {
 						"=> Skipping merged 0a0000 file generation");
 					return false;
 				}
+
+				// No external excel files, nor any replacement rules are provided.
+				if (readers.empty() && replacements.empty())
+					return false;
 
 				const auto actCtx = Dll::ActivationContext().With();
 				Window::ProgressPopupWindow progressWindow(Dll::FindGameMainWindow(false));
