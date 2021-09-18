@@ -553,11 +553,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 								if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 									return;
 
-								if (region == L"KR" && exhName == "Addon") {
-									progress += ProgressMaxPerTask;
-									return;
-								}
-
+								// Step. Calculate maximum progress
 								size_t progressIndex = 0;
 								std::vector<uint64_t> progresses(readers.size() + 2);
 								uint64_t lastAddedProgress = 0;
@@ -567,6 +563,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 									lastAddedProgress = addProgress;
 								};
 
+								// Step. Load source EXH/D files
 								const auto exhPath = Sqex::Sqpack::EntryPathSpec(std::format("exd/{}.exh", exhName));
 								std::unique_ptr<Sqex::Excel::Depth2ExhExdCreator> exCreator;
 								{
@@ -609,6 +606,18 @@ struct App::Feature::GameResourceOverrider::Implementation {
 									publishProgress();
 								}
 
+								auto sourceLanguages = exCreator->Languages;
+								std::vector languagePriorities{  // TODO
+									Sqex::Language::English,
+									Sqex::Language::Japanese,
+									Sqex::Language::German,
+									Sqex::Language::French,
+									Sqex::Language::ChineseSimplified,
+									Sqex::Language::ChineseTraditional,
+									Sqex::Language::Korean,
+								};
+
+								// Step. Load external EXH/D files
 								for (const auto& reader : readers) {
 									try {
 										const auto exhReaderCurrent = Sqex::Excel::ExhReader(exhName, *(*reader)[exhPath]);
@@ -624,50 +633,8 @@ struct App::Feature::GameResourceOverrider::Implementation {
 												try {
 													const auto exdReader = Sqex::Excel::ExdReader(exhReaderCurrent, (*reader)[exdPathSpec]);
 													exCreator->AddLanguage(language);
-													for (const auto i : exdReader.GetIds()) {
-														auto newCol = exdReader.ReadDepth2(i);
-														if (region == L"KR") {
-															auto cols = exCreator->GetRow(i, Sqex::Language::Korean);
-															for (size_t j = 0; j < cols.size() && j < newCol.size(); ++j) {
-																if (cols[j].Type != Sqex::Excel::Exh::String)
-																	continue;
-																if (newCol[j].String.empty())
-																	continue;
-																if (!std::ranges::any_of(Utils::FromUtf8(cols[j].String), [](const auto& c) {
-																	const auto uc = static_cast<uint32_t>(c);
-																	return 44032 <= uc && uc <= 55203;
-																}))
-																	continue;
-																cols[j].String = newCol[j].String;
-															}
-															exCreator->SetRow(i, language, cols);
-														} else if (region == L"JP") {
-															auto cols = exCreator->GetRow(i, Sqex::Language::Japanese);
-															auto colRef2 = exCreator->GetRow(i, Sqex::Language::English);
-															auto colRef3 = exCreator->GetRow(i, Sqex::Language::German);
-															for (size_t j = 0; j < cols.size() && j < newCol.size(); ++j) {
-																if (cols[j].Type != Sqex::Excel::Exh::String)
-																	continue;
-																if (exhName == "Addon") {
-																	cols[j].String = newCol[j].String;
-																	continue;
-																}
-																if (cols[j].String == colRef2[j].String && cols[j].String == colRef3[j].String && cols[j].String == newCol[j].String)
-																	continue;
-
-																if (colRef2[j].String == newCol[j].String)
-																	cols[j].String = colRef2[j].String;
-																else
-																	cols[j].String = std::format("{} | {}", newCol[j].String, colRef2[j].String);
-																//if (colRef2[j].String == cols2[j].String)
-																//	cols[j].String = std::format("({}.{}: {})", exhName, i, colRef2[j].String);
-																//else
-																//	cols[j].String = std::format("({}.{}: {} / {})", exhName, i, colRef2[j].String, cols2[j].String);
-															}
-															exCreator->SetRow(i, language, cols);
-															// exCreator->SetRow(i, Sqex::Language::Japanese, cols);
-														}
-													}
+													for (const auto i : exdReader.GetIds())
+														exCreator->SetRow(i, language, exdReader.ReadDepth2(i), false);
 												} catch (const std::out_of_range&) {
 													// pass
 												}
@@ -678,6 +645,144 @@ struct App::Feature::GameResourceOverrider::Implementation {
 									}
 									progresses[progressIndex++] = ProgressMaxPerTask;
 									publishProgress();
+								}
+
+								std::vector<uint32_t> idsToRemove;
+								for (auto& [id, rowSet] : exCreator->Data) {
+									const std::vector<Sqex::Excel::ExdColumn>* referenceRow = nullptr;
+									for (const auto& l : languagePriorities) {
+										if (auto it = rowSet.find(l);
+											it != rowSet.end()) {
+											referenceRow = &it->second;
+											break;
+										}
+									}
+									if (!referenceRow) {
+										idsToRemove.push_back(id);
+										continue;
+									}
+
+									// Step. Figure out which columns to not modify and which are modifiable
+									std::set<size_t> columnsToModify, columnsToNeverModify;
+									try {
+										std::vector<Sqex::Excel::ExdColumn> *cols[4] = {
+											&rowSet.at(Sqex::Language::Japanese),
+											&rowSet.at(Sqex::Language::English),
+											&rowSet.at(Sqex::Language::German),
+											&rowSet.at(Sqex::Language::French),
+										};
+										for (size_t i = 0; i < cols[0]->size(); ++i) {
+											std::string compareTarget;
+											for (size_t j = 0; j < _countof(cols); ++j) {
+												if ((*cols[j])[i].Type != Sqex::Excel::Exh::String) {
+													columnsToNeverModify.insert(i);
+													break;
+												} else if (j != 0 && (*cols[0])[i].String != (*cols[j])[i].String) {
+													columnsToModify.insert(i);
+													break;
+												}
+											}
+										}
+									} catch (const std::out_of_range&) {
+										// pass
+									}
+									try {
+										std::vector<Sqex::Excel::ExdColumn>& cols = rowSet.at(Sqex::Language::Korean);
+										for (size_t i = 0; i < cols.size(); ++i) {
+											if (cols[i].Type != Sqex::Excel::Exh::String) {
+												columnsToNeverModify.insert(i);
+
+											} else {
+												// If it includes a valid UTF-8 byte sequence that is longer than a byte, set as a candidate.
+												const auto& s = cols[i].String;
+												for (size_t j = 0; j < s.size(); ++j) {
+													char32_t charCode;
+
+													if ((s[j] & 0x80) == 0) {
+														// pass; single byte
+														charCode = s[j];
+
+													} else if ((s[j] & 0xE0) == 0xC0) {
+														// 2 bytes
+														if (j + 2 > s.size())
+															break; // not enough bytes
+														if ((s[j + 1] & 0xC0) != 0x80)
+															continue;
+														charCode = static_cast<char32_t>(
+															((s[j + 0] & 0x1F) << 6) |
+															((s[j + 1] & 0x3F) << 0)
+															);
+														j += 1;
+														
+													} else if ((s[j] & 0xF0) == 0xE0) {
+														// 3 bytes
+														if (j + 3 > s.size())
+															break; // not enough bytes
+														if ((s[j + 1] & 0xC0) != 0x80
+															|| (s[j + 2] & 0xC0) != 0x80)
+															continue;
+														charCode = static_cast<char32_t>(
+															((s[j + 0] & 0x0F) << 12) |
+															((s[j + 1] & 0x3F) << 6) |
+															((s[j + 2] & 0x3F) << 0)
+															);
+														j += 2;
+
+													} else if ((s[j] & 0xF8) == 0xF0) {
+														// 4 bytes
+														if (j + 4 > s.size())
+															break; // not enough bytes
+														if ((s[j + 1] & 0xC0) != 0x80
+															|| (s[j + 2] & 0xC0) != 0x80
+															|| (s[j + 3] & 0xC0) != 0x80)
+															continue;
+														charCode = static_cast<char32_t>(
+															((s[j + 0] & 0x07) << 18) |
+															((s[j + 1] & 0x3F) << 12) |
+															((s[j + 2] & 0x3F) << 6) |
+															((s[j + 3] & 0x3F) << 0)
+															);
+														j += 3;
+
+													} else {
+														// invalid
+														continue;
+													}
+
+													if (charCode >= 128) {
+														columnsToModify.insert(i);
+														break;
+													}
+												}
+											}
+										}
+									} catch (const std::out_of_range&) {
+										// pass
+									}
+
+									// Step. Fill missing rows for languages that aren't from source, and restore columns if unmodifiable
+									for (const auto& language : exCreator->Languages) {
+										if (auto it = rowSet.find(language);
+											it == rowSet.end())
+											rowSet[language] = *referenceRow;
+										else {
+											auto& row = it->second;
+											for (size_t i = 0; i < row.size(); ++i) {
+												if (columnsToNeverModify.find(i) != columnsToNeverModify.end()) {
+													row[i] = (*referenceRow)[i];
+												}
+											}
+										}
+									}
+
+									// Step. Adjust language data per use config
+									for (const auto& language : exCreator->Languages) {
+										auto& column = rowSet[language];
+
+										for (size_t i = 0; i < column.size(); ++i) {
+											
+										}
+									}
 								}
 
 								{
