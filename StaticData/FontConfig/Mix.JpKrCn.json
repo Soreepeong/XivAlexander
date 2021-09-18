@@ -359,7 +359,8 @@
             ]
           },
           {
-            "name": "game:ChnAXIS_140"
+            "name": "game:ChnAXIS_140",
+            "offsetYModifier": 2
           }
         ]
       },
@@ -390,8 +391,7 @@
             ]
           },
           {
-            "name": "game:ChnAXIS_180",
-            "offsetYModifier": 3
+            "name": "game:ChnAXIS_180"
           }
         ]
       },
@@ -947,8 +947,7 @@
             ]
           },
           {
-            "name": "game:ChnAXIS_180",
-            "offsetYModifier": 3
+            "name": "game:ChnAXIS_180"
           }
         ]
       },
@@ -1324,8 +1323,7 @@
             ]
           },
           {
-            "name": "game:ChnAXIS_180",
-            "offsetYModifier": 3
+            "name": "game:ChnAXIS_180"
           }
         ]
       },
@@ -1353,8 +1351,7 @@
             "offsetXModifier": -1
           },
           {
-            "name": "game:ChnAXIS_180",
-            "offsetYModifier": 3
+            "name": "game:ChnAXIS_180"
           },
           {
             "name": "dwrite:SourceHanSansK:36",
@@ -1450,8 +1447,7 @@
             "offsetXModifier": -1
           },
           {
-            "name": "game:ChnAXIS_180",
-            "offsetYModifier": 3
+            "name": "game:ChnAXIS_180"
           },
           {
             "name": "dwrite:SourceHanSansK:18",

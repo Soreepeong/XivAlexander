@@ -880,12 +880,13 @@ struct App::Feature::GameResourceOverrider::Implementation {
 										}
 
 										// Step. Adjust language data per use config
+										std::map<Sqex::Language, std::vector<Sqex::Excel::ExdColumn>> pendingReplacements;
 										for (const auto& language : exCreator->Languages) {
 											const auto rules = replacements.find(language);
 											if (rules == replacements.end())
 												continue;
 
-											auto& column = rowSet.at(language);
+											auto row = rowSet.at(language);
 
 											for (const auto columnIndex : columnsToModify) {
 												for (const auto& rule : rules->second) {
@@ -901,7 +902,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 													if (!std::regex_search(exhName, exhNamePattern))
 														continue;
 
-													if (!std::regex_search(column[columnIndex].String, columnDataPattern))
+													if (!std::regex_search(row[columnIndex].String, columnDataPattern))
 														continue;
 
 													std::vector p = {std::format("{}", id)};
@@ -909,7 +910,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 														if (const auto it = rowSet.find(ruleSourceLanguage);
 															it != rowSet.end()) {
 
-															if (column[columnIndex].Type != Sqex::Excel::Exh::String)
+															if (row[columnIndex].Type != Sqex::Excel::Exh::String)
 																throw std::invalid_argument(std::format("Column {} of sourceLanguage {} in {} is not a string column", columnIndex, static_cast<int>(ruleSourceLanguage), exhName));
 
 															Misc::ExcelTransformConfig::PluralColumns pluralColummIndices;
@@ -994,11 +995,14 @@ struct App::Feature::GameResourceOverrider::Implementation {
 																throw std::invalid_argument("Only up to 7 source languages are supported");
 														}
 													}
-													column[columnIndex].String = Utils::StringTrim(out);
+													row[columnIndex].String = Utils::StringTrim(out);
 													break;
 												}
 											}
+											pendingReplacements.emplace(language, std::move(row));
 										}
+										for (auto& pair : pendingReplacements)
+											exCreator->SetRow(id, pair.first, pair.second);
 									}
 
 									{
