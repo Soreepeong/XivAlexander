@@ -174,13 +174,15 @@ void App::Window::ProgressPopupWindow::OnLayout(double zoom, double width, doubl
 		};
 
 		auto hdwp = BeginDeferWindowPos(static_cast<int>(targets.size()));
-		for (const auto& [hwnd, rt] : targets)
-			hdwp = DeferWindowPos(hdwp, hwnd, nullptr,
+		for (const auto& entry : targets) {
+			const auto& rt = entry.second;
+			hdwp = DeferWindowPos(hdwp, entry.first, nullptr,
 				static_cast<int>(rt.left * zoom),
 				static_cast<int>(rt.top * zoom),
 				static_cast<int>((rt.right - rt.left) * zoom),
 				static_cast<int>((rt.bottom - rt.top) * zoom),
 				0);
+		}
 		EndDeferWindowPos(hdwp);
 	}
 }

@@ -56,7 +56,9 @@ int main() {
 		if (creator.Data.empty())
 			continue;
 
-		for (const auto& [path, contents] : creator.Compile()) {
+		for (const auto& res : creator.Compile()) {
+			const auto& path = res.first;
+			const auto& contents = res.second;
 			const auto targetPath = std::filesystem::path(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\ffxiv\0a0000)") / path.Original;
 			create_directories(targetPath.parent_path());
 

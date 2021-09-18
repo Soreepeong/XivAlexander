@@ -34,7 +34,7 @@ void App::Network::Structures::FFXIVBundle::DebugPrint(LogCategory logCategory, 
 	const auto st = Utils::EpochToLocalSystemTime(Timestamp);
 	Misc::Logger::Acquire()->Format<LogLevel::Debug>(
 		logCategory,
-		"[{} / {:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}] Length={} ConnType={} Count={} Gzip={}n",
+		"[{} / {:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}] Length={} ConnType={} Count={} Gzip={}",
 		head,
 		st.wYear, st.wMonth, st.wDay,
 		st.wHour, st.wMinute, st.wSecond,
@@ -58,11 +58,11 @@ std::vector<std::vector<uint8_t>> App::Network::Structures::FFXIVBundle::SplitMe
 	return result;
 }
 
-std::vector<std::vector<uint8_t>> App::Network::Structures::FFXIVBundle::GetMessages() const {
+std::vector<std::vector<uint8_t>> App::Network::Structures::FFXIVBundle::GetMessages(Utils::ZlibReusableInflater& inflater) const {
 	const std::span view(reinterpret_cast<const uint8_t*>(this) + GamePacketHeaderSize, TotalLength - GamePacketHeaderSize);
 
 	if (GzipCompressed)
-		return SplitMessages(MessageCount, Utils::ZlibDecompress(&view[0], view.size()));
+		return SplitMessages(MessageCount, inflater(view));
 	else
 		return SplitMessages(MessageCount, view);
 }

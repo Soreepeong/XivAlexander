@@ -61,7 +61,7 @@ const std::vector<Sqex::Excel::ExdColumn>& Sqex::Excel::Depth2ExhExdCreator::Get
 
 void Sqex::Excel::Depth2ExhExdCreator::SetRow(uint32_t id, Language language, std::vector<ExdColumn> row, bool replace) {
 	if (!row.empty() && row.size() != Columns.size())
-		throw std::invalid_argument("bad column data");
+		throw std::invalid_argument(std::format("bad column data (expected {} columns, got {} columns)", Columns.size(), row.size()));
 	auto& target = Data[id][language];
 	if (target.empty() || replace)
 		target = std::move(row);
@@ -80,9 +80,9 @@ std::pair<Sqex::Sqpack::EntryPathSpec, std::vector<char>> Sqex::Excel::Depth2Exh
 
 	std::vector<Exd::RowLocator> locators;
 	auto offsetAccumulator = static_cast<uint32_t>(sizeof exdHeader + rows.size() * sizeof Exd::RowLocator);
-	for (const auto& [id, row] : rows) {
-		locators.emplace_back(id, offsetAccumulator);
-		offsetAccumulator += static_cast<uint32_t>(row.size());
+	for (const auto& row : rows) {
+		locators.emplace_back(row.first, offsetAccumulator);
+		offsetAccumulator += static_cast<uint32_t>(row.second.size());
 	}
 	const auto locatorSpan = std::span(reinterpret_cast<char*>(&locators[0]), std::span(locators).size_bytes());
 	exdHeader.IndexSize = static_cast<uint32_t>(locatorSpan.size_bytes());
@@ -148,10 +148,10 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>> Sqex::Excel::Depth2ExhE
 		return {};
 	pages.back().first.RowCount = pages.back().second.back() - pages.back().second.front() + 1;
 
-	for (const auto& [page, ids] : pages) {
+	for (const auto& page : pages) {
 		for (const auto language : Languages) {
 			std::map<uint32_t, std::vector<char>> rows;
-			for (const auto id : ids) {
+			for (const auto id : page.second) {
 				std::vector<char> row(sizeof Exd::RowHeader + FixedDataSize);
 
 				const auto fixedDataOffset = sizeof Exd::RowHeader;
@@ -237,7 +237,7 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>> Sqex::Excel::Depth2ExhE
 			}
 			if (rows.empty())
 				continue;
-			result.emplace(Flush(page.StartId, std::move(rows), language));
+			result.emplace(Flush(page.first.StartId, std::move(rows), language));
 		}
 	}
 

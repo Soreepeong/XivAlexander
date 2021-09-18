@@ -80,12 +80,12 @@ void App::Misc::ExcelTransformConfig::from_json(const nlohmann::json& j, Config&
 	o.sourceLanguages = j.at("sourceLanguages").get<decltype(o.sourceLanguages)>();
 	if (const auto it = j.find("pluralMap"); it != j.end()) {
 		o.pluralMap.clear();
-		for (const auto& [keyName, v] : it->items()) {
-			if (keyName.starts_with("#"))
+		for (const auto& pair : it->items()) {
+			if (pair.key().starts_with("#"))
 				continue;
 
-			o.pluralMap.emplace_back(keyName, PluralColumns{});
-			from_json(v, o.pluralMap.back().second);
+			o.pluralMap.emplace_back(pair.key(), PluralColumns{});
+			from_json(pair.value(), o.pluralMap.back().second);
 		}
 	}
 	o.targetGroups = j.at("targetGroups").get<decltype(o.targetGroups)>();

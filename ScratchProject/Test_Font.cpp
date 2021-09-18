@@ -25,6 +25,7 @@ static const auto* const pszTestString = reinterpret_cast<const char*>(
 	u8"KatakanaF: アカサタナハマヤラワ\n"
 	u8"Hangul: 가나다라마바사아자차카타파하\n"
 	u8"Hangul: ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ\n"
+	u8"Chinese: 天地玄黄，宇宙洪荒。\n"
 	u8"\n"
 	u8"<<SupportedUnicode>>\n"
 	u8"π™′＾¿¿‰øØ×∞∩£¥¢Ð€ªº†‡¤ ŒœŠšŸÅωψ↑↓→←⇔⇒♂♀♪¶§±＜＞≥≤≡÷½¼¾©®ª¹²³\n"
@@ -135,7 +136,8 @@ void compile() {
 	try {
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Original.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Gulim.dwrite.json)");
-		std::ifstream fin(R"(..\StaticData\FontConfig\JpKr.Mix.json)");
+		// std::ifstream fin(R"(..\StaticData\FontConfig\Mix.JpCnKr.json)");
+		std::ifstream fin(R"(..\StaticData\FontConfig\Mix.JpCn.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Gulim.gdi.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Gulimche.dwrite_file.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.ComicGulim.json)");

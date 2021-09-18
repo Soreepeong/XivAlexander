@@ -341,7 +341,6 @@ bool App::Config::Item<T>::LoadFrom(const nlohmann::json& data, bool announceCha
 		try {
 			newValue = it->template get<T>();
 		} catch (...) {
-			MessageBoxW(nullptr, L"", L"", MB_OK);
 			// do nothing for now
 			// TODO: show how the value is invalid
 #ifdef _DEBUG

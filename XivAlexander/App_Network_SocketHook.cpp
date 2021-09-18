@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "App_Network_SocketHook.h"
 
+#include <XivAlexanderCommon/XaZlib.h>
+
 #include "App_ConfigRepository.h"
 #include "App_Misc_Logger.h"
 #include "App_Network_IcmpPingTracker.h"
@@ -12,6 +14,8 @@ class SingleStream {
 public:
 	bool m_ending = false;
 	bool m_closed = false;
+
+	Utils::ZlibReusableInflater m_inflater;
 
 	std::vector<uint8_t> m_pending{};
 	std::vector<size_t> m_reservedOffset{};
@@ -128,7 +132,7 @@ public:
 				break;
 
 			try {
-				auto messages = pGamePacket->GetMessages();
+				auto messages = pGamePacket->GetMessages(m_inflater);
 				auto header = *pGamePacket;
 				header.TotalLength = static_cast<uint32_t>(GamePacketHeaderSize);
 				header.MessageCount = 0;
@@ -634,12 +638,10 @@ App::Network::SocketHook::SocketHook(XivAlexApp* pApp)
 			}
 
 			for (auto it = m_pImpl->m_sockets.begin(); it != m_pImpl->m_sockets.end();) {
-				const auto& [s, conn] = *it;
+				it->second->m_pImpl->AttemptSend();
 
-				conn->m_pImpl->AttemptSend();
-
-				if (conn->m_pImpl->CloseSendIfPossible())
-					it = m_pImpl->CleanupSocket(s);
+				if (it->second->m_pImpl->CloseSendIfPossible())
+					it = m_pImpl->CleanupSocket(it->first);
 				else
 					++it;
 			}
@@ -683,12 +685,12 @@ bool App::Network::SocketHook::IsUnloadable() const {
 }
 
 void App::Network::SocketHook::ReleaseSockets() {
-	for (const auto& [s, con] : m_pImpl->m_sockets) {
-		if (con->m_pImpl->m_unloading)
+	for (const auto& entry : m_pImpl->m_sockets) {
+		if (entry.second->m_pImpl->m_unloading)
 			continue;
 
-		m_logger->Format(LogCategory::SocketHook, m_pImpl->m_config->Runtime.GetLangId(), IDS_SOCKETHOOK_SOCKET_DETACH, s);
-		con->m_pImpl->Unload();
+		m_logger->Format(LogCategory::SocketHook, m_pImpl->m_config->Runtime.GetLangId(), IDS_SOCKETHOOK_SOCKET_DETACH, entry.first);
+		entry.second->m_pImpl->Unload();
 	}
 	m_pImpl->m_nonGameSockets.clear();
 }
@@ -697,9 +699,10 @@ std::wstring App::Network::SocketHook::Describe() const {
 	while (true) {
 		try {
 			std::wstring result;
-			for (const auto& [s, conn] : m_pImpl->m_sockets) {
+			for (const auto& entry : m_pImpl->m_sockets) {
+				const auto& conn = entry.second;
 				result += m_pImpl->m_config->Runtime.FormatStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_TITLE,
-					s,
+					entry.first,
 					Utils::FromUtf8(Utils::ToString(conn->m_pImpl->m_localAddress)),
 					Utils::FromUtf8(Utils::ToString(conn->m_pImpl->m_remoteAddress)));
 

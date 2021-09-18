@@ -1,10 +1,10 @@
 {
-  "name": "Change Japanese text of the game to English with some Japanese",
+  "name": "Change Chinese text of the game to Chinese with some English",
   "description": "",
-  "targetLanguage": "Japanese",
+  "targetLanguage": "SimplifiedChinese",
   "sourceLanguages": [
-    "English",
-    "Japanese"
+    "SimplifiedChinese",
+    "English"
   ],
   "pluralMap": {
     "# comment 1": [

@@ -26,30 +26,13 @@ struct Sqex::Sqpack::EntryRawStream::StreamDecoder::ReadStreamState {
 	const RandomAccessStream& Underlying;
 	std::span<uint8_t> destination;
 	std::vector<uint8_t> readBuffer;
-	std::vector<uint8_t> zlibBuffer;
 	uint64_t relativeOffset = 0;
 	uint32_t requestOffsetVerify = 0;
-	bool zstreamInitialized = false;
-	z_stream zstream{};
+
+	ZlibReusableInflater m_inflater{-15};
 
 	[[nodiscard]] const auto& AsHeader() const {
 		return *reinterpret_cast<const SqData::BlockHeader*>(&readBuffer[0]);
-	}
-
-	void InitializeZlib() {
-		int res;
-		if (!zstreamInitialized) {
-			res = inflateInit2(&zstream, -15);
-			zstreamInitialized = true;
-		} else
-			res = inflateReset2(&zstream, -15);
-		if (res != Z_OK)
-			throw ZlibError(res);
-	}
-
-	~ReadStreamState() {
-		if (zstreamInitialized)
-			inflateEnd(&zstream);
 	}
 
 private:
@@ -94,31 +77,23 @@ public:
 			if (blockHeader.CompressedSize == SqData::BlockHeader::CompressedSizeNotCompressed) {
 				std::copy_n(&read[static_cast<size_t>(sizeof blockHeader + relativeOffset)], target.size(), target.begin());
 			} else {
-				auto decompressionTarget = target;
-				if (relativeOffset) {
-					zlibBuffer.resize(blockHeader.DecompressedSize);
-					decompressionTarget = std::span(zlibBuffer);
-				}
-
 				if (sizeof blockHeader + blockHeader.CompressedSize > read.size_bytes())
 					throw CorruptDataException("Failed to read block");
-
-				InitializeZlib();
-				zstream.next_in = &read[sizeof blockHeader];
-				zstream.avail_in = blockHeader.CompressedSize;
-				zstream.next_out = &decompressionTarget[0];
-				zstream.avail_out = static_cast<uInt>(decompressionTarget.size());
-
-				if (const auto res = inflate(&zstream, Z_FINISH);
-					res != Z_OK && res != Z_BUF_ERROR && res != Z_STREAM_END)
-					throw ZlibError(res);
-				if (zstream.avail_out)
-					throw CorruptDataException("Not enough data produced");
-
-				if (relativeOffset)
-					std::copy_n(&decompressionTarget[static_cast<size_t>(relativeOffset)],
+				
+				if (relativeOffset) {
+					const auto buf = m_inflater(read.subspan(sizeof blockHeader, blockHeader.CompressedSize), blockHeader.DecompressedSize);
+					if (buf.size_bytes() != blockHeader.DecompressedSize)
+						throw CorruptDataException(std::format("Expected {} bytes, inflated to {} bytes",
+							blockHeader.DecompressedSize.Value(), buf.size_bytes()));
+					std::copy_n(&buf[static_cast<size_t>(relativeOffset)],
 						target.size_bytes(),
 						target.begin());
+				} else {
+					const auto buf = m_inflater(read.subspan(sizeof blockHeader, blockHeader.CompressedSize), target);
+					if (buf.size_bytes() != target.size_bytes())
+						throw CorruptDataException(std::format("Expected {} bytes, inflated to {} bytes",
+							target.size_bytes(), buf.size_bytes()));
+				}
 			}
 			destination = destination.subspan(target.size_bytes());
 

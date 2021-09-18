@@ -209,14 +209,17 @@ void Sqex::Sqpack::MemoryBinaryEntryProvider::Initialize(const RandomAccessStrea
 		.AlignedUnitAllocationCount = 0,
 		.BlockCountOrVersion = 0,
 	};
+	
+	ZlibReusableDeflater deflater(Z_BEST_COMPRESSION, Z_DEFLATED, -15);
+	std::vector<uint8_t> entryBody;
+	entryBody.reserve(rawSize);
 
-	std::vector<std::vector<uint8_t>> blocks;
 	std::vector<SqData::BlockHeaderLocator> locators;
 	for (uint32_t i = 0; i < rawSize; i += BlockDataSize) {
 		uint8_t buf[BlockDataSize];
 		const auto len = std::min<uint32_t>(BlockDataSize, rawSize - i);
 		stream.ReadStream(i, buf, len);
-		auto compressed = ZlibCompress(buf, len, Z_BEST_COMPRESSION, Z_DEFLATED, -15);
+		auto compressed = deflater(std::span(buf, len));
 
 		SqData::BlockHeader header{
 			.HeaderSize = sizeof SqData::BlockHeader,
@@ -224,18 +227,20 @@ void Sqex::Sqpack::MemoryBinaryEntryProvider::Initialize(const RandomAccessStrea
 			.CompressedSize = static_cast<uint32_t>(compressed.size()),
 			.DecompressedSize = len,
 		};
-		const auto pad = Align(sizeof header + compressed.size()).Pad;
+		const auto alignmentInfo = Align(sizeof header + compressed.size());
 
 		locators.emplace_back(SqData::BlockHeaderLocator{
 			locators.empty() ? 0 : locators.back().BlockSize + locators.back().Offset,
-			static_cast<uint16_t>(sizeof SqData::BlockHeader + compressed.size() + pad),
+			static_cast<uint16_t>(alignmentInfo.Alloc),
 			static_cast<uint16_t>(len)
 			});
 
-		blocks.emplace_back(std::vector<uint8_t>{ reinterpret_cast<uint8_t*>(&header), reinterpret_cast<uint8_t*>(&header + 1) });
-		blocks.emplace_back(std::move(compressed));
-		if (pad)
-			blocks.emplace_back(std::vector<uint8_t>(pad, 0));
+		entryBody.resize(entryBody.size() + alignmentInfo.Alloc);
+
+		auto ptr = entryBody.end() - static_cast<SSIZE_T>(alignmentInfo.Alloc);
+		ptr = std::copy_n(reinterpret_cast<uint8_t*>(&header), sizeof header, ptr);
+		ptr = std::copy(compressed.begin(), compressed.end(), ptr);
+		std::fill_n(ptr, alignmentInfo.Pad, 0);
 	}
 
 	entryHeader.BlockCountOrVersion = static_cast<uint32_t>(locators.size());
@@ -244,8 +249,7 @@ void Sqex::Sqpack::MemoryBinaryEntryProvider::Initialize(const RandomAccessStrea
 	if (!locators.empty()) {
 		m_data.insert(m_data.end(), reinterpret_cast<char*>(&locators.front()), reinterpret_cast<char*>(&locators.back() + 1));
 		m_data.resize(entryHeader.HeaderSize, 0);
-		for (const auto& block : blocks)
-			m_data.insert(m_data.end(), block.begin(), block.end());
+		m_data.insert(m_data.end(), entryBody.begin(), entryBody.end());
 	} else
 		m_data.resize(entryHeader.HeaderSize, 0);
 
@@ -660,13 +664,11 @@ uint64_t Sqex::Sqpack::OnTheFlyTextureEntryProvider::ReadStreamPartial(const Ran
 
 void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStream& stream) {
 	std::vector<SqData::TextureBlockHeaderLocator> blockLocators;
+	std::vector<uint8_t> readBuffer(BlockDataSize);
 	std::vector<uint16_t> subBlockSizes;
 	std::vector<uint8_t> texHeaderBytes;
-
 	std::vector<uint32_t> m_mipmapSizes;
-
-	std::vector<std::vector<uint8_t>> blocks;
-
+	
 	auto AsTexHeader = [&]() { return *reinterpret_cast<const Texture::Header*>(&texHeaderBytes[0]); };
 	auto AsMipmapOffsets = [&]() { return std::span(reinterpret_cast<const uint32_t*>(&texHeaderBytes[sizeof Texture::Header]), AsTexHeader().MipmapCount); };
 
@@ -698,6 +700,10 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 		m_mipmapSizes.push_back(offset);
 	}
 	m_mipmapSizes.back() = entryHeader.DecompressedSize - m_mipmapSizes.back();
+	
+	ZlibReusableDeflater deflater(Z_BEST_COMPRESSION, Z_DEFLATED, -15);
+	std::vector<uint8_t> entryBody;
+	entryBody.reserve(stream.StreamSize());
 
 	uint32_t blockOffsetCounter = 0;
 	for (size_t i = 0; i < mipmapOffsets.size(); ++i) {
@@ -713,10 +719,10 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 		size_t offset = mipmapOffsets[i];
 		for (size_t j = 0; j < subBlockCount; ++j) {
 			const auto len = j == subBlockCount - 1 ? mipmapSize % BlockDataSize : BlockDataSize;
-			uint8_t buf[BlockDataSize];
-			stream.ReadStream(offset, buf, len);
+			const auto buf = std::span(readBuffer).subspan(0, len);
+			stream.ReadStream(offset, std::span(buf));
 			offset += len;
-			auto compressed = ZlibCompress(buf, len, Z_BEST_COMPRESSION, Z_DEFLATED, -15);
+			auto compressed = deflater(buf);
 
 			SqData::BlockHeader header{
 				.HeaderSize = sizeof SqData::BlockHeader,
@@ -724,12 +730,17 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 				.CompressedSize = static_cast<uint32_t>(compressed.size()),
 				.DecompressedSize = len,
 			};
+			const auto alignmentInfo = Align(sizeof header + compressed.size());
 
-			subBlockSizes.push_back(static_cast<uint16_t>(sizeof header + compressed.size()));
+			subBlockSizes.push_back(static_cast<uint16_t>(alignmentInfo.Alloc));
 			blockOffsetCounter += subBlockSizes.back();
+	  
+			entryBody.resize(entryBody.size() + alignmentInfo.Alloc);
 
-			blocks.emplace_back(std::vector<uint8_t>{ reinterpret_cast<uint8_t*>(&header), reinterpret_cast<uint8_t*>(&header + 1) });
-			blocks.emplace_back(std::move(compressed));
+			auto ptr = entryBody.end() - static_cast<SSIZE_T>(alignmentInfo.Alloc);
+			ptr = std::copy_n(reinterpret_cast<uint8_t*>(&header), sizeof header, ptr);
+			ptr = std::copy(compressed.begin(), compressed.end(), ptr);
+			std::fill_n(ptr, alignmentInfo.Pad, 0);
 		}
 
 		blockLocators.emplace_back(loc);
@@ -754,8 +765,7 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 	m_data.insert(m_data.end(),
 		texHeaderBytes.begin(),
 		texHeaderBytes.end());
-	for (const auto& block : blocks)
-		m_data.insert(m_data.end(), block.begin(), block.end());
+	m_data.insert(m_data.end(), entryBody.begin(), entryBody.end());
 
 	m_data.resize(Align(m_data.size()));
 	reinterpret_cast<SqData::FileEntryHeader*>(&m_data[0])->AlignedUnitAllocationCount = Align<uint64_t, uint32_t>(m_data.size()).Count;

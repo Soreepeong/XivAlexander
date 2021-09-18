@@ -204,9 +204,9 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
 		bool wasObfuscated;
 		const auto pairs = Sqex::CommandLine::FromString(Utils::ToUtf8(Utils::Win32::GetCommandLineWithoutProgramName()), &wasObfuscated);
 		if (wasObfuscated) {
-			for (const auto& [k, v] : pairs) {
-				if (k == "T") {
-					const auto time = std::strtol(&v[0], nullptr, 10);
+			for (const auto& pair : pairs) {
+				if (pair.first == "T") {
+					const auto time = std::strtol(&pair.second[0], nullptr, 10);
 					const auto now = static_cast<decltype(time)>(GetTickCount64());
 					if (now - time > 20000) {
 						// if UAC dialog took a long time, then execute again

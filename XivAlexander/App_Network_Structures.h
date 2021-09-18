@@ -1,5 +1,9 @@
 #pragma once
 
+namespace Utils {
+	class ZlibReusableInflater;
+}
+
 namespace App {
 	enum class LogCategory;
 }
@@ -25,7 +29,7 @@ namespace App::Network::Structures {
 		void DebugPrint(LogCategory logCategory, const char* head) const;
 
 		[[nodiscard]] static std::vector<std::vector<uint8_t>> SplitMessages(uint16_t expectedMessageCount, const std::span<const uint8_t>& buf);
-		[[nodiscard]] std::vector<std::vector<uint8_t>> GetMessages() const;
+		[[nodiscard]] std::vector<std::vector<uint8_t>> GetMessages(Utils::ZlibReusableInflater&) const;
 	};
 
 	constexpr size_t GamePacketHeaderSize = offsetof(FFXIVBundle, Data);
@@ -91,6 +95,7 @@ namespace App::Network::Structures {
 				uint32_t SourceActorId;
 			} Effects[4];
 		};
+
 		struct S2C_ActionEffect {
 			uint32_t AnimationTargetActor;
 			uint32_t Unknown1;
@@ -107,9 +112,11 @@ namespace App::Network::Structures {
 			uint8_t EffectCount;
 			uint16_t Padding1;
 		};
+
 		struct S2C_ActorControl {
 			union {
 				S2C_ActorControlCategory Category;
+
 				struct RawType {
 					S2C_ActorControlCategory Category;
 					uint16_t Padding1;
@@ -119,6 +126,7 @@ namespace App::Network::Structures {
 					uint32_t Param4;
 					uint32_t Padding2;
 				} Raw;
+
 				struct CancelCastType {
 					S2C_ActorControlCategory Category;
 					uint16_t Padding1;
@@ -130,9 +138,11 @@ namespace App::Network::Structures {
 				} CancelCast;
 			};
 		};
+
 		struct S2C_ActorControlSelf {
 			union {
 				S2C_ActorControlSelfCategory Category;
+
 				struct RawType {
 					S2C_ActorControlSelfCategory Category;
 					uint16_t Padding1;
@@ -144,6 +154,7 @@ namespace App::Network::Structures {
 					uint32_t Param6;
 					uint32_t Padding2;
 				} Raw;
+
 				struct RollbackType {
 					S2C_ActorControlSelfCategory Category;
 					uint16_t Padding1;
@@ -155,6 +166,7 @@ namespace App::Network::Structures {
 					uint32_t SourceSequence;
 					uint32_t Padding2;
 				} Rollback;
+
 				struct CooldownType {
 					S2C_ActorControlSelfCategory Category;
 					uint16_t Padding1;
@@ -168,6 +180,7 @@ namespace App::Network::Structures {
 				} Cooldown;
 			};
 		};
+
 		struct S2C_ActorCast {
 			uint16_t ActionId;
 			uint8_t SkillType;
@@ -184,6 +197,7 @@ namespace App::Network::Structures {
 			uint16_t Z;
 			uint16_t Unknown4;
 		};
+
 		struct C2S_ActionRequest {
 			uint8_t Pad_0000;
 			uint8_t Type;
@@ -211,6 +225,7 @@ namespace App::Network::Structures {
 		uint16_t ServerId;
 		int32_t Epoch;
 		uint32_t Unknown2;
+
 		union {
 			uint8_t Raw[1];
 			IPCMessageDataType::S2C_ActionEffect S2C_ActionEffect;

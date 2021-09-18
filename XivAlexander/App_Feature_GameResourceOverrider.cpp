@@ -389,6 +389,11 @@ struct App::Feature::GameResourceOverrider::Implementation {
 								newName = std::format("{}/{}/{}", name.substr(0, pos), targetLanguageCode, name.substr(pos + strlen(t)));
 								break;
 							}
+							sprintf_s(t, "_%s_", languageCode);
+							if (const auto pos = nameLower.find(t); pos != std::string::npos) {
+								newName = std::format("{}_{}_{}", name.substr(0, pos), targetLanguageCode, name.substr(pos + strlen(t)));
+								break;
+							}
 						}
 					}
 					if (!newName.empty()) {
@@ -441,9 +446,9 @@ struct App::Feature::GameResourceOverrider::Implementation {
 		auto overlayedHandle = std::make_unique<OverlayedHandleData>(Utils::Win32::Event::Create(), fileToOpen, LARGE_INTEGER{}, nullptr);
 
 		std::lock_guard lock(m_virtualPathMapMutex);
-		for (const auto& [k, v] : m_sqpackViews) {
-			if (equivalent(k, indexFile)) {
-				overlayedHandle->ChooseStreamFrom(v, pathType);
+		for (const auto& view : m_sqpackViews) {
+			if (equivalent(view.first, indexFile)) {
+				overlayedHandle->ChooseStreamFrom(view.second, pathType);
 				break;
 			}
 		}
@@ -472,9 +477,9 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					"=> Processed SqPack {}/{}: Added {}, replaced {}, ignored {}, error {}",
 					creator.DatExpac, creator.DatName,
 					result.Added.size(), result.Replaced.size(), result.SkippedExisting.size(), result.Error.size());
-				for (const auto& [pathSpec, errorMessage] : result.Error) {
+				for (const auto& error : result.Error) {
 					m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
-						"\t=> Error processing {}: {}", pathSpec, errorMessage);
+						"\t=> Error processing {}: {}", error.first, error.second);
 				}
 			}
 
@@ -548,18 +553,18 @@ struct App::Feature::GameResourceOverrider::Implementation {
 						Misc::ExcelTransformConfig::Config transformConfig;
 						from_json(j, transformConfig);
 
-						for (const auto& [pattern, pluralColumn] : transformConfig.pluralMap) {
-							pluralColumns.emplace_back(std::regex(pattern, std::regex_constants::ECMAScript | std::regex_constants::icase), pluralColumn);
+						for (const auto& entry : transformConfig.pluralMap) {
+							pluralColumns.emplace_back(std::regex(entry.first, std::regex_constants::ECMAScript | std::regex_constants::icase), entry.second);
 						}
 						for (const auto& rule : transformConfig.rules) {
 							for (const auto& targetGroupName : rule.targetGroups) {
-								for (const auto& [exhNamePattern, columnIndices] : transformConfig.targetGroups.at(targetGroupName).columnIndices) {
+								for (const auto& target : transformConfig.targetGroups.at(targetGroupName).columnIndices) {
 									replacements[transformConfig.targetLanguage].emplace_back(
-										std::regex(exhNamePattern, std::regex_constants::ECMAScript | std::regex_constants::icase),
+										std::regex(target.first, std::regex_constants::ECMAScript | std::regex_constants::icase),
 										std::regex(rule.stringPattern, std::regex_constants::ECMAScript | std::regex_constants::icase),
 										transformConfig.sourceLanguages,
 										rule.replaceTo,
-										columnIndices
+										target.second
 									);
 								}
 							}
@@ -581,7 +586,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				Window::ProgressPopupWindow progressWindow(Dll::FindGameMainWindow(false));
 				Utils::Win32::TpEnvironment pool;
 				progressWindow.UpdateMessage("Generating merged exd files...");
-				
+
 				static constexpr auto ProgressMaxPerTask = 1000;
 				std::map<std::string, uint64_t> progressPerTask;
 				for (const auto& exhName : exhTable | std::views::keys)
@@ -630,7 +635,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 
 										exCreator = std::make_unique<Sqex::Excel::Depth2ExhExdCreator>(exhName, *exhReaderSource.Columns, exhReaderSource.Header.SomeSortOfBufferSize);
 										exCreator->FillMissingLanguageFrom = Sqex::Language::English;  // TODO: make it into option
-										
+
 										currentProgressMax = exhReaderSource.Languages.size() * exhReaderSource.Pages.size();
 										for (const auto language : exhReaderSource.Languages) {
 											for (const auto& page : exhReaderSource.Pages) {
@@ -647,6 +652,8 @@ struct App::Feature::GameResourceOverrider::Implementation {
 														exCreator->SetRow(i, language, exdReader.ReadDepth2(i));
 												} catch (const std::out_of_range&) {
 													// pass
+												} catch (const std::exception& e) {
+													throw std::runtime_error(std::format("Error while processing {}: {}", exdPathSpec, e.what()));
 												}
 											}
 										}
@@ -670,7 +677,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 									for (const auto& reader : readers) {
 										try {
 											const auto exhReaderCurrent = Sqex::Excel::ExhReader(exhName, *(*reader)[exhPath]);
-											
+
 											currentProgressMax = exhReaderCurrent.Languages.size() * exhReaderCurrent.Pages.size();
 											for (const auto language : exhReaderCurrent.Languages) {
 												for (const auto& page : exhReaderCurrent.Pages) {
@@ -683,10 +690,47 @@ struct App::Feature::GameResourceOverrider::Implementation {
 													try {
 														const auto exdReader = Sqex::Excel::ExdReader(exhReaderCurrent, (*reader)[exdPathSpec]);
 														exCreator->AddLanguage(language);
-														for (const auto i : exdReader.GetIds())
-															exCreator->SetRow(i, language, exdReader.ReadDepth2(i), false);
+														for (const auto i : exdReader.GetIds()) {
+															auto row = exdReader.ReadDepth2(i);
+															if (row.size() != exCreator->Columns.size()) {
+																const auto& rowSet = exCreator->Data.at(i);
+																const std::vector<Sqex::Excel::ExdColumn>* referenceRow = nullptr;
+																for (const auto& l : languagePriorities) {
+																	if (auto it = rowSet.find(l);
+																		it != rowSet.end()) {
+																		referenceRow = &it->second;
+																		break;
+																	}
+																}
+																if (!referenceRow)
+																	continue;
+
+																// Exceptions for Chinese client are based on speculations.
+																if (((region == L"JP" || region == L"KR") && language == Sqex::Language::ChineseSimplified) && exhName == "Fate") {
+																	auto replacements = std::vector{row[30].String, row[31].String, row[32].String, row[33].String, row[34].String, row[35].String};
+																	row = *referenceRow;
+																	for (size_t j = 0; j < replacements.size(); ++j)
+																		row[j].String = std::move(replacements[j]);
+
+																} else if (region == L"CN" && language != Sqex::Language::ChineseSimplified && exhName == "Fate") {
+																	auto replacements = std::vector{row[0].String, row[1].String, row[2].String, row[3].String, row[4].String, row[5].String};
+																	row = *referenceRow;
+																	for (size_t j = 0; j < replacements.size(); ++j)
+																		row[30 + j].String = std::move(replacements[j]);
+
+																} else {
+																	for (size_t j = row.size(); j < referenceRow->size(); ++j)
+																		row.push_back((*referenceRow)[j]);
+																	row.resize(referenceRow->size());
+																}
+															}
+															exCreator->SetRow(i, language, std::move(row), false);
+														}
 													} catch (const std::out_of_range&) {
 														// pass
+													} catch (const std::exception& e) {
+														m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
+															"=> Skipping {} because of error: {}", exdPathSpec, e.what());
 													}
 												}
 											}
@@ -843,26 +887,23 @@ struct App::Feature::GameResourceOverrider::Implementation {
 
 											auto& column = rowSet.at(language);
 
-											std::set<size_t> doneColumnIds;
-											for (const auto& rule : rules->second) {
-												const auto& exhNamePattern = std::get<0>(rule);
-												const auto& columnDataPattern = std::get<1>(rule);
-												const auto& ruleSourceLanguages = std::get<2>(rule);
-												const auto& replacementFormat = std::get<3>(rule);
-												const auto& columnIndices = std::get<4>(rule);
+											for (const auto columnIndex : columnsToModify) {
+												for (const auto& rule : rules->second) {
+													const auto& exhNamePattern = std::get<0>(rule);
+													const auto& columnDataPattern = std::get<1>(rule);
+													const auto& ruleSourceLanguages = std::get<2>(rule);
+													const auto& replacementFormat = std::get<3>(rule);
+													const auto& columnIndices = std::get<4>(rule);
 
-												if (!std::regex_search(exhName, exhNamePattern))
-													continue;
-												
-												for (const auto columnIndex : (columnIndices.empty() ? std::vector(columnsToModify.begin(), columnsToModify.end()) : columnIndices)) {
-													if (doneColumnIds.find(columnIndex) != doneColumnIds.end())
+													if (!columnIndices.empty() && std::ranges::find(columnIndices, columnIndex) == columnIndices.end())
 														continue;
+
+													if (!std::regex_search(exhName, exhNamePattern))
+														continue;
+
 													if (!std::regex_search(column[columnIndex].String, columnDataPattern))
 														continue;
-													if (column[columnIndex].Type != Sqex::Excel::Exh::String)
-														throw std::invalid_argument(std::format("Column {} of targetLanguage {} in {} is not a string column", columnIndex, static_cast<int>(language), exhName));
 
-													doneColumnIds.insert(id);
 													std::vector p = {std::format("{}", id)};
 													for (const auto ruleSourceLanguage : ruleSourceLanguages) {
 														if (const auto it = rowSet.find(ruleSourceLanguage);
@@ -872,9 +913,9 @@ struct App::Feature::GameResourceOverrider::Implementation {
 																throw std::invalid_argument(std::format("Column {} of sourceLanguage {} in {} is not a string column", columnIndex, static_cast<int>(ruleSourceLanguage), exhName));
 
 															Misc::ExcelTransformConfig::PluralColumns pluralColummIndices;
-															for (const auto& [pluralPattern, item] : pluralColumns) {
-																if (std::regex_search(exhName, pluralPattern)) {
-																	pluralColummIndices = item;
+															for (const auto& entry : pluralColumns) {
+																if (std::regex_search(exhName, entry.first)) {
+																	pluralColummIndices = entry.second;
 																	break;
 																}
 															}
@@ -954,11 +995,8 @@ struct App::Feature::GameResourceOverrider::Implementation {
 														}
 													}
 													column[columnIndex].String = Utils::StringTrim(out);
-												}
-
-												// Processed current rule; stop further processing
-												if (!doneColumnIds.empty())
 													break;
+												}
 											}
 										}
 									}
@@ -1059,9 +1097,9 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
 						"=> Processed external SqPack {}: Added {}",
 						file, batchAddResult.Added.size());
-					for (const auto& [pathSpec, errorMessage] : batchAddResult.Error) {
+					for (const auto& error : batchAddResult.Error) {
 						m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
-							"\t=> Error processing {}: {}", pathSpec, errorMessage);
+							"\t=> Error processing {}: {}", error.first, error.second);
 					}
 				}
 			}
@@ -1261,6 +1299,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 									std::shared_ptr<Sqex::Sqpack::EntryProvider> provider;
 									auto extension = entryPathSpec.Original.extension().wstring();
 									CharLowerW(&extension[0]);
+
 									if (extension == L".tex")
 										provider = std::make_shared<Sqex::Sqpack::MemoryTextureEntryProvider>(entryPathSpec, stream);
 									else

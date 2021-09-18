@@ -124,6 +124,8 @@ Sqex::FontCsv::FontCsvCreator::FontCsvCreator(const Win32::Semaphore& semaphore)
 Sqex::FontCsv::FontCsvCreator::~FontCsvCreator() = default;
 
 void Sqex::FontCsv::FontCsvCreator::AddCharacter(char32_t codePoint, const SeCompatibleDrawableFont<uint8_t>* font, bool replace, bool extendRange) {
+	if (codePoint == '\n' || codePoint == '\r')
+		return;
 	if (!font->HasCharacter(codePoint))
 		return;
 
@@ -158,15 +160,15 @@ void Sqex::FontCsv::FontCsvCreator::AddKerning(const SeCompatibleDrawableFont<ui
 }
 
 void Sqex::FontCsv::FontCsvCreator::AddKerning(const SeCompatibleDrawableFont<uint8_t>* font, bool replace) {
-	for (const auto& [pair, distance] : font->GetKerningTable())
-		AddKerning(font, pair.first, pair.second, static_cast<int>(distance), replace);
+	for (const auto& pair : font->GetKerningTable())
+		AddKerning(font, pair.first.first, pair.first.second, static_cast<int>(pair.second), replace);
 }
 
 void Sqex::FontCsv::FontCsvCreator::AddFont(const SeCompatibleDrawableFont<uint8_t>* font, bool replace, bool extendRange) {
 	for (const auto c : font->GetAllCharacters())
 		AddCharacter(c, font, replace, extendRange);
-	for (const auto& [pair, distance] : font->GetKerningTable())
-		AddKerning(font, pair.first, pair.second, static_cast<int>(distance), replace);
+	for (const auto& pair : font->GetKerningTable())
+		AddKerning(font, pair.first.first, pair.first.second, static_cast<int>(pair.second), replace);
 }
 
 Sqex::FontCsv::FontGenerateProcess Sqex::FontCsv::FontCsvCreator::GetProgress() const {
@@ -529,6 +531,7 @@ void Sqex::FontCsv::FontCsvCreator::Step3_Draw(RenderTarget& target) {
 		m_pImpl->Progress.Finished = true;
 	} catch (const std::exception& e) {
 		OnError(e);
+		DebugThrowError(e);
 	}
 }
 
@@ -680,7 +683,9 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 
 	void Compile() {
 		std::map<std::string, std::unique_ptr<FontCsvCreator::RenderTarget>> renderTargets;
-		for (const auto& [textureGroupFilenamePattern, fonts] : Config.targets) {
+		for (const auto& target : Config.targets) {
+			const auto& textureGroupFilenamePattern = target.first;
+			const auto& fonts = target.second;
 			renderTargets.emplace(textureGroupFilenamePattern, std::make_unique<FontCsvCreator::RenderTarget>(Config.textureWidth, Config.textureHeight, Config.glyphGap));
 			TextureGroupWorkPools.emplace(textureGroupFilenamePattern, std::make_unique<Win32::TpEnvironment>());
 			Result.Result.emplace(textureGroupFilenamePattern, ResultFontSet{});
@@ -700,7 +705,9 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 			}
 		}
 
-		for (const auto& [textureGroupFilenamePattern, fonts] : Config.targets) {
+		for (const auto& target : Config.targets) {
+			const auto& textureGroupFilenamePattern = target.first;
+			const auto& fonts = target.second;
 			WorkPool.SubmitWork([&]() {
 				if (Cancelled)
 					return;
@@ -709,132 +716,159 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				auto& target = *renderTargets.at(textureGroupFilenamePattern);
 				auto& remainingFonts = ResultWork.at(textureGroupFilenamePattern);
 				auto& textureGroupWorkPool = *TextureGroupWorkPools.at(textureGroupFilenamePattern);
-
 				std::vector<std::string> sortedRemainingFontList;
 				for (const auto& i : fonts.fontTargets | std::views::keys)
 					sortedRemainingFontList.emplace_back(i);
 
+				// Need to calculate/render small items first to avoid small components in big fonts reserving heights
 				std::ranges::sort(sortedRemainingFontList, [&](const auto& l, const auto& r) {
-					return fonts.fontTargets.at(l).height > fonts.fontTargets.at(r).height;
+					return fonts.fontTargets.at(l).height < fonts.fontTargets.at(r).height;
 				});
 
-				// Step 0. Calculate max progress value.
-				for (const auto& fontName : sortedRemainingFontList) {
-					if (Cancelled)
-						return;
-
-					textureGroupWorkPool.SubmitWork([this, &plan = fonts.fontTargets.at(fontName) , &creator = *remainingFonts.at(fontName)]() {
-						const auto semaphoreHolder = WaitSemaphore();
+				try {
+					// Step 0. Calculate max progress value.
+					for (const auto& fontName : sortedRemainingFontList) {
 						if (Cancelled)
 							return;
 
-						creator.SizePoints = static_cast<float>(plan.height);
-						if (plan.autoAscent)
-							creator.AscentPixels = FontCsvCreator::AutoVerticalValues;
-						else if (!plan.ascentFrom.empty())
-							creator.AscentPixels = GetSourceFont(plan.ascentFrom).Ascent();
-						else
-							creator.AscentPixels = 0;
-						if (plan.autoLineHeight)
-							creator.LineHeightPixels = FontCsvCreator::AutoVerticalValues;
-						else if (!plan.ascentFrom.empty())
-							creator.LineHeightPixels = GetSourceFont(plan.lineHeightFrom).LineHeight();
-						else
-							creator.LineHeightPixels = 0;
-						creator.MinGlobalOffsetX = plan.minGlobalOffsetX;
-						creator.MaxGlobalOffsetX = plan.maxGlobalOffsetX;
-						creator.GlobalOffsetYModifier = plan.globalOffsetY;
-						creator.AlwaysApplyKerningCharacters.insert(plan.charactersToKernAcrossFonts.begin(), plan.charactersToKernAcrossFonts.end());
-						creator.AlignToBaseline = plan.alignToBaseline;
-						creator.BorderThickness = plan.borderThickness;
-						creator.BorderOpacity = plan.borderOpacity;
-						creator.CompactLayout = plan.compactLayout == CreateConfig::SingleFontTarget::CompactLayout_NoOverride ? Config.compactLayout : (plan.compactLayout == CreateConfig::SingleFontTarget::CompactLayout_Override_Enable);
+						textureGroupWorkPool.SubmitWork([this, &plan = fonts.fontTargets.at(fontName) , &creator = *remainingFonts.at(fontName)]() {
+							try {
+								const auto semaphoreHolder = WaitSemaphore();
+								if (Cancelled)
+									return;
 
-						for (const auto& source : plan.sources) {
-							const auto& sourceFont = GetSourceFont(source.name);
-							if (source.ranges.empty()) {
-								creator.AddFont(&sourceFont, source.replace, source.extendRange);
-							} else {
-								for (const auto& rangeName : source.ranges) {
-									for (const auto& range : Config.ranges.at(rangeName).ranges | std::views::values) {
-										for (auto i = range.from; i < range.to; ++i)
-											creator.AddCharacter(i, &sourceFont, source.replace, source.extendRange);
-										if (range.from != range.to)  // separate line to prevent overflow (i < range.to might never be false)
-											creator.AddCharacter(range.to, &sourceFont, source.replace, source.extendRange);
+								creator.SizePoints = static_cast<float>(plan.height);
+								if (plan.autoAscent)
+									creator.AscentPixels = FontCsvCreator::AutoVerticalValues;
+								else if (!plan.ascentFrom.empty())
+									creator.AscentPixels = GetSourceFont(plan.ascentFrom).Ascent();
+								else
+									creator.AscentPixels = 0;
+								if (plan.autoLineHeight)
+									creator.LineHeightPixels = FontCsvCreator::AutoVerticalValues;
+								else if (!plan.ascentFrom.empty())
+									creator.LineHeightPixels = GetSourceFont(plan.lineHeightFrom).LineHeight();
+								else
+									creator.LineHeightPixels = 0;
+								creator.MinGlobalOffsetX = plan.minGlobalOffsetX;
+								creator.MaxGlobalOffsetX = plan.maxGlobalOffsetX;
+								creator.GlobalOffsetYModifier = plan.globalOffsetY;
+								creator.AlwaysApplyKerningCharacters.insert(plan.charactersToKernAcrossFonts.begin(), plan.charactersToKernAcrossFonts.end());
+								creator.AlignToBaseline = plan.alignToBaseline;
+								creator.BorderThickness = plan.borderThickness;
+								creator.BorderOpacity = plan.borderOpacity;
+								creator.CompactLayout = plan.compactLayout == CreateConfig::SingleFontTarget::CompactLayout_NoOverride ? Config.compactLayout : (plan.compactLayout == CreateConfig::SingleFontTarget::CompactLayout_Override_Enable);
 
-										if (Cancelled)
-											return;
+								for (const auto& source : plan.sources) {
+									const auto& sourceFont = GetSourceFont(source.name);
+									if (source.ranges.empty()) {
+										creator.AddFont(&sourceFont, source.replace, source.extendRange);
+									} else {
+										for (const auto& rangeName : source.ranges) {
+											for (const auto& range : Config.ranges.at(rangeName).ranges | std::views::values) {
+												for (auto i = range.from; i < range.to; ++i)
+													creator.AddCharacter(i, &sourceFont, source.replace, source.extendRange);
+												if (range.from != range.to)  // separate line to prevent overflow (i < range.to might never be false)
+													creator.AddCharacter(range.to, &sourceFont, source.replace, source.extendRange);
+
+												if (Cancelled)
+													return;
+											}
+										}
 									}
+									creator.AddKerning(&sourceFont, source.replace);
+
+									if (Cancelled)
+										return;
+								}
+
+								creator.Step0_CalcMax();
+							} catch (const std::exception& e) {
+								if (LastErrorMessage.empty()) {
+									LastErrorMessage = e.what() && *e.what() ? e.what() : "Unknown error";
+									void(Win32::Thread(L"Canceller", [this]() { Cancel(false); }));
+
+									DebugThrowError(e);
 								}
 							}
-							creator.AddKerning(&sourceFont, source.replace);
+						});
+					}
+					textureGroupWorkPool.WaitOutstanding();
 
-							if (Cancelled)
-								return;
-						}
-
-						creator.Step0_CalcMax();
-					});
-				}
-				textureGroupWorkPool.WaitOutstanding();
-
-				// Step 1. Calculate bounding boxes of every glyph used.
-				for (const auto& fontName : sortedRemainingFontList) {
-					textureGroupWorkPool.SubmitWork([this, &creator = *remainingFonts.at(fontName)]() {
-						const auto semaphoreHolder = WaitSemaphore();
-						if (Cancelled)
-							return;
-
-						creator.Step1_CalcBbox();
-					});
-				}
-				textureGroupWorkPool.WaitOutstanding();
-
-				// Step 2. Calculate where to put each glyph. Cannot be serialized.
-				for (const auto& fontName : sortedRemainingFontList) {
-					if (Cancelled)
-						return;
-
-					remainingFonts.at(fontName)->Step2_Layout(target);
-				}
-
-				// Step 3. Draw glyphs onto mipmaps.
-				for (const auto& fontName : sortedRemainingFontList) {
-					if (Cancelled)
-						return;
-
-					textureGroupWorkPool.SubmitWork([&, fontName = fontName, &creator = *remainingFonts.at(fontName)]() {
-						const auto semaphoreHolder = WaitSemaphore();
-						if (Cancelled)
-							return;
-
-						try {
-							creator.Step3_Draw(target);
-							if (Cancelled)
-								return;
-
-							auto compileResult = creator.GetResult();
-							{
-								const auto lock = std::lock_guard(ResultMtx);
-								resultSet.Fonts.emplace(fontName, std::move(compileResult));
-								if (resultSet.Fonts.size() != sortedRemainingFontList.size())
+					// Step 1. Calculate bounding boxes of every glyph used.
+					for (const auto& fontName : sortedRemainingFontList) {
+						textureGroupWorkPool.SubmitWork([this, &creator = *remainingFonts.at(fontName)]() {
+							try {
+								const auto semaphoreHolder = WaitSemaphore();
+								if (Cancelled)
 									return;
+
+								creator.Step1_CalcBbox();
+							} catch (const std::exception& e) {
+								if (LastErrorMessage.empty()) {
+									LastErrorMessage = e.what() && *e.what() ? e.what() : "Unknown error";
+									void(Win32::Thread(L"Canceller", [this]() { Cancel(false); }));
+
+									DebugThrowError(e);
+								}
 							}
-							if (Cancelled)
-								return;
+						});
+					}
+					textureGroupWorkPool.WaitOutstanding();
 
-							target.Finalize(Config.textureFormat);
+					// Step 2. Calculate where to put each glyph. Cannot be serialized.
+					for (const auto& fontName : sortedRemainingFontList) {
+						if (Cancelled)
+							return;
 
-							resultSet.Textures = target.AsTextureStreamVector();
-						} catch (const std::exception& e) {
-							if (LastErrorMessage.empty()) {
-								LastErrorMessage = e.what() && *e.what() ? e.what() : "Unknown error";
-								void(Win32::Thread(L"Canceller", [this]() { Cancel(false); }));
+						remainingFonts.at(fontName)->Step2_Layout(target);
+					}
 
-								DebugThrowError(e);
+					// Step 3. Draw glyphs onto mipmaps.
+					for (const auto& fontName : sortedRemainingFontList) {
+						if (Cancelled)
+							return;
+
+						textureGroupWorkPool.SubmitWork([&, fontName = fontName, &creator = *remainingFonts.at(fontName)]() {
+							try {
+								const auto semaphoreHolder = WaitSemaphore();
+								if (Cancelled)
+									return;
+
+								creator.Step3_Draw(target);
+								if (Cancelled)
+									return;
+
+								auto compileResult = creator.GetResult();
+								{
+									const auto lock = std::lock_guard(ResultMtx);
+									resultSet.Fonts.emplace(fontName, std::move(compileResult));
+									if (resultSet.Fonts.size() != sortedRemainingFontList.size())
+										return;
+								}
+								if (Cancelled)
+									return;
+								
+								target.Finalize(Config.textureFormat);
+								
+								resultSet.Textures = target.AsTextureStreamVector();
+							} catch (const std::exception& e) {
+								if (LastErrorMessage.empty()) {
+									LastErrorMessage = e.what() && *e.what() ? e.what() : "Unknown error";
+									void(Win32::Thread(L"Canceller", [this]() { Cancel(false); }));
+
+									DebugThrowError(e);
+								}
 							}
-						}
-					});
+						});
+					}
+				} catch (const std::exception& e) {
+					if (LastErrorMessage.empty()) {
+						LastErrorMessage = e.what() && *e.what() ? e.what() : "Unknown error";
+						void(Win32::Thread(L"Canceller", [this]() { Cancel(false); }));
+
+						DebugThrowError(e);
+					}
 				}
 				textureGroupWorkPool.WaitOutstanding();
 			});
@@ -871,13 +905,13 @@ Sqex::FontCsv::FontSetsCreator::~FontSetsCreator() {
 
 std::map<Sqex::Sqpack::EntryPathSpec, std::shared_ptr<const Sqex::RandomAccessStream>> Sqex::FontCsv::FontSetsCreator::ResultFontSets::GetAllStreams() const {
 	std::map<Sqpack::EntryPathSpec, std::shared_ptr<const RandomAccessStream>> result;
+	
+	for (const auto& fontSet : Result) {
+		for (size_t i = 0; i < fontSet.second.Textures.size(); ++i)
+			result.emplace(std::format("common/font/{}", std::format(fontSet.first, i + 1)), fontSet.second.Textures[i]);
 
-	for (const auto& [textureFilenameFormat, fontSet] : Result) {
-		for (size_t i = 0; i < fontSet.Textures.size(); ++i)
-			result.emplace(std::format("common/font/{}", std::format(textureFilenameFormat, i + 1)), fontSet.Textures[i]);
-
-		for (const auto& [fontName, newFontCsv] : fontSet.Fonts)
-			result.emplace(std::format("common/font/{}", fontName), newFontCsv);
+		for (const auto& entry : fontSet.second.Fonts)
+			result.emplace(std::format("common/font/{}", entry.first), entry.second);
 	}
 
 	return result;

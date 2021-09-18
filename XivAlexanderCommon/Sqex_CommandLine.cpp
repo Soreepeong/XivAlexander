@@ -123,10 +123,10 @@ std::string Sqex::CommandLine::ToString(const std::vector<std::pair<std::string,
 
 	} else {
 		std::vector<std::string> args;
-		for (const auto& [k, v] : map) {
-			if (k == "T")
+		for (const auto& pair : map) {
+			if (pair.first == "T")
 				continue;
-			args.emplace_back(std::format("{}={}", k, v));
+			args.emplace_back(std::format("{}={}", pair.first, pair.second));
 		}
 		return Utils::Win32::ReverseCommandLineToArgv(args);
 	}

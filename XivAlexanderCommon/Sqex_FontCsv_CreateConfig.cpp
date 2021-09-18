@@ -319,7 +319,7 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, SingleFontT
 
 	o.autoAscent = o.autoLineHeight = true;
 	
-	for (const auto& [descentMode, possibleKeyName, autoTarget, valueTarget, fromTarget] : std::vector<std::tuple<bool, const char*, bool*, uint8_t*, std::string*>>{
+	for (const auto [descentMode, possibleKeyName, autoTarget, valueTarget, fromTarget] : std::vector<std::tuple<bool, const char*, bool*, uint8_t*, std::string*>>{
 			{false, "ascent", &o.autoAscent, &o.ascent, &o.ascentFrom},
 			{false, "lineHeight", &o.autoLineHeight, &o.lineHeight, &o.lineHeightFrom},
 			{false, "descent", &o.autoLineHeight, &o.lineHeight, &o.lineHeightFrom},
@@ -378,7 +378,9 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const FontCreateCon
 		{"targets", o.targets},
 	});
 	auto& sources = j.at("sources");
-	for (const auto& [key, value] : o.sources) {
+	for (const auto pair : o.sources) {
+		const auto& key = pair.first;
+		const auto& value = pair.second;
 		if (value.isGameSource)
 			sources.emplace(key, value.gameSource);
 		else if (value.isDirectWriteSource)
@@ -403,7 +405,9 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, FontCreateC
 	}
 	if (o.textureFormat != Texture::Format::RGBA4444 && o.textureFormat != Texture::Format::RGBA_1 && o.textureFormat != Texture::Format::RGBA_2)
 		throw std::invalid_argument("Only RGBA4444 and RGBA8888 are supported");
-	for (const auto& [key, value] : j.at("sources").items()) {
+	for (const auto pair : j.at("sources").items()) {
+		const auto& key = pair.key();
+		const auto& value = pair.value();
 		if (key.starts_with("gdi:")) {
 			GdiSource source;
 			from_json(value, source);
