@@ -9,13 +9,15 @@
 #include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
 #include <XivAlexanderCommon/Utils_Win32_Process.h>
 #include <XivAlexanderCommon/Utils_Win32_ThreadPool.h>
+#include <XivAlexanderCommon/XivAlex.h>
+
 #include "App_ConfigRepository.h"
 #include "App_Misc_DebuggerDetectionDisabler.h"
+#include "App_Misc_ExcelTransformConfig.h"
 #include "App_Misc_Hooks.h"
 #include "App_Misc_Logger.h"
 #include "App_Window_ProgressPopupWindow.h"
 #include "DllMain.h"
-#include "XivAlexanderCommon/XivAlex.h"
 
 std::weak_ptr<App::Feature::GameResourceOverrider::Implementation> App::Feature::GameResourceOverrider::s_pImpl;
 
@@ -366,11 +368,11 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				}
 
 				if (m_config->Runtime.HashTrackerLanguageOverride != Sqex::Language::Unspecified) {
-					const char* languageCodes[] = { "ja", "en", "de", "fr", "chs", "cht", "ko" };
+					const char* languageCodes[] = {"ja", "en", "de", "fr", "chs", "cht", "ko"};
 					const auto targetLanguageCode = languageCodes[static_cast<int>(m_config->Runtime.HashTrackerLanguageOverride.Value()) - 1];
-					
+
 					std::string nameLower = name;
-					std::ranges::transform(nameLower, nameLower.begin(), [](char c) {return static_cast<char>(std::tolower(c)); });
+					std::ranges::transform(nameLower, nameLower.begin(), [](char c) { return static_cast<char>(std::tolower(c)); });
 					std::string newName;
 					if (nameLower.starts_with("ui/uld/logo")) {
 						// do nothing, as overriding this often freezes the game
@@ -509,7 +511,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 		if (creator.DatName == "0a0000") {
 			const auto cachedDir = m_config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / region / creator.DatExpac / creator.DatName;
 			if (!(exists(cachedDir / "TTMPD.mpd") && exists(cachedDir / "TTMPL.mpl"))) {
-				
+
 				std::map<std::string, int> exhTable;
 				// maybe generate exl?
 
@@ -519,7 +521,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				std::vector<std::unique_ptr<Sqex::Sqpack::Reader>> readers;
 
 				for (const auto& additionalSqpackRootDirectory : m_config->Runtime.AdditionalSqpackRootDirectories.Value()) {
-					const auto file = additionalSqpackRootDirectory / indexFile.parent_path().filename() / indexFile.filename();
+					const auto file = additionalSqpackRootDirectory / "sqpack" / indexFile.parent_path().filename() / indexFile.filename();
 					if (!exists(file))
 						continue;
 
@@ -530,17 +532,62 @@ struct App::Feature::GameResourceOverrider::Implementation {
 
 				create_directories(cachedDir);
 
+				std::vector<std::pair<std::regex, Misc::ExcelTransformConfig::PluralColumns>> pluralColumns;
+				std::map<Sqex::Language, std::vector<std::tuple<std::regex, std::regex, std::vector<Sqex::Language>, std::string, std::vector<size_t>>>> replacements;
+				auto replacementFileParseFail = false;
+				for (auto configFile : m_config->Runtime.ExcelTransformConfigFiles.Value()) {
+					configFile = m_config->TranslatePath(configFile);
+					if (configFile.empty())
+						continue;
+
+					try {
+						std::ifstream in(configFile);
+						nlohmann::json j;
+						in >> j;
+
+						Misc::ExcelTransformConfig::Config transformConfig;
+						from_json(j, transformConfig);
+
+						for (const auto& [pattern, pluralColumn] : transformConfig.pluralMap) {
+							pluralColumns.emplace_back(std::regex(pattern, std::regex_constants::ECMAScript | std::regex_constants::icase), pluralColumn);
+						}
+						for (const auto& rule : transformConfig.rules) {
+							for (const auto& targetGroupName : rule.targetGroups) {
+								for (const auto& [exhNamePattern, columnIndices] : transformConfig.targetGroups.at(targetGroupName).columnIndices) {
+									replacements[transformConfig.targetLanguage].emplace_back(
+										std::regex(exhNamePattern, std::regex_constants::ECMAScript | std::regex_constants::icase),
+										std::regex(rule.stringPattern, std::regex_constants::ECMAScript | std::regex_constants::icase),
+										transformConfig.sourceLanguages,
+										rule.replaceTo,
+										columnIndices
+									);
+								}
+							}
+						}
+					} catch (const std::exception& e) {
+						m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
+							"=> Error occurred while parsing excel transformation configuration file {}: {}",
+							configFile.wstring(), e.what());
+						replacementFileParseFail = true;
+					}
+				}
+				if (replacementFileParseFail) {
+					m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
+						"=> Skipping merged 0a0000 file generation");
+					return false;
+				}
+
 				const auto actCtx = Dll::ActivationContext().With();
 				Window::ProgressPopupWindow progressWindow(Dll::FindGameMainWindow(false));
-				progressWindow.UpdateMessage("Generating merged exd files...");
-				progressWindow.Show();
 				Utils::Win32::TpEnvironment pool;
-
-				std::atomic_int64_t progress = 0;
+				progressWindow.UpdateMessage("Generating merged exd files...");
+				
 				static constexpr auto ProgressMaxPerTask = 1000;
-				std::atomic_int64_t maxProgress = exhTable.size() * ProgressMaxPerTask;
-
-				progressWindow.UpdateProgress(progress, maxProgress);
+				std::map<std::string, uint64_t> progressPerTask;
+				for (const auto& exhName : exhTable | std::views::keys)
+					progressPerTask.emplace(exhName, 0);
+				progressWindow.UpdateProgress(0, exhTable.size() * ProgressMaxPerTask);
+				progressWindow.Show();
 				{
 					const auto ttmpl = Utils::Win32::File::Create(cachedDir / "TTMPL.mpl.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
 					const auto ttmpd = Utils::Win32::File::Create(cachedDir / "TTMPD.mpd.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
@@ -550,281 +597,422 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					const auto compressThread = Utils::Win32::Thread(L"CompressThread", [&]() {
 						for (const auto& exhName : exhTable | std::views::keys) {
 							pool.SubmitWork([&]() {
-								if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-									return;
-
-								// Step. Calculate maximum progress
-								size_t progressIndex = 0;
-								std::vector<uint64_t> progresses(readers.size() + 2);
-								uint64_t lastAddedProgress = 0;
-								const auto publishProgress = [&]() {
-									const auto addProgress = std::accumulate(progresses.begin(), progresses.end(), 0ULL) / (readers.size() + 2);
-									progress += addProgress - lastAddedProgress;
-									lastAddedProgress = addProgress;
-								};
-
-								// Step. Load source EXH/D files
-								const auto exhPath = Sqex::Sqpack::EntryPathSpec(std::format("exd/{}.exh", exhName));
-								std::unique_ptr<Sqex::Excel::Depth2ExhExdCreator> exCreator;
-								{
-									const auto exhReaderSource = Sqex::Excel::ExhReader(exhName, *creator[exhPath]);
-									if (exhReaderSource.Header.Depth != Sqex::Excel::Exh::Depth::Level2) {
-										progress += ProgressMaxPerTask;
+								try {
+									if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 										return;
-									}
 
-									if (std::ranges::find(exhReaderSource.Languages, Sqex::Language::Unspecified) != exhReaderSource.Languages.end()) {
-										progress += ProgressMaxPerTask;
-										return;
-									}
+									// Step. Calculate maximum progress
+									size_t progressIndex = 0;
+									uint64_t currentProgressMax = 0;
+									uint64_t currentProgress = 0;
+									auto& progressStoreTarget = progressPerTask.at(exhName);
+									const auto publishProgress = [&]() {
+										progressStoreTarget = (progressIndex * ProgressMaxPerTask + (currentProgressMax ? currentProgress * ProgressMaxPerTask / currentProgressMax : 0)) / (readers.size() + 2);
+									};
 
-									m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-										"=> Merging {}", exhName);
-
-									exCreator = std::make_unique<Sqex::Excel::Depth2ExhExdCreator>(exhName, *exhReaderSource.Columns, exhReaderSource.Header.SomeSortOfBufferSize);
-									exCreator->FillMissingLanguageFrom = Sqex::Language::English;  // TODO: make it into option
-
-									uint64_t localProgress = 0;
-									for (const auto language : exhReaderSource.Languages) {
-										for (const auto& page : exhReaderSource.Pages) {
-											progresses[progressIndex] = ProgressMaxPerTask * localProgress++ / (exhReaderSource.Languages.size() * exhReaderSource.Pages.size());
-											localProgress++;
-											publishProgress();
-
-											const auto exdPathSpec = exhReaderSource.GetDataPathSpec(page, language);
-											try {
-												const auto exdReader = Sqex::Excel::ExdReader(exhReaderSource, creator[exdPathSpec]);
-												exCreator->AddLanguage(language);
-												for (const auto i : exdReader.GetIds())
-													exCreator->SetRow(i, language, exdReader.ReadDepth2(i));
-											} catch (const std::out_of_range&) {
-												// pass
-											}
+									// Step. Load source EXH/D files
+									const auto exhPath = Sqex::Sqpack::EntryPathSpec(std::format("exd/{}.exh", exhName));
+									std::unique_ptr<Sqex::Excel::Depth2ExhExdCreator> exCreator;
+									{
+										const auto exhReaderSource = Sqex::Excel::ExhReader(exhName, *creator[exhPath]);
+										if (exhReaderSource.Header.Depth != Sqex::Excel::Exh::Depth::Level2) {
+											progressStoreTarget = ProgressMaxPerTask;
+											return;
 										}
-									}
-									progresses[progressIndex++] = ProgressMaxPerTask;
-									publishProgress();
-								}
 
-								auto sourceLanguages = exCreator->Languages;
-								std::vector languagePriorities{  // TODO
-									Sqex::Language::English,
-									Sqex::Language::Japanese,
-									Sqex::Language::German,
-									Sqex::Language::French,
-									Sqex::Language::ChineseSimplified,
-									Sqex::Language::ChineseTraditional,
-									Sqex::Language::Korean,
-								};
+										if (std::ranges::find(exhReaderSource.Languages, Sqex::Language::Unspecified) != exhReaderSource.Languages.end()) {
+											progressStoreTarget = ProgressMaxPerTask;
+											return;
+										}
 
-								// Step. Load external EXH/D files
-								for (const auto& reader : readers) {
-									try {
-										const auto exhReaderCurrent = Sqex::Excel::ExhReader(exhName, *(*reader)[exhPath]);
+										m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
+											"=> Merging {}", exhName);
 
-										uint64_t localProgress = 0;
-										for (const auto language : exhReaderCurrent.Languages) {
-											for (const auto& page : exhReaderCurrent.Pages) {
-												progresses[progressIndex] = ProgressMaxPerTask * localProgress++ / (exhReaderCurrent.Languages.size() * exhReaderCurrent.Pages.size());
-												localProgress++;
+										exCreator = std::make_unique<Sqex::Excel::Depth2ExhExdCreator>(exhName, *exhReaderSource.Columns, exhReaderSource.Header.SomeSortOfBufferSize);
+										exCreator->FillMissingLanguageFrom = Sqex::Language::English;  // TODO: make it into option
+										
+										currentProgressMax = exhReaderSource.Languages.size() * exhReaderSource.Pages.size();
+										for (const auto language : exhReaderSource.Languages) {
+											for (const auto& page : exhReaderSource.Pages) {
+												if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+													return;
+												currentProgress++;
 												publishProgress();
 
-												const auto exdPathSpec = exhReaderCurrent.GetDataPathSpec(page, language);
+												const auto exdPathSpec = exhReaderSource.GetDataPathSpec(page, language);
 												try {
-													const auto exdReader = Sqex::Excel::ExdReader(exhReaderCurrent, (*reader)[exdPathSpec]);
+													const auto exdReader = Sqex::Excel::ExdReader(exhReaderSource, creator[exdPathSpec]);
 													exCreator->AddLanguage(language);
 													for (const auto i : exdReader.GetIds())
-														exCreator->SetRow(i, language, exdReader.ReadDepth2(i), false);
+														exCreator->SetRow(i, language, exdReader.ReadDepth2(i));
 												} catch (const std::out_of_range&) {
 													// pass
 												}
 											}
 										}
-									} catch (const std::out_of_range&) {
-										// pass
-									}
-									progresses[progressIndex++] = ProgressMaxPerTask;
-									publishProgress();
-								}
-
-								std::vector<uint32_t> idsToRemove;
-								for (auto& [id, rowSet] : exCreator->Data) {
-									const std::vector<Sqex::Excel::ExdColumn>* referenceRow = nullptr;
-									for (const auto& l : languagePriorities) {
-										if (auto it = rowSet.find(l);
-											it != rowSet.end()) {
-											referenceRow = &it->second;
-											break;
-										}
-									}
-									if (!referenceRow) {
-										idsToRemove.push_back(id);
-										continue;
+										currentProgress = 0;
+										progressIndex++;
+										publishProgress();
 									}
 
-									// Step. Figure out which columns to not modify and which are modifiable
-									std::set<size_t> columnsToModify, columnsToNeverModify;
-									try {
-										std::vector<Sqex::Excel::ExdColumn> *cols[4] = {
-											&rowSet.at(Sqex::Language::Japanese),
-											&rowSet.at(Sqex::Language::English),
-											&rowSet.at(Sqex::Language::German),
-											&rowSet.at(Sqex::Language::French),
-										};
-										for (size_t i = 0; i < cols[0]->size(); ++i) {
-											std::string compareTarget;
-											for (size_t j = 0; j < _countof(cols); ++j) {
-												if ((*cols[j])[i].Type != Sqex::Excel::Exh::String) {
-													columnsToNeverModify.insert(i);
-													break;
-												} else if (j != 0 && (*cols[0])[i].String != (*cols[j])[i].String) {
-													columnsToModify.insert(i);
-													break;
+									auto sourceLanguages = exCreator->Languages;
+									std::vector languagePriorities{  // TODO
+										Sqex::Language::English,
+										Sqex::Language::Japanese,
+										Sqex::Language::German,
+										Sqex::Language::French,
+										Sqex::Language::ChineseSimplified,
+										Sqex::Language::ChineseTraditional,
+										Sqex::Language::Korean,
+									};
+
+									// Step. Load external EXH/D files
+									for (const auto& reader : readers) {
+										try {
+											const auto exhReaderCurrent = Sqex::Excel::ExhReader(exhName, *(*reader)[exhPath]);
+											
+											currentProgressMax = exhReaderCurrent.Languages.size() * exhReaderCurrent.Pages.size();
+											for (const auto language : exhReaderCurrent.Languages) {
+												for (const auto& page : exhReaderCurrent.Pages) {
+													if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+														return;
+													currentProgress++;
+													publishProgress();
+
+													const auto exdPathSpec = exhReaderCurrent.GetDataPathSpec(page, language);
+													try {
+														const auto exdReader = Sqex::Excel::ExdReader(exhReaderCurrent, (*reader)[exdPathSpec]);
+														exCreator->AddLanguage(language);
+														for (const auto i : exdReader.GetIds())
+															exCreator->SetRow(i, language, exdReader.ReadDepth2(i), false);
+													} catch (const std::out_of_range&) {
+														// pass
+													}
 												}
 											}
+										} catch (const std::out_of_range&) {
+											// pass
 										}
-									} catch (const std::out_of_range&) {
-										// pass
+										currentProgress = 0;
+										progressIndex++;
+										publishProgress();
 									}
-									try {
-										std::vector<Sqex::Excel::ExdColumn>& cols = rowSet.at(Sqex::Language::Korean);
-										for (size_t i = 0; i < cols.size(); ++i) {
-											if (cols[i].Type != Sqex::Excel::Exh::String) {
-												columnsToNeverModify.insert(i);
 
-											} else {
-												// If it includes a valid UTF-8 byte sequence that is longer than a byte, set as a candidate.
-												const auto& s = cols[i].String;
-												for (size_t j = 0; j < s.size(); ++j) {
-													char32_t charCode;
+									// Step. Ensure that there are no missing rows from externally sourced exd files
+									std::vector<uint32_t> idsToRemove;
+									for (auto& kv : exCreator->Data) {
+										const auto id = kv.first;
+										auto& rowSet = kv.second;
+										static_assert(std::is_reference_v<decltype(rowSet)>);
 
-													if ((s[j] & 0x80) == 0) {
-														// pass; single byte
-														charCode = s[j];
+										if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+											return;
 
-													} else if ((s[j] & 0xE0) == 0xC0) {
-														// 2 bytes
-														if (j + 2 > s.size())
-															break; // not enough bytes
-														if ((s[j + 1] & 0xC0) != 0x80)
-															continue;
-														charCode = static_cast<char32_t>(
-															((s[j + 0] & 0x1F) << 6) |
-															((s[j + 1] & 0x3F) << 0)
-															);
-														j += 1;
-														
-													} else if ((s[j] & 0xF0) == 0xE0) {
-														// 3 bytes
-														if (j + 3 > s.size())
-															break; // not enough bytes
-														if ((s[j + 1] & 0xC0) != 0x80
-															|| (s[j + 2] & 0xC0) != 0x80)
-															continue;
-														charCode = static_cast<char32_t>(
-															((s[j + 0] & 0x0F) << 12) |
-															((s[j + 1] & 0x3F) << 6) |
-															((s[j + 2] & 0x3F) << 0)
-															);
-														j += 2;
+										// Step. Find which language to use while filling current row if missing in other languages
+										const std::vector<Sqex::Excel::ExdColumn>* referenceRow = nullptr;
+										for (const auto& l : languagePriorities) {
+											if (auto it = rowSet.find(l);
+												it != rowSet.end()) {
+												referenceRow = &it->second;
+												break;
+											}
+										}
+										if (!referenceRow) {
+											idsToRemove.push_back(id);
+											continue;
+										}
 
-													} else if ((s[j] & 0xF8) == 0xF0) {
-														// 4 bytes
-														if (j + 4 > s.size())
-															break; // not enough bytes
-														if ((s[j + 1] & 0xC0) != 0x80
-															|| (s[j + 2] & 0xC0) != 0x80
-															|| (s[j + 3] & 0xC0) != 0x80)
-															continue;
-														charCode = static_cast<char32_t>(
-															((s[j + 0] & 0x07) << 18) |
-															((s[j + 1] & 0x3F) << 12) |
-															((s[j + 2] & 0x3F) << 6) |
-															((s[j + 3] & 0x3F) << 0)
-															);
-														j += 3;
-
-													} else {
-														// invalid
-														continue;
-													}
-
-													if (charCode >= 128) {
+										// Step. Figure out which columns to not modify and which are modifiable
+										std::set<size_t> columnsToModify, columnsToNeverModify;
+										try {
+											std::vector<Sqex::Excel::ExdColumn>* cols[4] = {
+												&rowSet.at(Sqex::Language::Japanese),
+												&rowSet.at(Sqex::Language::English),
+												&rowSet.at(Sqex::Language::German),
+												&rowSet.at(Sqex::Language::French),
+											};
+											for (size_t i = 0; i < cols[0]->size(); ++i) {
+												std::string compareTarget;
+												for (size_t j = 0; j < _countof(cols); ++j) {
+													if ((*cols[j])[i].Type != Sqex::Excel::Exh::String) {
+														columnsToNeverModify.insert(i);
+														break;
+													} else if (j != 0 && (*cols[0])[i].String != (*cols[j])[i].String) {
 														columnsToModify.insert(i);
 														break;
 													}
 												}
 											}
+										} catch (const std::out_of_range&) {
+											// pass
 										}
-									} catch (const std::out_of_range&) {
-										// pass
-									}
+										try {
+											std::vector<Sqex::Excel::ExdColumn>& cols = rowSet.at(Sqex::Language::Korean);
+											for (size_t i = 0; i < cols.size(); ++i) {
+												if (cols[i].Type != Sqex::Excel::Exh::String) {
+													columnsToNeverModify.insert(i);
 
-									// Step. Fill missing rows for languages that aren't from source, and restore columns if unmodifiable
-									for (const auto& language : exCreator->Languages) {
-										if (auto it = rowSet.find(language);
-											it == rowSet.end())
-											rowSet[language] = *referenceRow;
-										else {
-											auto& row = it->second;
-											for (size_t i = 0; i < row.size(); ++i) {
-												if (columnsToNeverModify.find(i) != columnsToNeverModify.end()) {
-													row[i] = (*referenceRow)[i];
+												} else {
+													// If it includes a valid UTF-8 byte sequence that is longer than a byte, set as a candidate.
+													const auto& s = cols[i].String;
+													for (size_t j = 0; j < s.size(); ++j) {
+														char32_t charCode;
+
+														if ((s[j] & 0x80) == 0) {
+															// pass; single byte
+															charCode = s[j];
+
+														} else if ((s[j] & 0xE0) == 0xC0) {
+															// 2 bytes
+															if (j + 2 > s.size())
+																break; // not enough bytes
+															if ((s[j + 1] & 0xC0) != 0x80)
+																continue;
+															charCode = static_cast<char32_t>(
+																((s[j + 0] & 0x1F) << 6) |
+																((s[j + 1] & 0x3F) << 0)
+															);
+															j += 1;
+
+														} else if ((s[j] & 0xF0) == 0xE0) {
+															// 3 bytes
+															if (j + 3 > s.size())
+																break; // not enough bytes
+															if ((s[j + 1] & 0xC0) != 0x80
+																|| (s[j + 2] & 0xC0) != 0x80)
+																continue;
+															charCode = static_cast<char32_t>(
+																((s[j + 0] & 0x0F) << 12) |
+																((s[j + 1] & 0x3F) << 6) |
+																((s[j + 2] & 0x3F) << 0)
+															);
+															j += 2;
+
+														} else if ((s[j] & 0xF8) == 0xF0) {
+															// 4 bytes
+															if (j + 4 > s.size())
+																break; // not enough bytes
+															if ((s[j + 1] & 0xC0) != 0x80
+																|| (s[j + 2] & 0xC0) != 0x80
+																|| (s[j + 3] & 0xC0) != 0x80)
+																continue;
+															charCode = static_cast<char32_t>(
+																((s[j + 0] & 0x07) << 18) |
+																((s[j + 1] & 0x3F) << 12) |
+																((s[j + 2] & 0x3F) << 6) |
+																((s[j + 3] & 0x3F) << 0)
+															);
+															j += 3;
+
+														} else {
+															// invalid
+															continue;
+														}
+
+														if (charCode >= 128) {
+															columnsToModify.insert(i);
+															break;
+														}
+													}
 												}
+											}
+										} catch (const std::out_of_range&) {
+											// pass
+										}
+
+										// Step. Fill missing rows for languages that aren't from source, and restore columns if unmodifiable
+										for (const auto& language : exCreator->Languages) {
+											if (auto it = rowSet.find(language);
+												it == rowSet.end())
+												rowSet[language] = *referenceRow;
+											else {
+												auto& row = it->second;
+												for (size_t i = 0; i < row.size(); ++i) {
+													if (columnsToNeverModify.find(i) != columnsToNeverModify.end()) {
+														row[i] = (*referenceRow)[i];
+													}
+												}
+											}
+										}
+
+										// Step. Adjust language data per use config
+										for (const auto& language : exCreator->Languages) {
+											const auto rules = replacements.find(language);
+											if (rules == replacements.end())
+												continue;
+
+											auto& column = rowSet.at(language);
+
+											std::set<size_t> doneColumnIds;
+											for (const auto& rule : rules->second) {
+												const auto& exhNamePattern = std::get<0>(rule);
+												const auto& columnDataPattern = std::get<1>(rule);
+												const auto& ruleSourceLanguages = std::get<2>(rule);
+												const auto& replacementFormat = std::get<3>(rule);
+												const auto& columnIndices = std::get<4>(rule);
+
+												if (!std::regex_search(exhName, exhNamePattern))
+													continue;
+												
+												for (const auto columnIndex : (columnIndices.empty() ? std::vector(columnsToModify.begin(), columnsToModify.end()) : columnIndices)) {
+													if (doneColumnIds.find(columnIndex) != doneColumnIds.end())
+														continue;
+													if (!std::regex_search(column[columnIndex].String, columnDataPattern))
+														continue;
+													if (column[columnIndex].Type != Sqex::Excel::Exh::String)
+														throw std::invalid_argument(std::format("Column {} of targetLanguage {} in {} is not a string column", columnIndex, static_cast<int>(language), exhName));
+
+													doneColumnIds.insert(id);
+													std::vector p = {std::format("{}", id)};
+													for (const auto ruleSourceLanguage : ruleSourceLanguages) {
+														if (const auto it = rowSet.find(ruleSourceLanguage);
+															it != rowSet.end()) {
+
+															if (column[columnIndex].Type != Sqex::Excel::Exh::String)
+																throw std::invalid_argument(std::format("Column {} of sourceLanguage {} in {} is not a string column", columnIndex, static_cast<int>(ruleSourceLanguage), exhName));
+
+															Misc::ExcelTransformConfig::PluralColumns pluralColummIndices;
+															for (const auto& [pluralPattern, item] : pluralColumns) {
+																if (std::regex_search(exhName, pluralPattern)) {
+																	pluralColummIndices = item;
+																	break;
+																}
+															}
+
+															auto readColumnIndex = columnIndex;
+															switch (ruleSourceLanguage) {
+																case Sqex::Language::English:
+																	// add stuff if stuff happens(tm)
+																	break;
+
+																case Sqex::Language::German:
+																case Sqex::Language::French:
+																	// add stuff if stuff happens(tm)
+																	break;
+
+																case Sqex::Language::Japanese:
+																case Sqex::Language::ChineseSimplified:
+																case Sqex::Language::ChineseTraditional:
+																case Sqex::Language::Korean: {
+																	if (pluralColummIndices.capitalizedColumnIndex != Misc::ExcelTransformConfig::PluralColumns::Index_NoColumn) {
+																		if (readColumnIndex == pluralColummIndices.pluralColumnIndex
+																			|| readColumnIndex == pluralColummIndices.singularColumnIndex)
+																			readColumnIndex = pluralColummIndices.capitalizedColumnIndex;
+																	} else {
+																		if (readColumnIndex == pluralColummIndices.pluralColumnIndex)
+																			readColumnIndex = pluralColummIndices.singularColumnIndex;
+																	}
+																	break;
+																}
+															}
+															p.emplace_back(it->second[readColumnIndex].String);
+														} else
+															p.emplace_back();
+													}
+
+													auto allSame = true;
+													size_t nonEmptySize = 0;
+													size_t lastNonEmptyIndex = 1;
+													for (size_t i = 1; i < p.size(); ++i) {
+														if (p[i] != p[0])
+															allSame = false;
+														if (!p[i].empty()) {
+															nonEmptySize++;
+															lastNonEmptyIndex = i;
+														}
+													}
+													std::string out;
+													if (allSame)
+														out = p[1];
+													else if (nonEmptySize <= 1)
+														out = p[lastNonEmptyIndex];
+													else {
+														switch (p.size()) {
+															case 1:
+																out = std::format(replacementFormat, p[0]);
+																break;
+															case 2:
+																out = std::format(replacementFormat, p[0], p[1]);
+																break;
+															case 3:
+																out = std::format(replacementFormat, p[0], p[1], p[2]);
+																break;
+															case 4:
+																out = std::format(replacementFormat, p[0], p[1], p[2], p[3]);
+																break;
+															case 5:
+																out = std::format(replacementFormat, p[0], p[1], p[2], p[3], p[4]);
+																break;
+															case 6:
+																out = std::format(replacementFormat, p[0], p[1], p[2], p[3], p[4], p[5]);
+																break;
+															case 7:
+																out = std::format(replacementFormat, p[0], p[1], p[2], p[3], p[4], p[5], p[6]);
+																break;
+															default:
+																throw std::invalid_argument("Only up to 7 source languages are supported");
+														}
+													}
+													column[columnIndex].String = Utils::StringTrim(out);
+												}
+
+												// Processed current rule; stop further processing
+												if (!doneColumnIds.empty())
+													break;
 											}
 										}
 									}
 
-									// Step. Adjust language data per use config
-									for (const auto& language : exCreator->Languages) {
-										auto& column = rowSet[language];
+									{
+										auto compiled = exCreator->Compile();
+										m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
+											"=> Saving {}", exhName);
 
-										for (size_t i = 0; i < column.size(); ++i) {
-											
-										}
-									}
-								}
+										currentProgressMax = compiled.size();
+										for (auto& kv : compiled) {
+											const auto& entryPathSpec = kv.first;
+											auto& data = kv.second;
+											currentProgress++;
+											publishProgress();
 
-								{
-									auto compiled = exCreator->Compile();
-									m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-										"=> Saving {}", exhName);
+											const auto targetPath = cachedDir / entryPathSpec.Original;
 
-									uint64_t localProgress = 0;
-									for (auto& [entryPathSpec, data] : compiled) {
-										progresses[progressIndex] = ProgressMaxPerTask * localProgress / compiled.size();
-										publishProgress();
+											const auto provider = Sqex::Sqpack::MemoryBinaryEntryProvider(entryPathSpec, std::make_shared<Sqex::MemoryRandomAccessStream>(std::move(*reinterpret_cast<std::vector<uint8_t>*>(&data))));
+											const auto len = provider.StreamSize();
+											const auto dv = provider.ReadStreamIntoVector<char>(0, len);
 
-										const auto targetPath = cachedDir / entryPathSpec.Original;
-
-										const auto provider = std::make_shared<Sqex::Sqpack::MemoryBinaryEntryProvider>(entryPathSpec, std::make_shared<Sqex::MemoryRandomAccessStream>(std::move(*reinterpret_cast<std::vector<uint8_t>*>(&data))));
-										const auto len = provider->StreamSize();
-										const auto dv = provider->ReadStreamIntoVector<char>(0, len);
-
-										if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-											return;
-										const auto lock = std::lock_guard(writeMtx);
-										const auto entryLine = std::format("{}\n", nlohmann::json::object({
-											{"FullPath", Utils::ToUtf8(entryPathSpec.Original.wstring())},
-											{"ModOffset", ttmpdPtr},
-											{"ModSize", len},
-											{"DatFile", "0a0000"},
+											if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+												return;
+											const auto lock = std::lock_guard(writeMtx);
+											const auto entryLine = std::format("{}\n", nlohmann::json::object({
+												{"FullPath", Utils::ToUtf8(entryPathSpec.Original.wstring())},
+												{"ModOffset", ttmpdPtr},
+												{"ModSize", len},
+												{"DatFile", "0a0000"},
 											}).dump());
-										ttmplPtr += ttmpl.Write(ttmplPtr, std::span(entryLine));
-										ttmpdPtr += ttmpd.Write(ttmpdPtr, std::span(dv));
+											ttmplPtr += ttmpl.Write(ttmplPtr, std::span(entryLine));
+											ttmpdPtr += ttmpd.Write(ttmpdPtr, std::span(dv));
+										}
+										currentProgress = 0;
+										progressIndex++;
+										publishProgress();
 									}
-									progresses[progressIndex++] = ProgressMaxPerTask;
-									publishProgress();
+								} catch (const std::exception& e) {
+									m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "=> Error: {}", e.what());
+									progressWindow.Cancel();
 								}
 							});
 						}
 						pool.WaitOutstanding();
 					});
 					while (true) {
-						if (WAIT_TIMEOUT != progressWindow.DoModalLoop(100, { compressThread }))
+						if (WAIT_TIMEOUT != progressWindow.DoModalLoop(100, {compressThread}))
 							break;
 
-						progressWindow.UpdateProgress(progress, maxProgress);
+						uint64_t p = 0;
+						for (const auto& val : progressPerTask | std::views::values)
+							p += val;
+						progressWindow.UpdateProgress(p, progressPerTask.size() * ProgressMaxPerTask);
 					}
 					pool.Cancel();
 					compressThread.Wait();
@@ -863,7 +1051,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				const auto file = additionalSqpackRootDirectory / indexFile.parent_path().filename() / indexFile.filename();
 				if (!exists(file))
 					continue;
-				
+
 				const auto batchAddResult = creator.AddEntriesFromSqPack(file, false, false);
 
 				if (!batchAddResult.Added.empty()) {
@@ -1035,7 +1223,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 
 					Sqex::FontCsv::FontSetsCreator fontCreator(cfg, Utils::Win32::Process::Current().PathOf().parent_path());
 					while (true) {
-						if (WAIT_TIMEOUT != progressWindow.DoModalLoop(100, { fontCreator.GetWaitableObject() }))
+						if (WAIT_TIMEOUT != progressWindow.DoModalLoop(100, {fontCreator.GetWaitableObject()}))
 							break;
 
 						const auto progress = fontCreator.GetProgress();
@@ -1062,7 +1250,10 @@ struct App::Feature::GameResourceOverrider::Implementation {
 						std::mutex writeMtx;
 
 						const auto compressThread = Utils::Win32::Thread(L"CompressThread", [&]() {
-							for (auto& [entryPathSpec, stream] : streams) {
+							for (const auto& kv : streams) {
+								const auto& entryPathSpec = kv.first;
+								const auto& stream = kv.second;
+
 								pool.SubmitWork([&]() {
 									if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 										return;
@@ -1086,7 +1277,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 										{"ModOffset", ttmpdPtr},
 										{"ModSize", len},
 										{"DatFile", "000000"},
-										}).dump());
+									}).dump());
 									ttmplPtr += ttmpl.Write(ttmplPtr, std::span(entryLine));
 									ttmpdPtr += ttmpd.Write(ttmpdPtr, std::span(dv));
 									progress += stream->StreamSize();
@@ -1094,9 +1285,9 @@ struct App::Feature::GameResourceOverrider::Implementation {
 							}
 							pool.WaitOutstanding();
 						});
-						
+
 						while (true) {
-							if (WAIT_TIMEOUT != progressWindow.DoModalLoop(100, { compressThread }))
+							if (WAIT_TIMEOUT != progressWindow.DoModalLoop(100, {compressThread}))
 								break;
 
 							progressWindow.UpdateProgress(progress, maxProgress);
@@ -1133,7 +1324,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				} catch (const std::exception& e) {
 					m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "=> Error: {}", e.what());
 				}
-			} catch (const std::runtime_error& e) {
+			} catch (const std::exception& e) {
 				m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, e.what());
 			}
 		}

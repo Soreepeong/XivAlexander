@@ -27,6 +27,7 @@
 #include <numeric>
 #include <queue>
 #include <ranges>
+#include <regex>
 #include <set>
 #include <span>
 #include <string>

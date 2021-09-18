@@ -683,7 +683,7 @@ bool App::Network::SocketHook::IsUnloadable() const {
 }
 
 void App::Network::SocketHook::ReleaseSockets() {
-	for (auto& [s, con] : m_pImpl->m_sockets) {
+	for (const auto& [s, con] : m_pImpl->m_sockets) {
 		if (con->m_pImpl->m_unloading)
 			continue;
 

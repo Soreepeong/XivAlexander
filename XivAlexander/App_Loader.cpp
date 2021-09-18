@@ -232,12 +232,12 @@ static std::set<DWORD> GetTargetPidList() {
 			Utils::Win32::Process hProcess;
 			try {
 				hProcess = Utils::Win32::Process(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
-			} catch (std::runtime_error&) {
+			} catch (const std::exception&) {
 				// some processes only allow PROCESS_QUERY_INFORMATION,
 				// while denying PROCESS_QUERY_LIMITED_INFORMATION.
 				try {
 					hProcess = Utils::Win32::Process(PROCESS_QUERY_INFORMATION, false, pid);
-				} catch (std::runtime_error&) {
+				} catch (const std::exception&) {
 					continue;
 				}
 			}
@@ -251,7 +251,7 @@ static std::set<DWORD> GetTargetPidList() {
 				}
 				if (suffixFound)
 					pids.insert(pid);
-			} catch (std::runtime_error& e) {
+			} catch (const std::exception& e) {
 				OutputDebugStringW(std::format(L"Error for PID {}: {}\n", pid, Utils::FromUtf8(e.what())).c_str());
 			}
 		}

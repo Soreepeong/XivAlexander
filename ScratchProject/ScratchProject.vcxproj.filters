@@ -7,6 +7,7 @@
     <ClCompile Include="Test_Font.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="Test_Excel.cpp" />
+    <ClCompile Include="Test.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />

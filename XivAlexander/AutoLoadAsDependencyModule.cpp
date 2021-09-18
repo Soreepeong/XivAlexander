@@ -59,7 +59,7 @@ Ret ChainCall(const char* szDllName, const char* szFunctionName, std::vector<std
 			else
 				cb(pOriginalFunction, !isLast);
 
-		} catch (const std::runtime_error& e) {
+		} catch (const std::exception& e) {
 			const auto activationContextCleanup = Dll::ActivationContext().With();
 			const auto choice = Utils::Win32::MessageBoxF(
 				Dll::FindGameMainWindow(false), MB_ICONWARNING | MB_ABORTRETRYIGNORE,
@@ -243,7 +243,7 @@ void AutoLoadAsDependencyModule() {
 		loadTarget.GetProcAddress<decltype(&XivAlexDll::SetLoadedAsDependency)>("XA_SetLoadedAsDependency")(nullptr);
 		loadTarget.GetProcAddress<decltype(&XivAlexDll::InjectEntryPoint)>("XA_InjectEntryPoint")(params);
 
-	} catch (const std::runtime_error& e) {
+	} catch (const std::exception& e) {
 		const auto activationContextCleanup = Dll::ActivationContext().With();
 		auto loop = true;
 		while (loop) {
@@ -343,7 +343,7 @@ void AutoLoadAsDependencyModule() {
 //
 //		MessageBoxA(nullptr, json.c_str(), "", MB_OK);
 //		dalamud.GetProcAddress<DWORD(WINAPI*)(LPVOID)>("Initialize", true)(&json[0]);
-//	} catch (const std::runtime_error& e) {
+//	} catch (const std::exception& e) {
 //		Utils::Win32::MessageBoxF(
 //			Dll::FindGameMainWindow(false), MB_ICONWARNING,
 //			FindStringResourceEx(Dll::Module(), IDS_APP_NAME, s_wLanguage) + 1,

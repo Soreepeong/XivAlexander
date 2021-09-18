@@ -218,6 +218,8 @@ namespace App {
 			Item<bool> UseDefaultGameResourceFileEntryRootDirectory = CreateConfigItem(this, "UseDefaultGameResourceFileEntryRootDirectory", true);
 			Item<std::vector<std::filesystem::path>> AdditionalGameResourceFileEntryRootDirectories =
 				CreateConfigItem<std::vector<std::filesystem::path>>(this, "AdditionalGameResourceFileEntryRootDirectories");
+			Item<std::vector<std::filesystem::path>> ExcelTransformConfigFiles =
+				CreateConfigItem<std::vector<std::filesystem::path>>(this, "ExcelTransformConfigFiles");
 
 			Item<std::string> OverrideFontConfig = CreateConfigItem(this, "OverrideFontConfig", std::string());
 
