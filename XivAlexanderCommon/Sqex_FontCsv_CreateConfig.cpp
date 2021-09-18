@@ -279,6 +279,8 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const SingleTargetC
 		{"ranges", o.ranges},
 		{"replace", o.replace},
 		{"extendRange", o.extendRange},
+		{"offsetXModifier", o.offsetXModifier},
+		{"offsetYModifier", o.offsetYModifier},
 	});
 }
 
@@ -287,6 +289,8 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, SingleTarge
 	o.ranges = j.value("ranges", std::vector<std::string>());
 	o.replace = j.value("replace", false);
 	o.extendRange = j.value("extendRange", true);
+	o.offsetXModifier = j.value("offsetXModifier", 0);
+	o.offsetYModifier = j.value("offsetYModifier", 0);
 }
 
 void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const SingleFontTarget& o) {

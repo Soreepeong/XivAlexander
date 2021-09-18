@@ -1086,7 +1086,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			}
 		} else {
 			for (const auto& additionalSqpackRootDirectory : m_config->Runtime.AdditionalSqpackRootDirectories.Value()) {
-				const auto file = additionalSqpackRootDirectory / indexFile.parent_path().filename() / indexFile.filename();
+				const auto file = additionalSqpackRootDirectory / "sqpack" / indexFile.parent_path().filename() / indexFile.filename();
 				if (!exists(file))
 					continue;
 

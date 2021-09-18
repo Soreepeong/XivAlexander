@@ -20,18 +20,24 @@ struct Sqex::FontCsv::FontCsvCreator::CharacterPlan {
 private:
 	mutable GlyphMeasurement m_bbox;
 	char32_t m_codePoint;
+	int m_offsetXModifier;
+	int m_offsetYModifier;
 
 public:
 	const SeCompatibleDrawableFont<uint8_t>* Font;
 
-	CharacterPlan(char32_t character, const SeCompatibleDrawableFont<uint8_t>* font)
+	CharacterPlan(char32_t character, const SeCompatibleDrawableFont<uint8_t>* font, int offsetXModifier, int offsetYModifier)
 		: m_codePoint(character)
+		, m_offsetXModifier(offsetXModifier)
+		, m_offsetYModifier(offsetYModifier)
 		, Font(font) {
 	}
 
 	const GlyphMeasurement& GetBbox() const {
-		if (m_bbox.empty)
+		if (m_bbox.empty) {
 			m_bbox = Font->Measure(0, 0, m_codePoint);
+			m_bbox.advanceX += m_offsetXModifier;
+		}
 		return m_bbox;
 	}
 
@@ -53,6 +59,10 @@ public:
 
 	[[nodiscard]] char32_t Character() const {
 		return m_codePoint;
+	}
+
+	[[nodiscard]] int OffsetYModifier() const {
+		return m_offsetYModifier;
 	}
 };
 
@@ -123,7 +133,7 @@ Sqex::FontCsv::FontCsvCreator::FontCsvCreator(const Win32::Semaphore& semaphore)
 
 Sqex::FontCsv::FontCsvCreator::~FontCsvCreator() = default;
 
-void Sqex::FontCsv::FontCsvCreator::AddCharacter(char32_t codePoint, const SeCompatibleDrawableFont<uint8_t>* font, bool replace, bool extendRange) {
+void Sqex::FontCsv::FontCsvCreator::AddCharacter(char32_t codePoint, const SeCompatibleDrawableFont<uint8_t>* font, bool replace, bool extendRange, int offsetXModifier, int offsetYModifier) {
 	if (codePoint == '\n' || codePoint == '\r')
 		return;
 	if (!font->HasCharacter(codePoint))
@@ -144,12 +154,12 @@ void Sqex::FontCsv::FontCsvCreator::AddCharacter(char32_t codePoint, const SeCom
 		return;
 	}
 
-	m_pImpl->Plans.insert(pos, CharacterPlan(codePoint, font));
+	m_pImpl->Plans.insert(pos, CharacterPlan(codePoint, font, offsetXModifier, offsetYModifier));
 }
 
-void Sqex::FontCsv::FontCsvCreator::AddCharacter(const SeCompatibleDrawableFont<uint8_t>* font, bool replace, bool extendRange) {
+void Sqex::FontCsv::FontCsvCreator::AddCharacter(const SeCompatibleDrawableFont<uint8_t>* font, bool replace, bool extendRange, int offsetXModifier, int offsetYModifier) {
 	for (const auto c : font->GetAllCharacters())
-		AddCharacter(c, font, replace, extendRange);
+		AddCharacter(c, font, replace, extendRange, offsetXModifier, offsetYModifier);
 }
 
 void Sqex::FontCsv::FontCsvCreator::AddKerning(const SeCompatibleDrawableFont<uint8_t>* font, char32_t left, char32_t right, int distance, bool replace) {
@@ -164,9 +174,9 @@ void Sqex::FontCsv::FontCsvCreator::AddKerning(const SeCompatibleDrawableFont<ui
 		AddKerning(font, pair.first.first, pair.first.second, static_cast<int>(pair.second), replace);
 }
 
-void Sqex::FontCsv::FontCsvCreator::AddFont(const SeCompatibleDrawableFont<uint8_t>* font, bool replace, bool extendRange) {
+void Sqex::FontCsv::FontCsvCreator::AddFont(const SeCompatibleDrawableFont<uint8_t>* font, bool replace, bool extendRange, int offsetXModifier, int offsetYModifier) {
 	for (const auto c : font->GetAllCharacters())
-		AddCharacter(c, font, replace, extendRange);
+		AddCharacter(c, font, replace, extendRange, offsetXModifier, offsetYModifier);
 	for (const auto& pair : font->GetKerningTable())
 		AddKerning(font, pair.first.first, pair.first.second, static_cast<int>(pair.second), replace);
 }
@@ -449,7 +459,7 @@ void Sqex::FontCsv::FontCsvCreator::Step2_Layout(RenderTarget& renderTarget) {
 		for (auto& plan : m_pImpl->Plans) {
 			if (m_pImpl->Cancelled)
 				return;
-
+			
 			m_pImpl->Progress.Progress_Layout++;
 
 			const auto& bbox = plan.GetBbox();
@@ -474,6 +484,8 @@ void Sqex::FontCsv::FontCsvCreator::Step2_Layout(RenderTarget& renderTarget) {
 				currentOffsetY += static_cast<int8_t>(bbox.top - m_pImpl->Step0Result.globalOffsetY);
 				boundingHeight = static_cast<uint8_t>(bbox.Height());
 			}
+
+			currentOffsetY += static_cast<int8_t>(plan.OffsetYModifier());
 
 			boundingHeight += static_cast<SSIZE_T>(2) * borderThickness;
 			const auto space = renderTarget.QueueDraw(plan.Character(), plan.Font,
@@ -762,14 +774,14 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 								for (const auto& source : plan.sources) {
 									const auto& sourceFont = GetSourceFont(source.name);
 									if (source.ranges.empty()) {
-										creator.AddFont(&sourceFont, source.replace, source.extendRange);
+										creator.AddFont(&sourceFont, source.replace, source.extendRange, source.offsetXModifier, source.offsetYModifier);
 									} else {
 										for (const auto& rangeName : source.ranges) {
 											for (const auto& range : Config.ranges.at(rangeName).ranges | std::views::values) {
 												for (auto i = range.from; i < range.to; ++i)
-													creator.AddCharacter(i, &sourceFont, source.replace, source.extendRange);
+													creator.AddCharacter(i, &sourceFont, source.replace, source.extendRange, source.offsetXModifier, source.offsetYModifier);
 												if (range.from != range.to)  // separate line to prevent overflow (i < range.to might never be false)
-													creator.AddCharacter(range.to, &sourceFont, source.replace, source.extendRange);
+													creator.AddCharacter(range.to, &sourceFont, source.replace, source.extendRange, source.offsetXModifier, source.offsetYModifier);
 
 												if (Cancelled)
 													return;
@@ -848,9 +860,9 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 								}
 								if (Cancelled)
 									return;
-								
+
 								target.Finalize(Config.textureFormat);
-								
+
 								resultSet.Textures = target.AsTextureStreamVector();
 							} catch (const std::exception& e) {
 								if (LastErrorMessage.empty()) {
@@ -905,7 +917,7 @@ Sqex::FontCsv::FontSetsCreator::~FontSetsCreator() {
 
 std::map<Sqex::Sqpack::EntryPathSpec, std::shared_ptr<const Sqex::RandomAccessStream>> Sqex::FontCsv::FontSetsCreator::ResultFontSets::GetAllStreams() const {
 	std::map<Sqpack::EntryPathSpec, std::shared_ptr<const RandomAccessStream>> result;
-	
+
 	for (const auto& fontSet : Result) {
 		for (size_t i = 0; i < fontSet.second.Textures.size(); ++i)
 			result.emplace(std::format("common/font/{}", std::format(fontSet.first, i + 1)), fontSet.second.Textures[i]);

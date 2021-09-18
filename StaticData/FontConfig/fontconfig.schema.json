@@ -21,6 +21,10 @@
       "default": 1,
       "minimum": 0
     },
+    "offsetXModifier": {
+      "type": "integer",
+      "default": 0
+    },
     "compactLayout": {
       "description": "Let each glyph have different height to save space.",
       "type": "boolean",

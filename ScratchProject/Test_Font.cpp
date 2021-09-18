@@ -50,7 +50,7 @@ static const auto* const pszTestString = reinterpret_cast<const char*>(
 	u8"Az Fv Fw Fy TV TW TY Tv Tw Ty VT WT YT tv tw ty vt wt yt\n"
 	u8"A\u200cz F\u200cv F\u200cw F\u200cy T\u200cV T\u200cW T\u200cY T\u200cv T\u200cw T\u200cy V\u200cT W\u200cT Y\u200cT t\u200cv t\u200cw t\u200cy v\u200ct w\u200ct y\u200ct\n"
 	u8"\n"
-	u8"테스트 finish\n"
+	u8"테스트 게임을 종료하시겠습니까?\n"
 	u8"ㅌㅅㅌ nj\n"
 	u8"“elemental”"
 );
@@ -136,8 +136,7 @@ void compile() {
 	try {
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Original.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Gulim.dwrite.json)");
-		// std::ifstream fin(R"(..\StaticData\FontConfig\Mix.JpCnKr.json)");
-		std::ifstream fin(R"(..\StaticData\FontConfig\Mix.JpCn.json)");
+		std::ifstream fin(R"(..\StaticData\FontConfig\Mix.JpKrCn.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Gulim.gdi.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Gulimche.dwrite_file.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.ComicGulim.json)");
@@ -245,7 +244,7 @@ void compile() {
 }
 
 int main() {
-	system("chcp 65001");
+	// system("chcp 65001");
 	// test_showcase<true>();
 	// test_direct();
 	compile();

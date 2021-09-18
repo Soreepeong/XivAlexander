@@ -150,10 +150,10 @@
         "lineHeight": "game:AXIS_96",
         "sources": [
           {
-            "name": "game:AXIS_96"
+            "name": "game:ChnAXIS_120"
           },
           {
-            "name": "game:ChnAXIS_120"
+            "name": "game:AXIS_96"
           }
         ]
       },
@@ -163,10 +163,10 @@
         "lineHeight": "game:AXIS_12",
         "sources": [
           {
-            "name": "game:AXIS_12"
+            "name": "game:ChnAXIS_120"
           },
           {
-            "name": "game:ChnAXIS_120"
+            "name": "game:AXIS_12"
           }
         ]
       },
@@ -176,10 +176,10 @@
         "lineHeight": "game:AXIS_14",
         "sources": [
           {
-            "name": "game:AXIS_14"
+            "name": "game:ChnAXIS_140"
           },
           {
-            "name": "game:ChnAXIS_140"
+            "name": "game:AXIS_14"
           }
         ]
       },
@@ -189,10 +189,10 @@
         "lineHeight": "game:AXIS_18",
         "sources": [
           {
-            "name": "game:AXIS_18"
+            "name": "game:ChnAXIS_180"
           },
           {
-            "name": "game:ChnAXIS_180"
+            "name": "game:AXIS_18"
           }
         ]
       },
@@ -210,8 +210,7 @@
             "extendRange": false
           },
           {
-            "name": "game:AXIS_36",
-            "replace": true
+            "name": "game:AXIS_36"
           }
         ]
       },
@@ -466,10 +465,10 @@
         "lineHeight": "game:AXIS_12",
         "sources": [
           {
-            "name": "game:AXIS_12"
+            "name": "game:ChnAXIS_120"
           },
           {
-            "name": "game:ChnAXIS_120"
+            "name": "game:AXIS_12"
           }
         ]
       },
@@ -479,10 +478,10 @@
         "lineHeight": "game:AXIS_14",
         "sources": [
           {
-            "name": "game:AXIS_14"
+            "name": "game:ChnAXIS_140"
           },
           {
-            "name": "game:ChnAXIS_140"
+            "name": "game:AXIS_14"
           }
         ]
       },
@@ -492,10 +491,10 @@
         "lineHeight": "game:AXIS_18",
         "sources": [
           {
-            "name": "game:AXIS_18"
+            "name": "game:ChnAXIS_180"
           },
           {
-            "name": "game:ChnAXIS_180"
+            "name": "game:AXIS_18"
           }
         ]
       },
@@ -667,10 +666,10 @@
         "lineHeight": "game:AXIS_12",
         "sources": [
           {
-            "name": "game:AXIS_12"
+            "name": "game:ChnAXIS_120"
           },
           {
-            "name": "game:ChnAXIS_120"
+            "name": "game:AXIS_12"
           }
         ]
       },
@@ -680,10 +679,10 @@
         "lineHeight": "game:AXIS_14",
         "sources": [
           {
-            "name": "game:AXIS_14"
+            "name": "game:ChnAXIS_140"
           },
           {
-            "name": "game:ChnAXIS_140"
+            "name": "game:AXIS_14"
           }
         ]
       },
@@ -693,10 +692,10 @@
         "lineHeight": "game:AXIS_18",
         "sources": [
           {
-            "name": "game:AXIS_18"
+            "name": "game:ChnAXIS_180"
           },
           {
-            "name": "game:ChnAXIS_180"
+            "name": "game:AXIS_18"
           }
         ]
       }

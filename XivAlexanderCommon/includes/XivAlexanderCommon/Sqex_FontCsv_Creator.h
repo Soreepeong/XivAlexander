@@ -46,7 +46,7 @@ namespace Sqex::FontCsv {
 		uint16_t GlobalOffsetYModifier = 0;
 		int MinGlobalOffsetX = 0;
 		int MaxGlobalOffsetX = 255;
-		std::set<char32_t> AlwaysApplyKerningCharacters = { U' ' };
+		std::set<char32_t> AlwaysApplyKerningCharacters = {U' '};
 		bool AlignToBaseline = true;
 		uint8_t BorderThickness = 0;
 		uint8_t BorderOpacity = 0;
@@ -55,20 +55,20 @@ namespace Sqex::FontCsv {
 		FontCsvCreator(const Win32::Semaphore& semaphore = nullptr);
 		~FontCsvCreator();
 
-		void AddCharacter(char32_t codePoint, const SeCompatibleDrawableFont<uint8_t>* font, bool replace = false, bool extendRange = true);
-		void AddCharacter(const SeCompatibleDrawableFont<uint8_t>* font, bool replace = false, bool extendRange = true);
+		void AddCharacter(char32_t codePoint, const SeCompatibleDrawableFont<uint8_t>* font, bool replace = false, bool extendRange = true, int offsetXModifier = 0, int offsetYModifier = 0);
+		void AddCharacter(const SeCompatibleDrawableFont<uint8_t>* font, bool replace = false, bool extendRange = true, int offsetXModifier = 0, int offsetYModifier = 0);
 		void AddKerning(const SeCompatibleDrawableFont<uint8_t>* font, char32_t left, char32_t right, int distance, bool replace = false);
 		void AddKerning(const SeCompatibleDrawableFont<uint8_t>* font, bool replace = false);
-		void AddFont(const SeCompatibleDrawableFont<uint8_t>* font, bool replace = false, bool extendRange = true);
-		
+		void AddFont(const SeCompatibleDrawableFont<uint8_t>* font, bool replace = false, bool extendRange = true, int offsetXModifier = 0, int offsetYModifier = 0);
+
 		ListenerManager<FontCsvCreator, void, const std::exception&> OnError;
-		
+
 		class RenderTarget {
 			friend class FontCsvCreator;
 
 			struct Implementation;
 			const std::unique_ptr<Implementation> m_pImpl;
-			
+
 		public:
 			RenderTarget(uint16_t textureWidth, uint16_t textureHeight, uint16_t glyphGap);
 			~RenderTarget();

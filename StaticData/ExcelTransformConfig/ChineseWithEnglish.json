@@ -1,9 +1,9 @@
 {
   "name": "Change Chinese text of the game to Chinese with some English",
   "description": "",
-  "targetLanguage": "SimplifiedChinese",
+  "targetLanguage": "ChineseSimplified",
   "sourceLanguages": [
-    "SimplifiedChinese",
+    "ChineseSimplified",
     "English"
   ],
   "pluralMap": {

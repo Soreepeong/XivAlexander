@@ -1,10 +1,10 @@
 {
-  "name": "Change English text of the game to English with some Japanese",
+  "name": "Change Japanese text of the game to Japanese with some English",
   "description": "",
-  "targetLanguage": "English",
+  "targetLanguage": "Japanese",
   "sourceLanguages": [
-    "English",
-    "Japanese"
+    "Japanese",
+    "English"
   ],
   "pluralMap": {
     "# comment 1": [

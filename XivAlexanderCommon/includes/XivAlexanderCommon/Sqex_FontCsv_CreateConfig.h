@@ -82,6 +82,8 @@ namespace Sqex::FontCsv::CreateConfig {
 		std::vector<std::string> ranges;
 		bool replace{};
 		bool extendRange{};
+		int offsetXModifier;
+		int offsetYModifier;
 	};
 	void to_json(nlohmann::json& j, const SingleTargetComponent& o);
 	void from_json(const nlohmann::json& j, SingleTargetComponent& o);
