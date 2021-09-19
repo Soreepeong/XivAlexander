@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "App_Feature_GameResourceOverrider.h"
 
+#include <XivAlexanderCommon/Sqex_EscapedString.h>
 #include <XivAlexanderCommon/Sqex_Excel_Generator.h>
 #include <XivAlexanderCommon/Sqex_Excel_Reader.h>
 #include <XivAlexanderCommon/Sqex_FontCsv_CreateConfig.h>
@@ -536,7 +537,17 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				create_directories(cachedDir);
 
 				std::vector<std::pair<std::regex, Misc::ExcelTransformConfig::PluralColumns>> pluralColumns;
-				std::map<Sqex::Language, std::vector<std::tuple<std::regex, std::regex, std::vector<Sqex::Language>, std::string, std::vector<size_t>>>> replacements;
+				struct ReplacementRule {
+					std::regex exhNamePattern;
+					std::regex stringPattern;
+					std::vector<Sqex::Language> sourceLanguage;
+					std::string replaceTo;
+					std::vector<size_t> columnIndices;
+					std::map<Sqex::Language, std::vector<std::string>> preprocessReplacements;
+					std::vector<std::string> postprocessReplacements;
+				};
+				std::map<Sqex::Language, std::vector<ReplacementRule>> rowReplacementRules;
+				std::map<std::string, std::pair<std::wregex, std::wstring>> columnReplacementTemplates;
 				auto replacementFileParseFail = false;
 				for (auto configFile : m_config->Runtime.ExcelTransformConfigFiles.Value()) {
 					configFile = m_config->TranslatePath(configFile);
@@ -554,16 +565,25 @@ struct App::Feature::GameResourceOverrider::Implementation {
 						for (const auto& entry : transformConfig.pluralMap) {
 							pluralColumns.emplace_back(std::regex(entry.first, std::regex_constants::ECMAScript | std::regex_constants::icase), entry.second);
 						}
+						for (const auto& entry : transformConfig.replacementTemplates) {
+							const auto pattern = Utils::FromUtf8(entry.second.from);
+							const auto flags = static_cast<std::regex_constants::syntax_option_type>(std::regex_constants::ECMAScript | (entry.second.icase ? std::regex_constants::icase : 0));
+							columnReplacementTemplates.emplace(entry.first, std::make_pair(
+								std::wregex(pattern, flags), Utils::FromUtf8(entry.second.to)
+							));
+						}
 						for (const auto& rule : transformConfig.rules) {
 							for (const auto& targetGroupName : rule.targetGroups) {
 								for (const auto& target : transformConfig.targetGroups.at(targetGroupName).columnIndices) {
-									replacements[transformConfig.targetLanguage].emplace_back(
+									rowReplacementRules[transformConfig.targetLanguage].emplace_back(ReplacementRule{
 										std::regex(target.first, std::regex_constants::ECMAScript | std::regex_constants::icase),
 										std::regex(rule.stringPattern, std::regex_constants::ECMAScript | std::regex_constants::icase),
 										transformConfig.sourceLanguages,
 										rule.replaceTo,
-										target.second
-									);
+										target.second,
+										rule.preprocessReplacements,
+										rule.postprocessReplacements,
+										});
 								}
 							}
 						}
@@ -581,7 +601,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				}
 
 				// No external excel files, nor any replacement rules are provided.
-				if (readers.empty() && replacements.empty())
+				if (readers.empty() && rowReplacementRules.empty())
 					return false;
 
 				const auto actCtx = Dll::ActivationContext().With();
@@ -593,7 +613,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				std::map<std::string, uint64_t> progressPerTask;
 				for (const auto& exhName : exhTable | std::views::keys)
 					progressPerTask.emplace(exhName, 0);
-				progressWindow.UpdateProgress(0, exhTable.size() * ProgressMaxPerTask);
+				progressWindow.UpdateProgress(0, 1ULL * exhTable.size() * ProgressMaxPerTask);
 				progressWindow.Show();
 				{
 					const auto ttmpl = Utils::Win32::File::Create(cachedDir / "TTMPL.mpl.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
@@ -614,7 +634,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 									uint64_t currentProgress = 0;
 									auto& progressStoreTarget = progressPerTask.at(exhName);
 									const auto publishProgress = [&]() {
-										progressStoreTarget = (progressIndex * ProgressMaxPerTask + (currentProgressMax ? currentProgress * ProgressMaxPerTask / currentProgressMax : 0)) / (readers.size() + 2);
+										progressStoreTarget = (1ULL * progressIndex * ProgressMaxPerTask + (currentProgressMax ? currentProgress * ProgressMaxPerTask / currentProgressMax : 0)) / (readers.size() + 2ULL);
 									};
 
 									// Step. Load source EXH/D files
@@ -638,7 +658,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 										exCreator = std::make_unique<Sqex::Excel::Depth2ExhExdCreator>(exhName, *exhReaderSource.Columns, exhReaderSource.Header.SomeSortOfBufferSize);
 										exCreator->FillMissingLanguageFrom = Sqex::Language::English;  // TODO: make it into option
 
-										currentProgressMax = exhReaderSource.Languages.size() * exhReaderSource.Pages.size();
+										currentProgressMax = 1ULL * exhReaderSource.Languages.size() * exhReaderSource.Pages.size();
 										for (const auto language : exhReaderSource.Languages) {
 											for (const auto& page : exhReaderSource.Pages) {
 												if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
@@ -680,7 +700,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 										try {
 											const auto exhReaderCurrent = Sqex::Excel::ExhReader(exhName, *(*reader)[exhPath]);
 
-											currentProgressMax = exhReaderCurrent.Languages.size() * exhReaderCurrent.Pages.size();
+											currentProgressMax = 1ULL * exhReaderCurrent.Languages.size() * exhReaderCurrent.Pages.size();
 											for (const auto language : exhReaderCurrent.Languages) {
 												for (const auto& page : exhReaderCurrent.Pages) {
 													if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
@@ -884,31 +904,25 @@ struct App::Feature::GameResourceOverrider::Implementation {
 										// Step. Adjust language data per use config
 										std::map<Sqex::Language, std::vector<Sqex::Excel::ExdColumn>> pendingReplacements;
 										for (const auto& language : exCreator->Languages) {
-											const auto rules = replacements.find(language);
-											if (rules == replacements.end())
+											const auto rules = rowReplacementRules.find(language);
+											if (rules == rowReplacementRules.end())
 												continue;
 
 											auto row = rowSet.at(language);
 
 											for (const auto columnIndex : columnsToModify) {
 												for (const auto& rule : rules->second) {
-													const auto& exhNamePattern = std::get<0>(rule);
-													const auto& columnDataPattern = std::get<1>(rule);
-													const auto& ruleSourceLanguages = std::get<2>(rule);
-													const auto& replacementFormat = std::get<3>(rule);
-													const auto& columnIndices = std::get<4>(rule);
-
-													if (!columnIndices.empty() && std::ranges::find(columnIndices, columnIndex) == columnIndices.end())
+													if (!rule.columnIndices.empty() && std::ranges::find(rule.columnIndices, columnIndex) == rule.columnIndices.end())
 														continue;
 
-													if (!std::regex_search(exhName, exhNamePattern))
+													if (!std::regex_search(exhName, rule.exhNamePattern))
 														continue;
 
-													if (!std::regex_search(row[columnIndex].String, columnDataPattern))
+													if (!std::regex_search(row[columnIndex].String, rule.stringPattern))
 														continue;
 
-													std::vector p = {std::format("{}", id)};
-													for (const auto ruleSourceLanguage : ruleSourceLanguages) {
+													std::vector p = {std::format("{}:{}", exhName, id)};
+													for (const auto ruleSourceLanguage : rule.sourceLanguage) {
 														if (const auto it = rowSet.find(ruleSourceLanguage);
 															it != rowSet.end()) {
 
@@ -949,7 +963,18 @@ struct App::Feature::GameResourceOverrider::Implementation {
 																	break;
 																}
 															}
-															p.emplace_back(it->second[readColumnIndex].String);
+															auto s = it->second[readColumnIndex].String;
+															if (const auto rules = rule.preprocessReplacements.find(ruleSourceLanguage); rules != rule.preprocessReplacements.end()) {
+																Sqex::EscapedString escaped = s;
+																auto u16 = Utils::FromUtf8(escaped.FilteredString());
+																for (const auto& ruleName : rules->second) {
+																	const auto& rep = columnReplacementTemplates.at(ruleName);
+																	u16 = std::regex_replace(u16, rep.first, rep.second);
+																}
+																escaped.FilteredString(Utils::ToUtf8(u16));
+																s = escaped;
+															}
+															p.emplace_back(std::move(s));
 														} else
 															p.emplace_back();
 													}
@@ -973,29 +998,39 @@ struct App::Feature::GameResourceOverrider::Implementation {
 													else {
 														switch (p.size()) {
 															case 1:
-																out = std::format(replacementFormat, p[0]);
+																out = std::format(rule.replaceTo, p[0]);
 																break;
 															case 2:
-																out = std::format(replacementFormat, p[0], p[1]);
+																out = std::format(rule.replaceTo, p[0], p[1]);
 																break;
 															case 3:
-																out = std::format(replacementFormat, p[0], p[1], p[2]);
+																out = std::format(rule.replaceTo, p[0], p[1], p[2]);
 																break;
 															case 4:
-																out = std::format(replacementFormat, p[0], p[1], p[2], p[3]);
+																out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3]);
 																break;
 															case 5:
-																out = std::format(replacementFormat, p[0], p[1], p[2], p[3], p[4]);
+																out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3], p[4]);
 																break;
 															case 6:
-																out = std::format(replacementFormat, p[0], p[1], p[2], p[3], p[4], p[5]);
+																out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3], p[4], p[5]);
 																break;
 															case 7:
-																out = std::format(replacementFormat, p[0], p[1], p[2], p[3], p[4], p[5], p[6]);
+																out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3], p[4], p[5], p[6]);
 																break;
 															default:
 																throw std::invalid_argument("Only up to 7 source languages are supported");
 														}
+													}
+													if (!rule.postprocessReplacements.empty()) {
+														Sqex::EscapedString escaped = out;
+														auto u16 = Utils::FromUtf8(escaped.FilteredString());
+														for (const auto& ruleName : rule.postprocessReplacements) {
+															const auto& rep = columnReplacementTemplates.at(ruleName);
+															u16 = std::regex_replace(u16, rep.first, rep.second);
+														}
+														escaped.FilteredString(Utils::ToUtf8(u16));
+														out = escaped;
 													}
 													row[columnIndex].String = Utils::StringTrim(out);
 													break;

@@ -39,12 +39,28 @@ void App::Misc::ExcelTransformConfig::from_json(const nlohmann::json& j, TargetG
 	o.columnIndices = j.get<decltype(o.columnIndices)>();
 }
 
+void App::Misc::ExcelTransformConfig::to_json(nlohmann::json& j, const ReplacementTemplate& o) {
+	j = nlohmann::json::object({
+		{"from", o.from},
+		{"to", o.to},
+		{"icase", o.icase},
+	});
+}
+
+void App::Misc::ExcelTransformConfig::from_json(const nlohmann::json& j, ReplacementTemplate& o) {
+	o.from = j.at("from").get<std::string>();
+	o.to = j.at("to").get<std::string>();
+	o.icase = j.value("icase", true);
+}
+
 void App::Misc::ExcelTransformConfig::to_json(nlohmann::json& j, const Rule& o) {
 	j = nlohmann::json::object({
 		{"targetGroups", o.targetGroups},
 		{"stringPattern", o.stringPattern},
 		{"replaceTo", o.replaceTo},
 		{"skipIfAllSame", o.skipIfAllSame},
+		{"preprocessReplacements", o.preprocessReplacements},
+		{"postprocessReplacements", o.postprocessReplacements},
 	});
 }
 
@@ -53,6 +69,14 @@ void App::Misc::ExcelTransformConfig::from_json(const nlohmann::json& j, Rule& o
 	o.stringPattern = j.value("stringPattern", decltype(o.stringPattern)());
 	o.replaceTo = j.at("replaceTo").get<decltype(o.replaceTo)>();
 	o.skipIfAllSame = j.value("skipIfAllSame", true);
+	if (const auto it = j.find("preprocessReplacements"); it != j.end()) {
+		for (const auto& entry : it->items()) {
+			Sqex::Language lang;
+			from_json(entry.key(), lang);
+			o.preprocessReplacements.emplace(lang, entry.value().get<std::vector<std::string>>());
+		}
+	}
+	o.postprocessReplacements = j.value("postprocessReplacements", decltype(o.postprocessReplacements)());
 }
 
 void App::Misc::ExcelTransformConfig::to_json(nlohmann::json& j, const Config& o) {
@@ -63,6 +87,7 @@ void App::Misc::ExcelTransformConfig::to_json(nlohmann::json& j, const Config& o
 		{"sourceLanguages", o.sourceLanguages},
 		{"pluralMap", o.pluralMap},
 		{"targetGroups", o.targetGroups},
+		{"replacementTemplates", o.replacementTemplates},
 		{"rules", o.rules},
 	});
 	if (o.sourceLanguages.empty())
@@ -89,5 +114,6 @@ void App::Misc::ExcelTransformConfig::from_json(const nlohmann::json& j, Config&
 		}
 	}
 	o.targetGroups = j.at("targetGroups").get<decltype(o.targetGroups)>();
+	o.replacementTemplates = j.value("replacementTemplates", decltype(o.replacementTemplates)());
 	o.rules = j.at("rules").get<decltype(o.rules)>();
 }

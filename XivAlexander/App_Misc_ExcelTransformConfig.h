@@ -25,11 +25,22 @@ namespace App::Misc::ExcelTransformConfig {
 	void to_json(nlohmann::json& j, const TargetGroup& o);
 	void from_json(const nlohmann::json& j, TargetGroup& o);
 
+	struct ReplacementTemplate {
+		std::string from;
+		std::string to;
+		bool icase = true;
+	};
+
+	void to_json(nlohmann::json& j, const ReplacementTemplate& o);
+	void from_json(const nlohmann::json& j, ReplacementTemplate& o);
+
 	struct Rule {
 		std::vector<std::string> targetGroups;
 		std::string stringPattern;
 		std::string replaceTo;
 		bool skipIfAllSame = true;
+		std::map<Sqex::Language, std::vector<std::string>> preprocessReplacements;
+		std::vector<std::string> postprocessReplacements;
 	};
 
 	void to_json(nlohmann::json& j, const Rule& o);
@@ -42,6 +53,7 @@ namespace App::Misc::ExcelTransformConfig {
 		std::vector<Sqex::Language> sourceLanguages;
 		std::vector<std::pair<std::string, PluralColumns>> pluralMap;
 		std::map<std::string, TargetGroup> targetGroups;
+		std::map<std::string, ReplacementTemplate> replacementTemplates;
 		std::vector<Rule> rules;
 	};
 

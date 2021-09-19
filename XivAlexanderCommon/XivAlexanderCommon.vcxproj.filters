@@ -169,6 +169,9 @@
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Excel_Generator.h">
       <Filter>Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
     </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_EscapedString.h">
+      <Filter>Square Enix Definitions</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -277,6 +280,9 @@
     </ClCompile>
     <ClCompile Include="Sqex_Excel_Generator.cpp">
       <Filter>Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_EscapedString.cpp">
+      <Filter>Square Enix Definitions</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

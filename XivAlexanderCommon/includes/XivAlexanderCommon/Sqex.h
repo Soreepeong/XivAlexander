@@ -22,6 +22,7 @@ namespace Sqex {
 		ChineseTraditional = 6,
 		Korean = 7,
 	};
+
 	void to_json(nlohmann::json&, const Language&);
 	void from_json(const nlohmann::json&, Language&);
 
@@ -35,6 +36,7 @@ namespace Sqex {
 		China = 100001,
 		Korea = 100002,
 	};
+
 	void to_json(nlohmann::json&, const Region&);
 	void from_json(const nlohmann::json&, Region&);
 
@@ -70,7 +72,7 @@ namespace Sqex {
 
 
 	template<typename T, size_t C>
-	bool IsAllSameValue(T(&arr)[C], std::remove_cv_t<T> supposedValue = 0) {
+	bool IsAllSameValue(T (&arr)[C], std::remove_cv_t<T> supposedValue = 0) {
 		for (size_t i = 0; i < C; ++i) {
 			if (arr[i] != supposedValue)
 				return false;
@@ -106,10 +108,12 @@ namespace Sqex {
 			ReadStream(offset, &buf, sizeof T);
 			return buf;
 		}
+
 		template<typename T>
 		void ReadStream(uint64_t offset, std::span<T> buf) const {
 			ReadStream(offset, buf.data(), buf.size_bytes());
 		}
+
 		template<typename T>
 		std::vector<T> ReadStreamIntoVector(uint64_t offset, size_t count = SIZE_MAX, size_t maxCount = SIZE_MAX) const {
 			if (count > maxCount)
@@ -158,6 +162,7 @@ namespace Sqex {
 		}
 
 		[[nodiscard]] uint64_t StreamSize() const override { return m_size; }
+
 		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override {
 			if (offset >= m_size)
 				return 0;
@@ -195,7 +200,7 @@ namespace Sqex {
 
 	public:
 		template<typename...Args>
-		MemoryRandomAccessStream(Args...args)
+		MemoryRandomAccessStream(Args ...args)
 			: m_buffer(std::forward<Args>(args)...) {
 		}
 
