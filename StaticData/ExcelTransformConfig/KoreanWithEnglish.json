@@ -247,16 +247,7 @@
     },
     {
       "targetGroups": ["mixed"],
-      "stringPattern": "[\\r\\n]|[\\.?!,。．！？]$",
       "replaceTo": "{1}\r\n{2}",
-      "preprocessReplacements": {
-        "Korean": ["stripKoreanDialogueNewlines", "stripKoreanDialogueNewlines2", "trimLeft", "trimRight"]
-      },
-      "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
-    },
-    {
-      "targetGroups": ["mixed"],
-      "replaceTo": "{1} {2}",
       "preprocessReplacements": {
         "Korean": ["stripKoreanDialogueNewlines", "stripKoreanDialogueNewlines2", "trimLeft", "trimRight"]
       },

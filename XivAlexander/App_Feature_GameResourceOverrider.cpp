@@ -368,9 +368,15 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					}
 				}
 
-				if (m_config->Runtime.HashTrackerLanguageOverride != Sqex::Language::Unspecified) {
+				auto overrideLanguage = Sqex::Language::Unspecified;
+				if (ext == ".scd")
+					overrideLanguage = m_config->Runtime.VoiceResourceLanguageOverride;
+				else
+					overrideLanguage = m_config->Runtime.ResourceLanguageOverride;
+
+				if (overrideLanguage != Sqex::Language::Unspecified) {
 					const char* languageCodes[] = {"ja", "en", "de", "fr", "chs", "cht", "ko"};
-					const auto targetLanguageCode = languageCodes[static_cast<int>(m_config->Runtime.HashTrackerLanguageOverride.Value()) - 1];
+					const auto targetLanguageCode = languageCodes[static_cast<int>(overrideLanguage) - 1];
 
 					std::string nameLower = name;
 					std::ranges::transform(nameLower, nameLower.begin(), [](char c) { return static_cast<char>(std::tolower(c)); });

@@ -186,7 +186,8 @@ namespace App {
 			Item<bool> UseAllIpcMessageLogger = CreateConfigItem(this, "UseAllIpcMessageLogger", false);
 
 			Item<bool> UseHashTrackerKeyLogging = CreateConfigItem(this, "UseHashTrackerKeyLogging", false);
-			Item<Sqex::Language> HashTrackerLanguageOverride = CreateConfigItem(this, "HashTrackerLanguageOverride", Sqex::Language::Unspecified);
+			Item<Sqex::Language> ResourceLanguageOverride = CreateConfigItem(this, "ResourceLanguageOverride", Sqex::Language::Unspecified);
+			Item<Sqex::Language> VoiceResourceLanguageOverride = CreateConfigItem(this, "VoiceResourceLanguageOverride", Sqex::Language::Unspecified);
 
 			Item<Language> Language = CreateConfigItem(this, "Language", Language::SystemDefault);
 

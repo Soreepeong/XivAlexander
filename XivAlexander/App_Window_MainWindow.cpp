@@ -257,37 +257,37 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE:
-					config.HashTrackerLanguageOverride = Sqex::Language::Unspecified;
+					config.ResourceLanguageOverride = Sqex::Language::Unspecified;
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH:
 					if (AskUpdateGameLanguageOverride(Sqex::Language::English))
-						config.HashTrackerLanguageOverride = Sqex::Language::English;
+						config.ResourceLanguageOverride = Sqex::Language::English;
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_GERMAN:
 					if (AskUpdateGameLanguageOverride(Sqex::Language::German))
-						config.HashTrackerLanguageOverride = Sqex::Language::German;
+						config.ResourceLanguageOverride = Sqex::Language::German;
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_FRENCH:
 					if (AskUpdateGameLanguageOverride(Sqex::Language::French))
-						config.HashTrackerLanguageOverride = Sqex::Language::French;
+						config.ResourceLanguageOverride = Sqex::Language::French;
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE:
 					if (AskUpdateGameLanguageOverride(Sqex::Language::Japanese))
-						config.HashTrackerLanguageOverride = Sqex::Language::Japanese;
+						config.ResourceLanguageOverride = Sqex::Language::Japanese;
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE:
 					if (AskUpdateGameLanguageOverride(Sqex::Language::ChineseSimplified))
-						config.HashTrackerLanguageOverride = Sqex::Language::ChineseSimplified;
+						config.ResourceLanguageOverride = Sqex::Language::ChineseSimplified;
 					return 0;
 
 				case ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN:
 					if (AskUpdateGameLanguageOverride(Sqex::Language::Korean))
-						config.HashTrackerLanguageOverride = Sqex::Language::Korean;
+						config.ResourceLanguageOverride = Sqex::Language::Korean;
 					return 0;
 
 				case ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW:
@@ -575,13 +575,13 @@ void App::Window::MainWindow::RepopulateMenu(HMENU hMenu) const {
 	Set(hMenu, ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER, config.UseEffectApplicationDelayLogger, true);
 
 	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS, config.UseHashTrackerKeyLogging, true);
-	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE, config.HashTrackerLanguageOverride == Sqex::Language::Unspecified, true);
-	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH, config.HashTrackerLanguageOverride == Sqex::Language::English, true);
-	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_GERMAN, config.HashTrackerLanguageOverride == Sqex::Language::German, true);
-	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_FRENCH, config.HashTrackerLanguageOverride == Sqex::Language::French, true);
-	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE, config.HashTrackerLanguageOverride == Sqex::Language::Japanese, true);
-	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE, config.HashTrackerLanguageOverride == Sqex::Language::ChineseSimplified, true);
-	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN, config.HashTrackerLanguageOverride == Sqex::Language::Korean, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE, config.ResourceLanguageOverride == Sqex::Language::Unspecified, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH, config.ResourceLanguageOverride == Sqex::Language::English, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_GERMAN, config.ResourceLanguageOverride == Sqex::Language::German, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_FRENCH, config.ResourceLanguageOverride == Sqex::Language::French, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE, config.ResourceLanguageOverride == Sqex::Language::Japanese, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE, config.ResourceLanguageOverride == Sqex::Language::ChineseSimplified, true);
+	Set(hMenu, ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN, config.ResourceLanguageOverride == Sqex::Language::Korean, true);
 
 	Set(hMenu, ID_TRAYMENU_CONFIGURATION_SHOWCONTROLWINDOW, config.ShowControlWindow, true);
 	Set(hMenu, ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW, config.ShowLoggingWindow, true);
