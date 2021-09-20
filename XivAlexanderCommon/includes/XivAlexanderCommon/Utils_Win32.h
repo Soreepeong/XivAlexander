@@ -36,7 +36,7 @@ namespace Utils::Win32 {
 		return MessageBoxF(hWnd, uType, lpCaption, FromUtf8(std::format(format, std::forward<Args>(args)...)).c_str());
 	}
 
-	void SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked, bool bEnabled);
+	void SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked, bool bEnabled, std::wstring newText = {});
 
 	std::string FormatWindowsErrorMessage(unsigned int errorCode);
 

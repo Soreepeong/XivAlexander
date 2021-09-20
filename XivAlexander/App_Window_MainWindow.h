@@ -33,6 +33,8 @@ namespace App::Window {
 		Sqex::Region m_gameRegion = Sqex::Region::Unspecified;
 		std::vector<std::pair<std::string, std::string>> m_launchParameters;
 
+		std::map<uint16_t, std::function<void()>> m_menuIdCallbacks;
+
 	public:
 		MainWindow(XivAlexApp* pApp, std::function<void()> unloadFunction);
 		~MainWindow() override;
@@ -44,13 +46,30 @@ namespace App::Window {
 
 		LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 		void OnDestroy() override;
-
-		void RepopulateMenu(HMENU hMenu) const;
+		
+		void RepopulateMenu();
+		void SetMenuStates() const;
 		void RegisterTrayIcon();
 		void RemoveTrayIcon();
 
 		[[nodiscard]] bool LanguageRegionModifiable() const;
 		void AskRestartGame(bool onlyOnModifier = false);
-		[[nodiscard]] bool AskUpdateGameLanguageOverride(Sqex::Language language) const;
+
+		void OnCommand_Menu_File(int menuId);
+		void OnCommand_Menu_Restart(int menuId);
+		void OnCommand_Menu_Network(int menuId);
+		void OnCommand_Menu_Modding(int menuId);
+		void OnCommand_Menu_Configure(int menuId);
+		void OnCommand_Menu_View(int menuId);
+		void OnCommand_Menu_Help(int menuId);
+
+		[[nodiscard]] std::filesystem::path ChooseFileToOpen(std::span<const COMDLG_FILTERSPEC> fileTypes, UINT nTitleResId) const;
+		
+		void ImportFontConfig(const std::filesystem::path& path);
+		void ImportExcelTransformConfig(const std::filesystem::path& path);
+		void AddAdditionalGameRootDirectory(const std::filesystem::path& path);
+		std::string InstallTTMP(const std::filesystem::path& path, const Utils::Win32::Event& cancelEvent);
+
+		std::pair<std::filesystem::path, std::string> InstallAnyFile(const std::filesystem::path& path, const Utils::Win32::Event& cancelEvent);
 	};
 }

@@ -164,13 +164,17 @@ int Utils::Win32::MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, c
 	return MessageBoxF(hWnd, uType, lpCaption, FromUtf8(text));
 }
 
-void Utils::Win32::SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked, bool bEnabled) {
+void Utils::Win32::SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked, bool bEnabled, std::wstring newText) {
 	MENUITEMINFOW mii = { sizeof(MENUITEMINFOW) };
-	mii.fMask = MIIM_STATE;
+	mii.fMask = MIIM_STATE | (!newText.empty() ? MIIM_STRING : 0);
 
 	GetMenuItemInfoW(hMenu, nMenuId, false, &mii);
 	mii.fState &= ~(MFS_CHECKED | MFS_ENABLED | MFS_DISABLED);
 	mii.fState |= (bChecked ? MFS_CHECKED : 0) | (bEnabled ? MFS_ENABLED : MFS_DISABLED);
+	if (!newText.empty()) {
+		mii.dwTypeData = &newText[0];
+		mii.cch = static_cast<UINT>(newText.size());
+	}
 	SetMenuItemInfoW(hMenu, nMenuId, false, &mii);
 }
 

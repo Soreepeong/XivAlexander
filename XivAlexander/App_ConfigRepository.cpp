@@ -142,6 +142,26 @@ std::wstring App::Config::Runtime::GetRegionNameLocalized(Sqex::Region gameRegio
 	return GetStringRes(RegionResourceIdMap.at(gameRegion));
 }
 
+std::vector<Sqex::Language> App::Config::Runtime::GetFallbackLanguageList() const {
+	std::vector<Sqex::Language> result;
+	for (const auto lang : FallbackLanguagePriority.Value()) {
+		if (std::ranges::find(result, lang) == result.end() && lang != Sqex::Language::ChineseTraditional && lang != Sqex::Language::Unspecified)
+			result.push_back(lang);
+	}
+	for (const auto lang : {
+		Sqex::Language::Japanese,
+		Sqex::Language::English,
+		Sqex::Language::German,
+		Sqex::Language::French,
+		Sqex::Language::ChineseSimplified,
+		Sqex::Language::Korean,
+	}) {
+		if (std::ranges::find(result, lang) == result.end())
+			result.push_back(lang);
+	}
+	return result;
+}
+
 std::filesystem::path App::Config::InitializationConfig::ResolveConfigStorageDirectoryPath() {
 	if (!Loaded())
 		Reload();

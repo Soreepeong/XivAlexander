@@ -142,7 +142,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 		, m_logger(Misc::Logger::Acquire())
 		, m_debugger(Misc::DebuggerDetectionDisabler::Acquire()) {
 
-		if (m_config->Runtime.UseResourceOverriding) {
+		if (m_config->Runtime.UseModding) {
 			const auto hDefaultHeap = GetProcessHeap();
 
 			m_cleanup += HeapAlloc.SetHook([this, hDefaultHeap](HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes) {
@@ -690,15 +690,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 									}
 
 									auto sourceLanguages = exCreator->Languages;
-									std::vector languagePriorities{  // TODO
-										Sqex::Language::English,
-										Sqex::Language::Japanese,
-										Sqex::Language::German,
-										Sqex::Language::French,
-										Sqex::Language::ChineseSimplified,
-										Sqex::Language::ChineseTraditional,
-										Sqex::Language::Korean,
-									};
+									const auto languagePriorities = m_config->Runtime.FallbackLanguagePriority.Value();
 
 									// Step. Load external EXH/D files
 									for (const auto& reader : readers) {
@@ -1089,10 +1081,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 						}
 						pool.WaitOutstanding();
 					});
-					while (true) {
-						if (WAIT_TIMEOUT != progressWindow.DoModalLoop(100, {compressThread}))
-							break;
-
+					while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {compressThread})) {
 						uint64_t p = 0;
 						for (const auto& val : progressPerTask | std::views::values)
 							p += val;
@@ -1190,6 +1179,15 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			for (const auto& file : files) {
 				m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, "Processing {}", file);
 
+				if (exists(file.parent_path() / "delete")) {
+					try {
+						remove_all(file.parent_path());
+						m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, "=> Deleted because \"delete\" file exists");
+					} catch (const std::exception& e) {
+						m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "=> Delete requested but failed, ignoring: {}", e.what());
+					}
+					continue;
+				}
 				if (exists(file.parent_path() / "disable")) {
 					m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, "=> Disabled because \"disable\" file exists");
 					continue;
@@ -1306,10 +1304,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					auto cfg = j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
 
 					Sqex::FontCsv::FontSetsCreator fontCreator(cfg, Utils::Win32::Process::Current().PathOf().parent_path());
-					while (true) {
-						if (WAIT_TIMEOUT != progressWindow.DoModalLoop(100, {fontCreator.GetWaitableObject()}))
-							break;
-
+					while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {fontCreator.GetWaitableObject()})) {
 						const auto progress = fontCreator.GetProgress();
 						progressWindow.UpdateProgress(progress.Progress, progress.Max);
 						if (progress.Indeterminate)
@@ -1371,10 +1366,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 							pool.WaitOutstanding();
 						});
 
-						while (true) {
-							if (WAIT_TIMEOUT != progressWindow.DoModalLoop(100, {compressThread}))
-								break;
-
+						while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {compressThread})) {
 							progressWindow.UpdateProgress(progress, maxProgress);
 						}
 						pool.Cancel();

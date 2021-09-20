@@ -48,6 +48,7 @@ App::Window::ProgressPopupWindow::ProgressPopupWindow(HWND hParentWindow)
 	SendMessageW(m_hCancelButton, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), TRUE);
 
 	ProgressPopupWindow::ApplyLanguage(m_config->Runtime.GetLangId());
+	UpdateProgress(0, 0);
 }
 
 App::Window::ProgressPopupWindow::~ProgressPopupWindow() {
@@ -57,10 +58,13 @@ App::Window::ProgressPopupWindow::~ProgressPopupWindow() {
 void App::Window::ProgressPopupWindow::UpdateProgress(uint64_t progress, uint64_t max) {
 	const auto prevStyle = GetWindowLongPtrW(m_hProgressBar, GWL_STYLE);
 	if (!max) {
-		if (!(prevStyle & PBS_MARQUEE))
+		if (!(prevStyle & PBS_MARQUEE)) {
 			SetWindowLongPtrW(m_hProgressBar, GWL_STYLE, prevStyle | PBS_MARQUEE);
+			SendMessageW(m_hProgressBar, PBM_SETMARQUEE, TRUE, 0);
+		}
 	} else {
 		if (prevStyle & PBS_MARQUEE) {
+			SendMessageW(m_hProgressBar, PBM_SETMARQUEE, FALSE, 0);
 			SetWindowLongPtrW(m_hProgressBar, GWL_STYLE, GetWindowLongPtrW(m_hProgressBar, GWL_STYLE) & ~PBS_MARQUEE);
 			SendMessageW(m_hProgressBar, PBM_SETRANGE32, 0, static_cast<LPARAM>(10000000));
 		}
@@ -125,15 +129,17 @@ void App::Window::ProgressPopupWindow::Show() {
 
 	RECT targetRect = {0, 0, static_cast<int>(GetZoom() * 640), static_cast<int>(GetZoom() * (margin * 4 + elementHeight * 3))};
 	AdjustWindowRectEx(&targetRect, GetWindowLongW(m_hWnd, GWL_STYLE), FALSE, 0);
-	SetWindowPos(m_hWnd, nullptr,
+	SetWindowPos(m_hWnd, m_hParentWindow && (GetWindowLongW(m_hParentWindow, GWL_EXSTYLE) & WS_EX_TOPMOST) ? HWND_TOPMOST : HWND_NOTOPMOST,
 		parentRect.left + (parentRect.right - parentRect.left - targetRect.right - targetRect.left) / 2,
 		parentRect.top + (parentRect.bottom - parentRect.top - targetRect.bottom - targetRect.top) / 2,
 		targetRect.right - targetRect.left,
 		targetRect.bottom - targetRect.top,
-		SWP_NOACTIVATE | SWP_NOREPOSITION | SWP_NOZORDER);
+		SWP_NOACTIVATE | SWP_NOREPOSITION);
 	ShowWindow(m_hWnd, SW_SHOW);
 	SetFocus(m_hCancelButton);
 	SetForegroundWindow(m_hWnd);
+	if (GetWindowLongW(m_hProgressBar, GWL_STYLE) & PBS_MARQUEE)
+		SendMessageW(m_hProgressBar, PBM_SETMARQUEE, TRUE, 0);
 }
 
 void App::Window::ProgressPopupWindow::OnLayout(double zoom, double width, double height, int resizeType) {

@@ -307,6 +307,7 @@ std::tuple<std::filesystem::path, int> Sqex::FontCsv::DirectWriteFont::GetFontFi
 
 	std::wstring buf(bufLen + 1, L'\0');
 	Succ(localFileLoader->GetFilePathFromKey(refKey, refKeySize, &buf[0], bufLen + 1));
+	buf.resize(bufLen);
 
 	return {buf, ref->GetFontFaceIndex()};
 }

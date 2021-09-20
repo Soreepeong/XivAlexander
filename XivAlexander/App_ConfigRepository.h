@@ -101,6 +101,15 @@ namespace App {
 				return *this;
 			}
 
+			Item<T>& operator=(T&& rv) {
+				if (m_value == rv)
+					return *this;
+
+				m_value = std::move(rv);
+				AnnounceChanged();
+				return *this;
+			}
+
 			[[nodiscard]] operator T() const& {
 				return m_value;
 			}
@@ -210,7 +219,7 @@ namespace App {
 			//Item<bool> ChainLoadDalamud_OptOutMbCollection = CreateConfigItem<bool>(this, "ChainLoadDalamud_OptOutMbCollection", true);
 			// ^ TODO: this doesn't work at the moment - see also AutoLoadAsDependencyModule.cpp
 
-			Item<bool> UseResourceOverriding = CreateConfigItem(this, "UseResourceOverriding", false);
+			Item<bool> UseModding = CreateConfigItem(this, "UseModding", false);
 			Item<std::vector<std::filesystem::path>> AdditionalSqpackRootDirectories =
 				CreateConfigItem<std::vector<std::filesystem::path>>(this, "AdditionalSqpackRootDirectories");
 			Item<bool> UseDefaultTexToolsModPackSearchDirectory = CreateConfigItem(this, "UseDefaultTexToolsModPackSearchDirectory", true);
@@ -221,6 +230,8 @@ namespace App {
 				CreateConfigItem<std::vector<std::filesystem::path>>(this, "AdditionalGameResourceFileEntryRootDirectories");
 			Item<std::vector<std::filesystem::path>> ExcelTransformConfigFiles =
 				CreateConfigItem<std::vector<std::filesystem::path>>(this, "ExcelTransformConfigFiles");
+			Item<std::vector<Sqex::Language>> FallbackLanguagePriority =
+				CreateConfigItem<std::vector<Sqex::Language>>(this, "FallbackLanguagePriority");
 
 			Item<std::string> OverrideFontConfig = CreateConfigItem(this, "OverrideFontConfig", std::string());
 
@@ -232,6 +243,8 @@ namespace App {
 			}
 			[[nodiscard]] std::wstring GetLanguageNameLocalized(Sqex::Language gameLanguage) const;
 			[[nodiscard]] std::wstring GetRegionNameLocalized(Sqex::Region gameRegion) const;
+			
+			[[nodiscard]] std::vector<Sqex::Language> GetFallbackLanguageList() const;
 		};
 
 		class Game : public BaseRepository {

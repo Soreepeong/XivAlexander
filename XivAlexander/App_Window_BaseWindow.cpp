@@ -99,7 +99,7 @@ auto App::Window::BaseWindow::RunOnUiThread(std::function<void()> fn, bool immed
 		return immediateIfNoWindow;
 	}
 	const auto pfn = new std::function(std::move(fn));
-	if (!PostMessage(m_hWnd, AppMessageRunOnUiThread, 1, reinterpret_cast<LPARAM>(pfn))) {
+	if (!PostMessageW(m_hWnd, AppMessageRunOnUiThread, 1, reinterpret_cast<LPARAM>(pfn))) {
 		delete pfn;
 		return false;
 	}

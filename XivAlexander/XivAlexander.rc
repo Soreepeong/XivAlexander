@@ -24,104 +24,6 @@ LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
 // Menu
 //
 
-IDR_TRAY_MENU MENU
-BEGIN
-    POPUP "ìÆçÏ(&F, F1)"
-    BEGIN
-        MENUITEM "(åªç›ÇÃÉvÉçÉZÉXÇÃèÛãµ)",                ID_TRAYMENU_CURRENTINFO, INACTIVE
-        MENUITEM SEPARATOR
-        POPUP "íxâÑÇÃâè¡(&M)"
-        BEGIN
-            MENUITEM "óLå¯âª(&E)\t(Ctrl+Shift+)H",     ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE
-            MENUITEM SEPARATOR
-            MENUITEM "ÉÇÅ[Éh&1ÅFéüÇÃÉAÉNÉVÉáÉìÇÃégópâ¬î\éûçèÇ©ÇÁÉåÉCÉeÉìÉVÇåJÇËè„Ç∞ÇÈ", ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_1
-            MENUITEM "ÉÇÅ[Éh&2ÅFÉTÅ[ÉoÇ©ÇÁÇÃâûìöÇ…Ç©Ç©ÇÈéûä‘Ç75msÇ…å≈íË", ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_2
-            MENUITEM "ÉÇÅ[Éh&3ÅFÉTÅ[ÉoÅ[Ç©ÇÁÇÃâûìöÇ…Ç©Ç©ÇÈéûä‘Ç∆ÉåÉCÉeÉìÉVÇï‚ê≥", ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_3
-            MENUITEM SEPARATOR
-            MENUITEM "ÉAÉNÉVÉáÉìÇÃêŸë¨Ç»égópÇÃñhé~(&E)\tCtrl+(Alt+)E", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY
-            MENUITEM SEPARATOR
-            MENUITEM "ÉçÉOÇóLå¯Ç…Ç∑ÇÈ(&L)\tCtrl+(Alt+)L",  ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING
-            MENUITEM "çÏìÆÇÃÉVÉ~ÉÖÉåÅ[ÉVÉáÉì(ÉçÉOÇ…ãLò^)(&P)\tCtrl+(Alt+)P", ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE
-        END
-        POPUP "ÉlÉbÉgÉèÅ[ÉN(&N)"
-        BEGIN
-            MENUITEM "ÉpÉPÉbÉgíxâÑÇÃåyå∏(&R)\t(Ctrl+Shift+)F1", ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY
-            MENUITEM SEPARATOR
-            MENUITEM "ÉãÅ[ÉvÉoÉbÉNÉAÉhÉåÉXÇÃèàóù(127.0.0.0/8)(&L)\t(Ctrl+Shift+)1", ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES
-            MENUITEM "ÉçÅ[ÉJÉãÉAÉhÉåÉXÇÃèàóù(10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)(&P)\t(Ctrl+Shift+)2", ID_TRAYMENU_NETWORKING_TAKEOVERPRIVATEADDRESSES
-            MENUITEM "Ç∑Ç◊ÇƒÇÃÉAÉhÉåÉXÇÃèàóù(0.0.0.0/0)(&A)\t(Ctrl+Shift+)3", ID_TRAYMENU_NETWORKING_TAKEOVERALLADDRESSES
-            MENUITEM "Ç∑Ç◊ÇƒÇÃÉ|Å[ÉgÇÃèàóù(&P)\t(Ctrl+Shift+)4", ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS
-            MENUITEM SEPARATOR
-            MENUITEM "Ç∑Ç◊ÇƒÇÃê⁄ë±ÇÃèàóùÇâèú(&E)\t(Ctrl+Shift+)F2", ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS
-        END
-        MENUITEM "IPCÉ^ÉCÉvÉtÉ@ÉCÉìÉ_Å[ÇÃégóp(&F)\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
-        MENUITEM "Ç∑Ç◊ÇƒÇÃIPCÉÅÉbÉZÅ[ÉWÇÉçÉOÇ…ãLò^(&A)\t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
-        MENUITEM "AddStatusEffectÇÃíxâÑÇÉçÉOÇ…ãLò^(&E)\t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
-        POPUP "ÉäÉ\Å[ÉXÇÃëÄçÏ(x64êÍóp)(&H)"
-        BEGIN
-            MENUITEM "ÉnÉbÉVÉÖâªÇ∑ÇÈëOÇÃï∂éöóÒÇÇ∑Ç◊ÇƒÉçÉOÇ…ãLò^(&L)",   ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS
-            MENUITEM SEPARATOR
-            MENUITEM "ÉQÅ[ÉÄÉäÉ\Å[ÉXÇÃåæåÍÇÃïœçXÅFégópÇµÇ»Ç¢(&N)",     ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE
-            MENUITEM "ÉQÅ[ÉÄÉäÉ\Å[ÉXÇÃåæåÍÇÃïœçXÅFì˙ñ{åÍ(&J)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE
-            MENUITEM "ÉQÅ[ÉÄÉäÉ\Å[ÉXÇÃåæåÍÇÃïœçXÅFâpåÍ(&E)",        ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH
-            MENUITEM "ÉQÅ[ÉÄÉäÉ\Å[ÉXÇÃåæåÍÇÃïœçXÅFÉhÉCÉcåÍ(&D)",      ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_GERMAN
-            MENUITEM "ÉQÅ[ÉÄÉäÉ\Å[ÉXÇÃåæåÍÇÃïœçXÅFÉtÉâÉìÉXåÍ(&F)",     ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_FRENCH
-            MENUITEM "ÉQÅ[ÉÄÉäÉ\Å[ÉXÇÃåæåÍÇÃïœçXÅFíÜçëåÍ(ä»ëÃéö)(&C)",  ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE
-            MENUITEM "ÉQÅ[ÉÄÉäÉ\Å[ÉXÇÃåæåÍÇÃïœçXÅFäÿçëåÍ(&K)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN
-        END
-        MENUITEM SEPARATOR
-        MENUITEM "ÉQÅ[ÉÄÉEÉBÉìÉhÉEÇèÌÇ…éËëOÇ…ï\é¶(&T)\tCtrl+Shift+T", ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP
-        POPUP "ÉQÅ[ÉÄÇÃã≠êßçƒãNìÆ(&S)"
-        BEGIN
-            MENUITEM "çƒãNìÆ(&R)\tCtrl+Shift+R",       ID_TRAYMENU_RESTARTGAME_RESTART
-            MENUITEM SEPARATOR
-            MENUITEM "DirectX11Çégóp(&D)\t(Ctrl+Shift+)D", ID_TRAYMENU_RESTARTGAME_USEDIRECTX11
-            MENUITEM "XivAlexanderÇégóp(&X)\t(Ctrl+Shift+)X", ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER
-            MENUITEM "ÉRÉ}ÉìÉhÉâÉCÉìÇÃìÔì«âªÇégóp(&P)\t(Ctrl+Shift+)P", ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION
-            MENUITEM "ä«óùé“å†å¿Ç≈é¿çs(&E)\t(Ctrl+Shift+)A", ID_TRAYMENU_RESTARTGAME_USEELEVATION
-            MENUITEM SEPARATOR
-            MENUITEM "åæåÍÅFì˙ñ{åÍ(&J)",                  ID_TRAYMENU_RESTARTGAME_LANGUAGE_JAPANESE
-            MENUITEM "åæåÍÅFâpåÍ(&E)",                   ID_TRAYMENU_RESTARTGAME_LANGUAGE_ENGLISH
-            MENUITEM "åæåÍÅFÉhÉCÉcåÍ(&D)",                 ID_TRAYMENU_RESTARTGAME_LANGUAGE_GERMAN
-            MENUITEM "åæåÍÅFÉtÉâÉìÉXåÍ(&F)",                ID_TRAYMENU_RESTARTGAME_LANGUAGE_FRENCH
-            MENUITEM "åæåÍÅFíÜçëåÍ(ä»ëÃéö)(&C)",             ID_TRAYMENU_RESTARTGAME_LANGUAGE_SIMPLIFIEDCHINESE
-            MENUITEM "åæåÍÅFäÿçëåÍ(&K)",                  ID_TRAYMENU_RESTARTGAME_LANGUAGE_KOREAN
-            MENUITEM SEPARATOR
-            MENUITEM "ínàÊÅFì˙ñ{(&1)",                   ID_TRAYMENU_RESTARTGAME_REGION_JAPAN
-            MENUITEM "ínàÊÅFñkïƒ(&2)",                   ID_TRAYMENU_RESTARTGAME_REGION_NORTH_AMERICA
-            MENUITEM "ínàÊÅFâ¢èB(&3)",                   ID_TRAYMENU_RESTARTGAME_REGION_EUROPE
-        END
-        MENUITEM "ÉQÅ[ÉÄÇÃã≠êßèIóπ(&X)\tCtrl+Shift+Q",  ID_TRAYMENU_EXITGAME
-        MENUITEM SEPARATOR
-        POPUP "ê›íË(&C)"
-        BEGIN
-            MENUITEM "ÉçÉOÉEÉBÉìÉhÉEÇÃï\é¶(&L)\t(Ctrl+Alt+)L", ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW
-            MENUITEM "ÉRÉìÉgÉçÅ[ÉãÉEÉBÉìÉhÉEÇÃï\é¶(&C)\tCtrl+(Alt+)W", ID_TRAYMENU_CONFIGURATION_SHOWCONTROLWINDOW
-            MENUITEM "ä¬ã´ê›íË(&R)\t(Ctrl+Alt+)R",      ID_TRAYMENU_CONFIGURATION_EDITRUNTIMECONFIGURATION
-            MENUITEM "OpcodeÇÃê›íË(&O)\t(Ctrl+Alt+)O", ID_TRAYMENU_CONFIGURATION_EDITOPCODECONFIGURATION
-            MENUITEM SEPARATOR
-            MENUITEM "ÉVÉXÉeÉÄåæåÍÇégóp(&S)\t",             ID_TRAYMENU_CONFIGURATION_LANGUAGE_SYSTEMDEFAULT
-            MENUITEM "åæåÍÅFâpåÍ(&E)\t",                 ID_TRAYMENU_CONFIGURATION_LANGUAGE_ENGLISH
-            MENUITEM "åæåÍÅFäÿçëåÍ(&K)\t",                ID_TRAYMENU_CONFIGURATION_LANGUAGE_KOREAN
-            MENUITEM "åæåÍÅFì˙ñ{åÍ(&J)",                  ID_TRAYMENU_CONFIGURATION_LANGUAGE_JAPANESE
-            MENUITEM SEPARATOR
-            MENUITEM "ê›íËÇÃçƒì«Ç›çûÇ›(&Z)\t(Ctrl+Shift+)F5", ID_TRAYMENU_CONFIGURATION_RELOAD
-        END
-        MENUITEM "ÉAÉbÉvÉfÅ[ÉgÇÃämîF(&P)\tCtrl+(Alt+)U", ID_TRAYMENU_CHECKFORUPDATES
-        MENUITEM "XivAlexanderÇÃèIóπ(&U)\tCtrl+(Alt+)Q", ID_TRAYMENU_UNLOADXIVALEXANDER
-    END
-    POPUP "ï\é¶(&V)"
-    BEGIN
-        MENUITEM "èÌÇ…éËëOÇ…ï\é¶(&T)\tCtrl+T",         ID_VIEW_ALWAYSONTOP
-    END
-    POPUP "ÉwÉãÉv(&H)"
-    BEGIN
-        MENUITEM "ÉwÉãÉvÉEÉFÅ[ÉuÉyÅ[ÉWÇï\é¶(&W)",           ID_HELP_OPENHELPWEBPAGE
-        MENUITEM SEPARATOR
-        MENUITEM "ÉzÅ[ÉÄÉyÅ[ÉWÇï\é¶(&H)",               ID_HELP_OPENHOMEPAGE
-    END
-END
-
 IDR_LOG_MENU MENU
 BEGIN
     POPUP "ÉtÉ@ÉCÉã(&F)"
@@ -149,6 +51,188 @@ BEGIN
     POPUP "ï\é¶(&V)"
     BEGIN
         MENUITEM "èÌÇ…éËëOÇ…ï\é¶(&T)\tCtrl+T",         ID_VIEW_ALWAYSONTOP
+    END
+END
+
+IDR_TRAY_MENU MENU
+BEGIN
+    POPUP "ÉtÉ@ÉCÉã(&F)"
+    BEGIN
+        MENUITEM "(Current Process Information)", ID_FILE_CURRENTINFO, INACTIVE
+        MENUITEM SEPARATOR
+        MENUITEM "ÉRÉìÉgÉçÅ[ÉãÉEÉBÉìÉhÉEÇÃï\é¶(&C)\tCtrl+(Alt+)W", ID_FILE_SHOWCONTROLWINDOW
+        MENUITEM "ÉçÉOÉEÉBÉìÉhÉEÇÃï\é¶(&L)\t(Ctrl+Alt+)L", ID_FILE_SHOWLOGGINGWINDOW
+        MENUITEM "ÉAÉbÉvÉfÅ[ÉgÇÃämîF(&P)\tCtrl+(Alt+)U", ID_FILE_CHECKFORUPDATES
+        MENUITEM "XivAlexanderÇÃèIóπ(&U)\tCtrl+(Alt+)Q", ID_FILE_UNLOADXIVALEXANDER
+        MENUITEM SEPARATOR
+        MENUITEM "ÉQÅ[ÉÄÇÃã≠êßèIóπ(&X)\tCtrl+Shift+Q",  ID_FILE_FORCEEXITGAME
+    END
+    POPUP "çƒãNìÆ(&R)"
+    BEGIN
+        MENUITEM "â∫ÇÃê›íËÇ≈çƒãNìÆ(&R)\tCtrl+Shift+R",  ID_RESTART_RESTART
+        MENUITEM SEPARATOR
+        MENUITEM "DirectX11Çégóp(&I)\t(Ctrl+Shift+)D", ID_RESTART_USEDIRECTX11
+        MENUITEM "XivAlexanderÇégóp(&X)\t(Ctrl+Shift+)X", ID_RESTART_USEXIVALEXANDER
+        MENUITEM "ÉRÉ}ÉìÉhÉâÉCÉìÇÃìÔì«âªÇégóp(&P)\t(Ctrl+Shift+)P", ID_RESTART_USEPARAMETEROBFUSCATION
+        MENUITEM "ä«óùé“å†å¿Ç≈é¿çs(&E)\t(Ctrl+Shift+)A", ID_RESTART_USEELEVATION
+        MENUITEM SEPARATOR
+        MENUITEM "åæåÍÅFì˙ñ{åÍ(&J)",                  ID_RESTART_LANGUAGE_JAPANESE
+        MENUITEM "åæåÍÅFâpåÍ(&E)",                   ID_RESTART_LANGUAGE_ENGLISH
+        MENUITEM "åæåÍÅFÉhÉCÉcåÍ(&D)",                 ID_RESTART_LANGUAGE_GERMAN
+        MENUITEM "åæåÍÅFÉtÉâÉìÉXåÍ(&F)",                ID_RESTART_LANGUAGE_FRENCH
+        MENUITEM "åæåÍÅFíÜçëåÍ(ä»ëÃéö)(&C)",             ID_RESTART_LANGUAGE_SIMPLIFIEDCHINESE
+        MENUITEM "åæåÍÅFäÿçëåÍ(&K)",                  ID_RESTART_LANGUAGE_KOREAN
+        MENUITEM SEPARATOR
+        MENUITEM "ínàÊÅFì˙ñ{(&1)",                   ID_RESTART_REGION_JAPAN
+        MENUITEM "ínàÊÅFñkïƒ(&2)",                   ID_RESTART_REGION_NORTH_AMERICA
+        MENUITEM "ínàÊÅFâ¢èB(&3)",                   ID_RESTART_REGION_EUROPE
+    END
+    POPUP "ÉlÉbÉgÉèÅ[ÉN(&N)"
+    BEGIN
+        POPUP "íxâÑÇÃâè¡(&H)"
+        BEGIN
+            MENUITEM "??(&E)\t(Ctrl+Shift+)H",      ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
+            MENUITEM SEPARATOR
+            MENUITEM "?? &1: ?? ???? ?? ?? ?? ?? ?? ????", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1
+            MENUITEM "?? &2: ?? ?? ??? 75ms? ??",   ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2
+            MENUITEM "?? &3: ?? ?? ? ?? ?? ??",     ID_NETWORK_HIGHLATENCYMITIGATION_MODE_3
+            MENUITEM SEPARATOR
+            MENUITEM "?? ?? ?? ??(&E)\tCtrl+(Alt+)E", ID_NETWORK_HIGHLATENCYMITIGATION_USEEARLYPENALTY
+            MENUITEM SEPARATOR
+            MENUITEM "?? ??(&L)\tCtrl+(Alt+)L",     ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING
+            MENUITEM "?? ?? (???? ?? ??)(&P)\tCtrl+(Alt+)P", ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "IPCÉ^ÉCÉvÉtÉ@ÉCÉìÉ_Å[ÇÃégóp(&F)\t(Ctrl+Shift+)F", ID_NETWORK_USEIPCTYPEFINDER
+        MENUITEM "Ç∑Ç◊ÇƒÇÃIPCÉÅÉbÉZÅ[ÉWÇÉçÉOÇ…ãLò^(&I)\t(Ctrl+Shift+)M", ID_NETWORK_USEALLIPCMESSAGELOGGER
+        MENUITEM "AddStatusEffectÇÃíxâÑÇÉçÉOÇ…ãLò^(&D)\t(Ctrl+Shift+)E", ID_NETWORK_LOGEFFECTAPPLICATIONDELAY
+        MENUITEM SEPARATOR
+        MENUITEM "ÉpÉPÉbÉgíxâÑÇÃåyå∏(&R)\t(Ctrl+Shift+)F1", ID_NETWORK_REDUCEPACKETDELAY
+        MENUITEM "Ç∑Ç◊ÇƒÇÃê⁄ë±ÇÃèàóùÇâèú(&E)\t(Ctrl+Shift+)F2", ID_NETWORK_RELEASEALLCONNECTIONS
+        POPUP "ÉAÉhÉåÉXÇÃîÕàÕÇÃñ‚ëËâåà(&T)"
+        BEGIN
+            MENUITEM "ÉãÅ[ÉvÉoÉbÉNÉAÉhÉåÉXÇÃèàóù(&L) (127.0.0.0/8)\t(Ctrl+Shift+)1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
+            MENUITEM "ÉçÅ[ÉJÉãÉAÉhÉåÉXÇÃèàóù(&P) (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\t(Ctrl+Shift+)2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
+            MENUITEM "Ç∑Ç◊ÇƒÇÃÉAÉhÉåÉXÇÃèàóù(&A) (0.0.0.0/0)\t(Ctrl+Shift+)3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
+            MENUITEM "Ç∑Ç◊ÇƒÇÃÉ|Å[ÉgÇÃèàóù(&O)\t(Ctrl+Shift+)4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
+        END
+    END
+    POPUP "ÉÇÉbÉfÉBÉìÉO(&M)"
+    BEGIN
+        MENUITEM "óLå¯âª(&E)",                     ID_MODDING_ENABLE
+        MENUITEM SEPARATOR
+        MENUITEM "ÉQÅ[ÉÄì‡Ç≈égÇÌÇÍÇÈåoòHÇÇ∑Ç◊ÇƒÉçÉOÇ…ãLò^(&P)",    ID_MODDING_LOGALLHASHKEYS
+        MENUITEM SEPARATOR
+        POPUP "åæåÍÇÃóDêÊèáà (&L)"
+        BEGIN
+            MENUITEM "ÉÅÉjÉÖÅ[ÇëIëÇµÇƒàÍî‘è„Ç…è„Ç∞ÇÁÇÍÇ‹Ç∑ÅB",        ID_MODDING_FALLBACKLANGUAGEPRIORITY_GUIDE, INACTIVE
+            MENUITEM SEPARATOR
+            MENUITEM "(entry 1)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1
+            MENUITEM "(entry 2)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY2
+            MENUITEM "(entry 3)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY3
+            MENUITEM "(entry 4)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY4
+            MENUITEM "(entry 5)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY5
+            MENUITEM "(entry 6)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY6
+        END
+        POPUP "ï\éÜåæåÍÇã≠êß(&D) (64ÉrÉbÉgêÍóp)"
+        BEGIN
+            MENUITEM "égópÇµÇ»Ç¢(&U)",                   ID_MODDING_DISPLAYLANGUAGE_DISABLE, CHECKED
+            MENUITEM SEPARATOR
+            MENUITEM "ì˙ñ{åÍ(&J)",                     ID_MODDING_DISPLAYLANGUAGE_JAPANESE
+            MENUITEM "âpåÍ(&E)",                      ID_MODDING_DISPLAYLANGUAGE_ENGLISH
+            MENUITEM "ÉhÉCÉcåÍ(&D)",                    ID_MODDING_DISPLAYLANGUAGE_GERMAN
+            MENUITEM "ÉtÉâÉìÉXåÍ(&F)",                   ID_MODDING_DISPLAYLANGUAGE_FRENCH
+            MENUITEM "íÜçëåÍ(ä»ëÃéö)(&C)",                ID_MODDING_DISPLAYLANGUAGE_CHINESESIMPLIFIED
+            MENUITEM "äÿçëåÍ(&K)",                     ID_MODDING_DISPLAYLANGUAGE_KOREAN
+        END
+        POPUP "âπê∫åæåÍÇã≠êß(&A) (64ÉrÉbÉgêÍóp)"
+        BEGIN
+            MENUITEM "égópÇµÇ»Ç¢(&U)",                   ID_MODDING_AUDIOLANGUAGE_DISABLE, CHECKED
+            MENUITEM SEPARATOR
+            MENUITEM "ì˙ñ{åÍ(&J)",                     ID_MODDING_AUDIOLANGUAGE_JAPANESE
+            MENUITEM "âpåÍ(&E)",                      ID_MODDING_AUDIOLANGUAGE_ENGLISH
+            MENUITEM "ÉhÉCÉcåÍ(&D)",                    ID_MODDING_AUDIOLANGUAGE_GERMAN
+            MENUITEM "ÉtÉâÉìÉXåÍ(&F)",                   ID_MODDING_AUDIOLANGUAGE_FRENCH
+            MENUITEM "íÜçëåÍ(ä»ëÃéö)(&C)",                ID_MODDING_AUDIOLANGUAGE_CHINESESIMPLIFIED
+            MENUITEM "äÿçëåÍ(&K)",                     ID_MODDING_AUDIOLANGUAGE_KOREAN
+        END
+        MENUITEM SEPARATOR
+        POPUP "ÉtÉHÉìÉgÇÃïœçX(&F)"
+        BEGIN
+            MENUITEM "ÉvÉäÉZÉbÉgÇÉCÉìÉ|Å[Ég(&I)",             ID_MODDING_CHANGEFONT_IMPORTPRESET
+            MENUITEM "ÉvÉäÉZÉbÉgÇÃÉtÉHÉãÉ_Å[ÇäJÇØÇÈ(&O)",         ID_MODDING_CHANGEFONT_OPENPRESETDIRECTORY
+            MENUITEM SEPARATOR
+            MENUITEM "égópÇµÇ»Ç¢(&D)",                   ID_MODDING_CHANGEFONT_DISABLE, CHECKED
+            MENUITEM SEPARATOR
+            MENUITEM "(ÉvÉäÉZÉbÉgÇÃÉtÉ@ÉCÉãÇ»Çµ)",              ID_MODDING_CHANGEFONT_NOENTRY, INACTIVE
+            MENUITEM "(Example entry)",             ID_MODDING_CHANGEFONT_ENTRY
+        END
+        POPUP "ÉAÉfÉBÉVÉáÉiÉãÉQÅ[ÉÄÇÃÉãÅ[ÉgÉtÉHÉãÉ_Å[(&G)"
+        BEGIN
+            MENUITEM "í«â¡(&A)",                      ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD
+            MENUITEM "Ç∑Ç◊Çƒè¡Ç∑(&R)",                   ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_REMOVEALL
+            MENUITEM SEPARATOR
+            MENUITEM "(ÉAÉfÉBÉVÉáÉiÉãÉQÅ[ÉÄÇÃÉãÅ[ÉgÉtÉHÉãÉ_Å[Ç»Çµ)",     ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_NOENTRY, INACTIVE
+            MENUITEM "(Example entry)",             ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ENTRY
+        END
+        POPUP "E&XDF(ÉeÉLÉXÉg)ÇÃïœä∑ÇÃãKë•"
+        BEGIN
+            MENUITEM "ãKë•ÉtÉ@ÉCÉãÇÉCÉìÉ|Å[Ég(&I)",            ID_MODDING_EXDFTRANSFORMATIONRULES_ADD
+            MENUITEM "Ç∑Ç◊Çƒè¡Ç∑(&R)",                   ID_MODDING_EXDFTRANSFORMATIONRULES_REMOVEALL
+            MENUITEM "ãKë•ÉtÉHÉãÉ_Å[ÇäJÇØÇÈ(&O)",             ID_MODDING_EXDFTRANSFORMATIONRULES_OPENPRESETDIRECTORY
+            MENUITEM SEPARATOR
+            MENUITEM "(EXDFÇÃïœä∑ÇÃãKë•Ç»Çµ)",              ID_MODDING_EXDFTRANSFORMATIONRULES_NOENTRY, INACTIVE
+            MENUITEM "(Example entry)",             ID_MODDING_EXDFTRANSFORMATIONRULES_ENTRY
+        END
+        POPUP "&TexToolsÉÇÉbÉhÉpÉbÉN"
+        BEGIN
+            POPUP "(template entry to be inserted at bottom)"
+            BEGIN
+                MENUITEM "óLå¯âª(&E)",                     ID_MODDING_TTMP_ENTRY_ENABLE, CHECKED
+                MENUITEM "è¡Ç∑ó\ñÒ(&D)",                    ID_MODDING_TTMP_ENTRY_DELETE
+                MENUITEM SEPARATOR
+            END
+            MENUITEM "ÉCÉìÉ|Å[Ég(&I)",                   ID_MODDING_TTMP_IMPORT
+            MENUITEM SEPARATOR
+            MENUITEM "Ç∑Ç◊Çƒè¡Ç∑ó\ñÒ(&R)",                 ID_MODDING_TTMP_REMOVEALL
+            MENUITEM "Ç∑Ç◊Çƒè¡Ç∑ó\ñÒÇéÊÇËè¡Çµ(&U)",            ID_MODDING_TTMP_UNDOREMOVEALL
+            MENUITEM SEPARATOR
+            MENUITEM "Ç∑Ç◊ÇƒÇóLå¯âª(&E)",                 ID_MODDING_TTMP_ENABLEALL
+            MENUITEM "Ç∑Ç◊ÇƒÇñ≥å¯âª(&D)",                 ID_MODDING_TTMP_DISABLEALL
+            MENUITEM SEPARATOR
+            MENUITEM "ÉtÉHÉãÉ_Å[ÇäJÇØÇÈ(&O)",               ID_MODDING_TTMP_OPENDIRECTORY
+            MENUITEM "çƒì«Ç›çûÇﬁ(&R)",                   ID_MODDING_TTMP_REFRESH
+            MENUITEM SEPARATOR
+            MENUITEM "(ÉCÉìÉXÉgÅ[ÉãÇ≥ÇÍÇΩÉÇÉbÉhÉpÉbÉNÇ»Çµ)",         ID_MODDING_TTMP_NOENTRY, INACTIVE
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "åë÷ÉtÉ@ÉCÉãÇÃÉtÉHÉãÉ_Å[ÇäJÇØÇÈ(&R)",        ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
+        MENUITEM SEPARATOR
+        MENUITEM "ÉQÅ[ÉÄÇçƒãNìÆÇ∑ÇÈÇ‹Ç≈ïœçXÇ…Ç»ÇÁÇ»Ç¢èÍçáÇ™ÇÊÇ≠Ç†ÇËÇ‹Ç∑ÅB", ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
+    END
+    POPUP "ê›íË(&C)"
+    BEGIN
+        MENUITEM "ä¬ã´ÅiÉâÉìÉ^ÉCÉÄÅjê›íË(&R)\t(Ctrl+Alt+)R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
+        MENUITEM "OpcodeÇÃê›íË(&O)\t(Ctrl+Alt+)O", ID_CONFIGURE_EDITOPCODECONFIGURATION
+        MENUITEM SEPARATOR
+        MENUITEM "ÉVÉXÉeÉÄåæåÍÇégóp(&S)\t",             ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT
+        MENUITEM "åæåÍÅFâpåÍ(&E)\t",                 ID_CONFIGURE_LANGUAGE_ENGLISH
+        MENUITEM "åæåÍÅFäÿçëåÍ(&K)\t",                ID_CONFIGURE_LANGUAGE_KOREAN
+        MENUITEM "åæåÍÅFì˙ñ{åÍ(&J)",                  ID_CONFIGURE_LANGUAGE_JAPANESE
+        MENUITEM SEPARATOR
+        MENUITEM "ê›íËÇÃÉtÉHÉãÉ_Å[ÇäJÇØÇÈ(&D)",            ID_CONFIGURE_OPENCONFIGURATIONDIRECTORY
+        MENUITEM "ê›íËÇÃçƒì«Ç›çûÇ›(&Z)\t(Ctrl+Shift+)F5", ID_CONFIGURE_RELOAD
+    END
+    POPUP "ï\é¶(&V)"
+    BEGIN
+        MENUITEM "èÌÇ…éËëOÇ…ï\é¶(&T)\tCtrl+T",         ID_VIEW_ALWAYSONTOP
+        MENUITEM "ÉQÅ[ÉÄÉEÉBÉìÉhÉEÇèÌÇ…éËëOÇ…ï\é¶(&T)\tCtrl+Shift+T", ID_VIEW_ALWAYSONTOPGAME
+    END
+    POPUP "ÉwÉãÉv(&H)"
+    BEGIN
+        MENUITEM "ÉwÉãÉvÉEÉFÅ[ÉuÉyÅ[ÉWÇï\é¶(&W)",           ID_HELP_OPENHELPWEBPAGE
+        MENUITEM SEPARATOR
+        MENUITEM "ÉzÅ[ÉÄÉyÅ[ÉWÇï\é¶(&H)",               ID_HELP_OPENHOMEPAGE
     END
 END
 
@@ -230,8 +314,6 @@ BEGIN
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "ä¬ã´ê›íË"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "OpcodeÇÃê›íË"
     IDS_WINDOW_LOG          "ÉçÉOÇÃï\é¶"
-    IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE 
-                            "Ç≤óòópÇÃÉNÉâÉCÉAÉìÉgÇÕëIëÇµÇΩåæåÍ({})Ç…ëŒâûÇµÇƒÇ¢Ç»Ç¢ÇΩÇﬂÉNÉâÉbÉVÉÖÇÃâ¬î\ê´Ç™çÇÇ¢Ç≈Ç∑ÅBë±ÇØÇ‹Ç∑Ç©ÅH\n\nÉQÅ[ÉÄÇ™ÉNÉâÉbÉVÉÖÇµÇΩèÍçáÅAê›íËÇñﬂÇµÅuÉQÅ[ÉÄÇÃã≠êßçƒãNìÆÅvÇçsÇ¡ÇƒÇ≠ÇæÇ≥Ç¢ÅB"
     IDS_LANGUAGE_NAME_ENGLISH "âpåÍ"
     IDS_LANGUAGE_NAME_JAPANESE "ì˙ñ{åÍ"
     IDS_LANGUAGE_NAME_GERMAN "ÉhÉCÉcåÍ"
@@ -292,6 +374,12 @@ BEGIN
     IDS_HELP_DISABLE_RUNAS  "Ç«ÇÃèÍçáÇ≈Ç‡ä«óùé“å†å¿Ç≈é¿çsÇµÇ‹ÇπÇÒÅB"
     IDS_HELP_INTERNAL_USE_ONLY "ì‡ïîégópÇÃÇ›Åiégópã÷é~Åj"
     IDS_HELP_TARGETS        "ÉçÅ[ÉhÇ‹ÇΩÇÕèIóπÇÃèÍçáÉvÉçÉZÉXIDÇ‹ÇΩÇÕÉvÉçÉZÉXÉpÉXÇÃÉTÉtÉBÉbÉNÉXÅAãNìÆÇÃèÍçáãNìÆÇ∑ÇÈÉvÉçÉZÉXÇÃÉpÉXÇ≈Ç∑ÅB"
+    IDS_TITLE_IMPORT_FONTCONFIG_PRESET "?? ??? ?? ????"
+    IDS_TITLE_ADD_EXTERNAL_GAME_DIRECTORY "?? ?? ?? ?? ????"
+    IDS_ERROR_NOT_GAME_DIRECTORY 
+                            "??? ?? ""{}"" ? ?? ??? ????. ""ffxiv_dx11.exe"" ? ""ffxiv.exe""? ???? ??? ??? ???."
+    IDS_NOTIFY_TTMP_HAS_CONFIGURATION 
+                            "?? ??? TexTools ??? ??? ?? ??? ?????. ???? ??? ???."
 END
 
 #endif    // Japanese (Japan) resources
@@ -338,93 +426,177 @@ END
 
 IDR_TRAY_MENU MENU
 BEGIN
-    POPUP "±‚¥…(&F, F1)"
+    POPUP "∆ƒ¿œ(&F)"
     BEGIN
-        MENUITEM "(«ˆ¿Á «¡∑ŒººΩ∫ ¡§∫∏)",                ID_TRAYMENU_CURRENTINFO, INACTIVE
+        MENUITEM "(Current Process Information)", ID_FILE_CURRENTINFO, INACTIVE
         MENUITEM SEPARATOR
-        POPUP "¡ˆø¨ «ÿº“(&M)"
+        MENUITEM "∞¸∏Æ √¢ ∫∏¿Ã±‚(&C)\tCtrl+(Alt+)W",  ID_FILE_SHOWCONTROLWINDOW
+        MENUITEM "∑Œ±◊ √¢ ∫∏¿Ã±‚(&L)\t(Ctrl+Alt+)L",  ID_FILE_SHOWLOGGINGWINDOW
+        MENUITEM "æ˜µ•¿Ã∆Æ »Æ¿Œ(&P)\tCtrl+(Alt+)U",   ID_FILE_CHECKFORUPDATES
+        MENUITEM "XivAlexander ¡æ∑·(&U)\tCtrl+(Alt+)Q", ID_FILE_UNLOADXIVALEXANDER
+        MENUITEM SEPARATOR
+        MENUITEM "∞‘¿” ∞≠¡¶ ¡æ∑·(&X)\tCtrl+Shift+Q",  ID_FILE_FORCEEXITGAME
+    END
+    POPUP "¿ÁΩ√¿€(&R)"
+    BEGIN
+        MENUITEM "æ∆∑° º≥¡§¿ª π›øµ«ÿ ¿ÁΩ√¿€«œ±‚(&R)\tCtrl+Shift+R", ID_RESTART_RESTART
+        MENUITEM SEPARATOR
+        MENUITEM "DirectX 11 ªÁøÎ(&I)\t(Ctrl+Shift+)D", ID_RESTART_USEDIRECTX11
+        MENUITEM "XivAlexander ªÁøÎ(&X)\t(Ctrl+Shift+)X", ID_RESTART_USEXIVALEXANDER
+        MENUITEM "∏Ì∑…¡Ÿ ≥≠µ∂»≠ ªÁøÎ(&P)\t(Ctrl+Shift+)P", ID_RESTART_USEPARAMETEROBFUSCATION
+        MENUITEM "∞¸∏Æ¿⁄ ±««—¿∏∑Œ Ω««‡(&A)\t(Ctrl+Shift+)A", ID_RESTART_USEELEVATION
+        MENUITEM SEPARATOR
+        MENUITEM "ææÓ: ¿œ∫ªæÓ(&J)",                 ID_RESTART_LANGUAGE_JAPANESE
+        MENUITEM "ææÓ: øµæÓ(&E)",                  ID_RESTART_LANGUAGE_ENGLISH
+        MENUITEM "ææÓ: µ∂¿œæÓ(&D)",                 ID_RESTART_LANGUAGE_GERMAN
+        MENUITEM "ææÓ: «¡∂˚Ω∫æÓ(&F)",                ID_RESTART_LANGUAGE_FRENCH
+        MENUITEM "ææÓ: ¡ﬂ±πæÓ(∞£√º)(&C)",             ID_RESTART_LANGUAGE_SIMPLIFIEDCHINESE
+        MENUITEM "ææÓ: «—±πæÓ(&K)",                 ID_RESTART_LANGUAGE_KOREAN
+        MENUITEM SEPARATOR
+        MENUITEM "¡ˆø™: ¿œ∫ª(&1)",                  ID_RESTART_REGION_JAPAN
+        MENUITEM "¡ˆø™: ∫œπÃ(&2)",                  ID_RESTART_REGION_NORTH_AMERICA
+        MENUITEM "¡ˆø™: ¿Ø∑¥(&3)",                  ID_RESTART_REGION_EUROPE
+    END
+    POPUP "≥◊∆Æøˆ≈©(&N)"
+    BEGIN
+        POPUP "¡ˆø¨ «ÿº“(&H)"
         BEGIN
-            MENUITEM "ªÁøÎ(&E)\t(Ctrl+Shift+)H",      ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE
+            MENUITEM "ªÁøÎ(&E)\t(Ctrl+Shift+)H",      ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
             MENUITEM SEPARATOR
-            MENUITEM "∏µÂ &1: ¡ˆø¨ Ω√∞£∏∏≈≠ ¥Ÿ¿Ω ±‚º˙ Ω√¿¸ ∞°¥… Ω√∞¢ æ’¥Á±‚±‚", ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_1
-            MENUITEM "∏µÂ &2: º≠πˆ ¿¿¥‰ Ω√∞£ 75ms∑Œ ∞Ì¡§",    ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_2
-            MENUITEM "∏µÂ &3: º≠πˆ ¿¿¥‰ π◊ ¡ˆø¨ Ω√∞£ ∫∏¡§",     ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_3
+            MENUITEM "∏µÂ &1: ¡ˆø¨ Ω√∞£∏∏≈≠ ¥Ÿ¿Ω ±‚º˙ Ω√¿¸ ∞°¥… Ω√∞¢ æ’¥Á±‚±‚", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1
+            MENUITEM "∏µÂ &2: º≠πˆ ¿¿¥‰ Ω√∞£¿ª 75ms∑Œ ∞Ì¡§",   ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2
+            MENUITEM "∏µÂ &3: º≠πˆ ¿¿¥‰ π◊ ¡ˆø¨ Ω√∞£ ∫∏¡§",     ID_NETWORK_HIGHLATENCYMITIGATION_MODE_3
             MENUITEM SEPARATOR
-            MENUITEM "¿Ã∏• ±‚º˙ Ω√¿¸ πÊ¡ˆ(&E)\tCtrl+(Alt+)E", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY
+            MENUITEM "¿Ã∏• ±‚º˙ Ω√¿¸ πÊ¡ˆ(&E)\tCtrl+(Alt+)E", ID_NETWORK_HIGHLATENCYMITIGATION_USEEARLYPENALTY
             MENUITEM SEPARATOR
-            MENUITEM "∑Œ±◊ ªÁøÎ(&L)\tCtrl+(Alt+)L",     ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING
-            MENUITEM "∏¿« ¿€µø (∑Œ±◊ø°º≠ πÃ∏Æ ∫∏±‚)(&P)\tCtrl+(Alt+)P", ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE
-        END
-        POPUP "≥◊∆Æøˆ≈©(&N)"
-        BEGIN
-            MENUITEM "∆–≈∂ µÙ∑π¿Ã ∞®º“(&R)\t(Ctrl+Shift+)F1", ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY
-            MENUITEM SEPARATOR
-            MENUITEM "∑Á«¡πÈ ¡÷º“ √≥∏Æ (127.0.0.0/8)(&L)\t(Ctrl+Shift+)1", ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES
-            MENUITEM "ªÁº≥ ¡÷º“ √≥∏Æ (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)(&P)\t(Ctrl+Shift+)2", ID_TRAYMENU_NETWORKING_TAKEOVERPRIVATEADDRESSES
-            MENUITEM "∏µÁ ¡÷º“ √≥∏Æ (0.0.0.0/0)(&A)\t(Ctrl+Shift+)3", ID_TRAYMENU_NETWORKING_TAKEOVERALLADDRESSES
-            MENUITEM "∏µÁ ∆˜∆Æ √≥∏Æ(&P)\t(Ctrl+Shift+)4", ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS
-            MENUITEM SEPARATOR
-            MENUITEM "∏µÁ ø¨∞· √≥∏Æ «ÿ¡¶(&E)\t(Ctrl+Shift+)F2", ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS
-        END
-        MENUITEM "IPC ∞Àªˆ µµøÏπÃ ªÁøÎ(&F)\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
-        MENUITEM "∏µÁ IPC ∏ﬁΩ√¡ˆ ∑Œ±◊ ªÁøÎ(&A)\t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
-        MENUITEM "±‚º˙ »ø∞˙ ¿˚øÎ ¡ˆø¨ ∑Œ±◊ ªÁøÎ(&E)\t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
-        POPUP "∏Æº“Ω∫ ¡∂¿€ (x64 ¿¸øÎ)(&H)"
-        BEGIN
-            MENUITEM "∏µÁ «ÿΩ√ √≥∏Æ ¿¸ πÆ¿⁄ø≠ ∑Œ±◊ ªÁøÎ(&L)",    ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS
-            MENUITEM SEPARATOR
-            MENUITEM "∞‘¿” ∏Æº“Ω∫ ææÓ ∫Ø∞Ê«œ¡ˆ æ ¿Ω(&N)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE
-            MENUITEM "∞‘¿” ∏Æº“Ω∫ ææÓ ∫Ø∞Ê: ¿œ∫ªæÓ(&J)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE
-            MENUITEM "∞‘¿” ∏Æº“Ω∫ ææÓ ∫Ø∞Ê: øµæÓ(&E)",        ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH
-            MENUITEM "∞‘¿” ∏Æº“Ω∫ ææÓ ∫Ø∞Ê: µ∂¿œæÓ(&D)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_GERMAN
-            MENUITEM "∞‘¿” ∏Æº“Ω∫ ææÓ ∫Ø∞Ê: «¡∂˚Ω∫æÓ(&F)",      ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_FRENCH
-            MENUITEM "∞‘¿” ∏Æº“Ω∫ ææÓ ∫Ø∞Ê: ¡ﬂ±πæÓ(∞£√º)(&C)",   ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE
-            MENUITEM "∞‘¿” ∏Æº“Ω∫ ææÓ ∫Ø∞Ê: «—±πæÓ(&K)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN
+            MENUITEM "∑Œ±◊ ªÁøÎ(&L)\tCtrl+(Alt+)L",     ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING
+            MENUITEM "∏¿« ¿€µø (∑Œ±◊ø°º≠ πÃ∏Æ ∫∏±‚)(&P)\tCtrl+(Alt+)P", ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE
         END
         MENUITEM SEPARATOR
-        MENUITEM "∞‘¿” √¢¿ª «◊ªÛ ¿ßø° «•Ω√(&T)\tCtrl+Shift+T", ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP
-        POPUP "∞‘¿” ∞≠¡¶ ¿ÁΩ√¿€(&S)"
-        BEGIN
-            MENUITEM "¿ÁΩ√¿€«œ±‚(&R)\tCtrl+Shift+R",     ID_TRAYMENU_RESTARTGAME_RESTART
-            MENUITEM SEPARATOR
-            MENUITEM "DirectX 11 ªÁøÎ(&D)\t(Ctrl+Shift+)D", ID_TRAYMENU_RESTARTGAME_USEDIRECTX11
-            MENUITEM "XivAlexander ªÁøÎ(&X)\t(Ctrl+Shift+)X", ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER
-            MENUITEM "∏Ì∑…¡Ÿ ≥≠µ∂»≠ ªÁøÎ(&P)\t(Ctrl+Shift+)P", ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION
-            MENUITEM "∞¸∏Æ¿⁄ ±««—¿∏∑Œ Ω««‡(&E)\t(Ctrl+Shift+)A", ID_TRAYMENU_RESTARTGAME_USEELEVATION
-            MENUITEM SEPARATOR
-            MENUITEM "ææÓ: ¿œ∫ªæÓ(&J)",                 ID_TRAYMENU_RESTARTGAME_LANGUAGE_JAPANESE
-            MENUITEM "ææÓ: øµæÓ(&E)",                  ID_TRAYMENU_RESTARTGAME_LANGUAGE_ENGLISH
-            MENUITEM "ææÓ: µ∂¿œæÓ(&D)",                 ID_TRAYMENU_RESTARTGAME_LANGUAGE_GERMAN
-            MENUITEM "ææÓ: «¡∂˚Ω∫æÓ(&F)",                ID_TRAYMENU_RESTARTGAME_LANGUAGE_FRENCH
-            MENUITEM "ææÓ: ¡ﬂ±πæÓ(∞£√º)(&C)",             ID_TRAYMENU_RESTARTGAME_LANGUAGE_SIMPLIFIEDCHINESE
-            MENUITEM "ææÓ: «—±πæÓ(&K)",                 ID_TRAYMENU_RESTARTGAME_LANGUAGE_KOREAN
-            MENUITEM SEPARATOR
-            MENUITEM "¡ˆø™: ¿œ∫ª(&1)",                  ID_TRAYMENU_RESTARTGAME_REGION_JAPAN
-            MENUITEM "¡ˆø™: ∫œπÃ(&2)",                  ID_TRAYMENU_RESTARTGAME_REGION_NORTH_AMERICA
-            MENUITEM "¡ˆø™: ¿Ø∑¥(&3)",                  ID_TRAYMENU_RESTARTGAME_REGION_EUROPE
-        END
-        MENUITEM "∞‘¿” ∞≠¡¶ ¡æ∑·(&X)\tCtrl+Shift+Q",  ID_TRAYMENU_EXITGAME
+        MENUITEM "IPC ∞Àªˆ µµøÏπÃ ªÁøÎ(&F)\t(Ctrl+Shift+)F", ID_NETWORK_USEIPCTYPEFINDER
+        MENUITEM "∏µÁ IPC ∏ﬁΩ√¡ˆ ∑Œ±◊ ªÁøÎ(&I)\t(Ctrl+Shift+)M", ID_NETWORK_USEALLIPCMESSAGELOGGER
+        MENUITEM "±‚º˙ »ø∞˙ ¿˚øÎ ¡ˆø¨ ∑Œ±◊ ªÁøÎ(&D)\t(Ctrl+Shift+)E", ID_NETWORK_LOGEFFECTAPPLICATIONDELAY
         MENUITEM SEPARATOR
-        POPUP "º≥¡§(&C)"
+        MENUITEM "∆–≈∂ µÙ∑π¿Ã ∞®º“(&R)\t(Ctrl+Shift+)F1", ID_NETWORK_REDUCEPACKETDELAY
+        MENUITEM "∏µÁ ø¨∞· √≥∏Æ «ÿ¡¶(&E)\t(Ctrl+Shift+)F2", ID_NETWORK_RELEASEALLCONNECTIONS
+        POPUP "ø¯∞› ¡÷º“ π¸¿ß πÆ¡¶ «ÿ∞·(&T)"
         BEGIN
-            MENUITEM "∑Œ±◊ √¢ ∫∏¿Ã±‚(&L)\t(Ctrl+Alt+)L",  ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW
-            MENUITEM "∞¸∏Æ √¢ ∫∏¿Ã±‚(&C)\tCtrl+(Alt+)W",  ID_TRAYMENU_CONFIGURATION_SHOWCONTROLWINDOW
-            MENUITEM "«¡∑Œ±◊∑• º≥¡§ ∫Ø∞Ê(&R)\t(Ctrl+Alt+)R", ID_TRAYMENU_CONFIGURATION_EDITRUNTIMECONFIGURATION
-            MENUITEM "ø…ƒ⁄µÂ º≥¡§ ∫Ø∞Ê(&O)\t(Ctrl+Alt+)O", ID_TRAYMENU_CONFIGURATION_EDITOPCODECONFIGURATION
-            MENUITEM SEPARATOR
-            MENUITEM "Ω√Ω∫≈€ ±‚∫ª ææÓ ªÁøÎ(&S)\t",          ID_TRAYMENU_CONFIGURATION_LANGUAGE_SYSTEMDEFAULT
-            MENUITEM "ææÓ: øµæÓ(&E)\t",                ID_TRAYMENU_CONFIGURATION_LANGUAGE_ENGLISH
-            MENUITEM "ææÓ: «—±πæÓ(&K)\t",               ID_TRAYMENU_CONFIGURATION_LANGUAGE_KOREAN
-            MENUITEM "ææÓ: ¿œ∫ªæÓ(&J)",                 ID_TRAYMENU_CONFIGURATION_LANGUAGE_JAPANESE
-            MENUITEM SEPARATOR
-            MENUITEM "º≥¡§ ¥ŸΩ√ ¿–æÓø¿±‚(&Z)\t(Ctrl+Shift+)F5", ID_TRAYMENU_CONFIGURATION_RELOAD
+            MENUITEM "∑Á«¡πÈ ¡÷º“ √≥∏Æ(&L) (127.0.0.0/8)\t(Ctrl+Shift+)1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
+            MENUITEM "ªÁº≥ ¡÷º“ √≥∏Æ(&P) (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\t(Ctrl+Shift+)2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
+            MENUITEM "∏µÁ ¡÷º“ √≥∏Æ(&A) (0.0.0.0/0)\t(Ctrl+Shift+)3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
+            MENUITEM "∏µÁ ∆˜∆Æ √≥∏Æ(&O)\t(Ctrl+Shift+)4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
         END
-        MENUITEM "æ˜µ•¿Ã∆Æ »Æ¿Œ(&P)\tCtrl+(Alt+)U",   ID_TRAYMENU_CHECKFORUPDATES
-        MENUITEM "XivAlexander ¡æ∑·(&U)\tCtrl+(Alt+)Q", ID_TRAYMENU_UNLOADXIVALEXANDER
+    END
+    POPUP "∏µÂ(&M)"
+    BEGIN
+        MENUITEM "ªÁøÎ(&E)",                      ID_MODDING_ENABLE
+        MENUITEM SEPARATOR
+        MENUITEM "∞‘¿”¿Ã ¡¢±Ÿ«œ¥¬ ≥ª∫Œ ∆ƒ¿œ ∞Ê∑Œ ∏µŒ ±‚∑œ«œ±‚(&P)", ID_MODDING_LOGALLHASHKEYS
+        MENUITEM SEPARATOR
+        POPUP "ææÓ øÏº±º¯¿ß(&L)"
+        BEGIN
+            MENUITEM "«◊∏Ò¿ª º±≈√«œ∏È ∏« ¿ß∑Œ º¯º≠∏¶ ¿Ãµø«“ ºˆ ¿÷Ω¿¥œ¥Ÿ.", ID_MODDING_FALLBACKLANGUAGEPRIORITY_GUIDE, INACTIVE
+            MENUITEM SEPARATOR
+            MENUITEM "(entry 1)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1
+            MENUITEM "(entry 2)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY2
+            MENUITEM "(entry 3)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY3
+            MENUITEM "(entry 4)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY4
+            MENUITEM "(entry 5)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY5
+            MENUITEM "(entry 6)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY6
+        END
+        POPUP "«•Ω√ ææÓ ∞≠¡¶(&D) (64∫Ò∆Æ ¿¸øÎ)"
+        BEGIN
+            MENUITEM "ªÁøÎ«œ¡ˆ æ ¿Ω(&U)",                 ID_MODDING_DISPLAYLANGUAGE_DISABLE, CHECKED
+            MENUITEM SEPARATOR
+            MENUITEM "¿œ∫ªæÓ(&J)",                     ID_MODDING_DISPLAYLANGUAGE_JAPANESE
+            MENUITEM "øµæÓ(&E)",                      ID_MODDING_DISPLAYLANGUAGE_ENGLISH
+            MENUITEM "µ∂¿œæÓ(&D)",                     ID_MODDING_DISPLAYLANGUAGE_GERMAN
+            MENUITEM "«¡∂˚Ω∫æÓ(&F)",                    ID_MODDING_DISPLAYLANGUAGE_FRENCH
+            MENUITEM "¡ﬂ±πæÓ(∞£√º)(&C)",                 ID_MODDING_DISPLAYLANGUAGE_CHINESESIMPLIFIED
+            MENUITEM "«—±πæÓ(&K)",                     ID_MODDING_DISPLAYLANGUAGE_KOREAN
+        END
+        POPUP "¿Ωº∫ ææÓ ∞≠¡¶(&A) (64∫Ò∆Æ ¿¸øÎ)"
+        BEGIN
+            MENUITEM "ªÁøÎ«œ¡ˆ æ ¿Ω(&U)",                 ID_MODDING_AUDIOLANGUAGE_DISABLE, CHECKED
+            MENUITEM SEPARATOR
+            MENUITEM "¿œ∫ªæÓ(&J)",                     ID_MODDING_AUDIOLANGUAGE_JAPANESE
+            MENUITEM "øµæÓ(&E)",                      ID_MODDING_AUDIOLANGUAGE_ENGLISH
+            MENUITEM "µ∂¿œæÓ(&D)",                     ID_MODDING_AUDIOLANGUAGE_GERMAN
+            MENUITEM "«¡∂˚Ω∫æÓ(&F)",                    ID_MODDING_AUDIOLANGUAGE_FRENCH
+            MENUITEM "¡ﬂ±πæÓ(∞£√º)(&C)",                 ID_MODDING_AUDIOLANGUAGE_CHINESESIMPLIFIED
+            MENUITEM "«—±πæÓ(&K)",                     ID_MODDING_AUDIOLANGUAGE_KOREAN
+        END
+        MENUITEM SEPARATOR
+        POPUP "∆˘∆Æ ∫Ø∞Ê(&F)"
+        BEGIN
+            MENUITEM "«¡∏Æº¬ ∫“∑Øø¿±‚(&I)",                ID_MODDING_CHANGEFONT_IMPORTPRESET
+            MENUITEM "«¡∏Æº¬ ∆˙¥ı ø≠±‚(&O)",               ID_MODDING_CHANGEFONT_OPENPRESETDIRECTORY
+            MENUITEM SEPARATOR
+            MENUITEM "ªÁøÎ«œ¡ˆ æ ¿Ω(&D)",                 ID_MODDING_CHANGEFONT_DISABLE, CHECKED
+            MENUITEM SEPARATOR
+            MENUITEM "(«¡∏Æº¬ ∆ƒ¿œ æ¯¿Ω)",                 ID_MODDING_CHANGEFONT_NOENTRY, INACTIVE
+            MENUITEM "(Example entry)",             ID_MODDING_CHANGEFONT_ENTRY
+        END
+        POPUP "√ﬂ∞° ∞‘¿” ∑Á∆Æ µ∑∫≈‰∏Æ(&G)"
+        BEGIN
+            MENUITEM "√ﬂ∞°(&A)",                      ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD
+            MENUITEM "∫ÒøÏ±‚(&R)",                     ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_REMOVEALL
+            MENUITEM SEPARATOR
+            MENUITEM "(√ﬂ∞° ∞‘¿” ∑Á∆Æ µ∑∫≈‰∏Æ æ¯¿Ω)",          ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_NOENTRY, INACTIVE
+            MENUITEM "(Example entry)",             ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ENTRY
+        END
+        POPUP "E&XDF(πÆ¿⁄ø≠) ∫Ø»Ø ±‘ƒ¢"
+        BEGIN
+            MENUITEM "±‘ƒ¢ ∆ƒ¿œ ∫“∑Øø¿±‚(&I)",              ID_MODDING_EXDFTRANSFORMATIONRULES_ADD
+            MENUITEM "∫ÒøÏ±‚(&R)",                     ID_MODDING_EXDFTRANSFORMATIONRULES_REMOVEALL
+            MENUITEM "±‘ƒ¢ ∆˙¥ı ø≠±‚(&O)",                ID_MODDING_EXDFTRANSFORMATIONRULES_OPENPRESETDIRECTORY
+            MENUITEM SEPARATOR
+            MENUITEM "(EXDF ∫Ø»Ø ±‘ƒ¢ æ¯¿Ω)",             ID_MODDING_EXDFTRANSFORMATIONRULES_NOENTRY, INACTIVE
+            MENUITEM "(Example entry)",             ID_MODDING_EXDFTRANSFORMATIONRULES_ENTRY
+        END
+        POPUP "&TexTools ∏µÂ∆—"
+        BEGIN
+            POPUP "(template entry to be inserted at bottom)"
+            BEGIN
+                MENUITEM "ªÁøÎ«‘(&E)",                     ID_MODDING_TTMP_ENTRY_ENABLE, CHECKED
+                MENUITEM "¡¶∞≈ øπæ‡(&D)",                   ID_MODDING_TTMP_ENTRY_DELETE
+                MENUITEM SEPARATOR
+            END
+            MENUITEM "∫“∑Øø¿±‚(&I)",                    ID_MODDING_TTMP_IMPORT
+            MENUITEM SEPARATOR
+            MENUITEM "∏µŒ ¡¶∞≈ øπæ‡(&R)",                ID_MODDING_TTMP_REMOVEALL
+            MENUITEM "∏µÁ ¡¶∞≈ øπæ‡ √Îº“(&U)",             ID_MODDING_TTMP_UNDOREMOVEALL
+            MENUITEM SEPARATOR
+            MENUITEM "∏µŒ »∞º∫»≠(&E)",                  ID_MODDING_TTMP_ENABLEALL
+            MENUITEM "∏µŒ ∫Ò»∞º∫»≠(&D)",                 ID_MODDING_TTMP_DISABLEALL
+            MENUITEM SEPARATOR
+            MENUITEM "∆˙¥ı ø≠±‚(&O)",                   ID_MODDING_TTMP_OPENDIRECTORY
+            MENUITEM "∏ﬁ¥∫ ªı∑Œ ∞Ìƒ°±‚(&R)",               ID_MODDING_TTMP_REFRESH
+            MENUITEM SEPARATOR
+            MENUITEM "(º≥ƒ°µ» ∏µÂ∆— æ¯¿Ω )",               ID_MODDING_TTMP_NOENTRY, INACTIVE
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "±≥√º ∆ƒ¿œ µ∑∫≈‰∏Æ ø≠±‚ (&R)",          ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
+        MENUITEM SEPARATOR
+        MENUITEM "∞‘¿” ¿ÁΩ√¿€±Ó¡ˆ ∫Ø∞Ê ªÁ«◊¿Ã π›øµµ«¡ˆ æ ¿ª ºˆµµ ¿÷Ω¿¥œ¥Ÿ.", ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
+    END
+    POPUP "º≥¡§(&C)"
+    BEGIN
+        MENUITEM "∑±≈∏¿”(«¡∑Œ±◊∑•) º≥¡§ ∫Ø∞Ê(&R)\t(Ctrl+Alt+)R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
+        MENUITEM "ø…ƒ⁄µÂ º≥¡§ ∫Ø∞Ê(&O)\t(Ctrl+Alt+)O", ID_CONFIGURE_EDITOPCODECONFIGURATION
+        MENUITEM SEPARATOR
+        MENUITEM "Ω√Ω∫≈€ ±‚∫ª ææÓ ªÁøÎ(&S)",            ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT
+        MENUITEM "ææÓ: øµæÓ(&E)",                  ID_CONFIGURE_LANGUAGE_ENGLISH
+        MENUITEM "ææÓ: «—±πæÓ(&K)",                 ID_CONFIGURE_LANGUAGE_KOREAN
+        MENUITEM "ææÓ: ¿œ∫ªæÓ(&J)",                 ID_CONFIGURE_LANGUAGE_JAPANESE
+        MENUITEM SEPARATOR
+        MENUITEM "º≥¡§∞™ ¿˙¿Â ∆˙¥ı ø≠±‚(&D)",            ID_CONFIGURE_OPENCONFIGURATIONDIRECTORY
+        MENUITEM "º≥¡§ ¥ŸΩ√ ¿–æÓµÈ¿Ã±‚(&Z)\t(Ctrl+Shift+)F5", ID_CONFIGURE_RELOAD
     END
     POPUP "∫∏±‚(&V)"
     BEGIN
         MENUITEM "«◊ªÛ ¿ßø° «•Ω√(&T)\tCtrl+T",        ID_VIEW_ALWAYSONTOP
+        MENUITEM "∞‘¿”¿ª «◊ªÛ ¿ßø° «•Ω√(&T)\tCtrl+Shift+T", ID_VIEW_ALWAYSONTOPGAME
     END
     POPUP "µµøÚ∏ª(&H)"
     BEGIN
@@ -542,8 +714,6 @@ BEGIN
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "«¡∑Œ±◊∑• º≥¡§ ∆Ì¡˝"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "ø…ƒ⁄µÂ º≥¡§ ∆Ì¡˝"
     IDS_WINDOW_LOG          "∑Œ±◊ ∫∏±‚"
-    IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE 
-                            "º±≈√«— ææÓ({})¥¬ «ÿ¥Á ∞‘¿” ≈¨∂Û¿Ãæ∆Æø°º≠ ¡ˆø¯«œ¡ˆ æ æ∆ ø¿∑˘∏¶ πﬂª˝Ω√≈≥ ∞°¥…º∫¿Ã ≥ÙΩ¿¥œ¥Ÿ. ∞Ëº”«œΩ√∞⁄Ω¿¥œ±Ó?\n\nø¿∑˘ ∏ﬁΩ√¡ˆ∞° ∂·¥Ÿ∏È º≥¡§¿ª ø¯ªÛ∫π±Õ«œ∞Ì ""∞‘¿” ∞≠¡¶ ¿ÁΩ√¿€"" ±‚¥…¿ª ¿ÃøÎ«ÿ ¡÷ººø‰."
     IDS_LANGUAGE_NAME_ENGLISH "øµæÓ"
     IDS_LANGUAGE_NAME_JAPANESE "¿œ∫ªæÓ"
     IDS_LANGUAGE_NAME_GERMAN "µ∂¿œæÓ"
@@ -605,6 +775,12 @@ BEGIN
     IDS_HELP_DISABLE_RUNAS  "æÓ∂≤ ∞ÊøÏø°µµ ∞¸∏Æ¿⁄ ±««—¿∏∑Œ Ω««‡«œ¡ˆ æ Ω¿¥œ¥Ÿ."
     IDS_HELP_INTERNAL_USE_ONLY "≥ª∫Œ øÎµµ¿‘¥œ¥Ÿ. ªÁøÎ ±›¡ˆ."
     IDS_HELP_TARGETS        "∫“∑ØµÈ¿Ã∞≈≥™ ¡æ∑· Ω√ø°¥¬ «¡∑ŒººΩ∫ ID ∂«¥¬ «¡∑ŒººΩ∫ ∞Ê∑Œ ¡¢πÃªÁ, Ω««‡ Ω√ø°¥¬ Ω««‡«“ «¡∑ŒººΩ∫¿« ∞Ê∑Œ¿‘¥œ¥Ÿ."
+    IDS_TITLE_IMPORT_FONTCONFIG_PRESET "∆˘∆Æ «¡∏Æº¬ ∆ƒ¿œ ∫“∑Øø¿±‚"
+    IDS_TITLE_ADD_EXTERNAL_GAME_DIRECTORY "ø‹∫Œ ∞‘¿” º≥ƒ° ∆˙¥ı √ﬂ∞°«œ±‚"
+    IDS_ERROR_NOT_GAME_DIRECTORY 
+                            "º±≈√«— ∆˙¥ı ""{}"" ¥¬ ∞‘¿” ∆˙¥ı∞° æ∆¥’¥œ¥Ÿ. ""ffxiv_dx11.exe"" π◊ ""ffxiv.exe""∞° µÈæÓ¿÷¥¬ ∆˙¥ı∏¶ º±≈√«ÿ ¡÷ººø‰."
+    IDS_NOTIFY_TTMP_HAS_CONFIGURATION 
+                            "πÊ±› º≥ƒ°«— TexTools ∏µÂ∆— ∆ƒ¿œ¿∫ √ﬂ∞° º≥¡§¿Ã « ø‰«’¥œ¥Ÿ. ∏ﬁ¥∫ø°º≠ º≥¡§«ÿ ¡÷ººø‰."
 END
 
 #endif    // Korean (Korea) resources
@@ -635,93 +811,177 @@ IDI_TRAY_ICON           ICON                    "..\\Graphics\\Icon.ico"
 
 IDR_TRAY_MENU MENU
 BEGIN
-    POPUP "&Features (F1)"
+    POPUP "&File"
     BEGIN
-        MENUITEM "(Current Process Information)", ID_TRAYMENU_CURRENTINFO, INACTIVE
+        MENUITEM "(Current Process Information)", ID_FILE_CURRENTINFO, INACTIVE
         MENUITEM SEPARATOR
-        POPUP "High Latency &Mitigation"
+        MENUITEM "Show &Control Window\tCtrl+(Alt+)W", ID_FILE_SHOWCONTROLWINDOW
+        MENUITEM "Show &Logging Window\t(Ctrl+Alt+)L", ID_FILE_SHOWLOGGINGWINDOW
+        MENUITEM "Check for U&pdates\tCtrl+(Alt+)U", ID_FILE_CHECKFORUPDATES
+        MENUITEM "&Unload XivAlexander\tCtrl+(Alt+)Q", ID_FILE_UNLOADXIVALEXANDER
+        MENUITEM SEPARATOR
+        MENUITEM "Force E&xit Game\tCtrl+Shift+Q", ID_FILE_FORCEEXITGAME
+    END
+    POPUP "&Restart"
+    BEGIN
+        MENUITEM "&Restart Using Choices Below\tCtrl+Shift+R", ID_RESTART_RESTART
+        MENUITEM SEPARATOR
+        MENUITEM "Use &DirectX 11\t(Ctrl+Shift+)D", ID_RESTART_USEDIRECTX11
+        MENUITEM "Use &XivAlexander\t(Ctrl+Shift+)X", ID_RESTART_USEXIVALEXANDER
+        MENUITEM "Use &Parameter Obfuscation\t(Ctrl+Shift+)P", ID_RESTART_USEPARAMETEROBFUSCATION
+        MENUITEM "Use Elevation (Run as &Administrator)\t(Ctrl+Shift+)A", ID_RESTART_USEELEVATION
+        MENUITEM SEPARATOR
+        MENUITEM "Language: &Japanese",         ID_RESTART_LANGUAGE_JAPANESE
+        MENUITEM "Language: &English",          ID_RESTART_LANGUAGE_ENGLISH
+        MENUITEM "Language: &German",           ID_RESTART_LANGUAGE_GERMAN
+        MENUITEM "Language: &French",           ID_RESTART_LANGUAGE_FRENCH
+        MENUITEM "Language: &Chinese(Simplified)", ID_RESTART_LANGUAGE_SIMPLIFIEDCHINESE
+        MENUITEM "Language: &Korean",           ID_RESTART_LANGUAGE_KOREAN
+        MENUITEM SEPARATOR
+        MENUITEM "Region: Japan (&1)",          ID_RESTART_REGION_JAPAN
+        MENUITEM "Region: North America (&2)",  ID_RESTART_REGION_NORTH_AMERICA
+        MENUITEM "Region: Europe (&3)",         ID_RESTART_REGION_EUROPE
+    END
+    POPUP "&Network"
+    BEGIN
+        POPUP "&High Latency Mitigation"
         BEGIN
-            MENUITEM "&Enable\t(Ctrl+Shift+)H",     ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE
+            MENUITEM "&Enable\t(Ctrl+Shift+)H",     ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
             MENUITEM SEPARATOR
-            MENUITEM "Mode &1: Subtract Latency",   ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_1
-            MENUITEM "Mode &2: Simulate RTT (75ms)", ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_2
-            MENUITEM "Mode &3: Simulate Normalized RTT and Latency", ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_3
+            MENUITEM "Mode &1: Subtract Latency",   ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1
+            MENUITEM "Mode &2: Simulate RTT (75ms)", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2
+            MENUITEM "Mode &3: Simulate Normalized RTT and Latency", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_3
             MENUITEM SEPARATOR
-            MENUITEM "Prevent &Early Firing\tCtrl+(Alt+)E", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY
+            MENUITEM "Prevent &Early Firing\tCtrl+(Alt+)E", ID_NETWORK_HIGHLATENCYMITIGATION_USEEARLYPENALTY
             MENUITEM SEPARATOR
-            MENUITEM "Use &Logging\tCtrl+(Alt+)L",  ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING
-            MENUITEM "&Preview Mode (Dry Run)\tCtrl+(Alt+)P", ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE
-        END
-        POPUP "&Networking"
-        BEGIN
-            MENUITEM "&Reduce Packet Delay\t(Ctrl+Shift+)F1", ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY
-            MENUITEM SEPARATOR
-            MENUITEM "Take Over &Loopback Addresses (127.0.0.0/8)\t(Ctrl+Shift+)1", ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES
-            MENUITEM "Take Over &Private Addresses (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\t(Ctrl+Shift+)2", ID_TRAYMENU_NETWORKING_TAKEOVERPRIVATEADDRESSES
-            MENUITEM "Take Over &All Addresses (0.0.0.0/0)\t(Ctrl+Shift+)3", ID_TRAYMENU_NETWORKING_TAKEOVERALLADDRESSES
-            MENUITEM "Take Over All &Ports\t(Ctrl+Shift+)4", ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS
-            MENUITEM SEPARATOR
-            MENUITEM "R&elease All Connections\t(Ctrl+Shift+)F2", ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS
-        END
-        MENUITEM "Use IPC Type &Finder\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
-        MENUITEM "Log All IPC &Message \t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
-        MENUITEM "Log &Effect Application Delay \t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
-        POPUP "&Resource Manipulation (x64 only)"
-        BEGIN
-            MENUITEM "&Log All Plaintext Before Hash", ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS
-            MENUITEM SEPARATOR
-            MENUITEM "&No Language Override",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE
-            MENUITEM "Override Game Resource Language: &Japanese", ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE
-            MENUITEM "Override Game Resource Language: &English", ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH
-            MENUITEM "Override Game Resource Language: &German", ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_GERMAN
-            MENUITEM "Override Game Resource Language: &French", ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_FRENCH
-            MENUITEM "Override Game Resource Language: &Chinese(Simplified)", ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE
-            MENUITEM "Override Game Resource Language: &Korean", ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN
+            MENUITEM "Use &Logging\tCtrl+(Alt+)L",  ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING
+            MENUITEM "&Preview Mode (Dry Run)\tCtrl+(Alt+)P", ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE
         END
         MENUITEM SEPARATOR
-        MENUITEM "Always Put Game Window on &Top\tCtrl+Shift+T", ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP
-        POPUP "Force Re&start Game"
-        BEGIN
-            MENUITEM "&Restart\tCtrl+Shift+R",      ID_TRAYMENU_RESTARTGAME_RESTART
-            MENUITEM SEPARATOR
-            MENUITEM "Use &DirectX 11\t(Ctrl+Shift+)D", ID_TRAYMENU_RESTARTGAME_USEDIRECTX11
-            MENUITEM "Use &XivAlexander\t(Ctrl+Shift+)X", ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER
-            MENUITEM "Use &Parameter Obfuscation\t(Ctrl+Shift+)P", ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION
-            MENUITEM "Use Elevation (Run as &Administrator)\t(Ctrl+Shift+)A", ID_TRAYMENU_RESTARTGAME_USEELEVATION
-            MENUITEM SEPARATOR
-            MENUITEM "Language: &Japanese",         ID_TRAYMENU_RESTARTGAME_LANGUAGE_JAPANESE
-            MENUITEM "Language: &English",          ID_TRAYMENU_RESTARTGAME_LANGUAGE_ENGLISH
-            MENUITEM "Language: &German",           ID_TRAYMENU_RESTARTGAME_LANGUAGE_GERMAN
-            MENUITEM "Language: &French",           ID_TRAYMENU_RESTARTGAME_LANGUAGE_FRENCH
-            MENUITEM "Language: &Chinese(Simplified)", ID_TRAYMENU_RESTARTGAME_LANGUAGE_SIMPLIFIEDCHINESE
-            MENUITEM "Language: &Korean",           ID_TRAYMENU_RESTARTGAME_LANGUAGE_KOREAN
-            MENUITEM SEPARATOR
-            MENUITEM "Region: Japan (&1)",          ID_TRAYMENU_RESTARTGAME_REGION_JAPAN
-            MENUITEM "Region: North America (&2)",  ID_TRAYMENU_RESTARTGAME_REGION_NORTH_AMERICA
-            MENUITEM "Region: Europe (&3)",         ID_TRAYMENU_RESTARTGAME_REGION_EUROPE
-        END
-        MENUITEM "Force E&xit Game\tCtrl+Shift+Q", ID_TRAYMENU_EXITGAME
+        MENUITEM "Use IPC Type &Finder\t(Ctrl+Shift+)F", ID_NETWORK_USEIPCTYPEFINDER
+        MENUITEM "Log All &IPC Message \t(Ctrl+Shift+)M", ID_NETWORK_USEALLIPCMESSAGELOGGER
+        MENUITEM "Log Effect Application &Delay \t(Ctrl+Shift+)E", ID_NETWORK_LOGEFFECTAPPLICATIONDELAY
         MENUITEM SEPARATOR
-        POPUP "&Configuration"
+        MENUITEM "&Reduce Packet Delay\t(Ctrl+Shift+)F1", ID_NETWORK_REDUCEPACKETDELAY
+        MENUITEM "R&elease All Connections\t(Ctrl+Shift+)F2", ID_NETWORK_RELEASEALLCONNECTIONS
+        POPUP "&Troubleshoot Remote Addresses"
         BEGIN
-            MENUITEM "Show &Logging Window\t(Ctrl+Alt+)L", ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW
-            MENUITEM "Show &Control Window\tCtrl+(Alt+)W", ID_TRAYMENU_CONFIGURATION_SHOWCONTROLWINDOW
-            MENUITEM "Edit &Runtime Configuration\t(Ctrl+Alt+)R", ID_TRAYMENU_CONFIGURATION_EDITRUNTIMECONFIGURATION
-            MENUITEM "Edit &Opcode Configuration\t(Ctrl+Alt+)O", ID_TRAYMENU_CONFIGURATION_EDITOPCODECONFIGURATION
-            MENUITEM SEPARATOR
-            MENUITEM "Use &System Default Language", ID_TRAYMENU_CONFIGURATION_LANGUAGE_SYSTEMDEFAULT
-            MENUITEM "Language: &English",          ID_TRAYMENU_CONFIGURATION_LANGUAGE_ENGLISH
-            MENUITEM "Language: &Korean",           ID_TRAYMENU_CONFIGURATION_LANGUAGE_KOREAN
-            MENUITEM "Language: &Japanese",         ID_TRAYMENU_CONFIGURATION_LANGUAGE_JAPANESE
-            MENUITEM SEPARATOR
-            MENUITEM "Reload (&Z)\t(Ctrl+Shift+)F5", ID_TRAYMENU_CONFIGURATION_RELOAD
+            MENUITEM "Take Over &Loopback Addresses (127.0.0.0/8)\t(Ctrl+Shift+)1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
+            MENUITEM "Take Over &Private Addresses (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\t(Ctrl+Shift+)2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
+            MENUITEM "Take Over &All Addresses (0.0.0.0/0)\t(Ctrl+Shift+)3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
+            MENUITEM "Take Over All P&orts\t(Ctrl+Shift+)4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
         END
-        MENUITEM "Check for U&pdates\tCtrl+(Alt+)U", ID_TRAYMENU_CHECKFORUPDATES
-        MENUITEM "&Unload XivAlexander\tCtrl+(Alt+)Q", ID_TRAYMENU_UNLOADXIVALEXANDER
+    END
+    POPUP "&Modding"
+    BEGIN
+        MENUITEM "&Enable",                     ID_MODDING_ENABLE
+        MENUITEM SEPARATOR
+        MENUITEM "Log All &Path Plaintext Before Hash", ID_MODDING_LOGALLHASHKEYS
+        MENUITEM SEPARATOR
+        POPUP "Fallback &Language Priority"
+        BEGIN
+            MENUITEM "Click on an item to bring to the top.", ID_MODDING_FALLBACKLANGUAGEPRIORITY_GUIDE, INACTIVE
+            MENUITEM SEPARATOR
+            MENUITEM "(entry 1)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1
+            MENUITEM "(entry 2)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY2
+            MENUITEM "(entry 3)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY3
+            MENUITEM "(entry 4)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY4
+            MENUITEM "(entry 5)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY5
+            MENUITEM "(entry 6)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY6
+        END
+        POPUP "Force &Display Language (x64 only)"
+        BEGIN
+            MENUITEM "&Disable",                    ID_MODDING_DISPLAYLANGUAGE_DISABLE, CHECKED
+            MENUITEM SEPARATOR
+            MENUITEM "&Japanese",                   ID_MODDING_DISPLAYLANGUAGE_JAPANESE
+            MENUITEM "&English",                    ID_MODDING_DISPLAYLANGUAGE_ENGLISH
+            MENUITEM "&German",                     ID_MODDING_DISPLAYLANGUAGE_GERMAN
+            MENUITEM "&French",                     ID_MODDING_DISPLAYLANGUAGE_FRENCH
+            MENUITEM "&Chinese (Simplified)",       ID_MODDING_DISPLAYLANGUAGE_CHINESESIMPLIFIED
+            MENUITEM "&Korean",                     ID_MODDING_DISPLAYLANGUAGE_KOREAN
+        END
+        POPUP "Force &Audio Language (x64 only)"
+        BEGIN
+            MENUITEM "&Disable",                    ID_MODDING_AUDIOLANGUAGE_DISABLE, CHECKED
+            MENUITEM SEPARATOR
+            MENUITEM "&Japanese",                   ID_MODDING_AUDIOLANGUAGE_JAPANESE
+            MENUITEM "&English",                    ID_MODDING_AUDIOLANGUAGE_ENGLISH
+            MENUITEM "&German",                     ID_MODDING_AUDIOLANGUAGE_GERMAN
+            MENUITEM "&French",                     ID_MODDING_AUDIOLANGUAGE_FRENCH
+            MENUITEM "&Chinese (Simplified)",       ID_MODDING_AUDIOLANGUAGE_CHINESESIMPLIFIED
+            MENUITEM "&Korean",                     ID_MODDING_AUDIOLANGUAGE_KOREAN
+        END
+        MENUITEM SEPARATOR
+        POPUP "Change &Font"
+        BEGIN
+            MENUITEM "&Import Preset",              ID_MODDING_CHANGEFONT_IMPORTPRESET
+            MENUITEM "&Open Preset Directory",      ID_MODDING_CHANGEFONT_OPENPRESETDIRECTORY
+            MENUITEM SEPARATOR
+            MENUITEM "&Disable",                    ID_MODDING_CHANGEFONT_DISABLE, CHECKED
+            MENUITEM SEPARATOR
+            MENUITEM "(No font configuration found)", ID_MODDING_CHANGEFONT_NOENTRY, INACTIVE
+            MENUITEM "(Example entry)",             ID_MODDING_CHANGEFONT_ENTRY
+        END
+        POPUP "Additional &Game Root Directories"
+        BEGIN
+            MENUITEM "&Add",                        ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD
+            MENUITEM "&Remove All",                 ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_REMOVEALL
+            MENUITEM SEPARATOR
+            MENUITEM "(No additional game root directories configured)", ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_NOENTRY, INACTIVE
+            MENUITEM "(Example entry)",             ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ENTRY
+        END
+        POPUP "E&XDF(Text) Transformation Rules"
+        BEGIN
+            MENUITEM "&Import",                     ID_MODDING_EXDFTRANSFORMATIONRULES_ADD
+            MENUITEM "&Remove All",                 ID_MODDING_EXDFTRANSFORMATIONRULES_REMOVEALL
+            MENUITEM "&Open Preset Directory",      ID_MODDING_EXDFTRANSFORMATIONRULES_OPENPRESETDIRECTORY
+            MENUITEM SEPARATOR
+            MENUITEM "(No EXDF transformation rules configured)", ID_MODDING_EXDFTRANSFORMATIONRULES_NOENTRY, INACTIVE
+            MENUITEM "(Example entry)",             ID_MODDING_EXDFTRANSFORMATIONRULES_ENTRY
+        END
+        POPUP "&TexTools ModPacks"
+        BEGIN
+            POPUP "(template entry to be inserted at bottom)"
+            BEGIN
+                MENUITEM "&Enable",                     ID_MODDING_TTMP_ENTRY_ENABLE, CHECKED
+                MENUITEM "&Delete",                     ID_MODDING_TTMP_ENTRY_DELETE
+                MENUITEM SEPARATOR
+            END
+            MENUITEM "&Import",                     ID_MODDING_TTMP_IMPORT
+            MENUITEM SEPARATOR
+            MENUITEM "&Remove All",                 ID_MODDING_TTMP_REMOVEALL
+            MENUITEM "&Undo Remove All",            ID_MODDING_TTMP_UNDOREMOVEALL
+            MENUITEM SEPARATOR
+            MENUITEM "&Enable All",                 ID_MODDING_TTMP_ENABLEALL
+            MENUITEM "&Disable All",                ID_MODDING_TTMP_DISABLEALL
+            MENUITEM SEPARATOR
+            MENUITEM "&Open Directory",             ID_MODDING_TTMP_OPENDIRECTORY
+            MENUITEM "&Refresh",                    ID_MODDING_TTMP_REFRESH
+            MENUITEM SEPARATOR
+            MENUITEM "(No installed ModPacks found)", ID_MODDING_TTMP_NOENTRY, INACTIVE
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "Open &Replacement File Entries Directory", ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
+        MENUITEM SEPARATOR
+        MENUITEM "Anything here will not be fully applied until game restart.", ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
+    END
+    POPUP "&Configure"
+    BEGIN
+        MENUITEM "Edit &Runtime Configuration\t(Ctrl+Alt+)R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
+        MENUITEM "Edit &Opcode Configuration\t(Ctrl+Alt+)O", ID_CONFIGURE_EDITOPCODECONFIGURATION
+        MENUITEM SEPARATOR
+        MENUITEM "Use &System Default Language", ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT
+        MENUITEM "Language: &English",          ID_CONFIGURE_LANGUAGE_ENGLISH
+        MENUITEM "Language: &Korean",           ID_CONFIGURE_LANGUAGE_KOREAN
+        MENUITEM "Language: &Japanese",         ID_CONFIGURE_LANGUAGE_JAPANESE
+        MENUITEM SEPARATOR
+        MENUITEM "Open Configuration &Directory", ID_CONFIGURE_OPENCONFIGURATIONDIRECTORY
+        MENUITEM "Reload (&Z)\t(Ctrl+Shift+)F5", ID_CONFIGURE_RELOAD
     END
     POPUP "&View"
     BEGIN
         MENUITEM "Always on &Top\tCtrl+T",      ID_VIEW_ALWAYSONTOP
+        MENUITEM "Always on &Top (Game Window)\tCtrl+Shift+T", ID_VIEW_ALWAYSONTOPGAME
     END
     POPUP "&Help"
     BEGIN
@@ -980,8 +1240,6 @@ BEGIN
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "Runtime Configuration Editor"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcode Configuration Editor"
     IDS_WINDOW_LOG          "Log Viewer"
-    IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE 
-                            "The language you selected({}) is probably unsupported from the game client you're currently using, and the game will probably crash. Do you want to continue?\n\nChange the configuration and use ""Force Restart Game"" if the game crashes, showing an error message."
     IDS_LANGUAGE_NAME_ENGLISH "English"
     IDS_LANGUAGE_NAME_JAPANESE "Japanese"
     IDS_LANGUAGE_NAME_GERMAN "German"
@@ -1050,6 +1308,13 @@ BEGIN
     IDS_HELP_DISABLE_RUNAS  "disable run as administrator"
     IDS_HELP_INTERNAL_USE_ONLY "internal use only. Do not use."
     IDS_HELP_TARGETS        "List of target process ID or path suffix if loading. Path of program to execute if launching."
+    IDS_TITLE_IMPORT_FONTCONFIG_PRESET 
+                            "Select font config preset file to import"
+    IDS_TITLE_ADD_EXTERNAL_GAME_DIRECTORY "Select external game directory"
+    IDS_ERROR_NOT_GAME_DIRECTORY 
+                            "Selected path ""{}"" does not seem to be a game directory. A game directory should have ""ffxiv.exe"" and ""ffxiv_dx11.exe"" in it."
+    IDS_NOTIFY_TTMP_HAS_CONFIGURATION 
+                            "Installed TexTools ModPack file has user configurable settings attached to it. Use menu to change settings."
 END
 
 #endif    // English (United States) resources
