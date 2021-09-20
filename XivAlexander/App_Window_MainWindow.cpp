@@ -429,7 +429,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 		auto count = 0;
 		for (const auto& additionalRoot : config.AdditionalSqpackRootDirectories.Value()) {
 			AppendMenuW(hParentMenu, MF_STRING, allocateMenuId([this, additionalRoot]() {
-				if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO, L"", L"Remove {}?", additionalRoot.wstring()) == IDNO)
+				if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO, L"", m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_ADDITIONAL_ROOT, additionalRoot.wstring())) == IDNO)
 					return;
 
 				std::vector<std::filesystem::path> newValue;
@@ -450,7 +450,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 		auto count = 0;
 		for (const auto& file : config.ExcelTransformConfigFiles.Value()) {
 			AppendMenuW(hParentMenu, MF_STRING, allocateMenuId([this, file]() {
-				if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO, L"", L"Remove {}?", file.wstring()) == IDNO)
+				if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO, L"", m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_EXCEL_TRANSFORM_CONFIG_FILE, file.wstring())) == IDNO)
 					return;
 
 				std::vector<std::filesystem::path> newValue;
@@ -1141,9 +1141,9 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 
 		case ID_MODDING_CHANGEFONT_IMPORTPRESET: {
 			try {
-				static const COMDLG_FILTERSPEC fileTypes[] = {
-					{L"Font preset JSON files (*.json)", L"*.json"},
-					{L"All files (*)", L"*"},
+				const COMDLG_FILTERSPEC fileTypes[] = {
+					{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_FONTPRESETJSON), L"*.json"},
+					{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*"},
 				};
 				const auto path = ChooseFileToOpen(std::span(fileTypes),IDS_TITLE_IMPORT_FONTCONFIG_PRESET);
 				if (path.empty())
@@ -1235,8 +1235,8 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 		case ID_MODDING_EXDFTRANSFORMATIONRULES_ADD:
 			try {
 				static const COMDLG_FILTERSPEC fileTypes[] = {
-					{L"Excel transformation configuration JSON files (*.json)", L"*.json"},
-					{L"All files (*)", L"*"},
+					{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON), L"*.json"},
+					{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*"},
 				};
 				const auto path = ChooseFileToOpen(std::span(fileTypes),IDS_TITLE_IMPORT_FONTCONFIG_PRESET);
 				if (path.empty())
@@ -1260,8 +1260,8 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 		case ID_MODDING_TTMP_IMPORT:
 			try {
 				static const COMDLG_FILTERSPEC fileTypes[] = {
-					{L"TexTools ModPack Files (*.ttmp, *.ttmp2, *.mpl)", L"*.ttmp; *.ttmp2; *.mpl"},
-					{L"All files (*)", L"*"},
+					{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_TTMP), L"*.ttmp; *.ttmp2; *.mpl"},
+					{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*"},
 				};
 				const auto path = ChooseFileToOpen(std::span(fileTypes),IDS_TITLE_IMPORT_FONTCONFIG_PRESET);
 				if (path.empty())
@@ -1304,19 +1304,19 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 			std::string msg;
 			switch (menuId) {
 				case ID_MODDING_TTMP_REMOVEALL:
-					msg = "Remove all TexTools ModPacks on restart?";
+					msg = Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_CONFIRM_REMOVEALLTTMP));
 					break;
 
 				case ID_MODDING_TTMP_UNDOREMOVEALL:
-					msg = "Cancel removing all TexTools ModPacks on restart?";
+					msg = Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_CONFIRM_UNDOREMOVEALLTTMP));
 					break;
 
 				case ID_MODDING_TTMP_ENABLEALL:
-					msg = "Enable all TexTools ModPacks on restart?";
+					msg = Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_CONFIRM_ENABLEALLTTMP));
 					break;
 
 				case ID_MODDING_TTMP_DISABLEALL:
-					msg = "Disable all TexTools ModPacks on restart?";
+					msg = Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_CONFIRM_DISABLEALLTTMP));
 					break;
 			}
 			if (Utils::Win32::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, m_config->Runtime.GetStringRes(IDS_APP_NAME), msg) == IDYES) {
@@ -1691,7 +1691,7 @@ std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& pa
 			remove_all(temporaryTtmpDirectory);
 		} catch (const std::exception& e) {
 			Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONWARNING, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-				"Failed to remove temporary directory: {}", e.what());
+				m_config->Runtime.FormatStringRes(IDS_ERROR_REMOVETEMPORARYDIRECTORY, temporaryTtmpDirectory.wstring(), e.what()));
 		}
 	});
 	temporaryTtmpDirectory = targetDirectory / std::format(L"TEMP_{}", GetTickCount64());
@@ -1736,7 +1736,7 @@ std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& pa
 			}
 
 			if (!mplFound || !mpdFound)
-				throw std::runtime_error("Archive does not contain ttmpd.mpd or ttmpl.mpl in its root folder.");
+				throw std::runtime_error(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_ARCHIVE_MISSING_TTMP)));
 
 			for (const auto& entry : pArc->getEntries()) {
 				if (cancelEvent.Wait(0) == WAIT_OBJECT_0)
@@ -1768,7 +1768,7 @@ std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& pa
 		} else {
 			const auto ttmpdPath = path.parent_path() / "TTMPD.mpd";
 			if (!exists(ttmpdPath))
-				throw std::runtime_error("TTMPD.mpd file missing");
+				throw std::runtime_error(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_TTMPD_MISSING)));
 			const auto ttmpl = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{f});
 			if (!ttmpl.ModPackPages.empty())
 				offerConfiguration = true;
@@ -1801,7 +1801,7 @@ std::pair<std::filesystem::path, std::string> App::Window::MainWindow::InstallAn
 	CharLowerW(&fileNameLower[0]);
 	if (fileNameLower == L"ffxiv_dx11.exe" || fileNameLower == L"ffxiv.exe") {
 		AddAdditionalGameRootDirectory(path.parent_path());
-		return std::make_pair(path, "Added to additional game root directory");
+		return std::make_pair(path, Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_RESULT_ADDADDITIONALGAMEROOTDIRECTORY)));
 	}
 	if (fileNameLower == L"ttmpd.mpd" || fileNameLower == L"choices.json")
 		return {path, {}};
@@ -1813,7 +1813,7 @@ std::pair<std::filesystem::path, std::string> App::Window::MainWindow::InstallAn
 	file.Read(0, buf, 2);
 	if (buf[0] == 'P' && buf[1] == 'K') {
 		const auto msg = InstallTTMP(path, cancelEvent);
-		return std::make_pair(path, msg.empty() ? "TTMP installed" : msg);
+		return std::make_pair(path, msg.empty() ? Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_RESULT_TTMP_INSTALLED)) : msg);
 	}
 	const auto fileSize = file.GetLength();
 	if (fileSize > 1048576)
@@ -1821,7 +1821,7 @@ std::pair<std::filesystem::path, std::string> App::Window::MainWindow::InstallAn
 
 	if (const auto ttmpl = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{file}); !ttmpl.SimpleModsList.empty() || !ttmpl.ModPackPages.empty()) {
 		const auto msg = InstallTTMP(path, cancelEvent);
-		return std::make_pair(path, msg.empty() ? "TTMP installed" : msg);
+		return std::make_pair(path, msg.empty() ? Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_RESULT_TTMP_INSTALLED)) : msg);
 	}
 
 	// Test file
@@ -1843,10 +1843,10 @@ std::pair<std::filesystem::path, std::string> App::Window::MainWindow::InstallAn
 	}
 	if (isPossiblyExcelTransformConfig) {
 		ImportExcelTransformConfig(path);
-		return std::make_pair(path, "Excel transform config installed");
+		return std::make_pair(path, Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_RESULT_EXCELCONFIGFILE_INSTALLED)));
 	} else if (isPossiblyFontConfig) {
 		ImportFontConfig(path);
-		return std::make_pair(path, "Font config installed");
+		return std::make_pair(path, Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_RESULT_FONTCONFIG_INSTALLED)));
 	} else
-		throw std::runtime_error("Unsupported file type");
+		throw std::runtime_error(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_UNSUPPORTED_FILE_TYPE)));
 }

@@ -356,7 +356,7 @@ void App::XivAlexApp::CustomMessageLoopBody() {
 	}
 }
 
-HWND App::XivAlexApp::GetGameWindowHandle() const {
+_Maybenull_ HWND App::XivAlexApp::GetGameWindowHandle() const {
 	return m_pGameWindow->GetHwnd();
 }
 
@@ -369,19 +369,19 @@ std::string App::XivAlexApp::IsUnloadable() const {
 		return pszDisabledReason;
 
 	if (Dll::IsLoadedAsDependency())
-		return "Loaded as dependency";  // TODO: create string resource
+		return Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_NOUNLOADREASON_DEPENDENCY));
 
 	if (m_pImpl == nullptr || m_pGameWindow == nullptr)
 		return "";
 
 	if (!m_pImpl->m_gameResourceOverrider->CanUnload())
-		return "Cannot unload when overlaying game resources";  // TODO: create string resource
+		return Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_NOUNLOADREASON_MODACTIVE));
 
 	if (m_pImpl->m_socketHook && !m_pImpl->m_socketHook->IsUnloadable())
-		return Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_UNLOAD_SOCKET));
+		return Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_NOUNLOADREASON_SOCKET));
 
 	if (m_pGameWindow->m_subclassHook && !m_pGameWindow->m_subclassHook->IsDisableable())
-		return Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_UNLOAD_WNDPROC));
+		return Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_NOUNLOADREASON_WNDPROC));
 
 	return "";
 }

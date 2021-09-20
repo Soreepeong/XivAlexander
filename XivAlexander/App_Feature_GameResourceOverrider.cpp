@@ -19,6 +19,7 @@
 #include "App_Misc_Logger.h"
 #include "App_Window_ProgressPopupWindow.h"
 #include "DllMain.h"
+#include "resource.h"
 
 std::weak_ptr<App::Feature::GameResourceOverrider::Implementation> App::Feature::GameResourceOverrider::s_pImpl;
 
@@ -653,7 +654,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				const auto actCtx = Dll::ActivationContext().With();
 				Window::ProgressPopupWindow progressWindow(Dll::FindGameMainWindow(false));
 				Utils::Win32::TpEnvironment pool;
-				progressWindow.UpdateMessage("Generating merged exd files...");
+				progressWindow.UpdateMessage(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_TITLE_GENERATING_EXD_FILES)));
 
 				static constexpr auto ProgressMaxPerTask = 1000;
 				std::map<std::string, uint64_t> progressPerTask;
@@ -1384,7 +1385,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 
 					const auto actCtx = Dll::ActivationContext().With();
 					Window::ProgressPopupWindow progressWindow(Dll::FindGameMainWindow(false));
-					progressWindow.UpdateMessage("Generating fonts...");
+					progressWindow.UpdateMessage(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_TITLE_GENERATING_FONTS)));
 					progressWindow.Show();
 
 					m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
@@ -1400,10 +1401,11 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {fontCreator.GetWaitableObject()})) {
 						const auto progress = fontCreator.GetProgress();
 						progressWindow.UpdateProgress(progress.Progress, progress.Max);
+						
 						if (progress.Indeterminate)
-							progressWindow.UpdateMessage(std::format("Generating fonts... ({} task(s) yet to be started)", progress.Indeterminate));
+							progressWindow.UpdateMessage(std::format("{} (+{})", m_config->Runtime.GetStringRes(IDS_TITLE_GENERATING_FONTS), progress.Indeterminate));
 						else
-							progressWindow.UpdateMessage("Generating fonts...");
+							progressWindow.UpdateMessage(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_TITLE_GENERATING_FONTS)));
 					}
 					if (progressWindow.GetCancelEvent().Wait(0) != WAIT_OBJECT_0) {
 						progressWindow.UpdateMessage("Compressing data...");

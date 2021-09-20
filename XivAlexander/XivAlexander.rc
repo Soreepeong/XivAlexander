@@ -208,7 +208,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "’u‚«Š·‚¦ƒtƒ@ƒCƒ‹‚ÌƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚é(&R)",      ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
         MENUITEM SEPARATOR
-        MENUITEM "ƒQ[ƒ€‚ðÄ‹N“®‚·‚é‚Ü‚Å•ÏX‚É‚È‚ç‚È‚¢ê‡‚ª‚æ‚­‚ ‚è‚Ü‚·B", ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
+        MENUITEM "ƒQ[ƒ€‚ðÄ‹N“®‚·‚é‚Ü‚Å“K—p‚³‚ê‚È‚¢ê‡‚ª‚ ‚è‚Ü‚·B",   ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
     END
     POPUP "Ý’è(&C)"
     BEGIN
@@ -230,7 +230,7 @@ BEGIN
     END
     POPUP "ƒwƒ‹ƒv(&H)"
     BEGIN
-        MENUITEM "ƒwƒ‹ƒvƒEƒF[ƒuƒy[ƒW‚ð•\Ž¦(&W)",           ID_HELP_OPENHELPWEBPAGE
+        MENUITEM "ƒwƒ‹ƒvƒy[ƒW‚ð•\Ž¦(&W)",               ID_HELP_OPENHELPWEBPAGE
         MENUITEM SEPARATOR
         MENUITEM "ƒz[ƒ€ƒy[ƒW‚ð•\Ž¦(&H)",               ID_HELP_OPENHOMEPAGE
     END
@@ -265,8 +265,8 @@ BEGIN
     IDS_LOG_XIVALEXANDER_INITIALIZED "XivAlexander‚Ì‰Šú‰»‚É¬Œ÷"
     IDS_ERROR_FREEGAMEMUTEX "ƒQ[ƒ€‚Ì‘½d‹N“®–hŽ~‰ðœ‚ÉŽ¸”s‚µ‚Ü‚µ‚½B({})"
     IDS_ERROR_UNEXPECTED    "—\‘z‚µ‚È‚¢ƒGƒ‰[‚ª”­¶‚µ‚Ü‚µ‚½B({})"
-    IDS_ERROR_UNLOAD_SOCKET "‘¼‚ÌƒvƒƒOƒ‰ƒ€‚Éƒ\ƒPƒbƒgŠÖ”‚ðŠ„‚èž‚Ü‚ê‚Ü‚µ‚½Bæ‚É‹£‡‚ÌƒvƒƒOƒ‰ƒ€‚ðI—¹‚µ‚Ä‚­‚¾‚³‚¢B"
-    IDS_ERROR_UNLOAD_WNDPROC 
+    IDS_NOUNLOADREASON_SOCKET "‘¼‚ÌƒvƒƒOƒ‰ƒ€‚Éƒ\ƒPƒbƒgŠÖ”‚ðŠ„‚èž‚Ü‚ê‚Ü‚µ‚½Bæ‚É‹£‡‚ÌƒvƒƒOƒ‰ƒ€‚ðI—¹‚µ‚Ä‚­‚¾‚³‚¢B"
+    IDS_NOUNLOADREASON_WNDPROC 
                             "‘¼‚ÌƒvƒƒOƒ‰ƒ€‚ÉƒEƒBƒ“ƒhƒE‚ÌƒvƒƒV[ƒWƒƒ‚ðŠ„‚èž‚Ü‚ê‚Ü‚µ‚½Bæ‚É‹£‡‚ÌƒvƒƒOƒ‰ƒ€‚ðI—¹‚µ‚Ä‚­‚¾‚³‚¢B"
     IDS_ERROR_INJECT        "‚±‚ÌƒvƒƒOƒ‰ƒ€‚Ì‰Šú‰»‚ÉŽ¸”s‚µ‚Ü‚µ‚½B\nƒGƒ‰[F{}\nPIDF{}\nƒpƒXF{}\nƒRƒ}ƒ“ƒhƒ‰ƒCƒ“F{}"
     IDS_WARNING_ZEROPING    "rtt={}, latency={}; VPN‚Ü‚½‚Íƒlƒbƒgƒ[ƒN‚©‚ç0ms‚Ì’x‰„‚ª•ñ‚³‚ê‚Ä‚¢‚é‚½‚ßAuƒT[ƒo[‚Ì’x‰„‚ð•â³v‚Ì–³Œø‰»‚ð‚¨‚·‚·‚ß‚µ‚Ü‚·B"
@@ -314,13 +314,14 @@ BEGIN
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "ŠÂ‹«Ý’è"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcode‚ÌÝ’è"
     IDS_WINDOW_LOG          "ƒƒO‚Ì•\Ž¦"
+    IDS_TITLE_GENERATING_FONTS "ƒtƒHƒ“ƒgƒtƒ@ƒCƒ‹‚ðì¬‚µ‚Ä‚¢‚Ü‚·c"
     IDS_LANGUAGE_NAME_ENGLISH "‰pŒê"
     IDS_LANGUAGE_NAME_JAPANESE "“ú–{Œê"
     IDS_LANGUAGE_NAME_GERMAN "ƒhƒCƒcŒê"
     IDS_LANGUAGE_NAME_FRENCH "ƒtƒ‰ƒ“ƒXŒê"
     IDS_LANGUAGE_NAME_KOREAN "ŠØ‘Œê"
     IDS_LANGUAGE_NAME_CHINESE_SIMPLIFIED "’†‘Œê(ŠÈ‘ÌŽš)"
-    IDS_LANGUAGE_NAME_UNSPECIFIED "(Œ¾Œê–¢‹K’è)"
+    IDS_LANGUAGE_NAME_UNSPECIFIED "(Œ¾Œê–¢Ý’è)"
 END
 
 STRINGTABLE
@@ -338,7 +339,7 @@ BEGIN
     IDS_CONFIRM_LAUNCH      "{1}‚Ì{0}ƒo[ƒWƒ‡ƒ“‚ÌƒQ[ƒ€‚ð‹N“®‚µ‚Ü‚·‚©H"
     IDS_ERROR_NOT_FOUND     "ƒQ[ƒ€‚ÌƒCƒ“ƒXƒg[ƒ‹æ‚ðŒ©‚Â‚¯‚é‚±‚Æ‚ª‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½BŽè“®‚ÅŽw’è‚µ‚Ä‚­‚¾‚³‚¢B"
     IDS_ERROR_COMMAND_LINE  "ƒRƒ}ƒ“ƒhƒ‰ƒCƒ“‚Ì‰ð“Ç‚ÉŽ¸”s‚µ‚Ü‚µ‚½B\nƒGƒ‰[F{}\n\n{}"
-    IDS_ERROR_SEDEBUGPRIVILEGE "Œ ŒÀ‚ÌŽæ“¾‚ÉŽ¸”s‚µ‚Ü‚µ‚½B\nEŠÇ—ŽÒŒ ŒÀ‚Å‹N“®‚µ’¼‚µ‚Ä‚Ý‚Ä‚­‚¾‚³‚¢B\nE{}"
+    IDS_ERROR_SEDEBUGPRIVILEGE "Œ ŒÀ‚ÌŽæ“¾‚ÉŽ¸”s‚µ‚Ü‚µ‚½B\nEŠÇ—ŽÒ‚Æ‚µ‚Ä‹N“®‚µ’¼‚µ‚Ä‚­‚¾‚³‚¢B\nE{}"
 END
 
 STRINGTABLE
@@ -374,12 +375,54 @@ BEGIN
     IDS_HELP_DISABLE_RUNAS  "‚Ç‚Ìê‡‚Å‚àŠÇ—ŽÒŒ ŒÀ‚ÅŽÀs‚µ‚Ü‚¹‚ñB"
     IDS_HELP_INTERNAL_USE_ONLY "“à•”Žg—p‚Ì‚ÝiŽg—p‹ÖŽ~j"
     IDS_HELP_TARGETS        "ƒ[ƒh‚Ü‚½‚ÍI—¹‚Ìê‡ƒvƒƒZƒXID‚Ü‚½‚ÍƒvƒƒZƒXƒpƒX‚ÌƒTƒtƒBƒbƒNƒXA‹N“®‚Ìê‡‹N“®‚·‚éƒvƒƒZƒX‚ÌƒpƒX‚Å‚·B"
-    IDS_TITLE_IMPORT_FONTCONFIG_PRESET "?? ??? ?? ????"
-    IDS_TITLE_ADD_EXTERNAL_GAME_DIRECTORY "?? ?? ?? ?? ????"
+    IDS_TITLE_IMPORT_FONTCONFIG_PRESET "“Ç‚Ýž‚ÞƒtƒHƒ“ƒg‚ÌƒvƒŠƒZƒbƒgƒtƒ@ƒCƒ‹‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
+    IDS_TITLE_ADD_EXTERNAL_GAME_DIRECTORY "ŠO•”‚ÌƒQ[ƒ€ƒtƒHƒ‹ƒ_[‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
     IDS_ERROR_NOT_GAME_DIRECTORY 
-                            "??? ?? ""{}"" ? ?? ??? ????. ""ffxiv_dx11.exe"" ? ""ffxiv.exe""? ???? ??? ??? ???."
+                            "‘I‘ð‚µ‚½ƒpƒX ""{}"" ‚ÍƒQ[ƒ€ƒtƒHƒ‹ƒ_‚Å‚Í‚ ‚è‚Ü‚¹‚ñB""ffxiv.exe""‚¨‚æ‚Ñ""ffxiv_dx11.exe""‚ÌŽÀsƒtƒ@ƒCƒ‹‚ª‘¶Ý‚·‚éƒtƒHƒ‹ƒ_‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢B"
     IDS_NOTIFY_TTMP_HAS_CONFIGURATION 
-                            "?? ??? TexTools ??? ??? ?? ??? ?????. ???? ??? ???."
+                            "‚½‚¾‚¢‚ÜƒCƒ“ƒXƒg[ƒ‹‚µ‚½TexTools MODƒpƒbƒN‚É‚ÍƒJƒXƒ^ƒ}ƒCƒY‰Â”\‚Èƒ†[ƒU[Ý’è‚ª‘¶Ý‚µ‚Ü‚·Bƒƒjƒ…[‚ÅÝ’è‚ðs‚Á‚Ä‚­‚¾‚³‚¢B"
+    IDS_TITLE_GENERATING_EXD_FILES "EXDFƒtƒ@ƒCƒ‹‚ðì¬‚µ‚Ä‚¢‚Ü‚·c"
+    IDS_CONFIRM_REMOVE_ADDITIONAL_ROOT 
+                            "Continue removing additional game root folder ""{}""?\n\nThis will not delete the files in the folder."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_CONFIRM_REMOVE_EXCEL_TRANSFORM_CONFIG_FILE 
+                            "Continue removing excel transform configuration file ""{}"" from the list?\n\nThis will not delete the file."
+    IDS_FILTERSPEC_FONTPRESETJSON "Font preset JSON files (*.json)"
+    IDS_FILTERSPEC_ALLFILES "All files (*.*)"
+    IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON 
+                            "Excel transformation configuration JSON files (*.json)"
+    IDS_FILTERSPEC_TTMP     "TexTools ModPack Files (*.ttmp, *.ttmp2, *.mpl)"
+    IDS_CONFIRM_REMOVEALLTTMP 
+                            "Do you want to remove all TexTools ModPacks on restart?"
+    IDS_CONFIRM_UNDOREMOVEALLTTMP 
+                            "Do you want to cancel removing all TexTools ModPacks on restart?"
+    IDS_CONFIRM_ENABLEALLTTMP 
+                            "Do you want to enable all TexTools ModPacks on restart?"
+    IDS_CONFIRM_DISABLEALLTTMP 
+                            "Do you want to disable all TexTools ModPacks on restart?"
+    IDS_NOUNLOADREASON_DEPENDENCY 
+                            "XivAlexander cannot be unloaded when it is loaded as a dependency (installation)."
+    IDS_NOUNLOADREASON_MODACTIVE 
+                            "XivAlexander cannot be unloaded when modding is active."
+    IDS_ERROR_REMOVETEMPORARYDIRECTORY 
+                            "Failed to remove temporary directory at ""{}"".\n\nError: {}"
+    IDS_ERROR_TTMPD_MISSING "Cannot find companion file TTMPD.mpd to selected TTMPL.mpl file."
+    IDS_ERROR_ARCHIVE_MISSING_TTMP 
+                            "Selected archive file does not contain TTMPD.mpd and/or TTMPL.mpl files."
+    IDS_RESULT_ADDADDITIONALGAMEROOTDIRECTORY 
+                            "Added to additional game root directory."
+    IDS_RESULT_TTMP_INSTALLED "Installed as a TexTools ModPack."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_RESULT_EXCELCONFIGFILE_INSTALLED 
+                            "Installed as an excel transform configuration file."
+    IDS_RESULT_FONTCONFIG_INSTALLED "Installed as a font config file."
+    IDS_ERROR_UNSUPPORTED_FILE_TYPE "Unsupported file type."
 END
 
 #endif    // Japanese (Japan) resources
@@ -665,8 +708,8 @@ BEGIN
     IDS_LOG_XIVALEXANDER_INITIALIZED "XivAlexander ÁØºñ ¿Ï·á"
     IDS_ERROR_FREEGAMEMUTEX "°ÔÀÓ Áßº¹ ½ÇÇà ¹æÁö ÇØÁ¦¿¡ ½ÇÆÐÇß½À´Ï´Ù. ({})"
     IDS_ERROR_UNEXPECTED    "¿¹»óÄ¡ ¸øÇÑ ¿À·ù°¡ ¹ß»ýÇß½À´Ï´Ù. ({})"
-    IDS_ERROR_UNLOAD_SOCKET "´Ù¸¥ ÇÁ·Î±×·¥ÀÌ ¼ÒÄÏ ÇÔ¼ö¸¦ °¡·ÎÃ«½À´Ï´Ù. ´Ù¸¥ ÇÁ·Î±×·¥À» ¸ÕÀú Á¾·áÇØ ÁÖ¼¼¿ä."
-    IDS_ERROR_UNLOAD_WNDPROC "´Ù¸¥ ÇÁ·Î±×·¥ÀÌ Ã¢ ÇÁ·Î½ÃÀú¸¦ °¡·ÎÃ«½À´Ï´Ù. ´Ù¸¥ ÇÁ·Î±×·¥À» ¸ÕÀú Á¾·áÇØ ÁÖ¼¼¿ä."
+    IDS_NOUNLOADREASON_SOCKET "´Ù¸¥ ÇÁ·Î±×·¥ÀÌ ¼ÒÄÏ ÇÔ¼ö¸¦ °¡·ÎÃ«½À´Ï´Ù. ´Ù¸¥ ÇÁ·Î±×·¥À» ¸ÕÀú Á¾·áÇØ ÁÖ¼¼¿ä."
+    IDS_NOUNLOADREASON_WNDPROC "´Ù¸¥ ÇÁ·Î±×·¥ÀÌ Ã¢ ÇÁ·Î½ÃÀú¸¦ °¡·ÎÃ«½À´Ï´Ù. ´Ù¸¥ ÇÁ·Î±×·¥À» ¸ÕÀú Á¾·áÇØ ÁÖ¼¼¿ä."
     IDS_ERROR_INJECT        "ÀÌ ÇÁ·Î±×·¥À» ÃÊ±âÈ­ÇÏÁö ¸øÇß½À´Ï´Ù.\n¿À·ù: {}\nPID: {}\n°æ·Î: {}\n¸í·ÉÁÙ: {}"
     IDS_WARNING_ZEROPING    "rtt={}, latency={}; VPN ¶Ç´Â ³×Æ®¿öÅ©¿¡¼­ ÇÎÀÌ 0ms¶ó°í º¸°íÇÏ°í ÀÖ½À´Ï´Ù. ""¼­¹ö Áö¿¬ º¸Á¤""¸¦ ²ô´Â °ÍÀ» ±ÇÀåÇÕ´Ï´Ù."
     IDS_ERROR_FREEGAMEMUTEX_CLOSEHANDLE 
@@ -714,6 +757,7 @@ BEGIN
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "ÇÁ·Î±×·¥ ¼³Á¤ ÆíÁý"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "¿ÉÄÚµå ¼³Á¤ ÆíÁý"
     IDS_WINDOW_LOG          "·Î±× º¸±â"
+    IDS_TITLE_GENERATING_FONTS "ÆùÆ® ÆÄÀÏ »ý¼º Áß..."
     IDS_LANGUAGE_NAME_ENGLISH "¿µ¾î"
     IDS_LANGUAGE_NAME_JAPANESE "ÀÏº»¾î"
     IDS_LANGUAGE_NAME_GERMAN "µ¶ÀÏ¾î"
@@ -781,6 +825,40 @@ BEGIN
                             "¼±ÅÃÇÑ Æú´õ ""{}"" ´Â °ÔÀÓ Æú´õ°¡ ¾Æ´Õ´Ï´Ù. ""ffxiv_dx11.exe"" ¹× ""ffxiv.exe""°¡ µé¾îÀÖ´Â Æú´õ¸¦ ¼±ÅÃÇØ ÁÖ¼¼¿ä."
     IDS_NOTIFY_TTMP_HAS_CONFIGURATION 
                             "¹æ±Ý ¼³Ä¡ÇÑ TexTools ¸ðµåÆÑ ÆÄÀÏÀº Ãß°¡ ¼³Á¤ÀÌ ÇÊ¿äÇÕ´Ï´Ù. ¸Þ´º¿¡¼­ ¼³Á¤ÇØ ÁÖ¼¼¿ä."
+    IDS_TITLE_GENERATING_EXD_FILES "EXDF ÆÄÀÏ »ý¼º Áß..."
+    IDS_CONFIRM_REMOVE_ADDITIONAL_ROOT 
+                            "°ÔÀÓ ¼³Ä¡ Æú´õ ""{}""¸¦ Ãß°¡ °ÔÀÓ ¼³Ä¡ Æú´õ ¸ñ·Ï¿¡¼­ Á¦¿ÜÇÕ´Ï´Ù."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_CONFIRM_REMOVE_EXCEL_TRANSFORM_CONFIG_FILE 
+                            "¹®ÀÚ¿­ º¯°æ ±ÔÄ¢ ÆÄÀÏ ""{}""À» ±ÔÄ¢ ¸ñ·Ï¿¡¼­ Á¦¿ÜÇÕ´Ï´Ù."
+    IDS_FILTERSPEC_FONTPRESETJSON "ÆùÆ® ÇÁ¸®¼Â JSON ÆÄÀÏ (*.json)"
+    IDS_FILTERSPEC_ALLFILES "¸ðµç ÆÄÀÏ (*.*)"
+    IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON "¹®ÀÚ¿­ º¯°æ ±ÔÄ¢ JSON ÆÄÀÏ (*.json)"
+    IDS_FILTERSPEC_TTMP     "TexTools ¸ðµåÆÑ ÆÄÀÏ (*.ttmp, *.ttmp2, *.mpl)"
+    IDS_CONFIRM_REMOVEALLTTMP "´ÙÀ½ Àç½ÃÀÛ ¶§ ¸ðµç TexTools ¸ðµåÆÑ ÆÄÀÏÀ» Á¦°ÅÇÕ´Ï´Ù."
+    IDS_CONFIRM_UNDOREMOVEALLTTMP 
+                            "´ÙÀ½ Àç½ÃÀÛ ¶§ ¿¹¾àµÈ ¸ðµç TexTools ¸ðµåÆÑ ÆÄÀÏ Á¦°Å ÀÛ¾÷À» Ãë¼ÒÇÕ´Ï´Ù."
+    IDS_CONFIRM_ENABLEALLTTMP "´ÙÀ½ Àç½ÃÀÛ ¶§ ¸ðµç TexTools ¸ðµåÆÑ ÆÄÀÏÀ» È°¼ºÈ­ÇÕ´Ï´Ù."
+    IDS_CONFIRM_DISABLEALLTTMP "´ÙÀ½ Àç½ÃÀÛ ¶§ ¸ðµç TexTools ¸ðµåÆÑ ÆÄÀÏÀ» ºñÈ°¼ºÈ­ÇÕ´Ï´Ù."
+    IDS_NOUNLOADREASON_DEPENDENCY 
+                            "XivAlexander´Â ±¸¼º ¿ä¼Ò·Î ºÒ·¯¿ÍÁ³À» ¶§ (¼³Ä¡µÇ¾úÀ» ¶§) °ÔÀÓ Á¾·á ¿ÜÀÇ ¹æ¹ýÀ¸·Î´Â Á¾·áÇÒ ¼ö ¾ø½À´Ï´Ù."
+    IDS_NOUNLOADREASON_MODACTIVE "¸ðµùÀÌ È°¼ºÈ­µÇ¾î ÀÖÀ» ¶§´Â XivAlexander¸¦ Á¾·áÇÒ ¼ö ¾ø½À´Ï´Ù."
+    IDS_ERROR_REMOVETEMPORARYDIRECTORY "ÀÓ½Ã Æú´õ ""{}""¸¦ Á¦°ÅÇÏÁö ¸øÇß½À´Ï´Ù.\n\n¿À·ù: {}"
+    IDS_ERROR_TTMPD_MISSING "¼±ÅÃÇÑ TTMPL.mpl ÆÄÀÏ¿¡ ÇØ´çÇÏ´Â TTMPD.mpd ÆÄÀÏÀ» Ã£À» ¼ö ¾ø½À´Ï´Ù."
+    IDS_ERROR_ARCHIVE_MISSING_TTMP 
+                            "¼±ÅÃÇÑ ¾ÐÃà ÆÄÀÏÀº TTMPD.mpd, TTMPL.mpl, È¤Àº µÑ ´Ù Æ÷ÇÔÇÏ°í ÀÖÁö ¾Ê½À´Ï´Ù."
+    IDS_RESULT_ADDADDITIONALGAMEROOTDIRECTORY "Ãß°¡ °ÔÀÓ ·çÆ® Æú´õ·Î Ãß°¡ÇÏ¿´½À´Ï´Ù."
+    IDS_RESULT_TTMP_INSTALLED "TexTools ¸ðµåÆÑÀ¸·Î ¼³Ä¡ÇÏ¿´½À´Ï´Ù."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_RESULT_EXCELCONFIGFILE_INSTALLED "¹®ÀÚ¿­ º¯°æ ±ÔÄ¢ ÆÄÀÏ·Î ¼³Ä¡ÇÏ¿´½À´Ï´Ù."
+    IDS_RESULT_FONTCONFIG_INSTALLED "ÆùÆ® ÇÁ¸®¼Â ÆÄÀÏ·Î ¼³Ä¡ÇÏ¿´½À´Ï´Ù."
+    IDS_ERROR_UNSUPPORTED_FILE_TYPE "Áö¿øÇÏÁö ¾Ê´Â ÆÄÀÏ Çü½ÄÀÔ´Ï´Ù."
 END
 
 #endif    // Korean (Korea) resources
@@ -1185,8 +1263,9 @@ BEGIN
     IDS_LOG_XIVALEXANDER_INITIALIZED "XivAlexander initialized."
     IDS_ERROR_FREEGAMEMUTEX "Failed to free multiple game run preventer. ({})"
     IDS_ERROR_UNEXPECTED    "Unexpected error occurred. ({})"
-    IDS_ERROR_UNLOAD_SOCKET "Another module has hooked socket functions over XivAlexander. Try unloading that other module first."
-    IDS_ERROR_UNLOAD_WNDPROC 
+    IDS_NOUNLOADREASON_SOCKET 
+                            "Another module has hooked socket functions over XivAlexander. Try unloading that other module first."
+    IDS_NOUNLOADREASON_WNDPROC 
                             "Another module has hooked window procedure over XivAlexander. Try unloading that other module first."
     IDS_ERROR_INJECT        "Failed to initialize this process.\nError: {}\nPID: {}\nPath: {}\nCommand Line: {}"
     IDS_WARNING_ZEROPING    "rtt={} but latency={}; your VPN or network might be reporting 0 ping. Unchecking ""Compensate for Server Delay"" is recommended."
@@ -1240,6 +1319,7 @@ BEGIN
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "Runtime Configuration Editor"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcode Configuration Editor"
     IDS_WINDOW_LOG          "Log Viewer"
+    IDS_TITLE_GENERATING_FONTS "Generating font files..."
     IDS_LANGUAGE_NAME_ENGLISH "English"
     IDS_LANGUAGE_NAME_JAPANESE "Japanese"
     IDS_LANGUAGE_NAME_GERMAN "German"
@@ -1315,6 +1395,49 @@ BEGIN
                             "Selected path ""{}"" does not seem to be a game directory. A game directory should have ""ffxiv.exe"" and ""ffxiv_dx11.exe"" in it."
     IDS_NOTIFY_TTMP_HAS_CONFIGURATION 
                             "Installed TexTools ModPack file has user configurable settings attached to it. Use menu to change settings."
+    IDS_TITLE_GENERATING_EXD_FILES 
+                            "Generating merged exd files (string tables)..."
+    IDS_CONFIRM_REMOVE_ADDITIONAL_ROOT 
+                            "Continue removing additional game root folder ""{}""?\n\nThis will not delete the files in the folder."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_CONFIRM_REMOVE_EXCEL_TRANSFORM_CONFIG_FILE 
+                            "Continue removing excel transform configuration file ""{}"" from the list?\n\nThis will not delete the file."
+    IDS_FILTERSPEC_FONTPRESETJSON "Font preset JSON files (*.json)"
+    IDS_FILTERSPEC_ALLFILES "All files (*.*)"
+    IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON 
+                            "Excel transformation configuration JSON files (*.json)"
+    IDS_FILTERSPEC_TTMP     "TexTools ModPack Files (*.ttmp, *.ttmp2, *.mpl)"
+    IDS_CONFIRM_REMOVEALLTTMP 
+                            "Do you want to remove all TexTools ModPacks on restart?"
+    IDS_CONFIRM_UNDOREMOVEALLTTMP 
+                            "Do you want to cancel removing all TexTools ModPacks on restart?"
+    IDS_CONFIRM_ENABLEALLTTMP 
+                            "Do you want to enable all TexTools ModPacks on restart?"
+    IDS_CONFIRM_DISABLEALLTTMP 
+                            "Do you want to disable all TexTools ModPacks on restart?"
+    IDS_NOUNLOADREASON_DEPENDENCY 
+                            "XivAlexander cannot be unloaded when it is loaded as a dependency (installation)."
+    IDS_NOUNLOADREASON_MODACTIVE 
+                            "XivAlexander cannot be unloaded when modding is active."
+    IDS_ERROR_REMOVETEMPORARYDIRECTORY 
+                            "Failed to remove temporary directory at ""{}"".\n\nError: {}"
+    IDS_ERROR_TTMPD_MISSING "Cannot find companion file TTMPD.mpd to selected TTMPL.mpl file."
+    IDS_ERROR_ARCHIVE_MISSING_TTMP 
+                            "Selected archive file does not contain TTMPD.mpd and/or TTMPL.mpl files."
+    IDS_RESULT_ADDADDITIONALGAMEROOTDIRECTORY 
+                            "Added to additional game root directory."
+    IDS_RESULT_TTMP_INSTALLED "Installed as a TexTools ModPack."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_RESULT_EXCELCONFIGFILE_INSTALLED 
+                            "Installed as an excel transform configuration file."
+    IDS_RESULT_FONTCONFIG_INSTALLED "Installed as a font config file."
+    IDS_ERROR_UNSUPPORTED_FILE_TYPE "Unsupported file type."
 END
 
 #endif    // English (United States) resources

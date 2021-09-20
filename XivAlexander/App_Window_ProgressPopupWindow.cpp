@@ -140,6 +140,7 @@ void App::Window::ProgressPopupWindow::Show() {
 	SetForegroundWindow(m_hWnd);
 	if (GetWindowLongW(m_hProgressBar, GWL_STYLE) & PBS_MARQUEE)
 		SendMessageW(m_hProgressBar, PBM_SETMARQUEE, TRUE, 0);
+	InvalidateRect(m_hWnd, nullptr, TRUE);
 }
 
 void App::Window::ProgressPopupWindow::OnLayout(double zoom, double width, double height, int resizeType) {
