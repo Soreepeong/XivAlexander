@@ -13,6 +13,292 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
+// Japanese (Japan) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_JPN)
+LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
+#pragma code_page(932)
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_TRAY_MENU MENU
+BEGIN
+    POPUP "“®ì(&F, F1)"
+    BEGIN
+        MENUITEM "(Œ»Ý‚ÌƒvƒƒZƒX‚Ìó‹µ)",                ID_TRAYMENU_CURRENTINFO, INACTIVE
+        MENUITEM SEPARATOR
+        POPUP "’x‰„‚Ì‰ðÁ(&M)"
+        BEGIN
+            MENUITEM "—LŒø‰»(&E)\t(Ctrl+Shift+)H",     ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE
+            MENUITEM SEPARATOR
+            MENUITEM "ƒ‚[ƒh&1FŽŸ‚ÌƒAƒNƒVƒ‡ƒ“‚ÌŽg—p‰Â”\Žž‚©‚çƒŒƒCƒeƒ“ƒV‚ðŒJ‚èã‚°‚é", ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_1
+            MENUITEM "ƒ‚[ƒh&2FƒT[ƒo‚©‚ç‚Ì‰ž“š‚É‚©‚©‚éŽžŠÔ‚ð75ms‚ÉŒÅ’è", ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_2
+            MENUITEM "ƒ‚[ƒh&3FƒT[ƒo[‚©‚ç‚Ì‰ž“š‚É‚©‚©‚éŽžŠÔ‚ÆƒŒƒCƒeƒ“ƒV‚ð•â³", ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_3
+            MENUITEM SEPARATOR
+            MENUITEM "ƒAƒNƒVƒ‡ƒ“‚ÌÙ‘¬‚ÈŽg—p‚Ì–hŽ~(&E)\tCtrl+(Alt+)E", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY
+            MENUITEM SEPARATOR
+            MENUITEM "ƒƒO‚ð—LŒø‚É‚·‚é(&L)\tCtrl+(Alt+)L",  ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING
+            MENUITEM "ì“®‚ÌƒVƒ~ƒ…ƒŒ[ƒVƒ‡ƒ“(ƒƒO‚É‹L˜^)(&P)\tCtrl+(Alt+)P", ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE
+        END
+        POPUP "ƒlƒbƒgƒ[ƒN(&N)"
+        BEGIN
+            MENUITEM "ƒpƒPƒbƒg’x‰„‚ÌŒyŒ¸(&R)\t(Ctrl+Shift+)F1", ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY
+            MENUITEM SEPARATOR
+            MENUITEM "ƒ‹[ƒvƒoƒbƒNƒAƒhƒŒƒX‚Ìˆ—(127.0.0.0/8)(&L)\t(Ctrl+Shift+)1", ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES
+            MENUITEM "ƒ[ƒJƒ‹ƒAƒhƒŒƒX‚Ìˆ—(10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)(&P)\t(Ctrl+Shift+)2", ID_TRAYMENU_NETWORKING_TAKEOVERPRIVATEADDRESSES
+            MENUITEM "‚·‚×‚Ä‚ÌƒAƒhƒŒƒX‚Ìˆ—(0.0.0.0/0)(&A)\t(Ctrl+Shift+)3", ID_TRAYMENU_NETWORKING_TAKEOVERALLADDRESSES
+            MENUITEM "‚·‚×‚Ä‚Ìƒ|[ƒg‚Ìˆ—(&P)\t(Ctrl+Shift+)4", ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS
+            MENUITEM SEPARATOR
+            MENUITEM "‚·‚×‚Ä‚ÌÚ‘±‚Ìˆ—‚ð‰ðœ(&E)\t(Ctrl+Shift+)F2", ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS
+        END
+        MENUITEM "IPCƒ^ƒCƒvƒtƒ@ƒCƒ“ƒ_[‚ÌŽg—p(&F)\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
+        MENUITEM "‚·‚×‚Ä‚ÌIPCƒƒbƒZ[ƒW‚ðƒƒO‚É‹L˜^(&A)\t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
+        MENUITEM "AddStatusEffect‚Ì’x‰„‚ðƒƒO‚É‹L˜^(&E)\t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
+        POPUP "ƒŠƒ\[ƒX‚Ì‘€ì(x64ê—p)(&H)"
+        BEGIN
+            MENUITEM "ƒnƒbƒVƒ…‰»‚·‚é‘O‚Ì•¶Žš—ñ‚ð‚·‚×‚ÄƒƒO‚É‹L˜^(&L)",   ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS
+            MENUITEM SEPARATOR
+            MENUITEM "ƒQ[ƒ€ƒŠƒ\[ƒX‚ÌŒ¾Œê‚Ì•ÏXFŽg—p‚µ‚È‚¢(&N)",     ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE
+            MENUITEM "ƒQ[ƒ€ƒŠƒ\[ƒX‚ÌŒ¾Œê‚Ì•ÏXF“ú–{Œê(&J)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE
+            MENUITEM "ƒQ[ƒ€ƒŠƒ\[ƒX‚ÌŒ¾Œê‚Ì•ÏXF‰pŒê(&E)",        ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH
+            MENUITEM "ƒQ[ƒ€ƒŠƒ\[ƒX‚ÌŒ¾Œê‚Ì•ÏXFƒhƒCƒcŒê(&D)",      ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_GERMAN
+            MENUITEM "ƒQ[ƒ€ƒŠƒ\[ƒX‚ÌŒ¾Œê‚Ì•ÏXFƒtƒ‰ƒ“ƒXŒê(&F)",     ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_FRENCH
+            MENUITEM "ƒQ[ƒ€ƒŠƒ\[ƒX‚ÌŒ¾Œê‚Ì•ÏXF’†‘Œê(ŠÈ‘ÌŽš)(&C)",  ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE
+            MENUITEM "ƒQ[ƒ€ƒŠƒ\[ƒX‚ÌŒ¾Œê‚Ì•ÏXFŠØ‘Œê(&K)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "ƒQ[ƒ€ƒEƒBƒ“ƒhƒE‚ðí‚ÉŽè‘O‚É•\Ž¦(&T)\tCtrl+Shift+T", ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP
+        POPUP "ƒQ[ƒ€‚Ì‹­§Ä‹N“®(&S)"
+        BEGIN
+            MENUITEM "Ä‹N“®(&R)\tCtrl+Shift+R",       ID_TRAYMENU_RESTARTGAME_RESTART
+            MENUITEM SEPARATOR
+            MENUITEM "DirectX11‚ðŽg—p(&D)\t(Ctrl+Shift+)D", ID_TRAYMENU_RESTARTGAME_USEDIRECTX11
+            MENUITEM "XivAlexander‚ðŽg—p(&X)\t(Ctrl+Shift+)X", ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER
+            MENUITEM "ƒRƒ}ƒ“ƒhƒ‰ƒCƒ“‚Ì“ï“Ç‰»‚ðŽg—p(&P)\t(Ctrl+Shift+)P", ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION
+            MENUITEM "ŠÇ—ŽÒŒ ŒÀ‚ÅŽÀs(&E)\t(Ctrl+Shift+)A", ID_TRAYMENU_RESTARTGAME_USEELEVATION
+            MENUITEM SEPARATOR
+            MENUITEM "Œ¾ŒêF“ú–{Œê(&J)",                  ID_TRAYMENU_RESTARTGAME_LANGUAGE_JAPANESE
+            MENUITEM "Œ¾ŒêF‰pŒê(&E)",                   ID_TRAYMENU_RESTARTGAME_LANGUAGE_ENGLISH
+            MENUITEM "Œ¾ŒêFƒhƒCƒcŒê(&D)",                 ID_TRAYMENU_RESTARTGAME_LANGUAGE_GERMAN
+            MENUITEM "Œ¾ŒêFƒtƒ‰ƒ“ƒXŒê(&F)",                ID_TRAYMENU_RESTARTGAME_LANGUAGE_FRENCH
+            MENUITEM "Œ¾ŒêF’†‘Œê(ŠÈ‘ÌŽš)(&C)",             ID_TRAYMENU_RESTARTGAME_LANGUAGE_SIMPLIFIEDCHINESE
+            MENUITEM "Œ¾ŒêFŠØ‘Œê(&K)",                  ID_TRAYMENU_RESTARTGAME_LANGUAGE_KOREAN
+            MENUITEM SEPARATOR
+            MENUITEM "’nˆæF“ú–{(&1)",                   ID_TRAYMENU_RESTARTGAME_REGION_JAPAN
+            MENUITEM "’nˆæF–k•Ä(&2)",                   ID_TRAYMENU_RESTARTGAME_REGION_NORTH_AMERICA
+            MENUITEM "’nˆæF‰¢B(&3)",                   ID_TRAYMENU_RESTARTGAME_REGION_EUROPE
+        END
+        MENUITEM "ƒQ[ƒ€‚Ì‹­§I—¹(&X)\tCtrl+Shift+Q",  ID_TRAYMENU_EXITGAME
+        MENUITEM SEPARATOR
+        POPUP "Ý’è(&C)"
+        BEGIN
+            MENUITEM "ƒƒOƒEƒBƒ“ƒhƒE‚Ì•\Ž¦(&L)\t(Ctrl+Alt+)L", ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW
+            MENUITEM "ƒRƒ“ƒgƒ[ƒ‹ƒEƒBƒ“ƒhƒE‚Ì•\Ž¦(&C)\tCtrl+(Alt+)W", ID_TRAYMENU_CONFIGURATION_SHOWCONTROLWINDOW
+            MENUITEM "ŠÂ‹«Ý’è(&R)\t(Ctrl+Alt+)R",      ID_TRAYMENU_CONFIGURATION_EDITRUNTIMECONFIGURATION
+            MENUITEM "Opcode‚ÌÝ’è(&O)\t(Ctrl+Alt+)O", ID_TRAYMENU_CONFIGURATION_EDITOPCODECONFIGURATION
+            MENUITEM SEPARATOR
+            MENUITEM "ƒVƒXƒeƒ€Œ¾Œê‚ðŽg—p(&S)\t",             ID_TRAYMENU_CONFIGURATION_LANGUAGE_SYSTEMDEFAULT
+            MENUITEM "Œ¾ŒêF‰pŒê(&E)\t",                 ID_TRAYMENU_CONFIGURATION_LANGUAGE_ENGLISH
+            MENUITEM "Œ¾ŒêFŠØ‘Œê(&K)\t",                ID_TRAYMENU_CONFIGURATION_LANGUAGE_KOREAN
+            MENUITEM "Œ¾ŒêF“ú–{Œê(&J)",                  ID_TRAYMENU_CONFIGURATION_LANGUAGE_JAPANESE
+            MENUITEM SEPARATOR
+            MENUITEM "Ý’è‚ÌÄ“Ç‚Ýž‚Ý(&Z)\t(Ctrl+Shift+)F5", ID_TRAYMENU_CONFIGURATION_RELOAD
+        END
+        MENUITEM "ƒAƒbƒvƒf[ƒg‚ÌŠm”F(&P)\tCtrl+(Alt+)U", ID_TRAYMENU_CHECKFORUPDATES
+        MENUITEM "XivAlexander‚ÌI—¹(&U)\tCtrl+(Alt+)Q", ID_TRAYMENU_UNLOADXIVALEXANDER
+    END
+    POPUP "•\Ž¦(&V)"
+    BEGIN
+        MENUITEM "í‚ÉŽè‘O‚É•\Ž¦(&T)\tCtrl+T",         ID_VIEW_ALWAYSONTOP
+    END
+    POPUP "ƒwƒ‹ƒv(&H)"
+    BEGIN
+        MENUITEM "ƒwƒ‹ƒvƒEƒF[ƒuƒy[ƒW‚ð•\Ž¦(&W)",           ID_HELP_OPENHELPWEBPAGE
+        MENUITEM SEPARATOR
+        MENUITEM "ƒz[ƒ€ƒy[ƒW‚ð•\Ž¦(&H)",               ID_HELP_OPENHOMEPAGE
+    END
+END
+
+IDR_LOG_MENU MENU
+BEGIN
+    POPUP "ƒtƒ@ƒCƒ‹(&F)"
+    BEGIN
+        MENUITEM "•Û‘¶(&S)\tCtrl+S",              ID_FILE_SAVE
+        MENUITEM "‹ó‚É‚·‚é(&E)\tCtrl+E",            ID_FILE_CLEAR
+        MENUITEM SEPARATOR
+        MENUITEM "•Â‚¶‚é(&W)\tCtrl+W",             ID_FILE_CLOSE
+    END
+    POPUP "•\Ž¦(&V)"
+    BEGIN
+        MENUITEM "í‚ÉŽè‘O‚É•\Ž¦(&T)\tCtrl+T",         ID_VIEW_ALWAYSONTOP
+    END
+END
+
+IDR_CONFIG_EDITOR_MENU MENU
+BEGIN
+    POPUP "ƒtƒ@ƒCƒ‹(&F)"
+    BEGIN
+        MENUITEM "•Û‘¶(&S)\tCtrl+S",              ID_FILE_SAVE
+        MENUITEM "Œ³‚É–ß‚·(&R)\tCtrl+R",            ID_FILE_REVERT
+        MENUITEM SEPARATOR
+        MENUITEM "•Â‚¶‚é(&W)\tCtrl+W",             ID_FILE_CLOSE
+    END
+    POPUP "•\Ž¦(&V)"
+    BEGIN
+        MENUITEM "í‚ÉŽè‘O‚É•\Ž¦(&T)\tCtrl+T",         ID_VIEW_ALWAYSONTOP
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_INCONSISTENT_FILES "ƒRƒ“ƒ|[ƒlƒ“ƒgƒtƒ@ƒCƒ‹‚Ìƒo[ƒWƒ‡ƒ“‚ªˆê’v‚µ‚Ä‚¢‚Ü‚¹‚ñB"
+    IDS_ERROR_MISSING_FILES "ƒRƒ“ƒ|[ƒlƒ“ƒgƒtƒ@ƒCƒ‹‚ðŒ©‚Â‚¯‚Ü‚¹‚ñB"
+    IDS_ERROR_INVALID_LAUNCHER_TYPE "ƒ‰ƒ“ƒ`ƒƒ[‚ÌŽw’è‚ª³‚µ‚­‚ ‚è‚Ü‚¹‚ñB"
+    IDS_APP_DESCRIPTION     "XivAlexanderLoader: XivAlexander‚ðƒQ[ƒ€‚ÌƒvƒƒZƒX‚Éƒ[ƒh‚µ‚Ü‚·B\n\n{}"
+    IDS_ERROR_LOAD          "XivAlexander‚ðƒvƒƒZƒX‚Éƒ[ƒh‚·‚é‚±‚Æ‚ÉŽ¸”s‚µ‚Ü‚µ‚½B (ƒGƒ‰[ƒR[ƒh: {})"
+    IDS_TITLE_SELECT_BOOT   "FFXIV BootƒvƒƒOƒ‰ƒ€‚Ì‘I‘ð"
+    IDS_ERROR_UNEXPECTED2   "—\‘z‚µ‚È‚¢ƒGƒ‰[‚ª”­¶‚µ‚Ü‚µ‚½B{}"
+    IDS_ERROR_LOADER_NOT_FOUND "{}‚ÅXivAlexanderLoader‚ðŒ©‚Â‚¯‚é‚±‚Æ‚ª‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B"
+    IDS_ERROR_CONFIGURATION_LOAD "Ý’èƒtƒ@ƒCƒ‹‚Ì“Ç‚Ýž‚Ý‚ÉŽ¸”s‚µ‚Ü‚µ‚½B({})"
+    IDS_LOG_NEW_CONFIG      "V‚½‚ÈÝ’èƒtƒ@ƒCƒ‹‚ð{}‚Éì¬‚µ‚Ü‚·B"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_CONFIGURATION_SAVE "Ý’èƒtƒ@ƒCƒ‹‚Ì•Û‘¶‚ÉŽ¸”s‚µ‚Ü‚µ‚½B({})"
+    IDS_ERROR_CONFIGURATION_PARSE_VALUE "Ý’è’l(""{}"")‚Ì“Ç‚Ýž‚Ý‚ÉŽ¸”s‚µ‚Ü‚µ‚½B({})"
+    IDS_ERROR_GAME_WINDOW_NOT_FOUND "ƒQ[ƒ€‚ÌƒƒCƒ“ƒEƒBƒ“ƒhƒE‚ðŒ©‚Â‚¯‚é‚±‚Æ‚ª‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B"
+    IDS_ERROR_UNLOAD_XIVALEXANDER "XivAlexander‚ÌI—¹‚ÉŽ¸”s‚µ‚Ü‚µ‚½B({})"
+    IDS_LOG_XIVALEXANDER_INITIALIZED "XivAlexander‚Ì‰Šú‰»‚É¬Œ÷"
+    IDS_ERROR_FREEGAMEMUTEX "ƒQ[ƒ€‚Ì‘½d‹N“®–hŽ~‰ðœ‚ÉŽ¸”s‚µ‚Ü‚µ‚½B({})"
+    IDS_ERROR_UNEXPECTED    "—\‘z‚µ‚È‚¢ƒGƒ‰[‚ª”­¶‚µ‚Ü‚µ‚½B({})"
+    IDS_ERROR_UNLOAD_SOCKET "‘¼‚ÌƒvƒƒOƒ‰ƒ€‚Éƒ\ƒPƒbƒgŠÖ”‚ðŠ„‚èž‚Ü‚ê‚Ü‚µ‚½Bæ‚É‹£‡‚ÌƒvƒƒOƒ‰ƒ€‚ðI—¹‚µ‚Ä‚­‚¾‚³‚¢B"
+    IDS_ERROR_UNLOAD_WNDPROC 
+                            "‘¼‚ÌƒvƒƒOƒ‰ƒ€‚ÉƒEƒBƒ“ƒhƒE‚ÌƒvƒƒV[ƒWƒƒ‚ðŠ„‚èž‚Ü‚ê‚Ü‚µ‚½Bæ‚É‹£‡‚ÌƒvƒƒOƒ‰ƒ€‚ðI—¹‚µ‚Ä‚­‚¾‚³‚¢B"
+    IDS_ERROR_INJECT        "‚±‚ÌƒvƒƒOƒ‰ƒ€‚Ì‰Šú‰»‚ÉŽ¸”s‚µ‚Ü‚µ‚½B\nƒGƒ‰[F{}\nPIDF{}\nƒpƒXF{}\nƒRƒ}ƒ“ƒhƒ‰ƒCƒ“F{}"
+    IDS_WARNING_ZEROPING    "rtt={}, latency={}; VPN‚Ü‚½‚Íƒlƒbƒgƒ[ƒN‚©‚ç0ms‚Ì’x‰„‚ª•ñ‚³‚ê‚Ä‚¢‚é‚½‚ßAuƒT[ƒo[‚Ì’x‰„‚ð•â³v‚Ì–³Œø‰»‚ð‚¨‚·‚·‚ß‚µ‚Ü‚·B"
+    IDS_ERROR_FREEGAMEMUTEX_CLOSEHANDLE 
+                            "ƒnƒ“ƒhƒ‹‚ÌŽæ“¾‚ÉŽ¸”s‚µ‚Ü‚µ‚½B({:p}(type {:2x}): {})"
+    IDS_PINGTRACKER_START   "{} -> {}: ’x‰„‚Ì‘ª’è‚ðŠJŽn‚µ‚Ü‚·B"
+    IDS_PINGTRACKER_END     "{} -> {}: ’x‰„‚Ì‘ª’è‚ð’†Ž~‚µ‚Ü‚·B"
+    IDS_PINGTRACKER_END_FAILURE_COUNT "{} -> {}: {}‰ñ˜A‘±‚Å’x‰„‚Ì‘ª’è‚ÉŽ¸”s‚µA‘ª’è‚ð’†Ž~‚µ‚Ü‚·B"
+    IDS_PINGTRACKER_END_ERROR "{} -> {}: ƒGƒ‰[‚ª”­¶‚µ‚½‚½‚ß’x‰„‚Ì‘ª’è‚ð’†Ž~‚µ‚Ü‚·B({})"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SOCKETHOOK_SOCKET_FOUND "{:x}: ˆ—ŠJŽn"
+    IDS_SOCKETHOOK_SOCKET_IGNORED_NOT_IPV4 "{:x}: œŠO (IPv4ƒAƒhƒŒƒX‚Å‚Í‚È‚¢‚½‚ß)"
+    IDS_SOCKETHOOK_SOCKET_IGNORED_IP "{:x}: œŠO (ƒŠƒ‚[ƒgƒAƒhƒŒƒX{}‚ÉŠY“–‚·‚éƒ‹[ƒ‹‚ª‚È‚¢‚½‚ß)"
+    IDS_SOCKETHOOK_SOCKET_IGNORED_PORT "{:x}: œŠO (ƒŠƒ‚[ƒgƒ|[ƒg{}‚ÉŠY“–‚·‚éƒ‹[ƒ‹‚ª‚È‚¢‚½‚ß)"
+    IDS_SOCKETHOOK_SOCKET_DETACH "{:x}: ˆ—I—¹"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_TITLE "Ú‘±æ {:x} ({} -> {})\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY 
+                            "* ƒ\ƒPƒbƒg’x‰„: ÅI’l {}ms, ’†‰›’l {}ms, •½‹Ï {}+{}ms\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY_FAILURE "* ƒ\ƒPƒbƒg’x‰„: ‘ª’èŽ¸”s\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY 
+                            "* ‘ª’è’x‰„: ÅI’l {}ms, ’†‰›’l {}ms, •½‹Ï {}+{}ms\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY_FAILURE "* ‘ª’è’x‰„: ‘ª’èŽ¸”s\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_RESPONSE_DELAY 
+                            "* ‰ž“š’x‰„: ’†‰›’l {}ms, •½‹Ï {}+{}ms\n\n"
+    IDS_CONFIRM_CONFIG_WINDOW_CLOSE "Ý’è‚ð•Û‘¶‚µ‚Ü‚·‚©H"
+    IDS_LOG_SAVED           "ƒƒOƒtƒ@ƒCƒ‹‚ðŽŸ‚ÌêŠ‚É•Û‘¶‚µ‚Ü‚µ‚½F{}"
+    IDS_ERROR_LOG_SAVE      "ƒƒOƒtƒ@ƒCƒ‹‚ðŽŸ‚ÌêŠ‚É•Û‘¶‚·‚é‚±‚Æ‚ÉŽ¸”s‚µ‚Ü‚µ‚½F{} ({})"
+    IDS_WARNING_GAME_PARAMETER_PARSE 
+                            "ƒQ[ƒ€‚Ì‹N“®Žž‚ÌƒRƒ}ƒ“ƒhƒ‰ƒCƒ“‚Ì‰ð“Ç‚ÉŽ¸”s‚µ‚Ü‚µ‚½BƒQ[ƒ€‚ÌÄ‹N“®ŠÖ˜A‚Ì‹@”\‚ð—˜—p‚Å‚«‚Ü‚¹‚ñB({})"
+    IDS_CONFIRM_MAIN_WINDOW_CLOSE 
+                            "XivAlexander‚ðI—¹‚µ‚Ü‚·‚©H\n\nI—¹‚µ‚½‚¢ê‡{}‚Ìƒ{ƒ^ƒ“‚ðA\n‚±‚ÌƒEƒBƒ“ƒhƒE‚¾‚¯•Â‚¶‚½‚¢ê‡{}‚Ìƒ{ƒ^ƒ“‚ðA\nŽæ‚èÁ‚·ê‡{}‚Ìƒ{ƒ^ƒ“‚ð‰Ÿ‚µ‚Ä‚­‚¾‚³‚¢B"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_CONFIRM_EXIT_GAME   "ƒQ[ƒ€‚ð‹­§I—¹‚µ‚Ü‚·‚©H"
+    IDS_ERROR_UPDATE_CHECK_LAUNCH "ƒAƒbƒvƒf[ƒg‚ÌŠm”F‚ÉŽ¸”s‚µ‚Ü‚µ‚½B({})"
+    IDS_CONFIRM_RESTART_GAME 
+                            "ƒQ[ƒ€‚ð‹­§“I‚ÉÄ‹N“®‚µ‚Ü‚·‚©H\n\nDirectX11‚ÌŽg—pF{}\nXivAlexander‚ÌŽg—pF{}\nƒRƒ}ƒ“ƒhƒ‰ƒCƒ“‚Ì“ï“Ç‰»‚ÌŽg—pF{}\nŠÇ—ŽÒŒ ŒÀ‚ÅŽÀsF{}\nŒ¾ŒêF{}\n’nˆæF{}"
+    IDS_MAIN_TEXT           "PID: {}\nƒQ[ƒ€‚ÌƒCƒ“ƒXƒg[ƒ‹æ: {}\nƒQ[ƒ€‚Ìƒo[ƒWƒ‡ƒ“: {} ({})\n\n{}"
+    IDS_APP_NAME            "XivAlexander"
+    IDS_WINDOW_RUNTIME_CONFIG_EDITOR "ŠÂ‹«Ý’è"
+    IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcode‚ÌÝ’è"
+    IDS_WINDOW_LOG          "ƒƒO‚Ì•\Ž¦"
+    IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE 
+                            "‚²—˜—p‚ÌƒNƒ‰ƒCƒAƒ“ƒg‚Í‘I‘ð‚µ‚½Œ¾Œê({})‚É‘Î‰ž‚µ‚Ä‚¢‚È‚¢‚½‚ßƒNƒ‰ƒbƒVƒ…‚Ì‰Â”\«‚ª‚‚¢‚Å‚·B‘±‚¯‚Ü‚·‚©H\n\nƒQ[ƒ€‚ªƒNƒ‰ƒbƒVƒ…‚µ‚½ê‡AÝ’è‚ð–ß‚µuƒQ[ƒ€‚Ì‹­§Ä‹N“®v‚ðs‚Á‚Ä‚­‚¾‚³‚¢B"
+    IDS_LANGUAGE_NAME_ENGLISH "‰pŒê"
+    IDS_LANGUAGE_NAME_JAPANESE "“ú–{Œê"
+    IDS_LANGUAGE_NAME_GERMAN "ƒhƒCƒcŒê"
+    IDS_LANGUAGE_NAME_FRENCH "ƒtƒ‰ƒ“ƒXŒê"
+    IDS_LANGUAGE_NAME_KOREAN "ŠØ‘Œê"
+    IDS_LANGUAGE_NAME_CHINESE_SIMPLIFIED "’†‘Œê(ŠÈ‘ÌŽš)"
+    IDS_LANGUAGE_NAME_UNSPECIFIED "(Œ¾Œê–¢‹K’è)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LANGUAGE_NAME_CHINESE_TRADITIONAL "’†‘Œê(³‘ÌŽš)"
+    IDS_REGION_NAME_UNSPECIFIED "(’nˆæ–¢‹K’è)"
+    IDS_REGION_NAME_JAPAN   "“ú–{"
+    IDS_REGION_NAME_NORTH_AMERICA "–k•Ä"
+    IDS_REGION_NAME_EUROPE  "‰¢B"
+    IDS_REGION_NAME_CHINA   "’†‘"
+    IDS_REGION_NAME_KOREA   "ŠØ‘"
+    IDS_CLIENT_INTERNATIONAL "ƒOƒ[ƒoƒ‹"
+    IDS_CLIENT_KOREAN       "ŠØ‘"
+    IDS_CLIENT_CHINESE      "’†‘"
+    IDS_CONFIRM_LAUNCH      "{1}‚Ì{0}ƒo[ƒWƒ‡ƒ“‚ÌƒQ[ƒ€‚ð‹N“®‚µ‚Ü‚·‚©H"
+    IDS_ERROR_NOT_FOUND     "ƒQ[ƒ€‚ÌƒCƒ“ƒXƒg[ƒ‹æ‚ðŒ©‚Â‚¯‚é‚±‚Æ‚ª‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½BŽè“®‚ÅŽw’è‚µ‚Ä‚­‚¾‚³‚¢B"
+    IDS_ERROR_COMMAND_LINE  "ƒRƒ}ƒ“ƒhƒ‰ƒCƒ“‚Ì‰ð“Ç‚ÉŽ¸”s‚µ‚Ü‚µ‚½B\nƒGƒ‰[F{}\n\n{}"
+    IDS_ERROR_SEDEBUGPRIVILEGE "Œ ŒÀ‚ÌŽæ“¾‚ÉŽ¸”s‚µ‚Ü‚µ‚½B\nEŠÇ—ŽÒŒ ŒÀ‚Å‹N“®‚µ’¼‚µ‚Ä‚Ý‚Ä‚­‚¾‚³‚¢B\nE{}"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_COMPONENTS    "ŽŸ‚Ìˆê•”‚Ü‚½‚Í‚·‚×‚Ä‚Ìƒtƒ@ƒCƒ‹‚ÌŒŸØ‚ÉŽ¸”s‚µ‚Ü‚µ‚½B\nEXivAlexander32.dll\nEXivAlexander64.dll\nEXivAlexanderLoader32.dll\nEXivAlexanderLoader64.dll\n\nƒvƒƒOƒ‰ƒ€‚ÌÄƒ_ƒEƒ“ƒ[ƒhŽŽ‚Ý‚Ü‚·‚©H"
+    IDS_URL_RELEASES        "https://github.com/Soreepeong/XivAlexander/releases"
+    IDS_ERROR_NO_FFXIV_PROCESS "{} ƒvƒƒZƒX‚ðŒ©‚Â‚¯‚Ü‚¹‚ñ‚Å‚µ‚½BƒQ[ƒ€‚ð‹N“®‚µ‚Ä‚¢‚é‚©Šm”F‚µ‚Ä‚­‚¾‚³‚¢B"
+    IDS_ERROR_NO_MATCHING_PROCESS "Žw’è‚ÌðŒ‚Éˆê’v‚·‚éƒvƒƒZƒX‚ðŒ©‚Â‚¯‚é‚±‚Æ‚ª‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B"
+    IDS_ERROR_RESTART_ADMIN "ŠÇ—ŽÒŒ ŒÀ‚ÅŽÀs‚ÉŽ¸”s‚µ‚Ü‚µ‚½B{}"
+    IDS_UPDATE_PROGRESS_DOWNLOADING_FILES "ƒAƒbƒvƒf[ƒgƒtƒ@ƒCƒ‹‚ðƒ_ƒEƒ“ƒ[ƒh‚µ‚Ä‚¢‚Ü‚·EEE"
+    IDS_UPDATE_PROGRESS_PREPARING_FILES "ƒAƒbƒvƒf[ƒgƒtƒ@ƒCƒ‹‚ð€”õ‚µ‚Ä‚¢‚Ü‚·EEE"
+    IDS_UPDATE_PROGRESS_CHECKING "ƒAƒbƒvƒf[ƒg‚ðŠm”F‚µ‚Ä‚¢‚Ü‚·EEE"
+    IDS_URL_MAIN            "https://github.com/Soreepeong/XivAlexander"
+    IDS_UPDATE_PROGRESS_UPDATING_FILES "ƒRƒ“ƒ|[ƒlƒ“ƒg‚ðƒAƒbƒvƒf[ƒg‚µ‚Ä‚¢‚Ü‚·EEE"
+    IDS_UPDATE_CLEANUP_UPDATE "ƒAƒbƒvƒf[ƒg‚ÌˆêŽžƒtƒ@ƒCƒ‹‚ðíœ‚µ‚Ä‚¢‚Ü‚·EEE"
+    IDS_UPDATE_RELOADING_XIVALEXANDER "‹N“®’†‚Ì‚Ó‚¥[‚Þ‚ÉXivAlexander‚ðƒ[ƒh‚µ‚Ä‚¢‚Ü‚·EEE"
+    IDS_UPDATE_COMPLETE     "ƒAƒbƒvƒf[ƒg‚É¬Œ÷‚µ‚Ü‚µ‚½B\n\n‚R•bŒã‚ÉÁ‚¦‚Ü‚·B"
+    IDS_UPDATE_PROCESS_KILL_FAILURE "ƒvƒƒZƒXID {}‚ÌI—¹‚ÉŽ¸”s‚µ‚Ü‚µ‚½B\n\n‘±‚­‚É‚ÍŽè“®‚ÅI—¹‚µ‚Ä‚­‚¾‚³‚¢B"
+    IDS_UPDATE_UNAVAILABLE  "V‚µ‚¢ƒAƒbƒvƒf[ƒg‚ª‚ ‚è‚Ü‚¹‚ñBŒ»Ý‚Ìƒo[ƒWƒ‡ƒ“‚Í{0}.{1}.{2}.{3}‚ÅAÅV‚Ìƒo[ƒWƒ‡ƒ“‚Í{8:%Ec}‚ÉƒŠƒŠ[ƒY‚³‚ê‚½{4}.{5}.{6}.{7}‚Å‚·B"
+    IDS_UPDATE_CONFIRM      "V‚µ‚¢ƒAƒbƒvƒf[ƒg‚ª‚ ‚è‚Ü‚·BV‹K‚Ìƒo[ƒWƒ‡ƒ“‚Í{4:%Ec}‚ÉƒŠƒŠ[ƒY‚³‚ê‚½{0}.{1}.{2}.{3}‚ÅAŒ»Ý‚Ìƒo[ƒWƒ‡ƒ“‚Í{5}.{6}.{7}.{8}‚Å‚·B\n\n{9}‚Ìƒ{ƒ^ƒ“‚ð‰Ÿ‚µƒŠƒŠ[ƒYƒm[ƒg‚ðŠm”F‚·‚é‚©A\n{10}‚Ìƒ{ƒ^ƒ“‚ð‰Ÿ‚µ¡‚·‚®ƒAƒbƒvƒf[ƒg‚·‚é‚©A‚Ü‚½‚Í\n{11}ƒ{ƒ^ƒ“‚ð‰Ÿ‚µŽæ‚èÁ‚µ‚Ü‚·B\n\nƒZƒLƒ…ƒŠƒeƒB[‚ÉŠÖ‚·‚é‘åŽ–‚È‚¨’m‚ç‚¹FGitHub‚ÉˆÀ‘S‚ÉÚ‘±‚Å‚«‚È‚¢ŠÂ‹«‚Å‚Íƒ_ƒEƒ“ƒ[ƒh‚µ‚È‚¢‚Å‚­‚¾‚³‚¢BˆÀ‘S‚Å‚Í‚È‚¢ŠÂ‹«‚É‚Í‹¤—p‚ÌVPN‚âƒvƒƒLƒV\‚àŠÜ‚Ü‚ê‚Ü‚·B"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_CONFIRM_INJECT_AGAIN 
+                            "‹N“®’†‚ÌƒQ[ƒ€‚ÌƒvƒƒZƒX({}:{})‚É‚·‚Å‚ÉXivAlexander‚ªƒ[ƒh‚³‚ê‚Ä‚¢‚Ü‚·B\n\n{}‚Ìƒ{ƒ^ƒ“‚ð‰Ÿ‚µÄ‚Ñƒ[ƒh‚·‚é‚©A\n{}‚Ìƒ{ƒ^ƒ“‚ÅI—¹‚·‚é‚©A\n{}‚Ìƒ{ƒ^ƒ“‚ÅƒXƒLƒbƒv‚µ‚Ü‚·B"
+    IDS_CONFIRM_INJECT      "ƒQ[ƒ€‚ÌƒvƒƒZƒX‚ðŒ©‚Â‚¯‚Ü‚µ‚½B\nEPIDF{}\nEƒpƒXF{}\nEOpcode’è‹`ƒtƒ@ƒCƒ‹F{}\n‚±‚ÌƒvƒƒZƒX‚ÉXivAlexander‚ðƒ[ƒh‚µ‚Ü‚·‚©H"
+    IDS_UPDATE_FILE_TOO_BIG "ƒAƒbƒvƒf[ƒg‚Ìƒtƒ@ƒCƒ‹ƒTƒCƒY‚Ì‚ª‚ª‘å‚«‚·‚¬‚Ü‚·BƒAƒbƒvƒf[ƒgƒtƒ@ƒCƒ‹‚Ì–³Œ‡«‚ðM—Š‚Å‚«‚éê‡AŽè“®‚Åƒtƒ@ƒCƒ‹‚ðŽæ‚èŠ·‚¦ƒAƒbƒvƒf[ƒg‚µ‚Ä‚­‚¾‚³‚¢B"
+    IDS_UPDATE_INVALID_VERSION "ƒo[ƒWƒ‡ƒ“î•ñ‚ÌŒŸØ‚ÉŽ¸”s‚µ‚Ü‚µ‚½BŽè“®‚ÅƒAƒbƒvƒf[ƒg‚ðŠm”F‚µ‚½ŒãA‘±‚¯‚Ä‚­‚¾‚³‚¢B"
+    IDS_HELP_ACTION         "ì‹Æ‚ðŽw’è‚µ‚Ü‚·B\n\tEauto: ‚·‚Å‚ÉƒQ[ƒ€‚ª‹N“®’†‚Ìê‡‹N“®’†‚ÌƒvƒƒZƒX‚Éƒ[ƒh‚µA‹N“®‚µ‚Ä‚¢‚È‚¢ê‡ƒQ[ƒ€‚ð‹N“®‚µ‚Ä‹N“®‚µ‚½ƒvƒƒZƒX‚Éƒ[ƒh‚µ‚Ü‚·B\n\tEask: ƒQ[ƒ€ƒvƒƒZƒX–ˆ‚És‚¤ì‹Æ‚ðŠm”F‚µ‚Ü‚·B\n\tEload: ƒQ[ƒ€ƒvƒƒZƒX‚ÉXivAlexander‚ðƒ[ƒh‚µ‚Ü‚·B\n\tEunload: ƒQ[ƒ€ƒvƒƒZƒX‚©‚çXivAlexander‚ðI—¹‚µ‚Ü‚·B\n\tElauncher: Žw’è‚ÌƒQ[ƒ€ƒ‰ƒ“ƒ`ƒƒ[‚ð‹N“®‚µA‹N“®‚µ‚½ƒQ[ƒ€‚ÉXivAlexander‚ðƒ[ƒh‚µ‚Ü‚·B\n\tEupdate-check: ƒAƒbƒvƒf[ƒg‚ðŠm”F‚µ‚Ü‚·B\n\tEweb: ”z•zƒTƒCƒg (https://github.com/Soreepeong/XivAlexander) ‚ðŠJ‚«‚Ü‚·B"
+    IDS_HELP_LAUNCHER       "ƒ‰ƒ“ƒ`ƒƒ[‚ðŽw’è‚µ‚Ü‚·B—LŒø‚È’l‚ÍautoiŽ©“®jAselecti–ˆ‰ñŠm”FjAinternationaliƒOƒ[ƒoƒ‹”ÅjAkoreaniŠØ‘”ÅjAchinesei’†‘”Åj‚Å‚·B"
+    IDS_HELP_QUIET          "ƒGƒ‰[ƒƒbƒZ[ƒW‚ð•\Ž¦‚µ‚Ü‚¹‚ñB"
+    IDS_HELP_DISABLE_RUNAS  "‚Ç‚Ìê‡‚Å‚àŠÇ—ŽÒŒ ŒÀ‚ÅŽÀs‚µ‚Ü‚¹‚ñB"
+    IDS_HELP_INTERNAL_USE_ONLY "“à•”Žg—p‚Ì‚ÝiŽg—p‹ÖŽ~j"
+    IDS_HELP_TARGETS        "ƒ[ƒh‚Ü‚½‚ÍI—¹‚Ìê‡ƒvƒƒZƒXID‚Ü‚½‚ÍƒvƒƒZƒXƒpƒX‚ÌƒTƒtƒBƒbƒNƒXA‹N“®‚Ìê‡‹N“®‚·‚éƒvƒƒZƒX‚ÌƒpƒX‚Å‚·B"
+END
+
+#endif    // Japanese (Japan) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
 // Korean (Korea) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_KOR)
@@ -43,6 +329,283 @@ BEGIN
 END
 
 #endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_TRAY_MENU MENU
+BEGIN
+    POPUP "±â´É(&F, F1)"
+    BEGIN
+        MENUITEM "(ÇöÀç ÇÁ·Î¼¼½º Á¤º¸)",                ID_TRAYMENU_CURRENTINFO, INACTIVE
+        MENUITEM SEPARATOR
+        POPUP "Áö¿¬ ÇØ¼Ò(&M)"
+        BEGIN
+            MENUITEM "»ç¿ë(&E)\t(Ctrl+Shift+)H",      ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE
+            MENUITEM SEPARATOR
+            MENUITEM "¸ðµå &1: Áö¿¬ ½Ã°£¸¸Å­ ´ÙÀ½ ±â¼ú ½ÃÀü °¡´É ½Ã°¢ ¾Õ´ç±â±â", ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_1
+            MENUITEM "¸ðµå &2: ¼­¹ö ÀÀ´ä ½Ã°£ 75ms·Î °íÁ¤",    ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_2
+            MENUITEM "¸ðµå &3: ¼­¹ö ÀÀ´ä ¹× Áö¿¬ ½Ã°£ º¸Á¤",     ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_3
+            MENUITEM SEPARATOR
+            MENUITEM "ÀÌ¸¥ ±â¼ú ½ÃÀü ¹æÁö(&E)\tCtrl+(Alt+)E", ID_TRAYMENU_HIGHLATENCYMITIGATION_USEEARLYPENALTY
+            MENUITEM SEPARATOR
+            MENUITEM "·Î±× »ç¿ë(&L)\tCtrl+(Alt+)L",     ID_TRAYMENU_HIGHLATENCYMITIGATION_USELOGGING
+            MENUITEM "¸ðÀÇ ÀÛµ¿ (·Î±×¿¡¼­ ¹Ì¸® º¸±â)(&P)\tCtrl+(Alt+)P", ID_TRAYMENU_HIGHLATENCYMITIGATION_PREVIEWMODE
+        END
+        POPUP "³×Æ®¿öÅ©(&N)"
+        BEGIN
+            MENUITEM "ÆÐÅ¶ µô·¹ÀÌ °¨¼Ò(&R)\t(Ctrl+Shift+)F1", ID_TRAYMENU_NETWORKING_REDUCEPACKETDELAY
+            MENUITEM SEPARATOR
+            MENUITEM "·çÇÁ¹é ÁÖ¼Ò Ã³¸® (127.0.0.0/8)(&L)\t(Ctrl+Shift+)1", ID_TRAYMENU_NETWORKING_TAKEOVERLOOPBACKADDRESSES
+            MENUITEM "»ç¼³ ÁÖ¼Ò Ã³¸® (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)(&P)\t(Ctrl+Shift+)2", ID_TRAYMENU_NETWORKING_TAKEOVERPRIVATEADDRESSES
+            MENUITEM "¸ðµç ÁÖ¼Ò Ã³¸® (0.0.0.0/0)(&A)\t(Ctrl+Shift+)3", ID_TRAYMENU_NETWORKING_TAKEOVERALLADDRESSES
+            MENUITEM "¸ðµç Æ÷Æ® Ã³¸®(&P)\t(Ctrl+Shift+)4", ID_TRAYMENU_NETWORKING_TAKEOVERALLPORTS
+            MENUITEM SEPARATOR
+            MENUITEM "¸ðµç ¿¬°á Ã³¸® ÇØÁ¦(&E)\t(Ctrl+Shift+)F2", ID_TRAYMENU_NETWORKING_RELEASEALLCONNECTIONS
+        END
+        MENUITEM "IPC °Ë»ö µµ¿ì¹Ì »ç¿ë(&F)\t(Ctrl+Shift+)F", ID_TRAYMENU_USEIPCTYPEFINDER
+        MENUITEM "¸ðµç IPC ¸Þ½ÃÁö ·Î±× »ç¿ë(&A)\t(Ctrl+Shift+)M", ID_TRAYMENU_USEALLIPCMESSAGELOGGER
+        MENUITEM "±â¼ú È¿°ú Àû¿ë Áö¿¬ ·Î±× »ç¿ë(&E)\t(Ctrl+Shift+)E", ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER
+        POPUP "¸®¼Ò½º Á¶ÀÛ (x64 Àü¿ë)(&H)"
+        BEGIN
+            MENUITEM "¸ðµç ÇØ½Ã Ã³¸® Àü ¹®ÀÚ¿­ ·Î±× »ç¿ë(&L)",    ID_TRAYMENU_HASHKEYMANIPULATION_LOGALLHASHKEYS
+            MENUITEM SEPARATOR
+            MENUITEM "°ÔÀÓ ¸®¼Ò½º ¾ð¾î º¯°æÇÏÁö ¾ÊÀ½(&N)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_NONE
+            MENUITEM "°ÔÀÓ ¸®¼Ò½º ¾ð¾î º¯°æ: ÀÏº»¾î(&J)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_JAPANESE
+            MENUITEM "°ÔÀÓ ¸®¼Ò½º ¾ð¾î º¯°æ: ¿µ¾î(&E)",        ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_ENGLISH
+            MENUITEM "°ÔÀÓ ¸®¼Ò½º ¾ð¾î º¯°æ: µ¶ÀÏ¾î(&D)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_GERMAN
+            MENUITEM "°ÔÀÓ ¸®¼Ò½º ¾ð¾î º¯°æ: ÇÁ¶û½º¾î(&F)",      ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_FRENCH
+            MENUITEM "°ÔÀÓ ¸®¼Ò½º ¾ð¾î º¯°æ: Áß±¹¾î(°£Ã¼)(&C)",   ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_SIMPLIFIEDCHINESE
+            MENUITEM "°ÔÀÓ ¸®¼Ò½º ¾ð¾î º¯°æ: ÇÑ±¹¾î(&K)",       ID_TRAYMENU_HASHKEYMANIPULATION_LANGUAGE_KOREAN
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "°ÔÀÓ Ã¢À» Ç×»ó À§¿¡ Ç¥½Ã(&T)\tCtrl+Shift+T", ID_TRAYMENU_KEEPGAMEWINDOWALWAYSONTOP
+        POPUP "°ÔÀÓ °­Á¦ Àç½ÃÀÛ(&S)"
+        BEGIN
+            MENUITEM "Àç½ÃÀÛÇÏ±â(&R)\tCtrl+Shift+R",     ID_TRAYMENU_RESTARTGAME_RESTART
+            MENUITEM SEPARATOR
+            MENUITEM "DirectX 11 »ç¿ë(&D)\t(Ctrl+Shift+)D", ID_TRAYMENU_RESTARTGAME_USEDIRECTX11
+            MENUITEM "XivAlexander »ç¿ë(&X)\t(Ctrl+Shift+)X", ID_TRAYMENU_RESTARTGAME_USEXIVALEXANDER
+            MENUITEM "¸í·ÉÁÙ ³­µ¶È­ »ç¿ë(&P)\t(Ctrl+Shift+)P", ID_TRAYMENU_RESTARTGAME_USEPARAMETEROBFUSCATION
+            MENUITEM "°ü¸®ÀÚ ±ÇÇÑÀ¸·Î ½ÇÇà(&E)\t(Ctrl+Shift+)A", ID_TRAYMENU_RESTARTGAME_USEELEVATION
+            MENUITEM SEPARATOR
+            MENUITEM "¾ð¾î: ÀÏº»¾î(&J)",                 ID_TRAYMENU_RESTARTGAME_LANGUAGE_JAPANESE
+            MENUITEM "¾ð¾î: ¿µ¾î(&E)",                  ID_TRAYMENU_RESTARTGAME_LANGUAGE_ENGLISH
+            MENUITEM "¾ð¾î: µ¶ÀÏ¾î(&D)",                 ID_TRAYMENU_RESTARTGAME_LANGUAGE_GERMAN
+            MENUITEM "¾ð¾î: ÇÁ¶û½º¾î(&F)",                ID_TRAYMENU_RESTARTGAME_LANGUAGE_FRENCH
+            MENUITEM "¾ð¾î: Áß±¹¾î(°£Ã¼)(&C)",             ID_TRAYMENU_RESTARTGAME_LANGUAGE_SIMPLIFIEDCHINESE
+            MENUITEM "¾ð¾î: ÇÑ±¹¾î(&K)",                 ID_TRAYMENU_RESTARTGAME_LANGUAGE_KOREAN
+            MENUITEM SEPARATOR
+            MENUITEM "Áö¿ª: ÀÏº»(&1)",                  ID_TRAYMENU_RESTARTGAME_REGION_JAPAN
+            MENUITEM "Áö¿ª: ºÏ¹Ì(&2)",                  ID_TRAYMENU_RESTARTGAME_REGION_NORTH_AMERICA
+            MENUITEM "Áö¿ª: À¯·´(&3)",                  ID_TRAYMENU_RESTARTGAME_REGION_EUROPE
+        END
+        MENUITEM "°ÔÀÓ °­Á¦ Á¾·á(&X)\tCtrl+Shift+Q",  ID_TRAYMENU_EXITGAME
+        MENUITEM SEPARATOR
+        POPUP "¼³Á¤(&C)"
+        BEGIN
+            MENUITEM "·Î±× Ã¢ º¸ÀÌ±â(&L)\t(Ctrl+Alt+)L",  ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW
+            MENUITEM "°ü¸® Ã¢ º¸ÀÌ±â(&C)\tCtrl+(Alt+)W",  ID_TRAYMENU_CONFIGURATION_SHOWCONTROLWINDOW
+            MENUITEM "ÇÁ·Î±×·¥ ¼³Á¤ º¯°æ(&R)\t(Ctrl+Alt+)R", ID_TRAYMENU_CONFIGURATION_EDITRUNTIMECONFIGURATION
+            MENUITEM "¿ÉÄÚµå ¼³Á¤ º¯°æ(&O)\t(Ctrl+Alt+)O", ID_TRAYMENU_CONFIGURATION_EDITOPCODECONFIGURATION
+            MENUITEM SEPARATOR
+            MENUITEM "½Ã½ºÅÛ ±âº» ¾ð¾î »ç¿ë(&S)\t",          ID_TRAYMENU_CONFIGURATION_LANGUAGE_SYSTEMDEFAULT
+            MENUITEM "¾ð¾î: ¿µ¾î(&E)\t",                ID_TRAYMENU_CONFIGURATION_LANGUAGE_ENGLISH
+            MENUITEM "¾ð¾î: ÇÑ±¹¾î(&K)\t",               ID_TRAYMENU_CONFIGURATION_LANGUAGE_KOREAN
+            MENUITEM "¾ð¾î: ÀÏº»¾î(&J)",                 ID_TRAYMENU_CONFIGURATION_LANGUAGE_JAPANESE
+            MENUITEM SEPARATOR
+            MENUITEM "¼³Á¤ ´Ù½Ã ÀÐ¾î¿À±â(&Z)\t(Ctrl+Shift+)F5", ID_TRAYMENU_CONFIGURATION_RELOAD
+        END
+        MENUITEM "¾÷µ¥ÀÌÆ® È®ÀÎ(&P)\tCtrl+(Alt+)U",   ID_TRAYMENU_CHECKFORUPDATES
+        MENUITEM "XivAlexander Á¾·á(&U)\tCtrl+(Alt+)Q", ID_TRAYMENU_UNLOADXIVALEXANDER
+    END
+    POPUP "º¸±â(&V)"
+    BEGIN
+        MENUITEM "Ç×»ó À§¿¡ Ç¥½Ã(&T)\tCtrl+T",        ID_VIEW_ALWAYSONTOP
+    END
+    POPUP "µµ¿ò¸»(&H)"
+    BEGIN
+        MENUITEM "µµ¿ò¸» À¥ÆäÀÌÁö Ç¥½Ã(&W)",             ID_HELP_OPENHELPWEBPAGE
+        MENUITEM SEPARATOR
+        MENUITEM "È¨ÆäÀÌÁö Ç¥½Ã(&H)",                 ID_HELP_OPENHOMEPAGE
+    END
+END
+
+IDR_LOG_MENU MENU
+BEGIN
+    POPUP "ÆÄÀÏ(&F)"
+    BEGIN
+        MENUITEM "ÀúÀå(&S)\tCtrl+S",              ID_FILE_SAVE
+        MENUITEM "ºñ¿ì±â(&E)\tCtrl+E",             ID_FILE_CLEAR
+        MENUITEM SEPARATOR
+        MENUITEM "´Ý±â(&W)\tCtrl+W",              ID_FILE_CLOSE
+    END
+    POPUP "º¸±â(&V)"
+    BEGIN
+        MENUITEM "Ç×»ó À§¿¡ Ç¥½Ã(&T)\tCtrl+T",        ID_VIEW_ALWAYSONTOP
+    END
+END
+
+IDR_CONFIG_EDITOR_MENU MENU
+BEGIN
+    POPUP "ÆÄÀÏ(&F)"
+    BEGIN
+        MENUITEM "ÀúÀå(&S)\tCtrl+S",              ID_FILE_SAVE
+        MENUITEM "µÇµ¹¸®±â(&R)\tCtrl+R",            ID_FILE_REVERT
+        MENUITEM SEPARATOR
+        MENUITEM "´Ý±â(&W)\tCtrl+W",              ID_FILE_CLOSE
+    END
+    POPUP "º¸±â(&V)"
+    BEGIN
+        MENUITEM "Ç×»ó À§¿¡ Ç¥½Ã(&T)\tCtrl+T",        ID_VIEW_ALWAYSONTOP
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_INCONSISTENT_FILES "±¸¼º ¿ä¼Ò ÆÄÀÏÀÇ ¹öÀüÀÌ ÀÏÄ¡ÇÏÁö ¾Ê½À´Ï´Ù."
+    IDS_ERROR_MISSING_FILES "±¸¼º ¿ä¼Ò ÆÄÀÏÀ» Ã£À» ¼ö ¾ø½À´Ï´Ù."
+    IDS_ERROR_INVALID_LAUNCHER_TYPE "·±Ã³ ÁöÁ¤ÀÌ Àß¸øµÇ¾ú½À´Ï´Ù."
+    IDS_APP_DESCRIPTION     "XivAlexanderLoader: XivAlexander¸¦ °ÔÀÓ ÇÁ·Î¼¼½º¿¡ ºÒ·¯µéÀÔ´Ï´Ù.\n\n{}"
+    IDS_ERROR_LOAD          "XivAlexander¸¦ ÇÁ·Î¼¼½º¿¡ ºÒ·¯µéÀÌÁö ¸øÇß½À´Ï´Ù. (¿À·ù ÄÚµå: {})"
+    IDS_TITLE_SELECT_BOOT   "FFXIV Boot ÇÁ·Î±×·¥ ¼±ÅÃ"
+    IDS_ERROR_UNEXPECTED2   "¿¹»óÄ¡ ¸øÇÑ ¿À·ù°¡ ¹ß»ýÇß½À´Ï´Ù. {}"
+    IDS_ERROR_LOADER_NOT_FOUND "XivAlexanderLoader¸¦ {}¿¡¼­ ¹ß°ßÇÒ ¼ö ¾ø¾ú½À´Ï´Ù."
+    IDS_ERROR_CONFIGURATION_LOAD "¼³Á¤ ÆÄÀÏÀ» ºÒ·¯¿ÀÁö ¸øÇß½À´Ï´Ù. ({})"
+    IDS_LOG_NEW_CONFIG      "»õ ¼³Á¤ ÆÄÀÏÀ» {}¿¡ »ý¼ºÇÕ´Ï´Ù."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_CONFIGURATION_SAVE "¼³Á¤ ÆÄÀÏÀ» ÀúÀåÇÏÁö ¸øÇß½À´Ï´Ù. ({})"
+    IDS_ERROR_CONFIGURATION_PARSE_VALUE "¼³Á¤°ª(""{}"")À» ºÒ·¯¿ÀÁö ¸øÇß½À´Ï´Ù. ({})"
+    IDS_ERROR_GAME_WINDOW_NOT_FOUND "°ÔÀÓ ¸ÞÀÎ Ã¢À» Ã£À» ¼ö ¾ø¾ú½À´Ï´Ù."
+    IDS_ERROR_UNLOAD_XIVALEXANDER "XivAlexander¸¦ Á¾·áÇÒ ¼ö ¾ø½À´Ï´Ù. ({})"
+    IDS_LOG_XIVALEXANDER_INITIALIZED "XivAlexander ÁØºñ ¿Ï·á"
+    IDS_ERROR_FREEGAMEMUTEX "°ÔÀÓ Áßº¹ ½ÇÇà ¹æÁö ÇØÁ¦¿¡ ½ÇÆÐÇß½À´Ï´Ù. ({})"
+    IDS_ERROR_UNEXPECTED    "¿¹»óÄ¡ ¸øÇÑ ¿À·ù°¡ ¹ß»ýÇß½À´Ï´Ù. ({})"
+    IDS_ERROR_UNLOAD_SOCKET "´Ù¸¥ ÇÁ·Î±×·¥ÀÌ ¼ÒÄÏ ÇÔ¼ö¸¦ °¡·ÎÃ«½À´Ï´Ù. ´Ù¸¥ ÇÁ·Î±×·¥À» ¸ÕÀú Á¾·áÇØ ÁÖ¼¼¿ä."
+    IDS_ERROR_UNLOAD_WNDPROC "´Ù¸¥ ÇÁ·Î±×·¥ÀÌ Ã¢ ÇÁ·Î½ÃÀú¸¦ °¡·ÎÃ«½À´Ï´Ù. ´Ù¸¥ ÇÁ·Î±×·¥À» ¸ÕÀú Á¾·áÇØ ÁÖ¼¼¿ä."
+    IDS_ERROR_INJECT        "ÀÌ ÇÁ·Î±×·¥À» ÃÊ±âÈ­ÇÏÁö ¸øÇß½À´Ï´Ù.\n¿À·ù: {}\nPID: {}\n°æ·Î: {}\n¸í·ÉÁÙ: {}"
+    IDS_WARNING_ZEROPING    "rtt={}, latency={}; VPN ¶Ç´Â ³×Æ®¿öÅ©¿¡¼­ ÇÎÀÌ 0ms¶ó°í º¸°íÇÏ°í ÀÖ½À´Ï´Ù. ""¼­¹ö Áö¿¬ º¸Á¤""¸¦ ²ô´Â °ÍÀ» ±ÇÀåÇÕ´Ï´Ù."
+    IDS_ERROR_FREEGAMEMUTEX_CLOSEHANDLE 
+                            "ÇÚµé Ã³¸®¿¡ ½ÇÆÐÇß½À´Ï´Ù. ({:p}(type {:2x}): {})"
+    IDS_PINGTRACKER_START   "{} -> {}: Áö¿¬ ½Ã°£ ÃøÁ¤À» ½ÃÀÛÇÕ´Ï´Ù."
+    IDS_PINGTRACKER_END     "{} -> {}: Áö¿¬ ½Ã°£ ÃøÁ¤À» ÁßÁöÇÕ´Ï´Ù."
+    IDS_PINGTRACKER_END_FAILURE_COUNT 
+                            "{} -> {}: {}¹ø ¿¬¼ÓÀ¸·Î Áö¿¬ ½Ã°£ ÃøÁ¤¿¡ ½ÇÆÐÇØ ÁßÁöÇÕ´Ï´Ù."
+    IDS_PINGTRACKER_END_ERROR "{} -> {}: ¿À·ù·Î ÀÎÇØ Áö¿¬ ½Ã°£ ÃøÁ¤À» ÁßÁöÇÕ´Ï´Ù. ({})"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SOCKETHOOK_SOCKET_FOUND "{:x}: Ã³¸® ½ÃÀÛ"
+    IDS_SOCKETHOOK_SOCKET_IGNORED_NOT_IPV4 "{:x}: Ã³¸® ¾ÈÇÔ (IPv4 ÁÖ¼Ò°¡ ¾Æ´Ô)"
+    IDS_SOCKETHOOK_SOCKET_IGNORED_IP "{:x}: Ã³¸® ¾ÈÇÔ (¿ø°Ý IP ÁÖ¼Ò {}´Â ±ÔÄ¢¿¡ ÇØ´çÇÏÁö ¾ÊÀ½)"
+    IDS_SOCKETHOOK_SOCKET_IGNORED_PORT "{:x}: Ã³¸® ¾ÈÇÔ (¿ø°Ý Æ÷Æ® {}´Â ±ÔÄ¢¿¡ ÇØ´çÇÏÁö ¾ÊÀ½)"
+    IDS_SOCKETHOOK_SOCKET_DETACH "{:x}: Ã³¸® Á¾·á"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_TITLE "¿¬°á {:x} ({} -> {})\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY 
+                            "* ¼ÒÄÏ Áö¿¬½Ã°£: ¸¶Áö¸· {}ms, Áß°£°ª {}ms, Æò±Õ {}+{}ms\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY_FAILURE "* ¼ÒÄÏ Áö¿¬½Ã°£: ÃøÁ¤ ½ÇÆÐ\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY 
+                            "* ÃøÁ¤ Áö¿¬½Ã°£: ¸¶Áö¸· {}ms, Áß°£°ª {}ms, Æò±Õ {}+{}ms\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY_FAILURE "* ÃøÁ¤ Áö¿¬½Ã°£: ÃøÁ¤ ½ÇÆÐ\n"
+    IDS_SOCKETHOOK_SOCKET_DESCRIBE_RESPONSE_DELAY 
+                            "* ÀÀ´ä Áö¿¬½Ã°£: Áß°£°ª {}ms, Æò±Õ {}+{}ms\n\n"
+    IDS_CONFIRM_CONFIG_WINDOW_CLOSE "»õ ¼³Á¤À» ÀúÀåÇÏ½Ã°Ú½À´Ï±î?"
+    IDS_LOG_SAVED           "·Î±× ÆÄÀÏÀÌ ´ÙÀ½ °æ·Î¿¡ ÀúÀåµÇ¾ú½À´Ï´Ù: {}"
+    IDS_ERROR_LOG_SAVE      "·Î±× ÆÄÀÏÀ» ´ÙÀ½ °æ·Î¿¡ ÀúÀåÇÏÁö ¸øÇß½À´Ï´Ù: {} ({})"
+    IDS_WARNING_GAME_PARAMETER_PARSE 
+                            "°ÔÀÓ ¸í·ÉÁÙÀ» ÇØµ¶ÇÏÁö ¸øÇß½À´Ï´Ù. °ÔÀÓ Àç½ÃÀÛ ±â´ÉÀ» »ç¿ëÇÒ ¼ö ¾ø½À´Ï´Ù. ({})"
+    IDS_CONFIRM_MAIN_WINDOW_CLOSE 
+                            "XivAlexander¸¦ Á¾·áÇÏ½Ã°Ú½À´Ï±î?\n\nÁ¾·áÇÏ·Á¸é {} ¹öÆ°À»,\nÀÌ Ã¢¸¸ ´ÝÀ¸·Á¸é {} ¹öÆ°À»,\n¾Æ¹«°Íµµ ¾È ÇÏ·Á¸é {} ¹öÆ°À» ´©¸£¼¼¿ä."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_CONFIRM_EXIT_GAME   "°ÔÀÓÀ» °­Á¦·Î Á¾·áÇÏ½Ã°Ú½À´Ï±î?"
+    IDS_ERROR_UPDATE_CHECK_LAUNCH "¾÷µ¥ÀÌÆ®¸¦ È®ÀÎÇÒ ¼ö ¾ø¾ú½À´Ï´Ù. ({})"
+    IDS_CONFIRM_RESTART_GAME 
+                            "°ÔÀÓÀ» °­Á¦·Î Àç½ÃÀÛÇÏ½Ã°Ú½À´Ï±î?\n\nDirectX 11 »ç¿ë: {}\nXivAlexander »ç¿ë: {}\n¸í·ÉÁÙ ³­µ¶È­ »ç¿ë: {}\n°ü¸®ÀÚ ±ÇÇÑÀ¸·Î ½ÇÇà: {}\n¾ð¾î: {}\nÁö¿ª: {}"
+    IDS_MAIN_TEXT           "PID: {}\n°ÔÀÓ °æ·Î: {}\n°ÔÀÓ ¹öÀü: {} ({})\n\n{}"
+    IDS_APP_NAME            "XivAlexander"
+    IDS_WINDOW_RUNTIME_CONFIG_EDITOR "ÇÁ·Î±×·¥ ¼³Á¤ ÆíÁý"
+    IDS_WINDOW_OPCODE_CONFIG_EDITOR "¿ÉÄÚµå ¼³Á¤ ÆíÁý"
+    IDS_WINDOW_LOG          "·Î±× º¸±â"
+    IDS_CONFIRM_POSSIBLY_UNSUPPORTED_GAME_CLIENT_LANGUAGE 
+                            "¼±ÅÃÇÑ ¾ð¾î({})´Â ÇØ´ç °ÔÀÓ Å¬¶óÀÌ¾ðÆ®¿¡¼­ Áö¿øÇÏÁö ¾Ê¾Æ ¿À·ù¸¦ ¹ß»ý½ÃÅ³ °¡´É¼ºÀÌ ³ô½À´Ï´Ù. °è¼ÓÇÏ½Ã°Ú½À´Ï±î?\n\n¿À·ù ¸Þ½ÃÁö°¡ ¶á´Ù¸é ¼³Á¤À» ¿ø»óº¹±ÍÇÏ°í ""°ÔÀÓ °­Á¦ Àç½ÃÀÛ"" ±â´ÉÀ» ÀÌ¿ëÇØ ÁÖ¼¼¿ä."
+    IDS_LANGUAGE_NAME_ENGLISH "¿µ¾î"
+    IDS_LANGUAGE_NAME_JAPANESE "ÀÏº»¾î"
+    IDS_LANGUAGE_NAME_GERMAN "µ¶ÀÏ¾î"
+    IDS_LANGUAGE_NAME_FRENCH "ÇÁ¶û½º¾î"
+    IDS_LANGUAGE_NAME_KOREAN "ÇÑ±¹¾î"
+    IDS_LANGUAGE_NAME_CHINESE_SIMPLIFIED "Áß±¹¾î(°£Ã¼ÀÚ)"
+    IDS_LANGUAGE_NAME_UNSPECIFIED "(¾ð¾î ¹ÌÁöÁ¤)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LANGUAGE_NAME_CHINESE_TRADITIONAL "Áß±¹¾î(Á¤Ã¼ÀÚ)"
+    IDS_REGION_NAME_UNSPECIFIED "(Áö¿ª ¹ÌÁöÁ¤)"
+    IDS_REGION_NAME_JAPAN   "ÀÏº»"
+    IDS_REGION_NAME_NORTH_AMERICA "ºÏ¹Ì"
+    IDS_REGION_NAME_EUROPE  "À¯·´"
+    IDS_REGION_NAME_CHINA   "Áß±¹"
+    IDS_REGION_NAME_KOREA   "ÇÑ±¹"
+    IDS_CLIENT_INTERNATIONAL "±Û·Î¹ú"
+    IDS_CLIENT_KOREAN       "ÇÑ±¹"
+    IDS_CLIENT_CHINESE      "Áß±¹"
+    IDS_CONFIRM_LAUNCH      "{1} ¿¡ ÀÖ´Â {0}ÆÇ °ÔÀÓÀ» ½ÇÇàÇÒ±î¿ä?"
+    IDS_ERROR_NOT_FOUND     "°ÔÀÓ ¼³Ä¡ °æ·Î¸¦ Ã£À» ¼ö ¾ø¾ú½À´Ï´Ù. ¼öµ¿À¸·Î ÁöÁ¤ÇØ ÁÖ¼¼¿ä."
+    IDS_ERROR_COMMAND_LINE  "¸í·ÉÁÙÀ» ÇØ¼®ÇÒ ¼ö ¾ø¾ú½À´Ï´Ù.\n¿À·ù: {}\n\n{}"
+    IDS_ERROR_SEDEBUGPRIVILEGE "±ÇÇÑÀ» ¾òÀ» ¼ö ¾ø¾ú½À´Ï´Ù.\n* °ü¸®ÀÚ ±ÇÇÑÀ¸·Î ´Ù½Ã ½ÇÇàÇØ º¸¼¼¿ä.\n* {}"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_COMPONENTS    "´ÙÀ½ Áß ÀÏºÎ ¶Ç´Â ÀüÃ¼ ÆÄÀÏÀ» °ËÁõÇÒ ¼ö ¾ø¾ú½À´Ï´Ù.\n* XivAlexander32.dll\n* XivAlexander64.dll\n* XivAlexanderLoader32.dll\n* XivAlexanderLoader64.dll\n\nÇÁ·Î±×·¥À» ´Ù½Ã ´Ù¿î·ÎµåÇÏ½Ã°Ú½À´Ï±î?"
+    IDS_URL_RELEASES        "https://github.com/Soreepeong/XivAlexander/releases"
+    IDS_ERROR_NO_FFXIV_PROCESS "{} ÇÁ·Î¼¼½º¸¦ Ã£À» ¼ö ¾ø½À´Ï´Ù. ¸ÕÀú °ÔÀÓÀ» ½ÇÇàÇÏ°í ´Ù½Ã ½ÃµµÇØ ÁÖ¼¼¿ä."
+    IDS_ERROR_NO_MATCHING_PROCESS "ÁöÁ¤ÇÑ Á¶°Ç¿¡ ¸Â´Â ÇÁ·Î¼¼½º¸¦ Ã£À» ¼ö ¾ø¾ú½À´Ï´Ù."
+    IDS_ERROR_RESTART_ADMIN "°ü¸®ÀÚ ±ÇÇÑÀ¸·Î ½ÇÇàÇÒ ¼ö ¾ø¾ú½À´Ï´Ù. {}"
+    IDS_UPDATE_PROGRESS_DOWNLOADING_FILES "¾÷µ¥ÀÌÆ® ÆÄÀÏ ´Ù¿î·Îµå Áß..."
+    IDS_UPDATE_PROGRESS_PREPARING_FILES "¾÷µ¥ÀÌÆ® ÆÄÀÏ ÁØºñ Áß..."
+    IDS_UPDATE_PROGRESS_CHECKING "¾÷µ¥ÀÌÆ® È®ÀÎ Áß..."
+    IDS_URL_MAIN            "https://github.com/Soreepeong/XivAlexander"
+    IDS_UPDATE_PROGRESS_UPDATING_FILES "±¸¼º ¿ä¼Ò ¾÷µ¥ÀÌÆ® Áß..."
+    IDS_UPDATE_CLEANUP_UPDATE "¾÷µ¥ÀÌÆ® ÀÓ½Ã ÆÄÀÏ Á¦°Å Áß..."
+    IDS_UPDATE_RELOADING_XIVALEXANDER "½ÇÇà ÁßÀÎ °ÔÀÓ¿¡ XivAlexander ºÒ·¯µéÀÌ´Â Áß..."
+    IDS_UPDATE_COMPLETE     "¾÷µ¥ÀÌÆ®¸¦ ¿Ï·áÇß½À´Ï´Ù.\n\n3ÃÊ ÈÄ ÀÚµ¿À¸·Î ´Ý½À´Ï´Ù."
+    IDS_UPDATE_PROCESS_KILL_FAILURE 
+                            "ÇÁ·Î¼¼½º ID {}¸¦ Á¾·áÇÒ ¼ö ¾ø¾ú½À´Ï´Ù.\n\n°è¼ÓÇÏ·Á¸é ¼öµ¿À¸·Î Á¾·áÇØ ÁÖ¼¼¿ä."
+    IDS_UPDATE_UNAVAILABLE  "¾÷µ¥ÀÌÆ®°¡ ¾ø½À´Ï´Ù. ÇöÀç ¹öÀüÀº {0}.{1}.{2}.{3}, ÃÖ½Å ¹öÀüÀº {8:%Ec}¿¡ ¿Ã¶ó¿Â {4}.{5}.{6}.{7} ÀÔ´Ï´Ù."
+    IDS_UPDATE_CONFIRM      "»õ ¾÷µ¥ÀÌÆ®°¡ ÀÖ½À´Ï´Ù. »õ ¹öÀüÀº {4:%Ec}¿¡ ¿Ã¶ó¿Â {0}.{1}.{2}.{3}ÀÌ°í, ÇöÀç ¹öÀüÀº {5}.{6}.{7}.{8} ÀÔ´Ï´Ù.\n\n{9} ¹öÆ°À» ´­·¯ º¯°æ »çÇ×À» È®ÀÎ,\n{10} ¹öÆ°À» ´­·¯ ¹Ù·Î ¾÷µ¥ÀÌÆ®, ¶Ç´Â\n{11} ¹öÆ°À» ´­·¯ Ãë¼ÒÇÏ¼¼¿ä.\n\nº¸¾È À¯ÀÇ»çÇ×: GitHub¿¡ ¾ÈÀüÇÏ°Ô ¿¬°áÇÒ ¼ö ¾ø´Ù¸é ¹Ù·Î ´Ù¿î·ÎµåÇÏÁö ¸¶¼¼¿ä. °ø¿ë VPN ¹× ÇÁ·Ï½Ãµµ ÀÌ¿¡ ÇØ´çÇÕ´Ï´Ù."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_CONFIRM_INJECT_AGAIN 
+                            "ÀÌ¹Ì ½ÇÇàÁßÀÎ °ÔÀÓ ÇÁ·Î¼¼½º({}:{})¿¡ XivAlexander°¡ ÀÌ¹Ì ºÒ·¯µé¾îÁ® ÀÖ½À´Ï´Ù.\n\n{} ¹öÆ°À¸·Î ´Ù½Ã ºÒ·¯µéÀÌ°Å³ª\n{} ¹öÆ°À¸·Î Á¾·áÇÏ°Å³ª\n{} ¹öÆ°À¸·Î °Ç³Ê¶Ù¼¼¿ä."
+    IDS_CONFIRM_INJECT      "°ÔÀÓ ÇÁ·Î¼¼½º¸¦ Ã£¾Ò½À´Ï´Ù.\n* PID: {}\n* °æ·Î: {}\n* ¿ÉÄÚµå ¼³Á¤ ÆÄÀÏ: {}\nÀÌ ÇÁ·Î¼¼½º¿¡ XivAlexanderÀ» ºÒ·¯µéÀÏ±î¿ä?"
+    IDS_UPDATE_FILE_TOO_BIG "¾÷µ¥ÀÌÆ® ÆÄÀÏÀÌ ³Ê¹« Å®´Ï´Ù. ¹®Á¦°¡ ¾ø´Â ¾÷µ¥ÀÌÆ® ÆÄÀÏÀÌ¶õ °ÍÀÌ È®½ÇÇÏ´Ù¸é ¼öµ¿À¸·Î ÆÄÀÏÀ» ±³Ã¼ÇØ ¾÷µ¥ÀÌÆ®ÇØ ÁÖ¼¼¿ä."
+    IDS_UPDATE_INVALID_VERSION "¹öÀü Á¤º¸¸¦ °ËÁõÇÒ ¼ö ¾ø¾ú½À´Ï´Ù. ¼öµ¿À¸·Î ¾÷µ¥ÀÌÆ® È®ÀÎ ÈÄ ÁøÇàÇØ ÁÖ¼¼¿ä."
+    IDS_HELP_ACTION         "ÀÛ¾÷À» ÁöÁ¤ÇÕ´Ï´Ù.\n\t* auto: °ÔÀÓÀÌ ÀÌ¹Ì ½ÇÇà ÁßÀÌ¸é ½ÇÇàÁßÀÎ °ÔÀÓ ÇÁ·Î¼¼½º·Î ºÒ·¯µéÀÌ°í, ¾Æ´Ï¶ó¸é °ÔÀÓÀ» ½ÇÇàÇÏ°í ½ÇÇàµÈ °ÔÀÓ¿¡ ºÒ·¯µéÀÔ´Ï´Ù.\n\t* ask: °ÔÀÓ ÇÁ·Î¼¼½º º° ÀÛ¾÷À» ¹¯½À´Ï´Ù.\n\t* load: °ÔÀÓ ÇÁ·Î¼¼½º¿¡ XivAlexander¸¦ ºÒ·¯µéÀÔ´Ï´Ù.\n\t* unload: °ÔÀÓ ÇÁ·Î¼¼½º¿¡¼­ XivAlexander¸¦ Á¾·áÇÕ´Ï´Ù.\n\t* launcher: ÁöÁ¤ÇÑ °ÔÀÓ ·±Ã³¸¦ ½ÇÇàÇÏ°í ½ÇÇàµÈ °ÔÀÓ¿¡ XivAlexander¸¦ ºÒ·¯µéÀÔ´Ï´Ù.\n\t* update-check: ¾÷µ¥ÀÌÆ®¸¦ È®ÀÎÇÕ´Ï´Ù.\n\t* web: ¹èÆ÷ À¥ÆäÀÌÁö https://github.com/Soreepeong/XivAlexander ¸¦ ¿±´Ï´Ù."
+    IDS_HELP_LAUNCHER       "·±Ã³¸¦ ÁöÁ¤ÇÕ´Ï´Ù. »ç¿ë °¡´ÉÇÑ °ªÀº auto (°¨Áö), select (¼±ÅÃ), international (±Û·Î¹úÆÇ), korean (ÇÑ±¹ÆÇ), chinese (Áß±¹ÆÇ) ÀÔ´Ï´Ù."
+    IDS_HELP_QUIET          "¿À·ù ¸Þ½ÃÁö¸¦ º¸ÀÌÁö ¾Ê½À´Ï´Ù."
+    IDS_HELP_DISABLE_RUNAS  "¾î¶² °æ¿ì¿¡µµ °ü¸®ÀÚ ±ÇÇÑÀ¸·Î ½ÇÇàÇÏÁö ¾Ê½À´Ï´Ù."
+    IDS_HELP_INTERNAL_USE_ONLY "³»ºÎ ¿ëµµÀÔ´Ï´Ù. »ç¿ë ±ÝÁö."
+    IDS_HELP_TARGETS        "ºÒ·¯µéÀÌ°Å³ª Á¾·á ½Ã¿¡´Â ÇÁ·Î¼¼½º ID ¶Ç´Â ÇÁ·Î¼¼½º °æ·Î Á¢¹Ì»ç, ½ÇÇà ½Ã¿¡´Â ½ÇÇàÇÒ ÇÁ·Î¼¼½ºÀÇ °æ·ÎÀÔ´Ï´Ù."
+END
 
 #endif    // Korean (Korea) resources
 /////////////////////////////////////////////////////////////////////////////

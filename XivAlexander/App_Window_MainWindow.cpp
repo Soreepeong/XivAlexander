@@ -186,6 +186,10 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 
 					/***************************************************************/
 
+				case ID_TRAYMENU_HIGHLATENCYMITIGATION_ENABLE:
+					config.UseHighLatencyMitigation = !config.UseHighLatencyMitigation;
+					return 0;
+
 				case ID_TRAYMENU_HIGHLATENCYMITIGATION_MODE_1:
 					config.HighLatencyMitigationMode = HighLatencyMitigationMode::SubtractLatency;
 					return 0;

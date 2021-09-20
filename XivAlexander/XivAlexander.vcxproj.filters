@@ -176,12 +176,6 @@
       <Filter>App\Apps</Filter>
     </ClInclude>
     <ClInclude Include="DllMain.h" />
-    <ClInclude Include="resource_ko.h">
-      <Filter>Resources</Filter>
-    </ClInclude>
-    <ClInclude Include="resource_ja.h">
-      <Filter>Resources</Filter>
-    </ClInclude>
     <ClInclude Include="includes\XivAlexander\XivAlexander.h">
       <Filter>Exported</Filter>
     </ClInclude>
@@ -202,12 +196,6 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="XivAlexander.rc">
-      <Filter>Resources</Filter>
-    </ResourceCompile>
-    <ResourceCompile Include="XivAlexander_ko.rc">
-      <Filter>Resources</Filter>
-    </ResourceCompile>
-    <ResourceCompile Include="XivAlexander_ja.rc">
       <Filter>Resources</Filter>
     </ResourceCompile>
   </ItemGroup>
