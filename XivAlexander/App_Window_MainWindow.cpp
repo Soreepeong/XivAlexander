@@ -217,10 +217,14 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 								}
 							}
 							if (!anyAdded)
-								ignored.emplace_back(path, "No matching files found");
+								ignored.emplace_back(path, Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_NO_MATCHING_FILES));
 						} else {
 							try {
-								success.emplace_back(InstallAnyFile(path, progress.GetCancelEvent()));
+								auto res = InstallAnyFile(path, progress.GetCancelEvent());
+								if (res.second.empty())
+									ignored.emplace_back(path, Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_UNSUPPORTED_FILE_TYPE)));
+								else
+									success.emplace_back(std::move(res));
 							} catch (const std::exception& e) {
 								ignored.emplace_back(path, e.what());
 							}
@@ -554,7 +558,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 								modEntry.Name.empty() ? "-" : modEntry.Name,
 								modEntry.Category.empty() ? "-" : modEntry.Category).c_str());
 					}
-					AppendMenuW(hSubMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hModSubMenu), L"Configure...");
+					AppendMenuW(hSubMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hModSubMenu), m_config->Runtime.GetStringRes(IDS_CONFIGURE));
 				}
 
 				for (size_t pageObjectIndex = 0; pageObjectIndex < ttmpl.ModPackPages.size(); ++pageObjectIndex) {

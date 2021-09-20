@@ -1408,7 +1408,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 							progressWindow.UpdateMessage(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_TITLE_GENERATING_FONTS)));
 					}
 					if (progressWindow.GetCancelEvent().Wait(0) != WAIT_OBJECT_0) {
-						progressWindow.UpdateMessage("Compressing data...");
+						progressWindow.UpdateMessage(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_TITLE_COMPRESSING)));
 						Utils::Win32::TpEnvironment pool;
 						const auto streams = fontCreator.GetResult().GetAllStreams();
 
