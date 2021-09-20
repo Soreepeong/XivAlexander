@@ -133,7 +133,6 @@
       "^DpsChallenge$": [5],
       "^DynamicEvent$": [11],
       "^DynamicEventSingleBattle$": [2],
-      "^Error$": [0],
       "^EventItemHelp$": [0],
       "^Fate$": [1],
       "^FateEvent$": [56, 57, 58, 59, 60, 62],
@@ -191,7 +190,7 @@
       "^shop/": [1],
       "^story/": [1],
       "^system/": [1],
-      "^transport/": [1],
+      "^transport/Aetheryte.": [1],
       "^warp/": [1]
     },
     "all": {

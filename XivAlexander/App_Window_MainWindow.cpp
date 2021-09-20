@@ -628,8 +628,8 @@ void App::Window::MainWindow::SetMenuStates() const {
 
 	// File
 	{
-		SetMenuState(hMenu, ID_TRAYMENU_CONFIGURATION_SHOWCONTROLWINDOW, config.ShowControlWindow, true);
-		SetMenuState(hMenu, ID_TRAYMENU_CONFIGURATION_SHOWLOGGINGWINDOW, config.ShowLoggingWindow, true);
+		SetMenuState(hMenu, ID_FILE_SHOWCONTROLWINDOW, config.ShowControlWindow, true);
+		SetMenuState(hMenu, ID_FILE_SHOWLOGGINGWINDOW, config.ShowLoggingWindow, true);
 	}
 
 	// Game

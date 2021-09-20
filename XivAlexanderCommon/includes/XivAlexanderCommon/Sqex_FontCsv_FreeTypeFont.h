@@ -48,22 +48,27 @@ namespace Sqex::FontCsv {
 	protected:
 		class FtFaceCtxMgr {
 			const FreeTypeFont* m_owner;
+			Implementation* m_impl;
 			FT_Face m_face;
 
 		public:
-			FtFaceCtxMgr(const FreeTypeFont* impl, FT_Face face);
+			FtFaceCtxMgr(const FreeTypeFont* owner, Implementation* impl, FT_Face face);
 
 			FtFaceCtxMgr(FtFaceCtxMgr&& r) noexcept
 				: m_owner(r.m_owner)
+				, m_impl(r.m_impl)
 				, m_face(r.m_face) {
 				r.m_face = nullptr;
+				r.m_impl = nullptr;
 				r.m_owner = nullptr;
 			}
 
 			FtFaceCtxMgr& operator=(FtFaceCtxMgr&& r) noexcept {
 				m_face = r.m_face;
+				m_impl = r.m_impl;
 				m_owner = r.m_owner;
 				r.m_face = nullptr;
+				r.m_impl = nullptr;
 				r.m_owner = nullptr;
 				return *this;
 			}

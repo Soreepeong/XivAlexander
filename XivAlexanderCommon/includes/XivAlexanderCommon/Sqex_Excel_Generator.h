@@ -12,7 +12,7 @@ namespace Sqex::Excel {
 		const uint32_t FixedDataSize;
 		std::map<uint32_t, std::map<Language, std::vector<ExdColumn>>> Data;
 		std::vector<Language> Languages;
-		Language FillMissingLanguageFrom = Language::Unspecified;
+		std::vector<Language> FillMissingLanguageFrom;
 
 		Depth2ExhExdCreator(std::string name, std::vector<Exh::Column> columns, int someSortOfBufferSize, size_t divideUnit = SIZE_MAX);
 

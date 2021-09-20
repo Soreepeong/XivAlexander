@@ -62,19 +62,19 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "ƒRƒ“ƒgƒ[ƒ‹ƒEƒBƒ“ƒhƒE‚Ì•\Ž¦(&C)\tCtrl+(Alt+)W", ID_FILE_SHOWCONTROLWINDOW
         MENUITEM "ƒƒOƒEƒBƒ“ƒhƒE‚Ì•\Ž¦(&L)\t(Ctrl+Alt+)L", ID_FILE_SHOWLOGGINGWINDOW
-        MENUITEM "ƒAƒbƒvƒf[ƒg‚ÌŠm”F(&P)\tCtrl+(Alt+)U", ID_FILE_CHECKFORUPDATES
-        MENUITEM "XivAlexander‚ÌI—¹(&U)\tCtrl+(Alt+)Q", ID_FILE_UNLOADXIVALEXANDER
+        MENUITEM "V‹KƒAƒbƒvƒf[ƒg‚ðƒ`ƒFƒbƒN(&P)\tCtrl+(Alt+)U", ID_FILE_CHECKFORUPDATES
+        MENUITEM "XivAlexander‚ðI—¹(&U)\tCtrl+(Alt+)Q", ID_FILE_UNLOADXIVALEXANDER
         MENUITEM SEPARATOR
-        MENUITEM "ƒQ[ƒ€‚Ì‹­§I—¹(&X)\tCtrl+Shift+Q",  ID_FILE_FORCEEXITGAME
+        MENUITEM "ƒQ[ƒ€‚ð‹­§I—¹(&X)\tCtrl+Shift+Q",  ID_FILE_FORCEEXITGAME
     END
     POPUP "Ä‹N“®(&R)"
     BEGIN
-        MENUITEM "‰º‚ÌÝ’è‚ÅÄ‹N“®(&R)\tCtrl+Shift+R",  ID_RESTART_RESTART
+        MENUITEM "ˆÈ‰º‚ÌÝ’è‚ÅÄ‹N“®(&R)\tCtrl+Shift+R", ID_RESTART_RESTART
         MENUITEM SEPARATOR
         MENUITEM "DirectX11‚ðŽg—p(&I)\t(Ctrl+Shift+)D", ID_RESTART_USEDIRECTX11
         MENUITEM "XivAlexander‚ðŽg—p(&X)\t(Ctrl+Shift+)X", ID_RESTART_USEXIVALEXANDER
         MENUITEM "ƒRƒ}ƒ“ƒhƒ‰ƒCƒ“‚Ì“ï“Ç‰»‚ðŽg—p(&P)\t(Ctrl+Shift+)P", ID_RESTART_USEPARAMETEROBFUSCATION
-        MENUITEM "ŠÇ—ŽÒŒ ŒÀ‚ÅŽÀs(&E)\t(Ctrl+Shift+)A", ID_RESTART_USEELEVATION
+        MENUITEM "ŠÇ—ŽÒ‚Æ‚µ‚ÄŽÀs(&E)\t(Ctrl+Shift+)A", ID_RESTART_USEELEVATION
         MENUITEM SEPARATOR
         MENUITEM "Œ¾ŒêF“ú–{Œê(&J)",                  ID_RESTART_LANGUAGE_JAPANESE
         MENUITEM "Œ¾ŒêF‰pŒê(&E)",                   ID_RESTART_LANGUAGE_ENGLISH
@@ -91,41 +91,41 @@ BEGIN
     BEGIN
         POPUP "’x‰„‚Ì‰ðÁ(&H)"
         BEGIN
-            MENUITEM "??(&E)\t(Ctrl+Shift+)H",      ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
+            MENUITEM "—LŒø‰»(&E)\t(Ctrl+Shift+)H",     ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
             MENUITEM SEPARATOR
-            MENUITEM "?? &1: ?? ???? ?? ?? ?? ?? ?? ????", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1
-            MENUITEM "?? &2: ?? ?? ??? 75ms? ??",   ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2
-            MENUITEM "?? &3: ?? ?? ? ?? ?? ??",     ID_NETWORK_HIGHLATENCYMITIGATION_MODE_3
+            MENUITEM "ƒ‚[ƒh&1FŽŸ‚ÌƒAƒNƒVƒ‡ƒ“‚ÌŽg—p‰Â”\Žž‚©‚çƒŒƒCƒeƒ“ƒV‚ðŒJ‚èã‚°‚é", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1
+            MENUITEM "ƒ‚[ƒh&2FƒT[ƒo‚©‚ç‚Ì‰ž“š‚É‚©‚©‚éŽžŠÔ‚ð75ms‚ÉŒÅ’è", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2
+            MENUITEM "ƒ‚[ƒh&3FƒT[ƒo[‚©‚ç‚Ì‰ž“š‚É‚©‚©‚éŽžŠÔ‚ÆƒŒƒCƒeƒ“ƒV‚ð•â³", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_3
             MENUITEM SEPARATOR
-            MENUITEM "?? ?? ?? ??(&E)\tCtrl+(Alt+)E", ID_NETWORK_HIGHLATENCYMITIGATION_USEEARLYPENALTY
+            MENUITEM "ƒAƒNƒVƒ‡ƒ“‚ÌÙ‘¬‚ÈŽg—p‚Ì–hŽ~(&E)\tCtrl+(Alt+)E", ID_NETWORK_HIGHLATENCYMITIGATION_USEEARLYPENALTY
             MENUITEM SEPARATOR
-            MENUITEM "?? ??(&L)\tCtrl+(Alt+)L",     ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING
-            MENUITEM "?? ?? (???? ?? ??)(&P)\tCtrl+(Alt+)P", ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE
+            MENUITEM "ƒƒO‚ð—LŒø‚É‚·‚é(&L)\tCtrl+(Alt+)L",  ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING
+            MENUITEM "ì“®‚ÌƒVƒ~ƒ…ƒŒ[ƒVƒ‡ƒ“(ƒƒO‚É‹L˜^)(&P)\tCtrl+(Alt+)P", ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE
         END
         MENUITEM SEPARATOR
-        MENUITEM "IPCƒ^ƒCƒvƒtƒ@ƒCƒ“ƒ_[‚ÌŽg—p(&F)\t(Ctrl+Shift+)F", ID_NETWORK_USEIPCTYPEFINDER
+        MENUITEM "IPCƒ^ƒCƒvƒtƒ@ƒCƒ“ƒ_[‚ðŽg—p(&F)\t(Ctrl+Shift+)F", ID_NETWORK_USEIPCTYPEFINDER
         MENUITEM "‚·‚×‚Ä‚ÌIPCƒƒbƒZ[ƒW‚ðƒƒO‚É‹L˜^(&I)\t(Ctrl+Shift+)M", ID_NETWORK_USEALLIPCMESSAGELOGGER
         MENUITEM "AddStatusEffect‚Ì’x‰„‚ðƒƒO‚É‹L˜^(&D)\t(Ctrl+Shift+)E", ID_NETWORK_LOGEFFECTAPPLICATIONDELAY
         MENUITEM SEPARATOR
         MENUITEM "ƒpƒPƒbƒg’x‰„‚ÌŒyŒ¸(&R)\t(Ctrl+Shift+)F1", ID_NETWORK_REDUCEPACKETDELAY
         MENUITEM "‚·‚×‚Ä‚ÌÚ‘±‚Ìˆ—‚ð‰ðœ(&E)\t(Ctrl+Shift+)F2", ID_NETWORK_RELEASEALLCONNECTIONS
-        POPUP "ƒAƒhƒŒƒX‚Ì”ÍˆÍ‚Ì–â‘è‰ðŒˆ(&T)"
+        POPUP "‘ÎÛƒAƒhƒŒƒX‚Ìƒgƒ‰ƒuƒ‹ƒVƒ…[ƒeƒBƒ“ƒO(&T)"
         BEGIN
-            MENUITEM "ƒ‹[ƒvƒoƒbƒNƒAƒhƒŒƒX‚Ìˆ—(&L) (127.0.0.0/8)\t(Ctrl+Shift+)1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
-            MENUITEM "ƒ[ƒJƒ‹ƒAƒhƒŒƒX‚Ìˆ—(&P) (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\t(Ctrl+Shift+)2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
-            MENUITEM "‚·‚×‚Ä‚ÌƒAƒhƒŒƒX‚Ìˆ—(&A) (0.0.0.0/0)\t(Ctrl+Shift+)3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
-            MENUITEM "‚·‚×‚Ä‚Ìƒ|[ƒg‚Ìˆ—(&O)\t(Ctrl+Shift+)4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
+            MENUITEM "ƒ‹[ƒvƒoƒbƒNƒAƒhƒŒƒX‚ðˆ—(&L) (127.0.0.0/8)\t(Ctrl+Shift+)1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
+            MENUITEM "ƒ[ƒJƒ‹ƒAƒhƒŒƒX‚ðˆ—(&P) (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\t(Ctrl+Shift+)2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
+            MENUITEM "‚·‚×‚Ä‚ÌƒAƒhƒŒƒX‚ðˆ—(&A) (0.0.0.0/0)\t(Ctrl+Shift+)3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
+            MENUITEM "‚·‚×‚Ä‚Ìƒ|[ƒg‚ðˆ—(&O)\t(Ctrl+Shift+)4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
         END
     END
-    POPUP "ƒ‚ƒbƒfƒBƒ“ƒO(&M)"
+    POPUP "MOD(&M)"
     BEGIN
         MENUITEM "—LŒø‰»(&E)",                     ID_MODDING_ENABLE
         MENUITEM SEPARATOR
-        MENUITEM "ƒQ[ƒ€“à‚ÅŽg‚í‚ê‚éŒo˜H‚ð‚·‚×‚ÄƒƒO‚É‹L˜^(&P)",    ID_MODDING_LOGALLHASHKEYS
+        MENUITEM "ƒQ[ƒ€‚ª“Ç‚Ýž‚Þ‚·‚×‚Ä‚Ìƒtƒ@ƒCƒ‹‚ÌƒpƒX‚ðƒƒO‚É‹L˜^(&P)", ID_MODDING_LOGALLHASHKEYS
         MENUITEM SEPARATOR
         POPUP "Œ¾Œê‚Ì—Dæ‡ˆÊ(&L)"
         BEGIN
-            MENUITEM "ƒƒjƒ…[‚ð‘I‘ð‚µ‚Äˆê”Ôã‚Éã‚°‚ç‚ê‚Ü‚·B",        ID_MODDING_FALLBACKLANGUAGEPRIORITY_GUIDE, INACTIVE
+            MENUITEM "ƒƒjƒ…[€–Ú‚ð‘I‘ð‚·‚é‚Æˆê”Ôã‚ÉˆÚ“®‚µ‚Ü‚·B",      ID_MODDING_FALLBACKLANGUAGEPRIORITY_GUIDE, INACTIVE
             MENUITEM SEPARATOR
             MENUITEM "(entry 1)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1
             MENUITEM "(entry 2)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY2
@@ -134,7 +134,7 @@ BEGIN
             MENUITEM "(entry 5)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY5
             MENUITEM "(entry 6)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY6
         END
-        POPUP "•\Ž†Œ¾Œê‚ð‹­§(&D) (64ƒrƒbƒgê—p)"
+        POPUP "•\Ž¦Œ¾Œê‚Ì‹­§(&D) (64ƒrƒbƒgê—p)"
         BEGIN
             MENUITEM "Žg—p‚µ‚È‚¢(&U)",                   ID_MODDING_DISPLAYLANGUAGE_DISABLE, CHECKED
             MENUITEM SEPARATOR
@@ -145,7 +145,7 @@ BEGIN
             MENUITEM "’†‘Œê(ŠÈ‘ÌŽš)(&C)",                ID_MODDING_DISPLAYLANGUAGE_CHINESESIMPLIFIED
             MENUITEM "ŠØ‘Œê(&K)",                     ID_MODDING_DISPLAYLANGUAGE_KOREAN
         END
-        POPUP "‰¹ºŒ¾Œê‚ð‹­§(&A) (64ƒrƒbƒgê—p)"
+        POPUP "‰¹ºŒ¾Œê‚Ì‹­§(&A) (64ƒrƒbƒgê—p)"
         BEGIN
             MENUITEM "Žg—p‚µ‚È‚¢(&U)",                   ID_MODDING_AUDIOLANGUAGE_DISABLE, CHECKED
             MENUITEM SEPARATOR
@@ -159,54 +159,54 @@ BEGIN
         MENUITEM SEPARATOR
         POPUP "ƒtƒHƒ“ƒg‚Ì•ÏX(&F)"
         BEGIN
-            MENUITEM "ƒvƒŠƒZƒbƒg‚ðƒCƒ“ƒ|[ƒg(&I)",             ID_MODDING_CHANGEFONT_IMPORTPRESET
-            MENUITEM "ƒvƒŠƒZƒbƒg‚ÌƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚é(&O)",         ID_MODDING_CHANGEFONT_OPENPRESETDIRECTORY
+            MENUITEM "ƒvƒŠƒZƒbƒg‚Ì“Ç‚Ýž‚Þ(&I)",              ID_MODDING_CHANGEFONT_IMPORTPRESET
+            MENUITEM "ƒvƒŠƒZƒbƒgƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚é(&O)",          ID_MODDING_CHANGEFONT_OPENPRESETDIRECTORY
             MENUITEM SEPARATOR
             MENUITEM "Žg—p‚µ‚È‚¢(&D)",                   ID_MODDING_CHANGEFONT_DISABLE, CHECKED
             MENUITEM SEPARATOR
-            MENUITEM "(ƒvƒŠƒZƒbƒg‚Ìƒtƒ@ƒCƒ‹‚È‚µ)",              ID_MODDING_CHANGEFONT_NOENTRY, INACTIVE
+            MENUITEM "(ƒvƒŠƒZƒbƒg€–Ú‚È‚µ)",                 ID_MODDING_CHANGEFONT_NOENTRY, INACTIVE
             MENUITEM "(Example entry)",             ID_MODDING_CHANGEFONT_ENTRY
         END
-        POPUP "ƒAƒfƒBƒVƒ‡ƒiƒ‹ƒQ[ƒ€‚Ìƒ‹[ƒgƒtƒHƒ‹ƒ_[(&G)"
+        POPUP "’Ç‰Á‚ÌƒQ[ƒ€ƒ‹[ƒgƒtƒHƒ‹ƒ_[(&G)"
         BEGIN
             MENUITEM "’Ç‰Á(&A)",                      ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD
-            MENUITEM "‚·‚×‚ÄÁ‚·(&R)",                   ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_REMOVEALL
+            MENUITEM "‹ó‚É‚·‚é(&R)",                    ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_REMOVEALL
             MENUITEM SEPARATOR
-            MENUITEM "(ƒAƒfƒBƒVƒ‡ƒiƒ‹ƒQ[ƒ€‚Ìƒ‹[ƒgƒtƒHƒ‹ƒ_[‚È‚µ)",     ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_NOENTRY, INACTIVE
+            MENUITEM "(’Ç‰Á‚ÌƒQ[ƒ€ƒ‹[ƒgƒtƒHƒ‹ƒ_‚È‚µ)",           ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_NOENTRY, INACTIVE
             MENUITEM "(Example entry)",             ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ENTRY
         END
-        POPUP "E&XDF(ƒeƒLƒXƒg)‚Ì•ÏŠ·‚Ì‹K‘¥"
+        POPUP "E&XDF(ƒeƒLƒXƒg)‚Ì’u‚«Š·‚¦‹K‘¥"
         BEGIN
-            MENUITEM "‹K‘¥ƒtƒ@ƒCƒ‹‚ðƒCƒ“ƒ|[ƒg(&I)",            ID_MODDING_EXDFTRANSFORMATIONRULES_ADD
-            MENUITEM "‚·‚×‚ÄÁ‚·(&R)",                   ID_MODDING_EXDFTRANSFORMATIONRULES_REMOVEALL
-            MENUITEM "‹K‘¥ƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚é(&O)",             ID_MODDING_EXDFTRANSFORMATIONRULES_OPENPRESETDIRECTORY
+            MENUITEM "’è‹`ƒtƒ@ƒCƒ‹‚Ì“Ç‚Ýž‚Ý(&I)",             ID_MODDING_EXDFTRANSFORMATIONRULES_ADD
+            MENUITEM "‹ó‚É‚·‚é(&R)",                    ID_MODDING_EXDFTRANSFORMATIONRULES_REMOVEALL
+            MENUITEM "’è‹`ƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚é(&O)",             ID_MODDING_EXDFTRANSFORMATIONRULES_OPENPRESETDIRECTORY
             MENUITEM SEPARATOR
-            MENUITEM "(EXDF‚Ì•ÏŠ·‚Ì‹K‘¥‚È‚µ)",              ID_MODDING_EXDFTRANSFORMATIONRULES_NOENTRY, INACTIVE
+            MENUITEM "(EXDF‚Ì’u‚«Š·‚¦‹K‘¥‚È‚µ)",             ID_MODDING_EXDFTRANSFORMATIONRULES_NOENTRY, INACTIVE
             MENUITEM "(Example entry)",             ID_MODDING_EXDFTRANSFORMATIONRULES_ENTRY
         END
-        POPUP "&TexToolsƒ‚ƒbƒhƒpƒbƒN"
+        POPUP "&TexTools MODƒpƒbƒN"
         BEGIN
             POPUP "(template entry to be inserted at bottom)"
             BEGIN
                 MENUITEM "—LŒø‰»(&E)",                     ID_MODDING_TTMP_ENTRY_ENABLE, CHECKED
-                MENUITEM "Á‚·—\–ñ(&D)",                    ID_MODDING_TTMP_ENTRY_DELETE
+                MENUITEM "íœ‚ð—\–ñ(&D)",                   ID_MODDING_TTMP_ENTRY_DELETE
                 MENUITEM SEPARATOR
             END
             MENUITEM "ƒCƒ“ƒ|[ƒg(&I)",                   ID_MODDING_TTMP_IMPORT
             MENUITEM SEPARATOR
-            MENUITEM "‚·‚×‚ÄÁ‚·—\–ñ(&R)",                 ID_MODDING_TTMP_REMOVEALL
-            MENUITEM "‚·‚×‚ÄÁ‚·—\–ñ‚ðŽæ‚èÁ‚µ(&U)",            ID_MODDING_TTMP_UNDOREMOVEALL
+            MENUITEM "‚·‚×‚Ä‚ÌMODƒpƒbƒN‚Ìíœ‚ð—\–ñ(&R)",        ID_MODDING_TTMP_REMOVEALL
+            MENUITEM "‚·‚×‚Ä‚ÌMODƒpƒbƒN‚Ìíœ—\–ñ‚ðŽæ‚èÁ‚·(&U)",    ID_MODDING_TTMP_UNDOREMOVEALL
             MENUITEM SEPARATOR
             MENUITEM "‚·‚×‚Ä‚ð—LŒø‰»(&E)",                 ID_MODDING_TTMP_ENABLEALL
             MENUITEM "‚·‚×‚Ä‚ð–³Œø‰»(&D)",                 ID_MODDING_TTMP_DISABLEALL
             MENUITEM SEPARATOR
             MENUITEM "ƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚é(&O)",               ID_MODDING_TTMP_OPENDIRECTORY
-            MENUITEM "Ä“Ç‚Ýž‚Þ(&R)",                   ID_MODDING_TTMP_REFRESH
+            MENUITEM "Ä“Ç‚Ýž‚Ý(&R)",                   ID_MODDING_TTMP_REFRESH
             MENUITEM SEPARATOR
-            MENUITEM "(ƒCƒ“ƒXƒg[ƒ‹‚³‚ê‚½ƒ‚ƒbƒhƒpƒbƒN‚È‚µ)",         ID_MODDING_TTMP_NOENTRY, INACTIVE
+            MENUITEM "(ƒCƒ“ƒXƒg[ƒ‹Ï‚Ý‚ÌMODƒpƒbƒN‚È‚µ)",         ID_MODDING_TTMP_NOENTRY, INACTIVE
         END
         MENUITEM SEPARATOR
-        MENUITEM "Œð‘Öƒtƒ@ƒCƒ‹‚ÌƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚é(&R)",        ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
+        MENUITEM "’u‚«Š·‚¦ƒtƒ@ƒCƒ‹‚ÌƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚é(&R)",      ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
         MENUITEM SEPARATOR
         MENUITEM "ƒQ[ƒ€‚ðÄ‹N“®‚·‚é‚Ü‚Å•ÏX‚É‚È‚ç‚È‚¢ê‡‚ª‚æ‚­‚ ‚è‚Ü‚·B", ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
     END
@@ -487,7 +487,7 @@ BEGIN
             MENUITEM "¸ðµç Æ÷Æ® Ã³¸®(&O)\t(Ctrl+Shift+)4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
         END
     END
-    POPUP "¸ðµå(&M)"
+    POPUP "¸ðµù(&M)"
     BEGIN
         MENUITEM "»ç¿ë(&E)",                      ID_MODDING_ENABLE
         MENUITEM SEPARATOR
@@ -504,7 +504,7 @@ BEGIN
             MENUITEM "(entry 5)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY5
             MENUITEM "(entry 6)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY6
         END
-        POPUP "Ç¥½Ã ¾ð¾î °­Á¦(&D) (64ºñÆ® Àü¿ë)"
+        POPUP "Ç¥½Ã ¾ð¾î °íÁ¤(&D) (64ºñÆ® Àü¿ë)"
         BEGIN
             MENUITEM "»ç¿ëÇÏÁö ¾ÊÀ½(&U)",                 ID_MODDING_DISPLAYLANGUAGE_DISABLE, CHECKED
             MENUITEM SEPARATOR
@@ -515,7 +515,7 @@ BEGIN
             MENUITEM "Áß±¹¾î(°£Ã¼)(&C)",                 ID_MODDING_DISPLAYLANGUAGE_CHINESESIMPLIFIED
             MENUITEM "ÇÑ±¹¾î(&K)",                     ID_MODDING_DISPLAYLANGUAGE_KOREAN
         END
-        POPUP "À½¼º ¾ð¾î °­Á¦(&A) (64ºñÆ® Àü¿ë)"
+        POPUP "À½¼º ¾ð¾î °íÁ¤(&A) (64ºñÆ® Àü¿ë)"
         BEGIN
             MENUITEM "»ç¿ëÇÏÁö ¾ÊÀ½(&U)",                 ID_MODDING_AUDIOLANGUAGE_DISABLE, CHECKED
             MENUITEM SEPARATOR
@@ -571,12 +571,12 @@ BEGIN
             MENUITEM "¸ðµÎ ºñÈ°¼ºÈ­(&D)",                 ID_MODDING_TTMP_DISABLEALL
             MENUITEM SEPARATOR
             MENUITEM "Æú´õ ¿­±â(&O)",                   ID_MODDING_TTMP_OPENDIRECTORY
-            MENUITEM "¸Þ´º »õ·Î °íÄ¡±â(&R)",               ID_MODDING_TTMP_REFRESH
+            MENUITEM "¸ñ·Ï ´Ù½Ã ºÒ·¯¿À±â(&R)",              ID_MODDING_TTMP_REFRESH
             MENUITEM SEPARATOR
             MENUITEM "(¼³Ä¡µÈ ¸ðµåÆÑ ¾øÀ½ )",               ID_MODDING_TTMP_NOENTRY, INACTIVE
         END
         MENUITEM SEPARATOR
-        MENUITEM "±³Ã¼ ÆÄÀÏ µð·ºÅä¸® ¿­±â (&R)",          ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
+        MENUITEM "±³Ã¼ ÆÄÀÏ Æú´õ ¿­±â(&R)",             ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
         MENUITEM SEPARATOR
         MENUITEM "°ÔÀÓ Àç½ÃÀÛ±îÁö º¯°æ »çÇ×ÀÌ ¹Ý¿µµÇÁö ¾ÊÀ» ¼öµµ ÀÖ½À´Ï´Ù.", ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
     END
@@ -591,7 +591,7 @@ BEGIN
         MENUITEM "¾ð¾î: ÀÏº»¾î(&J)",                 ID_CONFIGURE_LANGUAGE_JAPANESE
         MENUITEM SEPARATOR
         MENUITEM "¼³Á¤°ª ÀúÀå Æú´õ ¿­±â(&D)",            ID_CONFIGURE_OPENCONFIGURATIONDIRECTORY
-        MENUITEM "¼³Á¤ ´Ù½Ã ÀÐ¾îµéÀÌ±â(&Z)\t(Ctrl+Shift+)F5", ID_CONFIGURE_RELOAD
+        MENUITEM "¼³Á¤ ´Ù½Ã ºÒ·¯¿À±â(&Z)\t(Ctrl+Shift+)F5", ID_CONFIGURE_RELOAD
     END
     POPUP "º¸±â(&V)"
     BEGIN
@@ -944,13 +944,13 @@ BEGIN
             POPUP "(template entry to be inserted at bottom)"
             BEGIN
                 MENUITEM "&Enable",                     ID_MODDING_TTMP_ENTRY_ENABLE, CHECKED
-                MENUITEM "&Delete",                     ID_MODDING_TTMP_ENTRY_DELETE
+                MENUITEM "Mark for &Deletion on Restart", ID_MODDING_TTMP_ENTRY_DELETE
                 MENUITEM SEPARATOR
             END
             MENUITEM "&Import",                     ID_MODDING_TTMP_IMPORT
             MENUITEM SEPARATOR
-            MENUITEM "&Remove All",                 ID_MODDING_TTMP_REMOVEALL
-            MENUITEM "&Undo Remove All",            ID_MODDING_TTMP_UNDOREMOVEALL
+            MENUITEM "Mark All for D&eletion on Restart", ID_MODDING_TTMP_REMOVEALL
+            MENUITEM "&Undo Mark All for Deletion", ID_MODDING_TTMP_UNDOREMOVEALL
             MENUITEM SEPARATOR
             MENUITEM "&Enable All",                 ID_MODDING_TTMP_ENABLEALL
             MENUITEM "&Disable All",                ID_MODDING_TTMP_DISABLEALL

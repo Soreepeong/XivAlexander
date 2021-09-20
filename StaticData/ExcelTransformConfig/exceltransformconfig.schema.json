@@ -64,7 +64,7 @@
     "targetGroups": {
       "type": "object",
       "patternProperties": {
-        ".*": {
+        "[^#][A-Za-z0-9]+": {
           "type": [
             "array",
             "integer"
@@ -74,6 +74,36 @@
               "integer"
             ],
             "minItems": 1
+          }
+        }
+      }
+    },
+    "sourceReplacements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "replacementTemplates": {
+      "type": "object",
+      "patternProperties": {
+        "[^#][A-Za-z0-9]+": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string"
+            },
+            "to": {
+              "type": "string"
+            }
           }
         }
       }

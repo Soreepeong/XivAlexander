@@ -173,7 +173,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				_In_opt_ HANDLE hTemplateFile
 			) {
 					AtomicIntEnter implUseLock(m_stk);
-					
+
 					if (const auto lock = ReEnterPreventer::Lock(m_repCreateFileW); lock &&
 						!(dwDesiredAccess & GENERIC_WRITE) &&
 						dwCreationDisposition == OPEN_EXISTING &&
@@ -369,7 +369,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					}
 				}
 
-				auto overrideLanguage = Sqex::Language::Unspecified;
+				Sqex::Language overrideLanguage;
 				if (ext == ".scd")
 					overrideLanguage = m_config->Runtime.VoiceResourceLanguageOverride;
 				else
@@ -496,7 +496,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			additionalEntriesFound |= SetUpVirtualFileFromTexToolsModPacks(creator, indexFile);
 			additionalEntriesFound |= SetUpVirtualFileFromFileEntries(creator, indexFile);
 			additionalEntriesFound |= SetUpVirtualFileFromFontConfig(creator, indexFile);
-			
+
 			// Nothing to override, but still take it to figure out whether we can replace language-specific file names.
 			if (!additionalEntriesFound) {
 				m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
@@ -521,24 +521,65 @@ struct App::Feature::GameResourceOverrider::Implementation {
 
 		if (creator.DatName == "0a0000") {
 			const auto cachedDir = m_config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / region / creator.DatExpac / creator.DatName;
-			if (!(exists(cachedDir / "TTMPD.mpd") && exists(cachedDir / "TTMPL.mpl"))) {
 
-				std::map<std::string, int> exhTable;
-				// maybe generate exl?
+			std::map<std::string, int> exhTable;
+			// maybe generate exl?
 
-				for (const auto& pair : Sqex::Excel::ExlReader(*creator["exd/root.exl"]))
-					exhTable.emplace(pair);
+			for (const auto& pair : Sqex::Excel::ExlReader(*creator["exd/root.exl"]))
+				exhTable.emplace(pair);
 
-				std::vector<std::unique_ptr<Sqex::Sqpack::Reader>> readers;
+			std::string currentCacheKeys;
+			{
+				const auto gameRoot = indexFile.parent_path().parent_path().parent_path();
+				const auto versionFile = Utils::Win32::File::Create(gameRoot / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+				const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetLength()));
+				currentCacheKeys += std::format("SQPACK:{}:{}\n", canonical(gameRoot).wstring(), std::string(versionContent.begin(), versionContent.end()));
+			}
 
-				for (const auto& additionalSqpackRootDirectory : m_config->Runtime.AdditionalSqpackRootDirectories.Value()) {
-					const auto file = additionalSqpackRootDirectory / "sqpack" / indexFile.parent_path().filename() / indexFile.filename();
-					if (!exists(file))
-						continue;
+			std::vector<std::unique_ptr<Sqex::Sqpack::Reader>> readers;
+			for (const auto& additionalSqpackRootDirectory : m_config->Runtime.AdditionalSqpackRootDirectories.Value()) {
+				const auto file = additionalSqpackRootDirectory / "sqpack" / indexFile.parent_path().filename() / indexFile.filename();
+				if (!exists(file))
+					continue;
 
-					readers.emplace_back(std::make_unique<Sqex::Sqpack::Reader>(file));
+				const auto versionFile = Utils::Win32::File::Create(additionalSqpackRootDirectory / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+				const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetLength()));
+				currentCacheKeys += std::format("SQPACK:{}:{}\n", canonical(additionalSqpackRootDirectory).wstring(), std::string(versionContent.begin(), versionContent.end()));
+
+				readers.emplace_back(std::make_unique<Sqex::Sqpack::Reader>(file));
+			}
+
+			for (const auto& configFile : m_config->Runtime.ExcelTransformConfigFiles.Value()) {
+				uint8_t hash[20]{};
+				try {
+					const auto file = Utils::Win32::File::Create(configFile, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+					CryptoPP::SHA1 sha1;
+					const auto content = file.Read<uint8_t>(0, static_cast<size_t>(file.GetLength()));
+					sha1.Update(content.data(), content.size());
+					sha1.Final(reinterpret_cast<byte*>(hash));
+				} catch (...) {
 				}
 
+				CryptoPP::HexEncoder encoder;
+				encoder.Put(hash, sizeof hash);
+				encoder.MessageEnd();
+
+				std::string buf(encoder.MaxRetrievable(), 0);
+				encoder.Get(reinterpret_cast<byte*>(&buf[0]), buf.size());
+
+				currentCacheKeys += std::format("CONF:{}:{}\n", configFile.wstring(), buf);
+			}
+
+			auto needRecreate = true;
+			try {
+				const auto file = Utils::Win32::File::Create(cachedDir / "sources", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+				const auto content = file.Read<char>(0, static_cast<size_t>(file.GetLength()));
+				needRecreate = !std::equal(content.begin(), content.end(), currentCacheKeys.begin(), currentCacheKeys.end());
+			} catch (...) {
+				// pass
+			}
+
+			if (needRecreate) {
 				create_directories(cachedDir);
 
 				std::vector<std::pair<std::regex, Misc::ExcelTransformConfig::PluralColumns>> pluralColumns;
@@ -588,7 +629,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 										target.second,
 										rule.preprocessReplacements,
 										rule.postprocessReplacements,
-										});
+									});
 								}
 							}
 						}
@@ -661,7 +702,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 											"=> Merging {}", exhName);
 
 										exCreator = std::make_unique<Sqex::Excel::Depth2ExhExdCreator>(exhName, *exhReaderSource.Columns, exhReaderSource.Header.SomeSortOfBufferSize);
-										exCreator->FillMissingLanguageFrom = Sqex::Language::English;  // TODO: make it into option
+										exCreator->FillMissingLanguageFrom = m_config->Runtime.FallbackLanguagePriority.Value();
 
 										currentProgressMax = 1ULL * exhReaderSource.Languages.size() * exhReaderSource.Pages.size();
 										for (const auto language : exhReaderSource.Languages) {
@@ -690,7 +731,6 @@ struct App::Feature::GameResourceOverrider::Implementation {
 									}
 
 									auto sourceLanguages = exCreator->Languages;
-									const auto languagePriorities = m_config->Runtime.FallbackLanguagePriority.Value();
 
 									// Step. Load external EXH/D files
 									for (const auto& reader : readers) {
@@ -714,7 +754,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 															if (row.size() != exCreator->Columns.size()) {
 																const auto& rowSet = exCreator->Data.at(i);
 																const std::vector<Sqex::Excel::ExdColumn>* referenceRow = nullptr;
-																for (const auto& l : languagePriorities) {
+																for (const auto& l : exCreator->FillMissingLanguageFrom) {
 																	if (auto it = rowSet.find(l);
 																		it != rowSet.end()) {
 																		referenceRow = &it->second;
@@ -773,7 +813,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 
 										// Step. Find which language to use while filling current row if missing in other languages
 										const std::vector<Sqex::Excel::ExdColumn>* referenceRow = nullptr;
-										for (const auto& l : languagePriorities) {
+										for (const auto& l : exCreator->FillMissingLanguageFrom) {
 											if (auto it = rowSet.find(l);
 												it != rowSet.end()) {
 												referenceRow = &it->second;
@@ -1105,8 +1145,20 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					return false;
 				}
 
+				try {
+					std::filesystem::remove(cachedDir / "TTMPL.mpl");
+				} catch (...) {
+					// whatever
+				}
+				try {
+					std::filesystem::remove(cachedDir / "TTMPD.mpd");
+				} catch (...) {
+					// whatever
+				}
 				std::filesystem::rename(cachedDir / "TTMPL.mpl.tmp", cachedDir / "TTMPL.mpl");
 				std::filesystem::rename(cachedDir / "TTMPD.mpd.tmp", cachedDir / "TTMPD.mpd");
+				Utils::Win32::File::Create(cachedDir / "sources", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0)
+					.Write(0, currentCacheKeys.data(), currentCacheKeys.size());
 			}
 
 			try {
@@ -1286,8 +1338,49 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				const auto [region, _] = XivAlex::ResolveGameReleaseRegion();
 
 				const auto cachedDir = m_config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / region / creator.DatExpac / creator.DatName;
-				if (!(exists(cachedDir / "TTMPD.mpd") && exists(cachedDir / "TTMPL.mpl"))) {
+				
+				std::string currentCacheKeys;
+				{
+					const auto gameRoot = indexPath.parent_path().parent_path().parent_path();
+					const auto versionFile = Utils::Win32::File::Create(gameRoot / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+					const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetLength()));
+					currentCacheKeys += std::format("SQPACK:{}:{}\n", canonical(gameRoot).wstring(), std::string(versionContent.begin(), versionContent.end()));
+				}
+				
+				if (const auto& configFile = m_config->Runtime.OverrideFontConfig.Value(); !configFile.empty()) {
+					uint8_t hash[20]{};
+					try {
+						const auto file = Utils::Win32::File::Create(Utils::FromUtf8(configFile), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+						CryptoPP::SHA1 sha1;
+						const auto content = file.Read<uint8_t>(0, static_cast<size_t>(file.GetLength()));
+						sha1.Update(content.data(), content.size());
+						sha1.Final(reinterpret_cast<byte*>(hash));
+					} catch (...) {
+					}
+
+					CryptoPP::HexEncoder encoder;
+					encoder.Put(hash, sizeof hash);
+					encoder.MessageEnd();
+
+					std::string buf(encoder.MaxRetrievable(), 0);
+					encoder.Get(reinterpret_cast<byte*>(&buf[0]), buf.size());
+
+					currentCacheKeys += std::format("CONF:{}:{}\n", configFile, buf);
+				}
+
+				auto needRecreate = true;
+				try {
+					const auto file = Utils::Win32::File::Create(cachedDir / "sources", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+					const auto content = file.Read<char>(0, static_cast<size_t>(file.GetLength()));
+					needRecreate = !std::equal(content.begin(), content.end(), currentCacheKeys.begin(), currentCacheKeys.end());
+				} catch (...) {
+					// pass
+				}
+
+				if (needRecreate) {
 					create_directories(cachedDir);
+
+					MessageBoxW(nullptr, L"", L"", MB_OK);
 
 					const auto actCtx = Dll::ActivationContext().With();
 					Window::ProgressPopupWindow progressWindow(Dll::FindGameMainWindow(false));
@@ -1386,9 +1479,21 @@ struct App::Feature::GameResourceOverrider::Implementation {
 						}
 						return false;
 					}
-
+						
+					try {
+						std::filesystem::remove(cachedDir / "TTMPL.mpl");
+					} catch (...) {
+						// whatever
+					}
+					try {
+						std::filesystem::remove(cachedDir / "TTMPD.mpd");
+					} catch (...) {
+						// whatever
+					}
 					std::filesystem::rename(cachedDir / "TTMPL.mpl.tmp", cachedDir / "TTMPL.mpl");
 					std::filesystem::rename(cachedDir / "TTMPD.mpd.tmp", cachedDir / "TTMPD.mpd");
+					Utils::Win32::File::Create(cachedDir / "sources", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0)
+						.Write(0, currentCacheKeys.data(), currentCacheKeys.size());
 				}
 
 				try {

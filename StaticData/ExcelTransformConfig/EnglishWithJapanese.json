@@ -133,7 +133,6 @@
       "^DpsChallenge$": [5],
       "^DynamicEvent$": [11],
       "^DynamicEventSingleBattle$": [2],
-      "^Error$": [0],
       "^EventItemHelp$": [0],
       "^Fate$": [1],
       "^FateEvent$": [56, 57, 58, 59, 60, 62],
@@ -191,7 +190,7 @@
       "^shop/": [1],
       "^story/": [1],
       "^system/": [1],
-      "^transport/": [1],
+      "^transport/Aetheryte.": [1],
       "^warp/": [1]
     },
     "all": {
@@ -209,12 +208,11 @@
     },
     {
       "targetGroups": ["mixed"],
-      "stringPattern": "[\\r\\n]|[\\.!,。．！？]$",
-      "replaceTo": "{1}\n{2}"
-    },
-    {
-      "targetGroups": ["mixed"],
-      "replaceTo": "{1} {2}"
+      "replaceTo": "{1}\r\n{2}",
+      "preprocessReplacements": {
+        "Korean": ["stripKoreanDialogueNewlines", "stripKoreanDialogueNewlines2", "trimLeft", "trimRight"]
+      },
+      "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
     {
       "targetGroups": ["all"],

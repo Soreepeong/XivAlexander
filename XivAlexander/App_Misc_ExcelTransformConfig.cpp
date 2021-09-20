@@ -113,7 +113,25 @@ void App::Misc::ExcelTransformConfig::from_json(const nlohmann::json& j, Config&
 			from_json(pair.value(), o.pluralMap.back().second);
 		}
 	}
-	o.targetGroups = j.at("targetGroups").get<decltype(o.targetGroups)>();
-	o.replacementTemplates = j.value("replacementTemplates", decltype(o.replacementTemplates)());
+	if (const auto it = j.find("targetGroups"); it != j.end()) {
+		o.targetGroups.clear();
+		for (const auto& pair : it->items()) {
+			if (pair.key().starts_with("#"))
+				continue;
+
+			o.targetGroups.emplace(pair.key(), TargetGroup{});
+			from_json(pair.value(), o.pluralMap.back().second);
+		}
+	}
+	if (const auto it = j.find("replacementTemplates"); it != j.end()) {
+		o.replacementTemplates.clear();
+		for (const auto& pair : it->items()) {
+			if (pair.key().starts_with("#"))
+				continue;
+
+			o.replacementTemplates.emplace(pair.key(), ReplacementTemplate{});
+			from_json(pair.value(), o.pluralMap.back().second);
+		}
+	}
 	o.rules = j.at("rules").get<decltype(o.rules)>();
 }

@@ -62,14 +62,16 @@
 #pragma warning(disable: 26495)  // Variable is uninitialized. Always initialize a member variable (type.6).
 #pragma warning(disable: 26819)  // Unannotated fallthrough between switch labels (es.78).
 #include <MinHook.h>
-#include <nlohmann/json.hpp>
-#include <scintilla/Scintilla.h>
-#include <Zydis/Zydis.h>
 #include <argparse/argparse.hpp>
+#include <cryptopp/hex.h>
+#include <cryptopp/sha.h>
 #include <curlpp/cURLpp.hpp>
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
 #include <libzippp/libzippp.h>
+#include <nlohmann/json.hpp>
+#include <scintilla/Scintilla.h>
+#include <Zydis/Zydis.h>
 #pragma warning(pop)
 
 // COM smart pointer definitions

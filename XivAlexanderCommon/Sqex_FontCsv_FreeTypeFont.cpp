@@ -42,8 +42,6 @@ public:
 	const std::vector<char32_t> CharacterList;
 	const std::map<std::pair<char32_t, char32_t>, SSIZE_T> KerningMap;
 
-	CallOnDestruction::Multiple Cleanup;
-
 	Implementation(FreeTypeFont* this_, const std::filesystem::path& path, int faceIndex, float size)
 		: this_(this_)
 		, File(Win32::File::Create(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0))
@@ -87,7 +85,7 @@ public:
 
 			try {
 				Succ(FT_Set_Char_Size(face, 0, static_cast<FT_F26Dot6>(64 * m_pImpl->Size), 72, 72));
-				return FtFaceCtxMgr(m_pImpl->this_, face);
+				return FtFaceCtxMgr(m_pImpl->this_, m_pImpl, face);
 			} catch (...) {
 				Succ(FT_Done_Face(face));
 				throw;
@@ -163,27 +161,28 @@ Sqex::FontCsv::GlyphMeasurement Sqex::FontCsv::FreeTypeFont::Measure(SSIZE_T x, 
 	return GetFace(c).ToMeasurement(x, y);
 }
 
-Sqex::FontCsv::FreeTypeFont::FtFaceCtxMgr::FtFaceCtxMgr(const FreeTypeFont* impl, FT_Face face)
-	: m_owner(impl)
+Sqex::FontCsv::FreeTypeFont::FtFaceCtxMgr::FtFaceCtxMgr(const FreeTypeFont* owner, Implementation* impl, FT_Face face)
+	: m_owner(owner)
+	, m_impl(impl)
 	, m_face(face) {
 }
 
 Sqex::FontCsv::FreeTypeFont::FtFaceCtxMgr::~FtFaceCtxMgr() {
 	if (!m_face)
 		return;
-	for (const auto lock = std::lock_guard(m_owner->m_pImpl->FaceSlotMtx);
-		auto& slot : m_owner->m_pImpl->FaceSlots) {
+	for (const auto lock = std::lock_guard(m_impl->FaceSlotMtx);
+		auto& slot : m_impl->FaceSlots) {
 		if (!slot) {
 			slot = m_face;
 			return;
 		}
 	}
 
-	m_owner->m_pImpl->GetLibrary().FreeFace(m_face);
+	m_impl->GetLibrary().FreeFace(m_face);
 }
 
 FT_Library Sqex::FontCsv::FreeTypeFont::FtFaceCtxMgr::GetLibraryUnprotected() const {
-	return m_owner->m_pImpl->GetLibraryUnprotected();
+	return m_impl->GetLibraryUnprotected();
 }
 
 Sqex::FontCsv::FreeTypeFont::FtFaceCtxMgr Sqex::FontCsv::FreeTypeFont::GetFace(char32_t c, FT_Int32 additionalFlags) const {
@@ -194,7 +193,7 @@ Sqex::FontCsv::FreeTypeFont::FtFaceCtxMgr Sqex::FontCsv::FreeTypeFont::GetFace(c
 			if (c != std::numeric_limits<decltype(c)>::max())
 				Succ(FT_Load_Char(face, c, m_loadFlags | additionalFlags));
 			slot = nullptr;
-			return FtFaceCtxMgr(this, face);
+			return FtFaceCtxMgr(this, m_pImpl.get(), face);
 		}
 	}
 

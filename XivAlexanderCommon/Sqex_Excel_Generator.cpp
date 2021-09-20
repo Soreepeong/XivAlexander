@@ -159,10 +159,16 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>> Sqex::Excel::Depth2ExhE
 
 				auto sourceLanguage = language;
 				auto& rowSet = Data[id];
-				if (rowSet.find(language) == rowSet.end()) {
-					if (rowSet.find(FillMissingLanguageFrom) == rowSet.end())
+				if (rowSet.find(sourceLanguage) == rowSet.end()) {
+					sourceLanguage = Language::Unspecified;
+					for (auto lang : FillMissingLanguageFrom) {
+						if (rowSet.find(lang) == rowSet.end()) {
+							sourceLanguage = lang;
+							break;
+						}
+					}
+					if (sourceLanguage == Language::Unspecified)
 						continue;
-					sourceLanguage = FillMissingLanguageFrom;
 				}
 
 				auto& columns = rowSet[sourceLanguage];
