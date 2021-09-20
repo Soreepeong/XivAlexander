@@ -13,7 +13,6 @@
 #include "App_Misc_Hooks.h"
 #include "DllMain.h"
 #include "resource.h"
-#include "XivAlexanderCommon/Sqex_CommandLine.h"
 #if INTPTR_MAX == INT64_MAX
 #include "App_InjectOnCreateProcessApp_x64.h"
 #elif INTPTR_MAX == INT32_MAX
@@ -199,33 +198,6 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
 
 	// the game might restart itself for whatever reason.
 	s_injectOnCreateProcessApp->SetFlags(XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly);
-
-	try {
-		bool wasObfuscated;
-		const auto pairs = Sqex::CommandLine::FromString(Utils::ToUtf8(Utils::Win32::GetCommandLineWithoutProgramName()), &wasObfuscated);
-		if (wasObfuscated) {
-			for (const auto& pair : pairs) {
-				if (pair.first == "T") {
-					const auto time = std::strtol(&pair.second[0], nullptr, 10);
-					const auto now = static_cast<decltype(time)>(GetTickCount64());
-					if (now - time > 20000) {
-						// if UAC dialog took a long time, then execute again
-						if (Utils::Win32::RunProgram({
-							.path = process.PathOf(),
-							.args = Utils::FromUtf8(Sqex::CommandLine::ToString(pairs, true)),
-						})) {
-#ifdef _DEBUG
-							Utils::Win32::MessageBoxF(nullptr, MB_OK, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1, L"DEBUG: Restarting due to tick count difference of {} between encryption timestamp and now.", now - time);
-#endif
-							TerminateProcess(GetCurrentProcess(), 0);
-						}
-					}
-				}
-			}
-		}
-	} catch (...) {
-		// do nothing
-	}
 
 	// Load game resource overrider before the game starts to load files.
 	static App::Feature::GameResourceOverrider gameResourceOverriderPreload;

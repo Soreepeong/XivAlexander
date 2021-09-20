@@ -12,16 +12,18 @@ std::vector<std::pair<std::string, std::string>> Sqex::CommandLine::FromString(s
 	std::vector<std::pair<std::string, std::string>> res;
 
 	if (source.starts_with(ObfuscationHead) && source.size() >= 17) {
-		auto endPos = source.find_first_of(ObfuscationTail);
+		auto endPos = source.find(ObfuscationTail);
 		if (endPos == std::string::npos)
 			throw std::invalid_argument("bad encoded string");
+		OutputDebugStringW(std::format(L"len={} endPos={}", source.size(), endPos).c_str());
 		source = source.substr(sizeof ObfuscationHead - 1, endPos - (sizeof ObfuscationHead - 1));
 
 		const auto chksum = std::find(ChecksumTable, ChecksumTable + sizeof ChecksumTable, source.back()) - ChecksumTable;
+		source.pop_back();
 
 		{
 			CryptoPP::Base64URLDecoder b64decoder;
-			b64decoder.Put(reinterpret_cast<const uint8_t*>(&source), source.size());
+			b64decoder.Put(reinterpret_cast<const uint8_t*>(&source[0]), source.size());
 			b64decoder.MessageEnd();
 			source.resize(static_cast<size_t>(b64decoder.MaxRetrievable()));
 			b64decoder.Get(reinterpret_cast<uint8_t*>(&source[0]), source.size());

@@ -7,6 +7,7 @@ namespace Utils {
 	std::wstring FromUtf8(const std::string&);
 	std::string ToUtf8(const std::wstring&);
 	std::wstring FromOem(const std::string&);
+	std::string ToOem(const std::wstring&);
 
 	std::string ToString(const struct in_addr& ia);
 	std::string ToString(const struct sockaddr_in& sa);

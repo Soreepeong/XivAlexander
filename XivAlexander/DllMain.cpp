@@ -2,9 +2,11 @@
 #include "DllMain.h"
 
 #include <XivAlexander/XivAlexander.h>
+#include <XivAlexanderCommon/Sqex_CommandLine.h>
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
 #include <XivAlexanderCommon/XivAlex.h>
 
+#include "App_Misc_Hooks.h"
 #include "resource.h"
 
 static Utils::Win32::LoadedModule s_hModule;
@@ -79,11 +81,53 @@ DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 	}
 }
 
+static void CheckObfuscatedArguments() {
+	const auto process = Utils::Win32::Process::Current();
+	auto filename = process.PathOf().filename().wstring();
+	CharLowerW(&filename[0]);
+
+	if (filename != XivAlex::GameExecutableNameW)
+		return; // not the game process
+	
+	try {
+		std::vector<std::string> args;
+		if (int nArgs; LPWSTR * szArgList = CommandLineToArgvW(GetCommandLineW(), &nArgs)) {
+			for (int i = 0; i < nArgs; i++)
+				args.emplace_back(Utils::ToUtf8(szArgList[i]));
+			LocalFree(szArgList);
+		}
+		if (args.size() == 2) {
+			auto wasObfuscated = false;
+
+			// Once this function is called, it means that this dll will stick to the process until it exits,
+			// so it's safe to store stuff into static variables.
+
+			static const auto pairs = Sqex::CommandLine::FromString(args[1], &wasObfuscated);
+			if (wasObfuscated) {
+				static auto newlyCreatedArgumentsW = std::format(L"\"{}\" {}", process.PathOf().wstring(), Utils::Win32::ReverseCommandLineToArgv(Sqex::CommandLine::ToString(pairs, true)));
+				static auto newlyCreatedArgumentsA = Utils::ToOem(newlyCreatedArgumentsW);
+
+				static App::Misc::Hooks::ImportedFunction<LPWSTR> GetCommandLineW("kernel32!GetCommandLineW", "kernel32.dll", "GetCommandLineW");
+				static const auto h1 = GetCommandLineW.SetHook([]() -> LPWSTR {
+					return &newlyCreatedArgumentsW[0];
+				});
+
+				static App::Misc::Hooks::ImportedFunction<LPSTR> GetCommandLineA("kernel32!GetCommandLineA", "kernel32.dll", "GetCommandLineA");
+				static const auto h2 = GetCommandLineA.SetHook([]() -> LPSTR {
+					return &newlyCreatedArgumentsA[0];
+				});
+			}
+		}
+	} catch (...) {
+		// do nothing
+	}
+}
+
 BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 	switch (fdwReason) {
 		case DLL_PROCESS_ATTACH: {
 			s_bLoadedAsDependency = !!lpReserved;  // non-null for static loads
-
+			
 			try {
 				s_hModule.Attach(hInstance, Utils::Win32::LoadedModule::Null, false, "Instance attach failed <cannot happen>");
 				s_hActivationContext = Utils::Win32::ActivationContext(ACTCTXW{
@@ -93,6 +137,8 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 					.hModule = Dll::Module(),
 				});
 				MH_Initialize();
+				if (s_bLoadedAsDependency)
+					CheckObfuscatedArguments();
 			} catch (const std::exception& e) {
 				Utils::Win32::DebugPrint(L"DllMain({:x}, DLL_PROCESS_ATTACH, {}) Error: {}",
 					reinterpret_cast<size_t>(hInstance), reinterpret_cast<size_t>(lpReserved), e.what());

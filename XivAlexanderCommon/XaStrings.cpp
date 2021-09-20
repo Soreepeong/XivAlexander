@@ -24,6 +24,13 @@ std::wstring Utils::FromOem(const std::string& in) {
 	return u16;
 }
 
+std::string Utils::ToOem(const std::wstring& u16) {
+	const size_t length = WideCharToMultiByte(CP_OEMCP, 0, u16.c_str(), static_cast<int>(u16.size()), nullptr, 0, nullptr, nullptr);
+	std::string u8(length, 0);
+	WideCharToMultiByte(CP_OEMCP, 0, u16.c_str(), static_cast<int>(u16.size()), const_cast<LPSTR>(u8.c_str()), static_cast<int>(u8.size()), nullptr, nullptr);
+	return u8;
+}
+
 std::string Utils::ToString(const in_addr& ia) {
 	char s[INET_ADDRSTRLEN + 6] = { 0 };
 	inet_ntop(AF_INET, &ia, s, sizeof s);
