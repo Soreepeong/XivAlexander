@@ -565,7 +565,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				encoder.Put(hash, sizeof hash);
 				encoder.MessageEnd();
 
-				std::string buf(encoder.MaxRetrievable(), 0);
+				std::string buf(static_cast<size_t>(encoder.MaxRetrievable()), 0);
 				encoder.Get(reinterpret_cast<byte*>(&buf[0]), buf.size());
 
 				currentCacheKeys += std::format("CONF:{}:{}\n", configFile.wstring(), buf);
@@ -1363,7 +1363,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					encoder.Put(hash, sizeof hash);
 					encoder.MessageEnd();
 
-					std::string buf(encoder.MaxRetrievable(), 0);
+					std::string buf(static_cast<size_t>(encoder.MaxRetrievable()), 0);
 					encoder.Get(reinterpret_cast<byte*>(&buf[0]), buf.size());
 
 					currentCacheKeys += std::format("CONF:{}:{}\n", configFile, buf);

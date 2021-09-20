@@ -217,7 +217,7 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 								}
 							}
 							if (!anyAdded)
-								ignored.emplace_back(path, Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_NO_MATCHING_FILES));
+								ignored.emplace_back(path, Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_NO_MATCHING_FILES)));
 						} else {
 							try {
 								auto res = InstallAnyFile(path, progress.GetCancelEvent());
