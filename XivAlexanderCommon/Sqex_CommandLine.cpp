@@ -15,7 +15,6 @@ std::vector<std::pair<std::string, std::string>> Sqex::CommandLine::FromString(s
 		auto endPos = source.find(ObfuscationTail);
 		if (endPos == std::string::npos)
 			throw std::invalid_argument("bad encoded string");
-		OutputDebugStringW(std::format(L"len={} endPos={}", source.size(), endPos).c_str());
 		source = source.substr(sizeof ObfuscationHead - 1, endPos - (sizeof ObfuscationHead - 1));
 
 		const auto chksum = std::find(ChecksumTable, ChecksumTable + sizeof ChecksumTable, source.back()) - ChecksumTable;

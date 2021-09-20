@@ -173,7 +173,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				_In_opt_ HANDLE hTemplateFile
 			) {
 					AtomicIntEnter implUseLock(m_stk);
-
+					
 					if (const auto lock = ReEnterPreventer::Lock(m_repCreateFileW); lock &&
 						!(dwDesiredAccess & GENERIC_WRITE) &&
 						dwCreationDisposition == OPEN_EXISTING &&
@@ -201,8 +201,9 @@ struct App::Feature::GameResourceOverrider::Implementation {
 								}
 
 								if (pathType != PathTypeInvalid) {
-									if (const auto res = SetUpVirtualFile(fileToOpen, indexFile, pathType))
+									if (const auto res = SetUpVirtualFile(fileToOpen, indexFile, pathType)) {
 										return res;
+									}
 								}
 							}
 						} catch (const Utils::Win32::Error& e) {
@@ -495,13 +496,11 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			additionalEntriesFound |= SetUpVirtualFileFromTexToolsModPacks(creator, indexFile);
 			additionalEntriesFound |= SetUpVirtualFileFromFileEntries(creator, indexFile);
 			additionalEntriesFound |= SetUpVirtualFileFromFontConfig(creator, indexFile);
-
-			// Nothing to override, 
+			
+			// Nothing to override, but still take it to figure out whether we can replace language-specific file names.
 			if (!additionalEntriesFound) {
-				m_ignoredIndexFiles.insert(indexFile);
 				m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-					"=> Found no resources to override, releasing control.");
-				return nullptr;
+					"=> Found no resources to override.");
 			}
 
 			auto res = creator.AsViews(false);

@@ -321,7 +321,7 @@ public:
 			m_header.Type = SqpackType::SqIndex;
 			m_header.Unknown2 = SqpackHeader::Unknown2_Value;
 			if (strict)
-				m_header.Sha1.SetFromSpan(&m_header, 1);
+				m_header.Sha1.SetFromSpan(reinterpret_cast<char*>(&m_header), offsetof(SqpackHeader, Sha1));
 
 			auto& m_subheader = *reinterpret_cast<SqIndex::Header*>(&m_data[sizeof SqpackHeader]);
 			m_subheader.HeaderSize = sizeof SqIndex::Header;
@@ -353,8 +353,19 @@ public:
 				m_subheader.FolderSegment.Size = static_cast<uint32_t>(std::span(folderSegment).size_bytes());
 			}
 
-			if (strict)
-				m_subheader.Sha1.SetFromSpan(&m_subheader, 1);
+			if (strict) {
+				m_subheader.Sha1.SetFromSpan(reinterpret_cast<char*>(&m_subheader), offsetof(Sqpack::SqIndex::Header, Sha1));
+				if (!fileSegment.empty())
+					m_subheader.FileSegment.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&fileSegment.front()), m_subheader.FileSegment.Size);
+				if (!segment2.empty())
+					m_subheader.DataFilesSegment.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&segment2.front()), m_subheader.DataFilesSegment.Size);
+				if (!segment3.empty())
+					m_subheader.UnknownSegment3.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&segment3.front()), m_subheader.UnknownSegment3.Size);
+				if constexpr (UseFolders) {
+					if (!folderSegment.empty())
+						m_subheader.FolderSegment.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&folderSegment.front()), m_subheader.FolderSegment.Size);
+				}
+			}
 		}
 		if (!fileSegment.empty())
 			m_data.insert(m_data.end(), reinterpret_cast<const uint8_t*>(&fileSegment.front()), reinterpret_cast<const uint8_t*>(&fileSegment.back() + 1));
@@ -493,7 +504,7 @@ public:
 	}
 
 	uint64_t StreamSize() const override {
-		return m_header.size() + SubHeader().HeaderSize + SubHeader().DataSize;
+		return m_header.size() + SubHeader().DataSize;
 	}
 
 	std::string DescribeState() const override {
@@ -532,8 +543,21 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 
 		if (dataSubheaders.empty() ||
 			sizeof SqpackHeader + sizeof SqData::Header + dataSubheaders.back().DataSize + entry->BlockSize + entry->PadSize > dataSubheaders.back().MaxFileSize) {
-			if (strict && !dataSubheaders.empty())
-				dataSubheaders.back().Sha1.SetFromSpan(&dataSubheaders.back(), 1);
+			if (strict && !dataSubheaders.empty()) {
+				CryptoPP::SHA1 sha1;
+				for (auto& entry : dataEntries.back()) {
+					const auto& provider = *entry->Provider;
+					const auto length = provider.StreamSize();
+					uint8_t buf[4096];
+					for (uint64_t i = 0; i < length; i += 4096) {
+						const auto readlen = static_cast<size_t>(std::min<uint64_t>(sizeof buf, length - i));
+						provider.ReadStream(i, buf, readlen);
+						sha1.Update(buf, readlen);
+					}
+				}
+				sha1.Final(reinterpret_cast<byte*>(dataSubheaders.back().DataSha1.Value));
+				dataSubheaders.back().Sha1.SetFromSpan(reinterpret_cast<char*>(&dataSubheaders.back()), offsetof(Sqpack::SqData::Header, Sha1));
+			}
 			dataSubheaders.emplace_back(SqData::Header{
 				.HeaderSize = sizeof SqData::Header,
 				.Unknown1 = SqData::Header::Unknown1_Value,
@@ -563,10 +587,6 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 	m_pImpl->m_entries.clear();
 	m_pImpl->m_pathNameTupleEntryPointerMap.clear();
 	m_pImpl->m_fullPathEntryPointerMap.clear();
-	m_pImpl->m_sqpackIndexSegment2.clear();
-	m_pImpl->m_sqpackIndexSegment3.clear();
-	m_pImpl->m_sqpackIndex2Segment2.clear();
-	m_pImpl->m_sqpackIndex2Segment3.clear();
 
 	memcpy(dataHeader.Signature, SqpackHeader::Signature_Value, sizeof SqpackHeader::Signature_Value);
 	dataHeader.HeaderSize = sizeof SqpackHeader;
@@ -574,11 +594,11 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 	dataHeader.Type = SqpackType::SqData;
 	dataHeader.Unknown2 = SqpackHeader::Unknown2_Value;
 	if (strict)
-		dataHeader.Sha1.SetFromSpan(&dataHeader, 1);
+		dataHeader.Sha1.SetFromSpan(reinterpret_cast<char*>(&dataHeader), offsetof(SqpackHeader, Sha1));
 
 	auto res = SqpackViews{
 		.Index = std::make_shared<IndexView<SqIndex::Header::IndexType::Index>>(dataSubheaders.size(), std::move(fileEntries1), m_pImpl->m_sqpackIndexSegment2, m_pImpl->m_sqpackIndexSegment3, std::vector<SqIndex::FolderSegmentEntry>(), strict),
-		.Index2 = std::make_shared<IndexView<SqIndex::Header::IndexType::Index2>>(dataSubheaders.size(), std::move(fileEntries2), m_pImpl->m_sqpackIndexSegment2, m_pImpl->m_sqpackIndexSegment3, std::vector<SqIndex::FolderSegmentEntry>(), strict),
+		.Index2 = std::make_shared<IndexView<SqIndex::Header::IndexType::Index2>>(dataSubheaders.size(), std::move(fileEntries2), m_pImpl->m_sqpackIndex2Segment2, m_pImpl->m_sqpackIndex2Segment3, std::vector<SqIndex::FolderSegmentEntry>(), strict),
 		.EntryOffsets = std::move(entryOffsets),
 	};
 
