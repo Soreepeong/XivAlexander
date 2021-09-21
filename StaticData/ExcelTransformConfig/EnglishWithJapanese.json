@@ -193,29 +193,67 @@
       "^transport/Aetheryte.": [1],
       "^warp/": [1]
     },
-    "all": {
-      ".*": []
+    "allExceptLobby": {
+      "^(?!lobby).*": []
+    },
+    "lobby": {
+      "^lobby$": []
+    }
+  },
+  "replacementTemplates": {
+    "stripDialogueNewlines" : {
+      "from": "[\\r\\n]( *[^\\r\\n])",
+      "to": "$1"
+    },
+    "stripDialogueNewlines2" : {
+      "from": "([\\r\\n]) *",
+      "to": "$1"
+    },
+    "trimLeft": {
+      "from": "^\\s+",
+      "to": ""
+    },
+    "trimRight": {
+      "from": "\\s+$",
+      "to": ""
+    },
+    "stripDoubleSpaces": {
+      "from": " +",
+      "to": " "
     }
   },
   "rules": [
     {
       "targetGroups": ["object"],
-      "replaceTo": "{1} ({2})"
+      "replaceTo": "{1} ({2})",
+      "preprocessReplacements": {
+        "Japanese": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"]
+      },
+      "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
     {
       "targetGroups": ["sentence"],
-      "replaceTo": "{1}\n{2}"
+      "replaceTo": "{1}\r\n{2}",
+      "preprocessReplacements": {
+        "Japanese": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"]
+      },
+      "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
     {
       "targetGroups": ["mixed"],
       "replaceTo": "{1}\r\n{2}",
       "preprocessReplacements": {
-        "Korean": ["stripKoreanDialogueNewlines", "stripKoreanDialogueNewlines2", "trimLeft", "trimRight"]
+        "Japanese": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"]
       },
       "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
     {
-      "targetGroups": ["all"],
+      "targetGroups": ["allExceptLobby"],
+      "replaceTo": "{1}",
+      "postprocessReplacements": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight", "stripDoubleSpaces"]
+    },
+    {
+      "targetGroups": ["lobby"],
       "replaceTo": "{1}"
     }
   ]

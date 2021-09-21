@@ -207,11 +207,11 @@
     }
   ],
   "replacementTemplates": {
-    "stripKoreanDialogueNewlines" : {
+    "stripDialogueNewlines" : {
       "from": "[\\r\\n]( *[^\\r\\n])",
       "to": " $1"
     },
-    "stripKoreanDialogueNewlines2" : {
+    "stripDialogueNewlines2" : {
       "from": "([\\r\\n]) +",
       "to": "$1"
     },
@@ -233,7 +233,7 @@
       "targetGroups": ["object"],
       "replaceTo": "{1} ({2})",
       "preprocessReplacements": {
-        "Korean": ["stripKoreanDialogueNewlines", "stripKoreanDialogueNewlines2", "trimLeft", "trimRight"]
+        "Korean": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"]
       },
       "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
@@ -241,7 +241,7 @@
       "targetGroups": ["sentence"],
       "replaceTo": "{1}\r\n{2}",
       "preprocessReplacements": {
-        "Korean": ["stripKoreanDialogueNewlines", "stripKoreanDialogueNewlines2", "trimLeft", "trimRight"]
+        "Korean": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"]
       },
       "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
@@ -249,14 +249,14 @@
       "targetGroups": ["mixed"],
       "replaceTo": "{1}\r\n{2}",
       "preprocessReplacements": {
-        "Korean": ["stripKoreanDialogueNewlines", "stripKoreanDialogueNewlines2", "trimLeft", "trimRight"]
+        "Korean": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"]
       },
       "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
     {
       "targetGroups": ["allExceptLobby"],
       "replaceTo": "{1}",
-      "postprocessReplacements": ["stripKoreanDialogueNewlines", "stripKoreanDialogueNewlines2", "trimLeft", "trimRight", "stripDoubleSpaces"]
+      "postprocessReplacements": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight", "stripDoubleSpaces"]
     },
     {
       "targetGroups": ["lobby"],

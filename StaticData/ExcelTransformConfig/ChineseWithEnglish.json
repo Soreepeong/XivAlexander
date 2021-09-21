@@ -1,5 +1,5 @@
 {
-  "name": "Change Chinese text of the game to Chinese with some English",
+  "name": "Change ChineseSimplified text of the game to ChineseSimplified with some English",
   "description": "",
   "targetLanguage": "ChineseSimplified",
   "sourceLanguages": [
@@ -193,30 +193,73 @@
       "^transport/Aetheryte.": [1],
       "^warp/": [1]
     },
-    "all": {
-      ".*": []
+    "allExceptLobby": {
+      "^(?!lobby).*": []
+    },
+    "lobby": {
+      "^lobby$": []
+    }
+  },
+  "sourceReplacements": [
+    {
+      "from": "([가-힣])(?:\\s)+([가-힣])",
+      "to": "$1/$2"
+    }
+  ],
+  "replacementTemplates": {
+    "stripDialogueNewlines" : {
+      "from": "[\\r\\n]( *[^\\r\\n])",
+      "to": "$1"
+    },
+    "stripDialogueNewlines2" : {
+      "from": "([\\r\\n]) *",
+      "to": "$1"
+    },
+    "trimLeft": {
+      "from": "^\\s+",
+      "to": ""
+    },
+    "trimRight": {
+      "from": "\\s+$",
+      "to": ""
+    },
+    "stripDoubleSpaces": {
+      "from": " +",
+      "to": " "
     }
   },
   "rules": [
     {
       "targetGroups": ["object"],
-      "replaceTo": "{1} ({2})"
+      "replaceTo": "{1} ({2})",
+      "preprocessReplacements": {
+        "ChineseSimplified": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"]
+      },
+      "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
     {
       "targetGroups": ["sentence"],
-      "replaceTo": "{1}\n{2}"
+      "replaceTo": "{1}\r\n{2}",
+      "preprocessReplacements": {
+        "ChineseSimplified": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"]
+      },
+      "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
     {
       "targetGroups": ["mixed"],
-      "stringPattern": "[\\r\\n]|[\\.!,。．！？]$",
-      "replaceTo": "{1}\n{2}"
+      "replaceTo": "{1}\r\n{2}",
+      "preprocessReplacements": {
+        "ChineseSimplified": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"]
+      },
+      "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
     {
-      "targetGroups": ["mixed"],
-      "replaceTo": "{1} {2}"
+      "targetGroups": ["allExceptLobby"],
+      "replaceTo": "{1}",
+      "postprocessReplacements": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight", "stripDoubleSpaces"]
     },
     {
-      "targetGroups": ["all"],
+      "targetGroups": ["lobby"],
       "replaceTo": "{1}"
     }
   ]

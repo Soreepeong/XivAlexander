@@ -435,7 +435,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 		auto count = 0;
 		for (const auto& additionalRoot : config.AdditionalSqpackRootDirectories.Value()) {
 			AppendMenuW(hParentMenu, MF_STRING, allocateMenuId([this, additionalRoot]() {
-				if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO, L"", m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_ADDITIONAL_ROOT, additionalRoot.wstring())) == IDNO)
+				if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.GetStringRes(IDS_APP_NAME), m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_ADDITIONAL_ROOT, additionalRoot.wstring())) == IDNO)
 					return;
 
 				std::vector<std::filesystem::path> newValue;
@@ -456,7 +456,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 		auto count = 0;
 		for (const auto& file : config.ExcelTransformConfigFiles.Value()) {
 			AppendMenuW(hParentMenu, MF_STRING, allocateMenuId([this, file]() {
-				if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO, L"", m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_EXCEL_TRANSFORM_CONFIG_FILE, file.wstring())) == IDNO)
+				if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.GetStringRes(IDS_APP_NAME), m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_EXCEL_TRANSFORM_CONFIG_FILE, file.wstring())) == IDNO)
 					return;
 
 				std::vector<std::filesystem::path> newValue;
@@ -1605,7 +1605,7 @@ void App::Window::MainWindow::ImportFontConfig(const std::filesystem::path& path
 				alreadyExists = true;
 				break;
 			}
-			targetFileName = targetDirectory / std::format(L"{}_{}.json", std::filesystem::path(path).replace_extension("").wstring(), i);
+			targetFileName = targetDirectory / std::format(L"{}_{}.json", path.filename().replace_extension("").wstring(), i);
 		}
 	}
 
@@ -1633,7 +1633,7 @@ void App::Window::MainWindow::ImportExcelTransformConfig(const std::filesystem::
 				alreadyExists = true;
 				break;
 			}
-			targetFileName = targetDirectory / std::format(L"{}_{}.json", std::filesystem::path(path).replace_extension("").wstring(), i);
+			targetFileName = targetDirectory / std::format(L"{}_{}.json", path.filename().replace_extension("").wstring(), i);
 		}
 	}
 

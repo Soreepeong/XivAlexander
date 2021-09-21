@@ -1381,8 +1381,6 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				if (needRecreate) {
 					create_directories(cachedDir);
 
-					MessageBoxW(nullptr, L"", L"", MB_OK);
-
 					const auto actCtx = Dll::ActivationContext().With();
 					Window::ProgressPopupWindow progressWindow(Dll::FindGameMainWindow(false));
 					progressWindow.UpdateMessage(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_TITLE_GENERATING_FONTS)));

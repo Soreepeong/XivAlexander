@@ -200,13 +200,19 @@
       "^lobby$": []
     }
   },
+  "sourceReplacements": [
+    {
+      "from": "([가-힣])(?:\\s)+([가-힣])",
+      "to": "$1/$2"
+    }
+  ],
   "replacementTemplates": {
-    "stripJapaneseDialogueNewlines" : {
+    "stripDialogueNewlines" : {
       "from": "[\\r\\n]( *[^\\r\\n])",
-      "to": " $1"
+      "to": "$1"
     },
-    "stripJapaneseDialogueNewlines2" : {
-      "from": "([\\r\\n]) +",
+    "stripDialogueNewlines2" : {
+      "from": "([\\r\\n]) *",
       "to": "$1"
     },
     "trimLeft": {
@@ -227,7 +233,7 @@
       "targetGroups": ["object"],
       "replaceTo": "{1} ({2})",
       "preprocessReplacements": {
-        "Japanese": ["stripJapaneseDialogueNewlines", "stripJapaneseDialogueNewlines2", "trimLeft", "trimRight"]
+        "Japanese": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"]
       },
       "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
@@ -235,7 +241,7 @@
       "targetGroups": ["sentence"],
       "replaceTo": "{1}\r\n{2}",
       "preprocessReplacements": {
-        "Japanese": ["stripJapaneseDialogueNewlines", "stripJapaneseDialogueNewlines2", "trimLeft", "trimRight"]
+        "Japanese": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"]
       },
       "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
@@ -243,14 +249,14 @@
       "targetGroups": ["mixed"],
       "replaceTo": "{1}\r\n{2}",
       "preprocessReplacements": {
-        "Japanese": ["stripJapaneseDialogueNewlines", "stripJapaneseDialogueNewlines2", "trimLeft", "trimRight"]
+        "Japanese": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"]
       },
       "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
     {
       "targetGroups": ["allExceptLobby"],
       "replaceTo": "{1}",
-      "postprocessReplacements": ["stripJapaneseDialogueNewlines", "stripJapaneseDialogueNewlines2", "trimLeft", "trimRight", "stripDoubleSpaces"]
+      "postprocessReplacements": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight", "stripDoubleSpaces"]
     },
     {
       "targetGroups": ["lobby"],
