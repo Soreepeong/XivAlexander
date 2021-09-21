@@ -258,6 +258,8 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 
 		if (!report.empty())
 			Utils::Win32::MessageBoxF(m_hWnd, MB_OK, m_config->Runtime.GetStringRes(IDS_APP_NAME), Utils::FromUtf8(report));
+		else
+			Utils::Win32::MessageBoxF(m_hWnd, MB_OK, m_config->Runtime.GetStringRes(IDS_ERROR_UNSUPPORTED_FILE_TYPE), Utils::FromUtf8(report));
 
 	} else if (uMsg == WM_COMMAND) {
 		if (!lParam) {
@@ -374,7 +376,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 
 	const auto title = std::format(L"{}: {}, {}, {}",
 		m_config->Runtime.GetStringRes(IDS_APP_NAME), GetCurrentProcessId(), m_sRegion, m_sVersion);
-	ModifyMenuW(hMenu, ID_FILE_CURRENTINFO, MF_BYCOMMAND | MF_DISABLED, ID_TRAYMENU_CURRENTINFO, title.c_str());
+	ModifyMenuW(hMenu, ID_FILE_CURRENTINFO, MF_BYCOMMAND | MF_DISABLED, ID_FILE_CURRENTINFO, title.c_str());
 
 	m_menuIdCallbacks.clear();
 	const auto allocateMenuId = [&](std::function<void()> cb) -> UINT_PTR {
@@ -664,9 +666,9 @@ void App::Window::MainWindow::SetMenuStates() const {
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_USEEARLYPENALTY, config.UseEarlyPenalty, true);
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING, config.UseHighLatencyMitigationLogging, true);
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE, config.UseHighLatencyMitigationPreviewMode, true);
-		SetMenuState(hMenu, ID_TRAYMENU_USEIPCTYPEFINDER, config.UseOpcodeFinder, true);
-		SetMenuState(hMenu, ID_TRAYMENU_USEALLIPCMESSAGELOGGER, config.UseAllIpcMessageLogger, true);
-		SetMenuState(hMenu, ID_TRAYMENU_USEEFFECTAPPLICATIONDELAYLOGGER, config.UseEffectApplicationDelayLogger, true);
+		SetMenuState(hMenu, ID_NETWORK_USEIPCTYPEFINDER, config.UseOpcodeFinder, true);
+		SetMenuState(hMenu, ID_NETWORK_USEALLIPCMESSAGELOGGER, config.UseAllIpcMessageLogger, true);
+		SetMenuState(hMenu, ID_NETWORK_LOGEFFECTAPPLICATIONDELAY, config.UseEffectApplicationDelayLogger, true);
 		SetMenuState(hMenu, ID_NETWORK_REDUCEPACKETDELAY, config.ReducePacketDelay, true);
 		SetMenuState(hMenu, ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES, config.TakeOverLoopbackAddresses, true);
 		SetMenuState(hMenu, ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES, config.TakeOverPrivateAddresses, true);
@@ -1292,7 +1294,7 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 				adderThread.Wait();
 
 				if (!resultMessage.empty())
-					Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+					Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONINFORMATION, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 						Utils::FromUtf8(resultMessage));
 			} catch (const std::exception& e) {
 				Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
@@ -1647,7 +1649,15 @@ void App::Window::MainWindow::ImportExcelTransformConfig(const std::filesystem::
 	}
 
 	auto arr = m_config->Runtime.ExcelTransformConfigFiles.Value();
-	arr.emplace_back(Utils::ToUtf8(targetFileName.wstring()));
+	auto s = Utils::ToUtf8(targetFileName.wstring());
+	while (true) {
+		const auto it = std::ranges::find(arr, s);
+		if (it != arr.end())
+			arr.erase(it);
+		else
+			break;
+	}
+	arr.emplace(arr.begin(), std::move(s));
 	m_config->Runtime.ExcelTransformConfigFiles = arr;
 }
 
@@ -1655,12 +1665,21 @@ void App::Window::MainWindow::AddAdditionalGameRootDirectory(const std::filesyst
 	if (!exists(path / "ffxiv_dx11.exe")
 		|| !exists(path / "ffxiv.exe")) {
 		Utils::Win32::MessageBoxF(m_hWnd, MB_ICONWARNING, m_config->Runtime.GetStringRes(IDS_APP_NAME), m_config->Runtime.GetStringRes(IDS_ERROR_NOT_GAME_DIRECTORY), path.wstring());
+		return;
 	}
 
 	auto arr = m_config->Runtime.AdditionalSqpackRootDirectories.Value();
 	if (std::ranges::find(arr, path) != arr.end())
 		return;
-	arr.emplace_back(path);
+	auto s = Utils::ToUtf8(path.wstring());
+	while (true) {
+		const auto it = std::ranges::find(arr, s);
+		if (it != arr.end())
+			arr.erase(it);
+		else
+			break;
+	}
+	arr.emplace(arr.begin(), std::move(s));
 	m_config->Runtime.AdditionalSqpackRootDirectories = arr;
 }
 
@@ -1809,7 +1828,10 @@ std::pair<std::filesystem::path, std::string> App::Window::MainWindow::InstallAn
 	}
 	if (fileNameLower == L"ttmpd.mpd" || fileNameLower == L"choices.json")
 		return {path, {}};
-	if (!fileNameLower.ends_with(L".json") && !fileNameLower.ends_with(L".mpl"))
+	if (!fileNameLower.ends_with(L".json")
+		&& !fileNameLower.ends_with(L".mpl")
+		&& !fileNameLower.ends_with(L".ttmp")
+		&& !fileNameLower.ends_with(L".ttmp2"))
 		return {path, {}};
 
 	const auto file = Utils::Win32::File::Create(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);

@@ -125,11 +125,11 @@ namespace Sqex::FontCsv::CreateConfig {
 	void from_json(const nlohmann::json& j, SingleTextureTarget& o);
 
 	struct FontCreateConfig {
-		uint16_t glyphGap;
-		bool compactLayout;
-		uint16_t textureWidth;
-		uint16_t textureHeight;
-		Texture::Format textureFormat;
+		uint16_t glyphGap{};
+		bool compactLayout{};
+		uint16_t textureWidth{};
+		uint16_t textureHeight{};
+		Texture::Format textureFormat{};
 		std::map<std::string, InputFontSource> sources;
 		std::map<std::string, RangeSet> ranges;
 		std::map<std::string, SingleTextureTarget> targets;

@@ -109,8 +109,9 @@ void App::Misc::ExcelTransformConfig::from_json(const nlohmann::json& j, Config&
 			if (pair.key().starts_with("#"))
 				continue;
 
-			o.pluralMap.emplace_back(pair.key(), PluralColumns{});
-			from_json(pair.value(), o.pluralMap.back().second);
+			PluralColumns newItem{};
+			from_json(pair.value(), newItem);
+			o.pluralMap.emplace_back(pair.key(), newItem);
 		}
 	}
 	if (const auto it = j.find("targetGroups"); it != j.end()) {
@@ -119,8 +120,9 @@ void App::Misc::ExcelTransformConfig::from_json(const nlohmann::json& j, Config&
 			if (pair.key().starts_with("#"))
 				continue;
 
-			o.targetGroups.emplace(pair.key(), TargetGroup{});
-			from_json(pair.value(), o.pluralMap.back().second);
+			TargetGroup newItem{};
+			from_json(pair.value(), newItem);
+			o.targetGroups.emplace(pair.key(), std::move(newItem));
 		}
 	}
 	if (const auto it = j.find("replacementTemplates"); it != j.end()) {
@@ -129,8 +131,9 @@ void App::Misc::ExcelTransformConfig::from_json(const nlohmann::json& j, Config&
 			if (pair.key().starts_with("#"))
 				continue;
 
-			o.replacementTemplates.emplace(pair.key(), ReplacementTemplate{});
-			from_json(pair.value(), o.pluralMap.back().second);
+			ReplacementTemplate newItem{};
+			from_json(pair.value(), newItem);
+			o.replacementTemplates.emplace(pair.key(), std::move(newItem));
 		}
 	}
 	o.rules = j.at("rules").get<decltype(o.rules)>();

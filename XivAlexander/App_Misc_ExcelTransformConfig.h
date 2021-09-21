@@ -49,7 +49,7 @@ namespace App::Misc::ExcelTransformConfig {
 	struct Config {
 		std::string name;
 		std::string description;
-		Sqex::Language targetLanguage;
+		Sqex::Language targetLanguage{};
 		std::vector<Sqex::Language> sourceLanguages;
 		std::vector<std::pair<std::string, PluralColumns>> pluralMap;
 		std::map<std::string, TargetGroup> targetGroups;
