@@ -422,7 +422,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 		} catch (const std::filesystem::filesystem_error&) {
 			// pass
 		}
-		if (!foundEq) {
+		if (!foundEq && !currentConfig.empty()) {
 			AppendMenuW(hParentMenu, MF_STRING | MF_CHECKED, allocateMenuId([]() { /* do nothing */ }), currentConfig.wstring().c_str());
 			count++;
 		}

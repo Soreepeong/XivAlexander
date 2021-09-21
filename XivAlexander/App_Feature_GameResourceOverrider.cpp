@@ -536,6 +536,12 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetLength()));
 				currentCacheKeys += std::format("SQPACK:{}:{}\n", canonical(gameRoot).wstring(), std::string(versionContent.begin(), versionContent.end()));
 			}
+			
+			currentCacheKeys += "LANG";
+			for (const auto& lang : m_config->Runtime.GetFallbackLanguageList()) {
+				currentCacheKeys += std::format(":{}", static_cast<int>(lang));
+			}
+			currentCacheKeys += "\n";
 
 			std::vector<std::unique_ptr<Sqex::Sqpack::Reader>> readers;
 			for (const auto& additionalSqpackRootDirectory : m_config->Runtime.AdditionalSqpackRootDirectories.Value()) {
@@ -703,7 +709,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 											"=> Merging {}", exhName);
 
 										exCreator = std::make_unique<Sqex::Excel::Depth2ExhExdCreator>(exhName, *exhReaderSource.Columns, exhReaderSource.Header.SomeSortOfBufferSize);
-										exCreator->FillMissingLanguageFrom = m_config->Runtime.FallbackLanguagePriority.Value();
+										exCreator->FillMissingLanguageFrom = m_config->Runtime.GetFallbackLanguageList();
 
 										currentProgressMax = 1ULL * exhReaderSource.Languages.size() * exhReaderSource.Pages.size();
 										for (const auto language : exhReaderSource.Languages) {
