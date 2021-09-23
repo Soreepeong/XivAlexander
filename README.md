@@ -5,9 +5,7 @@ Don't download using the green Code button.
 # XivAlexander
 Latency mitigation and a bunch of modding tools mixed into one giant mishmash of a program.
 
-## Features
-
-### Latency mitigation
+## Mitigate lags
 | Connection | Image |
 | --- | --- |
 | Korea to NA DC<br />VPN only | ![Before GIF](https://github.com/Soreepeong/XivAlexander/raw/main/Graphics/before.gif) |
@@ -20,7 +18,7 @@ No more low DPS output just because you are on high latency network. **[Read how
 Use [XivMitmLatencyMitigator](https://github.com/Soreepeong/XivMitmLatencyMitigator) instead if you're not on Mac, PS4,
 or PS5, or want to apply this solution to a custom VPN server running on Linux operating system.
 
-### Mod easily
+## Apply mods easily
 ![Example mod menu](https://user-images.githubusercontent.com/3614868/134066429-67f7d590-6ab3-4f82-a9d9-33321ff3ff53.png)
 Easily import (drag and drop TTMP2 file onto control window!) and use TexTools ModPack, and configure if a ModPack requires it.
 **[Read how to apply TexTools ModPacks.](https://github.com/Soreepeong/XivAlexander/wiki/Modding)**
