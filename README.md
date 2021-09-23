@@ -40,18 +40,13 @@ Play Comic Fantasy XIV.
 Also, this can be used to use characters that are not natively supported by the game (Use Chinese or Korean characters in International client.)
 Except for right-to-left languages, which the game probably doesn't support at all.
 
-## Usage
-* Portable: Run the game if it isn't already running, run `XivAlexanderLoader32/64.exe`, and follow the instructions.
-* Portable 2: Run `XivAlexanderLoader32/64.exe` (it doesn't matter which one you run), and log in using the official launcher.
+## Quickstart
+It does not matter whichever you run - `XivAlexanderLoader32.exe` or `XivAlexanderLoader64.exe`.
+
+* Portable 1: Run the game if it isn't already running, run `XivAlexanderLoader32/64.exe`, and follow the instructions.
+* Portable 2: Run `XivAlexanderLoader32/64.exe`, and log in using the official launcher.
 * Installation: Autoload XivAlexander when you launch the game in whatever way. Compatible with Reshade and stuff.
   **[Read how to install and uninstall.](https://github.com/Soreepeong/XivAlexander/wiki/Installation)**
-
-## Notes
-* **As it uses DLL injection, your anti-virus software might flag this add-on.**
-  You might have to add both `XivAlexander32/64.dll` and `XivAlexanderLoader32/64.exe` to exclusion list.
-  Refer to your anti-virus software manual for instructions.
-* **[Find opcodes](https://github.com/Soreepeong/XivAlexander/wiki/How-to-find-opcodes)** after game updates.
-  This add-on will break whenever ACT FFXIV Plugin breaks.
 
 ## Building
 * This project uses [vcpkg](https://github.com/microsoft/vcpkg) to import dependencies.
