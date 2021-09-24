@@ -15,7 +15,7 @@ Latency mitigation and a bunch of modding tools mixed into one giant mishmash of
 This add-on will make double (or triple, depending on your skill/spell speed) weaving always possible.
 No more low DPS output just because you are on high latency network. **[Read how does it work.](https://github.com/Soreepeong/XivAlexander/wiki/Interface:-Main-Menu)**
 
-Use [XivMitmLatencyMitigator](https://github.com/Soreepeong/XivMitmLatencyMitigator) instead if you're not on Mac, PS4,
+Use [XivMitmLatencyMitigator](https://github.com/Soreepeong/XivMitmLatencyMitigator) instead if you're on Mac, PS4,
 or PS5, or want to apply this solution to a custom VPN server running on Linux operating system.
 
 ## Apply mods easily
