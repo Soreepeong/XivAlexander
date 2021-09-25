@@ -416,7 +416,7 @@ BEGIN
     IDS_TITLE_COMPRESSING   "データを圧縮しています…"
     IDS_CONFIGURE           "設定"
     IDS_ERROR_NO_MATCHING_FILES "このフォルダで対応のファイルが見つかりませんでした"
-    IDS_TITLE_ADD_EXCELTRANSFORMCONFIG "E&XDF(テキスト)の置き換え規則ファイルを選択してください"
+    IDS_TITLE_ADD_EXCELTRANSFORMCONFIG "EXDF(テキスト)の置き換え規則ファイルを選択してください"
     IDS_TITLE_IMPORT_TTMP   "TexTools MODパックを選択してください"
     IDS_TITLE_IMPORTING     "インポート中…"
 END
@@ -1108,8 +1108,8 @@ IDI_TRAY_ICON           ICON                    "..\\Graphics\\Icon.ico"
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,14,8,18
- PRODUCTVERSION 1,14,8,18
+ FILEVERSION 1,14,8,19
+ PRODUCTVERSION 1,14,8,19
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -1126,12 +1126,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Soreepeong"
             VALUE "FileDescription", "XivAlexander Main DLL"
-            VALUE "FileVersion", "1.14.8.18"
+            VALUE "FileVersion", "1.14.8.19"
             VALUE "InternalName", "XivAlexander.dll"
             VALUE "LegalCopyright", "Copyright (C) 2021"
             VALUE "OriginalFilename", "XivAlexander.dll"
             VALUE "ProductName", "XivAlexander"
-            VALUE "ProductVersion", "1.14.8.18"
+            VALUE "ProductVersion", "1.14.8.19"
         END
     END
     BLOCK "VarFileInfo"
