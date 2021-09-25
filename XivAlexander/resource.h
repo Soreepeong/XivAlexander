@@ -139,6 +139,9 @@
 #define IDS_TITLE_COMPRESSING           227
 #define IDS_CONFIGURE                   228
 #define IDS_ERROR_NO_MATCHING_FILES     229
+#define IDS_TITLE_ADD_EXCELTRANSFORMCONFIG 230
+#define IDS_TITLE_IMPORT_TTMP           231
+#define IDS_TITLE_IMPORTING             232
 #define ID_FILE_REVERT                  40012
 #define ID_FILE_SAVE                    40013
 #define ID_VIEW_ALWAYSONTOP             40014

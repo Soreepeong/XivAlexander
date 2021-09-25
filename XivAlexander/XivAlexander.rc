@@ -175,7 +175,7 @@ BEGIN
             MENUITEM "(’Ç‰Á‚ÌƒQ[ƒ€ƒ‹[ƒgƒtƒHƒ‹[ƒ_‚È‚µ)",          ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_NOENTRY, INACTIVE
             MENUITEM "(Example entry)",             ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ENTRY
         END
-        POPUP "E&XDF(ƒeƒLƒXƒg)‚Ì’u‚«Š·‚¦‹K‘¥"
+        POPUP "EXDF(ƒeƒLƒXƒg)‚Ì’u‚«Š·‚¦‹K‘¥(&X)"
         BEGIN
             MENUITEM "’è‹`ƒtƒ@ƒCƒ‹‚Ì“Ç‚Ýž‚Ý(&I)",             ID_MODDING_EXDFTRANSFORMATIONRULES_ADD
             MENUITEM "‹ó‚É‚·‚é(&R)",                    ID_MODDING_EXDFTRANSFORMATIONRULES_REMOVEALL
@@ -184,7 +184,7 @@ BEGIN
             MENUITEM "(EXDF‚Ì’u‚«Š·‚¦‹K‘¥‚È‚µ)",             ID_MODDING_EXDFTRANSFORMATIONRULES_NOENTRY, INACTIVE
             MENUITEM "(Example entry)",             ID_MODDING_EXDFTRANSFORMATIONRULES_ENTRY
         END
-        POPUP "&TexTools MODƒpƒbƒN"
+        POPUP "TexTools MODƒpƒbƒN(&T)"
         BEGIN
             POPUP "(template entry to be inserted at bottom)"
             BEGIN
@@ -416,6 +416,9 @@ BEGIN
     IDS_TITLE_COMPRESSING   "ƒf[ƒ^‚ðˆ³k‚µ‚Ä‚¢‚Ü‚·c"
     IDS_CONFIGURE           "Ý’è"
     IDS_ERROR_NO_MATCHING_FILES "‚±‚ÌƒtƒHƒ‹ƒ_‚Å‘Î‰ž‚Ìƒtƒ@ƒCƒ‹‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñ‚Å‚µ‚½"
+    IDS_TITLE_ADD_EXCELTRANSFORMCONFIG "E&XDF(ƒeƒLƒXƒg)‚Ì’u‚«Š·‚¦‹K‘¥ƒtƒ@ƒCƒ‹‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
+    IDS_TITLE_IMPORT_TTMP   "TexTools MODƒpƒbƒN‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
+    IDS_TITLE_IMPORTING     "ƒCƒ“ƒ|[ƒg’†c"
 END
 
 #endif    // Japanese (Japan) resources
@@ -555,7 +558,7 @@ BEGIN
             MENUITEM "(Ãß°¡ °ÔÀÓ ·çÆ® µð·ºÅä¸® ¾øÀ½)",          ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_NOENTRY, INACTIVE
             MENUITEM "(Example entry)",             ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ENTRY
         END
-        POPUP "E&XDF(¹®ÀÚ¿­) º¯È¯ ±ÔÄ¢"
+        POPUP "EXDF(¹®ÀÚ¿­) º¯È¯ ±ÔÄ¢(&X)"
         BEGIN
             MENUITEM "±ÔÄ¢ ÆÄÀÏ ºÒ·¯¿À±â(&I)",              ID_MODDING_EXDFTRANSFORMATIONRULES_ADD
             MENUITEM "ºñ¿ì±â(&R)",                     ID_MODDING_EXDFTRANSFORMATIONRULES_REMOVEALL
@@ -564,7 +567,7 @@ BEGIN
             MENUITEM "(EXDF º¯È¯ ±ÔÄ¢ ¾øÀ½)",             ID_MODDING_EXDFTRANSFORMATIONRULES_NOENTRY, INACTIVE
             MENUITEM "(Example entry)",             ID_MODDING_EXDFTRANSFORMATIONRULES_ENTRY
         END
-        POPUP "&TexTools ¸ðµåÆÑ"
+        POPUP "TexTools ¸ðµåÆÑ(&T)"
         BEGIN
             POPUP "(template entry to be inserted at bottom)"
             BEGIN
@@ -855,6 +858,9 @@ BEGIN
     IDS_TITLE_COMPRESSING   "¾ÐÃà Áß..."
     IDS_CONFIGURE           "¼³Á¤"
     IDS_ERROR_NO_MATCHING_FILES "ÀÌ Æú´õ ¾È¿¡¼­ Áö¿øÇÏ´Â ÆÄÀÏÀ» Ã£À» ¼ö ¾ø¾ú½À´Ï´Ù."
+    IDS_TITLE_ADD_EXCELTRANSFORMCONFIG "EXDF º¯È¯ ±ÔÄ¢ ÆÄÀÏ ºÒ·¯¿À±â"
+    IDS_TITLE_IMPORT_TTMP   "TexTools ¸ðµåÆÑ ÆÄÀÏ °¡Á®¿À±â"
+    IDS_TITLE_IMPORTING     "°¡Á®¿À´Â Áß..."
 END
 
 #endif    // Korean (Korea) resources
@@ -1436,6 +1442,10 @@ BEGIN
     IDS_CONFIGURE           "Configure"
     IDS_ERROR_NO_MATCHING_FILES 
                             "Could not find supported files in this directory."
+    IDS_TITLE_ADD_EXCELTRANSFORMCONFIG 
+                            "Select excel transformation configuration file"
+    IDS_TITLE_IMPORT_TTMP   "Select TexTools ModPack file"
+    IDS_TITLE_IMPORTING     "Importing..."
 END
 
 #endif    // English (United States) resources

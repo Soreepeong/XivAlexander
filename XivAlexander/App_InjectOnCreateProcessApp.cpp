@@ -85,8 +85,7 @@ struct App::InjectOnCreateProcessApp::Implementation {
 				if (process.IsProcess64Bits() == Utils::Win32::Process::Current().IsProcess64Bits()) {
 					XivAlexDll::PatchEntryPointForInjection(process);
 				} else {
-					LaunchXivAlexLoaderWithTargetHandles({process}, XivAlexDll::LoaderAction::Internal_Inject_HookEntryPoint, true,
-						Dll::Module().PathOf().parent_path() / XivAlex::XivAlexLoaderOppositeNameW);
+					LaunchXivAlexLoaderWithTargetHandles({process}, XivAlexDll::LoaderAction::Internal_Inject_HookEntryPoint, true);
 				}
 			}
 		} catch (std::exception& e) {

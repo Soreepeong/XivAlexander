@@ -6,6 +6,7 @@
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
 #include <XivAlexanderCommon/XivAlex.h>
 
+#include "App_ConfigRepository.h"
 #include "App_Misc_Hooks.h"
 #include "resource.h"
 
@@ -45,9 +46,9 @@ DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 	const std::vector<Utils::Win32::Process>& hSources,
 	LoaderAction action,
 	bool wait,
-	const std::filesystem::path& launcherPath,
 	const Utils::Win32::Process& waitFor) {
-	const auto companion = launcherPath.empty() ? Dll::Module().PathOf().parent_path() / XivAlex::XivAlexLoaderNameW : launcherPath;
+	const auto config = App::Config::Acquire();
+	const auto companion = config->Init.ResolveXivAlexInstallationPath() / XivAlex::XivAlexLoaderNameW;
 
 	if (!exists(companion))
 		throw std::runtime_error(Utils::ToUtf8(std::format(FindStringResourceEx(Dll::Module(), IDS_ERROR_LOADER_NOT_FOUND) + 1, companion)));

@@ -37,7 +37,6 @@ namespace XivAlexDll {
 		const std::vector<Utils::Win32::Process>& hSources,
 		LoaderAction action,
 		bool wait,
-		const std::filesystem::path& launcherPath = L"",
 		const Utils::Win32::Process& waitFor = nullptr);
 	XIVALEXANDER_DLLEXPORT InjectEntryPointParameters* PatchEntryPointForInjection(HANDLE hProcess);
 

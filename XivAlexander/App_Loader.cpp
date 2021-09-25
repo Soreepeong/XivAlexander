@@ -662,7 +662,7 @@ static void PerformUpdateAndExitIfSuccessful(std::vector<Utils::Win32::Process> 
 		}
 
 		LaunchXivAlexLoaderWithTargetHandles(unloadTargets, XivAlexDll::LoaderAction::Internal_Cleanup_Handle, true);
-		LaunchXivAlexLoaderWithTargetHandles(gameProcesses, XivAlexDll::LoaderAction::Internal_Update_Step2_ReplaceFiles, false, (tempExtractionDir / XivAlex::XivAlexLoader64NameW).c_str(), currentProcess);
+		LaunchXivAlexLoaderWithTargetHandles(gameProcesses, XivAlexDll::LoaderAction::Internal_Update_Step2_ReplaceFiles, false, currentProcess);
 
 		currentProcess.Terminate(0);
 	}
@@ -810,7 +810,7 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 			}
 
 			if (!defer.empty()) {
-				LaunchXivAlexLoaderWithTargetHandles(defer, g_parameters->m_action, true, (dllDir / XivAlex::XivAlexLoaderOppositeNameW).c_str());
+				LaunchXivAlexLoaderWithTargetHandles(defer, g_parameters->m_action, true);
 			}
 			return 0;
 
@@ -821,7 +821,7 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 				GetNativeSystemInfo(&si);
 				if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) {
 					std::vector<HANDLE> handles;
-					LaunchXivAlexLoaderWithTargetHandles(g_parameters->m_targetProcessHandles, g_parameters->m_action, false, (dllDir / XivAlex::XivAlexLoader64NameW).c_str());
+					LaunchXivAlexLoaderWithTargetHandles(g_parameters->m_targetProcessHandles, g_parameters->m_action, false);
 					return 0;
 				}
 			}
@@ -841,7 +841,7 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 				targetUpdatePath,
 				std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing
 			);
-			LaunchXivAlexLoaderWithTargetHandles(g_parameters->m_targetProcessHandles, LoaderAction::Internal_Update_Step3_CleanupFiles, false, (targetUpdatePath / XivAlex::XivAlexLoader64NameW).c_str(), currentProcess);
+			LaunchXivAlexLoaderWithTargetHandles(g_parameters->m_targetProcessHandles, LoaderAction::Internal_Update_Step3_CleanupFiles, false, currentProcess);
 			return 0;
 
 		} else if (g_parameters->m_action == LoaderAction::Internal_Update_Step3_CleanupFiles) {

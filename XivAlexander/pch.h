@@ -79,6 +79,7 @@
 _COM_SMARTPTR_TYPEDEF(IFileSaveDialog, __uuidof(IFileSaveDialog));
 _COM_SMARTPTR_TYPEDEF(IFileOpenDialog, __uuidof(IFileOpenDialog));
 _COM_SMARTPTR_TYPEDEF(IShellItem, __uuidof(IShellItem));
+_COM_SMARTPTR_TYPEDEF(IShellItemArray, __uuidof(IShellItemArray));
 
 // Infrequently changed utility headers
 #include <XivAlexanderCommon/XaFormat.h>

@@ -63,7 +63,7 @@ namespace App::Window {
 		void OnCommand_Menu_View(int menuId);
 		void OnCommand_Menu_Help(int menuId);
 
-		[[nodiscard]] std::filesystem::path ChooseFileToOpen(std::span<const COMDLG_FILTERSPEC> fileTypes, UINT nTitleResId) const;
+		[[nodiscard]] std::vector<std::filesystem::path> ChooseFileToOpen(std::span<const COMDLG_FILTERSPEC> fileTypes, UINT nTitleResId, const std::filesystem::path& defaultPath = {}) const;
 		
 		void ImportFontConfig(const std::filesystem::path& path);
 		void ImportExcelTransformConfig(const std::filesystem::path& path);
@@ -71,5 +71,6 @@ namespace App::Window {
 		std::string InstallTTMP(const std::filesystem::path& path, const Utils::Win32::Event& cancelEvent);
 
 		std::pair<std::filesystem::path, std::string> InstallAnyFile(const std::filesystem::path& path, const Utils::Win32::Event& cancelEvent);
+		void InstallMultipleFiles(const std::vector<std::filesystem::path>& paths);
 	};
 }

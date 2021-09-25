@@ -17,6 +17,8 @@
 #include "DllMain.h"
 #include "resource.h"
 
+#define WM_COPYGLOBALDATA 0x0049
+
 static const auto WmTrayCallback = WM_APP + 1;
 static const int TrayItemId = 1;
 static const int TimerIdReregisterTrayIcon = 100;
@@ -114,6 +116,9 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 	ApplyLanguage(m_config->Runtime.GetLangId());
 
 	DragAcceptFiles(m_hWnd, TRUE);
+	ChangeWindowMessageFilterEx(m_hWnd, WM_DROPFILES, MSGFLT_ALLOW, nullptr);
+	ChangeWindowMessageFilterEx(m_hWnd, WM_COPYDATA, MSGFLT_ALLOW, nullptr);
+	ChangeWindowMessageFilterEx(m_hWnd, WM_COPYGLOBALDATA, MSGFLT_ALLOW, nullptr);
 }
 
 App::Window::MainWindow::~MainWindow() {
@@ -124,8 +129,7 @@ App::Window::MainWindow::~MainWindow() {
 void App::Window::MainWindow::ShowContextMenu(const BaseWindow* parent) const {
 	if (!parent)
 		parent = this;
-
-	const auto hMenu = GetMenu(m_hWnd);
+	
 	SetMenuStates();
 	POINT curPoint;
 	GetCursorPos(&curPoint);
@@ -180,86 +184,30 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 			}
 		}
 		return 0;
+
 	} else if (uMsg == WM_INITMENUPOPUP) {
 		SetMenuStates();
+
 	} else if (uMsg == WM_DROPFILES) {
 		const auto hDrop = reinterpret_cast<HDROP>(wParam);
-		const auto fileCount = DragQueryFileW(hDrop, UINT_MAX, nullptr, 0);
-
-		std::vector<std::pair<std::filesystem::path, std::string>> success;
-		std::vector<std::pair<std::filesystem::path, std::string>> ignored;
-		{
-			ProgressPopupWindow progress(m_hWnd);
-			progress.UpdateMessage("Adding...");
-			progress.UpdateProgress(0, 0);
-			const auto showAfter = GetTickCount64() + 500;
-
-			const auto adderThread = Utils::Win32::Thread(L"DropFiles Handler", [&]() {
-				for (UINT i = 0; i < fileCount; ++i) {
-					std::wstring buf(static_cast<size_t>(1) + DragQueryFileW(hDrop, i, nullptr, 0), L'\0');
-					buf.resize(DragQueryFileW(hDrop, i, &buf[0], static_cast<UINT>(buf.size())));
-					const auto path = std::filesystem::path(buf);
-					try {
-						if (is_directory(path)) {
-							auto anyAdded = false;
-							for (const auto& item : std::filesystem::recursive_directory_iterator(path)) {
-								if (!item.is_directory()) {
-									try {
-										auto res = InstallAnyFile(item.path(), progress.GetCancelEvent());
-										if (!res.second.empty()) {
-											success.emplace_back(std::move(res));
-											anyAdded = true;
-										}
-									} catch (const std::exception& e) {
-										ignored.emplace_back(item.path(), e.what());
-										anyAdded = true;
-									}
-								}
-							}
-							if (!anyAdded)
-								ignored.emplace_back(path, Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_NO_MATCHING_FILES)));
-						} else {
-							try {
-								auto res = InstallAnyFile(path, progress.GetCancelEvent());
-								if (res.second.empty())
-									ignored.emplace_back(path, Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_UNSUPPORTED_FILE_TYPE)));
-								else
-									success.emplace_back(std::move(res));
-							} catch (const std::exception& e) {
-								ignored.emplace_back(path, e.what());
-							}
-						}
-					} catch (const std::exception& e) {
-						ignored.emplace_back(path, e.what());
-					}
-				}
-			});
-
-			while (WAIT_TIMEOUT == progress.DoModalLoop(100, {adderThread})) {
-				if (showAfter < GetTickCount64())
-					progress.Show();
-			}
-			adderThread.Wait();
+		std::vector<std::filesystem::path> paths;
+		for (UINT i = 0, i_ = DragQueryFileW(hDrop, UINT_MAX, nullptr, 0); i < i_; ++i) {
+			std::wstring buf(static_cast<size_t>(1) + DragQueryFileW(hDrop, i, nullptr, 0), L'\0');
+			buf.resize(DragQueryFileW(hDrop, i, &buf[0], static_cast<UINT>(buf.size())));
+			paths.emplace_back(std::move(buf));
 		}
 
-		std::string report;
-		for (const auto& pair : success) {
-			if (!report.empty())
-				report += "\n";
-			report += std::format("OK: {}: {}", pair.first.wstring(), pair.second);
-		}
-		if (!report.empty())
-			report += "\n";
-		for (const auto& pair : ignored) {
-			if (!report.empty())
-				report += "\n";
-			report += std::format("Error: {}: {}", pair.first.wstring(), pair.second);
-		}
+		InstallMultipleFiles(paths);
 
-		if (!report.empty())
-			Utils::Win32::MessageBoxF(m_hWnd, MB_OK, m_config->Runtime.GetStringRes(IDS_APP_NAME), Utils::FromUtf8(report));
-		else
-			Utils::Win32::MessageBoxF(m_hWnd, MB_OK, m_config->Runtime.GetStringRes(IDS_ERROR_UNSUPPORTED_FILE_TYPE), Utils::FromUtf8(report));
+	} else if (uMsg == WM_COPYDATA) {
+		const auto cds = *reinterpret_cast<const COPYDATASTRUCT*>(lParam);
+		if (IsBadReadPtr(&cds, sizeof cds))
+			return 0;
+
+		if (cds.cbData && IsBadReadPtr(cds.lpData, cds.cbData))
+			return 0;
+
+		// continue execution; no return here
 
 	} else if (uMsg == WM_COMMAND) {
 		if (!lParam) {
@@ -1147,15 +1095,30 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 
 		case ID_MODDING_CHANGEFONT_IMPORTPRESET: {
 			try {
+				const auto defaultPath = m_config->Init.ResolveConfigStorageDirectoryPath() / "FontConfig";
+				try {
+					if (!is_directory(defaultPath))
+						create_directories(defaultPath);
+				} catch (...) {
+					// pass
+				}
+
 				const COMDLG_FILTERSPEC fileTypes[] = {
 					{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_FONTPRESETJSON), L"*.json"},
 					{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*"},
 				};
-				const auto path = ChooseFileToOpen(std::span(fileTypes),IDS_TITLE_IMPORT_FONTCONFIG_PRESET);
-				if (path.empty())
-					return;
+				const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_IMPORT_FONTCONFIG_PRESET, defaultPath);
+				switch (paths.size()) {
+					case 0:
+						return;
 
-				ImportFontConfig(path);
+					case 1:
+						ImportFontConfig(paths[0]);
+						return;
+
+					default:
+						InstallMultipleFiles(paths);
+				}
 
 			} catch (const std::exception& e) {
 				Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
@@ -1240,15 +1203,30 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 
 		case ID_MODDING_EXDFTRANSFORMATIONRULES_ADD:
 			try {
+				const auto defaultPath = m_config->Init.ResolveConfigStorageDirectoryPath() / "ExcelTransformConfig";
+				try {
+					if (!is_directory(defaultPath))
+						create_directories(defaultPath);
+				} catch (...) {
+					// pass
+				}
+
 				static const COMDLG_FILTERSPEC fileTypes[] = {
 					{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON), L"*.json"},
 					{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*"},
 				};
-				const auto path = ChooseFileToOpen(std::span(fileTypes),IDS_TITLE_IMPORT_FONTCONFIG_PRESET);
-				if (path.empty())
-					return;
+				const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_ADD_EXCELTRANSFORMCONFIG, defaultPath);
+				switch (paths.size()) {
+					case 0:
+						return;
 
-				ImportExcelTransformConfig(path);
+					case 1:
+						ImportExcelTransformConfig(paths[0]);
+						return;
+
+					default:
+						InstallMultipleFiles(paths);
+				}
 
 			} catch (const std::exception& e) {
 				Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
@@ -1269,33 +1247,42 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 					{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_TTMP), L"*.ttmp; *.ttmp2; *.mpl"},
 					{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*"},
 				};
-				const auto path = ChooseFileToOpen(std::span(fileTypes),IDS_TITLE_IMPORT_FONTCONFIG_PRESET);
-				if (path.empty())
-					return;
+				const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_IMPORT_TTMP);
+				switch (paths.size()) {
+					case 0:
+						return;
 
-				ProgressPopupWindow progress(m_hWnd);
-				progress.UpdateMessage("Adding...");
-				progress.Show();
+					case 1: {
+						ProgressPopupWindow progress(m_hWnd);
+						progress.UpdateMessage(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_TITLE_IMPORTING)));
+						progress.Show();
 
-				std::string resultMessage;
-				const auto adderThread = Utils::Win32::Thread(L"TTMP Importer", [&]() {
-					try {
-						resultMessage = InstallTTMP(path, progress.GetCancelEvent());
-					} catch (const std::exception& e) {
-						progress.Cancel();
-						Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-							m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+						std::string resultMessage;
+						const auto adderThread = Utils::Win32::Thread(L"TTMP Importer", [&]() {
+							try {
+								resultMessage = InstallTTMP(paths[0], progress.GetCancelEvent());
+							} catch (const std::exception& e) {
+								progress.Cancel();
+								Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+									m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+							}
+						});
+
+						while (WAIT_TIMEOUT == progress.DoModalLoop(100, {adderThread})) {
+							// pass
+						}
+						adderThread.Wait();
+
+						if (!resultMessage.empty())
+							Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONINFORMATION, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+								Utils::FromUtf8(resultMessage));
+						return;
 					}
-				});
 
-				while (WAIT_TIMEOUT == progress.DoModalLoop(100, {adderThread})) {
-					// pass
+					default:
+						InstallMultipleFiles(paths);
 				}
-				adderThread.Wait();
 
-				if (!resultMessage.empty())
-					Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONINFORMATION, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-						Utils::FromUtf8(resultMessage));
 			} catch (const std::exception& e) {
 				Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 					m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
@@ -1537,7 +1524,7 @@ void App::Window::MainWindow::OnCommand_Menu_Help(int menuId) {
 	}
 }
 
-std::filesystem::path App::Window::MainWindow::ChooseFileToOpen(std::span<const COMDLG_FILTERSPEC> fileTypes, UINT nTitleResId) const {
+std::vector<std::filesystem::path> App::Window::MainWindow::ChooseFileToOpen(std::span<const COMDLG_FILTERSPEC> fileTypes, UINT nTitleResId, const std::filesystem::path& defaultPath) const {
 	try {
 		auto throw_on_error = [](HRESULT val) {
 			if (!SUCCEEDED(val))
@@ -1551,17 +1538,33 @@ std::filesystem::path App::Window::MainWindow::ChooseFileToOpen(std::span<const 
 		throw_on_error(pDialog->SetFileTypeIndex(0));
 		throw_on_error(pDialog->SetTitle(m_config->Runtime.GetStringRes(nTitleResId)));
 		throw_on_error(pDialog->GetOptions(&dwFlags));
-		throw_on_error(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
+		throw_on_error(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM | FOS_ALLOWMULTISELECT | FOS_NOCHANGEDIR));
+		if (!defaultPath.empty()) {
+			IShellItemPtr defaultDir;
+			if (!FAILED(SHCreateItemFromParsingName(defaultPath.c_str(), nullptr, defaultDir.GetIID(), reinterpret_cast<void**>(&defaultDir))))
+				throw_on_error(pDialog->SetDefaultFolder(defaultDir));
+		}
 		throw_on_error(pDialog->Show(m_hWnd));
 
-		IShellItemPtr pResult;
-		PWSTR pszFileName;
-		throw_on_error(pDialog->GetResult(&pResult));
-		throw_on_error(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
-		if (!pszFileName)
-			throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
-		const auto freeFileName = Utils::CallOnDestruction([pszFileName]() { CoTaskMemFree(pszFileName); });
-		return pszFileName;
+		IShellItemArrayPtr items;
+		throw_on_error(pDialog->GetResults(&items));
+
+		DWORD count = 0;
+		throw_on_error(items->GetCount(&count));
+
+		std::vector<std::filesystem::path> result;
+		for (DWORD i = 0; i < count; ++i) {
+			IShellItemPtr item;
+			throw_on_error(items->GetItemAt(i, &item));
+
+			PWSTR pszFileName;
+			throw_on_error(item->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
+			if (!pszFileName)
+				throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
+			result.emplace_back(pszFileName);
+			CoTaskMemFree(pszFileName);
+		}
+		return result;
 
 	} catch (std::exception& e) {
 		Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
@@ -1875,4 +1878,82 @@ std::pair<std::filesystem::path, std::string> App::Window::MainWindow::InstallAn
 		return std::make_pair(path, Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_RESULT_FONTCONFIG_INSTALLED)));
 	} else
 		throw std::runtime_error(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_UNSUPPORTED_FILE_TYPE)));
+}
+
+void App::Window::MainWindow::InstallMultipleFiles(const std::vector<std::filesystem::path>& paths) {
+	if (paths.empty())
+		return;
+
+	std::vector<std::pair<std::filesystem::path, std::string>> success;
+	std::vector<std::pair<std::filesystem::path, std::string>> ignored;
+	{
+		ProgressPopupWindow progress(m_hWnd);
+		progress.UpdateMessage(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_TITLE_IMPORTING)));
+		progress.UpdateProgress(0, 0);
+		const auto showAfter = GetTickCount64() + 500;
+
+		const auto adderThread = Utils::Win32::Thread(L"DropFiles Handler", [&]() {
+			for (const auto& path : paths) {
+				try {
+					if (is_directory(path)) {
+						auto anyAdded = false;
+						for (const auto& item : std::filesystem::recursive_directory_iterator(path)) {
+							if (!item.is_directory()) {
+								try {
+									auto res = InstallAnyFile(item.path(), progress.GetCancelEvent());
+									if (!res.second.empty()) {
+										success.emplace_back(std::move(res));
+										anyAdded = true;
+									}
+								} catch (const std::exception& e) {
+									ignored.emplace_back(item.path(), e.what());
+									anyAdded = true;
+								}
+							}
+						}
+						if (!anyAdded)
+							ignored.emplace_back(path, Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_NO_MATCHING_FILES)));
+					} else {
+						try {
+							auto res = InstallAnyFile(path, progress.GetCancelEvent());
+							if (res.second.empty())
+								ignored.emplace_back(path, Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_UNSUPPORTED_FILE_TYPE)));
+							else
+								success.emplace_back(std::move(res));
+						} catch (const std::exception& e) {
+							ignored.emplace_back(path, e.what());
+						}
+					}
+				} catch (const std::exception& e) {
+					ignored.emplace_back(path, e.what());
+				}
+			}
+		});
+
+		while (WAIT_TIMEOUT == progress.DoModalLoop(100, {adderThread})) {
+			if (showAfter < GetTickCount64())
+				progress.Show();
+		}
+		adderThread.Wait();
+	}
+
+	std::string report;
+	for (const auto& pair : success) {
+		if (!report.empty())
+			report += "\n";
+		report += std::format("OK: {}: {}", pair.first.wstring(), pair.second);
+	}
+	if (!report.empty())
+		report += "\n";
+	for (const auto& pair : ignored) {
+		if (!report.empty())
+			report += "\n";
+		report += std::format("Error: {}: {}", pair.first.wstring(), pair.second);
+	}
+
+	if (!report.empty())
+		Utils::Win32::MessageBoxF(m_hWnd, MB_OK, m_config->Runtime.GetStringRes(IDS_APP_NAME), Utils::FromUtf8(report));
+	else
+		Utils::Win32::MessageBoxF(m_hWnd, MB_OK, m_config->Runtime.GetStringRes(IDS_ERROR_UNSUPPORTED_FILE_TYPE), Utils::FromUtf8(report));
+
 }
