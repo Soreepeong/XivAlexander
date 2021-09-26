@@ -221,9 +221,21 @@ void App::Window::ProgressPopupWindow::OnDestroy() {
 LRESULT App::Window::ProgressPopupWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 	if (msg == m_wmTaskbarButtonCreated) {
 		if (SUCCEEDED(m_taskBarList3.CreateInstance(CLSID_TaskbarList))) {
-			m_taskBarList3->HrInit();
-			m_taskBarList3->SetProgressState(hwnd, TBPF_INDETERMINATE);
+			if (FAILED(m_taskBarList3->HrInit())) {
+				m_taskBarList3.Release();
+			} else {
+				if (GetWindowLongPtrW(m_hProgressBar, GWL_STYLE) & PBS_MARQUEE)
+					m_taskBarList3->SetProgressState(hwnd, TBPF_INDETERMINATE);
+				else {
+					const auto maxRange = static_cast<uint64_t>(SendMessageW(m_hProgressBar, PBM_GETRANGE, FALSE, 0));
+					const auto minRange = static_cast<uint64_t>(SendMessageW(m_hProgressBar, PBM_GETRANGE, TRUE, 0));
+					const auto pos = static_cast<uint64_t>(SendMessageW(m_hProgressBar, PBM_GETPOS, 0, 0));
+					m_taskBarList3->SetProgressState(m_hWnd, TBPF_NORMAL);
+					m_taskBarList3->SetProgressValue(m_hWnd, pos - minRange, maxRange - minRange);
+				}
+			}
 		}
+		return 0;
 	}
 	switch (msg) {
 		case WM_COMMAND: {
