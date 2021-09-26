@@ -30,6 +30,7 @@ static WNDCLASSEXW WindowClass() {
 App::Window::ProgressPopupWindow::ProgressPopupWindow(HWND hParentWindow)
 	: BaseWindow(WindowClass(), nullptr, WS_POPUPWINDOW | WS_CAPTION | WS_MINIMIZEBOX, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr)
 	, m_hParentWindow(hParentWindow)
+	, m_wmTaskbarButtonCreated(RegisterWindowMessageW(L"TaskbarButtonCreated"))
 	, m_hMessage(CreateWindowExW(0, L"STATIC", nullptr, WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, m_hWnd, nullptr, Dll::Module(), nullptr))
 	, m_hProgressBar(CreateWindowExW(0, PROGRESS_CLASSW, nullptr, WS_CHILD | WS_VISIBLE | PBS_MARQUEE, 0, 0, 0, 0, m_hWnd, nullptr, Dll::Module(), nullptr))
 	, m_hCancelButton(CreateWindowExW(0, L"BUTTON", Utils::Win32::MB_GetString(IDCANCEL - 1).c_str(), WS_CHILD | WS_VISIBLE | WS_TABSTOP, 0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(IDCANCEL), Dll::Module(), nullptr))
@@ -61,14 +62,23 @@ void App::Window::ProgressPopupWindow::UpdateProgress(uint64_t progress, uint64_
 		if (!(prevStyle & PBS_MARQUEE)) {
 			SetWindowLongPtrW(m_hProgressBar, GWL_STYLE, prevStyle | PBS_MARQUEE);
 			SendMessageW(m_hProgressBar, PBM_SETMARQUEE, TRUE, 0);
+
+			if (m_taskBarList3)
+				m_taskBarList3->SetProgressState(m_hWnd, TBPF_INDETERMINATE);
 		}
 	} else {
 		if (prevStyle & PBS_MARQUEE) {
 			SendMessageW(m_hProgressBar, PBM_SETMARQUEE, FALSE, 0);
 			SetWindowLongPtrW(m_hProgressBar, GWL_STYLE, GetWindowLongPtrW(m_hProgressBar, GWL_STYLE) & ~PBS_MARQUEE);
 			SendMessageW(m_hProgressBar, PBM_SETRANGE32, 0, static_cast<LPARAM>(10000000));
+
+			if (m_taskBarList3)
+				m_taskBarList3->SetProgressState(m_hWnd, TBPF_NORMAL);
 		}
 		SendMessageW(m_hProgressBar, PBM_SETPOS, static_cast<LPARAM>(10000000.0 * static_cast<double>(progress) / static_cast<double>(max)), 0);
+
+		if (m_taskBarList3)
+			m_taskBarList3->SetProgressValue(m_hWnd, progress, max);
 	}
 }
 
@@ -129,7 +139,7 @@ void App::Window::ProgressPopupWindow::Show() {
 
 	RECT targetRect = {0, 0, static_cast<int>(GetZoom() * 640), static_cast<int>(GetZoom() * (margin * 4 + elementHeight * 3))};
 	AdjustWindowRectEx(&targetRect, GetWindowLongW(m_hWnd, GWL_STYLE), FALSE, 0);
-	SetWindowPos(m_hWnd, m_hParentWindow && (GetWindowLongW(m_hParentWindow, GWL_EXSTYLE) & WS_EX_TOPMOST) ? HWND_TOPMOST : HWND_NOTOPMOST,
+	SetWindowPos(m_hWnd, HWND_TOPMOST,
 		parentRect.left + (parentRect.right - parentRect.left - targetRect.right - targetRect.left) / 2,
 		parentRect.top + (parentRect.bottom - parentRect.top - targetRect.bottom - targetRect.top) / 2,
 		targetRect.right - targetRect.left,
@@ -141,6 +151,7 @@ void App::Window::ProgressPopupWindow::Show() {
 	if (GetWindowLongW(m_hProgressBar, GWL_STYLE) & PBS_MARQUEE)
 		SendMessageW(m_hProgressBar, PBM_SETMARQUEE, TRUE, 0);
 	InvalidateRect(m_hWnd, nullptr, TRUE);
+	SetWindowPos(m_hWnd, m_hParentWindow && (GetWindowLongW(m_hParentWindow, GWL_EXSTYLE) & WS_EX_TOPMOST) ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 }
 
 void App::Window::ProgressPopupWindow::OnLayout(double zoom, double width, double height, int resizeType) {
@@ -160,24 +171,30 @@ void App::Window::ProgressPopupWindow::OnLayout(double zoom, double width, doubl
 		};
 
 		const auto targets = std::map<HWND, RECTLF>{
-			{m_hMessage, {
-				margin,
-				margin,
-				width - margin,
-				margin + elementHeight
-			}},
-			{m_hProgressBar, {
-				margin,
-				margin * 2 + elementHeight,
-				width - margin,
-				margin * 2 + elementHeight * 2
-			}},
-			{m_hCancelButton, {
-				width - margin - buttonWidth,
-				margin * 3 + elementHeight * 2,
-				width - margin,
-				margin * 3 + elementHeight * 3
-			}},
+			{
+				m_hMessage, {
+					margin,
+					margin,
+					width - margin,
+					margin + elementHeight
+				}
+			},
+			{
+				m_hProgressBar, {
+					margin,
+					margin * 2 + elementHeight,
+					width - margin,
+					margin * 2 + elementHeight * 2
+				}
+			},
+			{
+				m_hCancelButton, {
+					width - margin - buttonWidth,
+					margin * 3 + elementHeight * 2,
+					width - margin,
+					margin * 3 + elementHeight * 3
+				}
+			},
 		};
 
 		auto hdwp = BeginDeferWindowPos(static_cast<int>(targets.size()));
@@ -202,6 +219,12 @@ void App::Window::ProgressPopupWindow::OnDestroy() {
 }
 
 LRESULT App::Window::ProgressPopupWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+	if (msg == m_wmTaskbarButtonCreated) {
+		if (SUCCEEDED(m_taskBarList3.CreateInstance(CLSID_TaskbarList))) {
+			m_taskBarList3->HrInit();
+			m_taskBarList3->SetProgressState(hwnd, TBPF_INDETERMINATE);
+		}
+	}
 	switch (msg) {
 		case WM_COMMAND: {
 			if (wParam == IDCANCEL || wParam == IDOK)

@@ -114,7 +114,7 @@ std::vector<std::pair<uint32_t, uint32_t>> Utils::ParseIpRange(const std::string
 				}
 			}
 			result.emplace_back(startIp, endIp);
-		} catch (std::exception& e) {
+		} catch (const std::exception& e) {
 			throw std::format_error(std::format("Invalid IP range item \"{}\": {}. It must be in the form of \"0.0.0.0\", \"0.0.0.0-255.255.255.255\", or \"127.0.0.0/8\", delimited by comma(,).", range, e.what()));
 		}
 	}
@@ -153,7 +153,7 @@ std::vector<std::pair<uint32_t, uint32_t>> Utils::ParsePortRange(const std::stri
 				end = t;
 			}
 			result.emplace_back(start, end);
-		} catch (std::exception& e) {
+		} catch (const std::exception& e) {
 			throw std::format_error(std::format("Invalid port range item \"{}\": {}. It must be in the form of \"0-65535\" or single item, delimited by comma(,).", range, e.what()));
 		}
 	}

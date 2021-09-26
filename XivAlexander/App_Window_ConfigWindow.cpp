@@ -81,7 +81,7 @@ void App::Window::ConfigWindow::Revert() {
 			buffer = "{}";
 		}
 		buffer = nlohmann::json::parse(buffer).dump(1, '\t');
-	} catch (std::exception& e) {
+	} catch (const std::exception& e) {
 		m_logger->Format(LogCategory::General, m_config->Runtime.GetLangId(), IDS_ERROR_CONFIGURATION_LOAD, e.what());
 	}
 	m_originalConfig = std::move(buffer);
@@ -102,7 +102,7 @@ bool App::Window::ConfigWindow::TrySave() {
 	try {
 		std::ofstream out(m_pRepository->GetConfigPath());
 		out << buf;
-	} catch (std::exception& e) {
+	} catch (const std::exception& e) {
 		Utils::Win32::MessageBoxF(m_hWnd, MB_OK, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 			m_config->Runtime.FormatStringRes(IDS_ERROR_CONFIGURATION_SAVE, e.what()));
 		return false;

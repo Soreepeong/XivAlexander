@@ -189,9 +189,9 @@ public:
 
 					try {
 						pid = std::stoi(target, &idx);
-					} catch (std::invalid_argument&) {
+					} catch (const std::invalid_argument&) {
 						// empty
-					} catch (std::out_of_range&) {
+					} catch (const std::out_of_range&) {
 						// empty
 					}
 					if (idx != target.length()) {
@@ -362,16 +362,16 @@ static int RunProgramRetryAfterElevatingSelfAsNecessary(const std::filesystem::p
 	}))
 		return 0;
 	return Utils::Win32::RunProgram({
-				.args = Utils::FromUtf8(Utils::Win32::ReverseCommandLineToArgv({
-					"--disable-runas",
-					"-a", LoaderActionToString(XivAlexDll::LoaderAction::Launcher),
-					"-l", "select",
-					path.string()
-				})) + (args.empty() ? L"" : L" " + args),
-				.elevateMode = Utils::Win32::RunProgramParams::Force,
-			})
-			? 0
-			: 1;
+			.args = Utils::FromUtf8(Utils::Win32::ReverseCommandLineToArgv({
+				"--disable-runas",
+				"-a", LoaderActionToString(XivAlexDll::LoaderAction::Launcher),
+				"-l", "select",
+				path.string()
+			})) + (args.empty() ? L"" : L" " + args),
+			.elevateMode = Utils::Win32::RunProgramParams::Force,
+		})
+		? 0
+		: 1;
 }
 
 static int SelectAndRunLauncher() {
@@ -380,32 +380,27 @@ static int SelectAndRunLauncher() {
 	}
 
 	try {
-		auto throw_on_error = [](HRESULT val) {
-			if (!SUCCEEDED(val))
-				_com_raise_error(val);
-		};
-
 		IFileOpenDialogPtr pDialog;
 		DWORD dwFlags;
 		static const COMDLG_FILTERSPEC fileTypes[] = {
 			{L"FFXIV Boot Files (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe)", L"ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe"},
 			{L"Executable Files (*.exe)", L"*.exe"},
 		};
-		throw_on_error(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
-		throw_on_error(pDialog->SetFileTypes(ARRAYSIZE(fileTypes), fileTypes));
-		throw_on_error(pDialog->SetFileTypeIndex(0));
-		throw_on_error(pDialog->SetDefaultExtension(L"exe"));
-		throw_on_error(pDialog->SetTitle(FindStringResourceEx(Dll::Module(), IDS_TITLE_SELECT_BOOT) + 1));
-		throw_on_error(pDialog->GetOptions(&dwFlags));
-		throw_on_error(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
-		throw_on_error(pDialog->Show(nullptr));
+		Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
+		Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypes(ARRAYSIZE(fileTypes), fileTypes));
+		Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypeIndex(0));
+		Utils::Win32::Error::ThrowIfFailed(pDialog->SetDefaultExtension(L"exe"));
+		Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(FindStringResourceEx(Dll::Module(), IDS_TITLE_SELECT_BOOT) + 1));
+		Utils::Win32::Error::ThrowIfFailed(pDialog->GetOptions(&dwFlags));
+		Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
+		Utils::Win32::Error::ThrowIfFailed(pDialog->Show(nullptr), true);
 
 		std::wstring fileName;
 		{
 			IShellItemPtr pResult;
 			PWSTR pszFileName;
-			throw_on_error(pDialog->GetResult(&pResult));
-			throw_on_error(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
+			Utils::Win32::Error::ThrowIfFailed(pDialog->GetResult(&pResult));
+			Utils::Win32::Error::ThrowIfFailed(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
 			if (!pszFileName)
 				throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
 			fileName = pszFileName;
@@ -413,13 +408,12 @@ static int SelectAndRunLauncher() {
 		}
 
 		return RunProgramRetryAfterElevatingSelfAsNecessary(fileName);
-	} catch (std::exception& e) {
+
+	} catch (const Utils::Win32::CancelledError&) {
+		return 0;
+
+	} catch (const std::exception& e) {
 		Utils::Win32::MessageBoxF(nullptr, MB_ICONERROR, MsgboxTitle, FindStringResourceEx(Dll::Module(), IDS_ERROR_UNEXPECTED), e.what() ? Utils::FromUtf8(e.what()) : L"Unknown");
-	} catch (_com_error& e) {
-		if (e.Error() == HRESULT_FROM_WIN32(ERROR_CANCELLED))
-			return 1;
-		const auto err = static_cast<const wchar_t*>(e.Description());
-		throw std::runtime_error(err ? Utils::ToUtf8(err) : "Unknown");
 	}
 	return 0;
 }
@@ -458,7 +452,7 @@ static int RunLauncher() {
 			case LauncherType::Chinese:
 				return RunProgramRetryAfterElevatingSelfAsNecessary(launchers.at(XivAlex::GameRegion::Chinese).BootApp);
 		}
-	} catch (std::out_of_range&) {
+	} catch (const std::out_of_range&) {
 		if (g_parameters->m_action == XivAlexDll::LoaderAction::Auto) {
 			if (!g_parameters->m_quiet)
 				SelectAndRunLauncher();
@@ -468,7 +462,7 @@ static int RunLauncher() {
 		}
 		return -1;
 
-	} catch (std::exception& e) {
+	} catch (const std::exception& e) {
 		if (!g_parameters->m_quiet)
 			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, FindStringResourceEx(Dll::Module(), IDS_ERROR_UNEXPECTED) + 1, e.what());
 		return -1;
@@ -735,7 +729,7 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 	try {
 		g_parameters = std::make_unique<XivAlexanderLoaderParameter>();
 		g_parameters->Parse();
-	} catch (std::exception& err) {
+	} catch (const std::exception& err) {
 		Utils::Win32::MessageBoxF(nullptr, MB_ICONWARNING, MsgboxTitle, FindStringResourceEx(Dll::Module(), IDS_ERROR_COMMAND_LINE) + 1, err.what(), g_parameters->GetHelpMessage());
 		return -1;
 	}
@@ -770,7 +764,7 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 			case CheckPackageVersionResult::VersionMismatch:
 				throw std::runtime_error(Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_ERROR_INCONSISTENT_FILES) + 1));
 		}
-	} catch (std::exception& e) {
+	} catch (const std::exception& e) {
 		if (Utils::Win32::MessageBoxF(nullptr, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON1, MsgboxTitle,
 			FindStringResourceEx(Dll::Module(), IDS_ERROR_COMPONENTS) + 1,
 			Utils::FromUtf8(e.what())
@@ -910,7 +904,7 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 				.wait = true,
 				.elevateMode = Utils::Win32::RunProgramParams::Force,
 			});
-		} catch (std::exception& e) {
+		} catch (const std::exception& e) {
 			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle, FindStringResourceEx(Dll::Module(), IDS_ERROR_RESTART_ADMIN) + 1, e.what());
 		}
 		return 0;
@@ -919,7 +913,7 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 	for (const auto pid : pids) {
 		try {
 			DoPidTask(pid, dllDir, dllPath);
-		} catch (std::exception& e) {
+		} catch (const std::exception& e) {
 			if (!g_parameters->m_quiet)
 				Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, MsgboxTitle,
 					L"PID: {}\n"

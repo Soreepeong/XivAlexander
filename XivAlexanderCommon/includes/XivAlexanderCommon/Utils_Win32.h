@@ -38,7 +38,7 @@ namespace Utils::Win32 {
 
 	void SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked, bool bEnabled, std::wstring newText = {});
 
-	std::string FormatWindowsErrorMessage(unsigned int errorCode);
+	std::string FormatWindowsErrorMessage(unsigned int errorCode, int languageId = MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT));
 
 	std::pair<std::string, std::string> FormatModuleVersionString(const void* pBlock);
 	std::pair<std::string, std::string> FormatModuleVersionString(const std::filesystem::path& path);
@@ -91,11 +91,15 @@ namespace Utils::Win32 {
 	extern HANDLE g_hDefaultHeap;
 
 	class Error : public std::runtime_error {
+		static int DefaultLanguageId;
+
 		const DWORD m_nErrorCode;
 
 	public:
 		Error(DWORD errorCode, const std::string& msg);
 		explicit Error(const std::string& msg);
+
+		Error(const _com_error& e);
 
 		template<typename Arg, typename ... Args>
 		Error(const char* format, Arg arg1, Args...args)
@@ -107,5 +111,17 @@ namespace Utils::Win32 {
 		}
 
 		[[nodiscard]] auto Code() const { return m_nErrorCode; }
+
+		static void SetDefaultLanguageId(int languageId) {
+			DefaultLanguageId = languageId;
+		}
+
+		static void ThrowIfFailed(HRESULT hresult, bool expectCancel = false);
 	};
+	
+	class CancelledError : public Error {
+	public:
+		using Error::Error;
+	};
+
 }

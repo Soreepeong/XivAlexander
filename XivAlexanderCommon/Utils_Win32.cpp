@@ -1,9 +1,6 @@
 #include "pch.h"
 #include "Utils_Win32.h"
 
-#include <comdef.h>
-#include <shlobj_core.h>
-
 #include "Utils_Win32_Closeable.h"
 #include "Utils_Win32_Handle.h"
 #include "Utils_Win32_Process.h"
@@ -11,10 +8,10 @@
 
 HANDLE Utils::Win32::g_hDefaultHeap = 0;
 
-std::string Utils::Win32::FormatWindowsErrorMessage(unsigned int errorCode) {
+std::string Utils::Win32::FormatWindowsErrorMessage(unsigned int errorCode, int languageId) {
 	std::set<std::string> messages;
 	for (const auto langId : {
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		languageId,
 		MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
 #ifdef _DEBUG
 		MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN),
@@ -243,7 +240,7 @@ std::filesystem::path Utils::Win32::EnsureKnownFolderPath(const KNOWNFOLDERID& r
 	PWSTR pszPath;
 	const auto result = SHGetKnownFolderPath(rfid, KF_FLAG_CREATE | KF_FLAG_INIT, nullptr, &pszPath);
 	if (result != S_OK)
-		throw std::runtime_error(std::format("Failed to resolve %APPDATA%", _com_error(result).ErrorMessage()));
+		throw Error(_com_error(result));
 
 	const auto freepath = CallOnDestruction([pszPath]() { CoTaskMemFree(pszPath); });
 	return std::filesystem::path(pszPath);
@@ -258,7 +255,7 @@ static Utils::CallOnDestruction WithRunAsInvoker() {
 	env.resize(GetEnvironmentVariableW(NeverElevateEnvKey, &env[0], static_cast<DWORD>(env.size())));
 	const auto envNone = env.empty() && GetLastError() == ERROR_ENVVAR_NOT_FOUND;
 	if (!envNone && env.empty())
-		throw Utils::Win32::Error("GetEnvrionmentVariableW");
+		throw Utils::Win32::Error("GetEnvironmentVariableW");
 	if (!SetEnvironmentVariableW(NeverElevateEnvKey, NeverElevateEnvVal))
 		throw Utils::Win32::Error("SetEnvironmentVariableW");
 	return { [env = std::move(env), envNone] () {
@@ -453,10 +450,29 @@ std::vector<DWORD> Utils::Win32::GetProcessList() {
 	return res;
 }
 
+int Utils::Win32::Error::DefaultLanguageId = MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT);
+
 Utils::Win32::Error::Error(DWORD errorCode, const std::string& msg)
-	: std::runtime_error(FormatWindowsErrorMessage(errorCode) + ": " + msg)
+	: std::runtime_error(FormatWindowsErrorMessage(errorCode, DefaultLanguageId) + ": " + msg)
 	, m_nErrorCode(errorCode) {
 }
 
 Utils::Win32::Error::Error(const std::string& msg) : Error(GetLastError(), msg) {
+}
+
+Utils::Win32::Error::Error(const _com_error& e)
+	: std::runtime_error(
+		std::format("[0x{:08x}] {} ({})",
+			static_cast<uint32_t>(e.Error()),
+			ToUtf8(e.ErrorMessage()),
+			ToUtf8(e.Description().length() ? static_cast<const wchar_t*>(e.Description()) : L""))
+	),
+	m_nErrorCode(e.Error()) {
+}
+
+void Utils::Win32::Error::ThrowIfFailed(HRESULT hresult, bool expectCancel) {
+	if (expectCancel && hresult == HRESULT_FROM_WIN32(ERROR_CANCELLED))
+		throw CancelledError(_com_error(hresult));
+	if (FAILED(hresult))
+		throw Error(_com_error(hresult));
 }

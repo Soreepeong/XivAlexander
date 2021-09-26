@@ -365,12 +365,12 @@ struct App::Network::SocketHook::Implementation {
 		const auto& runtime = m_config->Runtime;
 		try {
 			m_allowedIpRange = Utils::ParseIpRange(game.Server_IpRange, runtime.TakeOverAllAddresses, runtime.TakeOverPrivateAddresses, runtime.TakeOverLoopbackAddresses);
-		} catch (std::exception& e) {
+		} catch (const std::exception& e) {
 			this_->m_logger->Format<LogLevel::Error>(LogCategory::SocketHook, e.what());
 		}
 		try {
 			m_allowedPortRange = Utils::ParsePortRange(game.Server_PortRange, runtime.TakeOverAllPorts);
-		} catch (std::exception& e) {
+		} catch (const std::exception& e) {
 			this_->m_logger->Format<LogLevel::Error>(LogCategory::SocketHook, e.what());
 		}
 	}

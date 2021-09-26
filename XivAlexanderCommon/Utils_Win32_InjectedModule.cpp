@@ -73,10 +73,10 @@ void Utils::Win32::InjectedModule::Clear() {
 		try {
 			try {
 				Call("CallFreeLibrary", m_rpModule, "CallFreeLibrary");
-			} catch (std::out_of_range&) {
+			} catch (const std::out_of_range&) {
 				m_hProcess.UnloadModule(m_rpModule);
 			}
-		} catch (std::exception&) {
+		} catch (const std::exception&) {
 
 			// suppress error if the process is already dead
 			if (WaitForSingleObject(m_hProcess, 0) == WAIT_TIMEOUT)

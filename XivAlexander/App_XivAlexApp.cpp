@@ -99,11 +99,14 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 			std::lock_guard _lock(m_queueMutex);
 			m_queuedFunctions.emplace([this, &f, &hEvent]() {
 				try {
-					f();
+					try {
+						f();
+					} catch (const _com_error& e) {
+						if (e.Error() != HRESULT_FROM_WIN32(ERROR_CANCELLED))
+							throw Utils::Win32::Error(e);
+					}
 				} catch (const std::exception& e) {
 					this_->m_logger->Log(LogCategory::General, this_->m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()), LogLevel::Error);
-				} catch (const _com_error& e) {
-					this_->m_logger->Log(LogCategory::General, this_->m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, static_cast<const wchar_t*>(e.Description())), LogLevel::Error);
 				} catch (...) {
 					this_->m_logger->Log(LogCategory::General, this_->m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, L"?"), LogLevel::Error);
 				}
@@ -312,7 +315,7 @@ void App::XivAlexApp::CustomMessageLoopBody() {
 
 	try {
 		Misc::FreeGameMutex::FreeGameMutex();
-	} catch (std::exception& e) {
+	} catch (const std::exception& e) {
 		m_logger->Format<LogLevel::Warning>(LogCategory::General, m_config->Runtime.GetLangId(), IDS_ERROR_FREEGAMEMUTEX, e.what());
 	}
 

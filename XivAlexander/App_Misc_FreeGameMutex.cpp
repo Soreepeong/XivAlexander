@@ -183,7 +183,7 @@ void App::Misc::FreeGameMutex::FreeGameMutex() {
 					"Freed game mutex {}.",
 					Utils::ToUtf8(name));
 			}
-		} catch (std::exception& e) {
+		} catch (const std::exception& e) {
 			logger->Format(
 				LogCategory::General,
 				config->Runtime.GetLangId(),

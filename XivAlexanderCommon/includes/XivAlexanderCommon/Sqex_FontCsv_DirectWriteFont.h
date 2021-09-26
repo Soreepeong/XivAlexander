@@ -8,13 +8,8 @@ namespace Sqex::FontCsv {
 
 	protected:
 		static void Succ(HRESULT hr) {
-			if (!SUCCEEDED(hr)) {
-				const auto err = _com_error(hr);
-				throw std::runtime_error(std::format("Error 0x{:08x}: {}",
-					static_cast<uint32_t>(err.Error()),
-					err.ErrorMessage()
-				));
-			}
+			if (!SUCCEEDED(hr))
+				throw Win32::Error(_com_error(hr));
 		}
 
 	public:

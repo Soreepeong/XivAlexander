@@ -129,7 +129,7 @@ double App::Window::BaseWindow::GetZoom() const {
 			newDpiY = GetDeviceCaps(hdc, LOGPIXELSY);
 		}
 		return std::min(newDpiY, newDpiX) / 96.;
-	} catch (std::exception&) {
+	} catch (const std::exception&) {
 		// uninterested in handling errors here
 		return 1.;
 	}

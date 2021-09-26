@@ -52,6 +52,8 @@ App::Config::BaseRepository::BaseRepository(__in_opt const Config* pConfig, std:
 	, m_logger(Misc::Logger::Acquire()) {
 }
 
+App::Config::BaseRepository::~BaseRepository() = default;
+
 App::Config::ItemBase::ItemBase(BaseRepository* pRepository, const char* pszName)
 	: m_pszName(pszName)
 	, m_pBaseRepository(pRepository) {
@@ -69,7 +71,7 @@ void App::Config::BaseRepository::Reload(bool announceChange) {
 			in >> totalConfig;
 			if (totalConfig.type() != nlohmann::detail::value_t::object)
 				throw std::runtime_error("Root must be an object.");  // TODO: string resource
-		} catch (std::exception& e) {
+		} catch (const std::exception& e) {
 			totalConfig = nlohmann::json::object();
 			changed = true;
 			m_logger->FormatDefaultLanguage<LogLevel::Warning>(LogCategory::General,
@@ -116,6 +118,22 @@ std::shared_ptr<App::Config> App::Config::Acquire() {
 		}
 	}
 	return r;
+}
+
+App::Config::Runtime::Runtime(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey)
+	: BaseRepository(pConfig, std::move(path), std::move(parentKey)) {
+	m_cleanup += Language.OnChangeListener([&](auto&) {
+		Utils::Win32::Error::SetDefaultLanguageId(GetLangId());
+	});
+}
+
+App::Config::Runtime::~Runtime() {
+	m_cleanup.Clear();
+}
+
+void App::Config::Runtime::Reload(bool announceChange) {
+	BaseRepository::Reload(announceChange);
+	Utils::Win32::Error::SetDefaultLanguageId(GetLangId());
 }
 
 WORD App::Config::Runtime::GetLangId() const {
@@ -254,7 +272,7 @@ void App::Config::BaseRepository::Save() {
 	try {
 		std::ofstream out(m_sConfigPath);
 		out << totalConfig.dump(1, '\t');
-	} catch (std::exception& e) {
+	} catch (const std::exception& e) {
 		m_logger->FormatDefaultLanguage<LogLevel::Error>(LogCategory::General, IDS_ERROR_CONFIGURATION_SAVE, e.what());
 	}
 }
@@ -271,7 +289,7 @@ bool App::Config::Item<uint16_t>::LoadFrom(const nlohmann::json& data, bool anno
 				newValue = it->get<uint16_t>();
 			else
 				return false;
-		} catch (std::exception& e) {
+		} catch (const std::exception& e) {
 			m_pBaseRepository->m_logger->FormatDefaultLanguage(LogCategory::General, IDS_ERROR_CONFIGURATION_PARSE_VALUE, strVal, e.what());
 		}
 		if (announceChanged)

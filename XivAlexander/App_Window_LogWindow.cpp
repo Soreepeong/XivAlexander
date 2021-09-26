@@ -143,29 +143,24 @@ LRESULT App::Window::LogWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
 						{L"Log Files (*.log)", L"*.log"},
 						{L"All Documents (*.*)", L"*.*"}
 					};
-					auto throw_on_error = [](HRESULT val) {
-						if (!SUCCEEDED(val))
-							_com_raise_error(val);
-					};
 
 					try {
 						IFileSaveDialogPtr pDialog;
 						DWORD dwFlags;
-						throw_on_error(pDialog.CreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER));
-						throw_on_error(pDialog->SetFileTypes(ARRAYSIZE(saveFileTypes), saveFileTypes));
-						throw_on_error(pDialog->SetFileTypeIndex(0));
-						throw_on_error(pDialog->SetDefaultExtension(L"log"));
-						throw_on_error(pDialog->GetOptions(&dwFlags));
-						throw_on_error(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
-
-						throw_on_error(pDialog->Show(hWnd));
+						Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER));
+						Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypes(ARRAYSIZE(saveFileTypes), saveFileTypes));
+						Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypeIndex(0));
+						Utils::Win32::Error::ThrowIfFailed(pDialog->SetDefaultExtension(L"log"));
+						Utils::Win32::Error::ThrowIfFailed(pDialog->GetOptions(&dwFlags));
+						Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
+						Utils::Win32::Error::ThrowIfFailed(pDialog->Show(hWnd), true);
 
 						std::filesystem::path newFileName;
 						{
 							IShellItemPtr pResult;
 							PWSTR pszNewFileName;
-							throw_on_error(pDialog->GetResult(&pResult));
-							throw_on_error(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszNewFileName));
+							Utils::Win32::Error::ThrowIfFailed(pDialog->GetResult(&pResult));
+							Utils::Win32::Error::ThrowIfFailed(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszNewFileName));
 							if (!pszNewFileName)
 								throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
 							newFileName = pszNewFileName;
@@ -176,14 +171,12 @@ LRESULT App::Window::LogWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
 						Utils::Win32::MessageBoxF(hWnd, MB_ICONINFORMATION, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 							m_config->Runtime.FormatStringRes(IDS_LOG_SAVED, newFileName));
 
-					} catch (std::exception& e) {
+					} catch (const Utils::Win32::CancelledError&) {
+						return 0;
+
+					} catch (const std::exception& e) {
 						Utils::Win32::MessageBoxF(hWnd, MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 							m_config->Runtime.FormatStringRes(IDS_ERROR_LOG_SAVE, e.what()));
-					} catch (_com_error& e) {
-						if (e.Error() == HRESULT_FROM_WIN32(ERROR_CANCELLED))
-							return 0;
-						Utils::Win32::MessageBoxF(hWnd, MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-							m_config->Runtime.FormatStringRes(IDS_ERROR_LOG_SAVE, static_cast<const wchar_t*>(e.Description())));
 					}
 					return 0;
 				}

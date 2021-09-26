@@ -7,12 +7,15 @@
 namespace App::Window {
 	class ProgressPopupWindow : public BaseWindow {
 		HWND const m_hParentWindow;
+		UINT const m_wmTaskbarButtonCreated;
 		HWND m_hMessage = nullptr;
 		HWND m_hProgressBar = nullptr;
 		HWND m_hCancelButton = nullptr;
 		HFONT m_hFont = nullptr;
 
 		const Utils::Win32::Event m_hCancelEvent;
+
+		ITaskbarList3Ptr m_taskBarList3;
 
 	public:
 		ProgressPopupWindow(HWND hParentWindow);

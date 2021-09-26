@@ -129,7 +129,7 @@ App::Window::MainWindow::~MainWindow() {
 void App::Window::MainWindow::ShowContextMenu(const BaseWindow* parent) const {
 	if (!parent)
 		parent = this;
-	
+
 	SetMenuStates();
 	POINT curPoint;
 	GetCursorPos(&curPoint);
@@ -1135,41 +1135,31 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 		case ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD:
 			while (true) {
 				try {
-					auto throw_on_error = [](HRESULT val) {
-						if (!SUCCEEDED(val))
-							_com_raise_error(val);
-					};
-
 					IFileOpenDialogPtr pDialog;
 					DWORD dwFlags;
-					throw_on_error(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
-					throw_on_error(pDialog->SetTitle(m_config->Runtime.GetStringRes(IDS_TITLE_ADD_EXTERNAL_GAME_DIRECTORY)));
-					throw_on_error(pDialog->GetOptions(&dwFlags));
-					throw_on_error(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM | FOS_PICKFOLDERS));
-					throw_on_error(pDialog->Show(m_hWnd));
+					Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
+					Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(m_config->Runtime.GetStringRes(IDS_TITLE_ADD_EXTERNAL_GAME_DIRECTORY)));
+					Utils::Win32::Error::ThrowIfFailed(pDialog->GetOptions(&dwFlags));
+					Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM | FOS_PICKFOLDERS));
+					Utils::Win32::Error::ThrowIfFailed(pDialog->Show(m_hWnd), true);
 
 					IShellItemPtr pResult;
 					PWSTR pszFileName;
-					throw_on_error(pDialog->GetResult(&pResult));
-					throw_on_error(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
+					Utils::Win32::Error::ThrowIfFailed(pDialog->GetResult(&pResult));
+					Utils::Win32::Error::ThrowIfFailed(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
 					if (!pszFileName)
 						throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
 					const auto freeFileName = Utils::CallOnDestruction([pszFileName]() { CoTaskMemFree(pszFileName); });
 
 					AddAdditionalGameRootDirectory(pszFileName);
 
-				} catch (std::exception& e) {
+				} catch (const Utils::Win32::CancelledError&) {
+					break;
+
+				} catch (const std::exception& e) {
 					Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 						m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-
-				} catch (_com_error& e) {
-					if (e.Error() != HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
-						const auto err = static_cast<const wchar_t*>(e.Description());
-						Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-							m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, err));
-					}
 				}
-				break;
 			}
 			return;
 
@@ -1526,39 +1516,34 @@ void App::Window::MainWindow::OnCommand_Menu_Help(int menuId) {
 
 std::vector<std::filesystem::path> App::Window::MainWindow::ChooseFileToOpen(std::span<const COMDLG_FILTERSPEC> fileTypes, UINT nTitleResId, const std::filesystem::path& defaultPath) const {
 	try {
-		auto throw_on_error = [](HRESULT val) {
-			if (!SUCCEEDED(val))
-				_com_raise_error(val);
-		};
-
 		IFileOpenDialogPtr pDialog;
 		DWORD dwFlags;
-		throw_on_error(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
-		throw_on_error(pDialog->SetFileTypes(static_cast<UINT>(fileTypes.size()), fileTypes.data()));
-		throw_on_error(pDialog->SetFileTypeIndex(0));
-		throw_on_error(pDialog->SetTitle(m_config->Runtime.GetStringRes(nTitleResId)));
-		throw_on_error(pDialog->GetOptions(&dwFlags));
-		throw_on_error(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM | FOS_ALLOWMULTISELECT | FOS_NOCHANGEDIR));
+		Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
+		Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypes(static_cast<UINT>(fileTypes.size()), fileTypes.data()));
+		Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypeIndex(0));
+		Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(m_config->Runtime.GetStringRes(nTitleResId)));
+		Utils::Win32::Error::ThrowIfFailed(pDialog->GetOptions(&dwFlags));
+		Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM | FOS_ALLOWMULTISELECT | FOS_NOCHANGEDIR));
 		if (!defaultPath.empty()) {
 			IShellItemPtr defaultDir;
 			if (!FAILED(SHCreateItemFromParsingName(defaultPath.c_str(), nullptr, defaultDir.GetIID(), reinterpret_cast<void**>(&defaultDir))))
-				throw_on_error(pDialog->SetDefaultFolder(defaultDir));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->SetDefaultFolder(defaultDir));
 		}
-		throw_on_error(pDialog->Show(m_hWnd));
+		Utils::Win32::Error::ThrowIfFailed(pDialog->Show(m_hWnd), true);
 
 		IShellItemArrayPtr items;
-		throw_on_error(pDialog->GetResults(&items));
+		Utils::Win32::Error::ThrowIfFailed(pDialog->GetResults(&items));
 
 		DWORD count = 0;
-		throw_on_error(items->GetCount(&count));
+		Utils::Win32::Error::ThrowIfFailed(items->GetCount(&count));
 
 		std::vector<std::filesystem::path> result;
 		for (DWORD i = 0; i < count; ++i) {
 			IShellItemPtr item;
-			throw_on_error(items->GetItemAt(i, &item));
+			Utils::Win32::Error::ThrowIfFailed(items->GetItemAt(i, &item));
 
 			PWSTR pszFileName;
-			throw_on_error(item->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
+			Utils::Win32::Error::ThrowIfFailed(item->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
 			if (!pszFileName)
 				throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
 			result.emplace_back(pszFileName);
@@ -1566,19 +1551,14 @@ std::vector<std::filesystem::path> App::Window::MainWindow::ChooseFileToOpen(std
 		}
 		return result;
 
-	} catch (std::exception& e) {
-		Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-			m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+	} catch (const Utils::Win32::CancelledError&) {
 		return {};
 
-	} catch (_com_error& e) {
-		if (e.Error() == HRESULT_FROM_WIN32(ERROR_CANCELLED))
-			return {};
-		const auto err = static_cast<const wchar_t*>(e.Description());
+	} catch (const std::exception& e) {
 		Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-			m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, err));
-		return {};
+			m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
 	}
+	return {};
 }
 
 // https://stackoverflow.com/a/39097160/1800296

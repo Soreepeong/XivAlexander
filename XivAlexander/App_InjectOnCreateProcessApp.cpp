@@ -88,7 +88,7 @@ struct App::InjectOnCreateProcessApp::Implementation {
 					LaunchXivAlexLoaderWithTargetHandles({process}, XivAlexDll::LoaderAction::Internal_Inject_HookEntryPoint, true);
 				}
 			}
-		} catch (std::exception& e) {
+		} catch (const std::exception& e) {
 			error = Utils::FromUtf8(e.what());
 		}
 
@@ -232,7 +232,7 @@ void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters* pParam) 
 				process.WriteMemory(p->EntryPoint, p->EntryPointOriginalBytes, p->EntryPointOriginalLength, true);
 				InitializeBeforeOriginalEntryPoint(hContinueNotify);
 				SetEvent(hContinueNotify);
-			} catch (std::exception& e) {
+			} catch (const std::exception& e) {
 				Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
 					1 + FindStringResourceEx(Dll::Module(), IDS_ERROR_INJECT),
 					e.what(), process.GetId(), process.PathOf().wstring(), GetCommandLineW());

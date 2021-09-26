@@ -37,6 +37,7 @@
 #include <PathCch.h>
 #include <Psapi.h>
 #include <shellapi.h>
+#include <shlobj_core.h>
 #include <Shlwapi.h>
 #include <TlHelp32.h>
 #include <wincrypt.h>

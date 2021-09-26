@@ -137,11 +137,12 @@ namespace App {
 
 		public:
 			BaseRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
+			virtual ~BaseRepository();
 
 			[[nodiscard]] auto Loaded() const { return m_loaded; }
 
 			void Save();
-			void Reload(bool announceChange = false);
+			virtual void Reload(bool announceChange = false);
 
 			[[nodiscard]] auto GetConfigPath() const { return m_sConfigPath; }
 
@@ -168,6 +169,8 @@ namespace App {
 		class Runtime : public BaseRepository {
 			friend class Config;
 			using BaseRepository::BaseRepository;
+
+			Utils::CallOnDestruction::Multiple m_cleanup;
 
 		public:
 
@@ -234,6 +237,11 @@ namespace App {
 				CreateConfigItem<std::vector<Sqex::Language>>(this, "FallbackLanguagePriority");
 
 			Item<std::string> OverrideFontConfig = CreateConfigItem(this, "OverrideFontConfig", std::string());
+			
+			Runtime(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
+			~Runtime() override;
+			
+			void Reload(bool announceChange = false) override;
 
 			[[nodiscard]] WORD GetLangId() const;
 			[[nodiscard]] LPCWSTR GetStringRes(UINT uId) const;
