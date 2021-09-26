@@ -367,7 +367,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 					// pass
 				}
 				AppendMenuW(hParentMenu, MF_STRING | (eq ? MF_CHECKED : 0), allocateMenuId([this, path = entry.path()]() {
-					m_config->Runtime.OverrideFontConfig = Utils::ToUtf8(path.wstring());
+					m_config->Runtime.OverrideFontConfig = path;
 				}), entry.path().filename().wstring().c_str());
 				count++;
 			}
@@ -1131,7 +1131,7 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 		}
 
 		case ID_MODDING_CHANGEFONT_DISABLE:
-			m_config->Runtime.OverrideFontConfig = std::string();
+			m_config->Runtime.OverrideFontConfig = std::filesystem::path();
 			return;
 
 		case ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD:
@@ -1602,11 +1602,12 @@ void App::Window::MainWindow::ImportFontConfig(const std::filesystem::path& path
 		// Test file
 		void(Utils::ParseJsonFromFile(path).get<Sqex::FontCsv::CreateConfig::FontCreateConfig>());
 
+		create_directories(targetDirectory);
 		if (!CopyFileW(path.c_str(), targetFileName.c_str(), TRUE))
 			throw Utils::Win32::Error("CopyFileW");
 	}
 
-	m_config->Runtime.OverrideFontConfig = Utils::ToUtf8(targetFileName.wstring());
+	m_config->Runtime.OverrideFontConfig = targetFileName;
 }
 
 void App::Window::MainWindow::ImportExcelTransformConfig(const std::filesystem::path& path) {
@@ -1626,25 +1627,25 @@ void App::Window::MainWindow::ImportExcelTransformConfig(const std::filesystem::
 	if (!alreadyExists) {
 		// Test file
 		void(Utils::ParseJsonFromFile(path).get<Misc::ExcelTransformConfig::Config>());
-
+		
+		create_directories(targetDirectory);
 		if (!CopyFileW(path.c_str(), targetFileName.c_str(), TRUE))
 			throw Utils::Win32::Error("CopyFileW");
 	}
 
 	auto arr = m_config->Runtime.ExcelTransformConfigFiles.Value();
-	auto s = Utils::ToUtf8(targetFileName.wstring());
 	while (true) {
-		const auto it = std::ranges::find(arr, s);
+		const auto it = std::ranges::find(arr, targetFileName);
 		if (it != arr.end())
 			arr.erase(it);
 		else
 			break;
 	}
-	arr.emplace(arr.begin(), std::move(s));
+	arr.emplace(arr.begin(), std::move(targetFileName));
 	m_config->Runtime.ExcelTransformConfigFiles = arr;
 }
 
-void App::Window::MainWindow::AddAdditionalGameRootDirectory(const std::filesystem::path& path) {
+void App::Window::MainWindow::AddAdditionalGameRootDirectory(std::filesystem::path path) {
 	if (!exists(path / "ffxiv_dx11.exe")
 		|| !exists(path / "ffxiv.exe")) {
 		Utils::Win32::MessageBoxF(m_hWnd, MB_ICONWARNING, m_config->Runtime.GetStringRes(IDS_APP_NAME), m_config->Runtime.GetStringRes(IDS_ERROR_NOT_GAME_DIRECTORY), path.wstring());
@@ -1654,15 +1655,14 @@ void App::Window::MainWindow::AddAdditionalGameRootDirectory(const std::filesyst
 	auto arr = m_config->Runtime.AdditionalSqpackRootDirectories.Value();
 	if (std::ranges::find(arr, path) != arr.end())
 		return;
-	auto s = Utils::ToUtf8(path.wstring());
 	while (true) {
-		const auto it = std::ranges::find(arr, s);
+		const auto it = std::ranges::find(arr, path);
 		if (it != arr.end())
 			arr.erase(it);
 		else
 			break;
 	}
-	arr.emplace(arr.begin(), std::move(s));
+	arr.emplace(arr.begin(), std::move(path));
 	m_config->Runtime.AdditionalSqpackRootDirectories = arr;
 }
 
@@ -1786,7 +1786,7 @@ std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& pa
 				for (int i = 0; exists(targetTtmpDirectory); i++)
 					targetTtmpDirectory = targetDirectory / std::format(L"{}_{}", name, i);
 			}
-
+			
 			if (!CopyFileW(path.c_str(), (temporaryTtmpDirectory / "TTMPL.mpl").c_str(), TRUE))
 				throw Utils::Win32::Error("CopyFileW");
 			if (!CopyFileW(ttmpdPath.c_str(), (temporaryTtmpDirectory / "TTMPD.mpd").c_str(), TRUE))

@@ -236,7 +236,7 @@ namespace App {
 			Item<std::vector<Sqex::Language>> FallbackLanguagePriority =
 				CreateConfigItem<std::vector<Sqex::Language>>(this, "FallbackLanguagePriority");
 
-			Item<std::string> OverrideFontConfig = CreateConfigItem(this, "OverrideFontConfig", std::string());
+			Item<std::filesystem::path> OverrideFontConfig = CreateConfigItem(this, "OverrideFontConfig", std::filesystem::path());
 			
 			Runtime(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
 			~Runtime() override;

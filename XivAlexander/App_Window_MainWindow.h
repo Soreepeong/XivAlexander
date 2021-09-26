@@ -67,7 +67,7 @@ namespace App::Window {
 		
 		void ImportFontConfig(const std::filesystem::path& path);
 		void ImportExcelTransformConfig(const std::filesystem::path& path);
-		void AddAdditionalGameRootDirectory(const std::filesystem::path& path);
+		void AddAdditionalGameRootDirectory(std::filesystem::path path);
 		std::string InstallTTMP(const std::filesystem::path& path, const Utils::Win32::Event& cancelEvent);
 
 		std::pair<std::filesystem::path, std::string> InstallAnyFile(const std::filesystem::path& path, const Utils::Win32::Event& cancelEvent);

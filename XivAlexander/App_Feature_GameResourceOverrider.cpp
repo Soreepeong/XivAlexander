@@ -346,18 +346,30 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					}
 				}
 
-				Sqex::Language overrideLanguage;
-				if (ext == ".scd")
-					overrideLanguage = m_config->Runtime.VoiceResourceLanguageOverride;
-				else
+				const auto nameLower = [&name]() {
+					auto val = Utils::FromUtf8(name);
+					CharLowerW(&val[0]);
+					return Utils::ToUtf8(val);
+				}();
+
+				const auto extLower = [&ext]() {
+					auto val = Utils::FromUtf8(ext);
+					CharLowerW(&val[0]);
+					return Utils::ToUtf8(val);
+				}();
+
+				auto overrideLanguage = Sqex::Language::Unspecified;
+				if (extLower == ".scd") {
+					if (nameLower.starts_with("cut/") || nameLower.starts_with("sound/voice/vo_line"))
+						overrideLanguage = m_config->Runtime.VoiceResourceLanguageOverride;
+				} else {
 					overrideLanguage = m_config->Runtime.ResourceLanguageOverride;
+				}
 
 				if (overrideLanguage != Sqex::Language::Unspecified) {
 					const char* languageCodes[] = {"ja", "en", "de", "fr", "chs", "cht", "ko"};
 					const auto targetLanguageCode = languageCodes[static_cast<int>(overrideLanguage) - 1];
 
-					std::string nameLower = name;
-					std::ranges::transform(nameLower, nameLower.begin(), [](char c) { return static_cast<char>(std::tolower(c)); });
 					std::string newName;
 					if (nameLower.starts_with("ui/uld/logo")) {
 						// do nothing, as overriding this often freezes the game
@@ -512,7 +524,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetLength()));
 				currentCacheKeys += std::format("SQPACK:{}:{}\n", canonical(gameRoot).wstring(), std::string(versionContent.begin(), versionContent.end()));
 			}
-			
+
 			currentCacheKeys += "LANG";
 			for (const auto& lang : m_config->Runtime.GetFallbackLanguageList()) {
 				currentCacheKeys += std::format(":{}", static_cast<int>(lang));
@@ -1308,16 +1320,15 @@ struct App::Feature::GameResourceOverrider::Implementation {
 		if (indexPath.filename() != L"000000.win32.index")
 			return false;
 
-		if (const auto fontConfigPathStr = m_config->Runtime.OverrideFontConfig.Value(); !fontConfigPathStr.empty()) {
-			const auto fontConfigPath = Config::TranslatePath(fontConfigPathStr);
+		if (const auto fontConfigPath = m_config->Runtime.OverrideFontConfig.Value(); !fontConfigPath.empty()) {
 			try {
 				if (!exists(fontConfigPath))
-					throw std::runtime_error(std::format("=> Font config file was not found: ", fontConfigPathStr));
+					throw std::runtime_error(std::format("=> Font config file was not found: ", fontConfigPath.wstring()));
 
 				const auto [region, _] = XivAlex::ResolveGameReleaseRegion();
 
 				const auto cachedDir = m_config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / region / creator.DatExpac / creator.DatName;
-				
+
 				std::string currentCacheKeys;
 				{
 					const auto gameRoot = indexPath.parent_path().parent_path().parent_path();
@@ -1325,11 +1336,11 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetLength()));
 					currentCacheKeys += std::format("SQPACK:{}:{}\n", canonical(gameRoot).wstring(), std::string(versionContent.begin(), versionContent.end()));
 				}
-				
+
 				if (const auto& configFile = m_config->Runtime.OverrideFontConfig.Value(); !configFile.empty()) {
 					uint8_t hash[20]{};
 					try {
-						const auto file = Utils::Win32::File::Create(Utils::FromUtf8(configFile), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+						const auto file = Utils::Win32::File::Create(configFile, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
 						CryptoPP::SHA1 sha1;
 						const auto content = file.Read<uint8_t>(0, static_cast<size_t>(file.GetLength()));
 						sha1.Update(content.data(), content.size());
@@ -1366,7 +1377,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 
 					m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
 						"=> Generating font per file: {}",
-						fontConfigPathStr);
+						fontConfigPath.wstring());
 
 					auto cfg = Utils::ParseJsonFromFile(fontConfigPath).get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
 
@@ -1374,7 +1385,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {fontCreator.GetWaitableObject()})) {
 						const auto progress = fontCreator.GetProgress();
 						progressWindow.UpdateProgress(progress.Progress, progress.Max);
-						
+
 						if (progress.Indeterminate)
 							progressWindow.UpdateMessage(std::format("{} (+{})", m_config->Runtime.GetStringRes(IDS_TITLE_GENERATING_FONTS), progress.Indeterminate));
 						else
@@ -1454,7 +1465,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 						}
 						return false;
 					}
-						
+
 					try {
 						std::filesystem::remove(cachedDir / "TTMPL.mpl");
 					} catch (...) {

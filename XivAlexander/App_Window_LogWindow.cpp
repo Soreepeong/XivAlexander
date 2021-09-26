@@ -10,7 +10,7 @@
 #include "resource.h"
 
 constexpr int BaseFontSize = 9;
-constexpr auto MaxDisplayedLines = 32768;
+constexpr auto MaxDisplayedLines = 256 * 1024;
 
 static const std::map<App::LogLevel, int> LogLevelStyleMap{
 	{App::LogLevel::Debug, STYLE_LASTPREDEFINED + 0},
