@@ -92,11 +92,11 @@ namespace Sqex::Excel {
 	}
 
 	struct ExdColumn {
-		Exh::ColumnDataType Type;
-		uint8_t ValidSize;
+		Exh::ColumnDataType Type{};
+		uint8_t ValidSize{};
 
 		union {
-			uint8_t Buffer[8];
+			uint8_t Buffer[8]{};
 			bool boolean;
 			int8_t int8;
 			uint8_t uint8;

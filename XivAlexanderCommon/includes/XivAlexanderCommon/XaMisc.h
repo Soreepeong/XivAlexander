@@ -136,6 +136,10 @@ namespace Utils {
 	}
 
 	std::map<std::pair<char32_t, char32_t>, SSIZE_T> ParseKerningTable(std::span<const char> data, const std::map<uint16_t, char32_t>& GlyphIndexToCharCodeMap);
+
+	nlohmann::json ParseJsonFromFile(const std::filesystem::path& path, size_t maxSize = 1024 * 1024 * 16);
+	void SaveJsonToFile(const std::filesystem::path& path, const nlohmann::json& json);
+	void SaveToFile(const std::filesystem::path& path, std::span<const char> s);
 }
 
 namespace std::filesystem {

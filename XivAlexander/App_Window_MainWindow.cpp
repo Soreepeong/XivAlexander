@@ -435,10 +435,9 @@ void App::Window::MainWindow::RepopulateMenu() {
 					continue;
 
 				const auto ttmpl = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream(entry.path()));
-				nlohmann::json conf;
+				auto conf = nlohmann::json::object();
 				try {
-					std::ifstream in(choicesPath);
-					in >> conf;
+					conf = Utils::ParseJsonFromFile(choicesPath);
 				} catch (...) {
 					// pass
 				}
@@ -493,9 +492,8 @@ void App::Window::MainWindow::RepopulateMenu() {
 										while (conf.size() <= i)
 											conf.insert(conf.end(), true);
 										conf[i] = entryDisabled;
-
-										std::ofstream out(choicesPath);
-										out << conf;
+										
+										Utils::SaveJsonToFile(choicesPath, conf);
 
 									} catch (const std::exception& e) {
 										Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
@@ -548,9 +546,9 @@ void App::Window::MainWindow::RepopulateMenu() {
 										while (page.size() <= modGroupIndex)
 											page.insert(page.end(), 0);
 										page[modGroupIndex] = optionIndex;
+										
+										Utils::SaveJsonToFile(choicesPath, conf);
 
-										std::ofstream out(choicesPath);
-										out << conf;
 									} catch (const std::exception& e) {
 										Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 											m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
@@ -1312,10 +1310,9 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 							continue;
 
 						const auto ttmpl = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream(entry.path()));
-						nlohmann::json conf;
+						auto conf = nlohmann::json::object();
 						try {
-							std::ifstream in(choicesPath);
-							in >> conf;
+							conf = Utils::ParseJsonFromFile(choicesPath);
 						} catch (...) {
 							// pass
 						}
@@ -1563,19 +1560,24 @@ std::vector<std::filesystem::path> App::Window::MainWindow::ChooseFileToOpen(std
 
 // https://stackoverflow.com/a/39097160/1800296
 static bool FileEquals(const std::filesystem::path& filename1, const std::filesystem::path& filename2) {
-	std::ifstream file1(filename1, std::ifstream::ate | std::ifstream::binary); //open file at the end
-	std::ifstream file2(filename2, std::ifstream::ate | std::ifstream::binary); //open file at the end
+	const auto ReadBufSize = 65536;
+	const auto file1 = Utils::Win32::File::Create(filename1, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+	const auto file2 = Utils::Win32::File::Create(filename1, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+	const auto size1 = file1.GetLength(), size2 = file2.GetLength();
+	if (size1 != size2)
+		return false;
+	
+	std::string buf1(ReadBufSize, 0);
+	std::string buf2(ReadBufSize, 0);
+	for (uint64_t ptr = 0; ptr < size1; ptr += ReadBufSize) {
+		const auto read = static_cast<size_t>(std::min<uint64_t>(ReadBufSize, size1 - ptr));
+		file1.Read(ptr, &buf1[0], read);
+		file2.Read(ptr, &buf2[0], read);
+		if (buf1 != buf2)
+			return false;
+	}
 
-	if (file1.tellg() != file2.tellg())
-		return false; //different file size
-
-	file1.seekg(0); //rewind
-	file2.seekg(0); //rewind
-
-	const std::istreambuf_iterator begin1(file1);
-	const std::istreambuf_iterator begin2(file2);
-
-	return std::equal(begin1, std::istreambuf_iterator<char>(), begin2); //Second argument is end-of-range iterator
+	return true;
 }
 
 void App::Window::MainWindow::ImportFontConfig(const std::filesystem::path& path) {
@@ -1594,10 +1596,7 @@ void App::Window::MainWindow::ImportFontConfig(const std::filesystem::path& path
 
 	if (!alreadyExists) {
 		// Test file
-		std::ifstream in(path);
-		nlohmann::json j;
-		in >> j;
-		void(j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>());
+		void(Utils::ParseJsonFromFile(path).get<Sqex::FontCsv::CreateConfig::FontCreateConfig>());
 
 		if (!CopyFileW(path.c_str(), targetFileName.c_str(), TRUE))
 			throw Utils::Win32::Error("CopyFileW");
@@ -1622,10 +1621,7 @@ void App::Window::MainWindow::ImportExcelTransformConfig(const std::filesystem::
 
 	if (!alreadyExists) {
 		// Test file
-		std::ifstream in(path);
-		nlohmann::json j;
-		in >> j;
-		void(j.get<Misc::ExcelTransformConfig::Config>());
+		void(Utils::ParseJsonFromFile(path).get<Misc::ExcelTransformConfig::Config>());
 
 		if (!CopyFileW(path.c_str(), targetFileName.c_str(), TRUE))
 			throw Utils::Win32::Error("CopyFileW");
@@ -1754,8 +1750,8 @@ std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& pa
 				if (name.empty())
 					continue;
 
-				std::ofstream file(temporaryTtmpDirectory / entry.getName(), std::ios::binary);
-				entry.readContent(file);
+				std::ofstream o(temporaryTtmpDirectory / entry.getName(), std::ios::binary | std::ios::out);
+				entry.readContent(o);
 			}
 
 			{
@@ -1834,18 +1830,16 @@ std::pair<std::filesystem::path, std::string> App::Window::MainWindow::InstallAn
 	}
 
 	// Test file
-	std::ifstream in(path);
-	nlohmann::json j;
-	in >> j;
+	const auto json = Utils::ParseJsonFromFile(path);
 	auto isPossiblyExcelTransformConfig = false, isPossiblyFontConfig = false;
 	try {
-		void(j.get<Misc::ExcelTransformConfig::Config>());
+		void(json.get<Misc::ExcelTransformConfig::Config>());
 		isPossiblyExcelTransformConfig = true;
 	} catch (...) {
 		// pass
 	}
 	try {
-		void(j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>());
+		void(json.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>());
 		isPossiblyFontConfig = true;
 	} catch (...) {
 		// pass

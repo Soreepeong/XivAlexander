@@ -115,6 +115,7 @@ void App::Misc::Logger::Log(LogCategory category, const wchar_t* s, LogLevel lev
 }
 
 void App::Misc::Logger::Log(LogCategory category, const std::string& s, LogLevel level) {
+	OutputDebugStringW(std::format(L"{}\n", s).c_str());
 	m_pImpl->AddLogItem(LogItem{
 		0,
 		category,

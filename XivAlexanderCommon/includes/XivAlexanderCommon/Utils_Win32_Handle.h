@@ -94,7 +94,6 @@ namespace Utils::Win32 {
 			LONG lInitialCount,
 			LONG lMaximumCount,
 			LPCWSTR lpName = nullptr,
-			DWORD dwFlags = 0,
 			DWORD dwDesiredAccess = SEMAPHORE_ALL_ACCESS
 		);
 

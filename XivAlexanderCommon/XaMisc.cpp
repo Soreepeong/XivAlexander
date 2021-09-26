@@ -2,6 +2,7 @@
 #include "XaMisc.h"
 
 #include "Utils_Win32.h"
+#include "Utils_Win32_Handle.h"
 #include "XaStrings.h"
 
 SYSTEMTIME Utils::EpochToLocalSystemTime(int64_t epochMilliseconds) {
@@ -315,6 +316,26 @@ std::map<std::pair<char32_t, char32_t>, SSIZE_T> Utils::ParseKerningTable(
 		}
 	}
 	return result;
+}
+
+nlohmann::json Utils::ParseJsonFromFile(const std::filesystem::path& path, size_t maxSize) {
+	const auto f = Win32::File::Create(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+	const auto size = f.GetLength();
+	if (size > maxSize)
+		throw std::runtime_error("File too big");
+
+	std::string buf(static_cast<size_t>(size), '\0');
+	f.Read(0, &buf[0], buf.size());
+	return nlohmann::json::parse(buf);
+}
+
+void Utils::SaveJsonToFile(const std::filesystem::path& path, const nlohmann::json& json) {
+	const auto s = json.dump(1, '\t');
+	SaveToFile(path, s);
+}
+
+void Utils::SaveToFile(const std::filesystem::path& path, std::span<const char> s) {
+	void(Win32::File::Create(path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0).Write(0, s));
 }
 
 void std::filesystem::to_json(nlohmann::json& j, const path& value) {

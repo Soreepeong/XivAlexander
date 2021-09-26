@@ -166,8 +166,7 @@ LRESULT App::Window::LogWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
 							newFileName = pszNewFileName;
 						}
 
-						std::ofstream f(newFileName);
-						f << buf;
+						Utils::SaveToFile(newFileName, buf);
 						Utils::Win32::MessageBoxF(hWnd, MB_ICONINFORMATION, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 							m_config->Runtime.FormatStringRes(IDS_LOG_SAVED, newFileName));
 

@@ -6,11 +6,19 @@
 
 #include "XaStrings.h"
 
-template<class CharT>
-struct std::formatter<std::filesystem::path, CharT> : std::formatter<std::basic_string<CharT>, CharT> {
+template<>
+struct std::formatter<std::filesystem::path, wchar_t> : std::formatter<std::wstring, wchar_t> {
 	template<class FormatContext>
 	auto format(const std::filesystem::path& t, FormatContext& fc) {
-		return std::formatter<std::basic_string<CharT>, CharT>::format(t.string<CharT>(), fc);
+		return std::formatter<std::wstring, wchar_t>::format(t.wstring(), fc);
+	}
+};
+
+template<>
+struct std::formatter<std::filesystem::path, char> : std::formatter<std::string, char> {
+	template<class FormatContext>
+	auto format(const std::filesystem::path& t, FormatContext& fc) {
+		return std::formatter<std::string, char>::format(Utils::ToUtf8(t.wstring()), fc);
 	}
 };
 

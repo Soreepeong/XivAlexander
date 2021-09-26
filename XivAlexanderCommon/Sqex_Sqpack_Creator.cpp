@@ -219,7 +219,7 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntryFromFile(En
 
 Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(const std::filesystem::path& extractedDir, bool overwriteExisting) {
 	AddEntryResult addEntryResult{};
-	nlohmann::json conf;
+	nlohmann::json choices;
 	const auto ttmpdPath = extractedDir / "TTMPD.mpd";
 	size_t ttmpd = SIZE_MAX;
 	const auto ttmpl = ThirdParty::TexTools::TTMPL::FromStream(FileRandomAccessStream{
@@ -228,14 +228,17 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 		)
 	});
 
-	if (const auto configPath = extractedDir / "choices.json"; exists(configPath)) {
-		m_pImpl->Log("Config file found");
-		std::ifstream in(configPath);
-		in >> conf;
+	if (const auto choicesPath = extractedDir / "choices.json"; exists(choicesPath)) {
+		try {
+			choices = ParseJsonFromFile(choicesPath);
+			m_pImpl->Log("Choices file loaded from {}", choicesPath.wstring());
+		} catch (const std::exception& e) {
+			m_pImpl->Log("Failed to load choices from {}: {}", choicesPath.wstring(), e.what());
+		}
 	}
 	for (size_t i = 0; i < ttmpl.SimpleModsList.size(); ++i) {
 		const auto& entry = ttmpl.SimpleModsList[i];
-		if (conf.is_array() && i < conf.size() && conf[i].is_boolean() && !conf[i].get<boolean>())
+		if (choices.is_array() && i < choices.size() && choices[i].is_boolean() && !choices[i].get<boolean>())
 			continue;
 		if (entry.DatFile != DatName)
 			continue;
@@ -262,7 +265,7 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 		const auto& modGroups = ttmpl.ModPackPages[pageObjectIndex].ModGroups;
 		if (modGroups.empty())
 			continue;
-		const auto pageConf = conf.is_array() && pageObjectIndex < conf.size() && conf[pageObjectIndex].is_array() ? conf[pageObjectIndex] : nlohmann::json::array();
+		const auto pageConf = choices.is_array() && pageObjectIndex < choices.size() && choices[pageObjectIndex].is_array() ? choices[pageObjectIndex] : nlohmann::json::array();
 
 		for (size_t modGroupIndex = 0; modGroupIndex < modGroups.size(); ++modGroupIndex) {
 			const auto& modGroup = modGroups[modGroupIndex];

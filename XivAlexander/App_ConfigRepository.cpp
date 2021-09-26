@@ -67,8 +67,7 @@ void App::Config::BaseRepository::Reload(bool announceChange) {
 	nlohmann::json totalConfig;
 	if (exists(m_sConfigPath)) {
 		try {
-			std::ifstream in(m_sConfigPath);
-			in >> totalConfig;
+			totalConfig = Utils::ParseJsonFromFile(m_sConfigPath);
 			if (totalConfig.type() != nlohmann::detail::value_t::object)
 				throw std::runtime_error("Root must be an object.");  // TODO: string resource
 		} catch (const std::exception& e) {
@@ -257,8 +256,7 @@ void App::Config::BaseRepository::Save() {
 
 	nlohmann::json totalConfig;
 	try {
-		std::ifstream in(m_sConfigPath);
-		in >> totalConfig;
+		totalConfig = Utils::ParseJsonFromFile(m_sConfigPath);
 		if (totalConfig.type() != nlohmann::detail::value_t::object)
 			throw std::runtime_error("Root must be an object.");  // TODO: string resource
 	} catch (const std::exception&) {
@@ -270,8 +268,7 @@ void App::Config::BaseRepository::Save() {
 		item->SaveTo(currentConfig);
 
 	try {
-		std::ofstream out(m_sConfigPath);
-		out << totalConfig.dump(1, '\t');
+		Utils::SaveJsonToFile(m_sConfigPath, totalConfig);
 	} catch (const std::exception& e) {
 		m_logger->FormatDefaultLanguage<LogLevel::Error>(LogCategory::General, IDS_ERROR_CONFIGURATION_SAVE, e.what());
 	}

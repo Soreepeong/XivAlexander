@@ -68,48 +68,32 @@ LRESULT App::Window::ConfigWindow::OnNotify(const LPNMHDR nmhdr) {
 
 void App::Window::ConfigWindow::Revert() {
 	m_pRepository->Save();
-	std::string buffer;
+	auto j = nlohmann::json::object();
 	try {
-		try {
-			std::ifstream in(m_pRepository->GetConfigPath());
-			in.seekg(0, std::ios::end);
-			const auto len = static_cast<size_t>(in.tellg());
-			buffer.resize(len, 0);
-			in.seekg(0);
-			in.read(&buffer[0], buffer.size());
-		} catch (...) {
-			buffer = "{}";
-		}
-		buffer = nlohmann::json::parse(buffer).dump(1, '\t');
+		j = Utils::ParseJsonFromFile(m_pRepository->GetConfigPath());
 	} catch (const std::exception& e) {
 		m_logger->Format(LogCategory::General, m_config->Runtime.GetLangId(), IDS_ERROR_CONFIGURATION_LOAD, e.what());
 	}
-	m_originalConfig = std::move(buffer);
+	m_originalConfig = j.dump(1, '\t');
 	m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(&m_originalConfig[0]));
 }
 
 bool App::Window::ConfigWindow::TrySave() {
-	std::string buf(m_direct(m_directPtr, SCI_GETLENGTH, 0, 0) + 1, '\0');
-	m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(&buf[0]));
-	buf.resize(buf.length() - 1);
 	try {
+		std::string buf(m_direct(m_directPtr, SCI_GETLENGTH, 0, 0) + 1, '\0');
+		m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(&buf[0]));
+		buf.resize(buf.length() - 1);
 		buf = nlohmann::json::parse(buf).dump(1, '\t');
+		Utils::SaveToFile(m_pRepository->GetConfigPath(), buf);
+		m_originalConfig = std::move(buf);
+		m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(&m_originalConfig[0]));
+		m_pRepository->Reload(true);
 	} catch (nlohmann::json::exception& e) {
 		Utils::Win32::MessageBoxF(m_hWnd, MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 			m_config->Runtime.FormatStringRes(IDS_ERROR_CONFIGURATION_SAVE, e.what()));
 		return false;
 	}
-	try {
-		std::ofstream out(m_pRepository->GetConfigPath());
-		out << buf;
-	} catch (const std::exception& e) {
-		Utils::Win32::MessageBoxF(m_hWnd, MB_OK, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-			m_config->Runtime.FormatStringRes(IDS_ERROR_CONFIGURATION_SAVE, e.what()));
-		return false;
-	}
-	m_originalConfig = std::move(buf);
-	m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(&m_originalConfig[0]));
-	m_pRepository->Reload(true);
+
 	return true;
 }
 

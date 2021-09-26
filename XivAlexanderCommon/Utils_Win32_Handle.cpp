@@ -147,8 +147,8 @@ void Utils::Win32::Thread::Terminate(DWORD dwExitCode, bool errorIfAlreadyTermin
 	throw Error(err, "TerminateThread");
 }
 
-Utils::Win32::Semaphore Utils::Win32::Semaphore::Create(LPSECURITY_ATTRIBUTES lpSemaphoreAttributes, LONG lInitialCount, LONG lMaximumCount, LPCWSTR lpName, DWORD dwFlags, DWORD dwDesiredAccess) {
-	return Semaphore(CreateSemaphoreExW(lpSemaphoreAttributes, lInitialCount, lMaximumCount, lpName, dwFlags, dwDesiredAccess), Null, "CreateSemaphoreExW");
+Utils::Win32::Semaphore Utils::Win32::Semaphore::Create(LPSECURITY_ATTRIBUTES lpSemaphoreAttributes, LONG lInitialCount, LONG lMaximumCount, LPCWSTR lpName, DWORD dwDesiredAccess) {
+	return Semaphore(CreateSemaphoreExW(lpSemaphoreAttributes, lInitialCount, lMaximumCount, lpName, 0, dwDesiredAccess), Null, "CreateSemaphoreExW");
 }
 
 LONG Utils::Win32::Semaphore::Release(LONG count) const {

@@ -81,9 +81,6 @@ struct App::Feature::GameResourceOverrider::Implementation {
 	Misc::Hooks::ImportedFunction<BOOL, HANDLE, LPVOID, DWORD, LPDWORD, LPOVERLAPPED> ReadFile{"kernel32::ReadFile", "kernel32.dll", "ReadFile"};
 	Misc::Hooks::ImportedFunction<BOOL, HANDLE, LARGE_INTEGER, PLARGE_INTEGER, DWORD> SetFilePointerEx{"kernel32::SetFilePointerEx", "kernel32.dll", "SetFilePointerEx"};
 
-	Misc::Hooks::ImportedFunction<LPVOID, HANDLE, DWORD, SIZE_T> HeapAlloc{"kernel32.dll::HeapAlloc", "kernel32.dll", "HeapAlloc"};
-	Misc::Hooks::ImportedFunction<BOOL, HANDLE, DWORD, LPVOID> HeapFree{"kernel32.dll::HeapFree", "kernel32.dll", "HeapFree"};
-
 	ReEnterPreventer m_repCreateFileW, m_repReadFile;
 
 	const std::filesystem::path m_baseSqpackDir = Utils::Win32::Process::Current().PathOf().remove_filename() / L"sqpack";
@@ -122,9 +119,6 @@ struct App::Feature::GameResourceOverrider::Implementation {
 	std::set<std::filesystem::path> m_ignoredIndexFiles;
 	std::atomic<int> m_stk;
 
-	std::mutex m_processHeapAllocationTrackerMutex;
-	std::map<void*, size_t> m_processHeapAllocations;
-
 	class AtomicIntEnter {
 		std::atomic<int>& v;
 	public:
@@ -144,26 +138,6 @@ struct App::Feature::GameResourceOverrider::Implementation {
 		, m_debugger(Misc::DebuggerDetectionDisabler::Acquire()) {
 
 		if (m_config->Runtime.UseModding) {
-			const auto hDefaultHeap = GetProcessHeap();
-
-			m_cleanup += HeapAlloc.SetHook([this, hDefaultHeap](HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes) {
-				const auto res = HeapAlloc.bridge(hHeap, dwFlags, dwBytes);
-				if (res && hHeap == hDefaultHeap) {
-					std::lock_guard lock(m_processHeapAllocationTrackerMutex);
-					m_processHeapAllocations[res] = dwBytes;
-				}
-				return res;
-			});
-
-			m_cleanup += HeapFree.SetHook([this, hDefaultHeap](HANDLE hHeap, DWORD dwFlags, LPVOID lpMem) {
-				const auto res = HeapFree.bridge(hHeap, dwFlags, lpMem);
-				if (res && hHeap == hDefaultHeap) {
-					std::lock_guard lock(m_processHeapAllocationTrackerMutex);
-					m_processHeapAllocations.erase(hHeap);
-				}
-				return res;
-			});
-
 			m_cleanup += CreateFileW.SetHook([this](
 				_In_ LPCWSTR lpFileName,
 				_In_ DWORD dwDesiredAccess,
@@ -294,6 +268,9 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				_In_ DWORD dwMoveMethod) {
 					AtomicIntEnter implUseLock(m_stk);
 
+					if (lpNewFilePointer)
+						*lpNewFilePointer = {};
+
 					OverlayedHandleData* pvpath = nullptr;
 					{
 						std::lock_guard lock(m_virtualPathMapMutex);
@@ -339,7 +316,6 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					}
 
 					return TRUE;
-
 				});
 		}
 
@@ -608,12 +584,8 @@ struct App::Feature::GameResourceOverrider::Implementation {
 						continue;
 
 					try {
-						std::ifstream in(configFile);
-						nlohmann::json j;
-						in >> j;
-
 						Misc::ExcelTransformConfig::Config transformConfig;
-						from_json(j, transformConfig);
+						from_json(Utils::ParseJsonFromFile(configFile), transformConfig);
 
 						for (const auto& entry : transformConfig.pluralMap) {
 							pluralColumns.emplace_back(std::regex(entry.first, std::regex_constants::ECMAScript | std::regex_constants::icase), entry.second);
@@ -1396,10 +1368,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 						"=> Generating font per file: {}",
 						fontConfigPathStr);
 
-					std::ifstream fin(fontConfigPath);
-					nlohmann::json j;
-					fin >> j;
-					auto cfg = j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
+					auto cfg = Utils::ParseJsonFromFile(fontConfigPath).get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
 
 					Sqex::FontCsv::FontSetsCreator fontCreator(cfg, Utils::Win32::Process::Current().PathOf().parent_path());
 					while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {fontCreator.GetWaitableObject()})) {
