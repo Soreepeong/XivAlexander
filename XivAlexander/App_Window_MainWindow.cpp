@@ -177,14 +177,18 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 				))) {
 				case IDYES:
 					m_triggerUnload();
-					break;
+				break;
 				case IDNO:
 					m_config->Runtime.ShowControlWindow = false;
-					break;
-			}
+				break;
+				}
 		}
 		return 0;
-
+	} else if (uMsg == WM_NCHITTEST) {
+		auto res = BaseWindow::WndProc(hwnd, uMsg, wParam, lParam);
+		if (res == HTCLIENT)
+			res = HTCAPTION;
+		return res;
 	} else if (uMsg == WM_INITMENUPOPUP) {
 		SetMenuStates();
 
