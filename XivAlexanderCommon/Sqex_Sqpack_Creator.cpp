@@ -1,8 +1,6 @@
 #include "pch.h"
 #include "Sqex_Sqpack_Creator.h"
 
-#include <fstream>
-
 #include "Sqex_Model.h"
 #include "Sqex_Sqpack_EntryProvider.h"
 #include "Sqex_Sqpack_EntryRawStream.h"
@@ -13,14 +11,16 @@ struct Sqex::Sqpack::Creator::Implementation {
 	AddEntryResult AddEntry(std::shared_ptr<EntryProvider> provider, size_t underlyingFileIndex = SIZE_MAX, bool overwriteExisting = true);
 
 	struct Entry {
-		uint32_t DataFileIndex;
-		uint32_t BlockSize;
-		uint32_t PadSize;
-		SqIndex::LEDataLocator Locator;
+		uint32_t DataFileIndex{};
+		uint32_t EntrySize{};
+		uint32_t PadSize{};
+		SqIndex::LEDataLocator Locator{};
 
-		uint64_t OffsetAfterHeaders;
+		uint32_t EntryReservedSize{};
+
+		uint64_t OffsetAfterHeaders{};
 		std::shared_ptr<EntryProvider> Provider;
-		size_t UnderlyingFileIndex;
+		size_t UnderlyingFileIndex{};
 	};
 
 	Creator* const this_;
@@ -160,7 +160,7 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::Implementation::Add
 		}
 
 		const auto pProvider = provider.get();
-		auto entry = std::make_unique<Entry>(0, 0, 0, 0, SqIndex::LEDataLocator{0, 0}, std::move(provider), underlyingFileIndex);
+		auto entry = std::make_unique<Entry>(0, 0, 0, SqIndex::LEDataLocator{0, 0}, 0, 0, std::move(provider), underlyingFileIndex);
 		if (entry->Provider->PathSpec().HasFullPathHash())
 			m_fullPathEntryPointerMap.insert_or_assign(entry->Provider->PathSpec().FullPathHash, entry.get());
 		if (entry->Provider->PathSpec().HasComponentHash())
@@ -204,14 +204,15 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromSqPac
 
 Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntryFromFile(EntryPathSpec pathSpec, const std::filesystem::path& path, bool overwriteExisting) {
 	std::shared_ptr<EntryProvider> provider;
+	auto extensionLower = path.extension().wstring();
+	CharLowerW(&extensionLower[0]);
 	if (file_size(path) == 0) {
 		provider = std::make_shared<EmptyEntryProvider>(std::move(pathSpec));
-	} else if (path.extension() == ".tex") {
+	} else if (extensionLower == L".tex") {
 		provider = std::make_shared<OnTheFlyTextureEntryProvider>(std::move(pathSpec), path);
-	} else if (path.extension() == ".mdl") {
+	} else if (extensionLower == L".mdl") {
 		provider = std::make_shared<OnTheFlyModelEntryProvider>(std::move(pathSpec), path);
 	} else {
-		// provider = std::make_shared<MemoryBinaryEntryProvider>(std::move(pathSpec), path);
 		provider = std::make_shared<OnTheFlyBinaryEntryProvider>(std::move(pathSpec), path);
 	}
 	return m_pImpl->AddEntry(provider, {}, overwriteExisting);
@@ -239,6 +240,9 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 }
 
 Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(const ThirdParty::TexTools::TTMPL& ttmpl, const Win32::File& ttmpd, const nlohmann::json& choices, bool overwriteExisting) {
+	if (DatExpac != "ffxiv")
+		return {};
+
 	AddEntryResult addEntryResult{};
 	size_t fileIndex = SIZE_MAX;
 
@@ -299,8 +303,56 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 	return addEntryResult;
 }
 
+void Sqex::Sqpack::Creator::ReserveSpacesFromTTMP(const ThirdParty::TexTools::TTMPL& ttmpl) {
+	if (DatExpac != "ffxiv")
+		return;
+
+	for (const auto& entry : ttmpl.SimpleModsList) {
+		if (entry.DatFile != DatName || entry.ModSize > UINT32_MAX)
+			continue;
+
+		ReserveSwappableSpace(entry.FullPath, static_cast<uint32_t>(entry.ModSize));
+	}
+	for (const auto& modPackPage : ttmpl.ModPackPages) {
+		for (const auto& modGroup : modPackPage.ModGroups) {
+			for (const auto& option : modGroup.OptionList) {
+				for (const auto& entry : option.ModsJsons) {
+					if (entry.DatFile != DatName || entry.ModSize > UINT32_MAX)
+						continue;
+
+					ReserveSwappableSpace(entry.FullPath, static_cast<uint32_t>(entry.ModSize));
+				}
+			}
+		}
+	}
+}
+
 Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntry(std::shared_ptr<EntryProvider> provider, bool overwriteExisting) {
 	return m_pImpl->AddEntry(std::move(provider), SIZE_MAX, overwriteExisting);
+}
+
+void Sqex::Sqpack::Creator::ReserveSwappableSpace(EntryPathSpec pathSpec, uint32_t size) {
+	if (pathSpec.HasComponentHash()) {
+		const auto it = m_pImpl->m_pathNameTupleEntryPointerMap.find(std::make_pair(pathSpec.PathHash, pathSpec.NameHash));
+		if (it != m_pImpl->m_pathNameTupleEntryPointerMap.end()) {
+			it->second->EntryReservedSize = std::max(it->second->EntryReservedSize, size);
+			return;
+		}
+	}
+	if (pathSpec.FullPathHash != EntryPathSpec::EmptyHashValue) {
+		const auto it = m_pImpl->m_fullPathEntryPointerMap.find(pathSpec.FullPathHash);
+		if (it != m_pImpl->m_fullPathEntryPointerMap.end()) {
+			it->second->EntryReservedSize = std::max(it->second->EntryReservedSize, size);
+			return;
+		}
+	}
+
+	auto entry = std::make_unique<Implementation::Entry>(0, 0, 0, SqIndex::LEDataLocator{0, 0}, size, 0, std::make_shared<EmptyEntryProvider>(std::move(pathSpec)), SIZE_MAX);
+	if (entry->Provider->PathSpec().HasFullPathHash())
+		m_pImpl->m_fullPathEntryPointerMap.insert_or_assign(entry->Provider->PathSpec().FullPathHash, entry.get());
+	if (entry->Provider->PathSpec().HasComponentHash())
+		m_pImpl->m_pathNameTupleEntryPointerMap.insert_or_assign(std::make_pair(entry->Provider->PathSpec().PathHash, entry->Provider->PathSpec().NameHash), entry.get());
+	m_pImpl->m_entries.emplace_back(std::move(entry));
 }
 
 template<Sqex::Sqpack::SqIndex::Header::IndexType IndexType, typename FileEntryType, bool UseFolders>
@@ -473,8 +525,8 @@ public:
 			for (; it < m_entries.end(); ++it) {
 				const auto& entry = *it->get();
 
-				if (relativeOffset < entry.BlockSize) {
-					const auto available = std::min(out.size_bytes(), static_cast<size_t>(entry.BlockSize - relativeOffset));
+				if (relativeOffset < entry.EntrySize) {
+					const auto available = std::min(out.size_bytes(), static_cast<size_t>(entry.EntrySize - relativeOffset));
 #ifdef _DEBUG
 					m_pLastEntryProviders.emplace_back(std::make_tuple(entry.Provider.get(), relativeOffset, available));
 #endif
@@ -485,7 +537,7 @@ public:
 					if (out.empty())
 						break;
 				} else
-					relativeOffset -= entry.BlockSize;
+					relativeOffset -= entry.EntrySize;
 
 				if (relativeOffset < entry.PadSize) {
 					const auto available = std::min(out.size_bytes(), static_cast<size_t>(entry.PadSize - relativeOffset));
@@ -537,12 +589,21 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 	std::vector<std::set<size_t>> dataOpenFileIndices;
 	std::map<EntryPathSpec, uint64_t> entryOffsets;
 
+	std::map<EntryPathSpec, EntryProvider*> entryProviders;
+
 	for (auto& entry : m_pImpl->m_entries) {
-		entry->BlockSize = static_cast<uint32_t>(entry->Provider->StreamSize());
-		entry->PadSize = Align(entry->BlockSize).Pad;
+		if (entry->EntryReservedSize != 0) {
+			entry->EntrySize = Align(std::max(entry->EntryReservedSize, static_cast<uint32_t>(entry->Provider->StreamSize()))).Alloc;
+			entry->PadSize = 0;
+			entry->Provider = std::make_shared<HotSwappableEntryProvider>(entry->Provider->PathSpec(), entry->EntrySize, std::move(entry->Provider));
+		} else {
+			entry->EntrySize = static_cast<uint32_t>(entry->Provider->StreamSize());
+			entry->PadSize = Align(entry->EntrySize).Pad;
+		}
+		entryProviders.emplace(entry->Provider->PathSpec(), entry->Provider.get());
 
 		if (dataSubheaders.empty() ||
-			sizeof SqpackHeader + sizeof SqData::Header + dataSubheaders.back().DataSize + entry->BlockSize + entry->PadSize > dataSubheaders.back().MaxFileSize) {
+			sizeof SqpackHeader + sizeof SqData::Header + dataSubheaders.back().DataSize + entry->EntrySize + entry->PadSize > dataSubheaders.back().MaxFileSize) {
 			if (strict && !dataSubheaders.empty()) {
 				CryptoPP::SHA1 sha1;
 				for (auto& entry : dataEntries.back()) {
@@ -581,7 +642,7 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 		if (entry->UnderlyingFileIndex != SIZE_MAX)
 			dataOpenFileIndices.back().insert(entry->UnderlyingFileIndex);
 
-		dataSubheaders.back().DataSize = dataSubheaders.back().DataSize + entry->BlockSize + entry->PadSize;
+		dataSubheaders.back().DataSize = dataSubheaders.back().DataSize + entry->EntrySize + entry->PadSize;
 		dataEntries.back().emplace_back(std::move(entry));
 	}
 	m_pImpl->m_entries.clear();
@@ -600,6 +661,7 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 		.Index = std::make_shared<IndexView<SqIndex::Header::IndexType::Index>>(dataSubheaders.size(), std::move(fileEntries1), m_pImpl->m_sqpackIndexSegment2, m_pImpl->m_sqpackIndexSegment3, std::vector<SqIndex::FolderSegmentEntry>(), strict),
 		.Index2 = std::make_shared<IndexView<SqIndex::Header::IndexType::Index2>>(dataSubheaders.size(), std::move(fileEntries2), m_pImpl->m_sqpackIndex2Segment2, m_pImpl->m_sqpackIndex2Segment3, std::vector<SqIndex::FolderSegmentEntry>(), strict),
 		.EntryOffsets = std::move(entryOffsets),
+		.EntryProviders = std::move(entryProviders),
 	};
 
 	for (size_t i = 0; i < dataSubheaders.size(); ++i) {

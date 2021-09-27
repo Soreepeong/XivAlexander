@@ -34,10 +34,11 @@ struct App::Misc::VirtualSqPacks::Implementation {
 	std::set<std::filesystem::path> m_ignoredIndexFiles;
 
 	struct TtmpSet {
-		std::filesystem::path path;
-		Sqex::ThirdParty::TexTools::TTMPL ttmpl;
-		Utils::Win32::File ttmpd;
-		nlohmann::json config;
+		bool Enabled = false;
+		std::filesystem::path ListPath;
+		Sqex::ThirdParty::TexTools::TTMPL List;
+		Utils::Win32::File DataFile;
+		nlohmann::json Choices;
 	};
 
 	std::vector<TtmpSet> m_ttmps;
@@ -49,8 +50,128 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 		const auto actCtx = Dll::ActivationContext().With();
 		Window::ProgressPopupWindow progressWindow(Dll::FindGameMainWindow(false));
-		progressWindow.UpdateMessage("Discovering files...");
 		progressWindow.Show();
+		InitializeSqPacks(progressWindow);
+		ReflectEnabledTtmp();
+	}
+
+	void ReflectEnabledTtmp() {
+		// TODO:
+		// 1. Suspend game main thread, by sending run on UI thread message
+		// 2. Wait until ReadFile stops
+
+		// 3. Clear replacements
+		for (const auto& ttmp : m_ttmps) {
+			for (const auto& entry : ttmp.List.SimpleModsList) {
+				const auto it = m_sqpackViews.find(m_sqpackPath / L"ffxiv" / entry.DatFile);
+				if (it == m_sqpackViews.end())
+					continue;
+
+				const auto entryIt = it->second.EntryProviders.find(entry.FullPath);
+				if (entryIt == it->second.EntryProviders.end())
+					continue;
+
+				const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second);
+				if (!provider)
+					continue;
+
+				provider->SwapStream(nullptr);
+			}
+
+			for (const auto& modPackPage : ttmp.List.ModPackPages) {
+				for (const auto& modGroup : modPackPage.ModGroups) {
+					for (const auto& option : modGroup.OptionList) {
+						for (const auto& entry : option.ModsJsons) {
+							const auto it = m_sqpackViews.find(m_sqpackPath / L"ffxiv" / entry.DatFile);
+							if (it == m_sqpackViews.end())
+								continue;
+
+							const auto entryIt = it->second.EntryProviders.find(entry.FullPath);
+							if (entryIt == it->second.EntryProviders.end())
+								continue;
+
+							const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second);
+							if (!provider)
+								continue;
+
+							provider->SwapStream(nullptr);
+						}
+					}
+				}
+			}
+		}
+
+		// 4. Set new replacements
+		for (const auto& ttmp : m_ttmps) {
+			if (!ttmp.Enabled)
+				continue;
+
+			const auto& choices = ttmp.Choices;
+
+			for (size_t i = 0; i < ttmp.List.SimpleModsList.size(); ++i) {
+				const auto& entry = ttmp.List.SimpleModsList[i];
+				if (choices.is_array() && i < choices.size() && choices[i].is_boolean() && !choices[i].get<boolean>())
+					continue;
+
+				const auto it = m_sqpackViews.find(m_sqpackPath / std::format(L"ffxiv/{}.win32.index", entry.DatFile));
+				if (it == m_sqpackViews.end())
+					continue;
+
+				const auto entryIt = it->second.EntryProviders.find(entry.FullPath);
+				if (entryIt == it->second.EntryProviders.end())
+					continue;
+
+				const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second);
+				if (!provider)
+					continue;
+
+				provider->SwapStream(std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(
+					entry.FullPath,
+					std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::File{ttmp.DataFile, false}, entry.ModOffset, entry.ModSize)
+				));
+			}
+
+			for (size_t pageObjectIndex = 0; pageObjectIndex < ttmp.List.ModPackPages.size(); ++pageObjectIndex) {
+				const auto& modGroups = ttmp.List.ModPackPages[pageObjectIndex].ModGroups;
+				if (modGroups.empty())
+					continue;
+				const auto pageConf = choices.is_array() && pageObjectIndex < choices.size() && choices[pageObjectIndex].is_array() ? choices[pageObjectIndex] : nlohmann::json::array();
+
+				for (size_t modGroupIndex = 0; modGroupIndex < modGroups.size(); ++modGroupIndex) {
+					const auto& modGroup = modGroups[modGroupIndex];
+					if (modGroups.empty())
+						continue;
+
+					const auto choice = modGroupIndex < pageConf.size() ? std::max(0, std::min(static_cast<int>(modGroup.OptionList.size() - 1), pageConf[modGroupIndex].get<int>())) : 0;
+					const auto& option = modGroup.OptionList[choice];
+
+					for (const auto& entry : option.ModsJsons) {
+						const auto it = m_sqpackViews.find(m_sqpackPath / std::format(L"ffxiv/{}.win32.index", entry.DatFile));
+						if (it == m_sqpackViews.end())
+							continue;
+
+						const auto entryIt = it->second.EntryProviders.find(entry.FullPath);
+						if (entryIt == it->second.EntryProviders.end())
+							continue;
+
+						const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second);
+						if (!provider)
+							continue;
+
+						provider->SwapStream(std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(
+							entry.FullPath,
+							std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::File{ttmp.DataFile, false}, entry.ModOffset, entry.ModSize)
+						));
+					}
+				}
+			}
+		}
+
+		// 5. Resume game main thread
+	}
+
+	void InitializeSqPacks(Window::ProgressPopupWindow& progressWindow) {
+		progressWindow.UpdateMessage("Discovering files...");
 
 		std::map<std::filesystem::path, std::unique_ptr<Sqex::Sqpack::Creator>> creators;
 		for (const auto& expac : std::filesystem::directory_iterator(m_sqpackPath)) {
@@ -112,11 +233,12 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					throw std::runtime_error("Cancelled");
 
 				try {
-					m_ttmps.emplace_back(
-						ttmpl,
-						Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{Utils::Win32::File::Create(ttmpl, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)}),
-						Utils::Win32::File::Create(ttmpl.parent_path() / "TTMPD.mpd", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)
-					);
+					m_ttmps.emplace_back(TtmpSet{
+						.Enabled = !exists(ttmpl.parent_path() / "disable"),
+						.ListPath = ttmpl,
+						.List = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{Utils::Win32::File::Create(ttmpl, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)}),
+						.DataFile = Utils::Win32::File::Create(ttmpl.parent_path() / "TTMPD.mpd", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)
+					});
 				} catch (const std::exception& e) {
 					m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
 						"Failed to load TexTools ModPack from {}: {}", ttmpl.wstring(), e.what());
@@ -124,7 +246,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				}
 				if (const auto choicesPath = ttmpl.parent_path() / "choices.json"; exists(choicesPath)) {
 					try {
-						m_ttmps.back().config = Utils::ParseJsonFromFile(choicesPath);
+						m_ttmps.back().Choices = Utils::ParseJsonFromFile(choicesPath);
 						m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
 							"Choices file loaded from {}", choicesPath.wstring());
 					} catch (const std::exception& e) {
@@ -201,17 +323,18 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 								progressValue += 1;
 
-								if (const auto result = creator.AddEntriesFromTTMP(ttmp.ttmpl, ttmp.ttmpd, ttmp.config); result.AnyItem()) {
-									const auto lock = std::lock_guard(groupedLogPrintLock);
-									m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
-										"[{}/{}] {}: added {}, replaced {}, ignored {}, error {}",
-										creator.DatExpac, creator.DatName, ttmp.path,
-										result.Added.size(), result.Replaced.size(), result.SkippedExisting.size(), result.Error.size());
-									for (const auto& error : result.Error) {
-										m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-											"\t=> Error processing {}: {}", error.first, error.second);
-									}
-								}
+								creator.ReserveSpacesFromTTMP(ttmp.List);
+								//if (const auto result = creator.AddEntriesFromTTMP(ttmp.ttmpl, ttmp.ttmpd, ttmp.config); result.AnyItem()) {
+								//	const auto lock = std::lock_guard(groupedLogPrintLock);
+								//	m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+								//		"[{}/{}] {}: added {}, replaced {}, ignored {}, error {}",
+								//		creator.DatExpac, creator.DatName, ttmp.path,
+								//		result.Added.size(), result.Replaced.size(), result.SkippedExisting.size(), result.Error.size());
+								//	for (const auto& error : result.Error) {
+								//		m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+								//			"\t=> Error processing {}: {}", error.first, error.second);
+								//	}
+								//}
 							}
 
 							SetUpVirtualFileFromFileEntries(creator, indexFile);
@@ -246,11 +369,15 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				SetUpGeneratedFonts(progressWindow, *pCreator, indexFile);
 			else if (pCreator->DatExpac == "ffxiv" && pCreator->DatName == "0a0000")
 				SetUpMergedExd(progressWindow, *pCreator, indexFile);
-			else {
+
+			const auto workerThread = Utils::Win32::Thread(L"VirtualSqPacks Element Finalizer", [&]() {
+				m_sqpackViews.emplace(indexFile, pCreator->AsViews(false));
+			});
+			while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {workerThread})) {
 				progressWindow.UpdateMessage("Finalizing...");
 				progressWindow.UpdateProgress(0, 0);
 			}
-			m_sqpackViews.emplace(indexFile, pCreator->AsViews(false));
+			workerThread.Wait();
 		}
 	}
 

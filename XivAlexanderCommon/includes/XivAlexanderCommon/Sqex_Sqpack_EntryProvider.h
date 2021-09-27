@@ -256,14 +256,15 @@ namespace Sqex::Sqpack {
 
 	class HotSwappableEntryProvider : public EmptyEntryProvider {
 		const uint32_t m_reservedSize;
+		const std::shared_ptr<const EntryProvider> m_baseStream;
 		std::shared_ptr<const EntryProvider> m_stream;
 
 	public:
 		HotSwappableEntryProvider(const EntryPathSpec& pathSpec, uint32_t reservedSize, std::shared_ptr<const EntryProvider> stream = nullptr)
 			: EmptyEntryProvider(pathSpec)
 			, m_reservedSize(Align(reservedSize))
-			, m_stream(std::move(stream)) {
-			if (m_stream && m_stream->StreamSize() > m_reservedSize)
+			, m_baseStream(std::move(stream)) {
+			if (m_baseStream && m_baseStream->StreamSize() > m_reservedSize)
 				throw std::invalid_argument("Provided stream requires more space than reserved size");
 		}
 
@@ -280,7 +281,7 @@ namespace Sqex::Sqpack {
 		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
 
 		[[nodiscard]] SqData::FileEntryType EntryType() const override {
-			return m_stream ? m_stream->EntryType() : EmptyEntryProvider::EntryType();
+			return m_stream ? m_stream->EntryType() : (m_baseStream ? m_baseStream->EntryType() : EmptyEntryProvider::EntryType());
 		}
 	};
 }

@@ -42,7 +42,9 @@ namespace Sqex::Sqpack {
 		AddEntryResult AddEntryFromFile(EntryPathSpec pathSpec, const std::filesystem::path& path, bool overwriteExisting = true);
 		AddEntryResult AddEntriesFromTTMP(const std::filesystem::path& extractedDir, bool overwriteExisting = true);
 		AddEntryResult AddEntriesFromTTMP(const ThirdParty::TexTools::TTMPL& ttmpl, const Win32::File& ttmpd, const nlohmann::json& choices, bool overwriteExisting = true);
+		void ReserveSpacesFromTTMP(const ThirdParty::TexTools::TTMPL& ttmpl);
 		AddEntryResult AddEntry(std::shared_ptr<EntryProvider> provider, bool overwriteExisting = true);
+		void ReserveSwappableSpace(EntryPathSpec pathSpec, uint32_t size);
 		
 	private:
 		template<SqIndex::Header::IndexType IndexType, typename FileEntryType, bool UseFolders>
@@ -57,6 +59,7 @@ namespace Sqex::Sqpack {
 			std::shared_ptr<RandomAccessStream> Index2;
 			std::vector<std::shared_ptr<RandomAccessStream>> Data;
 			std::map<EntryPathSpec, uint64_t> EntryOffsets;
+			std::map<EntryPathSpec, EntryProvider*> EntryProviders;
 		};
 		SqpackViews AsViews(bool strict);
 
