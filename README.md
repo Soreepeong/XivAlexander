@@ -20,7 +20,7 @@ or PS5, or want to apply this solution to a custom VPN server running on Linux o
 
 ## Apply mods easily
 ![Example mod menu](https://user-images.githubusercontent.com/3614868/134066429-67f7d590-6ab3-4f82-a9d9-33321ff3ff53.png)
-Easily import (drag and drop TTMP2 file onto control window!) and use TexTools ModPack, and configure if a ModPack requires it.
+Install mods by drag-and-dropping TexTools ModPack files, and configure if a ModPack requires it. Enable/disable mods without restart.
 **[Read how to apply TexTools ModPacks.](https://github.com/Soreepeong/XivAlexander/wiki/Modding)**
 
 ### Feature for language learners
