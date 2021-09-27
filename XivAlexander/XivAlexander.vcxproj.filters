@@ -104,6 +104,9 @@
     <ClCompile Include="App_Misc_ExcelTransformConfig.cpp">
       <Filter>App\Misc</Filter>
     </ClCompile>
+    <ClCompile Include="App_Misc_VirtualSqPacks.cpp">
+      <Filter>App\Misc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -186,6 +189,9 @@
       <Filter>App\Window</Filter>
     </ClInclude>
     <ClInclude Include="App_Misc_ExcelTransformConfig.h">
+      <Filter>App\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Misc_VirtualSqPacks.h">
       <Filter>App\Misc</Filter>
     </ClInclude>
   </ItemGroup>

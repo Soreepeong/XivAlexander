@@ -5,6 +5,10 @@
 #include "Utils_ListenerManager.h"
 #include "Utils_Win32_Handle.h"
 
+namespace Sqex::ThirdParty::TexTools {
+	struct TTMPL;
+}
+
 namespace Sqex::Sqpack {
 	class Creator {
 		const uint64_t m_maxFileSize;
@@ -37,6 +41,7 @@ namespace Sqex::Sqpack {
 		AddEntryResult AddEntriesFromSqPack(const std::filesystem::path& indexPath, bool overwriteExisting = true, bool overwriteUnknownSegments = false);
 		AddEntryResult AddEntryFromFile(EntryPathSpec pathSpec, const std::filesystem::path& path, bool overwriteExisting = true);
 		AddEntryResult AddEntriesFromTTMP(const std::filesystem::path& extractedDir, bool overwriteExisting = true);
+		AddEntryResult AddEntriesFromTTMP(const ThirdParty::TexTools::TTMPL& ttmpl, const Win32::File& ttmpd, const nlohmann::json& choices, bool overwriteExisting = true);
 		AddEntryResult AddEntry(std::shared_ptr<EntryProvider> provider, bool overwriteExisting = true);
 		
 	private:

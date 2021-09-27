@@ -218,10 +218,8 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntryFromFile(En
 }
 
 Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(const std::filesystem::path& extractedDir, bool overwriteExisting) {
-	AddEntryResult addEntryResult{};
 	nlohmann::json choices;
 	const auto ttmpdPath = extractedDir / "TTMPD.mpd";
-	size_t ttmpd = SIZE_MAX;
 	const auto ttmpl = ThirdParty::TexTools::TTMPL::FromStream(FileRandomAccessStream{
 		Win32::File::Create(
 			extractedDir / "TTMPL.mpl", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0
@@ -236,6 +234,14 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 			m_pImpl->Log("Failed to load choices from {}: {}", choicesPath.wstring(), e.what());
 		}
 	}
+
+	return AddEntriesFromTTMP(ttmpl, Win32::File::Create(ttmpdPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0), choices, overwriteExisting);
+}
+
+Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(const ThirdParty::TexTools::TTMPL& ttmpl, const Win32::File& ttmpd, const nlohmann::json& choices, bool overwriteExisting) {
+	AddEntryResult addEntryResult{};
+	size_t fileIndex = SIZE_MAX;
+
 	for (size_t i = 0; i < ttmpl.SimpleModsList.size(); ++i) {
 		const auto& entry = ttmpl.SimpleModsList[i];
 		if (choices.is_array() && i < choices.size() && choices[i].is_boolean() && !choices[i].get<boolean>())
@@ -243,14 +249,14 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 		if (entry.DatFile != DatName)
 			continue;
 
-		if (ttmpd == SIZE_MAX)
-			ttmpd = m_pImpl->OpenFile(ttmpdPath);
+		if (fileIndex == SIZE_MAX)
+			fileIndex = m_pImpl->OpenFile({}, ttmpd);
 
 		try {
 			addEntryResult += m_pImpl->AddEntry(std::make_shared<RandomAccessStreamAsEntryProviderView>(
 				entry.FullPath,
-				std::make_shared<FileRandomAccessStream>(Win32::File{m_pImpl->m_openFiles[ttmpd], false}, entry.ModOffset, entry.ModSize)
-			), ttmpd, overwriteExisting);
+				std::make_shared<FileRandomAccessStream>(Win32::File{m_pImpl->m_openFiles[fileIndex], false}, entry.ModOffset, entry.ModSize)
+			), fileIndex, overwriteExisting);
 			m_pImpl->Log("{}: {} (Name: {} > {})",
 				!addEntryResult.Added.empty() ? "Added" : !addEntryResult.Replaced.empty() ? "Replaced" : "Ignored",
 				entry.FullPath, ttmpl.Name, entry.Name
@@ -279,14 +285,14 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 				if (entry.DatFile != DatName)
 					continue;
 
-				if (ttmpd == SIZE_MAX)
-					ttmpd = m_pImpl->OpenFile(ttmpdPath);
+				if (fileIndex == SIZE_MAX)
+					fileIndex = m_pImpl->OpenFile({}, ttmpd);
 
 				try {
 					addEntryResult += m_pImpl->AddEntry(std::make_shared<RandomAccessStreamAsEntryProviderView>(
 						entry.FullPath,
-						std::make_shared<FileRandomAccessStream>(Win32::File{m_pImpl->m_openFiles[ttmpd], false}, entry.ModOffset, entry.ModSize)
-					), ttmpd, overwriteExisting);
+						std::make_shared<FileRandomAccessStream>(Win32::File{m_pImpl->m_openFiles[fileIndex], false}, entry.ModOffset, entry.ModSize)
+					), fileIndex, overwriteExisting);
 
 					m_pImpl->Log("{}: {} (Name: {} > {}({}) > {}({}) > {})",
 						!addEntryResult.Added.empty() ? "Added" : !addEntryResult.Replaced.empty() ? "Replaced" : "Ignored",
