@@ -257,10 +257,6 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 				entry.FullPath,
 				std::make_shared<FileRandomAccessStream>(Win32::File{m_pImpl->m_openFiles[fileIndex], false}, entry.ModOffset, entry.ModSize)
 			), fileIndex, overwriteExisting);
-			m_pImpl->Log("{}: {} (Name: {} > {})",
-				!addEntryResult.Added.empty() ? "Added" : !addEntryResult.Replaced.empty() ? "Replaced" : "Ignored",
-				entry.FullPath, ttmpl.Name, entry.Name
-			);
 		} catch (const std::exception& e) {
 			addEntryResult.Error.emplace(EntryPathSpec{entry.FullPath}, std::string(e.what()));
 			m_pImpl->Log("Error: {} (Name: {} > {})", entry.FullPath, ttmpl.Name, entry.Name);
@@ -293,15 +289,6 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 						entry.FullPath,
 						std::make_shared<FileRandomAccessStream>(Win32::File{m_pImpl->m_openFiles[fileIndex], false}, entry.ModOffset, entry.ModSize)
 					), fileIndex, overwriteExisting);
-
-					m_pImpl->Log("{}: {} (Name: {} > {}({}) > {}({}) > {})",
-						!addEntryResult.Added.empty() ? "Added" : !addEntryResult.Replaced.empty() ? "Replaced" : "Ignored",
-						entry.FullPath,
-						ttmpl.Name,
-						modGroup.GroupName, modGroupIndex,
-						option.Name, choice,
-						entry.Name
-					);
 				} catch (const std::exception& e) {
 					addEntryResult.Error.emplace(EntryPathSpec{entry.FullPath}, std::string(e.what()));
 					m_pImpl->Log("Error: {} (Name: {} > {})", entry.FullPath, ttmpl.Name, entry.Name);

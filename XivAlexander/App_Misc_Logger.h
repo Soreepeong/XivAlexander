@@ -19,6 +19,7 @@ namespace App {
 		EffectApplicationDelayLogger,
 		IpcTypeFinder,
 		GameResourceOverrider,
+		VirtualSqPacks,
 	};
 }
 

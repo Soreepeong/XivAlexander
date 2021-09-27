@@ -81,132 +81,131 @@ struct App::Feature::GameResourceOverrider::Implementation {
 		, m_debugger(Misc::DebuggerDetectionDisabler::Acquire())
 		, m_sqpacks(Utils::Win32::Process::Current().PathOf().remove_filename() / L"sqpack") {
 
-		if (m_config->Runtime.UseModding) {
-			m_cleanup += CreateFileW.SetHook([this](
-				_In_ LPCWSTR lpFileName,
-				_In_ DWORD dwDesiredAccess,
-				_In_ DWORD dwShareMode,
-				_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-				_In_ DWORD dwCreationDisposition,
-				_In_ DWORD dwFlagsAndAttributes,
-				_In_opt_ HANDLE hTemplateFile
-			) {
-					if (const auto lock = ReEnterPreventer::Lock(m_repCreateFileW); lock &&
-						!(dwDesiredAccess & GENERIC_WRITE) &&
-						dwCreationDisposition == OPEN_EXISTING &&
-						!hTemplateFile) {
-						if (const auto res = m_sqpacks.Open(lpFileName))
-							return res;
-					}
+		m_cleanup += CreateFileW.SetHook([this](
+			_In_ LPCWSTR lpFileName,
+			_In_ DWORD dwDesiredAccess,
+			_In_ DWORD dwShareMode,
+			_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+			_In_ DWORD dwCreationDisposition,
+			_In_ DWORD dwFlagsAndAttributes,
+			_In_opt_ HANDLE hTemplateFile
+		) {
+				if (const auto lock = ReEnterPreventer::Lock(m_repCreateFileW); lock &&
+					!(dwDesiredAccess & GENERIC_WRITE) &&
+					dwCreationDisposition == OPEN_EXISTING &&
+					!hTemplateFile) {
+					if (const auto res = m_sqpacks.Open(lpFileName))
+						return res;
+				}
 
-					return CreateFileW.bridge(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
-				});
+				return CreateFileW.bridge(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+			});
 
-			m_cleanup += CloseHandle.SetHook([this](
-				HANDLE handle
-			) {
-					if (m_sqpacks.Close(handle))
-						return 0;
+		m_cleanup += CloseHandle.SetHook([this](
+			HANDLE handle
+		) {
+				if (m_sqpacks.Close(handle))
+					return 0;
 
-					return CloseHandle.bridge(handle);
-				});
+				return CloseHandle.bridge(handle);
+			});
 
-			m_cleanup += ReadFile.SetHook([this](
-				_In_ HANDLE hFile,
-				_Out_writes_bytes_to_opt_(nNumberOfBytesToRead, *lpNumberOfBytesRead) __out_data_source(FILE) LPVOID lpBuffer,
-				_In_ DWORD nNumberOfBytesToRead,
-				_Out_opt_ LPDWORD lpNumberOfBytesRead,
-				_Inout_opt_ LPOVERLAPPED lpOverlapped
-			) {
-					if (const auto pvpath = m_sqpacks.Get(hFile)) {
-						auto& vpath = *pvpath;
-						try {
-							const auto fp = lpOverlapped ? ((static_cast<uint64_t>(lpOverlapped->OffsetHigh) << 32) | lpOverlapped->Offset) : vpath.FilePointer.QuadPart;
-							const auto read = vpath.Stream->ReadStreamPartial(fp, lpBuffer, nNumberOfBytesToRead);
+		m_cleanup += ReadFile.SetHook([this](
+			_In_ HANDLE hFile,
+			_Out_writes_bytes_to_opt_(nNumberOfBytesToRead, *lpNumberOfBytesRead) __out_data_source(FILE) LPVOID lpBuffer,
+			_In_ DWORD nNumberOfBytesToRead,
+			_Out_opt_ LPDWORD lpNumberOfBytesRead,
+			_Inout_opt_ LPOVERLAPPED lpOverlapped
+		) {
+				if (const auto pvpath = m_sqpacks.Get(hFile)) {
+					auto& vpath = *pvpath;
+					try {
+						const auto fp = lpOverlapped ? ((static_cast<uint64_t>(lpOverlapped->OffsetHigh) << 32) | lpOverlapped->Offset) : vpath.FilePointer.QuadPart;
+						const auto read = vpath.Stream->ReadStreamPartial(fp, lpBuffer, nNumberOfBytesToRead);
 
-							if (lpNumberOfBytesRead)
-								*lpNumberOfBytesRead = static_cast<DWORD>(read);
+						if (lpNumberOfBytesRead)
+							*lpNumberOfBytesRead = static_cast<DWORD>(read);
 
-							if (read != nNumberOfBytesToRead) {
-								m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, requested {} bytes, read {} bytes; state: {}",
-									vpath.Path.filename(), nNumberOfBytesToRead, read, vpath.Stream->DescribeState());
-							}
-
-							if (lpOverlapped) {
-								if (lpOverlapped->hEvent)
-									SetEvent(lpOverlapped->hEvent);
-								lpOverlapped->Internal = 0;
-								lpOverlapped->InternalHigh = static_cast<DWORD>(read);
-							} else
-								vpath.FilePointer.QuadPart = fp + read;
-
-							return TRUE;
-
-						} catch (const Utils::Win32::Error& e) {
-							if (e.Code() != ERROR_IO_PENDING)
-								m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, Message: {}",
-									vpath.Path.filename(), e.what());
-							SetLastError(e.Code());
-							return FALSE;
-
-						} catch (const std::exception& e) {
-							m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, Message: {}",
-								vpath.Path.filename(), e.what());
-							SetLastError(ERROR_READ_FAULT);
-							return FALSE;
+						if (read != nNumberOfBytesToRead) {
+							m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, requested {} bytes, read {} bytes; state: {}",
+								vpath.Path.filename(), nNumberOfBytesToRead, read, vpath.Stream->DescribeState());
 						}
-					}
-					return ReadFile.bridge(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
-				});
 
-			m_cleanup += SetFilePointerEx.SetHook([this](
-				_In_ HANDLE hFile,
-				_In_ LARGE_INTEGER liDistanceToMove,
-				_Out_opt_ PLARGE_INTEGER lpNewFilePointer,
-				_In_ DWORD dwMoveMethod) {
-					if (const auto pvpath = m_sqpacks.Get(hFile)) {
-						if (lpNewFilePointer)
-							*lpNewFilePointer = {};
-
-						auto& vpath = *pvpath;
-						try {
-							const auto len = vpath.Stream->StreamSize();
-
-							if (dwMoveMethod == FILE_BEGIN)
-								vpath.FilePointer.QuadPart = liDistanceToMove.QuadPart;
-							else if (dwMoveMethod == FILE_CURRENT)
-								vpath.FilePointer.QuadPart += liDistanceToMove.QuadPart;
-							else if (dwMoveMethod == FILE_END)
-								vpath.FilePointer.QuadPart = len - liDistanceToMove.QuadPart;
-							else {
-								SetLastError(ERROR_INVALID_PARAMETER);
-								return FALSE;
-							}
-
-							if (vpath.FilePointer.QuadPart > static_cast<int64_t>(len))
-								vpath.FilePointer.QuadPart = static_cast<int64_t>(len);
-
-							if (lpNewFilePointer)
-								*lpNewFilePointer = vpath.FilePointer;
-
-						} catch (const Utils::Win32::Error& e) {
-							m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"SetFilePointerEx: {}, Message: {}",
-								vpath.Path.filename(), e.what());
-							SetLastError(e.Code());
-							return FALSE;
-
-						} catch (const std::exception& e) {
-							m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, Message: {}",
-								vpath.Path.filename(), e.what());
-							SetLastError(ERROR_READ_FAULT);
-							return FALSE;
-						}
+						if (lpOverlapped) {
+							if (lpOverlapped->hEvent)
+								SetEvent(lpOverlapped->hEvent);
+							lpOverlapped->Internal = 0;
+							lpOverlapped->InternalHigh = static_cast<DWORD>(read);
+						} else
+							vpath.FilePointer.QuadPart = fp + read;
 
 						return TRUE;
+
+					} catch (const Utils::Win32::Error& e) {
+						if (e.Code() != ERROR_IO_PENDING)
+							m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, Message: {}",
+								vpath.Path.filename(), e.what());
+						SetLastError(e.Code());
+						return FALSE;
+
+					} catch (const std::exception& e) {
+						m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, Message: {}",
+							vpath.Path.filename(), e.what());
+						SetLastError(ERROR_READ_FAULT);
+						return FALSE;
 					}
-					return SetFilePointerEx.bridge(hFile, liDistanceToMove, lpNewFilePointer, dwMoveMethod);
-				});
-		}
+				}
+				return ReadFile.bridge(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
+			});
+
+		m_cleanup += SetFilePointerEx.SetHook([this](
+			_In_ HANDLE hFile,
+			_In_ LARGE_INTEGER liDistanceToMove,
+			_Out_opt_ PLARGE_INTEGER lpNewFilePointer,
+			_In_ DWORD dwMoveMethod) {
+				if (const auto pvpath = m_sqpacks.Get(hFile)) {
+					if (lpNewFilePointer)
+						*lpNewFilePointer = {};
+
+					auto& vpath = *pvpath;
+					try {
+						const auto len = vpath.Stream->StreamSize();
+
+						if (dwMoveMethod == FILE_BEGIN)
+							vpath.FilePointer.QuadPart = liDistanceToMove.QuadPart;
+						else if (dwMoveMethod == FILE_CURRENT)
+							vpath.FilePointer.QuadPart += liDistanceToMove.QuadPart;
+						else if (dwMoveMethod == FILE_END)
+							vpath.FilePointer.QuadPart = len - liDistanceToMove.QuadPart;
+						else {
+							SetLastError(ERROR_INVALID_PARAMETER);
+							return FALSE;
+						}
+
+						if (vpath.FilePointer.QuadPart > static_cast<int64_t>(len))
+							vpath.FilePointer.QuadPart = static_cast<int64_t>(len);
+
+						if (lpNewFilePointer)
+							*lpNewFilePointer = vpath.FilePointer;
+
+					} catch (const Utils::Win32::Error& e) {
+						m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"SetFilePointerEx: {}, Message: {}",
+							vpath.Path.filename(), e.what());
+						SetLastError(e.Code());
+						return FALSE;
+
+					} catch (const std::exception& e) {
+						m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, Message: {}",
+							vpath.Path.filename(), e.what());
+						SetLastError(ERROR_READ_FAULT);
+						return FALSE;
+					}
+
+					return TRUE;
+				}
+				return SetFilePointerEx.bridge(hFile, liDistanceToMove, lpNewFilePointer, dwMoveMethod);
+			});
+
 
 		for (auto ptr : Misc::Signatures::LookupForData([](const IMAGE_SECTION_HEADER& p) {
 					return strncmp(reinterpret_cast<const char*>(p.Name), ".text", 5) == 0;
@@ -315,21 +314,25 @@ struct App::Feature::GameResourceOverrider::Implementation {
 };
 
 std::shared_ptr<App::Feature::GameResourceOverrider::Implementation> App::Feature::GameResourceOverrider::AcquireImplementation() {
-	try {
-		static const auto UseModding = Config::Acquire()->Runtime.UseModding.Value();
-		if (UseModding) {
-			auto impl = s_pImpl.lock();
-			if (!impl) {
-				static std::mutex mtx;
+	static bool s_error = false;
+	static const auto s_useModding = Config::Acquire()->Runtime.UseModding.Value();
+	if (s_useModding && !s_error) {
+		auto impl = s_pImpl.lock();
+		if (!impl) {
+			static std::mutex mtx;
+			try {
 				const auto lock = std::lock_guard(mtx);
 				impl = s_pImpl.lock();
-				if (!impl)
+				if (!impl && !s_error)
 					s_pImpl = impl = std::make_unique<Implementation>();
+			} catch (const std::exception& e) {
+				s_error = true;
+				void(Utils::Win32::Thread(L"Temp", [msg = std::format("Disabling modding for the run: {}", e.what())]() {
+					Misc::Logger::Acquire()->Log(LogCategory::GameResourceOverrider, msg);
+				}));
 			}
-			return impl;
 		}
-	} catch (const std::exception& e) {
-		// pass
+		return impl;
 	}
 	return nullptr;
 }

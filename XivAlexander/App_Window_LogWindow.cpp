@@ -27,6 +27,7 @@ static const std::map<App::LogCategory, const char*> LogCategoryNames{
 	{App::LogCategory::EffectApplicationDelayLogger, "EffectApplicationDelayLogger"},
 	{App::LogCategory::IpcTypeFinder, "IpcTypeFinder"},
 	{App::LogCategory::GameResourceOverrider, "GameResourceOverrider"},
+	{App::LogCategory::VirtualSqPacks, "VirtualSqPacks"},
 };
 
 static WNDCLASSEXW WindowClass() {
@@ -68,7 +69,11 @@ App::Window::LogWindow::LogWindow()
 	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Warning), RGB(160, 160, 0));
 	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Error), RGB(255, 80, 80));
 
-	const auto addLogFn = [&](const std::deque<Misc::Logger::LogItem>& items) {
+	m_cleanup += m_config->Runtime.AlwaysOnTop_XivAlexLogWindow.OnChangeListener([this](auto&) {
+		SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexLogWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+	});
+	
+	m_cleanup += m_logger->OnNewLogItem([&](const std::deque<Misc::Logger::LogItem>& items) {
 		std::stringstream o;
 		auto level = LogLevel::Unset;
 		for (const auto& item : items) {
@@ -78,7 +83,9 @@ App::Window::LogWindow::LogWindow()
 			if (level != item.level) {
 				if (o.tellp())
 					FlushLog(o.str(), level);
+
 				o.clear();
+				o.str(std::string());
 				level = item.level;
 			}
 			const auto st = item.TimestampAsLocalSystemTime();
@@ -92,14 +99,7 @@ App::Window::LogWindow::LogWindow()
 		}
 		if (o.tellp())
 			FlushLog(o.str(), level);
-	};
-
-	m_cleanup += m_config->Runtime.AlwaysOnTop_XivAlexLogWindow.OnChangeListener([this](auto&) {
-		SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexLogWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 	});
-
-	m_logger->WithLogs([&](const auto& logs) { addLogFn(logs); });
-	m_cleanup += m_logger->OnNewLogItem(addLogFn);
 
 	ApplyLanguage(m_config->Runtime.GetLangId());
 	ShowWindow(m_hWnd, SW_SHOW);

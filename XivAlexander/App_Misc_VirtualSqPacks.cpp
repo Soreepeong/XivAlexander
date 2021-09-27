@@ -99,8 +99,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 						ttmpls.emplace_back(iter);
 					}
 				} catch (const std::exception& e) {
-					m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
-						"=> Failed to list items in {}: {}",
+					m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+						"Failed to list items in {}: {}",
 						dir, e.what());
 					continue;
 				}
@@ -118,17 +118,17 @@ struct App::Misc::VirtualSqPacks::Implementation {
 						Utils::Win32::File::Create(ttmpl.parent_path() / "TTMPD.mpd", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)
 					);
 				} catch (const std::exception& e) {
-					m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
+					m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
 						"Failed to load TexTools ModPack from {}: {}", ttmpl.wstring(), e.what());
 					continue;
 				}
 				if (const auto choicesPath = ttmpl.parent_path() / "choices.json"; exists(choicesPath)) {
 					try {
 						m_ttmps.back().config = Utils::ParseJsonFromFile(choicesPath);
-						m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
+						m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
 							"Choices file loaded from {}", choicesPath.wstring());
 					} catch (const std::exception& e) {
-						m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
+						m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
 							"Failed to load choices from {}: {}", choicesPath.wstring(), e.what());
 					}
 				}
@@ -139,6 +139,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			throw std::runtime_error("Cancelled");
 
 		{
+			std::mutex groupedLogPrintLock;
 			const auto progressMax = creators.size() * (0
 				+ 1 // original sqpack
 				+ m_config->Runtime.AdditionalSqpackRootDirectories.Value().size() // external sqpack
@@ -156,14 +157,14 @@ struct App::Misc::VirtualSqPacks::Implementation {
 								return;
 
 							progressValue += 1;
-							if (const auto result = creator.AddEntriesFromSqPack(indexFile, true, true);
-								!result.Added.empty() || !result.Replaced.empty()) {
-								m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-									"=> Processed SqPack {}/{}: Added {}, replaced {}, ignored {}, error {}",
+							if (const auto result = creator.AddEntriesFromSqPack(indexFile, true, true); result.AnyItem()) {
+								const auto lock = std::lock_guard(groupedLogPrintLock);
+								m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+									"[{}/{}] Source: added {}, replaced {}, ignored {}, error {}",
 									creator.DatExpac, creator.DatName,
 									result.Added.size(), result.Replaced.size(), result.SkippedExisting.size(), result.Error.size());
 								for (const auto& error : result.Error) {
-									m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
+									m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
 										"\t=> Error processing {}: {}", error.first, error.second);
 								}
 							}
@@ -179,16 +180,16 @@ struct App::Misc::VirtualSqPacks::Implementation {
 									if (!exists(file))
 										continue;
 
-									const auto batchAddResult = creator.AddEntriesFromSqPack(file, false, false);
-									if (!batchAddResult.AnyItem())
-										continue;
-
-									m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-										"=> Processed external SqPack {}: Added {}",
-										file, batchAddResult.Added.size());
-									for (const auto& error : batchAddResult.Error) {
-										m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
-											"\t=> Error processing {}: {}", error.first, error.second);
+									if (const auto result = creator.AddEntriesFromSqPack(file, false, false); result.AnyItem()) {
+										const auto lock = std::lock_guard(groupedLogPrintLock);
+										m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+											"[{}/{}] {}: added {}, replaced {}, ignored {}, error {}",
+											creator.DatExpac, creator.DatName, file,
+											result.Added.size(), result.Replaced.size(), result.SkippedExisting.size(), result.Error.size());
+										for (const auto& error : result.Error) {
+											m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+												"\t=> Error processing {}: {}", error.first, error.second);
+										}
 									}
 								}
 							} else
@@ -200,16 +201,16 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 								progressValue += 1;
 
-								const auto batchAddResult = creator.AddEntriesFromTTMP(ttmp.ttmpl, ttmp.ttmpd, ttmp.config);
-								if (!batchAddResult.AnyItem())
-									continue;
-
-								m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-									"=> Processed TTMPL {}: Added {}, replaced {}",
-									ttmp.path, batchAddResult.Added.size(), batchAddResult.Replaced.size());
-								for (const auto& error : batchAddResult.Error) {
-									m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
-										"\t=> Error processing {}: {}", error.first, error.second);
+								if (const auto result = creator.AddEntriesFromTTMP(ttmp.ttmpl, ttmp.ttmpd, ttmp.config); result.AnyItem()) {
+									const auto lock = std::lock_guard(groupedLogPrintLock);
+									m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+										"[{}/{}] {}: added {}, replaced {}, ignored {}, error {}",
+										creator.DatExpac, creator.DatName, ttmp.path,
+										result.Added.size(), result.Replaced.size(), result.SkippedExisting.size(), result.Error.size());
+									for (const auto& error : result.Error) {
+										m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+											"\t=> Error processing {}: {}", error.first, error.second);
+									}
 								}
 							}
 
@@ -217,8 +218,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 							progressValue += 1;
 						} catch (const std::exception& e) {
 							pool.Cancel();
-							m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
-								"\t=> Error processing {}: {}", indexFile.wstring(), e.what());
+							m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+								"[{}/{}] Error: {}", creator.DatExpac, creator.DatName, e.what());
 						}
 					});
 				}
@@ -238,6 +239,9 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			throw std::runtime_error("Cancelled");
 
 		for (const auto& [indexFile, pCreator] : creators) {
+			if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+				throw std::runtime_error("Cancelled");
+
 			if (pCreator->DatExpac == "ffxiv" && pCreator->DatName == "000000")
 				SetUpGeneratedFonts(progressWindow, *pCreator, indexFile);
 			else if (pCreator->DatExpac == "ffxiv" && pCreator->DatName == "0a0000")
@@ -369,15 +373,15 @@ struct App::Misc::VirtualSqPacks::Implementation {
 						}
 					}
 				} catch (const std::exception& e) {
-					m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
-						"=> Error occurred while parsing excel transformation configuration file {}: {}",
+					m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+						"Error occurred while parsing excel transformation configuration file {}: {}",
 						configFile.wstring(), e.what());
 					replacementFileParseFail = true;
 				}
 			}
 			if (replacementFileParseFail) {
-				m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
-					"=> Skipping merged 0a0000 file generation");
+				m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+					"Skipping string table generation");
 				return;
 			}
 
@@ -431,9 +435,6 @@ struct App::Misc::VirtualSqPacks::Implementation {
 										return;
 									}
 
-									m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-										"=> Merging {}", exhName);
-
 									exCreator = std::make_unique<Sqex::Excel::Depth2ExhExdCreator>(exhName, *exhReaderSource.Columns, exhReaderSource.Header.SomeSortOfBufferSize);
 									exCreator->FillMissingLanguageFrom = m_config->Runtime.GetFallbackLanguageList();
 
@@ -454,7 +455,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 											} catch (const std::out_of_range&) {
 												// pass
 											} catch (const std::exception& e) {
-												throw std::runtime_error(std::format("Error while processing {}: {}", exdPathSpec, e.what()));
+												throw std::runtime_error(std::format("Error occurred while processing {}: {}", exdPathSpec, e.what()));
 											}
 										}
 									}
@@ -521,8 +522,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 												} catch (const std::out_of_range&) {
 													// pass
 												} catch (const std::exception& e) {
-													m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
-														"=> Skipping {} because of error: {}", exdPathSpec, e.what());
+													m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+														"[{}] Skipping {} because of error: {}", exhName, exdPathSpec, e.what());
 												}
 											}
 										}
@@ -814,8 +815,6 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 								{
 									auto compiled = exCreator->Compile();
-									m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-										"=> Saving {}", exhName);
 
 									currentProgressMax = compiled.size();
 									for (auto& kv : compiled) {
@@ -847,7 +846,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 									publishProgress();
 								}
 							} catch (const std::exception& e) {
-								m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "=> Error: {}", e.what());
+								m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Error: {}", exhName, e.what());
 								progressWindow.Cancel();
 							}
 						});
@@ -895,17 +894,21 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		}
 
 		try {
-			const auto logCacher = creator.Log([&](const auto& s) {
-				m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, "=> {}", s);
-			});
-			const auto result = creator.AddEntriesFromTTMP(cachedDir);
+			if (const auto result = creator.AddEntriesFromTTMP(cachedDir); result.AnyItem()) {
+				m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+					"[ffxiv/0a0000] Generated string table: added {}, replaced {}, ignored {}, error {}",
+					result.Added.size(), result.Replaced.size(), result.SkippedExisting.size(), result.Error.size());
+				for (const auto& error : result.Error) {
+					m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+						"\t=> Error processing {}: {}", error.first, error.second);
+				}
+			}
 		} catch (const std::exception& e) {
-			m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "=> Error: {}", e.what());
+			m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[ffxiv/0a0000] Error: {}", e.what());
 		}
 	}
 
-	bool SetUpVirtualFileFromFileEntries(Sqex::Sqpack::Creator& creator, const std::filesystem::path& indexPath) {
-		auto additionalEntriesFound = false;
+	void SetUpVirtualFileFromFileEntries(Sqex::Sqpack::Creator& creator, const std::filesystem::path& indexPath) {
 		std::vector<std::filesystem::path> dirs;
 
 		if (m_config->Runtime.UseDefaultGameResourceFileEntryRootDirectory) {
@@ -936,8 +939,9 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					files.emplace_back(iter);
 				}
 			} catch (const std::exception& e) {
-				m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
-					"=> Failed to list items in {}: {}",
+				m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+					"[{}/{}] Failed to list items in {}: {}",
+					creator.DatName, creator.DatExpac,
 					dir, e.what());
 				continue;
 			}
@@ -949,25 +953,26 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 				try {
 					const auto result = creator.AddEntryFromFile(relative(file, dir), file);
-					const auto item = result.AnyItem();
-					if (!item)
-						throw std::runtime_error("Unexpected error");
-					m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
-						"=> {} file {}: (nameHash={:08x}, pathHash={:08x}, fullPathHash={:08x})",
-						result.Added.empty() ? "Replaced" : "Added",
-						item->PathSpec().Original,
-						item->PathSpec().NameHash,
-						item->PathSpec().PathHash,
-						item->PathSpec().FullPathHash);
-					additionalEntriesFound = true;
+					if (const auto item = result.AnyItem())
+						m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+							"[{}/{}] {} file {}: (nameHash={:08x}, pathHash={:08x}, fullPathHash={:08x})",
+							creator.DatName, creator.DatExpac,
+							result.Added.empty() ? "Replaced" : "Added",
+							item->PathSpec().Original,
+							item->PathSpec().NameHash,
+							item->PathSpec().PathHash,
+							item->PathSpec().FullPathHash);
+					else
+						for (const auto& error : result.Error | std::views::values)
+							throw std::runtime_error(error);
 				} catch (const std::exception& e) {
-					m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider,
-						"=> Failed to add file {}: {}",
+					m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+						"[{}/{}] Error processing {}: {}",
+						creator.DatName, creator.DatExpac,
 						file, e.what());
 				}
 			}
 		}
-		return additionalEntriesFound;
 	}
 
 	void SetUpGeneratedFonts(Window::ProgressPopupWindow& progressWindow, Sqex::Sqpack::Creator& creator, const std::filesystem::path& indexPath) {
@@ -1022,7 +1027,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 				progressWindow.UpdateMessage(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_TITLE_GENERATING_FONTS)));
 
-				m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
+				m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
 					"=> Generating font per file: {}",
 					fontConfigPath.wstring());
 
@@ -1129,18 +1134,17 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					.Write(0, currentCacheKeys.data(), currentCacheKeys.size());
 			}
 
-			try {
-				const auto logCacher = creator.Log([&](const auto& s) {
-					m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, "=> {}", s);
-				});
-				const auto result = creator.AddEntriesFromTTMP(cachedDir);
-				if (!result.Added.empty() || !result.Replaced.empty())
-					return;
-			} catch (const std::exception& e) {
-				m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "=> Error: {}", e.what());
+			if (const auto result = creator.AddEntriesFromTTMP(cachedDir); result.AnyItem()) {
+				m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+					"[ffxiv/000000] Generated font: added {}, replaced {}, ignored {}, error {}",
+					result.Added.size(), result.Replaced.size(), result.SkippedExisting.size(), result.Error.size());
+				for (const auto& error : result.Error) {
+					m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+						"\t=> Error processing {}: {}", error.first, error.second);
+				}
 			}
 		} catch (const std::exception& e) {
-			m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, e.what());
+			m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[ffxiv/000000] Error: {}", e.what());
 		}
 	}
 };
@@ -1201,7 +1205,7 @@ HANDLE App::Misc::VirtualSqPacks::Open(const std::filesystem::path& path) {
 			}
 		}
 
-		m_pImpl->m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider,
+		m_pImpl->m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
 			"Taking control of {}/{} (parent: {}/{}, type: {})",
 			fileToOpen.parent_path().filename(), fileToOpen.filename(),
 			indexFile.parent_path().filename(), indexFile.filename(),
@@ -1214,9 +1218,9 @@ HANDLE App::Misc::VirtualSqPacks::Open(const std::filesystem::path& path) {
 		m_pImpl->m_overlayedHandles.insert_or_assign(key, std::move(overlayedHandle));
 		return key;
 	} catch (const Utils::Win32::Error& e) {
-		m_pImpl->m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"CreateFileW: {}, Message: {}", path.wstring(), e.what());
+		m_pImpl->m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, L"CreateFileW: {}, Message: {}", path.wstring(), e.what());
 	} catch (const std::exception& e) {
-		m_pImpl->m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "CreateFileW: {}, Message: {}", path.wstring(), e.what());
+		m_pImpl->m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "CreateFileW: {}, Message: {}", path.wstring(), e.what());
 	}
 	return nullptr;
 }
