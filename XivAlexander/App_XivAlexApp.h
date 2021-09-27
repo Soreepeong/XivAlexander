@@ -52,5 +52,7 @@ namespace App {
 		[[nodiscard]] std::string IsUnloadable() const;
 
 		[[nodiscard]] Network::SocketHook* GetSocketHook();
+
+		static XivAlexApp* GetCurrentApp();
 	};
 }

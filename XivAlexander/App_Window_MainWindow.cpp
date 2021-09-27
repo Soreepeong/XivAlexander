@@ -8,8 +8,10 @@
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
 #include <XivAlexanderCommon/XivAlex.h>
 
+#include "App_Feature_GameResourceOverrider.h"
 #include "App_Misc_ExcelTransformConfig.h"
 #include "App_Misc_Logger.h"
+#include "App_Misc_VirtualSqPacks.h"
 #include "App_Network_SocketHook.h"
 #include "App_Window_ConfigWindow.h"
 #include "App_Window_ProgressPopupWindow.h"
@@ -107,6 +109,11 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 		RepopulateMenu();
 	});
 
+	if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
+		auto& sqpacks = overrider.GetVirtualSqPacks();
+		m_cleanup += sqpacks.OnTtmpSetsChanged([this]() { RepopulateMenu(); });
+	}
+
 	m_cleanup += m_pApp->GetSocketHook()->OnSocketFound([this](auto&) {
 		InvalidateRect(m_hWnd, nullptr, false);
 	});
@@ -177,11 +184,11 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 				))) {
 				case IDYES:
 					m_triggerUnload();
-				break;
+					break;
 				case IDNO:
 					m_config->Runtime.ShowControlWindow = false;
-				break;
-				}
+					break;
+			}
 		}
 		return 0;
 	} else if (uMsg == WM_NCHITTEST) {
@@ -429,102 +436,53 @@ void App::Window::MainWindow::RepopulateMenu() {
 		const auto hTemplateEntryMenu = GetSubMenu(hParentMenu, 0);
 		RemoveMenu(hParentMenu, 0, MF_BYPOSITION);
 		const auto deleteTemplateMenu = Utils::CallOnDestruction([hTemplateEntryMenu]() { DestroyMenu(hTemplateEntryMenu); });
+
 		auto count = 0;
-		try {
-			for (const auto& entry : std::filesystem::recursive_directory_iterator(m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods")) {
-				const auto choicesPath = entry.path().parent_path() / "choices.json";
-				auto lower = entry.path().filename().wstring();
-				CharLowerW(&lower[0]);
-				if (lower != L"ttmpl.mpl" || !exists(entry.path().parent_path() / L"TTMPD.mpd"))
-					continue;
 
-				const auto ttmpl = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream(entry.path()));
-				auto conf = nlohmann::json::object();
-				try {
-					conf = Utils::ParseJsonFromFile(choicesPath);
-				} catch (...) {
-					// pass
-				}
-
-				const auto disableFilePath = entry.path().parent_path() / "disable";
-				const auto bDisabled = exists(disableFilePath);
-				const auto deleteFilePath = entry.path().parent_path() / "delete";
-				const auto bDelete = exists(deleteFilePath);
-
+		if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
+			auto& sqpacks = overrider.GetVirtualSqPacks();
+			for (auto& ttmpSet : sqpacks.TtmpSets()) {
 				const auto hSubMenu = CreatePopupMenu();
-				AppendMenuW(hSubMenu, MF_STRING | (bDisabled ? 0 : MF_CHECKED), allocateMenuId([this, disableFilePath]() {
+				AppendMenuW(hSubMenu, MF_STRING | (ttmpSet.Enabled ? MF_CHECKED : 0), allocateMenuId([this, &ttmpSet]() {
 					try {
-						if (exists(disableFilePath))
-							remove(disableFilePath);
-						else
-							Utils::Win32::File::Create(disableFilePath, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0);
+						ttmpSet.Enabled = !ttmpSet.Enabled;
+						ttmpSet.ApplyChanges();
 					} catch (const std::exception& e) {
 						Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 							m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-						return;
 					}
-					RepopulateMenu();
 				}), getMenuText(hTemplateEntryMenu, 0).c_str());
 
-				AppendMenuW(hSubMenu, MF_STRING | (bDelete ? MF_CHECKED : 0), allocateMenuId([this, deleteFilePath]() {
+				AppendMenuW(hSubMenu, MF_STRING | (ttmpSet.MarkDelete ? MF_CHECKED : 0), allocateMenuId([this, &ttmpSet]() {
 					try {
-						if (exists(deleteFilePath))
-							remove(deleteFilePath);
-						else
-							Utils::Win32::File::Create(deleteFilePath, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0);
+						ttmpSet.MarkDelete = !ttmpSet.MarkDelete;
+						ttmpSet.ApplyChanges();
 					} catch (const std::exception& e) {
 						Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 							m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-						return;
 					}
-					RepopulateMenu();
 				}), getMenuText(hTemplateEntryMenu, 1).c_str());
 
 				AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
 
-				if (!ttmpl.SimpleModsList.empty()) {
-					const auto hModSubMenu = CreatePopupMenu();
-					for (size_t i = 0; i < ttmpl.SimpleModsList.size(); ++i) {
-						const auto& modEntry = ttmpl.SimpleModsList[i];
-						const auto entryDisabled = conf.is_array() && i < conf.size() && conf[i].is_boolean() && !conf[i].get<boolean>();
-						AppendMenuW(hModSubMenu, MF_STRING | (entryDisabled ? 0 : MF_CHECKED), allocateMenuId(
-								[this, i, entryDisabled, choicesPath, prevConf = conf]() {
-									try {
-										auto conf = prevConf;
-										if (!conf.is_array())
-											conf = nlohmann::json::array();
-										while (conf.size() <= i)
-											conf.insert(conf.end(), true);
-										conf[i] = entryDisabled;
-										
-										Utils::SaveJsonToFile(choicesPath, conf);
-
-									} catch (const std::exception& e) {
-										Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-											m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-										return;
-									}
-									RepopulateMenu();
-								}),
-							std::format(L"{} ({})",
-								modEntry.Name.empty() ? "-" : modEntry.Name,
-								modEntry.Category.empty() ? "-" : modEntry.Category).c_str());
-					}
-					AppendMenuW(hSubMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hModSubMenu), m_config->Runtime.GetStringRes(IDS_CONFIGURE));
+				if (!ttmpSet.Allocated) {
+					AppendMenuW(hSubMenu, MF_STRING | MF_DISABLED, 0, getMenuText(hTemplateEntryMenu, 3).c_str());
+					AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
 				}
-
-				for (size_t pageObjectIndex = 0; pageObjectIndex < ttmpl.ModPackPages.size(); ++pageObjectIndex) {
-					const auto& modGroups = ttmpl.ModPackPages[pageObjectIndex].ModGroups;
+				
+				for (size_t pageObjectIndex = 0; pageObjectIndex < ttmpSet.List.ModPackPages.size(); ++pageObjectIndex) {
+					const auto& modGroups = ttmpSet.List.ModPackPages[pageObjectIndex].ModGroups;
 					if (modGroups.empty())
 						continue;
-					const auto pageConf = conf.is_array() && pageObjectIndex < conf.size() && conf[pageObjectIndex].is_array() ? conf[pageObjectIndex] : nlohmann::json::array();
+					const auto pageConf = ttmpSet.Choices.at(pageObjectIndex);
 
 					for (size_t modGroupIndex = 0; modGroupIndex < modGroups.size(); ++modGroupIndex) {
 						const auto& modGroup = modGroups[modGroupIndex];
 						if (modGroup.OptionList.empty())
 							continue;
 
-						const auto choice = static_cast<size_t>(modGroupIndex < pageConf.size() ? std::max(0, std::min(static_cast<int>(modGroup.OptionList.size() - 1), pageConf[modGroupIndex].get<int>())) : 0);
+						const auto choice = pageConf.at(modGroupIndex).get<size_t>();
+
 						const auto hModSubMenu = CreatePopupMenu();
 						for (size_t optionIndex = 0; optionIndex < modGroup.OptionList.size(); ++optionIndex) {
 							const auto& modEntry = modGroup.OptionList[optionIndex];
@@ -536,41 +494,178 @@ void App::Window::MainWindow::RepopulateMenu() {
 								description += std::format(" ({})", modEntry.Description);
 
 							AppendMenuW(hModSubMenu, MF_STRING | (optionIndex == choice ? MF_CHECKED : 0), allocateMenuId(
-								[this, pageObjectIndex, modGroupIndex, optionIndex, choicesPath, prevConf = conf]() {
+								[this, pageObjectIndex, modGroupIndex, optionIndex, &ttmpSet]() {
 									try {
-										auto conf = prevConf;
-										if (!conf.is_array())
-											conf = nlohmann::json::array();
-										while (conf.size() <= pageObjectIndex)
-											conf.insert(conf.end(), nlohmann::json::array());
+										if (!ttmpSet.Choices.is_array())
+											ttmpSet.Choices = nlohmann::json::array();
+										while (ttmpSet.Choices.size() <= pageObjectIndex)
+											ttmpSet.Choices.insert(ttmpSet.Choices.end(), nlohmann::json::array());
 
-										auto& page = conf.at(pageObjectIndex);
+										auto& page = ttmpSet.Choices.at(pageObjectIndex);
 										if (!page.is_array())
 											page = nlohmann::json::array();
 										while (page.size() <= modGroupIndex)
 											page.insert(page.end(), 0);
 										page[modGroupIndex] = optionIndex;
-										
-										Utils::SaveJsonToFile(choicesPath, conf);
+
+										ttmpSet.ApplyChanges();
 
 									} catch (const std::exception& e) {
 										Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 											m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-										return;
 									}
-									RepopulateMenu();
 								}), Utils::FromUtf8(description).c_str());
 						}
 						AppendMenuW(hSubMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hModSubMenu), Utils::FromUtf8(modGroup.GroupName).c_str());
 					}
 				}
 
-				AppendMenuW(hParentMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hSubMenu), entry.path().parent_path().filename().wstring().c_str());
+				AppendMenuW(hParentMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hSubMenu), ttmpSet.ListPath.parent_path().filename().wstring().c_str());
 				count++;
 			}
-		} catch (const std::filesystem::filesystem_error&) {
-			// pass
 		}
+
+		//try {
+		//	for (const auto& entry : std::filesystem::recursive_directory_iterator(m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods")) {
+		//		const auto choicesPath = entry.path().parent_path() / "choices.json";
+		//		auto lower = entry.path().filename().wstring();
+		//		CharLowerW(&lower[0]);
+		//		if (lower != L"ttmpl.mpl" || !exists(entry.path().parent_path() / L"TTMPD.mpd"))
+		//			continue;
+		//
+		//		const auto ttmpl = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream(entry.path()));
+		//		auto conf = nlohmann::json::object();
+		//		try {
+		//			conf = Utils::ParseJsonFromFile(choicesPath);
+		//		} catch (...) {
+		//			// pass
+		//		}
+		//
+		//		const auto disableFilePath = entry.path().parent_path() / "disable";
+		//		const auto bDisabled = exists(disableFilePath);
+		//		const auto deleteFilePath = entry.path().parent_path() / "delete";
+		//		const auto bDelete = exists(deleteFilePath);
+		//
+		//		const auto hSubMenu = CreatePopupMenu();
+		//		AppendMenuW(hSubMenu, MF_STRING | (bDisabled ? 0 : MF_CHECKED), allocateMenuId([this, disableFilePath]() {
+		//			try {
+		//				if (exists(disableFilePath))
+		//					remove(disableFilePath);
+		//				else
+		//					Utils::Win32::File::Create(disableFilePath, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0);
+		//			} catch (const std::exception& e) {
+		//				Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+		//					m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+		//				return;
+		//			}
+		//			RepopulateMenu();
+		//		}), getMenuText(hTemplateEntryMenu, 0).c_str());
+		//
+		//		AppendMenuW(hSubMenu, MF_STRING | (bDelete ? MF_CHECKED : 0), allocateMenuId([this, deleteFilePath]() {
+		//			try {
+		//				if (exists(deleteFilePath))
+		//					remove(deleteFilePath);
+		//				else
+		//					Utils::Win32::File::Create(deleteFilePath, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0);
+		//			} catch (const std::exception& e) {
+		//				Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+		//					m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+		//				return;
+		//			}
+		//			RepopulateMenu();
+		//		}), getMenuText(hTemplateEntryMenu, 1).c_str());
+		//
+		//		AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
+		//
+		//		if (!ttmpl.SimpleModsList.empty()) {
+		//			const auto hModSubMenu = CreatePopupMenu();
+		//			for (size_t i = 0; i < ttmpl.SimpleModsList.size(); ++i) {
+		//				const auto& modEntry = ttmpl.SimpleModsList[i];
+		//				const auto entryDisabled = conf.is_array() && i < conf.size() && conf[i].is_boolean() && !conf[i].get<boolean>();
+		//				AppendMenuW(hModSubMenu, MF_STRING | (entryDisabled ? 0 : MF_CHECKED), allocateMenuId(
+		//						[this, i, entryDisabled, choicesPath, prevConf = conf]() {
+		//							try {
+		//								auto conf = prevConf;
+		//								if (!conf.is_array())
+		//									conf = nlohmann::json::array();
+		//								while (conf.size() <= i)
+		//									conf.insert(conf.end(), true);
+		//								conf[i] = entryDisabled;
+		//
+		//								Utils::SaveJsonToFile(choicesPath, conf);
+		//
+		//							} catch (const std::exception& e) {
+		//								Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+		//									m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+		//								return;
+		//							}
+		//							RepopulateMenu();
+		//						}),
+		//					std::format(L"{} ({})",
+		//						modEntry.Name.empty() ? "-" : modEntry.Name,
+		//						modEntry.Category.empty() ? "-" : modEntry.Category).c_str());
+		//			}
+		//			AppendMenuW(hSubMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hModSubMenu), m_config->Runtime.GetStringRes(IDS_CONFIGURE));
+		//		}
+		//
+		//		for (size_t pageObjectIndex = 0; pageObjectIndex < ttmpl.ModPackPages.size(); ++pageObjectIndex) {
+		//			const auto& modGroups = ttmpl.ModPackPages[pageObjectIndex].ModGroups;
+		//			if (modGroups.empty())
+		//				continue;
+		//			const auto pageConf = conf.is_array() && pageObjectIndex < conf.size() && conf[pageObjectIndex].is_array() ? conf[pageObjectIndex] : nlohmann::json::array();
+		//
+		//			for (size_t modGroupIndex = 0; modGroupIndex < modGroups.size(); ++modGroupIndex) {
+		//				const auto& modGroup = modGroups[modGroupIndex];
+		//				if (modGroup.OptionList.empty())
+		//					continue;
+		//
+		//				const auto choice = static_cast<size_t>(modGroupIndex < pageConf.size() ? std::max(0, std::min(static_cast<int>(modGroup.OptionList.size() - 1), pageConf[modGroupIndex].get<int>())) : 0);
+		//				const auto hModSubMenu = CreatePopupMenu();
+		//				for (size_t optionIndex = 0; optionIndex < modGroup.OptionList.size(); ++optionIndex) {
+		//					const auto& modEntry = modGroup.OptionList[optionIndex];
+		//
+		//					std::string description = modEntry.Name.empty() ? "-" : modEntry.Name;
+		//					if (!modEntry.GroupName.empty())
+		//						description += std::format(" ({})", modEntry.GroupName);
+		//					if (!modEntry.Description.empty())
+		//						description += std::format(" ({})", modEntry.Description);
+		//
+		//					AppendMenuW(hModSubMenu, MF_STRING | (optionIndex == choice ? MF_CHECKED : 0), allocateMenuId(
+		//						[this, pageObjectIndex, modGroupIndex, optionIndex, choicesPath, prevConf = conf]() {
+		//							try {
+		//								auto conf = prevConf;
+		//								if (!conf.is_array())
+		//									conf = nlohmann::json::array();
+		//								while (conf.size() <= pageObjectIndex)
+		//									conf.insert(conf.end(), nlohmann::json::array());
+		//
+		//								auto& page = conf.at(pageObjectIndex);
+		//								if (!page.is_array())
+		//									page = nlohmann::json::array();
+		//								while (page.size() <= modGroupIndex)
+		//									page.insert(page.end(), 0);
+		//								page[modGroupIndex] = optionIndex;
+		//
+		//								Utils::SaveJsonToFile(choicesPath, conf);
+		//
+		//							} catch (const std::exception& e) {
+		//								Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+		//									m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+		//								return;
+		//							}
+		//							RepopulateMenu();
+		//						}), Utils::FromUtf8(description).c_str());
+		//				}
+		//				AppendMenuW(hSubMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hModSubMenu), Utils::FromUtf8(modGroup.GroupName).c_str());
+		//			}
+		//		}
+		//
+		//		AppendMenuW(hParentMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hSubMenu), entry.path().parent_path().filename().wstring().c_str());
+		//		count++;
+		//	}
+		//} catch (const std::filesystem::filesystem_error&) {
+		//	// pass
+		//}
 		if (count)
 			DeleteMenu(hParentMenu, ID_MODDING_TTMP_NOENTRY, MF_BYCOMMAND);
 	}
@@ -1314,52 +1409,33 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 							continue;
 
 						const auto ttmpl = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream(entry.path()));
-						auto conf = nlohmann::json::object();
-						try {
-							conf = Utils::ParseJsonFromFile(choicesPath);
-						} catch (...) {
-							// pass
-						}
 
 						const auto deleteFilePath = entry.path().parent_path() / "delete";
 						const auto disableFilePath = entry.path().parent_path() / "disable";
+											
+						if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
+							auto& sqpacks = overrider.GetVirtualSqPacks();
+							for (auto& set : sqpacks.TtmpSets()) {
+								switch (menuId) {
+									case ID_MODDING_TTMP_REMOVEALL:
+										set.MarkDelete = true;
+										break;
 
-						switch (menuId) {
-							case ID_MODDING_TTMP_REMOVEALL:
-								try {
-									Utils::Win32::File::Create(deleteFilePath, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0);
-								} catch (const std::exception& e) {
-									if (!exists(deleteFilePath))
-										m_logger->Format<LogLevel::Error>(LogCategory::GameResourceOverrider, "Failed to mark {} for deletion: {}", entry.path().wstring(), e.what());
-								}
-								break;
+									case ID_MODDING_TTMP_UNDOREMOVEALL:
+										set.MarkDelete = false;
+										break;
 
-							case ID_MODDING_TTMP_UNDOREMOVEALL:
-								try {
-									remove(deleteFilePath);
-								} catch (const std::exception& e) {
-									if (exists(deleteFilePath))
-										m_logger->Format<LogLevel::Error>(LogCategory::GameResourceOverrider, "Failed to unmark {} from deletion: {}", entry.path().wstring(), e.what());
-								}
-								break;
+									case ID_MODDING_TTMP_ENABLEALL:
+										set.Enabled = true;
+										break;
 
-							case ID_MODDING_TTMP_ENABLEALL:
-								try {
-									remove(disableFilePath);
-								} catch (const std::exception& e) {
-									if (exists(disableFilePath))
-										m_logger->Format<LogLevel::Error>(LogCategory::GameResourceOverrider, "Failed to unmark {} as disabled: {}", entry.path().wstring(), e.what());
+									case ID_MODDING_TTMP_DISABLEALL:
+										set.Enabled = false;
+										break;
 								}
-								break;
-
-							case ID_MODDING_TTMP_DISABLEALL:
-								try {
-									Utils::Win32::File::Create(disableFilePath, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0);
-								} catch (const std::exception& e) {
-									if (exists(disableFilePath))
-										m_logger->Format<LogLevel::Error>(LogCategory::GameResourceOverrider, "Failed to mark {} as disabled: {}", entry.path().wstring(), e.what());
-								}
-								break;
+								set.ApplyChanges(false);
+							}
+							sqpacks.ReflectTtmpSets();
 						}
 					}
 				} catch (const std::filesystem::filesystem_error&) {
@@ -1570,7 +1646,7 @@ static bool FileEquals(const std::filesystem::path& filename1, const std::filesy
 	const auto size1 = file1.GetLength(), size2 = file2.GetLength();
 	if (size1 != size2)
 		return false;
-	
+
 	std::string buf1(ReadBufSize, 0);
 	std::string buf2(ReadBufSize, 0);
 	for (uint64_t ptr = 0; ptr < size1; ptr += ReadBufSize) {
@@ -1627,7 +1703,7 @@ void App::Window::MainWindow::ImportExcelTransformConfig(const std::filesystem::
 	if (!alreadyExists) {
 		// Test file
 		void(Utils::ParseJsonFromFile(path).get<Misc::ExcelTransformConfig::Config>());
-		
+
 		create_directories(targetDirectory);
 		if (!CopyFileW(path.c_str(), targetFileName.c_str(), TRUE))
 			throw Utils::Win32::Error("CopyFileW");
@@ -1786,7 +1862,7 @@ std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& pa
 				for (int i = 0; exists(targetTtmpDirectory); i++)
 					targetTtmpDirectory = targetDirectory / std::format(L"{}_{}", name, i);
 			}
-			
+
 			if (!CopyFileW(path.c_str(), (temporaryTtmpDirectory / "TTMPL.mpl").c_str(), TRUE))
 				throw Utils::Win32::Error("CopyFileW");
 			if (!CopyFileW(ttmpdPath.c_str(), (temporaryTtmpDirectory / "TTMPD.mpd").c_str(), TRUE))
@@ -1797,8 +1873,12 @@ std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& pa
 	}
 
 	std::filesystem::rename(temporaryTtmpDirectory, targetTtmpDirectory);
+	
+	if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
+		auto& sqpacks = overrider.GetVirtualSqPacks();
+		sqpacks.AddNewTtmp(targetTtmpDirectory / "TTMPL.mpl");
+	}
 
-	RepopulateMenu();
 	return offerConfiguration ? Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_NOTIFY_TTMP_HAS_CONFIGURATION)) : "";
 }
 

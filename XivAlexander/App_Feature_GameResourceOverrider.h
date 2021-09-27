@@ -1,5 +1,9 @@
 #pragma once
 
+namespace App::Misc {
+	class VirtualSqPacks;
+}
+
 namespace App::Feature {
 	class GameResourceOverrider {
 		struct Implementation;
@@ -13,5 +17,7 @@ namespace App::Feature {
 		~GameResourceOverrider();
 
 		bool CanUnload() const;
+
+		Misc::VirtualSqPacks& GetVirtualSqPacks();
 	};
 }

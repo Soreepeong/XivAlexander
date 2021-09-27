@@ -268,10 +268,12 @@ namespace Sqex::Sqpack {
 				throw std::invalid_argument("Provided stream requires more space than reserved size");
 		}
 
-		void SwapStream(std::shared_ptr<const EntryProvider> newStream = nullptr) {
+		auto SwapStream(std::shared_ptr<const EntryProvider> newStream = nullptr) {
 			if (newStream && newStream->StreamSize() > m_reservedSize)
 				throw std::invalid_argument("Provided stream requires more space than reserved size");
+			auto oldStream = std::move(m_stream);
 			m_stream = std::move(newStream);
+			return oldStream;
 		}
 
 		[[nodiscard]] uint64_t StreamSize() const override {

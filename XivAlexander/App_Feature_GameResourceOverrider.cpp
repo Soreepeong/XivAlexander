@@ -120,6 +120,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				if (const auto pvpath = m_sqpacks.Get(hFile)) {
 					auto& vpath = *pvpath;
 					try {
+						m_sqpacks.MarkIoRequest();
 						const auto fp = lpOverlapped ? ((static_cast<uint64_t>(lpOverlapped->OffsetHigh) << 32) | lpOverlapped->Offset) : vpath.FilePointer.QuadPart;
 						const auto read = vpath.Stream->ReadStreamPartial(fp, lpBuffer, nNumberOfBytesToRead);
 
@@ -169,6 +170,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 
 					auto& vpath = *pvpath;
 					try {
+						m_sqpacks.MarkIoRequest();
 						const auto len = vpath.Stream->StreamSize();
 
 						if (dwMoveMethod == FILE_BEGIN)
@@ -344,5 +346,9 @@ App::Feature::GameResourceOverrider::GameResourceOverrider()
 App::Feature::GameResourceOverrider::~GameResourceOverrider() = default;
 
 bool App::Feature::GameResourceOverrider::CanUnload() const {
-	return !!m_pImpl;
+	return !m_pImpl;
+}
+
+App::Misc::VirtualSqPacks& App::Feature::GameResourceOverrider::GetVirtualSqPacks() {
+	return m_pImpl->m_sqpacks;
 }

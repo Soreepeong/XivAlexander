@@ -592,7 +592,7 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 	std::map<EntryPathSpec, EntryProvider*> entryProviders;
 
 	for (auto& entry : m_pImpl->m_entries) {
-		if (entry->EntryReservedSize != 0) {
+		if (entry->EntryReservedSize) {
 			entry->EntrySize = Align(std::max(entry->EntryReservedSize, static_cast<uint32_t>(entry->Provider->StreamSize()))).Alloc;
 			entry->PadSize = 0;
 			entry->Provider = std::make_shared<HotSwappableEntryProvider>(entry->Provider->PathSpec(), entry->EntrySize, std::move(entry->Provider));

@@ -395,6 +395,10 @@ App::Network::SocketHook* App::XivAlexApp::GetSocketHook() {
 
 static std::unique_ptr<App::XivAlexApp> s_xivAlexApp;
 
+App::XivAlexApp* App::XivAlexApp::GetCurrentApp() {
+	return s_xivAlexApp.get();
+}
+
 size_t __stdcall XivAlexDll::EnableXivAlexander(size_t bEnable) {
 	if (!!bEnable == !!s_xivAlexApp)
 		return 0;
