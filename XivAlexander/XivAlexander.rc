@@ -189,20 +189,18 @@ BEGIN
             POPUP "(template entry to be inserted at bottom)"
             BEGIN
                 MENUITEM "桳岠壔(&E)",                     ID_MODDING_TTMP_ENTRY_ENABLE, CHECKED
-                MENUITEM "嶍彍傪梊栺(&D)",                   ID_MODDING_TTMP_ENTRY_DELETE
+                MENUITEM "嶍彍(&D)",                      ID_MODDING_TTMP_ENTRY_DELETE
                 MENUITEM SEPARATOR
                 MENUITEM "嵞婲摦昁梫",                       ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
                 MENUITEM SEPARATOR
             END
             MENUITEM "僀儞億乕僩(&I)",                   ID_MODDING_TTMP_IMPORT
             MENUITEM SEPARATOR
-            MENUITEM "偡傋偰偺MOD僷僢僋偺嶍彍傪梊栺(&R)",        ID_MODDING_TTMP_REMOVEALL
-            MENUITEM "偡傋偰偺MOD僷僢僋偺嶍彍梊栺傪庢傝徚偡(&U)",    ID_MODDING_TTMP_UNDOREMOVEALL
-            MENUITEM SEPARATOR
             MENUITEM "偡傋偰傪桳岠壔(&E)",                 ID_MODDING_TTMP_ENABLEALL
             MENUITEM "偡傋偰傪柍岠壔(&D)",                 ID_MODDING_TTMP_DISABLEALL
             MENUITEM SEPARATOR
             MENUITEM "僼僅儖僟乕傪奐偗傞(&O)",               ID_MODDING_TTMP_OPENDIRECTORY
+            MENUITEM "偡傋偰偺MOD僷僢僋傪嶍彍(&R)",           ID_MODDING_TTMP_REMOVEALL
             MENUITEM "嵞撉傒崬傒(&R)",                   ID_MODDING_TTMP_REFRESH
             MENUITEM SEPARATOR
             MENUITEM "(僀儞僗僩乕儖嵪傒偺MOD僷僢僋側偟)",         ID_MODDING_TTMP_NOENTRY, INACTIVE
@@ -395,10 +393,9 @@ BEGIN
     IDS_FILTERSPEC_ALLFILES "偡傋偰偺僼傽僀儖 (*.*)"
     IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON "僥僉僗僩抲偒姺偊掕媊僼傽僀儖 (*.json)"
     IDS_FILTERSPEC_TTMP     "TexTools MOD僷僢僋僼傽僀儖 (*.ttmp, *.ttmp2, *.mpl)"
-    IDS_CONFIRM_REMOVEALLTTMP "師偺嵞婲摦帪偵偡傋偰偺TexTools MOD僷僢僋傪嶍彍偟傑偡丅"
-    IDS_CONFIRM_UNDOREMOVEALLTTMP "師偺嵞婲摦帪偺偡傋偰偺TexTools MOD僷僢僋偺嶍彍傪庢傝徚偟傑偡丅"
-    IDS_CONFIRM_ENABLEALLTTMP "師偺嵞婲摦帪偵慡偰偺TexTools MOD僷僢僋傪桳岠偵偟傑偡丅"
-    IDS_CONFIRM_DISABLEALLTTMP "師偺嵞婲摦帪偵慡偰偺TexTools MOD僷僢僋傪柍岠偵偟傑偡丅"
+    IDS_CONFIRM_REMOVEALLTTMP "偡傋偰偺TexTools MOD僷僢僋傪嶍彍偟傑偡丅"
+    IDS_CONFIRM_ENABLEALLTTMP "慡偰偺TexTools MOD僷僢僋傪桳岠偵偟傑偡丅"
+    IDS_CONFIRM_DISABLEALLTTMP "慡偰偺TexTools MOD僷僢僋傪柍岠偵偟傑偡丅"
     IDS_NOUNLOADREASON_DEPENDENCY 
                             "XivAlexander偑僎乕儉偺埶懚僼傽僀儖偲偟偰僀儞僗僩乕儖偝傟儘乕僪偝傟偰傞応崌扨撈偱廔椆偡傞偙偲偼偱偒傑偣傫丅"
     IDS_NOUNLOADREASON_MODACTIVE "MOD偑桳岠偺応崌XivAlexander傪扨撈偱廔椆偡傞偙偲偼偱偒傑偣傫丅"
@@ -574,20 +571,18 @@ BEGIN
             POPUP "(template entry to be inserted at bottom)"
             BEGIN
                 MENUITEM "荤侩窃(&E)",                     ID_MODDING_TTMP_ENTRY_ENABLE, CHECKED
-                MENUITEM "力芭 抗距(&D)",                   ID_MODDING_TTMP_ENTRY_DELETE
+                MENUITEM "力芭(&D)",                      ID_MODDING_TTMP_ENTRY_DELETE
                 MENUITEM SEPARATOR
                 MENUITEM "犁矫累 鞘夸",                      ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
                 MENUITEM SEPARATOR
             END
             MENUITEM "阂矾坷扁(&I)",                    ID_MODDING_TTMP_IMPORT
             MENUITEM SEPARATOR
-            MENUITEM "葛滴 力芭 抗距(&R)",                ID_MODDING_TTMP_REMOVEALL
-            MENUITEM "葛电 力芭 抗距 秒家(&U)",             ID_MODDING_TTMP_UNDOREMOVEALL
-            MENUITEM SEPARATOR
             MENUITEM "葛滴 劝己拳(&E)",                  ID_MODDING_TTMP_ENABLEALL
             MENUITEM "葛滴 厚劝己拳(&D)",                 ID_MODDING_TTMP_DISABLEALL
             MENUITEM SEPARATOR
             MENUITEM "弃歹 凯扁(&O)",                   ID_MODDING_TTMP_OPENDIRECTORY
+            MENUITEM "葛滴 力芭(&R)",                   ID_MODDING_TTMP_REMOVEALL
             MENUITEM "格废 促矫 阂矾坷扁(&R)",              ID_MODDING_TTMP_REFRESH
             MENUITEM SEPARATOR
             MENUITEM "(汲摹等 葛靛蒲 绝澜 )",               ID_MODDING_TTMP_NOENTRY, INACTIVE
@@ -838,11 +833,9 @@ BEGIN
     IDS_FILTERSPEC_ALLFILES "葛电 颇老 (*.*)"
     IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON "巩磊凯 函版 痹蘑 JSON 颇老 (*.json)"
     IDS_FILTERSPEC_TTMP     "TexTools 葛靛蒲 颇老 (*.ttmp, *.ttmp2, *.mpl)"
-    IDS_CONFIRM_REMOVEALLTTMP "促澜 犁矫累 锭 葛电 TexTools 葛靛蒲 颇老阑 力芭钦聪促."
-    IDS_CONFIRM_UNDOREMOVEALLTTMP 
-                            "促澜 犁矫累 锭 抗距等 葛电 TexTools 葛靛蒲 颇老 力芭 累诀阑 秒家钦聪促."
-    IDS_CONFIRM_ENABLEALLTTMP "促澜 犁矫累 锭 葛电 TexTools 葛靛蒲 颇老阑 劝己拳钦聪促."
-    IDS_CONFIRM_DISABLEALLTTMP "促澜 犁矫累 锭 葛电 TexTools 葛靛蒲 颇老阑 厚劝己拳钦聪促."
+    IDS_CONFIRM_REMOVEALLTTMP "葛电 TexTools 葛靛蒲 颇老阑 力芭钦聪促."
+    IDS_CONFIRM_ENABLEALLTTMP "葛电 TexTools 葛靛蒲 颇老阑 劝己拳钦聪促."
+    IDS_CONFIRM_DISABLEALLTTMP "葛电 TexTools 葛靛蒲 颇老阑 厚劝己拳钦聪促."
     IDS_NOUNLOADREASON_DEPENDENCY 
                             "XivAlexander绰 备己 夸家肺 阂矾客脸阑 锭 (汲摹登菌阑 锭) 霸烙 辆丰 寇狼 规过栏肺绰 辆丰且 荐 绝嚼聪促."
     IDS_NOUNLOADREASON_MODACTIVE "葛爹捞 劝己拳登绢 乐阑 锭绰 XivAlexander甫 辆丰且 荐 绝嚼聪促."
@@ -1018,20 +1011,18 @@ BEGIN
             POPUP "(template entry to be inserted at bottom)"
             BEGIN
                 MENUITEM "&Enable",                     ID_MODDING_TTMP_ENTRY_ENABLE, CHECKED
-                MENUITEM "Mark for &Deletion on Restart", ID_MODDING_TTMP_ENTRY_DELETE
+                MENUITEM "&Delete",                     ID_MODDING_TTMP_ENTRY_DELETE
                 MENUITEM SEPARATOR
                 MENUITEM "Requires restart",            ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
                 MENUITEM SEPARATOR
             END
             MENUITEM "&Import",                     ID_MODDING_TTMP_IMPORT
             MENUITEM SEPARATOR
-            MENUITEM "Mark All for D&eletion on Restart", ID_MODDING_TTMP_REMOVEALL
-            MENUITEM "&Undo Mark All for Deletion", ID_MODDING_TTMP_UNDOREMOVEALL
-            MENUITEM SEPARATOR
             MENUITEM "&Enable All",                 ID_MODDING_TTMP_ENABLEALL
             MENUITEM "&Disable All",                ID_MODDING_TTMP_DISABLEALL
             MENUITEM SEPARATOR
             MENUITEM "&Open Directory",             ID_MODDING_TTMP_OPENDIRECTORY
+            MENUITEM "D&elete All",                 ID_MODDING_TTMP_REMOVEALL
             MENUITEM "&Refresh",                    ID_MODDING_TTMP_REFRESH
             MENUITEM SEPARATOR
             MENUITEM "(No installed ModPacks found)", ID_MODDING_TTMP_NOENTRY, INACTIVE
@@ -1416,14 +1407,9 @@ BEGIN
     IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON 
                             "Excel transformation configuration JSON files (*.json)"
     IDS_FILTERSPEC_TTMP     "TexTools ModPack Files (*.ttmp, *.ttmp2, *.mpl)"
-    IDS_CONFIRM_REMOVEALLTTMP 
-                            "Do you want to remove all TexTools ModPacks on restart?"
-    IDS_CONFIRM_UNDOREMOVEALLTTMP 
-                            "Do you want to cancel removing all TexTools ModPacks on restart?"
-    IDS_CONFIRM_ENABLEALLTTMP 
-                            "Do you want to enable all TexTools ModPacks on restart?"
-    IDS_CONFIRM_DISABLEALLTTMP 
-                            "Do you want to disable all TexTools ModPacks on restart?"
+    IDS_CONFIRM_REMOVEALLTTMP "Do you want to remove all TexTools ModPacks?"
+    IDS_CONFIRM_ENABLEALLTTMP "Do you want to enable all TexTools ModPacks?"
+    IDS_CONFIRM_DISABLEALLTTMP "Do you want to disable all TexTools ModPacks?"
     IDS_NOUNLOADREASON_DEPENDENCY 
                             "XivAlexander cannot be unloaded when it is loaded as a dependency (installation)."
     IDS_NOUNLOADREASON_MODACTIVE 

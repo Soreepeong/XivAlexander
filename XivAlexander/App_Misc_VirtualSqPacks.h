@@ -37,8 +37,8 @@ namespace App::Misc {
 
 			bool Allocated = false;
 			bool Enabled = false;
-			bool MarkDelete = false;
 			std::filesystem::path ListPath;
+			std::filesystem::path RenameTo;
 			Sqex::ThirdParty::TexTools::TTMPL List;
 			Utils::Win32::File DataFile;
 			nlohmann::json Choices;
@@ -49,9 +49,10 @@ namespace App::Misc {
 
 		std::vector<TtmpSet>& TtmpSets();
 
-		void AddNewTtmp(std::filesystem::path ttmpl);
+		void AddNewTtmp(const std::filesystem::path& ttmpl, bool reflectImmediately = true);
+		void DeleteTtmp(const std::filesystem::path& ttmpl, bool reflectImmediately = true);
+		void RescanTtmp();
 
 		Utils::ListenerManager<Implementation, void> OnTtmpSetsChanged;
-		void ReflectTtmpSets();
 	};
 }

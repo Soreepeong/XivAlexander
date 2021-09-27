@@ -453,23 +453,25 @@ void App::Window::MainWindow::RepopulateMenu() {
 					}
 				}), getMenuText(hTemplateEntryMenu, 0).c_str());
 
-				AppendMenuW(hSubMenu, MF_STRING | (ttmpSet.MarkDelete ? MF_CHECKED : 0), allocateMenuId([this, &ttmpSet]() {
+				AppendMenuW(hSubMenu, MF_STRING, allocateMenuId([this, &ttmpSet, &sqpacks]() {
 					try {
-						ttmpSet.MarkDelete = !ttmpSet.MarkDelete;
-						ttmpSet.ApplyChanges();
+						if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+							L"Delete \"{}\" at \"{}\"?", ttmpSet.List.Name, ttmpSet.ListPath.wstring()) == IDYES)
+							sqpacks.DeleteTtmp(ttmpSet.ListPath);
 					} catch (const std::exception& e) {
 						Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 							m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
 					}
 				}), getMenuText(hTemplateEntryMenu, 1).c_str());
 
-				AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
-
 				if (!ttmpSet.Allocated) {
-					AppendMenuW(hSubMenu, MF_STRING | MF_DISABLED, 0, getMenuText(hTemplateEntryMenu, 3).c_str());
 					AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
+					AppendMenuW(hSubMenu, MF_STRING | MF_DISABLED, 0, getMenuText(hTemplateEntryMenu, 3).c_str());
 				}
-				
+
+				if (!ttmpSet.List.ModPackPages.empty())
+					AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
+
 				for (size_t pageObjectIndex = 0; pageObjectIndex < ttmpSet.List.ModPackPages.size(); ++pageObjectIndex) {
 					const auto& modGroups = ttmpSet.List.ModPackPages[pageObjectIndex].ModGroups;
 					if (modGroups.empty())
@@ -1412,30 +1414,27 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 
 						const auto deleteFilePath = entry.path().parent_path() / "delete";
 						const auto disableFilePath = entry.path().parent_path() / "disable";
-											
+
 						if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
 							auto& sqpacks = overrider.GetVirtualSqPacks();
 							for (auto& set : sqpacks.TtmpSets()) {
 								switch (menuId) {
 									case ID_MODDING_TTMP_REMOVEALL:
-										set.MarkDelete = true;
-										break;
-
-									case ID_MODDING_TTMP_UNDOREMOVEALL:
-										set.MarkDelete = false;
+										sqpacks.DeleteTtmp(set.ListPath);
 										break;
 
 									case ID_MODDING_TTMP_ENABLEALL:
 										set.Enabled = true;
+										set.ApplyChanges(false);
 										break;
 
 									case ID_MODDING_TTMP_DISABLEALL:
 										set.Enabled = false;
+										set.ApplyChanges(false);
 										break;
 								}
-								set.ApplyChanges(false);
 							}
-							sqpacks.ReflectTtmpSets();
+							sqpacks.RescanTtmp();
 						}
 					}
 				} catch (const std::filesystem::filesystem_error&) {
@@ -1469,7 +1468,10 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 			return;
 
 		case ID_MODDING_TTMP_REFRESH:
-			RepopulateMenu();
+			if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
+				auto& sqpacks = overrider.GetVirtualSqPacks();
+				sqpacks.RescanTtmp();
+			}
 			return;
 
 		case ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY:
@@ -1873,7 +1875,7 @@ std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& pa
 	}
 
 	std::filesystem::rename(temporaryTtmpDirectory, targetTtmpDirectory);
-	
+
 	if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
 		auto& sqpacks = overrider.GetVirtualSqPacks();
 		sqpacks.AddNewTtmp(targetTtmpDirectory / "TTMPL.mpl");
