@@ -474,12 +474,10 @@ class Sqex::Sqpack::Creator::DataView : public RandomAccessStream {
 		buffer.insert(buffer.end(), reinterpret_cast<const uint8_t*>(&subheader), reinterpret_cast<const uint8_t*>(&subheader + 1));
 		return buffer;
 	}
-
-#ifdef _DEBUG
+	
 	mutable uint64_t m_nLastRequestedOffset = 0;
 	mutable uint64_t m_nLastRequestedSize = 0;
 	mutable std::vector<std::tuple<EntryProvider*, uint64_t, uint64_t>> m_pLastEntryProviders;
-#endif
 
 public:
 	DataView(const SqpackHeader& header, const SqData::Header& subheader, std::vector<std::unique_ptr<const Implementation::Entry>> entries, std::vector<std::shared_ptr<const Win32::File>> openFiles)
@@ -489,11 +487,9 @@ public:
 	}
 
 	uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override {
-#ifdef _DEBUG
 		m_pLastEntryProviders.clear();
 		m_nLastRequestedOffset = offset;
 		m_nLastRequestedSize = length;
-#endif
 		if (!length)
 			return 0;
 
@@ -527,9 +523,7 @@ public:
 
 				if (relativeOffset < entry.EntrySize) {
 					const auto available = std::min(out.size_bytes(), static_cast<size_t>(entry.EntrySize - relativeOffset));
-#ifdef _DEBUG
 					m_pLastEntryProviders.emplace_back(std::make_tuple(entry.Provider.get(), relativeOffset, available));
-#endif
 					entry.Provider->ReadStream(relativeOffset, out.data(), available);
 					out = out.subspan(available);
 					relativeOffset = 0;
@@ -560,15 +554,11 @@ public:
 	}
 
 	std::string DescribeState() const override {
-#ifdef _DEBUG
 		auto res = std::format("Sqpack::Creator::DataView({}->{})", m_nLastRequestedOffset, m_nLastRequestedSize);
 		for (const auto& [p, off, len] : m_pLastEntryProviders) {
-			res += std::format(" [{}: {}->{}]", p->DescribeState(), off, len);
+			res += std::format(" [{}: {}->{}: {}]", p->PathSpec(), off, len, p->DescribeState());
 		}
 		return res;
-#else
-		return "Sqpack::Creator::DataView";
-#endif
 	}
 };
 

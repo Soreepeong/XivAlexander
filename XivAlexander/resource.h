@@ -246,13 +246,14 @@
 #define ID_MODDING_TTMP_REFRESH         40448
 #define ID__REQUIRESRESTART             40451
 #define ID_MODDING_TTMP_ENTRY_REQUIRESRESTART 40452
+#define ID_MODDING_LOGALLFILEACCESS     40453
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        206
-#define _APS_NEXT_COMMAND_VALUE         40453
+#define _APS_NEXT_COMMAND_VALUE         40454
 #define _APS_NEXT_CONTROL_VALUE         1001
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

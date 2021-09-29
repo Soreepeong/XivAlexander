@@ -285,5 +285,12 @@ namespace Sqex::Sqpack {
 		[[nodiscard]] SqData::FileEntryType EntryType() const override {
 			return m_stream ? m_stream->EntryType() : (m_baseStream ? m_baseStream->EntryType() : EmptyEntryProvider::EntryType());
 		}
+
+		std::string DescribeState() const override {
+			return std::format("HotSwappableEntryProvider(reserved={}, base={}, override={})",
+				m_reservedSize,
+				m_baseStream ? m_baseStream->DescribeState() : std::string(),
+				m_stream ? m_stream->DescribeState() : std::string());
+		}
 	};
 }

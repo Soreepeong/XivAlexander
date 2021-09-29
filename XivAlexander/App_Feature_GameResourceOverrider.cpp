@@ -65,7 +65,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 	Misc::VirtualSqPacks m_sqpacks;
 
 	std::vector<std::unique_ptr<Misc::Hooks::PointerFunction<uint32_t, uint32_t, const char*, size_t>>> fns{};
-	std::set<std::string> m_alreadyLogged{};
+	std::vector<std::string> m_lastLoggedPaths;
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
 	Misc::Hooks::ImportedFunction<HANDLE, LPCWSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE> CreateFileW{"kernel32::CreateFileW", "kernel32.dll", "CreateFileW"};
@@ -130,6 +130,11 @@ struct App::Feature::GameResourceOverrider::Implementation {
 						if (read != nNumberOfBytesToRead) {
 							m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, requested {} bytes, read {} bytes; state: {}",
 								vpath.Path.filename(), nNumberOfBytesToRead, read, vpath.Stream->DescribeState());
+						} else {
+							if (m_config->Runtime.LogAllDataFileRead) {
+								m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, L"ReadFile: {}, requested {} bytes; state: {}",
+								vpath.Path.filename(), nNumberOfBytesToRead, vpath.Stream->DescribeState());
+							}
 						}
 
 						if (lpOverlapped) {
@@ -256,6 +261,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					overrideLanguage = m_config->Runtime.ResourceLanguageOverride;
 				}
 
+				std::string description;
 				if (overrideLanguage != Sqex::Language::Unspecified) {
 					const char* languageCodes[] = {"ja", "en", "de", "fr", "chs", "cht", "ko"};
 					const auto targetLanguageCode = languageCodes[static_cast<int>(overrideLanguage) - 1];
@@ -283,26 +289,27 @@ struct App::Feature::GameResourceOverrider::Implementation {
 							}
 						}
 					}
-					if (!newName.empty() && m_sqpacks.EntryExists(std::format("{}{}", newName, ext))) {
-						name = newName;
-						const auto newStr = std::format("{}{}{}", name, ext, rest);
-						if (!m_config->Runtime.UseHashTrackerKeyLogging) {
-							if (m_alreadyLogged.find(name) == m_alreadyLogged.end()) {
-								m_alreadyLogged.emplace(name);
-								m_logger->Format(LogCategory::GameResourceOverrider, "{:x}: {} => {}", reinterpret_cast<size_t>(ptr), str, newStr);
-							}
-						}
+					if (!newName.empty() && name != newName && m_sqpacks.EntryExists(std::format("{}{}", newName, ext))) {
+						const auto newStr = std::format("{}{}{}", newName, ext, rest);
+						description = std::format(" => {}", newStr);
 						Utils::Win32::Process::Current().WriteMemory(const_cast<char*>(str), newStr.c_str(), newStr.size() + 1, true);
 						len = newStr.size();
 					}
 				}
 				const auto res = self->bridge(initVal, str, len);
 
-				if (m_config->Runtime.UseHashTrackerKeyLogging) {
-					if (m_alreadyLogged.find(name) == m_alreadyLogged.end()) {
-						m_alreadyLogged.emplace(name);
-						m_logger->Format(LogCategory::GameResourceOverrider, "{:x}: {},{},{} => {:08x}", reinterpret_cast<size_t>(ptr), name, ext, rest, res);
+				if (m_config->Runtime.UseHashTrackerKeyLogging || !description.empty()) {
+					static std::mutex test;
+					const auto tlock = std::lock_guard(test);
+					auto current = std::string(str, len);
+					if (const auto it = std::ranges::find(m_lastLoggedPaths, current); it != m_lastLoggedPaths.end()) {
+						m_lastLoggedPaths.erase(it);
+					} else {
+						m_logger->Format(LogCategory::GameResourceOverrider, "{:x}: ~{:08x}: {}{}", reinterpret_cast<size_t>(ptr), res, current, description);
 					}
+					m_lastLoggedPaths.push_back(std::move(current));
+					while (m_lastLoggedPaths.size() > 16)
+						m_lastLoggedPaths.erase(m_lastLoggedPaths.begin());
 				}
 
 				return res;

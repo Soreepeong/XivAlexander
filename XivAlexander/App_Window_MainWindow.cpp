@@ -357,7 +357,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 	};
 	{
 		const auto currentConfig = m_config->TranslatePath(config.OverrideFontConfig.Value());
-		const auto hParentMenu = GetSubMenu(GetSubMenu(hMenu, 3), 8);
+		const auto hParentMenu = GetSubMenu(GetSubMenu(hMenu, 3), 9);
 		auto count = 0;
 		bool foundEq = false;
 		try {
@@ -390,7 +390,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 		DeleteMenu(hParentMenu, ID_MODDING_CHANGEFONT_ENTRY, MF_BYCOMMAND);
 	}
 	{
-		const auto hParentMenu = GetSubMenu(GetSubMenu(hMenu, 3), 9);
+		const auto hParentMenu = GetSubMenu(GetSubMenu(hMenu, 3), 10);
 		auto count = 0;
 		for (const auto& additionalRoot : config.AdditionalSqpackRootDirectories.Value()) {
 			AppendMenuW(hParentMenu, MF_STRING, allocateMenuId([this, additionalRoot]() {
@@ -411,7 +411,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 		DeleteMenu(hParentMenu, ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ENTRY, MF_BYCOMMAND);
 	}
 	{
-		const auto hParentMenu = GetSubMenu(GetSubMenu(hMenu, 3), 10);
+		const auto hParentMenu = GetSubMenu(GetSubMenu(hMenu, 3), 11);
 		auto count = 0;
 		for (const auto& file : config.ExcelTransformConfigFiles.Value()) {
 			AppendMenuW(hParentMenu, MF_STRING, allocateMenuId([this, file]() {
@@ -432,7 +432,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 		RemoveMenu(hParentMenu, ID_MODDING_EXDFTRANSFORMATIONRULES_ENTRY, MF_BYCOMMAND);
 	}
 	{
-		const auto hParentMenu = GetSubMenu(GetSubMenu(hMenu, 3), 11);
+		const auto hParentMenu = GetSubMenu(GetSubMenu(hMenu, 3), 12);
 		const auto hTemplateEntryMenu = GetSubMenu(hParentMenu, 0);
 		RemoveMenu(hParentMenu, 0, MF_BYPOSITION);
 		const auto deleteTemplateMenu = Utils::CallOnDestruction([hTemplateEntryMenu]() { DestroyMenu(hTemplateEntryMenu); });
@@ -1069,6 +1069,10 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 
 		case ID_MODDING_LOGALLHASHKEYS:
 			config.UseHashTrackerKeyLogging = !config.UseHashTrackerKeyLogging;
+			return;
+
+		case ID_MODDING_LOGALLFILEACCESS:
+			config.LogAllDataFileRead = !config.LogAllDataFileRead;
 			return;
 
 		case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1: {
