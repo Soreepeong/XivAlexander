@@ -11,6 +11,7 @@ namespace Sqex::Excel {
 		const size_t DivideUnit;
 		const uint32_t FixedDataSize;
 		std::map<uint32_t, std::map<Language, std::vector<ExdColumn>>> Data;
+		std::set<uint32_t> DivideAtIds;
 		std::vector<Language> Languages;
 		std::vector<Language> FillMissingLanguageFrom;
 

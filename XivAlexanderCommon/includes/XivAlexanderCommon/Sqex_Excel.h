@@ -37,7 +37,7 @@ namespace Sqex::Excel {
 
 		struct Pagination {
 			BE<uint32_t> StartId;
-			BE<uint32_t> RowCount;
+			BE<uint32_t> RowCountWithSkip;
 		};
 
 		enum Depth : uint8_t {
@@ -60,7 +60,7 @@ namespace Sqex::Excel {
 			BE<uint8_t> Padding_0x010;
 			BE<Depth> Depth;
 			BE<uint16_t> Padding_0x012;
-			BE<uint32_t> RowCount;
+			BE<uint32_t> RowCountWithoutSkip;
 			BE<uint64_t> Padding_0x018;
 		};
 	}

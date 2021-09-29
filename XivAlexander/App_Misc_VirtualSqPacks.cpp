@@ -466,7 +466,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		for (const auto& pair : Sqex::Excel::ExlReader(*creator["exd/root.exl"]))
 			exhTable.emplace(pair);
 
-		std::string currentCacheKeys;
+		std::string currentCacheKeys("VERSION:1\n");
 		{
 			const auto gameRoot = indexFile.parent_path().parent_path().parent_path();
 			const auto versionFile = Utils::Win32::File::Create(gameRoot / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
@@ -1024,6 +1024,46 @@ struct App::Misc::VirtualSqPacks::Implementation {
 										currentProgress++;
 										publishProgress();
 
+#ifdef _DEBUG
+										if (entryPathSpec.Original.extension() == L".exh") {
+											auto data2 = creator[entryPathSpec]->ReadStreamIntoVector<char>(0);
+											data2.resize(data2.size() - 2 * reinterpret_cast<Sqex::Excel::Exh::Header*>(&data2[0])->LanguageCount);
+											reinterpret_cast<Sqex::Excel::Exh::Header*>(&data2[0])->LanguageCount = static_cast<uint16_t>(exCreator->Languages.size());
+											for (const auto lang : exCreator->Languages) {
+												data2.push_back(static_cast<char>(lang));
+												data2.push_back(0);
+											}
+											const auto reader1 = Sqex::Excel::ExhReader(exhName, Sqex::MemoryRandomAccessStream(*reinterpret_cast<std::vector<uint8_t>*>(&data)));
+											const auto reader2 = Sqex::Excel::ExhReader(exhName, Sqex::MemoryRandomAccessStream(*reinterpret_cast<std::vector<uint8_t>*>(&data2)));
+											if (reader1.Header.FixedDataSize != reader2.Header.FixedDataSize)
+												Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] FixedDataSize: new {}, was {}", exhName, reader1.Header.FixedDataSize.Value(), reader2.Header.FixedDataSize.Value());
+											if (reader1.Header.ColumnCount != reader2.Header.ColumnCount)
+												Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] ColumnCount: new {}, was {}", exhName, reader1.Header.ColumnCount.Value(), reader2.Header.ColumnCount.Value());
+											if (reader1.Header.PageCount != reader2.Header.PageCount)
+												Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] PageCount: new {}, was {}", exhName, reader1.Header.PageCount.Value(), reader2.Header.PageCount.Value());
+											if (reader1.Header.SomeSortOfBufferSize != reader2.Header.SomeSortOfBufferSize)
+												Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] SomeSortOfBufferSize: new {}, was {}", exhName, reader1.Header.SomeSortOfBufferSize.Value(), reader2.Header.SomeSortOfBufferSize.Value());
+											if (reader1.Header.RowCountWithoutSkip != reader2.Header.RowCountWithoutSkip)
+												Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] RowCountWithoutSkip: new {}, was {}", exhName, reader1.Header.RowCountWithoutSkip.Value(), reader2.Header.RowCountWithoutSkip.Value());
+											if (reader1.Columns->size() != reader2.Columns->size())
+												Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Columns: new {}, was {}", exhName, reader1.Columns->size(), reader2.Columns->size());
+											for (size_t i = 0, i_ = std::min(reader1.Columns->size(), reader2.Columns->size()); i < i_; ++i) {
+												if ((*reader1.Columns)[i].Offset != (*reader2.Columns)[i].Offset)
+													Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Columns[{}].Offset: new {}, was {}", exhName, i, (*reader1.Columns)[i].Offset.Value(), (*reader2.Columns)[i].Offset.Value());
+												if ((*reader1.Columns)[i].Type != (*reader2.Columns)[i].Type)
+													Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Columns[{}].Type: new {}, was {}", exhName, i, static_cast<int>((*reader1.Columns)[i].Type.Value()), static_cast<int>((*reader2.Columns)[i].Type.Value()));
+											}
+											if (reader1.Pages.size() != reader2.Pages.size())
+												Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Pages: new {}, was {}", exhName, reader1.Pages.size(), reader2.Pages.size());
+											for (size_t i = 0, i_ = std::min(reader1.Pages.size(), reader2.Pages.size()); i < i_; ++i) {
+												if (reader1.Pages[i].StartId != reader2.Pages[i].StartId)
+													Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Pages[{}].StartId: new {}, was {}", exhName, i, reader1.Pages[i].StartId.Value(), reader2.Pages[i].StartId.Value());
+												if (reader1.Pages[i].RowCountWithSkip != reader2.Pages[i].RowCountWithSkip)
+													Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Pages[{}].RowCountWithSkip: new {}, was {}", exhName, i, reader1.Pages[i].RowCountWithSkip.Value(), reader2.Pages[i].RowCountWithSkip.Value());
+											}
+										}
+#endif
+										
 										const auto targetPath = cachedDir / entryPathSpec.Original;
 
 										const auto provider = Sqex::Sqpack::MemoryBinaryEntryProvider(entryPathSpec, std::make_shared<Sqex::MemoryRandomAccessStream>(std::move(*reinterpret_cast<std::vector<uint8_t>*>(&data))));

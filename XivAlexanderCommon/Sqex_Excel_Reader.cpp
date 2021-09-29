@@ -47,6 +47,8 @@ Sqex::Excel::ExhReader::ExhReader(std::string name, const RandomAccessStream& st
 		const auto expectedLength = sizeof Header + std::span(*Columns).size_bytes() + std::span(Pages).size_bytes() + std::span(Languages).size_bytes();
 		if (dataLength > expectedLength)
 			throw CorruptDataException(std::format("Extra {} byte(s) found", dataLength - expectedLength));
+		if (Header.Version != Exh::Header::Version_Value)
+			throw CorruptDataException(std::format("Unsupported version {}", Header.Version.Value()));
 	}
 }
 
@@ -93,13 +95,13 @@ void Sqex::Excel::ExhReader::Dump() const {
 	std::cout << std::format("Padding_0x010: {}\n", Header.Padding_0x010.Value());
 	std::cout << std::format("Depth: {}\n", static_cast<uint8_t>(Header.Depth.Value()));
 	std::cout << std::format("Padding_0x012: {}\n", Header.Padding_0x012.Value());
-	std::cout << std::format("RowCount: {}\n", Header.RowCount.Value());
+	std::cout << std::format("RowCountWithoutSkip: {}\n", Header.RowCountWithoutSkip.Value());
 	std::cout << std::format("Padding_0x018: {}\n", Header.Padding_0x018.Value());
 
 	for (const auto& column : *Columns)
 		std::cout << std::format("Column: Type {}, Offset {}\n", static_cast<uint16_t>(column.Type.Value()), column.Offset.Value());
 	for (const auto& page : Pages)
-		std::cout << std::format("Page: StartId {}, SubRowCount {}\n", page.StartId.Value(), page.RowCount.Value());
+		std::cout << std::format("Page: StartId {}, RowCountWithSkip {}\n", page.StartId.Value(), page.RowCountWithSkip.Value());
 	for (const auto& lang : Languages)
 		std::cout << std::format("Language: {}\n", static_cast<uint16_t>(lang));
 	for (const auto& page : Pages)

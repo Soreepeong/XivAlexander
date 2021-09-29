@@ -135,8 +135,8 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>> Sqex::Excel::Depth2ExhE
 	for (const auto id : Data | std::views::keys) {
 		if (pages.empty()) {
 			pages.emplace_back();
-		} else if (pages.back().second.size() == DivideUnit) {
-			pages.back().first.RowCount = pages.back().second.back() - pages.back().second.front() + 1;
+		} else if (pages.back().second.size() == DivideUnit || DivideAtIds.find(id) != DivideAtIds.end()) {
+			pages.back().first.RowCountWithSkip = pages.back().second.back() - pages.back().second.front() + 1;
 			pages.emplace_back();
 		}
 
@@ -146,7 +146,7 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>> Sqex::Excel::Depth2ExhE
 	}
 	if (pages.empty())
 		return {};
-	pages.back().first.RowCount = pages.back().second.back() - pages.back().second.front() + 1;
+	pages.back().first.RowCountWithSkip = pages.back().second.back() - pages.back().second.front() + 1;
 
 	for (const auto& page : pages) {
 		for (const auto language : Languages) {
@@ -258,7 +258,7 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>> Sqex::Excel::Depth2ExhE
 		exhHeader.LanguageCount = static_cast<uint16_t>(Languages.size());
 		exhHeader.SomeSortOfBufferSize = SomeSortOfBufferSize;
 		exhHeader.Depth = Exh::Level2;
-		exhHeader.RowCount = Data.empty() ? 0U : Data.rbegin()->first - Data.begin()->first + 1;  // some ids skip over
+		exhHeader.RowCountWithoutSkip = static_cast<uint32_t>(Data.size());
 
 		const auto columnSpan = std::span(reinterpret_cast<const char*>(&Columns[0]), std::span(Columns).size_bytes());
 		std::vector<Exh::Pagination> paginations;
