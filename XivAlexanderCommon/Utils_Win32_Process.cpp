@@ -3,7 +3,8 @@
 
 #include "Utils_CallOnDestruction.h"
 
-Utils::Win32::Process::Process() : Handle() {
+Utils::Win32::Process::Process()
+	: Handle() {
 }
 
 Utils::Win32::Process::Process(std::nullptr_t)
@@ -22,18 +23,18 @@ Utils::Win32::Process::Process(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD
 
 Utils::Win32::Process::~Process() = default;
 
-Utils::Win32::Process::Process(Process && r) noexcept
+Utils::Win32::Process::Process(Process&& r) noexcept
 	: Handle(r.m_object, r.m_bOwnership)
 	, m_moduleMemory(std::move(r.m_moduleMemory)) {
 	r.Detach();
 }
 
-Utils::Win32::Process::Process(const Process & r)
+Utils::Win32::Process::Process(const Process& r)
 	: Handle(r)
 	, m_moduleMemory(r.m_moduleMemory) {
 }
 
-Utils::Win32::Process& Utils::Win32::Process::operator=(Process && r) noexcept {
+Utils::Win32::Process& Utils::Win32::Process::operator=(Process&& r) noexcept {
 	if (&r == this)
 		return *this;
 
@@ -44,7 +45,7 @@ Utils::Win32::Process& Utils::Win32::Process::operator=(Process && r) noexcept {
 	return *this;
 }
 
-Utils::Win32::Process& Utils::Win32::Process::operator=(const Process & r) {
+Utils::Win32::Process& Utils::Win32::Process::operator=(const Process& r) {
 	if (&r == this)
 		return *this;
 
@@ -59,7 +60,7 @@ Utils::Win32::Process& Utils::Win32::Process::operator=(std::nullptr_t) {
 }
 
 Utils::Win32::Process& Utils::Win32::Process::Current() {
-	static Process current{ GetCurrentProcess(), false };
+	static Process current{GetCurrentProcess(), false};
 	return current;
 }
 
@@ -67,21 +68,21 @@ Utils::Win32::ProcessBuilder::ProcessBuilder() = default;
 
 Utils::Win32::ProcessBuilder::ProcessBuilder(ProcessBuilder&&) noexcept = default;
 
-Utils::Win32::ProcessBuilder::ProcessBuilder(const ProcessBuilder & r) {
+Utils::Win32::ProcessBuilder::ProcessBuilder(const ProcessBuilder& r) {
 	*this = r;
 }
 
 Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::operator=(ProcessBuilder&&) noexcept = default;
 
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::operator=(const ProcessBuilder & r) {
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::operator=(const ProcessBuilder& r) {
 	m_path = r.m_path;
 	m_dir = r.m_dir;
 	m_args = r.m_args;
 	m_inheritedHandles.reserve(r.m_inheritedHandles.size());
 	std::ranges::transform(r.m_inheritedHandles,
 		std::back_inserter(m_args), [](const Handle& h) {
-		return Handle::DuplicateFrom<Handle>(h, true);
-	});
+			return Handle::DuplicateFrom<Handle>(h, true);
+		});
 	return *this;
 }
 
@@ -91,6 +92,7 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 	const auto MaxLengthOfProcThreadAttributeList = 2UL;
 	STARTUPINFOEXW siex{};
 	PROCESS_INFORMATION pi{};
+	std::vector<HANDLE> handles; // this needs to be here, as ProcThreadAttribute only points here instead of copying the contents
 
 	if (m_bUseSize) {
 		siex.StartupInfo.dwFlags |= STARTF_USESIZE;
@@ -115,32 +117,28 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 			throw Error(err, "InitializeProcThreadAttributeList.1");
 		attributeListBuf.resize(size);
 	}
-	
+
 	const auto cleanAttributeList = CallOnDestruction([&siex]() {
 		if (siex.lpAttributeList)
 			DeleteProcThreadAttributeList(siex.lpAttributeList);
 	});
-	if (m_inheritedHandles.empty() && !m_parentProcess) {
-		siex.StartupInfo.cb = sizeof siex.StartupInfo;
-	} else {
-		siex.StartupInfo.cb = sizeof siex;
-		siex.lpAttributeList = reinterpret_cast<PPROC_THREAD_ATTRIBUTE_LIST>(&attributeListBuf[0]);
-		if (SIZE_T size; !InitializeProcThreadAttributeList(siex.lpAttributeList, MaxLengthOfProcThreadAttributeList, 0, &size))
-			throw Error("InitializeProcThreadAttributeList.2");
 
-		if (!m_inheritedHandles.empty()) {
-			std::vector<HANDLE> handles;
-			handles.reserve(m_inheritedHandles.size());
-			std::ranges::transform(m_inheritedHandles, std::back_inserter(handles), [](auto& v) { return static_cast<HANDLE>(v); });
-			if (!UpdateProcThreadAttribute(siex.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, &handles[0], handles.size() * sizeof handles[0], nullptr, nullptr))
-				throw Error("UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_HANDLE_LIST)");
-		}
+	siex.StartupInfo.cb = sizeof siex;
+	siex.lpAttributeList = reinterpret_cast<PPROC_THREAD_ATTRIBUTE_LIST>(&attributeListBuf[0]);
+	if (SIZE_T size = 0; !InitializeProcThreadAttributeList(siex.lpAttributeList, MaxLengthOfProcThreadAttributeList, 0, &size))
+		throw Error("InitializeProcThreadAttributeList.2");
+	
+	if (!m_inheritedHandles.empty()) {
+		handles.reserve(m_inheritedHandles.size());
+		std::ranges::transform(m_inheritedHandles, std::back_inserter(handles), [](const auto& v) { return static_cast<HANDLE>(v); });
+		if (!UpdateProcThreadAttribute(siex.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, &handles[0], handles.size() * sizeof handles[0], nullptr, nullptr))
+			throw Error("UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_HANDLE_LIST)");
+	}
 
-		if (m_parentProcess) {
-			auto hParentProcess = static_cast<HANDLE>(m_parentProcess);
-			if (!UpdateProcThreadAttribute(siex.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &hParentProcess, sizeof hParentProcess, nullptr, nullptr))
-				throw Error("UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS)");
-		}
+	if (m_parentProcess) {
+		auto hParentProcess = static_cast<HANDLE>(m_parentProcess);
+		if (!UpdateProcThreadAttribute(siex.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &hParentProcess, sizeof hParentProcess, nullptr, nullptr))
+			throw Error("UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS)");
 	}
 
 	std::wstring args;
@@ -163,12 +161,12 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 		}
 		environString.push_back(0);
 	}
-	
+
 	if (!CreateProcessW(m_path.c_str(), &args[0],
 		nullptr, nullptr,
 		m_inheritedHandles.empty() ? FALSE : TRUE,
-		CREATE_UNICODE_ENVIRONMENT | (siex.lpAttributeList ? EXTENDED_STARTUPINFO_PRESENT : 0),
-		environString.empty() ? nullptr : environString.data(),
+		CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT,
+		environString.empty() ? nullptr : &environString[0],
 		m_dir.empty() ? nullptr : m_dir.c_str(),
 		&siex.StartupInfo,
 		&pi))
@@ -192,7 +190,7 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithParent(HWND hWnd
 	DWORD pid;
 	if (!GetWindowThreadProcessId(hWnd, &pid))
 		throw Error("GetWindowThreadProcessId({})", reinterpret_cast<size_t>(static_cast<void*>(hWnd)));
-	return WithParent({ PROCESS_CREATE_PROCESS, FALSE, pid });
+	return WithParent({PROCESS_CREATE_PROCESS, FALSE, pid});
 }
 
 Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithParent(Process h) {
@@ -210,7 +208,7 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithWorkingDirectory
 	return *this;
 }
 
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithArgument(bool prependPathToArgument, const std::string & s) {
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithArgument(bool prependPathToArgument, const std::string& s) {
 	return WithArgument(prependPathToArgument, FromUtf8(s));
 }
 
@@ -220,11 +218,11 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithArgument(bool pr
 	return *this;
 }
 
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithAppendArgument(const std::string & s) {
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithAppendArgument(const std::string& s) {
 	return WithAppendArgument(FromUtf8(s));
 }
 
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithAppendArgument(const std::wstring & s) {
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithAppendArgument(const std::wstring& s) {
 	if (!m_args.empty())
 		m_args += L" ";
 	m_args += ReverseCommandLineToArgv(s);
@@ -403,7 +401,7 @@ Utils::Win32::Process Utils::Win32::RunProgram(RunProgramParams params) {
 	throw std::out_of_range("invalid elevateMode");
 }
 
-Utils::Win32::Process& Utils::Win32::Process::Attach(HANDLE r, bool ownership, const std::string & errorMessage) {
+Utils::Win32::Process& Utils::Win32::Process::Attach(HANDLE r, bool ownership, const std::string& errorMessage) {
 	Handle::Attach(r, Null, ownership, errorMessage);
 	return *this;
 }
@@ -533,7 +531,7 @@ int Utils::Win32::Process::CallRemoteFunction(void* rpfn, void* rpParam, const c
 	return exitCode;
 }
 
-std::pair<void*, void*> Utils::Win32::Process::FindImportedFunction(HMODULE hModule, const std::filesystem::path & dllName, const char* pszFunctionName, uint32_t hintOrOrdinal) const {
+std::pair<void*, void*> Utils::Win32::Process::FindImportedFunction(HMODULE hModule, const std::filesystem::path& dllName, const char* pszFunctionName, uint32_t hintOrOrdinal) const {
 	const auto fileName = ToUtf8(dllName.filename().wstring());
 
 	auto& mem = GetModuleMemoryBlockManager(hModule);
@@ -572,7 +570,7 @@ std::pair<void*, void*> Utils::Win32::Process::FindImportedFunction(HMODULE hMod
 			return std::make_pair<void*, void*>(
 				reinterpret_cast<char*>(hModule) + importTableItem.FirstThunk + j * sizeof size_t,
 				reinterpret_cast<void*>(pImportAddressTable[j])
-				);
+			);
 		}
 	}
 
@@ -630,7 +628,7 @@ void* Utils::Win32::Process::FindExportedFunction(HMODULE hModule, const char* p
 	return nullptr;
 }
 
-HMODULE Utils::Win32::Process::LoadModule(const std::filesystem::path & path) const {
+HMODULE Utils::Win32::Process::LoadModule(const std::filesystem::path& path) const {
 	auto pathBuf = path.wstring();
 	pathBuf.resize(pathBuf.size() + 1, L'\0');  // ensure null terminated
 
@@ -644,7 +642,7 @@ int Utils::Win32::Process::UnloadModule(HMODULE hModule) const {
 	return CallRemoteFunction(FreeLibrary, hModule, "FreeLibrary");
 }
 
-std::vector<MEMORY_BASIC_INFORMATION> Utils::Win32::Process::GetCommittedImageAllocation(const std::filesystem::path & path) const {
+std::vector<MEMORY_BASIC_INFORMATION> Utils::Win32::Process::GetCommittedImageAllocation(const std::filesystem::path& path) const {
 	std::vector<MEMORY_BASIC_INFORMATION> regions;
 	for (MEMORY_BASIC_INFORMATION mbi{};
 		VirtualQueryEx(m_object, mbi.BaseAddress, &mbi, sizeof mbi);
@@ -798,7 +796,7 @@ Utils::Win32::ModuleMemoryBlocks::ModuleMemoryBlocks(Process process, HMODULE hM
 		CurrentProcess.ReadMemory<char>(CurrentModule,
 			DosHeader.e_lfanew + offsetof(IMAGE_NT_HEADERS32, OptionalHeader),
 			std::span(OptionalHeaderRaw, optionalHeaderLength)
-			);
+		);
 }
 
 Utils::Win32::ModuleMemoryBlocks::~ModuleMemoryBlocks() = default;

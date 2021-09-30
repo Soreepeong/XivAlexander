@@ -52,8 +52,7 @@ DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 	LoaderAction action,
 	bool wait,
 	const Utils::Win32::Process& waitFor) {
-	const auto config = App::Config::Acquire();
-	const auto companion = config->Init.ResolveXivAlexInstallationPath() / XivAlex::XivAlexLoaderNameW;
+	const auto companion = (lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), XivAlex::GameExecutableNameW) == 0 ? App::Config::Acquire()->Init.ResolveXivAlexInstallationPath() : Dll::Module().PathOf().parent_path()) / XivAlex::XivAlexLoaderNameW;
 
 	if (!exists(companion))
 		throw std::runtime_error(Utils::ToUtf8(std::format(FindStringResourceEx(Dll::Module(), IDS_ERROR_LOADER_NOT_FOUND) + 1, companion)));

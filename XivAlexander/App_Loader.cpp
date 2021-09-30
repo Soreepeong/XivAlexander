@@ -356,11 +356,13 @@ static void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std:
 static int RunProgramRetryAfterElevatingSelfAsNecessary(const std::filesystem::path& path, const std::wstring& args = L"") {
 	if (Utils::Win32::RunProgram({
 		.path = path,
+		.dir = path.parent_path().c_str(),
 		.args = args,
 		.elevateMode = Utils::Win32::RunProgramParams::CancelIfRequired,
 	}))
 		return 0;
 	return Utils::Win32::RunProgram({
+			.dir = path.parent_path().c_str(),
 			.args = Utils::FromUtf8(Utils::Win32::ReverseCommandLineToArgv({
 				"--disable-runas",
 				"-a", LoaderActionToString(XivAlexDll::LoaderAction::Launcher),
@@ -905,7 +907,16 @@ static void Uninstall(const std::filesystem::path& gamePath) {
 	success = true;
 	revert.Clear();
 
-	Dll::MessageBoxF(nullptr, MB_OK, L"Uninstalled");
+	if (Dll::MessageBoxF(nullptr, MB_YESNO | MB_ICONQUESTION, L"Uninstalled; to completely install, remove the configuration files. Do you want to open the configuration folder?") == IDYES) {
+		SHELLEXECUTEINFOW shex{
+			.cbSize = sizeof shex,
+			.hwnd = nullptr,
+			.lpFile = dataPath.c_str(),
+			.nShow = SW_SHOW,
+		};
+		if (!ShellExecuteExW(&shex))
+			throw Utils::Win32::Error("ShellExecuteW");
+	}
 }
 
 int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
@@ -1135,7 +1146,7 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 				launchers.emplace_back(region, std::move(info));
 			for (size_t i = 0; i < launchers.size(); ++i) {
 				const auto& [region, info] = launchers[i];
-				const wchar_t* message = L"Install";
+				const wchar_t* message = L"Install XivAlexander";
 				const wchar_t* regionStr = nullptr;
 				const auto selfVersion = Utils::StringSplit<std::string>(Utils::Win32::FormatModuleVersionString(GetModuleHandleW(nullptr)).first, ".");
 				for (const auto name : {"d3d9.dll", "d3d11.dll"}) {
@@ -1144,11 +1155,11 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 						if (XivAlex::IsXivAlexanderDll(path)) {
 							const auto version = Utils::StringSplit<std::string>(Utils::Win32::FormatModuleVersionString(path).first, ".");
 							if (selfVersion > version)
-								message = L"Upgrade";
+								message = L"Update XivAlexander";
 							else if (selfVersion < version)
-								message = L"Downgrade";
+								message = L"Downgrade XivAlexander";
 							else
-								message = L"Reinstall";
+								message = L"Reinstall XivAlexander";
 						}
 					} catch (...) {
 					}
@@ -1166,7 +1177,7 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 					default:
 						continue;
 				}
-				titles.emplace_back(std::format(L"{}: {} at {}", message, regionStr, info.RootPath.wstring()));
+				titles.emplace_back(std::format(L"{}: {}\n{}", message, regionStr, info.RootPath.wstring()));
 				radios.emplace_back(static_cast<int>(2000 + radioItems.size()), titles.back().c_str());
 				radioItems.emplace_back(true, static_cast<uint32_t>(i));
 			}
@@ -1308,10 +1319,13 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 						if (nButton == 1003) {
 							if (bootPath.empty())
 								throw std::runtime_error("Unable to detect boot path");
-
-							EnableInjectOnCreateProcess(InjectOnCreateProcessAppFlags::Use | InjectOnCreateProcessAppFlags::InjectAll);
-							RunProgramRetryAfterElevatingSelfAsNecessary(bootPath);
-							EnableInjectOnCreateProcess(0);
+							
+							Utils::Win32::RunProgram({
+								.args = std::format(L"-a {} -l select {}",
+									LoaderActionToString(LoaderAction::Launcher),
+									Utils::Win32::ReverseCommandLineToArgv(bootPath.wstring())),
+								.wait = true,
+							});
 
 						} else if (nButton == 1001 || nButton == 1002) {
 							if (!selectionIsInstallation) {
