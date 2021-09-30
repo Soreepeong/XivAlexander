@@ -41,8 +41,6 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 		, m_windowFoundEvent(Utils::Win32::Event::Create())
 		, m_stopEvent(Utils::Win32::Event::Create())
 		, m_initThread(Utils::Win32::Thread(L"XivAlexApp::Implementation_GameWindow::Initializer", [this]() { InitializeThreadBody(); })) {
-
-		RaiseException(12456, 0, 0, nullptr);
 	}
 
 	~Implementation_GameWindow();
