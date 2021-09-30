@@ -1,12 +1,13 @@
 ﻿#include "pch.h"
 #include "App_Misc_CrashMessageBoxHandler.h"
 
+#include <XivAlexander/XivAlexander.h>
+#include <XivAlexanderCommon/XivAlex.h>
+
 #include "App_Misc_Hooks.h"
 #include "App_Misc_Logger.h"
 #include "DllMain.h"
 #include "resource.h"
-#include "XivAlexander/XivAlexander.h"
-#include "XivAlexanderCommon/XivAlex.h"
 
 static const std::wstring_view PossibleCrashMessageBoxTitle[]{
 	L"ファイナルファンタジーXIV", // Japanese
@@ -115,13 +116,11 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 					{2002, L"Restart with&out XivAlexander"},
 					{2003, L"E&xit"},
 				};
-
-				const auto hGameWindow = Dll::FindGameMainWindow(false);
-
+				
 				const auto tdtitle = std::format(L"{} (+{})", title, Dll::GetGenericMessageBoxTitle());
 				const TASKDIALOGCONFIG tdc{
 					.cbSize = sizeof tdc,
-					.hwndParent = !hWndParent && hGameWindow && GetWindowThreadProcessId(hGameWindow, nullptr) == GetCurrentThreadId() ? hGameWindow : hWndParent,
+					.hwndParent = hWndParent,
 					.hInstance = Dll::Module(),
 					.dwFlags = TDF_ENABLE_HYPERLINKS | TDF_ALLOW_DIALOG_CANCELLATION | TDF_POSITION_RELATIVE_TO_WINDOW | TDF_CAN_BE_MINIMIZED,
 					.pszWindowTitle = tdtitle.c_str(),
