@@ -91,9 +91,7 @@ Utils::Win32::ProcessBuilder::~ProcessBuilder() = default;
 std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuilder::Run() {
 	const auto MaxLengthOfProcThreadAttributeList = 2UL;
 	STARTUPINFOEXW siex{};
-	PROCESS_INFORMATION pi{};
-	std::vector<HANDLE> handles; // this needs to be here, as ProcThreadAttribute only points here instead of copying the contents
-
+	siex.StartupInfo.cb = sizeof siex;
 	if (m_bUseSize) {
 		siex.StartupInfo.dwFlags |= STARTF_USESIZE;
 		siex.StartupInfo.dwXSize = m_dwWidth;
@@ -109,31 +107,27 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 		siex.StartupInfo.wShowWindow = m_wShowWindow;
 	}
 
-	std::vector<char> attributeListBuf;
+	std::vector<HANDLE> handles; // this needs to be here, as ProcThreadAttribute only points here instead of copying the contents
+	handles.reserve(m_inheritedHandles.size());
+	std::ranges::transform(m_inheritedHandles, std::back_inserter(handles), [](const auto& v) { return static_cast<HANDLE>(v); });
 
+	std::vector<char> attributeListBuf;
 	if (SIZE_T size = 0; !InitializeProcThreadAttributeList(nullptr, MaxLengthOfProcThreadAttributeList, 0, &size)) {
 		const auto err = GetLastError();
 		if (err != ERROR_INSUFFICIENT_BUFFER)
 			throw Error(err, "InitializeProcThreadAttributeList.1");
 		attributeListBuf.resize(size);
+		siex.lpAttributeList = reinterpret_cast<PPROC_THREAD_ATTRIBUTE_LIST>(&attributeListBuf[0]);
+		if (!InitializeProcThreadAttributeList(siex.lpAttributeList, MaxLengthOfProcThreadAttributeList, 0, &size))
+			throw Error("InitializeProcThreadAttributeList.2");
 	}
-
 	const auto cleanAttributeList = CallOnDestruction([&siex]() {
 		if (siex.lpAttributeList)
 			DeleteProcThreadAttributeList(siex.lpAttributeList);
 	});
-
-	siex.StartupInfo.cb = sizeof siex;
-	siex.lpAttributeList = reinterpret_cast<PPROC_THREAD_ATTRIBUTE_LIST>(&attributeListBuf[0]);
-	if (SIZE_T size = 0; !InitializeProcThreadAttributeList(siex.lpAttributeList, MaxLengthOfProcThreadAttributeList, 0, &size))
-		throw Error("InitializeProcThreadAttributeList.2");
 	
-	if (!m_inheritedHandles.empty()) {
-		handles.reserve(m_inheritedHandles.size());
-		std::ranges::transform(m_inheritedHandles, std::back_inserter(handles), [](const auto& v) { return static_cast<HANDLE>(v); });
-		if (!UpdateProcThreadAttribute(siex.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, &handles[0], handles.size() * sizeof handles[0], nullptr, nullptr))
-			throw Error("UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_HANDLE_LIST)");
-	}
+	if (!handles.empty() && !UpdateProcThreadAttribute(siex.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, &handles[0], handles.size() * sizeof handles[0], nullptr, nullptr))
+		throw Error("UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_HANDLE_LIST)");
 
 	if (m_parentProcess) {
 		auto hParentProcess = static_cast<HANDLE>(m_parentProcess);
@@ -161,7 +155,8 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 		}
 		environString.push_back(0);
 	}
-
+	
+	PROCESS_INFORMATION pi{};
 	if (!CreateProcessW(m_path.c_str(), &args[0],
 		nullptr, nullptr,
 		m_inheritedHandles.empty() ? FALSE : TRUE,

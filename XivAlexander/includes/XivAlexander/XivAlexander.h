@@ -35,11 +35,18 @@ namespace XivAlexDll {
 
 	XIVALEXANDER_DLLEXPORT const char* LoaderActionToString(LoaderAction val);
 
+	enum WhichLoader {
+		Current,
+		Opposite,
+		Force32,
+		Force64,
+	};
 	XIVALEXANDER_DLLEXPORT DWORD LaunchXivAlexLoaderWithTargetHandles(
 		const std::vector<Utils::Win32::Process>& hSources,
 		LoaderAction action,
 		bool wait,
-		const Utils::Win32::Process& waitFor = nullptr);
+		const Utils::Win32::Process& waitFor = {},
+		WhichLoader which = Current);
 	XIVALEXANDER_DLLEXPORT InjectEntryPointParameters* PatchEntryPointForInjection(HANDLE hProcess);
 
 	//

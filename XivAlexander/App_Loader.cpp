@@ -988,8 +988,18 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 			}
 
 			case LoaderAction::Internal_Inject_HookEntryPoint: {
-				for (const auto& x : g_parameters->m_targetProcessHandles)
-					PatchEntryPointForInjection(x);
+				std::vector<Utils::Win32::Process> mine, defer;
+				for (auto& process : g_parameters->m_targetProcessHandles) {
+					if (process.IsProcess64Bits() == (INT64_MAX == INTPTR_MAX))
+						mine.emplace_back(std::move(process));
+					else
+						defer.emplace_back(std::move(process));
+				}
+				for (auto& process : mine)
+					PatchEntryPointForInjection(process);
+
+				if (!defer.empty())
+					LaunchXivAlexLoaderWithTargetHandles(defer, g_parameters->m_action, true, {}, Opposite);
 				return 0;
 			}
 
@@ -1015,7 +1025,7 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 				}
 
 				if (!defer.empty()) {
-					LaunchXivAlexLoaderWithTargetHandles(defer, g_parameters->m_action, true);
+					LaunchXivAlexLoaderWithTargetHandles(defer, g_parameters->m_action, true, {}, Opposite);
 				}
 				return 0;
 			}
@@ -1027,7 +1037,7 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 					GetNativeSystemInfo(&si);
 					if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) {
 						std::vector<HANDLE> handles;
-						LaunchXivAlexLoaderWithTargetHandles(g_parameters->m_targetProcessHandles, g_parameters->m_action, false);
+						LaunchXivAlexLoaderWithTargetHandles(g_parameters->m_targetProcessHandles, g_parameters->m_action, false, {}, Force64);
 						return 0;
 					}
 				}

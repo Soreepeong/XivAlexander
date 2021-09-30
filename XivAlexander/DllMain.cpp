@@ -51,8 +51,33 @@ DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 	const std::vector<Utils::Win32::Process>& hSources,
 	LoaderAction action,
 	bool wait,
-	const Utils::Win32::Process& waitFor) {
-	const auto companion = (lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), XivAlex::GameExecutableNameW) == 0 ? App::Config::Acquire()->Init.ResolveXivAlexInstallationPath() : Dll::Module().PathOf().parent_path()) / XivAlex::XivAlexLoaderNameW;
+	const Utils::Win32::Process& waitFor,
+	WhichLoader which) {
+
+	const auto companionPath = (
+		lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), XivAlex::GameExecutableNameW) == 0
+		? App::Config::Acquire()->Init.ResolveXivAlexInstallationPath()
+		: Dll::Module().PathOf().parent_path()
+	);
+	const wchar_t* whichLoader;
+	switch (which) {
+		case Current:
+			whichLoader = XivAlex::XivAlexLoaderNameW;
+			break;
+		case Opposite:
+			whichLoader = XivAlex::XivAlexLoaderOppositeNameW;
+			break;
+		case Force32:
+			whichLoader = XivAlex::XivAlexLoader32NameW;
+			break;
+		case Force64:
+			whichLoader = XivAlex::XivAlexLoader64NameW;
+			break;
+		default:
+			throw std::invalid_argument("Invalid which");
+	}
+
+	const auto companion = companionPath / whichLoader;
 
 	if (!exists(companion))
 		throw std::runtime_error(Utils::ToUtf8(std::format(FindStringResourceEx(Dll::Module(), IDS_ERROR_LOADER_NOT_FOUND) + 1, companion)));
@@ -95,10 +120,10 @@ static void CheckObfuscatedArguments() {
 
 	if (filename != XivAlex::GameExecutableNameW)
 		return; // not the game process
-	
+
 	try {
 		std::vector<std::string> args;
-		if (int nArgs; LPWSTR * szArgList = CommandLineToArgvW(s_originalCommandLine.data(), &nArgs)) {
+		if (int nArgs; LPWSTR* szArgList = CommandLineToArgvW(s_originalCommandLine.data(), &nArgs)) {
 			for (int i = 0; i < nArgs; i++)
 				args.emplace_back(Utils::ToUtf8(szArgList[i]));
 			LocalFree(szArgList);
@@ -135,7 +160,7 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 		case DLL_PROCESS_ATTACH: {
 			s_bLoadedAsDependency = !!lpReserved;  // non-null for static loads
 			s_originalCommandLine = GetCommandLineW();
-			
+
 			try {
 				s_hModule.Attach(hInstance, Utils::Win32::LoadedModule::Null, false, "Instance attach failed <cannot happen>");
 				s_hActivationContext = Utils::Win32::ActivationContext(ACTCTXW{
@@ -144,7 +169,7 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 					.lpResourceName = MAKEINTRESOURCE(IDR_RT_MANIFEST_LATE_ACTIVATION),
 					.hModule = Dll::Module(),
 				});
-				
+
 				if (s_bLoadedAsDependency) {
 					if (lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), XivAlex::XivAlexLoaderNameW) == 0)
 						MH_Initialize();
