@@ -159,8 +159,7 @@ struct App::XivAlexApp::Implementation final {
 				return;
 
 			if (const auto err = this_->IsUnloadable(); !err.empty()) {
-				Utils::Win32::MessageBoxF(m_trayWindow->Handle(), MB_ICONERROR, this->this_->m_config->Runtime.GetStringRes(IDS_APP_NAME),
-					this->this_->m_config->Runtime.FormatStringRes(IDS_ERROR_UNLOAD_XIVALEXANDER, err));
+				Dll::MessageBoxF(m_trayWindow->Handle(), MB_ICONERROR, this->this_->m_config->Runtime.FormatStringRes(IDS_ERROR_UNLOAD_XIVALEXANDER, err));
 				return;
 			}
 
@@ -414,9 +413,9 @@ size_t __stdcall XivAlexDll::EnableXivAlexander(size_t bEnable) {
 	} catch (const std::exception& e) {
 		Utils::Win32::DebugPrint(L"LoadXivAlexander error: {}\n", e.what());
 		if (bEnable)
-			Utils::Win32::MessageBoxF(nullptr, MB_ICONERROR | MB_OK,
-				FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
-				FindStringResourceEx(Dll::Module(), IDS_ERROR_LOAD) + 1, e.what());
+			Dll::MessageBoxF(nullptr, MB_ICONERROR | MB_OK,
+				FindStringResourceEx(Dll::Module(), IDS_ERROR_LOAD) + 1,
+				e.what());
 		return -1;
 	}
 }

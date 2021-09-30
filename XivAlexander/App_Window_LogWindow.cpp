@@ -19,17 +19,6 @@ static const std::map<App::LogLevel, int> LogLevelStyleMap{
 	{App::LogLevel::Error, STYLE_LASTPREDEFINED + 3},
 };
 
-static const std::map<App::LogCategory, const char*> LogCategoryNames{
-	{App::LogCategory::General, "General"},
-	{App::LogCategory::SocketHook, "SocketHook"},
-	{App::LogCategory::AllIpcMessageLogger, "AllIpcMessageLogger"},
-	{App::LogCategory::AnimationLockLatencyHandler, "AnimationLockLatencyHandler"},
-	{App::LogCategory::EffectApplicationDelayLogger, "EffectApplicationDelayLogger"},
-	{App::LogCategory::IpcTypeFinder, "IpcTypeFinder"},
-	{App::LogCategory::GameResourceOverrider, "GameResourceOverrider"},
-	{App::LogCategory::VirtualSqPacks, "VirtualSqPacks"},
-};
-
 static WNDCLASSEXW WindowClass() {
 	const auto hIcon = Utils::Win32::Icon(LoadIconW(Dll::Module(), MAKEINTRESOURCEW(IDI_TRAY_ICON)),
 		nullptr,
@@ -88,14 +77,7 @@ App::Window::LogWindow::LogWindow()
 				o.str(std::string());
 				level = item.level;
 			}
-			const auto st = item.TimestampAsLocalSystemTime();
-			const auto logstr = std::format("{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}\t{}\t{}\n",
-				st.wYear, st.wMonth, st.wDay,
-				st.wHour, st.wMinute, st.wSecond,
-				st.wMilliseconds,
-				LogCategoryNames.at(item.category),
-				item.log);
-			o << logstr;
+			o << item.Format() << std::endl;
 		}
 		if (o.tellp())
 			FlushLog(o.str(), level);
@@ -128,55 +110,19 @@ LRESULT App::Window::LogWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
 			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_ALWAYSONTOP, m_config->Runtime.AlwaysOnTop_XivAlexLogWindow, true);
 			break;
 		}
-		case WM_ACTIVATE:
+
+		case WM_ACTIVATE: {
 			SetFocus(m_hScintilla);
 			break;
+		}
+
 		case WM_COMMAND: {
 			switch (LOWORD(wParam)) {
 				case ID_FILE_SAVE: {
-					const auto hWnd = m_hWnd;
 					std::string buf(m_direct(m_directPtr, SCI_GETLENGTH, 0, 0) + 1, '\0');
 					m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(&buf[0]));
 					buf.resize(buf.length() - 1);
-
-					static const COMDLG_FILTERSPEC saveFileTypes[] = {
-						{L"Log Files (*.log)", L"*.log"},
-						{L"All Documents (*.*)", L"*.*"}
-					};
-
-					try {
-						IFileSaveDialogPtr pDialog;
-						DWORD dwFlags;
-						Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER));
-						Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypes(ARRAYSIZE(saveFileTypes), saveFileTypes));
-						Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypeIndex(0));
-						Utils::Win32::Error::ThrowIfFailed(pDialog->SetDefaultExtension(L"log"));
-						Utils::Win32::Error::ThrowIfFailed(pDialog->GetOptions(&dwFlags));
-						Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
-						Utils::Win32::Error::ThrowIfFailed(pDialog->Show(hWnd), true);
-
-						std::filesystem::path newFileName;
-						{
-							IShellItemPtr pResult;
-							PWSTR pszNewFileName;
-							Utils::Win32::Error::ThrowIfFailed(pDialog->GetResult(&pResult));
-							Utils::Win32::Error::ThrowIfFailed(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszNewFileName));
-							if (!pszNewFileName)
-								throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
-							newFileName = pszNewFileName;
-						}
-
-						Utils::SaveToFile(newFileName, buf);
-						Utils::Win32::MessageBoxF(hWnd, MB_ICONINFORMATION, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-							m_config->Runtime.FormatStringRes(IDS_LOG_SAVED, newFileName));
-
-					} catch (const Utils::Win32::CancelledError&) {
-						return 0;
-
-					} catch (const std::exception& e) {
-						Utils::Win32::MessageBoxF(hWnd, MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-							m_config->Runtime.FormatStringRes(IDS_ERROR_LOG_SAVE, e.what()));
-					}
+					m_logger->AskAndExportLogs(m_hWnd, {}, buf);
 					return 0;
 				}
 

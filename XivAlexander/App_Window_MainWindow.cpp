@@ -176,12 +176,11 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 		if (lParam)
 			DestroyWindow(m_hWnd);
 		else {
-			switch (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNOCANCEL | MB_ICONQUESTION, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-				m_config->Runtime.FormatStringRes(IDS_CONFIRM_MAIN_WINDOW_CLOSE,
-					Utils::Win32::MB_GetString(IDYES - 1),
-					Utils::Win32::MB_GetString(IDNO - 1),
-					Utils::Win32::MB_GetString(IDCANCEL - 1)
-				))) {
+			switch (Dll::MessageBoxF(m_hWnd, MB_YESNOCANCEL | MB_ICONQUESTION, m_config->Runtime.FormatStringRes(IDS_CONFIRM_MAIN_WINDOW_CLOSE,
+				Utils::Win32::MB_GetString(IDYES - 1),
+				Utils::Win32::MB_GetString(IDNO - 1),
+				Utils::Win32::MB_GetString(IDCANCEL - 1)
+			))) {
 				case IDYES:
 					m_triggerUnload();
 					break;
@@ -222,17 +221,21 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 
 	} else if (uMsg == WM_COMMAND) {
 		if (!lParam) {
-			const auto menuId = LOWORD(wParam);
-			if (m_menuIdCallbacks.find(menuId) != m_menuIdCallbacks.end()) {
-				m_menuIdCallbacks[menuId]();
-			} else {
-				OnCommand_Menu_File(menuId);
-				OnCommand_Menu_Restart(menuId);
-				OnCommand_Menu_Network(menuId);
-				OnCommand_Menu_Modding(menuId);
-				OnCommand_Menu_Configure(menuId);
-				OnCommand_Menu_View(menuId);
-				OnCommand_Menu_Help(menuId);
+			try {
+				const auto menuId = LOWORD(wParam);
+				if (m_menuIdCallbacks.find(menuId) != m_menuIdCallbacks.end()) {
+					m_menuIdCallbacks[menuId]();
+				} else {
+					OnCommand_Menu_File(menuId);
+					OnCommand_Menu_Restart(menuId);
+					OnCommand_Menu_Network(menuId);
+					OnCommand_Menu_Modding(menuId);
+					OnCommand_Menu_Configure(menuId);
+					OnCommand_Menu_View(menuId);
+					OnCommand_Menu_Help(menuId);
+				}
+			} catch (const std::exception& e) {
+				Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
 			}
 			return 0;
 		}
@@ -394,7 +397,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 		auto count = 0;
 		for (const auto& additionalRoot : config.AdditionalSqpackRootDirectories.Value()) {
 			AppendMenuW(hParentMenu, MF_STRING, allocateMenuId([this, additionalRoot]() {
-				if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.GetStringRes(IDS_APP_NAME), m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_ADDITIONAL_ROOT, additionalRoot.wstring())) == IDNO)
+				if (Dll::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_ADDITIONAL_ROOT, additionalRoot.wstring())) == IDNO)
 					return;
 
 				std::vector<std::filesystem::path> newValue;
@@ -415,7 +418,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 		auto count = 0;
 		for (const auto& file : config.ExcelTransformConfigFiles.Value()) {
 			AppendMenuW(hParentMenu, MF_STRING, allocateMenuId([this, file]() {
-				if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.GetStringRes(IDS_APP_NAME), m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_EXCEL_TRANSFORM_CONFIG_FILE, file.wstring())) == IDNO)
+				if (Dll::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_EXCEL_TRANSFORM_CONFIG_FILE, file.wstring())) == IDNO)
 					return;
 
 				std::vector<std::filesystem::path> newValue;
@@ -448,19 +451,17 @@ void App::Window::MainWindow::RepopulateMenu() {
 						ttmpSet.Enabled = !ttmpSet.Enabled;
 						ttmpSet.ApplyChanges();
 					} catch (const std::exception& e) {
-						Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-							m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+						Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
 					}
 				}), getMenuText(hTemplateEntryMenu, 0).c_str());
 
 				AppendMenuW(hSubMenu, MF_STRING, allocateMenuId([this, &ttmpSet, &sqpacks]() {
 					try {
-						if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+						if (Dll::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2, m_config->Runtime.GetStringRes(IDS_APP_NAME),
 							L"Delete \"{}\" at \"{}\"?", ttmpSet.List.Name, ttmpSet.ListPath.wstring()) == IDYES)
 							sqpacks.DeleteTtmp(ttmpSet.ListPath);
 					} catch (const std::exception& e) {
-						Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-							m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+						Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
 					}
 				}), getMenuText(hTemplateEntryMenu, 1).c_str());
 
@@ -513,8 +514,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 										ttmpSet.ApplyChanges();
 
 									} catch (const std::exception& e) {
-										Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-											m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+										Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
 									}
 								}), Utils::FromUtf8(description).c_str());
 						}
@@ -556,7 +556,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 		//				else
 		//					Utils::Win32::File::Create(disableFilePath, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0);
 		//			} catch (const std::exception& e) {
-		//				Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+		//				Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR,
 		//					m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
 		//				return;
 		//			}
@@ -570,7 +570,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 		//				else
 		//					Utils::Win32::File::Create(deleteFilePath, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0);
 		//			} catch (const std::exception& e) {
-		//				Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+		//				Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR,
 		//					m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
 		//				return;
 		//			}
@@ -597,7 +597,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 		//								Utils::SaveJsonToFile(choicesPath, conf);
 		//
 		//							} catch (const std::exception& e) {
-		//								Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+		//								Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR,
 		//									m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
 		//								return;
 		//							}
@@ -651,7 +651,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 		//								Utils::SaveJsonToFile(choicesPath, conf);
 		//
 		//							} catch (const std::exception& e) {
-		//								Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+		//								Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR,
 		//									m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
 		//								return;
 		//							}
@@ -804,7 +804,7 @@ void App::Window::MainWindow::AskRestartGame(bool onlyOnModifier) {
 	}
 	const auto yes = Utils::Win32::MB_GetString(IDYES - 1);
 	const auto no = Utils::Win32::MB_GetString(IDNO - 1);
-	if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, m_config->Runtime.GetStringRes(IDS_APP_NAME), m_config->Runtime.FormatStringRes(
+	if (Dll::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, m_config->Runtime.FormatStringRes(
 		IDS_CONFIRM_RESTART_GAME,
 		m_bUseDirectX11 ? yes : no,
 		Dll::IsLoadedAsDependency() || m_bUseXivAlexander ? yes : no,
@@ -814,59 +814,53 @@ void App::Window::MainWindow::AskRestartGame(bool onlyOnModifier) {
 		m_config->Runtime.GetRegionNameLocalized(m_gameRegion)
 	)) == IDYES) {
 		const auto process = Utils::Win32::Process::Current();
-		try {
-			const auto game = process.PathOf().parent_path() / (m_bUseDirectX11 ? XivAlex::GameExecutable64NameW : XivAlex::GameExecutable32NameW);
+		const auto game = process.PathOf().parent_path() / (m_bUseDirectX11 ? XivAlex::GameExecutable64NameW : XivAlex::GameExecutable32NameW);
 
-			auto params = m_launchParameters;
-			if (LanguageRegionModifiable()) {
-				auto found = false;
-				for (auto& pair : params) {
-					if (pair.first == "language") {
-						pair.second = std::format("{}", static_cast<int>(m_gameLanguage) - 1);
-						found = true;
-						break;
-					}
+		auto params = m_launchParameters;
+		if (LanguageRegionModifiable()) {
+			auto found = false;
+			for (auto& pair : params) {
+				if (pair.first == "language") {
+					pair.second = std::format("{}", static_cast<int>(m_gameLanguage) - 1);
+					found = true;
+					break;
 				}
-				if (!found)
-					params.emplace_back("language", std::format("{}", static_cast<int>(m_gameLanguage) - 1));
+			}
+			if (!found)
+				params.emplace_back("language", std::format("{}", static_cast<int>(m_gameLanguage) - 1));
 
-				found = false;
-				for (auto& pair : params) {
-					if (pair.first == "SYS.Region") {
-						pair.second = std::format("{}", static_cast<int>(m_gameRegion));
-						found = true;
-						break;
-					}
+			found = false;
+			for (auto& pair : params) {
+				if (pair.first == "SYS.Region") {
+					pair.second = std::format("{}", static_cast<int>(m_gameRegion));
+					found = true;
+					break;
 				}
-				if (!found)
-					params.emplace_back("SYS.Region", std::format("{}", static_cast<int>(m_gameRegion)));
 			}
-
-			XivAlexDll::EnableInjectOnCreateProcess(0);
-			bool ok;
-			if (!Dll::IsLoadedAsDependency() && m_bUseXivAlexander)
-				ok = Utils::Win32::RunProgram({
-					.path = Dll::Module().PathOf().parent_path() / (m_bUseDirectX11 ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW),
-					.args = std::format(L"-a launcher -l select \"{}\" {}", game, Sqex::CommandLine::ToString(params, m_bUseParameterObfuscation)),
-					.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
-				});
-			else
-				ok = Utils::Win32::RunProgram({
-					.path = game,
-					.args = Utils::FromUtf8(Sqex::CommandLine::ToString(params, m_bUseParameterObfuscation)),
-					.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
-				});
-
-			if (ok) {
-				RemoveTrayIcon();
-				process.Terminate(0);
-			}
-
-		} catch (const std::exception& e) {
-			Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-				m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+			if (!found)
+				params.emplace_back("SYS.Region", std::format("{}", static_cast<int>(m_gameRegion)));
 		}
-		XivAlexDll::EnableInjectOnCreateProcess(XivAlexDll::InjectOnCreateProcessAppFlags::Use | XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly);
+
+		XivAlexDll::EnableInjectOnCreateProcess(0);
+		const auto revertInjectOnCreateProcess = Utils::CallOnDestruction([]() { XivAlexDll::EnableInjectOnCreateProcess(XivAlexDll::InjectOnCreateProcessAppFlags::Use | XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly); });
+		bool ok;
+		if (!Dll::IsLoadedAsDependency() && m_bUseXivAlexander)
+			ok = Utils::Win32::RunProgram({
+				.path = Dll::Module().PathOf().parent_path() / (m_bUseDirectX11 ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW),
+				.args = std::format(L"-a launcher -l select \"{}\" {}", game, Sqex::CommandLine::ToString(params, m_bUseParameterObfuscation)),
+				.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
+			});
+		else
+			ok = Utils::Win32::RunProgram({
+				.path = game,
+				.args = Utils::FromUtf8(Sqex::CommandLine::ToString(params, m_bUseParameterObfuscation)),
+				.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
+			});
+
+		if (ok) {
+			RemoveTrayIcon();
+			process.Terminate(0);
+		}
 	}
 }
 
@@ -890,14 +884,9 @@ void App::Window::MainWindow::OnCommand_Menu_File(int menuId) {
 			return;
 
 		case ID_FILE_CHECKFORUPDATES:
-			try {
-				LaunchXivAlexLoaderWithTargetHandles({Utils::Win32::Process::Current()},
-					Dll::IsLoadedAsDependency() ? XivAlexDll::LoaderAction::Internal_Update_DependencyDllMode : XivAlexDll::LoaderAction::UpdateCheck,
-					false);
-			} catch (const std::exception& e) {
-				Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-					m_config->Runtime.FormatStringRes(IDS_ERROR_UPDATE_CHECK_LAUNCH, e.what()));
-			}
+			LaunchXivAlexLoaderWithTargetHandles({Utils::Win32::Process::Current()},
+				Dll::IsLoadedAsDependency() ? XivAlexDll::LoaderAction::Internal_Update_DependencyDllMode : XivAlexDll::LoaderAction::UpdateCheck,
+				false);
 			return;
 
 		case ID_FILE_UNLOADXIVALEXANDER:
@@ -905,8 +894,7 @@ void App::Window::MainWindow::OnCommand_Menu_File(int menuId) {
 			return;
 
 		case ID_FILE_FORCEEXITGAME:
-			if (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-				m_config->Runtime.GetStringRes(IDS_CONFIRM_EXIT_GAME)) == IDYES) {
+			if (Dll::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, m_config->Runtime.GetStringRes(IDS_CONFIRM_EXIT_GAME)) == IDYES) {
 				RemoveTrayIcon();
 				ExitProcess(0);
 			}
@@ -1175,58 +1163,33 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 			return;
 
 		case ID_MODDING_CHANGEFONT_OPENPRESETDIRECTORY:
-			try {
-				const auto path = m_config->Init.ResolveConfigStorageDirectoryPath() / "FontConfig";
-				if (!exists(path))
-					create_directories(path);
-
-				SHELLEXECUTEINFOW se{
-					.cbSize = sizeof SHELLEXECUTEINFOW,
-					.hwnd = m_hWnd,
-					.lpVerb = L"explore",
-					.lpFile = path.c_str(),
-					.nShow = SW_SHOW,
-				};
-				if (!ShellExecuteExW(&se))
-					throw Utils::Win32::Error("ShellExecuteExW");
-			} catch (const std::exception& e) {
-				Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-					m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-				return;
-			}
+			EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "FontConfig");
 			return;
 
 		case ID_MODDING_CHANGEFONT_IMPORTPRESET: {
+			const auto defaultPath = m_config->Init.ResolveConfigStorageDirectoryPath() / "FontConfig";
 			try {
-				const auto defaultPath = m_config->Init.ResolveConfigStorageDirectoryPath() / "FontConfig";
-				try {
-					if (!is_directory(defaultPath))
-						create_directories(defaultPath);
-				} catch (...) {
-					// pass
-				}
+				if (!is_directory(defaultPath))
+					create_directories(defaultPath);
+			} catch (...) {
+				// pass
+			}
 
-				const COMDLG_FILTERSPEC fileTypes[] = {
-					{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_FONTPRESETJSON), L"*.json"},
-					{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*"},
-				};
-				const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_IMPORT_FONTCONFIG_PRESET, defaultPath);
-				switch (paths.size()) {
-					case 0:
-						return;
+			const COMDLG_FILTERSPEC fileTypes[] = {
+				{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_FONTPRESETJSON), L"*.json"},
+				{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*"},
+			};
+			const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_IMPORT_FONTCONFIG_PRESET, defaultPath);
+			switch (paths.size()) {
+				case 0:
+					return;
 
-					case 1:
-						ImportFontConfig(paths[0]);
-						return;
+				case 1:
+					ImportFontConfig(paths[0]);
+					return;
 
-					default:
-						InstallMultipleFiles(paths);
-				}
-
-			} catch (const std::exception& e) {
-				Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-					m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-				return;
+				default:
+					InstallMultipleFiles(paths);
 			}
 			return;
 		}
@@ -1255,133 +1218,102 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 					const auto freeFileName = Utils::CallOnDestruction([pszFileName]() { CoTaskMemFree(pszFileName); });
 
 					AddAdditionalGameRootDirectory(pszFileName);
+					break;
 
 				} catch (const Utils::Win32::CancelledError&) {
 					break;
 
 				} catch (const std::exception& e) {
-					Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-						m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+					Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
 				}
 			}
 			return;
 
 		case ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_REMOVEALL:
-			if (Utils::Win32::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, m_config->Runtime.GetStringRes(IDS_APP_NAME), "Unregister all additional game root directories?") == IDYES) {
+			if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, "Unregister all additional game root directories?") == IDYES) {
 				m_config->Runtime.AdditionalSqpackRootDirectories = std::vector<std::filesystem::path>();
 			}
 			return;
 
 		case ID_MODDING_EXDFTRANSFORMATIONRULES_OPENPRESETDIRECTORY:
-			try {
-				const auto path = m_config->Init.ResolveConfigStorageDirectoryPath() / "ExcelTransformConfig";
-				if (!exists(path))
-					create_directories(path);
-
-				SHELLEXECUTEINFOW se{
-					.cbSize = sizeof SHELLEXECUTEINFOW,
-					.hwnd = m_hWnd,
-					.lpVerb = L"explore",
-					.lpFile = path.c_str(),
-					.nShow = SW_SHOW,
-				};
-				if (!ShellExecuteExW(&se))
-					throw Utils::Win32::Error("ShellExecuteExW");
-			} catch (const std::exception& e) {
-				Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-					m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-				return;
-			}
+			EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "ExcelTransformConfig");
 			return;
 
-		case ID_MODDING_EXDFTRANSFORMATIONRULES_ADD:
+		case ID_MODDING_EXDFTRANSFORMATIONRULES_ADD: {
+			const auto defaultPath = m_config->Init.ResolveConfigStorageDirectoryPath() / "ExcelTransformConfig";
 			try {
-				const auto defaultPath = m_config->Init.ResolveConfigStorageDirectoryPath() / "ExcelTransformConfig";
-				try {
-					if (!is_directory(defaultPath))
-						create_directories(defaultPath);
-				} catch (...) {
-					// pass
-				}
+				if (!is_directory(defaultPath))
+					create_directories(defaultPath);
+			} catch (...) {
+				// pass
+			}
 
-				static const COMDLG_FILTERSPEC fileTypes[] = {
-					{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON), L"*.json"},
-					{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*"},
-				};
-				const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_ADD_EXCELTRANSFORMCONFIG, defaultPath);
-				switch (paths.size()) {
-					case 0:
-						return;
+			static const COMDLG_FILTERSPEC fileTypes[] = {
+				{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON), L"*.json"},
+				{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*"},
+			};
+			const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_ADD_EXCELTRANSFORMCONFIG, defaultPath);
+			switch (paths.size()) {
+				case 0:
+					return;
 
-					case 1:
-						ImportExcelTransformConfig(paths[0]);
-						return;
+				case 1:
+					ImportExcelTransformConfig(paths[0]);
+					return;
 
-					default:
-						InstallMultipleFiles(paths);
-				}
-
-			} catch (const std::exception& e) {
-				Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-					m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-				return;
+				default:
+					InstallMultipleFiles(paths);
 			}
 			return;
+		}
 
 		case ID_MODDING_EXDFTRANSFORMATIONRULES_REMOVEALL:
-			if (Utils::Win32::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, m_config->Runtime.GetStringRes(IDS_APP_NAME), "Unregister all excel transformation rules?") == IDYES) {
+			if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, "Unregister all excel transformation rules?") == IDYES) {
 				m_config->Runtime.ExcelTransformConfigFiles = std::vector<std::filesystem::path>();
 			}
 			return;
 
-		case ID_MODDING_TTMP_IMPORT:
-			try {
-				static const COMDLG_FILTERSPEC fileTypes[] = {
-					{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_TTMP), L"*.ttmp; *.ttmp2; *.mpl"},
-					{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*"},
-				};
-				const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_IMPORT_TTMP);
-				switch (paths.size()) {
-					case 0:
-						return;
+		case ID_MODDING_TTMP_IMPORT: {
+			static const COMDLG_FILTERSPEC fileTypes[] = {
+				{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_TTMP), L"*.ttmp; *.ttmp2; *.mpl"},
+				{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*"},
+			};
+			const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_IMPORT_TTMP);
+			switch (paths.size()) {
+				case 0:
+					return;
 
-					case 1: {
-						ProgressPopupWindow progress(m_hWnd);
-						progress.UpdateMessage(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_TITLE_IMPORTING)));
-						progress.Show();
+				case 1: {
+					ProgressPopupWindow progress(m_hWnd);
+					progress.UpdateMessage(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_TITLE_IMPORTING)));
+					progress.Show();
 
-						std::string resultMessage;
-						const auto adderThread = Utils::Win32::Thread(L"TTMP Importer", [&]() {
-							try {
-								resultMessage = InstallTTMP(paths[0], progress.GetCancelEvent());
-							} catch (const std::exception& e) {
-								progress.Cancel();
-								Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-									m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-							}
-						});
-
-						while (WAIT_TIMEOUT == progress.DoModalLoop(100, {adderThread})) {
-							// pass
+					std::string resultMessage;
+					const auto adderThread = Utils::Win32::Thread(L"TTMP Importer", [&]() {
+						try {
+							resultMessage = InstallTTMP(paths[0], progress.GetCancelEvent());
+						} catch (const std::exception& e) {
+							progress.Cancel();
+							Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
 						}
-						adderThread.Wait();
+					});
 
-						if (!resultMessage.empty())
-							Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONINFORMATION, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-								Utils::FromUtf8(resultMessage));
-						return;
+					while (WAIT_TIMEOUT == progress.DoModalLoop(100, {adderThread})) {
+						// pass
 					}
+					adderThread.Wait();
 
-					default:
-						InstallMultipleFiles(paths);
+					if (!resultMessage.empty())
+						Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONINFORMATION, Utils::FromUtf8(resultMessage));
+					return;
 				}
 
-			} catch (const std::exception& e) {
-				Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-					m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-				return;
+				default:
+					InstallMultipleFiles(paths);
 			}
+
 			return;
+		}
 
 		case ID_MODDING_TTMP_REMOVEALL:
 		case ID_MODDING_TTMP_UNDOREMOVEALL:
@@ -1405,8 +1337,8 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 					msg = Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_CONFIRM_DISABLEALLTTMP));
 					break;
 			}
-			if (Utils::Win32::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, m_config->Runtime.GetStringRes(IDS_APP_NAME), msg) == IDYES) {
-				try {
+			if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, msg) == IDYES) {
+				
 					for (const auto& entry : std::filesystem::recursive_directory_iterator(m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods")) {
 						const auto choicesPath = entry.path().parent_path() / "choices.json";
 						auto lower = entry.path().filename().wstring();
@@ -1441,34 +1373,13 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 							sqpacks.RescanTtmp();
 						}
 					}
-				} catch (const std::filesystem::filesystem_error&) {
-					// pass
-				}
 				RepopulateMenu();
 			}
 			return;
 		}
 
 		case ID_MODDING_TTMP_OPENDIRECTORY:
-			try {
-				const auto path = m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods";
-				if (!exists(path))
-					create_directories(path);
-
-				SHELLEXECUTEINFOW se{
-					.cbSize = sizeof SHELLEXECUTEINFOW,
-					.hwnd = m_hWnd,
-					.lpVerb = L"explore",
-					.lpFile = path.c_str(),
-					.nShow = SW_SHOW,
-				};
-				if (!ShellExecuteExW(&se))
-					throw Utils::Win32::Error("ShellExecuteExW");
-			} catch (const std::exception& e) {
-				Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-					m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-				return;
-			}
+			EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods");
 			return;
 
 		case ID_MODDING_TTMP_REFRESH:
@@ -1479,25 +1390,7 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 			return;
 
 		case ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY:
-			try {
-				const auto path = m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries";
-				if (!exists(path))
-					create_directories(path);
-
-				SHELLEXECUTEINFOW se{
-					.cbSize = sizeof SHELLEXECUTEINFOW,
-					.hwnd = m_hWnd,
-					.lpVerb = L"explore",
-					.lpFile = path.c_str(),
-					.nShow = SW_SHOW,
-				};
-				if (!ShellExecuteExW(&se))
-					throw Utils::Win32::Error("ShellExecuteExW");
-			} catch (const std::exception& e) {
-				Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-					m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-				return;
-			}
+			EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries");
 			return;
 	}
 }
@@ -1537,31 +1430,12 @@ void App::Window::MainWindow::OnCommand_Menu_Configure(int menuId) {
 			return;
 
 		case ID_CONFIGURE_OPENCONFIGURATIONDIRECTORY:
-			try {
-				const auto path = m_config->Init.ResolveConfigStorageDirectoryPath();
-				if (!exists(path))
-					create_directories(path);
-
-				SHELLEXECUTEINFOW se{
-					.cbSize = sizeof SHELLEXECUTEINFOW,
-					.hwnd = m_hWnd,
-					.lpVerb = L"explore",
-					.lpFile = path.c_str(),
-					.nShow = SW_SHOW,
-				};
-				if (!ShellExecuteExW(&se))
-					throw Utils::Win32::Error("ShellExecuteExW");
-			} catch (const std::exception& e) {
-				Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-					m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-				return;
-			}
+			EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath());
 			return;
 
 		case ID_CONFIGURE_RELOAD:
 			config.Reload();
 			return;
-
 	}
 }
 
@@ -1584,14 +1458,14 @@ void App::Window::MainWindow::OnCommand_Menu_Help(int menuId) {
 	switch (menuId) {
 		case ID_HELP_OPENHELPWEBPAGE:
 		case ID_HELP_OPENHOMEPAGE: {
-			SHELLEXECUTEINFOW shex{};
-			shex.cbSize = sizeof shex;
-			shex.nShow = SW_SHOW;
-			shex.lpFile = m_config->Runtime.GetStringRes(menuId == ID_HELP_OPENHELPWEBPAGE ? IDS_URL_HELP : IDS_URL_HOMEPAGE);
-			if (!ShellExecuteExW(&shex)) {
-				Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-					m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, Utils::Win32::FormatWindowsErrorMessage(GetLastError())));
-			}
+			SHELLEXECUTEINFOW shex{
+				.cbSize = sizeof shex,
+				.hwnd = m_hWnd,
+				.lpFile = m_config->Runtime.GetStringRes(menuId == ID_HELP_OPENHELPWEBPAGE ? IDS_URL_HELP : IDS_URL_HOMEPAGE),
+				.nShow = SW_SHOW,
+			};
+			if (!ShellExecuteExW(&shex))
+				throw Utils::Win32::Error("ShellExecuteW");
 			return;
 		}
 	}
@@ -1636,12 +1510,7 @@ std::vector<std::filesystem::path> App::Window::MainWindow::ChooseFileToOpen(std
 
 	} catch (const Utils::Win32::CancelledError&) {
 		return {};
-
-	} catch (const std::exception& e) {
-		Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-			m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
 	}
-	return {};
 }
 
 // https://stackoverflow.com/a/39097160/1800296
@@ -1730,7 +1599,7 @@ void App::Window::MainWindow::ImportExcelTransformConfig(const std::filesystem::
 void App::Window::MainWindow::AddAdditionalGameRootDirectory(std::filesystem::path path) {
 	if (!exists(path / "ffxiv_dx11.exe")
 		|| !exists(path / "ffxiv.exe")) {
-		Utils::Win32::MessageBoxF(m_hWnd, MB_ICONWARNING, m_config->Runtime.GetStringRes(IDS_APP_NAME), m_config->Runtime.GetStringRes(IDS_ERROR_NOT_GAME_DIRECTORY), path.wstring());
+		Dll::MessageBoxF(m_hWnd, MB_ICONWARNING, m_config->Runtime.GetStringRes(IDS_ERROR_NOT_GAME_DIRECTORY), path.wstring());
 		return;
 	}
 
@@ -1778,8 +1647,7 @@ std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& pa
 		try {
 			remove_all(temporaryTtmpDirectory);
 		} catch (const std::exception& e) {
-			Utils::Win32::MessageBoxF(m_hWnd, MB_OK | MB_ICONWARNING, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-				m_config->Runtime.FormatStringRes(IDS_ERROR_REMOVETEMPORARYDIRECTORY, temporaryTtmpDirectory.wstring(), e.what()));
+			Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONWARNING, m_config->Runtime.FormatStringRes(IDS_ERROR_REMOVETEMPORARYDIRECTORY, temporaryTtmpDirectory.wstring(), e.what()));
 		}
 	});
 	temporaryTtmpDirectory = targetDirectory / std::format(L"TEMP_{}", GetTickCount64());
@@ -1796,8 +1664,8 @@ std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& pa
 			Utils::Win32::FileMapping mapping;
 			Utils::Win32::FileMapping::View mapView;
 
-			if (auto oemPath = Utils::ToOem(path);
-				Utils::FromOem(oemPath) == path) {
+			if (auto oemPath = Utils::ToUtf8(path.wstring(), CP_OEMCP);
+				Utils::FromUtf8(oemPath, CP_OEMCP) == path) {
 				pArc = new libzippp::ZipArchive(oemPath);
 				pArc->open();
 			} else {
@@ -2016,8 +1884,23 @@ void App::Window::MainWindow::InstallMultipleFiles(const std::vector<std::filesy
 	}
 
 	if (!report.empty())
-		Utils::Win32::MessageBoxF(m_hWnd, MB_OK, m_config->Runtime.GetStringRes(IDS_APP_NAME), Utils::FromUtf8(report));
+		Dll::MessageBoxF(m_hWnd, MB_OK, Utils::FromUtf8(report));
 	else
-		Utils::Win32::MessageBoxF(m_hWnd, MB_OK, m_config->Runtime.GetStringRes(IDS_ERROR_UNSUPPORTED_FILE_TYPE), Utils::FromUtf8(report));
+		Dll::MessageBoxF(m_hWnd, MB_OK, m_config->Runtime.GetStringRes(IDS_APP_NAME), L"{}\n\n{}", m_config->Runtime.GetStringRes(IDS_ERROR_UNSUPPORTED_FILE_TYPE), Utils::FromUtf8(report));
 
+}
+
+void App::Window::MainWindow::EnsureAndOpenDirectory(const std::filesystem::path& path) {
+	if (!exists(path))
+		create_directories(path);
+
+	SHELLEXECUTEINFOW se{
+		.cbSize = sizeof SHELLEXECUTEINFOW,
+		.hwnd = m_hWnd,
+		.lpVerb = L"explore",
+		.lpFile = path.c_str(),
+		.nShow = SW_SHOW,
+	};
+	if (!ShellExecuteExW(&se))
+		throw Utils::Win32::Error("ShellExecuteExW");
 }

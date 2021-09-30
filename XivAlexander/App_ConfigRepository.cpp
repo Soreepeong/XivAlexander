@@ -80,7 +80,7 @@ void App::Config::BaseRepository::Reload(bool announceChange) {
 	} else {
 		totalConfig = nlohmann::json::object();
 		changed = true;
-		m_logger->FormatDefaultLanguage(LogCategory::General, IDS_LOG_NEW_CONFIG, Utils::ToUtf8(m_sConfigPath));
+		m_logger->FormatDefaultLanguage(LogCategory::General, IDS_LOG_NEW_CONFIG, Utils::ToUtf8(m_sConfigPath.wstring()));
 	}
 
 	const auto& currentConfig = m_parentKey.empty() ? totalConfig : totalConfig[m_parentKey];

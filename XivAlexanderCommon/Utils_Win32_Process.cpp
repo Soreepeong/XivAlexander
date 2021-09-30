@@ -91,7 +91,6 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 	const auto MaxLengthOfProcThreadAttributeList = 2UL;
 	STARTUPINFOEXW siex{};
 	PROCESS_INFORMATION pi{};
-	siex.StartupInfo.cb = sizeof siex;
 
 	if (m_bUseSize) {
 		siex.StartupInfo.dwFlags |= STARTF_USESIZE;
@@ -116,26 +115,32 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 			throw Error(err, "InitializeProcThreadAttributeList.1");
 		attributeListBuf.resize(size);
 	}
-
-	siex.lpAttributeList = reinterpret_cast<PPROC_THREAD_ATTRIBUTE_LIST>(&attributeListBuf[0]);
-	if (SIZE_T size; !InitializeProcThreadAttributeList(siex.lpAttributeList, MaxLengthOfProcThreadAttributeList, 0, &size))
-		throw Error("InitializeProcThreadAttributeList.2");
+	
 	const auto cleanAttributeList = CallOnDestruction([&siex]() {
-		DeleteProcThreadAttributeList(siex.lpAttributeList);
+		if (siex.lpAttributeList)
+			DeleteProcThreadAttributeList(siex.lpAttributeList);
 	});
+	if (m_inheritedHandles.empty() && !m_parentProcess) {
+		siex.StartupInfo.cb = sizeof siex.StartupInfo;
+	} else {
+		siex.StartupInfo.cb = sizeof siex;
+		siex.lpAttributeList = reinterpret_cast<PPROC_THREAD_ATTRIBUTE_LIST>(&attributeListBuf[0]);
+		if (SIZE_T size; !InitializeProcThreadAttributeList(siex.lpAttributeList, MaxLengthOfProcThreadAttributeList, 0, &size))
+			throw Error("InitializeProcThreadAttributeList.2");
 
-	if (!m_inheritedHandles.empty()) {
-		std::vector<HANDLE> handles;
-		handles.reserve(m_inheritedHandles.size());
-		std::ranges::transform(m_inheritedHandles, std::back_inserter(handles), [](auto& v) { return static_cast<HANDLE>(v); });
-		if (!UpdateProcThreadAttribute(siex.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, &handles[0], handles.size() * sizeof handles[0], nullptr, nullptr))
-			throw Error("UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_HANDLE_LIST)");
-	}
+		if (!m_inheritedHandles.empty()) {
+			std::vector<HANDLE> handles;
+			handles.reserve(m_inheritedHandles.size());
+			std::ranges::transform(m_inheritedHandles, std::back_inserter(handles), [](auto& v) { return static_cast<HANDLE>(v); });
+			if (!UpdateProcThreadAttribute(siex.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, &handles[0], handles.size() * sizeof handles[0], nullptr, nullptr))
+				throw Error("UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_HANDLE_LIST)");
+		}
 
-	if (m_parentProcess) {
-		auto hParentProcess = static_cast<HANDLE>(m_parentProcess);
-		if (!UpdateProcThreadAttribute(siex.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &hParentProcess, sizeof hParentProcess, nullptr, nullptr))
-			throw Error("UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS)");
+		if (m_parentProcess) {
+			auto hParentProcess = static_cast<HANDLE>(m_parentProcess);
+			if (!UpdateProcThreadAttribute(siex.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &hParentProcess, sizeof hParentProcess, nullptr, nullptr))
+				throw Error("UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS)");
+		}
 	}
 
 	std::wstring args;
@@ -148,7 +153,25 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 	} else
 		args = m_args;
 
-	if (!CreateProcessW(m_path.c_str(), &args[0], nullptr, nullptr, TRUE, EXTENDED_STARTUPINFO_PRESENT, nullptr, m_dir.empty() ? nullptr : m_dir.c_str(), &siex.StartupInfo, &pi))
+	std::wstring environString;
+	if (m_environInitialized) {
+		for (const auto& item : m_environ) {
+			environString.append(item.first);
+			environString.push_back(L'=');
+			environString.append(item.second);
+			environString.push_back(0);
+		}
+		environString.push_back(0);
+	}
+	
+	if (!CreateProcessW(m_path.c_str(), &args[0],
+		nullptr, nullptr,
+		m_inheritedHandles.empty() ? FALSE : TRUE,
+		CREATE_UNICODE_ENVIRONMENT | (siex.lpAttributeList ? EXTENDED_STARTUPINFO_PRESENT : 0),
+		environString.empty() ? nullptr : environString.data(),
+		m_dir.empty() ? nullptr : m_dir.c_str(),
+		&siex.StartupInfo,
+		&pi))
 		throw Error("CreateProcess");
 
 	assert(pi.hThread);
@@ -240,11 +263,40 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithUnspecifiedShow(
 	return WithShow(0, false);
 }
 
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithEnviron(std::wstring_view key, std::wstring value) {
+	InitializeEnviron();
+	m_environ.emplace(key, std::move(value));
+	return *this;
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithoutEnviron(const std::wstring& key) {
+	InitializeEnviron();
+	m_environ.erase(key);
+	return *this;
+}
+
 Utils::Win32::Handle Utils::Win32::ProcessBuilder::Inherit(HANDLE hSource) {
 	auto h = Handle::DuplicateFrom<Handle>(hSource, true);
 	auto ret = Handle(h, false);
 	m_inheritedHandles.emplace_back(std::move(h));
 	return ret;
+}
+
+void Utils::Win32::ProcessBuilder::InitializeEnviron() {
+	if (m_environInitialized)
+		return;
+	auto ptr = GetEnvironmentStringsW();
+	const auto ptrFree = Utils::CallOnDestruction([ptr]() { FreeEnvironmentStringsW(ptr); });
+	while (*ptr) {
+		const auto part = std::wstring_view(ptr, wcslen(ptr));
+		const auto eqPos = part.find(L'=', 1);
+		if (eqPos != std::wstring_view::npos)
+			m_environ.emplace(part.substr(0, eqPos), part.substr(eqPos + 1));
+		else
+			m_environ.emplace(part, std::wstring());
+		ptr += part.size() + 1;
+	}
+	m_environInitialized = true;
 }
 
 Utils::Win32::Process& Utils::Win32::Process::Attach(HANDLE r, bool ownership, const std::string & errorMessage) {
@@ -262,17 +314,21 @@ void Utils::Win32::Process::Clear() {
 	Handle::Clear();
 }
 
-HMODULE Utils::Win32::Process::AddressOf(std::filesystem::path path, ModuleNameCompareMode compareMode, bool require) const {
+std::vector<HMODULE> Utils::Win32::Process::EnumModules() const {
 	std::vector<HMODULE> hModules;
 	DWORD cbNeeded;
 	do {
 		hModules.resize(hModules.size() + std::min<size_t>(1024, std::max<size_t>(32768, hModules.size())));
 		cbNeeded = static_cast<DWORD>(hModules.size());
 		if (!EnumProcessModules(m_object, &hModules[0], static_cast<DWORD>(hModules.size() * sizeof(HMODULE)), &cbNeeded))
-			throw Error(std::format("FindModuleAdderss(pid={}, path={})/EnumProcessModules", GetProcessId(m_object), ToUtf8(path)));
+			throw Error(std::format("EnumProcessModules(pid={})", GetProcessId(m_object)));
 	} while (cbNeeded == hModules.size() * sizeof(HMODULE));
 	hModules.resize(cbNeeded / sizeof(HMODULE));
 
+	return hModules;
+}
+
+HMODULE Utils::Win32::Process::AddressOf(std::filesystem::path path, ModuleNameCompareMode compareMode, bool require) const {
 	switch (compareMode) {
 		case ModuleNameCompareMode::FullPath:
 			path = canonical(path);
@@ -287,7 +343,7 @@ HMODULE Utils::Win32::Process::AddressOf(std::filesystem::path path, ModuleNameC
 
 	std::wstring sModName;
 	sModName.resize(PATHCCH_MAX_CCH);
-	for (const auto hModule : hModules) {
+	for (const auto hModule : EnumModules()) {
 		auto remoteModulePath = PathOf(hModule);
 		switch (compareMode) {
 			case ModuleNameCompareMode::FullPath:
@@ -365,7 +421,7 @@ int Utils::Win32::Process::CallRemoteFunction(void* rpfn, void* rpParam, const c
 }
 
 std::pair<void*, void*> Utils::Win32::Process::FindImportedFunction(HMODULE hModule, const std::filesystem::path & dllName, const char* pszFunctionName, uint32_t hintOrOrdinal) const {
-	const auto fileName = ToUtf8(dllName.filename());
+	const auto fileName = ToUtf8(dllName.filename().wstring());
 
 	auto& mem = GetModuleMemoryBlockManager(hModule);
 	for (const auto& importTableItem : mem.ReadDataDirectory<IMAGE_IMPORT_DESCRIPTOR>(IMAGE_DIRECTORY_ENTRY_IMPORT)) {

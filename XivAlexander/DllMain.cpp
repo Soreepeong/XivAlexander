@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "DllMain.h"
 
 #include <XivAlexander/XivAlexander.h>
@@ -7,6 +7,7 @@
 #include <XivAlexanderCommon/XivAlex.h>
 
 #include "App_ConfigRepository.h"
+#include "App_Misc_CrashMessageBoxHandler.h"
 #include "App_Misc_Hooks.h"
 #include "resource.h"
 
@@ -106,7 +107,7 @@ static void CheckObfuscatedArguments() {
 			static const auto pairs = Sqex::CommandLine::FromString(args[1], &wasObfuscated);
 			if (wasObfuscated) {
 				static auto newlyCreatedArgumentsW = std::format(L"\"{}\" {}", process.PathOf().wstring(), Utils::Win32::ReverseCommandLineToArgv(Sqex::CommandLine::ToString(pairs, true)));
-				static auto newlyCreatedArgumentsA = Utils::ToOem(newlyCreatedArgumentsW);
+				static auto newlyCreatedArgumentsA = Utils::ToUtf8(newlyCreatedArgumentsW, CP_OEMCP);
 
 				static App::Misc::Hooks::ImportedFunction<LPWSTR> GetCommandLineW("kernel32!GetCommandLineW", "kernel32.dll", "GetCommandLineW");
 				static const auto h1 = GetCommandLineW.SetHook([]() -> LPWSTR {
@@ -124,6 +125,8 @@ static void CheckObfuscatedArguments() {
 	}
 }
 
+static std::unique_ptr<App::Misc::CrashMessageBoxHandler> s_crashMessageBoxHandler;
+
 BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 	switch (fdwReason) {
 		case DLL_PROCESS_ATTACH: {
@@ -140,6 +143,9 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 				MH_Initialize();
 				if (s_bLoadedAsDependency)
 					CheckObfuscatedArguments();
+
+				s_crashMessageBoxHandler = std::make_unique<App::Misc::CrashMessageBoxHandler>();
+
 			} catch (const std::exception& e) {
 				Utils::Win32::DebugPrint(L"DllMain({:x}, DLL_PROCESS_ATTACH, {}) Error: {}",
 					reinterpret_cast<size_t>(hInstance), reinterpret_cast<size_t>(lpReserved), e.what());
@@ -150,6 +156,9 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 
 		case DLL_PROCESS_DETACH: {
 			auto fail = false;
+
+			s_crashMessageBoxHandler.reset();
+
 			if (const auto res = MH_Uninitialize(); res != MH_OK) {
 				fail = true;
 				Utils::Win32::DebugPrint(L"MH_Uninitialize error: {}", MH_StatusToString(res));
@@ -210,6 +219,45 @@ const char* Dll::GetUnloadDisabledReason() {
 
 bool Dll::IsLoadedAsDependency() {
 	return s_bLoadedAsDependency;
+}
+
+const wchar_t* Dll::GetGenericMessageBoxTitle() {
+	static std::wstring buf;
+	if (buf.empty()) {
+		buf = std::format(L"{} {}",
+			GetStringResFromId(IDS_APP_NAME),
+			Utils::Win32::FormatModuleVersionString(Module().PathOf()).second);
+	}
+	return buf.data();
+}
+
+int Dll::MessageBoxF(HWND hWnd, UINT uType, const std::wstring& text) {
+	return MessageBoxF(hWnd, uType, text.c_str());
+}
+
+int Dll::MessageBoxF(HWND hWnd, UINT uType, const std::string& text) {
+	return MessageBoxF(hWnd, uType, Utils::FromUtf8(text));
+}
+
+int Dll::MessageBoxF(HWND hWnd, UINT uType, const wchar_t* text) {
+	return MessageBoxW(hWnd, text, GetGenericMessageBoxTitle(), uType);
+}
+
+int Dll::MessageBoxF(HWND hWnd, UINT uType, const char* text) {
+	return MessageBoxF(hWnd, uType, Utils::FromUtf8(text));
+}
+
+LPCWSTR Dll::GetStringResFromId(UINT resId) {
+	try {
+		const auto conf = App::Config::Acquire();
+		return conf->Runtime.GetStringRes(resId);
+	} catch (...) {
+		return FindStringResourceEx(Module(), resId);
+	}
+}
+
+int Dll::MessageBoxF(HWND hWnd, UINT uType, UINT stringResId) {
+	return MessageBoxF(hWnd, uType, GetStringResFromId(stringResId));
 }
 
 HWND Dll::FindGameMainWindow(bool throwOnError) {

@@ -89,8 +89,7 @@ bool App::Window::ConfigWindow::TrySave() {
 		m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(&m_originalConfig[0]));
 		m_pRepository->Reload(true);
 	} catch (nlohmann::json::exception& e) {
-		Utils::Win32::MessageBoxF(m_hWnd, MB_ICONERROR, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-			m_config->Runtime.FormatStringRes(IDS_ERROR_CONFIGURATION_SAVE, e.what()));
+		Dll::MessageBoxF(m_hWnd, MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_CONFIGURATION_SAVE, e.what()));
 		return false;
 	}
 
@@ -143,8 +142,7 @@ LRESULT App::Window::ConfigWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 			m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(&buf[0]));
 			buf.resize(buf.length() - 1);
 			if (buf != m_originalConfig) {
-				switch (Utils::Win32::MessageBoxF(m_hWnd, MB_YESNOCANCEL | MB_ICONQUESTION, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-					m_config->Runtime.GetStringRes(IDS_CONFIRM_CONFIG_WINDOW_CLOSE))) {
+				switch (Dll::MessageBoxF(m_hWnd, MB_YESNOCANCEL | MB_ICONQUESTION, m_config->Runtime.GetStringRes(IDS_CONFIRM_CONFIG_WINDOW_CLOSE))) {
 					case IDCANCEL:
 						return 0;
 					case IDYES:

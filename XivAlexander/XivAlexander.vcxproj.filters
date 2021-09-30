@@ -107,6 +107,9 @@
     <ClCompile Include="App_Misc_VirtualSqPacks.cpp">
       <Filter>App\Misc</Filter>
     </ClCompile>
+    <ClCompile Include="App_Misc_CrashMessageBoxHandler.cpp">
+      <Filter>App\Misc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -192,6 +195,9 @@
       <Filter>App\Misc</Filter>
     </ClInclude>
     <ClInclude Include="App_Misc_VirtualSqPacks.h">
+      <Filter>App\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Misc_CrashMessageBoxHandler.h">
       <Filter>App\Misc</Filter>
     </ClInclude>
   </ItemGroup>

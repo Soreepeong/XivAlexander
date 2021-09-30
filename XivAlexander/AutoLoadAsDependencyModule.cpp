@@ -61,9 +61,8 @@ Ret ChainCall(const char* szDllName, const char* szFunctionName, std::vector<std
 
 		} catch (const std::exception& e) {
 			const auto activationContextCleanup = Dll::ActivationContext().With();
-			const auto choice = Utils::Win32::MessageBoxF(
+			const auto choice = Dll::MessageBoxF(
 				Dll::FindGameMainWindow(false), MB_ICONWARNING | MB_ABORTRETRYIGNORE,
-				FindStringResourceEx(Dll::Module(), IDS_APP_NAME, s_wLanguage) + 1,
 				L"Failed to load {}.\nReason: {}\n\nPress Abort to exit.\nPress Retry to keep on loading.\nPress Ignore to skip right ahead to system DLL.",
 				dll, e.what());
 			switch (choice) {
@@ -87,10 +86,10 @@ Ret ChainCall(const char* szDllName, const char* szFunctionName, std::vector<std
 	}
 
 	const auto activationContextCleanup = Dll::ActivationContext().With();
-	Utils::Win32::MessageBoxF(
+	Dll::MessageBoxF(
 		Dll::FindGameMainWindow(false), MB_ICONERROR,
-		FindStringResourceEx(Dll::Module(), IDS_APP_NAME, s_wLanguage) + 1,
-		L"Failed to load any of the possible {}. Aborting.", szDllName);
+		L"Failed to load any of the possible {}. Aborting.",
+		szDllName);
 	TerminateProcess(GetCurrentProcess(), -1);
 	ExitProcess(-1);  // Mark noreturn
 }
@@ -232,9 +231,13 @@ void AutoLoadAsDependencyModule() {
 
 	Dll::DisableUnloading(std::format("Loaded as DLL dependency in place of {}", Dll::Module().PathOf().filename()).c_str());
 
+	GetEnvironmentVariableW(L"XIVALEXANDER_DISABLE", nullptr, 0);
+	if (GetLastError() != ERROR_ENVVAR_NOT_FOUND)
+		return;
+
 	std::filesystem::path loadPath;
 	try {
-		std::shared_ptr<App::Config> conf = App::Config::Acquire();
+		const auto conf = App::Config::Acquire();
 		loadPath = conf->Init.ResolveXivAlexInstallationPath() / XivAlex::XivAlexDllNameW;
 		const auto loadTarget = Utils::Win32::LoadedModule(loadPath);
 		const auto params = XivAlexDll::PatchEntryPointForInjection(GetCurrentProcess());
@@ -247,9 +250,8 @@ void AutoLoadAsDependencyModule() {
 		const auto activationContextCleanup = Dll::ActivationContext().With();
 		auto loop = true;
 		while (loop) {
-			const auto choice = Utils::Win32::MessageBoxF(
+			const auto choice = Dll::MessageBoxF(
 				Dll::FindGameMainWindow(false), MB_ICONWARNING | MB_ABORTRETRYIGNORE,
-				FindStringResourceEx(Dll::Module(), IDS_APP_NAME, s_wLanguage) + 1,
 				L"{}\nReason: {}\n\nPress Abort to exit.\nPress Retry to open XivAlexander help webpage.\nPress Ignore to skip loading XivAlexander.",
 				loadPath.empty() ? L"Failed to resolve XivAlexander installation path." : std::format(L"Failed to load {}.", loadPath.wstring()),
 				e.what());
@@ -260,9 +262,8 @@ void AutoLoadAsDependencyModule() {
 					shex.nShow = SW_SHOW;
 					shex.lpFile = FindStringResourceEx(Dll::Module(), IDS_URL_HELP, s_wLanguage) + 1;
 					if (!ShellExecuteExW(&shex)) {
-						Utils::Win32::MessageBoxF(
+						Dll::MessageBoxF(
 							Dll::FindGameMainWindow(false), MB_OK | MB_ICONERROR,
-							FindStringResourceEx(Dll::Module(), IDS_APP_NAME, s_wLanguage) + 1,
 							std::format(FindStringResourceEx(Dll::Module(), IDS_ERROR_UNEXPECTED, s_wLanguage) + 1, Utils::Win32::FormatWindowsErrorMessage(GetLastError())));
 					}
 					break;
@@ -344,9 +345,8 @@ void AutoLoadAsDependencyModule() {
 //		MessageBoxA(nullptr, json.c_str(), "", MB_OK);
 //		dalamud.GetProcAddress<DWORD(WINAPI*)(LPVOID)>("Initialize", true)(&json[0]);
 //	} catch (const std::exception& e) {
-//		Utils::Win32::MessageBoxF(
+//		Dll::MessageBoxF(
 //			Dll::FindGameMainWindow(false), MB_ICONWARNING,
-//			FindStringResourceEx(Dll::Module(), IDS_APP_NAME, s_wLanguage) + 1,
 //			L"Failed to load Dalamud.\nReason: {}", e.what());
 //	}
 //}

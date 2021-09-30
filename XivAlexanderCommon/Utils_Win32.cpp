@@ -11,8 +11,8 @@ HANDLE Utils::Win32::g_hDefaultHeap = 0;
 std::string Utils::Win32::FormatWindowsErrorMessage(unsigned int errorCode, int languageId) {
 	std::set<std::string> messages;
 	for (const auto langId : {
-		languageId,
-		MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
+			languageId,
+			MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
 #ifdef _DEBUG
 		MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN),
 		MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN),
@@ -131,13 +131,35 @@ bool Utils::Win32::EnableTokenPrivilege(HANDLE hToken, LPCTSTR Privilege, bool b
 	return true;
 }
 
-void Utils::Win32::SetThreadDescription(HANDLE hThread, const std::wstring& description) {
-	decltype(&::SetThreadDescription) pfnSetThreadDescription = nullptr;
+std::wstring Utils::Win32::TryGetThreadDescription(HANDLE hThread) {
+	static decltype(&::GetThreadDescription) pfnGetThreadDescription = nullptr;
 
-	if (const auto hMod = LoadedModule(L"kernel32.dll", LOAD_LIBRARY_SEARCH_SYSTEM32, false))
-		pfnSetThreadDescription = hMod.GetProcAddress<decltype(pfnSetThreadDescription)>("SetThreadDescription");
-	else if (const auto hMod = LoadedModule(L"KernelBase.dll", LOAD_LIBRARY_SEARCH_SYSTEM32, false))
-		pfnSetThreadDescription = hMod.GetProcAddress<decltype(pfnSetThreadDescription)>("SetThreadDescription");
+	if (!pfnGetThreadDescription) {
+		if (const auto hMod = LoadedModule(L"kernel32.dll", LOAD_LIBRARY_SEARCH_SYSTEM32, false))
+			pfnGetThreadDescription = hMod.GetProcAddress<decltype(pfnGetThreadDescription)>("GetThreadDescription");
+		else if (const auto hMod = LoadedModule(L"KernelBase.dll", LOAD_LIBRARY_SEARCH_SYSTEM32, false))
+			pfnGetThreadDescription = hMod.GetProcAddress<decltype(pfnGetThreadDescription)>("GetThreadDescription");
+	}
+
+	if (!pfnGetThreadDescription)
+		return L"(unsupported)";
+
+	wchar_t* pName = nullptr;
+	if (const auto hr = pfnGetThreadDescription(hThread, &pName); FAILED(hr))
+		return std::format(L"(failed to read thread description: {})", Error(_com_error(hr)).what());
+
+	return pName;
+}
+
+void Utils::Win32::SetThreadDescription(HANDLE hThread, const std::wstring& description) {
+	static decltype(&::SetThreadDescription) pfnSetThreadDescription = nullptr;
+
+	if (!pfnSetThreadDescription) {
+		if (const auto hMod = LoadedModule(L"kernel32.dll", LOAD_LIBRARY_SEARCH_SYSTEM32, false))
+			pfnSetThreadDescription = hMod.GetProcAddress<decltype(pfnSetThreadDescription)>("SetThreadDescription");
+		else if (const auto hMod = LoadedModule(L"KernelBase.dll", LOAD_LIBRARY_SEARCH_SYSTEM32, false))
+			pfnSetThreadDescription = hMod.GetProcAddress<decltype(pfnSetThreadDescription)>("SetThreadDescription");
+	}
 
 	if (pfnSetThreadDescription)
 		pfnSetThreadDescription(hThread, description.data());
@@ -162,7 +184,7 @@ int Utils::Win32::MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, c
 }
 
 void Utils::Win32::SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked, bool bEnabled, std::wstring newText) {
-	MENUITEMINFOW mii = { sizeof(MENUITEMINFOW) };
+	MENUITEMINFOW mii = {sizeof(MENUITEMINFOW)};
 	mii.fMask = MIIM_STATE | (!newText.empty() ? MIIM_STRING : 0);
 
 	GetMenuItemInfoW(hMenu, nMenuId, false, &mii);
@@ -207,7 +229,7 @@ bool Utils::Win32::IsUserAnAdmin() {
 		0, 0, 0, 0, 0, 0,
 		&adminGroup))
 		return false;
-	const auto cleanup = CallOnDestruction([adminGroup]() {FreeSid(adminGroup); });
+	const auto cleanup = CallOnDestruction([adminGroup]() { FreeSid(adminGroup); });
 
 	if (BOOL b = FALSE; CheckTokenMembership(nullptr, adminGroup, &b) && b)
 		return true;
@@ -233,7 +255,7 @@ std::filesystem::path Utils::Win32::GetSystem32Path() {
 	sysDir.resize(GetSystemDirectoryW(&sysDir[0], static_cast<UINT>(sysDir.size())));
 	if (sysDir.empty())
 		throw Error("GetSystemWindowsDirectoryW");
-	return { std::move(sysDir) };
+	return {std::move(sysDir)};
 }
 
 std::filesystem::path Utils::Win32::EnsureKnownFolderPath(const KNOWNFOLDERID& rfid) {
@@ -258,9 +280,11 @@ static Utils::CallOnDestruction WithRunAsInvoker() {
 		throw Utils::Win32::Error("GetEnvironmentVariableW");
 	if (!SetEnvironmentVariableW(NeverElevateEnvKey, NeverElevateEnvVal))
 		throw Utils::Win32::Error("SetEnvironmentVariableW");
-	return { [env = std::move(env), envNone] () {
-		SetEnvironmentVariableW(NeverElevateEnvKey, envNone ? nullptr : &env[0]);
-	} };
+	return {
+		[env = std::move(env), envNone]() {
+			SetEnvironmentVariableW(NeverElevateEnvKey, envNone ? nullptr : &env[0]);
+		}
+	};
 }
 
 bool Utils::Win32::RunProgram(RunProgramParams params) {
@@ -280,8 +304,7 @@ bool Utils::Win32::RunProgram(RunProgramParams params) {
 	switch (params.elevateMode) {
 		case RunProgramParams::Normal:
 		case RunProgramParams::Force:
-		case RunProgramParams::NeverUnlessAlreadyElevated:
-		{
+		case RunProgramParams::NeverUnlessAlreadyElevated: {
 			if (params.elevateMode == RunProgramParams::NeverUnlessAlreadyElevated)
 				cleanup += WithRunAsInvoker();
 
@@ -310,8 +333,7 @@ bool Utils::Win32::RunProgram(RunProgramParams params) {
 
 		case RunProgramParams::NeverUnlessShellIsElevated:
 		case RunProgramParams::CancelIfRequired:
-		case RunProgramParams::NoElevationIfDenied:
-		{
+		case RunProgramParams::NoElevationIfDenied: {
 			if (params.elevateMode == RunProgramParams::NeverUnlessShellIsElevated) {
 				if (!IsUserAnAdmin()) {
 					params.elevateMode = RunProgramParams::NeverUnlessAlreadyElevated;
@@ -365,26 +387,36 @@ std::wstring Utils::Win32::GetCommandLineWithoutProgramName() {
 	return ptr;
 }
 
+// https://docs.microsoft.com/en-us/archive/blogs/twistylittlepassagesallalike/everyone-quotes-command-line-arguments-the-wrong-way
 std::wstring Utils::Win32::ReverseCommandLineToArgv(const std::wstring& arg) {
-	if (arg.find_first_of(L"\" ") != std::wstring::npos) {
-		std::wostringstream ss;
-		ss << L"\"";
-		for (size_t pos = 0; pos < arg.size();) {
-			const auto special = arg.find_first_of(L"\\\"", pos);
-			if (special == std::wstring::npos) {
-				ss << arg.substr(pos);
+	std::wstring res;
+	if (!arg.empty() && arg.find_first_of(L" \t\n\v\"") == std::wstring::npos)
+		res.append(arg);
+	else {
+		res.push_back(L'"');
+		for (auto it = arg.begin(); ; ++it) {
+			size_t bsCount = 0;
+
+			while (it != arg.end() && *it == L'\\') {
+				++it;
+				++bsCount;
+			}
+
+			if (it == arg.end()) {
+				res.append(bsCount * 2, L'\\');
 				break;
+			} else if (*it == L'"') {
+				res.append(bsCount * 2 + 1, L'\\');
+				res.push_back(*it);
 			} else {
-				ss << arg.substr(pos, special - pos) << L"\\" << arg[special];
-				pos = special + 1;
+				res.append(bsCount, L'\\');
+				res.push_back(*it);
 			}
 		}
-		ss << L"\"";
-		return ss.str();
 
-	} else {
-		return arg;
+		res.push_back(L'"');
 	}
+	return res;
 }
 
 std::wstring Utils::Win32::ReverseCommandLineToArgv(const std::span<const std::wstring>& argv) {
@@ -403,25 +435,34 @@ std::wstring Utils::Win32::ReverseCommandLineToArgv(const std::initializer_list<
 }
 
 std::string Utils::Win32::ReverseCommandLineToArgv(const std::string& arg) {
-	if (arg.find_first_of("\" ") != std::wstring::npos) {
-		std::ostringstream ss;
-		ss << "\"";
-		for (size_t pos = 0; pos < arg.size();) {
-			const auto special = arg.find_first_of("\\\"", pos);
-			if (special == std::wstring::npos) {
-				ss << arg.substr(pos);
+	std::string res;
+	if (!arg.empty() && arg.find_first_of(" \t\n\v\"") == std::string::npos)
+		res.append(arg);
+	else {
+		res.push_back('"');
+		for (auto it = arg.begin(); ; ++it) {
+			size_t bsCount = 0;
+
+			while (it != arg.end() && *it == '\\') {
+				++it;
+				++bsCount;
+			}
+
+			if (it == arg.end()) {
+				res.append(bsCount * 2, '\\');
 				break;
+			} else if (*it == '"') {
+				res.append(bsCount * 2 + 1, '\\');
+				res.push_back(*it);
 			} else {
-				ss << arg.substr(pos, special - pos) << "\\" << arg[special];
-				pos = special + 1;
+				res.append(bsCount, '\\');
+				res.push_back(*it);
 			}
 		}
-		ss << "\"";
-		return ss.str();
 
-	} else {
-		return arg;
+		res.push_back('"');
 	}
+	return res;
 }
 
 std::string Utils::Win32::ReverseCommandLineToArgv(const std::span<const std::string>& argv) {
@@ -457,7 +498,8 @@ Utils::Win32::Error::Error(DWORD errorCode, const std::string& msg)
 	, m_nErrorCode(errorCode) {
 }
 
-Utils::Win32::Error::Error(const std::string& msg) : Error(GetLastError(), msg) {
+Utils::Win32::Error::Error(const std::string& msg)
+	: Error(GetLastError(), msg) {
 }
 
 Utils::Win32::Error::Error(const _com_error& e)
@@ -466,8 +508,8 @@ Utils::Win32::Error::Error(const _com_error& e)
 			static_cast<uint32_t>(e.Error()),
 			ToUtf8(e.ErrorMessage()),
 			ToUtf8(e.Description().length() ? static_cast<const wchar_t*>(e.Description()) : L""))
-	),
-	m_nErrorCode(e.Error()) {
+	)
+	, m_nErrorCode(e.Error()) {
 }
 
 void Utils::Win32::Error::ThrowIfFailed(HRESULT hresult, bool expectCancel) {

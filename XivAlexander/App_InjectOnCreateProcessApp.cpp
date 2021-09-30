@@ -96,8 +96,7 @@ struct App::InjectOnCreateProcessApp::Implementation {
 		error += L" _DEBUG";
 #endif
 		if (!error.empty()) {
-			Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR,
-				FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
+			Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR,
 				L"Error: {}\n\n"
 				L"isTarget={}\n"
 				L"Self: PID={}, Platform={}, Path={}\n"
@@ -225,7 +224,7 @@ void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters* pParam) 
 				skipFree = p->SkipFree;
 
 #ifdef _DEBUG
-				Utils::Win32::MessageBoxF(nullptr, MB_OK, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
+				Dll::MessageBoxF(nullptr, MB_OK,
 					L"PID: {}\nPath: {}\nCommand Line: {}", process.GetId(), process.PathOf().wstring(), GetCommandLineW());
 #endif
 
@@ -233,7 +232,7 @@ void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters* pParam) 
 				InitializeBeforeOriginalEntryPoint(hContinueNotify);
 				SetEvent(hContinueNotify);
 			} catch (const std::exception& e) {
-				Utils::Win32::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, FindStringResourceEx(Dll::Module(), IDS_APP_NAME) + 1,
+				Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR,
 					1 + FindStringResourceEx(Dll::Module(), IDS_ERROR_INJECT),
 					e.what(), process.GetId(), process.PathOf().wstring(), GetCommandLineW());
 

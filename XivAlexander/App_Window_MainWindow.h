@@ -72,5 +72,7 @@ namespace App::Window {
 
 		std::pair<std::filesystem::path, std::string> InstallAnyFile(const std::filesystem::path& path, const Utils::Win32::Event& cancelEvent);
 		void InstallMultipleFiles(const std::vector<std::filesystem::path>& paths);
+
+		void EnsureAndOpenDirectory(const std::filesystem::path& path);
 	};
 }

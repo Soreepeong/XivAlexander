@@ -8,7 +8,8 @@
 #include <shtypes.h>
 
 namespace Utils::Win32 {
-
+	
+	std::wstring TryGetThreadDescription(HANDLE hThread);
 	void SetThreadDescription(HANDLE hThread, const std::wstring& description);
 
 	template <typename ... Args>

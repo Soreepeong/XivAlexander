@@ -38,6 +38,7 @@ namespace Utils::Win32 {
 			FileNameWithExtension = 1,
 			FileNameWithoutExtension = 2,
 		};
+		[[nodiscard]] std::vector<HMODULE> EnumModules() const;
 		[[nodiscard]] HMODULE AddressOf(std::filesystem::path path, ModuleNameCompareMode compareMode = ModuleNameCompareMode::FullPath, bool require = true) const;
 		[[nodiscard]] std::filesystem::path PathOf(HMODULE hModule = nullptr) const;
 		[[nodiscard]] bool IsCurrentProcessPseudoHandle() const;
@@ -137,6 +138,9 @@ namespace Utils::Win32 {
 		std::vector<Handle> m_inheritedHandles;
 		Process m_parentProcess;
 
+		bool m_environInitialized = false;
+		std::map<std::wstring, std::wstring> m_environ;
+
 	public:
 		ProcessBuilder();
 		ProcessBuilder(ProcessBuilder&&) noexcept;
@@ -169,12 +173,17 @@ namespace Utils::Win32 {
 		ProcessBuilder& WithUnspecifiedPosition();
 		ProcessBuilder& WithShow(WORD show, bool use = true);
 		ProcessBuilder& WithUnspecifiedShow();
+		ProcessBuilder& WithEnviron(std::wstring_view key, std::wstring value);
+		ProcessBuilder& WithoutEnviron(const std::wstring& key);
 
 		Handle Inherit(HANDLE hSource);
 		template<typename T, typename = std::is_base_of<T, Handle>>
 		T Inherit(T source) {
 			return T(Inherit(static_cast<HANDLE>(source)), false);
 		}
+
+	private:
+		void InitializeEnviron();
 	};
 
 	class ModuleMemoryBlocks {

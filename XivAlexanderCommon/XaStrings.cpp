@@ -3,32 +3,18 @@
 
 #include "Utils_Win32.h"
 
-std::wstring Utils::FromUtf8(const std::string& in) {
-	const size_t length = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), static_cast<int>(in.size()), nullptr, 0);
-	std::wstring u16(length, 0);
-	MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, in.c_str(), static_cast<int>(in.size()), const_cast<LPWSTR>(u16.c_str()), static_cast<int>(u16.size()));
-	return u16;
+std::wstring Utils::FromUtf8(std::string_view str, UINT codePage) {
+	const size_t length = MultiByteToWideChar(codePage, 0, str.data(), static_cast<int>(str.size()), nullptr, 0);
+	std::wstring wstr(length, 0);
+	MultiByteToWideChar(codePage, MB_ERR_INVALID_CHARS, str.data(), static_cast<int>(str.size()), const_cast<LPWSTR>(wstr.data()), static_cast<int>(wstr.size()));
+	return wstr;
 }
 
-std::string Utils::ToUtf8(const std::wstring& u16) {
-	const size_t length = WideCharToMultiByte(CP_UTF8, 0, u16.c_str(), static_cast<int>(u16.size()), nullptr, 0, nullptr, nullptr);
-	std::string u8(length, 0);
-	WideCharToMultiByte(CP_UTF8, 0, u16.c_str(), static_cast<int>(u16.size()), const_cast<LPSTR>(u8.c_str()), static_cast<int>(u8.size()), nullptr, nullptr);
-	return u8;
-}
-
-std::wstring Utils::FromOem(const std::string& in) {
-	const size_t length = MultiByteToWideChar(CP_OEMCP, 0, in.c_str(), static_cast<int>(in.size()), nullptr, 0);
-	std::wstring u16(length, 0);
-	MultiByteToWideChar(CP_OEMCP, MB_ERR_INVALID_CHARS, in.c_str(), static_cast<int>(in.size()), const_cast<LPWSTR>(u16.c_str()), static_cast<int>(u16.size()));
-	return u16;
-}
-
-std::string Utils::ToOem(const std::wstring& u16) {
-	const size_t length = WideCharToMultiByte(CP_OEMCP, 0, u16.c_str(), static_cast<int>(u16.size()), nullptr, 0, nullptr, nullptr);
-	std::string u8(length, 0);
-	WideCharToMultiByte(CP_OEMCP, 0, u16.c_str(), static_cast<int>(u16.size()), const_cast<LPSTR>(u8.c_str()), static_cast<int>(u8.size()), nullptr, nullptr);
-	return u8;
+std::string Utils::ToUtf8(std::wstring_view wstr, UINT codePage) {
+	const size_t length = WideCharToMultiByte(codePage, 0, wstr.data(), static_cast<int>(wstr.size()), nullptr, 0, nullptr, nullptr);
+	std::string str(length, 0);
+	WideCharToMultiByte(codePage, 0, wstr.data(), static_cast<int>(wstr.size()), const_cast<LPSTR>(str.c_str()), static_cast<int>(str.size()), nullptr, nullptr);
+	return str;
 }
 
 std::string Utils::ToString(const in_addr& ia) {

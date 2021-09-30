@@ -26,6 +26,7 @@ namespace App {
 namespace App::Misc {
 	class Logger {
 	public:
+		static const std::map<LogCategory, const char*> LogCategoryNames;
 
 		struct LogItem {
 			uint64_t id;
@@ -34,9 +35,8 @@ namespace App::Misc {
 			LogLevel level;
 			std::string log;
 
-			[[nodiscard]] auto TimestampAsLocalSystemTime() const {
-				return Utils::EpochToLocalSystemTime(std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count());
-			}
+			[[nodiscard]] SYSTEMTIME TimestampAsLocalSystemTime() const;
+			[[nodiscard]] std::string Format() const;
 		};
 
 	protected:
@@ -64,6 +64,8 @@ namespace App::Misc {
 		void Log(LogCategory category, const std::wstring& s, LogLevel level = LogLevel::Info);
 		void Log(LogCategory category, WORD wLanguage, UINT uStringResId, LogLevel level = LogLevel::Info);
 		void Clear();
+
+		void AskAndExportLogs(HWND hwndDialogParent, std::string_view heading = std::string_view(), std::string_view preformatted = std::string_view());
 
 		void WithLogs(const std::function<void(const std::deque<LogItem>& items)>& cb) const;
 		Utils::ListenerManager<Logger, void, const std::deque<LogItem>&> OnNewLogItem;
