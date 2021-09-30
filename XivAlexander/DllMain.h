@@ -41,4 +41,7 @@ namespace Dll {
 	int MessageBoxF(HWND hWnd, UINT uType, const char* format, Args ... args) {
 		return MessageBoxF(hWnd, uType, FromUtf8(std::format(format, std::forward<Args>(args)...)).c_str());
 	}
+
+	void SetLoadedFromEntryPoint();
+	[[nodiscard]] bool IsLoadedFromEntryPoint();
 }

@@ -79,12 +79,16 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 	const std::wregex Whitespace{LR"(\s+)"};
 
 	Implementation() {
-		m_cleanup += MessageBoxW.SetHook([this](HWND hWndParent, LPCWSTR body, LPCWSTR title, UINT flags) {
-			return ProcessMessageBox(hWndParent, body, title, flags);
-		});
-		m_cleanup += MessageBoxA.SetHook([this](HWND hWndParent, LPCSTR body, LPCSTR title, UINT flags) {
-			return ProcessMessageBox(hWndParent, Utils::FromUtf8(body, CP_OEMCP), Utils::FromUtf8(title, CP_OEMCP), flags);
-		});
+		if (MessageBoxW) {
+			m_cleanup += MessageBoxW.SetHook([this](HWND hWndParent, LPCWSTR body, LPCWSTR title, UINT flags) {
+				return ProcessMessageBox(hWndParent, body, title, flags);
+			});
+		}
+		if (MessageBoxA) {
+			m_cleanup += MessageBoxA.SetHook([this](HWND hWndParent, LPCSTR body, LPCSTR title, UINT flags) {
+				return ProcessMessageBox(hWndParent, Utils::FromUtf8(body, CP_OEMCP), Utils::FromUtf8(title, CP_OEMCP), flags);
+			});
+		}
 	}
 
 	int ProcessMessageBox(HWND hWndParent, const std::wstring& body, const std::wstring& title, UINT flags) {

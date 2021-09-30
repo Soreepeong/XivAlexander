@@ -191,6 +191,8 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
 	CharLowerW(&filename[0]);
 	s_injectOnCreateProcessApp = std::make_unique<App::InjectOnCreateProcessApp>();
 
+	Dll::SetLoadedFromEntryPoint();
+
 	if (filename != XivAlex::GameExecutableNameW)
 		return; // not the game process; don't load XivAlex app
 

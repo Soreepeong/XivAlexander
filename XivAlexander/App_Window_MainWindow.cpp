@@ -110,8 +110,8 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 	});
 
 	if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
-		auto& sqpacks = overrider.GetVirtualSqPacks();
-		m_cleanup += sqpacks.OnTtmpSetsChanged([this]() { RepopulateMenu(); });
+		if (const auto sqpacks = overrider.GetVirtualSqPacks())
+			m_cleanup += sqpacks->OnTtmpSetsChanged([this]() { RepopulateMenu(); });
 	}
 
 	m_cleanup += m_pApp->GetSocketHook()->OnSocketFound([this](auto&) {
@@ -443,87 +443,89 @@ void App::Window::MainWindow::RepopulateMenu() {
 		auto count = 0;
 
 		if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
-			auto& sqpacks = overrider.GetVirtualSqPacks();
-			for (auto& ttmpSet : sqpacks.TtmpSets()) {
-				const auto hSubMenu = CreatePopupMenu();
-				AppendMenuW(hSubMenu, MF_STRING | (ttmpSet.Enabled ? MF_CHECKED : 0), allocateMenuId([this, &ttmpSet]() {
-					try {
-						ttmpSet.Enabled = !ttmpSet.Enabled;
-						ttmpSet.ApplyChanges();
-					} catch (const std::exception& e) {
-						Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-					}
-				}), getMenuText(hTemplateEntryMenu, 0).c_str());
 
-				AppendMenuW(hSubMenu, MF_STRING, allocateMenuId([this, &ttmpSet, &sqpacks]() {
-					try {
-						if (Dll::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-							L"Delete \"{}\" at \"{}\"?", ttmpSet.List.Name, ttmpSet.ListPath.wstring()) == IDYES)
-							sqpacks.DeleteTtmp(ttmpSet.ListPath);
-					} catch (const std::exception& e) {
-						Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-					}
-				}), getMenuText(hTemplateEntryMenu, 1).c_str());
-
-				if (!ttmpSet.Allocated) {
-					AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
-					AppendMenuW(hSubMenu, MF_STRING | MF_DISABLED, 0, getMenuText(hTemplateEntryMenu, 3).c_str());
-				}
-
-				if (!ttmpSet.List.ModPackPages.empty())
-					AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
-
-				for (size_t pageObjectIndex = 0; pageObjectIndex < ttmpSet.List.ModPackPages.size(); ++pageObjectIndex) {
-					const auto& modGroups = ttmpSet.List.ModPackPages[pageObjectIndex].ModGroups;
-					if (modGroups.empty())
-						continue;
-					const auto pageConf = ttmpSet.Choices.at(pageObjectIndex);
-
-					for (size_t modGroupIndex = 0; modGroupIndex < modGroups.size(); ++modGroupIndex) {
-						const auto& modGroup = modGroups[modGroupIndex];
-						if (modGroup.OptionList.empty())
-							continue;
-
-						const auto choice = pageConf.at(modGroupIndex).get<size_t>();
-
-						const auto hModSubMenu = CreatePopupMenu();
-						for (size_t optionIndex = 0; optionIndex < modGroup.OptionList.size(); ++optionIndex) {
-							const auto& modEntry = modGroup.OptionList[optionIndex];
-
-							std::string description = modEntry.Name.empty() ? "-" : modEntry.Name;
-							if (!modEntry.GroupName.empty())
-								description += std::format(" ({})", modEntry.GroupName);
-							if (!modEntry.Description.empty())
-								description += std::format(" ({})", modEntry.Description);
-
-							AppendMenuW(hModSubMenu, MF_STRING | (optionIndex == choice ? MF_CHECKED : 0), allocateMenuId(
-								[this, pageObjectIndex, modGroupIndex, optionIndex, &ttmpSet]() {
-									try {
-										if (!ttmpSet.Choices.is_array())
-											ttmpSet.Choices = nlohmann::json::array();
-										while (ttmpSet.Choices.size() <= pageObjectIndex)
-											ttmpSet.Choices.insert(ttmpSet.Choices.end(), nlohmann::json::array());
-
-										auto& page = ttmpSet.Choices.at(pageObjectIndex);
-										if (!page.is_array())
-											page = nlohmann::json::array();
-										while (page.size() <= modGroupIndex)
-											page.insert(page.end(), 0);
-										page[modGroupIndex] = optionIndex;
-
-										ttmpSet.ApplyChanges();
-
-									} catch (const std::exception& e) {
-										Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-									}
-								}), Utils::FromUtf8(description).c_str());
+			if (const auto sqpacks = overrider.GetVirtualSqPacks()) {
+				for (auto& ttmpSet : sqpacks->TtmpSets()) {
+					const auto hSubMenu = CreatePopupMenu();
+					AppendMenuW(hSubMenu, MF_STRING | (ttmpSet.Enabled ? MF_CHECKED : 0), allocateMenuId([this, &ttmpSet]() {
+						try {
+							ttmpSet.Enabled = !ttmpSet.Enabled;
+							ttmpSet.ApplyChanges();
+						} catch (const std::exception& e) {
+							Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
 						}
-						AppendMenuW(hSubMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hModSubMenu), Utils::FromUtf8(modGroup.GroupName).c_str());
-					}
-				}
+					}), getMenuText(hTemplateEntryMenu, 0).c_str());
 
-				AppendMenuW(hParentMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hSubMenu), ttmpSet.ListPath.parent_path().filename().wstring().c_str());
-				count++;
+					AppendMenuW(hSubMenu, MF_STRING, allocateMenuId([this, &ttmpSet, &sqpacks]() {
+						try {
+							if (Dll::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+								L"Delete \"{}\" at \"{}\"?", ttmpSet.List.Name, ttmpSet.ListPath.wstring()) == IDYES)
+								sqpacks->DeleteTtmp(ttmpSet.ListPath);
+						} catch (const std::exception& e) {
+							Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+						}
+					}), getMenuText(hTemplateEntryMenu, 1).c_str());
+
+					if (!ttmpSet.Allocated) {
+						AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
+						AppendMenuW(hSubMenu, MF_STRING | MF_DISABLED, 0, getMenuText(hTemplateEntryMenu, 3).c_str());
+					}
+
+					if (!ttmpSet.List.ModPackPages.empty())
+						AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
+
+					for (size_t pageObjectIndex = 0; pageObjectIndex < ttmpSet.List.ModPackPages.size(); ++pageObjectIndex) {
+						const auto& modGroups = ttmpSet.List.ModPackPages[pageObjectIndex].ModGroups;
+						if (modGroups.empty())
+							continue;
+						const auto pageConf = ttmpSet.Choices.at(pageObjectIndex);
+
+						for (size_t modGroupIndex = 0; modGroupIndex < modGroups.size(); ++modGroupIndex) {
+							const auto& modGroup = modGroups[modGroupIndex];
+							if (modGroup.OptionList.empty())
+								continue;
+
+							const auto choice = pageConf.at(modGroupIndex).get<size_t>();
+
+							const auto hModSubMenu = CreatePopupMenu();
+							for (size_t optionIndex = 0; optionIndex < modGroup.OptionList.size(); ++optionIndex) {
+								const auto& modEntry = modGroup.OptionList[optionIndex];
+
+								std::string description = modEntry.Name.empty() ? "-" : modEntry.Name;
+								if (!modEntry.GroupName.empty())
+									description += std::format(" ({})", modEntry.GroupName);
+								if (!modEntry.Description.empty())
+									description += std::format(" ({})", modEntry.Description);
+
+								AppendMenuW(hModSubMenu, MF_STRING | (optionIndex == choice ? MF_CHECKED : 0), allocateMenuId(
+									[this, pageObjectIndex, modGroupIndex, optionIndex, &ttmpSet]() {
+										try {
+											if (!ttmpSet.Choices.is_array())
+												ttmpSet.Choices = nlohmann::json::array();
+											while (ttmpSet.Choices.size() <= pageObjectIndex)
+												ttmpSet.Choices.insert(ttmpSet.Choices.end(), nlohmann::json::array());
+
+											auto& page = ttmpSet.Choices.at(pageObjectIndex);
+											if (!page.is_array())
+												page = nlohmann::json::array();
+											while (page.size() <= modGroupIndex)
+												page.insert(page.end(), 0);
+											page[modGroupIndex] = optionIndex;
+
+											ttmpSet.ApplyChanges();
+
+										} catch (const std::exception& e) {
+											Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+										}
+									}), Utils::FromUtf8(description).c_str());
+							}
+							AppendMenuW(hSubMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hModSubMenu), Utils::FromUtf8(modGroup.GroupName).c_str());
+						}
+					}
+
+					AppendMenuW(hParentMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hSubMenu), ttmpSet.ListPath.parent_path().filename().wstring().c_str());
+					count++;
+				}
 			}
 		}
 
@@ -689,7 +691,7 @@ void App::Window::MainWindow::SetMenuStates() const {
 	{
 		SetMenuState(hMenu, ID_RESTART_RESTART, false, !m_launchParameters.empty());
 		SetMenuState(hMenu, ID_RESTART_USEDIRECTX11, m_bUseDirectX11, !m_launchParameters.empty());
-		SetMenuState(hMenu, ID_RESTART_USEXIVALEXANDER, Dll::IsLoadedAsDependency() || m_bUseXivAlexander, !m_launchParameters.empty() && !Dll::IsLoadedAsDependency());
+		SetMenuState(hMenu, ID_RESTART_USEXIVALEXANDER, m_bUseXivAlexander, !m_launchParameters.empty());
 		SetMenuState(hMenu, ID_RESTART_USEPARAMETEROBFUSCATION, m_bUseParameterObfuscation, !m_launchParameters.empty());
 		SetMenuState(hMenu, ID_RESTART_USEELEVATION, m_bUseElevation, !m_launchParameters.empty());
 		const auto languageRegionModifiable = LanguageRegionModifiable();
@@ -807,7 +809,7 @@ void App::Window::MainWindow::AskRestartGame(bool onlyOnModifier) {
 	if (Dll::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, m_config->Runtime.FormatStringRes(
 		IDS_CONFIRM_RESTART_GAME,
 		m_bUseDirectX11 ? yes : no,
-		Dll::IsLoadedAsDependency() || m_bUseXivAlexander ? yes : no,
+		m_bUseXivAlexander ? yes : no,
 		m_bUseParameterObfuscation ? yes : no,
 		m_bUseElevation ? yes : no,
 		m_config->Runtime.GetLanguageNameLocalized(m_gameLanguage),
@@ -844,6 +846,13 @@ void App::Window::MainWindow::AskRestartGame(bool onlyOnModifier) {
 		XivAlexDll::EnableInjectOnCreateProcess(0);
 		const auto revertInjectOnCreateProcess = Utils::CallOnDestruction([]() { XivAlexDll::EnableInjectOnCreateProcess(XivAlexDll::InjectOnCreateProcessAppFlags::Use | XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly); });
 		bool ok;
+
+		// This only mattered on initialization at AutoLoadAsDependencyModule, so it's safe to modify and not revert
+		if (m_bUseXivAlexander)
+			SetEnvironmentVariableW(L"XIVALEXANDER_DISABLE", nullptr);
+		else
+			SetEnvironmentVariableW(L"XIVALEXANDER_DISABLE", L"1");
+
 		if (!Dll::IsLoadedAsDependency() && m_bUseXivAlexander)
 			ok = Utils::Win32::RunProgram({
 				.path = Dll::Module().PathOf().parent_path() / (m_bUseDirectX11 ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW),
@@ -1338,25 +1347,25 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 					break;
 			}
 			if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, msg) == IDYES) {
-				
-					for (const auto& entry : std::filesystem::recursive_directory_iterator(m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods")) {
-						const auto choicesPath = entry.path().parent_path() / "choices.json";
-						auto lower = entry.path().filename().wstring();
-						CharLowerW(&lower[0]);
-						if (lower != L"ttmpl.mpl" || !exists(entry.path().parent_path() / L"TTMPD.mpd"))
-							continue;
 
-						const auto ttmpl = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream(entry.path()));
+				for (const auto& entry : std::filesystem::recursive_directory_iterator(m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods")) {
+					const auto choicesPath = entry.path().parent_path() / "choices.json";
+					auto lower = entry.path().filename().wstring();
+					CharLowerW(&lower[0]);
+					if (lower != L"ttmpl.mpl" || !exists(entry.path().parent_path() / L"TTMPD.mpd"))
+						continue;
 
-						const auto deleteFilePath = entry.path().parent_path() / "delete";
-						const auto disableFilePath = entry.path().parent_path() / "disable";
+					const auto ttmpl = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream(entry.path()));
 
-						if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
-							auto& sqpacks = overrider.GetVirtualSqPacks();
-							for (auto& set : sqpacks.TtmpSets()) {
+					const auto deleteFilePath = entry.path().parent_path() / "delete";
+					const auto disableFilePath = entry.path().parent_path() / "disable";
+
+					if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
+						if (const auto sqpacks = overrider.GetVirtualSqPacks()) {
+							for (auto& set : sqpacks->TtmpSets()) {
 								switch (menuId) {
 									case ID_MODDING_TTMP_REMOVEALL:
-										sqpacks.DeleteTtmp(set.ListPath);
+										sqpacks->DeleteTtmp(set.ListPath);
 										break;
 
 									case ID_MODDING_TTMP_ENABLEALL:
@@ -1370,9 +1379,10 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 										break;
 								}
 							}
-							sqpacks.RescanTtmp();
+							sqpacks->RescanTtmp();
 						}
 					}
+				}
 				RepopulateMenu();
 			}
 			return;
@@ -1384,8 +1394,8 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 
 		case ID_MODDING_TTMP_REFRESH:
 			if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
-				auto& sqpacks = overrider.GetVirtualSqPacks();
-				sqpacks.RescanTtmp();
+				if (const auto sqpacks = overrider.GetVirtualSqPacks())
+					sqpacks->RescanTtmp();
 			}
 			return;
 
@@ -1749,8 +1759,8 @@ std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& pa
 	std::filesystem::rename(temporaryTtmpDirectory, targetTtmpDirectory);
 
 	if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
-		auto& sqpacks = overrider.GetVirtualSqPacks();
-		sqpacks.AddNewTtmp(targetTtmpDirectory / "TTMPL.mpl");
+		if (const auto sqpacks = overrider.GetVirtualSqPacks())
+			sqpacks->AddNewTtmp(targetTtmpDirectory / "TTMPL.mpl");
 	}
 
 	return offerConfiguration ? Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_NOTIFY_TTMP_HAS_CONFIGURATION)) : "";

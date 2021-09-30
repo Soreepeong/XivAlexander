@@ -18,6 +18,6 @@ namespace App::Feature {
 
 		bool CanUnload() const;
 
-		Misc::VirtualSqPacks& GetVirtualSqPacks();
+		App::Misc::VirtualSqPacks* GetVirtualSqPacks();
 	};
 }

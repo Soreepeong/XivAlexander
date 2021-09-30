@@ -10,6 +10,7 @@
 #include "App_Misc_Hooks.h"
 #include "App_Misc_Logger.h"
 #include "App_Misc_VirtualSqPacks.h"
+#include "DllMain.h"
 
 std::weak_ptr<App::Feature::GameResourceOverrider::Implementation> App::Feature::GameResourceOverrider::s_pImpl;
 
@@ -62,10 +63,13 @@ struct App::Feature::GameResourceOverrider::Implementation {
 	const std::shared_ptr<Config> m_config;
 	const std::shared_ptr<Misc::Logger> m_logger;
 	const std::shared_ptr<Misc::DebuggerDetectionDisabler> m_debugger;
-	Misc::VirtualSqPacks m_sqpacks;
+	const std::filesystem::path m_sqpackPath;
+	std::unique_ptr<Misc::VirtualSqPacks> m_sqpacks;
+	bool m_bSqpackFailed = false;
 
 	std::vector<std::unique_ptr<Misc::Hooks::PointerFunction<uint32_t, uint32_t, const char*, size_t>>> fns{};
 	std::vector<std::string> m_lastLoggedPaths;
+	std::mutex m_lastLoggedPathMtx;
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
 	Misc::Hooks::ImportedFunction<HANDLE, LPCWSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE> CreateFileW{"kernel32::CreateFileW", "kernel32.dll", "CreateFileW"};
@@ -79,7 +83,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 		: m_config(Config::Acquire())
 		, m_logger(Misc::Logger::Acquire())
 		, m_debugger(Misc::DebuggerDetectionDisabler::Acquire())
-		, m_sqpacks(Utils::Win32::Process::Current().PathOf().remove_filename() / L"sqpack") {
+		, m_sqpackPath(Utils::Win32::Process::Current().PathOf().remove_filename() / L"sqpack") {
 
 		m_cleanup += CreateFileW.SetHook([this](
 			_In_ LPCWSTR lpFileName,
@@ -94,7 +98,20 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					!(dwDesiredAccess & GENERIC_WRITE) &&
 					dwCreationDisposition == OPEN_EXISTING &&
 					!hTemplateFile) {
-					if (const auto res = m_sqpacks.Open(lpFileName))
+					if (!m_sqpacks && !m_bSqpackFailed) {
+						try {
+							const auto path = std::filesystem::path(lpFileName);
+							const auto filename = path.filename();
+							const auto dirname = path.parent_path().filename();
+							const auto recreatedPath = m_sqpackPath / dirname / filename;
+							if (exists(recreatedPath) && equivalent(recreatedPath, path))
+								m_sqpacks = std::make_unique<Misc::VirtualSqPacks>(m_sqpackPath);
+						} catch (const std::exception& e) {
+							m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"CreateFile: {}, Message: {}", lpFileName, e.what());
+							m_bSqpackFailed = true;
+						}
+					}
+					if (const auto res = m_sqpacks ? m_sqpacks->Open(lpFileName) : nullptr)
 						return res;
 				}
 
@@ -104,7 +121,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 		m_cleanup += CloseHandle.SetHook([this](
 			HANDLE handle
 		) {
-				if (m_sqpacks.Close(handle))
+				if (m_sqpacks && m_sqpacks->Close(handle))
 					return 0;
 
 				return CloseHandle.bridge(handle);
@@ -117,10 +134,10 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			_Out_opt_ LPDWORD lpNumberOfBytesRead,
 			_Inout_opt_ LPOVERLAPPED lpOverlapped
 		) {
-				if (const auto pvpath = m_sqpacks.Get(hFile)) {
+				if (const auto pvpath = m_sqpacks ? m_sqpacks->Get(hFile) : nullptr) {
 					auto& vpath = *pvpath;
 					try {
-						m_sqpacks.MarkIoRequest();
+						m_sqpacks->MarkIoRequest();
 						const auto fp = lpOverlapped ? ((static_cast<uint64_t>(lpOverlapped->OffsetHigh) << 32) | lpOverlapped->Offset) : vpath.FilePointer.QuadPart;
 						const auto read = vpath.Stream->ReadStreamPartial(fp, lpBuffer, nNumberOfBytesToRead);
 
@@ -169,13 +186,13 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			_In_ LARGE_INTEGER liDistanceToMove,
 			_Out_opt_ PLARGE_INTEGER lpNewFilePointer,
 			_In_ DWORD dwMoveMethod) {
-				if (const auto pvpath = m_sqpacks.Get(hFile)) {
+				if (const auto pvpath = m_sqpacks ? m_sqpacks->Get(hFile) : nullptr) {
 					if (lpNewFilePointer)
 						*lpNewFilePointer = {};
 
 					auto& vpath = *pvpath;
 					try {
-						m_sqpacks.MarkIoRequest();
+						m_sqpacks->MarkIoRequest();
 						const auto len = vpath.Stream->StreamSize();
 
 						if (dwMoveMethod == FILE_BEGIN)
@@ -289,9 +306,9 @@ struct App::Feature::GameResourceOverrider::Implementation {
 							}
 						}
 					}
-					if (!newName.empty() && name != newName && m_sqpacks.EntryExists(std::format("{}{}", newName, ext))) {
+					if (!newName.empty() && name != newName && m_sqpacks && m_sqpacks->EntryExists(std::format("{}{}", newName, ext))) {
 						const auto newStr = std::format("{}{}{}", newName, ext, rest);
-						description = std::format(" => {}", newStr);
+						description = std::format("{} => {}", std::string_view(str, len), newStr);
 						Utils::Win32::Process::Current().WriteMemory(const_cast<char*>(str), newStr.c_str(), newStr.size() + 1, true);
 						len = newStr.size();
 					}
@@ -299,13 +316,13 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				const auto res = self->bridge(initVal, str, len);
 
 				if (m_config->Runtime.UseHashTrackerKeyLogging || !description.empty()) {
-					static std::mutex test;
-					const auto tlock = std::lock_guard(test);
 					auto current = std::string(str, len);
+					
+					const auto lock = std::lock_guard(m_lastLoggedPathMtx);
 					if (const auto it = std::ranges::find(m_lastLoggedPaths, current); it != m_lastLoggedPaths.end()) {
 						m_lastLoggedPaths.erase(it);
 					} else {
-						m_logger->Format(LogCategory::GameResourceOverrider, "{:x}: ~{:08x}: {}{}", reinterpret_cast<size_t>(ptr), res, current, description);
+						m_logger->Format(LogCategory::GameResourceOverrider, "{:x}: ~{:08x}: {}", reinterpret_cast<size_t>(ptr), res, description.empty() ? current : description);
 					}
 					m_lastLoggedPaths.push_back(std::move(current));
 					while (m_lastLoggedPaths.size() > 16)
@@ -324,7 +341,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 
 std::shared_ptr<App::Feature::GameResourceOverrider::Implementation> App::Feature::GameResourceOverrider::AcquireImplementation() {
 	static bool s_error = false;
-	static const auto s_useModding = Config::Acquire()->Runtime.UseModding.Value();
+	static const auto s_useModding = Config::Acquire()->Runtime.UseModding.Value() && (Dll::IsLoadedAsDependency() || Dll::IsLoadedFromEntryPoint());
 	if (s_useModding && !s_error) {
 		auto impl = s_pImpl.lock();
 		if (!impl) {
@@ -356,6 +373,6 @@ bool App::Feature::GameResourceOverrider::CanUnload() const {
 	return !m_pImpl;
 }
 
-App::Misc::VirtualSqPacks& App::Feature::GameResourceOverrider::GetVirtualSqPacks() {
-	return m_pImpl->m_sqpacks;
+App::Misc::VirtualSqPacks* App::Feature::GameResourceOverrider::GetVirtualSqPacks() {
+	return m_pImpl->m_sqpacks.get();
 }

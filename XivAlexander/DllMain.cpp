@@ -15,6 +15,8 @@ static Utils::Win32::LoadedModule s_hModule;
 static Utils::Win32::ActivationContext s_hActivationContext;
 static std::string s_dllUnloadDisableReason;
 static bool s_bLoadedAsDependency = false;
+static bool s_bLoadedFromEntryPoint = false;
+static std::unique_ptr<App::Misc::CrashMessageBoxHandler> s_crashMessageBoxHandler;
 
 const Utils::Win32::LoadedModule& Dll::Module() {
 	return s_hModule;
@@ -124,8 +126,6 @@ static void CheckObfuscatedArguments() {
 		// do nothing
 	}
 }
-
-static std::unique_ptr<App::Misc::CrashMessageBoxHandler> s_crashMessageBoxHandler;
 
 BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 	switch (fdwReason) {
@@ -258,6 +258,14 @@ LPCWSTR Dll::GetStringResFromId(UINT resId) {
 
 int Dll::MessageBoxF(HWND hWnd, UINT uType, UINT stringResId) {
 	return MessageBoxF(hWnd, uType, GetStringResFromId(stringResId));
+}
+
+void Dll::SetLoadedFromEntryPoint() {
+	s_bLoadedFromEntryPoint = true;
+}
+
+bool Dll::IsLoadedFromEntryPoint() {
+	return s_bLoadedFromEntryPoint;
 }
 
 HWND Dll::FindGameMainWindow(bool throwOnError) {

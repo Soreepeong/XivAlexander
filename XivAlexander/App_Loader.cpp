@@ -721,6 +721,8 @@ static void CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses, bo
 }
 
 int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
+	SetEnvironmentVariableW(L"XIVALEXANDER_DISABLE", nullptr);
+
 	if (!SUCCEEDED(CoInitializeEx(nullptr, COINIT_MULTITHREADED)))
 		std::abort();
 
