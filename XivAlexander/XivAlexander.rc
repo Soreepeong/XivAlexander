@@ -251,6 +251,7 @@ BEGIN
     IDS_APP_DESCRIPTION     "XivAlexanderLoader: XivAlexander‚ðƒQ[ƒ€‚ÌƒvƒƒZƒX‚Éƒ[ƒh‚µ‚Ü‚·B\n\n{}"
     IDS_ERROR_LOAD          "XivAlexander‚ðƒvƒƒZƒX‚Éƒ[ƒh‚·‚é‚±‚Æ‚ÉŽ¸”s‚µ‚Ü‚µ‚½B ({})"
     IDS_TITLE_SELECT_BOOT   "FFXIV BootƒvƒƒOƒ‰ƒ€‚Ì‘I‘ð"
+    IDS_TITLE_UNRECOVERABLEERROR "ƒGƒ‰[”­¶"
     IDS_ERROR_LOADER_NOT_FOUND "{}‚ÅXivAlexanderLoader‚ðŒ©‚Â‚¯‚é‚±‚Æ‚ª‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B"
     IDS_ERROR_CONFIGURATION_LOAD "Ý’èƒtƒ@ƒCƒ‹‚Ì“Ç‚Ýž‚Ý‚ÉŽ¸”s‚µ‚Ü‚µ‚½B({})"
     IDS_LOG_NEW_CONFIG      "V‚½‚ÈÝ’èƒtƒ@ƒCƒ‹‚ð{}‚Éì¬‚µ‚Ü‚·B"
@@ -296,6 +297,8 @@ BEGIN
                             "* ‰ž“š’x‰„: ’†‰›’l {}ms, •½‹Ï {}+{}ms\n\n"
     IDS_CONFIRM_CONFIG_WINDOW_CLOSE "Ý’è‚ð•Û‘¶‚µ‚Ü‚·‚©H"
     IDS_LOG_SAVED           "ƒƒOƒtƒ@ƒCƒ‹‚ðŽŸ‚ÌêŠ‚É•Û‘¶‚µ‚Ü‚µ‚½F{}\n\nƒƒOƒtƒ@ƒCƒ‹‚ðŠm”F‚µ‚Ü‚·‚©H"
+    IDS_TITLE_UNRECOVERABLEERROR_CONTENT 
+                            "ƒGƒ‰[‚ª”­¶‚µ‚½‚½‚ßAƒQ[ƒ€‚ðI—¹‚µ‚Ü‚·B\nXivAlexander‚ªƒGƒ‰[‚ÌŒ´ˆö‚Ìê‡‚à‚æ‚­‚ ‚è‚Ü‚·BGitHub‚ÉIssue‚ðì‚Á‚ÄƒƒO‚ðƒAƒvƒ[ƒh‚µ‚Ä•ñ‚µ‚Ä‚­‚¾‚³‚¢B"
     IDS_WARNING_GAME_PARAMETER_PARSE 
                             "ƒQ[ƒ€‚Ì‹N“®Žž‚ÌƒRƒ}ƒ“ƒhƒ‰ƒCƒ“‚Ì‰ð“Ç‚ÉŽ¸”s‚µ‚Ü‚µ‚½BƒQ[ƒ€‚ÌÄ‹N“®ŠÖ˜A‚Ì‹@”\‚ð—˜—p‚Å‚«‚Ü‚¹‚ñB({})"
     IDS_CONFIRM_MAIN_WINDOW_CLOSE 
@@ -305,6 +308,8 @@ END
 STRINGTABLE
 BEGIN
     IDS_CONFIRM_EXIT_GAME   "ƒQ[ƒ€‚ð‹­§I—¹‚µ‚Ü‚·‚©H"
+    IDS_TITLE_UNRECOVERABLEERROR_FOOTER 
+                            "<a href=""issues"">XivAlexander‚ÌGitHub‚ÌIssueƒy[ƒW</a>‚ðŠJ‚¯‚é"
     IDS_CONFIRM_RESTART_GAME 
                             "ƒQ[ƒ€‚ð‹­§“I‚ÉÄ‹N“®‚µ‚Ü‚·‚©H\n\nDirectX11‚ÌŽg—pF{}\nXivAlexander‚ÌŽg—pF{}\nƒRƒ}ƒ“ƒhƒ‰ƒCƒ“‚Ì“ï“Ç‰»‚ÌŽg—pF{}\nŠÇ—ŽÒŒ ŒÀ‚ÅŽÀsF{}\nŒ¾ŒêF{}\n’nˆæF{}"
     IDS_MAIN_TEXT           "PID: {}\nƒQ[ƒ€‚ÌƒCƒ“ƒXƒg[ƒ‹æ: {}\nƒQ[ƒ€‚Ìƒo[ƒWƒ‡ƒ“: {} ({})\n\n{}"
@@ -331,6 +336,8 @@ BEGIN
     IDS_REGION_NAME_EUROPE  "‰¢B"
     IDS_REGION_NAME_CHINA   "’†‘"
     IDS_REGION_NAME_KOREA   "ŠØ‘"
+    IDS_URL_HOMEPAGE        "https://github.com/Soreepeong/XivAlexander"
+    IDS_URL_HELP            "https://github.com/Soreepeong/XivAlexander/wiki/XivAlexander-Help"
     IDS_CLIENT_INTERNATIONAL "ƒOƒ[ƒoƒ‹"
     IDS_CLIENT_KOREAN       "ŠØ‘"
     IDS_CLIENT_CHINESE      "’†‘"
@@ -392,6 +399,7 @@ BEGIN
     IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON "ƒeƒLƒXƒg’u‚«Š·‚¦’è‹`ƒtƒ@ƒCƒ‹ (*.json)"
     IDS_FILTERSPEC_TTMP     "TexTools MODƒpƒbƒNƒtƒ@ƒCƒ‹ (*.ttmp, *.ttmp2, *.mpl)"
     IDS_CONFIRM_REMOVEALLTTMP "‚·‚×‚Ä‚ÌTexTools MODƒpƒbƒN‚ðíœ‚µ‚Ü‚·B"
+    IDS_URL_ISSUES          "https://github.com/Soreepeong/XivAlexander/issues"
     IDS_CONFIRM_ENABLEALLTTMP "‘S‚Ä‚ÌTexTools MODƒpƒbƒN‚ð—LŒø‚É‚µ‚Ü‚·B"
     IDS_CONFIRM_DISABLEALLTTMP "‘S‚Ä‚ÌTexTools MODƒpƒbƒN‚ð–³Œø‚É‚µ‚Ü‚·B"
     IDS_NOUNLOADREASON_DEPENDENCY 
@@ -416,6 +424,12 @@ BEGIN
     IDS_TITLE_ADD_EXCELTRANSFORMCONFIG "EXDF(ƒeƒLƒXƒg)‚Ì’u‚«Š·‚¦‹K‘¥ƒtƒ@ƒCƒ‹‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
     IDS_TITLE_IMPORT_TTMP   "TexTools MODƒpƒbƒN‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
     IDS_TITLE_IMPORTING     "ƒCƒ“ƒ|[ƒg’†c"
+    IDS_UNRECOVERABLEERROR_EXPORTLOG "ƒƒO‚ð•Û‘¶(&L)"
+    IDS_UNRECOVERABLEERROR_RESTARTWITHXIVALEXANDER 
+                            "XivAlexander‚ðŽg‚Á‚ÄƒQ[ƒ€‚ðÄ‹N“®‚·‚é(&W)"
+    IDS_UNRECOVERABLEERROR_RESTARTWITHOUTXIVALEXANDER 
+                            "XivAlexander‚È‚µ‚ÅƒQ[ƒ€‚ðÄ‹N“®‚·‚é(&O)"
+    IDS_UNRECOVERABLEERROR_EXIT "I—¹‚·‚é(&X)"
 END
 
 #endif    // Japanese (Japan) resources
@@ -687,6 +701,7 @@ BEGIN
     IDS_APP_DESCRIPTION     "XivAlexanderLoader: XivAlexander¸¦ °ÔÀÓ ÇÁ·Î¼¼½º¿¡ ºÒ·¯µéÀÔ´Ï´Ù.\n\n{}"
     IDS_ERROR_LOAD          "XivAlexander¸¦ ÇÁ·Î¼¼½º¿¡ ºÒ·¯µéÀÌÁö ¸øÇß½À´Ï´Ù. ({})"
     IDS_TITLE_SELECT_BOOT   "FFXIV Boot ÇÁ·Î±×·¥ ¼±ÅÃ"
+    IDS_TITLE_UNRECOVERABLEERROR "¿À·ù ¹ß»ý"
     IDS_ERROR_LOADER_NOT_FOUND "XivAlexanderLoader¸¦ {}¿¡¼­ ¹ß°ßÇÒ ¼ö ¾ø¾ú½À´Ï´Ù."
     IDS_ERROR_CONFIGURATION_LOAD "¼³Á¤ ÆÄÀÏÀ» ºÒ·¯¿ÀÁö ¸øÇß½À´Ï´Ù. ({})"
     IDS_LOG_NEW_CONFIG      "»õ ¼³Á¤ ÆÄÀÏÀ» {}¿¡ »ý¼ºÇÕ´Ï´Ù."
@@ -732,6 +747,8 @@ BEGIN
                             "* ÀÀ´ä Áö¿¬½Ã°£: Áß°£°ª {}ms, Æò±Õ {}+{}ms\n\n"
     IDS_CONFIRM_CONFIG_WINDOW_CLOSE "»õ ¼³Á¤À» ÀúÀåÇÏ½Ã°Ú½À´Ï±î?"
     IDS_LOG_SAVED           "·Î±× ÆÄÀÏÀÌ ´ÙÀ½ °æ·Î¿¡ ÀúÀåµÇ¾ú½À´Ï´Ù: {}\n\nÁö±Ý ·Î±× ÆÄÀÏÀ» È®ÀÎÇÏ½Ã°Ú½À´Ï±î?"
+    IDS_TITLE_UNRECOVERABLEERROR_CONTENT 
+                            "¿À·ù°¡ ¹ß»ýÇÏ¿© °ÔÀÓÀ» Á¾·áÇÕ´Ï´Ù.\nXivAlexander°¡ ¿À·ùÀÇ ¿øÀÎÀÏ ¼ö ÀÖ½À´Ï´Ù. GitHub¿¡ ·Î±×¸¦ Æ÷ÇÔÇÑ ÀÌ½´¸¦ »ý¼ºÇØ¼­ µµ¿òÀ» ¹ÞÀ¸½Ç ¼ö ÀÖ½À´Ï´Ù."
     IDS_WARNING_GAME_PARAMETER_PARSE 
                             "°ÔÀÓ ¸í·ÉÁÙÀ» ÇØµ¶ÇÏÁö ¸øÇß½À´Ï´Ù. °ÔÀÓ Àç½ÃÀÛ ±â´ÉÀ» »ç¿ëÇÒ ¼ö ¾ø½À´Ï´Ù. ({})"
     IDS_CONFIRM_MAIN_WINDOW_CLOSE 
@@ -741,6 +758,8 @@ END
 STRINGTABLE
 BEGIN
     IDS_CONFIRM_EXIT_GAME   "°ÔÀÓÀ» °­Á¦·Î Á¾·áÇÏ½Ã°Ú½À´Ï±î?"
+    IDS_TITLE_UNRECOVERABLEERROR_FOOTER 
+                            "<a href=""issues"">XivAlexanderÀÇ GitHub ÀÌ½´ ÆäÀÌÁö</a> ¿­±â"
     IDS_CONFIRM_RESTART_GAME 
                             "°ÔÀÓÀ» °­Á¦·Î Àç½ÃÀÛÇÏ½Ã°Ú½À´Ï±î?\n\nDirectX 11 »ç¿ë: {}\nXivAlexander »ç¿ë: {}\n¸í·ÉÁÙ ³­µ¶È­ »ç¿ë: {}\n°ü¸®ÀÚ ±ÇÇÑÀ¸·Î ½ÇÇà: {}\n¾ð¾î: {}\nÁö¿ª: {}"
     IDS_MAIN_TEXT           "PID: {}\n°ÔÀÓ °æ·Î: {}\n°ÔÀÓ ¹öÀü: {} ({})\n\n{}"
@@ -767,6 +786,8 @@ BEGIN
     IDS_REGION_NAME_EUROPE  "À¯·´"
     IDS_REGION_NAME_CHINA   "Áß±¹"
     IDS_REGION_NAME_KOREA   "ÇÑ±¹"
+    IDS_URL_HOMEPAGE        "https://github.com/Soreepeong/XivAlexander"
+    IDS_URL_HELP            "https://github.com/Soreepeong/XivAlexander/wiki/XivAlexander-Help"
     IDS_CLIENT_INTERNATIONAL "±Û·Î¹ú"
     IDS_CLIENT_KOREAN       "ÇÑ±¹"
     IDS_CLIENT_CHINESE      "Áß±¹"
@@ -830,6 +851,7 @@ BEGIN
     IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON "¹®ÀÚ¿­ º¯°æ ±ÔÄ¢ JSON ÆÄÀÏ (*.json)"
     IDS_FILTERSPEC_TTMP     "TexTools ¸ðµåÆÑ ÆÄÀÏ (*.ttmp, *.ttmp2, *.mpl)"
     IDS_CONFIRM_REMOVEALLTTMP "¸ðµç TexTools ¸ðµåÆÑ ÆÄÀÏÀ» Á¦°ÅÇÕ´Ï´Ù."
+    IDS_URL_ISSUES          "https://github.com/Soreepeong/XivAlexander/issues"
     IDS_CONFIRM_ENABLEALLTTMP "¸ðµç TexTools ¸ðµåÆÑ ÆÄÀÏÀ» È°¼ºÈ­ÇÕ´Ï´Ù."
     IDS_CONFIRM_DISABLEALLTTMP "¸ðµç TexTools ¸ðµåÆÑ ÆÄÀÏÀ» ºñÈ°¼ºÈ­ÇÕ´Ï´Ù."
     IDS_NOUNLOADREASON_DEPENDENCY 
@@ -854,6 +876,12 @@ BEGIN
     IDS_TITLE_ADD_EXCELTRANSFORMCONFIG "EXDF º¯È¯ ±ÔÄ¢ ÆÄÀÏ ºÒ·¯¿À±â"
     IDS_TITLE_IMPORT_TTMP   "TexTools ¸ðµåÆÑ ÆÄÀÏ °¡Á®¿À±â"
     IDS_TITLE_IMPORTING     "°¡Á®¿À´Â Áß..."
+    IDS_UNRECOVERABLEERROR_EXPORTLOG "·Î±× ÀúÀå(&L)"
+    IDS_UNRECOVERABLEERROR_RESTARTWITHXIVALEXANDER 
+                            "XivAlexanderÇÏ°í °°ÀÌ Àç½ÃÀÛÇÏ±â(&W)"
+    IDS_UNRECOVERABLEERROR_RESTARTWITHOUTXIVALEXANDER 
+                            "XivAlexander ¾øÀÌ Àç½ÃÀÛÇÏ±â(&O)"
+    IDS_UNRECOVERABLEERROR_EXIT "³¡³»±â(&X)"
 END
 
 #endif    // Korean (Korea) resources
@@ -1241,6 +1269,7 @@ BEGIN
     IDS_APP_DESCRIPTION     "XivAlexanderLoader: load XivAlexander into game process.\n\n{}"
     IDS_ERROR_LOAD          "Failed to load XivAlexander into process: {}"
     IDS_TITLE_SELECT_BOOT   "Select FFXIV Boot program"
+    IDS_TITLE_UNRECOVERABLEERROR "Unrecoverable Error"
     IDS_ERROR_LOADER_NOT_FOUND "XivAlexanderLoader could not be found at {}."
     IDS_ERROR_CONFIGURATION_LOAD "Failed to load configuration file. ({})"
     IDS_LOG_NEW_CONFIG      "Creating new configuration file at {}."
@@ -1294,6 +1323,8 @@ BEGIN
     IDS_CONFIRM_CONFIG_WINDOW_CLOSE 
                             "Do you want to apply the new configuration?"
     IDS_LOG_SAVED           "Log file has been saved to: {}\n\nDo you want to open the file?"
+    IDS_TITLE_UNRECOVERABLEERROR_CONTENT 
+                            "An unexpected error has occurred, and the game must exit.\nXivAlexander may be the cause of the error. Make an issue at GitHub with log to get help."
     IDS_WARNING_GAME_PARAMETER_PARSE 
                             "Could not resolve game launch parameters. Restart feature will be disabled. ({})"
     IDS_CONFIRM_MAIN_WINDOW_CLOSE 
@@ -1303,6 +1334,8 @@ END
 STRINGTABLE
 BEGIN
     IDS_CONFIRM_EXIT_GAME   "Do you want to force quit the game?"
+    IDS_TITLE_UNRECOVERABLEERROR_FOOTER 
+                            "Report to <a href=""issues"">XivAlexander Issues at GitHub</a>"
     IDS_CONFIRM_RESTART_GAME 
                             "Do you want to force restart the game?\n\nUse DirectX 11: {}\nUse XivAlexander: {}\nUse Parameter Obfuscation: {}\nUse Elevation (Run as Administrator): {}\nGame Language: {}\nRegion: {}"
     IDS_MAIN_TEXT           "Process ID: {}\nGame Path: {}\nGame Release: {} ({})\n\n{}"
@@ -1402,6 +1435,7 @@ BEGIN
                             "Excel transformation configuration JSON files (*.json)"
     IDS_FILTERSPEC_TTMP     "TexTools ModPack Files (*.ttmp, *.ttmp2, *.mpl)"
     IDS_CONFIRM_REMOVEALLTTMP "Do you want to remove all TexTools ModPacks?"
+    IDS_URL_ISSUES          "https://github.com/Soreepeong/XivAlexander/issues"
     IDS_CONFIRM_ENABLEALLTTMP "Do you want to enable all TexTools ModPacks?"
     IDS_CONFIRM_DISABLEALLTTMP "Do you want to disable all TexTools ModPacks?"
     IDS_NOUNLOADREASON_DEPENDENCY 
@@ -1432,6 +1466,12 @@ BEGIN
                             "Select excel transformation configuration file"
     IDS_TITLE_IMPORT_TTMP   "Select TexTools ModPack file"
     IDS_TITLE_IMPORTING     "Importing..."
+    IDS_UNRECOVERABLEERROR_EXPORTLOG "Export &Log"
+    IDS_UNRECOVERABLEERROR_RESTARTWITHXIVALEXANDER 
+                            "Restart &with XivAlexander"
+    IDS_UNRECOVERABLEERROR_RESTARTWITHOUTXIVALEXANDER 
+                            "Restart with&out XivAlexander"
+    IDS_UNRECOVERABLEERROR_EXIT "E&xit"
 END
 
 #endif    // English (United States) resources

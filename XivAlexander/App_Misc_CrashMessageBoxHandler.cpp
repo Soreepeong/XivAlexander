@@ -4,6 +4,7 @@
 #include <XivAlexander/XivAlexander.h>
 #include <XivAlexanderCommon/XivAlex.h>
 
+#include "App_ConfigRepository.h"
 #include "App_Misc_Hooks.h"
 #include "App_Misc_Logger.h"
 #include "DllMain.h"
@@ -104,19 +105,21 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 				if (bodyNormalizedWhitespace.find(candidate) == std::wstring::npos)
 					continue;
 
+				const auto config = Config::Acquire();
 				const auto newBody = std::format(L"Thread: {}\n\n{}", Utils::Win32::TryGetThreadDescription(GetCurrentThread()), body);
+				const auto okstr = Utils::Win32::MB_GetString(IDOK - 1);
 
 				const TASKDIALOG_BUTTON tdb[] = {
-					{1001, L"Export &log"},
-					{IDOK, L"OK"}
+					{1001, config->Runtime.GetStringRes(IDS_UNRECOVERABLEERROR_EXPORTLOG)},
+					{IDOK, okstr.c_str()},
 				};
 
 				const TASKDIALOG_BUTTON tdr[] = {
-					{2001, L"Restart &with XivAlexander"},
-					{2002, L"Restart with&out XivAlexander"},
-					{2003, L"E&xit"},
+					{2001, config->Runtime.GetStringRes(IDS_UNRECOVERABLEERROR_RESTARTWITHXIVALEXANDER)},
+					{2002, config->Runtime.GetStringRes(IDS_UNRECOVERABLEERROR_RESTARTWITHOUTXIVALEXANDER)},
+					{2003, config->Runtime.GetStringRes(IDS_UNRECOVERABLEERROR_EXIT)},
 				};
-				
+
 				const auto tdtitle = std::format(L"{} (+{})", title, Dll::GetGenericMessageBoxTitle());
 				const TASKDIALOGCONFIG tdc{
 					.cbSize = sizeof tdc,
@@ -125,8 +128,8 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 					.dwFlags = TDF_ENABLE_HYPERLINKS | TDF_ALLOW_DIALOG_CANCELLATION | TDF_POSITION_RELATIVE_TO_WINDOW | TDF_CAN_BE_MINIMIZED,
 					.pszWindowTitle = tdtitle.c_str(),
 					.pszMainIcon = TD_ERROR_ICON,
-					.pszMainInstruction = L"Unrecoverable error",
-					.pszContent = L"An unexpected error has occurred, and the game must exit.\nXivAlexander may be the cause of the error. Make an issue at GitHub to get help.",
+					.pszMainInstruction = config->Runtime.GetStringRes(IDS_TITLE_UNRECOVERABLEERROR),
+					.pszContent = config->Runtime.GetStringRes(IDS_TITLE_UNRECOVERABLEERROR_CONTENT),
 					.cButtons = _countof(tdb),
 					.pButtons = tdb,
 					.nDefaultButton = IDOK,
@@ -134,7 +137,7 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 					.pRadioButtons = tdr,
 					.nDefaultRadioButton = 2001,
 					.pszExpandedInformation = newBody.c_str(),
-					.pszFooter = LR"(Report to <a href="issues">Issues at GitHub</a>)",
+					.pszFooter = config->Runtime.GetStringRes(IDS_TITLE_UNRECOVERABLEERROR_FOOTER),
 					.pfCallback = [](HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, LONG_PTR lpRefData) -> HRESULT {
 						if (msg == TDN_BUTTON_CLICKED && wParam == 1001) {
 							Logger::Acquire()->AskAndExportLogs(hWnd, Utils::ToUtf8(*reinterpret_cast<std::wstring*>(lpRefData)));
@@ -145,7 +148,7 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 								SHELLEXECUTEINFOW shex{
 									.cbSize = sizeof shex,
 									.hwnd = hWnd,
-									.lpFile = L"https://github.com/Soreepeong/XivAlexander/issues",
+									.lpFile = Config::Acquire()->Runtime.GetStringRes(IDS_URL_ISSUES),
 									.nShow = SW_SHOW,
 								};
 								if (!ShellExecuteExW(&shex))

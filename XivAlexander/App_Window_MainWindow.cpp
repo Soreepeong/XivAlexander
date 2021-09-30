@@ -1325,17 +1325,12 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 		}
 
 		case ID_MODDING_TTMP_REMOVEALL:
-		case ID_MODDING_TTMP_UNDOREMOVEALL:
 		case ID_MODDING_TTMP_ENABLEALL:
 		case ID_MODDING_TTMP_DISABLEALL: {
 			std::string msg;
 			switch (menuId) {
 				case ID_MODDING_TTMP_REMOVEALL:
 					msg = Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_CONFIRM_REMOVEALLTTMP));
-					break;
-
-				case ID_MODDING_TTMP_UNDOREMOVEALL:
-					msg = Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_CONFIRM_UNDOREMOVEALLTTMP));
 					break;
 
 				case ID_MODDING_TTMP_ENABLEALL:
