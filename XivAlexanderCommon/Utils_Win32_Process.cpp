@@ -299,6 +299,110 @@ void Utils::Win32::ProcessBuilder::InitializeEnviron() {
 	m_environInitialized = true;
 }
 
+static Utils::CallOnDestruction WithRunAsInvoker() {
+	static constexpr auto NeverElevateEnvKey = L"__COMPAT_LAYER";
+	static constexpr auto NeverElevateEnvVal = L"RunAsInvoker";
+
+	std::wstring env;
+	env.resize(32768);
+	env.resize(GetEnvironmentVariableW(NeverElevateEnvKey, &env[0], static_cast<DWORD>(env.size())));
+	const auto envNone = env.empty() && GetLastError() == ERROR_ENVVAR_NOT_FOUND;
+	if (!envNone && env.empty())
+		throw Utils::Win32::Error("GetEnvironmentVariableW");
+	if (!SetEnvironmentVariableW(NeverElevateEnvKey, NeverElevateEnvVal))
+		throw Utils::Win32::Error("SetEnvironmentVariableW");
+	return {
+		[env = std::move(env), envNone]() {
+			SetEnvironmentVariableW(NeverElevateEnvKey, envNone ? nullptr : &env[0]);
+		}
+	};
+}
+
+Utils::Win32::Process Utils::Win32::RunProgram(RunProgramParams params) {
+	CallOnDestruction::Multiple cleanup;
+
+	if (params.path.empty())
+		params.path = Process::Current().PathOf();
+	else if (!exists(params.path)) {
+		std::wstring buf;
+		buf.resize(PATHCCH_MAX_CCH);
+		buf.resize(SearchPathW(nullptr, params.path.c_str(), L".exe", static_cast<DWORD>(buf.size()), &buf[0], nullptr));
+		if (buf.empty())
+			throw Error("SearchPath");
+		params.path = buf;
+	}
+
+	switch (params.elevateMode) {
+		case RunProgramParams::Normal:
+		case RunProgramParams::Force:
+		case RunProgramParams::NeverUnlessAlreadyElevated: {
+			if (params.elevateMode == RunProgramParams::NeverUnlessAlreadyElevated)
+				cleanup += WithRunAsInvoker();
+
+			SHELLEXECUTEINFOW sei{};
+			sei.cbSize = sizeof sei;
+			sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+			sei.lpVerb = params.elevateMode == RunProgramParams::Force ? L"runas" : L"open";
+			sei.lpFile = params.path.c_str();
+			sei.lpParameters = params.args.c_str();
+			sei.lpDirectory = params.dir.empty() ? nullptr : params.dir.c_str();
+			sei.nShow = SW_SHOW;
+			if (!ShellExecuteExW(&sei)) {
+				const auto err = GetLastError();
+				if (err == ERROR_CANCELLED && !params.throwOnCancel)
+					return {};
+
+				throw Error(err, "ShellExecuteExW");
+			}
+			if (!sei.hProcess)  // should not happen, unless registry is messed up.
+				throw std::runtime_error("Failed to execute a new program.");
+			if (params.wait)
+				WaitForSingleObject(sei.hProcess, INFINITE);
+			return {sei.hProcess, true};
+		}
+
+		case RunProgramParams::NeverUnlessShellIsElevated:
+		case RunProgramParams::CancelIfRequired:
+		case RunProgramParams::NoElevationIfDenied: {
+			if (params.elevateMode == RunProgramParams::NeverUnlessShellIsElevated) {
+				if (!IsUserAnAdmin()) {
+					params.elevateMode = RunProgramParams::NeverUnlessAlreadyElevated;
+					return RunProgram(params);
+				}
+				cleanup += WithRunAsInvoker();
+			}
+
+			try {
+				const auto [process, thread] = ProcessBuilder()
+					.WithPath(params.path)
+					.WithParent(params.elevateMode == RunProgramParams::NeverUnlessShellIsElevated ? GetShellWindow() : nullptr)
+					.WithWorkingDirectory(params.dir)
+					.WithArgument(true, params.args)
+					.Run();
+				if (params.wait)
+					process.Wait();
+				return process;
+			} catch (const Error& e) {
+				if (e.Code() == ERROR_ELEVATION_REQUIRED) {
+					if (params.elevateMode == RunProgramParams::CancelIfRequired && !params.throwOnCancel)
+						return {};
+					else if (params.elevateMode == RunProgramParams::NoElevationIfDenied) {
+						params.elevateMode = RunProgramParams::Normal;
+						params.throwOnCancel = false;
+						if (auto res = RunProgram(params))
+							return res;
+
+						params.elevateMode = RunProgramParams::NeverUnlessAlreadyElevated;
+						return RunProgram(params);
+					}
+				}
+				throw;
+			}
+		}
+	}
+	throw std::out_of_range("invalid elevateMode");
+}
+
 Utils::Win32::Process& Utils::Win32::Process::Attach(HANDLE r, bool ownership, const std::string & errorMessage) {
 	Handle::Attach(r, Null, ownership, errorMessage);
 	return *this;
@@ -408,6 +512,15 @@ void Utils::Win32::Process::Terminate(DWORD dwExitCode = 0, bool errorIfAlreadyT
 	if (!errorIfAlreadyTerminated && Wait(0) != WAIT_TIMEOUT)
 		return;
 	throw Error(err, "TerminateProcess");
+}
+
+DWORD Utils::Win32::Process::WaitAndGetExitCode() const {
+	Wait();
+
+	DWORD ex;
+	if (!GetExitCodeProcess(m_object, &ex))
+		throw Error("GetExitCodeProcess");
+	return ex;
 }
 
 int Utils::Win32::Process::CallRemoteFunction(void* rpfn, void* rpParam, const char* pcszDescription) const {

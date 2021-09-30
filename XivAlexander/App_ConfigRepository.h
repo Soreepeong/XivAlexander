@@ -141,8 +141,8 @@ namespace App {
 
 			[[nodiscard]] auto Loaded() const { return m_loaded; }
 
-			void Save();
-			virtual void Reload(bool announceChange = false);
+			void Save(const std::filesystem::path& to = {});
+			virtual void Reload(const std::filesystem::path& from, bool announceChange = false);
 
 			[[nodiscard]] auto GetConfigPath() const { return m_sConfigPath; }
 
@@ -166,7 +166,7 @@ namespace App {
 		// Relative paths are relative to the directory of the DLL.
 		// All items accept relative paths.
 
-		class Runtime : public BaseRepository {
+		class RuntimeRepository : public BaseRepository {
 			friend class Config;
 			using BaseRepository::BaseRepository;
 
@@ -239,10 +239,10 @@ namespace App {
 
 			Item<std::filesystem::path> OverrideFontConfig = CreateConfigItem(this, "OverrideFontConfig", std::filesystem::path());
 			
-			Runtime(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
-			~Runtime() override;
+			RuntimeRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
+			~RuntimeRepository() override;
 			
-			void Reload(bool announceChange = false) override;
+			void Reload(const std::filesystem::path& from, bool announceChange = false) override;
 
 			[[nodiscard]] WORD GetLangId() const;
 			[[nodiscard]] LPCWSTR GetStringRes(UINT uId) const;
@@ -256,7 +256,7 @@ namespace App {
 			[[nodiscard]] std::vector<Sqex::Language> GetFallbackLanguageList() const;
 		};
 
-		class Game : public BaseRepository {
+		class GameRepository : public BaseRepository {
 			const uint16_t InvalidIpcType = 0x93DB;
 
 			friend class Config;
@@ -287,7 +287,7 @@ namespace App {
 			};
 		};
 
-		class InitializationConfig : public BaseRepository {
+		class InitRepository : public BaseRepository {
 			friend class Config;
 			using BaseRepository::BaseRepository;
 
@@ -319,13 +319,13 @@ namespace App {
 		Config(std::filesystem::path initializationConfigPath);
 
 	public:
-		InitializationConfig Init;
-		Runtime Runtime;
-		Game Game;
+		InitRepository Init;
+		RuntimeRepository Runtime;
+		GameRepository Game;
 
 		virtual ~Config();
 
-		void SetQuitting();
+		void SuppressSave(bool suppress);
 
 		static std::shared_ptr<Config> Acquire();
 	};

@@ -8,4 +8,3 @@ EXPORTS
 	
 	XA_InjectEntryPoint=InjectEntryPoint				@100
 	XA_LoaderApp=XA_LoaderApp							@101
-	XA_SetLoadedAsDependency=SetLoadedAsDependency		@102

@@ -77,9 +77,8 @@ namespace Utils::Win32 {
 		ElevateMode elevateMode = Normal;
 		bool throwOnCancel = false;
 	};
-	bool RunProgram(RunProgramParams params);
 
-	std::wstring GetCommandLineWithoutProgramName();
+	std::wstring GetCommandLineWithoutProgramName(std::wstring_view = {});
 	std::wstring ReverseCommandLineToArgv(const std::wstring& argv);
 	std::wstring ReverseCommandLineToArgv(const std::span<const std::wstring>& argv);
 	std::wstring ReverseCommandLineToArgv(const std::initializer_list<const std::wstring>& argv);

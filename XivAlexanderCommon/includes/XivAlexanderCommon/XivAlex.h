@@ -16,6 +16,7 @@ namespace XivAlex {
 		std::string DownloadLink;
 		size_t DownloadSize;
 	};
+
 	VersionInformation CheckUpdates();
 
 	enum class GameRegion {
@@ -66,4 +67,6 @@ namespace XivAlex {
 #else
 #error "Environment not x86 or x64."
 #endif
+
+	bool IsXivAlexanderDll(const std::filesystem::path& dllPath);
 }

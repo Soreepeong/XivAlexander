@@ -60,14 +60,14 @@ App::Config::ItemBase::ItemBase(BaseRepository* pRepository, const char* pszName
 	pRepository->m_allItems.push_back(this);
 }
 
-void App::Config::BaseRepository::Reload(bool announceChange) {
+void App::Config::BaseRepository::Reload(const std::filesystem::path& from, bool announceChange) {
 	m_loaded = true;
 
 	bool changed = false;
 	nlohmann::json totalConfig;
-	if (exists(m_sConfigPath)) {
+	if (exists(from.empty() ? m_sConfigPath : from)) {
 		try {
-			totalConfig = Utils::ParseJsonFromFile(m_sConfigPath);
+			totalConfig = Utils::ParseJsonFromFile(from.empty() ? m_sConfigPath : from);
 			if (totalConfig.type() != nlohmann::detail::value_t::object)
 				throw std::runtime_error("Root must be an object.");  // TODO: string resource
 		} catch (const std::exception& e) {
@@ -80,7 +80,7 @@ void App::Config::BaseRepository::Reload(bool announceChange) {
 	} else {
 		totalConfig = nlohmann::json::object();
 		changed = true;
-		m_logger->FormatDefaultLanguage(LogCategory::General, IDS_LOG_NEW_CONFIG, Utils::ToUtf8(m_sConfigPath.wstring()));
+		m_logger->FormatDefaultLanguage(LogCategory::General, IDS_LOG_NEW_CONFIG, Utils::ToUtf8((from.empty() ? m_sConfigPath : from).wstring()));
 	}
 
 	const auto& currentConfig = m_parentKey.empty() ? totalConfig : totalConfig[m_parentKey];
@@ -119,34 +119,34 @@ std::shared_ptr<App::Config> App::Config::Acquire() {
 	return r;
 }
 
-App::Config::Runtime::Runtime(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey)
+App::Config::RuntimeRepository::RuntimeRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey)
 	: BaseRepository(pConfig, std::move(path), std::move(parentKey)) {
 	m_cleanup += Language.OnChangeListener([&](auto&) {
 		Utils::Win32::Error::SetDefaultLanguageId(GetLangId());
 	});
 }
 
-App::Config::Runtime::~Runtime() {
+App::Config::RuntimeRepository::~RuntimeRepository() {
 	m_cleanup.Clear();
 }
 
-void App::Config::Runtime::Reload(bool announceChange) {
-	BaseRepository::Reload(announceChange);
+void App::Config::RuntimeRepository::Reload(const std::filesystem::path& from, bool announceChange) {
+	BaseRepository::Reload(from, announceChange);
 	Utils::Win32::Error::SetDefaultLanguageId(GetLangId());
 }
 
-WORD App::Config::Runtime::GetLangId() const {
+WORD App::Config::RuntimeRepository::GetLangId() const {
 	if (const auto i = LanguageIdMap.find(Language); i != LanguageIdMap.end())
 		return i->second;
 
 	return MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL);
 }
 
-LPCWSTR App::Config::Runtime::GetStringRes(UINT uId) const {
+LPCWSTR App::Config::RuntimeRepository::GetStringRes(UINT uId) const {
 	return FindStringResourceEx(Dll::Module(), uId, GetLangId()) + 1;
 }
 
-std::wstring App::Config::Runtime::GetLanguageNameLocalized(Sqex::Language gameLanguage) const {
+std::wstring App::Config::RuntimeRepository::GetLanguageNameLocalized(Sqex::Language gameLanguage) const {
 	const auto langNameInUserLang = std::wstring(GetStringRes(LanguageIdNameResourceIdMap.at(GameLanguageIdMap.at(gameLanguage))));
 	auto langNameInGameLang = std::wstring(FindStringResourceEx(Dll::Module(), LanguageIdNameResourceIdMap.at(GameLanguageIdMap.at(gameLanguage)), GameLanguageIdMap.at(gameLanguage)) + 1);
 	if (langNameInUserLang == langNameInGameLang)
@@ -155,33 +155,33 @@ std::wstring App::Config::Runtime::GetLanguageNameLocalized(Sqex::Language gameL
 		return std::format(L"{} ({})", langNameInUserLang, langNameInGameLang);
 }
 
-std::wstring App::Config::Runtime::GetRegionNameLocalized(Sqex::Region gameRegion) const {
+std::wstring App::Config::RuntimeRepository::GetRegionNameLocalized(Sqex::Region gameRegion) const {
 	return GetStringRes(RegionResourceIdMap.at(gameRegion));
 }
 
-std::vector<Sqex::Language> App::Config::Runtime::GetFallbackLanguageList() const {
+std::vector<Sqex::Language> App::Config::RuntimeRepository::GetFallbackLanguageList() const {
 	std::vector<Sqex::Language> result;
 	for (const auto lang : FallbackLanguagePriority.Value()) {
 		if (std::ranges::find(result, lang) == result.end() && lang != Sqex::Language::ChineseTraditional && lang != Sqex::Language::Unspecified)
 			result.push_back(lang);
 	}
 	for (const auto lang : {
-		Sqex::Language::Japanese,
-		Sqex::Language::English,
-		Sqex::Language::German,
-		Sqex::Language::French,
-		Sqex::Language::ChineseSimplified,
-		Sqex::Language::Korean,
-	}) {
+			Sqex::Language::Japanese,
+			Sqex::Language::English,
+			Sqex::Language::German,
+			Sqex::Language::French,
+			Sqex::Language::ChineseSimplified,
+			Sqex::Language::Korean,
+		}) {
 		if (std::ranges::find(result, lang) == result.end())
 			result.push_back(lang);
 	}
 	return result;
 }
 
-std::filesystem::path App::Config::InitializationConfig::ResolveConfigStorageDirectoryPath() {
+std::filesystem::path App::Config::InitRepository::ResolveConfigStorageDirectoryPath() {
 	if (!Loaded())
-		Reload();
+		Reload({});
 
 	if (!FixedConfigurationFolderPath.Value().empty())
 		return EnsureDirectory(TranslatePath(FixedConfigurationFolderPath.Value()));
@@ -189,9 +189,9 @@ std::filesystem::path App::Config::InitializationConfig::ResolveConfigStorageDir
 		return EnsureDirectory(Utils::Win32::EnsureKnownFolderPath(FOLDERID_RoamingAppData) / L"XivAlexander");
 }
 
-std::filesystem::path App::Config::InitializationConfig::ResolveXivAlexInstallationPath() {
+std::filesystem::path App::Config::InitRepository::ResolveXivAlexInstallationPath() {
 	if (!Loaded())
-		Reload();
+		Reload({});
 
 	if (!XivAlexFolderPath.Value().empty())
 		return EnsureDirectory(TranslatePath(XivAlexFolderPath.Value()));
@@ -199,11 +199,11 @@ std::filesystem::path App::Config::InitializationConfig::ResolveXivAlexInstallat
 		return EnsureDirectory(Utils::Win32::EnsureKnownFolderPath(FOLDERID_LocalAppData) / L"XivAlexander");
 }
 
-std::filesystem::path App::Config::InitializationConfig::ResolveRuntimeConfigPath() {
+std::filesystem::path App::Config::InitRepository::ResolveRuntimeConfigPath() {
 	return ResolveConfigStorageDirectoryPath() / "config.runtime.json";
 }
 
-std::filesystem::path App::Config::InitializationConfig::ResolveGameOpcodeConfigPath() {
+std::filesystem::path App::Config::InitRepository::ResolveGameOpcodeConfigPath() {
 	const auto regionAndVersion = XivAlex::ResolveGameReleaseRegion();
 	return ResolveConfigStorageDirectoryPath() / std::format(L"game.{}.{}.json",
 		std::get<0>(regionAndVersion),
@@ -240,23 +240,23 @@ App::Config::Config(std::filesystem::path initializationConfigPath)
 	: Init(this, std::move(initializationConfigPath), "")
 	, Runtime(this, Init.ResolveRuntimeConfigPath(), Utils::ToUtf8(Utils::Win32::Process::Current().PathOf().wstring()))
 	, Game(this, Init.ResolveGameOpcodeConfigPath(), "") {
-	Runtime.Reload();
-	Game.Reload();
+	Runtime.Reload({});
+	Game.Reload({});
 }
 
 App::Config::~Config() = default;
 
-void App::Config::SetQuitting() {
-	m_bSuppressSave = true;
+void App::Config::SuppressSave(bool suppress) {
+	m_bSuppressSave = suppress;
 }
 
-void App::Config::BaseRepository::Save() {
-	if (m_pConfig && m_pConfig->m_bSuppressSave)
+void App::Config::BaseRepository::Save(const std::filesystem::path& to) {
+	if (to.empty() && (!m_pConfig || m_pConfig->m_bSuppressSave))
 		return;
 
 	nlohmann::json totalConfig;
 	try {
-		totalConfig = Utils::ParseJsonFromFile(m_sConfigPath);
+		totalConfig = Utils::ParseJsonFromFile(to.empty() ? m_sConfigPath : to);
 		if (totalConfig.type() != nlohmann::detail::value_t::object)
 			throw std::runtime_error("Root must be an object.");  // TODO: string resource
 	} catch (const std::exception&) {
@@ -268,7 +268,7 @@ void App::Config::BaseRepository::Save() {
 		item->SaveTo(currentConfig);
 
 	try {
-		Utils::SaveJsonToFile(m_sConfigPath, totalConfig);
+		Utils::SaveJsonToFile(to.empty() ? m_sConfigPath : to, totalConfig);
 	} catch (const std::exception& e) {
 		m_logger->FormatDefaultLanguage<LogLevel::Error>(LogCategory::General, IDS_ERROR_CONFIGURATION_SAVE, e.what());
 	}

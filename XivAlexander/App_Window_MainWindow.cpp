@@ -53,7 +53,7 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 	, m_bUseElevation(Utils::Win32::IsUserAnAdmin())
 	, m_launchParameters([this]() -> decltype(m_launchParameters) {
 		try {
-			return Sqex::CommandLine::FromString(Utils::ToUtf8(Utils::Win32::GetCommandLineWithoutProgramName()), &m_bUseParameterObfuscation);
+			return Sqex::CommandLine::FromString(Utils::ToUtf8(Utils::Win32::GetCommandLineWithoutProgramName(Dll::GetOriginalCommandLine())), &m_bUseParameterObfuscation);
 		} catch (const std::exception& e) {
 			m_logger->Format<LogLevel::Warning>(LogCategory::General, m_config->Runtime.GetLangId(), IDS_WARNING_GAME_PARAMETER_PARSE, e.what());
 			return {};
@@ -1439,7 +1439,7 @@ void App::Window::MainWindow::OnCommand_Menu_Configure(int menuId) {
 			return;
 
 		case ID_CONFIGURE_RELOAD:
-			config.Reload();
+			config.Reload({});
 			return;
 	}
 }

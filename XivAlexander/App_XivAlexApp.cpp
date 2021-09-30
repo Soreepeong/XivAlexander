@@ -399,6 +399,9 @@ App::XivAlexApp* App::XivAlexApp::GetCurrentApp() {
 }
 
 size_t __stdcall XivAlexDll::EnableXivAlexander(size_t bEnable) {
+	if (Dll::IsLoadedAsDependency())
+		return -1;
+
 	if (!!bEnable == !!s_xivAlexApp)
 		return 0;
 	try {
@@ -421,10 +424,8 @@ size_t __stdcall XivAlexDll::EnableXivAlexander(size_t bEnable) {
 }
 
 size_t __stdcall XivAlexDll::ReloadConfiguration(void* lpReserved) {
-	if (s_xivAlexApp) {
-		const auto config = App::Config::Acquire();
-		config->Runtime.Reload(true);
-		config->Game.Reload(true);
-	}
+	const auto config = App::Config::Acquire();
+	config->Runtime.Reload({}, true);
+	config->Game.Reload({}, true);
 	return 0;
 }

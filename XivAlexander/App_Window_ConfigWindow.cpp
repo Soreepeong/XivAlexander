@@ -87,7 +87,7 @@ bool App::Window::ConfigWindow::TrySave() {
 		Utils::SaveToFile(m_pRepository->GetConfigPath(), buf);
 		m_originalConfig = std::move(buf);
 		m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(&m_originalConfig[0]));
-		m_pRepository->Reload(true);
+		m_pRepository->Reload({}, true);
 	} catch (nlohmann::json::exception& e) {
 		Dll::MessageBoxF(m_hWnd, MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_CONFIGURATION_SAVE, e.what()));
 		return false;

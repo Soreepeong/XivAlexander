@@ -22,6 +22,8 @@ namespace XivAlexDll {
 		Unload,
 		Launcher,
 		UpdateCheck,
+		Install,
+		Uninstall,
 		Internal_Update_DependencyDllMode,
 		Internal_Update_Step2_ReplaceFiles,
 		Internal_Update_Step3_CleanupFiles,
@@ -61,6 +63,7 @@ namespace XivAlexDll {
 		size_t EntryPointOriginalLength;
 		void* TrampolineAddress;
 		bool SkipFree;
+		bool LoadInstalledXivAlexDllOnly;
 
 		struct {
 			HANDLE hContinuableEvent;
@@ -74,7 +77,6 @@ namespace XivAlexDll {
 	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall ReloadConfiguration(void* lpReserved);
 	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall DisableAllApps(void* lpReserved);
 	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall CallFreeLibrary(void*);
-	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall SetLoadedAsDependency(void*);
 
 	enum class CheckPackageVersionResult {
 		OK = 0,

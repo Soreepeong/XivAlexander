@@ -6,32 +6,27 @@
 #include <XivAlexander/XivAlexander.h>
 #include <XivAlexanderCommon/Sqex_CommandLine.h>
 #include <XivAlexanderCommon/Utils_Win32.h>
-#include <XivAlexanderCommon/Utils_Win32_Resource.h>
 #include <XivAlexanderCommon/XivAlex.h>
 
 #include "App_ConfigRepository.h"
 #include "DllMain.h"
-#include "resource.h"
 
 static WORD s_wLanguage = MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL);
 
 static Utils::Win32::LoadedModule EnsureOriginalDependencyModule(const char* szDllName, std::filesystem::path originalDllPath);
-static void AutoLoadAsDependencyModule();
 
 static std::set<std::filesystem::path> s_ignoreDlls;
 static bool s_useSystemDll = false;
 
 template<typename T_Fn, typename Ret>
 Ret ChainCall(const char* szDllName, const char* szFunctionName, std::vector<std::filesystem::path> chainLoadDlls, std::function<Ret(T_Fn, bool discardImmediately)> cb) {
-	AutoLoadAsDependencyModule();
-
 	const auto systemDll = Utils::Win32::GetSystem32Path() / szDllName;
 
 	if (s_useSystemDll) {
 		chainLoadDlls.clear();
 	} else {
 		std::vector<std::filesystem::path> temp;
-		for (auto& path : temp)
+		for (auto& path : chainLoadDlls)
 			if (!path.empty())
 				temp.emplace_back(App::Config::Config::TranslatePath(path));
 		chainLoadDlls = std::move(temp);
@@ -218,75 +213,12 @@ static Utils::Win32::LoadedModule EnsureOriginalDependencyModule(const char* szD
 
 // void LoadDalamud();
 
-void AutoLoadAsDependencyModule() {
-	static std::mutex s_singleRunMutex;
-	static bool s_loaded = false;
-
-	if (s_loaded)
-		return;
-
-	std::lock_guard lock(s_singleRunMutex);
-	if (s_loaded)
-		return;
-
-	Dll::DisableUnloading(std::format("Loaded as DLL dependency in place of {}", Dll::Module().PathOf().filename()).c_str());
-
-	GetEnvironmentVariableW(L"XIVALEXANDER_DISABLE", nullptr, 0);
-	if (GetLastError() != ERROR_ENVVAR_NOT_FOUND)
-		return;
-
-	std::filesystem::path loadPath;
-	try {
-		const auto conf = App::Config::Acquire();
-		loadPath = conf->Init.ResolveXivAlexInstallationPath() / XivAlex::XivAlexDllNameW;
-		const auto loadTarget = Utils::Win32::LoadedModule(loadPath);
-		const auto params = XivAlexDll::PatchEntryPointForInjection(GetCurrentProcess());
-		params->SkipFree = true;
-		loadTarget.SetPinned();
-		loadTarget.GetProcAddress<decltype(&XivAlexDll::SetLoadedAsDependency)>("XA_SetLoadedAsDependency")(nullptr);
-		loadTarget.GetProcAddress<decltype(&XivAlexDll::InjectEntryPoint)>("XA_InjectEntryPoint")(params);
-
-	} catch (const std::exception& e) {
-		const auto activationContextCleanup = Dll::ActivationContext().With();
-		auto loop = true;
-		while (loop) {
-			const auto choice = Dll::MessageBoxF(
-				Dll::FindGameMainWindow(false), MB_ICONWARNING | MB_ABORTRETRYIGNORE,
-				L"{}\nReason: {}\n\nPress Abort to exit.\nPress Retry to open XivAlexander help webpage.\nPress Ignore to skip loading XivAlexander.",
-				loadPath.empty() ? L"Failed to resolve XivAlexander installation path." : std::format(L"Failed to load {}.", loadPath.wstring()),
-				e.what());
-			switch (choice) {
-				case IDRETRY: {
-					SHELLEXECUTEINFOW shex{};
-					shex.cbSize = sizeof shex;
-					shex.nShow = SW_SHOW;
-					shex.lpFile = FindStringResourceEx(Dll::Module(), IDS_URL_HELP, s_wLanguage) + 1;
-					if (!ShellExecuteExW(&shex)) {
-						Dll::MessageBoxF(
-							Dll::FindGameMainWindow(false), MB_OK | MB_ICONERROR,
-							std::format(FindStringResourceEx(Dll::Module(), IDS_ERROR_UNEXPECTED, s_wLanguage) + 1, Utils::Win32::FormatWindowsErrorMessage(GetLastError())));
-					}
-					break;
-				}
-				case IDIGNORE: {
-					loop = false;
-					break;
-				}
-				case IDABORT:
-					TerminateProcess(GetCurrentProcess(), -1);
-			}
-		}
-	}
-
-	//if (conf && conf->Runtime.ChainLoadDalamud_Enable) {
-	//	if (conf->Runtime.ChainLoadDalamud_WaitMs) {
-	//		Utils::Win32::Thread(L"Dalamud Loader", LoadDalamud);
-	//	} else
-	//		LoadDalamud();
-	//}
-
-	s_loaded = true;
-}
+//if (conf && conf->Runtime.ChainLoadDalamud_Enable) {
+//	if (conf->Runtime.ChainLoadDalamud_WaitMs) {
+//		Utils::Win32::Thread(L"Dalamud Loader", LoadDalamud);
+//	} else
+//		LoadDalamud();
+//}
 
 //void LoadDalamud() {
 //	try {
@@ -318,7 +250,7 @@ void AutoLoadAsDependencyModule() {
 //
 //		std::string gameVersion;
 //		int language = static_cast<int>(Sqex::Language::English) - 1;
-//		auto pairs = Sqex::CommandLine::FromString(Utils::ToUtf8(Utils::Win32::GetCommandLineWithoutProgramName()));
+//		auto pairs = Sqex::CommandLine::FromString(Utils::ToUtf8(Utils::Win32::GetCommandLineWithoutProgramName(Dll::GetOriginalCommandLine())));
 //		for (auto& [k, v] : pairs) {
 //			if (k == "ver")
 //				gameVersion = std::move(v);

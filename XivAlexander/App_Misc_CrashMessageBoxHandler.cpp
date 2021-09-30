@@ -171,11 +171,11 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 					if (!Dll::IsLoadedAsDependency() && useXivAlexander)
 						builder
 							.WithPath(Dll::Module().PathOf().parent_path() / XivAlex::XivAlexLoaderNameW)
-							.WithArgument(true, std::format(L"-a launcher -l select \"{}\" {}", Utils::Win32::Process::Current().PathOf().wstring(), Utils::Win32::GetCommandLineWithoutProgramName()));
+							.WithArgument(true, std::format(L"-a launcher -l select \"{}\" {}", Utils::Win32::Process::Current().PathOf().wstring(), Dll::GetOriginalCommandLine()));
 					else
 						builder
 							.WithPath(Utils::Win32::Process::Current().PathOf())
-							.WithArgument(true, Utils::Win32::GetCommandLineWithoutProgramName());
+							.WithArgument(true, std::wstring(Dll::GetOriginalCommandLine()));
 
 					if (useXivAlexander)
 						builder.WithoutEnviron(L"XIVALEXANDER_DISABLE");

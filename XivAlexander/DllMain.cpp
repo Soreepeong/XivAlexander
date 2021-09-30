@@ -35,6 +35,8 @@ const char* XivAlexDll::LoaderActionToString(LoaderAction val) {
 		case LoaderAction::Unload: return "unload";
 		case LoaderAction::Launcher: return "launcher";
 		case LoaderAction::UpdateCheck: return "update-check";
+		case LoaderAction::Install: return "install";
+		case LoaderAction::Uninstall: return "uninstall";
 		case LoaderAction::Internal_Update_DependencyDllMode: return "_internal_update_dependencydllmode";
 		case LoaderAction::Internal_Update_Step2_ReplaceFiles: return "_internal_update_step2_replacefiles";
 		case LoaderAction::Internal_Update_Step3_CleanupFiles: return "_internal_update_step3_cleanupfiles";
@@ -85,6 +87,8 @@ DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 	}
 }
 
+static std::wstring_view s_originalCommandLine;
+
 static void CheckObfuscatedArguments() {
 	const auto process = Utils::Win32::Process::Current();
 	auto filename = process.PathOf().filename().wstring();
@@ -95,7 +99,7 @@ static void CheckObfuscatedArguments() {
 	
 	try {
 		std::vector<std::string> args;
-		if (int nArgs; LPWSTR * szArgList = CommandLineToArgvW(GetCommandLineW(), &nArgs)) {
+		if (int nArgs; LPWSTR * szArgList = CommandLineToArgvW(s_originalCommandLine.data(), &nArgs)) {
 			for (int i = 0; i < nArgs; i++)
 				args.emplace_back(Utils::ToUtf8(szArgList[i]));
 			LocalFree(szArgList);
@@ -108,7 +112,7 @@ static void CheckObfuscatedArguments() {
 
 			static const auto pairs = Sqex::CommandLine::FromString(args[1], &wasObfuscated);
 			if (wasObfuscated) {
-				static auto newlyCreatedArgumentsW = std::format(L"\"{}\" {}", process.PathOf().wstring(), Utils::Win32::ReverseCommandLineToArgv(Sqex::CommandLine::ToString(pairs, true)));
+				static auto newlyCreatedArgumentsW = std::format(L"\"{}\" {}", process.PathOf().wstring(), Utils::Win32::ReverseCommandLineToArgv(Sqex::CommandLine::ToString(pairs, false)));
 				static auto newlyCreatedArgumentsA = Utils::ToUtf8(newlyCreatedArgumentsW, CP_OEMCP);
 
 				static App::Misc::Hooks::ImportedFunction<LPWSTR> GetCommandLineW("kernel32!GetCommandLineW", "kernel32.dll", "GetCommandLineW");
@@ -131,6 +135,7 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 	switch (fdwReason) {
 		case DLL_PROCESS_ATTACH: {
 			s_bLoadedAsDependency = !!lpReserved;  // non-null for static loads
+			s_originalCommandLine = GetCommandLineW();
 			
 			try {
 				s_hModule.Attach(hInstance, Utils::Win32::LoadedModule::Null, false, "Instance attach failed <cannot happen>");
@@ -140,17 +145,31 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 					.lpResourceName = MAKEINTRESOURCE(IDR_RT_MANIFEST_LATE_ACTIVATION),
 					.hModule = Dll::Module(),
 				});
-				MH_Initialize();
-				if (s_bLoadedAsDependency)
+				
+				if (s_bLoadedAsDependency) {
+					if (lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), XivAlex::XivAlexLoaderNameW) == 0)
+						MH_Initialize();
+					else {
+						GetEnvironmentVariableW(L"XIVALEXANDER_DISABLE", nullptr, 0);
+						if (GetLastError() == ERROR_ENVVAR_NOT_FOUND) {
+							Dll::DisableUnloading(std::format("Loaded as DLL dependency in place of {}", Dll::Module().PathOf().filename()).c_str());
+							const auto params = XivAlexDll::PatchEntryPointForInjection(GetCurrentProcess());
+							params->SkipFree = true;
+							params->LoadInstalledXivAlexDllOnly = true;
+						}
+					}
+				} else {
+					MH_Initialize();
 					CheckObfuscatedArguments();
-
-				s_crashMessageBoxHandler = std::make_unique<App::Misc::CrashMessageBoxHandler>();
+					s_crashMessageBoxHandler = std::make_unique<App::Misc::CrashMessageBoxHandler>();
+				}
 
 			} catch (const std::exception& e) {
 				Utils::Win32::DebugPrint(L"DllMain({:x}, DLL_PROCESS_ATTACH, {}) Error: {}",
 					reinterpret_cast<size_t>(hInstance), reinterpret_cast<size_t>(lpReserved), e.what());
 				return FALSE;
 			}
+
 			return TRUE;
 		}
 
@@ -159,7 +178,7 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 
 			s_crashMessageBoxHandler.reset();
 
-			if (const auto res = MH_Uninitialize(); res != MH_OK) {
+			if (const auto res = MH_Uninitialize(); res != MH_OK && res != MH_ERROR_NOT_INITIALIZED) {
 				fail = true;
 				Utils::Win32::DebugPrint(L"MH_Uninitialize error: {}", MH_StatusToString(res));
 			}
@@ -172,6 +191,9 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 }
 
 size_t __stdcall XivAlexDll::DisableAllApps(void*) {
+	if (s_bLoadedAsDependency)
+		return -1;
+
 	EnableXivAlexander(0);
 	EnableInjectOnCreateProcess(0);
 	return 0;
@@ -179,10 +201,6 @@ size_t __stdcall XivAlexDll::DisableAllApps(void*) {
 
 void __stdcall XivAlexDll::CallFreeLibrary(void*) {
 	FreeLibraryAndExitThread(Dll::Module(), 0);
-}
-
-void __stdcall XivAlexDll::SetLoadedAsDependency(void*) {
-	s_bLoadedAsDependency = true;
 }
 
 [[nodiscard]] XivAlexDll::CheckPackageVersionResult XivAlexDll::CheckPackageVersion() {
@@ -208,6 +226,9 @@ void __stdcall XivAlexDll::SetLoadedAsDependency(void*) {
 }
 
 size_t Dll::DisableUnloading(const char* pszReason) {
+	if (s_bLoadedAsDependency)
+		return -1;
+
 	s_dllUnloadDisableReason = pszReason ? pszReason : "(reason not specified)";
 	Module().SetPinned();
 	return 0;
@@ -225,7 +246,7 @@ const wchar_t* Dll::GetGenericMessageBoxTitle() {
 	static std::wstring buf;
 	if (buf.empty()) {
 		buf = std::format(L"{} {}",
-			GetStringResFromId(IDS_APP_NAME),
+			1 + GetStringResFromId(IDS_APP_NAME),
 			Utils::Win32::FormatModuleVersionString(Module().PathOf()).second);
 	}
 	return buf.data();
@@ -258,6 +279,10 @@ LPCWSTR Dll::GetStringResFromId(UINT resId) {
 
 int Dll::MessageBoxF(HWND hWnd, UINT uType, UINT stringResId) {
 	return MessageBoxF(hWnd, uType, GetStringResFromId(stringResId));
+}
+
+std::wstring_view Dll::GetOriginalCommandLine() {
+	return s_originalCommandLine;
 }
 
 void Dll::SetLoadedFromEntryPoint() {

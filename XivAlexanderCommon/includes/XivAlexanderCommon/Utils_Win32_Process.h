@@ -46,6 +46,7 @@ namespace Utils::Win32 {
 		DWORD GetId() const;
 
 		void Terminate(DWORD dwExitCode, bool errorIfAlreadyTerminated = false) const;
+		DWORD WaitAndGetExitCode() const;
 
 		int CallRemoteFunction(void* rpfn, void* rpParam, const char* pcszDescription) const;
 
@@ -185,6 +186,8 @@ namespace Utils::Win32 {
 	private:
 		void InitializeEnviron();
 	};
+
+	Process RunProgram(RunProgramParams params);
 
 	class ModuleMemoryBlocks {
 	public:

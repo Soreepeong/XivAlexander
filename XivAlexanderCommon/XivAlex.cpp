@@ -280,3 +280,43 @@ std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLauncher
 	}
 	return result;
 }
+
+bool XivAlex::IsXivAlexanderDll(const std::filesystem::path& dllPath) {
+	DWORD verHandle = 0;
+	std::vector<BYTE> block;
+	block.resize(GetFileVersionInfoSizeW(dllPath.c_str(), &verHandle));
+	if (block.empty())
+		throw Utils::Win32::Error("GetFileVersionInfoSizeW");
+	if (!GetFileVersionInfoW(dllPath.c_str(), 0, static_cast<DWORD>(block.size()), &block[0]))
+		throw Utils::Win32::Error("GetFileVersionInfoW");
+	struct LANGANDCODEPAGE {
+		WORD wLanguage;
+		WORD wCodePage;
+	} * lpTranslate;
+	UINT cbTranslate;
+	if (!VerQueryValueW(&block[0],
+		TEXT("\\VarFileInfo\\Translation"),
+		reinterpret_cast<LPVOID*>(&lpTranslate),
+		&cbTranslate))
+		return false;
+
+	for (size_t i = 0; i < (cbTranslate / sizeof(struct LANGANDCODEPAGE)); i++) {
+		wchar_t* buf = nullptr;
+		UINT size = 0;
+		if (!VerQueryValueW(&block[0],
+			std::format(L"\\StringFileInfo\\{:04x}{:04x}\\FileDescription",
+				lpTranslate[i].wLanguage,
+				lpTranslate[i].wCodePage).c_str(),
+			reinterpret_cast<LPVOID*>(&buf),
+			&size))
+			continue;
+		auto currName = std::wstring_view(buf, size);
+		while (!currName.empty() && currName.back() == L'\0')
+			currName = currName.substr(0, currName.size() - 1);
+		if (currName.empty())
+			continue;
+		if (currName == L"XivAlexander Main DLL")
+			return true;
+	}
+	return false;
+}

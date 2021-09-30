@@ -8,6 +8,7 @@
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
 #include <XivAlexanderCommon/XivAlex.h>
 
+#include "App_ConfigRepository.h"
 #include "App_Feature_GameResourceOverrider.h"
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_Hooks.h"
@@ -54,10 +55,30 @@ struct App::InjectOnCreateProcessApp::Implementation {
 	[[nodiscard]] bool IsInjectTarget(const Utils::Win32::Process& process) const {
 		const auto path = process.PathOf();
 		auto pardir = path.parent_path();
-		const auto filename = path.filename();
+		const auto filename = path.filename().wstring();
 		if (equivalent(pardir, Dll::Module().PathOf().parent_path())
-			&& (filename == XivAlex::XivAlexLoader32NameW || filename == XivAlex::XivAlexLoader64NameW))
+			&& (lstrcmpiW(filename.c_str(), XivAlex::XivAlexLoader32NameW) == 0 || lstrcmpiW(filename.c_str(), XivAlex::XivAlexLoader64NameW) == 0))
 			return false;
+
+		if (lstrcmpiW(filename.c_str(), XivAlex::GameExecutable32NameW) == 0) {
+			for (const auto candidate : {"d3d9.dll", "dinput8.dll"}) {
+				try {
+					if (XivAlex::IsXivAlexanderDll(pardir / candidate))
+						return false;
+				} catch (...) {
+					// pass
+				}
+			}
+		} else if (lstrcmpiW(filename.c_str(), XivAlex::GameExecutable64NameW) == 0) {
+			for (const auto candidate : {"d3d11.dll", "dxgi.dll", "dinput8.dll"}) {
+				try {
+					if (XivAlex::IsXivAlexanderDll(pardir / candidate))
+						return false;
+				} catch (...) {
+					// pass
+				}
+			}
+		}
 
 		if (InjectAll)
 			return true;
@@ -185,6 +206,74 @@ size_t __stdcall XivAlexDll::EnableInjectOnCreateProcess(size_t flags) {
 	}
 }
 
+static void InitializeAsStubBeforeOriginalEntryPoint() {
+	const auto conf = App::Config::Acquire();
+	auto selfFileName = Dll::Module().PathOf().filename().wstring();
+	CharLowerW(&selfFileName[0]);
+	if (selfFileName == L"d3d11.dll") {
+		for (auto& path : conf->Runtime.ChainLoadPath_d3d11.Value())
+			if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(App::Config::Config::TranslatePath(path), 0, false))
+				mod.SetPinned();
+	} else if (selfFileName == L"d3d9.dll") {
+		for (auto& path : conf->Runtime.ChainLoadPath_d3d9.Value())
+			if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(App::Config::Config::TranslatePath(path), 0, false))
+				mod.SetPinned();
+	} else if (selfFileName == L"dinput8.dll") {
+		for (auto& path : conf->Runtime.ChainLoadPath_dinput8.Value())
+			if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(App::Config::Config::TranslatePath(path), 0, false))
+				mod.SetPinned();
+	} else if (selfFileName == L"dxgi.dll") {
+		for (auto& path : conf->Runtime.ChainLoadPath_dxgi.Value())
+			if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(App::Config::Config::TranslatePath(path), 0, false))
+				mod.SetPinned();
+	}
+
+	Dll::DisableUnloading(std::format("Loaded as DLL dependency in place of {}", Dll::Module().PathOf().filename()).c_str());
+
+	GetEnvironmentVariableW(L"XIVALEXANDER_DISABLE", nullptr, 0);
+	if (GetLastError() != ERROR_ENVVAR_NOT_FOUND)
+		return;
+
+	std::filesystem::path loadPath;
+	try {
+		const auto conf = App::Config::Acquire();
+		loadPath = conf->Init.ResolveXivAlexInstallationPath() / XivAlex::XivAlexDllNameW;
+		const auto loadTarget = Utils::Win32::LoadedModule(loadPath);
+		const auto params = XivAlexDll::PatchEntryPointForInjection(GetCurrentProcess());
+		params->SkipFree = true;
+		loadTarget.SetPinned();
+		loadTarget.GetProcAddress<decltype(&XivAlexDll::InjectEntryPoint)>("XA_InjectEntryPoint")(params);
+
+	} catch (const std::exception& e) {
+		const auto activationContextCleanup = Dll::ActivationContext().With();
+		auto loop = true;
+		while (loop) {
+			const auto choice = Dll::MessageBoxF(
+				Dll::FindGameMainWindow(false), MB_ICONWARNING | MB_ABORTRETRYIGNORE,
+				L"{}\nReason: {}\n\nPress Abort to exit.\nPress Retry to open XivAlexander help webpage.\nPress Ignore to skip loading XivAlexander.",
+				loadPath.empty() ? L"Failed to resolve XivAlexander installation path." : std::format(L"Failed to load {}.", loadPath.wstring()),
+				e.what());
+			switch (choice) {
+				case IDRETRY: {
+					SHELLEXECUTEINFOW shex{};
+					shex.cbSize = sizeof shex;
+					shex.nShow = SW_SHOW;
+					shex.lpFile = conf->Runtime.GetStringRes(IDS_URL_HELP);
+					if (!ShellExecuteExW(&shex))
+						Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, Utils::Win32::FormatWindowsErrorMessage(GetLastError()));
+					break;
+				}
+				case IDIGNORE: {
+					loop = false;
+					break;
+				}
+				case IDABORT:
+					TerminateProcess(GetCurrentProcess(), -1);
+			}
+		}
+	}
+}
+
 static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
 	const auto process = Utils::Win32::Process::Current();
 	auto filename = process.PathOf().filename().wstring();
@@ -227,16 +316,19 @@ void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters* pParam) 
 
 #ifdef _DEBUG
 				Dll::MessageBoxF(nullptr, MB_OK,
-					L"PID: {}\nPath: {}\nCommand Line: {}", process.GetId(), process.PathOf().wstring(), GetCommandLineW());
+					L"PID: {}\nPath: {}\nCommand Line: {}", process.GetId(), process.PathOf().wstring(), Dll::GetOriginalCommandLine());
 #endif
 
 				process.WriteMemory(p->EntryPoint, p->EntryPointOriginalBytes, p->EntryPointOriginalLength, true);
-				InitializeBeforeOriginalEntryPoint(hContinueNotify);
+				if (p->LoadInstalledXivAlexDllOnly)
+					InitializeAsStubBeforeOriginalEntryPoint();
+				else
+					InitializeBeforeOriginalEntryPoint(hContinueNotify);
 				SetEvent(hContinueNotify);
 			} catch (const std::exception& e) {
 				Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR,
 					1 + FindStringResourceEx(Dll::Module(), IDS_ERROR_INJECT),
-					e.what(), process.GetId(), process.PathOf().wstring(), GetCommandLineW());
+					e.what(), process.GetId(), process.PathOf().wstring(), Dll::GetOriginalCommandLine());
 
 #ifdef _DEBUG
 				throw;
