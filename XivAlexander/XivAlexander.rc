@@ -250,7 +250,7 @@ BEGIN
     IDS_ERROR_INVALID_LAUNCHER_TYPE "ƒ‰ƒ“ƒ`ƒƒ[‚ÌŽw’è‚ª³‚µ‚­‚ ‚è‚Ü‚¹‚ñB"
     IDS_APP_DESCRIPTION     "XivAlexanderLoader: XivAlexander‚ðƒQ[ƒ€‚ÌƒvƒƒZƒX‚Éƒ[ƒh‚µ‚Ü‚·B\n\n{}"
     IDS_ERROR_LOAD          "XivAlexander‚ðƒvƒƒZƒX‚Éƒ[ƒh‚·‚é‚±‚Æ‚ÉŽ¸”s‚µ‚Ü‚µ‚½B ({})"
-    IDS_TITLE_SELECT_BOOT   "FFXIV BootƒvƒƒOƒ‰ƒ€‚Ì‘I‘ð"
+    IDS_TITLE_SELECT_BOOT   "FFXIVBoot‚ÌŽÀs‚Ì‘I‘ð"
     IDS_TITLE_UNRECOVERABLEERROR "ƒGƒ‰[”­¶"
     IDS_ERROR_LOADER_NOT_FOUND "{}‚ÅXivAlexanderLoader‚ðŒ©‚Â‚¯‚é‚±‚Æ‚ª‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B"
     IDS_ERROR_CONFIGURATION_LOAD "Ý’èƒtƒ@ƒCƒ‹‚Ì“Ç‚Ýž‚Ý‚ÉŽ¸”s‚µ‚Ü‚µ‚½B({})"
@@ -430,6 +430,55 @@ BEGIN
     IDS_UNRECOVERABLEERROR_RESTARTWITHOUTXIVALEXANDER 
                             "XivAlexander‚È‚µ‚ÅƒQ[ƒ€‚ðÄ‹N“®‚·‚é(&O)"
     IDS_UNRECOVERABLEERROR_EXIT "I—¹‚·‚é(&X)"
+    IDS_INSTALLATIONSTATUS_NOTINSTALLED "ƒCƒ“ƒXƒg[ƒ‹‰Â”\"
+    IDS_INSTALLATIONSTATUS_INSTALLED "ƒCƒ“ƒXƒg[ƒ‹Š®—¹"
+    IDS_INSTALLATIONSTATUS_OLDER "ƒAƒbƒvƒf[ƒg‰Â”\"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_INSTALLATIONSTATUS_NEWER "¡ŽÀs’†‚ÌƒvƒƒOƒ‰ƒ€‚æ‚èÅV"
+    IDS_LOADERAPP_INTERACTIVE_FOOTER 
+                            "<a href=""refresh"">–Ú˜^‚ðXV</a> | <a href=""update"">ƒAƒbƒvƒf[ƒg‚ðŠm”F</a> | <a href=""homepage"">ƒz[ƒ€ƒy[ƒW‚ð•\Ž¦</a>"
+    IDS_LOADERAPP_INTERACTIVE_NOCHAINLOAD 
+                            "‘I‘ð‚³‚ê‚½ƒQ[ƒ€‚ÌƒvƒƒOƒ‰ƒ€‚ÍXivAlexander‚ªƒ[ƒh‚³‚ê‚½‚Ü‚Ü‚Å‚Í‹N“®‚ª‚Å‚«‚Ü‚¹‚ñBXivAlexander‚ðƒCƒ“ƒXƒg[ƒ‹‚µ‚½‚èAƒQ[ƒ€‚ð‹N“®‚µ‚½Œã‚Å–Ú˜^‚ðXV‚µ‚ÄXivAlexander‚ðƒ[ƒh‚³‚¹‚Ä‚­‚¾‚³‚¢B"
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_MAININSTRUCTION "XivAlexander‚ÌƒCƒ“ƒXƒg[ƒ‹"
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_CONTENT 
+                            "XivAlexander‚ðƒCƒ“ƒXƒg[ƒ‹‚·‚é‚ÆAƒQ[ƒ€‚Ì‹N“®‚Æ“¯Žž‚ÉXivAlexander‚àƒ[ƒh‚ª‚Å‚«‚Ü‚·B\n\nEŠÇ—ŽÒ‚ÌŒ ŒÀ‚ª•K—v‚Å‚·B\n* Reshade‚Æ“¯Žž‚ÉŽg‚¦‚Ü‚·B\n* ƒQ[ƒ€‚Ìƒf[ƒ^ƒtƒ@ƒCƒ‹‚Í•ÏX‚³‚ê‚Ü‚¹‚ñB"
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL 
+                            "XivAlexander‚ðƒCƒ“ƒXƒg[ƒ‹‚·‚é(&I)\nXivAlexander‚ð‘I‘ð‚µ‚½ƒQ[ƒ€ƒvƒƒOƒ‰ƒ€‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·B"
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_UNINSTALL 
+                            "XivAlexander‚ðƒAƒ“ƒCƒ“ƒXƒg[ƒ‹‚·‚é(&U)\nXivAlexander‚ð‘I‘ð‚µ‚½ƒQ[ƒ€ƒvƒƒOƒ‰ƒ€‚©‚çƒAƒ“ƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·B"
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_RUNGAME 
+                            "ƒQ[ƒ€‚ð‹N“®‚·‚é(&R)\nƒQ[ƒ€‚Ìƒ‰ƒ“ƒ`ƒƒ[‚ð‹N“®‚µ‚ÄAƒQ[ƒ€‚ªŽÀs‚³‚ê‚éŽžAXivAlexander‚ð“¯Žž‚Éƒ[ƒh‚³‚¹‚Ü‚·B"
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_LOADONCE 
+                            "ˆê‰ñ‚¾‚¯ƒ[ƒh‚³‚¹‚éc(&L)\nƒCƒ“ƒXƒg[ƒ‹‚µ‚È‚­‚ÄA‹N“®’†‚ÌƒQ[ƒ€ƒvƒƒZƒX‚ÉXivAlexander‚ðƒ[ƒh‚³‚¹‚Ü‚·B"
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_NOTLISTEDABOVE 
+                            "ƒCƒ“ƒXƒg[ƒ‹‚µ‚½ƒQ[ƒ€ƒvƒƒOƒ‰ƒ€‚ªã‚Å•\Ž¦‚³‚ê‚Ä‚¢‚È‚¢"
+    IDS_LOADERAPP_LOADONCE_MAININSTRUCTION "XivAlexander‚Ìƒ[ƒh"
+    IDS_LOADERAPP_LOADONCE_CONTENT 
+                            "XivAlexander‚ðƒCƒ“ƒXƒg[ƒ‹‚µ‚È‚­‚Ä‚àA¡‚·‚®‚ÉƒQ[ƒ€‚Éƒ[ƒh‚³‚¹‚Ü‚·B\n\n* MOD‚ðŽg‚¤‚½‚ß‚É‚ÍAXivAlexander‚ÌƒƒCƒ“ƒƒjƒ…[‚ðŽg‚Á‚ÄƒQ[ƒ€‚ðÄ‹N“®‚µ‚Ä‚­‚¾‚³‚¢B"
+    IDS_LOADERAPP_LOADONCE_LOAD 
+                            "XivAlexander‚ðƒ[ƒh‚³‚¹‚é(&L)\n‘I‘ð‚µ‚½ƒQ[ƒ€ƒvƒƒZƒX‚ÉXivAlexander‚ðƒ[ƒh‚³‚¹‚Ü‚·B"
+    IDS_LOADERAPP_LOADONCE_UNLOAD 
+                            "XivAlexander‚ðƒAƒ“ƒ[ƒh‚³‚¹‚é(&U)\n‘I‘ð‚µ‚½ƒQ[ƒ€ƒvƒƒZƒX‚©‚çXivAlexander‚ÌI—¹‚ðŽŽ‚Ý‚Ü‚·B"
+    IDS_LOADERAPP_LOADONCE_INSTALL 
+                            "ƒCƒ“ƒXƒg[ƒ‹‚·‚éc(&I)\nƒQ[ƒ€‚ð‹N“®‚·‚éŽž‚ÉA“¯Žž‚ÉXivAlexander‚ðƒ[ƒh‚³‚¹‚é‚½‚ß‚ÉXivAlexander‚ðƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·B"
+    IDS_FILTERSPEC_LOGFILES "ƒƒOƒtƒ@ƒCƒ‹ (*.log)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_FILTERSPEC_EXECUTABLEFILES "ŽÀsƒtƒ@ƒCƒ‹ (*.exe, *.scr)"
+    IDS_FILTERSPEC_FFXIVEXECUTABLEFILES 
+                            "FFXIV‚ÌŽÀsƒtƒ@ƒCƒ‹ (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe; ffxiv.exe)"
+    IDS_FILTERSPEC_FFXIVBOOTFILES 
+                            "FFXIV‚Ì‹N“®—pŽÀsƒtƒ@ƒCƒ‹ (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe)"
+    IDS_TITLE_SELECT_FFXIVEXECUTABLE "FFXIV‚ÌŽÀsƒtƒ@ƒCƒ‹‚Ì‘I‘ð"
+    IDS_NOTIFY_XIVALEXINSTALL_INSTALLCOMPLETE 
+                            "XivAlexander‚ðŽŸ‚ÌŒo˜H‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚µ‚½B\n\n{}"
+    IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE 
+                            "XivAlexander‚ðŽŸ‚ÌŒo˜H‚©‚çƒAƒ“ƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚µ‚½B\n\n{}\n\nÝ’èƒtƒ@ƒCƒ‹‚È‚Ç‚Í’¼Ú‚ÉŠm”F‚µ‚Äíœ‚µ‚Ä‚­‚¾‚³‚¢BÝ’èƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚Ü‚·B"
 END
 
 #endif    // Japanese (Japan) resources
@@ -700,7 +749,7 @@ BEGIN
     IDS_ERROR_INVALID_LAUNCHER_TYPE "·±Ã³ ÁöÁ¤ÀÌ Àß¸øµÇ¾ú½À´Ï´Ù."
     IDS_APP_DESCRIPTION     "XivAlexanderLoader: XivAlexander¸¦ °ÔÀÓ ÇÁ·Î¼¼½º¿¡ ºÒ·¯µéÀÔ´Ï´Ù.\n\n{}"
     IDS_ERROR_LOAD          "XivAlexander¸¦ ÇÁ·Î¼¼½º¿¡ ºÒ·¯µéÀÌÁö ¸øÇß½À´Ï´Ù. ({})"
-    IDS_TITLE_SELECT_BOOT   "FFXIV Boot ÇÁ·Î±×·¥ ¼±ÅÃ"
+    IDS_TITLE_SELECT_BOOT   "FFXIV Boot ½ÇÇà ÆÄÀÏ ¼±ÅÃÇÏ±â"
     IDS_TITLE_UNRECOVERABLEERROR "¿À·ù ¹ß»ý"
     IDS_ERROR_LOADER_NOT_FOUND "XivAlexanderLoader¸¦ {}¿¡¼­ ¹ß°ßÇÒ ¼ö ¾ø¾ú½À´Ï´Ù."
     IDS_ERROR_CONFIGURATION_LOAD "¼³Á¤ ÆÄÀÏÀ» ºÒ·¯¿ÀÁö ¸øÇß½À´Ï´Ù. ({})"
@@ -882,6 +931,54 @@ BEGIN
     IDS_UNRECOVERABLEERROR_RESTARTWITHOUTXIVALEXANDER 
                             "XivAlexander ¾øÀÌ Àç½ÃÀÛÇÏ±â(&O)"
     IDS_UNRECOVERABLEERROR_EXIT "³¡³»±â(&X)"
+    IDS_INSTALLATIONSTATUS_NOTINSTALLED "¼³Ä¡ °¡´É"
+    IDS_INSTALLATIONSTATUS_INSTALLED "¼³Ä¡µÊ"
+    IDS_INSTALLATIONSTATUS_OLDER "¾÷µ¥ÀÌÆ® °¡´É"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_INSTALLATIONSTATUS_NEWER "ÇöÀç ½ÇÇàÇÑ ÇÁ·Î±×·¥º¸´Ù ÃÖ½Å ¹öÀü"
+    IDS_LOADERAPP_INTERACTIVE_FOOTER 
+                            "<a href=""refresh"">»õ·Î °íÄ§</a> | <a href=""update"">¾÷µ¥ÀÌÆ® È®ÀÎ</a> | <a href=""homepage"">È¨ÆäÀÌÁö</a>"
+    IDS_LOADERAPP_INTERACTIVE_NOCHAINLOAD 
+                            "¼±ÅÃÇÑ °ÔÀÓ ¼³Ä¡º»Àº XivAlexanderÀÌ ºÒ·¯µé¿©Áø »óÅÂ·Î ÄÓ ¼ö ¾ø½À´Ï´Ù. XivAlexander¸¦ ¼³Ä¡ÇÏ°Å³ª, °ÔÀÓ ½ÇÇà ÈÄ »õ·Î °íÄ£ ÈÄ XivAlexander¸¦ ºÒ·¯µé¿© ÁÖ¼¼¿ä."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_MAININSTRUCTION "XivAlexander ¼³Ä¡"
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_CONTENT 
+                            "XivAlexander¸¦ ¼³Ä¡ÇÏ¸é °ÔÀÓ ½ÇÇà°ú ÇÔ²² XivAlexander¸¦ ½ÇÇàÇÒ ¼ö ÀÖ½À´Ï´Ù.\n\n* °ü¸®ÀÚ ±ÇÇÑÀÌ ÇÊ¿äÇÕ´Ï´Ù.\n* ReshadeÇÏ°í °°ÀÌ ¾µ ¼ö ÀÖ½À´Ï´Ù.\n* °ÔÀÓ µ¥ÀÌÅÍ ÆÄÀÏÀº º¯°æµÇÁö ¾Ê½À´Ï´Ù."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL 
+                            "XivAlexander ¼³Ä¡ÇÏ±â(&I)\nXivAlexander¸¦ ¼±ÅÃÇÑ °ÔÀÓ ¼³Ä¡¿¡ °°ÀÌ ¼³Ä¡ÇÕ´Ï´Ù."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_UNINSTALL 
+                            "XivAlexander Á¦°ÅÇÏ±â(&U)\nXivAlexander¸¦ ¼±ÅÃÇÑ °ÔÀÓ ¼³Ä¡¿¡¼­ Á¦°ÅÇÕ´Ï´Ù."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_RUNGAME 
+                            "°ÔÀÓ ½ÇÇàÇÏ±â(&R)\n°ÔÀÓ ·±Ã³¸¦ ½ÇÇàÇÏ°í °ÔÀÓÀÌ ½ÇÇàµÉ ¶§ XivAlexander¸¦ °°ÀÌ ½ÇÇàÇÕ´Ï´Ù."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_LOADONCE 
+                            "ÇÑ ¹ø¸¸ ½ÇÇàÇÏ±â...(&L)\n¼³Ä¡ ¾øÀÌ ½ÇÇà ÁßÀÎ °ÔÀÓ ÇÁ·Î¼¼½º¿¡ XivAlexander¸¦ ºÒ·¯µéÀÔ´Ï´Ù."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_NOTLISTEDABOVE "°ÔÀÓ ¼³Ä¡º»ÀÌ À§¿¡ Ç¥½ÃµÇÁö ¾ÊÀ½"
+    IDS_LOADERAPP_LOADONCE_MAININSTRUCTION "XivAlexander ÇÑ ¹ø¸¸ ½ÇÇàÇÏ±â"
+    IDS_LOADERAPP_LOADONCE_CONTENT 
+                            "¼³Ä¡ÇÏÁö ¾Ê°í Áö±Ý ¹Ù·Î XivAlexander¸¦ °ÔÀÓ¿¡ ºÒ·¯µéÀÏ ¼ö ÀÖ½À´Ï´Ù.\n\n* ¸ðµùÀ» »ç¿ëÇÏ±â À§ÇØ¼­´Â XivAlexander ¸Þ´º¸¦ ÀÌ¿ëÇØ¼­ °ÔÀÓÀ» Àç½ÃÀÛÇØ ÁÖ¼¼¿ä."
+    IDS_LOADERAPP_LOADONCE_LOAD 
+                            "XivAlexander ºÒ·¯µéÀÌ±â(&L)\n¼±ÅÃÇÑ °ÔÀÓ ÇÁ·Î¼¼½º¿¡ XivAlexander¸¦ ºÒ·¯µéÀÔ´Ï´Ù."
+    IDS_LOADERAPP_LOADONCE_UNLOAD 
+                            "XivAlexander Á¾·á½ÃÅ°±â(&U)\n¼±ÅÃÇÑ °ÔÀÓ ÇÁ·Î¼¼½º¿¡¼­ XivAlexander Á¾·á¸¦ ½ÃµµÇÕ´Ï´Ù."
+    IDS_LOADERAPP_LOADONCE_INSTALL 
+                            "¼³Ä¡ÇÏ±â...(&I)\n°ÔÀÓÀ» ÄÓ ¶§ ÀÚµ¿À¸·Î XivAlexander¸¦ ºÒ·¯µéÀÌ±â À§ÇØ XivAlexander¸¦ ¼³Ä¡ÇÕ´Ï´Ù."
+    IDS_FILTERSPEC_LOGFILES "·Î±× ÆÄÀÏ (*.log)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_FILTERSPEC_EXECUTABLEFILES "½ÇÇà ÆÄÀÏ (*.exe, *.scr)"
+    IDS_FILTERSPEC_FFXIVEXECUTABLEFILES 
+                            "FFXIV ½ÇÇà ÆÄÀÏ (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe; ffxiv.exe)"
+    IDS_FILTERSPEC_FFXIVBOOTFILES 
+                            "FFXIV Boot ½ÇÇà ÆÄÀÏ (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe)"
+    IDS_TITLE_SELECT_FFXIVEXECUTABLE "FFXIV ½ÇÇà ÆÄÀÏ ¼±ÅÃÇÏ±â"
+    IDS_NOTIFY_XIVALEXINSTALL_INSTALLCOMPLETE 
+                            "XivAlexander¸¦ ´ÙÀ½ °æ·Î¿¡ ¼³Ä¡ÇÏ¿´½À´Ï´Ù.\n\n{}"
+    IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE 
+                            "XivAlexander¸¦ ´ÙÀ½ °æ·Î¿¡¼­ Á¦°ÅÇÏ¿´½À´Ï´Ù.\n\n{}\n\n»ç¿ëÀÚ ¼³Á¤ ÆÄÀÏ µîÀº ¼öµ¿À¸·Î Á¦°ÅÇØ¾ß ÇÕ´Ï´Ù. ¼³Á¤ ÆÄÀÏ ÀúÀå Æú´õ¸¦ Áö±Ý È®ÀÎÇÏ½Ã°Ú½À´Ï±î?"
 END
 
 #endif    // Korean (Korea) resources
@@ -1479,7 +1576,48 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_INSTALLATIONSTATUS_NEWER "Downgradable"
+    IDS_INSTALLATIONSTATUS_NEWER "Newer than current program"
+    IDS_LOADERAPP_INTERACTIVE_FOOTER 
+                            "<a href=""refresh"">Refresh</a> | <a href=""update"">Check for updates</a> | <a href=""homepage"">Homepage</a>"
+    IDS_LOADERAPP_INTERACTIVE_NOCHAINLOAD 
+                            "Cannot launch game with XivAlexander enabled. You will have to install XivAlexander, or load XivAlexander after you have started the game and pressed the Refresh link below."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_MAININSTRUCTION "Install XivAlexander"
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_CONTENT 
+                            "You can install XivAlexander to load XivAlexander along with the game.\n\n* Requires Administrator permissions.\n* Compatible with Reshade.\n* No game data files are modified."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL 
+                            "&Install XivAlexander\nInstall XivAlexander for the selected game installation."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_UNINSTALL 
+                            "&Uninstall XivAlexander\nUninstall XivAlexander from the selected game installation."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_RUNGAME 
+                            "&Run game\nRun game launcher and load XivAlexander when game has started."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_LOADONCE 
+                            "&Load once...\nLoad XivAlexander into running game once without installation."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_NOTLISTEDABOVE 
+                            "Game installation not listed above"
+    IDS_LOADERAPP_LOADONCE_MAININSTRUCTION "Load XivAlexander once"
+    IDS_LOADERAPP_LOADONCE_CONTENT 
+                            "You can load XivAlexander into the game right now without installing first.\n\n* Restart game using XivAlexander main menu to enable modding."
+    IDS_LOADERAPP_LOADONCE_LOAD 
+                            "&Load XivAlexander\nLoad XivAlexander immediately to the selected game process."
+    IDS_LOADERAPP_LOADONCE_UNLOAD 
+                            "&Unload XivAlexander\nAttempt to unload XivAlexander from the selected game process."
+    IDS_LOADERAPP_LOADONCE_INSTALL 
+                            "&Install...\nInstall XivAlexander instead, for automatic loading when you run the game."
+    IDS_FILTERSPEC_LOGFILES "Log files (*.log)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_FILTERSPEC_EXECUTABLEFILES "Executable PE files (*.exe, *.scr)"
+    IDS_FILTERSPEC_FFXIVEXECUTABLEFILES 
+                            "FFXIV executable files (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe; ffxiv.exe)"
+    IDS_FILTERSPEC_FFXIVBOOTFILES 
+                            "FFXIV boot files (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe)"
+    IDS_TITLE_SELECT_FFXIVEXECUTABLE "Select FFXIV executable program"
+    IDS_NOTIFY_XIVALEXINSTALL_INSTALLCOMPLETE 
+                            "XivAlexander is now installed for {}."
+    IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE 
+                            "XivAlexander is now uninstalled from {}.\nFor complete removal of files, you will have to remove configuration files manually. Do you want to open the configuration folder?"
 END
 
 #endif    // English (United States) resources

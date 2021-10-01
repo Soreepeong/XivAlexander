@@ -64,7 +64,7 @@ int App::LoaderApp::Actions::Interactive::Run() {
 			.WithButtonCommandLinks()
 			.WithWindowTitle(Dll::GetGenericMessageBoxTitle())
 			.WithMainIcon(IDI_TRAY_ICON)
-			.WithFooter(LR"(<a href="refresh">Refresh</a> | <a href="update">Check for updates</a> | <a href="homepage">Homepage</a>)")
+			.WithFooter(IDS_LOADERAPP_INTERACTIVE_FOOTER)
 			.Build();
 		dialog.OnDialogConstructed = [](auto& dialog) {
 			SetWindowPos(dialog.GetHwnd(), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
@@ -98,7 +98,7 @@ std::function<Utils::Win32::TaskDialog::ActionHandled(Utils::Win32::TaskDialog&)
 				});
 			} else {
 				ShellExecutePathOrThrow(m_state.BootPath, dialog.GetHwnd());
-				Dll::MessageBoxF(nullptr, MB_ICONWARNING, L"Cannot launch game with XivAlexander enabled. You will have to install XivAlexander, or load XivAlexander after you have started the game and pressed the Refresh link below.");
+				Dll::MessageBoxF(nullptr, MB_ICONWARNING, IDS_LOADERAPP_INTERACTIVE_NOCHAINLOAD);
 			}
 		} catch (const Utils::Win32::CancelledError&) {
 			// pass
@@ -111,24 +111,24 @@ std::function<Utils::Win32::TaskDialog::ActionHandled(Utils::Win32::TaskDialog&)
 
 void App::LoaderApp::Actions::Interactive::SetupBuilderForInstallation(Utils::Win32::TaskDialog::Builder& builder, bool showLoadOnce) {
 	builder
-		.WithMainInstruction(L"Install XivAlexander")
-		.WithContent(L"You can install XivAlexander to launch XivAlexander with the game.\n\n* Requires Administrator permissions.\n* Compatible with Reshade.\n* No game data files are touched.")
+		.WithMainInstruction(IDS_LOADERAPP_INTERACTIVE_INSTALL_MAININSTRUCTION)
+		.WithContent(IDS_LOADERAPP_INTERACTIVE_INSTALL_CONTENT)
 		.WithButton({
-			.Text = L"&Install XivAlexander\nInstall XivAlexander for the selected game installation.",
+			.Text = IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL,
 			.Callback = SetupBuilderForInstallation_MakeInstallUninstallOnCommandCallback(true),
 		})
 		.WithButton({
-			.Text = L"&Uninstall XivAlexander\nUninstall XivAlexander from the selected game installation.",
+			.Text = IDS_LOADERAPP_INTERACTIVE_INSTALL_UNINSTALL,
 			.Callback = SetupBuilderForInstallation_MakeInstallUninstallOnCommandCallback(false),
 		})
 		.WithButton({
-			.Text = L"&Run game\nRun game launcher and load XivAlexander when game has started.",
+			.Text = IDS_LOADERAPP_INTERACTIVE_INSTALL_RUNGAME,
 			.Callback = SetupBuilderForInstallation_MakeRunGameLauncherOnCommandCallback(),
 		});
 
 	if (showLoadOnce) {
 		builder.WithButton({
-			.Text = L"&Load once...\nLoad XivAlexander into running game once without installation.",
+			.Text = IDS_LOADERAPP_INTERACTIVE_INSTALL_LOADONCE,
 			.Callback = [this](auto&) {
 				m_nextTaskDialogMode = TaskDialogMode::RunOnce;
 				return Utils::Win32::TaskDialog::NotHandled;
@@ -170,7 +170,7 @@ void App::LoaderApp::Actions::Interactive::SetupBuilderForInstallation(Utils::Wi
 	}
 
 	builder.WithRadio({
-		.Text = L"Game installation is not listed above",
+		.Text = IDS_LOADERAPP_INTERACTIVE_INSTALL_NOTLISTEDABOVE,
 		.Callback = [&](auto&) {
 			m_state.PathRequiresFileOpenDialog = true;
 			return Utils::Win32::TaskDialog::Handled;
@@ -196,18 +196,18 @@ std::function<Utils::Win32::TaskDialog::ActionHandled(Utils::Win32::TaskDialog&)
 
 void App::LoaderApp::Actions::Interactive::SetupBuilderForLoadOnce(Utils::Win32::TaskDialog::Builder& builder, const std::set<DWORD>& pids) {
 	builder
-		.WithMainInstruction(L"Run XivAlexander once")
-		.WithContent(L"You can run XivAlexander right now without installation.\n\n* Restart using XivAlexander menu after loading to enable modding.")
+		.WithMainInstruction(IDS_LOADERAPP_LOADONCE_MAININSTRUCTION)
+		.WithContent(IDS_LOADERAPP_LOADONCE_CONTENT)
 		.WithButton({
-			.Text = L"&Load XivAlexander\nLoad XivAlexander immediately to the selected process.",
+			.Text = IDS_LOADERAPP_LOADONCE_LOAD,
 			.Callback = SetupBuilderForLoadOnce_MakeLoadUnloadOnCommandCallback(true),
 		})
 		.WithButton({
-			.Text = L"&Unload XivAlexander\nAttempt to unload XivAlexander from the selected process.",
+			.Text = IDS_LOADERAPP_LOADONCE_UNLOAD,
 			.Callback = SetupBuilderForLoadOnce_MakeLoadUnloadOnCommandCallback(false),
 		})
 		.WithButton({
-			.Text = L"&Install...\nInstall XivAlexander for automatic loading when the game starts up.",
+			.Text = IDS_LOADERAPP_LOADONCE_INSTALL,
 			.Callback = [&](auto&) {
 				m_nextTaskDialogMode = TaskDialogMode::Install;
 				return Utils::Win32::TaskDialog::NotHandled;
@@ -217,7 +217,7 @@ void App::LoaderApp::Actions::Interactive::SetupBuilderForLoadOnce(Utils::Win32:
 	for (const auto pid : pids) {
 		const auto process = OpenProcessForInformation(pid, false);
 		builder.WithRadio({
-			.Text = std::format(L"Process ID: {}\n{}", pid, process ? process.PathOf().wstring() : Utils::FromUtf8(Utils::Win32::FormatWindowsErrorMessage(ERROR_ACCESS_DENIED))),
+			.Text = std::format(L"PID: {}\n{}", pid, process ? process.PathOf().wstring() : Utils::FromUtf8(Utils::Win32::FormatWindowsErrorMessage(ERROR_ACCESS_DENIED))),
 			.Callback = [this, pid](auto&) {
 				m_state.Pid = pid;
 				return Utils::Win32::TaskDialog::Handled;
@@ -230,15 +230,15 @@ void App::LoaderApp::Actions::Interactive::ShowSelectGameInstallationDialog() {
 	IFileOpenDialogPtr pDialog;
 	DWORD dwFlags;
 	static const COMDLG_FILTERSPEC fileTypes[] = {
-		{L"FFXIV executable files (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe; ffxiv.exe)", L"ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe; ffxiv.exe"},
-		{L"Executable Files (*.exe)", L"*.exe"},
-		{L"All files (*.*)", L"*"},
+		{FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_FFXIVEXECUTABLEFILES) + 1, L"ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe; ffxiv.exe"},
+		{FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_EXECUTABLEFILES) + 1, L"*.exe"},
+		{FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_ALLFILES) + 1, L"*"},
 	};
 	Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
 	Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypes(ARRAYSIZE(fileTypes), fileTypes));
 	Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypeIndex(0));
 	Utils::Win32::Error::ThrowIfFailed(pDialog->SetDefaultExtension(L"exe"));
-	Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(FindStringResourceEx(Dll::Module(), IDS_TITLE_SELECT_BOOT) + 1));
+	Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(FindStringResourceEx(Dll::Module(), IDS_TITLE_SELECT_FFXIVEXECUTABLE) + 1));
 	Utils::Win32::Error::ThrowIfFailed(pDialog->GetOptions(&dwFlags));
 	Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
 	Utils::Win32::Error::ThrowIfFailed(pDialog->Show(nullptr), true);

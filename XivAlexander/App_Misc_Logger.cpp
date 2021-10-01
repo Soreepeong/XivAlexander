@@ -170,8 +170,8 @@ void App::Misc::Logger::Clear() {
 
 void App::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::string_view heading, std::string_view preformatted) {
 	static const COMDLG_FILTERSPEC saveFileTypes[] = {
-		{L"Log Files (*.log)", L"*.log"},
-		{L"All Documents (*.*)", L"*.*"}
+		{FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_LOGFILES) + 1, L"*.log"},
+		{FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_ALLFILES) + 1, L"*.*"},
 	};
 
 	try {

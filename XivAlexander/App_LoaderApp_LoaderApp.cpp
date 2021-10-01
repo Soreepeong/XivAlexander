@@ -137,6 +137,9 @@ private:
 };
 
 extern "C" int XivAlexDll::XA_LoaderApp() {
+	// SetThreadUILanguage(MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN));
+	// SetThreadUILanguage(MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN));
+
 	App::LoaderApp::Arguments parameters;
 	try {
 		parameters.Parse();

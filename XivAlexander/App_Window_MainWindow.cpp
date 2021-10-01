@@ -288,9 +288,14 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 		gdiRestoreStack.emplace_back(SelectObject(backdc, CreateFontIndirectW(&ncm.lfMessageFont)));
 
 		FillRect(backdc, &rect, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
-		const auto str = m_config->Runtime.FormatStringRes(IDS_MAIN_TEXT,
-			GetCurrentProcessId(), m_path, m_sVersion, m_sRegion,
-			m_pApp->GetSocketHook()->Describe());
+		std::wstring str;
+		try {
+			m_config->Runtime.FormatStringRes(IDS_MAIN_TEXT,
+				GetCurrentProcessId(), m_path, m_sVersion, m_sRegion,
+				m_pApp->GetSocketHook()->Describe());
+		} catch (...) {
+			// pass
+		}
 		const auto pad = static_cast<int>(8 * zoom);
 		RECT rct = {
 			pad,

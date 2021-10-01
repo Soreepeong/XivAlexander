@@ -4,6 +4,7 @@
 #include "App_ConfigRepository.h"
 #include "App_LoaderApp.h"
 #include "DllMain.h"
+#include "resource.h"
 #include "XivAlexanderCommon/XivAlex.h"
 
 App::LoaderApp::Actions::InstallUninstall::InstallUninstall(const Arguments& args)
@@ -121,7 +122,7 @@ void App::LoaderApp::Actions::InstallUninstall::Install(const std::filesystem::p
 	success = true;
 	revert.Clear();
 
-	Dll::MessageBoxF(nullptr, MB_OK, L"Installed");
+	Dll::MessageBoxF(nullptr, MB_OK, IDS_NOTIFY_XIVALEXINSTALL_INSTALLCOMPLETE, gamePath.wstring());
 }
 
 void App::LoaderApp::Actions::InstallUninstall::Uninstall(const std::filesystem::path& gamePath) {
@@ -198,6 +199,6 @@ void App::LoaderApp::Actions::InstallUninstall::Uninstall(const std::filesystem:
 	success = true;
 	revert.Clear();
 
-	if (Dll::MessageBoxF(nullptr, MB_YESNO | MB_ICONQUESTION, L"Uninstalled; to completely install, remove the configuration files. Do you want to open the configuration folder?") == IDYES)
+	if (Dll::MessageBoxF(nullptr, MB_YESNO | MB_ICONQUESTION, IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE, gamePath.wstring()) == IDYES)
 		ShellExecutePathOrThrow(dataPath);
 }

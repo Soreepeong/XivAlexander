@@ -22,14 +22,15 @@ bool App::LoaderApp::Actions::RunLauncher::SelectAndRunLauncher() {
 		IFileOpenDialogPtr pDialog;
 		DWORD dwFlags;
 		static const COMDLG_FILTERSPEC fileTypes[] = {
-			{L"FFXIV Boot Files (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe)", L"ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe"},
-			{L"Executable Files (*.exe)", L"*.exe"},
+			{FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_FFXIVBOOTFILES) + 1, L"ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe"},
+			{FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_EXECUTABLEFILES) + 1, L"*.exe"},
+			{FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_ALLFILES) + 1, L"*.*"},
 		};
 		Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
 		Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypes(ARRAYSIZE(fileTypes), fileTypes));
 		Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypeIndex(0));
 		Utils::Win32::Error::ThrowIfFailed(pDialog->SetDefaultExtension(L"exe"));
-		Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(Utils::Win32::FindStringResourceEx(Dll::Module(), IDS_TITLE_SELECT_BOOT) + 1));
+		Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(FindStringResourceEx(Dll::Module(), IDS_TITLE_SELECT_BOOT) + 1));
 		Utils::Win32::Error::ThrowIfFailed(pDialog->GetOptions(&dwFlags));
 		Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
 		Utils::Win32::Error::ThrowIfFailed(pDialog->Show(nullptr), true);
