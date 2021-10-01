@@ -182,10 +182,23 @@ std::function<Utils::Win32::TaskDialog::ActionHandled(Utils::Win32::TaskDialog&)
 	return [this, load](auto& dialog) {
 		auto withHider = dialog.WithHiddenDialog();
 		try {
-			if (load)
-				LoadUnload(m_args).Load(m_state.Pid);
-			else
-				LoadUnload(m_args).Unload(m_state.Pid);
+			const auto process = OpenProcessForInformation(m_state.Pid);
+			auto tryElevate = false;
+			try {
+				void(OpenProcessForManipulation(m_state.Pid));
+			} catch (const Utils::Win32::Error& e) {
+				if (e.Code() == ERROR_ACCESS_DENIED && !Utils::Win32::IsUserAnAdmin()) {
+					tryElevate = true;
+				}
+			}
+			Utils::Win32::RunProgram({
+				.path = Utils::Win32::Process::Current().PathOf().parent_path() / (process.IsProcess64Bits() ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW),
+				.args = std::format(L"-a {} {}",
+					LoaderActionToString(load ? LoaderAction::Load : LoaderAction::Unload),
+					process.GetId()),
+				.wait = true,
+				.elevateMode = tryElevate ? Utils::Win32::RunProgramParams::NoElevationIfDenied : Utils::Win32::RunProgramParams::Normal,
+			});
 			withHider.Cancel();
 		} catch (const std::exception& e) {
 			Dll::MessageBoxF(nullptr, MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
