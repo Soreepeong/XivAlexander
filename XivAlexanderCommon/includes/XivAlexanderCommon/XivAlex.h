@@ -20,6 +20,7 @@ namespace XivAlex {
 	VersionInformation CheckUpdates();
 
 	enum class GameRegion {
+		Unspecified,
 		International,
 		Korean,
 		Chinese,
@@ -30,10 +31,11 @@ namespace XivAlex {
 		std::filesystem::path RootPath;
 		std::filesystem::path BootApp;
 		bool BootAppRequiresAdmin;
+		bool BootAppDirectlyInjectable;
 		std::set<std::filesystem::path> RelatedApps;
 	};
 
-	std::map<GameRegion, GameRegionInfo> FindGameLaunchers();
+	std::vector<std::pair<XivAlex::GameRegion, XivAlex::GameRegionInfo>> FindGameLaunchers();
 
 	const wchar_t GameExecutable32NameW[] = L"ffxiv.exe";
 	const wchar_t GameExecutable64NameW[] = L"ffxiv_dx11.exe";

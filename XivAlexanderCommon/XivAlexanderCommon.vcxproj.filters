@@ -172,6 +172,9 @@
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_EscapedString.h">
       <Filter>Square Enix Definitions</Filter>
     </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_TaskDialogBuilder.h">
+      <Filter>Windows API Wrappers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -283,6 +286,9 @@
     </ClCompile>
     <ClCompile Include="Sqex_EscapedString.cpp">
       <Filter>Square Enix Definitions</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils_Win32_TaskDialogBuilder.cpp">
+      <Filter>Windows API Wrappers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

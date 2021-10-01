@@ -21,7 +21,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 	// On unstable network connection, limit the possible overshoot in ExtraDelay.
 	static inline const int64_t MaximumExtraDelay = 150;  // in milliseconds
 
-	static inline const int64_t AutoAttackDelay = 100; // in milliseconds
+	static inline const int64_t AutoAttackDelay = 100;  // in milliseconds
 
 	class SingleConnectionHandler {
 

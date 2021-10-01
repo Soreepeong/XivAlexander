@@ -107,7 +107,7 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 		siex.StartupInfo.wShowWindow = m_wShowWindow;
 	}
 
-	std::vector<HANDLE> handles; // this needs to be here, as ProcThreadAttribute only points here instead of copying the contents
+	std::vector<HANDLE> handles;  // this needs to be here, as ProcThreadAttribute only points here instead of copying the contents
 	handles.reserve(m_inheritedHandles.size());
 	std::ranges::transform(m_inheritedHandles, std::back_inserter(handles), [](const auto& v) { return static_cast<HANDLE>(v); });
 
@@ -279,7 +279,7 @@ void Utils::Win32::ProcessBuilder::InitializeEnviron() {
 	if (m_environInitialized)
 		return;
 	auto ptr = GetEnvironmentStringsW();
-	const auto ptrFree = Utils::CallOnDestruction([ptr]() { FreeEnvironmentStringsW(ptr); });
+	const auto ptrFree = CallOnDestruction([ptr]() { FreeEnvironmentStringsW(ptr); });
 	while (*ptr) {
 		const auto part = std::wstring_view(ptr, wcslen(ptr));
 		const auto eqPos = part.find(L'=', 1);
@@ -586,9 +586,9 @@ void* Utils::Win32::Process::FindExportedFunction(HMODULE hModule, const char* p
 			if (strncmp(pName.data(), pszFunctionName, pName.size()) != 0)
 				continue;
 		} else if (!ordinal)
-			continue; // invalid; either one of name or ordinal shoould exist
+			continue;  // invalid; either one of name or ordinal shoould exist
 		else if (ordinal != pOrdinals[i])
-			continue; // exported by ordinal; ordinal mismatch
+			continue;  // exported by ordinal; ordinal mismatch
 
 		BoundaryCheck(pOrdinals[i], 0, pExportTable->NumberOfFunctions);
 		const auto rvaAddress = pFunctions[pOrdinals[i]];
@@ -600,7 +600,7 @@ void* Utils::Win32::Process::FindExportedFunction(HMODULE hModule, const char* p
 			forwardedName.resize(strlen(forwardedName.data()));
 			const auto dot = forwardedName.find('.');
 			if (dot == std::string::npos)
-				continue; // invalid; format is DLLNAME.FUNCTIONAME
+				continue;  // invalid; format is DLLNAME.FUNCTIONAME
 			forwardedName[dot] = '\0';
 
 			const auto* moduleName = &forwardedName[0];

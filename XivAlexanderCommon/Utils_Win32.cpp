@@ -28,7 +28,7 @@ std::string Utils::Win32::FormatWindowsErrorMessage(unsigned int errorCode, int 
 			langId,
 			reinterpret_cast<LPWSTR>(&errorText), // output 
 			0, // minimum size for output buffer
-			nullptr); // arguments - see note 
+			nullptr);  // arguments - see note 
 		if (nullptr != errorText) {
 			messages.insert(ToUtf8(errorText));
 			LocalFree(errorText);

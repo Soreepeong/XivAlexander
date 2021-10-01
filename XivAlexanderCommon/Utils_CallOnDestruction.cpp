@@ -3,21 +3,23 @@
 
 /// Constructors that will not call anything on destruction
 Utils::CallOnDestruction::CallOnDestruction() noexcept = default;
-Utils::CallOnDestruction::CallOnDestruction(std::nullptr_t) noexcept {}
+
+Utils::CallOnDestruction::CallOnDestruction(std::nullptr_t) noexcept {
+}
 
 /// Constructor that will call something on destruction
-Utils::CallOnDestruction::CallOnDestruction(std::function<void()> fn) :
-	m_fn(std::move(fn)) {
+Utils::CallOnDestruction::CallOnDestruction(std::function<void()> fn)
+	: m_fn(std::move(fn)) {
 }
 
 /// Constructor that will move the destruction callback from r to this
-Utils::CallOnDestruction::CallOnDestruction(CallOnDestruction && r) noexcept {
+Utils::CallOnDestruction::CallOnDestruction(CallOnDestruction&& r) noexcept {
 	m_fn = std::move(r.m_fn);
 	r.m_fn = nullptr;
 }
 
 /// Movement operator
-Utils::CallOnDestruction& Utils::CallOnDestruction::operator=(CallOnDestruction && r) noexcept {
+Utils::CallOnDestruction& Utils::CallOnDestruction::operator=(CallOnDestruction&& r) noexcept {
 	if (m_fn)
 		m_fn();
 	m_fn = std::move(r.m_fn);
@@ -31,14 +33,14 @@ Utils::CallOnDestruction& Utils::CallOnDestruction::operator=(std::nullptr_t) no
 	return *this;
 }
 
-Utils::CallOnDestruction& Utils::CallOnDestruction::operator=(std::function<void()> && fn) noexcept {
+Utils::CallOnDestruction& Utils::CallOnDestruction::operator=(std::function<void()>&& fn) noexcept {
 	if (m_fn)
 		m_fn();
 	m_fn = std::move(fn);
 	return *this;
 }
 
-Utils::CallOnDestruction& Utils::CallOnDestruction::operator=(const std::function<void()>&fn) {
+Utils::CallOnDestruction& Utils::CallOnDestruction::operator=(const std::function<void()>& fn) {
 	if (m_fn)
 		m_fn();
 	m_fn = fn;
@@ -63,6 +65,10 @@ Utils::CallOnDestruction& Utils::CallOnDestruction::Clear() {
 		m_fn = nullptr;
 	}
 	return *this;
+}
+
+void Utils::CallOnDestruction::Cancel() {
+	m_fn = nullptr;
 }
 
 Utils::CallOnDestruction::operator bool() const {

@@ -50,7 +50,7 @@ namespace Sqex::Sqpack {
 		LE<SqpackType> Type;
 		LE<uint32_t> YYYYMMDD;
 		LE<uint32_t> Time;
-		LE<uint32_t> Unknown2; // Intl: 0xFFFFFFFF, KR/CN: 1
+		LE<uint32_t> Unknown2;  // Intl: 0xFFFFFFFF, KR/CN: 1
 		char Padding_0x024[0x3c0 - 0x024]{};
 		Sha1Value Sha1;
 		char Padding_0x3D4[0x2c]{};

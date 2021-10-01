@@ -189,7 +189,7 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 					}
 				}
 
-				return IDOK; // since the game originally requested MB_OK
+				return IDOK;  // since the game originally requested MB_OK
 			}
 		}
 

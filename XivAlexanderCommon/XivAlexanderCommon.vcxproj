@@ -35,6 +35,7 @@
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Texture_Mipmap.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Texture_ModifiableTextureStream.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_ThirdParty_TexTools.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_TaskDialogBuilder.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_ThreadPool.h" />
     <ClInclude Include="includes\XivAlexanderCommon\XaDxtDecompression.h" />
     <ClInclude Include="includes\XivAlexanderCommon\XaFormat.h" />
@@ -79,6 +80,7 @@
     <ClCompile Include="Sqex_Texture.cpp" />
     <ClCompile Include="Sqex_Texture_ModifiableTextureStream.cpp" />
     <ClCompile Include="Sqex_ThirdParty_TexTools.cpp" />
+    <ClCompile Include="Utils_Win32_TaskDialogBuilder.cpp" />
     <ClCompile Include="XivAlexDefaultHeapAllocator.cpp" />
     <ClCompile Include="Sqex_CommandLine.cpp" />
     <ClCompile Include="Sqex.cpp" />

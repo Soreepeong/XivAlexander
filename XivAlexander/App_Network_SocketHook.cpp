@@ -385,7 +385,7 @@ struct App::Network::SocketHook::Implementation {
 		sockaddr_in addr{};
 		int namelen = sizeof addr;
 		if (0 != getpeername(s, reinterpret_cast<sockaddr*>(&addr), &namelen))
-			return TestRemoteAddressResult::Pass; // Not interested if not connected yet
+			return TestRemoteAddressResult::Pass;  // Not interested if not connected yet
 
 		if (addr.sin_family != AF_INET) {
 			this_->m_logger->Format(LogCategory::SocketHook, m_config->Runtime.GetLangId(), IDS_SOCKETHOOK_SOCKET_IGNORED_NOT_IPV4, s);

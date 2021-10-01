@@ -29,6 +29,7 @@ namespace Utils {
 		virtual ~CallOnDestruction();
 
 		CallOnDestruction& Clear();
+		void Cancel();
 
 		operator bool() const;
 
@@ -84,7 +85,9 @@ namespace Utils {
 		}
 
 		template<typename = std::enable_if_t<std::is_default_constructible_v<T>>>
-		CallOnDestructionWithValue(std::nullptr_t) noexcept : CallOnDestruction() {}
+		CallOnDestructionWithValue(std::nullptr_t) noexcept
+			: CallOnDestruction() {
+		}
 
 		template<typename = std::enable_if_t<std::is_default_constructible_v<T>>>
 		CallOnDestructionWithValue& operator=(std::nullptr_t) noexcept {
@@ -94,11 +97,11 @@ namespace Utils {
 
 		~CallOnDestructionWithValue() override = default;
 
-		operator T& () {
+		operator T&() {
 			return m_value;
 		}
 
-		operator const T& () const {
+		operator const T&() const {
 			return m_value;
 		}
 	};

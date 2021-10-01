@@ -4,6 +4,7 @@
 #include <XivAlexanderCommon/Utils_Win32_InjectedModule.h>
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
 #include <XivAlexanderCommon/XivAlex.h>
+#include <XivAlexanderCommon/Utils_Win32_TaskDialogBuilder.h>
 
 #include "App_ConfigRepository.h"
 #include "DllMain.h"
@@ -11,7 +12,7 @@
 
 static XivAlexDll::LoaderAction ParseLoaderAction(std::string val) {
 	if (val.empty())
-		return XivAlexDll::LoaderAction::Auto;
+		return XivAlexDll::LoaderAction::Interactive;
 	auto valw = Utils::FromUtf8(val);
 	CharLowerW(&valw[0]);
 	val = Utils::ToUtf8(valw);
@@ -86,7 +87,7 @@ class XivAlexanderLoaderParameter {
 public:
 	argparse::ArgumentParser argp;
 
-	XivAlexDll::LoaderAction m_action = XivAlexDll::LoaderAction::Auto;
+	XivAlexDll::LoaderAction m_action = XivAlexDll::LoaderAction::Interactive;
 	LauncherType m_launcherType = LauncherType::Auto;
 	bool m_quiet = false;
 	bool m_help = false;
@@ -107,7 +108,7 @@ public:
 			.help(Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_HELP_ACTION) + 1))
 			.required()
 			.nargs(1)
-			.default_value(XivAlexDll::LoaderAction::Auto)
+			.default_value(XivAlexDll::LoaderAction::Interactive)
 			.action([](const std::string& val) { return ParseLoaderAction(val); });
 		argp.add_argument("-l", "--launcher")
 			.help(Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_HELP_LAUNCHER) + 1))
@@ -206,10 +207,7 @@ public:
 	}
 
 	[[nodiscard]] std::wstring GetHelpMessage() const {
-		return std::format(
-			FindStringResourceEx(Dll::Module(), IDS_APP_DESCRIPTION) + 1,
-			Utils::FromUtf8(argp.help().str())
-		);
+		return std::format(FindStringResourceEx(Dll::Module(), IDS_APP_DESCRIPTION) + 1, argp.help().str());
 	}
 };
 
@@ -251,7 +249,7 @@ static std::set<DWORD> GetTargetPidList() {
 				if (suffixFound)
 					pids.insert(pid);
 			} catch (const std::exception& e) {
-				OutputDebugStringW(std::format(L"Error for PID {}: {}\n", pid, Utils::FromUtf8(e.what())).c_str());
+				OutputDebugStringW(std::format(L"Error for PID {}: {}\n", pid, e.what()).c_str());
 			}
 		}
 	}
@@ -292,10 +290,10 @@ static void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std:
 	const auto path = process.PathOf();
 
 	auto loaderAction = g_parameters->m_action;
-	if (loaderAction == XivAlexDll::LoaderAction::Ask || loaderAction == XivAlexDll::LoaderAction::Auto) {
+	if (loaderAction == XivAlexDll::LoaderAction::Ask || loaderAction == XivAlexDll::LoaderAction::Interactive) {
 		if (rpModule) {
 			switch (Dll::MessageBoxF(nullptr, MB_YESNOCANCEL | MB_ICONQUESTION | MB_DEFBUTTON1,
-				FindStringResourceEx(Dll::Module(), IDS_CONFIRM_INJECT_AGAIN) + 1,
+				IDS_CONFIRM_INJECT_AGAIN,
 				pid, path,
 				Utils::Win32::MB_GetString(IDYES - 1),
 				Utils::Win32::MB_GetString(IDNO - 1),
@@ -318,7 +316,7 @@ static void DoPidTask(DWORD pid, const std::filesystem::path& dllDir, const std:
 			const auto gameConfigPath = dllDir / gameConfigFilename;
 
 			switch (Dll::MessageBoxF(nullptr, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON1,
-				FindStringResourceEx(Dll::Module(), IDS_CONFIRM_INJECT) + 1,
+				IDS_CONFIRM_INJECT,
 				pid, path, gameConfigPath)) {
 				case IDYES:
 					loaderAction = XivAlexDll::LoaderAction::Load;
@@ -414,7 +412,7 @@ static int SelectAndRunLauncher() {
 		return 0;
 
 	} catch (const std::exception& e) {
-		Dll::MessageBoxF(nullptr, MB_ICONERROR, FindStringResourceEx(Dll::Module(), IDS_ERROR_UNEXPECTED), e.what() ? Utils::FromUtf8(e.what()) : L"Unknown");
+		Dll::MessageBoxF(nullptr, MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what() ? e.what() : "Unknown");
 	}
 	return 0;
 }
@@ -429,11 +427,11 @@ static int RunLauncher() {
 				if (launchers.empty() || !g_parameters->m_runProgram.empty())
 					return SelectAndRunLauncher();
 				else if (launchers.size() == 1)
-					return RunProgramRetryAfterElevatingSelfAsNecessary(launchers.begin()->second.BootApp);
+					return RunProgramRetryAfterElevatingSelfAsNecessary(launchers.front().second.BootApp);
 				else {
 					for (const auto& it : launchers) {
 						if (Dll::MessageBoxF(nullptr, MB_YESNO | MB_ICONQUESTION,
-							FindStringResourceEx(Dll::Module(), IDS_CONFIRM_LAUNCH) + 1,
+							IDS_CONFIRM_LAUNCH,
 							argparse::details::repr(it.first), it.second.RootPath) == IDYES)
 							RunProgramRetryAfterElevatingSelfAsNecessary(it.second.BootApp, L"");
 					}
@@ -444,28 +442,40 @@ static int RunLauncher() {
 			case LauncherType::Select:
 				return SelectAndRunLauncher();
 
-			case LauncherType::International:
-				return RunProgramRetryAfterElevatingSelfAsNecessary(launchers.at(XivAlex::GameRegion::International).BootApp);
+			case LauncherType::International: {
+				for (const auto& [region, info] : launchers)
+					if (region == XivAlex::GameRegion::International)
+						return RunProgramRetryAfterElevatingSelfAsNecessary(info.BootApp);
+				throw std::out_of_range(nullptr);
+			}
 
-			case LauncherType::Korean:
-				return RunProgramRetryAfterElevatingSelfAsNecessary(launchers.at(XivAlex::GameRegion::Korean).BootApp);
+			case LauncherType::Korean: {
+				for (const auto& [region, info] : launchers)
+					if (region == XivAlex::GameRegion::Korean)
+						return RunProgramRetryAfterElevatingSelfAsNecessary(info.BootApp);
+				throw std::out_of_range(nullptr);
+			}
 
-			case LauncherType::Chinese:
-				return RunProgramRetryAfterElevatingSelfAsNecessary(launchers.at(XivAlex::GameRegion::Chinese).BootApp);
+			case LauncherType::Chinese: {
+				for (const auto& [region, info] : launchers)
+					if (region == XivAlex::GameRegion::Chinese)
+						return RunProgramRetryAfterElevatingSelfAsNecessary(info.BootApp);
+				throw std::out_of_range(nullptr);
+			}
 		}
 	} catch (const std::out_of_range&) {
-		if (g_parameters->m_action == XivAlexDll::LoaderAction::Auto) {
+		if (g_parameters->m_action == XivAlexDll::LoaderAction::Interactive) {
 			if (!g_parameters->m_quiet)
 				SelectAndRunLauncher();
 
 		} else if (!g_parameters->m_quiet) {
-			Dll::MessageBoxF(nullptr, MB_OK | MB_ICONINFORMATION, FindStringResourceEx(Dll::Module(), IDS_ERROR_NOT_FOUND) + 1);
+			Dll::MessageBoxF(nullptr, MB_OK | MB_ICONINFORMATION, IDS_ERROR_NOT_FOUND);
 		}
 		return -1;
 
 	} catch (const std::exception& e) {
 		if (!g_parameters->m_quiet)
-			Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, FindStringResourceEx(Dll::Module(), IDS_ERROR_UNEXPECTED) + 1, e.what());
+			Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 		return -1;
 	}
 	return 0;
@@ -635,7 +645,7 @@ static void PerformUpdateAndExitIfSuccessful(std::vector<Utils::Win32::Process> 
 					} catch (const Utils::Win32::Error& e) {
 						if (e.Code() == ERROR_INVALID_PARAMETER)  // this process already gone
 							break;
-						if (Dll::MessageBoxF(nullptr, MB_OKCANCEL, FindStringResourceEx(Dll::Module(), IDS_UPDATE_PROCESS_KILL_FAILURE) + 1, pid, e.what()) == IDCANCEL)
+						if (Dll::MessageBoxF(nullptr, MB_OKCANCEL, IDS_UPDATE_PROCESS_KILL_FAILURE, pid, e.what()) == IDCANCEL)
 							return;
 					}
 				}
@@ -657,7 +667,7 @@ static void PerformUpdateAndExitIfSuccessful(std::vector<Utils::Win32::Process> 
 		}
 
 		LaunchXivAlexLoaderWithTargetHandles(unloadTargets, XivAlexDll::LoaderAction::Internal_Cleanup_Handle, true);
-		LaunchXivAlexLoaderWithTargetHandles(gameProcesses, XivAlexDll::LoaderAction::Internal_Update_Step2_ReplaceFiles, false, currentProcess);
+		LaunchXivAlexLoaderWithTargetHandles(gameProcesses, XivAlexDll::LoaderAction::Internal_Update_Step2_ReplaceFiles, false, currentProcess, XivAlexDll::Current, tempExtractionDir);
 
 		currentProcess.Terminate(0);
 	}
@@ -689,19 +699,19 @@ static void CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses, bo
 			throw std::runtime_error(Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_UPDATE_FILE_TOO_BIG) + 1));
 		if (local >= remote) {
 			Dll::MessageBoxF(nullptr, MB_OK | MB_ICONINFORMATION,
-				FindStringResourceEx(Dll::Module(), IDS_UPDATE_UNAVAILABLE) + 1,
+				IDS_UPDATE_UNAVAILABLE,
 				local[0], local[1], local[2], local[3], remote[0], remote[1], remote[2], remote[3], up.PublishDate);
 			return;
 		}
 		if (offerAutomaticUpdate) {
 			while (true) {
-				switch (Dll::MessageBoxF(nullptr, MB_YESNOCANCEL, std::format(
-					FindStringResourceEx(Dll::Module(), IDS_UPDATE_CONFIRM) + 1,
+				switch (Dll::MessageBoxF(nullptr, MB_YESNOCANCEL,
+					IDS_UPDATE_CONFIRM,
 					remote[0], remote[1], remote[2], remote[3], up.PublishDate, local[0], local[1], local[2], local[3],
 					Utils::Win32::MB_GetString(IDYES - 1),
 					Utils::Win32::MB_GetString(IDNO - 1),
 					Utils::Win32::MB_GetString(IDCANCEL - 1)
-				).c_str())) {
+				)) {
 					case IDYES:
 						ShellExecuteW(nullptr, L"open", FindStringResourceEx(Dll::Module(), IDS_URL_RELEASES) + 1, nullptr, nullptr, SW_SHOW);
 						break;
@@ -719,7 +729,7 @@ static void CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses, bo
 			ShellExecuteW(nullptr, L"open", FindStringResourceEx(Dll::Module(), IDS_URL_RELEASES) + 1, nullptr, nullptr, SW_SHOW);
 		}
 	} catch (const std::exception& e) {
-		Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, FindStringResourceEx(Dll::Module(), IDS_ERROR_UNEXPECTED) + 1, e.what());
+		Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 	}
 }
 
@@ -929,7 +939,7 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 		g_parameters = std::make_unique<XivAlexanderLoaderParameter>();
 		g_parameters->Parse();
 	} catch (const std::exception& err) {
-		Dll::MessageBoxF(nullptr, MB_ICONWARNING, FindStringResourceEx(Dll::Module(), IDS_ERROR_COMMAND_LINE) + 1, err.what(), g_parameters->GetHelpMessage());
+		Dll::MessageBoxF(nullptr, MB_ICONWARNING, IDS_ERROR_COMMAND_LINE, err.what(), g_parameters->GetHelpMessage());
 		return -1;
 	}
 	if (g_parameters->m_help) {
@@ -964,9 +974,7 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 				throw std::runtime_error(Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_ERROR_INCONSISTENT_FILES) + 1));
 		}
 	} catch (const std::exception& e) {
-		if (Dll::MessageBoxF(nullptr, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON1, FindStringResourceEx(Dll::Module(), IDS_ERROR_COMPONENTS) + 1,
-			Utils::FromUtf8(e.what())
-		) == IDYES) {
+		if (Dll::MessageBoxF(nullptr, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON1, IDS_ERROR_COMPONENTS, e.what()) == IDYES) {
 			ShellExecuteW(nullptr, L"open", FindStringResourceEx(Dll::Module(), IDS_URL_RELEASES) + 1, nullptr, nullptr, SW_SHOW);
 		}
 		return -1;
@@ -974,7 +982,7 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 
 	try {
 #ifdef _DEBUG
-		Dll::MessageBoxF(nullptr, MB_OK,  L"Action: {}", argparse::details::repr(g_parameters->m_action));
+		Dll::MessageBoxF(nullptr, MB_OK, L"Action: {}", argparse::details::repr(g_parameters->m_action));
 #endif
 		switch (g_parameters->m_action) {
 			case LoaderAction::Install: {
@@ -1058,21 +1066,25 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 					targetUpdatePath,
 					std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing
 				);
-				LaunchXivAlexLoaderWithTargetHandles(g_parameters->m_targetProcessHandles, LoaderAction::Internal_Update_Step3_CleanupFiles, false, currentProcess);
+				LaunchXivAlexLoaderWithTargetHandles(g_parameters->m_targetProcessHandles, LoaderAction::Internal_Update_Step3_CleanupFiles, false, currentProcess, Current, targetUpdatePath);
 				return 0;
 			}
 
 			case LoaderAction::Internal_Update_Step3_CleanupFiles: {
-				std::vector<Utils::Win32::Process> processes;
 				{
 					const auto checking = ShowLazyProgress(true, IDS_UPDATE_CLEANUP_UPDATE);
 					remove_all(Utils::Win32::Process::Current().PathOf().parent_path() / L"__UPDATE__");
 					remove(Utils::Win32::Process::Current().PathOf().parent_path() / L"update.zip");
 				}
-				{
+
+				if (g_parameters->m_targetProcessHandles.empty()) {
+					g_parameters->m_action = LoaderAction::Interactive;
+					break;
+
+				} else {
 					const auto checking = ShowLazyProgress(true, IDS_UPDATE_RELOADING_XIVALEXANDER);
 					auto pids = GetTargetPidList();
-					for (const auto& process : processes)
+					for (const auto& process : g_parameters->m_targetProcessHandles)
 						pids.erase(process.GetId());
 
 					if (!g_parameters->m_targetProcessHandles.empty())
@@ -1088,16 +1100,17 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 							}
 						}
 					}
+
+					{
+						const auto checking = ShowLazyProgress(false, IDS_UPDATE_COMPLETE);
+						Sleep(3000);
+					}
+					return 0;
 				}
-				{
-					const auto checking = ShowLazyProgress(false, IDS_UPDATE_COMPLETE);
-					Sleep(3000);
-				}
-				return 0;
 			}
 		}
 	} catch (const std::exception& e) {
-		Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, FindStringResourceEx(Dll::Module(), IDS_ERROR_UNEXPECTED) + 1,
+		Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED,
 			e.what());
 		return -1;
 	}
@@ -1120,286 +1133,374 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 		}
 	}
 
-	if (g_parameters->m_action == LoaderAction::Auto) {
-		auto loop = true;
-		auto taskDialogFail = false;
-		while (loop) {
+	if (g_parameters->m_action == LoaderAction::Interactive) {
+		enum class Mode {
+			Install,
+			RunOnce,
+			Break,
+		} mode = Mode::Install;
+		while (mode != Mode::Break) {
 			pids = GetTargetPidList();
 
-			std::vector<TASKDIALOG_BUTTON> buttons;
-			buttons.emplace_back(1001, L"&Load/Install");
-			buttons.emplace_back(1002, L"&Unload/Uninstall");
-			buttons.emplace_back(1003, L"Launch &Game");
+			if (pids.empty())
+				mode = Mode::Install;
 
-			std::vector<TASKDIALOG_BUTTON> radios;
-			std::vector<std::wstring> titles;
-			std::vector<std::pair<bool, uint32_t>> radioItems;
-			for (const auto pid : pids) {
-				std::wstring path;
+			std::filesystem::path gamePath, bootPath;
+			auto bootInjectable = false;
+			bool needChooser = true;
+			const auto installationChooser = [&gamePath, &bootPath, &bootInjectable](HWND hwnd) {
+				IFileOpenDialogPtr pDialog;
+				DWORD dwFlags;
+				static const COMDLG_FILTERSPEC fileTypes[] = {
+					{L"FFXIV executable files (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe; ffxiv.exe)", L"ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe; ffxiv.exe"},
+					{L"Executable Files (*.exe)", L"*.exe"},
+					{L"All files (*.*)", L"*"},
+				};
+				Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypes(ARRAYSIZE(fileTypes), fileTypes));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypeIndex(0));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->SetDefaultExtension(L"exe"));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(FindStringResourceEx(Dll::Module(), IDS_TITLE_SELECT_BOOT) + 1));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->GetOptions(&dwFlags));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
 				try {
-					path = Utils::Win32::Process(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid).PathOf();
+					Utils::Win32::Error::ThrowIfFailed(pDialog->Show(nullptr), true);
+				} catch (const Utils::Win32::CancelledError&) {
+					return false;
+				}
+
+				std::wstring fileName;
+				{
+					IShellItemPtr pResult;
+					PWSTR pszFileName;
+					Utils::Win32::Error::ThrowIfFailed(pDialog->GetResult(&pResult));
+					Utils::Win32::Error::ThrowIfFailed(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
+					if (!pszFileName)
+						throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
+					fileName = pszFileName;
+					CoTaskMemFree(pszFileName);
+				}
+
+				gamePath = fileName;
+				bootInjectable = true;
+				if (lstrcmpiW(gamePath.filename().wstring().c_str(), XivAlex::GameExecutable32NameW) == 0
+					|| lstrcmpiW(gamePath.filename().wstring().c_str(), XivAlex::GameExecutable64NameW) == 0) {
+					gamePath = gamePath.parent_path();
+					if (!exists(bootPath = gamePath.parent_path() / "FFXIVBoot.exe"))
+						if (!exists(bootPath = gamePath.parent_path() / "boot" / "ffxivboot.exe"))
+							if (!exists(bootPath = gamePath.parent_path() / "boot" / "ffxiv_boot.exe"))
+								bootPath.clear();
+				} else {
+					bootPath = gamePath;
+					if (!exists((gamePath = bootPath / "game") / "ffxivgame.ver"))
+						if (!exists((gamePath = bootPath.parent_path() / "game") / "ffxivgame.ver"))
+							if (!exists((gamePath = bootPath.parent_path().parent_path() / "game") / "ffxivgame.ver"))
+								gamePath.clear();
+				}
+				return true;
+			};
+
+			auto selectedPid = pids.empty() ? 0 : *pids.begin();
+
+			const auto loadOrUnload = [&selectedPid, &dllPath](bool load) {
+				Utils::Win32::Process process;
+				try {
+					process = Utils::Win32::Process(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, selectedPid);
 				} catch (...) {
-					try {
-						path = Utils::Win32::Process(PROCESS_QUERY_INFORMATION, FALSE, pid).PathOf();
-					} catch (...) {
-						path = L"(Unknown)";
-					}
+					process = Utils::Win32::Process(PROCESS_QUERY_INFORMATION, FALSE, selectedPid);
 				}
-				titles.emplace_back(std::format(L"Load/Unload: PID {} at {}", pid, path));
-				radios.emplace_back(static_cast<int>(2000 + radioItems.size()), titles.back().c_str());
-				radioItems.emplace_back(false, pid);
-			}
+				if (process.IsProcess64Bits() != Utils::Win32::Process::Current().IsProcess64Bits()
+					|| (!Utils::Win32::IsUserAnAdmin() && RequiresAdminAccess({process.GetId()}))) {
+					Utils::Win32::RunProgram({
+						.path = Utils::Win32::Process::Current().PathOf().parent_path() / (process.IsProcess64Bits() ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW),
+						.args = std::format(L"-a {} {}",
+							LoaderActionToString(load ? LoaderAction::Load : LoaderAction::Unload),
+							process.GetId()),
+						.wait = true
+					});
+				} else {
+					process = OpenProcessForInjection(selectedPid);
+					const auto injectedModule = Utils::Win32::InjectedModule(std::move(process), dllPath);
+					auto unloadRequired = false;
+					const auto cleanup = Utils::CallOnDestruction([&injectedModule, &unloadRequired]() {
+						if (unloadRequired)
+							injectedModule.Call("EnableXivAlexander", nullptr, "EnableXivAlexander(0)");
+					});
 
-			std::vector<std::pair<XivAlex::GameRegion, XivAlex::GameRegionInfo>> launchers;
-			for (auto& [region, info] : XivAlex::FindGameLaunchers())
-				launchers.emplace_back(region, std::move(info));
-			for (size_t i = 0; i < launchers.size(); ++i) {
-				const auto& [region, info] = launchers[i];
-				const wchar_t* message = L"Install XivAlexander";
-				const wchar_t* regionStr = nullptr;
-				const auto selfVersion = Utils::StringSplit<std::string>(Utils::Win32::FormatModuleVersionString(GetModuleHandleW(nullptr)).first, ".");
-				for (const auto name : {"d3d9.dll", "d3d11.dll"}) {
-					const auto path = info.RootPath / "game" / name;
-					try {
-						if (XivAlex::IsXivAlexanderDll(path)) {
-							const auto version = Utils::StringSplit<std::string>(Utils::Win32::FormatModuleVersionString(path).first, ".");
-							if (selfVersion > version)
-								message = L"Update XivAlexander";
-							else if (selfVersion < version)
-								message = L"Downgrade XivAlexander";
-							else
-								message = L"Reinstall XivAlexander";
-						}
-					} catch (...) {
-					}
+					if (load) {
+						unloadRequired = true;
+						if (const auto loadResult = injectedModule.Call("EnableXivAlexander", reinterpret_cast<void*>(1), "EnableXivAlexander(1)"); loadResult == 0)
+							unloadRequired = false;
+					} else
+						unloadRequired = true;
 				}
-				switch (region) {
-					case XivAlex::GameRegion::International:
-						regionStr = FindStringResourceEx(Dll::Module(), IDS_CLIENT_INTERNATIONAL) + 1;
-						break;
-					case XivAlex::GameRegion::Korean:
-						regionStr = FindStringResourceEx(Dll::Module(), IDS_CLIENT_KOREAN) + 1;
-						break;
-					case XivAlex::GameRegion::Chinese:
-						regionStr = FindStringResourceEx(Dll::Module(), IDS_CLIENT_CHINESE) + 1;
-						break;
-					default:
-						continue;
-				}
-				titles.emplace_back(std::format(L"{}: {}\n{}", message, regionStr, info.RootPath.wstring()));
-				radios.emplace_back(static_cast<int>(2000 + radioItems.size()), titles.back().c_str());
-				radioItems.emplace_back(true, static_cast<uint32_t>(i));
-			}
-			radios.emplace_back(3000, L"Choose installation");
+			};
 
-			const auto taskDialogCallback = [&](HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) -> HRESULT {
-				switch (msg) {
-					case TDN_HYPERLINK_CLICKED: {
+			auto builder = Utils::Win32::TaskDialog::Builder();
+			if (mode == Mode::Install) {
+				builder
+					.WithMainInstruction(L"Install XivAlexander")
+					.WithContent(L"You can install XivAlexander to launch XivAlexander with the game.\n\n* Requires Administrator permissions.\n* Compatible with Reshade.\n* No game data files are touched.");
+				builder.WithButton({
+					.Text = L"&Install XivAlexander\nInstall XivAlexander for the selected game installation.",
+					.Callback = [&](auto& dialog) {
 						try {
-							const auto target = std::wstring_view(reinterpret_cast<wchar_t*>(lParam));
-							if (target == L"refresh") {
-								loop = true;
-								PostMessageW(hWnd, WM_CLOSE, 0, 0);
-							} else if (target == L"update") {
-								ShowWindow(hWnd, SW_HIDE);
-								const auto show = Utils::CallOnDestruction([hWnd]() { ShowWindow(hWnd, SW_SHOW); });
-								CheckForUpdates(std::move(g_parameters->m_targetProcessHandles), true);
-							} else if (target == L"homepage") {
-								SHELLEXECUTEINFOW shex{
-									.cbSize = sizeof shex,
-									.hwnd = hWnd,
-									.lpFile = FindStringResourceEx(Dll::Module(), IDS_URL_HOMEPAGE) + 1,
-									.nShow = SW_SHOW,
-								};
-								if (!ShellExecuteExW(&shex))
-									throw Utils::Win32::Error("ShellExecuteW");
-							}
+							auto withHider = dialog.WithHiddenDialog();
+							if (needChooser && !installationChooser(dialog.GetHwnd()))
+								return Utils::Win32::TaskDialog::Handled;
+
+							Utils::Win32::RunProgram({
+								.args = std::format(L"-a {} {}",
+									LoaderActionToString(LoaderAction::Install),
+									Utils::Win32::ReverseCommandLineToArgv(gamePath.wstring())),
+								.wait = true,
+								.elevateMode = Utils::Win32::RunProgramParams::Force,
+							});
+							withHider.Cancel();
+							return Utils::Win32::TaskDialog::NotHandled;
 						} catch (const std::exception& e) {
-							Dll::MessageBoxF(hWnd, MB_ICONERROR, FindStringResourceEx(Dll::Module(), IDS_ERROR_UNEXPECTED), Utils::FromUtf8(e.what()));
+							Dll::MessageBoxF(nullptr, MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 						}
-						return S_OK;
-					}
-				}
-				return S_OK;
-			};
-			const TASKDIALOGCONFIG tdc{
-				.cbSize = sizeof tdc,
-				.hInstance = Dll::Module(),
-				.dwFlags = TDF_ENABLE_HYPERLINKS | TDF_ALLOW_DIALOG_CANCELLATION | TDF_CAN_BE_MINIMIZED,
-				.dwCommonButtons = TDCBF_CLOSE_BUTTON,
-				.pszWindowTitle = Dll::GetGenericMessageBoxTitle(),
-				.pszMainIcon = MAKEINTRESOURCEW(IDI_TRAY_ICON),
-				.pszMainInstruction = Dll::GetGenericMessageBoxTitle(),
-				.pszContent = L"What to do?",
-				.cButtons = static_cast<UINT>(buttons.size()),
-				.pButtons = &buttons[0],
-				.nDefaultButton = IDCLOSE,
-				.cRadioButtons = static_cast<UINT>(radios.size()),
-				.pRadioButtons = &radios[0],
-				.nDefaultRadioButton = pids.empty() ? 3001 : 3000,
-				.pszFooter = LR"(<a href="refresh">Refresh</a> | <a href="update">Check for update</a> | <a href="homepage">Homepage</a>)",
-				.pfCallback = [](HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, LONG_PTR lpRefData) -> HRESULT {
-					return (*reinterpret_cast<decltype(taskDialogCallback)*>(lpRefData))(hWnd, msg, wParam, lParam);
-				},
-				.lpCallbackData = reinterpret_cast<LONG_PTR>(&taskDialogCallback),
-			};
+						return Utils::Win32::TaskDialog::Handled;
+					},
+				});
+				builder.WithButton({
+					.Text = L"&Uninstall XivAlexander\nUninstall XivAlexander from the selected game installation.",
+					.Callback = [&](auto& dialog) {
+						try {
+							auto withHider = dialog.WithHiddenDialog();
+							if (needChooser && !installationChooser(dialog.GetHwnd()))
+								return Utils::Win32::TaskDialog::Handled;
 
-			loop = false;
-			int nButton = IDCANCEL, nRadio = 2000;
-			if (FAILED(TaskDialogIndirect(&tdc, &nButton, &nRadio, nullptr))) {
-				taskDialogFail = true;
-				break;
-			}
-			switch (nButton) {
-				case 1001:
-				case 1002:
-				case 1003:
-					loop = true;
-					try {
-						bool selectionIsInstallation = false;
-						uint32_t pidOrIndex = 0;
-						std::filesystem::path bootPath;
-						std::filesystem::path gamePath;
-						if (2000 <= nRadio && nRadio < 3000) {
-							std::tie(selectionIsInstallation, pidOrIndex) = radioItems[static_cast<size_t>(nRadio) - 2000];
-							if (selectionIsInstallation) {
-								bootPath = launchers[pidOrIndex].second.BootApp;
-								gamePath = launchers[pidOrIndex].second.RootPath / L"game";
-							} else {
-
-								Utils::Win32::Process process;
-								try {
-									process = Utils::Win32::Process(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pidOrIndex);
-								} catch (...) {
-									process = Utils::Win32::Process(PROCESS_QUERY_INFORMATION, FALSE, pidOrIndex);
-								}
-								if (process)
-									gamePath = process.PathOf().parent_path();
-								if (!exists(bootPath = gamePath.parent_path() / "FFXIVBoot.exe"))
-									if (!exists(bootPath = gamePath.parent_path() / "boot" / "ffxivboot.exe"))
-										if (!exists(bootPath = gamePath.parent_path() / "boot" / "ffxiv_boot.exe"))
-											bootPath.clear();
-							}
-						} else if (nRadio == 3000) {
-							IFileOpenDialogPtr pDialog;
-							DWORD dwFlags;
-							static const COMDLG_FILTERSPEC fileTypes[] = {
-								{L"FFXIV executable files (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe; ffxiv.exe)", L"ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe; ffxiv.exe"},
-								{L"Executable Files (*.exe)", L"*.exe"},
-								{L"All files (*.*)", L"*"},
-							};
-							Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
-							Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypes(ARRAYSIZE(fileTypes), fileTypes));
-							Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypeIndex(0));
-							Utils::Win32::Error::ThrowIfFailed(pDialog->SetDefaultExtension(L"exe"));
-							Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(FindStringResourceEx(Dll::Module(), IDS_TITLE_SELECT_BOOT) + 1));
-							Utils::Win32::Error::ThrowIfFailed(pDialog->GetOptions(&dwFlags));
-							Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
-							Utils::Win32::Error::ThrowIfFailed(pDialog->Show(nullptr), true);
-
-							std::wstring fileName;
-							{
-								IShellItemPtr pResult;
-								PWSTR pszFileName;
-								Utils::Win32::Error::ThrowIfFailed(pDialog->GetResult(&pResult));
-								Utils::Win32::Error::ThrowIfFailed(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
-								if (!pszFileName)
-									throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
-								fileName = pszFileName;
-								CoTaskMemFree(pszFileName);
-							}
-
-							selectionIsInstallation = true;
-							gamePath = fileName;
-							if (lstrcmpiW(gamePath.filename().wstring().c_str(), XivAlex::GameExecutable32NameW) == 0
-								|| lstrcmpiW(gamePath.filename().wstring().c_str(), XivAlex::GameExecutable64NameW) == 0) {
-								gamePath = gamePath.parent_path();
-								if (!exists(bootPath = gamePath.parent_path() / "FFXIVBoot.exe"))
-									if (!exists(bootPath = gamePath.parent_path() / "boot" / "ffxivboot.exe"))
-										if (!exists(bootPath = gamePath.parent_path() / "boot" / "ffxiv_boot.exe"))
-											bootPath.clear();
-							} else {
-								bootPath = gamePath;
-								if (!exists((gamePath = bootPath.parent_path() / "game") / XivAlex::GameExecutableNameW))
-									if (!exists((gamePath = bootPath.parent_path().parent_path() / "game") / XivAlex::GameExecutableNameW))
-										gamePath.clear();
-							}
+							Utils::Win32::RunProgram({
+								.args = std::format(L"-a {} {}",
+									LoaderActionToString(LoaderAction::Uninstall),
+									Utils::Win32::ReverseCommandLineToArgv(gamePath.wstring())),
+								.wait = true,
+								.elevateMode = Utils::Win32::RunProgramParams::Force,
+							});
+							withHider.Cancel();
+							return Utils::Win32::TaskDialog::NotHandled;
+						} catch (const std::exception& e) {
+							Dll::MessageBoxF(nullptr, MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 						}
+						return Utils::Win32::TaskDialog::Handled;
+					},
+				});
+				builder.WithButton({
+					.Text = L"&Launch Game\nRun game launcher and load XivAlexander when game is run.",
+					.Callback = [&](auto& dialog) {
+						try {
+							const auto withHider = dialog.WithHiddenDialog();
+							if (needChooser && !installationChooser(dialog.GetHwnd()))
+								return Utils::Win32::TaskDialog::Handled;
 
-						if (nButton == 1003) {
 							if (bootPath.empty())
 								throw std::runtime_error("Unable to detect boot path");
 
-							const auto isIntl = (lstrcmpiW(bootPath.filename().c_str(), L"ffxivboot.exe") == 0 || lstrcmpiW(bootPath.filename().c_str(), L"ffxivboot64.exe") == 0)
-								&& lstrcmpiW(bootPath.parent_path().filename().wstring().c_str(), L"boot") == 0;
-							Utils::Win32::RunProgram({
-								.args = std::format(L"-a {} -l select {}",
-									LoaderActionToString(LoaderAction::Launcher),
-									Utils::Win32::ReverseCommandLineToArgv(bootPath.wstring())),
-								.wait = true,
-								.elevateMode = isIntl ? Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated : Utils::Win32::RunProgramParams::NoElevationIfDenied,
-							});
-
-						} else if (nButton == 1001 || nButton == 1002) {
-							if (!selectionIsInstallation) {
-								Utils::Win32::Process process;
-								try {
-									process = Utils::Win32::Process(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pidOrIndex);
-								} catch (...) {
-									process = Utils::Win32::Process(PROCESS_QUERY_INFORMATION, FALSE, pidOrIndex);
-								}
-								if (process.IsProcess64Bits() != Utils::Win32::Process::Current().IsProcess64Bits()
-									|| (!Utils::Win32::IsUserAnAdmin() && RequiresAdminAccess({process.GetId()}))) {
-									Utils::Win32::RunProgram({
-										.path = Utils::Win32::Process::Current().PathOf().parent_path() / (process.IsProcess64Bits() ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW),
-										.args = std::format(L"-a {} {}",
-											LoaderActionToString(nButton == 1001 ? LoaderAction::Load : LoaderAction::Unload),
-											process.GetId()),
-										.wait = true
-									});
-								} else {
-									process = OpenProcessForInjection(pidOrIndex);
-									const auto injectedModule = Utils::Win32::InjectedModule(std::move(process), dllPath);
-									auto unloadRequired = false;
-									const auto cleanup = Utils::CallOnDestruction([&injectedModule, &unloadRequired]() {
-										if (unloadRequired)
-											injectedModule.Call("EnableXivAlexander", nullptr, "EnableXivAlexander(0)");
-									});
-
-									if (nButton == 1001) {
-										unloadRequired = true;
-										if (const auto loadResult = injectedModule.Call("EnableXivAlexander", reinterpret_cast<void*>(1), "EnableXivAlexander(1)"); loadResult == 0)
-											unloadRequired = false;
-									} else if (nButton == 1002) {
-										unloadRequired = true;
-									}
-								}
-
-							} else {
-								const auto dataPath = Utils::Win32::EnsureKnownFolderPath(FOLDERID_RoamingAppData) / L"XivAlexander";
-								const auto exePath = Utils::Win32::EnsureKnownFolderPath(FOLDERID_LocalAppData) / L"XivAlexander";
-								if (gamePath.empty())
-									throw std::runtime_error("Unable to detect game path");
-
+							if (bootInjectable || needChooser) {
+								const auto isIntl = (lstrcmpiW(bootPath.filename().c_str(), L"ffxivboot.exe") == 0 || lstrcmpiW(bootPath.filename().c_str(), L"ffxivboot64.exe") == 0)
+									&& lstrcmpiW(bootPath.parent_path().filename().wstring().c_str(), L"boot") == 0;
 								Utils::Win32::RunProgram({
-									.args = std::format(L"-a {} {}",
-										LoaderActionToString(nButton == 1001 ? LoaderAction::Install : LoaderAction::Uninstall),
-										Utils::Win32::ReverseCommandLineToArgv(gamePath.wstring())),
+									.args = std::format(L"-a {} -l select {}",
+										LoaderActionToString(LoaderAction::Launcher),
+										Utils::Win32::ReverseCommandLineToArgv(bootPath.wstring())),
 									.wait = true,
-									.elevateMode = Utils::Win32::RunProgramParams::Force,
+									.elevateMode = isIntl ? Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated : Utils::Win32::RunProgramParams::NoElevationIfDenied,
 								});
+							} else {
+								SHELLEXECUTEINFOW shex{
+									.cbSize = sizeof shex,
+									.hwnd = dialog.GetHwnd(),
+									.lpFile = bootPath.c_str(),
+									.nShow = SW_SHOW,
+								};
+								if (!ShellExecuteExW(&shex))
+									throw Utils::Win32::Error("ShellExecuteExW");
+								Dll::MessageBoxF(nullptr, MB_ICONWARNING, L"Cannot launch game with XivAlexander enabled. You will have to install XivAlexander, or load XivAlexander after you have started the game and pressed the Refresh link below.");
 							}
+						} catch (const std::exception& e) {
+							Dll::MessageBoxF(nullptr, MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 						}
+						return Utils::Win32::TaskDialog::Handled;
+					},
+				});
+				if (!pids.empty()) {
+					builder.WithButton({
+						.Text = L"&Run once...\nLoad XivAlexander into running game once without installation.",
+						.Callback = [&](auto&) {
+							mode = Mode::RunOnce;
+							return Utils::Win32::TaskDialog::NotHandled;
+						},
+					});
+				}
 
-					} catch (const Utils::Win32::CancelledError&) {
-
-					} catch (const std::exception& e) {
-						Dll::MessageBoxF(nullptr, MB_ICONERROR, FindStringResourceEx(Dll::Module(), IDS_ERROR_UNEXPECTED), Utils::FromUtf8(e.what()));
+				auto defaultRadioSet = false;
+				for (const auto& [region, info] : XivAlex::FindGameLaunchers()) {
+					const wchar_t* message = L"Install XivAlexander";
+					const wchar_t* regionStr = nullptr;
+					const auto selfVersion = Utils::StringSplit<std::string>(Utils::Win32::FormatModuleVersionString(GetModuleHandleW(nullptr)).first, ".");
+					for (const auto name : {"d3d9.dll", "d3d11.dll"}) {
+						const auto path = info.RootPath / "game" / name;
+						try {
+							if (XivAlex::IsXivAlexanderDll(path)) {
+								const auto version = Utils::StringSplit<std::string>(Utils::Win32::FormatModuleVersionString(path).first, ".");
+								if (selfVersion > version)
+									message = L"Update XivAlexander";
+								else if (selfVersion < version)
+									message = L"Downgrade XivAlexander";
+								else
+									message = L"Reinstall XivAlexander";
+							}
+						} catch (...) {
+						}
 					}
+					switch (region) {
+						case XivAlex::GameRegion::International:
+							regionStr = FindStringResourceEx(Dll::Module(), IDS_CLIENT_INTERNATIONAL) + 1;
+							break;
+						case XivAlex::GameRegion::Korean:
+							regionStr = FindStringResourceEx(Dll::Module(), IDS_CLIENT_KOREAN) + 1;
+							break;
+						case XivAlex::GameRegion::Chinese:
+							regionStr = FindStringResourceEx(Dll::Module(), IDS_CLIENT_CHINESE) + 1;
+							break;
+						default:
+							continue;
+					}
+					builder.WithRadio({
+						.Text = std::format(L"{}: {}\n{}", message, regionStr, info.RootPath.wstring()),
+						.Callback = [&gamePath, &bootPath, info, &bootInjectable, &needChooser](auto&) {
+							gamePath = info.RootPath / "game";
+							bootPath = info.BootApp;
+							bootInjectable = info.BootAppDirectlyInjectable;
+							needChooser = false;
+							return Utils::Win32::TaskDialog::Handled;
+						},
+					});
+					if (!defaultRadioSet) {
+						gamePath = info.RootPath / "game";
+						bootPath = info.BootApp;
+						bootInjectable = info.BootAppDirectlyInjectable;
+						needChooser = false;
+						defaultRadioSet = true;
+					}
+				}
+				builder.WithRadio({
+					.Text = L"Game installation is not listed above",
+					.Callback = [&](auto&) {
+						gamePath.clear();
+						bootPath.clear();
+						needChooser = true;
+						return Utils::Win32::TaskDialog::Handled;
+					},
+				});
+
+			} else {
+				builder
+					.WithMainInstruction(L"Run XivAlexander once")
+					.WithContent(L"You can run XivAlexander right now without installation.\n\n* Restart using XivAlexander menu after loading to enable modding.");
+				builder.WithButton({
+					.Text = L"&Load XivAlexander\nLoad XivAlexander immediately to the selected process.",
+					.Callback = [&](auto& dialog) {
+						auto withHider = dialog.WithHiddenDialog();
+						try {
+							loadOrUnload(true);
+							withHider.Cancel();
+						} catch (const std::exception& e) {
+							Dll::MessageBoxF(nullptr, MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+						}
+						return Utils::Win32::TaskDialog::NotHandled;
+					},
+				});
+				builder.WithButton({
+					.Text = L"&Unload XivAlexander\nAttempt to unload XivAlexander from the selected process.",
+					.Callback = [&](auto& dialog) {
+						auto withHider = dialog.WithHiddenDialog();
+						try {
+							loadOrUnload(false);
+							withHider.Cancel();
+						} catch (const std::exception& e) {
+							Dll::MessageBoxF(nullptr, MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+						}
+						return Utils::Win32::TaskDialog::NotHandled;
+					},
+				});
+				builder.WithButton({
+					.Text = L"&Install...\nInstall XivAlexander for automatic loading when the game starts up.",
+					.Callback = [&](auto&) {
+						mode = Mode::Install;
+						return Utils::Win32::TaskDialog::NotHandled;
+					},
+				});
+
+				for (const auto pid : pids) {
+					std::wstring path;
+					try {
+						path = Utils::Win32::Process(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid).PathOf();
+					} catch (...) {
+						try {
+							path = Utils::Win32::Process(PROCESS_QUERY_INFORMATION, FALSE, pid).PathOf();
+						} catch (...) {
+							path = L"(Unknown)";
+						}
+					}
+					builder.WithRadio({
+						.Text = std::format(L"Process ID: {}\n{}", pid, path),
+						.Callback = [&selectedPid, pid](auto&) {
+							selectedPid = pid;
+							return Utils::Win32::TaskDialog::Handled;
+						},
+					});
+				}
 			}
+
+			auto refreshRequested = false;
+			builder.WithHyperlinkHandler(L"refresh", [&](auto&) {
+				refreshRequested = true;
+				return Utils::Win32::TaskDialog::HyperlinkHandleResult::HandledCloseDialog;
+			});
+			builder.WithHyperlinkHandler(L"update", [&](auto& dialog) {
+				auto withHider = dialog.WithHiddenDialog();
+				try {
+					CheckForUpdates(std::move(g_parameters->m_targetProcessHandles), true);
+				} catch (const std::exception& e) {
+					Dll::MessageBoxF(dialog.GetHwnd(), MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+				}
+				return Utils::Win32::TaskDialog::HyperlinkHandleResult::HandledKeepDialog;
+			});
+			builder.WithHyperlinkHandler(L"homepage", [](auto& dialog) {
+				try {
+					SHELLEXECUTEINFOW shex{
+						.cbSize = sizeof shex,
+						.hwnd = dialog.GetHwnd(),
+						.lpFile = FindStringResourceEx(Dll::Module(), IDS_URL_HOMEPAGE) + 1,
+						.nShow = SW_SHOW,
+					};
+					if (!ShellExecuteExW(&shex))
+						throw Utils::Win32::Error("ShellExecuteW");
+				} catch (const std::exception& e) {
+					Dll::MessageBoxF(dialog.GetHwnd(), MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+				}
+				return Utils::Win32::TaskDialog::HyperlinkHandleResult::HandledKeepDialog;
+			});
+			auto dialog = builder
+				.WithInstance(Dll::Module())
+				.WithAllowDialogCancellation()
+				.WithCanBeMinimized()
+				.WithButtonCommandLinks()
+				.WithWindowTitle(Dll::GetGenericMessageBoxTitle())
+				.WithMainIcon(IDI_TRAY_ICON)
+				.WithFooter(LR"(<a href="refresh">Refresh</a> | <a href="update">Check for updates</a> | <a href="homepage">Homepage</a>)")
+				.Build();
+			dialog.OnDialogConstructed = [](auto& dialog) {
+				SetWindowPos(dialog.GetHwnd(), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+			};
+			const auto res = dialog.Show();
+			if (res.Button == IDCANCEL && !refreshRequested)
+				break;
 		}
-		if (!taskDialogFail)
-			return 0;
+		return 0;
 	}
 
 	if (pids.empty()) {

@@ -803,7 +803,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 													} else if ((s[j] & 0xE0) == 0xC0) {
 														// 2 bytes
 														if (j + 2 > s.size())
-															break; // not enough bytes
+															break;  // not enough bytes
 														if ((s[j + 1] & 0xC0) != 0x80)
 															continue;
 														charCode = static_cast<char32_t>(
@@ -815,7 +815,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 													} else if ((s[j] & 0xF0) == 0xE0) {
 														// 3 bytes
 														if (j + 3 > s.size())
-															break; // not enough bytes
+															break;  // not enough bytes
 														if ((s[j + 1] & 0xC0) != 0x80
 															|| (s[j + 2] & 0xC0) != 0x80)
 															continue;
@@ -829,7 +829,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 													} else if ((s[j] & 0xF8) == 0xF0) {
 														// 4 bytes
 														if (j + 4 > s.size())
-															break; // not enough bytes
+															break;  // not enough bytes
 														if ((s[j + 1] & 0xC0) != 0x80
 															|| (s[j + 2] & 0xC0) != 0x80
 															|| (s[j + 3] & 0xC0) != 0x80)

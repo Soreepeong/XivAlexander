@@ -106,7 +106,7 @@ namespace App::Network::Structures {
 			uint16_t SourceSequence;
 			uint16_t Rotation;
 			uint16_t ActionAnimationId;
-			uint8_t Variation; // animation
+			uint8_t Variation;  // animation
 			ActionEffectDisplayType EffectDisplayType;
 			uint8_t Unknown2;
 			uint8_t EffectCount;
@@ -189,7 +189,7 @@ namespace App::Network::Structures {
 			uint16_t Unknown2;
 			float CastTime;
 			uint32_t TargetId;
-			float Rotation; // rad
+			float Rotation;  // rad
 			uint16_t Flag;  // 1 = interruptible blinking
 			uint16_t Unknown3;
 			uint16_t X;

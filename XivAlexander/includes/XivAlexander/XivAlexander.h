@@ -15,7 +15,7 @@ namespace XivAlexDll {
 	struct InjectEntryPointParameters;
 
 	enum class LoaderAction : int {
-		Auto,
+		Interactive,
 		Web,
 		Ask,
 		Load,
@@ -46,7 +46,8 @@ namespace XivAlexDll {
 		LoaderAction action,
 		bool wait,
 		const Utils::Win32::Process& waitFor = {},
-		WhichLoader which = Current);
+		WhichLoader which = Current,
+		const std::filesystem::path& loaderPath = {});
 	XIVALEXANDER_DLLEXPORT InjectEntryPointParameters* PatchEntryPointForInjection(HANDLE hProcess);
 
 	//

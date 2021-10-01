@@ -286,7 +286,7 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
 	Dll::SetLoadedFromEntryPoint();
 
 	if (filename != XivAlex::GameExecutableNameW)
-		return; // not the game process; don't load XivAlex app
+		return;  // not the game process; don't load XivAlex app
 
 	// the game might restart itself for whatever reason.
 	s_injectOnCreateProcessApp->SetFlags(XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly);

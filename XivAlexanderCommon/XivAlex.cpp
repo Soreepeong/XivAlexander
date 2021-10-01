@@ -71,7 +71,7 @@ static std::wstring TestPublisher(const std::filesystem::path& path) {
 }
 
 std::tuple<std::wstring, std::wstring> XivAlex::ResolveGameReleaseRegion(const std::filesystem::path& path) {
-	const auto installationDir = path.parent_path().parent_path(); // remove "\game", "\ffxiv_dx11.exe"
+	const auto installationDir = path.parent_path().parent_path();  // remove "\game", "\ffxiv_dx11.exe"
 	const auto gameDir = installationDir / L"game";
 	const auto gameVerPath = gameDir / L"ffxivgame.ver";
 
@@ -105,8 +105,8 @@ std::tuple<std::wstring, std::wstring> XivAlex::ResolveGameReleaseRegion(const s
 
 	std::map<std::wstring, size_t> publisherCountries;
 	for (const auto& possibleRegionSpecificFilesDir : {
-		installationDir / L"boot" / L"ffxiv*.exe",
-		installationDir / L"sdo" / L"sdologinentry.dll",
+			installationDir / L"boot" / L"ffxiv*.exe",
+			installationDir / L"sdo" / L"sdologinentry.dll",
 		}) {
 		WIN32_FIND_DATAW data{};
 		const auto hFindFile = Utils::Win32::FindFile(
@@ -190,15 +190,17 @@ static std::wstring ReadRegistryAsString(const wchar_t* lpSubKey, const wchar_t*
 		return {};
 
 	std::wstring buf;
-	buf.resize(buflen);
+	buf.resize(buflen + 1);
 	if (RegQueryValueExW(hKey, lpValueName, nullptr, nullptr, reinterpret_cast<LPBYTE>(&buf[0]), &buflen))
 		return {};
+
+	buf.erase(std::ranges::find(buf, L'\0'), buf.end());
 
 	return buf;
 }
 
-std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLaunchers() {
-	std::map<GameRegion, GameRegionInfo> result;
+std::vector<std::pair<XivAlex::GameRegion, XivAlex::GameRegionInfo>> XivAlex::FindGameLaunchers() {
+	std::vector<std::pair<GameRegion, GameRegionInfo>> result;
 
 	if (const auto reg = ReadRegistryAsString(
 		LR"(SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{2B41E132-07DF-4925-A3D3-F2D1765CCDFE})",
@@ -217,6 +219,7 @@ std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLauncher
 
 #endif
 			.BootAppRequiresAdmin = false,
+			.BootAppDirectlyInjectable = true,
 			.RelatedApps = {
 				info.RootPath / L"boot" / L"ffxivboot.exe",
 				info.RootPath / L"boot" / L"ffxivboot64.exe",
@@ -229,7 +232,34 @@ std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLauncher
 			},
 		};
 
-		result.emplace(GameRegion::International, info);
+		result.emplace_back(GameRegion::International, info);
+	}
+
+	for (const auto steamAppId: { 
+			39210,  // paid
+			312060,  // free trial
+		}) {
+		if (const auto reg = ReadRegistryAsString(std::format(LR"(SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App {})", steamAppId).c_str(), L"InstallLocation"); !reg.empty()) {
+			GameRegionInfo info{
+				.Type = GameRegion::International,
+				.RootPath = std::filesystem::path(reg),
+				.BootApp = std::format(L"steam://rungameid/{}", steamAppId),
+				.BootAppRequiresAdmin = false,
+				.BootAppDirectlyInjectable = false,
+				.RelatedApps = {
+					info.RootPath / L"boot" / L"ffxivboot.exe",
+					info.RootPath / L"boot" / L"ffxivboot64.exe",
+					info.RootPath / L"boot" / L"ffxivconfig.exe",
+					info.RootPath / L"boot" / L"ffxivconfig64.exe",
+					info.RootPath / L"boot" / L"ffxivlauncher.exe",
+					info.RootPath / L"boot" / L"ffxivlauncher64.exe",
+					info.RootPath / L"boot" / L"ffxivupdater.exe",
+					info.RootPath / L"boot" / L"ffxivupdater.exe",
+				},
+			};
+
+			result.emplace_back(GameRegion::International, info);
+		}
 	}
 
 	if (const auto reg = ReadRegistryAsString(
@@ -241,7 +271,7 @@ std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLauncher
 		if (!argv)
 			return {};
 
-		Utils::CallOnDestruction c2([argv]() {LocalFree(argv); });
+		Utils::CallOnDestruction c2([argv]() { LocalFree(argv); });
 		if (cnt < 1)
 			return {};
 
@@ -250,12 +280,13 @@ std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLauncher
 			.RootPath = std::filesystem::path(argv[0]).parent_path().parent_path(),
 			.BootApp = info.RootPath / L"boot" / L"FFXIV_Boot.exe",
 			.BootAppRequiresAdmin = true,
+			.BootAppDirectlyInjectable = true,
 			.RelatedApps = {
 				info.RootPath / L"boot" / L"FFXIV_Boot.exe",
 				info.RootPath / L"boot" / L"FFXIV_Launcher.exe",
 			},
 		};
-		result.emplace(GameRegion::Korean, info);
+		result.emplace_back(GameRegion::Korean, info);
 	}
 
 	if (const auto reg = ReadRegistryAsString(
@@ -267,6 +298,7 @@ std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLauncher
 			.RootPath = std::filesystem::path(reg).parent_path(),
 			.BootApp = info.RootPath / L"FFXIVBoot.exe",
 			.BootAppRequiresAdmin = true,
+			.BootAppDirectlyInjectable = true,
 			.RelatedApps = {
 				info.RootPath / "LauncherUpdate" / "LauncherUpdater.exe",
 				info.RootPath / "FFXIVBoot.exe",
@@ -276,7 +308,7 @@ std::map<XivAlex::GameRegion, XivAlex::GameRegionInfo> XivAlex::FindGameLauncher
 				info.RootPath / "sdo" / "sdologin" / "update.exe",
 			},
 		};
-		result.emplace(GameRegion::Chinese, info);
+		result.emplace_back(GameRegion::Chinese, info);
 	}
 	return result;
 }

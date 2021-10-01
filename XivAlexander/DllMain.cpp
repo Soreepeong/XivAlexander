@@ -28,7 +28,7 @@ const Utils::Win32::ActivationContext& Dll::ActivationContext() {
 
 const char* XivAlexDll::LoaderActionToString(LoaderAction val) {
 	switch (val) {
-		case LoaderAction::Auto: return "auto";
+		case LoaderAction::Interactive: return "interactive";
 		case LoaderAction::Web: return "web";
 		case LoaderAction::Ask: return "ask";
 		case LoaderAction::Load: return "load";
@@ -52,13 +52,14 @@ DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 	LoaderAction action,
 	bool wait,
 	const Utils::Win32::Process& waitFor,
-	WhichLoader which) {
+	WhichLoader which,
+	const std::filesystem::path& loaderPath) {
 
-	const auto companionPath = (
+	const auto companionPath = loaderPath.empty() ? (
 		lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), XivAlex::GameExecutableNameW) == 0
 		? App::Config::Acquire()->Init.ResolveXivAlexInstallationPath()
 		: Dll::Module().PathOf().parent_path()
-	);
+	) : loaderPath;
 	const wchar_t* whichLoader;
 	switch (which) {
 		case Current:
@@ -119,7 +120,7 @@ static void CheckObfuscatedArguments() {
 	CharLowerW(&filename[0]);
 
 	if (filename != XivAlex::GameExecutableNameW)
-		return; // not the game process
+		return;  // not the game process
 
 	try {
 		std::vector<std::string> args;
