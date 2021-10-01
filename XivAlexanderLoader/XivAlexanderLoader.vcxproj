@@ -154,9 +154,9 @@
       <AdditionalManifestDependencies>type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'</AdditionalManifestDependencies>
     </Link>
     <CustomBuildStep>
-      <Command>IF EXIST "$(TargetPath).sign.txt" ( DEL $(TargetPath).sign.txt )
-set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /t http://timestamp.digicert.com /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"</Command>
+      <Command>set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
+"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha256 /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"
+"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha1 /as /v /fd sha1 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt;&gt; "$(TargetPath).sign.txt"</Command>
       <Message>Signing $(TargetPath)</Message>
       <Outputs>$(TargetPath).sign.txt</Outputs>
     </CustomBuildStep>
@@ -184,9 +184,9 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
       <AdditionalManifestDependencies>type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'</AdditionalManifestDependencies>
     </Link>
     <CustomBuildStep>
-      <Command>IF EXIST "$(TargetPath).sign.txt" ( DEL $(TargetPath).sign.txt )
-set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /t http://timestamp.digicert.com /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"</Command>
+      <Command>set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
+"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha256 /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"
+"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha1 /as /v /fd sha1 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt;&gt; "$(TargetPath).sign.txt"</Command>
       <Message>Signing $(TargetPath)</Message>
       <Outputs>$(TargetPath).sign.txt</Outputs>
     </CustomBuildStep>
@@ -218,9 +218,9 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
       <AdditionalManifestDependencies>type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'</AdditionalManifestDependencies>
     </Link>
     <CustomBuildStep>
-      <Command>IF EXIST "$(TargetPath).sign.txt" ( DEL $(TargetPath).sign.txt )
-set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /t http://timestamp.digicert.com /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"</Command>
+      <Command>set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
+"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha256 /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"
+"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha1 /as /v /fd sha1 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt;&gt; "$(TargetPath).sign.txt"</Command>
       <Message>Signing $(TargetPath)</Message>
       <Outputs>$(TargetPath).sign.txt</Outputs>
     </CustomBuildStep>
@@ -252,9 +252,9 @@ set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
       <AdditionalManifestDependencies>type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'</AdditionalManifestDependencies>
     </Link>
     <CustomBuildStep>
-      <Command>IF EXIST "$(TargetPath).sign.txt" ( DEL $(TargetPath).sign.txt )
-set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /t http://timestamp.digicert.com /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"</Command>
+      <Command>set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
+"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha256 /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"
+"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha1 /as /v /fd sha1 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt;&gt; "$(TargetPath).sign.txt"</Command>
       <Message>Signing $(TargetPath)</Message>
       <Outputs>$(TargetPath).sign.txt</Outputs>
     </CustomBuildStep>
