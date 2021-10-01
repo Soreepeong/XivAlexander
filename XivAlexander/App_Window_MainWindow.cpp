@@ -290,7 +290,7 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 		FillRect(backdc, &rect, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
 		std::wstring str;
 		try {
-			m_config->Runtime.FormatStringRes(IDS_MAIN_TEXT,
+			str = m_config->Runtime.FormatStringRes(IDS_MAIN_TEXT,
 				GetCurrentProcessId(), m_path, m_sVersion, m_sRegion,
 				m_pApp->GetSocketHook()->Describe());
 		} catch (...) {

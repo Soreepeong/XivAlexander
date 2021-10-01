@@ -161,8 +161,9 @@ cmd /c "exit /b 0"
 </Command>
     </PostBuildEvent>
     <CustomBuildStep>
-      <Command>set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /t http://timestamp.digicert.com /v /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"</Command>
+      <Command>IF EXIST "$(TargetPath).sign.txt" ( DEL $(TargetPath).sign.txt )
+set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
+"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /t http://timestamp.digicert.com /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"</Command>
       <Message>Signing $(TargetPath)</Message>
       <Outputs>$(TargetPath).sign.txt</Outputs>
     </CustomBuildStep>
@@ -200,8 +201,9 @@ cmd /c "exit /b 0"
 </Command>
     </PostBuildEvent>
     <CustomBuildStep>
-      <Command>set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /t http://timestamp.digicert.com /v /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"</Command>
+      <Command>IF EXIST "$(TargetPath).sign.txt" ( DEL $(TargetPath).sign.txt )
+set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
+"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /t http://timestamp.digicert.com /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"</Command>
       <Message>Signing $(TargetPath)</Message>
       <Outputs>$(TargetPath).sign.txt</Outputs>
     </CustomBuildStep>
@@ -245,7 +247,7 @@ cmd /c "exit /b 0"
     <CustomBuildStep>
       <Command>IF EXIST "$(TargetPath).sign.txt" ( DEL $(TargetPath).sign.txt )
 set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /t http://timestamp.digicert.com /v /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"</Command>
+"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /t http://timestamp.digicert.com /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"</Command>
       <Message>Signing $(TargetPath)</Message>
       <Outputs>$(TargetPath).sign.txt</Outputs>
     </CustomBuildStep>
@@ -289,7 +291,7 @@ cmd /c "exit /b 0"
     <CustomBuildStep>
       <Command>IF EXIST "$(TargetPath).sign.txt" ( DEL $(TargetPath).sign.txt )
 set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /t http://timestamp.digicert.com /v /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"</Command>
+"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /t http://timestamp.digicert.com /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"</Command>
       <Message>Signing $(TargetPath)</Message>
       <Outputs>$(TargetPath).sign.txt</Outputs>
     </CustomBuildStep>
