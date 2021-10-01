@@ -60,7 +60,10 @@ struct App::InjectOnCreateProcessApp::Implementation {
 			&& (lstrcmpiW(filename.c_str(), XivAlex::XivAlexLoader32NameW) == 0 || lstrcmpiW(filename.c_str(), XivAlex::XivAlexLoader64NameW) == 0))
 			return false;
 
-		if (lstrcmpiW(filename.c_str(), XivAlex::GameExecutable32NameW) == 0) {
+		const auto isGame32 = lstrcmpiW(filename.c_str(), XivAlex::GameExecutable32NameW) == 0;
+		const auto isGame64 = lstrcmpiW(filename.c_str(), XivAlex::GameExecutable64NameW) == 0;
+
+		if (isGame32) {
 			for (const auto candidate : {"d3d9.dll", "dinput8.dll"}) {
 				try {
 					if (XivAlex::IsXivAlexanderDll(pardir / candidate))
@@ -69,7 +72,7 @@ struct App::InjectOnCreateProcessApp::Implementation {
 					// pass
 				}
 			}
-		} else if (lstrcmpiW(filename.c_str(), XivAlex::GameExecutable64NameW) == 0) {
+		} else if (isGame64) {
 			for (const auto candidate : {"d3d11.dll", "dxgi.dll", "dinput8.dll"}) {
 				try {
 					if (XivAlex::IsXivAlexanderDll(pardir / candidate))
@@ -84,7 +87,7 @@ struct App::InjectOnCreateProcessApp::Implementation {
 			return true;
 
 		if (InjectGameOnly)
-			return filename == XivAlex::GameExecutable32NameW || filename == XivAlex::GameExecutable64NameW;
+			return isGame32 || isGame64;
 
 		// check 3 parent directories to determine whether it might have anything to do with FFXIV
 		for (int i = 0; i < 3; ++i) {
@@ -208,21 +211,21 @@ size_t __stdcall XivAlexDll::EnableInjectOnCreateProcess(size_t flags) {
 
 static void InitializeAsStubBeforeOriginalEntryPoint() {
 	const auto conf = App::Config::Acquire();
-	auto selfFileName = Dll::Module().PathOf().filename().wstring();
-	CharLowerW(&selfFileName[0]);
-	if (selfFileName == L"d3d11.dll") {
+	auto selfFileNameLower = Dll::Module().PathOf().filename().wstring();
+	CharLowerW(&selfFileNameLower[0]);
+	if (selfFileNameLower == L"d3d11.dll") {
 		for (auto& path : conf->Runtime.ChainLoadPath_d3d11.Value())
 			if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(App::Config::Config::TranslatePath(path), 0, false))
 				mod.SetPinned();
-	} else if (selfFileName == L"d3d9.dll") {
+	} else if (selfFileNameLower == L"d3d9.dll") {
 		for (auto& path : conf->Runtime.ChainLoadPath_d3d9.Value())
 			if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(App::Config::Config::TranslatePath(path), 0, false))
 				mod.SetPinned();
-	} else if (selfFileName == L"dinput8.dll") {
+	} else if (selfFileNameLower == L"dinput8.dll") {
 		for (auto& path : conf->Runtime.ChainLoadPath_dinput8.Value())
 			if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(App::Config::Config::TranslatePath(path), 0, false))
 				mod.SetPinned();
-	} else if (selfFileName == L"dxgi.dll") {
+	} else if (selfFileNameLower == L"dxgi.dll") {
 		for (auto& path : conf->Runtime.ChainLoadPath_dxgi.Value())
 			if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(App::Config::Config::TranslatePath(path), 0, false))
 				mod.SetPinned();

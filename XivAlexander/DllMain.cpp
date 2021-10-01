@@ -270,7 +270,7 @@ const wchar_t* Dll::GetGenericMessageBoxTitle() {
 	static std::wstring buf;
 	if (buf.empty()) {
 		buf = std::format(L"{} {}",
-			1 + GetStringResFromId(IDS_APP_NAME),
+			GetStringResFromId(IDS_APP_NAME),
 			Utils::Win32::FormatModuleVersionString(Module().PathOf()).second);
 	}
 	return buf.data();
@@ -297,7 +297,7 @@ LPCWSTR Dll::GetStringResFromId(UINT resId) {
 		const auto conf = App::Config::Acquire();
 		return conf->Runtime.GetStringRes(resId);
 	} catch (...) {
-		return FindStringResourceEx(Module(), resId);
+		return 1 + FindStringResourceEx(Module(), resId);
 	}
 }
 

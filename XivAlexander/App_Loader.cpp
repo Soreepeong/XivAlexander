@@ -523,8 +523,8 @@ static void PerformUpdateAndExitIfSuccessful(std::vector<Utils::Win32::Process> 
 	const auto& currentProcess = Utils::Win32::Process::Current();
 	const auto launcherDir = currentProcess.PathOf().parent_path();
 	const auto tempExtractionDir = launcherDir / L"__UPDATE__";
-	const auto launcherPath32 = launcherDir / XivAlex::XivAlexLoader32NameW;
-	const auto launcherPath64 = launcherDir / XivAlex::XivAlexLoader64NameW;
+	const auto loaderPath32 = launcherDir / XivAlex::XivAlexLoader32NameW;
+	const auto loaderPath64 = launcherDir / XivAlex::XivAlexLoader64NameW;
 
 	{
 		const auto progress = ShowLazyProgress(true, IDS_UPDATE_PROGRESS_DOWNLOADING_FILES);
@@ -625,7 +625,7 @@ static void PerformUpdateAndExitIfSuccessful(std::vector<Utils::Win32::Process> 
 					continue;
 				}
 			}
-			if (processPath == launcherPath32 || processPath == launcherPath64) {
+			if (lstrcmpiW(processPath.c_str(), loaderPath32.c_str()) == 0 || lstrcmpiW(processPath.c_str(), loaderPath64.c_str()) == 0) {
 				while (true) {
 					try {
 						const auto hProcess = Utils::Win32::Process(PROCESS_TERMINATE | SYNCHRONIZE, false, pid);
@@ -640,7 +640,7 @@ static void PerformUpdateAndExitIfSuccessful(std::vector<Utils::Win32::Process> 
 					}
 				}
 
-			} else if (processPath.filename() == XivAlex::GameExecutable64NameW || processPath.filename() == XivAlex::GameExecutable32NameW) {
+			} else if (lstrcmpiW(processPath.filename().c_str(), XivAlex::GameExecutable64NameW) == 0 || lstrcmpiW(processPath.filename().c_str(), XivAlex::GameExecutable32NameW) == 0) {
 				auto process = OpenProcessForInjection(pid);
 				gameProcesses.emplace_back(process);
 				unloadTargets.emplace_back(std::move(process));
@@ -1130,7 +1130,6 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 			buttons.emplace_back(1001, L"&Load/Install");
 			buttons.emplace_back(1002, L"&Unload/Uninstall");
 			buttons.emplace_back(1003, L"Launch &Game");
-			buttons.emplace_back(IDCLOSE, L"&Close");
 
 			std::vector<TASKDIALOG_BUTTON> radios;
 			std::vector<std::wstring> titles;
@@ -1227,6 +1226,7 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 				.cbSize = sizeof tdc,
 				.hInstance = Dll::Module(),
 				.dwFlags = TDF_ENABLE_HYPERLINKS | TDF_ALLOW_DIALOG_CANCELLATION | TDF_CAN_BE_MINIMIZED,
+				.dwCommonButtons = TDCBF_CLOSE_BUTTON,
 				.pszWindowTitle = Dll::GetGenericMessageBoxTitle(),
 				.pszMainIcon = MAKEINTRESOURCEW(IDI_TRAY_ICON),
 				.pszMainInstruction = Dll::GetGenericMessageBoxTitle(),
@@ -1329,12 +1329,15 @@ int __stdcall XivAlexDll::XA_LoaderApp(LPWSTR lpCmdLine) {
 						if (nButton == 1003) {
 							if (bootPath.empty())
 								throw std::runtime_error("Unable to detect boot path");
-							
+
+							const auto isIntl = (lstrcmpiW(bootPath.filename().c_str(), L"ffxivboot.exe") == 0 || lstrcmpiW(bootPath.filename().c_str(), L"ffxivboot64.exe") == 0)
+								&& lstrcmpiW(bootPath.parent_path().filename().wstring().c_str(), L"boot") == 0;
 							Utils::Win32::RunProgram({
 								.args = std::format(L"-a {} -l select {}",
 									LoaderActionToString(LoaderAction::Launcher),
 									Utils::Win32::ReverseCommandLineToArgv(bootPath.wstring())),
 								.wait = true,
+								.elevateMode = isIntl ? Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated : Utils::Win32::RunProgramParams::NoElevationIfDenied,
 							});
 
 						} else if (nButton == 1001 || nButton == 1002) {
