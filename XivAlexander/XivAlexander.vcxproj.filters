@@ -28,6 +28,12 @@
     <Filter Include="Exported">
       <UniqueIdentifier>{63c1eeff-8175-4675-b10d-e45dd16885bb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="App\Apps\LoaderApp">
+      <UniqueIdentifier>{42484399-8036-4d11-88e6-2931debcde39}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="App\Apps\LoaderApp\Actions">
+      <UniqueIdentifier>{9ab24cde-20cc-4271-b287-d15be9a77778}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -95,9 +101,6 @@
     <ClCompile Include="App_Feature_GameResourceOverrider.cpp">
       <Filter>App\Feature</Filter>
     </ClCompile>
-    <ClCompile Include="App_Loader.cpp">
-      <Filter>App\Apps</Filter>
-    </ClCompile>
     <ClCompile Include="App_Window_ProgressPopupWindow.cpp">
       <Filter>App\Window</Filter>
     </ClCompile>
@@ -109,6 +112,33 @@
     </ClCompile>
     <ClCompile Include="App_Misc_CrashMessageBoxHandler.cpp">
       <Filter>App\Misc</Filter>
+    </ClCompile>
+    <ClCompile Include="App_LoaderApp_LoaderApp.cpp">
+      <Filter>App\Apps\LoaderApp</Filter>
+    </ClCompile>
+    <ClCompile Include="App_LoaderApp_Actions_LoadUnload.cpp">
+      <Filter>App\Apps\LoaderApp\Actions</Filter>
+    </ClCompile>
+    <ClCompile Include="App_LoaderApp.cpp">
+      <Filter>App\Apps\LoaderApp</Filter>
+    </ClCompile>
+    <ClCompile Include="App_LoaderApp_Arguments.cpp">
+      <Filter>App\Apps\LoaderApp</Filter>
+    </ClCompile>
+    <ClCompile Include="App_LoaderApp_Actions_Interactive.cpp">
+      <Filter>App\Apps\LoaderApp\Actions</Filter>
+    </ClCompile>
+    <ClCompile Include="App_LoaderApp_Actions_RunLauncher.cpp">
+      <Filter>App\Apps\LoaderApp\Actions</Filter>
+    </ClCompile>
+    <ClCompile Include="App_LoaderApp_Actions_InstallUninstall.cpp">
+      <Filter>App\Apps\LoaderApp\Actions</Filter>
+    </ClCompile>
+    <ClCompile Include="App_LoaderApp_Actions_Update.cpp">
+      <Filter>App\Apps\LoaderApp\Actions</Filter>
+    </ClCompile>
+    <ClCompile Include="App_LoaderApp_Actions_Inject.cpp">
+      <Filter>App\Apps\LoaderApp\Actions</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -199,6 +229,33 @@
     </ClInclude>
     <ClInclude Include="App_Misc_CrashMessageBoxHandler.h">
       <Filter>App\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="App_LoaderApp_Actions_LoadUnload.h">
+      <Filter>App\Apps\LoaderApp\Actions</Filter>
+    </ClInclude>
+    <ClInclude Include="App_LoaderApp.h">
+      <Filter>App\Apps\LoaderApp</Filter>
+    </ClInclude>
+    <ClInclude Include="App_LoaderApp_Arguments.h">
+      <Filter>App\Apps\LoaderApp</Filter>
+    </ClInclude>
+    <ClInclude Include="App_LoaderApp_Actions_Interactive.h">
+      <Filter>App\Apps\LoaderApp\Actions</Filter>
+    </ClInclude>
+    <ClInclude Include="App_LoaderApp_LoaderApp.h">
+      <Filter>App\Apps\LoaderApp</Filter>
+    </ClInclude>
+    <ClInclude Include="App_LoaderApp_Actions_RunLauncher.h">
+      <Filter>App\Apps\LoaderApp\Actions</Filter>
+    </ClInclude>
+    <ClInclude Include="App_LoaderApp_Actions_InstallUninstall.h">
+      <Filter>App\Apps\LoaderApp\Actions</Filter>
+    </ClInclude>
+    <ClInclude Include="App_LoaderApp_Actions_Update.h">
+      <Filter>App\Apps\LoaderApp\Actions</Filter>
+    </ClInclude>
+    <ClInclude Include="App_LoaderApp_Actions_Inject.h">
+      <Filter>App\Apps\LoaderApp\Actions</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

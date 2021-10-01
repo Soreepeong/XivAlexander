@@ -29,7 +29,7 @@ namespace XivAlexDll {
 		Internal_Update_Step3_CleanupFiles,
 		Internal_Inject_HookEntryPoint,
 		Internal_Inject_LoadXivAlexanderImmediately,
-		Internal_Cleanup_Handle,
+		Internal_Inject_UnloadFromHandle,
 		Count_,  // for internal use only
 	};
 
@@ -45,7 +45,7 @@ namespace XivAlexDll {
 		const std::vector<Utils::Win32::Process>& hSources,
 		LoaderAction action,
 		bool wait,
-		const Utils::Win32::Process& waitFor = {},
+		const Utils::Win32::Process& waitForBeforeStarting = {},
 		WhichLoader which = Current,
 		const std::filesystem::path& loaderPath = {});
 	XIVALEXANDER_DLLEXPORT InjectEntryPointParameters* PatchEntryPointForInjection(HANDLE hProcess);
@@ -94,7 +94,7 @@ namespace XivAlexDll {
 
 	XIVALEXANDER_DLLEXPORT [[nodiscard]] CheckPackageVersionResult CheckPackageVersion();
 
-	extern "C" int __stdcall XA_LoaderApp(LPWSTR lpCmdLine);
+	extern "C" int XA_LoaderApp();
 }
 
 #endif

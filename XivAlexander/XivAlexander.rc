@@ -371,7 +371,7 @@ STRINGTABLE
 BEGIN
     IDS_CONFIRM_INJECT_AGAIN 
                             "‹N“®’†‚ÌƒQ[ƒ€‚ÌƒvƒƒZƒX({}:{})‚É‚·‚Å‚ÉXivAlexander‚ªƒ[ƒh‚³‚ê‚Ä‚¢‚Ü‚·B\n\n{}‚Ìƒ{ƒ^ƒ“‚ð‰Ÿ‚µÄ‚Ñƒ[ƒh‚·‚é‚©A\n{}‚Ìƒ{ƒ^ƒ“‚ÅI—¹‚·‚é‚©A\n{}‚Ìƒ{ƒ^ƒ“‚ÅƒXƒLƒbƒv‚µ‚Ü‚·B"
-    IDS_CONFIRM_INJECT      "ƒQ[ƒ€‚ÌƒvƒƒZƒX‚ðŒ©‚Â‚¯‚Ü‚µ‚½B\nEPIDF{}\nEƒpƒXF{}\nEOpcode’è‹`ƒtƒ@ƒCƒ‹F{}\n‚±‚ÌƒvƒƒZƒX‚ÉXivAlexander‚ðƒ[ƒh‚µ‚Ü‚·‚©H"
+    IDS_CONFIRM_INJECT      "ƒQ[ƒ€‚ÌƒvƒƒZƒX‚ðŒ©‚Â‚¯‚Ü‚µ‚½B\n\nEPIDF{}\nEƒpƒXF{}\n\n‚±‚ÌƒvƒƒZƒX‚ÉXivAlexander‚ðƒ[ƒh‚µ‚Ü‚·‚©H"
     IDS_UPDATE_FILE_TOO_BIG "ƒAƒbƒvƒf[ƒg‚Ìƒtƒ@ƒCƒ‹ƒTƒCƒY‚Ì‚ª‚ª‘å‚«‚·‚¬‚Ü‚·BƒAƒbƒvƒf[ƒgƒtƒ@ƒCƒ‹‚Ì–³Œ‡«‚ðM—Š‚Å‚«‚éê‡AŽè“®‚Åƒtƒ@ƒCƒ‹‚ðŽæ‚èŠ·‚¦ƒAƒbƒvƒf[ƒg‚µ‚Ä‚­‚¾‚³‚¢B"
     IDS_UPDATE_INVALID_VERSION "ƒo[ƒWƒ‡ƒ“î•ñ‚ÌŒŸØ‚ÉŽ¸”s‚µ‚Ü‚µ‚½BŽè“®‚ÅƒAƒbƒvƒf[ƒg‚ðŠm”F‚µ‚½ŒãA‘±‚¯‚Ä‚­‚¾‚³‚¢B"
     IDS_HELP_ACTION         "ì‹Æ‚ðŽw’è‚µ‚Ü‚·B\n\tEauto: ‚·‚Å‚ÉƒQ[ƒ€‚ª‹N“®’†‚Ìê‡‹N“®’†‚ÌƒvƒƒZƒX‚Éƒ[ƒh‚µA‹N“®‚µ‚Ä‚¢‚È‚¢ê‡ƒQ[ƒ€‚ð‹N“®‚µ‚Ä‹N“®‚µ‚½ƒvƒƒZƒX‚Éƒ[ƒh‚µ‚Ü‚·B\n\tEask: ƒQ[ƒ€ƒvƒƒZƒX–ˆ‚És‚¤ì‹Æ‚ðŠm”F‚µ‚Ü‚·B\n\tEload: ƒQ[ƒ€ƒvƒƒZƒX‚ÉXivAlexander‚ðƒ[ƒh‚µ‚Ü‚·B\n\tEunload: ƒQ[ƒ€ƒvƒƒZƒX‚©‚çXivAlexander‚ðI—¹‚µ‚Ü‚·B\n\tElauncher: Žw’è‚ÌƒQ[ƒ€ƒ‰ƒ“ƒ`ƒƒ[‚ð‹N“®‚µA‹N“®‚µ‚½ƒQ[ƒ€‚ÉXivAlexander‚ðƒ[ƒh‚µ‚Ü‚·B\n\tEupdate-check: ƒAƒbƒvƒf[ƒg‚ðŠm”F‚µ‚Ü‚·B\n\tEweb: ”z•zƒTƒCƒg (https://github.com/Soreepeong/XivAlexander) ‚ðŠJ‚«‚Ü‚·B"
@@ -822,7 +822,7 @@ STRINGTABLE
 BEGIN
     IDS_CONFIRM_INJECT_AGAIN 
                             "ÀÌ¹Ì ½ÇÇàÁßÀÎ °ÔÀÓ ÇÁ·Î¼¼½º({}:{})¿¡ XivAlexander°¡ ÀÌ¹Ì ºÒ·¯µé¾îÁ® ÀÖ½À´Ï´Ù.\n\n{} ¹öÆ°À¸·Î ´Ù½Ã ºÒ·¯µéÀÌ°Å³ª\n{} ¹öÆ°À¸·Î Á¾·áÇÏ°Å³ª\n{} ¹öÆ°À¸·Î °Ç³Ê¶Ù¼¼¿ä."
-    IDS_CONFIRM_INJECT      "°ÔÀÓ ÇÁ·Î¼¼½º¸¦ Ã£¾Ò½À´Ï´Ù.\n* PID: {}\n* °æ·Î: {}\n* ¿ÉÄÚµå ¼³Á¤ ÆÄÀÏ: {}\nÀÌ ÇÁ·Î¼¼½º¿¡ XivAlexanderÀ» ºÒ·¯µéÀÏ±î¿ä?"
+    IDS_CONFIRM_INJECT      "°ÔÀÓ ÇÁ·Î¼¼½º¸¦ Ã£¾Ò½À´Ï´Ù.\n\n* PID: {}\n* °æ·Î: {}\n\nÀÌ ÇÁ·Î¼¼½º¿¡ XivAlexanderÀ» ºÒ·¯µéÀÏ±î¿ä?"
     IDS_UPDATE_FILE_TOO_BIG "¾÷µ¥ÀÌÆ® ÆÄÀÏÀÌ ³Ê¹« Å®´Ï´Ù. ¹®Á¦°¡ ¾ø´Â ¾÷µ¥ÀÌÆ® ÆÄÀÏÀÌ¶õ °ÍÀÌ È®½ÇÇÏ´Ù¸é ¼öµ¿À¸·Î ÆÄÀÏÀ» ±³Ã¼ÇØ ¾÷µ¥ÀÌÆ®ÇØ ÁÖ¼¼¿ä."
     IDS_UPDATE_INVALID_VERSION "¹öÀü Á¤º¸¸¦ °ËÁõÇÒ ¼ö ¾ø¾ú½À´Ï´Ù. ¼öµ¿À¸·Î ¾÷µ¥ÀÌÆ® È®ÀÎ ÈÄ ÁøÇàÇØ ÁÖ¼¼¿ä."
     IDS_HELP_ACTION         "ÀÛ¾÷À» ÁöÁ¤ÇÕ´Ï´Ù.\n\t* auto: °ÔÀÓÀÌ ÀÌ¹Ì ½ÇÇà ÁßÀÌ¸é ½ÇÇàÁßÀÎ °ÔÀÓ ÇÁ·Î¼¼½º·Î ºÒ·¯µéÀÌ°í, ¾Æ´Ï¶ó¸é °ÔÀÓÀ» ½ÇÇàÇÏ°í ½ÇÇàµÈ °ÔÀÓ¿¡ ºÒ·¯µéÀÔ´Ï´Ù.\n\t* ask: °ÔÀÓ ÇÁ·Î¼¼½º º° ÀÛ¾÷À» ¹¯½À´Ï´Ù.\n\t* load: °ÔÀÓ ÇÁ·Î¼¼½º¿¡ XivAlexander¸¦ ºÒ·¯µéÀÔ´Ï´Ù.\n\t* unload: °ÔÀÓ ÇÁ·Î¼¼½º¿¡¼­ XivAlexander¸¦ Á¾·áÇÕ´Ï´Ù.\n\t* launcher: ÁöÁ¤ÇÑ °ÔÀÓ ·±Ã³¸¦ ½ÇÇàÇÏ°í ½ÇÇàµÈ °ÔÀÓ¿¡ XivAlexander¸¦ ºÒ·¯µéÀÔ´Ï´Ù.\n\t* update-check: ¾÷µ¥ÀÌÆ®¸¦ È®ÀÎÇÕ´Ï´Ù.\n\t* web: ¹èÆ÷ À¥ÆäÀÌÁö https://github.com/Soreepeong/XivAlexander ¸¦ ¿±´Ï´Ù."
@@ -1402,7 +1402,7 @@ STRINGTABLE
 BEGIN
     IDS_CONFIRM_INJECT_AGAIN 
                             "XivAlexander detected in FFXIV Process ({}:{})\n\nPress {} to try loading again if it hasn't loaded properly,\nPress {} to unload, or\nPress {} to skip."
-    IDS_CONFIRM_INJECT      "FFXIV Process found:\n* Process ID: {}\n* Path: {}\n* Game Version Configuration File: {}\nContinue loading XivAlexander into this process?"
+    IDS_CONFIRM_INJECT      "Game process found:\n\n* Process ID: {}\n* Path: {}\n\nContinue loading XivAlexander into this process?"
     IDS_UPDATE_FILE_TOO_BIG "Update package is too big, meaning that the package is possibly corrupted. Please replace files by yourself if you are sure that the update is correct."
     IDS_UPDATE_INVALID_VERSION 
                             "Version information could not be confirmed. Manually check and update the program."
@@ -1472,6 +1472,14 @@ BEGIN
     IDS_UNRECOVERABLEERROR_RESTARTWITHOUTXIVALEXANDER 
                             "Restart with&out XivAlexander"
     IDS_UNRECOVERABLEERROR_EXIT "E&xit"
+    IDS_INSTALLATIONSTATUS_NOTINSTALLED "Not installed"
+    IDS_INSTALLATIONSTATUS_INSTALLED "Installed"
+    IDS_INSTALLATIONSTATUS_OLDER "Upgradable"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_INSTALLATIONSTATUS_NEWER "Downgradable"
 END
 
 #endif    // English (United States) resources

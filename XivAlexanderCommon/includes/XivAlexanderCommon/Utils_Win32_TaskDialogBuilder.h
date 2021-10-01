@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Utils_CallOnDestruction.h"
 #include "Utils_Win32_Resource.h"
 
@@ -275,11 +276,6 @@ namespace Utils::Win32 {
 			return *this;
 		}
 
-		template<typename...Args>
-		Builder& WithButtonFormat(const StringOrResId& s, Args ...args) {
-			return WithButton(std::format(GetResString(s), std::forward<Args>(args...)));
-		}
-
 		Builder& WithButtonRemoved(int id) {
 			m_dialog.m_buttons.erase(std::remove_if(m_dialog.m_buttons.begin(), m_dialog.m_buttons.end(), [id](const auto& r) { return r.Id == id; }), m_dialog.m_buttons.end());
 			return *this;
@@ -303,11 +299,6 @@ namespace Utils::Win32 {
 			}
 			m_dialog.m_radios.emplace_back(std::move(b));
 			return *this;
-		}
-
-		template<typename...Args>
-		Builder& WithRadioFormat(const StringOrResId& s, Args ...args) {
-			return WithRadio(std::format(GetResString(s), std::forward<Args>(args...)));
 		}
 
 		Builder& WithRadioRemoved(int id) {

@@ -42,7 +42,7 @@ const char* XivAlexDll::LoaderActionToString(LoaderAction val) {
 		case LoaderAction::Internal_Update_Step3_CleanupFiles: return "_internal_update_step3_cleanupfiles";
 		case LoaderAction::Internal_Inject_HookEntryPoint: return "_internal_inject_hookentrypoint";
 		case LoaderAction::Internal_Inject_LoadXivAlexanderImmediately: return "_internal_inject_loadxivalexanderimmediately";
-		case LoaderAction::Internal_Cleanup_Handle: return "_internal_cleanup_handle";
+		case LoaderAction::Internal_Inject_UnloadFromHandle: return "_internal_inject_unloadfromhandle";
 	}
 	return "<invalid>";
 }
@@ -51,7 +51,7 @@ DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 	const std::vector<Utils::Win32::Process>& hSources,
 	LoaderAction action,
 	bool wait,
-	const Utils::Win32::Process& waitFor,
+	const Utils::Win32::Process& waitForBeforeStarting,
 	WhichLoader which,
 	const std::filesystem::path& loaderPath) {
 
@@ -92,9 +92,9 @@ DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 			.WithAppendArgument(L"--action")
 			.WithAppendArgument(LoaderActionToString(action));
 
-		if (waitFor)
+		if (waitForBeforeStarting)
 			creator.WithAppendArgument("--wait-process")
-				.WithAppendArgument("{}", creator.Inherit(waitFor).Value());
+				.WithAppendArgument("{}", creator.Inherit(waitForBeforeStarting).Value());
 		for (const auto& h : hSources)
 			creator.WithAppendArgument("{}", creator.Inherit(h).Value());
 
