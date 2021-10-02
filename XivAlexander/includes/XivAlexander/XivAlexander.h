@@ -74,7 +74,6 @@ namespace XivAlexDll {
 		bool LoadInstalledXivAlexDllOnly;
 
 		struct {
-			HANDLE hContinuableEvent;
 			HANDLE hWorkerThread;
 			HANDLE hMainThread;
 		} Internal;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <XivAlexanderCommon/Utils_CallOnDestruction.h>
+
 namespace App::Misc {
 	class VirtualSqPacks;
 }
@@ -13,4 +15,6 @@ namespace App::Feature::GameResourceOverrider {
 	[[nodiscard]] bool Enabled();
 
 	[[nodiscard]] Misc::VirtualSqPacks* GetVirtualSqPacks();
+
+	[[nodiscard]] Utils::CallOnDestruction OnVirtualSqPacksInitialized(std::function<void()>);
 }

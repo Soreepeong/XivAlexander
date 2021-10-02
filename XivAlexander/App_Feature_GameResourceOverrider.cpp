@@ -78,6 +78,8 @@ struct App::Feature::GameResourceOverrider::Implementation {
 	Misc::Hooks::ImportedFunction<BOOL, HANDLE, LARGE_INTEGER, PLARGE_INTEGER, DWORD> SetFilePointerEx{"kernel32::SetFilePointerEx", "kernel32.dll", "SetFilePointerEx"};
 
 	ReEnterPreventer m_repCreateFileW, m_repReadFile;
+	
+	Utils::ListenerManager<Implementation, void> OnVirtualSqPacksInitialized;
 
 	Implementation()
 		: m_config(Config::Acquire())
@@ -104,8 +106,14 @@ struct App::Feature::GameResourceOverrider::Implementation {
 							const auto filename = path.filename();
 							const auto dirname = path.parent_path().filename();
 							const auto recreatedPath = m_sqpackPath / dirname / filename;
-							if (exists(recreatedPath) && equivalent(recreatedPath, path))
+							if (exists(recreatedPath) && equivalent(recreatedPath, path)) {
 								m_sqpacks = std::make_unique<Misc::VirtualSqPacks>(m_sqpackPath);
+								try {
+									OnVirtualSqPacksInitialized();
+								} catch (const std::exception& e) {
+									m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"CreateFile: error while invoking OnVirtualSqPacksInitialized: {}", e.what());
+								}
+							}
 						} catch (const std::exception& e) {
 							m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"CreateFile: {}, Message: {}", lpFileName, e.what());
 							m_bSqpackFailed = true;
@@ -363,4 +371,10 @@ bool App::Feature::GameResourceOverrider::Enabled() {
 
 App::Misc::VirtualSqPacks* App::Feature::GameResourceOverrider::GetVirtualSqPacks() {
 	return s_pImpl ? s_pImpl->m_sqpacks.get() : nullptr;
+}
+
+Utils::CallOnDestruction App::Feature::GameResourceOverrider::OnVirtualSqPacksInitialized(std::function<void()> f) {
+	if (s_pImpl)
+		return s_pImpl->OnVirtualSqPacksInitialized(std::move(f));
+	return {};
 }

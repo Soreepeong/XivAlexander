@@ -277,7 +277,7 @@ static void InitializeAsStubBeforeOriginalEntryPoint() {
 	}
 }
 
-static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
+static void InitializeBeforeOriginalEntryPoint() {
 	const auto process = Utils::Win32::Process::Current();
 	auto filename = process.PathOf().filename().wstring();
 	CharLowerW(&filename[0]);
@@ -290,20 +290,19 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
 
 	// the game might restart itself for whatever reason.
 	s_injectOnCreateProcessApp->SetFlags(XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly);
-	
-	XivAlexDll::EnableXivAlexander(1);
-	XivAlexDll::EnableInjectOnCreateProcess(0);
 
 	// Load game resource overrider before the game starts to load files.
 	App::Feature::GameResourceOverrider::Enable();
 
-	// Let the original entry point continue execution.
-	SetEvent(hContinuableEvent);
+	void(Utils::Win32::Thread(L"EnableXivAlexanderSoon", []() {
+		Sleep(1000);
+		XivAlexDll::EnableXivAlexander(1);
+		XivAlexDll::EnableInjectOnCreateProcess(0);
+	}));
 }
 
 void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters* pParam) {
 	DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &pParam->Internal.hMainThread, 0, FALSE, DUPLICATE_SAME_ACCESS);
-	pParam->Internal.hContinuableEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
 	pParam->Internal.hWorkerThread = CreateThread(nullptr, 0, [](void* pParam) -> DWORD {
 		// ReSharper disable once CppInitializedValueIsAlwaysRewritten
 		auto skipFree = false;
@@ -313,7 +312,6 @@ void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters* pParam) 
 			try {
 				const auto activationContextCleanup = Dll::ActivationContext().With();
 				const auto p = static_cast<InjectEntryPointParameters*>(pParam);
-				const auto hContinueNotify = Utils::Win32::Handle::DuplicateFrom<Utils::Win32::Event>(p->Internal.hContinuableEvent);
 				const auto hMainThread = Utils::Win32::Thread(p->Internal.hMainThread, true);
 
 				skipFree = p->SkipFree;
@@ -327,8 +325,7 @@ void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters* pParam) 
 				if (p->LoadInstalledXivAlexDllOnly)
 					InitializeAsStubBeforeOriginalEntryPoint();
 				else
-					InitializeBeforeOriginalEntryPoint(hContinueNotify);
-				SetEvent(hContinueNotify);
+					InitializeBeforeOriginalEntryPoint();
 			} catch (const std::exception& e) {
 				Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR,
 					1 + FindStringResourceEx(Dll::Module(), IDS_ERROR_INJECT),
@@ -348,10 +345,8 @@ void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters* pParam) 
 		}
 		return 0;
 	}, pParam, 0, nullptr);
-	assert(pParam->Internal.hContinuableEvent);
 	assert(pParam->Internal.hWorkerThread);
-	WaitForSingleObject(pParam->Internal.hContinuableEvent, INFINITE);
-	CloseHandle(pParam->Internal.hContinuableEvent);
+	WaitForSingleObject(pParam->Internal.hWorkerThread, INFINITE);
 	CloseHandle(pParam->Internal.hWorkerThread);
 
 	// this invalidates "p" too

@@ -21,7 +21,11 @@
 
 #define WM_COPYGLOBALDATA 0x0049
 
-static const auto WmTrayCallback = WM_APP + 1;
+enum : UINT {
+	WmApp = WM_APP + 1,
+	WmTrayCallback,
+	WmRepopulateMenu,
+};
 static const int TrayItemId = 1;
 static const int TimerIdReregisterTrayIcon = 100;
 static const int TimerIdRepaint = 101;
@@ -100,13 +104,13 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 		SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexMainWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 	}
 	m_cleanup += m_config->Runtime.AdditionalSqpackRootDirectories.OnChangeListener([this](auto&) {
-		RepopulateMenu();
+		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 	});
 	m_cleanup += m_config->Runtime.ExcelTransformConfigFiles.OnChangeListener([this](auto&) {
-		RepopulateMenu();
+		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 	});
 	m_cleanup += m_config->Runtime.OverrideFontConfig.OnChangeListener([this](auto&) {
-		RepopulateMenu();
+		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 	});
 
 	if (!m_sqpacksLoaded) {
@@ -125,6 +129,10 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 		InvalidateRect(m_hWnd, nullptr, false);
 	});
 	ApplyLanguage(m_config->Runtime.GetLangId());
+
+	m_cleanup += Feature::GameResourceOverrider::OnVirtualSqPacksInitialized([this]() {
+		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
+	});
 
 	DragAcceptFiles(m_hWnd, TRUE);
 	ChangeWindowMessageFilterEx(m_hWnd, WM_DROPFILES, MSGFLT_ALLOW, nullptr);
@@ -200,8 +208,6 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 			res = HTCAPTION;
 		return res;
 	} else if (uMsg == WM_INITMENUPOPUP) {
-		if (!m_sqpacksLoaded && m_config->Runtime.UseModding)
-			RepopulateMenu();
 		SetMenuStates();
 
 	} else if (uMsg == WM_DROPFILES) {
@@ -269,6 +275,8 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 				SetForegroundWindow(m_hWnd);
 			}
 		}
+	} else if (uMsg == WmRepopulateMenu) {
+		RepopulateMenu();
 	} else if (uMsg == m_uTaskbarRestartMessage) {
 		RegisterTrayIcon();
 	} else if (uMsg == WM_TIMER) {
