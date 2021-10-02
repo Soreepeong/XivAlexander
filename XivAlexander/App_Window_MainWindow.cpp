@@ -1023,7 +1023,7 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 			config.VoiceResourceLanguageOverride = Sqex::Language::Unspecified;
 			return;
 
-		case ID_MODDING_AUDIOLANGUAGE_ENGLISH:
+		case ID_MODDING_AUDIOLANGUAGE_ENGLISH:z
 			config.VoiceResourceLanguageOverride = Sqex::Language::English;
 			return;
 
@@ -1115,7 +1115,7 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 			return;
 
 		case ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_REMOVEALL:
-			if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, "Unregister all additional game root directories?") == IDYES) {
+			if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, IDS_CONFIRM_UNREGISTERALLADDITIONALGAMEROOTDIRECTORIES) == IDYES) {
 				m_config->Runtime.AdditionalSqpackRootDirectories = std::vector<std::filesystem::path>();
 			}
 			return;
@@ -1153,7 +1153,7 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 		}
 
 		case ID_MODDING_EXDFTRANSFORMATIONRULES_REMOVEALL:
-			if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, "Unregister all excel transformation rules?") == IDYES) {
+			if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, IDS_CONFIRM_UNREGISTERALLEXCELTRANSFORMATIONRULES) == IDYES) {
 				m_config->Runtime.ExcelTransformConfigFiles = std::vector<std::filesystem::path>();
 			}
 			return;

@@ -480,6 +480,10 @@ BEGIN
                             "XivAlexander‚ðŽŸ‚ÌŒo˜H‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚µ‚½B\n\n{}"
     IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE 
                             "XivAlexander‚ðŽŸ‚ÌŒo˜H‚©‚çƒAƒ“ƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚µ‚½B\n\n{}\n\nÝ’èƒtƒ@ƒCƒ‹‚È‚Ç‚Í’¼Ú‚ÉŠm”F‚µ‚Äíœ‚µ‚Ä‚­‚¾‚³‚¢BÝ’èƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚Ü‚·B"
+    IDS_CONFIRM_UNREGISTERALLADDITIONALGAMEROOTDIRECTORIES 
+                            "“o˜^‚³‚ê‚½‚·‚×‚Ä‚Ì’Ç‰Á‚ÌƒQ[ƒ€ƒ‹[ƒgƒtƒHƒ‹ƒ_[‚ðÁ‚µ‚Ü‚·Biƒtƒ@ƒCƒ‹‚Ííœ‚µ‚Ü‚¹‚ñBj"
+    IDS_CONFIRM_UNREGISTERALLEXCELTRANSFORMATIONRULES 
+                            "“o˜^‚³‚ê‚½‚·‚×‚Ä‚ÌEXDF‚Ì’u‚«Š·‚¦‹K‘¥‚ðÁ‚µ‚Ü‚·Biƒtƒ@ƒCƒ‹‚Ííœ‚µ‚Ü‚¹‚ñBj"
 END
 
 #endif    // Japanese (Japan) resources
@@ -981,6 +985,10 @@ BEGIN
                             "XivAlexander¸¦ ´ÙÀ½ °æ·Î¿¡ ¼³Ä¡ÇÏ¿´½À´Ï´Ù.\n\n{}"
     IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE 
                             "XivAlexander¸¦ ´ÙÀ½ °æ·Î¿¡¼­ Á¦°ÅÇÏ¿´½À´Ï´Ù.\n\n{}\n\n»ç¿ëÀÚ ¼³Á¤ ÆÄÀÏ µîÀº ¼öµ¿À¸·Î Á¦°ÅÇØ¾ß ÇÕ´Ï´Ù. ¼³Á¤ ÆÄÀÏ ÀúÀå Æú´õ¸¦ Áö±Ý È®ÀÎÇÏ½Ã°Ú½À´Ï±î?"
+    IDS_CONFIRM_UNREGISTERALLADDITIONALGAMEROOTDIRECTORIES 
+                            "¸ðµç Ãß°¡ °ÔÀÓ ·çÆ® Æú´õÀÇ µî·ÏÀ» ÇØÁ¦ÇÕ´Ï´Ù."
+    IDS_CONFIRM_UNREGISTERALLEXCELTRANSFORMATIONRULES 
+                            "¸ðµç EXDF º¯°æ ±ÔÄ¢À» ¸ñ·Ï¿¡¼­ Á¦°ÅÇÕ´Ï´Ù. (ÆÄÀÏÀº »èÁ¦ÇÏÁö ¾Ê½À´Ï´Ù.)"
 END
 
 #endif    // Korean (Korea) resources
@@ -1621,6 +1629,10 @@ BEGIN
                             "XivAlexander is now installed for {}."
     IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE 
                             "XivAlexander is now uninstalled from {}.\nFor complete removal of files, you will have to remove configuration files manually. Do you want to open the configuration folder?"
+    IDS_CONFIRM_UNREGISTERALLADDITIONALGAMEROOTDIRECTORIES 
+                            "Continue unregistering all additional game root directories?"
+    IDS_CONFIRM_UNREGISTERALLEXCELTRANSFORMATIONRULES 
+                            "Continue unregistering all EXDF transformation rules?"
 END
 
 #endif    // English (United States) resources
