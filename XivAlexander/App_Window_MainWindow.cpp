@@ -26,6 +26,7 @@ enum : UINT {
 	WmTrayCallback,
 	WmRepopulateMenu,
 };
+
 static const int TrayItemId = 1;
 static const int TimerIdReregisterTrayIcon = 100;
 static const int TimerIdRepaint = 101;
@@ -114,11 +115,9 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 	});
 
 	if (!m_sqpacksLoaded) {
-		if (Feature::GameResourceOverrider::Enabled()) {
-			if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks()) {
-				m_cleanup += sqpacks->OnTtmpSetsChanged([this]() { RepopulateMenu(); });
-				m_sqpacksLoaded = true;
-			}
+		if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks()) {
+			m_cleanup += sqpacks->OnTtmpSetsChanged([this]() { RepopulateMenu(); });
+			m_sqpacksLoaded = true;
 		}
 	}
 
@@ -345,218 +344,223 @@ void App::Window::MainWindow::OnDestroy() {
 
 void App::Window::MainWindow::RepopulateMenu() {
 	if (GetWindowThreadProcessId(m_hWnd, nullptr) != GetCurrentThreadId()) {
-		RunOnUiThread([this]() {
-			RepopulateMenu();
-		});
+		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		return;
 	}
 
 	Utils::Win32::Menu(Dll::Module(), RT_MENU, MAKEINTRESOURCE(IDR_TRAY_MENU), m_config->Runtime.GetLangId()).AttachAndSwap(m_hWnd);
 	const auto hMenu = GetMenu(m_hWnd);
-	const auto& config = m_config->Runtime;
 
 	const auto title = std::format(L"{}: {}, {}, {}",
 		m_config->Runtime.GetStringRes(IDS_APP_NAME), GetCurrentProcessId(), m_sRegion, m_sVersion);
 	ModifyMenuW(hMenu, ID_FILE_CURRENTINFO, MF_BYCOMMAND | MF_DISABLED, ID_FILE_CURRENTINFO, title.c_str());
 
 	m_menuIdCallbacks.clear();
-	const auto allocateMenuId = [&](std::function<void()> cb) -> UINT_PTR {
-		uint16_t counter = 50000;
+	RepopulateMenu_FontConfig(GetSubMenu(GetSubMenu(hMenu, 3), 9));
+	RepopulateMenu_AdditionalSqpackRootDirectories(GetSubMenu(GetSubMenu(hMenu, 3), 10));
+	RepopulateMenu_ExdfTransformationRules(GetSubMenu(GetSubMenu(hMenu, 3), 11));
+	RepopulateMenu_Modding(GetSubMenu(GetSubMenu(hMenu, 3), 12));
+}
 
-		MENUITEMINFOW mii = {sizeof(MENUITEMINFOW)};
-		mii.fMask = MIIM_STATE;
+UINT_PTR App::Window::MainWindow::RepopulateMenu_AllocateMenuId(std::function<void()> cb) {
+	const auto hMenu = GetMenu(m_hWnd);
+	uint16_t counter = 50000;
 
-		while (m_menuIdCallbacks.find(counter) != m_menuIdCallbacks.end() || GetMenuItemInfoW(hMenu, counter, MF_BYCOMMAND, &mii)) {
-			++counter;
+	MENUITEMINFOW mii = {
+		.cbSize = sizeof mii,
+		.fMask = MIIM_STATE,
+	};
+
+	while (m_menuIdCallbacks.find(counter) != m_menuIdCallbacks.end() || GetMenuItemInfoW(hMenu, counter, MF_BYCOMMAND, &mii))
+		++counter;
+	m_menuIdCallbacks.emplace(counter, std::move(cb));
+	return counter;
+}
+
+std::wstring App::Window::MainWindow::RepopulateMenu_GetMenuTextById(HMENU hParentMenu, UINT commandId) {
+	std::wstring res(static_cast<size_t>(1) + GetMenuStringW(hParentMenu, commandId, nullptr, 0, MF_BYCOMMAND), '\0');
+	GetMenuStringW(hParentMenu, commandId, &res[0], static_cast<int>(res.size()), MF_BYCOMMAND);
+	return res;
+}
+
+void App::Window::MainWindow::RepopulateMenu_FontConfig(HMENU hParentMenu) {
+	const auto currentConfig = m_config->TranslatePath(m_config->Runtime.OverrideFontConfig.Value());
+
+	auto count = 0;
+	bool foundEq = false;
+	try {
+		for (const auto& entry : std::filesystem::directory_iterator(m_config->Init.ResolveConfigStorageDirectoryPath() / "FontConfig")) {
+			auto lower = entry.path().wstring();
+			CharLowerW(&lower[0]);
+			if (!lower.ends_with(L".json") || entry.is_directory())
+				continue;
+			auto eq = false;
+			try {
+				eq = equivalent(entry.path(), currentConfig);
+				foundEq |= eq;
+			} catch (...) {
+				// pass
+			}
+			AppendMenuW(hParentMenu, MF_STRING | (eq ? MF_CHECKED : 0), RepopulateMenu_AllocateMenuId([this, path = entry.path()]() {
+				m_config->Runtime.OverrideFontConfig = path;
+			}), entry.path().filename().wstring().c_str());
+			count++;
 		}
-		m_menuIdCallbacks.emplace(counter, std::move(cb));
-		return counter;
-	};
-	const auto getMenuText = [](HMENU parentMenu, UINT index) {
-		std::wstring res(static_cast<size_t>(1) + GetMenuStringW(parentMenu, index, nullptr, 0, MF_BYPOSITION), '\0');
-		GetMenuStringW(parentMenu, index, &res[0], static_cast<UINT>(res.size()), MF_BYPOSITION);
-		return res;
-	};
-	{
-		const auto currentConfig = m_config->TranslatePath(config.OverrideFontConfig.Value());
-		const auto hParentMenu = GetSubMenu(GetSubMenu(hMenu, 3), 9);
-		auto count = 0;
-		bool foundEq = false;
-		try {
-			for (const auto& entry : std::filesystem::directory_iterator(m_config->Init.ResolveConfigStorageDirectoryPath() / "FontConfig")) {
-				auto lower = entry.path().wstring();
-				CharLowerW(&lower[0]);
-				if (!lower.ends_with(L".json") || entry.is_directory())
-					continue;
-				auto eq = false;
+	} catch (const std::filesystem::filesystem_error&) {
+		// pass
+	}
+	if (!foundEq && !currentConfig.empty()) {
+		AppendMenuW(hParentMenu, MF_STRING | MF_CHECKED, RepopulateMenu_AllocateMenuId([]() { /* do nothing */ }), currentConfig.wstring().c_str());
+		count++;
+	}
+	if (count)
+		DeleteMenu(hParentMenu, ID_MODDING_CHANGEFONT_NOENTRY, MF_BYCOMMAND);
+	DeleteMenu(hParentMenu, ID_MODDING_CHANGEFONT_ENTRY, MF_BYCOMMAND);
+}
+
+void App::Window::MainWindow::RepopulateMenu_AdditionalSqpackRootDirectories(HMENU hParentMenu) {
+	auto count = 0;
+	for (const auto& additionalRoot : m_config->Runtime.AdditionalSqpackRootDirectories.Value()) {
+		AppendMenuW(hParentMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, additionalRoot]() {
+			if (Dll::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_ADDITIONAL_ROOT, additionalRoot.wstring())) == IDNO)
+				return;
+
+			std::vector<std::filesystem::path> newValue;
+			for (const auto& path : m_config->Runtime.AdditionalSqpackRootDirectories.Value()) {
+				if (path != additionalRoot)
+					newValue.emplace_back(path);
+			}
+			m_config->Runtime.AdditionalSqpackRootDirectories = std::move(newValue);
+		}), additionalRoot.wstring().c_str());
+		count++;
+	}
+	if (count)
+		DeleteMenu(hParentMenu, ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_NOENTRY, MF_BYCOMMAND);
+	DeleteMenu(hParentMenu, ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ENTRY, MF_BYCOMMAND);
+}
+
+void App::Window::MainWindow::RepopulateMenu_ExdfTransformationRules(HMENU hParentMenu) {
+	auto count = 0;
+	for (const auto& file : m_config->Runtime.ExcelTransformConfigFiles.Value()) {
+		AppendMenuW(hParentMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, file]() {
+			if (Dll::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_EXCEL_TRANSFORM_CONFIG_FILE, file.wstring())) == IDNO)
+				return;
+
+			std::vector<std::filesystem::path> newValue;
+			for (const auto& path : m_config->Runtime.ExcelTransformConfigFiles.Value()) {
+				if (path != file)
+					newValue.emplace_back(path);
+			}
+			m_config->Runtime.ExcelTransformConfigFiles = std::move(newValue);
+		}), file.wstring().c_str());
+		count++;
+	}
+	if (count)
+		DeleteMenu(hParentMenu, ID_MODDING_EXDFTRANSFORMATIONRULES_NOENTRY, MF_BYCOMMAND);
+	DeleteMenu(hParentMenu, ID_MODDING_EXDFTRANSFORMATIONRULES_ENTRY, MF_BYCOMMAND);
+}
+
+void App::Window::MainWindow::RepopulateMenu_Modding(HMENU hParentMenu) {
+	const auto hTemplateEntryMenu = GetSubMenu(hParentMenu, 0);
+	RemoveMenu(hParentMenu, 0, MF_BYPOSITION);
+	const auto deleteTemplateMenu = Utils::CallOnDestruction([hTemplateEntryMenu]() { DestroyMenu(hTemplateEntryMenu); });
+
+	auto count = 0;
+	auto ready = false;
+
+	if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks()) {
+		ready = true;
+		if (!m_sqpacksLoaded) {
+			m_cleanup += sqpacks->OnTtmpSetsChanged([this]() { RepopulateMenu(); });
+			m_sqpacksLoaded = true;
+		}
+		for (auto& ttmpSet : sqpacks->TtmpSets()) {
+			const auto hSubMenu = CreatePopupMenu();
+			AppendMenuW(hSubMenu, MF_STRING | (ttmpSet.Enabled ? MF_CHECKED : 0), RepopulateMenu_AllocateMenuId([this, &ttmpSet]() {
 				try {
-					eq = equivalent(entry.path(), currentConfig);
-					foundEq |= eq;
-				} catch (...) {
-					// pass
+					ttmpSet.Enabled = !ttmpSet.Enabled;
+					ttmpSet.ApplyChanges();
+				} catch (const std::exception& e) {
+					Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
 				}
-				AppendMenuW(hParentMenu, MF_STRING | (eq ? MF_CHECKED : 0), allocateMenuId([this, path = entry.path()]() {
-					m_config->Runtime.OverrideFontConfig = path;
-				}), entry.path().filename().wstring().c_str());
-				count++;
+			}), RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_TTMP_ENTRY_ENABLE).c_str());
+
+			AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, &ttmpSet, &sqpacks]() {
+				try {
+					if (Dll::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+						L"Delete \"{}\" at \"{}\"?", ttmpSet.List.Name, ttmpSet.ListPath.wstring()) == IDYES)
+						sqpacks->DeleteTtmp(ttmpSet.ListPath);
+				} catch (const std::exception& e) {
+					Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+				}
+			}), RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_TTMP_ENTRY_DELETE).c_str());
+
+			if (!ttmpSet.Allocated) {
+				AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
+				AppendMenuW(hSubMenu, MF_STRING | MF_DISABLED, 0, RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_TTMP_ENTRY_REQUIRESRESTART).c_str());
 			}
-		} catch (const std::filesystem::filesystem_error&) {
-			// pass
-		}
-		if (!foundEq && !currentConfig.empty()) {
-			AppendMenuW(hParentMenu, MF_STRING | MF_CHECKED, allocateMenuId([]() { /* do nothing */ }), currentConfig.wstring().c_str());
-			count++;
-		}
-		if (count)
-			DeleteMenu(hParentMenu, ID_MODDING_CHANGEFONT_NOENTRY, MF_BYCOMMAND);
-		DeleteMenu(hParentMenu, ID_MODDING_CHANGEFONT_ENTRY, MF_BYCOMMAND);
-	}
-	{
-		const auto hParentMenu = GetSubMenu(GetSubMenu(hMenu, 3), 10);
-		auto count = 0;
-		for (const auto& additionalRoot : config.AdditionalSqpackRootDirectories.Value()) {
-			AppendMenuW(hParentMenu, MF_STRING, allocateMenuId([this, additionalRoot]() {
-				if (Dll::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_ADDITIONAL_ROOT, additionalRoot.wstring())) == IDNO)
-					return;
 
-				std::vector<std::filesystem::path> newValue;
-				for (const auto& path : m_config->Runtime.AdditionalSqpackRootDirectories.Value()) {
-					if (path != additionalRoot)
-						newValue.emplace_back(path);
-				}
-				m_config->Runtime.AdditionalSqpackRootDirectories = std::move(newValue);
-			}), additionalRoot.wstring().c_str());
-			count++;
-		}
-		if (count)
-			DeleteMenu(hParentMenu, ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_NOENTRY, MF_BYCOMMAND);
-		DeleteMenu(hParentMenu, ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ENTRY, MF_BYCOMMAND);
-	}
-	{
-		const auto hParentMenu = GetSubMenu(GetSubMenu(hMenu, 3), 11);
-		auto count = 0;
-		for (const auto& file : config.ExcelTransformConfigFiles.Value()) {
-			AppendMenuW(hParentMenu, MF_STRING, allocateMenuId([this, file]() {
-				if (Dll::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_EXCEL_TRANSFORM_CONFIG_FILE, file.wstring())) == IDNO)
-					return;
+			if (!ttmpSet.List.ModPackPages.empty()) {
+				AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
+			}
 
-				std::vector<std::filesystem::path> newValue;
-				for (const auto& path : m_config->Runtime.ExcelTransformConfigFiles.Value()) {
-					if (path != file)
-						newValue.emplace_back(path);
-				}
-				m_config->Runtime.ExcelTransformConfigFiles = std::move(newValue);
-			}), file.wstring().c_str());
-			count++;
-		}
-		if (count)
-			RemoveMenu(hParentMenu, ID_MODDING_EXDFTRANSFORMATIONRULES_NOENTRY, MF_BYCOMMAND);
-		RemoveMenu(hParentMenu, ID_MODDING_EXDFTRANSFORMATIONRULES_ENTRY, MF_BYCOMMAND);
-	}
-	{
-		const auto hParentMenu = GetSubMenu(GetSubMenu(hMenu, 3), 12);
-		const auto hTemplateEntryMenu = GetSubMenu(hParentMenu, 0);
-		RemoveMenu(hParentMenu, 0, MF_BYPOSITION);
-		const auto deleteTemplateMenu = Utils::CallOnDestruction([hTemplateEntryMenu]() { DestroyMenu(hTemplateEntryMenu); });
+			for (size_t pageObjectIndex = 0; pageObjectIndex < ttmpSet.List.ModPackPages.size(); ++pageObjectIndex) {
+				const auto& modGroups = ttmpSet.List.ModPackPages[pageObjectIndex].ModGroups;
+				if (modGroups.empty())
+					continue;
+				const auto pageConf = ttmpSet.Choices.at(pageObjectIndex);
 
-		auto count = 0;
-		auto ready = false;
+				for (size_t modGroupIndex = 0; modGroupIndex < modGroups.size(); ++modGroupIndex) {
+					const auto& modGroup = modGroups[modGroupIndex];
+					if (modGroup.OptionList.empty())
+						continue;
 
-		if (Feature::GameResourceOverrider::Enabled()) {
-			if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks()) {
-				ready = true;
-				if (!m_sqpacksLoaded) {
-					m_cleanup += sqpacks->OnTtmpSetsChanged([this]() { RepopulateMenu(); });
-					m_sqpacksLoaded = true;
-				}
-				for (auto& ttmpSet : sqpacks->TtmpSets()) {
-					const auto hSubMenu = CreatePopupMenu();
-					AppendMenuW(hSubMenu, MF_STRING | (ttmpSet.Enabled ? MF_CHECKED : 0), allocateMenuId([this, &ttmpSet]() {
-						try {
-							ttmpSet.Enabled = !ttmpSet.Enabled;
-							ttmpSet.ApplyChanges();
-						} catch (const std::exception& e) {
-							Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-						}
-					}), getMenuText(hTemplateEntryMenu, 0).c_str());
+					const auto choice = pageConf.at(modGroupIndex).get<size_t>();
 
-					AppendMenuW(hSubMenu, MF_STRING, allocateMenuId([this, &ttmpSet, &sqpacks]() {
-						try {
-							if (Dll::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2, m_config->Runtime.GetStringRes(IDS_APP_NAME),
-								L"Delete \"{}\" at \"{}\"?", ttmpSet.List.Name, ttmpSet.ListPath.wstring()) == IDYES)
-								sqpacks->DeleteTtmp(ttmpSet.ListPath);
-						} catch (const std::exception& e) {
-							Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-						}
-					}), getMenuText(hTemplateEntryMenu, 1).c_str());
+					const auto hModSubMenu = CreatePopupMenu();
+					for (size_t optionIndex = 0; optionIndex < modGroup.OptionList.size(); ++optionIndex) {
+						const auto& modEntry = modGroup.OptionList[optionIndex];
 
-					if (!ttmpSet.Allocated) {
-						AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
-						AppendMenuW(hSubMenu, MF_STRING | MF_DISABLED, 0, getMenuText(hTemplateEntryMenu, 3).c_str());
+						std::string description = modEntry.Name.empty() ? "-" : modEntry.Name;
+						if (!modEntry.GroupName.empty())
+							description += std::format(" ({})", modEntry.GroupName);
+						if (!modEntry.Description.empty())
+							description += std::format(" ({})", modEntry.Description);
+
+						AppendMenuW(hModSubMenu, MF_STRING | (optionIndex == choice ? MF_CHECKED : 0), RepopulateMenu_AllocateMenuId(
+							[this, pageObjectIndex, modGroupIndex, optionIndex, &ttmpSet]() {
+								try {
+									if (!ttmpSet.Choices.is_array())
+										ttmpSet.Choices = nlohmann::json::array();
+									while (ttmpSet.Choices.size() <= pageObjectIndex)
+										ttmpSet.Choices.insert(ttmpSet.Choices.end(), nlohmann::json::array());
+
+									auto& page = ttmpSet.Choices.at(pageObjectIndex);
+									if (!page.is_array())
+										page = nlohmann::json::array();
+									while (page.size() <= modGroupIndex)
+										page.insert(page.end(), 0);
+									page[modGroupIndex] = optionIndex;
+
+									ttmpSet.ApplyChanges();
+
+								} catch (const std::exception& e) {
+									Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+								}
+							}), Utils::FromUtf8(description).c_str());
 					}
-
-					if (!ttmpSet.List.ModPackPages.empty())
-						AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
-
-					for (size_t pageObjectIndex = 0; pageObjectIndex < ttmpSet.List.ModPackPages.size(); ++pageObjectIndex) {
-						const auto& modGroups = ttmpSet.List.ModPackPages[pageObjectIndex].ModGroups;
-						if (modGroups.empty())
-							continue;
-						const auto pageConf = ttmpSet.Choices.at(pageObjectIndex);
-
-						for (size_t modGroupIndex = 0; modGroupIndex < modGroups.size(); ++modGroupIndex) {
-							const auto& modGroup = modGroups[modGroupIndex];
-							if (modGroup.OptionList.empty())
-								continue;
-
-							const auto choice = pageConf.at(modGroupIndex).get<size_t>();
-
-							const auto hModSubMenu = CreatePopupMenu();
-							for (size_t optionIndex = 0; optionIndex < modGroup.OptionList.size(); ++optionIndex) {
-								const auto& modEntry = modGroup.OptionList[optionIndex];
-
-								std::string description = modEntry.Name.empty() ? "-" : modEntry.Name;
-								if (!modEntry.GroupName.empty())
-									description += std::format(" ({})", modEntry.GroupName);
-								if (!modEntry.Description.empty())
-									description += std::format(" ({})", modEntry.Description);
-
-								AppendMenuW(hModSubMenu, MF_STRING | (optionIndex == choice ? MF_CHECKED : 0), allocateMenuId(
-									[this, pageObjectIndex, modGroupIndex, optionIndex, &ttmpSet]() {
-										try {
-											if (!ttmpSet.Choices.is_array())
-												ttmpSet.Choices = nlohmann::json::array();
-											while (ttmpSet.Choices.size() <= pageObjectIndex)
-												ttmpSet.Choices.insert(ttmpSet.Choices.end(), nlohmann::json::array());
-
-											auto& page = ttmpSet.Choices.at(pageObjectIndex);
-											if (!page.is_array())
-												page = nlohmann::json::array();
-											while (page.size() <= modGroupIndex)
-												page.insert(page.end(), 0);
-											page[modGroupIndex] = optionIndex;
-
-											ttmpSet.ApplyChanges();
-
-										} catch (const std::exception& e) {
-											Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-										}
-									}), Utils::FromUtf8(description).c_str());
-							}
-							AppendMenuW(hSubMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hModSubMenu), Utils::FromUtf8(modGroup.GroupName).c_str());
-						}
-					}
-
-					AppendMenuW(hParentMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hSubMenu), ttmpSet.ListPath.parent_path().filename().wstring().c_str());
-					count++;
+					AppendMenuW(hSubMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hModSubMenu), Utils::FromUtf8(modGroup.GroupName).c_str());
 				}
 			}
+
+			AppendMenuW(hParentMenu, MF_STRING | MF_POPUP | (ttmpSet.Enabled ? MF_CHECKED : 0), reinterpret_cast<UINT_PTR>(hSubMenu), ttmpSet.ListPath.parent_path().filename().wstring().c_str());
+			count++;
 		}
-		if (ready)
-			DeleteMenu(hParentMenu, ID_MODDING_TTMP_NOTREADY, MF_BYCOMMAND);
-		if (count || !ready)
-			DeleteMenu(hParentMenu, ID_MODDING_TTMP_NOENTRY, MF_BYCOMMAND);
 	}
+	if (ready)
+		DeleteMenu(hParentMenu, ID_MODDING_TTMP_NOTREADY, MF_BYCOMMAND);
+	if (count || !ready)
+		DeleteMenu(hParentMenu, ID_MODDING_TTMP_NOENTRY, MF_BYCOMMAND);
 }
 
 void App::Window::MainWindow::SetMenuStates() const {
@@ -1226,27 +1230,25 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 					break;
 			}
 			if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, msg) == IDYES) {
-				if (Feature::GameResourceOverrider::Enabled()) {
-					if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks()) {
-						for (auto& set : sqpacks->TtmpSets()) {
-							switch (menuId) {
-								case ID_MODDING_TTMP_REMOVEALL:
-									sqpacks->DeleteTtmp(set.ListPath, false);
-									break;
+				if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks()) {
+					for (auto& set : sqpacks->TtmpSets()) {
+						switch (menuId) {
+							case ID_MODDING_TTMP_REMOVEALL:
+								sqpacks->DeleteTtmp(set.ListPath, false);
+								break;
 
-								case ID_MODDING_TTMP_ENABLEALL:
-									set.Enabled = true;
-									set.ApplyChanges(false);
-									break;
+							case ID_MODDING_TTMP_ENABLEALL:
+								set.Enabled = true;
+								set.ApplyChanges(false);
+								break;
 
-								case ID_MODDING_TTMP_DISABLEALL:
-									set.Enabled = false;
-									set.ApplyChanges(false);
-									break;
-							}
+							case ID_MODDING_TTMP_DISABLEALL:
+								set.Enabled = false;
+								set.ApplyChanges(false);
+								break;
 						}
-						sqpacks->RescanTtmp();
 					}
+					sqpacks->RescanTtmp();
 				}
 			}
 			return;
@@ -1257,10 +1259,8 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 			return;
 
 		case ID_MODDING_TTMP_REFRESH:
-			if (Feature::GameResourceOverrider::Enabled()) {
-				if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks())
-					sqpacks->RescanTtmp();
-			}
+			if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks())
+				sqpacks->RescanTtmp();
 			return;
 
 		case ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY:
@@ -1622,10 +1622,8 @@ std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& pa
 
 	std::filesystem::rename(temporaryTtmpDirectory, targetTtmpDirectory);
 
-	if (Feature::GameResourceOverrider::Enabled()) {
-		if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks())
-			sqpacks->AddNewTtmp(targetTtmpDirectory / "TTMPL.mpl");
-	}
+	if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks())
+		sqpacks->AddNewTtmp(targetTtmpDirectory / "TTMPL.mpl");
 
 	return offerConfiguration ? Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_NOTIFY_TTMP_HAS_CONFIGURATION)) : "";
 }

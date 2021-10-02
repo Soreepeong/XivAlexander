@@ -50,6 +50,12 @@ namespace App::Window {
 		void OnDestroy() override;
 		
 		void RepopulateMenu();
+		UINT_PTR RepopulateMenu_AllocateMenuId(std::function<void()>);
+		static std::wstring RepopulateMenu_GetMenuTextById(HMENU hParentMenu, UINT commandId);
+		void RepopulateMenu_FontConfig(HMENU hParentMenu);
+		void RepopulateMenu_AdditionalSqpackRootDirectories(HMENU hParentMenu);
+		void RepopulateMenu_ExdfTransformationRules(HMENU hParentMenu);
+		void RepopulateMenu_Modding(HMENU hParentMenu);
 		void SetMenuStates() const;
 		void RegisterTrayIcon();
 		void RemoveTrayIcon();

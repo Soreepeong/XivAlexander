@@ -66,6 +66,14 @@ namespace Utils::Win32 {
 			StringOrResId(std::string_view text)
 				: Text(FromUtf8(text)) {
 			}
+
+			StringOrResId(const std::string& text)
+				: Text(FromUtf8(text)) {
+			}
+
+			StringOrResId(const char* text)
+				: Text(FromUtf8(text)) {
+			}
 		};
 
 		struct HIconOrRes {

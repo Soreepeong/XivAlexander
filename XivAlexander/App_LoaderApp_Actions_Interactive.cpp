@@ -2,7 +2,6 @@
 #include "App_LoaderApp_Actions_Interactive.h"
 
 #include "App_LoaderApp.h"
-#include "App_LoaderApp_Actions_LoadUnload.h"
 #include "App_LoaderApp_Actions_Update.h"
 #include "DllMain.h"
 #include "resource.h"
@@ -33,7 +32,6 @@ int App::LoaderApp::Actions::Interactive::Run() {
 			SetupBuilderForInstallation(builder, !pids.empty());
 		else
 			SetupBuilderForLoadOnce(builder, pids);
-
 
 		auto refreshRequested = false;
 		builder.WithHyperlinkHandler(L"refresh", [&](auto&) {

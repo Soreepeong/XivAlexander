@@ -564,113 +564,120 @@ App::Network::SocketHook::SocketHook(XivAlexApp* pApp)
 			if (m_unloading)
 				return;
 
-			try {
-				m_pImpl->m_cleanupList += std::move(socket.SetHook([&](_In_ int af, _In_ int type, _In_ int protocol) {
-					const auto result = socket.bridge(af, type, protocol);
-					if (GetCurrentThreadId() == m_pImpl->m_dwGameMainThreadId) {
-						m_logger->Format(LogCategory::SocketHook, "{:x}: API(socket)", result);
-						m_pImpl->FindOrCreateSingleConnection(result);
-					}
-					return result;
-				}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
+			void(Utils::Win32::Thread(L"SocketHook::SocketHook", [this, pApp]() {
+				// TODO
+				// MessageBoxW(nullptr, L"Test: continuing will load XivAlexander's networking features.", L"XivAlexander DEBUG", MB_OK);
 
-				m_pImpl->m_cleanupList += std::move(closesocket.SetHook([&](SOCKET s) {
-					if (GetCurrentThreadId() != m_pImpl->m_dwGameMainThreadId)
-						return closesocket.bridge(s);
+				pApp->RunOnGameLoop([&]() {
+					try {
+						m_pImpl->m_cleanupList += std::move(socket.SetHook([&](_In_ int af, _In_ int type, _In_ int protocol) {
+							const auto result = socket.bridge(af, type, protocol);
+							if (GetCurrentThreadId() == m_pImpl->m_dwGameMainThreadId) {
+								m_logger->Format(LogCategory::SocketHook, "{:x}: API(socket)", result);
+								m_pImpl->FindOrCreateSingleConnection(result);
+							}
+							return result;
+						}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
 
-					m_pImpl->CleanupSocket(s);
-					m_logger->Format(LogCategory::SocketHook, "{:x}: API(closesocket)", s);
-					m_pImpl->m_nonGameSockets.erase(s);
-					return closesocket.bridge(s);
-				}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
+						m_pImpl->m_cleanupList += std::move(closesocket.SetHook([&](SOCKET s) {
+							if (GetCurrentThreadId() != m_pImpl->m_dwGameMainThreadId)
+								return closesocket.bridge(s);
 
-				m_pImpl->m_cleanupList += std::move(send.SetHook([&](SOCKET s, const char* buf, int len, int flags) {
-					if (GetCurrentThreadId() != m_pImpl->m_dwGameMainThreadId)
-						return send.bridge(s, buf, len, flags);
+							m_pImpl->CleanupSocket(s);
+							m_logger->Format(LogCategory::SocketHook, "{:x}: API(closesocket)", s);
+							m_pImpl->m_nonGameSockets.erase(s);
+							return closesocket.bridge(s);
+						}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
 
-					const auto conn = m_pImpl->FindOrCreateSingleConnection(s);
-					if (conn == nullptr)
-						return send.bridge(s, buf, len, flags);
+						m_pImpl->m_cleanupList += std::move(send.SetHook([&](SOCKET s, const char* buf, int len, int flags) {
+							if (GetCurrentThreadId() != m_pImpl->m_dwGameMainThreadId)
+								return send.bridge(s, buf, len, flags);
 
-					conn->m_pImpl->m_sendRaw.Write(buf, len);
-					conn->m_pImpl->ProcessSendData();
-					conn->m_pImpl->AttemptSend();
-					return len;
-				}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
+							const auto conn = m_pImpl->FindOrCreateSingleConnection(s);
+							if (conn == nullptr)
+								return send.bridge(s, buf, len, flags);
 
-				m_pImpl->m_cleanupList += std::move(recv.SetHook([&](SOCKET s, char* buf, int len, int flags) {
-					if (GetCurrentThreadId() != m_pImpl->m_dwGameMainThreadId)
-						return recv.bridge(s, buf, len, flags);
+							conn->m_pImpl->m_sendRaw.Write(buf, len);
+							conn->m_pImpl->ProcessSendData();
+							conn->m_pImpl->AttemptSend();
+							return len;
+						}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
 
-					const auto conn = m_pImpl->FindOrCreateSingleConnection(s);
-					if (conn == nullptr)
-						return recv.bridge(s, buf, len, flags);
+						m_pImpl->m_cleanupList += std::move(recv.SetHook([&](SOCKET s, char* buf, int len, int flags) {
+							if (GetCurrentThreadId() != m_pImpl->m_dwGameMainThreadId)
+								return recv.bridge(s, buf, len, flags);
 
-					conn->m_pImpl->AttemptReceive();
+							const auto conn = m_pImpl->FindOrCreateSingleConnection(s);
+							if (conn == nullptr)
+								return recv.bridge(s, buf, len, flags);
 
-					const auto result = conn->m_pImpl->m_recvProcessed.Read(reinterpret_cast<uint8_t*>(buf), len);
-					if (conn->m_pImpl->CloseRecvIfPossible())
-						m_pImpl->CleanupSocket(s);
-
-					return static_cast<int>(result);
-				}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
-
-				m_pImpl->m_cleanupList += std::move(select.SetHook([&](int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const timeval* timeout) {
-					if (GetCurrentThreadId() != m_pImpl->m_dwGameMainThreadId)
-						return select.bridge(nfds, readfds, writefds, exceptfds, timeout);
-
-					const fd_set readfds_original = *readfds;
-					fd_set readfds_temp = *readfds;
-
-					select.bridge(nfds, &readfds_temp, writefds, exceptfds, timeout);
-
-					FD_ZERO(readfds);
-					for (size_t i = 0; i < readfds_original.fd_count; ++i) {
-						const auto s = readfds_original.fd_array[i];
-						const auto conn = m_pImpl->FindOrCreateSingleConnection(s);
-						if (conn == nullptr) {
-							if (FD_ISSET(s, &readfds_temp))
-								FD_SET(s, readfds);
-							continue;
-						}
-
-						if (FD_ISSET(s, &readfds_temp))
 							conn->m_pImpl->AttemptReceive();
 
-						if (conn->m_pImpl->m_recvProcessed.Available())
-							FD_SET(s, readfds);
+							const auto result = conn->m_pImpl->m_recvProcessed.Read(reinterpret_cast<uint8_t*>(buf), len);
+							if (conn->m_pImpl->CloseRecvIfPossible())
+								m_pImpl->CleanupSocket(s);
 
-						if (conn->m_pImpl->CloseRecvIfPossible())
-							m_pImpl->CleanupSocket(s);
+							return static_cast<int>(result);
+						}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
+
+						m_pImpl->m_cleanupList += std::move(select.SetHook([&](int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const timeval* timeout) {
+							if (GetCurrentThreadId() != m_pImpl->m_dwGameMainThreadId)
+								return select.bridge(nfds, readfds, writefds, exceptfds, timeout);
+
+							const fd_set readfds_original = *readfds;
+							fd_set readfds_temp = *readfds;
+
+							select.bridge(nfds, &readfds_temp, writefds, exceptfds, timeout);
+
+							FD_ZERO(readfds);
+							for (size_t i = 0; i < readfds_original.fd_count; ++i) {
+								const auto s = readfds_original.fd_array[i];
+								const auto conn = m_pImpl->FindOrCreateSingleConnection(s);
+								if (conn == nullptr) {
+									if (FD_ISSET(s, &readfds_temp))
+										FD_SET(s, readfds);
+									continue;
+								}
+
+								if (FD_ISSET(s, &readfds_temp))
+									conn->m_pImpl->AttemptReceive();
+
+								if (conn->m_pImpl->m_recvProcessed.Available())
+									FD_SET(s, readfds);
+
+								if (conn->m_pImpl->CloseRecvIfPossible())
+									m_pImpl->CleanupSocket(s);
+							}
+
+							for (auto it = m_pImpl->m_sockets.begin(); it != m_pImpl->m_sockets.end();) {
+								it->second->m_pImpl->AttemptSend();
+
+								if (it->second->m_pImpl->CloseSendIfPossible())
+									it = m_pImpl->CleanupSocket(it->first);
+								else
+									++it;
+							}
+
+							return static_cast<int>((readfds ? readfds->fd_count : 0) +
+								(writefds ? writefds->fd_count : 0) +
+								(exceptfds ? exceptfds->fd_count : 0));
+						}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
+
+						m_pImpl->m_cleanupList += std::move(connect.SetHook([&](SOCKET s, const sockaddr* name, int namelen) {
+							if (GetCurrentThreadId() != m_pImpl->m_dwGameMainThreadId)
+								return connect.bridge(s, name, namelen);
+
+							const auto result = connect.bridge(s, name, namelen);
+							m_logger->Format(LogCategory::SocketHook, "{:x}: API(connect): {}", s, Utils::ToString(*name));
+							return result;
+						}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
+						m_logger->Log(LogCategory::SocketHook, "Network operation has been redirected.");
+
+					} catch (const std::exception& e) {
+						m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "Failed to redirect network operation: {}", e.what());
 					}
-
-					for (auto it = m_pImpl->m_sockets.begin(); it != m_pImpl->m_sockets.end();) {
-						it->second->m_pImpl->AttemptSend();
-
-						if (it->second->m_pImpl->CloseSendIfPossible())
-							it = m_pImpl->CleanupSocket(it->first);
-						else
-							++it;
-					}
-
-					return static_cast<int>((readfds ? readfds->fd_count : 0) +
-						(writefds ? writefds->fd_count : 0) +
-						(exceptfds ? exceptfds->fd_count : 0));
-				}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
-
-				m_pImpl->m_cleanupList += std::move(connect.SetHook([&](SOCKET s, const sockaddr* name, int namelen) {
-					if (GetCurrentThreadId() != m_pImpl->m_dwGameMainThreadId)
-						return connect.bridge(s, name, namelen);
-
-					const auto result = connect.bridge(s, name, namelen);
-					m_logger->Format(LogCategory::SocketHook, "{:x}: API(connect): {}", s, Utils::ToString(*name));
-					return result;
-				}).Wrap([pApp](auto fn) { pApp->RunOnGameLoop(std::move(fn)); }));
-				m_logger->Log(LogCategory::SocketHook, "Network operation has been redirected.");
-
-			} catch (const std::exception& e) {
-				m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "Failed to redirect network operation: {}", e.what());
-			}
+				});
+			}));
 		});
 	});
 }
