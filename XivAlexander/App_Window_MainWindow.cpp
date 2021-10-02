@@ -109,9 +109,13 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 		RepopulateMenu();
 	});
 
-	if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
-		if (const auto sqpacks = overrider.GetVirtualSqPacks())
-			m_cleanup += sqpacks->OnTtmpSetsChanged([this]() { RepopulateMenu(); });
+	if (!m_sqpacksLoaded) {
+		if (const auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
+			if (const auto sqpacks = overrider.GetVirtualSqPacks()) {
+				m_cleanup += sqpacks->OnTtmpSetsChanged([this]() { RepopulateMenu(); });
+				m_sqpacksLoaded = true;
+			}
+		}
 	}
 
 	m_cleanup += m_pApp->GetSocketHook()->OnSocketFound([this](auto&) {
@@ -196,6 +200,8 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 			res = HTCAPTION;
 		return res;
 	} else if (uMsg == WM_INITMENUPOPUP) {
+		if (!m_sqpacksLoaded && m_config->Runtime.UseModding)
+			RepopulateMenu();
 		SetMenuStates();
 
 	} else if (uMsg == WM_DROPFILES) {
@@ -446,10 +452,15 @@ void App::Window::MainWindow::RepopulateMenu() {
 		const auto deleteTemplateMenu = Utils::CallOnDestruction([hTemplateEntryMenu]() { DestroyMenu(hTemplateEntryMenu); });
 
 		auto count = 0;
+		auto ready = false;
 
-		if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
-
+		if (const auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
 			if (const auto sqpacks = overrider.GetVirtualSqPacks()) {
+				ready = true;
+				if (!m_sqpacksLoaded) {
+					m_cleanup += sqpacks->OnTtmpSetsChanged([this]() { RepopulateMenu(); });
+					m_sqpacksLoaded = true;
+				}
 				for (auto& ttmpSet : sqpacks->TtmpSets()) {
 					const auto hSubMenu = CreatePopupMenu();
 					AppendMenuW(hSubMenu, MF_STRING | (ttmpSet.Enabled ? MF_CHECKED : 0), allocateMenuId([this, &ttmpSet]() {
@@ -533,149 +544,9 @@ void App::Window::MainWindow::RepopulateMenu() {
 				}
 			}
 		}
-
-		//try {
-		//	for (const auto& entry : std::filesystem::recursive_directory_iterator(m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods")) {
-		//		const auto choicesPath = entry.path().parent_path() / "choices.json";
-		//		auto lower = entry.path().filename().wstring();
-		//		CharLowerW(&lower[0]);
-		//		if (lower != L"ttmpl.mpl" || !exists(entry.path().parent_path() / L"TTMPD.mpd"))
-		//			continue;
-		//
-		//		const auto ttmpl = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream(entry.path()));
-		//		auto conf = nlohmann::json::object();
-		//		try {
-		//			conf = Utils::ParseJsonFromFile(choicesPath);
-		//		} catch (...) {
-		//			// pass
-		//		}
-		//
-		//		const auto disableFilePath = entry.path().parent_path() / "disable";
-		//		const auto bDisabled = exists(disableFilePath);
-		//		const auto deleteFilePath = entry.path().parent_path() / "delete";
-		//		const auto bDelete = exists(deleteFilePath);
-		//
-		//		const auto hSubMenu = CreatePopupMenu();
-		//		AppendMenuW(hSubMenu, MF_STRING | (bDisabled ? 0 : MF_CHECKED), allocateMenuId([this, disableFilePath]() {
-		//			try {
-		//				if (exists(disableFilePath))
-		//					remove(disableFilePath);
-		//				else
-		//					Utils::Win32::File::Create(disableFilePath, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0);
-		//			} catch (const std::exception& e) {
-		//				Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR,
-		//					m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-		//				return;
-		//			}
-		//			RepopulateMenu();
-		//		}), getMenuText(hTemplateEntryMenu, 0).c_str());
-		//
-		//		AppendMenuW(hSubMenu, MF_STRING | (bDelete ? MF_CHECKED : 0), allocateMenuId([this, deleteFilePath]() {
-		//			try {
-		//				if (exists(deleteFilePath))
-		//					remove(deleteFilePath);
-		//				else
-		//					Utils::Win32::File::Create(deleteFilePath, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0);
-		//			} catch (const std::exception& e) {
-		//				Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR,
-		//					m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-		//				return;
-		//			}
-		//			RepopulateMenu();
-		//		}), getMenuText(hTemplateEntryMenu, 1).c_str());
-		//
-		//		AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
-		//
-		//		if (!ttmpl.SimpleModsList.empty()) {
-		//			const auto hModSubMenu = CreatePopupMenu();
-		//			for (size_t i = 0; i < ttmpl.SimpleModsList.size(); ++i) {
-		//				const auto& modEntry = ttmpl.SimpleModsList[i];
-		//				const auto entryDisabled = conf.is_array() && i < conf.size() && conf[i].is_boolean() && !conf[i].get<boolean>();
-		//				AppendMenuW(hModSubMenu, MF_STRING | (entryDisabled ? 0 : MF_CHECKED), allocateMenuId(
-		//						[this, i, entryDisabled, choicesPath, prevConf = conf]() {
-		//							try {
-		//								auto conf = prevConf;
-		//								if (!conf.is_array())
-		//									conf = nlohmann::json::array();
-		//								while (conf.size() <= i)
-		//									conf.insert(conf.end(), true);
-		//								conf[i] = entryDisabled;
-		//
-		//								Utils::SaveJsonToFile(choicesPath, conf);
-		//
-		//							} catch (const std::exception& e) {
-		//								Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR,
-		//									m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-		//								return;
-		//							}
-		//							RepopulateMenu();
-		//						}),
-		//					std::format(L"{} ({})",
-		//						modEntry.Name.empty() ? "-" : modEntry.Name,
-		//						modEntry.Category.empty() ? "-" : modEntry.Category).c_str());
-		//			}
-		//			AppendMenuW(hSubMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hModSubMenu), m_config->Runtime.GetStringRes(IDS_CONFIGURE));
-		//		}
-		//
-		//		for (size_t pageObjectIndex = 0; pageObjectIndex < ttmpl.ModPackPages.size(); ++pageObjectIndex) {
-		//			const auto& modGroups = ttmpl.ModPackPages[pageObjectIndex].ModGroups;
-		//			if (modGroups.empty())
-		//				continue;
-		//			const auto pageConf = conf.is_array() && pageObjectIndex < conf.size() && conf[pageObjectIndex].is_array() ? conf[pageObjectIndex] : nlohmann::json::array();
-		//
-		//			for (size_t modGroupIndex = 0; modGroupIndex < modGroups.size(); ++modGroupIndex) {
-		//				const auto& modGroup = modGroups[modGroupIndex];
-		//				if (modGroup.OptionList.empty())
-		//					continue;
-		//
-		//				const auto choice = static_cast<size_t>(modGroupIndex < pageConf.size() ? std::max(0, std::min(static_cast<int>(modGroup.OptionList.size() - 1), pageConf[modGroupIndex].get<int>())) : 0);
-		//				const auto hModSubMenu = CreatePopupMenu();
-		//				for (size_t optionIndex = 0; optionIndex < modGroup.OptionList.size(); ++optionIndex) {
-		//					const auto& modEntry = modGroup.OptionList[optionIndex];
-		//
-		//					std::string description = modEntry.Name.empty() ? "-" : modEntry.Name;
-		//					if (!modEntry.GroupName.empty())
-		//						description += std::format(" ({})", modEntry.GroupName);
-		//					if (!modEntry.Description.empty())
-		//						description += std::format(" ({})", modEntry.Description);
-		//
-		//					AppendMenuW(hModSubMenu, MF_STRING | (optionIndex == choice ? MF_CHECKED : 0), allocateMenuId(
-		//						[this, pageObjectIndex, modGroupIndex, optionIndex, choicesPath, prevConf = conf]() {
-		//							try {
-		//								auto conf = prevConf;
-		//								if (!conf.is_array())
-		//									conf = nlohmann::json::array();
-		//								while (conf.size() <= pageObjectIndex)
-		//									conf.insert(conf.end(), nlohmann::json::array());
-		//
-		//								auto& page = conf.at(pageObjectIndex);
-		//								if (!page.is_array())
-		//									page = nlohmann::json::array();
-		//								while (page.size() <= modGroupIndex)
-		//									page.insert(page.end(), 0);
-		//								page[modGroupIndex] = optionIndex;
-		//
-		//								Utils::SaveJsonToFile(choicesPath, conf);
-		//
-		//							} catch (const std::exception& e) {
-		//								Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR,
-		//									m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-		//								return;
-		//							}
-		//							RepopulateMenu();
-		//						}), Utils::FromUtf8(description).c_str());
-		//				}
-		//				AppendMenuW(hSubMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hModSubMenu), Utils::FromUtf8(modGroup.GroupName).c_str());
-		//			}
-		//		}
-		//
-		//		AppendMenuW(hParentMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hSubMenu), entry.path().parent_path().filename().wstring().c_str());
-		//		count++;
-		//	}
-		//} catch (const std::filesystem::filesystem_error&) {
-		//	// pass
-		//}
-		if (count)
+		if (ready)
+			DeleteMenu(hParentMenu, ID_MODDING_TTMP_NOTREADY, MF_BYCOMMAND);
+		if (count || !ready)
 			DeleteMenu(hParentMenu, ID_MODDING_TTMP_NOENTRY, MF_BYCOMMAND);
 	}
 }
@@ -1347,43 +1218,28 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 					break;
 			}
 			if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, msg) == IDYES) {
+				if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
+					if (const auto sqpacks = overrider.GetVirtualSqPacks()) {
+						for (auto& set : sqpacks->TtmpSets()) {
+							switch (menuId) {
+								case ID_MODDING_TTMP_REMOVEALL:
+									sqpacks->DeleteTtmp(set.ListPath, false);
+									break;
 
-				for (const auto& entry : std::filesystem::recursive_directory_iterator(m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods")) {
-					const auto choicesPath = entry.path().parent_path() / "choices.json";
-					auto lower = entry.path().filename().wstring();
-					CharLowerW(&lower[0]);
-					if (lower != L"ttmpl.mpl" || !exists(entry.path().parent_path() / L"TTMPD.mpd"))
-						continue;
+								case ID_MODDING_TTMP_ENABLEALL:
+									set.Enabled = true;
+									set.ApplyChanges(false);
+									break;
 
-					const auto ttmpl = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream(entry.path()));
-
-					const auto deleteFilePath = entry.path().parent_path() / "delete";
-					const auto disableFilePath = entry.path().parent_path() / "disable";
-
-					if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
-						if (const auto sqpacks = overrider.GetVirtualSqPacks()) {
-							for (auto& set : sqpacks->TtmpSets()) {
-								switch (menuId) {
-									case ID_MODDING_TTMP_REMOVEALL:
-										sqpacks->DeleteTtmp(set.ListPath);
-										break;
-
-									case ID_MODDING_TTMP_ENABLEALL:
-										set.Enabled = true;
-										set.ApplyChanges(false);
-										break;
-
-									case ID_MODDING_TTMP_DISABLEALL:
-										set.Enabled = false;
-										set.ApplyChanges(false);
-										break;
-								}
+								case ID_MODDING_TTMP_DISABLEALL:
+									set.Enabled = false;
+									set.ApplyChanges(false);
+									break;
 							}
-							sqpacks->RescanTtmp();
 						}
+						sqpacks->RescanTtmp();
 					}
 				}
-				RepopulateMenu();
 			}
 			return;
 		}

@@ -146,9 +146,9 @@ void App::LoaderApp::Actions::Interactive::SetupBuilderForInstallation(Utils::Wi
 				if (XivAlex::IsXivAlexanderDll(path)) {
 					const auto version = Utils::StringSplit<std::string>(Utils::Win32::FormatModuleVersionString(path).first, ".");
 					if (selfVersion > version)
-						resId = IDS_INSTALLATIONSTATUS_NEWER;
-					else if (selfVersion < version)
 						resId = IDS_INSTALLATIONSTATUS_OLDER;
+					else if (selfVersion < version)
+						resId = IDS_INSTALLATIONSTATUS_NEWER;
 					else
 						resId = IDS_INSTALLATIONSTATUS_INSTALLED;
 				}

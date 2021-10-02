@@ -373,6 +373,6 @@ bool App::Feature::GameResourceOverrider::CanUnload() const {
 	return !m_pImpl;
 }
 
-App::Misc::VirtualSqPacks* App::Feature::GameResourceOverrider::GetVirtualSqPacks() {
+App::Misc::VirtualSqPacks* App::Feature::GameResourceOverrider::GetVirtualSqPacks() const {
 	return m_pImpl->m_sqpacks.get();
 }

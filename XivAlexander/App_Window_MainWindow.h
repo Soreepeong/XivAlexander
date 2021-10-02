@@ -18,8 +18,6 @@ namespace App::Window {
 		std::unique_ptr<ConfigWindow> m_runtimeConfigEditor{ nullptr };
 		std::unique_ptr<ConfigWindow> m_gameConfigEditor{ nullptr };
 
-		Utils::CallOnDestruction::Multiple m_cleanup;
-
 		std::filesystem::path m_path;
 		std::wstring m_sRegion, m_sVersion;
 
@@ -34,6 +32,10 @@ namespace App::Window {
 		std::vector<std::pair<std::string, std::string>> m_launchParameters;
 
 		std::map<uint16_t, std::function<void()>> m_menuIdCallbacks;
+
+		bool m_sqpacksLoaded = false;
+
+		Utils::CallOnDestruction::Multiple m_cleanup;
 
 	public:
 		MainWindow(XivAlexApp* pApp, std::function<void()> unloadFunction);

@@ -16,8 +16,8 @@ namespace App::Feature {
 		GameResourceOverrider();
 		~GameResourceOverrider();
 
-		bool CanUnload() const;
+		[[nodiscard]] bool CanUnload() const;
 
-		App::Misc::VirtualSqPacks* GetVirtualSqPacks();
+		[[nodiscard]] Misc::VirtualSqPacks* GetVirtualSqPacks() const;
 	};
 }

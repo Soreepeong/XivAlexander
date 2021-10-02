@@ -205,6 +205,7 @@ BEGIN
             MENUITEM "çƒì«Ç›çûÇ›(&R)",                   ID_MODDING_TTMP_REFRESH
             MENUITEM SEPARATOR
             MENUITEM "(ÉCÉìÉXÉgÅ[ÉãçœÇ›ÇÃMODÉpÉbÉNÇ»Çµ)",         ID_MODDING_TTMP_NOENTRY, INACTIVE
+            MENUITEM "(MODã@î\Ç™ÉçÅ[ÉhÇ≥ÇÍÇƒÇ»Ç¢)",            ID_MODDING_TTMP_NOTREADY, INACTIVE
         END
         MENUITEM SEPARATOR
         MENUITEM "íuÇ´ä∑Ç¶ÉtÉ@ÉCÉãÇÃÉtÉHÉãÉ_Å[ÇäJÇØÇÈ(&R)",      ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
@@ -648,6 +649,7 @@ BEGIN
             MENUITEM "∏Ò∑œ ¥ŸΩ√ ∫“∑Øø¿±‚(&R)",              ID_MODDING_TTMP_REFRESH
             MENUITEM SEPARATOR
             MENUITEM "(º≥ƒ°µ» ∏µÂ∆— æ¯¿Ω )",               ID_MODDING_TTMP_NOENTRY, INACTIVE
+            MENUITEM "(∏µ˘ ±‚¥… ¡ÿ∫Òµ«¡ˆ æ ¿Ω)",             ID_MODDING_TTMP_NOTREADY, INACTIVE
         END
         MENUITEM SEPARATOR
         MENUITEM "±≥√º ∆ƒ¿œ ∆˙¥ı ø≠±‚(&R)",             ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
@@ -1148,6 +1150,7 @@ BEGIN
             MENUITEM "&Refresh",                    ID_MODDING_TTMP_REFRESH
             MENUITEM SEPARATOR
             MENUITEM "(No installed ModPacks found)", ID_MODDING_TTMP_NOENTRY, INACTIVE
+            MENUITEM "(Not ready)",                 ID_MODDING_TTMP_NOTREADY, INACTIVE
         END
         MENUITEM SEPARATOR
         MENUITEM "Open &Replacement File Entries Directory", ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
@@ -1227,8 +1230,8 @@ IDI_TRAY_ICON           ICON                    "..\\Graphics\\Icon.ico"
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,14,8,24
- PRODUCTVERSION 1,14,8,24
+ FILEVERSION 1,14,8,25
+ PRODUCTVERSION 1,14,8,25
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -1245,12 +1248,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Soreepeong"
             VALUE "FileDescription", "XivAlexander Main DLL"
-            VALUE "FileVersion", "1.14.8.24"
+            VALUE "FileVersion", "1.14.8.25"
             VALUE "InternalName", "XivAlexander.dll"
             VALUE "LegalCopyright", "Copyright (C) 2021"
             VALUE "OriginalFilename", "XivAlexander.dll"
             VALUE "ProductName", "XivAlexander"
-            VALUE "ProductVersion", "1.14.8.24"
+            VALUE "ProductVersion", "1.14.8.25"
         END
     END
     BLOCK "VarFileInfo"
