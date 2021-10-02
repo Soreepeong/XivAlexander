@@ -252,7 +252,7 @@ static void InitializeAsStubBeforeOriginalEntryPoint() {
 		auto loop = true;
 		while (loop) {
 			const auto choice = Dll::MessageBoxF(
-				Dll::FindGameMainWindow(false), MB_ICONWARNING | MB_ABORTRETRYIGNORE,
+				nullptr, MB_ICONWARNING | MB_ABORTRETRYIGNORE,
 				L"{}\nReason: {}\n\nPress Abort to exit.\nPress Retry to open XivAlexander help webpage.\nPress Ignore to skip loading XivAlexander.",
 				loadPath.empty() ? L"Failed to resolve XivAlexander installation path." : std::format(L"Failed to load {}.", loadPath.wstring()),
 				e.what());
@@ -290,14 +290,15 @@ static void InitializeBeforeOriginalEntryPoint(HANDLE hContinuableEvent) {
 
 	// the game might restart itself for whatever reason.
 	s_injectOnCreateProcessApp->SetFlags(XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly);
+	
+	XivAlexDll::EnableXivAlexander(1);
+	XivAlexDll::EnableInjectOnCreateProcess(0);
 
 	// Load game resource overrider before the game starts to load files.
-	static App::Feature::GameResourceOverrider gameResourceOverriderPreload;
+	App::Feature::GameResourceOverrider::Enable();
 
 	// Let the original entry point continue execution.
 	SetEvent(hContinuableEvent);
-	XivAlexDll::EnableXivAlexander(1);
-	XivAlexDll::EnableInjectOnCreateProcess(0);
 }
 
 void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters* pParam) {

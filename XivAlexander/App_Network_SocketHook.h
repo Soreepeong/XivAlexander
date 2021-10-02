@@ -54,6 +54,9 @@ namespace App::Network {
 		friend class SingleConnection;
 		friend struct SingleConnection::Implementation;
 
+		bool m_unloading = false;
+		Utils::Win32::Thread m_hThreadSetupHook;
+
 	public:
 		std::shared_ptr<Misc::Logger> const m_logger;
 		Utils::ListenerManager<Implementation, void, SingleConnection&> OnSocketFound;
@@ -64,7 +67,7 @@ namespace App::Network {
 
 		Misc::Hooks::ImportedFunction<SOCKET, int, int, int> socket{ "socket::socket", "ws2_32.dll", "socket", 23 };
 		Misc::Hooks::ImportedFunction<int, SOCKET, const sockaddr*, int> connect{ "socket::connect", "ws2_32.dll", "connect", 4 };
-		Misc::Hooks::ImportedFunction<int, int, fd_set*, fd_set*, fd_set*, const timeval*> select{ "socket::select", "ws2_32.dll", "select", 18 };
+		Misc::Hooks::ImportedFunction<int, int, struct fd_set*, struct fd_set*, struct fd_set*, const timeval*> select{ "socket::select", "ws2_32.dll", "select", 18 };
 		Misc::Hooks::ImportedFunction<int, SOCKET, char*, int, int> recv{ "socket::recv", "ws2_32.dll", "recv", 16 };
 		Misc::Hooks::ImportedFunction<int, SOCKET, const char*, int, int> send{ "socket::send", "ws2_32.dll", "send", 19 };
 		Misc::Hooks::ImportedFunction<int, SOCKET> closesocket{ "socket::closesocket", "ws2_32.dll", "closesocket", 3 };

@@ -30,15 +30,13 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 	std::shared_ptr<Misc::Hooks::WndProcFunction> m_subclassHook;
 
 	Utils::CallOnDestruction::Multiple m_cleanup;
-
-	const Utils::Win32::Event m_windowFoundEvent;
+	
 	const Utils::Win32::Event m_stopEvent;
 	const Utils::Win32::Thread m_initThread;  // Must be the last member variable
 
 	Implementation_GameWindow(XivAlexApp* this_)
 		: this_(this_)
 		, m_hWnd(nullptr)
-		, m_windowFoundEvent(Utils::Win32::Event::Create())
 		, m_stopEvent(Utils::Win32::Event::Create())
 		, m_initThread(Utils::Win32::Thread(L"XivAlexApp::Implementation_GameWindow::Initializer", [this]() { InitializeThreadBody(); })) {
 	}
@@ -51,7 +49,6 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 				return;
 			m_hWnd = Dll::FindGameMainWindow(false);
 		} while (!m_hWnd);
-		m_windowFoundEvent.Set();
 
 		m_subclassHook = std::make_shared<Misc::Hooks::WndProcFunction>("GameMainWindow", m_hWnd);
 
@@ -74,25 +71,15 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 	}
 
 	HWND GetHwnd() const {
-		if (m_windowFoundEvent.Wait(false, {m_stopEvent}) == WAIT_OBJECT_0 + 1)
+		if (m_initThread.Wait(false, {m_stopEvent}) == WAIT_OBJECT_0 + 1)
 			return nullptr;
 		return m_hWnd;
 	}
 
 	void RunOnGameLoop(std::function<void()> f) {
-		if (this_->m_bInterrnalUnloadInitiated)
+		if (this_->m_bInternalUnloadInitiated)
 			return f();
-
-		if (!m_hWnd)
-			return f();
-
-		{
-			// If the game window is hung, "just do it"
-			DWORD_PTR result;
-			if (!SendMessageTimeoutW(m_hWnd, WM_NULL, 0, 0, SMTO_ABORTIFHUNG | SMTO_BLOCK, 500, &result))
-				return f();
-		}
-
+		
 		m_initThread.Wait();
 		const auto hEvent = Utils::Win32::Event::Create();
 		{
@@ -143,7 +130,6 @@ struct App::XivAlexApp::Implementation final {
 	std::unique_ptr<Feature::IpcTypeFinder> m_ipcTypeFinder{};
 	std::unique_ptr<Feature::AllIpcMessageLogger> m_allIpcMessageLogger{};
 	std::unique_ptr<Feature::EffectApplicationDelayLogger> m_effectApplicationDelayLogger{};
-	std::unique_ptr<Feature::GameResourceOverrider> m_gameResourceOverrider{};
 
 	std::unique_ptr<Window::LogWindow> m_logWindow{};
 	std::unique_ptr<Window::MainWindow> m_trayWindow{};
@@ -155,7 +141,7 @@ struct App::XivAlexApp::Implementation final {
 			return;
 
 		m_trayWindow = std::make_unique<Window::MainWindow>(this_, [this]() {
-			if (this->this_->m_bInterrnalUnloadInitiated)
+			if (this->this_->m_bInternalUnloadInitiated)
 				return;
 
 			if (const auto err = this_->IsUnloadable(); !err.empty()) {
@@ -163,7 +149,7 @@ struct App::XivAlexApp::Implementation final {
 				return;
 			}
 
-			this->this_->m_bInterrnalUnloadInitiated = true;
+			this->this_->m_bInternalUnloadInitiated = true;
 			void(Utils::Win32::Thread(L"XivAlexander::App::XivAlexApp::Implementation::SetupTrayWindow::XivAlexUnloader", []() {
 				XivAlexDll::DisableAllApps(nullptr);
 			}, Utils::Win32::LoadedModule::LoadMore(Dll::Module())));
@@ -230,9 +216,6 @@ struct App::XivAlexApp::Implementation final {
 		});
 		m_cleanup += [this]() { m_effectApplicationDelayLogger = nullptr; };
 
-		m_gameResourceOverrider = std::make_unique<Feature::GameResourceOverrider>();
-		m_cleanup += [this]() { m_gameResourceOverrider = nullptr; };
-
 		if (config.ShowLoggingWindow)
 			m_logWindow = std::make_unique<Window::LogWindow>();
 		m_cleanup += config.ShowLoggingWindow.OnChangeListener([&](Config::ItemBase&) {
@@ -244,7 +227,7 @@ struct App::XivAlexApp::Implementation final {
 		m_cleanup += [this]() { m_logWindow = nullptr; };
 
 		m_cleanup += ExitProcess.SetHook([this](UINT exitCode) {
-			this->this_->m_bInterrnalUnloadInitiated = true;
+			this->this_->m_bInternalUnloadInitiated = true;
 
 			if (this->m_trayWindow)
 				SendMessageW(this->m_trayWindow->Handle(), WM_CLOSE, 0, 1);
@@ -295,7 +278,7 @@ App::XivAlexApp::~XivAlexApp() {
 
 	m_hCustomMessageLoop.Wait();
 
-	if (!m_bInterrnalUnloadInitiated) {
+	if (!m_bInternalUnloadInitiated) {
 		// Being destructed from DllMain(Process detach).
 		// Should have been cleaned up first, but couldn't get a chance,
 		// so the only thing possible is to force quit, or an error message will appear.
@@ -376,7 +359,7 @@ std::string App::XivAlexApp::IsUnloadable() const {
 	if (m_pImpl == nullptr || m_pGameWindow == nullptr)
 		return "";
 
-	if (!m_pImpl->m_gameResourceOverrider->CanUnload())
+	if (Feature::GameResourceOverrider::Enabled())
 		return Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_NOUNLOADREASON_MODACTIVE));
 
 	if (m_pImpl->m_socketHook && !m_pImpl->m_socketHook->IsUnloadable())

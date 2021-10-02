@@ -31,7 +31,7 @@ namespace App {
 		friend struct Implementation_GameWindow;
 		std::unique_ptr<Implementation_GameWindow> m_pGameWindow;
 
-		bool m_bInterrnalUnloadInitiated = false;
+		bool m_bInternalUnloadInitiated = false;
 
 		const Utils::Win32::Event m_loadCompleteEvent;
 

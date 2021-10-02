@@ -110,8 +110,8 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 	});
 
 	if (!m_sqpacksLoaded) {
-		if (const auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
-			if (const auto sqpacks = overrider.GetVirtualSqPacks()) {
+		if (Feature::GameResourceOverrider::Enabled()) {
+			if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks()) {
 				m_cleanup += sqpacks->OnTtmpSetsChanged([this]() { RepopulateMenu(); });
 				m_sqpacksLoaded = true;
 			}
@@ -454,8 +454,8 @@ void App::Window::MainWindow::RepopulateMenu() {
 		auto count = 0;
 		auto ready = false;
 
-		if (const auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
-			if (const auto sqpacks = overrider.GetVirtualSqPacks()) {
+		if (Feature::GameResourceOverrider::Enabled()) {
+			if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks()) {
 				ready = true;
 				if (!m_sqpacksLoaded) {
 					m_cleanup += sqpacks->OnTtmpSetsChanged([this]() { RepopulateMenu(); });
@@ -1023,7 +1023,7 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 			config.VoiceResourceLanguageOverride = Sqex::Language::Unspecified;
 			return;
 
-		case ID_MODDING_AUDIOLANGUAGE_ENGLISH:z
+		case ID_MODDING_AUDIOLANGUAGE_ENGLISH:
 			config.VoiceResourceLanguageOverride = Sqex::Language::English;
 			return;
 
@@ -1218,8 +1218,8 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 					break;
 			}
 			if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, msg) == IDYES) {
-				if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
-					if (const auto sqpacks = overrider.GetVirtualSqPacks()) {
+				if (Feature::GameResourceOverrider::Enabled()) {
+					if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks()) {
 						for (auto& set : sqpacks->TtmpSets()) {
 							switch (menuId) {
 								case ID_MODDING_TTMP_REMOVEALL:
@@ -1249,8 +1249,8 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 			return;
 
 		case ID_MODDING_TTMP_REFRESH:
-			if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
-				if (const auto sqpacks = overrider.GetVirtualSqPacks())
+			if (Feature::GameResourceOverrider::Enabled()) {
+				if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks())
 					sqpacks->RescanTtmp();
 			}
 			return;
@@ -1614,8 +1614,8 @@ std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& pa
 
 	std::filesystem::rename(temporaryTtmpDirectory, targetTtmpDirectory);
 
-	if (auto overrider = Feature::GameResourceOverrider(); !overrider.CanUnload()) {
-		if (const auto sqpacks = overrider.GetVirtualSqPacks())
+	if (Feature::GameResourceOverrider::Enabled()) {
+		if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks())
 			sqpacks->AddNewTtmp(targetTtmpDirectory / "TTMPL.mpl");
 	}
 

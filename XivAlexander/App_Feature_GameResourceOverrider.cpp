@@ -12,7 +12,7 @@
 #include "App_Misc_VirtualSqPacks.h"
 #include "DllMain.h"
 
-std::weak_ptr<App::Feature::GameResourceOverrider::Implementation> App::Feature::GameResourceOverrider::s_pImpl;
+std::shared_ptr<App::Feature::GameResourceOverrider::Implementation> App::Feature::GameResourceOverrider::s_pImpl;
 
 class ReEnterPreventer {
 	std::mutex m_lock;
@@ -150,7 +150,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 						} else {
 							if (m_config->Runtime.LogAllDataFileRead) {
 								m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, L"ReadFile: {}, requested {} bytes; state: {}",
-								vpath.Path.filename(), nNumberOfBytesToRead, vpath.Stream->DescribeState());
+									vpath.Path.filename(), nNumberOfBytesToRead, vpath.Stream->DescribeState());
 							}
 						}
 
@@ -317,7 +317,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 
 				if (m_config->Runtime.UseHashTrackerKeyLogging || !description.empty()) {
 					auto current = std::string(str, len);
-					
+
 					const auto lock = std::lock_guard(m_lastLoggedPathMtx);
 					if (const auto it = std::ranges::find(m_lastLoggedPaths, current); it != m_lastLoggedPaths.end()) {
 						m_lastLoggedPaths.erase(it);
@@ -339,40 +339,28 @@ struct App::Feature::GameResourceOverrider::Implementation {
 	}
 };
 
-std::shared_ptr<App::Feature::GameResourceOverrider::Implementation> App::Feature::GameResourceOverrider::AcquireImplementation() {
+void App::Feature::GameResourceOverrider::Enable() {
 	static bool s_error = false;
 	static const auto s_useModding = Config::Acquire()->Runtime.UseModding.Value() && (Dll::IsLoadedAsDependency() || Dll::IsLoadedFromEntryPoint());
-	if (s_useModding && !s_error) {
-		auto impl = s_pImpl.lock();
-		if (!impl) {
-			static std::mutex mtx;
-			try {
-				const auto lock = std::lock_guard(mtx);
-				impl = s_pImpl.lock();
-				if (!impl && !s_error)
-					s_pImpl = impl = std::make_unique<Implementation>();
-			} catch (const std::exception& e) {
-				s_error = true;
-				void(Utils::Win32::Thread(L"Temp", [msg = std::format("Disabling modding for the run: {}", e.what())]() {
-					Misc::Logger::Acquire()->Log(LogCategory::GameResourceOverrider, msg);
-				}));
-			}
+	if (s_useModding && !s_error && !s_pImpl) {
+		static std::mutex mtx;
+		try {
+			const auto lock = std::lock_guard(mtx);
+			if (s_useModding && !s_error && !s_pImpl)
+				s_pImpl = std::make_unique<Implementation>();
+		} catch (const std::exception& e) {
+			s_error = true;
+			void(Utils::Win32::Thread(L"Temp", [msg = std::format("Disabling modding for the run: {}", e.what())]() {
+				Misc::Logger::Acquire()->Log(LogCategory::GameResourceOverrider, msg);
+			}));
 		}
-		return impl;
 	}
-	return nullptr;
 }
 
-App::Feature::GameResourceOverrider::GameResourceOverrider()
-	: m_pImpl(AcquireImplementation()) {
+bool App::Feature::GameResourceOverrider::Enabled() {
+	return !!s_pImpl;
 }
 
-App::Feature::GameResourceOverrider::~GameResourceOverrider() = default;
-
-bool App::Feature::GameResourceOverrider::CanUnload() const {
-	return !m_pImpl;
-}
-
-App::Misc::VirtualSqPacks* App::Feature::GameResourceOverrider::GetVirtualSqPacks() const {
-	return m_pImpl->m_sqpacks.get();
+App::Misc::VirtualSqPacks* App::Feature::GameResourceOverrider::GetVirtualSqPacks() {
+	return s_pImpl ? s_pImpl->m_sqpacks.get() : nullptr;
 }
