@@ -27,4 +27,7 @@ template<>
 std::string argparse::details::repr(App::LoaderApp::LauncherType const& val);
 
 template<>
+std::string argparse::details::repr(App::LoaderApp::InstallMode const& val);
+
+template<>
 std::string argparse::details::repr(XivAlex::GameRegion const& val);

@@ -32,7 +32,7 @@ namespace App::LoaderApp::Actions {
 		int Run();
 
 	private:
-		std::function<Utils::Win32::TaskDialog::ActionHandled(Utils::Win32::TaskDialog&)> SetupBuilderForInstallation_MakeInstallUninstallOnCommandCallback(bool install);
+		std::function<Utils::Win32::TaskDialog::ActionHandled(Utils::Win32::TaskDialog&)> SetupBuilderForInstallation_MakeInstallUninstallOnCommandCallback(bool install, InstallMode installMode);
 		std::function<Utils::Win32::TaskDialog::ActionHandled(Utils::Win32::TaskDialog&)> SetupBuilderForInstallation_MakeRunGameLauncherOnCommandCallback();
 		void SetupBuilderForInstallation(Utils::Win32::TaskDialog::Builder& builder, bool showLoadOnce);
 

@@ -107,6 +107,16 @@ std::string argparse::details::repr(App::LoaderApp::LauncherType const& val) {
 }
 
 template<>
+std::string argparse::details::repr(App::LoaderApp::InstallMode const& val) {
+	switch (val) {
+		case App::LoaderApp::InstallMode::D3D: return "d3d";
+		case App::LoaderApp::InstallMode::DInput8x86: return "dinput8x86";
+		case App::LoaderApp::InstallMode::DInput8x64: return "dinput8x64";
+	}
+	return std::format("({})", static_cast<int>(val));
+}
+
+template<>
 std::string argparse::details::repr(XivAlex::GameRegion const& val) {
 	switch (val) {
 		case XivAlex::GameRegion::International: return Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_CLIENT_INTERNATIONAL) + 1);

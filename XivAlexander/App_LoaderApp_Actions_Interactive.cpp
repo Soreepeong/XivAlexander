@@ -112,12 +112,20 @@ void App::LoaderApp::Actions::Interactive::SetupBuilderForInstallation(Utils::Wi
 		.WithMainInstruction(IDS_LOADERAPP_INTERACTIVE_INSTALL_MAININSTRUCTION)
 		.WithContent(IDS_LOADERAPP_INTERACTIVE_INSTALL_CONTENT)
 		.WithButton({
-			.Text = IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL,
-			.Callback = SetupBuilderForInstallation_MakeInstallUninstallOnCommandCallback(true),
+			.Text = IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_D3D,
+			.Callback = SetupBuilderForInstallation_MakeInstallUninstallOnCommandCallback(true, InstallMode::D3D),
+		})
+		.WithButton({
+			.Text = IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X64,
+			.Callback = SetupBuilderForInstallation_MakeInstallUninstallOnCommandCallback(true, InstallMode::DInput8x64),
+		})
+		.WithButton({
+			.Text = IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X86,
+			.Callback = SetupBuilderForInstallation_MakeInstallUninstallOnCommandCallback(true, InstallMode::DInput8x86),
 		})
 		.WithButton({
 			.Text = IDS_LOADERAPP_INTERACTIVE_INSTALL_UNINSTALL,
-			.Callback = SetupBuilderForInstallation_MakeInstallUninstallOnCommandCallback(false),
+			.Callback = SetupBuilderForInstallation_MakeInstallUninstallOnCommandCallback(false, InstallMode::D3D),  // last parameter doesn't matter
 		})
 		.WithButton({
 			.Text = IDS_LOADERAPP_INTERACTIVE_INSTALL_RUNGAME,
@@ -138,7 +146,7 @@ void App::LoaderApp::Actions::Interactive::SetupBuilderForInstallation(Utils::Wi
 	for (const auto& [region, info] : XivAlex::FindGameLaunchers()) {
 		auto resId = IDS_INSTALLATIONSTATUS_NOTINSTALLED;
 		const auto selfVersion = Utils::StringSplit<std::string>(Utils::Win32::FormatModuleVersionString(GetModuleHandleW(nullptr)).first, ".");
-		for (const auto name : {"d3d9.dll", "d3d11.dll"}) {
+		for (const auto name : {"d3d9.dll", "d3d11.dll", "dinput8.dll"}) {
 			const auto path = info.RootPath / "game" / name;
 			try {
 				if (XivAlex::IsXivAlexanderDll(path)) {
@@ -284,16 +292,17 @@ void App::LoaderApp::Actions::Interactive::ShowSelectGameInstallationDialog() {
 	}
 }
 
-std::function<Utils::Win32::TaskDialog::ActionHandled(Utils::Win32::TaskDialog&)> App::LoaderApp::Actions::Interactive::SetupBuilderForInstallation_MakeInstallUninstallOnCommandCallback(bool install) {
-	return [this, install](Utils::Win32::TaskDialog& dialog) {
+std::function<Utils::Win32::TaskDialog::ActionHandled(Utils::Win32::TaskDialog&)> App::LoaderApp::Actions::Interactive::SetupBuilderForInstallation_MakeInstallUninstallOnCommandCallback(bool install, InstallMode installMode) {
+	return [this, install, installMode](Utils::Win32::TaskDialog& dialog) {
 		try {
 			auto withHider = dialog.WithHiddenDialog();
 			if (m_state.PathRequiresFileOpenDialog)
 				ShowSelectGameInstallationDialog();
 
 			Utils::Win32::RunProgram({
-				.args = std::format(L"-a {} {}",
+				.args = std::format(L"-a {} --install-mode {} {}",
 					LoaderActionToString(install ? LoaderAction::Install : LoaderAction::Uninstall),
+					argparse::details::repr(installMode),
 					Utils::Win32::ReverseCommandLineToArgv(m_state.GamePath.wstring())),
 				.wait = true,
 				.elevateMode = Utils::Win32::RunProgramParams::Force,

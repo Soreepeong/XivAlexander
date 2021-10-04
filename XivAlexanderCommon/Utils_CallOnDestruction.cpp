@@ -95,8 +95,10 @@ Utils::CallOnDestruction::Multiple& Utils::CallOnDestruction::Multiple::operator
 }
 
 void Utils::CallOnDestruction::Multiple::Clear() {
-	while (!m_list.empty())
+	while (!m_list.empty()) {
+		m_list.back().Clear();
 		m_list.pop_back();
+	}
 }
 
 Utils::CallOnDestruction::Multiple::~Multiple() {

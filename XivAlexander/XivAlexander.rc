@@ -446,8 +446,8 @@ BEGIN
     IDS_LOADERAPP_INTERACTIVE_INSTALL_MAININSTRUCTION "XivAlexander‚ÌƒCƒ“ƒXƒg[ƒ‹"
     IDS_LOADERAPP_INTERACTIVE_INSTALL_CONTENT 
                             "XivAlexander‚ğƒCƒ“ƒXƒg[ƒ‹‚·‚é‚ÆAƒQ[ƒ€‚Ì‹N“®‚Æ“¯‚ÉXivAlexander‚àƒ[ƒh‚ª‚Å‚«‚Ü‚·B\n\nEŠÇ—Ò‚ÌŒ ŒÀ‚ª•K—v‚Å‚·B\n* Reshade‚Æ“¯‚Ég‚¦‚Ü‚·B\n* ƒQ[ƒ€‚Ìƒf[ƒ^ƒtƒ@ƒCƒ‹‚Í•ÏX‚³‚ê‚Ü‚¹‚ñB"
-    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL 
-                            "XivAlexander‚ğƒCƒ“ƒXƒg[ƒ‹‚·‚é(&I)\nXivAlexander‚ğ‘I‘ğ‚µ‚½ƒQ[ƒ€ƒvƒƒOƒ‰ƒ€‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·B"
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_D3D 
+                            "XivAlexander‚ğd3d9/d3d11‚ÅƒCƒ“ƒXƒg[ƒ‹‚·‚é(&I)\nXivAlexander‚ğ‘I‘ğ‚µ‚½ƒQ[ƒ€ƒtƒHƒ‹ƒ_[‚Éd3d9.dll‚Æd3d11.dll‚ÅƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·B"
     IDS_LOADERAPP_INTERACTIVE_INSTALL_UNINSTALL 
                             "XivAlexander‚ğƒAƒ“ƒCƒ“ƒXƒg[ƒ‹‚·‚é(&U)\nXivAlexander‚ğ‘I‘ğ‚µ‚½ƒQ[ƒ€ƒvƒƒOƒ‰ƒ€‚©‚çƒAƒ“ƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·B"
     IDS_LOADERAPP_INTERACTIVE_INSTALL_RUNGAME 
@@ -484,6 +484,13 @@ BEGIN
                             "“o˜^‚³‚ê‚½‚·‚×‚Ä‚Ì’Ç‰Á‚ÌƒQ[ƒ€ƒ‹[ƒgƒtƒHƒ‹ƒ_[‚ğÁ‚µ‚Ü‚·Biƒtƒ@ƒCƒ‹‚Ííœ‚µ‚Ü‚¹‚ñBj"
     IDS_CONFIRM_UNREGISTERALLEXCELTRANSFORMATIONRULES 
                             "“o˜^‚³‚ê‚½‚·‚×‚Ä‚ÌEXDF‚Ì’u‚«Š·‚¦‹K‘¥‚ğÁ‚µ‚Ü‚·Biƒtƒ@ƒCƒ‹‚Ííœ‚µ‚Ü‚¹‚ñBj"
+    IDS_HELP_INSTALL_MODE   "specify install mode (possible values: d3d (default), dinput8x86, dinput8x64)"
+    IDS_ERROR_INVALID_INSTALL_MODE 
+                            "Invalid install mode specified. Accepted values are d3d, dinput8x86, and dinput8x64."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X86 
+                            "XivAlexander‚ğdinput8(x86)‚ÅƒCƒ“ƒXƒg[ƒ‹‚·‚é(&I)\nXivAlexander‚ğ‘I‘ğ‚µ‚½ƒQ[ƒ€ƒtƒHƒ‹ƒ_[‚Édinput8.dll‚ÅƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·BƒQ[ƒ€‚ÌDirectX9ƒo[ƒWƒ‡ƒ“‚¾‚¯‚Å“K—p‚É‚È‚è‚Ü‚·B"
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X64 
+                            "XivAlexander‚ğdinput8(x64)‚ÅƒCƒ“ƒXƒg[ƒ‹‚·‚é(&I)\nXivAlexander‚ğ‘I‘ğ‚µ‚½ƒQ[ƒ€ƒtƒHƒ‹ƒ_[‚Édinput8.dll‚ÅƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·BƒQ[ƒ€‚ÌDirectX11ƒo[ƒWƒ‡ƒ“‚¾‚¯‚Å“K—p‚É‚È‚è‚Ü‚·B"
 END
 
 #endif    // Japanese (Japan) resources
@@ -952,8 +959,8 @@ BEGIN
     IDS_LOADERAPP_INTERACTIVE_INSTALL_MAININSTRUCTION "XivAlexander ¼³Ä¡"
     IDS_LOADERAPP_INTERACTIVE_INSTALL_CONTENT 
                             "XivAlexander¸¦ ¼³Ä¡ÇÏ¸é °ÔÀÓ ½ÇÇà°ú ÇÔ²² XivAlexander¸¦ ½ÇÇàÇÒ ¼ö ÀÖ½À´Ï´Ù.\n\n* °ü¸®ÀÚ ±ÇÇÑÀÌ ÇÊ¿äÇÕ´Ï´Ù.\n* ReshadeÇÏ°í °°ÀÌ ¾µ ¼ö ÀÖ½À´Ï´Ù.\n* °ÔÀÓ µ¥ÀÌÅÍ ÆÄÀÏÀº º¯°æµÇÁö ¾Ê½À´Ï´Ù."
-    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL 
-                            "XivAlexander ¼³Ä¡ÇÏ±â(&I)\nXivAlexander¸¦ ¼±ÅÃÇÑ °ÔÀÓ ¼³Ä¡¿¡ °°ÀÌ ¼³Ä¡ÇÕ´Ï´Ù."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_D3D 
+                            "XivAlexander¸¦ d3d9/d3d11·Î ¼³Ä¡ÇÏ±â(&I)\nXivAlexander¸¦ ¼±ÅÃÇÑ °ÔÀÓ ¼³Ä¡ Æú´õ¿¡ d3d9.dll ¹× d3d11.dll ÆÄÀÏ·Î ¼³Ä¡ÇÕ´Ï´Ù."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_UNINSTALL 
                             "XivAlexander Á¦°ÅÇÏ±â(&U)\nXivAlexander¸¦ ¼±ÅÃÇÑ °ÔÀÓ ¼³Ä¡¿¡¼­ Á¦°ÅÇÕ´Ï´Ù."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_RUNGAME 
@@ -989,6 +996,13 @@ BEGIN
                             "¸ğµç Ãß°¡ °ÔÀÓ ·çÆ® Æú´õÀÇ µî·ÏÀ» ÇØÁ¦ÇÕ´Ï´Ù."
     IDS_CONFIRM_UNREGISTERALLEXCELTRANSFORMATIONRULES 
                             "¸ğµç EXDF º¯°æ ±ÔÄ¢À» ¸ñ·Ï¿¡¼­ Á¦°ÅÇÕ´Ï´Ù. (ÆÄÀÏÀº »èÁ¦ÇÏÁö ¾Ê½À´Ï´Ù.)"
+    IDS_HELP_INSTALL_MODE   "¼³Ä¡ ¸ğµå¸¦ ÁöÁ¤ÇÕ´Ï´Ù. (°¡´ÉÇÑ °ª: d3d (default), dinput8x86, dinput8x64)"
+    IDS_ERROR_INVALID_INSTALL_MODE 
+                            "¼³Ä¡ ¸ğµå ÁöÁ¤ÀÌ Àß¸øµÇ¾ú½À´Ï´Ù. »ç¿ë °¡´ÉÇÑ °ªÀº d3d, dinput8x86, dinput8x64 ÀÔ´Ï´Ù."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X86 
+                            "XivAlexander¸¦ dinput8.dll(x86)·Î ¼³Ä¡ÇÏ±â(&I)\nXivAlexander¸¦ ¼±ÅÃÇÑ °ÔÀÓ ¼³Ä¡ Æú´õ¿¡ dinput8.dll ÆÄÀÏ·Î ¼³Ä¡ÇÕ´Ï´Ù. °ÔÀÓÀ» DirectX 9 ¸ğµå·Î ÄÓ ¶§¸¸ Àû¿ëµË´Ï´Ù."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X64 
+                            "XivAlexander¸¦ dinput8.dll(x64)·Î ¼³Ä¡ÇÏ±â(&I)\nXivAlexander¸¦ ¼±ÅÃÇÑ °ÔÀÓ ¼³Ä¡ Æú´õ¿¡ dinput8.dll ÆÄÀÏ·Î ¼³Ä¡ÇÕ´Ï´Ù. °ÔÀÓÀ» DirectX 11 ¸ğµå·Î ÄÓ ¶§¸¸ Àû¿ëµË´Ï´Ù."
 END
 
 #endif    // Korean (Korea) resources
@@ -1595,8 +1609,8 @@ BEGIN
     IDS_LOADERAPP_INTERACTIVE_INSTALL_MAININSTRUCTION "Install XivAlexander"
     IDS_LOADERAPP_INTERACTIVE_INSTALL_CONTENT 
                             "You can install XivAlexander to load XivAlexander along with the game.\n\n* Requires Administrator permissions.\n* Compatible with Reshade.\n* No game data files are modified."
-    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL 
-                            "&Install XivAlexander\nInstall XivAlexander for the selected game installation."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_D3D 
+                            "&Install XivAlexander as d3d9 and d3d11\nInstall XivAlexander for the selected game installation, taking place of d3d9.dll and d3d11.dll."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_UNINSTALL 
                             "&Uninstall XivAlexander\nUninstall XivAlexander from the selected game installation."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_RUNGAME 
@@ -1633,6 +1647,13 @@ BEGIN
                             "Continue unregistering all additional game root directories?"
     IDS_CONFIRM_UNREGISTERALLEXCELTRANSFORMATIONRULES 
                             "Continue unregistering all EXDF transformation rules?"
+    IDS_HELP_INSTALL_MODE   "specify install mode (possible values: d3d (default), dinput8x86, dinput8x64)"
+    IDS_ERROR_INVALID_INSTALL_MODE 
+                            "Invalid install mode specified. Accepted values are d3d, dinput8x86, and dinput8x64."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X86 
+                            "&Install XivAlexander as dinput8.dll for DirectX 9 version\nInstall XivAlexander for the selected game installation in DirectX 9 version, taking place of dinput8.dll."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X64 
+                            "&Install XivAlexander as dinput8.dll for DirectX 11 version\nInstall XivAlexander for the selected game installation in DirectX 11 version, taking place of dinput8.dll."
 END
 
 #endif    // English (United States) resources

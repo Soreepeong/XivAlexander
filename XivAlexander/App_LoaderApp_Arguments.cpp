@@ -13,8 +13,8 @@ using namespace XivAlexDll;
 App::LoaderApp::Arguments::Arguments()
 	: argp("XivAlexanderLoader") {
 
-	argp.add_argument("-a", "--action")
-		.help(Utils::ToUtf8(Utils::Win32::FindStringResourceEx(Dll::Module(), IDS_HELP_ACTION) + 1))
+	argp.add_argument("--action", "-a")
+		.help(Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_HELP_ACTION) + 1))
 		.required()
 		.nargs(1)
 		.default_value(LoaderAction::Interactive)
@@ -35,7 +35,7 @@ App::LoaderApp::Arguments::Arguments()
 			}
 			throw std::runtime_error("invalid LoaderAction");
 		});
-	argp.add_argument("-l", "--launcher")
+	argp.add_argument("--launcher", "-l")
 		.help(Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_HELP_LAUNCHER) + 1))
 		.required()
 		.nargs(1)
@@ -58,11 +58,32 @@ App::LoaderApp::Arguments::Arguments()
 
 			throw std::runtime_error(Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_ERROR_INVALID_LAUNCHER_TYPE) + 1));
 		});
-	argp.add_argument("-q", "--quiet")
+	argp.add_argument("--install-mode", "-i")
+		.help(Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_HELP_INSTALL_MODE) + 1))
+		.required()
+		.nargs(1)
+		.default_value(InstallMode::D3D)
+		.action([](const std::string& val_) {
+			auto val = Utils::FromUtf8(val_);
+			CharLowerW(&val[0]);
+			for (size_t i = 0; i < static_cast<size_t>(InstallMode::Count_); ++i) {
+				auto compare = Utils::FromUtf8(argparse::details::repr(static_cast<InstallMode>(i)));
+				CharLowerW(&compare[0]);
+
+				auto equal = true;
+				for (size_t j = 0; equal && j < val.length() && j < compare.length(); ++j)
+					equal = val[j] == compare[j];
+				if (equal)
+					return static_cast<InstallMode>(i);
+			}
+
+			throw std::runtime_error(Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_ERROR_INVALID_INSTALL_MODE) + 1));
+		});
+	argp.add_argument("--quiet", "-q")
 		.help(Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_HELP_QUIET) + 1))
 		.default_value(false)
 		.implicit_value(true);
-	argp.add_argument("-d", "--disable-runas")
+	argp.add_argument("--disable-runas", "-d")
 		.help(Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_HELP_DISABLE_RUNAS) + 1))
 		.default_value(false)
 		.implicit_value(true);
@@ -105,10 +126,11 @@ void App::LoaderApp::Arguments::Parse() {
 
 	argp.parse_args(args);
 
-	m_action = argp.get<XivAlexDll::LoaderAction>("-a");
-	m_launcherType = argp.get<LauncherType>("-l");
-	m_quiet = argp.get<bool>("-q");
-	m_disableAutoRunAs = argp.get<bool>("-d");
+	m_action = argp.get<LoaderAction>("--action");
+	m_installMode = argp.get<InstallMode>("--install-mode");
+	m_launcherType = argp.get<LauncherType>("--launcher");
+	m_quiet = argp.get<bool>("--quiet");
+	m_disableAutoRunAs = argp.get<bool>("--disable-runas");
 	if (const auto waitHandle = argp.get<Utils::Win32::Process>("--wait-process"))
 		waitHandle.Wait();
 
