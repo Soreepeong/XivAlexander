@@ -137,7 +137,7 @@ static void CheckObfuscatedArguments() {
 
 			static const auto pairs = Sqex::CommandLine::FromString(args[1], &wasObfuscated);
 			if (wasObfuscated) {
-				static auto newlyCreatedArgumentsW = std::format(L"\"{}\" {}", process.PathOf().wstring(), Utils::Win32::ReverseCommandLineToArgv(Sqex::CommandLine::ToString(pairs, false)));
+				static auto newlyCreatedArgumentsW = std::format(L"\"{}\" {}", process.PathOf().wstring(), Sqex::CommandLine::ToString(pairs, false));
 				static auto newlyCreatedArgumentsA = Utils::ToUtf8(newlyCreatedArgumentsW, CP_OEMCP);
 
 				static App::Misc::Hooks::ImportedFunction<LPWSTR> GetCommandLineW("kernel32!GetCommandLineW", "kernel32.dll", "GetCommandLineW");
