@@ -34,6 +34,32 @@ namespace App::Misc::ExcelTransformConfig {
 	void to_json(nlohmann::json& j, const ReplacementTemplate& o);
 	void from_json(const nlohmann::json& j, ReplacementTemplate& o);
 
+	struct IgnoredCell {
+		std::string name;
+		int id;
+		int column;
+		Sqex::Language forceLanguage{};
+
+		bool operator<(const IgnoredCell& r) const {
+			if (const auto eq = _stricmp(name.c_str(), r.name.c_str()); eq != 0)
+				return eq < 0;
+			if (id != r.id)
+				return id < r.id;
+			return column < r.column;
+		}
+
+		bool operator==(const IgnoredCell& r) const {
+			return 0 == _stricmp(name.c_str(), r.name.c_str()) && id == r.id && column == r.column;
+		}
+
+		bool operator>(const IgnoredCell& r) const {
+			return !operator<(r);
+		}
+	};
+
+	void to_json(nlohmann::json& j, const IgnoredCell& o);
+	void from_json(const nlohmann::json& j, IgnoredCell& o);
+
 	struct Rule {
 		std::vector<std::string> targetGroups;
 		std::string stringPattern;
@@ -54,6 +80,7 @@ namespace App::Misc::ExcelTransformConfig {
 		std::vector<std::pair<std::string, PluralColumns>> pluralMap;
 		std::map<std::string, TargetGroup> targetGroups;
 		std::map<std::string, ReplacementTemplate> replacementTemplates;
+		std::vector<IgnoredCell> ignoredCells;
 		std::vector<Rule> rules;
 	};
 

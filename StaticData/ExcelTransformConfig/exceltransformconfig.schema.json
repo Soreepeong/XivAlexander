@@ -108,6 +108,40 @@
         }
       }
     },
+    "ignoredCells": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "column": {
+            "type": "integer"
+          },
+          "forceLanguage": {
+            "type": "string",
+            "enum": [
+              "Japanese",
+              "English",
+              "German",
+              "French",
+              "ChineseSimplified",
+              "ChineseTraditional",
+              "Korean"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "id",
+          "column"
+        ]
+      }
+    },
     "rules": {
       "type": "array",
       "items": {

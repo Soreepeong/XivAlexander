@@ -537,6 +537,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				std::vector<std::string> postprocessReplacements;
 			};
 			std::map<Sqex::Language, std::vector<ReplacementRule>> rowReplacementRules;
+			std::map<Sqex::Language, std::set<ExcelTransformConfig::IgnoredCell>> ignoredCells;
 			std::map<std::string, std::pair<std::wregex, std::wstring>> columnReplacementTemplates;
 			auto replacementFileParseFail = false;
 			for (auto configFile : Config->Runtime.ExcelTransformConfigFiles.Value()) {
@@ -558,6 +559,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 							std::wregex(pattern, flags), Utils::FromUtf8(entry.second.to)
 						));
 					}
+					ignoredCells[transformConfig.targetLanguage].insert(transformConfig.ignoredCells.begin(), transformConfig.ignoredCells.end());
 					for (const auto& rule : transformConfig.rules) {
 						for (const auto& targetGroupName : rule.targetGroups) {
 							for (const auto& target : transformConfig.targetGroups.at(targetGroupName).columnIndices) {
@@ -880,9 +882,28 @@ struct App::Misc::VirtualSqPacks::Implementation {
 										if (rules == rowReplacementRules.end())
 											continue;
 
+										std::set<ExcelTransformConfig::IgnoredCell> *currentIgnoredCells = nullptr;
+										if (const auto it = ignoredCells.find(language); it != ignoredCells.end())
+											currentIgnoredCells = &it->second;
+
 										auto row = rowSet.at(language);
 
 										for (const auto columnIndex : columnsToModify) {
+											if (currentIgnoredCells) {
+												if (const auto it = currentIgnoredCells->find(ExcelTransformConfig::IgnoredCell{exhName, static_cast<int>(id), static_cast<int>(columnIndex)});
+													it != currentIgnoredCells->end()) {
+													if (const auto it2 = rowSet.find(it->forceLanguage);
+														it2 != rowSet.end()) {
+														Logger->Format(LogCategory::VirtualSqPacks, "Using \"{}\" in place of \"{}\" per rules, at {}({}, {})",
+															it2->second[columnIndex].String,
+															row[columnIndex].String,
+															exhName, id, columnIndex);
+														row[columnIndex].String = it2->second[columnIndex].String;
+														continue;
+													}
+												}
+											}
+
 											for (const auto& rule : rules->second) {
 												if (!rule.columnIndices.empty() && std::ranges::find(rule.columnIndices, columnIndex) == rule.columnIndices.end())
 													continue;

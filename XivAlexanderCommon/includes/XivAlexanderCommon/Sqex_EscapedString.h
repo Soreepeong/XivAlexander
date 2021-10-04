@@ -1,12 +1,6 @@
 #pragma once
 
-#include <algorithm>
-#include <mutex>
-#include <span>
-#include <type_traits>
-
 #include "Utils_Win32_Handle.h"
-#include "XaMisc.h"
 
 namespace Sqex {
 	class EscapedString {

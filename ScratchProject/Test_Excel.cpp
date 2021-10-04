@@ -1,20 +1,24 @@
 #include "pch.h"
 
 #include <set>
+#include <XivAlexanderCommon/Sqex_EscapedString.h>
 #include <XivAlexanderCommon/Sqex_Excel.h>
-#include <XivAlexanderCommon/Sqex_Excel_Generator.h>
 #include <XivAlexanderCommon/Sqex_Excel_Reader.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_EntryRawStream.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
 
+const auto QuoteStartU8 = u8"¡°";
+const auto QuoteEndU8 = u8"¡±";
+const auto QuoteStart = reinterpret_cast<const char*>(QuoteStartU8);
+const auto QuoteEnd = reinterpret_cast<const char*>(QuoteEndU8);
+
 int main() {
 	system("chcp 65001");
-	const Sqex::Sqpack::Reader reader(LR"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game\sqpack\ffxiv\0a0000.win32.index)");
-	const Sqex::Sqpack::Reader readerG(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\0a0000.win32.index)");
+	const Sqex::Sqpack::Reader reader(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\0a0000.win32.index)");
 	const auto exl = Sqex::Excel::ExlReader(Sqex::Sqpack::EntryRawStream(reader.GetEntryProvider("exd/root.exl")));
 	for (const auto& x : exl | std::views::keys) {
-		if (x != "Addon") continue;
-		// if (x.find('/') != std::string::npos) continue;
+		if (x.find('/') == std::string::npos)
+			continue;
 
 		const auto exhProvider = reader.GetEntryProvider(std::format("exd/{}.exh", x));
 		const auto exhStream = Sqex::Sqpack::EntryRawStream(exhProvider);
@@ -24,46 +28,37 @@ int main() {
 
 		if (std::ranges::find(exh.Languages, Sqex::Language::Unspecified) != exh.Languages.end())
 			continue;
-
-		std::cout << std::format("Processing {} (id {}, unk2 0x{:04x})...\n", x, exl[x], exh.Header.SomeSortOfBufferSize.Value());
-
-		Sqex::Excel::Depth2ExhExdCreator creator(x, *exh.Columns, exh.Header.SomeSortOfBufferSize);
-		creator.AddLanguage(Sqex::Language::English);
-		creator.AddLanguage(Sqex::Language::Japanese);
-		creator.AddLanguage(Sqex::Language::Korean);
+		
+		// quest/019/HeaVnz905_01970: incantation is "Y'shtola"(88) and "Aloths'y"(89)
 
 		for (const auto& page : exh.Pages) {
-			const auto koreanExd = std::make_unique<Sqex::Excel::ExdReader>(exh, std::make_shared<Sqex::BufferedRandomAccessStream>(reader[exh.GetDataPathSpec(page, Sqex::Language::Korean)]));
-			const auto englishExd = std::make_unique<Sqex::Excel::ExdReader>(exh, std::make_shared<Sqex::BufferedRandomAccessStream>(readerG[exh.GetDataPathSpec(page, Sqex::Language::English)]));
-			for (const auto i : koreanExd->GetIds()) {
-				auto koreanRow = koreanExd->ReadDepth2(i);
-				creator.SetRow(i, Sqex::Language::Korean, koreanRow);
-				creator.SetRow(i, Sqex::Language::Japanese, koreanRow);
-				try {
-					auto englishRow = englishExd->ReadDepth2(i);
-					for (size_t i = 0; i < koreanRow.size() && i < englishRow.size(); ++i) {
-						auto& col = koreanRow[i];
-						if (col.Type == Sqex::Excel::Exh::String && !col.String.empty()) {
-							col.String = englishRow[i].String;
-						}
+			const auto exd = std::make_unique<Sqex::Excel::ExdReader>(exh, std::make_shared<Sqex::BufferedRandomAccessStream>(reader[exh.GetDataPathSpec(page, Sqex::Language::English)]));
+			std::set<std::string> candidates;
+			std::set<std::string> says;
+			for (const auto i : exd->GetIds()) {
+				auto row = exd->ReadDepth2(i);
+
+				const auto es = Sqex::EscapedString(row[1].String);
+				const auto s = es.FilteredString();
+				if (s.starts_with("With the chat mode")) {
+					if (const auto i1 = s.find(QuoteStart), i2 = s.find(QuoteEnd, i1); i1 != std::string::npos && i2 != std::string::npos && i1 < i2) {
+						auto say = s.substr(i1 + 3, i2 - i1 - 3);
+						candidates.insert(say);
+						std::cout << std::format("[{:03}] Found {}: {}\n", i, row[0].String, s);
+					} else {
+						// std::cout << std::format("[{:03}] Unknown {}: {}\n", i, row[0].String, s);
 					}
-				} catch (const std::out_of_range&) {
+				} else if (candidates.find(s) != candidates.end()) {
+					says.insert(s);
+					says.insert(s + "!");
+					std::cout << std::format("{}:{:} = {}\n", x, i, row[0].String, row[1].String);
 				}
-				creator.SetRow(i, Sqex::Language::English, koreanRow);
 			}
-		}
-
-		if (creator.Data.empty())
-			continue;
-
-		for (const auto& res : creator.Compile()) {
-			const auto& path = res.first;
-			const auto& contents = res.second;
-			const auto targetPath = std::filesystem::path(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\ffxiv\0a0000)") / path.Original;
-			create_directories(targetPath.parent_path());
-
-			Utils::Win32::File::Create(targetPath, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0)
-				.Write(0, std::span(contents));
+			std::set<std::string> missing;
+			std::set_difference(candidates.begin(), candidates.end(), says.begin(), says.end(), std::inserter(missing, missing.end()));
+			for (const auto& s : missing) {
+				std::cout << "MISSING " << s << std::endl;
+			}
 		}
 	}
 

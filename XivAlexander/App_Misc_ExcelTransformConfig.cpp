@@ -53,6 +53,22 @@ void App::Misc::ExcelTransformConfig::from_json(const nlohmann::json& j, Replace
 	o.icase = j.value("icase", true);
 }
 
+void App::Misc::ExcelTransformConfig::to_json(nlohmann::json& j, const IgnoredCell& o) {
+	j = nlohmann::json::object({
+		{"name", o.name},
+		{"id", o.id},
+		{"column", o.column},
+		{"forceLanguage", o.forceLanguage},
+	});
+}
+
+void App::Misc::ExcelTransformConfig::from_json(const nlohmann::json& j, IgnoredCell& o) {
+	o.name = j.at("name").get<std::string>();
+	o.id = j.at("id").get<int>();
+	o.column = j.at("column").get<int>();
+	o.forceLanguage = j.at("forceLanguage").get<Sqex::Language>();
+}
+
 void App::Misc::ExcelTransformConfig::to_json(nlohmann::json& j, const Rule& o) {
 	j = nlohmann::json::object({
 		{"targetGroups", o.targetGroups},
@@ -88,6 +104,7 @@ void App::Misc::ExcelTransformConfig::to_json(nlohmann::json& j, const Config& o
 		{"pluralMap", o.pluralMap},
 		{"targetGroups", o.targetGroups},
 		{"replacementTemplates", o.replacementTemplates},
+		{"ignoredCells", o.ignoredCells},
 		{"rules", o.rules},
 	});
 	if (o.sourceLanguages.empty())
@@ -136,5 +153,6 @@ void App::Misc::ExcelTransformConfig::from_json(const nlohmann::json& j, Config&
 			o.replacementTemplates.emplace(pair.key(), std::move(newItem));
 		}
 	}
+	o.ignoredCells = j.at("ignoredCells").get<decltype(o.ignoredCells)>();
 	o.rules = j.at("rules").get<decltype(o.rules)>();
 }
