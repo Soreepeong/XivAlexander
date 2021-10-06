@@ -2,6 +2,7 @@
 #include "App_InjectOnCreateProcessApp.h"
 
 #include <XivAlexander/XivAlexander.h>
+#include <XivAlexanderCommon/Sqex_CommandLine.h>
 #include <XivAlexanderCommon/Utils_CallOnDestruction.h>
 #include <XivAlexanderCommon/Utils_Win32.h>
 #include <XivAlexanderCommon/Utils_Win32_Process.h>
@@ -139,38 +140,194 @@ struct App::InjectOnCreateProcessApp::Implementation {
 
 App::InjectOnCreateProcessApp::Implementation::Implementation() {
 	m_cleanup += CreateProcessW.SetHook([this](_In_opt_ LPCWSTR lpApplicationName, _Inout_opt_ LPWSTR lpCommandLine, _In_opt_ LPSECURITY_ATTRIBUTES lpProcessAttributes, _In_opt_ LPSECURITY_ATTRIBUTES lpThreadAttributes, _In_ BOOL bInheritHandles, _In_ DWORD dwCreationFlags, _In_opt_ LPVOID lpEnvironment, _In_opt_ LPCWSTR lpCurrentDirectory, _In_ LPSTARTUPINFOW lpStartupInfo, _Out_ LPPROCESS_INFORMATION lpProcessInformation) -> BOOL {
+		int result = 0;
 		const bool noOperation = dwCreationFlags & (DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS);
-		const auto result = CreateProcessW.bridge(
-			lpApplicationName,
-			lpCommandLine,
-			lpProcessAttributes,
-			lpThreadAttributes,
-			bInheritHandles,
-			dwCreationFlags | (noOperation ? 0 : CREATE_SUSPENDED),
-			lpEnvironment,
-			lpCurrentDirectory,
-			lpStartupInfo,
-			lpProcessInformation);
-		if (result && !noOperation)
+		std::filesystem::path applicationPath;
+		std::wstring commandLine, pathForCommandLine;
+		std::wstring buf;
+		try {
+			if (lpCommandLine)
+				std::tie(pathForCommandLine, commandLine) = Utils::Win32::SplitCommandLineIntoNameAndArgs(lpCommandLine);
+			else if (lpApplicationName)
+				pathForCommandLine = lpApplicationName;
+			else
+				throw Utils::Win32::Error(ERROR_INVALID_PARAMETER);
+
+			if (lpApplicationName) {
+				applicationPath = lpApplicationName;
+
+			} else {
+				if (lpCommandLine[0] == L'"') {
+					applicationPath = pathForCommandLine;
+				} else {
+					const auto parts = Utils::StringSplit<std::wstring>(lpCommandLine, L" ");
+					std::wstring applicationPathBuf = parts[0];
+					size_t i = 0;
+					while (true) {
+						std::filesystem::path applicationPathConstructing = applicationPathBuf;
+						if (!applicationPathConstructing.has_extension())
+							applicationPathConstructing += ".exe";
+						if (!applicationPathConstructing.is_absolute()) {
+							buf.resize(PATHCCH_MAX_CCH);
+							buf.resize(SearchPathW(nullptr, applicationPathBuf.c_str(), L".exe", PATHCCH_MAX_CCH, &buf[0], nullptr));
+							if (!buf.empty())
+								applicationPathConstructing = buf;
+						}
+						if (exists(applicationPathConstructing)) {
+							applicationPath = std::move(applicationPathConstructing);
+							pathForCommandLine = applicationPath;
+							commandLine.clear();
+							while (++i < parts.size()) {
+								if (!commandLine.empty())
+									commandLine.push_back(L' ');
+								commandLine.append(parts[i]);
+							}
+							break;
+						}
+						if (++i >= parts.size())
+							throw Utils::Win32::Error(ERROR_FILE_NOT_FOUND);
+						applicationPathBuf.push_back(L' ');
+						applicationPathBuf.append(parts[i]);
+					}
+				}
+			}
+
+			buf.resize(PATHCCH_MAX_CCH);
+			buf.resize(GetFullPathNameW(applicationPath.c_str(), PATHCCH_MAX_CCH, &buf[0], nullptr));
+			if (buf.empty())
+				throw Utils::Win32::Error("GetFullPathNameW");
+			else
+				applicationPath = buf;
+
+			try {
+				if (equivalent(applicationPath, Utils::Win32::Process::Current().PathOf())
+					&& (lstrcmpiW(applicationPath.filename().c_str(), XivAlex::GameExecutable32NameW) == 0
+						|| lstrcmpiW(applicationPath.filename().c_str(), XivAlex::GameExecutable64NameW) == 0)) {
+					if (Dll::IsOriginalCommandLineObfuscated())
+						commandLine = Utils::FromUtf8(Sqex::CommandLine::ToString(Sqex::CommandLine::FromString(Utils::ToUtf8(commandLine)), true));
+				}
+			} catch (...) {
+				// pass
+			}
+
+			if (!commandLine.empty())
+				commandLine = std::format(L"{} {}", Utils::Win32::ReverseCommandLineToArgv(pathForCommandLine), commandLine);
+			else
+				commandLine = Utils::Win32::ReverseCommandLineToArgv(pathForCommandLine);
+
+			result = CreateProcessW.bridge(
+				lpApplicationName ? applicationPath.c_str() : nullptr,
+				lpCommandLine ? commandLine.data() : nullptr,
+				lpProcessAttributes,
+				lpThreadAttributes,
+				bInheritHandles,
+				dwCreationFlags | (noOperation ? 0 : CREATE_SUSPENDED),
+				lpEnvironment,
+				lpCurrentDirectory,
+				lpStartupInfo,
+				lpProcessInformation);
+			if (!result)
+				throw Utils::Win32::Error("CreateProcessW");
+
+#ifdef _DEBUG
+			Dll::MessageBoxF(nullptr, MB_OK,
+				L"CreateProcessW OK\n\n"
+				L"lpApplicationName={}\n"
+				"lpCommandLine={}\n"
+				"resolved lpApplicationName={}\n"
+				"resolved lpCommandLine={}\n",
+				lpApplicationName ? lpApplicationName : L"(nullptr)",
+				lpCommandLine ? lpCommandLine : L"(nullptr)",
+				lpApplicationName ? applicationPath.c_str() : L"(nullptr)",
+				lpCommandLine ? commandLine.c_str() : L"(nullptr)"
+			);
+#endif
+
+		} catch (const Utils::Win32::Error& e) {
+#ifdef _DEBUG
+			Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR,
+				L"CreateProcessW failure: {}\n\n"
+				L"lpApplicationName={}\n"
+				"lpCommandLine={}\n"
+				"resolved lpApplicationName={}\n"
+				"resolved lpCommandLine={}\n",
+				e.what(),
+				lpApplicationName ? lpApplicationName : L"(nullptr)",
+				lpCommandLine ? lpCommandLine : L"(nullptr)",
+				lpApplicationName ? applicationPath.c_str() : L"(nullptr)",
+				lpCommandLine ? commandLine.c_str() : L"(nullptr)"
+			);
+#endif
+			SetLastError(e.Code());
+			return FALSE;
+		} catch (const std::exception& e) {
+			Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR,
+				L"CreateProcessW failure: {}\n\n"
+				L"lpApplicationName={}\n"
+				"lpCommandLine={}\n"
+				"resolved lpApplicationName={}\n"
+				"resolved lpCommandLine={}\n",
+				e.what(),
+				lpApplicationName ? lpApplicationName : L"(nullptr)",
+				lpCommandLine ? lpCommandLine : L"(nullptr)",
+				lpApplicationName ? applicationPath.c_str() : L"(nullptr)",
+				lpCommandLine ? commandLine.c_str() : L"(nullptr)"
+			);
+			SetLastError(ERROR_INTERNAL_ERROR);
+			return FALSE;
+		}
+		if (!noOperation)
 			PostProcessExecution(dwCreationFlags, lpProcessInformation);
 		return result;
 	});
 	m_cleanup += CreateProcessA.SetHook([this](_In_opt_ LPCSTR lpApplicationName, _Inout_opt_ LPSTR lpCommandLine, _In_opt_ LPSECURITY_ATTRIBUTES lpProcessAttributes, _In_opt_ LPSECURITY_ATTRIBUTES lpThreadAttributes, _In_ BOOL bInheritHandles, _In_ DWORD dwCreationFlags, _In_opt_ LPVOID lpEnvironment, _In_opt_ LPCSTR lpCurrentDirectory, _In_ LPSTARTUPINFOA lpStartupInfo, _Out_ LPPROCESS_INFORMATION lpProcessInformation) -> BOOL {
-		const bool noOperation = dwCreationFlags & (DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS);
-		const auto result = CreateProcessA.bridge(
-			lpApplicationName,
-			lpCommandLine,
+		if (!lpStartupInfo) {
+			SetLastError(ERROR_INVALID_PARAMETER);
+			return 0;
+		}
+
+		std::vector<uint8_t> buf;
+		buf.resize(lpStartupInfo->cb);
+		memcpy(&buf[0], lpStartupInfo, lpStartupInfo->cb);
+
+		STARTUPINFOW& siw = *reinterpret_cast<STARTUPINFOW*>(&buf[0]);
+		std::optional<std::wstring> applicationName, commandLine, currentDirectory, reserved, desktop, title;
+		if (lpApplicationName)
+			applicationName = Utils::FromUtf8(lpApplicationName, CP_OEMCP);
+		if (lpCommandLine)
+			commandLine = Utils::FromUtf8(lpCommandLine, CP_OEMCP);
+		if (lpCurrentDirectory)
+			currentDirectory = Utils::FromUtf8(lpCurrentDirectory, CP_OEMCP);
+		if (lpStartupInfo->lpReserved)
+			reserved = Utils::FromUtf8(lpStartupInfo->lpReserved, CP_OEMCP);
+		if (lpStartupInfo->lpDesktop)
+			desktop = Utils::FromUtf8(lpStartupInfo->lpDesktop, CP_OEMCP);
+		if (lpStartupInfo->lpTitle)
+			title = Utils::FromUtf8(lpStartupInfo->lpTitle, CP_OEMCP);
+		siw.lpReserved = reserved ? reserved->data() : nullptr;
+		siw.lpDesktop = desktop ? desktop->data() : nullptr;
+		siw.lpTitle = title ? title->data() : nullptr;
+#ifdef _DEBUG
+		Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR,
+			L"CreateProcessA\n\n"
+			L"lpApplicationName={}\n"
+			"lpCommandLine={}\n",
+			applicationName ? applicationName->c_str() : L"(nullptr)",
+			commandLine ? commandLine->c_str() : L"(nullptr)"
+		);
+#endif
+
+		return CreateProcessW(
+			applicationName ? applicationName->data() : nullptr,
+			commandLine ? commandLine->data() : nullptr,
 			lpProcessAttributes,
 			lpThreadAttributes,
 			bInheritHandles,
-			dwCreationFlags | (noOperation ? 0 : CREATE_SUSPENDED),
+			dwCreationFlags,
 			lpEnvironment,
-			lpCurrentDirectory,
-			lpStartupInfo,
+			currentDirectory ? currentDirectory->data() : nullptr,
+			&siw,
 			lpProcessInformation);
-		if (result && !noOperation)
-			PostProcessExecution(dwCreationFlags, lpProcessInformation);
-		return result;
 	});
 }
 

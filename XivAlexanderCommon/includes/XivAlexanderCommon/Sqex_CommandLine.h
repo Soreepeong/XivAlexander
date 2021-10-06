@@ -12,5 +12,5 @@ namespace Sqex::CommandLine {
 	std::string ToString(const std::vector<std::pair<std::string, std::string>>& map, bool obfuscate);
 
 	void ReverseEvery4Bytes(std::string& s);
-	std::vector<std::string> Split(const std::string& source, char delimiter, size_t maxCount);
+	std::vector<std::string> SplitPreserveDelimiter(const std::string& source, char delimiter, size_t maxCount);
 }

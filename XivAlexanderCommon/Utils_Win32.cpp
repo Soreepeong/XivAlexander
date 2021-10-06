@@ -258,7 +258,7 @@ std::filesystem::path Utils::Win32::GetSystem32Path() {
 	return {std::move(sysDir)};
 }
 
-std::filesystem::path Utils::Win32::EnsureKnownFolderPath(const KNOWNFOLDERID& rfid) {
+std::filesystem::path Utils::Win32::EnsureKnownFolderPath(_In_ REFKNOWNFOLDERID rfid) {
 	PWSTR pszPath;
 	const auto result = SHGetKnownFolderPath(rfid, KF_FLAG_CREATE | KF_FLAG_INIT, nullptr, &pszPath);
 	if (result != S_OK)
@@ -268,18 +268,47 @@ std::filesystem::path Utils::Win32::EnsureKnownFolderPath(const KNOWNFOLDERID& r
 	return std::filesystem::path(pszPath);
 }
 
-std::wstring Utils::Win32::GetCommandLineWithoutProgramName(std::wstring_view line) {
+std::vector<std::wstring> Utils::Win32::CommandLineToArgs(const std::wstring& cmdLine) {
+	// line is null-terminated
+	const auto line = std::wstring_view(cmdLine.empty() ? GetCommandLineW() : cmdLine.c_str());
+	std::vector<std::wstring> args;
+	if (int nArgs; LPWSTR* szArgList = CommandLineToArgvW(line.data(), &nArgs)) {
+		if (szArgList) {
+			for (int i = 0; i < nArgs; i++)
+				args.emplace_back(szArgList[i]);
+			LocalFree(szArgList);
+		}
+	}
+	return args;
+}
+
+std::vector<std::string> Utils::Win32::CommandLineToArgsU8(const std::wstring& cmdLine) {
+	// line is null-terminated
+	const auto line = std::wstring_view(cmdLine.empty() ? GetCommandLineW() : cmdLine.c_str());
+	std::vector<std::string> args;
+	if (int nArgs; LPWSTR* szArgList = CommandLineToArgvW(line.data(), &nArgs)) {
+		if (szArgList) {
+			for (int i = 0; i < nArgs; i++)
+				args.emplace_back(ToUtf8(szArgList[i]));
+			LocalFree(szArgList);
+		}
+	}
+	return args;
+}
+
+std::pair<std::wstring, std::wstring> Utils::Win32::SplitCommandLineIntoNameAndArgs(std::wstring line) {
 	if (line.empty())
 		line = GetCommandLineW();
 	auto inQuote = false;
-	auto ptr = line.data();
+	auto ptr = line.c_str();
 	for (; *ptr && ((*ptr != L' ' && *ptr != L'\t') || inQuote); ++ptr) {
 		if (*ptr == L'\"')
 			inQuote = !inQuote;
 	}
+	std::wstring namePart = CommandLineToArgs(line).front();
 	if (*ptr)
 		++ptr;
-	return ptr;
+	return {std::move(namePart), ptr};
 }
 
 // https://docs.microsoft.com/en-us/archive/blogs/twistylittlepassagesallalike/everyone-quotes-command-line-arguments-the-wrong-way

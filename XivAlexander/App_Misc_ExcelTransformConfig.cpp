@@ -153,6 +153,6 @@ void App::Misc::ExcelTransformConfig::from_json(const nlohmann::json& j, Config&
 			o.replacementTemplates.emplace(pair.key(), std::move(newItem));
 		}
 	}
-	o.ignoredCells = j.at("ignoredCells").get<decltype(o.ignoredCells)>();
+	o.ignoredCells = j.value("ignoredCells", decltype(o.ignoredCells)());
 	o.rules = j.at("rules").get<decltype(o.rules)>();
 }

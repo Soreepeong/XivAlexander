@@ -43,6 +43,7 @@ namespace Dll {
 	}
 
 	std::wstring_view GetOriginalCommandLine();
+	bool IsOriginalCommandLineObfuscated();
 	void SetLoadedFromEntryPoint();
 	[[nodiscard]] bool IsLoadedFromEntryPoint();
 }

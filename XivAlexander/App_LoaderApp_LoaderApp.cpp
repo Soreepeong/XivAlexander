@@ -96,9 +96,8 @@ public:
 			throw std::logic_error("invalid m_action value");
 
 		} catch (const std::exception& e) {
-			if (e.what())
-				Dll::MessageBoxF(nullptr, MB_ICONWARNING, IDS_ERROR_UNEXPECTED,
-					std::format(L"{}\nSeDebugPrivilege: {}", e.what(), m_errorClaimingSeDebugPrivilege.empty() ? "OK" : m_errorClaimingSeDebugPrivilege));
+			Dll::MessageBoxF(nullptr, MB_ICONWARNING, IDS_ERROR_UNEXPECTED,
+				std::format(L"{}\nSeDebugPrivilege: {}", e.what(), m_errorClaimingSeDebugPrivilege.empty() ? "OK" : m_errorClaimingSeDebugPrivilege));
 
 			return -1;
 		}
@@ -120,14 +119,14 @@ private:
 		} catch (const std::exception& e) {
 			if (Dll::MessageBoxF(nullptr, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON1, IDS_ERROR_COMPONENTS, e.what()) == IDYES)
 				ShellExecutePathOrThrow(FindStringResourceEx(Dll::Module(), IDS_URL_RELEASES) + 1);
-			throw std::exception(nullptr);
+			ExitProcess(-1);
 		}
 	}
 
 	void RunElevatedSelfIfPossible() {
 		try {
 			ExitProcess(Utils::Win32::RunProgram({
-				.args = std::format(L"--disable-runas {}", Utils::Win32::GetCommandLineWithoutProgramName()),
+				.args = std::format(L"--disable-runas {}", Utils::Win32::SplitCommandLineIntoNameAndArgs().second),
 				.elevateMode = Utils::Win32::RunProgramParams::Force,
 			}).WaitAndGetExitCode());
 		} catch (const std::exception&) {

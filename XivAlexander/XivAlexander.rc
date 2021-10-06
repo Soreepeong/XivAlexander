@@ -313,7 +313,7 @@ BEGIN
                             "<a href=""issues"">XivAlexander‚ÌGitHub‚ÌIssueƒy[ƒW</a>‚ğŠJ‚¯‚é"
     IDS_CONFIRM_RESTART_GAME 
                             "ƒQ[ƒ€‚ğ‹­§“I‚ÉÄ‹N“®‚µ‚Ü‚·‚©H\n\nDirectX11‚Ìg—pF{}\nXivAlexander‚Ìg—pF{}\nƒRƒ}ƒ“ƒhƒ‰ƒCƒ“‚Ì“ï“Ç‰»‚Ìg—pF{}\nŠÇ—ÒŒ ŒÀ‚ÅÀsF{}\nŒ¾ŒêF{}\n’nˆæF{}"
-    IDS_MAIN_TEXT           "PID: {}\nƒQ[ƒ€‚ÌƒCƒ“ƒXƒg[ƒ‹æ: {}\nƒQ[ƒ€‚Ìƒo[ƒWƒ‡ƒ“: {} ({})\n\n{}"
+    IDS_MAIN_TEXT           "PID: {}\nƒQ[ƒ€‚ÌƒCƒ“ƒXƒg[ƒ‹æ: {}\nƒRƒ}ƒ“ƒhƒ‰ƒCƒ“F{}\nƒQ[ƒ€‚Ìƒo[ƒWƒ‡ƒ“: {} ({})\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "ŠÂ‹«İ’è"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcode‚Ìİ’è"
@@ -824,7 +824,7 @@ BEGIN
                             "<a href=""issues"">XivAlexanderÀÇ GitHub ÀÌ½´ ÆäÀÌÁö</a> ¿­±â"
     IDS_CONFIRM_RESTART_GAME 
                             "°ÔÀÓÀ» °­Á¦·Î Àç½ÃÀÛÇÏ½Ã°Ú½À´Ï±î?\n\nDirectX 11 »ç¿ë: {}\nXivAlexander »ç¿ë: {}\n¸í·ÉÁÙ ³­µ¶È­ »ç¿ë: {}\n°ü¸®ÀÚ ±ÇÇÑÀ¸·Î ½ÇÇà: {}\n¾ğ¾î: {}\nÁö¿ª: {}"
-    IDS_MAIN_TEXT           "PID: {}\n°ÔÀÓ °æ·Î: {}\n°ÔÀÓ ¹öÀü: {} ({})\n\n{}"
+    IDS_MAIN_TEXT           "PID: {}\n°ÔÀÓ °æ·Î: {}\nÀÎÀÚ: {}\n°ÔÀÓ ¹öÀü: {} ({})\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "ÇÁ·Î±×·¥ ¼³Á¤ ÆíÁı"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "¿ÉÄÚµå ¼³Á¤ ÆíÁı"
@@ -1252,8 +1252,8 @@ IDI_TRAY_ICON           ICON                    "..\\Graphics\\Icon.ico"
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,14,8,27
- PRODUCTVERSION 1,14,8,27
+ FILEVERSION 1,14,8,28
+ PRODUCTVERSION 1,14,8,28
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -1270,12 +1270,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Soreepeong"
             VALUE "FileDescription", "XivAlexander Main DLL"
-            VALUE "FileVersion", "1.14.8.27"
+            VALUE "FileVersion", "1.14.8.28"
             VALUE "InternalName", "XivAlexander.dll"
             VALUE "LegalCopyright", "Copyright (C) 2021"
             VALUE "OriginalFilename", "XivAlexander.dll"
             VALUE "ProductName", "XivAlexander"
-            VALUE "ProductVersion", "1.14.8.27"
+            VALUE "ProductVersion", "1.14.8.28"
         END
     END
     BLOCK "VarFileInfo"
@@ -1460,7 +1460,7 @@ BEGIN
                             "Report to <a href=""issues"">XivAlexander Issues at GitHub</a>"
     IDS_CONFIRM_RESTART_GAME 
                             "Do you want to force restart the game?\n\nUse DirectX 11: {}\nUse XivAlexander: {}\nUse Parameter Obfuscation: {}\nUse Elevation (Run as Administrator): {}\nGame Language: {}\nRegion: {}"
-    IDS_MAIN_TEXT           "Process ID: {}\nGame Path: {}\nGame Release: {} ({})\n\n{}"
+    IDS_MAIN_TEXT           "Process ID: {}\nGame Path: {}\nArguments: {}\nGame Release: {} ({})\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "Runtime Configuration Editor"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcode Configuration Editor"
