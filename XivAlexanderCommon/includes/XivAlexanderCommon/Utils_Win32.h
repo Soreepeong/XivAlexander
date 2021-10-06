@@ -78,7 +78,10 @@ namespace Utils::Win32 {
 		bool throwOnCancel = false;
 	};
 
-	std::wstring GetCommandLineWithoutProgramName(std::wstring_view = {});
+	// Needs to be null-terminated, and wstring_view does not guarantee that
+	std::vector<std::wstring> CommandLineToArgs(const std::wstring& = {});
+	std::vector<std::string> CommandLineToArgsU8(const std::wstring& = {});
+	std::pair<std::wstring, std::wstring> SplitCommandLineIntoNameAndArgs(std::wstring = {});
 	std::wstring ReverseCommandLineToArgv(const std::wstring& argv);
 	std::wstring ReverseCommandLineToArgv(const std::span<const std::wstring>& argv);
 	std::wstring ReverseCommandLineToArgv(const std::initializer_list<const std::wstring>& argv);

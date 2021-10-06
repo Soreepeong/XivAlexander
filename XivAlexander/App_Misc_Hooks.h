@@ -68,6 +68,10 @@ namespace App::Misc::Hooks {
 			return m_bridge(std::forward<Args>(args)...);
 		}
 
+		R operator()(Args...args) const {
+			return this->m_pAddress(std::forward<Args>(args)...);
+		}
+
 		[[nodiscard]] virtual bool IsDisableable() const {
 			return true;
 		}

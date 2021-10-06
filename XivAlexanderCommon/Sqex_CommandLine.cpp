@@ -52,13 +52,13 @@ std::vector<std::pair<std::string, std::string>> Sqex::CommandLine::FromString(s
 				ReverseEvery4Bytes(decrypted);
 				source.clear();
 
-				for (const auto& item : Split(decrypted, '/', SIZE_MAX)) {
-					const auto keyValue = Split(item, '=', 1);
+				for (const auto& item : SplitPreserveDelimiter(decrypted, '/', SIZE_MAX)) {
+					const auto keyValue = SplitPreserveDelimiter(item, '=', 1);
 					if (keyValue.size() == 1)
-						res.emplace_back(Utils::StringReplaceAll<std::string>(keyValue[0], "  ", " "), "");
+						res.emplace_back(Utils::StringReplaceAll<std::string>(Utils::ToUtf8(Utils::FromUtf8(keyValue[0], CP_OEMCP)), "  ", " "), "");
 					else
-						res.emplace_back(Utils::StringReplaceAll<std::string>(keyValue[0], "  ", " "),
-							Utils::StringReplaceAll<std::string>(keyValue[1], "  ", " "));
+						res.emplace_back(Utils::StringReplaceAll<std::string>(Utils::ToUtf8(Utils::FromUtf8(keyValue[0], CP_OEMCP)), "  ", " "),
+							Utils::StringReplaceAll<std::string>(Utils::ToUtf8(Utils::FromUtf8(keyValue[1], CP_OEMCP)), "  ", " "));
 				}
 				if (wasObfuscated)
 					*wasObfuscated = true;
@@ -99,8 +99,8 @@ std::string Sqex::CommandLine::ToString(const std::vector<std::pair<std::string,
 				if (k == "T")
 					continue;
 
-				plain << " /" << Utils::StringReplaceAll<std::string>(k, " ", "  ")
-					<< " =" << Utils::StringReplaceAll<std::string>(v, " ", "  ");
+				plain << " /" << Utils::StringReplaceAll<std::string>(Utils::ToUtf8(Utils::FromUtf8(k), CP_OEMCP), " ", "  ")
+					<< " =" << Utils::StringReplaceAll<std::string>(Utils::ToUtf8(Utils::FromUtf8(v), CP_OEMCP), " ", "  ");
 			}
 			encrypted = plain.str();
 		}
@@ -140,7 +140,7 @@ void Sqex::CommandLine::ReverseEvery4Bytes(std::string& s) {
 		i = _byteswap_ulong(i);
 }
 
-std::vector<std::string> Sqex::CommandLine::Split(const std::string& source, char delimiter, size_t maxCount) {
+std::vector<std::string> Sqex::CommandLine::SplitPreserveDelimiter(const std::string& source, char delimiter, size_t maxCount) {
 	std::vector<std::string> split;
 	split.resize(1);
 	auto begin = false;
@@ -151,9 +151,8 @@ std::vector<std::string> Sqex::CommandLine::Split(const std::string& source, cha
 			continue;
 
 		if (c == delimiter)
-			split.emplace_back(&c, 1);
-		else
-			split.back() += c;
+			split.emplace_back();
+		split.back().push_back(c);
 	}
 	for (size_t i = 1; i < split.size();) {
 		const auto nonspace = split[i - 1].find_last_not_of(' ');

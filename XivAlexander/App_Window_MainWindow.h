@@ -29,7 +29,8 @@ namespace App::Window {
 		bool m_bUseElevation;
 		Sqex::Language m_gameLanguage = Sqex::Language::Unspecified;
 		Sqex::Region m_gameRegion = Sqex::Region::Unspecified;
-		std::vector<std::pair<std::string, std::string>> m_launchParameters;
+		const std::vector<std::pair<std::string, std::string>> m_launchParameters;
+		const std::string m_startupArgumentsForDisplay;
 
 		std::map<uint16_t, std::function<void()>> m_menuIdCallbacks;
 

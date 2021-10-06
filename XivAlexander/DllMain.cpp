@@ -113,6 +113,7 @@ DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 }
 
 static std::wstring_view s_originalCommandLine;
+static bool s_originalCommandLineIsObfuscated;
 
 static void CheckObfuscatedArguments() {
 	const auto process = Utils::Win32::Process::Current();
@@ -130,13 +131,11 @@ static void CheckObfuscatedArguments() {
 			LocalFree(szArgList);
 		}
 		if (args.size() == 2) {
-			auto wasObfuscated = false;
-
 			// Once this function is called, it means that this dll will stick to the process until it exits,
 			// so it's safe to store stuff into static variables.
 
-			static const auto pairs = Sqex::CommandLine::FromString(args[1], &wasObfuscated);
-			if (wasObfuscated) {
+			static const auto pairs = Sqex::CommandLine::FromString(args[1], &s_originalCommandLineIsObfuscated);
+			if (s_originalCommandLineIsObfuscated) {
 				static auto newlyCreatedArgumentsW = std::format(L"\"{}\" {}", process.PathOf().wstring(), Sqex::CommandLine::ToString(pairs, false));
 				static auto newlyCreatedArgumentsA = Utils::ToUtf8(newlyCreatedArgumentsW, CP_OEMCP);
 
@@ -165,23 +164,19 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 			try {
 				s_hModule.Attach(hInstance, Utils::Win32::LoadedModule::Null, false, "Instance attach failed <cannot happen>");
 				s_hActivationContext = Utils::Win32::ActivationContext(ACTCTXW{
-					.cbSize = sizeof ACTCTXW,
+					.cbSize = static_cast<ULONG>(sizeof ACTCTXW),
 					.dwFlags = ACTCTX_FLAG_HMODULE_VALID | ACTCTX_FLAG_RESOURCE_NAME_VALID,
 					.lpResourceName = MAKEINTRESOURCE(IDR_RT_MANIFEST_LATE_ACTIVATION),
 					.hModule = Dll::Module(),
 				});
-
-				if (s_bLoadedAsDependency) {
-					if (lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), XivAlex::XivAlexLoaderNameW) == 0)
-						MH_Initialize();
-					else {
-						GetEnvironmentVariableW(L"XIVALEXANDER_DISABLE", nullptr, 0);
-						if (GetLastError() == ERROR_ENVVAR_NOT_FOUND) {
-							Dll::DisableUnloading(std::format("Loaded as DLL dependency in place of {}", Dll::Module().PathOf().filename()).c_str());
-							const auto params = XivAlexDll::PatchEntryPointForInjection(GetCurrentProcess());
-							params->SkipFree = true;
-							params->LoadInstalledXivAlexDllOnly = true;
-						}
+				
+				if (s_bLoadedAsDependency && lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), XivAlex::GameExecutableNameW) == 0) {
+					GetEnvironmentVariableW(L"XIVALEXANDER_DISABLE", nullptr, 0);
+					if (GetLastError() == ERROR_ENVVAR_NOT_FOUND) {
+						Dll::DisableUnloading(std::format("Loaded as DLL dependency in place of {}", Dll::Module().PathOf().filename()).c_str());
+						const auto params = XivAlexDll::PatchEntryPointForInjection(GetCurrentProcess());
+						params->SkipFree = true;
+						params->LoadInstalledXivAlexDllOnly = true;
 					}
 				} else {
 					MH_Initialize();
@@ -308,6 +303,10 @@ int Dll::MessageBoxF(HWND hWnd, UINT uType, UINT stringResId) {
 
 std::wstring_view Dll::GetOriginalCommandLine() {
 	return s_originalCommandLine;
+}
+
+bool Dll::IsOriginalCommandLineObfuscated() {
+	return s_originalCommandLineIsObfuscated;
 }
 
 void Dll::SetLoadedFromEntryPoint() {

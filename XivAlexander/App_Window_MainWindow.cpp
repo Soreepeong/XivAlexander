@@ -58,11 +58,31 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 	, m_bUseElevation(Utils::Win32::IsUserAnAdmin())
 	, m_launchParameters([this]() -> decltype(m_launchParameters) {
 		try {
-			return Sqex::CommandLine::FromString(Utils::ToUtf8(Utils::Win32::GetCommandLineWithoutProgramName(Dll::GetOriginalCommandLine())), &m_bUseParameterObfuscation);
+			const auto args = Utils::Win32::CommandLineToArgsU8(std::wstring(Dll::GetOriginalCommandLine()));
+			switch (args.size()) {
+				case 0:
+				case 1:
+					throw std::runtime_error("Empty arguments");
+				case 2:
+					return Sqex::CommandLine::FromString(args[1], &m_bUseParameterObfuscation);
+				default:
+					return Sqex::CommandLine::FromString(Utils::Win32::ReverseCommandLineToArgv(std::span(args).subspan(1)), &m_bUseParameterObfuscation);
+			}
 		} catch (const std::exception& e) {
 			m_logger->Format<LogLevel::Warning>(LogCategory::General, m_config->Runtime.GetLangId(), IDS_WARNING_GAME_PARAMETER_PARSE, e.what());
 			return {};
 		}
+	}())
+	, m_startupArgumentsForDisplay([this]() {
+		auto params = m_launchParameters;
+		for (auto& [k, v] : params) {
+			if (k == "DEV.TestSID") {
+				for (auto& c : v)
+					c = '*';
+				v += std::format("({})", v.size());
+			}
+		}
+		return Sqex::CommandLine::ToString(params, false);
 	}()) {
 
 	std::tie(m_sRegion, m_sVersion) = XivAlex::ResolveGameReleaseRegion();
@@ -234,7 +254,7 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 		if (!lParam) {
 			try {
 				const auto menuId = LOWORD(wParam);
-				if (m_menuIdCallbacks.find(menuId) != m_menuIdCallbacks.end()) {
+				if (m_menuIdCallbacks.contains(menuId)) {
 					m_menuIdCallbacks[menuId]();
 				} else {
 					OnCommand_Menu_File(menuId);
@@ -304,7 +324,7 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 		std::wstring str;
 		try {
 			str = m_config->Runtime.FormatStringRes(IDS_MAIN_TEXT,
-				GetCurrentProcessId(), m_path, m_sVersion, m_sRegion,
+				GetCurrentProcessId(), m_path, m_startupArgumentsForDisplay, m_sVersion, m_sRegion,
 				m_pApp->GetSocketHook()->Describe());
 		} catch (...) {
 			// pass
@@ -371,7 +391,7 @@ UINT_PTR App::Window::MainWindow::RepopulateMenu_AllocateMenuId(std::function<vo
 		.fMask = MIIM_STATE,
 	};
 
-	while (m_menuIdCallbacks.find(counter) != m_menuIdCallbacks.end() || GetMenuItemInfoW(hMenu, counter, MF_BYCOMMAND, &mii))
+	while (m_menuIdCallbacks.contains(counter) || GetMenuItemInfoW(hMenu, counter, MF_BYCOMMAND, &mii))
 		++counter;
 	m_menuIdCallbacks.emplace(counter, std::move(cb));
 	return counter;
@@ -730,6 +750,10 @@ void App::Window::MainWindow::AskRestartGame(bool onlyOnModifier) {
 			if (!found)
 				params.emplace_back("SYS.Region", std::format("{}", static_cast<int>(m_gameRegion)));
 		}
+		const auto args = Sqex::CommandLine::ToString(params, m_bUseParameterObfuscation);
+		if (args.empty()) {
+			throw std::runtime_error("Failed to encode arguments");
+		}
 
 		XivAlexDll::EnableInjectOnCreateProcess(0);
 		const auto revertInjectOnCreateProcess = Utils::CallOnDestruction([]() { XivAlexDll::EnableInjectOnCreateProcess(XivAlexDll::InjectOnCreateProcessAppFlags::Use | XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly); });
@@ -744,13 +768,13 @@ void App::Window::MainWindow::AskRestartGame(bool onlyOnModifier) {
 		if (!Dll::IsLoadedAsDependency() && m_bUseXivAlexander)
 			ok = Utils::Win32::RunProgram({
 				.path = Dll::Module().PathOf().parent_path() / (m_bUseDirectX11 ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW),
-				.args = std::format(L"-a launcher -l select \"{}\" {}", game, Sqex::CommandLine::ToString(params, m_bUseParameterObfuscation)),
+				.args = std::format(L"-a launcher -l select \"{}\" {}", game, args),
 				.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
 			});
 		else
 			ok = Utils::Win32::RunProgram({
 				.path = game,
-				.args = Utils::FromUtf8(Sqex::CommandLine::ToString(params, m_bUseParameterObfuscation)),
+				.args = Utils::FromUtf8(args),
 				.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
 			});
 
@@ -1767,7 +1791,7 @@ void App::Window::MainWindow::EnsureAndOpenDirectory(const std::filesystem::path
 		create_directories(path);
 
 	SHELLEXECUTEINFOW se{
-		.cbSize = sizeof SHELLEXECUTEINFOW,
+		.cbSize = static_cast<DWORD>(sizeof SHELLEXECUTEINFOW),
 		.hwnd = m_hWnd,
 		.lpVerb = L"explore",
 		.lpFile = path.c_str(),
