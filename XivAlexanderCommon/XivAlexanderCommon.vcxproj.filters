@@ -40,6 +40,9 @@
     <Filter Include="Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29">
       <UniqueIdentifier>{efb71632-499e-4880-875e-ddbd81be0ea3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Square Enix Definitions\Game Resource Files\Sound %28.scd%29">
+      <UniqueIdentifier>{63c632e9-165b-493d-a2de-5f20d1ebc928}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -175,6 +178,12 @@
     <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_TaskDialogBuilder.h">
       <Filter>Windows API Wrappers</Filter>
     </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sound.h">
+      <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sound_Reader.h">
+      <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -289,6 +298,12 @@
     </ClCompile>
     <ClCompile Include="Utils_Win32_TaskDialogBuilder.cpp">
       <Filter>Windows API Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Sound_Reader.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Sound.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

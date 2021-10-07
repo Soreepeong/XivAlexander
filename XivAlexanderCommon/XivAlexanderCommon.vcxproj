@@ -30,6 +30,8 @@
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_GdiFont.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_SeCompatibleDrawableFont.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_SeCompatibleFont.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sound.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sound_Reader.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_EntryProvider.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_EntryRawStream.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Texture_Mipmap.h" />
@@ -64,6 +66,7 @@
     <ClInclude Include="includes\XivAlexanderCommon\XaZlib.h" />
     <ClInclude Include="includes\XivAlexanderCommon\XivAlex.h" />
     <ClInclude Include="pch.h" />
+    <ClCompile Include="Sqex_Sound.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Sqex_EscapedString.cpp" />
@@ -76,6 +79,7 @@
     <ClCompile Include="Sqex_FontCsv_FreeTypeFont.cpp" />
     <ClCompile Include="Sqex_FontCsv_GdiFont.cpp" />
     <ClCompile Include="Sqex_FontCsv_SeCompatibleFont.cpp" />
+    <ClCompile Include="Sqex_Sound_Reader.cpp" />
     <ClCompile Include="Sqex_Sqpack_EntryRawStream.cpp" />
     <ClCompile Include="Sqex_Texture.cpp" />
     <ClCompile Include="Sqex_Texture_ModifiableTextureStream.cpp" />
