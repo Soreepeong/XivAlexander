@@ -637,6 +637,7 @@ void App::Window::MainWindow::SetMenuStates() const {
 	{
 		SetMenuState(hMenu, ID_MODDING_ENABLE, config.UseModding, true);
 		SetMenuState(hMenu, ID_MODDING_LOGALLHASHKEYS, config.UseHashTrackerKeyLogging, true);
+		SetMenuState(hMenu, ID_MODDING_LOGALLFILEACCESS, config.LogAllDataFileRead, true);
 
 		const auto languageList = config.GetFallbackLanguageList();
 		SetMenuState(hMenu, ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1, false, true, config.GetLanguageNameLocalized(languageList[0]));
@@ -661,6 +662,11 @@ void App::Window::MainWindow::SetMenuStates() const {
 		SetMenuState(hMenu, ID_MODDING_AUDIOLANGUAGE_JAPANESE, config.VoiceResourceLanguageOverride == Sqex::Language::Japanese, true);
 		SetMenuState(hMenu, ID_MODDING_AUDIOLANGUAGE_CHINESESIMPLIFIED, config.VoiceResourceLanguageOverride == Sqex::Language::ChineseSimplified, true);
 		SetMenuState(hMenu, ID_MODDING_AUDIOLANGUAGE_KOREAN, config.VoiceResourceLanguageOverride == Sqex::Language::Korean, true);
+
+		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_BATTLE, config.MuteVoice_Battle, true);
+		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_CM, config.MuteVoice_Cm, true);
+		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_EMOTE, config.MuteVoice_Emote, true);
+		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_LINE, config.MuteVoice_Line, true);
 
 		SetMenuState(hMenu, ID_MODDING_CHANGEFONT_DISABLE, config.OverrideFontConfig.Value().empty(), true);
 	}
@@ -1081,6 +1087,22 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 
 		case ID_MODDING_AUDIOLANGUAGE_KOREAN:
 			config.VoiceResourceLanguageOverride = Sqex::Language::Korean;
+			return;
+
+		case ID_MODDING_MUTEVOICE_BATTLE:
+			config.MuteVoice_Battle = !config.MuteVoice_Battle;
+			return;
+
+		case ID_MODDING_MUTEVOICE_CM:
+			config.MuteVoice_Cm = !config.MuteVoice_Cm;
+			return;
+
+		case ID_MODDING_MUTEVOICE_EMOTE:
+			config.MuteVoice_Emote = !config.MuteVoice_Emote;
+			return;
+
+		case ID_MODDING_MUTEVOICE_LINE:
+			config.MuteVoice_Line = !config.MuteVoice_Line;
 			return;
 
 		case ID_MODDING_CHANGEFONT_OPENPRESETDIRECTORY:

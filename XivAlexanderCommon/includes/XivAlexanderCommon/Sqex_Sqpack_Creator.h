@@ -64,6 +64,7 @@ namespace Sqex::Sqpack {
 		SqpackViews AsViews(bool strict);
 
 		std::shared_ptr<RandomAccessStream> operator[](const EntryPathSpec& pathSpec) const;
+		std::vector<EntryPathSpec> AllPathSpec() const;
 	};
 
 }

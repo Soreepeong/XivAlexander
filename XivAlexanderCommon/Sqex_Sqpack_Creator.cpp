@@ -677,3 +677,11 @@ std::shared_ptr<Sqex::RandomAccessStream> Sqex::Sqpack::Creator::operator[](cons
 		return std::make_shared<BufferedRandomAccessStream>(std::make_shared<EntryRawStream>(it->second->Provider));
 	throw std::out_of_range("pathSpec not found");
 }
+
+std::vector<Sqex::Sqpack::EntryPathSpec> Sqex::Sqpack::Creator::AllPathSpec() const {
+	std::vector<EntryPathSpec> res;
+	res.reserve(m_pImpl->m_entries.size());
+	for (const auto& entry : m_pImpl->m_entries)
+		res.emplace_back(entry->Provider->PathSpec());
+	return res;
+}

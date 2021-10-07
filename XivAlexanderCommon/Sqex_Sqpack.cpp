@@ -297,7 +297,12 @@ void Sqex::Sqpack::SqData::Header::Verify(uint32_t expectedSpanIndex) const {
 }
 
 uint32_t Sqex::Sqpack::SqexHash(const char* data, size_t len) {
-	std::string normalizedText(data, len);
+	std::string normalizedText;
+	if (len == SIZE_MAX) {
+		normalizedText = data;
+		len = normalizedText.size();
+	} else
+		normalizedText = {data, len};
 	for (auto& c : normalizedText) {
 		if ('A' <= c && c <= 'Z')
 			c -= 'A' - 'a';

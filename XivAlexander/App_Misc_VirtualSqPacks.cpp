@@ -5,6 +5,8 @@
 #include <XivAlexanderCommon/Sqex_Excel_Generator.h>
 #include <XivAlexanderCommon/Sqex_Excel_Reader.h>
 #include <XivAlexanderCommon/Sqex_FontCsv_Creator.h>
+#include <XivAlexanderCommon/Sqex_Sound_Reader.h>
+#include <XivAlexanderCommon/Sqex_Sound_Writer.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Creator.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_EntryProvider.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
@@ -40,6 +42,10 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 	std::vector<TtmpSet> TtmpSets;
 
+	std::shared_ptr<const Sqex::RandomAccessStream> EmptyScd;
+
+	Utils::CallOnDestruction::Multiple Cleanup;
+
 	Implementation(VirtualSqPacks* sqpacks, std::filesystem::path sqpackPath)
 		: Sqpacks(*sqpacks)
 		, Config(Config::Acquire())
@@ -50,10 +56,19 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		Window::ProgressPopupWindow progressWindow(Dll::FindGameMainWindow(false));
 		progressWindow.Show();
 		InitializeSqPacks(progressWindow);
-		ReflectEnabledTtmp(true);
+		ReflectUsedEntries(true);
+
+		Cleanup += Config->Runtime.MuteVoice_Battle.OnChangeListener([this](auto&) { ReflectUsedEntries(); });
+		Cleanup += Config->Runtime.MuteVoice_Cm.OnChangeListener([this](auto&) { ReflectUsedEntries(); });
+		Cleanup += Config->Runtime.MuteVoice_Emote.OnChangeListener([this](auto&) { ReflectUsedEntries(); });
+		Cleanup += Config->Runtime.MuteVoice_Line.OnChangeListener([this](auto&) { ReflectUsedEntries(); });
 	}
 
-	void ReflectEnabledTtmp(bool isCalledFromConstructor = false) {
+	~Implementation() {
+		Cleanup.Clear();
+	}
+
+	void ReflectUsedEntries(bool isCalledFromConstructor = false) {
 		const auto pApp = XivAlexApp::GetCurrentApp();
 		const auto mainThreadStallEvent = Utils::Win32::Event::Create();
 		const auto mainThreadStalledEvent = Utils::Win32::Event::Create();
@@ -85,8 +100,32 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			const auto resumeIo = Utils::CallOnDestruction([this]() { IoLockEvent.Set(); });
 		}
 
-		// Step. Find placeholders to adjust
 		std::map<Sqex::Sqpack::EntryPathSpec, std::tuple<Sqex::Sqpack::HotSwappableEntryProvider*, std::shared_ptr<Sqex::Sqpack::EntryProvider>, std::string>> replacements;
+
+		// Step. Find voices to enable or disable
+		const auto voBattle = Sqex::Sqpack::SqexHash("sound/voice/vo_battle", SIZE_MAX);
+		const auto voCm = Sqex::Sqpack::SqexHash("sound/voice/vo_cm", SIZE_MAX);
+		const auto voEmote = Sqex::Sqpack::SqexHash("sound/voice/vo_emote", SIZE_MAX);
+		const auto voLine = Sqex::Sqpack::SqexHash("sound/voice/vo_line", SIZE_MAX);
+		for (const auto& [k, v] : SqpackViews.at(SqpackPath / L"ffxiv/070000.win32.index").EntryProviders) {
+			const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(v);
+			if (!provider)
+				continue;
+
+			if (k.PathHash == voBattle || k.PathHash == voCm || k.PathHash == voEmote || k.PathHash == voLine)
+				replacements.insert_or_assign(k, std::make_tuple(provider, std::shared_ptr<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(), std::string()));
+
+			if (k.PathHash == voBattle && Config->Runtime.MuteVoice_Battle)
+				std::get<1>(replacements.at(k)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(k, EmptyScd);
+			if (k.PathHash == voCm && Config->Runtime.MuteVoice_Cm)
+				std::get<1>(replacements.at(k)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(k, EmptyScd);
+			if (k.PathHash == voEmote && Config->Runtime.MuteVoice_Emote)
+				std::get<1>(replacements.at(k)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(k, EmptyScd);
+			if (k.PathHash == voLine && Config->Runtime.MuteVoice_Line)
+				std::get<1>(replacements.at(k)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(k, EmptyScd);
+		}
+
+		// Step. Find placeholders to adjust
 		for (const auto& ttmp : TtmpSets) {
 			for (const auto& entry : ttmp.List.SimpleModsList) {
 				const auto it = SqpackViews.find(SqpackPath / std::format(L"ffxiv/{}.win32.index", entry.DatFile));
@@ -130,16 +169,16 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		}
 
 		// Step. Unregister TTMP files that no longer exist and delete associated files
-		for (auto it = TtmpSets.begin(); it != TtmpSets.end(); ) {
+		for (auto it = TtmpSets.begin(); it != TtmpSets.end();) {
 			if (!exists(it->ListPath)) {
 				it->DataFile.Clear();
 				for (const auto& path : {
-					it->ListPath,
-					it->ListPath.parent_path() / "TTMPD.mpd",
-					it->ListPath.parent_path() / "choices.json",
-					it->ListPath.parent_path() / "disable",
-					it->ListPath.parent_path(),
-				}) {
+						it->ListPath,
+						it->ListPath.parent_path() / "TTMPD.mpd",
+						it->ListPath.parent_path() / "choices.json",
+						it->ListPath.parent_path() / "disable",
+						it->ListPath.parent_path(),
+					}) {
 					try {
 						remove(path);
 					} catch (...) {
@@ -164,10 +203,10 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					SetFileInformationByHandle(it->DataFile, FileRenameInfo, &renameInfoBuffer[0], static_cast<DWORD>(renameInfoBuffer.size()));
 
 					for (const auto& path : {
-						"TTMPD.mpd",
-						"choices.json",
-						"disable",
-					}) {
+							"TTMPD.mpd",
+							"choices.json",
+							"disable",
+						}) {
 						const auto oldPath = it->ListPath.parent_path() / path;
 						if (exists(oldPath))
 							std::filesystem::rename(oldPath, it->RenameTo / path);
@@ -242,10 +281,12 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		// Step. Apply replacements
 		for (const auto& pathSpec : replacements | std::views::keys) {
 			auto& [place, newEntry, description] = replacements.at(pathSpec);
-			if (description.empty())
-				Logger->Format(LogCategory::VirtualSqPacks, "Reset: {}", pathSpec);
-			else
-				Logger->Format(LogCategory::VirtualSqPacks, "{}: {}", description, pathSpec);
+			if (!description.empty()) {
+				if (newEntry)
+					Logger->Format(LogCategory::VirtualSqPacks, "{}: {}", description, pathSpec);
+				else
+					Logger->Format(LogCategory::VirtualSqPacks, "Reset: {}", pathSpec);
+			}
 			place->SwapStream(std::move(newEntry));
 		}
 
@@ -280,10 +321,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		{
 			std::vector<std::filesystem::path> ttmpls;
 			std::vector<std::filesystem::path> dirs;
-			if (Config->Runtime.UseDefaultTexToolsModPackSearchDirectory) {
-				dirs.emplace_back(SqpackPath / "TexToolsMods");
-				dirs.emplace_back(Config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods");
-			}
+			dirs.emplace_back(SqpackPath / "TexToolsMods");
+			dirs.emplace_back(Config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods");
 
 			for (const auto& dir : Config->Runtime.AdditionalTexToolsModPackSearchDirectories.Value()) {
 				if (!dir.empty())
@@ -374,6 +413,22 @@ struct App::Misc::VirtualSqPacks::Implementation {
 									Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
 										"\t=> Error processing {}: {}", error.first, error.second);
 								}
+							}
+
+							if (creator.DatExpac == "ffxiv" && creator.DatName == "070000") {
+								const auto reader = Sqex::Sound::ScdReader(creator["sound/system/sample_system.scd"]);
+								Sqex::Sound::ScdWriter writer;
+								writer.SetTable1(reader.ReadTable1Entries());
+								writer.SetTable4(reader.ReadTable4Entries());
+								writer.SetTable2(reader.ReadTable2Entries());
+								for (size_t i = 0; i < 256; ++i) {
+									writer.SetSoundEntry(i, Sqex::Sound::ScdWriter::SoundEntry::EmptyEntry());
+								}
+								EmptyScd = std::make_shared<Sqex::MemoryRandomAccessStream>(
+									Sqex::Sqpack::MemoryBinaryEntryProvider("dummy/dummy", std::make_shared<Sqex::MemoryRandomAccessStream>(writer.Export()))
+									.ReadStreamIntoVector<uint8_t>(0));
+								for (const auto& pathSpec : creator.AllPathSpec())
+									creator.ReserveSwappableSpace(pathSpec, static_cast<uint32_t>(EmptyScd->StreamSize()));
 							}
 
 							if (creator.DatExpac != "ffxiv" || creator.DatName != "0a0000") {
@@ -868,7 +923,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 										else {
 											auto& row = it->second;
 											for (size_t i = 0; i < row.size(); ++i) {
-												if (columnsToNeverModify.find(i) != columnsToNeverModify.end()) {
+												if (columnsToNeverModify.contains(i)) {
 													row[i] = (*referenceRow)[i];
 												}
 											}
@@ -882,7 +937,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 										if (rules == rowReplacementRules.end())
 											continue;
 
-										std::set<ExcelTransformConfig::IgnoredCell> *currentIgnoredCells = nullptr;
+										std::set<ExcelTransformConfig::IgnoredCell>* currentIgnoredCells = nullptr;
 										if (const auto it = ignoredCells.find(language); it != ignoredCells.end())
 											currentIgnoredCells = &it->second;
 
@@ -1084,7 +1139,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 											}
 										}
 #endif
-										
+
 										const auto targetPath = cachedDir / entryPathSpec.Original;
 
 										const auto provider = Sqex::Sqpack::MemoryBinaryEntryProvider(entryPathSpec, std::make_shared<Sqex::MemoryRandomAccessStream>(std::move(*reinterpret_cast<std::vector<uint8_t>*>(&data))));
@@ -1173,10 +1228,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 	void SetUpVirtualFileFromFileEntries(Sqex::Sqpack::Creator& creator, const std::filesystem::path& indexPath) {
 		std::vector<std::filesystem::path> dirs;
 
-		if (Config->Runtime.UseDefaultGameResourceFileEntryRootDirectory) {
-			dirs.emplace_back(indexPath.parent_path().parent_path());
-			dirs.emplace_back(Config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries");
-		}
+		dirs.emplace_back(indexPath.parent_path().parent_path());
+		dirs.emplace_back(Config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries");
 
 		for (const auto& dir : Config->Runtime.AdditionalGameResourceFileEntryRootDirectories.Value()) {
 			if (!dir.empty())
@@ -1556,7 +1609,7 @@ void App::Misc::VirtualSqPacks::TtmpSet::ApplyChanges(bool announce) {
 	Utils::SaveJsonToFile(choicesPath, Choices);
 
 	if (announce)
-		Impl->ReflectEnabledTtmp();
+		Impl->ReflectUsedEntries();
 }
 
 std::vector<App::Misc::VirtualSqPacks::TtmpSet>& App::Misc::VirtualSqPacks::TtmpSets() {
@@ -1626,7 +1679,7 @@ void App::Misc::VirtualSqPacks::AddNewTtmp(const std::filesystem::path& ttmpl, b
 					const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second);
 					if (!provider)
 						continue;
-					
+
 					pos->Allocated &= provider->StreamSize() >= entry.ModSize;
 				}
 			}
@@ -1634,7 +1687,7 @@ void App::Misc::VirtualSqPacks::AddNewTtmp(const std::filesystem::path& ttmpl, b
 	}
 
 	if (reflectImmediately)
-		m_pImpl->ReflectEnabledTtmp();
+		m_pImpl->ReflectUsedEntries();
 }
 
 void App::Misc::VirtualSqPacks::DeleteTtmp(const std::filesystem::path& ttmpl, bool reflectImmediately) {
@@ -1645,15 +1698,13 @@ void App::Misc::VirtualSqPacks::DeleteTtmp(const std::filesystem::path& ttmpl, b
 		return;
 	remove(pos->ListPath);
 	if (reflectImmediately)
-		m_pImpl->ReflectEnabledTtmp();
+		m_pImpl->ReflectUsedEntries();
 }
 
 void App::Misc::VirtualSqPacks::RescanTtmp() {
 	std::vector<std::filesystem::path> dirs = m_pImpl->Config->Runtime.AdditionalTexToolsModPackSearchDirectories.Value();
-	if (m_pImpl->Config->Runtime.UseDefaultTexToolsModPackSearchDirectory) {
-		dirs.emplace_back(m_pImpl->SqpackPath / "TexToolsMods");
-		dirs.emplace_back(m_pImpl->Config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods");
-	}
+	dirs.emplace_back(m_pImpl->SqpackPath / "TexToolsMods");
+	dirs.emplace_back(m_pImpl->Config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods");
 
 	for (const auto& dir : dirs) {
 		if (dir.empty() || !is_directory(dir))
@@ -1679,5 +1730,5 @@ void App::Misc::VirtualSqPacks::RescanTtmp() {
 		}
 	}
 
-	m_pImpl->ReflectEnabledTtmp();
+	m_pImpl->ReflectUsedEntries();
 }

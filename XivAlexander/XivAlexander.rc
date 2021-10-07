@@ -1124,6 +1124,13 @@ BEGIN
             MENUITEM "&Chinese (Simplified)",       ID_MODDING_AUDIOLANGUAGE_CHINESESIMPLIFIED
             MENUITEM "&Korean",                     ID_MODDING_AUDIOLANGUAGE_KOREAN
         END
+        POPUP "Mute &Voice"
+        BEGIN
+            MENUITEM "&Battle",                     40459
+            MENUITEM "&Cm",                         40460
+            MENUITEM "&Emote",                      ID_MODDING_MUTEVOICE_EMOTE
+            MENUITEM "NPC &Dialogue During Battle", 40463
+        END
         MENUITEM SEPARATOR
         POPUP "Change &Font"
         BEGIN

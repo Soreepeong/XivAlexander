@@ -199,9 +199,39 @@ namespace Sqex {
 		std::vector<uint8_t> m_buffer;
 
 	public:
+		MemoryRandomAccessStream() = default;
+		
+		MemoryRandomAccessStream(MemoryRandomAccessStream&& r) noexcept
+			: m_buffer(std::move(r.m_buffer)) {
+		}
+
+		MemoryRandomAccessStream(const MemoryRandomAccessStream& r) 
+			: m_buffer(r.m_buffer) {
+		}
+
 		template<typename...Args>
 		MemoryRandomAccessStream(Args ...args)
 			: m_buffer(std::forward<Args>(args)...) {
+		}
+		
+		MemoryRandomAccessStream& operator=(std::vector<uint8_t>&& buf) noexcept {
+			m_buffer = std::move(buf);
+			return *this;
+		}
+
+		MemoryRandomAccessStream& operator=(const std::vector<uint8_t>& buf) {
+			m_buffer = buf;
+			return *this;
+		}
+		
+		MemoryRandomAccessStream& operator=(MemoryRandomAccessStream&& r) noexcept {
+			m_buffer = std::move(r.m_buffer);
+			return *this;
+		}
+		
+		MemoryRandomAccessStream& operator=(const MemoryRandomAccessStream& r) {
+			m_buffer = r.m_buffer;
+			return *this;
 		}
 
 		[[nodiscard]] uint64_t StreamSize() const override { return m_buffer.size(); }

@@ -2,9 +2,9 @@
 
 #include "Sqex_Sound.h"
 
-const uint8_t Sqex::Sound::ScdHeader::SedbSignature_Value[4]{'S', 'E', 'D', 'B'};
-const uint8_t Sqex::Sound::ScdHeader::SscfSignature_Value[4]{'S', 'S', 'C', 'F'};
-const uint8_t Sqex::Sound::SoundEntryAuxChunk::Name_Mark[4]{'M', 'A', 'R', 'K'};
+const char Sqex::Sound::ScdHeader::SedbSignature_Value[4]{'S', 'E', 'D', 'B'};
+const char Sqex::Sound::ScdHeader::SscfSignature_Value[4]{'S', 'S', 'C', 'F'};
+const char Sqex::Sound::SoundEntryAuxChunk::Name_Mark[4]{'M', 'A', 'R', 'K'};
 const uint8_t Sqex::Sound::SoundEntryOggHeader::Version3XorTable[256]{
 	0x3A, 0x32, 0x32, 0x32, 0x03, 0x7E, 0x12, 0xF7, 0xB2, 0xE2, 0xA2, 0x67, 0x32, 0x32, 0x22, 0x32,
 	0x32, 0x52, 0x16, 0x1B, 0x3C, 0xA1, 0x54, 0x7B, 0x1B, 0x97, 0xA6, 0x93, 0x1A, 0x4B, 0xAA, 0xA6,

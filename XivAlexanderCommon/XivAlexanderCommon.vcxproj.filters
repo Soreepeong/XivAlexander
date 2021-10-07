@@ -184,6 +184,9 @@
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sound_Reader.h">
       <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
     </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sound_Writer.h">
+      <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -303,6 +306,9 @@
       <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
     </ClCompile>
     <ClCompile Include="Sqex_Sound.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Sound_Writer.cpp">
       <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
     </ClCompile>
   </ItemGroup>

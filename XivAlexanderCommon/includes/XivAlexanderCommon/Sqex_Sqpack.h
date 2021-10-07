@@ -283,7 +283,7 @@ namespace Sqex::Sqpack {
 	}
 
 	extern const uint32_t SqexHashTable[4][256];
-	uint32_t SqexHash(const char* data, size_t len);
+	uint32_t SqexHash(const char* data, size_t len = SIZE_MAX);
 	uint32_t SqexHash(const std::string& text);
 	uint32_t SqexHash(const std::string_view& text);
 	uint32_t SqexHash(const std::filesystem::path& path);

@@ -226,10 +226,8 @@ namespace App {
 			Item<bool> UseModding = CreateConfigItem(this, "UseModding", false);
 			Item<std::vector<std::filesystem::path>> AdditionalSqpackRootDirectories =
 				CreateConfigItem<std::vector<std::filesystem::path>>(this, "AdditionalSqpackRootDirectories");
-			Item<bool> UseDefaultTexToolsModPackSearchDirectory = CreateConfigItem(this, "UseDefaultTexToolsModPackSearchDirectory", true);
 			Item<std::vector<std::filesystem::path>> AdditionalTexToolsModPackSearchDirectories =
 				CreateConfigItem<std::vector<std::filesystem::path>>(this, "AdditionalTexToolsModPackSearchDirectories");
-			Item<bool> UseDefaultGameResourceFileEntryRootDirectory = CreateConfigItem(this, "UseDefaultGameResourceFileEntryRootDirectory", true);
 			Item<std::vector<std::filesystem::path>> AdditionalGameResourceFileEntryRootDirectories =
 				CreateConfigItem<std::vector<std::filesystem::path>>(this, "AdditionalGameResourceFileEntryRootDirectories");
 			Item<std::vector<std::filesystem::path>> ExcelTransformConfigFiles =
@@ -238,6 +236,11 @@ namespace App {
 				CreateConfigItem<std::vector<Sqex::Language>>(this, "FallbackLanguagePriority");
 
 			Item<std::filesystem::path> OverrideFontConfig = CreateConfigItem(this, "OverrideFontConfig", std::filesystem::path());
+			
+			Item<bool> MuteVoice_Battle = CreateConfigItem(this, "MuteVoice_Battle", false);
+			Item<bool> MuteVoice_Cm = CreateConfigItem(this, "MuteVoice_Cm", false);
+			Item<bool> MuteVoice_Emote = CreateConfigItem(this, "MuteVoice_Emote", false);
+			Item<bool> MuteVoice_Line = CreateConfigItem(this, "MuteVoice_Line", false);
 			
 			RuntimeRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
 			~RuntimeRepository() override;

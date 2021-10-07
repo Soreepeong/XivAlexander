@@ -48,7 +48,7 @@ Sqex::Sound::ScdReader::ScdReader(std::shared_ptr<RandomAccessStream> stream)
 }
 
 const Sqex::Sound::ADPCMWAVEFORMAT& Sqex::Sound::ScdReader::SoundEntry::GetMsAdpcmHeader() const {
-	if (Header->Codec != SoundEntryHeader::Codec_MsAdpcm)
+	if (Header->Format != SoundEntryHeader::EntryFormat_WaveFormatAdpcm)
 		throw std::invalid_argument("Not MS-ADPCM");
 	if (ExtraData.size_bytes() < sizeof SoundEntryOggHeader)
 		throw std::invalid_argument("ExtraData too small to fit MsAdpcmHeader");
@@ -60,7 +60,7 @@ const Sqex::Sound::ADPCMWAVEFORMAT& Sqex::Sound::ScdReader::SoundEntry::GetMsAdp
 
 std::vector<uint8_t> Sqex::Sound::ScdReader::SoundEntry::GetMsAdpcmWavFile() const {
 	const auto& hdr = GetMsAdpcmHeader();
-	const auto header = std::span(reinterpret_cast<const uint8_t*>(&hdr), sizeof hdr + hdr.wfx.cbSize);
+	const auto header = std::span(reinterpret_cast<const uint8_t*>(&hdr), sizeof hdr.wfx + hdr.wfx.cbSize);
 	std::vector<uint8_t> res;
 	const auto insert = [&res](const auto& v) {
 		res.insert(res.end(), reinterpret_cast<const uint8_t*>(&v), reinterpret_cast<const uint8_t*>(&v) + sizeof v);
@@ -72,7 +72,7 @@ std::vector<uint8_t> Sqex::Sound::ScdReader::SoundEntry::GetMsAdpcmWavFile() con
 	);
 	res.reserve(totalLength);
 	insert(LE(0x46464952U));  // "RIFF"
-	insert(LE(totalLength - 4));
+	insert(LE(totalLength - 8));
 	insert(LE(0x45564157U));  // "WAVE"
 	insert(LE(0x20746D66U));  // "fmt "
 	insert(LE(static_cast<uint32_t>(header.size())));
@@ -84,7 +84,7 @@ std::vector<uint8_t> Sqex::Sound::ScdReader::SoundEntry::GetMsAdpcmWavFile() con
 }
 
 const Sqex::Sound::SoundEntryOggHeader& Sqex::Sound::ScdReader::SoundEntry::GetOggSeekTableHeader() const {
-	if (Header->Codec != SoundEntryHeader::Codec_Ogg)
+	if (Header->Format != SoundEntryHeader::EntryFormat_Ogg)
 		throw std::invalid_argument("Not ogg");
 	if (ExtraData.size_bytes() < sizeof SoundEntryOggHeader)
 		throw std::invalid_argument("ExtraData too small to fit OggSeekTableHeader");
