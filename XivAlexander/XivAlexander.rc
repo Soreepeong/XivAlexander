@@ -157,6 +157,13 @@ BEGIN
             MENUITEM "íÜçëåÍ(ä»ëÃéö)(&C)",                ID_MODDING_AUDIOLANGUAGE_CHINESESIMPLIFIED
             MENUITEM "äÿçëåÍ(&K)",                     ID_MODDING_AUDIOLANGUAGE_KOREAN
         END
+        POPUP "ê∫ÇÃÉ~ÉÖÅ[Ég(&V)"
+        BEGIN
+            MENUITEM "êÌì¨(&B)",                      40459
+            MENUITEM "CM(ä¬ã´ÇÃê∫ÅH)(&C)",               40460
+            MENUITEM "ÉGÉÇÅ[Ég(&E)",                    ID_MODDING_MUTEVOICE_EMOTE
+            MENUITEM "êÌì¨íÜÇÃNPCÇÃÉZÉäÉt(&D)",             40463
+        END
         MENUITEM SEPARATOR
         POPUP "ÉtÉHÉìÉgÇÃïœçX(&F)"
         BEGIN
@@ -611,6 +618,13 @@ BEGIN
             MENUITEM "«¡∂˚Ω∫æÓ(&F)",                    ID_MODDING_AUDIOLANGUAGE_FRENCH
             MENUITEM "¡ﬂ±πæÓ(∞£√º)(&C)",                 ID_MODDING_AUDIOLANGUAGE_CHINESESIMPLIFIED
             MENUITEM "«—±πæÓ(&K)",                     ID_MODDING_AUDIOLANGUAGE_KOREAN
+        END
+        POPUP "∏Òº“∏Æ ∫–∑˘ ¿Ωº“∞≈(&V)"
+        BEGIN
+            MENUITEM "¿¸≈ı(&B)",                      40459
+            MENUITEM "CM(»Ø∞Ê º” ∏Òº“∏Æ∑Œ √ﬂ√¯)(&C)",        40460
+            MENUITEM "∞®¡§ «•«ˆ(&E)",                   ID_MODDING_MUTEVOICE_EMOTE
+            MENUITEM "¿¸≈ı ¡ﬂ NPC ¥ÎªÁ(&D)",             40463
         END
         MENUITEM SEPARATOR
         POPUP "∆˘∆Æ ∫Ø∞Ê(&F)"
@@ -1127,7 +1141,7 @@ BEGIN
         POPUP "Mute &Voice"
         BEGIN
             MENUITEM "&Battle",                     40459
-            MENUITEM "&Cm",                         40460
+            MENUITEM "&CM (Probably environmental voices)", 40460
             MENUITEM "&Emote",                      ID_MODDING_MUTEVOICE_EMOTE
             MENUITEM "NPC &Dialogue During Battle", 40463
         END
