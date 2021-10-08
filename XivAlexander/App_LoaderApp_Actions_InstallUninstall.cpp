@@ -183,7 +183,7 @@ void App::LoaderApp::Actions::InstallUninstall::Uninstall(const std::filesystem:
 	RemoveTemporaryFiles(gamePath);
 
 	if (Dll::MessageBoxF(nullptr, MB_YESNO | MB_ICONQUESTION, IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE, gamePath.wstring()) == IDYES)
-		ShellExecutePathOrThrow(dataPath);
+		Utils::Win32::ShellExecutePathOrThrow(dataPath);
 }
 
 void App::LoaderApp::Actions::InstallUninstall::RevertChainLoadDlls(

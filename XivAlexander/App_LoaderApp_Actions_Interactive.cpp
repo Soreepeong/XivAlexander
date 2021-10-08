@@ -49,7 +49,7 @@ int App::LoaderApp::Actions::Interactive::Run() {
 		});
 		builder.WithHyperlinkHandler(L"homepage", [](auto& dialog) {
 			try {
-				ShellExecutePathOrThrow(FindStringResourceEx(Dll::Module(), IDS_URL_HOMEPAGE) + 1, dialog.GetHwnd());
+				Utils::Win32::ShellExecutePathOrThrow(FindStringResourceEx(Dll::Module(), IDS_URL_HOMEPAGE) + 1, dialog.GetHwnd());
 			} catch (const std::exception& e) {
 				Dll::MessageBoxF(dialog.GetHwnd(), MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 			}
@@ -95,7 +95,7 @@ std::function<Utils::Win32::TaskDialog::ActionHandled(Utils::Win32::TaskDialog&)
 					.elevateMode = isIntl ? Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated : Utils::Win32::RunProgramParams::NoElevationIfDenied,
 				});
 			} else {
-				ShellExecutePathOrThrow(m_state.BootPath, dialog.GetHwnd());
+				Utils::Win32::ShellExecutePathOrThrow(m_state.BootPath, dialog.GetHwnd());
 				Dll::MessageBoxF(nullptr, MB_ICONWARNING, IDS_LOADERAPP_INTERACTIVE_NOCHAINLOAD);
 			}
 		} catch (const Utils::Win32::CancelledError&) {
@@ -284,7 +284,7 @@ void App::LoaderApp::Actions::Interactive::ShowSelectGameInstallationDialog() {
 				if (!exists(m_state.BootPath = m_state.GamePath.parent_path() / "boot" / "ffxiv_boot.exe"))
 					m_state.BootPath.clear();
 	} else {
-		m_state.BootPath = m_state.GamePath;
+		m_state.BootPath = m_state.GamePath.parent_path();
 		if (!exists((m_state.GamePath = m_state.BootPath / "game") / "ffxivgame.ver"))
 			if (!exists((m_state.GamePath = m_state.BootPath.parent_path() / "game") / "ffxivgame.ver"))
 				if (!exists((m_state.GamePath = m_state.BootPath.parent_path().parent_path() / "game") / "ffxivgame.ver"))

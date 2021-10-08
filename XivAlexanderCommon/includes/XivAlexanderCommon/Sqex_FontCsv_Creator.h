@@ -121,9 +121,14 @@ namespace Sqex::FontCsv {
 
 			[[nodiscard]] std::map<Sqpack::EntryPathSpec, std::shared_ptr<const RandomAccessStream>> GetAllStreams() const;
 		};
-
-		bool Wait(DWORD timeout = INFINITE) const;
-		HANDLE GetWaitableObject() const;
+		
+		void VerifyRequirements(
+			const std::function<std::filesystem::path(const CreateConfig::GameIndexFile&)>& promptGameIndexFile,
+			const std::function<bool(const CreateConfig::FontRequirement&)>& promptFontRequirement
+		);
+		void Start();
+		[[nodiscard]] bool Wait(DWORD timeout = INFINITE) const;
+		[[nodiscard]] HANDLE GetWaitableObject() const;
 		[[nodiscard]] FontGenerateProcess GetProgress() const;
 		[[nodiscard]] const ResultFontSets& GetResult() const;
 		[[nodiscard]] const std::string& GetError() const;

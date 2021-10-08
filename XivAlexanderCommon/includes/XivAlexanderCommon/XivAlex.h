@@ -5,6 +5,8 @@
 #include <set>
 #include <string>
 
+#include "Sqex.h"
+
 namespace XivAlex {
 	[[nodiscard]] std::tuple<std::wstring, std::wstring> ResolveGameReleaseRegion();
 	[[nodiscard]] std::tuple<std::wstring, std::wstring> ResolveGameReleaseRegion(const std::filesystem::path& path);
@@ -19,15 +21,8 @@ namespace XivAlex {
 
 	VersionInformation CheckUpdates();
 
-	enum class GameRegion {
-		Unspecified,
-		International,
-		Korean,
-		Chinese,
-	};
-
 	struct GameRegionInfo {
-		GameRegion Type;
+		Sqex::GameRegion Type;
 		std::filesystem::path RootPath;
 		std::filesystem::path BootApp;
 		bool BootAppRequiresAdmin;
@@ -35,7 +30,7 @@ namespace XivAlex {
 		std::set<std::filesystem::path> RelatedApps;
 	};
 
-	std::vector<std::pair<XivAlex::GameRegion, XivAlex::GameRegionInfo>> FindGameLaunchers();
+	std::vector<std::pair<Sqex::GameRegion, GameRegionInfo>> FindGameLaunchers();
 
 	const wchar_t GameExecutable32NameW[] = L"ffxiv.exe";
 	const wchar_t GameExecutable64NameW[] = L"ffxiv_dx11.exe";

@@ -3,156 +3,175 @@
   "description": "Mixes KrnAXIS from Korean game client to International game client, and falls back to Source Han Sans K where corresponding font size isn't available. Game installation paths are hardcoded as default installation paths in C:\\Program Files(x86), so you may have to change paths.",
   "textureWidth": 4096,
   "textureHeight": 4096,
+  "gameIndexFiles": {
+    "jp": {
+      "autoDetectRegion": "International"
+    },
+    "kr": {
+      "autoDetectRegion": "Korean"
+    }
+  },
+  "fontRequirements": [
+    {
+      "name": "Source Han Sans K",
+      "homepage": "https://github.com/adobe-fonts/source-han-sans",
+      "installInstructions": {
+        "^en($|-)": "1. Download \"Language Specific OTFs Korean (한국어)\" (about 90MB) from <a href=\"https://github.com/adobe-fonts/source-han-sans/releases\">Source Han Sans official distribution page at GitHub</a>.\n2. Extract all files.\n3. Navigate into \"OTF\\Korean\"\n4. Select everything (press Ctrl+A).\n5. Right click on any of the items.\n6. Click \"Install\" or \"Install for all users\".",
+        "^ja($|-)": "1. <a href=\"https://github.com/adobe-fonts/source-han-sans/releases\">Source Han Sansの公式ダウンロードページ(GitHub)</a>で「Language Specific OTFs Korean (한국어)」を選択してダウンロードします。\n2. すべてのファイルの圧縮を解除します。\n3. 「OTF\\Korean」フォルダーを開けます。\n4. すべてのファイルを選択します。（ショートカットキーはCtrl+Aです。）\n5. あるファイルを右クリックします。\n6. 「インストール」あるいは「すべてのユーザーに対してインストール」を選択します。",
+        "^ko($|-)": "1. <a href=\"https://github.com/adobe-fonts/source-han-sans/releases\">본고딕 (Source Han Sans K) 공식 다운로드 페이지 (GitHub)</a>에서 \"Language Specific OTFs Korean (한국어)\"를 선택해서 받습니다.\n2. 모든 파일의 압축을 풉니다.\n3. \"OTF\\Korean\" 폴더로 들어갑니다.\n4. 모든 파일을 선택합니다. (Ctrl+A를 누르세요.)\n5. 아무 파일이나 마우스 오른쪽 버튼 클릭을 합니다.\n6. \"설치\" 혹은 \"모든 사용자용으로 설치\"를 선택해 주세요."
+      }
+    }
+  ],
   "sources": {
     "game:AXIS_96": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/AXIS_96.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:AXIS_12": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/AXIS_12.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:AXIS_14": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/AXIS_14.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:AXIS_18": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/AXIS_18.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:AXIS_36": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/AXIS_36.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:KrnAXIS_120": {
-      "indexFile": "C:\\Program Files (x86)\\FINAL FANTASY XIV - KOREA\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "kr",
       "fdtPath": "common/font/KrnAXIS_120.fdt",
       "texturePath": "common/font/font_krn_{}.tex"
     },
     "game:KrnAXIS_140": {
-      "indexFile": "C:\\Program Files (x86)\\FINAL FANTASY XIV - KOREA\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "kr",
       "fdtPath": "common/font/KrnAXIS_140.fdt",
       "texturePath": "common/font/font_krn_{}.tex"
     },
     "game:KrnAXIS_180": {
-      "indexFile": "C:\\Program Files (x86)\\FINAL FANTASY XIV - KOREA\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "kr",
       "fdtPath": "common/font/KrnAXIS_180.fdt",
       "texturePath": "common/font/font_krn_{}.tex"
     },
     "game:KrnAXIS_360": {
-      "indexFile": "C:\\Program Files (x86)\\FINAL FANTASY XIV - KOREA\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "kr",
       "fdtPath": "common/font/KrnAXIS_360.fdt",
       "texturePath": "common/font/font_krn_{}.tex"
     },
     "game:Jupiter_16": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/Jupiter_16.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:Jupiter_20": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/Jupiter_20.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:Jupiter_23": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/Jupiter_23.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:Jupiter_45": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/Jupiter_45.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:Jupiter_46": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/Jupiter_46.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:Jupiter_90": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/Jupiter_90.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:Meidinger_16": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/Meidinger_16.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:Meidinger_20": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/Meidinger_20.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:Meidinger_40": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/Meidinger_40.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:MiedingerMid_10": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/MiedingerMid_10.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:MiedingerMid_12": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/MiedingerMid_12.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:MiedingerMid_14": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/MiedingerMid_14.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:MiedingerMid_18": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/MiedingerMid_18.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:MiedingerMid_36": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/MiedingerMid_36.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:TrumpGothic_184": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/TrumpGothic_184.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:TrumpGothic_23": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/TrumpGothic_23.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:TrumpGothic_34": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/TrumpGothic_34.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:TrumpGothic_68": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/TrumpGothic_68.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "dwrite:SourceHanSansK:9.6": {
       "familyName": "Source Han Sans K",
       "height": 9.6,
-      "weight": 400
+      "weight": 500
     },
     "dwrite:SourceHanSansK:12": {
       "familyName": "Source Han Sans K",
       "height": 12,
-      "weight": 400
+      "weight": 500
     },
     "dwrite:SourceHanSansK:14": {
       "familyName": "Source Han Sans K",
       "height": 14,
-      "weight": 400
+      "weight": 500
     },
     "dwrite:SourceHanSansK:18": {
       "familyName": "Source Han Sans K",
@@ -176,70 +195,6 @@
         "U+1100",
         "U+11FF"
       ]
-    },
-    "HangulMinimum": {
-      "Hangul Jamo": [
-        "U+1100",
-        "U+11FF"
-      ],
-      "Hangul Compatibility Jamo": [
-        "U+3130",
-        "U+318F"
-      ],
-      "Hangul Jamo Extended-A": [
-        "U+A960",
-        "U+A97F"
-      ],
-      "Hangul Syllables": [
-        "U+AC00",
-        "U+D7AF"
-      ],
-      "Hangul Jamo Extended-B": [
-        "U+D7B0",
-        "U+D7FF"
-      ]
-    },
-    "Hangul": {
-      "Hangul Jamo": [
-        "U+1100",
-        "U+11FF"
-      ],
-      "CJK Symbols and Punctuation": [
-        "U+3000",
-        "U+303F"
-      ],
-      "Hangul Compatibility Jamo": [
-        "U+3130",
-        "U+318F"
-      ],
-      "Enclosed CJK Letters and Months": [
-        "U+3200",
-        "U+32FF"
-      ],
-      "CJK Unified Ideographs Extension A": [
-        "U+3400",
-        "U+4DBF"
-      ],
-      "CJK Unified Ideographs": [
-        "U+4E00",
-        "U+9FFF"
-      ],
-      "Hangul Jamo Extended-A": [
-        "U+A960",
-        "U+A97F"
-      ],
-      "Hangul Syllables": [
-        "U+AC00",
-        "U+D7AF"
-      ],
-      "Hangul Jamo Extended-B": [
-        "U+D7B0",
-        "U+D7FF"
-      ],
-      "CJK Compatibility Ideographs": [
-        "U+F900",
-        "U+FAFF"
-      ]
     }
   },
   "targets": {
@@ -250,14 +205,17 @@
         "lineHeight": "game:AXIS_96",
         "sources": [
           {
-            "name": "game:AXIS_96"
+            "name": "game:KrnAXIS_120"
           },
           {
             "name": "dwrite:SourceHanSansK:9.6",
             "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
+            "replace": true,
+            "extendRange": false
+          },
+          {
+            "name": "game:AXIS_96",
+            "replace": true
           }
         ]
       },
@@ -279,13 +237,6 @@
           {
             "name": "game:KrnAXIS_120",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:12",
-            "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -307,13 +258,6 @@
           {
             "name": "game:KrnAXIS_140",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:14",
-            "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -335,13 +279,6 @@
           {
             "name": "game:KrnAXIS_180",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:18",
-            "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -363,13 +300,6 @@
           {
             "name": "game:KrnAXIS_360",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:36",
-            "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -391,13 +321,6 @@
           {
             "name": "game:KrnAXIS_180",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:18",
-            "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -407,14 +330,17 @@
         "lineHeight": "game:Jupiter_20",
         "sources": [
           {
-            "name": "game:Jupiter_20"
+            "name": "game:KrnAXIS_120"
           },
           {
             "name": "dwrite:SourceHanSansK:24",
             "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
+            "replace": true,
+            "extendRange": false
+          },
+          {
+            "name": "game:Jupiter_20",
+            "replace": true
           }
         ]
       },
@@ -424,14 +350,17 @@
         "lineHeight": "game:Jupiter_23",
         "sources": [
           {
-            "name": "game:Jupiter_23"
+            "name": "game:KrnAXIS_120"
           },
           {
             "name": "dwrite:SourceHanSansK:24",
             "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
+            "replace": true,
+            "extendRange": false
+          },
+          {
+            "name": "game:Jupiter_23",
+            "replace": true
           }
         ]
       },
@@ -457,8 +386,12 @@
             "name": "dwrite:SourceHanSansK:36",
             "offsetXModifier": -1,
             "ranges": [
-              "HangulMinimum"
+              "Hangul Jamo"
             ]
+          },
+          {
+            "name": "game:KrnAXIS_360",
+            "offsetXModifier": -1
           }
         ]
       },
@@ -508,14 +441,17 @@
         "lineHeight": "game:MiedingerMid_10",
         "sources": [
           {
-            "name": "game:MiedingerMid_10"
+            "name": "game:KrnAXIS_120"
           },
           {
             "name": "dwrite:SourceHanSansK:9.6",
             "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
+            "replace": true,
+            "extendRange": false
+          },
+          {
+            "name": "game:MiedingerMid_10",
+            "replace": true
           }
         ]
       },
@@ -537,13 +473,6 @@
           {
             "name": "game:KrnAXIS_120",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:12",
-            "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -565,13 +494,6 @@
           {
             "name": "game:KrnAXIS_140",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:14",
-            "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -593,13 +515,6 @@
           {
             "name": "game:KrnAXIS_180",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:18",
-            "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -621,13 +536,6 @@
           {
             "name": "game:KrnAXIS_360",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:36",
-            "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -649,13 +557,6 @@
           {
             "name": "game:KrnAXIS_180",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:18",
-            "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -665,14 +566,17 @@
         "lineHeight": "game:TrumpGothic_23",
         "sources": [
           {
-            "name": "game:TrumpGothic_23"
+            "name": "game:KrnAXIS_120"
           },
           {
             "name": "dwrite:SourceHanSansK:24",
             "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
+            "replace": true,
+            "extendRange": false
+          },
+          {
+            "name": "game:TrumpGothic_23",
+            "replace": true
           }
         ]
       },
@@ -688,8 +592,12 @@
             "name": "dwrite:SourceHanSansK:36",
             "offsetXModifier": -1,
             "ranges": [
-              "HangulMinimum"
+              "Hangul Jamo"
             ]
+          },
+          {
+            "name": "game:KrnAXIS_360",
+            "offsetXModifier": -1
           }
         ]
       },
@@ -705,8 +613,12 @@
             "name": "dwrite:SourceHanSansK:36",
             "offsetXModifier": -1,
             "ranges": [
-              "HangulMinimum"
+              "Hangul Jamo"
             ]
+          },
+          {
+            "name": "game:KrnAXIS_360",
+            "offsetXModifier": -1
           }
         ]
       }
@@ -721,13 +633,6 @@
             "name": "game:AXIS_12"
           },
           {
-            "name": "dwrite:SourceHanSansK:12",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
-          },
-          {
             "name": "game:KrnAXIS_120",
             "offsetXModifier": -1
           },
@@ -735,8 +640,9 @@
             "name": "dwrite:SourceHanSansK:12",
             "offsetXModifier": -1,
             "ranges": [
-              "HangulMinimum"
-            ]
+              "Hangul Jamo"
+            ],
+            "replace": true
           }
         ]
       },
@@ -749,13 +655,6 @@
             "name": "game:AXIS_14"
           },
           {
-            "name": "dwrite:SourceHanSansK:14",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
-          },
-          {
             "name": "game:KrnAXIS_140",
             "offsetXModifier": -1
           },
@@ -763,8 +662,9 @@
             "name": "dwrite:SourceHanSansK:14",
             "offsetXModifier": -1,
             "ranges": [
-              "HangulMinimum"
-            ]
+              "Hangul Jamo"
+            ],
+            "replace": true
           }
         ]
       },
@@ -786,13 +686,6 @@
           {
             "name": "game:KrnAXIS_180",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:18",
-            "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -814,13 +707,6 @@
           {
             "name": "game:KrnAXIS_180",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:18",
-            "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -830,14 +716,17 @@
         "lineHeight": "game:Jupiter_20",
         "sources": [
           {
-            "name": "game:Jupiter_20"
+            "name": "game:KrnAXIS_120"
           },
           {
             "name": "dwrite:SourceHanSansK:24",
             "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
+            "replace": true,
+            "extendRange": false
+          },
+          {
+            "name": "game:Jupiter_20",
+            "replace": true
           }
         ]
       },
@@ -847,14 +736,17 @@
         "lineHeight": "game:Jupiter_23",
         "sources": [
           {
-            "name": "game:Jupiter_23"
+            "name": "game:KrnAXIS_120"
           },
           {
             "name": "dwrite:SourceHanSansK:24",
             "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
+            "replace": true,
+            "extendRange": false
+          },
+          {
+            "name": "game:Jupiter_23",
+            "replace": true
           }
         ]
       },
@@ -894,14 +786,17 @@
         "lineHeight": "game:MiedingerMid_10",
         "sources": [
           {
-            "name": "game:MiedingerMid_10"
+            "name": "game:KrnAXIS_120"
           },
           {
             "name": "dwrite:SourceHanSansK:9.6",
             "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
+            "replace": true,
+            "extendRange": false
+          },
+          {
+            "name": "game:MiedingerMid_10",
+            "replace": true
           }
         ]
       },
@@ -923,13 +818,6 @@
           {
             "name": "game:KrnAXIS_120",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:12",
-            "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -951,13 +839,6 @@
           {
             "name": "game:KrnAXIS_140",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:14",
-            "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -979,13 +860,6 @@
           {
             "name": "game:KrnAXIS_180",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:18",
-            "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -1007,13 +881,6 @@
           {
             "name": "game:KrnAXIS_180",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:18",
-            "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -1023,14 +890,17 @@
         "lineHeight": "game:TrumpGothic_23",
         "sources": [
           {
-            "name": "game:TrumpGothic_23"
+            "name": "game:KrnAXIS_120"
           },
           {
             "name": "dwrite:SourceHanSansK:24",
             "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
+            "replace": true,
+            "extendRange": false
+          },
+          {
+            "name": "game:TrumpGothic_23",
+            "replace": true
           }
         ]
       },
@@ -1046,8 +916,12 @@
             "name": "dwrite:SourceHanSansK:36",
             "offsetXModifier": -1,
             "ranges": [
-              "HangulMinimum"
+              "Hangul Jamo"
             ]
+          },
+          {
+            "name": "game:KrnAXIS_360",
+            "offsetXModifier": -1
           }
         ]
       }
@@ -1062,13 +936,6 @@
             "name": "game:AXIS_12"
           },
           {
-            "name": "dwrite:SourceHanSansK:12",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
-          },
-          {
             "name": "game:KrnAXIS_120",
             "offsetXModifier": -1
           },
@@ -1076,8 +943,9 @@
             "name": "dwrite:SourceHanSansK:12",
             "offsetXModifier": -1,
             "ranges": [
-              "HangulMinimum"
-            ]
+              "Hangul Jamo"
+            ],
+            "replace": true
           }
         ]
       },
@@ -1090,13 +958,6 @@
             "name": "game:AXIS_14"
           },
           {
-            "name": "dwrite:SourceHanSansK:14",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
-          },
-          {
             "name": "game:KrnAXIS_140",
             "offsetXModifier": -1
           },
@@ -1104,8 +965,9 @@
             "name": "dwrite:SourceHanSansK:14",
             "offsetXModifier": -1,
             "ranges": [
-              "HangulMinimum"
-            ]
+              "Hangul Jamo"
+            ],
+            "replace": true
           }
         ]
       },
@@ -1127,13 +989,6 @@
           {
             "name": "game:KrnAXIS_180",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:18",
-            "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       },
@@ -1155,13 +1010,6 @@
           {
             "name": "game:KrnAXIS_360",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:36",
-            "offsetXModifier": -1,
-            "ranges": [
-              "HangulMinimum"
-            ]
           }
         ]
       }

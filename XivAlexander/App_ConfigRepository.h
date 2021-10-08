@@ -255,6 +255,7 @@ namespace App {
 			}
 			[[nodiscard]] std::wstring GetLanguageNameLocalized(Sqex::Language gameLanguage) const;
 			[[nodiscard]] std::wstring GetRegionNameLocalized(Sqex::Region gameRegion) const;
+			[[nodiscard]] std::vector<std::pair<WORD, std::string>> GetDisplayLanguagePriorities() const;
 			
 			[[nodiscard]] std::vector<Sqex::Language> GetFallbackLanguageList() const;
 		};
@@ -312,8 +313,7 @@ namespace App {
 			std::filesystem::path ResolveGameOpcodeConfigPath();
 		};
 
-		static std::filesystem::path TranslatePath(const std::filesystem::path& path, const std::filesystem::path& relativeTo  ={});
-		static std::filesystem::path EnsureDirectory(const std::filesystem::path&);
+		static std::filesystem::path TranslatePath(const std::filesystem::path& path, const std::filesystem::path& relativeTo = {});
 
 	protected:
 		static std::weak_ptr<Config> s_instance;

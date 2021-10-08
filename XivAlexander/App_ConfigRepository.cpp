@@ -159,6 +159,40 @@ std::wstring App::Config::RuntimeRepository::GetRegionNameLocalized(Sqex::Region
 	return GetStringRes(RegionResourceIdMap.at(gameRegion));
 }
 
+std::vector<std::pair<WORD, std::string>> App::Config::RuntimeRepository::GetDisplayLanguagePriorities() const {
+	std::vector<std::pair<WORD, std::string>> res;
+	if (Language != Language::SystemDefault) {
+		wchar_t buf[64];
+		LCIDToLocaleName(LanguageIdMap.at(Language), &buf[0], 64, LOCALE_INVARIANT);
+		res.emplace_back(LanguageIdMap.at(Language), Utils::ToUtf8(buf));
+	}
+	try {
+		ULONG num = 0, bufSize = 0;
+		if (!GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &num, nullptr, &bufSize))
+			throw Utils::Win32::Error("GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &num, nullptr, &bufSize)");
+		std::wstring buf(bufSize, L'\0');
+		if (!GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &num, &buf[0], &bufSize))
+			throw Utils::Win32::Error("GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &num, &buf[0], &bufSize)");
+		buf.resize(bufSize);
+		auto ptr = &buf[0];
+		while (*ptr) {
+			const auto len = wcslen(ptr);
+			res.emplace_back(LANGIDFROMLCID(LocaleNameToLCID(ptr, 0)), Utils::ToUtf8(ptr));
+			ptr += len + 1;
+		}
+	} catch(...) {
+		// pass
+	}
+	for (const auto& [language, languageId] : LanguageIdMap) {
+		if (language == Language::SystemDefault || language == Language)
+			continue;
+		wchar_t buf[64];
+		LCIDToLocaleName(languageId, &buf[0], 64, LOCALE_INVARIANT);
+		res.emplace_back(languageId, Utils::ToUtf8(buf));
+	}
+	return res;
+}
+
 std::vector<Sqex::Language> App::Config::RuntimeRepository::GetFallbackLanguageList() const {
 	std::vector<Sqex::Language> result;
 	for (const auto lang : FallbackLanguagePriority.Value()) {
@@ -184,9 +218,9 @@ std::filesystem::path App::Config::InitRepository::ResolveConfigStorageDirectory
 		Reload({});
 
 	if (!FixedConfigurationFolderPath.Value().empty())
-		return EnsureDirectory(TranslatePath(FixedConfigurationFolderPath.Value()));
+		return Utils::Win32::EnsureDirectory(TranslatePath(FixedConfigurationFolderPath.Value()));
 	else
-		return EnsureDirectory(Utils::Win32::EnsureKnownFolderPath(FOLDERID_RoamingAppData) / L"XivAlexander");
+		return Utils::Win32::EnsureDirectory(Utils::Win32::EnsureKnownFolderPath(FOLDERID_RoamingAppData) / L"XivAlexander");
 }
 
 std::filesystem::path App::Config::InitRepository::ResolveXivAlexInstallationPath() {
@@ -194,9 +228,9 @@ std::filesystem::path App::Config::InitRepository::ResolveXivAlexInstallationPat
 		Reload({});
 
 	if (!XivAlexFolderPath.Value().empty())
-		return EnsureDirectory(TranslatePath(XivAlexFolderPath.Value()));
+		return Utils::Win32::EnsureDirectory(TranslatePath(XivAlexFolderPath.Value()));
 	else
-		return EnsureDirectory(Utils::Win32::EnsureKnownFolderPath(FOLDERID_LocalAppData) / L"XivAlexander");
+		return Utils::Win32::EnsureDirectory(Utils::Win32::EnsureKnownFolderPath(FOLDERID_LocalAppData) / L"XivAlexander");
 }
 
 std::filesystem::path App::Config::InitRepository::ResolveRuntimeConfigPath() {
@@ -211,29 +245,7 @@ std::filesystem::path App::Config::InitRepository::ResolveGameOpcodeConfigPath()
 }
 
 std::filesystem::path App::Config::TranslatePath(const std::filesystem::path& path, const std::filesystem::path& relativeTo) {
-	if (path.empty())
-		return {};
-	std::wstring buf;
-	buf.resize(PATHCCH_MAX_CCH);
-	buf.resize(ExpandEnvironmentStringsW(path.wstring().c_str(), &buf[0], PATHCCH_MAX_CCH));
-	if (!buf.empty())
-		buf.resize(buf.size() - 1);
-
-	auto pathbuf = std::filesystem::path(buf);
-	if (pathbuf.is_relative())
-		pathbuf = (relativeTo.empty() ? Dll::Module().PathOf().parent_path() : relativeTo) / pathbuf;
-	return pathbuf.lexically_normal();
-}
-
-std::filesystem::path App::Config::EnsureDirectory(const std::filesystem::path& path) {
-	if (!is_directory(path)) {
-		if (const auto res = SHCreateDirectoryExW(nullptr, path.c_str(), nullptr);
-			res != ERROR_SUCCESS && res != ERROR_ALREADY_EXISTS)
-			throw Utils::Win32::Error(res, "SHCreateDirectoryExW");
-		if (!is_directory(path))
-			throw std::runtime_error(std::format("Path \"{}\" is not a directory", path));
-	}
-	return canonical(path);
+	return Utils::Win32::TranslatePath(path, relativeTo.empty() ? Dll::Module().PathOf() : relativeTo);
 }
 
 App::Config::Config(std::filesystem::path initializationConfigPath)

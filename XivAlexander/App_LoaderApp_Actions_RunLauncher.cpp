@@ -85,21 +85,21 @@ int App::LoaderApp::Actions::RunLauncher::Run() {
 
 			case LauncherType::International: {
 				for (const auto& [region, info] : launchers)
-					if (region == XivAlex::GameRegion::International)
+					if (region == Sqex::GameRegion::International)
 						return !RunProgramRetryAfterElevatingSelfAsNecessary(info.BootApp);
 				throw std::out_of_range(nullptr);
 			}
 
 			case LauncherType::Korean: {
 				for (const auto& [region, info] : launchers)
-					if (region == XivAlex::GameRegion::Korean)
+					if (region == Sqex::GameRegion::Korean)
 						return !RunProgramRetryAfterElevatingSelfAsNecessary(info.BootApp);
 				throw std::out_of_range(nullptr);
 			}
 
 			case LauncherType::Chinese: {
 				for (const auto& [region, info] : launchers)
-					if (region == XivAlex::GameRegion::Chinese)
+					if (region == Sqex::GameRegion::Chinese)
 						return !RunProgramRetryAfterElevatingSelfAsNecessary(info.BootApp);
 				throw std::out_of_range(nullptr);
 			}

@@ -78,17 +78,6 @@ bool App::LoaderApp::EnsureNoWow64Emulation() {
 	return true;
 }
 
-void App::LoaderApp::ShellExecutePathOrThrow(const std::filesystem::path& path, HWND hwndOwner) {
-	SHELLEXECUTEINFOW shex{
-		.cbSize = sizeof shex,
-		.hwnd = hwndOwner,
-		.lpFile = path.c_str(),
-		.nShow = SW_SHOW,
-	};
-	if (!ShellExecuteExW(&shex))
-		throw Utils::Win32::Error("ShellExecuteExW");
-}
-
 template<>
 std::string argparse::details::repr(XivAlexDll::LoaderAction const& val) {
 	return LoaderActionToString(val);
@@ -117,11 +106,11 @@ std::string argparse::details::repr(App::LoaderApp::InstallMode const& val) {
 }
 
 template<>
-std::string argparse::details::repr(XivAlex::GameRegion const& val) {
+std::string argparse::details::repr(Sqex::GameRegion const& val) {
 	switch (val) {
-		case XivAlex::GameRegion::International: return Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_CLIENT_INTERNATIONAL) + 1);
-		case XivAlex::GameRegion::Korean: return Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_CLIENT_KOREAN) + 1);
-		case XivAlex::GameRegion::Chinese: return Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_CLIENT_CHINESE) + 1);
+		case Sqex::GameRegion::International: return Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_CLIENT_INTERNATIONAL) + 1);
+		case Sqex::GameRegion::Korean: return Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_CLIENT_KOREAN) + 1);
+		case Sqex::GameRegion::Chinese: return Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_CLIENT_CHINESE) + 1);
 	}
 	return std::format("({})", static_cast<int>(val));
 }

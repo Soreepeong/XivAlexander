@@ -1,137 +1,156 @@
 {
-  "name": "AXIS+ChnAXIS+Source Han Sans K/SC(DirectWrite)",
+  "name": "AXIS+ChnAXIS+Source Han Sans SC(DirectWrite)",
   "description": "Mixes ChnAXIS from Chinese game client to International game client, and falls back to Source Han Sans SC where corresponding font size isn't available. You may have to change game installation paths.",
   "textureWidth": 4096,
   "textureHeight": 4096,
   "compactLayout": true,
+  "gameIndexFiles": {
+    "jp": {
+      "autoDetectRegion": "International"
+    },
+    "cn": {
+      "autoDetectRegion": "Chinese"
+    }
+  },
+  "fontRequirements": [
+    {
+      "name": "Source Han Sans SC",
+      "homepage": "https://github.com/adobe-fonts/source-han-sans",
+      "installInstructions": {
+        "^en($|-)": "1. Download \"Language Specific OTFs Simplified Chinese (简体中文)\" (about 90MB) from <a href=\"https://github.com/adobe-fonts/source-han-sans/releases\">Source Han Sans official distribution page at GitHub</a>.\n2. Extract all files.\n3. Navigate into \"OTF\\Korean\"\n4. Select everything (press Ctrl+A).\n5. Right click on any of the items.\n6. Click \"Install\" or \"Install for all users\".",
+        "^ja($|-)": "1. <a href=\"https://github.com/adobe-fonts/source-han-sans/releases\">Source Han Sansの公式ダウンロードページ(GitHub)</a>で「Language Specific OTFs Simplified Chinese (简体中文)」を選択してダウンロードします。\n2. すべてのファイルの圧縮を解除します。\n3. 「OTF\\Korean」フォルダーを開けます。\n4. すべてのファイルを選択します。（ショートカットキーはCtrl+Aです。）\n5. あるファイルを右クリックします。\n6. 「インストール」あるいは「すべてのユーザーに対してインストール」を選択します。",
+        "^ko($|-)": "1. <a href=\"https://github.com/adobe-fonts/source-han-sans/releases\">Source Han Sans 공식 다운로드 페이지 (GitHub)</a>에서 \"Language Specific OTFs Simplified Chinese (简体中文)\"를 선택해서 받습니다.\n2. 모든 파일의 압축을 풉니다.\n3. \"OTF\\Korean\" 폴더로 들어갑니다.\n4. 모든 파일을 선택합니다. (Ctrl+A를 누르세요.)\n5. 아무 파일이나 마우스 오른쪽 버튼 클릭을 합니다.\n6. \"설치\" 혹은 \"모든 사용자용으로 설치\"를 선택해 주세요."
+      }
+    }
+  ],
   "sources": {
     "game:AXIS_96": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/AXIS_96.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:AXIS_12": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/AXIS_12.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:AXIS_14": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/AXIS_14.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:AXIS_18": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/AXIS_18.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:AXIS_36": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/AXIS_36.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:ChnAXIS_120": {
-      "indexFile": "D:\\Program Files (x86)\\SNDA\\FFXIV\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "cn",
       "fdtPath": "common/font/ChnAXIS_120.fdt",
       "texturePath": "common/font/font_chn_{}.tex"
     },
     "game:ChnAXIS_140": {
-      "indexFile": "D:\\Program Files (x86)\\SNDA\\FFXIV\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "cn",
       "fdtPath": "common/font/ChnAXIS_140.fdt",
       "texturePath": "common/font/font_chn_{}.tex"
     },
     "game:ChnAXIS_180": {
-      "indexFile": "D:\\Program Files (x86)\\SNDA\\FFXIV\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "cn",
       "fdtPath": "common/font/ChnAXIS_180.fdt",
       "texturePath": "common/font/font_chn_{}.tex"
     },
     "game:Jupiter_16": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/Jupiter_16.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:Jupiter_20": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/Jupiter_20.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:Jupiter_23": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/Jupiter_23.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:Jupiter_45": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/Jupiter_45.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:Jupiter_46": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/Jupiter_46.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:Jupiter_90": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/Jupiter_90.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:Meidinger_16": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/Meidinger_16.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:Meidinger_20": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/Meidinger_20.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:Meidinger_40": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/Meidinger_40.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:MiedingerMid_10": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/MiedingerMid_10.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:MiedingerMid_12": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/MiedingerMid_12.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:MiedingerMid_14": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/MiedingerMid_14.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:MiedingerMid_18": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/MiedingerMid_18.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:MiedingerMid_36": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/MiedingerMid_36.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:TrumpGothic_184": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/TrumpGothic_184.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:TrumpGothic_23": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/TrumpGothic_23.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:TrumpGothic_34": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/TrumpGothic_34.fdt",
       "texturePath": "common/font/font{}.tex"
     },
     "game:TrumpGothic_68": {
-      "indexFile": "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\000000.win32.index",
+      "gameIndexFileName": "jp",
       "fdtPath": "common/font/TrumpGothic_68.fdt",
       "texturePath": "common/font/font{}.tex"
     },
@@ -139,22 +158,6 @@
       "familyName": "Source Han Sans SC",
       "height": 36,
       "weight": 400
-    }
-  },
-  "ranges": {
-    "ChineseSimplified": {
-      "CJK Unified Ideographs": [
-        "U+4E00",
-        "U+9FFF"
-      ],
-      "CJK Unified Ideographs Extension A": [
-        "U+3400",
-        "U+4DBF"
-      ],
-      "CJK Compatibility Ideographs": [
-        "U+F900",
-        "U+FAFF"
-      ]
     }
   },
   "targets": {
@@ -714,10 +717,17 @@
         "lineHeight": "game:AXIS_18",
         "sources": [
           {
-            "name": "game:AXIS_18"
+            "name": "game:ChnAXIS_180",
+            "offsetYModifier": 3
           },
           {
-            "name": "game:ChnAXIS_180"
+            "name": "dwrite:SourceHanSansSC:36",
+            "replace": true,
+            "extendRange": false
+          },
+          {
+            "name": "game:AXIS_36",
+            "replace": true
           }
         ]
       }

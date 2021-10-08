@@ -84,7 +84,7 @@ void Sqex::from_json(const nlohmann::json& j, Region& newValue) {
 	CharLowerW(&newValueString[0]);
 
 	newValue = Region::Unspecified;
-	if (!newValueString.empty())
+	if (newValueString.empty())
 		return;
 
 	if (newValueString.substr(0, std::min<size_t>(5, newValueString.size())) == L"japan")
@@ -97,6 +97,38 @@ void Sqex::from_json(const nlohmann::json& j, Region& newValue) {
 		newValue = Region::China;
 	else if (newValueString.substr(0, std::min<size_t>(5, newValueString.size())) == L"korea")
 		newValue = Region::Korea;
+}
+
+void Sqex::to_json(nlohmann::json& j , const GameRegion& value) {
+	switch (value) {
+		case GameRegion::International:
+			j = "International";
+			break;
+		case GameRegion::Chinese:
+			j = "Chinese";
+			break;
+		case GameRegion::Korean:
+			j = "Korean";
+			break;
+		default:
+			j = "Unspecified";
+	}
+}
+
+void Sqex::from_json(const nlohmann::json& j, GameRegion& newValue) {
+	auto newValueString = FromUtf8(j.get<std::string>());
+	CharLowerW(&newValueString[0]);
+
+	newValue = GameRegion::Unspecified;
+	if (newValueString.empty())
+		return;
+
+	if (newValueString.substr(0, std::min<size_t>(13, newValueString.size())) == L"international")
+		newValue = GameRegion::International;
+	else if (newValueString.substr(0, std::min<size_t>(7, newValueString.size())) == L"chinese")
+		newValue = GameRegion::Chinese;
+	else if (newValueString.substr(0, std::min<size_t>(6, newValueString.size())) == L"korean")
+		newValue = GameRegion::Korean;
 }
 
 Sqex::RandomAccessStream::RandomAccessStream() = default;

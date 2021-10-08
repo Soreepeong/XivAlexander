@@ -9,8 +9,28 @@
 #include "Sqex_Texture.h"
 
 namespace Sqex::FontCsv::CreateConfig {
+	struct GameIndexFile {
+		std::vector<std::filesystem::path> pathList;
+		GameRegion autoDetectRegion = GameRegion::Unspecified;
+		std::string autoDetectIndexExpac;
+		std::string autoDetectIndexFile;
+		std::vector<std::filesystem::path> fallbackPathList;
+		std::vector<std::pair<std::string, std::string>> fallbackPrompt;
+	};
+	void to_json(nlohmann::json& j, const GameIndexFile& o);
+	void from_json(const nlohmann::json& j, GameIndexFile& o);
+	
+	struct FontRequirement {
+		std::string name;
+		std::string homepage;
+		std::vector<std::pair<std::string, std::string>> installInstructions;
+	};
+	void to_json(nlohmann::json& j, const FontRequirement& o);
+	void from_json(const nlohmann::json& j, FontRequirement& o);
+
 	struct GameSource {
 		std::filesystem::path indexFile;
+		std::string gameIndexFileName;
 		std::filesystem::path fdtPath;
 		std::filesystem::path texturePath;
 		int advanceWidthDelta{};
@@ -130,9 +150,13 @@ namespace Sqex::FontCsv::CreateConfig {
 		uint16_t textureWidth{};
 		uint16_t textureHeight{};
 		Texture::Format textureFormat{};
+		std::map<std::string, GameIndexFile> gameIndexFiles;
+		std::vector<FontRequirement> fontRequirements;
 		std::map<std::string, InputFontSource> sources;
 		std::map<std::string, RangeSet> ranges;
 		std::map<std::string, SingleTextureTarget> targets;
+
+		void ValidateOrThrow() const;
 	};
 	void to_json(nlohmann::json& j, const FontCreateConfig& o);
 	void from_json(const nlohmann::json& j, FontCreateConfig& o);

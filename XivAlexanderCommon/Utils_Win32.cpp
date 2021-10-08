@@ -183,6 +183,32 @@ int Utils::Win32::MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, c
 	return MessageBoxF(hWnd, uType, lpCaption, FromUtf8(text));
 }
 
+std::filesystem::path Utils::Win32::TranslatePath(const std::filesystem::path& path, const std::filesystem::path& relativeTo) {
+	if (path.empty())
+		return {};
+	std::wstring buf;
+	buf.resize(PATHCCH_MAX_CCH);
+	buf.resize(ExpandEnvironmentStringsW(path.wstring().c_str(), &buf[0], PATHCCH_MAX_CCH));
+	if (!buf.empty())
+		buf.resize(buf.size() - 1);
+
+	auto pathbuf = std::filesystem::path(buf);
+	if (pathbuf.is_relative())
+		pathbuf = relativeTo / pathbuf;
+	return pathbuf.lexically_normal();
+}
+
+std::filesystem::path Utils::Win32::EnsureDirectory(const std::filesystem::path& path) {
+	if (!is_directory(path)) {
+		if (const auto res = SHCreateDirectoryExW(nullptr, path.c_str(), nullptr);
+			res != ERROR_SUCCESS && res != ERROR_ALREADY_EXISTS)
+			throw Utils::Win32::Error(res, "SHCreateDirectoryExW");
+		if (!is_directory(path))
+			throw std::runtime_error(std::format("Path \"{}\" is not a directory", path));
+	}
+	return canonical(path);
+}
+
 void Utils::Win32::SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked, bool bEnabled, std::wstring newText) {
 	MENUITEMINFOW mii = {sizeof(MENUITEMINFOW)};
 	mii.fMask = MIIM_STATE | (!newText.empty() ? MIIM_STRING : 0);
@@ -266,6 +292,17 @@ std::filesystem::path Utils::Win32::EnsureKnownFolderPath(_In_ REFKNOWNFOLDERID 
 
 	const auto freepath = CallOnDestruction([pszPath]() { CoTaskMemFree(pszPath); });
 	return std::filesystem::path(pszPath);
+}
+
+void Utils::Win32::ShellExecutePathOrThrow(const std::filesystem::path& path, HWND hwndOwner) {
+	SHELLEXECUTEINFOW shex{
+		.cbSize = sizeof shex,
+		.hwnd = hwndOwner,
+		.lpFile = path.c_str(),
+		.nShow = SW_SHOW,
+	};
+	if (!ShellExecuteExW(&shex))
+		throw Error("ShellExecuteExW");
 }
 
 std::vector<std::wstring> Utils::Win32::CommandLineToArgs(const std::wstring& cmdLine) {

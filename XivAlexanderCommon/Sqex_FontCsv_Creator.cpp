@@ -6,7 +6,9 @@
 #include "Sqex_FontCsv_GdiFont.h"
 #include "Sqex_Sqpack_EntryRawStream.h"
 #include "Sqex_Sqpack_Reader.h"
+#include "Utils_Win32_Process.h"
 #include "Utils_Win32_ThreadPool.h"
+#include "XivAlex.h"
 
 inline void DebugThrowError(const std::exception& e) {
 #ifdef _DEBUG
@@ -459,7 +461,7 @@ void Sqex::FontCsv::FontCsvCreator::Step2_Layout(RenderTarget& renderTarget) {
 		for (auto& plan : m_pImpl->Plans) {
 			if (m_pImpl->Cancelled)
 				return;
-			
+
 			m_pImpl->Progress.Progress_Layout++;
 
 			const auto& bbox = plan.GetBbox();
@@ -562,6 +564,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 	std::map<std::filesystem::path, std::unique_ptr<Sqpack::Reader>> SqpackReaders;
 	std::map<std::tuple<std::filesystem::path, std::filesystem::path>, std::vector<std::shared_ptr<const Texture::MipmapStream>>> GameTextures;
 	std::map<std::string, std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>> SourceFonts;
+	std::map<std::string, std::filesystem::path> ResolvedGameIndexFiles;
 
 	ResultFontSets Result;
 	std::mutex ResultMtx;
@@ -613,8 +616,15 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 			std::shared_ptr<SeCompatibleDrawableFont<uint8_t>> newFont;
 			const auto& inputFontSource = Config.sources.at(name);
 			if (const auto& source = inputFontSource.gameSource; inputFontSource.isGameSource) {
-				auto indexFilePath = source.indexFile.empty() ? GamePath / LR"(sqpack\ffxiv\000000.win32.index)" : std::filesystem::path(source.indexFile);
-				indexFilePath = canonical(indexFilePath);
+				std::filesystem::path indexFilePath;
+				if (source.indexFile.empty() && source.gameIndexFileName.empty())
+					indexFilePath = GamePath / LR"(sqpack\ffxiv\000000.win32.index)";
+				else {
+					indexFilePath = canonical(source.indexFile);
+					if (!exists(indexFilePath)) {
+						indexFilePath = ResolvedGameIndexFiles.at(source.gameIndexFileName);
+					}
+				}
 
 				auto reader = SqpackReaders.find(indexFilePath);
 				if (reader == SqpackReaders.end())
@@ -651,32 +661,74 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 
 			} else if (const auto& source = inputFontSource.directWriteSource; inputFontSource.isDirectWriteSource) {
 				std::shared_ptr<DirectWriteDrawingFont<uint8_t>> dfont;
-				if (!source.fontFile.empty())
-					dfont = std::make_shared<DirectWriteDrawingFont<uint8_t>>(
-						source.fontFile, source.faceIndex, static_cast<float>(source.height), source.renderMode
-					);
-				else if (!source.familyName.empty())
-					dfont = std::make_shared<DirectWriteDrawingFont<uint8_t>>(
-						FromUtf8(source.familyName).c_str(), static_cast<float>(source.height), static_cast<DWRITE_FONT_WEIGHT>(source.weight), source.stretch, source.style, source.renderMode
-					);
-				else
+
+				if (source.fontFile.empty() && source.familyName.empty())
 					throw std::invalid_argument("Neither of fontFile nor familyName was specified.");
+
+				std::string accumulatedError;
+				if (!source.fontFile.empty()) {
+					try {
+						dfont = std::make_shared<DirectWriteDrawingFont<uint8_t>>(
+							source.fontFile, source.faceIndex, static_cast<float>(source.height), source.renderMode
+						);
+					} catch (const std::exception& e) {
+						if (source.familyName.empty())
+							throw;
+						accumulatedError += e.what();
+					}
+				}
+
+				if (!dfont && !source.familyName.empty()) {
+					try {
+						dfont = std::make_shared<DirectWriteDrawingFont<uint8_t>>(
+							FromUtf8(source.familyName).c_str(), static_cast<float>(source.height), static_cast<DWRITE_FONT_WEIGHT>(source.weight), source.stretch, source.style, source.renderMode
+						);
+					} catch (const std::exception& e) {
+						if (!accumulatedError.empty())
+							accumulatedError += "; ";
+						accumulatedError += e.what();
+					}
+				}
+
+				if (!dfont)
+					throw std::invalid_argument(accumulatedError);
+
 				if (source.measureUsingFreeType)
 					dfont->SetMeasureWithFreeType();
 				newFont = std::move(dfont);
 				newFont->AdvanceWidthDelta(source.advanceWidthDelta);
 
 			} else if (const auto& source = inputFontSource.freeTypeSource; inputFontSource.isFreeTypeSource) {
-				if (!source.fontFile.empty())
-					newFont = std::make_shared<FreeTypeDrawingFont<uint8_t>>(
-						source.fontFile, source.faceIndex, static_cast<float>(source.height), source.loadFlags
-					);
-				else if (!source.familyName.empty())
-					newFont = std::make_shared<FreeTypeDrawingFont<uint8_t>>(
-						FromUtf8(source.familyName).c_str(), static_cast<float>(source.height), static_cast<DWRITE_FONT_WEIGHT>(source.weight), source.stretch, source.style, source.loadFlags
-					);
-				else
+				if (source.fontFile.empty() && source.familyName.empty())
 					throw std::invalid_argument("Neither of fontFile nor familyName was specified.");
+
+				std::string accumulatedError;
+				if (!source.fontFile.empty()) {
+					try {
+						newFont = std::make_shared<FreeTypeDrawingFont<uint8_t>>(
+							source.fontFile, source.faceIndex, static_cast<float>(source.height), source.loadFlags
+						);
+					} catch (const std::exception& e) {
+						if (source.familyName.empty())
+							throw;
+						accumulatedError += e.what();
+					}
+				}
+
+				if (!newFont && !source.familyName.empty()) {
+					try {
+						newFont = std::make_shared<FreeTypeDrawingFont<uint8_t>>(
+							FromUtf8(source.familyName).c_str(), static_cast<float>(source.height), static_cast<DWRITE_FONT_WEIGHT>(source.weight), source.stretch, source.style, source.loadFlags
+						);
+					} catch (const std::exception& e) {
+						if (!accumulatedError.empty())
+							accumulatedError += "; ";
+						accumulatedError += e.what();
+					}
+				}
+
+				if (!newFont)
+					throw std::invalid_argument(accumulatedError);
 
 				newFont->AdvanceWidthDelta(source.advanceWidthDelta);
 			} else
@@ -901,14 +953,13 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				v2->Cancel();
 			}
 		}
-		if (wait)
+		if (wait && WorkerThread)
 			WorkerThread.Wait();
 	}
 };
 
 Sqex::FontCsv::FontSetsCreator::FontSetsCreator(CreateConfig::FontCreateConfig config, std::filesystem::path gamePath, LONG maxCoreCount)
 	: m_pImpl(std::make_unique<Implementation>(std::move(config), std::move(gamePath), maxCoreCount ? maxCoreCount : Win32::GetCoreCount())) {
-	m_pImpl->WorkerThread = Win32::Thread(L"FontSetsCreator", [this]() { m_pImpl->Compile(); });
 }
 
 Sqex::FontCsv::FontSetsCreator::~FontSetsCreator() {
@@ -929,16 +980,115 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::shared_ptr<const Sqex::RandomAccessSt
 	return result;
 }
 
+_COM_SMARTPTR_TYPEDEF(IDWriteFactory, __uuidof(IDWriteFactory));
+_COM_SMARTPTR_TYPEDEF(IDWriteFontCollection, __uuidof(IDWriteFontCollection));
+
+void Sqex::FontCsv::FontSetsCreator::VerifyRequirements(
+	const std::function<std::filesystem::path(const CreateConfig::GameIndexFile&)>& promptGameIndexFile,
+	const std::function<bool(const CreateConfig::FontRequirement&)>& promptFontRequirement
+) {
+	const auto relativeTo = Win32::Process::Current().PathOf();
+	const auto Succ = [](HRESULT hr) {
+		if (!SUCCEEDED(hr))
+			throw Win32::Error(_com_error(hr));
+	};
+
+	IDWriteFactoryPtr factory;
+	IDWriteFontCollectionPtr coll;
+
+	for (const auto& singleTextureTarget : m_pImpl->Config.targets | std::views::values) {
+		for (const auto& target : singleTextureTarget.fontTargets | std::views::values) {
+			for (const auto& sourceInfo : target.sources) {
+				auto& sourceOuter = m_pImpl->Config.sources.at(sourceInfo.name);
+				if (sourceOuter.isGameSource) {
+					auto& source = sourceOuter.gameSource;
+					if (!source.indexFile.empty() && exists(Win32::TranslatePath(source.indexFile, relativeTo)))
+						continue;
+					for (const auto& [name, gameIndexFile] : m_pImpl->Config.gameIndexFiles) {
+						if ([&] {
+							for (auto path : gameIndexFile.pathList) {
+								path = Win32::TranslatePath(path, Win32::Process::Current().PathOf());
+								if (exists(path)) {
+									m_pImpl->ResolvedGameIndexFiles.emplace(name, std::move(path));
+									return 0;
+								}
+							}
+							for (const auto& [region, info] : XivAlex::FindGameLaunchers()) {
+								if (region == gameIndexFile.autoDetectRegion) {
+									auto path = info.RootPath / "game" / "sqpack" / gameIndexFile.autoDetectIndexExpac / std::format("{}.win32.index", gameIndexFile.autoDetectIndexFile);
+									if (!exists(path))
+										continue;
+									m_pImpl->ResolvedGameIndexFiles.emplace(name, std::move(path));
+									return 0;
+								}
+							}
+							for (auto path : gameIndexFile.fallbackPathList) {
+								path = Win32::TranslatePath(path, Win32::Process::Current().PathOf());
+								if (exists(path)) {
+									m_pImpl->ResolvedGameIndexFiles.emplace(name, std::move(path));
+									return 0;
+								}
+							}
+							return 1;
+						}()) {
+							auto path = promptGameIndexFile(gameIndexFile);
+							if (path.empty())
+								return;
+							m_pImpl->ResolvedGameIndexFiles.emplace(name, std::move(path));
+						}
+					}
+				} else if (sourceOuter.isDirectWriteSource || (
+					sourceOuter.isFreeTypeSource
+					&& (sourceOuter.freeTypeSource.fontFile.empty()
+						|| !exists(Win32::TranslatePath(sourceOuter.freeTypeSource.fontFile, relativeTo))
+					)
+					&& !sourceOuter.freeTypeSource.familyName.empty())) {
+
+					const auto familyName = FromUtf8(sourceOuter.isDirectWriteSource ? sourceOuter.directWriteSource.familyName : sourceOuter.freeTypeSource.familyName);
+					for (const auto& rule : m_pImpl->Config.fontRequirements) {
+						const auto wname = FromUtf8(rule.name);
+						if (lstrcmpiW(wname.c_str(), familyName.c_str()) == 0) {
+							while (true) {
+								if (!coll) {
+									if (!factory)
+										Succ(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&factory)));
+									Succ(factory->GetSystemFontCollection(&coll));
+								}
+
+								BOOL exists = false;
+								UINT32 index = UINT32_MAX;
+								Succ(coll->FindFamilyName(familyName.c_str(), &index, &exists));
+								if (exists)
+									break;
+
+								if (!promptFontRequirement(rule))
+									return;
+								coll = nullptr;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+void Sqex::FontCsv::FontSetsCreator::Start() {
+	m_pImpl->WorkerThread = Win32::Thread(L"FontSetsCreator", [this] { m_pImpl->Compile(); });
+}
+
 const Sqex::FontCsv::FontSetsCreator::ResultFontSets& Sqex::FontCsv::FontSetsCreator::GetResult() const {
 	if (m_pImpl->Cancelled)
 		throw std::runtime_error(m_pImpl->LastErrorMessage.empty() ? "Cancelled" : m_pImpl->LastErrorMessage.c_str());
-	if (m_pImpl->WorkerThread.Wait(0) == WAIT_TIMEOUT)
+	if (!m_pImpl->WorkerThread || m_pImpl->WorkerThread.Wait(0) == WAIT_TIMEOUT)
 		throw std::runtime_error("not finished");
 
 	return m_pImpl->Result;
 }
 
 bool Sqex::FontCsv::FontSetsCreator::Wait(DWORD timeout) const {
+	if (!m_pImpl->WorkerThread)
+		throw std::runtime_error("Not started yet");
 	const auto res = m_pImpl->WorkerThread.Wait(false, {m_pImpl->CancelEvent}, timeout);
 	if (res == WAIT_TIMEOUT)
 		return false;
@@ -956,6 +1106,8 @@ const std::string& Sqex::FontCsv::FontSetsCreator::GetError() const {
 }
 
 Sqex::FontCsv::FontGenerateProcess Sqex::FontCsv::FontSetsCreator::GetProgress() const {
+	if (!m_pImpl->WorkerThread)
+		throw std::runtime_error("Not started yet");
 	auto result = FontGenerateProcess{
 		.Finished = m_pImpl->WorkerThread.Wait(0) != WAIT_TIMEOUT,
 		.Indeterminate = 0,

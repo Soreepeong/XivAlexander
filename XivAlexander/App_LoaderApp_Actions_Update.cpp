@@ -100,7 +100,7 @@ void App::LoaderApp::Actions::Update::CheckForUpdates(std::vector<Utils::Win32::
 					Utils::Win32::MB_GetString(IDCANCEL - 1)
 				)) {
 					case IDYES:
-						LoaderApp::ShellExecutePathOrThrow(FindStringResourceEx(Dll::Module(), IDS_URL_RELEASES) + 1);
+						Utils::Win32::ShellExecutePathOrThrow(FindStringResourceEx(Dll::Module(), IDS_URL_RELEASES) + 1);
 						break;
 
 					case IDNO:
@@ -113,7 +113,7 @@ void App::LoaderApp::Actions::Update::CheckForUpdates(std::vector<Utils::Win32::
 			}
 		} else {
 			// TODO: create string resource: New update is available, cannot autoupdate because being called as dll, etc etc.
-			LoaderApp::ShellExecutePathOrThrow(FindStringResourceEx(Dll::Module(), IDS_URL_RELEASES) + 1);
+			Utils::Win32::ShellExecutePathOrThrow(FindStringResourceEx(Dll::Module(), IDS_URL_RELEASES) + 1);
 		}
 	} catch (const std::exception& e) {
 		Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());

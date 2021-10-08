@@ -27,6 +27,9 @@ namespace Utils::Win32 {
 	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const wchar_t* text);
 	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const char* text);
 
+	std::filesystem::path TranslatePath(const std::filesystem::path& path, const std::filesystem::path& relativeTo);
+	std::filesystem::path EnsureDirectory(const std::filesystem::path& path);
+
 	template <typename ... Args>
 	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const wchar_t* format, Args ... args) {
 		return MessageBoxF(hWnd, uType, lpCaption, std::format(format, std::forward<Args>(args)...).c_str());
@@ -78,6 +81,8 @@ namespace Utils::Win32 {
 		bool throwOnCancel = false;
 	};
 
+	void ShellExecutePathOrThrow(const std::filesystem::path& path, HWND hwndOwner = nullptr);
+
 	// Needs to be null-terminated, and wstring_view does not guarantee that
 	std::vector<std::wstring> CommandLineToArgs(const std::wstring& = {});
 	std::vector<std::string> CommandLineToArgsU8(const std::wstring& = {});
@@ -125,6 +130,7 @@ namespace Utils::Win32 {
 	class CancelledError : public Error {
 	public:
 		using Error::Error;
+		CancelledError() : Error(ERROR_CANCELLED, "Cancelled") {}
 	};
 
 }

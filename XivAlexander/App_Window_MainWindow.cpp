@@ -376,10 +376,10 @@ void App::Window::MainWindow::RepopulateMenu() {
 	ModifyMenuW(hMenu, ID_FILE_CURRENTINFO, MF_BYCOMMAND | MF_DISABLED, ID_FILE_CURRENTINFO, title.c_str());
 
 	m_menuIdCallbacks.clear();
-	RepopulateMenu_FontConfig(GetSubMenu(GetSubMenu(hMenu, 3), 9));
-	RepopulateMenu_AdditionalSqpackRootDirectories(GetSubMenu(GetSubMenu(hMenu, 3), 10));
-	RepopulateMenu_ExdfTransformationRules(GetSubMenu(GetSubMenu(hMenu, 3), 11));
-	RepopulateMenu_Modding(GetSubMenu(GetSubMenu(hMenu, 3), 12));
+	RepopulateMenu_FontConfig(GetSubMenu(GetSubMenu(hMenu, 3), 10));
+	RepopulateMenu_AdditionalSqpackRootDirectories(GetSubMenu(GetSubMenu(hMenu, 3), 11));
+	RepopulateMenu_ExdfTransformationRules(GetSubMenu(GetSubMenu(hMenu, 3), 12));
+	RepopulateMenu_Modding(GetSubMenu(GetSubMenu(hMenu, 3), 13));
 }
 
 UINT_PTR App::Window::MainWindow::RepopulateMenu_AllocateMenuId(std::function<void()> cb) {
@@ -1437,7 +1437,7 @@ std::vector<std::filesystem::path> App::Window::MainWindow::ChooseFileToOpen(std
 static bool FileEquals(const std::filesystem::path& filename1, const std::filesystem::path& filename2) {
 	const auto ReadBufSize = 65536;
 	const auto file1 = Utils::Win32::File::Create(filename1, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
-	const auto file2 = Utils::Win32::File::Create(filename1, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+	const auto file2 = Utils::Win32::File::Create(filename2, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
 	const auto size1 = file1.GetLength(), size2 = file2.GetLength();
 	if (size1 != size2)
 		return false;
@@ -1446,9 +1446,9 @@ static bool FileEquals(const std::filesystem::path& filename1, const std::filesy
 	std::string buf2(ReadBufSize, 0);
 	for (uint64_t ptr = 0; ptr < size1; ptr += ReadBufSize) {
 		const auto read = static_cast<size_t>(std::min<uint64_t>(ReadBufSize, size1 - ptr));
-		file1.Read(ptr, &buf1[0], read);
-		file2.Read(ptr, &buf2[0], read);
-		if (buf1 != buf2)
+		file1.Read(ptr, &buf1[0], read, Utils::Win32::File::PartialIoMode::AlwaysFull);
+		file2.Read(ptr, &buf2[0], read, Utils::Win32::File::PartialIoMode::AlwaysFull);
+		if (0 != memcmp(&buf1[0], &buf2[0], read))
 			return false;
 	}
 

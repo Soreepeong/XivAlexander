@@ -57,7 +57,7 @@ public:
 #endif
 			switch (m_args.m_action) {
 				case LoaderAction::Web:
-					ShellExecutePathOrThrow(FindStringResourceEx(Dll::Module(), IDS_URL_MAIN) + 1);
+					Utils::Win32::ShellExecutePathOrThrow(FindStringResourceEx(Dll::Module(), IDS_URL_MAIN) + 1);
 					return 0;
 
 				case LoaderAction::Interactive:
@@ -118,7 +118,7 @@ private:
 			}
 		} catch (const std::exception& e) {
 			if (Dll::MessageBoxF(nullptr, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON1, IDS_ERROR_COMPONENTS, e.what()) == IDYES)
-				ShellExecutePathOrThrow(FindStringResourceEx(Dll::Module(), IDS_URL_RELEASES) + 1);
+				Utils::Win32::ShellExecutePathOrThrow(FindStringResourceEx(Dll::Module(), IDS_URL_RELEASES) + 1);
 			ExitProcess(-1);
 		}
 	}

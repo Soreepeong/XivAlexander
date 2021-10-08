@@ -1,7 +1,19 @@
 {
-  "name": "Papyrus/Gungsuh (International Client)",
+  "name": "Original AXIS with Simplified Chinese Support from Source Han Sans SC Regular (for International and Chinese Clients)",
   "textureWidth": 4096,
   "textureHeight": 4096,
+  "compactLayout": true,
+  "fontRequirements": [
+    {
+      "name": "Source Han Sans SC",
+      "homepage": "https://github.com/adobe-fonts/source-han-sans",
+      "installInstructions": {
+        "^en($|-)": "1. Download \"Language Specific OTFs Simplified Chinese (简体中文)\" (about 90MB) from <a href=\"https://github.com/adobe-fonts/source-han-sans/releases\">Source Han Sans official distribution page at GitHub</a>.\n2. Extract all files.\n3. Navigate into \"OTF\\Korean\"\n4. Select everything (press Ctrl+A).\n5. Right click on any of the items.\n6. Click \"Install\" or \"Install for all users\".",
+        "^ja($|-)": "1. <a href=\"https://github.com/adobe-fonts/source-han-sans/releases\">Source Han Sansの公式ダウンロードページ(GitHub)</a>で「Language Specific OTFs Simplified Chinese (简体中文)」を選択してダウンロードします。\n2. すべてのファイルの圧縮を解除します。\n3. 「OTF\\Korean」フォルダーを開けます。\n4. すべてのファイルを選択します。（ショートカットキーはCtrl+Aです。）\n5. あるファイルを右クリックします。\n6. 「インストール」あるいは「すべてのユーザーに対してインストール」を選択します。",
+        "^ko($|-)": "1. <a href=\"https://github.com/adobe-fonts/source-han-sans/releases\">Source Han Sans 공식 다운로드 페이지 (GitHub)</a>에서 \"Language Specific OTFs Simplified Chinese (简体中文)\"를 선택해서 받습니다.\n2. 모든 파일의 압축을 풉니다.\n3. \"OTF\\Korean\" 폴더로 들어갑니다.\n4. 모든 파일을 선택합니다. (Ctrl+A를 누르세요.)\n5. 아무 파일이나 마우스 오른쪽 버튼 클릭을 합니다.\n6. \"설치\" 혹은 \"모든 사용자용으로 설치\"를 선택해 주세요."
+      }
+    }
+  ],
   "sources": {
     "game:AXIS_96": {
       "fdtPath": "common/font/AXIS_96.fdt",
@@ -95,139 +107,37 @@
       "fdtPath": "common/font/TrumpGothic_68.fdt",
       "texturePath": "common/font/font{}.tex"
     },
-    "dwrite:Gungsuh:9.6": {
-      "familyName": "Gungsuh",
-      "height": 9.6,
-      "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL",
-      "measureUsingFreeType": true
-    },
-    "dwrite:Gungsuh:12": {
-      "familyName": "Gungsuh",
-      "height": 12,
-      "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL",
-      "measureUsingFreeType": true
-    },
-    "dwrite:Gungsuh:14": {
-      "familyName": "Gungsuh",
-      "height": 14,
-      "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL",
-      "measureUsingFreeType": true
-    },
-    "dwrite:Gungsuh:18": {
-      "familyName": "Gungsuh",
-      "height": 18,
-      "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL",
-      "measureUsingFreeType": true
-    },
-    "dwrite:Gungsuh:24": {
-      "familyName": "Gungsuh",
-      "height": 24,
-      "weight": 400
-    },
-    "dwrite:Gungsuh:36": {
-      "familyName": "Gungsuh",
-      "height": 36,
-      "weight": 400
-    },
-    "dwrite:Papyrus:9.6": {
-      "familyName": "Papyrus",
-      "height": 9.6,
-      "weight": 400
-    },
-    "dwrite:Papyrus:12": {
-      "familyName": "Papyrus",
+    "dwrite:SourceHanSansSC:12": {
+      "familyName": "Source Han Sans SC",
       "height": 12,
       "weight": 400
     },
-    "dwrite:Papyrus:14": {
-      "familyName": "Papyrus",
+    "dwrite:SourceHanSansSC:14": {
+      "familyName": "Source Han Sans SC",
       "height": 14,
       "weight": 400
     },
-    "dwrite:Papyrus:18": {
-      "familyName": "Papyrus",
+    "dwrite:SourceHanSansSC:18": {
+      "familyName": "Source Han Sans SC",
       "height": 18,
       "weight": 400
     },
-    "dwrite:Papyrus:24": {
-      "familyName": "Papyrus",
-      "height": 24,
-      "weight": 400
-    },
-    "dwrite:Papyrus:36": {
-      "familyName": "Papyrus",
+    "dwrite:SourceHanSansSC:36": {
+      "familyName": "Source Han Sans SC",
       "height": 36,
       "weight": 400
     }
   },
   "ranges": {
-    "HangulMinimum": {
-      "Hangul Jamo": [
-        "U+1100",
-        "U+11FF"
-      ],
-      "Hangul Compatibility Jamo": [
-        "U+3130",
-        "U+318F"
-      ],
-      "Hangul Jamo Extended-A": [
-        "U+A960",
-        "U+A97F"
-      ],
-      "Hangul Syllables": [
-        "U+AC00",
-        "U+D7AF"
-      ],
-      "Hangul Jamo Extended-B": [
-        "U+D7B0",
-        "U+D7FF"
-      ]
-    },
-    "Hangul": {
-      "Hangul Jamo": [
-        "U+1100",
-        "U+11FF"
-      ],
-      "CJK Symbols and Punctuation": [
-        "U+3000",
-        "U+303F"
-      ],
-      "Hangul Compatibility Jamo": [
-        "U+3130",
-        "U+318F"
-      ],
-      "Enclosed CJK Letters and Months": [
-        "U+3200",
-        "U+32FF"
-      ],
-      "CJK Unified Ideographs Extension A": [
-        "U+3400",
-        "U+4DBF"
-      ],
-      "CJK Unified Ideographs": [
-        "U+4E00",
-        "U+9FFF"
-      ],
-      "Hangul Jamo Extended-A": [
-        "U+A960",
-        "U+A97F"
-      ],
-      "Hangul Syllables": [
-        "U+AC00",
-        "U+D7AF"
-      ],
-      "Hangul Jamo Extended-B": [
-        "U+D7B0",
-        "U+D7FF"
-      ],
-      "CJK Compatibility Ideographs": [
-        "U+F900",
-        "U+FAFF"
-      ]
+    "ChineseSimplified": {
+      "CJK Symbols and Punctuation(〇)": ["U+3007", "U+3007"],
+      "CJK Unified Ideographs Extension A": ["U+3400", "U+4DBF"],
+      "CJK Unified Ideographs": ["U+4E00", "U+9FFF"],
+      "CJK Unified Ideographs Extension B": ["U+20000", "U+2A6DF"],
+      "CJK Unified Ideographs Extension C": ["U+2A700", "U+2B73F"],
+      "CJK Unified Ideographs Extension D": ["U+2B740", "U+2B81F"],
+      "CJK Unified Ideographs Extension E": ["U+2B820", "U+2CEAF"],
+      "CJK Unified Ideographs Extension F": ["U+2CEB0", "U+2EBEF"]
     }
   },
   "targets": {
@@ -241,14 +151,9 @@
             "name": "game:AXIS_96"
           },
           {
-            "name": "dwrite:Papyrus:9.6",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:9.6",
+            "name": "dwrite:SourceHanSansSC:12",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -262,14 +167,9 @@
             "name": "game:AXIS_12"
           },
           {
-            "name": "dwrite:Papyrus:12",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:12",
+            "name": "dwrite:SourceHanSansSC:12",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -283,14 +183,9 @@
             "name": "game:AXIS_14"
           },
           {
-            "name": "dwrite:Papyrus:14",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:14",
+            "name": "dwrite:SourceHanSansSC:14",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -304,14 +199,9 @@
             "name": "game:AXIS_18"
           },
           {
-            "name": "dwrite:Papyrus:18",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:18",
+            "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -325,14 +215,9 @@
             "name": "game:AXIS_36"
           },
           {
-            "name": "dwrite:Papyrus:36",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:36",
+            "name": "dwrite:SourceHanSansSC:36",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -346,14 +231,9 @@
             "name": "game:Jupiter_16"
           },
           {
-            "name": "dwrite:Papyrus:18",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:18",
+            "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -367,14 +247,9 @@
             "name": "game:Jupiter_20"
           },
           {
-            "name": "dwrite:Papyrus:24",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:24",
+            "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -388,14 +263,9 @@
             "name": "game:Jupiter_23"
           },
           {
-            "name": "dwrite:Papyrus:24",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:24",
+            "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -419,14 +289,9 @@
             "name": "game:Jupiter_46"
           },
           {
-            "name": "dwrite:Papyrus:36",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:36",
+            "name": "dwrite:SourceHanSansSC:36",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -480,14 +345,9 @@
             "name": "game:MiedingerMid_10"
           },
           {
-            "name": "dwrite:Papyrus:9.6",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:9.6",
+            "name": "dwrite:SourceHanSansSC:12",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -501,14 +361,9 @@
             "name": "game:MiedingerMid_12"
           },
           {
-            "name": "dwrite:Papyrus:12",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:12",
+            "name": "dwrite:SourceHanSansSC:12",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -522,14 +377,9 @@
             "name": "game:MiedingerMid_14"
           },
           {
-            "name": "dwrite:Papyrus:14",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:14",
+            "name": "dwrite:SourceHanSansSC:14",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -543,14 +393,9 @@
             "name": "game:MiedingerMid_18"
           },
           {
-            "name": "dwrite:Papyrus:18",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:18",
+            "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -564,14 +409,9 @@
             "name": "game:MiedingerMid_36"
           },
           {
-            "name": "dwrite:Papyrus:36",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:36",
+            "name": "dwrite:SourceHanSansSC:36",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -585,14 +425,9 @@
             "name": "game:TrumpGothic_184"
           },
           {
-            "name": "dwrite:Papyrus:18",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:18",
+            "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -606,14 +441,9 @@
             "name": "game:TrumpGothic_23"
           },
           {
-            "name": "dwrite:Papyrus:24",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:24",
+            "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -627,14 +457,9 @@
             "name": "game:TrumpGothic_34"
           },
           {
-            "name": "dwrite:Papyrus:36",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:36",
+            "name": "dwrite:SourceHanSansSC:36",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -648,14 +473,9 @@
             "name": "game:TrumpGothic_68"
           },
           {
-            "name": "dwrite:Papyrus:36",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:36",
+            "name": "dwrite:SourceHanSansSC:36",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -671,14 +491,9 @@
             "name": "game:AXIS_12"
           },
           {
-            "name": "dwrite:Papyrus:12",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:12",
+            "name": "dwrite:SourceHanSansSC:12",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -692,14 +507,9 @@
             "name": "game:AXIS_14"
           },
           {
-            "name": "dwrite:Papyrus:14",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:14",
+            "name": "dwrite:SourceHanSansSC:14",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -713,14 +523,9 @@
             "name": "game:AXIS_18"
           },
           {
-            "name": "dwrite:Papyrus:18",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:18",
+            "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -734,14 +539,9 @@
             "name": "game:Jupiter_16"
           },
           {
-            "name": "dwrite:Papyrus:18",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:18",
+            "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -755,14 +555,9 @@
             "name": "game:Jupiter_20"
           },
           {
-            "name": "dwrite:Papyrus:24",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:24",
+            "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -776,14 +571,9 @@
             "name": "game:Jupiter_23"
           },
           {
-            "name": "dwrite:Papyrus:24",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:24",
+            "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -827,14 +617,9 @@
             "name": "game:MiedingerMid_10"
           },
           {
-            "name": "dwrite:Papyrus:9.6",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:9.6",
+            "name": "dwrite:SourceHanSansSC:12",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -848,14 +633,9 @@
             "name": "game:MiedingerMid_12"
           },
           {
-            "name": "dwrite:Papyrus:12",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:12",
+            "name": "dwrite:SourceHanSansSC:12",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -869,14 +649,9 @@
             "name": "game:MiedingerMid_14"
           },
           {
-            "name": "dwrite:Papyrus:14",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:14",
+            "name": "dwrite:SourceHanSansSC:14",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -890,14 +665,9 @@
             "name": "game:MiedingerMid_18"
           },
           {
-            "name": "dwrite:Papyrus:18",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:18",
+            "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -911,14 +681,9 @@
             "name": "game:TrumpGothic_184"
           },
           {
-            "name": "dwrite:Papyrus:18",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:18",
+            "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -932,14 +697,9 @@
             "name": "game:TrumpGothic_23"
           },
           {
-            "name": "dwrite:Papyrus:24",
-            "extendRange": false,
-            "replace": true
-          },
-          {
-            "name": "dwrite:Gungsuh:24",
+            "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
             ]
           }
         ]
@@ -953,14 +713,59 @@
             "name": "game:TrumpGothic_34"
           },
           {
-            "name": "dwrite:Papyrus:36",
-            "extendRange": false,
-            "replace": true
+            "name": "dwrite:SourceHanSansSC:36",
+            "ranges": [
+              "ChineseSimplified"
+            ]
+          }
+        ]
+      }
+    },
+    "font_chn_{}.tex": {
+      "ChnAXIS_120.fdt": {
+        "height": 12,
+        "ascent": "game:AXIS_12",
+        "lineHeight": "game:AXIS_12",
+        "sources": [
+          {
+            "name": "game:AXIS_12"
           },
           {
-            "name": "dwrite:Gungsuh:36",
+            "name": "dwrite:SourceHanSansSC:12",
             "ranges": [
-              "HangulMinimum"
+              "ChineseSimplified"
+            ]
+          }
+        ]
+      },
+      "ChnAXIS_140.fdt": {
+        "height": 14,
+        "ascent": "game:AXIS_14",
+        "lineHeight": "game:AXIS_14",
+        "sources": [
+          {
+            "name": "game:AXIS_14"
+          },
+          {
+            "name": "dwrite:SourceHanSansSC:14",
+            "ranges": [
+              "ChineseSimplified"
+            ]
+          }
+        ]
+      },
+      "ChnAXIS_180.fdt": {
+        "height": 36,
+        "ascent": "game:AXIS_36",
+        "lineHeight": "game:AXIS_36",
+        "sources": [
+          {
+            "name": "game:AXIS_36"
+          },
+          {
+            "name": "dwrite:SourceHanSansSC:36",
+            "ranges": [
+              "ChineseSimplified"
             ]
           }
         ]

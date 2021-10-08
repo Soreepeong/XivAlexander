@@ -12,6 +12,7 @@
 #include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
 #include <XivAlexanderCommon/Sqex_ThirdParty_TexTools.h>
 #include <XivAlexanderCommon/Utils_Win32_Process.h>
+#include <XivAlexanderCommon/Utils_Win32_TaskDialogBuilder.h>
 #include <XivAlexanderCommon/Utils_Win32_ThreadPool.h>
 #include <XivAlexanderCommon/XivAlex.h>
 
@@ -1291,176 +1292,343 @@ struct App::Misc::VirtualSqPacks::Implementation {
 	}
 
 	void SetUpGeneratedFonts(Window::ProgressPopupWindow& progressWindow, Sqex::Sqpack::Creator& creator, const std::filesystem::path& indexPath) {
-		const auto fontConfigPath = Config->Runtime.OverrideFontConfig.Value();
-		if (fontConfigPath.empty())
-			return;
-
-		try {
-			const auto [region, _] = XivAlex::ResolveGameReleaseRegion();
-			const auto cachedDir = Config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / region / creator.DatExpac / creator.DatName;
-
-			std::string currentCacheKeys;
-			{
-				const auto gameRoot = indexPath.parent_path().parent_path().parent_path();
-				const auto versionFile = Utils::Win32::File::Create(gameRoot / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
-				const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetLength()));
-				currentCacheKeys += std::format("SQPACK:{}:{}\n", canonical(gameRoot).wstring(), std::string(versionContent.begin(), versionContent.end()));
-			}
-
-			if (const auto& configFile = Config->Runtime.OverrideFontConfig.Value(); !configFile.empty()) {
-				uint8_t hash[20]{};
-				try {
-					const auto file = Utils::Win32::File::Create(configFile, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
-					CryptoPP::SHA1 sha1;
-					const auto content = file.Read<uint8_t>(0, static_cast<size_t>(file.GetLength()));
-					sha1.Update(content.data(), content.size());
-					sha1.Final(reinterpret_cast<byte*>(hash));
-				} catch (...) {
-				}
-
-				CryptoPP::HexEncoder encoder;
-				encoder.Put(hash, sizeof hash);
-				encoder.MessageEnd();
-
-				std::string buf(static_cast<size_t>(encoder.MaxRetrievable()), 0);
-				encoder.Get(reinterpret_cast<byte*>(&buf[0]), buf.size());
-
-				currentCacheKeys += std::format("CONF:{}:{}\n", configFile, buf);
-			}
-
-			auto needRecreate = true;
+		while (true) {
+			const auto fontConfigPath = Config->Runtime.OverrideFontConfig.Value();
+			if (fontConfigPath.empty())
+				return;
+		
 			try {
-				const auto file = Utils::Win32::File::Create(cachedDir / "sources", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
-				const auto content = file.Read<char>(0, static_cast<size_t>(file.GetLength()));
-				needRecreate = !std::ranges::equal(content, currentCacheKeys);
-			} catch (...) {
-				// pass
-			}
+				const auto [region, _] = XivAlex::ResolveGameReleaseRegion();
+				const auto cachedDir = Config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / region / creator.DatExpac / creator.DatName;
 
-			if (needRecreate) {
-				create_directories(cachedDir);
-
-				progressWindow.UpdateMessage(Utils::ToUtf8(Config->Runtime.GetStringRes(IDS_TITLE_GENERATING_FONTS)));
-
-				Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
-					"=> Generating font per file: {}",
-					fontConfigPath.wstring());
-
-				auto cfg = Utils::ParseJsonFromFile(fontConfigPath).get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
-
-				Sqex::FontCsv::FontSetsCreator fontCreator(cfg, Utils::Win32::Process::Current().PathOf().parent_path());
-				while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {fontCreator.GetWaitableObject()})) {
-					const auto progress = fontCreator.GetProgress();
-					progressWindow.UpdateProgress(progress.Progress, progress.Max);
-
-					if (progress.Indeterminate)
-						progressWindow.UpdateMessage(std::format("{} (+{})", Config->Runtime.GetStringRes(IDS_TITLE_GENERATING_FONTS), progress.Indeterminate));
-					else
-						progressWindow.UpdateMessage(Utils::ToUtf8(Config->Runtime.GetStringRes(IDS_TITLE_GENERATING_FONTS)));
+				std::string currentCacheKeys;
+				{
+					const auto gameRoot = indexPath.parent_path().parent_path().parent_path();
+					const auto versionFile = Utils::Win32::File::Create(gameRoot / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+					const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetLength()));
+					currentCacheKeys += std::format("SQPACK:{}:{}\n", canonical(gameRoot).wstring(), std::string(versionContent.begin(), versionContent.end()));
 				}
-				if (progressWindow.GetCancelEvent().Wait(0) != WAIT_OBJECT_0) {
-					progressWindow.UpdateMessage(Utils::ToUtf8(Config->Runtime.GetStringRes(IDS_TITLE_COMPRESSING)));
-					Utils::Win32::TpEnvironment pool;
-					const auto streams = fontCreator.GetResult().GetAllStreams();
 
-					std::atomic_int64_t progress = 0;
-					uint64_t maxProgress = 0;
-					for (auto& stream : streams | std::views::values)
-						maxProgress += stream->StreamSize() * 2;
-					progressWindow.UpdateProgress(progress, maxProgress);
+				if (const auto& configFile = Config->Runtime.OverrideFontConfig.Value(); !configFile.empty()) {
+					uint8_t hash[20]{};
+					try {
+						const auto file = Utils::Win32::File::Create(configFile, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+						CryptoPP::SHA1 sha1;
+						const auto content = file.Read<uint8_t>(0, static_cast<size_t>(file.GetLength()));
+						sha1.Update(content.data(), content.size());
+						sha1.Final(reinterpret_cast<byte*>(hash));
+					} catch (...) {
+					}
 
-					const auto ttmpl = Utils::Win32::File::Create(cachedDir / "TTMPL.mpl.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
-					const auto ttmpd = Utils::Win32::File::Create(cachedDir / "TTMPD.mpd.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
-					uint64_t ttmplPtr = 0, ttmpdPtr = 0;
-					std::mutex writeMtx;
+					CryptoPP::HexEncoder encoder;
+					encoder.Put(hash, sizeof hash);
+					encoder.MessageEnd();
 
-					const auto compressThread = Utils::Win32::Thread(L"CompressThread", [&]() {
-						for (const auto& kv : streams) {
-							const auto& entryPathSpec = kv.first;
-							const auto& stream = kv.second;
+					std::string buf(static_cast<size_t>(encoder.MaxRetrievable()), 0);
+					encoder.Get(reinterpret_cast<byte*>(&buf[0]), buf.size());
 
-							pool.SubmitWork([&]() {
-								if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-									return;
+					currentCacheKeys += std::format("CONF:{}:{}\n", configFile, buf);
+				}
 
-								std::shared_ptr<Sqex::Sqpack::EntryProvider> provider;
-								auto extension = entryPathSpec.Original.extension().wstring();
-								CharLowerW(&extension[0]);
+				auto needRecreate = true;
+				try {
+					const auto file = Utils::Win32::File::Create(cachedDir / "sources", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+					const auto content = file.Read<char>(0, static_cast<size_t>(file.GetLength()));
+					needRecreate = !std::ranges::equal(content, currentCacheKeys);
+				} catch (...) {
+					// pass
+				}
 
-								if (extension == L".tex")
-									provider = std::make_shared<Sqex::Sqpack::MemoryTextureEntryProvider>(entryPathSpec, stream);
-								else
-									provider = std::make_shared<Sqex::Sqpack::MemoryBinaryEntryProvider>(entryPathSpec, stream);
-								const auto len = provider->StreamSize();
-								const auto dv = provider->ReadStreamIntoVector<char>(0, static_cast<SSIZE_T>(len));
-								progress += stream->StreamSize();
+				if (needRecreate) {
+					create_directories(cachedDir);
 
-								if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-									return;
-								const auto lock = std::lock_guard(writeMtx);
-								const auto entryLine = std::format("{}\n", nlohmann::json::object({
-									{"FullPath", Utils::ToUtf8(entryPathSpec.Original.wstring())},
-									{"ModOffset", ttmpdPtr},
-									{"ModSize", len},
-									{"DatFile", "000000"},
-								}).dump());
-								ttmplPtr += ttmpl.Write(ttmplPtr, std::span(entryLine));
-								ttmpdPtr += ttmpd.Write(ttmpdPtr, std::span(dv));
-								progress += stream->StreamSize();
-							});
-						}
-						pool.WaitOutstanding();
-					});
+					progressWindow.UpdateMessage(Utils::ToUtf8(Config->Runtime.GetStringRes(IDS_TITLE_GENERATING_FONTS)));
 
-					while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {compressThread})) {
+					Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+						"=> Generating font per file: {}",
+						fontConfigPath.wstring());
+
+					auto cfg = Utils::ParseJsonFromFile(fontConfigPath).get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
+					cfg.ValidateOrThrow();
+
+					Sqex::FontCsv::FontSetsCreator fontCreator(cfg, Utils::Win32::Process::Current().PathOf().parent_path());
+					SetupGeneratedFonts_VerifyRequirements(fontCreator, progressWindow);
+					fontCreator.Start();
+
+					while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {fontCreator.GetWaitableObject()})) {
+						const auto progress = fontCreator.GetProgress();
+						progressWindow.UpdateProgress(progress.Progress, progress.Max);
+
+						if (progress.Indeterminate)
+							progressWindow.UpdateMessage(std::format("{} (+{})", Config->Runtime.GetStringRes(IDS_TITLE_GENERATING_FONTS), progress.Indeterminate));
+						else
+							progressWindow.UpdateMessage(Utils::ToUtf8(Config->Runtime.GetStringRes(IDS_TITLE_GENERATING_FONTS)));
+					}
+					if (progressWindow.GetCancelEvent().Wait(0) != WAIT_OBJECT_0) {
+						progressWindow.UpdateMessage(Utils::ToUtf8(Config->Runtime.GetStringRes(IDS_TITLE_COMPRESSING)));
+						Utils::Win32::TpEnvironment pool;
+						const auto streams = fontCreator.GetResult().GetAllStreams();
+
+						std::atomic_int64_t progress = 0;
+						uint64_t maxProgress = 0;
+						for (auto& stream : streams | std::views::values)
+							maxProgress += stream->StreamSize() * 2;
 						progressWindow.UpdateProgress(progress, maxProgress);
+
+						const auto ttmpl = Utils::Win32::File::Create(cachedDir / "TTMPL.mpl.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
+						const auto ttmpd = Utils::Win32::File::Create(cachedDir / "TTMPD.mpd.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
+						uint64_t ttmplPtr = 0, ttmpdPtr = 0;
+						std::mutex writeMtx;
+
+						const auto compressThread = Utils::Win32::Thread(L"CompressThread", [&]() {
+							for (const auto& kv : streams) {
+								const auto& entryPathSpec = kv.first;
+								const auto& stream = kv.second;
+
+								pool.SubmitWork([&]() {
+									if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+										return;
+
+									std::shared_ptr<Sqex::Sqpack::EntryProvider> provider;
+									auto extension = entryPathSpec.Original.extension().wstring();
+									CharLowerW(&extension[0]);
+
+									if (extension == L".tex")
+										provider = std::make_shared<Sqex::Sqpack::MemoryTextureEntryProvider>(entryPathSpec, stream);
+									else
+										provider = std::make_shared<Sqex::Sqpack::MemoryBinaryEntryProvider>(entryPathSpec, stream);
+									const auto len = provider->StreamSize();
+									const auto dv = provider->ReadStreamIntoVector<char>(0, static_cast<SSIZE_T>(len));
+									progress += stream->StreamSize();
+
+									if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+										return;
+									const auto lock = std::lock_guard(writeMtx);
+									const auto entryLine = std::format("{}\n", nlohmann::json::object({
+										{"FullPath", Utils::ToUtf8(entryPathSpec.Original.wstring())},
+										{"ModOffset", ttmpdPtr},
+										{"ModSize", len},
+										{"DatFile", "000000"},
+									}).dump());
+									ttmplPtr += ttmpl.Write(ttmplPtr, std::span(entryLine));
+									ttmpdPtr += ttmpd.Write(ttmpdPtr, std::span(dv));
+									progress += stream->StreamSize();
+								});
+							}
+							pool.WaitOutstanding();
+						});
+
+						while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {compressThread})) {
+							progressWindow.UpdateProgress(progress, maxProgress);
+						}
+						pool.Cancel();
+						compressThread.Wait();
 					}
-					pool.Cancel();
-					compressThread.Wait();
+
+					if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0) {
+						try {
+							std::filesystem::remove(cachedDir / "TTMPL.mpl.tmp");
+						} catch (...) {
+							// whatever
+						}
+						try {
+							std::filesystem::remove(cachedDir / "TTMPD.mpd.tmp");
+						} catch (...) {
+							// whatever
+						}
+						return;
+					}
+
+					try {
+						std::filesystem::remove(cachedDir / "TTMPL.mpl");
+					} catch (...) {
+						// whatever
+					}
+					try {
+						std::filesystem::remove(cachedDir / "TTMPD.mpd");
+					} catch (...) {
+						// whatever
+					}
+					std::filesystem::rename(cachedDir / "TTMPL.mpl.tmp", cachedDir / "TTMPL.mpl");
+					std::filesystem::rename(cachedDir / "TTMPD.mpd.tmp", cachedDir / "TTMPD.mpd");
+					Utils::Win32::File::Create(cachedDir / "sources", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0)
+						.Write(0, currentCacheKeys.data(), currentCacheKeys.size());
 				}
 
-				if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0) {
-					try {
-						std::filesystem::remove(cachedDir / "TTMPL.mpl.tmp");
-					} catch (...) {
-						// whatever
+				if (const auto result = creator.AddEntriesFromTTMP(cachedDir); result.AnyItem()) {
+					Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+						"[ffxiv/000000] Generated font: added {}, replaced {}, ignored {}, error {}",
+						result.Added.size(), result.Replaced.size(), result.SkippedExisting.size(), result.Error.size());
+					for (const auto& error : result.Error) {
+						Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+							"\t=> Error processing {}: {}", error.first, error.second);
 					}
-					try {
-						std::filesystem::remove(cachedDir / "TTMPD.mpd.tmp");
-					} catch (...) {
-						// whatever
-					}
+				}
+
+				return;
+			} catch (const Utils::Win32::CancelledError&) {
+				Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks, "[ffxiv/000000] Font generation cancelled");
+				return;
+
+			} catch (const std::exception& e) {
+				Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[ffxiv/000000] Error: {}", e.what());
+				if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 					return;
-				}
-
-				try {
-					std::filesystem::remove(cachedDir / "TTMPL.mpl");
-				} catch (...) {
-					// whatever
-				}
-				try {
-					std::filesystem::remove(cachedDir / "TTMPD.mpd");
-				} catch (...) {
-					// whatever
-				}
-				std::filesystem::rename(cachedDir / "TTMPL.mpl.tmp", cachedDir / "TTMPL.mpl");
-				std::filesystem::rename(cachedDir / "TTMPD.mpd.tmp", cachedDir / "TTMPD.mpd");
-				Utils::Win32::File::Create(cachedDir / "sources", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0)
-					.Write(0, currentCacheKeys.data(), currentCacheKeys.size());
-			}
-
-			if (const auto result = creator.AddEntriesFromTTMP(cachedDir); result.AnyItem()) {
-				Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
-					"[ffxiv/000000] Generated font: added {}, replaced {}, ignored {}, error {}",
-					result.Added.size(), result.Replaced.size(), result.SkippedExisting.size(), result.Error.size());
-				for (const auto& error : result.Error) {
-					Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-						"\t=> Error processing {}: {}", error.first, error.second);
+				switch (Dll::MessageBoxF(progressWindow.Handle(), MB_ICONERROR | MB_ABORTRETRYIGNORE, 
+					L"An error has occurred while generating or loading fonts. Do you want to retry?\n\nError: {}", // TODO: resource
+					e.what())) {
+					case IDRETRY:
+						continue;
+					case IDABORT:
+						ExitProcess(-1);
+					case IDIGNORE:
+						return;
 				}
 			}
-		} catch (const std::exception& e) {
-			Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[ffxiv/000000] Error: {}", e.what());
 		}
+	}
+
+	void SetupGeneratedFonts_VerifyRequirements(Sqex::FontCsv::FontSetsCreator& fontCreator, Window::ProgressPopupWindow& progressWindow) {
+		fontCreator.VerifyRequirements(
+			[this, &progressWindow](const Sqex::FontCsv::CreateConfig::GameIndexFile& gameIndexFile) -> std::filesystem::path {
+				std::wstring prompt;
+				if (gameIndexFile.fallbackPrompt.empty()) {
+					prompt = Config->Runtime.GetStringRes(IDS_TITLE_SELECT_FFXIVEXECUTABLE);
+					switch (gameIndexFile.autoDetectRegion) {
+						case Sqex::GameRegion::International:
+							prompt += std::format(L" ({})", Config->Runtime.GetStringRes(IDS_CLIENT_INTERNATIONAL));
+							break;
+						case Sqex::GameRegion::Chinese:
+							prompt += std::format(L" ({})", Config->Runtime.GetStringRes(IDS_CLIENT_KOREAN));
+							break;
+						case Sqex::GameRegion::Korean:
+							prompt += std::format(L" ({})", Config->Runtime.GetStringRes(IDS_CLIENT_CHINESE));
+							break;
+					}
+				} else if (gameIndexFile.fallbackPrompt.size() == 1)
+					prompt = Utils::FromUtf8(gameIndexFile.fallbackPrompt.front().second);
+				else {
+					auto found = false;
+					for (const auto& [langId, localeName]: Config->Runtime.GetDisplayLanguagePriorities()) {
+						for (const auto& [localeNameRegex, customPrompt] : gameIndexFile.fallbackPrompt) {
+							if (std::regex_search(localeName, std::regex(localeNameRegex, std::regex::icase))) {
+								prompt = Utils::FromUtf8(customPrompt);
+								found = true;
+								break;
+							}
+						}
+						if (found)
+							break;
+					}
+					if (!found)
+						prompt = Utils::FromUtf8(gameIndexFile.fallbackPrompt.front().second);
+				}
+						
+				IFileOpenDialogPtr pDialog;
+				DWORD dwFlags;
+				static const COMDLG_FILTERSPEC fileTypes[] = {
+					{FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_FFXIVEXECUTABLEFILES) + 1, L"ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe; ffxiv.exe"},
+					{FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_EXECUTABLEFILES) + 1, L"*.exe"},
+					{FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_ALLFILES) + 1, L"*"},
+				};
+				Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypes(ARRAYSIZE(fileTypes), fileTypes));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypeIndex(0));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->SetDefaultExtension(L"exe"));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(prompt.c_str()));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->GetOptions(&dwFlags));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->Show(progressWindow.Handle()), true);
+
+				while (true) {
+					std::filesystem::path fileName;
+					{
+						IShellItemPtr pResult;
+						PWSTR pszFileName;
+						Utils::Win32::Error::ThrowIfFailed(pDialog->GetResult(&pResult));
+						Utils::Win32::Error::ThrowIfFailed(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
+						if (!pszFileName)
+							throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
+						fileName = pszFileName;
+						CoTaskMemFree(pszFileName);
+					}
+
+					if (lstrcmpiW(fileName.filename().wstring().c_str(), XivAlex::GameExecutable32NameW) == 0
+						|| lstrcmpiW(fileName.filename().wstring().c_str(), XivAlex::GameExecutable64NameW) == 0) {
+						return fileName.parent_path();
+					} else {
+						fileName = fileName.parent_path();
+						std::filesystem::path GamePath;
+						if (!exists((GamePath = fileName / "game") / "ffxivgame.ver"))
+							if (!exists((GamePath = fileName.parent_path() / "game") / "ffxivgame.ver"))
+								if (!exists((GamePath = fileName.parent_path().parent_path() / "game") / "ffxivgame.ver"))
+									continue;
+						return GamePath;
+					}
+				}
+			},
+			[this, &progressWindow](const Sqex::FontCsv::CreateConfig::FontRequirement& requirement) -> bool {
+				std::wstring instructions;
+				if (requirement.installInstructions.empty())
+					instructions = L"TODO"; // TODO
+				else if (requirement.installInstructions.size() == 1)
+					instructions = Utils::FromUtf8(requirement.installInstructions.front().second);
+				else {
+					auto found = false;
+					for (const auto& [langId, localeName]: Config->Runtime.GetDisplayLanguagePriorities()) {
+						for (const auto& [localeNameRegex, customPrompt] : requirement.installInstructions) {
+							if (std::regex_search(localeName, std::regex(localeNameRegex, std::regex::icase))) {
+								instructions = Utils::FromUtf8(customPrompt);
+								found = true;
+								break;
+							}
+						}
+						if (found)
+							break;
+					}
+					if (!found)
+						instructions = Utils::FromUtf8(requirement.installInstructions.front().second);
+				}
+						
+				auto builder = Utils::Win32::TaskDialog::Builder();
+				if (!requirement.homepage.empty()){
+					builder.WithHyperlinkHandler(L"homepage", [homepage = Utils::FromUtf8(requirement.homepage)](auto& dialog) {
+						try {
+							Utils::Win32::ShellExecutePathOrThrow(homepage, dialog.GetHwnd());
+						} catch (const std::exception& e) {
+							Dll::MessageBoxF(dialog.GetHwnd(), MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+						}
+						return Utils::Win32::TaskDialog::HyperlinkHandleResult::HandledKeepDialog;
+					});
+					builder.WithFooter(std::format(L"<a href=\"homepage\">{}</a>", 
+						Utils::StringReplaceAll<std::string>(
+							Utils::StringReplaceAll<std::string>(requirement.homepage, "&", "&amp;")
+							, "<", "&lt;")
+					));
+				}
+				const auto res = builder
+					.WithWindowTitle(Dll::GetGenericMessageBoxTitle())
+					.WithParentWindow(progressWindow.Handle())
+					.WithInstance(Dll::Module())
+					.WithAllowDialogCancellation()
+					.WithCanBeMinimized()
+					.WithHyperlinkShellExecute()
+					.WithMainIcon(IDI_TRAY_ICON)
+					.WithMainInstruction(L"Font installation required")
+					.WithContent(instructions)
+					.WithButton({
+						.Id = 1001,
+						.Text = L"Check again",
+					})
+					.WithButtonDefault(1001)
+					.WithCommonButton(TDCBF_CANCEL_BUTTON)
+					.Build()
+					.Show();
+				if (res.Button == IDCANCEL)
+					throw Utils::Win32::CancelledError();
+				return true;
+			}
+		);
 	}
 };
 

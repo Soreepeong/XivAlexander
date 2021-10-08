@@ -31,14 +31,22 @@ namespace Sqex {
 		Japan = 1,
 		NorthAmerica = 2,
 		Europe = 3,
-
-		// Following 2 are only for sentinel purpoess.
-		China = 100001,
-		Korea = 100002,
+		China = 4,
+		Korea = 5,
 	};
 
 	void to_json(nlohmann::json&, const Region&);
 	void from_json(const nlohmann::json&, Region&);
+
+	enum class GameRegion {
+		Unspecified,
+		International,
+		Korean,
+		Chinese,
+	};
+
+	void to_json(nlohmann::json&, const GameRegion&);
+	void from_json(const nlohmann::json&, GameRegion&);
 
 	class CorruptDataException : public std::runtime_error {
 	public:

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "XivAlex.h"
+
 #include "Utils_CallOnDestruction.h"
 #include "Utils_Win32.h"
 #include "Utils_Win32_Closeable.h"
@@ -199,15 +200,15 @@ static std::wstring ReadRegistryAsString(const wchar_t* lpSubKey, const wchar_t*
 	return buf;
 }
 
-std::vector<std::pair<XivAlex::GameRegion, XivAlex::GameRegionInfo>> XivAlex::FindGameLaunchers() {
-	std::vector<std::pair<GameRegion, GameRegionInfo>> result;
+std::vector<std::pair<Sqex::GameRegion, XivAlex::GameRegionInfo>> XivAlex::FindGameLaunchers() {
+	std::vector<std::pair<Sqex::GameRegion, GameRegionInfo>> result;
 
 	if (const auto reg = ReadRegistryAsString(
 		LR"(SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{2B41E132-07DF-4925-A3D3-F2D1765CCDFE})",
 		L"DisplayIcon"
 	); !reg.empty()) {
 		GameRegionInfo info{
-			.Type = GameRegion::International,
+			.Type = Sqex::GameRegion::International,
 			.RootPath = std::filesystem::path(reg).parent_path().parent_path(),
 #if INTPTR_MAX == INT32_MAX
 
@@ -232,7 +233,7 @@ std::vector<std::pair<XivAlex::GameRegion, XivAlex::GameRegionInfo>> XivAlex::Fi
 			},
 		};
 
-		result.emplace_back(GameRegion::International, info);
+		result.emplace_back(Sqex::GameRegion::International, info);
 	}
 
 	for (const auto steamAppId: { 
@@ -241,7 +242,7 @@ std::vector<std::pair<XivAlex::GameRegion, XivAlex::GameRegionInfo>> XivAlex::Fi
 		}) {
 		if (const auto reg = ReadRegistryAsString(std::format(LR"(SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App {})", steamAppId).c_str(), L"InstallLocation"); !reg.empty()) {
 			GameRegionInfo info{
-				.Type = GameRegion::International,
+				.Type = Sqex::GameRegion::International,
 				.RootPath = std::filesystem::path(reg),
 				.BootApp = std::format(L"steam://rungameid/{}", steamAppId),
 				.BootAppRequiresAdmin = false,
@@ -258,7 +259,7 @@ std::vector<std::pair<XivAlex::GameRegion, XivAlex::GameRegionInfo>> XivAlex::Fi
 				},
 			};
 
-			result.emplace_back(GameRegion::International, info);
+			result.emplace_back(Sqex::GameRegion::International, info);
 		}
 	}
 
@@ -276,7 +277,7 @@ std::vector<std::pair<XivAlex::GameRegion, XivAlex::GameRegionInfo>> XivAlex::Fi
 			return {};
 
 		GameRegionInfo info{
-			.Type = GameRegion::Korean,
+			.Type = Sqex::GameRegion::Korean,
 			.RootPath = std::filesystem::path(argv[0]).parent_path().parent_path(),
 			.BootApp = info.RootPath / L"boot" / L"FFXIV_Boot.exe",
 			.BootAppRequiresAdmin = true,
@@ -286,7 +287,7 @@ std::vector<std::pair<XivAlex::GameRegion, XivAlex::GameRegionInfo>> XivAlex::Fi
 				info.RootPath / L"boot" / L"FFXIV_Launcher.exe",
 			},
 		};
-		result.emplace_back(GameRegion::Korean, info);
+		result.emplace_back(Sqex::GameRegion::Korean, info);
 	}
 
 	if (const auto reg = ReadRegistryAsString(
@@ -294,7 +295,7 @@ std::vector<std::pair<XivAlex::GameRegion, XivAlex::GameRegionInfo>> XivAlex::Fi
 		L"DisplayIcon"
 	); !reg.empty()) {
 		GameRegionInfo info{
-			.Type = GameRegion::Chinese,
+			.Type = Sqex::GameRegion::Chinese,
 			.RootPath = std::filesystem::path(reg).parent_path(),
 			.BootApp = info.RootPath / L"FFXIVBoot.exe",
 			.BootAppRequiresAdmin = true,
@@ -308,7 +309,7 @@ std::vector<std::pair<XivAlex::GameRegion, XivAlex::GameRegionInfo>> XivAlex::Fi
 				info.RootPath / "sdo" / "sdologin" / "update.exe",
 			},
 		};
-		result.emplace_back(GameRegion::Chinese, info);
+		result.emplace_back(Sqex::GameRegion::Chinese, info);
 	}
 	return result;
 }
