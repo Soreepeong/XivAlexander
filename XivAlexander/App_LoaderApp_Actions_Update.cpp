@@ -2,7 +2,6 @@
 #include "App_LoaderApp_Actions_Update.h"
 
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
-#include <XivAlexanderCommon/XivAlex.h>
 
 #include "App_LoaderApp.h"
 #include "App_LoaderApp_Actions_Interactive.h"
@@ -52,7 +51,7 @@ App::LoaderApp::Actions::Update::Update(const Arguments& args)
 void App::LoaderApp::Actions::Update::CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses, bool offerAutomaticUpdate) {
 	if (BOOL w = FALSE; IsWow64Process(GetCurrentProcess(), &w) && w) {
 		Utils::Win32::RunProgram({
-			.path = Utils::Win32::Process::Current().PathOf().parent_path() / XivAlex::XivAlexLoader64NameW,
+			.path = Utils::Win32::Process::Current().PathOf().parent_path() / XivAlexDll::XivAlexLoader64NameW,
 			.args = Utils::FromUtf8(Utils::Win32::ReverseCommandLineToArgv({
 				"-a", LoaderActionToString(LoaderAction::UpdateCheck),
 			})),
@@ -67,14 +66,14 @@ void App::LoaderApp::Actions::Update::CheckForUpdates(std::vector<Utils::Win32::
 
 	try {
 		std::vector<int> remote, local;
-		XivAlex::VersionInformation up;
+		XivAlexDll::VersionInformation up;
 		if (m_args.m_debugUpdate) {
 			local = {0, 0, 0, 0};
 			remote = {0, 0, 0, 1};
 		} else {
 			const auto checking = ShowLazyProgress(true, IDS_UPDATE_PROGRESS_CHECKING);
 			const auto [selfFileVersion, selfProductVersion] = Utils::Win32::FormatModuleVersionString(GetModuleHandleW(nullptr));
-			up = XivAlex::CheckUpdates();
+			up = XivAlexDll::CheckUpdates();
 			const auto remoteS = Utils::StringSplit<std::string>(up.Name.substr(1), ".");
 			const auto localS = Utils::StringSplit<std::string>(selfProductVersion, ".");
 			for (const auto& s : remoteS)
@@ -160,8 +159,8 @@ void App::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(std::vect
 	const auto& currentProcess = Utils::Win32::Process::Current();
 	const auto launcherDir = currentProcess.PathOf().parent_path();
 	const auto tempExtractionDir = launcherDir / L"__UPDATE__";
-	const auto loaderPath32 = launcherDir / XivAlex::XivAlexLoader32NameW;
-	const auto loaderPath64 = launcherDir / XivAlex::XivAlexLoader64NameW;
+	const auto loaderPath32 = launcherDir / XivAlexDll::XivAlexLoader32NameW;
+	const auto loaderPath64 = launcherDir / XivAlexDll::XivAlexLoader64NameW;
 
 	{
 		const auto progress = ShowLazyProgress(true, IDS_UPDATE_PROGRESS_DOWNLOADING_FILES);
@@ -173,10 +172,10 @@ void App::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(std::vect
 						const auto tempPath = launcherDir / L"updatesourcetest.zip";
 						libzippp::ZipArchive arc(tempPath.string());
 						arc.open(libzippp::ZipArchive::Write);
-						arc.addFile(Utils::ToUtf8(XivAlex::XivAlexDll32NameW), Utils::ToUtf8((launcherDir / XivAlex::XivAlexDll32NameW).wstring()));
-						arc.addFile(Utils::ToUtf8(XivAlex::XivAlexDll64NameW), Utils::ToUtf8((launcherDir / XivAlex::XivAlexDll64NameW).wstring()));
-						arc.addFile(Utils::ToUtf8(XivAlex::XivAlexLoader32NameW), Utils::ToUtf8((launcherDir / XivAlex::XivAlexLoader32NameW).wstring()));
-						arc.addFile(Utils::ToUtf8(XivAlex::XivAlexLoader64NameW), Utils::ToUtf8((launcherDir / XivAlex::XivAlexLoader64NameW).wstring()));
+						arc.addFile(Utils::ToUtf8(XivAlexDll::XivAlexDll32NameW), Utils::ToUtf8((launcherDir / XivAlexDll::XivAlexDll32NameW).wstring()));
+						arc.addFile(Utils::ToUtf8(XivAlexDll::XivAlexDll64NameW), Utils::ToUtf8((launcherDir / XivAlexDll::XivAlexDll64NameW).wstring()));
+						arc.addFile(Utils::ToUtf8(XivAlexDll::XivAlexLoader32NameW), Utils::ToUtf8((launcherDir / XivAlexDll::XivAlexLoader32NameW).wstring()));
+						arc.addFile(Utils::ToUtf8(XivAlexDll::XivAlexLoader64NameW), Utils::ToUtf8((launcherDir / XivAlexDll::XivAlexLoader64NameW).wstring()));
 						arc.close();
 						copy(tempPath, updateZip);
 					} else {
@@ -277,7 +276,7 @@ void App::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(std::vect
 					}
 				}
 
-			} else if (lstrcmpiW(processPath.filename().c_str(), XivAlex::GameExecutable64NameW) == 0 || lstrcmpiW(processPath.filename().c_str(), XivAlex::GameExecutable32NameW) == 0) {
+			} else if (lstrcmpiW(processPath.filename().c_str(), XivAlexDll::GameExecutable64NameW) == 0 || lstrcmpiW(processPath.filename().c_str(), XivAlexDll::GameExecutable32NameW) == 0) {
 				auto process = OpenProcessForManipulation(pid);
 				gameProcesses.emplace_back(process);
 				unloadTargets.emplace_back(std::move(process));
@@ -285,7 +284,7 @@ void App::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(std::vect
 				try {
 					auto process = OpenProcessForManipulation(pid);
 					const auto is64 = process.IsProcess64Bits();
-					const auto modulePath = launcherDir / (is64 ? XivAlex::XivAlexDll64NameW : XivAlex::XivAlexDll32NameW);
+					const auto modulePath = launcherDir / (is64 ? XivAlexDll::XivAlexDll64NameW : XivAlexDll::XivAlexDll32NameW);
 					if (process.AddressOf(modulePath, Utils::Win32::Process::ModuleNameCompareMode::FullPath, false))
 						unloadTargets.emplace_back(std::move(process));
 				} catch (...) {

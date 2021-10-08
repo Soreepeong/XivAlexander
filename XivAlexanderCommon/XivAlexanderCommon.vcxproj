@@ -65,7 +65,6 @@
     <ClInclude Include="includes\XivAlexanderCommon\XaMisc.h" />
     <ClInclude Include="includes\XivAlexanderCommon\XaStrings.h" />
     <ClInclude Include="includes\XivAlexanderCommon\XaZlib.h" />
-    <ClInclude Include="includes\XivAlexanderCommon\XivAlex.h" />
     <ClInclude Include="pch.h" />
     <ClCompile Include="Sqex_Sound.cpp" />
   </ItemGroup>
@@ -114,7 +113,6 @@
     <ClCompile Include="Utils_Win32.cpp" />
     <ClCompile Include="Utils_Win32_InjectedModule.cpp" />
     <ClCompile Include="XaZlib.cpp" />
-    <ClCompile Include="XivAlex.cpp" />
     <ClCompile Include="Sqex_Sqpack_Creator.cpp" />
   </ItemGroup>
   <ItemGroup>

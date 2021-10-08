@@ -1,6 +1,5 @@
 #pragma once
 
-#include "XivAlexanderCommon/XivAlex.h"
 #include "App_LoaderApp_Arguments.h"
 
 namespace App::LoaderApp::Actions {

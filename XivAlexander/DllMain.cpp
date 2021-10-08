@@ -4,7 +4,6 @@
 #include <XivAlexander/XivAlexander.h>
 #include <XivAlexanderCommon/Sqex_CommandLine.h>
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
-#include <XivAlexanderCommon/XivAlex.h>
 
 #include "App_ConfigRepository.h"
 #include "App_Misc_CrashMessageBoxHandler.h"
@@ -56,23 +55,23 @@ DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 	const std::filesystem::path& loaderPath) {
 
 	const auto companionPath = loaderPath.empty() ? (
-		lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), XivAlex::GameExecutableNameW) == 0
+		lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), XivAlexDll::GameExecutableNameW) == 0
 		? App::Config::Acquire()->Init.ResolveXivAlexInstallationPath()
 		: Dll::Module().PathOf().parent_path()
 	) : loaderPath;
 	const wchar_t* whichLoader;
 	switch (which) {
 		case Current:
-			whichLoader = XivAlex::XivAlexLoaderNameW;
+			whichLoader = XivAlexDll::XivAlexLoaderNameW;
 			break;
 		case Opposite:
-			whichLoader = XivAlex::XivAlexLoaderOppositeNameW;
+			whichLoader = XivAlexDll::XivAlexLoaderOppositeNameW;
 			break;
 		case Force32:
-			whichLoader = XivAlex::XivAlexLoader32NameW;
+			whichLoader = XivAlexDll::XivAlexLoader32NameW;
 			break;
 		case Force64:
-			whichLoader = XivAlex::XivAlexLoader64NameW;
+			whichLoader = XivAlexDll::XivAlexLoader64NameW;
 			break;
 		default:
 			throw std::invalid_argument("Invalid which");
@@ -120,7 +119,7 @@ static void CheckObfuscatedArguments() {
 	auto filename = process.PathOf().filename().wstring();
 	CharLowerW(&filename[0]);
 
-	if (filename != XivAlex::GameExecutableNameW)
+	if (filename != XivAlexDll::GameExecutableNameW)
 		return;  // not the game process
 
 	try {
@@ -170,7 +169,7 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 					.hModule = Dll::Module(),
 				});
 				
-				if (s_bLoadedAsDependency && lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), XivAlex::GameExecutableNameW) == 0) {
+				if (s_bLoadedAsDependency && lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), XivAlexDll::GameExecutableNameW) == 0) {
 					GetEnvironmentVariableW(L"XIVALEXANDER_DISABLE", nullptr, 0);
 					if (GetLastError() == ERROR_ENVVAR_NOT_FOUND) {
 						Dll::DisableUnloading(std::format("Loaded as DLL dependency in place of {}", Dll::Module().PathOf().filename()).c_str());
@@ -228,10 +227,10 @@ void __stdcall XivAlexDll::CallFreeLibrary(void*) {
 	std::vector<std::pair<std::string, std::string>> modules;
 	try {
 		modules = {
-			Utils::Win32::FormatModuleVersionString(dir / XivAlex::XivAlexLoader32NameW),
-			Utils::Win32::FormatModuleVersionString(dir / XivAlex::XivAlexLoader64NameW),
-			Utils::Win32::FormatModuleVersionString(dir / XivAlex::XivAlexDll32NameW),
-			Utils::Win32::FormatModuleVersionString(dir / XivAlex::XivAlexDll64NameW),
+			Utils::Win32::FormatModuleVersionString(dir / XivAlexDll::XivAlexLoader32NameW),
+			Utils::Win32::FormatModuleVersionString(dir / XivAlexDll::XivAlexLoader64NameW),
+			Utils::Win32::FormatModuleVersionString(dir / XivAlexDll::XivAlexDll32NameW),
+			Utils::Win32::FormatModuleVersionString(dir / XivAlexDll::XivAlexDll64NameW),
 		};
 	} catch (const Utils::Win32::Error& e) {
 		if (e.Code() == ERROR_FILE_NOT_FOUND)
@@ -329,4 +328,73 @@ HWND Dll::FindGameMainWindow(bool throwOnError) {
 	if (hwnd == nullptr && throwOnError)
 		throw std::runtime_error(Utils::ToUtf8(FindStringResourceEx(Module(), IDS_ERROR_GAME_WINDOW_NOT_FOUND) + 1));
 	return hwnd;
+}
+
+
+XivAlexDll::VersionInformation XivAlexDll::CheckUpdates() {
+	std::ostringstream os;
+
+	curlpp::Easy req;
+	req.setOpt(curlpp::options::Url("https://api.github.com/repos/Soreepeong/XivAlexander/releases/latest"));
+	req.setOpt(curlpp::options::UserAgent("Mozilla/5.0"));
+	os << req;
+	const auto parsed = nlohmann::json::parse(os.str());
+	const auto assets = parsed.at("assets");
+	if (assets.empty())
+		throw std::runtime_error("Could not detect updates. Please try again at a later time.");
+	const auto item = assets[0];
+
+	std::istringstream in(parsed.at("published_at").get<std::string>());
+	std::chrono::sys_seconds tp;
+	from_stream(in, "%FT%TZ", tp);
+	if (in.fail())
+		throw std::format_error(std::format("Failed to parse datetime string \"{}\"", in.str()));
+
+	return {
+		.Name = parsed.at("name").get<std::string>(),
+		.Body = parsed.at("body").get<std::string>(),
+		.PublishDate = std::chrono::zoned_time(std::chrono::current_zone(), tp),
+		.DownloadLink = item.at("browser_download_url").get<std::string>(),
+		.DownloadSize = item.at("size").get<size_t>(),
+	};
+}
+
+bool XivAlexDll::IsXivAlexanderDll(const std::filesystem::path& dllPath) {
+	DWORD verHandle = 0;
+	std::vector<BYTE> block;
+	block.resize(GetFileVersionInfoSizeW(dllPath.c_str(), &verHandle));
+	if (block.empty())
+		throw Utils::Win32::Error("GetFileVersionInfoSizeW");
+	if (!GetFileVersionInfoW(dllPath.c_str(), 0, static_cast<DWORD>(block.size()), &block[0]))
+		throw Utils::Win32::Error("GetFileVersionInfoW");
+	struct LANGANDCODEPAGE {
+		WORD wLanguage;
+		WORD wCodePage;
+	} * lpTranslate;
+	UINT cbTranslate;
+	if (!VerQueryValueW(&block[0],
+		TEXT("\\VarFileInfo\\Translation"),
+		reinterpret_cast<LPVOID*>(&lpTranslate),
+		&cbTranslate))
+		return false;
+
+	for (size_t i = 0; i < (cbTranslate / sizeof(struct LANGANDCODEPAGE)); i++) {
+		wchar_t* buf = nullptr;
+		UINT size = 0;
+		if (!VerQueryValueW(&block[0],
+			std::format(L"\\StringFileInfo\\{:04x}{:04x}\\FileDescription",
+				lpTranslate[i].wLanguage,
+				lpTranslate[i].wCodePage).c_str(),
+			reinterpret_cast<LPVOID*>(&buf),
+			&size))
+			continue;
+		auto currName = std::wstring_view(buf, size);
+		while (!currName.empty() && currName.back() == L'\0')
+			currName = currName.substr(0, currName.size() - 1);
+		if (currName.empty())
+			continue;
+		if (currName == L"XivAlexander Main DLL")
+			return true;
+	}
+	return false;
 }

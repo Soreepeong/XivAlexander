@@ -38,15 +38,15 @@ namespace Sqex {
 	void to_json(nlohmann::json&, const Region&);
 	void from_json(const nlohmann::json&, Region&);
 
-	enum class GameRegion {
+	enum class GameReleaseRegion {
 		Unspecified,
 		International,
 		Korean,
 		Chinese,
 	};
 
-	void to_json(nlohmann::json&, const GameRegion&);
-	void from_json(const nlohmann::json&, GameRegion&);
+	void to_json(nlohmann::json&, const GameReleaseRegion&);
+	void from_json(const nlohmann::json&, GameReleaseRegion&);
 
 	class CorruptDataException : public std::runtime_error {
 	public:

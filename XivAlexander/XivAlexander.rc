@@ -165,6 +165,7 @@ BEGIN
             MENUITEM "êÌì¨íÜÇÃNPCÇÃÉZÉäÉt(&D)",             40463
         END
         MENUITEM SEPARATOR
+        MENUITEM "!! modify MainWindow if this section changes !!", ID_MODDING_SUBMENUMARKER, INACTIVE
         POPUP "ÉtÉHÉìÉgÇÃïœçX(&F)"
         BEGIN
             MENUITEM "ÉvÉäÉZÉbÉgÇÃì«Ç›çûÇﬁ(&I)",              ID_MODDING_CHANGEFONT_IMPORTPRESET
@@ -177,7 +178,12 @@ BEGIN
         END
         POPUP "í«â¡ÇÃÉQÅ[ÉÄÉãÅ[ÉgÉtÉHÉãÉ_Å[(&G)"
         BEGIN
-            MENUITEM "í«â¡(&A)",                      ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD
+            POPUP "í«â¡(&A)"
+            BEGIN
+                MENUITEM "íºê⁄Ç…ëIëÅc(&S)",                  ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD_SELECTFOLDER
+                MENUITEM SEPARATOR
+                MENUITEM "(é©ìÆÇ≈íTÇπÇΩÉQÅ[ÉÄÉãÅ[ÉgÉtÉHÉãÉ_Å[Ç»Çµ)",       ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD_EMPTY, INACTIVE
+            END
             MENUITEM "ãÛÇ…Ç∑ÇÈ(&R)",                    ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_REMOVEALL
             MENUITEM SEPARATOR
             MENUITEM "(í«â¡ÇÃÉQÅ[ÉÄÉãÅ[ÉgÉtÉHÉãÅ[É_Ç»Çµ)",          ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_NOENTRY, INACTIVE
@@ -637,6 +643,7 @@ BEGIN
             MENUITEM "¿¸≈ı ¡ﬂ NPC ¥ÎªÁ(&D)",             40463
         END
         MENUITEM SEPARATOR
+        MENUITEM "!! modify MainWindow if this section changes !!", ID_MODDING_SUBMENUMARKER, INACTIVE
         POPUP "∆˘∆Æ ∫Ø∞Ê(&F)"
         BEGIN
             MENUITEM "«¡∏Æº¬ ∫“∑Øø¿±‚(&I)",                ID_MODDING_CHANGEFONT_IMPORTPRESET
@@ -649,7 +656,12 @@ BEGIN
         END
         POPUP "√ﬂ∞° ∞‘¿” ∑Á∆Æ µ∑∫≈‰∏Æ(&G)"
         BEGIN
-            MENUITEM "√ﬂ∞°(&A)",                      ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD
+            POPUP "√ﬂ∞°(&A)"
+            BEGIN
+                MENUITEM "√£æ∆∫∏±‚...(&S)",                 ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD_SELECTFOLDER
+                MENUITEM SEPARATOR
+                MENUITEM "(∞‘¿” ∑Á∆Æ µ∑∫≈‰∏Æ ¿⁄µø¿∏∑Œ √£¿ª ºˆ æ¯¿Ω)",   ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD_EMPTY, INACTIVE
+            END
             MENUITEM "∫ÒøÏ±‚(&R)",                     ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_REMOVEALL
             MENUITEM SEPARATOR
             MENUITEM "(√ﬂ∞° ∞‘¿” ∑Á∆Æ µ∑∫≈‰∏Æ æ¯¿Ω)",          ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_NOENTRY, INACTIVE
@@ -1166,6 +1178,7 @@ BEGIN
             MENUITEM "NPC &Dialogue During Battle", 40463
         END
         MENUITEM SEPARATOR
+        MENUITEM "!! modify MainWindow if this section changes !!", 40464, INACTIVE
         POPUP "Change &Font"
         BEGIN
             MENUITEM "&Import Preset",              ID_MODDING_CHANGEFONT_IMPORTPRESET
@@ -1178,7 +1191,12 @@ BEGIN
         END
         POPUP "Additional &Game Root Directories"
         BEGIN
-            MENUITEM "&Add",                        ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD
+            POPUP "&Add"
+            BEGIN
+                MENUITEM "&Select folder...",           ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD_SELECTFOLDER
+                MENUITEM SEPARATOR
+                MENUITEM "(Game installation could not be automatically detected)", 40465, INACTIVE
+            END
             MENUITEM "&Remove All",                 ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_REMOVEALL
             MENUITEM SEPARATOR
             MENUITEM "(No additional game root directories configured)", ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_NOENTRY, INACTIVE

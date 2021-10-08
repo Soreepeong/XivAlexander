@@ -21,7 +21,7 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, GameIndexFi
 	const char* lastAttempt;
 	try {
 		o.pathList = j.value(lastAttempt = "pathList", decltype(o.pathList)());
-		o.autoDetectRegion = j.value(lastAttempt = "autoDetectRegion", GameRegion::Unspecified);
+		o.autoDetectRegion = j.value(lastAttempt = "autoDetectRegion", GameReleaseRegion::Unspecified);
 		o.autoDetectIndexExpac = j.value(lastAttempt = "autoDetectIndexExpac", std::string("ffxiv"));
 		o.autoDetectIndexFile = j.value(lastAttempt = "autoDetectIndexFile", std::string("000000"));
 		o.fallbackPathList = j.value(lastAttempt = "fallbackPathList", decltype(o.fallbackPathList)());

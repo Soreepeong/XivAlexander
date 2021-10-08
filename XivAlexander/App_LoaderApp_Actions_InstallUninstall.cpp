@@ -5,7 +5,6 @@
 #include "App_LoaderApp.h"
 #include "DllMain.h"
 #include "resource.h"
-#include "XivAlexanderCommon/XivAlex.h"
 
 App::LoaderApp::Actions::InstallUninstall::InstallUninstall(const Arguments& args)
 	: m_args(args) {
@@ -83,9 +82,9 @@ void App::LoaderApp::Actions::InstallUninstall::Install(const std::filesystem::p
 				config64.ChainLoadPath_d3d11 = list;
 			}
 			remove(gamePath / "config.xivalexinit.json");
-			copy_file(cdir / XivAlex::XivAlexDll64NameW, d3d11);
+			copy_file(cdir / XivAlexDll::XivAlexDll64NameW, d3d11);
 			revert += [d3d11, &success]() { if (!success) remove(d3d11); };
-			copy_file(cdir / XivAlex::XivAlexDll32NameW, d3d9);
+			copy_file(cdir / XivAlexDll::XivAlexDll32NameW, d3d9);
 			revert += [d3d9, &success]() { if (!success) remove(d3d9); };
 			break;
 		}
@@ -105,7 +104,7 @@ void App::LoaderApp::Actions::InstallUninstall::Install(const std::filesystem::p
 				config32.ChainLoadPath_dinput8 = list;
 			}
 			remove(gamePath / "config.xivalexinit.json");
-			copy_file(cdir / XivAlex::XivAlexDll32NameW, dinput8);
+			copy_file(cdir / XivAlexDll::XivAlexDll32NameW, dinput8);
 			revert += [dinput8, &success]() { if (!success) remove(dinput8); };
 			break;
 		}
@@ -125,7 +124,7 @@ void App::LoaderApp::Actions::InstallUninstall::Install(const std::filesystem::p
 				config64.ChainLoadPath_dinput8 = list;
 			}
 			remove(gamePath / "config.xivalexinit.json");
-			copy_file(cdir / XivAlex::XivAlexDll64NameW, dinput8);
+			copy_file(cdir / XivAlexDll::XivAlexDll64NameW, dinput8);
 			revert += [dinput8, &success]() { if (!success) remove(dinput8); };
 			break;
 		}
@@ -199,7 +198,7 @@ void App::LoaderApp::Actions::InstallUninstall::RevertChainLoadDlls(
 	const auto dinput8 = gamePath / "dinput8.dll";
 	
 	for (const auto& f : {d3d9, d3d11, dxgi, dinput8}) {
-		if (!exists(f) || !XivAlex::IsXivAlexanderDll(f))
+		if (!exists(f) || !XivAlexDll::IsXivAlexanderDll(f))
 			continue;
 
 		std::filesystem::path temp;

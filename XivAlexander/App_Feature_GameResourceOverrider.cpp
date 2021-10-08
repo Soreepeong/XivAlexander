@@ -3,7 +3,6 @@
 
 #include <XivAlexanderCommon/Sqex_EscapedString.h>
 #include <XivAlexanderCommon/Utils_Win32_Process.h>
-#include <XivAlexanderCommon/XivAlex.h>
 
 #include "App_ConfigRepository.h"
 #include "App_Misc_DebuggerDetectionDisabler.h"

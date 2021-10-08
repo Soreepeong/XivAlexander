@@ -122,6 +122,7 @@ namespace Sqex::FontCsv {
 			[[nodiscard]] std::map<Sqpack::EntryPathSpec, std::shared_ptr<const RandomAccessStream>> GetAllStreams() const;
 		};
 		
+		void ProvideGameDirectory(Sqex::GameReleaseRegion, std::filesystem::path);
 		void VerifyRequirements(
 			const std::function<std::filesystem::path(const CreateConfig::GameIndexFile&)>& promptGameIndexFile,
 			const std::function<bool(const CreateConfig::FontRequirement&)>& promptFontRequirement

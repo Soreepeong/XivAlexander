@@ -2,13 +2,12 @@
 #include "App_LoaderApp_Actions_Inject.h"
 
 #include <XivAlexanderCommon/Utils_Win32_InjectedModule.h>
-#include <XivAlexanderCommon/XivAlex.h>
 
 using namespace XivAlexDll;
 
 App::LoaderApp::Actions::Inject::Inject(const Arguments& args)
 	: m_args(args)
-	, m_dllPath(Utils::Win32::Process::Current().PathOf().parent_path() / XivAlex::XivAlexDllNameW) {
+	, m_dllPath(Utils::Win32::Process::Current().PathOf().parent_path() / XivAlexDll::XivAlexDllNameW) {
 }
 
 int App::LoaderApp::Actions::Inject::Run() {

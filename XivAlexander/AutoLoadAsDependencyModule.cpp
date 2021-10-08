@@ -6,7 +6,6 @@
 #include <XivAlexander/XivAlexander.h>
 #include <XivAlexanderCommon/Sqex_CommandLine.h>
 #include <XivAlexanderCommon/Utils_Win32.h>
-#include <XivAlexanderCommon/XivAlex.h>
 
 #include "App_ConfigRepository.h"
 #include "DllMain.h"

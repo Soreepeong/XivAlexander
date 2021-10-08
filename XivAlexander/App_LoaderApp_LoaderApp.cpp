@@ -5,7 +5,6 @@
 #include <XivAlexander/XivAlexander.h>
 #include <XivAlexanderCommon/Utils_Win32_InjectedModule.h>
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
-#include <XivAlexanderCommon/XivAlex.h>
 
 #include "App_LoaderApp_Actions_Inject.h"
 #include "App_LoaderApp_Actions_InstallUninstall.h"
@@ -48,7 +47,7 @@ public:
 
 			const auto& currentProcess = Utils::Win32::Process::Current();
 			const auto dllDir = currentProcess.PathOf().parent_path();
-			const auto dllPath = dllDir / XivAlex::XivAlexDllNameW;
+			const auto dllPath = dllDir / XivAlexDll::XivAlexDllNameW;
 
 			VerifyPackageVersionOrThrow();
 

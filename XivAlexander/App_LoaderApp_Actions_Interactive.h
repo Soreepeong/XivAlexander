@@ -1,9 +1,9 @@
 #pragma once
 
 #include <XivAlexanderCommon/Utils_Win32_TaskDialogBuilder.h>
-#include <XivAlexanderCommon/XivAlex.h>
 
 #include "App_LoaderApp_Arguments.h"
+#include "App_Misc_GameInstallationDetector.h"
 
 namespace App::LoaderApp::Actions {
 	class Interactive {
@@ -23,7 +23,7 @@ namespace App::LoaderApp::Actions {
 			bool PathRequiresFileOpenDialog = true;
 			DWORD Pid = 0;
 
-			void SelectFrom(const XivAlex::GameRegionInfo& info);
+			void SelectFrom(const Misc::GameInstallationDetector::GameReleaseInfo& info);
 		} m_state;
 
 	public:

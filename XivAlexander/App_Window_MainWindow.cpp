@@ -6,10 +6,10 @@
 #include <XivAlexanderCommon/Sqex_FontCsv_CreateConfig.h>
 #include <XivAlexanderCommon/Sqex_ThirdParty_TexTools.h>
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
-#include <XivAlexanderCommon/XivAlex.h>
 
 #include "App_Feature_GameResourceOverrider.h"
 #include "App_Misc_ExcelTransformConfig.h"
+#include "App_Misc_GameInstallationDetector.h"
 #include "App_Misc_Logger.h"
 #include "App_Misc_VirtualSqPacks.h"
 #include "App_Network_SocketHook.h"
@@ -85,23 +85,26 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 		return Sqex::CommandLine::ToString(params, false);
 	}()) {
 
-	std::tie(m_sRegion, m_sVersion) = XivAlex::ResolveGameReleaseRegion();
+	try {
+		m_gameReleaseInfo = Misc::GameInstallationDetector::GetGameReleaseInfo();
 
-	if (m_sRegion == L"JP" && !m_launchParameters.empty()) {
-		m_gameLanguage = Sqex::Language::English;
-		m_gameRegion = Sqex::Region::Japan;
-		for (const auto& pair : m_launchParameters) {
-			if (pair.first == "language")
-				m_gameLanguage = static_cast<Sqex::Language>(1 + std::strtol(pair.second.c_str(), nullptr, 0));
-			else if (pair.first == "SYS.Region")
-				m_gameRegion = static_cast<Sqex::Region>(std::strtol(pair.second.c_str(), nullptr, 0));
+		if (m_gameReleaseInfo.Region == Sqex::GameReleaseRegion::International && !m_launchParameters.empty()) {
+			m_gameLanguage = Sqex::Language::English;
+			m_gameRegion = Sqex::Region::Japan;
+			for (const auto& pair : m_launchParameters) {
+				if (pair.first == "language")
+					m_gameLanguage = static_cast<Sqex::Language>(1 + std::strtol(pair.second.c_str(), nullptr, 0));
+				else if (pair.first == "SYS.Region")
+					m_gameRegion = static_cast<Sqex::Region>(std::strtol(pair.second.c_str(), nullptr, 0));
+			}
+		} else if (m_gameReleaseInfo.Region == Sqex::GameReleaseRegion::Chinese) {
+			m_gameLanguage = Sqex::Language::ChineseSimplified;
+			m_gameRegion = Sqex::Region::China;
+		} else if (m_gameReleaseInfo.Region == Sqex::GameReleaseRegion::Korean) {
+			m_gameLanguage = Sqex::Language::Korean;
+			m_gameRegion = Sqex::Region::Korea;
 		}
-	} else if (m_sRegion == L"CN") {
-		m_gameLanguage = Sqex::Language::ChineseSimplified;
-		m_gameRegion = Sqex::Region::China;
-	} else if (m_sRegion == L"KR") {
-		m_gameLanguage = Sqex::Language::Korean;
-		m_gameRegion = Sqex::Region::Korea;
+	} catch (...) {
 	}
 
 	RegisterTrayIcon();
@@ -197,7 +200,7 @@ void App::Window::MainWindow::ApplyLanguage(WORD languageId) {
 	RepopulateMenu();
 
 	const auto title = std::format(L"{}: {}, {}, {}",
-		m_config->Runtime.GetStringRes(IDS_APP_NAME), GetCurrentProcessId(), m_sRegion, m_sVersion);
+		m_config->Runtime.GetStringRes(IDS_APP_NAME), GetCurrentProcessId(), m_gameReleaseInfo.CountryCode, m_gameReleaseInfo.GameVersion);
 	SetWindowTextW(m_hWnd, title.c_str());
 	InvalidateRect(m_hWnd, nullptr, FALSE);
 }
@@ -324,7 +327,7 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 		std::wstring str;
 		try {
 			str = m_config->Runtime.FormatStringRes(IDS_MAIN_TEXT,
-				GetCurrentProcessId(), m_path, m_startupArgumentsForDisplay, m_sVersion, m_sRegion,
+				GetCurrentProcessId(), m_path, m_startupArgumentsForDisplay, m_gameReleaseInfo.GameVersion, m_gameReleaseInfo.CountryCode,
 				m_pApp->GetSocketHook()->Describe());
 		} catch (...) {
 			// pass
@@ -372,14 +375,24 @@ void App::Window::MainWindow::RepopulateMenu() {
 	const auto hMenu = GetMenu(m_hWnd);
 
 	const auto title = std::format(L"{}: {}, {}, {}",
-		m_config->Runtime.GetStringRes(IDS_APP_NAME), GetCurrentProcessId(), m_sRegion, m_sVersion);
+		m_config->Runtime.GetStringRes(IDS_APP_NAME), GetCurrentProcessId(), m_gameReleaseInfo.CountryCode, m_gameReleaseInfo.GameVersion);
 	ModifyMenuW(hMenu, ID_FILE_CURRENTINFO, MF_BYCOMMAND | MF_DISABLED, ID_FILE_CURRENTINFO, title.c_str());
 
 	m_menuIdCallbacks.clear();
-	RepopulateMenu_FontConfig(GetSubMenu(GetSubMenu(hMenu, 3), 10));
-	RepopulateMenu_AdditionalSqpackRootDirectories(GetSubMenu(GetSubMenu(hMenu, 3), 11));
-	RepopulateMenu_ExdfTransformationRules(GetSubMenu(GetSubMenu(hMenu, 3), 12));
-	RepopulateMenu_Modding(GetSubMenu(GetSubMenu(hMenu, 3), 13));
+	{
+		const auto hModMenu = GetSubMenu(hMenu, 3);
+		int index = 0;
+		
+		for (const auto menuItemCount = GetMenuItemCount(hModMenu); index < menuItemCount; index++) {
+			if (GetMenuItemID(hModMenu, index) == ID_MODDING_SUBMENUMARKER)
+				break;
+		}
+		DeleteMenu(hModMenu, index, MF_BYPOSITION);
+		RepopulateMenu_FontConfig(GetSubMenu(hModMenu, index++));
+		RepopulateMenu_AdditionalSqpackRootDirectories(GetSubMenu(hModMenu, index++));
+		RepopulateMenu_ExdfTransformationRules(GetSubMenu(hModMenu, index++));
+		RepopulateMenu_Modding(GetSubMenu(hModMenu, index++));
+	}
 }
 
 UINT_PTR App::Window::MainWindow::RepopulateMenu_AllocateMenuId(std::function<void()> cb) {
@@ -440,7 +453,9 @@ void App::Window::MainWindow::RepopulateMenu_FontConfig(HMENU hParentMenu) {
 
 void App::Window::MainWindow::RepopulateMenu_AdditionalSqpackRootDirectories(HMENU hParentMenu) {
 	auto count = 0;
+	std::set existing{ m_gameReleaseInfo.GamePath() };
 	for (const auto& additionalRoot : m_config->Runtime.AdditionalSqpackRootDirectories.Value()) {
+		existing.insert(additionalRoot);
 		AppendMenuW(hParentMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, additionalRoot]() {
 			if (Dll::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_ADDITIONAL_ROOT, additionalRoot.wstring())) == IDNO)
 				return;
@@ -457,6 +472,19 @@ void App::Window::MainWindow::RepopulateMenu_AdditionalSqpackRootDirectories(HME
 	if (count)
 		DeleteMenu(hParentMenu, ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_NOENTRY, MF_BYCOMMAND);
 	DeleteMenu(hParentMenu, ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ENTRY, MF_BYCOMMAND);
+	
+	const auto hAddMenu = GetSubMenu(hParentMenu, 0);
+	count = 0;
+	for (const auto& info : Misc::GameInstallationDetector::FindInstallations()) {
+		if (existing.contains(info.GamePath()))
+			continue;
+		AppendMenuW(hAddMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, info]() {
+			AddAdditionalGameRootDirectory(info.GamePath());
+		}), std::format(L"{} ({}, {})", info.GamePath().wstring(), info.CountryCode, info.GameVersion).c_str());
+		count++;
+	}
+	if (count)
+		DeleteMenu(hAddMenu, ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD_EMPTY, MF_BYCOMMAND);
 }
 
 void App::Window::MainWindow::RepopulateMenu_ExdfTransformationRules(HMENU hParentMenu) {
@@ -730,7 +758,7 @@ void App::Window::MainWindow::AskRestartGame(bool onlyOnModifier) {
 		m_config->Runtime.GetRegionNameLocalized(m_gameRegion)
 	)) == IDYES) {
 		const auto process = Utils::Win32::Process::Current();
-		const auto game = process.PathOf().parent_path() / (m_bUseDirectX11 ? XivAlex::GameExecutable64NameW : XivAlex::GameExecutable32NameW);
+		const auto game = process.PathOf().parent_path() / (m_bUseDirectX11 ? XivAlexDll::GameExecutable64NameW : XivAlexDll::GameExecutable32NameW);
 
 		auto params = m_launchParameters;
 		if (LanguageRegionModifiable()) {
@@ -773,7 +801,7 @@ void App::Window::MainWindow::AskRestartGame(bool onlyOnModifier) {
 
 		if (!Dll::IsLoadedAsDependency() && m_bUseXivAlexander)
 			ok = Utils::Win32::RunProgram({
-				.path = Dll::Module().PathOf().parent_path() / (m_bUseDirectX11 ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW),
+				.path = Dll::Module().PathOf().parent_path() / (m_bUseDirectX11 ? XivAlexDll::XivAlexLoader64NameW : XivAlexDll::XivAlexLoader32NameW),
 				.args = std::format(L"-a launcher -l select \"{}\" {}", game, args),
 				.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
 			});
@@ -1141,7 +1169,7 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 			m_config->Runtime.OverrideFontConfig = std::filesystem::path();
 			return;
 
-		case ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD:
+		case ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD_SELECTFOLDER:
 			while (true) {
 				try {
 					IFileOpenDialogPtr pDialog;

@@ -140,6 +140,9 @@
     <ClCompile Include="App_LoaderApp_Actions_Inject.cpp">
       <Filter>App\Apps\LoaderApp\Actions</Filter>
     </ClCompile>
+    <ClCompile Include="App_Misc_GameInstallationDetector.cpp">
+      <Filter>App\Misc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -256,6 +259,9 @@
     </ClInclude>
     <ClInclude Include="App_LoaderApp_Actions_Inject.h">
       <Filter>App\Apps\LoaderApp\Actions</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Misc_GameInstallationDetector.h">
+      <Filter>App\Misc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

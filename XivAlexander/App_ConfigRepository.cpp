@@ -3,8 +3,8 @@
 
 #include <XivAlexanderCommon/Utils_Win32_Process.h>
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
-#include <XivAlexanderCommon/XivAlex.h>
 
+#include "App_Misc_GameInstallationDetector.h"
 #include "App_Misc_Logger.h"
 #include "DllMain.h"
 #include "resource.h"
@@ -238,10 +238,8 @@ std::filesystem::path App::Config::InitRepository::ResolveRuntimeConfigPath() {
 }
 
 std::filesystem::path App::Config::InitRepository::ResolveGameOpcodeConfigPath() {
-	const auto regionAndVersion = XivAlex::ResolveGameReleaseRegion();
-	return ResolveConfigStorageDirectoryPath() / std::format(L"game.{}.{}.json",
-		std::get<0>(regionAndVersion),
-		std::get<1>(regionAndVersion));
+	const auto gameReleaseInfo = Misc::GameInstallationDetector::GetGameReleaseInfo();
+	return ResolveConfigStorageDirectoryPath() / std::format(L"game.{}.{}.json", gameReleaseInfo.CountryCode, gameReleaseInfo.PathSafeGameVersion);
 }
 
 std::filesystem::path App::Config::TranslatePath(const std::filesystem::path& path, const std::filesystem::path& relativeTo) {

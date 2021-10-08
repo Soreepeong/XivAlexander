@@ -2,8 +2,8 @@
 
 #include "App_LoaderApp_Arguments.h"
 
+#include <XivAlexanderCommon/Sqex.h>
 #include <XivAlexanderCommon/Utils_Win32_Process.h>
-#include <XivAlexanderCommon/XivAlex.h>
 
 namespace App::LoaderApp {
 	Utils::Win32::Process OpenProcessForInformation(DWORD pid, bool errorOnAccessDenied = true);
@@ -27,4 +27,4 @@ template<>
 std::string argparse::details::repr(App::LoaderApp::InstallMode const& val);
 
 template<>
-std::string argparse::details::repr(Sqex::GameRegion const& val);
+std::string argparse::details::repr(Sqex::GameReleaseRegion const& val);

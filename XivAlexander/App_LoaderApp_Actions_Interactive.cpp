@@ -8,7 +8,7 @@
 
 using namespace XivAlexDll;
 
-void App::LoaderApp::Actions::Interactive::TaskDialogState::SelectFrom(const XivAlex::GameRegionInfo& info) {
+void App::LoaderApp::Actions::Interactive::TaskDialogState::SelectFrom(const Misc::GameInstallationDetector::GameReleaseInfo& info) {
 	GamePath = info.RootPath / "game";
 	BootPath = info.BootApp;
 	BootPathIsInjectable = info.BootAppDirectlyInjectable;
@@ -143,13 +143,13 @@ void App::LoaderApp::Actions::Interactive::SetupBuilderForInstallation(Utils::Wi
 	}
 
 	auto defaultRadioSet = false;
-	for (const auto& [region, info] : XivAlex::FindGameLaunchers()) {
+	for (const auto& gameReleaseInfo : Misc::GameInstallationDetector::FindInstallations()) {
 		auto resId = IDS_INSTALLATIONSTATUS_NOTINSTALLED;
 		const auto selfVersion = Utils::StringSplit<std::string>(Utils::Win32::FormatModuleVersionString(GetModuleHandleW(nullptr)).first, ".");
 		for (const auto name : {"d3d9.dll", "d3d11.dll", "dinput8.dll"}) {
-			const auto path = info.RootPath / "game" / name;
+			const auto path = gameReleaseInfo.GamePath() / name;
 			try {
-				if (XivAlex::IsXivAlexanderDll(path)) {
+				if (XivAlexDll::IsXivAlexanderDll(path)) {
 					const auto version = Utils::StringSplit<std::string>(Utils::Win32::FormatModuleVersionString(path).first, ".");
 					if (selfVersion > version)
 						resId = IDS_INSTALLATIONSTATUS_OLDER;
@@ -163,14 +163,14 @@ void App::LoaderApp::Actions::Interactive::SetupBuilderForInstallation(Utils::Wi
 		}
 
 		builder.WithRadio({
-			.Text = std::format(L"{}: {}\n{}", FindStringResourceEx(Dll::Module(), resId) + 1, argparse::details::repr(region), info.RootPath.wstring()),
-			.Callback = [this, info](auto&) {
-				m_state.SelectFrom(info);
+			.Text = std::format(L"{}: {}\n{}", FindStringResourceEx(Dll::Module(), resId) + 1, argparse::details::repr(gameReleaseInfo.Region), gameReleaseInfo.RootPath.wstring()),
+			.Callback = [this, gameReleaseInfo](auto&) {
+				m_state.SelectFrom(gameReleaseInfo);
 				return Utils::Win32::TaskDialog::Handled;
 			},
 		});
 		if (!defaultRadioSet) {
-			m_state.SelectFrom(info);
+			m_state.SelectFrom(gameReleaseInfo);
 			defaultRadioSet = true;
 		}
 	}
@@ -198,7 +198,7 @@ std::function<Utils::Win32::TaskDialog::ActionHandled(Utils::Win32::TaskDialog&)
 				}
 			}
 			Utils::Win32::RunProgram({
-				.path = Utils::Win32::Process::Current().PathOf().parent_path() / (process.IsProcess64Bits() ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW),
+				.path = Utils::Win32::Process::Current().PathOf().parent_path() / (process.IsProcess64Bits() ? XivAlexDll::XivAlexLoader64NameW : XivAlexDll::XivAlexLoader32NameW),
 				.args = std::format(L"-a {} {}",
 					LoaderActionToString(load ? LoaderAction::Load : LoaderAction::Unload),
 					process.GetId()),
@@ -276,8 +276,8 @@ void App::LoaderApp::Actions::Interactive::ShowSelectGameInstallationDialog() {
 
 	m_state.GamePath = fileName;
 	m_state.BootPathIsInjectable = true;
-	if (lstrcmpiW(m_state.GamePath.filename().wstring().c_str(), XivAlex::GameExecutable32NameW) == 0
-		|| lstrcmpiW(m_state.GamePath.filename().wstring().c_str(), XivAlex::GameExecutable64NameW) == 0) {
+	if (lstrcmpiW(m_state.GamePath.filename().wstring().c_str(), XivAlexDll::GameExecutable32NameW) == 0
+		|| lstrcmpiW(m_state.GamePath.filename().wstring().c_str(), XivAlexDll::GameExecutable64NameW) == 0) {
 		m_state.GamePath = m_state.GamePath.parent_path();
 		if (!exists(m_state.BootPath = m_state.GamePath.parent_path() / "FFXIVBoot.exe"))
 			if (!exists(m_state.BootPath = m_state.GamePath.parent_path() / "boot" / "ffxivboot.exe"))

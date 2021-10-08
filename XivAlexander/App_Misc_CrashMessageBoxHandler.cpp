@@ -2,7 +2,6 @@
 #include "App_Misc_CrashMessageBoxHandler.h"
 
 #include <XivAlexander/XivAlexander.h>
-#include <XivAlexanderCommon/XivAlex.h>
 
 #include "App_ConfigRepository.h"
 #include "App_Misc_Hooks.h"
@@ -170,7 +169,7 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 					auto builder = Utils::Win32::ProcessBuilder();
 					if (!Dll::IsLoadedAsDependency() && useXivAlexander)
 						builder
-							.WithPath(Dll::Module().PathOf().parent_path() / XivAlex::XivAlexLoaderNameW)
+							.WithPath(Dll::Module().PathOf().parent_path() / XivAlexDll::XivAlexLoaderNameW)
 							.WithArgument(true, std::format(L"-a launcher -l select \"{}\" {}", Utils::Win32::Process::Current().PathOf().wstring(), Dll::GetOriginalCommandLine()));
 					else
 						builder

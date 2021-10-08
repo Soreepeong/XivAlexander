@@ -311,6 +311,7 @@ cmd /c "exit /b 0"
     <ClCompile Include="App_Misc_CrashMessageBoxHandler.cpp" />
     <ClCompile Include="App_Misc_DebuggerDetectionDisabler.cpp" />
     <ClCompile Include="App_Misc_ExcelTransformConfig.cpp" />
+    <ClCompile Include="App_Misc_GameInstallationDetector.cpp" />
     <ClCompile Include="App_Misc_VirtualSqPacks.cpp" />
     <ClCompile Include="App_Network_IcmpPingTracker.cpp" />
     <ClCompile Include="App_Window_ProgressPopupWindow.cpp" />
@@ -356,6 +357,7 @@ cmd /c "exit /b 0"
     <ClInclude Include="App_Misc_CrashMessageBoxHandler.h" />
     <ClInclude Include="App_Misc_DebuggerDetectionDisabler.h" />
     <ClInclude Include="App_Misc_ExcelTransformConfig.h" />
+    <ClInclude Include="App_Misc_GameInstallationDetector.h" />
     <ClInclude Include="App_Misc_VirtualSqPacks.h" />
     <ClInclude Include="App_Window_ProgressPopupWindow.h" />
     <ClInclude Include="App_XivAlexApp.h" />

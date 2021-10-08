@@ -8,7 +8,6 @@
 #include "Sqex_Sqpack_Reader.h"
 #include "Utils_Win32_Process.h"
 #include "Utils_Win32_ThreadPool.h"
-#include "XivAlex.h"
 
 inline void DebugThrowError(const std::exception& e) {
 #ifdef _DEBUG
@@ -560,6 +559,8 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 	bool Cancelled = false;
 	Win32::Thread WorkerThread;
 
+	std::map<Sqex::GameReleaseRegion, std::filesystem::path> GameRootDirectories;
+
 	std::mutex SourceFontMapAccessMtx, SourceFontLoadMtx;
 	std::map<std::filesystem::path, std::unique_ptr<Sqpack::Reader>> SqpackReaders;
 	std::map<std::tuple<std::filesystem::path, std::filesystem::path>, std::vector<std::shared_ptr<const Texture::MipmapStream>>> GameTextures;
@@ -983,6 +984,10 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::shared_ptr<const Sqex::RandomAccessSt
 _COM_SMARTPTR_TYPEDEF(IDWriteFactory, __uuidof(IDWriteFactory));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontCollection, __uuidof(IDWriteFontCollection));
 
+void Sqex::FontCsv::FontSetsCreator::ProvideGameDirectory(Sqex::GameReleaseRegion region, std::filesystem::path path) {
+	m_pImpl->GameRootDirectories.emplace(region, std::move(path));
+}
+
 void Sqex::FontCsv::FontSetsCreator::VerifyRequirements(
 	const std::function<std::filesystem::path(const CreateConfig::GameIndexFile&)>& promptGameIndexFile,
 	const std::function<bool(const CreateConfig::FontRequirement&)>& promptFontRequirement
@@ -1017,9 +1022,9 @@ void Sqex::FontCsv::FontSetsCreator::VerifyRequirements(
 								}
 							}
 
-							for (const auto& [region, info] : XivAlex::FindGameLaunchers()) {
+							for (const auto& [region, rootDirectory] : m_pImpl->GameRootDirectories) {
 								if (region == gameIndexFile.autoDetectRegion) {
-									auto path = info.RootPath / "game" / "sqpack" / gameIndexFile.autoDetectIndexExpac / std::format("{}.win32.index", gameIndexFile.autoDetectIndexFile);
+									auto path = rootDirectory / "game" / "sqpack" / gameIndexFile.autoDetectIndexExpac / std::format("{}.win32.index", gameIndexFile.autoDetectIndexFile);
 									if (!exists(path))
 										continue;
 									m_pImpl->ResolvedGameIndexFiles.emplace(name, std::move(path));

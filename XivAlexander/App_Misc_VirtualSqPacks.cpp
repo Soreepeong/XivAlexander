@@ -14,10 +14,10 @@
 #include <XivAlexanderCommon/Utils_Win32_Process.h>
 #include <XivAlexanderCommon/Utils_Win32_TaskDialogBuilder.h>
 #include <XivAlexanderCommon/Utils_Win32_ThreadPool.h>
-#include <XivAlexanderCommon/XivAlex.h>
 
 #include "App_ConfigRepository.h"
 #include "App_Misc_ExcelTransformConfig.h"
+#include "App_Misc_GameInstallationDetector.h"
 #include "App_Misc_Logger.h"
 #include "App_Window_ProgressPopupWindow.h"
 #include "App_XivAlexApp.h"
@@ -33,6 +33,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 	static constexpr int PathTypeIndex = -1;
 	static constexpr int PathTypeIndex2 = -2;
 	static constexpr int PathTypeInvalid = -3;
+
+	const Misc::GameInstallationDetector::GameReleaseInfo GameReleaseInfo;
 
 	std::map<std::filesystem::path, Sqex::Sqpack::Creator::SqpackViews> SqpackViews;
 	std::map<HANDLE, std::unique_ptr<OverlayedHandleData>> OverlayedHandles;
@@ -51,7 +53,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		: Sqpacks(*sqpacks)
 		, Config(Config::Acquire())
 		, Logger(Logger::Acquire())
-		, SqpackPath(std::move(sqpackPath)) {
+		, SqpackPath(std::move(sqpackPath))
+		, GameReleaseInfo(Misc::GameInstallationDetector::GetGameReleaseInfo()) {
 
 		const auto actCtx = Dll::ActivationContext().With();
 		Window::ProgressPopupWindow progressWindow(Dll::FindGameMainWindow(false));
@@ -512,9 +515,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 	}
 
 	void SetUpMergedExd(Window::ProgressPopupWindow& progressWindow, Sqex::Sqpack::Creator& creator, const std::filesystem::path& indexFile) {
-		const auto region = std::get<0>(XivAlex::ResolveGameReleaseRegion());
-
-		const auto cachedDir = Config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / region / creator.DatExpac / creator.DatName;
+		const auto cachedDir = Config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / GameReleaseInfo.CountryCode / creator.DatExpac / creator.DatName;
 
 		std::map<std::string, int> exhTable;
 		// maybe generate exl?
@@ -758,13 +759,13 @@ struct App::Misc::VirtualSqPacks::Implementation {
 																continue;
 
 															// Exceptions for Chinese client are based on speculations.
-															if (((region == L"JP" || region == L"KR") && language == Sqex::Language::ChineseSimplified) && exhName == "Fate") {
+															if (((GameReleaseInfo.Region == Sqex::GameReleaseRegion::International || GameReleaseInfo.Region == Sqex::GameReleaseRegion::Korean) && language == Sqex::Language::ChineseSimplified) && exhName == "Fate") {
 																auto replacements = std::vector{row[30].String, row[31].String, row[32].String, row[33].String, row[34].String, row[35].String};
 																row = *referenceRow;
 																for (size_t j = 0; j < replacements.size(); ++j)
 																	row[j].String = std::move(replacements[j]);
 
-															} else if (region == L"CN" && language != Sqex::Language::ChineseSimplified && exhName == "Fate") {
+															} else if (GameReleaseInfo.Region == Sqex::GameReleaseRegion::Chinese && language != Sqex::Language::ChineseSimplified && exhName == "Fate") {
 																auto replacements = std::vector{row[0].String, row[1].String, row[2].String, row[3].String, row[4].String, row[5].String};
 																row = *referenceRow;
 																for (size_t j = 0; j < replacements.size(); ++j)
@@ -1298,8 +1299,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				return;
 		
 			try {
-				const auto [region, _] = XivAlex::ResolveGameReleaseRegion();
-				const auto cachedDir = Config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / region / creator.DatExpac / creator.DatName;
+				const auto cachedDir = Config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / GameReleaseInfo.CountryCode / creator.DatExpac / creator.DatName;
 
 				std::string currentCacheKeys;
 				{
@@ -1352,6 +1352,18 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					cfg.ValidateOrThrow();
 
 					Sqex::FontCsv::FontSetsCreator fontCreator(cfg, Utils::Win32::Process::Current().PathOf().parent_path());
+					for (const auto& additionalSqpackRootDirectory : Config->Runtime.AdditionalSqpackRootDirectories.Value()) {
+						try {
+							const auto info = Misc::GameInstallationDetector::GetGameReleaseInfo(Config::TranslatePath(additionalSqpackRootDirectory));
+							fontCreator.ProvideGameDirectory(info.Region, info.RootPath);
+						} catch (const std::exception& e) {
+							Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+								"\t=> Skipping {} in additional game root directories while discovering game installations for font generation: {}",
+								additionalSqpackRootDirectory.wstring(), e.what());
+						}
+					}
+					for (const auto& info : Misc::GameInstallationDetector::FindInstallations())
+						fontCreator.ProvideGameDirectory(info.Region, info.RootPath);
 					SetupGeneratedFonts_VerifyRequirements(fontCreator, progressWindow);
 					fontCreator.Start();
 
@@ -1493,13 +1505,13 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				if (gameIndexFile.fallbackPrompt.empty()) {
 					prompt = Config->Runtime.GetStringRes(IDS_TITLE_SELECT_FFXIVEXECUTABLE);
 					switch (gameIndexFile.autoDetectRegion) {
-						case Sqex::GameRegion::International:
+						case Sqex::GameReleaseRegion::International:
 							prompt += std::format(L" ({})", Config->Runtime.GetStringRes(IDS_CLIENT_INTERNATIONAL));
 							break;
-						case Sqex::GameRegion::Chinese:
+						case Sqex::GameReleaseRegion::Chinese:
 							prompt += std::format(L" ({})", Config->Runtime.GetStringRes(IDS_CLIENT_CHINESE));
 							break;
-						case Sqex::GameRegion::Korean:
+						case Sqex::GameReleaseRegion::Korean:
 							prompt += std::format(L" ({})", Config->Runtime.GetStringRes(IDS_CLIENT_KOREAN));
 							break;
 					}

@@ -2,7 +2,6 @@
 #include "App_LoaderApp.h"
 
 #include <XivAlexander/XivAlexander.h>
-#include <XivAlexanderCommon/XivAlex.h>
 
 #include "DllMain.h"
 #include "resource.h"
@@ -71,7 +70,7 @@ bool App::LoaderApp::EnsureNoWow64Emulation() {
 		return false;
 
 	Utils::Win32::RunProgram({
-		.path = Utils::Win32::Process::Current().PathOf().parent_path() / XivAlex::XivAlexLoader64NameW,
+		.path = Utils::Win32::Process::Current().PathOf().parent_path() / XivAlexDll::XivAlexLoader64NameW,
 		.args = Utils::Win32::SplitCommandLineIntoNameAndArgs(std::wstring(Dll::GetOriginalCommandLine())).second,
 		.wait = true,
 	});
@@ -106,11 +105,11 @@ std::string argparse::details::repr(App::LoaderApp::InstallMode const& val) {
 }
 
 template<>
-std::string argparse::details::repr(Sqex::GameRegion const& val) {
+std::string argparse::details::repr(Sqex::GameReleaseRegion const& val) {
 	switch (val) {
-		case Sqex::GameRegion::International: return Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_CLIENT_INTERNATIONAL) + 1);
-		case Sqex::GameRegion::Korean: return Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_CLIENT_KOREAN) + 1);
-		case Sqex::GameRegion::Chinese: return Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_CLIENT_CHINESE) + 1);
+		case Sqex::GameReleaseRegion::International: return Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_CLIENT_INTERNATIONAL) + 1);
+		case Sqex::GameReleaseRegion::Korean: return Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_CLIENT_KOREAN) + 1);
+		case Sqex::GameReleaseRegion::Chinese: return Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_CLIENT_CHINESE) + 1);
 	}
 	return std::format("({})", static_cast<int>(val));
 }

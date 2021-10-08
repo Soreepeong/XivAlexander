@@ -15,7 +15,7 @@ void App::LoaderApp::Actions::LoadUnload::RunForPid(DWORD pid) {
 
 	if (process.IsProcess64Bits() != Utils::Win32::Process::Current().IsProcess64Bits()) {
 		Utils::Win32::RunProgram({
-			.path = Utils::Win32::Process::Current().PathOf().parent_path() / (process.IsProcess64Bits() ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW),
+			.path = Utils::Win32::Process::Current().PathOf().parent_path() / (process.IsProcess64Bits() ? XivAlexDll::XivAlexLoader64NameW : XivAlexDll::XivAlexLoader32NameW),
 			.args = std::format(L"{}-a {} {}",
 				m_args.m_quiet ? L"-q " : L"",
 				LoaderActionToString(m_args.m_action),
@@ -81,7 +81,7 @@ void App::LoaderApp::Actions::LoadUnload::LoadOrUnload(const Utils::Win32::Proce
 	if (process.IsProcess64Bits() != Utils::Win32::Process::Current().IsProcess64Bits()
 		|| (!Utils::Win32::IsUserAnAdmin() && TestAdminRequirementForProcessManipulation({process.GetId()}))) {
 		Utils::Win32::RunProgram({
-			.path = Utils::Win32::Process::Current().PathOf().parent_path() / (process.IsProcess64Bits() ? XivAlex::XivAlexLoader64NameW : XivAlex::XivAlexLoader32NameW),
+			.path = Utils::Win32::Process::Current().PathOf().parent_path() / (process.IsProcess64Bits() ? XivAlexDll::XivAlexLoader64NameW : XivAlexDll::XivAlexLoader32NameW),
 			.args = std::format(L"-a {} {}",
 				LoaderActionToString(load ? LoaderAction::Load : LoaderAction::Unload),
 				process.GetId()),
@@ -107,7 +107,7 @@ void App::LoaderApp::Actions::LoadUnload::LoadOrUnload(const Utils::Win32::Proce
 
 App::LoaderApp::Actions::LoadUnload::LoadUnload(const Arguments& args)
 	: m_args(args)
-	, m_dllPath(Utils::Win32::Process::Current().PathOf().parent_path() / XivAlex::XivAlexDllNameW) {
+	, m_dllPath(Utils::Win32::Process::Current().PathOf().parent_path() / XivAlexDll::XivAlexDllNameW) {
 }
 
 int App::LoaderApp::Actions::LoadUnload::Run() {
@@ -116,7 +116,7 @@ int App::LoaderApp::Actions::LoadUnload::Run() {
 		if (!m_args.m_quiet) {
 			std::wstring errors;
 			if (m_args.m_targetPids.empty() && m_args.m_targetSuffix.empty())
-				errors = std::format(Utils::Win32::FindStringResourceEx(Dll::Module(), IDS_ERROR_NO_FFXIV_PROCESS) + 1, XivAlex::GameExecutableNameW);
+				errors = std::format(Utils::Win32::FindStringResourceEx(Dll::Module(), IDS_ERROR_NO_FFXIV_PROCESS) + 1, XivAlexDll::GameExecutableNameW);
 			else
 				errors = FindStringResourceEx(Dll::Module(), IDS_ERROR_NO_MATCHING_PROCESS) + 1;
 			Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, errors);

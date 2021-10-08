@@ -7,7 +7,6 @@
 #include <XivAlexanderCommon/Utils_Win32.h>
 #include <XivAlexanderCommon/Utils_Win32_Process.h>
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
-#include <XivAlexanderCommon/XivAlex.h>
 
 #include "App_ConfigRepository.h"
 #include "App_Feature_GameResourceOverrider.h"
@@ -58,16 +57,16 @@ struct App::InjectOnCreateProcessApp::Implementation {
 		auto pardir = path.parent_path();
 		const auto filename = path.filename().wstring();
 		if (equivalent(pardir, Dll::Module().PathOf().parent_path())
-			&& (lstrcmpiW(filename.c_str(), XivAlex::XivAlexLoader32NameW) == 0 || lstrcmpiW(filename.c_str(), XivAlex::XivAlexLoader64NameW) == 0))
+			&& (lstrcmpiW(filename.c_str(), XivAlexDll::XivAlexLoader32NameW) == 0 || lstrcmpiW(filename.c_str(), XivAlexDll::XivAlexLoader64NameW) == 0))
 			return false;
 
-		const auto isGame32 = lstrcmpiW(filename.c_str(), XivAlex::GameExecutable32NameW) == 0;
-		const auto isGame64 = lstrcmpiW(filename.c_str(), XivAlex::GameExecutable64NameW) == 0;
+		const auto isGame32 = lstrcmpiW(filename.c_str(), XivAlexDll::GameExecutable32NameW) == 0;
+		const auto isGame64 = lstrcmpiW(filename.c_str(), XivAlexDll::GameExecutable64NameW) == 0;
 
 		if (isGame32) {
 			for (const auto candidate : {"d3d9.dll", "dinput8.dll"}) {
 				try {
-					if (XivAlex::IsXivAlexanderDll(pardir / candidate))
+					if (XivAlexDll::IsXivAlexanderDll(pardir / candidate))
 						return false;
 				} catch (...) {
 					// pass
@@ -76,7 +75,7 @@ struct App::InjectOnCreateProcessApp::Implementation {
 		} else if (isGame64) {
 			for (const auto candidate : {"d3d11.dll", "dxgi.dll", "dinput8.dll"}) {
 				try {
-					if (XivAlex::IsXivAlexanderDll(pardir / candidate))
+					if (XivAlexDll::IsXivAlexanderDll(pardir / candidate))
 						return false;
 				} catch (...) {
 					// pass
@@ -92,7 +91,7 @@ struct App::InjectOnCreateProcessApp::Implementation {
 
 		// check 3 parent directories to determine whether it might have anything to do with FFXIV
 		for (int i = 0; i < 3; ++i) {
-			if (exists(pardir / L"game" / XivAlex::GameExecutableNameW))
+			if (exists(pardir / L"game" / XivAlexDll::GameExecutableNameW))
 				return true;
 			pardir = pardir.parent_path();
 		}
@@ -201,8 +200,8 @@ App::InjectOnCreateProcessApp::Implementation::Implementation() {
 
 			try {
 				if (equivalent(applicationPath, Utils::Win32::Process::Current().PathOf())
-					&& (lstrcmpiW(applicationPath.filename().c_str(), XivAlex::GameExecutable32NameW) == 0
-						|| lstrcmpiW(applicationPath.filename().c_str(), XivAlex::GameExecutable64NameW) == 0)) {
+					&& (lstrcmpiW(applicationPath.filename().c_str(), XivAlexDll::GameExecutable32NameW) == 0
+						|| lstrcmpiW(applicationPath.filename().c_str(), XivAlexDll::GameExecutable64NameW) == 0)) {
 					if (Dll::IsOriginalCommandLineObfuscated())
 						commandLine = Utils::FromUtf8(Sqex::CommandLine::ToString(Sqex::CommandLine::FromString(Utils::ToUtf8(commandLine)), true));
 				}
@@ -397,7 +396,7 @@ static void InitializeAsStubBeforeOriginalEntryPoint() {
 	std::filesystem::path loadPath;
 	try {
 		const auto conf = App::Config::Acquire();
-		loadPath = conf->Init.ResolveXivAlexInstallationPath() / XivAlex::XivAlexDllNameW;
+		loadPath = conf->Init.ResolveXivAlexInstallationPath() / XivAlexDll::XivAlexDllNameW;
 		const auto loadTarget = Utils::Win32::LoadedModule(loadPath);
 		const auto params = XivAlexDll::PatchEntryPointForInjection(GetCurrentProcess());
 		params->SkipFree = true;
@@ -442,7 +441,7 @@ static void InitializeBeforeOriginalEntryPoint() {
 
 	Dll::SetLoadedFromEntryPoint();
 
-	if (filename != XivAlex::GameExecutableNameW)
+	if (filename != XivAlexDll::GameExecutableNameW)
 		return;  // not the game process; don't load XivAlex app
 
 	// the game might restart itself for whatever reason.

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "App_ConfigRepository.h"
+#include "App_Misc_GameInstallationDetector.h"
 #include "App_Window_BaseWindow.h"
 
 namespace App {
@@ -19,7 +20,7 @@ namespace App::Window {
 		std::unique_ptr<ConfigWindow> m_gameConfigEditor{ nullptr };
 
 		std::filesystem::path m_path;
-		std::wstring m_sRegion, m_sVersion;
+		Misc::GameInstallationDetector::GameReleaseInfo m_gameReleaseInfo;
 
 		uint64_t m_lastTrayIconLeftButtonUp = 0;
 

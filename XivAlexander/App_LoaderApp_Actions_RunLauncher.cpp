@@ -4,9 +4,9 @@
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
 
 #include "App_LoaderApp.h"
+#include "App_Misc_GameInstallationDetector.h"
 #include "DllMain.h"
 #include "resource.h"
-#include "XivAlexanderCommon/XivAlex.h"
 
 using namespace XivAlexDll;
 
@@ -62,19 +62,19 @@ int App::LoaderApp::Actions::RunLauncher::Run() {
 	try {
 		EnableInjectOnCreateProcess(InjectOnCreateProcessAppFlags::Use | InjectOnCreateProcessAppFlags::InjectAll);
 
-		const auto launchers = XivAlex::FindGameLaunchers();
+		const auto launchers = App::Misc::GameInstallationDetector::FindInstallations();
 		switch (m_args.m_launcherType) {
 			case LauncherType::Auto: {
 				if (launchers.empty() || !m_args.m_runProgram.empty())
 					return !SelectAndRunLauncher();
 				else if (launchers.size() == 1)
-					return !RunProgramRetryAfterElevatingSelfAsNecessary(launchers.front().second.BootApp);
+					return !RunProgramRetryAfterElevatingSelfAsNecessary(launchers.front().BootApp);
 				else {
-					for (const auto& it : launchers) {
+					for (const auto& launcher : launchers) {
 						if (Dll::MessageBoxF(nullptr, MB_YESNO | MB_ICONQUESTION,
 							IDS_CONFIRM_LAUNCH,
-							argparse::details::repr(it.first), it.second.RootPath) == IDYES)
-							RunProgramRetryAfterElevatingSelfAsNecessary(it.second.BootApp, L"");
+							argparse::details::repr(launcher.Region), launcher.RootPath) == IDYES)
+							RunProgramRetryAfterElevatingSelfAsNecessary(launcher.BootApp, L"");
 					}
 				}
 				return 0;
@@ -84,23 +84,23 @@ int App::LoaderApp::Actions::RunLauncher::Run() {
 				return SelectAndRunLauncher();
 
 			case LauncherType::International: {
-				for (const auto& [region, info] : launchers)
-					if (region == Sqex::GameRegion::International)
-						return !RunProgramRetryAfterElevatingSelfAsNecessary(info.BootApp);
+				for (const auto& launcher : launchers)
+					if (launcher.Region == Sqex::GameReleaseRegion::International)
+						return !RunProgramRetryAfterElevatingSelfAsNecessary(launcher.BootApp);
 				throw std::out_of_range(nullptr);
 			}
 
 			case LauncherType::Korean: {
-				for (const auto& [region, info] : launchers)
-					if (region == Sqex::GameRegion::Korean)
-						return !RunProgramRetryAfterElevatingSelfAsNecessary(info.BootApp);
+				for (const auto& launcher : launchers)
+					if (launcher.Region == Sqex::GameReleaseRegion::Korean)
+						return !RunProgramRetryAfterElevatingSelfAsNecessary(launcher.BootApp);
 				throw std::out_of_range(nullptr);
 			}
 
 			case LauncherType::Chinese: {
-				for (const auto& [region, info] : launchers)
-					if (region == Sqex::GameRegion::Chinese)
-						return !RunProgramRetryAfterElevatingSelfAsNecessary(info.BootApp);
+				for (const auto& launcher : launchers)
+					if (launcher.Region == Sqex::GameReleaseRegion::Chinese)
+						return !RunProgramRetryAfterElevatingSelfAsNecessary(launcher.BootApp);
 				throw std::out_of_range(nullptr);
 			}
 		}

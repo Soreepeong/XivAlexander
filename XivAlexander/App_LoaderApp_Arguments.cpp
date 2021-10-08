@@ -2,7 +2,6 @@
 #include "App_LoaderApp_Arguments.h"
 
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
-#include <XivAlexanderCommon/XivAlex.h>
 
 #include "App_LoaderApp.h"
 #include "DllMain.h"
@@ -170,8 +169,8 @@ void App::LoaderApp::Arguments::Parse() {
 	}
 
 	if (m_targetPids.empty() && m_targetSuffix.empty()) {
-		m_targetSuffix.emplace(XivAlex::GameExecutable32NameW);
-		m_targetSuffix.emplace(XivAlex::GameExecutable64NameW);
+		m_targetSuffix.emplace(XivAlexDll::GameExecutable32NameW);
+		m_targetSuffix.emplace(XivAlexDll::GameExecutable64NameW);
 	}
 }
 

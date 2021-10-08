@@ -11,7 +11,7 @@
 namespace Sqex::FontCsv::CreateConfig {
 	struct GameIndexFile {
 		std::vector<std::filesystem::path> pathList;
-		GameRegion autoDetectRegion = GameRegion::Unspecified;
+		GameReleaseRegion autoDetectRegion = GameReleaseRegion::Unspecified;
 		std::string autoDetectIndexExpac;
 		std::string autoDetectIndexFile;
 		std::vector<std::filesystem::path> fallbackPathList;
