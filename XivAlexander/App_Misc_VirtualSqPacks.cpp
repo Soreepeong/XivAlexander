@@ -296,7 +296,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 	}
 
 	void InitializeSqPacks(Window::ProgressPopupWindow& progressWindow) {
-		progressWindow.UpdateMessage("Discovering files...");
+		progressWindow.UpdateMessage(Utils::ToUtf8(Config->Runtime.GetStringRes(IDS_TITLE_DISCOVERINGFILES)));
 
 		std::map<std::filesystem::path, std::unique_ptr<Sqex::Sqpack::Creator>> creators;
 		for (const auto& expac : std::filesystem::directory_iterator(SqpackPath)) {
@@ -478,8 +478,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				}
 				pool.WaitOutstanding();
 			});
-
-			progressWindow.UpdateMessage("Indexing files...");
+			
+			progressWindow.UpdateMessage(Utils::ToUtf8(Config->Runtime.GetStringRes(IDS_TITLE_INDEXINGFILES)));
 			progressWindow.UpdateProgress(0, progressMax);
 			while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {loaderThread})) {
 				progressWindow.UpdateProgress(progressValue, progressMax);
@@ -504,7 +504,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				SqpackViews.emplace(indexFile, pCreator->AsViews(false));
 			});
 			while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {workerThread})) {
-				progressWindow.UpdateMessage("Finalizing...");
+				progressWindow.UpdateMessage(Utils::ToUtf8(Config->Runtime.GetStringRes(IDS_TITLE_FINALIZING)));
 				progressWindow.UpdateProgress(0, 0);
 			}
 			workerThread.Wait();
@@ -1474,9 +1474,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[ffxiv/000000] Error: {}", e.what());
 				if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 					return;
-				switch (Dll::MessageBoxF(progressWindow.Handle(), MB_ICONERROR | MB_ABORTRETRYIGNORE, 
-					L"An error has occurred while generating or loading fonts. Do you want to retry?\n\nError: {}", // TODO: resource
-					e.what())) {
+				switch (Dll::MessageBoxF(progressWindow.Handle(), MB_ICONERROR | MB_ABORTRETRYIGNORE, IDS_ERROR_GENERATEFONT, e.what())) {
 					case IDRETRY:
 						continue;
 					case IDABORT:
@@ -1614,11 +1612,11 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					.WithCanBeMinimized()
 					.WithHyperlinkShellExecute()
 					.WithMainIcon(IDI_TRAY_ICON)
-					.WithMainInstruction(L"Font installation required")
+					.WithMainInstruction(Config->Runtime.GetStringRes(IDS_GENERATEFONT_FONTINSTALLATIONREQUIRED))
 					.WithContent(instructions)
 					.WithButton({
 						.Id = 1001,
-						.Text = L"Check again",
+						.Text = Config->Runtime.GetStringRes(IDS_GENERATEFONT_CHECKAGAIN),
 					})
 					.WithButtonDefault(1001)
 					.WithCommonButton(TDCBF_CANCEL_BUTTON)

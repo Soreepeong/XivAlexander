@@ -498,6 +498,16 @@ BEGIN
                             "XivAlexander‚ğdinput8(x86)‚ÅƒCƒ“ƒXƒg[ƒ‹‚·‚é(&I)\nXivAlexander‚ğ‘I‘ğ‚µ‚½ƒQ[ƒ€ƒtƒHƒ‹ƒ_[‚Édinput8.dll‚ÅƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·BƒQ[ƒ€‚ÌDirectX9ƒo[ƒWƒ‡ƒ“‚¾‚¯‚Å“K—p‚É‚È‚è‚Ü‚·B"
     IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X64 
                             "XivAlexander‚ğdinput8(x64)‚ÅƒCƒ“ƒXƒg[ƒ‹‚·‚é(&I)\nXivAlexander‚ğ‘I‘ğ‚µ‚½ƒQ[ƒ€ƒtƒHƒ‹ƒ_[‚Édinput8.dll‚ÅƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·BƒQ[ƒ€‚ÌDirectX11ƒo[ƒWƒ‡ƒ“‚¾‚¯‚Å“K—p‚É‚È‚è‚Ü‚·B"
+    IDS_ERROR_GENERATEFONT  "ƒtƒHƒ“ƒg‚Ì¶¬‚ª‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B‚à‚¤ˆê‰ñ¶¬‚µ‚Ä‚¢Œ©‚Ü‚·B\n\nƒGƒ‰[F{}"
+    IDS_GENERATEFONT_FONTINSTALLATIONREQUIRED "ƒtƒHƒ“‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ä‚­‚¾‚³‚¢B"
+    IDS_GENERATEFONT_CHECKAGAIN "ƒCƒ“ƒXƒg[ƒ‹ó‘Ô‚ğÄŠm”F"
+    IDS_TITLE_DISCOVERINGFILES "ƒtƒ@ƒCƒ‹‚ğ’Tõ‚µ‚Ä‚¢‚Ü‚·c"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_TITLE_INDEXINGFILES "ƒtƒ@ƒCƒ‹‚ğõˆø‚µ‚Ä‚¢‚Ü‚·c"
+    IDS_TITLE_FINALIZING    "ƒtƒ@ƒCƒ‹‚Ì€”õ‚ğŠ®—¹‚µ‚Ä‚¢‚Ü‚·c"
 END
 
 #endif    // Japanese (Japan) resources
@@ -1017,6 +1027,16 @@ BEGIN
                             "XivAlexander¸¦ dinput8.dll(x86)·Î ¼³Ä¡ÇÏ±â(&I)\nXivAlexander¸¦ ¼±ÅÃÇÑ °ÔÀÓ ¼³Ä¡ Æú´õ¿¡ dinput8.dll ÆÄÀÏ·Î ¼³Ä¡ÇÕ´Ï´Ù. °ÔÀÓÀ» DirectX 9 ¸ğµå·Î ÄÓ ¶§¸¸ Àû¿ëµË´Ï´Ù."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X64 
                             "XivAlexander¸¦ dinput8.dll(x64)·Î ¼³Ä¡ÇÏ±â(&I)\nXivAlexander¸¦ ¼±ÅÃÇÑ °ÔÀÓ ¼³Ä¡ Æú´õ¿¡ dinput8.dll ÆÄÀÏ·Î ¼³Ä¡ÇÕ´Ï´Ù. °ÔÀÓÀ» DirectX 11 ¸ğµå·Î ÄÓ ¶§¸¸ Àû¿ëµË´Ï´Ù."
+    IDS_ERROR_GENERATEFONT  "ÆùÆ® »ı¼º/ºÒ·¯¿À±â Áß ¿À·ù°¡ ¹ß»ıÇß½À´Ï´Ù. ´Ù½Ã ½ÃµµÇÏ½Ã°Ú½À´Ï±î?\n\n¿À·ù: {}"
+    IDS_GENERATEFONT_FONTINSTALLATIONREQUIRED "ÆùÆ® ¼³Ä¡°¡ ÇÊ¿äÇÕ´Ï´Ù."
+    IDS_GENERATEFONT_CHECKAGAIN "¼³Ä¡ »óÅÂ ÀçÈ®ÀÎ"
+    IDS_TITLE_DISCOVERINGFILES "ÆÄÀÏ Ã£´Â Áß..."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_TITLE_INDEXINGFILES "ÆÄÀÏ »öÀÎ Áß..."
+    IDS_TITLE_FINALIZING    "ÆÄÀÏ ÁØºñ ¿Ï·á Áß..."
 END
 
 #endif    // Korean (Korea) resources
@@ -1675,6 +1695,16 @@ BEGIN
                             "&Install XivAlexander as dinput8.dll for DirectX 9 version\nInstall XivAlexander for the selected game installation in DirectX 9 version, taking place of dinput8.dll."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X64 
                             "&Install XivAlexander as dinput8.dll for DirectX 11 version\nInstall XivAlexander for the selected game installation in DirectX 11 version, taking place of dinput8.dll."
+    IDS_ERROR_GENERATEFONT  "An error has occurred while generating or loading fonts. Do you want to retry?\n\nError: {}"
+    IDS_GENERATEFONT_FONTINSTALLATIONREQUIRED "Font installation required"
+    IDS_GENERATEFONT_CHECKAGAIN "Check again"
+    IDS_TITLE_DISCOVERINGFILES "Discovering files..."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_TITLE_INDEXINGFILES "Indexing files..."
+    IDS_TITLE_FINALIZING    "Finalizing..."
 END
 
 #endif    // English (United States) resources

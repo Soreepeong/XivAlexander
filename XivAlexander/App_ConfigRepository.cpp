@@ -163,7 +163,7 @@ std::vector<std::pair<WORD, std::string>> App::Config::RuntimeRepository::GetDis
 	std::vector<std::pair<WORD, std::string>> res;
 	if (Language != Language::SystemDefault) {
 		wchar_t buf[64];
-		LCIDToLocaleName(LanguageIdMap.at(Language), &buf[0], 64, LOCALE_INVARIANT);
+		LCIDToLocaleName(LanguageIdMap.at(Language), &buf[0], 64, 0);
 		res.emplace_back(LanguageIdMap.at(Language), Utils::ToUtf8(buf));
 	}
 	try {
@@ -187,7 +187,7 @@ std::vector<std::pair<WORD, std::string>> App::Config::RuntimeRepository::GetDis
 		if (language == Language::SystemDefault || language == Language)
 			continue;
 		wchar_t buf[64];
-		LCIDToLocaleName(languageId, &buf[0], 64, LOCALE_INVARIANT);
+		LCIDToLocaleName(languageId, &buf[0], 64, 0);
 		res.emplace_back(languageId, Utils::ToUtf8(buf));
 	}
 	return res;
