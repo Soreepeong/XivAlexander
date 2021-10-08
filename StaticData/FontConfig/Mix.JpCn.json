@@ -248,6 +248,7 @@
         "height": 16,
         "ascent": "game:Jupiter_16",
         "lineHeight": "game:Jupiter_16",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_16"
@@ -261,6 +262,7 @@
         "height": 20,
         "ascent": "game:Jupiter_20",
         "lineHeight": "game:Jupiter_20",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_20"
@@ -274,6 +276,7 @@
         "height": 23,
         "ascent": "game:Jupiter_23",
         "lineHeight": "game:Jupiter_23",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_23"
@@ -287,6 +290,7 @@
         "height": 45,
         "ascent": "game:Jupiter_45",
         "lineHeight": "game:Jupiter_45",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_45"
@@ -297,6 +301,7 @@
         "height": 46,
         "ascent": "game:Jupiter_46",
         "lineHeight": "game:Jupiter_46",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:ChnAXIS_180"
@@ -316,6 +321,7 @@
         "height": 90,
         "ascent": "game:Jupiter_90",
         "lineHeight": "game:Jupiter_90",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_90"
@@ -326,6 +332,7 @@
         "height": 16,
         "ascent": "game:Meidinger_16",
         "lineHeight": "game:Meidinger_16",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Meidinger_16"
@@ -336,6 +343,7 @@
         "height": 20,
         "ascent": "game:Meidinger_20",
         "lineHeight": "game:Meidinger_20",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Meidinger_20"
@@ -346,6 +354,7 @@
         "height": 40,
         "ascent": "game:Meidinger_40",
         "lineHeight": "game:Meidinger_40",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Meidinger_40"
@@ -356,6 +365,7 @@
         "height": 10,
         "ascent": "game:MiedingerMid_10",
         "lineHeight": "game:MiedingerMid_10",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:MiedingerMid_10"
@@ -369,6 +379,7 @@
         "height": 12,
         "ascent": "game:MiedingerMid_12",
         "lineHeight": "game:MiedingerMid_12",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:MiedingerMid_12"
@@ -382,6 +393,7 @@
         "height": 14,
         "ascent": "game:MiedingerMid_14",
         "lineHeight": "game:MiedingerMid_14",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:MiedingerMid_14"
@@ -395,6 +407,7 @@
         "height": 18,
         "ascent": "game:MiedingerMid_18",
         "lineHeight": "game:MiedingerMid_18",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:MiedingerMid_18"
@@ -408,6 +421,7 @@
         "height": 36,
         "ascent": "game:MiedingerMid_36",
         "lineHeight": "game:MiedingerMid_36",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:ChnAXIS_180"
@@ -427,6 +441,7 @@
         "height": 18.4,
         "ascent": "game:TrumpGothic_184",
         "lineHeight": "game:TrumpGothic_184",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:TrumpGothic_184"
@@ -440,6 +455,7 @@
         "height": 23,
         "ascent": "game:TrumpGothic_23",
         "lineHeight": "game:TrumpGothic_23",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:TrumpGothic_23"
@@ -453,6 +469,7 @@
         "height": 34,
         "ascent": "game:TrumpGothic_34",
         "lineHeight": "game:TrumpGothic_34",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:ChnAXIS_180"
@@ -472,6 +489,7 @@
         "height": 68,
         "ascent": "game:TrumpGothic_68",
         "lineHeight": "game:TrumpGothic_68",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:ChnAXIS_180"
@@ -533,6 +551,7 @@
         "height": 16,
         "ascent": "game:Jupiter_16",
         "lineHeight": "game:Jupiter_16",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_16"
@@ -546,6 +565,7 @@
         "height": 20,
         "ascent": "game:Jupiter_20",
         "lineHeight": "game:Jupiter_20",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_20"
@@ -559,6 +579,7 @@
         "height": 23,
         "ascent": "game:Jupiter_23",
         "lineHeight": "game:Jupiter_23",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_23"
@@ -572,6 +593,7 @@
         "height": 45,
         "ascent": "game:Jupiter_45",
         "lineHeight": "game:Jupiter_45",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_45"
@@ -582,6 +604,7 @@
         "height": 16,
         "ascent": "game:Meidinger_16",
         "lineHeight": "game:Meidinger_16",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Meidinger_16"
@@ -592,6 +615,7 @@
         "height": 20,
         "ascent": "game:Meidinger_20",
         "lineHeight": "game:Meidinger_20",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Meidinger_20"
@@ -602,6 +626,7 @@
         "height": 10,
         "ascent": "game:MiedingerMid_10",
         "lineHeight": "game:MiedingerMid_10",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:MiedingerMid_10"
@@ -615,6 +640,7 @@
         "height": 12,
         "ascent": "game:MiedingerMid_12",
         "lineHeight": "game:MiedingerMid_12",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:MiedingerMid_12"
@@ -628,6 +654,7 @@
         "height": 14,
         "ascent": "game:MiedingerMid_14",
         "lineHeight": "game:MiedingerMid_14",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:MiedingerMid_14"
@@ -641,6 +668,7 @@
         "height": 18,
         "ascent": "game:MiedingerMid_18",
         "lineHeight": "game:MiedingerMid_18",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:MiedingerMid_18"
@@ -654,6 +682,7 @@
         "height": 18.4,
         "ascent": "game:TrumpGothic_184",
         "lineHeight": "game:TrumpGothic_184",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:TrumpGothic_184"
@@ -667,6 +696,7 @@
         "height": 23,
         "ascent": "game:TrumpGothic_23",
         "lineHeight": "game:TrumpGothic_23",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:TrumpGothic_23"
@@ -680,6 +710,7 @@
         "height": 34,
         "ascent": "game:TrumpGothic_34",
         "lineHeight": "game:TrumpGothic_34",
+        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:TrumpGothic_34"
