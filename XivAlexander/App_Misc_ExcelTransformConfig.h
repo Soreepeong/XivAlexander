@@ -1,8 +1,7 @@
 #pragma once
 
 #include <nlohmann/json_fwd.hpp>
-
-#include "XivAlexanderCommon/Sqex.h"
+#include <XivAlexanderCommon/Sqex.h>
 
 namespace App::Misc::ExcelTransformConfig {
 
