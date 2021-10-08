@@ -1006,6 +1006,9 @@ void Sqex::FontCsv::FontSetsCreator::VerifyRequirements(
 						continue;
 					for (const auto& [name, gameIndexFile] : m_pImpl->Config.gameIndexFiles) {
 						if ([&] {
+							if (m_pImpl->ResolvedGameIndexFiles.contains(name))
+								return 0;
+
 							for (auto path : gameIndexFile.pathList) {
 								path = Win32::TranslatePath(path, Win32::Process::Current().PathOf());
 								if (exists(path)) {
@@ -1013,6 +1016,7 @@ void Sqex::FontCsv::FontSetsCreator::VerifyRequirements(
 									return 0;
 								}
 							}
+
 							for (const auto& [region, info] : XivAlex::FindGameLaunchers()) {
 								if (region == gameIndexFile.autoDetectRegion) {
 									auto path = info.RootPath / "game" / "sqpack" / gameIndexFile.autoDetectIndexExpac / std::format("{}.win32.index", gameIndexFile.autoDetectIndexFile);
@@ -1022,6 +1026,7 @@ void Sqex::FontCsv::FontSetsCreator::VerifyRequirements(
 									return 0;
 								}
 							}
+
 							for (auto path : gameIndexFile.fallbackPathList) {
 								path = Win32::TranslatePath(path, Win32::Process::Current().PathOf());
 								if (exists(path)) {
@@ -1029,11 +1034,13 @@ void Sqex::FontCsv::FontSetsCreator::VerifyRequirements(
 									return 0;
 								}
 							}
+
 							return 1;
 						}()) {
 							auto path = promptGameIndexFile(gameIndexFile);
 							if (path.empty())
 								return;
+							path = path / "game" / "sqpack" / gameIndexFile.autoDetectIndexExpac / std::format("{}.win32.index", gameIndexFile.autoDetectIndexFile);
 							m_pImpl->ResolvedGameIndexFiles.emplace(name, std::move(path));
 						}
 					}

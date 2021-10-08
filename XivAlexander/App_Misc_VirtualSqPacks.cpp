@@ -1497,10 +1497,10 @@ struct App::Misc::VirtualSqPacks::Implementation {
 							prompt += std::format(L" ({})", Config->Runtime.GetStringRes(IDS_CLIENT_INTERNATIONAL));
 							break;
 						case Sqex::GameRegion::Chinese:
-							prompt += std::format(L" ({})", Config->Runtime.GetStringRes(IDS_CLIENT_KOREAN));
+							prompt += std::format(L" ({})", Config->Runtime.GetStringRes(IDS_CLIENT_CHINESE));
 							break;
 						case Sqex::GameRegion::Korean:
-							prompt += std::format(L" ({})", Config->Runtime.GetStringRes(IDS_CLIENT_CHINESE));
+							prompt += std::format(L" ({})", Config->Runtime.GetStringRes(IDS_CLIENT_KOREAN));
 							break;
 					}
 				} else if (gameIndexFile.fallbackPrompt.size() == 1)
@@ -1551,17 +1551,10 @@ struct App::Misc::VirtualSqPacks::Implementation {
 						CoTaskMemFree(pszFileName);
 					}
 
-					if (lstrcmpiW(fileName.filename().wstring().c_str(), XivAlex::GameExecutable32NameW) == 0
-						|| lstrcmpiW(fileName.filename().wstring().c_str(), XivAlex::GameExecutable64NameW) == 0) {
-						return fileName.parent_path();
-					} else {
+					while (fileName != fileName.parent_path()) {
 						fileName = fileName.parent_path();
-						std::filesystem::path GamePath;
-						if (!exists((GamePath = fileName / "game") / "ffxivgame.ver"))
-							if (!exists((GamePath = fileName.parent_path() / "game") / "ffxivgame.ver"))
-								if (!exists((GamePath = fileName.parent_path().parent_path() / "game") / "ffxivgame.ver"))
-									continue;
-						return GamePath;
+						if (exists(fileName / "game" / "ffxivgame.ver"))
+							return fileName;
 					}
 				}
 			},
