@@ -5,6 +5,7 @@
 #include "Utils_Win32.h"
 #include "Utils_Win32_Closeable.h"
 #include "Utils_Win32_Handle.h"
+#include "Utils_Win32_Process.h"
 
 std::tuple<std::wstring, std::wstring> XivAlex::ResolveGameReleaseRegion() {
 	std::wstring path(PATHCCH_MAX_CCH, L'\0');
@@ -311,6 +312,77 @@ std::vector<std::pair<Sqex::GameRegion, XivAlex::GameRegionInfo>> XivAlex::FindG
 		};
 		result.emplace_back(Sqex::GameRegion::Chinese, info);
 	}
+
+	auto selfPath = Utils::Win32::Process::Current().PathOf().parent_path();
+	for (size_t i = 0; i < 3; ++i) {
+		if (!exists(selfPath / "game" / "ffxivgame.ver"))
+			selfPath = selfPath.parent_path();
+	}
+	if (exists(selfPath / "game" / "ffxivgame.ver")) {
+		if (exists(selfPath / "boot" / "FFXIV_Boot.exe"))
+			result.emplace_back(Sqex::GameRegion::Korean, GameRegionInfo{
+				.Type = Sqex::GameRegion::Korean,
+				.RootPath = selfPath,
+				.BootApp = selfPath / L"boot" / L"FFXIV_Boot.exe",
+				.BootAppRequiresAdmin = true,
+				.BootAppDirectlyInjectable = true,
+				.RelatedApps = {
+					selfPath / L"boot" / L"FFXIV_Boot.exe",
+					selfPath / L"boot" / L"FFXIV_Launcher.exe",
+				},
+			});
+		
+		if (exists(selfPath / "boot" / "ffxivboot.exe"))
+			result.emplace_back(Sqex::GameRegion::International, GameRegionInfo{
+				.Type = Sqex::GameRegion::International,
+				.RootPath = selfPath,
+#if INTPTR_MAX == INT32_MAX
+
+			.BootApp = selfPath / L"boot" / L"ffxivboot.exe",
+
+#elif INTPTR_MAX == INT64_MAX
+
+			.BootApp = selfPath / L"boot" / L"ffxivboot64.exe",
+
+#endif
+				.BootAppRequiresAdmin = false,
+				.BootAppDirectlyInjectable = false,
+				.RelatedApps = {
+					selfPath / L"boot" / L"ffxivboot.exe",
+					selfPath / L"boot" / L"ffxivboot64.exe",
+					selfPath / L"boot" / L"ffxivconfig.exe",
+					selfPath / L"boot" / L"ffxivconfig64.exe",
+					selfPath / L"boot" / L"ffxivlauncher.exe",
+					selfPath / L"boot" / L"ffxivlauncher64.exe",
+					selfPath / L"boot" / L"ffxivupdater.exe",
+					selfPath / L"boot" / L"ffxivupdater.exe",
+				},
+			});
+		
+		if (exists(selfPath / "FFXIVBoot.exe"))
+			result.emplace_back(Sqex::GameRegion::International, GameRegionInfo{
+			.Type = Sqex::GameRegion::Chinese,
+			.RootPath = selfPath,
+			.BootApp = selfPath / L"FFXIVBoot.exe",
+			.BootAppRequiresAdmin = true,
+			.BootAppDirectlyInjectable = true,
+			.RelatedApps = {
+				selfPath / "LauncherUpdate" / "LauncherUpdater.exe",
+				selfPath / "FFXIVBoot.exe",
+				selfPath / "sdo" / "sdologin" / "sdologin.exe",
+				selfPath / "sdo" / "sdologin" / "Launcher.exe",
+				selfPath / "sdo" / "sdologin" / "sdolplugin.exe",
+				selfPath / "sdo" / "sdologin" / "update.exe",
+			},
+		});
+	}
+
+    std::set<std::filesystem::path> seen;
+    auto newEnd = std::remove_if(result.begin(), result.end(), [&seen](const auto& value) {
+        return !seen.insert(value.second.RootPath).second;
+    });
+    result.erase(newEnd, result.end());
+
 	return result;
 }
 
