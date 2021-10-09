@@ -243,7 +243,7 @@ std::filesystem::path App::Config::InitRepository::ResolveGameOpcodeConfigPath()
 }
 
 std::filesystem::path App::Config::TranslatePath(const std::filesystem::path& path, const std::filesystem::path& relativeTo) {
-	return Utils::Win32::TranslatePath(path, relativeTo.empty() ? Dll::Module().PathOf() : relativeTo);
+	return Utils::Win32::TranslatePath(path, relativeTo.empty() ? Dll::Module().PathOf().parent_path() : relativeTo);
 }
 
 App::Config::Config(std::filesystem::path initializationConfigPath)
