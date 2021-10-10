@@ -413,7 +413,7 @@ int main() {
 
 		{2, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.0 - Shadowbringers\00010.flac)", "music/ex2/bgm_ex2_ban_24.scd", 0, 0, 1},
 		{2, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.0 - Shadowbringers\00011.flac)", "music/ex2/bgm_ex2_ban_25.scd", 0, 0, 1},
-		// {2, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.0 - Shadowbringers\00012.flac)", "music/ex2/bgm_season_xmascho.scd", 0, 0, 1}, // 4 channel audio
+		// {2, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.0 - Shadowbringers\00012.flac)", "music/ex2/bgm_season_xmascho.scd", 0, 0, 1}, // (TODO: 4ch)
 		// {2, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.0 - Shadowbringers\00013.flac)", "music/ex2/bgm_season_xmascho.scd", 0, 0, 1},
 		{0, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.0 - Shadowbringers\00014.flac)", "music/ffxiv/bgm_emj.scd", 0, 0, 1},
 		{2, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.0 - Shadowbringers\00015.flac)", "music/ex2/bgm_ex2_eu_dungeon.scd", 0, 0, 1},
@@ -527,7 +527,7 @@ int main() {
 
 		{3, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn\DUD_020.flac)", "music/ex3/bgm_ex3_ytc_05.scd", 0, 0, 1},
 		{3, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn\DUD_021.flac)", "music/ex3/bgm_ex3_dan_d10.scd", 0, 0, 1},
-		{3, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn\DUD_022.flac)", "music/ex3/bgm_ex3_boss_battle03.scd", 0, 0, 1},
+		{3, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn\DUD_022.flac)", "music/ex3/bgm_ex3_boss_battle03.scd", 0, 10, 1},  // Blu-ray version has an ending
 		{3, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn\DUD_023.flac)", "music/ex3/bgm_ex3_banfort_kkrn_good.scd", 0, 0, 1},
 		{3, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn\DUD_024.flac)", "music/ex3/bgm_ex3_ban_09.scd", 0, 7, 1},  // Blu-ray version has an ending
 		{3, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn\DUD_025.flac)", "music/ex3/bgm_ex3_ban_10.scd", 0, 0, 1},
@@ -550,9 +550,9 @@ int main() {
 		{3, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn\DUD_040.flac)", "music/ex3/bgm_ex3_banfort_dwarf_good.scd", 0, 0, 1},
 		// {3, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn\DUD_041.flac)", "music/ex3/.scd", 0, 0, 1},  // TODO: The Isle of Endless Summer
 		{3, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn\DUD_042.flac)", "music/ex3/bgm_ex3_dan_d11.scd", 0, 0, 1},
-		{3, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn\DUD_043.flac)", "music/ex3/bgm_ex3_ban_12.scd", 0, 0, 1},
+		// {3, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn\DUD_043.flac)", "music/ex3/bgm_ex3_ban_12.scd", 0, 0, 1},  // TODO: figure these out
 		// {3, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn\DUD_044.flac)", "music/ex3/bgm_ex3_ban_11.scd", 0, 0, 1},  // Blu-ray version has an ending
-		// {3, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn\DUD_044.flac)", "music/ex3/bgm_ex3_ban_14.scd", 0, 0, 1},  // TODO: figure these out
+		// {3, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn\DUD_044.flac)", "music/ex3/bgm_ex3_ban_14.scd", 0, 0, 1},
 		{3, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn\DUD_045.flac)", "music/ex3/bgm_ex3_event_22.scd", 0, 0, 1},
 		{3, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn\DUD_046.flac)", "music/ex3/bgm_ex3_ytc_13.scd", 0, 0, 1},
 		{3, LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn\DUD_047.flac)", "music/ex3/bgm_ex3_ytc_14.scd", 0, 0, 1},
