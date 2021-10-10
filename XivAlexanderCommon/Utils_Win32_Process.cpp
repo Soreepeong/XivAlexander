@@ -106,10 +106,22 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 		siex.StartupInfo.dwFlags |= STARTF_USESHOWWINDOW;
 		siex.StartupInfo.wShowWindow = m_wShowWindow;
 	}
+	if (m_hStdin || m_hStdout || m_hStderr) {
+		siex.StartupInfo.dwFlags |= STARTF_USESTDHANDLES;
+		siex.StartupInfo.hStdInput = m_hStdin ? m_hStdin : GetStdHandle(STD_INPUT_HANDLE);
+		siex.StartupInfo.hStdOutput = m_hStdout ? m_hStdout : GetStdHandle(STD_OUTPUT_HANDLE);
+		siex.StartupInfo.hStdError = m_hStderr ? m_hStderr : GetStdHandle(STD_ERROR_HANDLE);
+	}
 
 	std::vector<HANDLE> handles;  // this needs to be here, as ProcThreadAttribute only points here instead of copying the contents
-	handles.reserve(m_inheritedHandles.size());
+	handles.reserve(3 + m_inheritedHandles.size());
 	std::ranges::transform(m_inheritedHandles, std::back_inserter(handles), [](const auto& v) { return static_cast<HANDLE>(v); });
+	if (m_hStdin)
+		handles.push_back(m_hStdin);
+	if (m_hStdout)
+		handles.push_back(m_hStdout);
+	if (m_hStderr)
+		handles.push_back(m_hStderr);
 
 	std::vector<char> attributeListBuf;
 	if (SIZE_T size = 0; !InitializeProcThreadAttributeList(nullptr, MaxLengthOfProcThreadAttributeList, 0, &size)) {
@@ -159,7 +171,7 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 	PROCESS_INFORMATION pi{};
 	if (!CreateProcessW(m_path.c_str(), &args[0],
 		nullptr, nullptr,
-		m_inheritedHandles.empty() ? FALSE : TRUE,
+		handles.empty() ? FALSE : TRUE,
 		CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT,
 		environString.empty() ? nullptr : &environString[0],
 		m_dir.empty() ? nullptr : m_dir.c_str(),
@@ -224,6 +236,18 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithAppendArgument(c
 	return *this;
 }
 
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithAppendArgument(std::initializer_list<std::string> list) {
+	for (const auto& s : list)
+		WithAppendArgument(s);
+	return *this;
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithAppendArgument(std::initializer_list<std::wstring> list) {
+	for (const auto& s : list)
+		WithAppendArgument(s);
+	return *this;
+}
+
 Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithSize(DWORD width, DWORD height, bool use) {
 	m_dwWidth = use ? width : 0;
 	m_dwHeight = use ? height : 0;
@@ -265,6 +289,36 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithEnviron(std::wst
 Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithoutEnviron(const std::wstring& key) {
 	InitializeEnviron();
 	m_environ.erase(key);
+	return *this;
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStdin(HANDLE h) {
+	if (h == INVALID_HANDLE_VALUE)
+		m_hStdin = nullptr;
+	else if (h == nullptr)
+		m_hStdin = Handle::DuplicateFrom<Handle>(File::Create("nul", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0), true);
+	else
+		m_hStdin = Handle::DuplicateFrom<Handle>(h, true);
+	return *this;
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStdout(HANDLE h) {
+	if (h == INVALID_HANDLE_VALUE)
+		m_hStdout = nullptr;
+	else if (h == nullptr)
+		m_hStdout = Handle::DuplicateFrom<Handle>(File::Create("nul", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0), true);
+	else
+		m_hStdout = Handle::DuplicateFrom<Handle>(h, true);
+	return *this;
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStderr(HANDLE h) {
+	if (h == INVALID_HANDLE_VALUE)
+		m_hStderr = nullptr;
+	else if (h == nullptr)
+		m_hStderr = Handle::DuplicateFrom<Handle>(File::Create("nul", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0), true);
+	else
+		m_hStderr = Handle::DuplicateFrom<Handle>(h, true);
 	return *this;
 }
 
@@ -502,9 +556,9 @@ void Utils::Win32::Process::Terminate(DWORD dwExitCode = 0, bool errorIfAlreadyT
 	if (TerminateProcess(m_object, dwExitCode))
 		return;
 	const auto err = GetLastError();
-	if (!errorIfAlreadyTerminated && Wait(0) != WAIT_TIMEOUT)
-		return;
-	throw Error(err, "TerminateProcess");
+	if (errorIfAlreadyTerminated && Wait(0) != WAIT_TIMEOUT)
+		throw Error(err, "TerminateProcess");
+	return;
 }
 
 DWORD Utils::Win32::Process::WaitAndGetExitCode() const {

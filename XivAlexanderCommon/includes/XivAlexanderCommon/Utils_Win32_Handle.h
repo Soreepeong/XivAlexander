@@ -122,6 +122,8 @@ namespace Utils::Win32 {
 			_In_opt_ HANDLE hTemplateFile = nullptr
 		);
 
+		static std::pair<File, File> CreatePipe(LPSECURITY_ATTRIBUTES lpPipeAttributes = nullptr, DWORD nSize = 0);
+
 		enum class PartialIoMode {
 			AlwaysFull,
 			AllowPartial,

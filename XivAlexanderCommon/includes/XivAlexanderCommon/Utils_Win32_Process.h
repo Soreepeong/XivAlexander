@@ -141,6 +141,10 @@ namespace Utils::Win32 {
 
 		bool m_environInitialized = false;
 		std::map<std::wstring, std::wstring> m_environ;
+		
+		Handle m_hStdin;
+		Handle m_hStdout;
+		Handle m_hStderr;
 
 	public:
 		ProcessBuilder();
@@ -160,6 +164,8 @@ namespace Utils::Win32 {
 		ProcessBuilder& WithArgument(bool prependPathToArgument, std::wstring);
 		ProcessBuilder& WithAppendArgument(const std::string&);
 		ProcessBuilder& WithAppendArgument(const std::wstring&);
+		ProcessBuilder& WithAppendArgument(std::initializer_list<std::string>);
+		ProcessBuilder& WithAppendArgument(std::initializer_list<std::wstring>);
 		template<typename ... Args>
 		ProcessBuilder& WithAppendArgument(const char* format, Args ... args) {
 			return WithAppendArgument(std::format(format, std::forward<Args>(args)...));
@@ -176,6 +182,9 @@ namespace Utils::Win32 {
 		ProcessBuilder& WithUnspecifiedShow();
 		ProcessBuilder& WithEnviron(std::wstring_view key, std::wstring value);
 		ProcessBuilder& WithoutEnviron(const std::wstring& key);
+		ProcessBuilder& WithStdin(HANDLE = nullptr);
+		ProcessBuilder& WithStdout(HANDLE = nullptr);
+		ProcessBuilder& WithStderr(HANDLE = nullptr);
 
 		Handle Inherit(HANDLE hSource);
 		template<typename T, typename = std::is_base_of<T, Handle>>

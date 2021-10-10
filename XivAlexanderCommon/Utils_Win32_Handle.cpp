@@ -216,6 +216,13 @@ Utils::Win32::File Utils::Win32::File::Create(
 	return { hFile, true };
 }
 
+std::pair<Utils::Win32::File, Utils::Win32::File> Utils::Win32::File::CreatePipe(LPSECURITY_ATTRIBUTES lpPipeAttributes, DWORD nSize) {
+	HANDLE hReadPipe, hWritePipe;
+	if (!::CreatePipe(&hReadPipe, &hWritePipe, lpPipeAttributes, nSize))
+		throw Error("CreatePipe");
+	return {{hReadPipe, true}, {hWritePipe, true}};
+}
+
 size_t Utils::Win32::File::Read(uint64_t offset, void* buf, size_t len, PartialIoMode readMode) const {
 	const uint64_t ChunkSize = 0x10000000UL;
 	if (len > ChunkSize) {

@@ -133,6 +133,20 @@ namespace Sqex {
 			return result;
 		}
 
+		template<typename T>
+		std::function<std::span<T>(size_t len, bool throwOnIncompleteRead)> AsLinearReader() const {
+			return [this, buf = std::vector<T>(), ptr = uint64_t(), to = StreamSize()](size_t len, bool throwOnIncompleteRead) mutable {
+				if (ptr == to)
+					return std::span<T>();
+				buf.resize(static_cast<size_t>(std::min<uint64_t>(len, to - ptr)));
+				const auto read = ReadStreamPartial(ptr, buf.data(), buf.size());
+				if (read < buf.size() && throwOnIncompleteRead)
+					throw std::runtime_error("incomplete read");
+				ptr += buf.size();
+				return std::span(buf);
+			};
+		}
+
 		virtual std::string DescribeState() const { return {}; }
 	};
 

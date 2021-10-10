@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Sqex_Sound_Writer.h"
 
-Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromWave(const RandomAccessStream& stream) {
+Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromWave(const std::function<std::span<uint8_t>(size_t len, bool throwOnIncompleteRead)>& reader) {
 	struct ExpectedFormat {
 		LE<uint32_t> Riff;
 		LE<uint32_t> RemainingSize;
@@ -9,11 +9,16 @@ Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromWave(
 		LE<uint32_t> fmt_;
 		LE<uint32_t> WaveFormatExSize;
 	};
-	const auto hdr = stream.ReadStream<ExpectedFormat>(0);
+	const auto hdr = *reinterpret_cast<const ExpectedFormat*>(reader(sizeof ExpectedFormat, true).data());
 	if (hdr.Riff != 0x46464952U || hdr.Wave != 0x45564157U || hdr.fmt_ != 0x20746D66U)
 		throw std::invalid_argument("Bad file header");
-	if (hdr.RemainingSize + 8 > stream.StreamSize())
-		throw std::invalid_argument("Truncated file?");
+		
+	std::vector<uint8_t> wfbuf;
+	{
+		auto r = reader(hdr.WaveFormatExSize, true);
+		wfbuf.insert(wfbuf.end(), r.begin(), r.end());
+	}
+	auto& wfex = *reinterpret_cast<WAVEFORMATEX*>(&wfbuf[0]);
 
 	auto pos = sizeof hdr + hdr.WaveFormatExSize;
 	while (pos < hdr.RemainingSize + 8) {
@@ -21,11 +26,10 @@ Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromWave(
 			LE<uint32_t> Code;
 			LE<uint32_t> Len;
 		};
-		const auto sectionHdr = stream.ReadStream<CodeAndLen>(pos);
+		const auto sectionHdr = *reinterpret_cast<const CodeAndLen*>(reader(sizeof CodeAndLen, true).data());
 		pos += sizeof sectionHdr;
 		if (sectionHdr.Code == 0x61746164U) {  // "data"
-			auto wfbuf = stream.ReadStreamIntoVector<uint8_t>(sizeof hdr, hdr.WaveFormatExSize);
-			auto& wfex = *reinterpret_cast<WAVEFORMATEX*>(&wfbuf[0]);
+			auto r = reader(sectionHdr.Len, true);
 
 			auto res = SoundEntry{
 				.Header = {
@@ -34,7 +38,7 @@ Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromWave(
 					.SamplingRate = wfex.nSamplesPerSec,
 					.Unknown_0x02E = 0,
 				},
-				.Data = stream.ReadStreamIntoVector<uint8_t>(pos, sectionHdr.Len),
+				.Data = {r.begin(), r.end()},
 			};
 
 			switch (wfex.wFormatTag) {
@@ -56,7 +60,7 @@ Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromWave(
 	throw std::invalid_argument("No data section found");
 }
 
-Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromOgg(const RandomAccessStream& stream) {
+Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromOgg(const std::function<std::span<uint8_t>(size_t len, bool throwOnIncompleteRead)>& reader) {
 	ogg_sync_state oy{};
 	ogg_sync_init(&oy);
 	const auto oyCleanup = Utils::CallOnDestruction([&oy] { ogg_sync_clear(&oy); });
@@ -79,14 +83,15 @@ Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromOgg(c
 	uint32_t loopStartBytes = 0, loopEndBytes = 0;
 	ogg_page og{};
 	ogg_packet op{};
-	for (size_t packetIndex = 0, pageIndex = 0, ptr = 0, to_ = static_cast<size_t>(stream.StreamSize()); ptr < to_; ) {
-		const auto available = static_cast<uint32_t>(std::min<size_t>(4096, to_ - ptr));
-		if (const auto buffer = ogg_sync_buffer(&oy, available))
-			stream.ReadStream(ptr, buffer, available);
+	for (size_t packetIndex = 0, pageIndex = 0; ; ) {
+		const auto read = reader(4096, false);
+		if (read.empty())
+			break;
+		if (const auto buffer = ogg_sync_buffer(&oy, static_cast<uint32_t>(read.size())))
+			memcpy(buffer, read.data(), read.size());
 		else
 			throw std::runtime_error("ogg_sync_buffer failed");
-		ptr += available;
-		if (0 != ogg_sync_wrote(&oy, available))
+		if (0 != ogg_sync_wrote(&oy, static_cast<uint32_t>(read.size())))
 			throw std::runtime_error("ogg_sync_wrote failed");
 
 		for (;; ++pageIndex) {
@@ -139,7 +144,6 @@ Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromOgg(c
 							++comments;
 						}
 					}
-				} else {
 				}
 			}
 

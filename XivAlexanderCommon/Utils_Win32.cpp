@@ -455,7 +455,7 @@ std::vector<DWORD> Utils::Win32::GetProcessList() {
 int Utils::Win32::Error::DefaultLanguageId = MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT);
 
 Utils::Win32::Error::Error(DWORD errorCode, const std::string& msg)
-	: std::runtime_error(FormatWindowsErrorMessage(errorCode, DefaultLanguageId) + ": " + msg)
+	: std::runtime_error(std::format("{}: {} ({})", msg, errorCode, FormatWindowsErrorMessage(errorCode, DefaultLanguageId)))
 	, m_nErrorCode(errorCode) {
 }
 
