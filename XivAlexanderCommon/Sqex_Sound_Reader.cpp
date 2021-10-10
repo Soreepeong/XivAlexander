@@ -111,13 +111,11 @@ std::vector<uint8_t> Sqex::Sound::ScdReader::SoundEntry::GetOggFile() const {
 	if (tbl.Version == 0x2 && tbl.EncodeByte) {
 		for (auto& c : std::span(res).subspan(0, header.size()))
 			c ^= tbl.EncodeByte;
-	}
-	if (tbl.Version == 0x3) {
-		const auto target = std::span(res).subspan(header.size());
-		const auto byte1 = static_cast<uint8_t>(target.size() & 0xFF & 0x7F);
-		const auto byte2 = static_cast<uint8_t>(byte1 & 0x3F);
-		for (size_t i = 0; i < target.size(); i++)
-			target[i] ^= SoundEntryOggHeader::Version3XorTable[(byte2 + i) & 0xFF] ^ byte1;
+	} else if (tbl.Version == 0x3) {
+		const auto byte1 = static_cast<uint8_t>(Data.size() & 0x7F);
+		const auto byte2 = static_cast<uint8_t>(Data.size() & 0x3F);
+		for (size_t i = 0; i < res.size(); i++)
+			res[i] ^= SoundEntryOggHeader::Version3XorTable[(byte2 + i) & 0xFF] ^ byte1;
 	}
 	return res;
 }

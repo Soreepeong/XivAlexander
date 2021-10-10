@@ -9,6 +9,7 @@
     "curlpp",
     "libzippp",
     "cryptopp",
-    "freetype"
+    "freetype",
+    "libvorbis"
   ]
 }

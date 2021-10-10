@@ -21,8 +21,9 @@ namespace Sqex::Sound {
 			[[nodiscard]] const WAVEFORMATEX& AsWaveFormatEx() const {
 				return *reinterpret_cast<const WAVEFORMATEX*>(&ExtraData[0]);
 			}
-
+			
 			static SoundEntry FromWave(const RandomAccessStream& stream);
+			static SoundEntry FromOgg(const RandomAccessStream& stream);
 			static SoundEntry EmptyEntry();
 
 			[[nodiscard]] size_t CalculateEntrySize() const;

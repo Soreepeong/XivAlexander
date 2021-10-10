@@ -8,12 +8,16 @@
 #include <format>
 #include <iostream>
 #include <fstream>
+#include <numeric>
 
 #define NOMINMAX
 #include <Windows.h>
 
 #include <cryptopp/sha.h>
 #include <zlib.h>
+#include <ogg/ogg.h>
+#include <vorbis/codec.h>
+#include <vorbis/vorbisenc.h>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
