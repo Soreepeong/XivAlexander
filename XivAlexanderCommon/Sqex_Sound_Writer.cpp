@@ -118,7 +118,7 @@ Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromOgg(c
 				const auto sampleIndex = ogg_page_granulepos(&og);
 				if (loopStartSample && loopStartBytes == 0 && loopStartSample <= sampleIndex)
 					loopStartBytes = static_cast<uint32_t>(data.size());
-				if (loopEndSample && loopEndBytes == 0 && loopEndSample <= sampleIndex)
+				if (loopEndSample && loopEndBytes == 0 && loopEndSample < sampleIndex)
 					loopEndBytes = static_cast<uint32_t>(data.size());
 
 				data.insert(data.end(), og.header, og.header + og.header_len);
