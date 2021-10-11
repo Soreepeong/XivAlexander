@@ -380,7 +380,8 @@ private:
 	std::vector<uint8_t> MergeSingle(MusicImportTarget& targetSet, size_t targetIndex, size_t pathIndex) {
 		auto& originalInfo = m_sourceInfo["target"];
 		auto& scdReader = m_targetOriginals[targetIndex][pathIndex];
-		const auto originalOgg = scdReader->GetSoundEntry(0).GetOggFile();
+		const auto originalEntry = scdReader->GetSoundEntry(0);
+		const auto originalOgg = originalEntry.GetOggFile();
 		const auto originalOggStream = Sqex::MemoryRandomAccessStream(originalOgg);
 		uint32_t loopStartBlockIndex = 0;
 		uint32_t loopEndBlockIndex = 0;
@@ -545,15 +546,15 @@ private:
 						sourceSetsByIndex.push_back(&m_sourceInfo[segment.channels[i].source]);
 					size_t wrote = 0;
 
-					const auto segmentEndBlock = segment.length ? currentBlockIndex + static_cast<uint32_t>(targetRate * *segment.length) : endBlockIndex;
+					const auto segmentEndBlockIndex = segment.length ? currentBlockIndex + static_cast<uint32_t>(targetRate * *segment.length) : endBlockIndex;
 
-					auto stopSegment = currentBlockIndex >= segmentEndBlock;
+					auto stopSegment = currentBlockIndex >= segmentEndBlockIndex;
 					while (!stopSegment) {
 						for (size_t i = 0; i < originalInfo.Channels; ++i) {
 							const auto pSource = sourceSetsByIndex[i];
 							const auto sourceChannelIndex = segment.channels[i].channel;
 							if (pSource->ReadBufPtr + sourceChannelIndex >= pSource->ReadBuf.size()) {
-								const auto readReqSize = std::min<size_t>(8192, segmentEndBlock - currentBlockIndex) * pSource->Channels;
+								const auto readReqSize = std::min<size_t>(8192, segmentEndBlockIndex - currentBlockIndex) * pSource->Channels;
 								auto empty = false;
 								try {
 									const auto read = (*pSource->Reader)(readReqSize, false);
@@ -567,11 +568,11 @@ private:
 									empty = true;
 								}
 								if (empty) {
-									if (segmentEndBlock == UINT32_MAX) {
+									if (segmentEndBlockIndex == UINT32_MAX) {
 										stopSegment = true;
 										break;
 									} else
-										throw std::runtime_error(std::format("not expecting eof yet ({}/{})", currentBlockIndex, segmentEndBlock));
+										throw std::runtime_error(std::format("not expecting eof yet ({}/{})", currentBlockIndex, segmentEndBlockIndex));
 								}
 							}
 							buf.push_back(pSource->ReadBuf[pSource->ReadBufPtr + sourceChannelIndex]);
@@ -581,7 +582,7 @@ private:
 								source.ReadBufPtr += source.Channels;
 							currentBlockIndex++;
 						}
-						stopSegment |= currentBlockIndex == segmentEndBlock;
+						stopSegment |= currentBlockIndex == segmentEndBlockIndex;
 					
 						if (buf.size() == BufferedBlockCount * originalInfo.Channels || stopSegment) {
 							hEncoderInWrite.Write(0, std::span(buf));
@@ -599,7 +600,7 @@ private:
 			}
 		});
 
-		const auto e = Sqex::Sound::ScdWriter::SoundEntry::FromOgg([&error, hEncoderOutRead = std::move(hEncoderOutRead), buf = std::vector<uint8_t>()](size_t len, bool throwOnIncompleteRead) mutable->std::span<uint8_t> {
+		auto e = Sqex::Sound::ScdWriter::SoundEntry::FromOgg([&error, hEncoderOutRead = std::move(hEncoderOutRead), buf = std::vector<uint8_t>()](size_t len, bool throwOnIncompleteRead) mutable->std::span<uint8_t> {
 			try {
 				buf.resize(8192);
 				buf.resize(hEncoderOutRead.Read(0, std::span(buf), Utils::Win32::File::PartialIoMode::AllowPartial));
@@ -613,6 +614,21 @@ private:
 			}
 			return {};
 		});
+		
+		if (const auto marks = originalEntry.GetMarkedSampleBlockIndices(); !marks.empty()) {
+			auto& buf = e.AuxChunks[Sqex::Sound::SoundEntryAuxChunk::Name_Mark];
+			buf.resize((3 + marks.size()) * 4);
+			auto& markHeader = *reinterpret_cast<Sqex::Sound::SoundEntryAuxChunk::AuxChunkData::MarkChunkData*>(&buf[0]);
+			markHeader = {
+				.LoopStartSampleBlockIndex = loopStartBlockIndex,
+				.LoopEndSampleBlockIndex = loopEndBlockIndex,
+				.Count = static_cast<uint32_t>(marks.size()),
+			};
+			const auto span = std::span(reinterpret_cast<uint32_t*>(&buf[3 * 4]), marks.size());
+			size_t i = 0;
+			for (const auto blockIndex : originalEntry.GetMarkedSampleBlockIndices())
+				span[i++] = static_cast<uint32_t>(1ULL * blockIndex * targetRate / originalInfo.Rate);
+		}
 
 		encoderProcess.Terminate(0);
 		for (auto& info : m_sourceInfo | std::views::values)
@@ -625,12 +641,15 @@ private:
 		writer.SetTable1(scdReader->ReadTable1Entries());
 		writer.SetTable4(scdReader->ReadTable4Entries());
 		writer.SetTable2(scdReader->ReadTable2Entries());
-		writer.SetSoundEntry(0, e);
+		writer.SetSoundEntry(0, std::move(e));
 		return writer.Export();
 	}
 };
 
 int main() {
+	//auto rdr = Sqex::Sound::ScdReader(std::make_shared<Sqex::FileRandomAccessStream>(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\ex3\0c0300\music\ex3\bgm_ex3_myc_01.scd)"));
+	//auto ent = rdr.GetSoundEntry(0);
+	//ent.GetOggFile();
 	const Sqex::Sqpack::Reader readers[4]{
 		{LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\0c0000.win32.index)"},
 		{LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ex1\0c0100.win32.index)"},

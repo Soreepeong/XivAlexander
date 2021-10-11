@@ -35,6 +35,8 @@ namespace Sqex::Sound {
 			std::span<uint8_t> ExtraData;
 			std::span<uint8_t> Data;
 
+			[[nodiscard]] std::set<uint32_t> GetMarkedSampleBlockIndices() const;
+
 			[[nodiscard]] const ADPCMWAVEFORMAT& GetMsAdpcmHeader() const;
 			[[nodiscard]] std::vector<uint8_t> GetMsAdpcmWavFile() const;
 

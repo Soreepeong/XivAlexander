@@ -207,10 +207,13 @@ void Sqex::Sound::ScdWriter::SoundEntry::ExportTo(std::vector<uint8_t>& res) con
 	auto hdr = Header;
 	hdr.StreamOffset = static_cast<uint32_t>(entrySize - Data.size() - sizeof hdr);
 	hdr.StreamSize = static_cast<uint32_t>(Data.size());
+	hdr.AuxChunkCount = static_cast<uint32_t>(AuxChunks.size());
 
 	res.reserve(res.size() + entrySize);
 	insert(hdr);
 	for (const auto& [name, aux] : AuxChunks) {
+		if (name.size() != 4)
+			throw std::invalid_argument("Length of name must be 4");
 		res.insert(res.end(), name.begin(), name.end());
 		insert(static_cast<uint32_t>(8 + aux.size()));
 		res.insert(res.end(), aux.begin(), aux.end());

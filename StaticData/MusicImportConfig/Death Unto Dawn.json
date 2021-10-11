@@ -500,7 +500,9 @@
         "Battle with an Esper (Zodiac Age Version)"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_myc_04.scd"
+        "path": "music/ex3/bgm_ex3_myc_04.scd",
+        "enable": false,
+        "# comment": "TODO: Figure this out"
       }
     },
     {
@@ -866,7 +868,9 @@
         "Widespread Illness (From NieR:Automata)"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_ytc_27.scd"
+        "path": "music/ex3/bgm_ex3_ytc_27.scd",
+        "enable": false,
+        "# comment": "TODO: Figure this out"
       }
     },
     {
@@ -993,7 +997,9 @@
         "Forever at Your Side"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_event_26.scd"
+        "path": "music/ex3/bgm_ex3_event_26.scd",
+        "enable": false,
+        "# comment": "TODO: Figure this out"
       }
     },
     {

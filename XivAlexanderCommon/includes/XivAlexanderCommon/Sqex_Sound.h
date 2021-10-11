@@ -70,10 +70,10 @@ namespace Sqex::Sound {
 
 		union AuxChunkData {
 			struct MarkChunkData {
-				LE<uint32_t> Unknown_0x000;
-				LE<uint32_t> Unknown_0x004;
+				LE<uint32_t> LoopStartSampleBlockIndex;
+				LE<uint32_t> LoopEndSampleBlockIndex;
 				LE<uint32_t> Count;
-				LE<uint32_t> Items[1];
+				LE<uint32_t> SampleBlockIndices[1];
 			} Mark;
 		} Data;
 	};

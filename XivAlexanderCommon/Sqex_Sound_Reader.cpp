@@ -47,6 +47,18 @@ Sqex::Sound::ScdReader::ScdReader(std::shared_ptr<RandomAccessStream> stream)
 	, m_endOfTable4(!m_offsetsTable1.empty() && m_offsetsTable1.front() ? m_offsetsTable1.front() : m_endOfTable1) {
 }
 
+std::set<uint32_t> Sqex::Sound::ScdReader::SoundEntry::GetMarkedSampleBlockIndices() const {
+	std::set<uint32_t> res;
+	for (const auto& chunk : AuxChunks) {
+		if (memcmp(chunk->Name, SoundEntryAuxChunk::Name_Mark, sizeof chunk->Name) != 0)
+			continue;
+		
+		const auto span = std::span(chunk->Data.Mark.SampleBlockIndices, chunk->Data.Mark.Count);
+		res.insert(span.begin(), span.end());
+	}
+	return res;
+}
+
 const Sqex::Sound::ADPCMWAVEFORMAT& Sqex::Sound::ScdReader::SoundEntry::GetMsAdpcmHeader() const {
 	if (Header->Format != SoundEntryHeader::EntryFormat_WaveFormatAdpcm)
 		throw std::invalid_argument("Not MS-ADPCM");

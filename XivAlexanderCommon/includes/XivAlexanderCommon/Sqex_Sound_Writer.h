@@ -10,7 +10,7 @@ namespace Sqex::Sound {
 	public:
 		struct SoundEntry {
 			SoundEntryHeader Header;
-			std::map<std::array<char, 4>, std::vector<uint8_t>> AuxChunks;
+			std::map<std::string, std::vector<uint8_t>> AuxChunks;
 			std::vector<uint8_t> ExtraData;
 			std::vector<uint8_t> Data;
 
