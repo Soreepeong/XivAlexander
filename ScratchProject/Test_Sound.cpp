@@ -382,8 +382,8 @@ private:
 		auto& scdReader = m_targetOriginals[targetIndex][pathIndex];
 		const auto originalOgg = scdReader->GetSoundEntry(0).GetOggFile();
 		const auto originalOggStream = Sqex::MemoryRandomAccessStream(originalOgg);
-		uint32_t LoopStartBlock = 0;
-		uint32_t LoopEndBlock = 0;
+		uint32_t loopStartBlockIndex = 0;
+		uint32_t loopEndBlockIndex = 0;
 		{
 			const auto originalProbe = RunProbe("ogg", originalOggStream.AsLinearReader<uint8_t>(), m_ffprobe).at("streams").at(0);
 			originalInfo = {
@@ -393,9 +393,9 @@ private:
 			if (const auto it = originalProbe.find("tags"); it != originalProbe.end()) {
 				for (const auto& item : it->get<nlohmann::json::object_t>()) {
 					if (_strnicmp(item.first.c_str(), "LoopStart", 9) == 0)
-						LoopStartBlock = std::strtoul(item.second.get<std::string>().c_str(), nullptr, 10);
+						loopStartBlockIndex = std::strtoul(item.second.get<std::string>().c_str(), nullptr, 10);
 					else if (_strnicmp(item.first.c_str(), "LoopEnd", 7) == 0)
-						LoopEndBlock = std::strtoul(item.second.get<std::string>().c_str(), nullptr, 10);
+						loopEndBlockIndex = std::strtoul(item.second.get<std::string>().c_str(), nullptr, 10);
 				}
 			}
 		}
@@ -403,8 +403,16 @@ private:
 		uint32_t targetRate = 0;
 		for (const auto& targetInfo : m_sourceInfo | std::views::values)
 			targetRate = std::max(targetRate, targetInfo.Rate);
-		LoopStartBlock = static_cast<uint32_t>(1ULL * LoopStartBlock * targetRate / originalInfo.Rate);
-		LoopEndBlock = static_cast<uint32_t>(1ULL * LoopEndBlock * targetRate / originalInfo.Rate);
+		loopStartBlockIndex = static_cast<uint32_t>(1ULL * loopStartBlockIndex * targetRate / originalInfo.Rate);
+		loopEndBlockIndex = static_cast<uint32_t>(1ULL * loopEndBlockIndex * targetRate / originalInfo.Rate);
+		
+		if (targetSet.loopOffsetDelta) {
+			loopStartBlockIndex -= static_cast<uint32_t>(targetRate * targetSet.loopOffsetDelta);
+			loopEndBlockIndex -= static_cast<uint32_t>(targetRate * targetSet.loopOffsetDelta);
+		}
+		if (targetSet.loopLengthDivisor != 1) {
+			loopEndBlockIndex = loopStartBlockIndex + (loopEndBlockIndex - loopStartBlockIndex) / targetSet.loopLengthDivisor;
+		}
 
 		if (targetSet.segments.empty()) {
 			if (m_sources.size() > 1)
@@ -440,9 +448,9 @@ private:
 				.WithAppendArgument("-i").WithAppendArgument("-")
 				.WithAppendArgument("-f").WithAppendArgument("ogg")
 				.WithAppendArgument("-q:a").WithAppendArgument("10");
-			if (LoopStartBlock || LoopEndBlock) {
-				builder.WithAppendArgument("-metadata").WithAppendArgument(L"LoopStart={}", LoopStartBlock);
-				builder.WithAppendArgument("-metadata").WithAppendArgument(L"LoopEnd={}", LoopEndBlock);
+			if (loopStartBlockIndex || loopEndBlockIndex) {
+				builder.WithAppendArgument("-metadata").WithAppendArgument(L"LoopStart={}", loopStartBlockIndex);
+				builder.WithAppendArgument("-metadata").WithAppendArgument(L"LoopEnd={}", loopEndBlockIndex);
 			}
 			builder.WithAppendArgument("-");
 			encoderProcess = builder.Run().first;
@@ -452,13 +460,13 @@ private:
 
 		std::string error;
 		const auto hDecoderToEncoder = Utils::Win32::Thread(L"DecoderToEncoder", [&, hEncoderInWrite = std::move(hEncoderInWrite)]() {
-			uint32_t currentBlock = 0;
+			uint32_t currentBlockIndex = 0;
 
 			std::vector<float> buf;
 			const auto BufferedBlockCount = 8192;
 			buf.reserve(BufferedBlockCount * originalInfo.Channels);
 
-			const auto endBlock = LoopEndBlock ? LoopEndBlock : UINT32_MAX;
+			const auto endBlockIndex = loopEndBlockIndex ? loopEndBlockIndex : UINT32_MAX;
 
 			try {
 				for (const auto& segment : targetSet.segments) {
@@ -478,7 +486,7 @@ private:
 						double threshold = 0.1;
 						if (name == "target") {
 							info.Reader = std::make_unique<FloatPcmSource>("ogg", originalOggStream.AsLinearReader<uint8_t>(), m_ffmpeg, targetRate, ffmpegFilter);
-							minBlockIndex = currentBlock;
+							minBlockIndex = currentBlockIndex;
 						} else {
 							info.Reader = std::make_unique<FloatPcmSource>(m_sources[name], m_ffmpeg, targetRate, ffmpegFilter);
 							if (segment.sourceOffsets.contains(name))
@@ -517,7 +525,7 @@ private:
 						for (size_t channelIndex = 0; channelIndex < segment.channels.size(); ++channelIndex) {
 							const auto& channelMap = segment.channels[channelIndex];
 							if (channelMap.source == name) {
-								auto srcCopyFromOffset = static_cast<SSIZE_T>(originalInfo.FirstBlocks[channelIndex]) - info.FirstBlocks[channelMap.channel] - currentBlock;
+								auto srcCopyFromOffset = static_cast<SSIZE_T>(originalInfo.FirstBlocks[channelIndex]) - info.FirstBlocks[channelMap.channel] - currentBlockIndex;
 								srcCopyFromOffset *= info.Channels;
 
 								if (srcCopyFromOffset < 0) {
@@ -537,15 +545,15 @@ private:
 						sourceSetsByIndex.push_back(&m_sourceInfo[segment.channels[i].source]);
 					size_t wrote = 0;
 
-					const auto segmentEndBlock = segment.length ? currentBlock + static_cast<uint32_t>(targetRate * *segment.length) : endBlock;
+					const auto segmentEndBlock = segment.length ? currentBlockIndex + static_cast<uint32_t>(targetRate * *segment.length) : endBlockIndex;
 
-					auto stopSegment = currentBlock >= segmentEndBlock;
+					auto stopSegment = currentBlockIndex >= segmentEndBlock;
 					while (!stopSegment) {
 						for (size_t i = 0; i < originalInfo.Channels; ++i) {
 							const auto pSource = sourceSetsByIndex[i];
 							const auto sourceChannelIndex = segment.channels[i].channel;
 							if (pSource->ReadBufPtr + sourceChannelIndex >= pSource->ReadBuf.size()) {
-								const auto readReqSize = std::min<size_t>(8192, segmentEndBlock - currentBlock) * pSource->Channels;
+								const auto readReqSize = std::min<size_t>(8192, segmentEndBlock - currentBlockIndex) * pSource->Channels;
 								auto empty = false;
 								try {
 									const auto read = (*pSource->Reader)(readReqSize, false);
@@ -563,7 +571,7 @@ private:
 										stopSegment = true;
 										break;
 									} else
-										throw std::runtime_error(std::format("not expecting eof yet ({}/{})", currentBlock, segmentEndBlock));
+										throw std::runtime_error(std::format("not expecting eof yet ({}/{})", currentBlockIndex, segmentEndBlock));
 								}
 							}
 							buf.push_back(pSource->ReadBuf[pSource->ReadBufPtr + sourceChannelIndex]);
@@ -571,9 +579,9 @@ private:
 						if (!stopSegment) {
 							for (auto& source : m_sourceInfo | std::views::values)
 								source.ReadBufPtr += source.Channels;
-							currentBlock++;
+							currentBlockIndex++;
 						}
-						stopSegment |= currentBlock == segmentEndBlock;
+						stopSegment |= currentBlockIndex == segmentEndBlock;
 					
 						if (buf.size() == BufferedBlockCount * originalInfo.Channels || stopSegment) {
 							hEncoderInWrite.Write(0, std::span(buf));
@@ -583,7 +591,7 @@ private:
 				}
 
 			} catch (const Utils::Win32::Error& e) {
-				if ((e.Code() != ERROR_BROKEN_PIPE && e.Code() != ERROR_NO_DATA) || (endBlock != UINT32_MAX && currentBlock < endBlock)) {
+				if ((e.Code() != ERROR_BROKEN_PIPE && e.Code() != ERROR_NO_DATA) || (endBlockIndex != UINT32_MAX && currentBlockIndex < endBlockIndex)) {
 					error = e.what();
 				}
 			} catch (const std::exception& e) {
