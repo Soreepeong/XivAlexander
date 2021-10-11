@@ -10,6 +10,7 @@
 #include <fstream>
 #include <numeric>
 #include <regex>
+#include <set>
 
 #define NOMINMAX
 #include <Windows.h>

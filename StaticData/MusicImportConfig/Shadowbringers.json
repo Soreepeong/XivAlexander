@@ -153,22 +153,26 @@
       },
       "target": {
         "path": "music/ffxiv/bgm_season_xmascho.scd",
-        "channels": [
+        "segments": [
           {
-            "source": "Starlight, Starbright",
-            "channel": 0
-          },
-          {
-            "source": "Starlight, Starbright",
-            "channel": 1
-          },
-          {
-            "source": "Starlight, Not Right",
-            "channel": 0
-          },
-          {
-            "source": "Starlight, Not Right",
-            "channel": 1
+            "channels": [
+              {
+                "source": "Starlight, Starbright",
+                "channel": 0
+              },
+              {
+                "source": "Starlight, Starbright",
+                "channel": 1
+              },
+              {
+                "source": "Starlight, Not Right",
+                "channel": 0
+              },
+              {
+                "source": "Starlight, Not Right",
+                "channel": 1
+              }
+            ]
           }
         ]
       }
@@ -317,13 +321,47 @@
       },
       "target": {
         "path": "music/ex2/bgm_ex2_rti_34.scd",
-        "concat": [
+        "segments": [
           {
-            "source": "Final Struggle",
+            "sourceOffsets": {
+              "Final Struggle": 0
+            },
+            "sourceThresholds": {
+              "target": 0.3,
+              "Final Struggle": 0.3
+            },
+            "sourceFilters": {
+              "Final Struggle": "volume=-2dB"
+            },
+            "channels": [
+              {
+                "source": "Final Struggle",
+                "channel": 0
+              },
+              {
+                "source": "Final Struggle",
+                "channel": 1
+              }
+            ],
             "length": 14.71
           },
           {
-            "source": "Hall of Worship"
+            "sourceOffsets": {
+              "Hall of Worship": 0
+            },
+            "sourceFilters": {
+              "Hall of Worship": "volume=-2dB"
+            },
+            "channels": [
+              {
+                "source": "Hall of Worship",
+                "channel": 0
+              },
+              {
+                "source": "Hall of Worship",
+                "channel": 1
+              }
+            ]
           }
         ]
       }

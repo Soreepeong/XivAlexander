@@ -18,31 +18,28 @@ void from_json(const nlohmann::json& j, MusicImportTargetChannel& o) {
 			o.source = std::nullopt;
 		else
 			o.source = it->get<std::string>();
-
+			
 		o.channel = j.at(lastAttempt = "channel").get<uint32_t>();
 	} catch (const std::exception& e) {
 		throw std::invalid_argument(std::format("[{}] {}", lastAttempt, e.what()));
 	}
 }
 
-struct MusicImportTargetConcatItem {
-	std::optional<std::string> source;
-	std::optional<double> from;  // in seconds
+struct MusicImportSegmentItem {
+	std::vector<MusicImportTargetChannel> channels;
+	std::map<std::string, double> sourceOffsets;
+	std::map<std::string, double> sourceThresholds;
+	std::map<std::string, std::string> sourceFilters;
 	std::optional<double> length;  // in seconds
 };
 
-void from_json(const nlohmann::json& j, MusicImportTargetConcatItem& o) {
+void from_json(const nlohmann::json& j, MusicImportSegmentItem& o) {
 	const char* lastAttempt;
 	try {
-		if (const auto it = j.find(lastAttempt = "source"); it == j.end())
-			o.source = std::nullopt;
-		else
-			o.source = it->get<std::string>();
-
-		if (const auto it = j.find(lastAttempt = "from"); it == j.end())
-			o.from = std::nullopt;
-		else
-			o.from = it->get<double>();
+		o.channels = j.at(lastAttempt = "channels").get<std::vector<MusicImportTargetChannel>>();
+		o.sourceOffsets = j.value(lastAttempt = "sourceOffsets", decltype(o.sourceOffsets)());
+		o.sourceThresholds = j.value(lastAttempt = "sourceThresholds", decltype(o.sourceThresholds)());
+		o.sourceFilters = j.value(lastAttempt = "sourceFilters", decltype(o.sourceFilters)());
 
 		if (const auto it = j.find(lastAttempt = "length"); it == j.end())
 			o.length = std::nullopt;
@@ -58,8 +55,7 @@ struct MusicImportTarget {
 	std::vector<std::filesystem::path> path;
 	float loopOffsetDelta;
 	int loopLengthDivisor;
-	std::optional<std::vector<MusicImportTargetChannel>> channels;
-	std::optional<std::vector<MusicImportTargetConcatItem>> concat;
+	std::vector<MusicImportSegmentItem> segments;
 	bool enable;
 };
 
@@ -78,15 +74,10 @@ void from_json(const nlohmann::json& j, MusicImportTarget& o) {
 		o.loopOffsetDelta = j.value("loopOffsetDelta", 0.f);
 		o.loopLengthDivisor = j.value("loopLengthDivisor", 1);
 
-		if (const auto it = j.find(lastAttempt = "channels"); it == j.end())
-			o.channels = std::nullopt;
+		if (const auto it = j.find(lastAttempt = "segments"); it == j.end())
+			o.segments = {};
 		else
-			o.channels = it->get<std::vector<MusicImportTargetChannel>>();
-
-		if (const auto it = j.find(lastAttempt = "concat"); it == j.end())
-			o.concat = std::nullopt;
-		else
-			o.concat = it->get<std::vector<MusicImportTargetConcatItem>>();
+			o.segments = it->get<std::vector<MusicImportSegmentItem>>();
 
 		o.enable = j.value("enable", true);
 	} catch (const std::exception& e) {
@@ -152,7 +143,7 @@ class MusicImporter {
 		std::vector<float> m_buffer;
 
 	public:
-		FloatPcmSource(const std::filesystem::path& path, const std::filesystem::path& ffmpegPath, int forceSamplingRate = 0) {
+		FloatPcmSource(const std::filesystem::path& path, const std::filesystem::path& ffmpegPath, int forceSamplingRate = 0, std::string audioFilters = {}) {
 			auto [hStdoutRead, hStdoutWrite] = Utils::Win32::File::CreatePipe();
 			auto builder = Utils::Win32::ProcessBuilder();
 			builder
@@ -164,13 +155,15 @@ class MusicImporter {
 			builder.WithAppendArgument("-f").WithAppendArgument("f32le");
 			if (forceSamplingRate)
 				builder.WithAppendArgument("-ar").WithAppendArgument("{}", forceSamplingRate);
+			if (!audioFilters.empty())
+				builder.WithAppendArgument("-filter:a").WithAppendArgument(audioFilters);
 			builder.WithAppendArgument("-");
 
 			m_hReaderProcess = builder.Run().first;
 			m_hStdoutReader = std::move(hStdoutRead);
 		}
 		
-		FloatPcmSource(std::string originalFormat, std::function<std::span<uint8_t>(size_t len, bool throwOnIncompleteRead)> linearReader, const std::filesystem::path& ffmpegPath, int forceSamplingRate = 0) {
+		FloatPcmSource(std::string originalFormat, std::function<std::span<uint8_t>(size_t len, bool throwOnIncompleteRead)> linearReader, const std::filesystem::path& ffmpegPath, int forceSamplingRate = 0, std::string audioFilters = {}) {
 			auto [hStdinRead, hStdinWrite] = Utils::Win32::File::CreatePipe();
 			auto [hStdoutRead, hStdoutWrite] = Utils::Win32::File::CreatePipe();
 			auto builder = Utils::Win32::ProcessBuilder();
@@ -185,6 +178,8 @@ class MusicImporter {
 			builder.WithAppendArgument("-f").WithAppendArgument("f32le");
 			if (forceSamplingRate)
 				builder.WithAppendArgument("-ar").WithAppendArgument("{}", forceSamplingRate);
+			if (!audioFilters.empty())
+				builder.WithAppendArgument("-filter:a").WithAppendArgument(audioFilters);
 			builder.WithAppendArgument("-");
 
 			m_hReaderProcess = builder.Run().first;
@@ -379,18 +374,14 @@ public:
 			for (size_t j = 0; j < targetSet.path.size(); ++j) {
 				std::vector<uint8_t> res;
 				std::cout << std::format("Working on {}...\n", targetSet.path[j].wstring());
-				if (targetSet.concat) {
-					throw std::runtime_error("TODO: concat");
-				} else {
-					res = MergeChannels(targetSet, i, j);
-				}	
+				res = MergeSingle(targetSet, i, j);
 				cb(Utils::ToUtf8(Utils::StringSplit<std::wstring>(m_config.target[i].path[j].wstring(), L"/")[1]), m_config.target[i].path[j], std::move(res));
 			}
 		}
 	}
 
 private:
-	std::vector<uint8_t> MergeChannels(MusicImportTarget& targetSet, size_t targetIndex, size_t pathIndex) {
+	std::vector<uint8_t> MergeSingle(MusicImportTarget& targetSet, size_t targetIndex, size_t pathIndex) {
 		auto& originalInfo = m_sourceInfo["target"];
 		auto& scdReader = m_targetOriginals[targetIndex][pathIndex];
 		const auto originalOgg = scdReader->GetSoundEntry(0).GetOggFile();
@@ -419,64 +410,22 @@ private:
 		LoopStartBlock = static_cast<uint32_t>(1ULL * LoopStartBlock * targetRate / originalInfo.Rate);
 		LoopEndBlock = static_cast<uint32_t>(1ULL * LoopEndBlock * targetRate / originalInfo.Rate);
 
-		if (!targetSet.channels.has_value()) {
+		if (targetSet.segments.empty()) {
 			if (m_sources.size() > 1)
-				throw std::invalid_argument("channels must be set when there are more than one source");
-			targetSet.channels = std::vector<MusicImportTargetChannel>{
-				{.source = m_sources.begin()->first, .channel = 0},
-				{.source = m_sources.begin()->first, .channel = 1},
+				throw std::invalid_argument("segments must be set when there are more than one source");
+			targetSet.segments = std::vector<MusicImportSegmentItem>{
+				{
+					.channels = std::vector<MusicImportTargetChannel>{
+						{.source = m_sources.begin()->first, .channel = 0},
+						{.source = m_sources.begin()->first, .channel = 1},
+					},
+				},
 			};
 		}
 
-		if (originalInfo.Channels != targetSet.channels->size())
-			throw std::invalid_argument(std::format("originalChannels={}, expected={}", originalInfo.Channels, targetSet.channels ? targetSet.channels->size() : 2));
-
-		for (auto& [name, info] : m_sourceInfo) {
-			if (name == "target")
-				info.Reader = std::make_unique<FloatPcmSource>("ogg", originalOggStream.AsLinearReader<uint8_t>(), m_ffmpeg, targetRate);
-			else
-				info.Reader = std::make_unique<FloatPcmSource>(m_sources[name], m_ffmpeg, targetRate);
-			info.FirstBlocks.clear();
-			info.FirstBlocks.resize(info.Channels, INT32_MAX);
-			uint32_t blockIndex = 0;
-			auto pending = true;
-			while (pending) {
-				const auto buf = (*info.Reader)(info.Channels * static_cast<size_t>(8192), false);
-				if (buf.empty())
-					break;
-
-				info.ReadBuf.insert(info.ReadBuf.end(), buf.begin(), buf.end());
-				for (size_t i = 0, to = buf.size(); pending && i < to; ++blockIndex) {
-					pending = false;
-					for (size_t c = 0; c < info.Channels; ++c, ++i) {
-						if (info.FirstBlocks[c] != INT32_MAX)
-							continue;
-						if (buf[i] >= 0.1)
-							info.FirstBlocks[c] = blockIndex;
-						else
-							pending = true;
-					}
-				}
-			}
-		}
-		
-		for (auto& [name, info] : m_sourceInfo) {
-			if (name != "target") {
-				for (size_t channelIndex = 0; channelIndex < targetSet.channels->size(); ++channelIndex) {
-					const auto& channelMap = (*targetSet.channels)[channelIndex];
-					if (channelMap.source == name) {
-						if (const auto srcCopyFromOffset = static_cast<int>(info.Channels) * (originalInfo.FirstBlocks[channelIndex] - info.FirstBlocks[channelMap.channel]);
-							srcCopyFromOffset < 0) {
-							info.ReadBuf.erase(info.ReadBuf.begin(), info.ReadBuf.begin() - srcCopyFromOffset);
-						} else {
-							info.ReadBuf.resize(info.ReadBuf.size() + srcCopyFromOffset);
-							std::move(info.ReadBuf.begin(), info.ReadBuf.end() - srcCopyFromOffset, info.ReadBuf.begin() + srcCopyFromOffset);
-							std::fill_n(info.ReadBuf.begin(), srcCopyFromOffset, 0.f);
-						}
-						break;
-					}
-				}
-			}
+		for (const auto& segment : targetSet.segments) {
+			if (originalInfo.Channels != segment.channels.size())
+				throw std::invalid_argument(std::format("originalChannels={}, expected={}", originalInfo.Channels, segment.channels.size()));
 		}
 		
 		auto [hEncoderOutRead, hEncoderOutWrite] = Utils::Win32::File::CreatePipe();
@@ -506,56 +455,134 @@ private:
 		}
 
 		std::string error;
-		const auto hDecoderToEncoder = Utils::Win32::Thread(L"DecoderToEncoder", [this, &LoopEndBlock, &error, &targetSet, &originalInfo, targetRate, hEncoderInWrite = std::move(hEncoderInWrite)]() {
+		const auto hDecoderToEncoder = Utils::Win32::Thread(L"DecoderToEncoder", [&, hEncoderInWrite = std::move(hEncoderInWrite)]() {
 			uint32_t currentBlock = 0;
 
 			std::vector<float> buf;
-			const auto BufferedBlockCount = 65536;
-			buf.reserve(BufferedBlockCount * targetSet.channels->size());
+			const auto BufferedBlockCount = 8192;
+			buf.reserve(BufferedBlockCount * originalInfo.Channels);
 
-			auto endBlock = LoopEndBlock ? LoopEndBlock : UINT32_MAX;
-			std::vector<SourceSet*> sourceSetsByIndex;
-			for (size_t i = 0; i < targetSet.channels->size(); ++i)
-				sourceSetsByIndex.push_back((*targetSet.channels)[i].source ? &m_sourceInfo[*(*targetSet.channels)[i].source] : &originalInfo);
-			size_t wrote = 0;
+			const auto endBlock = LoopEndBlock ? LoopEndBlock : UINT32_MAX;
+
 			try {
-				while (currentBlock < endBlock) {
-					for (size_t i = 0; i < targetSet.channels->size(); ++i) {
-						const auto pSource = sourceSetsByIndex[i];
-						const auto sourceChannelIndex = (*targetSet.channels)[i].channel;
-						if (pSource->ReadBufPtr + sourceChannelIndex >= pSource->ReadBuf.size()) {
-							pSource->ReadBufPtr = 0;
-							const auto readReqSize = std::min<size_t>(8192, endBlock - currentBlock) * pSource->Channels;
-							auto empty = false;
-							try {
-								const auto read = (*pSource->Reader)(readReqSize, false);
-								pSource->ReadBuf.clear();
-								pSource->ReadBuf.insert(pSource->ReadBuf.end(), read.begin(), read.end());
-								empty = read.empty();
-							} catch (const Utils::Win32::Error& e) {
-								if (e.Code() != ERROR_BROKEN_PIPE && e.Code() != ERROR_NO_DATA) 
-									throw;
-								empty = true;
-							}
-							if (empty) {
-								if (endBlock == UINT32_MAX) {
-									endBlock = currentBlock;
-									break;
-								} else
-									throw std::runtime_error(std::format("not expecting eof yet ({}/{})", currentBlock, endBlock));
+				for (const auto& segment : targetSet.segments) {
+					std::set<std::string> usedSources;
+					for (const auto& name : m_sourceInfo | std::views::keys) {
+						if (name == "target" || std::ranges::any_of(segment.channels, [&name](const auto& ch) { return ch.source == name; }))
+							usedSources.insert(name);
+					}
+
+					for (const auto& name : usedSources) {
+						auto& info = m_sourceInfo.at(name);
+						info.FirstBlocks.clear();
+						info.FirstBlocks.resize(info.Channels, INT32_MAX);
+
+						const auto ffmpegFilter = segment.sourceFilters.contains(name) ? segment.sourceFilters.at(name) : std::string();
+						uint32_t minBlockIndex = 0;
+						double threshold = 0.1;
+						if (name == "target") {
+							info.Reader = std::make_unique<FloatPcmSource>("ogg", originalOggStream.AsLinearReader<uint8_t>(), m_ffmpeg, targetRate, ffmpegFilter);
+							minBlockIndex = currentBlock;
+						} else {
+							info.Reader = std::make_unique<FloatPcmSource>(m_sources[name], m_ffmpeg, targetRate, ffmpegFilter);
+							if (segment.sourceOffsets.contains(name))
+								minBlockIndex = static_cast<uint32_t>(targetRate * segment.sourceOffsets.at(name));
+						}
+						if (segment.sourceThresholds.contains(name))
+							threshold = segment.sourceThresholds.at(name);
+						
+						uint32_t blockIndex = 0;
+						auto pending = true;
+						while (pending) {
+							const auto buf = (*info.Reader)(info.Channels * static_cast<size_t>(8192), false);
+							if (buf.empty())
+								break;
+
+							info.ReadBuf.insert(info.ReadBuf.end(), buf.begin(), buf.end());
+							for (size_t i = 0, to = buf.size(); pending && i < to; ++blockIndex) {
+								pending = false;
+								for (size_t c = 0; c < info.Channels; ++c, ++i) {
+									if (info.FirstBlocks[c] != INT32_MAX)
+										continue;
+									if (buf[i] >= threshold && blockIndex >= minBlockIndex)
+										info.FirstBlocks[c] = blockIndex;
+									else
+										pending = true;
+								}
 							}
 						}
-						buf.push_back(pSource->ReadBuf[pSource->ReadBufPtr + sourceChannelIndex]);
 					}
-					if (currentBlock < endBlock) {
-						for (auto& source : m_sourceInfo | std::views::values)
-							source.ReadBufPtr += source.Channels;
-						currentBlock++;
+		
+					for (const auto& name : usedSources) {
+						auto& info = m_sourceInfo.at(name);
+						if (name == "target")
+							continue;
+
+						for (size_t channelIndex = 0; channelIndex < segment.channels.size(); ++channelIndex) {
+							const auto& channelMap = segment.channels[channelIndex];
+							if (channelMap.source == name) {
+								auto srcCopyFromOffset = static_cast<SSIZE_T>(originalInfo.FirstBlocks[channelIndex]) - info.FirstBlocks[channelMap.channel] - currentBlock;
+								srcCopyFromOffset *= info.Channels;
+
+								if (srcCopyFromOffset < 0) {
+									info.ReadBuf.erase(info.ReadBuf.begin(), info.ReadBuf.begin() - srcCopyFromOffset);
+								} else if (srcCopyFromOffset > 0) {
+									info.ReadBuf.resize(info.ReadBuf.size() + srcCopyFromOffset);
+									std::move(info.ReadBuf.begin(), info.ReadBuf.end() - srcCopyFromOffset, info.ReadBuf.begin() + srcCopyFromOffset);
+									std::fill_n(info.ReadBuf.begin(), srcCopyFromOffset, 0.f);
+								}
+								break;
+							}
+						}
 					}
+
+					std::vector<SourceSet*> sourceSetsByIndex;
+					for (size_t i = 0; i < originalInfo.Channels; ++i)
+						sourceSetsByIndex.push_back(segment.channels[i].source ? &m_sourceInfo[*segment.channels[i].source] : &originalInfo);
+					size_t wrote = 0;
+
+					const auto segmentEndBlock = segment.length ? currentBlock + static_cast<uint32_t>(targetRate * *segment.length) : endBlock;
+
+					auto stopSegment = currentBlock >= segmentEndBlock;
+					while (!stopSegment) {
+						for (size_t i = 0; i < originalInfo.Channels; ++i) {
+							const auto pSource = sourceSetsByIndex[i];
+							const auto sourceChannelIndex = segment.channels[i].channel;
+							if (pSource->ReadBufPtr + sourceChannelIndex >= pSource->ReadBuf.size()) {
+								pSource->ReadBufPtr = 0;
+								const auto readReqSize = std::min<size_t>(8192, segmentEndBlock - currentBlock) * pSource->Channels;
+								auto empty = false;
+								try {
+									const auto read = (*pSource->Reader)(readReqSize, false);
+									pSource->ReadBuf.clear();
+									pSource->ReadBuf.insert(pSource->ReadBuf.end(), read.begin(), read.end());
+									empty = read.empty();
+								} catch (const Utils::Win32::Error& e) {
+									if (e.Code() != ERROR_BROKEN_PIPE && e.Code() != ERROR_NO_DATA) 
+										throw;
+									empty = true;
+								}
+								if (empty) {
+									if (segmentEndBlock == UINT32_MAX) {
+										stopSegment = true;
+										break;
+									} else
+										throw std::runtime_error(std::format("not expecting eof yet ({}/{})", currentBlock, segmentEndBlock));
+								}
+							}
+							buf.push_back(pSource->ReadBuf[pSource->ReadBufPtr + sourceChannelIndex]);
+						}
+						if (!stopSegment) {
+							for (auto& source : m_sourceInfo | std::views::values)
+								source.ReadBufPtr += source.Channels;
+							currentBlock++;
+						}
+						stopSegment |= currentBlock == segmentEndBlock;
 					
-					if (buf.size() == BufferedBlockCount * targetSet.channels->size() || currentBlock == endBlock) {
-						hEncoderInWrite.Write(0, std::span(buf));
-						buf.clear();
+						if (buf.size() == BufferedBlockCount * originalInfo.Channels || stopSegment) {
+							hEncoderInWrite.Write(0, std::span(buf));
+							buf.clear();
+						}
 					}
 				}
 
