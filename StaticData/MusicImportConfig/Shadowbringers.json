@@ -1,0 +1,1001 @@
+{
+  "name": "Final Fantasy XIV - 5.0 - Shadowbringers",
+  "purchaseLinks": {
+    "amazon.co.jp": "https://www.amazon.co.jp/dp/B07Y62NCNX/"
+  },
+  "items": [
+    {
+      "source": [
+        "00000",
+        "SHADOWBRINGERS_01",
+        "死の大地 ～永久焦土 ザ・バーン～",
+        "A Land Long Dead"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_dan_d13.scd"
+      }
+    },
+    {
+      "source": [
+        "00001",
+        "SHADOWBRINGERS_02",
+        "不穏の淵",
+        "Bedlam's Brink"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_event_38.scd"
+      }
+    },
+    {
+      "source": [
+        "00002",
+        "SHADOWBRINGERS_03",
+        "戦闘シーン ～次元の狭間オメガ：アルファ編～",
+        "Battle"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_alpha_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00003",
+        "SHADOWBRINGERS_04",
+        "エスケープ ～次元の狭間オメガ：アルファ編～",
+        "eScape"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_alpha_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00004",
+        "SHADOWBRINGERS_05",
+        "何処でもない何処か",
+        "Everywhere and Nowhere"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_event_31.scd"
+      }
+    },
+    {
+      "source": [
+        "00005",
+        "SHADOWBRINGERS_06",
+        "心を持たぬ者 ～次元の狭間オメガ：アルファ編～",
+        "Heartless"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_alpha_03.scd"
+      }
+    },
+    {
+      "source": [
+        "00006",
+        "SHADOWBRINGERS_07",
+        "空より現れし者 ～次元の狭間オメガ：アルファ編～",
+        "From the Heavens"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_alpha_04.scd"
+      }
+    },
+    {
+      "source": [
+        "00007",
+        "SHADOWBRINGERS_08",
+        "翼に夢を",
+        "A Dream in Flight"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_event_32.scd"
+      }
+    },
+    {
+      "source": [
+        "00008",
+        "SHADOWBRINGERS_09",
+        "エンディング",
+        "Ending"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_event_34.scd"
+      }
+    },
+    {
+      "source": [
+        "00009",
+        "SHADOWBRINGERS_10",
+        "泥中の蓮 ～草木汚染 聖モシャーヌ植物園～",
+        "From Mud"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_dan_d14.scd"
+      }
+    },
+    {
+      "source": [
+        "00010",
+        "SHADOWBRINGERS_11",
+        "千年の誰そ彼 ～朱雀征魂戦～",
+        "Sunset"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_ban_24.scd"
+      }
+    },
+    {
+      "source": [
+        "00011",
+        "SHADOWBRINGERS_12",
+        "千年の暁 ～朱雀征魂戦～",
+        "Sunrise"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_ban_25.scd"
+      }
+    },
+    {
+      "source": {
+        "Starlight, Starbright": [
+          "00012",
+          "SHADOWBRINGERS_13",
+          "星芒の歌",
+          "Starlight, Starbright"
+        ],
+        "Starlight, Not Right": [
+          "00013",
+          "SHADOWBRINGERS_14",
+          "絶望の歌",
+          "Starlight, Not Right"
+        ]
+      },
+      "target": {
+        "path": "music/ffxiv/bgm_season_xmascho.scd",
+        "channels": [
+          {
+            "source": "Starlight, Starbright",
+            "channel": 0
+          },
+          {
+            "source": "Starlight, Starbright",
+            "channel": 1
+          },
+          {
+            "source": "Starlight, Not Right",
+            "channel": 0
+          },
+          {
+            "source": "Starlight, Not Right",
+            "channel": 1
+          }
+        ]
+      }
+    },
+    {
+      "source": [
+        "00014",
+        "SHADOWBRINGERS_15",
+        "東方遊戯",
+        "Doman Distractions"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_emj.scd"
+      }
+    },
+    {
+      "source": [
+        "00015",
+        "SHADOWBRINGERS_16",
+        "Gates of Paradise - The Garden of Ru'Hmet"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_eu_dungeon.scd"
+      }
+    },
+    {
+      "source": [
+        "00016",
+        "SHADOWBRINGERS_17",
+        "Onslaught"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_eu_boss.scd"
+      }
+    },
+    {
+      "source": [
+        "00017",
+        "SHADOWBRINGERS_18",
+        "Turmoil"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_eu_lb.scd"
+      }
+    },
+    {
+      "source": [
+        "00018",
+        "SHADOWBRINGERS_19",
+        "Under The Stars"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_rti_26.scd"
+      }
+    },
+    {
+      "source": [
+        "00019",
+        "SHADOWBRINGERS_20",
+        "緊迫1",
+        "Pressure (No. 1)"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_rti_28.scd"
+      }
+    },
+    {
+      "source": [
+        "00020",
+        "SHADOWBRINGERS_21",
+        "Antipyretic"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_rti_29.scd"
+      }
+    },
+    {
+      "source": [
+        "00021",
+        "SHADOWBRINGERS_22",
+        "Bloody Excrement",
+        "B. E."
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_rti_27.scd"
+      }
+    },
+    {
+      "source": [
+        "00022",
+        "SHADOWBRINGERS_23",
+        "異形の者",
+        "A Man Consumed"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_rti_30.scd"
+      }
+    },
+    {
+      "source": [
+        "00023",
+        "SHADOWBRINGERS_24",
+        "聖アジョラのテーマ",
+        "St. Ajora's Theme"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_rti_19.scd"
+      }
+    },
+    {
+      "source": [
+        "00024",
+        "SHADOWBRINGERS_25",
+        "降臨",
+        "Descent"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_rti_32.scd"
+      }
+    },
+    {
+      "source": [
+        "00025",
+        "SHADOWBRINGERS_26",
+        "Ultema The Perfect Body!",
+        "Ultima's Perfection"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_rti_33.scd"
+      }
+    },
+    {
+      "source": {
+        "Final Struggle": [
+          "00026",
+          "SHADOWBRINGERS_27",
+          "ラスト戦闘終了",
+          "Final Struggle"
+        ],
+        "Hall of Worship": [
+          "00027",
+          "SHADOWBRINGERS_28",
+          "礼拝堂",
+          "Hall of Worship"
+        ]
+      },
+      "target": {
+        "path": "music/ex2/bgm_ex2_rti_34.scd",
+        "concat": [
+          {
+            "source": "Final Struggle",
+            "length": 14.71
+          },
+          {
+            "source": "Hall of Worship"
+          }
+        ]
+      }
+    },
+    {
+      "source": [
+        "00028",
+        "SHADOWBRINGERS_29",
+        "ブレイブストーリー",
+        "Brave Story"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_rti_23.scd"
+      }
+    },
+    {
+      "source": [
+        "00029",
+        "SHADOWBRINGERS_30",
+        "アルマのテーマ",
+        "Alma's Theme"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_rti_24.scd"
+      }
+    },
+    {
+      "source": [
+        "00030",
+        "SHADOWBRINGERS_31",
+        "毛皮骨肉商",
+        "Poachers' Den"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_rti_20.scd"
+      }
+    },
+    {
+      "source": [
+        "00031",
+        "SHADOWBRINGERS_32",
+        "Epilogue Movie",
+        "Epilogue"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_rti_21.scd"
+      }
+    },
+    {
+      "source": [
+        "00032",
+        "SHADOWBRINGERS_33",
+        "Staff Credit",
+        "Credits"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_rti_22.scd"
+      }
+    },
+    {
+      "source": [
+        "00033",
+        "SHADOWBRINGERS_34",
+        "謀略",
+        "Intrigue"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_rti_25.scd"
+      }
+    },
+    {
+      "source": [
+        "00034",
+        "SHADOWBRINGERS_35",
+        "雲蒸龍変 ～青龍征魂戦～",
+        "From the Dragon's Wake"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_ban_26.scd"
+      }
+    },
+    {
+      "source": [
+        "00035",
+        "SHADOWBRINGERS_36",
+        "黒煙の戦い ～境界戦線 ギムリトダーク～",
+        "A Pall Most Murderous"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_dan_d15.scd"
+      }
+    },
+    {
+      "source": "00036.flac",
+      "target": {
+        "path": [
+          "music/ex3/movie/shadowbringers_loop_ja.scd",
+          "music/ex3/movie/shadowbringers_loop_en.scd",
+          "music/ex3/movie/shadowbringers_loop_de.scd",
+          "music/ex3/movie/shadowbringers_loop_fr.scd",
+          "music/ex3/movie/shadowbringers_loop_chs.scd",
+          "music/ex3/movie/shadowbringers_loop_ko.scd"
+        ],
+        "enable": false,
+        "# comment": "audio track in the movie has voices in it, and thus not replaceable"
+      }
+    },
+    {
+      "source": [
+        "00037",
+        "SHADOWBRINGERS_38",
+        "四重の見聞を経て",
+        "Four-fold Knowing"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_system_title.scd"
+      }
+    },
+    {
+      "source": [
+        "00038",
+        "SHADOWBRINGERS_39",
+        "世界を照らす闇 ～クリスタリウム：昼～",
+        "The Dark Which Illuminates the World"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_town_c_day.scd"
+      }
+    },
+    {
+      "source": [
+        "00039",
+        "SHADOWBRINGERS_40",
+        "合わないピース",
+        "Unmatching Pieces"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_field_kor_day2.scd"
+      }
+    },
+    {
+      "source": [
+        "00040",
+        "SHADOWBRINGERS_41",
+        "対峙",
+        "Rencounter"
+      ],
+      "target": {
+        "path": [
+          "music/ex3/bgm_ex3_field_ama_battle.scd",
+          "music/ex3/bgm_ex3_field_ilm_battle.scd",
+          "music/ex3/bgm_ex3_field_kor_battle.scd",
+          "music/ex3/bgm_ex3_field_lak_battle.scd",
+          "music/ex3/bgm_ex3_field_rak_battle.scd"
+        ]
+      }
+    },
+    {
+      "source": [
+        "00041",
+        "SHADOWBRINGERS_42",
+        "それなりの暮らし",
+        "Such as it Is"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_field_safe_03.scd"
+      }
+    },
+    {
+      "source": [
+        "00042",
+        "SHADOWBRINGERS_43",
+        "享楽の痛み",
+        "Pain in Pleasure"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_town_y_day2.scd"
+      }
+    },
+    {
+      "source": [
+        "00043",
+        "SHADOWBRINGERS_44",
+        "琥珀の砂漠 ～アム・アレーン：昼～",
+        "Sands of Amber"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_field_ama_day.scd"
+      }
+    },
+    {
+      "source": [
+        "00044",
+        "SHADOWBRINGERS_45",
+        "言い尽くせぬ悲哀",
+        "No Greater Sorrow"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_field_safe_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00045",
+        "SHADOWBRINGERS_46",
+        "天上の窮地",
+        "Paradisaical Predicaments"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_event_08.scd"
+      }
+    },
+    {
+      "source": [
+        "00046",
+        "SHADOWBRINGERS_47",
+        "始まりの湖 ～レイクランド：昼～",
+        "The Source"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_field_lak_day.scd"
+      }
+    },
+    {
+      "source": [
+        "00047",
+        "SHADOWBRINGERS_48",
+        "炎と剣によりて ～殺戮郷村 ホルミンスター～",
+        "To Fire and Sword"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_dan_d01.scd"
+      }
+    },
+    {
+      "source": [
+        "00048",
+        "SHADOWBRINGERS_49",
+        "貪欲",
+        "Insatiable"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_boss_battle01.scd"
+      }
+    },
+    {
+      "source": [
+        "00049",
+        "SHADOWBRINGERS_50",
+        "不変と変化 ～レイクランド：夜～",
+        "Unchanging, Everchanging"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_field_lak_night.scd"
+      }
+    },
+    {
+      "source": [
+        "00050",
+        "SHADOWBRINGERS_51",
+        "運命の旅",
+        "On Our Fates Alight"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_mount01.scd"
+      }
+    },
+    {
+      "source": [
+        "00051",
+        "SHADOWBRINGERS_52",
+        "知恵は眠らず ～クリスタリウム：夜～",
+        "Knowledge Never Sleeps"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_town_c_night.scd"
+      }
+    },
+    {
+      "source": [
+        "00052",
+        "SHADOWBRINGERS_53",
+        "大逆",
+        "High Treason"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_event_06.scd"
+      }
+    },
+    {
+      "source": [
+        "00053",
+        "SHADOWBRINGERS_54",
+        "残忍と自由 ～イル・メグ：昼～",
+        "Fierce and Free"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_field_ilm_day.scd"
+      }
+    },
+    {
+      "source": [
+        "00055",
+        "SHADOWBRINGERS_55",
+        "生きる理由",
+        "A Reason to Live"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_field_safe_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00056",
+        "SHADOWBRINGERS_56",
+        "虚構 ～水妖幻園 ドォーヌ・メグ～",
+        "Figments"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_dan_d02.scd"
+      }
+    },
+    {
+      "source": [
+        "00057",
+        "SHADOWBRINGERS_57",
+        "目覚めの御使い ～ティターニア討滅戦～",
+        "What Angel Wakes Me"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_ban_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00058",
+        "SHADOWBRINGERS_58",
+        "妖精の輪 ～イル・メグ：夜～",
+        "The Faerie Ring"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_field_ilm_night.scd"
+      }
+    },
+    {
+      "source": [
+        "00059",
+        "SHADOWBRINGERS_59",
+        "シヴィライゼーションズ ～ラケティカ大森林：昼～",
+        "Civilizations"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_field_rak_day.scd"
+      }
+    },
+    {
+      "source": [
+        "00060",
+        "SHADOWBRINGERS_60",
+        "紐解かれしもの ～古跡探索 キタンナ神影洞～",
+        "Unwound"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_dan_d03.scd"
+      }
+    },
+    {
+      "source": [
+        "00061",
+        "SHADOWBRINGERS_61",
+        "望みなき競争 ～ラケティカ大森林：夜～",
+        "A Hopeless Race"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_field_rak_night.scd"
+      }
+    },
+    {
+      "source": [
+        "00062",
+        "SHADOWBRINGERS_62",
+        "反復する明日",
+        "Tomorrow and Tomorrow - Reprise"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_event_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00063",
+        "SHADOWBRINGERS_63",
+        "深き底 ～爽涼離宮 マリカの大井戸～",
+        "Deep Down"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_dan_d04.scd"
+      }
+    },
+    {
+      "source": [
+        "00064",
+        "SHADOWBRINGERS_64",
+        "鮮血の砂漠 ～アム・アレーン：夜～",
+        "Sands of Blood"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_field_ama_night.scd"
+      }
+    },
+    {
+      "source": [
+        "00065",
+        "SHADOWBRINGERS_65",
+        "より良き明日",
+        "A Better Tomorrow"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_event_03.scd"
+      }
+    },
+    {
+      "source": [
+        "00066",
+        "SHADOWBRINGERS_66",
+        "危険な言葉",
+        "Dangerous Words"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_event_05.scd"
+      }
+    },
+    {
+      "source": [
+        "00067",
+        "SHADOWBRINGERS_67",
+        "獣の腹 ～偽造天界 グルグ火山～",
+        "In the Belly of the Beast"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_dan_d05.scd"
+      }
+    },
+    {
+      "source": [
+        "00068",
+        "SHADOWBRINGERS_68",
+        "インサニティー ～イノセンス討滅戦～",
+        "Insanity"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_ban_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00069",
+        "SHADOWBRINGERS_69",
+        "雨の中の涙",
+        "Tears in the Rain"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_event_04.scd"
+      }
+    },
+    {
+      "source": [
+        "00070",
+        "SHADOWBRINGERS_70",
+        "五尋の深み ～テンペスト：浅部～",
+        "Full Fathom Five"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_field_tem_day.scd"
+      }
+    },
+    {
+      "source": [
+        "00071",
+        "SHADOWBRINGERS_71",
+        "冥き水底 ～テンペスト：深部～",
+        "'Neath Dark Waters"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_field_tem_night.scd"
+      }
+    },
+    {
+      "source": [
+        "00072",
+        "SHADOWBRINGERS_72",
+        "驚嘆の真実",
+        "More than Truth"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_event_07.scd"
+      }
+    },
+    {
+      "source": [
+        "00073",
+        "SHADOWBRINGERS_73",
+        "死の刻 ～終末幻想 アーモロート～",
+        "Mortal Instants"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_dan_d06.scd"
+      }
+    },
+    {
+      "source": [
+        "00074",
+        "SHADOWBRINGERS_74",
+        "影をもたらす者 ～ハーデス前哨戦～",
+        "Who Brings Shadow"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_ban_03.scd"
+      }
+    },
+    {
+      "source": [
+        "00075",
+        "SHADOWBRINGERS_75",
+        "砕けぬ思い ～ハーデス討滅戦～",
+        "Invincible"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_ban_04.scd"
+      }
+    },
+    {
+      "source": [
+        "00076",
+        "SHADOWBRINGERS_76",
+        "Tomorrow and Tomorrow"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_event_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00077",
+        "SHADOWBRINGERS_77",
+        "クイックウェイ ～コルシア島：夜～",
+        "The Quick Way"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_field_kor_night.scd"
+      }
+    },
+    {
+      "source": [
+        "00078",
+        "SHADOWBRINGERS_78",
+        "分かたれし世界 ～コルシア島：昼～",
+        "A World Divided"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_field_kor_day.scd"
+      }
+    },
+    {
+      "source": [
+        "00079",
+        "SHADOWBRINGERS_79",
+        "Vamo' alla Flamenco ～漆黒～",
+        "Vamo' alla Flamenco"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_event_12.scd"
+      }
+    },
+    {
+      "source": [
+        "00080",
+        "SHADOWBRINGERS_80",
+        "仮面舞踏会 ～ユールモア：夜～",
+        "Masquerade"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_town_y_night.scd"
+      }
+    },
+    {
+      "source": [
+        "00081",
+        "SHADOWBRINGERS_81",
+        "耽溺 ～ユールモア：昼～",
+        "Indulgence"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_town_y_day.scd"
+      }
+    },
+    {
+      "source": [
+        "00082",
+        "SHADOWBRINGERS_82",
+        "影なき影 ～創造機関 アナイダアカデミア～",
+        "Shadows Withal"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_dan_d07.scd"
+      }
+    },
+    {
+      "source": [
+        "00083",
+        "SHADOWBRINGERS_83",
+        "ロングフォール ～異界遺構 シルクス・ツイニング～",
+        "A Long Fall"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_dan_d08.scd"
+      }
+    },
+    {
+      "source": [
+        "00084",
+        "SHADOWBRINGERS_84",
+        "ノアのリュート ～漆黒～",
+        "The Lute"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_event_14.scd"
+      }
+    },
+    {
+      "source": [
+        "00085",
+        "SHADOWBRINGERS_85",
+        "Blue Fields ～漆黒～",
+        "Blue Fields"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_raid_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00086",
+        "SHADOWBRINGERS_86",
+        "Force Your Way ～漆黒～",
+        "Force Your Way"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_raid_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00087",
+        "SHADOWBRINGERS_87",
+        "輝ける蒼 ～希望の園エデン：覚醒編～",
+        "Blinding Indigo"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_raid_04.scd"
+      }
+    },
+    {
+      "source": [
+        "00088",
+        "SHADOWBRINGERS_88",
+        "ランドスライド ～希望の園エデン：覚醒編～",
+        "Landslide"
+      ],
+      "target": {
+        "path": "music/ex3/bgm_ex3_raid_03.scd"
+      }
+    }
+  ]
+}

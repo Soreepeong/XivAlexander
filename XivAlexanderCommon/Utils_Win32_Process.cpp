@@ -292,6 +292,11 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithoutEnviron(const
 	return *this;
 }
 
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStdin(Utils::Win32::Handle h) {
+	m_hStdin = h ? Handle::DuplicateFrom<Handle>(h, true) : nullptr;
+	return *this;
+}
+
 Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStdin(HANDLE h) {
 	if (h == INVALID_HANDLE_VALUE)
 		m_hStdin = nullptr;
@@ -302,6 +307,11 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStdin(HANDLE h) 
 	return *this;
 }
 
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStdout(Utils::Win32::Handle h) {
+	m_hStdout = h ? Handle::DuplicateFrom<Handle>(h, true) : nullptr;
+	return *this;
+}
+
 Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStdout(HANDLE h) {
 	if (h == INVALID_HANDLE_VALUE)
 		m_hStdout = nullptr;
@@ -309,6 +319,11 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStdout(HANDLE h)
 		m_hStdout = Handle::DuplicateFrom<Handle>(File::Create("nul", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0), true);
 	else
 		m_hStdout = Handle::DuplicateFrom<Handle>(h, true);
+	return *this;
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStderr(Utils::Win32::Handle h) {
+	m_hStderr = h ? Handle::DuplicateFrom<Handle>(h, true) : nullptr;
 	return *this;
 }
 

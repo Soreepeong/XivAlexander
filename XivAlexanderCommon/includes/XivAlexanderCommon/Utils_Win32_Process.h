@@ -182,8 +182,11 @@ namespace Utils::Win32 {
 		ProcessBuilder& WithUnspecifiedShow();
 		ProcessBuilder& WithEnviron(std::wstring_view key, std::wstring value);
 		ProcessBuilder& WithoutEnviron(const std::wstring& key);
+		ProcessBuilder& WithStdin(Utils::Win32::Handle);
 		ProcessBuilder& WithStdin(HANDLE = nullptr);
+		ProcessBuilder& WithStdout(Utils::Win32::Handle);
 		ProcessBuilder& WithStdout(HANDLE = nullptr);
+		ProcessBuilder& WithStderr(Utils::Win32::Handle);
 		ProcessBuilder& WithStderr(HANDLE = nullptr);
 
 		Handle Inherit(HANDLE hSource);

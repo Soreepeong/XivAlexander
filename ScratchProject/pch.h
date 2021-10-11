@@ -9,6 +9,7 @@
 #include <iostream>
 #include <fstream>
 #include <numeric>
+#include <regex>
 
 #define NOMINMAX
 #include <Windows.h>
@@ -25,6 +26,7 @@
 #include FT_OUTLINE_H 
 #include FT_GLYPH_H
 
+#include <mmreg.h>
 #include <comdef.h>
 #include <dwrite_3.h>
 
