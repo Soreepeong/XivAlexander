@@ -7,18 +7,14 @@
 #include <XivAlexanderCommon/Utils_Win32_ThreadPool.h>
 
 struct MusicImportTargetChannel {
-	std::optional<std::string> source;
+	std::string source;
 	uint32_t channel;
 };
 
 void from_json(const nlohmann::json& j, MusicImportTargetChannel& o) {
 	const char* lastAttempt;
 	try {
-		if (const auto it = j.find(lastAttempt = "source"); it == j.end())
-			o.source = std::nullopt;
-		else
-			o.source = it->get<std::string>();
-			
+		o.source = j.at(lastAttempt = "source").get<std::string>();
 		o.channel = j.at(lastAttempt = "channel").get<uint32_t>();
 	} catch (const std::exception& e) {
 		throw std::invalid_argument(std::format("[{}] {}", lastAttempt, e.what()));
@@ -499,12 +495,12 @@ private:
 								break;
 
 							info.ReadBuf.insert(info.ReadBuf.end(), buf.begin(), buf.end());
-							for (size_t i = 0, to = buf.size(); pending && i < to; ++blockIndex) {
+							for (; pending && (blockIndex + 1) * info.Channels - 1 < info.ReadBuf.size(); ++blockIndex) {
 								pending = false;
-								for (size_t c = 0; c < info.Channels; ++c, ++i) {
+								for (size_t c = 0; c < info.Channels; ++c) {
 									if (info.FirstBlocks[c] != INT32_MAX)
 										continue;
-									if (buf[i] >= threshold && blockIndex >= minBlockIndex)
+									if (info.ReadBuf[blockIndex * info.Channels + c] >= threshold && blockIndex >= minBlockIndex)
 										info.FirstBlocks[c] = blockIndex;
 									else
 										pending = true;
@@ -538,7 +534,7 @@ private:
 
 					std::vector<SourceSet*> sourceSetsByIndex;
 					for (size_t i = 0; i < originalInfo.Channels; ++i)
-						sourceSetsByIndex.push_back(segment.channels[i].source ? &m_sourceInfo[*segment.channels[i].source] : &originalInfo);
+						sourceSetsByIndex.push_back(&m_sourceInfo[segment.channels[i].source]);
 					size_t wrote = 0;
 
 					const auto segmentEndBlock = segment.length ? currentBlock + static_cast<uint32_t>(targetRate * *segment.length) : endBlock;
@@ -549,12 +545,12 @@ private:
 							const auto pSource = sourceSetsByIndex[i];
 							const auto sourceChannelIndex = segment.channels[i].channel;
 							if (pSource->ReadBufPtr + sourceChannelIndex >= pSource->ReadBuf.size()) {
-								pSource->ReadBufPtr = 0;
 								const auto readReqSize = std::min<size_t>(8192, segmentEndBlock - currentBlock) * pSource->Channels;
 								auto empty = false;
 								try {
 									const auto read = (*pSource->Reader)(readReqSize, false);
-									pSource->ReadBuf.clear();
+									pSource->ReadBuf.erase(pSource->ReadBuf.begin(), pSource->ReadBuf.begin() + pSource->ReadBufPtr);
+									pSource->ReadBufPtr = 0;
 									pSource->ReadBuf.insert(pSource->ReadBuf.end(), read.begin(), read.end());
 									empty = read.empty();
 								} catch (const Utils::Win32::Error& e) {
@@ -590,6 +586,8 @@ private:
 				if ((e.Code() != ERROR_BROKEN_PIPE && e.Code() != ERROR_NO_DATA) || (endBlock != UINT32_MAX && currentBlock < endBlock)) {
 					error = e.what();
 				}
+			} catch (const std::exception& e) {
+				error = e.what();
 			}
 		});
 
@@ -602,8 +600,10 @@ private:
 				if (e.Code() != ERROR_BROKEN_PIPE && e.Code() != ERROR_NO_DATA) {
 					error = e.what();
 				}
-				return {};
+			} catch (const std::exception& e) {
+				error = e.what();
 			}
+			return {};
 		});
 
 		encoderProcess.Terminate(0);
@@ -629,39 +629,45 @@ int main() {
 		{LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ex2\0c0200.win32.index)"},
 		{LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ex3\0c0300.win32.index)"},
 	};
+	
+	// const auto confFile = LR"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\MusicImportConfig\Shadowbringers.json)";
+	// const auto sourceFilesDir = LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.0 - Shadowbringers)";
+
+	const auto confFile = LR"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\MusicImportConfig\Death Unto Dawn.json)";
+	const auto sourceFilesDir = LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn)";
 
 	MusicImportConfig conf;
-	from_json(Utils::ParseJsonFromFile(LR"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\MusicImportConfig\Shadowbringers.json)"), conf);
+	from_json(Utils::ParseJsonFromFile(confFile), conf);
 
 	auto tp = Utils::Win32::TpEnvironment(IsDebuggerPresent() ? 1 : 0);
 	for (const auto& item : conf.items) {
-		tp.SubmitWork([&item, &readers] {
-			bool allTargetExists = true;
-			MusicImporter importer(item, LR"(C:\Windows\ffmpeg.exe)", LR"(C:\Windows\ffprobe.exe)");
-			importer.LoadTargetInfo([&readers, &allTargetExists](std::string ex, std::filesystem::path path) -> std::shared_ptr<Sqex::Sound::ScdReader> {
-				std::filesystem::path targetPath;
-				if (ex == "ffxiv")
-					targetPath = std::format(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\ffxiv\0c0000\{0})", path.wstring());
-				else
-					targetPath = std::format(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\ex{0}\0c0{0}00\{1})", ex.substr(2, 1), path.wstring());
-				allTargetExists &= exists(targetPath);
-
-				if (ex == "ffxiv")
-					return std::make_shared<Sqex::Sound::ScdReader>(readers[0][path]);
-				else if (ex == "ex1")
-					return std::make_shared<Sqex::Sound::ScdReader>(readers[1][path]);
-				else if (ex == "ex2")
-					return std::make_shared<Sqex::Sound::ScdReader>(readers[2][path]);
-				else if (ex == "ex3")
-					return std::make_shared<Sqex::Sound::ScdReader>(readers[3][path]);
-				else
-					return nullptr;
-			});
-			if (allTargetExists)
-				return;
-			
-			importer.ResolveSources(LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.0 - Shadowbringers)");
+		tp.SubmitWork([&item, &readers, &sourceFilesDir] {
 			try {
+				bool allTargetExists = true;
+				MusicImporter importer(item, LR"(C:\Windows\ffmpeg.exe)", LR"(C:\Windows\ffprobe.exe)");
+				importer.LoadTargetInfo([&readers, &allTargetExists](std::string ex, std::filesystem::path path) -> std::shared_ptr<Sqex::Sound::ScdReader> {
+					std::filesystem::path targetPath;
+					if (ex == "ffxiv")
+						targetPath = std::format(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\ffxiv\0c0000\{0})", path.wstring());
+					else
+						targetPath = std::format(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\ex{0}\0c0{0}00\{1})", ex.substr(2, 1), path.wstring());
+					allTargetExists &= exists(targetPath);
+
+					if (ex == "ffxiv")
+						return std::make_shared<Sqex::Sound::ScdReader>(readers[0][path]);
+					else if (ex == "ex1")
+						return std::make_shared<Sqex::Sound::ScdReader>(readers[1][path]);
+					else if (ex == "ex2")
+						return std::make_shared<Sqex::Sound::ScdReader>(readers[2][path]);
+					else if (ex == "ex3")
+						return std::make_shared<Sqex::Sound::ScdReader>(readers[3][path]);
+					else
+						return nullptr;
+				});
+				if (allTargetExists)
+					return;
+			
+				importer.ResolveSources(sourceFilesDir);
 				importer.Merge([](std::string ex, std::filesystem::path path, std::vector<uint8_t> data) {
 					std::filesystem::path targetPath;
 					if (ex == "ffxiv")

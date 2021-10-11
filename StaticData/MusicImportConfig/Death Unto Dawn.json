@@ -43,22 +43,26 @@
       },
       "target": {
         "path": "music/ex3/bgm_ex3_ban_07.scd",
-        "channels": [
+        "segments": [
           {
-            "source": "Rise (Journeys)",
-            "channel": 0
-          },
-          {
-            "source": "Rise (Journeys)",
-            "channel": 1
-          },
-          {
-            "source": "Stasis Loop",
-            "channel": 0
-          },
-          {
-            "source": "Stasis Loop",
-            "channel": 1
+            "channels": [
+              {
+                "source": "Rise (Journeys)",
+                "channel": 0
+              },
+              {
+                "source": "Rise (Journeys)",
+                "channel": 1
+              },
+              {
+                "source": "Stasis Loop",
+                "channel": 0
+              },
+              {
+                "source": "Stasis Loop",
+                "channel": 1
+              }
+            ]
           }
         ],
         "enable": false,
@@ -91,31 +95,37 @@
         ]
       },
       "target": {
-        "path": "music/ex3/bgm_pvp_battle_02.scd",
-        "channels": [
+        "path": "music/ffxiv/bgm_pvp_battle_02.scd",
+        "segments": [
           {
-            "source": "A Fine Air Forbiddeth",
-            "channel": 0
-          },
-          {
-            "source": "A Fine Air Forbiddeth",
-            "channel": 1
-          },
-          {
-            "source": "A Fierce Air Forceth",
-            "channel": 0
-          },
-          {
-            "source": "A Fierce Air Forceth",
-            "channel": 1
-          },
-          {
-            "source": "target",
-            "channel": 4
-          },
-          {
-            "source": "target",
-            "channel": 5
+            "channels": [
+              {
+                "source": "A Fine Air Forbiddeth",
+                "channel": 0
+              },
+              {
+                "source": "A Fierce Air Forceth",
+                "channel": 0
+              },
+              {
+                "source": "A Fine Air Forbiddeth",
+                "channel": 1
+              },
+              {
+                "source": "target",
+                "channel": 3,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              },
+              {
+                "source": "A Fierce Air Forceth",
+                "channel": 1
+              },
+              {
+                "source": "target",
+                "channel": 5,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              }
+            ]
           }
         ]
       }
@@ -160,27 +170,31 @@
         "Starlight de Chocobo (?)": [
           "DUD_011",
           "スターライト de チョコボ？",
-          "Starlight de Chocobo (?)"
+          "Starlight de Chocobo \\(\\?\\)"
         ]
       },
       "target": {
-        "path": "music/ex3/bgm_season_xmascho_02.scd",
-        "channels": [
+        "path": "music/ffxiv/bgm_season_xmascho_02.scd",
+        "segments": [
           {
-            "source": "Starlight de Chocobo",
-            "channel": 0
-          },
-          {
-            "source": "Starlight de Chocobo",
-            "channel": 1
-          },
-          {
-            "source": "Starlight de Chocobo (?)",
-            "channel": 0
-          },
-          {
-            "source": "Starlight de Chocobo (?)",
-            "channel": 1
+            "channels": [
+              {
+                "source": "Starlight de Chocobo",
+                "channel": 0
+              },
+              {
+                "source": "Starlight de Chocobo",
+                "channel": 1
+              },
+              {
+                "source": "Starlight de Chocobo (?)",
+                "channel": 0
+              },
+              {
+                "source": "Starlight de Chocobo (?)",
+                "channel": 1
+              }
+            ]
           }
         ]
       }
@@ -414,30 +428,35 @@
       },
       "target": {
         "path": "music/ex3/bgm_ex3_myc_01.scd",
-        "channels": [
+        "segments": [
           {
-            "source": "Wind on the Plains",
-            "channel": 0
-          },
-          {
-            "source": "Wind on the Plains",
-            "channel": 1
-          },
-          {
-            "source": "Blood on the Wind",
-            "channel": 0
-          },
-          {
-            "source": "Blood on the Wind",
-            "channel": 1
-          },
-          {
-            "source": "target",
-            "channel": 4
-          },
-          {
-            "source": "target",
-            "channel": 5
+            "# comment": "ffmpeg layout: 0 2 1 4 5 3",
+            "channels": [
+              {
+                "source": "Wind on the Plains",
+                "channel": 0
+              },
+              {
+                "source": "Blood on the Wind",
+                "channel": 0
+              },
+              {
+                "source": "Wind on the Plains",
+                "channel": 1
+              },
+              {
+                "source": "target",
+                "channel": 3
+              },
+              {
+                "source": "Blood on the Wind",
+                "channel": 1
+              },
+              {
+                "source": "target",
+                "channel": 5
+              }
+            ]
           }
         ]
       }
@@ -640,22 +659,26 @@
       },
       "target": {
         "path": "music/ex1/bgm_ex1_hukko_concert.scd",
-        "channels": [
+        "segments": [
           {
-            "source": "New Foundations",
-            "channel": 0
-          },
-          {
-            "source": "New Foundations",
-            "channel": 1
-          },
-          {
-            "source": "New Foundations (Groundbreaking)",
-            "channel": 0
-          },
-          {
-            "source": "New Foundations (Groundbreaking)",
-            "channel": 1
+            "channels": [
+              {
+                "source": "New Foundations",
+                "channel": 0
+              },
+              {
+                "source": "New Foundations",
+                "channel": 1
+              },
+              {
+                "source": "New Foundations (Groundbreaking)",
+                "channel": 0
+              },
+              {
+                "source": "New Foundations (Groundbreaking)",
+                "channel": 1
+              }
+            ]
           }
         ]
       }
