@@ -867,7 +867,28 @@
         "'Neath Dark Waters"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_field_tem_night.scd"
+        "path": "music/ex3/bgm_ex3_field_tem_night.scd",
+        "segments": [
+          {
+            "sourceOffsets": {
+              "source": 0
+            },
+            "sourceThresholds": {
+              "target": 0.03,
+              "source": 0.03
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {

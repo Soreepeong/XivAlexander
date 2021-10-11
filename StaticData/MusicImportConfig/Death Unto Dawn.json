@@ -104,21 +104,21 @@
                 "channel": 0
               },
               {
+                "source": "A Fine Air Forbiddeth",
+                "channel": 1
+              },
+              {
                 "source": "A Fierce Air Forceth",
                 "channel": 0
               },
               {
-                "source": "A Fine Air Forbiddeth",
+                "source": "A Fierce Air Forceth",
                 "channel": 1
               },
               {
                 "source": "target",
                 "channel": 3,
                 "# comment": "ffmpeg layout: 0 2 1 4 5 3"
-              },
-              {
-                "source": "A Fierce Air Forceth",
-                "channel": 1
               },
               {
                 "source": "target",
@@ -430,23 +430,18 @@
         "path": "music/ex3/bgm_ex3_myc_01.scd",
         "segments": [
           {
-            "# comment": "ffmpeg layout: 0 2 1 4 5 3",
             "channels": [
               {
                 "source": "Wind on the Plains",
                 "channel": 0
               },
               {
-                "source": "Blood on the Wind",
-                "channel": 0
-              },
-              {
                 "source": "Wind on the Plains",
                 "channel": 1
               },
               {
-                "source": "target",
-                "channel": 3
+                "source": "Blood on the Wind",
+                "channel": 0
               },
               {
                 "source": "Blood on the Wind",
@@ -454,7 +449,13 @@
               },
               {
                 "source": "target",
-                "channel": 5
+                "channel": 3,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              },
+              {
+                "source": "target",
+                "channel": 5,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
               }
             ]
           }

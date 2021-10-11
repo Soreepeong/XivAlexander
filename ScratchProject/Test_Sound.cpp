@@ -527,6 +527,7 @@ private:
 		
 		const auto BufferedBlockCount = 8192;
 		std::vector<uint8_t> result;
+		result.reserve(static_cast<size_t>(1ULL * originalOgg.size() * targetRate / originalInfo.Rate) + 1048576);
 
 		vorbis_info vi;
 		vorbis_info_init(&vi);
@@ -775,9 +776,6 @@ private:
 };
 
 int main() {
-	//auto rdr = Sqex::Sound::ScdReader(std::make_shared<Sqex::FileRandomAccessStream>(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\ex3\0c0300\music\ex3\bgm_ex3_myc_01.scd)"));
-	//auto ent = rdr.GetSoundEntry(0);
-	//ent.GetOggFile();
 	const Sqex::Sqpack::Reader readers[4]{
 		{LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\0c0000.win32.index)"},
 		{LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ex1\0c0100.win32.index)"},
@@ -796,8 +794,8 @@ int main() {
 		MusicImportConfig conf;
 		from_json(Utils::ParseJsonFromFile(confFile), conf);
 
-		// auto tp = Utils::Win32::TpEnvironment(IsDebuggerPresent() ? 1 : 0);
-		auto tp = Utils::Win32::TpEnvironment();
+		auto tp = Utils::Win32::TpEnvironment(IsDebuggerPresent() ? 1 : 0);
+		// auto tp = Utils::Win32::TpEnvironment();
 		for (const auto& item : conf.items) {
 			tp.SubmitWork([&item, &readers, &sourceFilesDir] {
 				try {
@@ -833,6 +831,7 @@ int main() {
 						else
 							targetPath = std::format(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\ex{0}\0c0{0}00\{1})", ex.substr(2, 1), path.wstring());
 						Utils::Win32::File::Create(targetPath, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, 0).Write(0, std::span(data));
+						std::cout << std::format("Done: {}\n", path.wstring());
 					});
 				} catch (const std::exception& e) {
 					std::cout << std::format("Error on {}: {}\n", item.source.begin()->second.front(), e.what());
