@@ -79,6 +79,7 @@ Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromOgg(c
 	std::vector<uint8_t> header;
 	std::vector<uint8_t> data;
 	std::vector<uint32_t> seekTable;
+	std::vector<uint32_t> seekTableSamples;
 	uint32_t loopStartSample = 0, loopEndSample = 0;
 	uint32_t loopStartBytes = 0, loopEndBytes = 0;
 	ogg_page og{};
@@ -113,16 +114,21 @@ Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromOgg(c
 				header.insert(header.end(), og.header, og.header + og.header_len);
 				header.insert(header.end(), og.body, og.body + og.body_len);
 			} else {
-				seekTable.push_back(static_cast<uint32_t>(data.size()));
-
 				const auto sampleIndex = ogg_page_granulepos(&og);
-				if (loopStartSample && loopStartBytes == 0 && loopStartSample <= sampleIndex)
-					loopStartBytes = static_cast<uint32_t>(data.size());
-				if (loopEndSample && loopEndBytes == 0 && loopEndSample < sampleIndex)
-					loopEndBytes = static_cast<uint32_t>(data.size());
-
+				if (loopStartSample && loopStartBytes == 0){
+					if (loopStartSample < sampleIndex)
+						loopStartBytes = seekTable.back();
+					else if (loopStartSample == sampleIndex)
+						loopStartBytes = static_cast<uint32_t>(data.size());
+				}
+					
+				seekTable.push_back(static_cast<uint32_t>(data.size()));
+				seekTableSamples.push_back(static_cast<uint32_t>(sampleIndex));
 				data.insert(data.end(), og.header, og.header + og.header_len);
 				data.insert(data.end(), og.body, og.body + og.body_len);
+
+				if (loopEndSample && loopEndBytes == 0 && loopEndSample < sampleIndex)
+					loopEndBytes = static_cast<uint32_t>(data.size());
 			}
 			
 			for (;; ++packetIndex) {
@@ -148,6 +154,7 @@ Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromOgg(c
 			}
 
 			if (ogg_page_eos(&og)) {
+				const auto sampleIndex = ogg_page_granulepos(&og);
 				if (loopEndSample && !loopEndBytes)
 					loopEndBytes = static_cast<uint32_t>(data.size());
 				std::vector<uint8_t> oggHeaderBytes;

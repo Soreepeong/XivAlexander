@@ -1,0 +1,18 @@
+{
+  "name": "Final Fantasy XIV - 3.0 - Heavensward",
+  "purchaseLinks": {
+  },
+  "items": [
+    {
+      "source": [
+        "00001",
+        "HEAVENSWARD_FFXIV_02",
+        "雪風",
+        "A Cold Wind"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_system_title.scd"
+      }
+    }
+  ]
+}

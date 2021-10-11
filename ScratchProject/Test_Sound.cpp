@@ -130,6 +130,92 @@ void from_json(const nlohmann::json& j, MusicImportConfig& o) {
 	}
 }
 
+std::vector<uint8_t> ToOgg(std::span<float> samples, uint32_t channels, uint32_t samplingRate, uint64_t loopStart, uint64_t loopEnd) {
+	std::vector<uint8_t> result;
+
+	ogg_stream_state os; /* take physical pages, weld into a logical
+							stream of packets */
+	ogg_page         og; /* one Ogg bitstream page.  Vorbis packets are inside */
+	ogg_packet       op; /* one raw packet of data for decode */
+
+	vorbis_info      vi; /* struct that stores all the static vorbis bitstream
+							settings */
+	vorbis_comment   vc; /* struct that stores all the user comments */
+
+	vorbis_dsp_state vd; /* central working state for the packet->PCM decoder */
+	vorbis_block     vb; /* local working space for packet->PCM decode */
+
+	vorbis_info_init(&vi);
+	if (const auto res = vorbis_encode_init_vbr(&vi, channels, samplingRate, 1))
+		throw std::runtime_error(std::format("vorbis_encode_init_vbr: {}", res));
+
+	vorbis_comment_init(&vc);
+	vorbis_comment_add_tag(&vc, "LoopStart", std::format("{}", loopStart).c_str());
+	vorbis_comment_add_tag(&vc, "LoopEnd", std::format("{}", loopEnd).c_str());
+
+	vorbis_analysis_init(&vd, &vi);
+	vorbis_block_init(&vd, &vb);
+	ogg_stream_init(&os, 1);
+
+	{
+		ogg_packet header;
+		ogg_packet headerComments;
+		ogg_packet headerCode;
+		vorbis_analysis_headerout(&vd, &vc, &header, &headerComments, &headerCode);
+		ogg_stream_packetin(&os, &header);
+		ogg_stream_packetin(&os, &headerComments);
+		ogg_stream_packetin(&os, &headerCode);
+
+		while (const auto flushResult = ogg_stream_flush(&os, &og)) {
+			result.reserve(result.size() + og.header_len + og.body_len);
+			result.insert(result.end(), og.header, og.header + og.header_len);
+			result.insert(result.end(), og.body, og.body + og.body_len);
+		}
+	}
+
+	const size_t BlockCountPerRead = 8192;
+	for (size_t sampleBlockIndex = 0; sampleBlockIndex < loopEnd; ) {
+		auto readSampleBlocks = std::min(BlockCountPerRead, loopEnd - sampleBlockIndex);
+
+		if (loopStart && sampleBlockIndex < loopStart && loopStart < sampleBlockIndex + readSampleBlocks)
+			readSampleBlocks = loopStart - sampleBlockIndex;
+
+		const auto readSamples = readSampleBlocks * channels;
+		auto buffer = vorbis_analysis_buffer(&vd, static_cast<int>(readSampleBlocks));
+		for (size_t ptr = sampleBlockIndex * channels, i = 0; i < readSampleBlocks; ++sampleBlockIndex, ++i) {
+			for (size_t channelIndex = 0; channelIndex < channels; ++channelIndex, ++ptr) {
+				buffer[channelIndex][i] = samples[ptr];
+			}
+		}
+		vorbis_analysis_wrote(&vd, static_cast<int>(readSamples / channels));
+		if (sampleBlockIndex == loopEnd)
+			vorbis_analysis_wrote(&vd, 0);
+
+		while (vorbis_analysis_blockout(&vd, &vb) == 1 && !ogg_page_eos(&og)) {
+			vorbis_analysis(&vb, nullptr);
+			vorbis_bitrate_addblock(&vb);
+			while (vorbis_bitrate_flushpacket(&vd, &op) && !ogg_page_eos(&og)) {
+				ogg_stream_packetin(&os, &op);
+
+				while (!ogg_page_eos(&og)) {
+					if (const auto r = ogg_stream_flush_fill(&os, &og, 0); r == 0)
+						break;
+						
+					result.reserve(result.size() + og.header_len + og.body_len);
+					result.insert(result.end(), og.header, og.header + og.header_len);
+					result.insert(result.end(), og.body, og.body + og.body_len);
+				}
+			}
+		}
+	}
+	ogg_stream_clear(&os);
+	vorbis_block_clear(&vb);
+	vorbis_dsp_clear(&vd);
+	vorbis_comment_clear(&vc);
+	vorbis_info_clear(&vi);
+
+	return result;
+}
 class MusicImporter {
 	class FloatPcmSource {
 		Utils::Win32::Process m_hReaderProcess;
@@ -175,7 +261,9 @@ class MusicImporter {
 			if (forceSamplingRate)
 				builder.WithAppendArgument("-ar").WithAppendArgument("{}", forceSamplingRate);
 			if (!audioFilters.empty())
-				builder.WithAppendArgument("-filter:a").WithAppendArgument(audioFilters);
+				builder.WithAppendArgument("-filter:a").WithAppendArgument("aresample=resampler=soxr, " + audioFilters);
+			else
+				builder.WithAppendArgument("-filter:a").WithAppendArgument("aresample=resampler=soxr");
 			builder.WithAppendArgument("-");
 
 			m_hReaderProcess = builder.Run().first;
@@ -383,6 +471,7 @@ private:
 		const auto originalEntry = scdReader->GetSoundEntry(0);
 		const auto originalOgg = originalEntry.GetOggFile();
 		const auto originalOggStream = Sqex::MemoryRandomAccessStream(originalOgg);
+
 		uint32_t loopStartBlockIndex = 0;
 		uint32_t loopEndBlockIndex = 0;
 		{
@@ -432,189 +521,232 @@ private:
 			if (originalInfo.Channels != segment.channels.size())
 				throw std::invalid_argument(std::format("originalChannels={}, expected={}", originalInfo.Channels, segment.channels.size()));
 		}
+
+		uint32_t currentBlockIndex = 0;
+		const auto endBlockIndex = loopEndBlockIndex ? loopEndBlockIndex : UINT32_MAX;
 		
-		auto [hEncoderOutRead, hEncoderOutWrite] = Utils::Win32::File::CreatePipe();
-		auto [hEncoderInRead, hEncoderInWrite] = Utils::Win32::File::CreatePipe();
-		Utils::Win32::Process encoderProcess;
+		const auto BufferedBlockCount = 8192;
+		std::vector<uint8_t> result;
+
+		vorbis_info vi;
+		vorbis_info_init(&vi);
+		if (const auto res = vorbis_encode_init_vbr(&vi, originalInfo.Channels, targetRate, 1))
+			throw std::runtime_error(std::format("vorbis_encode_init_vbr: {}", res));
+		const auto viCleanup = Utils::CallOnDestruction([&vi] { vorbis_info_clear(&vi); });
+
+		vorbis_dsp_state vd;
+		if (const auto res = vorbis_analysis_init(&vd, &vi))
+			throw std::runtime_error(std::format("vorbis_analysis_init: {}", res));
+		const auto vdCleanup = Utils::CallOnDestruction([&vd] { vorbis_dsp_clear(&vd); });
+
+		vorbis_block vb;
+		if (const auto res = vorbis_block_init(&vd, &vb))
+			throw std::runtime_error(std::format("vorbis_block_init: {}", res));
+		const auto vbCleanup = Utils::CallOnDestruction([&vb] { vorbis_block_clear(&vb); });
+
+		ogg_stream_state os;
+		if (const auto res = ogg_stream_init(&os, 0))
+			throw std::runtime_error(std::format("ogg_stream_init: {}", res));
+		const auto osCleanup = Utils::CallOnDestruction([&os] { ogg_stream_clear(&os); });
+
+		ogg_page og;
 		{
-			auto builder = Utils::Win32::ProcessBuilder();
-			builder
-				.WithPath(m_ffmpeg)
-				.WithStdin(hEncoderInRead)
-				.WithStdout(hEncoderOutWrite)
-				.WithAppendArgument("-hide_banner")
-				.WithAppendArgument("-f").WithAppendArgument("f32le")
-				.WithAppendArgument("-ac").WithAppendArgument("{}", originalInfo.Channels)
-				.WithAppendArgument("-ar").WithAppendArgument("{}", targetRate)
-				.WithAppendArgument("-i").WithAppendArgument("-")
-				.WithAppendArgument("-f").WithAppendArgument("ogg")
-				.WithAppendArgument("-q:a").WithAppendArgument("10");
+			vorbis_comment vc;
+			vorbis_comment_init(&vc);
+			const auto vcCleanup = Utils::CallOnDestruction([&vc] { vorbis_comment_clear(&vc); });
 			if (loopStartBlockIndex || loopEndBlockIndex) {
-				builder.WithAppendArgument("-metadata").WithAppendArgument(L"LoopStart={}", loopStartBlockIndex);
-				builder.WithAppendArgument("-metadata").WithAppendArgument(L"LoopEnd={}", loopEndBlockIndex);
+				vorbis_comment_add_tag(&vc, "LoopStart", std::format("{}", loopStartBlockIndex).c_str());
+				vorbis_comment_add_tag(&vc, "LoopEnd", std::format("{}", loopEndBlockIndex).c_str());
 			}
-			builder.WithAppendArgument("-");
-			encoderProcess = builder.Run().first;
-			hEncoderInRead.Clear();
-			hEncoderOutWrite.Clear();
+
+			ogg_packet header;
+			ogg_packet headerComments;
+			ogg_packet headerCode;
+			vorbis_analysis_headerout(&vd, &vc, &header, &headerComments, &headerCode);
+			ogg_stream_packetin(&os, &header);
+			ogg_stream_packetin(&os, &headerComments);
+			ogg_stream_packetin(&os, &headerCode);
+
+			while (const auto flushResult = ogg_stream_flush(&os, &og)) {
+				result.reserve(result.size() + og.header_len + og.body_len);
+				result.insert(result.end(), og.header, og.header + og.header_len);
+				result.insert(result.end(), og.body, og.body + og.body_len);
+			}
 		}
 
-		std::string error;
-		const auto hDecoderToEncoder = Utils::Win32::Thread(L"DecoderToEncoder", [&, hEncoderInWrite = std::move(hEncoderInWrite)]() {
-			uint32_t currentBlockIndex = 0;
+		ogg_packet op;
+		for (size_t segmentIndex = 0; segmentIndex < targetSet.segments.size(); ++segmentIndex) {
+			const auto& segment = targetSet.segments[segmentIndex];
+			std::set<std::string> usedSources;
+			for (const auto& name : m_sourceInfo | std::views::keys) {
+				if (name == "target" || std::ranges::any_of(segment.channels, [&name](const auto& ch) { return ch.source == name; }))
+					usedSources.insert(name);
+			}
 
-			std::vector<float> buf;
-			const auto BufferedBlockCount = 8192;
-			buf.reserve(BufferedBlockCount * originalInfo.Channels);
+			for (const auto& name : usedSources) {
+				auto& info = m_sourceInfo.at(name);
+				info.FirstBlocks.clear();
+				info.FirstBlocks.resize(info.Channels, INT32_MAX);
 
-			const auto endBlockIndex = loopEndBlockIndex ? loopEndBlockIndex : UINT32_MAX;
-
-			try {
-				for (const auto& segment : targetSet.segments) {
-					std::set<std::string> usedSources;
-					for (const auto& name : m_sourceInfo | std::views::keys) {
-						if (name == "target" || std::ranges::any_of(segment.channels, [&name](const auto& ch) { return ch.source == name; }))
-							usedSources.insert(name);
-					}
-
-					for (const auto& name : usedSources) {
-						auto& info = m_sourceInfo.at(name);
-						info.FirstBlocks.clear();
-						info.FirstBlocks.resize(info.Channels, INT32_MAX);
-
-						const auto ffmpegFilter = segment.sourceFilters.contains(name) ? segment.sourceFilters.at(name) : std::string();
-						uint32_t minBlockIndex = 0;
-						double threshold = 0.1;
-						if (name == "target") {
-							info.Reader = std::make_unique<FloatPcmSource>("ogg", originalOggStream.AsLinearReader<uint8_t>(), m_ffmpeg, targetRate, ffmpegFilter);
-							minBlockIndex = currentBlockIndex;
-						} else {
-							info.Reader = std::make_unique<FloatPcmSource>(m_sources[name], m_ffmpeg, targetRate, ffmpegFilter);
-							if (segment.sourceOffsets.contains(name))
-								minBlockIndex = static_cast<uint32_t>(targetRate * segment.sourceOffsets.at(name));
-						}
-						if (segment.sourceThresholds.contains(name))
-							threshold = segment.sourceThresholds.at(name);
+				const auto ffmpegFilter = segment.sourceFilters.contains(name) ? segment.sourceFilters.at(name) : std::string();
+				uint32_t minBlockIndex = 0;
+				double threshold = 0.1;
+				if (name == "target") {
+					info.Reader = std::make_unique<FloatPcmSource>("ogg", originalOggStream.AsLinearReader<uint8_t>(), m_ffmpeg, targetRate, ffmpegFilter);
+					minBlockIndex = currentBlockIndex;
+				} else {
+					info.Reader = std::make_unique<FloatPcmSource>(m_sources[name], m_ffmpeg, targetRate, ffmpegFilter);
+					if (segment.sourceOffsets.contains(name))
+						minBlockIndex = static_cast<uint32_t>(targetRate * segment.sourceOffsets.at(name));
+				}
+				info.ReadBuf.clear();
+				info.ReadBufPtr = 0;
+				if (segment.sourceThresholds.contains(name))
+					threshold = segment.sourceThresholds.at(name);
 						
-						uint32_t blockIndex = 0;
-						auto pending = true;
-						while (pending) {
-							const auto buf = (*info.Reader)(info.Channels * static_cast<size_t>(8192), false);
-							if (buf.empty())
-								break;
+				uint32_t blockIndex = 0;
+				auto pending = true;
+				while (pending) {
+					const auto buf = (*info.Reader)(info.Channels * static_cast<size_t>(8192), false);
+					if (buf.empty())
+						break;
 
-							info.ReadBuf.insert(info.ReadBuf.end(), buf.begin(), buf.end());
-							for (; pending && (blockIndex + 1) * info.Channels - 1 < info.ReadBuf.size(); ++blockIndex) {
-								pending = false;
-								for (size_t c = 0; c < info.Channels; ++c) {
-									if (info.FirstBlocks[c] != INT32_MAX)
-										continue;
-									if (info.ReadBuf[blockIndex * info.Channels + c] >= threshold && blockIndex >= minBlockIndex)
-										info.FirstBlocks[c] = blockIndex;
-									else
-										pending = true;
-								}
-							}
+					info.ReadBuf.insert(info.ReadBuf.end(), buf.begin(), buf.end());
+					for (; pending && (blockIndex + 1) * info.Channels - 1 < info.ReadBuf.size(); ++blockIndex) {
+						pending = false;
+						for (size_t c = 0; c < info.Channels; ++c) {
+							if (info.FirstBlocks[c] != INT32_MAX)
+								continue;
+							if (info.ReadBuf[blockIndex * info.Channels + c] >= threshold && blockIndex >= minBlockIndex)
+								info.FirstBlocks[c] = blockIndex;
+							else
+								pending = true;
 						}
 					}
+				}
+			}
 		
-					for (const auto& name : usedSources) {
-						auto& info = m_sourceInfo.at(name);
-						if (name == "target")
-							continue;
+			for (const auto& name : usedSources) {
+				auto& info = m_sourceInfo.at(name);
+				if (name == "target")
+					continue;
 
-						for (size_t channelIndex = 0; channelIndex < segment.channels.size(); ++channelIndex) {
-							const auto& channelMap = segment.channels[channelIndex];
-							if (channelMap.source == name) {
-								auto srcCopyFromOffset = static_cast<SSIZE_T>(originalInfo.FirstBlocks[channelIndex]) - info.FirstBlocks[channelMap.channel] - currentBlockIndex;
-								srcCopyFromOffset *= info.Channels;
+				for (size_t channelIndex = 0; channelIndex < segment.channels.size(); ++channelIndex) {
+					const auto& channelMap = segment.channels[channelIndex];
+					if (channelMap.source == name) {
+						auto srcCopyFromOffset = static_cast<SSIZE_T>(originalInfo.FirstBlocks[channelIndex]) - info.FirstBlocks[channelMap.channel] - currentBlockIndex;
+						srcCopyFromOffset *= info.Channels;
 
-								if (srcCopyFromOffset < 0) {
-									info.ReadBuf.erase(info.ReadBuf.begin(), info.ReadBuf.begin() - srcCopyFromOffset);
-								} else if (srcCopyFromOffset > 0) {
-									info.ReadBuf.resize(info.ReadBuf.size() + srcCopyFromOffset);
-									std::move(info.ReadBuf.begin(), info.ReadBuf.end() - srcCopyFromOffset, info.ReadBuf.begin() + srcCopyFromOffset);
-									std::fill_n(info.ReadBuf.begin(), srcCopyFromOffset, 0.f);
-								}
+						if (srcCopyFromOffset < 0) {
+							info.ReadBuf.erase(info.ReadBuf.begin(), info.ReadBuf.begin() - srcCopyFromOffset);
+						} else if (srcCopyFromOffset > 0) {
+							info.ReadBuf.resize(info.ReadBuf.size() + srcCopyFromOffset);
+							std::move(info.ReadBuf.begin(), info.ReadBuf.end() - srcCopyFromOffset, info.ReadBuf.begin() + srcCopyFromOffset);
+							std::fill_n(info.ReadBuf.begin(), srcCopyFromOffset, 0.f);
+						}
+						break;
+					}
+				}
+			}
+
+			std::vector<SourceSet*> sourceSetsByIndex;
+			for (size_t i = 0; i < originalInfo.Channels; ++i)
+				sourceSetsByIndex.push_back(&m_sourceInfo[segment.channels[i].source]);
+			size_t wrote = 0;
+
+			const auto segmentEndBlockIndex = segment.length ? currentBlockIndex + static_cast<uint32_t>(targetRate * *segment.length) : endBlockIndex;
+
+			auto stopSegment = currentBlockIndex >= segmentEndBlockIndex;
+			float** buf = nullptr;
+			uint32_t bufptr = 0;
+			while (!stopSegment) {
+				if (buf == nullptr) {
+					buf = vorbis_analysis_buffer(&vd, BufferedBlockCount);
+					if (!buf)
+						throw std::runtime_error("vorbis_analysis_buffer: fail");
+					bufptr = 0;
+				}
+				for (size_t i = 0; i < originalInfo.Channels; ++i) {
+					const auto pSource = sourceSetsByIndex[i];
+					const auto sourceChannelIndex = segment.channels[i].channel;
+					if (pSource->ReadBufPtr + sourceChannelIndex >= pSource->ReadBuf.size()) {
+						const auto readReqSize = std::min<size_t>(8192, segmentEndBlockIndex - currentBlockIndex) * pSource->Channels;
+						auto empty = false;
+						try {
+							const auto read = (*pSource->Reader)(readReqSize, false);
+							pSource->ReadBuf.erase(pSource->ReadBuf.begin(), pSource->ReadBuf.begin() + pSource->ReadBufPtr);
+							pSource->ReadBufPtr = 0;
+							pSource->ReadBuf.insert(pSource->ReadBuf.end(), read.begin(), read.end());
+							empty = read.empty();
+						} catch (const Utils::Win32::Error& e) {
+							if (e.Code() != ERROR_BROKEN_PIPE && e.Code() != ERROR_NO_DATA) 
+								throw;
+							empty = true;
+						}
+						if (empty) {
+							if (segmentEndBlockIndex == UINT32_MAX) {
+								stopSegment = true;
 								break;
-							}
+							} else
+								throw std::runtime_error(std::format("not expecting eof yet ({}/{})", currentBlockIndex, segmentEndBlockIndex));
 						}
 					}
-
-					std::vector<SourceSet*> sourceSetsByIndex;
-					for (size_t i = 0; i < originalInfo.Channels; ++i)
-						sourceSetsByIndex.push_back(&m_sourceInfo[segment.channels[i].source]);
-					size_t wrote = 0;
-
-					const auto segmentEndBlockIndex = segment.length ? currentBlockIndex + static_cast<uint32_t>(targetRate * *segment.length) : endBlockIndex;
-
-					auto stopSegment = currentBlockIndex >= segmentEndBlockIndex;
-					while (!stopSegment) {
-						for (size_t i = 0; i < originalInfo.Channels; ++i) {
-							const auto pSource = sourceSetsByIndex[i];
-							const auto sourceChannelIndex = segment.channels[i].channel;
-							if (pSource->ReadBufPtr + sourceChannelIndex >= pSource->ReadBuf.size()) {
-								const auto readReqSize = std::min<size_t>(8192, segmentEndBlockIndex - currentBlockIndex) * pSource->Channels;
-								auto empty = false;
-								try {
-									const auto read = (*pSource->Reader)(readReqSize, false);
-									pSource->ReadBuf.erase(pSource->ReadBuf.begin(), pSource->ReadBuf.begin() + pSource->ReadBufPtr);
-									pSource->ReadBufPtr = 0;
-									pSource->ReadBuf.insert(pSource->ReadBuf.end(), read.begin(), read.end());
-									empty = read.empty();
-								} catch (const Utils::Win32::Error& e) {
-									if (e.Code() != ERROR_BROKEN_PIPE && e.Code() != ERROR_NO_DATA) 
-										throw;
-									empty = true;
-								}
-								if (empty) {
-									if (segmentEndBlockIndex == UINT32_MAX) {
-										stopSegment = true;
-										break;
-									} else
-										throw std::runtime_error(std::format("not expecting eof yet ({}/{})", currentBlockIndex, segmentEndBlockIndex));
-								}
-							}
-							buf.push_back(pSource->ReadBuf[pSource->ReadBufPtr + sourceChannelIndex]);
-						}
-						if (!stopSegment) {
-							for (auto& source : m_sourceInfo | std::views::values)
-								source.ReadBufPtr += source.Channels;
-							currentBlockIndex++;
-						}
-						stopSegment |= currentBlockIndex == segmentEndBlockIndex;
+					buf[i][bufptr] = pSource->ReadBuf[pSource->ReadBufPtr + sourceChannelIndex];
+				}
+				if (!stopSegment) {
+					for (auto& source : m_sourceInfo | std::views::values)
+						source.ReadBufPtr += source.Channels;
+					currentBlockIndex++;
+					bufptr++;
+				}
+				stopSegment |= currentBlockIndex == segmentEndBlockIndex;
 					
-						if (buf.size() == BufferedBlockCount * originalInfo.Channels || stopSegment) {
-							hEncoderInWrite.Write(0, std::span(buf));
-							buf.clear();
+				if (bufptr == BufferedBlockCount || stopSegment) {
+					if (const auto res = vorbis_analysis_wrote(&vd, bufptr); res < 0)
+						throw std::runtime_error(std::format("vorbis_analysis_wrote: {}", res));
+					buf = nullptr;
+					if (stopSegment && segmentIndex == targetSet.segments.size() - 1) {
+						if (const auto res = vorbis_analysis_wrote(&vd, 0); res < 0)
+							throw std::runtime_error(std::format("vorbis_analysis_wrote: {}", res));
+					}
+
+					while (!ogg_page_eos(&og)) {
+						if (const auto res = vorbis_analysis_blockout(&vd, &vb); res < 0)
+							throw std::runtime_error(std::format("vorbis_analysis_blockout: {}", res)); 
+						else if (res == 0)
+							break;
+
+						if (const auto res = vorbis_analysis(&vb, nullptr); res < 0)
+							throw std::runtime_error(std::format("vorbis_analysis: {}", res)); 
+						if (const auto res = vorbis_bitrate_addblock(&vb); res < 0)
+							throw std::runtime_error(std::format("vorbis_bitrate_addblock: {}", res)); 
+						
+						while (!ogg_page_eos(&og)) {
+							if (const auto res = vorbis_bitrate_flushpacket(&vd, &op); res < 0)
+								throw std::runtime_error(std::format("vorbis_bitrate_flushpacket: {}", res)); 
+							else if (res == 0)
+								break;
+							
+							if (const auto res = ogg_stream_packetin(&os, &op); res < 0)
+								throw std::runtime_error(std::format("ogg_stream_packetin: {}", res)); 
+
+							while (!ogg_page_eos(&og)) {
+								if (const auto res = ogg_stream_flush_fill(&os, &og, 0); res < 0)
+									throw std::runtime_error(std::format("ogg_stream_flush_fill: {}", res)); 
+								else if (res == 0)
+									break;
+						
+								result.reserve(result.size() + og.header_len + og.body_len);
+								result.insert(result.end(), og.header, og.header + og.header_len);
+								result.insert(result.end(), og.body, og.body + og.body_len);
+							}
 						}
 					}
 				}
-
-			} catch (const Utils::Win32::Error& e) {
-				if ((e.Code() != ERROR_BROKEN_PIPE && e.Code() != ERROR_NO_DATA) || (endBlockIndex != UINT32_MAX && currentBlockIndex < endBlockIndex)) {
-					error = e.what();
-				}
-			} catch (const std::exception& e) {
-				error = e.what();
 			}
-		});
+		}
 
-		auto e = Sqex::Sound::ScdWriter::SoundEntry::FromOgg([&error, hEncoderOutRead = std::move(hEncoderOutRead), buf = std::vector<uint8_t>()](size_t len, bool throwOnIncompleteRead) mutable->std::span<uint8_t> {
-			try {
-				buf.resize(8192);
-				buf.resize(hEncoderOutRead.Read(0, std::span(buf), Utils::Win32::File::PartialIoMode::AllowPartial));
-				return std::span(buf);
-			} catch (const Utils::Win32::Error& e) {
-				if (e.Code() != ERROR_BROKEN_PIPE && e.Code() != ERROR_NO_DATA) {
-					error = e.what();
-				}
-			} catch (const std::exception& e) {
-				error = e.what();
-			}
-			return {};
-		});
-		
+		auto e = Sqex::Sound::ScdWriter::SoundEntry::FromOgg(Sqex::MemoryRandomAccessStream(result).AsLinearReader<uint8_t>());
 		if (const auto marks = originalEntry.GetMarkedSampleBlockIndices(); !marks.empty()) {
 			auto& buf = e.AuxChunks[Sqex::Sound::SoundEntryAuxChunk::Name_Mark];
 			buf.resize((3 + marks.size()) * 4);
@@ -630,12 +762,8 @@ private:
 				span[i++] = static_cast<uint32_t>(1ULL * blockIndex * targetRate / originalInfo.Rate);
 		}
 
-		encoderProcess.Terminate(0);
 		for (auto& info : m_sourceInfo | std::views::values)
 			info.Reader = nullptr;
-		hDecoderToEncoder.Wait();
-		if (!error.empty())
-			throw std::runtime_error(std::format("Error: {}", error));
 
 		Sqex::Sound::ScdWriter writer;
 		writer.SetTable1(scdReader->ReadTable1Entries());
@@ -657,57 +785,61 @@ int main() {
 		{LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ex3\0c0300.win32.index)"},
 	};
 	
-	// const auto confFile = LR"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\MusicImportConfig\Shadowbringers.json)";
-	// const auto sourceFilesDir = LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.0 - Shadowbringers)";
+	const auto confFile = LR"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\MusicImportConfig\Heavensward.json)";
+	const auto sourceFilesDir = LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 3.0 - Heavensward)";
+	
+	for (const auto [confFile, sourceFilesDir] : std::vector<std::pair<std::filesystem::path, std::filesystem::path>> {
+		{LR"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\MusicImportConfig\Heavensward.json)", LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 3.0 - Heavensward)"},
+		{LR"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\MusicImportConfig\Shadowbringers.json)", LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.0 - Shadowbringers)"},
+		{LR"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\MusicImportConfig\Death Unto Dawn.json)", LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn)"},
+	}) {
+		MusicImportConfig conf;
+		from_json(Utils::ParseJsonFromFile(confFile), conf);
 
-	const auto confFile = LR"(Z:\GitWorks\Soreepeong\XivAlexander\StaticData\MusicImportConfig\Death Unto Dawn.json)";
-	const auto sourceFilesDir = LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn)";
+		// auto tp = Utils::Win32::TpEnvironment(IsDebuggerPresent() ? 1 : 0);
+		auto tp = Utils::Win32::TpEnvironment();
+		for (const auto& item : conf.items) {
+			tp.SubmitWork([&item, &readers, &sourceFilesDir] {
+				try {
+					bool allTargetExists = true;
+					MusicImporter importer(item, LR"(C:\Windows\ffmpeg.exe)", LR"(C:\Windows\ffprobe.exe)");
+					importer.LoadTargetInfo([&readers, &allTargetExists](std::string ex, std::filesystem::path path) -> std::shared_ptr<Sqex::Sound::ScdReader> {
+						std::filesystem::path targetPath;
+						if (ex == "ffxiv")
+							targetPath = std::format(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\ffxiv\0c0000\{0})", path.wstring());
+						else
+							targetPath = std::format(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\ex{0}\0c0{0}00\{1})", ex.substr(2, 1), path.wstring());
+						allTargetExists &= exists(targetPath);
 
-	MusicImportConfig conf;
-	from_json(Utils::ParseJsonFromFile(confFile), conf);
-
-	auto tp = Utils::Win32::TpEnvironment(IsDebuggerPresent() ? 1 : 0);
-	for (const auto& item : conf.items) {
-		tp.SubmitWork([&item, &readers, &sourceFilesDir] {
-			try {
-				bool allTargetExists = true;
-				MusicImporter importer(item, LR"(C:\Windows\ffmpeg.exe)", LR"(C:\Windows\ffprobe.exe)");
-				importer.LoadTargetInfo([&readers, &allTargetExists](std::string ex, std::filesystem::path path) -> std::shared_ptr<Sqex::Sound::ScdReader> {
-					std::filesystem::path targetPath;
-					if (ex == "ffxiv")
-						targetPath = std::format(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\ffxiv\0c0000\{0})", path.wstring());
-					else
-						targetPath = std::format(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\ex{0}\0c0{0}00\{1})", ex.substr(2, 1), path.wstring());
-					allTargetExists &= exists(targetPath);
-
-					if (ex == "ffxiv")
-						return std::make_shared<Sqex::Sound::ScdReader>(readers[0][path]);
-					else if (ex == "ex1")
-						return std::make_shared<Sqex::Sound::ScdReader>(readers[1][path]);
-					else if (ex == "ex2")
-						return std::make_shared<Sqex::Sound::ScdReader>(readers[2][path]);
-					else if (ex == "ex3")
-						return std::make_shared<Sqex::Sound::ScdReader>(readers[3][path]);
-					else
-						return nullptr;
-				});
-				if (allTargetExists)
-					return;
+						if (ex == "ffxiv")
+							return std::make_shared<Sqex::Sound::ScdReader>(readers[0][path]);
+						else if (ex == "ex1")
+							return std::make_shared<Sqex::Sound::ScdReader>(readers[1][path]);
+						else if (ex == "ex2")
+							return std::make_shared<Sqex::Sound::ScdReader>(readers[2][path]);
+						else if (ex == "ex3")
+							return std::make_shared<Sqex::Sound::ScdReader>(readers[3][path]);
+						else
+							return nullptr;
+					});
+					if (allTargetExists)
+						return;
 			
-				importer.ResolveSources(sourceFilesDir);
-				importer.Merge([](std::string ex, std::filesystem::path path, std::vector<uint8_t> data) {
-					std::filesystem::path targetPath;
-					if (ex == "ffxiv")
-						targetPath = std::format(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\ffxiv\0c0000\{0})", path.wstring());
-					else
-						targetPath = std::format(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\ex{0}\0c0{0}00\{1})", ex.substr(2, 1), path.wstring());
-					Utils::Win32::File::Create(targetPath, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, 0).Write(0, std::span(data));
-				});
-			} catch (const std::exception& e) {
-				std::cout << std::format("Error on {}: {}\n", item.source.begin()->second.front(), e.what());
-			}
-		});
+					importer.ResolveSources(sourceFilesDir);
+					importer.Merge([](std::string ex, std::filesystem::path path, std::vector<uint8_t> data) {
+						std::filesystem::path targetPath;
+						if (ex == "ffxiv")
+							targetPath = std::format(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\ffxiv\0c0000\{0})", path.wstring());
+						else
+							targetPath = std::format(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\ex{0}\0c0{0}00\{1})", ex.substr(2, 1), path.wstring());
+						Utils::Win32::File::Create(targetPath, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, 0).Write(0, std::span(data));
+					});
+				} catch (const std::exception& e) {
+					std::cout << std::format("Error on {}: {}\n", item.source.begin()->second.front(), e.what());
+				}
+			});
+		}
+		tp.WaitOutstanding();
 	}
-	tp.WaitOutstanding();
 	return 0;
 }
