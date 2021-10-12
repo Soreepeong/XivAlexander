@@ -100,7 +100,7 @@ namespace XivAlexDll {
 		std::string Body;
 		std::chrono::zoned_time<std::chrono::seconds> PublishDate;
 		std::string DownloadLink;
-		size_t DownloadSize;
+		size_t DownloadSize{};
 	};
 
 	VersionInformation CheckUpdates();

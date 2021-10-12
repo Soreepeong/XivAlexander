@@ -38,7 +38,7 @@ void Sqex::ThirdParty::TexTools::from_json(const nlohmann::json& j, ModEntry& p)
 	p.DatFile = JsonValueOrDefault(j, "DatFile", ""s, ""s);
 	p.IsDefault = JsonValueOrDefault(j, "IsDefault", false, false);
 	if (const auto it = j.find("ModPackEntry"); it != j.end() && !it->is_null())
-		p.ModPack = std::make_unique<ModPackEntry>(it->get<ModPackEntry>());
+		p.ModPack = it->get<ModPackEntry>();
 }
 
 void Sqex::ThirdParty::TexTools::ModPackPage::from_json(const nlohmann::json& j, Option& p) {

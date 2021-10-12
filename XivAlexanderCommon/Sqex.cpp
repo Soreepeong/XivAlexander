@@ -181,19 +181,19 @@ uint64_t Sqex::BufferedRandomAccessStream::ReadStreamPartial(uint64_t offset, vo
 	return length - out.size_bytes();
 }
 
-Sqex::FileRandomAccessStream::FileRandomAccessStream(Win32::File file, uint64_t offset, uint64_t length)
+Sqex::FileRandomAccessStream::FileRandomAccessStream(Win32::Handle file, uint64_t offset, uint64_t length)
 	: m_file(std::move(file))
 	, m_offset(offset)
-	, m_size(length == UINT64_MAX ? m_file.GetLength() - m_offset : length) {
-	if (const auto filelen = m_file.GetLength(); m_offset + m_size > filelen) {
-		throw std::invalid_argument(std::format("offset({}) + size({}) > file size({} from {})", m_offset, m_size, filelen, m_file.ResolveName()));
+	, m_size(length == UINT64_MAX ? m_file.GetFileSize() - m_offset : length) {
+	if (const auto filelen = m_file.GetFileSize(); m_offset + m_size > filelen) {
+		throw std::invalid_argument(std::format("offset({}) + size({}) > file size({} from {})", m_offset, m_size, filelen, m_file.GetPathName()));
 	}
 }
 
 Sqex::FileRandomAccessStream::FileRandomAccessStream(std::filesystem::path path, uint64_t offset, uint64_t length, bool openImmediately)
 	: m_path(std::move(path))
 	, m_initializationMutex(openImmediately ? nullptr : std::make_shared<std::mutex>())
-	, m_file(openImmediately ? Win32::File::Create(m_path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0) : Win32::File())
+	, m_file(openImmediately ? Win32::Handle::FromCreateFile(m_path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0) : Win32::Handle())
 	, m_offset(offset)
 	, m_size(length == UINT64_MAX ? file_size(m_path) - m_offset : length) {
 	if (const auto filelen = file_size(m_path); m_offset + m_size > filelen) {
@@ -215,12 +215,12 @@ uint64_t Sqex::FileRandomAccessStream::ReadStreamPartial(uint64_t offset, void* 
 		if (const auto mtx = m_initializationMutex) {
 			const auto lock = std::lock_guard(*mtx);
 			if (m_initializationMutex) {
-				m_file = Win32::File::Create(m_path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+				m_file = Win32::Handle::FromCreateFile(m_path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
 				m_initializationMutex = nullptr;
 			}
 		}
 	}
 
 	const auto available = static_cast<size_t>(std::min(length, m_size - offset));
-	return m_file.Read(m_offset + offset, buf, available, Win32::File::PartialIoMode::AllowPartial);
+	return m_file.Read(m_offset + offset, buf, available, Win32::Handle::PartialIoMode::AllowPartial);
 }

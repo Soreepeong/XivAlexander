@@ -191,18 +191,15 @@ void App::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(std::vect
 
 					remove_all(tempExtractionDir);
 
-					const auto hFile = Utils::Win32::Handle(CreateFileW(updateZip.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr),
-						INVALID_HANDLE_VALUE, "CreateFileW({}, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr)", updateZip);
-					LARGE_INTEGER fileSize;
-					if (!GetFileSizeEx(hFile, &fileSize))
-						throw Utils::Win32::Error("GetFileSizeEx");
-					if (fileSize.QuadPart > 128 * 1024 * 1024)
+					const auto hFile = Utils::Win32::Handle::FromCreateFile(updateZip, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING);
+					const auto fileSize = hFile.GetFileSize();
+					if (fileSize > 128 * 1024 * 1024)
 						throw Utils::Win32::Error(Utils::ToUtf8(FindStringResourceEx(Dll::Module(), IDS_UPDATE_FILE_TOO_BIG) + 1));
-					const auto hMapFile = Utils::Win32::Handle(CreateFileMappingW(hFile, nullptr, PAGE_READONLY, fileSize.HighPart, fileSize.LowPart, nullptr), nullptr, "CreateFileMappingW");
-					const auto pMapped = Utils::Win32::Closeable<void*, UnmapViewOfFile>(MapViewOfFile(hMapFile, FILE_MAP_READ, 0, 0, fileSize.LowPart));
+					const auto hFileMapping = Utils::Win32::FileMapping::Create(hFile);
+					const auto fileMappingView = Utils::Win32::FileMapping::View::Create(hFileMapping);
 
-					const auto pArc = libzippp::ZipArchive::fromBuffer(pMapped, fileSize.LowPart);
-					const auto freeArc = Utils::CallOnDestruction([pArc]() {
+					const auto pArc = libzippp::ZipArchive::fromBuffer(*fileMappingView, static_cast<uint32_t>(fileSize));
+					const auto freeArc = Utils::CallOnDestruction([pArc] {
 						pArc->close();
 						delete pArc;
 					});

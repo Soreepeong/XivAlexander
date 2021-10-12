@@ -64,15 +64,15 @@ namespace Sqex::Texture {
 	};
 
 	class FileBackedReadOnlyMipmap : public MipmapStream {
-		const Win32::File m_file;
+		const Win32::Handle m_file;
 
 	public:
-		FileBackedReadOnlyMipmap(uint16_t width, uint16_t height, Format type, Win32::File file)
+		FileBackedReadOnlyMipmap(uint16_t width, uint16_t height, Format type, Win32::Handle file)
 			: MipmapStream(width, height, type)
 			, m_file(std::move(file)) {
 		}
 
-		[[nodiscard]] uint64_t StreamSize() const override { return static_cast<uint32_t>(m_file.GetLength()); }
+		[[nodiscard]] uint64_t StreamSize() const override { return static_cast<uint32_t>(m_file.GetFileSize()); }
 		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override { return m_file.Read(offset, buf, static_cast<size_t>(length)); }
 	};
 }

@@ -7,7 +7,7 @@ struct Sqex::FontCsv::FreeTypeFont::Implementation {
 	class LibraryAccessor;
 
 	FreeTypeFont* const this_;
-	const Win32::File File;
+	const Win32::Handle File;
 	const Win32::FileMapping FileMapping;
 	const Win32::FileMapping::View FileMappingView;
 	const int FaceIndex;
@@ -44,7 +44,7 @@ public:
 
 	Implementation(FreeTypeFont* this_, const std::filesystem::path& path, int faceIndex, float size)
 		: this_(this_)
-		, File(Win32::File::Create(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0))
+		, File(Win32::Handle::FromCreateFile(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0))
 		, FileMapping(Win32::FileMapping::Create(File))
 		, FileMappingView(Win32::FileMapping::View::Create(FileMapping))
 		, FaceIndex(faceIndex)

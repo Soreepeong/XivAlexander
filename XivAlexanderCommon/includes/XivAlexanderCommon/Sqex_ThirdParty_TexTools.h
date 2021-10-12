@@ -26,7 +26,7 @@ namespace Sqex::ThirdParty::TexTools {
 		uint64_t ModSize{};
 		std::string DatFile;
 		bool IsDefault{};
-		std::unique_ptr<ModPackEntry> ModPack;
+		std::optional<ModPackEntry> ModPack;
 	};
 	void to_json(nlohmann::json&, const ModEntry&);
 	void from_json(const nlohmann::json&, ModEntry&);

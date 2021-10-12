@@ -5,19 +5,20 @@
 #include "XaStrings.h"
 
 namespace Utils::Win32 {
-	template <typename T, auto CloserFunction>
+	template <typename T, auto CloserFunction, T NullValue = (T)0>
 	class Closeable {
 	public:
-		static constexpr T Null = reinterpret_cast<T>(nullptr);
+		static constexpr T Null = NullValue;
 
 	protected:
 		T m_object;
 		bool m_bOwnership;
 
 	public:
-		Closeable(std::nullptr_t) : Closeable(Null, false) {}
+		Closeable() : m_object(Null), m_bOwnership(false) {}
+		Closeable(std::nullptr_t) : m_object(Null), m_bOwnership(false) {}
 
-		explicit Closeable(T object = Null, bool ownership = false)
+		Closeable(T object, bool ownership)
 			: m_object(object)
 			, m_bOwnership(object != Null && ownership) {
 		}

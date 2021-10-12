@@ -6,7 +6,7 @@
 #include "Utils_Win32_Process.h"
 #include "Utils_Win32_Resource.h"
 
-HANDLE Utils::Win32::g_hDefaultHeap = 0;
+HANDLE Utils::Win32::g_hDefaultHeap = nullptr;
 
 std::string Utils::Win32::FormatWindowsErrorMessage(unsigned int errorCode, int languageId) {
 	std::set<std::string> messages;
@@ -209,6 +209,15 @@ std::filesystem::path Utils::Win32::EnsureDirectory(const std::filesystem::path&
 	return canonical(path);
 }
 
+std::filesystem::path Utils::Win32::ResolvePathFromFileName(const std::filesystem::path& path, const std::filesystem::path& ext) {
+	std::wstring buf;
+	buf.resize(PATHCCH_MAX_CCH);
+	buf.resize(SearchPathW(nullptr, path.c_str(), ext.empty() ? nullptr : ext.c_str(), PATHCCH_MAX_CCH, &buf[0], nullptr));
+	if (buf.empty())
+		throw std::runtime_error(std::format("path resolve failed for \"{}\" with ext \"{}\"", path, ext));
+	return buf;
+}
+
 void Utils::Win32::SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked, bool bEnabled, std::wstring newText) {
 	MENUITEMINFOW mii = {sizeof(MENUITEMINFOW)};
 	mii.fMask = MIIM_STATE | (!newText.empty() ? MIIM_STRING : 0);
@@ -240,7 +249,7 @@ void Utils::Win32::AddDebugPrivilege() {
 		token = Handle(hToken, INVALID_HANDLE_VALUE, "AddDebugPrivilege: Invalid");
 	}
 
-	if (!EnableTokenPrivilege(token, SE_DEBUG_NAME, TRUE))
+	if (!EnableTokenPrivilege(token, SE_DEBUG_NAME, true))
 		throw Error("AddDebugPrivilege/EnableTokenPrivilege(SeDebugPrivilege)");
 }
 
@@ -272,7 +281,7 @@ std::filesystem::path Utils::Win32::GetMappedImageNativePath(HANDLE hProcess, vo
 }
 
 std::filesystem::path Utils::Win32::ToNativePath(const std::filesystem::path& path) {
-	return File::Create(path.wstring().c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0).ResolveName(false, true);
+	return Handle::FromCreateFile(path.wstring().c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0).GetPathName(false, true);
 }
 
 std::filesystem::path Utils::Win32::GetSystem32Path() {

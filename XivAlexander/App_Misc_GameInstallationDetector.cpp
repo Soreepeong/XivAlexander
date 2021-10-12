@@ -104,7 +104,7 @@ App::Misc::GameInstallationDetector::GameReleaseInfo App::Misc::GameInstallation
 
 	GameReleaseInfo result{};
 	result.RootPath = std::move(deepestLookupPath);
-	result.GameVersion = Utils::Win32::File::Create(gameVersionPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0).Read<char>(0, 256, Utils::Win32::File::PartialIoMode::AllowPartial);
+	result.GameVersion = Utils::Win32::Handle::FromCreateFile(gameVersionPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0).Read<char>(0, 256, Utils::Win32::Handle::PartialIoMode::AllowPartial);
 	for (auto& chr : result.PathSafeGameVersion = result.GameVersion) {
 		for (auto i : "<>:\"/\\|?*") {
 			if (chr == i || chr < 32)

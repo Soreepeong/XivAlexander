@@ -194,7 +194,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				try {
 					create_directories(it->RenameTo);
 
-					const auto renameToDirHandle = Utils::Win32::File::Create(it->RenameTo, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0);
+					const auto renameToDirHandle = Utils::Win32::Handle::FromCreateFile(it->RenameTo, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0);
 
 					const auto newListPath = (it->RenameTo / L"TTMPL.mpl").wstring();
 					std::vector<char> renameInfoBuffer;
@@ -248,7 +248,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 				std::get<1>(entryIt->second) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(
 					entry.FullPath,
-					std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::File{ttmp.DataFile, false}, entry.ModOffset, entry.ModSize)
+					std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::Handle{ttmp.DataFile, false}, entry.ModOffset, entry.ModSize)
 				);
 				std::get<2>(entryIt->second) = ttmp.List.Name;
 			}
@@ -274,7 +274,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 						std::get<1>(entryIt->second) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(
 							entry.FullPath,
-							std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::File{ttmp.DataFile, false}, entry.ModOffset, entry.ModSize)
+							std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::Handle{ttmp.DataFile, false}, entry.ModOffset, entry.ModSize)
 						);
 						std::get<2>(entryIt->second) = std::format("{} ({} > {})", ttmp.List.Name, modGroup.GroupName, option.Name);
 					}
@@ -363,8 +363,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 						.Allocated = true,
 						.Enabled = !exists(ttmpl.parent_path() / "disable"),
 						.ListPath = ttmpl,
-						.List = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{Utils::Win32::File::Create(ttmpl, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)}),
-						.DataFile = Utils::Win32::File::Create(ttmpl.parent_path() / "TTMPD.mpd", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)
+						.List = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{Utils::Win32::Handle::FromCreateFile(ttmpl, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)}),
+						.DataFile = Utils::Win32::Handle::FromCreateFile(ttmpl.parent_path() / "TTMPD.mpd", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)
 					});
 				} catch (const std::exception& e) {
 					Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
@@ -526,8 +526,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		std::string currentCacheKeys("VERSION:1\n");
 		{
 			const auto gameRoot = indexFile.parent_path().parent_path().parent_path();
-			const auto versionFile = Utils::Win32::File::Create(gameRoot / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
-			const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetLength()));
+			const auto versionFile = Utils::Win32::Handle::FromCreateFile(gameRoot / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+			const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetFileSize()));
 			currentCacheKeys += std::format("SQPACK:{}:{}\n", canonical(gameRoot).wstring(), std::string(versionContent.begin(), versionContent.end()));
 		}
 
@@ -543,8 +543,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			if (!exists(file))
 				continue;
 
-			const auto versionFile = Utils::Win32::File::Create(additionalSqpackRootDirectory / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
-			const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetLength()));
+			const auto versionFile = Utils::Win32::Handle::FromCreateFile(additionalSqpackRootDirectory / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+			const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetFileSize()));
 			currentCacheKeys += std::format("SQPACK:{}:{}\n", canonical(additionalSqpackRootDirectory).wstring(), std::string(versionContent.begin(), versionContent.end()));
 
 			readers.emplace_back(std::make_unique<Sqex::Sqpack::Reader>(file));
@@ -553,9 +553,9 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		for (const auto& configFile : Config->Runtime.ExcelTransformConfigFiles.Value()) {
 			uint8_t hash[20]{};
 			try {
-				const auto file = Utils::Win32::File::Create(configFile, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+				const auto file = Utils::Win32::Handle::FromCreateFile(configFile, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
 				CryptoPP::SHA1 sha1;
-				const auto content = file.Read<uint8_t>(0, static_cast<size_t>(file.GetLength()));
+				const auto content = file.Read<uint8_t>(0, static_cast<size_t>(file.GetFileSize()));
 				sha1.Update(content.data(), content.size());
 				sha1.Final(reinterpret_cast<byte*>(hash));
 			} catch (...) {
@@ -573,8 +573,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 		auto needRecreate = true;
 		try {
-			const auto file = Utils::Win32::File::Create(cachedDir / "sources", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
-			const auto content = file.Read<char>(0, static_cast<size_t>(file.GetLength()));
+			const auto file = Utils::Win32::Handle::FromCreateFile(cachedDir / "sources", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+			const auto content = file.Read<char>(0, static_cast<size_t>(file.GetFileSize()));
 			needRecreate = !std::ranges::equal(content, currentCacheKeys);
 		} catch (...) {
 			// pass
@@ -659,8 +659,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				progressPerTask.emplace(exhName, 0);
 			progressWindow.UpdateProgress(0, 1ULL * exhTable.size() * ProgressMaxPerTask);
 			{
-				const auto ttmpl = Utils::Win32::File::Create(cachedDir / "TTMPL.mpl.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
-				const auto ttmpd = Utils::Win32::File::Create(cachedDir / "TTMPD.mpd.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
+				const auto ttmpl = Utils::Win32::Handle::FromCreateFile(cachedDir / "TTMPL.mpl.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
+				const auto ttmpd = Utils::Win32::Handle::FromCreateFile(cachedDir / "TTMPD.mpd.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
 				uint64_t ttmplPtr = 0, ttmpdPtr = 0;
 				std::mutex writeMtx;
 
@@ -1208,7 +1208,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			}
 			std::filesystem::rename(cachedDir / "TTMPL.mpl.tmp", cachedDir / "TTMPL.mpl");
 			std::filesystem::rename(cachedDir / "TTMPD.mpd.tmp", cachedDir / "TTMPD.mpd");
-			Utils::Win32::File::Create(cachedDir / "sources", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0)
+			Utils::Win32::Handle::FromCreateFile(cachedDir / "sources", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0)
 				.Write(0, currentCacheKeys.data(), currentCacheKeys.size());
 		}
 
@@ -1228,22 +1228,51 @@ struct App::Misc::VirtualSqPacks::Implementation {
 	}
 
 	void SetUpVirtualFileFromFileEntries(Sqex::Sqpack::Creator& creator, const std::filesystem::path& indexPath) {
-		std::vector<std::filesystem::path> dirs;
-
-		dirs.emplace_back(indexPath.parent_path().parent_path());
-		dirs.emplace_back(Config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries");
+		std::vector<std::filesystem::path> rootDirs;
+		rootDirs.emplace_back(indexPath.parent_path().parent_path());
+		rootDirs.emplace_back(Config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries");
 
 		for (const auto& dir : Config->Runtime.AdditionalGameResourceFileEntryRootDirectories.Value()) {
 			if (!dir.empty())
-				dirs.emplace_back(Config::TranslatePath(dir));
+				rootDirs.emplace_back(Config::TranslatePath(dir));
 		}
 
-		for (size_t i = 0, i_ = dirs.size(); i < i_; ++i) {
-			dirs.emplace_back(dirs[i] / std::format("{}.win32", creator.DatExpac) / creator.DatName);
-			dirs[i] = dirs[i] / creator.DatExpac / creator.DatName;
+		std::vector<std::pair<std::filesystem::path, std::filesystem::path>> dirs;
+		for (const auto& dir : rootDirs) {
+			dirs.emplace_back(dir / creator.DatExpac / creator.DatName, dir / creator.DatExpac / creator.DatName);
+			dirs.emplace_back(dir / creator.DatExpac / std::format("{}.win32", creator.DatName), dir / creator.DatExpac / std::format("{}.win32", creator.DatName));
 		}
-
-		for (const auto& dir : dirs) {
+		std::filesystem::path pathPrefix;
+		if (const auto datType = indexPath.filename().wstring().substr(0, 2);
+			lstrcmpiW(datType.c_str(), L"0c") == 0)
+			pathPrefix = std::format("music/{}", creator.DatExpac);
+		else if (datType == L"02")
+			pathPrefix = std::format("bg/{}", creator.DatExpac);
+		else if (datType == L"03")
+			pathPrefix = std::format("cut/{}", creator.DatExpac);
+		else if (datType == L"00" && creator.DatExpac == "ffxiv")
+			pathPrefix = "common";
+		else if (datType == L"01" && creator.DatExpac == "ffxiv")
+			pathPrefix = "bgcommon";
+		else if (datType == L"04" && creator.DatExpac == "ffxiv")
+			pathPrefix = "chara";
+		else if (datType == L"05" && creator.DatExpac == "ffxiv")
+			pathPrefix = "shader";
+		else if (datType == L"06" && creator.DatExpac == "ffxiv")
+			pathPrefix = "ui";
+		else if (datType == L"07" && creator.DatExpac == "ffxiv")
+			pathPrefix = "sound";
+		else if (datType == L"08" && creator.DatExpac == "ffxiv")
+			pathPrefix = "vfx";
+		else if (datType == L"0a" && creator.DatExpac == "ffxiv")
+			pathPrefix = "exd";
+		else if (datType == L"0b" && creator.DatExpac == "ffxiv")
+			pathPrefix = "game_script";
+		if (!pathPrefix.empty()) {
+			for (const auto& dir : rootDirs)
+				dirs.emplace_back(dir / pathPrefix, dir);
+		}
+		for (const auto& [dir, relativeTo] : dirs) {
 			if (!is_directory(dir))
 				continue;
 
@@ -1269,7 +1298,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					continue;
 
 				try {
-					const auto result = creator.AddEntryFromFile(relative(file, dir), file);
+					const auto result = creator.AddEntryFromFile(relative(file, relativeTo), file);
 					if (const auto item = result.AnyItem())
 						Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
 							"[{}/{}] {} file {}: (nameHash={:08x}, pathHash={:08x}, fullPathHash={:08x})",
@@ -1304,17 +1333,17 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				std::string currentCacheKeys;
 				{
 					const auto gameRoot = indexPath.parent_path().parent_path().parent_path();
-					const auto versionFile = Utils::Win32::File::Create(gameRoot / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
-					const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetLength()));
+					const auto versionFile = Utils::Win32::Handle::FromCreateFile(gameRoot / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+					const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetFileSize()));
 					currentCacheKeys += std::format("SQPACK:{}:{}\n", canonical(gameRoot).wstring(), std::string(versionContent.begin(), versionContent.end()));
 				}
 
 				if (const auto& configFile = Config->Runtime.OverrideFontConfig.Value(); !configFile.empty()) {
 					uint8_t hash[20]{};
 					try {
-						const auto file = Utils::Win32::File::Create(configFile, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+						const auto file = Utils::Win32::Handle::FromCreateFile(configFile, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
 						CryptoPP::SHA1 sha1;
-						const auto content = file.Read<uint8_t>(0, static_cast<size_t>(file.GetLength()));
+						const auto content = file.Read<uint8_t>(0, static_cast<size_t>(file.GetFileSize()));
 						sha1.Update(content.data(), content.size());
 						sha1.Final(reinterpret_cast<byte*>(hash));
 					} catch (...) {
@@ -1332,8 +1361,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 				auto needRecreate = true;
 				try {
-					const auto file = Utils::Win32::File::Create(cachedDir / "sources", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
-					const auto content = file.Read<char>(0, static_cast<size_t>(file.GetLength()));
+					const auto file = Utils::Win32::Handle::FromCreateFile(cachedDir / "sources", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+					const auto content = file.Read<char>(0, static_cast<size_t>(file.GetFileSize()));
 					needRecreate = !std::ranges::equal(content, currentCacheKeys);
 				} catch (...) {
 					// pass
@@ -1387,8 +1416,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 							maxProgress += stream->StreamSize() * 2;
 						progressWindow.UpdateProgress(progress, maxProgress);
 
-						const auto ttmpl = Utils::Win32::File::Create(cachedDir / "TTMPL.mpl.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
-						const auto ttmpd = Utils::Win32::File::Create(cachedDir / "TTMPD.mpd.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
+						const auto ttmpl = Utils::Win32::Handle::FromCreateFile(cachedDir / "TTMPL.mpl.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
+						const auto ttmpd = Utils::Win32::Handle::FromCreateFile(cachedDir / "TTMPD.mpd.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
 						uint64_t ttmplPtr = 0, ttmpdPtr = 0;
 						std::mutex writeMtx;
 
@@ -1463,7 +1492,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					}
 					std::filesystem::rename(cachedDir / "TTMPL.mpl.tmp", cachedDir / "TTMPL.mpl");
 					std::filesystem::rename(cachedDir / "TTMPD.mpd.tmp", cachedDir / "TTMPD.mpd");
-					Utils::Win32::File::Create(cachedDir / "sources", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0)
+					Utils::Win32::Handle::FromCreateFile(cachedDir / "sources", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0)
 						.Write(0, currentCacheKeys.data(), currentCacheKeys.size());
 				}
 
@@ -1775,7 +1804,7 @@ void App::Misc::VirtualSqPacks::TtmpSet::ApplyChanges(bool announce) {
 	if (bDisabled && Enabled)
 		remove(disableFilePath);
 	else if (!bDisabled && !Enabled)
-		Utils::Win32::File::Create(disableFilePath, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0);
+		Utils::Win32::Handle::FromCreateFile(disableFilePath, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0);
 
 	Utils::SaveJsonToFile(choicesPath, Choices);
 
@@ -1799,8 +1828,8 @@ void App::Misc::VirtualSqPacks::AddNewTtmp(const std::filesystem::path& ttmpl, b
 			.Allocated = true,
 			.Enabled = !exists(ttmpl.parent_path() / "disable"),
 			.ListPath = ttmpl,
-			.List = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{Utils::Win32::File::Create(ttmpl, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)}),
-			.DataFile = Utils::Win32::File::Create(ttmpl.parent_path() / "TTMPD.mpd", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)
+			.List = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{Utils::Win32::Handle::FromCreateFile(ttmpl, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)}),
+			.DataFile = Utils::Win32::Handle::FromCreateFile(ttmpl.parent_path() / "TTMPD.mpd", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)
 		});
 	} catch (const std::exception& e) {
 		m_pImpl->Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,

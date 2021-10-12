@@ -1464,9 +1464,9 @@ std::vector<std::filesystem::path> App::Window::MainWindow::ChooseFileToOpen(std
 // https://stackoverflow.com/a/39097160/1800296
 static bool FileEquals(const std::filesystem::path& filename1, const std::filesystem::path& filename2) {
 	const auto ReadBufSize = 65536;
-	const auto file1 = Utils::Win32::File::Create(filename1, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
-	const auto file2 = Utils::Win32::File::Create(filename2, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
-	const auto size1 = file1.GetLength(), size2 = file2.GetLength();
+	const auto file1 = Utils::Win32::Handle::FromCreateFile(filename1, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+	const auto file2 = Utils::Win32::Handle::FromCreateFile(filename2, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+	const auto size1 = file1.GetFileSize(), size2 = file2.GetFileSize();
 	if (size1 != size2)
 		return false;
 
@@ -1474,8 +1474,8 @@ static bool FileEquals(const std::filesystem::path& filename1, const std::filesy
 	std::string buf2(ReadBufSize, 0);
 	for (uint64_t ptr = 0; ptr < size1; ptr += ReadBufSize) {
 		const auto read = static_cast<size_t>(std::min<uint64_t>(ReadBufSize, size1 - ptr));
-		file1.Read(ptr, &buf1[0], read, Utils::Win32::File::PartialIoMode::AlwaysFull);
-		file2.Read(ptr, &buf2[0], read, Utils::Win32::File::PartialIoMode::AlwaysFull);
+		file1.Read(ptr, &buf1[0], read, Utils::Win32::Handle::PartialIoMode::AlwaysFull);
+		file2.Read(ptr, &buf2[0], read, Utils::Win32::Handle::PartialIoMode::AlwaysFull);
 		if (0 != memcmp(&buf1[0], &buf2[0], read))
 			return false;
 	}
@@ -1604,7 +1604,7 @@ std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& pa
 	auto offerConfiguration = false;
 	{
 		char header[2];
-		const auto f = Utils::Win32::File::Create(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0);
+		const auto f = Utils::Win32::Handle::FromCreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0);
 		f.Read(0, std::span<char>(header));
 
 		if (header[0] == 'P' && header[1] == 'K') {
@@ -1619,7 +1619,7 @@ std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& pa
 			} else {
 				mapping = Utils::Win32::FileMapping::Create(f);
 				mapView = Utils::Win32::FileMapping::View::Create(mapping);
-				pArc = libzippp::ZipArchive::fromBuffer(mapView.AsSpan<char>().data(), static_cast<uint32_t>(f.GetLength()));
+				pArc = libzippp::ZipArchive::fromBuffer(mapView.AsSpan<char>().data(), static_cast<uint32_t>(f.GetFileSize()));
 			}
 			const auto freeArc = Utils::CallOnDestruction([pArc]() {
 				pArc->close();
@@ -1717,14 +1717,14 @@ std::pair<std::filesystem::path, std::string> App::Window::MainWindow::InstallAn
 		&& !fileNameLower.ends_with(L".ttmp2"))
 		return {path, {}};
 
-	const auto file = Utils::Win32::File::Create(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+	const auto file = Utils::Win32::Handle::FromCreateFile(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
 	char buf[2];
 	file.Read(0, buf, 2);
 	if (buf[0] == 'P' && buf[1] == 'K') {
 		const auto msg = InstallTTMP(path, cancelEvent);
 		return std::make_pair(path, msg.empty() ? Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_RESULT_TTMP_INSTALLED)) : msg);
 	}
-	const auto fileSize = file.GetLength();
+	const auto fileSize = file.GetFileSize();
 	if (fileSize > 1048576)
 		throw std::runtime_error("File too big");
 

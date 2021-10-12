@@ -29,6 +29,7 @@ namespace Utils::Win32 {
 
 	std::filesystem::path TranslatePath(const std::filesystem::path& path, const std::filesystem::path& relativeTo);
 	std::filesystem::path EnsureDirectory(const std::filesystem::path& path);
+	std::filesystem::path ResolvePathFromFileName(const std::filesystem::path& path, const std::filesystem::path& ext = {});
 
 	template <typename ... Args>
 	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const wchar_t* format, Args ... args) {

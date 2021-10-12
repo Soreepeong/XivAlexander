@@ -40,7 +40,7 @@ namespace App::Misc {
 			std::filesystem::path ListPath;
 			std::filesystem::path RenameTo;
 			Sqex::ThirdParty::TexTools::TTMPL List;
-			Utils::Win32::File DataFile;
+			Utils::Win32::Handle DataFile;
 			nlohmann::json Choices;
 
 			void FixChoices();

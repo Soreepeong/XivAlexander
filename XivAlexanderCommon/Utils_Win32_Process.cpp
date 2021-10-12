@@ -108,9 +108,9 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 	}
 	if (m_hStdin || m_hStdout || m_hStderr) {
 		siex.StartupInfo.dwFlags |= STARTF_USESTDHANDLES;
-		siex.StartupInfo.hStdInput = m_hStdin ? m_hStdin : GetStdHandle(STD_INPUT_HANDLE);
-		siex.StartupInfo.hStdOutput = m_hStdout ? m_hStdout : GetStdHandle(STD_OUTPUT_HANDLE);
-		siex.StartupInfo.hStdError = m_hStderr ? m_hStderr : GetStdHandle(STD_ERROR_HANDLE);
+		siex.StartupInfo.hStdInput = m_hStdin ? *m_hStdin : GetStdHandle(STD_INPUT_HANDLE);
+		siex.StartupInfo.hStdOutput = m_hStdout ? *m_hStdout : GetStdHandle(STD_OUTPUT_HANDLE);
+		siex.StartupInfo.hStdError = m_hStderr ? *m_hStderr : GetStdHandle(STD_ERROR_HANDLE);
 	}
 
 	std::vector<HANDLE> handles;  // this needs to be here, as ProcThreadAttribute only points here instead of copying the contents
@@ -301,7 +301,7 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStdin(HANDLE h) 
 	if (h == INVALID_HANDLE_VALUE)
 		m_hStdin = nullptr;
 	else if (h == nullptr)
-		m_hStdin = Handle::DuplicateFrom<Handle>(File::Create("nul", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0), true);
+		m_hStdin = Handle::DuplicateFrom<Handle>(Handle::FromCreateFile("nul", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0), true);
 	else
 		m_hStdin = Handle::DuplicateFrom<Handle>(h, true);
 	return *this;
@@ -316,7 +316,7 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStdout(HANDLE h)
 	if (h == INVALID_HANDLE_VALUE)
 		m_hStdout = nullptr;
 	else if (h == nullptr)
-		m_hStdout = Handle::DuplicateFrom<Handle>(File::Create("nul", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0), true);
+		m_hStdout = Handle::DuplicateFrom<Handle>(Handle::FromCreateFile("nul", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0), true);
 	else
 		m_hStdout = Handle::DuplicateFrom<Handle>(h, true);
 	return *this;
@@ -331,7 +331,7 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStderr(HANDLE h)
 	if (h == INVALID_HANDLE_VALUE)
 		m_hStderr = nullptr;
 	else if (h == nullptr)
-		m_hStderr = Handle::DuplicateFrom<Handle>(File::Create("nul", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0), true);
+		m_hStderr = Handle::DuplicateFrom<Handle>(Handle::FromCreateFile("nul", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0), true);
 	else
 		m_hStderr = Handle::DuplicateFrom<Handle>(h, true);
 	return *this;

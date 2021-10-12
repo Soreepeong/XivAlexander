@@ -29,7 +29,7 @@ struct Sqex::Sqpack::Creator::Implementation {
 	std::map<std::pair<uint32_t, uint32_t>, Entry*> m_pathNameTupleEntryPointerMap;
 	std::map<uint32_t, Entry*> m_fullPathEntryPointerMap;
 
-	std::vector<Win32::File> m_openFiles;
+	std::vector<Win32::Handle> m_openFiles;
 
 	std::vector<char> m_sqpackIndexSegment2;
 	std::vector<SqIndex::Segment3Entry> m_sqpackIndexSegment3;
@@ -52,7 +52,7 @@ struct Sqex::Sqpack::Creator::Implementation {
 
 	size_t OpenFile(
 		_In_opt_ std::filesystem::path curItemPath,
-		_In_opt_ Win32::File alreadyOpenedFile = {});
+		_In_opt_ Win32::Handle alreadyOpenedFile = {});
 };
 
 Sqex::Sqpack::Creator::Creator(std::string ex, std::string name, uint64_t maxFileSize)
@@ -68,27 +68,27 @@ Sqex::Sqpack::Creator::~Creator() = default;
 
 size_t Sqex::Sqpack::Creator::Implementation::OpenFile(
 	_In_opt_ std::filesystem::path curItemPath,
-	_In_opt_ Win32::File alreadyOpenedFile
+	_In_opt_ Win32::Handle alreadyOpenedFile
 ) {
 	if (curItemPath.empty()) {
 		if (!alreadyOpenedFile)
 			throw std::invalid_argument("curItemPath and alreadyOpenedFile cannot both be empty");
 		else
-			curItemPath = alreadyOpenedFile.ResolveName();
+			curItemPath = alreadyOpenedFile.GetPathName();
 	}
 
 	size_t found;
 	for (found = 0; found < m_openFiles.size(); ++found) {
-		if (equivalent(m_openFiles[found].ResolveName(), curItemPath)) {
+		if (equivalent(m_openFiles[found].GetPathName(), curItemPath)) {
 			break;
 		}
 	}
 	if (found == m_openFiles.size()) {
 		if (alreadyOpenedFile) {
 			if (!alreadyOpenedFile.HasOwnership())
-				alreadyOpenedFile = Win32::File::DuplicateFrom<Win32::File>(alreadyOpenedFile);
+				alreadyOpenedFile = Win32::Handle::DuplicateFrom<Win32::Handle>(alreadyOpenedFile);
 		} else
-			alreadyOpenedFile = Win32::File::Create(curItemPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+			alreadyOpenedFile = Win32::Handle::FromCreateFile(curItemPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
 
 		m_openFiles.emplace_back(std::move(alreadyOpenedFile));
 	}
@@ -133,12 +133,13 @@ std::vector<Sqex::Sqpack::EntryProvider*> Sqex::Sqpack::Creator::AddEntryResult:
 }
 
 Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::Implementation::AddEntry(std::shared_ptr<EntryProvider> provider, size_t underlyingFileIndex, bool overwriteExisting) {
+	const EntryPathSpec pathSpec = provider->PathSpec();
 	try {
-		if (provider->PathSpec().HasComponentHash()) {
-			const auto it = m_pathNameTupleEntryPointerMap.find(std::make_pair(provider->PathSpec().PathHash, provider->PathSpec().NameHash));
+		if (pathSpec.HasComponentHash()) {
+			const auto it = m_pathNameTupleEntryPointerMap.find(std::make_pair(pathSpec.PathHash, pathSpec.NameHash));
 			if (it != m_pathNameTupleEntryPointerMap.end()) {
 				if (!overwriteExisting) {
-					it->second->Provider->UpdatePathSpec(provider->PathSpec());
+					it->second->Provider->UpdatePathSpec(pathSpec);
 					return {.SkippedExisting = {it->second->Provider.get()}};
 				}
 				it->second->Provider = std::move(provider);
@@ -146,11 +147,11 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::Implementation::Add
 				return {.Replaced = {it->second->Provider.get()}};
 			}
 		}
-		if (provider->PathSpec().FullPathHash != EntryPathSpec::EmptyHashValue) {
-			const auto it = m_fullPathEntryPointerMap.find(provider->PathSpec().FullPathHash);
+		if (pathSpec.FullPathHash != EntryPathSpec::EmptyHashValue) {
+			const auto it = m_fullPathEntryPointerMap.find(pathSpec.FullPathHash);
 			if (it != m_fullPathEntryPointerMap.end()) {
 				if (!overwriteExisting) {
-					it->second->Provider->UpdatePathSpec(provider->PathSpec());
+					it->second->Provider->UpdatePathSpec(pathSpec);
 					return {.SkippedExisting = {it->second->Provider.get()}};
 				}
 				it->second->Provider = std::move(provider);
@@ -161,14 +162,14 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::Implementation::Add
 
 		const auto pProvider = provider.get();
 		auto entry = std::make_unique<Entry>(0, 0, 0, SqIndex::LEDataLocator{0, 0}, 0, 0, std::move(provider), underlyingFileIndex);
-		if (entry->Provider->PathSpec().HasFullPathHash())
-			m_fullPathEntryPointerMap.insert_or_assign(entry->Provider->PathSpec().FullPathHash, entry.get());
-		if (entry->Provider->PathSpec().HasComponentHash())
-			m_pathNameTupleEntryPointerMap.insert_or_assign(std::make_pair(entry->Provider->PathSpec().PathHash, entry->Provider->PathSpec().NameHash), entry.get());
+		if (pathSpec.HasFullPathHash())
+			m_fullPathEntryPointerMap.insert_or_assign(pathSpec.FullPathHash, entry.get());
+		if (pathSpec.HasComponentHash())
+			m_pathNameTupleEntryPointerMap.insert_or_assign(std::make_pair(pathSpec.PathHash, pathSpec.NameHash), entry.get());
 		m_entries.emplace_back(std::move(entry));
 		return {.Added = {pProvider}};
 	} catch (const std::exception& e) {
-		return {.Error = {{provider->PathSpec(), std::string(e.what())}}};
+		return {.Error = {{pathSpec, std::string(e.what())}}};
 	}
 }
 
@@ -191,7 +192,7 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromSqPac
 	for (const auto& entry : reader.Files) {
 		try {
 			result += m_pImpl->AddEntry(
-				reader.GetEntryProvider(entry, Win32::File{m_pImpl->m_openFiles[dataFileIndexToOpenFileIndex[entry.DataFileIndex]], false}),
+				reader.GetEntryProvider(entry, Win32::Handle{m_pImpl->m_openFiles[dataFileIndexToOpenFileIndex[entry.DataFileIndex]], false}),
 				dataFileIndexToOpenFileIndex[entry.DataFileIndex],
 				overwriteExisting);
 		} catch (const std::exception& e) {
@@ -222,7 +223,7 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 	nlohmann::json choices;
 	const auto ttmpdPath = extractedDir / "TTMPD.mpd";
 	const auto ttmpl = ThirdParty::TexTools::TTMPL::FromStream(FileRandomAccessStream{
-		Win32::File::Create(
+		Win32::Handle::FromCreateFile(
 			extractedDir / "TTMPL.mpl", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0
 		)
 	});
@@ -236,10 +237,10 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 		}
 	}
 
-	return AddEntriesFromTTMP(ttmpl, Win32::File::Create(ttmpdPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0), choices, overwriteExisting);
+	return AddEntriesFromTTMP(ttmpl, Win32::Handle::FromCreateFile(ttmpdPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0), choices, overwriteExisting);
 }
 
-Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(const ThirdParty::TexTools::TTMPL& ttmpl, const Win32::File& ttmpd, const nlohmann::json& choices, bool overwriteExisting) {
+Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(const ThirdParty::TexTools::TTMPL& ttmpl, const Win32::Handle& ttmpd, const nlohmann::json& choices, bool overwriteExisting) {
 	if (DatExpac != "ffxiv")
 		return {};
 
@@ -259,7 +260,7 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 		try {
 			addEntryResult += m_pImpl->AddEntry(std::make_shared<RandomAccessStreamAsEntryProviderView>(
 				entry.FullPath,
-				std::make_shared<FileRandomAccessStream>(Win32::File{m_pImpl->m_openFiles[fileIndex], false}, entry.ModOffset, entry.ModSize)
+				std::make_shared<FileRandomAccessStream>(Win32::Handle{m_pImpl->m_openFiles[fileIndex], false}, entry.ModOffset, entry.ModSize)
 			), fileIndex, overwriteExisting);
 		} catch (const std::exception& e) {
 			addEntryResult.Error.emplace(EntryPathSpec{entry.FullPath}, std::string(e.what()));
@@ -291,7 +292,7 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 				try {
 					addEntryResult += m_pImpl->AddEntry(std::make_shared<RandomAccessStreamAsEntryProviderView>(
 						entry.FullPath,
-						std::make_shared<FileRandomAccessStream>(Win32::File{m_pImpl->m_openFiles[fileIndex], false}, entry.ModOffset, entry.ModSize)
+						std::make_shared<FileRandomAccessStream>(Win32::Handle{m_pImpl->m_openFiles[fileIndex], false}, entry.ModOffset, entry.ModSize)
 					), fileIndex, overwriteExisting);
 				} catch (const std::exception& e) {
 					addEntryResult.Error.emplace(EntryPathSpec{entry.FullPath}, std::string(e.what()));
@@ -461,7 +462,7 @@ public:
 class Sqex::Sqpack::Creator::DataView : public RandomAccessStream {
 	const std::vector<uint8_t> m_header;
 	const std::vector<std::unique_ptr<const Implementation::Entry>> m_entries;
-	const std::vector<std::shared_ptr<const Win32::File>> m_openFiles;
+	const std::vector<std::shared_ptr<const Win32::Handle>> m_openFiles;
 
 	const SqData::Header& SubHeader() const {
 		return *reinterpret_cast<const SqData::Header*>(&m_header[sizeof SqpackHeader]);
@@ -480,7 +481,7 @@ class Sqex::Sqpack::Creator::DataView : public RandomAccessStream {
 	mutable std::vector<std::tuple<EntryProvider*, uint64_t, uint64_t>> m_pLastEntryProviders;
 
 public:
-	DataView(const SqpackHeader& header, const SqData::Header& subheader, std::vector<std::unique_ptr<const Implementation::Entry>> entries, std::vector<std::shared_ptr<const Win32::File>> openFiles)
+	DataView(const SqpackHeader& header, const SqData::Header& subheader, std::vector<std::unique_ptr<const Implementation::Entry>> entries, std::vector<std::shared_ptr<const Win32::Handle>> openFiles)
 		: m_header(Concat(header, subheader))
 		, m_entries(std::move(entries))
 		, m_openFiles(std::move(openFiles)) {
@@ -567,10 +568,10 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 	std::vector<SqIndex::FileSegmentEntry2> fileEntries2;
 	std::vector<SqIndex::FolderSegmentEntry> folderEntries;
 
-	std::vector<std::shared_ptr<const Win32::File>> openFiles;
+	std::vector<std::shared_ptr<const Win32::Handle>> openFiles;
 
 	for (auto& f : m_pImpl->m_openFiles)
-		openFiles.emplace_back(std::make_shared<const Win32::File>(std::move(f)));
+		openFiles.emplace_back(std::make_shared<const Win32::Handle>(std::move(f)));
 	m_pImpl->m_openFiles.clear();
 
 	SqpackHeader dataHeader{};
@@ -658,7 +659,7 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 	};
 
 	for (size_t i = 0; i < dataSubheaders.size(); ++i) {
-		std::vector<std::shared_ptr<const Win32::File>> dataOpenFiles;
+		std::vector<std::shared_ptr<const Win32::Handle>> dataOpenFiles;
 		for (const auto j : dataOpenFileIndices[i])
 			dataOpenFiles.emplace_back(openFiles[j]);
 

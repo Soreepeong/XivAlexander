@@ -21,7 +21,7 @@ Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromWave(
 	auto& wfex = *reinterpret_cast<WAVEFORMATEX*>(&wfbuf[0]);
 
 	auto pos = sizeof hdr + hdr.WaveFormatExSize;
-	while (pos < hdr.RemainingSize + 8) {
+	while (pos - 8 < hdr.RemainingSize) {
 		struct CodeAndLen {
 			LE<uint32_t> Code;
 			LE<uint32_t> Len;
@@ -60,11 +60,47 @@ Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromWave(
 	throw std::invalid_argument("No data section found");
 }
 
+Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromOgg(
+	std::vector<uint8_t> headerPages,
+	std::vector<uint8_t> dataPages,
+	uint32_t channels,
+	uint32_t samplingRate,
+	uint32_t loopStartOffset,
+	uint32_t loopEndOffset,
+	std::span<uint32_t> seekTable
+) {
+	std::vector<uint8_t> oggHeaderBytes;
+	oggHeaderBytes.reserve(sizeof SoundEntryOggHeader + std::span(seekTable).size_bytes() + headerPages.size());
+	oggHeaderBytes.resize(sizeof SoundEntryOggHeader);
+	const auto seekTableSpan = std::span(reinterpret_cast<const uint8_t*>(&seekTable[0]), seekTable.size() * sizeof seekTable[0]);
+	oggHeaderBytes.insert(oggHeaderBytes.end(), seekTableSpan.begin(), seekTableSpan.end());
+	oggHeaderBytes.insert(oggHeaderBytes.end(), headerPages.begin(), headerPages.end());
+	auto& oggHeader = *reinterpret_cast<SoundEntryOggHeader*>(&oggHeaderBytes[0]);
+	oggHeader.Version = 0x02;
+	oggHeader.HeaderSize = 0x20;
+	oggHeader.SeekTableSize = static_cast<uint32_t>(seekTableSpan.size_bytes());
+	oggHeader.VorbisHeaderSize = static_cast<uint32_t>(headerPages.size());
+	return Sqex::Sound::ScdWriter::SoundEntry{
+		.Header = {
+			.StreamSize = static_cast<uint32_t>(dataPages.size()),
+			.ChannelCount = channels,
+			.SamplingRate = samplingRate,
+			.Format = SoundEntryHeader::EntryFormat::EntryFormat_Ogg,
+			.LoopStartOffset = loopStartOffset,
+			.LoopEndOffset = loopEndOffset,
+			.StreamOffset = static_cast<uint32_t>(oggHeaderBytes.size()),
+			.Unknown_0x02E = 0,
+		},
+		.ExtraData = std::move(oggHeaderBytes),
+		.Data = std::move(dataPages),
+	};
+}
+
 Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromOgg(const std::function<std::span<uint8_t>(size_t len, bool throwOnIncompleteRead)>& reader) {
 	ogg_sync_state oy{};
 	ogg_sync_init(&oy);
 	const auto oyCleanup = Utils::CallOnDestruction([&oy] { ogg_sync_clear(&oy); });
-	
+
 	vorbis_info vi{};
 	vorbis_info_init(&vi);
 	const auto viCleanup = Utils::CallOnDestruction([&vi] { vorbis_info_clear(&vi); });
@@ -72,16 +108,16 @@ Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromOgg(c
 	vorbis_comment vc{};
 	vorbis_comment_init(&vc);
 	const auto vcCleanup = Utils::CallOnDestruction([&vc] { vorbis_comment_clear(&vc); });
-	
+
 	ogg_stream_state os{};
 	Utils::CallOnDestruction osCleanup;
-	
+
 	std::vector<uint8_t> header;
 	std::vector<uint8_t> data;
 	std::vector<uint32_t> seekTable;
 	std::vector<uint32_t> seekTableSamples;
 	uint32_t loopStartSample = 0, loopEndSample = 0;
-	uint32_t loopStartBytes = 0, loopEndBytes = 0;
+	uint32_t loopStartOffset = 0, loopEndOffset = 0;
 	ogg_page og{};
 	ogg_packet op{};
 	for (size_t packetIndex = 0, pageIndex = 0; ; ) {
@@ -109,39 +145,36 @@ Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromOgg(c
 
 			if (0 != ogg_stream_pagein(&os, &og))
 				throw std::runtime_error("ogg_stream_pagein failed");
-			
+
 			if (packetIndex < 3) {
 				header.insert(header.end(), og.header, og.header + og.header_len);
 				header.insert(header.end(), og.body, og.body + og.body_len);
-			} else {
-				const auto sampleIndex = ogg_page_granulepos(&og);
-				if (loopStartSample && loopStartBytes == 0){
-					if (loopStartSample < sampleIndex)
-						loopStartBytes = seekTable.back();
-					else if (loopStartSample == sampleIndex)
-						loopStartBytes = static_cast<uint32_t>(data.size());
-				}
-					
+			}
+			else {
+				const auto sampleIndexAtEndOfPage = static_cast<uint32_t>(ogg_page_granulepos(&og));
+				if (loopStartSample && loopStartOffset == UINT32_MAX && loopStartSample <= sampleIndexAtEndOfPage)
+					loopStartOffset = seekTable.empty() ? 0 : seekTable.back();
+
 				seekTable.push_back(static_cast<uint32_t>(data.size()));
-				seekTableSamples.push_back(static_cast<uint32_t>(sampleIndex));
+				seekTableSamples.push_back(sampleIndexAtEndOfPage);
 				data.insert(data.end(), og.header, og.header + og.header_len);
 				data.insert(data.end(), og.body, og.body + og.body_len);
 
-				if (loopEndSample && loopEndBytes == 0 && loopEndSample < sampleIndex)
-					loopEndBytes = static_cast<uint32_t>(data.size());
+				if (loopEndSample && loopEndOffset == UINT32_MAX && loopEndSample < sampleIndexAtEndOfPage)
+					loopEndOffset = static_cast<uint32_t>(data.size());
 			}
-			
+
 			for (;; ++packetIndex) {
 				if (auto r = ogg_stream_packetout(&os, &op); r == -1)
 					throw std::runtime_error("ogg_stream_packetout failed");
 				else if (r == 0)
 					break;
-		
+
 				if (packetIndex < 3) {
 					if (const auto res = vorbis_synthesis_headerin(&vi, &vc, &op))
 						throw std::runtime_error(std::format("vorbis_synthesis_headerin failed: {}", res));
 					if (packetIndex == 2) {
-						char **comments=vc.user_comments;
+						char** comments = vc.user_comments;
 						while (*comments) {
 							if (_strnicmp(*comments, "LoopStart=", 10) == 0)
 								loopStartSample = std::strtoul(*comments + 10, nullptr, 10);
@@ -155,37 +188,19 @@ Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromOgg(c
 
 			if (ogg_page_eos(&og)) {
 				const auto sampleIndex = ogg_page_granulepos(&og);
-				if (loopEndSample && !loopEndBytes)
-					loopEndBytes = static_cast<uint32_t>(data.size());
-				std::vector<uint8_t> oggHeaderBytes;
-				oggHeaderBytes.reserve(sizeof SoundEntryOggHeader + std::span(seekTable).size_bytes() + header.size());
-				oggHeaderBytes.resize(sizeof SoundEntryOggHeader);
-				const auto seekTableSpan = std::span(reinterpret_cast<const uint8_t*>(&seekTable[0]), seekTable.size() * sizeof seekTable[0]);
-				oggHeaderBytes.insert(oggHeaderBytes.end(), seekTableSpan.begin(), seekTableSpan.end());
-				oggHeaderBytes.insert(oggHeaderBytes.end(), header.begin(), header.end());
-				auto& oggHeader = *reinterpret_cast<SoundEntryOggHeader*>(&oggHeaderBytes[0]);
-				oggHeader.Version = 0x02;
-				oggHeader.HeaderSize = 0x20;
-				oggHeader.SeekTableSize = static_cast<uint32_t>(seekTableSpan.size_bytes());
-				oggHeader.VorbisHeaderSize = static_cast<uint32_t>(header.size());
-				return Sqex::Sound::ScdWriter::SoundEntry{
-					.Header = {
-						.StreamSize = static_cast<uint32_t>(data.size()),
-						.ChannelCount = static_cast<uint32_t>(vi.channels),
-						.SamplingRate = static_cast<uint32_t>(vi.rate),
-						.Format = SoundEntryHeader::EntryFormat::EntryFormat_Ogg,
-						.LoopStartOffset = loopStartBytes,
-						.LoopEndOffset = loopEndBytes,
-						.StreamOffset = static_cast<uint32_t>(oggHeaderBytes.size()),
-						.Unknown_0x02E = 0,
-					},
-					.ExtraData = std::move(oggHeaderBytes),
-					.Data = std::move(data),
-				};
+				if (loopEndSample && !loopEndOffset)
+					loopEndOffset = static_cast<uint32_t>(data.size());
+
+				return FromOgg(
+					std::move(header), std::move(data), 
+					static_cast<uint32_t>(vi.channels), static_cast<uint32_t>(vi.rate),
+					loopStartOffset, loopEndOffset,
+					std::span(seekTable)
+				);
 			}
 		}
 	}
-	
+
 	throw std::invalid_argument("ogg: eos not found");
 }
 

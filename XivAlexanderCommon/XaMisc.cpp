@@ -319,8 +319,8 @@ std::map<std::pair<char32_t, char32_t>, SSIZE_T> Utils::ParseKerningTable(
 }
 
 nlohmann::json Utils::ParseJsonFromFile(const std::filesystem::path& path, size_t maxSize) {
-	const auto f = Win32::File::Create(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
-	const auto size = f.GetLength();
+	const auto f = Win32::Handle::FromCreateFile(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+	const auto size = f.GetFileSize();
 	if (size > maxSize)
 		throw std::runtime_error("File too big");
 
@@ -335,7 +335,7 @@ void Utils::SaveJsonToFile(const std::filesystem::path& path, const nlohmann::js
 }
 
 void Utils::SaveToFile(const std::filesystem::path& path, std::span<const char> s) {
-	void(Win32::File::Create(path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0).Write(0, s));
+	void(Win32::Handle::FromCreateFile(path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0).Write(0, s));
 }
 
 void std::filesystem::to_json(nlohmann::json& j, const path& value) {

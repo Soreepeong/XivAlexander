@@ -11,9 +11,7 @@
         "Locus \\(Duality\\)"
       ],
       "target": {
-        "path": "music/ex3/.scd",
-        "enable": false,
-        "# comment": "TEA musics in the disc have endings, making it impossible/difficult to find loop points"
+        "path": "music/ex3/bgm_ex3_boss_battle02.scd"
       }
     },
     {
@@ -24,49 +22,77 @@
       ],
       "target": {
         "path": "music/ex3/bgm_ex3_ban_05.scd",
-        "enable": false,
-        "# comment": "TEA musics in the disc have endings, making it impossible/difficult to find loop points"
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ],
+            "length": 205.5
+          },
+          {
+            "sourceOffsets": {
+              "target": 205.5
+            },
+            "channels": [
+              {
+                "source": "target",
+                "channel": 0
+              },
+              {
+                "source": "target",
+                "channel": 1
+              }
+            ]
+          }
+        ],
+        "# comment": [
+          "Fall back to in-game version's loop, instead of blu-ray disc's version with ending.",
+          "Technically, we can reuse the silencing part at the mid of the song, but using that requires figuring out exact timestamp of the section to take."
+        ]
       }
     },
     {
-      "source": {
-        "Rise \\(Journeys\\)": [
-          "DUD_003",
-          "ライズ \\(Journeys\\) ～機工城アレキサンダー：天動編～",
-          "Rise \\(Journeys\\)"
-        ],
-        "Stasis Loop": [
-          "TFEOF_FFXIV_38",
-          "無限停止　～機工城アレキサンダー：天動編～",
-          "Stasis Loop"
-        ]
-      },
+      "source": [
+        "DUD_003",
+        "ライズ \\(Journeys\\) ～機工城アレキサンダー：天動編～",
+        "Rise \\(Journeys\\)"
+      ],
       "target": {
         "path": "music/ex3/bgm_ex3_ban_07.scd",
         "segments": [
           {
             "channels": [
               {
-                "source": "Rise \\(Journeys\\)",
+                "source": "source",
                 "channel": 0
               },
               {
-                "source": "Rise \\(Journeys\\)",
+                "source": "source",
                 "channel": 1
               },
               {
-                "source": "Stasis Loop",
-                "channel": 0
+                "source": "target",
+                "channel": 2
               },
               {
-                "source": "Stasis Loop",
-                "channel": 1
+                "source": "target",
+                "channel": 3
               }
             ]
           }
         ],
         "enable": false,
-        "# comment": "TEA musics in the disc have endings, making it impossible/difficult to find loop points"
+        "# comment": [
+          "In-game Statis Loop has longer repeat cycle than blu-ray version, so we can't use that.",
+          "Blu-ray version has stasis loop in it, which will delay the remainder of the song; will probably need sample block index adjustment"
+        ]
       }
     },
     {
@@ -78,7 +104,7 @@
       "target": {
         "path": "music/ex3/bgm_ex3_ban_08.scd",
         "enable": false,
-        "# comment": "TEA musics in the disc have endings, making it impossible/difficult to find loop points"
+        "# comment": "Blu-ray version has statis loop-esque sequence in it, rendering it incompatible with in-game resource."
       }
     },
     {
@@ -502,8 +528,7 @@
       ],
       "target": {
         "path": "music/ex3/bgm_ex3_myc_04.scd",
-        "enable": false,
-        "# comment": "TODO: Figure this out"
+        "loopOffsetDelta": 80
       }
     },
     {
@@ -558,8 +583,37 @@
       ],
       "target": {
         "path": "music/ex3/bgm_ex3_ban_12.scd",
-        "enable": false,
-        "# comment": "TODO: Fix loop"
+        "loopOffsetDelta": 1,
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ],
+            "length": 72
+          },
+          {
+            "sourceOffsets": {
+              "target": 72
+            },
+            "channels": [
+              {
+                "source": "target",
+                "channel": 0
+              },
+              {
+                "source": "target",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -569,12 +623,41 @@
         "To the Edge"
       ],
       "target": {
-        "path": [
-          "music/ex3/bgm_ex3_ban_11.scd",
-          "music/ex3/bgm_ex3_ban_14.scd"
-        ],
-        "enable": false,
-        "# comment": "TODO: Fix loop; blu-ray version has an ending"
+        "path": "music/ex3/bgm_ex3_ban_11.scd",
+        "# comment": "bgm_ex3_ban_14: intro truncated version",
+        "segments": [
+          {
+            "sourceFilters": {
+              "source": "volume=-3dB"
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ],
+            "length": 432
+          },
+          {
+            "sourceOffsets": {
+              "target": 432
+            },
+            "channels": [
+              {
+                "source": "target",
+                "channel": 0
+              },
+              {
+                "source": "target",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -880,7 +963,7 @@
       "target": {
         "path": "music/ex3/bgm_ex3_ytc_26.scd",
         "enable": false,
-        "# comment": "TODO: Figure this out"
+        "# comment": "Incomplete."
       }
     },
     {
@@ -892,7 +975,7 @@
       "target": {
         "path": "music/ex3/bgm_ex3_ytc_27.scd",
         "enable": false,
-        "# comment": "TODO: Figure this out"
+        "# comment": "Incomplete."
       }
     },
     {
@@ -977,8 +1060,24 @@
         },
         {
           "path": "music/ex3/bgm_ex3_ytc_02.scd",
-          "volume": 0.5,
-          "# comment": "TODO: Figure out volume"
+          "# comment": "Volume is a little bit lower than the above one.",
+          "segments": [
+            {
+              "sourceFilters": {
+                "source": "volume=-5dB"
+              },
+              "channels": [
+                {
+                  "source": "source",
+                  "channel": 0
+                },
+                {
+                  "source": "source",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
         }
       ]
     },
@@ -1020,8 +1119,7 @@
       ],
       "target": {
         "path": "music/ex3/bgm_ex3_event_26.scd",
-        "enable": false,
-        "# comment": "TODO: Figure this out"
+        "loopOffsetDelta": 6.426
       }
     },
     {
