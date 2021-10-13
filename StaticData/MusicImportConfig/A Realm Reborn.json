@@ -1083,15 +1083,47 @@
             ]
           ],
           "filterComplex": "[0:a] [1:a] concat=n=2:v=0:a=1 [res]",
-          "filterComplexOutName": "res"
+          "filterComplexOutName": "[res]"
         }
       },
       "target": [
         {
-          "path": "music/ffxiv/bgm_field_uru_06.scd"
+          "path": "music/ffxiv/bgm_field_uru_06.scd",
+          "segments": [
+            {
+              "length": 97,
+              "channels": [
+                {
+                  "source": "source",
+                  "channel": 0
+                },
+                {
+                  "source": "source",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
         },
         {
-          "path": "music/ffxiv/bgm_event_enterprise.scd"
+          "path": "music/ffxiv/bgm_event_enterprise.scd",
+          "segments": [
+            {
+              "sourceOffsets": {
+                "source": 97
+              },
+              "channels": [
+                {
+                  "source": "source",
+                  "channel": 0
+                },
+                {
+                  "source": "source",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
         }
       ]
     },
