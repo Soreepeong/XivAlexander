@@ -595,7 +595,7 @@
         "Starlit Gateway"
       ],
       "target": {
-        "path": "music/ex2/bgm_season_xmas2017.scd"
+        "path": "music/ffxiv/bgm_season_xmas2017.scd"
       }
     },
     {
@@ -649,7 +649,7 @@
         ]
       },
       "target": {
-        "path": "music/ex2/bgm_pvp_mogi_01.scd",
+        "path": "music/ffxiv/bgm_pvp_mogi_01.scd",
         "segments": [
           {
             "channels": [

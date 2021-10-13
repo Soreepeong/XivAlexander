@@ -78,7 +78,7 @@
         "The Kiss"
       ],
       "target": {
-        "path": "music/ex1/bgm_season_vt.scd"
+        "path": "music/ffxiv/bgm_season_vt.scd"
       }
     },
     {
@@ -225,7 +225,7 @@
       "target": {
         "path": [
           "music/ex1/bgm_ex1_field_skypirates.scd",
-          "music/ex1/bgm_season_vtid.scd"
+          "music/ffxiv/bgm_season_vtid.scd"
         ]
       }
     },

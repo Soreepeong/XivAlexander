@@ -683,27 +683,27 @@
         "Metal"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1.scd",
+        "path": "music/ex1/bgm_ex1_alex03.scd",
         "segments": [
           {
             "channels": [
               {
-                "source": "A Fine Air Forbiddeth",
+                "source": "target",
+                "channel": 0,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              },
+              {
+                "source": "target",
+                "channel": 2,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              },
+              {
+                "source": "source",
                 "channel": 0
               },
               {
-                "source": "A Fine Air Forbiddeth",
+                "source": "source",
                 "channel": 1
-              },
-              {
-                "source": "target",
-                "channel": 1,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
-              },
-              {
-                "source": "target",
-                "channel": 4,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
               },
               {
                 "source": "target",

@@ -81,8 +81,51 @@ void from_json(const nlohmann::json& j, MusicImportTarget& o) {
 	}
 }
 
+struct MusicImportSourceItem {
+	std::vector<std::vector<std::string>> inputFiles;
+	std::string filterComplex;
+	std::string filterComplexOutName;
+};
+
+void from_json(const nlohmann::json& j, MusicImportSourceItem& o) {
+	const char* lastAttempt;
+	try {
+		if (j.is_array()) {
+			lastAttempt = "<array>";
+			if (j.empty())
+				return;
+			if (j.at(0).is_array())
+				o.inputFiles = j.get<decltype(o.inputFiles)>();
+			else
+				o.inputFiles = { j.get<std::vector<std::string>>() };
+		} else if (j.is_string()) {
+			lastAttempt = "<string>";
+			o.inputFiles = {{ j.get<std::string>() }};
+		} else {
+			if (const auto it = j.find(lastAttempt = "inputFiles"); it == j.end())
+				throw std::invalid_argument("required key missing");
+			else if (it->is_array()) {
+				if (!it->empty()) {
+					if (it->at(0).is_array())
+						o.inputFiles = it->get<std::vector<std::vector<std::string>>>();
+					else
+						o.inputFiles = { it->get<std::vector<std::string>>() };
+				}
+			} else if (it->is_string())
+				o.inputFiles = {{ it->get<std::string>() }};
+			else
+				throw std::invalid_argument("only array, object, or string is accepted");
+
+			o.filterComplex = j.value(lastAttempt = "filterComplex", std::string());
+			o.filterComplexOutName = j.value(lastAttempt = "filterComplexOutName", std::string());
+		}
+	} catch (const std::exception& e) {
+		throw std::invalid_argument(std::format("[{}] {}", lastAttempt, e.what()));
+	}
+}
+
 struct MusicImportItem {
-	std::map<std::string, std::vector<std::string>> source;
+	std::map<std::string, MusicImportSourceItem> source;
 	std::vector<MusicImportTarget> target;
 };
 
@@ -92,13 +135,11 @@ void from_json(const nlohmann::json& j, MusicImportItem& o) {
 		if (const auto it = j.find(lastAttempt = "source"); it == j.end())
 			throw std::invalid_argument("required key missing");
 		else if (it->is_object())
-			o.source = it->get<std::map<std::string, std::vector<std::string>>>();
-		else if (it->is_array())
-			o.source = { {"source", it->get<std::vector<std::string>>()} };
-		else if (it->is_string())
-			o.source = { {"source", {it->get<std::string>()} } };
+			o.source = it->get<std::map<std::string, MusicImportSourceItem>>();
+		else if (it->is_array() || it->is_string())
+			o.source = {{"source", it->get<MusicImportSourceItem>()}};
 		else
-			throw std::invalid_argument("only array, object, or string is accepted");
+			throw std::invalid_argument("only array or object is accepted");
 
 		if (const auto it = j.find(lastAttempt = "target"); it == j.end())
 			throw std::invalid_argument("required key missing");
@@ -139,27 +180,12 @@ class MusicImporter {
 		std::vector<float> m_buffer;
 
 	public:
-		FloatPcmSource(const std::filesystem::path& path, const std::filesystem::path& ffmpegPath, int forceSamplingRate = 0, std::string audioFilters = {}) {
-			auto [hStdoutRead, hStdoutWrite] = Utils::Win32::Handle::FromCreatePipe();
-			auto builder = Utils::Win32::ProcessBuilder();
-			builder
-				.WithPath(ffmpegPath)
-				.WithStdout(std::move(hStdoutWrite));
-				
-			builder.WithAppendArgument("-hide_banner");
-			builder.WithAppendArgument("-i").WithAppendArgument(path.wstring());
-			builder.WithAppendArgument("-f").WithAppendArgument("f32le");
-			if (forceSamplingRate)
-				builder.WithAppendArgument("-ar").WithAppendArgument("{}", forceSamplingRate);
-			if (!audioFilters.empty())
-				builder.WithAppendArgument("-filter:a").WithAppendArgument(audioFilters);
-			builder.WithAppendArgument("-");
-
-			m_hReaderProcess = builder.Run().first;
-			m_hStdoutReader = std::move(hStdoutRead);
-		}
-		
-		FloatPcmSource(std::string originalFormat, std::function<std::span<uint8_t>(size_t len, bool throwOnIncompleteRead)> linearReader, const std::filesystem::path& ffmpegPath, int forceSamplingRate = 0, std::string audioFilters = {}) {
+		FloatPcmSource(
+			const MusicImportSourceItem& sourceItem,
+			std::vector<std::filesystem::path> resolvedPaths,
+			std::function<std::span<uint8_t>(size_t len, bool throwOnIncompleteRead)> linearOggReader,
+			const std::filesystem::path& ffmpegPath, int forceSamplingRate = 0, std::string audioFilters = {}
+		) {
 			auto [hStdinRead, hStdinWrite] = Utils::Win32::Handle::FromCreatePipe();
 			auto [hStdoutRead, hStdoutWrite] = Utils::Win32::Handle::FromCreatePipe();
 			auto builder = Utils::Win32::ProcessBuilder();
@@ -167,26 +193,53 @@ class MusicImporter {
 				.WithPath(ffmpegPath)
 				.WithStdin(std::move(hStdinRead))
 				.WithStdout(std::move(hStdoutWrite));
-				
+			
+			auto useOggPipe = false;
 			builder.WithAppendArgument("-hide_banner");
-			builder.WithAppendArgument("-f").WithAppendArgument(originalFormat);
-			builder.WithAppendArgument("-i").WithAppendArgument("-");
+			for (size_t i = 0; i < sourceItem.inputFiles.size(); ++i) {
+				if (sourceItem.inputFiles.at(i).empty()) {
+					builder.WithAppendArgument("-f").WithAppendArgument("ogg");
+					builder.WithAppendArgument("-i").WithAppendArgument("-");
+					useOggPipe = true;
+				} else
+					builder.WithAppendArgument("-i").WithAppendArgument(resolvedPaths[i].wstring());
+			}
 			builder.WithAppendArgument("-f").WithAppendArgument("f32le");
+			if (sourceItem.filterComplex.empty()) {
+				if (forceSamplingRate && audioFilters.empty())
+					builder.WithAppendArgument("-filter:a").WithAppendArgument("aresample={}:resampler=soxr", forceSamplingRate);
+				else if (forceSamplingRate && !audioFilters.empty())
+					builder.WithAppendArgument("-filter:a").WithAppendArgument("aresample={}:resampler=soxr,{}", forceSamplingRate, audioFilters);
+				else if (!forceSamplingRate && !audioFilters.empty())
+					builder.WithAppendArgument("-filter:a").WithAppendArgument(audioFilters);
+			} else {
+				if (!forceSamplingRate && audioFilters.empty())
+					builder.WithAppendArgument("-map").WithAppendArgument(sourceItem.filterComplexOutName);
+				else if (forceSamplingRate && audioFilters.empty())
+					builder.WithAppendArgument("-filter_complex").WithAppendArgument("{}; {} aresample={}:resampler=soxr [_xa_final_output]", sourceItem.filterComplex, sourceItem.filterComplexOutName, forceSamplingRate)
+						.WithAppendArgument("-map").WithAppendArgument("[_xa_final_output]");
+				else if (!forceSamplingRate && !audioFilters.empty())
+					builder.WithAppendArgument("-filter_complex").WithAppendArgument("{}; {} {} [_xa_final_output]", sourceItem.filterComplex, sourceItem.filterComplexOutName, audioFilters)
+					.WithAppendArgument("-map").WithAppendArgument("[_xa_final_output]");
+				else if (forceSamplingRate && !audioFilters.empty())
+					builder.WithAppendArgument("-filter_complex").WithAppendArgument("{}; {} aresample={}:resampler=soxr,{} [_xa_final_output]", sourceItem.filterComplex, sourceItem.filterComplexOutName, forceSamplingRate, audioFilters)
+					.WithAppendArgument("-map").WithAppendArgument("[_xa_final_output]");
+				builder.WithStderr(GetStdHandle(STD_ERROR_HANDLE));
+			}
 			if (forceSamplingRate)
 				builder.WithAppendArgument("-ar").WithAppendArgument("{}", forceSamplingRate);
-			if (!audioFilters.empty())
-				builder.WithAppendArgument("-filter:a").WithAppendArgument("aresample=resampler=soxr, " + audioFilters);
-			else
-				builder.WithAppendArgument("-filter:a").WithAppendArgument("aresample=resampler=soxr");
 			builder.WithAppendArgument("-");
 
 			m_hReaderProcess = builder.Run().first;
 			m_hStdoutReader = std::move(hStdoutRead);
 
-			m_hStdinWriterThread = Utils::Win32::Thread(L"MusicImporter::Source", [hStdinWriter = std::move(hStdinWrite), linearReader = std::move(linearReader)] {
+			if (!useOggPipe)
+				return;
+
+			m_hStdinWriterThread = Utils::Win32::Thread(L"MusicImporter::Source", [hStdinWriter = std::move(hStdinWrite), linearOggReader = std::move(linearOggReader)]{
 				try {
 					while (true) {
-						const auto read = linearReader(8192, false);
+						const auto read = linearOggReader(8192, false);
 						if (read.empty())
 							break;
 						hStdinWriter.Write(0, read);
@@ -198,7 +251,7 @@ class MusicImporter {
 				}
 			});
 		}
-
+		
 		~FloatPcmSource() {
 			if (m_hReaderProcess)
 				m_hReaderProcess.Terminate(0);
@@ -292,8 +345,8 @@ class MusicImporter {
 	MusicImportItem m_config;
 	const std::filesystem::path m_ffmpeg, m_ffprobe;
 
-	std::map<std::string, std::vector<std::wregex>> m_sourceNamePatterns;
-	std::map<std::string, std::filesystem::path> m_sources;
+	std::map<std::string, std::vector<std::vector<std::wregex>>> m_sourceNamePatterns;
+	std::map<std::string, std::vector<std::filesystem::path>> m_sources;
 	std::vector<std::vector<std::shared_ptr<Sqex::Sound::ScdReader>>> m_targetOriginals;
 	
 	struct SourceSet {
@@ -313,12 +366,24 @@ public:
 		: m_config(std::move(config))
 		, m_ffmpeg(std::move(ffmpeg))
 		, m_ffprobe(std::move(ffprobe)) {
-		for (const auto& [sourceName, fileNamePatterns] : m_config.source) {
-			auto& patterns = m_sourceNamePatterns[sourceName];
-			for (const auto& pattern : fileNamePatterns) {
-				patterns.emplace_back(std::wregex(Utils::FromUtf8(pattern), std::wregex::icase));
+		for (const auto& [sourceName, source] : m_config.source) {
+			m_sources[sourceName].resize(source.inputFiles.size());
+			auto& compiledSources = m_sourceNamePatterns[sourceName];
+			for (size_t i = 0; i < source.inputFiles.size(); ++i) {
+				const auto& patterns = source.inputFiles.at(i);
+				compiledSources.emplace_back();
+				for (const auto& pattern : patterns)
+					compiledSources.back().emplace_back(std::wregex(Utils::FromUtf8(pattern), std::wregex::icase));
 			}
 		}
+
+		if (!m_config.source.contains("target")) {
+			m_config.source["target"] = MusicImportSourceItem{
+				.inputFiles = {{}}
+			};
+			m_sources["target"] = {};
+		}
+
 		m_targetOriginals.resize(m_config.target.size());
 	}
 
@@ -335,29 +400,32 @@ public:
 	bool ResolveSources(const std::filesystem::path& dir) {
 		auto allFound = true;
 		for (const auto& item : std::filesystem::directory_iterator(dir)) {
-			for (const auto& [sourceName, fileNamePatterns] : m_sourceNamePatterns) {
-				if (m_sources.contains(sourceName))
-					continue;
-				
-				for (const auto& pattern : fileNamePatterns) {
-					if (std::regex_search(item.path().filename().wstring(), pattern)) {
-						try {
-							const auto probe = RunProbe(item.path(), m_ffprobe).at("streams").at(0);
-							m_sourceInfo[sourceName] = {
-								.Rate = static_cast<uint32_t>(std::strtoul(probe.at("sample_rate").get<std::string>().c_str(), nullptr, 10)),
-								.Channels = probe.at("channels").get<uint32_t>(),
-							};
-							m_sources[sourceName] = item.path();
-							break;
-						} catch (const std::exception&) {
-							// TODO: notify user
+			for (const auto& [sourceName, source] : m_sourceNamePatterns) {
+				bool found = true;
+
+				for (size_t i = 0; i < source.size(); ++i) {
+					if (!m_sources[sourceName][i].empty())
+						continue;
+					found = false;
+					const auto& patterns = source.at(i);
+					for (const auto& pattern : patterns) {
+						if (std::regex_search(item.path().filename().wstring(), pattern)) {
+							try {
+								const auto probe = RunProbe(item.path(), m_ffprobe).at("streams").at(0);
+								m_sourceInfo[sourceName] = {
+									.Rate = static_cast<uint32_t>(std::strtoul(probe.at("sample_rate").get<std::string>().c_str(), nullptr, 10)),
+									.Channels = probe.at("channels").get<uint32_t>(),
+								};
+								m_sources[sourceName][i] = item.path();
+								break;
+							} catch (const std::exception&) {
+								// TODO: notify user
+							}
 						}
 					}
 				}
-				if (m_sources.contains(sourceName))
-					continue;
 
-				allFound = false;
+				allFound &= found;
 			}
 		}
 		return allFound;
@@ -382,6 +450,8 @@ private:
 	std::vector<uint8_t> MergeSingle(MusicImportTarget& targetSet, size_t targetIndex, size_t pathIndex) {
 		auto& originalInfo = m_sourceInfo["target"];
 		auto& scdReader = m_targetOriginals[targetIndex][pathIndex];
+		if (!scdReader)
+			throw std::runtime_error(std::format("file {} not found", m_config.target.at(targetIndex).path[pathIndex].wstring()));
 		const auto originalEntry = scdReader->GetSoundEntry(0);
 		const auto originalOgg = originalEntry.GetOggFile();
 		const auto originalOggStream = Sqex::MemoryRandomAccessStream(originalOgg);
@@ -404,7 +474,7 @@ private:
 			}
 		}
 		
-		std::cout << std::format("{:.3f} -> {:.3f}\n", 1. * loopStartBlockIndex / originalInfo.Rate, 1. * loopEndBlockIndex / originalInfo.Rate);
+		// std::cout << std::format("{:.3f} -> {:.3f}\n", 1. * loopStartBlockIndex / originalInfo.Rate, 1. * loopEndBlockIndex / originalInfo.Rate);
 
 		uint32_t targetRate = 0;
 		for (const auto& targetInfo : m_sourceInfo | std::views::values)
@@ -419,16 +489,16 @@ private:
 		if (targetSet.loopLengthDivisor != 1) {
 			loopEndBlockIndex = loopStartBlockIndex + (loopEndBlockIndex - loopStartBlockIndex) / targetSet.loopLengthDivisor;
 		}
-		std::cout << std::format("{:.3f} -> {:.3f}\n", 1. * loopStartBlockIndex / targetRate, 1. * loopEndBlockIndex / targetRate);
+		// std::cout << std::format("{:.3f} -> {:.3f}\n", 1. * loopStartBlockIndex / targetRate, 1. * loopEndBlockIndex / targetRate);
 
 		if (targetSet.segments.empty()) {
-			if (m_sources.size() > 1)
+			if (m_sources.size() != 2)  // user-specified and "target"
 				throw std::invalid_argument("segments must be set when there are more than one source");
 			targetSet.segments = std::vector<MusicImportSegmentItem>{
 				{
 					.channels = std::vector<MusicImportTargetChannel>{
-						{.source = m_sources.begin()->first, .channel = 0},
-						{.source = m_sources.begin()->first, .channel = 1},
+						{.source = m_sources.begin()->first == "target" ? m_sources.rbegin()->first : m_sources.begin()->first, .channel = 0},
+						{.source = m_sources.begin()->first == "target" ? m_sources.rbegin()->first : m_sources.begin()->first, .channel = 1},
 					},
 				},
 			};
@@ -520,14 +590,12 @@ private:
 				const auto ffmpegFilter = segment.sourceFilters.contains(name) ? segment.sourceFilters.at(name) : std::string();
 				uint32_t minBlockIndex = 0;
 				double threshold = 0.1;
-				if (name == "target") {
-					info.Reader = std::make_unique<FloatPcmSource>("ogg", originalOggStream.AsLinearReader<uint8_t>(), m_ffmpeg, targetRate, ffmpegFilter);
-					minBlockIndex = currentBlockIndex;
-				} else {
-					info.Reader = std::make_unique<FloatPcmSource>(m_sources[name], m_ffmpeg, targetRate, ffmpegFilter);
-				}
+				info.Reader = std::make_unique<FloatPcmSource>(m_config.source.at(name), m_sources.at(name), originalOggStream.AsLinearReader<uint8_t>(), m_ffmpeg, targetRate, ffmpegFilter);
 				if (segment.sourceOffsets.contains(name))
 					minBlockIndex = static_cast<uint32_t>(targetRate * segment.sourceOffsets.at(name));
+				else if (name == "target")
+					minBlockIndex = currentBlockIndex;
+
 				info.ReadBuf.clear();
 				info.ReadBufPtr = 0;
 				if (segment.sourceThresholds.contains(name))
@@ -614,7 +682,9 @@ private:
 								stopSegment = true;
 								break;
 							} else
-								throw std::runtime_error(std::format("not expecting eof yet ({}/{})", currentBlockIndex, segmentEndBlockIndex));
+								throw std::runtime_error(std::format("not expecting eof yet ({}/{}: {:.3f}s)",
+									currentBlockIndex, segmentEndBlockIndex,
+									1. / targetRate * (segmentEndBlockIndex - currentBlockIndex)));
 						}
 					}
 					buf[i][bufptr] = pSource->ReadBuf[pSource->ReadBufPtr + sourceChannelIndex];
@@ -774,55 +844,64 @@ int main() {
 		{LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ex3\0c0300.win32.index)"},
 	};
 	
-	for (auto& [confFile, sourceFilesDir] : std::vector<std::pair<std::filesystem::path, std::filesystem::path>> {
+	for (auto& [confFile, sourceFilesDir] : std::vector<std::pair<std::filesystem::path, std::filesystem::path>>{
+		{LR"(..\StaticData\MusicImportConfig\Before Meteor.json)", LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 1.0 - Before Meteor)"},
+		{LR"(..\StaticData\MusicImportConfig\A Realm Reborn.json)", LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 2.0 - A Realm Reborn)"},
+		{LR"(..\StaticData\MusicImportConfig\Before The Fall.json)", LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 2.5 - Before The Fall)"},
 		{LR"(..\StaticData\MusicImportConfig\Heavensward.json)", LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 3.0 - Heavensward)"},
+		{LR"(..\StaticData\MusicImportConfig\The Far Edge Of Fate.json)", LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 3.5 - The Far Edge Of Fate)"},
+		{LR"(..\StaticData\MusicImportConfig\Stormblood.json)", LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 4.0 - Stormblood)"},
 		{LR"(..\StaticData\MusicImportConfig\Monster Hunter World.json)", LR"(D:\OneDrive\Musics\Sorted by OSTs\Monster Hunter World\Monster Hunter World Original Soundtrack)"},
 		{LR"(..\StaticData\MusicImportConfig\Shadowbringers.json)", LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.0 - Shadowbringers)"},
 		{LR"(..\StaticData\MusicImportConfig\Death Unto Dawn.json)", LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn)"},
 	}) {
-		confFile = canonical(confFile);
-		sourceFilesDir = canonical(sourceFilesDir);
-		MusicImportConfig conf;
-		from_json(Utils::ParseJsonFromFile(confFile), conf);
+		try {
+			confFile = canonical(confFile);
+			sourceFilesDir = canonical(sourceFilesDir);
+			MusicImportConfig conf;
+			from_json(Utils::ParseJsonFromFile(confFile), conf);
 
-		auto tp = Utils::Win32::TpEnvironment(IsDebuggerPresent() ? 1 : 0);
-		// auto tp = Utils::Win32::TpEnvironment();
-		for (const auto& item : conf.items) {
-			tp.SubmitWork([&item, &readers, &sourceFilesDir] {
-				try {
-					bool allTargetExists = true;
-					MusicImporter importer(item, Utils::Win32::ResolvePathFromFileName("ffmpeg.exe"), Utils::Win32::ResolvePathFromFileName("ffprobe.exe"));
-					importer.LoadTargetInfo([&readers, &allTargetExists](std::string ex, std::filesystem::path path) -> std::shared_ptr<Sqex::Sound::ScdReader> {
-						const auto targetPath = std::filesystem::path(std::format(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\{0})", path.wstring()));
-						allTargetExists &= exists(targetPath);
+			auto tp = Utils::Win32::TpEnvironment(IsDebuggerPresent() ? 1 : 0);
+			// auto tp = Utils::Win32::TpEnvironment();
+			for (const auto& item : conf.items) {
+				tp.SubmitWork([&confFile, &item, &readers, &sourceFilesDir] {
+					try {
+						bool allTargetExists = true;
+						MusicImporter importer(item, Utils::Win32::ResolvePathFromFileName("ffmpeg.exe"), Utils::Win32::ResolvePathFromFileName("ffprobe.exe"));
+						importer.LoadTargetInfo([&readers, &allTargetExists](std::string ex, std::filesystem::path path) -> std::shared_ptr<Sqex::Sound::ScdReader> {
+							const auto targetPath = std::filesystem::path(std::format(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\{0})", path.wstring()));
+							allTargetExists &= exists(targetPath);
 
-						if (ex == "ffxiv")
-							return std::make_shared<Sqex::Sound::ScdReader>(readers[0][path]);
-						else if (ex == "ex1")
-							return std::make_shared<Sqex::Sound::ScdReader>(readers[1][path]);
-						else if (ex == "ex2")
-							return std::make_shared<Sqex::Sound::ScdReader>(readers[2][path]);
-						else if (ex == "ex3")
-							return std::make_shared<Sqex::Sound::ScdReader>(readers[3][path]);
-						else
-							return nullptr;
-					});
-					if (allTargetExists)
-						return;
+							if (ex == "ffxiv")
+								return std::make_shared<Sqex::Sound::ScdReader>(readers[0][path]);
+							else if (ex == "ex1")
+								return std::make_shared<Sqex::Sound::ScdReader>(readers[1][path]);
+							else if (ex == "ex2")
+								return std::make_shared<Sqex::Sound::ScdReader>(readers[2][path]);
+							else if (ex == "ex3")
+								return std::make_shared<Sqex::Sound::ScdReader>(readers[3][path]);
+							else
+								return nullptr;
+						});
+						if (allTargetExists)
+							return;
 			
-					importer.ResolveSources(sourceFilesDir);
-					importer.Merge([](std::string ex, std::filesystem::path path, std::vector<uint8_t> data) {
-						const auto targetPath = std::filesystem::path(std::format(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\{0})", path.wstring()));
-						create_directories(targetPath.parent_path());
-						Utils::Win32::Handle::FromCreateFile(targetPath, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, 0).Write(0, std::span(data));
-						std::cout << std::format("Done: {}\n", path.wstring());
-					});
-				} catch (const std::exception& e) {
-					std::cout << std::format("Error on {}: {}\n", item.source.begin()->second.front(), e.what());
-				}
-			});
+						importer.ResolveSources(sourceFilesDir);
+						importer.Merge([](std::string ex, std::filesystem::path path, std::vector<uint8_t> data) {
+							const auto targetPath = std::filesystem::path(std::format(LR"(C:\Users\SP\AppData\Roaming\XivAlexander\ReplacementFileEntries\{0})", path.wstring()));
+							create_directories(targetPath.parent_path());
+							Utils::Win32::Handle::FromCreateFile(targetPath, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, 0).Write(0, std::span(data));
+							std::cout << std::format("Done: {}\n", path.wstring());
+						});
+					} catch (const std::exception& e) {
+						std::cout << std::format("Error on {}:{}: {}\n", confFile.filename().wstring(), item.source.begin()->second.inputFiles.front().front(), e.what());
+					}
+				});
+			}
+			tp.WaitOutstanding();
+		} catch (const std::exception& e) {
+			std::cout << std::format("Error on {}: {}\n", confFile.filename().wstring(), e.what());
 		}
-		tp.WaitOutstanding();
 	}
 	return 0;
 }
