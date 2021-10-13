@@ -1,0 +1,643 @@
+{
+  "name": "Final Fantasy XIV - 3.5 - The Far Edge Of Fate",
+  "purchaseLinks": {
+    "amazon.co.jp": "https://www.amazon.co.jp/dp/B06XRQCZX9/"
+  },
+  "items": [
+    {
+      "source": [
+        "00000",
+        "TFEOF_FFXIV_01",
+        "魔神　～魔神セフィロト討滅戦～",
+        "Fiend"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_ban_sephiroth02.scd"
+      }
+    },
+    {
+      "source": [
+        "00001",
+        "TFEOF_FFXIV_02",
+        "上り階段をくだれ　～星海観測 逆さの塔～",
+        "Down the Up Staircase"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_dravanial_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00002",
+        "TFEOF_FFXIV_03",
+        "踊る人形カルコブリーナ　～蒼天～",
+        "Dancing Calcabrina"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_dravanial_03.scd"
+      }
+    },
+    {
+      "source": [
+        "00003",
+        "TFEOF_FFXIV_04",
+        "逆襲の咆哮",
+        "Revenge Twofold"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_boss05.scd"
+      }
+    },
+    {
+      "source": [
+        "00004",
+        "TFEOF_FFXIV_05",
+        "分かたれし者たち",
+        "Piece of Mind"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_banfort_gunasu_good.scd"
+      }
+    },
+    {
+      "source": [
+        "00005",
+        "TFEOF_FFXIV_06",
+        "繋がりし者たち",
+        "No Sound, No Scutter"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_banfort_gunasu_bad.scd"
+      }
+    },
+    {
+      "source": [
+        "00006",
+        "TFEOF_FFXIV_07",
+        "純愛の口づけ",
+        "The Kiss"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_season_vt.scd"
+      }
+    },
+    {
+      "source": [
+        "00007",
+        "TFEOF_FFXIV_08",
+        "餓えた狼　～ザ・フィースト～",
+        "Starved"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_pvp01.scd",
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              },
+              {
+                "source": "target",
+                "channel": 2
+              },
+              {
+                "source": "target",
+                "channel": 3
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": [
+        "00008",
+        "TFEOF_FFXIV_09",
+        "古の都　～神聖遺跡 古アムダプール市街～",
+        "The Ancient City"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_komuda2.scd"
+      }
+    },
+    {
+      "source": [
+        "00009",
+        "TFEOF_FFXIV_10",
+        "メタル：ブルートジャスティスモード　～機工城アレキサンダー：律動編～",
+        "Metal [-–] Brute Justice Mode"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_alex04.scd"
+      }
+    },
+    {
+      "source": [
+        "00010",
+        "TFEOF_FFXIV_11",
+        "聖なる助言者",
+        "Holy Consult"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_hullbreaker_hard.scd"
+      }
+    },
+    {
+      "source": [
+        "00011",
+        "TFEOF_FFXIV_12",
+        "詫言の詩　～天竜宮殿 ソール・カイ～",
+        "Apologies"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_dravaniac_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00012",
+        "TFEOF_FFXIV_13",
+        "戦神の教義 ～皇都イシュガルド防衛戦～",
+        "Faith in Her Fury"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_con_ish_01.scd",
+        "# comment": "TODO: Fade in bgm_ex1_event_nidhogg_01"
+      }
+    },
+    {
+      "source": [
+        "00013",
+        "TFEOF_FFXIV_14",
+        "始祖たる幻龍",
+        "Primogenitor"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_mor_02.scd",
+        "# comment": "TODO: Fade in bgm_ex1_event_nidhogg_03"
+      }
+    },
+    {
+      "source": [
+        "00014",
+        "TFEOF_FFXIV_15",
+        "邪竜の急襲　～ニーズヘッグ征竜戦～",
+        "Freefall"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_ban_nidhogg_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00015",
+        "TFEOF_FFXIV_16",
+        "最期の咆哮　～ニーズヘッグ征竜戦～",
+        "Revenge of the Horde"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_ban_nidhogg_03.scd"
+      }
+    },
+    {
+      "source": [
+        "00016",
+        "TFEOF_FFXIV_17",
+        "ただ死者のみが見る",
+        "Only the Dead"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_event_fortemps.scd"
+      }
+    },
+    {
+      "source": [
+        "00017",
+        "TFEOF_FFXIV_18",
+        "自由なる風に吹かれて",
+        "Freedom"
+      ],
+      "target": {
+        "path": [
+          "music/ex1/bgm_ex1_field_skypirates.scd",
+          "music/ex1/bgm_season_vtid.scd"
+        ]
+      }
+    },
+    {
+      "source": {
+        "Teardrops in the Rain": [
+          "00018",
+          "TFEOF_FFXIV_19",
+          "雨と涙に濡れて　～禁忌都市マハ～",
+          "Teardrops in the Rain"
+        ],
+        "Torrent": [
+          "00019",
+          "TFEOF_FFXIV_20",
+          "豪雨に打たれて　～禁忌都市マハ～",
+          "Torrent"
+        ]
+      },
+      "target": {
+        "path": "music/ex1/bgm_ex1_makosen_nomal02.scd",
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "Teardrops in the Rain",
+                "channel": 0
+              },
+              {
+                "source": "Teardrops in the Rain",
+                "channel": 1
+              },
+              {
+                "source": "Torrent",
+                "channel": 0
+              },
+              {
+                "source": "Torrent",
+                "channel": 1
+              },
+              {
+                "source": "target",
+                "channel": 5,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              },
+              {
+                "source": "target",
+                "channel": 3,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": [
+        "00020",
+        "TFEOF_FFXIV_21",
+        "幾千の顔　～禁忌都市マハ～",
+        "A Thousand Faces"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_makosen_boss02.scd"
+      }
+    },
+    {
+      "source": [
+        "00021",
+        "TFEOF_FFXIV_22",
+        "漆黒のエッダ",
+        "Blackbosom"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_deepboss01.scd"
+      }
+    },
+    {
+      "source": [
+        "00022",
+        "TFEOF_FFXIV_23",
+        "メリー・ワンダラー・ワルツ",
+        "The Merry Wanderer Waltz"
+      ],
+      "target": {
+        "path": [
+          "music/ffxiv/bgm_dungeon_deep00.scd",
+          "music/ex1/bgm_ex1_event_hildy.scd"
+        ]
+      }
+    },
+    {
+      "source": [
+        "00023",
+        "TFEOF_FFXIV_24",
+        "黒衣の迷宮",
+        "Emerald Labyrinth"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_deep01.scd"
+      }
+    },
+    {
+      "source": [
+        "00024",
+        "TFEOF_FFXIV_25",
+        "淡き光の夢に",
+        "Enraptured"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_deep02.scd"
+      }
+    },
+    {
+      "source": [
+        "00025",
+        "TFEOF_FFXIV_26",
+        "モードゥナの涙雨",
+        "Tears for Mor Dhona"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_deep03.scd"
+      }
+    },
+    {
+      "source": [
+        "00026",
+        "TFEOF_FFXIV_27",
+        "トイレに行けない夜",
+        "Fog of Phantom"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_event_nivas.scd"
+      }
+    },
+    {
+      "source": [
+        "00027",
+        "TFEOF_FFXIV_28",
+        "死亡報告",
+        "Notice of Death"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_deep01.scd"
+      }
+    },
+    {
+      "source": [
+        "00028",
+        "TFEOF_FFXIV_29",
+        "笛吹大魔王",
+        "Blasphemous Experiment"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_deep02.scd"
+      }
+    },
+    {
+      "source": [
+        "00029",
+        "TFEOF_FFXIV_30",
+        "ガントレット",
+        "The Gauntlet"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_pvp_duel.scd"
+      }
+    },
+    {
+      "source": [
+        "00030",
+        "TFEOF_FFXIV_31",
+        "ハイパーレインボーＺ",
+        "Hyper Rainbow Z"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_season_summerfes02.scd"
+      }
+    },
+    {
+      "source": [
+        "00031",
+        "TFEOF_FFXIV_32",
+        "朝まで大騒ぎ",
+        "Up at Dawn"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_season_halloweend.scd"
+      }
+    },
+    {
+      "source": [
+        "00032",
+        "TFEOF_FFXIV_33",
+        "地殻　～峻厳渓谷 ゼルファトル～",
+        "Grounded"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_xelphatol.scd"
+      }
+    },
+    {
+      "source": [
+        "00033",
+        "TFEOF_FFXIV_34",
+        "ビブリオフォビア　～稀書回収 グブラ幻想図書館～",
+        "Bibliophobia"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_dravanial_04.scd"
+      }
+    },
+    {
+      "source": [
+        "00034",
+        "TFEOF_FFXIV_35",
+        "指数崩壊　～機工城アレキサンダー：天動編～",
+        "Exponential Entropy"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_alex06.scd"
+      }
+    },
+    {
+      "source": [
+        "00035",
+        "TFEOF_FFXIV_36",
+        "刻の外側　～機工城アレキサンダー：天動編～",
+        "Out of Time"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_alex09.scd"
+      }
+    },
+    {
+      "source": [
+        "00036",
+        "TFEOF_FFXIV_37",
+        "メビウス　～機工城アレキサンダー：天動編～",
+        "Moebius"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_alex07.scd"
+      }
+    },
+    {
+      "source": [
+        "00037",
+        "TFEOF_FFXIV_38",
+        "無限停止　～機工城アレキサンダー：天動編～",
+        "Stasis Loop"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_.scd",
+        "enable": false,
+        "# comment": "In-game Statis Loop has longer repeat cycle than blu-ray version, so we can't use that."
+      }
+    },
+    {
+      "source": [
+        "00038",
+        "TFEOF_FFXIV_39",
+        "ライズ　～機工城アレキサンダー：天動編～",
+        "Rise"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_alex08.scd",
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              },
+              {
+                "source": "target",
+                "channel": 2
+              },
+              {
+                "source": "target",
+                "channel": 3
+              }
+            ]
+          }
+        ],
+        "enable": false,
+        "# comment": "In-game Statis Loop has longer repeat cycle than blu-ray version, so we can't use that."
+      }
+    },
+    {
+      "source": [
+        "00039",
+        "TFEOF_FFXIV_40",
+        "永遠の欠片",
+        "Fragments of Forever"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_odayaka.scd"
+      }
+    },
+    {
+      "source": [
+        "00040",
+        "TFEOF_FFXIV_41",
+        "勝利への猛攻",
+        "He who Continues the Attack"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_boss04.scd"
+      }
+    },
+    {
+      "source": [
+        "00041",
+        "TFEOF_FFXIV_42",
+        "死闘　～蒼天～",
+        "Battle to the Death [-–] Heavensward"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_ban_sephiroth01.scd"
+      }
+    },
+    {
+      "source": [
+        "00042",
+        "TFEOF_FFXIV_43",
+        "女神　～女神ソフィア討滅戦～",
+        "Equilibrium"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_ban_sophia.scd"
+      }
+    },
+    {
+      "source": [
+        "00043",
+        "TFEOF_FFXIV_44",
+        "約束の地　～影の国ダン・スカー～",
+        "Promises"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_makosen_field01.scd"
+      }
+    },
+    {
+      "source": [
+        "00044",
+        "TFEOF_FFXIV_45",
+        "影法師　～影の国ダン・スカー～",
+        "Shadow of the Body"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_makosen_field02.scd"
+      }
+    },
+    {
+      "source": [
+        "00045",
+        "TFEOF_FFXIV_46",
+        "砂塵",
+        "Quicksand"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_dravaniah_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00046",
+        "TFEOF_FFXIV_47",
+        "ペンウルティマニア　～鬼神ズルワーン討滅戦～",
+        "Penultimania"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_ban_demon.scd"
+      }
+    },
+    {
+      "source": [
+        "00047",
+        "TFEOF_FFXIV_48",
+        "鬼神　～鬼神ズルワーン討滅戦～",
+        "Infinity"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_ban_demon_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00048",
+        "TFEOF_FFXIV_49",
+        "アナザーブリック　～巨大防壁 バエサルの長城～",
+        "Another Brick"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_gri_09.scd"
+      }
+    },
+    {
+      "source": [
+        "00049",
+        "TFEOF_FFXIV_50",
+        "銀鱗と鋼鉄",
+        "Scale and Steel"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_ban_03_1.scd"
+      }
+    }
+  ]
+}

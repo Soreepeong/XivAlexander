@@ -1,0 +1,851 @@
+{
+  "name": "Final Fantasy XIV - 2.5 - Before The Fall",
+  "purchaseLinks": {
+    "amazon.co.jp": "https://www.amazon.co.jp/dp/B010EB1KL2/"
+  },
+  "items": [
+    {
+      "source": [
+        "00000",
+        "BTF_FFXIV_01",
+        "船乗りには難破を ～蛮神リヴァイアサン前哨戦～",
+        "Wreck to the Seaman"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ban_leviathan1.scd"
+      }
+    },
+    {
+      "source": [
+        "00001",
+        "BTF_FFXIV_02",
+        "混沌の渦動 ～蛮神リヴァイアサン討滅戦～",
+        "Through the Maelstrom"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ban_leviathan2.scd"
+      }
+    },
+    {
+      "source": [
+        "00002",
+        "BTF_FFXIV_03",
+        "魔大戦の傷跡 ～腐敗遺跡 古アムダプール市街～",
+        "The Scars of Battle"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_gri_05.scd"
+      }
+    },
+    {
+      "source": [
+        "00003",
+        "BTF_FFXIV_04",
+        "不屈の挑戦",
+        "Persistence"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_boss_05.scd"
+      }
+    },
+    {
+      "source": [
+        "00004",
+        "BTF_FFXIV_05",
+        "怒れる神々",
+        "Wrath of the Eikons"
+      ],
+      "# comment": "Diabolos's Theme",
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_gri_06.scd"
+      }
+    },
+    {
+      "source": [
+        "00005",
+        "BTF_FFXIV_06",
+        "ノォヴ一味",
+        "Breathless"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_bancolony_sahagin.scd"
+      }
+    },
+    {
+      "source": [
+        "00006",
+        "BTF_FFXIV_07",
+        "クズテツどもの歌",
+        "Gluppity-schlopp"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_bancolony_kobold.scd"
+      }
+    },
+    {
+      "source": [
+        "00007",
+        "BTF_FFXIV_08",
+        "憤怒 ～盟友支援 ブレイフロクスの野営地～",
+        "Fury"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_lim_05.scd"
+      }
+    },
+    {
+      "source": [
+        "00008",
+        "BTF_FFXIV_09",
+        "Pa-Paya"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_season_easter.scd"
+      }
+    },
+    {
+      "source": [
+        "00009",
+        "BTF_FFXIV_10",
+        "キャラバン護衛 ～剣闘領域 ハラタリ修練所～",
+        "Birds of a Feather"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_uru_05.scd"
+      }
+    },
+    {
+      "source": [
+        "00010",
+        "BTF_FFXIV_11",
+        "紅蓮の戦旗の下に ～剣闘領域 ハラタリ修練所～",
+        "Beneath Bloodied Banners"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_uru_06.scd"
+      }
+    },
+    {
+      "source": [
+        "00011",
+        "BTF_FFXIV_12",
+        "でぶチョコボ騎乗",
+        "Big-boned"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ride_debuchocobo.scd"
+      }
+    },
+    {
+      "source": [
+        "00012",
+        "BTF_FFXIV_13",
+        "ビッグブリッヂの死闘 ～新生～",
+        "Battle on the Big Bridge"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_clashonthebigbridge.scd"
+      }
+    },
+    {
+      "source": [
+        "00013",
+        "BTF_FFXIV_14",
+        "混沌の渦動 ～蛮神リヴァイアサン討滅戦：女性版～",
+        "Through the Maelstrom \\(Female Vocals\\)"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ban_leviathan2.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00014",
+        "BTF_FFXIV_15",
+        "メテオ",
+        "Meteor"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_neal.scd"
+      }
+    },
+    {
+      "source": {
+        "Blades": [
+          "00015",
+          "BTF_FFXIV_16",
+          "剣と剣 ～大迷宮 バハムート侵攻編～",
+          "Blades"
+        ],
+        "Spiral": [
+          "00117",
+          "ARR_FFXIV_118",
+          "螺旋",
+          "Spiral"
+        ]
+      },
+      "target": {
+        "path": "music/ffxiv/bgm_con_bahamut_v2.scd",
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "Blades",
+                "channel": 0
+              },
+              {
+                "source": "Blades",
+                "channel": 1
+              },
+              {
+                "source": "Spiral",
+                "channel": 0
+              },
+              {
+                "source": "Spiral",
+                "channel": 1
+              },
+              {
+                "source": "target",
+                "channel": 5,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              },
+              {
+                "source": "target",
+                "channel": 3,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": [
+        "00016",
+        "BTF_FFXIV_17",
+        "戦乱",
+        "Tempest"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_con_neal.scd"
+      }
+    },
+    {
+      "source": [
+        "00017",
+        "BTF_FFXIV_18",
+        "白銀の凶鳥、飛翔せり",
+        "Rise of the White Raven"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_con_carteneaubattle.scd"
+      }
+    },
+    {
+      "source": [
+        "00018",
+        "BTF_FFXIV_19",
+        "地平線の彼方 ～財宝伝説 ハルブレーカー・アイル～",
+        "Horizons Calling"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_lim_06.scd"
+      }
+    },
+    {
+      "source": [
+        "00019",
+        "BTF_FFXIV_20",
+        "何よりも高く",
+        "Far from Home"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_bancolony_ixal.scd"
+      }
+    },
+    {
+      "source": [
+        "00020",
+        "BTF_FFXIV_21",
+        "漆黒の誓い ～惨劇霊殿 タムタラの墓所～",
+        "Dark Vows"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_gri_07.scd"
+      }
+    },
+    {
+      "source": [
+        "00021",
+        "BTF_FFXIV_22",
+        "Answers [-–] Reprise"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_season_answers.scd"
+      }
+    },
+    {
+      "source": [
+        "00022",
+        "BTF_FFXIV_23",
+        "雷光雷鳴 ～蛮神ラムウ討滅戦～",
+        "Thunder Rolls"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ban_ramuh.scd"
+      }
+    },
+    {
+      "source": [
+        "00023",
+        "BTF_FFXIV_24",
+        "紅蓮祭",
+        "Moonfire Faire"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_season_summerfes.scd"
+      }
+    },
+    {
+      "source": [
+        "00024",
+        "BTF_FFXIV_25",
+        "刃、厚いほどに",
+        "Thicker than a Knife's Blade"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_sad2.scd"
+      }
+    },
+    {
+      "source": [
+        "00025",
+        "BTF_FFXIV_26",
+        "作戦会議室",
+        "The War Room"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_pvp_intro.scd"
+      }
+    },
+    {
+      "source": {
+        "Rouse Out!": [
+          "00026",
+          "BTF_FFXIV_27",
+          "総員抜剣！",
+          "Rouse Out!"
+        ],
+        "Blood for Blood": [
+          "00027",
+          "BTF_FFXIV_28",
+          "血で血を洗って",
+          "Blood for Blood"
+        ]
+      },
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "Rouse Out!",
+                "channel": 0
+              },
+              {
+                "source": "Rouse Out!",
+                "channel": 1
+              },
+              {
+                "source": "Blood for Blood",
+                "channel": 0
+              },
+              {
+                "source": "Blood for Blood",
+                "channel": 1
+              },
+              {
+                "source": "target",
+                "channel": 5,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              },
+              {
+                "source": "target",
+                "channel": 3,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": [
+        "00028",
+        "BTF_FFXIV_29",
+        "卵が先か？",
+        "Or the Egg?"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_chocoboeducation.scd"
+      }
+    },
+    {
+      "source": [
+        "00029",
+        "BTF_FFXIV_30",
+        "ゲーム理論",
+        "Game Theory"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_minigame_puzzle.scd"
+      }
+    },
+    {
+      "source": [
+        "00030",
+        "BTF_FFXIV_31",
+        "ドーガとウネの心",
+        "Now I Know the Truth"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_unedoga.scd"
+      }
+    },
+    {
+      "source": {
+        "Out of the Labyrinth": [
+          "00031",
+          "BTF_FFXIV_32",
+          "絢爛 ～クリスタルタワー：シルクスの塔～",
+          "Out of the Labyrinth"
+        ],
+        "Shattered": [
+          "00032",
+          "BTF_FFXIV_33",
+          "破砕 ～クリスタルタワー：シルクスの塔～",
+          "Shattered"
+        ]
+      },
+      "target": [
+        {
+          "path": "music/ffxiv/bgm_con_crystaltower_02.scd",
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "Out of the Labyrinth",
+                  "channel": 0
+                },
+                {
+                  "source": "Out of the Labyrinth",
+                  "channel": 1
+                },
+                {
+                  "source": "Shattered",
+                  "channel": 0
+                },
+                {
+                  "source": "Shattered",
+                  "channel": 1
+                },
+                {
+                  "source": "target",
+                  "channel": 5,
+                  "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                },
+                {
+                  "source": "target",
+                  "channel": 3,
+                  "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "music/ex3/bgm_ex3_event_18",
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "Shattered",
+                  "channel": 0
+                },
+                {
+                  "source": "Shattered",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": [
+        "00033",
+        "BTF_FFXIV_34",
+        "時はこぼれ落ちて",
+        "Loss of Time"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_gendaishi.scd"
+      }
+    },
+    {
+      "source": [
+        "00034",
+        "BTF_FFXIV_35",
+        "教皇",
+        "His Holiness"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_ishkyoko.scd"
+      }
+    },
+    {
+      "source": [
+        "00035",
+        "BTF_FFXIV_36",
+        "嵐の中の灯火 ～怪鳥巨塔 シリウス大灯台～",
+        "A Light in the Storm"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_lim_04.scd"
+      }
+    },
+    {
+      "source": [
+        "00036",
+        "BTF_FFXIV_37",
+        "潮衝 ～逆襲要害 サスタシャ浸食洞～",
+        "Riptide"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_lim_07.scd"
+      }
+    },
+    {
+      "source": [
+        "00037",
+        "BTF_FFXIV_38",
+        "忍びの刃",
+        "The Edge"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_lim_ninja.scd"
+      }
+    },
+    {
+      "source": [
+        "00038",
+        "BTF_FFXIV_39",
+        "落日の遺跡 ～遺跡救援 カルン埋没寺院～",
+        "Forgotten by the Sun"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_uru_07.scd"
+      }
+    },
+    {
+      "source": [
+        "00039",
+        "BTF_FFXIV_40",
+        "槍旗",
+        "Pennons Aloft"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_boss_04.scd"
+      }
+    },
+    {
+      "source": [
+        "00040",
+        "BTF_FFXIV_41",
+        "秘密坑道 ～氷結潜窟 スノークローク大氷壁～",
+        "The Warrens"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_ish_04.scd"
+      }
+    },
+    {
+      "source": [
+        "00041",
+        "BTF_FFXIV_42",
+        "雪上の足跡 ～蛮神シヴァ前哨戦～",
+        "Footsteps in the Snow"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ban_shiva1.scd"
+      }
+    },
+    {
+      "source": [
+        "00042",
+        "BTF_FFXIV_43",
+        "忘却の彼方 ～蛮神シヴァ討滅戦～",
+        "Oblivion"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ban_shiva2.scd"
+      }
+    },
+    {
+      "source": [
+        "00043",
+        "BTF_FFXIV_44",
+        "永遠の誓い",
+        "Everbinding Oath"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_season_wedding.scd"
+      }
+    },
+    {
+      "source": [
+        "00044",
+        "BTF_FFXIV_45",
+        "灰より生まれし者",
+        "From the Ashes"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_con_bahamut_bigboss1.scd"
+      }
+    },
+    {
+      "source": [
+        "00045",
+        "BTF_FFXIV_46",
+        "侵攻",
+        "The Coil Tightens"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_bahamut_4thnc.scd"
+      }
+    },
+    {
+      "source": [
+        "00046",
+        "BTF_FFXIV_47",
+        "マンダヴィル・ゴールドソーサー",
+        "Four-sided Circle"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_glodsaucer_lobby.scd"
+      }
+    },
+    {
+      "source": [
+        "00047",
+        "BTF_FFXIV_48",
+        "天国の扉",
+        "Gateway to Paradise"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_glodsaucer_gate.scd"
+      }
+    },
+    {
+      "source": [
+        "00048",
+        "BTF_FFXIV_49",
+        "チョコボレース",
+        "Sport of Kings"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_glodsaucer_race.scd"
+      }
+    },
+    {
+      "source": [
+        "00049",
+        "BTF_FFXIV_50",
+        "戦禍 ～邪念排撃 古城アムダプール～",
+        "Aftermath"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_gri_08.scd"
+      }
+    },
+    {
+      "source": [
+        "00050",
+        "BTF_FFXIV_51",
+        "聖域の罠 ～武装聖域 ワンダラーパレス～",
+        "Tricksome"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_lim_08.scd"
+      }
+    },
+    {
+      "source": [
+        "00051",
+        "BTF_FFXIV_52",
+        "魔導仕掛けの友",
+        "Magiteknical Difficulties"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ride_magitekarmor.scd"
+      }
+    },
+    {
+      "source": {
+        "Blind to the Dark": [
+          "00052",
+          "BTF_FFXIV_53",
+          "薄闇 ～クリスタルタワー：闇の世界～",
+          "Blind to the Dark"
+        ],
+        "Hamartomania": [
+          "00053",
+          "BTF_FFXIV_54",
+          "暗闇 ～クリスタルタワー：闇の世界～",
+          "Hamartomania"
+        ]
+      },
+      "target": {
+        "path": "music/ffxiv/bgm_con_crystaltower_03.scd",
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "Blind to the Dark",
+                "channel": 0
+              },
+              {
+                "source": "Blind to the Dark",
+                "channel": 1
+              },
+              {
+                "source": "Hamartomania",
+                "channel": 0
+              },
+              {
+                "source": "Hamartomania",
+                "channel": 1
+              },
+              {
+                "source": "target",
+                "channel": 5,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              },
+              {
+                "source": "target",
+                "channel": 3,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": {
+        "Hunger": [
+          "00054",
+          "BTF_FFXIV_55",
+          "死闘の序曲",
+          "Hunger"
+        ],
+        "The Reach of Darkness": [
+          "00055",
+          "BTF_FFXIV_56",
+          "最後の死闘 ～新生～",
+          "The Reach of Darkness"
+        ]
+      },
+      "target": {
+        "path": "music/ffxiv/bgm_con_crystaltower_boss_03.scd",
+        "enable": false,
+        "# comments": "TODO: fade hunger and the reach of darkness",
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "Hunger",
+                "channel": 0
+              },
+              {
+                "source": "Hunger",
+                "channel": 1
+              }
+            ],
+            "length": 14.71
+          },
+          {
+            "channels": [
+              {
+                "source": "The Reach of Darkness",
+                "channel": 0
+              },
+              {
+                "source": "The Reach of Darkness",
+                "channel": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": [
+        "00056",
+        "BTF_FFXIV_57",
+        "悠久の風 ～新生～",
+        "Eternal Wind"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_uq.scd"
+      }
+    },
+    {
+      "source": [
+        "00057",
+        "BTF_FFXIV_58",
+        "戦神の教義 ～皇都イシュガルド防衛戦～",
+        "Faith in Her Fury"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_con_ish_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00058",
+        "BTF_FFXIV_59",
+        "仇敵 ～皇都イシュガルド防衛戦～",
+        "Unworthy"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_con_ish_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00059",
+        "BTF_FFXIV_60",
+        "銀の涙 ～幻龍残骸 黙約の塔～",
+        "Silver Tears"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_mor_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00060",
+        "BTF_FFXIV_61",
+        "始祖たる幻龍",
+        "Primogenitor"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_mor_02.scd"
+      }
+    }
+  ]
+}

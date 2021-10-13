@@ -1,0 +1,1633 @@
+{
+  "name": "Final Fantasy XIV - 2.0 - A Realm Reborn",
+  "purchaseLinks": {
+    "amazon.co.jp": "https://www.amazon.co.jp/dp/B00I3LHM2M/"
+  },
+  "items": [
+    {
+      "source": [
+        "00000",
+        "ARR_FFXIV_001",
+        "Prelude [–-] Rebirth",
+        "プレリュード　～再誕の煌めき～"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_system_title.scd"
+      }
+    },
+    {
+      "source": [
+        "00001",
+        "ARR_FFXIV_002",
+        "Torn from the Heavens",
+        "天より降りし力"
+      ],
+      "target": {
+        "path": [
+          "music/ffxiv/bgm_boss_01.scd",
+          "music/ffxiv/bgm_con_teikoku_01_sido.scd"
+        ]
+      }
+    },
+    {
+      "source": [
+        "00002",
+        "ARR_FFXIV_003",
+        "Prelude [–-] Discoveries",
+        "プレリュード　～冒険の序章～"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_system_chara.scd"
+      }
+    },
+    {
+      "source": [
+        "00003",
+        "ARR_FFXIV_004",
+        "A New Hope",
+        "希望の都"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_town_uru_day.scd"
+      }
+    },
+    {
+      "source": {
+        "source": [
+          "00004",
+          "ARR_FFXIV_005",
+          "To the Sun",
+          "灼熱の地へ"
+        ],
+        "source5": {
+          "inputFiles": [
+            [
+              "00004",
+              "ARR_FFXIV_005",
+              "To the Sun",
+              "灼熱の地へ"
+            ]
+          ],
+          "filterComplex": "[0:a]atrim=241.769:254.487,afade=type=in:duration=6.335s,afade=type=out:duration=4s[a]; [0:a]atrim=254.487s:355.707s,adelay=5.388s[b]; [a] [b] amerge"
+        }
+      },
+      "target": [
+        {
+          "path": "music/ffxiv/bgm_field_uru_01.scd",
+          "segments": [
+            {
+              "sourceOffsets": {
+                "source": 0
+              },
+              "length": 30.41,
+              "channels": [
+                {
+                  "source": "source",
+                  "channel": 0
+                },
+                {
+                  "source": "source",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "music/ffxiv/bgm_field_uru_02.scd",
+          "segments": [
+            {
+              "sourceOffsets": {
+                "source": 30
+              },
+              "length": 140.3,
+              "channels": [
+                {
+                  "source": "source",
+                  "channel": 0
+                },
+                {
+                  "source": "source",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "music/ffxiv/bgm_field_uru_03.scd",
+          "segments": [
+            {
+              "sourceOffsets": {
+                "source": 170
+              },
+              "length": 86.4,
+              "channels": [
+                {
+                  "source": "source",
+                  "channel": 0
+                },
+                {
+                  "source": "source",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "music/ffxiv/bgm_field_uru_04.scd",
+          "segments": [
+            {
+              "sourceThresholds": {
+                "source5": 0,
+                "target": 0
+              },
+              "length": 109.025,
+              "enable": false,
+              "# comment": "TODO: implement filterComplex input",
+              "channels": [
+                {
+                  "source": "source",
+                  "channel": 0
+                },
+                {
+                  "source": "source",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "music/ffxiv/bgm_field_uru_05.scd",
+          "segments": [
+            {
+              "sourceOffsets": {
+                "source": 356.182
+              },
+              "channels": [
+                {
+                  "source": "source",
+                  "channel": 0
+                },
+                {
+                  "source": "source",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": [
+        "00005",
+        "ARR_FFXIV_006",
+        "The Land Burns",
+        "荒野の鼓動"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_battle_uru_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00006",
+        "ARR_FFXIV_007",
+        "The Gift of Life",
+        "生命の賜物"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_safe1.scd"
+      }
+    },
+    {
+      "source": [
+        "00007",
+        "ARR_FFXIV_008",
+        "Another Round",
+        "もう一杯！"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_bar.scd"
+      }
+    },
+    {
+      "source": [
+        "00008",
+        "ARR_FFXIV_009",
+        "Hard to Miss",
+        "宿命"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_fate_mid.scd"
+      }
+    },
+    {
+      "source": [
+        "00009",
+        "ARR_FFXIV_010",
+        "Bo-down",
+        "レンタル de チョコボ"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ride_rchocobo.scd"
+      }
+    },
+    {
+      "source": [
+        "00010",
+        "ARR_FFXIV_011",
+        "Sultana Dreaming",
+        "夢見る女王陛下"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_town_uru_night.scd"
+      }
+    },
+    {
+      "source": [
+        "00011",
+        "ARR_FFXIV_012",
+        "Bliss",
+        "無常の喜び"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_tanoshii2.scd"
+      }
+    },
+    {
+      "source": [
+        "00012",
+        "ARR_FFXIV_013",
+        "Fracture",
+        "不穏な気配"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_huon.scd"
+      }
+    },
+    {
+      "source": [
+        "00013",
+        "ARR_FFXIV_014",
+        "Tenacity",
+        "不屈の闘志"
+      ],
+      "target": {
+        "path": [
+          "music/ffxiv/bgm_beginner01.scd",
+          "music/ffxiv/bgm_leves.scd"
+        ]
+      }
+    },
+    {
+      "source": [
+        "00014",
+        "ARR_FFXIV_015",
+        "Return of the Hero",
+        "英雄の凱旋"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_heroreturn.scd"
+      }
+    },
+    {
+      "source": [
+        "00015",
+        "ARR_FFXIV_016",
+        "A World Apart",
+        "そして世界へ"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_tabidachi.scd"
+      }
+    },
+    {
+      "source": [
+        "00016",
+        "ARR_FFXIV_017",
+        "I Am the Sea",
+        "偉大なる母港"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_town_lim_day.scd"
+      }
+    },
+    {
+      "source": [
+        "00017",
+        "ARR_FFXIV_018",
+        "On Westerly Winds",
+        "西風に乗せて"
+      ],
+      "target": [
+        {
+          "path": "music/ffxiv/bgm_field_lim_01.scd",
+          "enable": false
+        },
+        {
+          "path": "music/ffxiv/bgm_field_lim_02.scd",
+          "enable": false
+        },
+        {
+          "path": "music/ffxiv/bgm_field_lim_03.scd",
+          "enable": false
+        },
+        {
+          "path": "music/ffxiv/bgm_field_lim_04.scd",
+          "enable": false
+        },
+        {
+          "path": "music/ffxiv/bgm_field_lim_05.scd",
+          "enable": false
+        }
+      ]
+    },
+    {
+      "source": [
+        "00018",
+        "ARR_FFXIV_019",
+        "The Land Breathes",
+        "大地の鼓動"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_battle_lim_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00019",
+        "ARR_FFXIV_020",
+        "Saltswept",
+        "潮風香る街"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_lim_07.scd"
+      }
+    },
+    {
+      "source": [
+        "00020",
+        "ARR_FFXIV_021",
+        "Ruby Moonrise",
+        "爆ぜよ耐熱装備"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_fate_bombard.scd"
+      }
+    },
+    {
+      "source": [
+        "00021",
+        "ARR_FFXIV_022",
+        "Eorzea de Chocobo",
+        "エオルゼア de チョコボ"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ride_chocobo.scd"
+      }
+    },
+    {
+      "source": [
+        "00022",
+        "ARR_FFXIV_023",
+        "A Sailor Never Sleeps",
+        "船乗りは眠らない"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_town_lim_night.scd"
+      }
+    },
+    {
+      "source": [
+        "00023",
+        "ARR_FFXIV_024",
+        "Currents",
+        "潮流"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_lim_06.scd"
+      }
+    },
+    {
+      "source": [
+        "00024",
+        "ARR_FFXIV_025",
+        "Brothers in Arms",
+        "戦友"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_behest.scd"
+      }
+    },
+    {
+      "source": [
+        "00025",
+        "ARR_FFXIV_026",
+        "Wailers And Waterwheels",
+        "水車の調べ"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_town_gri_day.scd"
+      }
+    },
+    {
+      "source": [
+        "00026",
+        "ARR_FFXIV_027",
+        "Serenity",
+        "静穏の森"
+      ],
+      "target": [
+        {
+          "path": "music/ffxiv/bgm_field_gri_01.scd",
+          "enable": false
+        },
+        {
+          "path": "music/ffxiv/bgm_field_gri_02.scd",
+          "enable": false
+        },
+        {
+          "path": "music/ffxiv/bgm_field_gri_03.scd",
+          "enable": false
+        },
+        {
+          "path": "music/ffxiv/bgm_field_gri_04.scd",
+          "enable": false
+        },
+        {
+          "path": "music/ffxiv/bgm_field_gri_05.scd",
+          "enable": false
+        }
+      ]
+    },
+    {
+      "source": [
+        "00027",
+        "ARR_FFXIV_028",
+        "The Land Bends",
+        "森の鼓動"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_battle_gri_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00028",
+        "ARR_FFXIV_029",
+        "Reign of Pain",
+        "黒き悪魔"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_fate_ffxi01.scd"
+      }
+    },
+    {
+      "source": [
+        "00029",
+        "ARR_FFXIV_030",
+        "The Rider's Boon",
+        "その背に揺られて"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ride_commonmonster.scd"
+      }
+    },
+    {
+      "source": [
+        "00030",
+        "ARR_FFXIV_031",
+        "Dance of the Fireflies",
+        "蛍たちの舞踏会"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_town_gri_night.scd"
+      }
+    },
+    {
+      "source": [
+        "00031",
+        "ARR_FFXIV_032",
+        "Greenwrath",
+        "精霊の意思"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_gri_06.scd"
+      }
+    },
+    {
+      "source": [
+        "00032",
+        "ARR_FFXIV_033",
+        "From the Depths",
+        "仄暗い底から"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_lim_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00033",
+        "ARR_FFXIV_034",
+        "The Promise of Plunder",
+        "隠し財宝を求めて"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_battle_dungeon_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00034",
+        "ARR_FFXIV_035",
+        "Slumber Disturbed",
+        "妨げられた眠り"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_gri_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00035",
+        "ARR_FFXIV_036",
+        "A Fine Death",
+        "名誉に賭けて"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_boss_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00036",
+        "ARR_FFXIV_037",
+        "Below",
+        "地下坑道"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_uru_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00037",
+        "ARR_FFXIV_038",
+        "Nemesis",
+        "ネメシス"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_boss_03.scd"
+      }
+    },
+    {
+      "source": [
+        "00038",
+        "ARR_FFXIV_039",
+        "A Victory Fanfare Reborn (Full)",
+        "勝利のファンファーレ　～新生（フル）～"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_system_winloop.scd"
+      }
+    },
+    {
+      "source": [
+        "00039",
+        "ARR_FFXIV_040",
+        "The Waking Sands",
+        "砂の家"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_suna.scd"
+      }
+    },
+    {
+      "source": [
+        "00040",
+        "ARR_FFXIV_041",
+        "Smoulder",
+        "燻る灰"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_bancolony_amaruja.scd"
+      }
+    },
+    {
+      "source": [
+        "00041",
+        "ARR_FFXIV_042",
+        "Pitfire",
+        "炎獄の火種"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_banfort_amaruja.scd"
+      }
+    },
+    {
+      "source": [
+        "00042",
+        "ARR_FFXIV_043",
+        "One Blood",
+        "血脈"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_banactivity.scd"
+      }
+    },
+    {
+      "source": [
+        "00043",
+        "ARR_FFXIV_044",
+        "Primal Judgment",
+        "原始の審判"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ban_ifrit.scd"
+      }
+    },
+    {
+      "source": [
+        "00044",
+        "ARR_FFXIV_045",
+        "Calling",
+        "星の囁き"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_safe2.scd"
+      }
+    },
+    {
+      "source": [
+        "00045",
+        "ARR_FFXIV_046",
+        "Where the Heart Is",
+        "心温まる場所"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_housing_day.scd"
+      }
+    },
+    {
+      "source": [
+        "00046",
+        "ARR_FFXIV_047",
+        "Where the Hearth Is",
+        "体暖まる場所"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_housing_night.scd"
+      }
+    },
+    {
+      "source": [
+        "00047",
+        "ARR_FFXIV_048",
+        "Battle Theme 1.x",
+        "戦闘シーン1.X"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_fate_ff2.scd"
+      }
+    },
+    {
+      "source": [
+        "00048",
+        "ARR_FFXIV_049",
+        "Conundrum",
+        "堂々巡り"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_mystery.scd"
+      }
+    },
+    {
+      "source": [
+        "00049",
+        "ARR_FFXIV_050",
+        "Agent of Inquiry",
+        "事件屋のアレ"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_nexthildy.scd"
+      }
+    },
+    {
+      "source": [
+        "00050",
+        "ARR_FFXIV_051",
+        "The Ludus",
+        "闘士の修練所"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_uru_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00051",
+        "ARR_FFXIV_052",
+        "Flibbertigibbet",
+        "イタズラっ子たち"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_bancolony_sylph.scd"
+      }
+    },
+    {
+      "source": [
+        "00052",
+        "ARR_FFXIV_053",
+        "A Curious Breed of Botherment",
+        "世にも奇妙な厄介者"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_banfort_sylph.scd"
+      }
+    },
+    {
+      "source": [
+        "00053",
+        "ARR_FFXIV_054",
+        "A Thousand Screams",
+        "千の悲鳴"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_gri_03.scd"
+      }
+    },
+    {
+      "source": [
+        "00054",
+        "ARR_FFXIV_055",
+        "My Soul to Keep",
+        "我が魂を捧げて"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_darknesslullaby.scd"
+      }
+    },
+    {
+      "source": [
+        "00055",
+        "ARR_FFXIV_056",
+        "From Fear to Fortitude",
+        "豪勇の士"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_battlecommon_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00056",
+        "ARR_FFXIV_057",
+        "The Maiden's Lament",
+        "乙女の哀歌"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_gri_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00057",
+        "ARR_FFXIV_058",
+        "Ruby Sunrise",
+        "輝く太陽"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_lim_beach.scd"
+      }
+    },
+    {
+      "source": [
+        "00058",
+        "ARR_FFXIV_059",
+        "Lipflaps on Longstops",
+        "野営地のお調子者"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_lim_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00059",
+        "ARR_FFXIV_060",
+        "Echoes of Ages Past",
+        "昔日の残響"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_uru_03.scd"
+      }
+    },
+    {
+      "source": [
+        "00060",
+        "ARR_FFXIV_061",
+        "Abomination",
+        "憎悪"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_uru_04.scd"
+      }
+    },
+    {
+      "source": [
+        "00061",
+        "ARR_FFXIV_062",
+        "Quick as Silver, Hard as Stone",
+        "疾きこと銀の如く、硬きこと石の如く"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_banfort_kobold.scd"
+      }
+    },
+    {
+      "source": [
+        "00062",
+        "ARR_FFXIV_063",
+        "Weight of a Whisper",
+        "タイタンの慟哭"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ban_titan_pre1.scd"
+      }
+    },
+    {
+      "source": [
+        "00063",
+        "ARR_FFXIV_064",
+        "Weight of His Will",
+        "タイタンの憤怒"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ban_titan_pre2.scd"
+      }
+    },
+    {
+      "source": [
+        "00064",
+        "ARR_FFXIV_065",
+        "Weight of the World",
+        "タイタンの激震"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ban_titan_pre3.scd"
+      }
+    },
+    {
+      "source": [
+        "00065",
+        "ARR_FFXIV_066",
+        "Heartless",
+        "タイタンの心核"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ban_titan_pre4.scd"
+      }
+    },
+    {
+      "source": [
+        "00066",
+        "ARR_FFXIV_067",
+        "Under the Weight",
+        "過重圧殺！　～蛮神タイタン討滅戦～"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ban_titan.scd"
+      }
+    },
+    {
+      "source": [
+        "00067",
+        "ARR_FFXIV_068",
+        "Forever Lost",
+        "永遠の離別"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_sad.scd"
+      }
+    },
+    {
+      "source": [
+        "00068",
+        "ARR_FFXIV_069",
+        "Fealty",
+        "忠義"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_ish_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00069",
+        "ARR_FFXIV_070",
+        "Undying Faith",
+        "鋼の信仰"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_ish_03.scd"
+      }
+    },
+    {
+      "source": [
+        "00070",
+        "ARR_FFXIV_071",
+        "The Land Breaks",
+        "雪山の鼓動"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_battle_ish_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00071",
+        "ARR_FFXIV_072",
+        "The Dragon's Dirge",
+        "竜の葬送歌"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_ish_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00072",
+        "ARR_FFXIV_073",
+        "Cold Salvation",
+        "極寒戦線"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_ish_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00073",
+        "ARR_FFXIV_074",
+        "The Darkhold",
+        "ゼーメル要塞"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_ish_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00074",
+        "ARR_FFXIV_075",
+        "Miser's Folly",
+        "守銭奴の愚行"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_ish_03.scd"
+      }
+    },
+    {
+      "source": [
+        "00075",
+        "ARR_FFXIV_076",
+        "Thunderer",
+        "雷鳴"
+      ],
+      "target": {
+        "path": [
+          "music/ffxiv/bgm_fate_hmn.scd",
+          "music/ffxiv/bgm_con_ascian.scd"
+        ]
+      }
+    },
+    {
+      "source": [
+        "00076",
+        "ARR_FFXIV_077",
+        "Kiss of Chaos",
+        "混沌の予感"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_battleoverture.scd"
+      }
+    },
+    {
+      "source": [
+        "00077",
+        "ARR_FFXIV_078",
+        "Flightless Wings",
+        "猛き嵐の剣に"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_banfort_ixal.scd"
+      }
+    },
+    {
+      "source": [
+        "00078",
+        "ARR_FFXIV_079",
+        "Fleeting Rays",
+        "儚き光彩"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_uru_06.scd"
+      }
+    },
+    {
+      "source": [
+        "00079",
+        "ARR_FFXIV_080",
+        "Engage",
+        "蒼き翼"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_enterprise.scd"
+      }
+    },
+    {
+      "source": [
+        "00080",
+        "ARR_FFXIV_081",
+        "Damnation",
+        "破滅"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_kincho.scd"
+      }
+    },
+    {
+      "source": [
+        "00081",
+        "ARR_FFXIV_082",
+        "Fallen Angel",
+        "堕天せし者"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ban_garuda.scd"
+      }
+    },
+    {
+      "source": [
+        "00082",
+        "ARR_FFXIV_083",
+        "Frontiers Within",
+        "フロンティア"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_mor_03.scd"
+      }
+    },
+    {
+      "source": [
+        "00083",
+        "ARR_FFXIV_084",
+        "Reflections",
+        "リフレクション"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_mor_04.scd"
+      }
+    },
+    {
+      "source": [
+        "00084",
+        "ARR_FFXIV_085",
+        "Intertwined",
+        "交錯"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_mor_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00085",
+        "ARR_FFXIV_086",
+        "The Land Bleeds",
+        "水晶の鼓動"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_battle_mor_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00086",
+        "ARR_FFXIV_087",
+        "Crystal Rain",
+        "クリスタルの雨"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_mor_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00087",
+        "ARR_FFXIV_088",
+        "Through the Gloom",
+        "薄闇に射す光"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_lim_04.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00088",
+        "ARR_FFXIV_089",
+        "Slither",
+        "五里霧中"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_danger3.scd"
+      }
+    },
+    {
+      "source": [
+        "00089",
+        "ARR_FFXIV_090",
+        "Good King Moggle Mog XII",
+        "善王モグル・モグXII世"
+      ],
+      "target": {
+        "path": [
+          "music/ffxiv/bgm_ban_moogle_king.scd",
+          "music/ffxiv/bgm_ban_moogle_goku.scd"
+        ]
+      }
+    },
+    {
+      "source": [
+        "00090",
+        "ARR_FFXIV_091",
+        "A Tonberry's Tears",
+        "トンベリの涙"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_lim_03.scd"
+      }
+    },
+    {
+      "source": [
+        "00091",
+        "ARR_FFXIV_092",
+        "A Fell Air Falleth",
+        "戦士の直感"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_battle_dungeon_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00092",
+        "ARR_FFXIV_093",
+        "Cracks in the Wall",
+        "古城にて……"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_gri_04.scd"
+      }
+    },
+    {
+      "source": [
+        "00093",
+        "ARR_FFXIV_094",
+        "Skullduggery",
+        "奸計"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_treacherous.scd"
+      }
+    },
+    {
+      "source": [
+        "00094",
+        "ARR_FFXIV_095",
+        "Breaking Boundaries",
+        "極限を超えて"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_jobshiren.scd"
+      }
+    },
+    {
+      "source": {
+        "The Dark's Embrace": [
+          "00095",
+          "ARR_FFXIV_096",
+          "The Dark's Embrace",
+          "闇の抱擁"
+        ],
+        "The Dark's Kiss": [
+          "00096",
+          "ARR_FFXIV_097",
+          "The Dark's Kiss",
+          "闇の口付"
+        ]
+      },
+      "target": [
+        {
+          "path": "music/ffxiv/bgm_rade_01.scd",
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "The Dark's Embrace",
+                  "channel": 0
+                },
+                {
+                  "source": "The Dark's Embrace",
+                  "channel": 1
+                },
+                {
+                  "source": "The Dark's Kiss",
+                  "channel": 0
+                },
+                {
+                  "source": "The Dark's Kiss",
+                  "channel": 1
+                },
+                {
+                  "source": "target",
+                  "channel": 5,
+                  "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                },
+                {
+                  "source": "target",
+                  "channel": 3,
+                  "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "music/ex3/bgm_ex3_event_19.scd",
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "The Dark's Kiss",
+                  "channel": 0
+                },
+                {
+                  "source": "The Dark's Kiss",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": {
+        "Hubris": [
+          "00097",
+          "ARR_FFXIV_098",
+          "Hubris",
+          "傲慢"
+        ],
+        "Ever Upwards": [
+          "00098",
+          "ARR_FFXIV_099",
+          "Ever Upwards",
+          "天上へ"
+        ]
+      },
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "Hubris",
+                "channel": 0
+              },
+              {
+                "source": "Hubris",
+                "channel": 1
+              },
+              {
+                "source": "Ever Upwards",
+                "channel": 0
+              },
+              {
+                "source": "Ever Upwards",
+                "channel": 1
+              },
+              {
+                "source": "target",
+                "channel": 5,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              },
+              {
+                "source": "target",
+                "channel": 3,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": [
+        "00099",
+        "ARR_FFXIV_100",
+        "Tumbling Down",
+        "奈落へ"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_con_crystaltower_boss_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00100",
+        "ARR_FFXIV_101",
+        "Defender of the Realm",
+        "エオルゼアの守護者"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_protector.scd"
+      }
+    },
+    {
+      "source": [
+        "00101",
+        "ARR_FFXIV_102",
+        "Machinations",
+        "軍議"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_keikaku.scd"
+      }
+    },
+    {
+      "source": [
+        "00102",
+        "ARR_FFXIV_103",
+        "Discordance",
+        "不調和"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_danger1.scd"
+      }
+    },
+    {
+      "source": [
+        "00103",
+        "ARR_FFXIV_104",
+        "The Emperor's Wont",
+        "魔導の軍勢"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_con_teikoku_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00104",
+        "ARR_FFXIV_105",
+        "Beyond the Unknown",
+        "未知の領域へ"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_danger2.scd"
+      }
+    },
+    {
+      "source": [
+        "00105",
+        "ARR_FFXIV_106",
+        "The Only Path",
+        "ただひとつの道"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_buki.scd"
+      }
+    },
+    {
+      "source": [
+        "00106",
+        "ARR_FFXIV_107",
+        "Penitus",
+        "魔導城プラエトリウム"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_con_teikoku_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00107",
+        "ARR_FFXIV_108",
+        "Bite of the Black Wolf",
+        "漆黒の王狼、咆吼せり"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_con_teikoku_gaius.scd"
+      }
+    },
+    {
+      "source": [
+        "00108",
+        "ARR_FFXIV_109",
+        "The Maker's Ruin",
+        "神なき世界"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_perfectaltima.scd"
+      }
+    },
+    {
+      "source": [
+        "00109",
+        "ARR_FFXIV_110",
+        "Ultima",
+        "究極幻想"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_con_altima.scd"
+      }
+    },
+    {
+      "source": [
+        "00110",
+        "ARR_FFXIV_111",
+        "Serving the Light",
+        "光の加護"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_blow.scd"
+      }
+    },
+    {
+      "source": [
+        "00111",
+        "ARR_FFXIV_112",
+        "Flight",
+        "終局"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_escape.scd"
+      }
+    },
+    {
+      "source": {
+        "The Seventh Sun": [
+          "00112",
+          "ARR_FFXIV_113",
+          "The Seventh Sun",
+          "第七星暦"
+        ],
+        "Dawn of a New Era": [
+          "00113",
+          "ARR_FFXIV_114",
+          "Dawn of a New Era",
+          "新時代の暁"
+        ]
+      },
+      "target": {
+        "path": "music/ffxiv/bgm_event_7thumbralera.scd",
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "The Seventh Sun",
+                "channel": 0
+              },
+              {
+                "source": "The Seventh Sun",
+                "channel": 1
+              }
+            ],
+            "length": 315
+          },
+          {
+            "channels": [
+              {
+                "source": "Dawn of a New Era",
+                "channel": 0
+              },
+              {
+                "source": "Dawn of a New Era",
+                "channel": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": [
+        "00114",
+        "ARR_FFXIV_115",
+        "And You! [–-] A Realm Reborn Medley",
+        "And You!　～新生エオルゼアメドレー～"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_system_endcredit01.scd",
+        "enable": false,
+        "# comment": "Plays Answers, this medley, then loops Prelude Discoveries"
+      }
+    },
+    {
+      "source": [
+        "00115",
+        "ARR_FFXIV_116",
+        "The Corpse Hall",
+        "斬"
+      ],
+      "target": {
+        "path": [
+          "music/ffxiv/bgm_ban_odin.scd",
+          "music/ffxiv/bgm_fate_odin.scd",
+          "music/ffxiv/bgm_ride_odin.scd"
+        ]
+      }
+    },
+    {
+      "source": {
+        "Primal Timbre": [
+          "00116",
+          "ARR_FFXIV_117",
+          "Primal Timbre",
+          "真実を求めて"
+        ],
+        "Spiral": [
+          "00117",
+          "ARR_FFXIV_118",
+          "螺旋",
+          "Spiral"
+        ]
+      },
+      "target": {
+        "path": "music/ffxiv/bgm_con_bahamut_v2.scd",
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "Primal Timbre",
+                "channel": 0
+              },
+              {
+                "source": "Primal Timbre",
+                "channel": 1
+              },
+              {
+                "source": "Spiral",
+                "channel": 0
+              },
+              {
+                "source": "Spiral",
+                "channel": 1
+              },
+              {
+                "source": "target",
+                "channel": 5,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              },
+              {
+                "source": "target",
+                "channel": 3,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": [
+        "00118",
+        "ARR_FFXIV_119",
+        "Calamity Unbound",
+        "試練を超える力"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_con_bahamut_boss.scd"
+      }
+    },
+    {
+      "source": [
+        "ARR_FFXIV_120",
+        "Battle on the Big Bridge Reborn",
+        "ビッグブリッヂの死闘 ～新生～"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_clashonthebigbridge.scd"
+      }
+    }
+  ]
+}

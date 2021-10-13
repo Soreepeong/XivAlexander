@@ -6,6 +6,7 @@
   "items": [
     {
       "source": [
+        "00000",
         "DUD_001",
         "ローカス \\(Duality\\) ～機工城アレキサンダー：起動編～",
         "Locus \\(Duality\\)"
@@ -16,6 +17,7 @@
     },
     {
       "source": [
+        "00001",
         "DUD_002",
         "メタル：ブルートジャスティスモード \\(Journeys\\) ～機工城アレキサンダー：律動編～",
         "Metal - Brute Justice Mode \\(Journeys\\)"
@@ -60,6 +62,7 @@
     },
     {
       "source": [
+        "00002",
         "DUD_003",
         "ライズ \\(Journeys\\) ～機工城アレキサンダー：天動編～",
         "Rise \\(Journeys\\)"
@@ -97,6 +100,7 @@
     },
     {
       "source": [
+        "00003",
         "DUD_004",
         "メビウス \\(Orchestral Version\\) ～機工城アレキサンダー：天動編～",
         "Moebius \\(Orchestral Version\\)"
@@ -110,11 +114,13 @@
     {
       "source": {
         "A Fine Air Forbiddeth": [
+          "00004",
           "DUD_005",
           "戦士の守勢 ～PvPフロントライン～",
           "A Fine Air Forbiddeth"
         ],
         "A Fierce Air Forceth": [
+          "00005",
           "DUD_006",
           "戦士の攻勢 ～PvPフロントライン～",
           "A Fierce Air Forceth"
@@ -143,12 +149,12 @@
               },
               {
                 "source": "target",
-                "channel": 3,
+                "channel": 5,
                 "# comment": "ffmpeg layout: 0 2 1 4 5 3"
               },
               {
                 "source": "target",
-                "channel": 5,
+                "channel": 3,
                 "# comment": "ffmpeg layout: 0 2 1 4 5 3"
               }
             ]
@@ -158,6 +164,7 @@
     },
     {
       "source": [
+        "00006",
         "DUD_007",
         "リェー・メグの門",
         "The Garden's Gates"
@@ -168,6 +175,7 @@
     },
     {
       "source": [
+        "00007",
         "DUD_008",
         "花の館 ～魔法宮殿 グラン・コスモス～",
         "The Grand Cosmos"
@@ -178,6 +186,7 @@
     },
     {
       "source": [
+        "00008",
         "DUD_009",
         "名も無き者たちの情熱 ～蒼天街復興～",
         "The Mendicant's Relish"
@@ -189,11 +198,13 @@
     {
       "source": {
         "Starlight de Chocobo": [
+          "00009",
           "DUD_010",
           "スターライト de チョコボ",
           "Starlight de Chocobo"
         ],
         "Starlight de Chocobo (?)": [
+          "00010",
           "DUD_011",
           "スターライト de チョコボ？",
           "Starlight de Chocobo \\(\\?\\)"
@@ -227,6 +238,7 @@
     },
     {
       "source": [
+        "00011",
         "DUD_012",
         "意味／無 \\(From NieR:Automata\\)",
         "Significance - Nothing \\(From NieR:Automata\\)"
@@ -237,6 +249,7 @@
     },
     {
       "source": [
+        "00012",
         "DUD_013",
         "曖昧ナ希望／氷雨 \\(From NieR:Automata\\)",
         "Vague Hope - Cold Rain \\(From NieR:Automata\\)"
@@ -247,6 +260,7 @@
     },
     {
       "source": [
+        "00013",
         "DUD_014",
         "崩壊ノ虚妄 \\(From NieR:Automata\\)",
         "Crumbling Lies - Front \\(From NieR:Automata\\)"
@@ -257,6 +271,7 @@
     },
     {
       "source": [
+        "00014",
         "DUD_015",
         "顕現シタ異物 \\(From NieR:Automata\\)",
         "Alien Manifestation \\(From NieR:Automata\\)"
@@ -267,6 +282,7 @@
     },
     {
       "source": [
+        "00015",
         "DUD_016",
         "イニシエノウタ／贖罪 \\(From NieR:Automata\\)",
         "Song of the Ancients - Atonement \\(From NieR:Automata\\)"
@@ -277,6 +293,7 @@
     },
     {
       "source": [
+        "00016",
         "DUD_017",
         "双極ノ悪夢 \\(From NieR:Automata\\)",
         "Bipolar Nightmare \\(From NieR:Automata\\)"
@@ -287,6 +304,7 @@
     },
     {
       "source": [
+        "00017",
         "DUD_018",
         "Weight of the World／Prelude Version",
         "Weight of the World - Prelude Version"
@@ -297,6 +315,7 @@
     },
     {
       "source": [
+        "00018",
         "DUD_019",
         "澱ンダ祈リ／暁風 \\(From NieR:Automata\\)",
         "Faltering Prayer - Dawn Breeze \\(From NieR:Automata\\)"
@@ -307,6 +326,7 @@
     },
     {
       "source": [
+        "00019",
         "DUD_020",
         "還ラナイ声／ギター \\(From NieR:Automata\\)",
         "Voice of no Return - Guitar \\(From NieR:Automata\\)"
@@ -317,6 +337,7 @@
     },
     {
       "source": [
+        "00020",
         "DUD_021",
         "底に潜みし者 ～黒風海底 アニドラス・アナムネーシス～",
         "Floundering in the Depths"
@@ -327,6 +348,7 @@
     },
     {
       "source": [
+        "00021",
         "DUD_022",
         "貪欲 \\(Scions & Sinners\\)",
         "Insatiable \\(Scions & Sinners\\)"
@@ -339,6 +361,7 @@
     },
     {
       "source": [
+        "00022",
         "DUD_023",
         "ホパル古盤",
         "Hopl's Dropple"
@@ -349,6 +372,7 @@
     },
     {
       "source": [
+        "00023",
         "DUD_024",
         "究極幻想 \\(Scions & Sinners\\)",
         "Ultima \\(Scions & Sinners\\)"
@@ -361,6 +385,7 @@
     },
     {
       "source": [
+        "00024",
         "DUD_025",
         "白銀の凶鳥、飛翔せり \\(Orchestral Version\\)",
         "Rise of the White Raven \\(Orchestral Version\\)"
@@ -371,6 +396,7 @@
     },
     {
       "source": [
+        "00025",
         "DUD_026",
         "蒼き日常 ～蒼天街復興～",
         "Hearthward"
@@ -381,6 +407,7 @@
     },
     {
       "source": [
+        "00026",
         "DUD_027",
         "雷轟電撃 ～希望の園エデン：共鳴編～",
         "Twice Stricken"
@@ -391,6 +418,7 @@
     },
     {
       "source": [
+        "00027",
         "DUD_028",
         "原始の堕天使 ～希望の園エデン：共鳴編～",
         "Primal Angel"
@@ -401,6 +429,7 @@
     },
     {
       "source": [
+        "00028",
         "DUD_029",
         "雪上の足跡 ～蛮神シヴァ前哨戦～",
         "Footsteps in the Snow"
@@ -411,6 +440,7 @@
     },
     {
       "source": [
+        "00029",
         "DUD_030",
         "分割された光 ～希望の園エデン：共鳴編～",
         "A Sundering of Light"
@@ -421,6 +451,7 @@
     },
     {
       "source": [
+        "00030",
         "DUD_031",
         "忘却の此方 ～希望の園エデン：共鳴編～",
         "Return to Oblivion"
@@ -431,6 +462,7 @@
     },
     {
       "source": [
+        "00031",
         "DUD_032",
         "ガンゴッシュ",
         "Gangos"
@@ -442,11 +474,13 @@
     {
       "source": {
         "Wind on the Plains": [
+          "00032",
           "DUD_033",
           "ボズヤの微風",
           "Wind on the Plains"
         ],
         "Blood on the Wind": [
+          "00033",
           "DUD_034",
           "ボズヤの血風",
           "Blood on the Wind"
@@ -475,12 +509,12 @@
               },
               {
                 "source": "target",
-                "channel": 3,
+                "channel": 5,
                 "# comment": "ffmpeg layout: 0 2 1 4 5 3"
               },
               {
                 "source": "target",
-                "channel": 5,
+                "channel": 3,
                 "# comment": "ffmpeg layout: 0 2 1 4 5 3"
               }
             ]
@@ -490,6 +524,7 @@
     },
     {
       "source": [
+        "00034",
         "DUD_035",
         "騒乱 \\(Zodiac Age Version\\)",
         "Unrest \\(Zodiac Age Version\\)"
@@ -502,6 +537,7 @@
     },
     {
       "source": [
+        "00035",
         "DUD_036",
         "動乱 帝国バージョン \\(Zodiac Age Version\\)",
         "Discord: Imperial \\(Zodiac Age Version\\)"
@@ -512,6 +548,7 @@
     },
     {
       "source": [
+        "00036",
         "DUD_037",
         "潜入 \\(Zodiac Age Version\\)",
         "Into the Fortress \\(Zodiac Age Version\\)"
@@ -522,6 +559,7 @@
     },
     {
       "source": [
+        "00037",
         "DUD_038",
         "召喚獣戦 \\(Zodiac Age Version\\)",
         "Battle with an Esper \\(Zodiac Age Version\\)"
@@ -533,6 +571,7 @@
     },
     {
       "source": [
+        "00038",
         "DUD_039",
         "死闘 \\(Zodiac Age Version\\)",
         "Life and Death \\(Zodiac Age Version\\)"
@@ -545,6 +584,7 @@
     },
     {
       "source": [
+        "00039",
         "DUD_040",
         "ワッツハンマー・ガレージ",
         "Watts's Anvil"
@@ -555,18 +595,18 @@
     },
     {
       "source": [
+        "00040",
         "DUD_041",
         "常夏の島",
         "The Isle of Endless Summer"
       ],
       "target": {
-        "path": "music/ex3/.scd",
-        "enable": false,
-        "# comment": "TODO: Find which game file does this music correspond to"
+        "path": "music/ffxiv/bgm_event_hula.scd"
       }
     },
     {
       "source": [
+        "00041",
         "DUD_042",
         "すべての道が至る場所 ～漆黒決戦 ノルヴラント～",
         "Where All Roads Lead"
@@ -577,6 +617,7 @@
     },
     {
       "source": [
+        "00042",
         "DUD_043",
         "暗がりに響く音",
         "Echoes in the Dark"
@@ -618,6 +659,7 @@
     },
     {
       "source": [
+        "00043",
         "DUD_044",
         "To the Edge",
         "To the Edge"
@@ -662,6 +704,7 @@
     },
     {
       "source": [
+        "00044",
         "DUD_045",
         "悠久の風 ～漆黒～",
         "Eternal Wind \\(Shadowbringers\\)"
@@ -693,6 +736,7 @@
     },
     {
       "source": [
+        "00045",
         "DUD_046",
         "遊園施設 \\(From NieR:Automata\\)",
         "Amusement Park \\(From NieR:Automata\\)"
@@ -703,6 +747,7 @@
     },
     {
       "source": [
+        "00046",
         "DUD_047",
         "偽リノ城塞 \\(From NieR:Automata\\)",
         "Fortress of Lies \\(From NieR:Automata\\)"
@@ -713,6 +758,7 @@
     },
     {
       "source": [
+        "00047",
         "DUD_048",
         "オバアチャン／破壊 \\(From NieR:Automata\\)",
         "Grandma - Destruction \\(From NieR:Automata\\)"
@@ -723,6 +769,7 @@
     },
     {
       "source": [
+        "00048",
         "DUD_049",
         "異形ノ末路 \\(From NieR:Automata\\)",
         "End of the Unknown \\(From NieR:Automata\\)"
@@ -733,6 +780,7 @@
     },
     {
       "source": [
+        "00049",
         "DUD_050",
         "天より降りし力～全テヲ破壊スル黒キ巨人／Medley Version",
         "Torn from the Heavens/The Dark Colossus Destroys All - Medley Version"
@@ -743,6 +791,7 @@
     },
     {
       "source": [
+        "00050",
         "DUD_051",
         "割レタ心 \\(From NieR:Automata\\)",
         "Broken Heart \\(From NieR:Automata\\)"
@@ -754,11 +803,13 @@
     {
       "source": {
         "New Foundations": [
+          "00051",
           "DUD_052",
           "祝いの調べ ～蒼天街復興～",
           "New Foundations"
         ],
         "New Foundations (Groundbreaking)": [
+          "00052",
           "DUD_053",
           "祝いの調べ：熱演 ～蒼天街復興～",
           "New Foundations \\(Groundbreaking\\)"
@@ -792,18 +843,18 @@
     },
     {
       "source": [
+        "00053",
         "DUD_054",
         "ゴゴのテーマ",
         "Gogo's Theme"
       ],
       "target": {
-        "path": "music/ex3/.scd",
-        "enable": false,
-        "# comment": "TODO: Find which game file does this music correspond to"
+        "path": "music/ex2/bgm_ex2_aoz_battle03.scd"
       }
     },
     {
       "source": [
+        "00055",
         "DUD_055",
         "焼き立てポークシー ～魔術工房 マトーヤのアトリエ～",
         "Freshly Glazed Porxie"
@@ -814,6 +865,7 @@
     },
     {
       "source": [
+        "00056",
         "DUD_056",
         "漆黒の王狼、再び ～エメラルドウェポン破壊作戦～",
         "The Black Wolf Stalks Again"
@@ -824,6 +876,7 @@
     },
     {
       "source": [
+        "00057",
         "DUD_057",
         "Don’t be Afraid ～漆黒～",
         "Don't Be Afraid \\(Shadowbringers\\)"
@@ -834,6 +887,7 @@
     },
     {
       "source": [
+        "00058",
         "DUD_058",
         "The Legendary Beast ～漆黒～",
         "The Legendary Beast \\(Shadowbringers\\)"
@@ -844,6 +898,7 @@
     },
     {
       "source": [
+        "00059",
         "DUD_059",
         "美しき思い出 ～希望の園エデン：再生編～",
         "Treasured Memory"
@@ -854,6 +909,7 @@
     },
     {
       "source": [
+        "00060",
         "DUD_060",
         "消せない約束 ～希望の園エデン：再生編～",
         "Promises to Keep"
@@ -864,6 +920,7 @@
     },
     {
       "source": [
+        "00061",
         "DUD_061",
         "The Extreme ～漆黒～",
         "The Extreme \\(Shadowbringers\\)"
@@ -874,6 +931,7 @@
     },
     {
       "source": [
+        "00062",
         "DUD_062",
         "Ami ～漆黒～",
         "Ami \\(Shadowbringers\\)"
@@ -884,18 +942,19 @@
     },
     {
       "source": [
+        "00063",
         "DUD_063",
         "Shuffle or Boogie ～漆黒～",
         "Shuffle or Boogie \\(Shadowbringers\\)"
       ],
       "target": {
-        "path": "music/ex3/.scd",
-        "enable": false,
-        "# comment": "TODO: Find which game file does this music correspond to"
+        "path": "music/ffxiv/bgm_glodsaucer_triplewaiting.scd",
+        "# comment": "\"glod\" is sic"
       }
     },
     {
       "source": [
+        "00064",
         "DUD_064",
         "ソーヘン地下宮殿 \\(Zodiac Age Version\\)",
         "The Sochen Cave Palace \\(Zodiac Age Version\\)"
@@ -906,6 +965,7 @@
     },
     {
       "source": [
+        "00065",
         "DUD_065",
         "言葉無き戦い \\(Zodiac Age Version\\)",
         "Giving Chase \\(Zodiac Age Version\\)"
@@ -916,6 +976,7 @@
     },
     {
       "source": [
+        "00066",
         "DUD_066",
         "復活の女王 ～グンヒルド・ディルーブラム～",
         "The Queen Awakens"
@@ -926,6 +987,7 @@
     },
     {
       "source": [
+        "00067",
         "DUD_067",
         "怒れる悪魔 ～旗艦ダル・リアータ攻略戦～",
         "Wrath of the Harrier"
@@ -936,6 +998,7 @@
     },
     {
       "source": [
+        "00068",
         "DUD_068",
         "蒼天街復興祝祭",
         "Skyrise"
@@ -946,6 +1009,7 @@
     },
     {
       "source": [
+        "00069",
         "DUD_069",
         "還ラナイ声／通常 \\(From NieR:Automata\\)",
         "Voice of no Return - Normal \\(From NieR:Automata\\)"
@@ -956,6 +1020,7 @@
     },
     {
       "source": [
+        "00070",
         "DUD_070",
         "沈痛ノ色 \\(From NieR:Automata\\)",
         "The Color of Depression \\(From NieR:Automata\\)"
@@ -968,6 +1033,7 @@
     },
     {
       "source": [
+        "00071",
         "DUD_071",
         "茫洋タル病 \\(From NieR:Automata\\)",
         "Widespread Illness \\(From NieR:Automata\\)"
@@ -980,6 +1046,7 @@
     },
     {
       "source": [
+        "00072",
         "DUD_072",
         "エミール／絶望 \\(From NieR:Automata\\)",
         "Emil - Despair \\(From NieR:Automata\\)"
@@ -990,6 +1057,7 @@
     },
     {
       "source": [
+        "00073",
         "DUD_073",
         "追悼 \\(From NieR:Automata\\)",
         "Mourning \\(From NieR:Automata\\)"
@@ -1000,6 +1068,7 @@
     },
     {
       "source": [
+        "00074",
         "DUD_074",
         "終ワリノ音 \\(From NieR:Automata\\)",
         "The Sound of the End \\(From NieR:Automata\\)"
@@ -1010,6 +1079,7 @@
     },
     {
       "source": [
+        "00075",
         "DUD_075",
         "終ワリノ音：丁 \\(From NieR:Automata\\)",
         "The Sound of the End: 8bit \\(From NieR:Automata\\)"
@@ -1020,6 +1090,7 @@
     },
     {
       "source": [
+        "00076",
         "DUD_076",
         "取リ憑イタ業病 \\(From NieR:Automata\\)",
         "Possessed by Disease \\(From NieR:Automata\\)"
@@ -1030,6 +1101,7 @@
     },
     {
       "source": [
+        "00077",
         "DUD_077",
         "カイネ／Final Fantasy Main Theme Version",
         "Kainé - Final Fantasy Main Theme Version"
@@ -1040,6 +1112,7 @@
     },
     {
       "source": [
+        "00078",
         "DUD_078",
         "Weight of the World／Instrumental Version \\(From NieR:Automata\\)",
         "Weight of the World - Instrumental Version \\(From NieR:Automata\\)"
@@ -1050,6 +1123,7 @@
     },
     {
       "source": [
+        "00079",
         "DUD_079",
         "遺サレタ場所／斜光 \\(From NieR:Automata\\)",
         "City Ruins - Rays of Light \\(From NieR:Automata\\)"
@@ -1083,6 +1157,7 @@
     },
     {
       "source": [
+        "00080",
         "DUD_080",
         "炎の七部族 ～黄金平原 パガルザン～",
         "Seven Flames"
@@ -1093,6 +1168,7 @@
     },
     {
       "source": [
+        "00081",
         "DUD_081",
         "愛を求める者たち",
         "And Love You Shall Find"
@@ -1103,6 +1179,7 @@
     },
     {
       "source": [
+        "00082",
         "DUD_082",
         "孤児たちの戦い ～ダイヤウェポン捕獲作戦～",
         "In the Arms of War"
@@ -1113,6 +1190,7 @@
     },
     {
       "source": [
+        "00083",
         "DUD_083",
         "ひとりじゃない",
         "Forever at Your Side"
@@ -1124,6 +1202,7 @@
     },
     {
       "source": [
+        "00084",
         "DUD_084",
         "魔導船 ～漆黒～",
         "Lunar Whale \\(Shadowbringers\\)"

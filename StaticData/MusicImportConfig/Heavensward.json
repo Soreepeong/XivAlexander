@@ -1,8 +1,20 @@
 {
   "name": "Final Fantasy XIV - 3.0 - Heavensward",
   "purchaseLinks": {
+    "amazon.co.jp": "https://www.amazon.co.jp/dp/B018RSCA6I/"
   },
   "items": [
+    {
+      "source": [
+        "00000",
+        "HEAVENSWARD_FFXIV_01",
+        "Heavensward"
+      ],
+      "target": {
+        "path": "music/ex1/movie/heavensward_loop.scd",
+        "enable": false
+      }
+    },
     {
       "source": [
         "00001",
@@ -12,6 +24,700 @@
       ],
       "target": {
         "path": "music/ex1/bgm_ex1_system_title.scd"
+      }
+    },
+    {
+      "source": [
+        "00002",
+        "HEAVENSWARD_FFXIV_03",
+        "堅牢 ～イシュガルド下層：昼～",
+        "Solid"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_town_ish02_day.scd"
+      }
+    },
+    {
+      "source": [
+        "00003",
+        "HEAVENSWARD_FFXIV_04",
+        "風に向かって ～クルザス西部高地：昼～",
+        "Against the Wind"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_field_ishsebu02.scd"
+      }
+    },
+    {
+      "source": [
+        "00004",
+        "HEAVENSWARD_FFXIV_05",
+        "熱戦 ～イシュガルド地方：戦闘～",
+        "Melt"
+      ],
+      "target": {
+        "path": [
+          "music/ex1/bgm_ex1_battle_abaracia_01.scd",
+          "music/ex1/bgm_ex1_battle_dravaniac_01.scd",
+          "music/ex1/bgm_ex1_battle_dravaniah_01.scd",
+          "music/ex1/bgm_ex1_battle_dravanial_01.scd",
+          "music/ex1/bgm_ex1_battle_ishsebu_01.scd",
+          "music/ex1/bgm_ex1_battle_magicc_01.scd"
+        ]
+      }
+    },
+    {
+      "source": [
+        "00005",
+        "HEAVENSWARD_FFXIV_06",
+        "堕落 ～廃砦捜索 ダスクヴィジル～",
+        "Descent"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_ishsebu_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00006",
+        "HEAVENSWARD_FFXIV_07",
+        "不吉なる前兆",
+        "Ominous Prognisticks"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_boss_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00007",
+        "HEAVENSWARD_FFXIV_08",
+        "黒闇と白雪 ～クルザス西部高地：夜～",
+        "Black and White"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_field_ishsebu03.scd"
+      }
+    },
+    {
+      "source": [
+        "00008",
+        "HEAVENSWARD_FFXIV_09",
+        "ノブレス・スリープス ～イシュガルド上層：夜～",
+        "Nobility Sleeps"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_town_ish01_night.scd"
+      }
+    },
+    {
+      "source": [
+        "00009",
+        "HEAVENSWARD_FFXIV_10",
+        "国境なき空",
+        "Borderless"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_ride_flyingmount.scd"
+      }
+    },
+    {
+      "source": [
+        "00010",
+        "HEAVENSWARD_FFXIV_11",
+        "旅の宿",
+        "Shelter"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_field_safe1.scd"
+      }
+    },
+    {
+      "source": [
+        "00011",
+        "HEAVENSWARD_FFXIV_12",
+        "雲に隠れて ～アバラシア雲海：昼～",
+        "Lost in the Clouds"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_field_abaracia02.scd"
+      }
+    },
+    {
+      "source": [
+        "00012",
+        "HEAVENSWARD_FFXIV_13",
+        "大らかな家",
+        "Coming Home"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_banfort_banu_good.scd"
+      }
+    },
+    {
+      "source": [
+        "00013",
+        "HEAVENSWARD_FFXIV_14",
+        "夏の雨の如く ～神域浮島 ネバーリープ～",
+        "Like a Summer Rain"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_abaracia_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00014",
+        "HEAVENSWARD_FFXIV_15",
+        "天上の世界 ～アバラシア雲海：夜～",
+        "Close to the Heavens"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_field_abaracia03.scd"
+      }
+    },
+    {
+      "source": [
+        "00015",
+        "HEAVENSWARD_FFXIV_16",
+        "宝石 ～雲海探索 ディアデム諸島～",
+        "Jewel"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_sorashima_battle.scd"
+      }
+    },
+    {
+      "source": [
+        "00016",
+        "HEAVENSWARD_FFXIV_17",
+        "天のため",
+        "For the Sky"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_event_strategy.scd"
+      }
+    },
+    {
+      "source": [
+        "00017",
+        "HEAVENSWARD_FFXIV_18",
+        "みんなでいれば怖くない",
+        "Safety in Numbers"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_field_safe2.scd"
+      }
+    },
+    {
+      "source": [
+        "00018",
+        "HEAVENSWARD_FFXIV_19",
+        "彩られし山麓 ～高地ドラヴァニア：昼～",
+        "Painted Foothills"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_field_dravaniah02.scd"
+      }
+    },
+    {
+      "source": [
+        "00019",
+        "HEAVENSWARD_FFXIV_20",
+        "武神降臨 ～蛮神ラーヴァナ前哨戦～",
+        "The Hand that Gives the Rose"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_ban_ravana_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00020",
+        "HEAVENSWARD_FFXIV_21",
+        "曲がらぬ刃 ～蛮神ラーヴァナ討滅戦～",
+        "Unbending Steel"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_ban_ravana_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00021",
+        "HEAVENSWARD_FFXIV_22",
+        "彩られし夜空 ～高地ドラヴァニア：夜～",
+        "Painted Skies"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_field_dravaniah03.scd"
+      }
+    },
+    {
+      "source": [
+        "00022",
+        "HEAVENSWARD_FFXIV_23",
+        "永遠の眠り ～霊峰踏破 ソーム・アル～",
+        "Slumber Eternal"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_dravaniah_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00023",
+        "HEAVENSWARD_FFXIV_24",
+        "ランドロード ～ドラヴァニア雲海：昼～",
+        "Landlords"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_field_dravaniac02.scd"
+      }
+    },
+    {
+      "source": [
+        "00024",
+        "HEAVENSWARD_FFXIV_25",
+        "それは愛くぽ？",
+        "What is Love?"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_event_moogle.scd"
+      }
+    },
+    {
+      "source": [
+        "00025",
+        "HEAVENSWARD_FFXIV_26",
+        "邪竜の咆吼 ～邪竜血戦 ドラゴンズエアリー～",
+        "Roar of the Wyrm"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_dravaniac_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00026",
+        "HEAVENSWARD_FFXIV_27",
+        "スカイロード ～ドラヴァニア雲海：夜～",
+        "Skylords"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_field_dravaniac03.scd"
+      }
+    },
+    {
+      "source": [
+        "00027",
+        "HEAVENSWARD_FFXIV_28",
+        "闘争",
+        "Contention"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_event_dragonwar.scd"
+      }
+    },
+    {
+      "source": [
+        "00028",
+        "HEAVENSWARD_FFXIV_29",
+        "ノブレス・オブリージュ ～イシュガルド上層：昼～",
+        "Nobility Obliges"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_town_ish01_day.scd"
+      }
+    },
+    {
+      "source": [
+        "00029",
+        "HEAVENSWARD_FFXIV_30",
+        "聖座 ～強硬突入 イシュガルド教皇庁～",
+        "Hallowed Halls"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_kyoko.scd"
+      }
+    },
+    {
+      "source": [
+        "00030",
+        "HEAVENSWARD_FFXIV_31",
+        "蒼天騎士団",
+        "The Heavens' Ward"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_event_soten.scd"
+      }
+    },
+    {
+      "source": [
+        "00031",
+        "HEAVENSWARD_FFXIV_32",
+        "雲霧街の夜霧 ～イシュガルド下層：夜～",
+        "Night in the Brume"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_town_ish02_night.scd"
+      }
+    },
+    {
+      "source": [
+        "00032",
+        "HEAVENSWARD_FFXIV_33",
+        "雷雨の如く",
+        "Heavy Rain"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_banfort_banu_bad.scd"
+      }
+    },
+    {
+      "source": [
+        "00033",
+        "HEAVENSWARD_FFXIV_34",
+        "果てなき蒼 ～蛮神ビスマルク前哨戦～",
+        "Limitless Blue"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_ban_bismark_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00034",
+        "HEAVENSWARD_FFXIV_35",
+        "狂気なる災厄 ～蛮神ビスマルク討滅戦～",
+        "Woe that Is Madness"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_ban_bismark_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00035",
+        "HEAVENSWARD_FFXIV_36",
+        "誤想",
+        "Misconception"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_event_dragon.scd"
+      }
+    },
+    {
+      "source": [
+        "00036",
+        "HEAVENSWARD_FFXIV_37",
+        "欠けた頁 ～低地ドラヴァニア：昼～",
+        "Missing Pages"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_field_dravanial02.scd"
+      }
+    },
+    {
+      "source": [
+        "00037",
+        "HEAVENSWARD_FFXIV_38",
+        "約束の地",
+        "Paradise Found"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_rest_sharean.scd"
+      }
+    },
+    {
+      "source": [
+        "00038",
+        "HEAVENSWARD_FFXIV_39",
+        "マトーヤの洞窟 ～蒼天～",
+        "The Mushroomery"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_rest_matoya.scd"
+      }
+    },
+    {
+      "source": [
+        "00039",
+        "HEAVENSWARD_FFXIV_40",
+        "万世の言葉 ～禁書回収 グブラ幻想図書館～",
+        "Ink Long Dry"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_dravanial_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00040",
+        "HEAVENSWARD_FFXIV_41",
+        "ホームステッド",
+        "Homestead"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_rest_sharean_night.scd"
+      }
+    },
+    {
+      "source": [
+        "00041",
+        "HEAVENSWARD_FFXIV_42",
+        "静寂の星空 ～低地ドラヴァニア：夜～",
+        "The Silent Regard of Stars"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_field_dravanial03.scd"
+      }
+    },
+    {
+      "source": [
+        "00042",
+        "HEAVENSWARD_FFXIV_43",
+        "有毒植物 ～草木庭園　聖モシャーヌ植物園～",
+        "Poison Ivy"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_botanical_gardens.scd"
+      }
+    },
+    {
+      "source": [
+        "00043",
+        "HEAVENSWARD_FFXIV_44",
+        "座礁 ～制圧巨塔 シリウス大灯台～",
+        "Upon the Rocks"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_sirius_lighthouse.scd"
+      }
+    },
+    {
+      "source": {
+        "Aetherpause": [
+          "00044",
+          "HEAVENSWARD_FFXIV_45",
+          "エーテル圏 ～魔航船ヴォイドアーク～",
+          "Aetherpause"
+        ],
+        "In Darkness, There Is One": [
+          "00045",
+          "HEAVENSWARD_FFXIV_46",
+          "深淵に潜む者 ～魔航船ヴォイドアーク～",
+          "In Darkness, There Is One"
+        ]
+      },
+      "target": {
+        "path": "music/ex1/bgm_ex1_makosen_nomal.scd",
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "Aetherpause",
+                "channel": 0
+              },
+              {
+                "source": "Aetherpause",
+                "channel": 1
+              },
+              {
+                "source": "In Darkness, There Is One",
+                "channel": 0
+              },
+              {
+                "source": "In Darkness, There Is One",
+                "channel": 1
+              },
+              {
+                "source": "target",
+                "channel": 5,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              },
+              {
+                "source": "target",
+                "channel": 3,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": [
+        "00046",
+        "HEAVENSWARD_FFXIV_47",
+        "ヴォイドの棺 ～魔航船ヴォイドアーク～",
+        "Voidal Manifest"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_makosen_boss01.scd"
+      }
+    },
+    {
+      "source": [
+        "00047",
+        "HEAVENSWARD_FFXIV_48",
+        "石と鋼",
+        "Stone and Steel"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_event_ishwar.scd"
+      }
+    },
+    {
+      "source": [
+        "00048",
+        "HEAVENSWARD_FFXIV_49",
+        "未解読法則 ～魔大陸アジス・ラー～",
+        "Order Yet Undeciphered"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_field_magicc02.scd"
+      }
+    },
+    {
+      "source": [
+        "00049",
+        "HEAVENSWARD_FFXIV_50",
+        "アンブレーカブル ～博物戦艦 フラクタル・コンティニアム～",
+        "Unbreakable"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_magicc_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00050",
+        "HEAVENSWARD_FFXIV_51",
+        "イマジネーション ～蒼天聖戦 魔科学研究所～",
+        "Imagination"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_magicc_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00051",
+        "HEAVENSWARD_FFXIV_52",
+        "英傑は死なず ～蒼天幻想 ナイツ・オブ・ラウンド討滅戦～",
+        "Heroes Never Die"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_boss03.scd"
+      }
+    },
+    {
+      "source": [
+        "00052",
+        "HEAVENSWARD_FFXIV_53",
+        "英傑 ～ナイツ・オブ・ラウンド討滅戦～",
+        "Heroes"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_boss02.scd"
+      }
+    },
+    {
+      "source": [
+        "00053",
+        "HEAVENSWARD_FFXIV_54",
+        "発端",
+        "Inception"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_event_start.scd"
+      }
+    },
+    {
+      "source": [
+        "00054",
+        "HEAVENSWARD_FFXIV_55",
+        "Dragonsong"
+      ],
+      "target": [
+        {
+          "path": "music/ex1/bgm_ex1_ban_nidhogg_01.scd",
+          "enable": false,
+          "# comment": "TODO: Dragonsong with faded loop"
+        },
+        {
+          "path": "music/ex1/bgm_ex1_endcredit01.scd",
+          "enable": false,
+          "# comment": "Plays Dragonsong, Solid, Heavensward, and then loop Heroes of Stone and Steel."
+        }
+      ]
+    },
+    {
+      "source": [
+        "00055",
+        "HEAVENSWARD_FFXIV_56",
+        "製造者責任 ～機工城アレキサンダー：起動編～",
+        "Sins of the Father, Sins of the Son"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_alex01.scd"
+      }
+    },
+    {
+      "source": [
+        "00056",
+        "HEAVENSWARD_FFXIV_57",
+        "ローカス ～機工城アレキサンダー：起動編～",
+        "Locus"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_alex02.scd"
+      }
+    },
+    {
+      "source": [
+        "00057",
+        "HEAVENSWARD_FFXIV_58",
+        "メタル ～機工城アレキサンダー：起動編～",
+        "Metal"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1.scd",
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "A Fine Air Forbiddeth",
+                "channel": 0
+              },
+              {
+                "source": "A Fine Air Forbiddeth",
+                "channel": 1
+              },
+              {
+                "source": "target",
+                "channel": 1,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              },
+              {
+                "source": "target",
+                "channel": 4,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              },
+              {
+                "source": "target",
+                "channel": 5,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              },
+              {
+                "source": "target",
+                "channel": 3,
+                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+              }
+            ]
+          }
+        ]
       }
     }
   ]

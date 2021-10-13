@@ -192,7 +192,7 @@
       "source": [
         "00015",
         "SHADOWBRINGERS_16",
-        "Gates of Paradise - The Garden of Ru'Hmet"
+        "Gates of Paradise [-–] The Garden of Ru'Hmet"
       ],
       "target": {
         "path": "music/ex2/bgm_ex2_eu_dungeon.scd"
@@ -765,7 +765,7 @@
         "00062",
         "SHADOWBRINGERS_62",
         "反復する明日",
-        "Tomorrow and Tomorrow - Reprise"
+        "Tomorrow and Tomorrow [-–] Reprise"
       ],
       "target": {
         "path": "music/ex3/bgm_ex3_event_02.scd"

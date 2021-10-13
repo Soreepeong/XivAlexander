@@ -776,6 +776,7 @@ int main() {
 	
 	for (auto& [confFile, sourceFilesDir] : std::vector<std::pair<std::filesystem::path, std::filesystem::path>> {
 		{LR"(..\StaticData\MusicImportConfig\Heavensward.json)", LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 3.0 - Heavensward)"},
+		{LR"(..\StaticData\MusicImportConfig\Monster Hunter World.json)", LR"(D:\OneDrive\Musics\Sorted by OSTs\Monster Hunter World\Monster Hunter World Original Soundtrack)"},
 		{LR"(..\StaticData\MusicImportConfig\Shadowbringers.json)", LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.0 - Shadowbringers)"},
 		{LR"(..\StaticData\MusicImportConfig\Death Unto Dawn.json)", LR"(D:\OneDrive\Musics\Sorted by OSTs\Final Fantasy XIV\Final Fantasy 14 - 5.5 - Death Unto Dawn)"},
 	}) {
