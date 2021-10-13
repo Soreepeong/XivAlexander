@@ -4,109 +4,1237 @@
     "amazon.co.jp": "https://www.amazon.co.jp/dp/B00D1B8WY6/"
   },
   "items": [
-    {"source": ["Before_Meteor_FFXIV_001", "Before_Meteor_FFXIV_1", "プレリュード ～追憶の煌めき～", "Prelude [-–] Remembrance"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_002", "Before_Meteor_FFXIV_2", "オープニングテーマ", "Opening Theme"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_003", "Before_Meteor_FFXIV_3", "潮風の集う街 ～リムサ・ロミンサのテーマ～", "Navigator's Glory", "The Theme of Limsa Lominsa"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_004", "Before_Meteor_FFXIV_4", "自由なる風に吹かれて", "Freedom"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_005", "Before_Meteor_FFXIV_5", "ラノシアの疾風", "On Windy Meadows"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_006", "Before_Meteor_FFXIV_6", "天楔", "Nail of the Heavens"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_007", "Before_Meteor_FFXIV_7", "旭影を追いかけ", "In the Shadow of the Colossus"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_008", "Before_Meteor_FFXIV_8", "セイレーンの呼び声", "Siren Song"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_009", "Before_Meteor_FFXIV_9", "木々のさざめく街 ～グリダニアのテーマ～", "Born of the Boughs", "The Theme of Gridania"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_010", "Before_Meteor_FFXIV_10", "冥き地の底に", "Whisper of the Land"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_011", "Before_Meteor_FFXIV_11", "黒衣の迷宮", "Emerald Labyrinth"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_012", "Before_Meteor_FFXIV_12", "鳴動", "The Forest's Pulse"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_013", "Before_Meteor_FFXIV_13", "草藪を掻きわけ", "Bathed in Woodsin"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_014", "Before_Meteor_FFXIV_14", "モーグリ行進曲", "March of the Moogles"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_015", "Before_Meteor_FFXIV_15", "運命の交わる街 ～ウルダハのテーマ～", "The Twin Faces of Fate", "The Theme of Ul'dah"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_016", "Before_Meteor_FFXIV_16", "ザナラーンの黄昏", "Twilight over Thanalan"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_017", "Before_Meteor_FFXIV_17", "深き海の淵に", "Widdershins"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_018", "Before_Meteor_FFXIV_18", "砂塵", "Quicksand"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_019", "Before_Meteor_FFXIV_19", "砂礫を踏みしめ", "Desert Moon Defied"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_020", "Before_Meteor_FFXIV_20", "クルザスの静寂", "Unspoken"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_021", "Before_Meteor_FFXIV_21", "槍旗", "Pennons Aloft"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_022", "Before_Meteor_FFXIV_22", "桟道を上りて", "Starlight and Sellswords"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_023", "Before_Meteor_FFXIV_23", "モードゥナの涙雨", "Tears for Mor Dhona"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_024", "Before_Meteor_FFXIV_24", "幽境", "Phantoms on the Lake"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_025", "Before_Meteor_FFXIV_25", "街路の雑踏", "Supply & Demand"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_026", "Before_Meteor_FFXIV_26", "安らぎの部屋", "Behind Closed Doors"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_027", "Before_Meteor_FFXIV_27", "地平線の彼方", "Horizons Calling"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_028", "Before_Meteor_FFXIV_28", "ノー・クォーター", "No Quarter"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_029", "Before_Meteor_FFXIV_29", "紅蓮の戦旗の下に", "Beneath Bloodied Banners"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_030", "Before_Meteor_FFXIV_30", "すべてはこの手から", "With these Hands"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_031", "Before_Meteor_FFXIV_31", "バイデザイン", "By Design"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_032", "Before_Meteor_FFXIV_32", "自然の賜物", "Nature's Bounty"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_033", "Before_Meteor_FFXIV_33", "汗を流して", "When a Tree Falls"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_034", "Before_Meteor_FFXIV_34", "駆け引き", "Decisions"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_035", "Before_Meteor_FFXIV_35", "栄光の賛歌", "Crowning Achievements"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_036", "Before_Meteor_FFXIV_36", "心の故郷", "Where the Heart Is"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_037", "Before_Meteor_FFXIV_37", "聖なる助言者", "Holy Consult"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_038", "Before_Meteor_FFXIV_38", "エーテルのまどろみ", "Aetherial Slumber"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_039", "Before_Meteor_FFXIV_39", "追憶の迷路", "The Echo"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_040", "Before_Meteor_FFXIV_40", "前触れ", "Fever Dream"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_041", "Before_Meteor_FFXIV_41", "日溜り", "Daring Dalliances"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_042", "Before_Meteor_FFXIV_42", "哀愁", "Sacred Bonds"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_043", "Before_Meteor_FFXIV_43", "清浄なる心", "Piece of Mind"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_044", "Before_Meteor_FFXIV_44", "焦燥の旅路", "Inner Recess"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_045", "Before_Meteor_FFXIV_45", "帰るべき場所", "From the Heart"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_046", "Before_Meteor_FFXIV_46", "また、ここから", "Fourteen Steps"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_047", "Before_Meteor_FFXIV_47", "永遠の欠片", "Fragments of Forever"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_048", "Before_Meteor_FFXIV_48", "静かなる一刻", "Tranquility"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_049", "Before_Meteor_FFXIV_49", "疑惑の廻廊", "Neverborn"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_050", "Before_Meteor_FFXIV_50", "永遠の誓い", "Everbinding Oath"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_051", "Before_Meteor_FFXIV_51", "降神祭", "Heavensturn"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_052", "Before_Meteor_FFXIV_52", "紅蓮祭", "Moonfire Faire"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_053", "Before_Meteor_FFXIV_53", "守護天節", "All Saint's Wake"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_054", "Before_Meteor_FFXIV_54", "星芒祭", "Starlight Celebration"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_055", "Before_Meteor_FFXIV_55", "紅き焔の熱に", "Conflagration"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_056", "Before_Meteor_FFXIV_56", "エッグハントの英雄", "The Hero of Hatchingtide"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_057", "Before_Meteor_FFXIV_57", "淡き光の夢に", "Enraptured"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_058", "Before_Meteor_FFXIV_58", "蛮勇", "Battle Drums"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_059", "Before_Meteor_FFXIV_59", "レンタル de チョコボ", "Bo-down"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_060", "Before_Meteor_FFXIV_60", "憤怒", "Fury"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_061", "Before_Meteor_FFXIV_61", "試練の戦い", "The Seventh Gate"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_062", "Before_Meteor_FFXIV_62", "勝利のファンファーレ ～凱歌～ ＜ショート＞", "Victory Fanfare ＜Short＞"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_063", "Before_Meteor_FFXIV_63", "忍び寄る闇", "Without Shadow"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_064", "Before_Meteor_FFXIV_64", "祈りの歌", "Canticle"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_065", "Before_Meteor_FFXIV_65", "怒れる神々", "Wrath of the Eikons"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_066", "Before_Meteor_FFXIV_66", "原始の審判", "Primal Judgment"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_067", "Before_Meteor_FFXIV_67", "夢はいまも……", "Final Respite"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_068", "Before_Meteor_FFXIV_68", "闇の抱擁", "The Dark's Embrace"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_069", "Before_Meteor_FFXIV_69", "闇の口付", "The Dark's Kiss"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_070", "Before_Meteor_FFXIV_70", "ネメシス", "Nemesis"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_071", "Before_Meteor_FFXIV_71", "勝利のファンファーレ ～凱歌～ ＜ロング＞", "Victory Fanfare ＜Full＞"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_072", "Before_Meteor_FFXIV_72", "黒渦団軍令部", "Maelstrom Command"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_073", "Before_Meteor_FFXIV_73", "双蛇党統合司令部", "Into the Adder's Den"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_074", "Before_Meteor_FFXIV_74", "不滅隊作戦本部", "The Hall of Flames"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_075", "Before_Meteor_FFXIV_75", "名誉と義務", "Honor and Duty"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_076", "Before_Meteor_FFXIV_76", "エオルゼア de チョコボ", "Eorzea de Chocobo"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_077", "Before_Meteor_FFXIV_77", "洋上の小波", "Ripples in the Sea"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_078", "Before_Meteor_FFXIV_78", "砂の機密", "The Sands' Secrets"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_079", "Before_Meteor_FFXIV_79", "露の玉、月の光", "Dewdrops & Moonbeams"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_080", "Before_Meteor_FFXIV_80", "夢見るは遙かなる空", "Dreams Aloft"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_081", "Before_Meteor_FFXIV_81", "大空へ", "Airborne"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_082", "Before_Meteor_FFXIV_82", "キャラバン護衛", "Birds of a Feather"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_083", "Before_Meteor_FFXIV_83", "とんずら！", "Flee Together"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_084", "Before_Meteor_FFXIV_84", "疾きこと銀の如く、硬きこと石の如く", "Quick as Silver, Hard as Stone"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_085", "Before_Meteor_FFXIV_85", "猛き嵐の剣に", "Flightless Wings"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_086", "Before_Meteor_FFXIV_86", "炎獄の火種", "Pitfire"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_087", "Before_Meteor_FFXIV_87", "隠し財宝を求めて", "The Promise of Plunder"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_088", "Before_Meteor_FFXIV_88", "メテオ", "Meteor"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_089", "Before_Meteor_FFXIV_89", "七匹の道化たち", "Seven Jesters"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_090", "Before_Meteor_FFXIV_90", "善王モグル・モグXII世", "Good King Moggle Mog XII"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_091", "Before_Meteor_FFXIV_91", "その背に揺られて", "The Rider's Boon"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_092", "Before_Meteor_FFXIV_92", "極限を超えて", "Breaking Boundaries"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_093", "Before_Meteor_FFXIV_93", "古のジョブ", "Relics"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_094", "Before_Meteor_FFXIV_94", "時神に誘われて", "In the Arms of Althyk"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_095", "Before_Meteor_FFXIV_95", "事件屋のアレ", "Agent of Inquiry"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_096", "Before_Meteor_FFXIV_96", "運命の導き", "The Tug of Fate"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_097", "Before_Meteor_FFXIV_97", "全隊前へ！", "To the Fore"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_098", "Before_Meteor_FFXIV_98", "帝国の意志", "Imperial Will"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_099", "Before_Meteor_FFXIV_99", "鋼の理念", "Steel Reason"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_100", "Before_Meteor_FFXIV_100", "インペリウム", "Imperium"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_101", "Before_Meteor_FFXIV_101", "堕天せし者", "Fallen Angel"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_102", "Before_Meteor_FFXIV_102", "戦乱", "Tempest"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_103", "Before_Meteor_FFXIV_103", "白銀の凶鳥、飛翔せり", "Rise of the White Raven"], "target": {"path": "music/ffxiv/bgm_"}},
-    {"source": ["Before_Meteor_FFXIV_104", "Before_Meteor_FFXIV_104", "Answers"], "target": {"path": "music/ffxiv/bgm_"}}
+    {
+      "source": [
+        "00001",
+        "Before_Meteor_FFXIV_1",
+        "プレリュード ～追憶の煌めき～",
+        "Prelude [-–] Remembrance"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00002",
+        "Before_Meteor_FFXIV_2",
+        "オープニングテーマ",
+        "Opening Theme"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00003",
+        "Before_Meteor_FFXIV_3",
+        "潮風の集う街 ～リムサ・ロミンサのテーマ～",
+        "Navigator's Glory",
+        "The Theme of Limsa Lominsa"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00004",
+        "Before_Meteor_FFXIV_4",
+        "自由なる風に吹かれて",
+        "Freedom"
+      ],
+      "target": {
+        "path": [
+          "music/ex1/bgm_ex1_field_skypirates.scd",
+          "music/ex1/bgm_season_vtid.scd"
+        ]
+      }
+    },
+    {
+      "source": [
+        "00005",
+        "Before_Meteor_FFXIV_5",
+        "ラノシアの疾風",
+        "On Windy Meadows"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_startlim.scd"
+      }
+    },
+    {
+      "source": [
+        "00006",
+        "Before_Meteor_FFXIV_6",
+        "天楔",
+        "Nail of the Heavens"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_aoz_battle01.scd"
+      }
+    },
+    {
+      "source": [
+        "00007",
+        "Before_Meteor_FFXIV_7",
+        "旭影を追いかけ",
+        "In the Shadow of the Colossus"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00008",
+        "Before_Meteor_FFXIV_8",
+        "セイレーンの呼び声",
+        "Siren Song"
+      ],
+      "target": {
+        "path": [
+          "music/ffxiv/bgm_season_princess.scd",
+          "music/ex3/bgm_ex3_town_y_bar.scd"
+        ]
+      }
+    },
+    {
+      "source": [
+        "00009",
+        "Before_Meteor_FFXIV_9",
+        "木々のさざめく街 ～グリダニアのテーマ～",
+        "Born of the Boughs",
+        "The Theme of Gridania"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00010",
+        "Before_Meteor_FFXIV_10",
+        "冥き地の底に",
+        "Whisper of the Land"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_startgri.scd"
+      }
+    },
+    {
+      "source": [
+        "00011",
+        "Before_Meteor_FFXIV_11",
+        "黒衣の迷宮",
+        "Emerald Labyrinth"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_deep01.scd"
+      }
+    },
+    {
+      "source": [
+        "00012",
+        "Before_Meteor_FFXIV_12",
+        "鳴動",
+        "The Forest's Pulse"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00013",
+        "Before_Meteor_FFXIV_13",
+        "草藪を掻きわけ",
+        "Bathed in Woodsin"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00014",
+        "Before_Meteor_FFXIV_14",
+        "モーグリ行進曲",
+        "March of the Moogles"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00015",
+        "Before_Meteor_FFXIV_15",
+        "運命の交わる街 ～ウルダハのテーマ～",
+        "The Twin Faces of Fate",
+        "The Theme of Ul'dah"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00016",
+        "Before_Meteor_FFXIV_16",
+        "ザナラーンの黄昏",
+        "Twilight over Thanalan"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_startluru.scd"
+      }
+    },
+    {
+      "source": [
+        "00017",
+        "Before_Meteor_FFXIV_17",
+        "深き海の淵に",
+        "Widdershins"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00018",
+        "Before_Meteor_FFXIV_18",
+        "砂塵",
+        "Quicksand"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_dravaniah_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00019",
+        "Before_Meteor_FFXIV_19",
+        "砂礫を踏みしめ",
+        "Desert Moon Defied"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00020",
+        "Before_Meteor_FFXIV_20",
+        "クルザスの静寂",
+        "Unspoken"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ex2_event_35.scd"
+      }
+    },
+    {
+      "source": [
+        "00021",
+        "Before_Meteor_FFXIV_21",
+        "槍旗",
+        "Pennons Aloft"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_boss_04.scd"
+      }
+    },
+    {
+      "source": [
+        "00022",
+        "Before_Meteor_FFXIV_22",
+        "桟道を上りて",
+        "Starlight and Sellswords"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00023",
+        "Before_Meteor_FFXIV_23",
+        "モードゥナの涙雨",
+        "Tears for Mor Dhona"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_deep03.scd"
+      }
+    },
+    {
+      "source": [
+        "00024",
+        "Before_Meteor_FFXIV_24",
+        "幽境",
+        "Phantoms on the Lake"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_boss_05.scd"
+      }
+    },
+    {
+      "source": [
+        "00025",
+        "Before_Meteor_FFXIV_25",
+        "街路の雑踏",
+        "Supply & Demand"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_bazaar.scd"
+      }
+    },
+    {
+      "source": [
+        "00026",
+        "Before_Meteor_FFXIV_26",
+        "安らぎの部屋",
+        "Behind Closed Doors"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_town_rest_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00027",
+        "Before_Meteor_FFXIV_27",
+        "地平線の彼方",
+        "Horizons Calling"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_lim_06.scd"
+      }
+    },
+    {
+      "source": [
+        "00028",
+        "Before_Meteor_FFXIV_28",
+        "ノー・クォーター",
+        "No Quarter"
+      ],
+      "target": {
+        "path": "music/ex2/bgm_ex2_eu_nm.scd"
+      }
+    },
+    {
+      "source": [
+        "00029",
+        "Before_Meteor_FFXIV_29",
+        "紅蓮の戦旗の下に",
+        "Beneath Bloodied Banners"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_uru_06.scd"
+      }
+    },
+    {
+      "source": [
+        "00030",
+        "Before_Meteor_FFXIV_30",
+        "すべてはこの手から",
+        "With these Hands"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00031",
+        "Before_Meteor_FFXIV_31",
+        "バイデザイン",
+        "By Design"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_craft.scd"
+      }
+    },
+    {
+      "source": [
+        "00032",
+        "Before_Meteor_FFXIV_32",
+        "自然の賜物",
+        "Nature's Bounty"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00033",
+        "Before_Meteor_FFXIV_33",
+        "汗を流して",
+        "When a Tree Falls"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00034",
+        "Before_Meteor_FFXIV_34",
+        "駆け引き",
+        "Decisions"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_nego.scd"
+      }
+    },
+    {
+      "source": [
+        "00035",
+        "Before_Meteor_FFXIV_35",
+        "栄光の賛歌",
+        "Crowning Achievements"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00036",
+        "Before_Meteor_FFXIV_36",
+        "心の故郷",
+        "Where the Heart Is"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_ansoku2.scd"
+      }
+    },
+    {
+      "source": [
+        "00037",
+        "Before_Meteor_FFXIV_37",
+        "聖なる助言者",
+        "Holy Consult"
+      ],
+      "target": {
+        "path": "music/ex1/bgm_ex1_dungeon_hullbreaker_hard.scd"
+      }
+    },
+    {
+      "source": [
+        "00038",
+        "Before_Meteor_FFXIV_38",
+        "エーテルのまどろみ",
+        "Aetherial Slumber"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00039",
+        "Before_Meteor_FFXIV_39",
+        "追憶の迷路",
+        "The Echo"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_kako.scd"
+      }
+    },
+    {
+      "source": [
+        "00040",
+        "Before_Meteor_FFXIV_40",
+        "前触れ",
+        "Fever Dream"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_fuan.scd"
+      }
+    },
+    {
+      "source": [
+        "00041",
+        "Before_Meteor_FFXIV_41",
+        "日溜り",
+        "Daring Dalliances"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_tanoshii1.scd"
+      }
+    },
+    {
+      "source": [
+        "00042",
+        "Before_Meteor_FFXIV_42",
+        "哀愁",
+        "Sacred Bonds"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_verysad.scd"
+      }
+    },
+    {
+      "source": [
+        "00043",
+        "Before_Meteor_FFXIV_43",
+        "清浄なる心",
+        "Piece of Mind"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00044",
+        "Before_Meteor_FFXIV_44",
+        "焦燥の旅路",
+        "Inner Recess"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00045",
+        "Before_Meteor_FFXIV_45",
+        "帰るべき場所",
+        "From the Heart"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00046",
+        "Before_Meteor_FFXIV_46",
+        "また、ここから",
+        "Fourteen Steps"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00047",
+        "Before_Meteor_FFXIV_47",
+        "永遠の欠片",
+        "Fragments of Forever"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_odayaka.scd"
+      }
+    },
+    {
+      "source": [
+        "00048",
+        "Before_Meteor_FFXIV_48",
+        "静かなる一刻",
+        "Tranquility"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_ansoku1.scd"
+      }
+    },
+    {
+      "source": [
+        "00049",
+        "Before_Meteor_FFXIV_49",
+        "疑惑の廻廊",
+        "Neverborn"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ex2_event_37.scd"
+      }
+    },
+    {
+      "source": [
+        "00050",
+        "Before_Meteor_FFXIV_50",
+        "永遠の誓い",
+        "Everbinding Oath"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_season_wedding.scd"
+      }
+    },
+    {
+      "source": [
+        "00051",
+        "Before_Meteor_FFXIV_51",
+        "降神祭",
+        "Heavensturn"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_season_newyear.scd"
+      }
+    },
+    {
+      "source": [
+        "00052",
+        "Before_Meteor_FFXIV_52",
+        "紅蓮祭",
+        "Moonfire Faire"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_season_summerfes.scd"
+      }
+    },
+    {
+      "source": [
+        "00053",
+        "Before_Meteor_FFXIV_53",
+        "守護天節",
+        "All Saint's Wake"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_season_halloween.scd"
+      }
+    },
+    {
+      "source": [
+        "00054",
+        "Before_Meteor_FFXIV_54",
+        "星芒祭",
+        "Starlight Celebration"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_season_christmas.scd"
+      }
+    },
+    {
+      "source": [
+        "00055",
+        "Before_Meteor_FFXIV_55",
+        "紅き焔の熱に",
+        "Conflagration"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00056",
+        "Before_Meteor_FFXIV_56",
+        "エッグハントの英雄",
+        "The Hero of Hatchingtide"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_system_winshot_04.scd"
+      }
+    },
+    {
+      "source": [
+        "00057",
+        "Before_Meteor_FFXIV_57",
+        "淡き光の夢に",
+        "Enraptured"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_deep02.scd"
+      }
+    },
+    {
+      "source": [
+        "00058",
+        "Before_Meteor_FFXIV_58",
+        "蛮勇",
+        "Battle Drums"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_banfort_sahagin.scd"
+      }
+    },
+    {
+      "source": [
+        "00059",
+        "Before_Meteor_FFXIV_59",
+        "レンタル de チョコボ",
+        "Bo-down"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ride_rchocobo.scd"
+      }
+    },
+    {
+      "source": [
+        "00060",
+        "Before_Meteor_FFXIV_60",
+        "憤怒",
+        "Fury"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_lim_05.scd"
+      }
+    },
+    {
+      "source": [
+        "00061",
+        "Before_Meteor_FFXIV_61",
+        "試練の戦い",
+        "The Seventh Gate"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00062",
+        "Before_Meteor_FFXIV_62",
+        "勝利のファンファーレ ～凱歌～ ＜ショート＞",
+        "Victory Fanfare ＜Short＞"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00063",
+        "Before_Meteor_FFXIV_63",
+        "忍び寄る闇",
+        "Without Shadow"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_ascian.scd"
+      }
+    },
+    {
+      "source": [
+        "00064",
+        "Before_Meteor_FFXIV_64",
+        "祈りの歌",
+        "Canticle"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_truth.scd"
+      }
+    },
+    {
+      "source": [
+        "00065",
+        "Before_Meteor_FFXIV_65",
+        "怒れる神々",
+        "Wrath of the Eikons"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_dungeon_gri_06.scd"
+      }
+    },
+    {
+      "source": [
+        "00066",
+        "Before_Meteor_FFXIV_66",
+        "原始の審判",
+        "Primal Judgment"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_ban_ifrit.scd"
+      }
+    },
+    {
+      "source": [
+        "00067",
+        "Before_Meteor_FFXIV_67",
+        "夢はいまも……",
+        "Final Respite"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_.scd",
+        "enable": false
+      }
+    },
+    {
+      "source": {
+        "The Dark's Embrace": [
+          "00068",
+          "Before_Meteor_FFXIV_68",
+          "闇の抱擁",
+          "The Dark's Embrace"
+        ],
+        "The Dark's Kiss": [
+          "00069",
+          "Before_Meteor_FFXIV_69",
+          "闇の口付",
+          "The Dark's Kiss"
+        ]
+      },
+      "target": [
+        {
+          "path": "music/ffxiv/bgm_rade_01.scd",
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "The Dark's Embrace",
+                  "channel": 0
+                },
+                {
+                  "source": "The Dark's Embrace",
+                  "channel": 1
+                },
+                {
+                  "source": "The Dark's Kiss",
+                  "channel": 0
+                },
+                {
+                  "source": "The Dark's Kiss",
+                  "channel": 1
+                },
+                {
+                  "source": "target",
+                  "channel": 5,
+                  "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                },
+                {
+                  "source": "target",
+                  "channel": 3,
+                  "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "source": [
+            "00070",
+            "Before_Meteor_FFXIV_70",
+            "ネメシス",
+            "Nemesis"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_boss_03.scd"
+          }
+        },
+        {
+          "source": [
+            "00071",
+            "Before_Meteor_FFXIV_71",
+            "勝利のファンファーレ ～凱歌～ ＜ロング＞",
+            "Victory Fanfare ＜Full＞"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_chocoborace_win1st.scd"
+          }
+        },
+        {
+          "source": [
+            "00072",
+            "Before_Meteor_FFXIV_72",
+            "黒渦団軍令部",
+            "Maelstrom Command"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_company_lim.scd"
+          }
+        },
+        {
+          "source": [
+            "00073",
+            "Before_Meteor_FFXIV_73",
+            "双蛇党統合司令部",
+            "Into the Adder's Den"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_company_gri.scd"
+          }
+        },
+        {
+          "source": [
+            "00074",
+            "Before_Meteor_FFXIV_74",
+            "不滅隊作戦本部",
+            "The Hall of Flames"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_company_uru.scd"
+          }
+        },
+        {
+          "source": [
+            "00075",
+            "Before_Meteor_FFXIV_75",
+            "名誉と義務",
+            "Honor and Duty"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_.scd",
+            "enable": false
+          }
+        },
+        {
+          "source": [
+            "00076",
+            "Before_Meteor_FFXIV_76",
+            "エオルゼア de チョコボ",
+            "Eorzea de Chocobo"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_ride_chocobo.scd"
+          }
+        },
+        {
+          "source": [
+            "00077",
+            "Before_Meteor_FFXIV_77",
+            "洋上の小波",
+            "Ripples in the Sea"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_event_melvib.scd"
+          }
+        },
+        {
+          "source": [
+            "00078",
+            "Before_Meteor_FFXIV_78",
+            "砂の機密",
+            "The Sands' Secrets"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_event_rauburn.scd"
+          }
+        },
+        {
+          "source": [
+            "00079",
+            "Before_Meteor_FFXIV_79",
+            "露の玉、月の光",
+            "Dewdrops & Moonbeams"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_event_kanuescd"
+          }
+        },
+        {
+          "source": [
+            "00080",
+            "Before_Meteor_FFXIV_80",
+            "夢見るは遙かなる空",
+            "Dreams Aloft"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_event_memoryofcid.scd"
+          }
+        },
+        {
+          "source": [
+            "00081",
+            "Before_Meteor_FFXIV_81",
+            "大空へ",
+            "Airborne"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_.scd",
+            "enable": false
+          }
+        },
+        {
+          "source": [
+            "00082",
+            "Before_Meteor_FFXIV_82",
+            "キャラバン護衛",
+            "Birds of a Feather"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_dungeon_uru_05.scd"
+          }
+        },
+        {
+          "source": [
+            "00083",
+            "Before_Meteor_FFXIV_83",
+            "とんずら！",
+            "Flee Together"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_.scd",
+            "enable": false
+          }
+        },
+        {
+          "source": [
+            "00084",
+            "Before_Meteor_FFXIV_84",
+            "疾きこと銀の如く、硬きこと石の如く",
+            "Quick as Silver, Hard as Stone"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_field_banfort_kobold.scd"
+          }
+        },
+        {
+          "source": [
+            "00085",
+            "Before_Meteor_FFXIV_85",
+            "猛き嵐の剣に",
+            "Flightless Wings"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_field_banfort_ixal.scd"
+          }
+        },
+        {
+          "source": [
+            "00086",
+            "Before_Meteor_FFXIV_86",
+            "炎獄の火種",
+            "Pitfire"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_field_banfort_amaruja.scd"
+          }
+        },
+        {
+          "source": [
+            "00087",
+            "Before_Meteor_FFXIV_87",
+            "隠し財宝を求めて",
+            "The Promise of Plunder"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_battle_dungeon_01.scd"
+          }
+        },
+        {
+          "source": [
+            "00088",
+            "Before_Meteor_FFXIV_88",
+            "メテオ",
+            "Meteor"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_event_neal.scd"
+          }
+        },
+        {
+          "source": [
+            "00089",
+            "Before_Meteor_FFXIV_89",
+            "七匹の道化たち",
+            "Seven Jesters"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_.scd",
+            "enable": false
+          }
+        },
+        {
+          "source": [
+            "00090",
+            "Before_Meteor_FFXIV_90",
+            "善王モグル・モグXII世",
+            "Good King Moggle Mog XII"
+          ],
+          "target": {
+            "path": [
+              "music/ffxiv/bgm_ban_moogle_king.scd",
+              "music/ffxiv/bgm_ban_moogle_goku.scd"
+            ]
+          }
+        },
+        {
+          "source": [
+            "00091",
+            "Before_Meteor_FFXIV_91",
+            "その背に揺られて",
+            "The Rider's Boon"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_ride_commonmonster.scd"
+          }
+        },
+        {
+          "source": [
+            "00092",
+            "Before_Meteor_FFXIV_92",
+            "極限を超えて",
+            "Breaking Boundaries"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_event_jobshiren.scd"
+          }
+        },
+        {
+          "source": [
+            "00093",
+            "Before_Meteor_FFXIV_93",
+            "古のジョブ",
+            "Relics"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_event_jobevent.scd"
+          }
+        },
+        {
+          "source": [
+            "00094",
+            "Before_Meteor_FFXIV_94",
+            "時神に誘われて",
+            "In the Arms of Althyk"
+          ],
+          "target": {
+            "path": "sound/zingle/Zingle_Sleep.scd"
+          }
+        },
+        {
+          "source": [
+            "00095",
+            "Before_Meteor_FFXIV_95",
+            "事件屋のアレ",
+            "Agent of Inquiry"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_event_hildy.scd"
+          }
+        },
+        {
+          "source": [
+            "00096",
+            "Before_Meteor_FFXIV_96",
+            "運命の導き",
+            "The Tug of Fate"
+          ],
+          "target": {
+            "path": [
+              "music/ffxiv/bgm_boss_06.scd",
+              "music/ffxiv/bgm_fate_kyoten.scd"
+            ]
+          }
+        },
+        {
+          "source": [
+            "00097",
+            "Before_Meteor_FFXIV_97",
+            "全隊前へ！",
+            "To the Fore"
+          ],
+          "target": {
+            "path": [
+              "music/ffxiv/bgm_boss_07.scd",
+              "music/ffxiv/bgm_fate_bouei.scd",
+              "music/ffxiv/bgm_fate_bouei2.scd"
+            ]
+          }
+        },
+        {
+          "source": [
+            "00098",
+            "Before_Meteor_FFXIV_98",
+            "帝国の意志",
+            "Imperial Will"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_event_teikoku.scd"
+          }
+        },
+        {
+          "source": [
+            "00099",
+            "Before_Meteor_FFXIV_99",
+            "鋼の理念",
+            "Steel Reason"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_con_teikoku_boss.scd"
+          }
+        },
+        {
+          "source": [
+            "00100",
+            "Before_Meteor_FFXIV_100",
+            "インペリウム",
+            "Imperium"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_aoz_battle02.scd"
+          }
+        },
+        {
+          "source": [
+            "00101",
+            "Before_Meteor_FFXIV_101",
+            "堕天せし者",
+            "Fallen Angel"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_ban_garuda.scd"
+          }
+        },
+        {
+          "source": [
+            "00102",
+            "Before_Meteor_FFXIV_102",
+            "戦乱",
+            "Tempest"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_con_neal.scd"
+          }
+        },
+        {
+          "source": [
+            "00103",
+            "Before_Meteor_FFXIV_103",
+            "白銀の凶鳥、飛翔せり",
+            "Rise of the White Raven"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_con_carteneaubattle.scd"
+          }
+        },
+        {
+          "source": [
+            "00104",
+            "Before_Meteor_FFXIV_104",
+            "Answers"
+          ],
+          "target": {
+            "path": "music/ffxiv/bgm_.scd",
+            "enable": false,
+            "# comment": "bgm_con_bahamut_bigboss0, bgm_con_bahamut_bigboss2, bgm_con_bahamut_bigboss3"
+          }
+        }
+      ]
+    }
   ]
 }

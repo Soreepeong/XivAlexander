@@ -1017,7 +1017,10 @@
         "Siren Song"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_season_princess.scd"
+        "path": [
+          "music/ffxiv/bgm_season_princess.scd",
+          "music/ex3/bgm_ex3_town_y_bar.scd"
+        ]
       }
     },
     {
