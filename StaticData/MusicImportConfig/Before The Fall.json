@@ -12,7 +12,9 @@
         "Wreck to the Seaman"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ban_leviathan1.scd"
+        "path": "music/ffxiv/bgm_ban_leviathan1.scd",
+        "enable": false,
+        "# comment": "In-game beat has longer repeat cycle than blu-ray version."
       }
     },
     {
@@ -187,6 +189,14 @@
       },
       "target": {
         "path": "music/ffxiv/bgm_con_bahamut_v2.scd",
+        "sequentialToFfmpegChannelIndexMap": [
+          0,
+          2,
+          1,
+          4,
+          5,
+          3
+        ],
         "segments": [
           {
             "channels": [
@@ -208,13 +218,11 @@
               },
               {
                 "source": "target",
-                "channel": 5,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 4
               },
               {
                 "source": "target",
-                "channel": 3,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 5
               }
             ]
           }
@@ -346,7 +354,15 @@
         ]
       },
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/bgm_pvp_battle.scd",
+        "sequentialToFfmpegChannelIndexMap": [
+          0,
+          2,
+          1,
+          4,
+          5,
+          3
+        ],
         "segments": [
           {
             "channels": [
@@ -368,13 +384,11 @@
               },
               {
                 "source": "target",
-                "channel": 5,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 4
               },
               {
                 "source": "target",
-                "channel": 3,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 5
               }
             ]
           }
@@ -432,6 +446,14 @@
       "target": [
         {
           "path": "music/ffxiv/bgm_con_crystaltower_02.scd",
+          "sequentialToFfmpegChannelIndexMap": [
+            0,
+            2,
+            1,
+            4,
+            5,
+            3
+          ],
           "segments": [
             {
               "channels": [
@@ -453,13 +475,11 @@
                 },
                 {
                   "source": "target",
-                  "channel": 5,
-                  "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                  "channel": 4
                 },
                 {
                   "source": "target",
-                  "channel": 3,
-                  "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                  "channel": 5
                 }
               ]
             }
@@ -492,7 +512,9 @@
         "Loss of Time"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_gendaishi.scd"
+        "path": "music/ffxiv/bgm_event_gendaishi.scd",
+        "loopLengthDivisor": 2,
+        "# comment": "One period contains two loops"
       }
     },
     {
@@ -613,7 +635,10 @@
         "From the Ashes"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_con_bahamut_bigboss1.scd"
+        "path": [
+          "music/ffxiv/bgm_con_bahamut_bigboss1.scd",
+          "music/ffxiv/bgm_ride_bennu.scd"
+        ]
       }
     },
     {
@@ -635,7 +660,10 @@
         "Four-sided Circle"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_glodsaucer_lobby.scd"
+        "path": [
+          "music/ffxiv/bgm_glodsaucer_lobby.scd",
+          "music/ffxiv/bgm_ride_gs01.scd"
+        ]
       }
     },
     {
@@ -710,8 +738,20 @@
       },
       "target": {
         "path": "music/ffxiv/bgm_con_crystaltower_03.scd",
+        "sequentialToFfmpegChannelIndexMap": [
+          0,
+          2,
+          1,
+          4,
+          5,
+          3
+        ],
         "segments": [
           {
+            "sourceFilters": {
+              "Blind to the Dark": "volume=+3dB",
+              "Hamartomania": "volume=+3dB"
+            },
             "channels": [
               {
                 "source": "Blind to the Dark",
@@ -731,13 +771,11 @@
               },
               {
                 "source": "target",
-                "channel": 5,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 4
               },
               {
                 "source": "target",
-                "channel": 3,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 5
               }
             ]
           }

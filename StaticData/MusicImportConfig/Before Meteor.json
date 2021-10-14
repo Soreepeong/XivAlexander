@@ -619,7 +619,10 @@
         "All Saint's Wake"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_season_halloween.scd"
+        "path": [
+          "music/ffxiv/bgm_season_halloween.scd",
+          "music/ffxiv/bgm_ride_broom.scd"
+        ]
       }
     },
     {
@@ -765,7 +768,10 @@
         "Primal Judgment"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ban_ifrit.scd"
+        "path": [
+          "music/ffxiv/bgm_ban_ifrit.scd",
+          "music/ffxiv/bgm_ride_ifrit.scd"
+        ]
       }
     },
     {
@@ -798,6 +804,14 @@
       "target": [
         {
           "path": "music/ffxiv/bgm_rade_01.scd",
+          "sequentialToFfmpegChannelIndexMap": [
+            0,
+            2,
+            1,
+            4,
+            5,
+            3
+          ],
           "segments": [
             {
               "channels": [
@@ -819,13 +833,11 @@
                 },
                 {
                   "source": "target",
-                  "channel": 5,
-                  "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                  "channel": 4
                 },
                 {
                   "source": "target",
-                  "channel": 3,
-                  "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                  "channel": 5
                 }
               ]
             }
@@ -1079,7 +1091,10 @@
         "The Rider's Boon"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ride_commonmonster.scd"
+        "path": [
+          "music/ffxiv/bgm_ride_commonmonster.scd",
+          "music/ffxiv/bgm_ride_coolmount.scd"
+        ]
       }
     },
     {
@@ -1187,7 +1202,10 @@
         "Imperium"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_aoz_battle02.scd"
+        "path": [
+          "music/ffxiv/bgm_aoz_battle02.scd",
+          "music/ffxiv/bgm_ride_aoz.scd"
+        ]
       }
     },
     {
@@ -1198,7 +1216,10 @@
         "Fallen Angel"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ban_garuda.scd"
+        "path": [
+          "music/ffxiv/bgm_ban_garuda.scd",
+          "music/ffxiv/bgm_ride_gruda.scd"
+        ]
       }
     },
     {

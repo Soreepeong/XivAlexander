@@ -37,7 +37,10 @@
         "プレリュード　～冒険の序章～"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_system_chara.scd"
+        "path": [
+          "music/ffxiv/bgm_system_chara.scd",
+          "music/ffxiv/bgm_ride_bcomp.scd"
+        ]
       }
     },
     {
@@ -59,7 +62,7 @@
           "To the Sun",
           "灼熱の地へ"
         ],
-        "source5": {
+        "source2": {
           "inputFiles": [
             [
               "00004",
@@ -68,7 +71,19 @@
               "灼熱の地へ"
             ]
           ],
-          "filterComplex": "[0:a]atrim=242.649:254.487,asetpts=PTS-STARTPTS,volume=+10dB,afade=type=in:st=0:d=0.737:curve=qua,afade=type=in:st=0:d=5.5:curve=qsin[ra];[0:a]atrim=254.487s:355.707s,adelay=8s:all=1,atrim=0.6673125s,asetpts=PTS-STARTPTS,volume='1+2*max(18-t,0)/18':eval=frame[rb];[ra][rb]amix=inputs=2:duration=longest,volume=+5dB,apad=whole_dur=110.252[res]",
+          "filterComplex": "[0:a]atrim=30.744:171.044,adelay=1s:all=1,atrim=0.764,asetpts=PTS-STARTPTS,volume='2.5*pow(min(0.1+0.9*min(t,7.4)/7.4,min(140.3-t,2.5)/2.5),1.5)':eval=frame[res]",
+          "filterComplexOutName": "[res]"
+        },
+        "source4": {
+          "inputFiles": [
+            [
+              "00004",
+              "ARR_FFXIV_005",
+              "To the Sun",
+              "灼熱の地へ"
+            ]
+          ],
+          "filterComplex": "[0:a]atrim=242.649:254.487,asetpts=PTS-STARTPTS,volume=+10dB,afade=type=in:st=0:d=0.737:curve=qua,afade=type=in:st=0:d=5.5:curve=qsin[ra];[0:a]atrim=254.487s:355.707s,adelay=8s:all=1,atrim=0.9043125s,asetpts=PTS-STARTPTS,volume='1+2*max(18-t,0)/18':eval=frame[rb];[ra][rb]amix=inputs=2:duration=longest,volume=+5dB,apad=whole_dur=110.252[res]",
           "filterComplexOutName": "[res]"
         }
       },
@@ -95,33 +110,17 @@
           "path": "music/ffxiv/bgm_field_uru_02.scd",
           "segments": [
             {
-              "length": 2.438,
+              "sourceThresholds": {
+                "source2": 0,
+                "target": 0
+              },
               "channels": [
                 {
-                  "source": "target",
+                  "source": "source2",
                   "channel": 0
                 },
                 {
-                  "source": "target",
-                  "channel": 1
-                }
-              ]
-            },
-            {
-              "sourceOffsets": {
-                "source": 32.9
-              },
-              "sourceFilters": {
-                "source": "volume=+5dB"
-              },
-              "length": 137.862,
-              "channels": [
-                {
-                  "source": "source",
-                  "channel": 0
-                },
-                {
-                  "source": "source",
+                  "source": "source2",
                   "channel": 1
                 }
               ]
@@ -133,9 +132,9 @@
           "segments": [
             {
               "sourceOffsets": {
-                "source": 170
+                "source": 170.952
               },
-              "sourceThresholds":{
+              "sourceThresholds": {
                 "source": 0.15,
                 "target": 0.15
               },
@@ -161,16 +160,16 @@
           "segments": [
             {
               "sourceThresholds": {
-                "source5": 0,
+                "source4": 0,
                 "target": 0
               },
               "channels": [
                 {
-                  "source": "source5",
+                  "source": "source4",
                   "channel": 0
                 },
                 {
-                  "source": "source5",
+                  "source": "source4",
                   "channel": 1
                 }
               ]
@@ -181,26 +180,13 @@
           "path": "music/ffxiv/bgm_field_uru_05.scd",
           "segments": [
             {
-              "length": 1.5,
-              "channels": [
-                {
-                  "source": "target",
-                  "channel": 0
-                },
-                {
-                  "source": "target",
-                  "channel": 1
-                }
-              ]
-            },
-            {
               "sourceOffsets": {
-                "source": 357.271
+                "source": 355.771
               },
               "sourceFilters": {
-                "source": "volume=+5dB"
+                "source": "volume=+7dB"
               },
-              "length": 37.208,
+              "length": 39.708,
               "channels": [
                 {
                   "source": "source",
@@ -531,7 +517,10 @@
         "その背に揺られて"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ride_commonmonster.scd"
+        "path": [
+          "music/ffxiv/bgm_ride_commonmonster.scd",
+          "music/ffxiv/bgm_ride_coolmount.scd"
+        ]
       }
     },
     {
@@ -626,7 +615,7 @@
       "source": [
         "00038",
         "ARR_FFXIV_039",
-        "A Victory Fanfare Reborn (Full)",
+        "A Victory Fanfare Reborn \\(Full\\)",
         "勝利のファンファーレ　～新生（フル）～"
       ],
       "target": {
@@ -685,7 +674,10 @@
         "原始の審判"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ban_ifrit.scd"
+        "path": [
+          "music/ffxiv/bgm_ban_ifrit.scd",
+          "music/ffxiv/bgm_ride_ifrit.scd"
+        ]
       }
     },
     {
@@ -1066,66 +1058,26 @@
       }
     },
     {
-      "source": {
-        "source": {
-          "inputFiles": [
-            [
-              "00078",
-              "ARR_FFXIV_079",
-              "Fleeting Rays",
-              "儚き光彩"
-            ],
-            [
-              "00079",
-              "ARR_FFXIV_080",
-              "Engage",
-              "蒼き翼"
-            ]
-          ],
-          "filterComplex": "[0:a] [1:a] concat=n=2:v=0:a=1 [res]",
-          "filterComplexOutName": "[res]"
-        }
-      },
-      "target": [
-        {
-          "path": "music/ffxiv/bgm_field_uru_06.scd",
-          "segments": [
-            {
-              "length": 97,
-              "channels": [
-                {
-                  "source": "source",
-                  "channel": 0
-                },
-                {
-                  "source": "source",
-                  "channel": 1
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "path": "music/ffxiv/bgm_event_enterprise.scd",
-          "segments": [
-            {
-              "sourceOffsets": {
-                "source": 97
-              },
-              "channels": [
-                {
-                  "source": "source",
-                  "channel": 0
-                },
-                {
-                  "source": "source",
-                  "channel": 1
-                }
-              ]
-            }
-          ]
-        }
-      ]
+      "source": [
+        "00078",
+        "ARR_FFXIV_079",
+        "Fleeting Rays",
+        "儚き光彩"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_field_uru_06.scd"
+      }
+    },
+    {
+      "source": [
+        "00079",
+        "ARR_FFXIV_080",
+        "Engage",
+        "蒼き翼"
+      ],
+      "target": {
+        "path": "music/ffxiv/bgm_event_enterprise.scd"
+      }
     },
     {
       "source": [
@@ -1146,7 +1098,10 @@
         "堕天せし者"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ban_garuda.scd"
+        "path": [
+          "music/ffxiv/bgm_ban_garuda.scd",
+          "music/ffxiv/bgm_ride_gruda.scd"
+        ]
       }
     },
     {
@@ -1315,6 +1270,14 @@
       "target": [
         {
           "path": "music/ffxiv/bgm_rade_01.scd",
+          "sequentialToFfmpegChannelIndexMap": [
+            0,
+            2,
+            1,
+            4,
+            5,
+            3
+          ],
           "segments": [
             {
               "channels": [
@@ -1336,13 +1299,11 @@
                 },
                 {
                   "source": "target",
-                  "channel": 5,
-                  "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                  "channel": 4
                 },
                 {
                   "source": "target",
-                  "channel": 3,
-                  "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                  "channel": 5
                 }
               ]
             }
@@ -1384,8 +1345,21 @@
       },
       "target": {
         "path": "music/ffxiv/bgm_con_crystaltower_01.scd",
+        "sequentialToFfmpegChannelIndexMap": [
+          0,
+          2,
+          1,
+          4,
+          5,
+          3
+        ],
         "segments": [
           {
+            "sourceThresholds": {
+              "Hubris": 0.4,
+              "Ever Upwards": 0.4,
+              "target": 0.4
+            },
             "channels": [
               {
                 "source": "Hubris",
@@ -1405,13 +1379,11 @@
               },
               {
                 "source": "target",
-                "channel": 5,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 4
               },
               {
                 "source": "target",
-                "channel": 3,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 5
               }
             ]
           }
@@ -1651,7 +1623,15 @@
         ]
       },
       "target": {
-        "path": "music/ffxiv/bgm_con_bahamut_v2.scd",
+        "path": "music/ffxiv/bgm_con_bahamut.scd",
+        "sequentialToFfmpegChannelIndexMap": [
+          0,
+          2,
+          1,
+          4,
+          5,
+          3
+        ],
         "segments": [
           {
             "channels": [
@@ -1673,13 +1653,11 @@
               },
               {
                 "source": "target",
-                "channel": 5,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 4
               },
               {
                 "source": "target",
-                "channel": 3,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 5
               }
             ]
           }

@@ -88,26 +88,86 @@
         "餓えた狼　～ザ・フィースト～",
         "Starved"
       ],
+      "target": [
+        {
+          "path": "music/ex1/bgm_ex1_pvp01.scd",
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "source",
+                  "channel": 0
+                },
+                {
+                  "source": "source",
+                  "channel": 1
+                },
+                {
+                  "source": "target",
+                  "channel": 2
+                },
+                {
+                  "source": "target",
+                  "channel": 3
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "music/ffxiv/bgm_ride_feast.scd",
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "source",
+                  "channel": 0
+                },
+                {
+                  "source": "source",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": {
+        "Starved": [
+          "00007",
+          "TFEOF_FFXIV_08",
+          "餓えた狼　～ザ・フィースト～",
+          "Starved"
+        ],
+        "Dangertek": [
+          "00089",
+          "SB_FFXIV_089",
+          "危険なる妙技",
+          "Dangertek"
+        ]
+      },
       "target": {
-        "path": "music/ex1/bgm_ex1_pvp01.scd",
+        "path": "music/ffxiv/bgm_ex1_pvp01.scd",
         "segments": [
           {
             "channels": [
               {
-                "source": "source",
+                "source": "Starved",
                 "channel": 0
               },
               {
-                "source": "source",
+                "source": "Starved",
                 "channel": 1
               },
               {
-                "source": "target",
-                "channel": 2
+                "source": "Dangertek",
+                "channel": 0
               },
               {
-                "source": "target",
-                "channel": 3
+                "source": "Dangertek",
+                "channel": 1
               }
             ]
           }
@@ -133,7 +193,24 @@
         "Metal [-–] Brute Justice Mode"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_alex04.scd"
+        "path": "music/ex1/bgm_ex1_alex04.scd",
+        "segments": [
+          {
+            "sourceFilters": {
+              "source": "volume=+3.5dB"
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -237,17 +314,40 @@
           "雨と涙に濡れて　～禁忌都市マハ～",
           "Teardrops in the Rain"
         ],
-        "Torrent": [
-          "00019",
-          "TFEOF_FFXIV_20",
-          "豪雨に打たれて　～禁忌都市マハ～",
-          "Torrent"
-        ]
+        "Torrent": {
+          "inputFiles": [
+            [
+              "00018",
+              "TFEOF_FFXIV_19",
+              "雨と涙に濡れて　～禁忌都市マハ～",
+              "Teardrops in the Rain"
+            ],
+            [
+              "00019",
+              "TFEOF_FFXIV_20",
+              "豪雨に打たれて　～禁忌都市マハ～",
+              "Torrent"
+            ]
+          ],
+          "filterComplex": "[0:a]atrim=0:11.625,afade=t=out:st=10.925:d=0.7[s1];[1:a]adelay=10s:all=1,atrim=0.931[s2];[s1][s2]amix=inputs=2:duration=longest,volume=+3dB[res]",
+          "filterComplexOutName": "[res]"
+        }
       },
       "target": {
         "path": "music/ex1/bgm_ex1_makosen_nomal02.scd",
+        "sequentialToFfmpegChannelIndexMap": [
+          0,
+          2,
+          1,
+          4,
+          5,
+          3
+        ],
         "segments": [
           {
+            "sourceFilters": {
+              "Teardrops in the Rain": "volume=+3dB"
+            },
             "channels": [
               {
                 "source": "Teardrops in the Rain",
@@ -267,13 +367,11 @@
               },
               {
                 "source": "target",
-                "channel": 5,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 4
               },
               {
                 "source": "target",
-                "channel": 3,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 5
               }
             ]
           }
@@ -357,7 +455,7 @@
         "Fog of Phantom"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_event_nivas.scd"
+        "path": "music/ex1/bgm_ex1_deep01.scd"
       }
     },
     {
@@ -368,7 +466,7 @@
         "Notice of Death"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_deep01.scd"
+        "path": "music/ex1/bgm_ex1_event_nivas.scd"
       }
     },
     {
@@ -445,7 +543,27 @@
         "Exponential Entropy"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_alex06.scd"
+        "path": [
+          "music/ex1/bgm_ex1_alex06.scd",
+          "music/ffxiv/bgm_ride_cruise.scd"
+        ],
+        "segments": [
+          {
+            "sourceFilters": {
+              "source": "volume=+1dB"
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -456,7 +574,24 @@
         "Out of Time"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_alex09.scd"
+        "path": "music/ex1/bgm_ex1_alex09.scd",
+        "segments": [
+          {
+            "sourceFilters": {
+              "source": "volume=+3.5dB"
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -467,7 +602,27 @@
         "Moebius"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_alex07.scd"
+        "path": [
+          "music/ex1/bgm_ex1_alex07.scd",
+          "music/ffxiv/bgm_ride_alex2.scd"
+        ],
+        "segments": [
+          {
+            "sourceFilters": {
+              "source": "volume=+3.5dB"
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -480,7 +635,7 @@
       "target": {
         "path": "music/ex1/bgm_ex1_.scd",
         "enable": false,
-        "# comment": "In-game Statis Loop has longer repeat cycle than blu-ray version, so we can't use that."
+        "# comment": "In-game Statis Loop has longer repeat cycle than blu-ray version."
       }
     },
     {
@@ -494,6 +649,9 @@
         "path": "music/ex1/bgm_ex1_alex08.scd",
         "segments": [
           {
+            "sourceFilters": {
+              "source": "volume=+5dB"
+            },
             "channels": [
               {
                 "source": "source",
@@ -513,9 +671,7 @@
               }
             ]
           }
-        ],
-        "enable": false,
-        "# comment": "In-game Statis Loop has longer repeat cycle than blu-ray version, so we can't use that."
+        ]
       }
     },
     {
@@ -614,7 +770,10 @@
         "Infinity"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_ban_demon_02.scd"
+        "path": [
+          "music/ex1/bgm_ex1_ban_demon_02.scd",
+          "music/ffxiv/bgm_ride_demon"
+        ]
       }
     },
     {
@@ -636,7 +795,28 @@
         "Scale and Steel"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_ban_03_1.scd"
+        "path": "music/ex2/bgm_ex2_ban_03_1.scd",
+        "segments": [
+          {
+            "sourceThresholds": {
+              "target": 0.05,
+              "source": 0.05
+            },
+            "sourceFilters": {
+              "source": "volume=+3.5dB"
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     }
   ]

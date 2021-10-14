@@ -131,7 +131,26 @@
         "Procedamus in Pace"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_town_r_sad.scd"
+        "path": "music/ex2/bgm_ex2_town_r_sad.scd",
+        "loopOffsetDelta": 32,
+        "segments": [
+          {
+            "sourceThresholds": {
+              "target": 0.05,
+              "source": 0.05
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -321,7 +340,9 @@
         "Cyan's Theme"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_event_07.scd"
+        "path": "music/ex2/bgm_ex2_event_07.scd",
+        "enable": false,
+        "# comment": "Soundtrack is shorter than the game resource."
       }
     },
     {
@@ -409,7 +430,10 @@
         "Deception"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_dan_d08.scd"
+        "path": [
+          "music/ex2/bgm_ex2_dan_d08.scd",
+          "music/ffxiv/bgm_ride_abare.scd"
+        ]
       }
     },
     {
@@ -497,7 +521,24 @@
         "The Worm's Tail"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_ban_03_2.scd"
+        "path": "music/ex2/bgm_ex2_ban_03_2.scd",
+        "segments": [
+          {
+            "sourceFilters": {
+              "source": "volume=+3.5dB"
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -650,6 +691,14 @@
       },
       "target": {
         "path": "music/ffxiv/bgm_pvp_mogi_01.scd",
+        "sequentialToFfmpegChannelIndexMap": [
+          0,
+          2,
+          1,
+          4,
+          5,
+          3
+        ],
         "segments": [
           {
             "channels": [
@@ -671,13 +720,11 @@
               },
               {
                 "source": "target",
-                "channel": 5,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 4
               },
               {
                 "source": "target",
-                "channel": 3,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 5
               }
             ]
           }
@@ -823,7 +870,28 @@
         "Iroha"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_field_iroha.scd"
+        "path": "music/ex2/bgm_ex2_field_iroha.scd",
+        "segments": [
+          {
+            "sourceOffsets": {
+              "source": 0
+            },
+            "sourceThresholds": {
+              "target": 0.03,
+              "source": 0.03
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -856,7 +924,10 @@
         "Amatsu Kaze"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_ban_13.scd"
+        "path": [
+          "music/ex2/bgm_ex2_ban_13.scd",
+          "music/ffxiv/bgm_ride_byakko.scd"
+        ]
       }
     },
     {
@@ -964,6 +1035,14 @@
       },
       "target": {
         "path": "music/ex2/bgm_ex2_eu_field.scd",
+        "sequentialToFfmpegChannelIndexMap": [
+          0,
+          2,
+          1,
+          4,
+          5,
+          3
+        ],
         "segments": [
           {
             "channels": [
@@ -985,13 +1064,11 @@
               },
               {
                 "source": "target",
-                "channel": 5,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 4
               },
               {
                 "source": "target",
-                "channel": 3,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 5
               }
             ]
           }
@@ -1055,7 +1132,7 @@
         "Wasshoi, Wasshoi!"
       ],
       "target": {
-        "path": "music/ride/bgm_ride_mikoshi.scd"
+        "path": "music/ffxiv/bgm_ride_mikoshi.scd"
       }
     },
     {
@@ -1067,6 +1144,47 @@
       ],
       "target": {
         "path": "music/ex2/bgm_ex2_uzune2.scd"
+      }
+    },
+    {
+      "source": {
+        "Starved": [
+          "00007",
+          "TFEOF_FFXIV_08",
+          "餓えた狼　～ザ・フィースト～",
+          "Starved"
+        ],
+        "Dangertek": [
+          "00089",
+          "SB_FFXIV_089",
+          "危険なる妙技",
+          "Dangertek"
+        ]
+      },
+      "target": {
+        "path": "music/ffxiv/bgm_ex1_pvp01.scd",
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "Starved",
+                "channel": 0
+              },
+              {
+                "source": "Starved",
+                "channel": 1
+              },
+              {
+                "source": "Dangertek",
+                "channel": 0
+              },
+              {
+                "source": "Dangertek",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -1099,7 +1217,37 @@
         "Primal Judgment \\(From Astral to Umbral\\)"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_ban_20.scd"
+        "path": "music/ex2/bgm_ex2_ban_20.scd",
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ],
+            "length": 165
+          },
+          {
+            "sourceOffsets": {
+              "target": 165
+            },
+            "channels": [
+              {
+                "source": "target",
+                "channel": 0
+              },
+              {
+                "source": "target",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -1122,8 +1270,7 @@
       ],
       "target": {
         "path": "music/ex2/bgm_ex2_ban_23.scd",
-        "enable": false,
-        "# comment": "TODO: cut from 31s?"
+        "enable": false
       }
     },
     {

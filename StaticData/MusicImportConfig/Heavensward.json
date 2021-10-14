@@ -118,7 +118,7 @@
         "Borderless"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_ride_flyingmount.scd"
+        "path": "music/ffxiv/bgm_ex1_ride_flyingmount.scd"
       }
     },
     {
@@ -173,7 +173,28 @@
         "Close to the Heavens"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_field_abaracia03.scd"
+        "path": "music/ex1/bgm_ex1_field_abaracia03.scd",
+        "segments": [
+          {
+            "sourceOffsets": {
+              "source": 0
+            },
+            "sourceThresholds": {
+              "target": 0.03,
+              "source": 0.03
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -305,7 +326,25 @@
         "Skylords"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_field_dravaniac03.scd"
+        "path": "music/ex1/bgm_ex1_field_dravaniac03.scd",
+        "segments": [
+          {
+            "sourceThresholds": {
+              "target": 0.01,
+              "source": 0.01
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -316,7 +355,25 @@
         "Contention"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_event_dragonwar.scd"
+        "path": "music/ex1/bgm_ex1_event_dragonwar.scd",
+        "segments": [
+          {
+            "sourceThresholds": {
+              "target": 0.05,
+              "source": 0.05
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -393,7 +450,10 @@
         "Woe that Is Madness"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_ban_bismark_02.scd"
+        "path": [
+          "music/ex1/bgm_ex1_ban_bismark_02.scd",
+          "music/ffxiv/bgm_ride_bismark.scd"
+        ]
       }
     },
     {
@@ -470,7 +530,25 @@
         "The Silent Regard of Stars"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_field_dravanial03.scd"
+        "path": "music/ex1/bgm_ex1_field_dravanial03.scd",
+        "segments": [
+          {
+            "sourceThresholds": {
+              "target": 0.01,
+              "source": 0.01
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -512,6 +590,14 @@
       },
       "target": {
         "path": "music/ex1/bgm_ex1_makosen_nomal.scd",
+        "sequentialToFfmpegChannelIndexMap": [
+          0,
+          2,
+          1,
+          4,
+          5,
+          3
+        ],
         "segments": [
           {
             "channels": [
@@ -533,13 +619,11 @@
               },
               {
                 "source": "target",
-                "channel": 5,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 4
               },
               {
                 "source": "target",
-                "channel": 3,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 5
               }
             ]
           }
@@ -661,7 +745,24 @@
         "Sins of the Father, Sins of the Son"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_alex01.scd"
+        "path": "music/ex1/bgm_ex1_alex01.scd",
+        "segments": [
+          {
+            "sourceFilters": {
+              "source": "volume=+3.5dB"
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -672,7 +773,27 @@
         "Locus"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_alex02.scd"
+        "path": [
+          "music/ex1/bgm_ex1_alex02.scd",
+          "music/ffxiv/bgm_ride_alex.scd"
+        ],
+        "segments": [
+          {
+            "sourceFilters": {
+              "source": "volume=+3.5dB"
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -684,18 +805,27 @@
       ],
       "target": {
         "path": "music/ex1/bgm_ex1_alex03.scd",
+        "sequentialToFfmpegChannelIndexMap": [
+          0,
+          2,
+          1,
+          4,
+          5,
+          3
+        ],
         "segments": [
           {
+            "sourceFilters": {
+              "source": "volume=+3.5dB"
+            },
             "channels": [
               {
                 "source": "target",
-                "channel": 0,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 0
               },
               {
                 "source": "target",
-                "channel": 2,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 1
               },
               {
                 "source": "source",
@@ -707,13 +837,11 @@
               },
               {
                 "source": "target",
-                "channel": 5,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 4
               },
               {
                 "source": "target",
-                "channel": 3,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 5
               }
             ]
           }

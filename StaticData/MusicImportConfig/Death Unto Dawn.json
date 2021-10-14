@@ -93,7 +93,7 @@
         ],
         "enable": false,
         "# comment": [
-          "In-game Statis Loop has longer repeat cycle than blu-ray version, so we can't use that.",
+          "In-game Statis Loop has longer repeat cycle than blu-ray version.",
           "Blu-ray version has stasis loop in it, which will delay the remainder of the song; will probably need sample block index adjustment"
         ]
       }
@@ -126,8 +126,16 @@
           "A Fierce Air Forceth"
         ]
       },
-      "target": {
+      "target": [{
         "path": "music/ffxiv/bgm_pvp_battle_02.scd",
+        "sequentialToFfmpegChannelIndexMap": [
+          0,
+          2,
+          1,
+          4,
+          5,
+          3
+        ],
         "segments": [
           {
             "channels": [
@@ -149,18 +157,32 @@
               },
               {
                 "source": "target",
-                "channel": 5,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 4
               },
               {
                 "source": "target",
-                "channel": 3,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 5
               }
             ]
           }
         ]
-      }
+      },{
+        "path": "bgm_ride_frontline",
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "A Fierce Air Forceth",
+                "channel": 0
+              },
+              {
+                "source": "A Fierce Air Forceth",
+                "channel": 1
+              }
+            ]
+          }
+        ]
+      }]
     },
     {
       "source": [
@@ -402,7 +424,10 @@
         "Hearthward"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_hukko_finish01.scd"
+        "path": [
+          "music/ex1/bgm_ex1_hukko_finish01.scd",
+          "music/ffxiv/bgm_ride_hukko01.scd"
+        ]
       }
     },
     {
@@ -413,7 +438,10 @@
         "Twice Stricken"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_raid_05.scd"
+        "path": [
+          "music/ex3/bgm_ex3_raid_05.scd",
+          "music/ffxiv/bgm_ride_eden02.scd"
+        ]
       }
     },
     {
@@ -488,6 +516,14 @@
       },
       "target": {
         "path": "music/ex3/bgm_ex3_myc_01.scd",
+        "sequentialToFfmpegChannelIndexMap": [
+          0,
+          2,
+          1,
+          4,
+          5,
+          3
+        ],
         "segments": [
           {
             "channels": [
@@ -509,13 +545,11 @@
               },
               {
                 "source": "target",
-                "channel": 5,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 4
               },
               {
                 "source": "target",
-                "channel": 3,
-                "# comment": "ffmpeg layout: 0 2 1 4 5 3"
+                "channel": 5
               }
             ]
           }
@@ -871,7 +905,10 @@
         "The Black Wolf Stalks Again"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_con_01.scd"
+        "path": [
+          "music/ex3/bgm_ex3_con_01.scd",
+          "bgm/ffxiv/bgm_ride_emerald.scd"
+        ]
       }
     },
     {
@@ -915,7 +952,10 @@
         "Promises to Keep"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_raid_11.scd"
+        "path": [
+          "music/ex3/bgm_ex3_raid_11.scd",
+          "music/ffxiv/bgm_ride_eden03.scd"
+        ]
       }
     },
     {
@@ -1185,7 +1225,10 @@
         "In the Arms of War"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_ban_15.scd"
+        "path": [
+          "music/ex3/bgm_ex3_ban_15.scd",
+          "music/ffxiv/bgm_ride_dia.scd"
+        ]
       }
     },
     {
