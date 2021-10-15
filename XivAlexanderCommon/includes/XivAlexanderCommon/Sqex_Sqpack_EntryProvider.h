@@ -276,6 +276,10 @@ namespace Sqex::Sqpack {
 			return oldStream;
 		}
 
+		auto GetBaseStream() const {
+			return m_baseStream.get();
+		}
+
 		[[nodiscard]] uint64_t StreamSize() const override {
 			return m_reservedSize;
 		}

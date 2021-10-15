@@ -70,12 +70,14 @@ namespace Sqex::Sqpack {
 			Model::Header& AsHeader() { return *reinterpret_cast<Model::Header*>(&Head[0]); }
 		};
 
-		const std::shared_ptr<EntryProvider> m_provider;
+		const std::shared_ptr<const EntryProvider> m_providerShared;
+		const EntryProvider* m_provider;
 		const SqData::FileEntryHeader m_entryHeader;
 		const std::unique_ptr<StreamDecoder> m_decoder;
 
 	public:
-		EntryRawStream(std::shared_ptr<EntryProvider> provider);
+		EntryRawStream(const EntryProvider* provider);
+		EntryRawStream(std::shared_ptr<const EntryProvider> provider);
 
 		[[nodiscard]] uint64_t StreamSize() const override {
 			return m_decoder ? m_entryHeader.DecompressedSize.Value() : 0;

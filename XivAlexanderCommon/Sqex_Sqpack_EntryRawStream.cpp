@@ -349,8 +349,17 @@ uint64_t Sqex::Sqpack::EntryRawStream::ModelStreamDecoder::ReadStreamPartial(uin
 	return length - info.destination.size_bytes();
 }
 
-Sqex::Sqpack::EntryRawStream::EntryRawStream(std::shared_ptr<EntryProvider> provider)
-	: m_provider(std::move(provider))
+Sqex::Sqpack::EntryRawStream::EntryRawStream(const EntryProvider* provider)
+	: m_provider(provider)
+	, m_entryHeader(m_provider->ReadStream<SqData::FileEntryHeader>(0))
+	, m_decoder(
+		m_entryHeader.Type == SqData::FileEntryType::Empty || m_entryHeader.DecompressedSize == 0 ? nullptr : m_entryHeader.Type == SqData::FileEntryType::Binary ? static_cast<std::unique_ptr<StreamDecoder>>(std::make_unique<BinaryStreamDecoder>(this)) : m_entryHeader.Type == SqData::FileEntryType::Texture ? static_cast<std::unique_ptr<StreamDecoder>>(std::make_unique<TextureStreamDecoder>(this)) : m_entryHeader.Type == SqData::FileEntryType::Model ? static_cast<std::unique_ptr<StreamDecoder>>(std::make_unique<ModelStreamDecoder>(this)) : nullptr
+	) {
+}
+
+Sqex::Sqpack::EntryRawStream::EntryRawStream(std::shared_ptr<const EntryProvider> provider)
+	: m_providerShared(std::move(provider))
+	, m_provider(m_providerShared.get())
 	, m_entryHeader(m_provider->ReadStream<SqData::FileEntryHeader>(0))
 	, m_decoder(
 		m_entryHeader.Type == SqData::FileEntryType::Empty || m_entryHeader.DecompressedSize == 0 ? nullptr : m_entryHeader.Type == SqData::FileEntryType::Binary ? static_cast<std::unique_ptr<StreamDecoder>>(std::make_unique<BinaryStreamDecoder>(this)) : m_entryHeader.Type == SqData::FileEntryType::Texture ? static_cast<std::unique_ptr<StreamDecoder>>(std::make_unique<TextureStreamDecoder>(this)) : m_entryHeader.Type == SqData::FileEntryType::Model ? static_cast<std::unique_ptr<StreamDecoder>>(std::make_unique<ModelStreamDecoder>(this)) : nullptr

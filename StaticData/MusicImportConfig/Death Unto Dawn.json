@@ -1,7 +1,12 @@
 {
   "name": "Final Fantasy XIV - 5.5 - Death Unto Dawn",
-  "purchaseLinks": {
-    "amazon.co.jp": "https://www.amazon.co.jp/dp/B097XB7DD6/"
+  "searchDirectories": {
+    "Death Unto Dawn": {
+      "default": true,
+      "purchaseLinks": {
+        "amazon.co.jp": "https://www.amazon.co.jp/dp/B097XB7DD6/"
+      }
+    }
   },
   "items": [
     {
@@ -167,7 +172,7 @@
           }
         ]
       },{
-        "path": "bgm_ride_frontline",
+        "path": "music/ffxiv/bgm_ride_frontline.scd",
         "segments": [
           {
             "channels": [
@@ -400,7 +405,10 @@
         "Ultima \\(Scions & Sinners\\)"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_ban_09.scd",
+        "path": [
+          "music/ex3/bgm_ex3_ban_09.scd",
+          "music/ffxiv/bgm_ride_ruby.scd"
+        ],
         "loopOffsetDelta": 7,
         "# comment": "Blu-ray version has an ending"
       }
@@ -564,7 +572,10 @@
         "Unrest \\(Zodiac Age Version\\)"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_myc_06.scd",
+        "path": [
+          "music/ex3/bgm_ex3_myc_06.scd",
+          "music/ffxiv/bgm_ride_myc01.scd"
+        ],
         "loopLengthDivisor": 2,
         "# comment": "One period contains two loops"
       }
@@ -695,11 +706,13 @@
       "source": [
         "00043",
         "DUD_044",
-        "To the Edge",
         "To the Edge"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_ban_11.scd",
+        "path": [
+          "music/ex3/bgm_ex3_ban_11.scd",
+          "music/ffxiv/bgm_ride_wol.scd"
+        ],
         "# comment": "bgm_ex3_ban_14: intro truncated version",
         "segments": [
           {
@@ -907,7 +920,7 @@
       "target": {
         "path": [
           "music/ex3/bgm_ex3_con_01.scd",
-          "bgm/ffxiv/bgm_ride_emerald.scd"
+          "music/ffxiv/bgm_ride_emerald.scd"
         ]
       }
     },

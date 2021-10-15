@@ -198,6 +198,25 @@ BEGIN
             MENUITEM "(EXDFÇÃíuÇ´ä∑Ç¶ãKë•Ç»Çµ)",             ID_MODDING_EXDFTRANSFORMATIONRULES_NOENTRY, INACTIVE
             MENUITEM "(Example entry)",             ID_MODDING_EXDFTRANSFORMATIONRULES_ENTRY
         END
+        POPUP "âπäyÇÃâπé¿ÇÃå¸è„(&M)"
+        BEGIN
+            POPUP "(template entry to be inserted at bottom)"
+            BEGIN
+                MENUITEM "ÉtÉHÉãÉ_Å[Çí«â¡(&A)",                ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_ADD
+                MENUITEM "ãÛÇ…Ç∑ÇÈ(&C)",                    ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_CLEAR
+                MENUITEM SEPARATOR
+                MENUITEM "{}Ç≈îÉÇ§(&B)",                   ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_BUYFROM
+                MENUITEM SEPARATOR
+                MENUITEM "(å¥ñ{ÇÃâπäyÉtÉ@ÉCÉãÇÃÉtÉHÉãÉ_Å[Ç»Çµ)",         ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_EMPTY, INACTIVE
+            END
+            MENUITEM "íËã`ÉtÉ@ÉCÉãÇÃì«Ç›çûÇ›(&I)",             ID_MODDING_REPLACEMUSICS_IMPORT
+            MENUITEM "ãÛÇ…Ç∑ÇÈ(&R)",                    ID_MODDING_REPLACEMUSICS_REMOVEALL
+            MENUITEM "âπäyÉtÉ@ÉCÉãÇÉGÉìÉRÅ[Éh(&G)",            ID_MODDING_REPLACEMUSICS_GENERATE
+            MENUITEM SEPARATOR
+            MENUITEM "(ãKë•Ç»Çµ)",                      ID_MODDING_REPLACEMUSICS_NORULESCONFIGURED, INACTIVE
+            MENUITEM SEPARATOR
+            MENUITEM "(å¥ñ{ÇÃâπäyÉtÉ@ÉCÉãÇÃÉtÉHÉãÉ_Å[Ç»Çµ)",         ID_MODDING_REPLACEMUSICS_NOSOUCEDIRECTORIESCONFIGURED, INACTIVE
+        END
         POPUP "TexTools MODÉpÉbÉN(&T)"
         BEGIN
             POPUP "(template entry to be inserted at bottom)"
@@ -675,6 +694,25 @@ BEGIN
             MENUITEM SEPARATOR
             MENUITEM "(EXDF ∫Ø»Ø ±‘ƒ¢ æ¯¿Ω)",             ID_MODDING_EXDFTRANSFORMATIONRULES_NOENTRY, INACTIVE
             MENUITEM "(Example entry)",             ID_MODDING_EXDFTRANSFORMATIONRULES_ENTRY
+        END
+        POPUP "¿Ωæ« ¿Ω¡˙ «‚ªÛ(&M)"
+        BEGIN
+            POPUP "(template entry to be inserted at bottom)"
+            BEGIN
+                MENUITEM "∆˙¥ı √ﬂ∞°(&A)",                   ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_ADD
+                MENUITEM "∫ÒøÏ±‚(&C)",                     ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_CLEAR
+                MENUITEM SEPARATOR
+                MENUITEM "{}ø°º≠ ±∏∏≈«œ±‚(&B)",               ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_BUYFROM
+                MENUITEM SEPARATOR
+                MENUITEM "(º≥¡§µ» ¿Ωæ« ø¯∫ª ∆˙¥ı æ¯¿Ω)",           ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_EMPTY, INACTIVE
+            END
+            MENUITEM "±‘ƒ¢ ∫“∑Øø¿±‚(&I)",                 ID_MODDING_REPLACEMUSICS_IMPORT
+            MENUITEM "∫ÒøÏ±‚(&R)",                     ID_MODDING_REPLACEMUSICS_REMOVEALL
+            MENUITEM "¿Ωæ« ∆ƒ¿œ ∫Ø»Ø«œ±‚(&G)",              ID_MODDING_REPLACEMUSICS_GENERATE
+            MENUITEM SEPARATOR
+            MENUITEM "(º≥¡§µ» ±‘ƒ¢ æ¯¿Ω)",                 ID_MODDING_REPLACEMUSICS_NORULESCONFIGURED, INACTIVE
+            MENUITEM SEPARATOR
+            MENUITEM "(º≥¡§µ» ¿Ωæ« ø¯∫ª ∆˙¥ı æ¯¿Ω)",           ID_MODDING_REPLACEMUSICS_NOSOUCEDIRECTORIESCONFIGURED, INACTIVE
         END
         POPUP "TexTools ∏µÂ∆—(&T)"
         BEGIN
@@ -1210,6 +1248,25 @@ BEGIN
             MENUITEM SEPARATOR
             MENUITEM "(No EXDF transformation rules configured)", ID_MODDING_EXDFTRANSFORMATIONRULES_NOENTRY, INACTIVE
             MENUITEM "(Example entry)",             ID_MODDING_EXDFTRANSFORMATIONRULES_ENTRY
+        END
+        POPUP "Upgrade &Music Quality"
+        BEGIN
+            POPUP "(template entry to be inserted at bottom)"
+            BEGIN
+                MENUITEM "&Add Directories",            ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_ADD
+                MENUITEM "&Clear",                      ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_CLEAR
+                MENUITEM SEPARATOR
+                MENUITEM "&Buy from {}",                ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_BUYFROM
+                MENUITEM SEPARATOR
+                MENUITEM "(No source directory configured)", ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_EMPTY, INACTIVE
+            END
+            MENUITEM "&Import Rules",               ID_MODDING_REPLACEMUSICS_IMPORT
+            MENUITEM "&Remove All Rules",           ID_MODDING_REPLACEMUSICS_REMOVEALL
+            MENUITEM "&Generate Music Files",       ID_MODDING_REPLACEMUSICS_GENERATE
+            MENUITEM SEPARATOR
+            MENUITEM "(No rules configured)",       ID_MODDING_REPLACEMUSICS_NORULESCONFIGURED, INACTIVE
+            MENUITEM SEPARATOR
+            MENUITEM "(No source directories configured)", ID_MODDING_REPLACEMUSICS_NOSOUCEDIRECTORIESCONFIGURED, INACTIVE
         END
         POPUP "&TexTools ModPacks"
         BEGIN

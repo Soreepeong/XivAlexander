@@ -1,7 +1,12 @@
 {
   "name": "Final Fantasy XIV - 1.0 - Before Meteor",
-  "purchaseLinks": {
-    "amazon.co.jp": "https://www.amazon.co.jp/dp/B00D1B8WY6/"
+  "searchDirectories": {
+    "Before Meteor": {
+      "default": true,
+      "purchaseLinks": {
+        "amazon.co.jp": "https://www.amazon.co.jp/dp/B00D1B8WY6/"
+      }
+    }
   },
   "items": [
     {
@@ -320,7 +325,10 @@
         "Horizons Calling"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_lim_06.scd"
+        "path": [
+          "music/ffxiv/bgm_dungeon_lim_06.scd",
+          "music/ffxiv/bgm_ride_kgreen.scd"
+        ]
       }
     },
     {
@@ -1079,7 +1087,8 @@
       "target": {
         "path": [
           "music/ffxiv/bgm_ban_moogle_king.scd",
-          "music/ffxiv/bgm_ban_moogle_goku.scd"
+          "music/ffxiv/bgm_ban_moogle_goku.scd",
+          "music/ffxiv/bgm_ride_mogle.scd"
         ]
       }
     },
@@ -1127,9 +1136,7 @@
         "In the Arms of Althyk"
       ],
       "target": {
-        "path": "sound/zingle/Zingle_Sleep.scd",
-        "enable": false,
-        "# comment": "If path starts with \"sound/\", encode to wav instead."
+        "path": "sound/zingle/Zingle_Sleep.scd"
       }
     },
     {
@@ -1191,7 +1198,10 @@
         "Steel Reason"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_con_teikoku_boss.scd"
+        "path": [
+          "music/ffxiv/bgm_con_teikoku_boss.scd",
+          "music/ffxiv/bgm_ride_magitekspecial.scd"
+        ]
       }
     },
     {

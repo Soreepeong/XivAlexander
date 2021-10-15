@@ -18,6 +18,7 @@ const std::map<App::LogCategory, const char*> App::Misc::Logger::LogCategoryName
 	{App::LogCategory::IpcTypeFinder, "IpcTypeFinder"},
 	{App::LogCategory::GameResourceOverrider, "GameResourceOverrider"},
 	{App::LogCategory::VirtualSqPacks, "VirtualSqPacks"},
+	{App::LogCategory::MusicImporter, "MusicImporter"},
 };
 
 std::weak_ptr<App::Misc::Logger> App::Misc::Logger::s_instance;

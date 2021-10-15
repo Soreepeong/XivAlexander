@@ -1,7 +1,17 @@
 {
   "name": "Final Fantasy XIV - 3.5 - The Far Edge Of Fate",
-  "purchaseLinks": {
-    "amazon.co.jp": "https://www.amazon.co.jp/dp/B06XRQCZX9/"
+  "searchDirectories": {
+    "The Far Edge Of Fate": {
+      "default": true,
+      "purchaseLinks": {
+        "amazon.co.jp": "https://www.amazon.co.jp/dp/B06XRQCZX9/"
+      }
+    },
+    "Stormblood": {
+      "purchaseLinks": {
+        "amazon.co.jp": "https://www.amazon.co.jp/dp/B07CZZJ24B/"
+      }
+    }
   },
   "items": [
     {
@@ -135,18 +145,50 @@
     },
     {
       "source": {
-        "Starved": [
-          "00007",
-          "TFEOF_FFXIV_08",
-          "餓えた狼　～ザ・フィースト～",
-          "Starved"
-        ],
-        "Dangertek": [
-          "00089",
-          "SB_FFXIV_089",
-          "危険なる妙技",
-          "Dangertek"
-        ]
+        "Starved": {
+          "inputFiles": [
+            [
+              {
+                "directory": "The Far Edge Of Fate",
+                "pattern": "00007"
+              },
+              {
+                "directory": "The Far Edge Of Fate",
+                "pattern": "TFEOF_FFXIV_08"
+              },
+              {
+                "directory": "The Far Edge Of Fate",
+                "pattern": "餓えた狼　～ザ・フィースト～"
+              },
+              {
+                "directory": "The Far Edge Of Fate",
+                "pattern": "Starved"
+              }
+            ]
+          ]
+        },
+        "Dangertek": {
+          "inputFiles": [
+            [
+              {
+                "directory": "Stormblood",
+                "pattern": "00089"
+              },
+              {
+                "directory": "Stormblood",
+                "pattern": "SB_FFXIV_089"
+              },
+              {
+                "directory": "Stormblood",
+                "pattern": "危険なる妙技"
+              },
+              {
+                "directory": "Stormblood",
+                "pattern": "Dangertek"
+              }
+            ]
+          ]
+        }
       },
       "target": {
         "path": "music/ffxiv/bgm_ex1_pvp01.scd",
@@ -243,8 +285,26 @@
         "Faith in Her Fury"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_con_ish_01.scd",
-        "# comment": "TODO: Fade in bgm_ex1_event_nidhogg_01"
+        "path": "music/ffxiv/bgm_con_ish_01.scd"
+      }
+    },
+    {
+      "source": {
+        "source": {
+          "inputFiles": [
+            [
+              "00012",
+              "TFEOF_FFXIV_13",
+              "戦神の教義 ～皇都イシュガルド防衛戦～",
+              "Faith in Her Fury"
+            ]
+          ],
+          "filterComplex": "[0:a]atrim=45.95,asetpts=PTS-STARTPTS,afade=t=in:st=0:d=3.318[res]",
+          "filterComplexOutName": "[res]"
+        }
+      },
+      "target": {
+        "path": "music/ex1/bgm_ex1_event_nidhogg_01.scd"
       }
     },
     {
@@ -255,8 +315,7 @@
         "Primogenitor"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_mor_02.scd",
-        "# comment": "TODO: Fade in bgm_ex1_event_nidhogg_03"
+        "path": "music/ffxiv/bgm_dungeon_mor_02.scd"
       }
     },
     {
@@ -267,7 +326,10 @@
         "Freefall"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_ban_nidhogg_02.scd"
+        "path": [
+          "music/ex1/bgm_ex1_ban_nidhogg_02.scd",
+          "music/ffxiv/bgm_ride_nidhogg.scd"
+        ]
       }
     },
     {
@@ -410,7 +472,8 @@
       "target": {
         "path": [
           "music/ffxiv/bgm_dungeon_deep00.scd",
-          "music/ex1/bgm_ex1_event_hildy.scd"
+          "music/ex1/bgm_ex1_event_hildy.scd",
+          "music/ffxiv/bgm_ride_kyellow.scd"
         ]
       }
     },
@@ -704,7 +767,10 @@
         "Battle to the Death [-–] Heavensward"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_ban_sephiroth01.scd"
+        "path": [
+          "music/ex1/bgm_ex1_ban_sephiroth01.scd",
+          "music/ffxiv/bgm_ride_sephiroth.scd"
+        ]
       }
     },
     {
@@ -715,7 +781,10 @@
         "Equilibrium"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_ban_sophia.scd"
+        "path": [
+          "music/ex1/bgm_ex1_ban_sophia.scd",
+          "music/ffxiv/bgm_ride_sophia.scd"
+        ]
       }
     },
     {
@@ -772,7 +841,7 @@
       "target": {
         "path": [
           "music/ex1/bgm_ex1_ban_demon_02.scd",
-          "music/ffxiv/bgm_ride_demon"
+          "music/ffxiv/bgm_ride_demon.scd"
         ]
       }
     },

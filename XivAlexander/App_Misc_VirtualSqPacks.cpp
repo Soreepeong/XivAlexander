@@ -9,6 +9,7 @@
 #include <XivAlexanderCommon/Sqex_Sound_Writer.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Creator.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_EntryProvider.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_EntryRawStream.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
 #include <XivAlexanderCommon/Sqex_ThirdParty_TexTools.h>
 #include <XivAlexanderCommon/Utils_Win32_Process.h>
@@ -1755,6 +1756,21 @@ bool App::Misc::VirtualSqPacks::EntryExists(const Sqex::Sqpack::EntryPathSpec& p
 	return std::ranges::any_of(m_pImpl->SqpackViews | std::views::values, [&pathSpec](const auto& t) {
 		return t.EntryOffsets.find(pathSpec) != t.EntryOffsets.end();
 	});
+}
+
+std::shared_ptr<Sqex::RandomAccessStream> App::Misc::VirtualSqPacks::GetOriginalEntry(const Sqex::Sqpack::EntryPathSpec& pathSpec) const {
+	for (const auto& pack : m_pImpl->SqpackViews | std::views::values) {
+		const auto it = pack.EntryProviders.find(pathSpec);
+		if (it == pack.EntryProviders.end())
+			continue;
+
+		const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(it->second);
+		if (!provider)
+			return std::make_shared<Sqex::Sqpack::EntryRawStream>(it->second);
+
+		return std::make_shared<Sqex::Sqpack::EntryRawStream>(provider->GetBaseStream());
+	}
+	throw std::out_of_range("entry not found");
 }
 
 void App::Misc::VirtualSqPacks::MarkIoRequest() {

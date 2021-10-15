@@ -29,6 +29,7 @@ namespace App::Misc {
 		OverlayedHandleData* Get(HANDLE handle);
 
 		bool EntryExists(const Sqex::Sqpack::EntryPathSpec& pathSpec) const;
+		std::shared_ptr<Sqex::RandomAccessStream> GetOriginalEntry(const Sqex::Sqpack::EntryPathSpec& pathSpec) const;
 
 		void MarkIoRequest();
 

@@ -1,7 +1,17 @@
 {
   "name": "Final Fantasy XIV - 2.5 - Before The Fall",
-  "purchaseLinks": {
-    "amazon.co.jp": "https://www.amazon.co.jp/dp/B010EB1KL2/"
+  "searchDirectories": {
+    "Before The Fall": {
+      "default": true,
+      "purchaseLinks": {
+        "amazon.co.jp": "https://www.amazon.co.jp/dp/B010EB1KL2/"
+      }
+    },
+    "A Realm Reborn": {
+      "purchaseLinks": {
+        "amazon.co.jp": "https://www.amazon.co.jp/dp/B00I3LHM2M/"
+      }
+    }
   },
   "items": [
     {
@@ -21,11 +31,14 @@
       "source": [
         "00001",
         "BTF_FFXIV_02",
-        "混沌の渦動 ～蛮神リヴァイアサン討滅戦～",
-        "Through the Maelstrom"
+        "^((?!女性版).)*混沌の渦動 ～蛮神リヴァイアサン討滅戦～((?!女性版).)*$",
+        "^((?!female).)*Through the Maelstrom((?!female).)*$"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ban_leviathan2.scd"
+        "path": [
+          "music/ffxiv/bgm_ban_leviathan2.scd",
+          "music/ffxiv/bgm_ride_leviathan.scd"
+        ]
       }
     },
     {
@@ -89,7 +102,7 @@
         "00007",
         "BTF_FFXIV_08",
         "憤怒 ～盟友支援 ブレイフロクスの野営地～",
-        "Fury"
+        "^((?!Faith).)*Fury((?!Faith).)*$"
       ],
       "target": {
         "path": "music/ffxiv/bgm_dungeon_lim_05.scd"
@@ -158,7 +171,8 @@
       ],
       "target": {
         "path": "music/ffxiv/bgm_ban_leviathan2.scd",
-        "enable": false
+        "enable": false,
+        "# comment": "Alternative version."
       }
     },
     {
@@ -180,12 +194,28 @@
           "剣と剣 ～大迷宮 バハムート侵攻編～",
           "Blades"
         ],
-        "Spiral": [
-          "00117",
-          "ARR_FFXIV_118",
-          "螺旋",
-          "Spiral"
-        ]
+        "Spiral": {
+          "inputFiles": [
+            [
+              {
+                "directory": "A Realm Reborn",
+                "pattern": "00117"
+              },
+              {
+                "directory": "A Realm Reborn",
+                "pattern": "ARR_FFXIV_118"
+              },
+              {
+                "directory": "A Realm Reborn",
+                "pattern": "螺旋"
+              },
+              {
+                "directory": "A Realm Reborn",
+                "pattern": "Spiral"
+              }
+            ]
+          ]
+        }
       },
       "target": {
         "path": "music/ffxiv/bgm_con_bahamut_v2.scd",
@@ -259,7 +289,10 @@
         "Horizons Calling"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_lim_06.scd"
+        "path": [
+          "music/ffxiv/bgm_dungeon_lim_06.scd",
+          "music/ffxiv/bgm_ride_kgreen.scd"
+        ]
       }
     },
     {
@@ -302,7 +335,10 @@
         "Thunder Rolls"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ban_ramuh.scd"
+        "path": [
+          "music/ffxiv/bgm_ban_ramuh.scd",
+          "music/ffxiv/bgm_ride_ramuh.scd"
+        ]
       }
     },
     {
@@ -613,7 +649,10 @@
         "Oblivion"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ban_shiva2.scd"
+        "path": [
+          "music/ffxiv/bgm_ban_shiva2.scd",
+          "music/ffxiv/bgm_ride_shiva.scd"
+        ]
       }
     },
     {
@@ -784,50 +823,27 @@
     },
     {
       "source": {
-        "Hunger": [
-          "00054",
-          "BTF_FFXIV_55",
-          "死闘の序曲",
-          "Hunger"
-        ],
-        "The Reach of Darkness": [
-          "00055",
-          "BTF_FFXIV_56",
-          "最後の死闘 ～新生～",
-          "The Reach of Darkness"
-        ]
+        "source": {
+          "inputFiles": [
+            [
+              "00054",
+              "BTF_FFXIV_55",
+              "死闘の序曲",
+              "Hunger"
+            ],
+            [
+              "00055",
+              "BTF_FFXIV_56",
+              "最後の死闘 ～新生～",
+              "The Reach of Darkness"
+            ]
+          ],
+          "filterComplex": "[1:a]adelay=32s:all=1,atrim=0.924[r2];[0:a][r2]amix=inputs=2:duration=longest:normalize=0[res]",
+          "filterComplexOutName": "[res]"
+        }
       },
       "target": {
-        "path": "music/ffxiv/bgm_con_crystaltower_boss_03.scd",
-        "enable": false,
-        "# comments": "TODO: fade hunger and the reach of darkness",
-        "segments": [
-          {
-            "channels": [
-              {
-                "source": "Hunger",
-                "channel": 0
-              },
-              {
-                "source": "Hunger",
-                "channel": 1
-              }
-            ],
-            "length": 14.71
-          },
-          {
-            "channels": [
-              {
-                "source": "The Reach of Darkness",
-                "channel": 0
-              },
-              {
-                "source": "The Reach of Darkness",
-                "channel": 1
-              }
-            ]
-          }
-        ]
+        "path": "music/ffxiv/bgm_con_crystaltower_boss_03.scd"
       }
     },
     {

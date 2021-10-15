@@ -20,6 +20,7 @@ namespace App {
 		IpcTypeFinder,
 		GameResourceOverrider,
 		VirtualSqPacks,
+		MusicImporter,
 	};
 }
 

@@ -1,7 +1,12 @@
 {
   "name": "Final Fantasy XIV - 5.0 - Shadowbringers",
-  "purchaseLinks": {
-    "amazon.co.jp": "https://www.amazon.co.jp/dp/B07Y62NCNX/"
+  "searchDirectories": {
+    "Shadowbringers": {
+      "default": true,
+      "purchaseLinks": {
+        "amazon.co.jp": "https://www.amazon.co.jp/dp/B07Y62NCNX/"
+      }
+    }
   },
   "items": [
     {
@@ -136,7 +141,10 @@
         "Sunrise"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_ban_25.scd"
+        "path": [
+          "music/ex2/bgm_ex2_ban_25.scd",
+          "music/ffxiv/bgm_ride_suzaku.scd"
+        ]
       }
     },
     {
@@ -443,7 +451,10 @@
         "From the Dragon's Wake"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_ban_26.scd"
+        "path": [
+          "music/ex2/bgm_ex2_ban_26.scd",
+          "music/ffxiv/bgm_ride_seiryu.scd"
+        ]
       }
     },
     {
@@ -722,7 +733,10 @@
         "What Angel Wakes Me"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_ban_01.scd"
+        "path": [
+          "music/ex3/bgm_ex3_ban_01.scd",
+          "music/ffxiv/bgm_ride_titania.scd"
+        ]
       }
     },
     {

@@ -172,7 +172,7 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 	if (!CreateProcessW(m_path.c_str(), &args[0],
 		nullptr, nullptr,
 		handles.empty() ? FALSE : TRUE,
-		CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT,
+		CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT | (m_bNoWindow ? CREATE_NO_WINDOW : 0),
 		environString.empty() ? nullptr : &environString[0],
 		m_dir.empty() ? nullptr : m_dir.c_str(),
 		&siex.StartupInfo,
@@ -334,6 +334,11 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStderr(HANDLE h)
 		m_hStderr = Handle::DuplicateFrom<Handle>(Handle::FromCreateFile("nul", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0), true);
 	else
 		m_hStderr = Handle::DuplicateFrom<Handle>(h, true);
+	return *this;
+}
+
+Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithNoWindow(bool noWindow) {
+	m_bNoWindow = noWindow;
 	return *this;
 }
 

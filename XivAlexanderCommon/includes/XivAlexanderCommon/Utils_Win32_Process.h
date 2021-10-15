@@ -138,6 +138,7 @@ namespace Utils::Win32 {
 		std::wstring m_args;
 		std::vector<Handle> m_inheritedHandles;
 		Process m_parentProcess;
+		bool m_bNoWindow = false;
 
 		bool m_environInitialized = false;
 		std::map<std::wstring, std::wstring> m_environ;
@@ -188,6 +189,7 @@ namespace Utils::Win32 {
 		ProcessBuilder& WithStdout(HANDLE = nullptr);
 		ProcessBuilder& WithStderr(Utils::Win32::Handle);
 		ProcessBuilder& WithStderr(HANDLE = nullptr);
+		ProcessBuilder& WithNoWindow(bool noWindow = true);
 
 		Handle Inherit(HANDLE hSource);
 		template<typename T, typename = std::is_base_of<T, Handle>>

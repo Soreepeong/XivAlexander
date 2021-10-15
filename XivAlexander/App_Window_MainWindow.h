@@ -57,6 +57,7 @@ namespace App::Window {
 		void RepopulateMenu_FontConfig(HMENU hParentMenu);
 		void RepopulateMenu_AdditionalSqpackRootDirectories(HMENU hParentMenu);
 		void RepopulateMenu_ExdfTransformationRules(HMENU hParentMenu);
+		void RepopulateMenu_UpgradeMusicQuality(HMENU hParentMenu);
 		void RepopulateMenu_Modding(HMENU hParentMenu);
 		void SetMenuStates() const;
 		void RegisterTrayIcon();
@@ -74,8 +75,9 @@ namespace App::Window {
 		void OnCommand_Menu_Help(int menuId);
 
 		[[nodiscard]] std::vector<std::filesystem::path> ChooseFileToOpen(std::span<const COMDLG_FILTERSPEC> fileTypes, UINT nTitleResId, const std::filesystem::path& defaultPath = {}) const;
-		
+
 		void ImportFontConfig(const std::filesystem::path& path);
+		void ImportMusicImportConfig(const std::filesystem::path& path);
 		void ImportExcelTransformConfig(const std::filesystem::path& path);
 		void AddAdditionalGameRootDirectory(std::filesystem::path path);
 		std::string InstallTTMP(const std::filesystem::path& path, const Utils::Win32::Event& cancelEvent);

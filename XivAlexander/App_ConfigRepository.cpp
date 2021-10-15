@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "App_ConfigRepository.h"
 
+#include <XivAlexanderCommon/Sqex_Sound_MusicImporter.h>
 #include <XivAlexanderCommon/Utils_Win32_Process.h>
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
 
@@ -88,7 +89,7 @@ void App::Config::BaseRepository::Reload(const std::filesystem::path& from, bool
 	m_destructionCallbacks.clear();
 	for (const auto& item : m_allItems) {
 		changed |= item->LoadFrom(currentConfig, announceChange);
-		m_destructionCallbacks.push_back(item->OnChangeListener([this](ItemBase&) { Save(); }));
+		m_destructionCallbacks.push_back(item->OnChangeListenerAlsoOnLoad([this](ItemBase&) { Save(); }));
 	}
 
 	if (changed)
@@ -121,8 +122,30 @@ std::shared_ptr<App::Config> App::Config::Acquire() {
 
 App::Config::RuntimeRepository::RuntimeRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey)
 	: BaseRepository(pConfig, std::move(path), std::move(parentKey)) {
-	m_cleanup += Language.OnChangeListener([&](auto&) {
+	m_cleanup += Language.OnChangeListenerAlsoOnLoad([&](auto&) {
 		Utils::Win32::Error::SetDefaultLanguageId(GetLangId());
+	});
+	m_cleanup += MusicImportConfig.OnChangeListenerAlsoOnLoad([&](auto&) {
+		std::set<std::string> newKeys;
+		m_musicDirectoryPurchaseWebsites.clear();
+		for (const auto& path : MusicImportConfig.Value()) {
+			try {
+				const auto importConfig = Utils::ParseJsonFromFile(TranslatePath(path)).get<Sqex::Sound::MusicImportConfig>();
+				for (const auto& [dirName, dirInfo] : importConfig.searchDirectories) {
+					m_musicDirectoryPurchaseWebsites[dirName].insert(dirInfo.purchaseLinks.begin(), dirInfo.purchaseLinks.end());
+					if (!MusicImportConfig_Directories.Value().contains(dirName))
+						newKeys.insert(dirName);
+				}
+			} catch (...) {
+				// pass
+			}
+		}
+		if (!newKeys.empty()) {
+			auto newValue = MusicImportConfig_Directories.Value();
+			for (const auto& newKey : newKeys)
+				newValue[newKey].clear();
+			MusicImportConfig_Directories = newValue;
+		}
 	});
 }
 
@@ -213,6 +236,14 @@ std::vector<Sqex::Language> App::Config::RuntimeRepository::GetFallbackLanguageL
 	return result;
 }
 
+[[nodiscard]] const std::map<std::string, std::string>& App::Config::RuntimeRepository::GetMusicDirectoryPurchaseWebsites(std::string name) const {
+	static std::map<std::string, std::string> empty;
+	const auto it = m_musicDirectoryPurchaseWebsites.find(name);
+	if (it == m_musicDirectoryPurchaseWebsites.end())
+		return empty;
+	return it->second;
+}
+
 std::filesystem::path App::Config::InitRepository::ResolveConfigStorageDirectoryPath() {
 	if (!Loaded())
 		Reload({});
@@ -301,8 +332,10 @@ bool App::Config::Item<uint16_t>::LoadFrom(const nlohmann::json& data, bool anno
 		}
 		if (announceChanged)
 			this->operator=(newValue);
-		else
+		else {
 			Assign(newValue);
+			AnnounceChanged(true);
+		}
 	}
 	return false;
 }
@@ -394,8 +427,10 @@ bool App::Config::Item<T>::LoadFrom(const nlohmann::json& data, bool announceCha
 		}
 		if (announceChanged)
 			this->operator=(newValue);
-		else
+		else {
 			Assign(newValue);
+			AnnounceChanged(true);
+		}
 	}
 	return false;
 }

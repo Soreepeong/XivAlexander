@@ -1,7 +1,12 @@
 {
   "name": "Final Fantasy XIV - 3.0 - Heavensward",
-  "purchaseLinks": {
-    "amazon.co.jp": "https://www.amazon.co.jp/dp/B018RSCA6I/"
+  "searchDirectories": {
+    "Heavensward": {
+      "default": true,
+      "purchaseLinks": {
+        "amazon.co.jp": "https://www.amazon.co.jp/dp/B018RSCA6I/"
+      }
+    }
   },
   "items": [
     {
@@ -260,7 +265,10 @@
         "Unbending Steel"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_ban_ravana_02.scd"
+        "path": [
+          "music/ex1/bgm_ex1_ban_ravana_02.scd",
+          "music/ffxiv/bgm_ride_ravana.scd"
+        ]
       }
     },
     {
@@ -642,14 +650,23 @@
       }
     },
     {
-      "source": [
-        "00047",
-        "HEAVENSWARD_FFXIV_48",
-        "石と鋼",
-        "Stone and Steel"
-      ],
+      "source": {
+        "source": {
+          "inputFiles": [
+            [
+              "00047",
+              "HEAVENSWARD_FFXIV_48",
+              "石と鋼",
+              "Stone and Steel"
+            ]
+          ],
+          "filterComplex": "[0:a]atrim=55.261,asetpts=PTS-STARTPTS,afade=t=in:st=0:d=3.318[res]",
+          "filterComplexOutName": "[res]"
+        }
+      },
       "target": {
-        "path": "music/ex1/bgm_ex1_event_ishwar.scd"
+        "path": "music/ex1/bgm_ex1_event_nidhogg_02.scd",
+        "loopOffsetDelta": 10
       }
     },
     {
@@ -701,10 +718,13 @@
         "00052",
         "HEAVENSWARD_FFXIV_53",
         "英傑 ～ナイツ・オブ・ラウンド討滅戦～",
-        "Heroes"
+        "^((?!never).)*Heroes((?!never).)*$"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_boss02.scd"
+        "path": [
+          "music/ex1/bgm_ex1_boss02.scd",
+          "music/ffxiv/bgm_ride_kor.scd"
+        ]
       }
     },
     {
@@ -719,23 +739,34 @@
       }
     },
     {
+      "source": {
+        "source": {
+          "inputFiles": [
+            [
+              "00054",
+              "HEAVENSWARD_FFXIV_55",
+              "Dragonsong"
+            ]
+          ],
+          "filterComplex": "[0:a]adelay=332s:all=1,atrim=0.117[loop];[0:a][loop]amix=inputs=2:duration=longest:normalize=0[res]",
+          "filterComplexOutName": "[res]"
+        }
+      },
+      "target": {
+        "path": "music/ex1/bgm_ex1_ban_nidhogg_01.scd"
+      }
+    },
+    {
       "source": [
         "00054",
         "HEAVENSWARD_FFXIV_55",
         "Dragonsong"
       ],
-      "target": [
-        {
-          "path": "music/ex1/bgm_ex1_ban_nidhogg_01.scd",
-          "enable": false,
-          "# comment": "TODO: Dragonsong with faded loop"
-        },
-        {
-          "path": "music/ex1/bgm_ex1_endcredit01.scd",
-          "enable": false,
-          "# comment": "Plays Dragonsong, Solid, Heavensward, and then loop Heroes of Stone and Steel."
-        }
-      ]
+      "target": {
+        "path": "music/ex1/bgm_ex1_endcredit01.scd",
+        "enable": false,
+        "# comment": "Plays Dragonsong, Solid, Heavensward, and then loop Heroes of Stone and Steel."
+      }
     },
     {
       "source": [

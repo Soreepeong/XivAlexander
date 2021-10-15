@@ -1,7 +1,12 @@
 {
   "name": "Final Fantasy XIV - 2.0 - A Realm Reborn",
-  "purchaseLinks": {
-    "amazon.co.jp": "https://www.amazon.co.jp/dp/B00I3LHM2M/"
+  "searchDirectories": {
+    "A Realm Reborn": {
+      "default": true,
+      "purchaseLinks": {
+        "amazon.co.jp": "https://www.amazon.co.jp/dp/B00I3LHM2M/"
+      }
+    }
   },
   "items": [
     {
@@ -338,33 +343,158 @@
       }
     },
     {
-      "source": [
-        "00017",
-        "ARR_FFXIV_018",
-        "On Westerly Winds",
-        "西風に乗せて"
-      ],
+      "source": {
+        "source1": {
+          "inputFiles": [
+            [
+              "00017",
+              "ARR_FFXIV_018",
+              "On Westerly Winds",
+              "西風に乗せて"
+            ],
+            []
+          ],
+          "filterComplex": "[0:a]atrim=0:26.187,afade=t=out:st=25.687:d=0.5[r1];[1:a]volume=0[r2];[r1][r2]amix=inputs=2:duration=longest:normalize=0,volume=+3.5dB[res]",
+          "filterComplexOutName": "[res]"
+        },
+        "source2": {
+          "inputFiles": [
+            [
+              "00017",
+              "ARR_FFXIV_018",
+              "On Westerly Winds",
+              "西風に乗せて"
+            ],
+            []
+          ],
+          "filterComplex": "[0:a]atrim=26.206:85.767,asetpts=PTS-STARTPTS,afade=t=out:st=59.061:d=0.5[r1];[1:a]volume=0[r2];[r1][r2]amix=inputs=2:duration=longest:normalize=0,volume=+3.5dB[res]",
+          "filterComplexOutName": "[res]"
+        },
+        "source3": {
+          "inputFiles": [
+            [
+              "00017",
+              "ARR_FFXIV_018",
+              "On Westerly Winds",
+              "西風に乗せて"
+            ],
+            []
+          ],
+          "filterComplex": "[0:a]atrim=85.767:149.716,asetpts=PTS-STARTPTS[r1];[1:a]volume=0[r2];[r1][r2]amix=inputs=2:duration=longest:normalize=0,volume=+3.5dB[res]",
+          "filterComplexOutName": "[res]"
+        },
+        "source4": {
+          "inputFiles": [
+            [
+              "00017",
+              "ARR_FFXIV_018",
+              "On Westerly Winds",
+              "西風に乗せて"
+            ],
+            []
+          ],
+          "filterComplex": "[0:a]atrim=149.716:261.864[r1];[1:a]volume=0[r2];[r1][r2]amix=inputs=2:duration=longest:normalize=0,volume=+3.5dB[res]",
+          "filterComplexOutName": "[res]"
+        },
+        "source5": {
+          "inputFiles": [
+            [
+              "00017",
+              "ARR_FFXIV_018",
+              "On Westerly Winds",
+              "西風に乗せて"
+            ],
+            []
+          ],
+          "filterComplex": "[0:a]atrim=262.519,asetpts=PTS-STARTPTS,afade=t=in:st=0:d=0.5[r1];[1:a]volume=0[r2];[r1][r2]amix=inputs=2:duration=shortest:normalize=0,volume=+3.5dB[res]",
+          "filterComplexOutName": "[res]"
+        }
+      },
       "target": [
         {
           "path": "music/ffxiv/bgm_field_lim_01.scd",
-          "enable": false,
-          "# comment": "TODO"
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "source1",
+                  "channel": 0
+                },
+                {
+                  "source": "source1",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
         },
         {
           "path": "music/ffxiv/bgm_field_lim_02.scd",
-          "enable": false
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "source2",
+                  "channel": 0
+                },
+                {
+                  "source": "source2",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
         },
         {
           "path": "music/ffxiv/bgm_field_lim_03.scd",
-          "enable": false
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "source3",
+                  "channel": 0
+                },
+                {
+                  "source": "source3",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
         },
         {
           "path": "music/ffxiv/bgm_field_lim_04.scd",
-          "enable": false
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "source4",
+                  "channel": 0
+                },
+                {
+                  "source": "source4",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
         },
         {
           "path": "music/ffxiv/bgm_field_lim_05.scd",
-          "enable": false
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "source5",
+                  "channel": 0
+                },
+                {
+                  "source": "source5",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
         }
       ]
     },
@@ -457,33 +587,162 @@
       }
     },
     {
-      "source": [
-        "00026",
-        "ARR_FFXIV_027",
-        "Serenity",
-        "静穏の森"
-      ],
+      "source": {
+        "source1": {
+          "inputFiles": [
+            [
+              "00026",
+              "ARR_FFXIV_027",
+              "Serenity",
+              "静穏の森"
+            ],
+            []
+          ],
+          "filterComplex": "[0:a]atrim=0.519:44.312[r1];[1:a]volume=0[r2];[r2][r1]amix=inputs=2:duration=first:normalize=0,volume=+3.5dB[res]",
+          "filterComplexOutName": "[res]"
+        },
+        "source2": {
+          "inputFiles": [
+            [
+              "00026",
+              "ARR_FFXIV_027",
+              "Serenity",
+              "静穏の森"
+            ],
+            []
+          ],
+          "filterComplex": "[0:a]atrim=44.312:114.889[r1];[1:a]volume=0[r2];[r2][r1]amix=inputs=2:duration=first:normalize=0,volume=+3.5dB[res]",
+          "filterComplexOutName": "[res]"
+        },
+        "source3": {
+          "inputFiles": [
+            [
+              "00026",
+              "ARR_FFXIV_027",
+              "Serenity",
+              "静穏の森"
+            ],
+            []
+          ],
+          "filterComplex": "[0:a]atrim=114.889:217.103,asetpts=PTS-STARTPTS,afade=t=out:st=100.714:d=1[r1];[1:a]volume=0[r2];[r2][r1]amix=inputs=2:duration=first:normalize=0,volume=+3.5dB[res]",
+          "filterComplexOutName": "[res]"
+        },
+        "source4": {
+          "inputFiles": [
+            [
+              "00026",
+              "ARR_FFXIV_027",
+              "Serenity",
+              "静穏の森"
+            ],
+            []
+          ],
+          "filterComplex": "[0:a]atrim=217.103:290.431,asetpts=PTS-STARTPTS,afade=t=in:st=0:d=0.5,afade=t=out:st=71.329:d=1.5[r1];[1:a]volume=0[r2];[r2][r1]amix=inputs=2:duration=first:normalize=0,volume=+3.5dB[res]",
+          "filterComplexOutName": "[res]"
+        },
+        "source5": {
+          "inputFiles": [
+            [
+              "00026",
+              "ARR_FFXIV_027",
+              "Serenity",
+              "静穏の森"
+            ],
+            []
+          ],
+          "filterComplex": "[0:a]atrim=291.424:351.243,asetpts=PTS-STARTPTS,afade=t=in:st=0:d=0.5[r1];[1:a]volume=0[r2];[r2][r1]amix=inputs=2:duration=first:normalize=0,volume=+3.5dB[res]",
+          "filterComplexOutName": "[res]"
+        }
+      },
       "target": [
         {
           "path": "music/ffxiv/bgm_field_gri_01.scd",
-          "enable": false,
-          "# comment": "TODO"
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "source1",
+                  "channel": 0
+                },
+                {
+                  "source": "source1",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
         },
         {
           "path": "music/ffxiv/bgm_field_gri_02.scd",
-          "enable": false
+          "segments": [
+            {
+              "sourceThresholds": {
+                "target": 0.03,
+                "source2": 0.03
+              },
+              "channels": [
+                {
+                  "source": "source2",
+                  "channel": 0
+                },
+                {
+                  "source": "source2",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
         },
         {
           "path": "music/ffxiv/bgm_field_gri_03.scd",
-          "enable": false
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "source3",
+                  "channel": 0
+                },
+                {
+                  "source": "source3",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
         },
         {
           "path": "music/ffxiv/bgm_field_gri_04.scd",
-          "enable": false
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "source4",
+                  "channel": 0
+                },
+                {
+                  "source": "source4",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
         },
         {
           "path": "music/ffxiv/bgm_field_gri_05.scd",
-          "enable": false
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "source5",
+                  "channel": 0
+                },
+                {
+                  "source": "source5",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
         }
       ]
     },
@@ -930,7 +1189,10 @@
         "過重圧殺！　～蛮神タイタン討滅戦～"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ban_titan.scd"
+        "path": [
+          "music/ffxiv/bgm_ban_titan.scd",
+          "music/ffxiv/bgm_ride_titan.scd"
+        ]
       }
     },
     {
@@ -1169,7 +1431,7 @@
       "target": {
         "path": "music/ffxiv/bgm_dungeon_lim_04.scd",
         "enable": false,
-        "# comment": "TODO"
+        "# comment": "Cannot be simply looped"
       }
     },
     {
@@ -1193,7 +1455,8 @@
       "target": {
         "path": [
           "music/ffxiv/bgm_ban_moogle_king.scd",
-          "music/ffxiv/bgm_ban_moogle_goku.scd"
+          "music/ffxiv/bgm_ban_moogle_goku.scd",
+          "music/ffxiv/bgm_ride_mogle.scd"
         ]
       }
     },
@@ -1673,16 +1936,6 @@
       ],
       "target": {
         "path": "music/ffxiv/bgm_con_bahamut_boss.scd"
-      }
-    },
-    {
-      "source": [
-        "ARR_FFXIV_120",
-        "Battle on the Big Bridge Reborn",
-        "ビッグブリッヂの死闘 ～新生～"
-      ],
-      "target": {
-        "path": "music/ffxiv/bgm_event_clashonthebigbridge.scd"
       }
     }
   ]

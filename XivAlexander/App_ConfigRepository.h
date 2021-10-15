@@ -48,8 +48,10 @@ namespace App {
 			virtual bool LoadFrom(const nlohmann::json&, bool announceChanged = false) = 0;
 			virtual void SaveTo(nlohmann::json&) const = 0;
 
-			void AnnounceChanged() {
-				OnChangeListener(*this);
+			void AnnounceChanged(bool skipNonLoad) {
+				OnChangeListenerAlsoOnLoad(*this);
+				if (!skipNonLoad)
+					OnChangeListener(*this);
 			}
 
 		public:
@@ -58,6 +60,7 @@ namespace App {
 			[[nodiscard]] auto Name() const { return m_pszName; }
 
 			Utils::ListenerManager<ItemBase, void, ItemBase&> OnChangeListener;
+			Utils::ListenerManager<ItemBase, void, ItemBase&> OnChangeListenerAlsoOnLoad;
 		};
 
 		template<typename T>
@@ -97,7 +100,7 @@ namespace App {
 					return *this;
 
 				m_value = rv;
-				AnnounceChanged();
+				AnnounceChanged(false);
 				return *this;
 			}
 
@@ -106,7 +109,7 @@ namespace App {
 					return *this;
 
 				m_value = std::move(rv);
-				AnnounceChanged();
+				AnnounceChanged(false);
 				return *this;
 			}
 
@@ -241,6 +244,9 @@ namespace App {
 			Item<bool> MuteVoice_Cm = CreateConfigItem(this, "MuteVoice_Cm", false);
 			Item<bool> MuteVoice_Emote = CreateConfigItem(this, "MuteVoice_Emote", false);
 			Item<bool> MuteVoice_Line = CreateConfigItem(this, "MuteVoice_Line", false);
+
+			Item<std::vector<std::filesystem::path>> MusicImportConfig = CreateConfigItem(this, "MusicImportConfig", std::vector<std::filesystem::path>());
+			Item<std::map<std::string, std::vector<std::filesystem::path>>> MusicImportConfig_Directories = CreateConfigItem(this, "MusicImportConfig_Directories", std::map<std::string, std::vector<std::filesystem::path>>());
 			
 			RuntimeRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
 			~RuntimeRepository() override;
@@ -258,6 +264,12 @@ namespace App {
 			[[nodiscard]] std::vector<std::pair<WORD, std::string>> GetDisplayLanguagePriorities() const;
 			
 			[[nodiscard]] std::vector<Sqex::Language> GetFallbackLanguageList() const;
+
+		private:
+			std::map<std::string, std::map<std::string, std::string>> m_musicDirectoryPurchaseWebsites;
+
+		public:
+			[[nodiscard]] const std::map<std::string, std::string>& GetMusicDirectoryPurchaseWebsites(std::string name) const;
 		};
 
 		class GameRepository : public BaseRepository {

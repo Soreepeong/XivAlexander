@@ -235,7 +235,7 @@ void Sqex::Sound::ScdWriter::SoundEntry::ExportTo(std::vector<uint8_t>& res) con
 	insert(hdr);
 	for (const auto& [name, aux] : AuxChunks) {
 		if (name.size() != 4)
-			throw std::invalid_argument("Length of name must be 4");
+			throw std::invalid_argument(std::format("Length of name must be 4, got \"{}\"({})", name, name.size()));
 		res.insert(res.end(), name.begin(), name.end());
 		insert(static_cast<uint32_t>(8 + aux.size()));
 		res.insert(res.end(), aux.begin(), aux.end());

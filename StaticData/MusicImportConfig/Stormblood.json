@@ -1,7 +1,17 @@
 {
   "name": "Final Fantasy XIV - 4.0 - Stormblood",
-  "purchaseLinks": {
-    "amazon.co.jp": "https://www.amazon.co.jp/dp/B07CZZJ24B/"
+  "searchDirectories": {
+    "Stormblood": {
+      "default": true,
+      "purchaseLinks": {
+        "amazon.co.jp": "https://www.amazon.co.jp/dp/B07CZZJ24B/"
+      }
+    },
+    "The Far Edge Of Fate": {
+      "purchaseLinks": {
+        "amazon.co.jp": "https://www.amazon.co.jp/dp/B06XRQCZX9/"
+      }
+    }
   },
   "items": [
     {
@@ -24,7 +34,10 @@
         "Prelude [-–] Long March Home"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_system_title.scd"
+        "path": [
+          "music/ex2/bgm_ex2_system_title.scd",
+          "music/ffxiv/bgm_ride_kyubi.scd"
+        ]
       }
     },
     {
@@ -300,6 +313,31 @@
       }
     },
     {
+      "source": {
+        "source": {
+          "inputFiles": [
+            [
+              "00022",
+              "SB_FFXIV_023",
+              "祭りである ～蛮神スサノオ討滅戦～",
+              "Riot"
+            ],
+            [
+              "00023",
+              "SB_FFXIV_024",
+              "終始 ～蛮神スサノオ討滅戦～",
+              "At Both Ends"
+            ]
+          ],
+          "filterComplex": "[0:a]atrim=0:21.807,afade=t=out:st=21.757:d=0.05[p1];[1:a]adelay=18s:all=1,atrim=0.567,asetpts=PTS-STARTPTS,volume='max(0,min(4.238,t-16.433))/4.238':eval=frame[p2];[p1][p2]amix=inputs=2:duration=longest:normalize=0,volume=+3.5dB[res]",
+          "filterComplexOutName": "[res]"
+        }
+      },
+      "target": {
+        "path": "music/ffxiv/bgm_ride_susano.scd"
+      }
+    },
+    {
       "source": [
         "00024",
         "SB_FFXIV_025",
@@ -455,7 +493,10 @@
         "Beauty's Wicked Wiles"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_ban_02.scd"
+        "path": [
+          "music/ex2/bgm_ex2_ban_02.scd",
+          "music/ffxiv/bgm_ride_lakshmi.scd"
+        ]
       }
     },
     {
@@ -521,7 +562,10 @@
         "The Worm's Tail"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_ban_03_2.scd",
+        "path": [
+          "music/ex2/bgm_ex2_ban_03_2.scd",
+          "music/ffxiv/bgm_ride_shinryu.scd"
+        ],
         "segments": [
           {
             "sourceFilters": {
@@ -614,7 +658,10 @@
         "Final, Not Final"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_omega_04.scd"
+        "path": [
+          "music/ex2/bgm_ex2_omega_04.scd",
+          "music/ffxiv/bgm_ride_omega.scd"
+        ]
       }
     },
     {
@@ -1015,7 +1062,10 @@
         "Dancing Mad [-–] Movement IV"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_sigma_06.scd"
+        "path": [
+          "music/ex2/bgm_ex2_sigma_06.scd",
+          "music/ffxiv/bgm_ride_sigma.scd"
+        ]
       }
     },
     {
@@ -1148,18 +1198,50 @@
     },
     {
       "source": {
-        "Starved": [
-          "00007",
-          "TFEOF_FFXIV_08",
-          "餓えた狼　～ザ・フィースト～",
-          "Starved"
-        ],
-        "Dangertek": [
-          "00089",
-          "SB_FFXIV_089",
-          "危険なる妙技",
-          "Dangertek"
-        ]
+        "Starved": {
+          "inputFiles": [
+            [
+              {
+                "directory": "The Far Edge Of Fate",
+                "pattern": "00007"
+              },
+              {
+                "directory": "The Far Edge Of Fate",
+                "pattern": "TFEOF_FFXIV_08"
+              },
+              {
+                "directory": "The Far Edge Of Fate",
+                "pattern": "餓えた狼　～ザ・フィースト～"
+              },
+              {
+                "directory": "The Far Edge Of Fate",
+                "pattern": "Starved"
+              }
+            ]
+          ]
+        },
+        "Dangertek": {
+          "inputFiles": [
+            [
+              {
+                "directory": "Stormblood",
+                "pattern": "00089"
+              },
+              {
+                "directory": "Stormblood",
+                "pattern": "SB_FFXIV_089"
+              },
+              {
+                "directory": "Stormblood",
+                "pattern": "危険なる妙技"
+              },
+              {
+                "directory": "Stormblood",
+                "pattern": "Dangertek"
+              }
+            ]
+          ]
+        }
       },
       "target": {
         "path": "music/ffxiv/bgm_ex1_pvp01.scd",
@@ -1270,7 +1352,8 @@
       ],
       "target": {
         "path": "music/ex2/bgm_ex2_ban_23.scd",
-        "enable": false
+        "enable": false,
+        "# comment": "Incomplete."
       }
     },
     {
@@ -1389,7 +1472,10 @@
         "Wayward Daughter"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_ban_18.scd"
+        "path": [
+          "music/ex2/bgm_ex2_ban_18.scd",
+          "music/ffxiv/bgm_ride_tk.scd"
+        ]
       }
     }
   ]
