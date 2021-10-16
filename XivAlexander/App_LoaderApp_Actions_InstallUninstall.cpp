@@ -216,7 +216,7 @@ static std::string GetSha1(const std::filesystem::path& f) {
 		CryptoPP::SHA1 sha1;
 		std::vector<uint8_t> buf(8192);
 		for (uint64_t i = 0, len = file.GetFileSize(); i < len; i += 8192) {
-			const auto read = file.Read(i, &buf[0], std::min(len - i, buf.size()));
+			const auto read = file.Read(i, &buf[0], static_cast<size_t>(std::min<uint64_t>(len - i, buf.size())));
 			sha1.Update(buf.data(), read);
 		}
 
