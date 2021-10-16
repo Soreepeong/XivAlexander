@@ -83,7 +83,11 @@ void App::Window::ProgressPopupWindow::UpdateProgress(uint64_t progress, uint64_
 }
 
 void App::Window::ProgressPopupWindow::UpdateMessage(const std::string& message) {
-	SendMessageW(m_hMessage, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(Utils::FromUtf8(message).c_str()));
+	UpdateMessage(Utils::FromUtf8(message));
+}
+
+void App::Window::ProgressPopupWindow::UpdateMessage(const std::wstring& message) {
+	SendMessageW(m_hMessage, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(message.c_str()));
 }
 
 void App::Window::ProgressPopupWindow::Cancel() {
@@ -111,17 +115,18 @@ DWORD App::Window::ProgressPopupWindow::DoModalLoop(int ms, std::vector<HANDLE> 
 			return which;
 
 		} else if (which == WAIT_OBJECT_0 + events.size()) {
-			if (GetMessageW(&msg, nullptr, 0, 0)) {
+			if (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE)) {
+				if (msg.message == WM_QUIT) {
+					m_hCancelEvent.Set();
+					PostQuitMessage(static_cast<int>(msg.wParam));
+					return 0;
+				}
 				if (msg.hwnd == m_hWnd || GetParent(msg.hwnd) == m_hWnd) {
 					if (msg.message == WM_KEYDOWN && (msg.wParam == VK_RETURN || msg.wParam == VK_ESCAPE))
 						PostMessageW(m_hWnd, WM_COMMAND, MAKEWPARAM(IDCANCEL, BN_CLICKED), reinterpret_cast<LPARAM>(m_hCancelButton));
 				}
 				TranslateMessage(&msg);
 				DispatchMessageW(&msg);
-			} else {
-				m_hCancelEvent.Set();
-				PostQuitMessage(static_cast<int>(msg.wParam));
-				return 0;
 			}
 		}
 	}

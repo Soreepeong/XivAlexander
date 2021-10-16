@@ -315,6 +315,9 @@
     <ClCompile Include="Sqex_Sound_MusicImporter.cpp">
       <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
     </ClCompile>
+    <ClCompile Include="Utils_Win32_ThreadPool.cpp">
+      <Filter>Windows API Wrappers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json">

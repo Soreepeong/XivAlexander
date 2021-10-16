@@ -398,8 +398,10 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				+ 1 // replacement file entry
 			);
 			std::atomic_size_t progressValue = 0;
+			std::atomic_size_t fileIndex = 0;
 
 			Utils::Win32::TpEnvironment pool;
+			const std::filesystem::path* pLastStartedIndexFile = &creators.begin()->first;
 			const auto loaderThread = Utils::Win32::Thread(L"VirtualSqPack Constructor", [&]() {
 				for (const auto& indexFile : creators | std::views::keys) {
 					pool.SubmitWork([&, &creator = *creators.at(indexFile)]() {
@@ -408,6 +410,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 								return;
 
 							progressValue += 1;
+							fileIndex += 1;
+							pLastStartedIndexFile = &indexFile;
 							if (const auto result = creator.AddEntriesFromSqPack(indexFile, true, true); result.AnyItem()) {
 								const auto lock = std::lock_guard(groupedLogPrintLock);
 								Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
@@ -483,11 +487,10 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				pool.WaitOutstanding();
 			});
 			
-			progressWindow.UpdateMessage(Utils::ToUtf8(Config->Runtime.GetStringRes(IDS_TITLE_INDEXINGFILES)));
-			progressWindow.UpdateProgress(0, progressMax);
-			while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {loaderThread})) {
+			do {
+				progressWindow.UpdateMessage(Config->Runtime.FormatStringRes(IDS_TITLE_INDEXINGFILES, static_cast<size_t>(fileIndex), creators.size(), *pLastStartedIndexFile));
 				progressWindow.UpdateProgress(progressValue, progressMax);
-			}
+			} while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, { loaderThread }));
 			pool.Cancel();
 			loaderThread.Wait();
 		}

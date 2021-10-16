@@ -91,7 +91,7 @@ int main() {
 				std::cout << std::format("[{}/{}] {}\n", index++, count, target.path.front());
 
 				try {
-					Sqex::Sound::MusicImporter importer(item.source, target, Utils::Win32::ResolvePathFromFileName("ffmpeg.exe"), Utils::Win32::ResolvePathFromFileName("ffprobe.exe"));
+					Sqex::Sound::MusicImporter importer(item.source, target, Utils::Win32::ResolvePathFromFileName("ffmpeg.exe"), Utils::Win32::ResolvePathFromFileName("ffprobe.exe"), Utils::Win32::Event::Create());
 					for (const auto& path : target.path) {
 						const auto rootName = path.begin()->wstring();
 						if (lstrcmpiW(rootName.c_str(), L"sound") == 0)
@@ -111,6 +111,9 @@ int main() {
 						} else
 							throw std::invalid_argument(std::format("{} is not a valid root folder name", rootName));
 					}
+					const auto logger = importer.OnWarningLog([&](const std::string& s) {
+						std::cout << std::format("Error on {}: {}\n", target.path.front(), s);
+					});
 
 					auto resolved = false;
 					for (const auto& [dirName, dirPath] : directories)

@@ -23,6 +23,7 @@ namespace App::Window {
 
 		void UpdateProgress(uint64_t progress, uint64_t max);
 		void UpdateMessage(const std::string& message);
+		void UpdateMessage(const std::wstring& message);
 
 		void Cancel();
 		[[nodiscard]] const Utils::Win32::Event& GetCancelEvent() const;

@@ -275,6 +275,11 @@ Utils::Win32::Thread& Utils::Win32::Thread::operator=(const Thread & r) {
 	return *this;
 }
 
+Utils::Win32::Thread& Utils::Win32::Thread::operator=(std::nullptr_t) noexcept {
+	Clear();
+	return *this;
+}
+
 Utils::Win32::Thread::~Thread() = default;
 
 DWORD Utils::Win32::Thread::GetId() const {

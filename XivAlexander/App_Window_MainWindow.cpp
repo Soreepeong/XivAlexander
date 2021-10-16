@@ -7,6 +7,7 @@
 #include <XivAlexanderCommon/Sqex_Sound_MusicImporter.h>
 #include <XivAlexanderCommon/Sqex_ThirdParty_TexTools.h>
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
+#include <XivAlexanderCommon/Utils_Win32_TaskDialogBuilder.h>
 #include <XivAlexanderCommon/Utils_Win32_ThreadPool.h>
 
 #include "App_Feature_GameResourceOverrider.h"
@@ -59,33 +60,33 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 	, m_path(Utils::Win32::Process::Current().PathOf())
 	, m_bUseElevation(Utils::Win32::IsUserAnAdmin())
 	, m_launchParameters([this]() -> decltype(m_launchParameters) {
-		try {
-			const auto args = Utils::Win32::CommandLineToArgsU8(std::wstring(Dll::GetOriginalCommandLine()));
-			switch (args.size()) {
-				case 0:
-				case 1:
-					throw std::runtime_error("Empty arguments");
-				case 2:
-					return Sqex::CommandLine::FromString(args[1], &m_bUseParameterObfuscation);
-				default:
-					return Sqex::CommandLine::FromString(Utils::Win32::ReverseCommandLineToArgv(std::span(args).subspan(1)), &m_bUseParameterObfuscation);
-			}
-		} catch (const std::exception& e) {
-			m_logger->Format<LogLevel::Warning>(LogCategory::General, m_config->Runtime.GetLangId(), IDS_WARNING_GAME_PARAMETER_PARSE, e.what());
-			return {};
+	try {
+		const auto args = Utils::Win32::CommandLineToArgsU8(std::wstring(Dll::GetOriginalCommandLine()));
+		switch (args.size()) {
+		case 0:
+		case 1:
+			throw std::runtime_error("Empty arguments");
+		case 2:
+			return Sqex::CommandLine::FromString(args[1], &m_bUseParameterObfuscation);
+		default:
+			return Sqex::CommandLine::FromString(Utils::Win32::ReverseCommandLineToArgv(std::span(args).subspan(1)), &m_bUseParameterObfuscation);
 		}
-	}())
-	, m_startupArgumentsForDisplay([this]() {
-		auto params = m_launchParameters;
-		for (auto& [k, v] : params) {
-			if (k == "DEV.TestSID") {
-				for (auto& c : v)
-					c = '*';
-				v += std::format("({})", v.size());
-			}
+	} catch (const std::exception& e) {
+		m_logger->Format<LogLevel::Warning>(LogCategory::General, m_config->Runtime.GetLangId(), IDS_WARNING_GAME_PARAMETER_PARSE, e.what());
+		return {};
+	}
+}())
+, m_startupArgumentsForDisplay([this]() {
+	auto params = m_launchParameters;
+	for (auto& [k, v] : params) {
+		if (k == "DEV.TestSID") {
+			for (auto& c : v)
+				c = '*';
+			v += std::format("({})", v.size());
 		}
-		return Sqex::CommandLine::ToString(params, false);
-	}()) {
+	}
+	return Sqex::CommandLine::ToString(params, false);
+}()) {
 
 	try {
 		m_gameReleaseInfo = Misc::GameInstallationDetector::GetGameReleaseInfo();
@@ -203,8 +204,8 @@ void App::Window::MainWindow::ShowContextMenu(const BaseWindow* parent) const {
 }
 
 void App::Window::MainWindow::ApplyLanguage(WORD languageId) {
-	m_hAcceleratorWindow = {Dll::Module(), RT_ACCELERATOR, MAKEINTRESOURCE(IDR_TRAY_ACCELERATOR), languageId};
-	m_hAcceleratorThread = {Dll::Module(), RT_ACCELERATOR, MAKEINTRESOURCE(IDR_TRAY_GLOBAL_ACCELERATOR), languageId};
+	m_hAcceleratorWindow = { Dll::Module(), RT_ACCELERATOR, MAKEINTRESOURCE(IDR_TRAY_ACCELERATOR), languageId };
+	m_hAcceleratorThread = { Dll::Module(), RT_ACCELERATOR, MAKEINTRESOURCE(IDR_TRAY_GLOBAL_ACCELERATOR), languageId };
 	RepopulateMenu();
 
 	const auto title = std::format(L"{}: {}, {}, {}",
@@ -223,12 +224,12 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 				Utils::Win32::MB_GetString(IDNO - 1),
 				Utils::Win32::MB_GetString(IDCANCEL - 1)
 			))) {
-				case IDYES:
-					m_triggerUnload();
-					break;
-				case IDNO:
-					m_config->Runtime.ShowControlWindow = false;
-					break;
+			case IDYES:
+				m_triggerUnload();
+				break;
+			case IDNO:
+				m_config->Runtime.ShowControlWindow = false;
+				break;
 			}
 		}
 		return 0;
@@ -277,7 +278,7 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					OnCommand_Menu_Help(menuId);
 				}
 			} catch (const std::exception& e) {
-				Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+				Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 			}
 			return 0;
 		}
@@ -321,7 +322,7 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 		const auto hdc = BeginPaint(m_hWnd, &ps);
 
 		const auto zoom = GetZoom();
-		NONCLIENTMETRICSW ncm = {sizeof(NONCLIENTMETRICSW)};
+		NONCLIENTMETRICSW ncm = { sizeof(NONCLIENTMETRICSW) };
 		SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof ncm, &ncm, 0);
 
 		GetClientRect(m_hWnd, &rect);
@@ -366,6 +367,11 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 void App::Window::MainWindow::OnDestroy() {
 	m_triggerUnload();
 
+	if (const auto replaceMusicsProgressWindow = decltype(m_replaceMusicsProgressWindow)(m_replaceMusicsProgressWindow))
+		replaceMusicsProgressWindow->Cancel();
+	if (const auto replaceMusicsThread = decltype(m_replaceMusics)(m_replaceMusics))
+		replaceMusicsThread.Wait();
+
 	m_runtimeConfigEditor = nullptr;
 	m_gameConfigEditor = nullptr;
 	RemoveTrayIcon();
@@ -390,7 +396,7 @@ void App::Window::MainWindow::RepopulateMenu() {
 	{
 		const auto hModMenu = GetSubMenu(hMenu, 3);
 		int index = 0;
-		
+
 		for (const auto menuItemCount = GetMenuItemCount(hModMenu); index < menuItemCount; index++) {
 			if (GetMenuItemID(hModMenu, index) == ID_MODDING_SUBMENUMARKER)
 				break;
@@ -481,7 +487,7 @@ void App::Window::MainWindow::RepopulateMenu_AdditionalSqpackRootDirectories(HME
 	if (count)
 		DeleteMenu(hParentMenu, ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_NOENTRY, MF_BYCOMMAND);
 	DeleteMenu(hParentMenu, ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ENTRY, MF_BYCOMMAND);
-	
+
 	const auto hAddMenu = GetSubMenu(hParentMenu, 0);
 	count = 0;
 	for (const auto& info : Misc::GameInstallationDetector::FindInstallations()) {
@@ -529,8 +535,7 @@ void App::Window::MainWindow::RepopulateMenu_UpgradeMusicQuality(HMENU hParentMe
 	}
 	for (const auto& file : m_config->Runtime.MusicImportConfig.Value()) {
 		InsertMenu(hParentMenu, index++, MF_STRING | MF_BYPOSITION, RepopulateMenu_AllocateMenuId([this, file] {
-			// TODO: change resource id
-			if (Dll::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_EXCEL_TRANSFORM_CONFIG_FILE, file.wstring())) == IDNO)
+			if (Dll::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_MUSICIMPORTCONFIG, file.wstring())) == IDNO)
 				return;
 
 			std::vector<std::filesystem::path> newValue;
@@ -541,6 +546,7 @@ void App::Window::MainWindow::RepopulateMenu_UpgradeMusicQuality(HMENU hParentMe
 			m_config->Runtime.MusicImportConfig = std::move(newValue);
 		}), file.wstring().c_str());
 	}
+
 
 	index = 0;
 	for (const auto menuItemCount = GetMenuItemCount(hParentMenu); index < menuItemCount; index++) {
@@ -554,8 +560,7 @@ void App::Window::MainWindow::RepopulateMenu_UpgradeMusicQuality(HMENU hParentMe
 				IFileOpenDialogPtr pDialog;
 				DWORD dwFlags;
 				Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
-				// TODO: change resource ID
-				Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(m_config->Runtime.GetStringRes(IDS_TITLE_ADD_EXTERNAL_GAME_DIRECTORY)));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(m_config->Runtime.FormatStringRes(IDS_TITLE_ADD_MUSICDIRECTORY, name).c_str()));
 				Utils::Win32::Error::ThrowIfFailed(pDialog->GetOptions(&dwFlags));
 				Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM | FOS_PICKFOLDERS));
 				Utils::Win32::Error::ThrowIfFailed(pDialog->Show(m_hWnd), true);
@@ -568,7 +573,6 @@ void App::Window::MainWindow::RepopulateMenu_UpgradeMusicQuality(HMENU hParentMe
 					throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
 				const auto freeFileName = Utils::CallOnDestruction([pszFileName]() { CoTaskMemFree(pszFileName); });
 
-				// paths.erase(std::remove_if(paths.begin(), paths.end(), [&name] (const auto& r) { return name == r; }), paths.end());
 				paths.emplace_back(pszFileName);
 
 				auto newValue = m_config->Runtime.MusicImportConfig_Directories.Value();
@@ -579,13 +583,12 @@ void App::Window::MainWindow::RepopulateMenu_UpgradeMusicQuality(HMENU hParentMe
 				// pass
 
 			} catch (const std::exception& e) {
-				Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+				Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 			}
 		}), RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_ADD).c_str());
 
 		AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, name]() {
-			// TODO: change resource id
-			if (Dll::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_EXCEL_TRANSFORM_CONFIG_FILE, name)) == IDNO)
+			if (Dll::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.FormatStringRes(IDS_CONFIRM_UNREGISTERALLMUSICSOURCEDIRECTORIES, name)) == IDNO)
 				return;
 
 			auto newValue = m_config->Runtime.MusicImportConfig_Directories.Value();
@@ -601,7 +604,7 @@ void App::Window::MainWindow::RepopulateMenu_UpgradeMusicQuality(HMENU hParentMe
 					try {
 						Utils::Win32::ShellExecutePathOrThrow(websiteUrl, m_hWnd);
 					} catch (const std::exception& e) {
-						Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+						Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 					}
 				}), std::format(RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_BUYFROM), websiteName).c_str());
 			}
@@ -610,11 +613,10 @@ void App::Window::MainWindow::RepopulateMenu_UpgradeMusicQuality(HMENU hParentMe
 
 		for (const auto& path : paths) {
 			AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, name, path, paths = paths]() mutable {
-				// TODO: change resource id
-				if (Dll::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_EXCEL_TRANSFORM_CONFIG_FILE, path.wstring())) == IDNO)
+				if (Dll::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_MUSICSOURCEDIRECTORY, name, path)) == IDNO)
 					return;
 
-				paths.erase(std::remove_if(paths.begin(), paths.end(), [&path] (const auto& r) { return path == r; }), paths.end());
+				paths.erase(std::remove_if(paths.begin(), paths.end(), [&path](const auto& r) { return path == r; }), paths.end());
 
 				auto newValue = m_config->Runtime.MusicImportConfig_Directories.Value();
 				newValue.insert_or_assign(name, paths);
@@ -654,7 +656,7 @@ void App::Window::MainWindow::RepopulateMenu_Modding(HMENU hParentMenu) {
 					ttmpSet.Enabled = !ttmpSet.Enabled;
 					ttmpSet.ApplyChanges();
 				} catch (const std::exception& e) {
-					Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+					Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 				}
 			}), RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_TTMP_ENTRY_ENABLE).c_str());
 
@@ -664,7 +666,7 @@ void App::Window::MainWindow::RepopulateMenu_Modding(HMENU hParentMenu) {
 						L"Delete \"{}\" at \"{}\"?", ttmpSet.List.Name, ttmpSet.ListPath.wstring()) == IDYES)
 						sqpacks->DeleteTtmp(ttmpSet.ListPath);
 				} catch (const std::exception& e) {
-					Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
+					Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 				}
 			}), RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_TTMP_ENTRY_DELETE).c_str());
 
@@ -702,25 +704,25 @@ void App::Window::MainWindow::RepopulateMenu_Modding(HMENU hParentMenu) {
 
 						AppendMenuW(hModSubMenu, MF_STRING | (optionIndex == choice ? MF_CHECKED : 0), RepopulateMenu_AllocateMenuId(
 							[this, pageObjectIndex, modGroupIndex, optionIndex, &ttmpSet]() {
-								try {
-									if (!ttmpSet.Choices.is_array())
-										ttmpSet.Choices = nlohmann::json::array();
-									while (ttmpSet.Choices.size() <= pageObjectIndex)
-										ttmpSet.Choices.insert(ttmpSet.Choices.end(), nlohmann::json::array());
+							try {
+								if (!ttmpSet.Choices.is_array())
+									ttmpSet.Choices = nlohmann::json::array();
+								while (ttmpSet.Choices.size() <= pageObjectIndex)
+									ttmpSet.Choices.insert(ttmpSet.Choices.end(), nlohmann::json::array());
 
-									auto& page = ttmpSet.Choices.at(pageObjectIndex);
-									if (!page.is_array())
-										page = nlohmann::json::array();
-									while (page.size() <= modGroupIndex)
-										page.insert(page.end(), 0);
-									page[modGroupIndex] = optionIndex;
+								auto& page = ttmpSet.Choices.at(pageObjectIndex);
+								if (!page.is_array())
+									page = nlohmann::json::array();
+								while (page.size() <= modGroupIndex)
+									page.insert(page.end(), 0);
+								page[modGroupIndex] = optionIndex;
 
-									ttmpSet.ApplyChanges();
+								ttmpSet.ApplyChanges();
 
-								} catch (const std::exception& e) {
-									Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-								}
-							}), Utils::FromUtf8(description).c_str());
+							} catch (const std::exception& e) {
+								Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+							}
+						}), Utils::FromUtf8(description).c_str());
 					}
 					AppendMenuW(hSubMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hModSubMenu), Utils::FromUtf8(modGroup.GroupName).c_str());
 				}
@@ -841,7 +843,7 @@ void App::Window::MainWindow::RegisterTrayIcon() {
 	const auto hIcon = Utils::Win32::Icon(LoadIconW(Dll::Module(), MAKEINTRESOURCEW(IDI_TRAY_ICON)),
 		nullptr,
 		"LoadIconW");
-	NOTIFYICONDATAW nid = {sizeof(NOTIFYICONDATAW)};
+	NOTIFYICONDATAW nid = { sizeof(NOTIFYICONDATAW) };
 	nid.uVersion = NOTIFYICON_VERSION_4;
 	nid.uID = TrayItemId;
 	nid.hWnd = this->m_hWnd;
@@ -854,7 +856,7 @@ void App::Window::MainWindow::RegisterTrayIcon() {
 }
 
 void App::Window::MainWindow::RemoveTrayIcon() {
-	NOTIFYICONDATAW nid = {sizeof(NOTIFYICONDATAW)};
+	NOTIFYICONDATAW nid = { sizeof(NOTIFYICONDATAW) };
 	nid.uID = TrayItemId;
 	nid.hWnd = m_hWnd;
 	nid.uFlags = NIF_GUID;
@@ -926,16 +928,16 @@ void App::Window::MainWindow::AskRestartGame(bool onlyOnModifier) {
 
 		if (!Dll::IsLoadedAsDependency() && m_bUseXivAlexander)
 			ok = Utils::Win32::RunProgram({
-				.path = Dll::Module().PathOf().parent_path() / (m_bUseDirectX11 ? XivAlexDll::XivAlexLoader64NameW : XivAlexDll::XivAlexLoader32NameW),
-				.args = std::format(L"-a launcher -l select \"{}\" {}", game, args),
-				.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
-			});
+			.path = Dll::Module().PathOf().parent_path() / (m_bUseDirectX11 ? XivAlexDll::XivAlexLoader64NameW : XivAlexDll::XivAlexLoader32NameW),
+			.args = std::format(L"-a launcher -l select \"{}\" {}", game, args),
+			.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
+				});
 		else
 			ok = Utils::Win32::RunProgram({
-				.path = game,
-				.args = Utils::FromUtf8(args),
-				.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
-			});
+			.path = game,
+			.args = Utils::FromUtf8(args),
+			.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
+				});
 
 		if (ok) {
 			RemoveTrayIcon();
@@ -948,110 +950,110 @@ void App::Window::MainWindow::OnCommand_Menu_File(int menuId) {
 	auto& config = m_config->Runtime;
 
 	switch (menuId) {
-		case ID_GLOBAL_SHOW_TRAYMENU:
-			for (const auto& w : All())
-				if (w->Handle() == GetForegroundWindow())
-					ShowContextMenu(w);
-			return;
+	case ID_GLOBAL_SHOW_TRAYMENU:
+		for (const auto& w : All())
+			if (w->Handle() == GetForegroundWindow())
+				ShowContextMenu(w);
+		return;
 
-		case ID_FILE_SHOWLOGGINGWINDOW:
-			config.ShowLoggingWindow = !config.ShowLoggingWindow;
-			return;
+	case ID_FILE_SHOWLOGGINGWINDOW:
+		config.ShowLoggingWindow = !config.ShowLoggingWindow;
+		return;
 
-		case ID_FILE_SHOWCONTROLWINDOW:
-			config.ShowControlWindow = !config.ShowControlWindow;
-			SetForegroundWindow(m_hWnd);
-			return;
+	case ID_FILE_SHOWCONTROLWINDOW:
+		config.ShowControlWindow = !config.ShowControlWindow;
+		SetForegroundWindow(m_hWnd);
+		return;
 
-		case ID_FILE_CHECKFORUPDATES:
-			LaunchXivAlexLoaderWithTargetHandles({Utils::Win32::Process::Current()},
-				Dll::IsLoadedAsDependency() ? XivAlexDll::LoaderAction::Internal_Update_DependencyDllMode : XivAlexDll::LoaderAction::UpdateCheck,
-				false);
-			return;
+	case ID_FILE_CHECKFORUPDATES:
+		LaunchXivAlexLoaderWithTargetHandles({ Utils::Win32::Process::Current() },
+			Dll::IsLoadedAsDependency() ? XivAlexDll::LoaderAction::Internal_Update_DependencyDllMode : XivAlexDll::LoaderAction::UpdateCheck,
+			false);
+		return;
 
-		case ID_FILE_UNLOADXIVALEXANDER:
-			m_triggerUnload();
-			return;
+	case ID_FILE_UNLOADXIVALEXANDER:
+		m_triggerUnload();
+		return;
 
-		case ID_FILE_FORCEEXITGAME:
-			if (Dll::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, m_config->Runtime.GetStringRes(IDS_CONFIRM_EXIT_GAME)) == IDYES) {
-				RemoveTrayIcon();
-				ExitProcess(0);
-			}
-			return;
+	case ID_FILE_FORCEEXITGAME:
+		if (Dll::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, m_config->Runtime.GetStringRes(IDS_CONFIRM_EXIT_GAME)) == IDYES) {
+			RemoveTrayIcon();
+			ExitProcess(0);
+		}
+		return;
 	}
 }
 
 void App::Window::MainWindow::OnCommand_Menu_Restart(int menuId) {
 	switch (menuId) {
-		case ID_RESTART_RESTART:
-			AskRestartGame();
-			return;
+	case ID_RESTART_RESTART:
+		AskRestartGame();
+		return;
 
-		case ID_RESTART_USEDIRECTX11:
-			m_bUseDirectX11 = !m_bUseDirectX11;
-			AskRestartGame(true);
-			return;
+	case ID_RESTART_USEDIRECTX11:
+		m_bUseDirectX11 = !m_bUseDirectX11;
+		AskRestartGame(true);
+		return;
 
-		case ID_RESTART_USEXIVALEXANDER:
-			m_bUseXivAlexander = !m_bUseXivAlexander;
-			AskRestartGame(true);
-			return;
+	case ID_RESTART_USEXIVALEXANDER:
+		m_bUseXivAlexander = !m_bUseXivAlexander;
+		AskRestartGame(true);
+		return;
 
-		case ID_RESTART_USEPARAMETEROBFUSCATION:
-			m_bUseParameterObfuscation = !m_bUseParameterObfuscation;
-			AskRestartGame(true);
-			return;
+	case ID_RESTART_USEPARAMETEROBFUSCATION:
+		m_bUseParameterObfuscation = !m_bUseParameterObfuscation;
+		AskRestartGame(true);
+		return;
 
-		case ID_RESTART_USEELEVATION:
-			m_bUseElevation = !m_bUseElevation;
-			AskRestartGame(true);
-			return;
+	case ID_RESTART_USEELEVATION:
+		m_bUseElevation = !m_bUseElevation;
+		AskRestartGame(true);
+		return;
 
-		case ID_RESTART_LANGUAGE_ENGLISH:
-			m_gameLanguage = Sqex::Language::English;
-			AskRestartGame(true);
-			return;
+	case ID_RESTART_LANGUAGE_ENGLISH:
+		m_gameLanguage = Sqex::Language::English;
+		AskRestartGame(true);
+		return;
 
-		case ID_RESTART_LANGUAGE_GERMAN:
-			m_gameLanguage = Sqex::Language::German;
-			AskRestartGame(true);
-			return;
+	case ID_RESTART_LANGUAGE_GERMAN:
+		m_gameLanguage = Sqex::Language::German;
+		AskRestartGame(true);
+		return;
 
-		case ID_RESTART_LANGUAGE_FRENCH:
-			m_gameLanguage = Sqex::Language::French;
-			AskRestartGame(true);
-			return;
+	case ID_RESTART_LANGUAGE_FRENCH:
+		m_gameLanguage = Sqex::Language::French;
+		AskRestartGame(true);
+		return;
 
-		case ID_RESTART_LANGUAGE_JAPANESE:
-			m_gameLanguage = Sqex::Language::Japanese;
-			AskRestartGame(true);
-			return;
+	case ID_RESTART_LANGUAGE_JAPANESE:
+		m_gameLanguage = Sqex::Language::Japanese;
+		AskRestartGame(true);
+		return;
 
-		case ID_RESTART_LANGUAGE_SIMPLIFIEDCHINESE:
-			m_gameLanguage = Sqex::Language::ChineseSimplified;
-			AskRestartGame(true);
-			return;
+	case ID_RESTART_LANGUAGE_SIMPLIFIEDCHINESE:
+		m_gameLanguage = Sqex::Language::ChineseSimplified;
+		AskRestartGame(true);
+		return;
 
-		case ID_RESTART_LANGUAGE_KOREAN:
-			m_gameLanguage = Sqex::Language::Korean;
-			AskRestartGame(true);
-			return;
+	case ID_RESTART_LANGUAGE_KOREAN:
+		m_gameLanguage = Sqex::Language::Korean;
+		AskRestartGame(true);
+		return;
 
-		case ID_RESTART_REGION_JAPAN:
-			m_gameRegion = Sqex::Region::Japan;
-			AskRestartGame(true);
-			return;
+	case ID_RESTART_REGION_JAPAN:
+		m_gameRegion = Sqex::Region::Japan;
+		AskRestartGame(true);
+		return;
 
-		case ID_RESTART_REGION_NORTH_AMERICA:
-			m_gameRegion = Sqex::Region::NorthAmerica;
-			AskRestartGame(true);
-			return;
+	case ID_RESTART_REGION_NORTH_AMERICA:
+		m_gameRegion = Sqex::Region::NorthAmerica;
+		AskRestartGame(true);
+		return;
 
-		case ID_RESTART_REGION_EUROPE:
-			m_gameRegion = Sqex::Region::Europe;
-			AskRestartGame(true);
-			return;
+	case ID_RESTART_REGION_EUROPE:
+		m_gameRegion = Sqex::Region::Europe;
+		AskRestartGame(true);
+		return;
 	}
 }
 
@@ -1059,71 +1061,71 @@ void App::Window::MainWindow::OnCommand_Menu_Network(int menuId) {
 	auto& config = m_config->Runtime;
 
 	switch (menuId) {
-		case ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE:
-			config.UseHighLatencyMitigation = !config.UseHighLatencyMitigation;
-			return;
+	case ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE:
+		config.UseHighLatencyMitigation = !config.UseHighLatencyMitigation;
+		return;
 
-		case ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1:
-			config.HighLatencyMitigationMode = HighLatencyMitigationMode::SubtractLatency;
-			return;
+	case ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1:
+		config.HighLatencyMitigationMode = HighLatencyMitigationMode::SubtractLatency;
+		return;
 
-		case ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2:
-			config.HighLatencyMitigationMode = HighLatencyMitigationMode::SimulateRtt;
-			return;
+	case ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2:
+		config.HighLatencyMitigationMode = HighLatencyMitigationMode::SimulateRtt;
+		return;
 
-		case ID_NETWORK_HIGHLATENCYMITIGATION_MODE_3:
-			config.HighLatencyMitigationMode = HighLatencyMitigationMode::SimulateNormalizedRttAndLatency;
-			return;
+	case ID_NETWORK_HIGHLATENCYMITIGATION_MODE_3:
+		config.HighLatencyMitigationMode = HighLatencyMitigationMode::SimulateNormalizedRttAndLatency;
+		return;
 
-		case ID_NETWORK_HIGHLATENCYMITIGATION_USEEARLYPENALTY:
-			config.UseEarlyPenalty = !config.UseEarlyPenalty;
-			return;
+	case ID_NETWORK_HIGHLATENCYMITIGATION_USEEARLYPENALTY:
+		config.UseEarlyPenalty = !config.UseEarlyPenalty;
+		return;
 
-		case ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING:
-			config.UseHighLatencyMitigationLogging = !config.UseHighLatencyMitigationLogging;
-			return;
+	case ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING:
+		config.UseHighLatencyMitigationLogging = !config.UseHighLatencyMitigationLogging;
+		return;
 
-		case ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE:
-			config.UseHighLatencyMitigationPreviewMode = !config.UseHighLatencyMitigationPreviewMode;
-			return;
+	case ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE:
+		config.UseHighLatencyMitigationPreviewMode = !config.UseHighLatencyMitigationPreviewMode;
+		return;
 
-		case ID_NETWORK_USEALLIPCMESSAGELOGGER:
-			config.UseAllIpcMessageLogger = !config.UseAllIpcMessageLogger;
-			return;
+	case ID_NETWORK_USEALLIPCMESSAGELOGGER:
+		config.UseAllIpcMessageLogger = !config.UseAllIpcMessageLogger;
+		return;
 
-		case ID_NETWORK_USEIPCTYPEFINDER:
-			config.UseOpcodeFinder = !config.UseOpcodeFinder;
-			return;
+	case ID_NETWORK_USEIPCTYPEFINDER:
+		config.UseOpcodeFinder = !config.UseOpcodeFinder;
+		return;
 
-		case ID_NETWORK_LOGEFFECTAPPLICATIONDELAY:
-			config.UseEffectApplicationDelayLogger = !config.UseEffectApplicationDelayLogger;
-			return;
+	case ID_NETWORK_LOGEFFECTAPPLICATIONDELAY:
+		config.UseEffectApplicationDelayLogger = !config.UseEffectApplicationDelayLogger;
+		return;
 
-		case ID_NETWORK_REDUCEPACKETDELAY:
-			config.ReducePacketDelay = !config.ReducePacketDelay;
-			return;
+	case ID_NETWORK_REDUCEPACKETDELAY:
+		config.ReducePacketDelay = !config.ReducePacketDelay;
+		return;
 
-		case ID_NETWORK_RELEASEALLCONNECTIONS:
-			m_pApp->RunOnGameLoop([this]() {
-				m_pApp->GetSocketHook()->ReleaseSockets();
-			});
-			return;
+	case ID_NETWORK_RELEASEALLCONNECTIONS:
+		m_pApp->RunOnGameLoop([this]() {
+			m_pApp->GetSocketHook()->ReleaseSockets();
+		});
+		return;
 
-		case ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES:
-			config.TakeOverLoopbackAddresses = !config.TakeOverLoopbackAddresses;
-			return;
+	case ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES:
+		config.TakeOverLoopbackAddresses = !config.TakeOverLoopbackAddresses;
+		return;
 
-		case ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES:
-			config.TakeOverPrivateAddresses = !config.TakeOverPrivateAddresses;
-			return;
+	case ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES:
+		config.TakeOverPrivateAddresses = !config.TakeOverPrivateAddresses;
+		return;
 
-		case ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES:
-			config.TakeOverAllAddresses = !config.TakeOverAllAddresses;
-			return;
+	case ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES:
+		config.TakeOverAllAddresses = !config.TakeOverAllAddresses;
+		return;
 
-		case ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS:
-			config.TakeOverAllPorts = !config.TakeOverAllPorts;
-			return;
+	case ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS:
+		config.TakeOverAllPorts = !config.TakeOverAllPorts;
+		return;
 	}
 }
 
@@ -1131,482 +1133,560 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 	auto& config = m_config->Runtime;
 
 	switch (menuId) {
-		case ID_MODDING_ENABLE:
-			config.UseModding = !config.UseModding;
-			return;
+	case ID_MODDING_ENABLE:
+		config.UseModding = !config.UseModding;
+		return;
 
-		case ID_MODDING_LOGALLHASHKEYS:
-			config.UseHashTrackerKeyLogging = !config.UseHashTrackerKeyLogging;
-			return;
+	case ID_MODDING_LOGALLHASHKEYS:
+		config.UseHashTrackerKeyLogging = !config.UseHashTrackerKeyLogging;
+		return;
 
-		case ID_MODDING_LOGALLFILEACCESS:
-			config.LogAllDataFileRead = !config.LogAllDataFileRead;
-			return;
+	case ID_MODDING_LOGALLFILEACCESS:
+		config.LogAllDataFileRead = !config.LogAllDataFileRead;
+		return;
 
-		case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1: {
-			auto languageList = config.GetFallbackLanguageList();
-			languageList.insert(languageList.begin(), languageList[0]);
-			languageList.erase(languageList.begin() + 1);
-			config.FallbackLanguagePriority = languageList;
-			return;
+	case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1: {
+		auto languageList = config.GetFallbackLanguageList();
+		languageList.insert(languageList.begin(), languageList[0]);
+		languageList.erase(languageList.begin() + 1);
+		config.FallbackLanguagePriority = languageList;
+		return;
+	}
+	case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY2: {
+		auto languageList = config.GetFallbackLanguageList();
+		languageList.insert(languageList.begin(), languageList[1]);
+		languageList.erase(languageList.begin() + 2);
+		config.FallbackLanguagePriority = languageList;
+		return;
+	}
+	case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY3: {
+		auto languageList = config.GetFallbackLanguageList();
+		languageList.insert(languageList.begin(), languageList[2]);
+		languageList.erase(languageList.begin() + 3);
+		config.FallbackLanguagePriority = languageList;
+		return;
+	}
+	case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY4: {
+		auto languageList = config.GetFallbackLanguageList();
+		languageList.insert(languageList.begin(), languageList[3]);
+		languageList.erase(languageList.begin() + 4);
+		config.FallbackLanguagePriority = languageList;
+		return;
+	}
+	case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY5: {
+		auto languageList = config.GetFallbackLanguageList();
+		languageList.insert(languageList.begin(), languageList[4]);
+		languageList.erase(languageList.begin() + 5);
+		config.FallbackLanguagePriority = languageList;
+		return;
+	}
+	case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY6: {
+		auto languageList = config.GetFallbackLanguageList();
+		languageList.insert(languageList.begin(), languageList[5]);
+		languageList.erase(languageList.begin() + 6);
+		config.FallbackLanguagePriority = languageList;
+		return;
+	}
+
+	case ID_MODDING_DISPLAYLANGUAGE_DISABLE:
+		config.ResourceLanguageOverride = Sqex::Language::Unspecified;
+		return;
+
+	case ID_MODDING_DISPLAYLANGUAGE_ENGLISH:
+		config.ResourceLanguageOverride = Sqex::Language::English;
+		return;
+
+	case ID_MODDING_DISPLAYLANGUAGE_GERMAN:
+		config.ResourceLanguageOverride = Sqex::Language::German;
+		return;
+
+	case ID_MODDING_DISPLAYLANGUAGE_FRENCH:
+		config.ResourceLanguageOverride = Sqex::Language::French;
+		return;
+
+	case ID_MODDING_DISPLAYLANGUAGE_JAPANESE:
+		config.ResourceLanguageOverride = Sqex::Language::Japanese;
+		return;
+
+	case ID_MODDING_DISPLAYLANGUAGE_CHINESESIMPLIFIED:
+		config.ResourceLanguageOverride = Sqex::Language::ChineseSimplified;
+		return;
+
+	case ID_MODDING_DISPLAYLANGUAGE_KOREAN:
+		config.ResourceLanguageOverride = Sqex::Language::Korean;
+		return;
+
+	case ID_MODDING_AUDIOLANGUAGE_DISABLE:
+		config.VoiceResourceLanguageOverride = Sqex::Language::Unspecified;
+		return;
+
+	case ID_MODDING_AUDIOLANGUAGE_ENGLISH:
+		config.VoiceResourceLanguageOverride = Sqex::Language::English;
+		return;
+
+	case ID_MODDING_AUDIOLANGUAGE_GERMAN:
+		config.VoiceResourceLanguageOverride = Sqex::Language::German;
+		return;
+
+	case ID_MODDING_AUDIOLANGUAGE_FRENCH:
+		config.VoiceResourceLanguageOverride = Sqex::Language::French;
+		return;
+
+	case ID_MODDING_AUDIOLANGUAGE_JAPANESE:
+		config.VoiceResourceLanguageOverride = Sqex::Language::Japanese;
+		return;
+
+	case ID_MODDING_AUDIOLANGUAGE_CHINESESIMPLIFIED:
+		config.VoiceResourceLanguageOverride = Sqex::Language::ChineseSimplified;
+		return;
+
+	case ID_MODDING_AUDIOLANGUAGE_KOREAN:
+		config.VoiceResourceLanguageOverride = Sqex::Language::Korean;
+		return;
+
+	case ID_MODDING_MUTEVOICE_BATTLE:
+		config.MuteVoice_Battle = !config.MuteVoice_Battle;
+		return;
+
+	case ID_MODDING_MUTEVOICE_CM:
+		config.MuteVoice_Cm = !config.MuteVoice_Cm;
+		return;
+
+	case ID_MODDING_MUTEVOICE_EMOTE:
+		config.MuteVoice_Emote = !config.MuteVoice_Emote;
+		return;
+
+	case ID_MODDING_MUTEVOICE_LINE:
+		config.MuteVoice_Line = !config.MuteVoice_Line;
+		return;
+
+	case ID_MODDING_CHANGEFONT_OPENPRESETDIRECTORY:
+		EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "FontConfig");
+		return;
+
+	case ID_MODDING_CHANGEFONT_IMPORTPRESET: {
+		const auto defaultPath = m_config->Init.ResolveConfigStorageDirectoryPath() / "FontConfig";
+		try {
+			if (!is_directory(defaultPath))
+				create_directories(defaultPath);
+		} catch (...) {
+			// pass
 		}
-		case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY2: {
-			auto languageList = config.GetFallbackLanguageList();
-			languageList.insert(languageList.begin(), languageList[1]);
-			languageList.erase(languageList.begin() + 2);
-			config.FallbackLanguagePriority = languageList;
+
+		const COMDLG_FILTERSPEC fileTypes[] = {
+			{ m_config->Runtime.GetStringRes(IDS_FILTERSPEC_FONTPRESETJSON), L"*.json" },
+			{ m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*" },
+		};
+		const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_IMPORT_FONTCONFIG_PRESET, defaultPath);
+		switch (paths.size()) {
+		case 0:
 			return;
+
+		case 1:
+			ImportFontConfig(paths[0]);
+			return;
+
+		default:
+			InstallMultipleFiles(paths);
 		}
-		case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY3: {
-			auto languageList = config.GetFallbackLanguageList();
-			languageList.insert(languageList.begin(), languageList[2]);
-			languageList.erase(languageList.begin() + 3);
-			config.FallbackLanguagePriority = languageList;
-			return;
-		}
-		case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY4: {
-			auto languageList = config.GetFallbackLanguageList();
-			languageList.insert(languageList.begin(), languageList[3]);
-			languageList.erase(languageList.begin() + 4);
-			config.FallbackLanguagePriority = languageList;
-			return;
-		}
-		case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY5: {
-			auto languageList = config.GetFallbackLanguageList();
-			languageList.insert(languageList.begin(), languageList[4]);
-			languageList.erase(languageList.begin() + 5);
-			config.FallbackLanguagePriority = languageList;
-			return;
-		}
-		case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY6: {
-			auto languageList = config.GetFallbackLanguageList();
-			languageList.insert(languageList.begin(), languageList[5]);
-			languageList.erase(languageList.begin() + 6);
-			config.FallbackLanguagePriority = languageList;
-			return;
-		}
+		return;
+	}
 
-		case ID_MODDING_DISPLAYLANGUAGE_DISABLE:
-			config.ResourceLanguageOverride = Sqex::Language::Unspecified;
-			return;
+	case ID_MODDING_CHANGEFONT_DISABLE:
+		m_config->Runtime.OverrideFontConfig = std::filesystem::path();
+		return;
 
-		case ID_MODDING_DISPLAYLANGUAGE_ENGLISH:
-			config.ResourceLanguageOverride = Sqex::Language::English;
-			return;
-
-		case ID_MODDING_DISPLAYLANGUAGE_GERMAN:
-			config.ResourceLanguageOverride = Sqex::Language::German;
-			return;
-
-		case ID_MODDING_DISPLAYLANGUAGE_FRENCH:
-			config.ResourceLanguageOverride = Sqex::Language::French;
-			return;
-
-		case ID_MODDING_DISPLAYLANGUAGE_JAPANESE:
-			config.ResourceLanguageOverride = Sqex::Language::Japanese;
-			return;
-
-		case ID_MODDING_DISPLAYLANGUAGE_CHINESESIMPLIFIED:
-			config.ResourceLanguageOverride = Sqex::Language::ChineseSimplified;
-			return;
-
-		case ID_MODDING_DISPLAYLANGUAGE_KOREAN:
-			config.ResourceLanguageOverride = Sqex::Language::Korean;
-			return;
-
-		case ID_MODDING_AUDIOLANGUAGE_DISABLE:
-			config.VoiceResourceLanguageOverride = Sqex::Language::Unspecified;
-			return;
-
-		case ID_MODDING_AUDIOLANGUAGE_ENGLISH:
-			config.VoiceResourceLanguageOverride = Sqex::Language::English;
-			return;
-
-		case ID_MODDING_AUDIOLANGUAGE_GERMAN:
-			config.VoiceResourceLanguageOverride = Sqex::Language::German;
-			return;
-
-		case ID_MODDING_AUDIOLANGUAGE_FRENCH:
-			config.VoiceResourceLanguageOverride = Sqex::Language::French;
-			return;
-
-		case ID_MODDING_AUDIOLANGUAGE_JAPANESE:
-			config.VoiceResourceLanguageOverride = Sqex::Language::Japanese;
-			return;
-
-		case ID_MODDING_AUDIOLANGUAGE_CHINESESIMPLIFIED:
-			config.VoiceResourceLanguageOverride = Sqex::Language::ChineseSimplified;
-			return;
-
-		case ID_MODDING_AUDIOLANGUAGE_KOREAN:
-			config.VoiceResourceLanguageOverride = Sqex::Language::Korean;
-			return;
-
-		case ID_MODDING_MUTEVOICE_BATTLE:
-			config.MuteVoice_Battle = !config.MuteVoice_Battle;
-			return;
-
-		case ID_MODDING_MUTEVOICE_CM:
-			config.MuteVoice_Cm = !config.MuteVoice_Cm;
-			return;
-
-		case ID_MODDING_MUTEVOICE_EMOTE:
-			config.MuteVoice_Emote = !config.MuteVoice_Emote;
-			return;
-
-		case ID_MODDING_MUTEVOICE_LINE:
-			config.MuteVoice_Line = !config.MuteVoice_Line;
-			return;
-
-		case ID_MODDING_CHANGEFONT_OPENPRESETDIRECTORY:
-			EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "FontConfig");
-			return;
-
-		case ID_MODDING_CHANGEFONT_IMPORTPRESET: {
-			const auto defaultPath = m_config->Init.ResolveConfigStorageDirectoryPath() / "FontConfig";
+	case ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD_SELECTFOLDER:
+		while (true) {
 			try {
-				if (!is_directory(defaultPath))
-					create_directories(defaultPath);
-			} catch (...) {
-				// pass
+				IFileOpenDialogPtr pDialog;
+				DWORD dwFlags;
+				Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(m_config->Runtime.GetStringRes(IDS_TITLE_ADD_EXTERNAL_GAME_DIRECTORY)));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->GetOptions(&dwFlags));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM | FOS_PICKFOLDERS));
+				Utils::Win32::Error::ThrowIfFailed(pDialog->Show(m_hWnd), true);
+
+				IShellItemPtr pResult;
+				PWSTR pszFileName;
+				Utils::Win32::Error::ThrowIfFailed(pDialog->GetResult(&pResult));
+				Utils::Win32::Error::ThrowIfFailed(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
+				if (!pszFileName)
+					throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
+				const auto freeFileName = Utils::CallOnDestruction([pszFileName]() { CoTaskMemFree(pszFileName); });
+
+				AddAdditionalGameRootDirectory(pszFileName);
+				break;
+
+			} catch (const Utils::Win32::CancelledError&) {
+				break;
+
+			} catch (const std::exception& e) {
+				Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 			}
+		}
+		return;
 
-			const COMDLG_FILTERSPEC fileTypes[] = {
-				{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_FONTPRESETJSON), L"*.json"},
-				{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*"},
-			};
-			const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_IMPORT_FONTCONFIG_PRESET, defaultPath);
-			switch (paths.size()) {
-				case 0:
-					return;
+	case ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_REMOVEALL:
+		if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, IDS_CONFIRM_UNREGISTERALLADDITIONALGAMEROOTDIRECTORIES) == IDYES) {
+			m_config->Runtime.AdditionalSqpackRootDirectories = std::vector<std::filesystem::path>();
+		}
+		return;
 
-				case 1:
-					ImportFontConfig(paths[0]);
-					return;
+	case ID_MODDING_EXDFTRANSFORMATIONRULES_OPENPRESETDIRECTORY:
+		EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "ExcelTransformConfig");
+		return;
 
-				default:
-					InstallMultipleFiles(paths);
-			}
+	case ID_MODDING_EXDFTRANSFORMATIONRULES_ADD: {
+		const auto defaultPath = m_config->Init.ResolveConfigStorageDirectoryPath() / "ExcelTransformConfig";
+		try {
+			if (!is_directory(defaultPath))
+				create_directories(defaultPath);
+		} catch (...) {
+			// pass
+		}
+
+		static const COMDLG_FILTERSPEC fileTypes[] = {
+			{ m_config->Runtime.GetStringRes(IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON), L"*.json" },
+			{ m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*" },
+		};
+		const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_ADD_EXCELTRANSFORMCONFIG, defaultPath);
+		switch (paths.size()) {
+		case 0:
+			return;
+
+		case 1:
+			ImportExcelTransformConfig(paths[0]);
+			return;
+
+		default:
+			InstallMultipleFiles(paths);
+		}
+		return;
+	}
+
+	case ID_MODDING_EXDFTRANSFORMATIONRULES_REMOVEALL:
+		if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, IDS_CONFIRM_UNREGISTERALLEXCELTRANSFORMATIONRULES) == IDYES) {
+			m_config->Runtime.ExcelTransformConfigFiles = std::vector<std::filesystem::path>();
+		}
+		return;
+
+	case ID_MODDING_REPLACEMUSICS_IMPORT: {
+		const auto defaultPath = m_config->Init.ResolveConfigStorageDirectoryPath() / "MusicImportConfig";
+		try {
+			if (!is_directory(defaultPath))
+				create_directories(defaultPath);
+		} catch (...) {
+			// pass
+		}
+
+		static const COMDLG_FILTERSPEC fileTypes[] = {
+			{ L"Music Import Config (*.json)", L"*.json" },
+			{ m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*" },
+		};
+		const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_ADD_MUSICIMPORTCONFIG, defaultPath);
+		switch (paths.size()) {
+		case 0:
+			return;
+
+		case 1:
+			ImportMusicImportConfig(paths[0]);
+			return;
+
+		default:
+			InstallMultipleFiles(paths);
+		}
+		return;
+	}
+
+	case ID_MODDING_REPLACEMUSICS_REMOVEALL: {
+		if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, IDS_CONFIRM_UNREGISTERALLMUSICIMPORTCONFIG) == IDYES) {
+			m_config->Runtime.MusicImportConfig = std::vector<std::filesystem::path>{};
+		}
+		return;
+	}
+
+	case ID_MODDING_REPLACEMUSICS_GENERATE: {
+		if (m_replaceMusics) {
+			const auto window = decltype(m_replaceMusicsProgressWindow)(m_replaceMusicsProgressWindow);
+			if (window && window->GetCancelEvent().Wait(0) == WAIT_TIMEOUT)
+				SetForegroundWindow(m_replaceMusicsProgressWindow->Handle());
+			else
+				Dll::MessageBoxF(m_hWnd, MB_ICONWARNING, IDS_ERROR_CANCELLING_TRYAGAINLATER);
 			return;
 		}
 
-		case ID_MODDING_CHANGEFONT_DISABLE:
-			m_config->Runtime.OverrideFontConfig = std::filesystem::path();
-			return;
-
-		case ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD_SELECTFOLDER:
-			while (true) {
-				try {
-					IFileOpenDialogPtr pDialog;
-					DWORD dwFlags;
-					Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
-					Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(m_config->Runtime.GetStringRes(IDS_TITLE_ADD_EXTERNAL_GAME_DIRECTORY)));
-					Utils::Win32::Error::ThrowIfFailed(pDialog->GetOptions(&dwFlags));
-					Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM | FOS_PICKFOLDERS));
-					Utils::Win32::Error::ThrowIfFailed(pDialog->Show(m_hWnd), true);
-
-					IShellItemPtr pResult;
-					PWSTR pszFileName;
-					Utils::Win32::Error::ThrowIfFailed(pDialog->GetResult(&pResult));
-					Utils::Win32::Error::ThrowIfFailed(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
-					if (!pszFileName)
-						throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
-					const auto freeFileName = Utils::CallOnDestruction([pszFileName]() { CoTaskMemFree(pszFileName); });
-
-					AddAdditionalGameRootDirectory(pszFileName);
-					break;
-
-				} catch (const Utils::Win32::CancelledError&) {
-					break;
-
-				} catch (const std::exception& e) {
-					Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-				}
-			}
-			return;
-
-		case ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_REMOVEALL:
-			if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, IDS_CONFIRM_UNREGISTERALLADDITIONALGAMEROOTDIRECTORIES) == IDYES) {
-				m_config->Runtime.AdditionalSqpackRootDirectories = std::vector<std::filesystem::path>();
-			}
-			return;
-
-		case ID_MODDING_EXDFTRANSFORMATIONRULES_OPENPRESETDIRECTORY:
-			EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "ExcelTransformConfig");
-			return;
-
-		case ID_MODDING_EXDFTRANSFORMATIONRULES_ADD: {
-			const auto defaultPath = m_config->Init.ResolveConfigStorageDirectoryPath() / "ExcelTransformConfig";
-			try {
-				if (!is_directory(defaultPath))
-					create_directories(defaultPath);
-			} catch (...) {
-				// pass
-			}
-
-			static const COMDLG_FILTERSPEC fileTypes[] = {
-				{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON), L"*.json"},
-				{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*"},
-			};
-			const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_ADD_EXCELTRANSFORMCONFIG, defaultPath);
-			switch (paths.size()) {
-				case 0:
-					return;
-
-				case 1:
-					ImportExcelTransformConfig(paths[0]);
-					return;
-
-				default:
-					InstallMultipleFiles(paths);
-			}
+		const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks();
+		if (!sqpacks) {
+			Dll::MessageBoxF(m_hWnd, MB_ICONWARNING, IDS_ERROR_MODDINGACTIVEREQUIRED);
 			return;
 		}
 
-		case ID_MODDING_EXDFTRANSFORMATIONRULES_REMOVEALL:
-			if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, IDS_CONFIRM_UNREGISTERALLEXCELTRANSFORMATIONRULES) == IDYES) {
-				m_config->Runtime.ExcelTransformConfigFiles = std::vector<std::filesystem::path>();
-			}
-			return;
-
-		case ID_MODDING_REPLACEMUSICS_IMPORT: {
-			const auto defaultPath = m_config->Init.ResolveConfigStorageDirectoryPath() / "MusicImportConfig";
-			try {
-				if (!is_directory(defaultPath))
-					create_directories(defaultPath);
-			} catch (...) {
-				// pass
-			}
-
-			static const COMDLG_FILTERSPEC fileTypes[] = {
-				{L"Music Import Config (*.json)", L"*.json"},
-				{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*"},
-			};
-			// TODO: change resource ID
-			const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_ADD_EXCELTRANSFORMCONFIG, defaultPath);
-			switch (paths.size()) {
-			case 0:
-				return;
-
-			case 1:
-				ImportMusicImportConfig(paths[0]);
-				return;
-
-			default:
-				InstallMultipleFiles(paths);
-			}
-			return;
-		}
-
-		case ID_MODDING_REPLACEMUSICS_REMOVEALL: {
-			// TODO: localize this
-			if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, "Remove all?") == IDYES) {
-				m_config->Runtime.MusicImportConfig = std::vector<std::filesystem::path>{};
-			}
-			return;
-		}
-
-		case ID_MODDING_REPLACEMUSICS_GENERATE: {
-			const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks();
-			if (!sqpacks) {
-				Dll::MessageBoxF(m_hWnd, MB_ICONWARNING, "TODO: message");
-				return;
-			}
-
-			// TODO: store this thread in a variable
-			Utils::Win32::Thread(L"ReplaceMusicGeneratorOnOtherThread",[this, sqpacks] {
-				const auto targetBasePath = m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries";
-
-				ProgressPopupWindow progressWindow(nullptr);
-				progressWindow.UpdateMessage("Working");
-				progressWindow.Show();
-
-				size_t index = 0;
-				size_t count = 0;
-				const auto workerThread = Utils::Win32::Thread(L"ReplaceMusicGenerator", [&] {
-					std::vector<Sqex::Sound::MusicImportItem> items;
-					for (const auto& confFile : m_config->Runtime.MusicImportConfig.Value()) {
+		auto ffmpeg = m_config->Init.ResolveXivAlexInstallationPath() / L"ffmpeg.exe";
+		auto ffprobe = m_config->Init.ResolveXivAlexInstallationPath() / L"ffprobe.exe";
+		
+		if (!exists(ffmpeg) || !exists(ffprobe)) {
+			const auto res = Utils::Win32::TaskDialog::Builder()
+				.WithWindowTitle(Dll::GetGenericMessageBoxTitle())
+				.WithParentWindow(m_hWnd)
+				.WithInstance(Dll::Module())
+				.WithAllowDialogCancellation()
+				.WithCanBeMinimized()
+				.WithHyperlinkShellExecute()
+				.WithMainIcon(IDI_TRAY_ICON)
+				.WithMainInstruction(m_config->Runtime.GetStringRes(IDS_FFMPEGREQUIRED_MAININSTRUCTIONS))
+				.WithContent(m_config->Runtime.GetStringRes(IDS_FFMPEGREQUIRED_CONTENT))
+				.WithButton({
+					.Id = 1001,
+					.Text = m_config->Runtime.GetStringRes(IDS_FFMPEGREQUIRED_OPENDOWNLOADSITE),
+					.Callback = [](const auto& dialog) {
 						try {
-							Sqex::Sound::MusicImportConfig conf;
-							from_json(Utils::ParseJsonFromFile(Config::TranslatePath(confFile)), conf);
+							Utils::Win32::ShellExecutePathOrThrow(L"https://ffmpeg.org/download.html", dialog.GetHwnd());
+						} catch (const std::exception& e) {
+							Dll::MessageBoxF(dialog.GetHwnd(), MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+						}
+						return Utils::Win32::TaskDialog::ActionHandled::Handled;
+					},
+				})
+				.WithButton({
+					.Id = 1002,
+					.Text = m_config->Runtime.GetStringRes(IDS_FFMPEGREQUIRED_OPENTARGETDIR),
+					.Callback = [this](const auto& dialog) {
+						try {
+							Utils::Win32::ShellExecutePathOrThrow(m_config->Init.ResolveXivAlexInstallationPath(), dialog.GetHwnd());
+						} catch (const std::exception& e) {
+							Dll::MessageBoxF(dialog.GetHwnd(), MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+						}
+						return Utils::Win32::TaskDialog::ActionHandled::Handled;
+					},
+				})
+				.WithButton({
+					.Id = 1003,
+					.Text = m_config->Runtime.GetStringRes(IDS_FFMPEGREQUIRED_CONFIRMINSTALLATION),
+					.Callback = [&ffmpeg, &ffprobe](const auto& dialog) {
+						if (!exists(ffmpeg)) {
+							Dll::MessageBoxF(dialog.GetHwnd(), MB_OK | MB_ICONWARNING, IDS_FFMPEGREQUIRED_NOTFOUND, ffmpeg);
+							return Utils::Win32::TaskDialog::ActionHandled::Handled;
+						}
+						if (!exists(ffprobe)) {
+							Dll::MessageBoxF(dialog.GetHwnd(), MB_OK | MB_ICONWARNING, IDS_FFMPEGREQUIRED_NOTFOUND, ffprobe);
+							return Utils::Win32::TaskDialog::ActionHandled::Handled;
+						}
+						return Utils::Win32::TaskDialog::ActionHandled::NotHandled;
+					},
+				})
+				.WithButtonDefault(1001)
+				.Build()
+				.Show();
+			if (res.Button == IDCANCEL)
+				return;
+		}
 
-							std::string defaultDir;
-							for (const auto& [dirName, dirConfig] : conf.searchDirectories) {
-								if (dirConfig.default_)
-									defaultDir = dirName;
-							}
+		m_replaceMusics = Utils::Win32::Thread(L"ReplaceMusicGeneratorOnOtherThread", [this, sqpacks, ffmpeg = ffmpeg, ffprobe = ffprobe] {
+			const auto targetBasePath = m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries";
 
-							for (auto& item : conf.items) {
-								for (auto& source : item.source | std::views::values) {
-									for (auto& fileList : source.inputFiles) {
-										for (auto& patternList : fileList) {
-											if (!patternList.directory.has_value())
-												patternList.directory = defaultDir;
-										}
+			m_replaceMusicsProgressWindow = std::make_shared<ProgressPopupWindow>(nullptr);
+
+			size_t index = 0;
+			size_t count = 0;
+			const std::filesystem::path* pLastStartedTargetFile = nullptr;
+			const auto workerThread = Utils::Win32::Thread(L"ReplaceMusicGenerator", [&] {
+				std::vector<Sqex::Sound::MusicImportItem> items;
+				for (const auto& confFile : m_config->Runtime.MusicImportConfig.Value()) {
+					try {
+						Sqex::Sound::MusicImportConfig conf;
+						from_json(Utils::ParseJsonFromFile(Config::TranslatePath(confFile)), conf);
+
+						std::string defaultDir;
+						for (const auto& [dirName, dirConfig] : conf.searchDirectories) {
+							if (dirConfig.default_)
+								defaultDir = dirName;
+						}
+
+						for (auto& item : conf.items) {
+							for (auto& source : item.source | std::views::values) {
+								for (auto& fileList : source.inputFiles) {
+									for (auto& patternList : fileList) {
+										if (!patternList.directory.has_value())
+											patternList.directory = defaultDir;
 									}
 								}
-								items.emplace_back(std::move(item));
 							}
-						} catch (const std::exception& e) {
-							m_logger->Format<LogLevel::Warning>(LogCategory::MusicImporter, "{}: {}", confFile.filename().wstring(), e.what());
+							items.emplace_back(std::move(item));
 						}
+					} catch (const std::exception& e) {
+						m_logger->Format<LogLevel::Warning>(LogCategory::MusicImporter, "{}: {}", confFile.filename().wstring(), e.what());
 					}
+				}
 
-					auto tp = Utils::Win32::TpEnvironment();
-					for (const auto& item : items) {
-						for (const auto& target : item.target) {
-							if (!target.enable)
-								continue;
+				auto tp = Utils::Win32::TpEnvironment(-1, THREAD_PRIORITY_IDLE);
+				for (const auto& item : items) {
+					for (const auto& target : item.target) {
+						if (!target.enable)
+							continue;
 
-							auto allTargetExists = true;
-							for (const auto& path : target.path)
-								allTargetExists &= exists(targetBasePath / path);
-							if (allTargetExists)
-								continue;
+						auto allTargetExists = true;
+						for (const auto& path : target.path)
+							allTargetExists &= exists(targetBasePath / path);
+						if (allTargetExists)
+							continue;
 
-							count++;
-							tp.SubmitWork([&] {
-								if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+						count++;
+						tp.SubmitWork([&] {
+							if (m_replaceMusicsProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+								return;
+
+							pLastStartedTargetFile = &target.path.front();
+							++index;
+
+							try {
+								Sqex::Sound::MusicImporter importer(item.source, target, ffmpeg, ffprobe, m_replaceMusicsProgressWindow->GetCancelEvent());
+								const auto logger = importer.OnWarningLog([&](const std::string& s) {
+									m_logger->Format<LogLevel::Error>(LogCategory::MusicImporter, "{}: {}\n", target.path.front(), s);
+								});
+
+								for (const auto& path : target.path)
+									importer.AppendReader(std::make_shared<Sqex::Sound::ScdReader>(sqpacks->GetOriginalEntry(path)));
+								if (m_replaceMusicsProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 									return;
 
-								SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_IDLE);
-								progressWindow.UpdateMessage(std::format("Working on {} ({}/{})...", target.path.front(), index, count));
-								++index;
-
-								try {
-									Sqex::Sound::MusicImporter importer(item.source, target, Utils::Win32::ResolvePathFromFileName("ffmpeg.exe"), Utils::Win32::ResolvePathFromFileName("ffprobe.exe"));
-									for (const auto& path : target.path)
-										importer.AppendReader(std::make_shared<Sqex::Sound::ScdReader>(sqpacks->GetOriginalEntry(path)));
-
-									auto resolved = false;
-									for (const auto& [dirName, dirPaths] : m_config->Runtime.MusicImportConfig_Directories.Value()) {
-										for (const auto& dirPath : dirPaths)
-											resolved |= importer.ResolveSources(dirName, Config::TranslatePath(dirPath));
-									}
-									if (!resolved)
-										throw std::runtime_error("Not all source files are found");
-
-									importer.Merge([&targetBasePath](std::filesystem::path path, std::vector<uint8_t> data) {
-										const auto targetPath = targetBasePath / path;
-										create_directories(targetPath.parent_path());
-										Utils::Win32::Handle::FromCreateFile(targetPath, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, 0).Write(0, std::span(data));
-										});
-								} catch (const std::exception& e) {
-									m_logger->Format<LogLevel::Error>(LogCategory::MusicImporter, "Error on {}: {}\n", target.path.front(), e.what());
+								auto resolved = false;
+								for (const auto& [dirName, dirPaths] : m_config->Runtime.MusicImportConfig_Directories.Value()) {
+									for (const auto& dirPath : dirPaths)
+										resolved |= importer.ResolveSources(dirName, Config::TranslatePath(dirPath));
 								}
+								if (m_replaceMusicsProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+									return;
+								if (!resolved)
+									throw std::runtime_error("Not all source files are found");
+
+								importer.Merge([&targetBasePath](std::filesystem::path path, std::vector<uint8_t> data) {
+									const auto targetPath = targetBasePath / path;
+									create_directories(targetPath.parent_path());
+									Utils::Win32::Handle::FromCreateFile(targetPath, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, 0).Write(0, std::span(data));
 								});
-						}
+								if (m_replaceMusicsProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+									return;
+							} catch (const std::exception& e) {
+								m_logger->Format<LogLevel::Error>(LogCategory::MusicImporter, "{}: {}\n", target.path.front(), e.what());
+							}
+						});
 					}
-					tp.WaitOutstanding();
-					});
-
-				while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, { workerThread })) {
-					if (index == count)
-						progressWindow.UpdateProgress(0, 0);
-					else
-						progressWindow.UpdateProgress(index, count);
 				}
-				workerThread.Wait();
+				tp.WaitOutstanding();
 			});
+
+			do {
+				m_replaceMusicsProgressWindow->UpdateMessage(m_config->Runtime.FormatStringRes(IDS_TITLE_MUSICIMPORTPROGRESS, pLastStartedTargetFile ? *pLastStartedTargetFile : std::filesystem::path{}, index, count));
+				if (index == count)
+					m_replaceMusicsProgressWindow->UpdateProgress(0, 0);
+				else
+					m_replaceMusicsProgressWindow->UpdateProgress(index, count);
+				m_replaceMusicsProgressWindow->Show();
+			} while (WAIT_TIMEOUT == m_replaceMusicsProgressWindow->DoModalLoop(100, { workerThread }));
+			workerThread.Wait();
+			m_replaceMusics = nullptr;
+			m_replaceMusicsProgressWindow = nullptr;
+		});
+		return;
+	}
+
+	case ID_MODDING_TTMP_IMPORT: {
+		static const COMDLG_FILTERSPEC fileTypes[] = {
+			{ m_config->Runtime.GetStringRes(IDS_FILTERSPEC_TTMP), L"*.ttmp; *.ttmp2; *.mpl" },
+			{ m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*" },
+		};
+		const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_IMPORT_TTMP);
+		switch (paths.size()) {
+		case 0:
 			return;
-		}
 
-		case ID_MODDING_TTMP_IMPORT: {
-			static const COMDLG_FILTERSPEC fileTypes[] = {
-				{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_TTMP), L"*.ttmp; *.ttmp2; *.mpl"},
-				{m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*"},
-			};
-			const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_IMPORT_TTMP);
-			switch (paths.size()) {
-				case 0:
-					return;
+		case 1: {
+			ProgressPopupWindow progress(m_hWnd);
+			progress.UpdateMessage(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_TITLE_IMPORTING)));
+			progress.Show();
 
-				case 1: {
-					ProgressPopupWindow progress(m_hWnd);
-					progress.UpdateMessage(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_TITLE_IMPORTING)));
-					progress.Show();
-
-					std::string resultMessage;
-					const auto adderThread = Utils::Win32::Thread(L"TTMP Importer", [&]() {
-						try {
-							resultMessage = InstallTTMP(paths[0], progress.GetCancelEvent());
-						} catch (const std::exception& e) {
-							progress.Cancel();
-							Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_UNEXPECTED, e.what()));
-						}
-					});
-
-					while (WAIT_TIMEOUT == progress.DoModalLoop(100, {adderThread})) {
-						// pass
-					}
-					adderThread.Wait();
-
-					if (!resultMessage.empty())
-						Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONINFORMATION, Utils::FromUtf8(resultMessage));
-					return;
+			std::string resultMessage;
+			const auto adderThread = Utils::Win32::Thread(L"TTMP Importer", [&]() {
+				try {
+					resultMessage = InstallTTMP(paths[0], progress.GetCancelEvent());
+				} catch (const std::exception& e) {
+					progress.Cancel();
+					Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 				}
+			});
 
-				default:
-					InstallMultipleFiles(paths);
+			while (WAIT_TIMEOUT == progress.DoModalLoop(100, { adderThread })) {
+				// pass
 			}
+			adderThread.Wait();
 
+			if (!resultMessage.empty())
+				Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONINFORMATION, Utils::FromUtf8(resultMessage));
 			return;
 		}
 
+		default:
+			InstallMultipleFiles(paths);
+		}
+
+		return;
+	}
+
+	case ID_MODDING_TTMP_REMOVEALL:
+	case ID_MODDING_TTMP_ENABLEALL:
+	case ID_MODDING_TTMP_DISABLEALL: {
+		std::string msg;
+		switch (menuId) {
 		case ID_MODDING_TTMP_REMOVEALL:
+			msg = Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_CONFIRM_REMOVEALLTTMP));
+			break;
+
 		case ID_MODDING_TTMP_ENABLEALL:
-		case ID_MODDING_TTMP_DISABLEALL: {
-			std::string msg;
-			switch (menuId) {
-				case ID_MODDING_TTMP_REMOVEALL:
-					msg = Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_CONFIRM_REMOVEALLTTMP));
-					break;
+			msg = Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_CONFIRM_ENABLEALLTTMP));
+			break;
 
-				case ID_MODDING_TTMP_ENABLEALL:
-					msg = Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_CONFIRM_ENABLEALLTTMP));
-					break;
-
-				case ID_MODDING_TTMP_DISABLEALL:
-					msg = Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_CONFIRM_DISABLEALLTTMP));
-					break;
-			}
-			if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, msg) == IDYES) {
-				if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks()) {
-					for (auto& set : sqpacks->TtmpSets()) {
-						switch (menuId) {
-							case ID_MODDING_TTMP_REMOVEALL:
-								sqpacks->DeleteTtmp(set.ListPath, false);
-								break;
-
-							case ID_MODDING_TTMP_ENABLEALL:
-								set.Enabled = true;
-								set.ApplyChanges(false);
-								break;
-
-							case ID_MODDING_TTMP_DISABLEALL:
-								set.Enabled = false;
-								set.ApplyChanges(false);
-								break;
-						}
-					}
-					sqpacks->RescanTtmp();
-				}
-			}
-			return;
+		case ID_MODDING_TTMP_DISABLEALL:
+			msg = Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_CONFIRM_DISABLEALLTTMP));
+			break;
 		}
+		if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, msg) == IDYES) {
+			if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks()) {
+				for (auto& set : sqpacks->TtmpSets()) {
+					switch (menuId) {
+					case ID_MODDING_TTMP_REMOVEALL:
+						sqpacks->DeleteTtmp(set.ListPath, false);
+						break;
 
-		case ID_MODDING_TTMP_OPENDIRECTORY:
-			EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods");
-			return;
+					case ID_MODDING_TTMP_ENABLEALL:
+						set.Enabled = true;
+						set.ApplyChanges(false);
+						break;
 
-		case ID_MODDING_TTMP_REFRESH:
-			if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks())
+					case ID_MODDING_TTMP_DISABLEALL:
+						set.Enabled = false;
+						set.ApplyChanges(false);
+						break;
+					}
+				}
 				sqpacks->RescanTtmp();
-			return;
+			}
+		}
+		return;
+	}
 
-		case ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY:
-			EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries");
-			return;
+	case ID_MODDING_TTMP_OPENDIRECTORY:
+		EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods");
+		return;
+
+	case ID_MODDING_TTMP_REFRESH:
+		if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks())
+			sqpacks->RescanTtmp();
+		return;
+
+	case ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY:
+		EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries");
+		return;
 	}
 }
 
@@ -1614,43 +1694,43 @@ void App::Window::MainWindow::OnCommand_Menu_Configure(int menuId) {
 	auto& config = m_config->Runtime;
 
 	switch (menuId) {
-		case ID_CONFIGURE_EDITRUNTIMECONFIGURATION:
-			if (m_runtimeConfigEditor && !m_runtimeConfigEditor->IsDestroyed())
-				SetForegroundWindow(m_runtimeConfigEditor->Handle());
-			else
-				m_runtimeConfigEditor = std::make_unique<ConfigWindow>(IDS_WINDOW_RUNTIME_CONFIG_EDITOR, &m_config->Runtime);
-			return;
+	case ID_CONFIGURE_EDITRUNTIMECONFIGURATION:
+		if (m_runtimeConfigEditor && !m_runtimeConfigEditor->IsDestroyed())
+			SetForegroundWindow(m_runtimeConfigEditor->Handle());
+		else
+			m_runtimeConfigEditor = std::make_unique<ConfigWindow>(IDS_WINDOW_RUNTIME_CONFIG_EDITOR, &m_config->Runtime);
+		return;
 
-		case ID_CONFIGURE_EDITOPCODECONFIGURATION:
-			if (m_gameConfigEditor && !m_gameConfigEditor->IsDestroyed())
-				SetForegroundWindow(m_gameConfigEditor->Handle());
-			else
-				m_gameConfigEditor = std::make_unique<ConfigWindow>(IDS_WINDOW_OPCODE_CONFIG_EDITOR, &m_config->Game);
-			return;
+	case ID_CONFIGURE_EDITOPCODECONFIGURATION:
+		if (m_gameConfigEditor && !m_gameConfigEditor->IsDestroyed())
+			SetForegroundWindow(m_gameConfigEditor->Handle());
+		else
+			m_gameConfigEditor = std::make_unique<ConfigWindow>(IDS_WINDOW_OPCODE_CONFIG_EDITOR, &m_config->Game);
+		return;
 
-		case ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT:
-			config.Language = Language::SystemDefault;
-			return;
+	case ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT:
+		config.Language = Language::SystemDefault;
+		return;
 
-		case ID_CONFIGURE_LANGUAGE_ENGLISH:
-			config.Language = Language::English;
-			return;
+	case ID_CONFIGURE_LANGUAGE_ENGLISH:
+		config.Language = Language::English;
+		return;
 
-		case ID_CONFIGURE_LANGUAGE_KOREAN:
-			config.Language = Language::Korean;
-			return;
+	case ID_CONFIGURE_LANGUAGE_KOREAN:
+		config.Language = Language::Korean;
+		return;
 
-		case ID_CONFIGURE_LANGUAGE_JAPANESE:
-			config.Language = Language::Japanese;
-			return;
+	case ID_CONFIGURE_LANGUAGE_JAPANESE:
+		config.Language = Language::Japanese;
+		return;
 
-		case ID_CONFIGURE_OPENCONFIGURATIONDIRECTORY:
-			EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath());
-			return;
+	case ID_CONFIGURE_OPENCONFIGURATIONDIRECTORY:
+		EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath());
+		return;
 
-		case ID_CONFIGURE_RELOAD:
-			config.Reload({});
-			return;
+	case ID_CONFIGURE_RELOAD:
+		config.Reload({});
+		return;
 	}
 }
 
@@ -1658,31 +1738,31 @@ void App::Window::MainWindow::OnCommand_Menu_View(int menuId) {
 	auto& config = m_config->Runtime;
 
 	switch (menuId) {
-		case ID_VIEW_ALWAYSONTOP: {
-			m_config->Runtime.AlwaysOnTop_XivAlexMainWindow = !m_config->Runtime.AlwaysOnTop_XivAlexMainWindow;
-			return;
-		}
+	case ID_VIEW_ALWAYSONTOP: {
+		m_config->Runtime.AlwaysOnTop_XivAlexMainWindow = !m_config->Runtime.AlwaysOnTop_XivAlexMainWindow;
+		return;
+	}
 
-		case ID_VIEW_ALWAYSONTOPGAME:
-			config.AlwaysOnTop_GameMainWindow = !config.AlwaysOnTop_GameMainWindow;
-			return;
+	case ID_VIEW_ALWAYSONTOPGAME:
+		config.AlwaysOnTop_GameMainWindow = !config.AlwaysOnTop_GameMainWindow;
+		return;
 	}
 }
 
 void App::Window::MainWindow::OnCommand_Menu_Help(int menuId) {
 	switch (menuId) {
-		case ID_HELP_OPENHELPWEBPAGE:
-		case ID_HELP_OPENHOMEPAGE: {
-			SHELLEXECUTEINFOW shex{
-				.cbSize = sizeof shex,
-				.hwnd = m_hWnd,
-				.lpFile = m_config->Runtime.GetStringRes(menuId == ID_HELP_OPENHELPWEBPAGE ? IDS_URL_HELP : IDS_URL_HOMEPAGE),
-				.nShow = SW_SHOW,
-			};
-			if (!ShellExecuteExW(&shex))
-				throw Utils::Win32::Error("ShellExecuteW");
-			return;
-		}
+	case ID_HELP_OPENHELPWEBPAGE:
+	case ID_HELP_OPENHOMEPAGE: {
+		SHELLEXECUTEINFOW shex{
+			.cbSize = sizeof shex,
+			.hwnd = m_hWnd,
+			.lpFile = m_config->Runtime.GetStringRes(menuId == ID_HELP_OPENHELPWEBPAGE ? IDS_URL_HELP : IDS_URL_HOMEPAGE),
+			.nShow = SW_SHOW,
+		};
+		if (!ShellExecuteExW(&shex))
+			throw Utils::Win32::Error("ShellExecuteW");
+		return;
+	}
 	}
 }
 
@@ -1975,7 +2055,7 @@ std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& pa
 			const auto ttmpdPath = path.parent_path() / "TTMPD.mpd";
 			if (!exists(ttmpdPath))
 				throw std::runtime_error(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_TTMPD_MISSING)));
-			const auto ttmpl = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{f});
+			const auto ttmpl = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{ f });
 			if (!ttmpl.ModPackPages.empty())
 				offerConfiguration = true;
 			const auto possibleChoicesPath = path.parent_path() / "choices.json";
@@ -2012,12 +2092,12 @@ std::pair<std::filesystem::path, std::string> App::Window::MainWindow::InstallAn
 		return std::make_pair(path, Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_RESULT_ADDADDITIONALGAMEROOTDIRECTORY)));
 	}
 	if (fileNameLower == L"ttmpd.mpd" || fileNameLower == L"choices.json")
-		return {path, {}};
+		return { path, {} };
 	if (!fileNameLower.ends_with(L".json")
 		&& !fileNameLower.ends_with(L".mpl")
 		&& !fileNameLower.ends_with(L".ttmp")
 		&& !fileNameLower.ends_with(L".ttmp2"))
-		return {path, {}};
+		return { path, {} };
 
 	const auto file = Utils::Win32::Handle::FromCreateFile(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
 	char buf[2];
@@ -2030,7 +2110,7 @@ std::pair<std::filesystem::path, std::string> App::Window::MainWindow::InstallAn
 	if (fileSize > 1048576)
 		throw std::runtime_error("File too big");
 
-	if (const auto ttmpl = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{file}); !ttmpl.SimpleModsList.empty() || !ttmpl.ModPackPages.empty()) {
+	if (const auto ttmpl = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{ file }); !ttmpl.SimpleModsList.empty() || !ttmpl.ModPackPages.empty()) {
 		const auto msg = InstallTTMP(path, cancelEvent);
 		return std::make_pair(path, msg.empty() ? Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_RESULT_TTMP_INSTALLED)) : msg);
 	}
@@ -2119,7 +2199,7 @@ void App::Window::MainWindow::InstallMultipleFiles(const std::vector<std::filesy
 			}
 		});
 
-		while (WAIT_TIMEOUT == progress.DoModalLoop(100, {adderThread})) {
+		while (WAIT_TIMEOUT == progress.DoModalLoop(100, { adderThread })) {
 			if (showAfter < GetTickCount64())
 				progress.Show();
 		}

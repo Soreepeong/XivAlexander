@@ -10,7 +10,7 @@ template<>
 struct std::formatter<std::filesystem::path, wchar_t> : std::formatter<std::wstring, wchar_t> {
 	template<class FormatContext>
 	auto format(const std::filesystem::path& t, FormatContext& fc) {
-		return std::formatter<std::wstring, wchar_t>::format(t.wstring(), fc);
+		return std::formatter<std::wstring, wchar_t>::format(t.c_str(), fc);
 	}
 };
 

@@ -114,6 +114,7 @@ namespace Utils::Win32 {
 		Thread(const Thread& r);
 		Thread& operator =(Thread&& r) noexcept;
 		Thread& operator =(const Thread& r);
+		Thread& operator =(std::nullptr_t) noexcept;
 		~Thread() override;
 
 		[[nodiscard]] DWORD GetId() const;

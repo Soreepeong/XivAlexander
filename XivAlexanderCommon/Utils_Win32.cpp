@@ -214,7 +214,7 @@ std::filesystem::path Utils::Win32::ResolvePathFromFileName(const std::filesyste
 	buf.resize(PATHCCH_MAX_CCH);
 	buf.resize(SearchPathW(nullptr, path.c_str(), ext.empty() ? nullptr : ext.c_str(), PATHCCH_MAX_CCH, &buf[0], nullptr));
 	if (buf.empty())
-		throw std::runtime_error(std::format("path resolve failed for \"{}\" with ext \"{}\"", path, ext));
+		throw Error("SearchPathW");
 	return buf;
 }
 

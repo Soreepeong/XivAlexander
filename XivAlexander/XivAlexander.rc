@@ -513,12 +513,12 @@ BEGIN
     IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE 
                             "XivAlexander‚ðŽŸ‚ÌŒo˜H‚©‚çƒAƒ“ƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚µ‚½B\n\n{}\n\nÝ’èƒtƒ@ƒCƒ‹‚È‚Ç‚Í’¼Ú‚ÉŠm”F‚µ‚Äíœ‚µ‚Ä‚­‚¾‚³‚¢BÝ’èƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚Ü‚·B"
     IDS_CONFIRM_UNREGISTERALLADDITIONALGAMEROOTDIRECTORIES 
-                            "“o˜^‚³‚ê‚½‚·‚×‚Ä‚Ì’Ç‰Á‚ÌƒQ[ƒ€ƒ‹[ƒgƒtƒHƒ‹ƒ_[‚ðÁ‚µ‚Ü‚·Biƒtƒ@ƒCƒ‹‚Ííœ‚µ‚Ü‚¹‚ñBj"
+                            "“o˜^‚³‚ê‚½‚·‚×‚Ä‚Ì’Ç‰Á‚ÌƒQ[ƒ€ƒ‹[ƒgƒtƒHƒ‹ƒ_[‚ðƒŠƒXƒg‚©‚çŠO‚µ‚Ü‚·B"
     IDS_CONFIRM_UNREGISTERALLEXCELTRANSFORMATIONRULES 
-                            "“o˜^‚³‚ê‚½‚·‚×‚Ä‚ÌEXDF‚Ì’u‚«Š·‚¦‹K‘¥‚ðÁ‚µ‚Ü‚·Biƒtƒ@ƒCƒ‹‚Ííœ‚µ‚Ü‚¹‚ñBj"
-    IDS_HELP_INSTALL_MODE   "specify install mode (possible values: d3d (default), dinput8x86, dinput8x64)"
+                            "“o˜^‚³‚ê‚½‚·‚×‚Ä‚ÌEXDF‚Ì’u‚«Š·‚¦‹K‘¥‚ðƒŠƒXƒg‚©‚çŠO‚µ‚Ü‚·B"
+    IDS_HELP_INSTALL_MODE   "ƒCƒ“ƒXƒg[ƒ‹ƒ‚[ƒh‚ðŽw’è‚µ‚Ü‚·B—LŒø‚È’l‚Íd3diŠî–{jAdinput8x86Adinput8x64‚Å‚·B"
     IDS_ERROR_INVALID_INSTALL_MODE 
-                            "Invalid install mode specified. Accepted values are d3d, dinput8x86, and dinput8x64."
+                            "ƒCƒ“ƒXƒg[ƒ‹ƒ‚[ƒh‚ªŠÔˆá‚Á‚Ä‚¢‚Ü‚·BŽg‚¦‚é‚Ì‚Íd3dAdinput8x86Adinput8x64‚Å‚·B"
     IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X86 
                             "XivAlexander‚ðdinput8(x86)‚ÅƒCƒ“ƒXƒg[ƒ‹‚·‚é(&I)\nXivAlexander‚ð‘I‘ð‚µ‚½ƒQ[ƒ€ƒtƒHƒ‹ƒ_[‚Édinput8.dll‚ÅƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·BƒQ[ƒ€‚ÌDirectX9ƒo[ƒWƒ‡ƒ“‚¾‚¯‚Å“K—p‚É‚È‚è‚Ü‚·B"
     IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X64 
@@ -531,8 +531,31 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_TITLE_INDEXINGFILES "ƒtƒ@ƒCƒ‹‚ðõˆø‚µ‚Ä‚¢‚Ü‚·c"
+    IDS_TITLE_INDEXINGFILES "ƒtƒ@ƒCƒ‹‚ðõˆø‚µ‚Ä‚¢‚Ü‚·c ({}/{}: {})"
     IDS_TITLE_FINALIZING    "ƒtƒ@ƒCƒ‹‚Ì€”õ‚ðŠ®—¹‚µ‚Ä‚¢‚Ü‚·c"
+    IDS_CONFIRM_REMOVE_MUSICIMPORTCONFIG "‰¹Šy‚Ì•ÔŠÒÝ’èƒtƒ@ƒCƒ‹""{}""‚ðƒŠƒXƒg‚©‚çŠO‚µ‚Ü‚·B"
+    IDS_TITLE_ADD_MUSICDIRECTORY """{}""‚ÌŒ³‚Ì‰¹Šyƒtƒ@ƒCƒ‹‚ÌƒtƒHƒ‹ƒ_[‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
+    IDS_CONFIRM_REMOVE_MUSICSOURCEDIRECTORY 
+                            "Œ³‚Ì‰¹Šyƒtƒ@ƒCƒ‹‚ÌƒtƒHƒ‹ƒ_[""{}""‚ð""{}""‚ÌƒŠƒXƒg‚©‚çŠO‚µ‚Ü‚·B"
+    IDS_CONFIRM_UNREGISTERALLMUSICSOURCEDIRECTORIES 
+                            "“o˜^‚³‚ê‚½‚·‚×‚Ä‚Ì""{}""‚ÌŒ³‚Ì‰¹Šyƒtƒ@ƒCƒ‹‚ÌƒtƒHƒ‹ƒ_[‚ðƒŠƒXƒg‚©‚çŠO‚µ‚Ü‚·B"
+    IDS_TITLE_ADD_MUSICIMPORTCONFIG "‰¹Šy‚Ì•ÔŠÒÝ’èƒtƒ@ƒCƒ‹‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
+    IDS_CONFIRM_UNREGISTERALLMUSICIMPORTCONFIG 
+                            "“o˜^‚³‚ê‚½‚·‚×‚Ä‚Ì‰¹Šy‚Ì•ÔŠÒÝ’èƒtƒ@ƒCƒ‹‚ðƒŠƒXƒg‚©‚çŠO‚µ‚Ü‚·B"
+    IDS_ERROR_MODDINGACTIVEREQUIRED "‚±‚Ì‹@”\‚Ì‚½‚ß‚É‚ÍMOD‚ª•K—v‚Å‚·B"
+    IDS_ERROR_CANCELLING_TRYAGAINLATER "‘O‚ÌƒIƒyƒŒ[ƒVƒ‡ƒ“‚ðƒLƒƒƒ“ƒZƒ‹’†‚Å‚·B‚¿‚å‚Á‚ÆŒã‚Å‚à‚¤ˆê‰ñ‚µ‚Ä‚­‚¾‚³‚¢B"
+    IDS_TITLE_MUSICIMPORTPROGRESS "‰¹Šyƒtƒ@ƒCƒ‹‚ðƒGƒ“ƒR[ƒh’†cF{} ({}/{})"
+    IDS_FFMPEGREQUIRED_CONTENT 
+                            "‚±‚ÌƒIƒyƒŒ[ƒVƒ‡ƒ“‚Ì‚½‚ß‚É‚ÍFFmpeg‚ª•K—v‚Å‚·Bƒ_ƒEƒ“ƒ[ƒh‚µ‚Ä‰º‚Ìƒ{ƒ^ƒ“‚ÅŠJ‚¯‚ç‚ê‚éƒtƒHƒ‹ƒ_[‚Éffprobe.exe‚Æffmpeg.exe‚ðƒJƒs‚µ‚Ä“ü‚ê‚Ä‚­‚¾‚³‚¢B\n\nWindows builds‚Ì’†‚Ìgyan.dev‚âBtbN‚â‰½‚Å‚àŽg‚Á‚Ä‚àOK‚Å‚·Bufullv‚âugplvƒo[ƒWƒ‡ƒ“‚ðƒ_ƒEƒ“ƒ[ƒh‚µ‚Ä‚­‚¾‚³‚¢B"
+    IDS_FFMPEGREQUIRED_MAININSTRUCTIONS "FFmpeg‚ÌƒCƒ“ƒXƒg[ƒ‹"
+    IDS_FFMPEGREQUIRED_OPENDOWNLOADSITE "ƒ_ƒEƒ“ƒ[ƒhƒy[ƒW‚ðŠJ‚¯‚é"
+    IDS_FFMPEGREQUIRED_OPENTARGETDIR "ƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚é"
+    IDS_FFMPEGREQUIRED_CONFIRMINSTALLATION "ƒCƒ“ƒXƒg[ƒ‹Šm”F"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_FFMPEGREQUIRED_NOTFOUND """{}""ƒtƒ@ƒCƒ‹‚ð’T‚¹‚Ü‚¹‚ñB"
 END
 
 #endif    // Japanese (Japan) resources
@@ -1085,8 +1108,31 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_TITLE_INDEXINGFILES "ÆÄÀÏ »öÀÎ Áß..."
+    IDS_TITLE_INDEXINGFILES "ÆÄÀÏ »öÀÎ Áß... ({}/{}: {})"
     IDS_TITLE_FINALIZING    "ÆÄÀÏ ÁØºñ ¿Ï·á Áß..."
+    IDS_CONFIRM_REMOVE_MUSICIMPORTCONFIG "À½¾Ç º¯È¯ ¼³Á¤ ÆÄÀÏ ""{}""À» ¸ñ·Ï¿¡¼­ Á¦°ÅÇÕ´Ï´Ù."
+    IDS_TITLE_ADD_MUSICDIRECTORY """{}""¿¡ ÇØ´çÇÏ´Â ¿øº» À½¾Ç Æú´õ ¼±ÅÃÇÏ±â"
+    IDS_CONFIRM_REMOVE_MUSICSOURCEDIRECTORY 
+                            "¿øº» À½¾Ç Æú´õ ""{}""À» ""{}""ÀÇ ¸ñ·Ï¿¡¼­ Á¦°ÅÇÕ´Ï´Ù."
+    IDS_CONFIRM_UNREGISTERALLMUSICSOURCEDIRECTORIES 
+                            "¸ðµç ¿øº» À½¾Ç Æú´õ¸¦ ""{}""ÀÇ ¸ñ·Ï¿¡¼­ Á¦°ÅÇÕ´Ï´Ù."
+    IDS_TITLE_ADD_MUSICIMPORTCONFIG "À½¾Ç º¯È¯ ¼³Á¤ ÆÄÀÏ ¼±ÅÃÇÏ±â"
+    IDS_CONFIRM_UNREGISTERALLMUSICIMPORTCONFIG 
+                            "¸ðµç À½¾Ç º¯È¯ ¼³Á¤ ÆÄÀÏÀ» Á¦°ÅÇÕ´Ï´Ù. (ÆÄÀÏÀº »èÁ¦ÇÏÁö ¾Ê½À´Ï´Ù.)"
+    IDS_ERROR_MODDINGACTIVEREQUIRED "¸ðµùÀÌ ÄÑÁ® ÀÖ¾î¾ß »ç¿ëÇÒ ¼ö ÀÖ´Â ±â´ÉÀÔ´Ï´Ù."
+    IDS_ERROR_CANCELLING_TRYAGAINLATER "¸¶Áö¸· ÀÛ¾÷À» Ãë¼Ò ÁßÀÔ´Ï´Ù. Àá½Ã ÈÄ ´Ù½Ã ½ÃµµÇØ ÁÖ¼¼¿ä."
+    IDS_TITLE_MUSICIMPORTPROGRESS "À½¾Ç ÆÄÀÏÀ» º¯È¯ÇÏ°í ÀÖ½À´Ï´Ù: {} ({}/{})"
+    IDS_FFMPEGREQUIRED_CONTENT 
+                            "ÀÌ ÀÛ¾÷À» À§ÇØ¼­´Â FFmpeg°¡ ÇÊ¿äÇÕ´Ï´Ù. ´Ù¿î·Îµå ÈÄ ¾Æ·¡ ¹öÆ°À¸·Î ¿­ ¼ö ÀÖ´Â Æú´õ¿¡ ffmpeg.exeÇÏ°í ffprobe.exe¸¦ º¹»çÇØ ³Ö¾î ÁÖ¼¼¿ä.\n\nWindows builds ¾ÈÀÌ¶ó¸é gyan.dev³ª BtbN³ª ¾î¶² ¼±ÅÃÁö¸¦ ½áµµ »ó°ü ¾ø½À´Ï´Ù. ""full"" ¶Ç´Â ""gpl"" ¹öÀüÀ» ´Ù¿î·Îµå¹Þ¾Æ ÁÖ¼¼¿ä."
+    IDS_FFMPEGREQUIRED_MAININSTRUCTIONS "FFmpeg ¼³Ä¡ÇÏ±â"
+    IDS_FFMPEGREQUIRED_OPENDOWNLOADSITE "´Ù¿î·Îµå À¥ÆäÀÌÁö ¿­±â"
+    IDS_FFMPEGREQUIRED_OPENTARGETDIR "Æú´õ ¿­±â"
+    IDS_FFMPEGREQUIRED_CONFIRMINSTALLATION "¼³Ä¡ ¿©ºÎ È®ÀÎ"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_FFMPEGREQUIRED_NOTFOUND """{}"" ÆÄÀÏÀ» Ã£À» ¼ö ¾ø½À´Ï´Ù."
 END
 
 #endif    // Korean (Korea) resources
@@ -1778,8 +1824,34 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_TITLE_INDEXINGFILES "Indexing files..."
+    IDS_TITLE_INDEXINGFILES "Indexing files... ({}/{}: {})"
     IDS_TITLE_FINALIZING    "Finalizing..."
+    IDS_CONFIRM_REMOVE_MUSICIMPORTCONFIG 
+                            "Continue removing music import configuration file ""{}"" from the list?\n\nThis will not delete the file."
+    IDS_TITLE_ADD_MUSICDIRECTORY "Select music source directory for ""{}"""
+    IDS_CONFIRM_REMOVE_MUSICSOURCEDIRECTORY 
+                            "Continue removing music source directory ""{}"" from the list for ""{}""?\n\nThis will not delete the file."
+    IDS_CONFIRM_UNREGISTERALLMUSICSOURCEDIRECTORIES 
+                            "Continue unregistering all music source directories for ""{}""?"
+    IDS_TITLE_ADD_MUSICIMPORTCONFIG "Select music import configuration file"
+    IDS_CONFIRM_UNREGISTERALLMUSICIMPORTCONFIG 
+                            "Continue unregistering all music import configuration files?"
+    IDS_ERROR_MODDINGACTIVEREQUIRED 
+                            "Modding must be active to use this feature."
+    IDS_ERROR_CANCELLING_TRYAGAINLATER 
+                            "Cancelling previous operation. Please try again later."
+    IDS_TITLE_MUSICIMPORTPROGRESS "Encoding file {}... ({}/{})"
+    IDS_FFMPEGREQUIRED_CONTENT 
+                            "FFmpeg is required for this operation. Please download and copy ffmpeg.exe and ffprobe.exe into the directory accessible from the button below.\n\nYou can use either gyan.dev or BtbN Windows builds. Use ""full"" or ""gpl"" version when you are given options with which file to download."
+    IDS_FFMPEGREQUIRED_MAININSTRUCTIONS "Install FFmpeg"
+    IDS_FFMPEGREQUIRED_OPENDOWNLOADSITE "Open Webpage"
+    IDS_FFMPEGREQUIRED_OPENTARGETDIR "Open Directory"
+    IDS_FFMPEGREQUIRED_CONFIRMINSTALLATION "Confirm Installation"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_FFMPEGREQUIRED_NOTFOUND """{}"" could not be found."
 END
 
 #endif    // English (United States) resources

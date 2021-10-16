@@ -10,6 +10,7 @@ namespace App {
 
 namespace App::Window {
 	class ConfigWindow;
+	class ProgressPopupWindow;
 
 	class MainWindow : public BaseWindow {
 		XivAlexApp* m_pApp;
@@ -32,6 +33,9 @@ namespace App::Window {
 		Sqex::Region m_gameRegion = Sqex::Region::Unspecified;
 		const std::vector<std::pair<std::string, std::string>> m_launchParameters;
 		const std::string m_startupArgumentsForDisplay;
+
+		Utils::Win32::Thread m_replaceMusics;
+		std::shared_ptr<ProgressPopupWindow> m_replaceMusicsProgressWindow;
 
 		std::map<uint16_t, std::function<void()>> m_menuIdCallbacks;
 

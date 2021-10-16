@@ -168,20 +168,60 @@ void Sqex::Sound::from_json(const nlohmann::json& j, MusicImportConfig& o) {
 	}
 }
 
-Sqex::Sound::MusicImporter::FloatPcmSource::FloatPcmSource(const MusicImportSourceItem& sourceItem, std::vector<std::filesystem::path> resolvedPaths, std::function<std::span<uint8_t>(size_t len, bool throwOnIncompleteRead)> linearReader, const char* linearReaderType, const std::filesystem::path& ffmpegPath, int forceSamplingRate, std::string audioFilters) {
+static Utils::Win32::Thread StderrRelayer(Utils::Win32::Handle hStderrRead, std::function<void(const std::string&)> stderrCallback) {
+	return Utils::Win32::Thread(L"StderrRelayer", [hStderrRead = std::move(hStderrRead), stderrCallback = std::move(stderrCallback)]() {
+		std::string buf(8192, '\0');
+		size_t ptr = 0;
+		try {
+			while (const auto read = hStderrRead.Read(0, &buf[ptr], buf.size() - ptr, Utils::Win32::Handle::PartialIoMode::AllowPartial)) {
+				ptr += read;
+				size_t prevNewline = 0;
+				for (size_t newline = 0; (newline = buf.find_first_of("\n\r", prevNewline)) != std::string::npos && newline < ptr; prevNewline = newline + 1) {
+					if (prevNewline < newline)
+						stderrCallback(buf.substr(prevNewline, newline - prevNewline));
+				}
+				buf.erase(buf.begin(), buf.begin() + prevNewline);
+				ptr -= prevNewline;
+				if (buf.size() - ptr < 8192)
+					buf.resize(buf.size() + std::min<size_t>(buf.size(), 1048576));
+			}
+			buf.resize(ptr);
+		} catch (const Utils::Win32::Error& e) {
+			buf.resize(ptr);
+			if (e.Code() != ERROR_BROKEN_PIPE && e.Code() != ERROR_NO_DATA)
+				buf += std::format("\nstderr read error: {}", e.what());
+		}
+		size_t prevNewline = 0;
+		for (size_t newline = 0; (newline = buf.find_first_of("\n\r", prevNewline)) != std::string::npos && newline < ptr; prevNewline = newline + 1) {
+			if (prevNewline < newline)
+				stderrCallback(buf.substr(prevNewline, newline - prevNewline));
+		}
+		if (prevNewline < ptr)
+			stderrCallback(buf.substr(prevNewline, ptr - prevNewline));
+	});
+}
+
+Sqex::Sound::MusicImporter::FloatPcmSource::FloatPcmSource(
+	const MusicImportSourceItem& sourceItem,
+	std::vector<std::filesystem::path> resolvedPaths,
+	std::function<std::span<uint8_t>(size_t len, bool throwOnIncompleteRead)> linearReader, const char* linearReaderType,
+	const std::filesystem::path& ffmpegPath, std::function<void(const std::string&)> stderrCallback,
+	int forceSamplingRate, std::string audioFilters
+) {
 	auto [hStdinRead, hStdinWrite] = Utils::Win32::Handle::FromCreatePipe();
 	auto [hStdoutRead, hStdoutWrite] = Utils::Win32::Handle::FromCreatePipe();
+	auto [hStderrRead, hStderrWrite] = Utils::Win32::Handle::FromCreatePipe();
 	auto builder = Utils::Win32::ProcessBuilder();
 	builder
 		.WithPath(ffmpegPath)
 		.WithNoWindow()
+		.WithAppendArgument("-hide_banner")
+		.WithAppendArgument("-loglevel").WithAppendArgument("warning")
 		.WithStdin(std::move(hStdinRead))
-		.WithStdout(std::move(hStdoutWrite));
-	builder.WithStderr(GetStdHandle(STD_ERROR_HANDLE));
+		.WithStdout(std::move(hStdoutWrite))
+		.WithStderr(std::move(hStderrWrite));
 
 	auto useStdinPipe = false;
-	builder.WithAppendArgument("-hide_banner");
-	builder.WithAppendArgument("-loglevel").WithAppendArgument("warning");
 	for (size_t i = 0; i < sourceItem.inputFiles.size(); ++i) {
 		if (sourceItem.inputFiles.at(i).empty()) {
 			builder.WithAppendArgument("-f").WithAppendArgument(linearReaderType);
@@ -217,24 +257,25 @@ Sqex::Sound::MusicImporter::FloatPcmSource::FloatPcmSource(const MusicImportSour
 
 	m_hReaderProcess = builder.Run().first;
 	m_hStdoutReader = std::move(hStdoutRead);
+	m_hStderrReaderThread = StderrRelayer(std::move(hStderrRead), stderrCallback);
 
 	if (!useStdinPipe)
 		return;
 
-	m_hStdinWriterThread = Utils::Win32::Thread(L"MusicImporter::Source", [hStdinWriter = std::move(hStdinWrite), linearReader = std::move(linearReader)]{
+	m_hStdinWriterThread = Utils::Win32::Thread(L"MusicImporter::Source", [hStdinWriter = std::move(hStdinWrite), linearReader = std::move(linearReader), stderrCallback]() {
 		try {
-		while (true) {
-			const auto read = linearReader(8192, false);
-			if (read.empty())
-				break;
-			hStdinWriter.Write(0, read);
-		};
-	} catch (const Utils::Win32::Error& e) {
-		if (e.Code() != ERROR_BROKEN_PIPE && e.Code() != ERROR_NO_DATA) {
-			std::cout << std::format("Error on MusicImporter::Source: {}\n", e.what());
+			while (true) {
+				const auto read = linearReader(8192, false);
+				if (read.empty())
+					break;
+				hStdinWriter.Write(0, read);
+			};
+		} catch (const Utils::Win32::Error& e) {
+			if (e.Code() != ERROR_BROKEN_PIPE && e.Code() != ERROR_NO_DATA) {
+				stderrCallback(std::format("stdout write error: {}", e.what()));
+			}
 		}
-	}
-		});
+	});
 }
 
 Sqex::Sound::MusicImporter::FloatPcmSource::~FloatPcmSource() {
@@ -242,20 +283,51 @@ Sqex::Sound::MusicImporter::FloatPcmSource::~FloatPcmSource() {
 		m_hReaderProcess.Terminate(0);
 	if (m_hStdinWriterThread)
 		m_hStdinWriterThread.Wait();
+	if (m_hStderrReaderThread)
+		m_hStderrReaderThread.Wait();
 }
 
-nlohmann::json Sqex::Sound::MusicImporter::RunProbe(const std::filesystem::path& path, const std::filesystem::path& ffprobePath) {
+std::span<float> Sqex::Sound::MusicImporter::FloatPcmSource::operator()(size_t len, bool throwOnIncompleteRead) {
+	std::move(m_buffer.end() - m_unusedBytes, m_buffer.end(), m_buffer.begin());
+	m_buffer.resize(std::max(m_unusedBytes, len * sizeof(float)));
+	try {
+		while (const auto available = m_buffer.size() - m_unusedBytes) {
+			const auto read = m_hStdoutReader.Read(0, &m_buffer[m_unusedBytes], available, Utils::Win32::Handle::PartialIoMode::AllowPartial);
+			if (!read)
+				break;
+			m_unusedBytes += read;
+		}
+	} catch (const Utils::Win32::Error& e) {
+		if (e.Code() != ERROR_BROKEN_PIPE && e.Code() != ERROR_NO_DATA)
+			throw;
+	}
+	m_buffer.resize(m_unusedBytes);
+	const auto availableSampleCount = m_unusedBytes / sizeof(float);
+	m_unusedBytes -= availableSampleCount * sizeof(float);
+	if (availableSampleCount != len && throwOnIncompleteRead)
+		throw std::runtime_error("EOF");
+	if (m_buffer.empty())
+		return std::span<float>();
+	return std::span(reinterpret_cast<float*>(&m_buffer[0]), m_buffer.size() * sizeof(m_buffer[0])).subspan(0, availableSampleCount);
+}
+
+nlohmann::json Sqex::Sound::MusicImporter::RunProbe(const std::filesystem::path& path, const std::filesystem::path& ffprobePath, std::function<void(const std::string&)> stderrCallback) {
 	auto [hStdoutRead, hStdoutWrite] = Utils::Win32::Handle::FromCreatePipe();
+	auto [hStderrRead, hStderrWrite] = Utils::Win32::Handle::FromCreatePipe();
 	auto process = Utils::Win32::ProcessBuilder()
 		.WithPath(ffprobePath)
-		.WithNoWindow()
 		.WithStdout(std::move(hStdoutWrite))
+		.WithStderr(std::move(hStderrWrite))
+		.WithNoWindow()
 		.WithAppendArgument("-hide_banner")
+		.WithAppendArgument("-loglevel").WithAppendArgument("warning")
 		.WithAppendArgument("-i").WithAppendArgument(path.wstring())
 		.WithAppendArgument("-show_streams")
 		.WithAppendArgument("-select_streams").WithAppendArgument("a:0")
 		.WithAppendArgument("-print_format").WithAppendArgument("json")
 		.Run().first;
+
+	const auto stderrReader = StderrRelayer(std::move(hStderrRead), std::move(stderrCallback));
 
 	std::string str;
 	try {
@@ -270,18 +342,24 @@ nlohmann::json Sqex::Sound::MusicImporter::RunProbe(const std::filesystem::path&
 		if (e.Code() != ERROR_BROKEN_PIPE && e.Code() != ERROR_NO_DATA)
 			throw;
 	}
+	process.Terminate(0);
+	stderrReader.Wait();
+
 	return nlohmann::json::parse(str);
 }
 
-nlohmann::json Sqex::Sound::MusicImporter::RunProbe(const char* originalFormat, std::function<std::span<uint8_t>(size_t len, bool throwOnIncompleteRead)> linearReader, const std::filesystem::path& ffprobePath) {
+nlohmann::json Sqex::Sound::MusicImporter::RunProbe(const char* originalFormat, std::function<std::span<uint8_t>(size_t len, bool throwOnIncompleteRead)> linearReader, const std::filesystem::path& ffprobePath, std::function<void(const std::string&)> stderrCallback) {
 	auto [hStdoutRead, hStdoutWrite] = Utils::Win32::Handle::FromCreatePipe();
 	auto [hStdinRead, hStdinWrite] = Utils::Win32::Handle::FromCreatePipe();
+	auto [hStderrRead, hStderrWrite] = Utils::Win32::Handle::FromCreatePipe();
 	const auto process = Utils::Win32::ProcessBuilder()
 		.WithPath(ffprobePath)
-		.WithNoWindow()
 		.WithStdin(std::move(hStdinRead))
 		.WithStdout(std::move(hStdoutWrite))
+		.WithStderr(std::move(hStderrWrite))
+		.WithNoWindow()
 		.WithAppendArgument("-hide_banner")
+		.WithAppendArgument("-loglevel").WithAppendArgument("warning")
 		.WithAppendArgument("-f").WithAppendArgument(originalFormat)
 		.WithAppendArgument("-i").WithAppendArgument("-")
 		.WithAppendArgument("-show_streams")
@@ -289,20 +367,21 @@ nlohmann::json Sqex::Sound::MusicImporter::RunProbe(const char* originalFormat, 
 		.WithAppendArgument("-print_format").WithAppendArgument("json")
 		.Run().first;
 
-	const auto stdoutWriter = Utils::Win32::Thread(L"RunProbe", [hStdinWrite = std::move(hStdinWrite), linearReader = std::move(linearReader)]{
+	const auto stderrReader = StderrRelayer(std::move(hStderrRead), std::move(stderrCallback));
+	const auto stdoutWriter = Utils::Win32::Thread(L"RunProbe", [hStdinWrite = std::move(hStdinWrite), linearReader = std::move(linearReader)]() {
 		try {
-		while (true) {
-			const auto read = linearReader(8192, false);
-			if (read.empty())
-				break;
-			hStdinWrite.Write(0, read);
-		};
-	} catch (const Utils::Win32::Error& e) {
-		if (e.Code() != ERROR_BROKEN_PIPE && e.Code() != ERROR_NO_DATA) {
-			std::cout << std::format("Error on MusicImporter::Source: {}\n", e.what());
+			while (true) {
+				const auto read = linearReader(8192, false);
+				if (read.empty())
+					break;
+				hStdinWrite.Write(0, read);
+			};
+		} catch (const Utils::Win32::Error& e) {
+			if (e.Code() != ERROR_BROKEN_PIPE && e.Code() != ERROR_NO_DATA) {
+				std::cout << std::format("Error on MusicImporter::Source: {}\n", e.what());
+			}
 		}
-	}
-		});
+	});
 
 	std::string str;
 	try {
@@ -319,15 +398,17 @@ nlohmann::json Sqex::Sound::MusicImporter::RunProbe(const char* originalFormat, 
 	}
 	process.Terminate(0);
 	stdoutWriter.Wait();
+	stderrReader.Wait();
 
 	return nlohmann::json::parse(str);
 }
 
-Sqex::Sound::MusicImporter::MusicImporter(std::map<std::string, MusicImportSourceItem> sourceItems, MusicImportTarget target, std::filesystem::path ffmpeg, std::filesystem::path ffprobe)
+Sqex::Sound::MusicImporter::MusicImporter(std::map<std::string, MusicImportSourceItem> sourceItems, MusicImportTarget target, std::filesystem::path ffmpeg, std::filesystem::path ffprobe, Utils::Win32::Event cancelEvent)
 	: m_sourceItems(std::move(sourceItems))
 	, m_target(std::move(target))
 	, m_ffmpeg(std::move(ffmpeg))
-	, m_ffprobe(std::move(ffprobe)) {
+	, m_ffprobe(std::move(ffprobe))
+	, m_cancelEvent(std::move(cancelEvent)) {
 
 	for (const auto& [sourceName, source] : m_sourceItems)
 		m_sourcePaths[sourceName].resize(source.inputFiles.size());
@@ -348,6 +429,8 @@ bool Sqex::Sound::MusicImporter::ResolveSources(std::string dirName, const std::
 	auto allFound = true;
 	for (const auto& [sourceName, source] : m_sourceItems) {
 		for (size_t i = 0; i < source.inputFiles.size(); ++i) {
+			if (m_cancelEvent.Wait(0) == WAIT_OBJECT_0)
+				return false;
 			if (!m_sourcePaths[sourceName][i].empty())
 				continue;
 
@@ -368,15 +451,15 @@ bool Sqex::Sound::MusicImporter::ResolveSources(std::string dirName, const std::
 			auto found = false;
 			if (occurrences.size() == 1) {
 				try {
-					const auto probe = RunProbe(*occurrences.begin(), m_ffprobe).at("streams").at(0);
+					const auto probe = RunProbe(*occurrences.begin(), m_ffprobe, [this](const std::string& msg) { OnWarningLog(msg); }).at("streams").at(0);
 					m_sourceInfo[sourceName] = {
 						.Rate = static_cast<uint32_t>(std::strtoul(probe.at("sample_rate").get<std::string>().c_str(), nullptr, 10)),
 						.Channels = probe.at("channels").get<uint32_t>(),
 					};
 					m_sourcePaths[sourceName][i] = *occurrences.begin();
 					found = true;
-				} catch (const nlohmann::json::out_of_range&) {
-					// pass
+				} catch (const std::exception& e) {
+					ShowWarningLog(std::format("Error when trying to check {}: {}", *occurrences.begin(), e.what()));
 				}
 			} else if (occurrences.size() >= 2) {
 				std::string buf;
@@ -423,7 +506,7 @@ void Sqex::Sound::MusicImporter::Merge(const std::function<void(const std::files
 		uint32_t loopStartBlockIndex = 0;
 		uint32_t loopEndBlockIndex = 0;
 		{
-			const auto originalProbe = RunProbe(originalEntryFormat, originalDataStream.AsLinearReader<uint8_t>(), m_ffprobe).at("streams").at(0);
+			const auto originalProbe = RunProbe(originalEntryFormat, originalDataStream.AsLinearReader<uint8_t>(), m_ffprobe, [this](const std::string& msg) { OnWarningLog(msg); }).at("streams").at(0);
 			originalInfo = {
 				.Rate = static_cast<uint32_t>(std::strtoul(originalProbe.at("sample_rate").get<std::string>().c_str(), nullptr, 10)),
 				.Channels = originalProbe.at("channels").get<uint32_t>(),
@@ -458,14 +541,16 @@ void Sqex::Sound::MusicImporter::Merge(const std::function<void(const std::files
 		if (m_target.segments.empty()) {
 			if (m_sourcePaths.size() != 2)  // user-specified and OriginalSource
 				throw std::invalid_argument("segments must be set when there are more than one source");
-			m_target.segments = std::vector<MusicImportSegmentItem>{
+			m_target.segments = std::vector<MusicImportSegmentItem>{ { .channels = {
 				{
-					.channels = std::vector<MusicImportTargetChannel>{
-						{ .source = m_sourcePaths.begin()->first == OriginalSource ? m_sourcePaths.rbegin()->first : m_sourcePaths.begin()->first, .channel = 0 },
-				{ .source = m_sourcePaths.begin()->first == OriginalSource ? m_sourcePaths.rbegin()->first : m_sourcePaths.begin()->first, .channel = 1 },
-			},
+					.source = m_sourcePaths.begin()->first == OriginalSource ? m_sourcePaths.rbegin()->first : m_sourcePaths.begin()->first,
+					.channel = 0
 				},
-			};
+				{
+					.source = m_sourcePaths.begin()->first == OriginalSource ? m_sourcePaths.rbegin()->first : m_sourcePaths.begin()->first,
+					.channel = 1
+				},
+			} } };
 		}
 
 		lastStepDescription = "EnsureChannels";
@@ -563,7 +648,7 @@ void Sqex::Sound::MusicImporter::Merge(const std::function<void(const std::files
 				const auto ffmpegFilter = segment.sourceFilters.contains(name) ? segment.sourceFilters.at(name) : std::string();
 				uint32_t minBlockIndex = 0;
 				double threshold = 0.1;
-				info.Reader = std::make_unique<FloatPcmSource>(m_sourceItems.at(name), m_sourcePaths.at(name), originalDataStream.AsLinearReader<uint8_t>(), originalEntryFormat, m_ffmpeg, targetRate, ffmpegFilter);
+				info.Reader = std::make_unique<FloatPcmSource>(m_sourceItems.at(name), m_sourcePaths.at(name), originalDataStream.AsLinearReader<uint8_t>(), originalEntryFormat, m_ffmpeg, [this](const std::string& msg) { OnWarningLog(msg); }, targetRate, ffmpegFilter);
 				if (segment.sourceOffsets.contains(name))
 					minBlockIndex = static_cast<uint32_t>(targetRate * segment.sourceOffsets.at(name));
 				else if (name == OriginalSource)
@@ -596,6 +681,9 @@ void Sqex::Sound::MusicImporter::Merge(const std::function<void(const std::files
 					} else
 						info.ReadBuf.insert(info.ReadBuf.end(), buf.begin(), buf.end());
 					for (; pending && (blockIndex + 1) * info.Channels - 1 < info.ReadBuf.size(); ++blockIndex) {
+						if (m_cancelEvent.Wait(0) == WAIT_OBJECT_0)
+							return;
+
 						pending = false;
 						for (size_t c = 0; c < info.Channels; ++c) {
 							if (info.FirstBlocks[c] != INT32_MAX)
@@ -608,6 +696,8 @@ void Sqex::Sound::MusicImporter::Merge(const std::function<void(const std::files
 						}
 					}
 				}
+				if (pending)
+					throw std::runtime_error(std::format("first audio sample above {} not found", threshold));
 			}
 
 			for (const auto& name : usedSources) {
@@ -647,6 +737,9 @@ void Sqex::Sound::MusicImporter::Merge(const std::function<void(const std::files
 			uint32_t bufptr = 0;
 			while (!stopSegment) {
 				if (buf == nullptr) {
+					if (m_cancelEvent.Wait(0) == WAIT_OBJECT_0)
+						return;
+
 					if (originalEntry.Header->Format == Sqex::Sound::SoundEntryHeader::EntryFormat_Ogg)
 						buf = vorbis_analysis_buffer(&vd, BufferedBlockCount);
 					else {
@@ -865,7 +958,7 @@ void Sqex::Sound::MusicImporter::Merge(const std::function<void(const std::files
 		}
 
 		if (const auto marks = originalEntry.GetMarkedSampleBlockIndices(); !marks.empty()) {
-			auto& buf = soundEntry.AuxChunks[Sqex::Sound::SoundEntryAuxChunk::Name_Mark];
+			auto& buf = soundEntry.AuxChunks[std::string(Sqex::Sound::SoundEntryAuxChunk::Name_Mark, sizeof Sqex::Sound::SoundEntryAuxChunk::Name_Mark)];
 			buf.resize((3 + marks.size()) * 4);
 			auto& markHeader = *reinterpret_cast<Sqex::Sound::SoundEntryAuxChunk::AuxChunkData::MarkChunkData*>(&buf[0]);
 			markHeader = {
