@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "App_LoaderApp_Actions_InstallUninstall.h"
 
+#include <XivAlexanderCommon/Utils_Win32_TaskDialogBuilder.h>
+
 #include "App_ConfigRepository.h"
 #include "App_LoaderApp.h"
 #include "DllMain.h"
@@ -185,41 +187,124 @@ void App::LoaderApp::Actions::InstallUninstall::Uninstall(const std::filesystem:
 		Utils::Win32::ShellExecutePathOrThrow(dataPath);
 }
 
+static void QueueRemoval(const std::filesystem::path& path, const bool& success, Utils::CallOnDestruction::Multiple& revert) {
+	std::filesystem::path temp;
+	for (size_t i = 0; ; i++)
+		if (!exists(temp = std::filesystem::path(path).replace_filename(std::format(L"_temp.{}.dll", i))))
+			break;
+	rename(path, temp);
+	revert += [path, temp, &success]() {
+		if (success) {
+			try {
+				remove(temp);
+			} catch (...) {
+				std::filesystem::path temp2;
+				for (size_t i = 0; ; i++)
+					if (!exists(temp2 = std::filesystem::path(path).replace_filename(std::format(L"_xivalex_temp_delete_me_{}.tmp", i))))
+						break;
+				rename(temp, temp2);
+			}
+		} else
+			rename(temp, path);
+	};
+}
+
+static std::string GetSha1(const std::filesystem::path& f) {
+	uint8_t hash[20]{};
+	{
+		const auto file = Utils::Win32::Handle::FromCreateFile(f, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+		CryptoPP::SHA1 sha1;
+		std::vector<uint8_t> buf(8192);
+		for (uint64_t i = 0, len = file.GetFileSize(); i < len; i += 8192) {
+			const auto read = file.Read(i, &buf[0], std::min(len - i, buf.size()));
+			sha1.Update(buf.data(), read);
+		}
+
+		sha1.Final(hash);
+	}
+	return std::string(reinterpret_cast<const char*>(hash), sizeof hash);
+}
+
 void App::LoaderApp::Actions::InstallUninstall::RevertChainLoadDlls(
 	const std::filesystem::path& gamePath,
 	const bool& success,
 	Utils::CallOnDestruction::Multiple& revert,
 	Config::RuntimeRepository& config64, Config::RuntimeRepository& config32
 ) {
-
+	static const auto ReplaceableDinput8FkMod = std::string("\x9F\xFC\x74\xAE\x3F\xB4\x25\x97\x48\x78\x5B\xB6\x8E\xF2\x8C\xA6\xDC\xD6\xFE\x1F", 20);
 	const auto d3d11 = gamePath / "d3d11.dll";
 	const auto d3d9 = gamePath / "d3d9.dll";
 	const auto dxgi = gamePath / "dxgi.dll";
 	const auto dinput8 = gamePath / "dinput8.dll";
 	
-	for (const auto& f : {d3d9, d3d11, dxgi, dinput8}) {
-		if (!exists(f) || !XivAlexDll::IsXivAlexanderDll(f))
+	for (const auto& f : { d3d9, d3d11, dxgi, dinput8 }) {
+		if (!exists(f))
 			continue;
 
-		std::filesystem::path temp;
-		for (size_t i = 0; ; i++)
-			if (!exists(temp = std::filesystem::path(f).replace_filename(std::format(L"_temp.{}.dll", i))))
-				break;
-		rename(f, temp);
-		revert += [f, temp, &success]() {
-			if (success) {
+		const auto hash = GetSha1(f);
+
+		if (XivAlexDll::IsXivAlexanderDll(f)) {
+			QueueRemoval(f, success, revert);
+		} else if (ReplaceableDinput8FkMod == hash) {
+			const auto res = Utils::Win32::TaskDialog::Builder()
+				.WithWindowTitle(Dll::GetGenericMessageBoxTitle())
+				.WithInstance(Dll::Module())
+				.WithAllowDialogCancellation()
+				.WithCanBeMinimized()
+				.WithHyperlinkShellExecute()
+				.WithMainIcon(IDI_TRAY_ICON)
+				.WithMainInstruction(L"기존 한글 패치 제거")
+				.WithContent(
+					// Only native Korean speakers use this patch, so hardcoding this
+					L"기존 dinput8.dll을 이용하는 한글 패치가 감지되었습니다. XivAlexander를 설치함과 동시에 기존 패치를 제거할까요?\n"
+					LR"(XivAlexander를 통해서도 게임 내에서 한글을 이용할 수 있습니다. <a href="https://github.com/Soreepeong/XivAlexander/wiki/%ED%8F%B0%ED%8A%B8-%EA%B5%90%EC%B2%B4-%EC%84%A4%EC%A0%95">폰트 교체 설정</a> 위키 페이지를 참조하세요.)"
+					L"\n\n"
+					L"Korean font patch using dinput8.dll has been detected. Do you want to remove that when XivAlexander installs successfully?\n"
+					LR"(You can use Korean text using XivAlexander too. See <a href="https://github.com/Soreepeong/XivAlexander/wiki/Set-up-font-replacement">Set up font replacement</a> wiki page for how.)"
+				)
+				.WithCommonButton(TDCBF_OK_BUTTON)
+				.WithCommonButton(TDCBF_CANCEL_BUTTON)
+				.WithButtonDefault(TDCBF_OK_BUTTON)
+				.Build()
+				.Show();
+			if (res.Button == IDCANCEL)
+				continue;
+
+			static const char* ChainDeleteHashes[][2]{
+				{ "data/common/font/font_krn_1.tex", "\x28\xA2\xD9\x77\x3A\xC1\x4A\xD9\x48\xAD\xD9\xC7\x1E\xB0\x90\x77\x4B\x60\xA7\x8E" },
+				{ "data/common/font/font_krn_2.tex", "\x66\x8A\x6E\xB4\x39\x4B\x46\x33\xD3\x00\xA4\x66\xBD\xCC\xC3\xE9\xED\x1E\xCC\x6F" },
+				{ "data/common/font/font_krn_3.tex", "\x21\x68\x7B\x3F\x6D\xF4\x5B\x23\xF3\xC9\xA7\x28\xB7\x26\x09\xF4\x49\x6E\x9E\xFE" },
+				{ "data/common/font/KrnAXIS_120.fdt", "\xEE\xE1\x83\xD3\x7E\xE1\xD4\xA2\x36\xFC\xCB\x0D\xB9\xEC\x40\x29\xCE\x4D\x40\x1B" },
+				{ "data/common/font/KrnAXIS_140.fdt", "\x8E\x38\x1A\x1D\x75\x0B\x12\x9F\x40\x4F\xE8\xEF\xA0\x6C\xA2\xEC\x47\xF7\x1D\x93" },
+				{ "data/common/font/KrnAXIS_180.fdt", "\x4B\xEE\x04\x00\x07\xBF\x6F\x88\x9A\xF4\xFA\x9E\x09\x00\xF4\xF2\xDE\xC7\x73\x00" },
+			};
+
+			// This comes first, as Utils::CallOnDestruction::Multiple is FILO (stack).
+			revert += [&success, gamePath]() {
+				if (!success)
+					return;
 				try {
-					remove(temp);
+					for (auto path = gamePath / "data" / "common" / "font";
+						path != gamePath && path.parent_path() != path;
+						path = path.parent_path()) {
+						if (is_directory(path) && is_empty(path))
+							remove(path);
+					}
 				} catch (...) {
-					std::filesystem::path temp2;
-					for (size_t i = 0; ; i++)
-						if (!exists(temp2 = std::filesystem::path(f).replace_filename(std::format(L"_xivalex_temp_delete_me_{}.tmp", i))))
-							break;
-					rename(temp, temp2);
+					// courtesy removal of old files can fail silently
 				}
-			} else
-				rename(temp, f);
-		};
+			};
+
+			for (const auto [checkFile, checkFileHash] : ChainDeleteHashes) {
+				if (!exists(gamePath / checkFile))
+					continue;
+				if (GetSha1(gamePath / checkFile) != std::string_view(checkFileHash, 20))
+					continue;
+				QueueRemoval(gamePath / checkFile, success, revert);
+			}
+			QueueRemoval(f, success, revert);
+			continue;
+		}
 	}
 
 	if (!exists(d3d9) && config32.ChainLoadPath_d3d9.Value().size() == 1) {

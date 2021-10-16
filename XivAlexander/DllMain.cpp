@@ -363,8 +363,12 @@ bool XivAlexDll::IsXivAlexanderDll(const std::filesystem::path& dllPath) {
 	DWORD verHandle = 0;
 	std::vector<BYTE> block;
 	block.resize(GetFileVersionInfoSizeW(dllPath.c_str(), &verHandle));
-	if (block.empty())
-		throw Utils::Win32::Error("GetFileVersionInfoSizeW");
+	if (block.empty()) {
+		const auto err = GetLastError();
+		if (err == ERROR_RESOURCE_TYPE_NOT_FOUND)
+			return false;
+		throw Utils::Win32::Error(err, "GetFileVersionInfoSizeW");
+	}
 	if (!GetFileVersionInfoW(dllPath.c_str(), 0, static_cast<DWORD>(block.size()), &block[0]))
 		throw Utils::Win32::Error("GetFileVersionInfoW");
 	struct LANGANDCODEPAGE {
