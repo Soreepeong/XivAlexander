@@ -56,7 +56,7 @@ It does not matter whichever you run - `XivAlexanderLoader32.exe` or `XivAlexand
 * Portable 1: Run the game if it isn't already running, run `XivAlexanderLoader32/64.exe`, and follow the instructions.
 * Portable 2: Run `XivAlexanderLoader32/64.exe`, and log in using the official launcher.
 * Installation: Autoload XivAlexander when you launch the game in whatever way. Compatible with Reshade and stuff.
-  **[Read how to install and uninstall.](https://github.com/Soreepeong/XivAlexander/wiki/Installation)**
+  **[Read how to install and uninstall.](https://github.com/Soreepeong/XivAlexander/wiki/Installation-and-Load-Once)**
 
 ## Building
 * This project uses [vcpkg](https://github.com/microsoft/vcpkg) to import dependencies.
