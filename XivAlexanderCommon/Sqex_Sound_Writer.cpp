@@ -229,7 +229,7 @@ void Sqex::Sound::ScdWriter::SoundEntry::ExportTo(std::vector<uint8_t>& res) con
 	auto hdr = Header;
 	hdr.StreamOffset = static_cast<uint32_t>(entrySize - Data.size() - sizeof hdr);
 	hdr.StreamSize = static_cast<uint32_t>(Data.size());
-	hdr.AuxChunkCount = static_cast<uint32_t>(AuxChunks.size());
+	hdr.AuxChunkCount = static_cast<uint16_t>(AuxChunks.size());
 
 	res.reserve(res.size() + entrySize);
 	insert(hdr);
