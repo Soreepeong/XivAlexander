@@ -17,7 +17,10 @@
         "A Land Long Dead"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_dan_d13.scd"
+        "path": [
+          "music/ex2/BGM_EX2_Dan_D13.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_260.scd"
+        ]
       }
     },
     {
@@ -28,7 +31,10 @@
         "Bedlam's Brink"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_event_38.scd"
+        "path": [
+          "music/ex2/BGM_EX2_Event_38.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_386.scd"
+        ]
       }
     },
     {
@@ -39,7 +45,10 @@
         "Battle"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_alpha_01.scd"
+        "path": [
+          "music/ex2/BGM_EX2_alpha_01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_270.scd"
+        ]
       }
     },
     {
@@ -50,7 +59,10 @@
         "eScape"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_alpha_02.scd"
+        "path": [
+          "music/ex2/BGM_EX2_alpha_02.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_272.scd"
+        ]
       }
     },
     {
@@ -61,7 +73,10 @@
         "Everywhere and Nowhere"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_event_31.scd"
+        "path": [
+          "music/ex2/BGM_EX2_Event_31.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_444.scd"
+        ]
       }
     },
     {
@@ -72,7 +87,10 @@
         "Heartless"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_alpha_03.scd"
+        "path": [
+          "music/ex2/BGM_EX2_alpha_03.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_273.scd"
+        ]
       }
     },
     {
@@ -84,8 +102,9 @@
       ],
       "target": {
         "path": [
-          "music/ex2/bgm_ex2_alpha_04.scd",
-          "music/ffxiv/bgm_ride_alpha.scd"
+          "music/ex2/BGM_EX2_alpha_04.scd",
+          "music/ffxiv/BGM_Ride_Alpha.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_277.scd"
         ]
       }
     },
@@ -97,7 +116,10 @@
         "A Dream in Flight"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_event_32.scd"
+        "path": [
+          "music/ex2/BGM_EX2_Event_32.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_276.scd"
+        ]
       }
     },
     {
@@ -108,7 +130,7 @@
         "Ending"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_event_34.scd"
+        "path": "music/ex2/BGM_EX2_Event_34.scd"
       }
     },
     {
@@ -119,7 +141,10 @@
         "From Mud"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_dan_d14.scd"
+        "path": [
+          "music/ex2/BGM_EX2_Dan_D14.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_259.scd"
+        ]
       }
     },
     {
@@ -130,7 +155,7 @@
         "Sunset"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_ban_24.scd"
+        "path": "music/ex2/BGM_EX2_Ban_24.scd"
       }
     },
     {
@@ -142,8 +167,9 @@
       ],
       "target": {
         "path": [
-          "music/ex2/bgm_ex2_ban_25.scd",
-          "music/ffxiv/bgm_ride_suzaku.scd"
+          "music/ex2/BGM_EX2_Ban_25.scd",
+          "music/ffxiv/BGM_Ride_Suzaku.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_261.scd"
         ]
       }
     },
@@ -162,31 +188,50 @@
           "Starlight, Not Right"
         ]
       },
-      "target": {
-        "path": "music/ffxiv/bgm_season_xmascho.scd",
-        "segments": [
-          {
-            "channels": [
-              {
-                "source": "Starlight, Starbright",
-                "channel": 0
-              },
-              {
-                "source": "Starlight, Starbright",
-                "channel": 1
-              },
-              {
-                "source": "Starlight, Not Right",
-                "channel": 0
-              },
-              {
-                "source": "Starlight, Not Right",
-                "channel": 1
-              }
-            ]
-          }
-        ]
-      }
+      "target": [
+        {
+          "path": "music/ffxiv/BGM_Season_XmasCho.scd",
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "Starlight, Starbright",
+                  "channel": 0
+                },
+                {
+                  "source": "Starlight, Starbright",
+                  "channel": 1
+                },
+                {
+                  "source": "Starlight, Not Right",
+                  "channel": 0
+                },
+                {
+                  "source": "Starlight, Not Right",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "music/ffxiv/Orchestrion/BGM_ORCH_254.scd",
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "Starlight, Starbright",
+                  "channel": 0
+                },
+                {
+                  "source": "Starlight, Starbright",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "source": [
@@ -196,7 +241,10 @@
         "Doman Distractions"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_emj.scd"
+        "path": [
+          "music/ffxiv/BGM_EMJ.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_290.scd"
+        ]
       }
     },
     {
@@ -206,7 +254,10 @@
         "Gates of Paradise [-–] The Garden of Ru'Hmet"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_eu_dungeon.scd"
+        "path": [
+          "music/ex2/BGM_EX2_EU_Dungeon.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_296.scd"
+        ]
       }
     },
     {
@@ -216,7 +267,10 @@
         "Onslaught"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_eu_boss.scd"
+        "path": [
+          "music/ex2/BGM_EX2_EU_Boss.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_297.scd"
+        ]
       }
     },
     {
@@ -226,7 +280,10 @@
         "Turmoil"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_eu_lb.scd"
+        "path": [
+          "music/ex2/BGM_EX2_EU_LB.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_298.scd"
+        ]
       }
     },
     {
@@ -236,7 +293,10 @@
         "Under The Stars"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_rti_26.scd"
+        "path": [
+          "music/ex2/BGM_EX2_Rti_26.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_302.scd"
+        ]
       }
     },
     {
@@ -247,7 +307,10 @@
         "Pressure \\(No. 1\\)"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_rti_28.scd"
+        "path": [
+          "music/ex2/BGM_EX2_Rti_28.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_303.scd"
+        ]
       }
     },
     {
@@ -257,7 +320,10 @@
         "Antipyretic"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_rti_29.scd"
+        "path": [
+          "music/ex2/BGM_EX2_Rti_29.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_304.scd"
+        ]
       }
     },
     {
@@ -268,7 +334,7 @@
         "B. E."
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_rti_27.scd"
+        "path": "music/ex2/BGM_EX2_Rti_27.scd"
       }
     },
     {
@@ -279,7 +345,10 @@
         "A Man Consumed"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_rti_30.scd"
+        "path": [
+          "music/ex2/BGM_EX2_Rti_30.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_305.scd"
+        ]
       }
     },
     {
@@ -290,7 +359,7 @@
         "St. Ajora's Theme"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_rti_19.scd"
+        "path": "music/ex2/BGM_EX2_Rti_19.scd"
       }
     },
     {
@@ -301,7 +370,7 @@
         "Descent"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_rti_32.scd"
+        "path": "music/ex2/BGM_EX2_Rti_32.scd"
       }
     },
     {
@@ -312,7 +381,10 @@
         "Ultima's Perfection"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_rti_33.scd"
+        "path": [
+          "music/ex2/BGM_EX2_Rti_33.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_306.scd"
+        ]
       }
     },
     {
@@ -331,7 +403,7 @@
         ]
       },
       "target": {
-        "path": "music/ex2/bgm_ex2_rti_34.scd",
+        "path": "music/ex2/BGM_EX2_Rti_34.scd",
         "segments": [
           {
             "sourceOffsets": {
@@ -385,7 +457,7 @@
         "Brave Story"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_rti_23.scd"
+        "path": "music/ex2/BGM_EX2_Rti_23.scd"
       }
     },
     {
@@ -396,7 +468,10 @@
         "Alma's Theme"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_rti_24.scd"
+        "path": [
+          "music/ex2/BGM_EX2_Rti_24.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_301.scd"
+        ]
       }
     },
     {
@@ -407,7 +482,7 @@
         "Poachers' Den"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_rti_20.scd"
+        "path": "music/ex2/BGM_EX2_Rti_20.scd"
       }
     },
     {
@@ -418,7 +493,7 @@
         "Epilogue"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_rti_21.scd"
+        "path": "music/ex2/BGM_EX2_Rti_21.scd"
       }
     },
     {
@@ -429,7 +504,10 @@
         "Credits"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_rti_22.scd"
+        "path": [
+          "music/ex2/BGM_EX2_Rti_22.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_300.scd"
+        ]
       }
     },
     {
@@ -440,7 +518,7 @@
         "Intrigue"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_rti_25.scd"
+        "path": "music/ex2/BGM_EX2_Rti_25.scd"
       }
     },
     {
@@ -452,8 +530,9 @@
       ],
       "target": {
         "path": [
-          "music/ex2/bgm_ex2_ban_26.scd",
-          "music/ffxiv/bgm_ride_seiryu.scd"
+          "music/ex2/BGM_EX2_Ban_26.scd",
+          "music/ffxiv/BGM_Ride_Seiryu.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_287.scd"
         ]
       }
     },
@@ -465,23 +544,35 @@
         "A Pall Most Murderous"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_dan_d15.scd"
+        "path": [
+          "music/ex2/BGM_EX2_Dan_D15.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_288.scd"
+        ]
       }
     },
     {
-      "source": "00036.flac",
-      "target": {
-        "path": [
-          "music/ex3/movie/shadowbringers_loop_ja.scd",
-          "music/ex3/movie/shadowbringers_loop_en.scd",
-          "music/ex3/movie/shadowbringers_loop_de.scd",
-          "music/ex3/movie/shadowbringers_loop_fr.scd",
-          "music/ex3/movie/shadowbringers_loop_chs.scd",
-          "music/ex3/movie/shadowbringers_loop_ko.scd"
-        ],
-        "enable": false,
-        "# comment": "audio track in the movie has voices in it, and thus not replaceable"
-      }
+      "source": [
+        "00036",
+        "SHADOWBRINGERS_37",
+        "Shadowbringers"
+      ],
+      "target": [
+        {
+          "path": "music/ffxiv/Orchestrion/BGM_ORCH_327.scd"
+        },
+        {
+          "path": [
+            "music/ex3/movie/shadowbringers_loop_ja.scd",
+            "music/ex3/movie/shadowbringers_loop_en.scd",
+            "music/ex3/movie/shadowbringers_loop_de.scd",
+            "music/ex3/movie/shadowbringers_loop_fr.scd",
+            "music/ex3/movie/shadowbringers_loop_chs.scd",
+            "music/ex3/movie/shadowbringers_loop_ko.scd"
+          ],
+          "enable": false,
+          "# comment": "audio track in the movie has voices in it, and thus not replaceable"
+        }
+      ]
     },
     {
       "source": [
@@ -492,8 +583,8 @@
       ],
       "target": {
         "path": [
-          "music/ex3/bgm_ex3_system_title.scd",
-          "music/ffxiv/bgm_ride_ex3comp.scd"
+          "music/ex3/BGM_EX3_System_Title.scd",
+          "music/ffxiv/BGM_Ride_EX3Comp.scd"
         ]
       }
     },
@@ -505,7 +596,10 @@
         "The Dark Which Illuminates the World"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_town_c_day.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Town_C_Day.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_317.scd"
+        ]
       }
     },
     {
@@ -516,7 +610,10 @@
         "Unmatching Pieces"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_field_kor_day2.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Field_Kor_Day2.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_447.scd"
+          ]
       }
     },
     {
@@ -528,11 +625,12 @@
       ],
       "target": {
         "path": [
-          "music/ex3/bgm_ex3_field_ama_battle.scd",
-          "music/ex3/bgm_ex3_field_ilm_battle.scd",
-          "music/ex3/bgm_ex3_field_kor_battle.scd",
-          "music/ex3/bgm_ex3_field_lak_battle.scd",
-          "music/ex3/bgm_ex3_field_rak_battle.scd"
+          "music/ex3/BGM_EX3_Field_Ama_Battle.scd",
+          "music/ex3/BGM_EX3_Field_Ilm_Battle.scd",
+          "music/ex3/BGM_EX3_Field_Kor_Battle.scd",
+          "music/ex3/BGM_EX3_Field_Lak_Battle.scd",
+          "music/ex3/BGM_EX3_Field_Rak_Battle.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_339.scd"
         ]
       }
     },
@@ -544,7 +642,7 @@
         "Such as it Is"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_field_safe_03.scd"
+        "path": "music/ex3/BGM_EX3_Field_Safe_03.scd"
       }
     },
     {
@@ -555,7 +653,10 @@
         "Pain in Pleasure"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_town_y_day2.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Town_Y_Day2.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_352.scd"
+        ]
       }
     },
     {
@@ -566,7 +667,10 @@
         "Sands of Amber"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_field_ama_day.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Field_Ama_Day.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_321.scd"
+        ]
       }
     },
     {
@@ -577,7 +681,10 @@
         "No Greater Sorrow"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_field_safe_02.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Field_Safe_02.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_388.scd"
+        ]
       }
     },
     {
@@ -588,7 +695,7 @@
         "Paradisaical Predicaments"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_event_08.scd"
+        "path": "music/ex3/BGM_EX3_Event_08.scd"
       }
     },
     {
@@ -599,7 +706,10 @@
         "The Source"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_field_lak_day.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Field_Lak_Day.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_319.scd"
+        ]
       }
     },
     {
@@ -610,7 +720,10 @@
         "To Fire and Sword"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_dan_d01.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Dan_D01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_329.scd"
+        ]
       }
     },
     {
@@ -621,7 +734,10 @@
         "Insatiable"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_boss_battle01.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Boss_Battle01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_340.scd"
+        ]
       }
     },
     {
@@ -632,7 +748,10 @@
         "Unchanging, Everchanging"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_field_lak_night.scd",
+        "path": [
+          "music/ex3/BGM_EX3_Field_Lak_Night.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_346.scd"
+        ],
         "segments": [
           {
             "sourceOffsets": {
@@ -665,8 +784,9 @@
       ],
       "target": {
         "path": [
-          "music/ex3/bgm_ex3_mount01.scd",
-          "music/ffxiv/bgm_ride_amaro.scd"
+          "music/ex3/BGM_EX3_Mount01.scd",
+          "music/ffxiv/BGM_Ride_Amaro.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_389.scd"
         ]
       }
     },
@@ -678,7 +798,10 @@
         "Knowledge Never Sleeps"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_town_c_night.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Town_C_Night.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_344.scd"
+        ]
       }
     },
     {
@@ -689,7 +812,7 @@
         "High Treason"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_event_06.scd"
+        "path": "music/ex3/BGM_EX3_Event_06.scd"
       }
     },
     {
@@ -700,7 +823,10 @@
         "Fierce and Free"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_field_ilm_day.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Field_Ilm_Day.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_322.scd"
+        ]
       }
     },
     {
@@ -711,7 +837,10 @@
         "A Reason to Live"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_field_safe_01.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Field_Safe_01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_387.scd"
+        ]
       }
     },
     {
@@ -722,7 +851,10 @@
         "Figments"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_dan_d02.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Dan_D02.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_330.scd"
+        ]
       }
     },
     {
@@ -734,8 +866,9 @@
       ],
       "target": {
         "path": [
-          "music/ex3/bgm_ex3_ban_01.scd",
-          "music/ffxiv/bgm_ride_titania.scd"
+          "music/ex3/BGM_EX3_Ban_01.scd",
+          "music/ffxiv/BGM_Ride_Titania.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_325.scd"
         ]
       }
     },
@@ -747,7 +880,10 @@
         "The Faerie Ring"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_field_ilm_night.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Field_Ilm_Night.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_349.scd"
+        ]
       }
     },
     {
@@ -758,7 +894,10 @@
         "Civilizations"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_field_rak_day.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Field_Rak_Day.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_323.scd"
+        ]
       }
     },
     {
@@ -769,7 +908,10 @@
         "Unwound"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_dan_d03.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Dan_D03.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_331.scd"
+        ]
       }
     },
     {
@@ -780,7 +922,10 @@
         "A Hopeless Race"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_field_rak_night.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Field_Rak_Night.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_350.scd"
+        ]
       }
     },
     {
@@ -791,7 +936,10 @@
         "Tomorrow and Tomorrow [-–] Reprise"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_event_02.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Event_02.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_445.scd"
+        ]
       }
     },
     {
@@ -802,7 +950,10 @@
         "Deep Down"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_dan_d04.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Dan_D04.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_332.scd"
+        ]
       }
     },
     {
@@ -813,7 +964,10 @@
         "Sands of Blood"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_field_ama_night.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Field_Ama_Night.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_348.scd"
+        ]
       }
     },
     {
@@ -824,7 +978,10 @@
         "A Better Tomorrow"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_event_03.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Event_03.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_479.scd"
+          ]
       }
     },
     {
@@ -835,7 +992,10 @@
         "Dangerous Words"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_event_05.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Event_05.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_446.scd"
+        ]
       }
     },
     {
@@ -846,7 +1006,10 @@
         "In the Belly of the Beast"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_dan_d05.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Dan_D05.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_333.scd"
+        ]
       }
     },
     {
@@ -858,8 +1021,9 @@
       ],
       "target": {
         "path": [
-          "music/ex3/bgm_ex3_ban_02.scd",
-          "music/ffxiv/bgm_ride_innocence.scd"
+          "music/ex3/BGM_EX3_Ban_02.scd",
+          "music/ffxiv/BGM_Ride_Innocence.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_326.scd"
         ]
       }
     },
@@ -871,7 +1035,7 @@
         "Tears in the Rain"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_event_04.scd"
+        "path": "music/ex3/BGM_EX3_Event_04.scd"
       }
     },
     {
@@ -882,7 +1046,10 @@
         "Full Fathom Five"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_field_tem_day.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Field_Tem_Day.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_324.scd"
+        ]
       }
     },
     {
@@ -893,7 +1060,10 @@
         "'Neath Dark Waters"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_field_tem_night.scd",
+        "path": [
+          "music/ex3/BGM_EX3_Field_Tem_Night.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_351.scd"
+        ],
         "segments": [
           {
             "sourceOffsets": {
@@ -925,7 +1095,7 @@
         "More than Truth"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_event_07.scd"
+        "path": "music/ex3/BGM_EX3_Event_07.scd"
       }
     },
     {
@@ -936,7 +1106,10 @@
         "Mortal Instants"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_dan_d06.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Dan_D06.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_334.scd"
+        ]
       }
     },
     {
@@ -947,7 +1120,7 @@
         "Who Brings Shadow"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_ban_03.scd"
+        "path": "music/ex3/BGM_EX3_Ban_03.scd"
       }
     },
     {
@@ -959,8 +1132,9 @@
       ],
       "target": {
         "path": [
-          "music/ex3/bgm_ex3_ban_04.scd",
-          "music/ffxiv/bgm_ride_hades.scd"
+          "music/ex3/BGM_EX3_Ban_04.scd",
+          "music/ffxiv/BGM_Ride_Hades.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_353.scd"
         ]
       }
     },
@@ -971,7 +1145,10 @@
         "Tomorrow and Tomorrow"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_event_01.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Event_01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_328.scd"
+        ]
       }
     },
     {
@@ -982,7 +1159,10 @@
         "The Quick Way"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_field_kor_night.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Field_Kor_Night.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_347.scd"
+        ]
       }
     },
     {
@@ -993,7 +1173,10 @@
         "A World Divided"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_field_kor_day.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Field_Kor_Day.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_320.scd"
+        ]
       }
     },
     {
@@ -1004,7 +1187,10 @@
         "Vamo' alla Flamenco"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_event_12.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Event_12.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_376.scd"
+        ]
       }
     },
     {
@@ -1015,7 +1201,10 @@
         "Masquerade"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_town_y_night.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Town_Y_Night.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_345.scd"
+        ]
       }
     },
     {
@@ -1026,7 +1215,10 @@
         "Indulgence"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_town_y_day.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Town_Y_Day.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_318.scd"
+        ]
       }
     },
     {
@@ -1036,9 +1228,16 @@
         "影なき影 ～創造機関 アナイダアカデミア～",
         "Shadows Withal"
       ],
-      "target": {
-        "path": "music/ex3/bgm_ex3_dan_d07.scd"
-      }
+      "target": [
+        {
+          "path": "music/ex3/BGM_EX3_Dan_D07.scd"
+        },
+        {
+          "path": "music/ffxiv/Orchestrion/BGM_ORCH_335.scd",
+          "enable": false,
+          "# comment": "Beginning part of the music is missing in Orchestrion version"
+        }
+      ]
     },
     {
       "source": [
@@ -1048,7 +1247,10 @@
         "A Long Fall"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_dan_d08.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Dan_D08.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_336.scd"
+        ]
       }
     },
     {
@@ -1059,7 +1261,7 @@
         "The Lute"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_event_14.scd"
+        "path": "music/ex3/BGM_EX3_Event_14.scd"
       }
     },
     {
@@ -1070,7 +1272,10 @@
         "Blue Fields"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_raid_01.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Raid_01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_371.scd"
+        ]
       }
     },
     {
@@ -1081,7 +1286,10 @@
         "Force Your Way"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_raid_02.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Raid_02.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_341.scd"
+        ]
       }
     },
     {
@@ -1092,7 +1300,10 @@
         "Blinding Indigo"
       ],
       "target": {
-        "path": "music/ex3/bgm_ex3_raid_04.scd"
+        "path": [
+          "music/ex3/BGM_EX3_Raid_04.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_342.scd"
+        ]
       }
     },
     {
@@ -1104,8 +1315,9 @@
       ],
       "target": {
         "path": [
-          "music/ex3/bgm_ex3_raid_03.scd",
-          "music/ffxiv/bgm_ride_eden.scd"
+          "music/ex3/BGM_EX3_Raid_03.scd",
+          "music/ffxiv/BGM_Ride_Eden.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_343.scd"
         ]
       }
     }

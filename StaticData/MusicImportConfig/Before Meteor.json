@@ -17,7 +17,7 @@
         "Prelude [-–] Remembrance"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -29,7 +29,7 @@
         "Opening Theme"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -42,7 +42,7 @@
         "The Theme of Limsa Lominsa"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -55,8 +55,9 @@
       ],
       "target": {
         "path": [
-          "music/ex1/bgm_ex1_field_skypirates.scd",
-          "music/ffxiv/bgm_season_vtid.scd"
+          "music/ex1/BGM_EX1_Field_SkyPirates.scd",
+          "music/ffxiv/BGM_Season_VTID.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_478.scd"
         ]
       }
     },
@@ -68,7 +69,10 @@
         "On Windy Meadows"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_startlim.scd"
+        "path": [
+          "music/ffxiv/BGM_Event_StartLim.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_076.scd"
+        ]
       }
     },
     {
@@ -79,7 +83,10 @@
         "Nail of the Heavens"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_aoz_battle01.scd"
+        "path": [
+          "music/ffxiv/BGM_AOZ_Battle01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_360.scd"
+        ]
       }
     },
     {
@@ -90,7 +97,7 @@
         "In the Shadow of the Colossus"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -103,8 +110,9 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_season_princess.scd",
-          "music/ex3/bgm_ex3_town_y_bar.scd"
+          "music/ffxiv/BGM_Season_Princess.scd",
+          "music/ex3/BGM_EX3_Town_Y_Bar.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_220.scd"
         ]
       }
     },
@@ -117,7 +125,7 @@
         "The Theme of Gridania"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -129,7 +137,10 @@
         "Whisper of the Land"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_startgri.scd"
+        "path": [
+          "music/ffxiv/BGM_Event_StartGri.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_077.scd"
+        ]
       }
     },
     {
@@ -140,7 +151,7 @@
         "Emerald Labyrinth"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_deep01.scd"
+        "path": "music/ffxiv/BGM_Dungeon_Deep01.scd"
       }
     },
     {
@@ -151,7 +162,7 @@
         "The Forest's Pulse"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -163,7 +174,7 @@
         "Bathed in Woodsin"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -175,7 +186,7 @@
         "March of the Moogles"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -188,7 +199,7 @@
         "The Theme of Ul'dah"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -200,7 +211,10 @@
         "Twilight over Thanalan"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_startluru.scd"
+        "path": [
+          "music/ffxiv/BGM_Event_StartLUru.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_078.scd"
+        ]
       }
     },
     {
@@ -211,7 +225,7 @@
         "Widdershins"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -223,7 +237,10 @@
         "Quicksand"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_dungeon_dravaniah_02.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Dungeon_DravaniaH_02.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_140.scd"
+        ]
       }
     },
     {
@@ -234,7 +251,7 @@
         "Desert Moon Defied"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -246,7 +263,7 @@
         "Unspoken"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_event_35.scd"
+        "path": "music/ex2/BGM_EX2_Event_35.scd"
       }
     },
     {
@@ -257,7 +274,7 @@
         "Pennons Aloft"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_boss_04.scd"
+        "path": "music/ffxiv/BGM_Boss_04.scd"
       }
     },
     {
@@ -268,7 +285,7 @@
         "Starlight and Sellswords"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -280,7 +297,7 @@
         "Tears for Mor Dhona"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_deep03.scd"
+        "path": "music/ffxiv/BGM_Dungeon_Deep03.scd"
       }
     },
     {
@@ -291,7 +308,7 @@
         "Phantoms on the Lake"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_boss_05.scd"
+        "path": "music/ffxiv/BGM_Boss_05.scd"
       }
     },
     {
@@ -302,7 +319,7 @@
         "Supply & Demand"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_bazaar.scd",
+        "path": "music/ffxiv/BGM_Event_Bazaar.scd",
         "loopOffsetDelta": 20
       }
     },
@@ -314,7 +331,10 @@
         "Behind Closed Doors"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_town_rest_01.scd"
+        "path": [
+          "music/ffxiv/BGM_Town_Rest_01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_098.scd"
+        ]
       }
     },
     {
@@ -326,8 +346,9 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_dungeon_lim_06.scd",
-          "music/ffxiv/bgm_ride_kgreen.scd"
+          "music/ffxiv/BGM_Dungeon_Lim_06.scd",
+          "music/ffxiv/BGM_Ride_Kgreen.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_067.scd"
         ]
       }
     },
@@ -339,7 +360,7 @@
         "No Quarter"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_eu_nm.scd"
+        "path": "music/ex2/BGM_EX2_EU_NM.scd"
       }
     },
     {
@@ -350,7 +371,10 @@
         "Beneath Bloodied Banners"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_uru_06.scd"
+        "path": [
+          "music/ffxiv/BGM_Dungeon_Uru_06.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_258.scd"
+        ]
       }
     },
     {
@@ -361,7 +385,7 @@
         "With these Hands"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -373,7 +397,10 @@
         "By Design"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_craft.scd"
+        "path": [
+          "music/ffxiv/BGM_Event_Craft.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_477.scd"
+        ]
       }
     },
     {
@@ -384,7 +411,7 @@
         "Nature's Bounty"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -396,7 +423,7 @@
         "When a Tree Falls"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -408,7 +435,7 @@
         "Decisions"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_nego.scd",
+        "path": "music/ffxiv/BGM_Event_Nego.scd",
         "loopOffsetDelta": 10.5
       }
     },
@@ -420,7 +447,7 @@
         "Crowning Achievements"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -432,7 +459,10 @@
         "Where the Heart Is"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_ansoku2.scd"
+        "path": [
+          "music/ffxiv/BGM_Event_Ansoku2.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_102.scd"
+        ]
       }
     },
     {
@@ -443,7 +473,7 @@
         "Holy Consult"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_dungeon_hullbreaker_hard.scd"
+        "path": "music/ex1/BGM_EX1_Dungeon_Hullbreaker_Hard.scd"
       }
     },
     {
@@ -454,7 +484,7 @@
         "Aetherial Slumber"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -466,7 +496,7 @@
         "The Echo"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_kako.scd"
+        "path": "music/ffxiv/BGM_Event_Kako.scd"
       }
     },
     {
@@ -477,7 +507,7 @@
         "Fever Dream"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_fuan.scd"
+        "path": "music/ffxiv/BGM_Event_Fuan.scd"
       }
     },
     {
@@ -488,7 +518,10 @@
         "Daring Dalliances"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_tanoshii1.scd",
+        "path": [
+          "music/ffxiv/BGM_Event_Tanoshii1.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_229.scd"
+        ],
         "loopOffsetDelta": 16
       }
     },
@@ -500,7 +533,7 @@
         "Sacred Bonds"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_verysad.scd",
+        "path": "music/ffxiv/BGM_Event_VerySad.scd",
         "loopOffsetDelta": 32
       }
     },
@@ -512,7 +545,7 @@
         "Piece of Mind"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -524,7 +557,7 @@
         "Inner Recess"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -536,7 +569,7 @@
         "From the Heart"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -548,7 +581,7 @@
         "Fourteen Steps"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -560,7 +593,10 @@
         "Fragments of Forever"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_odayaka.scd"
+        "path": [
+          "music/ffxiv/BGM_Event_Odayaka.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_219.scd"
+        ]
       }
     },
     {
@@ -571,7 +607,7 @@
         "Tranquility"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_ansoku1.scd",
+        "path": "music/ffxiv/BGM_Event_Ansoku1.scd",
         "loopOffsetDelta": 30.82
       }
     },
@@ -583,7 +619,7 @@
         "Neverborn"
       ],
       "target": {
-        "path": "music/ex2/bgm_ex2_event_37.scd"
+        "path": "music/ex2/BGM_EX2_Event_37.scd"
       }
     },
     {
@@ -594,7 +630,7 @@
         "Everbinding Oath"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_season_wedding.scd"
+        "path": "music/ffxiv/BGM_Season_Wedding.scd"
       }
     },
     {
@@ -605,7 +641,10 @@
         "Heavensturn"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_season_newyear.scd"
+        "path": [
+          "music/ffxiv/BGM_Season_NewYear.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_092.scd"
+        ]
       }
     },
     {
@@ -616,7 +655,10 @@
         "Moonfire Faire"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_season_summerfes.scd"
+        "path": [
+          "music/ffxiv/BGM_Season_SummerFes.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_060.scd"
+        ]
       }
     },
     {
@@ -628,8 +670,9 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_season_halloween.scd",
-          "music/ffxiv/bgm_ride_broom.scd"
+          "music/ffxiv/BGM_Season_Halloween.scd",
+          "music/ffxiv/BGM_Ride_Broom.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_089.scd"
         ]
       }
     },
@@ -641,7 +684,10 @@
         "Starlight Celebration"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_season_christmas.scd"
+        "path": [
+          "music/ffxiv/BGM_Season_Christmas.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_091.scd"
+        ]
       }
     },
     {
@@ -652,7 +698,7 @@
         "Conflagration"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -664,7 +710,7 @@
         "The Hero of Hatchingtide"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_system_winshot_04.scd"
+        "path": "music/ffxiv/BGM_System_WinShot_04.scd"
       }
     },
     {
@@ -675,7 +721,7 @@
         "Enraptured"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_deep02.scd"
+        "path": "music/ffxiv/BGM_Dungeon_Deep02.scd"
       }
     },
     {
@@ -686,7 +732,7 @@
         "Battle Drums"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_banfort_sahagin.scd"
+        "path": "music/ffxiv/BGM_Field_BanFort_Sahagin.scd"
       }
     },
     {
@@ -697,7 +743,7 @@
         "Bo-down"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ride_rchocobo.scd"
+        "path": "music/ffxiv/BGM_Ride_RChocobo.scd"
       }
     },
     {
@@ -708,7 +754,10 @@
         "Fury"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_lim_05.scd"
+        "path": [
+          "music/ffxiv/BGM_Dungeon_Lim_05.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_338.scd"
+        ]
       }
     },
     {
@@ -719,7 +768,7 @@
         "The Seventh Gate"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -731,7 +780,7 @@
         "Victory Fanfare ＜Short＞"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -743,7 +792,7 @@
         "Without Shadow"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_ascian.scd"
+        "path": "music/ffxiv/BGM_Event_Ascian.scd"
       }
     },
     {
@@ -754,7 +803,10 @@
         "Canticle"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_truth.scd"
+        "path": [
+          "music/ffxiv/BGM_Event_Truth.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_136.scd"
+        ]
       }
     },
     {
@@ -765,7 +817,7 @@
         "Wrath of the Eikons"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_gri_06.scd"
+        "path": "music/ffxiv/BGM_Dungeon_Gri_06.scd"
       }
     },
     {
@@ -777,8 +829,9 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_ban_ifrit.scd",
-          "music/ffxiv/bgm_ride_ifrit.scd"
+          "music/ffxiv/BGM_Ban_Ifrit.scd",
+          "music/ffxiv/BGM_Ride_Ifrit.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_030.scd"
         ]
       }
     },
@@ -790,7 +843,7 @@
         "Final Respite"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -811,7 +864,7 @@
       },
       "target": [
         {
-          "path": "music/ffxiv/bgm_rade_01.scd",
+          "path": "music/ffxiv/BGM_Rade_01.scd",
           "sequentialToFfmpegChannelIndexMap": [
             0,
             2,
@@ -850,6 +903,40 @@
               ]
             }
           ]
+        },
+        {
+          "path": "music/ex3/BGM_EX3_Event_19.scd",
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "The Dark's Kiss",
+                  "channel": 0
+                },
+                {
+                  "source": "The Dark's Kiss",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "music/ffxiv/Orchestrion/BGM_ORCH_022.scd",
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "The Dark's Embrace",
+                  "channel": 0
+                },
+                {
+                  "source": "The Dark's Embrace",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
         }
       ]
     },
@@ -861,7 +948,10 @@
         "Nemesis"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_boss_03.scd"
+        "path": [
+          "music/ffxiv/BGM_Boss_03.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_443.scd"
+        ]
       }
     },
     {
@@ -872,7 +962,7 @@
         "Victory Fanfare ＜Full＞"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_chocoborace_win1st.scd"
+        "path": "music/ffxiv/BGM_ChocoboRace_Win1st.scd"
       }
     },
     {
@@ -883,7 +973,7 @@
         "Maelstrom Command"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_company_lim.scd"
+        "path": "music/ffxiv/BGM_Company_Lim.scd"
       }
     },
     {
@@ -894,7 +984,7 @@
         "Into the Adder's Den"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_company_gri.scd"
+        "path": "music/ffxiv/BGM_Company_Gri.scd"
       }
     },
     {
@@ -905,7 +995,7 @@
         "The Hall of Flames"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_company_uru.scd"
+        "path": "music/ffxiv/BGM_Company_Uru.scd"
       }
     },
     {
@@ -916,7 +1006,7 @@
         "Honor and Duty"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -928,7 +1018,7 @@
         "Eorzea de Chocobo"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ride_chocobo.scd"
+        "path": "music/ffxiv/BGM_Ride_Chocobo.scd"
       }
     },
     {
@@ -939,7 +1029,7 @@
         "Ripples in the Sea"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_melvib.scd"
+        "path": "music/ffxiv/BGM_Event_Melvib.scd"
       }
     },
     {
@@ -950,7 +1040,7 @@
         "The Sands' Secrets"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_rauburn.scd"
+        "path": "music/ffxiv/BGM_Event_Rauburn.scd"
       }
     },
     {
@@ -961,7 +1051,7 @@
         "Dewdrops & Moonbeams"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_kanue.scd"
+        "path": "music/ffxiv/BGM_Event_Kanue.scd"
       }
     },
     {
@@ -972,7 +1062,7 @@
         "Dreams Aloft"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_memoryofcid.scd"
+        "path": "music/ffxiv/BGM_Event_MemoryOfCid.scd"
       }
     },
     {
@@ -983,7 +1073,7 @@
         "Airborne"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -995,7 +1085,7 @@
         "Birds of a Feather"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_uru_05.scd"
+        "path": "music/ffxiv/BGM_Dungeon_Uru_05.scd"
       }
     },
     {
@@ -1006,7 +1096,7 @@
         "Flee Together"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -1018,7 +1108,7 @@
         "Quick as Silver, Hard as Stone"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_banfort_kobold.scd"
+        "path": "music/ffxiv/BGM_Field_BanFort_Kobold.scd"
       }
     },
     {
@@ -1029,7 +1119,7 @@
         "Flightless Wings"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_banfort_ixal.scd"
+        "path": "music/ffxiv/BGM_Field_BanFort_Ixal.scd"
       }
     },
     {
@@ -1040,7 +1130,7 @@
         "Pitfire"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_banfort_amaruja.scd"
+        "path": "music/ffxiv/BGM_Field_BanFort_Amaruja.scd"
       }
     },
     {
@@ -1051,7 +1141,7 @@
         "The Promise of Plunder"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_battle_dungeon_01.scd"
+        "path": "music/ffxiv/BGM_Battle_Dungeon_01.scd"
       }
     },
     {
@@ -1062,7 +1152,7 @@
         "Meteor"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_neal.scd"
+        "path": "music/ffxiv/BGM_Event_Neal.scd"
       }
     },
     {
@@ -1073,7 +1163,7 @@
         "Seven Jesters"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false
       }
     },
@@ -1086,9 +1176,10 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_ban_moogle_king.scd",
-          "music/ffxiv/bgm_ban_moogle_goku.scd",
-          "music/ffxiv/bgm_ride_mogle.scd"
+          "music/ffxiv/BGM_Ban_Moogle_King.scd",
+          "music/ffxiv/BGM_Ban_Moogle_Goku.scd",
+          "music/ffxiv/BGM_Ride_Mogle.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_070.scd"
         ]
       }
     },
@@ -1101,8 +1192,8 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_ride_commonmonster.scd",
-          "music/ffxiv/bgm_ride_coolmount.scd"
+          "music/ffxiv/BGM_Ride_CommonMonster.scd",
+          "music/ffxiv/BGM_Ride_CoolMount.scd"
         ]
       }
     },
@@ -1114,7 +1205,10 @@
         "Breaking Boundaries"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_jobshiren.scd"
+        "path": [
+          "music/ffxiv/BGM_Event_JobShiren.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_138.scd"
+        ]
       }
     },
     {
@@ -1125,7 +1219,7 @@
         "Relics"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_jobevent.scd"
+        "path": "music/ffxiv/BGM_Event_JobEvent.scd"
       }
     },
     {
@@ -1147,7 +1241,10 @@
         "Agent of Inquiry"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_hildy.scd"
+        "path": [
+          "music/ffxiv/BGM_Event_Hildy.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_013.scd"
+        ]
       }
     },
     {
@@ -1159,8 +1256,8 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_boss_06.scd",
-          "music/ffxiv/bgm_fate_kyoten.scd"
+          "music/ffxiv/BGM_Boss_06.scd",
+          "music/ffxiv/BGM_Fate_Kyoten.scd"
         ]
       }
     },
@@ -1173,9 +1270,9 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_boss_07.scd",
-          "music/ffxiv/bgm_fate_bouei.scd",
-          "music/ffxiv/bgm_fate_bouei2.scd"
+          "music/ffxiv/BGM_Boss_07.scd",
+          "music/ffxiv/BGM_Fate_Bouei.scd",
+          "music/ffxiv/BGM_Fate_Bouei2.scd"
         ]
       }
     },
@@ -1187,7 +1284,10 @@
         "Imperial Will"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_teikoku.scd"
+        "path": [
+          "music/ffxiv/BGM_Event_Teikoku.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_134.scd"
+        ]
       }
     },
     {
@@ -1199,8 +1299,9 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_con_teikoku_boss.scd",
-          "music/ffxiv/bgm_ride_magitekspecial.scd"
+          "music/ffxiv/BGM_Con_Teikoku_Boss.scd",
+          "music/ffxiv/BGM_Ride_MagitekSpecial.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_135.scd"
         ]
       }
     },
@@ -1213,8 +1314,9 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_aoz_battle02.scd",
-          "music/ffxiv/bgm_ride_aoz.scd"
+          "music/ffxiv/BGM_AOZ_Battle02.scd",
+          "music/ffxiv/BGM_Ride_AOZ.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_361.scd"
         ]
       }
     },
@@ -1227,8 +1329,9 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_ban_garuda.scd",
-          "music/ffxiv/bgm_ride_gruda.scd"
+          "music/ffxiv/BGM_Ban_Garuda.scd",
+          "music/ffxiv/BGM_Ride_Gruda.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_031.scd"
         ]
       }
     },
@@ -1240,7 +1343,10 @@
         "Tempest"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_con_neal.scd"
+        "path": [
+          "music/ffxiv/BGM_Con_Neal.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_148.scd"
+        ]
       }
     },
     {
@@ -1251,7 +1357,10 @@
         "Rise of the White Raven"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_con_carteneaubattle.scd"
+        "path": [
+          "music/ffxiv/BGM_Con_CarteneauBattle.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_043.scd"
+        ]
       }
     },
     {
@@ -1261,9 +1370,9 @@
         "Answers"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_.scd",
+        "path": "music/ffxiv/BGM_.scd",
         "enable": false,
-        "# comment": "bgm_con_bahamut_bigboss0, bgm_con_bahamut_bigboss2, bgm_con_bahamut_bigboss3"
+        "# comment": "bgm_Con_bahamut_bigboss0, bgm_Con_bahamut_bigboss2, bgm_Con_bahamut_bigboss3, bgm_ORCH_045"
       }
     }
   ]

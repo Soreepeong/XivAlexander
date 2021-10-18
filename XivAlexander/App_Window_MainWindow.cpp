@@ -1519,7 +1519,7 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 					}
 				}
 
-				auto tp = Utils::Win32::TpEnvironment(-1, THREAD_PRIORITY_IDLE);
+				auto tp = Utils::Win32::TpEnvironment(0, THREAD_PRIORITY_IDLE);
 				for (const auto& item : items) {
 					for (const auto& target : item.target) {
 						if (!target.enable)

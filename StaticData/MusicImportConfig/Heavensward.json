@@ -15,10 +15,16 @@
         "HEAVENSWARD_FFXIV_01",
         "Heavensward"
       ],
-      "target": {
-        "path": "music/ex1/movie/heavensward_loop.scd",
-        "enable": false
-      }
+      "target": [
+        {
+          "path": "music/ffxiv/Orchestrion/BGM_ORCH_061.scd",
+          "enable": false
+        },
+        {
+          "path": "music/ex1/movie/heavensward_loop.scd",
+          "enable": false
+        }
+      ]
     },
     {
       "source": [
@@ -28,7 +34,10 @@
         "A Cold Wind"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_system_title.scd"
+        "path": [
+          "music/ex1/BGM_EX1_System_Title.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_001.scd"
+        ]
       }
     },
     {
@@ -39,7 +48,10 @@
         "Solid"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_town_ish02_day.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Town_Ish02_Day.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_005.scd"
+        ]
       }
     },
     {
@@ -50,7 +62,10 @@
         "Against the Wind"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_field_ishsebu02.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Field_IshSebu02.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_054.scd"
+        ]
       }
     },
     {
@@ -62,12 +77,12 @@
       ],
       "target": {
         "path": [
-          "music/ex1/bgm_ex1_battle_abaracia_01.scd",
-          "music/ex1/bgm_ex1_battle_dravaniac_01.scd",
-          "music/ex1/bgm_ex1_battle_dravaniah_01.scd",
-          "music/ex1/bgm_ex1_battle_dravanial_01.scd",
-          "music/ex1/bgm_ex1_battle_ishsebu_01.scd",
-          "music/ex1/bgm_ex1_battle_magicc_01.scd"
+          "music/ex1/BGM_EX1_Battle_Abaracia_01.scd",
+          "music/ex1/BGM_EX1_Battle_DravaniaC_01.scd",
+          "music/ex1/BGM_EX1_Battle_DravaniaH_01.scd",
+          "music/ex1/BGM_EX1_Battle_DravaniaL_01.scd",
+          "music/ex1/BGM_EX1_Battle_IshSebu_01.scd",
+          "music/ex1/BGM_EX1_Battle_MagicC_01.scd"
         ]
       }
     },
@@ -79,7 +94,7 @@
         "Descent"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_dungeon_ishsebu_01.scd"
+        "path": "music/ex1/BGM_EX1_Dungeon_IshSebu_01.scd"
       }
     },
     {
@@ -90,7 +105,10 @@
         "Ominous Prognisticks"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_boss_01.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Boss_01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_063.scd"
+        ]
       }
     },
     {
@@ -101,7 +119,10 @@
         "Black and White"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_field_ishsebu03.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Field_IshSebu03.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_239.scd"
+        ]
       }
     },
     {
@@ -112,7 +133,10 @@
         "Nobility Sleeps"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_town_ish01_night.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Town_Ish01_Night.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_096.scd"
+        ]
       }
     },
     {
@@ -123,7 +147,7 @@
         "Borderless"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ex1_ride_flyingmount.scd"
+        "path": "music/ffxiv/BGM_EX1_Ride_FlyingMount.scd"
       }
     },
     {
@@ -134,7 +158,10 @@
         "Shelter"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_field_safe1.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Field_Safe1.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_053.scd"
+        ]
       }
     },
     {
@@ -145,7 +172,10 @@
         "Lost in the Clouds"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_field_abaracia02.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Field_Abaracia02.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_011.scd"
+        ]
       }
     },
     {
@@ -156,7 +186,10 @@
         "Coming Home"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_banfort_banu_good.scd"
+        "path": [
+          "music/ex1/BGM_EX1_BanFort_Banu_Good.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_095.scd"
+        ]
       }
     },
     {
@@ -167,7 +200,7 @@
         "Like a Summer Rain"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_dungeon_abaracia_01.scd"
+        "path": "music/ex1/BGM_EX1_Dungeon_Abaracia_01.scd"
       }
     },
     {
@@ -178,7 +211,10 @@
         "Close to the Heavens"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_field_abaracia03.scd",
+        "path": [
+          "music/ex1/BGM_EX1_Field_Abaracia03.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_100.scd"
+        ],
         "segments": [
           {
             "sourceOffsets": {
@@ -210,7 +246,7 @@
         "Jewel"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_sorashima_battle.scd"
+        "path": "music/ex1/BGM_EX1_Sorashima_Battle.scd"
       }
     },
     {
@@ -221,7 +257,7 @@
         "For the Sky"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_event_strategy.scd"
+        "path": "music/ex1/BGM_EX1_Event_Strategy.scd"
       }
     },
     {
@@ -232,7 +268,10 @@
         "Safety in Numbers"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_field_safe2.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Field_Safe2.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_359.scd"
+        ]
       }
     },
     {
@@ -243,7 +282,10 @@
         "Painted Foothills"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_field_dravaniah02.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Field_DravaniaH02.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_010.scd"
+        ]
       }
     },
     {
@@ -254,7 +296,10 @@
         "The Hand that Gives the Rose"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_ban_ravana_01.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Ban_Ravana_01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_145.scd"
+        ]
       }
     },
     {
@@ -266,8 +311,9 @@
       ],
       "target": {
         "path": [
-          "music/ex1/bgm_ex1_ban_ravana_02.scd",
-          "music/ffxiv/bgm_ride_ravana.scd"
+          "music/ex1/BGM_EX1_Ban_Ravana_02.scd",
+          "music/ffxiv/BGM_Ride_Ravana.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_146.scd"
         ]
       }
     },
@@ -279,7 +325,10 @@
         "Painted Skies"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_field_dravaniah03.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Field_DravaniaH03.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_451.scd"
+        ]
       }
     },
     {
@@ -290,7 +339,10 @@
         "Slumber Eternal"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_dungeon_dravaniah_01.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Dungeon_DravaniaH_01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_110.scd"
+        ]
       }
     },
     {
@@ -301,7 +353,10 @@
         "Landlords"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_field_dravaniac02.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Field_DravaniaC02.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_055.scd"
+        ]
       }
     },
     {
@@ -312,7 +367,7 @@
         "What is Love?"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_event_moogle.scd"
+        "path": "music/ex1/BGM_EX1_Event_Moogle.scd"
       }
     },
     {
@@ -323,7 +378,7 @@
         "Roar of the Wyrm"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_dungeon_dravaniac_01.scd"
+        "path": "music/ex1/BGM_EX1_Dungeon_DravaniaC_01.scd"
       }
     },
     {
@@ -334,7 +389,10 @@
         "Skylords"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_field_dravaniac03.scd",
+        "path": [
+          "music/ex1/BGM_EX1_Field_DravaniaC03.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_168.scd"
+        ],
         "segments": [
           {
             "sourceThresholds": {
@@ -363,7 +421,10 @@
         "Contention"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_event_dragonwar.scd",
+        "path": [
+          "music/ex1/BGM_EX1_Event_DragonWar.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_046.scd"
+        ],
         "segments": [
           {
             "sourceThresholds": {
@@ -392,7 +453,10 @@
         "Nobility Obliges"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_town_ish01_day.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Town_Ish01_Day.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_051.scd"
+        ]
       }
     },
     {
@@ -403,7 +467,10 @@
         "Hallowed Halls"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_dungeon_kyoko.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Dungeon_Kyoko.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_139.scd"
+        ]
       }
     },
     {
@@ -414,7 +481,10 @@
         "The Heavens' Ward"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_event_soten.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Event_Soten.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_423.scd"
+        ]
       }
     },
     {
@@ -425,7 +495,10 @@
         "Night in the Brume"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_town_ish02_night.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Town_Ish02_Night.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_097.scd"
+        ]
       }
     },
     {
@@ -436,7 +509,7 @@
         "Heavy Rain"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_banfort_banu_bad.scd"
+        "path": "music/ex1/BGM_EX1_BanFort_Banu_Bad.scd"
       }
     },
     {
@@ -447,7 +520,10 @@
         "Limitless Blue"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_ban_bismark_01.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Ban_Bismark_01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_143.scd"
+        ]
       }
     },
     {
@@ -459,8 +535,9 @@
       ],
       "target": {
         "path": [
-          "music/ex1/bgm_ex1_ban_bismark_02.scd",
-          "music/ffxiv/bgm_ride_bismark.scd"
+          "music/ex1/BGM_EX1_Ban_Bismark_02.scd",
+          "music/ffxiv/BGM_Ride_Bismark.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_144.scd"
         ]
       }
     },
@@ -472,7 +549,7 @@
         "Misconception"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_event_dragon.scd"
+        "path": "music/ex1/BGM_EX1_Event_Dragon.scd"
       }
     },
     {
@@ -483,7 +560,10 @@
         "Missing Pages"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_field_dravanial02.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Field_DravaniaL02.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_056.scd"
+        ]
       }
     },
     {
@@ -494,7 +574,10 @@
         "Paradise Found"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_rest_sharean.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Rest_Sharean.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_382.scd"
+        ]
       }
     },
     {
@@ -505,7 +588,10 @@
         "The Mushroomery"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_rest_matoya.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Rest_Matoya.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_052.scd"
+        ]
       }
     },
     {
@@ -516,7 +602,10 @@
         "Ink Long Dry"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_dungeon_dravanial_01.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Dungeon_DravaniaL_01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_064.scd"
+        ]
       }
     },
     {
@@ -527,7 +616,10 @@
         "Homestead"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_rest_sharean_night.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Rest_Sharean_Night.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_103.scd"
+        ]
       }
     },
     {
@@ -538,7 +630,10 @@
         "The Silent Regard of Stars"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_field_dravanial03.scd",
+        "path": [
+          "music/ex1/BGM_EX1_Field_DravaniaL03.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_169.scd"
+        ],
         "segments": [
           {
             "sourceThresholds": {
@@ -567,7 +662,10 @@
         "Poison Ivy"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_dungeon_botanical_gardens.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Dungeon_botanical_gardens.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_164.scd"
+        ]
       }
     },
     {
@@ -578,7 +676,10 @@
         "Upon the Rocks"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_dungeon_sirius_lighthouse.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Dungeon_Sirius_Lighthouse.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_256.scd"
+        ]
       }
     },
     {
@@ -596,47 +697,66 @@
           "In Darkness, There Is One"
         ]
       },
-      "target": {
-        "path": "music/ex1/bgm_ex1_makosen_nomal.scd",
-        "sequentialToFfmpegChannelIndexMap": [
-          0,
-          2,
-          1,
-          4,
-          5,
-          3
-        ],
-        "segments": [
-          {
-            "channels": [
-              {
-                "source": "Aetherpause",
-                "channel": 0
-              },
-              {
-                "source": "Aetherpause",
-                "channel": 1
-              },
-              {
-                "source": "In Darkness, There Is One",
-                "channel": 0
-              },
-              {
-                "source": "In Darkness, There Is One",
-                "channel": 1
-              },
-              {
-                "source": "target",
-                "channel": 4
-              },
-              {
-                "source": "target",
-                "channel": 5
-              }
-            ]
-          }
-        ]
-      }
+      "target": [
+        {
+          "path": "music/ex1/BGM_EX1_Makosen_Nomal.scd",
+          "sequentialToFfmpegChannelIndexMap": [
+            0,
+            2,
+            1,
+            4,
+            5,
+            3
+          ],
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "Aetherpause",
+                  "channel": 0
+                },
+                {
+                  "source": "Aetherpause",
+                  "channel": 1
+                },
+                {
+                  "source": "In Darkness, There Is One",
+                  "channel": 0
+                },
+                {
+                  "source": "In Darkness, There Is One",
+                  "channel": 1
+                },
+                {
+                  "source": "target",
+                  "channel": 4
+                },
+                {
+                  "source": "target",
+                  "channel": 5
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "music/ffxiv/Orchestrion/BGM_ORCH_151.scd",
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "Aetherpause",
+                  "channel": 0
+                },
+                {
+                  "source": "Aetherpause",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "source": [
@@ -646,7 +766,24 @@
         "Voidal Manifest"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_makosen_boss01.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Makosen_Boss01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_152.scd"
+        ]
+      }
+    },
+    {
+      "source": [
+        "00047",
+        "HEAVENSWARD_FFXIV_48",
+        "石と鋼",
+        "Stone and Steel"
+      ],
+      "target": {
+        "path": [
+          "music/ex1/BGM_EX1_Event_IshWar.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_384.scd"
+        ]
       }
     },
     {
@@ -665,7 +802,7 @@
         }
       },
       "target": {
-        "path": "music/ex1/bgm_ex1_event_nidhogg_02.scd",
+        "path": "music/ex1/BGM_EX1_Event_Nidhogg_02.scd",
         "loopOffsetDelta": 10
       }
     },
@@ -677,7 +814,10 @@
         "Order Yet Undeciphered"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_field_magicc02.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Field_MagicC02.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_390.scd"
+        ]
       }
     },
     {
@@ -688,7 +828,10 @@
         "Unbreakable"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_dungeon_magicc_02.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Dungeon_MagicC_02.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_065.scd"
+        ]
       }
     },
     {
@@ -699,7 +842,10 @@
         "Imagination"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_dungeon_magicc_01.scd"
+        "path": [
+          "music/ex1/BGM_EX1_Dungeon_MagicC_01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_024.scd"
+        ]
       }
     },
     {
@@ -710,7 +856,7 @@
         "Heroes Never Die"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_boss03.scd"
+        "path": "music/ex1/BGM_EX1_Boss03.scd"
       }
     },
     {
@@ -722,8 +868,9 @@
       ],
       "target": {
         "path": [
-          "music/ex1/bgm_ex1_boss02.scd",
-          "music/ffxiv/bgm_ride_kor.scd"
+          "music/ex1/BGM_EX1_Boss02.scd",
+          "music/ffxiv/BGM_Ride_KoR.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_033.scd"
         ]
       }
     },
@@ -735,7 +882,7 @@
         "Inception"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_event_start.scd"
+        "path": "music/ex1/BGM_EX1_Event_Start.scd"
       }
     },
     {
@@ -753,7 +900,7 @@
         }
       },
       "target": {
-        "path": "music/ex1/bgm_ex1_ban_nidhogg_01.scd"
+        "path": "music/ex1/BGM_EX1_Ban_Nidhogg_01.scd"
       }
     },
     {
@@ -762,11 +909,17 @@
         "HEAVENSWARD_FFXIV_55",
         "Dragonsong"
       ],
-      "target": {
-        "path": "music/ex1/bgm_ex1_endcredit01.scd",
-        "enable": false,
-        "# comment": "Plays Dragonsong, Solid, Heavensward, and then loop Heroes of Stone and Steel."
-      }
+      "target": [
+        {
+          "path": "music/ffxiv/Orchestrion/BGM_ORCH_079.scd",
+          "enable": false
+        },
+        {
+          "path": "music/ex1/BGM_EX1_EndCredit01.scd",
+          "enable": false,
+          "# comment": "Plays Dragonsong, Solid, Heavensward, and then loop Heroes of Stone and Steel."
+        }
+      ]
     },
     {
       "source": [
@@ -776,7 +929,10 @@
         "Sins of the Father, Sins of the Son"
       ],
       "target": {
-        "path": "music/ex1/bgm_ex1_alex01.scd",
+        "path": [
+          "music/ex1/BGM_EX1_Alex01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_117.scd"
+        ],
         "segments": [
           {
             "sourceFilters": {
@@ -805,8 +961,10 @@
       ],
       "target": {
         "path": [
-          "music/ex1/bgm_ex1_alex02.scd",
-          "music/ffxiv/bgm_ride_alex.scd"
+          "music/ex1/BGM_EX1_Alex02.scd",
+          "music/ffxiv/BGM_Ride_Alex.scd",
+          "music/ffxiv/BGM_PvP_Mogi_02.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_118.scd"
         ],
         "segments": [
           {
@@ -834,50 +992,55 @@
         "メタル ～機工城アレキサンダー：起動編～",
         "Metal"
       ],
-      "target": {
-        "path": "music/ex1/bgm_ex1_alex03.scd",
-        "sequentialToFfmpegChannelIndexMap": [
-          0,
-          2,
-          1,
-          4,
-          5,
-          3
-        ],
-        "segments": [
-          {
-            "sourceFilters": {
-              "source": "volume=+3.5dB"
-            },
-            "channels": [
-              {
-                "source": "target",
-                "channel": 0
+      "target": [
+        {
+          "path": "music/ex1/BGM_EX1_Alex03.scd",
+          "sequentialToFfmpegChannelIndexMap": [
+            0,
+            2,
+            1,
+            4,
+            5,
+            3
+          ],
+          "segments": [
+            {
+              "sourceFilters": {
+                "source": "volume=+3.5dB"
               },
-              {
-                "source": "target",
-                "channel": 1
-              },
-              {
-                "source": "source",
-                "channel": 0
-              },
-              {
-                "source": "source",
-                "channel": 1
-              },
-              {
-                "source": "target",
-                "channel": 4
-              },
-              {
-                "source": "target",
-                "channel": 5
-              }
-            ]
-          }
-        ]
-      }
+              "channels": [
+                {
+                  "source": "target",
+                  "channel": 0
+                },
+                {
+                  "source": "target",
+                  "channel": 1
+                },
+                {
+                  "source": "source",
+                  "channel": 0
+                },
+                {
+                  "source": "source",
+                  "channel": 1
+                },
+                {
+                  "source": "target",
+                  "channel": 4
+                },
+                {
+                  "source": "target",
+                  "channel": 5
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "music/ffxiv/Orchestrion/BGM_ORCH_119.scd"
+        }
+      ]
     }
   ]
 }

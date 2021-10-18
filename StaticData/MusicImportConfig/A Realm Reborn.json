@@ -17,7 +17,7 @@
         "プレリュード　～再誕の煌めき～"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_system_title.scd"
+        "path": "music/ffxiv/BGM_System_Title.scd"
       }
     },
     {
@@ -29,8 +29,9 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_boss_01.scd",
-          "music/ffxiv/bgm_con_teikoku_01_sido.scd"
+          "music/ffxiv/BGM_Boss_01.scd",
+          "music/ffxiv/BGM_Con_Teikoku_01_Sido.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_027.scd"
         ]
       }
     },
@@ -43,8 +44,9 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_system_chara.scd",
-          "music/ffxiv/bgm_ride_bcomp.scd"
+          "music/ffxiv/BGM_System_Chara.scd",
+          "music/ffxiv/BGM_Ride_Bcomp.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_012.scd"
         ]
       }
     },
@@ -56,7 +58,10 @@
         "希望の都"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_town_uru_day.scd"
+        "path": [
+          "music/ffxiv/BGM_Town_Uru_Day.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_004.scd"
+        ]
       }
     },
     {
@@ -94,7 +99,25 @@
       },
       "target": [
         {
-          "path": "music/ffxiv/bgm_field_uru_01.scd",
+          "path": "music/ffxiv/Orchestrion/BGM_ORCH_057.scd",
+          "enable": false,
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "source",
+                  "channel": 0
+                },
+                {
+                  "source": "source",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "music/ffxiv/BGM_Field_Uru_01.scd",
           "segments": [
             {
               "length": 29.712,
@@ -112,7 +135,7 @@
           ]
         },
         {
-          "path": "music/ffxiv/bgm_field_uru_02.scd",
+          "path": "music/ffxiv/BGM_Field_Uru_02.scd",
           "segments": [
             {
               "sourceThresholds": {
@@ -133,7 +156,7 @@
           ]
         },
         {
-          "path": "music/ffxiv/bgm_field_uru_03.scd",
+          "path": "music/ffxiv/BGM_Field_Uru_03.scd",
           "segments": [
             {
               "sourceOffsets": {
@@ -161,7 +184,7 @@
           ]
         },
         {
-          "path": "music/ffxiv/bgm_field_uru_04.scd",
+          "path": "music/ffxiv/BGM_Field_Uru_04.scd",
           "segments": [
             {
               "sourceThresholds": {
@@ -182,7 +205,7 @@
           ]
         },
         {
-          "path": "music/ffxiv/bgm_field_uru_05.scd",
+          "path": "music/ffxiv/BGM_Field_Uru_05.scd",
           "segments": [
             {
               "sourceOffsets": {
@@ -215,7 +238,7 @@
         "荒野の鼓動"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_battle_uru_01.scd"
+        "path": "music/ffxiv/BGM_Battle_Uru_01.scd"
       }
     },
     {
@@ -226,7 +249,7 @@
         "生命の賜物"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_safe1.scd"
+        "path": "music/ffxiv/BGM_Field_Safe1.scd"
       }
     },
     {
@@ -237,7 +260,10 @@
         "もう一杯！"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_bar.scd"
+        "path": [
+          "music/ffxiv/BGM_Field_Bar.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_009.scd"
+        ]
       }
     },
     {
@@ -248,7 +274,10 @@
         "宿命"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_fate_mid.scd"
+        "path": [
+          "music/ffxiv/BGM_Fate_Mid.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_419.scd"
+        ]
       }
     },
     {
@@ -259,7 +288,7 @@
         "レンタル de チョコボ"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ride_rchocobo.scd"
+        "path": "music/ffxiv/BGM_Ride_RChocobo.scd"
       }
     },
     {
@@ -270,7 +299,10 @@
         "夢見る女王陛下"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_town_uru_night.scd"
+        "path": [
+          "music/ffxiv/BGM_Town_Uru_Night.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_048.scd"
+        ]
       }
     },
     {
@@ -281,7 +313,7 @@
         "無常の喜び"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_tanoshii2.scd"
+        "path": "music/ffxiv/BGM_Event_Tanoshii2.scd"
       }
     },
     {
@@ -292,7 +324,7 @@
         "不穏な気配"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_huon.scd"
+        "path": "music/ffxiv/BGM_Event_Huon.scd"
       }
     },
     {
@@ -304,8 +336,9 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_beginner01.scd",
-          "music/ffxiv/bgm_leves.scd"
+          "music/ffxiv/BGM_Beginner01.scd",
+          "music/ffxiv/BGM_Leves.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_017.scd"
         ]
       }
     },
@@ -317,7 +350,7 @@
         "英雄の凱旋"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_heroreturn.scd"
+        "path": "music/ffxiv/BGM_Event_HeroReturn.scd"
       }
     },
     {
@@ -328,7 +361,10 @@
         "そして世界へ"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_tabidachi.scd"
+        "path": [
+          "music/ffxiv/BGM_Event_Tabidachi.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_015.scd"
+        ]
       }
     },
     {
@@ -339,11 +375,20 @@
         "偉大なる母港"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_town_lim_day.scd"
+        "path": [
+          "music/ffxiv/BGM_Town_Lim_Day.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_003.scd"
+        ]
       }
     },
     {
       "source": {
+        "source": [
+          "00017",
+          "ARR_FFXIV_018",
+          "On Westerly Winds",
+          "西風に乗せて"
+        ],
         "source1": {
           "inputFiles": [
             [
@@ -412,7 +457,25 @@
       },
       "target": [
         {
-          "path": "music/ffxiv/bgm_field_lim_01.scd",
+          "path": "music/ffxiv/Orchestrion/BGM_ORCH_058.scd",
+          "enable": false,
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "source",
+                  "channel": 0
+                },
+                {
+                  "source": "source",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "music/ffxiv/BGM_Field_Lim_01.scd",
           "segments": [
             {
               "channels": [
@@ -429,7 +492,7 @@
           ]
         },
         {
-          "path": "music/ffxiv/bgm_field_lim_02.scd",
+          "path": "music/ffxiv/BGM_Field_Lim_02.scd",
           "segments": [
             {
               "channels": [
@@ -446,7 +509,7 @@
           ]
         },
         {
-          "path": "music/ffxiv/bgm_field_lim_03.scd",
+          "path": "music/ffxiv/BGM_Field_Lim_03.scd",
           "segments": [
             {
               "channels": [
@@ -463,7 +526,7 @@
           ]
         },
         {
-          "path": "music/ffxiv/bgm_field_lim_04.scd",
+          "path": "music/ffxiv/BGM_Field_Lim_04.scd",
           "segments": [
             {
               "channels": [
@@ -480,7 +543,7 @@
           ]
         },
         {
-          "path": "music/ffxiv/bgm_field_lim_05.scd",
+          "path": "music/ffxiv/BGM_Field_Lim_05.scd",
           "segments": [
             {
               "channels": [
@@ -506,7 +569,7 @@
         "大地の鼓動"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_battle_lim_01.scd"
+        "path": "music/ffxiv/BGM_Battle_Lim_01.scd"
       }
     },
     {
@@ -517,7 +580,10 @@
         "潮風香る街"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_lim_07.scd"
+        "path": [
+          "music/ffxiv/BGM_Field_Lim_07.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_130.scd"
+        ]
       }
     },
     {
@@ -528,7 +594,7 @@
         "爆ぜよ耐熱装備"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_fate_bombard.scd"
+        "path": "music/ffxiv/BGM_FATE_Bombard.scd"
       }
     },
     {
@@ -539,7 +605,7 @@
         "エオルゼア de チョコボ"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ride_chocobo.scd"
+        "path": "music/ffxiv/BGM_Ride_Chocobo.scd"
       }
     },
     {
@@ -550,7 +616,10 @@
         "船乗りは眠らない"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_town_lim_night.scd"
+        "path": [
+          "music/ffxiv/BGM_Town_Lim_Night.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_049.scd"
+        ]
       }
     },
     {
@@ -561,7 +630,7 @@
         "潮流"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_lim_06.scd"
+        "path": "music/ffxiv/BGM_Field_Lim_06.scd"
       }
     },
     {
@@ -572,7 +641,7 @@
         "戦友"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_behest.scd"
+        "path": "music/ffxiv/BGM_Behest.scd"
       }
     },
     {
@@ -583,11 +652,20 @@
         "水車の調べ"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_town_gri_day.scd"
+        "path": [
+          "music/ffxiv/BGM_Town_Gri_Day.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_002.scd"
+        ]
       }
     },
     {
       "source": {
+        "source": [
+          "00026",
+          "ARR_FFXIV_027",
+          "Serenity",
+          "静穏の森"
+        ],
         "source1": {
           "inputFiles": [
             [
@@ -656,7 +734,25 @@
       },
       "target": [
         {
-          "path": "music/ffxiv/bgm_field_gri_01.scd",
+          "path": "music/ffxiv/Orchestrion/BGM_ORCH_059.scd",
+          "enable": false,
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "source",
+                  "channel": 0
+                },
+                {
+                  "source": "source",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "music/ffxiv/BGM_Field_Gri_01.scd",
           "segments": [
             {
               "channels": [
@@ -673,7 +769,7 @@
           ]
         },
         {
-          "path": "music/ffxiv/bgm_field_gri_02.scd",
+          "path": "music/ffxiv/BGM_Field_Gri_02.scd",
           "segments": [
             {
               "sourceThresholds": {
@@ -694,7 +790,7 @@
           ]
         },
         {
-          "path": "music/ffxiv/bgm_field_gri_03.scd",
+          "path": "music/ffxiv/BGM_Field_Gri_03.scd",
           "segments": [
             {
               "channels": [
@@ -711,7 +807,7 @@
           ]
         },
         {
-          "path": "music/ffxiv/bgm_field_gri_04.scd",
+          "path": "music/ffxiv/BGM_Field_Gri_04.scd",
           "segments": [
             {
               "channels": [
@@ -728,7 +824,7 @@
           ]
         },
         {
-          "path": "music/ffxiv/bgm_field_gri_05.scd",
+          "path": "music/ffxiv/BGM_Field_Gri_05.scd",
           "segments": [
             {
               "channels": [
@@ -754,7 +850,7 @@
         "森の鼓動"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_battle_gri_01.scd"
+        "path": "music/ffxiv/BGM_Battle_Gri_01.scd"
       }
     },
     {
@@ -765,7 +861,7 @@
         "黒き悪魔"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_fate_ffxi01.scd"
+        "path": "music/ffxiv/BGM_Fate_FFXI01.scd"
       }
     },
     {
@@ -777,8 +873,8 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_ride_commonmonster.scd",
-          "music/ffxiv/bgm_ride_coolmount.scd"
+          "music/ffxiv/BGM_Ride_CommonMonster.scd",
+          "music/ffxiv/BGM_Ride_CoolMount.scd"
         ]
       }
     },
@@ -790,7 +886,10 @@
         "蛍たちの舞踏会"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_town_gri_night.scd"
+        "path": [
+          "music/ffxiv/BGM_Town_Gri_Night.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_050.scd"
+        ]
       }
     },
     {
@@ -801,7 +900,7 @@
         "精霊の意思"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_gri_06.scd"
+        "path": "music/ffxiv/BGM_Field_Gri_06.scd"
       }
     },
     {
@@ -812,7 +911,7 @@
         "仄暗い底から"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_lim_01.scd"
+        "path": "music/ffxiv/BGM_Dungeon_Lim_01.scd"
       }
     },
     {
@@ -823,7 +922,7 @@
         "隠し財宝を求めて"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_battle_dungeon_01.scd"
+        "path": "music/ffxiv/BGM_Battle_Dungeon_01.scd"
       }
     },
     {
@@ -834,7 +933,10 @@
         "妨げられた眠り"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_gri_01.scd"
+        "path": [
+          "music/ffxiv/BGM_Dungeon_Gri_01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_021.scd"
+        ]
       }
     },
     {
@@ -845,7 +947,10 @@
         "名誉に賭けて"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_boss_02.scd"
+        "path": [
+          "music/ffxiv/BGM_Boss_02.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_452.scd"
+        ]
       }
     },
     {
@@ -856,7 +961,10 @@
         "地下坑道"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_uru_01.scd"
+        "path": [
+          "music/ffxiv/BGM_Dungeon_Uru_01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_453.scd"
+        ]
       }
     },
     {
@@ -867,7 +975,10 @@
         "ネメシス"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_boss_03.scd"
+        "path": [
+          "music/ffxiv/BGM_Boss_03.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_443.scd"
+        ]
       }
     },
     {
@@ -878,7 +989,7 @@
         "勝利のファンファーレ　～新生（フル）～"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_system_winloop.scd"
+        "path": "music/ffxiv/BGM_System_WinLoop.scd"
       }
     },
     {
@@ -889,7 +1000,10 @@
         "砂の家"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_suna.scd"
+        "path": [
+          "music/ffxiv/BGM_Field_Suna.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_006.scd"
+        ]
       }
     },
     {
@@ -900,7 +1014,10 @@
         "燻る灰"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_bancolony_amaruja.scd"
+        "path": [
+          "music/ffxiv/BGM_Field_BanColony_Amaruja.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_094.scd"
+        ]
       }
     },
     {
@@ -911,7 +1028,7 @@
         "炎獄の火種"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_banfort_amaruja.scd"
+        "path": "music/ffxiv/BGM_Field_BanFort_Amaruja.scd"
       }
     },
     {
@@ -922,7 +1039,7 @@
         "血脈"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_banactivity.scd"
+        "path": "music/ffxiv/BGM_Event_BanActivity.scd"
       }
     },
     {
@@ -934,9 +1051,11 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_ban_ifrit.scd",
-          "music/ffxiv/bgm_ride_ifrit.scd"
-        ]
+          "music/ffxiv/BGM_Ban_Ifrit.scd",
+          "music/ffxiv/BGM_Ride_Ifrit.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_030.scd"
+        ],
+        "enable": false
       }
     },
     {
@@ -947,7 +1066,7 @@
         "星の囁き"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_safe2.scd"
+        "path": "music/ffxiv/BGM_Field_Safe2.scd"
       }
     },
     {
@@ -958,7 +1077,7 @@
         "心温まる場所"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_housing_day.scd"
+        "path": "music/ffxiv/BGM_Field_Housing_Day.scd"
       }
     },
     {
@@ -969,7 +1088,7 @@
         "体暖まる場所"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_housing_night.scd"
+        "path": "music/ffxiv/BGM_Field_Housing_Night.scd"
       }
     },
     {
@@ -980,7 +1099,11 @@
         "戦闘シーン1.X"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_fate_ff2.scd"
+        "path": [
+          "music/ffxiv/BGM_Fate_FF2.scd",
+          "music/ffxiv/BGM_Event_FF2BossBattle.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_105.scd"
+        ]
       }
     },
     {
@@ -991,7 +1114,7 @@
         "堂々巡り"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_mystery.scd"
+        "path": "music/ffxiv/BGM_Event_Mystery.scd"
       }
     },
     {
@@ -1002,7 +1125,10 @@
         "事件屋のアレ"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_nexthildy.scd"
+        "path": [
+          "music/ffxiv/BGM_Event_Hildy.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_013.scd"
+        ]
       }
     },
     {
@@ -1013,7 +1139,10 @@
         "闘士の修練所"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_uru_02.scd"
+        "path": [
+          "music/ffxiv/BGM_Dungeon_Uru_02.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_448.scd"
+        ]
       }
     },
     {
@@ -1024,7 +1153,10 @@
         "イタズラっ子たち"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_bancolony_sylph.scd"
+        "path": [
+          "music/ffxiv/BGM_Field_BanColony_Sylph.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_126.scd"
+        ]
       }
     },
     {
@@ -1035,7 +1167,7 @@
         "世にも奇妙な厄介者"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_banfort_sylph.scd"
+        "path": "music/ffxiv/BGM_Field_BanFort_Sylph.scd"
       }
     },
     {
@@ -1046,7 +1178,7 @@
         "千の悲鳴"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_gri_03.scd"
+        "path": "music/ffxiv/BGM_Dungeon_Gri_03.scd"
       }
     },
     {
@@ -1057,7 +1189,7 @@
         "我が魂を捧げて"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_darknesslullaby.scd"
+        "path": "music/ffxiv/BGM_Event_DarknessLullaby.scd"
       }
     },
     {
@@ -1068,7 +1200,7 @@
         "豪勇の士"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_battlecommon_02.scd"
+        "path": "music/ffxiv/BGM_Event_BattleCommon_02.scd"
       }
     },
     {
@@ -1079,7 +1211,10 @@
         "乙女の哀歌"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_gri_02.scd"
+        "path": [
+          "music/ffxiv/BGM_Dungeon_Gri_02.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_377.scd"
+        ]
       }
     },
     {
@@ -1090,7 +1225,7 @@
         "輝く太陽"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_lim_beach.scd"
+        "path": "music/ffxiv/BGM_Field_Lim_Beach.scd"
       }
     },
     {
@@ -1101,7 +1236,7 @@
         "野営地のお調子者"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_lim_02.scd"
+        "path": "music/ffxiv/BGM_Dungeon_Lim_02.scd"
       }
     },
     {
@@ -1112,7 +1247,7 @@
         "昔日の残響"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_uru_03.scd"
+        "path": "music/ffxiv/BGM_Dungeon_Uru_03.scd"
       }
     },
     {
@@ -1123,7 +1258,10 @@
         "憎悪"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_uru_04.scd"
+        "path": [
+          "music/ffxiv/BGM_Dungeon_Uru_04.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_421.scd"
+        ]
       }
     },
     {
@@ -1134,7 +1272,8 @@
         "疾きこと銀の如く、硬きこと石の如く"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_banfort_kobold.scd"
+        "path": "music/ffxiv/BGM_Field_BanFort_Kobold.scd",
+        "enable": false
       }
     },
     {
@@ -1145,7 +1284,7 @@
         "タイタンの慟哭"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ban_titan_pre1.scd"
+        "path": "music/ffxiv/BGM_Ban_Titan_pre1.scd"
       }
     },
     {
@@ -1156,7 +1295,7 @@
         "タイタンの憤怒"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ban_titan_pre2.scd"
+        "path": "music/ffxiv/BGM_Ban_Titan_pre2.scd"
       }
     },
     {
@@ -1167,7 +1306,7 @@
         "タイタンの激震"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ban_titan_pre3.scd"
+        "path": "music/ffxiv/BGM_Ban_Titan_pre3.scd"
       }
     },
     {
@@ -1178,7 +1317,7 @@
         "タイタンの心核"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_ban_titan_pre4.scd"
+        "path": "music/ffxiv/BGM_Ban_Titan_pre4.scd"
       }
     },
     {
@@ -1190,8 +1329,9 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_ban_titan.scd",
-          "music/ffxiv/bgm_ride_titan.scd"
+          "music/ffxiv/BGM_Ban_Titan.scd",
+          "music/ffxiv/BGM_Ride_Titan.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_032.scd"
         ]
       }
     },
@@ -1203,7 +1343,10 @@
         "永遠の離別"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_sad.scd"
+        "path": [
+          "music/ffxiv/BGM_Event_Sad.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_137.scd"
+        ]
       }
     },
     {
@@ -1214,7 +1357,10 @@
         "忠義"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_ish_01.scd"
+        "path": [
+          "music/ffxiv/BGM_Field_Ish_01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_383.scd"
+        ]
       }
     },
     {
@@ -1225,7 +1371,7 @@
         "鋼の信仰"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_ish_03.scd"
+        "path": "music/ffxiv/BGM_Field_Ish_03.scd"
       }
     },
     {
@@ -1236,7 +1382,7 @@
         "雪山の鼓動"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_battle_ish_01.scd"
+        "path": "music/ffxiv/BGM_Battle_Ish_01.scd"
       }
     },
     {
@@ -1247,7 +1393,7 @@
         "竜の葬送歌"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_ish_02.scd"
+        "path": "music/ffxiv/BGM_Field_Ish_02.scd"
       }
     },
     {
@@ -1258,7 +1404,7 @@
         "極寒戦線"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_ish_01.scd"
+        "path": "music/ffxiv/BGM_Dungeon_Ish_01.scd"
       }
     },
     {
@@ -1269,7 +1415,10 @@
         "ゼーメル要塞"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_ish_02.scd"
+        "path": [
+          "music/ffxiv/BGM_Dungeon_Ish_02.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_378.scd"
+        ]
       }
     },
     {
@@ -1280,7 +1429,7 @@
         "守銭奴の愚行"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_ish_03.scd"
+        "path": "music/ffxiv/BGM_Dungeon_Ish_03.scd"
       }
     },
     {
@@ -1292,8 +1441,9 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_fate_hmn.scd",
-          "music/ffxiv/bgm_con_ascian.scd"
+          "music/ffxiv/BGM_Fate_HMN.scd",
+          "music/ffxiv/BGM_Con_Ascian.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_042.scd"
         ]
       }
     },
@@ -1305,7 +1455,7 @@
         "混沌の予感"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_battleoverture.scd"
+        "path": "music/ffxiv/BGM_Event_BattleOverture.scd"
       }
     },
     {
@@ -1316,7 +1466,7 @@
         "猛き嵐の剣に"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_banfort_ixal.scd"
+        "path": "music/ffxiv/BGM_Field_BanFort_Ixal.scd"
       }
     },
     {
@@ -1327,7 +1477,10 @@
         "儚き光彩"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_uru_06.scd"
+        "path": [
+          "music/ffxiv/BGM_Field_Uru_06.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_129.scd"
+        ]
       }
     },
     {
@@ -1338,7 +1491,10 @@
         "蒼き翼"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_enterprise.scd"
+        "path": [
+          "music/ffxiv/BGM_Event_Enterprise.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_074.scd"
+        ]
       }
     },
     {
@@ -1349,7 +1505,7 @@
         "破滅"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_kincho.scd"
+        "path": "music/ffxiv/BGM_Event_Kincho.scd"
       }
     },
     {
@@ -1361,8 +1517,9 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_ban_garuda.scd",
-          "music/ffxiv/bgm_ride_gruda.scd"
+          "music/ffxiv/BGM_Ban_Garuda.scd",
+          "music/ffxiv/BGM_Ride_Gruda.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_031.scd"
         ]
       }
     },
@@ -1374,7 +1531,10 @@
         "フロンティア"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_mor_03.scd"
+        "path": [
+          "music/ffxiv/BGM_Field_Mor_03.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_128.scd"
+        ]
       }
     },
     {
@@ -1385,7 +1545,10 @@
         "リフレクション"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_mor_04.scd"
+        "path": [
+          "music/ffxiv/BGM_Field_Mor_04.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_099.scd"
+        ]
       }
     },
     {
@@ -1396,7 +1559,7 @@
         "交錯"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_mor_01.scd"
+        "path": "music/ffxiv/BGM_Field_Mor_01.scd"
       }
     },
     {
@@ -1407,7 +1570,7 @@
         "水晶の鼓動"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_battle_mor_01.scd"
+        "path": "music/ffxiv/BGM_Battle_Mor_01.scd"
       }
     },
     {
@@ -1418,7 +1581,7 @@
         "クリスタルの雨"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_mor_02.scd"
+        "path": "music/ffxiv/BGM_Field_Mor_02.scd"
       }
     },
     {
@@ -1428,11 +1591,16 @@
         "Through the Gloom",
         "薄闇に射す光"
       ],
-      "target": {
-        "path": "music/ffxiv/bgm_dungeon_lim_04.scd",
-        "enable": false,
-        "# comment": "Cannot be simply looped"
-      }
+      "target": [
+        {
+          "path": [
+            "music/ffxiv/BGM_Dungeon_Lim_04.scd",
+            "music/ffxiv/Orchestrion/BGM_ORCH_023.scd"
+          ],
+          "enable": false,
+          "# comment": "Cannot be simply looped"
+        }
+      ]
     },
     {
       "source": [
@@ -1442,7 +1610,7 @@
         "五里霧中"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_danger3.scd"
+        "path": "music/ffxiv/BGM_Field_Danger3.scd"
       }
     },
     {
@@ -1454,9 +1622,10 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_ban_moogle_king.scd",
-          "music/ffxiv/bgm_ban_moogle_goku.scd",
-          "music/ffxiv/bgm_ride_mogle.scd"
+          "music/ffxiv/BGM_Ban_Moogle_King.scd",
+          "music/ffxiv/BGM_Ban_Moogle_Goku.scd",
+          "music/ffxiv/BGM_Ride_Mogle.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_070.scd"
         ]
       }
     },
@@ -1468,7 +1637,10 @@
         "トンベリの涙"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_lim_03.scd"
+        "path": [
+          "music/ffxiv/BGM_Dungeon_Lim_03.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_420.scd"
+        ]
       }
     },
     {
@@ -1479,7 +1651,7 @@
         "戦士の直感"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_battle_dungeon_02.scd"
+        "path": "music/ffxiv/BGM_Battle_Dungeon_02.scd"
       }
     },
     {
@@ -1490,7 +1662,7 @@
         "古城にて……"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_dungeon_gri_04.scd"
+        "path": "music/ffxiv/BGM_Dungeon_Gri_04.scd"
       }
     },
     {
@@ -1501,7 +1673,7 @@
         "奸計"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_treacherous.scd"
+        "path": "music/ffxiv/BGM_Event_Treacherous.scd"
       }
     },
     {
@@ -1512,7 +1684,10 @@
         "極限を超えて"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_jobshiren.scd"
+        "path": [
+          "music/ffxiv/BGM_Event_JobShiren.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_138.scd"
+        ]
       }
     },
     {
@@ -1532,7 +1707,7 @@
       },
       "target": [
         {
-          "path": "music/ffxiv/bgm_rade_01.scd",
+          "path": "music/ffxiv/BGM_Rade_01.scd",
           "sequentialToFfmpegChannelIndexMap": [
             0,
             2,
@@ -1573,7 +1748,7 @@
           ]
         },
         {
-          "path": "music/ex3/bgm_ex3_event_19.scd",
+          "path": "music/ex3/BGM_EX3_Event_19.scd",
           "segments": [
             {
               "channels": [
@@ -1583,6 +1758,23 @@
                 },
                 {
                   "source": "The Dark's Kiss",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "music/ffxiv/Orchestrion/BGM_ORCH_022.scd",
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "The Dark's Embrace",
+                  "channel": 0
+                },
+                {
+                  "source": "The Dark's Embrace",
                   "channel": 1
                 }
               ]
@@ -1606,52 +1798,71 @@
           "天上へ"
         ]
       },
-      "target": {
-        "path": "music/ffxiv/bgm_con_crystaltower_01.scd",
-        "sequentialToFfmpegChannelIndexMap": [
-          0,
-          2,
-          1,
-          4,
-          5,
-          3
-        ],
-        "segments": [
-          {
-            "sourceThresholds": {
-              "Hubris": 0.4,
-              "Ever Upwards": 0.4,
-              "target": 0.4
-            },
-            "channels": [
-              {
-                "source": "Hubris",
-                "channel": 0
+      "target": [
+        {
+          "path": "music/ffxiv/BGM_Con_CrystalTower_01.scd",
+          "sequentialToFfmpegChannelIndexMap": [
+            0,
+            2,
+            1,
+            4,
+            5,
+            3
+          ],
+          "segments": [
+            {
+              "sourceThresholds": {
+                "Hubris": 0.4,
+                "Ever Upwards": 0.4,
+                "target": 0.4
               },
-              {
-                "source": "Hubris",
-                "channel": 1
-              },
-              {
-                "source": "Ever Upwards",
-                "channel": 0
-              },
-              {
-                "source": "Ever Upwards",
-                "channel": 1
-              },
-              {
-                "source": "target",
-                "channel": 4
-              },
-              {
-                "source": "target",
-                "channel": 5
-              }
-            ]
-          }
-        ]
-      }
+              "channels": [
+                {
+                  "source": "Hubris",
+                  "channel": 0
+                },
+                {
+                  "source": "Hubris",
+                  "channel": 1
+                },
+                {
+                  "source": "Ever Upwards",
+                  "channel": 0
+                },
+                {
+                  "source": "Ever Upwards",
+                  "channel": 1
+                },
+                {
+                  "source": "target",
+                  "channel": 4
+                },
+                {
+                  "source": "target",
+                  "channel": 5
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "music/ffxiv/Orchestrion/BGM_ORCH_035.scd",
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "Hubris",
+                  "channel": 0
+                },
+                {
+                  "source": "Hubris",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "source": [
@@ -1661,7 +1872,10 @@
         "奈落へ"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_con_crystaltower_boss_01.scd"
+        "path": [
+          "music/ffxiv/BGM_Con_CrystalTower_Boss_01.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_036.scd"
+        ]
       }
     },
     {
@@ -1672,7 +1886,10 @@
         "エオルゼアの守護者"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_protector.scd"
+        "path": [
+          "music/ffxiv/BGM_Event_Protector.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_075.scd"
+        ]
       }
     },
     {
@@ -1683,7 +1900,7 @@
         "軍議"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_keikaku.scd"
+        "path": "music/ffxiv/BGM_Event_Keikaku.scd"
       }
     },
     {
@@ -1694,7 +1911,7 @@
         "不調和"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_danger1.scd"
+        "path": "music/ffxiv/BGM_Field_Danger1.scd"
       }
     },
     {
@@ -1705,7 +1922,7 @@
         "魔導の軍勢"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_con_teikoku_01.scd"
+        "path": "music/ffxiv/BGM_Con_Teikoku_01.scd"
       }
     },
     {
@@ -1716,7 +1933,7 @@
         "未知の領域へ"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_field_danger2.scd"
+        "path": "music/ffxiv/BGM_Field_Danger2.scd"
       }
     },
     {
@@ -1727,7 +1944,10 @@
         "ただひとつの道"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_buki.scd"
+        "path": [
+          "music/ffxiv/BGM_Event_Buki.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_014.scd"
+        ]
       }
     },
     {
@@ -1738,7 +1958,7 @@
         "魔導城プラエトリウム"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_con_teikoku_02.scd"
+        "path": "music/ffxiv/BGM_Con_Teikoku_02.scd"
       }
     },
     {
@@ -1749,7 +1969,7 @@
         "漆黒の王狼、咆吼せり"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_con_teikoku_gaius.scd"
+        "path": "music/ffxiv/BGM_Con_Teikoku_Gaius.scd"
       }
     },
     {
@@ -1760,7 +1980,10 @@
         "神なき世界"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_perfectaltima.scd"
+        "path": [
+          "music/ffxiv/BGM_Event_PerfectAltima.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_029.scd"
+        ]
       }
     },
     {
@@ -1771,7 +1994,10 @@
         "究極幻想"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_con_altima.scd"
+        "path": [
+          "music/ffxiv/BGM_Con_Altima.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_028.scd"
+        ]
       }
     },
     {
@@ -1782,7 +2008,7 @@
         "光の加護"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_blow.scd"
+        "path": "music/ffxiv/BGM_Event_Blow.scd"
       }
     },
     {
@@ -1793,7 +2019,7 @@
         "終局"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_event_escape.scd"
+        "path": "music/ffxiv/BGM_Event_Escape.scd"
       }
     },
     {
@@ -1812,7 +2038,7 @@
         ]
       },
       "target": {
-        "path": "music/ffxiv/bgm_event_7thumbralera.scd",
+        "path": "music/ffxiv/BGM_Event_7thUmbralEra.scd",
         "segments": [
           {
             "channels": [
@@ -1850,7 +2076,7 @@
         "And You!　～新生エオルゼアメドレー～"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_system_endcredit01.scd",
+        "path": "music/ffxiv/BGM_System_EndCredit01.scd",
         "enable": false,
         "# comment": "Plays Answers, this medley, then loops Prelude Discoveries"
       }
@@ -1864,9 +2090,10 @@
       ],
       "target": {
         "path": [
-          "music/ffxiv/bgm_ban_odin.scd",
-          "music/ffxiv/bgm_fate_odin.scd",
-          "music/ffxiv/bgm_ride_odin.scd"
+          "music/ffxiv/BGM_Ban_Odin.scd",
+          "music/ffxiv/BGM_Fate_Odin.scd",
+          "music/ffxiv/BGM_Ride_Odin.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_142.scd"
         ]
       }
     },
@@ -1885,47 +2112,66 @@
           "Spiral"
         ]
       },
-      "target": {
-        "path": "music/ffxiv/bgm_con_bahamut.scd",
-        "sequentialToFfmpegChannelIndexMap": [
-          0,
-          2,
-          1,
-          4,
-          5,
-          3
-        ],
-        "segments": [
-          {
-            "channels": [
-              {
-                "source": "Primal Timbre",
-                "channel": 0
-              },
-              {
-                "source": "Primal Timbre",
-                "channel": 1
-              },
-              {
-                "source": "Spiral",
-                "channel": 0
-              },
-              {
-                "source": "Spiral",
-                "channel": 1
-              },
-              {
-                "source": "target",
-                "channel": 4
-              },
-              {
-                "source": "target",
-                "channel": 5
-              }
-            ]
-          }
-        ]
-      }
+      "target": [
+        {
+          "path": "music/ffxiv/BGM_Con_Bahamut.scd",
+          "sequentialToFfmpegChannelIndexMap": [
+            0,
+            2,
+            1,
+            4,
+            5,
+            3
+          ],
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "Primal Timbre",
+                  "channel": 0
+                },
+                {
+                  "source": "Primal Timbre",
+                  "channel": 1
+                },
+                {
+                  "source": "Spiral",
+                  "channel": 0
+                },
+                {
+                  "source": "Spiral",
+                  "channel": 1
+                },
+                {
+                  "source": "target",
+                  "channel": 4
+                },
+                {
+                  "source": "target",
+                  "channel": 5
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "music/ffxiv/Orchestrion/BGM_ORCH_149.scd",
+          "segments": [
+            {
+              "channels": [
+                {
+                  "source": "Spiral",
+                  "channel": 0
+                },
+                {
+                  "source": "Spiral",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "source": [
@@ -1935,7 +2181,10 @@
         "試練を超える力"
       ],
       "target": {
-        "path": "music/ffxiv/bgm_con_bahamut_boss.scd"
+        "path": [
+          "music/ffxiv/BGM_Con_Bahamut_Boss.scd",
+          "music/ffxiv/Orchestrion/BGM_ORCH_104.scd"
+        ]
       }
     }
   ]
