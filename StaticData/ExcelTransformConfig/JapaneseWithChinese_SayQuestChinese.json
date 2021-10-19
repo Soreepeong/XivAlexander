@@ -195,27 +195,18 @@
       "^transport/Aetheryte.": [1],
       "^warp/": [1]
     },
-    "allExceptLobby": {
-      "^(?!lobby).*": []
-    },
-    "lobby": {
-      "^lobby$": []
+    "all": {
+      "": []
     }
   },
-  "sourceReplacements": [
-    {
-      "from": "([가-힣])(?:\\s)+([가-힣])",
-      "to": "$1/$2"
-    }
-  ],
   "replacementTemplates": {
     "stripDialogueNewlines" : {
-      "from": "[\\r\\n]( *[^\\r\\n])",
-      "to": " $1"
+      "from": "\\s*[\\r\\n]\\s*",
+      "to": ""
     },
-    "stripDialogueNewlines2" : {
-      "from": "([\\r\\n]) +",
-      "to": "$1"
+    "newlinesToSpace" : {
+      "from": "\\s*[\\r\\n]\\s*",
+      "to": " "
     },
     "trimLeft": {
       "from": "^\\s+",
@@ -293,8 +284,8 @@
       "targetGroups": ["object"],
       "replaceTo": "{1} ({2})",
       "preprocessReplacements": {
-        "ChineseSimplified": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"],
-        "Japanese": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"]
+        "ChineseSimplified": ["stripDialogueNewlines", "trimLeft", "trimRight"],
+        "Japanese": ["stripDialogueNewlines", "trimLeft", "trimRight"]
       },
       "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
@@ -302,8 +293,8 @@
       "targetGroups": ["sentence"],
       "replaceTo": "{1}\r\n{2}",
       "preprocessReplacements": {
-        "ChineseSimplified": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"],
-        "Japanese": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"]
+        "ChineseSimplified": ["stripDialogueNewlines", "trimLeft", "trimRight"],
+        "Japanese": ["stripDialogueNewlines", "trimLeft", "trimRight"]
       },
       "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
@@ -311,18 +302,13 @@
       "targetGroups": ["mixed"],
       "replaceTo": "{1}\r\n{2}",
       "preprocessReplacements": {
-        "ChineseSimplified": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"],
-        "Japanese": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"]
+        "ChineseSimplified": ["stripDialogueNewlines", "trimLeft", "trimRight"],
+        "Japanese": ["stripDialogueNewlines", "trimLeft", "trimRight"]
       },
       "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
     {
-      "targetGroups": ["allExceptLobby"],
-      "replaceTo": "{1}",
-      "postprocessReplacements": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight", "stripDoubleSpaces"]
-    },
-    {
-      "targetGroups": ["lobby"],
+      "targetGroups": ["all"],
       "replaceTo": "{1}"
     }
   ]

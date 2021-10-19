@@ -195,21 +195,18 @@
       "^transport/Aetheryte.": [1],
       "^warp/": [1]
     },
-    "allExceptLobby": {
-      "^(?!lobby).*": []
-    },
-    "lobby": {
-      "^lobby$": []
+    "all": {
+      "": []
     }
   },
   "replacementTemplates": {
     "stripDialogueNewlines" : {
-      "from": "[\\r\\n]( *[^\\r\\n])",
-      "to": " $1"
+      "from": "\\s*[\\r\\n]\\s*",
+      "to": ""
     },
-    "stripDialogueNewlines2" : {
-      "from": "([\\r\\n]) +",
-      "to": "$1"
+    "newlinesToSpace" : {
+      "from": "\\s*[\\r\\n]\\s*",
+      "to": " "
     },
     "trimLeft": {
       "from": "^\\s+",
@@ -287,7 +284,7 @@
       "targetGroups": ["object"],
       "replaceTo": "{1} ({2})",
       "preprocessReplacements": {
-        "Korean": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"]
+        "Korean": ["newlinesToSpace", "trimLeft", "trimRight"]
       },
       "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
@@ -295,7 +292,7 @@
       "targetGroups": ["sentence"],
       "replaceTo": "{1}\r\n{2}",
       "preprocessReplacements": {
-        "Korean": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"]
+        "Korean": ["newlinesToSpace", "trimLeft", "trimRight"]
       },
       "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
@@ -303,17 +300,12 @@
       "targetGroups": ["mixed"],
       "replaceTo": "{1}\r\n{2}",
       "preprocessReplacements": {
-        "Korean": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight"]
+        "Korean": ["newlinesToSpace", "trimLeft", "trimRight"]
       },
       "postprocessReplacements": ["stripDoubleSpaces", "trimLeft", "trimRight"]
     },
     {
-      "targetGroups": ["allExceptLobby"],
-      "replaceTo": "{1}",
-      "postprocessReplacements": ["stripDialogueNewlines", "stripDialogueNewlines2", "trimLeft", "trimRight", "stripDoubleSpaces"]
-    },
-    {
-      "targetGroups": ["lobby"],
+      "targetGroups": ["all"],
       "replaceTo": "{1}"
     }
   ]
