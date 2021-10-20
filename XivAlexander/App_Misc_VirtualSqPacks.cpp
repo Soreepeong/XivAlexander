@@ -1086,7 +1086,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 													escaped.FilteredString(Utils::ToUtf8(u16));
 													out = escaped;
 												}
-												row[columnIndex].String = Utils::StringTrim(out);
+												row[columnIndex].String = out;
 												break;
 											}
 										}
