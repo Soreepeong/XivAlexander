@@ -587,10 +587,10 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		if (needRecreate) {
 			create_directories(cachedDir);
 
-			std::vector<std::pair<std::regex, ExcelTransformConfig::PluralColumns>> pluralColumns;
+			std::vector<std::pair<srell::u8cregex, ExcelTransformConfig::PluralColumns>> pluralColumns;
 			struct ReplacementRule {
-				std::regex exhNamePattern;
-				std::regex stringPattern;
+				srell::u8cregex exhNamePattern;
+				srell::u8cregex stringPattern;
 				std::vector<Sqex::Language> sourceLanguage;
 				std::string replaceTo;
 				std::vector<size_t> columnIndices;
@@ -599,7 +599,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			};
 			std::map<Sqex::Language, std::vector<ReplacementRule>> rowReplacementRules;
 			std::map<Sqex::Language, std::set<ExcelTransformConfig::IgnoredCell>> ignoredCells;
-			std::map<std::string, std::pair<std::wregex, std::wstring>> columnReplacementTemplates;
+			std::map<std::string, std::pair<srell::u8cregex, std::string>> columnReplacementTemplates;
 			auto replacementFileParseFail = false;
 			for (auto configFile : Config->Runtime.ExcelTransformConfigFiles.Value()) {
 				configFile = Config->TranslatePath(configFile);
@@ -611,22 +611,20 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					from_json(Utils::ParseJsonFromFile(configFile), transformConfig);
 
 					for (const auto& entry : transformConfig.pluralMap) {
-						pluralColumns.emplace_back(std::regex(entry.first, std::regex_constants::ECMAScript | std::regex_constants::icase), entry.second);
+						pluralColumns.emplace_back(srell::u8cregex(entry.first, srell::regex_constants::ECMAScript | srell::regex_constants::icase), entry.second);
 					}
 					for (const auto& entry : transformConfig.replacementTemplates) {
-						const auto pattern = Utils::FromUtf8(entry.second.from);
-						const auto flags = static_cast<std::regex_constants::syntax_option_type>(std::regex_constants::ECMAScript | (entry.second.icase ? std::regex_constants::icase : 0));
 						columnReplacementTemplates.emplace(entry.first, std::make_pair(
-							std::wregex(pattern, flags), Utils::FromUtf8(entry.second.to)
-						));
+							srell::u8cregex(entry.second.from, srell::regex_constants::ECMAScript | (entry.second.icase ? srell::regex_constants::icase : srell::regex_constants::syntax_option_type())),
+							entry.second.to));
 					}
 					ignoredCells[transformConfig.targetLanguage].insert(transformConfig.ignoredCells.begin(), transformConfig.ignoredCells.end());
 					for (const auto& rule : transformConfig.rules) {
 						for (const auto& targetGroupName : rule.targetGroups) {
 							for (const auto& target : transformConfig.targetGroups.at(targetGroupName).columnIndices) {
 								rowReplacementRules[transformConfig.targetLanguage].emplace_back(ReplacementRule{
-									std::regex(target.first, std::regex_constants::ECMAScript | std::regex_constants::icase),
-									std::regex(rule.stringPattern, std::regex_constants::ECMAScript | std::regex_constants::icase),
+									srell::u8cregex(target.first, srell::regex_constants::ECMAScript | srell::regex_constants::icase),
+									srell::u8cregex(rule.stringPattern, srell::regex_constants::ECMAScript | srell::regex_constants::icase),
 									transformConfig.sourceLanguages,
 									rule.replaceTo,
 									target.second,
@@ -969,10 +967,10 @@ struct App::Misc::VirtualSqPacks::Implementation {
 												if (!rule.columnIndices.empty() && std::ranges::find(rule.columnIndices, columnIndex) == rule.columnIndices.end())
 													continue;
 
-												if (!std::regex_search(exhName, rule.exhNamePattern))
+												if (!srell::regex_search(exhName, rule.exhNamePattern))
 													continue;
 
-												if (!std::regex_search(row[columnIndex].String, rule.stringPattern))
+												if (!srell::regex_search(row[columnIndex].String, rule.stringPattern))
 													continue;
 
 												std::vector p = {std::format("{}:{}", exhName, id)};
@@ -985,7 +983,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 														ExcelTransformConfig::PluralColumns pluralColummIndices;
 														for (const auto& entry : pluralColumns) {
-															if (std::regex_search(exhName, entry.first)) {
+															if (srell::regex_search(exhName, entry.first)) {
 																pluralColummIndices = entry.second;
 																break;
 															}
@@ -1017,18 +1015,17 @@ struct App::Misc::VirtualSqPacks::Implementation {
 																break;
 															}
 														}
-														auto s = it->second[readColumnIndex].String;
 														if (const auto rules = rule.preprocessReplacements.find(ruleSourceLanguage); rules != rule.preprocessReplacements.end()) {
-															Sqex::EscapedString escaped = s;
-															auto u16 = Utils::FromUtf8(escaped.FilteredString());
+															Sqex::EscapedString escaped(it->second[readColumnIndex].String);
+															std::string replacing(escaped.FilteredString());
 															for (const auto& ruleName : rules->second) {
-																const auto& rep = columnReplacementTemplates.at(ruleName);
-																u16 = std::regex_replace(u16, rep.first, rep.second);
+																const auto& [replaceFrom, replaceTo] = columnReplacementTemplates.at(ruleName);
+																replacing = srell::regex_replace(replacing, replaceFrom, replaceTo);
 															}
-															escaped.FilteredString(Utils::ToUtf8(u16));
-															s = escaped;
-														}
-														p.emplace_back(std::move(s));
+															escaped.FilteredString(replacing);
+															p.emplace_back(static_cast<std::string>(escaped));
+														} else
+															p.emplace_back(it->second[readColumnIndex].String);
 													} else
 														p.emplace_back();
 												}
@@ -1077,16 +1074,16 @@ struct App::Misc::VirtualSqPacks::Implementation {
 													}
 												}
 												if (!rule.postprocessReplacements.empty()) {
-													Sqex::EscapedString escaped = out;
-													auto u16 = Utils::FromUtf8(escaped.FilteredString());
+													Sqex::EscapedString escaped(out);
+													std::string replacing(escaped.FilteredString());
 													for (const auto& ruleName : rule.postprocessReplacements) {
-														const auto& rep = columnReplacementTemplates.at(ruleName);
-														u16 = std::regex_replace(u16, rep.first, rep.second);
+														const auto& [replaceFrom, replaceTo] = columnReplacementTemplates.at(ruleName);
+														replacing = srell::regex_replace(replacing, replaceFrom, replaceTo);
 													}
-													escaped.FilteredString(Utils::ToUtf8(u16));
-													out = escaped;
-												}
-												row[columnIndex].String = out;
+													escaped.FilteredString(replacing);
+													row[columnIndex].String = escaped;
+												} else
+													row[columnIndex].String = std::move(out);
 												break;
 											}
 										}
@@ -1554,7 +1551,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					auto found = false;
 					for (const auto& [langId, localeName]: Config->Runtime.GetDisplayLanguagePriorities()) {
 						for (const auto& [localeNameRegex, customPrompt] : gameIndexFile.fallbackPrompt) {
-							if (std::regex_search(localeName, std::regex(localeNameRegex, std::regex::icase))) {
+							if (srell::regex_search(localeName, srell::u8cregex(localeNameRegex, srell::u8cregex::icase))) {
 								prompt = Utils::FromUtf8(customPrompt);
 								found = true;
 								break;
@@ -1613,7 +1610,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					auto found = false;
 					for (const auto& [langId, localeName]: Config->Runtime.GetDisplayLanguagePriorities()) {
 						for (const auto& [localeNameRegex, customPrompt] : requirement.installInstructions) {
-							if (std::regex_search(localeName, std::regex(localeNameRegex, std::regex::icase))) {
+							if (srell::regex_search(localeName, srell::u8cregex(localeNameRegex, srell::u8cregex::icase))) {
 								instructions = Utils::FromUtf8(customPrompt);
 								found = true;
 								break;
@@ -1823,7 +1820,7 @@ void App::Misc::VirtualSqPacks::TtmpSet::ApplyChanges(bool announce) {
 	if (bDisabled && Enabled)
 		remove(disableFilePath);
 	else if (!bDisabled && !Enabled)
-		Utils::Win32::Handle::FromCreateFile(disableFilePath, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0);
+		Utils::Win32::Handle::FromCreateFile(disableFilePath, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0);
 
 	Utils::SaveJsonToFile(choicesPath, Choices);
 

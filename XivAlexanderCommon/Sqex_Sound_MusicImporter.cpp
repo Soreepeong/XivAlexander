@@ -72,7 +72,7 @@ void Sqex::Sound::from_json(const nlohmann::json& j, MusicImportSourceItemInputF
 				o.directory = it->get<std::string>();
 			o.pattern = j.value(lastAttempt = "pattern", decltype(o.pattern)());
 		}
-		o.pattern_compiled = std::wregex(Utils::FromUtf8(o.pattern), std::wregex::icase);
+		o.pattern_compiled = srell::u16wregex(Utils::FromUtf8(o.pattern), srell::regex_constants::icase);
 
 	} catch (const std::exception& e) {
 		throw std::invalid_argument(std::format("[{}] {}", lastAttempt, e.what()));
@@ -443,7 +443,7 @@ bool Sqex::Sound::MusicImporter::ResolveSources(std::string dirName, const std::
 				for (const auto& pattern : patterns) {
 					if (pattern.directory != dirName)
 						continue;
-					if (std::regex_search(item.path().filename().wstring(), pattern.pattern_compiled))
+					if (srell::regex_search(item.path().filename().wstring(), pattern.pattern_compiled))
 						occurrences.insert(item.path());
 				}
 			}

@@ -8,6 +8,7 @@
     "curlpp",
     "cryptopp",
     "freetype",
-    "libvorbis"
+    "libvorbis",
+    "srell"
   ]
 }

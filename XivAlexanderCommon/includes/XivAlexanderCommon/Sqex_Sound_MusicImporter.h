@@ -39,7 +39,7 @@ namespace Sqex::Sound {
 	struct MusicImportSourceItemInputFile {
 		std::optional<std::string> directory;
 		std::string pattern;
-		std::wregex pattern_compiled;
+		srell::u16wregex pattern_compiled;
 	};
 
 	void from_json(const nlohmann::json& j, MusicImportSourceItemInputFile& o);

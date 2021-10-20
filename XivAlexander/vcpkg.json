@@ -15,6 +15,7 @@
     "argparse",
     "libzippp",
     "freetype",
-    "libvorbis"
+    "libvorbis",
+    "srell"
   ]
 }

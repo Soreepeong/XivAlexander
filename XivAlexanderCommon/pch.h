@@ -64,6 +64,7 @@
 #include <curlpp/Options.hpp>
 #include <freetype/freetype.h>
 #include <nlohmann/json.hpp>
+#include <srell.hpp>
 #include <vorbis/codec.h>
 #include <vorbis/vorbisenc.h>
 
