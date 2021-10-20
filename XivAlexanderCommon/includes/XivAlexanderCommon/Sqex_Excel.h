@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Sqex.h"
+#include "Sqex_EscapedString.h"
 
 namespace Sqex::Excel {
 	// https://xiv.dev/game-data/file-formats/excel
@@ -109,6 +110,6 @@ namespace Sqex::Excel {
 			uint64_t uint64;
 		};
 
-		std::string String;
+		Sqex::EscapedString String;
 	};
 }

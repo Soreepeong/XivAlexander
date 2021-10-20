@@ -3,87 +3,90 @@
 
 const std::string Sqex::EscapedString::EscapedNewLine = "\x02\x10\x01\x03";
 
-static const char* consume(const char* ptr) {
-	auto ptru8 = reinterpret_cast<const uint8_t*>(ptr);
-	if (*ptr != '\x02')
-		return ptr + 1;
+void Sqex::EscapedString::Parse() const {
+	if (!m_parsed.empty() || m_escaped.empty())
+		return;
 
-	uint32_t len;
-	ptru8 += 3;
-	switch (ptru8[-1]) {
-		case 0xF0:
-		case 0xF1:
-			// 1 bytes
-			len = 1 + ptru8[0];
-			ptru8 += 1;
-			break;
-		case 0xF2:
-			// 2 bytes
-			len = 1 + (ptru8[1] | (ptru8[0] << 8));
-			ptru8 += 2;
-			break;
-		case 0xFA:
-			// 3 bytes
-			len = 1 + (ptru8[2] | (ptru8[1] << 8) | (ptru8[0] << 16));
-			ptru8 += 3;
-			break;
-		case 0xFE:
-			// 4 bytes
-			len = 1 + (ptru8[3] | (ptru8[2] << 8) | (ptru8[1] << 16) | (ptru8[0] << 24));
-			ptru8 += 4;
-			break;
-		default:
-			if (ptru8[-1] < 0xF0)
-				len = ptru8[-1];
-			else {
-				__debugbreak();
-				len = 0;
+	std::string parsed;
+	std::vector<std::string> components;
+	parsed.reserve(m_escaped.size());
+
+	std::span remaining{ reinterpret_cast<const uint8_t*>(&m_escaped[0]), m_escaped.size() };
+	while (!remaining.empty()) {
+		if (remaining.front() == SentinelCharacter) {
+			if (remaining.size() < 3)
+				throw std::invalid_argument("sentinel character occurred but there are less than 3 remaining bytes");
+
+			// 0x00, byte, mark(0x02)
+			// 0x01, byte, type
+			// 0x02, byte, length specifier
+			uint32_t len = remaining[2];
+			switch (len) {
+			case 0xF0:
+			case 0xF1:
+				// 1 bytes
+				len = 1 + remaining[3] + 1;
+				break;
+
+			case 0xF2:
+				// 2 bytes
+				len = 1 + (remaining[4] | (remaining[3] << 8)) + 2;
+				break;
+
+			case 0xFA:
+				// 3 bytes
+				len = 1 + (remaining[5] | (remaining[4] << 8) | (remaining[3] << 16)) + 3;
+				break;
+
+			case 0xFE:
+				// 4 bytes
+				len = 1 + (remaining[6] | (remaining[5] << 8) | (remaining[4] << 16) | (remaining[3] << 24)) + 4;
+				break;
+
+			default:
+				if (len >= 0xF0)
+					throw std::runtime_error(std::format("Unknown length specifier value {:x}", remaining[-1]));
 			}
-	}
-	return reinterpret_cast<const char*>(ptru8 + len);
-}
+			len += 3;
 
-Sqex::EscapedString& Sqex::EscapedString::operator=(const std::string& src) {
-	m_escapedLength = 0;
-	m_filteredString.reserve(src.size());
-
-	auto ptr = &src[0];
-	while (*ptr) {
-		if (*ptr == '\x02') {
-			const auto nextPtr = consume(ptr);
-			auto escaped = std::string(ptr, nextPtr);
+			const auto escaped = std::string_view(reinterpret_cast<const char*>(&remaining[0]), len);
 			if (escaped == EscapedNewLine)
-				m_filteredString.push_back('\r');
+				parsed.push_back('\r');
 			else {
-				m_filteredString.push_back(*ptr);
-				m_escapedItems.emplace_back(std::move(escaped));
+				parsed.push_back(SentinelCharacter);
+				components.emplace_back(escaped);
 			}
-			ptr = nextPtr;
+			remaining = remaining.subspan(len);
 		} else {
-			m_filteredString.push_back(*ptr);
-			ptr++;
+			parsed.push_back(remaining.front());
+			remaining = remaining.subspan(1);
 		}
 	}
-	return *this;
+
+	m_parsed = std::move(parsed);
+	m_components = std::move(components);
 }
 
-void Sqex::EscapedString::FilteredString(std::string s) {
-	if (static_cast<size_t>(std::ranges::count(s, SentinelCharacter)) != m_escapedItems.size())
-		throw std::invalid_argument("Count of placeholders differ");
-	m_filteredString = std::move(s);
-}
+void Sqex::EscapedString::Escape() const {
+	if (!m_escaped.empty() || m_parsed.empty())
+		return;
 
-Sqex::EscapedString::operator std::string() const {
+	size_t reserveSize = m_parsed.size();
+	for (const auto& component : m_components)
+		reserveSize += component.size();
+
 	std::string res;
+	res.reserve(reserveSize);
+	
 	size_t escapeIndex = 0;
-	res.reserve(m_escapedLength + m_filteredString.size());
-	for (const auto chr : m_filteredString) {
+	for (const auto chr : m_parsed) {
 		if (chr == SentinelCharacter)
-			res += m_escapedItems[escapeIndex++];
+			res += m_components[escapeIndex++];
 		else if (chr == '\r')
 			res += EscapedNewLine;
 		else
 			res += chr;
 	}
-	return res;
+
+	m_escaped = std::move(res);
 }

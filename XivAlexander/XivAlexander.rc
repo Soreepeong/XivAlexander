@@ -556,6 +556,7 @@ END
 STRINGTABLE
 BEGIN
     IDS_FFMPEGREQUIRED_NOTFOUND """{}""ƒtƒ@ƒCƒ‹‚ð’T‚¹‚Ü‚¹‚ñB"
+    IDS_ERROR_GENERATEFONT2 "EXDFƒtƒ@ƒCƒ‹‚Ì¶¬‚ª‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B‚à‚¤ˆê‰ñ¶¬‚µ‚Ä‚¢Œ©‚Ü‚·B\n\nƒGƒ‰[F{}"
 END
 
 #endif    // Japanese (Japan) resources
@@ -1121,7 +1122,7 @@ BEGIN
                             "¸ðµç À½¾Ç º¯È¯ ¼³Á¤ ÆÄÀÏÀ» Á¦°ÅÇÕ´Ï´Ù. (ÆÄÀÏÀº »èÁ¦ÇÏÁö ¾Ê½À´Ï´Ù.)"
     IDS_ERROR_MODDINGACTIVEREQUIRED "¸ðµùÀÌ ÄÑÁ® ÀÖ¾î¾ß »ç¿ëÇÒ ¼ö ÀÖ´Â ±â´ÉÀÔ´Ï´Ù."
     IDS_ERROR_CANCELLING_TRYAGAINLATER "¸¶Áö¸· ÀÛ¾÷À» Ãë¼Ò ÁßÀÔ´Ï´Ù. Àá½Ã ÈÄ ´Ù½Ã ½ÃµµÇØ ÁÖ¼¼¿ä."
-    IDS_TITLE_MUSICIMPORTPROGRESS "À½¾Ç ÆÄÀÏÀ» º¯È¯ÇÏ°í ÀÖ½À´Ï´Ù: {} ({}/{})"
+    IDS_TITLE_MUSICIMPORTPROGRESS "À½¾Ç ÆÄÀÏÀ» º¯È¯ Áß... {} ({}/{})"
     IDS_FFMPEGREQUIRED_CONTENT 
                             "ÀÌ ÀÛ¾÷À» À§ÇØ¼­´Â FFmpeg°¡ ÇÊ¿äÇÕ´Ï´Ù. ´Ù¿î·Îµå ÈÄ ¾Æ·¡ ¹öÆ°À¸·Î ¿­ ¼ö ÀÖ´Â Æú´õ¿¡ ffmpeg.exeÇÏ°í ffprobe.exe¸¦ º¹»çÇØ ³Ö¾î ÁÖ¼¼¿ä.\n\nWindows builds ¾ÈÀÌ¶ó¸é gyan.dev³ª BtbN³ª ¾î¶² ¼±ÅÃÁö¸¦ ½áµµ »ó°ü ¾ø½À´Ï´Ù. ""full"" ¶Ç´Â ""gpl"" ¹öÀüÀ» ´Ù¿î·Îµå¹Þ¾Æ ÁÖ¼¼¿ä."
     IDS_FFMPEGREQUIRED_MAININSTRUCTIONS "FFmpeg ¼³Ä¡ÇÏ±â"
@@ -1133,6 +1134,7 @@ END
 STRINGTABLE
 BEGIN
     IDS_FFMPEGREQUIRED_NOTFOUND """{}"" ÆÄÀÏÀ» Ã£À» ¼ö ¾ø½À´Ï´Ù."
+    IDS_ERROR_GENERATEFONT2 "EXDF ÆÄÀÏ »ý¼º/ºÒ·¯¿À±â Áß ¿À·ù°¡ ¹ß»ýÇß½À´Ï´Ù. ´Ù½Ã ½ÃµµÇÏ½Ã°Ú½À´Ï±î?\n\n¿À·ù: {}"
 END
 
 #endif    // Korean (Korea) resources
@@ -1852,6 +1854,8 @@ END
 STRINGTABLE
 BEGIN
     IDS_FFMPEGREQUIRED_NOTFOUND """{}"" could not be found."
+    IDS_ERROR_GENERATESTRINGTABLES 
+                            "An error has occurred while generating or loading string tables. Do you want to retry?\n\nError: {}"
 END
 
 #endif    // English (United States) resources

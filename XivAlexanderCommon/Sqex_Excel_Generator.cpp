@@ -183,7 +183,7 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>> Sqex::Excel::Depth2ExhE
 						{
 							const auto stringOffset = BE(static_cast<uint32_t>(row.size() - variableDataOffset));
 							std::copy_n(reinterpret_cast<const char*>(&stringOffset), 4, &row[fixedDataOffset + columnDefinition.Offset]);
-							row.insert(row.end(), column.String.begin(), column.String.end());
+							row.insert(row.end(), column.String.Escaped().begin(), column.String.Escaped().end());
 							row.push_back(0);
 							column.ValidSize = 0;
 							break;

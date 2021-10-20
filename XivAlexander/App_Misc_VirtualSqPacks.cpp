@@ -519,712 +519,648 @@ struct App::Misc::VirtualSqPacks::Implementation {
 	}
 
 	void SetUpMergedExd(Window::ProgressPopupWindow& progressWindow, Sqex::Sqpack::Creator& creator, const std::filesystem::path& indexFile) {
-		const auto cachedDir = Config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / GameReleaseInfo.CountryCode / creator.DatExpac / creator.DatName;
-
-		std::map<std::string, int> exhTable;
-		// maybe generate exl?
-
-		for (const auto& pair : Sqex::Excel::ExlReader(*creator["exd/root.exl"]))
-			exhTable.emplace(pair);
-
-		std::string currentCacheKeys("VERSION:1\n");
-		{
-			const auto gameRoot = indexFile.parent_path().parent_path().parent_path();
-			const auto versionFile = Utils::Win32::Handle::FromCreateFile(gameRoot / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
-			const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetFileSize()));
-			currentCacheKeys += std::format("SQPACK:{}:{}\n", canonical(gameRoot).wstring(), std::string(versionContent.begin(), versionContent.end()));
-		}
-
-		currentCacheKeys += "LANG";
-		for (const auto& lang : Config->Runtime.GetFallbackLanguageList()) {
-			currentCacheKeys += std::format(":{}", static_cast<int>(lang));
-		}
-		currentCacheKeys += "\n";
-
-		std::vector<std::unique_ptr<Sqex::Sqpack::Reader>> readers;
-		for (const auto& additionalSqpackRootDirectory : Config->Runtime.AdditionalSqpackRootDirectories.Value()) {
-			const auto file = additionalSqpackRootDirectory / "sqpack" / indexFile.parent_path().filename() / indexFile.filename();
-			if (!exists(file))
-				continue;
-
-			const auto versionFile = Utils::Win32::Handle::FromCreateFile(additionalSqpackRootDirectory / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
-			const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetFileSize()));
-			currentCacheKeys += std::format("SQPACK:{}:{}\n", canonical(additionalSqpackRootDirectory).wstring(), std::string(versionContent.begin(), versionContent.end()));
-
-			readers.emplace_back(std::make_unique<Sqex::Sqpack::Reader>(file));
-		}
-
-		for (const auto& configFile : Config->Runtime.ExcelTransformConfigFiles.Value()) {
-			uint8_t hash[20]{};
+		while (true) {
 			try {
-				const auto file = Utils::Win32::Handle::FromCreateFile(configFile, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
-				CryptoPP::SHA1 sha1;
-				const auto content = file.Read<uint8_t>(0, static_cast<size_t>(file.GetFileSize()));
-				sha1.Update(content.data(), content.size());
-				sha1.Final(reinterpret_cast<byte*>(hash));
-			} catch (...) {
-			}
+				const auto additionalGameRootDirectories{ Config->Runtime.AdditionalSqpackRootDirectories.Value() };
+				const auto excelTransformConfigFiles{ Config->Runtime.ExcelTransformConfigFiles.Value() };
+				if (additionalGameRootDirectories.empty() && excelTransformConfigFiles.empty())
+					return;
 
-			CryptoPP::HexEncoder encoder;
-			encoder.Put(hash, sizeof hash);
-			encoder.MessageEnd();
+				const auto fallbackLanguageList{ Config->Runtime.GetFallbackLanguageList() };
+				const auto cachedDir = Config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / GameReleaseInfo.CountryCode / creator.DatExpac / creator.DatName;
 
-			std::string buf(static_cast<size_t>(encoder.MaxRetrievable()), 0);
-			encoder.Get(reinterpret_cast<byte*>(&buf[0]), buf.size());
+				std::map<std::string, int> exhTable;
+				// maybe generate exl?
 
-			currentCacheKeys += std::format("CONF:{}:{}\n", configFile.wstring(), buf);
-		}
+				for (const auto& pair : Sqex::Excel::ExlReader(*creator["exd/root.exl"]))
+					exhTable.emplace(pair);
 
-		auto needRecreate = true;
-		try {
-			const auto file = Utils::Win32::Handle::FromCreateFile(cachedDir / "sources", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
-			const auto content = file.Read<char>(0, static_cast<size_t>(file.GetFileSize()));
-			needRecreate = !std::ranges::equal(content, currentCacheKeys);
-		} catch (...) {
-			// pass
-		}
+				std::string currentCacheKeys("VERSION:2\n");
+				{
+					const auto gameRoot = indexFile.parent_path().parent_path().parent_path();
+					const auto versionFile = Utils::Win32::Handle::FromCreateFile(gameRoot / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+					const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetFileSize()));
+					currentCacheKeys += std::format("SQPACK:{}:{}\n", canonical(gameRoot).wstring(), std::string(versionContent.begin(), versionContent.end()));
+				}
 
-		if (needRecreate) {
-			create_directories(cachedDir);
+				currentCacheKeys += "LANG";
+				for (const auto& lang : fallbackLanguageList)
+					currentCacheKeys += std::format(":{}", static_cast<int>(lang));
+				currentCacheKeys += "\n";
 
-			std::vector<std::pair<srell::u8cregex, ExcelTransformConfig::PluralColumns>> pluralColumns;
-			struct ReplacementRule {
-				srell::u8cregex exhNamePattern;
-				srell::u8cregex stringPattern;
-				std::vector<Sqex::Language> sourceLanguage;
-				std::string replaceTo;
-				std::vector<size_t> columnIndices;
-				std::map<Sqex::Language, std::vector<std::string>> preprocessReplacements;
-				std::vector<std::string> postprocessReplacements;
-			};
-			std::map<Sqex::Language, std::vector<ReplacementRule>> rowReplacementRules;
-			std::map<Sqex::Language, std::set<ExcelTransformConfig::IgnoredCell>> ignoredCells;
-			std::map<std::string, std::pair<srell::u8cregex, std::string>> columnReplacementTemplates;
-			auto replacementFileParseFail = false;
-			for (auto configFile : Config->Runtime.ExcelTransformConfigFiles.Value()) {
-				configFile = Config->TranslatePath(configFile);
-				if (configFile.empty())
-					continue;
+				std::vector<std::unique_ptr<Sqex::Sqpack::Reader>> readers;
+				for (const auto& additionalSqpackRootDirectory : additionalGameRootDirectories) {
+					const auto file = additionalSqpackRootDirectory / "sqpack" / indexFile.parent_path().filename() / indexFile.filename();
+					if (!exists(file))
+						continue;
 
+					const auto versionFile = Utils::Win32::Handle::FromCreateFile(additionalSqpackRootDirectory / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+					const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetFileSize()));
+					currentCacheKeys += std::format("SQPACK:{}:{}\n", canonical(additionalSqpackRootDirectory).wstring(), std::string(versionContent.begin(), versionContent.end()));
+
+					readers.emplace_back(std::make_unique<Sqex::Sqpack::Reader>(file));
+				}
+
+				for (const auto& configFile : excelTransformConfigFiles) {
+					uint8_t hash[20]{};
+					try {
+						const auto file = Utils::Win32::Handle::FromCreateFile(configFile, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+						CryptoPP::SHA1 sha1;
+						const auto content = file.Read<uint8_t>(0, static_cast<size_t>(file.GetFileSize()));
+						sha1.Update(content.data(), content.size());
+						sha1.Final(reinterpret_cast<byte*>(hash));
+					} catch (...) {
+					}
+
+					CryptoPP::HexEncoder encoder;
+					encoder.Put(hash, sizeof hash);
+					encoder.MessageEnd();
+
+					std::string buf(static_cast<size_t>(encoder.MaxRetrievable()), 0);
+					encoder.Get(reinterpret_cast<byte*>(&buf[0]), buf.size());
+
+					currentCacheKeys += std::format("CONF:{}:{}\n", configFile.wstring(), buf);
+				}
+
+				auto needRecreate = true;
 				try {
-					ExcelTransformConfig::Config transformConfig;
-					from_json(Utils::ParseJsonFromFile(configFile), transformConfig);
+					const auto file = Utils::Win32::Handle::FromCreateFile(cachedDir / "sources", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+					const auto content = file.Read<char>(0, static_cast<size_t>(file.GetFileSize()));
+					needRecreate = !std::ranges::equal(content, currentCacheKeys);
+				} catch (...) {
+					// pass
+				}
 
-					for (const auto& entry : transformConfig.pluralMap) {
-						pluralColumns.emplace_back(srell::u8cregex(entry.first, srell::regex_constants::ECMAScript | srell::regex_constants::icase), entry.second);
-					}
-					for (const auto& entry : transformConfig.replacementTemplates) {
-						columnReplacementTemplates.emplace(entry.first, std::make_pair(
-							srell::u8cregex(entry.second.from, srell::regex_constants::ECMAScript | (entry.second.icase ? srell::regex_constants::icase : srell::regex_constants::syntax_option_type())),
-							entry.second.to));
-					}
-					ignoredCells[transformConfig.targetLanguage].insert(transformConfig.ignoredCells.begin(), transformConfig.ignoredCells.end());
-					for (const auto& rule : transformConfig.rules) {
-						for (const auto& targetGroupName : rule.targetGroups) {
-							for (const auto& target : transformConfig.targetGroups.at(targetGroupName).columnIndices) {
-								rowReplacementRules[transformConfig.targetLanguage].emplace_back(ReplacementRule{
-									srell::u8cregex(target.first, srell::regex_constants::ECMAScript | srell::regex_constants::icase),
-									srell::u8cregex(rule.stringPattern, srell::regex_constants::ECMAScript | srell::regex_constants::icase),
-									transformConfig.sourceLanguages,
-									rule.replaceTo,
-									target.second,
-									rule.preprocessReplacements,
-									rule.postprocessReplacements,
-								});
+				if (needRecreate) {
+					create_directories(cachedDir);
+
+					std::vector<std::pair<srell::u8cregex, ExcelTransformConfig::PluralColumns>> pluralColumns;
+					struct ReplacementRule {
+						srell::u8cregex exhNamePattern;
+						srell::u8cregex stringPattern;
+						std::vector<Sqex::Language> sourceLanguage;
+						std::string replaceTo;
+						std::set<size_t> columnIndices;
+						std::map<Sqex::Language, std::vector<std::string>> preprocessReplacements;
+						std::vector<std::string> postprocessReplacements;
+					};
+					std::map<Sqex::Language, std::vector<ReplacementRule>> rowReplacementRules;
+					std::map<Sqex::Language, std::set<ExcelTransformConfig::IgnoredCell>> ignoredCells;
+					std::map<std::string, std::pair<srell::u8cregex, std::string>> columnReplacementTemplates;
+					auto replacementFileParseFail = false;
+					for (const auto& configFile : Config->Runtime.ExcelTransformConfigFiles.Value()) {
+						if (configFile.empty())
+							continue;
+
+						try {
+							ExcelTransformConfig::Config transformConfig;
+							from_json(Utils::ParseJsonFromFile(Config->TranslatePath(configFile)), transformConfig);
+
+							for (const auto& entry : transformConfig.pluralMap) {
+								pluralColumns.emplace_back(srell::u8cregex(entry.first, srell::regex_constants::ECMAScript | srell::regex_constants::icase), entry.second);
 							}
+							for (const auto& entry : transformConfig.replacementTemplates) {
+								columnReplacementTemplates.emplace(entry.first, std::make_pair(
+									srell::u8cregex(entry.second.from, srell::regex_constants::ECMAScript | (entry.second.icase ? srell::regex_constants::icase : srell::regex_constants::syntax_option_type())),
+									entry.second.to));
+							}
+							ignoredCells[transformConfig.targetLanguage].insert(transformConfig.ignoredCells.begin(), transformConfig.ignoredCells.end());
+							for (const auto& rule : transformConfig.rules) {
+								for (const auto& targetGroupName : rule.targetGroups) {
+									for (const auto& target : transformConfig.targetGroups.at(targetGroupName).columnIndices) {
+										rowReplacementRules[transformConfig.targetLanguage].emplace_back(ReplacementRule{
+											srell::u8cregex(target.first, srell::regex_constants::ECMAScript | srell::regex_constants::icase),
+											srell::u8cregex(rule.stringPattern, srell::regex_constants::ECMAScript | srell::regex_constants::icase),
+											transformConfig.sourceLanguages,
+											rule.replaceTo,
+											{target.second.begin(), target.second.end()},
+											rule.preprocessReplacements,
+											rule.postprocessReplacements,
+										});
+									}
+								}
+							}
+						} catch (const std::exception& e) {
+							Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+								"Error occurred while parsing excel transformation configuration file {}: {}",
+								configFile.wstring(), e.what());
+							replacementFileParseFail = true;
 						}
 					}
-				} catch (const std::exception& e) {
-					Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-						"Error occurred while parsing excel transformation configuration file {}: {}",
-						configFile.wstring(), e.what());
-					replacementFileParseFail = true;
-				}
-			}
-			if (replacementFileParseFail) {
-				Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-					"Skipping string table generation");
-				return;
-			}
+					if (replacementFileParseFail) {
+						Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+							"Skipping string table generation");
+						return;
+					}
 
-			// No external excel files, nor any replacement rules are provided.
-			if (readers.empty() && rowReplacementRules.empty())
-				return;
+					const auto actCtx = Dll::ActivationContext().With();
+					Utils::Win32::TpEnvironment pool;
+					progressWindow.UpdateMessage(Utils::ToUtf8(Config->Runtime.GetStringRes(IDS_TITLE_GENERATING_EXD_FILES)));
 
-			const auto actCtx = Dll::ActivationContext().With();
-			Utils::Win32::TpEnvironment pool;
-			progressWindow.UpdateMessage(Utils::ToUtf8(Config->Runtime.GetStringRes(IDS_TITLE_GENERATING_EXD_FILES)));
+					static constexpr auto ProgressMaxPerTask = 1000;
+					std::map<std::string, uint64_t> progressPerTask;
+					for (const auto& exhName : exhTable | std::views::keys)
+						progressPerTask.emplace(exhName, 0);
+					progressWindow.UpdateProgress(0, 1ULL * exhTable.size() * ProgressMaxPerTask);
+					{
+						const auto ttmpl = Utils::Win32::Handle::FromCreateFile(cachedDir / "TTMPL.mpl.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
+						const auto ttmpd = Utils::Win32::Handle::FromCreateFile(cachedDir / "TTMPD.mpd.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
+						uint64_t ttmplPtr = 0, ttmpdPtr = 0;
+						std::mutex writeMtx;
 
-			static constexpr auto ProgressMaxPerTask = 1000;
-			std::map<std::string, uint64_t> progressPerTask;
-			for (const auto& exhName : exhTable | std::views::keys)
-				progressPerTask.emplace(exhName, 0);
-			progressWindow.UpdateProgress(0, 1ULL * exhTable.size() * ProgressMaxPerTask);
-			{
-				const auto ttmpl = Utils::Win32::Handle::FromCreateFile(cachedDir / "TTMPL.mpl.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
-				const auto ttmpd = Utils::Win32::Handle::FromCreateFile(cachedDir / "TTMPD.mpd.tmp", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
-				uint64_t ttmplPtr = 0, ttmpdPtr = 0;
-				std::mutex writeMtx;
+						std::string errorMessage;
+						const auto compressThread = Utils::Win32::Thread(L"CompressThread", [&]() {
+							for (const auto& exhName : exhTable | std::views::keys) {
+								pool.SubmitWork([&]() {
+									const char* lastStep = "Begin";
+									try {
+										if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+											return;
 
-				const auto compressThread = Utils::Win32::Thread(L"CompressThread", [&]() {
-					for (const auto& exhName : exhTable | std::views::keys) {
-						pool.SubmitWork([&]() {
-							try {
-								if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-									return;
+										lastStep = "Calculate maximum progress";
+										size_t progressIndex = 0;
+										uint64_t currentProgressMax = 0;
+										uint64_t currentProgress = 0;
+										auto& progressStoreTarget = progressPerTask.at(exhName);
+										const auto publishProgress = [&]() {
+											progressStoreTarget = (1ULL * progressIndex * ProgressMaxPerTask + (currentProgressMax ? currentProgress * ProgressMaxPerTask / currentProgressMax : 0)) / (readers.size() + 2ULL);
+										};
 
-								// Step. Calculate maximum progress
-								size_t progressIndex = 0;
-								uint64_t currentProgressMax = 0;
-								uint64_t currentProgress = 0;
-								auto& progressStoreTarget = progressPerTask.at(exhName);
-								const auto publishProgress = [&]() {
-									progressStoreTarget = (1ULL * progressIndex * ProgressMaxPerTask + (currentProgressMax ? currentProgress * ProgressMaxPerTask / currentProgressMax : 0)) / (readers.size() + 2ULL);
-								};
-
-								// Step. Load source EXH/D files
-								const auto exhPath = Sqex::Sqpack::EntryPathSpec(std::format("exd/{}.exh", exhName));
-								std::unique_ptr<Sqex::Excel::Depth2ExhExdCreator> exCreator;
-								{
-									const auto exhReaderSource = Sqex::Excel::ExhReader(exhName, *creator[exhPath]);
-									if (exhReaderSource.Header.Depth != Sqex::Excel::Exh::Depth::Level2) {
-										progressStoreTarget = ProgressMaxPerTask;
-										return;
-									}
-
-									if (std::ranges::find(exhReaderSource.Languages, Sqex::Language::Unspecified) != exhReaderSource.Languages.end()) {
-										progressStoreTarget = ProgressMaxPerTask;
-										return;
-									}
-
-									exCreator = std::make_unique<Sqex::Excel::Depth2ExhExdCreator>(exhName, *exhReaderSource.Columns, exhReaderSource.Header.SomeSortOfBufferSize);
-									exCreator->FillMissingLanguageFrom = Config->Runtime.GetFallbackLanguageList();
-
-									currentProgressMax = 1ULL * exhReaderSource.Languages.size() * exhReaderSource.Pages.size();
-									for (const auto language : exhReaderSource.Languages) {
-										for (const auto& page : exhReaderSource.Pages) {
-											if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+										lastStep = "Load source EXH/D files";
+										const auto exhPath = Sqex::Sqpack::EntryPathSpec(std::format("exd/{}.exh", exhName));
+										std::unique_ptr<Sqex::Excel::Depth2ExhExdCreator> exCreator;
+										{
+											const auto exhReaderSource = Sqex::Excel::ExhReader(exhName, *creator[exhPath]);
+											if (exhReaderSource.Header.Depth != Sqex::Excel::Exh::Depth::Level2) {
+												progressStoreTarget = ProgressMaxPerTask;
 												return;
-											currentProgress++;
-											publishProgress();
+											}
 
-											const auto exdPathSpec = exhReaderSource.GetDataPathSpec(page, language);
+											if (std::ranges::find(exhReaderSource.Languages, Sqex::Language::Unspecified) != exhReaderSource.Languages.end()) {
+												progressStoreTarget = ProgressMaxPerTask;
+												return;
+											}
+
+											exCreator = std::make_unique<Sqex::Excel::Depth2ExhExdCreator>(exhName, *exhReaderSource.Columns, exhReaderSource.Header.SomeSortOfBufferSize);
+											exCreator->FillMissingLanguageFrom = fallbackLanguageList;
+
+											currentProgressMax = 1ULL * exhReaderSource.Languages.size() * exhReaderSource.Pages.size();
+											for (const auto language : exhReaderSource.Languages) {
+												for (const auto& page : exhReaderSource.Pages) {
+													if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+														return;
+													currentProgress++;
+													publishProgress();
+
+													const auto exdPathSpec = exhReaderSource.GetDataPathSpec(page, language);
+													try {
+														const auto exdReader = Sqex::Excel::ExdReader(exhReaderSource, creator[exdPathSpec]);
+														exCreator->AddLanguage(language);
+														for (const auto i : exdReader.GetIds())
+															exCreator->SetRow(i, language, exdReader.ReadDepth2(i));
+													} catch (const std::out_of_range&) {
+														// pass
+													} catch (const std::exception& e) {
+														throw std::runtime_error(std::format("Error occurred while processing {}: {}", exdPathSpec, e.what()));
+													}
+												}
+											}
+											currentProgress = 0;
+											progressIndex++;
+											publishProgress();
+										}
+
+										lastStep = "Load basic stuff";
+										const auto sourceLanguages{ exCreator->Languages };
+										const auto pluralColummIndices = [&]() {
+											for (const auto& entry : pluralColumns) {
+												if (srell::regex_search(exhName, entry.first))
+													return entry.second;
+											}
+											return ExcelTransformConfig::PluralColumns();
+										}();
+										const auto exhRowReplacementRules = [&]() {
+											std::map<Sqex::Language, std::vector<ReplacementRule>> res;
+											for (const auto language : fallbackLanguageList)
+												res.emplace(language, std::vector<ReplacementRule>{});
+
+											for (auto& [language, rules] : rowReplacementRules) {
+												auto& exhRules = res.at(language);
+												for (auto& rule : rules)
+													if (srell::regex_search(exhName, rule.exhNamePattern))
+														exhRules.emplace_back(rule);
+											}
+											return res;
+										}();
+
+										lastStep = "Load external EXH/D files";
+										for (const auto& reader : readers) {
 											try {
-												const auto exdReader = Sqex::Excel::ExdReader(exhReaderSource, creator[exdPathSpec]);
-												exCreator->AddLanguage(language);
-												for (const auto i : exdReader.GetIds())
-													exCreator->SetRow(i, language, exdReader.ReadDepth2(i));
+												const auto exhReaderCurrent = Sqex::Excel::ExhReader(exhName, *(*reader)[exhPath]);
+
+												currentProgressMax = 1ULL * exhReaderCurrent.Languages.size() * exhReaderCurrent.Pages.size();
+												for (const auto language : exhReaderCurrent.Languages) {
+													for (const auto& page : exhReaderCurrent.Pages) {
+														if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+															return;
+														currentProgress++;
+														publishProgress();
+
+														const auto exdPathSpec = exhReaderCurrent.GetDataPathSpec(page, language);
+														try {
+															const auto exdReader = Sqex::Excel::ExdReader(exhReaderCurrent, (*reader)[exdPathSpec]);
+															exCreator->AddLanguage(language);
+															for (const auto i : exdReader.GetIds()) {
+																auto row = exdReader.ReadDepth2(i);
+																if (row.size() != exCreator->Columns.size()) {
+																	const auto& rowSet = exCreator->Data.at(i);
+																	const std::vector<Sqex::Excel::ExdColumn>* referenceRowPtr = nullptr;
+																	for (const auto& l : exCreator->FillMissingLanguageFrom) {
+																		if (auto it = rowSet.find(l);
+																			it != rowSet.end()) {
+																			referenceRowPtr = &it->second;
+																			break;
+																		}
+																	}
+																	if (!referenceRowPtr)
+																		continue;
+																	const auto& referenceRow = *referenceRowPtr;
+
+																	// Exceptions for Chinese client are based on speculations.
+																	if (((GameReleaseInfo.Region == Sqex::GameReleaseRegion::International || GameReleaseInfo.Region == Sqex::GameReleaseRegion::Korean) && language == Sqex::Language::ChineseSimplified) && exhName == "Fate") {
+																		decltype(row) prevRow(std::move(row));
+																		row = referenceRow;
+																		for (size_t j = 0; j < 6; ++j)
+																			row[0 + j].String = std::move(prevRow[30 + j].String);
+
+																	} else if (GameReleaseInfo.Region == Sqex::GameReleaseRegion::Chinese && language != Sqex::Language::ChineseSimplified && exhName == "Fate") {
+																		decltype(row) prevRow(std::move(row));
+																		row = referenceRow;
+																		for (size_t j = 0; j < 6; ++j)
+																			row[30 + j].String = std::move(prevRow[0 + j].String);
+
+																	} else {
+																		if (row.size() < referenceRow.size()) {
+																			row.reserve(referenceRow.size());
+																			for (size_t j = row.size(); j < referenceRow.size(); ++j)
+																				row.push_back(referenceRow[j]);
+																		} else
+																			row.resize(referenceRow.size());
+																	}
+																}
+																exCreator->SetRow(i, language, std::move(row), false);
+															}
+														} catch (const std::out_of_range&) {
+															// pass
+														} catch (const std::exception& e) {
+															Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+																"[{}] Skipping {} because of error: {}", exhName, exdPathSpec, e.what());
+														}
+													}
+												}
 											} catch (const std::out_of_range&) {
 												// pass
-											} catch (const std::exception& e) {
-												throw std::runtime_error(std::format("Error occurred while processing {}: {}", exdPathSpec, e.what()));
 											}
+											currentProgress = 0;
+											progressIndex++;
+											publishProgress();
 										}
-									}
-									currentProgress = 0;
-									progressIndex++;
-									publishProgress();
-								}
 
-								auto sourceLanguages = exCreator->Languages;
+										lastStep = "Ensure that there are no missing rows from externally sourced exd files";
+										for (auto& [id, rowSet] : exCreator->Data) {
+											if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+												return;
 
-								// Step. Load external EXH/D files
-								for (const auto& reader : readers) {
-									try {
-										const auto exhReaderCurrent = Sqex::Excel::ExhReader(exhName, *(*reader)[exhPath]);
+											lastStep = "Find which language to use while filling current row if missing in other languages";
+											const std::vector<Sqex::Excel::ExdColumn>* referenceRowPtr = nullptr;
+											for (const auto& l : exCreator->FillMissingLanguageFrom) {
+												if (auto it = rowSet.find(l);
+													it != rowSet.end()) {
+													referenceRowPtr = &it->second;
+													break;
+												}
+											}
+											if (!referenceRowPtr)
+												continue;
+											const auto& referenceRow = *referenceRowPtr;
 
-										currentProgressMax = 1ULL * exhReaderCurrent.Languages.size() * exhReaderCurrent.Pages.size();
-										for (const auto language : exhReaderCurrent.Languages) {
-											for (const auto& page : exhReaderCurrent.Pages) {
-												if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-													return;
-												currentProgress++;
-												publishProgress();
+											lastStep = "Fill missing rows for languages that aren't from source, and restore columns if unmodifiable";
+											for (const auto& language : exCreator->Languages) {
+												if (auto it = rowSet.find(language);
+													it == rowSet.end())
+													rowSet[language] = referenceRow;
+												else {
+													auto& row = it->second;
+													for (size_t i = 0; i < row.size(); ++i) {
+														if (referenceRow[i].Type != Sqex::Excel::Exh::String) {
+															row[i] = referenceRow[i];
+														}
+													}
+												}
+											}
 
-												const auto exdPathSpec = exhReaderCurrent.GetDataPathSpec(page, language);
-												try {
-													const auto exdReader = Sqex::Excel::ExdReader(exhReaderCurrent, (*reader)[exdPathSpec]);
-													exCreator->AddLanguage(language);
-													for (const auto i : exdReader.GetIds()) {
-														auto row = exdReader.ReadDepth2(i);
-														if (row.size() != exCreator->Columns.size()) {
-															const auto& rowSet = exCreator->Data.at(i);
-															const std::vector<Sqex::Excel::ExdColumn>* referenceRow = nullptr;
-															for (const auto& l : exCreator->FillMissingLanguageFrom) {
-																if (auto it = rowSet.find(l);
-																	it != rowSet.end()) {
-																	referenceRow = &it->second;
-																	break;
-																}
-															}
-															if (!referenceRow)
+											lastStep = "Adjust language data per use config";
+											std::map<Sqex::Language, std::vector<Sqex::Excel::ExdColumn>> pendingReplacements;
+											for (const auto& language : exCreator->Languages) {
+												const auto& rules = exhRowReplacementRules.at(language);
+												if (rules.empty())
+													continue;
+
+												std::set<ExcelTransformConfig::IgnoredCell>* currentIgnoredCells = nullptr;
+												if (const auto it = ignoredCells.find(language); it != ignoredCells.end())
+													currentIgnoredCells = &it->second;
+
+												auto row{rowSet.at(language)};
+
+												for (size_t columnIndex = 0; columnIndex < row.size(); columnIndex++) {
+													if (row[columnIndex].Type != Sqex::Excel::Exh::String)
+														continue;
+
+													if (currentIgnoredCells) {
+														if (const auto it = currentIgnoredCells->find(ExcelTransformConfig::IgnoredCell{exhName, static_cast<int>(id), static_cast<int>(columnIndex)});
+															it != currentIgnoredCells->end()) {
+															if (const auto it2 = rowSet.find(it->forceLanguage);
+																it2 != rowSet.end()) {
+																Logger->Format(LogCategory::VirtualSqPacks, "Using \"{}\" in place of \"{}\" per rules, at {}({}, {})",
+																	it2->second[columnIndex].String.Parsed(),
+																	row[columnIndex].String.Parsed(),
+																	exhName, id, columnIndex);
+																row[columnIndex].String = it2->second[columnIndex].String;
 																continue;
-
-															// Exceptions for Chinese client are based on speculations.
-															if (((GameReleaseInfo.Region == Sqex::GameReleaseRegion::International || GameReleaseInfo.Region == Sqex::GameReleaseRegion::Korean) && language == Sqex::Language::ChineseSimplified) && exhName == "Fate") {
-																auto replacements = std::vector{row[30].String, row[31].String, row[32].String, row[33].String, row[34].String, row[35].String};
-																row = *referenceRow;
-																for (size_t j = 0; j < replacements.size(); ++j)
-																	row[j].String = std::move(replacements[j]);
-
-															} else if (GameReleaseInfo.Region == Sqex::GameReleaseRegion::Chinese && language != Sqex::Language::ChineseSimplified && exhName == "Fate") {
-																auto replacements = std::vector{row[0].String, row[1].String, row[2].String, row[3].String, row[4].String, row[5].String};
-																row = *referenceRow;
-																for (size_t j = 0; j < replacements.size(); ++j)
-																	row[30 + j].String = std::move(replacements[j]);
-
-															} else {
-																for (size_t j = row.size(); j < referenceRow->size(); ++j)
-																	row.push_back((*referenceRow)[j]);
-																row.resize(referenceRow->size());
 															}
 														}
-														exCreator->SetRow(i, language, std::move(row), false);
 													}
-												} catch (const std::out_of_range&) {
-													// pass
-												} catch (const std::exception& e) {
-													Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-														"[{}] Skipping {} because of error: {}", exhName, exdPathSpec, e.what());
-												}
-											}
-										}
-									} catch (const std::out_of_range&) {
-										// pass
-									}
-									currentProgress = 0;
-									progressIndex++;
-									publishProgress();
-								}
 
-								// Step. Ensure that there are no missing rows from externally sourced exd files
-								std::vector<uint32_t> idsToRemove;
-								for (auto& kv : exCreator->Data) {
-									const auto id = kv.first;
-									auto& rowSet = kv.second;
-									static_assert(std::is_reference_v<decltype(rowSet)>);
-
-									if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-										return;
-
-									// Step. Find which language to use while filling current row if missing in other languages
-									const std::vector<Sqex::Excel::ExdColumn>* referenceRow = nullptr;
-									for (const auto& l : exCreator->FillMissingLanguageFrom) {
-										if (auto it = rowSet.find(l);
-											it != rowSet.end()) {
-											referenceRow = &it->second;
-											break;
-										}
-									}
-									if (!referenceRow) {
-										idsToRemove.push_back(id);
-										continue;
-									}
-
-									// Step. Figure out which columns to not modify and which are modifiable
-									std::set<size_t> columnsToModify, columnsToNeverModify;
-									try {
-										std::vector<Sqex::Excel::ExdColumn>* cols[4] = {
-											&rowSet.at(Sqex::Language::Japanese),
-											&rowSet.at(Sqex::Language::English),
-											&rowSet.at(Sqex::Language::German),
-											&rowSet.at(Sqex::Language::French),
-										};
-										for (size_t i = 0; i < cols[0]->size(); ++i) {
-											std::string compareTarget;
-											for (size_t j = 0; j < _countof(cols); ++j) {
-												if ((*cols[j])[i].Type != Sqex::Excel::Exh::String) {
-													columnsToNeverModify.insert(i);
-													break;
-												} else if (j != 0 && (*cols[0])[i].String != (*cols[j])[i].String) {
-													columnsToModify.insert(i);
-													break;
-												}
-											}
-										}
-									} catch (const std::out_of_range&) {
-										// pass
-									}
-									try {
-										std::vector<Sqex::Excel::ExdColumn>& cols = rowSet.at(Sqex::Language::Korean);
-										for (size_t i = 0; i < cols.size(); ++i) {
-											if (cols[i].Type != Sqex::Excel::Exh::String) {
-												columnsToNeverModify.insert(i);
-
-											} else {
-												// If it includes a valid UTF-8 byte sequence that is longer than a byte, set as a candidate.
-												const auto& s = cols[i].String;
-												for (size_t j = 0; j < s.size(); ++j) {
-													char32_t charCode;
-
-													if ((s[j] & 0x80) == 0) {
-														// pass; single byte
-														charCode = s[j];
-
-													} else if ((s[j] & 0xE0) == 0xC0) {
-														// 2 bytes
-														if (j + 2 > s.size())
-															break;  // not enough bytes
-														if ((s[j + 1] & 0xC0) != 0x80)
+													for (const auto& rule : rules) {
+														if (!rule.columnIndices.contains(columnIndex))
 															continue;
-														charCode = static_cast<char32_t>(
-															((s[j + 0] & 0x1F) << 6) |
-															((s[j + 1] & 0x3F) << 0)
-														);
-														j += 1;
 
-													} else if ((s[j] & 0xF0) == 0xE0) {
-														// 3 bytes
-														if (j + 3 > s.size())
-															break;  // not enough bytes
-														if ((s[j + 1] & 0xC0) != 0x80
-															|| (s[j + 2] & 0xC0) != 0x80)
+														if (!srell::regex_search(row[columnIndex].String.Escaped(), rule.stringPattern))
 															continue;
-														charCode = static_cast<char32_t>(
-															((s[j + 0] & 0x0F) << 12) |
-															((s[j + 1] & 0x3F) << 6) |
-															((s[j + 2] & 0x3F) << 0)
-														);
-														j += 2;
 
-													} else if ((s[j] & 0xF8) == 0xF0) {
-														// 4 bytes
-														if (j + 4 > s.size())
-															break;  // not enough bytes
-														if ((s[j + 1] & 0xC0) != 0x80
-															|| (s[j + 2] & 0xC0) != 0x80
-															|| (s[j + 3] & 0xC0) != 0x80)
-															continue;
-														charCode = static_cast<char32_t>(
-															((s[j + 0] & 0x07) << 18) |
-															((s[j + 1] & 0x3F) << 12) |
-															((s[j + 2] & 0x3F) << 6) |
-															((s[j + 3] & 0x3F) << 0)
-														);
-														j += 3;
+														std::vector p = {std::format("{}:{}", exhName, id)};
+														for (const auto ruleSourceLanguage : rule.sourceLanguage) {
+															if (const auto it = rowSet.find(ruleSourceLanguage);
+																it != rowSet.end()) {
 
-													} else {
-														// invalid
-														continue;
-													}
+																if (row[columnIndex].Type != Sqex::Excel::Exh::String)
+																	throw std::invalid_argument(std::format("Column {} of sourceLanguage {} in {} is not a string column", columnIndex, static_cast<int>(ruleSourceLanguage), exhName));
 
-													if (charCode >= 128) {
-														columnsToModify.insert(i);
-														break;
-													}
-												}
-											}
-										}
-									} catch (const std::out_of_range&) {
-										// pass
-									}
+																auto readColumnIndex = columnIndex;
+																switch (ruleSourceLanguage) {
+																	case Sqex::Language::English:
+																		// add stuff if stuff happens(tm)
+																		break;
 
-									// Step. Fill missing rows for languages that aren't from source, and restore columns if unmodifiable
-									for (const auto& language : exCreator->Languages) {
-										if (auto it = rowSet.find(language);
-											it == rowSet.end())
-											rowSet[language] = *referenceRow;
-										else {
-											auto& row = it->second;
-											for (size_t i = 0; i < row.size(); ++i) {
-												if (columnsToNeverModify.contains(i)) {
-													row[i] = (*referenceRow)[i];
-												}
-											}
-										}
-									}
+																	case Sqex::Language::German:
+																	case Sqex::Language::French:
+																		// add stuff if stuff happens(tm)
+																		break;
 
-									// Step. Adjust language data per use config
-									std::map<Sqex::Language, std::vector<Sqex::Excel::ExdColumn>> pendingReplacements;
-									for (const auto& language : exCreator->Languages) {
-										const auto rules = rowReplacementRules.find(language);
-										if (rules == rowReplacementRules.end())
-											continue;
-
-										std::set<ExcelTransformConfig::IgnoredCell>* currentIgnoredCells = nullptr;
-										if (const auto it = ignoredCells.find(language); it != ignoredCells.end())
-											currentIgnoredCells = &it->second;
-
-										auto row = rowSet.at(language);
-
-										for (const auto columnIndex : columnsToModify) {
-											if (currentIgnoredCells) {
-												if (const auto it = currentIgnoredCells->find(ExcelTransformConfig::IgnoredCell{exhName, static_cast<int>(id), static_cast<int>(columnIndex)});
-													it != currentIgnoredCells->end()) {
-													if (const auto it2 = rowSet.find(it->forceLanguage);
-														it2 != rowSet.end()) {
-														Logger->Format(LogCategory::VirtualSqPacks, "Using \"{}\" in place of \"{}\" per rules, at {}({}, {})",
-															it2->second[columnIndex].String,
-															row[columnIndex].String,
-															exhName, id, columnIndex);
-														row[columnIndex].String = it2->second[columnIndex].String;
-														continue;
-													}
-												}
-											}
-
-											for (const auto& rule : rules->second) {
-												if (!rule.columnIndices.empty() && std::ranges::find(rule.columnIndices, columnIndex) == rule.columnIndices.end())
-													continue;
-
-												if (!srell::regex_search(exhName, rule.exhNamePattern))
-													continue;
-
-												if (!srell::regex_search(row[columnIndex].String, rule.stringPattern))
-													continue;
-
-												std::vector p = {std::format("{}:{}", exhName, id)};
-												for (const auto ruleSourceLanguage : rule.sourceLanguage) {
-													if (const auto it = rowSet.find(ruleSourceLanguage);
-														it != rowSet.end()) {
-
-														if (row[columnIndex].Type != Sqex::Excel::Exh::String)
-															throw std::invalid_argument(std::format("Column {} of sourceLanguage {} in {} is not a string column", columnIndex, static_cast<int>(ruleSourceLanguage), exhName));
-
-														ExcelTransformConfig::PluralColumns pluralColummIndices;
-														for (const auto& entry : pluralColumns) {
-															if (srell::regex_search(exhName, entry.first)) {
-																pluralColummIndices = entry.second;
-																break;
-															}
-														}
-
-														auto readColumnIndex = columnIndex;
-														switch (ruleSourceLanguage) {
-															case Sqex::Language::English:
-																// add stuff if stuff happens(tm)
-																break;
-
-															case Sqex::Language::German:
-															case Sqex::Language::French:
-																// add stuff if stuff happens(tm)
-																break;
-
-															case Sqex::Language::Japanese:
-															case Sqex::Language::ChineseSimplified:
-															case Sqex::Language::ChineseTraditional:
-															case Sqex::Language::Korean: {
-																if (pluralColummIndices.capitalizedColumnIndex != ExcelTransformConfig::PluralColumns::Index_NoColumn) {
-																	if (readColumnIndex == pluralColummIndices.pluralColumnIndex
-																		|| readColumnIndex == pluralColummIndices.singularColumnIndex)
-																		readColumnIndex = pluralColummIndices.capitalizedColumnIndex;
-																} else {
-																	if (readColumnIndex == pluralColummIndices.pluralColumnIndex)
-																		readColumnIndex = pluralColummIndices.singularColumnIndex;
+																	case Sqex::Language::Japanese:
+																	case Sqex::Language::ChineseSimplified:
+																	case Sqex::Language::ChineseTraditional:
+																	case Sqex::Language::Korean: {
+																		if (pluralColummIndices.capitalizedColumnIndex != ExcelTransformConfig::PluralColumns::Index_NoColumn) {
+																			if (readColumnIndex == pluralColummIndices.pluralColumnIndex
+																				|| readColumnIndex == pluralColummIndices.singularColumnIndex)
+																				readColumnIndex = pluralColummIndices.capitalizedColumnIndex;
+																		} else {
+																			if (readColumnIndex == pluralColummIndices.pluralColumnIndex)
+																				readColumnIndex = pluralColummIndices.singularColumnIndex;
+																		}
+																		break;
+																	}
 																}
-																break;
+																if (const auto rules = rule.preprocessReplacements.find(ruleSourceLanguage); rules != rule.preprocessReplacements.end()) {
+																	Sqex::EscapedString escaped(it->second[readColumnIndex].String);
+																	std::string replacing(escaped.Parsed());
+																	for (const auto& ruleName : rules->second) {
+																		const auto& [replaceFrom, replaceTo] = columnReplacementTemplates.at(ruleName);
+																		replacing = srell::regex_replace(replacing, replaceFrom, replaceTo);
+																	}
+																	p.emplace_back(escaped.SetParsedCompatible(replacing).Escaped());
+																} else
+																	p.emplace_back(it->second[readColumnIndex].String.Escaped());
+															} else
+																p.emplace_back();
+														}
+
+														auto allSame = true;
+														size_t nonEmptySize = 0;
+														size_t lastNonEmptyIndex = 1;
+														for (size_t i = 1; i < p.size(); ++i) {
+															if (p[i] != p[0])
+																allSame = false;
+															if (!p[i].empty()) {
+																nonEmptySize++;
+																lastNonEmptyIndex = i;
 															}
 														}
-														if (const auto rules = rule.preprocessReplacements.find(ruleSourceLanguage); rules != rule.preprocessReplacements.end()) {
-															Sqex::EscapedString escaped(it->second[readColumnIndex].String);
-															std::string replacing(escaped.FilteredString());
-															for (const auto& ruleName : rules->second) {
+														std::string out;
+														if (allSame)
+															out = p[1];
+														else if (nonEmptySize <= 1)
+															out = p[lastNonEmptyIndex];
+														else {
+															switch (p.size()) {
+																case 1:
+																	out = std::format(rule.replaceTo, p[0]);
+																	break;
+																case 2:
+																	out = std::format(rule.replaceTo, p[0], p[1]);
+																	break;
+																case 3:
+																	out = std::format(rule.replaceTo, p[0], p[1], p[2]);
+																	break;
+																case 4:
+																	out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3]);
+																	break;
+																case 5:
+																	out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3], p[4]);
+																	break;
+																case 6:
+																	out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3], p[4], p[5]);
+																	break;
+																case 7:
+																	out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3], p[4], p[5], p[6]);
+																	break;
+																default:
+																	throw std::invalid_argument("Only up to 7 source languages are supported");
+															}
+														}
+
+														Sqex::EscapedString escaped(out);
+														if (!rule.postprocessReplacements.empty()) {
+															std::string replacing(escaped.Parsed());
+															for (const auto& ruleName : rule.postprocessReplacements) {
 																const auto& [replaceFrom, replaceTo] = columnReplacementTemplates.at(ruleName);
 																replacing = srell::regex_replace(replacing, replaceFrom, replaceTo);
 															}
-															escaped.FilteredString(replacing);
-															p.emplace_back(static_cast<std::string>(escaped));
-														} else
-															p.emplace_back(it->second[readColumnIndex].String);
-													} else
-														p.emplace_back();
-												}
-
-												auto allSame = true;
-												size_t nonEmptySize = 0;
-												size_t lastNonEmptyIndex = 1;
-												for (size_t i = 1; i < p.size(); ++i) {
-													if (p[i] != p[0])
-														allSame = false;
-													if (!p[i].empty()) {
-														nonEmptySize++;
-														lastNonEmptyIndex = i;
+															escaped.SetParsedCompatible(replacing);
+														}
+														row[columnIndex].String = std::move(escaped);
+														break;
 													}
 												}
-												std::string out;
-												if (allSame)
-													out = p[1];
-												else if (nonEmptySize <= 1)
-													out = p[lastNonEmptyIndex];
-												else {
-													switch (p.size()) {
-														case 1:
-															out = std::format(rule.replaceTo, p[0]);
-															break;
-														case 2:
-															out = std::format(rule.replaceTo, p[0], p[1]);
-															break;
-														case 3:
-															out = std::format(rule.replaceTo, p[0], p[1], p[2]);
-															break;
-														case 4:
-															out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3]);
-															break;
-														case 5:
-															out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3], p[4]);
-															break;
-														case 6:
-															out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3], p[4], p[5]);
-															break;
-														case 7:
-															out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3], p[4], p[5], p[6]);
-															break;
-														default:
-															throw std::invalid_argument("Only up to 7 source languages are supported");
-													}
-												}
-												if (!rule.postprocessReplacements.empty()) {
-													Sqex::EscapedString escaped(out);
-													std::string replacing(escaped.FilteredString());
-													for (const auto& ruleName : rule.postprocessReplacements) {
-														const auto& [replaceFrom, replaceTo] = columnReplacementTemplates.at(ruleName);
-														replacing = srell::regex_replace(replacing, replaceFrom, replaceTo);
-													}
-													escaped.FilteredString(replacing);
-													row[columnIndex].String = escaped;
-												} else
-													row[columnIndex].String = std::move(out);
-												break;
+												pendingReplacements.emplace(language, std::move(row));
 											}
+											for (auto& [language, row] : pendingReplacements)
+												exCreator->SetRow(id, language, std::move(row));
 										}
-										pendingReplacements.emplace(language, std::move(row));
-									}
-									for (auto& pair : pendingReplacements)
-										exCreator->SetRow(id, pair.first, pair.second);
-								}
 
-								{
-									auto compiled = exCreator->Compile();
+										{
+											lastStep = "Compile";
+											auto compiled = exCreator->Compile();
 
-									currentProgressMax = compiled.size();
-									for (auto& kv : compiled) {
-										const auto& entryPathSpec = kv.first;
-										auto& data = kv.second;
-										currentProgress++;
-										publishProgress();
+											lastStep = "Compress";
+											currentProgressMax = compiled.size();
+											for (auto& kv : compiled) {
+												const auto& entryPathSpec = kv.first;
+												auto& data = kv.second;
+												currentProgress++;
+												publishProgress();
 
 #ifdef _DEBUG
-										if (entryPathSpec.Original.extension() == L".exh") {
-											auto data2 = creator[entryPathSpec]->ReadStreamIntoVector<char>(0);
-											data2.resize(data2.size() - 2 * reinterpret_cast<Sqex::Excel::Exh::Header*>(&data2[0])->LanguageCount);
-											reinterpret_cast<Sqex::Excel::Exh::Header*>(&data2[0])->LanguageCount = static_cast<uint16_t>(exCreator->Languages.size());
-											for (const auto lang : exCreator->Languages) {
-												data2.push_back(static_cast<char>(lang));
-												data2.push_back(0);
-											}
-											const auto reader1 = Sqex::Excel::ExhReader(exhName, Sqex::MemoryRandomAccessStream(*reinterpret_cast<std::vector<uint8_t>*>(&data)));
-											const auto reader2 = Sqex::Excel::ExhReader(exhName, Sqex::MemoryRandomAccessStream(*reinterpret_cast<std::vector<uint8_t>*>(&data2)));
-											if (reader1.Header.FixedDataSize != reader2.Header.FixedDataSize)
-												Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] FixedDataSize: new {}, was {}", exhName, reader1.Header.FixedDataSize.Value(), reader2.Header.FixedDataSize.Value());
-											if (reader1.Header.ColumnCount != reader2.Header.ColumnCount)
-												Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] ColumnCount: new {}, was {}", exhName, reader1.Header.ColumnCount.Value(), reader2.Header.ColumnCount.Value());
-											if (reader1.Header.PageCount != reader2.Header.PageCount)
-												Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] PageCount: new {}, was {}", exhName, reader1.Header.PageCount.Value(), reader2.Header.PageCount.Value());
-											if (reader1.Header.SomeSortOfBufferSize != reader2.Header.SomeSortOfBufferSize)
-												Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] SomeSortOfBufferSize: new {}, was {}", exhName, reader1.Header.SomeSortOfBufferSize.Value(), reader2.Header.SomeSortOfBufferSize.Value());
-											if (reader1.Header.RowCountWithoutSkip != reader2.Header.RowCountWithoutSkip)
-												Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] RowCountWithoutSkip: new {}, was {}", exhName, reader1.Header.RowCountWithoutSkip.Value(), reader2.Header.RowCountWithoutSkip.Value());
-											if (reader1.Columns->size() != reader2.Columns->size())
-												Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Columns: new {}, was {}", exhName, reader1.Columns->size(), reader2.Columns->size());
-											for (size_t i = 0, i_ = std::min(reader1.Columns->size(), reader2.Columns->size()); i < i_; ++i) {
-												if ((*reader1.Columns)[i].Offset != (*reader2.Columns)[i].Offset)
-													Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Columns[{}].Offset: new {}, was {}", exhName, i, (*reader1.Columns)[i].Offset.Value(), (*reader2.Columns)[i].Offset.Value());
-												if ((*reader1.Columns)[i].Type != (*reader2.Columns)[i].Type)
-													Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Columns[{}].Type: new {}, was {}", exhName, i, static_cast<int>((*reader1.Columns)[i].Type.Value()), static_cast<int>((*reader2.Columns)[i].Type.Value()));
-											}
-											if (reader1.Pages.size() != reader2.Pages.size())
-												Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Pages: new {}, was {}", exhName, reader1.Pages.size(), reader2.Pages.size());
-											for (size_t i = 0, i_ = std::min(reader1.Pages.size(), reader2.Pages.size()); i < i_; ++i) {
-												if (reader1.Pages[i].StartId != reader2.Pages[i].StartId)
-													Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Pages[{}].StartId: new {}, was {}", exhName, i, reader1.Pages[i].StartId.Value(), reader2.Pages[i].StartId.Value());
-												if (reader1.Pages[i].RowCountWithSkip != reader2.Pages[i].RowCountWithSkip)
-													Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Pages[{}].RowCountWithSkip: new {}, was {}", exhName, i, reader1.Pages[i].RowCountWithSkip.Value(), reader2.Pages[i].RowCountWithSkip.Value());
-											}
-										}
+												if (entryPathSpec.Original.extension() == L".exh") {
+													auto data2 = creator[entryPathSpec]->ReadStreamIntoVector<char>(0);
+													data2.resize(data2.size() - 2 * reinterpret_cast<Sqex::Excel::Exh::Header*>(&data2[0])->LanguageCount);
+													reinterpret_cast<Sqex::Excel::Exh::Header*>(&data2[0])->LanguageCount = static_cast<uint16_t>(exCreator->Languages.size());
+													for (const auto lang : exCreator->Languages) {
+														data2.push_back(static_cast<char>(lang));
+														data2.push_back(0);
+													}
+													const auto reader1 = Sqex::Excel::ExhReader(exhName, Sqex::MemoryRandomAccessStream(*reinterpret_cast<std::vector<uint8_t>*>(&data)));
+													const auto reader2 = Sqex::Excel::ExhReader(exhName, Sqex::MemoryRandomAccessStream(*reinterpret_cast<std::vector<uint8_t>*>(&data2)));
+													if (reader1.Header.FixedDataSize != reader2.Header.FixedDataSize)
+														Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] FixedDataSize: new {}, was {}", exhName, reader1.Header.FixedDataSize.Value(), reader2.Header.FixedDataSize.Value());
+													if (reader1.Header.ColumnCount != reader2.Header.ColumnCount)
+														Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] ColumnCount: new {}, was {}", exhName, reader1.Header.ColumnCount.Value(), reader2.Header.ColumnCount.Value());
+													if (reader1.Header.PageCount != reader2.Header.PageCount)
+														Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] PageCount: new {}, was {}", exhName, reader1.Header.PageCount.Value(), reader2.Header.PageCount.Value());
+													if (reader1.Header.SomeSortOfBufferSize != reader2.Header.SomeSortOfBufferSize)
+														Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] SomeSortOfBufferSize: new {}, was {}", exhName, reader1.Header.SomeSortOfBufferSize.Value(), reader2.Header.SomeSortOfBufferSize.Value());
+													if (reader1.Header.RowCountWithoutSkip != reader2.Header.RowCountWithoutSkip)
+														Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] RowCountWithoutSkip: new {}, was {}", exhName, reader1.Header.RowCountWithoutSkip.Value(), reader2.Header.RowCountWithoutSkip.Value());
+													if (reader1.Columns->size() != reader2.Columns->size())
+														Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Columns: new {}, was {}", exhName, reader1.Columns->size(), reader2.Columns->size());
+													for (size_t i = 0, i_ = std::min(reader1.Columns->size(), reader2.Columns->size()); i < i_; ++i) {
+														if ((*reader1.Columns)[i].Offset != (*reader2.Columns)[i].Offset)
+															Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Columns[{}].Offset: new {}, was {}", exhName, i, (*reader1.Columns)[i].Offset.Value(), (*reader2.Columns)[i].Offset.Value());
+														if ((*reader1.Columns)[i].Type != (*reader2.Columns)[i].Type)
+															Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Columns[{}].Type: new {}, was {}", exhName, i, static_cast<int>((*reader1.Columns)[i].Type.Value()), static_cast<int>((*reader2.Columns)[i].Type.Value()));
+													}
+													if (reader1.Pages.size() != reader2.Pages.size())
+														Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Pages: new {}, was {}", exhName, reader1.Pages.size(), reader2.Pages.size());
+													for (size_t i = 0, i_ = std::min(reader1.Pages.size(), reader2.Pages.size()); i < i_; ++i) {
+														if (reader1.Pages[i].StartId != reader2.Pages[i].StartId)
+															Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Pages[{}].StartId: new {}, was {}", exhName, i, reader1.Pages[i].StartId.Value(), reader2.Pages[i].StartId.Value());
+														if (reader1.Pages[i].RowCountWithSkip != reader2.Pages[i].RowCountWithSkip)
+															Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Pages[{}].RowCountWithSkip: new {}, was {}", exhName, i, reader1.Pages[i].RowCountWithSkip.Value(), reader2.Pages[i].RowCountWithSkip.Value());
+													}
+												}
 #endif
 
-										const auto targetPath = cachedDir / entryPathSpec.Original;
+												const auto targetPath = cachedDir / entryPathSpec.Original;
 
-										const auto provider = Sqex::Sqpack::MemoryBinaryEntryProvider(entryPathSpec, std::make_shared<Sqex::MemoryRandomAccessStream>(std::move(*reinterpret_cast<std::vector<uint8_t>*>(&data))));
-										const auto len = provider.StreamSize();
-										const auto dv = provider.ReadStreamIntoVector<char>(0, static_cast<SSIZE_T>(len));
+												const auto provider = Sqex::Sqpack::MemoryBinaryEntryProvider(entryPathSpec, std::make_shared<Sqex::MemoryRandomAccessStream>(std::move(*reinterpret_cast<std::vector<uint8_t>*>(&data))));
+												const auto len = provider.StreamSize();
+												const auto dv = provider.ReadStreamIntoVector<char>(0, static_cast<SSIZE_T>(len));
 
-										if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-											return;
-										const auto lock = std::lock_guard(writeMtx);
-										const auto entryLine = std::format("{}\n", nlohmann::json::object({
-											{"FullPath", Utils::ToUtf8(entryPathSpec.Original.wstring())},
-											{"ModOffset", ttmpdPtr},
-											{"ModSize", len},
-											{"DatFile", "0a0000"},
-										}).dump());
-										ttmplPtr += ttmpl.Write(ttmplPtr, std::span(entryLine));
-										ttmpdPtr += ttmpd.Write(ttmpdPtr, std::span(dv));
+												if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+													return;
+
+												lastStep = "Write to filesystem";
+												const auto lock = std::lock_guard(writeMtx);
+												const auto entryLine = std::format("{}\n", nlohmann::json::object({
+													{"FullPath", Utils::ToUtf8(entryPathSpec.Original.wstring())},
+													{"ModOffset", ttmpdPtr},
+													{"ModSize", len},
+													{"DatFile", "0a0000"},
+												}).dump());
+												ttmplPtr += ttmpl.Write(ttmplPtr, std::span(entryLine));
+												ttmpdPtr += ttmpd.Write(ttmpdPtr, std::span(dv));
+											}
+											currentProgress = 0;
+											progressIndex++;
+											publishProgress();
+										}
+									} catch (const std::exception& e) {
+										if (errorMessage.empty()) {
+											const auto lock = std::lock_guard(writeMtx);
+											if (errorMessage.empty()) {
+												errorMessage = std::format("{}: {}: {}", exhName, lastStep, e.what());
+												Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Error: {}/{}", exhName, lastStep, e.what());
+												progressWindow.Cancel();
+											}
+										}
 									}
-									currentProgress = 0;
-									progressIndex++;
-									publishProgress();
-								}
-							} catch (const std::exception& e) {
-								Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Error: {}", exhName, e.what());
-								progressWindow.Cancel();
+								});
 							}
+							pool.WaitOutstanding();
 						});
+						while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {compressThread})) {
+							uint64_t p = 0;
+							for (const auto& val : progressPerTask | std::views::values)
+								p += val;
+							progressWindow.UpdateProgress(p, progressPerTask.size() * ProgressMaxPerTask);
+						}
+						pool.Cancel();
+						compressThread.Wait();
 					}
-					pool.WaitOutstanding();
-				});
-				while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {compressThread})) {
-					uint64_t p = 0;
-					for (const auto& val : progressPerTask | std::views::values)
-						p += val;
-					progressWindow.UpdateProgress(p, progressPerTask.size() * ProgressMaxPerTask);
-				}
-				pool.Cancel();
-				compressThread.Wait();
-			}
 
-			if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0) {
-				try {
-					std::filesystem::remove(cachedDir / "TTMPL.mpl.tmp");
-				} catch (...) {
-					// whatever
+					if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0) {
+						try {
+							std::filesystem::remove(cachedDir / "TTMPL.mpl.tmp");
+						} catch (...) {
+							// whatever
+						}
+						try {
+							std::filesystem::remove(cachedDir / "TTMPD.mpd.tmp");
+						} catch (...) {
+							// whatever
+						}
+						return;
+					}
+
+					try {
+						std::filesystem::remove(cachedDir / "TTMPL.mpl");
+					} catch (...) {
+						// whatever
+					}
+					try {
+						std::filesystem::remove(cachedDir / "TTMPD.mpd");
+					} catch (...) {
+						// whatever
+					}
+					std::filesystem::rename(cachedDir / "TTMPL.mpl.tmp", cachedDir / "TTMPL.mpl");
+					std::filesystem::rename(cachedDir / "TTMPD.mpd.tmp", cachedDir / "TTMPD.mpd");
+					Utils::Win32::Handle::FromCreateFile(cachedDir / "sources", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0)
+						.Write(0, currentCacheKeys.data(), currentCacheKeys.size());
 				}
-				try {
-					std::filesystem::remove(cachedDir / "TTMPD.mpd.tmp");
-				} catch (...) {
-					// whatever
+
+				if (const auto result = creator.AddEntriesFromTTMP(cachedDir); result.AnyItem()) {
+					Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+						"[ffxiv/0a0000] Generated string table: added {}, replaced {}, ignored {}, error {}",
+						result.Added.size(), result.Replaced.size(), result.SkippedExisting.size(), result.Error.size());
+					for (const auto& error : result.Error) {
+						Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+							"\t=> Error processing {}: {}", error.first, error.second);
+					}
 				}
 				return;
-			}
 
-			try {
-				std::filesystem::remove(cachedDir / "TTMPL.mpl");
-			} catch (...) {
-				// whatever
-			}
-			try {
-				std::filesystem::remove(cachedDir / "TTMPD.mpd");
-			} catch (...) {
-				// whatever
-			}
-			std::filesystem::rename(cachedDir / "TTMPL.mpl.tmp", cachedDir / "TTMPL.mpl");
-			std::filesystem::rename(cachedDir / "TTMPD.mpd.tmp", cachedDir / "TTMPD.mpd");
-			Utils::Win32::Handle::FromCreateFile(cachedDir / "sources", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0)
-				.Write(0, currentCacheKeys.data(), currentCacheKeys.size());
-		}
-
-		try {
-			if (const auto result = creator.AddEntriesFromTTMP(cachedDir); result.AnyItem()) {
-				Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
-					"[ffxiv/0a0000] Generated string table: added {}, replaced {}, ignored {}, error {}",
-					result.Added.size(), result.Replaced.size(), result.SkippedExisting.size(), result.Error.size());
-				for (const auto& error : result.Error) {
-					Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-						"\t=> Error processing {}: {}", error.first, error.second);
+			} catch (const std::exception& e) {
+				Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[ffxiv/0a0000] Error: {}", e.what());
+				switch (Dll::MessageBoxF(progressWindow.Handle(), MB_ICONERROR | MB_ABORTRETRYIGNORE, IDS_ERROR_GENERATESTRINGTABLES, e.what())) {
+					case IDRETRY:
+						continue;
+					case IDABORT:
+						ExitProcess(-1);
+					case IDIGNORE:
+						return;
 				}
 			}
-		} catch (const std::exception& e) {
-			Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[ffxiv/0a0000] Error: {}", e.what());
 		}
 	}
 
@@ -1324,7 +1260,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 	void SetUpGeneratedFonts(Window::ProgressPopupWindow& progressWindow, Sqex::Sqpack::Creator& creator, const std::filesystem::path& indexPath) {
 		while (true) {
-			const auto fontConfigPath = Config->Runtime.OverrideFontConfig.Value();
+			const auto fontConfigPath{Config->Runtime.OverrideFontConfig.Value()};
 			if (fontConfigPath.empty())
 				return;
 		

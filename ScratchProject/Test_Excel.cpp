@@ -1,4 +1,4 @@
-#include "pch.h"
+Ôªø#include "pch.h"
 
 #include <set>
 #include <XivAlexanderCommon/Sqex_EscapedString.h>
@@ -7,8 +7,8 @@
 #include <XivAlexanderCommon/Sqex_Sqpack_EntryRawStream.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
 
-const auto QuoteStartU8 = u8"°∞";
-const auto QuoteEndU8 = u8"°±";
+const auto QuoteStartU8 = u8"‚Äú";
+const auto QuoteEndU8 = u8"‚Äù";
 const auto QuoteStart = reinterpret_cast<const char*>(QuoteStartU8);
 const auto QuoteEnd = reinterpret_cast<const char*>(QuoteEndU8);
 
@@ -34,20 +34,19 @@ void FindSayQuests(const Sqex::Sqpack::Reader& reader, const std::string& x) {
 		for (const auto i : exd->GetIds()) {
 			auto row = exd->ReadDepth2(i);
 
-			const auto es = Sqex::EscapedString(row[1].String);
-			const auto s = es.FilteredString();
+			const auto& s = row[1].String.Parsed();
 			if (s.starts_with("With the chat mode")) {
 				if (const auto i1 = s.find(QuoteStart), i2 = s.find(QuoteEnd, i1); i1 != std::string::npos && i2 != std::string::npos && i1 < i2) {
 					auto say = s.substr(i1 + 3, i2 - i1 - 3);
 					candidates.insert(say);
-					std::cout << std::format("[{:03}] Found {}: {}\n", i, row[0].String, s);
+					std::cout << std::format("[{:03}] Found {}: {}\n", i, row[0].String.Parsed(), s);
 				} else {
 					// std::cout << std::format("[{:03}] Unknown {}: {}\n", i, row[0].String, s);
 				}
 			} else if (candidates.find(s) != candidates.end()) {
 				says.insert(s);
 				says.insert(s + "!");
-				std::cout << std::format("{}:{:} = {}\n", x, i, row[0].String, row[1].String);
+				std::cout << std::format("{}:{:} = {}\n", x, i, row[0].String.Parsed(), row[1].String.Parsed());
 			}
 		}
 		std::set<std::string> missing;
@@ -65,9 +64,6 @@ int main() {
 	const Sqex::Sqpack::Reader reader(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\0a0000.win32.index)");
 	const auto exl = Sqex::Excel::ExlReader(Sqex::Sqpack::EntryRawStream(reader.GetEntryProvider("exd/root.exl")));
 	for (const auto& x : exl | std::views::keys) {
-		if (x != "Lobby")
-			continue;
-
 		const auto exhProvider = reader.GetEntryProvider(std::format("exd/{}.exh", x));
 		const auto exhStream = Sqex::Sqpack::EntryRawStream(exhProvider);
 		const auto exh = Sqex::Excel::ExhReader(x, exhStream);
@@ -83,14 +79,7 @@ int main() {
 			std::set<std::string> says;
 			for (const auto i : exd->GetIds()) {
 				auto row = exd->ReadDepth2(i);
-
-				auto es = Sqex::EscapedString(row[3].String);
-				auto s = es.FilteredString();
-				Dummy();
-				es.FilteredString(s);
-				Dummy();
-				const auto enc = static_cast<std::string>(es);
-				Dummy();
+				auto& es = row[3].String;
 			}
 		}
 	}

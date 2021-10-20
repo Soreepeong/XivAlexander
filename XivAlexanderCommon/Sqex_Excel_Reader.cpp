@@ -129,7 +129,7 @@ Sqex::Excel::ExdColumn Sqex::Excel::ExdReader::TranslateColumn(const Exh::Column
 		{
 			BE<uint32_t> stringOffset;
 			std::copy_n(&fixedData[columnDefinition.Offset], 4, reinterpret_cast<char*>(&stringOffset));
-			column.String = std::string(&fullData[m_fixedDataSize + stringOffset]);
+			column.String.SetEscaped(&fullData[m_fixedDataSize + stringOffset]);
 			break;
 		}
 
