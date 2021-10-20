@@ -60,33 +60,24 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 	, m_path(Utils::Win32::Process::Current().PathOf())
 	, m_bUseElevation(Utils::Win32::IsUserAnAdmin())
 	, m_launchParameters([this]() -> decltype(m_launchParameters) {
-	try {
-		const auto args = Utils::Win32::CommandLineToArgsU8(std::wstring(Dll::GetOriginalCommandLine()));
-		switch (args.size()) {
-		case 0:
-		case 1:
-			throw std::runtime_error("Empty arguments");
-		case 2:
-			return Sqex::CommandLine::FromString(args[1], &m_bUseParameterObfuscation);
-		default:
-			return Sqex::CommandLine::FromString(Utils::Win32::ReverseCommandLineToArgv(std::span(args).subspan(1)), &m_bUseParameterObfuscation);
+		try {
+			return Sqex::CommandLine::FromString(Dll::GetOriginalCommandLine(), &m_bUseParameterObfuscation);
+		} catch (const std::exception& e) {
+			m_logger->Format<LogLevel::Warning>(LogCategory::General, m_config->Runtime.GetLangId(), IDS_WARNING_GAME_PARAMETER_PARSE, e.what());
+			return {};
 		}
-	} catch (const std::exception& e) {
-		m_logger->Format<LogLevel::Warning>(LogCategory::General, m_config->Runtime.GetLangId(), IDS_WARNING_GAME_PARAMETER_PARSE, e.what());
-		return {};
-	}
-}())
-, m_startupArgumentsForDisplay([this]() {
-	auto params = m_launchParameters;
-	for (auto& [k, v] : params) {
-		if (k == "DEV.TestSID") {
-			for (auto& c : v)
-				c = '*';
-			v += std::format("({})", v.size());
+	}())
+	, m_startupArgumentsForDisplay([this]() {
+		auto params{m_launchParameters};
+		for (auto& [k, v] : params) {
+			if (k == "DEV.TestSID") {
+				for (auto& c : v)
+					c = '*';
+				v += std::format("({})", v.size());
+			}
 		}
-	}
-	return Sqex::CommandLine::ToString(params, false);
-}()) {
+		return Sqex::CommandLine::ToString(params, false);
+	}()) {
 
 	try {
 		m_gameReleaseInfo = Misc::GameInstallationDetector::GetGameReleaseInfo();
@@ -757,13 +748,15 @@ void App::Window::MainWindow::SetMenuStates() const {
 		SetMenuState(hMenu, ID_RESTART_USEXIVALEXANDER, m_bUseXivAlexander, !m_launchParameters.empty());
 		SetMenuState(hMenu, ID_RESTART_USEPARAMETEROBFUSCATION, m_bUseParameterObfuscation, !m_launchParameters.empty());
 		SetMenuState(hMenu, ID_RESTART_USEELEVATION, m_bUseElevation, !m_launchParameters.empty());
-		const auto languageRegionModifiable = LanguageRegionModifiable();
+		const auto languageRegionModifiable = Dll::IsLanguageRegionModifiable();
+		SetMenuState(hMenu, ID_RESTART_LANGUAGE_REMEMBER, languageRegionModifiable && m_config->Runtime.RememberedGameLaunchLanguage != Sqex::Language::Unspecified, languageRegionModifiable);
 		SetMenuState(hMenu, ID_RESTART_LANGUAGE_ENGLISH, m_gameLanguage == Sqex::Language::English, languageRegionModifiable);
 		SetMenuState(hMenu, ID_RESTART_LANGUAGE_GERMAN, m_gameLanguage == Sqex::Language::German, languageRegionModifiable);
 		SetMenuState(hMenu, ID_RESTART_LANGUAGE_FRENCH, m_gameLanguage == Sqex::Language::French, languageRegionModifiable);
 		SetMenuState(hMenu, ID_RESTART_LANGUAGE_JAPANESE, m_gameLanguage == Sqex::Language::Japanese, languageRegionModifiable);
 		SetMenuState(hMenu, ID_RESTART_LANGUAGE_SIMPLIFIEDCHINESE, m_gameLanguage == Sqex::Language::ChineseSimplified, false);
 		SetMenuState(hMenu, ID_RESTART_LANGUAGE_KOREAN, m_gameLanguage == Sqex::Language::Korean, false);
+		SetMenuState(hMenu, ID_RESTART_REGION_REMEMBER, languageRegionModifiable && m_config->Runtime.RememberedGameLaunchRegion != Sqex::Region::Unspecified, languageRegionModifiable);
 		SetMenuState(hMenu, ID_RESTART_REGION_JAPAN, m_gameRegion == Sqex::Region::Japan, languageRegionModifiable);
 		SetMenuState(hMenu, ID_RESTART_REGION_NORTH_AMERICA, m_gameRegion == Sqex::Region::NorthAmerica, languageRegionModifiable);
 		SetMenuState(hMenu, ID_RESTART_REGION_EUROPE, m_gameRegion == Sqex::Region::Europe, languageRegionModifiable);
@@ -863,12 +856,6 @@ void App::Window::MainWindow::RemoveTrayIcon() {
 	Shell_NotifyIconW(NIM_DELETE, &nid);
 }
 
-bool App::Window::MainWindow::LanguageRegionModifiable() const {
-	return m_gameRegion == Sqex::Region::Japan
-		|| m_gameRegion == Sqex::Region::NorthAmerica
-		|| m_gameRegion == Sqex::Region::Europe;
-}
-
 void App::Window::MainWindow::AskRestartGame(bool onlyOnModifier) {
 	if (onlyOnModifier && !((GetKeyState(VK_CONTROL) & 0x8000) || (GetKeyState(VK_SHIFT) & 0x8000))) {
 		return;
@@ -884,64 +871,35 @@ void App::Window::MainWindow::AskRestartGame(bool onlyOnModifier) {
 		m_config->Runtime.GetLanguageNameLocalized(m_gameLanguage),
 		m_config->Runtime.GetRegionNameLocalized(m_gameRegion)
 	)) == IDYES) {
-		const auto process = Utils::Win32::Process::Current();
-		const auto game = process.PathOf().parent_path() / (m_bUseDirectX11 ? XivAlexDll::GameExecutable64NameW : XivAlexDll::GameExecutable32NameW);
-
-		auto params = m_launchParameters;
-		if (LanguageRegionModifiable()) {
-			auto found = false;
-			for (auto& pair : params) {
-				if (pair.first == "language") {
-					pair.second = std::format("{}", static_cast<int>(m_gameLanguage) - 1);
-					found = true;
-					break;
-				}
-			}
-			if (!found)
-				params.emplace_back("language", std::format("{}", static_cast<int>(m_gameLanguage) - 1));
-
-			found = false;
-			for (auto& pair : params) {
-				if (pair.first == "SYS.Region") {
-					pair.second = std::format("{}", static_cast<int>(m_gameRegion));
-					found = true;
-					break;
-				}
-			}
-			if (!found)
-				params.emplace_back("SYS.Region", std::format("{}", static_cast<int>(m_gameRegion)));
+		auto params{ m_launchParameters };
+		if (Dll::IsLanguageRegionModifiable()) {
+			Sqex::CommandLine::ModifyParameter(params, "language", std::format("{}", static_cast<int>(m_gameLanguage) - 1));
+			Sqex::CommandLine::ModifyParameter(params, "region", std::format("{}", static_cast<int>(m_gameRegion)));
 		}
-		const auto args = Sqex::CommandLine::ToString(params, m_bUseParameterObfuscation);
-		if (args.empty()) {
-			throw std::runtime_error("Failed to encode arguments");
-		}
+
+		Utils::Win32::RunProgramParams runParams{
+			.path = Utils::Win32::Process::Current().PathOf().parent_path() / (m_bUseDirectX11 ? XivAlexDll::GameExecutable64NameW : XivAlexDll::GameExecutable32NameW),
+			.args = Sqex::CommandLine::ToString(params, m_bUseParameterObfuscation),
+			.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
+		};
 
 		XivAlexDll::EnableInjectOnCreateProcess(0);
 		const auto revertInjectOnCreateProcess = Utils::CallOnDestruction([]() { XivAlexDll::EnableInjectOnCreateProcess(XivAlexDll::InjectOnCreateProcessAppFlags::Use | XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly); });
-		bool ok;
-
+		
 		// This only mattered on initialization at AutoLoadAsDependencyModule, so it's safe to modify and not revert
 		if (m_bUseXivAlexander)
 			SetEnvironmentVariableW(L"XIVALEXANDER_DISABLE", nullptr);
 		else
 			SetEnvironmentVariableW(L"XIVALEXANDER_DISABLE", L"1");
 
-		if (!Dll::IsLoadedAsDependency() && m_bUseXivAlexander)
-			ok = Utils::Win32::RunProgram({
-			.path = Dll::Module().PathOf().parent_path() / (m_bUseDirectX11 ? XivAlexDll::XivAlexLoader64NameW : XivAlexDll::XivAlexLoader32NameW),
-			.args = std::format(L"-a launcher -l select \"{}\" {}", game, args),
-			.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
-				});
-		else
-			ok = Utils::Win32::RunProgram({
-			.path = game,
-			.args = Utils::FromUtf8(args),
-			.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
-				});
+		if (!Dll::IsLoadedAsDependency() && m_bUseXivAlexander) {
+			runParams.args = std::format(L"-a launcher -l select {} {}", Utils::Win32::ReverseCommandLineToArgv(runParams.path), runParams.args);
+			runParams.path = Dll::Module().PathOf().parent_path() / (m_bUseDirectX11 ? XivAlexDll::XivAlexLoader64NameW : XivAlexDll::XivAlexLoader32NameW);
+		}
 
-		if (ok) {
+		if (Utils::Win32::RunProgram(std::move(runParams))) {
 			RemoveTrayIcon();
-			process.Terminate(0);
+			Utils::Win32::Process::Current().Terminate(0);
 		}
 	}
 }
@@ -1010,48 +968,80 @@ void App::Window::MainWindow::OnCommand_Menu_Restart(int menuId) {
 		AskRestartGame(true);
 		return;
 
+	case ID_RESTART_LANGUAGE_REMEMBER:
+		if (m_config->Runtime.RememberedGameLaunchLanguage == Sqex::Language::Unspecified)
+			m_config->Runtime.RememberedGameLaunchLanguage = m_gameLanguage;
+		else
+			m_config->Runtime.RememberedGameLaunchLanguage = Sqex::Language::Unspecified;
+		return;
+
 	case ID_RESTART_LANGUAGE_ENGLISH:
 		m_gameLanguage = Sqex::Language::English;
+		if (m_config->Runtime.RememberedGameLaunchLanguage != Sqex::Language::Unspecified)
+			m_config->Runtime.RememberedGameLaunchLanguage = m_gameLanguage;
 		AskRestartGame(true);
 		return;
 
 	case ID_RESTART_LANGUAGE_GERMAN:
 		m_gameLanguage = Sqex::Language::German;
+		if (m_config->Runtime.RememberedGameLaunchLanguage != Sqex::Language::Unspecified)
+			m_config->Runtime.RememberedGameLaunchLanguage = m_gameLanguage;
 		AskRestartGame(true);
 		return;
 
 	case ID_RESTART_LANGUAGE_FRENCH:
 		m_gameLanguage = Sqex::Language::French;
+		if (m_config->Runtime.RememberedGameLaunchLanguage != Sqex::Language::Unspecified)
+			m_config->Runtime.RememberedGameLaunchLanguage = m_gameLanguage;
 		AskRestartGame(true);
 		return;
 
 	case ID_RESTART_LANGUAGE_JAPANESE:
 		m_gameLanguage = Sqex::Language::Japanese;
+		if (m_config->Runtime.RememberedGameLaunchLanguage != Sqex::Language::Unspecified)
+			m_config->Runtime.RememberedGameLaunchLanguage = m_gameLanguage;
 		AskRestartGame(true);
 		return;
 
 	case ID_RESTART_LANGUAGE_SIMPLIFIEDCHINESE:
 		m_gameLanguage = Sqex::Language::ChineseSimplified;
+		if (m_config->Runtime.RememberedGameLaunchLanguage != Sqex::Language::Unspecified)
+			m_config->Runtime.RememberedGameLaunchLanguage = m_gameLanguage;
 		AskRestartGame(true);
 		return;
 
 	case ID_RESTART_LANGUAGE_KOREAN:
 		m_gameLanguage = Sqex::Language::Korean;
+		if (m_config->Runtime.RememberedGameLaunchLanguage != Sqex::Language::Unspecified)
+			m_config->Runtime.RememberedGameLaunchLanguage = m_gameLanguage;
 		AskRestartGame(true);
+		return;
+
+	case ID_RESTART_REGION_REMEMBER:
+		if (m_config->Runtime.RememberedGameLaunchRegion == Sqex::Region::Unspecified)
+			m_config->Runtime.RememberedGameLaunchRegion = m_gameRegion;
+		else
+			m_config->Runtime.RememberedGameLaunchRegion = Sqex::Region::Unspecified;
 		return;
 
 	case ID_RESTART_REGION_JAPAN:
 		m_gameRegion = Sqex::Region::Japan;
+		if (m_config->Runtime.RememberedGameLaunchRegion != Sqex::Region::Unspecified)
+			m_config->Runtime.RememberedGameLaunchRegion = m_gameRegion;
 		AskRestartGame(true);
 		return;
 
 	case ID_RESTART_REGION_NORTH_AMERICA:
 		m_gameRegion = Sqex::Region::NorthAmerica;
+		if (m_config->Runtime.RememberedGameLaunchRegion != Sqex::Region::Unspecified)
+			m_config->Runtime.RememberedGameLaunchRegion = m_gameRegion;
 		AskRestartGame(true);
 		return;
 
 	case ID_RESTART_REGION_EUROPE:
 		m_gameRegion = Sqex::Region::Europe;
+		if (m_config->Runtime.RememberedGameLaunchRegion != Sqex::Region::Unspecified)
+			m_config->Runtime.RememberedGameLaunchRegion = m_gameRegion;
 		AskRestartGame(true);
 		return;
 	}

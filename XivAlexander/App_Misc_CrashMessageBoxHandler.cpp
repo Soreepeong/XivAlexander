@@ -174,7 +174,7 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 					else
 						builder
 							.WithPath(Utils::Win32::Process::Current().PathOf())
-							.WithArgument(true, std::wstring(Dll::GetOriginalCommandLine()));
+							.WithArgument(true, Dll::GetOriginalCommandLine());
 
 					if (useXivAlexander)
 						builder.WithoutEnviron(L"XIVALEXANDER_DISABLE");

@@ -42,8 +42,10 @@ namespace Dll {
 		return MessageBoxF(hWnd, uType, FromUtf8(std::format(format, std::forward<Args>(args)...)).c_str());
 	}
 
-	std::wstring_view GetOriginalCommandLine();
-	bool IsOriginalCommandLineObfuscated();
+	std::wstring GetOriginalCommandLine();
+	[[nodiscard]] bool IsOriginalCommandLineObfuscated();
+	[[nodiscard]] bool IsLanguageRegionModifiable();
+
 	void SetLoadedFromEntryPoint();
 	[[nodiscard]] bool IsLoadedFromEntryPoint();
 }

@@ -205,6 +205,9 @@ namespace App {
 			Item<Sqex::Language> ResourceLanguageOverride = CreateConfigItem(this, "ResourceLanguageOverride", Sqex::Language::Unspecified);
 			Item<Sqex::Language> VoiceResourceLanguageOverride = CreateConfigItem(this, "VoiceResourceLanguageOverride", Sqex::Language::Unspecified);
 
+			Item<Sqex::Language> RememberedGameLaunchLanguage = CreateConfigItem(this, "RememberedGameLaunchLanguage", Sqex::Language::Unspecified);
+			Item<Sqex::Region> RememberedGameLaunchRegion = CreateConfigItem(this, "RememberedGameLaunchRegion", Sqex::Region::Unspecified);
+
 			Item<Language> Language = CreateConfigItem(this, "Language", Language::SystemDefault);
 
 			// If not set, default to files in System32 (SysWOW64) in %WINDIR% (GetSystemDirectory)

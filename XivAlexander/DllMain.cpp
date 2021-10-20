@@ -9,6 +9,7 @@
 #include "App_Misc_CrashMessageBoxHandler.h"
 #include "App_Misc_Hooks.h"
 #include "resource.h"
+#include "App_Misc_GameInstallationDetector.h"
 
 static Utils::Win32::LoadedModule s_hModule;
 static Utils::Win32::ActivationContext s_hActivationContext;
@@ -111,11 +112,11 @@ DWORD XivAlexDll::LaunchXivAlexLoaderWithTargetHandles(
 	}
 }
 
-static std::wstring_view s_originalCommandLine;
+static std::wstring s_originalCommandLine;
 static bool s_originalCommandLineIsObfuscated;
 
 static void CheckObfuscatedArguments() {
-	const auto process = Utils::Win32::Process::Current();
+	const auto& process = Utils::Win32::Process::Current();
 	auto filename = process.PathOf().filename().wstring();
 	CharLowerW(&filename[0]);
 
@@ -123,32 +124,36 @@ static void CheckObfuscatedArguments() {
 		return;  // not the game process
 
 	try {
-		std::vector<std::string> args;
-		if (int nArgs; LPWSTR* szArgList = CommandLineToArgvW(s_originalCommandLine.data(), &nArgs)) {
-			for (int i = 0; i < nArgs; i++)
-				args.emplace_back(Utils::ToUtf8(szArgList[i]));
-			LocalFree(szArgList);
-		}
-		if (args.size() == 2) {
-			// Once this function is called, it means that this dll will stick to the process until it exits,
-			// so it's safe to store stuff into static variables.
+		auto params = Sqex::CommandLine::FromString(Dll::GetOriginalCommandLine(), &s_originalCommandLineIsObfuscated);
+		if (Dll::IsLanguageRegionModifiable()) {
+			auto config = App::Config::Acquire();
 
-			static const auto pairs = Sqex::CommandLine::FromString(args[1], &s_originalCommandLineIsObfuscated);
-			if (s_originalCommandLineIsObfuscated) {
-				static auto newlyCreatedArgumentsW = std::format(L"\"{}\" {}", process.PathOf().wstring(), Sqex::CommandLine::ToString(pairs, false));
-				static auto newlyCreatedArgumentsA = Utils::ToUtf8(newlyCreatedArgumentsW, CP_OEMCP);
+			if (const auto language = config->Runtime.RememberedGameLaunchLanguage.Value();
+				language != Sqex::Language::Unspecified) {
+				Sqex::CommandLine::ModifyParameter(params, "language", std::format("{}", static_cast<int>(language) - 1));
+			}
 
-				static App::Misc::Hooks::ImportedFunction<LPWSTR> GetCommandLineW("kernel32!GetCommandLineW", "kernel32.dll", "GetCommandLineW");
-				static const auto h1 = GetCommandLineW.SetHook([]() -> LPWSTR {
-					return &newlyCreatedArgumentsW[0];
-				});
-
-				static App::Misc::Hooks::ImportedFunction<LPSTR> GetCommandLineA("kernel32!GetCommandLineA", "kernel32.dll", "GetCommandLineA");
-				static const auto h2 = GetCommandLineA.SetHook([]() -> LPSTR {
-					return &newlyCreatedArgumentsA[0];
-				});
+			if (const auto region = config->Runtime.RememberedGameLaunchRegion.Value();
+				region != Sqex::Region::Unspecified) {
+				Sqex::CommandLine::ModifyParameter(params, "SYS.Region", std::format("{}", static_cast<int>(region)));
 			}
 		}
+
+		// Once this function is called, it means that this dll will stick to the process until it exits,
+		// so it's safe to store stuff into static variables.
+
+		static auto newlyCreatedArgumentsW = std::format(L"\"{}\" {}", process.PathOf().wstring(), Sqex::CommandLine::ToString(params, false));
+		static auto newlyCreatedArgumentsA = Utils::ToUtf8(newlyCreatedArgumentsW, CP_OEMCP);
+
+		static App::Misc::Hooks::ImportedFunction<LPWSTR> GetCommandLineW("kernel32!GetCommandLineW", "kernel32.dll", "GetCommandLineW");
+		static const auto h1 = GetCommandLineW.SetHook([]() -> LPWSTR {
+			return &newlyCreatedArgumentsW[0];
+		});
+
+		static App::Misc::Hooks::ImportedFunction<LPSTR> GetCommandLineA("kernel32!GetCommandLineA", "kernel32.dll", "GetCommandLineA");
+		static const auto h2 = GetCommandLineA.SetHook([]() -> LPSTR {
+			return &newlyCreatedArgumentsA[0];
+		});
 	} catch (...) {
 		// do nothing
 	}
@@ -300,12 +305,24 @@ int Dll::MessageBoxF(HWND hWnd, UINT uType, UINT stringResId) {
 	return MessageBoxF(hWnd, uType, GetStringResFromId(stringResId));
 }
 
-std::wstring_view Dll::GetOriginalCommandLine() {
+std::wstring Dll::GetOriginalCommandLine() {
 	return s_originalCommandLine;
 }
 
 bool Dll::IsOriginalCommandLineObfuscated() {
 	return s_originalCommandLineIsObfuscated;
+}
+
+bool Dll::IsLanguageRegionModifiable() {
+	static std::optional<bool> s_modifiable;
+	if (!s_modifiable.has_value()) {
+		try {
+			s_modifiable = App::Misc::GameInstallationDetector::GetGameReleaseInfo().Region == Sqex::GameReleaseRegion::International;
+		} catch (...) {
+			s_modifiable = false;
+		}
+	}
+	return *s_modifiable;
 }
 
 void Dll::SetLoadedFromEntryPoint() {

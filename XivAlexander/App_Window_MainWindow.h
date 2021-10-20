@@ -32,7 +32,7 @@ namespace App::Window {
 		Sqex::Language m_gameLanguage = Sqex::Language::Unspecified;
 		Sqex::Region m_gameRegion = Sqex::Region::Unspecified;
 		const std::vector<std::pair<std::string, std::string>> m_launchParameters;
-		const std::string m_startupArgumentsForDisplay;
+		const std::wstring m_startupArgumentsForDisplay;
 
 		Utils::Win32::Thread m_replaceMusics;
 		std::shared_ptr<ProgressPopupWindow> m_replaceMusicsProgressWindow;
@@ -67,7 +67,6 @@ namespace App::Window {
 		void RegisterTrayIcon();
 		void RemoveTrayIcon();
 
-		[[nodiscard]] bool LanguageRegionModifiable() const;
 		void AskRestartGame(bool onlyOnModifier = false);
 
 		void OnCommand_Menu_File(int menuId);

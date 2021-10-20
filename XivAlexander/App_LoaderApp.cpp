@@ -71,7 +71,7 @@ bool App::LoaderApp::EnsureNoWow64Emulation() {
 
 	Utils::Win32::RunProgram({
 		.path = Utils::Win32::Process::Current().PathOf().parent_path() / XivAlexDll::XivAlexLoader64NameW,
-		.args = Utils::Win32::SplitCommandLineIntoNameAndArgs(std::wstring(Dll::GetOriginalCommandLine())).second,
+		.args = Utils::Win32::SplitCommandLineIntoNameAndArgs(Dll::GetOriginalCommandLine()).second,
 		.wait = true,
 	});
 	return true;

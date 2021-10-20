@@ -203,7 +203,7 @@ App::InjectOnCreateProcessApp::Implementation::Implementation() {
 					&& (lstrcmpiW(applicationPath.filename().c_str(), XivAlexDll::GameExecutable32NameW) == 0
 						|| lstrcmpiW(applicationPath.filename().c_str(), XivAlexDll::GameExecutable64NameW) == 0)) {
 					if (Dll::IsOriginalCommandLineObfuscated())
-						commandLine = Utils::FromUtf8(Sqex::CommandLine::ToString(Sqex::CommandLine::FromString(Utils::ToUtf8(commandLine)), true));
+						commandLine = Sqex::CommandLine::ToString(Sqex::CommandLine::FromString(std::format(L"unused.exe {}", commandLine)), true);
 				}
 			} catch (...) {
 				// pass
@@ -434,7 +434,7 @@ static void InitializeAsStubBeforeOriginalEntryPoint() {
 }
 
 static void InitializeBeforeOriginalEntryPoint() {
-	const auto process = Utils::Win32::Process::Current();
+	const auto& process = Utils::Win32::Process::Current();
 	auto filename = process.PathOf().filename().wstring();
 	CharLowerW(&filename[0]);
 	s_injectOnCreateProcessApp = std::make_unique<App::InjectOnCreateProcessApp>();
@@ -460,10 +460,11 @@ static void InitializeBeforeOriginalEntryPoint() {
 void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters* pParam) {
 	DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &pParam->Internal.hMainThread, 0, FALSE, DUPLICATE_SAME_ACCESS);
 	pParam->Internal.hWorkerThread = CreateThread(nullptr, 0, [](void* pParam) -> DWORD {
+		Utils::Win32::SetThreadDescription(GetCurrentThread(), L"InjectEntryPoint::WorkerThread");
 		// ReSharper disable once CppInitializedValueIsAlwaysRewritten
 		auto skipFree = false;
 		{
-			const auto process = Utils::Win32::Process::Current();
+			const auto& process = Utils::Win32::Process::Current();
 
 			try {
 				const auto activationContextCleanup = Dll::ActivationContext().With();

@@ -34,54 +34,65 @@ struct App::Misc::Logger::Implementation final {
 	std::deque<LogItem> m_items, m_pendingItems;
 	uint64_t m_logIdCounter = 1;
 
-	// needs to be last, as "this" needs to be done initializing
-	const Utils::Win32::Thread m_hDispatcherThread;
+	Utils::Win32::Thread m_hDispatcherThread;
 
 	Implementation(Logger& logger)
-		: logger(logger)
-		, m_hDispatcherThread(std::format(L"XivAlexander::App::Misc::Logger({:x})::Implementation({:x}::DispatcherThreadBody",
-				reinterpret_cast<size_t>(&logger), reinterpret_cast<size_t>(this)
-			), [this]() { return DispatcherThreadBody(); }) {
-		ResumeThread(m_hDispatcherThread);
+		: logger(logger) {
 	}
 
 	~Implementation() {
 		m_bQuitting = true;
 		m_threadTrigger.notify_all();
-		WaitForSingleObject(m_hDispatcherThread, INFINITE);
-	}
-
-	void DispatcherThreadBody() {
-		while (true) {
-			std::deque<LogItem> pendingItems;
-			{
-				std::unique_lock lock(m_pendingItemLock);
-				if (m_pendingItems.empty()) {
-					m_threadTrigger.wait(lock);
-					if (m_bQuitting)
-						return;
-				}
-				pendingItems = std::move(m_pendingItems);
-			}
-			{
-				std::lock_guard lock(m_itemLock);
-				for (auto& item : pendingItems) {
-					m_items.push_back(item);
-					if (m_items.size() > MaxLogCount)
-						m_items.pop_front();
-				}
-			}
-			logger.OnNewLogItem(pendingItems);
-		}
+		if (m_hDispatcherThread)
+			void(m_hDispatcherThread.Wait(INFINITE));
 	}
 
 	void AddLogItem(LogItem item) {
 		std::lock_guard lock(m_pendingItemLock);
 		item.id = m_logIdCounter++;
-		m_pendingItems.push_back(std::move(item));
-		while (m_pendingItems.size() > MaxLogCount)
-			m_pendingItems.pop_front();
-		m_threadTrigger.notify_all();
+		if (m_hDispatcherThread) {
+			m_pendingItems.push_back(std::move(item));
+			while (m_pendingItems.size() > MaxLogCount)
+				m_pendingItems.pop_front();
+			m_threadTrigger.notify_all();
+		} else {
+			m_items.push_back(item);
+		}
+	}
+
+	void StartDispatcher() {
+		if (m_hDispatcherThread)
+			return;
+
+		std::lock_guard lock(m_pendingItemLock);
+		if (m_hDispatcherThread)
+			return;
+
+		m_hDispatcherThread = Utils::Win32::Thread(std::format(L"XivAlexander::App::Misc::Logger({:x})::Implementation({:x}::DispatcherThreadBody",
+			reinterpret_cast<size_t>(&logger), reinterpret_cast<size_t>(this)
+		), [this]() {
+			while (true) {
+				std::deque<LogItem> pendingItems;
+				{
+					std::unique_lock lock(m_pendingItemLock);
+					if (m_pendingItems.empty()) {
+						m_threadTrigger.wait(lock);
+						if (m_bQuitting)
+							return;
+					}
+					pendingItems = std::move(m_pendingItems);
+				}
+				{
+					std::lock_guard lock(m_itemLock);
+					for (auto& item : pendingItems) {
+						m_items.push_back(item);
+						if (m_items.size() > MaxLogCount)
+							m_items.pop_front();
+					}
+				}
+				logger.OnNewLogItem(pendingItems);
+			}
+		});
 	}
 };
 
@@ -110,6 +121,7 @@ App::Misc::Logger::Logger()
 	, OnNewLogItem([this](const auto& cb) {
 		std::lock_guard lock(m_pImpl->m_itemLock);
 		cb(m_pImpl->m_items);
+		m_pImpl->StartDispatcher();
 	}) {
 	Utils::Win32::DebugPrint(L"Logger: New");
 }
@@ -201,7 +213,7 @@ void App::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::string_view
 		}
 
 		{
-			const auto process = Utils::Win32::Process::Current();
+			const auto& process = Utils::Win32::Process::Current();
 			std::ofstream of(newFileName);
 			if (!heading.empty())
 				of << heading << "\n\n";

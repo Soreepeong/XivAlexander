@@ -8,14 +8,15 @@ const char Sqex::CommandLine::ChecksumTable[17] = "fX1pGtdS5CAP4_VL";
 const char Sqex::CommandLine::ObfuscationHead[13] = "//**sqex0003";
 const char Sqex::CommandLine::ObfuscationTail[5] = "**//";
 
-std::vector<std::pair<std::string, std::string>> Sqex::CommandLine::FromString(std::string source, bool* wasObfuscated) {
+std::vector<std::pair<std::string, std::string>> Sqex::CommandLine::FromString(const std::wstring& source, bool* wasObfuscated) {
+	const auto args = Utils::Win32::CommandLineToArgsU8(source);
 	std::vector<std::pair<std::string, std::string>> res;
 
-	if (source.starts_with(ObfuscationHead) && source.size() >= 17) {
-		auto endPos = source.find(ObfuscationTail);
+	if (args.size() == 2 && args[1].starts_with(ObfuscationHead) && args[1].size() >= 17) {
+		auto endPos = args[1].find(ObfuscationTail);
 		if (endPos == std::string::npos)
 			throw std::invalid_argument("bad encoded string");
-		source = source.substr(sizeof ObfuscationHead - 1, endPos - (sizeof ObfuscationHead - 1));
+		auto source = args[1].substr(sizeof ObfuscationHead - 1, endPos - (sizeof ObfuscationHead - 1));
 
 		const auto chksum = std::find(ChecksumTable, ChecksumTable + sizeof ChecksumTable, source.back()) - ChecksumTable;
 		source.pop_back();
@@ -68,16 +69,12 @@ std::vector<std::pair<std::string, std::string>> Sqex::CommandLine::FromString(s
 		throw std::invalid_argument("bad encoded string");
 
 	} else {
-		if (int nArgs; LPWSTR* szArgList = CommandLineToArgvW(std::format(L"test.exe {}", source).c_str(), &nArgs)) {
-			const auto cleanup = Utils::CallOnDestruction([szArgList]() { LocalFree(szArgList); });
-			for (int i = 1; i < nArgs; i++) {
-				const auto arg = Utils::ToUtf8(szArgList[i]);
-				const auto eq = arg.find_first_of('=');
-				if (eq == std::string::npos)
-					res.emplace_back(arg, "");
-				else
-					res.emplace_back(arg.substr(0, eq), arg.substr(eq + 1));
-			}
+		for (size_t i = 1; i < args.size(); ++i) {
+			const auto eq = args[i].find('=');
+			if (eq == std::string::npos)
+				res.emplace_back(args[i], "");
+			else
+				res.emplace_back(args[i].substr(0, eq), args[i].substr(eq + 1));
 		}
 		if (wasObfuscated)
 			*wasObfuscated = false;
@@ -85,7 +82,7 @@ std::vector<std::pair<std::string, std::string>> Sqex::CommandLine::FromString(s
 	}
 }
 
-std::string Sqex::CommandLine::ToString(const std::vector<std::pair<std::string, std::string>>& map, bool obfuscate) {
+std::wstring Sqex::CommandLine::ToString(const std::vector<std::pair<std::string, std::string>>& args, bool obfuscate) {
 	if (obfuscate) {
 		const auto tick = static_cast<DWORD>(GetTickCount64() & 0xFFFFFFFF);  // Practically GetTickCount, but silencing the warning
 		const auto key = std::format("{:08x}", tick & 0xFFFF0000);
@@ -95,7 +92,7 @@ std::string Sqex::CommandLine::ToString(const std::vector<std::pair<std::string,
 		{
 			std::ostringstream plain;
 			plain << " T =" << tick;
-			for (const auto& [k, v] : map) {
+			for (const auto& [k, v] : args) {
 				if (k == "T")
 					continue;
 
@@ -120,16 +117,16 @@ std::string Sqex::CommandLine::ToString(const std::vector<std::pair<std::string,
 			b64encoder.Get(reinterpret_cast<uint8_t*>(&encrypted[0]), encrypted.size());
 		}
 
-		return std::format("{}{}{}{}", ObfuscationHead, encrypted, chksum, ObfuscationTail);
+		return Utils::FromUtf8(std::format("{}{}{}{}", ObfuscationHead, encrypted, chksum, ObfuscationTail));
 
 	} else {
-		std::vector<std::string> args;
-		for (const auto& pair : map) {
+		std::vector<std::wstring> res;
+		for (const auto& pair : args) {
 			if (pair.first == "T")
 				continue;
-			args.emplace_back(std::format("{}={}", pair.first, pair.second));
+			res.emplace_back(std::format(L"{}={}", pair.first, pair.second));
 		}
-		return Utils::Win32::ReverseCommandLineToArgv(args);
+		return Utils::Win32::ReverseCommandLineToArgv(res);
 	}
 }
 
@@ -169,4 +166,14 @@ std::vector<std::string> Sqex::CommandLine::SplitPreserveDelimiter(const std::st
 		s = s.substr(off, to - off);
 	}
 	return split;
+}
+
+void Sqex::CommandLine::ModifyParameter(std::vector<std::pair<std::string, std::string>>& args, const std::string& key, std::string value) {
+	for (auto& pair : args) {
+		if (pair.first == key) {
+			pair.second = std::move(value);
+			return;
+		}
+	}
+	args.emplace_back(key, std::move(value));
 }

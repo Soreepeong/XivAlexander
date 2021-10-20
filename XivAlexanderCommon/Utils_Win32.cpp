@@ -315,10 +315,8 @@ void Utils::Win32::ShellExecutePathOrThrow(const std::filesystem::path& path, HW
 }
 
 std::vector<std::wstring> Utils::Win32::CommandLineToArgs(const std::wstring& cmdLine) {
-	// line is null-terminated
-	const auto line = std::wstring_view(cmdLine.empty() ? GetCommandLineW() : cmdLine.c_str());
 	std::vector<std::wstring> args;
-	if (int nArgs; LPWSTR* szArgList = CommandLineToArgvW(line.data(), &nArgs)) {
+	if (int nArgs; LPWSTR* szArgList = CommandLineToArgvW(cmdLine.empty() ? GetCommandLineW() : cmdLine.c_str(), &nArgs)) {
 		if (szArgList) {
 			for (int i = 0; i < nArgs; i++)
 				args.emplace_back(szArgList[i]);
@@ -329,10 +327,8 @@ std::vector<std::wstring> Utils::Win32::CommandLineToArgs(const std::wstring& cm
 }
 
 std::vector<std::string> Utils::Win32::CommandLineToArgsU8(const std::wstring& cmdLine) {
-	// line is null-terminated
-	const auto line = std::wstring_view(cmdLine.empty() ? GetCommandLineW() : cmdLine.c_str());
 	std::vector<std::string> args;
-	if (int nArgs; LPWSTR* szArgList = CommandLineToArgvW(line.data(), &nArgs)) {
+	if (int nArgs; LPWSTR* szArgList = CommandLineToArgvW(cmdLine.empty() ? GetCommandLineW() : cmdLine.c_str(), &nArgs)) {
 		if (szArgList) {
 			for (int i = 0; i < nArgs; i++)
 				args.emplace_back(ToUtf8(szArgList[i]));

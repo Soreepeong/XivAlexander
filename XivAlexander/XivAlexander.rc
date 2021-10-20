@@ -86,6 +86,9 @@ BEGIN
         MENUITEM "抧堟丗擔杮(&1)",                   ID_RESTART_REGION_JAPAN
         MENUITEM "抧堟丗杒暷(&2)",                   ID_RESTART_REGION_NORTH_AMERICA
         MENUITEM "抧堟丗墷廈(&3)",                   ID_RESTART_REGION_EUROPE
+        MENUITEM SEPARATOR
+        MENUITEM "尵岅偺愝掕傪曐懚(&L)",                ID_RESTART_LANGUAGE_REMEMBER, CHECKED
+        MENUITEM "抧堟偺愝掕傪曐懚(&S)",                ID_RESTART_REGION_REMEMBER, CHECKED
     END
     POPUP "僱僢僩儚乕僋(&N)"
     BEGIN
@@ -607,6 +610,9 @@ BEGIN
         MENUITEM "瘤开: 老夯(&1)",                  ID_RESTART_REGION_JAPAN
         MENUITEM "瘤开: 合固(&2)",                  ID_RESTART_REGION_NORTH_AMERICA
         MENUITEM "瘤开: 蜡反(&3)",                  ID_RESTART_REGION_EUROPE
+        MENUITEM SEPARATOR
+        MENUITEM "攫绢 汲沥 扁撅(&L)",                ID_RESTART_LANGUAGE_REMEMBER, CHECKED
+        MENUITEM "瘤开 汲沥 扁撅(&S)",                ID_RESTART_REGION_REMEMBER, CHECKED
     END
     POPUP "匙飘况农(&N)"
     BEGIN
@@ -1185,6 +1191,9 @@ BEGIN
         MENUITEM "Region: Japan (&1)",          ID_RESTART_REGION_JAPAN
         MENUITEM "Region: North America (&2)",  ID_RESTART_REGION_NORTH_AMERICA
         MENUITEM "Region: Europe (&3)",         ID_RESTART_REGION_EUROPE
+        MENUITEM SEPARATOR
+        MENUITEM "Remember &Language Settings", ID_RESTART_LANGUAGE_REMEMBER, CHECKED
+        MENUITEM "Remember Region &Settings",   ID_RESTART_REGION_REMEMBER, CHECKED
     END
     POPUP "&Network"
     BEGIN
