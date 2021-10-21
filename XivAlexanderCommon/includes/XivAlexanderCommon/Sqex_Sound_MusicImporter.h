@@ -1,6 +1,6 @@
 #pragma once
 
-#include <regex>
+#include <srell.hpp>
 
 #include "Sqex_Sound_Reader.h"
 #include "Utils_ListenerManager.h"
@@ -39,7 +39,15 @@ namespace Sqex::Sound {
 	struct MusicImportSourceItemInputFile {
 		std::optional<std::string> directory;
 		std::string pattern;
-		srell::u16wregex pattern_compiled;
+
+		explicit MusicImportSourceItemInputFile(std::string pattern = {}, std::optional<std::string> directory = std::nullopt)
+			: directory(directory)
+			, pattern(pattern) {}
+
+		const srell::u16wregex& GetCompiledPattern() const;
+
+	private:
+		mutable std::optional<srell::u16wregex> m_patternCompiled;
 	};
 
 	void from_json(const nlohmann::json& j, MusicImportSourceItemInputFile& o);

@@ -125,7 +125,7 @@ App::Config::RuntimeRepository::RuntimeRepository(__in_opt const Config* pConfig
 	m_cleanup += Language.OnChangeListenerAlsoOnLoad([&](auto&) {
 		Utils::Win32::Error::SetDefaultLanguageId(GetLangId());
 	});
-	m_cleanup += MusicImportConfig.OnChangeListener([&](auto&) {
+	m_cleanup += MusicImportConfig.OnChangeListenerAlsoOnLoad([&](auto&) {
 		std::set<std::string> newKeys;
 		m_musicDirectoryPurchaseWebsites.clear();
 		for (const auto& path : MusicImportConfig.Value()) {

@@ -72,7 +72,6 @@ void Sqex::Sound::from_json(const nlohmann::json& j, MusicImportSourceItemInputF
 				o.directory = it->get<std::string>();
 			o.pattern = j.value(lastAttempt = "pattern", decltype(o.pattern)());
 		}
-		o.pattern_compiled = srell::u16wregex(Utils::FromUtf8(o.pattern), srell::regex_constants::icase);
 
 	} catch (const std::exception& e) {
 		throw std::invalid_argument(std::format("[{}] {}", lastAttempt, e.what()));
@@ -93,7 +92,7 @@ void Sqex::Sound::from_json(const nlohmann::json& j, MusicImportSourceItem& o) {
 				o.inputFiles = { j.get<std::vector<MusicImportSourceItemInputFile>>() };
 		} else if (j.is_string()) {
 			lastAttempt = "<string>";
-			o.inputFiles = { { { .pattern = j.get<std::string>() } } };
+			o.inputFiles = { { Sqex::Sound::MusicImportSourceItemInputFile(j.get<std::string>()) } };
 		} else {
 			if (const auto it = j.find(lastAttempt = "inputFiles"); it == j.end())
 				throw std::invalid_argument("required key missing");
@@ -443,7 +442,7 @@ bool Sqex::Sound::MusicImporter::ResolveSources(std::string dirName, const std::
 				for (const auto& pattern : patterns) {
 					if (pattern.directory != dirName)
 						continue;
-					if (srell::regex_search(item.path().filename().wstring(), pattern.pattern_compiled))
+					if (srell::regex_search(item.path().filename().wstring(), pattern.GetCompiledPattern()))
 						occurrences.insert(item.path());
 				}
 			}
@@ -1004,4 +1003,10 @@ void Sqex::Sound::MusicImporter::Merge(const std::function<void(const std::files
 	} catch (const std::runtime_error& e) {
 		throw std::runtime_error(std::format("Failed to encode: {} (step: {})", e.what(), lastStepDescription));
 	}
+}
+
+const srell::u16wregex& Sqex::Sound::MusicImportSourceItemInputFile::GetCompiledPattern() const {
+	if (!m_patternCompiled)
+		m_patternCompiled = srell::u16wregex(Utils::FromUtf8(pattern), srell::regex_constants::icase);
+	return *m_patternCompiled;
 }
