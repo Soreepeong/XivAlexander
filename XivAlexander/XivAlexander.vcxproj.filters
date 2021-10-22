@@ -143,6 +143,9 @@
     <ClCompile Include="App_Misc_GameInstallationDetector.cpp">
       <Filter>App\Misc</Filter>
     </ClCompile>
+    <ClCompile Include="App_Feature_DamageTracker.cpp">
+      <Filter>App\Feature</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -262,6 +265,9 @@
     </ClInclude>
     <ClInclude Include="App_Misc_GameInstallationDetector.h">
       <Filter>App\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Feature_DamageTracker.h">
+      <Filter>App\Feature</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

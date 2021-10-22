@@ -7,6 +7,7 @@
 #include "App_ConfigRepository.h"
 #include "App_Feature_AllIpcMessageLogger.h"
 #include "App_Feature_AnimationLockLatencyHandler.h"
+#include "App_Feature_DamageTracker.h"
 #include "App_Feature_EffectApplicationDelayLogger.h"
 #include "App_Feature_GameResourceOverrider.h"
 #include "App_Feature_IpcTypeFinder.h"
@@ -126,10 +127,11 @@ struct App::XivAlexApp::Implementation final {
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
 	std::unique_ptr<Network::SocketHook> m_socketHook{};
-	std::unique_ptr<Feature::AnimationLockLatencyHandler> m_animationLockLatencyHandler{};
-	std::unique_ptr<Feature::IpcTypeFinder> m_ipcTypeFinder{};
 	std::unique_ptr<Feature::AllIpcMessageLogger> m_allIpcMessageLogger{};
+	std::unique_ptr<Feature::AnimationLockLatencyHandler> m_animationLockLatencyHandler{};
+	std::unique_ptr<Feature::DamageTracker> m_damageTracker{};
 	std::unique_ptr<Feature::EffectApplicationDelayLogger> m_effectApplicationDelayLogger{};
+	std::unique_ptr<Feature::IpcTypeFinder> m_ipcTypeFinder{};
 
 	std::unique_ptr<Window::LogWindow> m_logWindow{};
 	std::unique_ptr<Window::MainWindow> m_trayWindow{};
@@ -185,6 +187,10 @@ struct App::XivAlexApp::Implementation final {
 				m_animationLockLatencyHandler = nullptr;
 		});
 		m_cleanup += [this]() { m_animationLockLatencyHandler = nullptr; };
+
+		// TODO: testing
+		m_damageTracker = std::make_unique<Feature::DamageTracker>(m_socketHook.get());
+		m_cleanup += [this]() { m_damageTracker = nullptr; };
 
 		if (config.UseOpcodeFinder)
 			m_ipcTypeFinder = std::make_unique<Feature::IpcTypeFinder>(m_socketHook.get());

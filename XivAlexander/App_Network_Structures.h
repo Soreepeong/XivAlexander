@@ -56,13 +56,24 @@ namespace App::Network::Structures {
 		MountName = 0x0d,
 	};
 
+	// See: https://github.com/ravahn/machina/blob/master/Machina.FFXIV/Headers/Global/Server_ActorControl.cs
+	// See: https://github.com/SapphireServer/Sapphire/blob/develop/src/common/Network/CommonActorControl.h
 	enum class S2C_ActorControlSelfCategory : uint16_t {
 		Cooldown = 0x0011,
 		ActionRejected = 0x02bc,
 	};
 
 	enum class S2C_ActorControlCategory : uint16_t {
+		JobChange = 0x0005,  // Param1=job id
+		Death = 0x0006,
 		CancelCast = 0x000f,
+
+		StatusEffectGain = 0x0014,
+		StatusEffectLose = 0x0015,
+		StatusEffectUpdate = 0x0016,
+		EffectOverTime = 0x0017,
+
+		DirectorUpdate = 0x006d,
 	};
 
 	struct KeepAliveMessageData {
@@ -113,12 +124,11 @@ namespace App::Network::Structures {
 			uint16_t Padding1;
 		};
 
+#pragma pack(push, 1)
 		struct S2C_ActorControl {
+			S2C_ActorControlCategory Category;
 			union {
-				S2C_ActorControlCategory Category;
-
 				struct RawType {
-					S2C_ActorControlCategory Category;
 					uint16_t Padding1;
 					uint32_t Param1;
 					uint32_t Param2;
@@ -127,8 +137,30 @@ namespace App::Network::Structures {
 					uint32_t Padding2;
 				} Raw;
 
+				struct DeathType {
+					uint16_t Padding1;
+					uint32_t SourceActorId;
+					uint32_t Param2;
+					uint32_t Param3;
+					uint32_t Param4;
+					uint32_t Padding2;
+				} Death;
+
+				struct EffectOverTimeType {
+					enum class EffectTypeEnum : uint32_t {
+						Damage = 3,
+						Heal = 4,
+					};
+
+					uint16_t Padding1;
+					uint32_t BuffId;
+					EffectTypeEnum EffectType;
+					uint32_t Amount;
+					uint32_t SourceActorId;
+					uint32_t Padding2;
+				} EffectOverTime;
+
 				struct CancelCastType {
-					S2C_ActorControlCategory Category;
 					uint16_t Padding1;
 					uint32_t Param1;
 					uint32_t Param2;
@@ -138,6 +170,7 @@ namespace App::Network::Structures {
 				} CancelCast;
 			};
 		};
+#pragma pack(pop)
 
 		struct S2C_ActorControlSelf {
 			union {
@@ -251,6 +284,24 @@ namespace App::Network::Structures {
 			IPCMessageData IPC;
 		} Data;
 
-		void DebugPrint(LogCategory logCategory, const char* head, bool dump = false) const;
+		size_t DataLength() const {
+			return Length - offsetof(std::remove_reference_t<decltype(*this)>, Data);
+		}
+
+		struct DumpConfig {
+			enum GuessType : uint8_t {
+				None,
+				Outgoing,
+				Incoming,
+			};
+
+			bool Dump = false;
+			bool DumpString = false;
+			GuessType Guess = None;
+			size_t SpacingUnit = 4;
+			size_t DoubleSpacingUnit = 16;
+			size_t LineBreakUnit = 32;
+		};
+		std::string DebugPrint(const DumpConfig& dumpConfig = {}) const;
 	};
 }

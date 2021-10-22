@@ -874,7 +874,7 @@ void App::Window::MainWindow::AskRestartGame(bool onlyOnModifier) {
 		auto params{ m_launchParameters };
 		if (Dll::IsLanguageRegionModifiable()) {
 			Sqex::CommandLine::ModifyParameter(params, "language", std::format("{}", static_cast<int>(m_gameLanguage) - 1));
-			Sqex::CommandLine::ModifyParameter(params, "region", std::format("{}", static_cast<int>(m_gameRegion)));
+			Sqex::CommandLine::ModifyParameter(params, "SYS.Region", std::format("{}", static_cast<int>(m_gameRegion)));
 		}
 
 		Utils::Win32::RunProgramParams runParams{

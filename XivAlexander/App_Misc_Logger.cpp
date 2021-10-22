@@ -14,6 +14,7 @@ const std::map<App::LogCategory, const char*> App::Misc::Logger::LogCategoryName
 	{App::LogCategory::SocketHook, "SocketHook"},
 	{App::LogCategory::AllIpcMessageLogger, "AllIpcMessageLogger"},
 	{App::LogCategory::AnimationLockLatencyHandler, "AnimationLockLatencyHandler"},
+	{App::LogCategory::DamageTracker, "DamageTracker"},
 	{App::LogCategory::EffectApplicationDelayLogger, "EffectApplicationDelayLogger"},
 	{App::LogCategory::IpcTypeFinder, "IpcTypeFinder"},
 	{App::LogCategory::GameResourceOverrider, "GameResourceOverrider"},

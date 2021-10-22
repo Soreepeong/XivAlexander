@@ -23,7 +23,7 @@ char32_t Sqex::FontCsv::Utf8Uint32ToUnicodeCodePoint(uint32_t n) {
 			(((n >> 0x08) & 0x1F) << 6) |
 			(((n >> 0x00) & 0x3F) << 0)
 		);
-	else if ((n & 0xF0C0C0) == 0xE08080)
+	else if ((n & 0xFFF0C0C0) == 0xE08080)
 		return static_cast<char32_t>(
 			(((n >> 0x10) & 0x0F) << 12) |
 			(((n >> 0x08) & 0x3F) << 6) |

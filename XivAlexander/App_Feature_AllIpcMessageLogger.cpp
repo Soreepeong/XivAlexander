@@ -7,66 +7,26 @@
 struct App::Feature::AllIpcMessageLogger::Implementation {
 	class SingleConnectionHandler {
 	public:
-		Implementation* m_pImpl;
-		Network::SingleConnection& conn;
+		Implementation* Impl;
+		Network::SingleConnection& Conn;
 
 		SingleConnectionHandler(Implementation* pImpl, Network::SingleConnection& conn)
-			: m_pImpl(pImpl)
-			, conn(conn) {
+			: Impl(pImpl)
+			, Conn(conn) {
 			using namespace Network::Structures;
 
-			conn.AddIncomingFFXIVMessageHandler(this, [&](auto pMessage) {
-				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
-					const char* pszPossibleMessageType;
-					switch (pMessage->Length) {
-						case 0x09c: pszPossibleMessageType = "ActionEffect01";
-							break;
-						case 0x29c: pszPossibleMessageType = "ActionEffect08";
-							break;
-						case 0x4dc: pszPossibleMessageType = "ActionEffect16";
-							break;
-						case 0x71c: pszPossibleMessageType = "ActionEffect24";
-							break;
-						case 0x95c: pszPossibleMessageType = "ActionEffect32";
-							break;
-						case 0x040: pszPossibleMessageType = "ActorControlSelf, ActorCast";
-							break;
-						case 0x038: pszPossibleMessageType = "ActorControl";
-							break;
-						case 0x078: pszPossibleMessageType = "AddStatusEffect";
-							break;
-						default: pszPossibleMessageType = nullptr;
-					}
-					m_pImpl->m_logger->Format(LogCategory::AllIpcMessageLogger, "source={:08x} current={:08x} subtype={:04x} length={:x} (S2C{}{})",
-						pMessage->SourceActor, pMessage->CurrentActor,
-						pMessage->Data.IPC.SubType, pMessage->Length,
-						pszPossibleMessageType ? ": Possibly " : "",
-						pszPossibleMessageType ? pszPossibleMessageType : "");
-				}
+			Conn.AddIncomingFFXIVMessageHandler(this, [&](auto pMessage) {
+				Impl->m_logger->Format(LogCategory::AllIpcMessageLogger, "Incoming: {}", pMessage->DebugPrint({ .Dump = true, .DumpString = true, .Guess = FFXIVMessage::DumpConfig::Incoming }));
 				return true;
 			});
-			conn.AddOutgoingFFXIVMessageHandler(this, [&](auto pMessage) {
-				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
-					const char* pszPossibleMessageType;
-					switch (pMessage->Length) {
-						case 0x038: pszPossibleMessageType = "PositionUpdate";
-							break;
-						case 0x040: pszPossibleMessageType = "ActionRequest, C2S_ActionRequestGroundTargeted, InteractTarget";
-							break;
-						default: pszPossibleMessageType = nullptr;
-					}
-					m_pImpl->m_logger->Format(LogCategory::AllIpcMessageLogger, "source={:08x} current={:08x} subtype={:04x} length={:x} (C2S{}{})",
-						pMessage->SourceActor, pMessage->CurrentActor,
-						pMessage->Data.IPC.SubType, pMessage->Length,
-						pszPossibleMessageType ? ": Possibly " : "",
-						pszPossibleMessageType ? pszPossibleMessageType : "");
-				}
+			Conn.AddOutgoingFFXIVMessageHandler(this, [&](auto pMessage) {
+				Impl->m_logger->Format(LogCategory::AllIpcMessageLogger, "Outgoing: {}", pMessage->DebugPrint({ .Dump = true, .DumpString = true, .Guess = FFXIVMessage::DumpConfig::Outgoing }));
 				return true;
 			});
 		}
 
 		~SingleConnectionHandler() {
-			conn.RemoveMessageHandlers(this);
+			Conn.RemoveMessageHandlers(this);
 		}
 	};
 

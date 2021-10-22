@@ -16,6 +16,7 @@ namespace App {
 		SocketHook,
 		AllIpcMessageLogger,
 		AnimationLockLatencyHandler,
+		DamageTracker,
 		EffectApplicationDelayLogger,
 		IpcTypeFinder,
 		GameResourceOverrider,
