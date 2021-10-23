@@ -10,6 +10,7 @@ Utils::NumericStatisticsTracker::NumericStatisticsTracker(size_t trackCount, int
 Utils::NumericStatisticsTracker::~NumericStatisticsTracker() = default;
 
 void Utils::NumericStatisticsTracker::AddValue(int64_t v) {
+	const auto lock = std::lock_guard(m_mtx);
 	m_values.push_back(v);
 	m_expiryTimestamp.push_back(m_maxAge == UINT64_MAX ? UINT64_MAX : GetTickCount64() + m_maxAge);
 	while (m_values.size() > m_trackCount) {
@@ -32,6 +33,7 @@ int64_t Utils::NumericStatisticsTracker::InvalidValue() const {
 }
 
 int64_t Utils::NumericStatisticsTracker::Latest() const {
+	const auto lock = std::lock_guard(m_mtx);
 	const auto& vals = RemoveExpired();
 	if (vals.empty())
 		return m_emptyValue;
@@ -39,6 +41,7 @@ int64_t Utils::NumericStatisticsTracker::Latest() const {
 }
 
 int64_t Utils::NumericStatisticsTracker::Min() const {
+	const auto lock = std::lock_guard(m_mtx);
 	const auto& vals = RemoveExpired();
 	if (vals.empty())
 		return m_emptyValue;
@@ -46,6 +49,7 @@ int64_t Utils::NumericStatisticsTracker::Min() const {
 }
 
 int64_t Utils::NumericStatisticsTracker::Max() const {
+	const auto lock = std::lock_guard(m_mtx);
 	const auto& vals = RemoveExpired();
 	if (vals.empty())
 		return m_emptyValue;
@@ -53,6 +57,7 @@ int64_t Utils::NumericStatisticsTracker::Max() const {
 }
 
 int64_t Utils::NumericStatisticsTracker::Mean() const {
+	const auto lock = std::lock_guard(m_mtx);
 	const auto& vals = RemoveExpired();
 	if (vals.empty())
 		return m_emptyValue;
@@ -60,6 +65,7 @@ int64_t Utils::NumericStatisticsTracker::Mean() const {
 }
 
 int64_t Utils::NumericStatisticsTracker::Median() const {
+	const auto lock = std::lock_guard(m_mtx);
 	const auto& vals = RemoveExpired();
 	if (vals.empty())
 		return m_emptyValue;
@@ -77,6 +83,7 @@ int64_t Utils::NumericStatisticsTracker::Median() const {
 }
 
 int64_t Utils::NumericStatisticsTracker::Deviation() const {
+	const auto lock = std::lock_guard(m_mtx);
 	const auto& vals = RemoveExpired();
 	if (vals.size() < 2)
 		return 0;
@@ -90,10 +97,12 @@ int64_t Utils::NumericStatisticsTracker::Deviation() const {
 }
 
 size_t Utils::NumericStatisticsTracker::Count() const {
+	const auto lock = std::lock_guard(m_mtx);
 	return RemoveExpired().size();
 }
 
 uint64_t Utils::NumericStatisticsTracker::NextBlankIn() const {
+	const auto lock = std::lock_guard(m_mtx);
 	if (RemoveExpired().size() < m_trackCount)
 		return 0;
 	return m_expiryTimestamp.front() - GetTickCount64();

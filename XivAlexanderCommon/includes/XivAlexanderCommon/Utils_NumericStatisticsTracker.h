@@ -7,6 +7,7 @@ namespace Utils {
 		const size_t m_trackCount;
 		const int64_t m_emptyValue;
 		const uint64_t m_maxAge;
+		mutable std::mutex m_mtx;
 		mutable std::deque<int64_t> m_values;
 		mutable std::deque<uint64_t> m_expiryTimestamp;
 

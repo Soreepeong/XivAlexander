@@ -199,6 +199,8 @@ namespace App {
 			Item<bool> ShowLoggingWindow = CreateConfigItem(this, "ShowLoggingWindow", true);
 			Item<bool> ShowControlWindow = CreateConfigItem(this, "ShowControlWindow", true);
 			Item<bool> UseAllIpcMessageLogger = CreateConfigItem(this, "UseAllIpcMessageLogger", false);
+			Item<bool> DumpAllMessagesIntoFile = CreateConfigItem(this, "DumpAllMessagesIntoFile", false);
+			Item<bool> PrintAllMessagesIntoLogWindow = CreateConfigItem(this, "PrintAllMessagesIntoLogWindow", true);
 			
 			Item<bool> UseHashTrackerKeyLogging = CreateConfigItem(this, "UseHashTrackerKeyLogging", false);
 			Item<bool> LogAllDataFileRead = CreateConfigItem(this, "LogAllDataFileRead", false);

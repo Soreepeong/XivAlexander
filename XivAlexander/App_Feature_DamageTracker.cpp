@@ -103,11 +103,11 @@ struct App::Feature::DamageTracker::Implementation {
 
 						auto& actor = Actors[pMessage->SourceActor];
 						actor.Id = pMessage->SourceActor;
-						if (info.EffectType == Network::Structures::IPCMessageDataType::S2C_ActorControl::EffectOverTimeType::EffectTypeEnum::Damage) {
+						if (info.EffectType == Network::Structures::EffectTypeEnum::Damage) {
 							actor.AccumulatedIncomingDamage += info.Amount;
 							// TODO: distribute to sources
 
-						} else if (info.EffectType == Network::Structures::IPCMessageDataType::S2C_ActorControl::EffectOverTimeType::EffectTypeEnum::Heal) {
+						} else if (info.EffectType == Network::Structures::EffectTypeEnum::Heal) {
 							actor.AccumulatedIncomingHeal += info.Amount;
 							// TODO: distribute to sources
 						}
@@ -123,7 +123,7 @@ struct App::Feature::DamageTracker::Implementation {
 						
 						auto& effectStorage = actor.StatusEffects[effect.EffectIndex];
 						effectStorage.BuffId = effect.EffectId;
-						effectStorage.Expiry = GetTickCount64() + effect.Duration;
+						effectStorage.Expiry = GetTickCount64() + static_cast<uint64_t>(1000 * effect.Duration);
 						effectStorage.SourceActorId = effect.SourceActorId;
 					}
 				}

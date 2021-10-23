@@ -76,6 +76,11 @@ namespace App::Network::Structures {
 		DirectorUpdate = 0x006d,
 	};
 
+	enum class EffectTypeEnum : uint32_t {
+		Damage = 3,
+		Heal = 4,
+	};
+
 	struct KeepAliveMessageData {
 		uint32_t Id;
 		int32_t Epoch;
@@ -147,10 +152,6 @@ namespace App::Network::Structures {
 				} Death;
 
 				struct EffectOverTimeType {
-					enum class EffectTypeEnum : uint32_t {
-						Damage = 3,
-						Heal = 4,
-					};
 
 					uint16_t Padding1;
 					uint32_t BuffId;

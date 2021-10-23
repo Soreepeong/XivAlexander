@@ -772,7 +772,9 @@ void App::Window::MainWindow::SetMenuStates() const {
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING, config.UseHighLatencyMitigationLogging, true);
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE, config.UseHighLatencyMitigationPreviewMode, true);
 		SetMenuState(hMenu, ID_NETWORK_USEIPCTYPEFINDER, config.UseOpcodeFinder, true);
-		SetMenuState(hMenu, ID_NETWORK_USEALLIPCMESSAGELOGGER, config.UseAllIpcMessageLogger, true);
+		SetMenuState(hMenu, ID_NETWORK_ALLIPCMESSAGELOGGER_ENABLE, config.UseAllIpcMessageLogger, true);
+		SetMenuState(hMenu, ID_NETWORK_ALLIPCMESSAGELOGGER_PRINTTOLOGWINDOW, config.PrintAllMessagesIntoLogWindow, true);
+		SetMenuState(hMenu, ID_NETWORK_ALLIPCMESSAGELOGGER_DUMPALLMESSAGESINTOFILE, config.DumpAllMessagesIntoFile, true);
 		SetMenuState(hMenu, ID_NETWORK_LOGEFFECTAPPLICATIONDELAY, config.UseEffectApplicationDelayLogger, true);
 		SetMenuState(hMenu, ID_NETWORK_REDUCEPACKETDELAY, config.ReducePacketDelay, true);
 		SetMenuState(hMenu, ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES, config.TakeOverLoopbackAddresses, true);
@@ -1079,8 +1081,16 @@ void App::Window::MainWindow::OnCommand_Menu_Network(int menuId) {
 		config.UseHighLatencyMitigationPreviewMode = !config.UseHighLatencyMitigationPreviewMode;
 		return;
 
-	case ID_NETWORK_USEALLIPCMESSAGELOGGER:
+	case ID_NETWORK_ALLIPCMESSAGELOGGER_ENABLE:
 		config.UseAllIpcMessageLogger = !config.UseAllIpcMessageLogger;
+		return;
+
+	case ID_NETWORK_ALLIPCMESSAGELOGGER_PRINTTOLOGWINDOW:
+		config.PrintAllMessagesIntoLogWindow = !config.PrintAllMessagesIntoLogWindow;
+		return;
+
+	case ID_NETWORK_ALLIPCMESSAGELOGGER_DUMPALLMESSAGESINTOFILE:
+		config.DumpAllMessagesIntoFile = !config.DumpAllMessagesIntoFile;
 		return;
 
 	case ID_NETWORK_USEIPCTYPEFINDER:
