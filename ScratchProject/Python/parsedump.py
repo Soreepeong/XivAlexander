@@ -1,8 +1,13 @@
 import ctypes
 import dataclasses
 import datetime
+import os.path
+import pickle
+import re
 import struct
 import typing
+
+import sqexdata
 
 
 @dataclasses.dataclass
@@ -11,6 +16,27 @@ class ActorStatusEffect:
     param: int = 0
     expiry: float = 0.
     source_actor_id: int = 0
+
+    def get_effect_name(self):
+        global status
+        try:
+            return status[self.effect_id][0]
+        except KeyError:
+            return f"Unknown({self.effect_id})"
+
+    def get_effect_description(self):
+        global status
+        try:
+            return status[self.effect_id][1]
+        except KeyError:
+            return f"Unknown({self.effect_id})"
+
+    def get_action_description_of_same_name_with_effect(self):
+        global actiontransient, action
+        for row_id in action.keys():
+            if action[row_id] == self.get_effect_name():
+                return actiontransient[row_id]
+        return "?"
 
 
 @dataclasses.dataclass
@@ -469,6 +495,7 @@ class DpsParser:
         self._unrealized_action_effects: typing.Dict[int, typing.Tuple[
             Actor, XivIpcActionEffect, typing.Dict[int, typing.List[XivActionEffect]]
         ]] = {}
+        self._over_time_potency: typing.Dict[int, int] = {}
 
     def get_actor(self, actor_id: int):
         if actor_id not in self._actors:
@@ -509,7 +536,10 @@ class DpsParser:
 
     def _register_amount(self, source: Actor, target: Actor, amount: int, is_over_time: bool, action_or_buff_id: int,
                          is_crit: bool, is_dh: bool):
+        global action, status
+        name = f"{status[action_or_buff_id][0]}(*)" if is_over_time else action[action_or_buff_id]
         print(f"{source.name} -> {target.name} (tick={is_over_time} action={action_or_buff_id}): "
+              f"{name} "
               f"{amount:+}{'!' if is_crit else ''}{'!!' if is_dh else ''} => {target.hp / target.max_hp * 100:.02f}%")
 
     def _on_update_hpmptp(self, data: XivIpcUpdateHpMpTp):
@@ -576,15 +606,67 @@ class DpsParser:
 
             self._source_actor.hp = max(0, min(self._source_actor.max_hp,
                                                self._source_actor.hp + amount * (-1 if effect_type == 3 else 1)))
-            self._register_amount(
-                source=self.get_actor(source_actor_id if buff_id else 0xE0000000),
-                target=self._source_actor,
-                amount=amount * (-1 if effect_type == 3 else 1),
-                is_over_time=True,
-                action_or_buff_id=buff_id,
-                is_crit=False,
-                is_dh=False,
-            )
+            if buff_id:
+                self._register_amount(
+                    source=self.get_actor(source_actor_id),
+                    target=self._source_actor,
+                    amount=amount * (-1 if effect_type == 3 else 1),
+                    is_over_time=True,
+                    action_or_buff_id=buff_id,
+                    is_crit=False,
+                    is_dh=False,
+                )
+            else:
+                potency_per_actor = {}
+                for effect in self._source_actor.status_effects:
+                    if not effect.effect_id:
+                        continue
+                    potency = self._over_time_potency.get(effect.effect_id, None)
+                    if potency is None:
+                        effect_description = effect.get_effect_description()
+                        action_description = (effect.get_action_description_of_same_name_with_effect()
+                                              .replace("\r", " ").replace("\x02", ""))
+                        test = effect_description.lower()
+                        try:
+                            if "damage over time" in test:
+                                potency = self._over_time_potency[effect.effect_id] = -int(
+                                    re.search("Potency: ([0-9]+)", action_description).group(1))
+                            elif "regenerating hp over time" in test:
+                                potency = self._over_time_potency[effect.effect_id] = int(
+                                    re.search("Potency: ([0-9]+)", action_description).group(1))
+                            else:
+                                potency = self._over_time_potency[effect.effect_id] = 0
+                        except AttributeError:
+                            potency = self._over_time_potency[effect.effect_id] = 0
+                    if potency == 0:
+                        continue
+                    if effect_type == 3 and potency > 0:
+                        continue
+                    if effect_type == 4 and potency < 0:
+                        continue
+
+                    if effect.source_actor_id not in potency_per_actor:
+                        potency_per_actor[effect.source_actor_id, effect.effect_id] = abs(potency)
+                    else:
+                        potency_per_actor[effect.source_actor_id, effect.effect_id] += abs(potency)
+
+                if not potency_per_actor:
+                    potency_per_actor = {(0xE0000000, 0): 1}
+                maxval = sum(potency_per_actor.values())
+                sumval = 0
+                for i, ((actor_id, effect_id), val) in enumerate(potency_per_actor.items()):
+                    self._register_amount(
+                        source=self.get_actor(actor_id),
+                        target=self._source_actor,
+                        amount=(
+                                (int(amount * val / maxval) if i < len(potency_per_actor) - 1 else amount - sumval)
+                                * (-1 if effect_type == 3 else 1)),
+                        is_over_time=True,
+                        action_or_buff_id=effect_id,
+                        is_crit=False,
+                        is_dh=False,
+                    )
+                    sumval += int(amount * val / maxval)
 
     def _on_action_effect_result(self, data: XivIpcActionEffectResult):
         effect_target_actor = self._source_actor
@@ -601,6 +683,7 @@ class DpsParser:
             t.param = effect.param
             t.expiry = self._timestamp + datetime.timedelta(seconds=effect.duration) if effect.duration > 0 else 0.
             t.source_actor_id = effect.source_actor_id
+            source_actor = self.get_actor(effect.source_actor_id)
 
         try:
             effect_source_actor, effect_summary, targets = self._unrealized_action_effects[data.global_sequence_id]
@@ -669,6 +752,29 @@ class DpsParser:
 
 
 def main():
+    global status, action, actiontransient
+    cached_file = "parsedump_cached.tmp"
+    if os.path.exists(cached_file):
+        try:
+            with open(cached_file, "rb") as fp:
+                status, action, actiontransient = pickle.load(fp)
+        except pickle.PickleError:
+            os.unlink(cached_file)
+    if not os.path.exists(cached_file):
+        with sqexdata.SqpackReader(
+                r"C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv", "0a0000"
+        ) as reader:
+            status = sqexdata.ExhHeader.read_data_from(reader, "Status").data
+            action = sqexdata.ExhHeader.read_data_from(reader, "Action").data
+            actiontransient = sqexdata.ExhHeader.read_data_from(reader, "ActionTransient").data
+            status = {k: (
+                sqexdata.SqEscapedString(v[0]).str(), sqexdata.SqEscapedString(v[1]).str()
+            ) for k, v in status[2].items()}
+            action = {k: sqexdata.SqEscapedString(v[0]).str() for k, v in action[2].items()}
+            actiontransient = {k: sqexdata.SqEscapedString(v[0]).str() for k, v in actiontransient[2].items()}
+        with open(cached_file, "wb") as fp:
+            pickle.dump((status, action, actiontransient), fp)
+
     parser = DpsParser()
 
     p = r"C:\Users\SP\AppData\Roaming\XivAlexander\Dump\Dump_20211023_111519_579_238.log"

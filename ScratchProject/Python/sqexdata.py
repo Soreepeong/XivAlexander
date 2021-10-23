@@ -1,8 +1,10 @@
 import contextlib
 import csv
 import ctypes
+import dataclasses
 import io
 import os
+import pathlib
 import re
 import shutil
 import struct
@@ -692,6 +694,8 @@ class ExhColumnDefinition(ctypes.BigEndianStructure):
         ("type", ctypes.c_uint16),
         ("offset", ctypes.c_uint16),
     )
+    type: int
+    offset: int
 
 
 class ExhPageDefinition(ctypes.BigEndianStructure):
@@ -699,6 +703,38 @@ class ExhPageDefinition(ctypes.BigEndianStructure):
         ("start_id", ctypes.c_uint32),
         ("row_count", ctypes.c_uint32),
     )
+
+
+class ExdHeader(ctypes.BigEndianStructure):
+    _fields_ = (
+        ("signature", ctypes.c_uint32),
+        ("version", ctypes.c_uint16),
+        ("padding_0x006", ctypes.c_uint16),
+        ("index_size", ctypes.c_uint32),
+        ("data_size", ctypes.c_uint32),
+        ("padding_0x010", ctypes.c_uint8 * 0x10),
+    )
+    index_size: int
+    data_size: int
+
+
+class ExdRowLocator(ctypes.BigEndianStructure):
+    _fields_ = (
+        ("row_id", ctypes.c_uint32),
+        ("offset", ctypes.c_uint32)
+    )
+    row_id: int
+    offset: int
+
+
+class ExdRowHeader(ctypes.BigEndianStructure):
+    _pack_ = 2
+    _fields_ = (
+        ("data_size", ctypes.c_uint32),
+        ("sub_row_count", ctypes.c_uint16)
+    )
+    data_size: int
+    sub_row_count: int
 
 
 class ExhHeader(ctypes.BigEndianStructure):
@@ -721,6 +757,59 @@ class ExhHeader(ctypes.BigEndianStructure):
     columns: typing.List[ExhColumnDefinition]
     pages: typing.List[ExhPageDefinition]
     languages: typing.List[int]
+
+    data: typing.Optional[typing.Dict[int, typing.Dict[int, any]]] = None
+
+    @classmethod
+    def read_data_from(cls, reader: 'SqpackReader', name: str):
+        self = parse_exh(reader[f"exd/{name}.exh"])
+        self.data = {}
+        for language in self.languages:
+            if language != 2:
+                continue
+            table = self.data[language] = {}
+            for page in self.pages:
+                try:
+                    data = bytearray(reader[f"exd/{name}_{page.start_id}{lang_prefix[language]}.exd"])
+                except KeyError:
+                    continue
+                exd_header = ExdHeader.from_buffer(data, 0)
+                locator_offset = ctypes.sizeof(exd_header)
+                for _ in range(exd_header.index_size // ctypes.sizeof(ExdRowLocator)):
+                    locator = ExdRowLocator.from_buffer(data, locator_offset)
+                    locator_offset += ctypes.sizeof(ExdRowLocator)
+                    row_header = ExdRowHeader.from_buffer(data, locator.offset)
+                    row_data = data[locator.offset + ctypes.sizeof(row_header):][:row_header.data_size]
+                    row = table[locator.row_id] = []
+                    for i, col_info in enumerate(self.columns):
+                        if col_info.type == 0:
+                            string_offset = (self.data_offset
+                                             + struct.unpack(">I", row_data[col_info.offset:col_info.offset + 4])[0])
+                            row.append(row_data[string_offset:row_data.index(0, string_offset)])
+                        elif col_info.type == 0x01:
+                            row.append(struct.unpack(">?", row_data[col_info.offset:col_info.offset + 1])[0])
+                        elif col_info.type == 0x02:
+                            row.append(struct.unpack(">b", row_data[col_info.offset:col_info.offset + 1])[0])
+                        elif col_info.type == 0x03:
+                            row.append(struct.unpack(">B", row_data[col_info.offset:col_info.offset + 1])[0])
+                        elif col_info.type == 0x04:
+                            row.append(struct.unpack(">h", row_data[col_info.offset:col_info.offset + 2])[0])
+                        elif col_info.type == 0x05:
+                            row.append(struct.unpack(">H", row_data[col_info.offset:col_info.offset + 2])[0])
+                        elif col_info.type == 0x06:
+                            row.append(struct.unpack(">i", row_data[col_info.offset:col_info.offset + 4])[0])
+                        elif col_info.type == 0x07:
+                            row.append(struct.unpack(">I", row_data[col_info.offset:col_info.offset + 4])[0])
+                        elif col_info.type == 0x09:
+                            row.append(struct.unpack(">f", row_data[col_info.offset:col_info.offset + 4])[0])
+                        elif col_info.type == 0x0a:
+                            row.append(struct.unpack(">q", row_data[col_info.offset:col_info.offset + 8])[0])
+                        elif col_info.type == 0x0b:
+                            row.append(struct.unpack(">Q", row_data[col_info.offset:col_info.offset + 8])[0])
+                        elif 0x19 <= col_info.type <= 0x20:
+                            row.append(bool(row_data[col_info.offset] & (1 << (col_info.type - 0x19))))
+
+        return self
 
 
 class TexHeader(ctypes.LittleEndianStructure):
@@ -918,6 +1007,44 @@ class ImageEncoding:
         return img.tobytes("raw", "BGRA")
 
 
+class SqEscapedString:
+    NEWLINE = b"\x02\x10\x01\x03"
+
+    def __init__(self, data: bytes):
+        res = bytearray()
+        self._escaped = []
+        i = 0
+        to = len(data)
+        while i < to:
+            if data[i] != 2:
+                res.append(data[i])
+                i += 1
+                continue
+            escaped_len = data[i + 2]
+            if escaped_len in (0xf0, 0xf1):
+                escaped_len = 1 + data[i + 3] + 1
+            elif escaped_len == 0xf2:
+                escaped_len = 1 + (data[i + 4] | (data[i + 3] << 8)) + 1
+            elif escaped_len == 0xfa:
+                escaped_len = 1 + (data[i + 5] | (data[i + 4] << 8) | (data[i + 3] << 16)) + 1
+            elif escaped_len == 0xfe:
+                escaped_len = 1 + (data[i + 6] | (data[i + 5] << 8) | (data[i + 4] << 16) | (data[i + 3] << 24)) + 1
+            elif escaped_len >= 0xf0:
+                raise ValueError
+            escaped_len = 3 + escaped_len
+            escaped = bytes(data[i:i + escaped_len])
+            if escaped == SqEscapedString.NEWLINE:
+                res.append(ord(b'\r'))
+            else:
+                res.append(2)
+                self._escaped.append(escaped)
+            i += escaped_len
+        self._str = res.decode("utf-8")
+
+    def str(self):
+        return self._str
+
+
 def parse_fdt(path: str):
     fp: io.RawIOBase
     with open(path, "rb") as fp:
@@ -994,6 +1121,61 @@ def parse_exh(data: bytes):
     exh_header.languages = struct.unpack("<" + "H" * exh_header.num_lang,
                                          data[offset:offset + 2 * exh_header.num_lang])
     return exh_header
+
+
+class SqpackReader:
+    def __init__(self, sqpack: str, xiv_file: str):
+        self._cleanup = contextlib.ExitStack()
+        self._fp_data = []
+        fp_index: io.RawIOBase
+        self._files: typing.Dict[int, typing.Dict[int, FileSegmentItem]] = {}
+        with open(f"{sqpack}\\{xiv_file}.win32.index", "rb") as fp_index:
+            for i in range(8):
+                try:
+                    # noinspection PyTypeChecker
+                    fp_data: io.RawIOBase = open(f"{sqpack}\\{xiv_file}.win32.dat{i}", "rb")
+                    self._fp_data.append(fp_data)
+                    # noinspection PyTypeChecker
+                    self._cleanup.enter_context(self._fp_data[i])
+                except FileNotFoundError:
+                    break
+
+            sqh = SqpackHeader()
+            fp_index.readinto(sqh)
+
+            sh = SegmentHeader()
+            fp_index.seek(sqh.header_length)
+            fp_index.readinto(sh)
+
+            fp_index.seek(sh.segment1.offset)
+            for i in range(0, sh.segment1.size, ctypes.sizeof(FileSegmentItem)):
+                item = FileSegmentItem()
+                fp_index.readinto(item)
+                if item.path_hash not in self._files:
+                    self._files[item.path_hash] = {item.name_hash: item}
+                else:
+                    self._files[item.path_hash][item.name_hash] = item
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._cleanup.__exit__(exc_type, exc_val, exc_tb)
+
+    def __getitem__(self, item: typing.Union[str, typing.Tuple[int, int]]) -> bytes:
+        if isinstance(item, str):
+            if "/" not in item:
+                raise KeyError
+            item = item.lower().replace("\\", "/")
+            path, name = item.rsplit("/")
+            item = sqexhash(path), sqexhash(name)
+
+        item = self._files[item[0]][item[1]]
+        item.data_entry_header = DataEntryHeader()
+        fp_data = self._fp_data[item.dat_index]
+        fp_data.seek(item.dat_offset)
+        fp_data.readinto(item.data_entry_header)
+        return item.read_data(fp_data)
 
 
 def extract(sqpack: str, xiv_file: str, target_dir: str,
