@@ -26,6 +26,6 @@ namespace Sqex::Excel {
 		std::pair<Sqpack::EntryPathSpec, std::vector<char>> Flush(uint32_t startId, std::map<uint32_t, std::vector<char>> rows, Language language);
 
 	public:
-		std::map<Sqpack::EntryPathSpec, std::vector<char>> Compile();
+		std::map<Sqpack::EntryPathSpec, std::vector<char>, Sqpack::EntryPathSpec::FullPathComparator> Compile();
 	};
 }

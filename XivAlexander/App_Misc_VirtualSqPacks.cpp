@@ -105,29 +105,30 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			const auto resumeIo = Utils::CallOnDestruction([this]() { IoLockEvent.Set(); });
 		}
 
-		std::map<Sqex::Sqpack::EntryPathSpec, std::tuple<Sqex::Sqpack::HotSwappableEntryProvider*, std::shared_ptr<Sqex::Sqpack::EntryProvider>, std::string>> replacements;
+		std::map<Sqex::Sqpack::EntryPathSpec, std::tuple<Sqex::Sqpack::HotSwappableEntryProvider*, std::shared_ptr<Sqex::Sqpack::EntryProvider>, std::string>, Sqex::Sqpack::EntryPathSpec::AllHashComparator> replacements;
 
 		// Step. Find voices to enable or disable
 		const auto voBattle = Sqex::Sqpack::SqexHash("sound/voice/vo_battle", SIZE_MAX);
 		const auto voCm = Sqex::Sqpack::SqexHash("sound/voice/vo_cm", SIZE_MAX);
 		const auto voEmote = Sqex::Sqpack::SqexHash("sound/voice/vo_emote", SIZE_MAX);
 		const auto voLine = Sqex::Sqpack::SqexHash("sound/voice/vo_line", SIZE_MAX);
-		for (const auto& [k, v] : SqpackViews.at(SqpackPath / L"ffxiv/070000.win32.index").EntryProviders) {
-			const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(v);
+		for (const auto& providerRaw : SqpackViews.at(SqpackPath / L"ffxiv/070000.win32.index").AllProviders) {
+			const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(providerRaw);
 			if (!provider)
 				continue;
 
-			if (k.PathHash == voBattle || k.PathHash == voCm || k.PathHash == voEmote || k.PathHash == voLine)
-				replacements.insert_or_assign(k, std::make_tuple(provider, std::shared_ptr<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(), std::string()));
+			const auto& pathSpec = provider->PathSpec();
+			if (pathSpec.PathHash == voBattle || pathSpec.PathHash == voCm || pathSpec.PathHash == voEmote || pathSpec.PathHash == voLine)
+				replacements.insert_or_assign(pathSpec, std::make_tuple(provider, std::shared_ptr<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(), std::string()));
 
-			if (k.PathHash == voBattle && Config->Runtime.MuteVoice_Battle)
-				std::get<1>(replacements.at(k)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(k, EmptyScd);
-			if (k.PathHash == voCm && Config->Runtime.MuteVoice_Cm)
-				std::get<1>(replacements.at(k)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(k, EmptyScd);
-			if (k.PathHash == voEmote && Config->Runtime.MuteVoice_Emote)
-				std::get<1>(replacements.at(k)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(k, EmptyScd);
-			if (k.PathHash == voLine && Config->Runtime.MuteVoice_Line)
-				std::get<1>(replacements.at(k)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(k, EmptyScd);
+			if (pathSpec.PathHash == voBattle && Config->Runtime.MuteVoice_Battle)
+				std::get<1>(replacements.at(pathSpec)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(pathSpec, EmptyScd);
+			if (pathSpec.PathHash == voCm && Config->Runtime.MuteVoice_Cm)
+				std::get<1>(replacements.at(pathSpec)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(pathSpec, EmptyScd);
+			if (pathSpec.PathHash == voEmote && Config->Runtime.MuteVoice_Emote)
+				std::get<1>(replacements.at(pathSpec)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(pathSpec, EmptyScd);
+			if (pathSpec.PathHash == voLine && Config->Runtime.MuteVoice_Line)
+				std::get<1>(replacements.at(pathSpec)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(pathSpec, EmptyScd);
 		}
 
 		// Step. Find placeholders to adjust
@@ -137,9 +138,13 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				if (it == SqpackViews.end())
 					continue;
 
-				const auto entryIt = it->second.EntryProviders.find(entry.FullPath);
-				if (entryIt == it->second.EntryProviders.end())
-					continue;
+				auto entryIt = it->second.HashOnlyProviders.find(entry.FullPath);
+				if (entryIt == it->second.HashOnlyProviders.end()) {
+					entryIt = it->second.FullProviders.find(entry.FullPath);
+					if (entryIt == it->second.FullProviders.end()) {
+						continue;
+					}
+				}
 
 				const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second);
 				if (!provider)
@@ -157,9 +162,13 @@ struct App::Misc::VirtualSqPacks::Implementation {
 							if (it == SqpackViews.end())
 								continue;
 
-							const auto entryIt = it->second.EntryProviders.find(entry.FullPath);
-							if (entryIt == it->second.EntryProviders.end())
-								continue;
+							auto entryIt = it->second.HashOnlyProviders.find(entry.FullPath);
+							if (entryIt == it->second.HashOnlyProviders.end()) {
+								entryIt = it->second.FullProviders.find(entry.FullPath);
+								if (entryIt == it->second.FullProviders.end()) {
+									continue;
+								}
+							}
 
 							const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second);
 							if (!provider)
@@ -1690,15 +1699,20 @@ App::Misc::VirtualSqPacks::OverlayedHandleData* App::Misc::VirtualSqPacks::Get(H
 
 bool App::Misc::VirtualSqPacks::EntryExists(const Sqex::Sqpack::EntryPathSpec& pathSpec) const {
 	return std::ranges::any_of(m_pImpl->SqpackViews | std::views::values, [&pathSpec](const auto& t) {
-		return t.EntryOffsets.find(pathSpec) != t.EntryOffsets.end();
+		return t.HashOnlyProviders.find(pathSpec) != t.HashOnlyProviders.end()
+			|| (pathSpec.HasOriginal() && t.FullProviders.find(pathSpec) != t.FullProviders.end());
 	});
 }
 
 std::shared_ptr<Sqex::RandomAccessStream> App::Misc::VirtualSqPacks::GetOriginalEntry(const Sqex::Sqpack::EntryPathSpec& pathSpec) const {
 	for (const auto& pack : m_pImpl->SqpackViews | std::views::values) {
-		const auto it = pack.EntryProviders.find(pathSpec);
-		if (it == pack.EntryProviders.end())
-			continue;
+		auto it = pack.HashOnlyProviders.find(pathSpec);
+		if (it == pack.HashOnlyProviders.end()) {
+			it = pack.FullProviders.find(pathSpec);
+			if (it == pack.FullProviders.end()) {
+				continue;
+			}
+		}
 
 		const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(it->second);
 		if (!provider)
@@ -1805,9 +1819,13 @@ void App::Misc::VirtualSqPacks::AddNewTtmp(const std::filesystem::path& ttmpl, b
 		if (it == m_pImpl->SqpackViews.end())
 			continue;
 
-		const auto entryIt = it->second.EntryProviders.find(entry.FullPath);
-		if (entryIt == it->second.EntryProviders.end())
-			continue;
+		auto entryIt = it->second.HashOnlyProviders.find(entry.FullPath);
+		if (entryIt == it->second.HashOnlyProviders.end()) {
+			entryIt = it->second.FullProviders.find(entry.FullPath);
+			if (entryIt == it->second.FullProviders.end()) {
+				continue;
+			}
+		}
 
 		const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second);
 		if (!provider)
@@ -1824,9 +1842,13 @@ void App::Misc::VirtualSqPacks::AddNewTtmp(const std::filesystem::path& ttmpl, b
 					if (it == m_pImpl->SqpackViews.end())
 						continue;
 
-					const auto entryIt = it->second.EntryProviders.find(entry.FullPath);
-					if (entryIt == it->second.EntryProviders.end())
-						continue;
+					auto entryIt = it->second.HashOnlyProviders.find(entry.FullPath);
+					if (entryIt == it->second.HashOnlyProviders.end()) {
+						entryIt = it->second.FullProviders.find(entry.FullPath);
+						if (entryIt == it->second.FullProviders.end()) {
+							continue;
+						}
+					}
 
 					const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second);
 					if (!provider)

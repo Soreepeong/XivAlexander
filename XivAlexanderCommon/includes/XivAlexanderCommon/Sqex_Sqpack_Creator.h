@@ -31,7 +31,7 @@ namespace Sqex::Sqpack {
 			std::vector<EntryProvider*> Added;
 			std::vector<EntryProvider*> Replaced;
 			std::vector<EntryProvider*> SkippedExisting;
-			std::map<EntryPathSpec, std::string> Error;
+			std::map<EntryPathSpec, std::string, Sqex::Sqpack::EntryPathSpec::FullComparator> Error;
 
 			AddEntryResult& operator+=(const AddEntryResult& r);
 			AddEntryResult& operator+=(AddEntryResult&& r);
@@ -41,14 +41,15 @@ namespace Sqex::Sqpack {
 		AddEntryResult AddEntriesFromSqPack(const std::filesystem::path& indexPath, bool overwriteExisting = true, bool overwriteUnknownSegments = false);
 		AddEntryResult AddEntryFromFile(EntryPathSpec pathSpec, const std::filesystem::path& path, bool overwriteExisting = true);
 		AddEntryResult AddEntriesFromTTMP(const std::filesystem::path& extractedDir, bool overwriteExisting = true);
-		AddEntryResult AddEntriesFromTTMP(const ThirdParty::TexTools::TTMPL& ttmpl, const Win32::Handle& ttmpd, const nlohmann::json& choices, bool overwriteExisting = true);
 		void ReserveSpacesFromTTMP(const ThirdParty::TexTools::TTMPL& ttmpl);
 		AddEntryResult AddEntry(std::shared_ptr<EntryProvider> provider, bool overwriteExisting = true);
 		void ReserveSwappableSpace(EntryPathSpec pathSpec, uint32_t size);
 		
 	private:
-		template<SqIndex::Header::IndexType IndexType, typename FileEntryType, bool UseFolders>
+		template<SqIndex::Header::IndexType IndexType, typename FileEntryType, typename ConflictEntryType, bool UseFolders>
 		class IndexViewBase;
+		using Index1View = IndexViewBase<Sqex::Sqpack::SqIndex::Header::IndexType::Index, SqIndex::FileSegmentEntry, SqIndex::HashConflictSegmentEntry, true>;
+		using Index2View = IndexViewBase<Sqex::Sqpack::SqIndex::Header::IndexType::Index, SqIndex::FileSegmentEntry2, SqIndex::HashConflictSegmentEntry2, false>;
 		template<SqIndex::Header::IndexType IndexType>
 		class IndexView;
 		class DataView;
@@ -58,8 +59,9 @@ namespace Sqex::Sqpack {
 			std::shared_ptr<RandomAccessStream> Index;
 			std::shared_ptr<RandomAccessStream> Index2;
 			std::vector<std::shared_ptr<RandomAccessStream>> Data;
-			std::map<EntryPathSpec, uint64_t> EntryOffsets;
-			std::map<EntryPathSpec, EntryProvider*> EntryProviders;
+			std::map<EntryPathSpec, EntryProvider*, EntryPathSpec::AllHashComparator> HashOnlyProviders;
+			std::map<EntryPathSpec, EntryProvider*, EntryPathSpec::FullPathComparator> FullProviders;
+			std::vector<EntryProvider*> AllProviders;
 		};
 		SqpackViews AsViews(bool strict);
 

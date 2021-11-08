@@ -66,7 +66,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 	std::unique_ptr<Misc::VirtualSqPacks> m_sqpacks;
 	bool m_bSqpackFailed = false;
 
-	std::vector<std::unique_ptr<Misc::Hooks::PointerFunction<uint32_t, uint32_t, const char*, size_t>>> fns{};
+	std::vector<std::unique_ptr<Misc::Hooks::PointerFunction<size_t, uint32_t, const char*, size_t>>> fns{};
 	std::vector<std::string> m_lastLoggedPaths;
 	std::mutex m_lastLoggedPathMtx;
 	Utils::CallOnDestruction::Multiple m_cleanup;
@@ -246,12 +246,12 @@ struct App::Feature::GameResourceOverrider::Implementation {
 				34,
 				{}
 			)) {
-			fns.emplace_back(std::make_unique<Misc::Hooks::PointerFunction<uint32_t, uint32_t, const char*, size_t>>(
+			fns.emplace_back(std::make_unique<Misc::Hooks::PointerFunction<size_t, uint32_t, const char*, size_t>>(
 				"FFXIV::GeneralHashCalcFn",
-				reinterpret_cast<uint32_t(__stdcall*)(uint32_t, const char*, size_t)>(ptr)
+				reinterpret_cast<size_t(__stdcall*)(uint32_t, const char*, size_t)>(ptr)
 			));
 			m_cleanup += fns.back()->SetHook([this, ptr, self = fns.back().get()](uint32_t initVal, const char* str, size_t len) {
-				if (!str || !*str)
+				if (!str || !*str || len >= 512 || !MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, str, static_cast<int>(len), nullptr, 0))
 					return self->bridge(initVal, str, len);
 
 				auto name = std::string(str);
@@ -329,7 +329,16 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					if (const auto it = std::ranges::find(m_lastLoggedPaths, current); it != m_lastLoggedPaths.end()) {
 						m_lastLoggedPaths.erase(it);
 					} else {
-						m_logger->Format(LogCategory::GameResourceOverrider, "{:x}: ~{:08x}: {}", reinterpret_cast<size_t>(ptr), res, description.empty() ? current : description);
+						const auto pathSpec = Sqex::Sqpack::EntryPathSpec(current);
+						m_logger->Format(LogCategory::GameResourceOverrider,
+#if INTPTR_MAX == INT64_MAX
+							"{} (~{:08x}/~{:08x}, ~{:08x}) => ~{:016x} (f={:016x}, initVal={:016x})",
+#else
+							"{} (~{:08x}/~{:08x}, ~{:08x}) => ~{:08x} (f={:08x}, initVal={:08x})",
+#endif
+							description.empty() ? current : description,
+							pathSpec.PathHash, pathSpec.NameHash, pathSpec.FullPathHash,
+							res, reinterpret_cast<size_t>(ptr), initVal);
 					}
 					m_lastLoggedPaths.push_back(std::move(current));
 					while (m_lastLoggedPaths.size() > 16)

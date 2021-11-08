@@ -77,7 +77,7 @@ namespace Sqex::Sqpack {
 		 *
 		 * Segment 2
 		 * * Descriptor.Count stands for number of .dat files
-		 * * Descriptor.Size is always 0x100
+		 * * Descriptor.Size is multiple of 0x100; each entry is sized 0x100
 		 * * Data is always 8x00s, 4xFFs, and the rest is 0x00s
 		 *
 		 * Segment 3
@@ -98,7 +98,7 @@ namespace Sqex::Sqpack {
 			LE<uint32_t> HeaderSize;
 			SegmentDescriptor FileSegment;
 			char Padding_0x04C[4]{};
-			SegmentDescriptor DataFilesSegment;  // Size is always 0x100
+			SegmentDescriptor HashConflictSegment;
 			SegmentDescriptor UnknownSegment3;
 			SegmentDescriptor FolderSegment;
 			char Padding_0x128[4]{};
@@ -108,9 +108,6 @@ namespace Sqex::Sqpack {
 			char Padding_0x3D4[0x2c]{};
 
 			void VerifySqpackIndexHeader(IndexType expectedIndexType) const;
-
-			void VerifyDataFileSegment(const std::vector<char>& DataFileSegment, int type) const;
-
 		};
 		static_assert(sizeof(Header) == 1024);
 
@@ -120,8 +117,10 @@ namespace Sqex::Sqpack {
 
 			[[nodiscard]] uint32_t Index() const { return (Value() & 0xF) / 2; }
 			[[nodiscard]] uint64_t Offset() const { return (Value() & 0xFFFFFFF0UL) * 8ULL; }
+			[[nodiscard]] bool HasConflicts() const { return Value() & 1; }
 			uint32_t Index(uint32_t value);
 			uint64_t Offset(uint64_t value);
+			bool HasConflicts(bool value);
 		};
 
 		struct FileSegmentEntry {
@@ -155,12 +154,33 @@ namespace Sqex::Sqpack {
 		};
 
 		struct FolderSegmentEntry {
-			LE<uint32_t> NameHash;
+			LE<uint32_t> PathHash;
 			LE<uint32_t> FileSegmentOffset;
 			LE<uint32_t> FileSegmentSize;
 			LE<uint32_t> Padding;
 
 			void Verify() const;
+		};
+
+		struct HashConflictSegmentEntry {
+			static constexpr uint32_t EndOfList = 0xFFFFFFFFU;
+
+			// TODO: following two can actually be in reverse order; find it out when the game data file actually contains a conflict in .index file
+			Utils::LE<uint32_t> NameHash;
+			Utils::LE<uint32_t> PathHash;
+			Sqex::Sqpack::SqIndex::LEDataLocator Locator;
+			Utils::LE<uint32_t> ConflictIndex;
+			char FullPath[0xF0];
+		};
+
+		struct HashConflictSegmentEntry2 {
+			static constexpr uint32_t EndOfList = 0xFFFFFFFFU;
+
+			Utils::LE<uint32_t> FullPathHash;
+			Utils::LE<uint32_t> UnusedHash;
+			Sqex::Sqpack::SqIndex::LEDataLocator Locator;
+			Utils::LE<uint32_t> ConflictIndex;
+			char FullPath[0xF0];
 		};
 	}
 
@@ -328,8 +348,14 @@ namespace Sqex::Sqpack {
 			, FullPathHash(SqexHash(Original)) {
 		}
 
-		template<class Elem, class Traits = std::char_traits<Elem>, class Alloc = std::allocator<Elem>>
-		EntryPathSpec(const std::basic_string<Elem, Traits, Alloc>& fullPath)
+		EntryPathSpec(const std::string& fullPath)
+			: Original(std::filesystem::path(Utils::FromUtf8(fullPath)).lexically_normal())
+			, PathHash(SqexHash(Original.parent_path()))
+			, NameHash(SqexHash(Original.filename()))
+			, FullPathHash(SqexHash(Original)) {
+		}
+
+		EntryPathSpec(const std::wstring& fullPath)
 			: Original(std::filesystem::path(fullPath).lexically_normal())
 			, PathHash(SqexHash(Original.parent_path()))
 			, NameHash(SqexHash(Original.filename()))
@@ -337,6 +363,13 @@ namespace Sqex::Sqpack {
 		}
 
 		EntryPathSpec(const char* fullPath)
+			: Original(std::filesystem::path(Utils::FromUtf8(fullPath)).lexically_normal())
+			, PathHash(SqexHash(Original.parent_path()))
+			, NameHash(SqexHash(Original.filename()))
+			, FullPathHash(SqexHash(Original)) {
+		}
+
+		EntryPathSpec(const wchar_t* fullPath)
 			: Original(std::filesystem::path(fullPath).lexically_normal())
 			, PathHash(SqexHash(Original.parent_path()))
 			, NameHash(SqexHash(Original.filename()))
@@ -383,11 +416,18 @@ namespace Sqex::Sqpack {
 			return PathHash != EmptyHashValue || NameHash != EmptyHashValue;
 		}
 
+		[[nodiscard]] bool HasOriginal() const {
+			return !Original.empty();
+		}
+
 		[[nodiscard]] bool empty() const {
 			return PathHash == EmptyHashValue && NameHash == EmptyHashValue && FullPathHash == EmptyHashValue;
 		}
 
 		bool operator==(const EntryPathSpec& r) const {
+			if (HasOriginal() && r.HasOriginal())
+				return lstrcmpiW(Original.c_str(), r.Original.c_str()) == 0;
+
 			return (HasComponentHash() && PathHash == r.PathHash && NameHash == r.NameHash)
 				|| (HasFullPathHash() && FullPathHash == r.FullPathHash)
 				|| (empty() && r.empty());
@@ -397,27 +437,97 @@ namespace Sqex::Sqpack {
 			return !this->operator==(r);
 		}
 
-		bool operator<(const EntryPathSpec& r) const {
-			if (FullPathHash != r.FullPathHash)
-				return FullPathHash < r.FullPathHash;
-			if (PathHash != r.PathHash)
-				return PathHash < r.PathHash;
-			if (NameHash != r.NameHash)
-				return NameHash < r.NameHash;
-			return false;
-		}
+		struct FullComparator {
+			bool operator()(const EntryPathSpec& l, const EntryPathSpec& r) const {
+				if (l.Original != r.Original)
+					return l.Original < r.Original;
+				if (l.FullPathHash != r.FullPathHash)
+					return l.FullPathHash < r.FullPathHash;
+				if (l.PathHash != r.PathHash)
+					return l.PathHash < r.PathHash;
+				if (l.NameHash != r.NameHash)
+					return l.NameHash < r.NameHash;
+				return false;
+			}
+		};
 
-		bool operator>(const EntryPathSpec& r) const {
-			if (FullPathHash != r.FullPathHash)
-				return FullPathHash > r.FullPathHash;
-			if (PathHash != r.PathHash)
-				return PathHash > r.PathHash;
-			if (NameHash != r.NameHash)
-				return NameHash > r.NameHash;
-			return false;
-		}
+		struct AllHashComparator {
+			bool operator()(const EntryPathSpec& l, const EntryPathSpec& r) const {
+				if (l.FullPathHash != r.FullPathHash)
+					return l.FullPathHash < r.FullPathHash;
+				if (l.PathHash != r.PathHash)
+					return l.PathHash < r.PathHash;
+				if (l.NameHash != r.NameHash)
+					return l.NameHash < r.NameHash;
+				return false;
+			}
+		};
+
+		struct FullHashComparator {
+			bool operator()(const EntryPathSpec& l, const EntryPathSpec& r) const {
+				return l.FullPathHash < r.FullPathHash;
+			}
+		};
+
+		struct PairHashComparator {
+			bool operator()(const EntryPathSpec& l, const EntryPathSpec& r) const {
+				if (l.PathHash == r.PathHash)
+					return l.NameHash < r.NameHash;
+				else
+					return l.PathHash < r.PathHash;
+			}
+		};
+
+		struct FullPathComparator {
+			bool operator()(const EntryPathSpec& l, const EntryPathSpec& r) const {
+				return l.Original < r.Original;
+			}
+		};
 	};
 
+	struct PathSpecComparator {
+		bool operator()(const SqIndex::FileSegmentEntry& l, const EntryPathSpec& r) const {
+			return l.NameHash < r.NameHash;
+		}
+
+		bool operator()(const EntryPathSpec& l, const SqIndex::FileSegmentEntry& r) const {
+			return l.NameHash < r.NameHash;
+		}
+
+		bool operator()(const SqIndex::FileSegmentEntry2& l, const EntryPathSpec& r) const {
+			return l.FullPathHash < r.FullPathHash;
+		}
+
+		bool operator()(const EntryPathSpec& l, const SqIndex::FileSegmentEntry2& r) const {
+			return l.FullPathHash < r.FullPathHash;
+		}
+
+		bool operator()(const SqIndex::FolderSegmentEntry& l, const EntryPathSpec& r) const {
+			return l.PathHash < r.PathHash;
+		}
+
+		bool operator()(const EntryPathSpec& l, const SqIndex::FolderSegmentEntry& r) const {
+			return l.PathHash < r.PathHash;
+		}
+
+		// following 4 functions are inefficient as they convert encodings every single pass,
+		// but conflicts aren't much to the extent I don't actually care about performance at the moment
+		bool operator()(const SqIndex::HashConflictSegmentEntry& l, const EntryPathSpec& r) const {
+			return reinterpret_cast<const char8_t*>(l.FullPath) < r.Original.u8string();
+		}
+
+		bool operator()(const EntryPathSpec& l, const SqIndex::HashConflictSegmentEntry& r) const {
+			return l.Original.u8string() < reinterpret_cast<const char8_t*>(r.FullPath);
+		}
+
+		bool operator()(const SqIndex::HashConflictSegmentEntry2& l, const EntryPathSpec& r) const {
+			return reinterpret_cast<const char8_t*>(l.FullPath) < r.Original.u8string();
+		}
+
+		bool operator()(const EntryPathSpec& l, const SqIndex::HashConflictSegmentEntry2& r) const {
+			return l.Original.u8string() < reinterpret_cast<const char8_t*>(r.FullPath);
+		}
+	};
 }
 
 template<>

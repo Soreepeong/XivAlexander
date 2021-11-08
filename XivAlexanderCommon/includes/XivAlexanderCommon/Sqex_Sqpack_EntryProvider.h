@@ -23,6 +23,8 @@ namespace Sqex::Sqpack {
 		bool UpdatePathSpec(const EntryPathSpec& r) {
 			if (m_pathSpec != r)
 				return false;
+			if (!m_pathSpec.HasOriginal())
+				m_pathSpec.Original = r.Original;
 			if (!m_pathSpec.HasFullPathHash())
 				m_pathSpec.FullPathHash = r.FullPathHash;
 			if (!m_pathSpec.HasComponentHash()) {

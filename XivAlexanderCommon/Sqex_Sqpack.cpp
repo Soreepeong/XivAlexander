@@ -202,8 +202,8 @@ void Sqex::Sqpack::SqIndex::Header::VerifySqpackIndexHeader(IndexType expectedIn
 
 	if (!IsAllSameValue(FileSegment.Padding_0x020))
 		throw CorruptDataException("FileSegment.Padding_0x020");
-	if (!IsAllSameValue(DataFilesSegment.Padding_0x020))
-		throw CorruptDataException("DataFilesSegment.Padding_0x020");
+	if (!IsAllSameValue(HashConflictSegment.Padding_0x020))
+		throw CorruptDataException("HashConflictSegment.Padding_0x020");
 	if (!IsAllSameValue(UnknownSegment3.Padding_0x020))
 		throw CorruptDataException("UnknownSegment3.Padding_0x020");
 	if (!IsAllSameValue(FolderSegment.Padding_0x020))
@@ -226,28 +226,6 @@ void Sqex::Sqpack::SqIndex::Header::VerifySqpackIndexHeader(IndexType expectedIn
 		throw CorruptDataException("Segment4.Count == 0");
 }
 
-void Sqex::Sqpack::SqIndex::Header::VerifyDataFileSegment(const std::vector<char>& DataFileSegment, int type) const {
-	if (DataFilesSegment.Size == 0x100) {
-		if (!IsAllSameValue(std::span(DataFileSegment).subspan(0, 4), '\xff'))
-			throw CorruptDataException("DataFileSegment.0-3 != 0xFF");
-		if (!IsAllSameValue(std::span(DataFileSegment).subspan(4, 4), '\xff')) {
-			if (type == 1)
-				throw CorruptDataException("DataFileSegment.4-7 != 0");
-			else if (type == 2) {
-				if (!IsAllSameValue(std::span(DataFileSegment).subspan(4, 4)))
-					throw CorruptDataException("DataFileSegment.4-7 != 0 nor 0xff");
-			} else
-				throw std::invalid_argument("type must be either 1 or 2");
-		}
-		if (!IsAllSameValue(std::span(DataFileSegment).subspan(8, 4)))
-			throw CorruptDataException("DataFileSegment.8-11 != 0");
-		if (!IsAllSameValue(std::span(DataFileSegment).subspan(12, 4), '\xff'))
-			throw CorruptDataException("DataFileSegment.12-15 != 0xFF");
-		if (!IsAllSameValue(std::span(DataFileSegment).subspan(16)))
-			throw CorruptDataException("DataFileSegment.16+ != 0x00");
-	}
-}
-
 Sqex::Sqpack::SqIndex::LEDataLocator::LEDataLocator(uint32_t index, uint64_t offset)
 	: LE<uint32_t>(0) {
 	Index(index);
@@ -268,6 +246,11 @@ uint64_t Sqex::Sqpack::SqIndex::LEDataLocator::Offset(const uint64_t value) {
 	if (divValue > UINT32_MAX)
 		throw std::invalid_argument("Value too big.");
 	Value(static_cast<uint32_t>((Value() & 0x0F) | divValue));
+	return value;
+}
+
+bool Sqex::Sqpack::SqIndex::LEDataLocator::HasConflicts(bool value) {
+	Value((Value() & 0xFFFFFFFE) | (value ? 1 : 0));
 	return value;
 }
 

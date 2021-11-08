@@ -967,8 +967,8 @@ Sqex::FontCsv::FontSetsCreator::~FontSetsCreator() {
 	m_pImpl->Cancel();
 }
 
-std::map<Sqex::Sqpack::EntryPathSpec, std::shared_ptr<const Sqex::RandomAccessStream>> Sqex::FontCsv::FontSetsCreator::ResultFontSets::GetAllStreams() const {
-	std::map<Sqpack::EntryPathSpec, std::shared_ptr<const RandomAccessStream>> result;
+std::map<Sqex::Sqpack::EntryPathSpec, std::shared_ptr<const Sqex::RandomAccessStream>, Sqex::Sqpack::EntryPathSpec::FullPathComparator> Sqex::FontCsv::FontSetsCreator::ResultFontSets::GetAllStreams() const {
+	std::map<Sqpack::EntryPathSpec, std::shared_ptr<const RandomAccessStream>, Sqpack::EntryPathSpec::FullPathComparator> result;
 
 	for (const auto& fontSet : Result) {
 		for (size_t i = 0; i < fontSet.second.Textures.size(); ++i)

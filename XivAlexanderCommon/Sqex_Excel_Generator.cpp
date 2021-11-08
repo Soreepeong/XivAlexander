@@ -128,8 +128,8 @@ std::pair<Sqex::Sqpack::EntryPathSpec, std::vector<char>> Sqex::Excel::Depth2Exh
 	);
 }
 
-std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>> Sqex::Excel::Depth2ExhExdCreator::Compile() {
-	std::map<Sqpack::EntryPathSpec, std::vector<char>> result;
+std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>, Sqex::Sqpack::EntryPathSpec::FullPathComparator> Sqex::Excel::Depth2ExhExdCreator::Compile() {
+	std::map<Sqpack::EntryPathSpec, std::vector<char>, Sqpack::EntryPathSpec::FullPathComparator> result;
 
 	std::vector<std::pair<Exh::Pagination, std::vector<uint32_t>>> pages;
 	for (const auto id : Data | std::views::keys) {

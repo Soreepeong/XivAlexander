@@ -119,7 +119,7 @@ namespace Sqex::FontCsv {
 		struct ResultFontSets {
 			std::map<std::string, ResultFontSet> Result;
 
-			[[nodiscard]] std::map<Sqpack::EntryPathSpec, std::shared_ptr<const RandomAccessStream>> GetAllStreams() const;
+			[[nodiscard]] std::map<Sqpack::EntryPathSpec, std::shared_ptr<const RandomAccessStream>, Sqpack::EntryPathSpec::FullPathComparator> GetAllStreams() const;
 		};
 		
 		void ProvideGameDirectory(Sqex::GameReleaseRegion, std::filesystem::path);

@@ -6,23 +6,12 @@
 
 namespace Sqex::Sqpack {
 	struct Reader {
-		struct SqDataEntry {
-			SqIndex::FileSegmentEntry Index;
-			SqIndex::FileSegmentEntry2 Index2;
-			uint64_t Offset;
-			uint32_t Size = UINT32_MAX;
-			uint32_t DataFileIndex;
-			
-			SqDataEntry(const SqIndex::FileSegmentEntry& entry);
-			SqDataEntry(const SqIndex::FileSegmentEntry2& entry);
-		};
-
 		struct SqIndexType {
 			SqpackHeader Header{};
 			SqIndex::Header IndexHeader{};
 			std::vector<SqIndex::FolderSegmentEntry> Folders;
-			std::map<uint32_t, std::vector<SqIndex::FileSegmentEntry>> Files;
-			std::vector<char> DataFileSegment;
+			std::vector<SqIndex::FileSegmentEntry> Files;
+			std::vector<SqIndex::HashConflictSegmentEntry> HashConflictSegment;
 			std::vector<SqIndex::Segment3Entry> Segment3;
 
 		private:
@@ -35,7 +24,7 @@ namespace Sqex::Sqpack {
 			SqIndex::Header IndexHeader{};
 			std::vector<SqIndex::FolderSegmentEntry> Folders;
 			std::vector<SqIndex::FileSegmentEntry2> Files;
-			std::vector<char> DataFileSegment;
+			std::vector<SqIndex::HashConflictSegmentEntry2> HashConflictSegment;
 			std::vector<SqIndex::Segment3Entry> Segment3;
 
 		private:
@@ -46,25 +35,22 @@ namespace Sqex::Sqpack {
 		struct SqDataType {
 			SqpackHeader Header{};
 			SqData::Header DataHeader{};
-			Win32::Handle FileOnDisk;
+			std::shared_ptr<FileRandomAccessStream> Stream;
 
 		private:
 			friend struct Reader;
-			SqDataType(Win32::Handle hFile, uint32_t datIndex, std::vector<SqDataEntry>& dataEntries, bool strictVerify);
+			SqDataType(Win32::Handle hFile, uint32_t datIndex, bool strictVerify);
 		};
 
 		SqIndexType Index;
 		SqIndex2Type Index2;
-		bool Sorted;
-		std::vector<SqDataEntry> Files;
 		std::vector<SqDataType> Data;
+		std::map<uint32_t, uint64_t> FileSizes;
 
-		Reader(const std::filesystem::path& indexFile, bool strictVerify = false, bool sort = false);
+		Reader(const std::filesystem::path& indexFile, bool strictVerify = false);
 
-		[[nodiscard]] std::shared_ptr<EntryProvider> GetEntryProvider(const EntryPathSpec& pathSpec, Win32::Handle handle = {}) const;
-		[[nodiscard]] std::shared_ptr<EntryProvider> GetEntryProvider(const SqDataEntry& entry, Win32::Handle handle = {}) const;
+		[[nodiscard]] std::shared_ptr<EntryProvider> GetEntryProvider(const EntryPathSpec& pathSpec, SqIndex::LEDataLocator locator = {}) const;
 
 		std::shared_ptr<RandomAccessStream> operator[](const EntryPathSpec& pathSpec) const;
-		std::shared_ptr<RandomAccessStream> operator[](const SqDataEntry& entry) const;
 	};
 }
