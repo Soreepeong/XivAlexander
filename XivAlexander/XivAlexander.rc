@@ -228,6 +228,7 @@ BEGIN
                 MENUITEM "çÌèú(&D)",                      ID_MODDING_TTMP_ENTRY_DELETE
                 MENUITEM SEPARATOR
                 MENUITEM "çƒãNìÆïKóv",                       ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
+                MENUITEM "ê‡ñæÇï\é¶(&D)",                   ID__40492
                 MENUITEM SEPARATOR
             END
             MENUITEM "ÉCÉìÉ|Å[Ég(&I)",                   ID_MODDING_TTMP_IMPORT
@@ -752,6 +753,7 @@ BEGIN
                 MENUITEM "¡¶∞≈(&D)",                      ID_MODDING_TTMP_ENTRY_DELETE
                 MENUITEM SEPARATOR
                 MENUITEM "¿ÁΩ√¿€ « ø‰",                      ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
+                MENUITEM "º≥∏Ì ∫∏±‚(&D)",                   ID_MODDING_TTMP_ENTRY_SHOWDESCRIPTION
                 MENUITEM SEPARATOR
             END
             MENUITEM "∫“∑Øø¿±‚(&I)",                    ID_MODDING_TTMP_IMPORT
@@ -1333,6 +1335,7 @@ BEGIN
                 MENUITEM "&Delete",                     ID_MODDING_TTMP_ENTRY_DELETE
                 MENUITEM SEPARATOR
                 MENUITEM "Requires restart",            ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
+                MENUITEM "Show &Description",           ID_MODDING_TTMP_ENTRY_SHOWDESCRIPTION
                 MENUITEM SEPARATOR
             END
             MENUITEM "&Import",                     ID_MODDING_TTMP_IMPORT

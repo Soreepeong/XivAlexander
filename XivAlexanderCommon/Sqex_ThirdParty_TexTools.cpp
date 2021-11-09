@@ -46,7 +46,7 @@ void Sqex::ThirdParty::TexTools::ModPackPage::from_json(const nlohmann::json& j,
 		throw CorruptDataException("Option must be an object");
 
 	p.Name = JsonValueOrDefault(j, "Name", ""s, ""s);
-	p.Description = JsonValueOrDefault(j, "Description ", ""s, ""s);
+	p.Description = JsonValueOrDefault(j, "Description", ""s, ""s);
 	p.ImagePath = JsonValueOrDefault(j, "ImagePath", ""s, ""s);
 	if (const auto it = j.find("ModsJsons"); it != j.end() && !it->is_null())
 		p.ModsJsons = it->get<decltype(p.ModsJsons)>();

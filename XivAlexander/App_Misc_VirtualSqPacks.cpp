@@ -274,19 +274,27 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					if (modGroups.empty())
 						continue;
 
-					const auto choice = pageConf.at(modGroupIndex).get<size_t>();
-					const auto& option = modGroup.OptionList[choice];
+					std::set<size_t> indices;
+					if (pageConf.at(modGroupIndex).is_array()) {
+						const auto tmp = pageConf.at(modGroupIndex).get<std::vector<size_t>>();
+						indices.insert(tmp.begin(), tmp.end());
+					} else
+						indices.insert(pageConf.at(modGroupIndex).get<size_t>());
+					
+					for (const auto optionIndex : indices) {
+						const auto& option = modGroup.OptionList[optionIndex];
 
-					for (const auto& entry : option.ModsJsons) {
-						const auto entryIt = replacements.find(entry.FullPath);
-						if (entryIt == replacements.end())
-							continue;
+						for (const auto& entry : option.ModsJsons) {
+							const auto entryIt = replacements.find(entry.FullPath);
+							if (entryIt == replacements.end())
+								continue;
 
-						std::get<1>(entryIt->second) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(
-							entry.FullPath,
-							std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::Handle{ttmp.DataFile, false}, entry.ModOffset, entry.ModSize)
-						);
-						std::get<2>(entryIt->second) = std::format("{} ({} > {})", ttmp.List.Name, modGroup.GroupName, option.Name);
+							std::get<1>(entryIt->second) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(
+								entry.FullPath,
+								std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::Handle{ ttmp.DataFile, false }, entry.ModOffset, entry.ModSize)
+								);
+							std::get<2>(entryIt->second) = std::format("{} ({} > {})", ttmp.List.Name, modGroup.GroupName, option.Name);
+						}
 					}
 				}
 			}
@@ -1148,7 +1156,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 						.Write(0, currentCacheKeys.data(), currentCacheKeys.size());
 				}
 
-				if (const auto result = creator.AddEntriesFromTTMP(cachedDir); result.AnyItem()) {
+				if (const auto result = creator.AddAllEntriesFromSimpleTTMP(cachedDir); result.AnyItem()) {
 					Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
 						"[ffxiv/0a0000] Generated string table: added {}, replaced {}, ignored {}, error {}",
 						result.Added.size(), result.Replaced.size(), result.SkippedExisting.size(), result.Error.size());
@@ -1442,7 +1450,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 						.Write(0, currentCacheKeys.data(), currentCacheKeys.size());
 				}
 
-				if (const auto result = creator.AddEntriesFromTTMP(cachedDir); result.AnyItem()) {
+				if (const auto result = creator.AddAllEntriesFromSimpleTTMP(cachedDir); result.AnyItem()) {
 					Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
 						"[ffxiv/000000] Generated font: added {}, replaced {}, ignored {}, error {}",
 						result.Added.size(), result.Replaced.size(), result.SkippedExisting.size(), result.Error.size());
@@ -1578,11 +1586,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 						}
 						return Utils::Win32::TaskDialog::HyperlinkHandleResult::HandledKeepDialog;
 					});
-					builder.WithFooter(std::format(L"<a href=\"homepage\">{}</a>", 
-						Utils::StringReplaceAll<std::string>(
-							Utils::StringReplaceAll<std::string>(requirement.homepage, "&", "&amp;")
-							, "<", "&lt;")
-					));
+					builder.WithFooter(std::format(L"<a href=\"homepage\">{}</a>", requirement.homepage));
 				}
 				const auto res = builder
 					.WithWindowTitle(Dll::GetGenericMessageBoxTitle())
@@ -1748,16 +1752,21 @@ void App::Misc::VirtualSqPacks::TtmpSet::FixChoices() {
 			const auto& modGroup = modGroups[modGroupIndex];
 			if (modGroups.empty())
 				continue;
-
+			
 			while (pageChoices.size() <= modGroupIndex)
-				pageChoices.emplace_back(0);
+				pageChoices.emplace_back(modGroup.SelectionType == "Multi" ? nlohmann::json::array() : nlohmann::json::array({ 0 }));
 
 			auto& modGroupChoice = pageChoices.at(modGroupIndex);
+			if (!modGroupChoice.is_array())
+				modGroupChoice = nlohmann::json::array({ modGroupChoice });
 
-			if (!modGroupChoice.is_number_unsigned())
-				modGroupChoice = 0;
-			else if (modGroupChoice.get<size_t>() >= modGroup.OptionList.size())
-				modGroupChoice = modGroup.OptionList.size() - 1;
+			for (auto& e : modGroupChoice) {
+				if (!e.is_number_unsigned())
+					e = 0;
+				else if (e.get<size_t>() >= modGroup.OptionList.size())
+					e = modGroup.OptionList.size() - 1;
+			}
+			modGroupChoice = modGroupChoice.get<std::set<size_t>>();
 		}
 	}
 }

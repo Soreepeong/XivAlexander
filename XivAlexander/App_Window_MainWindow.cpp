@@ -661,8 +661,41 @@ void App::Window::MainWindow::RepopulateMenu_Modding(HMENU hParentMenu) {
 				}
 			}), RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_TTMP_ENTRY_DELETE).c_str());
 
+			AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
+			AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, &ttmpSet]() {
+				Utils::Win32::TaskDialog::Builder()
+					.WithWindowTitle(Dll::GetGenericMessageBoxTitle())
+					.WithParentWindow(m_hWnd)
+					.WithInstance(Dll::Module())
+					.WithAllowDialogCancellation()
+					.WithCanBeMinimized()
+					.WithHyperlinkHandler(L"homepage", [&ttmpSet](auto& dialog) {
+						try {
+							Utils::Win32::ShellExecutePathOrThrow(Utils::FromUtf8(ttmpSet.List.Url), dialog.GetHwnd());
+						} catch (const std::exception& e) {
+							Dll::MessageBoxF(dialog.GetHwnd(), MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+						}
+						return Utils::Win32::TaskDialog::HyperlinkHandleResult::HandledKeepDialog;
+					})
+					.WithMainIcon(IDI_TRAY_ICON)
+					.WithMainInstruction(ttmpSet.List.Name)
+					.WithContent(std::format(L"{} - {}{}",
+						ttmpSet.List.Version.empty() ? "0.0" : ttmpSet.List.Version,
+						ttmpSet.List.Author.empty() ? "Anonymous" : ttmpSet.List.Author,
+						ttmpSet.List.Description.empty() ? "" : std::format("\n\n{}", ttmpSet.List.Description)
+					))
+					.WithFooter(ttmpSet.List.Url.empty() ? L"" : std::format(
+						L"<a href=\"homepage\">{}</a>",
+						ttmpSet.List.Url
+					))
+					.Build()
+					.Show();
+			}), std::format(L"{} - {} ({})",
+				ttmpSet.List.Name.empty() ? "Unnamed" : ttmpSet.List.Name,
+				ttmpSet.List.Author.empty() ? "Anonymous" : ttmpSet.List.Author,
+				ttmpSet.List.Version.empty() ? "0.0" : ttmpSet.List.Version
+			).c_str());
 			if (!ttmpSet.Allocated) {
-				AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
 				AppendMenuW(hSubMenu, MF_STRING | MF_DISABLED, 0, RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_TTMP_ENTRY_REQUIRESRESTART).c_str());
 			}
 
@@ -674,39 +707,53 @@ void App::Window::MainWindow::RepopulateMenu_Modding(HMENU hParentMenu) {
 				const auto& modGroups = ttmpSet.List.ModPackPages[pageObjectIndex].ModGroups;
 				if (modGroups.empty())
 					continue;
-				const auto pageConf = ttmpSet.Choices.at(pageObjectIndex);
+				const auto& pageConf = ttmpSet.Choices.at(pageObjectIndex);
 
 				for (size_t modGroupIndex = 0; modGroupIndex < modGroups.size(); ++modGroupIndex) {
 					const auto& modGroup = modGroups[modGroupIndex];
 					if (modGroup.OptionList.empty())
 						continue;
 
-					const auto choice = pageConf.at(modGroupIndex).get<size_t>();
+					const auto isMulti = modGroup.SelectionType == "Multi";
+					const auto optionIndices = pageConf.at(modGroupIndex).get<std::set<size_t>>();
 
 					const auto hModSubMenu = CreatePopupMenu();
+
+					if (std::ranges::any_of(modGroup.OptionList, [](const auto& e) { return !e.Description.empty(); })) {
+						AppendMenuW(hModSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, &modGroup]() {
+							std::string description;
+							for (const auto& option : modGroup.OptionList) {
+								if (!description.empty())
+									description += "\n";
+								description += std::format("* {}: {}", option.Name, option.Description.empty() ? "-" : option.Description);
+							}
+							void(Utils::Win32::Thread(L"MsgBoxThread", [description, &groupName = modGroup.GroupName]() {
+								MessageBoxW(nullptr, Utils::FromUtf8(description).c_str(), Utils::FromUtf8(groupName).c_str(), MB_OK);
+							}));
+						}), RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_TTMP_ENTRY_SHOWDESCRIPTION).c_str());
+						AppendMenuW(hModSubMenu, MF_SEPARATOR, 0, nullptr);
+					}
+
 					for (size_t optionIndex = 0; optionIndex < modGroup.OptionList.size(); ++optionIndex) {
 						const auto& modEntry = modGroup.OptionList[optionIndex];
 
 						std::string description = modEntry.Name.empty() ? "-" : modEntry.Name;
-						if (!modEntry.GroupName.empty())
+						if (!modEntry.GroupName.empty() && modEntry.GroupName != modGroup.GroupName)
 							description += std::format(" ({})", modEntry.GroupName);
-						if (!modEntry.Description.empty())
-							description += std::format(" ({})", modEntry.Description);
 
-						AppendMenuW(hModSubMenu, MF_STRING | (optionIndex == choice ? MF_CHECKED : 0), RepopulateMenu_AllocateMenuId(
-							[this, pageObjectIndex, modGroupIndex, optionIndex, &ttmpSet]() {
+						AppendMenuW(hModSubMenu, MF_STRING | (optionIndices.contains(optionIndex) ? MF_CHECKED : 0), RepopulateMenu_AllocateMenuId(
+							[this, isMulti, pageObjectIndex, modGroupIndex, optionIndices = optionIndices, optionIndex, &ttmpSet]() mutable {
 							try {
-								if (!ttmpSet.Choices.is_array())
-									ttmpSet.Choices = nlohmann::json::array();
-								while (ttmpSet.Choices.size() <= pageObjectIndex)
-									ttmpSet.Choices.insert(ttmpSet.Choices.end(), nlohmann::json::array());
-
 								auto& page = ttmpSet.Choices.at(pageObjectIndex);
-								if (!page.is_array())
-									page = nlohmann::json::array();
-								while (page.size() <= modGroupIndex)
-									page.insert(page.end(), 0);
-								page[modGroupIndex] = optionIndex;
+								
+								if (isMulti || GetKeyState(VK_CONTROL)) {
+									if (optionIndices.contains(optionIndex))
+										optionIndices.erase(optionIndex);
+									else
+										optionIndices.insert(optionIndex);
+									page[modGroupIndex] = optionIndices;
+								} else
+									page[modGroupIndex] = nlohmann::json::array({optionIndex});
 
 								ttmpSet.ApplyChanges();
 

@@ -197,23 +197,9 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntryFromFile(En
 	return m_pImpl->AddEntry(provider, overwriteExisting);
 }
 
-Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(const std::filesystem::path & extractedDir, bool overwriteExisting) {
-	nlohmann::json choices;
+Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddAllEntriesFromSimpleTTMP(const std::filesystem::path & extractedDir, bool overwriteExisting) {
 	const auto ttmpdPath = extractedDir / "TTMPD.mpd";
-	const auto ttmpl = ThirdParty::TexTools::TTMPL::FromStream(FileRandomAccessStream{
-		Win32::Handle::FromCreateFile(
-			extractedDir / "TTMPL.mpl", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0
-	)
-		});
-
-	if (const auto choicesPath = extractedDir / "choices.json"; exists(choicesPath)) {
-		try {
-			choices = ParseJsonFromFile(choicesPath);
-			m_pImpl->Log("Choices file loaded from {}", choicesPath.wstring());
-		} catch (const std::exception& e) {
-			m_pImpl->Log("Failed to load choices from {}: {}", choicesPath.wstring(), e.what());
-		}
-	}
+	const auto ttmpl = ThirdParty::TexTools::TTMPL::FromStream(FileRandomAccessStream{ Win32::Handle::FromCreateFile(extractedDir / "TTMPL.mpl", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0) });
 
 	if (DatExpac != "ffxiv")
 		return {};
@@ -224,8 +210,6 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 
 	for (size_t i = 0; i < ttmpl.SimpleModsList.size(); ++i) {
 		const auto& entry = ttmpl.SimpleModsList[i];
-		if (choices.is_array() && i < choices.size() && choices[i].is_boolean() && !choices[i].get<boolean>())
-			continue;
 		if (entry.DatFile != DatName)
 			continue;
 
@@ -234,34 +218,6 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromTTMP(
 		} catch (const std::exception& e) {
 			addEntryResult.Error.emplace(EntryPathSpec{ entry.FullPath }, std::string(e.what()));
 			m_pImpl->Log("Error: {} (Name: {} > {})", entry.FullPath, ttmpl.Name, entry.Name);
-		}
-	}
-
-	for (size_t pageObjectIndex = 0; pageObjectIndex < ttmpl.ModPackPages.size(); ++pageObjectIndex) {
-		const auto& modGroups = ttmpl.ModPackPages[pageObjectIndex].ModGroups;
-		if (modGroups.empty())
-			continue;
-		const auto pageConf = choices.is_array() && pageObjectIndex < choices.size() && choices[pageObjectIndex].is_array() ? choices[pageObjectIndex] : nlohmann::json::array();
-
-		for (size_t modGroupIndex = 0; modGroupIndex < modGroups.size(); ++modGroupIndex) {
-			const auto& modGroup = modGroups[modGroupIndex];
-			if (modGroups.empty())
-				continue;
-
-			const auto choice = modGroupIndex < pageConf.size() ? std::max(0, std::min(static_cast<int>(modGroup.OptionList.size() - 1), pageConf[modGroupIndex].get<int>())) : 0;
-			const auto& option = modGroup.OptionList[choice];
-
-			for (const auto& entry : option.ModsJsons) {
-				if (entry.DatFile != DatName)
-					continue;
-
-				try {
-					addEntryResult += m_pImpl->AddEntry(std::make_shared<RandomAccessStreamAsEntryProviderView>(entry.FullPath, dataStream, entry.ModOffset, entry.ModSize), overwriteExisting);
-				} catch (const std::exception& e) {
-					addEntryResult.Error.emplace(EntryPathSpec{ entry.FullPath }, std::string(e.what()));
-					m_pImpl->Log("Error: {} (Name: {} > {})", entry.FullPath, ttmpl.Name, entry.Name);
-				}
-			}
 		}
 	}
 	return addEntryResult;
