@@ -331,11 +331,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 					} else {
 						const auto pathSpec = Sqex::Sqpack::EntryPathSpec(current);
 						m_logger->Format(LogCategory::GameResourceOverrider,
-#if INTPTR_MAX == INT64_MAX
-							"{} (~{:08x}/~{:08x}, ~{:08x}) => ~{:016x} (f={:016x}, initVal={:016x})",
-#else
-							"{} (~{:08x}/~{:08x}, ~{:08x}) => ~{:08x} (f={:08x}, initVal={:08x})",
-#endif
+							"{} (~{:08x}/~{:08x}, ~{:08x}) => ~{:08x} (f={:p}, iv={:x})",
 							description.empty() ? current : description,
 							pathSpec.PathHash, pathSpec.NameHash, pathSpec.FullPathHash,
 							res, reinterpret_cast<size_t>(ptr), initVal);
