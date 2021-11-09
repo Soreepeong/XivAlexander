@@ -228,7 +228,7 @@ BEGIN
                 MENUITEM "削除(&D)",                      ID_MODDING_TTMP_ENTRY_DELETE
                 MENUITEM SEPARATOR
                 MENUITEM "再起動必要",                       ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
-                MENUITEM "説明を表示(&D)",                   ID__40492
+                MENUITEM "説明を表示(&D)",                   ID_MODDING_TTMP_ENTRY_SHOWDESCRIPTION
                 MENUITEM SEPARATOR
             END
             MENUITEM "インポート(&I)",                   ID_MODDING_TTMP_IMPORT
