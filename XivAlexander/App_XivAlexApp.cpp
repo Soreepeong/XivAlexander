@@ -251,6 +251,8 @@ App::XivAlexApp::Implementation::~Implementation() {
 	m_cleanup.Clear();
 }
 
+Utils::ListenerManager<App::XivAlexApp, void, App::XivAlexApp&> App::XivAlexApp::OnAppCreated;
+
 App::XivAlexApp::XivAlexApp()
 	: m_module(Utils::Win32::LoadedModule::LoadMore(Dll::Module()))
 	, m_detectionDisabler(Misc::DebuggerDetectionDisabler::Acquire())
@@ -302,6 +304,7 @@ void App::XivAlexApp::CustomMessageLoopBody() {
 	}
 
 	m_loadCompleteEvent.Set();
+	OnAppCreated(*this);
 
 	MSG msg;
 	while (GetMessageW(&msg, nullptr, 0, 0)) {

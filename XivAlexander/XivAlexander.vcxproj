@@ -301,6 +301,7 @@ cmd /c "exit /b 0"
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="App_DalamudHandlerApp.cpp" />
     <ClCompile Include="App_Feature_GameResourceOverrider.cpp" />
     <ClCompile Include="App_InjectOnCreateProcessApp.cpp" />
     <ClCompile Include="App_LoaderApp.cpp" />
@@ -345,6 +346,7 @@ cmd /c "exit /b 0"
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="App_DalamudHandlerApp.h" />
     <ClInclude Include="App_Feature_GameResourceOverrider.h" />
     <ClInclude Include="App_InjectOnCreateProcessApp.h" />
     <ClInclude Include="App_InjectOnCreateProcessApp_x64.h" />

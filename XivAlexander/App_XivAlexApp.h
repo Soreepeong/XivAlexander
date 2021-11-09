@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <XivAlexanderCommon/Utils_ListenerManager.h>
 #include <XivAlexanderCommon/Utils_Win32.h>
 #include <XivAlexanderCommon/Utils_Win32_Handle.h>
 #include <XivAlexanderCommon/Utils_Win32_LoadedModule.h>
@@ -53,6 +54,7 @@ namespace App {
 
 		[[nodiscard]] Network::SocketHook* GetSocketHook();
 
+		static Utils::ListenerManager<XivAlexApp, void, XivAlexApp&> OnAppCreated;
 		static XivAlexApp* GetCurrentApp();
 	};
 }

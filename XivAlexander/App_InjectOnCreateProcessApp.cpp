@@ -9,6 +9,7 @@
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
 
 #include "App_ConfigRepository.h"
+#include "App_DalamudHandlerApp.h"
 #include "App_Feature_GameResourceOverrider.h"
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_Hooks.h"
@@ -449,6 +450,9 @@ static void InitializeBeforeOriginalEntryPoint() {
 
 	// Load game resource overrider before the game starts to load files.
 	App::Feature::GameResourceOverrider::Enable();
+
+	// Delay Initialize call to Dalamud Boot if Dalamud is being used
+	App::DalamudHandlerApp::LoadDalamudHandler();
 
 	void(Utils::Win32::Thread(L"EnableXivAlexanderSoon", []() {
 		Sleep(1000);

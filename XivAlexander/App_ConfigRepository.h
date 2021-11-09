@@ -217,18 +217,6 @@ namespace App {
 			Item<std::vector<std::filesystem::path>> ChainLoadPath_d3d9 = CreateConfigItem<std::vector<std::filesystem::path>>(this, "ChainLoadPath_d3d9");
 			Item<std::vector<std::filesystem::path>> ChainLoadPath_dinput8 = CreateConfigItem<std::vector<std::filesystem::path>>(this, "ChainLoadPath_dinput8");
 
-			//// https://github.com/goatcorp/Dalamud/blob/master/Dalamud/DalamudStartInfo.cs
-			//Item<bool> ChainLoadDalamud_Enable = CreateConfigItem(this, "ChainLoadDalamud_Enable", false);
-			//Item<int> ChainLoadDalamud_WaitMs = CreateConfigItem(this, "ChainLoadDalamud_WaitMs", 0);
-			//Item<std::filesystem::path> ChainLoadDalamud_WorkingDirectory = CreateConfigItem<std::filesystem::path>(this, "ChainLoadDalamud_WorkingDirectory");
-			//// Following 4 paths are relative to ChainLoadDalamud_WorkingDirectory.
-			//Item<std::filesystem::path> ChainLoadDalamud_ConfigurationPath = CreateConfigItem<std::filesystem::path>(this, "ChainLoadDalamud_ConfigurationPath");
-			//Item<std::filesystem::path> ChainLoadDalamud_PluginDirectory = CreateConfigItem<std::filesystem::path>(this, "ChainLoadDalamud_PluginDirectory");
-			//Item<std::filesystem::path> ChainLoadDalamud_DefaultPluginDirectory = CreateConfigItem<std::filesystem::path>(this, "ChainLoadDalamud_DefaultPluginDirectory");
-			//Item<std::filesystem::path> ChainLoadDalamud_AssetDirectory = CreateConfigItem<std::filesystem::path>(this, "ChainLoadDalamud_AssetDirectory");
-			//Item<bool> ChainLoadDalamud_OptOutMbCollection = CreateConfigItem<bool>(this, "ChainLoadDalamud_OptOutMbCollection", true);
-			// ^ TODO: this doesn't work at the moment - see also AutoLoadAsDependencyModule.cpp
-
 			Item<bool> UseModding = CreateConfigItem(this, "UseModding", false);
 			Item<std::vector<std::filesystem::path>> AdditionalSqpackRootDirectories =
 				CreateConfigItem<std::vector<std::filesystem::path>>(this, "AdditionalSqpackRootDirectories");
