@@ -96,11 +96,11 @@ namespace Sqex::Sqpack {
 			};
 
 			LE<uint32_t> HeaderSize;
-			SegmentDescriptor FileSegment;
+			SegmentDescriptor HashLocatorSegment;
 			char Padding_0x04C[4]{};
-			SegmentDescriptor HashConflictSegment;
+			SegmentDescriptor TextLocatorSegment;
 			SegmentDescriptor UnknownSegment3;
-			SegmentDescriptor FolderSegment;
+			SegmentDescriptor PathHashLocatorSegment;
 			char Padding_0x128[4]{};
 			LE<IndexType> Type;
 			char Padding_0x130[0x3c0 - 0x130]{};

@@ -260,44 +260,44 @@ public:
 			auto& m_subheader = *reinterpret_cast<SqIndex::Header*>(&m_data[sizeof SqpackHeader]);
 			m_subheader.HeaderSize = sizeof SqIndex::Header;
 			m_subheader.Type = IndexType;
-			m_subheader.FileSegment.Count = 1;
-			m_subheader.FileSegment.Offset = m_header.HeaderSize + m_subheader.HeaderSize;
-			m_subheader.FileSegment.Size = static_cast<uint32_t>(std::span(fileSegment).size_bytes());
-			m_subheader.HashConflictSegment.Count = static_cast<uint32_t>(dataFilesCount);
-			m_subheader.HashConflictSegment.Offset = m_subheader.FileSegment.Offset + m_subheader.FileSegment.Size;
-			m_subheader.HashConflictSegment.Size = static_cast<uint32_t>(std::span(conflictSegment).size_bytes());
+			m_subheader.HashLocatorSegment.Count = 1;
+			m_subheader.HashLocatorSegment.Offset = m_header.HeaderSize + m_subheader.HeaderSize;
+			m_subheader.HashLocatorSegment.Size = static_cast<uint32_t>(std::span(fileSegment).size_bytes());
+			m_subheader.TextLocatorSegment.Count = static_cast<uint32_t>(dataFilesCount);
+			m_subheader.TextLocatorSegment.Offset = m_subheader.HashLocatorSegment.Offset + m_subheader.HashLocatorSegment.Size;
+			m_subheader.TextLocatorSegment.Size = static_cast<uint32_t>(std::span(conflictSegment).size_bytes());
 			m_subheader.UnknownSegment3.Count = 0;
-			m_subheader.UnknownSegment3.Offset = m_subheader.HashConflictSegment.Offset + m_subheader.HashConflictSegment.Size;
+			m_subheader.UnknownSegment3.Offset = m_subheader.TextLocatorSegment.Offset + m_subheader.TextLocatorSegment.Size;
 			m_subheader.UnknownSegment3.Size = static_cast<uint32_t>(std::span(segment3).size_bytes());
-			m_subheader.FolderSegment.Count = 0;
-			m_subheader.FolderSegment.Offset = m_subheader.UnknownSegment3.Offset + m_subheader.UnknownSegment3.Size;
+			m_subheader.PathHashLocatorSegment.Count = 0;
+			m_subheader.PathHashLocatorSegment.Offset = m_subheader.UnknownSegment3.Offset + m_subheader.UnknownSegment3.Size;
 			if constexpr (UseFolders) {
 				for (size_t i = 0; i < fileSegment.size(); ++i) {
 					const auto& entry = fileSegment[i];
 					if (folderSegment.empty() || folderSegment.back().PathHash != entry.PathHash) {
 						folderSegment.emplace_back(
 							entry.PathHash,
-							static_cast<uint32_t>(m_subheader.FileSegment.Offset + i * sizeof entry),
+							static_cast<uint32_t>(m_subheader.HashLocatorSegment.Offset + i * sizeof entry),
 							static_cast<uint32_t>(sizeof entry),
 							0);
 					} else {
 						folderSegment.back().PairHashLocatorSize = folderSegment.back().PairHashLocatorSize + sizeof entry;
 					}
 				}
-				m_subheader.FolderSegment.Size = static_cast<uint32_t>(std::span(folderSegment).size_bytes());
+				m_subheader.PathHashLocatorSegment.Size = static_cast<uint32_t>(std::span(folderSegment).size_bytes());
 			}
 
 			if (strict) {
 				m_subheader.Sha1.SetFromSpan(reinterpret_cast<char*>(&m_subheader), offsetof(Sqpack::SqIndex::Header, Sha1));
 				if (!fileSegment.empty())
-					m_subheader.FileSegment.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&fileSegment.front()), m_subheader.FileSegment.Size);
+					m_subheader.HashLocatorSegment.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&fileSegment.front()), m_subheader.HashLocatorSegment.Size);
 				if (!conflictSegment.empty())
-					m_subheader.HashConflictSegment.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&conflictSegment.front()), m_subheader.HashConflictSegment.Size);
+					m_subheader.TextLocatorSegment.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&conflictSegment.front()), m_subheader.TextLocatorSegment.Size);
 				if (!segment3.empty())
 					m_subheader.UnknownSegment3.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&segment3.front()), m_subheader.UnknownSegment3.Size);
 				if constexpr (UseFolders) {
 					if (!folderSegment.empty())
-						m_subheader.FolderSegment.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&folderSegment.front()), m_subheader.FolderSegment.Size);
+						m_subheader.PathHashLocatorSegment.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&folderSegment.front()), m_subheader.PathHashLocatorSegment.Size);
 				}
 			}
 		}

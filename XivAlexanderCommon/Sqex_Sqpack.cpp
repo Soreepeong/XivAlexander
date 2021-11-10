@@ -200,29 +200,29 @@ void Sqex::Sqpack::SqIndex::Header::VerifySqpackIndexHeader(IndexType expectedIn
 	if (!IsAllSameValue(Padding_0x3D4))
 		throw CorruptDataException("Padding_0x3D4");
 
-	if (!IsAllSameValue(FileSegment.Padding_0x020))
-		throw CorruptDataException("FileSegment.Padding_0x020");
-	if (!IsAllSameValue(HashConflictSegment.Padding_0x020))
-		throw CorruptDataException("HashConflictSegment.Padding_0x020");
+	if (!IsAllSameValue(HashLocatorSegment.Padding_0x020))
+		throw CorruptDataException("HashLocatorSegment.Padding_0x020");
+	if (!IsAllSameValue(TextLocatorSegment.Padding_0x020))
+		throw CorruptDataException("TextLocatorSegment.Padding_0x020");
 	if (!IsAllSameValue(UnknownSegment3.Padding_0x020))
 		throw CorruptDataException("UnknownSegment3.Padding_0x020");
-	if (!IsAllSameValue(FolderSegment.Padding_0x020))
-		throw CorruptDataException("FolderSegment.Padding_0x020");
+	if (!IsAllSameValue(PathHashLocatorSegment.Padding_0x020))
+		throw CorruptDataException("PathHashLocatorSegment.Padding_0x020");
 
-	if (Type == IndexType::Index && FileSegment.Size % sizeof PairHashLocator)
-		throw CorruptDataException("FileSegment.size % sizeof FileSegmentEntry != 0");
-	else if (Type == IndexType::Index2 && FileSegment.Size % sizeof FullHashLocator)
-		throw CorruptDataException("FileSegment.size % sizeof FileSegmentEntry2 != 0");
+	if (Type == IndexType::Index && HashLocatorSegment.Size % sizeof PairHashLocator)
+		throw CorruptDataException("HashLocatorSegment.size % sizeof FileSegmentEntry != 0");
+	else if (Type == IndexType::Index2 && HashLocatorSegment.Size % sizeof FullHashLocator)
+		throw CorruptDataException("HashLocatorSegment.size % sizeof FileSegmentEntry2 != 0");
 	if (UnknownSegment3.Size % sizeof Segment3Entry)
 		throw CorruptDataException("UnknownSegment3.size % sizeof Segment3Entry != 0");
-	if (FolderSegment.Size % sizeof PathHashLocator)
-		throw CorruptDataException("FolderSegment.size % sizeof FolderSegmentEntry != 0");
+	if (PathHashLocatorSegment.Size % sizeof PathHashLocator)
+		throw CorruptDataException("PathHashLocatorSegment.size % sizeof FolderSegmentEntry != 0");
 
-	if (FileSegment.Count != 1)
+	if (HashLocatorSegment.Count != 1)
 		throw CorruptDataException("Segment1.Count == 1");
 	if (UnknownSegment3.Count != 0)
 		throw CorruptDataException("Segment3.Count == 0");
-	if (FolderSegment.Count != 0)
+	if (PathHashLocatorSegment.Count != 0)
 		throw CorruptDataException("Segment4.Count == 0");
 }
 
