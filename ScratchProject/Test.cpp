@@ -13,49 +13,26 @@ int main() {
 		char FullPath[0xF0];
 	};
 
-	char buf[8192]{};
-	for (const auto& f : std::filesystem::directory_iterator(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\)")) {
+	std::vector<uint64_t> ts{GetTickCount64()};
+	std::vector<std::string> worklist;
+	for (const auto& f : std::filesystem::recursive_directory_iterator(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\)")) {
 		if (f.path().extension() != L".index")
 			continue;
 
-		if (f.path().filename() != "080000.win32.index")
-			continue;
-		/*const Sqex::Sqpack::Reader reader(f.path());
-		if (reader.Index2.HashConflictSegment.size() > 1) {
-			std::cout << f.path() << std::endl;
-		}
-		continue;*/
-
 		std::cout << f.path() << std::endl;
-		{
-			Sqex::Sqpack::Creator creator(f.path().parent_path().filename().string(), f.path().filename().string());
-			creator.AddEntriesFromSqPack(f.path(), true, true);
-			auto views = creator.AsViews(true);
+		worklist.emplace_back(f.path().filename().string());
 
-			auto fp = Utils::Win32::Handle::FromCreateFile(std::filesystem::path(LR"(Z:\xivtest)") / f.path().filename(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS);
-			for (size_t i = 0, i_ = views.Index->StreamSize(); i < i_; i += sizeof buf) {
-				const auto readlen = std::min(sizeof buf, i_ - i);
-				views.Index->ReadStream(i, buf, readlen);
-				fp.Write(i, buf, readlen);
-			}
-			fp = Utils::Win32::Handle::FromCreateFile(std::filesystem::path(LR"(Z:\xivtest)") / f.path().filename().replace_extension(".index2"), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS);
-			for (size_t i = 0, i_ = views.Index2->StreamSize(); i < i_; i += sizeof buf) {
-				const auto readlen = std::min(sizeof buf, i_ - i);
-				views.Index2->ReadStream(i, buf, readlen);
-				fp.Write(i, buf, readlen);
-			}
-			for (size_t i = 0; i < views.Data.size(); ++i) {
-				fp = Utils::Win32::Handle::FromCreateFile(std::filesystem::path(LR"(Z:\xivtest)") / f.path().filename().replace_extension(std::format(".dat{}", i)), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS);
-				for (size_t ptr = 0, i_ = views.Data[i]->StreamSize(); ptr < i_; ptr += sizeof buf) {
-					const auto readlen = std::min(sizeof buf, i_ - ptr);
-					views.Data[i]->ReadStream(ptr, buf, readlen);
-					fp.Write(ptr, buf, readlen);
-				}
-			}
-		}
-		const Sqex::Sqpack::Reader testReader(std::filesystem::path(LR"(Z:\xivtest)") / f.path().filename());
-		__debugbreak();
+		const Sqex::Sqpack::Reader reader(f.path());
+
+		ts.push_back(GetTickCount64());
+
+		/*Sqex::Sqpack::Creator creator(f.path().parent_path().filename().string(), f.path().filename().string());
+		creator.AddEntriesFromSqPack(f.path(), true, true);
+		auto views = creator.AsViews(false);*/
 	}
 
+	for (size_t i = 1; i < ts.size(); ++i) {
+		std::cout << std::format("{}: {}ms\n", worklist[i - 1], ts[i] - ts[i - 1]);
+	}
 	return 0;
 }
