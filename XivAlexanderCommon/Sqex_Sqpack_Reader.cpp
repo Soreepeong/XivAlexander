@@ -5,7 +5,7 @@
 
 template<typename HashLocatorT, typename TextLocatorT>
 Sqex::Sqpack::Reader::SqIndexType<HashLocatorT, TextLocatorT>::SqIndexType(const Win32::Handle& hFile, bool strictVerify)
-	: Data(hFile.Read<uint8_t>(0, hFile.GetFileSize()))
+	: Data(hFile.Read<uint8_t>(0, static_cast<size_t>(hFile.GetFileSize())))
 	, Header(*reinterpret_cast<const SqpackHeader*>(&Data[0]))
 	, IndexHeader(*reinterpret_cast<const SqIndex::Header*>(&Data[Header.HeaderSize]))
 	, HashLocators(reinterpret_cast<const HashLocatorT*>(&Data[IndexHeader.FileSegment.Offset]),

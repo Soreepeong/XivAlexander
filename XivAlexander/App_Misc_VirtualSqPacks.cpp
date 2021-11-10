@@ -455,8 +455,6 @@ struct App::Misc::VirtualSqPacks::Implementation {
 								EmptyScd = std::make_shared<Sqex::MemoryRandomAccessStream>(
 									Sqex::Sqpack::MemoryBinaryEntryProvider("dummy/dummy", std::make_shared<Sqex::MemoryRandomAccessStream>(writer.Export()))
 									.ReadStreamIntoVector<uint8_t>(0));
-								for (const auto& pathSpec : creator.AllPathSpec())
-									creator.ReserveSwappableSpace(pathSpec, static_cast<uint32_t>(EmptyScd->StreamSize()));
 							}
 
 							if (creator.DatExpac != "ffxiv" || creator.DatName != "0a0000") {
@@ -523,7 +521,10 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 			if (pCreator->DatExpac == "ffxiv" && pCreator->DatName == "000000")
 				SetUpGeneratedFonts(progressWindow, *pCreator, indexFile);
-			else if (pCreator->DatExpac == "ffxiv" && pCreator->DatName == "0a0000")
+			else if (pCreator->DatExpac == "ffxiv" && pCreator->DatName == "070000") {
+				for (const auto& pathSpec : pCreator->AllPathSpec())
+					pCreator->ReserveSwappableSpace(pathSpec, static_cast<uint32_t>(EmptyScd->StreamSize()));
+			} else if (pCreator->DatExpac == "ffxiv" && pCreator->DatName == "0a0000")
 				SetUpMergedExd(progressWindow, *pCreator, indexFile);
 		}
 
