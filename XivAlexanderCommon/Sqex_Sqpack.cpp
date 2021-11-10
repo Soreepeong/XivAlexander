@@ -166,7 +166,7 @@ bool Sqex::Sqpack::Sha1Value::IsZero() const {
 	return IsAllSameValue(Value);
 }
 
-void Sqex::Sqpack::SqpackHeader::VerifySqpackHeader(SqpackType supposedType) {
+void Sqex::Sqpack::SqpackHeader::VerifySqpackHeader(SqpackType supposedType) const {
 	if (HeaderSize != sizeof SqpackHeader)
 		throw CorruptDataException("sizeof Header != 0x400");
 	if (memcmp(Signature, Signature_Value, sizeof Signature) != 0)
@@ -183,7 +183,7 @@ void Sqex::Sqpack::SqpackHeader::VerifySqpackHeader(SqpackType supposedType) {
 }
 
 
-void Sqex::Sqpack::SqIndex::Header::VerifySqpackIndexHeader(IndexType expectedIndexType)  const {
+void Sqex::Sqpack::SqIndex::Header::VerifySqpackIndexHeader(IndexType expectedIndexType) const {
 	if (HeaderSize != sizeof Header)
 		throw CorruptDataException("sizeof IndexHeader != 0x400");
 	if (expectedIndexType != IndexType::Unspecified && expectedIndexType != Type)
@@ -209,13 +209,13 @@ void Sqex::Sqpack::SqIndex::Header::VerifySqpackIndexHeader(IndexType expectedIn
 	if (!IsAllSameValue(FolderSegment.Padding_0x020))
 		throw CorruptDataException("FolderSegment.Padding_0x020");
 
-	if (Type == IndexType::Index && FileSegment.Size % sizeof FileSegmentEntry)
+	if (Type == IndexType::Index && FileSegment.Size % sizeof PairHashLocator)
 		throw CorruptDataException("FileSegment.size % sizeof FileSegmentEntry != 0");
-	else if (Type == IndexType::Index2 && FileSegment.Size % sizeof FileSegmentEntry2)
+	else if (Type == IndexType::Index2 && FileSegment.Size % sizeof FullHashLocator)
 		throw CorruptDataException("FileSegment.size % sizeof FileSegmentEntry2 != 0");
 	if (UnknownSegment3.Size % sizeof Segment3Entry)
 		throw CorruptDataException("UnknownSegment3.size % sizeof Segment3Entry != 0");
-	if (FolderSegment.Size % sizeof FolderSegmentEntry)
+	if (FolderSegment.Size % sizeof PathHashLocator)
 		throw CorruptDataException("FolderSegment.size % sizeof FolderSegmentEntry != 0");
 
 	if (FileSegment.Count != 1)
@@ -228,18 +228,18 @@ void Sqex::Sqpack::SqIndex::Header::VerifySqpackIndexHeader(IndexType expectedIn
 
 Sqex::Sqpack::SqIndex::LEDataLocator::LEDataLocator(uint32_t index, uint64_t offset)
 	: LE<uint32_t>(0) {
-	Index(index);
-	Offset(offset);
+	DatFileIndex(index);
+	DatFileOffset(offset);
 }
 
-uint32_t Sqex::Sqpack::SqIndex::LEDataLocator::Index(const uint32_t value) {
+uint32_t Sqex::Sqpack::SqIndex::LEDataLocator::DatFileIndex(const uint32_t value) {
 	if (value >= 8)
 		throw std::invalid_argument("Index must be between 0 and 7.");
 	Value((Value() & ~0x0F) | (value * 2));
 	return value;
 }
 
-uint64_t Sqex::Sqpack::SqIndex::LEDataLocator::Offset(const uint64_t value) {
+uint64_t Sqex::Sqpack::SqIndex::LEDataLocator::DatFileOffset(const uint64_t value) {
 	if (value % 128)
 		throw std::invalid_argument("OffsetAfterHeaders must be a multiple of 128.");
 	const auto divValue = value / 8;
@@ -249,13 +249,13 @@ uint64_t Sqex::Sqpack::SqIndex::LEDataLocator::Offset(const uint64_t value) {
 	return value;
 }
 
-bool Sqex::Sqpack::SqIndex::LEDataLocator::HasConflicts(bool value) {
+bool Sqex::Sqpack::SqIndex::LEDataLocator::IsSynonym(bool value) {
 	Value((Value() & 0xFFFFFFFE) | (value ? 1 : 0));
 	return value;
 }
 
-void Sqex::Sqpack::SqIndex::FolderSegmentEntry::Verify() const {
-	if (FileSegmentSize % sizeof(FileSegmentEntry))
+void Sqex::Sqpack::SqIndex::PathHashLocator::Verify() const {
+	if (PairHashLocatorSize % sizeof(PairHashLocator))
 		throw CorruptDataException("FolderSegmentEntry.FileSegmentSize % sizeof FileSegmentEntry != 0");
 }
 

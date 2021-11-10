@@ -8,19 +8,8 @@
 #include "Sqex_ThirdParty_TexTools.h"
 
 struct Sqex::Sqpack::Creator::Implementation {
+	void AddEntry(AddEntryResult& result, std::shared_ptr<EntryProvider> provider, bool overwriteExisting = true);
 	AddEntryResult AddEntry(std::shared_ptr<EntryProvider> provider, bool overwriteExisting = true);
-
-	struct Entry {
-		uint32_t DataFileIndex{};
-		uint32_t EntrySize{};
-		uint32_t PadSize{};
-		SqIndex::LEDataLocator Locator{};
-
-		uint32_t EntryReservedSize{};
-
-		uint64_t OffsetAfterHeaders{};
-		std::shared_ptr<EntryProvider> Provider;
-	};
 
 	Creator* const this_;
 
@@ -61,7 +50,7 @@ Sqex::Sqpack::Creator::AddEntryResult& Sqex::Sqpack::Creator::AddEntryResult::op
 	Added.insert(Added.end(), r.Added.begin(), r.Added.end());
 	Replaced.insert(Replaced.end(), r.Replaced.begin(), r.Replaced.end());
 	SkippedExisting.insert(SkippedExisting.end(), r.SkippedExisting.begin(), r.SkippedExisting.end());
-	Error.insert(r.Error.begin(), r.Error.end());
+	Error.insert(Error.end(), r.Error.begin(), r.Error.end());
 	return *this;
 }
 
@@ -70,7 +59,11 @@ Sqex::Sqpack::Creator::AddEntryResult& Sqex::Sqpack::Creator::AddEntryResult::op
 	Added.insert(Added.end(), r.Added.begin(), r.Added.end());
 	Replaced.insert(Replaced.end(), r.Replaced.begin(), r.Replaced.end());
 	SkippedExisting.insert(SkippedExisting.end(), r.SkippedExisting.begin(), r.SkippedExisting.end());
-	Error.merge(r.Error);
+	Error.insert(Error.end(), r.Error.begin(), r.Error.end());
+	r.Added.clear();
+	r.Replaced.clear();
+	r.SkippedExisting.clear();
+	r.Error.clear();
 	return *this;
 }
 
@@ -92,7 +85,7 @@ std::vector<Sqex::Sqpack::EntryProvider*> Sqex::Sqpack::Creator::AddEntryResult:
 	return res;
 }
 
-Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::Implementation::AddEntry(std::shared_ptr<EntryProvider> provider, bool overwriteExisting) {
+void Sqex::Sqpack::Creator::Implementation::AddEntry(AddEntryResult& result, std::shared_ptr<EntryProvider> provider, bool overwriteExisting) {
 	const auto pProvider = provider.get();
 
 	try {
@@ -112,10 +105,12 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::Implementation::Add
 		if (pEntry) {
 			if (!overwriteExisting) {
 				pEntry->Provider->UpdatePathSpec(provider->PathSpec());
-				return { .SkippedExisting = { pEntry->Provider.get() } };
+				result.SkippedExisting.emplace_back(pEntry->Provider.get());
+				return;
 			}
 			pEntry->Provider = std::move(provider);
-			return { .Replaced = { pEntry->Provider.get() } };
+			result.Replaced.emplace_back(pProvider);
+			return;
 		}
 
 		auto entry = std::make_unique<Entry>(0, 0, 0, SqIndex::LEDataLocator{ 0, 0 }, 0, 0, std::move(provider));
@@ -123,61 +118,34 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::Implementation::Add
 			m_fullEntries.emplace(pProvider->PathSpec(), std::move(entry));
 		else
 			m_hashOnlyEntries.emplace(pProvider->PathSpec(), std::move(entry));
-		return { .Added = { pProvider } };
+		result.Added.emplace_back(pProvider);
 	} catch (const std::exception& e) {
-		return { .Error = { { pProvider->PathSpec(), std::string(e.what()) } } };
+		result.Error.emplace_back(pProvider->PathSpec(), e.what());
 	}
+}
+
+Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::Implementation::AddEntry(std::shared_ptr<EntryProvider> provider, bool overwriteExisting) {
+	AddEntryResult result;
+	AddEntry(result, std::move(provider), overwriteExisting);
+	return result;
 }
 
 Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromSqPack(const std::filesystem::path & indexPath, bool overwriteExisting, bool overwriteUnknownSegments) {
 	Reader reader{ indexPath, false };
 
-	AddEntryResult result{};
-
 	if (overwriteUnknownSegments) {
-		m_pImpl->m_sqpackIndexSegment3 = std::move(reader.Index.Segment3);
-		m_pImpl->m_sqpackIndex2Segment3 = std::move(reader.Index2.Segment3);
+		m_pImpl->m_sqpackIndexSegment3 = { reader.Index1.Segment3.begin(), reader.Index1.Segment3.end() };
+		m_pImpl->m_sqpackIndex2Segment3 = { reader.Index2.Segment3.begin(), reader.Index2.Segment3.end() };
 	}
 
-	std::map<uint32_t, EntryPathSpec> pathSpecs;
-	for (const auto& entry : reader.Index.Files) {
-		if (!entry.Locator.HasConflicts()) {
-			auto& spec = pathSpecs[entry.Locator.Value()];
-			spec.PathHash = entry.PathHash;
-			spec.NameHash = entry.NameHash;
-		}
-	}
-	for (const auto& entry : reader.Index.HashConflictSegment) {
-		if (entry.NameHash == SqIndex::HashConflictSegmentEntry::EndOfList
-			&& entry.PathHash == SqIndex::HashConflictSegmentEntry::EndOfList
-			&& entry.ConflictIndex == SqIndex::HashConflictSegmentEntry::EndOfList)
-			break;
-		pathSpecs[entry.Locator.Value()] = EntryPathSpec(entry.FullPath);
-	}
-	for (const auto& entry : reader.Index2.Files) {
-		if (!entry.Locator.HasConflicts()) {
-			pathSpecs[entry.Locator.Value()].FullPathHash = entry.FullPathHash;
-		}
-	}
-	for (const auto& entry : reader.Index2.HashConflictSegment) {
-		if (entry.FullPathHash == SqIndex::HashConflictSegmentEntry::EndOfList
-			&& entry.UnusedHash == SqIndex::HashConflictSegmentEntry::EndOfList
-			&& entry.ConflictIndex == SqIndex::HashConflictSegmentEntry::EndOfList)
-			break;
-		pathSpecs[entry.Locator.Value()] = EntryPathSpec(entry.FullPath);
-	}
-
-	for (auto& [locatorValue, pathSpec] : pathSpecs) {
-		const auto& locator = *reinterpret_cast<const SqIndex::LEDataLocator*>(&locatorValue);
+	AddEntryResult result;
+	for (const auto& [locator, entryInfo] : reader.EntryInfo) {
 		try {
-			result += m_pImpl->AddEntry(
-				reader.GetEntryProvider(pathSpec, locator),
-				overwriteExisting);
+			m_pImpl->AddEntry(result, reader.GetEntryProvider(entryInfo.PathSpec, locator, entryInfo.Allocation), overwriteExisting);
 		} catch (const std::exception& e) {
-			result.Error.emplace(std::move(pathSpec), std::string(e.what()));
+			result.Error.emplace_back(entryInfo.PathSpec, e.what());
 		}
 	}
-
 	return result;
 }
 
@@ -204,23 +172,22 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddAllEntriesFromSi
 	if (DatExpac != "ffxiv")
 		return {};
 
-	AddEntryResult addEntryResult{};
-
 	const auto dataStream = std::make_shared<FileRandomAccessStream>(Win32::Handle::FromCreateFile(ttmpdPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING));
 
+	AddEntryResult result;
 	for (size_t i = 0; i < ttmpl.SimpleModsList.size(); ++i) {
 		const auto& entry = ttmpl.SimpleModsList[i];
 		if (entry.DatFile != DatName)
 			continue;
 
 		try {
-			addEntryResult += m_pImpl->AddEntry(std::make_shared<RandomAccessStreamAsEntryProviderView>(entry.FullPath, dataStream, entry.ModOffset, entry.ModSize), overwriteExisting);
+			m_pImpl->AddEntry(result, std::make_shared<RandomAccessStreamAsEntryProviderView>(entry.FullPath, dataStream, entry.ModOffset, entry.ModSize), overwriteExisting);
 		} catch (const std::exception& e) {
-			addEntryResult.Error.emplace(EntryPathSpec{ entry.FullPath }, std::string(e.what()));
+			result.Error.emplace_back(EntryPathSpec{ entry.FullPath }, std::string(e.what()));
 			m_pImpl->Log("Error: {} (Name: {} > {})", entry.FullPath, ttmpl.Name, entry.Name);
 		}
 	}
-	return addEntryResult;
+	return result;
 }
 
 void Sqex::Sqpack::Creator::ReserveSpacesFromTTMP(const ThirdParty::TexTools::TTMPL & ttmpl) {
@@ -262,7 +229,7 @@ void Sqex::Sqpack::Creator::ReserveSwappableSpace(EntryPathSpec pathSpec, uint32
 	} else if (const auto it = m_pImpl->m_fullEntries.find(pathSpec); it != m_pImpl->m_fullEntries.end()) {
 		it->second->EntryReservedSize = std::max(it->second->EntryReservedSize, size);
 	} else {
-		auto entry = std::make_unique<Implementation::Entry>(0, 0, 0, SqIndex::LEDataLocator{ 0, 0 }, size, 0, std::make_shared<EmptyEntryProvider>(std::move(pathSpec)));
+		auto entry = std::make_unique<Entry>(0, 0, 0, SqIndex::LEDataLocator{ 0, 0 }, size, 0, std::make_shared<EmptyEntryProvider>(std::move(pathSpec)));
 		if (entry->Provider->PathSpec().HasOriginal())
 			m_pImpl->m_fullEntries.emplace(entry->Provider->PathSpec(), std::move(entry));
 		else
@@ -275,7 +242,7 @@ class Sqex::Sqpack::Creator::IndexViewBase : public RandomAccessStream {
 	std::vector<uint8_t> m_data;
 
 public:
-	IndexViewBase(size_t dataFilesCount, std::vector<FileEntryType> fileSegment, const std::vector<ConflictEntryType>& conflictSegment, const std::vector<SqIndex::Segment3Entry>& segment3, std::vector<SqIndex::FolderSegmentEntry> folderSegment = {}, bool strict = false) {
+	IndexViewBase(size_t dataFilesCount, std::vector<FileEntryType> fileSegment, const std::vector<ConflictEntryType>& conflictSegment, const std::vector<SqIndex::Segment3Entry>& segment3, std::vector<SqIndex::PathHashLocator> folderSegment = {}, bool strict = false) {
 
 		std::sort(fileSegment.begin(), fileSegment.end());
 
@@ -314,7 +281,7 @@ public:
 							static_cast<uint32_t>(sizeof entry),
 							0);
 					} else {
-						folderSegment.back().FileSegmentSize = folderSegment.back().FileSegmentSize + sizeof entry;
+						folderSegment.back().PairHashLocatorSize = folderSegment.back().PairHashLocatorSize + sizeof entry;
 					}
 				}
 				m_subheader.FolderSegment.Size = static_cast<uint32_t>(std::span(folderSegment).size_bytes());
@@ -363,7 +330,7 @@ public:
 
 class Sqex::Sqpack::Creator::DataView : public RandomAccessStream {
 	const std::vector<uint8_t> m_header;
-	const std::vector<std::unique_ptr<const Implementation::Entry>> m_entries;
+	const std::span<Entry*> m_entries;
 
 	const SqData::Header& SubHeader() const {
 		return *reinterpret_cast<const SqData::Header*>(&m_header[sizeof SqpackHeader]);
@@ -382,7 +349,7 @@ class Sqex::Sqpack::Creator::DataView : public RandomAccessStream {
 	mutable std::vector<std::tuple<EntryProvider*, uint64_t, uint64_t>> m_pLastEntryProviders;
 
 public:
-	DataView(const SqpackHeader& header, const SqData::Header& subheader, std::vector<std::unique_ptr<const Implementation::Entry>> entries)
+	DataView(const SqpackHeader& header, const SqData::Header& subheader, std::span<Entry*> entries)
 		: m_header(Concat(header, subheader))
 		, m_entries(std::move(entries)) {
 	}
@@ -408,19 +375,19 @@ public:
 
 		if (out.empty()) return length;
 
-		auto it = std::ranges::lower_bound(m_entries, nullptr, [&](const std::unique_ptr<const Implementation::Entry>& l, const std::unique_ptr<const Implementation::Entry>& r) {
+		auto it = std::ranges::lower_bound(m_entries, nullptr, [&](Entry* l, Entry* r) {
 			const auto lo = l ? l->OffsetAfterHeaders : relativeOffset;
 			const auto ro = r ? r->OffsetAfterHeaders : relativeOffset;
 			return lo < ro;
-		});
-		if (it != m_entries.begin() && (it == m_entries.end() || it->get()->OffsetAfterHeaders > relativeOffset))
+			});
+		if (it != m_entries.begin() && (it == m_entries.end() || (*it)->OffsetAfterHeaders > relativeOffset))
 			--it;
 
 		if (it != m_entries.end()) {
-			relativeOffset -= it->get()->OffsetAfterHeaders;
+			relativeOffset -= (*it)->OffsetAfterHeaders;
 
 			for (; it < m_entries.end(); ++it) {
-				const auto& entry = *it->get();
+				const auto& entry = **it;
 
 				if (relativeOffset < entry.EntrySize) {
 					const auto available = std::min(out.size_bytes(), static_cast<size_t>(entry.EntrySize - relativeOffset));
@@ -466,124 +433,124 @@ public:
 Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 	SqpackHeader dataHeader{};
 	std::vector<SqData::Header> dataSubheaders;
-	std::vector<std::vector<std::unique_ptr<const Implementation::Entry>>> dataEntries;
+	std::vector<std::pair<size_t, size_t>> dataEntryRanges;
 
-	std::map<std::pair<uint32_t, uint32_t>, std::set<EntryPathSpec, EntryPathSpec::PairHashComparator>> pairHashes;
-	std::map<uint32_t, std::set<EntryPathSpec, EntryPathSpec::FullHashComparator>> fullHashes;
+	auto res = SqpackViews{
+		.HashOnlyEntries = std::move(m_pImpl->m_hashOnlyEntries),
+		.FullPathEntries = std::move(m_pImpl->m_fullEntries),
+	};
+	
+	res.Entries.reserve(m_pImpl->m_fullEntries.size() + m_pImpl->m_hashOnlyEntries.size());
+	for (auto& entry : res.HashOnlyEntries | std::views::values)
+		res.Entries.emplace_back(entry.get());
+	for (auto& entry : res.FullPathEntries | std::views::values)
+		res.Entries.emplace_back(entry.get());
 
-	std::map<EntryPathSpec, Implementation::Entry*, EntryPathSpec::FullComparator> entryFullMap;
-	{
-		std::vector<std::unique_ptr<Implementation::Entry>> entries;
-		for (auto& entry : m_pImpl->m_fullEntries | std::views::values) {
-			entryFullMap.emplace(entry->Provider->PathSpec(), entry.get());
-			entries.emplace_back(std::move(entry));
-		}
-		for (auto& entry : m_pImpl->m_hashOnlyEntries | std::views::values) {
-			entryFullMap.emplace(entry->Provider->PathSpec(), entry.get());
-			entries.emplace_back(std::move(entry));
-		}
-		m_pImpl->m_fullEntries.clear();
-		m_pImpl->m_hashOnlyEntries.clear();
-
-		for (auto& entry : entries) {
-			const auto& pathSpec = entry->Provider->PathSpec();
-			entry->EntrySize = Align(std::max(entry->EntryReservedSize, static_cast<uint32_t>(entry->Provider->StreamSize()))).Alloc;
-			entry->PadSize = 0;
-			entry->Provider = std::make_shared<HotSwappableEntryProvider>(pathSpec, entry->EntrySize, std::move(entry->Provider));
-
-			pairHashes[std::make_pair(pathSpec.PathHash, pathSpec.NameHash)].insert(pathSpec);
-			fullHashes[pathSpec.FullPathHash].insert(pathSpec);
-
-			if (dataSubheaders.empty() ||
-				sizeof SqpackHeader + sizeof SqData::Header + dataSubheaders.back().DataSize + entry->EntrySize + entry->PadSize > dataSubheaders.back().MaxFileSize) {
-				if (strict && !dataSubheaders.empty()) {
-					CryptoPP::SHA1 sha1;
-					for (auto& entry : dataEntries.back()) {
-						const auto& provider = *entry->Provider;
-						const auto length = provider.StreamSize();
-						uint8_t buf[4096];
-						for (uint64_t i = 0; i < length; i += sizeof buf) {
-							const auto readlen = static_cast<size_t>(std::min<uint64_t>(sizeof buf, length - i));
-							provider.ReadStream(i, buf, readlen);
-							sha1.Update(buf, readlen);
-						}
-					}
-					sha1.Final(reinterpret_cast<byte*>(dataSubheaders.back().DataSha1.Value));
-					dataSubheaders.back().Sha1.SetFromSpan(reinterpret_cast<char*>(&dataSubheaders.back()), offsetof(Sqpack::SqData::Header, Sha1));
-				}
-				dataSubheaders.emplace_back(SqData::Header{
-					.HeaderSize = sizeof SqData::Header,
-					.Unknown1 = SqData::Header::Unknown1_Value,
-					.DataSize = 0,
-					.SpanIndex = static_cast<uint32_t>(dataSubheaders.size()),
-					.MaxFileSize = m_maxFileSize,
-					});
-				dataEntries.emplace_back();
-			}
-
-			entry->DataFileIndex = static_cast<uint32_t>(dataSubheaders.size() - 1);
-			entry->OffsetAfterHeaders = dataSubheaders.back().DataSize;
-			entry->Locator = { entry->DataFileIndex, sizeof SqpackHeader + sizeof SqData::Header + entry->OffsetAfterHeaders };
-
-			dataSubheaders.back().DataSize = dataSubheaders.back().DataSize + entry->EntrySize + entry->PadSize;
-			dataEntries.back().emplace_back(std::move(entry));
-		}
+	std::map<std::pair<uint32_t, uint32_t>, std::vector<Entry*>> pairHashes;
+	std::map<uint32_t, std::vector<Entry*>> fullHashes;
+	for (const auto& entry : res.Entries) {
+		const auto& pathSpec = entry->Provider->PathSpec();
+		pairHashes[std::make_pair(pathSpec.PathHash, pathSpec.NameHash)].emplace_back(entry);
+		fullHashes[pathSpec.FullPathHash].emplace_back(entry);
 	}
 
+	for (size_t i = 0; i < res.Entries.size(); ++i) {
+		auto& entry = res.Entries[i];
+		const auto& pathSpec = entry->Provider->PathSpec();
+		entry->EntrySize = Align(std::max(entry->EntryReservedSize, static_cast<uint32_t>(entry->Provider->StreamSize()))).Alloc;
+		entry->PadSize = 0;
+		entry->Provider = std::make_shared<HotSwappableEntryProvider>(pathSpec, entry->EntrySize, std::move(entry->Provider));
+
+		if (dataSubheaders.empty() ||
+			sizeof SqpackHeader + sizeof SqData::Header + dataSubheaders.back().DataSize + entry->EntrySize + entry->PadSize > dataSubheaders.back().MaxFileSize) {
+			if (strict && !dataSubheaders.empty()) {
+				CryptoPP::SHA1 sha1;
+				for (auto j = dataEntryRanges.back().first, j_ = j + dataEntryRanges.back().second; j < j_; ++j) {
+					const auto& entry = res.Entries[j];
+					const auto& provider = *entry->Provider;
+					const auto length = provider.StreamSize();
+					uint8_t buf[4096];
+					for (uint64_t j = 0; j < length; j += sizeof buf) {
+						const auto readlen = static_cast<size_t>(std::min<uint64_t>(sizeof buf, length - j));
+						provider.ReadStream(j, buf, readlen);
+						sha1.Update(buf, readlen);
+					}
+				}
+				sha1.Final(reinterpret_cast<byte*>(dataSubheaders.back().DataSha1.Value));
+				dataSubheaders.back().Sha1.SetFromSpan(reinterpret_cast<char*>(&dataSubheaders.back()), offsetof(Sqpack::SqData::Header, Sha1));
+			}
+			dataSubheaders.emplace_back(SqData::Header{
+				.HeaderSize = sizeof SqData::Header,
+				.Unknown1 = SqData::Header::Unknown1_Value,
+				.DataSize = 0,
+				.SpanIndex = static_cast<uint32_t>(dataSubheaders.size()),
+				.MaxFileSize = m_maxFileSize,
+				});
+			dataEntryRanges.emplace_back(i, 0);
+		}
+
+		entry->DataFileIndex = static_cast<uint32_t>(dataSubheaders.size() - 1);
+		entry->OffsetAfterHeaders = dataSubheaders.back().DataSize;
+		entry->Locator = { entry->DataFileIndex, sizeof SqpackHeader + sizeof SqData::Header + entry->OffsetAfterHeaders };
+
+		dataSubheaders.back().DataSize = dataSubheaders.back().DataSize + entry->EntrySize + entry->PadSize;
+		dataEntryRanges.back().second++;
+	}
+	
 	SqIndex::LEDataLocator conflictEntryLocator{};
-	conflictEntryLocator.HasConflicts(true);
-	std::vector<SqIndex::FileSegmentEntry> fileEntries1;
-	std::vector<SqIndex::HashConflictSegmentEntry> conflictEntries1;
-	for (const auto& [pairHash, pathSpecs] : pairHashes) {
-		if (pathSpecs.size() == 1) {
-			fileEntries1.emplace_back(SqIndex::FileSegmentEntry{ pairHash.second, pairHash.first, entryFullMap.at(*pathSpecs.begin())->Locator, 0 });
+	conflictEntryLocator.IsSynonym(true);
+	std::vector<SqIndex::PairHashLocator> fileEntries1;
+	std::vector<SqIndex::PairHashWithTextLocator> conflictEntries1;
+	for (const auto& [pairHash, correspondingEntries] : pairHashes) {
+		if (correspondingEntries.size() == 1) {
+			fileEntries1.emplace_back(SqIndex::PairHashLocator{ pairHash.second, pairHash.first, correspondingEntries.front()->Locator, 0 });
 		} else {
-			fileEntries1.emplace_back(SqIndex::FileSegmentEntry{ pairHash.second, pairHash.first, conflictEntryLocator, 0 });
+			fileEntries1.emplace_back(SqIndex::PairHashLocator{ pairHash.second, pairHash.first, conflictEntryLocator, 0 });
 			uint32_t i = 0;
-			for (const auto& pathSpec : pathSpecs) {
-				conflictEntries1.emplace_back(SqIndex::HashConflictSegmentEntry{
+			for (const auto& entry : correspondingEntries) {
+				conflictEntries1.emplace_back(SqIndex::PairHashWithTextLocator{
 					.NameHash = pairHash.second,
 					.PathHash = pairHash.first,
-					.Locator = entryFullMap.at(pathSpec)->Locator,
+					.Locator = entry->Locator,
 					.ConflictIndex = i++,
 					});
-				const auto path = Utils::ToUtf8(pathSpec.Original.wstring());
+				const auto path = Utils::ToUtf8(entry->Provider->PathSpec().Original.wstring());
 				strncpy_s(conflictEntries1.back().FullPath, path.c_str(), path.size());
 			}
 		}
 	}
-	conflictEntries1.emplace_back(SqIndex::HashConflictSegmentEntry{
-		.NameHash = SqIndex::HashConflictSegmentEntry::EndOfList,
-		.PathHash = SqIndex::HashConflictSegmentEntry::EndOfList,
+	conflictEntries1.emplace_back(SqIndex::PairHashWithTextLocator{
+		.NameHash = SqIndex::PairHashWithTextLocator::EndOfList,
+		.PathHash = SqIndex::PairHashWithTextLocator::EndOfList,
 		.Locator = 0,
-		.ConflictIndex = SqIndex::HashConflictSegmentEntry::EndOfList,
+		.ConflictIndex = SqIndex::PairHashWithTextLocator::EndOfList,
 		});
 
-	std::vector<SqIndex::FileSegmentEntry2> fileEntries2;
-	std::vector<SqIndex::HashConflictSegmentEntry2> conflictEntries2;
-	for (const auto& [fullHash, pathSpecs] : fullHashes) {
-		if (pathSpecs.size() == 1) {
-			fileEntries2.emplace_back(SqIndex::FileSegmentEntry2{ fullHash, entryFullMap.at(*pathSpecs.begin())->Locator });
+	std::vector<SqIndex::FullHashLocator> fileEntries2;
+	std::vector<SqIndex::FullHashWithTextLocator> conflictEntries2;
+	for (const auto& [fullHash, correspondingEntries] : fullHashes) {
+		if (correspondingEntries.size() == 1) {
+			fileEntries2.emplace_back(SqIndex::FullHashLocator{ fullHash, correspondingEntries.front()->Locator });
 		} else {
-			fileEntries2.emplace_back(SqIndex::FileSegmentEntry2{ fullHash, conflictEntryLocator });
+			fileEntries2.emplace_back(SqIndex::FullHashLocator{ fullHash, conflictEntryLocator });
 			uint32_t i = 0;
-			for (const auto& pathSpec : pathSpecs) {
-				conflictEntries2.emplace_back(SqIndex::HashConflictSegmentEntry2{
+			for (const auto& entry : correspondingEntries) {
+				conflictEntries2.emplace_back(SqIndex::FullHashWithTextLocator{
 					.FullPathHash = fullHash,
 					.UnusedHash = 0,
-					.Locator = entryFullMap.at(pathSpec)->Locator,
+					.Locator = entry->Locator,
 					.ConflictIndex = i++,
 					});
-				const auto path = Utils::ToUtf8(pathSpec.Original.wstring());
+				const auto path = Utils::ToUtf8(entry->Provider->PathSpec().Original.wstring());
 				strncpy_s(conflictEntries2.back().FullPath, path.c_str(), path.size());
 			}
 		}
 	}
-	conflictEntries2.emplace_back(SqIndex::HashConflictSegmentEntry2{
-		.FullPathHash = SqIndex::HashConflictSegmentEntry2::EndOfList,
-		.UnusedHash = SqIndex::HashConflictSegmentEntry2::EndOfList,
+	conflictEntries2.emplace_back(SqIndex::FullHashWithTextLocator{
+		.FullPathHash = SqIndex::FullHashWithTextLocator::EndOfList,
+		.UnusedHash = SqIndex::FullHashWithTextLocator::EndOfList,
 		.Locator = 0,
-		.ConflictIndex = SqIndex::HashConflictSegmentEntry2::EndOfList,
+		.ConflictIndex = SqIndex::FullHashWithTextLocator::EndOfList,
 		});
 
 	memcpy(dataHeader.Signature, SqpackHeader::Signature_Value, sizeof SqpackHeader::Signature_Value);
@@ -594,21 +561,10 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 	if (strict)
 		dataHeader.Sha1.SetFromSpan(reinterpret_cast<char*>(&dataHeader), offsetof(SqpackHeader, Sha1));
 
-	auto res = SqpackViews{
-		.Index = std::make_shared<Index1View>(dataSubheaders.size(), std::move(fileEntries1), std::move(conflictEntries1), m_pImpl->m_sqpackIndexSegment3, std::vector<SqIndex::FolderSegmentEntry>(), strict),
-		.Index2 = std::make_shared<Index2View>(dataSubheaders.size(), std::move(fileEntries2), std::move(conflictEntries2), m_pImpl->m_sqpackIndex2Segment3, std::vector<SqIndex::FolderSegmentEntry>(), strict),
-	};
-
-	for (size_t i = 0; i < dataSubheaders.size(); ++i) {
-		res.Data.emplace_back(std::make_shared<DataView>(dataHeader, dataSubheaders[i], std::move(dataEntries[i])));
-	}
-
-	for (auto& [pathSpec, entry] : entryFullMap) {
-		if (pathSpec.HasOriginal())
-			res.FullProviders.emplace(pathSpec, entry->Provider.get());
-		else
-			res.HashOnlyProviders.emplace(pathSpec, entry->Provider.get());
-	}
+	res.Index1 = std::make_shared<Index1View>(dataSubheaders.size(), std::move(fileEntries1), std::move(conflictEntries1), m_pImpl->m_sqpackIndexSegment3, std::vector<SqIndex::PathHashLocator>(), strict);
+	res.Index2 = std::make_shared<Index2View>(dataSubheaders.size(), std::move(fileEntries2), std::move(conflictEntries2), m_pImpl->m_sqpackIndex2Segment3, std::vector<SqIndex::PathHashLocator>(), strict);
+	for (size_t i = 0; i < dataSubheaders.size(); ++i)
+		res.Data.emplace_back(std::make_shared<DataView>(dataHeader, dataSubheaders[i], std::span(res.Entries).subspan(dataEntryRanges[i].first, dataEntryRanges[i].second)));
 
 	return res;
 }

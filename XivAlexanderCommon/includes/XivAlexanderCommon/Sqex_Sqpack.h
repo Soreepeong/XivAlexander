@@ -55,7 +55,7 @@ namespace Sqex::Sqpack {
 		Sha1Value Sha1;
 		char Padding_0x3D4[0x2c]{};
 
-		void VerifySqpackHeader(SqpackType supposedType);
+		void VerifySqpackHeader(SqpackType supposedType) const;
 	};
 	static_assert(offsetof(SqpackHeader, Sha1) == 0x3c0, "Bad SqpackHeader definition");
 	static_assert(sizeof(SqpackHeader) == 1024);
@@ -115,21 +115,21 @@ namespace Sqex::Sqpack {
 			using LE<uint32_t>::LE;
 			LEDataLocator(uint32_t index, uint64_t offset);
 
-			[[nodiscard]] uint32_t Index() const { return (Value() & 0xF) / 2; }
-			[[nodiscard]] uint64_t Offset() const { return (Value() & 0xFFFFFFF0UL) * 8ULL; }
-			[[nodiscard]] bool HasConflicts() const { return Value() & 1; }
-			uint32_t Index(uint32_t value);
-			uint64_t Offset(uint64_t value);
-			bool HasConflicts(bool value);
+			[[nodiscard]] uint32_t DatFileIndex() const { return (Value() & 0xF) / 2; }
+			[[nodiscard]] uint64_t DatFileOffset() const { return (Value() & 0xFFFFFFF0UL) * 8ULL; }
+			[[nodiscard]] bool IsSynonym() const { return Value() & 1; }
+			uint32_t DatFileIndex(uint32_t value);
+			uint64_t DatFileOffset(uint64_t value);
+			bool IsSynonym(bool value);
 		};
 
-		struct FileSegmentEntry {
+		struct PairHashLocator {
 			LE<uint32_t> NameHash;
 			LE<uint32_t> PathHash;
 			LEDataLocator Locator;
 			LE<uint32_t> Padding;
 
-			bool operator<(const FileSegmentEntry& r) const {
+			bool operator<(const PairHashLocator& r) const {
 				if (PathHash == r.PathHash)
 					return NameHash < r.NameHash;
 				else
@@ -137,11 +137,11 @@ namespace Sqex::Sqpack {
 			}
 		};
 
-		struct FileSegmentEntry2 {
+		struct FullHashLocator {
 			LE<uint32_t> FullPathHash;
 			LEDataLocator Locator;
 
-			bool operator<(const FileSegmentEntry2& r) const {
+			bool operator<(const FullHashLocator& r) const {
 				return FullPathHash < r.FullPathHash;
 			}
 		};
@@ -153,16 +153,16 @@ namespace Sqex::Sqpack {
 			LE<uint32_t> Unknown4;
 		};
 
-		struct FolderSegmentEntry {
+		struct PathHashLocator {
 			LE<uint32_t> PathHash;
-			LE<uint32_t> FileSegmentOffset;
-			LE<uint32_t> FileSegmentSize;
+			LE<uint32_t> PairHashLocatorOffset;
+			LE<uint32_t> PairHashLocatorSize;
 			LE<uint32_t> Padding;
 
 			void Verify() const;
 		};
 
-		struct HashConflictSegmentEntry {
+		struct PairHashWithTextLocator {
 			static constexpr uint32_t EndOfList = 0xFFFFFFFFU;
 
 			// TODO: following two can actually be in reverse order; find it out when the game data file actually contains a conflict in .index file
@@ -173,7 +173,7 @@ namespace Sqex::Sqpack {
 			char FullPath[0xF0];
 		};
 
-		struct HashConflictSegmentEntry2 {
+		struct FullHashWithTextLocator {
 			static constexpr uint32_t EndOfList = 0xFFFFFFFFU;
 
 			Utils::LE<uint32_t> FullPathHash;
@@ -341,6 +341,27 @@ namespace Sqex::Sqpack {
 			, FullPathHash(fullPathHash) {
 		}
 
+		EntryPathSpec(uint32_t pathHash, uint32_t nameHash, uint32_t fullPathHash, const std::string& fullPath)
+			: Original(std::filesystem::path(Utils::FromUtf8(fullPath)).lexically_normal())
+			, PathHash(pathHash)
+			, NameHash(nameHash)
+			, FullPathHash(fullPathHash) {
+		}
+
+		EntryPathSpec(uint32_t pathHash, uint32_t nameHash, const std::string& fullPath)
+			: Original(std::filesystem::path(Utils::FromUtf8(fullPath)).lexically_normal())
+			, PathHash(pathHash)
+			, NameHash(nameHash)
+			, FullPathHash(EmptyHashValue) {
+		}
+
+		EntryPathSpec(uint32_t fullPathHash, const std::string& fullPath)
+			: Original(std::filesystem::path(Utils::FromUtf8(fullPath)).lexically_normal())
+			, PathHash(EmptyHashValue)
+			, NameHash(EmptyHashValue)
+			, FullPathHash(fullPathHash) {
+		}
+
 		EntryPathSpec(const std::filesystem::path& fullPath)
 			: Original(fullPath.lexically_normal())
 			, PathHash(SqexHash(Original.parent_path()))
@@ -486,46 +507,44 @@ namespace Sqex::Sqpack {
 	};
 
 	struct PathSpecComparator {
-		bool operator()(const SqIndex::FileSegmentEntry& l, const EntryPathSpec& r) const {
-			return l.NameHash < r.NameHash;
+		bool operator()(const SqIndex::PairHashLocator& l, uint32_t r) const {
+			return l.NameHash < r;
 		}
 
-		bool operator()(const EntryPathSpec& l, const SqIndex::FileSegmentEntry& r) const {
-			return l.NameHash < r.NameHash;
+		bool operator()(uint32_t l, const SqIndex::PairHashLocator& r) const {
+			return l < r.NameHash;
 		}
 
-		bool operator()(const SqIndex::FileSegmentEntry2& l, const EntryPathSpec& r) const {
-			return l.FullPathHash < r.FullPathHash;
+		bool operator()(const SqIndex::PathHashLocator& l, uint32_t r) const {
+			return l.PathHash < r;
 		}
 
-		bool operator()(const EntryPathSpec& l, const SqIndex::FileSegmentEntry2& r) const {
-			return l.FullPathHash < r.FullPathHash;
+		bool operator()(uint32_t l, const SqIndex::PathHashLocator& r) const {
+			return l < r.PathHash;
 		}
 
-		bool operator()(const SqIndex::FolderSegmentEntry& l, const EntryPathSpec& r) const {
-			return l.PathHash < r.PathHash;
+		bool operator()(const SqIndex::FullHashLocator& l, uint32_t r) const {
+			return l.FullPathHash < r;
 		}
 
-		bool operator()(const EntryPathSpec& l, const SqIndex::FolderSegmentEntry& r) const {
-			return l.PathHash < r.PathHash;
+		bool operator()(uint32_t l, const SqIndex::FullHashLocator& r) const {
+			return l < r.FullPathHash;
 		}
 
-		// following 4 functions are inefficient as they convert encodings every single pass,
-		// but conflicts aren't much to the extent I don't actually care about performance at the moment
-		bool operator()(const SqIndex::HashConflictSegmentEntry& l, const EntryPathSpec& r) const {
-			return reinterpret_cast<const char8_t*>(l.FullPath) < r.Original.u8string();
+		bool operator()(const SqIndex::PairHashWithTextLocator& l, const char* rt) const {
+			return _strcmpi(l.FullPath, rt);
 		}
 
-		bool operator()(const EntryPathSpec& l, const SqIndex::HashConflictSegmentEntry& r) const {
-			return l.Original.u8string() < reinterpret_cast<const char8_t*>(r.FullPath);
+		bool operator()(const char* lt, const SqIndex::PairHashWithTextLocator& r) const {
+			return _strcmpi(lt, r.FullPath);
 		}
 
-		bool operator()(const SqIndex::HashConflictSegmentEntry2& l, const EntryPathSpec& r) const {
-			return reinterpret_cast<const char8_t*>(l.FullPath) < r.Original.u8string();
+		bool operator()(const SqIndex::FullHashWithTextLocator& l, const char* rt) const {
+			return _strcmpi(l.FullPath, rt);
 		}
 
-		bool operator()(const EntryPathSpec& l, const SqIndex::HashConflictSegmentEntry2& r) const {
-			return l.Original.u8string() < reinterpret_cast<const char8_t*>(r.FullPath);
+		bool operator()(const char* lt, const SqIndex::FullHashWithTextLocator& r) const {
+			return _strcmpi(lt, r.FullPath);
 		}
 	};
 }

@@ -3,137 +3,84 @@
 
 #include "Sqex_Sqpack_EntryRawStream.h"
 
-Sqex::Sqpack::Reader::SqIndexType::SqIndexType(const Win32::Handle& hFile, bool strictVerify) {
-	std::vector<std::pair<size_t, size_t>> accesses;
+template<typename HashLocatorT, typename TextLocatorT>
+Sqex::Sqpack::Reader::SqIndexType<HashLocatorT, TextLocatorT>::SqIndexType(const Win32::Handle& hFile, bool strictVerify)
+	: Data(hFile.Read<uint8_t>(0, hFile.GetFileSize()))
+	, Header(*reinterpret_cast<const SqpackHeader*>(&Data[0]))
+	, IndexHeader(*reinterpret_cast<const SqIndex::Header*>(&Data[Header.HeaderSize]))
+	, HashLocators(reinterpret_cast<const HashLocatorT*>(&Data[IndexHeader.FileSegment.Offset]),
+		IndexHeader.FileSegment.Size / sizeof HashLocatorT)
+	, TextLocators(reinterpret_cast<const TextLocatorT*>(&Data[IndexHeader.HashConflictSegment.Offset]),
+		IndexHeader.HashConflictSegment.Size / sizeof TextLocatorT)
+	, Segment3(reinterpret_cast<const SqIndex::Segment3Entry*>(&Data[IndexHeader.UnknownSegment3.Offset]),
+		IndexHeader.UnknownSegment3.Size / sizeof SqIndex::Segment3Entry) {
 
-	hFile.Read(0, &Header, sizeof SqpackHeader);
 	if (strictVerify) {
-		accesses.emplace_back(0, Header.HeaderSize);
 		Header.VerifySqpackHeader(SqpackType::SqIndex);
-	}
-
-	hFile.Read(Header.HeaderSize, &IndexHeader, sizeof SqIndex::Header);
-	if (strictVerify) {
-		accesses.emplace_back(Header.HeaderSize, IndexHeader.HeaderSize);
 		IndexHeader.VerifySqpackIndexHeader(SqIndex::Header::IndexType::Index);
-	}
-
-	Files.resize(IndexHeader.FileSegment.Size / sizeof Files[0]);
-	hFile.Read(IndexHeader.FileSegment.Offset, std::span(Files));
-	if (strictVerify) {
-		accesses.emplace_back(IndexHeader.FileSegment.Offset, IndexHeader.FileSegment.Size);
-		IndexHeader.FileSegment.Sha1.Verify(std::span(Files), "FileSegment Data SHA-1");
-	}
-
-	HashConflictSegment.resize(IndexHeader.HashConflictSegment.Size / sizeof HashConflictSegment[0]);
-	hFile.Read(IndexHeader.HashConflictSegment.Offset, std::span(HashConflictSegment));
-	if (strictVerify) {
-		accesses.emplace_back(IndexHeader.HashConflictSegment.Offset, IndexHeader.HashConflictSegment.Size);
-		IndexHeader.HashConflictSegment.Sha1.Verify(std::span(HashConflictSegment), "HashConflictSegment Data SHA-1");
-	}
-
-	Segment3.resize(IndexHeader.UnknownSegment3.Size / sizeof Segment3[0]);
-	hFile.Read(IndexHeader.UnknownSegment3.Offset, std::span(Segment3));
-	if (strictVerify) {
-		accesses.emplace_back(IndexHeader.UnknownSegment3.Offset, IndexHeader.UnknownSegment3.Size);
-		IndexHeader.UnknownSegment3.Sha1.Verify(std::span(Segment3), "UnknownSegment3 Data SHA-1");
-	}
-
-	Folders.resize(IndexHeader.FolderSegment.Size / sizeof Folders[0]);
-	hFile.Read(IndexHeader.FolderSegment.Offset, std::span(Folders));
-	if (strictVerify) {
-		accesses.emplace_back(IndexHeader.FolderSegment.Offset, IndexHeader.FolderSegment.Size);
-		IndexHeader.FolderSegment.Sha1.Verify(std::span(Folders), "FolderSegment Data SHA-1");
-	}
-
-	if (strictVerify) {
-		std::ranges::sort(accesses);
-		auto ptr = accesses[0].first;
-		for (const auto& [accessPointer, accessSize] : accesses) {
-			if (ptr > accessPointer)
-				throw CorruptDataException("Unread region found");
-			else if (ptr < accessPointer)
-				throw CorruptDataException("Overlapping region found");
-			ptr += accessSize;
-		}
-		if (ptr != hFile.GetFileSize())
-			throw CorruptDataException("Trailing region found");
+		if (IndexHeader.FileSegment.Size % sizeof HashLocatorT)
+			throw CorruptDataException("HashLocators has an invalid size alignment");
+		if (IndexHeader.HashConflictSegment.Size % sizeof TextLocatorT)
+			throw CorruptDataException("TextLocators has an invalid size alignment");
+		if (IndexHeader.UnknownSegment3.Size % sizeof SqIndex::Segment3Entry)
+			throw CorruptDataException("Segment3 has an invalid size alignment");
+		IndexHeader.FileSegment.Sha1.Verify(HashLocators, "FileSegment has invalid data SHA-1");
+		IndexHeader.HashConflictSegment.Sha1.Verify(TextLocators, "HashConflictSegment has invalid data SHA-1");
+		IndexHeader.UnknownSegment3.Sha1.Verify(Segment3, "UnknownSegment3 has invalid data SHA-1");
 	}
 }
 
-Sqex::Sqpack::Reader::SqIndex2Type::SqIndex2Type(const Win32::Handle& hFile, bool strictVerify) {
-	std::vector<std::pair<size_t, size_t>> accesses;
-
-	hFile.Read(0, &Header, sizeof SqpackHeader);
+Sqex::Sqpack::Reader::SqIndex1Type::SqIndex1Type(const Win32::Handle& hFile, bool strictVerify)
+	: SqIndexType<SqIndex::PairHashLocator, SqIndex::PairHashWithTextLocator>(hFile, strictVerify)
+	, PathHashLocators(reinterpret_cast<const SqIndex::PathHashLocator*>(&Data[IndexHeader.HashConflictSegment.Offset]),
+		IndexHeader.FolderSegment.Size / sizeof SqIndex::PathHashLocator) {
 	if (strictVerify) {
-		accesses.emplace_back(0, Header.HeaderSize);
-		Header.VerifySqpackHeader(SqpackType::SqIndex);
+		if (IndexHeader.HashConflictSegment.Size % sizeof SqIndex::PathHashLocator)
+			throw CorruptDataException("PathHashLocators has an invalid size alignment");
+		IndexHeader.FolderSegment.Sha1.Verify(PathHashLocators, "FolderSegment has invalid data SHA-1");
 	}
+}
 
-	hFile.Read(Header.HeaderSize, &IndexHeader, sizeof SqIndex::Header);
-	accesses.emplace_back(Header.HeaderSize, IndexHeader.HeaderSize);
-	if (strictVerify)
-		IndexHeader.VerifySqpackIndexHeader(SqIndex::Header::IndexType::Index2);
+std::span<const Sqex::Sqpack::SqIndex::PairHashLocator> Sqex::Sqpack::Reader::SqIndex1Type::GetPairHashLocators(uint32_t pathHash) const {
+	const auto it = std::lower_bound(PathHashLocators.begin(), PathHashLocators.end(), pathHash, PathSpecComparator());
+	if (it == PathHashLocators.end() || it->PathHash != pathHash)
+		throw std::out_of_range(std::format("PathHash {} not found", pathHash));
 
-	Files.resize(IndexHeader.FileSegment.Size / sizeof Files[0]);
-	hFile.Read(IndexHeader.FileSegment.Offset, std::span(Files));
-	if (strictVerify) {
-		accesses.emplace_back(IndexHeader.FileSegment.Offset, IndexHeader.FileSegment.Size);
-		IndexHeader.FileSegment.Sha1.Verify(std::span(Files), "FileSegment Data SHA-1");
-	}
+	return {
+		reinterpret_cast<const SqIndex::PairHashLocator*>(&Data[it->PairHashLocatorOffset]),
+		it->PairHashLocatorSize / sizeof SqIndex::PairHashLocator
+	};
+}
 
-	HashConflictSegment.resize(IndexHeader.HashConflictSegment.Size / sizeof HashConflictSegment[0]);
-	hFile.Read(IndexHeader.HashConflictSegment.Offset, std::span(HashConflictSegment));
-	if (strictVerify) {
-		accesses.emplace_back(IndexHeader.HashConflictSegment.Offset, IndexHeader.HashConflictSegment.Size);
-		IndexHeader.HashConflictSegment.Sha1.Verify(std::span(HashConflictSegment), "HashConflictSegment Data SHA-1");
-	}
+const Sqex::Sqpack::SqIndex::LEDataLocator& Sqex::Sqpack::Reader::SqIndex1Type::GetLocator(uint32_t pathHash, uint32_t nameHash) const {
+	const auto locators = GetPairHashLocators(pathHash);
+	const auto it = std::lower_bound(locators.begin(), locators.end(), nameHash, PathSpecComparator());
+	if (it == locators.end() || it->NameHash != nameHash)
+		throw std::out_of_range(std::format("NameHash {} in PathHash {} not found", nameHash, pathHash));
+	return it->Locator;
+}
 
-	Segment3.resize(IndexHeader.UnknownSegment3.Size / sizeof Segment3[0]);
-	hFile.Read(IndexHeader.UnknownSegment3.Offset, std::span(Segment3));
-	if (strictVerify) {
-		accesses.emplace_back(IndexHeader.UnknownSegment3.Offset, IndexHeader.UnknownSegment3.Size);
-		IndexHeader.UnknownSegment3.Sha1.Verify(std::span(Segment3), "UnknownSegment3 Data SHA-1");
-	}
+Sqex::Sqpack::Reader::SqIndex2Type::SqIndex2Type(const Win32::Handle& hFile, bool strictVerify)
+	: SqIndexType<SqIndex::FullHashLocator, SqIndex::FullHashWithTextLocator>(hFile, strictVerify) {
+}
 
-	Folders.resize(IndexHeader.FolderSegment.Size / sizeof Folders[0]);
-	hFile.Read(IndexHeader.FolderSegment.Offset, std::span(Folders));
-	if (strictVerify) {
-		accesses.emplace_back(IndexHeader.FolderSegment.Offset, IndexHeader.FolderSegment.Size);
-		IndexHeader.FolderSegment.Sha1.Verify(std::span(Folders), "FolderSegment Data SHA-1");
-	}
-
-	if (strictVerify) {
-		std::ranges::sort(accesses);
-		auto ptr = accesses[0].first;
-		for (const auto& [accessPointer, accessSize] : accesses) {
-			if (ptr > accessPointer)
-				throw CorruptDataException("Unread region found");
-			else if (ptr < accessPointer)
-				throw CorruptDataException("Overlapping region found");
-			ptr += accessSize;
-		}
-		if (ptr != hFile.GetFileSize())
-			throw CorruptDataException("Trailing region found");
-	}
+const Sqex::Sqpack::SqIndex::LEDataLocator& Sqex::Sqpack::Reader::SqIndex2Type::GetLocator(uint32_t fullPathHash) const {
+	const auto it = std::lower_bound(HashLocators.begin(), HashLocators.end(), fullPathHash, PathSpecComparator());
+	if (it == HashLocators.end() || it->FullPathHash != fullPathHash)
+		throw std::out_of_range(std::format("FullPathHash {} not found", fullPathHash));
+	return it->Locator;
 }
 
 Sqex::Sqpack::Reader::SqDataType::SqDataType(Win32::Handle hFile, const uint32_t datIndex, bool strictVerify)
 	: Stream(std::make_shared<FileRandomAccessStream>(std::move(hFile))) {
-	std::vector<std::pair<size_t, size_t>> accesses;
 
-	Stream->ReadStream(0, &Header, sizeof SqpackHeader);
+	// The following line loads both Header and DataHeader as they are adjacent to each other
+	Stream->ReadStream(0, &Header, sizeof Header + sizeof DataHeader);
 	if (strictVerify) {
-		if (datIndex == 0)
+		if (datIndex == 0) {
 			Header.VerifySqpackHeader(SqpackType::SqData);
-		accesses.emplace_back(0, sizeof SqpackHeader);
-	}
-
-	Stream->ReadStream(sizeof SqpackHeader, &DataHeader, sizeof SqData::Header);
-	if (strictVerify) {
-		if (datIndex == 0)
 			DataHeader.Verify(datIndex + 1);
-		accesses.emplace_back(sizeof SqpackHeader, sizeof SqData::Header);
+		}
 	}
 
 	if (strictVerify) {
@@ -146,88 +93,127 @@ Sqex::Sqpack::Reader::SqDataType::SqDataType(Win32::Handle hFile, const uint32_t
 }
 
 Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strictVerify)
-	: Index(Win32::Handle::FromCreateFile(std::filesystem::path(indexFile).replace_extension(".index"), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN), strictVerify)
+	: Index1(Win32::Handle::FromCreateFile(std::filesystem::path(indexFile).replace_extension(".index"), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN), strictVerify)
 	, Index2(Win32::Handle::FromCreateFile(std::filesystem::path(indexFile).replace_extension(".index2"), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN), strictVerify) {
 
-	std::vector<std::set<uint64_t>> offsets(Index.IndexHeader.HashConflictSegment.Count);
-	for (const auto& item : Index.Files)
-		if (!item.Locator.HasConflicts())
-			offsets[item.Locator.Index()].insert(item.Locator.Offset());
-	for (const auto& item : Index.HashConflictSegment)
-		offsets[item.Locator.Index()].insert(item.Locator.Offset());
-	for (const auto& item : Index2.Files)
-		if (!item.Locator.HasConflicts())
-			offsets[item.Locator.Index()].insert(item.Locator.Offset());
-	for (const auto& item : Index2.HashConflictSegment)
-		offsets[item.Locator.Index()].insert(item.Locator.Offset());
+	std::vector<std::pair<SqIndex::LEDataLocator, std::tuple<uint32_t, uint32_t, const char*>>> offsets1;
+	offsets1.reserve(
+		std::max(Index1.HashLocators.size() + Index1.TextLocators.size(), Index2.HashLocators.size() + Index2.TextLocators.size())
+		+ Index1.IndexHeader.HashConflictSegment.Count
+	);
+	for (const auto& item : Index1.HashLocators)
+		if (!item.Locator.IsSynonym())
+			offsets1.emplace_back(item.Locator, std::make_tuple(item.PathHash, item.NameHash, static_cast<const char*>(nullptr)));
+	for (const auto& item : Index1.TextLocators)
+		offsets1.emplace_back(item.Locator, std::make_tuple(item.PathHash, item.NameHash, item.FullPath));
 
-	Data.reserve(Index.IndexHeader.HashConflictSegment.Count);
-	for (uint32_t i = 0; i < Index.IndexHeader.HashConflictSegment.Count; ++i) {
+	std::vector<std::pair<SqIndex::LEDataLocator, std::tuple<uint32_t, const char*>>> offsets2;
+	for (const auto& item : Index2.HashLocators)
+		if (!item.Locator.IsSynonym())
+			offsets2.emplace_back(item.Locator, std::make_tuple(item.FullPathHash, static_cast<const char*>(nullptr)));
+	for (const auto& item : Index2.TextLocators)
+		offsets2.emplace_back(item.Locator, std::make_tuple(item.FullPathHash, item.FullPath));
+
+	if (offsets1.size() != offsets2.size())
+		throw CorruptDataException(".index and .index2 do not have the same number of files contained");
+
+	Data.reserve(Index1.IndexHeader.HashConflictSegment.Count);
+	for (uint32_t i = 0; i < Index1.IndexHeader.HashConflictSegment.Count; ++i) {
 		Data.emplace_back(SqDataType{
 			Win32::Handle::FromCreateFile(std::filesystem::path(indexFile).replace_extension(std::format(".dat{}", i)), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0),
 			i,
 			strictVerify,
 			});
-		offsets[i].insert(Data.back().Stream->StreamSize());
-
-		for (auto itnext = offsets[i].begin(), it = itnext++; itnext != offsets[i].end(); ++itnext, ++it) {
-			FileSizes[SqIndex::LEDataLocator(i, *it).Value()] = *itnext - *it;
+		offsets1.emplace_back(SqIndex::LEDataLocator(i, Data[i].Stream->StreamSize()), std::make_tuple(UINT32_MAX, UINT32_MAX, static_cast<const char*>(nullptr)));
+		offsets2.emplace_back(SqIndex::LEDataLocator(i, Data[i].Stream->StreamSize()), std::make_tuple(UINT32_MAX, static_cast<const char*>(nullptr)));
+	}
+	
+	struct Comparator {
+		bool operator()(const SqIndex::LEDataLocator& l, const SqIndex::LEDataLocator& r) const {
+			if (l.DatFileIndex() != r.DatFileIndex())
+				return l.DatFileIndex() < r.DatFileIndex();
+			if (l.DatFileOffset() != r.DatFileOffset())
+				return l.DatFileOffset() < r.DatFileOffset();
+			return false;
 		}
+
+		bool operator()(const std::pair<SqIndex::LEDataLocator, std::tuple<uint32_t, uint32_t, const char*>>& l, const std::pair<SqIndex::LEDataLocator, std::tuple<uint32_t, uint32_t, const char*>>& r) const {
+			return (*this)(l.first, r.first);
+		}
+
+		bool operator()(const std::pair<SqIndex::LEDataLocator, std::tuple<uint32_t, const char*>>& l, const std::pair<SqIndex::LEDataLocator, std::tuple<uint32_t, const char*>>& r) const {
+			return (*this)(l.first, r.first);
+		}
+	};
+
+	std::sort(offsets1.begin(), offsets1.end(), Comparator());
+	std::sort(offsets2.begin(), offsets2.end(), Comparator());
+	EntryInfo.reserve(offsets1.size());
+
+	if (strictVerify) {
+		for (size_t i = 0; i < offsets1.size(); ++i) {
+			if (offsets1[i].first != offsets2[i].first)
+				throw CorruptDataException(".index and .index2 have items with different locators");
+			if (offsets1[i].first.IsSynonym())
+				throw CorruptDataException("Synonym remains after conflict resolution");
+		}
+	}
+
+	for (size_t curr = 1, prev = 0; curr < offsets1.size(); ++curr, ++prev) {
+		if (offsets1[prev].first.DatFileIndex() != offsets1[curr].first.DatFileIndex())
+			continue;
+		EntryInfo.emplace_back(offsets1[prev].first, EntryInfoType{
+			.PathSpec = EntryPathSpec(
+				std::get<0>(offsets1[prev].second),
+				std::get<1>(offsets1[prev].second),
+				std::get<0>(offsets2[prev].second),
+				std::get<2>(offsets1[prev].second) ? std::string(std::get<2>(offsets1[prev].second)) :
+					std::get<1>(offsets2[prev].second) ? std::string(std::get<1>(offsets2[prev].second)) :
+						std::string()
+			),
+			.Allocation = offsets1[curr].first.DatFileOffset() - offsets1[prev].first.DatFileOffset(),
+			});
 	}
 }
 
-std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvider(const EntryPathSpec& pathSpec, SqIndex::LEDataLocator locator) const {
-	static const auto pathSpecComparator = PathSpecComparator();
-	
-	if (locator) {
-		// pass
-
-	} else if (pathSpec.HasComponentHash()) {
-		const auto folder = std::lower_bound(Index.Folders.begin(), Index.Folders.end(), pathSpec, pathSpecComparator);
-		if (folder == Index.Folders.end() || folder->PathHash != pathSpec.PathHash)
-			throw std::out_of_range(std::format("Entry {} not found (no corresponding folder from .index)", pathSpec));
-
-		const auto folderContents = std::span(
-			Index.Files.begin() + (static_cast<size_t>(0) + folder->FileSegmentOffset - Index.IndexHeader.FileSegment.Offset) / sizeof Index.Files[0],
-			Index.Files.begin() + (static_cast<size_t>(0) + folder->FileSegmentOffset + folder->FileSegmentSize - Index.IndexHeader.FileSegment.Offset) / sizeof Index.Files[0]
-		);
-
-		const auto file = std::lower_bound(folderContents.begin(), folderContents.end(), pathSpec, pathSpecComparator);
-		if (file == folderContents.end() || file->NameHash != pathSpec.NameHash)
-			throw std::out_of_range(std::format("Entry {} not found (no corresponding file from .index)", pathSpec));
-
-		if (file->Locator.HasConflicts()) {
-			const auto resolved = std::lower_bound(Index.HashConflictSegment.begin(), Index.HashConflictSegment.end(), pathSpec, pathSpecComparator);
-			if (resolved == Index.HashConflictSegment.end() || lstrcmpiW(Utils::FromUtf8(resolved->FullPath).c_str(), pathSpec.Original.c_str()) != 0)
-				throw std::out_of_range(std::format("Entry {} not found (no corresponding conflict resolution from .index)", pathSpec));
-			else
-				locator = resolved->Locator;
-		} else
-			locator = file->Locator;
+const Sqex::Sqpack::SqIndex::LEDataLocator& Sqex::Sqpack::Reader::GetLocator(const EntryPathSpec& pathSpec) const {
+	if (pathSpec.HasComponentHash()) {
+		const auto& locator = Index1.GetLocator(pathSpec.PathHash, pathSpec.NameHash);
+		if (locator.IsSynonym())
+			return Index1.GetLocatorFromTextLocators(Utils::ToUtf8(pathSpec.Original.wstring()).c_str());
+		return locator;
 
 	} else if (pathSpec.HasFullPathHash()) {
-		const auto file = std::lower_bound(Index2.Files.begin(), Index2.Files.end(), pathSpec, pathSpecComparator);
-		if (file == Index2.Files.end())
-			throw std::out_of_range(std::format("Entry {} not found (no corresponding file from .index2)", pathSpec));
+		const auto& locator = Index2.GetLocator(pathSpec.FullPathHash);
+		if (locator.IsSynonym())
+			return Index2.GetLocatorFromTextLocators(Utils::ToUtf8(pathSpec.Original.wstring()).c_str());
+		return locator;
 
-		if (file->Locator.HasConflicts()) {
-			const auto resolved = std::lower_bound(Index2.HashConflictSegment.begin(), Index2.HashConflictSegment.end(), pathSpec, pathSpecComparator);
-			if (resolved == Index2.HashConflictSegment.end() || lstrcmpiW(Utils::FromUtf8(resolved->FullPath).c_str(), pathSpec.Original.c_str()) != 0)
-				throw std::out_of_range(std::format("Entry {} not found (no corresponding conflict resolution from .index2)", pathSpec));
-			else
-				locator = resolved->Locator;
-		} else
-			locator = file->Locator;
-
-	}
-	
-	if (!locator)
+	} else
 		throw std::out_of_range(std::format("Path spec is empty"));
+}
 
-	if (locator.HasConflicts())
-		throw std::out_of_range(std::format("Conflict resolution still resulted in conflict"));
+std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvider(const EntryPathSpec& pathSpec, SqIndex::LEDataLocator locator, uint64_t allocation) const {
+	return std::make_shared<RandomAccessStreamAsEntryProviderView>(pathSpec, Data.at(locator.DatFileIndex()).Stream, locator.DatFileOffset(), allocation);
+}
 
-	return std::make_shared<RandomAccessStreamAsEntryProviderView>(pathSpec, Data.at(locator.Index()).Stream, locator.Offset(), FileSizes.at(locator.Value()));
+std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvider(const EntryPathSpec& pathSpec) const {
+	struct Comparator {
+		bool operator()(const std::pair<SqIndex::LEDataLocator, EntryInfoType>& l, const SqIndex::LEDataLocator& r) const {
+			return l.first < r;
+		}
+
+		bool operator()(const SqIndex::LEDataLocator& l, const std::pair<SqIndex::LEDataLocator, EntryInfoType>& r) const {
+			return l < r.first;
+		}
+	};
+
+	const auto& locator = GetLocator(pathSpec);
+	return GetEntryProvider(pathSpec, locator, std::lower_bound(EntryInfo.begin(), EntryInfo.end(), locator, Comparator())->second.Allocation);
+}
+
+std::shared_ptr<Sqex::RandomAccessStream> Sqex::Sqpack::Reader::GetFile(const EntryPathSpec& pathSpec) const {
+	return std::make_shared<BufferedRandomAccessStream>(std::make_shared<EntryRawStream>(GetEntryProvider(pathSpec)));
 }
 
 std::shared_ptr<Sqex::RandomAccessStream> Sqex::Sqpack::Reader::operator[](const EntryPathSpec& pathSpec) const {

@@ -31,7 +31,7 @@ namespace Sqex::Sqpack {
 			std::vector<EntryProvider*> Added;
 			std::vector<EntryProvider*> Replaced;
 			std::vector<EntryProvider*> SkippedExisting;
-			std::map<EntryPathSpec, std::string, Sqex::Sqpack::EntryPathSpec::FullComparator> Error;
+			std::vector<std::pair<EntryPathSpec, std::string>> Error;
 
 			AddEntryResult& operator+=(const AddEntryResult& r);
 			AddEntryResult& operator+=(AddEntryResult&& r);
@@ -48,20 +48,32 @@ namespace Sqex::Sqpack {
 	private:
 		template<SqIndex::Header::IndexType IndexType, typename FileEntryType, typename ConflictEntryType, bool UseFolders>
 		class IndexViewBase;
-		using Index1View = IndexViewBase<Sqex::Sqpack::SqIndex::Header::IndexType::Index, SqIndex::FileSegmentEntry, SqIndex::HashConflictSegmentEntry, true>;
-		using Index2View = IndexViewBase<Sqex::Sqpack::SqIndex::Header::IndexType::Index, SqIndex::FileSegmentEntry2, SqIndex::HashConflictSegmentEntry2, false>;
+		using Index1View = IndexViewBase<Sqex::Sqpack::SqIndex::Header::IndexType::Index, SqIndex::PairHashLocator, SqIndex::PairHashWithTextLocator, true>;
+		using Index2View = IndexViewBase<Sqex::Sqpack::SqIndex::Header::IndexType::Index, SqIndex::FullHashLocator, SqIndex::FullHashWithTextLocator, false>;
 		template<SqIndex::Header::IndexType IndexType>
 		class IndexView;
 		class DataView;
 
 	public:
+		struct Entry {
+			uint32_t DataFileIndex{};
+			uint32_t EntrySize{};
+			uint32_t PadSize{};
+			SqIndex::LEDataLocator Locator{};
+
+			uint32_t EntryReservedSize{};
+
+			uint64_t OffsetAfterHeaders{};
+			std::shared_ptr<EntryProvider> Provider;
+		};
+
 		struct SqpackViews {
-			std::shared_ptr<RandomAccessStream> Index;
+			std::shared_ptr<RandomAccessStream> Index1;
 			std::shared_ptr<RandomAccessStream> Index2;
 			std::vector<std::shared_ptr<RandomAccessStream>> Data;
-			std::map<EntryPathSpec, EntryProvider*, EntryPathSpec::AllHashComparator> HashOnlyProviders;
-			std::map<EntryPathSpec, EntryProvider*, EntryPathSpec::FullPathComparator> FullProviders;
-			std::vector<EntryProvider*> AllProviders;
+			std::vector<Entry*> Entries;
+			std::map<EntryPathSpec, std::unique_ptr<Entry>, EntryPathSpec::AllHashComparator> HashOnlyEntries;
+			std::map<EntryPathSpec, std::unique_ptr<Entry>, EntryPathSpec::FullPathComparator> FullPathEntries;
 		};
 		SqpackViews AsViews(bool strict);
 

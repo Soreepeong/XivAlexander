@@ -112,8 +112,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		const auto voCm = Sqex::Sqpack::SqexHash("sound/voice/vo_cm", SIZE_MAX);
 		const auto voEmote = Sqex::Sqpack::SqexHash("sound/voice/vo_emote", SIZE_MAX);
 		const auto voLine = Sqex::Sqpack::SqexHash("sound/voice/vo_line", SIZE_MAX);
-		for (const auto& providerRaw : SqpackViews.at(SqpackPath / L"ffxiv/070000.win32.index").AllProviders) {
-			const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(providerRaw);
+		for (const auto& entry : SqpackViews.at(SqpackPath / L"ffxiv/070000.win32.index").Entries) {
+			const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entry->Provider.get());
 			if (!provider)
 				continue;
 
@@ -138,15 +138,16 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				if (it == SqpackViews.end())
 					continue;
 
-				auto entryIt = it->second.HashOnlyProviders.find(entry.FullPath);
-				if (entryIt == it->second.HashOnlyProviders.end()) {
-					entryIt = it->second.FullProviders.find(entry.FullPath);
-					if (entryIt == it->second.FullProviders.end()) {
+				const auto pathSpec = Sqex::Sqpack::EntryPathSpec(entry.FullPath);
+				auto entryIt = it->second.HashOnlyEntries.find(pathSpec);
+				if (entryIt == it->second.HashOnlyEntries.end()) {
+					entryIt = it->second.FullPathEntries.find(pathSpec);
+					if (entryIt == it->second.FullPathEntries.end()) {
 						continue;
 					}
 				}
 
-				const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second);
+				const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second->Provider.get());
 				if (!provider)
 					continue;
 
@@ -162,15 +163,16 @@ struct App::Misc::VirtualSqPacks::Implementation {
 							if (it == SqpackViews.end())
 								continue;
 
-							auto entryIt = it->second.HashOnlyProviders.find(entry.FullPath);
-							if (entryIt == it->second.HashOnlyProviders.end()) {
-								entryIt = it->second.FullProviders.find(entry.FullPath);
-								if (entryIt == it->second.FullProviders.end()) {
+							const auto pathSpec = Sqex::Sqpack::EntryPathSpec(entry.FullPath);
+							auto entryIt = it->second.HashOnlyEntries.find(pathSpec);
+							if (entryIt == it->second.HashOnlyEntries.end()) {
+								entryIt = it->second.FullPathEntries.find(pathSpec);
+								if (entryIt == it->second.FullPathEntries.end()) {
 									continue;
 								}
 							}
 
-							const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second);
+							const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second->Provider.get());
 							if (!provider)
 								continue;
 
@@ -523,15 +525,32 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				SetUpGeneratedFonts(progressWindow, *pCreator, indexFile);
 			else if (pCreator->DatExpac == "ffxiv" && pCreator->DatName == "0a0000")
 				SetUpMergedExd(progressWindow, *pCreator, indexFile);
+		}
 
+		{
+			const auto progressMax = creators.size();
+			size_t progressValue = 0;
 			const auto workerThread = Utils::Win32::Thread(L"VirtualSqPacks Element Finalizer", [&]() {
-				SqpackViews.emplace(indexFile, pCreator->AsViews(false));
+				Utils::Win32::TpEnvironment pool;
+				std::mutex resLock;
+				for (const auto& [indexFile, pCreator] : creators) {
+					if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+						throw std::runtime_error("Cancelled");
+
+					pool.SubmitWork([&]() {
+						auto v = pCreator->AsViews(false);
+
+						const auto lock = std::lock_guard(resLock);
+						SqpackViews.emplace(indexFile, std::move(v));
+						progressValue += 1;
+					});
+				}
+				pool.WaitOutstanding();
 			});
-			while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {workerThread})) {
+			while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, { workerThread })) {
 				progressWindow.UpdateMessage(Utils::ToUtf8(Config->Runtime.GetStringRes(IDS_TITLE_FINALIZING)));
-				progressWindow.UpdateProgress(0, 0);
+				progressWindow.UpdateProgress(progressValue, progressMax);
 			}
-			workerThread.Wait();
 		}
 	}
 
@@ -1654,7 +1673,7 @@ HANDLE App::Misc::VirtualSqPacks::Open(const std::filesystem::path& path) {
 			if (equivalent(view.first, indexFile)) {
 				switch (pathType) {
 					case Implementation::PathTypeIndex:
-						overlayedHandle->Stream = view.second.Index;
+						overlayedHandle->Stream = view.second.Index1;
 						break;
 
 					case Implementation::PathTypeIndex2:
@@ -1703,24 +1722,24 @@ App::Misc::VirtualSqPacks::OverlayedHandleData* App::Misc::VirtualSqPacks::Get(H
 
 bool App::Misc::VirtualSqPacks::EntryExists(const Sqex::Sqpack::EntryPathSpec& pathSpec) const {
 	return std::ranges::any_of(m_pImpl->SqpackViews | std::views::values, [&pathSpec](const auto& t) {
-		return t.HashOnlyProviders.find(pathSpec) != t.HashOnlyProviders.end()
-			|| (pathSpec.HasOriginal() && t.FullProviders.find(pathSpec) != t.FullProviders.end());
+		return t.HashOnlyEntries.find(pathSpec) != t.HashOnlyEntries.end()
+			|| (pathSpec.HasOriginal() && t.FullPathEntries.find(pathSpec) != t.FullPathEntries.end());
 	});
 }
 
 std::shared_ptr<Sqex::RandomAccessStream> App::Misc::VirtualSqPacks::GetOriginalEntry(const Sqex::Sqpack::EntryPathSpec& pathSpec) const {
 	for (const auto& pack : m_pImpl->SqpackViews | std::views::values) {
-		auto it = pack.HashOnlyProviders.find(pathSpec);
-		if (it == pack.HashOnlyProviders.end()) {
-			it = pack.FullProviders.find(pathSpec);
-			if (it == pack.FullProviders.end()) {
+		auto it = pack.HashOnlyEntries.find(pathSpec);
+		if (it == pack.HashOnlyEntries.end()) {
+			it = pack.FullPathEntries.find(pathSpec);
+			if (it == pack.FullPathEntries.end()) {
 				continue;
 			}
 		}
 
-		const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(it->second);
+		const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(it->second->Provider.get());
 		if (!provider)
-			return std::make_shared<Sqex::Sqpack::EntryRawStream>(it->second);
+			return std::make_shared<Sqex::Sqpack::EntryRawStream>(it->second->Provider.get());
 
 		return std::make_shared<Sqex::Sqpack::EntryRawStream>(provider->GetBaseStream());
 	}
@@ -1828,15 +1847,16 @@ void App::Misc::VirtualSqPacks::AddNewTtmp(const std::filesystem::path& ttmpl, b
 		if (it == m_pImpl->SqpackViews.end())
 			continue;
 
-		auto entryIt = it->second.HashOnlyProviders.find(entry.FullPath);
-		if (entryIt == it->second.HashOnlyProviders.end()) {
-			entryIt = it->second.FullProviders.find(entry.FullPath);
-			if (entryIt == it->second.FullProviders.end()) {
+		const auto pathSpec = Sqex::Sqpack::EntryPathSpec(entry.FullPath);
+		auto entryIt = it->second.HashOnlyEntries.find(pathSpec);
+		if (entryIt == it->second.HashOnlyEntries.end()) {
+			entryIt = it->second.FullPathEntries.find(pathSpec);
+			if (entryIt == it->second.FullPathEntries.end()) {
 				continue;
 			}
 		}
 
-		const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second);
+		const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second->Provider.get());
 		if (!provider)
 			continue;
 
@@ -1851,15 +1871,16 @@ void App::Misc::VirtualSqPacks::AddNewTtmp(const std::filesystem::path& ttmpl, b
 					if (it == m_pImpl->SqpackViews.end())
 						continue;
 
-					auto entryIt = it->second.HashOnlyProviders.find(entry.FullPath);
-					if (entryIt == it->second.HashOnlyProviders.end()) {
-						entryIt = it->second.FullProviders.find(entry.FullPath);
-						if (entryIt == it->second.FullProviders.end()) {
+					const auto pathSpec = Sqex::Sqpack::EntryPathSpec(entry.FullPath);
+					auto entryIt = it->second.HashOnlyEntries.find(pathSpec);
+					if (entryIt == it->second.HashOnlyEntries.end()) {
+						entryIt = it->second.FullPathEntries.find(pathSpec);
+						if (entryIt == it->second.FullPathEntries.end()) {
 							continue;
 						}
 					}
 
-					const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second);
+					const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second->Provider.get());
 					if (!provider)
 						continue;
 
