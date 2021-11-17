@@ -83,14 +83,8 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 		m_gameReleaseInfo = Misc::GameInstallationDetector::GetGameReleaseInfo();
 
 		if (m_gameReleaseInfo.Region == Sqex::GameReleaseRegion::International && !m_launchParameters.empty()) {
-			m_gameLanguage = Sqex::Language::English;
-			m_gameRegion = Sqex::Region::Japan;
-			for (const auto& pair : m_launchParameters) {
-				if (pair.first == "language")
-					m_gameLanguage = static_cast<Sqex::Language>(1 + std::strtol(pair.second.c_str(), nullptr, 0));
-				else if (pair.first == "SYS.Region")
-					m_gameRegion = static_cast<Sqex::Region>(std::strtol(pair.second.c_str(), nullptr, 0));
-			}
+			m_gameLanguage = Sqex::CommandLine::WellKnown::GetLanguage(m_launchParameters, Sqex::Language::English);
+			m_gameRegion = Sqex::CommandLine::WellKnown::GetRegion(m_launchParameters, Sqex::Region::NorthAmerica);
 		} else if (m_gameReleaseInfo.Region == Sqex::GameReleaseRegion::Chinese) {
 			m_gameLanguage = Sqex::Language::ChineseSimplified;
 			m_gameRegion = Sqex::Region::China;
@@ -920,8 +914,8 @@ void App::Window::MainWindow::AskRestartGame(bool onlyOnModifier) {
 	)) == IDYES) {
 		auto params{ m_launchParameters };
 		if (Dll::IsLanguageRegionModifiable()) {
-			Sqex::CommandLine::ModifyParameter(params, "language", std::format("{}", static_cast<int>(m_gameLanguage) - 1));
-			Sqex::CommandLine::ModifyParameter(params, "region", std::format("{}", static_cast<int>(m_gameRegion)));
+			Sqex::CommandLine::WellKnown::SetLanguage(params, m_gameLanguage);
+			Sqex::CommandLine::WellKnown::SetRegion(params, m_gameRegion);
 		}
 
 		Utils::Win32::RunProgramParams runParams{

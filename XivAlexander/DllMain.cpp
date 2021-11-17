@@ -127,16 +127,8 @@ static void CheckObfuscatedArguments() {
 		auto params = Sqex::CommandLine::FromString(Dll::GetOriginalCommandLine(), &s_originalCommandLineIsObfuscated);
 		if (Dll::IsLanguageRegionModifiable()) {
 			auto config = App::Config::Acquire();
-
-			if (const auto language = config->Runtime.RememberedGameLaunchLanguage.Value();
-				language != Sqex::Language::Unspecified) {
-				Sqex::CommandLine::ModifyParameter(params, "language", std::format("{}", static_cast<int>(language) - 1));
-			}
-
-			if (const auto region = config->Runtime.RememberedGameLaunchRegion.Value();
-				region != Sqex::Region::Unspecified) {
-				Sqex::CommandLine::ModifyParameter(params, "SYS.Region", std::format("{}", static_cast<int>(region)));
-			}
+			Sqex::CommandLine::WellKnown::SetLanguage(params, config->Runtime.RememberedGameLaunchLanguage);
+			Sqex::CommandLine::WellKnown::SetRegion(params, config->Runtime.RememberedGameLaunchRegion);
 		}
 
 		// Once this function is called, it means that this dll will stick to the process until it exits,

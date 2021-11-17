@@ -177,3 +177,29 @@ void Sqex::CommandLine::ModifyParameter(std::vector<std::pair<std::string, std::
 	}
 	args.emplace_back(key, std::move(value));
 }
+
+void Sqex::CommandLine::WellKnown::SetRegion(std::vector<std::pair<std::string, std::string>>& args, Region region) {
+	if (region != Region::Unspecified)
+		return ModifyParameter(args, Keys::Region, std::format("{}", static_cast<int>(region)));
+}
+
+Sqex::Region Sqex::CommandLine::WellKnown::GetRegion(const std::vector<std::pair<std::string, std::string>>& args, Region fallback /*= Region::Unspecified*/) {
+	for (const auto& pair : args) {
+		if (pair.first == Keys::Region)
+			return static_cast<Region>(std::strtol(pair.second.c_str(), nullptr, 0));
+	}
+	return fallback;
+}
+
+void Sqex::CommandLine::WellKnown::SetLanguage(std::vector<std::pair<std::string, std::string>>& args, Language language) {
+	if (language != Language::Unspecified)
+		return ModifyParameter(args, Keys::Language, std::format("{}", static_cast<int>(language) - 1));
+}
+
+Sqex::Language Sqex::CommandLine::WellKnown::GetLanguage(const std::vector<std::pair<std::string, std::string>>& args, Language fallback /*= Language::Unspecified*/) {
+	for (const auto& pair : args) {
+		if (pair.first == Keys::Language)
+			return static_cast<Language>(1 + std::strtol(pair.second.c_str(), nullptr, 0));
+	}
+	return fallback;
+}
