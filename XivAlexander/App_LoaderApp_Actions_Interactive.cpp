@@ -197,14 +197,19 @@ std::function<Utils::Win32::TaskDialog::ActionHandled(Utils::Win32::TaskDialog&)
 					tryElevate = true;
 				}
 			}
-			Utils::Win32::RunProgram({
+			const auto exitCode = Utils::Win32::RunProgram({
 				.path = Utils::Win32::Process::Current().PathOf().parent_path() / (process.IsProcess64Bits() ? XivAlexDll::XivAlexLoader64NameW : XivAlexDll::XivAlexLoader32NameW),
 				.args = std::format(L"-a {} {}",
 					LoaderActionToString(load ? LoaderAction::Load : LoaderAction::Unload),
 					process.GetId()),
 				.wait = true,
 				.elevateMode = tryElevate ? Utils::Win32::RunProgramParams::NoElevationIfDenied : Utils::Win32::RunProgramParams::Normal,
-			});
+				}).WaitAndGetExitCode();
+
+			// special case: if there was only one game process running, exit loader
+			if (exitCode == 0 && m_args.GetTargetPidList().size() <= 1)
+				ExitProcess(0);
+
 			withHider.Cancel();
 		} catch (const std::exception& e) {
 			Dll::MessageBoxF(nullptr, MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
