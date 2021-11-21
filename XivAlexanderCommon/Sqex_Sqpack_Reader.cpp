@@ -35,14 +35,12 @@ Sqex::Sqpack::Reader::SqIndex1Type::SqIndex1Type(const Win32::Handle& hFile, boo
 	, PathHashLocators(reinterpret_cast<const SqIndex::PathHashLocator*>(&Data[IndexHeader.PathHashLocatorSegment.Offset]),
 		IndexHeader.PathHashLocatorSegment.Size / sizeof SqIndex::PathHashLocator) {
 	if (strictVerify) {
-		if (IndexHeader.TextLocatorSegment.Size % sizeof SqIndex::PathHashLocator)
+		if (IndexHeader.PathHashLocatorSegment.Size % sizeof SqIndex::PathHashLocator)
 			throw CorruptDataException("PathHashLocators has an invalid size alignment");
 		IndexHeader.PathHashLocatorSegment.Sha1.Verify(PathHashLocators, "PathHashLocatorSegment has invalid data SHA-1");
 	}
 }
 
-#pragma optimize("", off)
-__declspec(noinline)
 std::span<const Sqex::Sqpack::SqIndex::PairHashLocator> Sqex::Sqpack::Reader::SqIndex1Type::GetPairHashLocators(uint32_t pathHash) const {
 	const auto it = std::lower_bound(PathHashLocators.begin(), PathHashLocators.end(), pathHash, PathSpecComparator());
 	if (it == PathHashLocators.end() || it->PathHash != pathHash)
@@ -53,7 +51,6 @@ std::span<const Sqex::Sqpack::SqIndex::PairHashLocator> Sqex::Sqpack::Reader::Sq
 		it->PairHashLocatorSize / sizeof SqIndex::PairHashLocator
 	};
 }
-#pragma optimize("", on)
 
 const Sqex::Sqpack::SqIndex::LEDataLocator& Sqex::Sqpack::Reader::SqIndex1Type::GetLocator(uint32_t pathHash, uint32_t nameHash) const {
 	const auto locators = GetPairHashLocators(pathHash);
@@ -105,14 +102,14 @@ Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strict
 		+ Index1.IndexHeader.TextLocatorSegment.Count
 	);
 	for (const auto& item : Index1.HashLocators)
-		if (!item.Locator.IsSynonym())
+		if (!item.Locator.IsSynonym)
 			offsets1.emplace_back(item.Locator, std::make_tuple(item.PathHash, item.NameHash, static_cast<const char*>(nullptr)));
 	for (const auto& item : Index1.TextLocators)
 		offsets1.emplace_back(item.Locator, std::make_tuple(item.PathHash, item.NameHash, item.FullPath));
 
 	std::vector<std::pair<SqIndex::LEDataLocator, std::tuple<uint32_t, const char*>>> offsets2;
 	for (const auto& item : Index2.HashLocators)
-		if (!item.Locator.IsSynonym())
+		if (!item.Locator.IsSynonym)
 			offsets2.emplace_back(item.Locator, std::make_tuple(item.FullPathHash, static_cast<const char*>(nullptr)));
 	for (const auto& item : Index2.TextLocators)
 		offsets2.emplace_back(item.Locator, std::make_tuple(item.FullPathHash, item.FullPath));
@@ -133,8 +130,8 @@ Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strict
 	
 	struct Comparator {
 		bool operator()(const SqIndex::LEDataLocator& l, const SqIndex::LEDataLocator& r) const {
-			if (l.DatFileIndex() != r.DatFileIndex())
-				return l.DatFileIndex() < r.DatFileIndex();
+			if (l.DatFileIndex != r.DatFileIndex)
+				return l.DatFileIndex < r.DatFileIndex;
 			if (l.DatFileOffset() != r.DatFileOffset())
 				return l.DatFileOffset() < r.DatFileOffset();
 			return false;
@@ -147,6 +144,10 @@ Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strict
 		bool operator()(const std::pair<SqIndex::LEDataLocator, std::tuple<uint32_t, const char*>>& l, const std::pair<SqIndex::LEDataLocator, std::tuple<uint32_t, const char*>>& r) const {
 			return (*this)(l.first, r.first);
 		}
+
+		bool operator()(const std::pair<SqIndex::LEDataLocator, EntryInfoType>& l, const std::pair<SqIndex::LEDataLocator, EntryInfoType>& r) const {
+			return l.first < r.first;
+		}
 	};
 
 	std::sort(offsets1.begin(), offsets1.end(), Comparator());
@@ -157,13 +158,13 @@ Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strict
 		for (size_t i = 0; i < offsets1.size(); ++i) {
 			if (offsets1[i].first != offsets2[i].first)
 				throw CorruptDataException(".index and .index2 have items with different locators");
-			if (offsets1[i].first.IsSynonym())
+			if (offsets1[i].first.IsSynonym)
 				throw CorruptDataException("Synonym remains after conflict resolution");
 		}
 	}
 
 	for (size_t curr = 1, prev = 0; curr < offsets1.size(); ++curr, ++prev) {
-		if (offsets1[prev].first.DatFileIndex() != offsets1[curr].first.DatFileIndex())
+		if (offsets1[prev].first.DatFileIndex != offsets1[curr].first.DatFileIndex)
 			continue;
 		EntryInfo.emplace_back(offsets1[prev].first, EntryInfoType{
 			.PathSpec = EntryPathSpec(
@@ -177,18 +178,20 @@ Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strict
 			.Allocation = offsets1[curr].first.DatFileOffset() - offsets1[prev].first.DatFileOffset(),
 			});
 	}
+
+	std::sort(EntryInfo.begin(), EntryInfo.end(), Comparator());
 }
 
 const Sqex::Sqpack::SqIndex::LEDataLocator& Sqex::Sqpack::Reader::GetLocator(const EntryPathSpec& pathSpec) const {
 	try {
 		if (pathSpec.HasComponentHash()) {
 			const auto& locator = Index1.GetLocator(pathSpec.PathHash, pathSpec.NameHash);
-			if (locator.IsSynonym())
+			if (locator.IsSynonym)
 				return Index1.GetLocatorFromTextLocators(Utils::ToUtf8(pathSpec.Original.wstring()).c_str());
 			return locator;
 		} else if (pathSpec.HasFullPathHash()) {
 			const auto& locator = Index2.GetLocator(pathSpec.FullPathHash);
-			if (locator.IsSynonym())
+			if (locator.IsSynonym)
 				return Index2.GetLocatorFromTextLocators(Utils::ToUtf8(pathSpec.Original.wstring()).c_str());
 			return locator;
 		}
@@ -199,7 +202,7 @@ const Sqex::Sqpack::SqIndex::LEDataLocator& Sqex::Sqpack::Reader::GetLocator(con
 }
 
 std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvider(const EntryPathSpec& pathSpec, SqIndex::LEDataLocator locator, uint64_t allocation) const {
-	return std::make_shared<RandomAccessStreamAsEntryProviderView>(pathSpec, Data.at(locator.DatFileIndex()).Stream, locator.DatFileOffset(), allocation);
+	return std::make_shared<RandomAccessStreamAsEntryProviderView>(pathSpec, Data.at(locator.DatFileIndex).Stream, locator.DatFileOffset(), allocation);
 }
 
 std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvider(const EntryPathSpec& pathSpec) const {
@@ -214,7 +217,8 @@ std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::Reader::GetEntryProvi
 	};
 
 	const auto& locator = GetLocator(pathSpec);
-	return GetEntryProvider(pathSpec, locator, std::lower_bound(EntryInfo.begin(), EntryInfo.end(), locator, Comparator())->second.Allocation);
+	const auto entryInfo = std::lower_bound(EntryInfo.begin(), EntryInfo.end(), locator, Comparator());
+	return GetEntryProvider(pathSpec, locator, entryInfo->second.Allocation);
 }
 
 std::shared_ptr<Sqex::RandomAccessStream> Sqex::Sqpack::Reader::GetFile(const EntryPathSpec& pathSpec) const {

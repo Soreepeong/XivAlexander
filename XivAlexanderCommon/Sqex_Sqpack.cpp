@@ -226,34 +226,6 @@ void Sqex::Sqpack::SqIndex::Header::VerifySqpackIndexHeader(IndexType expectedIn
 		throw CorruptDataException("Segment4.Count == 0");
 }
 
-Sqex::Sqpack::SqIndex::LEDataLocator::LEDataLocator(uint32_t index, uint64_t offset)
-	: LE<uint32_t>(0) {
-	DatFileIndex(index);
-	DatFileOffset(offset);
-}
-
-uint32_t Sqex::Sqpack::SqIndex::LEDataLocator::DatFileIndex(const uint32_t value) {
-	if (value >= 8)
-		throw std::invalid_argument("Index must be between 0 and 7.");
-	Value((Value() & ~0x0F) | (value * 2));
-	return value;
-}
-
-uint64_t Sqex::Sqpack::SqIndex::LEDataLocator::DatFileOffset(const uint64_t value) {
-	if (value % 128)
-		throw std::invalid_argument("OffsetAfterHeaders must be a multiple of 128.");
-	const auto divValue = value / 8;
-	if (divValue > UINT32_MAX)
-		throw std::invalid_argument("Value too big.");
-	Value(static_cast<uint32_t>((Value() & 0x0F) | divValue));
-	return value;
-}
-
-bool Sqex::Sqpack::SqIndex::LEDataLocator::IsSynonym(bool value) {
-	Value((Value() & 0xFFFFFFFE) | (value ? 1 : 0));
-	return value;
-}
-
 void Sqex::Sqpack::SqIndex::PathHashLocator::Verify() const {
 	if (PairHashLocatorSize % sizeof(PairHashLocator))
 		throw CorruptDataException("FolderSegmentEntry.FileSegmentSize % sizeof FileSegmentEntry != 0");

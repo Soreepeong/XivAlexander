@@ -497,15 +497,13 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 		dataEntryRanges.back().second++;
 	}
 	
-	SqIndex::LEDataLocator conflictEntryLocator{};
-	conflictEntryLocator.IsSynonym(true);
 	std::vector<SqIndex::PairHashLocator> fileEntries1;
 	std::vector<SqIndex::PairHashWithTextLocator> conflictEntries1;
 	for (const auto& [pairHash, correspondingEntries] : pairHashes) {
 		if (correspondingEntries.size() == 1) {
 			fileEntries1.emplace_back(SqIndex::PairHashLocator{ pairHash.second, pairHash.first, correspondingEntries.front()->Locator, 0 });
 		} else {
-			fileEntries1.emplace_back(SqIndex::PairHashLocator{ pairHash.second, pairHash.first, conflictEntryLocator, 0 });
+			fileEntries1.emplace_back(SqIndex::PairHashLocator{ pairHash.second, pairHash.first, SqIndex::LEDataLocator::Synonym(), 0});
 			uint32_t i = 0;
 			for (const auto& entry : correspondingEntries) {
 				conflictEntries1.emplace_back(SqIndex::PairHashWithTextLocator{
@@ -532,7 +530,7 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 		if (correspondingEntries.size() == 1) {
 			fileEntries2.emplace_back(SqIndex::FullHashLocator{ fullHash, correspondingEntries.front()->Locator });
 		} else {
-			fileEntries2.emplace_back(SqIndex::FullHashLocator{ fullHash, conflictEntryLocator });
+			fileEntries2.emplace_back(SqIndex::FullHashLocator{ fullHash, SqIndex::LEDataLocator::Synonym() });
 			uint32_t i = 0;
 			for (const auto& entry : correspondingEntries) {
 				conflictEntries2.emplace_back(SqIndex::FullHashWithTextLocator{

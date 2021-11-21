@@ -59,7 +59,7 @@ namespace Sqex::Sqpack {
 	};
 	static_assert(offsetof(SqpackHeader, Sha1) == 0x3c0, "Bad SqpackHeader definition");
 	static_assert(sizeof(SqpackHeader) == 1024);
-	
+
 	namespace SqIndex {
 		struct SegmentDescriptor {
 			LE<uint32_t> Count;
@@ -111,16 +111,63 @@ namespace Sqex::Sqpack {
 		};
 		static_assert(sizeof(Header) == 1024);
 
-		struct LEDataLocator : LE<uint32_t> {
-			using LE<uint32_t>::LE;
-			LEDataLocator(uint32_t index, uint64_t offset);
+		union LEDataLocator {
+			static LEDataLocator Synonym() {
+				return {1};
+			}
 
-			[[nodiscard]] uint32_t DatFileIndex() const { return (Value() & 0xF) / 2; }
-			[[nodiscard]] uint64_t DatFileOffset() const { return (Value() & 0xFFFFFFF0UL) * 8ULL; }
-			[[nodiscard]] bool IsSynonym() const { return Value() & 1; }
-			uint32_t DatFileIndex(uint32_t value);
-			uint64_t DatFileOffset(uint64_t value);
-			bool IsSynonym(bool value);
+			uint32_t Value;
+			struct {
+				uint32_t IsSynonym : 1;
+				uint32_t DatFileIndex : 3;
+				uint32_t DatFileOffsetBy8 : 28;
+			};
+
+			LEDataLocator(const LEDataLocator& r)
+				: IsSynonym(r.IsSynonym)
+				, DatFileIndex(r.DatFileIndex)
+				, DatFileOffsetBy8(r.DatFileOffsetBy8) {
+			}
+
+			LEDataLocator(uint32_t value = 0)
+				: Value(value) {
+			}
+
+			LEDataLocator(uint32_t index, uint64_t offset)
+				: IsSynonym(0)
+				, DatFileIndex(index)
+				, DatFileOffsetBy8(static_cast<uint32_t>(offset / 128)) {
+				if (offset % 128)
+					throw std::invalid_argument("Offset must be a multiple of 128.");
+				if (offset / 8 > UINT32_MAX)
+					throw std::invalid_argument("Offset is too big.");
+			}
+
+			[[nodiscard]] uint64_t DatFileOffset() const {
+				return DatFileOffsetBy8 * 128ULL;
+			}
+
+			uint64_t DatFileOffset(uint64_t value) {
+				if (value % 128)
+					throw std::invalid_argument("Offset must be a multiple of 128.");
+				if (value / 8 > UINT32_MAX)
+					throw std::invalid_argument("Offset is too big.");
+				DatFileOffsetBy8 = static_cast<uint32_t>(value / 128);
+			}
+
+			bool operator<(const LEDataLocator& r) const {
+				return Value < r.Value;
+			}
+
+			bool operator>(const LEDataLocator& r) const {
+				return Value > r.Value;
+			}
+
+			bool operator==(const LEDataLocator& r) const {
+				if (IsSynonym || r.IsSynonym)
+					return IsSynonym == r.IsSynonym;
+				return Value == r.Value;
+			}
 		};
 
 		struct PairHashLocator {
@@ -250,7 +297,7 @@ namespace Sqex::Sqpack {
 			LE<uint32_t> HeaderSize;
 			LE<FileEntryType> Type;
 			LE<uint32_t> DecompressedSize;
-			
+
 			// See: https://github.com/reusu/FFXIVChnTextPatch/blob/08826ee37acd7461fc7a90f829ac1faee1f68933/src/main/java/name/yumao/ffxiv/chn/builder/BinaryBlockBuilder.java#L78
 			// Unknown1 does contain a value in original sqpack files, but the game works nonetheless when 0 is given.
 			LE<uint32_t> Unknown1;
@@ -267,7 +314,7 @@ namespace Sqex::Sqpack {
 			LE<uint32_t> FirstSubBlockIndex;
 			LE<uint32_t> SubBlockCount;
 		};
-		
+
 		struct ModelBlockLocator {
 			static const size_t EntryIndexMap[11];
 

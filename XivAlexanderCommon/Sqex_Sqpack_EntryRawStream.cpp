@@ -146,30 +146,18 @@ Sqex::Sqpack::EntryRawStream::TextureStreamDecoder::TextureStreamDecoder(const E
 		readOffset += std::span(Blocks.back().RemainingBlockSizes).size_bytes();
 	}
 
-	Head.reserve(Align(sizeof Texture::Header + 8 * sizeof uint32_t));
+	const auto mipmapOffsets = Underlying().ReadStreamIntoVector<uint32_t>(EntryHeader().HeaderSize + sizeof Texture::Header, locators.size());
+	if (sizeof Texture::Header + std::span(mipmapOffsets).size_bytes() > locators[0].FirstBlockOffset)
+		throw CorruptDataException("Mipmap offset entries overlap the first block");
 
-	readOffset = EntryHeader().HeaderSize;
-	Head.resize(sizeof Texture::Header);
-	Underlying().ReadStream(readOffset, std::span(Head));
-	const auto texHeader = *reinterpret_cast<const Texture::Header*>(&Head[0]);
-	readOffset += sizeof texHeader;
+	Head = Underlying().ReadStreamIntoVector<uint8_t>(EntryHeader().HeaderSize, mipmapOffsets[0]);
+	const auto& texHeader = *reinterpret_cast<const Texture::Header*>(&Head[0]);
 	if (texHeader.MipmapCount != locators.size())
 		throw CorruptDataException("MipmapCount != count(TextureBlockHeaderLocator)");
 
-	Head.resize(sizeof Texture::Header + texHeader.MipmapCount * sizeof uint32_t);
-	Underlying().ReadStream(readOffset, std::span(Head).subspan(sizeof Texture::Header));
-	const auto mipmapOffsets = Underlying().ReadStreamIntoVector<uint32_t>(readOffset, texHeader.MipmapCount);
-	if (sizeof texHeader + std::span(mipmapOffsets).size_bytes() > locators[0].FirstBlockOffset)
-		throw CorruptDataException("Mipmap offset entries overlap the first block");
-
-	if (!Blocks.empty()) {
-		if (mipmapOffsets[0] < Head.size())
-			throw CorruptDataException("First block overlaps header");
-		Head.resize(mipmapOffsets[0], 0);
-	}
-
+	Head.resize(mipmapOffsets[0]);
 	for (size_t i = 0; i < Blocks.size(); ++i)
-		Blocks[i].RequestOffset = mipmapOffsets[i] - static_cast<uint32_t>(Head.size());
+		Blocks[i].RequestOffset = mipmapOffsets[i] - mipmapOffsets[0];
 }
 
 uint64_t Sqex::Sqpack::EntryRawStream::TextureStreamDecoder::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) {
@@ -211,14 +199,19 @@ uint64_t Sqex::Sqpack::EntryRawStream::TextureStreamDecoder::ReadStreamPartial(u
 			++it;
 		} else {
 			const auto& blockHeader = info.AsHeader();
-			it = Blocks.emplace(++it, BlockInfo{
+			auto newBlockInfo = BlockInfo{
 				.RequestOffset = it->RequestOffset + blockHeader.DecompressedSize,
 				.BlockOffset = it->BlockOffset + it->RemainingBlockSizes.front(),
 				.MipmapIndex = it->MipmapIndex,
 				.RemainingDecompressedSize = it->RemainingDecompressedSize - blockHeader.DecompressedSize,
 				.RemainingBlockSizes = std::move(it->RemainingBlockSizes),
-			});
-			it->RemainingBlockSizes.erase(it->RemainingBlockSizes.begin());
+			};
+
+			++it;
+			if (it == Blocks.end() || (it->RequestOffset != newBlockInfo.RequestOffset && it->BlockOffset != newBlockInfo.BlockOffset)) {
+				newBlockInfo.RemainingBlockSizes.erase(newBlockInfo.RemainingBlockSizes.begin());
+				it = Blocks.emplace(it, std::move(newBlockInfo));
+			}
 		}
 
 		if (info.destination.empty())
