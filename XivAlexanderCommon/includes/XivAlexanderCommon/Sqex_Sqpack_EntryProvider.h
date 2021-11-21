@@ -24,7 +24,7 @@ namespace Sqex::Sqpack {
 			if (m_pathSpec != r)
 				return false;
 			if (!m_pathSpec.HasOriginal())
-				m_pathSpec.Original = r.Original;
+				m_pathSpec.FullPath = r.FullPath;
 			if (!m_pathSpec.HasFullPathHash())
 				m_pathSpec.FullPathHash = r.FullPathHash;
 			if (!m_pathSpec.HasComponentHash()) {

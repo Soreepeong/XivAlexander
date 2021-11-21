@@ -1059,7 +1059,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 												publishProgress();
 
 #ifdef _DEBUG
-												if (entryPathSpec.Original.extension() == L".exh") {
+												if (entryPathSpec.FullPath.extension() == L".exh") {
 													auto data2 = creator[entryPathSpec]->ReadStreamIntoVector<char>(0);
 													data2.resize(data2.size() - 2 * reinterpret_cast<Sqex::Excel::Exh::Header*>(&data2[0])->LanguageCount);
 													reinterpret_cast<Sqex::Excel::Exh::Header*>(&data2[0])->LanguageCount = static_cast<uint16_t>(exCreator->Languages.size());
@@ -1098,7 +1098,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 												}
 #endif
 
-												const auto targetPath = cachedDir / entryPathSpec.Original;
+												const auto targetPath = cachedDir / entryPathSpec.FullPath;
 
 												const auto provider = Sqex::Sqpack::MemoryBinaryEntryProvider(entryPathSpec, std::make_shared<Sqex::MemoryRandomAccessStream>(std::move(*reinterpret_cast<std::vector<uint8_t>*>(&data))));
 												const auto len = provider.StreamSize();
@@ -1110,7 +1110,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 												lastStep = "Write to filesystem";
 												const auto lock = std::lock_guard(writeMtx);
 												const auto entryLine = std::format("{}\n", nlohmann::json::object({
-													{"FullPath", Utils::ToUtf8(entryPathSpec.Original.wstring())},
+													{"FullPath", Utils::ToUtf8(entryPathSpec.FullPath.wstring())},
 													{"ModOffset", ttmpdPtr},
 													{"ModSize", len},
 													{"DatFile", "0a0000"},
@@ -1278,7 +1278,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 							"[{}/{}] {} file {}: (nameHash={:08x}, pathHash={:08x}, fullPathHash={:08x})",
 							creator.DatName, creator.DatExpac,
 							result.Added.empty() ? "Replaced" : "Added",
-							item->PathSpec().Original,
+							item->PathSpec().FullPath,
 							item->PathSpec().NameHash,
 							item->PathSpec().PathHash,
 							item->PathSpec().FullPathHash);
@@ -1405,7 +1405,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 										return;
 
 									std::shared_ptr<Sqex::Sqpack::EntryProvider> provider;
-									auto extension = entryPathSpec.Original.extension().wstring();
+									auto extension = entryPathSpec.FullPath.extension().wstring();
 									CharLowerW(&extension[0]);
 
 									if (extension == L".tex")
@@ -1420,7 +1420,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 										return;
 									const auto lock = std::lock_guard(writeMtx);
 									const auto entryLine = std::format("{}\n", nlohmann::json::object({
-										{"FullPath", Utils::ToUtf8(entryPathSpec.Original.wstring())},
+										{"FullPath", Utils::ToUtf8(entryPathSpec.FullPath.wstring())},
 										{"ModOffset", ttmpdPtr},
 										{"ModSize", len},
 										{"DatFile", "000000"},

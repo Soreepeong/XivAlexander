@@ -184,15 +184,16 @@ Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strict
 
 const Sqex::Sqpack::SqIndex::LEDataLocator& Sqex::Sqpack::Reader::GetLocator(const EntryPathSpec& pathSpec) const {
 	try {
+		if (pathSpec.HasFullPathHash()) {
+			const auto& locator = Index2.GetLocator(pathSpec.FullPathHash);
+			if (locator.IsSynonym)
+				return Index2.GetLocatorFromTextLocators(pathSpec.NativeRepresentation().c_str());
+			return locator;
+		}
 		if (pathSpec.HasComponentHash()) {
 			const auto& locator = Index1.GetLocator(pathSpec.PathHash, pathSpec.NameHash);
 			if (locator.IsSynonym)
-				return Index1.GetLocatorFromTextLocators(Utils::ToUtf8(pathSpec.Original.wstring()).c_str());
-			return locator;
-		} else if (pathSpec.HasFullPathHash()) {
-			const auto& locator = Index2.GetLocator(pathSpec.FullPathHash);
-			if (locator.IsSynonym)
-				return Index2.GetLocatorFromTextLocators(Utils::ToUtf8(pathSpec.Original.wstring()).c_str());
+				return Index1.GetLocatorFromTextLocators(pathSpec.NativeRepresentation().c_str());
 			return locator;
 		}
 	} catch (const std::out_of_range& e) {

@@ -512,7 +512,7 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 					.Locator = entry->Locator,
 					.ConflictIndex = i++,
 					});
-				const auto path = Utils::ToUtf8(entry->Provider->PathSpec().Original.wstring());
+				const auto path = entry->Provider->PathSpec().NativeRepresentation();
 				strncpy_s(conflictEntries1.back().FullPath, path.c_str(), path.size());
 			}
 		}
@@ -539,7 +539,7 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 					.Locator = entry->Locator,
 					.ConflictIndex = i++,
 					});
-				const auto path = Utils::ToUtf8(entry->Provider->PathSpec().Original.wstring());
+				const auto path = entry->Provider->PathSpec().NativeRepresentation();
 				strncpy_s(conflictEntries2.back().FullPath, path.c_str(), path.size());
 			}
 		}
