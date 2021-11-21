@@ -43,6 +43,7 @@
 #include <iphlpapi.h>
 #include <mstcpip.h>
 #include <PathCch.h>
+#include <propvarutil.h>
 #include <Psapi.h>
 #include <shellapi.h>
 #include <ShellScalingApi.h>
@@ -82,6 +83,7 @@ _COM_SMARTPTR_TYPEDEF(IFileOpenDialog, __uuidof(IFileOpenDialog));
 _COM_SMARTPTR_TYPEDEF(IShellItem, __uuidof(IShellItem));
 _COM_SMARTPTR_TYPEDEF(IShellItemArray, __uuidof(IShellItemArray));
 _COM_SMARTPTR_TYPEDEF(ITaskbarList3, __uuidof(ITaskbarList3));
+_COM_SMARTPTR_TYPEDEF(IPropertyStore, __uuidof(IPropertyStore));
 
 // Infrequently changed utility headers
 #include <XivAlexanderCommon/XaFormat.h>

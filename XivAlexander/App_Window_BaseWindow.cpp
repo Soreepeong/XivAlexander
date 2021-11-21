@@ -157,6 +157,19 @@ LRESULT App::Window::BaseWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 				m_hWndLastFocus = GetFocus();
 			break;
 
+		case WM_CREATE: {
+			IPropertyStorePtr store;
+			PROPERTYKEY pkey{};
+			PROPVARIANT pv{};
+			if (SUCCEEDED(PSGetPropertyKeyFromName(L"System.AppUserModel.ID", &pkey))
+				&& SUCCEEDED(SHGetPropertyStoreForWindow(hwnd, IID_IPropertyStore, reinterpret_cast<void**>(&store)))
+				&& SUCCEEDED(InitPropVariantFromString(L"Soreepeong.XivAlexander", &pv))) {
+				store->SetValue(pkey, pv);
+				PropVariantClear(&pv);
+			}
+			break;
+		}
+
 		case WM_SETFOCUS:
 			if (m_hWndLastFocus)
 				SetFocus(m_hWndLastFocus);
@@ -203,6 +216,15 @@ LRESULT App::Window::BaseWindow::OnSysCommand(WPARAM commandId, short xPos, shor
 
 void App::Window::BaseWindow::OnDestroy() {
 	OnDestroyListener();
+
+	IPropertyStorePtr store;
+	PROPERTYKEY pkey{};
+	if (SUCCEEDED(PSGetPropertyKeyFromName(L"System.AppUserModel.ID", &pkey))
+		&& SUCCEEDED(SHGetPropertyStoreForWindow(m_hWnd, IID_IPropertyStore, reinterpret_cast<void**>(&store)))) {
+		PROPVARIANT pv{};
+		PropVariantInit(&pv);
+		store->SetValue(pkey, pv);
+	}
 	m_bDestroyed = true;
 }
 
