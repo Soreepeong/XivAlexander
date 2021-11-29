@@ -51,6 +51,7 @@
 #include <Shlwapi.h>
 #include <ShObjIdl.h>
 #include <windowsx.h>
+#include <winhttp.h>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 

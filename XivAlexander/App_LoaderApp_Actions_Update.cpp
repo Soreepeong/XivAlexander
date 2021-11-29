@@ -185,6 +185,31 @@ void App::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(std::vect
 							req.setOpt(curlpp::options::Url(url));
 							req.setOpt(curlpp::options::UserAgent("Mozilla/5.0"));
 							req.setOpt(curlpp::options::FollowLocation(true));
+
+							if (WINHTTP_CURRENT_USER_IE_PROXY_CONFIG proxyInfo{}; WinHttpGetIEProxyConfigForCurrentUser(&proxyInfo)) {
+								std::wstring proxy;
+								std::vector<std::wstring> proxyBypass;
+								if (proxyInfo.lpszProxy) {
+									proxy = proxyInfo.lpszProxy;
+									GlobalFree(proxyInfo.lpszProxy);
+								}
+								if (proxyInfo.lpszProxyBypass) {
+									proxyBypass = Utils::StringSplit<std::wstring>(Utils::StringReplaceAll<std::wstring>(proxyInfo.lpszProxyBypass, L";", L" "), L" ");
+									GlobalFree(proxyInfo.lpszProxyBypass);
+								}
+								if (proxyInfo.lpszAutoConfigUrl)
+									GlobalFree(proxyInfo.lpszAutoConfigUrl);
+								bool noProxy = proxy.empty();
+								for (const auto& v : proxyBypass) {
+									if (lstrcmpiW(&v[0], L"api.github.com") == 0) {
+										noProxy = true;
+									}
+								}
+								if (!noProxy) {
+									req.setOpt(curlpp::options::Proxy(Utils::ToUtf8(proxy)));
+								}
+							}
+
 							f << req;
 						}
 					}
