@@ -49,13 +49,11 @@ Sqex::FontCsv::ModifiableFontCsvStream::ModifiableFontCsvStream(const RandomAcce
 }
 
 uint64_t Sqex::FontCsv::ModifiableFontCsvStream::StreamSize() const {
-	return static_cast<uint32_t>(
-		sizeof m_fcsv
+	return sizeof m_fcsv
 		+ sizeof m_fthd
 		+ std::span(m_fontTableEntries).size_bytes()
 		+ sizeof m_knhd
-		+ std::span(m_kerningEntries).size_bytes()
-	);
+		+ std::span(m_kerningEntries).size_bytes();
 }
 
 uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {

@@ -129,6 +129,9 @@ static void CheckObfuscatedArguments() {
 			auto config = App::Config::Acquire();
 			Sqex::CommandLine::WellKnown::SetLanguage(params, config->Runtime.RememberedGameLaunchLanguage);
 			Sqex::CommandLine::WellKnown::SetRegion(params, config->Runtime.RememberedGameLaunchRegion);
+			OutputDebugStringW(std::format(L"Parameters modified (language={} region={})\n",
+				static_cast<int>(config->Runtime.RememberedGameLaunchLanguage.Value()),
+				static_cast<int>(config->Runtime.RememberedGameLaunchRegion.Value())).c_str());
 		}
 
 		// Once this function is called, it means that this dll will stick to the process until it exits,
@@ -146,8 +149,8 @@ static void CheckObfuscatedArguments() {
 		static const auto h2 = GetCommandLineA.SetHook([]() -> LPSTR {
 			return &newlyCreatedArgumentsA[0];
 		});
-	} catch (...) {
-		// do nothing
+	} catch (const std::exception& e) {
+		OutputDebugStringW(std::format(L"Error in CheckObfuscatedArguments: {}\n", e.what()).c_str());
 	}
 }
 
