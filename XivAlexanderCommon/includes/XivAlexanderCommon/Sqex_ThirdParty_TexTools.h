@@ -27,6 +27,8 @@ namespace Sqex::ThirdParty::TexTools {
 		std::string DatFile;
 		bool IsDefault{};
 		std::optional<ModPackEntry> ModPack;
+
+		std::string ToExpacDatPath() const;
 	};
 	void to_json(nlohmann::json&, const ModEntry&);
 	void from_json(const nlohmann::json&, ModEntry&);

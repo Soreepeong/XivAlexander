@@ -251,6 +251,7 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "’u‚«Š·‚¦ƒtƒ@ƒCƒ‹‚ÌƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚é(&R)",      ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
+        MENUITEM "TTMPL/TTMPDƒtƒ@ƒCƒ‹‚É•ÏŠ·‚µ‚Ä•Û‘¶(&O)",  ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
         MENUITEM "ƒQ[ƒ€‚ðÄ‹N“®‚·‚é‚Ü‚Å“K—p‚³‚ê‚È‚¢ê‡‚ª‚ ‚è‚Ü‚·B",   ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
     END
@@ -541,7 +542,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_TITLE_INDEXINGFILES "ƒtƒ@ƒCƒ‹‚ðõˆø‚µ‚Ä‚¢‚Ü‚·c ({}/{}: {})"
+    IDS_TITLE_INDEXINGFILES "ƒtƒ@ƒCƒ‹‚ðõˆø‚µ‚Ä‚¢‚Ü‚·c({1}/{2}): {0}"
     IDS_TITLE_FINALIZING    "ƒtƒ@ƒCƒ‹‚Ì€”õ‚ðŠ®—¹‚µ‚Ä‚¢‚Ü‚·c"
     IDS_CONFIRM_REMOVE_MUSICIMPORTCONFIG "‰¹Šy‚Ì•ÔŠÒÝ’èƒtƒ@ƒCƒ‹""{}""‚ðƒŠƒXƒg‚©‚çŠO‚µ‚Ü‚·B"
     IDS_TITLE_ADD_MUSICDIRECTORY """{}""‚ÌŒ³‚Ì‰¹Šyƒtƒ@ƒCƒ‹‚ÌƒtƒHƒ‹ƒ_[‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
@@ -554,7 +555,7 @@ BEGIN
                             "“o˜^‚³‚ê‚½‚·‚×‚Ä‚Ì‰¹Šy‚Ì•ÔŠÒÝ’èƒtƒ@ƒCƒ‹‚ðƒŠƒXƒg‚©‚çŠO‚µ‚Ü‚·B"
     IDS_ERROR_MODDINGACTIVEREQUIRED "‚±‚Ì‹@”\‚Ì‚½‚ß‚É‚ÍMOD‚ª•K—v‚Å‚·B"
     IDS_ERROR_CANCELLING_TRYAGAINLATER "‘O‚ÌƒIƒyƒŒ[ƒVƒ‡ƒ“‚ðƒLƒƒƒ“ƒZƒ‹’†‚Å‚·B‚¿‚å‚Á‚ÆŒã‚Å‚à‚¤ˆê‰ñ‚µ‚Ä‚­‚¾‚³‚¢B"
-    IDS_TITLE_MUSICIMPORTPROGRESS "‰¹Šyƒtƒ@ƒCƒ‹‚ðƒGƒ“ƒR[ƒh’†cF{} ({}/{})"
+    IDS_TITLE_MUSICIMPORTPROGRESS "‰¹Šyƒtƒ@ƒCƒ‹‚ðƒGƒ“ƒR[ƒh‚µ‚Ä‚¢‚Ü‚·c({1}/{2}): {0}"
     IDS_FFMPEGREQUIRED_CONTENT 
                             "‚±‚ÌƒIƒyƒŒ[ƒVƒ‡ƒ“‚Ì‚½‚ß‚É‚ÍFFmpeg‚ª•K—v‚Å‚·Bƒ_ƒEƒ“ƒ[ƒh‚µ‚Ä‰º‚Ìƒ{ƒ^ƒ“‚ÅŠJ‚¯‚ç‚ê‚éƒtƒHƒ‹ƒ_[‚Éffprobe.exe‚Æffmpeg.exe‚ðƒJƒs‚µ‚Ä“ü‚ê‚Ä‚­‚¾‚³‚¢B\n\nWindows builds‚Ì’†‚Ìgyan.dev‚âBtbN‚â‰½‚Å‚àŽg‚Á‚Ä‚àOK‚Å‚·Bufullv‚âugplvƒo[ƒWƒ‡ƒ“‚ðƒ_ƒEƒ“ƒ[ƒh‚µ‚Ä‚­‚¾‚³‚¢B"
     IDS_FFMPEGREQUIRED_MAININSTRUCTIONS "FFmpeg‚ÌƒCƒ“ƒXƒg[ƒ‹"
@@ -567,6 +568,8 @@ STRINGTABLE
 BEGIN
     IDS_FFMPEGREQUIRED_NOTFOUND """{}""ƒtƒ@ƒCƒ‹‚ð’T‚¹‚Ü‚¹‚ñB"
     IDS_ERROR_GENERATEFONT2 "EXDFƒtƒ@ƒCƒ‹‚Ì¶¬‚ª‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B‚à‚¤ˆê‰ñ¶¬‚µ‚Ä‚¢Œ©‚Ü‚·B\n\nƒGƒ‰[F{}"
+    IDS_TITLE_EXPORTTTMPDIRECTORY "TTMPL/TTMPDƒtƒ@ƒCƒ‹‚Ì•Û‘¶ƒtƒHƒ‹ƒ_[‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
+    IDS_TITLE_EXPORTTTMPPROGRESS "TTMPƒtƒ@ƒCƒ‹ƒZƒbƒg‚É•ÏŠ·‚µ‚Ä‚¢‚Ü‚·c({1}/{2}): {0}"
 END
 
 #endif    // Japanese (Japan) resources
@@ -782,6 +785,7 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "±³Ã¼ ÆÄÀÏ Æú´õ ¿­±â(&R)",             ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
+        MENUITEM "TTMPL/TTMPDÆÄÀÏ·Î ³»º¸³»±â(&O)",     ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
         MENUITEM "°ÔÀÓ Àç½ÃÀÛ±îÁö º¯°æ »çÇ×ÀÌ ¹Ý¿µµÇÁö ¾ÊÀ» ¼öµµ ÀÖ½À´Ï´Ù.", ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
     END
@@ -1129,7 +1133,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_TITLE_INDEXINGFILES "ÆÄÀÏ »öÀÎ Áß... ({}/{}: {})"
+    IDS_TITLE_INDEXINGFILES "ÆÄÀÏ »öÀÎ Áß... ({1}/{2}): {0}"
     IDS_TITLE_FINALIZING    "ÆÄÀÏ ÁØºñ ¿Ï·á Áß..."
     IDS_CONFIRM_REMOVE_MUSICIMPORTCONFIG "À½¾Ç º¯È¯ ¼³Á¤ ÆÄÀÏ ""{}""À» ¸ñ·Ï¿¡¼­ Á¦°ÅÇÕ´Ï´Ù."
     IDS_TITLE_ADD_MUSICDIRECTORY """{}""¿¡ ÇØ´çÇÏ´Â ¿øº» À½¾Ç Æú´õ ¼±ÅÃÇÏ±â"
@@ -1142,7 +1146,7 @@ BEGIN
                             "¸ðµç À½¾Ç º¯È¯ ¼³Á¤ ÆÄÀÏÀ» Á¦°ÅÇÕ´Ï´Ù. (ÆÄÀÏÀº »èÁ¦ÇÏÁö ¾Ê½À´Ï´Ù.)"
     IDS_ERROR_MODDINGACTIVEREQUIRED "¸ðµùÀÌ ÄÑÁ® ÀÖ¾î¾ß »ç¿ëÇÒ ¼ö ÀÖ´Â ±â´ÉÀÔ´Ï´Ù."
     IDS_ERROR_CANCELLING_TRYAGAINLATER "¸¶Áö¸· ÀÛ¾÷À» Ãë¼Ò ÁßÀÔ´Ï´Ù. Àá½Ã ÈÄ ´Ù½Ã ½ÃµµÇØ ÁÖ¼¼¿ä."
-    IDS_TITLE_MUSICIMPORTPROGRESS "À½¾Ç ÆÄÀÏÀ» º¯È¯ Áß... {} ({}/{})"
+    IDS_TITLE_MUSICIMPORTPROGRESS "À½¾Ç ÆÄÀÏÀ» º¯È¯ Áß... ({1}/{2}): {0}"
     IDS_FFMPEGREQUIRED_CONTENT 
                             "ÀÌ ÀÛ¾÷À» À§ÇØ¼­´Â FFmpeg°¡ ÇÊ¿äÇÕ´Ï´Ù. ´Ù¿î·Îµå ÈÄ ¾Æ·¡ ¹öÆ°À¸·Î ¿­ ¼ö ÀÖ´Â Æú´õ¿¡ ffmpeg.exeÇÏ°í ffprobe.exe¸¦ º¹»çÇØ ³Ö¾î ÁÖ¼¼¿ä.\n\nWindows builds ¾ÈÀÌ¶ó¸é gyan.dev³ª BtbN³ª ¾î¶² ¼±ÅÃÁö¸¦ ½áµµ »ó°ü ¾ø½À´Ï´Ù. ""full"" ¶Ç´Â ""gpl"" ¹öÀüÀ» ´Ù¿î·Îµå¹Þ¾Æ ÁÖ¼¼¿ä."
     IDS_FFMPEGREQUIRED_MAININSTRUCTIONS "FFmpeg ¼³Ä¡ÇÏ±â"
@@ -1155,6 +1159,8 @@ STRINGTABLE
 BEGIN
     IDS_FFMPEGREQUIRED_NOTFOUND """{}"" ÆÄÀÏÀ» Ã£À» ¼ö ¾ø½À´Ï´Ù."
     IDS_ERROR_GENERATEFONT2 "EXDF ÆÄÀÏ »ý¼º/ºÒ·¯¿À±â Áß ¿À·ù°¡ ¹ß»ýÇß½À´Ï´Ù. ´Ù½Ã ½ÃµµÇÏ½Ã°Ú½À´Ï±î?\n\n¿À·ù: {}"
+    IDS_TITLE_EXPORTTTMPDIRECTORY "TTMPL/TTMPD ÆÄÀÏÀ» ÀúÀåÇÒ °æ·Î ¼±ÅÃÇÏ±â"
+    IDS_TITLE_EXPORTTTMPPROGRESS "TTMP ÆÄÀÏ·Î ³»º¸³»´Â Áß... ({1}/{2}): {0}"
 END
 
 #endif    // Korean (Korea) resources
@@ -1370,6 +1376,7 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "Open &Replacement File Entries Directory", ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
+        MENUITEM "Exp&ort to TTMPL/TTMPD Files", ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
         MENUITEM "Anything here will not be fully applied until game restart.", ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
     END
@@ -1856,7 +1863,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_TITLE_INDEXINGFILES "Indexing files... ({}/{}: {})"
+    IDS_TITLE_INDEXINGFILES "Indexing files... ({1}/{2}): {0}"
     IDS_TITLE_FINALIZING    "Finalizing..."
     IDS_CONFIRM_REMOVE_MUSICIMPORTCONFIG 
                             "Continue removing music import configuration file ""{}"" from the list?\n\nThis will not delete the file."
@@ -1872,7 +1879,7 @@ BEGIN
                             "Modding must be active to use this feature."
     IDS_ERROR_CANCELLING_TRYAGAINLATER 
                             "Cancelling previous operation. Please try again later."
-    IDS_TITLE_MUSICIMPORTPROGRESS "Encoding file {}... ({}/{})"
+    IDS_TITLE_MUSICIMPORTPROGRESS "Encoding files... ({1}/{2}): {0}"
     IDS_FFMPEGREQUIRED_CONTENT 
                             "FFmpeg is required for this operation. Please download and copy ffmpeg.exe and ffprobe.exe into the directory accessible from the button below.\n\nYou can use either gyan.dev or BtbN Windows builds. Use ""full"" or ""gpl"" version when you are given options with which file to download."
     IDS_FFMPEGREQUIRED_MAININSTRUCTIONS "Install FFmpeg"
@@ -1886,6 +1893,8 @@ BEGIN
     IDS_FFMPEGREQUIRED_NOTFOUND """{}"" could not be found."
     IDS_ERROR_GENERATESTRINGTABLES 
                             "An error has occurred while generating or loading string tables. Do you want to retry?\n\nError: {}"
+    IDS_TITLE_EXPORTTTMPDIRECTORY "Select a folder to save TTMPL/TTMPD files"
+    IDS_TITLE_EXPORTTTMPPROGRESS "Exporting files... ({1}/{2}): {0}"
 END
 
 #endif    // English (United States) resources

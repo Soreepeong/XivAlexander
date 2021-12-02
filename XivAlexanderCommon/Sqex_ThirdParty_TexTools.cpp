@@ -117,3 +117,10 @@ void Sqex::ThirdParty::TexTools::from_json(const nlohmann::json& j, TTMPL& p) {
 	if (const auto it = j.find("SimpleModsList"); it != j.end() && !it->is_null())
 		p.SimpleModsList = it->get<decltype(p.SimpleModsList)>();
 }
+
+std::string Sqex::ThirdParty::TexTools::ModEntry::ToExpacDatPath() const {
+	const auto expac = std::strtol(DatFile.substr(2, 2).c_str(), 0, 16);
+	if (expac == 0)
+		return std::format("ffxiv/{}", DatFile);
+	return std::format("ex{}/{}", expac, DatFile);
+}

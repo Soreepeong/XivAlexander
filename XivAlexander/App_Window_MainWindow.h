@@ -34,8 +34,8 @@ namespace App::Window {
 		const std::vector<std::pair<std::string, std::string>> m_launchParameters;
 		const std::wstring m_startupArgumentsForDisplay;
 
-		Utils::Win32::Thread m_replaceMusics;
-		std::shared_ptr<ProgressPopupWindow> m_replaceMusicsProgressWindow;
+		Utils::Win32::Thread m_backgroundWorkerThread;
+		std::shared_ptr<ProgressPopupWindow> m_backgroundWorkerProgressWindow;
 
 		std::map<uint16_t, std::function<void()>> m_menuIdCallbacks;
 

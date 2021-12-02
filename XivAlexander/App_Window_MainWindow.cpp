@@ -4,6 +4,7 @@
 #include <XivAlexander/XivAlexander.h>
 #include <XivAlexanderCommon/Sqex_CommandLine.h>
 #include <XivAlexanderCommon/Sqex_FontCsv_CreateConfig.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_EntryProvider.h>
 #include <XivAlexanderCommon/Sqex_Sound_MusicImporter.h>
 #include <XivAlexanderCommon/Sqex_ThirdParty_TexTools.h>
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
@@ -352,9 +353,9 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 void App::Window::MainWindow::OnDestroy() {
 	m_triggerUnload();
 
-	if (const auto replaceMusicsProgressWindow = decltype(m_replaceMusicsProgressWindow)(m_replaceMusicsProgressWindow))
+	if (const auto replaceMusicsProgressWindow = decltype(m_backgroundWorkerProgressWindow)(m_backgroundWorkerProgressWindow))
 		replaceMusicsProgressWindow->Cancel();
-	if (const auto replaceMusicsThread = decltype(m_replaceMusics)(m_replaceMusics))
+	if (const auto replaceMusicsThread = decltype(m_backgroundWorkerThread)(m_backgroundWorkerThread))
 		replaceMusicsThread.Wait();
 
 	m_runtimeConfigEditor = nullptr;
@@ -1442,10 +1443,10 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 	}
 
 	case ID_MODDING_REPLACEMUSICS_GENERATE: {
-		if (m_replaceMusics) {
-			const auto window = decltype(m_replaceMusicsProgressWindow)(m_replaceMusicsProgressWindow);
+		if (m_backgroundWorkerThread) {
+			const auto window = decltype(m_backgroundWorkerProgressWindow)(m_backgroundWorkerProgressWindow);
 			if (window && window->GetCancelEvent().Wait(0) == WAIT_TIMEOUT)
-				SetForegroundWindow(m_replaceMusicsProgressWindow->Handle());
+				SetForegroundWindow(m_backgroundWorkerProgressWindow->Handle());
 			else
 				Dll::MessageBoxF(m_hWnd, MB_ICONWARNING, IDS_ERROR_CANCELLING_TRYAGAINLATER);
 			return;
@@ -1517,10 +1518,10 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 				return;
 		}
 
-		m_replaceMusics = Utils::Win32::Thread(L"ReplaceMusicGeneratorOnOtherThread", [this, sqpacks, ffmpeg = ffmpeg, ffprobe = ffprobe] {
+		m_backgroundWorkerThread = Utils::Win32::Thread(L"ReplaceMusicGeneratorOnOtherThread", [this, sqpacks, ffmpeg = ffmpeg, ffprobe = ffprobe] {
 			const auto targetBasePath = m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries";
 
-			m_replaceMusicsProgressWindow = std::make_shared<ProgressPopupWindow>(nullptr);
+			m_backgroundWorkerProgressWindow = std::make_shared<ProgressPopupWindow>(nullptr);
 
 			size_t index = 0;
 			size_t count = 0;
@@ -1568,14 +1569,14 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 
 						count++;
 						tp.SubmitWork([&] {
-							if (m_replaceMusicsProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+							if (m_backgroundWorkerProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 								return;
 
 							pLastStartedTargetFile = &target.path.front();
 							++index;
 
 							try {
-								Sqex::Sound::MusicImporter importer(item.source, target, ffmpeg, ffprobe, m_replaceMusicsProgressWindow->GetCancelEvent());
+								Sqex::Sound::MusicImporter importer(item.source, target, ffmpeg, ffprobe, m_backgroundWorkerProgressWindow->GetCancelEvent());
 								const auto logger = importer.OnWarningLog([&](const std::string& s) {
 									m_logger->Format<LogLevel::Error>(LogCategory::MusicImporter, "{}: {}\n", target.path.front(), s);
 								});
@@ -1583,7 +1584,7 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 								importer.SetSamplingRate(m_config->Runtime.MusicImportTargetSamplingRate);
 								for (const auto& path : target.path)
 									importer.AppendReader(std::make_shared<Sqex::Sound::ScdReader>(sqpacks->GetOriginalEntry(path)));
-								if (m_replaceMusicsProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+								if (m_backgroundWorkerProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 									return;
 
 								auto resolved = false;
@@ -1591,7 +1592,7 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 									for (const auto& dirPath : dirPaths)
 										resolved |= importer.ResolveSources(dirName, Config::TranslatePath(dirPath));
 								}
-								if (m_replaceMusicsProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+								if (m_backgroundWorkerProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 									return;
 								if (!resolved)
 									throw std::runtime_error("Not all source files are found");
@@ -1601,7 +1602,7 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 									create_directories(targetPath.parent_path());
 									Utils::Win32::Handle::FromCreateFile(targetPath, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, 0).Write(0, std::span(data));
 								});
-								if (m_replaceMusicsProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+								if (m_backgroundWorkerProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 									return;
 							} catch (const std::exception& e) {
 								m_logger->Format<LogLevel::Error>(LogCategory::MusicImporter, "{}: {}\n", target.path.front(), e.what());
@@ -1613,16 +1614,16 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 			});
 
 			do {
-				m_replaceMusicsProgressWindow->UpdateMessage(m_config->Runtime.FormatStringRes(IDS_TITLE_MUSICIMPORTPROGRESS, pLastStartedTargetFile ? *pLastStartedTargetFile : std::filesystem::path{}, index, count));
+				m_backgroundWorkerProgressWindow->UpdateMessage(m_config->Runtime.FormatStringRes(IDS_TITLE_MUSICIMPORTPROGRESS, pLastStartedTargetFile ? *pLastStartedTargetFile : std::filesystem::path{}, index, count));
 				if (index == count)
-					m_replaceMusicsProgressWindow->UpdateProgress(0, 0);
+					m_backgroundWorkerProgressWindow->UpdateProgress(0, 0);
 				else
-					m_replaceMusicsProgressWindow->UpdateProgress(index, count);
-				m_replaceMusicsProgressWindow->Show();
-			} while (WAIT_TIMEOUT == m_replaceMusicsProgressWindow->DoModalLoop(100, { workerThread }));
+					m_backgroundWorkerProgressWindow->UpdateProgress(index, count);
+				m_backgroundWorkerProgressWindow->Show();
+			} while (WAIT_TIMEOUT == m_backgroundWorkerProgressWindow->DoModalLoop(100, { workerThread }));
 			workerThread.Wait();
-			m_replaceMusics = nullptr;
-			m_replaceMusicsProgressWindow = nullptr;
+			m_backgroundWorkerThread = nullptr;
+			m_backgroundWorkerProgressWindow = nullptr;
 		});
 		return;
 	}
@@ -1735,6 +1736,150 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 	case ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY:
 		EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries");
 		return;
+
+	case ID_MODDING_EXPORTTOTTMP: {
+		if (m_backgroundWorkerThread) {
+			const auto window = decltype(m_backgroundWorkerProgressWindow)(m_backgroundWorkerProgressWindow);
+			if (window && window->GetCancelEvent().Wait(0) == WAIT_TIMEOUT)
+				SetForegroundWindow(m_backgroundWorkerProgressWindow->Handle());
+			else
+				Dll::MessageBoxF(m_hWnd, MB_ICONWARNING, IDS_ERROR_CANCELLING_TRYAGAINLATER);
+			return;
+		}
+
+		std::filesystem::path targetDir;
+		try {
+			IFileOpenDialogPtr pDialog;
+			DWORD dwFlags;
+			Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
+			Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(m_config->Runtime.GetStringRes(IDS_TITLE_EXPORTTTMPDIRECTORY)));
+			Utils::Win32::Error::ThrowIfFailed(pDialog->GetOptions(&dwFlags));
+			Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM | FOS_PICKFOLDERS));
+			Utils::Win32::Error::ThrowIfFailed(pDialog->Show(m_hWnd), true);
+
+			IShellItemPtr pResult;
+			PWSTR pszFileName;
+			Utils::Win32::Error::ThrowIfFailed(pDialog->GetResult(&pResult));
+			Utils::Win32::Error::ThrowIfFailed(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
+			if (!pszFileName)
+				throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
+			const auto freeFileName = Utils::CallOnDestruction([pszFileName]() { CoTaskMemFree(pszFileName); });
+
+			targetDir = pszFileName;
+
+		} catch (const Utils::Win32::CancelledError&) {
+			return;
+
+		} catch (const std::exception& e) {
+			Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+			return;
+		}
+		auto ttmpl = Utils::Win32::Handle::FromCreateFile(targetDir / "TTMPL.mpl", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
+		auto ttmpd = Utils::Win32::Handle::FromCreateFile(targetDir / "TTMPD.mpd", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
+
+		m_backgroundWorkerThread = Utils::Win32::Thread(L"TtmpExporterOnOtherThread", [this, ttmpl = std::move(ttmpl), ttmpd = std::move(ttmpd)] {
+			uint64_t ttmplPtr = 0, ttmpdPtr = 0;
+
+			m_backgroundWorkerProgressWindow = std::make_shared<ProgressPopupWindow>(nullptr);
+
+			size_t index = 0;
+			size_t count = 0;
+			std::vector<std::pair<std::filesystem::path, std::wstring>> worklist;
+			const std::wstring* pLastStartedTargetFile = nullptr;
+
+			const auto workerThread = Utils::Win32::Thread(L"TtmpExporter", [&] {
+				const auto targetBasePath = m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries";
+				try {
+					for (const auto& target : std::filesystem::recursive_directory_iterator(targetBasePath))
+						if (target.is_regular_file()) {
+							worklist.push_back(std::make_pair(target.path(), relative(target.path(), targetBasePath).wstring()));
+							for (auto& c : worklist.back().second) {
+								if (c == L'\\')
+									c = '/';
+							}
+						}
+				} catch (const std::exception& e) {
+					Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+					return;
+				}
+
+				count = worklist.size();
+
+				for (const auto& [target, relPath]: worklist) {
+					pLastStartedTargetFile = &relPath;
+					try {
+						std::string datFile;
+						auto relPathLower(relPath);
+						CharLowerW(&relPathLower[0]);
+
+						if (auto relPathComponents = Utils::StringSplit<std::wstring>(relPathLower, L"/");
+							relPathComponents[0] == L"music")
+							datFile = std::format("0c{:0>2x}00", relPathComponents[1].starts_with(L"ex") ? std::wcstol(&relPathComponents[1][2], nullptr, 10) : 0);
+						else if (relPathComponents[0] == L"bg" && relPathComponents[1] == L"ffxiv")
+							datFile = "020000";
+						else if (relPathComponents[0] == L"bg" && relPathComponents[1].starts_with(L"ex")) // bg/ex1/04_sea_s2/...
+							datFile = std::format("02{:0>2x}{:0>2}", std::wcstol(&relPathComponents[1][2], nullptr, 10), std::wcstol(&relPathComponents[2][0], nullptr, 10));
+						else if (relPathComponents[0] == L"cut")
+							datFile = std::format("03{:0>2x}00", relPathComponents[1].starts_with(L"ex") ? std::wcstol(&relPathComponents[1][2], nullptr, 10) : 0);
+						else if (relPathComponents[0] == L"common")
+							datFile = "000000";
+						else if (relPathComponents[0] == L"bgcommon")
+							datFile = "010000";
+						else if (relPathComponents[0] == L"chara")
+							datFile = "040000";
+						else if (relPathComponents[0] == L"shader")
+							datFile = "050000";
+						else if (relPathComponents[0] == L"ui")
+							datFile = "060000";
+						else if (relPathComponents[0] == L"sound")
+							datFile = "070000";
+						else if (relPathComponents[0] == L"vfx")
+							datFile = "080000";
+						else if (relPathComponents[0] == L"exd")
+							datFile = "0a0000";
+						else if (relPathComponents[0] == L"game_script")
+							datFile = "0b0000";
+						else
+							throw std::runtime_error(std::format("Could not decide where to store {}", relPath));
+
+						const auto entryPathSpec = Sqex::Sqpack::EntryPathSpec(relPath);
+
+						const auto provider = Sqex::Sqpack::MemoryBinaryEntryProvider(entryPathSpec, std::make_shared<Sqex::FileRandomAccessStream>(target));
+						const auto len = provider.StreamSize();
+						const auto dv = provider.ReadStreamIntoVector<char>(0, static_cast<SSIZE_T>(len));
+
+						if (m_backgroundWorkerProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+							return;
+
+						const auto entryLine = std::format("{}\n", nlohmann::json::object({
+							{"FullPath", Utils::StringReplaceAll<std::string>(Utils::ToUtf8(entryPathSpec.FullPath.wstring()), "\\", "/")},
+							{"ModOffset", ttmpdPtr},
+							{"ModSize", len},
+							{"DatFile", datFile},
+							}).dump());
+						ttmplPtr += ttmpl.Write(ttmplPtr, std::span(entryLine));
+						ttmpdPtr += ttmpd.Write(ttmpdPtr, std::span(dv));
+						index++;
+					} catch (const std::exception& e) {
+						m_logger->Format<LogLevel::Error>(LogCategory::General, "{}: {}\n", target.wstring(), e.what());
+					}
+				}
+				});
+
+			do {
+				m_backgroundWorkerProgressWindow->UpdateMessage(m_config->Runtime.FormatStringRes(IDS_TITLE_EXPORTTTMPPROGRESS, pLastStartedTargetFile ? *pLastStartedTargetFile : std::wstring(), index, count));
+				if (index == count)
+					m_backgroundWorkerProgressWindow->UpdateProgress(0, 0);
+				else
+					m_backgroundWorkerProgressWindow->UpdateProgress(index, count);
+				m_backgroundWorkerProgressWindow->Show();
+			} while (WAIT_TIMEOUT == m_backgroundWorkerProgressWindow->DoModalLoop(100, { workerThread }));
+			workerThread.Wait();
+			m_backgroundWorkerThread = nullptr;
+			m_backgroundWorkerProgressWindow = nullptr;
+			});
+		return;
+	}
 	}
 }
 

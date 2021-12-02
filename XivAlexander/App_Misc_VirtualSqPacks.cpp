@@ -134,9 +134,12 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		// Step. Find placeholders to adjust
 		for (const auto& ttmp : TtmpSets) {
 			for (const auto& entry : ttmp.List.SimpleModsList) {
-				const auto it = SqpackViews.find(SqpackPath / std::format(L"ffxiv/{}.win32.index", entry.DatFile));
-				if (it == SqpackViews.end())
+				const auto v = SqpackPath / std::format(L"{}.win32.index", entry.ToExpacDatPath());
+				const auto it = SqpackViews.find(v);
+				if (it == SqpackViews.end()) {
+					Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "Failed to find {} as a sqpack file", v.c_str());
 					continue;
+				}
 
 				const auto pathSpec = Sqex::Sqpack::EntryPathSpec(entry.FullPath);
 				auto entryIt = it->second.HashOnlyEntries.find(pathSpec);
@@ -159,9 +162,12 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				for (const auto& modGroup : modPackPage.ModGroups) {
 					for (const auto& option : modGroup.OptionList) {
 						for (const auto& entry : option.ModsJsons) {
-							const auto it = SqpackViews.find(SqpackPath / std::format(L"ffxiv/{}.win32.index", entry.DatFile));
-							if (it == SqpackViews.end())
+							const auto v = SqpackPath / std::format(L"{}.win32.index", entry.ToExpacDatPath());
+							const auto it = SqpackViews.find(v);
+							if (it == SqpackViews.end()) {
+								Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "Failed to find {} as a sqpack file", v.c_str());
 								continue;
+							}
 
 							const auto pathSpec = Sqex::Sqpack::EntryPathSpec(entry.FullPath);
 							auto entryIt = it->second.HashOnlyEntries.find(pathSpec);
@@ -505,7 +511,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			});
 			
 			do {
-				progressWindow.UpdateMessage(Config->Runtime.FormatStringRes(IDS_TITLE_INDEXINGFILES, static_cast<size_t>(fileIndex), creators.size(), *pLastStartedIndexFile));
+				progressWindow.UpdateMessage(Config->Runtime.FormatStringRes(IDS_TITLE_INDEXINGFILES, *pLastStartedIndexFile, static_cast<size_t>(fileIndex), creators.size()));
 				progressWindow.UpdateProgress(progressValue, progressMax);
 			} while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, { loaderThread }));
 			pool.Cancel();
@@ -1110,7 +1116,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 												lastStep = "Write to filesystem";
 												const auto lock = std::lock_guard(writeMtx);
 												const auto entryLine = std::format("{}\n", nlohmann::json::object({
-													{"FullPath", Utils::ToUtf8(entryPathSpec.FullPath.wstring())},
+													{"FullPath", Utils::StringReplaceAll<std::string>(Utils::ToUtf8(entryPathSpec.FullPath.wstring()), "\\", "/")},
 													{"ModOffset", ttmpdPtr},
 													{"ModSize", len},
 													{"DatFile", "0a0000"},
@@ -1844,7 +1850,7 @@ void App::Misc::VirtualSqPacks::AddNewTtmp(const std::filesystem::path& ttmpl, b
 	pos->FixChoices();
 
 	for (const auto& entry : pos->List.SimpleModsList) {
-		const auto it = m_pImpl->SqpackViews.find(m_pImpl->SqpackPath / std::format(L"ffxiv/{}.win32.index", entry.DatFile));
+		const auto it = m_pImpl->SqpackViews.find(m_pImpl->SqpackPath / std::format(L"{}.win32.index", entry.ToExpacDatPath()));
 		if (it == m_pImpl->SqpackViews.end())
 			continue;
 
@@ -1868,7 +1874,7 @@ void App::Misc::VirtualSqPacks::AddNewTtmp(const std::filesystem::path& ttmpl, b
 		for (const auto& modGroup : modPackPage.ModGroups) {
 			for (const auto& option : modGroup.OptionList) {
 				for (const auto& entry : option.ModsJsons) {
-					const auto it = m_pImpl->SqpackViews.find(m_pImpl->SqpackPath / std::format(L"ffxiv/{}.win32.index", entry.DatFile));
+					const auto it = m_pImpl->SqpackViews.find(m_pImpl->SqpackPath / std::format(L"{}.win32.index", entry.ToExpacDatPath()));
 					if (it == m_pImpl->SqpackViews.end())
 						continue;
 

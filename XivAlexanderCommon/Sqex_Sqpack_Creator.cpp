@@ -191,9 +191,6 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddAllEntriesFromSi
 }
 
 void Sqex::Sqpack::Creator::ReserveSpacesFromTTMP(const ThirdParty::TexTools::TTMPL & ttmpl) {
-	if (DatExpac != "ffxiv")
-		return;
-
 	for (const auto& entry : ttmpl.SimpleModsList) {
 		if (entry.DatFile != DatName || entry.ModSize > UINT32_MAX)
 			continue;
