@@ -195,7 +195,7 @@ void App::Window::MainWindow::ApplyLanguage(WORD languageId) {
 	RepopulateMenu();
 
 	const auto title = std::format(L"{}: {}, {}, {}",
-		m_config->Runtime.GetStringRes(IDS_APP_NAME), GetCurrentProcessId(), m_gameReleaseInfo.CountryCode, m_gameReleaseInfo.GameVersion);
+		Dll::GetGenericMessageBoxTitle(), GetCurrentProcessId(), m_gameReleaseInfo.CountryCode, m_gameReleaseInfo.GameVersion);
 	SetWindowTextW(m_hWnd, title.c_str());
 	InvalidateRect(m_hWnd, nullptr, FALSE);
 }
