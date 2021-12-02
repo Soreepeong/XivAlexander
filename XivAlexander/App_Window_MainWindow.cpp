@@ -857,6 +857,10 @@ void App::Window::MainWindow::SetMenuStates() const {
 		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_EMOTE, config.MuteVoice_Emote, true);
 		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_LINE, config.MuteVoice_Line, true);
 
+		SetMenuState(hMenu, ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_HIGHESTPOSSIBLE, config.MusicImportTargetSamplingRate == 0, true);
+		SetMenuState(hMenu, ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_44100, config.MusicImportTargetSamplingRate == 44100, true);
+		SetMenuState(hMenu, ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_48000, config.MusicImportTargetSamplingRate == 48000, true);
+
 		SetMenuState(hMenu, ID_MODDING_CHANGEFONT_DISABLE, config.OverrideFontConfig.Value().empty(), true);
 	}
 
@@ -1576,6 +1580,7 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 									m_logger->Format<LogLevel::Error>(LogCategory::MusicImporter, "{}: {}\n", target.path.front(), s);
 								});
 
+								importer.SetSamplingRate(m_config->Runtime.MusicImportTargetSamplingRate);
 								for (const auto& path : target.path)
 									importer.AppendReader(std::make_shared<Sqex::Sound::ScdReader>(sqpacks->GetOriginalEntry(path)));
 								if (m_replaceMusicsProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
@@ -1621,6 +1626,18 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 		});
 		return;
 	}
+
+	case ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_HIGHESTPOSSIBLE:
+		m_config->Runtime.MusicImportTargetSamplingRate = 0;
+		return;
+
+	case ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_44100:
+		m_config->Runtime.MusicImportTargetSamplingRate = 44100;
+		return;
+
+	case ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_48000:
+		m_config->Runtime.MusicImportTargetSamplingRate = 48000;
+		return;
 
 	case ID_MODDING_TTMP_IMPORT: {
 		static const COMDLG_FILTERSPEC fileTypes[] = {

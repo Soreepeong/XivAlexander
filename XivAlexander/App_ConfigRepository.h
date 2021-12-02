@@ -238,6 +238,7 @@ namespace App {
 
 			Item<std::vector<std::filesystem::path>> MusicImportConfig = CreateConfigItem(this, "MusicImportConfig", std::vector<std::filesystem::path>());
 			Item<std::map<std::string, std::vector<std::filesystem::path>>> MusicImportConfig_Directories = CreateConfigItem(this, "MusicImportConfig_Directories", std::map<std::string, std::vector<std::filesystem::path>>());
+			Item<int> MusicImportTargetSamplingRate = CreateConfigItem(this, "MusicImportTargetSamplingRate", 0);
 			
 			RuntimeRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
 			~RuntimeRepository() override;

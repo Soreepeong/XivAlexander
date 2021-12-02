@@ -569,6 +569,21 @@
           }
         ]
       },
+      "AXIS_36_lobby.fdt": {
+        "height": 36,
+        "ascent": "game:AXIS_36",
+        "lineHeight": "game:AXIS_36",
+        "sources": [
+          {
+            "name": "game:AXIS_36"
+          },
+          {
+            "name": "dwrite:ComicSans:36",
+            "extendRange": false,
+            "replace": true
+          }
+        ]
+      },
       "Jupiter_16_lobby.fdt": {
         "height": 16,
         "ascent": "game:Jupiter_16",
@@ -624,6 +639,36 @@
           }
         ]
       },
+      "Jupiter_46_lobby.fdt": {
+        "height": 46,
+        "ascent": "game:Jupiter_46",
+        "lineHeight": "game:Jupiter_46",
+        "sources": [
+          {
+            "name": "game:Jupiter_46"
+          },
+          {
+            "name": "dwrite:ComicSans:46",
+            "extendRange": false,
+            "replace": true
+          }
+        ]
+      },
+      "Jupiter_90_lobby.fdt": {
+        "height": 90,
+        "ascent": "game:Jupiter_90",
+        "lineHeight": "game:Jupiter_90",
+        "sources": [
+          {
+            "name": "game:Jupiter_90"
+          },
+          {
+            "name": "dwrite:ComicSans:90",
+            "extendRange": false,
+            "replace": true
+          }
+        ]
+      },
       "Meidinger_16_lobby.fdt": {
         "height": 16,
         "ascent": "game:Meidinger_16",
@@ -641,6 +686,21 @@
         "sources": [
           {
             "name": "game:Meidinger_20"
+          }
+        ]
+      },
+      "Meidinger_40.fdt": {
+        "height": 40,
+        "ascent": "game:Meidinger_40",
+        "lineHeight": "game:Meidinger_40",
+        "sources": [
+          {
+            "name": "game:Meidinger_40"
+          },
+          {
+            "name": "dwrite:ComicSans:40",
+            "extendRange": false,
+            "replace": true
           }
         ]
       },
@@ -699,6 +759,21 @@
           },
           {
             "name": "dwrite:ComicSans:18",
+            "extendRange": false,
+            "replace": true
+          }
+        ]
+      },
+      "MiedingerMid_36.fdt": {
+        "height": 36,
+        "ascent": "game:MiedingerMid_36",
+        "lineHeight": "game:MiedingerMid_36",
+        "sources": [
+          {
+            "name": "game:MiedingerMid_36"
+          },
+          {
+            "name": "dwrite:ComicSans:36",
             "extendRange": false,
             "replace": true
           }

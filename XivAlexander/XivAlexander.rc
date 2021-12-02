@@ -215,6 +215,12 @@ BEGIN
             MENUITEM "íËã`ÉtÉ@ÉCÉãÇÃì«Ç›çûÇ›(&I)",             ID_MODDING_REPLACEMUSICS_IMPORT
             MENUITEM "ãÛÇ…Ç∑ÇÈ(&R)",                    ID_MODDING_REPLACEMUSICS_REMOVEALL
             MENUITEM "âπäyÉtÉ@ÉCÉãÇÉGÉìÉRÅ[Éh(&G)",            ID_MODDING_REPLACEMUSICS_GENERATE
+            POPUP "ÉTÉìÉvÉãÉåÅ[Ég(&S)"
+            BEGIN
+                MENUITEM "ç≈ëÂ(&H)",                      ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_HIGHESTPOSSIBLE
+                MENUITEM "48KHz(&8)",                   ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_48000
+                MENUITEM "44.1KHz(&4)",                 ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_44100
+            END
             MENUITEM SEPARATOR
             MENUITEM "(ãKë•Ç»Çµ)",                      ID_MODDING_REPLACEMUSICS_NORULESCONFIGURED, INACTIVE
             MENUITEM SEPARATOR
@@ -740,6 +746,12 @@ BEGIN
             MENUITEM "±‘ƒ¢ ∫“∑Øø¿±‚(&I)",                 ID_MODDING_REPLACEMUSICS_IMPORT
             MENUITEM "∫ÒøÏ±‚(&R)",                     ID_MODDING_REPLACEMUSICS_REMOVEALL
             MENUITEM "¿Ωæ« ∆ƒ¿œ ∫Ø»Ø«œ±‚(&G)",              ID_MODDING_REPLACEMUSICS_GENERATE
+            POPUP "ª˘«√∏µ ∑π¿Ã∆Æ(&S)"
+            BEGIN
+                MENUITEM "√÷¥Î(&H)",                      ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_HIGHESTPOSSIBLE
+                MENUITEM "48KHz(&8)",                   ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_48000
+                MENUITEM "44.1KHz(&4)",                 ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_44100
+            END
             MENUITEM SEPARATOR
             MENUITEM "(º≥¡§µ» ±‘ƒ¢ æ¯¿Ω)",                 ID_MODDING_REPLACEMUSICS_NORULESCONFIGURED, INACTIVE
             MENUITEM SEPARATOR
@@ -1322,6 +1334,12 @@ BEGIN
             MENUITEM "&Import Rules",               ID_MODDING_REPLACEMUSICS_IMPORT
             MENUITEM "&Remove All Rules",           ID_MODDING_REPLACEMUSICS_REMOVEALL
             MENUITEM "&Generate Music Files",       ID_MODDING_REPLACEMUSICS_GENERATE
+            POPUP "&Sampling Rate"
+            BEGIN
+                MENUITEM "&Highest possible",           ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_HIGHESTPOSSIBLE
+                MENUITEM "4&8KHz",                      ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_48000
+                MENUITEM "4&4.1KHz",                    ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_44100
+            END
             MENUITEM SEPARATOR
             MENUITEM "(No rules configured)",       ID_MODDING_REPLACEMUSICS_NORULESCONFIGURED, INACTIVE
             MENUITEM SEPARATOR
