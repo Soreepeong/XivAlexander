@@ -462,6 +462,23 @@
           }
         ]
       },
+      "AXIS_36_lobby.fdt": {
+        "height": 36,
+        "ascent": "game:AXIS_36",
+        "lineHeight": "game:AXIS_36",
+        "maxGlobalOffsetX": 2,
+        "sources": [
+          {
+            "name": "game:AXIS_36"
+          },
+          {
+            "name": "dwrite:NotoSansThai:36",
+            "ranges": [
+              "Thai"
+            ]
+          }
+        ]
+      },
       "Jupiter_16_lobby.fdt": {
         "height": 16,
         "ascent": "game:Jupiter_16",
@@ -502,6 +519,26 @@
           }
         ]
       },
+      "Jupiter_46_lobby.fdt": {
+        "height": 46,
+        "ascent": "game:Jupiter_46",
+        "lineHeight": "game:Jupiter_46",
+        "sources": [
+          {
+            "name": "game:Jupiter_46"
+          }
+        ]
+      },
+      "Jupiter_90_lobby.fdt": {
+        "height": 90,
+        "ascent": "game:Jupiter_90",
+        "lineHeight": "game:Jupiter_90",
+        "sources": [
+          {
+            "name": "game:Jupiter_90"
+          }
+        ]
+      },
       "Meidinger_16_lobby.fdt": {
         "height": 16,
         "ascent": "game:Meidinger_16",
@@ -519,6 +556,16 @@
         "sources": [
           {
             "name": "game:Meidinger_20"
+          }
+        ]
+      },
+      "Meidinger_40_lobby.fdt": {
+        "height": 40,
+        "ascent": "game:Meidinger_40",
+        "lineHeight": "game:Meidinger_40",
+        "sources": [
+          {
+            "name": "game:Meidinger_40"
           }
         ]
       },
@@ -562,6 +609,16 @@
           }
         ]
       },
+      "MiedingerMid_36_lobby.fdt": {
+        "height": 36,
+        "ascent": "game:MiedingerMid_36",
+        "lineHeight": "game:MiedingerMid_36",
+        "sources": [
+          {
+            "name": "game:MiedingerMid_36"
+          }
+        ]
+      },
       "TrumpGothic_184_lobby.fdt": {
         "height": 18.4,
         "ascent": "game:TrumpGothic_184",
@@ -589,6 +646,16 @@
         "sources": [
           {
             "name": "game:TrumpGothic_34"
+          }
+        ]
+      },
+      "TrumpGothic_68_lobby.fdt": {
+        "height": 68,
+        "ascent": "game:TrumpGothic_68",
+        "lineHeight": "game:TrumpGothic_68",
+        "sources": [
+          {
+            "name": "game:TrumpGothic_68"
           }
         ]
       }

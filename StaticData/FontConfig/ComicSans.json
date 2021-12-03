@@ -593,7 +593,7 @@
             "name": "game:Jupiter_16"
           },
           {
-            "name": "dwrite:ComicSans:18",
+            "name": "dwrite:ComicSans:16",
             "extendRange": false,
             "replace": true
           }
@@ -608,7 +608,7 @@
             "name": "game:Jupiter_20"
           },
           {
-            "name": "dwrite:ComicSans:24",
+            "name": "dwrite:ComicSans:20",
             "extendRange": false,
             "replace": true
           }
@@ -623,7 +623,7 @@
             "name": "game:Jupiter_23"
           },
           {
-            "name": "dwrite:ComicSans:24",
+            "name": "dwrite:ComicSans:23",
             "extendRange": false,
             "replace": true
           }
@@ -636,6 +636,11 @@
         "sources": [
           {
             "name": "game:Jupiter_45"
+          },
+          {
+            "name": "dwrite:ComicSans:45",
+            "extendRange": false,
+            "replace": true
           }
         ]
       },
@@ -676,6 +681,11 @@
         "sources": [
           {
             "name": "game:Meidinger_16"
+          },
+          {
+            "name": "dwrite:ComicSans:16",
+            "extendRange": false,
+            "replace": true
           }
         ]
       },
@@ -686,10 +696,15 @@
         "sources": [
           {
             "name": "game:Meidinger_20"
+          },
+          {
+            "name": "dwrite:ComicSans:20",
+            "extendRange": false,
+            "replace": true
           }
         ]
       },
-      "Meidinger_40.fdt": {
+      "Meidinger_40_lobby.fdt": {
         "height": 40,
         "ascent": "game:Meidinger_40",
         "lineHeight": "game:Meidinger_40",
@@ -764,7 +779,7 @@
           }
         ]
       },
-      "MiedingerMid_36.fdt": {
+      "MiedingerMid_36_lobby.fdt": {
         "height": 36,
         "ascent": "game:MiedingerMid_36",
         "lineHeight": "game:MiedingerMid_36",
@@ -819,6 +834,21 @@
           },
           {
             "name": "dwrite:ComicSans:36",
+            "extendRange": false,
+            "replace": true
+          }
+        ]
+      },
+      "TrumpGothic_68_lobby.fdt": {
+        "height": 68,
+        "ascent": "game:TrumpGothic_68",
+        "lineHeight": "game:TrumpGothic_68",
+        "sources": [
+          {
+            "name": "game:TrumpGothic_68"
+          },
+          {
+            "name": "dwrite:ComicSans:68",
             "extendRange": false,
             "replace": true
           }

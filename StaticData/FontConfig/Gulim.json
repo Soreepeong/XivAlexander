@@ -711,6 +711,27 @@
           }
         ]
       },
+      "AXIS_36_lobby.fdt": {
+        "height": 36,
+        "ascent": "game:AXIS_36",
+        "lineHeight": "game:AXIS_36",
+        "sources": [
+          {
+            "name": "game:AXIS_36"
+          },
+          {
+            "name": "freetype:Gulim:36",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:36",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
       "Jupiter_16_lobby.fdt": {
         "height": 16,
         "ascent": "game:Jupiter_16",
@@ -789,6 +810,42 @@
           }
         ]
       },
+      "Jupiter_46_lobby.fdt": {
+        "height": 46,
+        "ascent": "game:Jupiter_46",
+        "lineHeight": "game:Jupiter_46",
+        "sources": [
+          {
+            "name": "game:Jupiter_46"
+          },
+          {
+            "name": "freetype:Gulim:45",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:45",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "Jupiter_90_lobby.fdt": {
+        "height": 90,
+        "ascent": "game:Jupiter_90",
+        "lineHeight": "game:Jupiter_90",
+        "sources": [
+          {
+            "name": "game:Jupiter_90"
+          },
+          {
+            "name": "freetype:Gulim:90",
+            "extendRange": false,
+            "replace": true
+          }
+        ]
+      },
       "Meidinger_16_lobby.fdt": {
         "height": 16,
         "ascent": "game:Meidinger_16",
@@ -814,6 +871,21 @@
           },
           {
             "name": "freetype:Gulim:20",
+            "extendRange": false,
+            "replace": true
+          }
+        ]
+      },
+      "Meidinger_40_lobby.fdt": {
+        "height": 40,
+        "ascent": "game:Meidinger_40",
+        "lineHeight": "game:Meidinger_40",
+        "sources": [
+          {
+            "name": "game:Meidinger_40"
+          },
+          {
+            "name": "freetype:Gulim:40",
             "extendRange": false,
             "replace": true
           }
@@ -903,6 +975,27 @@
           }
         ]
       },
+      "MiedingerMid_36_lobby.fdt": {
+        "height": 36,
+        "ascent": "game:MiedingerMid_36",
+        "lineHeight": "game:MiedingerMid_36",
+        "sources": [
+          {
+            "name": "game:MiedingerMid_36"
+          },
+          {
+            "name": "freetype:Gulim:36",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:36",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
       "TrumpGothic_184_lobby.fdt": {
         "height": 18.4,
         "ascent": "game:TrumpGothic_184",
@@ -960,6 +1053,27 @@
           },
           {
             "name": "freetype:Gulim:36",
+            "ranges": [
+              "HangulMinimum"
+            ]
+          }
+        ]
+      },
+      "TrumpGothic_68_lobby.fdt": {
+        "height": 68,
+        "ascent": "game:TrumpGothic_68",
+        "lineHeight": "game:TrumpGothic_68",
+        "sources": [
+          {
+            "name": "game:TrumpGothic_68"
+          },
+          {
+            "name": "freetype:Gulim:68",
+            "extendRange": false,
+            "replace": true
+          },
+          {
+            "name": "freetype:Gulim:68",
             "ranges": [
               "HangulMinimum"
             ]

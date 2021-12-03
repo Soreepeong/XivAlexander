@@ -547,6 +547,26 @@
           }
         ]
       },
+      "AXIS_36_lobby.fdt": {
+        "height": 36,
+        "ascent": "game:AXIS_36",
+        "lineHeight": "game:AXIS_36",
+        "sources": [
+          {
+            "name": "game:ChnAXIS_180",
+            "offsetYModifier": 3
+          },
+          {
+            "name": "dwrite:SourceHanSansSC:36",
+            "replace": true,
+            "extendRange": false
+          },
+          {
+            "name": "game:AXIS_36",
+            "replace": true
+          }
+        ]
+      },
       "Jupiter_16_lobby.fdt": {
         "height": 16,
         "ascent": "game:Jupiter_16",
@@ -600,6 +620,37 @@
           }
         ]
       },
+      "Jupiter_46_lobby.fdt": {
+        "height": 46,
+        "ascent": "game:Jupiter_46",
+        "lineHeight": "game:Jupiter_46",
+        "maxGlobalOffsetX": 0,
+        "sources": [
+          {
+            "name": "game:ChnAXIS_180"
+          },
+          {
+            "name": "dwrite:SourceHanSansSC:36",
+            "replace": true,
+            "extendRange": false
+          },
+          {
+            "name": "game:Jupiter_46",
+            "replace": true
+          }
+        ]
+      },
+      "Jupiter_90_lobby.fdt": {
+        "height": 90,
+        "ascent": "game:Jupiter_90",
+        "lineHeight": "game:Jupiter_90",
+        "maxGlobalOffsetX": 0,
+        "sources": [
+          {
+            "name": "game:Jupiter_90"
+          }
+        ]
+      },
       "Meidinger_16_lobby.fdt": {
         "height": 16,
         "ascent": "game:Meidinger_16",
@@ -619,6 +670,17 @@
         "sources": [
           {
             "name": "game:Meidinger_20"
+          }
+        ]
+      },
+      "Meidinger_40_lobby.fdt": {
+        "height": 40,
+        "ascent": "game:Meidinger_40",
+        "lineHeight": "game:Meidinger_40",
+        "maxGlobalOffsetX": 0,
+        "sources": [
+          {
+            "name": "game:Meidinger_40"
           }
         ]
       },
@@ -678,6 +740,26 @@
           }
         ]
       },
+      "MiedingerMid_36_lobby.fdt": {
+        "height": 36,
+        "ascent": "game:MiedingerMid_36",
+        "lineHeight": "game:MiedingerMid_36",
+        "maxGlobalOffsetX": 0,
+        "sources": [
+          {
+            "name": "game:ChnAXIS_180"
+          },
+          {
+            "name": "dwrite:SourceHanSansSC:36",
+            "replace": true,
+            "extendRange": false
+          },
+          {
+            "name": "game:MiedingerMid_36",
+            "replace": true
+          }
+        ]
+      },
       "TrumpGothic_184_lobby.fdt": {
         "height": 18.4,
         "ascent": "game:TrumpGothic_184",
@@ -713,10 +795,36 @@
         "maxGlobalOffsetX": 0,
         "sources": [
           {
-            "name": "game:TrumpGothic_34"
+            "name": "game:ChnAXIS_180"
           },
           {
+            "name": "dwrite:SourceHanSansSC:36",
+            "replace": true,
+            "extendRange": false
+          },
+          {
+            "name": "game:TrumpGothic_34",
+            "replace": true
+          }
+        ]
+      },
+      "TrumpGothic_68_lobby.fdt": {
+        "height": 68,
+        "ascent": "game:TrumpGothic_68",
+        "lineHeight": "game:TrumpGothic_68",
+        "maxGlobalOffsetX": 0,
+        "sources": [
+          {
             "name": "game:ChnAXIS_180"
+          },
+          {
+            "name": "dwrite:SourceHanSansSC:36",
+            "replace": true,
+            "extendRange": false
+          },
+          {
+            "name": "game:TrumpGothic_68",
+            "replace": true
           }
         ]
       }
