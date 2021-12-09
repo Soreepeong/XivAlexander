@@ -277,7 +277,14 @@
     {"name": "quest/038/BanQiq114_03819", "id": 57, "column": 1, "forceLanguage": "Korean"},
     {"name": "quest/039/BanDwa108_03909", "id": 65, "column": 1, "forceLanguage": "Korean"},
     {"name": "quest/039/LucKra304_03978", "id": 141, "column": 1, "forceLanguage": "Korean"},
-    {"name": "quest/039/LucKta301_03952", "id": 101, "column": 1, "forceLanguage": "Korean"}
+    {"name": "quest/039/LucKta301_03952", "id": 101, "column": 1, "forceLanguage": "Korean"},
+    {"name": "quest/042/AktKze002_04241", "id": 52, "column": 1, "forceLanguage": "Korean"},
+    {"name": "quest/042/AktKze013_04252", "id": 55, "column": 1, "forceLanguage": "Korean"},
+    {"name": "quest/042/AktKzf007_04262", "id": 54, "column": 1, "forceLanguage": "Korean"},
+    {"name": "quest/043/AktKzi002_04317", "id": 65, "column": 1, "forceLanguage": "Korean"},
+    {"name": "quest/043/AktKzj008_04344", "id": 57, "column": 1, "forceLanguage": "Korean"},
+    {"name": "quest/044/AktKme107_04425", "id": 135, "column": 1, "forceLanguage": "Korean"},
+    {"name": "quest/044/AktKme107_04425", "id": 142, "column": 1, "forceLanguage": "Korean"}
   ],
   "rules": [
     {
