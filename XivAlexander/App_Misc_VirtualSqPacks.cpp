@@ -746,6 +746,12 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 											exCreator = std::make_unique<Sqex::Excel::Depth2ExhExdCreator>(exhName, *exhReaderSource.Columns, exhReaderSource.Header.SomeSortOfBufferSize);
 											exCreator->FillMissingLanguageFrom = fallbackLanguageList;
+											exCreator->AddLanguage(Sqex::Language::Japanese);
+											exCreator->AddLanguage(Sqex::Language::English);
+											exCreator->AddLanguage(Sqex::Language::German);
+											exCreator->AddLanguage(Sqex::Language::French);
+											exCreator->AddLanguage(Sqex::Language::ChineseSimplified);
+											exCreator->AddLanguage(Sqex::Language::Korean);
 
 											currentProgressMax = 1ULL * exhReaderSource.Languages.size() * exhReaderSource.Pages.size();
 											for (const auto language : exhReaderSource.Languages) {
@@ -811,6 +817,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 														const auto exdPathSpec = exhReaderCurrent.GetDataPathSpec(page, language);
 														try {
+															Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+																"[{}] Adding {}", exhName, exdPathSpec);
 															const auto exdReader = Sqex::Excel::ExdReader(exhReaderCurrent, (*reader)[exdPathSpec]);
 															exCreator->AddLanguage(language);
 															for (const auto i : exdReader.GetIds()) {
@@ -876,10 +884,12 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 											lastStep = "Find which language to use while filling current row if missing in other languages";
 											const std::vector<Sqex::Excel::ExdColumn>* referenceRowPtr = nullptr;
+											auto referenceRowLanguage = Sqex::Language::Unspecified;
 											for (const auto& l : exCreator->FillMissingLanguageFrom) {
 												if (auto it = rowSet.find(l);
 													it != rowSet.end()) {
 													referenceRowPtr = &it->second;
+													referenceRowLanguage = l;
 													break;
 												}
 											}
@@ -901,8 +911,41 @@ struct App::Misc::VirtualSqPacks::Implementation {
 															referenceRowUsedColumnIndices.insert(i);
 														} else {
 															if (row[i].String.Empty()) {
-																row[i] = referenceRow[i];
-																referenceRowUsedColumnIndices.insert(i);
+																// apply only if made of incompatible languages
+
+																int sourceLanguageType = 0, referenceLanguageType = 0;
+																switch (language) {
+																case Sqex::Language::Japanese:
+																case Sqex::Language::English:
+																case Sqex::Language::German:
+																case Sqex::Language::French:
+																	sourceLanguageType = 1;
+																	break;
+																case Sqex::Language::ChineseSimplified:
+																	sourceLanguageType = 2;
+																	break;
+																case Sqex::Language::Korean:
+																	sourceLanguageType = 3;
+																}
+
+																switch (referenceRowLanguage) {
+																case Sqex::Language::Japanese:
+																case Sqex::Language::English:
+																case Sqex::Language::German:
+																case Sqex::Language::French:
+																	referenceLanguageType = 1;
+																	break;
+																case Sqex::Language::ChineseSimplified:
+																	referenceLanguageType = 2;
+																	break;
+																case Sqex::Language::Korean:
+																	referenceLanguageType = 3;
+																}
+
+																if (sourceLanguageType != referenceLanguageType) {
+																	row[i] = referenceRow[i];
+																	referenceRowUsedColumnIndices.insert(i);
+																}
 															}
 														}
 													}
