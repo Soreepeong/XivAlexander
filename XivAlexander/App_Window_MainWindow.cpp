@@ -646,9 +646,9 @@ void App::Window::MainWindow::RepopulateMenu_Modding(HMENU hParentMenu) {
 				}
 			}), RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_TTMP_ENTRY_ENABLE).c_str());
 
-			AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, &ttmpSet, &sqpacks]() {
+			AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, &ttmpSet, sqpacks]() {
 				try {
-					if (Dll::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2, m_config->Runtime.GetStringRes(IDS_APP_NAME),
+					if (Dll::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2,
 						L"Delete \"{}\" at \"{}\"?", ttmpSet.List.Name, ttmpSet.ListPath.wstring()) == IDYES)
 						sqpacks->DeleteTtmp(ttmpSet.ListPath);
 				} catch (const std::exception& e) {
