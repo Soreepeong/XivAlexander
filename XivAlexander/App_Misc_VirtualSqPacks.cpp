@@ -888,6 +888,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 											const auto& referenceRow = *referenceRowPtr;
 
 											lastStep = "Fill missing rows for languages that aren't from source, and restore columns if unmodifiable";
+											std::set<size_t> referenceRowUsedColumnIndices;
 											for (const auto& language : exCreator->Languages) {
 												if (auto it = rowSet.find(language);
 													it == rowSet.end())
@@ -897,9 +898,12 @@ struct App::Misc::VirtualSqPacks::Implementation {
 													for (size_t i = 0; i < row.size(); ++i) {
 														if (referenceRow[i].Type != Sqex::Excel::Exh::String) {
 															row[i] = referenceRow[i];
+															referenceRowUsedColumnIndices.insert(i);
 														} else {
-															if (row[i].String.Empty())
+															if (row[i].String.Empty()) {
 																row[i] = referenceRow[i];
+																referenceRowUsedColumnIndices.insert(i);
+															}
 														}
 													}
 												}
@@ -920,6 +924,9 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 												for (size_t columnIndex = 0; columnIndex < row.size(); columnIndex++) {
 													if (row[columnIndex].Type != Sqex::Excel::Exh::String)
+														continue;
+
+													if (referenceRowUsedColumnIndices.find(columnIndex) != referenceRowUsedColumnIndices.end())
 														continue;
 
 													if (currentIgnoredCells) {
@@ -953,29 +960,36 @@ struct App::Misc::VirtualSqPacks::Implementation {
 																	throw std::invalid_argument(std::format("Column {} of sourceLanguage {} in {} is not a string column", columnIndex, static_cast<int>(ruleSourceLanguage), exhName));
 
 																auto readColumnIndex = columnIndex;
+																bool normalizeToCapital = false;
 																switch (ruleSourceLanguage) {
 																	case Sqex::Language::English:
-																		// add stuff if stuff happens(tm)
-																		break;
-
 																	case Sqex::Language::German:
 																	case Sqex::Language::French:
-																		// add stuff if stuff happens(tm)
+																		switch (language) {
+																			case Sqex::Language::Japanese:
+																			case Sqex::Language::ChineseSimplified:
+																			case Sqex::Language::ChineseTraditional:
+																			case Sqex::Language::Korean:
+																				normalizeToCapital = true;
+																		}
 																		break;
 
 																	case Sqex::Language::Japanese:
 																	case Sqex::Language::ChineseSimplified:
 																	case Sqex::Language::ChineseTraditional:
 																	case Sqex::Language::Korean: {
-																		if (pluralColummIndices.capitalizedColumnIndex != ExcelTransformConfig::PluralColumns::Index_NoColumn) {
-																			if (readColumnIndex == pluralColummIndices.pluralColumnIndex
-																				|| readColumnIndex == pluralColummIndices.singularColumnIndex)
-																				readColumnIndex = pluralColummIndices.capitalizedColumnIndex;
-																		} else {
-																			if (readColumnIndex == pluralColummIndices.pluralColumnIndex)
-																				readColumnIndex = pluralColummIndices.singularColumnIndex;
-																		}
+																		normalizeToCapital = true;
 																		break;
+																	}
+																}
+																if (normalizeToCapital) {
+																	if (pluralColummIndices.capitalizedColumnIndex != ExcelTransformConfig::PluralColumns::Index_NoColumn) {
+																		if (readColumnIndex == pluralColummIndices.pluralColumnIndex
+																			|| readColumnIndex == pluralColummIndices.singularColumnIndex)
+																			readColumnIndex = pluralColummIndices.capitalizedColumnIndex;
+																	} else {
+																		if (readColumnIndex == pluralColummIndices.pluralColumnIndex)
+																			readColumnIndex = pluralColummIndices.singularColumnIndex;
 																	}
 																}
 																if (const auto rules = rule.preprocessReplacements.find(ruleSourceLanguage); rules != rule.preprocessReplacements.end()) {
@@ -991,14 +1005,16 @@ struct App::Misc::VirtualSqPacks::Implementation {
 															} else
 																p.emplace_back();
 														}
+														while (p.size() < 16)
+															p.emplace_back();
 
 														auto allSame = true;
 														size_t nonEmptySize = 0;
 														size_t lastNonEmptyIndex = 1;
 														for (size_t i = 1; i < p.size(); ++i) {
-															if (p[i] != p[0])
-																allSame = false;
 															if (!p[i].empty()) {
+																if (p[i] != p[1])
+																	allSame = false;
 																nonEmptySize++;
 																lastNonEmptyIndex = i;
 															}
@@ -1008,33 +1024,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 															out = p[1];
 														else if (nonEmptySize <= 1)
 															out = p[lastNonEmptyIndex];
-														else {
-															switch (p.size()) {
-																case 1:
-																	out = std::format(rule.replaceTo, p[0]);
-																	break;
-																case 2:
-																	out = std::format(rule.replaceTo, p[0], p[1]);
-																	break;
-																case 3:
-																	out = std::format(rule.replaceTo, p[0], p[1], p[2]);
-																	break;
-																case 4:
-																	out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3]);
-																	break;
-																case 5:
-																	out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3], p[4]);
-																	break;
-																case 6:
-																	out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3], p[4], p[5]);
-																	break;
-																case 7:
-																	out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3], p[4], p[5], p[6]);
-																	break;
-																default:
-																	throw std::invalid_argument("Only up to 7 source languages are supported");
-															}
-														}
+														else
+															out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
 
 														Sqex::EscapedString escaped(out);
 														if (!rule.postprocessReplacements.empty()) {
