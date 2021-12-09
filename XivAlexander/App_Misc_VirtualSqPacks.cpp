@@ -578,7 +578,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				for (const auto& pair : Sqex::Excel::ExlReader(*creator["exd/root.exl"]))
 					exhTable.emplace(pair);
 
-				std::string currentCacheKeys("VERSION:2\n");
+				std::string currentCacheKeys("VERSION:3\n");
 				{
 					const auto gameRoot = indexFile.parent_path().parent_path().parent_path();
 					const auto versionFile = Utils::Win32::Handle::FromCreateFile(gameRoot / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
@@ -897,6 +897,9 @@ struct App::Misc::VirtualSqPacks::Implementation {
 													for (size_t i = 0; i < row.size(); ++i) {
 														if (referenceRow[i].Type != Sqex::Excel::Exh::String) {
 															row[i] = referenceRow[i];
+														} else {
+															if (row[i].String.Empty())
+																row[i] = referenceRow[i];
 														}
 													}
 												}
