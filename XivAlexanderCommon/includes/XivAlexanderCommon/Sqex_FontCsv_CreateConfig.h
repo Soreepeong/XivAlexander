@@ -49,6 +49,7 @@ namespace Sqex::FontCsv::CreateConfig {
 		DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE_NORMAL;
 		DWRITE_FONT_STRETCH stretch = DWRITE_FONT_STRETCH_NORMAL;
 		int advanceWidthDelta{};
+		int oversampleScale = 1;
 	};
 	void to_json(nlohmann::json& j, const DirectWriteSource& o);
 	void from_json(const nlohmann::json& j, DirectWriteSource& o);
@@ -63,12 +64,14 @@ namespace Sqex::FontCsv::CreateConfig {
 		DWRITE_FONT_STRETCH stretch = DWRITE_FONT_STRETCH_NORMAL;
 		uint32_t loadFlags{};
 		int advanceWidthDelta{};
+		int oversampleScale = 1;
 	};
 	void to_json(nlohmann::json& j, const FreeTypeSource& o);
 	void from_json(const nlohmann::json& j, FreeTypeSource& o);
 
 	struct GdiSource : LOGFONTW {
 		int advanceWidthDelta{};
+		int oversampleScale = 1;
 	};
 	void to_json(nlohmann::json& j, const GdiSource& o);
 	void from_json(const nlohmann::json& j, GdiSource& o);

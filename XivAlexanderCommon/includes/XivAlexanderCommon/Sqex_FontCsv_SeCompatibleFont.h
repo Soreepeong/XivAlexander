@@ -17,7 +17,7 @@ namespace Sqex::FontCsv {
 		[[nodiscard]] SSIZE_T Width() const { return right - left; }
 		[[nodiscard]] SSIZE_T Height() const { return bottom - top; }
 		[[nodiscard]] SSIZE_T Area() const { return Width() * Height(); }
-		[[nodiscard]] bool EffectivelyEmpty() const { return empty || (left == right && top == bottom); }
+		[[nodiscard]] bool EffectivelyEmpty() const { return empty || left == right || top == bottom; }
 
 		GlyphMeasurement& SetFrom(const RECT& r, bool keepAdvanceXIfNotEmpty = true) {
 			empty = !r.left && !r.top && !r.right && !r.bottom;

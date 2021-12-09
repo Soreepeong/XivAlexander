@@ -657,8 +657,13 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				newFont->AdvanceWidthDelta(source.advanceWidthDelta);
 
 			} else if (const auto& source = inputFontSource.gdiSource; inputFontSource.isGdiSource) {
-				newFont = std::make_shared<GdiDrawingFont<uint8_t>>(source);
+				auto s2(source);
+				s2.lfHeight *= source.oversampleScale;
+				newFont = std::make_shared<GdiDrawingFont<uint8_t>>(s2);
 				newFont->AdvanceWidthDelta(source.advanceWidthDelta);
+
+				if (source.oversampleScale > 1)
+					newFont = std::make_shared<Sqex::FontCsv::SeOversampledFont<uint8_t>>(std::move(newFont), source.oversampleScale);
 
 			} else if (const auto& source = inputFontSource.directWriteSource; inputFontSource.isDirectWriteSource) {
 				std::shared_ptr<DirectWriteDrawingFont<uint8_t>> dfont;
@@ -670,7 +675,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				if (!source.fontFile.empty()) {
 					try {
 						dfont = std::make_shared<DirectWriteDrawingFont<uint8_t>>(
-							source.fontFile, source.faceIndex, static_cast<float>(source.height), source.renderMode
+							source.fontFile, source.faceIndex, static_cast<float>(source.height * source.oversampleScale), source.renderMode
 						);
 					} catch (const std::exception& e) {
 						if (source.familyName.empty())
@@ -682,7 +687,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				if (!dfont && !source.familyName.empty()) {
 					try {
 						dfont = std::make_shared<DirectWriteDrawingFont<uint8_t>>(
-							FromUtf8(source.familyName).c_str(), static_cast<float>(source.height), static_cast<DWRITE_FONT_WEIGHT>(source.weight), source.stretch, source.style, source.renderMode
+							FromUtf8(source.familyName).c_str(), static_cast<float>(source.height * source.oversampleScale), static_cast<DWRITE_FONT_WEIGHT>(source.weight), source.stretch, source.style, source.renderMode
 						);
 					} catch (const std::exception& e) {
 						if (!accumulatedError.empty())
@@ -697,7 +702,10 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				if (source.measureUsingFreeType)
 					dfont->SetMeasureWithFreeType();
 				newFont = std::move(dfont);
-				newFont->AdvanceWidthDelta(source.advanceWidthDelta);
+				newFont->AdvanceWidthDelta(source.advanceWidthDelta * source.oversampleScale);
+
+				if (source.oversampleScale > 1)
+					newFont = std::make_shared<Sqex::FontCsv::SeOversampledFont<uint8_t>>(std::move(newFont), source.oversampleScale);
 
 			} else if (const auto& source = inputFontSource.freeTypeSource; inputFontSource.isFreeTypeSource) {
 				if (source.fontFile.empty() && source.familyName.empty())
@@ -707,7 +715,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				if (!source.fontFile.empty()) {
 					try {
 						newFont = std::make_shared<FreeTypeDrawingFont<uint8_t>>(
-							source.fontFile, source.faceIndex, static_cast<float>(source.height), source.loadFlags
+							source.fontFile, source.faceIndex, static_cast<float>(source.height * source.oversampleScale), source.loadFlags
 						);
 					} catch (const std::exception& e) {
 						if (source.familyName.empty())
@@ -719,7 +727,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				if (!newFont && !source.familyName.empty()) {
 					try {
 						newFont = std::make_shared<FreeTypeDrawingFont<uint8_t>>(
-							FromUtf8(source.familyName).c_str(), static_cast<float>(source.height), static_cast<DWRITE_FONT_WEIGHT>(source.weight), source.stretch, source.style, source.loadFlags
+							FromUtf8(source.familyName).c_str(), static_cast<float>(source.height * source.oversampleScale), static_cast<DWRITE_FONT_WEIGHT>(source.weight), source.stretch, source.style, source.loadFlags
 						);
 					} catch (const std::exception& e) {
 						if (!accumulatedError.empty())
@@ -731,7 +739,11 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				if (!newFont)
 					throw std::invalid_argument(accumulatedError);
 
-				newFont->AdvanceWidthDelta(source.advanceWidthDelta);
+				newFont->AdvanceWidthDelta(source.advanceWidthDelta * source.oversampleScale);
+
+				if (source.oversampleScale > 1)
+					newFont = std::make_shared<Sqex::FontCsv::SeOversampledFont<uint8_t>>(std::move(newFont), source.oversampleScale);
+
 			} else
 				throw std::invalid_argument("Could not identify which font to load.");
 
@@ -833,8 +845,8 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 											for (const auto& range : Config.ranges.at(rangeName).ranges | std::views::values) {
 												for (auto i = range.from; i < range.to; ++i)
 													creator.AddCharacter(i, &sourceFont, source.replace, source.extendRange, source.offsetXModifier, source.offsetYModifier);
-												if (range.from != range.to)  // separate line to prevent overflow (i < range.to might never be false)
-													creator.AddCharacter(range.to, &sourceFont, source.replace, source.extendRange, source.offsetXModifier, source.offsetYModifier);
+												// separate line to prevent overflow (i < range.to might never be false)
+												creator.AddCharacter(range.to, &sourceFont, source.replace, source.extendRange, source.offsetXModifier, source.offsetYModifier);
 
 												if (Cancelled)
 													return;

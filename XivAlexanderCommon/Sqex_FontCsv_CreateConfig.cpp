@@ -159,6 +159,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const DirectWriteSo
 		{"stretch", o.stretch},
 		{"measureUsingFreeType", o.measureUsingFreeType},
 		{"advanceWidthDelta", o.advanceWidthDelta},
+		{"oversampleScale", o.oversampleScale},
 	});
 }
 
@@ -177,6 +178,7 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, DirectWrite
 		o.stretch = j.value(lastAttempt = "stretch", DWRITE_FONT_STRETCH_NORMAL);
 		o.measureUsingFreeType = j.value(lastAttempt = "measureUsingFreeType", false);
 		o.advanceWidthDelta = j.value(lastAttempt = "advanceWidthDelta", 0);
+		o.oversampleScale = j.value(lastAttempt = "oversampleScale", 1);
 	} catch (const std::exception& e) {
 		throw std::invalid_argument(std::format("[{}] {}", lastAttempt, e.what()));
 	}
@@ -215,6 +217,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const FreeTypeSourc
 		{"style", o.style},
 		{"stretch", o.stretch},
 		{"advanceWidthDelta", o.advanceWidthDelta},
+		{"oversampleScale", o.oversampleScale},
 	});
 }
 
@@ -231,6 +234,7 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, FreeTypeSou
 		o.style = j.value(lastAttempt = "style", DWRITE_FONT_STYLE_NORMAL);
 		o.stretch = j.value(lastAttempt = "stretch", DWRITE_FONT_STRETCH_NORMAL);
 		o.advanceWidthDelta = j.value(lastAttempt = "advanceWidthDelta", 0);
+		o.oversampleScale = j.value(lastAttempt = "oversampleScale", 1);
 		o.loadFlags = 0;
 		for (auto& flag : StringSplit<std::string>(j.value(lastAttempt = "loadFlags", ""), "|")) {
 			CharUpperA(&flag[0]);
@@ -280,6 +284,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const GdiSource& o)
 		{"lfPitchAndFamily", o.lfPitchAndFamily},
 		{"faceName", ToUtf8(o.lfFaceName)},
 		{"advanceWidthDelta", o.advanceWidthDelta},
+		{"oversampleScale", o.oversampleScale},
 	});
 }
 
@@ -302,6 +307,7 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, GdiSource& 
 		const auto faceName = FromUtf8(j.at(lastAttempt = "faceName").get<std::string>());
 		wcsncpy_s(o.lfFaceName, &faceName[0], faceName.size());
 		o.advanceWidthDelta = j.value(lastAttempt = "advanceWidthDelta", 0);
+		o.oversampleScale = j.value(lastAttempt = "oversampleScale", 1);
 	} catch (const std::exception& e) {
 		throw std::invalid_argument(std::format("[{}] {}", lastAttempt, e.what()));
 	}

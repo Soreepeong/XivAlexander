@@ -304,7 +304,7 @@ namespace Sqex::FontCsv {
 			return bbox;
 		}
 
-		GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, const char32_t c, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity = MaxOpacity, OpacityType bgOpacity = MaxOpacity) const override {
+		GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, char32_t c, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity = MaxOpacity, OpacityType bgOpacity = MaxOpacity) const override {
 			const auto entry = GetStream().GetFontEntry(c);
 			if (!entry)  // skip missing characters
 				return {};
@@ -344,6 +344,118 @@ namespace Sqex::FontCsv {
 					return currBbox;
 			}
 			return { true };
+		}
+	};
+
+	template<typename DestPixFmt = Texture::RGBA8888, typename OpacityType = uint8_t>
+	class SeOversampledFont : public SeCompatibleDrawableFont<DestPixFmt, OpacityType> {
+		const std::shared_ptr<SeCompatibleDrawableFont<DestPixFmt, OpacityType>> m_underlying;
+		const int m_scale;
+
+		mutable std::optional<std::map<std::pair<char32_t, char32_t>, SSIZE_T>> m_kerningTable;
+
+		static uint32_t ResolverFunction(const uint8_t& n) {
+			return n;
+		}
+
+	public:
+		using SeCompatibleDrawableFont<DestPixFmt, OpacityType>::MaxOpacity;
+
+		SeOversampledFont(std::shared_ptr<SeCompatibleDrawableFont<DestPixFmt, OpacityType>> underlying, int scale)
+			: m_underlying(std::move(underlying))
+			, m_scale(scale) {
+		}
+
+		bool HasCharacter(char32_t c) const override {
+			return m_underlying->HasCharacter(c);
+		}
+
+		float Size() const override {
+			return (m_underlying->Size() + m_scale - 1) / m_scale;
+		}
+
+		const std::vector<char32_t>& GetAllCharacters() const override {
+			return m_underlying->GetAllCharacters();
+		}
+
+		uint32_t Ascent() const override {
+			return (m_underlying->Ascent() + m_scale - 1) / m_scale;
+		}
+
+		uint32_t LineHeight() const override {
+			return (m_underlying->LineHeight() + m_scale - 1) / m_scale;
+		}
+
+		const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& GetKerningTable() const override {
+			if (!m_kerningTable) {
+				m_kerningTable = std::map<std::pair<char32_t, char32_t>, SSIZE_T>{};
+				for (const auto& [k, v] : m_underlying->GetKerningTable()) {
+					if (v / m_scale)
+						m_kerningTable->insert_or_assign(k, v / m_scale);
+				}
+			}
+			return *m_kerningTable;
+		}
+
+		SSIZE_T GetKerning(char32_t l, char32_t r, SSIZE_T defaultOffset = 0) const override {
+			const auto& kt = GetKerningTable();
+			if (const auto it = kt.find(std::make_pair(l, r)); it == kt.end())
+				return defaultOffset;
+			else
+				return it->second;
+		}
+
+		GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const override {
+			auto size2 = m_underlying->Measure(0, 0, c);
+			size2.left /= m_scale;
+			size2.top /= m_scale;
+			size2.right = (size2.right + m_scale - 1) / m_scale;
+			size2.bottom = (size2.bottom + m_scale - 1) / m_scale;
+			size2.advanceX /= m_scale;
+			size2.Translate(x, y);
+			return size2;
+		}
+
+		using SeCompatibleDrawableFont<DestPixFmt, OpacityType>::Draw;
+		GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, char32_t c, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity = MaxOpacity, OpacityType bgOpacity = MaxOpacity) const override {
+			auto size1 = m_underlying->Measure(0, 0, c);
+			auto size2 = GlyphMeasurement(size1);
+			size2.left /= m_scale;
+			size2.top /= m_scale;
+			size2.right = size1.left == size2.right ? size2.left : (size2.right + m_scale - 1) / m_scale;
+			size2.bottom = size1.top == size2.bottom ? size2.top : (size2.bottom + m_scale - 1) / m_scale;
+			size2.advanceX /= m_scale;
+			if (size2.EffectivelyEmpty())
+				return size2;
+
+			const auto tex1baseleft = size1.left > 0 ? 0 : -size1.left;
+			const auto tex1basetop = size1.top > 0 ? 0 : -size1.top;
+			Texture::MemoryBackedMipmap tex1(static_cast<uint16_t>(tex1baseleft + size1.right), static_cast<uint16_t>(tex1basetop + size1.bottom), Texture::Format::L8_1);
+			auto buf1 = tex1.View<uint8_t>();
+			m_underlying->Draw(&tex1, tex1baseleft, tex1basetop, c, 0xFF, 0x00);
+
+			const auto tex2baseleft = size2.left > 0 ? 0 : -size2.left;
+			const auto tex2basetop = size2.top > 0 ? 0 : -size2.top;
+			Texture::MemoryBackedMipmap tex2(static_cast<uint16_t>(tex2baseleft + size2.right), static_cast<uint16_t>(tex2basetop + size2.bottom), Texture::Format::L8_1);
+			auto buf2 = tex2.View<uint8_t>();
+			for (SSIZE_T i = 0; i < tex2.Height(); ++i) {
+				for (SSIZE_T j = 0; j < tex2.Width(); ++j) {
+					int accumulator = 0, cnt = 0;
+					for (SSIZE_T i2 = i * m_scale, i2_ = std::min<SSIZE_T>(i2 + m_scale, tex1.Height()); i2 < i2_; i2++)
+						for (SSIZE_T j2 = j * m_scale, j2_ = std::min<SSIZE_T>(j2 + m_scale, tex1.Width()); j2 < j2_; j2++) {
+							accumulator += buf1[i2 * tex1.Width() + j2];
+							cnt++;
+						}
+					buf2[i * tex2.Width() + j] = cnt ? static_cast<uint8_t>(accumulator / cnt) : 0;
+				}
+			}
+
+			auto destSize = GlyphMeasurement(size2);
+			destSize.Translate(x, y);
+			auto destBuf = to->View<DestPixFmt>();
+
+			RgbBitmapCopy<uint8_t, ResolverFunction, DestPixFmt, OpacityType>::CopyTo(size2, destSize, &buf2[0], &destBuf[0], tex2.Width(), tex2.Height(), to->Width(), fgColor, bgColor, fgOpacity, bgOpacity);
+			return destSize;
 		}
 	};
 #pragma warning(pop)

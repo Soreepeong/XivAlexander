@@ -134,16 +134,17 @@ void compile() {
 	Sqex::FontCsv::FontSetsCreator::ResultFontSets result;
 	bool isArgb32;
 	try {
+		std::ifstream fin(R"(..\StaticData\FontConfig\Test.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Original.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Gulim.dwrite.json)");
-		std::ifstream fin(R"(..\StaticData\FontConfig\Mix.JpKrCn.json)");
+		// std::ifstream fin(R"(..\StaticData\FontConfig\Mix.JpKrCn.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Gulim.gdi.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Gulimche.dwrite_file.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.ComicGulim.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.ComicSans.freetype.border.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.ComicSans.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.PapyrusGungsuh.json)");
-		// std::ifstream fin(R"(..\StaticData\FontConfig\International.WithMinimalHangul.json)");
+		// std::ifstream fin(R"(..\StaticData\FontConfig\SourceHanSansK.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.WithMinimalHangul.Border.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\Korean.Original.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\Korean.Border36.json)");
@@ -152,8 +153,9 @@ void compile() {
 		auto cfg = j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
 		isArgb32 = cfg.textureFormat != Sqex::Texture::Format::RGBA4444;
 
-		Sqex::FontCsv::FontSetsCreator creator(cfg, R"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game\)");
-		// Sqex::FontCsv::FontSetsCreator creator(cfg, R"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game)");
+		Sqex::FontCsv::FontSetsCreator creator(cfg, R"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game)");
+		// Sqex::FontCsv::FontSetsCreator creator(cfg, R"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game\)");
+		creator.Start();
 		while (!creator.Wait(100)) {
 			const auto progress = creator.GetProgress();
 			std::cout << progress.Indeterminate << " " << progress.Scale(100.) << "%     \r";
@@ -179,7 +181,7 @@ void compile() {
 
 		if (isArgb32) {
 			for (const auto& [fontName, newFontCsv] : fontSet.Fonts) {
-				const auto newFont = std::make_shared<Sqex::FontCsv::SeDrawableFont<Sqex::Texture::RGBA8888>>(newFontCsv, newMipmaps);
+				std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<Sqex::Texture::RGBA8888>> newFont = std::make_shared<Sqex::FontCsv::SeDrawableFont<Sqex::Texture::RGBA8888>>(newFontCsv, newMipmaps);
 				{
 					const auto lines = Utils::StringSplit<std::string>(pszTestString, "\n");
 					const auto cw = static_cast<uint16_t>(newFont->Measure(5, 5, pszTestString).Width() + 10);
@@ -210,7 +212,7 @@ void compile() {
 			}
 		} else {
 			for (const auto& [fontName, newFontCsv] : fontSet.Fonts) {
-				const auto newFont = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(newFontCsv, newMipmaps);
+				std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<>> newFont = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(newFontCsv, newMipmaps);
 				{
 					const auto lines = Utils::StringSplit<std::string>(pszTestString, "\n");
 					const auto cw = static_cast<uint16_t>(newFont->Measure(5, 5, pszTestString).Width() + 10);

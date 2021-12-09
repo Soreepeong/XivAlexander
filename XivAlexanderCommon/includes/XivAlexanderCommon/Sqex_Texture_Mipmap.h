@@ -43,6 +43,11 @@ namespace Sqex::Texture {
 		std::vector<uint8_t> m_data;
 
 	public:
+		MemoryBackedMipmap(uint16_t width, uint16_t height, Format type)
+			: MipmapStream(width, height, type)
+			, m_data(RawDataLength(type, width, height)) {
+		}
+
 		MemoryBackedMipmap(uint16_t width, uint16_t height, Format type, std::vector<uint8_t> data)
 			: MipmapStream(width, height, type)
 			, m_data(std::move(data)) {
