@@ -319,6 +319,14 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			}
 			place->SwapStream(std::move(newEntry));
 		}
+		
+		// Step. Flush caches if any
+		for (const auto& view : SqpackViews) {
+			for (const auto& dataView : view.second.Data) {
+				if (const auto* pStream = dynamic_cast<Sqex::BufferedRandomAccessStream*>(dataView.get()))
+					pStream->Flush();
+			}
+		}
 
 		if (!isCalledFromConstructor)
 			Sqpacks.OnTtmpSetsChanged();
@@ -1742,6 +1750,7 @@ HANDLE App::Misc::VirtualSqPacks::Open(const std::filesystem::path& path) {
 		if (!overlayedHandle->Stream)
 			return nullptr;
 
+		overlayedHandle->Stream = std::make_shared<Sqex::BufferedRandomAccessStream>(std::move(overlayedHandle->Stream));
 		const auto key = static_cast<HANDLE>(overlayedHandle->IdentifierHandle);
 		m_pImpl->OverlayedHandles.insert_or_assign(key, std::move(overlayedHandle));
 		return key;

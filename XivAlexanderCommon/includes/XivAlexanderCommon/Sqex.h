@@ -154,6 +154,11 @@ namespace Sqex {
 		const std::shared_ptr<RandomAccessStream> m_stream;
 		const size_t m_bufferSize;
 		const uint64_t m_streamSize;
+#if INTPTR_MAX == INT64_MAX
+		bool m_bEnableBuffering = true;
+#else
+		bool m_bEnableBuffering = false;
+#endif
 		mutable std::vector<void*> m_buffers;
 
 	public:
@@ -169,6 +174,10 @@ namespace Sqex {
 		[[nodiscard]] uint64_t StreamSize() const override { return m_streamSize; }
 
 		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
+
+		void EnableBuffering(bool bEnable);
+
+		void Flush() const;
 	};
 
 	class RandomAccessStreamPartialView : public RandomAccessStream {
