@@ -162,7 +162,7 @@ namespace Sqex {
 		mutable std::vector<void*> m_buffers;
 
 	public:
-		BufferedRandomAccessStream(std::shared_ptr<RandomAccessStream> stream, size_t bufferSize = 65536)
+		BufferedRandomAccessStream(std::shared_ptr<RandomAccessStream> stream, size_t bufferSize = 16384)
 			: m_stream(std::move(stream))
 			, m_bufferSize(bufferSize)
 			, m_streamSize(m_stream->StreamSize())
