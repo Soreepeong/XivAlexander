@@ -828,6 +828,7 @@ void App::Window::MainWindow::SetMenuStates() const {
 		SetMenuState(hMenu, ID_MODDING_ENABLE, config.UseModding, true);
 		SetMenuState(hMenu, ID_MODDING_LOGALLHASHKEYS, config.UseHashTrackerKeyLogging, true);
 		SetMenuState(hMenu, ID_MODDING_LOGALLFILEACCESS, config.LogAllDataFileRead, true);
+		SetMenuState(hMenu, ID_MODDING_CACHEALLFILERETRIEVAL, config.UseOverlayedFileBuffering, true);
 
 		const auto languageList = config.GetFallbackLanguageList();
 		SetMenuState(hMenu, ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1, false, true, config.GetLanguageNameLocalized(languageList[0]));
@@ -867,6 +868,7 @@ void App::Window::MainWindow::SetMenuStates() const {
 
 	// Configure
 	{
+		SetMenuState(hMenu, ID_CONFIGURE_USEMORECPUTIME, config.UseMoreCpuTime, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT, config.Language == Language::SystemDefault, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_ENGLISH, config.Language == Language::English, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_KOREAN, config.Language == Language::Korean, true);
@@ -1179,6 +1181,10 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 
 	case ID_MODDING_LOGALLFILEACCESS:
 		config.LogAllDataFileRead = !config.LogAllDataFileRead;
+		return;
+
+	case ID_MODDING_CACHEALLFILERETRIEVAL:
+		config.UseOverlayedFileBuffering = !config.UseOverlayedFileBuffering;
 		return;
 
 	case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1: {
@@ -1899,6 +1905,10 @@ void App::Window::MainWindow::OnCommand_Menu_Configure(int menuId) {
 			SetForegroundWindow(m_gameConfigEditor->Handle());
 		else
 			m_gameConfigEditor = std::make_unique<ConfigWindow>(IDS_WINDOW_OPCODE_CONFIG_EDITOR, &m_config->Game);
+		return;
+
+	case ID_CONFIGURE_USEMORECPUTIME:
+		config.UseMoreCpuTime = !config.UseMoreCpuTime;
 		return;
 
 	case ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT:

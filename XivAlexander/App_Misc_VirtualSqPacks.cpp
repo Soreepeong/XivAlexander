@@ -63,6 +63,15 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		InitializeSqPacks(progressWindow);
 		ReflectUsedEntries(true);
 
+		Cleanup += Config->Runtime.UseOverlayedFileBuffering.OnChangeListenerAlsoOnLoad([this](auto&) {
+			for (auto& view : SqpackViews) {
+				view.second.Index1->EnableBuffering(Config->Runtime.UseOverlayedFileBuffering);
+				view.second.Index2->EnableBuffering(Config->Runtime.UseOverlayedFileBuffering);
+				for (auto& dataView : view.second.Data) {
+					dataView->EnableBuffering(Config->Runtime.UseOverlayedFileBuffering);
+				}
+			}
+		});
 		Cleanup += Config->Runtime.MuteVoice_Battle.OnChangeListener([this](auto&) { ReflectUsedEntries(); });
 		Cleanup += Config->Runtime.MuteVoice_Cm.OnChangeListener([this](auto&) { ReflectUsedEntries(); });
 		Cleanup += Config->Runtime.MuteVoice_Emote.OnChangeListener([this](auto&) { ReflectUsedEntries(); });
@@ -399,7 +408,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 						.ListPath = ttmpl,
 						.List = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{Utils::Win32::Handle::FromCreateFile(ttmpl, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)}),
 						.DataFile = Utils::Win32::Handle::FromCreateFile(ttmpl.parent_path() / "TTMPD.mpd", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)
-					});
+						});
 				} catch (const std::exception& e) {
 					Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
 						"Failed to load TexTools ModPack from {}: {}", ttmpl.wstring(), e.what());
@@ -1750,7 +1759,6 @@ HANDLE App::Misc::VirtualSqPacks::Open(const std::filesystem::path& path) {
 		if (!overlayedHandle->Stream)
 			return nullptr;
 
-		overlayedHandle->Stream = std::make_shared<Sqex::BufferedRandomAccessStream>(std::move(overlayedHandle->Stream));
 		const auto key = static_cast<HANDLE>(overlayedHandle->IdentifierHandle);
 		m_pImpl->OverlayedHandles.insert_or_assign(key, std::move(overlayedHandle));
 		return key;

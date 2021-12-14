@@ -434,6 +434,22 @@ static void InitializeAsStubBeforeOriginalEntryPoint() {
 	}
 }
 
+static void SetUseMoreCpuTimeHooks() {
+	static Utils::CallOnDestruction::Multiple s_hooks;
+	static App::Misc::Hooks::PointerFunction<DWORD_PTR, HANDLE, DWORD_PTR> s_SetThreadAffinityMask{ "SetThreadAffinityMask", ::SetThreadAffinityMask };
+	static App::Misc::Hooks::PointerFunction<void, LPSYSTEM_INFO> s_GetSystemInfo("GetSystemInfo", ::GetSystemInfo);
+	static App::Misc::Hooks::PointerFunction<void, DWORD> s_Sleep("Sleep", ::Sleep);
+	s_hooks += s_SetThreadAffinityMask.SetHook([](HANDLE h, DWORD_PTR d) { return static_cast<DWORD_PTR>(-1); });
+	s_hooks += s_GetSystemInfo.SetHook([&](LPSYSTEM_INFO i) {
+		s_GetSystemInfo.bridge(i);
+		i->dwNumberOfProcessors *= 8;
+		});
+	s_hooks += s_Sleep.SetHook([&](DWORD i) {
+		if (i)
+			s_Sleep.bridge(i);
+		});
+}
+
 static void InitializeBeforeOriginalEntryPoint() {
 	const auto& process = Utils::Win32::Process::Current();
 	auto filename = process.PathOf().filename().wstring();
@@ -453,6 +469,9 @@ static void InitializeBeforeOriginalEntryPoint() {
 
 	// Delay Initialize call to Dalamud Boot if Dalamud is being used
 	App::DalamudHandlerApp::LoadDalamudHandler();
+
+	if (App::Config::Acquire()->Runtime.UseMoreCpuTime)
+		SetUseMoreCpuTimeHooks();
 
 	void(Utils::Win32::Thread(L"EnableXivAlexanderSoon", []() {
 		Sleep(1000);

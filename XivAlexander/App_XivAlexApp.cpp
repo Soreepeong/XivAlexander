@@ -68,6 +68,16 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 				SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 		});
 		m_cleanup += [this]() { SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE); };
+
+		IPropertyStorePtr store;
+		PROPERTYKEY pkey{};
+		PROPVARIANT pv{};
+		if (SUCCEEDED(PSGetPropertyKeyFromName(L"System.AppUserModel.ID", &pkey))
+			&& SUCCEEDED(SHGetPropertyStoreForWindow(m_hWnd, IID_IPropertyStore, reinterpret_cast<void**>(&store)))
+			&& SUCCEEDED(InitPropVariantFromString(L"SquareEnix.FFXIV", &pv))) {
+			store->SetValue(pkey, pv);
+			PropVariantClear(&pv);
+		}
 	}
 
 	HWND GetHwnd() const {
@@ -305,19 +315,6 @@ void App::XivAlexApp::CustomMessageLoopBody() {
 
 	m_loadCompleteEvent.Set();
 	OnAppCreated(*this);
-
-	RunOnGameLoop([this]() {
-		IPropertyStorePtr store;
-		PROPERTYKEY pkey{};
-		PROPVARIANT pv{};
-		if (SUCCEEDED(PSGetPropertyKeyFromName(L"System.AppUserModel.ID", &pkey))
-			&& SUCCEEDED(SHGetPropertyStoreForWindow(m_pGameWindow->GetHwnd(), IID_IPropertyStore, reinterpret_cast<void**>(&store)))
-			&& SUCCEEDED(InitPropVariantFromString(L"SquareEnix.FFXIV", &pv))) {
-			m_logger->Log(LogCategory::General, L"PropertyKey");
-			store->SetValue(pkey, pv);
-			PropVariantClear(&pv);
-		}
-		});
 
 	MSG msg;
 	while (GetMessageW(&msg, nullptr, 0, 0)) {

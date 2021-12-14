@@ -32,7 +32,7 @@ Sqex::Sqpack::Reader::SqIndexType<HashLocatorT, TextLocatorT>::SqIndexType(const
 
 Sqex::Sqpack::Reader::SqIndex1Type::SqIndex1Type(const Win32::Handle& hFile, bool strictVerify)
 	: SqIndexType<SqIndex::PairHashLocator, SqIndex::PairHashWithTextLocator>(hFile, strictVerify)
-	, PathHashLocators(reinterpret_cast<const SqIndex::PathHashLocator*>(&Data[IndexHeader.PathHashLocatorSegment.Offset]),
+	, PathHashLocators(reinterpret_cast<const SqIndex::PathHashLocator*>(IndexHeader.PathHashLocatorSegment.Size ? &Data[IndexHeader.PathHashLocatorSegment.Offset] : 0),
 		IndexHeader.PathHashLocatorSegment.Size / sizeof SqIndex::PathHashLocator) {
 	if (strictVerify) {
 		if (IndexHeader.PathHashLocatorSegment.Size % sizeof SqIndex::PathHashLocator)

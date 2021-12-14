@@ -68,9 +68,9 @@ namespace Sqex::Sqpack {
 		};
 
 		struct SqpackViews {
-			std::shared_ptr<RandomAccessStream> Index1;
-			std::shared_ptr<RandomAccessStream> Index2;
-			std::vector<std::shared_ptr<RandomAccessStream>> Data;
+			std::shared_ptr<Sqex::BufferedRandomAccessStream> Index1;
+			std::shared_ptr<Sqex::BufferedRandomAccessStream> Index2;
+			std::vector<std::shared_ptr<Sqex::BufferedRandomAccessStream>> Data;
 			std::vector<Entry*> Entries;
 			std::map<EntryPathSpec, std::unique_ptr<Entry>, EntryPathSpec::AllHashComparator> HashOnlyEntries;
 			std::map<EntryPathSpec, std::unique_ptr<Entry>, EntryPathSpec::FullPathComparator> FullPathEntries;

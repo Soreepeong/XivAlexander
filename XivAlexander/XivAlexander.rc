@@ -126,6 +126,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "僎乕儉偑撉傒崬傓偡傋偰偺僼傽僀儖偺僷僗傪儘僌偵婰榐(&P)\t(Ctrl+Alt+)K", ID_MODDING_LOGALLHASHKEYS
         MENUITEM "偡傋偰偺僼傽僀儖偺傾僋僙僗傪儘僌偵婰榐(I)",      ID_MODDING_LOGALLFILEACCESS
+        MENUITEM "偡傋偰偺僼傽僀儖傪儊儌儕偵僉儍僢僔儏(&C)",      ID_MODDING_CACHEALLFILERETRIEVAL
         MENUITEM SEPARATOR
         POPUP "尵岅偺桪愭弴埵(&L)"
         BEGIN
@@ -162,10 +163,10 @@ BEGIN
         END
         POPUP "惡偺儈儏乕僩(&V)"
         BEGIN
-            MENUITEM "愴摤(&B)",                      40459
-            MENUITEM "CM(娐嫬偺惡丠)(&C)",               40460
+            MENUITEM "愴摤(&B)",                      ID_MODDING_MUTEVOICE_BATTLE
+            MENUITEM "CM(娐嫬偺惡丠)(&C)",               ID_MODDING_MUTEVOICE_CM
             MENUITEM "僄儌乕僩(&E)",                    ID_MODDING_MUTEVOICE_EMOTE
-            MENUITEM "愴摤拞偺NPC偺僙儕僼(&D)",             40463
+            MENUITEM "愴摤拞偺NPC偺僙儕僼(&D)",             ID_MODDING_MUTEVOICE_LINE
         END
         MENUITEM SEPARATOR
         MENUITEM "!! modify MainWindow if this section changes !!", ID_MODDING_SUBMENUMARKER, INACTIVE
@@ -259,6 +260,8 @@ BEGIN
     BEGIN
         MENUITEM "娐嫬乮儔儞僞僀儉乯愝掕(&R)\t(Ctrl+Alt+)R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
         MENUITEM "Opcode偺愝掕(&O)\t(Ctrl+Alt+)O", ID_CONFIGURE_EDITOPCODECONFIGURATION
+        MENUITEM SEPARATOR
+        MENUITEM "僎乕儉偑CPU傪偱偒傞偩偗棙梡偝偣傞(&C)",      ID_CONFIGURE_USEMORECPUTIME
         MENUITEM SEPARATOR
         MENUITEM "僔僗僥儉尵岅傪巊梡(&S)\t",             ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT
         MENUITEM "尵岅丗塸岅(&E)\t",                 ID_CONFIGURE_LANGUAGE_ENGLISH
@@ -660,6 +663,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "霸烙捞 立辟窍绰 郴何 颇老 版肺 葛滴 扁废窍扁(&P)\t(Ctrl+Alt+)K", ID_MODDING_LOGALLHASHKEYS
         MENUITEM "葛电 颇老 立辟 扁废窍扁(&I)",           ID_MODDING_LOGALLFILEACCESS
+        MENUITEM "葛电 颇老 皋葛府俊 某矫窍扁(&C)",         ID_MODDING_CACHEALLFILERETRIEVAL
         MENUITEM SEPARATOR
         POPUP "攫绢 快急鉴困(&L)"
         BEGIN
@@ -696,10 +700,10 @@ BEGIN
         END
         POPUP "格家府 盒幅 澜家芭(&V)"
         BEGIN
-            MENUITEM "傈捧(&B)",                      40459
-            MENUITEM "CM(券版 加 格家府肺 眠螟)(&C)",        40460
+            MENUITEM "傈捧(&B)",                      ID_MODDING_MUTEVOICE_BATTLE
+            MENUITEM "CM(券版 加 格家府肺 眠螟)(&C)",        ID_MODDING_MUTEVOICE_CM
             MENUITEM "皑沥 钎泅(&E)",                   ID_MODDING_MUTEVOICE_EMOTE
-            MENUITEM "傈捧 吝 NPC 措荤(&D)",             40463
+            MENUITEM "傈捧 吝 NPC 措荤(&D)",             ID_MODDING_MUTEVOICE_LINE
         END
         MENUITEM SEPARATOR
         MENUITEM "!! modify MainWindow if this section changes !!", ID_MODDING_SUBMENUMARKER, INACTIVE
@@ -793,6 +797,8 @@ BEGIN
     BEGIN
         MENUITEM "繁鸥烙(橇肺弊伐) 汲沥 函版(&R)\t(Ctrl+Alt+)R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
         MENUITEM "可内靛 汲沥 函版(&O)\t(Ctrl+Alt+)O", ID_CONFIGURE_EDITOPCODECONFIGURATION
+        MENUITEM SEPARATOR
+        MENUITEM "霸烙捞 啊瓷茄 父怒 CPU甫 静档废 父甸扁(&C)", ID_CONFIGURE_USEMORECPUTIME
         MENUITEM SEPARATOR
         MENUITEM "矫胶袍 扁夯 攫绢 荤侩(&S)",            ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT
         MENUITEM "攫绢: 康绢(&E)",                  ID_CONFIGURE_LANGUAGE_ENGLISH
@@ -1251,6 +1257,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Log All &Path Plaintext Before Hash\t(Ctrl+Alt+)K", ID_MODDING_LOGALLHASHKEYS
         MENUITEM "Log All F&ile Access",        ID_MODDING_LOGALLFILEACCESS
+        MENUITEM "&Cache All File Retrieval",   ID_MODDING_CACHEALLFILERETRIEVAL
         MENUITEM SEPARATOR
         POPUP "Fallback &Language Priority"
         BEGIN
@@ -1287,13 +1294,13 @@ BEGIN
         END
         POPUP "Mute &Voice"
         BEGIN
-            MENUITEM "&Battle",                     40459
-            MENUITEM "&CM (Probably environmental voices)", 40460
+            MENUITEM "&Battle",                     ID_MODDING_MUTEVOICE_BATTLE
+            MENUITEM "&CM (Probably environmental voices)", ID_MODDING_MUTEVOICE_CM
             MENUITEM "&Emote",                      ID_MODDING_MUTEVOICE_EMOTE
-            MENUITEM "NPC &Dialogue During Battle", 40463
+            MENUITEM "NPC &Dialogue During Battle", ID_MODDING_MUTEVOICE_LINE
         END
         MENUITEM SEPARATOR
-        MENUITEM "!! modify MainWindow if this section changes !!", 40464, INACTIVE
+        MENUITEM "!! modify MainWindow if this section changes !!", ID_MODDING_SUBMENUMARKER, INACTIVE
         POPUP "Change &Font"
         BEGIN
             MENUITEM "&Import Preset",              ID_MODDING_CHANGEFONT_IMPORTPRESET
@@ -1384,6 +1391,8 @@ BEGIN
     BEGIN
         MENUITEM "Edit &Runtime Configuration\t(Ctrl+Alt+)R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
         MENUITEM "Edit &Opcode Configuration\t(Ctrl+Alt+)O", ID_CONFIGURE_EDITOPCODECONFIGURATION
+        MENUITEM SEPARATOR
+        MENUITEM "Force the Game to Use More &CPU Time", ID_CONFIGURE_USEMORECPUTIME
         MENUITEM SEPARATOR
         MENUITEM "Use &System Default Language", ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT
         MENUITEM "Language: &English",          ID_CONFIGURE_LANGUAGE_ENGLISH

@@ -149,7 +149,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;XivAlexanderCommon$(PlatformArchitecture).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;Winhttp.lib;XivAlexanderCommon$(PlatformArchitecture).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
       <ModuleDefinitionFile>Exports_x64.def</ModuleDefinitionFile>
       <DelayLoadDLLs>
@@ -189,7 +189,7 @@ cmd /c "exit /b 0"
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;XivAlexanderCommon$(PlatformArchitecture).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;Winhttp.lib;XivAlexanderCommon$(PlatformArchitecture).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
       <ModuleDefinitionFile>Exports_x86.def</ModuleDefinitionFile>
       <DelayLoadDLLs>
