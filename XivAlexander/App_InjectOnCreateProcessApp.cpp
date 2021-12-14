@@ -439,14 +439,27 @@ static void SetUseMoreCpuTimeHooks() {
 	static App::Misc::Hooks::PointerFunction<DWORD_PTR, HANDLE, DWORD_PTR> s_SetThreadAffinityMask{ "SetThreadAffinityMask", ::SetThreadAffinityMask };
 	static App::Misc::Hooks::PointerFunction<void, LPSYSTEM_INFO> s_GetSystemInfo("GetSystemInfo", ::GetSystemInfo);
 	static App::Misc::Hooks::PointerFunction<void, DWORD> s_Sleep("Sleep", ::Sleep);
+	static App::Misc::Hooks::PointerFunction<DWORD, DWORD, BOOL> s_SleepEx("SleepEx", ::SleepEx);
 	s_hooks += s_SetThreadAffinityMask.SetHook([](HANDLE h, DWORD_PTR d) { return static_cast<DWORD_PTR>(-1); });
 	s_hooks += s_GetSystemInfo.SetHook([&](LPSYSTEM_INFO i) {
 		s_GetSystemInfo.bridge(i);
 		i->dwNumberOfProcessors *= 8;
 		});
+	
+	static uint8_t counter = 0;
 	s_hooks += s_Sleep.SetHook([&](DWORD i) {
 		if (i)
 			s_Sleep.bridge(i);
+		else if (!++counter)
+			SwitchToThread();
+		});
+	s_hooks += s_SleepEx.SetHook([&](DWORD i, BOOL bAlertable) {
+		if (i || bAlertable)
+			return s_SleepEx.bridge(i, bAlertable);
+
+		if (!++counter)
+			SwitchToThread();
+		return 0UL;
 		});
 }
 
