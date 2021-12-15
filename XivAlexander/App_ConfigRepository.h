@@ -202,7 +202,6 @@ namespace App {
 			
 			Item<bool> UseHashTrackerKeyLogging = CreateConfigItem(this, "UseHashTrackerKeyLogging", false);
 			Item<bool> LogAllDataFileRead = CreateConfigItem(this, "LogAllDataFileRead", false);
-			Item<bool> UseOverlayedFileBuffering = CreateConfigItem(this, "UseOverlayedFileBuffering", false);
 			Item<Sqex::Language> ResourceLanguageOverride = CreateConfigItem(this, "ResourceLanguageOverride", Sqex::Language::Unspecified);
 			Item<Sqex::Language> VoiceResourceLanguageOverride = CreateConfigItem(this, "VoiceResourceLanguageOverride", Sqex::Language::Unspecified);
 

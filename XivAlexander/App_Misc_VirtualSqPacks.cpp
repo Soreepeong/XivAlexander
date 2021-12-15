@@ -63,13 +63,6 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		InitializeSqPacks(progressWindow);
 		ReflectUsedEntries(true);
 
-		Cleanup += Config->Runtime.UseOverlayedFileBuffering.OnChangeListenerAlsoOnLoad([this](auto&) {
-			for (auto& view : SqpackViews) {
-				for (auto& dataView : view.second.Data) {
-					dataView->EnableBuffering(Config->Runtime.UseOverlayedFileBuffering);
-				}
-			}
-		});
 		Cleanup += Config->Runtime.MuteVoice_Battle.OnChangeListener([this](auto&) { ReflectUsedEntries(); });
 		Cleanup += Config->Runtime.MuteVoice_Cm.OnChangeListener([this](auto&) { ReflectUsedEntries(); });
 		Cleanup += Config->Runtime.MuteVoice_Emote.OnChangeListener([this](auto&) { ReflectUsedEntries(); });

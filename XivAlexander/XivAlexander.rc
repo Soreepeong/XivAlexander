@@ -126,7 +126,6 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "僎乕儉偑撉傒崬傓偡傋偰偺僼傽僀儖偺僷僗傪儘僌偵婰榐(&P)\t(Ctrl+Alt+)K", ID_MODDING_LOGALLHASHKEYS
         MENUITEM "偡傋偰偺僼傽僀儖偺傾僋僙僗傪儘僌偵婰榐(I)",      ID_MODDING_LOGALLFILEACCESS
-        MENUITEM "偡傋偰偺僼傽僀儖傪儊儌儕偵僉儍僢僔儏(&C)",      ID_MODDING_CACHEALLFILERETRIEVAL
         MENUITEM SEPARATOR
         POPUP "尵岅偺桪愭弴埵(&L)"
         BEGIN
@@ -663,7 +662,6 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "霸烙捞 立辟窍绰 郴何 颇老 版肺 葛滴 扁废窍扁(&P)\t(Ctrl+Alt+)K", ID_MODDING_LOGALLHASHKEYS
         MENUITEM "葛电 颇老 立辟 扁废窍扁(&I)",           ID_MODDING_LOGALLFILEACCESS
-        MENUITEM "葛电 颇老 皋葛府俊 某矫窍扁(&C)",         ID_MODDING_CACHEALLFILERETRIEVAL
         MENUITEM SEPARATOR
         POPUP "攫绢 快急鉴困(&L)"
         BEGIN
@@ -1257,7 +1255,6 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Log All &Path Plaintext Before Hash\t(Ctrl+Alt+)K", ID_MODDING_LOGALLHASHKEYS
         MENUITEM "Log All F&ile Access",        ID_MODDING_LOGALLFILEACCESS
-        MENUITEM "&Cache All File Retrieval",   ID_MODDING_CACHEALLFILERETRIEVAL
         MENUITEM SEPARATOR
         POPUP "Fallback &Language Priority"
         BEGIN

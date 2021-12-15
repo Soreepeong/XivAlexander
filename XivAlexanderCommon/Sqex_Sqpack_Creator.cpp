@@ -344,10 +344,11 @@ class Sqex::Sqpack::Creator::DataView : public RandomAccessStream {
 	mutable uint64_t m_nLastRequestedSize = 0;
 	mutable uint64_t m_nLastTimeTaken = 0;
 	mutable std::vector<std::tuple<EntryProvider*, uint64_t, uint64_t>> m_pLastEntryProviders;
-	mutable size_t m_lastAccessedEntryIndex = 0;
+
 #if INTPTR_MAX == INT64_MAX
-	mutable std::deque<std::pair<size_t, std::vector<uint8_t>>> m_lastAccessedEntryData;
-	bool m_bUseBuffering = true;
+	mutable size_t m_lastAccessedEntryIndex = SIZE_MAX;
+	mutable uint8_t m_smallEntryBuffer[8 * 1048576];
+	mutable std::vector<uint8_t> m_largeEntryBuffer;
 #endif
 
 public:
@@ -383,7 +384,7 @@ public:
 			return length;
 		}
 
-		auto it = m_entries.begin() + m_lastAccessedEntryIndex;
+		auto it = m_lastAccessedEntryIndex == SIZE_MAX ? m_entries.begin() : m_entries.begin() + m_lastAccessedEntryIndex;
 		if ((*it)->OffsetAfterHeaders > relativeOffset || relativeOffset >= (*it)->OffsetAfterHeaders + (*it)->EntryReservedSize) {
 			it = std::ranges::lower_bound(m_entries, nullptr, [&](Entry* l, Entry* r) {
 				const auto lo = l ? l->OffsetAfterHeaders : relativeOffset;
@@ -399,58 +400,36 @@ public:
 
 			for (; it < m_entries.end(); ++it) {
 				const auto& entry = **it;
-				m_lastAccessedEntryIndex = it - m_entries.begin();
-	
+
 #if INTPTR_MAX == INT64_MAX
-				if (m_bUseBuffering) {
-					auto needAdd = m_lastAccessedEntryData.empty() || m_lastAccessedEntryData.front().first != m_lastAccessedEntryIndex;
-					if (needAdd && m_lastAccessedEntryData.size() > 1) {
-						for (auto it2 = m_lastAccessedEntryData.begin() + 1; it2 != m_lastAccessedEntryData.end(); ++it2) {
-							if (it2->first == m_lastAccessedEntryIndex) {
-								auto data(std::move(*it2));
-								m_lastAccessedEntryData.erase(it2);
-								m_lastAccessedEntryData.emplace_front(std::move(data));
-								needAdd = false;
-								break;
-							}
-						}
-					}
-					if (needAdd) {
-						auto del = false;
-						std::pair<size_t, std::vector<uint8_t>> ent;
-						if (m_lastAccessedEntryData.size() > 1) {
-							size_t sizeSum = 0;
-							for (auto it2 = m_lastAccessedEntryData.begin() + 1; it2 != m_lastAccessedEntryData.end();) {
-								sizeSum += it2->second.size();
-								del |= sizeSum >= 32 * 1048576;
-								if (del) {
-									ent = std::move(*it2);
-									it2 = m_lastAccessedEntryData.erase(it2);
-								} else
-									++it2;
-							}
-						}
-						m_lastAccessedEntryData.emplace_front(std::move(ent));
-						m_lastAccessedEntryData.front().first = m_lastAccessedEntryIndex;
-						m_lastAccessedEntryData.front().second.resize(size_t{} + entry.EntrySize + entry.PadSize);
-						entry.Provider->ReadStream(0, std::span(m_lastAccessedEntryData.front().second).subspan(0, entry.EntrySize));
-					}
+				const auto requiredSize = size_t{} + entry.EntrySize + entry.PadSize;
+				const auto reuseBuffer = requiredSize <= sizeof m_smallEntryBuffer;
 
-					if (auto& buf = m_lastAccessedEntryData.front().second; relativeOffset < buf.size()) {
-						const auto available = std::min(out.size_bytes(), static_cast<size_t>(buf.size() - relativeOffset));
-						m_pLastEntryProviders.emplace_back(std::make_tuple(entry.Provider.get(), relativeOffset, available));
-						std::copy_n(&buf[relativeOffset], available, &out[0]);
-						out = out.subspan(available);
-						relativeOffset = 0;
-
-						if (out.empty())
-							break;
-					} else
-						relativeOffset -= entry.EntrySize;
-					continue;
+				if (const auto entryIndex = it - m_entries.begin(); entryIndex != m_lastAccessedEntryIndex) {
+					m_lastAccessedEntryIndex = entryIndex;
+					if (reuseBuffer) {
+						std::vector<uint8_t>().swap(m_largeEntryBuffer);
+						entry.Provider->ReadStream(0, std::span(m_smallEntryBuffer).subspan(0, entry.EntrySize));
+					} else {
+						m_largeEntryBuffer.resize(requiredSize);
+						entry.Provider->ReadStream(0, std::span(m_largeEntryBuffer).subspan(0, entry.EntrySize));
+					}
 				}
-#endif
 
+				const auto buf = reuseBuffer ? std::span(m_smallEntryBuffer).subspan(0, requiredSize) : std::span(m_largeEntryBuffer);
+				if (relativeOffset < buf.size()) {
+					const auto available = std::min(out.size_bytes(), static_cast<size_t>(buf.size() - relativeOffset));
+					m_pLastEntryProviders.emplace_back(std::make_tuple(entry.Provider.get(), relativeOffset, available));
+					std::copy_n(&buf[relativeOffset], available, &out[0]);
+					out = out.subspan(available);
+					relativeOffset = 0;
+
+					if (out.empty())
+						break;
+				} else
+					relativeOffset -= entry.EntrySize;
+
+#else
 				if (relativeOffset < entry.EntrySize) {
 					const auto available = std::min(out.size_bytes(), static_cast<size_t>(entry.EntrySize - relativeOffset));
 					m_pLastEntryProviders.emplace_back(std::make_tuple(entry.Provider.get(), relativeOffset, available));
@@ -473,6 +452,7 @@ public:
 						break;
 				} else
 					relativeOffset -= entry.PadSize;
+#endif
 			}
 		}
 
@@ -494,16 +474,12 @@ public:
 	}
 	
 	void Flush() const override {
-		const auto lock = std::lock_guard(m_mtx);
-		m_lastAccessedEntryData.clear();
-	}
-
-	void EnableBuffering(bool bEnable) override {
 #if INTPTR_MAX == INT64_MAX
-		const auto lock = std::lock_guard(m_mtx);
-		if (m_bUseBuffering && !bEnable)
-			m_lastAccessedEntryData.clear();
-		m_bUseBuffering = bEnable;
+		if (!m_largeEntryBuffer.empty()) {
+			const auto lock = std::lock_guard(m_mtx);
+			std::vector<uint8_t>().swap(m_largeEntryBuffer);
+			m_lastAccessedEntryIndex = SIZE_MAX;
+		}
 #endif
 	}
 };

@@ -828,7 +828,6 @@ void App::Window::MainWindow::SetMenuStates() const {
 		SetMenuState(hMenu, ID_MODDING_ENABLE, config.UseModding, true);
 		SetMenuState(hMenu, ID_MODDING_LOGALLHASHKEYS, config.UseHashTrackerKeyLogging, true);
 		SetMenuState(hMenu, ID_MODDING_LOGALLFILEACCESS, config.LogAllDataFileRead, true);
-		SetMenuState(hMenu, ID_MODDING_CACHEALLFILERETRIEVAL, config.UseOverlayedFileBuffering, true);
 
 		const auto languageList = config.GetFallbackLanguageList();
 		SetMenuState(hMenu, ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1, false, true, config.GetLanguageNameLocalized(languageList[0]));
@@ -1181,10 +1180,6 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 
 	case ID_MODDING_LOGALLFILEACCESS:
 		config.LogAllDataFileRead = !config.LogAllDataFileRead;
-		return;
-
-	case ID_MODDING_CACHEALLFILERETRIEVAL:
-		config.UseOverlayedFileBuffering = !config.UseOverlayedFileBuffering;
 		return;
 
 	case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1: {
