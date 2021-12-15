@@ -434,35 +434,6 @@ static void InitializeAsStubBeforeOriginalEntryPoint() {
 	}
 }
 
-static void SetUseMoreCpuTimeHooks() {
-	static Utils::CallOnDestruction::Multiple s_hooks;
-	static App::Misc::Hooks::PointerFunction<DWORD_PTR, HANDLE, DWORD_PTR> s_SetThreadAffinityMask{ "SetThreadAffinityMask", ::SetThreadAffinityMask };
-	static App::Misc::Hooks::PointerFunction<void, LPSYSTEM_INFO> s_GetSystemInfo("GetSystemInfo", ::GetSystemInfo);
-	static App::Misc::Hooks::PointerFunction<void, DWORD> s_Sleep("Sleep", ::Sleep);
-	static App::Misc::Hooks::PointerFunction<DWORD, DWORD, BOOL> s_SleepEx("SleepEx", ::SleepEx);
-	s_hooks += s_SetThreadAffinityMask.SetHook([](HANDLE h, DWORD_PTR d) { return static_cast<DWORD_PTR>(-1); });
-	s_hooks += s_GetSystemInfo.SetHook([&](LPSYSTEM_INFO i) {
-		s_GetSystemInfo.bridge(i);
-		i->dwNumberOfProcessors *= 8;
-		});
-	
-	static uint8_t counter = 0;
-	s_hooks += s_Sleep.SetHook([&](DWORD i) {
-		if (i)
-			s_Sleep.bridge(i);
-		else if (!++counter)
-			SwitchToThread();
-		});
-	s_hooks += s_SleepEx.SetHook([&](DWORD i, BOOL bAlertable) {
-		if (i || bAlertable)
-			return s_SleepEx.bridge(i, bAlertable);
-
-		if (!++counter)
-			SwitchToThread();
-		return 0UL;
-		});
-}
-
 static void InitializeBeforeOriginalEntryPoint() {
 	const auto& process = Utils::Win32::Process::Current();
 	auto filename = process.PathOf().filename().wstring();
@@ -483,8 +454,53 @@ static void InitializeBeforeOriginalEntryPoint() {
 	// Delay Initialize call to Dalamud Boot if Dalamud is being used
 	App::DalamudHandlerApp::LoadDalamudHandler();
 
-	if (App::Config::Acquire()->Runtime.UseMoreCpuTime)
-		SetUseMoreCpuTimeHooks();
+	static Utils::CallOnDestruction::Multiple s_hooks;
+	static App::Misc::Hooks::PointerFunction<HANDLE, DWORD, BOOL, DWORD> s_OpenProcess{ "OpenProcess", ::OpenProcess };
+	s_hooks += s_OpenProcess.SetHook([&, firstVmWriteAccess = true](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) mutable {
+		if (dwProcessId == GetCurrentProcessId()) {
+
+			// Prevent game from restarting itself on startup
+			if (firstVmWriteAccess && dwDesiredAccess == PROCESS_VM_WRITE) {
+				firstVmWriteAccess = false;
+				SetLastError(ERROR_ACCESS_DENIED);
+				return HANDLE{};
+			}
+
+			// Prevent Reloaded from tripping
+			if (HANDLE h{}; DuplicateHandle(GetCurrentProcess(), GetCurrentProcess(), GetCurrentProcess(), &h, dwDesiredAccess, bInheritHandle, 0))
+				return h;
+
+			return HANDLE{};
+		}
+		return s_OpenProcess.bridge(dwDesiredAccess, bInheritHandle, dwProcessId);
+		});
+
+	if (App::Config::Acquire()->Runtime.UseMoreCpuTime) {
+		static App::Misc::Hooks::PointerFunction<DWORD_PTR, HANDLE, DWORD_PTR> s_SetThreadAffinityMask{ "SetThreadAffinityMask", ::SetThreadAffinityMask };
+		static App::Misc::Hooks::PointerFunction<void, LPSYSTEM_INFO> s_GetSystemInfo("GetSystemInfo", ::GetSystemInfo);
+		static App::Misc::Hooks::PointerFunction<void, DWORD> s_Sleep("Sleep", ::Sleep);
+		static App::Misc::Hooks::PointerFunction<DWORD, DWORD, BOOL> s_SleepEx("SleepEx", ::SleepEx);
+		s_hooks += s_SetThreadAffinityMask.SetHook([](HANDLE h, DWORD_PTR d) { return static_cast<DWORD_PTR>(-1); });
+		s_hooks += s_GetSystemInfo.SetHook([&](LPSYSTEM_INFO i) {
+			s_GetSystemInfo.bridge(i);
+			i->dwNumberOfProcessors *= 8;
+			});
+		static uint16_t counter = 0;
+		s_hooks += s_Sleep.SetHook([&](DWORD i) {
+			if (i)
+				s_Sleep.bridge(i);
+			else if (!++counter)
+				SwitchToThread();
+			});
+		s_hooks += s_SleepEx.SetHook([&](DWORD i, BOOL bAlertable) {
+			if (i || bAlertable)
+				return s_SleepEx.bridge(i, bAlertable);
+
+			if (!++counter)
+				SwitchToThread();
+			return 0UL;
+			});
+	}
 
 	void(Utils::Win32::Thread(L"EnableXivAlexanderSoon", []() {
 		Sleep(1000);

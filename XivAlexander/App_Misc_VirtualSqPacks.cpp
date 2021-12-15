@@ -65,8 +65,6 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 		Cleanup += Config->Runtime.UseOverlayedFileBuffering.OnChangeListenerAlsoOnLoad([this](auto&) {
 			for (auto& view : SqpackViews) {
-				view.second.Index1->EnableBuffering(Config->Runtime.UseOverlayedFileBuffering);
-				view.second.Index2->EnableBuffering(Config->Runtime.UseOverlayedFileBuffering);
 				for (auto& dataView : view.second.Data) {
 					dataView->EnableBuffering(Config->Runtime.UseOverlayedFileBuffering);
 				}
@@ -328,12 +326,11 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			}
 			place->SwapStream(std::move(newEntry));
 		}
-		
+
 		// Step. Flush caches if any
 		for (const auto& view : SqpackViews) {
 			for (const auto& dataView : view.second.Data) {
-				if (const auto* pStream = dynamic_cast<Sqex::BufferedRandomAccessStream*>(dataView.get()))
-					pStream->Flush();
+				dataView->Flush();
 			}
 		}
 
@@ -407,7 +404,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 						.Enabled = !exists(ttmpl.parent_path() / "disable"),
 						.ListPath = ttmpl,
 						.List = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{Utils::Win32::Handle::FromCreateFile(ttmpl, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)}),
-						.DataFile = Utils::Win32::Handle::FromCreateFile(ttmpl.parent_path() / "TTMPD.mpd", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)
+						.DataFile = Utils::Win32::Handle::FromCreateFile(ttmpl.parent_path() / "TTMPD.mpd", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN)
 						});
 				} catch (const std::exception& e) {
 					Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,

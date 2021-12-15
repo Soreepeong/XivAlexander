@@ -172,7 +172,7 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddAllEntriesFromSi
 	if (DatExpac != "ffxiv")
 		return {};
 
-	const auto dataStream = std::make_shared<FileRandomAccessStream>(Win32::Handle::FromCreateFile(ttmpdPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING));
+	const auto dataStream = std::make_shared<FileRandomAccessStream>(Win32::Handle::FromCreateFile(ttmpdPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN));
 
 	AddEntryResult result;
 	for (size_t i = 0; i < ttmpl.SimpleModsList.size(); ++i) {
@@ -235,95 +235,93 @@ void Sqex::Sqpack::Creator::ReserveSwappableSpace(EntryPathSpec pathSpec, uint32
 }
 
 template<Sqex::Sqpack::SqIndex::Header::IndexType IndexType, typename FileEntryType, typename ConflictEntryType, bool UseFolders>
-class Sqex::Sqpack::Creator::IndexViewBase : public RandomAccessStream {
-	std::vector<uint8_t> m_data;
+static std::vector<uint8_t> ExportIndexFileData(
+	size_t dataFilesCount, 
+	std::vector<FileEntryType> fileSegment,
+	const std::vector<ConflictEntryType>& conflictSegment,
+	const std::vector<Sqex::Sqpack::SqIndex::Segment3Entry>& segment3,
+	std::vector<Sqex::Sqpack::SqIndex::PathHashLocator> folderSegment = {},
+	bool strict = false
+) {
+	using namespace Sqex::Sqpack;
 
-public:
-	IndexViewBase(size_t dataFilesCount, std::vector<FileEntryType> fileSegment, const std::vector<ConflictEntryType>& conflictSegment, const std::vector<SqIndex::Segment3Entry>& segment3, std::vector<SqIndex::PathHashLocator> folderSegment = {}, bool strict = false) {
+	std::vector<uint8_t> data;
+	data.reserve(sizeof SqpackHeader
+		+ sizeof SqIndex::Header
+		+ std::span(fileSegment).size_bytes()
+		+ std::span(conflictSegment).size_bytes()
+		+ std::span(segment3).size_bytes()
+		+ std::span(folderSegment).size_bytes());
 
-		std::sort(fileSegment.begin(), fileSegment.end());
+	data.resize(sizeof SqpackHeader + sizeof SqIndex::Header);
+	auto& m_header = *reinterpret_cast<SqpackHeader*>(&data[0]);
+	memcpy(m_header.Signature, SqpackHeader::Signature_Value, sizeof SqpackHeader::Signature_Value);
+	m_header.HeaderSize = sizeof SqpackHeader;
+	m_header.Unknown1 = SqpackHeader::Unknown1_Value;
+	m_header.Type = SqpackType::SqIndex;
+	m_header.Unknown2 = SqpackHeader::Unknown2_Value;
+	if (strict)
+		m_header.Sha1.SetFromSpan(reinterpret_cast<char*>(&m_header), offsetof(SqpackHeader, Sha1));
 
-		m_data.resize(sizeof SqpackHeader + sizeof SqIndex::Header);
-		{
-			auto& m_header = *reinterpret_cast<SqpackHeader*>(&m_data[0]);
-			memcpy(m_header.Signature, SqpackHeader::Signature_Value, sizeof SqpackHeader::Signature_Value);
-			m_header.HeaderSize = sizeof SqpackHeader;
-			m_header.Unknown1 = SqpackHeader::Unknown1_Value;
-			m_header.Type = SqpackType::SqIndex;
-			m_header.Unknown2 = SqpackHeader::Unknown2_Value;
-			if (strict)
-				m_header.Sha1.SetFromSpan(reinterpret_cast<char*>(&m_header), offsetof(SqpackHeader, Sha1));
-
-			auto& m_subheader = *reinterpret_cast<SqIndex::Header*>(&m_data[sizeof SqpackHeader]);
-			m_subheader.HeaderSize = sizeof SqIndex::Header;
-			m_subheader.Type = IndexType;
-			m_subheader.HashLocatorSegment.Count = 1;
-			m_subheader.HashLocatorSegment.Offset = m_header.HeaderSize + m_subheader.HeaderSize;
-			m_subheader.HashLocatorSegment.Size = static_cast<uint32_t>(std::span(fileSegment).size_bytes());
-			m_subheader.TextLocatorSegment.Count = static_cast<uint32_t>(dataFilesCount);
-			m_subheader.TextLocatorSegment.Offset = m_subheader.HashLocatorSegment.Offset + m_subheader.HashLocatorSegment.Size;
-			m_subheader.TextLocatorSegment.Size = static_cast<uint32_t>(std::span(conflictSegment).size_bytes());
-			m_subheader.UnknownSegment3.Count = 0;
-			m_subheader.UnknownSegment3.Offset = m_subheader.TextLocatorSegment.Offset + m_subheader.TextLocatorSegment.Size;
-			m_subheader.UnknownSegment3.Size = static_cast<uint32_t>(std::span(segment3).size_bytes());
-			m_subheader.PathHashLocatorSegment.Count = 0;
-			m_subheader.PathHashLocatorSegment.Offset = m_subheader.UnknownSegment3.Offset + m_subheader.UnknownSegment3.Size;
-			if constexpr (UseFolders) {
-				for (size_t i = 0; i < fileSegment.size(); ++i) {
-					const auto& entry = fileSegment[i];
-					if (folderSegment.empty() || folderSegment.back().PathHash != entry.PathHash) {
-						folderSegment.emplace_back(
-							entry.PathHash,
-							static_cast<uint32_t>(m_subheader.HashLocatorSegment.Offset + i * sizeof entry),
-							static_cast<uint32_t>(sizeof entry),
-							0);
-					} else {
-						folderSegment.back().PairHashLocatorSize = folderSegment.back().PairHashLocatorSize + sizeof entry;
-					}
-				}
-				m_subheader.PathHashLocatorSegment.Size = static_cast<uint32_t>(std::span(folderSegment).size_bytes());
-			}
-
-			if (strict) {
-				m_subheader.Sha1.SetFromSpan(reinterpret_cast<char*>(&m_subheader), offsetof(Sqpack::SqIndex::Header, Sha1));
-				if (!fileSegment.empty())
-					m_subheader.HashLocatorSegment.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&fileSegment.front()), m_subheader.HashLocatorSegment.Size);
-				if (!conflictSegment.empty())
-					m_subheader.TextLocatorSegment.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&conflictSegment.front()), m_subheader.TextLocatorSegment.Size);
-				if (!segment3.empty())
-					m_subheader.UnknownSegment3.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&segment3.front()), m_subheader.UnknownSegment3.Size);
-				if constexpr (UseFolders) {
-					if (!folderSegment.empty())
-						m_subheader.PathHashLocatorSegment.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&folderSegment.front()), m_subheader.PathHashLocatorSegment.Size);
-				}
+	auto& m_subheader = *reinterpret_cast<SqIndex::Header*>(&data[sizeof SqpackHeader]);
+	std::sort(fileSegment.begin(), fileSegment.end());
+	m_subheader.HeaderSize = sizeof SqIndex::Header;
+	m_subheader.Type = IndexType;
+	m_subheader.HashLocatorSegment.Count = 1;
+	m_subheader.HashLocatorSegment.Offset = m_header.HeaderSize + m_subheader.HeaderSize;
+	m_subheader.HashLocatorSegment.Size = static_cast<uint32_t>(std::span(fileSegment).size_bytes());
+	m_subheader.TextLocatorSegment.Count = static_cast<uint32_t>(dataFilesCount);
+	m_subheader.TextLocatorSegment.Offset = m_subheader.HashLocatorSegment.Offset + m_subheader.HashLocatorSegment.Size;
+	m_subheader.TextLocatorSegment.Size = static_cast<uint32_t>(std::span(conflictSegment).size_bytes());
+	m_subheader.UnknownSegment3.Count = 0;
+	m_subheader.UnknownSegment3.Offset = m_subheader.TextLocatorSegment.Offset + m_subheader.TextLocatorSegment.Size;
+	m_subheader.UnknownSegment3.Size = static_cast<uint32_t>(std::span(segment3).size_bytes());
+	m_subheader.PathHashLocatorSegment.Count = 0;
+	m_subheader.PathHashLocatorSegment.Offset = m_subheader.UnknownSegment3.Offset + m_subheader.UnknownSegment3.Size;
+	if constexpr (UseFolders) {
+		for (size_t i = 0; i < fileSegment.size(); ++i) {
+			const auto& entry = fileSegment[i];
+			if (folderSegment.empty() || folderSegment.back().PathHash != entry.PathHash) {
+				folderSegment.emplace_back(
+					entry.PathHash,
+					static_cast<uint32_t>(m_subheader.HashLocatorSegment.Offset + i * sizeof entry),
+					static_cast<uint32_t>(sizeof entry),
+					0);
+			} else {
+				folderSegment.back().PairHashLocatorSize = folderSegment.back().PairHashLocatorSize + sizeof entry;
 			}
 		}
-		if (!fileSegment.empty())
-			m_data.insert(m_data.end(), reinterpret_cast<const uint8_t*>(&fileSegment.front()), reinterpret_cast<const uint8_t*>(&fileSegment.back() + 1));
-		if (!conflictSegment.empty())
-			m_data.insert(m_data.end(), reinterpret_cast<const uint8_t*>(&conflictSegment.front()), reinterpret_cast<const uint8_t*>(&conflictSegment.back() + 1));
-		if (!segment3.empty())
-			m_data.insert(m_data.end(), reinterpret_cast<const uint8_t*>(&segment3.front()), reinterpret_cast<const uint8_t*>(&segment3.back() + 1));
+		m_subheader.PathHashLocatorSegment.Size = static_cast<uint32_t>(std::span(folderSegment).size_bytes());
+	}
 
+	if (strict) {
+		m_subheader.Sha1.SetFromSpan(reinterpret_cast<char*>(&m_subheader), offsetof(SqIndex::Header, Sha1));
+		if (!fileSegment.empty())
+			m_subheader.HashLocatorSegment.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&fileSegment.front()), m_subheader.HashLocatorSegment.Size);
+		if (!conflictSegment.empty())
+			m_subheader.TextLocatorSegment.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&conflictSegment.front()), m_subheader.TextLocatorSegment.Size);
+		if (!segment3.empty())
+			m_subheader.UnknownSegment3.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&segment3.front()), m_subheader.UnknownSegment3.Size);
 		if constexpr (UseFolders) {
 			if (!folderSegment.empty())
-				m_data.insert(m_data.end(), reinterpret_cast<const uint8_t*>(&folderSegment.front()), reinterpret_cast<const uint8_t*>(&folderSegment.back() + 1));
+				m_subheader.PathHashLocatorSegment.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&folderSegment.front()), m_subheader.PathHashLocatorSegment.Size);
 		}
+	
+	}
+	if (!fileSegment.empty())
+		data.insert(data.end(), reinterpret_cast<const uint8_t*>(&fileSegment.front()), reinterpret_cast<const uint8_t*>(&fileSegment.back() + 1));
+	if (!conflictSegment.empty())
+		data.insert(data.end(), reinterpret_cast<const uint8_t*>(&conflictSegment.front()), reinterpret_cast<const uint8_t*>(&conflictSegment.back() + 1));
+	if (!segment3.empty())
+		data.insert(data.end(), reinterpret_cast<const uint8_t*>(&segment3.front()), reinterpret_cast<const uint8_t*>(&segment3.back() + 1));
+
+	if constexpr (UseFolders) {
+		if (!folderSegment.empty())
+			data.insert(data.end(), reinterpret_cast<const uint8_t*>(&folderSegment.front()), reinterpret_cast<const uint8_t*>(&folderSegment.back() + 1));
 	}
 
-	uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override {
-		if (!length)
-			return 0;
-
-		const auto available = static_cast<size_t>(std::min(length, m_data.size() - offset));
-		std::copy_n(&m_data[static_cast<size_t>(offset)], available, static_cast<uint8_t*>(buf));
-		return available;
-	}
-
-	uint64_t StreamSize() const override {
-		return m_data.size();
-	}
-};
+	return data;
+}
 
 class Sqex::Sqpack::Creator::DataView : public RandomAccessStream {
 	const std::vector<uint8_t> m_header;
@@ -341,9 +339,16 @@ class Sqex::Sqpack::Creator::DataView : public RandomAccessStream {
 		return buffer;
 	}
 
+	mutable std::mutex m_mtx;
 	mutable uint64_t m_nLastRequestedOffset = 0;
 	mutable uint64_t m_nLastRequestedSize = 0;
+	mutable uint64_t m_nLastTimeTaken = 0;
 	mutable std::vector<std::tuple<EntryProvider*, uint64_t, uint64_t>> m_pLastEntryProviders;
+	mutable size_t m_lastAccessedEntryIndex = 0;
+#if INTPTR_MAX == INT64_MAX
+	mutable std::deque<std::pair<size_t, std::vector<uint8_t>>> m_lastAccessedEntryData;
+	bool m_bUseBuffering = true;
+#endif
 
 public:
 	DataView(const SqpackHeader& header, const SqData::Header& subheader, std::span<Entry*> entries)
@@ -352,9 +357,12 @@ public:
 	}
 
 	uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override {
+		const auto st = Utils::GetHighPerformanceCounter(1000000);
+		const auto lock = std::lock_guard(m_mtx);
 		m_pLastEntryProviders.clear();
 		m_nLastRequestedOffset = offset;
 		m_nLastRequestedSize = length;
+		m_nLastTimeTaken = 0;
 		if (!length)
 			return 0;
 
@@ -370,21 +378,78 @@ public:
 		} else
 			relativeOffset -= m_header.size();
 
-		if (out.empty()) return length;
+		if (out.empty()) {
+			m_nLastTimeTaken = Utils::GetHighPerformanceCounter(1000000) - st;
+			return length;
+		}
 
-		auto it = std::ranges::lower_bound(m_entries, nullptr, [&](Entry* l, Entry* r) {
-			const auto lo = l ? l->OffsetAfterHeaders : relativeOffset;
-			const auto ro = r ? r->OffsetAfterHeaders : relativeOffset;
-			return lo < ro;
-			});
-		if (it != m_entries.begin() && (it == m_entries.end() || (*it)->OffsetAfterHeaders > relativeOffset))
-			--it;
+		auto it = m_entries.begin() + m_lastAccessedEntryIndex;
+		if ((*it)->OffsetAfterHeaders > relativeOffset || relativeOffset >= (*it)->OffsetAfterHeaders + (*it)->EntryReservedSize) {
+			it = std::ranges::lower_bound(m_entries, nullptr, [&](Entry* l, Entry* r) {
+				const auto lo = l ? l->OffsetAfterHeaders : relativeOffset;
+				const auto ro = r ? r->OffsetAfterHeaders : relativeOffset;
+				return lo < ro;
+				});
+			if (it != m_entries.begin() && (it == m_entries.end() || (*it)->OffsetAfterHeaders > relativeOffset))
+				--it;
+		}
 
 		if (it != m_entries.end()) {
 			relativeOffset -= (*it)->OffsetAfterHeaders;
 
 			for (; it < m_entries.end(); ++it) {
 				const auto& entry = **it;
+				m_lastAccessedEntryIndex = it - m_entries.begin();
+	
+#if INTPTR_MAX == INT64_MAX
+				if (m_bUseBuffering) {
+					auto needAdd = m_lastAccessedEntryData.empty() || m_lastAccessedEntryData.front().first != m_lastAccessedEntryIndex;
+					if (needAdd && m_lastAccessedEntryData.size() > 1) {
+						for (auto it2 = m_lastAccessedEntryData.begin() + 1; it2 != m_lastAccessedEntryData.end(); ++it2) {
+							if (it2->first == m_lastAccessedEntryIndex) {
+								auto data(std::move(*it2));
+								m_lastAccessedEntryData.erase(it2);
+								m_lastAccessedEntryData.emplace_front(std::move(data));
+								needAdd = false;
+								break;
+							}
+						}
+					}
+					if (needAdd) {
+						auto del = false;
+						std::pair<size_t, std::vector<uint8_t>> ent;
+						if (m_lastAccessedEntryData.size() > 1) {
+							size_t sizeSum = 0;
+							for (auto it2 = m_lastAccessedEntryData.begin() + 1; it2 != m_lastAccessedEntryData.end();) {
+								sizeSum += it2->second.size();
+								del |= sizeSum >= 32 * 1048576;
+								if (del) {
+									ent = std::move(*it2);
+									it2 = m_lastAccessedEntryData.erase(it2);
+								} else
+									++it2;
+							}
+						}
+						m_lastAccessedEntryData.emplace_front(std::move(ent));
+						m_lastAccessedEntryData.front().first = m_lastAccessedEntryIndex;
+						m_lastAccessedEntryData.front().second.resize(size_t{} + entry.EntrySize + entry.PadSize);
+						entry.Provider->ReadStream(0, std::span(m_lastAccessedEntryData.front().second).subspan(0, entry.EntrySize));
+					}
+
+					if (auto& buf = m_lastAccessedEntryData.front().second; relativeOffset < buf.size()) {
+						const auto available = std::min(out.size_bytes(), static_cast<size_t>(buf.size() - relativeOffset));
+						m_pLastEntryProviders.emplace_back(std::make_tuple(entry.Provider.get(), relativeOffset, available));
+						std::copy_n(&buf[relativeOffset], available, &out[0]);
+						out = out.subspan(available);
+						relativeOffset = 0;
+
+						if (out.empty())
+							break;
+					} else
+						relativeOffset -= entry.EntrySize;
+					continue;
+				}
+#endif
 
 				if (relativeOffset < entry.EntrySize) {
 					const auto available = std::min(out.size_bytes(), static_cast<size_t>(entry.EntrySize - relativeOffset));
@@ -411,6 +476,7 @@ public:
 			}
 		}
 
+		m_nLastTimeTaken = Utils::GetHighPerformanceCounter(1000000) - st;
 		return length - out.size_bytes();
 	}
 
@@ -419,11 +485,26 @@ public:
 	}
 
 	std::string DescribeState() const override {
-		auto res = std::format("Sqpack::Creator::DataView({}->{})", m_nLastRequestedOffset, m_nLastRequestedSize);
+		const auto lock = std::lock_guard(m_mtx);
+		auto res = std::format("Sqpack::Creator::DataView({}->{}) {}us", m_nLastRequestedOffset, m_nLastRequestedSize, m_nLastTimeTaken);
 		for (const auto& [p, off, len] : m_pLastEntryProviders) {
 			res += std::format(" [{}: {}->{}: {}]", p->PathSpec(), off, len, p->DescribeState());
 		}
 		return res;
+	}
+	
+	void Flush() const override {
+		const auto lock = std::lock_guard(m_mtx);
+		m_lastAccessedEntryData.clear();
+	}
+
+	void EnableBuffering(bool bEnable) override {
+#if INTPTR_MAX == INT64_MAX
+		const auto lock = std::lock_guard(m_mtx);
+		if (m_bUseBuffering && !bEnable)
+			m_lastAccessedEntryData.clear();
+		m_bUseBuffering = bEnable;
+#endif
 	}
 };
 
@@ -556,10 +637,12 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 	if (strict)
 		dataHeader.Sha1.SetFromSpan(reinterpret_cast<char*>(&dataHeader), offsetof(SqpackHeader, Sha1));
 
-	res.Index1 = std::make_shared<BufferedRandomAccessStream>(std::make_shared<Index1View>(dataSubheaders.size(), std::move(fileEntries1), std::move(conflictEntries1), m_pImpl->m_sqpackIndexSegment3, std::vector<SqIndex::PathHashLocator>(), strict));
-	res.Index2 = std::make_shared<BufferedRandomAccessStream>(std::make_shared<Index2View>(dataSubheaders.size(), std::move(fileEntries2), std::move(conflictEntries2), m_pImpl->m_sqpackIndex2Segment3, std::vector<SqIndex::PathHashLocator>(), strict));
+	res.Index1 = std::make_shared<Sqex::MemoryRandomAccessStream>(ExportIndexFileData<Sqex::Sqpack::SqIndex::Header::IndexType::Index, SqIndex::PairHashLocator, SqIndex::PairHashWithTextLocator, true>(
+		dataSubheaders.size(), std::move(fileEntries1), std::move(conflictEntries1), m_pImpl->m_sqpackIndexSegment3, std::vector<SqIndex::PathHashLocator>(), strict));
+	res.Index2 = std::make_shared<Sqex::MemoryRandomAccessStream>(ExportIndexFileData<Sqex::Sqpack::SqIndex::Header::IndexType::Index, SqIndex::FullHashLocator, SqIndex::FullHashWithTextLocator, false>(
+		dataSubheaders.size(), std::move(fileEntries2), std::move(conflictEntries2), m_pImpl->m_sqpackIndex2Segment3, std::vector<SqIndex::PathHashLocator>(), strict));
 	for (size_t i = 0; i < dataSubheaders.size(); ++i)
-		res.Data.emplace_back(std::make_shared<BufferedRandomAccessStream>(std::make_shared<DataView>(dataHeader, dataSubheaders[i], std::span(res.Entries).subspan(dataEntryRanges[i].first, dataEntryRanges[i].second))));
+		res.Data.emplace_back(std::make_shared<DataView>(dataHeader, dataSubheaders[i], std::span(res.Entries).subspan(dataEntryRanges[i].first, dataEntryRanges[i].second)));
 
 	return res;
 }

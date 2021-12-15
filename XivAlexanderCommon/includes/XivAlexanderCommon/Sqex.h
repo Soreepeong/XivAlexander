@@ -148,6 +148,10 @@ namespace Sqex {
 		}
 
 		virtual std::string DescribeState() const { return {}; }
+
+		virtual void EnableBuffering(bool bEnable) {}
+
+		virtual void Flush() const {}
 	};
 
 	class BufferedRandomAccessStream : public RandomAccessStream {
@@ -175,9 +179,9 @@ namespace Sqex {
 
 		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
 
-		void EnableBuffering(bool bEnable);
+		void EnableBuffering(bool bEnable) override;
 
-		void Flush() const;
+		void Flush() const override;
 	};
 
 	class RandomAccessStreamPartialView : public RandomAccessStream {

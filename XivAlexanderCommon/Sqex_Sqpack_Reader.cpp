@@ -120,7 +120,7 @@ Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strict
 	Data.reserve(Index1.IndexHeader.TextLocatorSegment.Count);
 	for (uint32_t i = 0; i < Index1.IndexHeader.TextLocatorSegment.Count; ++i) {
 		Data.emplace_back(SqDataType{
-			Win32::Handle::FromCreateFile(std::filesystem::path(indexFile).replace_extension(std::format(".dat{}", i)), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0),
+			Win32::Handle::FromCreateFile(std::filesystem::path(indexFile).replace_extension(std::format(".dat{}", i)), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN),
 			i,
 			strictVerify,
 			});

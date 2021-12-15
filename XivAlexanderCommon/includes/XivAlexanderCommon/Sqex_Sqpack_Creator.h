@@ -44,14 +44,8 @@ namespace Sqex::Sqpack {
 		void ReserveSpacesFromTTMP(const ThirdParty::TexTools::TTMPL& ttmpl);
 		AddEntryResult AddEntry(std::shared_ptr<EntryProvider> provider, bool overwriteExisting = true);
 		void ReserveSwappableSpace(EntryPathSpec pathSpec, uint32_t size);
-		
+
 	private:
-		template<SqIndex::Header::IndexType IndexType, typename FileEntryType, typename ConflictEntryType, bool UseFolders>
-		class IndexViewBase;
-		using Index1View = IndexViewBase<Sqex::Sqpack::SqIndex::Header::IndexType::Index, SqIndex::PairHashLocator, SqIndex::PairHashWithTextLocator, true>;
-		using Index2View = IndexViewBase<Sqex::Sqpack::SqIndex::Header::IndexType::Index, SqIndex::FullHashLocator, SqIndex::FullHashWithTextLocator, false>;
-		template<SqIndex::Header::IndexType IndexType>
-		class IndexView;
 		class DataView;
 
 	public:
@@ -68,9 +62,9 @@ namespace Sqex::Sqpack {
 		};
 
 		struct SqpackViews {
-			std::shared_ptr<Sqex::BufferedRandomAccessStream> Index1;
-			std::shared_ptr<Sqex::BufferedRandomAccessStream> Index2;
-			std::vector<std::shared_ptr<Sqex::BufferedRandomAccessStream>> Data;
+			std::shared_ptr<Sqex::RandomAccessStream> Index1;
+			std::shared_ptr<Sqex::RandomAccessStream> Index2;
+			std::vector<std::shared_ptr<Sqex::RandomAccessStream>> Data;
 			std::vector<Entry*> Entries;
 			std::map<EntryPathSpec, std::unique_ptr<Entry>, EntryPathSpec::AllHashComparator> HashOnlyEntries;
 			std::map<EntryPathSpec, std::unique_ptr<Entry>, EntryPathSpec::FullPathComparator> FullPathEntries;
