@@ -454,8 +454,8 @@ static void InitializeBeforeOriginalEntryPoint() {
 	static Utils::CallOnDestruction::Multiple s_hooks;
 
 	// Prevent the game from restarting to "fix" ACL
-	static App::Misc::Hooks::ImportedFunction<HANDLE, DWORD, BOOL, DWORD> s_OpenProcessForXiv{ "kernel32::OpenProcess", "kernel32.dll", "OpenProcess" };
-	static App::Misc::Hooks::PointerFunction<HANDLE, DWORD, BOOL, DWORD> s_OpenProcess{ "OpenProcess", ::OpenProcess };
+	static App::Misc::Hooks::ImportedFunction<HANDLE, DWORD, BOOL, DWORD> s_OpenProcessForXiv("kernel32!OpenProcess", "kernel32.dll", "OpenProcess");
+	static App::Misc::Hooks::PointerFunction<HANDLE, DWORD, BOOL, DWORD> s_OpenProcess("OpenProcess", ::OpenProcess);
 	s_hooks += s_OpenProcessForXiv.SetHook([](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) {
 		if (dwProcessId == GetCurrentProcessId()) {
 			// Prevent game from restarting itself on startup
@@ -477,10 +477,10 @@ static void InitializeBeforeOriginalEntryPoint() {
 	});
 
 	if (App::Config::Acquire()->Runtime.UseMoreCpuTime) {
-		static App::Misc::Hooks::PointerFunction<DWORD_PTR, HANDLE, DWORD_PTR> s_SetThreadAffinityMask{ "SetThreadAffinityMask", ::SetThreadAffinityMask };
-		static App::Misc::Hooks::PointerFunction<void, LPSYSTEM_INFO> s_GetSystemInfo("GetSystemInfo", ::GetSystemInfo);
-		static App::Misc::Hooks::PointerFunction<void, DWORD> s_Sleep("Sleep", ::Sleep);
-		static App::Misc::Hooks::PointerFunction<DWORD, DWORD, BOOL> s_SleepEx("SleepEx", ::SleepEx);
+		static App::Misc::Hooks::ImportedFunction<DWORD_PTR, HANDLE, DWORD_PTR> s_SetThreadAffinityMask("kernel32!SetThreadAffinityMask", "kernel32.dll", "SetThreadAffinityMask");
+		static App::Misc::Hooks::ImportedFunction<void, LPSYSTEM_INFO> s_GetSystemInfo("kernel32!GetSystemInfo", "kernel32.dll", "GetSystemInfo");
+		static App::Misc::Hooks::ImportedFunction<void, DWORD> s_Sleep("kernel32!Sleep", "kernel32.dll", "Sleep");
+		static App::Misc::Hooks::ImportedFunction<DWORD, DWORD, BOOL> s_SleepEx("kernel32!SleepEx", "kernel32.dll", "SleepEx");
 		s_hooks += s_SetThreadAffinityMask.SetHook([](HANDLE h, DWORD_PTR d) { return static_cast<DWORD_PTR>(-1); });
 		s_hooks += s_GetSystemInfo.SetHook([&](LPSYSTEM_INFO i) {
 			s_GetSystemInfo.bridge(i);
