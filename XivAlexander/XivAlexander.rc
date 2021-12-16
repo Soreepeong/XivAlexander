@@ -273,7 +273,9 @@ BEGIN
     POPUP "ï\é¶(&V)"
     BEGIN
         MENUITEM "èÌÇ…éËëOÇ…ï\é¶(&T)\tCtrl+T",         ID_VIEW_ALWAYSONTOP
-        MENUITEM "ÉQÅ[ÉÄÉEÉBÉìÉhÉEÇèÌÇ…éËëOÇ…ï\é¶(&T)\tCtrl+Shift+T", ID_VIEW_ALWAYSONTOPGAME
+        MENUITEM "ÉQÅ[ÉÄÉEÉBÉìÉhÉEÇèÌÇ…éËëOÇ…ï\é¶(&W)\tCtrl+Shift+T", ID_VIEW_ALWAYSONTOPGAME
+        MENUITEM SEPARATOR
+        MENUITEM "ç≈è¨âªÇÃë„ÇÌÇËÇ…ÉgÉåÉCÇ…âBÇ∑(&H)",          ID_VIEW_HIDEONMINIMIZE
     END
     POPUP "ÉwÉãÉv(&H)"
     BEGIN
@@ -809,7 +811,9 @@ BEGIN
     POPUP "∫∏±‚(&V)"
     BEGIN
         MENUITEM "«◊ªÛ ¿ßø° «•Ω√(&T)\tCtrl+T",        ID_VIEW_ALWAYSONTOP
-        MENUITEM "∞‘¿”¿ª «◊ªÛ ¿ßø° «•Ω√(&T)\tCtrl+Shift+T", ID_VIEW_ALWAYSONTOPGAME
+        MENUITEM "∞‘¿”¿ª «◊ªÛ ¿ßø° «•Ω√(&W)\tCtrl+Shift+T", ID_VIEW_ALWAYSONTOPGAME
+        MENUITEM SEPARATOR
+        MENUITEM "√÷º“»≠ Ω√ º˚±Ë(&H)",                ID_VIEW_HIDEONMINIMIZE
     END
     POPUP "µµøÚ∏ª(&H)"
     BEGIN
@@ -1402,7 +1406,9 @@ BEGIN
     POPUP "&View"
     BEGIN
         MENUITEM "Always on &Top\tCtrl+T",      ID_VIEW_ALWAYSONTOP
-        MENUITEM "Always on &Top (Game Window)\tCtrl+Shift+T", ID_VIEW_ALWAYSONTOPGAME
+        MENUITEM "Always on Top (Game &Window)\tCtrl+Shift+T", ID_VIEW_ALWAYSONTOPGAME
+        MENUITEM SEPARATOR
+        MENUITEM "&Hide on Minimize",           ID_VIEW_HIDEONMINIMIZE
     END
     POPUP "&Help"
     BEGIN

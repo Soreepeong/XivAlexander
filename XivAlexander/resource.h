@@ -331,13 +331,15 @@
 #define ID_MODDING_MUTEVOICE_BATTLE     40505
 #define ID_MODDING_MUTEVOICE_CM         40506
 #define ID_MODDING_MUTEVOICE_LINE       40507
+#define ID_VIEW_HIDEONMINIMIZE          40510
+#define ID_VIEW_USEMORECPUTIME          40511
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        206
-#define _APS_NEXT_COMMAND_VALUE         40508
+#define _APS_NEXT_COMMAND_VALUE         40512
 #define _APS_NEXT_CONTROL_VALUE         1001
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

@@ -108,7 +108,7 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 	});
 
 	m_cleanup += m_config->Runtime.ShowControlWindow.OnChangeListener([this](auto&) {
-		ShowWindow(m_hWnd, m_config->Runtime.ShowControlWindow ? SW_SHOW : SW_HIDE);
+		ShowWindow(m_hWnd, m_config->Runtime.ShowControlWindow ? SW_SHOWNORMAL : SW_HIDE);
 		if (m_config->Runtime.ShowControlWindow)
 			SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexMainWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 	});
@@ -278,19 +278,10 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 			auto willShowControlWindow = false;
 			if (m_lastTrayIconLeftButtonUp + GetDoubleClickTime() > now) {
 				if ((m_config->Runtime.ShowControlWindow = !m_config->Runtime.ShowControlWindow))
-					willShowControlWindow = true;
+					SetForegroundWindow(m_hWnd);
 				m_lastTrayIconLeftButtonUp = 0;
 			} else
 				m_lastTrayIconLeftButtonUp = now;
-
-			if (!willShowControlWindow) {
-				if (const auto hWndGame = m_pApp->GetGameWindowHandle()) {
-					const auto temporaryFocus = WithTemporaryFocus();
-					SetForegroundWindow(hWndGame);
-				}
-			} else {
-				SetForegroundWindow(m_hWnd);
-			}
 		}
 	} else if (uMsg == WmRepopulateMenu) {
 		RepopulateMenu();
@@ -346,6 +337,11 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 
 		EndPaint(m_hWnd, &ps);
 		return 0;
+	} else if (uMsg == WM_SIZE) {
+		if (wParam == SIZE_MINIMIZED && m_config->Runtime.HideOnMinimize) {
+			m_config->Runtime.ShowControlWindow = false;
+			return 0;
+		}
 	}
 	return BaseWindow::WndProc(hwnd, uMsg, wParam, lParam);
 }
@@ -875,8 +871,11 @@ void App::Window::MainWindow::SetMenuStates() const {
 	}
 
 	// View
-	SetMenuState(hMenu, ID_VIEW_ALWAYSONTOP, config.AlwaysOnTop_XivAlexMainWindow, true);
-	SetMenuState(hMenu, ID_VIEW_ALWAYSONTOPGAME, config.AlwaysOnTop_GameMainWindow, true);
+	{
+		SetMenuState(hMenu, ID_VIEW_ALWAYSONTOP, config.AlwaysOnTop_XivAlexMainWindow, true);
+		SetMenuState(hMenu, ID_VIEW_ALWAYSONTOPGAME, config.AlwaysOnTop_GameMainWindow, true);
+		SetMenuState(hMenu, ID_VIEW_HIDEONMINIMIZE, config.HideOnMinimize, true);
+	}
 }
 
 void App::Window::MainWindow::RegisterTrayIcon() {
@@ -1936,13 +1935,16 @@ void App::Window::MainWindow::OnCommand_Menu_View(int menuId) {
 	auto& config = m_config->Runtime;
 
 	switch (menuId) {
-	case ID_VIEW_ALWAYSONTOP: {
+	case ID_VIEW_ALWAYSONTOP:
 		m_config->Runtime.AlwaysOnTop_XivAlexMainWindow = !m_config->Runtime.AlwaysOnTop_XivAlexMainWindow;
 		return;
-	}
 
 	case ID_VIEW_ALWAYSONTOPGAME:
 		config.AlwaysOnTop_GameMainWindow = !config.AlwaysOnTop_GameMainWindow;
+		return;
+
+	case ID_VIEW_HIDEONMINIMIZE:
+		config.HideOnMinimize = !config.HideOnMinimize;
 		return;
 	}
 }
