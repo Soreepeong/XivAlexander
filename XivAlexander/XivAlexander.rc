@@ -36,6 +36,9 @@ BEGIN
     POPUP "ï\é¶(&V)"
     BEGIN
         MENUITEM "èÌÇ…éËëOÇ…ï\é¶(&T)\tCtrl+T",         ID_VIEW_ALWAYSONTOP
+        MENUITEM SEPARATOR
+        MENUITEM "ÉèÅ[ÉhÉâÉbÉvÇégóp(&W)\tCtrl+R",       ID_VIEW_USEWORDWRAP
+        MENUITEM "ìôïùÉtÉHÉìÉgÇégóp(&M)\tCtrl+M",       ID_VIEW_USEMONOSPACEDFONT
     END
 END
 
@@ -835,6 +838,9 @@ BEGIN
     POPUP "∫∏±‚(&V)"
     BEGIN
         MENUITEM "«◊ªÛ ¿ßø° «•Ω√(&T)\tCtrl+T",        ID_VIEW_ALWAYSONTOP
+        MENUITEM SEPARATOR
+        MENUITEM "¡ŸπŸ≤ﬁ ªÁøÎ(&W)\tCtrl+R",          ID_VIEW_USEWORDWRAP
+        MENUITEM "∞Ì¡§∆¯ ±€≤√ ªÁøÎ(&M)\tCtrl+M",       ID_VIEW_USEMONOSPACEDFONT
     END
 END
 
@@ -1430,6 +1436,9 @@ BEGIN
     POPUP "&View"
     BEGIN
         MENUITEM "Always on &Top\tCtrl+T",      ID_VIEW_ALWAYSONTOP
+        MENUITEM SEPARATOR
+        MENUITEM "Use &Word Wrap\tCtrl+R",      ID_VIEW_USEWORDWRAP
+        MENUITEM "Use &Monospaced Font\tCtrl+M", ID_VIEW_USEMONOSPACEDFONT
     END
 END
 
@@ -1525,6 +1534,8 @@ BEGIN
     "W",            ID_FILE_CLOSE,          VIRTKEY, CONTROL, NOINVERT
     "S",            ID_FILE_SAVE,           VIRTKEY, CONTROL, NOINVERT
     "T",            ID_VIEW_ALWAYSONTOP,    VIRTKEY, CONTROL, NOINVERT
+    "R",            ID_VIEW_USEWORDWRAP,    VIRTKEY, CONTROL, NOINVERT
+    "M",            ID_VIEW_USEMONOSPACEDFONT, VIRTKEY, CONTROL, NOINVERT
 END
 
 IDR_TRAY_ACCELERATOR ACCELERATORS

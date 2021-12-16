@@ -40,19 +40,22 @@ static WNDCLASSEXW WindowClass() {
 App::Window::LogWindow::LogWindow()
 	: BaseWindow(WindowClass(), nullptr, WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr) {
 
-	NONCLIENTMETRICS ncm = {sizeof(NONCLIENTMETRICS)};
-	SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
-
 	m_hScintilla = CreateWindowExW(0, L"Scintilla", L"", WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
 		0, 0, 0, 0, m_hWnd, nullptr, Dll::Module(), nullptr);
 	m_direct = reinterpret_cast<SciFnDirect>(SendMessageW(m_hScintilla, SCI_GETDIRECTFUNCTION, 0, 0));
 	m_directPtr = SendMessageW(m_hScintilla, SCI_GETDIRECTPOINTER, 0, 0);
 	m_direct(m_directPtr, SCI_STYLESETSIZE, STYLE_DEFAULT, static_cast<int>(BaseFontSize * GetZoom()));
-	m_direct(m_directPtr, SCI_SETWRAPMODE, SC_WRAP_CHAR, 0);
 	m_direct(m_directPtr, SCI_SETREADONLY, TRUE, 0);
 	m_direct(m_directPtr, SCI_SETMARGINTYPEN, 0, SC_MARGIN_NUMBER);
 	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 1, 0);
-	m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>(Utils::ToUtf8(ncm.lfMessageFont.lfFaceName).data()));
+	m_direct(m_directPtr, SCI_SETWRAPMODE, m_config->Runtime.UseWordWrap_XivAlexLogWindow ? SC_WRAP_CHAR : SC_WRAP_NONE, 0);
+	if (m_config->Runtime.UseMonospaceFont_XivAlexLogWindow) {
+		m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>("Courier New"));
+	} else {
+		NONCLIENTMETRICS ncm = { sizeof(NONCLIENTMETRICS) };
+		SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
+		m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>(Utils::ToUtf8(ncm.lfMessageFont.lfFaceName).data()));
+	}
 	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Debug), RGB(80, 80, 80));
 	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Info), RGB(0, 0, 0));
 	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Warning), RGB(160, 160, 0));
@@ -60,7 +63,19 @@ App::Window::LogWindow::LogWindow()
 
 	m_cleanup += m_config->Runtime.AlwaysOnTop_XivAlexLogWindow.OnChangeListener([this](auto&) {
 		SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexLogWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-	});
+		});
+	m_cleanup += m_config->Runtime.UseWordWrap_XivAlexLogWindow.OnChangeListener([this](auto&) {
+		m_direct(m_directPtr, SCI_SETWRAPMODE, m_config->Runtime.UseWordWrap_XivAlexLogWindow ? SC_WRAP_CHAR : SC_WRAP_NONE, 0);
+		});
+	m_cleanup += m_config->Runtime.UseMonospaceFont_XivAlexLogWindow.OnChangeListener([this](auto&) {
+		if (m_config->Runtime.UseMonospaceFont_XivAlexLogWindow) {
+			m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>("Courier New"));
+		} else {
+			NONCLIENTMETRICS ncm = { sizeof(NONCLIENTMETRICS) };
+			SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
+			m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>(Utils::ToUtf8(ncm.lfMessageFont.lfFaceName).data()));
+		}
+		});
 	
 	m_cleanup += m_logger->OnNewLogItem([&](const std::deque<Misc::Logger::LogItem>& items) {
 		std::stringstream o;
@@ -108,6 +123,8 @@ LRESULT App::Window::LogWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
 	switch (uMsg) {
 		case WM_INITMENUPOPUP: {
 			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_ALWAYSONTOP, m_config->Runtime.AlwaysOnTop_XivAlexLogWindow, true);
+			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_USEWORDWRAP, m_config->Runtime.UseWordWrap_XivAlexLogWindow, true);
+			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_USEMONOSPACEDFONT, m_config->Runtime.UseMonospaceFont_XivAlexLogWindow, true);
 			break;
 		}
 
@@ -141,6 +158,16 @@ LRESULT App::Window::LogWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
 
 				case ID_VIEW_ALWAYSONTOP: {
 					m_config->Runtime.AlwaysOnTop_XivAlexLogWindow = !m_config->Runtime.AlwaysOnTop_XivAlexLogWindow;
+					return 0;
+				}
+
+				case ID_VIEW_USEMONOSPACEDFONT: {
+					m_config->Runtime.UseMonospaceFont_XivAlexLogWindow = !m_config->Runtime.UseMonospaceFont_XivAlexLogWindow;
+					return 0;
+				}
+
+				case ID_VIEW_USEWORDWRAP: {
+					m_config->Runtime.UseWordWrap_XivAlexLogWindow = !m_config->Runtime.UseWordWrap_XivAlexLogWindow;
 					return 0;
 				}
 			}

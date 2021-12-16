@@ -338,7 +338,7 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 		EndPaint(m_hWnd, &ps);
 		return 0;
 	} else if (uMsg == WM_SIZE) {
-		if (wParam == SIZE_MINIMIZED && m_config->Runtime.HideOnMinimize) {
+		if (wParam == SIZE_MINIMIZED && m_config->Runtime.HideOnMinimize_XivAlexMainWindow) {
 			m_config->Runtime.ShowControlWindow = false;
 			return 0;
 		}
@@ -874,7 +874,7 @@ void App::Window::MainWindow::SetMenuStates() const {
 	{
 		SetMenuState(hMenu, ID_VIEW_ALWAYSONTOP, config.AlwaysOnTop_XivAlexMainWindow, true);
 		SetMenuState(hMenu, ID_VIEW_ALWAYSONTOPGAME, config.AlwaysOnTop_GameMainWindow, true);
-		SetMenuState(hMenu, ID_VIEW_HIDEONMINIMIZE, config.HideOnMinimize, true);
+		SetMenuState(hMenu, ID_VIEW_HIDEONMINIMIZE, config.HideOnMinimize_XivAlexMainWindow, true);
 	}
 }
 
@@ -1944,7 +1944,7 @@ void App::Window::MainWindow::OnCommand_Menu_View(int menuId) {
 		return;
 
 	case ID_VIEW_HIDEONMINIMIZE:
-		config.HideOnMinimize = !config.HideOnMinimize;
+		config.HideOnMinimize_XivAlexMainWindow = !config.HideOnMinimize_XivAlexMainWindow;
 		return;
 	}
 }
