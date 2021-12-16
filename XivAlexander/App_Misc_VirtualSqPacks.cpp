@@ -1988,3 +1988,21 @@ void App::Misc::VirtualSqPacks::RescanTtmp() {
 
 	m_pImpl->ReflectUsedEntries();
 }
+
+App::Misc::VirtualSqPacks* App::Misc::VirtualSqPacks::Instance() {
+	static std::unique_ptr<VirtualSqPacks> s_sqpacks;
+	static bool s_failed = false;
+	if (!s_sqpacks && !s_failed) {
+		static std::mutex s_mtx;
+		const auto lock = std::lock_guard(s_mtx);
+		if (!s_sqpacks && !s_failed) {
+			try{
+				s_sqpacks = std::make_unique<VirtualSqPacks>(Utils::Win32::Process::Current().PathOf().remove_filename() / L"sqpack");
+			} catch (const std::exception& e) {
+				Misc::Logger::Acquire()->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, L"VirtualSqPack failure: {}", e.what());
+				s_failed = true;
+			}
+		}
+	}
+	return s_sqpacks.get();
+}

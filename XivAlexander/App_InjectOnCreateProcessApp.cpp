@@ -445,16 +445,15 @@ static void InitializeBeforeOriginalEntryPoint() {
 	if (filename != XivAlexDll::GameExecutableNameW)
 		return;  // not the game process; don't load XivAlex app
 
-	// the game might restart itself for whatever reason.
-	s_injectOnCreateProcessApp->SetFlags(XivAlexDll::InjectOnCreateProcessAppFlags::InjectGameOnly);
+	// Delay Initialize call to Dalamud Boot if Dalamud is being used
+	App::DalamudHandlerApp::LoadDalamudHandler();
 
 	// Load game resource overrider before the game starts to load files.
 	App::Feature::GameResourceOverrider::Enable();
 
-	// Delay Initialize call to Dalamud Boot if Dalamud is being used
-	App::DalamudHandlerApp::LoadDalamudHandler();
-
 	static Utils::CallOnDestruction::Multiple s_hooks;
+
+	// Prevent the game from restarting to "fix" ACL
 	static App::Misc::Hooks::ImportedFunction<HANDLE, DWORD, BOOL, DWORD> s_OpenProcessForXiv{ "kernel32::OpenProcess", "kernel32.dll", "OpenProcess" };
 	static App::Misc::Hooks::PointerFunction<HANDLE, DWORD, BOOL, DWORD> s_OpenProcess{ "OpenProcess", ::OpenProcess };
 	s_hooks += s_OpenProcessForXiv.SetHook([](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) {
@@ -485,7 +484,7 @@ static void InitializeBeforeOriginalEntryPoint() {
 		s_hooks += s_SetThreadAffinityMask.SetHook([](HANDLE h, DWORD_PTR d) { return static_cast<DWORD_PTR>(-1); });
 		s_hooks += s_GetSystemInfo.SetHook([&](LPSYSTEM_INFO i) {
 			s_GetSystemInfo.bridge(i);
-			i->dwNumberOfProcessors = std::min(192UL, i->dwNumberOfProcessors);
+			i->dwNumberOfProcessors = std::min(192UL, i->dwNumberOfProcessors * 8);
 			});
 		static uint16_t counter = 0;
 		s_hooks += s_Sleep.SetHook([&](DWORD i) {
@@ -504,11 +503,7 @@ static void InitializeBeforeOriginalEntryPoint() {
 			});
 	}
 
-	void(Utils::Win32::Thread(L"EnableXivAlexanderSoon", []() {
-		Sleep(1000);
-		XivAlexDll::EnableXivAlexander(1);
-		XivAlexDll::EnableInjectOnCreateProcess(0);
-		}));
+	void(Utils::Win32::Thread(L"XivAlexDllEnableXivAlexander", []() { XivAlexDll::EnableXivAlexander(1); }));
 }
 
 void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters * pParam) {

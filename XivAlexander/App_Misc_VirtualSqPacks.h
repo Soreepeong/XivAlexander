@@ -16,6 +16,8 @@ namespace App::Misc {
 		VirtualSqPacks(std::filesystem::path sqpackPath);
 		~VirtualSqPacks();
 
+		static VirtualSqPacks* Instance();
+
 		HANDLE Open(const std::filesystem::path& path);
 		bool Close(HANDLE handle);
 

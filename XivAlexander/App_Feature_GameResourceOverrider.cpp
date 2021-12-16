@@ -63,7 +63,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 	const std::shared_ptr<Misc::Logger> m_logger;
 	const std::shared_ptr<Misc::DebuggerDetectionDisabler> m_debugger;
 	const std::filesystem::path m_sqpackPath;
-	std::unique_ptr<Misc::VirtualSqPacks> m_sqpacks;
+	Misc::VirtualSqPacks* m_sqpacks = nullptr;
 	bool m_bSqpackFailed = false;
 
 	std::vector<std::unique_ptr<Misc::Hooks::PointerFunction<size_t, uint32_t, const char*, size_t>>> fns{};
@@ -94,7 +94,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			_In_ DWORD dwCreationDisposition,
 			_In_ DWORD dwFlagsAndAttributes,
 			_In_opt_ HANDLE hTemplateFile
-		) {
+			) {
 				if (const auto lock = ReEnterPreventer::Lock(m_repCreateFileW); lock &&
 					!(dwDesiredAccess & GENERIC_WRITE) &&
 					dwCreationDisposition == OPEN_EXISTING &&
@@ -106,7 +106,9 @@ struct App::Feature::GameResourceOverrider::Implementation {
 							const auto dirname = path.parent_path().filename();
 							const auto recreatedPath = m_sqpackPath / dirname / filename;
 							if (exists(recreatedPath) && equivalent(recreatedPath, path)) {
-								m_sqpacks = std::make_unique<Misc::VirtualSqPacks>(m_sqpackPath);
+								m_sqpacks = Misc::VirtualSqPacks::Instance();
+								if (!m_sqpacks)
+									throw std::runtime_error("VirtualSqPack initialized failed");
 								try {
 									OnVirtualSqPacksInitialized();
 								} catch (const std::exception& e) {
@@ -360,6 +362,10 @@ void App::Feature::GameResourceOverrider::Enable() {
 			const auto lock = std::lock_guard(mtx);
 			if (s_useModding && !s_error && !s_pImpl)
 				s_pImpl = std::make_unique<Implementation>();
+
+			void(Utils::Win32::Thread(L"VirtualSqPackInitialize", []() {
+				App::Misc::VirtualSqPacks::Instance();
+			}));
 		} catch (const std::exception& e) {
 			s_error = true;
 			void(Utils::Win32::Thread(L"Temp", [msg = std::format("Disabling modding for the run: {}", e.what())]() {
@@ -374,7 +380,7 @@ bool App::Feature::GameResourceOverrider::Enabled() {
 }
 
 App::Misc::VirtualSqPacks* App::Feature::GameResourceOverrider::GetVirtualSqPacks() {
-	return s_pImpl ? s_pImpl->m_sqpacks.get() : nullptr;
+	return s_pImpl ? s_pImpl->m_sqpacks : nullptr;
 }
 
 Utils::CallOnDestruction App::Feature::GameResourceOverrider::OnVirtualSqPacksInitialized(std::function<void()> f) {
