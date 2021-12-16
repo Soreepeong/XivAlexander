@@ -485,7 +485,7 @@ static void InitializeBeforeOriginalEntryPoint() {
 		s_hooks += s_SetThreadAffinityMask.SetHook([](HANDLE h, DWORD_PTR d) { return static_cast<DWORD_PTR>(-1); });
 		s_hooks += s_GetSystemInfo.SetHook([&](LPSYSTEM_INFO i) {
 			s_GetSystemInfo.bridge(i);
-			i->dwNumberOfProcessors *= 8;
+			i->dwNumberOfProcessors = std::min(192UL, i->dwNumberOfProcessors);
 			});
 		static uint16_t counter = 0;
 		s_hooks += s_Sleep.SetHook([&](DWORD i) {

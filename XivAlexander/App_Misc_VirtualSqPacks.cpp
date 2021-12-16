@@ -544,6 +544,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		{
 			const auto progressMax = creators.size();
 			size_t progressValue = 0;
+			const auto dataViewBuffer = std::make_shared<Sqex::Sqpack::Creator::SqpackViewEntryCache>();
 			const auto workerThread = Utils::Win32::Thread(L"VirtualSqPacks Element Finalizer", [&]() {
 				Utils::Win32::TpEnvironment pool;
 				std::mutex resLock;
@@ -552,7 +553,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 						throw std::runtime_error("Cancelled");
 
 					pool.SubmitWork([&]() {
-						auto v = pCreator->AsViews(false);
+						auto v = pCreator->AsViews(false, pCreator->DatName.starts_with("0c") ? nullptr : dataViewBuffer);
 
 						const auto lock = std::lock_guard(resLock);
 						SqpackViews.emplace(indexFile, std::move(v));

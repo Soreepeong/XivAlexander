@@ -12,7 +12,7 @@ namespace Sqex::ThirdParty::TexTools {
 namespace Sqex::Sqpack {
 	class Creator {
 		const uint64_t m_maxFileSize;
-		
+
 	public:
 		const std::string DatExpac;
 		const std::string DatName;
@@ -69,7 +69,70 @@ namespace Sqex::Sqpack {
 			std::map<EntryPathSpec, std::unique_ptr<Entry>, EntryPathSpec::AllHashComparator> HashOnlyEntries;
 			std::map<EntryPathSpec, std::unique_ptr<Entry>, EntryPathSpec::FullPathComparator> FullPathEntries;
 		};
-		SqpackViews AsViews(bool strict);
+
+		class SqpackViewEntryCache {
+			static constexpr auto SmallEntryBufferSize = (INTPTR_MAX == INT64_MAX ? 256 : 8) * 1048576;
+			static constexpr auto LargeEntryBufferSizeMax = (INTPTR_MAX == INT64_MAX ? 1024 : 64) * 1048576;
+
+		public:
+			class BufferedEntry {
+				const DataView* m_view = nullptr;
+				const Entry* m_entry = nullptr;
+				std::vector<uint8_t> m_bufferPreallocated;
+				std::vector<uint8_t> m_bufferTemporary;
+				std::span<uint8_t> m_bufferActive;
+
+			public:
+				bool Empty() const {
+					return m_view == nullptr || m_entry == nullptr;
+				}
+
+				bool IsEntry(const DataView* view, const Entry* entry) const {
+					return m_view == view && m_entry == entry;
+				}
+
+				void ClearEntry() {
+					m_view = nullptr;
+					m_entry = nullptr;
+					if (!m_bufferTemporary.empty())
+						std::vector<uint8_t>().swap(m_bufferTemporary);
+				}
+
+				auto GetEntry() const {
+					return std::make_pair(m_view, m_entry);
+				}
+
+				void SetEntry(const DataView* view, const Entry* entry) {
+					m_view = view;
+					m_entry = entry;
+
+					if (entry->EntrySize <= SmallEntryBufferSize) {
+						if (!m_bufferTemporary.empty())
+							std::vector<uint8_t>().swap(m_bufferTemporary);
+						if (m_bufferPreallocated.size() != SmallEntryBufferSize)
+							m_bufferPreallocated.resize(SmallEntryBufferSize);
+						m_bufferActive = std::span(m_bufferPreallocated.begin(), entry->EntrySize);
+					} else {
+						m_bufferTemporary.resize(entry->EntrySize);
+						m_bufferActive = std::span(m_bufferTemporary);
+					}
+					entry->Provider->ReadStream(0, m_bufferActive);
+				}
+
+				const auto& Buffer() const {
+					return m_bufferActive;
+				}
+			};
+
+		private:
+			BufferedEntry m_lastActiveEntry;
+
+		public:
+			BufferedEntry* GetBuffer(const DataView* view, const Entry* entry);
+			void Flush();
+		};
+
+		SqpackViews AsViews(bool strict, const std::shared_ptr<SqpackViewEntryCache>& buffer = nullptr);
 
 		std::shared_ptr<RandomAccessStream> operator[](const EntryPathSpec& pathSpec) const;
 		std::vector<EntryPathSpec> AllPathSpec() const;

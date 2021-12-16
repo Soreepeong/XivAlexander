@@ -85,7 +85,7 @@ std::vector<Sqex::Sqpack::EntryProvider*> Sqex::Sqpack::Creator::AddEntryResult:
 	return res;
 }
 
-void Sqex::Sqpack::Creator::Implementation::AddEntry(AddEntryResult& result, std::shared_ptr<EntryProvider> provider, bool overwriteExisting) {
+void Sqex::Sqpack::Creator::Implementation::AddEntry(AddEntryResult & result, std::shared_ptr<EntryProvider> provider, bool overwriteExisting) {
 	const auto pProvider = provider.get();
 
 	try {
@@ -236,10 +236,10 @@ void Sqex::Sqpack::Creator::ReserveSwappableSpace(EntryPathSpec pathSpec, uint32
 
 template<Sqex::Sqpack::SqIndex::Header::IndexType IndexType, typename FileEntryType, typename ConflictEntryType, bool UseFolders>
 static std::vector<uint8_t> ExportIndexFileData(
-	size_t dataFilesCount, 
+	size_t dataFilesCount,
 	std::vector<FileEntryType> fileSegment,
-	const std::vector<ConflictEntryType>& conflictSegment,
-	const std::vector<Sqex::Sqpack::SqIndex::Segment3Entry>& segment3,
+	const std::vector<ConflictEntryType>&conflictSegment,
+	const std::vector<Sqex::Sqpack::SqIndex::Segment3Entry>&segment3,
 	std::vector<Sqex::Sqpack::SqIndex::PathHashLocator> folderSegment = {},
 	bool strict = false
 ) {
@@ -306,7 +306,7 @@ static std::vector<uint8_t> ExportIndexFileData(
 			if (!folderSegment.empty())
 				m_subheader.PathHashLocatorSegment.Sha1.SetFromSpan(reinterpret_cast<const uint8_t*>(&folderSegment.front()), m_subheader.PathHashLocatorSegment.Size);
 		}
-	
+
 	}
 	if (!fileSegment.empty())
 		data.insert(data.end(), reinterpret_cast<const uint8_t*>(&fileSegment.front()), reinterpret_cast<const uint8_t*>(&fileSegment.back() + 1));
@@ -339,27 +339,23 @@ class Sqex::Sqpack::Creator::DataView : public RandomAccessStream {
 		return buffer;
 	}
 
-	mutable std::mutex m_mtx;
 	mutable uint64_t m_nLastRequestedOffset = 0;
 	mutable uint64_t m_nLastRequestedSize = 0;
 	mutable uint64_t m_nLastTimeTaken = 0;
 	mutable std::vector<std::tuple<EntryProvider*, uint64_t, uint64_t>> m_pLastEntryProviders;
-
-#if INTPTR_MAX == INT64_MAX
 	mutable size_t m_lastAccessedEntryIndex = SIZE_MAX;
-	mutable uint8_t m_smallEntryBuffer[8 * 1048576];
-	mutable std::vector<uint8_t> m_largeEntryBuffer;
-#endif
+	const std::shared_ptr<SqpackViewEntryCache> m_buffer;
 
 public:
-	DataView(const SqpackHeader& header, const SqData::Header& subheader, std::span<Entry*> entries)
+
+	DataView(const SqpackHeader& header, const SqData::Header& subheader, std::span<Entry*> entries, std::shared_ptr<SqpackViewEntryCache> buffer)
 		: m_header(Concat(header, subheader))
-		, m_entries(std::move(entries)) {
+		, m_entries(std::move(entries))
+		, m_buffer(std::move(buffer)) {
 	}
 
 	uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override {
 		const auto st = Utils::GetHighPerformanceCounter(1000000);
-		const auto lock = std::lock_guard(m_mtx);
 		m_pLastEntryProviders.clear();
 		m_nLastRequestedOffset = offset;
 		m_nLastRequestedSize = length;
@@ -384,7 +380,7 @@ public:
 			return length;
 		}
 
-		auto it = m_lastAccessedEntryIndex == SIZE_MAX ? m_entries.begin() : m_entries.begin() + m_lastAccessedEntryIndex;
+		auto it = m_lastAccessedEntryIndex != SIZE_MAX ? m_entries.begin() + m_lastAccessedEntryIndex : m_entries.begin();
 		if ((*it)->OffsetAfterHeaders > relativeOffset || relativeOffset >= (*it)->OffsetAfterHeaders + (*it)->EntryReservedSize) {
 			it = std::ranges::lower_bound(m_entries, nullptr, [&](Entry* l, Entry* r) {
 				const auto lo = l ? l->OffsetAfterHeaders : relativeOffset;
@@ -400,40 +396,17 @@ public:
 
 			for (; it < m_entries.end(); ++it) {
 				const auto& entry = **it;
+				m_lastAccessedEntryIndex = it - m_entries.begin();
 
-#if INTPTR_MAX == INT64_MAX
-				const auto requiredSize = size_t{} + entry.EntrySize + entry.PadSize;
-				const auto reuseBuffer = requiredSize <= sizeof m_smallEntryBuffer;
+				const auto buf = m_buffer ? m_buffer->GetBuffer(this, &entry) : nullptr;
 
-				if (const auto entryIndex = it - m_entries.begin(); entryIndex != m_lastAccessedEntryIndex) {
-					m_lastAccessedEntryIndex = entryIndex;
-					if (reuseBuffer) {
-						std::vector<uint8_t>().swap(m_largeEntryBuffer);
-						entry.Provider->ReadStream(0, std::span(m_smallEntryBuffer).subspan(0, entry.EntrySize));
-					} else {
-						m_largeEntryBuffer.resize(requiredSize);
-						entry.Provider->ReadStream(0, std::span(m_largeEntryBuffer).subspan(0, entry.EntrySize));
-					}
-				}
-
-				const auto buf = reuseBuffer ? std::span(m_smallEntryBuffer).subspan(0, requiredSize) : std::span(m_largeEntryBuffer);
-				if (relativeOffset < buf.size()) {
-					const auto available = std::min(out.size_bytes(), static_cast<size_t>(buf.size() - relativeOffset));
-					m_pLastEntryProviders.emplace_back(std::make_tuple(entry.Provider.get(), relativeOffset, available));
-					std::copy_n(&buf[relativeOffset], available, &out[0]);
-					out = out.subspan(available);
-					relativeOffset = 0;
-
-					if (out.empty())
-						break;
-				} else
-					relativeOffset -= entry.EntrySize;
-
-#else
 				if (relativeOffset < entry.EntrySize) {
 					const auto available = std::min(out.size_bytes(), static_cast<size_t>(entry.EntrySize - relativeOffset));
 					m_pLastEntryProviders.emplace_back(std::make_tuple(entry.Provider.get(), relativeOffset, available));
-					entry.Provider->ReadStream(relativeOffset, out.data(), available);
+					if (buf)
+						std::copy_n(&buf->Buffer()[relativeOffset], available, &out[0]);
+					else
+						entry.Provider->ReadStream(relativeOffset, out.data(), available);
 					out = out.subspan(available);
 					relativeOffset = 0;
 
@@ -452,7 +425,6 @@ public:
 						break;
 				} else
 					relativeOffset -= entry.PadSize;
-#endif
 			}
 		}
 
@@ -465,26 +437,20 @@ public:
 	}
 
 	std::string DescribeState() const override {
-		const auto lock = std::lock_guard(m_mtx);
 		auto res = std::format("Sqpack::Creator::DataView({}->{}) {}us", m_nLastRequestedOffset, m_nLastRequestedSize, m_nLastTimeTaken);
 		for (const auto& [p, off, len] : m_pLastEntryProviders) {
 			res += std::format(" [{}: {}->{}: {}]", p->PathSpec(), off, len, p->DescribeState());
 		}
 		return res;
 	}
-	
+
 	void Flush() const override {
-#if INTPTR_MAX == INT64_MAX
-		if (!m_largeEntryBuffer.empty()) {
-			const auto lock = std::lock_guard(m_mtx);
-			std::vector<uint8_t>().swap(m_largeEntryBuffer);
-			m_lastAccessedEntryIndex = SIZE_MAX;
-		}
-#endif
+		if (m_buffer)
+			m_buffer->Flush();
 	}
 };
 
-Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
+Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict, const std::shared_ptr<SqpackViewEntryCache>&dataBuffer) {
 	SqpackHeader dataHeader{};
 	std::vector<SqData::Header> dataSubheaders;
 	std::vector<std::pair<size_t, size_t>> dataEntryRanges;
@@ -493,7 +459,7 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 		.HashOnlyEntries = std::move(m_pImpl->m_hashOnlyEntries),
 		.FullPathEntries = std::move(m_pImpl->m_fullEntries),
 	};
-	
+
 	res.Entries.reserve(m_pImpl->m_fullEntries.size() + m_pImpl->m_hashOnlyEntries.size());
 	for (auto& entry : res.HashOnlyEntries | std::views::values)
 		res.Entries.emplace_back(entry.get());
@@ -550,14 +516,14 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 		dataSubheaders.back().DataSize = dataSubheaders.back().DataSize + entry->EntrySize + entry->PadSize;
 		dataEntryRanges.back().second++;
 	}
-	
+
 	std::vector<SqIndex::PairHashLocator> fileEntries1;
 	std::vector<SqIndex::PairHashWithTextLocator> conflictEntries1;
 	for (const auto& [pairHash, correspondingEntries] : pairHashes) {
 		if (correspondingEntries.size() == 1) {
 			fileEntries1.emplace_back(SqIndex::PairHashLocator{ pairHash.second, pairHash.first, correspondingEntries.front()->Locator, 0 });
 		} else {
-			fileEntries1.emplace_back(SqIndex::PairHashLocator{ pairHash.second, pairHash.first, SqIndex::LEDataLocator::Synonym(), 0});
+			fileEntries1.emplace_back(SqIndex::PairHashLocator{ pairHash.second, pairHash.first, SqIndex::LEDataLocator::Synonym(), 0 });
 			uint32_t i = 0;
 			for (const auto& entry : correspondingEntries) {
 				conflictEntries1.emplace_back(SqIndex::PairHashWithTextLocator{
@@ -618,7 +584,7 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict) {
 	res.Index2 = std::make_shared<Sqex::MemoryRandomAccessStream>(ExportIndexFileData<Sqex::Sqpack::SqIndex::Header::IndexType::Index, SqIndex::FullHashLocator, SqIndex::FullHashWithTextLocator, false>(
 		dataSubheaders.size(), std::move(fileEntries2), std::move(conflictEntries2), m_pImpl->m_sqpackIndex2Segment3, std::vector<SqIndex::PathHashLocator>(), strict));
 	for (size_t i = 0; i < dataSubheaders.size(); ++i)
-		res.Data.emplace_back(std::make_shared<DataView>(dataHeader, dataSubheaders[i], std::span(res.Entries).subspan(dataEntryRanges[i].first, dataEntryRanges[i].second)));
+		res.Data.emplace_back(std::make_shared<DataView>(dataHeader, dataSubheaders[i], std::span(res.Entries).subspan(dataEntryRanges[i].first, dataEntryRanges[i].second), dataBuffer));
 
 	return res;
 }
@@ -639,4 +605,19 @@ std::vector<Sqex::Sqpack::EntryPathSpec> Sqex::Sqpack::Creator::AllPathSpec() co
 	for (const auto& entry : m_pImpl->m_fullEntries | std::views::keys)
 		res.emplace_back(entry);
 	return res;
+}
+
+void Sqex::Sqpack::Creator::SqpackViewEntryCache::Flush() {
+	m_lastActiveEntry.ClearEntry();
+}
+
+Sqex::Sqpack::Creator::SqpackViewEntryCache::BufferedEntry* Sqex::Sqpack::Creator::SqpackViewEntryCache::GetBuffer(const DataView * view, const Entry * entry) {
+	if (m_lastActiveEntry.IsEntry(view, entry))
+		return &m_lastActiveEntry;
+
+	if (entry->EntrySize > LargeEntryBufferSizeMax)
+		return nullptr;
+
+	m_lastActiveEntry.SetEntry(view, entry);
+	return &m_lastActiveEntry;
 }
