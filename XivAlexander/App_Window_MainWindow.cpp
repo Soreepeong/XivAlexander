@@ -982,7 +982,7 @@ void App::Window::MainWindow::OnCommand_Menu_File(int menuId) {
 	case ID_FILE_FORCEEXITGAME:
 		if (Dll::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, m_config->Runtime.GetStringRes(IDS_CONFIRM_EXIT_GAME)) == IDYES) {
 			RemoveTrayIcon();
-			ExitProcess(0);
+			TerminateProcess(GetCurrentProcess(), 0);
 		}
 		return;
 	}

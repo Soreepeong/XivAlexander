@@ -32,7 +32,7 @@ struct App::InjectOnCreateProcessApp::Implementation {
 		LPVOID,
 		LPCWSTR,
 		LPSTARTUPINFOW,
-		LPPROCESS_INFORMATION> CreateProcessW{"CreateProcessW", ::CreateProcessW};
+		LPPROCESS_INFORMATION> CreateProcessW{ "CreateProcessW", ::CreateProcessW };
 
 	Misc::Hooks::PointerFunction<BOOL, LPCSTR,
 		LPSTR,
@@ -43,7 +43,7 @@ struct App::InjectOnCreateProcessApp::Implementation {
 		LPVOID,
 		LPCSTR,
 		LPSTARTUPINFOA,
-		LPPROCESS_INFORMATION> CreateProcessA{"CreateProcessA", ::CreateProcessA};
+		LPPROCESS_INFORMATION> CreateProcessA{ "CreateProcessA", ::CreateProcessA };
 
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
@@ -65,7 +65,7 @@ struct App::InjectOnCreateProcessApp::Implementation {
 		const auto isGame64 = lstrcmpiW(filename.c_str(), XivAlexDll::GameExecutable64NameW) == 0;
 
 		if (isGame32) {
-			for (const auto candidate : {"d3d9.dll", "dinput8.dll"}) {
+			for (const auto candidate : { "d3d9.dll", "dinput8.dll" }) {
 				try {
 					if (XivAlexDll::IsXivAlexanderDll(pardir / candidate))
 						return false;
@@ -74,7 +74,7 @@ struct App::InjectOnCreateProcessApp::Implementation {
 				}
 			}
 		} else if (isGame64) {
-			for (const auto candidate : {"d3d11.dll", "dxgi.dll", "dinput8.dll"}) {
+			for (const auto candidate : { "d3d11.dll", "dxgi.dll", "dinput8.dll" }) {
 				try {
 					if (XivAlexDll::IsXivAlexanderDll(pardir / candidate))
 						return false;
@@ -110,7 +110,7 @@ struct App::InjectOnCreateProcessApp::Implementation {
 				if (process.IsProcess64Bits() == Utils::Win32::Process::Current().IsProcess64Bits()) {
 					XivAlexDll::PatchEntryPointForInjection(process);
 				} else {
-					LaunchXivAlexLoaderWithTargetHandles({process}, XivAlexDll::LoaderAction::Internal_Inject_HookEntryPoint, true, {}, XivAlexDll::Opposite);
+					LaunchXivAlexLoaderWithTargetHandles({ process }, XivAlexDll::LoaderAction::Internal_Inject_HookEntryPoint, true, {}, XivAlexDll::Opposite);
 				}
 			}
 		} catch (const std::exception& e) {
@@ -279,7 +279,7 @@ App::InjectOnCreateProcessApp::Implementation::Implementation() {
 		if (!noOperation)
 			PostProcessExecution(dwCreationFlags, lpProcessInformation);
 		return result;
-	});
+		});
 	m_cleanup += CreateProcessA.SetHook([this](_In_opt_ LPCSTR lpApplicationName, _Inout_opt_ LPSTR lpCommandLine, _In_opt_ LPSECURITY_ATTRIBUTES lpProcessAttributes, _In_opt_ LPSECURITY_ATTRIBUTES lpThreadAttributes, _In_ BOOL bInheritHandles, _In_ DWORD dwCreationFlags, _In_opt_ LPVOID lpEnvironment, _In_opt_ LPCSTR lpCurrentDirectory, _In_ LPSTARTUPINFOA lpStartupInfo, _Out_ LPPROCESS_INFORMATION lpProcessInformation) -> BOOL {
 		if (!lpStartupInfo) {
 			SetLastError(ERROR_INVALID_PARAMETER);
@@ -328,7 +328,7 @@ App::InjectOnCreateProcessApp::Implementation::Implementation() {
 			currentDirectory ? currentDirectory->data() : nullptr,
 			&siw,
 			lpProcessInformation);
-	});
+		});
 }
 
 App::InjectOnCreateProcessApp::Implementation::~Implementation() = default;
@@ -414,21 +414,21 @@ static void InitializeAsStubBeforeOriginalEntryPoint() {
 				loadPath.empty() ? L"Failed to resolve XivAlexander installation path." : std::format(L"Failed to load {}.", loadPath.wstring()),
 				e.what());
 			switch (choice) {
-				case IDRETRY: {
-					SHELLEXECUTEINFOW shex{};
-					shex.cbSize = sizeof shex;
-					shex.nShow = SW_SHOW;
-					shex.lpFile = conf->Runtime.GetStringRes(IDS_URL_HELP);
-					if (!ShellExecuteExW(&shex))
-						Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, Utils::Win32::FormatWindowsErrorMessage(GetLastError()));
-					break;
-				}
-				case IDIGNORE: {
-					loop = false;
-					break;
-				}
-				case IDABORT:
-					TerminateProcess(GetCurrentProcess(), -1);
+			case IDRETRY: {
+				SHELLEXECUTEINFOW shex{};
+				shex.cbSize = sizeof shex;
+				shex.nShow = SW_SHOW;
+				shex.lpFile = conf->Runtime.GetStringRes(IDS_URL_HELP);
+				if (!ShellExecuteExW(&shex))
+					Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, Utils::Win32::FormatWindowsErrorMessage(GetLastError()));
+				break;
+			}
+			case IDIGNORE: {
+				loop = false;
+				break;
+			}
+			case IDABORT:
+				TerminateProcess(GetCurrentProcess(), -1);
 			}
 		}
 	}
@@ -455,25 +455,27 @@ static void InitializeBeforeOriginalEntryPoint() {
 	App::DalamudHandlerApp::LoadDalamudHandler();
 
 	static Utils::CallOnDestruction::Multiple s_hooks;
+	static App::Misc::Hooks::ImportedFunction<HANDLE, DWORD, BOOL, DWORD> s_OpenProcessForXiv{ "kernel32::OpenProcess", "kernel32.dll", "OpenProcess" };
 	static App::Misc::Hooks::PointerFunction<HANDLE, DWORD, BOOL, DWORD> s_OpenProcess{ "OpenProcess", ::OpenProcess };
-	s_hooks += s_OpenProcess.SetHook([&, firstVmWriteAccess = true](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) mutable {
+	s_hooks += s_OpenProcessForXiv.SetHook([](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) {
 		if (dwProcessId == GetCurrentProcessId()) {
-
 			// Prevent game from restarting itself on startup
-			if (firstVmWriteAccess && dwDesiredAccess == PROCESS_VM_WRITE) {
-				firstVmWriteAccess = false;
+			if (dwDesiredAccess & PROCESS_VM_WRITE) {
 				SetLastError(ERROR_ACCESS_DENIED);
 				return HANDLE{};
 			}
-
+		}
+		return s_OpenProcess.bridge(dwDesiredAccess, bInheritHandle, dwProcessId);
+	});
+	s_hooks += s_OpenProcess.SetHook([](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) {
+		if (dwProcessId == GetCurrentProcessId()) {
 			// Prevent Reloaded from tripping
 			if (HANDLE h{}; DuplicateHandle(GetCurrentProcess(), GetCurrentProcess(), GetCurrentProcess(), &h, dwDesiredAccess, bInheritHandle, 0))
 				return h;
-
 			return HANDLE{};
 		}
 		return s_OpenProcess.bridge(dwDesiredAccess, bInheritHandle, dwProcessId);
-		});
+	});
 
 	if (App::Config::Acquire()->Runtime.UseMoreCpuTime) {
 		static App::Misc::Hooks::PointerFunction<DWORD_PTR, HANDLE, DWORD_PTR> s_SetThreadAffinityMask{ "SetThreadAffinityMask", ::SetThreadAffinityMask };
@@ -506,10 +508,10 @@ static void InitializeBeforeOriginalEntryPoint() {
 		Sleep(1000);
 		XivAlexDll::EnableXivAlexander(1);
 		XivAlexDll::EnableInjectOnCreateProcess(0);
-	}));
+		}));
 }
 
-void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters* pParam) {
+void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters * pParam) {
 	DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &pParam->Internal.hMainThread, 0, FALSE, DUPLICATE_SAME_ACCESS);
 	pParam->Internal.hWorkerThread = CreateThread(nullptr, 0, [](void* pParam) -> DWORD {
 		Utils::Win32::SetThreadDescription(GetCurrentThread(), L"InjectEntryPoint::WorkerThread");
@@ -553,7 +555,7 @@ void __stdcall XivAlexDll::InjectEntryPoint(InjectEntryPointParameters* pParam) 
 			FreeLibraryAndExitThread(Dll::Module(), 0);
 		}
 		return 0;
-	}, pParam, 0, nullptr);
+		}, pParam, 0, nullptr);
 	assert(pParam->Internal.hWorkerThread);
 	WaitForSingleObject(pParam->Internal.hWorkerThread, INFINITE);
 	CloseHandle(pParam->Internal.hWorkerThread);
@@ -592,7 +594,7 @@ XivAlexDll::InjectEntryPointParameters* XivAlexDll::PatchEntryPointForInjection(
 			+ pathBytes.size_bytes()
 		);
 		trampoline = new(&trampolineBuffer[0]) TrampolineTemplate();
-		pathBytesTarget = {&trampolineBuffer[trampolineLength], pathBytes.size_bytes()};
+		pathBytesTarget = { &trampolineBuffer[trampolineLength], pathBytes.size_bytes() };
 	}
 
 	const auto rvaEntryPoint = mem.OptionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC
