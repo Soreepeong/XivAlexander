@@ -1471,7 +1471,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 										return;
 									const auto lock = std::lock_guard(writeMtx);
 									const auto entryLine = std::format("{}\n", nlohmann::json::object({
-										{"FullPath", Utils::ToUtf8(entryPathSpec.FullPath.wstring())},
+										{"FullPath", Utils::StringReplaceAll<std::string>(Utils::ToUtf8(entryPathSpec.FullPath.wstring()), "\\", "/")},
 										{"ModOffset", ttmpdPtr},
 										{"ModSize", len},
 										{"DatFile", "000000"},
