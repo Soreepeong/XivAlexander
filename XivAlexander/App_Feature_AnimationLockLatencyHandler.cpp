@@ -46,7 +46,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 				return static_cast<int64_t>(GetTickCount64());
 			}
 
-			explicit PendingAction(const Network::Structures::IPCMessageDataType::C2S_ActionRequest& request)
+			explicit PendingAction(const Network::Structures::XivIpcs::C2S_ActionRequest& request)
 				: ActionId(request.ActionId)
 				, Sequence(request.Sequence)
 				, RequestTimestamp(Now()) {
@@ -77,10 +77,10 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 			const auto& runtimeConfig = m_config->Runtime;
 
 			conn.AddOutgoingFFXIVMessageHandler(this, [&](auto pMessage) {
-				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
-					if (pMessage->Data.IPC.SubType == gameConfig.C2S_ActionRequest[0]
-						|| pMessage->Data.IPC.SubType == gameConfig.C2S_ActionRequest[1]) {
-						const auto& actionRequest = pMessage->Data.IPC.Data.C2S_ActionRequest;
+				if (pMessage->Type == MessageType::Ipc && pMessage->Data.Ipc.Type == IpcType::InterestedType) {
+					if (pMessage->Data.Ipc.SubType == gameConfig.C2S_ActionRequest[0]
+						|| pMessage->Data.Ipc.SubType == gameConfig.C2S_ActionRequest[1]) {
+						const auto& actionRequest = pMessage->Data.Ipc.Data.C2S_ActionRequest;
 						m_pendingActions.emplace_back(actionRequest);
 
 						const auto delay = m_pendingActions.back().RequestTimestamp - m_lastAnimationLockEndsAt;
@@ -106,7 +106,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 								LogCategory::AnimationLockLatencyHandler,
 								"{:x}: C2S_ActionRequest({:04x}): actionId={:04x} sequence={:04x} delay={}{:+}ms prevNextRelative={}ms{}",
 								conn.Socket(),
-								pMessage->Data.IPC.SubType,
+								pMessage->Data.Ipc.SubType,
 								actionRequest.ActionId,
 								actionRequest.Sequence,
 								m_latestSuccessfulRequest.OriginalWaitTime,
@@ -120,32 +120,32 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 			conn.AddIncomingFFXIVMessageHandler(this, [&](auto pMessage) {
 				const auto now = PendingAction::Now();
 
-				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::CustomType) {
-					if (pMessage->Data.IPC.SubType == static_cast<uint16_t>(IpcCustomSubtype::OriginalWaitTime)) {
-						const auto& data = pMessage->Data.IPC.Data.S2C_Custom_OriginalWaitTime;
+				if (pMessage->Type == MessageType::Ipc && pMessage->Data.Ipc.Type == IpcType::CustomType) {
+					if (pMessage->Data.Ipc.SubType == static_cast<uint16_t>(IpcCustomSubtype::OriginalWaitTime)) {
+						const auto& data = pMessage->Data.Ipc.Data.S2C_Custom_OriginalWaitTime;
 						m_originalWaitTimeMap[data.SourceSequence] = static_cast<uint64_t>(static_cast<double>(data.OriginalWaitTime) * 1000ULL);
 					}
 
-					// Don't relay custom IPC data to game.
+					// Don't relay custom Ipc data to game.
 					return false;
 
-				} else if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
+				} else if (pMessage->Type == MessageType::Ipc && pMessage->Data.Ipc.Type == IpcType::InterestedType) {
 					// Only interested in messages intended for the current player
 					if (pMessage->CurrentActor == pMessage->SourceActor) {
-						if (gameConfig.S2C_ActionEffects[0] == pMessage->Data.IPC.SubType
-							|| gameConfig.S2C_ActionEffects[1] == pMessage->Data.IPC.SubType
-							|| gameConfig.S2C_ActionEffects[2] == pMessage->Data.IPC.SubType
-							|| gameConfig.S2C_ActionEffects[3] == pMessage->Data.IPC.SubType
-							|| gameConfig.S2C_ActionEffects[4] == pMessage->Data.IPC.SubType) {
+						if (gameConfig.S2C_ActionEffects[0] == pMessage->Data.Ipc.SubType
+							|| gameConfig.S2C_ActionEffects[1] == pMessage->Data.Ipc.SubType
+							|| gameConfig.S2C_ActionEffects[2] == pMessage->Data.Ipc.SubType
+							|| gameConfig.S2C_ActionEffects[3] == pMessage->Data.Ipc.SubType
+							|| gameConfig.S2C_ActionEffects[4] == pMessage->Data.Ipc.SubType) {
 
 							// actionEffect has to be modified later on, so no const
-							auto& actionEffect = pMessage->Data.IPC.Data.S2C_ActionEffect;
+							auto& actionEffect = pMessage->Data.Ipc.Data.S2C_ActionEffect;
 							int64_t originalWaitTime, waitTime;
 
 							std::stringstream description;
 							description << std::format("{:x}: S2C_ActionEffect({:04x}): actionId={:04x} sourceSequence={:04x}",
 								conn.Socket(),
-								pMessage->Data.IPC.SubType,
+								pMessage->Data.Ipc.SubType,
 								actionEffect.ActionId,
 								actionEffect.SourceSequence);
 
@@ -215,8 +215,8 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 							if (runtimeConfig.UseHighLatencyMitigationLogging)
 								m_pImpl->m_logger->Log(LogCategory::AnimationLockLatencyHandler, description.str());
 
-						} else if (pMessage->Data.IPC.SubType == gameConfig.S2C_ActorControlSelf) {
-							auto& actorControlSelf = pMessage->Data.IPC.Data.S2C_ActorControlSelf;
+						} else if (pMessage->Data.Ipc.SubType == gameConfig.S2C_ActorControlSelf) {
+							auto& actorControlSelf = pMessage->Data.Ipc.Data.S2C_ActorControlSelf;
 
 							// Oldest action request has been rejected from server.
 							if (actorControlSelf.Category == S2C_ActorControlSelfCategory::ActionRejected) {
@@ -249,8 +249,8 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 										rollback.SourceSequence);
 							}
 
-						} else if (pMessage->Data.IPC.SubType == gameConfig.S2C_ActorControl) {
-							const auto& actorControl = pMessage->Data.IPC.Data.S2C_ActorControl;
+						} else if (pMessage->Data.Ipc.SubType == gameConfig.S2C_ActorControl) {
+							const auto& actorControl = pMessage->Data.Ipc.Data.S2C_ActorControl;
 
 							// The server has cancelled an oldest action (which is a cast) in progress.
 							if (actorControl.Category == S2C_ActorControlCategory::CancelCast) {
@@ -277,8 +277,8 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 										cancelCast.ActionId);
 							}
 
-						} else if (pMessage->Data.IPC.SubType == gameConfig.S2C_ActorCast) {
-							const auto& actorCast = pMessage->Data.IPC.Data.S2C_ActorCast;
+						} else if (pMessage->Data.Ipc.SubType == gameConfig.S2C_ActorCast) {
+							const auto& actorCast = pMessage->Data.Ipc.Data.S2C_ActorCast;
 							// Mark that the last request was a cast.
 							// If it indeed is a cast, the game UI will block the user from generating additional requests,
 							// so first item is guaranteed to be the cast action.

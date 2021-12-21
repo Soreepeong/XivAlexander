@@ -16,53 +16,70 @@ struct App::Feature::AllIpcMessageLogger::Implementation {
 			using namespace Network::Structures;
 
 			conn.AddIncomingFFXIVMessageHandler(this, [&](auto pMessage) {
-				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
+				if (pMessage->Type == MessageType::Ipc && pMessage->Data.Ipc.Type == IpcType::InterestedType) {
 					const char* pszPossibleMessageType;
 					switch (pMessage->Length) {
-						case 0x09c: pszPossibleMessageType = "ActionEffect01";
+						case 0x09c:
+							pszPossibleMessageType = "ActionEffect01";
 							break;
-						case 0x29c: pszPossibleMessageType = "ActionEffect08";
+						case 0x29c:
+							pszPossibleMessageType = "ActionEffect08";
 							break;
-						case 0x4dc: pszPossibleMessageType = "ActionEffect16";
+						case 0x4dc:
+							pszPossibleMessageType = "ActionEffect16";
 							break;
-						case 0x71c: pszPossibleMessageType = "ActionEffect24";
+						case 0x71c:
+							pszPossibleMessageType = "ActionEffect24";
 							break;
-						case 0x95c: pszPossibleMessageType = "ActionEffect32";
+						case 0x95c:
+							pszPossibleMessageType = "ActionEffect32";
 							break;
-						case 0x040: pszPossibleMessageType = "ActorControlSelf, ActorCast";
+						case (sizeof XivMessageHeader + sizeof XivIpcHeader + sizeof XivIpcs::S2C_ActorControlSelf):
+							static_assert(sizeof XivIpcs::S2C_ActorControlSelf == sizeof XivIpcs::S2C_ActorCast);
+							pszPossibleMessageType = "ActorControlSelf, ActorCast";
 							break;
-						case 0x038: pszPossibleMessageType = "ActorControl";
+						case (sizeof XivMessageHeader + sizeof XivIpcHeader + sizeof XivIpcs::S2C_ActorControl):
+							static_assert(sizeof XivIpcs::S2C_ActorControl == sizeof XivIpcs::S2C_EffectResult6Basic);
+							pszPossibleMessageType = "ActorControl, EffectResult6Basic";
 							break;
-						case 0x078: pszPossibleMessageType = "AddStatusEffect";
+						case (sizeof XivMessageHeader + sizeof XivIpcHeader + sizeof XivIpcs::S2C_EffectResult5):
+							pszPossibleMessageType = "EffectResult5";
 							break;
-						default: pszPossibleMessageType = nullptr;
+						case (sizeof XivMessageHeader + sizeof XivIpcHeader + sizeof XivIpcs::S2C_EffectResult6):
+							pszPossibleMessageType = "EffectResult6";
+							break;
+						default:
+							pszPossibleMessageType = nullptr;
 					}
 					m_pImpl->m_logger->Format(LogCategory::AllIpcMessageLogger, "source={:08x} current={:08x} subtype={:04x} length={:x} (S2C{}{})",
 						pMessage->SourceActor, pMessage->CurrentActor,
-						pMessage->Data.IPC.SubType, pMessage->Length,
+						pMessage->Data.Ipc.SubType, pMessage->Length,
 						pszPossibleMessageType ? ": Possibly " : "",
 						pszPossibleMessageType ? pszPossibleMessageType : "");
 				}
 				return true;
-			});
+				});
 			conn.AddOutgoingFFXIVMessageHandler(this, [&](auto pMessage) {
-				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
+				if (pMessage->Type == MessageType::Ipc && pMessage->Data.Ipc.Type == IpcType::InterestedType) {
 					const char* pszPossibleMessageType;
 					switch (pMessage->Length) {
-						case 0x038: pszPossibleMessageType = "PositionUpdate";
+						case 0x038:
+							pszPossibleMessageType = "PositionUpdate";
 							break;
-						case 0x040: pszPossibleMessageType = "ActionRequest, C2S_ActionRequestGroundTargeted, InteractTarget";
+						case 0x040:
+							pszPossibleMessageType = "ActionRequest, C2S_ActionRequestGroundTargeted, InteractTarget";
 							break;
-						default: pszPossibleMessageType = nullptr;
+						default:
+							pszPossibleMessageType = nullptr;
 					}
 					m_pImpl->m_logger->Format(LogCategory::AllIpcMessageLogger, "source={:08x} current={:08x} subtype={:04x} length={:x} (C2S{}{})",
 						pMessage->SourceActor, pMessage->CurrentActor,
-						pMessage->Data.IPC.SubType, pMessage->Length,
+						pMessage->Data.Ipc.SubType, pMessage->Length,
 						pszPossibleMessageType ? ": Possibly " : "",
 						pszPossibleMessageType ? pszPossibleMessageType : "");
 				}
 				return true;
-			});
+				});
 		}
 
 		~SingleConnectionHandler() {
@@ -80,10 +97,10 @@ struct App::Feature::AllIpcMessageLogger::Implementation {
 		, m_socketHook(socketHook) {
 		m_cleanup += m_socketHook->OnSocketFound([&](Network::SingleConnection& conn) {
 			m_handlers.emplace(&conn, std::make_unique<SingleConnectionHandler>(this, conn));
-		});
+			});
 		m_cleanup += m_socketHook->OnSocketGone([&](Network::SingleConnection& conn) {
 			m_handlers.erase(&conn);
-		});
+			});
 	}
 
 	~Implementation() {

@@ -15,8 +15,8 @@ namespace App {
 
 namespace App::Network {
 	namespace Structures {
-		struct FFXIVBundle;
-		struct FFXIVMessage;
+		struct XivBundle;
+		struct XivMessage;
 	}
 
 	class SocketHook;
@@ -33,7 +33,7 @@ namespace App::Network {
 		SingleConnection(SocketHook* hook, SOCKET s);
 		~SingleConnection();
 
-		typedef std::function<bool(Structures::FFXIVMessage*)> MessageMangler;
+		typedef std::function<bool(Structures::XivMessage*)> MessageMangler;
 		void AddIncomingFFXIVMessageHandler(void* token, MessageMangler cb);
 		void AddOutgoingFFXIVMessageHandler(void* token, MessageMangler cb);
 		void RemoveMessageHandlers(void* token);

@@ -456,51 +456,63 @@ static void InitializeBeforeOriginalEntryPoint() {
 	// Prevent the game from restarting to "fix" ACL
 	static App::Misc::Hooks::ImportedFunction<HANDLE, DWORD, BOOL, DWORD> s_OpenProcessForXiv("kernel32!OpenProcess", "kernel32.dll", "OpenProcess");
 	static App::Misc::Hooks::PointerFunction<HANDLE, DWORD, BOOL, DWORD> s_OpenProcess("OpenProcess", ::OpenProcess);
-	s_hooks += s_OpenProcessForXiv.SetHook([](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) {
-		if (dwProcessId == GetCurrentProcessId()) {
-			// Prevent game from restarting itself on startup
-			if (dwDesiredAccess & PROCESS_VM_WRITE) {
-				SetLastError(ERROR_ACCESS_DENIED);
+	if (s_OpenProcessForXiv) {
+		s_hooks += s_OpenProcessForXiv.SetHook([](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) {
+			if (dwProcessId == GetCurrentProcessId()) {
+				// Prevent game from restarting itself on startup
+				if (dwDesiredAccess & PROCESS_VM_WRITE) {
+					SetLastError(ERROR_ACCESS_DENIED);
+					return HANDLE{};
+				}
+			}
+			return s_OpenProcess.bridge(dwDesiredAccess, bInheritHandle, dwProcessId);
+			});
+	}
+	if (s_OpenProcess) {
+		s_hooks += s_OpenProcess.SetHook([](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) {
+			if (dwProcessId == GetCurrentProcessId()) {
+				// Prevent Reloaded from tripping
+				if (HANDLE h{}; DuplicateHandle(GetCurrentProcess(), GetCurrentProcess(), GetCurrentProcess(), &h, dwDesiredAccess, bInheritHandle, 0))
+					return h;
 				return HANDLE{};
 			}
-		}
-		return s_OpenProcess.bridge(dwDesiredAccess, bInheritHandle, dwProcessId);
-	});
-	s_hooks += s_OpenProcess.SetHook([](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) {
-		if (dwProcessId == GetCurrentProcessId()) {
-			// Prevent Reloaded from tripping
-			if (HANDLE h{}; DuplicateHandle(GetCurrentProcess(), GetCurrentProcess(), GetCurrentProcess(), &h, dwDesiredAccess, bInheritHandle, 0))
-				return h;
-			return HANDLE{};
-		}
-		return s_OpenProcess.bridge(dwDesiredAccess, bInheritHandle, dwProcessId);
-	});
+			return s_OpenProcess.bridge(dwDesiredAccess, bInheritHandle, dwProcessId);
+			});
+	}
 
 	if (App::Config::Acquire()->Runtime.UseMoreCpuTime) {
 		static App::Misc::Hooks::ImportedFunction<DWORD_PTR, HANDLE, DWORD_PTR> s_SetThreadAffinityMask("kernel32!SetThreadAffinityMask", "kernel32.dll", "SetThreadAffinityMask");
 		static App::Misc::Hooks::ImportedFunction<void, LPSYSTEM_INFO> s_GetSystemInfo("kernel32!GetSystemInfo", "kernel32.dll", "GetSystemInfo");
 		static App::Misc::Hooks::ImportedFunction<void, DWORD> s_Sleep("kernel32!Sleep", "kernel32.dll", "Sleep");
 		static App::Misc::Hooks::ImportedFunction<DWORD, DWORD, BOOL> s_SleepEx("kernel32!SleepEx", "kernel32.dll", "SleepEx");
-		s_hooks += s_SetThreadAffinityMask.SetHook([](HANDLE h, DWORD_PTR d) { return static_cast<DWORD_PTR>(-1); });
-		s_hooks += s_GetSystemInfo.SetHook([&](LPSYSTEM_INFO i) {
-			s_GetSystemInfo.bridge(i);
-			i->dwNumberOfProcessors = std::min(192UL, i->dwNumberOfProcessors * 8);
-			});
+		if (s_SetThreadAffinityMask) {
+			s_hooks += s_SetThreadAffinityMask.SetHook([](HANDLE h, DWORD_PTR d) { return static_cast<DWORD_PTR>(-1); });
+		}
+		if (s_GetSystemInfo) {
+			s_hooks += s_GetSystemInfo.SetHook([&](LPSYSTEM_INFO i) {
+				s_GetSystemInfo.bridge(i);
+				i->dwNumberOfProcessors = std::min(192UL, i->dwNumberOfProcessors * 8);
+				});
+		}
 		static uint16_t counter = 0;
-		s_hooks += s_Sleep.SetHook([&](DWORD i) {
-			if (i)
-				s_Sleep.bridge(i);
-			else if (!++counter)
-				SwitchToThread();
-			});
-		s_hooks += s_SleepEx.SetHook([&](DWORD i, BOOL bAlertable) {
-			if (i || bAlertable)
-				return s_SleepEx.bridge(i, bAlertable);
+		if (s_Sleep) {
+			s_hooks += s_Sleep.SetHook([&](DWORD i) {
+				if (i)
+					s_Sleep.bridge(i);
+				else if (!++counter)
+					SwitchToThread();
+				});
+		}
+		if (s_SleepEx) {
+			s_hooks += s_SleepEx.SetHook([&](DWORD i, BOOL bAlertable) {
+				if (i || bAlertable)
+					return s_SleepEx.bridge(i, bAlertable);
 
-			if (!++counter)
-				SwitchToThread();
-			return 0UL;
-			});
+				if (!++counter)
+					SwitchToThread();
+				return 0UL;
+				});
+		}
 	}
 
 	void(Utils::Win32::Thread(L"XivAlexDllEnableXivAlexander", []() { XivAlexDll::EnableXivAlexander(1); }));

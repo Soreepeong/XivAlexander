@@ -108,17 +108,17 @@ public:
 			if (buf.empty())
 				break;
 
-			if (const auto trash = FFXIVBundle::ExtractFrontTrash(buf); !trash.empty()) {
+			if (const auto trash = XivBundle::ExtractFrontTrash(buf); !trash.empty()) {
 				target.Write(trash);
 				Consume(trash.size_bytes());
 				buf = buf.subspan(trash.size_bytes());
 			}
 
 			// Incomplete header
-			if (buf.size_bytes() < GamePacketHeaderSize)
+			if (buf.size_bytes() < sizeof XivBundleHeader)
 				break;
 
-			const auto* pGamePacket = reinterpret_cast<const FFXIVBundle*>(buf.data());
+			const auto* pGamePacket = reinterpret_cast<const XivBundle*>(buf.data());
 
 			// Invalid TotalLength
 			if (pGamePacket->TotalLength == 0) {
@@ -134,12 +134,12 @@ public:
 			try {
 				auto messages = pGamePacket->GetMessages(m_inflater);
 				auto header = *pGamePacket;
-				header.TotalLength = static_cast<uint32_t>(GamePacketHeaderSize);
+				header.TotalLength = static_cast<uint32_t>(sizeof XivBundleHeader);
 				header.MessageCount = 0;
 				header.GzipCompressed = 0;
 
 				for (auto& message : messages) {
-					const auto pMessage = reinterpret_cast<FFXIVMessage*>(&message[0]);
+					const auto pMessage = reinterpret_cast<XivMessage*>(&message[0]);
 
 					if (!messageMangler(pMessage))
 						pMessage->Length = 0;
@@ -151,9 +151,9 @@ public:
 					header.MessageCount += 1;
 				}
 
-				target.Write(&header, GamePacketHeaderSize);
+				target.Write(&header, sizeof XivBundleHeader);
 				for (const auto& message : messages) {
-					if (reinterpret_cast<const FFXIVMessage*>(&message[0])->Length)
+					if (reinterpret_cast<const XivMessage*>(&message[0])->Length)
 						target.Write(std::span(message));
 				}
 			} catch (const std::exception& e) {
@@ -262,7 +262,7 @@ struct App::Network::SingleConnection::Implementation {
 			auto use = true;
 
 			switch (pMessage->Type) {
-				case Structures::SegmentType::ServerKeepAlive:
+				case Structures::MessageType::ServerKeepAlive:
 					if (!m_keepAliveRequestTimestamps.empty()) {
 						int64_t delay;
 						do {
@@ -277,7 +277,7 @@ struct App::Network::SingleConnection::Implementation {
 					}
 					break;
 
-				case Structures::SegmentType::IPC:
+				case Structures::MessageType::Ipc:
 					for (const auto& cbs : m_incomingHandlers) {
 						for (const auto& cb : cbs.second) {
 							use &= cb(pMessage);
@@ -294,11 +294,11 @@ struct App::Network::SingleConnection::Implementation {
 			auto use = true;
 
 			switch (pMessage->Type) {
-				case Structures::SegmentType::ClientKeepAlive:
+				case Structures::MessageType::ClientKeepAlive:
 					m_keepAliveRequestTimestamps.push_back(Utils::GetHighPerformanceCounter());
 					break;
 
-				case Structures::SegmentType::IPC:
+				case Structures::MessageType::Ipc:
 					for (const auto& cbs : m_outgoingHandlers) {
 						for (const auto& cb : cbs.second) {
 							use &= cb(pMessage);

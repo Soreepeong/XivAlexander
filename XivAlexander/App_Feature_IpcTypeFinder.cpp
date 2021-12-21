@@ -17,7 +17,7 @@ struct App::Feature::IpcTypeFinder::Implementation {
 			using namespace Network::Structures;
 
 			conn.AddIncomingFFXIVMessageHandler(this, [&](auto pMessage) {
-				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
+				if (pMessage->Type == MessageType::Ipc && pMessage->Data.Ipc.Type == IpcType::InterestedType) {
 					if (pMessage->CurrentActor == pMessage->SourceActor) {
 						if (pMessage->Length == 0x9c ||
 							pMessage->Length == 0x29c ||
@@ -38,45 +38,46 @@ struct App::Feature::IpcTypeFinder::Implementation {
 							else if (pMessage->Length == 0x95c)
 								expectedCount = 32;
 
-							const auto& actionEffect = pMessage->Data.IPC.Data.S2C_ActionEffect;
+							const auto& actionEffect = pMessage->Data.Ipc.Data.S2C_ActionEffect;
 
 							m_pImpl->m_logger->Format(
 								LogCategory::IpcTypeFinder,
 								"{:x}: S2C_ActionEffect{:02}(0x{:04x}) length={:x} actionId={:04x} sequence={:04x} wait={:.3f}",
 								conn.Socket(),
 								expectedCount,
-								pMessage->Data.IPC.SubType,
+								pMessage->Data.Ipc.SubType,
 								pMessage->Length,
 								actionEffect.ActionId,
 								actionEffect.SourceSequence,
 								actionEffect.AnimationLockDuration);
 							pMessage->DebugPrint(LogCategory::IpcTypeFinder, "IpcTypeFinder", true);
 
-						} else if (pMessage->Length == 0x40) {
+						} else if (pMessage->Length == sizeof XivMessageHeader + sizeof XivIpcHeader + sizeof XivIpcs::S2C_ActorControlSelf) {
 							// Two possibilities: ActorControlSelf and ActorCast
+							static_assert(sizeof XivIpcs::S2C_ActorControlSelf == sizeof XivIpcs::S2C_ActorCast);
 
 							//
 							// Test ActorControlSelf
 							// 
-							const auto& actorControlSelf = pMessage->Data.IPC.Data.S2C_ActorControlSelf;
+							const auto& actorControlSelf = pMessage->Data.Ipc.Data.S2C_ActorControlSelf;
 							if (actorControlSelf.Category == S2C_ActorControlSelfCategory::Cooldown) {
 								const auto& cooldown = actorControlSelf.Cooldown;
 								m_pImpl->m_logger->Format(
 									LogCategory::IpcTypeFinder,
 									"{:x}: S2C_ActorControlSelf(0x{:04x}): Cooldown: actionId={:04x} duration={}",
 									conn.Socket(),
-									pMessage->Data.IPC.SubType,
+									pMessage->Data.Ipc.SubType,
 									cooldown.ActionId,
 									cooldown.Duration);
 								pMessage->DebugPrint(LogCategory::IpcTypeFinder, "IpcTypeFinder", true);
 
-							} else if (pMessage->Data.IPC.Data.S2C_ActorControlSelf.Category == S2C_ActorControlSelfCategory::ActionRejected) {
+							} else if (pMessage->Data.Ipc.Data.S2C_ActorControlSelf.Category == S2C_ActorControlSelfCategory::ActionRejected) {
 								const auto& rollback = actorControlSelf.Rollback;
 								m_pImpl->m_logger->Format(
 									LogCategory::IpcTypeFinder,
 									"{:x}: S2C_ActorControlSelf(0x{:04x}): Rollback: actionId={:04x} sourceSequence={:04x}",
 									conn.Socket(),
-									pMessage->Data.IPC.SubType,
+									pMessage->Data.Ipc.SubType,
 									rollback.ActionId,
 									rollback.SourceSequence);
 								pMessage->DebugPrint(LogCategory::IpcTypeFinder, "IpcTypeFinder", true);
@@ -89,34 +90,32 @@ struct App::Feature::IpcTypeFinder::Implementation {
 								LogCategory::IpcTypeFinder,
 								"{:x}: S2C_ActorCast(0x{:04x}): actionId={:04x} time={:.3f} target={:08x}",
 								conn.Socket(),
-								pMessage->Data.IPC.SubType,
-								pMessage->Data.IPC.Data.S2C_ActorCast.ActionId,
-								pMessage->Data.IPC.Data.S2C_ActorCast.CastTime,
-								pMessage->Data.IPC.Data.S2C_ActorCast.TargetId);
+								pMessage->Data.Ipc.SubType,
+								pMessage->Data.Ipc.Data.S2C_ActorCast.ActionId,
+								pMessage->Data.Ipc.Data.S2C_ActorCast.CastTime,
+								pMessage->Data.Ipc.Data.S2C_ActorCast.TargetId);
 							pMessage->DebugPrint(LogCategory::IpcTypeFinder, "IpcTypeFinder", true);
 
 						} else if (pMessage->Length == 0x38) {
 							// Test ActorControl
-							const auto& actorControl = pMessage->Data.IPC.Data.S2C_ActorControl;
+							const auto& actorControl = pMessage->Data.Ipc.Data.S2C_ActorControl;
 							if (actorControl.Category == S2C_ActorControlCategory::CancelCast) {
 								const auto& cancelCast = actorControl.CancelCast;
 								m_pImpl->m_logger->Format(
 									LogCategory::IpcTypeFinder,
 									"{:x}: S2C_ActorControl(0x{:04x}): CancelCast: actionId={:04x}",
 									conn.Socket(),
-									pMessage->Data.IPC.SubType,
+									pMessage->Data.Ipc.SubType,
 									cancelCast.ActionId);
 								pMessage->DebugPrint(LogCategory::IpcTypeFinder, "IpcTypeFinder", true);
 							}
 						}
 					}
-					if (pMessage->Length == 0x78) {
-						// Test AddStatusEffect
-						const auto& actorControl = pMessage->Data.IPC.Data.S2C_AddStatusEffect;
-						const auto& addStatusEffect = pMessage->Data.IPC.Data.S2C_AddStatusEffect;
+					if (pMessage->Length == sizeof XivMessageHeader + sizeof XivIpcHeader + sizeof XivIpcs::S2C_EffectResult5) {
+						const auto& effectResult = pMessage->Data.Ipc.Data.S2C_EffectResult5;
 						std::string effects;
-						for (int i = 0; i < addStatusEffect.EffectCount; ++i) {
-							const auto& entry = addStatusEffect.Effects[i];
+						for (int i = 0; i < effectResult.EffectCount; ++i) {
+							const auto& entry = effectResult.Effects[i];
 							effects += std::format(
 								"\n\teffectId={:04x} duration={:g} sourceActorId={:08x}",
 								entry.EffectId,
@@ -126,31 +125,67 @@ struct App::Feature::IpcTypeFinder::Implementation {
 						}
 						m_pImpl->m_logger->Format(
 							LogCategory::IpcTypeFinder,
-							"{:x}: S2C_AddStatusEffect(0x{:04x}): relatedActionSequence={:08x} actorId={:08x} HP={}/{} MP={} shield={}{}",
+							"{:x}: S2C_EffectResult5(0x{:04x}): relatedActionSequence={:08x} actorId={:08x} HP={}/{} MP={} shield={}{}",
 							conn.Socket(),
-							pMessage->Data.IPC.SubType,
-							addStatusEffect.RelatedActionSequence,
-							addStatusEffect.ActorId,
-							addStatusEffect.CurrentHp,
-							addStatusEffect.MaxHp,
-							addStatusEffect.CurentMp,
-							addStatusEffect.DamageShield,
+							pMessage->Data.Ipc.SubType,
+							effectResult.RelatedActionSequence,
+							effectResult.ActorId,
+							effectResult.CurrentHp,
+							effectResult.MaxHp,
+							effectResult.CurentMp,
+							effectResult.DamageShield,
 							effects
+						);
+					} else if (pMessage->Length == sizeof XivMessageHeader + sizeof XivIpcHeader + sizeof XivIpcs::S2C_EffectResult6) {
+						const auto& effectResult = pMessage->Data.Ipc.Data.S2C_EffectResult6;
+						std::string effects;
+						for (int i = 0; i < effectResult.EffectCount; ++i) {
+							const auto& entry = effectResult.Effects[i];
+							effects += std::format(
+								"\n\teffectId={:04x} duration={:g} sourceActorId={:08x}",
+								entry.EffectId,
+								entry.Duration,
+								entry.SourceActorId
+							);
+						}
+						m_pImpl->m_logger->Format(
+							LogCategory::IpcTypeFinder,
+							"{:x}: S2C_EffectResult6(0x{:04x}): relatedActionSequence={:08x} actorId={:08x} HP={}/{} MP={} shield={}{}",
+							conn.Socket(),
+							pMessage->Data.Ipc.SubType,
+							effectResult.RelatedActionSequence,
+							effectResult.ActorId,
+							effectResult.CurrentHp,
+							effectResult.MaxHp,
+							effectResult.CurentMp,
+							effectResult.DamageShield,
+							effects
+						);
+					} else if (pMessage->Length == sizeof XivMessageHeader + sizeof XivIpcHeader + sizeof XivIpcs::S2C_EffectResult6Basic) {
+						const auto& effectResult = pMessage->Data.Ipc.Data.S2C_EffectResult6Basic;
+						m_pImpl->m_logger->Format(
+							LogCategory::IpcTypeFinder,
+							"{:x}: S2C_EffectResult6Basic(0x{:04x}): relatedActionSequence={:08x} actorId={:08x} HP={}",
+							conn.Socket(),
+							pMessage->Data.Ipc.SubType,
+							effectResult.RelatedActionSequence,
+							effectResult.ActorId,
+							effectResult.CurrentHp
 						);
 					}
 				}
 				return true;
 			});
 			conn.AddOutgoingFFXIVMessageHandler(this, [&](auto pMessage) {
-				if (pMessage->Type == SegmentType::IPC && pMessage->Data.IPC.Type == IpcType::InterestedType) {
+				if (pMessage->Type == MessageType::Ipc && pMessage->Data.Ipc.Type == IpcType::InterestedType) {
 					if (pMessage->Length == 0x40) {
 						// Test ActionRequest
-						const auto& actionRequest = pMessage->Data.IPC.Data.C2S_ActionRequest;
+						const auto& actionRequest = pMessage->Data.Ipc.Data.C2S_ActionRequest;
 						m_pImpl->m_logger->Format(
 							LogCategory::IpcTypeFinder,
 							"{:x}: C2S_ActionRequest/GroundTargeted(0x{:04x}): actionId={:04x} sequence={:04x}",
 							conn.Socket(),
-							pMessage->Data.IPC.SubType,
+							pMessage->Data.Ipc.SubType,
 							actionRequest.ActionId, actionRequest.Sequence);
 						pMessage->DebugPrint(LogCategory::IpcTypeFinder, "IpcTypeFinder", true);
 					}
