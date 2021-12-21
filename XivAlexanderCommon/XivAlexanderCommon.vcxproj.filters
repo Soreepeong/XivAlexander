@@ -171,7 +171,7 @@
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Excel_Generator.h">
       <Filter>Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_EscapedString.h">
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_SeString.h">
       <Filter>Square Enix Definitions</Filter>
     </ClInclude>
     <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_TaskDialogBuilder.h">
@@ -297,7 +297,7 @@
     <ClCompile Include="Sqex_Excel_Generator.cpp">
       <Filter>Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_EscapedString.cpp">
+    <ClCompile Include="Sqex_SeString.cpp">
       <Filter>Square Enix Definitions</Filter>
     </ClCompile>
     <ClCompile Include="Utils_Win32_TaskDialogBuilder.cpp">

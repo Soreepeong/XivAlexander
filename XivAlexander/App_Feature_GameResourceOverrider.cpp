@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "App_Feature_GameResourceOverrider.h"
 
-#include <XivAlexanderCommon/Sqex_EscapedString.h>
+#include <XivAlexanderCommon/Sqex_SeString.h>
 #include <XivAlexanderCommon/Utils_Win32_Process.h>
 
 #include "App_ConfigRepository.h"

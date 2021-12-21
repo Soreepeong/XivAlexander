@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_EscapedString.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_SeString.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Excel.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Excel_Generator.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Excel_Reader.h" />
@@ -70,7 +70,7 @@
     <ClCompile Include="Sqex_Sound.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Sqex_EscapedString.cpp" />
+    <ClCompile Include="Sqex_SeString.cpp" />
     <ClCompile Include="Sqex_Excel.cpp" />
     <ClCompile Include="Sqex_Excel_Generator.cpp" />
     <ClCompile Include="Sqex_Excel_Reader.cpp" />

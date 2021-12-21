@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "App_Misc_VirtualSqPacks.h"
 
-#include <XivAlexanderCommon/Sqex_EscapedString.h>
+#include <XivAlexanderCommon/Sqex_SeString.h>
 #include <XivAlexanderCommon/Sqex_Excel_Generator.h>
 #include <XivAlexanderCommon/Sqex_Excel_Reader.h>
 #include <XivAlexanderCommon/Sqex_FontCsv_Creator.h>
@@ -1044,7 +1044,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 																	}
 																}
 																if (const auto rules = rule.preprocessReplacements.find(ruleSourceLanguage); rules != rule.preprocessReplacements.end()) {
-																	Sqex::EscapedString escaped(it->second[readColumnIndex].String);
+																	Sqex::SeString escaped(it->second[readColumnIndex].String);
+																	escaped.NewlineAsCarriageReturn(true);
 																	std::string replacing(escaped.Parsed());
 																	for (const auto& ruleName : rules->second) {
 																		const auto& [replaceFrom, replaceTo] = columnReplacementTemplates.at(ruleName);
@@ -1078,7 +1079,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 														else
 															out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
 
-														Sqex::EscapedString escaped(out);
+														Sqex::SeString escaped(out);
+														escaped.NewlineAsCarriageReturn(true);
 														if (!rule.postprocessReplacements.empty()) {
 															std::string replacing(escaped.Parsed());
 															for (const auto& ruleName : rule.postprocessReplacements) {
