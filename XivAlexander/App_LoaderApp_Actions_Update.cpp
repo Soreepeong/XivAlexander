@@ -48,21 +48,20 @@ App::LoaderApp::Actions::Update::Update(const Arguments& args)
 	: m_args(args) {
 }
 
-void App::LoaderApp::Actions::Update::CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses, bool offerAutomaticUpdate) {
+int App::LoaderApp::Actions::Update::CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses, bool offerAutomaticUpdate) {
 	if (BOOL w = FALSE; IsWow64Process(GetCurrentProcess(), &w) && w) {
-		Utils::Win32::RunProgram({
+		return Utils::Win32::RunProgram({
 			.path = Utils::Win32::Process::Current().PathOf().parent_path() / XivAlexDll::XivAlexLoader64NameW,
 			.args = Utils::FromUtf8(Utils::Win32::ReverseCommandLineToArgv({
-				"-a", LoaderActionToString(LoaderAction::UpdateCheck),
+				"-a", LoaderActionToString(offerAutomaticUpdate ? LoaderAction::UpdateCheck : LoaderAction::Internal_Update_DependencyDllMode),
 			})),
 			.wait = true,
-		});
-		return;
+		}).WaitAndGetExitCode();
 	}
 
 	const auto updateZip = Utils::Win32::Process::Current().PathOf().parent_path() / "update.zip";
-	if (exists(updateZip))
-		PerformUpdateAndExitIfSuccessful(prevProcesses, "", updateZip);
+	if (exists(updateZip) && offerAutomaticUpdate)
+		return PerformUpdateAndExitIfSuccessful(prevProcesses, "", updateZip);
 
 	try {
 		std::vector<int> remote, local;
@@ -87,7 +86,7 @@ void App::LoaderApp::Actions::Update::CheckForUpdates(std::vector<Utils::Win32::
 			Dll::MessageBoxF(nullptr, MB_OK | MB_ICONINFORMATION,
 				IDS_UPDATE_UNAVAILABLE,
 				local[0], local[1], local[2], local[3], remote[0], remote[1], remote[2], remote[3], up.PublishDate);
-			return;
+			return 0;
 		}
 		if (offerAutomaticUpdate) {
 			while (true) {
@@ -104,38 +103,44 @@ void App::LoaderApp::Actions::Update::CheckForUpdates(std::vector<Utils::Win32::
 
 					case IDNO:
 						PerformUpdateAndExitIfSuccessful(std::move(prevProcesses), up.DownloadLink, updateZip);
-						return;
+						return 0;
 
 					case IDCANCEL:
-						return;
+						return -1;
 				}
 			}
 		} else {
-			// TODO: create string resource: New update is available, cannot autoupdate because being called as dll, etc etc.
-			Utils::Win32::ShellExecutePathOrThrow(FindStringResourceEx(Dll::Module(), IDS_URL_RELEASES) + 1);
+			switch (Dll::MessageBoxF(nullptr, MB_YESNO,
+				IDS_UPDATE_CONFIRM_NOAUTO,
+				remote[0], remote[1], remote[2], remote[3], up.PublishDate, local[0], local[1], local[2], local[3]
+			)) {
+				case IDYES:
+					Utils::Win32::ShellExecutePathOrThrow(FindStringResourceEx(Dll::Module(), IDS_URL_RELEASES) + 1);
+					return 0;
+
+				case IDNO:
+					return -1;
+			}
 		}
 	} catch (const std::exception& e) {
 		Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 	}
+	return -1;
 }
 
 int App::LoaderApp::Actions::Update::Run() {
 	switch (m_args.m_action) {
 		case LoaderAction::UpdateCheck:
-			CheckForUpdates(m_args.m_targetProcessHandles, true);
-			return 0;
+			return CheckForUpdates(m_args.m_targetProcessHandles, true);
 
 		case LoaderAction::Internal_Update_DependencyDllMode:
-			CheckForUpdates(m_args.m_targetProcessHandles, false);
-			return 0;
+			return CheckForUpdates(m_args.m_targetProcessHandles, false);
 
 		case LoaderAction::Internal_Update_Step2_ReplaceFiles:
-			UpdateStep_ReplaceFiles();
-			return 0;
+			return UpdateStep_ReplaceFiles();
 
 		case LoaderAction::Internal_Update_Step3_CleanupFiles:
-			UpdateStep_CleanupFiles();
-			return 0;
+			return UpdateStep_CleanupFiles();
 	}
 	throw std::logic_error("invalid m_action for Update");
 }
@@ -153,7 +158,7 @@ bool App::LoaderApp::Actions::Update::RequiresElevationForUpdate(std::vector<DWO
 	return false;
 }
 
-void App::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(std::vector<Utils::Win32::Process> gameProcesses, const std::string& url, const std::filesystem::path& updateZip) {
+int App::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(std::vector<Utils::Win32::Process> gameProcesses, const std::string& url, const std::filesystem::path& updateZip) {
 	std::vector<DWORD> prevProcessIds;
 	std::ranges::transform(gameProcesses, std::back_inserter(prevProcessIds), [](const Utils::Win32::Process& k) { return k.GetId(); });
 	const auto& currentProcess = Utils::Win32::Process::Current();
@@ -239,7 +244,7 @@ void App::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(std::vect
 					break;
 				} catch (...) {
 					if (url.empty())
-						return;
+						return -1;
 
 					if (i == 1)
 						throw;
@@ -254,11 +259,10 @@ void App::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(std::vect
 	// TODO: ask user to quit all FFXIV related processes, except the game itself.
 
 	if (RequiresElevationForUpdate(prevProcessIds)) {
-		Utils::Win32::RunProgram({
+		return Utils::Win32::RunProgram({
 			.args = std::format(L"--action {}", LoaderActionToString(LoaderAction::UpdateCheck)),
 			.elevateMode = Utils::Win32::RunProgramParams::Force,
-		});
-		return;
+		}).WaitAndGetExitCode();
 	}
 
 	{
@@ -294,7 +298,7 @@ void App::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(std::vect
 						if (e.Code() == ERROR_INVALID_PARAMETER)  // this process already gone
 							break;
 						if (Dll::MessageBoxF(nullptr, MB_OKCANCEL, IDS_UPDATE_PROCESS_KILL_FAILURE, pid, e.what()) == IDCANCEL)
-							return;
+							return -1;
 					}
 				}
 
@@ -319,23 +323,30 @@ void App::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(std::vect
 
 		currentProcess.Terminate(0);
 	}
+	return 0;
 }
 
-void App::LoaderApp::Actions::Update::UpdateStep_ReplaceFiles() {
+int App::LoaderApp::Actions::Update::UpdateStep_ReplaceFiles() {
 	const auto checking = ShowLazyProgress(true, IDS_UPDATE_PROGRESS_UPDATING_FILES);
 	const auto temporaryUpdatePath = Utils::Win32::Process::Current().PathOf().parent_path();
 	const auto targetUpdatePath = temporaryUpdatePath.parent_path();
 	if (temporaryUpdatePath.filename() != L"__UPDATE__")
 		throw std::runtime_error("cannot update outside of update process");
-	copy(
-		temporaryUpdatePath,
-		targetUpdatePath,
-		std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing
-	);
+	try {
+		copy(
+			temporaryUpdatePath,
+			targetUpdatePath,
+			std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing
+		);
+	} catch (const std::exception& e) {
+		Dll::MessageBoxF(nullptr, MB_ICONWARNING, IDS_UPDATE_ERROR_ACCESS_DENIED, e.what());
+		return -1;
+	}
 	LaunchXivAlexLoaderWithTargetHandles(m_args.m_targetProcessHandles, LoaderAction::Internal_Update_Step3_CleanupFiles, false, Utils::Win32::Process::Current(), Current, targetUpdatePath);
+	return 0;
 }
 
-void App::LoaderApp::Actions::Update::UpdateStep_CleanupFiles() {
+int App::LoaderApp::Actions::Update::UpdateStep_CleanupFiles() {
 	{
 		const auto checking = ShowLazyProgress(true, IDS_UPDATE_CLEANUP_UPDATE);
 		remove_all(Utils::Win32::Process::Current().PathOf().parent_path() / L"__UPDATE__");
@@ -367,4 +378,5 @@ void App::LoaderApp::Actions::Update::UpdateStep_CleanupFiles() {
 			Sleep(3000);
 		}
 	}
+	return 0;
 }

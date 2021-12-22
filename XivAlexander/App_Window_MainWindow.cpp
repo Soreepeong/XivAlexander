@@ -971,7 +971,7 @@ void App::Window::MainWindow::OnCommand_Menu_File(int menuId) {
 
 	case ID_FILE_CHECKFORUPDATES:
 		LaunchXivAlexLoaderWithTargetHandles({ Utils::Win32::Process::Current() },
-			Dll::IsLoadedAsDependency() ? XivAlexDll::LoaderAction::Internal_Update_DependencyDllMode : XivAlexDll::LoaderAction::UpdateCheck,
+			Dll::GetUnloadDisabledReason() ? XivAlexDll::LoaderAction::UpdateCheck : XivAlexDll::LoaderAction::Internal_Update_DependencyDllMode,
 			false);
 		return;
 

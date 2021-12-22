@@ -9,16 +9,16 @@ namespace App::LoaderApp::Actions {
 	public:
 		Update(const Arguments& args);
 
-		void CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses, bool offerAutomaticUpdate);
+		int CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses, bool offerAutomaticUpdate);
 		
 		int Run();
 
 	private:
 		bool RequiresElevationForUpdate(std::vector<DWORD> excludedPid);
 
-		void PerformUpdateAndExitIfSuccessful(std::vector<Utils::Win32::Process> gameProcesses, const std::string& url, const std::filesystem::path& updateZip);
+		int PerformUpdateAndExitIfSuccessful(std::vector<Utils::Win32::Process> gameProcesses, const std::string& url, const std::filesystem::path& updateZip);
 
-		void UpdateStep_ReplaceFiles();
-		void UpdateStep_CleanupFiles();
+		int UpdateStep_ReplaceFiles();
+		int UpdateStep_CleanupFiles();
 	};
 }

@@ -93,7 +93,6 @@ public:
 			}
 
 			throw std::logic_error("invalid m_action value");
-
 		} catch (const std::exception& e) {
 			Dll::MessageBoxF(nullptr, MB_ICONWARNING, IDS_ERROR_UNEXPECTED,
 				std::format(L"{}\nSeDebugPrivilege: {}", e.what(), m_errorClaimingSeDebugPrivilege.empty() ? "OK" : m_errorClaimingSeDebugPrivilege));
