@@ -124,7 +124,7 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 					.cbSize = sizeof tdc,
 					.hwndParent = hWndParent,
 					.hInstance = Dll::Module(),
-					.dwFlags = TDF_ENABLE_HYPERLINKS | TDF_ALLOW_DIALOG_CANCELLATION | TDF_POSITION_RELATIVE_TO_WINDOW | TDF_CAN_BE_MINIMIZED,
+					.dwFlags = TDF_ENABLE_HYPERLINKS | TDF_ALLOW_DIALOG_CANCELLATION | TDF_POSITION_RELATIVE_TO_WINDOW | TDF_CAN_BE_MINIMIZED | TDF_EXPANDED_BY_DEFAULT,
 					.pszWindowTitle = tdtitle.c_str(),
 					.pszMainIcon = TD_ERROR_ICON,
 					.pszMainInstruction = config->Runtime.GetStringRes(IDS_TITLE_UNRECOVERABLEERROR),
