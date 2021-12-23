@@ -404,7 +404,7 @@ public:
 					const auto available = std::min(out.size_bytes(), static_cast<size_t>(entry.EntrySize - relativeOffset));
 					m_pLastEntryProviders.emplace_back(std::make_tuple(entry.Provider.get(), relativeOffset, available));
 					if (buf)
-						std::copy_n(&buf->Buffer()[relativeOffset], available, &out[0]);
+						std::copy_n(&buf->Buffer()[static_cast<size_t>(relativeOffset)], available, &out[0]);
 					else
 						entry.Provider->ReadStream(relativeOffset, out.data(), available);
 					out = out.subspan(available);

@@ -79,12 +79,15 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 	Hooks::ImportedFunction<int, HWND, LPCWSTR, LPCWSTR, UINT> MessageBoxW{ "user32!MessageBoxW", "user32.dll", "MessageBoxW" };
 	Hooks::ImportedFunction<int, HWND, LPCSTR, LPCSTR, UINT> MessageBoxA{ "user32!MessageBoxA", "user32.dll", "MessageBoxA" };
 	Hooks::PointerFunction<LPTOP_LEVEL_EXCEPTION_FILTER, LPTOP_LEVEL_EXCEPTION_FILTER> SetUnhandledExceptionFilter{ "kernel32!SetUnhandledExceptionFilter", ::SetUnhandledExceptionFilter };
+	std::unique_ptr<Hooks::PointerFunction<int, UINT, UINT_PTR, LPCWSTR, PEXCEPTION_POINTERS, LPCWSTR, LPCWSTR>> EEPolicyHandleFatalError;
+
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
 	const std::wregex Whitespace{ LR"(\s+)" };
 
 	_crt_signal_t m_prevSignalHandler{};
 	LPTOP_LEVEL_EXCEPTION_FILTER m_prevTopLevelExceptionHandler{};
+	std::deque<std::pair<EXCEPTION_RECORD, CONTEXT>> m_prevExcs;
 
 	//
 	// https://stackoverflow.com/a/28276227
@@ -92,7 +95,7 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 
 	static inline std::wstring DumpStackTrace(const CONTEXT& context, HANDLE hThread = GetCurrentThread()) {
 		union Symbol {
-			char Buffer[sizeof SYMBOL_INFOW + sizeof(wchar_t) * 1024];
+			char Buffer[sizeof SYMBOL_INFOW + sizeof(wchar_t) * 1024]{};
 			SYMBOL_INFOW Data;
 
 		public:
@@ -109,6 +112,8 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 
 				std::wstring res(Data.MaxNameLen, L'\0');
 				res.resize(UnDecorateSymbolNameW(Data.Name, &res[0], static_cast<DWORD>(res.size()), UNDNAME_COMPLETE));
+				if (res.empty())
+					return Data.Name;
 				return res;
 			}
 		};
@@ -119,17 +124,18 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 			SymSetOptions(SymGetOptions() | SYMOPT_LOAD_LINES | SYMOPT_UNDNAME);
 
 			std::vector<Utils::Win32::LoadedModule> modules;
+			std::map<HMODULE, MODULEINFO> modInfos;
 			for (const auto& mod : Utils::Win32::Process::Current().EnumModules()) {
 				modules.emplace_back(Utils::Win32::LoadedModule(mod, false));
-				const auto modInfo = modules.back().ModuleInfo();
+				const auto& modInfo = modInfos[mod] = modules.back().ModuleInfo();
 				SymLoadModuleExW(GetCurrentProcess(), nullptr,
 					modules.back().PathOf().c_str(),
 					modules.back().BaseName().c_str(),
 					reinterpret_cast<DWORD64>(mod), modInfo.SizeOfImage, nullptr, 0);
 			}
 
-#ifdef _M_X64
 			STACKFRAME64 frame;
+#ifdef _M_X64
 			frame.AddrPC.Offset = context.Rip;
 			frame.AddrPC.Mode = AddrModeFlat;
 			frame.AddrStack.Offset = context.Rsp;
@@ -137,7 +143,6 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 			frame.AddrFrame.Offset = context.Rbp;
 			frame.AddrFrame.Mode = AddrModeFlat;
 #else
-			STACKFRAME frame;
 			frame.AddrPC.Offset = context.Eip;
 			frame.AddrPC.Mode = AddrModeFlat;
 			frame.AddrStack.Offset = context.Esp;
@@ -155,19 +160,7 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 			std::wostringstream builder;
 			do {
 				if (frame.AddrPC.Offset) {
-					auto mod = std::lower_bound(modules.begin(), modules.end(), frame.AddrPC.Offset, [](const Utils::Win32::LoadedModule& l, size_t offset) { return l.Value<size_t>() < offset; });
-					if (mod != modules.end() && mod != modules.begin() && mod->Value<size_t>() > frame.AddrPC.Offset)
-						--mod;
-					if (mod != modules.end()) {
-						const auto path = mod->PathOf();
-						const auto modName = mod->BaseName();
-						if (lstrcmpiW(path.filename().c_str(), modName.c_str()) == 0)
-							builder << std::format(L"* {}+0x{:x}: ", path, frame.AddrPC.Offset - mod->Value<size_t>());
-						else
-							builder << std::format(L"* {}({})+0x{:x}: ", path, modName, frame.AddrPC.Offset - mod->Value<size_t>());
-					} else
-						builder << std::format(L"* ??? 0x{:x}: ", frame.AddrPC.Offset);
-					builder << Symbol(frame.AddrPC.Offset).UndecoratedName();
+					builder << L"* " << ReadableAddress(frame.AddrPC.Offset, modules) << ": " << Symbol(frame.AddrPC.Offset).UndecoratedName();
 					if (DWORD offsetFromSymbol{};
 						SymGetLineFromAddrW64(GetCurrentProcess(), frame.AddrPC.Offset, &offsetFromSymbol, &line))
 						builder << std::format(L" {}:{}(+0x{:x})\n", line.FileName, line.LineNumber, offsetFromSymbol);
@@ -186,6 +179,39 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 		} catch (const std::exception& e) {
 			return std::format(L"Error occurred while trying to capture stack trace: {}", e.what());
 		}
+	}
+
+	static std::wstring ReadableAddress(DWORD64 address, std::vector<Utils::Win32::LoadedModule>& modules) {
+		if (modules.empty()) {
+			for (const auto& mod : Utils::Win32::Process::Current().EnumModules()) {
+				modules.emplace_back(Utils::Win32::LoadedModule(mod, false));
+				const auto modInfo = modules.back().ModuleInfo();
+				SymLoadModuleExW(GetCurrentProcess(), nullptr,
+					modules.back().PathOf().c_str(),
+					modules.back().BaseName().c_str(),
+					reinterpret_cast<DWORD64>(mod), modInfo.SizeOfImage, nullptr, 0);
+			}
+			std::sort(modules.begin(), modules.end());
+		}
+
+		auto mod = std::lower_bound(modules.begin(), modules.end(), address, [](const Utils::Win32::LoadedModule& l, DWORD64 offset) { return l.Value<DWORD64>() < offset; });
+		if (mod != modules.end() && mod != modules.begin() && mod->Value<DWORD64>() > address)
+			--mod;
+		if (mod == modules.end() || address < mod->Value<DWORD64>() || address >= mod->Value<DWORD64>() + mod->ModuleInfo().SizeOfImage)
+			return std::format(L"0x{:x}", address - mod->Value<DWORD64>());
+		
+		const auto path = mod->PathOf();
+		const auto modName = mod->BaseName();
+		if (lstrcmpiW(path.filename().c_str(), modName.c_str()) != 0)
+			return std::format(L"{}({})+0x{:x}", path, modName, address - mod->Value<DWORD64>());
+
+		size_t cnt = 0;
+		for (const auto& mod : modules)
+			cnt += lstrcmpiW(mod.BaseName().c_str(), modName.c_str()) == 0 ? 1 : 0;
+		if (cnt > 1)
+			return std::format(L"{}({})+0x{:x}", path, modName, address - mod->Value<DWORD64>());
+
+		return std::format(L"{}+0x{:x}", path, address - mod->Value<DWORD64>());
 	}
 
 	Implementation() {
@@ -209,47 +235,40 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 			TerminateProcess(GetCurrentProcess(), 0);
 			});
 
-		m_cleanup += SetUnhandledExceptionFilter.SetHook([](LPTOP_LEVEL_EXCEPTION_FILTER) -> LPTOP_LEVEL_EXCEPTION_FILTER { return nullptr; });
+		m_cleanup += SetUnhandledExceptionFilter.SetHook([&](LPTOP_LEVEL_EXCEPTION_FILTER) -> LPTOP_LEVEL_EXCEPTION_FILTER {
+			if (const auto ptr = reinterpret_cast<const char*>(GetModuleHandleW(L"coreclr.dll"))) {
+				EEPolicyHandleFatalError = std::make_unique<decltype(EEPolicyHandleFatalError)::element_type>("CoreCLR!EEPolicy::HandleFatalError",
+					reinterpret_cast<int(*)(UINT, UINT_PTR, LPCWSTR, PEXCEPTION_POINTERS, LPCWSTR, LPCWSTR)>(ptr + 0x25d0dc));
 
-		m_prevTopLevelExceptionHandler = SetUnhandledExceptionFilter.bridge([](PEXCEPTION_POINTERS excInfo) -> LONG {
+				void(Utils::Win32::Thread(L"Test", [&]() {
 
-			std::wostringstream errStr;
-			errStr << L"Unexpected error occurred.\n\n";
-			try {
-				std::vector<Utils::Win32::LoadedModule> modules;
-				for (const auto& mod : Utils::Win32::Process::Current().EnumModules()) {
-					modules.emplace_back(Utils::Win32::LoadedModule(mod, false));
-					const auto modInfo = modules.back().ModuleInfo();
-					SymLoadModuleExW(GetCurrentProcess(), nullptr,
-						modules.back().PathOf().c_str(),
-						modules.back().BaseName().c_str(),
-						reinterpret_cast<DWORD64>(mod), modInfo.SizeOfImage, nullptr, 0);
-				}
-				std::sort(modules.begin(), modules.end());
-				for (auto excRec = excInfo->ExceptionRecord; excRec; excRec = excRec->ExceptionRecord) {
-					if (excRec != excInfo->ExceptionRecord)
-						errStr << L"\n";
-					errStr << std::format(L"Code: 0x{:x}\nFlags: 0x{:x}\n", excRec->ExceptionCode, excRec->ExceptionFlags);
+					m_cleanup += [excHandler = AddVectoredExceptionHandler(1, [](PEXCEPTION_POINTERS excInfo) -> LONG {
+						s_pInstance->m_prevExcs.emplace_back(*excInfo->ExceptionRecord, *excInfo->ContextRecord);
+						if (s_pInstance->m_prevExcs.size() > 4)
+							s_pInstance->m_prevExcs.pop_front();
+						return EXCEPTION_CONTINUE_SEARCH;
+						})]() { RemoveVectoredExceptionHandler(excHandler); };
+				}));
 
-					const auto address = reinterpret_cast<size_t>(excRec->ExceptionAddress);
-					auto mod = std::lower_bound(modules.begin(), modules.end(), address, [](const Utils::Win32::LoadedModule& l, size_t offset) { return l.Value<size_t>() < offset; });
-					if (mod != modules.end() && mod != modules.begin() && mod->Value<size_t>() > address)
-						--mod;
-					if (mod != modules.end())
-						errStr << std::format(L"Address: {}+0x{:x}\n", mod->BaseName(), address - mod->Value<size_t>());
-					else
-						errStr << std::format(L"Address: 0x{:x}\n", address);
-					for (size_t i = 0; i < excRec->NumberParameters; i++) {
-						errStr << std::format(L"Param #{}: {}\n", i, excRec->ExceptionInformation[i]);
-					}
-				}
-				errStr << L"Stack trace:\n" << DumpStackTrace(*excInfo->ContextRecord);
-			} catch (const std::exception& e) {
-				errStr << L"An error has occurred while trying to display information about the error.\n" << e.what();
+				m_cleanup += EEPolicyHandleFatalError->SetHook(
+					[&](UINT exitCode, UINT_PTR address, LPCWSTR pszMessage /* = NULL */, PEXCEPTION_POINTERS pExceptionInfo /* = NULL */, LPCWSTR errorSource /* = NULL */, LPCWSTR argExceptionString /* = NULL */) -> int {
+						std::vector<Utils::Win32::LoadedModule> modules;
+						s_pInstance->HandleExceptionPointers(pExceptionInfo, std::format(
+							L"Exit code: {}\nAddress: {}\nMessage: {}\nError source: {}\nException string: {}",
+							exitCode, ReadableAddress(address, modules),
+							pszMessage ? pszMessage : L"(None)",
+							errorSource ? errorSource : L"(None)",
+							argExceptionString ? argExceptionString : L"(None)"
+						));
+						return 0;
+					});
 			}
 
-			s_pInstance->ShowMessage(errStr.str());
-			TerminateProcess(GetCurrentProcess(), 0);
+			return nullptr;
+			});
+
+		m_prevTopLevelExceptionHandler = SetUnhandledExceptionFilter.bridge([](PEXCEPTION_POINTERS excInfo) -> LONG {
+			s_pInstance->HandleExceptionPointers(excInfo);
 			return EXCEPTION_CONTINUE_SEARCH;
 			});
 	}
@@ -258,6 +277,57 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 		SetUnhandledExceptionFilter.bridge(m_prevTopLevelExceptionHandler);
 		signal(SIGABRT, m_prevSignalHandler);
 		s_pInstance = nullptr;
+	}
+
+	void HandleExceptionPointers(PEXCEPTION_POINTERS excInfo, std::wstring addInfo = L"Unexpected error occurred.") {
+		std::wostringstream errStr;
+		errStr << addInfo << L"\n\n";
+		if (excInfo && !IsBadReadPtr(excInfo, sizeof * excInfo)) {
+			try {
+				std::vector<Utils::Win32::LoadedModule> modules;
+				for (auto excRec = excInfo->ExceptionRecord; excRec && !IsBadReadPtr(excRec, sizeof *excRec); excRec = excRec->ExceptionRecord) {
+					if (excRec != excInfo->ExceptionRecord)
+						errStr << L"\n";
+					errStr << std::format(L"Code: 0x{:x}\nFlags: 0x{:x}\n", excRec->ExceptionCode, excRec->ExceptionFlags);
+					errStr << std::format(L"Address: {}\n", ReadableAddress(reinterpret_cast<DWORD64>(excRec->ExceptionAddress), modules));
+					for (size_t i = 0; i < excRec->NumberParameters; i++) {
+						errStr << std::format(L"Param #{}: {:x}\n", i, excRec->ExceptionInformation[i]);
+					}
+				}
+				errStr << L"Stack trace:\n" << DumpStackTrace(*excInfo->ContextRecord);
+			} catch (const std::exception& e) {
+				errStr << L"An error has occurred while trying to display information about the error.\n" << e.what();
+			}
+		}
+		try {
+			CONTEXT ctx{};
+			RtlCaptureContext(&ctx);
+			errStr << L"Stack trace from error handler:\n" << DumpStackTrace(ctx);
+		} catch (const std::exception& e) {
+			errStr << L"An error has occurred while trying to display stack trace from error handler.\n" << e.what();
+		}
+
+		for (const auto& [excInfo, ctx] : std::ranges::reverse_view(m_prevExcs)) {
+			try {
+				errStr << L"\nPrevious exception:\n";
+				std::vector<Utils::Win32::LoadedModule> modules;
+				for (auto excRec = &excInfo; excRec && !IsBadReadPtr(excRec, sizeof * excRec); excRec = excRec->ExceptionRecord) {
+					if (excRec != &excInfo)
+						errStr << L"\n";
+					errStr << std::format(L"Code: 0x{:x}\nFlags: 0x{:x}\n", excRec->ExceptionCode, excRec->ExceptionFlags);
+					errStr << std::format(L"Address: {}\n", ReadableAddress(reinterpret_cast<DWORD64>(excRec->ExceptionAddress), modules));
+					for (size_t i = 0; i < excRec->NumberParameters; i++) {
+						errStr << std::format(L"Param #{}: {:x}\n", i, excRec->ExceptionInformation[i]);
+					}
+				}
+				errStr << L"Stack trace:\n" << DumpStackTrace(ctx);
+			} catch (const std::exception& e) {
+				errStr << L"An error has occurred while trying to display information about the error.\n" << e.what();
+			}
+		}
+
+		ShowMessage(errStr.str());
+		TerminateProcess(GetCurrentProcess(), 0);
 	}
 
 	void ShowMessage(const std::wstring& message, const std::wstring& title = {}) {
