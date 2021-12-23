@@ -29,7 +29,25 @@ namespace Utils::Win32 {
 		}
 
 		[[nodiscard]] std::filesystem::path PathOf() const;
+		[[nodiscard]] std::filesystem::path BaseName() const;
+		[[nodiscard]] MODULEINFO ModuleInfo() const;
 		
 		void SetPinned() const;
+
+		bool operator<(const LoadedModule& r) const {
+			return m_object < r.m_object;
+		}
+
+		bool operator>(const LoadedModule& r) const {
+			return m_object > r.m_object;
+		}
+
+		bool operator<=(const LoadedModule& r) const {
+			return m_object <= r.m_object;
+		}
+
+		bool operator>=(const LoadedModule& r) const {
+			return m_object >= r.m_object;
+		}
 	};
 }

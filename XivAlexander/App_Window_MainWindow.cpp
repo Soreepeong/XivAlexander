@@ -226,7 +226,6 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 		return res;
 	} else if (uMsg == WM_INITMENUPOPUP) {
 		SetMenuStates();
-
 	} else if (uMsg == WM_DROPFILES) {
 		const auto hDrop = reinterpret_cast<HDROP>(wParam);
 		std::vector<std::filesystem::path> paths;

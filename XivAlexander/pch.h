@@ -29,6 +29,7 @@
 #include <ranges>
 #include <regex>
 #include <set>
+#include <signal.h>
 #include <span>
 #include <string>
 #include <type_traits>
@@ -40,6 +41,7 @@
 #include <winternl.h>
 
 // Windows API, part 2
+#include <DbgHelp.h>
 #include <iphlpapi.h>
 #include <mstcpip.h>
 #include <PathCch.h>

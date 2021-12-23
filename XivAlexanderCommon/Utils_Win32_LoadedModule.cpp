@@ -61,6 +61,15 @@ std::filesystem::path Utils::Win32::LoadedModule::PathOf() const {
 	return Process::Current().PathOf(*this);
 }
 
+std::filesystem::path Utils::Win32::LoadedModule::BaseName() const {
+	std::wstring result;
+	result.resize(PATHCCH_MAX_CCH);
+	result.resize(GetModuleBaseNameW(GetCurrentProcess(), m_object, &result[0], static_cast<DWORD>(result.size())));
+	if (result.empty())
+		throw Error("GetModuleBaseNameW");
+	return result;
+}
+
 void Utils::Win32::LoadedModule::SetPinned() const {
 	const auto pModuleHandleAsPsz = reinterpret_cast<LPCWSTR>(m_object);
 	HMODULE dummy;
@@ -70,4 +79,11 @@ void Utils::Win32::LoadedModule::SetPinned() const {
 			"GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, 0x{:x})",
 			reinterpret_cast<size_t>(pModuleHandleAsPsz));
 	}
+}
+
+MODULEINFO Utils::Win32::LoadedModule::ModuleInfo() const {
+	MODULEINFO res;
+	if (!GetModuleInformation(GetCurrentProcess(), m_object, &res, sizeof res))
+		throw Error("GetModuleInformation");
+	return res;
 }
