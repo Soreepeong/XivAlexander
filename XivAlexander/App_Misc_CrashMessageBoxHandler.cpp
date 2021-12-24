@@ -79,7 +79,6 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 	Hooks::ImportedFunction<int, HWND, LPCWSTR, LPCWSTR, UINT> MessageBoxW{ "user32!MessageBoxW", "user32.dll", "MessageBoxW" };
 	Hooks::ImportedFunction<int, HWND, LPCSTR, LPCSTR, UINT> MessageBoxA{ "user32!MessageBoxA", "user32.dll", "MessageBoxA" };
 	Hooks::PointerFunction<LPTOP_LEVEL_EXCEPTION_FILTER, LPTOP_LEVEL_EXCEPTION_FILTER> SetUnhandledExceptionFilter{ "kernel32!SetUnhandledExceptionFilter", ::SetUnhandledExceptionFilter };
-	std::unique_ptr<Hooks::PointerFunction<int, UINT, UINT_PTR, LPCWSTR, PEXCEPTION_POINTERS, LPCWSTR, LPCWSTR>> EEPolicyHandleFatalError;
 
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
@@ -87,7 +86,6 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 
 	_crt_signal_t m_prevSignalHandler{};
 	LPTOP_LEVEL_EXCEPTION_FILTER m_prevTopLevelExceptionHandler{};
-	std::deque<std::pair<EXCEPTION_RECORD, CONTEXT>> m_prevExcs;
 
 	//
 	// https://stackoverflow.com/a/28276227
@@ -235,37 +233,7 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 			TerminateProcess(GetCurrentProcess(), 0);
 			});
 
-		m_cleanup += SetUnhandledExceptionFilter.SetHook([&](LPTOP_LEVEL_EXCEPTION_FILTER) -> LPTOP_LEVEL_EXCEPTION_FILTER {
-			if (const auto ptr = reinterpret_cast<const char*>(GetModuleHandleW(L"coreclr.dll"))) {
-				EEPolicyHandleFatalError = std::make_unique<decltype(EEPolicyHandleFatalError)::element_type>("CoreCLR!EEPolicy::HandleFatalError",
-					reinterpret_cast<int(*)(UINT, UINT_PTR, LPCWSTR, PEXCEPTION_POINTERS, LPCWSTR, LPCWSTR)>(ptr + 0x25d0dc));
-
-				void(Utils::Win32::Thread(L"Test", [&]() {
-
-					m_cleanup += [excHandler = AddVectoredExceptionHandler(1, [](PEXCEPTION_POINTERS excInfo) -> LONG {
-						s_pInstance->m_prevExcs.emplace_back(*excInfo->ExceptionRecord, *excInfo->ContextRecord);
-						if (s_pInstance->m_prevExcs.size() > 4)
-							s_pInstance->m_prevExcs.pop_front();
-						return EXCEPTION_CONTINUE_SEARCH;
-						})]() { RemoveVectoredExceptionHandler(excHandler); };
-				}));
-
-				m_cleanup += EEPolicyHandleFatalError->SetHook(
-					[&](UINT exitCode, UINT_PTR address, LPCWSTR pszMessage /* = NULL */, PEXCEPTION_POINTERS pExceptionInfo /* = NULL */, LPCWSTR errorSource /* = NULL */, LPCWSTR argExceptionString /* = NULL */) -> int {
-						std::vector<Utils::Win32::LoadedModule> modules;
-						s_pInstance->HandleExceptionPointers(pExceptionInfo, std::format(
-							L"Exit code: {}\nAddress: {}\nMessage: {}\nError source: {}\nException string: {}",
-							exitCode, ReadableAddress(address, modules),
-							pszMessage ? pszMessage : L"(None)",
-							errorSource ? errorSource : L"(None)",
-							argExceptionString ? argExceptionString : L"(None)"
-						));
-						return 0;
-					});
-			}
-
-			return nullptr;
-			});
+		m_cleanup += SetUnhandledExceptionFilter.SetHook([&](LPTOP_LEVEL_EXCEPTION_FILTER) -> LPTOP_LEVEL_EXCEPTION_FILTER { return nullptr; });
 
 		m_prevTopLevelExceptionHandler = SetUnhandledExceptionFilter.bridge([](PEXCEPTION_POINTERS excInfo) -> LONG {
 			s_pInstance->HandleExceptionPointers(excInfo);
@@ -305,25 +273,6 @@ struct App::Misc::CrashMessageBoxHandler::Implementation {
 			errStr << L"Stack trace from error handler:\n" << DumpStackTrace(ctx);
 		} catch (const std::exception& e) {
 			errStr << L"An error has occurred while trying to display stack trace from error handler.\n" << e.what();
-		}
-
-		for (const auto& [excInfo, ctx] : std::ranges::reverse_view(m_prevExcs)) {
-			try {
-				errStr << L"\nPrevious exception:\n";
-				std::vector<Utils::Win32::LoadedModule> modules;
-				for (auto excRec = &excInfo; excRec && !IsBadReadPtr(excRec, sizeof * excRec); excRec = excRec->ExceptionRecord) {
-					if (excRec != &excInfo)
-						errStr << L"\n";
-					errStr << std::format(L"Code: 0x{:x}\nFlags: 0x{:x}\n", excRec->ExceptionCode, excRec->ExceptionFlags);
-					errStr << std::format(L"Address: {}\n", ReadableAddress(reinterpret_cast<DWORD64>(excRec->ExceptionAddress), modules));
-					for (size_t i = 0; i < excRec->NumberParameters; i++) {
-						errStr << std::format(L"Param #{}: {:x}\n", i, excRec->ExceptionInformation[i]);
-					}
-				}
-				errStr << L"Stack trace:\n" << DumpStackTrace(ctx);
-			} catch (const std::exception& e) {
-				errStr << L"An error has occurred while trying to display information about the error.\n" << e.what();
-			}
 		}
 
 		ShowMessage(errStr.str());

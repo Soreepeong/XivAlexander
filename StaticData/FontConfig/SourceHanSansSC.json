@@ -8,9 +8,9 @@
       "name": "Source Han Sans SC",
       "homepage": "https://github.com/adobe-fonts/source-han-sans",
       "installInstructions": {
-        "^en($|-)": "1. Download \"Language Specific OTFs Simplified Chinese (简体中文)\" (about 90MB) from <a href=\"https://github.com/adobe-fonts/source-han-sans/releases\">Source Han Sans official distribution page at GitHub</a>.\n2. Extract all files.\n3. Navigate into \"OTF\\Korean\"\n4. Select everything (press Ctrl+A).\n5. Right click on any of the items.\n6. Click \"Install\" or \"Install for all users\".",
-        "^ja($|-)": "1. <a href=\"https://github.com/adobe-fonts/source-han-sans/releases\">Source Han Sansの公式ダウンロードページ(GitHub)</a>で「Language Specific OTFs Simplified Chinese (简体中文)」を選択してダウンロードします。\n2. すべてのファイルの圧縮を解除します。\n3. 「OTF\\Korean」フォルダーを開けます。\n4. すべてのファイルを選択します。（ショートカットキーはCtrl+Aです。）\n5. あるファイルを右クリックします。\n6. 「インストール」あるいは「すべてのユーザーに対してインストール」を選択します。",
-        "^ko($|-)": "1. <a href=\"https://github.com/adobe-fonts/source-han-sans/releases\">Source Han Sans 공식 다운로드 페이지 (GitHub)</a>에서 \"Language Specific OTFs Simplified Chinese (简体中文)\"를 선택해서 받습니다.\n2. 모든 파일의 압축을 풉니다.\n3. \"OTF\\Korean\" 폴더로 들어갑니다.\n4. 모든 파일을 선택합니다. (Ctrl+A를 누르세요.)\n5. 아무 파일이나 마우스 오른쪽 버튼 클릭을 합니다.\n6. \"설치\" 혹은 \"모든 사용자용으로 설치\"를 선택해 주세요."
+        "^en($|-)": "1. Download \"Language Specific OTFs Simplified Chinese (简体中文)\" (about 90MB) from <a href=\"https://github.com/adobe-fonts/source-han-sans/releases\">Source Han Sans official distribution page at GitHub</a>.\n2. Extract all files.\n3. Navigate into \"OTF\\SimplifiedChinese\"\n4. Select everything (press Ctrl+A).\n5. Right click on any of the items.\n6. Click \"Install\" or \"Install for all users\".",
+        "^ja($|-)": "1. <a href=\"https://github.com/adobe-fonts/source-han-sans/releases\">Source Han Sansの公式ダウンロードページ(GitHub)</a>で「Language Specific OTFs Simplified Chinese (简体中文)」を選択してダウンロードします。\n2. すべてのファイルの圧縮を解除します。\n3. 「OTF\\SimplifiedChinese」フォルダーを開けます。\n4. すべてのファイルを選択します。（ショートカットキーはCtrl+Aです。）\n5. あるファイルを右クリックします。\n6. 「インストール」あるいは「すべてのユーザーに対してインストール」を選択します。",
+        "^ko($|-)": "1. <a href=\"https://github.com/adobe-fonts/source-han-sans/releases\">Source Han Sans 공식 다운로드 페이지 (GitHub)</a>에서 \"Language Specific OTFs Simplified Chinese (简体中文)\"를 선택해서 받습니다.\n2. 모든 파일의 압축을 풉니다.\n3. \"OTF\\SimplifiedChinese\" 폴더로 들어갑니다.\n4. 모든 파일을 선택합니다. (Ctrl+A를 누르세요.)\n5. 아무 파일이나 마우스 오른쪽 버튼 클릭을 합니다.\n6. \"설치\" 혹은 \"모든 사용자용으로 설치\"를 선택해 주세요."
       }
     }
   ],
