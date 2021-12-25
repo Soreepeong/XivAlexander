@@ -101,6 +101,7 @@ void App::Misc::ExcelTransformConfig::to_json(nlohmann::json& j, const Config& o
 		{"description", o.description},
 		{"targetLanguage", o.targetLanguage},
 		{"sourceLanguages", o.sourceLanguages},
+		{"columnMap", o.columnMap},
 		{"pluralMap", o.pluralMap},
 		{"targetGroups", o.targetGroups},
 		{"replacementTemplates", o.replacementTemplates},
@@ -120,6 +121,22 @@ void App::Misc::ExcelTransformConfig::from_json(const nlohmann::json& j, Config&
 	o.description = j.value("description", decltype(o.description)());
 	o.targetLanguage = j.at("targetLanguage").get<decltype(o.targetLanguage)>();
 	o.sourceLanguages = j.at("sourceLanguages").get<decltype(o.sourceLanguages)>();
+	if (const auto it = j.find("columnMap"); it != j.end()) {
+		o.columnMap.clear();
+		for (const auto& pair : it->items()) {
+			if (pair.key().starts_with("#"))
+				continue;
+
+			std::map<Sqex::Language, std::vector<size_t>> colDef;
+			for (const auto& pair2 : pair.value().items()) {
+				auto lang = Sqex::Language::Unspecified;
+				Sqex::from_json(pair2.key(), lang);
+				colDef.emplace(lang, pair2.value().get<std::vector<size_t>>());
+			}
+
+			o.columnMap.emplace_back(pair.key(), colDef);
+		}
+	}
 	if (const auto it = j.find("pluralMap"); it != j.end()) {
 		o.pluralMap.clear();
 		for (const auto& pair : it->items()) {

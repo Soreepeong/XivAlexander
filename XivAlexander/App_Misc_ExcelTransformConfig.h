@@ -76,6 +76,7 @@ namespace App::Misc::ExcelTransformConfig {
 		std::string description;
 		Sqex::Language targetLanguage{};
 		std::vector<Sqex::Language> sourceLanguages;
+		std::vector<std::pair<std::string, std::map<Sqex::Language, std::vector<size_t>>>> columnMap;
 		std::vector<std::pair<std::string, PluralColumns>> pluralMap;
 		std::map<std::string, TargetGroup> targetGroups;
 		std::map<std::string, ReplacementTemplate> replacementTemplates;

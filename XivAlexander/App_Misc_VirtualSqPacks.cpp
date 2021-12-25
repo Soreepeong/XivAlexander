@@ -644,7 +644,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 				if (needRecreate) {
 					create_directories(cachedDir);
-
+					
+					std::vector<std::pair<srell::u8cregex, std::map<Sqex::Language, std::vector<size_t>>>> columnMaps;
 					std::vector<std::pair<srell::u8cregex, ExcelTransformConfig::PluralColumns>> pluralColumns;
 					struct ReplacementRule {
 						srell::u8cregex exhNamePattern;
@@ -667,6 +668,9 @@ struct App::Misc::VirtualSqPacks::Implementation {
 							ExcelTransformConfig::Config transformConfig;
 							from_json(Utils::ParseJsonFromFile(Config->TranslatePath(configFile)), transformConfig);
 
+							for (const auto& entry : transformConfig.columnMap) {
+								columnMaps.emplace_back(srell::u8cregex(entry.first, srell::regex_constants::ECMAScript | srell::regex_constants::icase), entry.second);
+							}
 							for (const auto& entry : transformConfig.pluralMap) {
 								pluralColumns.emplace_back(srell::u8cregex(entry.first, srell::regex_constants::ECMAScript | srell::regex_constants::icase), entry.second);
 							}
@@ -790,9 +794,9 @@ struct App::Misc::VirtualSqPacks::Implementation {
 										lastStep = "Load basic stuff";
 										const auto sourceLanguages{ exCreator->Languages };
 										const auto pluralColummIndices = [&]() {
-											for (const auto& entry : pluralColumns) {
-												if (srell::regex_search(exhName, entry.first))
-													return entry.second;
+											for (const auto& [pattern, data] : pluralColumns) {
+												if (srell::regex_search(exhName, pattern))
+													return data;
 											}
 											return ExcelTransformConfig::PluralColumns();
 										}();
@@ -809,6 +813,27 @@ struct App::Misc::VirtualSqPacks::Implementation {
 											}
 											return res;
 										}();
+										const auto columnMap = [&]() -> std::map<Sqex::Language, std::vector<size_t>> {
+											std::map<Sqex::Language, std::vector<size_t>> res;
+											for (const auto& [pattern, data] : columnMaps) {
+												if (!srell::regex_search(exhName, pattern))
+													continue;
+												for (const auto& [language, data2] : data)
+													res[language] = data2;
+											}
+											return res;
+										}();
+										const auto translateColumnIndex = [&](Sqex::Language fromLanguage, Sqex::Language toLanguage, size_t fromIndex) -> size_t {
+											const auto fromIter = columnMap.find(fromLanguage);
+											const auto toIter = columnMap.find(toLanguage);
+											if (fromIter == columnMap.end() || toIter == columnMap.end())
+												return fromIndex;
+											
+											const auto it = std::lower_bound(fromIter->second.begin(), fromIter->second.end(), fromIndex);
+											if (it == fromIter->second.end() || *it != fromIndex)
+												return fromIndex;
+											return toIter->second.at(it - fromIter->second.begin());
+										};
 
 										lastStep = "Load external EXH/D files";
 										for (const auto& reader : readers) {
@@ -831,41 +856,43 @@ struct App::Misc::VirtualSqPacks::Implementation {
 															exCreator->AddLanguage(language);
 															for (const auto i : exdReader.GetIds()) {
 																auto row = exdReader.ReadDepth2(i);
-																if (row.size() != exCreator->Columns.size()) {
-																	const auto& rowSet = exCreator->Data.at(i);
-																	const std::vector<Sqex::Excel::ExdColumn>* referenceRowPtr = nullptr;
-																	for (const auto& l : exCreator->FillMissingLanguageFrom) {
-																		if (auto it = rowSet.find(l);
-																			it != rowSet.end()) {
-																			referenceRowPtr = &it->second;
-																			break;
-																		}
+																const auto& rowSet = exCreator->Data.at(i);
+																auto referenceRowLanguage = Sqex::Language::Unspecified;
+																const std::vector<Sqex::Excel::ExdColumn>* referenceRowPtr = nullptr;
+																for (const auto& l : exCreator->FillMissingLanguageFrom) {
+																	if (auto it = rowSet.find(l);
+																		it != rowSet.end()) {
+																		referenceRowLanguage = l;
+																		referenceRowPtr = &it->second;
+																		break;
 																	}
-																	if (!referenceRowPtr)
+																}
+																if (!referenceRowPtr)
+																	continue;
+																const auto& referenceRow = *referenceRowPtr;
+
+																auto prevRow{std::move(row)};
+																row = referenceRow;
+																for (size_t j = 0; j < row.size(); ++j) {
+																	if (row[j].Type != Sqex::Excel::Exh::ColumnDataType::String)
 																		continue;
-																	const auto& referenceRow = *referenceRowPtr;
-
-																	// Exceptions for Chinese client are based on speculations.
-																	if (((GameReleaseInfo.Region == Sqex::GameReleaseRegion::International || GameReleaseInfo.Region == Sqex::GameReleaseRegion::Korean) && language == Sqex::Language::ChineseSimplified) && exhName == "Fate") {
-																		decltype(row) prevRow(std::move(row));
-																		row = referenceRow;
-																		for (size_t j = 0; j < 6; ++j)
-																			row[0 + j].String = std::move(prevRow[30 + j].String);
-
-																	} else if (GameReleaseInfo.Region == Sqex::GameReleaseRegion::Chinese && language != Sqex::Language::ChineseSimplified && exhName == "Fate") {
-																		decltype(row) prevRow(std::move(row));
-																		row = referenceRow;
-																		for (size_t j = 0; j < 6; ++j)
-																			row[30 + j].String = std::move(prevRow[0 + j].String);
-
-																	} else {
-																		if (row.size() < referenceRow.size()) {
-																			row.reserve(referenceRow.size());
-																			for (size_t j = row.size(); j < referenceRow.size(); ++j)
-																				row.push_back(referenceRow[j]);
-																		} else
-																			row.resize(referenceRow.size());
+																	const auto otherColIndex = translateColumnIndex(referenceRowLanguage, language, j);
+																	if (otherColIndex >= prevRow.size()) {
+																		if (otherColIndex != j)
+																			Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+																				"[{}] Skipping column: Column {} of language {} is was requested but there are {} columns",
+																				exhName, j, otherColIndex, static_cast<int>(language), prevRow.size());
+																		continue;
 																	}
+																	if (prevRow[otherColIndex].Type != Sqex::Excel::Exh::ColumnDataType::String) {
+																		Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+																			"[{}] Skipping column: Column {} of language {} is string but column {} of language {} is not a string",
+																			exhName, j, static_cast<int>(referenceRowLanguage), otherColIndex, static_cast<int>(language));
+																		continue;
+																	}
+																	if (prevRow[otherColIndex].String.Empty())
+																		continue;
+																	row[j].String = std::move(prevRow[otherColIndex].String);
 																}
 																exCreator->SetRow(i, language, std::move(row), false);
 															}

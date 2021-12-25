@@ -6,6 +6,24 @@
     "English",
     "Korean"
   ],
+  "columnMap": {
+    "^ContentFinderCondition$": {
+      "English": [38, 39],
+      "Korean": [37, 38]
+    },
+    "^ContentGauge$": {
+      "English": [1, 4],
+      "Korean": [0, 3]
+    },
+    "^InclusionShop$": {
+      "English": [1],
+      "Korean": [0]
+    },
+    "^NpcYell$": {
+      "English": [9],
+      "Korean": [10]
+    }
+  },
   "pluralMap": {
     "# comment 1": [
       "singularColumnIndex",
@@ -46,7 +64,7 @@
       "^CompanyAction$": [0],
       "^CompanyCraftDraft$": [0],
       "^Completion$": [3, 4],
-      "^ContentFinderCondition$": [37, 38],
+      "^ContentFinderCondition$": [38, 39],
       "^ContentGauge$": [0],
       "^ContentRoulette$": [0, 1],
       "^ContentUiCategory$": [0],

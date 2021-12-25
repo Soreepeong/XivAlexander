@@ -62,7 +62,12 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 	, m_bUseElevation(Utils::Win32::IsUserAnAdmin())
 	, m_launchParameters([this]() -> decltype(m_launchParameters) {
 		try {
-			return Sqex::CommandLine::FromString(Dll::GetOriginalCommandLine(), &m_bUseParameterObfuscation);
+			auto res = Sqex::CommandLine::FromString(Dll::GetOriginalCommandLine(), &m_bUseParameterObfuscation);
+			if (m_config->Runtime.RememberedGameLaunchLanguage != Sqex::Language::Unspecified)
+				Sqex::CommandLine::WellKnown::SetLanguage(res, m_config->Runtime.RememberedGameLaunchLanguage);
+			if (m_config->Runtime.RememberedGameLaunchRegion != Sqex::Region::Unspecified)
+				Sqex::CommandLine::WellKnown::SetRegion(res, m_config->Runtime.RememberedGameLaunchRegion);
+			return res;
 		} catch (const std::exception& e) {
 			m_logger->Format<LogLevel::Warning>(LogCategory::General, m_config->Runtime.GetLangId(), IDS_WARNING_GAME_PARAMETER_PARSE, e.what());
 			return {};
