@@ -20,6 +20,7 @@
 #include <ogg/ogg.h>
 #include <vorbis/codec.h>
 #include <vorbis/vorbisenc.h>
+#include <srell.hpp>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H

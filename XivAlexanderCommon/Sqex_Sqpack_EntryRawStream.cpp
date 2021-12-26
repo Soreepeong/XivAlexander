@@ -224,6 +224,7 @@ uint64_t Sqex::Sqpack::EntryRawStream::TextureStreamDecoder::ReadStreamPartial(u
 
 Sqex::Sqpack::EntryRawStream::ModelStreamDecoder::ModelStreamDecoder(const EntryRawStream* stream)
 	: StreamDecoder(stream) {
+	const auto underlyingSize = Underlying().StreamSize();
 	uint64_t readOffset = sizeof SqData::FileEntryHeader;
 	const auto locator = Underlying().ReadStream<SqData::ModelBlockLocator>(readOffset);
 	const auto blockCount = static_cast<size_t>(locator.FirstBlockIndices.Index[2]) + locator.BlockCount.Index[2];
@@ -277,7 +278,12 @@ Sqex::Sqpack::EntryRawStream::ModelStreamDecoder::ModelStreamDecoder(const Entry
 	auto lastOffset = 0;
 	for (auto it = Blocks.begin(); it != Blocks.end(); ++it) {
 		SqData::BlockHeader blockHeader;
-		Underlying().ReadStream(it->BlockOffset, &blockHeader, sizeof blockHeader);
+
+		if (it->BlockOffset == underlyingSize)
+			blockHeader.DecompressedSize = blockHeader.CompressedSize = 0;
+		else
+			Underlying().ReadStream(it->BlockOffset, &blockHeader, sizeof blockHeader);
+
 		if (MaxBlockSize < sizeof blockHeader + blockHeader.CompressedSize)
 			MaxBlockSize = static_cast<uint16_t>(sizeof blockHeader + blockHeader.CompressedSize);
 
@@ -295,8 +301,8 @@ Sqex::Sqpack::EntryRawStream::ModelStreamDecoder::ModelStreamDecoder(const Entry
 			AsHeader().VertexSize[j] += Blocks[i].DecompressedSize;
 		for (uint16_t i = locator.FirstBlockIndices.Index[j].Value(), i_ = locator.FirstBlockIndices.Index[j] + locator.BlockCount.Index[j]; i < i_; ++i)
 			AsHeader().IndexSize[j] += Blocks[i].DecompressedSize;
-		AsHeader().VertexOffset[j] = static_cast<uint32_t>(Head.size() + Blocks[locator.FirstBlockIndices.Vertex[j]].RequestOffset);
-		AsHeader().IndexOffset[j] = static_cast<uint32_t>(Head.size() + Blocks[locator.FirstBlockIndices.Index[j]].RequestOffset);
+		AsHeader().VertexOffset[j] = static_cast<uint32_t>(Head.size() + (locator.FirstBlockIndices.Vertex[j] == Blocks.size() ? underlyingSize : Blocks[locator.FirstBlockIndices.Vertex[j]].RequestOffset));
+		AsHeader().IndexOffset[j] = static_cast<uint32_t>(Head.size() + (locator.FirstBlockIndices.Index[j] == Blocks.size() ? underlyingSize : Blocks[locator.FirstBlockIndices.Index[j]].RequestOffset));
 	}
 }
 

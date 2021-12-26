@@ -325,7 +325,7 @@ static std::vector<uint8_t> ExportIndexFileData(
 
 class Sqex::Sqpack::Creator::DataView : public RandomAccessStream {
 	const std::vector<uint8_t> m_header;
-	const std::span<Entry*> m_entries;
+	const std::span<Entry*> AllEntries;
 
 	const SqData::Header& SubHeader() const {
 		return *reinterpret_cast<const SqData::Header*>(&m_header[sizeof SqpackHeader]);
@@ -350,7 +350,7 @@ public:
 
 	DataView(const SqpackHeader& header, const SqData::Header& subheader, std::span<Entry*> entries, std::shared_ptr<SqpackViewEntryCache> buffer)
 		: m_header(Concat(header, subheader))
-		, m_entries(std::move(entries))
+		, AllEntries(std::move(entries))
 		, m_buffer(std::move(buffer)) {
 	}
 
@@ -380,23 +380,23 @@ public:
 			return length;
 		}
 
-		auto it = m_lastAccessedEntryIndex != SIZE_MAX ? m_entries.begin() + m_lastAccessedEntryIndex : m_entries.begin();
+		auto it = m_lastAccessedEntryIndex != SIZE_MAX ? AllEntries.begin() + m_lastAccessedEntryIndex : AllEntries.begin();
 		if ((*it)->OffsetAfterHeaders > relativeOffset || relativeOffset >= (*it)->OffsetAfterHeaders + (*it)->EntryReservedSize) {
-			it = std::ranges::lower_bound(m_entries, nullptr, [&](Entry* l, Entry* r) {
+			it = std::ranges::lower_bound(AllEntries, nullptr, [&](Entry* l, Entry* r) {
 				const auto lo = l ? l->OffsetAfterHeaders : relativeOffset;
 				const auto ro = r ? r->OffsetAfterHeaders : relativeOffset;
 				return lo < ro;
 				});
-			if (it != m_entries.begin() && (it == m_entries.end() || (*it)->OffsetAfterHeaders > relativeOffset))
+			if (it != AllEntries.begin() && (it == AllEntries.end() || (*it)->OffsetAfterHeaders > relativeOffset))
 				--it;
 		}
 
-		if (it != m_entries.end()) {
+		if (it != AllEntries.end()) {
 			relativeOffset -= (*it)->OffsetAfterHeaders;
 
-			for (; it < m_entries.end(); ++it) {
+			for (; it < AllEntries.end(); ++it) {
 				const auto& entry = **it;
-				m_lastAccessedEntryIndex = it - m_entries.begin();
+				m_lastAccessedEntryIndex = it - AllEntries.begin();
 
 				const auto buf = m_buffer ? m_buffer->GetBuffer(this, &entry) : nullptr;
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Psapi.h>
+
 #include "Utils_Win32_Closeable.h"
 
 namespace Utils::Win32 {
