@@ -57,6 +57,13 @@ namespace Sqex {
 		std::span<const ImcEntry> AllEntries() const {
 			return { reinterpret_cast<const ImcEntry*>(&Data[sizeof Header()]), (Data.size() - sizeof Header()) / sizeof ImcEntry };
 		}
+
+		void AddFromDefault() {
+			const auto newData = std::vector(AllEntries().begin(), AllEntries().begin() + EntryCountPerSet());
+			const auto newDataBytes = std::span(reinterpret_cast<const uint8_t*>(&newData[0]), std::span(newData).size_bytes());
+			Data.insert(Data.end(), newDataBytes.begin(), newDataBytes.end());
+			Header().SubsetCount += 1;
+		}
 	};
 
 	struct EqdpHeader {
@@ -541,13 +548,16 @@ int main() {
 			if (const auto imcedit = metadata.Get<Sqex::ImcEntry>(Sqex::ThirdParty::TexTools::ItemMetadata::MetaDataType::Imc); !imcedit.empty()) {
 				Sqex::ImcFile* imc = nullptr;
 				if (const auto it = imcs.find(metadata.ImcFilename()); it == imcs.end()) {
-					auto ptr = std::make_unique<Sqex::ImcFile>(*reader["chara/equipment/e0100/e0100.imc"]);
+					auto ptr = std::make_unique<Sqex::ImcFile>(*reader[metadata.ImcFilename()]);
 					imc = ptr.get();
 					imcs.emplace(metadata.ImcFilename(), std::move(ptr));
 				} else
 					imc = it->second.get();
 				for (size_t i = 0; i < imcedit.size(); ++i) {
-					auto& target = imc->AllEntries()[i * imc->EntryCountPerSet() + metadata.SlotIndex];
+					const auto entryIndex = i * imc->EntryCountPerSet() + metadata.SlotIndex;
+					if (entryIndex >= imc->AllEntries().size())
+						imc->AddFromDefault();
+					auto& target = imc->AllEntries()[entryIndex];
 					target = imcedit[i];
 				}
 			}
