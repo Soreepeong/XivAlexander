@@ -523,7 +523,7 @@ int64_t App::Network::SingleConnection::FetchSocketLatency() {
 	DWORD tcpInfoVersion = 0, cb = 0;
 	if (0 != WSAIoctl(m_socket, SIO_TCP_INFO, &tcpInfoVersion, sizeof tcpInfoVersion, &info, sizeof info, &cb, nullptr, nullptr)) {
 		const auto err = WSAGetLastError();
-		m_pImpl->m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0: {:08x} ({})", m_socket,
+		m_pImpl->m_logger->Format<LogLevel::Info>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0: {:08x} ({})", m_socket,
 			err, Utils::Win32::FormatWindowsErrorMessage(err));
 		m_pImpl->m_nIoctlTcpInfoFailureCount++;
 		return INT64_MAX;
