@@ -41,7 +41,7 @@ namespace Sqex::Sqpack {
 		AddEntryResult AddEntriesFromSqPack(const std::filesystem::path& indexPath, bool overwriteExisting = true, bool overwriteUnknownSegments = false);
 		AddEntryResult AddEntryFromFile(EntryPathSpec pathSpec, const std::filesystem::path& path, bool overwriteExisting = true);
 		AddEntryResult AddAllEntriesFromSimpleTTMP(const std::filesystem::path& extractedDir, bool overwriteExisting = true);
-		void ReserveSpacesFromTTMP(const ThirdParty::TexTools::TTMPL& ttmpl);
+		void ReserveSpacesFromTTMP(const ThirdParty::TexTools::TTMPL& ttmpl, const std::shared_ptr<Sqex::RandomAccessStream>& ttmpd);
 		AddEntryResult AddEntry(std::shared_ptr<EntryProvider> provider, bool overwriteExisting = true);
 		void ReserveSwappableSpace(EntryPathSpec pathSpec, uint32_t size);
 

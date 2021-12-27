@@ -58,7 +58,6 @@ struct App::DalamudHandlerApp::Implementation {
 	const LdrUnregisterDllNotificationType LdrUnregisterDllNotification;
 
 	std::vector<std::unique_ptr<Misc::Hooks::PointerFunction<DWORD, LPVOID>>> InitializeHooks;
-	bool InitializeCalled = false;
 
 	Utils::CallOnDestruction::Multiple Cleanup;
 
@@ -97,12 +96,6 @@ struct App::DalamudHandlerApp::Implementation {
 		// Intentional leak; neither of this DLL or Dalamud Boot DLL will ever get unloaded
 		// Dll unload callback is called after the DLL is gone; MH will try to revert the unloaded region of memory
 		new Utils::CallOnDestruction(InitializeHooks.back()->SetHook([this, pHook = InitializeHooks.back().get()](LPVOID lpParam) -> DWORD {
-			if (InitializeCalled) {
-				Logger->Format(LogCategory::General, "Dropping subsequent Dalamud load request");
-				return 0;
-			}
-
-			InitializeCalled = true;
 			auto pXivAlexApp = App::XivAlexApp::GetCurrentApp();
 			if (!pXivAlexApp) {
 				Logger->Format(LogCategory::General, "Dalamud Initialize called; waiting for game window to become available");
@@ -117,8 +110,6 @@ struct App::DalamudHandlerApp::Implementation {
 			Logger->Format(LogCategory::General, "Calling Dalamud Initialize");
 			const auto res = pHook->bridge(lpParam);
 			Logger->Format(LogCategory::General, "Dalamud Initialize result: {}", res);
-			if (res)
-				InitializeCalled = false;
 			return res;
 		}));
 	}

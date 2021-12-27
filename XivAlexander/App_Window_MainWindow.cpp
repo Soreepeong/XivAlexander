@@ -1812,41 +1812,10 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 				for (const auto& [target, relPath]: worklist) {
 					pLastStartedTargetFile = &relPath;
 					try {
-						std::string datFile;
-						auto relPathLower(relPath);
-						CharLowerW(&relPathLower[0]);
-
-						if (auto relPathComponents = Utils::StringSplit<std::wstring>(relPathLower, L"/");
-							relPathComponents[0] == L"music")
-							datFile = std::format("0c{:0>2x}00", relPathComponents[1].starts_with(L"ex") ? std::wcstol(&relPathComponents[1][2], nullptr, 10) : 0);
-						else if (relPathComponents[0] == L"bg" && relPathComponents[1] == L"ffxiv")
-							datFile = "020000";
-						else if (relPathComponents[0] == L"bg" && relPathComponents[1].starts_with(L"ex")) // bg/ex1/04_sea_s2/...
-							datFile = std::format("02{:0>2x}{:0>2}", std::wcstol(&relPathComponents[1][2], nullptr, 10), std::wcstol(&relPathComponents[2][0], nullptr, 10));
-						else if (relPathComponents[0] == L"cut")
-							datFile = std::format("03{:0>2x}00", relPathComponents[1].starts_with(L"ex") ? std::wcstol(&relPathComponents[1][2], nullptr, 10) : 0);
-						else if (relPathComponents[0] == L"common")
-							datFile = "000000";
-						else if (relPathComponents[0] == L"bgcommon")
-							datFile = "010000";
-						else if (relPathComponents[0] == L"chara")
-							datFile = "040000";
-						else if (relPathComponents[0] == L"shader")
-							datFile = "050000";
-						else if (relPathComponents[0] == L"ui")
-							datFile = "060000";
-						else if (relPathComponents[0] == L"sound")
-							datFile = "070000";
-						else if (relPathComponents[0] == L"vfx")
-							datFile = "080000";
-						else if (relPathComponents[0] == L"exd")
-							datFile = "0a0000";
-						else if (relPathComponents[0] == L"game_script")
-							datFile = "0b0000";
-						else
-							throw std::runtime_error(std::format("Could not decide where to store {}", relPath));
-
 						const auto entryPathSpec = Sqex::Sqpack::EntryPathSpec(relPath);
+						const auto datFile = entryPathSpec.DatFile();
+						if (datFile.empty())
+							throw std::runtime_error(std::format("Could not decide where to store {}", relPath));
 
 						const auto provider = Sqex::Sqpack::MemoryBinaryEntryProvider(entryPathSpec, std::make_shared<Sqex::FileRandomAccessStream>(target));
 						const auto len = provider.StreamSize();

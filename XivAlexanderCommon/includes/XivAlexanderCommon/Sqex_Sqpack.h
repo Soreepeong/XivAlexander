@@ -500,6 +500,9 @@ namespace Sqex::Sqpack {
 			return s;
 		}
 
+		[[nodiscard]] std::string DatFile() const;
+		[[nodiscard]] std::string DatExpac() const;
+
 		bool operator==(const EntryPathSpec& r) const {
 			if (HasOriginal() && r.HasOriginal())
 				return lstrcmpiW(FullPath.c_str(), r.FullPath.c_str()) == 0;

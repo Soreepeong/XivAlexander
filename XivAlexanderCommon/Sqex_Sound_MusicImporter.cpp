@@ -174,7 +174,7 @@ const srell::u16wregex& Sqex::Sound::MusicImportSourceItemInputFile::GetCompiled
 }
 
 static Utils::Win32::Thread StderrRelayer(Utils::Win32::Handle hStderrRead, std::function<void(const std::string&)> stderrCallback) {
-	return Utils::Win32::Thread(L"StderrRelayer", [hStderrRead = std::move(hStderrRead), stderrCallback = std::move(stderrCallback)]() {
+	return { L"StderrRelayer",[hStderrRead = std::move(hStderrRead), stderrCallback = std::move(stderrCallback)]() {
 		std::string buf(8192, '\0');
 		size_t ptr = 0;
 		try {
@@ -203,7 +203,7 @@ static Utils::Win32::Thread StderrRelayer(Utils::Win32::Handle hStderrRead, std:
 		}
 		if (prevNewline < ptr)
 			stderrCallback(buf.substr(prevNewline, ptr - prevNewline));
-	});
+	} };
 }
 
 struct Sqex::Sound::MusicImporter::Implementation {
@@ -395,7 +395,7 @@ std::span<float> Sqex::Sound::MusicImporter::Implementation::FloatPcmSource::ope
 	if (availableSampleCount != len && throwOnIncompleteRead)
 		throw std::runtime_error("EOF");
 	if (m_buffer.empty())
-		return std::span<float>();
+		return {};
 	return std::span(reinterpret_cast<float*>(&m_buffer[0]), m_buffer.size() * sizeof(m_buffer[0])).subspan(0, availableSampleCount);
 }
 
@@ -560,15 +560,15 @@ void Sqex::Sound::MusicImporter::Implementation::Merge(const std::function<void(
 
 		std::vector<uint8_t> originalData;
 		switch (originalEntry.Header->Format) {
-		case Sqex::Sound::SoundEntryHeader::EntryFormat_WaveFormatAdpcm:
-			originalData = originalEntry.GetMsAdpcmWavFile();
-			originalEntryFormat = "wav";
-			break;
+			case Sqex::Sound::SoundEntryHeader::EntryFormat_WaveFormatAdpcm:
+				originalData = originalEntry.GetMsAdpcmWavFile();
+				originalEntryFormat = "wav";
+				break;
 
-		case Sqex::Sound::SoundEntryHeader::EntryFormat_Ogg:
-			originalData = originalEntry.GetOggFile();
-			originalEntryFormat = "ogg";
-			break;
+			case Sqex::Sound::SoundEntryHeader::EntryFormat_Ogg:
+				originalData = originalEntry.GetOggFile();
+				originalEntryFormat = "ogg";
+				break;
 		}
 		const auto originalDataStream = Sqex::MemoryRandomAccessStream(originalData);
 
@@ -614,7 +614,7 @@ void Sqex::Sound::MusicImporter::Implementation::Merge(const std::function<void(
 		if (Target.segments.empty()) {
 			if (SourcePaths.size() != 2)  // user-specified and OriginalSource
 				throw std::invalid_argument("segments must be set when there are more than one source");
-			Target.segments = std::vector<MusicImportSegmentItem>{ { .channels = {
+			Target.segments = std::vector<MusicImportSegmentItem>{ {.channels = {
 				{
 					.source = SourcePaths.begin()->first == OriginalSource ? SourcePaths.rbegin()->first : SourcePaths.begin()->first,
 					.channel = 0
@@ -1093,10 +1093,10 @@ void Sqex::Sound::MusicImporter::AppendReader(std::shared_ptr<Sqex::Sound::ScdRe
 	return m_pImpl->AppendReader(std::move(reader));
 }
 
-bool Sqex::Sound::MusicImporter::ResolveSources(std::string dirName, const std::filesystem::path& dir) {
+bool Sqex::Sound::MusicImporter::ResolveSources(std::string dirName, const std::filesystem::path & dir) {
 	return m_pImpl->ResolveSources(std::move(dirName), dir);
 }
 
-void Sqex::Sound::MusicImporter::Merge(const std::function<void(const std::filesystem::path& path, std::vector<uint8_t>)>& cb) {
+void Sqex::Sound::MusicImporter::Merge(const std::function<void(const std::filesystem::path& path, std::vector<uint8_t>)>&cb) {
 	return m_pImpl->Merge(cb);
 }

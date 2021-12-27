@@ -43,6 +43,12 @@
     <Filter Include="Square Enix Definitions\Game Resource Files\Sound %28.scd%29">
       <UniqueIdentifier>{63c632e9-165b-493d-a2de-5f20d1ebc928}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Square Enix Definitions\Game Resource Files\Equipment/Gimmick Parameters %28.eqp, .gmp%29">
+      <UniqueIdentifier>{a320a006-2a67-4604-8375-f0b88b656646}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Square Enix Definitions\Game Resource Files\Equipment Deformer Parameter %28.eqdp%29">
+      <UniqueIdentifier>{72ce1b0e-dee1-4e18-aa7e-3709043fa2cc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -189,6 +195,18 @@
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sound_MusicImporter.h">
       <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
     </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Imc.h">
+      <Filter>Square Enix Definitions\Game Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Est.h">
+      <Filter>Square Enix Definitions\Game Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_EqpGmp.h">
+      <Filter>Square Enix Definitions\Game Resource Files\Equipment/Gimmick Parameters %28.eqp, .gmp%29</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Eqdp.h">
+      <Filter>Square Enix Definitions\Game Resource Files\Equipment Deformer Parameter %28.eqdp%29</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -317,6 +335,12 @@
     </ClCompile>
     <ClCompile Include="Utils_Win32_ThreadPool.cpp">
       <Filter>Windows API Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_EqpGmp.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\Equipment/Gimmick Parameters %28.eqp, .gmp%29</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Eqdp.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\Equipment Deformer Parameter %28.eqdp%29</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -291,3 +291,57 @@ uint32_t Sqex::Sqpack::SqexHash(const std::string_view& text) {
 uint32_t Sqex::Sqpack::SqexHash(const std::filesystem::path& path) {
 	return SqexHash(ToUtf8(path.lexically_normal().wstring()));
 }
+
+std::string Sqex::Sqpack::EntryPathSpec::DatFile() const {
+	auto relPathLower(FullPath.wstring());
+	CharLowerW(&relPathLower[0]);
+	for (auto& c : relPathLower)
+		if (c == L'\\')
+			c = L'/';
+	if (auto relPathComponents = Utils::StringSplit<std::wstring>(relPathLower, L"/");
+		relPathComponents[0] == L"music")
+		return std::format("0c{:0>2x}00", relPathComponents[1].starts_with(L"ex") ? std::wcstol(&relPathComponents[1][2], nullptr, 10) : 0);
+	else if (relPathComponents[0] == L"bg" && relPathComponents[1] == L"ffxiv")
+		return "020000";
+	else if (relPathComponents[0] == L"bg" && relPathComponents[1].starts_with(L"ex")) // bg/ex1/04_sea_s2/...
+		return std::format("02{:0>2x}{:0>2}", std::wcstol(&relPathComponents[1][2], nullptr, 10), std::wcstol(&relPathComponents[2][0], nullptr, 10));
+	else if (relPathComponents[0] == L"cut")
+		return std::format("03{:0>2x}00", relPathComponents[1].starts_with(L"ex") ? std::wcstol(&relPathComponents[1][2], nullptr, 10) : 0);
+	else if (relPathComponents[0] == L"common")
+		return "000000";
+	else if (relPathComponents[0] == L"bgcommon")
+		return "010000";
+	else if (relPathComponents[0] == L"chara")
+		return "040000";
+	else if (relPathComponents[0] == L"shader")
+		return "050000";
+	else if (relPathComponents[0] == L"ui")
+		return "060000";
+	else if (relPathComponents[0] == L"sound")
+		return "070000";
+	else if (relPathComponents[0] == L"vfx")
+		return "080000";
+	else if (relPathComponents[0] == L"exd")
+		return "0a0000";
+	else if (relPathComponents[0] == L"game_script")
+		return "0b0000";
+	return "";
+}
+
+std::string Sqex::Sqpack::EntryPathSpec::DatExpac() const {
+	auto relPathLower(FullPath.wstring());
+	CharLowerW(&relPathLower[0]);
+	for (auto& c : relPathLower)
+		if (c == L'\\')
+			c = L'/';
+	if (auto relPathComponents = Utils::StringSplit<std::wstring>(relPathLower, L"/");
+		relPathComponents[0] == L"music")
+		return Utils::ToUtf8(relPathComponents[1]);
+	else if (relPathComponents[0] == L"bg" && relPathComponents[1] == L"ffxiv")
+		return "ffxiv";
+	else if (relPathComponents[0] == L"bg" && relPathComponents[1].starts_with(L"ex")) // bg/ex1/04_sea_s2/...
+		return Utils::ToUtf8(relPathComponents[1]);
+	else if (relPathComponents[0] == L"cut")
+		return Utils::ToUtf8(relPathComponents[1]);
+	return "ffxiv";
+}

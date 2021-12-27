@@ -190,10 +190,22 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddAllEntriesFromSi
 	return result;
 }
 
-void Sqex::Sqpack::Creator::ReserveSpacesFromTTMP(const ThirdParty::TexTools::TTMPL & ttmpl) {
+void Sqex::Sqpack::Creator::ReserveSpacesFromTTMP(const ThirdParty::TexTools::TTMPL& ttmpl, const std::shared_ptr<Sqex::RandomAccessStream>& ttmpd) {
 	for (const auto& entry : ttmpl.SimpleModsList) {
 		if (entry.DatFile != DatName || entry.ModSize > UINT32_MAX)
 			continue;
+
+		if (entry.IsMetadata()) {
+			const auto metadata = Sqex::ThirdParty::TexTools::ItemMetadata(Sqex::Sqpack::EntryRawStream(std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(entry.FullPath, ttmpd, entry.ModOffset, entry.ModSize)));
+			if (!metadata.Get<Sqex::Imc::Entry>(Sqex::ThirdParty::TexTools::ItemMetadata::MetaDataType::Imc).empty())
+				ReserveSwappableSpace(metadata.ImcPath(), 65536);
+			if (const auto eqdpedit = metadata.Get<Sqex::ThirdParty::TexTools::ItemMetadata::EqdpEntry>(Sqex::ThirdParty::TexTools::ItemMetadata::MetaDataType::Eqdp); !eqdpedit.empty()) {
+				for (const auto& v : eqdpedit) {
+					ReserveSwappableSpace(metadata.EqdpPath(metadata.ItemType, v.RaceCode), 1048576);
+				}
+			}
+			continue;
+		}
 
 		ReserveSwappableSpace(entry.FullPath, static_cast<uint32_t>(entry.ModSize));
 	}
@@ -203,6 +215,18 @@ void Sqex::Sqpack::Creator::ReserveSpacesFromTTMP(const ThirdParty::TexTools::TT
 				for (const auto& entry : option.ModsJsons) {
 					if (entry.DatFile != DatName || entry.ModSize > UINT32_MAX)
 						continue;
+
+					if (entry.IsMetadata()) {
+						const auto metadata = Sqex::ThirdParty::TexTools::ItemMetadata(Sqex::Sqpack::EntryRawStream(std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(entry.FullPath, ttmpd, entry.ModOffset, entry.ModSize)));
+						if (!metadata.Get<Sqex::Imc::Entry>(Sqex::ThirdParty::TexTools::ItemMetadata::MetaDataType::Imc).empty())
+							ReserveSwappableSpace(metadata.ImcPath(), 65536);
+						if (const auto eqdpedit = metadata.Get<Sqex::ThirdParty::TexTools::ItemMetadata::EqdpEntry>(Sqex::ThirdParty::TexTools::ItemMetadata::MetaDataType::Eqdp); !eqdpedit.empty()) {
+							for (const auto& v : eqdpedit) {
+								ReserveSwappableSpace(metadata.EqdpPath(metadata.ItemType, v.RaceCode), 1048576);
+							}
+						}
+						continue;
+					}
 
 					ReserveSwappableSpace(entry.FullPath, static_cast<uint32_t>(entry.ModSize));
 				}

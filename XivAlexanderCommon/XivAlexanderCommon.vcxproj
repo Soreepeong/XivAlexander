@@ -19,6 +19,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Eqdp.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_EqpGmp.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Est.h" />
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Imc.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_SeString.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Excel.h" />
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Excel_Generator.h" />
@@ -67,6 +71,8 @@
     <ClInclude Include="includes\XivAlexanderCommon\XaStrings.h" />
     <ClInclude Include="includes\XivAlexanderCommon\XaZlib.h" />
     <ClInclude Include="pch.h" />
+    <ClCompile Include="Sqex_Eqdp.cpp" />
+    <ClCompile Include="Sqex_EqpGmp.cpp" />
     <ClCompile Include="Sqex_Sound.cpp" />
   </ItemGroup>
   <ItemGroup>

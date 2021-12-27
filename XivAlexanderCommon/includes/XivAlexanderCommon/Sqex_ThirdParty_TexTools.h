@@ -6,6 +6,10 @@
 #include <nlohmann/json.hpp>
 
 #include "Sqex.h"
+#include "Sqex_Eqdp.h"
+#include "Sqex_EqpGmp.h"
+#include "Sqex_Est.h"
+#include "Sqex_Imc.h"
 
 namespace Sqex::ThirdParty::TexTools {
 
@@ -29,6 +33,7 @@ namespace Sqex::ThirdParty::TexTools {
 		std::optional<ModPackEntry> ModPack;
 
 		std::string ToExpacDatPath() const;
+		bool IsMetadata() const;
 	};
 	void to_json(nlohmann::json&, const ModEntry&);
 	void from_json(const nlohmann::json&, ModEntry&);
@@ -78,4 +83,146 @@ namespace Sqex::ThirdParty::TexTools {
 	};
 	void to_json(nlohmann::json&, const TTMPL&);
 	void from_json(const nlohmann::json&, TTMPL&);
+
+	class ItemMetadata {
+	public:
+		static constexpr uint32_t Version_Value = 2;
+		static const srell::u8cregex CharacterMetaPathTest;
+		static const srell::u8cregex HousingMetaPathTest;
+
+		enum class MetaDataType : uint32_t {
+			Invalid,
+			Imc,
+			Eqdp,
+			Eqp,
+			Est,
+			Gmp,
+		};
+
+		enum class TargetEstType {
+			Invalid,
+			Face,
+			Hair,
+			Head,
+			Body,
+		};
+
+		enum class TargetItemType {
+			Invalid,
+			Equipment,
+			Accessory,
+			Housing,
+		};
+
+		class NotItemMetadataError : public std::runtime_error {
+			using std::runtime_error::runtime_error;
+		};
+
+#pragma pack(push, 1)
+		struct MetaDataHeader {
+			LE<uint32_t> EntryCount;
+			LE<uint32_t> HeaderSize;
+			LE<uint32_t> FirstEntryLocatorOffset;
+		};
+
+		struct MetaDataEntryLocator {
+			LE<MetaDataType> Type;
+			LE<uint32_t> Offset;
+			LE<uint32_t> Size;
+		};
+
+		struct EqdpEntry {
+			uint32_t RaceCode;
+			uint8_t Value : 2;
+			uint8_t Padding : 6;
+		};
+		static_assert(sizeof EqdpEntry == 5);
+
+		struct GmpEntry {
+			uint32_t Enabled : 1;
+			uint32_t Animated : 1;
+			uint32_t RotationA : 10;
+			uint32_t RotationB : 10;
+			uint32_t RotationC : 10;
+			uint8_t UnknownLow : 4;
+			uint8_t UnknownHigh : 4;
+		};
+		static_assert(sizeof GmpEntry == 5);
+
+		struct EstEntry {
+			uint16_t RaceCode;
+			uint16_t SetId;
+			uint16_t SkelId;
+		};
+#pragma pack(pop)
+
+		const std::vector<uint8_t> Data;
+		const uint32_t& Version;
+		const std::string_view Path;
+		const MetaDataHeader& Header;
+		const std::span<const MetaDataEntryLocator> AllEntries;
+
+		TargetItemType ItemType = TargetItemType::Invalid;
+		TargetEstType EstType = TargetEstType::Invalid;
+		std::string PrimaryType;
+		std::string SecondaryType;
+		std::string FullPathPrefix;
+		uint16_t PrimaryId = 0;
+		uint16_t SecondaryId = 0;
+		size_t SlotIndex = 0;
+		size_t EqpEntrySize = 0;
+		size_t EqpEntryOffset = 0;
+
+		ItemMetadata(const RandomAccessStream& stream);
+
+		template<typename T>
+		std::span<const T> Get(MetaDataType type) const {
+			for (const auto& entry : AllEntries) {
+				if (entry.Type != type)
+					continue;
+				const auto spanBytes = std::span(Data).subspan(entry.Offset, entry.Size);
+				return { reinterpret_cast<const T*>(spanBytes.data()), spanBytes.size_bytes() / sizeof T };
+			}
+			return {};
+		}
+
+		std::string ImcPath() const {
+			return std::format("{}.imc", FullPathPrefix);
+		}
+
+		static std::string EqdpPath(TargetItemType type, uint32_t race) {
+			switch (type) {
+				case TargetItemType::Equipment:
+					return std::format("chara/xls/charadb/equipmentdeformerparameter/c{:04}.eqdp", race);
+				case TargetItemType::Accessory:
+					return std::format("chara/xls/charadb/accessorydeformerparameter/c{:04}.eqdp", race);
+				default:
+					throw std::invalid_argument("only equipment and accessory have valid eqdp");
+			}
+		}
+
+		static constexpr auto EqpPath = "chara/xls/equipmentparameter/equipmentparameter.eqp";
+		static constexpr auto GmpPath = "chara/xls/equipmentparameter/gimmickparameter.gmp";
+
+		static const char* EstPath(TargetEstType type) {
+			switch (type) {
+				case TargetEstType::Face:
+					return "chara/xls/charadb/faceskeletontemplate.est";
+				case TargetEstType::Hair:
+					return "chara/xls/charadb/hairskeletontemplate.est";
+				case TargetEstType::Head:
+					return "chara/xls/charadb/extra_met.est";
+				case TargetEstType::Body:
+					return "chara/xls/charadb/extra_top.est";
+				default:
+					return nullptr;
+			}
+		}
+
+		void ApplyImcEdits(std::function<Sqex::Imc::File&()> reader) const;
+		void ApplyEqdpEdits(std::function<Sqex::Eqdp::ExpandedFile& (TargetItemType, uint32_t)> reader) const;
+		void ApplyEqpEdits(Sqex::EqpGmp::ExpandedFile& eqp) const;
+		void ApplyGmpEdits(Sqex::EqpGmp::ExpandedFile& gmp) const;
+		void ApplyEstEdits(Sqex::Est::File& est) const;
+	};
 }
