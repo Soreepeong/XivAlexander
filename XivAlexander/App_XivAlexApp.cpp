@@ -174,9 +174,9 @@ struct App::XivAlexApp::Implementation final {
 	int64_t LastWaitForSingleObjectUs{};
 	int64_t QueryPerformanceCounterMin{};
 	int64_t QueryPerformanceCounterDrift{};
-	Utils::NumericStatisticsTracker MessagePumpIntervalUs{ 32, 0 };
-	Utils::NumericStatisticsTracker RenderTimeTakenUs{ 32, 0 };
-	Utils::NumericStatisticsTracker SocketCallDelayUs{ 32, 0 };
+	Utils::NumericStatisticsTracker MessagePumpIntervalUs{ 64, 0 };
+	Utils::NumericStatisticsTracker RenderTimeTakenUs{ 64, 0 };
+	Utils::NumericStatisticsTracker SocketCallDelayUs{ 64, 0 };
 
 	void SetupTrayWindow() {
 		if (m_trayWindow)
@@ -324,8 +324,7 @@ struct App::XivAlexApp::Implementation final {
 					while (!MessagePumpGuaranteeCounterUs.empty() && *MessagePumpGuaranteeCounterUs.begin() <= nowUs)
 						MessagePumpGuaranteeCounterUs.erase(MessagePumpGuaranteeCounterUs.begin());
 
-					const auto pumpIntervalUs = MessagePumpIntervalUs.Mean();
-					if (!MessagePumpGuaranteeCounterUs.empty() && *MessagePumpGuaranteeCounterUs.begin() - nowUs <= pumpIntervalUs) {
+					if (!MessagePumpGuaranteeCounterUs.empty() && *MessagePumpGuaranteeCounterUs.begin() - nowUs <= MessagePumpIntervalUs.Mean()) {
 						waitUntilCounterUs = *MessagePumpGuaranteeCounterUs.begin();
 						MessagePumpGuaranteeCounterUs.erase(MessagePumpGuaranteeCounterUs.begin());
 					}
@@ -334,12 +333,11 @@ struct App::XivAlexApp::Implementation final {
 						SocketCallDelayUs.AddValue(socketSelectUs - LastMessagePumpCounterUs.back());
 
 					if (waitUntilCounterUs > 0 && !LastMessagePumpCounterUs.empty() && this_->m_config->Runtime.SynchronizeProcessing) {
-						this_->AdjustCounterDriftUs(waitUntilCounterUs - nowUs);
-
-						waitUntilCounterUs -= SocketCallDelayUs.Mean();
-						this_->m_logger->Format(LogCategory::General, "Waiting for {}us before next PeekMessage (select {}us, render time taken {}us, pump interval {}us)",
+						this_->m_logger->Format(LogCategory::General, "Waiting for {}us before next PeekMessage (select {}{:+}us, render time taken {}{:+}us, pump interval {}{:+}us)",
 							waitUntilCounterUs - nowUs,
-							SocketCallDelayUs.Latest(), RenderTimeTakenUs.Latest(), pumpIntervalUs);
+							SocketCallDelayUs.Mean(), SocketCallDelayUs.Deviation(),
+							RenderTimeTakenUs.Mean(), RenderTimeTakenUs.Deviation(),
+							MessagePumpIntervalUs.Mean(), MessagePumpIntervalUs.Deviation());
 						while (waitUntilCounterUs > (nowUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier)))
 							void(0);
 						LastMessagePumpCounterUs.push_back(nowUs);
