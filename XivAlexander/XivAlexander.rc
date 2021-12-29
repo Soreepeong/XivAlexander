@@ -1488,8 +1488,8 @@ IDI_TRAY_ICON           ICON                    "..\\Graphics\\Icon.ico"
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,14,8,42
- PRODUCTVERSION 1,14,8,42
+ FILEVERSION 1,14,8,43
+ PRODUCTVERSION 1,14,8,43
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -1506,12 +1506,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Soreepeong"
             VALUE "FileDescription", "XivAlexander Main DLL"
-            VALUE "FileVersion", "1.14.8.42"
+            VALUE "FileVersion", "1.14.8.43"
             VALUE "InternalName", "XivAlexander.dll"
             VALUE "LegalCopyright", "Copyright (C) 2021"
             VALUE "OriginalFilename", "XivAlexander.dll"
             VALUE "ProductName", "XivAlexander"
-            VALUE "ProductVersion", "1.14.8.42"
+            VALUE "ProductVersion", "1.14.8.43"
         END
     END
     BLOCK "VarFileInfo"
