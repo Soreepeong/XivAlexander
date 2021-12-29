@@ -2,6 +2,7 @@
 
 #include "App_ConfigRepository.h"
 #include "App_Misc_GameInstallationDetector.h"
+#include "App_Misc_VirtualSqPacks.h"
 #include "App_Window_BaseWindow.h"
 
 namespace App {
@@ -84,6 +85,7 @@ namespace App::Window {
 		void ImportExcelTransformConfig(const std::filesystem::path& path);
 		void AddAdditionalGameRootDirectory(std::filesystem::path path);
 		std::string InstallTTMP(const std::filesystem::path& path, const Utils::Win32::Event& cancelEvent);
+		void BatchTtmpOperation(Misc::VirtualSqPacks::NestedTtmp& parent, int menuId);
 
 		std::pair<std::filesystem::path, std::string> InstallAnyFile(const std::filesystem::path& path, const Utils::Win32::Event& cancelEvent);
 		void InstallMultipleFiles(const std::vector<std::filesystem::path>& paths);

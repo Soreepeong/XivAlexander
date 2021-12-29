@@ -451,10 +451,10 @@ BEGIN
     IDS_FILTERSPEC_ALLFILES "偡傋偰偺僼傽僀儖 (*.*)"
     IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON "僥僉僗僩抲偒姺偊掕媊僼傽僀儖 (*.json)"
     IDS_FILTERSPEC_TTMP     "TexTools MOD僷僢僋僼傽僀儖 (*.ttmp, *.ttmp2, *.mpl)"
-    IDS_CONFIRM_REMOVEALLTTMP "偡傋偰偺TexTools MOD僷僢僋傪嶍彍偟傑偡丅"
+    IDS_CONFIRM_REMOVEALLTTMP "乽{}乿僼僅儖僟乕偵偁傞慡偰偺TexTools MOD僷僢僋傪嶍彍偟傑偡丅"
     IDS_URL_ISSUES          "https://github.com/Soreepeong/XivAlexander/issues"
-    IDS_CONFIRM_ENABLEALLTTMP "慡偰偺TexTools MOD僷僢僋傪桳岠偵偟傑偡丅"
-    IDS_CONFIRM_DISABLEALLTTMP "慡偰偺TexTools MOD僷僢僋傪柍岠偵偟傑偡丅"
+    IDS_CONFIRM_ENABLEALLTTMP "乽{}乿僼僅儖僟乕偵偁傞慡偰偺TexTools MOD僷僢僋傪桳岠偵偟傑偡丅"
+    IDS_CONFIRM_DISABLEALLTTMP "乽{}乿僼僅儖僟乕偵偁傞慡偰偺TexTools MOD僷僢僋傪柍岠偵偟傑偡丅"
     IDS_NOUNLOADREASON_DEPENDENCY 
                             "XivAlexander偑僎乕儉偺埶懚僼傽僀儖偲偟偰僀儞僗僩乕儖偝傟儘乕僪偝傟偰傞応崌扨撈偱廔椆偡傞偙偲偼偱偒傑偣傫丅"
     IDS_NOUNLOADREASON_MODACTIVE "MOD偑桳岠偺応崌XivAlexander傪扨撈偱廔椆偡傞偙偲偼偱偒傑偣傫丅"
@@ -1056,10 +1056,10 @@ BEGIN
     IDS_FILTERSPEC_ALLFILES "葛电 颇老 (*.*)"
     IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON "巩磊凯 函版 痹蘑 JSON 颇老 (*.json)"
     IDS_FILTERSPEC_TTMP     "TexTools 葛靛蒲 颇老 (*.ttmp, *.ttmp2, *.mpl)"
-    IDS_CONFIRM_REMOVEALLTTMP "葛电 TexTools 葛靛蒲 颇老阑 力芭钦聪促."
+    IDS_CONFIRM_REMOVEALLTTMP """{}"" 弃歹俊 乐绰 葛电 TexTools 葛靛蒲 颇老阑 力芭钦聪促."
     IDS_URL_ISSUES          "https://github.com/Soreepeong/XivAlexander/issues"
-    IDS_CONFIRM_ENABLEALLTTMP "葛电 TexTools 葛靛蒲 颇老阑 劝己拳钦聪促."
-    IDS_CONFIRM_DISABLEALLTTMP "葛电 TexTools 葛靛蒲 颇老阑 厚劝己拳钦聪促."
+    IDS_CONFIRM_ENABLEALLTTMP """{}"" 弃歹俊 乐绰 葛电 TexTools 葛靛蒲 颇老阑 劝己拳钦聪促."
+    IDS_CONFIRM_DISABLEALLTTMP """{}"" 弃歹俊 乐绰 葛电 TexTools 葛靛蒲 颇老阑 厚劝己拳钦聪促."
     IDS_NOUNLOADREASON_DEPENDENCY 
                             "XivAlexander绰 备己 夸家肺 阂矾客脸阑 锭 (汲摹登菌阑 锭) 霸烙 辆丰 寇狼 规过栏肺绰 辆丰且 荐 绝嚼聪促."
     IDS_NOUNLOADREASON_MODACTIVE "葛爹捞 劝己拳登绢 乐阑 锭绰 XivAlexander甫 辆丰且 荐 绝嚼聪促."
@@ -1794,10 +1794,13 @@ BEGIN
     IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON 
                             "Excel transformation configuration JSON files (*.json)"
     IDS_FILTERSPEC_TTMP     "TexTools ModPack Files (*.ttmp, *.ttmp2, *.mpl)"
-    IDS_CONFIRM_REMOVEALLTTMP "Do you want to remove all TexTools ModPacks?"
+    IDS_CONFIRM_REMOVEALLTTMP 
+                            "Do you want to remove all TexTools ModPacks in ""{}""?"
     IDS_URL_ISSUES          "https://github.com/Soreepeong/XivAlexander/issues"
-    IDS_CONFIRM_ENABLEALLTTMP "Do you want to enable all TexTools ModPacks?"
-    IDS_CONFIRM_DISABLEALLTTMP "Do you want to disable all TexTools ModPacks?"
+    IDS_CONFIRM_ENABLEALLTTMP 
+                            "Do you want to enable all TexTools ModPacks in ""{}""?"
+    IDS_CONFIRM_DISABLEALLTTMP 
+                            "Do you want to disable all TexTools ModPacks in ""{}""?"
     IDS_NOUNLOADREASON_DEPENDENCY 
                             "XivAlexander cannot be unloaded when it is loaded as a dependency (installation)."
     IDS_NOUNLOADREASON_MODACTIVE 

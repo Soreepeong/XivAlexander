@@ -48,7 +48,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 	Utils::Win32::Event IoEvent = Utils::Win32::Event::Create();
 	Utils::Win32::Event IoLockEvent = Utils::Win32::Event::Create(nullptr, TRUE, TRUE);
 
-	std::vector<TtmpSet> TtmpSets;
+	std::shared_ptr<NestedTtmp> Ttmps;
 
 	std::shared_ptr<const Sqex::RandomAccessStream> EmptyScd;
 
@@ -96,6 +96,15 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		throw std::out_of_range("entry not found");
 	}
 
+	struct ReflectUsedEntriesTempData {
+		std::map<Sqex::Sqpack::EntryPathSpec, std::tuple<Sqex::Sqpack::HotSwappableEntryProvider*, std::shared_ptr<Sqex::Sqpack::EntryProvider>, std::string>, Sqex::Sqpack::EntryPathSpec::AllHashComparator> Replacements;
+		std::map<std::string, Sqex::Est::File> Est;
+		Sqex::EqpGmp::ExpandedFile Eqp;
+		Sqex::EqpGmp::ExpandedFile Gmp;
+		std::map<std::string, Sqex::Imc::File> Imc;
+		std::map<std::pair<Sqex::ThirdParty::TexTools::ItemMetadata::TargetItemType, uint32_t>, Sqex::Eqdp::ExpandedFile> Eqdp;
+	};
+
 	void ReflectUsedEntries(bool isCalledFromConstructor = false) {
 		const auto pApp = XivAlexApp::GetCurrentApp();
 		const auto mainThreadStallEvent = Utils::Win32::Event::Create();
@@ -108,9 +117,9 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				pApp->RunOnGameLoop([mainThreadStalledEvent, mainThreadStallEvent]() {
 					mainThreadStalledEvent.Set();
 					mainThreadStallEvent.Wait();
-				});
+					});
 			}
-		});
+			});
 		if (!isCalledFromConstructor)
 			mainThreadStalledEvent.Wait();
 
@@ -128,7 +137,10 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			const auto resumeIo = Utils::CallOnDestruction([this]() { IoLockEvent.Set(); });
 		}
 
-		std::map<Sqex::Sqpack::EntryPathSpec, std::tuple<Sqex::Sqpack::HotSwappableEntryProvider*, std::shared_ptr<Sqex::Sqpack::EntryProvider>, std::string>, Sqex::Sqpack::EntryPathSpec::AllHashComparator> replacements;
+		ReflectUsedEntriesTempData tempData{
+			.Eqp{*GetOriginalEntry(Sqex::ThirdParty::TexTools::ItemMetadata::EqpPath)},
+			.Gmp{*GetOriginalEntry(Sqex::ThirdParty::TexTools::ItemMetadata::GmpPath)},
+		};
 
 		// Step. Find voices to enable or disable
 		const auto voBattle = Sqex::Sqpack::SqexHash("sound/voice/vo_battle", SIZE_MAX);
@@ -142,103 +154,64 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 			const auto& pathSpec = provider->PathSpec();
 			if (pathSpec.PathHash == voBattle || pathSpec.PathHash == voCm || pathSpec.PathHash == voEmote || pathSpec.PathHash == voLine)
-				replacements.insert_or_assign(pathSpec, std::make_tuple(provider, std::shared_ptr<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(), std::string()));
+				tempData.Replacements.insert_or_assign(pathSpec, std::make_tuple(provider, std::shared_ptr<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(), std::string()));
 
 			if (pathSpec.PathHash == voBattle && Config->Runtime.MuteVoice_Battle)
-				std::get<1>(replacements.at(pathSpec)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(pathSpec, EmptyScd);
+				std::get<1>(tempData.Replacements.at(pathSpec)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(pathSpec, EmptyScd);
 			if (pathSpec.PathHash == voCm && Config->Runtime.MuteVoice_Cm)
-				std::get<1>(replacements.at(pathSpec)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(pathSpec, EmptyScd);
+				std::get<1>(tempData.Replacements.at(pathSpec)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(pathSpec, EmptyScd);
 			if (pathSpec.PathHash == voEmote && Config->Runtime.MuteVoice_Emote)
-				std::get<1>(replacements.at(pathSpec)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(pathSpec, EmptyScd);
+				std::get<1>(tempData.Replacements.at(pathSpec)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(pathSpec, EmptyScd);
 			if (pathSpec.PathHash == voLine && Config->Runtime.MuteVoice_Line)
-				std::get<1>(replacements.at(pathSpec)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(pathSpec, EmptyScd);
+				std::get<1>(tempData.Replacements.at(pathSpec)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(pathSpec, EmptyScd);
 		}
 
-		// Step. Revert metadata files
-		std::map<std::string, Sqex::Est::File> Est;
-		Sqex::EqpGmp::ExpandedFile Eqp(*GetOriginalEntry(Sqex::ThirdParty::TexTools::ItemMetadata::EqpPath));
-		Sqex::EqpGmp::ExpandedFile Gmp(*GetOriginalEntry(Sqex::ThirdParty::TexTools::ItemMetadata::GmpPath));
-		std::map<std::string, Sqex::Imc::File> Imc;
-		std::map<std::pair<Sqex::ThirdParty::TexTools::ItemMetadata::TargetItemType, uint32_t>, Sqex::Eqdp::ExpandedFile> Eqdp;
+		Ttmps->Traverse([&](NestedTtmp& nestedTtmp) {
+			if (!nestedTtmp.Ttmp)
+				return NestedTtmp::Continue;
+			TtmpSet& ttmp = *nestedTtmp.Ttmp;
 
-		// Step. Find placeholders to adjust
-		const auto findPlaceholdersFromTtmpEntry = [&](const TtmpSet& ttmp, const Sqex::ThirdParty::TexTools::ModEntry& entry) {
-			const auto v = SqpackPath / std::format(L"{}.win32.index", entry.ToExpacDatPath());
-			const auto it = SqpackViews.find(v);
-			if (it == SqpackViews.end()) {
-				Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "Failed to find {} as a sqpack file", v.c_str());
-				return;
-			}
+			// Step. Find placeholders to adjust
+			ttmp.ForEachEntry(false, [&](const auto& entry) {
+				const auto v = SqpackPath / std::format(L"{}.win32.index", entry.ToExpacDatPath());
+				const auto it = SqpackViews.find(v);
+				if (it == SqpackViews.end()) {
+					Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "Failed to find {} as a sqpack file", v.c_str());
+					return TtmpSet::Continue;
+				}
 
-			const auto doForPathSpec = [&](const Sqex::Sqpack::EntryPathSpec& pathSpec) {
-				auto entryIt = it->second.HashOnlyEntries.find(pathSpec);
-				if (entryIt == it->second.HashOnlyEntries.end()) {
-					entryIt = it->second.FullPathEntries.find(pathSpec);
-					if (entryIt == it->second.FullPathEntries.end()) {
-						return;
+				if (!entry.IsMetadata()) {
+					ReflectUsedEntries_FindPlaceholders(it->second, tempData, entry.FullPath);
+				} else {
+					const auto ttmpd = std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::Handle{ ttmp.DataFile, false });
+					const auto metadata = Sqex::ThirdParty::TexTools::ItemMetadata(Sqex::Sqpack::EntryRawStream(std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(entry.FullPath, ttmpd, entry.ModOffset, entry.ModSize)));
+					ReflectUsedEntries_FindPlaceholders(it->second, tempData, metadata.ImcPath());
+					ReflectUsedEntries_FindPlaceholders(it->second, tempData, Sqex::ThirdParty::TexTools::ItemMetadata::EqpPath);
+					ReflectUsedEntries_FindPlaceholders(it->second, tempData, Sqex::ThirdParty::TexTools::ItemMetadata::GmpPath);
+					if (const auto estPath = Sqex::ThirdParty::TexTools::ItemMetadata::EstPath(metadata.EstType))
+						ReflectUsedEntries_FindPlaceholders(it->second, tempData, estPath);
+					if (const auto eqdpedit = metadata.Get<Sqex::ThirdParty::TexTools::ItemMetadata::EqdpEntry>(Sqex::ThirdParty::TexTools::ItemMetadata::MetaDataType::Eqdp); !eqdpedit.empty()) {
+						for (const auto& v : eqdpedit) {
+							ReflectUsedEntries_FindPlaceholders(it->second, tempData, Sqex::ThirdParty::TexTools::ItemMetadata::EqdpPath(metadata.ItemType, v.RaceCode));
+						}
 					}
 				}
 
-				const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second->Provider.get());
-				if (!provider)
-					return;
+				return TtmpSet::Continue;
+				});
 
-				provider->UpdatePathSpec(pathSpec);
-				replacements.insert_or_assign(pathSpec, std::make_tuple(provider, std::shared_ptr<Sqex::Sqpack::EntryProvider>(), std::string()));
-			};
-
-			if (!entry.IsMetadata())
-				return doForPathSpec(entry.FullPath);
-
-			const auto ttmpd = std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::Handle{ ttmp.DataFile, false });
-			const auto metadata = Sqex::ThirdParty::TexTools::ItemMetadata(Sqex::Sqpack::EntryRawStream(std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(entry.FullPath, ttmpd, entry.ModOffset, entry.ModSize)));
-			doForPathSpec(metadata.ImcPath());
-			doForPathSpec(Sqex::ThirdParty::TexTools::ItemMetadata::EqpPath);
-			doForPathSpec(Sqex::ThirdParty::TexTools::ItemMetadata::GmpPath);
-			if (const auto estPath = Sqex::ThirdParty::TexTools::ItemMetadata::EstPath(metadata.EstType))
-				doForPathSpec(estPath);
-			if (const auto eqdpedit = metadata.Get<Sqex::ThirdParty::TexTools::ItemMetadata::EqdpEntry>(Sqex::ThirdParty::TexTools::ItemMetadata::MetaDataType::Eqdp); !eqdpedit.empty()) {
-				for (const auto& v : eqdpedit) {
-					doForPathSpec(Sqex::ThirdParty::TexTools::ItemMetadata::EqdpPath(metadata.ItemType, v.RaceCode));
-				}
+			// Step. Unregister TTMP files that no longer exist and delete associated files
+			if (!exists(ttmp.ListPath)) {
+				ttmp.TryCleanupUnusedFiles();
+				return NestedTtmp::Delete;
 			}
-		};
-		for (const auto& ttmp : TtmpSets) {
-			for (const auto& entry : ttmp.List.SimpleModsList)
-				findPlaceholdersFromTtmpEntry(ttmp, entry);
-
-			for (const auto& modPackPage : ttmp.List.ModPackPages)
-				for (const auto& modGroup : modPackPage.ModGroups)
-					for (const auto& option : modGroup.OptionList)
-						for (const auto& entry : option.ModsJsons)
-							findPlaceholdersFromTtmpEntry(ttmp, entry);
-		}
-
-		// Step. Unregister TTMP files that no longer exist and delete associated files
-		for (auto it = TtmpSets.begin(); it != TtmpSets.end();) {
-			if (!exists(it->ListPath)) {
-				it->DataFile.Clear();
-				for (const auto& path : {
-						it->ListPath,
-						it->ListPath.parent_path() / "TTMPD.mpd",
-						it->ListPath.parent_path() / "choices.json",
-						it->ListPath.parent_path() / "disable",
-						it->ListPath.parent_path(),
-					}) {
-					try {
-						remove(path);
-					} catch (...) {
-						// pass
-					}
-				}
-				it = TtmpSets.erase(it);
-			} else if (!it->RenameTo.empty()) {
+			if (!ttmp.RenameTo.empty()) {
 				try {
-					create_directories(it->RenameTo);
+					create_directories(ttmp.RenameTo);
 
-					const auto renameToDirHandle = Utils::Win32::Handle::FromCreateFile(it->RenameTo, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0);
+					const auto renameToDirHandle = Utils::Win32::Handle::FromCreateFile(ttmp.RenameTo, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0);
 
-					const auto newListPath = (it->RenameTo / L"TTMPL.mpl").wstring();
+					const auto newListPath = (ttmp.RenameTo / L"TTMPL.mpl").wstring();
 					std::vector<char> renameInfoBuffer;
 					renameInfoBuffer.resize(sizeof FILE_RENAME_INFO + newListPath.size());
 					auto renameInfo = *reinterpret_cast<FILE_RENAME_INFO*>(&renameInfoBuffer[0]);
@@ -246,135 +219,65 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					renameInfo.RootDirectory = renameToDirHandle;
 					renameInfo.FileNameLength = static_cast<DWORD>(newListPath.size());
 					wcsncpy_s(renameInfo.FileName, renameInfo.FileNameLength, newListPath.data(), newListPath.size());
-					SetFileInformationByHandle(it->DataFile, FileRenameInfo, &renameInfoBuffer[0], static_cast<DWORD>(renameInfoBuffer.size()));
+					SetFileInformationByHandle(ttmp.DataFile, FileRenameInfo, &renameInfoBuffer[0], static_cast<DWORD>(renameInfoBuffer.size()));
 
 					for (const auto& path : {
 							"TTMPD.mpd",
 							"choices.json",
 							"disable",
 						}) {
-						const auto oldPath = it->ListPath.parent_path() / path;
+						const auto oldPath = ttmp.ListPath.parent_path() / path;
 						if (exists(oldPath))
-							std::filesystem::rename(oldPath, it->RenameTo / path);
+							std::filesystem::rename(oldPath, ttmp.RenameTo / path);
 					}
 					try {
-						remove(it->ListPath.parent_path());
+						remove(ttmp.ListPath.parent_path());
 					} catch (...) {
 						// pass
 					}
-					it->ListPath = newListPath;
-					it->RenameTo.clear();
+					ttmp.ListPath = newListPath;
+					ttmp.RenameTo.clear();
 				} catch (const std::exception& e) {
 					Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
 						"Failed to move {} to {}: {}",
-						it->ListPath.wstring(), it->RenameTo.wstring(), e.what());
-				}
-				++it;
-			} else
-				++it;
-		}
-
-		// Step. Set new replacements
-		for (const auto& ttmp : TtmpSets) {
-			if (!ttmp.Enabled || !ttmp.Allocated)
-				continue;
-
-			const auto& choices = ttmp.Choices;
-
-			const auto setReplacementsFromTtmpEntry = [&](const Sqex::ThirdParty::TexTools::ModEntry& entry) {
-				if (entry.IsMetadata()) {
-					const auto ttmpd = std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::Handle{ ttmp.DataFile, false });
-					const auto metadata = Sqex::ThirdParty::TexTools::ItemMetadata(Sqex::Sqpack::EntryRawStream(std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(entry.FullPath, ttmpd, entry.ModOffset, entry.ModSize)));
-					metadata.ApplyImcEdits([&]() -> Sqex::Imc::File& {
-						const auto imcPath = metadata.ImcPath();
-						if (const auto it = Imc.find(imcPath); it == Imc.end())
-							return Imc[imcPath] = Sqex::Imc::File(*GetOriginalEntry(imcPath));
-						else
-							return it->second;
-						});
-					metadata.ApplyEqdpEdits([&](auto type, auto race) -> Sqex::Eqdp::ExpandedFile& {
-						const auto key = std::make_pair(type, race);
-						if (const auto it = Eqdp.find(key); it == Eqdp.end())
-							return Eqdp[key] = Sqex::Eqdp::ExpandedFile(*GetOriginalEntry(Sqex::ThirdParty::TexTools::ItemMetadata::EqdpPath(type, race)));
-						else
-							return it->second;
-						});
-					metadata.ApplyEqpEdits(Eqp);
-					metadata.ApplyGmpEdits(Gmp);
-					
-					const auto estPath = Sqex::ThirdParty::TexTools::ItemMetadata::EstPath(metadata.EstType);
-					if (estPath) {
-						if (const auto it = Est.find(estPath); it == Est.end())
-							metadata.ApplyEstEdits(Est[estPath] = Sqex::Est::File(*GetOriginalEntry(estPath)));
-						else
-							metadata.ApplyEstEdits(it->second);
-					}
-					return;
-				}
-
-				const auto entryIt = replacements.find(entry.FullPath);
-				if (entryIt == replacements.end())
-					return;
-
-				std::get<1>(entryIt->second) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(
-					entry.FullPath,
-					std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::Handle{ ttmp.DataFile, false }, entry.ModOffset, entry.ModSize)
-					);
-				std::get<2>(entryIt->second) = ttmp.List.Name;
-			};
-
-			for (const auto& entry : ttmp.List.SimpleModsList)
-				setReplacementsFromTtmpEntry(entry);
-
-			for (size_t pageObjectIndex = 0; pageObjectIndex < ttmp.List.ModPackPages.size(); ++pageObjectIndex) {
-				const auto& modGroups = ttmp.List.ModPackPages[pageObjectIndex].ModGroups;
-				if (modGroups.empty())
-					continue;
-				const auto& pageConf = choices.at(pageObjectIndex);
-
-				for (size_t modGroupIndex = 0; modGroupIndex < modGroups.size(); ++modGroupIndex) {
-					const auto& modGroup = modGroups[modGroupIndex];
-					if (modGroups.empty())
-						continue;
-
-					std::set<size_t> indices;
-					if (pageConf.at(modGroupIndex).is_array()) {
-						const auto tmp = pageConf.at(modGroupIndex).get<std::vector<size_t>>();
-						indices.insert(tmp.begin(), tmp.end());
-					} else
-						indices.insert(pageConf.at(modGroupIndex).get<size_t>());
-					
-					for (const auto optionIndex : indices) {
-						for (const auto& entry : modGroup.OptionList[optionIndex].ModsJsons)
-							setReplacementsFromTtmpEntry(entry);
-					}
+						ttmp.ListPath.wstring(), ttmp.RenameTo.wstring(), e.what());
 				}
 			}
-		}
+
+			return NestedTtmp::Continue;
+			});
+
+		Ttmps->RemoveEmptyChildren();
+
+		// Step. Set new replacements
+		Ttmps->Traverse([&](NestedTtmp& nestedTtmp) {
+			if (!nestedTtmp.Ttmp)
+				return NestedTtmp::Continue;
+			TtmpSet& ttmp = *nestedTtmp.Ttmp;
+
+			if (!ttmp.Enabled || !ttmp.Allocated)
+				return NestedTtmp::Continue;
+
+			ttmp.ForEachEntry(true, [&](const auto& entry) {
+				ReflectUsedEntries_SetReplacementsFromTtmpEntry(tempData, ttmp, entry);
+				return TtmpSet::Continue;
+				});
+			return NestedTtmp::Continue;
+			});
 
 		// Step. Replace metadata files
-		const auto setFromBinary = [&](const std::string& path, const std::vector<uint8_t>& data) {
-			const auto pathSpec = Sqex::Sqpack::EntryPathSpec(path);
+		for (const auto& [path, data] : tempData.Est)
+			ReflectUsedEntries_SetFromBuffer(tempData, path, data.Data());
+		ReflectUsedEntries_SetFromBuffer(tempData, Sqex::ThirdParty::TexTools::ItemMetadata::EqpPath, tempData.Eqp.DataBytes());
+		ReflectUsedEntries_SetFromBuffer(tempData, Sqex::ThirdParty::TexTools::ItemMetadata::GmpPath, tempData.Gmp.DataBytes());
+		for (const auto& [path, data] : tempData.Imc)
+			ReflectUsedEntries_SetFromBuffer(tempData, path, data.Data());
+		for (const auto& [eqdpKey, data] : tempData.Eqdp)
+			ReflectUsedEntries_SetFromBuffer(tempData, Sqex::ThirdParty::TexTools::ItemMetadata::EqdpPath(eqdpKey.first, eqdpKey.second), data.Data());
 
-			const auto entryIt = replacements.find(pathSpec);
-			if (entryIt == replacements.end())
-				return;
-
-			std::get<1>(entryIt->second) = std::make_shared<Sqex::Sqpack::OnTheFlyBinaryEntryProvider>(path, std::make_shared<Sqex::MemoryRandomAccessStream>(data));
-			std::get<2>(entryIt->second) = "Metadata";
-		};
-		for (const auto& [path, data] : Est)
-			setFromBinary(path, data.Data());
-		setFromBinary(Sqex::ThirdParty::TexTools::ItemMetadata::EqpPath, Eqp.DataBytes());
-		setFromBinary(Sqex::ThirdParty::TexTools::ItemMetadata::GmpPath, Gmp.DataBytes());
-		for (const auto& [path, data] : Imc)
-			setFromBinary(path, data.Data());
-		for (const auto& [eqdpKey, data] : Eqdp)
-			setFromBinary(Sqex::ThirdParty::TexTools::ItemMetadata::EqdpPath(eqdpKey.first, eqdpKey.second), data.Data());
-
-		// Step. Apply replacements
-		for (const auto& pathSpec : replacements | std::views::keys) {
-			auto& [place, newEntry, description] = replacements.at(pathSpec);
+		// Step. Apply tempData.Replacements
+		for (const auto& pathSpec : tempData.Replacements | std::views::keys) {
+			auto& [place, newEntry, description] = tempData.Replacements.at(pathSpec);
 			if (!description.empty()) {
 				if (newEntry)
 					Logger->Format(LogCategory::VirtualSqPacks, "{}: {}", description, pathSpec);
@@ -393,6 +296,102 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 		if (!isCalledFromConstructor)
 			Sqpacks.OnTtmpSetsChanged();
+	}
+
+	void ReflectUsedEntries_FindPlaceholders(
+		Sqex::Sqpack::Creator::SqpackViews& view,
+		ReflectUsedEntriesTempData& tempData,
+		const Sqex::Sqpack::EntryPathSpec& pathSpec
+	) {
+		auto entryIt = view.HashOnlyEntries.find(pathSpec);
+		if (entryIt == view.HashOnlyEntries.end()) {
+			entryIt = view.FullPathEntries.find(pathSpec);
+			if (entryIt == view.FullPathEntries.end())
+				return;
+		}
+
+		const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second->Provider.get());
+		if (!provider)
+			return;
+
+		provider->UpdatePathSpec(pathSpec);
+		tempData.Replacements.insert_or_assign(pathSpec, std::make_tuple(provider, std::shared_ptr<Sqex::Sqpack::EntryProvider>(), std::string()));
+	}
+
+	void ReflectUsedEntries_SetReplacementsFromTtmpEntry(
+		ReflectUsedEntriesTempData& tempData,
+		TtmpSet& ttmp,
+		const Sqex::ThirdParty::TexTools::ModEntry& entry
+	) {
+		if (entry.IsMetadata()) {
+			const auto ttmpd = std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::Handle{ ttmp.DataFile, false });
+			const auto metadata = Sqex::ThirdParty::TexTools::ItemMetadata(Sqex::Sqpack::EntryRawStream(std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(entry.FullPath, ttmpd, entry.ModOffset, entry.ModSize)));
+			metadata.ApplyImcEdits([&]() -> Sqex::Imc::File& {
+				const auto imcPath = metadata.ImcPath();
+				if (const auto it = tempData.Imc.find(imcPath); it == tempData.Imc.end())
+					return tempData.Imc[imcPath] = Sqex::Imc::File(*GetOriginalEntry(imcPath));
+				else
+					return it->second;
+				});
+			metadata.ApplyEqdpEdits([&](auto type, auto race) -> Sqex::Eqdp::ExpandedFile& {
+				const auto key = std::make_pair(type, race);
+				if (const auto it = tempData.Eqdp.find(key); it == tempData.Eqdp.end())
+					return tempData.Eqdp[key] = Sqex::Eqdp::ExpandedFile(*GetOriginalEntry(Sqex::ThirdParty::TexTools::ItemMetadata::EqdpPath(type, race)));
+				else
+					return it->second;
+				});
+			metadata.ApplyEqpEdits(tempData.Eqp);
+			metadata.ApplyGmpEdits(tempData.Gmp);
+
+			const auto estPath = Sqex::ThirdParty::TexTools::ItemMetadata::EstPath(metadata.EstType);
+			if (estPath) {
+				if (const auto it = tempData.Est.find(estPath); it == tempData.Est.end())
+					metadata.ApplyEstEdits(tempData.Est[estPath] = Sqex::Est::File(*GetOriginalEntry(estPath)));
+				else
+					metadata.ApplyEstEdits(it->second);
+			}
+		} else {
+			const auto entryIt = tempData.Replacements.find(entry.FullPath);
+			if (entryIt == tempData.Replacements.end())
+				return;
+
+			std::get<1>(entryIt->second) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(
+				entry.FullPath,
+				std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::Handle{ ttmp.DataFile, false }, entry.ModOffset, entry.ModSize)
+				);
+			std::get<2>(entryIt->second) = ttmp.List.Name;
+		}
+	}
+	void ReflectUsedEntries_SetFromBuffer(
+		ReflectUsedEntriesTempData& tempData,
+		const std::string& path,
+		const std::vector<uint8_t>& data
+	) {
+		const auto pathSpec = Sqex::Sqpack::EntryPathSpec(path);
+
+		const auto entryIt = tempData.Replacements.find(pathSpec);
+		if (entryIt == tempData.Replacements.end())
+			return;
+
+		std::get<1>(entryIt->second) = std::make_shared<Sqex::Sqpack::OnTheFlyBinaryEntryProvider>(path, std::make_shared<Sqex::MemoryRandomAccessStream>(data));
+		std::get<2>(entryIt->second) = "Metadata";
+	}
+
+	std::vector<std::filesystem::path> GetPossibleTtmpDirs() const {
+		std::vector<std::filesystem::path> dirs;
+		dirs.emplace_back(Config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods");
+		dirs.emplace_back(SqpackPath / "TexToolsMods");
+
+		for (const auto& dir : Config->Runtime.AdditionalTexToolsModPackSearchDirectories.Value())
+			dirs.emplace_back(Config::TranslatePath(dir));
+
+		for (auto it = dirs.begin(); it != dirs.end();) {
+			if (!exists(*it) || !is_directory(*it) || it->empty())
+				it = dirs.erase(it);
+			else
+				++it;
+		}
+		return dirs;
 	}
 
 	void InitializeSqPacks(Window::ProgressPopupWindow& progressWindow) {
@@ -415,71 +414,18 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				creators.emplace(sqpack, std::make_unique<Sqex::Sqpack::Creator>(
 					Utils::ToUtf8(expac.path().filename().wstring()),
 					Utils::ToUtf8(sqpack.path().filename().replace_extension().replace_extension().wstring())
-				));
+					));
 			}
 		}
 
-		{
-			std::vector<std::filesystem::path> ttmpls;
-			std::vector<std::filesystem::path> dirs;
-			dirs.emplace_back(SqpackPath / "TexToolsMods");
-			dirs.emplace_back(Config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods");
+		Ttmps = std::make_shared<NestedTtmp>(NestedTtmp{
+			.Children = std::vector<std::shared_ptr<NestedTtmp>>{},
+		});
 
-			for (const auto& dir : Config->Runtime.AdditionalTexToolsModPackSearchDirectories.Value()) {
-				if (!dir.empty())
-					dirs.emplace_back(Config::TranslatePath(dir));
-			}
-
-			for (const auto& dir : dirs) {
-				if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-					throw std::runtime_error("Cancelled");
-				if (dir.empty() || !is_directory(dir))
-					continue;
-
-				try {
-					for (const auto& iter : std::filesystem::recursive_directory_iterator(dir)) {
-						if (iter.path().filename() != "TTMPL.mpl")
-							continue;
-						ttmpls.emplace_back(iter);
-					}
-				} catch (const std::exception& e) {
-					Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-						"Failed to list items in {}: {}",
-						dir, e.what());
-				}
-			}
-
-			std::ranges::sort(ttmpls);
-			for (const auto& ttmpl : ttmpls) {
-				if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-					throw std::runtime_error("Cancelled");
-
-				try {
-					TtmpSets.emplace_back(TtmpSet{
-						.Impl = this,
-						.Allocated = true,
-						.Enabled = !exists(ttmpl.parent_path() / "disable"),
-						.ListPath = ttmpl,
-						.List = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{Utils::Win32::Handle::FromCreateFile(ttmpl, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)}),
-						.DataFile = Utils::Win32::Handle::FromCreateFile(ttmpl.parent_path() / "TTMPD.mpd", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN)
-						});
-				} catch (const std::exception& e) {
-					Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-						"Failed to load TexTools ModPack from {}: {}", ttmpl.wstring(), e.what());
-					continue;
-				}
-				if (const auto choicesPath = ttmpl.parent_path() / "choices.json"; exists(choicesPath)) {
-					try {
-						TtmpSets.back().Choices = Utils::ParseJsonFromFile(choicesPath);
-						Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
-							"Choices file loaded from {}", choicesPath.wstring());
-					} catch (const std::exception& e) {
-						Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-							"Failed to load choices from {}: {}", choicesPath.wstring(), e.what());
-					}
-				}
-				TtmpSets.back().FixChoices();
-			}
+		for (const auto& dir : GetPossibleTtmpDirs()) {
+			if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+				throw std::runtime_error("Cancelled");
+			RescanTtmpTree(dir, Ttmps);
 		}
 
 		if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
@@ -490,9 +436,9 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			const auto progressMax = creators.size() * (0
 				+ 1 // original sqpack
 				+ Config->Runtime.AdditionalSqpackRootDirectories.Value().size() // external sqpack
-				+ TtmpSets.size() // TTMP
+				+ Ttmps->Count() // TTMP
 				+ 1 // replacement file entry
-			);
+				);
 			std::atomic_size_t progressValue = 0;
 			std::atomic_size_t fileIndex = 0;
 
@@ -569,17 +515,23 @@ struct App::Misc::VirtualSqPacks::Implementation {
 								creator.ReserveSwappableSpace(Sqex::ThirdParty::TexTools::ItemMetadata::GmpPath, 1048576);
 							}
 
-							for (const auto& ttmp : TtmpSets) {
+							if (Ttmps->Traverse([&](const auto& nestedTtmp) {
 								if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-									return;
+									return NestedTtmp::Break;
 
 								progressValue += 1;
 
-								creator.ReserveSpacesFromTTMP(ttmp.List, std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::Handle(ttmp.DataFile, false)));
-							}
+								if (!nestedTtmp.Ttmp)
+									return NestedTtmp::Continue;
+								const auto& ttmp = *nestedTtmp.Ttmp;
 
-							SetUpVirtualFileFromFileEntries(creator, indexFile);
-							progressValue += 1;
+								creator.ReserveSpacesFromTTMP(ttmp.List, std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::Handle(ttmp.DataFile, false)));
+								return NestedTtmp::Continue;
+								}) == NestedTtmp::Break)
+								return;
+
+								SetUpVirtualFileFromFileEntries(creator, indexFile);
+								progressValue += 1;
 						} catch (const std::exception& e) {
 							pool.Cancel();
 							Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
@@ -588,8 +540,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					});
 				}
 				pool.WaitOutstanding();
-			});
-			
+				});
+
 			do {
 				progressWindow.UpdateMessage(Config->Runtime.FormatStringRes(IDS_TITLE_INDEXINGFILES, *pLastStartedIndexFile, static_cast<size_t>(fileIndex), creators.size()));
 				progressWindow.UpdateProgress(progressValue, progressMax);
@@ -631,15 +583,169 @@ struct App::Misc::VirtualSqPacks::Implementation {
 						const auto lock = std::lock_guard(resLock);
 						SqpackViews.emplace(indexFile, std::move(v));
 						progressValue += 1;
-					});
+						});
 				}
 				pool.WaitOutstanding();
-			});
+				});
 			while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, { workerThread })) {
 				progressWindow.UpdateMessage(Utils::ToUtf8(Config->Runtime.GetStringRes(IDS_TITLE_FINALIZING)));
 				progressWindow.UpdateProgress(progressValue, progressMax);
 			}
 		}
+	}
+
+	void RescanTtmpTree(const std::filesystem::path& path, std::shared_ptr<NestedTtmp> parent) {
+		try {
+			for (const auto& iter : std::filesystem::directory_iterator(path)) {
+				if (!iter.is_directory())
+					continue;
+
+				std::shared_ptr<NestedTtmp> current;
+				for (auto& child : *parent->Children) {
+					if (equivalent(child->Path, iter.path())) {
+						current = child;
+						break;
+					}
+				}
+				if (const auto ttmplPath = iter.path() / "TTMPL.mpl"; exists(ttmplPath)) {
+					if (!current)
+						AddFromTtmpl(ttmplPath, parent);
+				} else {
+					if (!current)
+						current = parent->Children->emplace_back(std::make_shared<NestedTtmp>(NestedTtmp{
+							.Path = iter.path(),
+							.Parent = parent,
+							.Children = std::vector<std::shared_ptr<NestedTtmp>>{},
+							}));
+					RescanTtmpTree(iter.path(), current);
+				}
+			}
+		} catch (const std::exception& e) {
+			Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+				"Failed to list items in {}: {}",
+				path.wstring(), e.what());
+		}
+
+		if (const auto orderingFile = path / "order.json"; exists(orderingFile)) {
+			try {
+				std::map<std::filesystem::path, uint64_t> orderMap;
+				for (const auto& [path, index] : Utils::ParseJsonFromFile(orderingFile).items()) {
+					orderMap.emplace(std::filesystem::path(Utils::FromUtf8(path)), index.get<uint64_t>());
+				}
+				Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+					"Ordering file loaded from {}", orderingFile.wstring());
+				for (auto& child : *parent->Children) {
+					if (const auto it = orderMap.find(child->Path.filename()); it != orderMap.end())
+						child->Index = it->second;
+				}
+			} catch (const std::exception& e) {
+				Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+					"Failed to load choices from {}: {}", orderingFile.wstring(), e.what());
+			}
+		}
+		parent->RemoveEmptyChildren();
+		parent->Sort();
+	}
+
+	std::shared_ptr<NestedTtmp> AddFromTtmpl(const std::filesystem::path& ttmplPath, const std::shared_ptr<NestedTtmp>& parent) {
+		const auto ttmpDir = ttmplPath.parent_path();
+		if (ttmplPath.filename() != "TTMPL.mpl")
+			return nullptr;
+
+		std::shared_ptr<NestedTtmp> added;
+		try {
+			added = parent->Children->emplace_back(std::make_shared<NestedTtmp>(NestedTtmp{
+				.Path = ttmpDir,
+				.Parent = parent,
+				.Ttmp = TtmpSet{
+					.Impl = this,
+					.Allocated = true,
+					.Enabled = !exists(ttmpDir / "disable"),
+					.ListPath = ttmplPath,
+					.List = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{Utils::Win32::Handle::FromCreateFile(ttmplPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)}),
+					.DataFile = Utils::Win32::Handle::FromCreateFile(ttmpDir / "TTMPD.mpd", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN)
+				},
+				}));
+		} catch (const std::exception& e) {
+			Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+				"Failed to load TexTools ModPack from {}: {}", ttmplPath.wstring(), e.what());
+			return nullptr;
+		}
+		if (const auto choicesPath = ttmpDir / "choices.json"; exists(choicesPath)) {
+			try {
+				added->Ttmp->Choices = Utils::ParseJsonFromFile(choicesPath);
+				Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+					"Choices file loaded from {}", choicesPath.wstring());
+			} catch (const std::exception& e) {
+				Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+					"Failed to load choices from {}: {}", choicesPath.wstring(), e.what());
+			}
+		}
+		added->Ttmp->FixChoices();
+		return added;
+	}
+
+	std::shared_ptr<NestedTtmp> FindNestedTtmpContainer(const std::filesystem::path& ttmpl, bool create) {
+		std::vector<std::filesystem::path> dirStack;
+		for (const auto& dir : GetPossibleTtmpDirs()) {
+			auto ttmpRoot{ ttmpl };
+			while (ttmpRoot != ttmpRoot.parent_path()) {
+				ttmpRoot = ttmpRoot.parent_path();
+				if (equivalent(dir, ttmpRoot))
+					break;
+				dirStack.emplace_back(ttmpRoot);
+			}
+			if (ttmpRoot == ttmpRoot.parent_path()) {
+				Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+					"{} is not in one of ttmp root folders.", ttmpl.wstring());
+				return nullptr;
+			}
+		}
+
+		std::shared_ptr<NestedTtmp> folder{Ttmps};
+		while (!dirStack.empty()) {
+			auto subfolder = folder->Find(dirStack.back());
+			if (!subfolder) {
+				if (!create)
+					return nullptr;
+				subfolder = folder->Children->emplace_back(std::make_shared<NestedTtmp>(NestedTtmp{
+					.Path = dirStack.back(),
+					.Parent = folder,
+					.Children = std::vector<std::shared_ptr<NestedTtmp>>{},
+					}));
+				folder->Sort();
+			}
+			folder = subfolder;
+			dirStack.pop_back();
+		}
+
+		return folder;
+	}
+
+	void CheckTtmpAllocation(TtmpSet& item) {
+		item.ForEachEntry(false, [&](const auto& entry) {
+			item.Allocated = false;
+
+			const auto it = SqpackViews.find(SqpackPath / std::format(L"{}.win32.index", entry.ToExpacDatPath()));
+			if (it == SqpackViews.end())
+				return TtmpSet::Continue;
+
+			const auto pathSpec = Sqex::Sqpack::EntryPathSpec(entry.FullPath);
+			auto entryIt = it->second.HashOnlyEntries.find(pathSpec);
+			if (entryIt == it->second.HashOnlyEntries.end()) {
+				entryIt = it->second.FullPathEntries.find(pathSpec);
+				if (entryIt == it->second.FullPathEntries.end()) {
+					return TtmpSet::Continue;
+				}
+			}
+
+			const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second->Provider.get());
+			if (!provider)
+				return TtmpSet::Continue;
+
+			item.Allocated = provider->StreamSize() >= entry.ModSize;
+			return TtmpSet::Continue;
+			});
 	}
 
 	void SetUpMergedExd(Window::ProgressPopupWindow& progressWindow, Sqex::Sqpack::Creator& creator, const std::filesystem::path& indexFile) {
@@ -717,7 +823,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 				if (needRecreate) {
 					create_directories(cachedDir);
-					
+
 					std::vector<std::pair<srell::u8cregex, std::map<Sqex::Language, std::vector<size_t>>>> columnMaps;
 					std::vector<std::pair<srell::u8cregex, ExcelTransformConfig::PluralColumns>> pluralColumns;
 					struct ReplacementRule {
@@ -764,7 +870,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 											{target.second.begin(), target.second.end()},
 											rule.preprocessReplacements,
 											rule.postprocessReplacements,
-										});
+											});
 									}
 								}
 							}
@@ -901,7 +1007,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 											const auto toIter = columnMap.find(toLanguage);
 											if (fromIter == columnMap.end() || toIter == columnMap.end())
 												return fromIndex;
-											
+
 											const auto it = std::lower_bound(fromIter->second.begin(), fromIter->second.end(), fromIndex);
 											if (it == fromIter->second.end() || *it != fromIndex)
 												return fromIndex;
@@ -944,7 +1050,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 																	continue;
 																const auto& referenceRow = *referenceRowPtr;
 
-																auto prevRow{std::move(row)};
+																auto prevRow{ std::move(row) };
 																row = referenceRow;
 																for (size_t j = 0; j < row.size(); ++j) {
 																	if (row[j].Type != Sqex::Excel::Exh::ColumnDataType::String)
@@ -1023,31 +1129,31 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 																int sourceLanguageType = 0, referenceLanguageType = 0;
 																switch (language) {
-																case Sqex::Language::Japanese:
-																case Sqex::Language::English:
-																case Sqex::Language::German:
-																case Sqex::Language::French:
-																	sourceLanguageType = 1;
-																	break;
-																case Sqex::Language::ChineseSimplified:
-																	sourceLanguageType = 2;
-																	break;
-																case Sqex::Language::Korean:
-																	sourceLanguageType = 3;
+																	case Sqex::Language::Japanese:
+																	case Sqex::Language::English:
+																	case Sqex::Language::German:
+																	case Sqex::Language::French:
+																		sourceLanguageType = 1;
+																		break;
+																	case Sqex::Language::ChineseSimplified:
+																		sourceLanguageType = 2;
+																		break;
+																	case Sqex::Language::Korean:
+																		sourceLanguageType = 3;
 																}
 
 																switch (referenceRowLanguage) {
-																case Sqex::Language::Japanese:
-																case Sqex::Language::English:
-																case Sqex::Language::German:
-																case Sqex::Language::French:
-																	referenceLanguageType = 1;
-																	break;
-																case Sqex::Language::ChineseSimplified:
-																	referenceLanguageType = 2;
-																	break;
-																case Sqex::Language::Korean:
-																	referenceLanguageType = 3;
+																	case Sqex::Language::Japanese:
+																	case Sqex::Language::English:
+																	case Sqex::Language::German:
+																	case Sqex::Language::French:
+																		referenceLanguageType = 1;
+																		break;
+																	case Sqex::Language::ChineseSimplified:
+																		referenceLanguageType = 2;
+																		break;
+																	case Sqex::Language::Korean:
+																		referenceLanguageType = 3;
 																}
 
 																if (sourceLanguageType != referenceLanguageType) {
@@ -1071,7 +1177,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 												if (const auto it = ignoredCells.find(language); it != ignoredCells.end())
 													currentIgnoredCells = &it->second;
 
-												auto row{rowSet.at(language)};
+												auto row{ rowSet.at(language) };
 
 												for (size_t columnIndex = 0; columnIndex < row.size(); columnIndex++) {
 													if (row[columnIndex].Type != Sqex::Excel::Exh::String)
@@ -1081,7 +1187,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 														continue;
 
 													if (currentIgnoredCells) {
-														if (const auto it = currentIgnoredCells->find(ExcelTransformConfig::IgnoredCell{exhName, static_cast<int>(id), static_cast<int>(columnIndex)});
+														if (const auto it = currentIgnoredCells->find(ExcelTransformConfig::IgnoredCell{ exhName, static_cast<int>(id), static_cast<int>(columnIndex) });
 															it != currentIgnoredCells->end()) {
 															if (const auto it2 = rowSet.find(it->forceLanguage);
 																it2 != rowSet.end()) {
@@ -1102,7 +1208,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 														if (!srell::regex_search(row[columnIndex].String.Escaped(), rule.stringPattern))
 															continue;
 
-														std::vector p = {std::format("{}:{}", exhName, id)};
+														std::vector p = { std::format("{}:{}", exhName, id) };
 														for (const auto ruleSourceLanguage : rule.sourceLanguage) {
 															if (const auto it = rowSet.find(ruleSourceLanguage);
 																it != rowSet.end()) {
@@ -1267,7 +1373,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 													{"ModOffset", ttmpdPtr},
 													{"ModSize", len},
 													{"DatFile", "0a0000"},
-												}).dump());
+													}).dump());
 												ttmplPtr += ttmpl.Write(ttmplPtr, std::span(entryLine));
 												ttmpdPtr += ttmpd.Write(ttmpdPtr, std::span(dv));
 											}
@@ -1285,11 +1391,11 @@ struct App::Misc::VirtualSqPacks::Implementation {
 											}
 										}
 									}
-								});
+									});
 							}
 							pool.WaitOutstanding();
-						});
-						while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {compressThread})) {
+							});
+						while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, { compressThread })) {
 							uint64_t p = 0;
 							for (const auto& val : progressPerTask | std::views::values)
 								p += val;
@@ -1450,10 +1556,10 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 	void SetUpGeneratedFonts(Window::ProgressPopupWindow& progressWindow, Sqex::Sqpack::Creator& creator, const std::filesystem::path& indexPath) {
 		while (true) {
-			const auto fontConfigPath{Config->Runtime.OverrideFontConfig.Value()};
+			const auto fontConfigPath{ Config->Runtime.OverrideFontConfig.Value() };
 			if (fontConfigPath.empty())
 				return;
-		
+
 			try {
 				const auto cachedDir = Config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / GameReleaseInfo.CountryCode / creator.DatExpac / creator.DatName;
 
@@ -1523,7 +1629,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					SetupGeneratedFonts_VerifyRequirements(fontCreator, progressWindow);
 					fontCreator.Start();
 
-					while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {fontCreator.GetWaitableObject()})) {
+					while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, { fontCreator.GetWaitableObject() })) {
 						const auto progress = fontCreator.GetProgress();
 						progressWindow.UpdateProgress(progress.Progress, progress.Max);
 
@@ -1577,16 +1683,16 @@ struct App::Misc::VirtualSqPacks::Implementation {
 										{"ModOffset", ttmpdPtr},
 										{"ModSize", len},
 										{"DatFile", "000000"},
-									}).dump());
+										}).dump());
 									ttmplPtr += ttmpl.Write(ttmplPtr, std::span(entryLine));
 									ttmpdPtr += ttmpd.Write(ttmpdPtr, std::span(dv));
 									progress += stream->StreamSize();
-								});
+									});
 							}
 							pool.WaitOutstanding();
-						});
+							});
 
-						while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {compressThread})) {
+						while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, { compressThread })) {
 							progressWindow.UpdateProgress(progress, maxProgress);
 						}
 						pool.Cancel();
@@ -1675,7 +1781,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					prompt = Utils::FromUtf8(gameIndexFile.fallbackPrompt.front().second);
 				else {
 					auto found = false;
-					for (const auto& [langId, localeName]: Config->Runtime.GetDisplayLanguagePriorities()) {
+					for (const auto& [langId, localeName] : Config->Runtime.GetDisplayLanguagePriorities()) {
 						for (const auto& [localeNameRegex, customPrompt] : gameIndexFile.fallbackPrompt) {
 							if (srell::regex_search(localeName, srell::u8cregex(localeNameRegex, srell::u8cregex::icase))) {
 								prompt = Utils::FromUtf8(customPrompt);
@@ -1689,7 +1795,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					if (!found)
 						prompt = Utils::FromUtf8(gameIndexFile.fallbackPrompt.front().second);
 				}
-						
+
 				IFileOpenDialogPtr pDialog;
 				DWORD dwFlags;
 				static const COMDLG_FILTERSPEC fileTypes[] = {
@@ -1734,7 +1840,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					instructions = Utils::FromUtf8(requirement.installInstructions.front().second);
 				else {
 					auto found = false;
-					for (const auto& [langId, localeName]: Config->Runtime.GetDisplayLanguagePriorities()) {
+					for (const auto& [langId, localeName] : Config->Runtime.GetDisplayLanguagePriorities()) {
 						for (const auto& [localeNameRegex, customPrompt] : requirement.installInstructions) {
 							if (srell::regex_search(localeName, srell::u8cregex(localeNameRegex, srell::u8cregex::icase))) {
 								instructions = Utils::FromUtf8(customPrompt);
@@ -1748,9 +1854,9 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					if (!found)
 						instructions = Utils::FromUtf8(requirement.installInstructions.front().second);
 				}
-						
+
 				auto builder = Utils::Win32::TaskDialog::Builder();
-				if (!requirement.homepage.empty()){
+				if (!requirement.homepage.empty()) {
 					builder.WithHyperlinkHandler(L"homepage", [homepage = Utils::FromUtf8(requirement.homepage)](auto& dialog) {
 						try {
 							Utils::Win32::ShellExecutePathOrThrow(homepage, dialog.GetHwnd());
@@ -1774,8 +1880,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					.WithButton({
 						.Id = 1001,
 						.Text = Config->Runtime.GetStringRes(IDS_GENERATEFONT_CHECKAGAIN),
-					})
-					.WithButtonDefault(1001)
+						})
+						.WithButtonDefault(1001)
 					.WithCommonButton(TDCBF_CANCEL_BUTTON)
 					.Build()
 					.Show();
@@ -1783,7 +1889,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					throw Utils::Win32::CancelledError();
 				return true;
 			}
-		);
+			);
 	}
 };
 
@@ -1793,7 +1899,7 @@ App::Misc::VirtualSqPacks::VirtualSqPacks(std::filesystem::path sqpackPath)
 
 App::Misc::VirtualSqPacks::~VirtualSqPacks() = default;
 
-HANDLE App::Misc::VirtualSqPacks::Open(const std::filesystem::path& path) {
+HANDLE App::Misc::VirtualSqPacks::Open(const std::filesystem::path & path) {
 	try {
 		const auto fileToOpen = absolute(path);
 		const auto recreatedFilePath = m_pImpl->SqpackPath / fileToOpen.parent_path().filename() / fileToOpen.filename();
@@ -1874,14 +1980,14 @@ App::Misc::VirtualSqPacks::OverlayedHandleData* App::Misc::VirtualSqPacks::Get(H
 	return nullptr;
 }
 
-bool App::Misc::VirtualSqPacks::EntryExists(const Sqex::Sqpack::EntryPathSpec& pathSpec) const {
+bool App::Misc::VirtualSqPacks::EntryExists(const Sqex::Sqpack::EntryPathSpec & pathSpec) const {
 	return std::ranges::any_of(m_pImpl->SqpackViews | std::views::values, [&pathSpec](const auto& t) {
 		return t.HashOnlyEntries.find(pathSpec) != t.HashOnlyEntries.end()
 			|| (pathSpec.HasOriginal() && t.FullPathEntries.find(pathSpec) != t.FullPathEntries.end());
-	});
+		});
 }
 
-std::shared_ptr<Sqex::RandomAccessStream> App::Misc::VirtualSqPacks::GetOriginalEntry(const Sqex::Sqpack::EntryPathSpec& pathSpec) const {
+std::shared_ptr<Sqex::RandomAccessStream> App::Misc::VirtualSqPacks::GetOriginalEntry(const Sqex::Sqpack::EntryPathSpec & pathSpec) const {
 	return m_pImpl->GetOriginalEntry(pathSpec);
 }
 
@@ -1910,7 +2016,7 @@ void App::Misc::VirtualSqPacks::TtmpSet::FixChoices() {
 			const auto& modGroup = modGroups[modGroupIndex];
 			if (modGroups.empty())
 				continue;
-			
+
 			while (pageChoices.size() <= modGroupIndex)
 				pageChoices.emplace_back(modGroup.SelectionType == "Multi" ? nlohmann::json::array() : nlohmann::json::array({ 0 }));
 
@@ -1945,134 +2051,103 @@ void App::Misc::VirtualSqPacks::TtmpSet::ApplyChanges(bool announce) {
 		Impl->ReflectUsedEntries();
 }
 
-std::vector<App::Misc::VirtualSqPacks::TtmpSet>& App::Misc::VirtualSqPacks::TtmpSets() {
-	return m_pImpl->TtmpSets;
-}
+App::Misc::VirtualSqPacks::TtmpSet::TraverseCallbackResult App::Misc::VirtualSqPacks::TtmpSet::ForEachEntry(bool choiceOnly, std::function<TraverseCallbackResult(const Sqex::ThirdParty::TexTools::ModEntry&)> cb) const {
+	for (const auto& entry : List.SimpleModsList)
+		if (Break == cb(entry))
+			return Break;
 
-void App::Misc::VirtualSqPacks::AddNewTtmp(const std::filesystem::path& ttmpl, bool reflectImmediately) {
-	auto pos = std::ranges::lower_bound(m_pImpl->TtmpSets, ttmpl, [](const auto& l, const auto& r) -> bool {
-		return l.ListPath < r;
-	});
-	if (pos != m_pImpl->TtmpSets.end() && equivalent(pos->ListPath, ttmpl))
-		return;
-	try {
-		pos = m_pImpl->TtmpSets.emplace(pos, TtmpSet{
-			.Impl = m_pImpl.get(),
-			.Allocated = true,
-			.Enabled = !exists(ttmpl.parent_path() / "disable"),
-			.ListPath = ttmpl,
-			.List = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{Utils::Win32::Handle::FromCreateFile(ttmpl, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)}),
-			.DataFile = Utils::Win32::Handle::FromCreateFile(ttmpl.parent_path() / "TTMPD.mpd", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)
-		});
-	} catch (const std::exception& e) {
-		m_pImpl->Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-			"Failed to load TexTools ModPack from {}: {}", ttmpl.wstring(), e.what());
-		return;
-	}
-	if (const auto choicesPath = ttmpl.parent_path() / "choices.json"; exists(choicesPath)) {
-		try {
-			pos->Choices = Utils::ParseJsonFromFile(choicesPath);
-			m_pImpl->Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
-				"Choices file loaded from {}", choicesPath.wstring());
-		} catch (const std::exception& e) {
-			m_pImpl->Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-				"Failed to load choices from {}: {}", choicesPath.wstring(), e.what());
-		}
-	}
-	pos->FixChoices();
-
-	for (const auto& entry : pos->List.SimpleModsList) {
-		const auto it = m_pImpl->SqpackViews.find(m_pImpl->SqpackPath / std::format(L"{}.win32.index", entry.ToExpacDatPath()));
-		if (it == m_pImpl->SqpackViews.end())
-			continue;
-
-		const auto pathSpec = Sqex::Sqpack::EntryPathSpec(entry.FullPath);
-		auto entryIt = it->second.HashOnlyEntries.find(pathSpec);
-		if (entryIt == it->second.HashOnlyEntries.end()) {
-			entryIt = it->second.FullPathEntries.find(pathSpec);
-			if (entryIt == it->second.FullPathEntries.end()) {
+	if (choiceOnly) {
+		for (size_t pageObjectIndex = 0; pageObjectIndex < List.ModPackPages.size(); ++pageObjectIndex) {
+			const auto& modGroups = List.ModPackPages[pageObjectIndex].ModGroups;
+			if (modGroups.empty())
 				continue;
-			}
-		}
 
-		const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second->Provider.get());
-		if (!provider)
-			continue;
+			const auto& pageConf = Choices.at(pageObjectIndex);
 
-		pos->Allocated &= provider->StreamSize() >= entry.ModSize;
-	}
+			for (size_t modGroupIndex = 0; modGroupIndex < modGroups.size(); ++modGroupIndex) {
+				const auto& modGroup = modGroups[modGroupIndex];
+				if (modGroups.empty())
+					continue;
 
-	for (const auto& modPackPage : pos->List.ModPackPages) {
-		for (const auto& modGroup : modPackPage.ModGroups) {
-			for (const auto& option : modGroup.OptionList) {
-				for (const auto& entry : option.ModsJsons) {
-					const auto it = m_pImpl->SqpackViews.find(m_pImpl->SqpackPath / std::format(L"{}.win32.index", entry.ToExpacDatPath()));
-					if (it == m_pImpl->SqpackViews.end())
-						continue;
+				std::set<size_t> indices;
+				if (pageConf.at(modGroupIndex).is_array()) {
+					const auto tmp = pageConf.at(modGroupIndex).get<std::vector<size_t>>();
+					indices.insert(tmp.begin(), tmp.end());
+				} else
+					indices.insert(pageConf.at(modGroupIndex).get<size_t>());
 
-					const auto pathSpec = Sqex::Sqpack::EntryPathSpec(entry.FullPath);
-					auto entryIt = it->second.HashOnlyEntries.find(pathSpec);
-					if (entryIt == it->second.HashOnlyEntries.end()) {
-						entryIt = it->second.FullPathEntries.find(pathSpec);
-						if (entryIt == it->second.FullPathEntries.end()) {
-							continue;
-						}
-					}
-
-					const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second->Provider.get());
-					if (!provider)
-						continue;
-
-					pos->Allocated &= provider->StreamSize() >= entry.ModSize;
+				for (const auto optionIndex : indices) {
+					for (const auto& entry : modGroup.OptionList[optionIndex].ModsJsons)
+						if (Break == cb(entry))
+							return Break;
 				}
 			}
 		}
+	} else {
+		for (const auto& modPackPage : List.ModPackPages)
+			for (const auto& modGroup : modPackPage.ModGroups)
+				for (const auto& option : modGroup.OptionList)
+					for (const auto& entry : option.ModsJsons)
+						if (Break == cb(entry))
+							return Break;
 	}
+	return Continue;
+}
+
+void App::Misc::VirtualSqPacks::TtmpSet::TryCleanupUnusedFiles() {
+	DataFile.Clear();
+	for (const auto& path : {
+			ListPath.parent_path() / "TTMPD.mpd",
+			ListPath.parent_path() / "choices.json",
+			ListPath.parent_path() / "disable",
+			ListPath.parent_path(),
+		}) {
+		try {
+			remove(path);
+		} catch (...) {
+			// pass
+		}
+	}
+}
+
+void App::Misc::VirtualSqPacks::AddNewTtmp(const std::filesystem::path & ttmplPath, bool reflectImmediately) {
+	auto folder = m_pImpl->FindNestedTtmpContainer(ttmplPath, true);
+	if (!folder || folder->Find(ttmplPath))  // already exists
+		return;
+
+	std::shared_ptr<NestedTtmp> added;
+	try {
+		added = m_pImpl->AddFromTtmpl(ttmplPath, folder);
+		folder->Sort();
+	} catch (const std::exception& e) {
+		m_pImpl->Ttmps->RemoveEmptyChildren();
+		m_pImpl->Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+			"Failed to load TexTools ModPack from {}: {}", ttmplPath.wstring(), e.what());
+		return;
+	}
+
+	m_pImpl->CheckTtmpAllocation(*added->Ttmp);
 
 	if (reflectImmediately)
 		m_pImpl->ReflectUsedEntries();
 }
 
-void App::Misc::VirtualSqPacks::DeleteTtmp(const std::filesystem::path& ttmpl, bool reflectImmediately) {
-	const auto pos = std::ranges::lower_bound(m_pImpl->TtmpSets, ttmpl, [](const auto& l, const auto& r) -> bool {
-		return l.ListPath < r;
-	});
-	if (pos == m_pImpl->TtmpSets.end() || !equivalent(pos->ListPath, ttmpl))
+void App::Misc::VirtualSqPacks::DeleteTtmp(const std::filesystem::path & ttmpl, bool reflectImmediately) {
+	auto folder = m_pImpl->FindNestedTtmpContainer(ttmpl, false);
+	if (!folder)
 		return;
-	remove(pos->ListPath);
+	auto ttmp = folder->Find(ttmpl);
+	if (!ttmp || !ttmp->Ttmp)
+		return;
+	remove(ttmp->Ttmp->ListPath);
+	m_pImpl->Ttmps->RemoveEmptyChildren();
 	if (reflectImmediately)
 		m_pImpl->ReflectUsedEntries();
 }
 
 void App::Misc::VirtualSqPacks::RescanTtmp() {
-	std::vector<std::filesystem::path> dirs = m_pImpl->Config->Runtime.AdditionalTexToolsModPackSearchDirectories.Value();
-	dirs.emplace_back(m_pImpl->SqpackPath / "TexToolsMods");
-	dirs.emplace_back(m_pImpl->Config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods");
-
-	for (const auto& dir : dirs) {
-		if (dir.empty() || !is_directory(dir))
-			continue;
-
-		try {
-			for (const auto& iter : std::filesystem::recursive_directory_iterator(dir)) {
-				const auto& ttmpl = iter.path();
-				if (ttmpl.filename() != "TTMPL.mpl")
-					continue;
-
-				try {
-					AddNewTtmp(ttmpl, false);
-				} catch (const std::exception& e) {
-					m_pImpl->Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-						"Failed to load TexTools ModPack from {}: {}", ttmpl.wstring(), e.what());
-				}
-			}
-		} catch (const std::exception& e) {
-			m_pImpl->Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-				"Failed to list items in {}: {}",
-				dir, e.what());
-		}
-	}
-
+	for (const auto& dir : m_pImpl->GetPossibleTtmpDirs())
+		m_pImpl->RescanTtmpTree(dir, m_pImpl->Ttmps);
 	m_pImpl->ReflectUsedEntries();
 }
 
@@ -2083,7 +2158,7 @@ App::Misc::VirtualSqPacks* App::Misc::VirtualSqPacks::Instance() {
 		static std::mutex s_mtx;
 		const auto lock = std::lock_guard(s_mtx);
 		if (!s_sqpacks && !s_failed) {
-			try{
+			try {
 				s_sqpacks = std::make_unique<VirtualSqPacks>(Utils::Win32::Process::Current().PathOf().remove_filename() / L"sqpack");
 			} catch (const std::exception& e) {
 				Misc::Logger::Acquire()->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, L"VirtualSqPack failure: {}", e.what());
@@ -2092,4 +2167,85 @@ App::Misc::VirtualSqPacks* App::Misc::VirtualSqPacks::Instance() {
 		}
 	}
 	return s_sqpacks.get();
+}
+
+std::shared_ptr<App::Misc::VirtualSqPacks::NestedTtmp> App::Misc::VirtualSqPacks::GetTtmps() const {
+	return m_pImpl->Ttmps;
+}
+
+App::Misc::VirtualSqPacks::NestedTtmp::TraverseCallbackResult App::Misc::VirtualSqPacks::NestedTtmp::Traverse(const std::function<TraverseCallbackResult(NestedTtmp&)>&cb) {
+	if (const auto res = cb(*this); res != Continue)
+		return res;
+	if (Children) {
+		for (auto it = Children->begin(); it != Children->end();) {
+			switch ((*it)->Traverse(cb)) {
+				case Break:
+					return Break;
+				case Delete:
+					it = Children->erase(it);
+					break;
+				default:
+					++it;
+			}
+		}
+		return Continue;
+	}
+	return Continue;
+}
+
+App::Misc::VirtualSqPacks::NestedTtmp::TraverseCallbackResult App::Misc::VirtualSqPacks::NestedTtmp::Traverse(const std::function<TraverseCallbackResult(const NestedTtmp&)>&cb) const {
+	if (const auto res = cb(*this); res != Continue)
+		return res;
+	if (Children) {
+		for (const auto& t : *Children) {
+			switch (const_cast<const NestedTtmp*>(t.get())->Traverse(cb)) {
+				case Break:
+					return Break;
+				case Delete:
+					throw std::runtime_error("Cannot delete from const");
+			}
+		}
+		return Continue;
+	}
+	return Continue;
+}
+
+size_t App::Misc::VirtualSqPacks::NestedTtmp::Count() const {
+	size_t i = Ttmp.has_value() ? 1 : 0;
+	Traverse([&i](const auto&) { ++i; return Continue; });
+	return i;
+}
+
+bool App::Misc::VirtualSqPacks::NestedTtmp::IsAnythingEnabled() const {
+	return Traverse([](const auto& t) { return t.Ttmp && t.Ttmp->Enabled ? Break : Continue; }) == Break;
+}
+
+void App::Misc::VirtualSqPacks::NestedTtmp::Sort() {
+	std::sort(Children->begin(), Children->end(), [](const auto& l, const auto& r) {
+		if (l->Index == r->Index)
+			return l->Path.wstring() < r->Path.wstring();
+		return l->Index < r->Index;
+		});
+}
+
+std::shared_ptr<App::Misc::VirtualSqPacks::NestedTtmp> App::Misc::VirtualSqPacks::NestedTtmp::Find(const std::filesystem::path & path) {
+	if (IsGroup())
+		for (auto& child : *Children)
+			if (equivalent(child->Path, path))
+				return child;
+	return nullptr;
+}
+
+void App::Misc::VirtualSqPacks::NestedTtmp::RemoveEmptyChildren() {
+	if (!Children)
+		return;
+	for (auto it = Children->begin(); it != Children->end();) {
+		auto& t = **it;
+		t.RemoveEmptyChildren();
+		if (!t.Ttmp && (!t.Children || t.Children->empty())) {
+			t.Parent = nullptr;
+			it = Children->erase(it);
+		} else
+			++it;
+	}
 }
