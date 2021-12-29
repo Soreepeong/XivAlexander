@@ -215,6 +215,7 @@ namespace App {
 
 			Item<bool> UseMoreCpuTime = CreateConfigItem(this, "UseMoreCpuPower", true);
 			Item<bool> SynchronizeProcessing = CreateConfigItem(this, "SynchronizeProcessing", true);
+			Item<bool> TerminateOnExitProcess = CreateConfigItem(this, "TerminateOnExitProcess", false);
 
 			Item<Language> Language = CreateConfigItem(this, "Language", Language::SystemDefault);
 

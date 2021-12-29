@@ -292,14 +292,16 @@ struct App::XivAlexApp::Implementation final {
 		m_cleanup += [this]() { m_logWindow = nullptr; };
 
 		m_cleanup += ExitProcess.SetHook([this](UINT exitCode) {
+			const auto quickTerminate = this_->m_config->Runtime.TerminateOnExitProcess.Value();
+
 			this->this_->m_bInternalUnloadInitiated = true;
 
 			if (this->m_trayWindow)
-				SendMessageW(this->m_trayWindow->Handle(), WM_CLOSE, 0, 1);
+				SendMessageW(this->m_trayWindow->Handle(), WM_CLOSE, exitCode, quickTerminate ? 2 : 1);
 			WaitForSingleObject(this->this_->m_hCustomMessageLoop, INFINITE);
 
-			// TODO: option to whether terminate quickly
-			// ::TerminateProcess(GetCurrentProcess(), exitCode);
+			if (quickTerminate)
+				TerminateProcess(GetCurrentProcess(), exitCode);
 
 			XivAlexDll::DisableAllApps(nullptr);
 

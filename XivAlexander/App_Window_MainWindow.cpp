@@ -207,9 +207,12 @@ void App::Window::MainWindow::ApplyLanguage(WORD languageId) {
 
 LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	if (uMsg == WM_CLOSE) {
-		if (lParam)
+		if (lParam == 1) {
 			DestroyWindow(m_hWnd);
-		else {
+		} else if (lParam == 2) {
+			RemoveTrayIcon();
+			TerminateProcess(GetCurrentProcess(), static_cast<UINT>(wParam));
+		} else {
 			switch (Dll::MessageBoxF(m_hWnd, MB_YESNOCANCEL | MB_ICONQUESTION, m_config->Runtime.FormatStringRes(IDS_CONFIRM_MAIN_WINDOW_CLOSE,
 				Utils::Win32::MB_GetString(IDYES - 1),
 				Utils::Win32::MB_GetString(IDNO - 1),
@@ -869,6 +872,7 @@ void App::Window::MainWindow::SetMenuStates() const {
 	{
 		SetMenuState(hMenu, ID_CONFIGURE_USEMORECPUTIME, config.UseMoreCpuTime, true);
 		SetMenuState(hMenu, ID_CONFIGURE_SYNCHRONIZEPROCESSING, config.SynchronizeProcessing, true);
+		SetMenuState(hMenu, ID_CONFIGURE_QUICKGAMETERMINATION, config.TerminateOnExitProcess, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT, config.Language == Language::SystemDefault, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_ENGLISH, config.Language == Language::English, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_KOREAN, config.Language == Language::Korean, true);
@@ -1881,6 +1885,10 @@ void App::Window::MainWindow::OnCommand_Menu_Configure(int menuId) {
 
 	case ID_CONFIGURE_SYNCHRONIZEPROCESSING:
 		config.SynchronizeProcessing = !config.SynchronizeProcessing;
+		return;
+
+	case ID_CONFIGURE_QUICKGAMETERMINATION:
+		config.TerminateOnExitProcess = !config.TerminateOnExitProcess;
 		return;
 
 	case ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT:
