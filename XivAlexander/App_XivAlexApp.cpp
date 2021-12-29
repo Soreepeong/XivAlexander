@@ -20,13 +20,16 @@
 #include "DllMain.h"
 #include "resource.h"
 
+constexpr static auto SecondToMicrosecondMultiplier = 1000000;
+
 struct App::XivAlexApp::Implementation_GameWindow final {
 	XivAlexApp* const this_;
 
 	std::mutex m_queueMutex;
 	std::queue<std::function<void()>> m_queuedFunctions{};
 
-	HWND m_hWnd;
+	HWND m_hWnd{};
+	DWORD m_mainThreadId{};
 	std::shared_ptr<Misc::Hooks::WndProcFunction> m_subclassHook;
 
 	Utils::CallOnDestruction::Multiple m_cleanup;
@@ -36,7 +39,6 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 
 	Implementation_GameWindow(XivAlexApp* this_)
 		: this_(this_)
-		, m_hWnd(nullptr)
 		, m_stopEvent(Utils::Win32::Event::Create())
 		, m_initThread(Utils::Win32::Thread(L"XivAlexApp::Implementation_GameWindow::Initializer", [this]() { InitializeThreadBody(); })) {
 	}
@@ -49,6 +51,8 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 				return;
 			m_hWnd = Dll::FindGameMainWindow(false);
 		} while (!m_hWnd);
+
+		m_mainThreadId = GetWindowThreadProcessId(m_hWnd, nullptr);
 
 		m_subclassHook = std::make_shared<Misc::Hooks::WndProcFunction>("GameMainWindow", m_hWnd);
 
@@ -80,10 +84,20 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 		}
 	}
 
-	HWND GetHwnd() const {
-		if (m_initThread.Wait(false, {m_stopEvent}) == WAIT_OBJECT_0 + 1)
+	HWND GetHwnd(bool wait = false) const {
+		if (wait && m_initThread.Wait(false, {m_stopEvent}) == WAIT_OBJECT_0 + 1)
 			return nullptr;
 		return m_hWnd;
+	}
+
+	DWORD GetThreadId(bool wait = false) const {
+		if (wait && m_initThread.Wait(false, { m_stopEvent }) == WAIT_OBJECT_0 + 1)
+			return 0;
+		return m_mainThreadId;
+	}
+
+	bool IsRunningAtGameMainThread() const {
+		return GetCurrentThreadId() == m_mainThreadId;
 	}
 
 	void RunOnGameLoop(std::function<void()> f) {
@@ -144,7 +158,25 @@ struct App::XivAlexApp::Implementation final {
 	std::unique_ptr<Window::LogWindow> m_logWindow{};
 	std::unique_ptr<Window::MainWindow> m_trayWindow{};
 
-	Misc::Hooks::ImportedFunction<void, UINT> ExitProcess{"ExitProcess", "kernel32.dll", "ExitProcess"};
+	Misc::Hooks::ImportedFunction<void, UINT> ExitProcess{ "kernel32!ExitProcess", "kernel32.dll", "ExitProcess" };
+	Misc::Hooks::ImportedFunction<BOOL, LPMSG, HWND, UINT, UINT, UINT> PeekMessageW{ "user32!PeekMessageW", "user32.dll", "PeekMessageW" };
+	// Misc::Hooks::ImportedFunction<BOOL, PLARGE_INTEGER> QueryPerformanceCounter{ "kernel32!QueryPerformanceCounter", "kernel32.dll", "QueryPerformanceCounter" };
+	Misc::Hooks::PointerFunction<BOOL, PLARGE_INTEGER> QueryPerformanceCounter{ "kernel32!QueryPerformanceCounter", ::QueryPerformanceCounter };
+	Misc::Hooks::ImportedFunction<void, DWORD> Sleep{ "kernel32!Sleep", "kernel32.dll", "Sleep" };
+	Misc::Hooks::ImportedFunction<DWORD, DWORD, BOOL> SleepEx{ "kernel32!SleepEx", "kernel32.dll", "SleepEx" };
+	Misc::Hooks::ImportedFunction<DWORD, HANDLE, DWORD> WaitForSingleObject{ "kernel32!WaitForSingleObject", "kernel32.dll", "WaitForSingleObject" };
+	Misc::Hooks::ImportedFunction<DWORD, HANDLE, DWORD, BOOL> WaitForSingleObjectEx{ "kernel32!WaitForSingleObjectEx", "kernel32.dll", "WaitForSingleObjectEx" };
+	Misc::Hooks::ImportedFunction<DWORD, DWORD, const HANDLE*, BOOL, DWORD> WaitForMultipleObjects{ "kernel32!WaitForMultipleObjects", "kernel32.dll", "WaitForMultipleObjects" };
+	Misc::Hooks::ImportedFunction<DWORD, DWORD, const HANDLE*, BOOL, DWORD, DWORD> MsgWaitForMultipleObjects{ "user32!MsgWaitForMultipleObjects", "user32.dll", "MsgWaitForMultipleObjects" };
+
+	std::deque<int64_t> LastMessagePumpCounterUs;
+	std::set<int64_t> MessagePumpGuaranteeCounterUs;
+	int64_t LastWaitForSingleObjectUs{};
+	int64_t QueryPerformanceCounterMin{};
+	int64_t QueryPerformanceCounterDrift{};
+	Utils::NumericStatisticsTracker MessagePumpIntervalUs{ 32, 0 };
+	Utils::NumericStatisticsTracker RenderTimeTakenUs{ 32, 0 };
+	Utils::NumericStatisticsTracker SocketCallDelayUs{ 32, 0 };
 
 	void SetupTrayWindow() {
 		if (m_trayWindow)
@@ -170,7 +202,30 @@ struct App::XivAlexApp::Implementation final {
 		: this_(this_) {
 	}
 
-	~Implementation();
+	void Cleanup() {
+		m_cleanup.Clear();
+		if (const auto hwnd = this_->m_pGameWindow->GetHwnd(false)) {
+			// Make sure our window procedure hook isn't in progress
+			SendMessageW(hwnd, WM_NULL, 0, 0);
+		}
+	}
+
+	~Implementation() {
+		Cleanup();
+	}
+
+	bool ShouldSkipSleep(DWORD dwMilliseconds) const {
+		static uint16_t s_counter = 0;
+		if (dwMilliseconds > 1)
+			return false;
+		if (!this_->m_config->Runtime.UseMoreCpuTime)
+			return false;
+		if (GetForegroundWindow() != this_->m_pGameWindow->GetHwnd(false))
+			return false;
+		if (!++s_counter)
+			SwitchToThread();
+		return true;
+	}
 
 	void Load() {
 		Scintilla_RegisterClasses(Dll::Module());
@@ -243,21 +298,120 @@ struct App::XivAlexApp::Implementation final {
 				SendMessageW(this->m_trayWindow->Handle(), WM_CLOSE, 0, 1);
 			WaitForSingleObject(this->this_->m_hCustomMessageLoop, INFINITE);
 
+			// TODO: option to whether terminate quickly
+			// ::TerminateProcess(GetCurrentProcess(), exitCode);
+
 			XivAlexDll::DisableAllApps(nullptr);
 
 			// hook is released, and "this" should be invalid at this point.
 			::ExitProcess(exitCode);
 		});
+
+		m_cleanup += PeekMessageW.SetHook([this, lastRemoveMsg = UINT{}](LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg) mutable->BOOL {
+			if (GetCurrentThreadId() == this_->m_pGameWindow->GetThreadId(false)) {
+				if (lastRemoveMsg == wRemoveMsg) {
+					if (LastWaitForSingleObjectUs && !LastMessagePumpCounterUs.empty()) {
+						RenderTimeTakenUs.AddValue(LastWaitForSingleObjectUs - LastMessagePumpCounterUs.back());
+						LastWaitForSingleObjectUs = 0;
+					}
+
+					auto nowUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier);
+					int64_t waitUntilCounterUs = 0;
+
+					// Ignore failed guarantees
+					while (!MessagePumpGuaranteeCounterUs.empty() && *MessagePumpGuaranteeCounterUs.begin() <= nowUs)
+						MessagePumpGuaranteeCounterUs.erase(MessagePumpGuaranteeCounterUs.begin());
+
+					const auto pumpIntervalUs = MessagePumpIntervalUs.Mean();
+					if (!MessagePumpGuaranteeCounterUs.empty() && *MessagePumpGuaranteeCounterUs.begin() - nowUs <= pumpIntervalUs) {
+						waitUntilCounterUs = *MessagePumpGuaranteeCounterUs.begin();
+						MessagePumpGuaranteeCounterUs.erase(MessagePumpGuaranteeCounterUs.begin());
+					}
+
+					if (const auto socketSelectUs = m_socketHook ? m_socketHook->GetLastSocketSelectCounterUs() : 0)
+						SocketCallDelayUs.AddValue(socketSelectUs - LastMessagePumpCounterUs.back());
+
+					if (waitUntilCounterUs > 0 && !LastMessagePumpCounterUs.empty() && this_->m_config->Runtime.SynchronizeProcessing) {
+						this_->AdjustCounterDriftUs(waitUntilCounterUs - nowUs);
+
+						waitUntilCounterUs -= SocketCallDelayUs.Mean();
+						this_->m_logger->Format(LogCategory::General, "Waiting for {}us before next PeekMessage (select {}us, render time taken {}us, pump interval {}us)",
+							waitUntilCounterUs - nowUs,
+							SocketCallDelayUs.Latest(), RenderTimeTakenUs.Latest(), pumpIntervalUs);
+						while (waitUntilCounterUs > (nowUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier)))
+							void(0);
+						LastMessagePumpCounterUs.push_back(nowUs);
+					} else {
+						this_->AdjustCounterDriftUs(0);
+						LastMessagePumpCounterUs.push_back(nowUs);
+						if (LastMessagePumpCounterUs.size() >= 2)
+							MessagePumpIntervalUs.AddValue(LastMessagePumpCounterUs[LastMessagePumpCounterUs.size() - 1] - LastMessagePumpCounterUs[LastMessagePumpCounterUs.size() - 2]);
+					}
+					if (LastMessagePumpCounterUs.size() > 2 && LastMessagePumpCounterUs.back() - LastMessagePumpCounterUs.front() >= SecondToMicrosecondMultiplier)
+						LastMessagePumpCounterUs.pop_front();
+
+				} else
+					lastRemoveMsg = wRemoveMsg;
+			}
+			return PeekMessageW.bridge(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+			});
+
+		m_cleanup += QueryPerformanceCounter.SetHook([this](PLARGE_INTEGER lpPerformanceCount) -> BOOL {
+			const auto requestingOriginal = lpPerformanceCount->QuadPart == 0xFEFEFEFEDCDCDCDCLL;
+			lpPerformanceCount->QuadPart = 0;
+
+			if (!QueryPerformanceCounter.bridge(lpPerformanceCount))
+				return FALSE;
+
+			if (!requestingOriginal)
+				lpPerformanceCount->QuadPart = std::max(lpPerformanceCount->QuadPart + QueryPerformanceCounterDrift, QueryPerformanceCounterMin);
+			return TRUE;
+			});
+
+		m_cleanup += Sleep.SetHook([&](DWORD dwMilliseconds) {
+			if (!ShouldSkipSleep(dwMilliseconds))
+				Sleep.bridge(dwMilliseconds);
+			});
+
+		m_cleanup += SleepEx.SetHook([&](DWORD dwMilliseconds, BOOL bAlertable) -> DWORD {
+			// Note: if the user have conditional frame rate limit, then SleepEx(50) will be called.
+			if (bAlertable || !ShouldSkipSleep(dwMilliseconds))
+				return SleepEx.bridge(dwMilliseconds, bAlertable);
+
+			return 0;
+			});
+
+		m_cleanup += WaitForSingleObject.SetHook([&](HANDLE hHandle, DWORD dwMilliseconds) -> DWORD {
+			if (ShouldSkipSleep(dwMilliseconds))
+				dwMilliseconds = 0;
+			else if (dwMilliseconds == INFINITE && this_->m_pGameWindow->IsRunningAtGameMainThread())
+				LastWaitForSingleObjectUs = Utils::GetHighPerformanceCounter(1000000);
+			return WaitForSingleObject.bridge(hHandle, dwMilliseconds);
+			});
+
+		m_cleanup += WaitForSingleObjectEx.SetHook([&](HANDLE hHandle, DWORD dwMilliseconds, BOOL bAlertable) -> DWORD {
+			if (ShouldSkipSleep(dwMilliseconds))
+				dwMilliseconds = 0;
+			return WaitForSingleObjectEx.bridge(hHandle, dwMilliseconds, bAlertable);
+			});
+
+		m_cleanup += WaitForMultipleObjects.SetHook([&](DWORD nCount, const HANDLE* lpHandles, BOOL bWaitAll, DWORD dwMilliseconds) -> DWORD {
+			if (ShouldSkipSleep(dwMilliseconds))
+				dwMilliseconds = 0;
+			return WaitForMultipleObjects.bridge(nCount, lpHandles, bWaitAll, dwMilliseconds);
+			});
+
+		m_cleanup += MsgWaitForMultipleObjects.SetHook([&](DWORD nCount, const HANDLE* lpHandles, BOOL bWaitAll, DWORD dwMilliseconds, DWORD dwWakeMask) -> DWORD {
+			if (ShouldSkipSleep(dwMilliseconds))
+				dwMilliseconds = 0;
+			return MsgWaitForMultipleObjects.bridge(nCount, lpHandles, bWaitAll, dwMilliseconds, dwWakeMask);
+			});
 	}
 };
 
 App::XivAlexApp::Implementation_GameWindow::~Implementation_GameWindow() {
 	m_stopEvent.Set();
 	m_initThread.Wait();
-	m_cleanup.Clear();
-}
-
-App::XivAlexApp::Implementation::~Implementation() {
 	m_cleanup.Clear();
 }
 
@@ -297,7 +451,7 @@ App::XivAlexApp::~XivAlexApp() {
 		TerminateProcess(GetCurrentProcess(), 0);
 	}
 
-	m_pImpl->m_cleanup.Clear();
+	m_pImpl->Cleanup();
 }
 
 void App::XivAlexApp::CustomMessageLoopBody() {
@@ -354,8 +508,12 @@ void App::XivAlexApp::CustomMessageLoopBody() {
 	}
 }
 
-_Maybenull_ HWND App::XivAlexApp::GetGameWindowHandle() const {
-	return m_pGameWindow->GetHwnd();
+_Maybenull_ HWND App::XivAlexApp::GetGameWindowHandle(bool wait) const {
+	return m_pGameWindow->GetHwnd(wait);
+}
+
+DWORD App::XivAlexApp::GetGameWindowThreadId(bool wait) const {
+	return m_pGameWindow->GetThreadId(wait);
 }
 
 void App::XivAlexApp::RunOnGameLoop(std::function<void()> f) {
@@ -387,6 +545,22 @@ std::string App::XivAlexApp::IsUnloadable() const {
 App::Network::SocketHook* App::XivAlexApp::GetSocketHook() {
 	return m_pImpl->m_socketHook.get();
 }
+
+void App::XivAlexApp::GuaranteePumpBeginCounter(int64_t nextInUs) {
+	if (nextInUs > 0)
+		m_pImpl->MessagePumpGuaranteeCounterUs.insert(Utils::GetHighPerformanceCounter(1000000) + nextInUs);
+}
+
+void App::XivAlexApp::AdjustCounterDriftUs(int64_t driftUs) {
+	LARGE_INTEGER freq, cntr;
+	QueryPerformanceFrequency(&freq);
+	m_pImpl->QueryPerformanceCounter.bridge(&cntr);
+	const auto prevDrift = m_pImpl->QueryPerformanceCounterDrift;
+	m_pImpl->QueryPerformanceCounterDrift += driftUs * freq.QuadPart / SecondToMicrosecondMultiplier;
+	if (m_pImpl->QueryPerformanceCounterDrift < 0)
+		m_pImpl->QueryPerformanceCounterDrift = 0;
+	m_pImpl->QueryPerformanceCounterMin = std::max(m_pImpl->QueryPerformanceCounterMin, cntr.QuadPart + std::max(prevDrift, m_pImpl->QueryPerformanceCounterDrift));
+;}
 
 static std::unique_ptr<App::XivAlexApp> s_xivAlexApp;
 

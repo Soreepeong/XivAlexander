@@ -63,6 +63,8 @@ struct App::Network::IcmpPingTracker::Implementation {
 
 	private:
 		void Run() {
+			static constexpr auto SecondToMicrosecondMultiplier = 1000000;
+
 			const auto& logger = m_icmpPingTracker->m_pImpl->m_logger;
 			const auto& config = m_icmpPingTracker->m_pImpl->m_config;
 			try {
@@ -78,10 +80,10 @@ struct App::Network::IcmpPingTracker::Implementation {
 					Utils::ToString(m_pair.Destination));
 				size_t consecutiveFailureCount = 0;
 				do {
-					const auto interval = std::max<DWORD>(1000, static_cast<DWORD>(std::min<uint64_t>(INT32_MAX, Tracker->NextBlankIn())));
-					const auto startTime = Utils::GetHighPerformanceCounter();
+					const auto interval = std::max<DWORD>(SecondToMicrosecondMultiplier, static_cast<DWORD>(std::min<uint64_t>(INT32_MAX, Tracker->NextBlankIn())));
+					const auto startTime = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier);
 					const auto ok = IcmpSendEcho2Ex(hIcmp, nullptr, nullptr, nullptr, m_pair.Source.s_addr, m_pair.Destination.s_addr, sendBuf, sizeof sendBuf, nullptr, replyBuf, sizeof replyBuf, interval);
-					const auto endTime = Utils::GetHighPerformanceCounter();
+					const auto endTime = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier);
 					const auto latency = endTime - startTime;
 					auto waitTime = static_cast<DWORD>(interval - latency);
 
@@ -149,7 +151,7 @@ Utils::CallOnDestruction App::Network::IcmpPingTracker::Track(const in_addr& sou
 	});
 }
 
-const Utils::NumericStatisticsTracker* App::Network::IcmpPingTracker::GetTracker(const in_addr& source, const in_addr& destination) const {
+const Utils::NumericStatisticsTracker* App::Network::IcmpPingTracker::GetTrackerUs(const in_addr& source, const in_addr& destination) const {
 	const auto pair = ConnectionPair{source, destination};
 	if (const auto it = m_pImpl->m_trackersByAddress.find(pair); it != m_pImpl->m_trackersByAddress.end())
 		return it->second->Tracker.get();

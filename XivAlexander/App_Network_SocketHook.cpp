@@ -271,9 +271,9 @@ struct App::Network::SingleConnection::Implementation {
 						} while (!m_keepAliveRequestTimestamps.empty() && delay > 5000);
 
 						// Add statistics sample
-						this_->ApplicationLatency.AddValue(delay);
-						if (const auto latency = this_->FetchSocketLatency())
-							this_->SocketLatency.AddValue(latency);
+						this_->ApplicationLatencyUs.AddValue(delay);
+						if (const auto latency = this_->FetchSocketLatencyUs())
+							this_->SocketLatencyUs.AddValue(latency);
 					}
 					break;
 
@@ -338,12 +338,13 @@ struct App::Network::SocketHook::Implementation {
 	std::vector<std::pair<uint32_t, uint32_t>> m_allowedIpRange{};
 	std::vector<std::pair<uint32_t, uint32_t>> m_allowedPortRange{};
 	Utils::CallOnDestruction::Multiple m_cleanupList;
+	int64_t LastSocketSelectCounterUs{};
 
 	Implementation(SocketHook* this_, XivAlexApp* pApp)
 		: m_config(Config::Acquire())
 		, this_(this_)
 		, m_pApp(pApp)
-		, m_dwGameMainThreadId(GetWindowThreadProcessId(pApp->GetGameWindowHandle(), nullptr)) {
+		, m_dwGameMainThreadId(pApp->GetGameWindowThreadId()) {
 		auto reparse = [this](Config::ItemBase&) {
 			ParseTakeOverAddresses();
 			this->this_->ReleaseSockets();
@@ -515,7 +516,7 @@ void App::Network::SingleConnection::ResolveAddresses() {
 	m_pImpl->ResolveAddresses();
 }
 
-int64_t App::Network::SingleConnection::FetchSocketLatency() {
+int64_t App::Network::SingleConnection::FetchSocketLatencyUs() {
 	if (m_pImpl->m_nIoctlTcpInfoFailureCount >= 5)
 		return INT64_MAX;
 
@@ -532,20 +533,20 @@ int64_t App::Network::SingleConnection::FetchSocketLatency() {
 		m_pImpl->m_nIoctlTcpInfoFailureCount++;
 		return INT64_MAX;
 	} else {
-		const auto latency = info.RttUs / 1000LL;
-		SocketLatency.AddValue(latency);
+		const auto latency = info.RttUs;
+		SocketLatencyUs.AddValue(latency);
 		return latency;
 	}
 };
 
-const Utils::NumericStatisticsTracker* App::Network::SingleConnection::GetPingLatencyTracker() const {
+const Utils::NumericStatisticsTracker* App::Network::SingleConnection::GetPingLatencyTrackerUs() const {
 	if (m_pImpl->m_localAddress.ss_family != AF_INET || m_pImpl->m_remoteAddress.ss_family != AF_INET)
 		return nullptr;
 	const auto& local = *reinterpret_cast<const sockaddr_in*>(&m_pImpl->m_localAddress);
 	const auto& remote = *reinterpret_cast<const sockaddr_in*>(&m_pImpl->m_remoteAddress);
 	if (!local.sin_addr.s_addr || !remote.sin_addr.s_addr)
 		return nullptr;
-	return m_pImpl->hook_->m_pImpl->m_pingTracker.GetTracker(local.sin_addr, remote.sin_addr);
+	return m_pImpl->hook_->m_pImpl->m_pingTracker.GetTrackerUs(local.sin_addr, remote.sin_addr);
 }
 
 App::Network::SocketHook::SocketHook(XivAlexApp* pApp)
@@ -624,6 +625,8 @@ App::Network::SocketHook::SocketHook(XivAlexApp* pApp)
 							if (GetCurrentThreadId() != m_pImpl->m_dwGameMainThreadId)
 								return select.bridge(nfds, readfds, writefds, exceptfds, timeout);
 
+							m_pImpl->LastSocketSelectCounterUs = Utils::GetHighPerformanceCounter(1000000);
+							
 							const fd_set readfds_original = *readfds;
 							fd_set readfds_temp = *readfds;
 
@@ -694,7 +697,7 @@ App::Network::SocketHook::~SocketHook() {
 		Sleep(1);
 	}
 
-	if (const auto hGameWnd = m_pImpl->m_pApp->GetGameWindowHandle()) {
+	if (const auto hGameWnd = m_pImpl->m_pApp->GetGameWindowHandle(false)) {
 		// Let it process main message loop first to ensure that no socket operation is in progress
 		SendMessageW(hGameWnd, WM_NULL, 0, 0);
 	}
@@ -709,6 +712,10 @@ bool App::Network::SocketHook::IsUnloadable() const {
 		&& recv.IsDisableable()
 		&& send.IsDisableable()
 		&& closesocket.IsDisableable();
+}
+
+int64_t App::Network::SocketHook::GetLastSocketSelectCounterUs() const {
+	return m_pImpl ? m_pImpl->LastSocketSelectCounterUs : 0;
 }
 
 void App::Network::SocketHook::ReleaseSockets() {
@@ -739,20 +746,20 @@ std::wstring App::Network::SocketHook::Describe() const {
 					Utils::FromUtf8(Utils::ToString(conn->m_pImpl->m_localAddress)),
 					Utils::FromUtf8(Utils::ToString(conn->m_pImpl->m_remoteAddress)));
 
-				if (const auto latency = conn->FetchSocketLatency())
+				if (const auto latency = conn->FetchSocketLatencyUs())
 					result += m_pImpl->m_config->Runtime.FormatStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY,
-						latency, conn->SocketLatency.Median(), conn->SocketLatency.Mean(), conn->SocketLatency.Deviation());
+						latency, conn->SocketLatencyUs.Median(), conn->SocketLatencyUs.Mean(), conn->SocketLatencyUs.Deviation());
 				else
 					result += m_pImpl->m_config->Runtime.GetStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY_FAILURE);
 
-				if (const auto tracker = conn->GetPingLatencyTracker(); tracker && tracker->Count())
+				if (const auto tracker = conn->GetPingLatencyTrackerUs(); tracker && tracker->Count())
 					result += m_pImpl->m_config->Runtime.FormatStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY,
 						tracker->Latest(), tracker->Median(), tracker->Mean(), tracker->Deviation());
 				else
 					result += m_pImpl->m_config->Runtime.GetStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY_FAILURE);
 
 				result += m_pImpl->m_config->Runtime.FormatStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_RESPONSE_DELAY,
-					conn->ApplicationLatency.Median(), conn->ApplicationLatency.Mean(), conn->ApplicationLatency.Deviation());
+					conn->ApplicationLatencyUs.Median(), conn->ApplicationLatencyUs.Mean(), conn->ApplicationLatencyUs.Deviation());
 			}
 			return result;
 		} catch (...) {

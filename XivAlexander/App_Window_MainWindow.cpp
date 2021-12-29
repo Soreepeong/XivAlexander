@@ -868,6 +868,7 @@ void App::Window::MainWindow::SetMenuStates() const {
 	// Configure
 	{
 		SetMenuState(hMenu, ID_CONFIGURE_USEMORECPUTIME, config.UseMoreCpuTime, true);
+		SetMenuState(hMenu, ID_CONFIGURE_SYNCHRONIZEPROCESSING, config.SynchronizeProcessing, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT, config.Language == Language::SystemDefault, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_ENGLISH, config.Language == Language::English, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_KOREAN, config.Language == Language::Korean, true);
@@ -1876,6 +1877,10 @@ void App::Window::MainWindow::OnCommand_Menu_Configure(int menuId) {
 
 	case ID_CONFIGURE_USEMORECPUTIME:
 		config.UseMoreCpuTime = !config.UseMoreCpuTime;
+		return;
+
+	case ID_CONFIGURE_SYNCHRONIZEPROCESSING:
+		config.SynchronizeProcessing = !config.SynchronizeProcessing;
 		return;
 
 	case ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT:

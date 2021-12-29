@@ -18,6 +18,6 @@ namespace App::Network {
 
 		Utils::CallOnDestruction Track(const in_addr& source, const in_addr& destination);
 
-		[[nodiscard]] const Utils::NumericStatisticsTracker* GetTracker(const in_addr& source, const in_addr& destination) const;
+		[[nodiscard]] const Utils::NumericStatisticsTracker* GetTrackerUs(const in_addr& source, const in_addr& destination) const;
 	};
 }

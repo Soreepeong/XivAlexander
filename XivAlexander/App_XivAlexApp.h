@@ -47,14 +47,19 @@ namespace App {
 		void CustomMessageLoopBody();
 
 	public:
-		[[nodiscard]] _Maybenull_ HWND GetGameWindowHandle() const;
+		[[nodiscard]] _Maybenull_ HWND GetGameWindowHandle(bool wait = false) const;
+		[[nodiscard]] DWORD GetGameWindowThreadId(bool wait = false) const;
 
 		void RunOnGameLoop(std::function<void()> f);
 		[[nodiscard]] std::string IsUnloadable() const;
 
 		[[nodiscard]] Network::SocketHook* GetSocketHook();
 
+		void GuaranteePumpBeginCounter(int64_t counterUs);
+		void AdjustCounterDriftUs(int64_t driftUs);
+
 		static Utils::ListenerManager<XivAlexApp, void, XivAlexApp&> OnAppCreated;
 		static XivAlexApp* GetCurrentApp();
+
 	};
 }

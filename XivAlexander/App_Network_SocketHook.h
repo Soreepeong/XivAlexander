@@ -41,12 +41,12 @@ namespace App::Network {
 
 		[[nodiscard]] auto Socket() const { return m_socket; }
 
-		[[nodiscard]] int64_t FetchSocketLatency();
+		[[nodiscard]] int64_t FetchSocketLatencyUs();
 
-		Utils::NumericStatisticsTracker SocketLatency{ 10, 0 };
-		Utils::NumericStatisticsTracker ApplicationLatency{ 10, 0 };
-		Utils::NumericStatisticsTracker ExaggeratedNetworkLatency{ 10, INT64_MAX, 30000 };
-		const Utils::NumericStatisticsTracker* GetPingLatencyTracker() const;
+		Utils::NumericStatisticsTracker SocketLatencyUs{ 10, 0 };
+		Utils::NumericStatisticsTracker ApplicationLatencyUs{ 10, 0 };
+		Utils::NumericStatisticsTracker ExaggeratedNetworkLatencyUs{ 10, INT64_MAX, 30000 };
+		const Utils::NumericStatisticsTracker* GetPingLatencyTrackerUs() const;
 	};
 
 	class SocketHook {
@@ -81,6 +81,7 @@ namespace App::Network {
 		~SocketHook();
 
 		[[nodiscard]] bool IsUnloadable() const;
+		[[nodiscard]] int64_t GetLastSocketSelectCounterUs() const;
 
 		void ReleaseSockets();
 

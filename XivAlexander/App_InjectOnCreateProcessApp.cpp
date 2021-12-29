@@ -483,8 +483,6 @@ static void InitializeBeforeOriginalEntryPoint() {
 	if (App::Config::Acquire()->Runtime.UseMoreCpuTime) {
 		static App::Misc::Hooks::ImportedFunction<DWORD_PTR, HANDLE, DWORD_PTR> s_SetThreadAffinityMask("kernel32!SetThreadAffinityMask", "kernel32.dll", "SetThreadAffinityMask");
 		static App::Misc::Hooks::ImportedFunction<void, LPSYSTEM_INFO> s_GetSystemInfo("kernel32!GetSystemInfo", "kernel32.dll", "GetSystemInfo");
-		static App::Misc::Hooks::ImportedFunction<void, DWORD> s_Sleep("kernel32!Sleep", "kernel32.dll", "Sleep");
-		static App::Misc::Hooks::ImportedFunction<DWORD, DWORD, BOOL> s_SleepEx("kernel32!SleepEx", "kernel32.dll", "SleepEx");
 		if (s_SetThreadAffinityMask) {
 			s_hooks += s_SetThreadAffinityMask.SetHook([](HANDLE h, DWORD_PTR d) { return static_cast<DWORD_PTR>(-1); });
 		}
@@ -492,25 +490,6 @@ static void InitializeBeforeOriginalEntryPoint() {
 			s_hooks += s_GetSystemInfo.SetHook([&](LPSYSTEM_INFO i) {
 				s_GetSystemInfo.bridge(i);
 				i->dwNumberOfProcessors = std::min(192UL, i->dwNumberOfProcessors * 8);
-				});
-		}
-		static uint16_t counter = 0;
-		if (s_Sleep) {
-			s_hooks += s_Sleep.SetHook([&](DWORD i) {
-				if (i)
-					s_Sleep.bridge(i);
-				else if (!++counter)
-					SwitchToThread();
-				});
-		}
-		if (s_SleepEx) {
-			s_hooks += s_SleepEx.SetHook([&](DWORD i, BOOL bAlertable) {
-				if (i || bAlertable)
-					return s_SleepEx.bridge(i, bAlertable);
-
-				if (!++counter)
-					SwitchToThread();
-				return 0UL;
 				});
 		}
 	}

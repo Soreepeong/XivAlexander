@@ -214,6 +214,7 @@ namespace App {
 			Item<Sqex::Region> RememberedGameLaunchRegion = CreateConfigItem(this, "RememberedGameLaunchRegion", Sqex::Region::Unspecified);
 
 			Item<bool> UseMoreCpuTime = CreateConfigItem(this, "UseMoreCpuPower", true);
+			Item<bool> SynchronizeProcessing = CreateConfigItem(this, "SynchronizeProcessing", true);
 
 			Item<Language> Language = CreateConfigItem(this, "Language", Language::SystemDefault);
 

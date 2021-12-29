@@ -264,6 +264,7 @@ BEGIN
         MENUITEM "Opcode‚ÌÝ’è(&O)\t(Ctrl+Alt+)O", ID_CONFIGURE_EDITOPCODECONFIGURATION
         MENUITEM SEPARATOR
         MENUITEM "ƒQ[ƒ€‚ªCPU‚ð‚Å‚«‚é‚¾‚¯—˜—p‚³‚¹‚é(&C)",      ID_CONFIGURE_USEMORECPUTIME
+        MENUITEM "ƒŠƒLƒƒƒXƒg‚ÆƒAƒjƒ[ƒVƒ‡ƒ“‘Ò‹@ŽžŠÔ‚ÆƒQ[ƒ€ˆ—‚Ì“¯Šú‰»(&S)", ID_CONFIGURE_SYNCHRONIZEPROCESSING
         MENUITEM SEPARATOR
         MENUITEM "ƒVƒXƒeƒ€Œ¾Œê‚ðŽg—p(&S)\t",             ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT
         MENUITEM "Œ¾ŒêF‰pŒê(&E)\t",                 ID_CONFIGURE_LANGUAGE_ENGLISH
@@ -339,13 +340,13 @@ BEGIN
     IDS_SOCKETHOOK_SOCKET_DETACH "{:x}: ˆ—I—¹"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_TITLE "Ú‘±æ {:x} ({} -> {})\n"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY 
-                            "* ƒ\ƒPƒbƒg’x‰„: ÅI’l {}ms, ’†‰›’l {}ms, •½‹Ï {}+{}ms\n"
+                            "* ƒ\ƒPƒbƒg’x‰„: ÅI’l {}us, ’†‰›’l {}us, •½‹Ï {}{:+}us\n"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY_FAILURE "* ƒ\ƒPƒbƒg’x‰„: ‘ª’èŽ¸”s\n"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY 
-                            "* ‘ª’è’x‰„: ÅI’l {}ms, ’†‰›’l {}ms, •½‹Ï {}+{}ms\n"
+                            "* ‘ª’è’x‰„: ÅI’l {}us, ’†‰›’l {}us, •½‹Ï {}{:+}us\n"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY_FAILURE "* ‘ª’è’x‰„: ‘ª’èŽ¸”s\n"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_RESPONSE_DELAY 
-                            "* ‰ž“š’x‰„: ’†‰›’l {}ms, •½‹Ï {}+{}ms\n\n"
+                            "* ‰ž“š’x‰„: ’†‰›’l {}us, •½‹Ï {}{:+}us\n\n"
     IDS_CONFIRM_CONFIG_WINDOW_CLOSE "Ý’è‚ð•Û‘¶‚µ‚Ü‚·‚©H"
     IDS_LOG_SAVED           "ƒƒOƒtƒ@ƒCƒ‹‚ðŽŸ‚ÌêŠ‚É•Û‘¶‚µ‚Ü‚µ‚½F{}\n\nƒƒOƒtƒ@ƒCƒ‹‚ðŠm”F‚µ‚Ü‚·‚©H"
     IDS_TITLE_UNRECOVERABLEERROR_CONTENT 
@@ -806,6 +807,7 @@ BEGIN
         MENUITEM "¿ÉÄÚµå ¼³Á¤ º¯°æ(&O)\t(Ctrl+Alt+)O", ID_CONFIGURE_EDITOPCODECONFIGURATION
         MENUITEM SEPARATOR
         MENUITEM "°ÔÀÓÀÌ °¡´ÉÇÑ ¸¸Å­ CPU¸¦ ¾²µµ·Ï ¸¸µé±â(&C)", ID_CONFIGURE_USEMORECPUTIME
+        MENUITEM "Àç»ç¿ë ´ë±â ½Ã°£ ¹× ¾Ö´Ï¸ÞÀÌ¼Ç ½Ã°£¿¡ °ÔÀÓ Ã³¸®¸¦ µ¿±âÈ­ÇÏ±â(&S)", ID_CONFIGURE_SYNCHRONIZEPROCESSING
         MENUITEM SEPARATOR
         MENUITEM "½Ã½ºÅÛ ±âº» ¾ð¾î »ç¿ë(&S)",            ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT
         MENUITEM "¾ð¾î: ¿µ¾î(&E)",                  ID_CONFIGURE_LANGUAGE_ENGLISH
@@ -940,13 +942,13 @@ BEGIN
     IDS_SOCKETHOOK_SOCKET_DETACH "{:x}: Ã³¸® Á¾·á"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_TITLE "¿¬°á {:x} ({} -> {})\n"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY 
-                            "* ¼ÒÄÏ Áö¿¬½Ã°£: ¸¶Áö¸· {}ms, Áß°£°ª {}ms, Æò±Õ {}+{}ms\n"
+                            "* ¼ÒÄÏ Áö¿¬½Ã°£: ¸¶Áö¸· {}us, Áß°£°ª {}us, Æò±Õ {}{:+}us\n"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY_FAILURE "* ¼ÒÄÏ Áö¿¬½Ã°£: ÃøÁ¤ ½ÇÆÐ\n"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY 
-                            "* ÃøÁ¤ Áö¿¬½Ã°£: ¸¶Áö¸· {}ms, Áß°£°ª {}ms, Æò±Õ {}+{}ms\n"
+                            "* ÃøÁ¤ Áö¿¬½Ã°£: ¸¶Áö¸· {}us, Áß°£°ª {}us, Æò±Õ {}{:+}us\n"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY_FAILURE "* ÃøÁ¤ Áö¿¬½Ã°£: ÃøÁ¤ ½ÇÆÐ\n"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_RESPONSE_DELAY 
-                            "* ÀÀ´ä Áö¿¬½Ã°£: Áß°£°ª {}ms, Æò±Õ {}+{}ms\n\n"
+                            "* ÀÀ´ä Áö¿¬½Ã°£: Áß°£°ª {}us, Æò±Õ {}{:+}us\n\n"
     IDS_CONFIRM_CONFIG_WINDOW_CLOSE "»õ ¼³Á¤À» ÀúÀåÇÏ½Ã°Ú½À´Ï±î?"
     IDS_LOG_SAVED           "·Î±× ÆÄÀÏÀÌ ´ÙÀ½ °æ·Î¿¡ ÀúÀåµÇ¾ú½À´Ï´Ù: {}\n\nÁö±Ý ·Î±× ÆÄÀÏÀ» È®ÀÎÇÏ½Ã°Ú½À´Ï±î?"
     IDS_TITLE_UNRECOVERABLEERROR_CONTENT 
@@ -1408,6 +1410,7 @@ BEGIN
         MENUITEM "Edit &Opcode Configuration\t(Ctrl+Alt+)O", ID_CONFIGURE_EDITOPCODECONFIGURATION
         MENUITEM SEPARATOR
         MENUITEM "Force the Game to Use More &CPU Time", ID_CONFIGURE_USEMORECPUTIME
+        MENUITEM "&Synchronize Processing to Cooldowns and Animation Locks", ID_CONFIGURE_SYNCHRONIZEPROCESSING
         MENUITEM SEPARATOR
         MENUITEM "Use &System Default Language", ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT
         MENUITEM "Language: &English",          ID_CONFIGURE_LANGUAGE_ENGLISH
@@ -1665,15 +1668,15 @@ BEGIN
     IDS_SOCKETHOOK_SOCKET_DETACH "{:x}: Detaching"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_TITLE "Connection {:x} ({} -> {})\n"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY 
-                            "* Socket Latency: last {}ms, median {}ms, average {}+{}ms\n"
+                            "* Socket Latency: last {}us, median {}us, average {}{:+}us\n"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY_FAILURE 
                             "* Socket Latency: failed to resolve\n"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY 
-                            "* Ping Latency: last {}ms, median {}ms, average {}+{}ms\n"
+                            "* Ping Latency: last {}us, median {}us, average {}{:+}us\n"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY_FAILURE 
                             "* Ping Latency: failed to resolve\n"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_RESPONSE_DELAY 
-                            "* Response Delay: median {}ms, average {}+{}ms\n\n"
+                            "* Response Delay: median {}us, average {}{:+}us\n\n"
     IDS_CONFIRM_CONFIG_WINDOW_CLOSE 
                             "Do you want to apply the new configuration?"
     IDS_LOG_SAVED           "Log file has been saved to: {}\n\nDo you want to open the file?"

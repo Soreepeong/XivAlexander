@@ -61,6 +61,10 @@ namespace App::Misc::Hooks {
 			if (m_detour)
 				std::abort();
 
+			// If something is still using the bridge, wait for that to finish
+			while (m_hookCounter)
+				Sleep(1);
+
 			*m_destructed = true;
 		}
 
@@ -94,7 +98,18 @@ namespace App::Misc::Hooks {
 		}
 
 	protected:
+		std::atomic_size_t m_hookCounter{};
+
+		Utils::CallOnDestruction AcquireHookCounter() {
+			m_hookCounter++;
+			return { [this]() {
+				m_hookCounter--;
+			} };
+		}
+
+		// Keep it virtual; need to deref from template function accepting instance of this class which is a template class
 		virtual R DetouredGateway(Args...args) {
+			const auto _hookCounterRelease = AcquireHookCounter();
 			if (m_detour)
 				return m_detour(std::forward<Args>(args)...);
 			else
