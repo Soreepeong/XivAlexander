@@ -130,7 +130,7 @@ uint64_t Sqex::Texture::ModifiableTextureStream::ReadStreamPartial(uint64_t offs
 
 		const auto padInfo = Align(mipmapStream.StreamSize());
 		if (relativeOffset < mipmapStream.StreamSize()) {
-			const auto available = std::min(out.size_bytes(), mipmapStream.StreamSize() - relativeOffset);
+			const auto available = static_cast<size_t>(std::min<uint64_t>(out.size_bytes(), mipmapStream.StreamSize() - relativeOffset));
 			mipmapStream.ReadStream(relativeOffset, out.data(), available);
 			out = out.subspan(available);
 			relativeOffset = 0;

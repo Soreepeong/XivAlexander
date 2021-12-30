@@ -69,11 +69,11 @@ uint64_t Sqex::Sqpack::LazyFileOpeningEntryProvider::ReadStreamPartial(uint64_t 
 
 	auto target = std::span(static_cast<char*>(buf), static_cast<size_t>(length));
 	if (offset < size) {
-		const auto read = ReadStreamPartial(*m_stream, offset, &target[0], std::min<uint64_t>(size - offset, target.size()));
+		const auto read = static_cast<size_t>(ReadStreamPartial(*m_stream, offset, &target[0], std::min<uint64_t>(size - offset, target.size())));
 		target = target.subspan(read);
 	}
 	// size ... estimate
-	const auto remaining = std::min<uint64_t>(estimate - size, target.size());
+	const auto remaining = static_cast<size_t>(std::min<uint64_t>(estimate - size, target.size()));
 	std::ranges::fill(target.subspan(0, remaining), 0);
 	return length - (target.size() - remaining);
 }
@@ -829,7 +829,7 @@ uint64_t Sqex::Sqpack::HotSwappableEntryProvider::ReadStreamPartial(uint64_t off
 
 	if (offset < underlyingStreamLength) {
 		const auto dataTarget = target.subspan(0, static_cast<SSIZE_T>(dataLength));
-		const auto readLength = underlyingStream.ReadStreamPartial(offset, &dataTarget[0], dataTarget.size_bytes());
+		const auto readLength = static_cast<size_t>(underlyingStream.ReadStreamPartial(offset, &dataTarget[0], dataTarget.size_bytes()));
 		if (readLength != dataTarget.size_bytes())
 			throw std::logic_error(std::format("HotSwappableEntryProvider underlying data read fail: {}", underlyingStream.DescribeState()));
 		target = target.subspan(readLength);

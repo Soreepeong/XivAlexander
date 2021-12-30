@@ -54,9 +54,9 @@ std::shared_ptr<Sqex::Sqpack::EntryProvider> ToDecompressedEntryProvider(std::sh
 }
 
 uint64_t StreamToFile(const Sqex::RandomAccessStream& stream, const Utils::Win32::Handle& file, std::vector<uint8_t>& buffer, uint64_t offset = 0, const std::string& progressPrefix = {}) {
-	for (size_t pos = 0, pos_ = stream.StreamSize(); pos < pos_;) {
+	for (uint64_t pos = 0, pos_ = stream.StreamSize(); pos < pos_;) {
 		std::cout << std::format("{} Save: {:>6.02f}%: {} / {}\n", progressPrefix, pos * 100. / pos_, pos, pos_);
-		const auto read = stream.ReadStreamPartial(pos, &buffer[0], buffer.size());
+		const auto read = static_cast<size_t>(stream.ReadStreamPartial(pos, &buffer[0], buffer.size()));
 		file.Write(offset, std::span(buffer).subspan(0, read));
 		pos += read;
 		offset += read;
