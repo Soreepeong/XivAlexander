@@ -9,6 +9,8 @@
 #include <XivAlexanderCommon/Utils_Win32_ThreadPool.h>
 
 std::shared_ptr<Sqex::RandomAccessStream> StripSecondaryMipmaps(std::shared_ptr<Sqex::RandomAccessStream> src) {
+	return src;
+
 	auto stream = std::make_shared<Sqex::Texture::ModifiableTextureStream>(std::move(src));
 	stream->TruncateMipmap(1);
 	return stream;
@@ -29,7 +31,7 @@ std::shared_ptr<Sqex::RandomAccessStream> StripLodModels(std::shared_ptr<Sqex::R
 	src = std::make_shared<Sqex::MemoryRandomAccessStream>(data);
 
 	/*auto raw = std::make_shared<Sqex::Sqpack::EntryRawStream>(std::make_shared<Sqex::Sqpack::OnTheFlyModelEntryProvider>(Sqex::Sqpack::EntryPathSpec{}, src));
-	auto data2=  raw->ReadStreamIntoVector<uint8_t>(0);
+	auto data2 = raw->ReadStreamIntoVector<uint8_t>(0);
 	std::cout << memcmp(data.data(), data2.data(), data.size());*/
 	return src;
 }
@@ -106,11 +108,8 @@ int main() {
 
 		tpenv.SubmitWork([path = index.path()]() {
 			const auto expac = path.parent_path().filename().string();
-			const auto dir = std::filesystem::path("Z:/sqpack") / expac;
+			const auto dir = std::filesystem::path(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\)") / expac;
 			std::filesystem::create_directories(dir);
-
-			// if (path.filename() != "000000.win32.index") return;
-			// if (expac != "ex4") return;
 
 			if (std::filesystem::exists(dir / path.filename()))
 				return;

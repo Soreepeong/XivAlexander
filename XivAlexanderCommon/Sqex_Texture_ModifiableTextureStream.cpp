@@ -44,7 +44,7 @@ void Sqex::Texture::ModifiableTextureStream::AppendMipmap(std::shared_ptr<Mipmap
 	m_mipmapOffsets.push_back(static_cast<uint32_t>(Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes())));
 	for (size_t i = 0; i < m_mipmaps.size() - 1; ++i)
 		m_mipmapOffsets.push_back(static_cast<uint32_t>(m_mipmapOffsets[i] + Align(m_mipmaps[i]->StreamSize()).Alloc));
-	m_header.HeaderSize = Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes());
+	m_header.HeaderSize = static_cast<uint32_t>(Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes()));
 }
 
 void Sqex::Texture::ModifiableTextureStream::TruncateMipmap(size_t count) {

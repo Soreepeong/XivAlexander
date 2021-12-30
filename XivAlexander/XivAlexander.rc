@@ -240,23 +240,30 @@ BEGIN
                 MENUITEM "à–¾‚ð•\Ž¦(&D)",                   ID_MODDING_TTMP_ENTRY_SHOWDESCRIPTION
                 MENUITEM SEPARATOR
             END
-            MENUITEM "ƒCƒ“ƒ|[ƒg(&I)",                   ID_MODDING_TTMP_IMPORT
+            MENUITEM "(ƒCƒ“ƒXƒg[ƒ‹Ï‚Ý‚ÌMODƒpƒbƒN‚È‚µ)",         ID_MODDING_TTMP_NOENTRY, INACTIVE
+            MENUITEM "(MOD‹@”\‚ªƒ[ƒh‚³‚ê‚Ä‚È‚¢)",            ID_MODDING_TTMP_NOTREADY, INACTIVE
+            MENUITEM SEPARATOR
+            MENUITEM "1ŽŸŒ³‚ÅƒtƒHƒ‹ƒ_[‚ð•\Ž¦(&F)",            ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY
+            MENUITEM "1ŽŸŒ³‚ÅƒtƒHƒ‹ƒ_[‚ð•\Ž¦‚ÌŽžAƒtƒHƒ‹ƒ_[‚Ì—LE–³Œø‰»Ý’è‚ð—LŒø‰»(&T)", ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW
+            MENUITEM "ê—p‚Ìƒƒjƒ…[‚ð•\Ž¦(&M)",              ID_MODDING_TTMP_SHOWDEDICATEDMENU
             MENUITEM SEPARATOR
             MENUITEM "‚·‚×‚Ä‚ð—LŒø‰»(&E)",                 ID_MODDING_TTMP_ENABLEALL
             MENUITEM "‚·‚×‚Ä‚ð–³Œø‰»(&D)",                 ID_MODDING_TTMP_DISABLEALL
             MENUITEM SEPARATOR
+            MENUITEM "ƒCƒ“ƒ|[ƒg(&I)",                   ID_MODDING_TTMP_IMPORT
             MENUITEM "ƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚é(&O)",               ID_MODDING_TTMP_OPENDIRECTORY
-            MENUITEM "‚·‚×‚Ä‚ÌMODƒpƒbƒN‚ðíœ(&R)",           ID_MODDING_TTMP_REMOVEALL
+            MENUITEM "‚·‚×‚Ä‚ÌMODƒpƒbƒN‚ðíœ(&L)",           ID_MODDING_TTMP_REMOVEALL
             MENUITEM "Ä“Ç‚Ýž‚Ý(&R)",                   ID_MODDING_TTMP_REFRESH
-            MENUITEM SEPARATOR
-            MENUITEM "(ƒCƒ“ƒXƒg[ƒ‹Ï‚Ý‚ÌMODƒpƒbƒN‚È‚µ)",         ID_MODDING_TTMP_NOENTRY, INACTIVE
-            MENUITEM "(MOD‹@”\‚ªƒ[ƒh‚³‚ê‚Ä‚È‚¢)",            ID_MODDING_TTMP_NOTREADY, INACTIVE
         END
         MENUITEM SEPARATOR
         MENUITEM "’u‚«Š·‚¦ƒtƒ@ƒCƒ‹‚ÌƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚é(&R)",      ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
         MENUITEM "TTMPL/TTMPDƒtƒ@ƒCƒ‹‚É•ÏŠ·‚µ‚Ä•Û‘¶(&O)",  ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
         MENUITEM "ƒQ[ƒ€‚ðÄ‹N“®‚·‚é‚Ü‚Å“K—p‚³‚ê‚È‚¢ê‡‚ª‚ ‚è‚Ü‚·B",   ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
+    END
+    POPUP "TTMP(&T)"
+    BEGIN
+        MENUITEM SEPARATOR
     END
     POPUP "Ý’è(&C)"
     BEGIN
@@ -784,23 +791,30 @@ BEGIN
                 MENUITEM "¼³¸í º¸±â(&D)",                   ID_MODDING_TTMP_ENTRY_SHOWDESCRIPTION
                 MENUITEM SEPARATOR
             END
-            MENUITEM "ºÒ·¯¿À±â(&I)",                    ID_MODDING_TTMP_IMPORT
+            MENUITEM "(¼³Ä¡µÈ ¸ðµåÆÑ ¾øÀ½ )",               ID_MODDING_TTMP_NOENTRY, INACTIVE
+            MENUITEM "(¸ðµù ±â´É ÁØºñµÇÁö ¾ÊÀ½)",             ID_MODDING_TTMP_NOTREADY, INACTIVE
+            MENUITEM SEPARATOR
+            MENUITEM "ÀÏÂ÷¿øÀ¸·Î Æú´õ Ç¥½Ã(&F)",             ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY
+            MENUITEM "ÀÏÂ÷¿øÀ¸·Î Æú´õ Ç¥½Ã ½Ã Æú´õ È°¼ºÈ­ Á¦¾î »ç¿ë(&T)", ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW
+            MENUITEM "Àü¿ë ¸Þ´º º¸ÀÌ±â(&M)",               ID_MODDING_TTMP_SHOWDEDICATEDMENU
             MENUITEM SEPARATOR
             MENUITEM "¸ðµÎ È°¼ºÈ­(&E)",                  ID_MODDING_TTMP_ENABLEALL
             MENUITEM "¸ðµÎ ºñÈ°¼ºÈ­(&D)",                 ID_MODDING_TTMP_DISABLEALL
             MENUITEM SEPARATOR
+            MENUITEM "ºÒ·¯¿À±â(&I)",                    ID_MODDING_TTMP_IMPORT
             MENUITEM "Æú´õ ¿­±â(&O)",                   ID_MODDING_TTMP_OPENDIRECTORY
-            MENUITEM "¸ðµÎ Á¦°Å(&R)",                   ID_MODDING_TTMP_REMOVEALL
+            MENUITEM "¸ðµÎ Á¦°Å(&L)",                   ID_MODDING_TTMP_REMOVEALL
             MENUITEM "¸ñ·Ï ´Ù½Ã ºÒ·¯¿À±â(&R)",              ID_MODDING_TTMP_REFRESH
-            MENUITEM SEPARATOR
-            MENUITEM "(¼³Ä¡µÈ ¸ðµåÆÑ ¾øÀ½ )",               ID_MODDING_TTMP_NOENTRY, INACTIVE
-            MENUITEM "(¸ðµù ±â´É ÁØºñµÇÁö ¾ÊÀ½)",             ID_MODDING_TTMP_NOTREADY, INACTIVE
         END
         MENUITEM SEPARATOR
         MENUITEM "±³Ã¼ ÆÄÀÏ Æú´õ ¿­±â(&R)",             ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
         MENUITEM "TTMPL/TTMPDÆÄÀÏ·Î ³»º¸³»±â(&O)",     ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
         MENUITEM "°ÔÀÓ Àç½ÃÀÛ±îÁö º¯°æ »çÇ×ÀÌ ¹Ý¿µµÇÁö ¾ÊÀ» ¼öµµ ÀÖ½À´Ï´Ù.", ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
+    END
+    POPUP "TTMP(&T)"
+    BEGIN
+        MENUITEM SEPARATOR
     END
     POPUP "¼³Á¤(&C)"
     BEGIN
@@ -1388,23 +1402,30 @@ BEGIN
                 MENUITEM "Show &Description",           ID_MODDING_TTMP_ENTRY_SHOWDESCRIPTION
                 MENUITEM SEPARATOR
             END
-            MENUITEM "&Import",                     ID_MODDING_TTMP_IMPORT
+            MENUITEM "(No installed ModPacks found)", ID_MODDING_TTMP_NOENTRY, INACTIVE
+            MENUITEM "(Not ready)",                 ID_MODDING_TTMP_NOTREADY, INACTIVE
+            MENUITEM SEPARATOR
+            MENUITEM "&Flatten Folder Display",     ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY
+            MENUITEM "Use Folder &Toggling on Flattened View", ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW
+            MENUITEM "Show Dedicated &Menu",        ID_MODDING_TTMP_SHOWDEDICATEDMENU
             MENUITEM SEPARATOR
             MENUITEM "&Enable All",                 ID_MODDING_TTMP_ENABLEALL
             MENUITEM "&Disable All",                ID_MODDING_TTMP_DISABLEALL
+            MENUITEM "De&lete All",                 ID_MODDING_TTMP_REMOVEALL
             MENUITEM SEPARATOR
+            MENUITEM "&Import",                     ID_MODDING_TTMP_IMPORT
             MENUITEM "&Open Directory",             ID_MODDING_TTMP_OPENDIRECTORY
-            MENUITEM "D&elete All",                 ID_MODDING_TTMP_REMOVEALL
             MENUITEM "&Refresh",                    ID_MODDING_TTMP_REFRESH
-            MENUITEM SEPARATOR
-            MENUITEM "(No installed ModPacks found)", ID_MODDING_TTMP_NOENTRY, INACTIVE
-            MENUITEM "(Not ready)",                 ID_MODDING_TTMP_NOTREADY, INACTIVE
         END
         MENUITEM SEPARATOR
         MENUITEM "Open &Replacement File Entries Directory", ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
         MENUITEM "Exp&ort to TTMPL/TTMPD Files", ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
         MENUITEM "Anything here will not be fully applied until game restart.", ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
+    END
+    POPUP "&TTMP"
+    BEGIN
+        MENUITEM SEPARATOR
     END
     POPUP "&Configure"
     BEGIN

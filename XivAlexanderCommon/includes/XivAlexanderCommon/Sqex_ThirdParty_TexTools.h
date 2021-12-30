@@ -86,8 +86,10 @@ namespace Sqex::ThirdParty::TexTools {
 			Break,
 		};
 
-		TraverseCallbackResult ForEachEntry(std::function<TraverseCallbackResult(Sqex::ThirdParty::TexTools::ModEntry&)> cb);
-		TraverseCallbackResult ForEachEntry(std::function<TraverseCallbackResult(const Sqex::ThirdParty::TexTools::ModEntry&)> cb) const;
+		void ForEachEntry(std::function<void(Sqex::ThirdParty::TexTools::ModEntry&)> cb);
+		void ForEachEntry(std::function<void(const Sqex::ThirdParty::TexTools::ModEntry&)> cb) const;
+		TraverseCallbackResult ForEachEntryInterruptible(std::function<TraverseCallbackResult(Sqex::ThirdParty::TexTools::ModEntry&)> cb);
+		TraverseCallbackResult ForEachEntryInterruptible(std::function<TraverseCallbackResult(const Sqex::ThirdParty::TexTools::ModEntry&)> cb) const;
 	};
 	void to_json(nlohmann::json&, const TTMPL&);
 	void from_json(const nlohmann::json&, TTMPL&);

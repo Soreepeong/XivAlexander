@@ -36,22 +36,18 @@ namespace App::Misc {
 		void MarkIoRequest();
 
 		struct TtmpSet {
-			Implementation* Impl = nullptr;
-
 			bool Allocated = false;
-			bool Enabled = false;
 			std::filesystem::path ListPath;
-			std::filesystem::path RenameTo;
 			Sqex::ThirdParty::TexTools::TTMPL List;
 			Utils::Win32::Handle DataFile;
 			nlohmann::json Choices;
 
 			void FixChoices();
-			void ApplyChanges(bool announce = true);
 
 			using TraverseCallbackResult = Sqex::ThirdParty::TexTools::TTMPL::TraverseCallbackResult;
 
-			TraverseCallbackResult ForEachEntry(bool choiceOnly, std::function<TraverseCallbackResult(const Sqex::ThirdParty::TexTools::ModEntry&)> cb) const;
+			void ForEachEntry(bool choiceOnly, std::function<void(const Sqex::ThirdParty::TexTools::ModEntry&)> cb) const;
+			TraverseCallbackResult ForEachEntryInterruptible(bool choiceOnly, std::function<TraverseCallbackResult(const Sqex::ThirdParty::TexTools::ModEntry&)> cb) const;
 
 			void TryCleanupUnusedFiles();
 		};
@@ -60,8 +56,11 @@ namespace App::Misc {
 			uint64_t Index{ UINT64_MAX };
 			std::filesystem::path Path;
 			std::shared_ptr<NestedTtmp> Parent;
+			bool Enabled = true;
+
 			std::optional<std::vector<std::shared_ptr<NestedTtmp>>> Children;
 			std::optional<TtmpSet> Ttmp;
+			std::optional<std::filesystem::path> RenameTo;
 
 			bool IsGroup() const {
 				return Children.has_value();
@@ -73,10 +72,11 @@ namespace App::Misc {
 				Delete,
 			};
 
-			TraverseCallbackResult Traverse(const std::function<TraverseCallbackResult(NestedTtmp&)>& cb);
-			TraverseCallbackResult Traverse(const std::function<TraverseCallbackResult(const NestedTtmp&)>& cb) const;
+			void Traverse(bool traverseEnabledOnly, const std::function<void(NestedTtmp&)>& cb);
+			void Traverse(bool traverseEnabledOnly, const std::function<void(const NestedTtmp&)>& cb) const;
+			TraverseCallbackResult TraverseInterruptible(bool traverseEnabledOnly, const std::function<TraverseCallbackResult(NestedTtmp&)>& cb);
+			TraverseCallbackResult TraverseInterruptible(bool traverseEnabledOnly, const std::function<TraverseCallbackResult(const NestedTtmp&)>& cb) const;
 			size_t Count() const;
-			bool IsAnythingEnabled() const;
 			void Sort();
 			void RemoveEmptyChildren();
 			std::shared_ptr<NestedTtmp> Find(const std::filesystem::path& path);
@@ -87,6 +87,7 @@ namespace App::Misc {
 		void AddNewTtmp(const std::filesystem::path& ttmpl, bool reflectImmediately = true);
 		void DeleteTtmp(const std::filesystem::path& ttmpl, bool reflectImmediately = true);
 		void RescanTtmp();
+		void ApplyTtmpChanges(NestedTtmp& nestedTtmp, bool announce = true);
 
 		Utils::ListenerManager<Implementation, void> OnTtmpSetsChanged;
 	};

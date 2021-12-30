@@ -136,6 +136,15 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 	m_cleanup += m_config->Runtime.MusicImportConfig_Directories.OnChangeListener([this](auto&) {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
+	m_cleanup += m_config->Runtime.TtmpShowDedicatedMenu.OnChangeListener([this](auto&) {
+		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
+		});
+	m_cleanup += m_config->Runtime.TtmpUseSubdirectoryTogglingOnFlattenedView.OnChangeListener([this](auto&) {
+		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
+		});
+	m_cleanup += m_config->Runtime.TtmpFlattenSubdirectoryDisplay.OnChangeListener([this](auto&) {
+		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
+		});
 
 	if (!m_sqpacksLoaded) {
 		if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks()) {
@@ -374,29 +383,54 @@ void App::Window::MainWindow::RepopulateMenu() {
 		return;
 	}
 
-	Utils::Win32::Menu(Dll::Module(), RT_MENU, MAKEINTRESOURCE(IDR_TRAY_MENU), m_config->Runtime.GetLangId()).AttachAndSwap(m_hWnd);
-	const auto hMenu = GetMenu(m_hWnd);
+	auto menu = Utils::Win32::Menu(Dll::Module(), RT_MENU, MAKEINTRESOURCE(IDR_TRAY_MENU), m_config->Runtime.GetLangId());
 
 	const auto title = std::format(L"{}: {}, {}, {}",
 		m_config->Runtime.GetStringRes(IDS_APP_NAME), GetCurrentProcessId(), m_gameReleaseInfo.CountryCode, m_gameReleaseInfo.GameVersion);
-	ModifyMenuW(hMenu, ID_FILE_CURRENTINFO, MF_BYCOMMAND | MF_DISABLED, ID_FILE_CURRENTINFO, title.c_str());
+	ModifyMenuW(menu, ID_FILE_CURRENTINFO, MF_BYCOMMAND | MF_DISABLED, ID_FILE_CURRENTINFO, title.c_str());
 
 	m_menuIdCallbacks.clear();
 	{
-		const auto hModMenu = GetSubMenu(hMenu, 3);
-		int index = 0;
+		const auto hModMenu = GetSubMenu(menu, 3);
+		const auto hOuterTtmpMenu = GetSubMenu(menu, 4);
 
+		int index = 0;
 		for (const auto menuItemCount = GetMenuItemCount(hModMenu); index < menuItemCount; index++) {
 			if (GetMenuItemID(hModMenu, index) == ID_MODDING_SUBMENUMARKER)
 				break;
 		}
 		DeleteMenu(hModMenu, index, MF_BYPOSITION);
-		RepopulateMenu_FontConfig(GetSubMenu(hModMenu, index++));
-		RepopulateMenu_AdditionalSqpackRootDirectories(GetSubMenu(hModMenu, index++));
-		RepopulateMenu_ExdfTransformationRules(GetSubMenu(hModMenu, index++));
-		RepopulateMenu_UpgradeMusicQuality(GetSubMenu(hModMenu, index++));
-		RepopulateMenu_Modding(GetSubMenu(hModMenu, index++));
+		const auto hFontConfigMenu = GetSubMenu(hModMenu, index++);
+		const auto hAdditionalSqpackRootDirectoriesMenu = GetSubMenu(hModMenu, index++);
+		const auto hExdfTransformationRulesMenu = GetSubMenu(hModMenu, index++);
+		const auto hUpgradeMusicQualityMenu = GetSubMenu(hModMenu, index++);
+		const auto hInnerTtmpMenu = GetSubMenu(hModMenu, index++);
+
+		if (m_config->Runtime.TtmpShowDedicatedMenu) {
+			while (GetMenuItemCount(hOuterTtmpMenu))
+				DeleteMenu(hOuterTtmpMenu, 0, MF_BYPOSITION);
+			for (index = 0; index < GetMenuItemCount(hInnerTtmpMenu); ++index) {
+				MENUITEMINFOW mii = {
+					.cbSize = sizeof mii,
+					.fMask = MIIM_TYPE,
+				};
+				GetMenuItemInfoW(hInnerTtmpMenu, index, TRUE, &mii);
+				if (mii.fType & MFT_SEPARATOR) {
+					DeleteMenu(hInnerTtmpMenu, index, MF_BYPOSITION);
+					break;
+				}
+			}
+		} else {
+			DeleteMenu(menu, 4, MF_BYPOSITION);
+		}
+
+		RepopulateMenu_FontConfig(hFontConfigMenu);
+		RepopulateMenu_AdditionalSqpackRootDirectories(hAdditionalSqpackRootDirectoriesMenu);
+		RepopulateMenu_ExdfTransformationRules(hExdfTransformationRulesMenu);
+		RepopulateMenu_UpgradeMusicQuality(hUpgradeMusicQualityMenu);
+		RepopulateMenu_Ttmp(hInnerTtmpMenu, hOuterTtmpMenu);
 	}
+	menu.AttachAndSwap(m_hWnd);
 }
 
 UINT_PTR App::Window::MainWindow::RepopulateMenu_AllocateMenuId(std::function<void()> cb) {
@@ -536,7 +570,6 @@ void App::Window::MainWindow::RepopulateMenu_UpgradeMusicQuality(HMENU hParentMe
 			}), file.wstring().c_str());
 	}
 
-
 	index = 0;
 	for (const auto menuItemCount = GetMenuItemCount(hParentMenu); index < menuItemCount; index++) {
 		if (GetMenuItemID(hParentMenu, index) == ID_MODDING_REPLACEMUSICS_NOSOUCEDIRECTORIESCONFIGURED)
@@ -624,9 +657,9 @@ void App::Window::MainWindow::RepopulateMenu_UpgradeMusicQuality(HMENU hParentMe
 		DeleteMenu(hParentMenu, ID_MODDING_REPLACEMUSICS_NOSOUCEDIRECTORIESCONFIGURED, MF_BYCOMMAND);
 }
 
-void App::Window::MainWindow::RepopulateMenu_Modding(HMENU hParentMenu) {
-	const auto hTemplateEntryMenu = GetSubMenu(hParentMenu, 0);
-	RemoveMenu(hParentMenu, 0, MF_BYPOSITION);
+void App::Window::MainWindow::RepopulateMenu_Ttmp(HMENU hInnerTtmpMenu, HMENU hOuterTtmpMenu) {
+	const auto hTemplateEntryMenu = GetSubMenu(hInnerTtmpMenu, 0);
+	RemoveMenu(hInnerTtmpMenu, 0, MF_BYPOSITION);
 	const auto deleteTemplateMenu = Utils::CallOnDestruction([hTemplateEntryMenu]() { DestroyMenu(hTemplateEntryMenu); });
 
 	auto count = 0;
@@ -639,42 +672,94 @@ void App::Window::MainWindow::RepopulateMenu_Modding(HMENU hParentMenu) {
 			m_sqpacksLoaded = true;
 		}
 
-		std::vector<std::pair<HMENU, Misc::VirtualSqPacks::NestedTtmp*>> menuStack;
-		sqpacks->GetTtmps()->Traverse([&](Misc::VirtualSqPacks::NestedTtmp& dir) {
-			if (!dir.Parent) {
-				menuStack.emplace_back(hParentMenu, sqpacks->GetTtmps().get());
-				return Misc::VirtualSqPacks::NestedTtmp::Continue;
+		struct MenuStack {
+			HMENU Menu;
+			Misc::VirtualSqPacks::NestedTtmp* Item;
+			int InsertionIndex;
+			bool HideInner;
+		};
+		std::vector<MenuStack> menuStack;
+		sqpacks->GetTtmps()->Traverse(false, [&](Misc::VirtualSqPacks::NestedTtmp& nestedTtmp) {
+			if (!nestedTtmp.Parent) {
+				if (m_config->Runtime.TtmpShowDedicatedMenu) {
+					menuStack.emplace_back(MenuStack{ hOuterTtmpMenu, &nestedTtmp, 0, false });
+				} else {
+					menuStack.emplace_back(MenuStack{ hInnerTtmpMenu, &nestedTtmp, 0, false });
+				}
+				return;
 			}
 
-			while (menuStack.size() > 1 && dir.Parent.get() != menuStack.back().second)
+			while (menuStack.size() > 1 && nestedTtmp.Parent.get() != menuStack.back().Item)
 				menuStack.pop_back();
 
-			if (dir.IsGroup()) {
-				const auto hSubMenu = CreatePopupMenu();
-				AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, &dir]() {
-					BatchTtmpOperation(dir, ID_MODDING_TTMP_ENABLEALL);
-					}), RepopulateMenu_GetMenuTextById(hParentMenu, ID_MODDING_TTMP_ENABLEALL).c_str());
-				AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, &dir]() {
-					BatchTtmpOperation(dir, ID_MODDING_TTMP_DISABLEALL);
-					}), RepopulateMenu_GetMenuTextById(hParentMenu, ID_MODDING_TTMP_DISABLEALL).c_str());
-				AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, &dir]() {
-					BatchTtmpOperation(dir, ID_MODDING_TTMP_REMOVEALL);
-					}), RepopulateMenu_GetMenuTextById(hParentMenu, ID_MODDING_TTMP_REMOVEALL).c_str());
+			if (nestedTtmp.IsGroup()) {
+				if (m_config->Runtime.TtmpFlattenSubdirectoryDisplay) {
+					std::wstring menuName;
+					menuName.resize(3 * (menuStack.size() - 1), L' ');
+					menuName += nestedTtmp.Path.filename().wstring();
 
-				AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
+					const auto skipMenu = menuStack.back().HideInner;
 
-				AppendMenuW(menuStack.back().first, MF_STRING | MF_POPUP | (dir.IsAnythingEnabled() ? MF_CHECKED : 0), reinterpret_cast<UINT_PTR>(hSubMenu), dir.Path.filename().wstring().c_str());
-				menuStack.emplace_back(hSubMenu, &dir);
-				return Misc::VirtualSqPacks::NestedTtmp::Continue;
+					menuStack.emplace_back(MenuStack{ nullptr, &nestedTtmp, 0, menuStack.back().HideInner || !nestedTtmp.Enabled });
+
+					if (!skipMenu)
+						InsertMenuW(menuStack.front().Menu,
+							menuStack.front().InsertionIndex++,
+							MF_BYPOSITION | MF_STRING | (nestedTtmp.Enabled ? MF_CHECKED : 0) | (m_config->Runtime.TtmpUseSubdirectoryTogglingOnFlattenedView ? 0 : MF_DISABLED),
+							RepopulateMenu_AllocateMenuId([this, &nestedTtmp, sqpacks]() {
+								try {
+									nestedTtmp.Enabled = !nestedTtmp.Enabled;
+									sqpacks->ApplyTtmpChanges(nestedTtmp);
+								} catch (const std::exception& e) {
+									Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+								}
+								}),
+							menuName.c_str());
+				} else {
+					const auto hSubMenu = CreatePopupMenu();
+					AppendMenuW(hSubMenu, MF_STRING | (nestedTtmp.Enabled ? MF_CHECKED : 0), RepopulateMenu_AllocateMenuId([this, &nestedTtmp, sqpacks]() {
+						try {
+							nestedTtmp.Enabled = !nestedTtmp.Enabled;
+							sqpacks->ApplyTtmpChanges(nestedTtmp);
+						} catch (const std::exception& e) {
+							Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+						}
+						}), RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_TTMP_ENTRY_ENABLE).c_str());
+
+					AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
+					AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
+
+					AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, &nestedTtmp]() {
+						BatchTtmpOperation(nestedTtmp, ID_MODDING_TTMP_ENABLEALL);
+						}), RepopulateMenu_GetMenuTextById(hInnerTtmpMenu, ID_MODDING_TTMP_ENABLEALL).c_str());
+					AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, &nestedTtmp]() {
+						BatchTtmpOperation(nestedTtmp, ID_MODDING_TTMP_DISABLEALL);
+						}), RepopulateMenu_GetMenuTextById(hInnerTtmpMenu, ID_MODDING_TTMP_DISABLEALL).c_str());
+					AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, &nestedTtmp]() {
+						BatchTtmpOperation(nestedTtmp, ID_MODDING_TTMP_REMOVEALL);
+						}), RepopulateMenu_GetMenuTextById(hInnerTtmpMenu, ID_MODDING_TTMP_REMOVEALL).c_str());
+
+					InsertMenuW(menuStack.back().Menu,
+						menuStack.back().InsertionIndex++,
+						MF_BYPOSITION | MF_STRING | MF_POPUP | (nestedTtmp.Enabled ? MF_CHECKED : 0),
+						reinterpret_cast<UINT_PTR>(hSubMenu),
+						nestedTtmp.Path.filename().wstring().c_str());
+					menuStack.emplace_back(MenuStack{ hSubMenu, &nestedTtmp, 2 });
+				}
+				return;
 			}
 
-			auto& ttmpSet = *dir.Ttmp;
+			count++;
+			if (menuStack.back().HideInner)
+				return;
+
+			auto& ttmpSet = *nestedTtmp.Ttmp;
 
 			const auto hSubMenu = CreatePopupMenu();
-			AppendMenuW(hSubMenu, MF_STRING | (ttmpSet.Enabled ? MF_CHECKED : 0), RepopulateMenu_AllocateMenuId([this, &ttmpSet]() {
+			AppendMenuW(hSubMenu, MF_STRING | (nestedTtmp.Enabled ? MF_CHECKED : 0), RepopulateMenu_AllocateMenuId([this, sqpacks, &nestedTtmp]() {
 				try {
-					ttmpSet.Enabled = !ttmpSet.Enabled;
-					ttmpSet.ApplyChanges();
+					nestedTtmp.Enabled = !nestedTtmp.Enabled;
+					sqpacks->ApplyTtmpChanges(nestedTtmp);
 				} catch (const std::exception& e) {
 					Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 				}
@@ -771,11 +856,11 @@ void App::Window::MainWindow::RepopulateMenu_Modding(HMENU hParentMenu) {
 							description += std::format(" ({})", modEntry.GroupName);
 
 						AppendMenuW(hModSubMenu, MF_STRING | (optionIndices.contains(optionIndex) ? MF_CHECKED : 0), RepopulateMenu_AllocateMenuId(
-							[this, isMulti, pageObjectIndex, modGroupIndex, optionIndices = optionIndices, optionIndex, &ttmpSet]() mutable {
+							[this, isMulti, pageObjectIndex, modGroupIndex, optionIndices = optionIndices, optionIndex, &ttmpSet, &nestedTtmp, sqpacks]() mutable {
 								try {
 									auto& page = ttmpSet.Choices.at(pageObjectIndex);
 
-									if (isMulti || GetKeyState(VK_CONTROL)) {
+									if (isMulti || (GetKeyState(VK_CONTROL) & 0x8000U)) {
 										if (optionIndices.contains(optionIndex))
 											optionIndices.erase(optionIndex);
 										else
@@ -784,7 +869,7 @@ void App::Window::MainWindow::RepopulateMenu_Modding(HMENU hParentMenu) {
 									} else
 										page[modGroupIndex] = nlohmann::json::array({ optionIndex });
 
-									ttmpSet.ApplyChanges();
+									sqpacks->ApplyTtmpChanges(nestedTtmp);
 
 								} catch (const std::exception& e) {
 									Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
@@ -795,16 +880,39 @@ void App::Window::MainWindow::RepopulateMenu_Modding(HMENU hParentMenu) {
 				}
 			}
 
-			AppendMenuW(menuStack.back().first, MF_STRING | MF_POPUP | (ttmpSet.Enabled ? MF_CHECKED : 0), reinterpret_cast<UINT_PTR>(hSubMenu), dir.Path.filename().wstring().c_str());
-			count++;
+			if (m_config->Runtime.TtmpFlattenSubdirectoryDisplay) {
+				std::wstring menuName;
+				menuName.resize(3 * (menuStack.size() - 1), L' ');
+				menuName += nestedTtmp.Path.filename().wstring();
 
-			return Misc::VirtualSqPacks::NestedTtmp::Continue;
+				InsertMenuW(menuStack.front().Menu,
+					menuStack.front().InsertionIndex++,
+					MF_BYPOSITION | MF_STRING | MF_POPUP | (nestedTtmp.Enabled ? MF_CHECKED : 0),
+					reinterpret_cast<UINT_PTR>(hSubMenu),
+					menuName.c_str());
+			} else {
+				InsertMenuW(menuStack.back().Menu,
+					menuStack.back().InsertionIndex++,
+					MF_BYPOSITION | MF_STRING | MF_POPUP | (nestedTtmp.Enabled ? MF_CHECKED : 0),
+					reinterpret_cast<UINT_PTR>(hSubMenu),
+					nestedTtmp.Path.filename().wstring().c_str());
+			}
 			});
 	}
-	if (ready)
-		DeleteMenu(hParentMenu, ID_MODDING_TTMP_NOTREADY, MF_BYCOMMAND);
-	if (count || !ready)
-		DeleteMenu(hParentMenu, ID_MODDING_TTMP_NOENTRY, MF_BYCOMMAND);
+	if (m_config->Runtime.TtmpShowDedicatedMenu) {
+		if (!ready)
+			AppendMenuW(hOuterTtmpMenu, MF_DISABLED, 0, RepopulateMenu_GetMenuTextById(hInnerTtmpMenu, ID_MODDING_TTMP_NOTREADY).c_str());
+		DeleteMenu(hInnerTtmpMenu, ID_MODDING_TTMP_NOTREADY, MF_BYCOMMAND);
+
+		if (!count && ready)
+			AppendMenuW(hOuterTtmpMenu, MF_DISABLED, 0, RepopulateMenu_GetMenuTextById(hInnerTtmpMenu, ID_MODDING_TTMP_NOENTRY).c_str());
+		DeleteMenu(hInnerTtmpMenu, ID_MODDING_TTMP_NOENTRY, MF_BYCOMMAND);
+	} else {
+		if (ready)
+			DeleteMenu(hInnerTtmpMenu, ID_MODDING_TTMP_NOTREADY, MF_BYCOMMAND);
+		if (count || !ready)
+			DeleteMenu(hInnerTtmpMenu, ID_MODDING_TTMP_NOENTRY, MF_BYCOMMAND);
+	}
 }
 
 void App::Window::MainWindow::SetMenuStates() const {
@@ -897,6 +1005,10 @@ void App::Window::MainWindow::SetMenuStates() const {
 		SetMenuState(hMenu, ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_HIGHESTPOSSIBLE, config.MusicImportTargetSamplingRate == 0, true);
 		SetMenuState(hMenu, ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_44100, config.MusicImportTargetSamplingRate == 44100, true);
 		SetMenuState(hMenu, ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_48000, config.MusicImportTargetSamplingRate == 48000, true);
+
+		SetMenuState(hMenu, ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY, config.TtmpFlattenSubdirectoryDisplay, true);
+		SetMenuState(hMenu, ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW, config.TtmpUseSubdirectoryTogglingOnFlattenedView, config.TtmpFlattenSubdirectoryDisplay);
+		SetMenuState(hMenu, ID_MODDING_TTMP_SHOWDEDICATEDMENU, config.TtmpShowDedicatedMenu, true);
 
 		SetMenuState(hMenu, ID_MODDING_CHANGEFONT_DISABLE, config.OverrideFontConfig.Value().empty(), true);
 	}
@@ -1682,6 +1794,18 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 			m_config->Runtime.MusicImportTargetSamplingRate = 48000;
 			return;
 
+		case ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY:
+			m_config->Runtime.TtmpFlattenSubdirectoryDisplay = !m_config->Runtime.TtmpFlattenSubdirectoryDisplay;
+			return;
+
+		case ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW:
+			m_config->Runtime.TtmpUseSubdirectoryTogglingOnFlattenedView = !m_config->Runtime.TtmpUseSubdirectoryTogglingOnFlattenedView;
+			return;
+
+		case ID_MODDING_TTMP_SHOWDEDICATEDMENU:
+			m_config->Runtime.TtmpShowDedicatedMenu = !m_config->Runtime.TtmpShowDedicatedMenu;
+			return;
+
 		case ID_MODDING_TTMP_IMPORT: {
 			static const COMDLG_FILTERSPEC fileTypes[] = {
 				{ m_config->Runtime.GetStringRes(IDS_FILTERSPEC_TTMP), L"*.ttmp; *.ttmp2; *.mpl" },
@@ -2445,9 +2569,9 @@ void App::Window::MainWindow::BatchTtmpOperation(Misc::VirtualSqPacks::NestedTtm
 		}
 		if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, msg) == IDYES) {
 			if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks()) {
-				parent.Traverse([&](Misc::VirtualSqPacks::NestedTtmp& nestedTtmp) {
+				parent.Traverse(false, [&](Misc::VirtualSqPacks::NestedTtmp& nestedTtmp) {
 					if (!nestedTtmp.Ttmp)
-						return Misc::VirtualSqPacks::NestedTtmp::Continue;
+						return;
 
 					auto& set = *nestedTtmp.Ttmp;
 					switch (menuId) {
@@ -2456,16 +2580,16 @@ void App::Window::MainWindow::BatchTtmpOperation(Misc::VirtualSqPacks::NestedTtm
 							break;
 
 						case ID_MODDING_TTMP_ENABLEALL:
-							set.Enabled = true;
-							set.ApplyChanges(false);
+							nestedTtmp.Enabled = true;
+							sqpacks->ApplyTtmpChanges(nestedTtmp, false);
 							break;
 
 						case ID_MODDING_TTMP_DISABLEALL:
-							set.Enabled = false;
-							set.ApplyChanges(false);
+							nestedTtmp.Enabled = false;
+							sqpacks->ApplyTtmpChanges(nestedTtmp, false);
 							break;
 					}
-					return Misc::VirtualSqPacks::NestedTtmp::Continue;
+					return;
 					});
 				sqpacks->RescanTtmp();
 			}

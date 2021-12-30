@@ -182,7 +182,29 @@ Sqex::ThirdParty::TexTools::TTMPL Sqex::ThirdParty::TexTools::TTMPL::FromStream(
 	return res;
 }
 
-Sqex::ThirdParty::TexTools::TTMPL::TraverseCallbackResult Sqex::ThirdParty::TexTools::TTMPL::ForEachEntry(std::function<TraverseCallbackResult(Sqex::ThirdParty::TexTools::ModEntry&)> cb) {
+void Sqex::ThirdParty::TexTools::TTMPL::ForEachEntry(std::function<void(Sqex::ThirdParty::TexTools::ModEntry&)> cb) {
+	for (auto& entry : SimpleModsList)
+		cb(entry);
+
+	for (auto& modPackPage : ModPackPages)
+		for (auto& modGroup : modPackPage.ModGroups)
+			for (auto& option : modGroup.OptionList)
+				for (auto& entry : option.ModsJsons)
+					cb(entry);
+}
+
+void Sqex::ThirdParty::TexTools::TTMPL::ForEachEntry(std::function<void(const Sqex::ThirdParty::TexTools::ModEntry&)> cb) const {
+	for (auto& entry : SimpleModsList)
+		cb(entry);
+
+	for (auto& modPackPage : ModPackPages)
+		for (auto& modGroup : modPackPage.ModGroups)
+			for (auto& option : modGroup.OptionList)
+				for (auto& entry : option.ModsJsons)
+					cb(entry);
+}
+
+Sqex::ThirdParty::TexTools::TTMPL::TraverseCallbackResult Sqex::ThirdParty::TexTools::TTMPL::ForEachEntryInterruptible(std::function<TraverseCallbackResult(Sqex::ThirdParty::TexTools::ModEntry&)> cb) {
 	for (auto& entry : SimpleModsList)
 		if (Break == cb(entry))
 			return Break;
@@ -197,7 +219,7 @@ Sqex::ThirdParty::TexTools::TTMPL::TraverseCallbackResult Sqex::ThirdParty::TexT
 	return Continue;
 }
 
-Sqex::ThirdParty::TexTools::TTMPL::TraverseCallbackResult Sqex::ThirdParty::TexTools::TTMPL::ForEachEntry(std::function<TraverseCallbackResult(const Sqex::ThirdParty::TexTools::ModEntry&)> cb) const {
+Sqex::ThirdParty::TexTools::TTMPL::TraverseCallbackResult Sqex::ThirdParty::TexTools::TTMPL::ForEachEntryInterruptible(std::function<TraverseCallbackResult(const Sqex::ThirdParty::TexTools::ModEntry&)> cb) const {
 	for (const auto& entry : SimpleModsList)
 		if (Break == cb(entry))
 			return Break;

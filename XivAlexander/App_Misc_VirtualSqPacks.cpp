@@ -166,13 +166,13 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				std::get<1>(tempData.Replacements.at(pathSpec)) = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(pathSpec, EmptyScd);
 		}
 
-		Ttmps->Traverse([&](NestedTtmp& nestedTtmp) {
+		Ttmps->Traverse(false, [&](NestedTtmp& nestedTtmp) {
 			if (!nestedTtmp.Ttmp)
-				return NestedTtmp::Continue;
+				return;
 			TtmpSet& ttmp = *nestedTtmp.Ttmp;
 
 			// Step. Find placeholders to adjust
-			ttmp.ForEachEntry(false, [&](const auto& entry) {
+			ttmp.ForEachEntryInterruptible(false, [&](const auto& entry) {
 				const auto v = SqpackPath / std::format(L"{}.win32.index", entry.ToExpacDatPath());
 				const auto it = SqpackViews.find(v);
 				if (it == SqpackViews.end()) {
@@ -203,15 +203,15 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			// Step. Unregister TTMP files that no longer exist and delete associated files
 			if (!exists(ttmp.ListPath)) {
 				ttmp.TryCleanupUnusedFiles();
-				return NestedTtmp::Delete;
+				return;
 			}
-			if (!ttmp.RenameTo.empty()) {
+			if (nestedTtmp.RenameTo) {
 				try {
-					create_directories(ttmp.RenameTo);
+					create_directories(*nestedTtmp.RenameTo);
 
-					const auto renameToDirHandle = Utils::Win32::Handle::FromCreateFile(ttmp.RenameTo, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0);
+					const auto renameToDirHandle = Utils::Win32::Handle::FromCreateFile(*nestedTtmp.RenameTo, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0);
 
-					const auto newListPath = (ttmp.RenameTo / L"TTMPL.mpl").wstring();
+					const auto newListPath = (*nestedTtmp.RenameTo / L"TTMPL.mpl").wstring();
 					std::vector<char> renameInfoBuffer;
 					renameInfoBuffer.resize(sizeof FILE_RENAME_INFO + newListPath.size());
 					auto renameInfo = *reinterpret_cast<FILE_RENAME_INFO*>(&renameInfoBuffer[0]);
@@ -228,7 +228,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 						}) {
 						const auto oldPath = ttmp.ListPath.parent_path() / path;
 						if (exists(oldPath))
-							std::filesystem::rename(oldPath, ttmp.RenameTo / path);
+							std::filesystem::rename(oldPath, *nestedTtmp.RenameTo / path);
 					}
 					try {
 						remove(ttmp.ListPath.parent_path());
@@ -236,33 +236,27 @@ struct App::Misc::VirtualSqPacks::Implementation {
 						// pass
 					}
 					ttmp.ListPath = newListPath;
-					ttmp.RenameTo.clear();
+					nestedTtmp.RenameTo.reset();
 				} catch (const std::exception& e) {
 					Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
 						"Failed to move {} to {}: {}",
-						ttmp.ListPath.wstring(), ttmp.RenameTo.wstring(), e.what());
+						ttmp.ListPath.wstring(), nestedTtmp.RenameTo->wstring(), e.what());
+					nestedTtmp.RenameTo.reset();
 				}
 			}
 
-			return NestedTtmp::Continue;
+			return;
 			});
 
 		Ttmps->RemoveEmptyChildren();
 
 		// Step. Set new replacements
-		Ttmps->Traverse([&](NestedTtmp& nestedTtmp) {
-			if (!nestedTtmp.Ttmp)
-				return NestedTtmp::Continue;
-			TtmpSet& ttmp = *nestedTtmp.Ttmp;
-
-			if (!ttmp.Enabled || !ttmp.Allocated)
-				return NestedTtmp::Continue;
-
-			ttmp.ForEachEntry(true, [&](const auto& entry) {
-				ReflectUsedEntries_SetReplacementsFromTtmpEntry(tempData, ttmp, entry);
-				return Sqex::ThirdParty::TexTools::TTMPL::Continue;
-				});
-			return NestedTtmp::Continue;
+		Ttmps->Traverse(true, [&](NestedTtmp& nestedTtmp) {
+			if (nestedTtmp.Ttmp && nestedTtmp.Ttmp->Allocated) {
+				nestedTtmp.Ttmp->ForEachEntry(true, [&](const auto& entry) {
+					ReflectUsedEntries_SetReplacementsFromTtmpEntry(tempData, *nestedTtmp.Ttmp, entry);
+					});
+			}
 			});
 
 		// Step. Replace metadata files
@@ -394,6 +388,22 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		return dirs;
 	}
 
+	void SaveNestedTtmpConfig(NestedTtmp& ttmp, bool announce) {
+		const auto disableFilePath = ttmp.Path / "disable";
+		const auto choicesPath = ttmp.Path / "choices.json";
+
+		if (ttmp.Enabled && exists(disableFilePath))
+			remove(disableFilePath);
+		else if (!ttmp.Enabled && !exists(disableFilePath))
+			void(std::ofstream(disableFilePath));
+
+		if (ttmp.Ttmp)
+			Utils::SaveJsonToFile(choicesPath, ttmp.Ttmp->Choices);
+
+		if (announce)
+			ReflectUsedEntries();
+	}
+
 	void InitializeSqPacks(Window::ProgressPopupWindow& progressWindow) {
 		progressWindow.UpdateMessage(Utils::ToUtf8(Config->Runtime.GetStringRes(IDS_TITLE_DISCOVERINGFILES)));
 
@@ -515,7 +525,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 								creator.ReserveSwappableSpace(Sqex::ThirdParty::TexTools::ItemMetadata::GmpPath, 1048576);
 							}
 
-							if (Ttmps->Traverse([&](const auto& nestedTtmp) {
+							if (Ttmps->TraverseInterruptible(false, [&](const auto& nestedTtmp) {
 								if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 									return NestedTtmp::Break;
 
@@ -643,6 +653,9 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					"Failed to load choices from {}: {}", orderingFile.wstring(), e.what());
 			}
 		}
+
+		parent->Enabled = !exists(path / "disable");
+
 		parent->RemoveEmptyChildren();
 		parent->Sort();
 	}
@@ -657,10 +670,9 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			added = parent->Children->emplace_back(std::make_shared<NestedTtmp>(NestedTtmp{
 				.Path = ttmpDir,
 				.Parent = parent,
+				.Enabled = !exists(ttmpDir / "disable"),
 				.Ttmp = TtmpSet{
-					.Impl = this,
 					.Allocated = true,
-					.Enabled = !exists(ttmpDir / "disable"),
 					.ListPath = ttmplPath,
 					.List = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{Utils::Win32::Handle::FromCreateFile(ttmplPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)}),
 					.DataFile = Utils::Win32::Handle::FromCreateFile(ttmpDir / "TTMPD.mpd", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN)
@@ -723,7 +735,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 	}
 
 	void CheckTtmpAllocation(TtmpSet& item) {
-		item.ForEachEntry(false, [&](const auto& entry) {
+		item.ForEachEntryInterruptible(false, [&](const auto& entry) {
 			item.Allocated = false;
 
 			const auto it = SqpackViews.find(SqpackPath / std::format(L"{}.win32.index", entry.ToExpacDatPath()));
@@ -2035,25 +2047,9 @@ void App::Misc::VirtualSqPacks::TtmpSet::FixChoices() {
 	}
 }
 
-void App::Misc::VirtualSqPacks::TtmpSet::ApplyChanges(bool announce) {
-	const auto disableFilePath = ListPath.parent_path() / "disable";
-	const auto bDisabled = exists(disableFilePath);
-	const auto choicesPath = ListPath.parent_path() / "choices.json";
-
-	if (bDisabled && Enabled)
-		remove(disableFilePath);
-	else if (!bDisabled && !Enabled)
-		Utils::Win32::Handle::FromCreateFile(disableFilePath, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0);
-
-	Utils::SaveJsonToFile(choicesPath, Choices);
-
-	if (announce)
-		Impl->ReflectUsedEntries();
-}
-
-App::Misc::VirtualSqPacks::TtmpSet::TraverseCallbackResult App::Misc::VirtualSqPacks::TtmpSet::ForEachEntry(bool choiceOnly, std::function<TraverseCallbackResult(const Sqex::ThirdParty::TexTools::ModEntry&)> cb) const {
+App::Misc::VirtualSqPacks::TtmpSet::TraverseCallbackResult App::Misc::VirtualSqPacks::TtmpSet::ForEachEntryInterruptible(bool choiceOnly, std::function<TraverseCallbackResult(const Sqex::ThirdParty::TexTools::ModEntry&)> cb) const {
 	if (!choiceOnly)
-		return List.ForEachEntry(cb);
+		return List.ForEachEntryInterruptible(cb);
 
 	for (const auto& entry : List.SimpleModsList)
 		if (TraverseCallbackResult::Break == cb(entry))
@@ -2086,6 +2082,40 @@ App::Misc::VirtualSqPacks::TtmpSet::TraverseCallbackResult App::Misc::VirtualSqP
 		}
 	}
 	return Sqex::ThirdParty::TexTools::TTMPL::Continue;
+}
+
+void App::Misc::VirtualSqPacks::TtmpSet::ForEachEntry(bool choiceOnly, std::function<void(const Sqex::ThirdParty::TexTools::ModEntry&)> cb) const {
+	if (!choiceOnly)
+		return List.ForEachEntry(cb);
+
+	for (const auto& entry : List.SimpleModsList)
+		cb(entry);
+
+	for (size_t pageObjectIndex = 0; pageObjectIndex < List.ModPackPages.size(); ++pageObjectIndex) {
+		const auto& modGroups = List.ModPackPages[pageObjectIndex].ModGroups;
+		if (modGroups.empty())
+			continue;
+
+		const auto& pageConf = Choices.at(pageObjectIndex);
+
+		for (size_t modGroupIndex = 0; modGroupIndex < modGroups.size(); ++modGroupIndex) {
+			const auto& modGroup = modGroups[modGroupIndex];
+			if (modGroups.empty())
+				continue;
+
+			std::set<size_t> indices;
+			if (pageConf.at(modGroupIndex).is_array()) {
+				const auto tmp = pageConf.at(modGroupIndex).get<std::vector<size_t>>();
+				indices.insert(tmp.begin(), tmp.end());
+			} else
+				indices.insert(pageConf.at(modGroupIndex).get<size_t>());
+
+			for (const auto optionIndex : indices) {
+				for (const auto& entry : modGroup.OptionList[optionIndex].ModsJsons)
+					cb(entry);
+			}
+		}
+	}
 }
 
 void App::Misc::VirtualSqPacks::TtmpSet::TryCleanupUnusedFiles() {
@@ -2167,12 +2197,36 @@ std::shared_ptr<App::Misc::VirtualSqPacks::NestedTtmp> App::Misc::VirtualSqPacks
 	return m_pImpl->Ttmps;
 }
 
-App::Misc::VirtualSqPacks::NestedTtmp::TraverseCallbackResult App::Misc::VirtualSqPacks::NestedTtmp::Traverse(const std::function<TraverseCallbackResult(NestedTtmp&)>&cb) {
+void App::Misc::VirtualSqPacks::ApplyTtmpChanges(NestedTtmp& nestedTtmp, bool announce) {
+	return m_pImpl->SaveNestedTtmpConfig(nestedTtmp, announce);
+}
+
+void App::Misc::VirtualSqPacks::NestedTtmp::Traverse(bool traverseEnabledOnly, const std::function<void(NestedTtmp&)>& cb) {
+	if (traverseEnabledOnly && !Enabled)
+		return;
+	cb(*this);
+	if (Children)
+		for (auto& t : *Children)
+			t->Traverse(traverseEnabledOnly, cb);
+}
+
+void App::Misc::VirtualSqPacks::NestedTtmp::Traverse(bool traverseEnabledOnly, const std::function<void(const NestedTtmp&)>& cb) const {
+	if (traverseEnabledOnly && !Enabled)
+		return;
+	cb(*this);
+	if (Children)
+		for (const auto& t : *Children)
+			const_cast<const NestedTtmp*>(t.get())->Traverse(traverseEnabledOnly, cb);
+}
+
+App::Misc::VirtualSqPacks::NestedTtmp::TraverseCallbackResult App::Misc::VirtualSqPacks::NestedTtmp::TraverseInterruptible(bool traverseEnabledOnly, const std::function<TraverseCallbackResult(NestedTtmp&)>&cb) {
+	if (traverseEnabledOnly && !Enabled)
+		return Continue;
 	if (const auto res = cb(*this); res != Continue)
 		return res;
 	if (Children) {
 		for (auto it = Children->begin(); it != Children->end();) {
-			switch ((*it)->Traverse(cb)) {
+			switch ((*it)->TraverseInterruptible(traverseEnabledOnly, cb)) {
 				case Break:
 					return Break;
 				case Delete:
@@ -2187,12 +2241,14 @@ App::Misc::VirtualSqPacks::NestedTtmp::TraverseCallbackResult App::Misc::Virtual
 	return Continue;
 }
 
-App::Misc::VirtualSqPacks::NestedTtmp::TraverseCallbackResult App::Misc::VirtualSqPacks::NestedTtmp::Traverse(const std::function<TraverseCallbackResult(const NestedTtmp&)>&cb) const {
+App::Misc::VirtualSqPacks::NestedTtmp::TraverseCallbackResult App::Misc::VirtualSqPacks::NestedTtmp::TraverseInterruptible(bool traverseEnabledOnly, const std::function<TraverseCallbackResult(const NestedTtmp&)>&cb) const {
+	if (traverseEnabledOnly && !Enabled)
+		return Continue;
 	if (const auto res = cb(*this); res != Continue)
 		return res;
 	if (Children) {
 		for (const auto& t : *Children) {
-			switch (const_cast<const NestedTtmp*>(t.get())->Traverse(cb)) {
+			switch (const_cast<const NestedTtmp*>(t.get())->TraverseInterruptible(traverseEnabledOnly, cb)) {
 				case Break:
 					return Break;
 				case Delete:
@@ -2206,12 +2262,8 @@ App::Misc::VirtualSqPacks::NestedTtmp::TraverseCallbackResult App::Misc::Virtual
 
 size_t App::Misc::VirtualSqPacks::NestedTtmp::Count() const {
 	size_t i = Ttmp.has_value() ? 1 : 0;
-	Traverse([&i](const auto&) { ++i; return Continue; });
+	Traverse(false, [&i](const auto&) { ++i; });
 	return i;
-}
-
-bool App::Misc::VirtualSqPacks::NestedTtmp::IsAnythingEnabled() const {
-	return Traverse([](const auto& t) { return t.Ttmp && t.Ttmp->Enabled ? Break : Continue; }) == Break;
 }
 
 void App::Misc::VirtualSqPacks::NestedTtmp::Sort() {

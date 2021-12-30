@@ -63,7 +63,7 @@ namespace App::Window {
 		void RepopulateMenu_AdditionalSqpackRootDirectories(HMENU hParentMenu);
 		void RepopulateMenu_ExdfTransformationRules(HMENU hParentMenu);
 		void RepopulateMenu_UpgradeMusicQuality(HMENU hParentMenu);
-		void RepopulateMenu_Modding(HMENU hParentMenu);
+		void RepopulateMenu_Ttmp(HMENU hParentMenu, HMENU hTtmpMenu);
 		void SetMenuStates() const;
 		void RegisterTrayIcon();
 		void RemoveTrayIcon();

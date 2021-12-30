@@ -803,7 +803,7 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 	m_data.resize(Align(m_data.size()));
 	
 	auto& fileEntryHeader = *reinterpret_cast<SqData::FileEntryHeader*>(&m_data[0]);
-	fileEntryHeader.DataAlignedUnitCount = Align<uint64_t, uint32_t>(m_data.size() - entryHeader.HeaderSize);
+	fileEntryHeader.DataAlignedUnitCount = Align<uint64_t, uint32_t>(m_data.size() - entryHeader.HeaderSize).Count;
 	fileEntryHeader.AlignedUnitAllocationCount = fileEntryHeader.DataAlignedUnitCount;
 }
 
