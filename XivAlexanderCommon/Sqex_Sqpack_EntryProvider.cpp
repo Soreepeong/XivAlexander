@@ -33,7 +33,7 @@ const Sqex::Sqpack::EmptyEntryProvider& Sqex::Sqpack::EmptyEntryProvider::Instan
 Sqex::Sqpack::LazyFileOpeningEntryProvider::LazyFileOpeningEntryProvider(EntryPathSpec spec, std::filesystem::path path, bool openImmediately)
 	: EntryProvider(std::move(spec))
 	, m_path(std::move(path))
-	, m_stream(std::make_shared<FileRandomAccessStream>(m_path, 0, SIZE_MAX, openImmediately))
+	, m_stream(std::make_shared<FileRandomAccessStream>(m_path, 0, UINT64_MAX, openImmediately))
 	, m_initializationMutex(std::make_unique<std::mutex>())
 	, m_originalSize(m_stream->StreamSize()) {
 }
