@@ -8,6 +8,7 @@
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="Test_Excel.cpp" />
     <ClCompile Include="Test_Sound.cpp" />
+    <ClCompile Include="Test_TtmpMeta.cpp" />
     <ClCompile Include="Test.cpp" />
   </ItemGroup>
   <ItemGroup>

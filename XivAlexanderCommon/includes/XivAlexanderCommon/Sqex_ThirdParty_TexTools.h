@@ -80,6 +80,14 @@ namespace Sqex::ThirdParty::TexTools {
 		std::vector<ModEntry> SimpleModsList;
 
 		static TTMPL FromStream(const RandomAccessStream& stream);
+
+		enum TraverseCallbackResult {
+			Continue,
+			Break,
+		};
+
+		TraverseCallbackResult ForEachEntry(std::function<TraverseCallbackResult(Sqex::ThirdParty::TexTools::ModEntry&)> cb);
+		TraverseCallbackResult ForEachEntry(std::function<TraverseCallbackResult(const Sqex::ThirdParty::TexTools::ModEntry&)> cb) const;
 	};
 	void to_json(nlohmann::json&, const TTMPL&);
 	void from_json(const nlohmann::json&, TTMPL&);

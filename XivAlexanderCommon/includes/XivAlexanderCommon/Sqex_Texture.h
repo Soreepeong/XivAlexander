@@ -56,27 +56,27 @@ namespace Sqex::Texture {
 
 	struct RGBA5551 {
 		static constexpr size_t ChannelCount = 4;
-		static constexpr uint8_t MaxR = 31;
-		static constexpr uint8_t MaxG = 31;
-		static constexpr uint8_t MaxB = 31;
-		static constexpr uint8_t MaxA = 1;
+		static constexpr uint16_t MaxR = 31;
+		static constexpr uint16_t MaxG = 31;
+		static constexpr uint16_t MaxB = 31;
+		static constexpr uint16_t MaxA = 1;
 
-		uint8_t R : 5;
-		uint8_t G : 5;
-		uint8_t B : 5;
-		uint8_t A : 1;  // Actually opacity
+		uint16_t R : 5;
+		uint16_t G : 5;
+		uint16_t B : 5;
+		uint16_t A : 1;  // Actually opacity
 
 		void SetFrom(uint32_t r, uint32_t g, uint32_t b) {
-			R = static_cast<uint8_t>(r);
-			G = static_cast<uint8_t>(g);
-			B = static_cast<uint8_t>(b);
+			R = static_cast<uint16_t>(r);
+			G = static_cast<uint16_t>(g);
+			B = static_cast<uint16_t>(b);
 		}
 
 		void SetFrom(uint32_t r, uint32_t g, uint32_t b, uint32_t a) {
-			R = static_cast<uint8_t>(r);
-			G = static_cast<uint8_t>(g);
-			B = static_cast<uint8_t>(b);
-			A = static_cast<uint8_t>(a);
+			R = static_cast<uint16_t>(r);
+			G = static_cast<uint16_t>(g);
+			B = static_cast<uint16_t>(b);
+			A = static_cast<uint16_t>(a);
 		}
 	};
 

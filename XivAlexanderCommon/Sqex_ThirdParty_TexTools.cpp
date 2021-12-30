@@ -14,6 +14,15 @@ T JsonValueOrDefault(const nlohmann::json& json, const char* key, T defaultValue
 	return defaultValue;
 }
 
+void Sqex::ThirdParty::TexTools::to_json(nlohmann::json& j, const ModPackEntry& p) {
+	j = nlohmann::json::object({
+		{"Name", p.Name},
+		{"Author", p.Author},
+		{"Version", p.Version},
+		{"Url", p.Url},
+		});
+}
+
 void Sqex::ThirdParty::TexTools::from_json(const nlohmann::json& j, ModPackEntry& p) {
 	if (j.is_null())
 		return;
@@ -24,6 +33,20 @@ void Sqex::ThirdParty::TexTools::from_json(const nlohmann::json& j, ModPackEntry
 	p.Author = JsonValueOrDefault(j, "Author", ""s, ""s);
 	p.Version = JsonValueOrDefault(j, "Version", ""s, ""s);
 	p.Url = JsonValueOrDefault(j, "Url", ""s, ""s);
+}
+
+void Sqex::ThirdParty::TexTools::to_json(nlohmann::json& j, const ModEntry& p) {
+	j = nlohmann::json::object({
+		{"Name", p.Name},
+		{"Category", p.Category},
+		{"FullPath", p.FullPath},
+		{"ModOffset", p.ModOffset},
+		{"ModSize", p.ModSize},
+		{"DatFile", p.DatFile},
+		{"IsDefault", p.IsDefault},
+		});
+	if (p.ModPack)
+		j["ModPackEntry"] = *p.ModPack;
 }
 
 void Sqex::ThirdParty::TexTools::from_json(const nlohmann::json& j, ModEntry& p) {
@@ -41,6 +64,18 @@ void Sqex::ThirdParty::TexTools::from_json(const nlohmann::json& j, ModEntry& p)
 		p.ModPack = it->get<ModPackEntry>();
 }
 
+void Sqex::ThirdParty::TexTools::ModPackPage::to_json(nlohmann::json& j, const Option& p) {
+	j = nlohmann::json::object({
+		{"Name", p.Name},
+		{"Description", p.Description},
+		{"ImagePath", p.ImagePath},
+		{"ModsJsons", p.ModsJsons},
+		{"GroupName", p.GroupName},
+		{"SelectionType", p.SelectionType},
+		{"IsChecked", p.IsChecked},
+		});
+}
+
 void Sqex::ThirdParty::TexTools::ModPackPage::from_json(const nlohmann::json& j, Option& p) {
 	if (!j.is_object())
 		throw CorruptDataException("Option must be an object");
@@ -55,6 +90,14 @@ void Sqex::ThirdParty::TexTools::ModPackPage::from_json(const nlohmann::json& j,
 	p.IsChecked = JsonValueOrDefault(j, "IsChecked", false, false);
 }
 
+void Sqex::ThirdParty::TexTools::ModPackPage::to_json(nlohmann::json& j, const ModGroup& p) {
+	j = nlohmann::json::object({
+		{"GroupName", p.GroupName},
+		{"SelectionType", p.SelectionType},
+		{"OptionList", p.OptionList},
+		});
+}
+
 void Sqex::ThirdParty::TexTools::ModPackPage::from_json(const nlohmann::json& j, ModGroup& p) {
 	if (!j.is_object())
 		throw CorruptDataException("Option must be an object");
@@ -65,6 +108,13 @@ void Sqex::ThirdParty::TexTools::ModPackPage::from_json(const nlohmann::json& j,
 		p.OptionList = it->get<decltype(p.OptionList)>();
 }
 
+void Sqex::ThirdParty::TexTools::ModPackPage::to_json(nlohmann::json& j, const Page& p) {
+	j = nlohmann::json::object({
+		{"PageIndex", p.PageIndex},
+		{"ModGroups", p.ModGroups},
+		});
+}
+
 void Sqex::ThirdParty::TexTools::ModPackPage::from_json(const nlohmann::json& j, Page& p) {
 	if (!j.is_object())
 		throw CorruptDataException("Option must be an object");
@@ -72,6 +122,37 @@ void Sqex::ThirdParty::TexTools::ModPackPage::from_json(const nlohmann::json& j,
 	p.PageIndex = JsonValueOrDefault(j, "PageIndex", 0, 0);
 	if (const auto it = j.find("ModGroups"); it != j.end() && !it->is_null())
 		p.ModGroups = it->get<decltype(p.ModGroups)>();
+}
+
+void Sqex::ThirdParty::TexTools::to_json(nlohmann::json& j, const TTMPL& p) {
+	j = nlohmann::json::object({
+		{"MinimumFrameworkVersion", p.MinimumFrameworkVersion},
+		{"FormatVersion", p.FormatVersion},
+		{"Name", p.Name},
+		{"Author", p.Author},
+		{"Version", p.Version},
+		{"Description", p.Description},
+		{"Url", p.Url},
+		{"ModPackPages", p.ModPackPages},
+		{"SimpleModsList", p.SimpleModsList},
+		});
+}
+
+void Sqex::ThirdParty::TexTools::from_json(const nlohmann::json& j, TTMPL& p) {
+	if (!j.is_object())
+		throw CorruptDataException("TTMPL must be an object");
+
+	p.MinimumFrameworkVersion = JsonValueOrDefault(j, "MinimumFrameworkVersion", ""s, ""s);
+	p.FormatVersion = JsonValueOrDefault(j, "FormatVersion", ""s, ""s);
+	p.Name = JsonValueOrDefault(j, "Name", ""s, ""s);
+	p.Author = JsonValueOrDefault(j, "Author", ""s, ""s);
+	p.Version = JsonValueOrDefault(j, "Version", ""s, ""s);
+	p.Description = JsonValueOrDefault(j, "Description", ""s, ""s);
+	p.Url = JsonValueOrDefault(j, "Url", ""s, ""s);
+	if (const auto it = j.find("ModPackPages"); it != j.end() && !it->is_null())
+		p.ModPackPages = it->get<decltype(p.ModPackPages)>();
+	if (const auto it = j.find("SimpleModsList"); it != j.end() && !it->is_null())
+		p.SimpleModsList = it->get<decltype(p.SimpleModsList)>();
 }
 
 Sqex::ThirdParty::TexTools::TTMPL Sqex::ThirdParty::TexTools::TTMPL::FromStream(const RandomAccessStream& stream) {
@@ -101,21 +182,34 @@ Sqex::ThirdParty::TexTools::TTMPL Sqex::ThirdParty::TexTools::TTMPL::FromStream(
 	return res;
 }
 
-void Sqex::ThirdParty::TexTools::from_json(const nlohmann::json& j, TTMPL& p) {
-	if (!j.is_object())
-		throw CorruptDataException("TTMPL must be an object");
+Sqex::ThirdParty::TexTools::TTMPL::TraverseCallbackResult Sqex::ThirdParty::TexTools::TTMPL::ForEachEntry(std::function<TraverseCallbackResult(Sqex::ThirdParty::TexTools::ModEntry&)> cb) {
+	for (auto& entry : SimpleModsList)
+		if (Break == cb(entry))
+			return Break;
 
-	p.MinimumFrameworkVersion = JsonValueOrDefault(j, "MinimumFrameworkVersion", ""s, ""s);
-	p.FormatVersion = JsonValueOrDefault(j, "FormatVersion", ""s, ""s);
-	p.Name = JsonValueOrDefault(j, "Name", ""s, ""s);
-	p.Author = JsonValueOrDefault(j, "Author", ""s, ""s);
-	p.Version = JsonValueOrDefault(j, "Version", ""s, ""s);
-	p.Description = JsonValueOrDefault(j, "Description", ""s, ""s);
-	p.Url = JsonValueOrDefault(j, "Url", ""s, ""s);
-	if (const auto it = j.find("ModPackPages"); it != j.end() && !it->is_null())
-		p.ModPackPages = it->get<decltype(p.ModPackPages)>();
-	if (const auto it = j.find("SimpleModsList"); it != j.end() && !it->is_null())
-		p.SimpleModsList = it->get<decltype(p.SimpleModsList)>();
+	for (auto& modPackPage : ModPackPages)
+		for (auto& modGroup : modPackPage.ModGroups)
+			for (auto& option : modGroup.OptionList)
+				for (auto& entry : option.ModsJsons)
+					if (Break == cb(entry))
+						return Break;
+
+	return Continue;
+}
+
+Sqex::ThirdParty::TexTools::TTMPL::TraverseCallbackResult Sqex::ThirdParty::TexTools::TTMPL::ForEachEntry(std::function<TraverseCallbackResult(const Sqex::ThirdParty::TexTools::ModEntry&)> cb) const {
+	for (const auto& entry : SimpleModsList)
+		if (Break == cb(entry))
+			return Break;
+
+	for (const auto& modPackPage : ModPackPages)
+		for (const auto& modGroup : modPackPage.ModGroups)
+			for (const auto& option : modGroup.OptionList)
+				for (const auto& entry : option.ModsJsons)
+					if (Break == cb(entry))
+						return Break;
+
+	return Continue;
 }
 
 std::string Sqex::ThirdParty::TexTools::ModEntry::ToExpacDatPath() const {
@@ -153,7 +247,7 @@ const srell::u8cregex Sqex::ThirdParty::TexTools::ItemMetadata::HousingMetaPathT
 	")\\.meta$"
 	, srell::u8cregex::icase);
 
-Sqex::ThirdParty::TexTools::ItemMetadata::ItemMetadata(const RandomAccessStream& stream) 
+Sqex::ThirdParty::TexTools::ItemMetadata::ItemMetadata(const RandomAccessStream& stream)
 	: Data(stream.ReadStreamIntoVector<uint8_t>(0))
 	, Version(*reinterpret_cast<const uint32_t*>(&Data[0]))
 	, Path(reinterpret_cast<const char*>(&Data[sizeof Version]))

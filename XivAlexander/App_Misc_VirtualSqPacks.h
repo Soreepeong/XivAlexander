@@ -49,10 +49,7 @@ namespace App::Misc {
 			void FixChoices();
 			void ApplyChanges(bool announce = true);
 
-			enum TraverseCallbackResult {
-				Continue,
-				Break,
-			};
+			using TraverseCallbackResult = Sqex::ThirdParty::TexTools::TTMPL::TraverseCallbackResult;
 
 			TraverseCallbackResult ForEachEntry(bool choiceOnly, std::function<TraverseCallbackResult(const Sqex::ThirdParty::TexTools::ModEntry&)> cb) const;
 

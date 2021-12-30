@@ -16,15 +16,27 @@ Sqex::Texture::ModifiableTextureStream::ModifiableTextureStream(Format type, uin
 	} {
 }
 
+Sqex::Texture::ModifiableTextureStream::ModifiableTextureStream(const std::shared_ptr<RandomAccessStream>& stream)
+	: m_header{ stream->ReadStream<Texture::Header>(0) } {
+	const auto mipmapLocators = stream->ReadStreamIntoVector<uint32_t>(sizeof m_header, m_header.MipmapCount);
+	for (size_t i = 0; i < mipmapLocators.size(); ++i)
+		AppendMipmap(std::make_shared<WrappedMipmapStream>(m_header.Width >> i, m_header.Height >> i, m_header.Type,
+			std::make_shared<Sqex::RandomAccessStreamPartialView>(stream, mipmapLocators[i],
+				RawDataLength(m_header.Type, m_header.Width >> i, m_header.Height >> i))
+			));
+}
+
 Sqex::Texture::ModifiableTextureStream::~ModifiableTextureStream() = default;
 
-void Sqex::Texture::ModifiableTextureStream::AppendMipmap(std::shared_ptr<MemoryBackedMipmap> mipmap) {
+void Sqex::Texture::ModifiableTextureStream::AppendMipmap(std::shared_ptr<MipmapStream> mipmap) {
 	if (mipmap->Width() != m_header.Width >> m_mipmaps.size())
 		throw std::invalid_argument("invalid mipmap width");
 	if (mipmap->Height() != m_header.Height >> m_mipmaps.size())
 		throw std::invalid_argument("invalid mipmap height");
 	if (mipmap->Type() != m_header.Type)
 		throw std::invalid_argument("invalid mipmap type");
+	if (mipmap->StreamSize() != RawDataLength(mipmap->Type(), mipmap->Width(), mipmap->Height()))
+		throw std::invalid_argument("invalid mipmap size");
 	m_mipmaps.emplace_back(std::move(mipmap));
 	m_header.MipmapCount = static_cast<uint16_t>(m_mipmaps.size());
 
@@ -32,10 +44,11 @@ void Sqex::Texture::ModifiableTextureStream::AppendMipmap(std::shared_ptr<Memory
 	m_mipmapOffsets.push_back(static_cast<uint32_t>(Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes())));
 	for (size_t i = 0; i < m_mipmaps.size() - 1; ++i)
 		m_mipmapOffsets.push_back(static_cast<uint32_t>(m_mipmapOffsets[i] + Align(m_mipmaps[i]->StreamSize()).Alloc));
+	m_header.HeaderSize = Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes());
 }
 
 void Sqex::Texture::ModifiableTextureStream::TruncateMipmap(size_t count) {
-	if (m_mipmaps.size() > count)
+	if (m_mipmaps.size() < count)
 		throw std::invalid_argument("only truncation is supported");
 	m_mipmaps.resize(count);
 	m_mipmapOffsets.resize(count);
@@ -113,19 +126,19 @@ uint64_t Sqex::Texture::ModifiableTextureStream::ReadStreamPartial(uint64_t offs
 	relativeOffset -= *it;
 
 	for (auto i = it - m_mipmapOffsets.begin(); it != m_mipmapOffsets.end(); ++it, ++i) {
-		const auto view = m_mipmaps[i]->View<uint8_t>();
-		const auto padInfo = Align(view.size_bytes());
-		if (relativeOffset < view.size_bytes()) {
-			const auto src = view.subspan(static_cast<size_t>(relativeOffset));
-			const auto available = std::min(out.size_bytes(), src.size_bytes());
-			std::copy_n(src.begin(), available, out.begin());
+		const auto& mipmapStream = *m_mipmaps[i];
+
+		const auto padInfo = Align(mipmapStream.StreamSize());
+		if (relativeOffset < mipmapStream.StreamSize()) {
+			const auto available = std::min(out.size_bytes(), mipmapStream.StreamSize() - relativeOffset);
+			mipmapStream.ReadStream(relativeOffset, out.data(), available);
 			out = out.subspan(available);
 			relativeOffset = 0;
 
 			if (out.empty())
 				return length;
 		} else
-			relativeOffset -= view.size_bytes();
+			relativeOffset -= mipmapStream.StreamSize();
 
 		if (const auto padSize = padInfo.Pad;
 			relativeOffset < padSize) {

@@ -58,6 +58,8 @@ namespace Sqex::Sqpack {
 		}
 
 		std::string DescribeState() const override { return "EmptyEntryProvider"; }
+
+		static const EmptyEntryProvider& Instance();
 	};
 
 	class LazyFileOpeningEntryProvider : public EntryProvider {
@@ -273,7 +275,7 @@ namespace Sqex::Sqpack {
 		auto SwapStream(std::shared_ptr<const EntryProvider> newStream = nullptr) {
 			if (newStream && newStream->StreamSize() > m_reservedSize)
 				throw std::invalid_argument("Provided stream requires more space than reserved size");
-			auto oldStream = std::move(m_stream);
+			auto oldStream{ std::move(m_stream) };
 			m_stream = std::move(newStream);
 			return oldStream;
 		}

@@ -33,3 +33,4 @@
 #include <dwrite_3.h>
 
 #include <XivAlexanderCommon/XaFormat.h>
+#include <XivAlexanderCommon/XaMisc.h>

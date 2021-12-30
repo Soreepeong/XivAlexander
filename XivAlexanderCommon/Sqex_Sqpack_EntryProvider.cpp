@@ -7,10 +7,10 @@
 uint64_t Sqex::Sqpack::EmptyEntryProvider::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {
 	if (offset < sizeof SqData::FileEntryHeader) {
 		const auto header = SqData::FileEntryHeader{
-			.HeaderSize = sizeof SqData::FileEntryHeader,
+			.HeaderSize = static_cast<uint32_t>(Sqex::Align(sizeof SqData::FileEntryHeader).Alloc),
 			.Type = SqData::FileEntryType::Binary,
 			.DecompressedSize = 0,
-			.Unknown1 = 0,
+			.DataAlignedUnitCount = 0,
 			.AlignedUnitAllocationCount = 0,
 			.BlockCountOrVersion = 0,
 		};
@@ -23,6 +23,11 @@ uint64_t Sqex::Sqpack::EmptyEntryProvider::ReadStreamPartial(uint64_t offset, vo
 	}
 
 	return 0;
+}
+
+const Sqex::Sqpack::EmptyEntryProvider& Sqex::Sqpack::EmptyEntryProvider::Instance() {
+	static const EmptyEntryProvider s_instance{ EntryPathSpec() };
+	return s_instance;
 }
 
 Sqex::Sqpack::LazyFileOpeningEntryProvider::LazyFileOpeningEntryProvider(EntryPathSpec spec, std::filesystem::path path, bool openImmediately)
@@ -52,7 +57,25 @@ uint64_t Sqex::Sqpack::LazyFileOpeningEntryProvider::StreamSize() const {
 
 uint64_t Sqex::Sqpack::LazyFileOpeningEntryProvider::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {
 	const_cast<LazyFileOpeningEntryProvider*>(this)->Resolve();
-	return ReadStreamPartial(*m_stream, offset, buf, length);
+	const auto size = StreamSize(*m_stream);
+	const auto estimate = MaxPossibleStreamSize();
+	if (estimate == size || offset + length <= size)
+		return ReadStreamPartial(*m_stream, offset, buf, length);
+
+	if (offset >= estimate)
+		return 0;
+	if (offset + length > estimate)
+		length = estimate - offset;
+
+	auto target = std::span(static_cast<char*>(buf), static_cast<size_t>(length));
+	if (offset < size) {
+		const auto read = ReadStreamPartial(*m_stream, offset, &target[0], std::min<uint64_t>(size - offset, target.size()));
+		target = target.subspan(read);
+	}
+	// size ... estimate
+	const auto remaining = std::min<uint64_t>(estimate - size, target.size());
+	std::ranges::fill(target.subspan(0, remaining), 0);
+	return length - (target.size() - remaining);
 }
 
 void Sqex::Sqpack::LazyFileOpeningEntryProvider::Resolve() {
@@ -79,14 +102,15 @@ void Sqex::Sqpack::OnTheFlyBinaryEntryProvider::Initialize(const RandomAccessStr
 		.HeaderSize = static_cast<uint32_t>(sizeof m_header + blockCount * sizeof SqData::BlockHeaderLocator),
 		.Type = SqData::FileEntryType::Binary,
 		.DecompressedSize = static_cast<uint32_t>(m_originalSize),
-		.Unknown1 = 0,
+		.DataAlignedUnitCount = 0,
 		.AlignedUnitAllocationCount = 0,
 		.BlockCountOrVersion = blockCount,
 	};
 	const auto align = Align(m_header.HeaderSize);
 	m_padBeforeData = align.Pad;
 	m_header.HeaderSize = align;
-	m_header.AlignedUnitAllocationCount = Align<uint64_t, uint32_t>(MaxPossibleStreamSize()).Count;
+	m_header.DataAlignedUnitCount = Align<uint64_t, uint32_t>(MaxPossibleStreamSize() - m_header.HeaderSize).Count;
+	m_header.AlignedUnitAllocationCount = m_header.DataAlignedUnitCount;
 }
 
 uint64_t Sqex::Sqpack::OnTheFlyBinaryEntryProvider::MaxPossibleStreamSize() const {
@@ -205,7 +229,7 @@ void Sqex::Sqpack::MemoryBinaryEntryProvider::Initialize(const RandomAccessStrea
 		.HeaderSize = sizeof entryHeader,
 		.Type = SqData::FileEntryType::Binary,
 		.DecompressedSize = rawSize,
-		.Unknown1 = 0,
+		.DataAlignedUnitCount = 0,
 		.AlignedUnitAllocationCount = 0,
 		.BlockCountOrVersion = 0,
 	};
@@ -254,7 +278,9 @@ void Sqex::Sqpack::MemoryBinaryEntryProvider::Initialize(const RandomAccessStrea
 		m_data.resize(entryHeader.HeaderSize, 0);
 
 	m_data.resize(Align(m_data.size()));
-	reinterpret_cast<SqData::FileEntryHeader*>(&m_data[0])->AlignedUnitAllocationCount = Align<uint64_t, uint32_t>(m_data.size()).Count;
+	auto& fileEntryHeader = *reinterpret_cast<SqData::FileEntryHeader*>(&m_data[0]);
+	fileEntryHeader.DataAlignedUnitCount = Align<uint64_t, uint32_t>(m_data.size() - fileEntryHeader.HeaderSize).Count;
+	fileEntryHeader.AlignedUnitAllocationCount = fileEntryHeader.DataAlignedUnitCount;
 }
 
 uint64_t Sqex::Sqpack::MemoryBinaryEntryProvider::ReadStreamPartial(const RandomAccessStream& stream, uint64_t offset, void* buf, uint64_t length) const {
@@ -273,7 +299,7 @@ void Sqex::Sqpack::OnTheFlyModelEntryProvider::Initialize(const RandomAccessStre
 	auto baseFileOffset = static_cast<uint32_t>(sizeof fileHeader);
 	m_header.Entry.Type = SqData::FileEntryType::Model;
 	m_header.Entry.DecompressedSize = static_cast<uint32_t>(stream.StreamSize());
-	m_header.Entry.Unknown1 = 0;
+	m_header.Entry.DataAlignedUnitCount = 0;
 	m_header.Entry.AlignedUnitAllocationCount = 0;
 	m_header.Entry.BlockCountOrVersion = fileHeader.Version;
 
@@ -355,7 +381,8 @@ void Sqex::Sqpack::OnTheFlyModelEntryProvider::Initialize(const RandomAccessStre
 		throw std::runtime_error("Bad model file (incomplete data)");
 
 	m_header.Entry.HeaderSize = Align(static_cast<uint32_t>(sizeof m_header + std::span(m_blockDataSizes).size_bytes()));
-	m_header.Entry.AlignedUnitAllocationCount = Align<uint64_t, uint32_t>(MaxPossibleStreamSize()).Count;
+	m_header.Entry.DataAlignedUnitCount = Align<uint64_t, uint32_t>(MaxPossibleStreamSize() - m_header.Entry.HeaderSize).Count;
+	m_header.Entry.AlignedUnitAllocationCount = m_header.Entry.DataAlignedUnitCount;
 }
 
 uint64_t Sqex::Sqpack::OnTheFlyModelEntryProvider::MaxPossibleStreamSize() const {
@@ -489,7 +516,7 @@ void Sqex::Sqpack::OnTheFlyTextureEntryProvider::Initialize(const RandomAccessSt
 		.HeaderSize = sizeof SqData::FileEntryHeader,
 		.Type = SqData::FileEntryType::Texture,
 		.DecompressedSize = static_cast<uint32_t>(stream.StreamSize()),
-		.Unknown1 = 0,
+		.DataAlignedUnitCount = 0,
 		.AlignedUnitAllocationCount = 0,
 	};
 
@@ -542,6 +569,7 @@ void Sqex::Sqpack::OnTheFlyTextureEntryProvider::Initialize(const RandomAccessSt
 	entryHeader.HeaderSize = entryHeader.HeaderSize + static_cast<uint32_t>(
 		std::span(m_blockLocators).size_bytes() +
 		std::span(m_subBlockSizes).size_bytes());
+	entryHeader.HeaderSize = Sqex::Align(entryHeader.HeaderSize).Alloc;
 
 	m_mergedHeader.insert(m_mergedHeader.end(),
 		reinterpret_cast<char*>(&entryHeader),
@@ -552,6 +580,7 @@ void Sqex::Sqpack::OnTheFlyTextureEntryProvider::Initialize(const RandomAccessSt
 	m_mergedHeader.insert(m_mergedHeader.end(),
 		reinterpret_cast<char*>(&m_subBlockSizes.front()),
 		reinterpret_cast<char*>(&m_subBlockSizes.back() + 1));
+	m_mergedHeader.resize(entryHeader.HeaderSize);
 	m_mergedHeader.insert(m_mergedHeader.end(),
 		m_texHeaderBytes.begin(),
 		m_texHeaderBytes.end());
@@ -560,7 +589,10 @@ void Sqex::Sqpack::OnTheFlyTextureEntryProvider::Initialize(const RandomAccessSt
 	for (const auto mipmapSize : m_mipmapSizes) {
 		m_size += (mipmapSize + BlockDataSize - 1) / BlockDataSize * sizeof SqData::BlockHeader + mipmapSize;
 	}
-	reinterpret_cast<SqData::FileEntryHeader*>(&m_mergedHeader[0])->AlignedUnitAllocationCount = Align<uint64_t, uint32_t>(MaxPossibleStreamSize()).Count;
+
+	auto& fileEntryHeader = *reinterpret_cast<SqData::FileEntryHeader*>(&m_mergedHeader[0]);
+	fileEntryHeader.DataAlignedUnitCount = Align<uint64_t, uint32_t>(m_size - fileEntryHeader.HeaderSize).Count;
+	fileEntryHeader.AlignedUnitAllocationCount = fileEntryHeader.DataAlignedUnitCount;
 }
 
 uint64_t Sqex::Sqpack::OnTheFlyTextureEntryProvider::MaxPossibleStreamSize() const {
@@ -676,7 +708,7 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 		.HeaderSize = sizeof SqData::FileEntryHeader,
 		.Type = SqData::FileEntryType::Texture,
 		.DecompressedSize = static_cast<uint32_t>(stream.StreamSize()),
-		.Unknown1 = 0,
+		.DataAlignedUnitCount = 0,
 		.AlignedUnitAllocationCount = 0,
 	};
 
@@ -749,9 +781,9 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 		loc.FirstBlockOffset = loc.FirstBlockOffset + static_cast<uint32_t>(std::span(texHeaderBytes).size_bytes());
 	}
 
-	entryHeader.HeaderSize = entryHeader.HeaderSize + static_cast<uint32_t>(
+	entryHeader.HeaderSize = Sqex::Align(entryHeader.HeaderSize + static_cast<uint32_t>(
 		std::span(blockLocators).size_bytes() +
-		std::span(subBlockSizes).size_bytes());
+		std::span(subBlockSizes).size_bytes()));
 
 	m_data.insert(m_data.end(),
 		reinterpret_cast<char*>(&entryHeader),
@@ -762,13 +794,17 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 	m_data.insert(m_data.end(),
 		reinterpret_cast<char*>(&subBlockSizes.front()),
 		reinterpret_cast<char*>(&subBlockSizes.back() + 1));
+	m_data.resize(entryHeader.HeaderSize);
 	m_data.insert(m_data.end(),
 		texHeaderBytes.begin(),
 		texHeaderBytes.end());
 	m_data.insert(m_data.end(), entryBody.begin(), entryBody.end());
 
 	m_data.resize(Align(m_data.size()));
-	reinterpret_cast<SqData::FileEntryHeader*>(&m_data[0])->AlignedUnitAllocationCount = Align<uint64_t, uint32_t>(m_data.size()).Count;
+	
+	auto& fileEntryHeader = *reinterpret_cast<SqData::FileEntryHeader*>(&m_data[0]);
+	fileEntryHeader.DataAlignedUnitCount = Align<uint64_t, uint32_t>(m_data.size() - entryHeader.HeaderSize);
+	fileEntryHeader.AlignedUnitAllocationCount = fileEntryHeader.DataAlignedUnitCount;
 }
 
 uint64_t Sqex::Sqpack::MemoryTextureEntryProvider::ReadStreamPartial(const RandomAccessStream& stream, uint64_t offset, void* buf, uint64_t length) const {
@@ -786,28 +822,18 @@ uint64_t Sqex::Sqpack::HotSwappableEntryProvider::ReadStreamPartial(uint64_t off
 	if (offset + length > m_reservedSize)
 		length = m_reservedSize - offset;
 
-	const auto target = std::span(static_cast<uint8_t*>(buf), static_cast<SSIZE_T>(length));
-	const auto underlyingStreamLength = m_stream
-		? m_stream->StreamSize()
-		: (m_baseStream
-			? m_baseStream->StreamSize()
-			: EmptyEntryProvider::StreamSize());
+	auto target = std::span(static_cast<uint8_t*>(buf), static_cast<SSIZE_T>(length));
+	const auto& underlyingStream = m_stream ? *m_stream : m_baseStream ? *m_baseStream : EmptyEntryProvider::Instance();
+	const auto underlyingStreamLength = underlyingStream.StreamSize();
 	const auto dataLength = offset < underlyingStreamLength ? std::min(length, underlyingStreamLength - offset) : 0;
 
 	if (offset < underlyingStreamLength) {
 		const auto dataTarget = target.subspan(0, static_cast<SSIZE_T>(dataLength));
-		const auto readLength = m_stream
-			? m_stream->ReadStreamPartial(offset, &dataTarget[0], dataTarget.size_bytes())
-			: (m_baseStream
-				? m_baseStream->ReadStreamPartial(offset, &dataTarget[0], dataTarget.size_bytes())
-				: EmptyEntryProvider::ReadStreamPartial(offset, &dataTarget[0], dataTarget.size_bytes()));
-
+		const auto readLength = underlyingStream.ReadStreamPartial(offset, &dataTarget[0], dataTarget.size_bytes());
 		if (readLength != dataTarget.size_bytes())
-			throw std::logic_error("HotSwappableEntryProvider underlying data read fail");
+			throw std::logic_error(std::format("HotSwappableEntryProvider underlying data read fail: {}", underlyingStream.DescribeState()));
+		target = target.subspan(readLength);
 	}
-	if (offset + length > underlyingStreamLength) {
-		const auto padTarget = target.subspan(static_cast<SSIZE_T>(dataLength));
-		void(std::ranges::fill(padTarget, 0));
-	}
+	std::ranges::fill(target, 0);
 	return length;
 }

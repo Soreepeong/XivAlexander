@@ -142,7 +142,7 @@ struct App::Feature::GameResourceOverrider::Implementation {
 			_In_ DWORD nNumberOfBytesToRead,
 			_Out_opt_ LPDWORD lpNumberOfBytesRead,
 			_Inout_opt_ LPOVERLAPPED lpOverlapped
-		) {
+			) {
 				if (const auto pvpath = m_sqpacks ? m_sqpacks->Get(hFile) : nullptr) {
 					auto& vpath = *pvpath;
 					try {

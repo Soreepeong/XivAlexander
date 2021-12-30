@@ -78,11 +78,11 @@ size_t Sqex::Texture::RawDataLength(Format type, size_t width, size_t height) {
 			return width * height * sizeof RGBAHHHH;
 
 		case Format::DXT1:
-			return width * height * 8;
+			return width * height / 2;
 
 		case Format::DXT3:
 		case Format::DXT5:
-			return width * height * 16;
+			return width * height / 4;
 
 		case Format::Unknown:
 		default:

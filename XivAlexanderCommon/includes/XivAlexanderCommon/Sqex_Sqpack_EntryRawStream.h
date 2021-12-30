@@ -83,6 +83,10 @@ namespace Sqex::Sqpack {
 			return m_decoder ? m_entryHeader.DecompressedSize.Value() : 0;
 		}
 
+		[[nodiscard]] SqData::FileEntryType EntryType() const {
+			return m_provider->EntryType();
+		}
+
 		const EntryPathSpec& PathSpec() const {
 			return m_provider->PathSpec();
 		}

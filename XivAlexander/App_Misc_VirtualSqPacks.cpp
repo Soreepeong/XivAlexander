@@ -177,7 +177,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				const auto it = SqpackViews.find(v);
 				if (it == SqpackViews.end()) {
 					Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "Failed to find {} as a sqpack file", v.c_str());
-					return TtmpSet::Continue;
+					return Sqex::ThirdParty::TexTools::TTMPL::Continue;
 				}
 
 				if (!entry.IsMetadata()) {
@@ -197,7 +197,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					}
 				}
 
-				return TtmpSet::Continue;
+				return Sqex::ThirdParty::TexTools::TTMPL::Continue;
 				});
 
 			// Step. Unregister TTMP files that no longer exist and delete associated files
@@ -260,7 +260,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 			ttmp.ForEachEntry(true, [&](const auto& entry) {
 				ReflectUsedEntries_SetReplacementsFromTtmpEntry(tempData, ttmp, entry);
-				return TtmpSet::Continue;
+				return Sqex::ThirdParty::TexTools::TTMPL::Continue;
 				});
 			return NestedTtmp::Continue;
 			});
@@ -728,23 +728,23 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 			const auto it = SqpackViews.find(SqpackPath / std::format(L"{}.win32.index", entry.ToExpacDatPath()));
 			if (it == SqpackViews.end())
-				return TtmpSet::Continue;
+				return Sqex::ThirdParty::TexTools::TTMPL::Continue;
 
 			const auto pathSpec = Sqex::Sqpack::EntryPathSpec(entry.FullPath);
 			auto entryIt = it->second.HashOnlyEntries.find(pathSpec);
 			if (entryIt == it->second.HashOnlyEntries.end()) {
 				entryIt = it->second.FullPathEntries.find(pathSpec);
 				if (entryIt == it->second.FullPathEntries.end()) {
-					return TtmpSet::Continue;
+					return Sqex::ThirdParty::TexTools::TTMPL::Continue;
 				}
 			}
 
 			const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entryIt->second->Provider.get());
 			if (!provider)
-				return TtmpSet::Continue;
+				return Sqex::ThirdParty::TexTools::TTMPL::Continue;
 
 			item.Allocated = provider->StreamSize() >= entry.ModSize;
-			return TtmpSet::Continue;
+			return Sqex::ThirdParty::TexTools::TTMPL::Continue;
 			});
 	}
 
@@ -2052,46 +2052,40 @@ void App::Misc::VirtualSqPacks::TtmpSet::ApplyChanges(bool announce) {
 }
 
 App::Misc::VirtualSqPacks::TtmpSet::TraverseCallbackResult App::Misc::VirtualSqPacks::TtmpSet::ForEachEntry(bool choiceOnly, std::function<TraverseCallbackResult(const Sqex::ThirdParty::TexTools::ModEntry&)> cb) const {
-	for (const auto& entry : List.SimpleModsList)
-		if (Break == cb(entry))
-			return Break;
+	if (!choiceOnly)
+		return List.ForEachEntry(cb);
 
-	if (choiceOnly) {
-		for (size_t pageObjectIndex = 0; pageObjectIndex < List.ModPackPages.size(); ++pageObjectIndex) {
-			const auto& modGroups = List.ModPackPages[pageObjectIndex].ModGroups;
+	for (const auto& entry : List.SimpleModsList)
+		if (TraverseCallbackResult::Break == cb(entry))
+			return TraverseCallbackResult::Break;
+
+	for (size_t pageObjectIndex = 0; pageObjectIndex < List.ModPackPages.size(); ++pageObjectIndex) {
+		const auto& modGroups = List.ModPackPages[pageObjectIndex].ModGroups;
+		if (modGroups.empty())
+			continue;
+
+		const auto& pageConf = Choices.at(pageObjectIndex);
+
+		for (size_t modGroupIndex = 0; modGroupIndex < modGroups.size(); ++modGroupIndex) {
+			const auto& modGroup = modGroups[modGroupIndex];
 			if (modGroups.empty())
 				continue;
 
-			const auto& pageConf = Choices.at(pageObjectIndex);
+			std::set<size_t> indices;
+			if (pageConf.at(modGroupIndex).is_array()) {
+				const auto tmp = pageConf.at(modGroupIndex).get<std::vector<size_t>>();
+				indices.insert(tmp.begin(), tmp.end());
+			} else
+				indices.insert(pageConf.at(modGroupIndex).get<size_t>());
 
-			for (size_t modGroupIndex = 0; modGroupIndex < modGroups.size(); ++modGroupIndex) {
-				const auto& modGroup = modGroups[modGroupIndex];
-				if (modGroups.empty())
-					continue;
-
-				std::set<size_t> indices;
-				if (pageConf.at(modGroupIndex).is_array()) {
-					const auto tmp = pageConf.at(modGroupIndex).get<std::vector<size_t>>();
-					indices.insert(tmp.begin(), tmp.end());
-				} else
-					indices.insert(pageConf.at(modGroupIndex).get<size_t>());
-
-				for (const auto optionIndex : indices) {
-					for (const auto& entry : modGroup.OptionList[optionIndex].ModsJsons)
-						if (Break == cb(entry))
-							return Break;
-				}
+			for (const auto optionIndex : indices) {
+				for (const auto& entry : modGroup.OptionList[optionIndex].ModsJsons)
+					if (Sqex::ThirdParty::TexTools::TTMPL::Break == cb(entry))
+						return Sqex::ThirdParty::TexTools::TTMPL::Break;
 			}
 		}
-	} else {
-		for (const auto& modPackPage : List.ModPackPages)
-			for (const auto& modGroup : modPackPage.ModGroups)
-				for (const auto& option : modGroup.OptionList)
-					for (const auto& entry : option.ModsJsons)
-						if (Break == cb(entry))
-							return Break;
 	}
-	return Continue;
+	return Sqex::ThirdParty::TexTools::TTMPL::Continue;
 }
 
 void App::Misc::VirtualSqPacks::TtmpSet::TryCleanupUnusedFiles() {
