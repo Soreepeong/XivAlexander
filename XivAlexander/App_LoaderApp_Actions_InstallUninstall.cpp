@@ -138,11 +138,13 @@ void App::LoaderApp::Actions::InstallUninstall::Install(const std::filesystem::p
 
 		if (f.path().filename().wstring().starts_with(L"game.")
 			&& f.path().filename().wstring().ends_with(L".json"))
-			copy_file(f, dataPath / f.path().filename(), std::filesystem::copy_options::overwrite_existing);
+			if (!exists(dataPath / f.path().filename()) || !equivalent(f, dataPath / f.path().filename()))
+				copy_file(f, dataPath / f.path().filename(), std::filesystem::copy_options::overwrite_existing);
 
 		if (f.path().filename().wstring().ends_with(L".exe")
 			|| f.path().filename().wstring().ends_with(L".dll"))
-			copy_file(f, exePath / f.path().filename(), std::filesystem::copy_options::overwrite_existing);
+			if (!exists(exePath / f.path().filename()) || !equivalent(f, exePath / f.path().filename()))
+				copy_file(f, exePath / f.path().filename(), std::filesystem::copy_options::overwrite_existing);
 	}
 
 	config64.Save(configPath);
