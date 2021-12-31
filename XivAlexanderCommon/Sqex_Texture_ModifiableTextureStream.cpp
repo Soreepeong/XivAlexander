@@ -3,14 +3,14 @@
 
 #include "Sqex_Sqpack.h"
 
-Sqex::Texture::ModifiableTextureStream::ModifiableTextureStream(Format type, uint16_t width, uint16_t height, uint16_t depth)
+Sqex::Texture::ModifiableTextureStream::ModifiableTextureStream(Format type, uint16_t width, uint16_t height, uint16_t layers)
 	: m_header{
 		.Unknown1 = 0,
 		.HeaderSize = static_cast<uint16_t>(Align(sizeof m_header)),
 		.Type = type,
 		.Width = width,
 		.Height = height,
-		.Depth = depth,
+		.Layers = layers,
 		.MipmapCount = 0,
 		.Unknown2 = {}
 	} {
@@ -20,9 +20,9 @@ Sqex::Texture::ModifiableTextureStream::ModifiableTextureStream(const std::share
 	: m_header{ stream->ReadStream<Texture::Header>(0) } {
 	const auto mipmapLocators = stream->ReadStreamIntoVector<uint32_t>(sizeof m_header, m_header.MipmapCount);
 	for (size_t i = 0; i < mipmapLocators.size(); ++i)
-		AppendMipmap(std::make_shared<WrappedMipmapStream>(m_header.Width >> i, m_header.Height >> i, m_header.Type,
+		AppendMipmap(std::make_shared<WrappedMipmapStream>(m_header.Width >> i, m_header.Height >> i, m_header.Layers, m_header.Type,
 			std::make_shared<Sqex::RandomAccessStreamPartialView>(stream, mipmapLocators[i],
-				RawDataLength(m_header.Type, m_header.Width >> i, m_header.Height >> i))
+				RawDataLength(m_header.Type, m_header.Width >> i, m_header.Height >> i, m_header.Layers))
 			));
 }
 
@@ -33,9 +33,11 @@ void Sqex::Texture::ModifiableTextureStream::AppendMipmap(std::shared_ptr<Mipmap
 		throw std::invalid_argument("invalid mipmap width");
 	if (mipmap->Height() != m_header.Height >> m_mipmaps.size())
 		throw std::invalid_argument("invalid mipmap height");
+	if (mipmap->Layers() != m_header.Layers)
+		throw std::invalid_argument("invalid mipmap layers");
 	if (mipmap->Type() != m_header.Type)
 		throw std::invalid_argument("invalid mipmap type");
-	if (mipmap->StreamSize() != RawDataLength(mipmap->Type(), mipmap->Width(), mipmap->Height()))
+	if (mipmap->StreamSize() != RawDataLength(mipmap->Type(), mipmap->Width(), mipmap->Height(), mipmap->Layers()))
 		throw std::invalid_argument("invalid mipmap size");
 	m_mipmaps.emplace_back(std::move(mipmap));
 	m_header.MipmapCount = static_cast<uint16_t>(m_mipmaps.size());

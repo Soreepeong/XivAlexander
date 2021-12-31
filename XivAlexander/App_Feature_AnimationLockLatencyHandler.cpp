@@ -110,14 +110,8 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 								pMessage->Data.Ipc.SubType,
 								actionRequest.ActionId,
 								actionRequest.Sequence,
-								delayUs > 10 * SecondToMicrosecondMultiplier ? "" : std::format(
-									" delay={}{}.{:06}s",
-									delayUs > 0 ? "" : "-", abs(delayUs) / SecondToMicrosecondMultiplier, abs(delayUs) % SecondToMicrosecondMultiplier
-								),
-								prevRelativeUs > 10 * SecondToMicrosecondMultiplier ? "" : std::format(
-									" prevRelative={}.{:06}s",
-									prevRelativeUs / SecondToMicrosecondMultiplier, prevRelativeUs % SecondToMicrosecondMultiplier
-								));
+								delayUs > 10 * SecondToMicrosecondMultiplier ? "" : std::format(" delay={}s", static_cast<double>(delayUs) / SecondToMicrosecondMultiplier),
+								prevRelativeUs > 10 * SecondToMicrosecondMultiplier ? "" : std::format(" prevRelative={}s", static_cast<double>(prevRelativeUs) / SecondToMicrosecondMultiplier));
 						}
 					}
 				}
@@ -209,9 +203,9 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 								}
 								description << std::format(" wait={}us->{}us->0us (ping/jitter too high)",
 									originalWaitUs, waitUs);
-							} else if (waitUs != originalWaitUs) {
+							} else if (waitUs < originalWaitUs) {
 								if (!runtimeConfig.UseHighLatencyMitigationPreviewMode) {
-									actionEffect.AnimationLockDuration = static_cast<float>(waitUs) / 1000000.f;
+									actionEffect.AnimationLockDuration = static_cast<float>(waitUs) / static_cast<float>(SecondToMicrosecondMultiplier);
 									m_latestSuccessfulRequest.WaitTimeUs = waitUs - originalWaitUs;
 									XivAlexApp::GetCurrentApp()->GuaranteePumpBeginCounter(waitUs);
 								}

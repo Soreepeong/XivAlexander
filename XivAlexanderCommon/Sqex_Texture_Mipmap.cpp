@@ -4,19 +4,19 @@
 #include "XaDxtDecompression.h"
 
 std::shared_ptr<const Sqex::Texture::MipmapStream> Sqex::Texture::MipmapStream::ViewARGB8888(Format type) const {
-	if (type != Format::RGBA_1 && type != Format::RGBA_2 && type != Format::Unknown)
+	if (type != Format::A8R8G8B8 && type != Format::X8R8G8B8 && type != Format::Unknown)
 		throw std::invalid_argument("invalid argb8888 compression type");
 
-	if (m_type == Format::RGBA_1 || m_type == Format::RGBA_2) {
+	if (m_type == Format::A8R8G8B8 || m_type == Format::X8R8G8B8) {
 		auto res = std::static_pointer_cast<const MipmapStream>(shared_from_this());
 		if (m_type == type || type == Format::Unknown)
 			return res;
 		else
-			return std::make_shared<WrappedMipmapStream>(this->Width(), this->Height(), type, std::move(res));
+			return std::make_shared<WrappedMipmapStream>(this->Width(), this->Height(), this->Layers(), type, std::move(res));
 	}
 
 	if (type == Format::Unknown)
-		return MemoryBackedMipmap::NewARGB8888From(this, Format::RGBA_1);
+		return MemoryBackedMipmap::NewARGB8888From(this, Format::A8R8G8B8);
 	else
 		return MemoryBackedMipmap::NewARGB8888From(this, type);
 }
@@ -27,7 +27,7 @@ std::shared_ptr<Sqex::Texture::MipmapStream> Sqex::Texture::MipmapStream::FromTe
 	if (mipmapIndex >= offsets.size())
 		throw std::invalid_argument(std::format("mipmapIndex={} > mipmapCount={}", mipmapIndex, offsets.size()));
 
-	const auto dataSize = RawDataLength(header.Type, header.Width >> mipmapIndex, header.Height >> mipmapIndex);
+	const auto dataSize = RawDataLength(header.Type, header.Width >> mipmapIndex, header.Height >> mipmapIndex, header.Layers);
 	if (mipmapIndex == offsets.size() - 1) {
 		if (stream->StreamSize() - offsets[mipmapIndex] < dataSize)
 			throw std::runtime_error("overlapping mipmap data detected");
@@ -36,7 +36,7 @@ std::shared_ptr<Sqex::Texture::MipmapStream> Sqex::Texture::MipmapStream::FromTe
 			throw std::runtime_error("overlapping mipmap data detected");
 	}
 
-	return std::make_shared<WrappedMipmapStream>(header.Width >> mipmapIndex, header.Height >> mipmapIndex, header.Type,
+	return std::make_shared<WrappedMipmapStream>(header.Width >> mipmapIndex, header.Height >> mipmapIndex, header.Layers, header.Type,
 		std::make_shared<RandomAccessStreamPartialView>(stream, offsets[mipmapIndex], dataSize)
 		);
 }
@@ -399,7 +399,7 @@ void Sqex::Texture::MipmapStream::Show(std::string title) const {
 }
 
 std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMipmap::NewARGB8888From(const MipmapStream* stream, Format type) {
-	if (type != Format::RGBA_1 && type != Format::RGBA_2)
+	if (type != Format::A8R8G8B8 && type != Format::X8R8G8B8)
 		throw std::invalid_argument("invalid argb8888 compression type");
 
 	const auto width = stream->Width();
@@ -412,8 +412,8 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 	uint32_t pos = 0, read = 0;
 	uint8_t buf8[8192];
 	switch (stream->Type()) {
-		case Format::L8_1:
-		case Format::L8_2:
+		case Format::L8:
+		case Format::A8:
 		{
 			if (cbSource < pixelCount)
 				throw std::runtime_error("Truncated data detected");
@@ -428,7 +428,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 			break;
 		}
 
-		case Format::RGBA4444:
+		case Format::A4R4G4B4:
 		{
 			if (cbSource < pixelCount * sizeof RGBA4444)
 				throw std::runtime_error("Truncated data detected");
@@ -442,7 +442,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 			break;
 		}
 
-		case Format::RGBA5551:
+		case Format::A1R5G5B5:
 		{
 			if (cbSource < pixelCount * sizeof RGBA5551)
 				throw std::runtime_error("Truncated data detected");
@@ -456,14 +456,14 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 			break;
 		}
 
-		case Format::RGBA_1:
-		case Format::RGBA_2:
+		case Format::A8R8G8B8:
+		case Format::X8R8G8B8:
 			if (cbSource < pixelCount * sizeof RGBA8888)
 				throw std::runtime_error("Truncated data detected");
 			stream->ReadStream(0, std::span(rgba8888view));
 			break;
 
-		case Format::RGBAF:
+		case Format::A16B16G16R16F:
 		{
 			if (cbSource < pixelCount * sizeof RGBAHHHH)
 				throw std::runtime_error("Truncated data detected");
@@ -473,6 +473,21 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 				stream->ReadStream(read, buf8, len);
 				read += len;
 				for (size_t i = 0, count = len / sizeof RGBAHHHH; i < count; ++pos, ++i)
+					rgba8888view[pos].SetFromF(view[i]);
+			}
+			break;
+		}
+
+		case Format::A32B32G32R32F:
+		{
+			if (cbSource < pixelCount * sizeof RGBAFFFF)
+				throw std::runtime_error("Truncated data detected");
+			stream->ReadStream(0, std::span(rgba8888view));
+			const auto view = std::span(reinterpret_cast<RGBAFFFF*>(buf8), sizeof buf8 / sizeof RGBAFFFF);
+			while (const auto len = static_cast<uint32_t>(std::min<uint64_t>(cbSource - read, sizeof buf8))) {
+				stream->ReadStream(read, buf8, len);
+				read += len;
+				for (size_t i = 0, count = len / sizeof RGBAFFFF; i < count; ++pos, ++i)
 					rgba8888view[pos].SetFromF(view[i]);
 			}
 			break;
@@ -540,7 +555,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 			throw std::runtime_error("Unsupported type");
 	}
 
-	return std::make_shared<MemoryBackedMipmap>(stream->Width(), stream->Height(), type, std::move(result));
+	return std::make_shared<MemoryBackedMipmap>(stream->Width(), stream->Height(), stream->Layers(), type, std::move(result));
 }
 
 uint64_t Sqex::Texture::MemoryBackedMipmap::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {

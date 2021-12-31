@@ -4,25 +4,21 @@
 namespace Sqex::Texture {
 	enum class Format : uint32_t {
 		Unknown = 0,
-
-		// https://github.com/goaaats/ffxiv-explorer-fork/blob/develop/src/main/java/com/fragmenterworks/ffxivextract/models/Texture_File.java
-
-		// Grayscale
-		L8_1 = 0x1130,      // 1 byte (L8) per pixel
-		L8_2 = 0x1131,      // same with above
-
-		// Full color with alpha channel
-		RGBA4444 = 0x1440,  // 2 bytes (LE binary[16]: aaaaBBBBggggRRRR) per pixel
-		RGBA5551 = 0x1441,  // 2 bytes (LE binary[16]: aBBBBBgggggRRRRR) per pixel
-		RGBA_1 = 0x1450,    // 4 bytes (LE binary[32]: aaaaaaaaBBBBBBBBggggggggRRRRRRRR) per pixel
-		RGBA_2 = 0x1451,    // same with above
-		RGBAF = 0x2460,     // 8 bytes (LE half[4]: r, g, b, a)
-		//                     ^ TODO: check if it's rgba or abgr
-
-		// https://en.wikipedia.org/wiki/S3_Texture_Compression
-		DXT1 = 0x3420,
-		DXT3 = 0x3430,
-		DXT5 = 0x3431,
+		L8 = 4400,
+		A8 = 4401,
+		A4R4G4B4 = 5184,
+		A1R5G5B5 = 5185,
+		A8R8G8B8 = 5200,
+		X8R8G8B8 = 5201,
+		R32F = 8528,
+		G16R16F = 8784,
+		G32R32F = 8800,
+		A16B16G16R16F = 9312,
+		A32B32G32R32F = 9328,
+		DXT1 = 13344,
+		DXT3 = 13360,
+		DXT5 = 13361,
+		D16 = 16704,
 	};
 
 	void to_json(nlohmann::json& j, const Format& o);
@@ -122,10 +118,28 @@ namespace Sqex::Texture {
 		static constexpr float MaxB = 1.f;
 		static constexpr float MaxA = 1.f;
 
-		Half R;
-		Half G;
-		Half B;
-		Half A;  // Actually opacity
+		uint64_t Value;
+		struct {
+			Half R;
+			Half G;
+			Half B;
+			Half A;  // Actually opacity
+		};
+	};
+
+	union RGBAFFFF {
+		static constexpr size_t ChannelCount = 4;
+		static constexpr float MaxR = 1.f;
+		static constexpr float MaxG = 1.f;
+		static constexpr float MaxB = 1.f;
+		static constexpr float MaxA = 1.f;
+
+		struct {
+			float R;
+			float G;
+			float B;
+			float A;  // Actually opacity
+		};
 	};
 
 	union RGBA8888 {
@@ -171,7 +185,7 @@ namespace Sqex::Texture {
 		}
 	};
 
-	size_t RawDataLength(Format type, size_t width, size_t height);
+	size_t RawDataLength(Format type, size_t width, size_t height, size_t layers);
 
 	struct Header {
 		LE<uint16_t> Unknown1;
@@ -179,7 +193,7 @@ namespace Sqex::Texture {
 		LE<Format> Type;
 		LE<uint16_t> Width;
 		LE<uint16_t> Height;
-		LE<uint16_t> Depth;
+		LE<uint16_t> Layers;
 		LE<uint16_t> MipmapCount;
 		char Unknown2[0xC]{};
 	};

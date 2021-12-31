@@ -73,7 +73,7 @@ namespace Sqex::FontCsv {
 			RenderTarget(uint16_t textureWidth, uint16_t textureHeight, uint16_t glyphGap);
 			~RenderTarget();
 
-			void Finalize(Texture::Format textureFormat = Texture::Format::RGBA4444);
+			void Finalize(Texture::Format textureFormat = Texture::Format::A4R4G4B4);
 
 			[[nodiscard]] std::vector<std::shared_ptr<const Texture::MipmapStream>> AsMipmapStreamVector() const;
 			[[nodiscard]] std::vector<std::shared_ptr<Texture::ModifiableTextureStream>> AsTextureStreamVector() const;

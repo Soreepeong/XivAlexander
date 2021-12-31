@@ -92,7 +92,19 @@ namespace Sqex::Sqpack {
 		}
 
 		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override {
-			return m_decoder ? m_decoder->ReadStreamPartial(offset, buf, length) : 0;
+			if (!m_decoder)
+				return 0;
+			const auto fullSize = m_entryHeader.DecompressedSize.Value();
+			if (offset >= fullSize)
+				return 0;
+			if (offset + length > fullSize)
+				length = fullSize - offset;
+			
+			const auto decompressedSize = m_entryHeader.DecompressedSize.Value();
+			auto read = m_decoder->ReadStreamPartial(offset, buf, length);
+			if (read != length)
+				std::fill_n(static_cast<char*>(buf) + read, length - read, 0);
+			return length;
 		}
 	};
 }

@@ -430,13 +430,13 @@ namespace Sqex::FontCsv {
 
 			const auto tex1baseleft = size1.left > 0 ? 0 : -size1.left;
 			const auto tex1basetop = size1.top > 0 ? 0 : -size1.top;
-			Texture::MemoryBackedMipmap tex1(static_cast<uint16_t>(tex1baseleft + size1.right), static_cast<uint16_t>(tex1basetop + size1.bottom), Texture::Format::L8_1);
+			Texture::MemoryBackedMipmap tex1(static_cast<uint16_t>(tex1baseleft + size1.right), static_cast<uint16_t>(tex1basetop + size1.bottom), 1, Texture::Format::L8);
 			auto buf1 = tex1.View<uint8_t>();
 			m_underlying->Draw(&tex1, tex1baseleft, tex1basetop, c, 0xFF, 0x00);
 
 			const auto tex2baseleft = size2.left > 0 ? 0 : -size2.left;
 			const auto tex2basetop = size2.top > 0 ? 0 : -size2.top;
-			Texture::MemoryBackedMipmap tex2(static_cast<uint16_t>(tex2baseleft + size2.right), static_cast<uint16_t>(tex2basetop + size2.bottom), Texture::Format::L8_1);
+			Texture::MemoryBackedMipmap tex2(static_cast<uint16_t>(tex2baseleft + size2.right), static_cast<uint16_t>(tex2basetop + size2.bottom), 1, Texture::Format::L8);
 			auto buf2 = tex2.View<uint8_t>();
 			for (SSIZE_T i = 0; i < tex2.Height(); ++i) {
 				for (SSIZE_T j = 0; j < tex2.Width(); ++j) {

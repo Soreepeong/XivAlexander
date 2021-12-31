@@ -56,7 +56,6 @@ namespace App {
 		[[nodiscard]] Network::SocketHook* GetSocketHook();
 
 		void GuaranteePumpBeginCounter(int64_t counterUs);
-		void AdjustCounterDriftUs(int64_t driftUs);
 
 		static Utils::ListenerManager<XivAlexApp, void, XivAlexApp&> OnAppCreated;
 		static XivAlexApp* GetCurrentApp();

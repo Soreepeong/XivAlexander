@@ -249,10 +249,7 @@ struct Sqex::FontCsv::FontCsvCreator::RenderTarget::Implementation {
 			}
 
 			if (newTargetRequired) {
-				Mipmaps.emplace_back(std::make_shared<Texture::MemoryBackedMipmap>(
-					TextureWidth, TextureHeight,
-					Texture::Format::L8_1,
-					std::vector<uint8_t>(static_cast<size_t>(TextureWidth) * TextureHeight)));
+				Mipmaps.emplace_back(std::make_shared<Texture::MemoryBackedMipmap>(TextureWidth, TextureHeight, 1, Texture::Format::L8));
 				CurrentX = CurrentY = GlyphGap;
 				CurrentLineHeight = 0;
 			}
@@ -276,18 +273,14 @@ struct Sqex::FontCsv::FontCsvCreator::RenderTarget::Implementation {
 		return std::make_pair(it->second, isNewEntry);
 	}
 
-	template<typename TextureTypeSupportingRGBA = Texture::RGBA4444, Texture::Format TextureFormat = Texture::Format::RGBA4444>
+	template<typename TextureTypeSupportingRGBA = Texture::RGBA4444, Texture::Format TextureFormat = Texture::Format::A4R4G4B4>
 	void Finalize() {
-		auto mipmaps = std::move(Mipmaps);
+		auto mipmaps{std::move(Mipmaps)};
 		while (mipmaps.size() % 4)
-			mipmaps.push_back(std::make_shared<Texture::MemoryBackedMipmap>(
-				mipmaps[0]->Width(), mipmaps[0]->Height(), Texture::Format::L8_1,
-				std::vector<uint8_t>(static_cast<size_t>(mipmaps[0]->Width()) * mipmaps[0]->Height())));
+			mipmaps.push_back(std::make_shared<Texture::MemoryBackedMipmap>(mipmaps[0]->Width(), mipmaps[0]->Height(), 1, Texture::Format::L8));
 
 		for (size_t i = 0; i < mipmaps.size() / 4; ++i) {
-			Mipmaps.push_back(std::make_shared<Texture::MemoryBackedMipmap>(
-				mipmaps[0]->Width(), mipmaps[0]->Height(), TextureFormat,
-				std::vector<uint8_t>(sizeof TextureTypeSupportingRGBA * mipmaps[0]->Width() * mipmaps[0]->Height())));
+			Mipmaps.push_back(std::make_shared<Texture::MemoryBackedMipmap>(mipmaps[0]->Width(), mipmaps[0]->Height(), 1, TextureFormat));
 
 			const auto target = Mipmaps.back()->View<TextureTypeSupportingRGBA>();
 			const auto b = mipmaps[i * 4 + 0]->View<uint8_t>();
@@ -313,14 +306,14 @@ Sqex::FontCsv::FontCsvCreator::RenderTarget::~RenderTarget() = default;
 
 void Sqex::FontCsv::FontCsvCreator::RenderTarget::Finalize(Texture::Format textureFormat) {
 	switch (textureFormat) {
-		case Texture::Format::RGBA4444:
-			return m_pImpl->Finalize<Texture::RGBA4444, Texture::Format::RGBA4444>();
+		case Texture::Format::A4R4G4B4:
+			return m_pImpl->Finalize<Texture::RGBA4444, Texture::Format::A4R4G4B4>();
 
-		case Texture::Format::RGBA_1:
-			return m_pImpl->Finalize<Texture::RGBA8888, Texture::Format::RGBA_1>();
+		case Texture::Format::A8R8G8B8:
+			return m_pImpl->Finalize<Texture::RGBA8888, Texture::Format::A8R8G8B8>();
 
-		case Texture::Format::RGBA_2:
-			return m_pImpl->Finalize<Texture::RGBA8888, Texture::Format::RGBA_2>();
+		case Texture::Format::X8R8G8B8:
+			return m_pImpl->Finalize<Texture::RGBA8888, Texture::Format::X8R8G8B8>();
 
 		default:
 			throw std::invalid_argument("Unsupported texture type for generating font");

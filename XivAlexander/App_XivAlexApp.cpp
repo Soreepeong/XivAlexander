@@ -160,8 +160,6 @@ struct App::XivAlexApp::Implementation final {
 
 	Misc::Hooks::ImportedFunction<void, UINT> ExitProcess{ "kernel32!ExitProcess", "kernel32.dll", "ExitProcess" };
 	Misc::Hooks::ImportedFunction<BOOL, LPMSG, HWND, UINT, UINT, UINT> PeekMessageW{ "user32!PeekMessageW", "user32.dll", "PeekMessageW" };
-	// Misc::Hooks::ImportedFunction<BOOL, PLARGE_INTEGER> QueryPerformanceCounter{ "kernel32!QueryPerformanceCounter", "kernel32.dll", "QueryPerformanceCounter" };
-	Misc::Hooks::PointerFunction<BOOL, PLARGE_INTEGER> QueryPerformanceCounter{ "kernel32!QueryPerformanceCounter", ::QueryPerformanceCounter };
 	Misc::Hooks::ImportedFunction<void, DWORD> Sleep{ "kernel32!Sleep", "kernel32.dll", "Sleep" };
 	Misc::Hooks::ImportedFunction<DWORD, DWORD, BOOL> SleepEx{ "kernel32!SleepEx", "kernel32.dll", "SleepEx" };
 	Misc::Hooks::ImportedFunction<DWORD, HANDLE, DWORD> WaitForSingleObject{ "kernel32!WaitForSingleObject", "kernel32.dll", "WaitForSingleObject" };
@@ -172,8 +170,6 @@ struct App::XivAlexApp::Implementation final {
 	std::deque<int64_t> LastMessagePumpCounterUs;
 	std::set<int64_t> MessagePumpGuaranteeCounterUs;
 	int64_t LastWaitForSingleObjectUs{};
-	int64_t QueryPerformanceCounterMin{};
-	int64_t QueryPerformanceCounterDrift{};
 	Utils::NumericStatisticsTracker MessagePumpIntervalUs{ 64, 0 };
 	Utils::NumericStatisticsTracker RenderTimeTakenUs{ 64, 0 };
 	Utils::NumericStatisticsTracker SocketCallDelayUs{ 64, 0 };
@@ -342,7 +338,6 @@ struct App::XivAlexApp::Implementation final {
 							void(0);
 						LastMessagePumpCounterUs.push_back(nowUs);
 					} else {
-						this_->AdjustCounterDriftUs(0);
 						LastMessagePumpCounterUs.push_back(nowUs);
 						if (LastMessagePumpCounterUs.size() >= 2)
 							MessagePumpIntervalUs.AddValue(LastMessagePumpCounterUs[LastMessagePumpCounterUs.size() - 1] - LastMessagePumpCounterUs[LastMessagePumpCounterUs.size() - 2]);
@@ -354,18 +349,6 @@ struct App::XivAlexApp::Implementation final {
 					lastRemoveMsg = wRemoveMsg;
 			}
 			return PeekMessageW.bridge(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
-			});
-
-		m_cleanup += QueryPerformanceCounter.SetHook([this](PLARGE_INTEGER lpPerformanceCount) -> BOOL {
-			const auto requestingOriginal = lpPerformanceCount->QuadPart == 0xFEFEFEFEDCDCDCDCLL;
-			lpPerformanceCount->QuadPart = 0;
-
-			if (!QueryPerformanceCounter.bridge(lpPerformanceCount))
-				return FALSE;
-
-			if (!requestingOriginal)
-				lpPerformanceCount->QuadPart = std::max(lpPerformanceCount->QuadPart + QueryPerformanceCounterDrift, QueryPerformanceCounterMin);
-			return TRUE;
 			});
 
 		m_cleanup += Sleep.SetHook([&](DWORD dwMilliseconds) {
@@ -550,17 +533,6 @@ void App::XivAlexApp::GuaranteePumpBeginCounter(int64_t nextInUs) {
 	if (nextInUs > 0)
 		m_pImpl->MessagePumpGuaranteeCounterUs.insert(Utils::GetHighPerformanceCounter(1000000) + nextInUs);
 }
-
-void App::XivAlexApp::AdjustCounterDriftUs(int64_t driftUs) {
-	LARGE_INTEGER freq, cntr;
-	QueryPerformanceFrequency(&freq);
-	m_pImpl->QueryPerformanceCounter.bridge(&cntr);
-	const auto prevDrift = m_pImpl->QueryPerformanceCounterDrift;
-	m_pImpl->QueryPerformanceCounterDrift += driftUs * freq.QuadPart / SecondToMicrosecondMultiplier;
-	if (m_pImpl->QueryPerformanceCounterDrift < 0)
-		m_pImpl->QueryPerformanceCounterDrift = 0;
-	m_pImpl->QueryPerformanceCounterMin = std::max(m_pImpl->QueryPerformanceCounterMin, cntr.QuadPart + std::max(prevDrift, m_pImpl->QueryPerformanceCounterDrift));
-;}
 
 static std::unique_ptr<App::XivAlexApp> s_xivAlexApp;
 

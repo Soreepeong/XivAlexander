@@ -507,13 +507,13 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, FontCreateC
 		o.compactLayout = j.value(lastAttempt = "compactLayout", false);
 		o.textureWidth = j.value<uint16_t>(lastAttempt = "textureWidth", 1024);
 		o.textureHeight = j.value<uint16_t>(lastAttempt = "textureHeight", 1024);
-		o.textureFormat = Texture::Format::RGBA4444;
+		o.textureFormat = Texture::Format::A4R4G4B4;
 		for (const auto possibleKeyName : {"textureFormat", "textureType"}) {
 			if (const auto it = j.find(lastAttempt = possibleKeyName); it != j.end()) {
 				o.textureFormat = it->get<decltype(o.textureFormat)>();
 			}
 		}
-		if (o.textureFormat != Texture::Format::RGBA4444 && o.textureFormat != Texture::Format::RGBA_1 && o.textureFormat != Texture::Format::RGBA_2)
+		if (o.textureFormat != Texture::Format::A4R4G4B4 && o.textureFormat != Texture::Format::A8R8G8B8 && o.textureFormat != Texture::Format::X8R8G8B8)
 			throw std::invalid_argument("Only RGBA4444 and RGBA8888 are supported");
 		o.gameIndexFiles = j.value(lastAttempt = "gameIndexFiles", decltype(o.gameIndexFiles)());
 		o.fontRequirements = j.value(lastAttempt = "fontRequirements", decltype(o.fontRequirements)());
