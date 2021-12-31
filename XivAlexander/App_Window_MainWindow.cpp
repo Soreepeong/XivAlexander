@@ -876,6 +876,32 @@ void App::Window::MainWindow::RepopulateMenu_Ttmp(HMENU hInnerTtmpMenu, HMENU hO
 								}
 							}), Utils::FromUtf8(description).c_str());
 					}
+
+					if (isMulti) {
+						AppendMenuW(hModSubMenu, MF_SEPARATOR, 0, nullptr);
+						AppendMenuW(hModSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, pageObjectIndex, modGroupIndex, &modGroup, &ttmpSet, &nestedTtmp, sqpacks]() {
+							try {
+								auto& page = ttmpSet.Choices.at(pageObjectIndex);
+								auto newOptions = nlohmann::json::array();
+								for (size_t i = 0; i < modGroup.OptionList.size(); ++i)
+									newOptions.push_back(i);
+								page[modGroupIndex] = std::move(newOptions);
+								sqpacks->ApplyTtmpChanges(nestedTtmp);
+							} catch (const std::exception& e) {
+								Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+							}
+							}), RepopulateMenu_GetMenuTextById(hInnerTtmpMenu, ID_MODDING_TTMP_ENABLEALL).c_str());
+						AppendMenuW(hModSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, pageObjectIndex, modGroupIndex, &ttmpSet, &nestedTtmp, sqpacks]() {
+							try {
+								auto& page = ttmpSet.Choices.at(pageObjectIndex);
+								page[modGroupIndex] = nlohmann::json::array();
+								sqpacks->ApplyTtmpChanges(nestedTtmp);
+							} catch (const std::exception& e) {
+								Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+							}
+							}), RepopulateMenu_GetMenuTextById(hInnerTtmpMenu, ID_MODDING_TTMP_DISABLEALL).c_str());
+					}
+
 					AppendMenuW(hSubMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hModSubMenu), Utils::FromUtf8(modGroup.GroupName).c_str());
 				}
 			}

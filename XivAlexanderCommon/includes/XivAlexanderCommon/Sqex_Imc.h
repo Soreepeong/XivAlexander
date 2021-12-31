@@ -30,15 +30,33 @@ namespace Sqex::Imc {
 		std::vector<uint8_t> m_data;
 
 	public:
-		File() : m_data(sizeof Imc::Header) {}
-		File(const RandomAccessStream& stream) : m_data(stream.ReadStreamIntoVector<uint8_t>(0)) {}
-		File(File&& file) : m_data(std::move(file.m_data)) { file.m_data.resize(sizeof Imc::Header); }
-		File(const File& file) : m_data(file.m_data) {}
+		File()
+			: m_data(sizeof Imc::Header) {
+		}
+
+		File(const RandomAccessStream& stream)
+			: m_data(stream.ReadStreamIntoVector<uint8_t>(0)) {
+			if (m_data.size() < sizeof Imc::Header) {
+				m_data.clear();
+				m_data.resize(sizeof Imc::Header);
+			}
+		}
+
+		File(File&& file)
+			: m_data(std::move(file.m_data)) {
+			file.m_data.resize(sizeof Imc::Header);
+		}
+
+		File(const File& file)
+			: m_data(file.m_data) {
+		}
+
 		File& operator=(File&& file) {
 			m_data = std::move(file.m_data);
 			file.m_data.resize(sizeof Imc::Header);
 			return *this;
 		}
+
 		File& operator=(const File& file) {
 			m_data = file.m_data;
 			return *this;
@@ -85,7 +103,7 @@ namespace Sqex::Imc {
 			if (subsetCount > UINT16_MAX)
 				throw std::range_error("up to 64k subsets are supported");
 			const auto countPerSet = EntryCountPerSet();
-			if (subsetCount > Header().SubsetCount) {
+			if (subsetCount > Header().SubsetCount && Header().SubsetCount > 0) {
 				m_data.resize(sizeof Imc::Header + sizeof Imc::Entry * countPerSet * (size_t{ 1 } + Header().SubsetCount));
 				m_data.reserve(sizeof Imc::Header + sizeof Imc::Entry * countPerSet * (1 + subsetCount));
 				for (auto i = Header().SubsetCount.Value(); i < subsetCount; ++i) {

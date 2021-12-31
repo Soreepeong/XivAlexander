@@ -168,7 +168,8 @@ namespace Sqex::ThirdParty::TexTools {
 
 		const std::vector<uint8_t> Data;
 		const uint32_t& Version;
-		const std::string_view Path;
+		const std::string TargetPath;
+		const std::string SourcePath;
 		const MetaDataHeader& Header;
 		const std::span<const MetaDataEntryLocator> AllEntries;
 
@@ -176,14 +177,15 @@ namespace Sqex::ThirdParty::TexTools {
 		TargetEstType EstType = TargetEstType::Invalid;
 		std::string PrimaryType;
 		std::string SecondaryType;
-		std::string FullPathPrefix;
+		std::string TargetImcPath;
+		std::string SourceImcPath;
 		uint16_t PrimaryId = 0;
 		uint16_t SecondaryId = 0;
 		size_t SlotIndex = 0;
 		size_t EqpEntrySize = 0;
 		size_t EqpEntryOffset = 0;
 
-		ItemMetadata(const RandomAccessStream& stream);
+		ItemMetadata(std::string gamePath, const RandomAccessStream& stream);
 
 		template<typename T>
 		std::span<const T> Get(MetaDataType type) const {
@@ -194,10 +196,6 @@ namespace Sqex::ThirdParty::TexTools {
 				return { reinterpret_cast<const T*>(spanBytes.data()), spanBytes.size_bytes() / sizeof T };
 			}
 			return {};
-		}
-
-		std::string ImcPath() const {
-			return std::format("{}.imc", FullPathPrefix);
 		}
 
 		static std::string EqdpPath(TargetItemType type, uint32_t race) {

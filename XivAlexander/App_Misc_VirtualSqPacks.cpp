@@ -184,8 +184,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					ReflectUsedEntries_FindPlaceholders(it->second, tempData, entry.FullPath);
 				} else {
 					const auto ttmpd = std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::Handle{ ttmp.DataFile, false });
-					const auto metadata = Sqex::ThirdParty::TexTools::ItemMetadata(Sqex::Sqpack::EntryRawStream(std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(entry.FullPath, ttmpd, entry.ModOffset, entry.ModSize)));
-					ReflectUsedEntries_FindPlaceholders(it->second, tempData, metadata.ImcPath());
+					const auto metadata = Sqex::ThirdParty::TexTools::ItemMetadata(entry.FullPath, Sqex::Sqpack::EntryRawStream(std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(entry.FullPath, ttmpd, entry.ModOffset, entry.ModSize)));
+					ReflectUsedEntries_FindPlaceholders(it->second, tempData, metadata.TargetImcPath);
 					ReflectUsedEntries_FindPlaceholders(it->second, tempData, Sqex::ThirdParty::TexTools::ItemMetadata::EqpPath);
 					ReflectUsedEntries_FindPlaceholders(it->second, tempData, Sqex::ThirdParty::TexTools::ItemMetadata::GmpPath);
 					if (const auto estPath = Sqex::ThirdParty::TexTools::ItemMetadata::EstPath(metadata.EstType))
@@ -319,11 +319,11 @@ struct App::Misc::VirtualSqPacks::Implementation {
 	) {
 		if (entry.IsMetadata()) {
 			const auto ttmpd = std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::Handle{ ttmp.DataFile, false });
-			const auto metadata = Sqex::ThirdParty::TexTools::ItemMetadata(Sqex::Sqpack::EntryRawStream(std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(entry.FullPath, ttmpd, entry.ModOffset, entry.ModSize)));
+			const auto metadata = Sqex::ThirdParty::TexTools::ItemMetadata(entry.FullPath, Sqex::Sqpack::EntryRawStream(std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(entry.FullPath, ttmpd, entry.ModOffset, entry.ModSize)));
 			metadata.ApplyImcEdits([&]() -> Sqex::Imc::File& {
-				const auto imcPath = metadata.ImcPath();
+				const auto imcPath = metadata.TargetImcPath;
 				if (const auto it = tempData.Imc.find(imcPath); it == tempData.Imc.end())
-					return tempData.Imc[imcPath] = Sqex::Imc::File(*GetOriginalEntry(imcPath));
+					return tempData.Imc[imcPath] = Sqex::Imc::File(*GetOriginalEntry(metadata.SourceImcPath));
 				else
 					return it->second;
 				});

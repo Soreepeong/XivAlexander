@@ -196,9 +196,9 @@ void Sqex::Sqpack::Creator::ReserveSpacesFromTTMP(const ThirdParty::TexTools::TT
 			continue;
 
 		if (entry.IsMetadata()) {
-			const auto metadata = Sqex::ThirdParty::TexTools::ItemMetadata(Sqex::Sqpack::EntryRawStream(std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(entry.FullPath, ttmpd, entry.ModOffset, entry.ModSize)));
+			const auto metadata = Sqex::ThirdParty::TexTools::ItemMetadata(entry.FullPath, Sqex::Sqpack::EntryRawStream(std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(entry.FullPath, ttmpd, entry.ModOffset, entry.ModSize)));
 			if (!metadata.Get<Sqex::Imc::Entry>(Sqex::ThirdParty::TexTools::ItemMetadata::MetaDataType::Imc).empty())
-				ReserveSwappableSpace(metadata.ImcPath(), 65536);
+				ReserveSwappableSpace(metadata.TargetImcPath, 65536);
 			if (const auto eqdpedit = metadata.Get<Sqex::ThirdParty::TexTools::ItemMetadata::EqdpEntry>(Sqex::ThirdParty::TexTools::ItemMetadata::MetaDataType::Eqdp); !eqdpedit.empty()) {
 				for (const auto& v : eqdpedit) {
 					ReserveSwappableSpace(metadata.EqdpPath(metadata.ItemType, v.RaceCode), 1048576);
@@ -217,9 +217,9 @@ void Sqex::Sqpack::Creator::ReserveSpacesFromTTMP(const ThirdParty::TexTools::TT
 						continue;
 
 					if (entry.IsMetadata()) {
-						const auto metadata = Sqex::ThirdParty::TexTools::ItemMetadata(Sqex::Sqpack::EntryRawStream(std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(entry.FullPath, ttmpd, entry.ModOffset, entry.ModSize)));
+						const auto metadata = Sqex::ThirdParty::TexTools::ItemMetadata(entry.FullPath, Sqex::Sqpack::EntryRawStream(std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(entry.FullPath, ttmpd, entry.ModOffset, entry.ModSize)));
 						if (!metadata.Get<Sqex::Imc::Entry>(Sqex::ThirdParty::TexTools::ItemMetadata::MetaDataType::Imc).empty())
-							ReserveSwappableSpace(metadata.ImcPath(), 65536);
+							ReserveSwappableSpace(metadata.TargetImcPath, 65536);
 						if (const auto eqdpedit = metadata.Get<Sqex::ThirdParty::TexTools::ItemMetadata::EqdpEntry>(Sqex::ThirdParty::TexTools::ItemMetadata::MetaDataType::Eqdp); !eqdpedit.empty()) {
 							for (const auto& v : eqdpedit) {
 								ReserveSwappableSpace(metadata.EqdpPath(metadata.ItemType, v.RaceCode), 1048576);

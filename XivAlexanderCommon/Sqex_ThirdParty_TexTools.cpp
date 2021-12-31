@@ -252,12 +252,11 @@ bool Sqex::ThirdParty::TexTools::ModEntry::IsMetadata() const {
 const srell::u8cregex Sqex::ThirdParty::TexTools::ItemMetadata::CharacterMetaPathTest(
 	"^(?<FullPathPrefix>chara"
 	"/(?<PrimaryType>[a-z]+)"
-	"/[a-z](?<PrimaryId>[0-9]+)"
+	"/(?<PrimaryCode>[a-z])(?<PrimaryId>[0-9]+)"
 	"(?:/obj"
 	"/(?<SecondaryType>[a-z]+)"
-	"/[a-z](?<SecondaryId>[0-9]+))?"
-	"/.*?"
-	")(?:_(?<Slot>[a-z]{3}))?\\.meta$"
+	"/(?<SecondaryCode>[a-z])(?<SecondaryId>[0-9]+))?"
+	"/).*?(?:_(?<Slot>[a-z]{3}))?\\.meta$"
 	, srell::u8cregex::icase);
 const srell::u8cregex Sqex::ThirdParty::TexTools::ItemMetadata::HousingMetaPathTest(
 	"^(?<FullPathPrefix>bgcommon"
@@ -265,24 +264,26 @@ const srell::u8cregex Sqex::ThirdParty::TexTools::ItemMetadata::HousingMetaPathT
 	"/(?<PrimaryType>[a-z]+)"
 	"/general"
 	"/(?<PrimaryId>[0-9]+)"
-	"/.*?"
-	")\\.meta$"
+	"/).*?\\.meta$"
 	, srell::u8cregex::icase);
 
-Sqex::ThirdParty::TexTools::ItemMetadata::ItemMetadata(const RandomAccessStream& stream)
+Sqex::ThirdParty::TexTools::ItemMetadata::ItemMetadata(std::string gamePath, const RandomAccessStream& stream)
 	: Data(stream.ReadStreamIntoVector<uint8_t>(0))
 	, Version(*reinterpret_cast<const uint32_t*>(&Data[0]))
-	, Path(reinterpret_cast<const char*>(&Data[sizeof Version]))
-	, Header(*reinterpret_cast<const MetaDataHeader*>(Path.data() + Path.size() + 1))
-	, AllEntries(reinterpret_cast<const MetaDataEntryLocator*>(&Data[Header.FirstEntryLocatorOffset]), Header.EntryCount) {
-	const auto pathStr = std::string(Path);
+	, TargetPath(std::move(gamePath))
+	, SourcePath(reinterpret_cast<const char*>(&Data[sizeof Version]))
+	, Header(*reinterpret_cast<const MetaDataHeader*>(&Data[sizeof Version + SourcePath.size() + 1]))
+	, AllEntries(reinterpret_cast<const MetaDataEntryLocator*>(Data.data() + Header.FirstEntryLocatorOffset), Header.EntryCount) {
 	if (srell::u8csmatch matches;
-		srell::regex_search(pathStr, matches, CharacterMetaPathTest)) {
+		srell::regex_search(TargetPath, matches, CharacterMetaPathTest)) {
 		PrimaryType = matches["PrimaryType"].str();
 		PrimaryId = static_cast<uint16_t>(std::strtol(matches["PrimaryId"].str().c_str(), nullptr, 10));
 		SecondaryType = matches["SecondaryType"].str();
 		SecondaryId = static_cast<uint16_t>(std::strtol(matches["SecondaryId"].str().c_str(), nullptr, 10));
-		FullPathPrefix = matches["FullPathPrefix"].str();
+		if (SecondaryType.empty())
+			TargetImcPath = matches["FullPathPrefix"].str() + matches["PrimaryCode"].str() + matches["PrimaryId"].str() + ".imc";
+		else
+			TargetImcPath = matches["FullPathPrefix"].str() + matches["SecondaryCode"].str() + matches["SecondaryId"].str() + ".imc";
 		CharLowerA(&PrimaryType[0]);
 		CharLowerA(&SecondaryType[0]);
 		if (PrimaryType == "equipment") {
@@ -315,10 +316,21 @@ Sqex::ThirdParty::TexTools::ItemMetadata::ItemMetadata(const RandomAccessStream&
 				EstType = TargetEstType::Face;
 		}
 
-	} else if (srell::regex_search(pathStr, matches, HousingMetaPathTest)) {
+	} else if (srell::regex_search(TargetPath, matches, HousingMetaPathTest)) {
 		PrimaryType = matches["PrimaryType"].str();
 		PrimaryId = static_cast<uint16_t>(std::strtol(matches["PrimaryId"].str().c_str(), nullptr, 10));
 		ItemType = TargetItemType::Housing;
+
+	} else {
+		throw NotItemMetadataError("Unsupported meta file");
+	}
+
+	if (srell::u8csmatch matches;
+		srell::regex_search(SourcePath, matches, CharacterMetaPathTest)) {
+		if (SecondaryType.empty())
+			SourceImcPath = matches["FullPathPrefix"].str() + matches["PrimaryCode"].str() + matches["PrimaryId"].str() + ".imc";
+		else
+			SourceImcPath = matches["FullPathPrefix"].str() + matches["SecondaryCode"].str() + matches["SecondaryId"].str() + ".imc";
 
 	} else {
 		throw NotItemMetadataError("Unsupported meta file");
@@ -328,6 +340,10 @@ Sqex::ThirdParty::TexTools::ItemMetadata::ItemMetadata(const RandomAccessStream&
 void Sqex::ThirdParty::TexTools::ItemMetadata::ApplyImcEdits(std::function<Sqex::Imc::File& ()> reader) const {
 	if (const auto imcedit = Get<Sqex::Imc::Entry>(MetaDataType::Imc); !imcedit.empty()) {
 		auto& imc = reader();
+		if (imc.Header().Type == Imc::Type::Unknown) {
+			const auto& typeStr = SecondaryType.empty() ? PrimaryType : SecondaryType;
+			imc.Header().Type = typeStr == "equipment" || typeStr == "accessory" ? Imc::Type::Set : Imc::Type::NonSet;
+		}
 		imc.Ensure(imcedit.size() - 1);
 		for (size_t i = 0; i < imcedit.size(); ++i) {
 			imc.Entry(i * imc.EntryCountPerSet() + SlotIndex) = imcedit[i];
