@@ -27,29 +27,18 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 	static constexpr auto SecondToMicrosecondMultiplier = 1000000;
 
 	class SingleConnectionHandler {
-
-		const std::shared_ptr<Config> m_config;
+		const std::shared_ptr<Config> Config;
+		Implementation& Impl;
+		Network::SingleConnection& Conn;
 
 		struct PendingAction {
-			uint32_t ActionId;
-			uint32_t Sequence;
-			int64_t RequestUs;
-			int64_t ResponseUs = 0;
-			bool CastFlag = false;
-			int64_t OriginalWaitUs = 0;
-			int64_t WaitTimeUs = 0;
-
-			PendingAction()
-				: ActionId(0)
-				, Sequence(0)
-				, RequestUs(0) {
-			}
-
-			explicit PendingAction(const Network::Structures::XivIpcs::C2S_ActionRequest& request)
-				: ActionId(request.ActionId)
-				, Sequence(request.Sequence)
-				, RequestUs(Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier)) {
-			}
+			uint32_t ActionId{};
+			uint32_t Sequence{};
+			int64_t RequestUs{};
+			int64_t ResponseUs{};
+			int64_t OriginalWaitUs{};
+			int64_t WaitTimeUs{};
+			bool CastFlag{};
 		};
 
 	public:
@@ -57,53 +46,55 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 		// This will result in cancellation of following actions, so to prevent this, we keep track of outgoing action
 		// request timestamps, and stack up required animation lock time responses from server.
 		// The game will only process the latest animation lock duration information.
-		std::deque<PendingAction> m_pendingActions{};
-		PendingAction m_latestSuccessfulRequest;
-		int64_t m_lastAnimationLockEndsAtUs = 0;
-		std::map<int, int64_t> m_originalWaitUsMap{};
-		Utils::NumericStatisticsTracker m_earlyRequestsDurationUs{32, 0};
+		std::deque<PendingAction> PendingActions;
+		std::optional<PendingAction> LatestSuccessfulRequest;
+		std::optional<int64_t> LastAnimationLockEndsAtUs;
+		std::map<int, int64_t> OriginalWaitUsMap;
+		Utils::NumericStatisticsTracker EarlyRequestsDurationUs{32, 0};
 
-		Implementation* m_pImpl;
-		Network::SingleConnection& conn;
 
 		SingleConnectionHandler(Implementation* pImpl, Network::SingleConnection& conn)
-			: m_config(Config::Acquire())
-			, m_pImpl(pImpl)
-			, conn(conn) {
+			: Config(Config::Acquire())
+			, Impl(*pImpl)
+			, Conn(conn) {
 			using namespace Network::Structures;
 
-			const auto& gameConfig = m_config->Game;
-			const auto& runtimeConfig = m_config->Runtime;
+			const auto& gameConfig = Config->Game;
+			const auto& runtimeConfig = Config->Runtime;
 
 			conn.AddOutgoingFFXIVMessageHandler(this, [&](auto pMessage) {
 				if (pMessage->Type == MessageType::Ipc && pMessage->Data.Ipc.Type == IpcType::InterestedType) {
 					if (pMessage->Data.Ipc.SubType == gameConfig.C2S_ActionRequest[0]
 						|| pMessage->Data.Ipc.SubType == gameConfig.C2S_ActionRequest[1]) {
 						const auto& actionRequest = pMessage->Data.Ipc.Data.C2S_ActionRequest;
-						m_pendingActions.emplace_back(actionRequest);
+						PendingActions.emplace_back(PendingAction{
+							.ActionId = actionRequest.ActionId,
+							.Sequence = actionRequest.Sequence,
+							.RequestUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier),
+							});
 
-						const auto delayUs = m_pendingActions.back().RequestUs - m_lastAnimationLockEndsAtUs;
+						const auto delayUs = LastAnimationLockEndsAtUs ? PendingActions.back().RequestUs - *LastAnimationLockEndsAtUs : INT64_MAX;
 
-						if (delayUs < 0) {
+						if (LastAnimationLockEndsAtUs && delayUs < 0) {
 							if (runtimeConfig.UseEarlyPenalty) {
 								// If somehow latest action request has been made before last animation lock end time,
 								// penalize by forcing the next action to be usable after the early duration passes.
-								m_lastAnimationLockEndsAtUs -= delayUs;
+								LastAnimationLockEndsAtUs = *LastAnimationLockEndsAtUs - delayUs;
 
 								// Record how early did the game let the user user action, and reflect that when deciding next extraDelay.
-								m_earlyRequestsDurationUs.AddValue(-delayUs);
+								EarlyRequestsDurationUs.AddValue(-delayUs);
 							}
 
 						} else {
 							// Otherwise, if there was no action queued to begin with before the current one, update the base lock time to now.
-							if (m_pendingActions.size() == 1)
-								m_lastAnimationLockEndsAtUs = m_pendingActions.back().RequestUs;
+							if (PendingActions.size() == 1)
+								LastAnimationLockEndsAtUs = PendingActions.back().RequestUs;
 						}
 
 						if (runtimeConfig.UseHighLatencyMitigationLogging) {
-							const auto prevRelativeUs = m_pendingActions.back().RequestUs - m_latestSuccessfulRequest.RequestUs;
+							const auto prevRelativeUs = LatestSuccessfulRequest ? PendingActions.back().RequestUs - LatestSuccessfulRequest->RequestUs : INT64_MAX;
 
-							m_pImpl->m_logger->Format(
+							Impl.m_logger->Format(
 								LogCategory::AnimationLockLatencyHandler,
 								"{:x}: C2S_ActionRequest({:04x}): actionId={:04x} sequence={:04x}{}{}",
 								conn.Socket(),
@@ -123,7 +114,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 				if (pMessage->Type == MessageType::Ipc && pMessage->Data.Ipc.Type == IpcType::CustomType) {
 					if (pMessage->Data.Ipc.SubType == static_cast<uint16_t>(IpcCustomSubtype::OriginalWaitTime)) {
 						const auto& data = pMessage->Data.Ipc.Data.S2C_Custom_OriginalWaitTime;
-						m_originalWaitUsMap[data.SourceSequence] = static_cast<uint64_t>(static_cast<double>(data.OriginalWaitTime) * SecondToMicrosecondMultiplier);
+						OriginalWaitUsMap[data.SourceSequence] = static_cast<uint64_t>(static_cast<double>(data.OriginalWaitTime) * SecondToMicrosecondMultiplier);
 					}
 
 					// Don't relay custom Ipc data to game.
@@ -149,72 +140,79 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 								actionEffect.ActionId,
 								actionEffect.SourceSequence);
 
-							if (const auto it = m_originalWaitUsMap.find(actionEffect.SourceSequence); it == m_originalWaitUsMap.end())
+							if (const auto it = OriginalWaitUsMap.find(actionEffect.SourceSequence); it == OriginalWaitUsMap.end())
 								waitUs = originalWaitUs = static_cast<int64_t>(static_cast<double>(actionEffect.AnimationLockDuration) * SecondToMicrosecondMultiplier);
 							else {
 								waitUs = originalWaitUs = it->second;
-								m_originalWaitUsMap.erase(it);
+								OriginalWaitUsMap.erase(it);
 							}
 
 							if (actionEffect.SourceSequence == 0) {
 								// Process actions originating from server.
-								if (!m_latestSuccessfulRequest.CastFlag && m_latestSuccessfulRequest.Sequence && m_lastAnimationLockEndsAtUs > nowUs) {
-									m_latestSuccessfulRequest.ActionId = actionEffect.ActionId;
-									m_latestSuccessfulRequest.Sequence = 0;
-									m_lastAnimationLockEndsAtUs += (originalWaitUs + nowUs) - (m_latestSuccessfulRequest.OriginalWaitUs + m_latestSuccessfulRequest.ResponseUs);
-									m_lastAnimationLockEndsAtUs = std::max(m_lastAnimationLockEndsAtUs, nowUs + AutoAttackDelayUs);
-									waitUs = m_lastAnimationLockEndsAtUs - nowUs;
+								if (LatestSuccessfulRequest && !LatestSuccessfulRequest->CastFlag && LatestSuccessfulRequest->Sequence && *LastAnimationLockEndsAtUs > nowUs) {
+									LatestSuccessfulRequest->ActionId = actionEffect.ActionId;
+									LatestSuccessfulRequest->Sequence = 0;
+									*LastAnimationLockEndsAtUs += (originalWaitUs + nowUs) - (LatestSuccessfulRequest->OriginalWaitUs + LatestSuccessfulRequest->ResponseUs);
+									*LastAnimationLockEndsAtUs = std::max(*LastAnimationLockEndsAtUs, nowUs + AutoAttackDelayUs);
+									waitUs = *LastAnimationLockEndsAtUs - nowUs;
 								}
 								description << " serverOriginated";
 
 							} else {
 								// find the one sharing Sequence, assuming action responses are always in order
-								while (!m_pendingActions.empty() && m_pendingActions.front().Sequence != actionEffect.SourceSequence) {
-									const auto& item = m_pendingActions.front();
-									m_pImpl->m_logger->Format(
+								while (!PendingActions.empty() && PendingActions.front().Sequence != actionEffect.SourceSequence) {
+									const auto& item = PendingActions.front();
+									Impl.m_logger->Format(
 										LogCategory::AnimationLockLatencyHandler,
 										u8"\t┎ ActionRequest ignored for processing: actionId={:04x} sequence={:04x}",
 										item.ActionId, item.Sequence);
-									m_pendingActions.pop_front();
+									PendingActions.pop_front();
 								}
 
-								if (!m_pendingActions.empty()) {
-									m_latestSuccessfulRequest = m_pendingActions.front();
-									m_latestSuccessfulRequest.ResponseUs = nowUs;
-									m_latestSuccessfulRequest.OriginalWaitUs = originalWaitUs;
+								if (!PendingActions.empty()) {
+									LatestSuccessfulRequest = PendingActions.front();
+									LatestSuccessfulRequest->ResponseUs = nowUs;
+									LatestSuccessfulRequest->OriginalWaitUs = originalWaitUs;
 
 									// 100ms animation lock after cast ends stays. Modify animation lock duration for instant actions only.
 									// Since no other action is in progress right before the cast ends, we can safely replace the animation lock with the latest after-cast lock.
-									if (!m_latestSuccessfulRequest.CastFlag) {
-										const auto rttUs = static_cast<int64_t>(nowUs - m_latestSuccessfulRequest.RequestUs);
+									if (!LatestSuccessfulRequest->CastFlag) {
+										const auto rttUs = static_cast<int64_t>(nowUs - LatestSuccessfulRequest->RequestUs);
 										conn.ApplicationLatencyUs.AddValue(rttUs);
 										description << std::format(" rtt={}us", rttUs);
-										m_lastAnimationLockEndsAtUs = ResolveNextAnimationLockEndUs(m_lastAnimationLockEndsAtUs, nowUs, originalWaitUs, rttUs, description);
-										waitUs = m_lastAnimationLockEndsAtUs - nowUs;
+										LastAnimationLockEndsAtUs = ResolveNextAnimationLockEndUs(*LastAnimationLockEndsAtUs, nowUs, originalWaitUs, rttUs, description);
+										waitUs = *LastAnimationLockEndsAtUs - nowUs;
 									}
-									m_pendingActions.pop_front();
+									PendingActions.pop_front();
 								}
 							}
+
+							// Animation locks may not increase above twice of original.
+							waitUs = std::min(originalWaitUs * 2, waitUs);
+							LastAnimationLockEndsAtUs = nowUs + waitUs;
 
 							if (waitUs < 0) {
 								if (!runtimeConfig.UseHighLatencyMitigationPreviewMode) {
 									actionEffect.AnimationLockDuration = 0;
-									m_latestSuccessfulRequest.WaitTimeUs = -m_latestSuccessfulRequest.OriginalWaitUs;
+									if (LatestSuccessfulRequest)
+										LatestSuccessfulRequest->WaitTimeUs = -LatestSuccessfulRequest->OriginalWaitUs;
 								}
 								description << std::format(" wait={}us->{}us->0us (ping/jitter too high)",
 									originalWaitUs, waitUs);
 							} else if (waitUs < originalWaitUs) {
 								if (!runtimeConfig.UseHighLatencyMitigationPreviewMode) {
 									actionEffect.AnimationLockDuration = static_cast<float>(waitUs) / static_cast<float>(SecondToMicrosecondMultiplier);
-									m_latestSuccessfulRequest.WaitTimeUs = waitUs - originalWaitUs;
+									if (LatestSuccessfulRequest)
+										LatestSuccessfulRequest->WaitTimeUs = waitUs - originalWaitUs;
 									XivAlexApp::GetCurrentApp()->GuaranteePumpBeginCounter(waitUs);
 								}
 								description << std::format(" wait={}us->{}us", originalWaitUs, waitUs);
 							} else
 								description << std::format(" wait={}us", originalWaitUs);
 							description << std::format(" next={:%H:%M:%S}", std::chrono::system_clock::now() + std::chrono::milliseconds(waitUs));
+
 							if (runtimeConfig.UseHighLatencyMitigationLogging)
-								m_pImpl->m_logger->Log(LogCategory::AnimationLockLatencyHandler, description.str());
+								Impl.m_logger->Log(LogCategory::AnimationLockLatencyHandler, description.str());
 
 						} else if (pMessage->Data.Ipc.SubType == gameConfig.S2C_ActorControlSelf) {
 							auto& actorControlSelf = pMessage->Data.Ipc.Data.S2C_ActorControlSelf;
@@ -223,12 +221,12 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 								// Received cooldown information; try to make the game accept input and process stuff as soon as cooldown expires
 								const auto& cooldown = actorControlSelf.Cooldown;
 
-								if (!m_pendingActions.empty() && m_pendingActions.front().ActionId == cooldown.ActionId) {
-									const auto cooldownRegistrationDelayUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier) - m_pendingActions.front().RequestUs;
+								if (!PendingActions.empty() && PendingActions.front().ActionId == cooldown.ActionId) {
+									const auto cooldownRegistrationDelayUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier) - PendingActions.front().RequestUs;
 									XivAlexApp::GetCurrentApp()->GuaranteePumpBeginCounter(cooldown.Duration * 10000LL - cooldownRegistrationDelayUs);
 
 									if (runtimeConfig.UseHighLatencyMitigationLogging) {
-										m_pImpl->m_logger->Format(
+										Impl.m_logger->Format(
 											LogCategory::AnimationLockLatencyHandler,
 											"{:x}: S2C_ActorControlSelf/Cooldown: actionId={:04x} duration={}.{:02}s",
 											conn.Socket(),
@@ -242,25 +240,25 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 								const auto& rollback = actorControlSelf.Rollback;
 
 								// find the one sharing Sequence, assuming action responses are always in order
-								while (!m_pendingActions.empty()
+								while (!PendingActions.empty()
 									&& (
 										// Sometimes SourceSequence is empty, in which case, we use ActionId to judge.
-										(rollback.SourceSequence != 0 && m_pendingActions.front().Sequence != rollback.SourceSequence)
-										|| (rollback.SourceSequence == 0 && m_pendingActions.front().ActionId != rollback.ActionId)
+										(rollback.SourceSequence != 0 && PendingActions.front().Sequence != rollback.SourceSequence)
+										|| (rollback.SourceSequence == 0 && PendingActions.front().ActionId != rollback.ActionId)
 									)) {
-									const auto& item = m_pendingActions.front();
-									m_pImpl->m_logger->Format(
+									const auto& item = PendingActions.front();
+									Impl.m_logger->Format(
 										LogCategory::AnimationLockLatencyHandler,
 										u8"\t┎ ActionRequest ignored for processing: actionId={:04x} sequence={:04x}",
 										item.ActionId, item.Sequence);
-									m_pendingActions.pop_front();
+									PendingActions.pop_front();
 								}
 
-								if (!m_pendingActions.empty())
-									m_pendingActions.pop_front();
+								if (!PendingActions.empty())
+									PendingActions.pop_front();
 
 								if (runtimeConfig.UseHighLatencyMitigationLogging)
-									m_pImpl->m_logger->Format(
+									Impl.m_logger->Format(
 										LogCategory::AnimationLockLatencyHandler,
 										"{:x}: S2C_ActorControlSelf/ActionRejected: actionId={:04x} sourceSequence={:04x}",
 										conn.Socket(),
@@ -276,20 +274,20 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 								const auto& cancelCast = actorControl.CancelCast;
 
 								// find the one sharing Sequence, assuming action responses are always in order
-								while (!m_pendingActions.empty() && m_pendingActions.front().ActionId != cancelCast.ActionId) {
-									const auto& item = m_pendingActions.front();
-									m_pImpl->m_logger->Format(
+								while (!PendingActions.empty() && PendingActions.front().ActionId != cancelCast.ActionId) {
+									const auto& item = PendingActions.front();
+									Impl.m_logger->Format(
 										LogCategory::AnimationLockLatencyHandler,
 										u8"\t┎ ActionRequest ignored for processing: actionId={:04x} sequence={:04x}",
 										item.ActionId, item.Sequence);
-									m_pendingActions.pop_front();
+									PendingActions.pop_front();
 								}
 
-								if (!m_pendingActions.empty())
-									m_pendingActions.pop_front();
+								if (!PendingActions.empty())
+									PendingActions.pop_front();
 
 								if (runtimeConfig.UseHighLatencyMitigationLogging)
-									m_pImpl->m_logger->Format(
+									Impl.m_logger->Format(
 										LogCategory::AnimationLockLatencyHandler,
 										"{:x}: S2C_ActorControl/CancelCast: actionId={:04x}",
 										conn.Socket(),
@@ -301,11 +299,11 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 							// Mark that the last request was a cast.
 							// If it indeed is a cast, the game UI will block the user from generating additional requests,
 							// so first item is guaranteed to be the cast action.
-							if (!m_pendingActions.empty())
-								m_pendingActions.front().CastFlag = true;
+							if (!PendingActions.empty())
+								PendingActions.front().CastFlag = true;
 
 							if (runtimeConfig.UseHighLatencyMitigationLogging)
-								m_pImpl->m_logger->Format(
+								Impl.m_logger->Format(
 									LogCategory::AnimationLockLatencyHandler,
 									"{:x}: S2C_ActorCast: actionId={:04x} time={:.3f} target={:08x}",
 									conn.Socket(),
@@ -320,14 +318,14 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 		}
 
 		~SingleConnectionHandler() {
-			conn.RemoveMessageHandlers(this);
+			Conn.RemoveMessageHandlers(this);
 		}
 
 		int64_t ResolveNextAnimationLockEndUs(const int64_t lastAnimationLockEndsAtUs, const int64_t nowUs, const int64_t originalWaitUs, const int64_t rttUs, std::stringstream& description) {
-			const auto& runtimeConfig = m_config->Runtime;
-			const auto pingTrackerUs = conn.GetPingLatencyTrackerUs();
+			const auto& runtimeConfig = Config->Runtime;
+			const auto pingTrackerUs = Conn.GetPingLatencyTrackerUs();
 
-			const auto socketLatencyUs = conn.FetchSocketLatencyUs();
+			const auto socketLatencyUs = Conn.FetchSocketLatencyUs();
 			const auto pingLatencyUs = pingTrackerUs ? pingTrackerUs->Latest() : INT64_MAX;
 			auto latencyUs = std::min(pingLatencyUs, socketLatencyUs);
 
@@ -338,10 +336,10 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 				description << " latencyUnavailable";
 			} else {
 				if (latencyUs > rttUs)
-					conn.ExaggeratedNetworkLatencyUs.AddValue(latencyUs - rttUs);
+					Conn.ExaggeratedNetworkLatencyUs.AddValue(latencyUs - rttUs);
 
-				if (const auto exaggerationUs = conn.ExaggeratedNetworkLatencyUs.Median();
-					exaggerationUs != conn.ExaggeratedNetworkLatencyUs.InvalidValue() && latencyUs >= exaggerationUs) {
+				if (const auto exaggerationUs = Conn.ExaggeratedNetworkLatencyUs.Median();
+					exaggerationUs != Conn.ExaggeratedNetworkLatencyUs.InvalidValue() && latencyUs >= exaggerationUs) {
 					// Reported latency is higher than rtt, which means latency measurement is unreliable.
 					if (socketLatencyUs < pingLatencyUs)
 						description << std::format(" socketLatency={}->{}us", latencyUs, latencyUs - exaggerationUs);
@@ -362,11 +360,11 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 					return nowUs + originalWaitUs - latencyUs;
 
 				case HighLatencyMitigationMode::SimulateNormalizedRttAndLatency: {
-					const auto rttMin = conn.ApplicationLatencyUs.Min();
-					const auto rttMean = conn.ApplicationLatencyUs.Mean();
-					const auto rttDeviation = conn.ApplicationLatencyUs.Deviation();
-					const auto latencyMean = !pingTrackerUs || pingLatencyUs > socketLatencyUs ? conn.SocketLatencyUs.Mean() : pingTrackerUs->Mean();
-					const auto latencyDeviation = !pingTrackerUs || pingLatencyUs > socketLatencyUs ? conn.SocketLatencyUs.Deviation() : pingTrackerUs->Deviation();
+					const auto rttMin = Conn.ApplicationLatencyUs.Min();
+					const auto rttMean = Conn.ApplicationLatencyUs.Mean();
+					const auto rttDeviation = Conn.ApplicationLatencyUs.Deviation();
+					const auto latencyMean = !pingTrackerUs || pingLatencyUs > socketLatencyUs ? Conn.SocketLatencyUs.Mean() : pingTrackerUs->Mean();
+					const auto latencyDeviation = !pingTrackerUs || pingLatencyUs > socketLatencyUs ? Conn.SocketLatencyUs.Deviation() : pingTrackerUs->Deviation();
 
 					// Correct latency and server response time values in case of outliers.
 					const auto latencyAdjustedImmediate = Utils::Clamp(latencyUs, latencyMean - latencyDeviation, latencyMean + latencyDeviation);
@@ -379,7 +377,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 					// Correct latency value based on estimate if server response time is stable.
 					const auto latencyAdjusted = std::max(latencyEstimate, latencyAdjustedImmediate);
 
-					const auto earlyPenalty = runtimeConfig.UseEarlyPenalty ? m_earlyRequestsDurationUs.Max() : 0;
+					const auto earlyPenalty = runtimeConfig.UseEarlyPenalty ? EarlyRequestsDurationUs.Max() : 0;
 					if (earlyPenalty)
 						description << std::format(" earlyPenalty={}us", earlyPenalty);
 
@@ -391,9 +389,9 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 					description << std::format(" delayAdjusted={}us", delay);
 
 					if (rttUs > 100 && latencyUs < 5000) {
-						m_pImpl->m_logger->Format<LogLevel::Warning>(
+						Impl.m_logger->Format<LogLevel::Warning>(
 							LogCategory::AnimationLockLatencyHandler,
-							m_config->Runtime.GetLangId(), IDS_WARNING_ZEROPING,
+							Config->Runtime.GetLangId(), IDS_WARNING_ZEROPING,
 							rttUs, latencyUs / 1000);
 					}
 					return lastAnimationLockEndsAtUs + originalWaitUs + delay;
