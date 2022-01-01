@@ -269,7 +269,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		for (const auto& [eqdpKey, data] : tempData.Eqdp)
 			ReflectUsedEntries_SetFromBuffer(tempData, Sqex::ThirdParty::TexTools::ItemMetadata::EqdpPath(eqdpKey.first, eqdpKey.second), data.Data());
 
-		// Step. Apply tempData.Replacements
+		// Step. Apply replacements
 		for (const auto& pathSpec : tempData.Replacements | std::views::keys) {
 			auto& [place, newEntry, description] = tempData.Replacements.at(pathSpec);
 			if (!description.empty()) {
@@ -619,7 +619,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				}
 				if (const auto ttmplPath = iter.path() / "TTMPL.mpl"; exists(ttmplPath)) {
 					if (!current)
-						AddFromTtmpl(ttmplPath, parent);
+						AddFromTtmpl(ttmplPath, parent, false);
 				} else {
 					if (!current)
 						current = parent->Children->emplace_back(std::make_shared<NestedTtmp>(NestedTtmp{
@@ -660,7 +660,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		parent->Sort();
 	}
 
-	std::shared_ptr<NestedTtmp> AddFromTtmpl(const std::filesystem::path& ttmplPath, const std::shared_ptr<NestedTtmp>& parent) {
+	std::shared_ptr<NestedTtmp> AddFromTtmpl(const std::filesystem::path& ttmplPath, const std::shared_ptr<NestedTtmp>& parent, bool checkAllocation) {
 		const auto ttmpDir = ttmplPath.parent_path();
 		if (ttmplPath.filename() != "TTMPL.mpl")
 			return nullptr;
@@ -672,7 +672,6 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				.Parent = parent,
 				.Enabled = !exists(ttmpDir / "disable"),
 				.Ttmp = TtmpSet{
-					.Allocated = true,
 					.ListPath = ttmplPath,
 					.List = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{Utils::Win32::Handle::FromCreateFile(ttmplPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)}),
 					.DataFile = Utils::Win32::Handle::FromCreateFile(ttmpDir / "TTMPD.mpd", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN)
@@ -683,6 +682,10 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				"Failed to load TexTools ModPack from {}: {}", ttmplPath.wstring(), e.what());
 			return nullptr;
 		}
+		if (checkAllocation)
+			CheckTtmpAllocation(*added->Ttmp);
+		else
+			added->Ttmp->Allocated = true;
 		if (const auto choicesPath = ttmpDir / "choices.json"; exists(choicesPath)) {
 			try {
 				added->Ttmp->Choices = Utils::ParseJsonFromFile(choicesPath);
@@ -735,19 +738,17 @@ struct App::Misc::VirtualSqPacks::Implementation {
 	}
 
 	void CheckTtmpAllocation(TtmpSet& item) {
-		item.ForEachEntryInterruptible(false, [&](const auto& entry) {
-			item.Allocated = false;
-
+		item.Allocated = Sqex::ThirdParty::TexTools::TTMPL::Continue == item.ForEachEntryInterruptible(false, [&](const auto& entry) {
 			const auto it = SqpackViews.find(SqpackPath / std::format(L"{}.win32.index", entry.ToExpacDatPath()));
 			if (it == SqpackViews.end())
-				return Sqex::ThirdParty::TexTools::TTMPL::Continue;
+				return Sqex::ThirdParty::TexTools::TTMPL::Break;
 
 			const auto pathSpec = Sqex::Sqpack::EntryPathSpec(entry.FullPath);
 			auto entryIt = it->second.HashOnlyEntries.find(pathSpec);
 			if (entryIt == it->second.HashOnlyEntries.end()) {
 				entryIt = it->second.FullPathEntries.find(pathSpec);
 				if (entryIt == it->second.FullPathEntries.end()) {
-					return Sqex::ThirdParty::TexTools::TTMPL::Continue;
+					return Sqex::ThirdParty::TexTools::TTMPL::Break;
 				}
 			}
 
@@ -755,8 +756,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			if (!provider)
 				return Sqex::ThirdParty::TexTools::TTMPL::Continue;
 
-			item.Allocated = provider->StreamSize() >= entry.ModSize;
-			return Sqex::ThirdParty::TexTools::TTMPL::Continue;
+			return provider->StreamSize() >= entry.ModSize ? Sqex::ThirdParty::TexTools::TTMPL::Continue : Sqex::ThirdParty::TexTools::TTMPL::Break;
 			});
 	}
 
@@ -2141,7 +2141,7 @@ void App::Misc::VirtualSqPacks::AddNewTtmp(const std::filesystem::path & ttmplPa
 
 	std::shared_ptr<NestedTtmp> added;
 	try {
-		added = m_pImpl->AddFromTtmpl(ttmplPath, folder);
+		added = m_pImpl->AddFromTtmpl(ttmplPath, folder, true);
 		folder->Sort();
 	} catch (const std::exception& e) {
 		m_pImpl->Ttmps->RemoveEmptyChildren();
