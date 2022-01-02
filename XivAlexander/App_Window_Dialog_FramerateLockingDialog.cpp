@@ -17,7 +17,7 @@ static double GetDlgItemDouble(HWND hwnd, int nId) {
 
 static void SetDlgItemTextIfChanged(HWND hwnd, int nId, const std::wstring& buf) {
 	std::wstring buf2;
-	buf2.resize(buf2.size() + 1);
+	buf2.resize(buf.size() + 1);
 	buf2.resize(GetDlgItemTextW(hwnd, nId, &buf2[0], static_cast<int>(buf2.size())));
 	if (buf2 == buf)
 		return;
@@ -43,17 +43,15 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(HWND hParentWindow) 
 			return Utils::CallOnDestruction([this]() { PreventEditUpdateCounter -= 1; });
 		}
 
-		void CalcFps() {
-			auto prevIntervalValue = IntervalUs;
-			if (!prevIntervalValue)
-				prevIntervalValue = 1000000 / 60;  // default to 60fps
-
-			// For (Interval + Deviation) * n >= Gcd for minimum n,
-			// find minimum interval
-			for (auto i = IntervalUs + 1; i <= 1000000; ++i) {
-				if ((Gcd10ms * 10000) % (i + FpsDevUs) > (Gcd10ms * 10000) % (prevIntervalValue + FpsDevUs)) {
-					prevIntervalValue = i - 1;
-					break;
+		void CalcFps(double fromFps, double toFps) {
+			fromFps = std::min(1000000., std::max(1., fromFps));
+			toFps = std::min(1000000., std::max(1., toFps));
+			auto prevIntervalValue = static_cast<uint64_t>(1000000. / toFps);
+			const auto gcdUs = Gcd10ms * 10000;
+			
+			for (auto i = prevIntervalValue, i_ = static_cast<uint64_t>(1000000. / fromFps); i <= i_; ++i) {
+				if (i + FpsDevUs - gcdUs % (i + FpsDevUs) < prevIntervalValue + FpsDevUs - gcdUs % (prevIntervalValue + FpsDevUs)) {
+					prevIntervalValue = i;
 				}
 			}
 
@@ -68,7 +66,7 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(HWND hParentWindow) 
 			if (IntervalUs == 0)
 				Fps = 0.;
 			else
-				Fps = static_cast<double>(1000000 - FpsDevUs) / IntervalUs;
+				Fps = 1000000. / static_cast<double>(IntervalUs);
 			SetDlgItemTextIfChanged(Hwnd, IDC_TARGETFRAMERATE_EDIT, std::format(L"{:g}", Fps).c_str());
 			SetDlgItemTextIfChanged(Hwnd, IDC_INTERVAL_EDIT, std::format(L"{}", IntervalUs).c_str());
 			Preview();
@@ -88,7 +86,7 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(HWND hParentWindow) 
 			}
 			Fps = fps;
 			if (fps > 0)
-				IntervalUs = static_cast<uint64_t>(std::ceil(static_cast<double>(1000000 - FpsDevUs) / Fps));
+				IntervalUs = static_cast<uint64_t>(std::ceil(1000000. / Fps));
 			else
 				IntervalUs = 0;
 			SetDlgItemTextIfChanged(Hwnd, IDC_INTERVAL_EDIT, std::format(L"{}", IntervalUs).c_str());
@@ -99,7 +97,6 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(HWND hParentWindow) 
 			const auto prevent = PreventEditUpdate();
 			FpsDevUs = fpsDevUs;
 			Gcd10ms = gcd10ms;
-			UpdateFps(Fps);
 			Preview();
 		}
 
@@ -108,10 +105,11 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(HWND hParentWindow) 
 			if (IntervalUs == 0)
 				SetDlgItemTextW(Hwnd, IDC_ESTIMATEDDRIFT_EDIT, L"-");
 			else {
-				const auto dv1 = Gcd10ms * 10000 % (IntervalUs + FpsDevUs);
-				const auto dv2 = Gcd10ms * 10000 % IntervalUs;
+				const auto gcdUs = Gcd10ms * 10000;
+				const auto dv1 = IntervalUs + FpsDevUs - gcdUs % (IntervalUs + FpsDevUs);
+				const auto dv2 = IntervalUs - gcdUs % IntervalUs;
 				if (dv1 == dv2)
-					SetDlgItemTextW(Hwnd, IDC_ESTIMATEDDRIFT_EDIT, std::format(L"{}", Gcd10ms * 10000 % (IntervalUs + FpsDevUs)).c_str());
+					SetDlgItemTextW(Hwnd, IDC_ESTIMATEDDRIFT_EDIT, std::format(L"{}", dv1).c_str());
 				else
 					SetDlgItemTextW(Hwnd, IDC_ESTIMATEDDRIFT_EDIT, std::format(L"{} ~ {}", std::min(dv1, dv2), std::max(dv1, dv2)).c_str());
 			}
@@ -142,6 +140,8 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(HWND hParentWindow) 
 				const auto prevent = data.PreventEditUpdate();
 				CheckDlgButton(hwnd, IDC_PREVIEW, TRUE);
 				SetDlgItemTextW(hwnd, IDC_INTERVAL_EDIT, std::format(L"{}", data.IntervalUs).c_str());
+				SetDlgItemTextW(hwnd, IDC_TARGETFPS_FROM_EDIT, std::format(L"{:g}", std::floor(data.Fps)).c_str());
+				SetDlgItemTextW(hwnd, IDC_TARGETFPS_TO_EDIT, std::format(L"{:g}", std::ceil(data.Fps)).c_str());
 				SetDlgItemTextW(hwnd, IDC_TARGETFRAMERATE_EDIT, std::format(L"{:g}", data.Fps).c_str());
 				SetDlgItemTextW(hwnd, IDC_FPSDEV_EDIT, std::format(L"{}", data.FpsDevUs).c_str());
 				SetDlgItemTextW(hwnd, IDC_GCD_EDIT, std::format(L"{}.{:02}", data.Gcd10ms / 100, data.Gcd10ms % 100).c_str());
@@ -162,7 +162,7 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(HWND hParentWindow) 
 						return 0;
 					
 					case IDC_CALCFPS:
-						data.CalcFps();
+						data.CalcFps(GetDlgItemDouble(hwnd, IDC_TARGETFPS_FROM_EDIT), GetDlgItemDouble(hwnd, IDC_TARGETFPS_TO_EDIT));
 						return 0;
 				
 					case IDC_PREVIEW:

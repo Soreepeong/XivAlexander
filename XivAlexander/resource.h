@@ -212,6 +212,7 @@
 #define IDC_TARGETFRAMERATE_EDIT        1002
 #define IDC_FPSDEV_EDIT                 1003
 #define IDC_GCD_EDIT                    1004
+#define IDC_TARGETFPS_FROM_EDIT         1005
 #define IDC_INTERVAL_STATIC             1006
 #define IDC_TARGETFRAMERATE_STATIC      1007
 #define IDC_FPSDEV_STATIC               1008
@@ -219,6 +220,10 @@
 #define IDC_PREVIEW                     1010
 #define IDC_ESTIMATEDDRIFT_STATIC       1011
 #define IDC_ESTIMATEDDRIFT_EDIT         1012
+#define IDC_TARGETFPS_FROM_STATIC       1013
+#define IDC_FPSDEV_EDIT3                1014
+#define IDC_TARGETFPS_TO_EDIT           1014
+#define IDC_TARGETFPS_TO_STATIC         1015
 #define ID_FILE_REVERT                  40012
 #define ID_FILE_SAVE                    40013
 #define ID_VIEW_ALWAYSONTOP             40014
@@ -366,7 +371,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        208
 #define _APS_NEXT_COMMAND_VALUE         40529
-#define _APS_NEXT_CONTROL_VALUE         1014
+#define _APS_NEXT_CONTROL_VALUE         1016
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
