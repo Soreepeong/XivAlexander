@@ -204,7 +204,8 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 									actionEffect.AnimationLockDuration = static_cast<float>(waitUs) / static_cast<float>(SecondToMicrosecondMultiplier);
 									if (LatestSuccessfulRequest)
 										LatestSuccessfulRequest->WaitTimeUs = waitUs - originalWaitUs;
-									XivAlexApp::GetCurrentApp()->GuaranteePumpBeginCounter(waitUs);
+									if (Config->Runtime.SynchronizeProcessing)
+										XivAlexApp::GetCurrentApp()->GuaranteePumpBeginCounter(waitUs);
 								}
 								description << std::format(" wait={}us->{}us", originalWaitUs, waitUs);
 							} else
@@ -223,7 +224,8 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 
 								if (!PendingActions.empty() && PendingActions.front().ActionId == cooldown.ActionId) {
 									const auto cooldownRegistrationDelayUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier) - PendingActions.front().RequestUs;
-									XivAlexApp::GetCurrentApp()->GuaranteePumpBeginCounter(cooldown.Duration * 10000LL - cooldownRegistrationDelayUs);
+									if (Config->Runtime.SynchronizeProcessing)
+										XivAlexApp::GetCurrentApp()->GuaranteePumpBeginCounter(cooldown.Duration * 10000LL - cooldownRegistrationDelayUs);
 
 									if (runtimeConfig.UseHighLatencyMitigationLogging) {
 										Impl.m_logger->Format(

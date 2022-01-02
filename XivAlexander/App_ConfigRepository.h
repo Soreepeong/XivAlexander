@@ -216,8 +216,8 @@ namespace App {
 			Item<bool> UseMoreCpuTime = CreateConfigItem(this, "UseMoreCpuPower", true);
 			Item<bool> SynchronizeProcessing = CreateConfigItem(this, "SynchronizeProcessing", true);
 			Item<bool> TerminateOnExitProcess = CreateConfigItem(this, "TerminateOnExitProcess", false);
-			Item<size_t> GameLoopInputAcceptIntervalUs = CreateConfigItem<size_t>(this, "GameLoopInputAcceptIntervalUs", 0, [](const size_t& val) {
-				return std::min<size_t>(std::max<size_t>(0, val), 100000);
+			Item<size_t> LockFramerate = CreateConfigItem<size_t>(this, "LockFramerate", 0, [](const size_t& val) {
+				return std::min<size_t>(std::max<size_t>(0, val), 1000000);
 			});
 
 			Item<Language> Language = CreateConfigItem(this, "Language", Language::SystemDefault);

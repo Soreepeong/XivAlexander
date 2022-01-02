@@ -326,7 +326,7 @@ struct App::XivAlexApp::Implementation final {
 					}
 
 					auto recordPumpInterval = false;
-					if (const auto intervalUs = this_->m_config->Runtime.GameLoopInputAcceptIntervalUs; intervalUs && waitUntilCounterUs == 0) {
+					if (const auto intervalUs = this_->m_config->Runtime.LockFramerate; intervalUs && waitUntilCounterUs == 0) {
 						recordPumpInterval = true;
 						waitUntilCounterUs = (1 + nowUs / intervalUs) * intervalUs;
 					}
@@ -334,7 +334,7 @@ struct App::XivAlexApp::Implementation final {
 					if (const auto socketSelectUs = m_socketHook ? m_socketHook->GetLastSocketSelectCounterUs() : 0)
 						SocketCallDelayTrackerUs.AddValue(socketSelectUs - LastMessagePumpCounterUs.back());
 
-					if (waitUntilCounterUs > 0 && !LastMessagePumpCounterUs.empty() && this_->m_config->Runtime.SynchronizeProcessing) {
+					if (waitUntilCounterUs > 0 && !LastMessagePumpCounterUs.empty()) {
 						const auto useMoreCpuTime = this_->m_config->Runtime.UseMoreCpuTime.Value();
 						while (waitUntilCounterUs > (nowUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier))) {
 							if (useMoreCpuTime)

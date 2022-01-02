@@ -18,6 +18,7 @@
 #include "App_Misc_VirtualSqPacks.h"
 #include "App_Network_SocketHook.h"
 #include "App_Window_ConfigWindow.h"
+#include "App_Window_Dialog_FramerateLockingDialog.h"
 #include "App_Window_ProgressPopupWindow.h"
 #include "App_XivAlexApp.h"
 #include "DllMain.h"
@@ -1050,6 +1051,10 @@ void App::Window::MainWindow::SetMenuStates() const {
 	// Configure
 	{
 		SetMenuState(hMenu, ID_CONFIGURE_USEMORECPUTIME, config.UseMoreCpuTime, true);
+		if (config.LockFramerate)
+			SetMenuState(hMenu, ID_CONFIGURE_LOCKFRAMERATE, true, true, m_config->Runtime.FormatStringRes(IDS_MENU_LOCKFRAMERATE, 1000000. / config.LockFramerate));
+		else
+			SetMenuState(hMenu, ID_CONFIGURE_LOCKFRAMERATE, false, true, m_config->Runtime.GetStringRes(IDS_MENU_LOCKFRAMERATE_DISABLED));
 		SetMenuState(hMenu, ID_CONFIGURE_SYNCHRONIZEPROCESSING, config.SynchronizeProcessing, true);
 		SetMenuState(hMenu, ID_CONFIGURE_QUICKGAMETERMINATION, config.TerminateOnExitProcess, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT, config.Language == Language::SystemDefault, true);
@@ -2038,6 +2043,10 @@ void App::Window::MainWindow::OnCommand_Menu_Configure(int menuId) {
 
 		case ID_CONFIGURE_USEMORECPUTIME:
 			config.UseMoreCpuTime = !config.UseMoreCpuTime;
+			return;
+
+		case ID_CONFIGURE_LOCKFRAMERATE: 
+			Dialog::FramerateLockingDialog::ShowModal(m_hWnd);
 			return;
 
 		case ID_CONFIGURE_SYNCHRONIZEPROCESSING:
