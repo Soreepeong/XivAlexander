@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <XivAlexanderCommon/Utils_ListenerManager.h>
+#include <XivAlexanderCommon/Utils_NumericStatisticsTracker.h>
 #include <XivAlexanderCommon/Utils_Win32.h>
 #include <XivAlexanderCommon/Utils_Win32_Handle.h>
 #include <XivAlexanderCommon/Utils_Win32_LoadedModule.h>
@@ -54,6 +55,10 @@ namespace App {
 		[[nodiscard]] std::string IsUnloadable() const;
 
 		[[nodiscard]] Network::SocketHook* GetSocketHook();
+
+		[[nodiscard]] const Utils::NumericStatisticsTracker& GetMessagePumpIntervalTrackerUs() const;
+		[[nodiscard]] const Utils::NumericStatisticsTracker& GetRenderTimeTakenTrackerUs() const;
+		[[nodiscard]] const Utils::NumericStatisticsTracker& GetSocketCallDelayTrackerUs() const;
 
 		void GuaranteePumpBeginCounter(int64_t counterUs);
 

@@ -746,20 +746,25 @@ std::wstring App::Network::SocketHook::Describe() const {
 					Utils::FromUtf8(Utils::ToString(conn->m_pImpl->m_localAddress)),
 					Utils::FromUtf8(Utils::ToString(conn->m_pImpl->m_remoteAddress)));
 
-				if (const auto latency = conn->FetchSocketLatencyUs())
+				if (const auto latency = conn->FetchSocketLatencyUs()) {
+					const auto [mean, dev] = conn->SocketLatencyUs.MeanAndDeviation();
 					result += m_pImpl->m_config->Runtime.FormatStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY,
-						latency, conn->SocketLatencyUs.Median(), conn->SocketLatencyUs.Mean(), conn->SocketLatencyUs.Deviation());
-				else
+						latency, conn->SocketLatencyUs.Median(), mean, dev);
+				} else
 					result += m_pImpl->m_config->Runtime.GetStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY_FAILURE);
 
-				if (const auto tracker = conn->GetPingLatencyTrackerUs(); tracker && tracker->Count())
+				if (const auto tracker = conn->GetPingLatencyTrackerUs(); tracker && tracker->Count()) {
+					const auto [mean, dev] = tracker->MeanAndDeviation();
 					result += m_pImpl->m_config->Runtime.FormatStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY,
-						tracker->Latest(), tracker->Median(), tracker->Mean(), tracker->Deviation());
-				else
+						tracker->Latest(), tracker->Median(), mean, dev);
+				} else
 					result += m_pImpl->m_config->Runtime.GetStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_PING_LATENCY_FAILURE);
-
-				result += m_pImpl->m_config->Runtime.FormatStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_RESPONSE_DELAY,
-					conn->ApplicationLatencyUs.Median(), conn->ApplicationLatencyUs.Mean(), conn->ApplicationLatencyUs.Deviation());
+				
+				{
+					const auto [mean, dev] = conn->ApplicationLatencyUs.MeanAndDeviation();
+					result += m_pImpl->m_config->Runtime.FormatStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_RESPONSE_DELAY,
+						conn->ApplicationLatencyUs.Median(), mean, dev);
+				}
 			}
 			return result;
 		} catch (...) {

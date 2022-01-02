@@ -170,9 +170,9 @@ struct App::XivAlexApp::Implementation final {
 	std::deque<int64_t> LastMessagePumpCounterUs;
 	std::set<int64_t> MessagePumpGuaranteeCounterUs;
 	int64_t LastWaitForSingleObjectUs{};
-	Utils::NumericStatisticsTracker MessagePumpIntervalUs{ 64, 0 };
-	Utils::NumericStatisticsTracker RenderTimeTakenUs{ 64, 0 };
-	Utils::NumericStatisticsTracker SocketCallDelayUs{ 64, 0 };
+	Utils::NumericStatisticsTracker MessagePumpIntervalTrackerUs{ 1024, 0 };
+	Utils::NumericStatisticsTracker RenderTimeTakenTrackerUs{ 1024, 0 };
+	Utils::NumericStatisticsTracker SocketCallDelayTrackerUs{ 1024, 0 };
 
 	void SetupTrayWindow() {
 		if (m_trayWindow)
@@ -308,40 +308,47 @@ struct App::XivAlexApp::Implementation final {
 		m_cleanup += PeekMessageW.SetHook([this, lastRemoveMsg = UINT{}](LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg) mutable->BOOL {
 			if (GetCurrentThreadId() == this_->m_pGameWindow->GetThreadId(false)) {
 				if (lastRemoveMsg == wRemoveMsg) {
-					if (LastWaitForSingleObjectUs && !LastMessagePumpCounterUs.empty()) {
-						RenderTimeTakenUs.AddValue(LastWaitForSingleObjectUs - LastMessagePumpCounterUs.back());
-						LastWaitForSingleObjectUs = 0;
-					}
-
 					auto nowUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier);
 					int64_t waitUntilCounterUs = 0;
+
+					if (LastWaitForSingleObjectUs && !LastMessagePumpCounterUs.empty()) {
+						RenderTimeTakenTrackerUs.AddValue(LastWaitForSingleObjectUs - LastMessagePumpCounterUs.back());
+						LastWaitForSingleObjectUs = 0;
+					}
 
 					// Ignore failed guarantees
 					while (!MessagePumpGuaranteeCounterUs.empty() && *MessagePumpGuaranteeCounterUs.begin() <= nowUs)
 						MessagePumpGuaranteeCounterUs.erase(MessagePumpGuaranteeCounterUs.begin());
 
-					if (!MessagePumpGuaranteeCounterUs.empty() && *MessagePumpGuaranteeCounterUs.begin() - nowUs <= MessagePumpIntervalUs.Mean()) {
+					if (!MessagePumpGuaranteeCounterUs.empty() && *MessagePumpGuaranteeCounterUs.begin() - nowUs <= MessagePumpIntervalTrackerUs.Latest()) {
 						waitUntilCounterUs = *MessagePumpGuaranteeCounterUs.begin();
 						MessagePumpGuaranteeCounterUs.erase(MessagePumpGuaranteeCounterUs.begin());
 					}
 
+					auto recordPumpInterval = false;
+					if (const auto intervalUs = this_->m_config->Runtime.GameLoopInputAcceptIntervalUs; intervalUs && waitUntilCounterUs == 0) {
+						recordPumpInterval = true;
+						waitUntilCounterUs = (1 + nowUs / intervalUs) * intervalUs;
+					}
+
 					if (const auto socketSelectUs = m_socketHook ? m_socketHook->GetLastSocketSelectCounterUs() : 0)
-						SocketCallDelayUs.AddValue(socketSelectUs - LastMessagePumpCounterUs.back());
+						SocketCallDelayTrackerUs.AddValue(socketSelectUs - LastMessagePumpCounterUs.back());
 
 					if (waitUntilCounterUs > 0 && !LastMessagePumpCounterUs.empty() && this_->m_config->Runtime.SynchronizeProcessing) {
-						this_->m_logger->Format(LogCategory::General, "Waiting for {}us before next PeekMessage (select {}{:+}us, render time taken {}{:+}us, pump interval {}{:+}us)",
-							waitUntilCounterUs - nowUs,
-							SocketCallDelayUs.Mean(), SocketCallDelayUs.Deviation(),
-							RenderTimeTakenUs.Mean(), RenderTimeTakenUs.Deviation(),
-							MessagePumpIntervalUs.Mean(), MessagePumpIntervalUs.Deviation());
-						while (waitUntilCounterUs > (nowUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier)))
-							void(0);
+						const auto useMoreCpuTime = this_->m_config->Runtime.UseMoreCpuTime.Value();
+						while (waitUntilCounterUs > (nowUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier))) {
+							if (useMoreCpuTime)
+								void(0);
+							else
+								::Sleep(0);
+						}
 						LastMessagePumpCounterUs.push_back(nowUs);
 					} else {
 						LastMessagePumpCounterUs.push_back(nowUs);
-						if (LastMessagePumpCounterUs.size() >= 2)
-							MessagePumpIntervalUs.AddValue(LastMessagePumpCounterUs[LastMessagePumpCounterUs.size() - 1] - LastMessagePumpCounterUs[LastMessagePumpCounterUs.size() - 2]);
+						recordPumpInterval = true;
 					}
+					if (recordPumpInterval && LastMessagePumpCounterUs.size() >= 2)
+						MessagePumpIntervalTrackerUs.AddValue(LastMessagePumpCounterUs[LastMessagePumpCounterUs.size() - 1] - LastMessagePumpCounterUs[LastMessagePumpCounterUs.size() - 2]);
 					if (LastMessagePumpCounterUs.size() > 2 && LastMessagePumpCounterUs.back() - LastMessagePumpCounterUs.front() >= SecondToMicrosecondMultiplier)
 						LastMessagePumpCounterUs.pop_front();
 
@@ -527,6 +534,18 @@ std::string App::XivAlexApp::IsUnloadable() const {
 
 App::Network::SocketHook* App::XivAlexApp::GetSocketHook() {
 	return m_pImpl->m_socketHook.get();
+}
+
+const Utils::NumericStatisticsTracker& App::XivAlexApp::GetMessagePumpIntervalTrackerUs() const {
+	return m_pImpl->MessagePumpIntervalTrackerUs;
+}
+
+const Utils::NumericStatisticsTracker& App::XivAlexApp::GetRenderTimeTakenTrackerUs() const {
+	return m_pImpl->RenderTimeTakenTrackerUs;
+}
+
+const Utils::NumericStatisticsTracker& App::XivAlexApp::GetSocketCallDelayTrackerUs() const {
+	return m_pImpl->SocketCallDelayTrackerUs;
 }
 
 void App::XivAlexApp::GuaranteePumpBeginCounter(int64_t nextInUs) {

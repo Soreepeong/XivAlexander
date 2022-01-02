@@ -372,7 +372,7 @@ BEGIN
                             "<a href=""issues"">XivAlexander‚ÌGitHub‚ÌIssueƒy[ƒW</a>‚ğŠJ‚¯‚é"
     IDS_CONFIRM_RESTART_GAME 
                             "ƒQ[ƒ€‚ğ‹­§“I‚ÉÄ‹N“®‚µ‚Ü‚·‚©H\n\nDirectX11‚Ìg—pF{}\nXivAlexander‚Ìg—pF{}\nƒRƒ}ƒ“ƒhƒ‰ƒCƒ“‚Ì“ï“Ç‰»‚Ìg—pF{}\nŠÇ—ÒŒ ŒÀ‚ÅÀsF{}\nŒ¾ŒêF{}\n’nˆæF{}"
-    IDS_MAIN_TEXT           "PID: {}\nƒQ[ƒ€‚ÌƒCƒ“ƒXƒg[ƒ‹æ: {}\nƒRƒ}ƒ“ƒhƒ‰ƒCƒ“F{}\nƒQ[ƒ€‚Ìƒo[ƒWƒ‡ƒ“: {} ({})\n\n{}"
+    IDS_MAIN_TEXT           "PID: {}\nƒQ[ƒ€‚ÌƒCƒ“ƒXƒg[ƒ‹æ: {}\nƒRƒ}ƒ“ƒhƒ‰ƒCƒ“F{}\nƒQ[ƒ€‚Ìƒo[ƒWƒ‡ƒ“: {} ({})\nƒƒbƒZƒW[ƒ‹[ƒvF{}+{:06}us (–ˆ•b{:.02f}‰ñ)\nƒŒƒ“ƒ_[F{}+{:06}usiFPS‚Ì§ŒÀ‚ª‚È‚©‚Á‚½‚ç–ˆ•b{:.02f}‰ñj\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "ŠÂ‹«İ’è"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcode‚Ìİ’è"
@@ -982,7 +982,7 @@ BEGIN
                             "<a href=""issues"">XivAlexanderÀÇ GitHub ÀÌ½´ ÆäÀÌÁö</a> ¿­±â"
     IDS_CONFIRM_RESTART_GAME 
                             "°ÔÀÓÀ» °­Á¦·Î Àç½ÃÀÛÇÏ½Ã°Ú½À´Ï±î?\n\nDirectX 11 »ç¿ë: {}\nXivAlexander »ç¿ë: {}\n¸í·ÉÁÙ ³­µ¶È­ »ç¿ë: {}\n°ü¸®ÀÚ ±ÇÇÑÀ¸·Î ½ÇÇà: {}\n¾ğ¾î: {}\nÁö¿ª: {}"
-    IDS_MAIN_TEXT           "PID: {}\n°ÔÀÓ °æ·Î: {}\nÀÎÀÚ: {}\n°ÔÀÓ ¹öÀü: {} ({})\n\n{}"
+    IDS_MAIN_TEXT           "PID: {}\n°ÔÀÓ °æ·Î: {}\nÀÎÀÚ: {}\n°ÔÀÓ ¹öÀü: {} ({})\n¸Ş½ÃÁö ·çÇÁ: {}+{:06}us (ÃÊ´ç {:.02f}È¸)\n·»´õ: {}+{:06}us (FPS ¹«Á¦ÇÑ ¼³Á¤ ½Ã ÃÊ´ç {:.02f}È¸)\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "ÇÁ·Î±×·¥ ¼³Á¤ ÆíÁı"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "¿ÉÄÚµå ¼³Á¤ ÆíÁı"
@@ -1719,7 +1719,7 @@ BEGIN
                             "Report to <a href=""issues"">XivAlexander Issues at GitHub</a>"
     IDS_CONFIRM_RESTART_GAME 
                             "Do you want to force restart the game?\n\nUse DirectX 11: {}\nUse XivAlexander: {}\nUse Parameter Obfuscation: {}\nUse Elevation (Run as Administrator): {}\nGame Language: {}\nRegion: {}"
-    IDS_MAIN_TEXT           "Process ID: {}\nGame Path: {}\nArguments: {}\nGame Release: {} ({})\n\n{}"
+    IDS_MAIN_TEXT           "Process ID: {}\nGame Path: {}\nArguments: {}\nGame Release: {} ({})\nMessage Pump: {}+{:06}us ({:.02f}/s)\nRender Time: {}+{:06}us ({:.02f}/s if unlimited)\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "Runtime Configuration Editor"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcode Configuration Editor"
@@ -1814,7 +1814,7 @@ BEGIN
     IDS_FILTERSPEC_ALLFILES "All files (*.*)"
     IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON 
                             "Excel transformation configuration JSON files (*.json)"
-    IDS_FILTERSPEC_TTMP     "TexTools ModPack Files (*.ttmp, *.ttmp2, *.mpl)"
+    IDS_FILTERSPEC_TTMP     "Process ID: {}\nGame Path: {}\nArguments: {}\nGame Release: {} ({})\nMessage Pump: {:06}+{:06}us ({}/s)\nRender Time: {:06}+{:06}us ({}/s if without FPS limits)\n\n{}"
     IDS_CONFIRM_REMOVEALLTTMP 
                             "Do you want to remove all TexTools ModPacks in ""{}""?"
     IDS_URL_ISSUES          "https://github.com/Soreepeong/XivAlexander/issues"

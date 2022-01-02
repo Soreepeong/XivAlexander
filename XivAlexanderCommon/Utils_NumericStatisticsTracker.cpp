@@ -1,29 +1,26 @@
 #include "pch.h"
 #include "Utils_NumericStatisticsTracker.h"
+#include "XaMisc.h"
 
-Utils::NumericStatisticsTracker::NumericStatisticsTracker(size_t trackCount, int64_t emptyValue, uint64_t maxAge)
+Utils::NumericStatisticsTracker::NumericStatisticsTracker(size_t trackCount, int64_t emptyValue, int64_t maxAgeUs)
 	: m_trackCount(trackCount)
 	, m_emptyValue(emptyValue)
-	, m_maxAge(maxAge) {
+	, m_maxAgeUs(maxAgeUs) {
 }
 
 Utils::NumericStatisticsTracker::~NumericStatisticsTracker() = default;
 
 void Utils::NumericStatisticsTracker::AddValue(int64_t v) {
-	m_values.push_back(v);
-	m_expiryTimestamp.push_back(m_maxAge == UINT64_MAX ? UINT64_MAX : GetTickCount64() + m_maxAge);
-	while (m_values.size() > m_trackCount) {
-		m_values.pop_front();
-		m_expiryTimestamp.pop_front();
-	}
+	m_values.emplace_back(v, m_maxAgeUs);
+	void(RemoveExpired(m_values.back().Timestamp));
 }
 
-const std::deque<int64_t>& Utils::NumericStatisticsTracker::RemoveExpired() const {
-	const auto now = GetTickCount64();
-	while (!m_expiryTimestamp.empty() && m_expiryTimestamp.front() < now) {
+const std::deque<Utils::NumericStatisticsTracker::Entry>& Utils::NumericStatisticsTracker::RemoveExpired(int64_t nowUs) const {
+	while (!m_values.empty() && (
+		m_values.size() > m_trackCount || 
+		m_values.front().Expiry < nowUs
+	))
 		m_values.pop_front();
-		m_expiryTimestamp.pop_front();
-	}
 	return m_values;
 }
 
@@ -35,66 +32,144 @@ int64_t Utils::NumericStatisticsTracker::Latest() const {
 	const auto& vals = RemoveExpired();
 	if (vals.empty())
 		return m_emptyValue;
-	return vals.back();
+	return vals.back().Value;
 }
 
-int64_t Utils::NumericStatisticsTracker::Min() const {
+int64_t Utils::NumericStatisticsTracker::Min(int64_t sinceUs) const {
 	const auto& vals = RemoveExpired();
-	if (vals.empty())
-		return m_emptyValue;
-	return *std::ranges::min_element(vals);
+	auto found = false;
+	int64_t minValue{};
+	for (const auto& v : std::ranges::reverse_view(vals)) {
+		if (v.Timestamp < sinceUs)
+			break;
+		if (!found || minValue < v.Value)
+			minValue = v.Value;
+		found = true;
+	}
+	return found ? minValue : m_emptyValue;
 }
 
-int64_t Utils::NumericStatisticsTracker::Max() const {
+int64_t Utils::NumericStatisticsTracker::Max(int64_t sinceUs) const {
 	const auto& vals = RemoveExpired();
-	if (vals.empty())
-		return m_emptyValue;
-	return *std::ranges::max_element(vals);
+	auto found = false;
+	int64_t maxValue{};
+	for (const auto& v : std::ranges::reverse_view(vals)) {
+		if (v.Timestamp < sinceUs)
+			break;
+		if (!found || maxValue > v.Value)
+			maxValue = v.Value;
+		found = true;
+	}
+	return found ? maxValue : m_emptyValue;
 }
 
-int64_t Utils::NumericStatisticsTracker::Mean() const {
+int64_t Utils::NumericStatisticsTracker::Median(int64_t sinceUs) const {
 	const auto& vals = RemoveExpired();
-	if (vals.empty())
-		return m_emptyValue;
-	return static_cast<int64_t>(std::round(std::accumulate(vals.begin(), vals.end(), 0.0) / vals.size()));
-}
 
-int64_t Utils::NumericStatisticsTracker::Median() const {
-	const auto& vals = RemoveExpired();
-	if (vals.empty())
+	std::vector<int64_t> sorted;
+	sorted.reserve(vals.size());
+	for (const auto& v : std::ranges::reverse_view(vals)) {
+		if (v.Timestamp < sinceUs)
+			break;
+		sorted.emplace_back(v.Value);
+	}
+	if (sorted.empty())
 		return m_emptyValue;
-
-	std::vector<int64_t> sorted(vals.size());
-	std::partial_sort_copy(vals.begin(), vals.end(), sorted.begin(), sorted.end());
+	std::ranges::sort(sorted);
 
 	if (sorted.size() % 2 == 0) {
 		// even
-		return (sorted[vals.size() / 2] + sorted[vals.size() / 2 - 1]) / 2;
+		return (sorted[sorted.size() / 2] + sorted[sorted.size() / 2 - 1]) / 2;
 	} else {
 		// odd
-		return sorted[vals.size() / 2];
+		return sorted[sorted.size() / 2];
 	}
 }
 
-int64_t Utils::NumericStatisticsTracker::Deviation() const {
+int64_t Utils::NumericStatisticsTracker::Mean(int64_t sinceUs) const {
 	const auto& vals = RemoveExpired();
-	if (vals.size() < 2)
-		return 0;
-
-	const auto mean = std::accumulate(vals.begin(), vals.end(), 0.0) / vals.size();
-
-	std::vector<double> diff(vals.size());
-	std::ranges::transform(vals, diff.begin(), [mean](int64_t x) { return static_cast<double>(x) - mean; });
-	const auto sum2 = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
-	return static_cast<int64_t>(std::round(std::sqrt(sum2 / vals.size())));
+	size_t count = 0;
+	int64_t acc{};
+	for (const auto& v : std::ranges::reverse_view(vals)) {
+		if (v.Timestamp < sinceUs)
+			break;
+		acc += v.Value;
+		++count;
+	}
+	return count ? acc / count : m_emptyValue;
 }
 
-size_t Utils::NumericStatisticsTracker::Count() const {
-	return RemoveExpired().size();
+std::pair<int64_t, int64_t> Utils::NumericStatisticsTracker::MeanAndDeviation(int64_t sinceUs) const {
+	const auto& vals = RemoveExpired();
+
+	size_t count = 0;
+	int64_t acc{};
+	for (const auto& v : std::ranges::reverse_view(vals)) {
+		if (v.Timestamp < sinceUs)
+			break;
+		acc += v.Value;
+		++count;
+	}
+
+	if (count == 0)
+		return {m_emptyValue, 0};
+	if (count == 1)
+		return {acc, 0};
+	const auto mean = acc / count;
+
+	uint64_t diffSquaredSum = 0;
+	for (const auto& v : std::ranges::reverse_view(vals)) {
+		if (v.Timestamp < sinceUs)
+			break;
+		diffSquaredSum += (v.Value - mean) * (v.Value - mean);
+	}
+
+	return {mean, static_cast<int64_t>(std::sqrt(diffSquaredSum / count))};
 }
 
-uint64_t Utils::NumericStatisticsTracker::NextBlankIn() const {
+int64_t Utils::NumericStatisticsTracker::Deviation(int64_t sinceUs) const {
+	return MeanAndDeviation(sinceUs).second;
+}
+
+size_t Utils::NumericStatisticsTracker::Count(int64_t sinceUs) const {
+	const auto& vals = RemoveExpired();
+	if (!sinceUs)
+		return vals.size();
+
+	size_t count = 0;
+	for (const auto& v : std::ranges::reverse_view(vals)) {
+		if (v.Timestamp < sinceUs)
+			break;
+		++count;
+	}
+	return count;
+}
+
+int64_t Utils::NumericStatisticsTracker::NextBlankInUs() const {
 	if (RemoveExpired().size() < m_trackCount)
 		return 0;
-	return m_expiryTimestamp.front() - GetTickCount64();
+	return m_values.front().Value - Entry(0, 0).Value;
+}
+
+double Utils::NumericStatisticsTracker::CountFractional(int64_t sinceUs) const {
+	const auto& vals = RemoveExpired();
+	if (!sinceUs)
+		return static_cast<double>(vals.size());
+
+	size_t count = 0;
+	int64_t lastTimestamp = INT64_MIN;
+	for (const auto& v : std::ranges::reverse_view(vals)) {
+		if (v.Timestamp < sinceUs) {
+			if (lastTimestamp != INT64_MIN) {
+				const auto window = lastTimestamp - v.Timestamp;
+				const auto elapsed = sinceUs - v.Timestamp;
+				if (window > elapsed)
+					return static_cast<double>(count) + static_cast<double>(elapsed) / static_cast<double>(window);
+			}
+			break;
+		}
+		++count;
+		lastTimestamp = v.Timestamp;
+	}
+	return static_cast<double>(count);
 }

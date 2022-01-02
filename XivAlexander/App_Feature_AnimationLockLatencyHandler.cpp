@@ -361,10 +361,8 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 
 				case HighLatencyMitigationMode::SimulateNormalizedRttAndLatency: {
 					const auto rttMin = Conn.ApplicationLatencyUs.Min();
-					const auto rttMean = Conn.ApplicationLatencyUs.Mean();
-					const auto rttDeviation = Conn.ApplicationLatencyUs.Deviation();
-					const auto latencyMean = !pingTrackerUs || pingLatencyUs > socketLatencyUs ? Conn.SocketLatencyUs.Mean() : pingTrackerUs->Mean();
-					const auto latencyDeviation = !pingTrackerUs || pingLatencyUs > socketLatencyUs ? Conn.SocketLatencyUs.Deviation() : pingTrackerUs->Deviation();
+					const auto [rttMean, rttDeviation] = Conn.ApplicationLatencyUs.MeanAndDeviation();
+					const auto [latencyMean, latencyDeviation] = !pingTrackerUs || pingLatencyUs > socketLatencyUs ? Conn.SocketLatencyUs.MeanAndDeviation() : pingTrackerUs->MeanAndDeviation();
 
 					// Correct latency and server response time values in case of outliers.
 					const auto latencyAdjustedImmediate = Utils::Clamp(latencyUs, latencyMean - latencyDeviation, latencyMean + latencyDeviation);

@@ -45,7 +45,7 @@ namespace App::Network {
 
 		Utils::NumericStatisticsTracker SocketLatencyUs{ 10, 0 };
 		Utils::NumericStatisticsTracker ApplicationLatencyUs{ 10, 0 };
-		Utils::NumericStatisticsTracker ExaggeratedNetworkLatencyUs{ 10, INT64_MAX, 30000 };
+		Utils::NumericStatisticsTracker ExaggeratedNetworkLatencyUs{ 10, INT64_MAX, 30 * 1000 * 1000 };
 		const Utils::NumericStatisticsTracker* GetPingLatencyTrackerUs() const;
 	};
 

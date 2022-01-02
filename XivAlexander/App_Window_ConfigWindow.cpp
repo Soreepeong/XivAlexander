@@ -83,10 +83,20 @@ bool App::Window::ConfigWindow::TrySave() {
 		std::string buf(m_direct(m_directPtr, SCI_GETLENGTH, 0, 0) + 1, '\0');
 		m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(&buf[0]));
 		buf.resize(buf.length() - 1);
-		buf = nlohmann::json::parse(buf).dump(1, '\t');
-		Utils::SaveToFile(m_pRepository->GetConfigPath(), buf);
-		m_originalConfig = std::move(buf);
-		m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(&m_originalConfig[0]));
+		auto buf2 = nlohmann::json::parse(buf).dump(1, '\t');
+		Utils::SaveToFile(m_pRepository->GetConfigPath(), buf2);
+		const auto firstVisibleLine = m_direct(m_directPtr, SCI_GETFIRSTVISIBLELINE, 0, 0);
+		std::vector<std::pair<size_t, size_t>> selections(m_direct(m_directPtr, SCI_GETSELECTIONS, 0, 0));
+		for (size_t i = 0; i < selections.size(); ++i) {
+			selections[i].first = m_direct(m_directPtr, SCI_GETSELECTIONNCARET, i, 0);
+			selections[i].second = m_direct(m_directPtr, SCI_GETSELECTIONNANCHOR, i, 0);
+		}
+		m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(&buf2[0]));
+		m_direct(m_directPtr, SCI_CLEARSELECTIONS, 0, 0);
+		for (size_t i = 0; i < selections.size(); ++i)
+			m_direct(m_directPtr, SCI_ADDSELECTION, selections[i].first, selections[i].second);
+		m_direct(m_directPtr, SCI_SETFIRSTVISIBLELINE, firstVisibleLine, 0);
+		m_originalConfig = std::move(buf2);
 		m_pRepository->Reload({}, true);
 	} catch (nlohmann::json::exception& e) {
 		Dll::MessageBoxF(m_hWnd, MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_CONFIGURATION_SAVE, e.what()));

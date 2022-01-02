@@ -160,9 +160,9 @@ namespace App {
 				return Item<T>(pRepository, pszName, defaultValue);
 			}
 
-			template<typename T, typename ... Args>
-			static Item<T> CreateConfigItem(BaseRepository* pRepository, const char* pszName, T defaultValue, Args...args) {
-				return Item<T>(pRepository, pszName, defaultValue, std::forward<Args...>(args));
+			template<typename T>
+			static Item<T> CreateConfigItem(BaseRepository* pRepository, const char* pszName, T defaultValue, std::function<T(const T&)> validator) {
+				return Item<T>(pRepository, pszName, defaultValue, validator);
 			}
 		};
 
@@ -216,6 +216,9 @@ namespace App {
 			Item<bool> UseMoreCpuTime = CreateConfigItem(this, "UseMoreCpuPower", true);
 			Item<bool> SynchronizeProcessing = CreateConfigItem(this, "SynchronizeProcessing", true);
 			Item<bool> TerminateOnExitProcess = CreateConfigItem(this, "TerminateOnExitProcess", false);
+			Item<size_t> GameLoopInputAcceptIntervalUs = CreateConfigItem<size_t>(this, "GameLoopInputAcceptIntervalUs", 0, [](const size_t& val) {
+				return std::min<size_t>(std::max<size_t>(0, val), 100000);
+			});
 
 			Item<Language> Language = CreateConfigItem(this, "Language", Language::SystemDefault);
 

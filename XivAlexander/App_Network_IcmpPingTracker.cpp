@@ -47,7 +47,7 @@ struct App::Network::IcmpPingTracker::Implementation {
 	public:
 		SingleTracker(IcmpPingTracker* icmpPingTracker, const ConnectionPair& pair)
 			: m_icmpPingTracker(icmpPingTracker)
-			, Tracker(std::make_shared<Utils::NumericStatisticsTracker>(8, INT64_MAX, 60 * 1000))
+			, Tracker(std::make_shared<Utils::NumericStatisticsTracker>(8, INT64_MAX, 60 * 1000 * 1000))
 			, m_hExitEvent(Utils::Win32::Event::Create())
 			, m_pair(pair)
 			, m_hWorkerThread(std::format(L"XivAlexander::App::Network::IcmpPingTracker({:x})::SingleTracker({:x}: {} <-> {})",
@@ -80,26 +80,26 @@ struct App::Network::IcmpPingTracker::Implementation {
 					Utils::ToString(m_pair.Destination));
 				size_t consecutiveFailureCount = 0;
 				do {
-					const auto interval = std::max<DWORD>(SecondToMicrosecondMultiplier, static_cast<DWORD>(std::min<uint64_t>(INT32_MAX, Tracker->NextBlankIn())));
-					const auto startTime = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier);
-					const auto ok = IcmpSendEcho2Ex(hIcmp, nullptr, nullptr, nullptr, m_pair.Source.s_addr, m_pair.Destination.s_addr, sendBuf, sizeof sendBuf, nullptr, replyBuf, sizeof replyBuf, interval);
-					const auto endTime = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier);
-					const auto latency = endTime - startTime;
-					auto waitTime = static_cast<DWORD>(interval - latency);
+					const auto intervalUs = std::max<DWORD>(SecondToMicrosecondMultiplier, static_cast<DWORD>(std::min<uint64_t>(INT32_MAX, Tracker->NextBlankInUs())));
+					const auto startUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier);
+					const auto ok = IcmpSendEcho2Ex(hIcmp, nullptr, nullptr, nullptr, m_pair.Source.s_addr, m_pair.Destination.s_addr, sendBuf, sizeof sendBuf, nullptr, replyBuf, sizeof replyBuf, intervalUs);
+					const auto endUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier);
+					const auto latencyUs = endUs - startUs;
+					auto waitTimeUs = static_cast<DWORD>(intervalUs - latencyUs);
 
 					if (ok) {
 						consecutiveFailureCount = 0;
 
 						const auto latest = Tracker->Latest();
-						Tracker->AddValue(latency);
+						Tracker->AddValue(latencyUs);
 
 						// if ping changes by more than 10%, then ping again to confirm
-						if (latency > 0 && 100 * std::abs(latest - latency) / latency >= 10)
-							waitTime = 1;
+						if (latencyUs > 0 && 100 * std::abs(latest - latencyUs) / latencyUs >= 10)
+							waitTimeUs = 1;
 					} else
 						consecutiveFailureCount++;
 
-					if (m_hExitEvent.Wait(waitTime) != WAIT_TIMEOUT) {
+					if (m_hExitEvent.Wait(waitTimeUs) != WAIT_TIMEOUT) {
 						logger->Format(LogCategory::SocketHook,
 							config->Runtime.GetLangId(),
 							IDS_PINGTRACKER_END,

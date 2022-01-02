@@ -328,8 +328,16 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 		FillRect(backdc, &rect, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
 		std::wstring str;
 		try {
+			const auto window = Utils::GetHighPerformanceCounter(1000000) - 1000000;
+			const auto [msgPumpMean, msgPumpDev] = m_pApp->GetMessagePumpIntervalTrackerUs().MeanAndDeviation(window);
+			const auto [renderMean, renderDev] = m_pApp->GetRenderTimeTakenTrackerUs().MeanAndDeviation(window);
 			str = m_config->Runtime.FormatStringRes(IDS_MAIN_TEXT,
-				GetCurrentProcessId(), m_path, m_startupArgumentsForDisplay, m_gameReleaseInfo.GameVersion, m_gameReleaseInfo.CountryCode,
+				GetCurrentProcessId(),
+				m_path, 
+				m_startupArgumentsForDisplay,
+				m_gameReleaseInfo.GameVersion, m_gameReleaseInfo.CountryCode,
+				msgPumpMean, msgPumpDev, m_pApp->GetMessagePumpIntervalTrackerUs().CountFractional(window),
+				renderMean, renderDev, 1000000. / static_cast<double>(renderMean),
 				m_pApp->GetSocketHook()->Describe());
 		} catch (...) {
 			// pass
