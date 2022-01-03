@@ -55,13 +55,13 @@ App::Config::BaseRepository::BaseRepository(__in_opt const Config* pConfig, std:
 
 App::Config::BaseRepository::~BaseRepository() = default;
 
-App::Config::ItemBase::ItemBase(BaseRepository* pRepository, const char* pszName)
+App::Config::ItemBase::ItemBase(BaseRepository * pRepository, const char* pszName)
 	: m_pszName(pszName)
 	, m_pBaseRepository(pRepository) {
 	pRepository->m_allItems.push_back(this);
 }
 
-void App::Config::BaseRepository::Reload(const std::filesystem::path& from, bool announceChange) {
+void App::Config::BaseRepository::Reload(const std::filesystem::path & from, bool announceChange) {
 	m_loaded = true;
 
 	bool changed = false;
@@ -120,11 +120,11 @@ std::shared_ptr<App::Config> App::Config::Acquire() {
 	return r;
 }
 
-App::Config::RuntimeRepository::RuntimeRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey)
+App::Config::RuntimeRepository::RuntimeRepository(__in_opt const Config * pConfig, std::filesystem::path path, std::string parentKey)
 	: BaseRepository(pConfig, std::move(path), std::move(parentKey)) {
 	m_cleanup += Language.OnChangeListenerAlsoOnLoad([&](auto&) {
 		Utils::Win32::Error::SetDefaultLanguageId(GetLangId());
-	});
+		});
 	m_cleanup += MusicImportConfig.OnChangeListenerAlsoOnLoad([&](auto&) {
 		std::set<std::string> newKeys;
 		m_musicDirectoryPurchaseWebsites.clear();
@@ -146,14 +146,14 @@ App::Config::RuntimeRepository::RuntimeRepository(__in_opt const Config* pConfig
 				newValue[newKey].clear();
 			MusicImportConfig_Directories = newValue;
 		}
-	});
+		});
 }
 
 App::Config::RuntimeRepository::~RuntimeRepository() {
 	m_cleanup.Clear();
 }
 
-void App::Config::RuntimeRepository::Reload(const std::filesystem::path& from, bool announceChange) {
+void App::Config::RuntimeRepository::Reload(const std::filesystem::path & from, bool announceChange) {
 	BaseRepository::Reload(from, announceChange);
 	Utils::Win32::Error::SetDefaultLanguageId(GetLangId());
 }
@@ -203,7 +203,7 @@ std::vector<std::pair<WORD, std::string>> App::Config::RuntimeRepository::GetDis
 			res.emplace_back(LANGIDFROMLCID(LocaleNameToLCID(ptr, 0)), Utils::ToUtf8(ptr));
 			ptr += len + 1;
 		}
-	} catch(...) {
+	} catch (...) {
 		// pass
 	}
 	for (const auto& [language, languageId] : LanguageIdMap) {
@@ -234,6 +234,18 @@ std::vector<Sqex::Language> App::Config::RuntimeRepository::GetFallbackLanguageL
 			result.push_back(lang);
 	}
 	return result;
+}
+
+uint64_t App::Config::RuntimeRepository::CalculateLockFramerateInterval(double fromFps, double toFps, uint64_t gcdUs, uint64_t maximumRenderIntervalDeviation) {
+	fromFps = std::min(1000000., std::max(1., fromFps));
+	toFps = std::min(1000000., std::max(1., toFps));
+	auto minInterval = static_cast<uint64_t>(1000000. / toFps);
+	for (auto i = minInterval + 1, i_ = static_cast<uint64_t>(1000000. / fromFps); i <= i_; ++i) {
+		if (i - gcdUs % i < minInterval - gcdUs % minInterval && i - gcdUs % i >= maximumRenderIntervalDeviation) {
+			minInterval = i;
+		}
+	}
+	return minInterval;
 }
 
 [[nodiscard]] const std::map<std::string, std::string>& App::Config::RuntimeRepository::GetMusicDirectoryPurchaseWebsites(std::string name) const {
@@ -273,7 +285,7 @@ std::filesystem::path App::Config::InitRepository::ResolveGameOpcodeConfigPath()
 	return ResolveConfigStorageDirectoryPath() / std::format(L"game.{}.{}.json", gameReleaseInfo.CountryCode, gameReleaseInfo.PathSafeGameVersion);
 }
 
-std::filesystem::path App::Config::TranslatePath(const std::filesystem::path& path, const std::filesystem::path& relativeTo) {
+std::filesystem::path App::Config::TranslatePath(const std::filesystem::path & path, const std::filesystem::path & relativeTo) {
 	return Utils::Win32::TranslatePath(path, relativeTo.empty() ? Dll::Module().PathOf().parent_path() : relativeTo);
 }
 
@@ -291,7 +303,7 @@ void App::Config::SuppressSave(bool suppress) {
 	m_bSuppressSave = suppress;
 }
 
-void App::Config::BaseRepository::Save(const std::filesystem::path& to) {
+void App::Config::BaseRepository::Save(const std::filesystem::path & to) {
 	if (to.empty() && (!m_pConfig || m_pConfig->m_bSuppressSave))
 		return;
 
@@ -315,7 +327,7 @@ void App::Config::BaseRepository::Save(const std::filesystem::path& to) {
 	}
 }
 
-bool App::Config::Item<uint16_t>::LoadFrom(const nlohmann::json& data, bool announceChanged) {
+bool App::Config::Item<uint16_t>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
 	if (const auto it = data.find(Name()); it != data.end()) {
 		uint16_t newValue;
 		std::string strVal;
@@ -340,11 +352,11 @@ bool App::Config::Item<uint16_t>::LoadFrom(const nlohmann::json& data, bool anno
 	return false;
 }
 
-void App::Config::Item<uint16_t>::SaveTo(nlohmann::json& data) const {
+void App::Config::Item<uint16_t>::SaveTo(nlohmann::json & data) const {
 	data[Name()] = std::format("0x{:04x}", m_value);
 }
 
-void App::to_json(nlohmann::json& j, const Language& value) {
+void App::to_json(nlohmann::json & j, const Language & value) {
 	switch (value) {
 		case Language::English:
 			j = "English";
@@ -364,7 +376,7 @@ void App::to_json(nlohmann::json& j, const Language& value) {
 	}
 }
 
-void App::from_json(const nlohmann::json& it, Language& value) {
+void App::from_json(const nlohmann::json & it, Language & value) {
 	auto newValueString = Utils::FromUtf8(it.get<std::string>());
 	CharLowerW(&newValueString[0]);
 
@@ -380,7 +392,7 @@ void App::from_json(const nlohmann::json& it, Language& value) {
 		value = Language::Japanese;
 }
 
-void App::to_json(nlohmann::json& j, const HighLatencyMitigationMode& value) {
+void App::to_json(nlohmann::json & j, const HighLatencyMitigationMode & value) {
 	switch (value) {
 		case HighLatencyMitigationMode::SubtractLatency:
 			j = "SubtractLatency";
@@ -396,7 +408,7 @@ void App::to_json(nlohmann::json& j, const HighLatencyMitigationMode& value) {
 	}
 }
 
-void App::from_json(const nlohmann::json& it, HighLatencyMitigationMode& value) {
+void App::from_json(const nlohmann::json & it, HighLatencyMitigationMode & value) {
 	auto newValueString = Utils::FromUtf8(it.get<std::string>());
 	CharLowerW(&newValueString[0]);
 
@@ -413,7 +425,7 @@ void App::from_json(const nlohmann::json& it, HighLatencyMitigationMode& value) 
 }
 
 template<typename T>
-bool App::Config::Item<T>::LoadFrom(const nlohmann::json& data, bool announceChanged) {
+bool App::Config::Item<T>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
 	if (const auto it = data.find(Name()); it != data.end()) {
 		T newValue;
 		try {
@@ -436,6 +448,6 @@ bool App::Config::Item<T>::LoadFrom(const nlohmann::json& data, bool announceCha
 }
 
 template<typename T>
-void App::Config::Item<T>::SaveTo(nlohmann::json& data) const {
+void App::Config::Item<T>::SaveTo(nlohmann::json & data) const {
 	data[Name()] = m_value;
 }

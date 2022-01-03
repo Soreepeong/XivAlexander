@@ -245,6 +245,8 @@
 #define IDC_LASTGCD_RANGE_EDIT_MIN      1032
 #define IDC_LASTGCD_RESET               1033
 #define IDC_LASTGCD_RANGE_EDIT_MAX      1034
+#define IDC_AUTOMATICFPSLOCKING2        1035
+#define IDC_MINIMIZEWORSTCASE           1035
 #define ID_FILE_REVERT                  40012
 #define ID_FILE_SAVE                    40013
 #define ID_VIEW_ALWAYSONTOP             40014

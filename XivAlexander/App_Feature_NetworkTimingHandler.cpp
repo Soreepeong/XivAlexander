@@ -238,9 +238,12 @@ struct App::Feature::NetworkTimingHandler::Implementation {
 									}
 									group.TimestampUs = PendingActions.front().RequestUs;
 
-									const auto cooldownRegistrationDelayUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier) - PendingActions.front().RequestUs;
-									if (Config->Runtime.SynchronizeProcessing)
-										XivAlexApp::GetCurrentApp()->GuaranteePumpBeginCounter(cooldown.Duration * 10000LL - cooldownRegistrationDelayUs);
+									if (Config->Runtime.SynchronizeProcessing) {
+										if (group.Id != CooldownGroup::Id_Gcd || !(Config->Runtime.LockFramerateAutomatic || Config->Runtime.LockFramerateInterval)) {
+											const auto cooldownRegistrationDelayUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier) - PendingActions.front().RequestUs;
+											XivAlexApp::GetCurrentApp()->GuaranteePumpBeginCounter(cooldown.Duration * 10000LL - cooldownRegistrationDelayUs);
+										}
+									}
 
 									if (runtimeConfig.UseHighLatencyMitigationLogging) {
 										Impl.m_logger->Format(

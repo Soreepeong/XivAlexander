@@ -219,7 +219,7 @@ namespace App {
 
 			Item<uint64_t> LockFramerateInterval = CreateConfigItem<uint64_t>(this, "LockFramerate", 0, [](const uint64_t& val) {
 				return std::min<uint64_t>(std::max<uint64_t>(0, val), 1000000);
-			});
+				});
 			Item<bool> LockFramerateAutomatic = CreateConfigItem(this, "LockFramerateAutomatic", false);
 			Item<double> LockFramerateTargetFramerateRangeFrom = CreateConfigItem(this, "LockFramerateTargetFramerateRangeFrom", 50.);
 			Item<double> LockFramerateTargetFramerateRangeTo = CreateConfigItem(this, "LockFramerateTargetFramerateRangeTo", 60.);
@@ -280,19 +280,7 @@ namespace App {
 			
 			[[nodiscard]] std::vector<Sqex::Language> GetFallbackLanguageList() const;
 
-			[[nodiscard]] static uint64_t CalculateLockFramerateInterval(double fromFps, double toFps, uint64_t gcdUs, uint64_t maximumRenderIntervalDeviation) {
-				fromFps = std::min(1000000., std::max(1., fromFps));
-				toFps = std::min(1000000., std::max(1., toFps));
-				auto minInterval = static_cast<uint64_t>(1000000. / toFps);
-
-				for (auto i = minInterval + 1, i_ = static_cast<uint64_t>(1000000. / fromFps); i <= i_; ++i) {
-					if (i - gcdUs % i < minInterval - gcdUs % minInterval && i - gcdUs % i >= maximumRenderIntervalDeviation) {
-						minInterval = i;
-					}
-				}
-
-				return minInterval;
-			}
+			[[nodiscard]] static uint64_t CalculateLockFramerateInterval(double fromFps, double toFps, uint64_t gcdUs, uint64_t maximumRenderIntervalDeviation);
 
 		private:
 			std::map<std::string, std::map<std::string, std::string>> m_musicDirectoryPurchaseWebsites;
