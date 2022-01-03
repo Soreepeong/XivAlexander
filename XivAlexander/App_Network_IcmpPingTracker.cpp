@@ -99,7 +99,7 @@ struct App::Network::IcmpPingTracker::Implementation {
 					} else
 						consecutiveFailureCount++;
 
-					if (m_hExitEvent.Wait(waitTimeUs) != WAIT_TIMEOUT) {
+					if (m_hExitEvent.Wait(waitTimeUs / 1000) != WAIT_TIMEOUT) {
 						logger->Format(LogCategory::SocketHook,
 							config->Runtime.GetLangId(),
 							IDS_PINGTRACKER_END,
