@@ -88,7 +88,7 @@ int64_t Utils::NumericStatisticsTracker::Median(int64_t sinceUs) const {
 
 int64_t Utils::NumericStatisticsTracker::Mean(int64_t sinceUs) const {
 	const auto& vals = RemoveExpired();
-	size_t count = 0;
+	int64_t count = 0;
 	int64_t acc{};
 	for (const auto& v : std::ranges::reverse_view(vals)) {
 		if (v.Timestamp < sinceUs)
@@ -102,7 +102,7 @@ int64_t Utils::NumericStatisticsTracker::Mean(int64_t sinceUs) const {
 std::pair<int64_t, int64_t> Utils::NumericStatisticsTracker::MeanAndDeviation(int64_t sinceUs) const {
 	const auto& vals = RemoveExpired();
 
-	size_t count = 0;
+	int64_t count = 0;
 	int64_t acc{};
 	for (const auto& v : std::ranges::reverse_view(vals)) {
 		if (v.Timestamp < sinceUs)
@@ -117,7 +117,7 @@ std::pair<int64_t, int64_t> Utils::NumericStatisticsTracker::MeanAndDeviation(in
 		return {acc, 0};
 	const auto mean = acc / count;
 
-	uint64_t diffSquaredSum = 0;
+	int64_t diffSquaredSum = 0;
 	for (const auto& v : std::ranges::reverse_view(vals)) {
 		if (v.Timestamp < sinceUs)
 			break;

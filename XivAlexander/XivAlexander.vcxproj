@@ -325,7 +325,7 @@ cmd /c "exit /b 0"
     <ClCompile Include="DllMain.cpp" />
     <ClCompile Include="App_XivAlexApp.cpp" />
     <ClCompile Include="App_ConfigRepository.cpp" />
-    <ClCompile Include="App_Feature_AnimationLockLatencyHandler.cpp" />
+    <ClCompile Include="App_Feature_NetworkTimingHandler.cpp" />
     <ClCompile Include="App_Feature_EffectApplicationDelayLogger.cpp" />
     <ClCompile Include="App_Feature_IpcTypeFinder.cpp" />
     <ClCompile Include="App_Feature_AllIpcMessageLogger.cpp" />
@@ -370,7 +370,7 @@ cmd /c "exit /b 0"
     <ClInclude Include="App_Window_ProgressPopupWindow.h" />
     <ClInclude Include="App_XivAlexApp.h" />
     <ClInclude Include="App_ConfigRepository.h" />
-    <ClInclude Include="App_Feature_AnimationLockLatencyHandler.h" />
+    <ClInclude Include="App_Feature_NetworkTimingHandler.h" />
     <ClInclude Include="App_Feature_EffectApplicationDelayLogger.h" />
     <ClInclude Include="App_Feature_IpcTypeFinder.h" />
     <ClInclude Include="App_Feature_AllIpcMessageLogger.h" />

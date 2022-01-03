@@ -8,6 +8,10 @@
 #include <XivAlexanderCommon/Utils_Win32_LoadedModule.h>
 
 namespace App {
+	namespace Feature {
+		class NetworkTimingHandler;
+	}
+
 	namespace Network {
 		class SocketHook;
 	}
@@ -55,6 +59,7 @@ namespace App {
 		[[nodiscard]] std::string IsUnloadable() const;
 
 		[[nodiscard]] Network::SocketHook* GetSocketHook();
+		[[nodiscard]] Feature::NetworkTimingHandler* GetTimingHandler();
 
 		[[nodiscard]] const Utils::NumericStatisticsTracker& GetMessagePumpIntervalTrackerUs() const;
 		[[nodiscard]] const Utils::NumericStatisticsTracker& GetRenderTimeTakenTrackerUs() const;
@@ -64,6 +69,5 @@ namespace App {
 
 		static Utils::ListenerManager<XivAlexApp, void, XivAlexApp&> OnAppCreated;
 		static XivAlexApp* GetCurrentApp();
-
 	};
 }

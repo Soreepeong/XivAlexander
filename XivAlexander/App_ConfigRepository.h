@@ -187,7 +187,7 @@ namespace App {
 			Item<bool> UseWordWrap_XivAlexLogWindow = CreateConfigItem(this, "UseWordWrap_XivAlexLogWindow", false);
 			Item<bool> UseMonospaceFont_XivAlexLogWindow = CreateConfigItem(this, "UseMonospaceFont_XivAlexLogWindow", false);
 
-			Item<bool> UseHighLatencyMitigation = CreateConfigItem(this, "UseHighLatencyMitigation", true);
+			Item<bool> UseNetworkTimingHandler = CreateConfigItem(this, "UseNetworkTimingHandler", true);
 			Item<HighLatencyMitigationMode> HighLatencyMitigationMode = CreateConfigItem(this, "HighLatencyMitigationMode", HighLatencyMitigationMode::SimulateNormalizedRttAndLatency);
 			Item<bool> UseEarlyPenalty = CreateConfigItem(this, "UseEarlyPenalty", false);
 			Item<bool> UseHighLatencyMitigationLogging = CreateConfigItem(this, "UseHighLatencyMitigationLogging", true);
@@ -213,12 +213,20 @@ namespace App {
 			Item<Sqex::Language> RememberedGameLaunchLanguage = CreateConfigItem(this, "RememberedGameLaunchLanguage", Sqex::Language::Unspecified);
 			Item<Sqex::Region> RememberedGameLaunchRegion = CreateConfigItem(this, "RememberedGameLaunchRegion", Sqex::Region::Unspecified);
 
-			Item<bool> UseMoreCpuTime = CreateConfigItem(this, "UseMoreCpuPower", true);
-			Item<bool> SynchronizeProcessing = CreateConfigItem(this, "SynchronizeProcessing", true);
+			Item<bool> UseMoreCpuTime = CreateConfigItem(this, "UseMoreCpuPower", false);
+			Item<bool> SynchronizeProcessing = CreateConfigItem(this, "SynchronizeProcessing", false);
 			Item<bool> TerminateOnExitProcess = CreateConfigItem(this, "TerminateOnExitProcess", false);
-			Item<size_t> LockFramerate = CreateConfigItem<size_t>(this, "LockFramerate", 0, [](const size_t& val) {
-				return std::min<size_t>(std::max<size_t>(0, val), 1000000);
+
+			Item<uint64_t> LockFramerateInterval = CreateConfigItem<uint64_t>(this, "LockFramerate", 0, [](const uint64_t& val) {
+				return std::min<uint64_t>(std::max<uint64_t>(0, val), 1000000);
 			});
+			Item<bool> LockFramerateAutomatic = CreateConfigItem(this, "LockFramerateAutomatic", false);
+			Item<double> LockFramerateTargetFramerateRangeFrom = CreateConfigItem(this, "LockFramerateTargetFramerateRangeFrom", 50.);
+			Item<double> LockFramerateTargetFramerateRangeTo = CreateConfigItem(this, "LockFramerateTargetFramerateRangeTo", 60.);
+			Item<uint64_t> LockFramerateMaximumRenderIntervalDeviation = CreateConfigItem<uint64_t>(this, "LockFramerateMaximumRenderIntervalDeviation", 100, [](const uint64_t& val) {
+				return std::min<uint64_t>(std::max<uint64_t>(0, val), 1000000);
+				});
+			Item<uint64_t> LockFramerateGlobalCooldown = CreateConfigItem<uint64_t>(this, "LockFramerateGlobalCooldown", 250);
 
 			Item<Language> Language = CreateConfigItem(this, "Language", Language::SystemDefault);
 
@@ -271,6 +279,20 @@ namespace App {
 			[[nodiscard]] std::vector<std::pair<WORD, std::string>> GetDisplayLanguagePriorities() const;
 			
 			[[nodiscard]] std::vector<Sqex::Language> GetFallbackLanguageList() const;
+
+			[[nodiscard]] static uint64_t CalculateLockFramerateInterval(double fromFps, double toFps, uint64_t gcdUs, uint64_t maximumRenderIntervalDeviation) {
+				fromFps = std::min(1000000., std::max(1., fromFps));
+				toFps = std::min(1000000., std::max(1., toFps));
+				auto minInterval = static_cast<uint64_t>(1000000. / toFps);
+
+				for (auto i = minInterval + 1, i_ = static_cast<uint64_t>(1000000. / fromFps); i <= i_; ++i) {
+					if (i - gcdUs % i < minInterval - gcdUs % minInterval && i - gcdUs % i >= maximumRenderIntervalDeviation) {
+						minInterval = i;
+					}
+				}
+
+				return minInterval;
+			}
 
 		private:
 			std::map<std::string, std::map<std::string, std::string>> m_musicDirectoryPurchaseWebsites;

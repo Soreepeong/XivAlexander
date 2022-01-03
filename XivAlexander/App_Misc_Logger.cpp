@@ -13,7 +13,7 @@ const std::map<App::LogCategory, const char*> App::Misc::Logger::LogCategoryName
 	{App::LogCategory::General, "General"},
 	{App::LogCategory::SocketHook, "SocketHook"},
 	{App::LogCategory::AllIpcMessageLogger, "AllIpcMessageLogger"},
-	{App::LogCategory::AnimationLockLatencyHandler, "AnimationLockLatencyHandler"},
+	{App::LogCategory::NetworkTimingHandler, "NetworkTimingHandler"},
 	{App::LogCategory::EffectApplicationDelayLogger, "EffectApplicationDelayLogger"},
 	{App::LogCategory::IpcTypeFinder, "IpcTypeFinder"},
 	{App::LogCategory::GameResourceOverrider, "GameResourceOverrider"},

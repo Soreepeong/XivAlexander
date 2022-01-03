@@ -178,7 +178,7 @@ namespace App::Network::Structures {
 				struct CooldownType {
 					S2C_ActorControlSelfCategory Category;
 					uint16_t Padding1;
-					uint32_t Param1;
+					uint32_t CooldownGroupId;
 					uint32_t ActionId;
 					uint32_t Duration;  // in 10 milliseconds unit
 					uint32_t Param4;

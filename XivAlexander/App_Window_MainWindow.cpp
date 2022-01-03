@@ -985,7 +985,7 @@ void App::Window::MainWindow::SetMenuStates() const {
 
 	// Network
 	{
-		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE, config.UseHighLatencyMitigation, true);
+		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE, config.UseNetworkTimingHandler, true);
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1, config.HighLatencyMitigationMode == HighLatencyMitigationMode::SubtractLatency, true);
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2, config.HighLatencyMitigationMode == HighLatencyMitigationMode::SimulateRtt, true);
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_MODE_3, config.HighLatencyMitigationMode == HighLatencyMitigationMode::SimulateNormalizedRttAndLatency, true);
@@ -1051,8 +1051,10 @@ void App::Window::MainWindow::SetMenuStates() const {
 	// Configure
 	{
 		SetMenuState(hMenu, ID_CONFIGURE_USEMORECPUTIME, config.UseMoreCpuTime, true);
-		if (config.LockFramerate)
-			SetMenuState(hMenu, ID_CONFIGURE_LOCKFRAMERATE, true, true, m_config->Runtime.FormatStringRes(IDS_MENU_LOCKFRAMERATE, 1000000. / config.LockFramerate));
+		if (config.LockFramerateAutomatic)
+			SetMenuState(hMenu, ID_CONFIGURE_LOCKFRAMERATE, true, true, m_config->Runtime.GetStringRes(IDS_MENU_LOCKFRAMERATE_AUTOMATIC));
+		else if (config.LockFramerateInterval)
+			SetMenuState(hMenu, ID_CONFIGURE_LOCKFRAMERATE, true, true, m_config->Runtime.FormatStringRes(IDS_MENU_LOCKFRAMERATE, 1000000. / config.LockFramerateInterval));
 		else
 			SetMenuState(hMenu, ID_CONFIGURE_LOCKFRAMERATE, false, true, m_config->Runtime.GetStringRes(IDS_MENU_LOCKFRAMERATE_DISABLED));
 		SetMenuState(hMenu, ID_CONFIGURE_SYNCHRONIZEPROCESSING, config.SynchronizeProcessing, true);
@@ -1291,7 +1293,7 @@ void App::Window::MainWindow::OnCommand_Menu_Network(int menuId) {
 
 	switch (menuId) {
 		case ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE:
-			config.UseHighLatencyMitigation = !config.UseHighLatencyMitigation;
+			config.UseNetworkTimingHandler = !config.UseNetworkTimingHandler;
 			return;
 
 		case ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1:
@@ -2046,7 +2048,7 @@ void App::Window::MainWindow::OnCommand_Menu_Configure(int menuId) {
 			return;
 
 		case ID_CONFIGURE_LOCKFRAMERATE: 
-			Dialog::FramerateLockingDialog::ShowModal(m_hWnd);
+			Dialog::FramerateLockingDialog::Show(XivAlexApp::GetCurrentApp(), m_hWnd);
 			return;
 
 		case ID_CONFIGURE_SYNCHRONIZEPROCESSING:

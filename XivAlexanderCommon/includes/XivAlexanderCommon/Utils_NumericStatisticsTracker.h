@@ -17,7 +17,7 @@ namespace Utils {
 			Entry(int64_t value, uint64_t maxAgeUs)
 				: Value(value)
 				, Timestamp(Utils::GetHighPerformanceCounter(1000000))
-				, Expiry(maxAgeUs == INT64_MAX ? INT64_MAX : Timestamp + maxAgeUs){
+				, Expiry(maxAgeUs == INT64_MAX ? INT64_MAX : Timestamp + maxAgeUs) {
 			}
 		};
 
@@ -28,6 +28,8 @@ namespace Utils {
 		~NumericStatisticsTracker();
 
 		void AddValue(int64_t);
+		void Clear() { m_values.clear(); };
+		bool Empty() const { return m_values.empty(); }
 
 	private:
 		[[nodiscard]] const std::deque<Entry>& RemoveExpired(int64_t nowUs = Utils::GetHighPerformanceCounter(1000000)) const;

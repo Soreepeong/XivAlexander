@@ -51,7 +51,7 @@
     <ClCompile Include="App_Misc_FreeGameMutex.cpp">
       <Filter>App\Misc</Filter>
     </ClCompile>
-    <ClCompile Include="App_Feature_AnimationLockLatencyHandler.cpp">
+    <ClCompile Include="App_Feature_NetworkTimingHandler.cpp">
       <Filter>App\Feature</Filter>
     </ClCompile>
     <ClCompile Include="App_Window_BaseWindow.cpp">
@@ -166,7 +166,7 @@
     <ClInclude Include="App_Misc_FreeGameMutex.h">
       <Filter>App\Misc</Filter>
     </ClInclude>
-    <ClInclude Include="App_Feature_AnimationLockLatencyHandler.h">
+    <ClInclude Include="App_Feature_NetworkTimingHandler.h">
       <Filter>App\Feature</Filter>
     </ClInclude>
     <ClInclude Include="App_Window_BaseWindow.h">

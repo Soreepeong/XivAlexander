@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-#include "App_Feature_AnimationLockLatencyHandler.h"
+#include "App_Feature_NetworkTimingHandler.h"
 
 #include <XivAlexanderCommon/XaMisc.h>
 
@@ -10,7 +10,7 @@
 #include "App_XivAlexApp.h"
 #include "resource.h"
 
-struct App::Feature::AnimationLockLatencyHandler::Implementation {
+struct App::Feature::NetworkTimingHandler::Implementation {
 	// Server responses have been usually taking between 50ms and 100ms on below-1ms
 	// latency to server, so 75ms is a good average.
 	// The server will do sanity check on the frequency of action use requests,
@@ -25,6 +25,8 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 	static constexpr int64_t AutoAttackDelayUs = 100000;
 
 	static constexpr auto SecondToMicrosecondMultiplier = 1000000;
+
+	std::map<uint32_t, CooldownGroup> LastCooldownGroup;
 
 	class SingleConnectionHandler {
 		const std::shared_ptr<Config> Config;
@@ -52,7 +54,6 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 		std::map<int, int64_t> OriginalWaitUsMap;
 		Utils::NumericStatisticsTracker EarlyRequestsDurationUs{32, 0};
 
-
 		SingleConnectionHandler(Implementation* pImpl, Network::SingleConnection& conn)
 			: Config(Config::Acquire())
 			, Impl(*pImpl)
@@ -61,6 +62,8 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 
 			const auto& gameConfig = Config->Game;
 			const auto& runtimeConfig = Config->Runtime;
+
+			Impl.LastCooldownGroup.clear();
 
 			conn.AddOutgoingFFXIVMessageHandler(this, [&](auto pMessage) {
 				if (pMessage->Type == MessageType::Ipc && pMessage->Data.Ipc.Type == IpcType::InterestedType) {
@@ -95,7 +98,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 							const auto prevRelativeUs = LatestSuccessfulRequest ? PendingActions.back().RequestUs - LatestSuccessfulRequest->RequestUs : INT64_MAX;
 
 							Impl.m_logger->Format(
-								LogCategory::AnimationLockLatencyHandler,
+								LogCategory::NetworkTimingHandler,
 								"{:x}: C2S_ActionRequest({:04x}): actionId={:04x} sequence={:04x}{}{}",
 								conn.Socket(),
 								pMessage->Data.Ipc.SubType,
@@ -163,7 +166,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 								while (!PendingActions.empty() && PendingActions.front().Sequence != actionEffect.SourceSequence) {
 									const auto& item = PendingActions.front();
 									Impl.m_logger->Format(
-										LogCategory::AnimationLockLatencyHandler,
+										LogCategory::NetworkTimingHandler,
 										u8"\t┎ ActionRequest ignored for processing: actionId={:04x} sequence={:04x}",
 										item.ActionId, item.Sequence);
 									PendingActions.pop_front();
@@ -213,7 +216,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 							description << std::format(" next={:%H:%M:%S}", std::chrono::system_clock::now() + std::chrono::milliseconds(waitUs));
 
 							if (runtimeConfig.UseHighLatencyMitigationLogging)
-								Impl.m_logger->Log(LogCategory::AnimationLockLatencyHandler, description.str());
+								Impl.m_logger->Log(LogCategory::NetworkTimingHandler, description.str());
 
 						} else if (pMessage->Data.Ipc.SubType == gameConfig.S2C_ActorControlSelf) {
 							auto& actorControlSelf = pMessage->Data.Ipc.Data.S2C_ActorControlSelf;
@@ -221,21 +224,34 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 							if (actorControlSelf.Category == S2C_ActorControlSelfCategory::Cooldown) {
 								// Received cooldown information; try to make the game accept input and process stuff as soon as cooldown expires
 								const auto& cooldown = actorControlSelf.Cooldown;
+								auto& group = Impl.LastCooldownGroup[cooldown.CooldownGroupId];
+								const auto diffAction = group.LastActionId != cooldown.ActionId;
+								auto newDriftItem = false;
+								group.LastActionId = cooldown.ActionId;
+								group.Id = cooldown.CooldownGroupId;
+								group.DurationUs = cooldown.Duration * 10000LL;
 
 								if (!PendingActions.empty() && PendingActions.front().ActionId == cooldown.ActionId) {
+									if (!diffAction && PendingActions.front().RequestUs - group.TimestampUs > 0 && PendingActions.front().RequestUs - group.TimestampUs < group.DurationUs * 2) {
+										group.DriftTrackerUs.AddValue(PendingActions.front().RequestUs - group.TimestampUs - group.DurationUs);
+										newDriftItem = true;
+									}
+									group.TimestampUs = PendingActions.front().RequestUs;
+
 									const auto cooldownRegistrationDelayUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier) - PendingActions.front().RequestUs;
 									if (Config->Runtime.SynchronizeProcessing)
 										XivAlexApp::GetCurrentApp()->GuaranteePumpBeginCounter(cooldown.Duration * 10000LL - cooldownRegistrationDelayUs);
 
 									if (runtimeConfig.UseHighLatencyMitigationLogging) {
 										Impl.m_logger->Format(
-											LogCategory::AnimationLockLatencyHandler,
-											"{:x}: S2C_ActorControlSelf/Cooldown: actionId={:04x} duration={}.{:02}s",
+											LogCategory::NetworkTimingHandler,
+											"{:x}: S2C_ActorControlSelf/Cooldown: actionId={:04x} group={:04x} duration={}.{:02}s",
 											conn.Socket(),
-											cooldown.ActionId,
+											cooldown.ActionId, cooldown.CooldownGroupId,
 											cooldown.Duration / 100, cooldown.Duration % 100);
 									}
 								}
+								Impl.CallOnCooldownGroupUpdateListener(group.Id, newDriftItem);
 
 							} else if (actorControlSelf.Category == S2C_ActorControlSelfCategory::ActionRejected) {
 								// Oldest action request has been rejected from server.
@@ -250,7 +266,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 									)) {
 									const auto& item = PendingActions.front();
 									Impl.m_logger->Format(
-										LogCategory::AnimationLockLatencyHandler,
+										LogCategory::NetworkTimingHandler,
 										u8"\t┎ ActionRequest ignored for processing: actionId={:04x} sequence={:04x}",
 										item.ActionId, item.Sequence);
 									PendingActions.pop_front();
@@ -261,7 +277,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 
 								if (runtimeConfig.UseHighLatencyMitigationLogging)
 									Impl.m_logger->Format(
-										LogCategory::AnimationLockLatencyHandler,
+										LogCategory::NetworkTimingHandler,
 										"{:x}: S2C_ActorControlSelf/ActionRejected: actionId={:04x} sourceSequence={:04x}",
 										conn.Socket(),
 										rollback.ActionId,
@@ -279,7 +295,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 								while (!PendingActions.empty() && PendingActions.front().ActionId != cancelCast.ActionId) {
 									const auto& item = PendingActions.front();
 									Impl.m_logger->Format(
-										LogCategory::AnimationLockLatencyHandler,
+										LogCategory::NetworkTimingHandler,
 										u8"\t┎ ActionRequest ignored for processing: actionId={:04x} sequence={:04x}",
 										item.ActionId, item.Sequence);
 									PendingActions.pop_front();
@@ -290,7 +306,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 
 								if (runtimeConfig.UseHighLatencyMitigationLogging)
 									Impl.m_logger->Format(
-										LogCategory::AnimationLockLatencyHandler,
+										LogCategory::NetworkTimingHandler,
 										"{:x}: S2C_ActorControl/CancelCast: actionId={:04x}",
 										conn.Socket(),
 										cancelCast.ActionId);
@@ -306,7 +322,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 
 							if (runtimeConfig.UseHighLatencyMitigationLogging)
 								Impl.m_logger->Format(
-									LogCategory::AnimationLockLatencyHandler,
+									LogCategory::NetworkTimingHandler,
 									"{:x}: S2C_ActorCast: actionId={:04x} time={:.3f} target={:08x}",
 									conn.Socket(),
 									actorCast.ActionId,
@@ -390,7 +406,7 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 
 					if (rttUs > 100 && latencyUs < 5000) {
 						Impl.m_logger->Format<LogLevel::Warning>(
-							LogCategory::AnimationLockLatencyHandler,
+							LogCategory::NetworkTimingHandler,
 							Config->Runtime.GetLangId(), IDS_WARNING_ZEROPING,
 							rttUs, latencyUs / 1000);
 					}
@@ -403,13 +419,15 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 		}
 	};
 
+	NetworkTimingHandler* const this_;
 	const std::shared_ptr<Misc::Logger> m_logger;
 	Network::SocketHook* const m_socketHook;
 	std::map<Network::SingleConnection*, std::unique_ptr<SingleConnectionHandler>> m_handlers{};
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
-	Implementation(Network::SocketHook* socketHook)
-		: m_logger(Misc::Logger::Acquire())
+	Implementation(NetworkTimingHandler* const this_, Network::SocketHook* socketHook)
+		: this_(this_)
+		, m_logger(Misc::Logger::Acquire())
 		, m_socketHook(socketHook) {
 		m_cleanup += m_socketHook->OnSocketFound([&](Network::SingleConnection& conn) {
 			m_handlers.emplace(&conn, std::make_unique<SingleConnectionHandler>(this, conn));
@@ -422,10 +440,19 @@ struct App::Feature::AnimationLockLatencyHandler::Implementation {
 	~Implementation() {
 		m_handlers.clear();
 	}
+
+	void CallOnCooldownGroupUpdateListener(uint32_t groupId, bool newDriftItem) const {
+		if (const auto it = LastCooldownGroup.find(groupId); it != LastCooldownGroup.end())
+			this_->OnCooldownGroupUpdateListener(it->second, newDriftItem);
+	}
 };
 
-App::Feature::AnimationLockLatencyHandler::AnimationLockLatencyHandler(Network::SocketHook* socketHook)
-	: m_pImpl(std::make_unique<Implementation>(socketHook)) {
+App::Feature::NetworkTimingHandler::NetworkTimingHandler(Network::SocketHook* socketHook)
+	: m_pImpl(std::make_unique<Implementation>(this, socketHook)) {
 }
 
-App::Feature::AnimationLockLatencyHandler::~AnimationLockLatencyHandler() = default;
+App::Feature::NetworkTimingHandler::~NetworkTimingHandler() = default;
+
+const App::Feature::NetworkTimingHandler::CooldownGroup& App::Feature::NetworkTimingHandler::GetCooldownGroup(uint32_t groupId) const {
+	return m_pImpl->LastCooldownGroup[groupId];
+}

@@ -6,7 +6,7 @@
 
 #include "App_ConfigRepository.h"
 #include "App_Feature_AllIpcMessageLogger.h"
-#include "App_Feature_AnimationLockLatencyHandler.h"
+#include "App_Feature_NetworkTimingHandler.h"
 #include "App_Feature_EffectApplicationDelayLogger.h"
 #include "App_Feature_GameResourceOverrider.h"
 #include "App_Feature_IpcTypeFinder.h"
@@ -150,7 +150,7 @@ struct App::XivAlexApp::Implementation final {
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
 	std::unique_ptr<Network::SocketHook> m_socketHook{};
-	std::unique_ptr<Feature::AnimationLockLatencyHandler> m_animationLockLatencyHandler{};
+	std::unique_ptr<Feature::NetworkTimingHandler> m_networkTimingHandler{};
 	std::unique_ptr<Feature::IpcTypeFinder> m_ipcTypeFinder{};
 	std::unique_ptr<Feature::AllIpcMessageLogger> m_allIpcMessageLogger{};
 	std::unique_ptr<Feature::EffectApplicationDelayLogger> m_effectApplicationDelayLogger{};
@@ -237,15 +237,15 @@ struct App::XivAlexApp::Implementation final {
 
 		auto& config = this_->m_config->Runtime;
 
-		if (config.UseHighLatencyMitigation)
-			m_animationLockLatencyHandler = std::make_unique<Feature::AnimationLockLatencyHandler>(m_socketHook.get());
-		m_cleanup += config.UseHighLatencyMitigation.OnChangeListener([&](Config::ItemBase&) {
-			if (config.UseHighLatencyMitigation)
-				m_animationLockLatencyHandler = std::make_unique<Feature::AnimationLockLatencyHandler>(m_socketHook.get());
+		if (config.UseNetworkTimingHandler)
+			m_networkTimingHandler = std::make_unique<Feature::NetworkTimingHandler>(m_socketHook.get());
+		m_cleanup += config.UseNetworkTimingHandler.OnChangeListener([&](Config::ItemBase&) {
+			if (config.UseNetworkTimingHandler)
+				m_networkTimingHandler = std::make_unique<Feature::NetworkTimingHandler>(m_socketHook.get());
 			else
-				m_animationLockLatencyHandler = nullptr;
+				m_networkTimingHandler = nullptr;
 		});
-		m_cleanup += [this]() { m_animationLockLatencyHandler = nullptr; };
+		m_cleanup += [this]() { m_networkTimingHandler = nullptr; };
 
 		if (config.UseOpcodeFinder)
 			m_ipcTypeFinder = std::make_unique<Feature::IpcTypeFinder>(m_socketHook.get());
@@ -308,6 +308,8 @@ struct App::XivAlexApp::Implementation final {
 		m_cleanup += PeekMessageW.SetHook([this, lastRemoveMsg = UINT{}](LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg) mutable->BOOL {
 			if (GetCurrentThreadId() == this_->m_pGameWindow->GetThreadId(false)) {
 				if (lastRemoveMsg == wRemoveMsg) {
+					const auto& rt = this_->m_config->Runtime;
+
 					auto nowUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier);
 					int64_t waitUntilCounterUs = 0;
 
@@ -326,16 +328,30 @@ struct App::XivAlexApp::Implementation final {
 					}
 
 					auto recordPumpInterval = false;
-					if (const auto intervalUs = this_->m_config->Runtime.LockFramerate; intervalUs && waitUntilCounterUs == 0) {
+					uint64_t waitUntilMs = 0;
+					if (rt.LockFramerateAutomatic && m_networkTimingHandler) {
+						const auto& group = m_networkTimingHandler->GetCooldownGroup(Feature::NetworkTimingHandler::CooldownGroup::Id_Gcd);
+						if (group.DurationUs != INT64_MAX) {
+							waitUntilMs = Config::RuntimeRepository::CalculateLockFramerateInterval(
+								rt.LockFramerateTargetFramerateRangeFrom,
+								rt.LockFramerateTargetFramerateRangeTo,
+								group.DurationUs,
+								rt.LockFramerateMaximumRenderIntervalDeviation
+							);
+						}
+					} else {
+						waitUntilMs = rt.LockFramerateInterval;
+					}
+					if (waitUntilMs && waitUntilCounterUs == 0) {
 						recordPumpInterval = true;
-						waitUntilCounterUs = (1 + nowUs / intervalUs) * intervalUs;
+						waitUntilCounterUs = (1 + nowUs / waitUntilMs) * waitUntilMs;
 					}
 
 					if (const auto socketSelectUs = m_socketHook ? m_socketHook->GetLastSocketSelectCounterUs() : 0)
 						SocketCallDelayTrackerUs.AddValue(socketSelectUs - LastMessagePumpCounterUs.back());
 
 					if (waitUntilCounterUs > 0 && !LastMessagePumpCounterUs.empty()) {
-						const auto useMoreCpuTime = this_->m_config->Runtime.UseMoreCpuTime.Value();
+						const auto useMoreCpuTime = rt.UseMoreCpuTime.Value();
 						while (waitUntilCounterUs > (nowUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier))) {
 							if (useMoreCpuTime)
 								void(0);
@@ -534,6 +550,10 @@ std::string App::XivAlexApp::IsUnloadable() const {
 
 App::Network::SocketHook* App::XivAlexApp::GetSocketHook() {
 	return m_pImpl->m_socketHook.get();
+}
+
+App::Feature::NetworkTimingHandler* App::XivAlexApp::GetTimingHandler() {
+	return m_pImpl->m_networkTimingHandler.get();
 }
 
 const Utils::NumericStatisticsTracker& App::XivAlexApp::GetMessagePumpIntervalTrackerUs() const {
