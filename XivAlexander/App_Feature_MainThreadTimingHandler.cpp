@@ -31,37 +31,14 @@ struct App::Feature::MainThreadTimingHandler::Implementation {
 	Utils::NumericStatisticsTracker SocketCallDelayTrackerUs{ 1024, 0 };
 
 	Utils::CallOnDestruction::Multiple Cleanup;
-	Utils::CallOnDestruction CleanupActionRequestListener;
 
 	UINT LastPeekMessageHadRemoveMsg{};
-	bool ExpectingAnyActionToBeUsedInRenderPass{};
-	bool AnyActionUsedInRenderPass{};
-	uint8_t NumberOfFramesToNonstopRender{};
 	int64_t LastLockedFramerateRenderIntervalUs{};
 	int64_t LastLockedFramerateRenderDriftUs{};
 
 	Implementation(XivAlexApp& app)
 		: App(app)
 		, Config(Config::Acquire()) {
-
-		if (const auto handler = App.GetNetworkTimingHandler())
-			CleanupActionRequestListener = handler->OnActionRequestListener([&](auto&) { AnyActionUsedInRenderPass = true; });
-		Cleanup += Config->Runtime.UseNetworkTimingHandler.OnChangeListener([&](auto&) {
-			if (Config->Runtime.UseNetworkTimingHandler) {
-				void(Utils::Win32::Thread(L"UseNetworkTimingHandler/OnCooldownGroupUpdateListener Waiter", [&]() {
-					while (true) {
-						if (const auto handler = App.GetNetworkTimingHandler()) {
-							CleanupActionRequestListener = handler->OnActionRequestListener([&](auto&) { AnyActionUsedInRenderPass = true; });
-							break;
-						}
-						Sleep(1);
-					};
-					}));
-			} else {
-				CleanupActionRequestListener.Clear();
-			}
-			});
-		Cleanup += [&]() { CleanupActionRequestListener.Clear(); };
 
 		Cleanup += PeekMessageW.SetHook([this](LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg) mutable->BOOL {
 			if (App.IsRunningOnGameMainThread()) {
@@ -75,102 +52,83 @@ struct App::Feature::MainThreadTimingHandler::Implementation {
 						LastWaitForSingleObjectUs = 0;
 					}
 
-					// Make up for failed guarantees if any by rendering a frame without waiting
-					while (!MessagePumpGuaranteeCounterUs.empty() && *MessagePumpGuaranteeCounterUs.begin() <= nowUs) {
+					while (!MessagePumpGuaranteeCounterUs.empty() && *MessagePumpGuaranteeCounterUs.begin() <= nowUs)
 						MessagePumpGuaranteeCounterUs.erase(MessagePumpGuaranteeCounterUs.begin());
-						NumberOfFramesToNonstopRender = std::max<uint8_t>(NumberOfFramesToNonstopRender, 1);
+
+					int64_t waitUntilCounterUs = 0;
+					if (!MessagePumpGuaranteeCounterUs.empty() && *MessagePumpGuaranteeCounterUs.begin() - nowUs <= MessagePumpIntervalTrackerUs.Latest()) {
+						waitUntilCounterUs = *MessagePumpGuaranteeCounterUs.begin();
+						MessagePumpGuaranteeCounterUs.erase(MessagePumpGuaranteeCounterUs.begin());
 					}
 
-					// If we expected for something to happen but nothing happened, then render another without waiting for up to 3 frames
-					if (AnyActionUsedInRenderPass)
-						NumberOfFramesToNonstopRender = 0;
-					else if (ExpectingAnyActionToBeUsedInRenderPass)
-						NumberOfFramesToNonstopRender = std::max<uint8_t>(NumberOfFramesToNonstopRender, 10);
-					else if (NumberOfFramesToNonstopRender)
-						NumberOfFramesToNonstopRender--;
-					ExpectingAnyActionToBeUsedInRenderPass = AnyActionUsedInRenderPass = false;
-
-					if (NumberOfFramesToNonstopRender == 0) {
-						int64_t waitUntilCounterUs = 0;
-						if (!MessagePumpGuaranteeCounterUs.empty() && *MessagePumpGuaranteeCounterUs.begin() - nowUs <= MessagePumpIntervalTrackerUs.Latest()) {
-							waitUntilCounterUs = *MessagePumpGuaranteeCounterUs.begin();
-							MessagePumpGuaranteeCounterUs.erase(MessagePumpGuaranteeCounterUs.begin());
-							ExpectingAnyActionToBeUsedInRenderPass = true;
-						} else
-							ExpectingAnyActionToBeUsedInRenderPass = false;
-
-						auto recordPumpInterval = false;
-						if (!waitUntilCounterUs) {
-							uint64_t waitForUs = 0, waitForDrift = 0;
-							const auto test = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier);
-							if (const auto networkingHelper = App.GetNetworkTimingHandler(); networkingHelper && rt.LockFramerateAutomatic) {
-								const auto& group = networkingHelper->GetCooldownGroup(Feature::NetworkTimingHandler::CooldownGroup::Id_Gcd);
-								if (group.DurationUs != UINT64_MAX) {
-									const auto frameInterval = static_cast<int64_t>(Config::RuntimeRepository::CalculateLockFramerateIntervalUs(
-										rt.LockFramerateTargetFramerateRangeFrom,
-										rt.LockFramerateTargetFramerateRangeTo,
-										group.DurationUs,
-										rt.LockFramerateMaximumRenderIntervalDeviation
-									));
-									if (frameInterval && LastLockedFramerateRenderIntervalUs && LastLockedFramerateRenderIntervalUs != frameInterval) {
-										const auto prevRenderTimestamp = nowUs / LastLockedFramerateRenderIntervalUs * LastLockedFramerateRenderIntervalUs + LastLockedFramerateRenderDriftUs + frameInterval;
-										int64_t minDiff = UINT64_MAX;
-										int64_t minDriftUs = 0;
-										for (int64_t i = 0; i < frameInterval; ++i) {
-											const auto nextRenderTimestamp = static_cast<int64_t>((1 + (nowUs - i) / frameInterval) * frameInterval + i);
-											if (nextRenderTimestamp < prevRenderTimestamp)
-												continue;
-											const auto diff = nextRenderTimestamp - prevRenderTimestamp;
-											if (diff < minDiff) {
-												minDiff = diff;
-												minDriftUs = i;
-											}
+					auto recordPumpInterval = false;
+					if (!waitUntilCounterUs) {
+						uint64_t waitForUs = 0, waitForDrift = 0;
+						const auto test = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier);
+						if (const auto networkingHelper = App.GetNetworkTimingHandler(); networkingHelper && rt.LockFramerateAutomatic) {
+							const auto& group = networkingHelper->GetCooldownGroup(Feature::NetworkTimingHandler::CooldownGroup::Id_Gcd);
+							if (group.DurationUs != UINT64_MAX) {
+								const auto frameInterval = static_cast<int64_t>(Config::RuntimeRepository::CalculateLockFramerateIntervalUs(
+									rt.LockFramerateTargetFramerateRangeFrom,
+									rt.LockFramerateTargetFramerateRangeTo,
+									group.DurationUs,
+									rt.LockFramerateMaximumRenderIntervalDeviation
+								));
+								if (frameInterval && LastLockedFramerateRenderIntervalUs && LastLockedFramerateRenderIntervalUs != frameInterval) {
+									const auto prevRenderTimestamp = nowUs / LastLockedFramerateRenderIntervalUs * LastLockedFramerateRenderIntervalUs + LastLockedFramerateRenderDriftUs + frameInterval;
+									int64_t minDiff = UINT64_MAX;
+									int64_t minDriftUs = 0;
+									for (int64_t i = 0; i < frameInterval; ++i) {
+										const auto nextRenderTimestamp = static_cast<int64_t>((1 + (nowUs - i) / frameInterval) * frameInterval + i);
+										if (nextRenderTimestamp < prevRenderTimestamp)
+											continue;
+										const auto diff = nextRenderTimestamp - prevRenderTimestamp;
+										if (diff < minDiff) {
+											minDiff = diff;
+											minDriftUs = i;
 										}
-										LastLockedFramerateRenderDriftUs = minDriftUs;
 									}
-									waitForUs = LastLockedFramerateRenderIntervalUs = frameInterval;
-									waitForDrift = LastLockedFramerateRenderDriftUs;
-									OutputDebugStringW(std::format(L"5. {}us / {} / {}\n", Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier) - test, waitForUs, waitForDrift).c_str());
-								} else {
-									waitForUs = LastLockedFramerateRenderIntervalUs = static_cast<uint64_t>(1000000. / std::min(1000000., std::max(1., rt.LockFramerateTargetFramerateRangeTo.Value())));
-									waitForDrift = 0;
+									LastLockedFramerateRenderDriftUs = minDriftUs;
 								}
+								waitForUs = LastLockedFramerateRenderIntervalUs = frameInterval;
+								waitForDrift = LastLockedFramerateRenderDriftUs;
+								OutputDebugStringW(std::format(L"5. {}us / {} / {}\n", Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier) - test, waitForUs, waitForDrift).c_str());
 							} else {
-								waitForUs = rt.LockFramerateInterval;
+								waitForUs = LastLockedFramerateRenderIntervalUs = static_cast<uint64_t>(1000000. / std::min(1000000., std::max(1., rt.LockFramerateTargetFramerateRangeTo.Value())));
 								waitForDrift = 0;
 							}
-							if (waitForUs) {
-								recordPumpInterval = true;
-								waitUntilCounterUs = (1 + (nowUs - waitForDrift) / waitForUs) * waitForUs + waitForDrift;
-							}
-						}
-
-						if (!LastMessagePumpCounterUs.empty()) {
-							if (const auto socketSelectUs = App.GetSocketHook() ? App.GetSocketHook()->GetLastSocketSelectCounterUs() : 0)
-								SocketCallDelayTrackerUs.AddValue(socketSelectUs - LastMessagePumpCounterUs.back());
-						}
-
-						if (waitUntilCounterUs > 0 && !LastMessagePumpCounterUs.empty()) {
-							const auto useMoreCpuTime = rt.UseMoreCpuTime.Value();
-							while (waitUntilCounterUs > (nowUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier))) {
-								if (useMoreCpuTime)
-									void(0);
-								else
-									::Sleep(0);
-							}
-							LastMessagePumpCounterUs.push_back(nowUs);
 						} else {
-							LastMessagePumpCounterUs.push_back(nowUs);
-							recordPumpInterval = true;
+							waitForUs = rt.LockFramerateInterval;
+							waitForDrift = 0;
 						}
-						if (recordPumpInterval && LastMessagePumpCounterUs.size() >= 2)
-							MessagePumpIntervalTrackerUs.AddValue(LastMessagePumpCounterUs[LastMessagePumpCounterUs.size() - 1] - LastMessagePumpCounterUs[LastMessagePumpCounterUs.size() - 2]);
-						if (LastMessagePumpCounterUs.size() > 2 && LastMessagePumpCounterUs.back() - LastMessagePumpCounterUs.front() >= SecondToMicrosecondMultiplier)
-							LastMessagePumpCounterUs.pop_front();
+						if (waitForUs) {
+							recordPumpInterval = true;
+							waitUntilCounterUs = (1 + (nowUs - waitForDrift) / waitForUs) * waitForUs + waitForDrift;
+						}
+					}
 
+					if (!LastMessagePumpCounterUs.empty()) {
+						if (const auto socketSelectUs = App.GetSocketHook() ? App.GetSocketHook()->GetLastSocketSelectCounterUs() : 0)
+							SocketCallDelayTrackerUs.AddValue(socketSelectUs - LastMessagePumpCounterUs.back());
+					}
+
+					if (waitUntilCounterUs > 0 && !LastMessagePumpCounterUs.empty()) {
+						const auto useMoreCpuTime = rt.UseMoreCpuTime.Value();
+						while (waitUntilCounterUs > (nowUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier))) {
+							if (useMoreCpuTime)
+								void(0);
+							else
+								::Sleep(0);
+						}
+						LastMessagePumpCounterUs.push_back(nowUs);
 					} else {
 						LastMessagePumpCounterUs.push_back(nowUs);
+						recordPumpInterval = true;
 					}
+					if (recordPumpInterval && LastMessagePumpCounterUs.size() >= 2)
+						MessagePumpIntervalTrackerUs.AddValue(LastMessagePumpCounterUs[LastMessagePumpCounterUs.size() - 1] - LastMessagePumpCounterUs[LastMessagePumpCounterUs.size() - 2]);
+					if (LastMessagePumpCounterUs.size() > 2 && LastMessagePumpCounterUs.back() - LastMessagePumpCounterUs.front() >= SecondToMicrosecondMultiplier)
+						LastMessagePumpCounterUs.pop_front();
 
 				} else {
 					LastPeekMessageHadRemoveMsg = wRemoveMsg;
@@ -260,7 +218,7 @@ void App::Feature::MainThreadTimingHandler::GuaranteePumpBeginCounterIn(int64_t 
 }
 
 void App::Feature::MainThreadTimingHandler::GuaranteePumpBeginCounterAt(int64_t counterUs) {
-
+	m_pImpl->MessagePumpGuaranteeCounterUs.insert(counterUs);
 }
 
 App::Feature::MainThreadTimingHandler::~MainThreadTimingHandler() = default;

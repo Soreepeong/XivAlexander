@@ -140,9 +140,9 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(XivAlexApp* app, HWN
 		bool TryRegisterTimingHandler() {
 			if (const auto handler = App.GetNetworkTimingHandler()) {
 				CleanupNetworkTimingHandlerCooldownCallback = handler->OnCooldownGroupUpdateListener([&](const Feature::NetworkTimingHandler::CooldownGroup& group, bool newDriftItem) {
-					if (group.Id != Feature::NetworkTimingHandler::CooldownGroup::Id_Gcd || !Automatic)
+					if (group.Id != Feature::NetworkTimingHandler::CooldownGroup::Id_Gcd)
 						return;
-					PostMessageW(Hwnd, WM_APP + 1, group.DurationUs / 10000, newDriftItem ? static_cast<int32_t>(group.DriftTrackerUs.Latest()) : INT32_MAX);
+					PostMessageW(Hwnd, WM_APP + 1, static_cast<int32_t>(group.DurationUs / 10000), newDriftItem ? static_cast<int32_t>(group.DriftTrackerUs.Latest()) : INT32_MAX);
 					});
 				if (const auto& group = handler->GetCooldownGroup(Feature::NetworkTimingHandler::CooldownGroup::Id_Gcd); group.DurationUs != UINT64_MAX) {
 					Gcd10ms = group.DurationUs / 10000;
@@ -279,7 +279,8 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(XivAlexApp* app, HWN
 
 		void ReflectDisplay() const {
 			const auto prevent = PreventEditUpdate();
-			SetDlgItemTextIfChanged(Hwnd, IDC_TARGETFRAMERATE_EDIT, Fps(), std::format(L"{:g}", Fps()));
+			if (static_cast<uint64_t>(1000000. / GetDlgItemDouble(Hwnd, IDC_TARGETFRAMERATE_EDIT)) != IntervalUs)
+				SetDlgItemTextIfChanged(Hwnd, IDC_TARGETFRAMERATE_EDIT, Fps(), std::format(L"{:g}", Fps()));
 			SetDlgItemTextIfChanged(Hwnd, IDC_INTERVAL_EDIT, IntervalUs, std::format(L"{}", IntervalUs));
 			SetDlgItemTextIfChanged(Hwnd, IDC_GCD_EDIT, Gcd10ms, std::format(L"{}.{:02}", Gcd10ms / 100, Gcd10ms % 100));
 			if (IntervalUs == 0) {
@@ -367,7 +368,8 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(XivAlexApp* app, HWN
 			case WM_APP + 1: {
 				data.Gcd10ms = static_cast<uint32_t>(wParam);
 				const auto durationUs = data.Gcd10ms * 10000;
-				data.IntervalUs = Config::RuntimeRepository::CalculateLockFramerateIntervalUs(data.FpsRangeFrom, data.FpsRangeTo, durationUs, data.FpsDevUs);
+				if (data.Automatic)
+					data.IntervalUs = Config::RuntimeRepository::CalculateLockFramerateIntervalUs(data.FpsRangeFrom, data.FpsRangeTo, durationUs, data.FpsDevUs);
 				if (const auto latest = static_cast<int32_t>(lParam); lParam != INT32_MAX) {
 					data.LocalTracker.AddValue(lParam);
 					ListBox_InsertString(GetDlgItem(hwnd, IDC_LASTGCD_LIST), 0, std::format(L"{}.{:02}s {:+07}us", durationUs / 1000000, durationUs % 1000000 / 10000, lParam).c_str());
