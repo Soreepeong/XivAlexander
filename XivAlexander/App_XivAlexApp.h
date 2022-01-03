@@ -10,6 +10,7 @@
 namespace App {
 	namespace Feature {
 		class NetworkTimingHandler;
+		class MainThreadTimingHandler;
 	}
 
 	namespace Network {
@@ -54,18 +55,14 @@ namespace App {
 	public:
 		[[nodiscard]] _Maybenull_ HWND GetGameWindowHandle(bool wait = false) const;
 		[[nodiscard]] DWORD GetGameWindowThreadId(bool wait = false) const;
+		[[nodiscard]] bool IsRunningOnGameMainThread() const;
 
 		void RunOnGameLoop(std::function<void()> f);
 		[[nodiscard]] std::string IsUnloadable() const;
 
 		[[nodiscard]] Network::SocketHook* GetSocketHook();
-		[[nodiscard]] Feature::NetworkTimingHandler* GetTimingHandler();
-
-		[[nodiscard]] const Utils::NumericStatisticsTracker& GetMessagePumpIntervalTrackerUs() const;
-		[[nodiscard]] const Utils::NumericStatisticsTracker& GetRenderTimeTakenTrackerUs() const;
-		[[nodiscard]] const Utils::NumericStatisticsTracker& GetSocketCallDelayTrackerUs() const;
-
-		void GuaranteePumpBeginCounter(int64_t counterUs);
+		[[nodiscard]] Feature::NetworkTimingHandler* GetNetworkTimingHandler() const;
+		[[nodiscard]] Feature::MainThreadTimingHandler* GetMainThreadTimingHelper() const;
 
 		static Utils::ListenerManager<XivAlexApp, void, XivAlexApp&> OnAppCreated;
 		static XivAlexApp* GetCurrentApp();

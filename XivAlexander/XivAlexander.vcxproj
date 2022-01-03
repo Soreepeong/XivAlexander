@@ -303,6 +303,7 @@ cmd /c "exit /b 0"
   <ItemGroup>
     <ClCompile Include="App_DalamudHandlerApp.cpp" />
     <ClCompile Include="App_Feature_GameResourceOverrider.cpp" />
+    <ClCompile Include="App_Feature_MainThreadTimingHandler.cpp" />
     <ClCompile Include="App_InjectOnCreateProcessApp.cpp" />
     <ClCompile Include="App_LoaderApp.cpp" />
     <ClCompile Include="App_LoaderApp_Actions_Inject.cpp" />
@@ -349,6 +350,7 @@ cmd /c "exit /b 0"
   <ItemGroup>
     <ClInclude Include="App_DalamudHandlerApp.h" />
     <ClInclude Include="App_Feature_GameResourceOverrider.h" />
+    <ClInclude Include="App_Feature_MainThreadTimingHandler.h" />
     <ClInclude Include="App_InjectOnCreateProcessApp.h" />
     <ClInclude Include="App_InjectOnCreateProcessApp_x64.h" />
     <ClInclude Include="App_InjectOnCreateProcessApp_x86.h" />

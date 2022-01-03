@@ -236,15 +236,27 @@ std::vector<Sqex::Language> App::Config::RuntimeRepository::GetFallbackLanguageL
 	return result;
 }
 
-uint64_t App::Config::RuntimeRepository::CalculateLockFramerateInterval(double fromFps, double toFps, uint64_t gcdUs, uint64_t maximumRenderIntervalDeviation) {
+uint64_t App::Config::RuntimeRepository::CalculateLockFramerateIntervalUs(double fromFps, double toFps, uint64_t gcdUs, uint64_t renderIntervalDeviation) {
+	static double prevFromFps{}, prevToFps{};
+	static uint64_t prevGcdUs{}, prevRenderIntervalDeviation{};
+	static uint64_t prevResult{};
+	if (prevFromFps == fromFps && prevToFps == toFps && prevGcdUs == gcdUs && prevRenderIntervalDeviation == renderIntervalDeviation) {
+		return prevResult;
+	}
+
 	fromFps = std::min(1000000., std::max(1., fromFps));
 	toFps = std::min(1000000., std::max(1., toFps));
 	auto minInterval = static_cast<uint64_t>(1000000. / toFps);
 	for (auto i = minInterval + 1, i_ = static_cast<uint64_t>(1000000. / fromFps); i <= i_; ++i) {
-		if (i - gcdUs % i < minInterval - gcdUs % minInterval && i - gcdUs % i >= maximumRenderIntervalDeviation) {
+		if (i - gcdUs % i < minInterval - gcdUs % minInterval && i - gcdUs % i >= renderIntervalDeviation) {
 			minInterval = i;
 		}
 	}
+	prevFromFps = fromFps;
+	prevToFps = toFps;
+	prevGcdUs = gcdUs;
+	prevRenderIntervalDeviation = renderIntervalDeviation;
+	prevResult = minInterval;
 	return minInterval;
 }
 

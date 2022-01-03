@@ -280,7 +280,7 @@ namespace App {
 			
 			[[nodiscard]] std::vector<Sqex::Language> GetFallbackLanguageList() const;
 
-			[[nodiscard]] static uint64_t CalculateLockFramerateInterval(double fromFps, double toFps, uint64_t gcdUs, uint64_t maximumRenderIntervalDeviation);
+			[[nodiscard]] static uint64_t CalculateLockFramerateIntervalUs(double fromFps, double toFps, uint64_t gcdUs, uint64_t maximumRenderIntervalDeviation);
 
 		private:
 			std::map<std::string, std::map<std::string, std::string>> m_musicDirectoryPurchaseWebsites;

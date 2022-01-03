@@ -41,7 +41,7 @@ static void SetDlgItemTextIfChanged(HWND hwnd, int nId, uint64_t val, const std:
 	SetDlgItemTextW(hwnd, nId, repr.c_str());
 }
 
-void App::Window::Dialog::FramerateLockingDialog::ShowModal(XivAlexApp* app, HWND hParentWindow) {
+void App::Window::Dialog::FramerateLockingDialog::ShowModal(XivAlexApp* app, HWND hParentWindow, const Utils::Win32::Event& hCancelEvent) {
 	struct Data {
 		XivAlexApp& App;
 		HWND const Hwnd;
@@ -137,21 +137,15 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(XivAlexApp* app, HWN
 		}
 
 		bool TryRegisterTimingHandler() {
-			if (const auto handler = App.GetTimingHandler()) {
+			if (const auto handler = App.GetNetworkTimingHandler()) {
 				CleanupNetworkTimingHandlerCooldownCallback = handler->OnCooldownGroupUpdateListener([&](const Feature::NetworkTimingHandler::CooldownGroup& group, bool newDriftItem) {
-					if (group.Id != Feature::NetworkTimingHandler::CooldownGroup::Id_Gcd)
+					if (group.Id != Feature::NetworkTimingHandler::CooldownGroup::Id_Gcd || !Automatic)
 						return;
-					Gcd10ms = group.DurationUs / 10000;
-					IntervalUs = Config::RuntimeRepository::CalculateLockFramerateInterval(FpsRangeFrom, FpsRangeTo, group.DurationUs, FpsDevUs);
-					if (newDriftItem) {
-						LocalTracker.AddValue(group.DriftTrackerUs.Latest());
-						ListBox_InsertString(GetDlgItem(Hwnd, IDC_LASTGCD_LIST), 0, std::format(L"{}.{:02}s {:+07}us", group.DurationUs / 1000000, group.DurationUs % 1000000 / 10000, group.DriftTrackerUs.Latest()).c_str());
-					}
-					ReflectDisplay();
+					PostMessageW(Hwnd, WM_APP + 1, group.DurationUs / 10000, newDriftItem ? static_cast<int32_t>(group.DriftTrackerUs.Latest()) : INT32_MAX);
 					});
 				if (const auto& group = handler->GetCooldownGroup(Feature::NetworkTimingHandler::CooldownGroup::Id_Gcd); group.DurationUs != UINT64_MAX) {
 					Gcd10ms = group.DurationUs / 10000;
-					IntervalUs = Config::RuntimeRepository::CalculateLockFramerateInterval(FpsRangeFrom, FpsRangeTo, group.DurationUs, FpsDevUs);
+					IntervalUs = Config::RuntimeRepository::CalculateLockFramerateIntervalUs(FpsRangeFrom, FpsRangeTo, group.DurationUs, FpsDevUs);
 					ReflectDisplay();
 				}
 				return true;
@@ -209,12 +203,12 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(XivAlexApp* app, HWN
 			Automatic = IsDlgButtonChecked(Hwnd, IDC_AUTOMATICFPSLOCKING);
 			if (Automatic) {
 				auto& rt = Config->Runtime;
-				if (const auto handler = App.GetTimingHandler()) {
+				if (const auto handler = App.GetNetworkTimingHandler()) {
 					if (const auto& group = handler->GetCooldownGroup(Feature::NetworkTimingHandler::CooldownGroup::Id_Gcd); group.DurationUs != UINT64_MAX) {
 						Gcd10ms = group.DurationUs / 10000;
 					}
 				}
-				IntervalUs = Config::RuntimeRepository::CalculateLockFramerateInterval(FpsRangeFrom, FpsRangeTo, Gcd10ms * 10000, FpsDevUs);
+				IntervalUs = Config::RuntimeRepository::CalculateLockFramerateIntervalUs(FpsRangeFrom, FpsRangeTo, Gcd10ms * 10000, FpsDevUs);
 				SendMessageW(GetDlgItem(Hwnd, IDC_INTERVAL_EDIT), EM_SETREADONLY, TRUE, 0);
 				SendMessageW(GetDlgItem(Hwnd, IDC_TARGETFRAMERATE_EDIT), EM_SETREADONLY, TRUE, 0);
 				SendMessageW(GetDlgItem(Hwnd, IDC_GCD_EDIT), EM_SETREADONLY, TRUE, 0);
@@ -232,7 +226,7 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(XivAlexApp* app, HWN
 			FpsRangeFrom = std::min(1000000., std::max(1., GetDlgItemDouble(Hwnd, IDC_TARGETFPS_FROM_EDIT)));
 			FpsRangeTo = std::min(1000000., std::max(1., GetDlgItemDouble(Hwnd, IDC_TARGETFPS_TO_EDIT)));
 			if (Automatic) {
-				IntervalUs = Config::RuntimeRepository::CalculateLockFramerateInterval(FpsRangeFrom, FpsRangeTo, Gcd10ms * 10000, FpsDevUs);
+				IntervalUs = Config::RuntimeRepository::CalculateLockFramerateIntervalUs(FpsRangeFrom, FpsRangeTo, Gcd10ms * 10000, FpsDevUs);
 				ReflectDisplay();
 			}
 		}
@@ -240,7 +234,7 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(XivAlexApp* app, HWN
 		void MaxRenderIntervalDeviation_OnChange() {
 			FpsDevUs = GetDlgItemInt(Hwnd, IDC_FPSDEV_EDIT, nullptr, FALSE);
 			if (Automatic)
-				IntervalUs = Config::RuntimeRepository::CalculateLockFramerateInterval(FpsRangeFrom, FpsRangeTo, Gcd10ms * 10000, FpsDevUs);
+				IntervalUs = Config::RuntimeRepository::CalculateLockFramerateIntervalUs(FpsRangeFrom, FpsRangeTo, Gcd10ms * 10000, FpsDevUs);
 			ReflectDisplay();
 		}
 
@@ -250,7 +244,7 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(XivAlexApp* app, HWN
 		}
 
 		void CalcFps_Click() {
-			IntervalUs = Config::RuntimeRepository::CalculateLockFramerateInterval(FpsRangeFrom, FpsRangeTo, Gcd10ms * 10000, FpsDevUs);
+			IntervalUs = Config::RuntimeRepository::CalculateLockFramerateIntervalUs(FpsRangeFrom, FpsRangeTo, Gcd10ms * 10000, FpsDevUs);
 			ReflectDisplay();
 		}
 
@@ -347,6 +341,18 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(XivAlexApp* app, HWN
 		XivAlexApp& App;
 		HWND HwndParent;
 	} params{.App = *app, .HwndParent = hParentWindow};
+
+	Utils::Win32::Thread cancelWatcher;
+	if (hCancelEvent) {
+		hCancelEvent.Reset();
+		cancelWatcher = Utils::Win32::Thread(L"FramerateLockingDialog/CancelWatcher", [&]() {
+			hCancelEvent.Wait();
+			if (auto pData = params.Data.get()) {
+				SendMessage(pData->Hwnd, WM_CLOSE, 0, 0);
+			}
+			});
+	}
+
 	const auto hDlgModalParent = GetWindowThreadProcessId(hParentWindow, nullptr) == GetCurrentThreadId() ? hParentWindow : nullptr;
 	DialogBoxParamW(Dll::Module(), MAKEINTRESOURCEW(IDD_DIALOG_FRAMERATELOCKING), hDlgModalParent, [](HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) -> INT_PTR {
 		auto& data = *reinterpret_cast<Data*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
@@ -354,6 +360,20 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(XivAlexApp* app, HWN
 			case WM_INITDIALOG: {
 				auto& params = *reinterpret_cast<InitDialogParams*>(lParam);
 				params.Data = std::make_unique<Data>(params.App, hwnd, params.HwndParent);
+				return 0;
+			}
+
+			case WM_APP + 1: {
+				data.Gcd10ms = static_cast<uint32_t>(wParam);
+				const auto durationUs = data.Gcd10ms * 10000;
+				data.IntervalUs = Config::RuntimeRepository::CalculateLockFramerateIntervalUs(data.FpsRangeFrom, data.FpsRangeTo, durationUs, data.FpsDevUs);
+				if (const auto latest = static_cast<int32_t>(lParam); lParam != INT32_MAX) {
+					data.LocalTracker.AddValue(lParam);
+					ListBox_InsertString(GetDlgItem(hwnd, IDC_LASTGCD_LIST), 0, std::format(L"{}.{:02}s {:+07}us", durationUs / 1000000, durationUs % 1000000 / 10000, lParam).c_str());
+					for (auto i = ListBox_GetCount(GetDlgItem(hwnd, IDC_LASTGCD_LIST)) - 1; i >= 1024; --i)
+						ListBox_DeleteString(GetDlgItem(hwnd, IDC_LASTGCD_LIST), i);
+				}
+				data.ReflectDisplay();
 				return 0;
 			}
 
@@ -433,10 +453,19 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(XivAlexApp* app, HWN
 		}
 		return 0;
 		}, reinterpret_cast<LPARAM>(&params));
+	if (hCancelEvent)
+		hCancelEvent.Set();
+	if (cancelWatcher)
+		cancelWatcher.Wait();
 }
 
-void App::Window::Dialog::FramerateLockingDialog::Show(XivAlexApp* app, HWND hParentWindow) {
-	void(Utils::Win32::Thread(L"FramerateLockingDialog", [=]() {
-		ShowModal(app, hParentWindow);
-	}));
+Utils::CallOnDestruction App::Window::Dialog::FramerateLockingDialog::Show(XivAlexApp* app, HWND hParentWindow) {
+	const auto hEvent = Utils::Win32::Event::Create();
+	const auto hThread = Utils::Win32::Thread(L"FramerateLockingDialog", [app, hParentWindow, hEvent]() {
+		ShowModal(app, hParentWindow, hEvent);
+	});
+	return { [=]() {
+		hEvent.Set();
+		hThread.Wait();
+	} };
 }

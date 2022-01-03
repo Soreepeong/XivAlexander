@@ -22,7 +22,6 @@ SYSTEMTIME Utils::EpochToLocalSystemTime(int64_t epochMilliseconds) {
 int64_t Utils::GetHighPerformanceCounter(int32_t multiplier) {
 	LARGE_INTEGER time, freq;
 	QueryPerformanceFrequency(&freq);
-	time.QuadPart = 0xFEFEFEFEDCDCDCDCLL;
 	QueryPerformanceCounter(&time);
 	return time.QuadPart * multiplier / freq.QuadPart;
 }

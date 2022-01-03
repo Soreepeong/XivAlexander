@@ -82,7 +82,7 @@ struct App::Network::IcmpPingTracker::Implementation {
 				do {
 					const auto intervalUs = std::max<DWORD>(SecondToMicrosecondMultiplier, static_cast<DWORD>(std::min<uint64_t>(INT32_MAX, Tracker->NextBlankInUs())));
 					const auto startUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier);
-					const auto ok = IcmpSendEcho2Ex(hIcmp, nullptr, nullptr, nullptr, m_pair.Source.s_addr, m_pair.Destination.s_addr, sendBuf, sizeof sendBuf, nullptr, replyBuf, sizeof replyBuf, intervalUs);
+					const auto ok = IcmpSendEcho2Ex(hIcmp, nullptr, nullptr, nullptr, m_pair.Source.s_addr, m_pair.Destination.s_addr, sendBuf, sizeof sendBuf, nullptr, replyBuf, sizeof replyBuf, 5000);  // wait up to 5s
 					const auto endUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier);
 					const auto latencyUs = endUs - startUs;
 					auto waitTimeUs = static_cast<DWORD>(intervalUs - latencyUs);

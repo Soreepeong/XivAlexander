@@ -152,6 +152,9 @@
     <ClCompile Include="App_Window_Dialog_FramerateLockingDialog.cpp">
       <Filter>App\Window\Dialog</Filter>
     </ClCompile>
+    <ClCompile Include="App_Feature_MainThreadTimingHandler.cpp">
+      <Filter>App\Feature</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -277,6 +280,9 @@
     </ClInclude>
     <ClInclude Include="App_Window_Dialog_FramerateLockingDialog.h">
       <Filter>App\Window\Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="App_Feature_MainThreadTimingHandler.h">
+      <Filter>App\Feature</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

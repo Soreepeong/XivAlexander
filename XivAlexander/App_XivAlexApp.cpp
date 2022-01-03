@@ -6,6 +6,7 @@
 
 #include "App_ConfigRepository.h"
 #include "App_Feature_AllIpcMessageLogger.h"
+#include "App_Feature_MainThreadTimingHandler.h"
 #include "App_Feature_NetworkTimingHandler.h"
 #include "App_Feature_EffectApplicationDelayLogger.h"
 #include "App_Feature_GameResourceOverrider.h"
@@ -96,10 +97,6 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 		return m_mainThreadId;
 	}
 
-	bool IsRunningAtGameMainThread() const {
-		return GetCurrentThreadId() == m_mainThreadId;
-	}
-
 	void RunOnGameLoop(std::function<void()> f) {
 		if (this_->m_bInternalUnloadInitiated)
 			return f();
@@ -145,12 +142,13 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 };
 
 struct App::XivAlexApp::Implementation final {
-	XivAlexApp* const this_;
+	XivAlexApp* const This;
 
 	Utils::CallOnDestruction::Multiple m_cleanup;
 
 	std::unique_ptr<Network::SocketHook> m_socketHook{};
 	std::unique_ptr<Feature::NetworkTimingHandler> m_networkTimingHandler{};
+	std::unique_ptr<Feature::MainThreadTimingHandler> m_mainThreadTimingHandler{};
 	std::unique_ptr<Feature::IpcTypeFinder> m_ipcTypeFinder{};
 	std::unique_ptr<Feature::AllIpcMessageLogger> m_allIpcMessageLogger{};
 	std::unique_ptr<Feature::EffectApplicationDelayLogger> m_effectApplicationDelayLogger{};
@@ -159,35 +157,21 @@ struct App::XivAlexApp::Implementation final {
 	std::unique_ptr<Window::MainWindow> m_trayWindow{};
 
 	Misc::Hooks::ImportedFunction<void, UINT> ExitProcess{ "kernel32!ExitProcess", "kernel32.dll", "ExitProcess" };
-	Misc::Hooks::ImportedFunction<BOOL, LPMSG, HWND, UINT, UINT, UINT> PeekMessageW{ "user32!PeekMessageW", "user32.dll", "PeekMessageW" };
-	Misc::Hooks::ImportedFunction<void, DWORD> Sleep{ "kernel32!Sleep", "kernel32.dll", "Sleep" };
-	Misc::Hooks::ImportedFunction<DWORD, DWORD, BOOL> SleepEx{ "kernel32!SleepEx", "kernel32.dll", "SleepEx" };
-	Misc::Hooks::ImportedFunction<DWORD, HANDLE, DWORD> WaitForSingleObject{ "kernel32!WaitForSingleObject", "kernel32.dll", "WaitForSingleObject" };
-	Misc::Hooks::ImportedFunction<DWORD, HANDLE, DWORD, BOOL> WaitForSingleObjectEx{ "kernel32!WaitForSingleObjectEx", "kernel32.dll", "WaitForSingleObjectEx" };
-	Misc::Hooks::ImportedFunction<DWORD, DWORD, const HANDLE*, BOOL, DWORD> WaitForMultipleObjects{ "kernel32!WaitForMultipleObjects", "kernel32.dll", "WaitForMultipleObjects" };
-	Misc::Hooks::ImportedFunction<DWORD, DWORD, const HANDLE*, BOOL, DWORD, DWORD> MsgWaitForMultipleObjects{ "user32!MsgWaitForMultipleObjects", "user32.dll", "MsgWaitForMultipleObjects" };
-
-	std::deque<int64_t> LastMessagePumpCounterUs;
-	std::set<int64_t> MessagePumpGuaranteeCounterUs;
-	int64_t LastWaitForSingleObjectUs{};
-	Utils::NumericStatisticsTracker MessagePumpIntervalTrackerUs{ 1024, 0 };
-	Utils::NumericStatisticsTracker RenderTimeTakenTrackerUs{ 1024, 0 };
-	Utils::NumericStatisticsTracker SocketCallDelayTrackerUs{ 1024, 0 };
 
 	void SetupTrayWindow() {
 		if (m_trayWindow)
 			return;
 
-		m_trayWindow = std::make_unique<Window::MainWindow>(this_, [this]() {
-			if (this->this_->m_bInternalUnloadInitiated)
+		m_trayWindow = std::make_unique<Window::MainWindow>(This, [this]() {
+			if (this->This->m_bInternalUnloadInitiated)
 				return;
 
-			if (const auto err = this_->IsUnloadable(); !err.empty()) {
-				Dll::MessageBoxF(m_trayWindow->Handle(), MB_ICONERROR, this->this_->m_config->Runtime.FormatStringRes(IDS_ERROR_UNLOAD_XIVALEXANDER, err));
+			if (const auto err = This->IsUnloadable(); !err.empty()) {
+				Dll::MessageBoxF(m_trayWindow->Handle(), MB_ICONERROR, this->This->m_config->Runtime.FormatStringRes(IDS_ERROR_UNLOAD_XIVALEXANDER, err));
 				return;
 			}
 
-			this->this_->m_bInternalUnloadInitiated = true;
+			this->This->m_bInternalUnloadInitiated = true;
 			void(Utils::Win32::Thread(L"XivAlexander::App::XivAlexApp::Implementation::SetupTrayWindow::XivAlexUnloader", []() {
 				XivAlexDll::DisableAllApps(nullptr);
 			}, Utils::Win32::LoadedModule::LoadMore(Dll::Module())));
@@ -195,12 +179,12 @@ struct App::XivAlexApp::Implementation final {
 	}
 
 	Implementation(XivAlexApp* this_)
-		: this_(this_) {
+		: This(this_) {
 	}
 
 	void Cleanup() {
 		m_cleanup.Clear();
-		if (const auto hwnd = this_->m_pGameWindow->GetHwnd(false)) {
+		if (const auto hwnd = This->m_pGameWindow->GetHwnd(false)) {
 			// Make sure our window procedure hook isn't in progress
 			SendMessageW(hwnd, WM_NULL, 0, 0);
 		}
@@ -210,24 +194,11 @@ struct App::XivAlexApp::Implementation final {
 		Cleanup();
 	}
 
-	bool ShouldSkipSleep(DWORD dwMilliseconds) const {
-		static uint16_t s_counter = 0;
-		if (dwMilliseconds > 1)
-			return false;
-		if (!this_->m_config->Runtime.UseMoreCpuTime)
-			return false;
-		if (GetForegroundWindow() != this_->m_pGameWindow->GetHwnd(false))
-			return false;
-		if (!++s_counter)
-			SwitchToThread();
-		return true;
-	}
-
 	void Load() {
 		Scintilla_RegisterClasses(Dll::Module());
 		m_cleanup += []() { Scintilla_ReleaseResources(); };
 
-		m_socketHook = std::make_unique<Network::SocketHook>(this->this_);
+		m_socketHook = std::make_unique<Network::SocketHook>(This);
 		m_cleanup += [this]() {
 			m_socketHook = nullptr;
 		};
@@ -235,17 +206,21 @@ struct App::XivAlexApp::Implementation final {
 		SetupTrayWindow();
 		m_cleanup += [this]() { m_trayWindow = nullptr; };
 
-		auto& config = this_->m_config->Runtime;
+		auto& config = This->m_config->Runtime;
 
 		if (config.UseNetworkTimingHandler)
-			m_networkTimingHandler = std::make_unique<Feature::NetworkTimingHandler>(m_socketHook.get());
+			m_networkTimingHandler = std::make_unique<Feature::NetworkTimingHandler>(*This);
 		m_cleanup += config.UseNetworkTimingHandler.OnChangeListener([&](Config::ItemBase&) {
 			if (config.UseNetworkTimingHandler)
-				m_networkTimingHandler = std::make_unique<Feature::NetworkTimingHandler>(m_socketHook.get());
+				m_networkTimingHandler = std::make_unique<Feature::NetworkTimingHandler>(*This);
 			else
 				m_networkTimingHandler = nullptr;
 		});
 		m_cleanup += [this]() { m_networkTimingHandler = nullptr; };
+
+		m_mainThreadTimingHandler = std::make_unique<Feature::MainThreadTimingHandler>(*This);
+		// TODO: Make this optional?
+		m_cleanup += [this]() { m_mainThreadTimingHandler = nullptr; };
 
 		if (config.UseOpcodeFinder)
 			m_ipcTypeFinder = std::make_unique<Feature::IpcTypeFinder>(m_socketHook.get());
@@ -288,13 +263,13 @@ struct App::XivAlexApp::Implementation final {
 		m_cleanup += [this]() { m_logWindow = nullptr; };
 
 		m_cleanup += ExitProcess.SetHook([this](UINT exitCode) {
-			const auto quickTerminate = this_->m_config->Runtime.TerminateOnExitProcess.Value();
+			const auto quickTerminate = This->m_config->Runtime.TerminateOnExitProcess.Value();
 
-			this->this_->m_bInternalUnloadInitiated = true;
+			this->This->m_bInternalUnloadInitiated = true;
 
 			if (this->m_trayWindow)
 				SendMessageW(this->m_trayWindow->Handle(), WM_CLOSE, exitCode, quickTerminate ? 2 : 1);
-			WaitForSingleObject(this->this_->m_hCustomMessageLoop, INFINITE);
+			WaitForSingleObject(this->This->m_hCustomMessageLoop, INFINITE);
 
 			if (quickTerminate)
 				TerminateProcess(GetCurrentProcess(), exitCode);
@@ -304,114 +279,6 @@ struct App::XivAlexApp::Implementation final {
 			// hook is released, and "this" should be invalid at this point.
 			::ExitProcess(exitCode);
 		});
-
-		m_cleanup += PeekMessageW.SetHook([this, lastRemoveMsg = UINT{}](LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg) mutable->BOOL {
-			if (GetCurrentThreadId() == this_->m_pGameWindow->GetThreadId(false)) {
-				if (lastRemoveMsg == wRemoveMsg) {
-					const auto& rt = this_->m_config->Runtime;
-
-					auto nowUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier);
-					int64_t waitUntilCounterUs = 0;
-
-					if (LastWaitForSingleObjectUs && !LastMessagePumpCounterUs.empty()) {
-						RenderTimeTakenTrackerUs.AddValue(LastWaitForSingleObjectUs - LastMessagePumpCounterUs.back());
-						LastWaitForSingleObjectUs = 0;
-					}
-
-					// Ignore failed guarantees
-					while (!MessagePumpGuaranteeCounterUs.empty() && *MessagePumpGuaranteeCounterUs.begin() <= nowUs)
-						MessagePumpGuaranteeCounterUs.erase(MessagePumpGuaranteeCounterUs.begin());
-
-					if (!MessagePumpGuaranteeCounterUs.empty() && *MessagePumpGuaranteeCounterUs.begin() - nowUs <= MessagePumpIntervalTrackerUs.Latest()) {
-						waitUntilCounterUs = *MessagePumpGuaranteeCounterUs.begin();
-						MessagePumpGuaranteeCounterUs.erase(MessagePumpGuaranteeCounterUs.begin());
-					}
-
-					auto recordPumpInterval = false;
-					uint64_t waitUntilMs = 0;
-					if (rt.LockFramerateAutomatic && m_networkTimingHandler) {
-						const auto& group = m_networkTimingHandler->GetCooldownGroup(Feature::NetworkTimingHandler::CooldownGroup::Id_Gcd);
-						if (group.DurationUs != INT64_MAX) {
-							waitUntilMs = Config::RuntimeRepository::CalculateLockFramerateInterval(
-								rt.LockFramerateTargetFramerateRangeFrom,
-								rt.LockFramerateTargetFramerateRangeTo,
-								group.DurationUs,
-								rt.LockFramerateMaximumRenderIntervalDeviation
-							);
-						}
-					} else {
-						waitUntilMs = rt.LockFramerateInterval;
-					}
-					if (waitUntilMs && waitUntilCounterUs == 0) {
-						recordPumpInterval = true;
-						waitUntilCounterUs = (1 + nowUs / waitUntilMs) * waitUntilMs;
-					}
-
-					if (const auto socketSelectUs = m_socketHook ? m_socketHook->GetLastSocketSelectCounterUs() : 0)
-						SocketCallDelayTrackerUs.AddValue(socketSelectUs - LastMessagePumpCounterUs.back());
-
-					if (waitUntilCounterUs > 0 && !LastMessagePumpCounterUs.empty()) {
-						const auto useMoreCpuTime = rt.UseMoreCpuTime.Value();
-						while (waitUntilCounterUs > (nowUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier))) {
-							if (useMoreCpuTime)
-								void(0);
-							else
-								::Sleep(0);
-						}
-						LastMessagePumpCounterUs.push_back(nowUs);
-					} else {
-						LastMessagePumpCounterUs.push_back(nowUs);
-						recordPumpInterval = true;
-					}
-					if (recordPumpInterval && LastMessagePumpCounterUs.size() >= 2)
-						MessagePumpIntervalTrackerUs.AddValue(LastMessagePumpCounterUs[LastMessagePumpCounterUs.size() - 1] - LastMessagePumpCounterUs[LastMessagePumpCounterUs.size() - 2]);
-					if (LastMessagePumpCounterUs.size() > 2 && LastMessagePumpCounterUs.back() - LastMessagePumpCounterUs.front() >= SecondToMicrosecondMultiplier)
-						LastMessagePumpCounterUs.pop_front();
-
-				} else
-					lastRemoveMsg = wRemoveMsg;
-			}
-			return PeekMessageW.bridge(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
-			});
-
-		m_cleanup += Sleep.SetHook([&](DWORD dwMilliseconds) {
-			if (!ShouldSkipSleep(dwMilliseconds))
-				Sleep.bridge(dwMilliseconds);
-			});
-
-		m_cleanup += SleepEx.SetHook([&](DWORD dwMilliseconds, BOOL bAlertable) -> DWORD {
-			// Note: if the user have conditional frame rate limit, then SleepEx(50) will be called.
-			if (bAlertable || !ShouldSkipSleep(dwMilliseconds))
-				return SleepEx.bridge(dwMilliseconds, bAlertable);
-
-			return 0;
-			});
-
-		m_cleanup += WaitForSingleObject.SetHook([&](HANDLE hHandle, DWORD dwMilliseconds) -> DWORD {
-			if (ShouldSkipSleep(dwMilliseconds))
-				dwMilliseconds = 0;
-			else if (dwMilliseconds == INFINITE && this_->m_pGameWindow->IsRunningAtGameMainThread())
-				LastWaitForSingleObjectUs = Utils::GetHighPerformanceCounter(1000000);
-			return WaitForSingleObject.bridge(hHandle, dwMilliseconds);
-			});
-
-		m_cleanup += WaitForSingleObjectEx.SetHook([&](HANDLE hHandle, DWORD dwMilliseconds, BOOL bAlertable) -> DWORD {
-			if (ShouldSkipSleep(dwMilliseconds))
-				dwMilliseconds = 0;
-			return WaitForSingleObjectEx.bridge(hHandle, dwMilliseconds, bAlertable);
-			});
-
-		m_cleanup += WaitForMultipleObjects.SetHook([&](DWORD nCount, const HANDLE* lpHandles, BOOL bWaitAll, DWORD dwMilliseconds) -> DWORD {
-			if (ShouldSkipSleep(dwMilliseconds))
-				dwMilliseconds = 0;
-			return WaitForMultipleObjects.bridge(nCount, lpHandles, bWaitAll, dwMilliseconds);
-			});
-
-		m_cleanup += MsgWaitForMultipleObjects.SetHook([&](DWORD nCount, const HANDLE* lpHandles, BOOL bWaitAll, DWORD dwMilliseconds, DWORD dwWakeMask) -> DWORD {
-			if (ShouldSkipSleep(dwMilliseconds))
-				dwMilliseconds = 0;
-			return MsgWaitForMultipleObjects.bridge(nCount, lpHandles, bWaitAll, dwMilliseconds, dwWakeMask);
-			});
 	}
 };
 
@@ -522,6 +389,10 @@ DWORD App::XivAlexApp::GetGameWindowThreadId(bool wait) const {
 	return m_pGameWindow->GetThreadId(wait);
 }
 
+bool App::XivAlexApp::IsRunningOnGameMainThread() const {
+	return GetCurrentThreadId() == m_pGameWindow->m_mainThreadId;
+}
+
 void App::XivAlexApp::RunOnGameLoop(std::function<void()> f) {
 	m_pGameWindow->RunOnGameLoop(std::move(f));
 }
@@ -552,25 +423,12 @@ App::Network::SocketHook* App::XivAlexApp::GetSocketHook() {
 	return m_pImpl->m_socketHook.get();
 }
 
-App::Feature::NetworkTimingHandler* App::XivAlexApp::GetTimingHandler() {
+App::Feature::NetworkTimingHandler* App::XivAlexApp::GetNetworkTimingHandler() const {
 	return m_pImpl->m_networkTimingHandler.get();
 }
 
-const Utils::NumericStatisticsTracker& App::XivAlexApp::GetMessagePumpIntervalTrackerUs() const {
-	return m_pImpl->MessagePumpIntervalTrackerUs;
-}
-
-const Utils::NumericStatisticsTracker& App::XivAlexApp::GetRenderTimeTakenTrackerUs() const {
-	return m_pImpl->RenderTimeTakenTrackerUs;
-}
-
-const Utils::NumericStatisticsTracker& App::XivAlexApp::GetSocketCallDelayTrackerUs() const {
-	return m_pImpl->SocketCallDelayTrackerUs;
-}
-
-void App::XivAlexApp::GuaranteePumpBeginCounter(int64_t nextInUs) {
-	if (nextInUs > 0)
-		m_pImpl->MessagePumpGuaranteeCounterUs.insert(Utils::GetHighPerformanceCounter(1000000) + nextInUs);
+App::Feature::MainThreadTimingHandler* App::XivAlexApp::GetMainThreadTimingHelper() const {
+	return m_pImpl->m_mainThreadTimingHandler.get();
 }
 
 static std::unique_ptr<App::XivAlexApp> s_xivAlexApp;

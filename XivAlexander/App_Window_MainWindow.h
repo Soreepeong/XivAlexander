@@ -43,6 +43,7 @@ namespace App::Window {
 		bool m_sqpacksLoaded = false;
 
 		Utils::CallOnDestruction::Multiple m_cleanup;
+		Utils::CallOnDestruction m_cleanupFramerateLockDialog;
 
 	public:
 		MainWindow(XivAlexApp* pApp, std::function<void()> unloadFunction);

@@ -12,6 +12,7 @@
 #include <XivAlexanderCommon/Utils_Win32_ThreadPool.h>
 
 #include "App_Feature_GameResourceOverrider.h"
+#include "App_Feature_MainThreadTimingHandler.h"
 #include "App_Misc_ExcelTransformConfig.h"
 #include "App_Misc_GameInstallationDetector.h"
 #include "App_Misc_Logger.h"
@@ -173,6 +174,7 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 }
 
 App::Window::MainWindow::~MainWindow() {
+	m_cleanupFramerateLockDialog.Clear();
 	m_cleanup.Clear();
 	Destroy();
 }
@@ -330,14 +332,19 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 		std::wstring str;
 		try {
 			const auto window = Utils::GetHighPerformanceCounter(1000000) - 1000000;
-			const auto [msgPumpMean, msgPumpDev] = m_pApp->GetMessagePumpIntervalTrackerUs().MeanAndDeviation(window);
-			const auto [renderMean, renderDev] = m_pApp->GetRenderTimeTakenTrackerUs().MeanAndDeviation(window);
+			uint64_t msgPumpMean{}, msgPumpDev{}, renderMean{}, renderDev{};
+			double msgPumpCount{};
+			if (const auto handler = m_pApp->GetMainThreadTimingHelper()) {
+				std::tie(msgPumpMean, msgPumpDev) = handler->GetMessagePumpIntervalTrackerUs().MeanAndDeviation(window);
+				msgPumpCount = handler->GetMessagePumpIntervalTrackerUs().CountFractional(window);
+				std::tie(renderMean, renderDev) = handler->GetRenderTimeTakenTrackerUs().MeanAndDeviation(window);
+			}
 			str = m_config->Runtime.FormatStringRes(IDS_MAIN_TEXT,
 				GetCurrentProcessId(),
 				m_path, 
 				m_startupArgumentsForDisplay,
 				m_gameReleaseInfo.GameVersion, m_gameReleaseInfo.CountryCode,
-				msgPumpMean, msgPumpDev, m_pApp->GetMessagePumpIntervalTrackerUs().CountFractional(window),
+				msgPumpMean, msgPumpDev, msgPumpCount,
 				renderMean, renderDev, 1000000. / static_cast<double>(renderMean),
 				m_pApp->GetSocketHook()->Describe());
 		} catch (...) {
@@ -2047,8 +2054,8 @@ void App::Window::MainWindow::OnCommand_Menu_Configure(int menuId) {
 			config.UseMoreCpuTime = !config.UseMoreCpuTime;
 			return;
 
-		case ID_CONFIGURE_LOCKFRAMERATE: 
-			Dialog::FramerateLockingDialog::Show(XivAlexApp::GetCurrentApp(), m_hWnd);
+		case ID_CONFIGURE_LOCKFRAMERATE:
+			m_cleanupFramerateLockDialog = Dialog::FramerateLockingDialog::Show(XivAlexApp::GetCurrentApp(), m_hWnd);
 			return;
 
 		case ID_CONFIGURE_SYNCHRONIZEPROCESSING:
