@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include <XivAlexanderCommon/Utils_Win32_LoadedModule.h>
+#include <XivAlexanderCommon/Utils_Win32_Resource.h>
 
 #include "App_ConfigRepository.h"
 #include "App_Feature_NetworkTimingHandler.h"
@@ -354,7 +355,7 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(XivAlexApp* app, HWN
 	}
 
 	const auto hDlgModalParent = GetWindowThreadProcessId(hParentWindow, nullptr) == GetCurrentThreadId() ? hParentWindow : nullptr;
-	DialogBoxParamW(Dll::Module(), MAKEINTRESOURCEW(IDD_DIALOG_FRAMERATELOCKING), hDlgModalParent, [](HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) -> INT_PTR {
+	DialogBoxIndirectParamW(Dll::Module(), Utils::Win32::GlobalResource(Dll::Module(), RT_DIALOG, MAKEINTRESOURCEW(IDD_DIALOG_FRAMERATELOCKING), Config::Acquire()->Runtime.GetLangId()).GetDataAs<DLGTEMPLATE>(), hDlgModalParent, [](HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) -> INT_PTR {
 		auto& data = *reinterpret_cast<Data*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
 		switch (message) {
 			case WM_INITDIALOG: {

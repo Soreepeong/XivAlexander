@@ -9,6 +9,10 @@ namespace Utils::Win32 {
 		GlobalResource(HINSTANCE hInstance, LPCWSTR lpType, LPCWSTR lpName, WORD wLanguage = MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), bool fallbackToDefault = true);
 
 		[[nodiscard]] void* GetData() const;
+		template<typename T>
+		[[nodiscard]] T* GetDataAs() const {
+			return static_cast<T*>(GetData());
+		}
 	};
 
 	class Menu : public Closeable<HMENU, DestroyMenu> {
