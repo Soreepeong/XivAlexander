@@ -273,7 +273,7 @@ namespace Sqex::Sqpack {
 		static_assert(offsetof(Header, Sha1) == 0x3c0, "Bad SqDataHeader definition");
 
 		enum class FileEntryType {
-			Empty = 1,
+			EmptyOrObfuscated = 1,
 			Binary = 2,
 			Model = 3,
 			Texture = 4,
@@ -298,10 +298,18 @@ namespace Sqex::Sqpack {
 			LE<FileEntryType> Type;
 			LE<uint32_t> DecompressedSize;
 
-			LE<uint32_t> DataAlignedUnitCount; // (Allocation - HeaderSize) / 128
-			LE<uint32_t> AlignedUnitAllocationCount;
+			LE<uint32_t> AllocatedSpaceUnitCount; // (Allocation - HeaderSize) / 128
+			LE<uint32_t> OccupiedSpaceUnitCount;
 
 			LE<uint32_t> BlockCountOrVersion;
+
+			void SetSpaceUnits(size_t totalEntrySize) {
+				AllocatedSpaceUnitCount = OccupiedSpaceUnitCount = static_cast<uint32_t>((totalEntrySize - HeaderSize) / 128);
+			}
+
+			uint32_t GetTotalEntrySize() const {
+				return HeaderSize + OccupiedSpaceUnitCount * 128;
+			}
 		};
 
 		struct TextureBlockHeaderLocator {

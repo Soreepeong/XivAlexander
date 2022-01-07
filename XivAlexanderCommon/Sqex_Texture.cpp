@@ -78,7 +78,10 @@ void Sqex::Texture::from_json(const nlohmann::json& j, Format& o) {
 	}
 }
 
-size_t Sqex::Texture::RawDataLength(Format type, size_t width, size_t height, size_t layers) {
+size_t Sqex::Texture::RawDataLength(Format type, size_t width, size_t height, size_t layers, size_t mipmapIndex) {
+	width = std::max<size_t>(1, width >> mipmapIndex);
+	height = std::max<size_t>(1, height >> mipmapIndex);
+	layers = std::max<size_t>(1, layers >> mipmapIndex);
 	switch (type) {
 		case Format::L8:
 		case Format::A8:
@@ -102,11 +105,11 @@ size_t Sqex::Texture::RawDataLength(Format type, size_t width, size_t height, si
 			return width * height * layers * 16;
 
 		case Format::DXT1:
-			return width * height * layers / 2;
+			return layers * std::max<size_t>(1, ((width + 3) / 4)) * std::max<size_t>(1, ((height + 3) / 4)) * 8;
 
 		case Format::DXT3:
 		case Format::DXT5:
-			return width * height * layers / 4;
+			return layers * std::max<size_t>(1, ((width + 3) / 4)) * std::max<size_t>(1, ((height + 3) / 4)) * 16;
 
 		case Format::D16:
 		case Format::Unknown:

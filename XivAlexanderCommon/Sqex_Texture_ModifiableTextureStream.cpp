@@ -19,25 +19,33 @@ Sqex::Texture::ModifiableTextureStream::ModifiableTextureStream(Format type, uin
 Sqex::Texture::ModifiableTextureStream::ModifiableTextureStream(const std::shared_ptr<RandomAccessStream>& stream)
 	: m_header{ stream->ReadStream<Texture::Header>(0) } {
 	const auto mipmapLocators = stream->ReadStreamIntoVector<uint32_t>(sizeof m_header, m_header.MipmapCount);
-	for (size_t i = 0; i < mipmapLocators.size(); ++i)
-		AppendMipmap(std::make_shared<WrappedMipmapStream>(m_header.Width >> i, m_header.Height >> i, m_header.Layers, m_header.Type,
-			std::make_shared<Sqex::RandomAccessStreamPartialView>(stream, mipmapLocators[i],
-				RawDataLength(m_header.Type, m_header.Width >> i, m_header.Height >> i, m_header.Layers))
-			));
+	for (size_t i = 0; i < mipmapLocators.size(); ++i) {
+		const auto w = std::max(1, m_header.Width >> i);
+		const auto h = std::max(1, m_header.Height >> i);
+		const auto l = std::max(1, m_header.Layers >> i);
+		const auto mipmapSize = RawDataLength(m_header.Type, w, h, l);
+		auto mipmapDataView = std::make_shared<Sqex::RandomAccessStreamPartialView>(stream, mipmapLocators[i], mipmapSize);
+		auto mipmapView = std::make_shared<WrappedMipmapStream>(w, h, l, m_header.Type, mipmapDataView);
+		AppendMipmap(mipmapView);
+	}
 }
 
 Sqex::Texture::ModifiableTextureStream::~ModifiableTextureStream() = default;
 
 void Sqex::Texture::ModifiableTextureStream::AppendMipmap(std::shared_ptr<MipmapStream> mipmap) {
-	if (mipmap->Width() != m_header.Width >> m_mipmaps.size())
+	const auto w = std::max(1, m_header.Width >> m_mipmaps.size());
+	const auto h = std::max(1, m_header.Height >> m_mipmaps.size());
+	const auto l = std::max(1, m_header.Layers >> m_mipmaps.size());
+
+	if (mipmap->Width() != w)
 		throw std::invalid_argument("invalid mipmap width");
-	if (mipmap->Height() != m_header.Height >> m_mipmaps.size())
+	if (mipmap->Height() != h)
 		throw std::invalid_argument("invalid mipmap height");
-	if (mipmap->Layers() != m_header.Layers)
+	if (mipmap->Layers() != l)
 		throw std::invalid_argument("invalid mipmap layers");
 	if (mipmap->Type() != m_header.Type)
 		throw std::invalid_argument("invalid mipmap type");
-	if (mipmap->StreamSize() != RawDataLength(mipmap->Type(), mipmap->Width(), mipmap->Height(), mipmap->Layers()))
+	if (mipmap->StreamSize() != RawDataLength(mipmap->Type(), w, h, l))
 		throw std::invalid_argument("invalid mipmap size");
 	m_mipmaps.emplace_back(std::move(mipmap));
 	m_header.MipmapCount = static_cast<uint16_t>(m_mipmaps.size());

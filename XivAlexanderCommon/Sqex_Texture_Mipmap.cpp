@@ -27,7 +27,7 @@ std::shared_ptr<Sqex::Texture::MipmapStream> Sqex::Texture::MipmapStream::FromTe
 	if (mipmapIndex >= offsets.size())
 		throw std::invalid_argument(std::format("mipmapIndex={} > mipmapCount={}", mipmapIndex, offsets.size()));
 
-	const auto dataSize = RawDataLength(header.Type, header.Width >> mipmapIndex, header.Height >> mipmapIndex, header.Layers);
+	const auto dataSize = RawDataLength(header, mipmapIndex);
 	if (mipmapIndex == offsets.size() - 1) {
 		if (stream->StreamSize() - offsets[mipmapIndex] < dataSize)
 			throw std::runtime_error("overlapping mipmap data detected");

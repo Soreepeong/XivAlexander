@@ -58,11 +58,25 @@ namespace Sqex {
 	template<typename T, typename CountT = T>
 	struct AlignResult {
 		CountT Count;
+		T Value;
+		T By;
 		T Alloc;
 		T Pad;
 
 		operator T() const {
 			return Alloc;
+		}
+
+		void IterateChunked(std::function<void(CountT, T, T)> cb, T baseOffset = 0) const {
+			if (Pad == 0) {
+				for (CountT i = 0; i < Count; ++i)
+					cb(i, baseOffset + i * By, By);
+			} else {
+				CountT i = 0;
+				for (; i < Count - 1; ++i)
+					cb(i, baseOffset + i * By, By);
+				cb(i, baseOffset + i * By, Value - i * By);
+			}
 		}
 	};
 
@@ -73,6 +87,8 @@ namespace Sqex {
 		const auto pad = alloc - value;
 		return {
 			.Count = static_cast<CountT>(count),
+			.Value = value,
+			.By = by,
 			.Alloc = static_cast<T>(alloc),
 			.Pad = static_cast<T>(pad),
 		};
@@ -232,52 +248,74 @@ namespace Sqex {
 
 	class MemoryRandomAccessStream : public RandomAccessStream {
 		std::vector<uint8_t> m_buffer;
+		std::span<uint8_t> m_view;
 
 	public:
 		MemoryRandomAccessStream() = default;
 		
 		MemoryRandomAccessStream(MemoryRandomAccessStream&& r) noexcept
-			: m_buffer(std::move(r.m_buffer)) {
+			: m_buffer(std::move(r.m_buffer))
+			, m_view(std::move(r.m_view)) {
+			r.m_view = {};
 		}
 
 		MemoryRandomAccessStream(const MemoryRandomAccessStream& r) 
-			: m_buffer(r.m_buffer) {
+			: m_buffer(r.m_buffer)
+			, m_view(r.OwnsData() ? std::span(m_buffer) : r.m_view) {
 		}
 
-		template<typename...Args>
-		MemoryRandomAccessStream(Args ...args)
-			: m_buffer(std::forward<Args>(args)...) {
+		MemoryRandomAccessStream(std::vector<uint8_t> buffer)
+			: m_buffer(std::move(buffer))
+			, m_view(m_buffer) {
+		}
+
+		MemoryRandomAccessStream(std::span<uint8_t> view)
+			: m_view(view) {
 		}
 		
 		MemoryRandomAccessStream& operator=(std::vector<uint8_t>&& buf) noexcept {
 			m_buffer = std::move(buf);
+			m_view = std::span(m_buffer);
 			return *this;
 		}
 
 		MemoryRandomAccessStream& operator=(const std::vector<uint8_t>& buf) {
 			m_buffer = buf;
+			m_view = std::span(m_buffer);
 			return *this;
 		}
 		
 		MemoryRandomAccessStream& operator=(MemoryRandomAccessStream&& r) noexcept {
 			m_buffer = std::move(r.m_buffer);
+			m_view = std::move(r.m_view);
+			r.m_view = {};
 			return *this;
 		}
 		
 		MemoryRandomAccessStream& operator=(const MemoryRandomAccessStream& r) {
-			m_buffer = r.m_buffer;
+			if (r.OwnsData()) {
+				m_buffer = r.m_buffer;
+				m_view = std::span(m_buffer);
+			} else {
+				m_buffer.clear();
+				m_view = r.m_view;
+			}
 			return *this;
 		}
 
-		[[nodiscard]] uint64_t StreamSize() const override { return m_buffer.size(); }
+		[[nodiscard]] uint64_t StreamSize() const override { return m_view.size(); }
 
 		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override {
-			if (offset >= m_buffer.size())
+			if (offset >= m_view.size())
 				return 0;
-			if (offset + length > m_buffer.size())
-				length = m_buffer.size() - offset;
-			std::copy_n(&m_buffer[static_cast<size_t>(offset)], static_cast<size_t>(length), static_cast<char*>(buf));
+			if (offset + length > m_view.size())
+				length = m_view.size() - offset;
+			std::copy_n(&m_view[static_cast<size_t>(offset)], static_cast<size_t>(length), static_cast<char*>(buf));
 			return length;
+		}
+
+		bool OwnsData() const {
+			return !m_buffer.empty() && m_view.data() == m_buffer.data();
 		}
 	};
 }

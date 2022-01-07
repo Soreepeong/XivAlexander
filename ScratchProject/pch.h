@@ -15,6 +15,9 @@
 #define NOMINMAX
 #include <Windows.h>
 
+#include <cryptopp/base64.h>
+#include <cryptopp/blowfish.h>
+#include <cryptopp/modes.h>
 #include <cryptopp/sha.h>
 #include <zlib.h>
 #include <ogg/ogg.h>

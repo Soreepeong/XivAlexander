@@ -54,9 +54,9 @@ std::span<uint8_t> Utils::ZlibReusableInflater::operator()(std::span<const uint8
 		m_zstream.avail_out = static_cast<uint32_t>(m_buffer.size() - m_zstream.total_out);
 
 		if (const auto res = inflate(&m_zstream, Z_FINISH);
-			res != Z_OK && res != Z_BUF_ERROR && res != Z_STREAM_END)
+			res != Z_OK && res != Z_BUF_ERROR && res != Z_STREAM_END) {
 			throw ZlibError(res);
-		else {
+		} else {
 			if (res == Z_STREAM_END)
 				break;
 			m_buffer.resize(m_buffer.size() + std::min<size_t>(m_buffer.size(), 65536));
@@ -82,8 +82,9 @@ std::span<uint8_t> Utils::ZlibReusableInflater::operator()(std::span<const uint8
 	m_zstream.avail_out = static_cast<uint32_t>(target.size());
 
 	if (const auto res = inflate(&m_zstream, Z_FINISH);
-		res != Z_OK && res != Z_BUF_ERROR && res != Z_STREAM_END)
+		res != Z_OK && res != Z_BUF_ERROR && res != Z_STREAM_END) {
 		throw ZlibError(res);
+	}
 
 	return target.subspan(0, target.size() - m_zstream.avail_out);
 }
@@ -113,7 +114,7 @@ Utils::ZlibReusableDeflater::~ZlibReusableDeflater() {
 		deflateEnd(&m_zstream);
 }
 
-std::span<uint8_t> Utils::ZlibReusableDeflater::operator()(std::span<const uint8_t> source) {
+std::span<uint8_t> Utils::ZlibReusableDeflater::Deflate(std::span<const uint8_t> source) {
 	Initialize();
 
 	m_zstream.next_in = &source[0];
@@ -135,5 +136,5 @@ std::span<uint8_t> Utils::ZlibReusableDeflater::operator()(std::span<const uint8
 		}
 	}
 
-	return std::span(m_buffer).subspan(0, m_zstream.total_out);
+	return m_latestResult = std::span(m_buffer).subspan(0, m_zstream.total_out);
 }

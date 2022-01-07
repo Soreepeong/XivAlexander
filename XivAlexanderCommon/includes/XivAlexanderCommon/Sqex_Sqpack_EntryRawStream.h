@@ -41,7 +41,6 @@ namespace Sqex::Sqpack {
 			struct BlockInfo {
 				uint32_t RequestOffset;
 				uint32_t BlockOffset;
-				uint16_t MipmapIndex;
 				uint32_t RemainingDecompressedSize;
 				std::vector<uint16_t> RemainingBlockSizes;
 			};

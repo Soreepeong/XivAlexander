@@ -154,7 +154,7 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntryFromFile(En
 	auto extensionLower = path.extension().wstring();
 	CharLowerW(&extensionLower[0]);
 	if (file_size(path) == 0) {
-		provider = std::make_shared<EmptyEntryProvider>(std::move(pathSpec));
+		provider = std::make_shared<EmptyOrObfuscatedEntryProvider>(std::move(pathSpec));
 	} else if (extensionLower == L".tex") {
 		provider = std::make_shared<OnTheFlyTextureEntryProvider>(std::move(pathSpec), path);
 	} else if (extensionLower == L".mdl") {
@@ -250,7 +250,7 @@ void Sqex::Sqpack::Creator::ReserveSwappableSpace(EntryPathSpec pathSpec, uint32
 	} else if (const auto it = m_pImpl->m_fullEntries.find(pathSpec); it != m_pImpl->m_fullEntries.end()) {
 		it->second->EntryReservedSize = std::max(it->second->EntryReservedSize, size);
 	} else {
-		auto entry = std::make_unique<Entry>(0, 0, 0, SqIndex::LEDataLocator{ 0, 0 }, size, 0, std::make_shared<EmptyEntryProvider>(std::move(pathSpec)));
+		auto entry = std::make_unique<Entry>(0, 0, 0, SqIndex::LEDataLocator{ 0, 0 }, size, 0, std::make_shared<EmptyOrObfuscatedEntryProvider>(std::move(pathSpec)));
 		if (entry->Provider->PathSpec().HasOriginal())
 			m_pImpl->m_fullEntries.emplace(entry->Provider->PathSpec(), std::move(entry));
 		else

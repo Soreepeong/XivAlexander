@@ -43,6 +43,8 @@ namespace Utils {
 		bool m_initialized = false;
 		std::vector<uint8_t> m_buffer;
 
+		std::span<uint8_t> m_latestResult;
+
 		void Initialize();
 
 	public:
@@ -56,6 +58,14 @@ namespace Utils {
 
 		~ZlibReusableDeflater();
 
-		std::span<uint8_t> operator()(std::span<const uint8_t> source);
+		std::span<uint8_t> Deflate(std::span<const uint8_t> source);
+
+		std::span<uint8_t> operator()(std::span<const uint8_t> source) {
+			return Deflate(source);
+		}
+
+		const std::span<uint8_t>& Result() const {
+			return m_latestResult;
+		}
 	};
 }

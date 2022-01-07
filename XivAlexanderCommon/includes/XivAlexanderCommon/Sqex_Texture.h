@@ -185,8 +185,6 @@ namespace Sqex::Texture {
 		}
 	};
 
-	size_t RawDataLength(Format type, size_t width, size_t height, size_t layers);
-
 	struct Header {
 		LE<uint16_t> Unknown1;
 		LE<uint16_t> HeaderSize;
@@ -197,4 +195,9 @@ namespace Sqex::Texture {
 		LE<uint16_t> MipmapCount;
 		char Unknown2[0xC]{};
 	};
+
+	size_t RawDataLength(Format type, size_t width, size_t height, size_t layers, size_t mipmapIndex = 0);
+	inline size_t RawDataLength(const Header& header, size_t mipmapIndex = 0) {
+		return RawDataLength(header.Type, header.Width, header.Height, header.Layers, mipmapIndex);
+	}
 }
