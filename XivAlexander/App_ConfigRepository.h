@@ -249,6 +249,7 @@ namespace App {
 			Item<std::vector<std::filesystem::path>> ChainLoadPath_dinput8 = CreateConfigItem<std::vector<std::filesystem::path>>(this, "ChainLoadPath_dinput8");
 
 			Item<bool> UseModding = CreateConfigItem(this, "UseModding", false);
+			Item<bool> CompressModsWheneverPossible = CreateConfigItem(this, "CompressModsWheneverPossible", true);
 			Item<bool> TtmpFlattenSubdirectoryDisplay = CreateConfigItem(this, "TtmpFlattenSubdirectoryDisplay", false);
 			Item<bool> TtmpUseSubdirectoryTogglingOnFlattenedView = CreateConfigItem(this, "", false);
 			Item<bool> TtmpShowDedicatedMenu = CreateConfigItem(this, "TtmpShowDedicatedMenu", false);

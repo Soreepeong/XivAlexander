@@ -994,7 +994,7 @@ void App::Window::MainWindow::SetMenuStates() const {
 	{
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE, config.UseNetworkTimingHandler, true);
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1, config.HighLatencyMitigationMode == HighLatencyMitigationMode::SubtractLatency, true);
-		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2, config.HighLatencyMitigationMode == HighLatencyMitigationMode::SimulateRtt, true);
+		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2, config.HighLatencyMitigationMode == HighLatencyMitigationMode::SimulateRtt, true, config.FormatStringRes(IDS_MENU_NETWORKLATENCYHANDLEMODE_2, config.ExpectedAnimationLockDurationUs.Value()));
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_MODE_3, config.HighLatencyMitigationMode == HighLatencyMitigationMode::SimulateNormalizedRttAndLatency, true);
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_USEEARLYPENALTY, config.UseEarlyPenalty, true);
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING, config.UseHighLatencyMitigationLogging, true);
@@ -1014,6 +1014,7 @@ void App::Window::MainWindow::SetMenuStates() const {
 		SetMenuState(hMenu, ID_MODDING_ENABLE, config.UseModding, true);
 		SetMenuState(hMenu, ID_MODDING_LOGALLHASHKEYS, config.UseHashTrackerKeyLogging, true);
 		SetMenuState(hMenu, ID_MODDING_LOGALLFILEACCESS, config.LogAllDataFileRead, true);
+		SetMenuState(hMenu, ID_MODDING_COMPRESSWHENEVERPOSSIBLE, config.CompressModsWheneverPossible, true);
 
 		const auto languageList = config.GetFallbackLanguageList();
 		SetMenuState(hMenu, ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1, false, true, config.GetLanguageNameLocalized(languageList[0]));
@@ -1381,6 +1382,10 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 
 		case ID_MODDING_LOGALLFILEACCESS:
 			config.LogAllDataFileRead = !config.LogAllDataFileRead;
+			return;
+
+		case ID_MODDING_COMPRESSWHENEVERPOSSIBLE:
+			config.CompressModsWheneverPossible = !config.CompressModsWheneverPossible;
 			return;
 
 		case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1: {

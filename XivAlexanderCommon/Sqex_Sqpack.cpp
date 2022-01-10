@@ -262,12 +262,16 @@ Sqex::Sqpack::SqData::FileEntryHeader Sqex::Sqpack::SqData::FileEntryHeader::New
 	return res;
 }
 
-void Sqex::Sqpack::SqData::FileEntryHeader::SetSpaceUnits(size_t totalEntrySize) {
-	AllocatedSpaceUnitCount = OccupiedSpaceUnitCount = static_cast<uint32_t>((totalEntrySize - HeaderSize) / EntryAlignment);
+void Sqex::Sqpack::SqData::FileEntryHeader::SetSpaceUnits(uint64_t dataSize) {
+	AllocatedSpaceUnitCount = OccupiedSpaceUnitCount = Align<size_t, uint32_t>(dataSize, EntryAlignment).Count;
 }
 
-uint32_t Sqex::Sqpack::SqData::FileEntryHeader::GetTotalEntrySize() const {
-	return HeaderSize + OccupiedSpaceUnitCount * EntryAlignment;
+uint64_t Sqex::Sqpack::SqData::FileEntryHeader::GetDataSize() const {
+	return 1ULL * OccupiedSpaceUnitCount * EntryAlignment;
+}
+
+uint64_t Sqex::Sqpack::SqData::FileEntryHeader::GetTotalEntrySize() const {
+	return HeaderSize + GetDataSize();
 }
 
 uint32_t Sqex::Sqpack::SqexHash(const char* data, size_t len) {

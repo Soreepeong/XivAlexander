@@ -318,6 +318,7 @@ void Sqex::Sqpack::MemoryModelEntryProvider::Initialize(const RandomAccessStream
 	}
 
 	entryHeader.HeaderSize = Align(static_cast<uint32_t>(sizeof entryHeader + sizeof modelHeader + std::span(paddedBlockSizes).size_bytes()));
+	entryHeader.SetSpaceUnits(entryBody.size());
 
 	m_data.reserve(Align(entryHeader.HeaderSize + getNextBlockOffset()));
 	m_data.insert(m_data.end(), reinterpret_cast<char*>(&entryHeader), reinterpret_cast<char*>(&entryHeader + 1));
@@ -330,7 +331,6 @@ void Sqex::Sqpack::MemoryModelEntryProvider::Initialize(const RandomAccessStream
 		m_data.resize(entryHeader.HeaderSize, 0);
 
 	m_data.resize(Align(m_data.size()));
-	reinterpret_cast<SqData::FileEntryHeader*>(&m_data[0])->SetSpaceUnits(m_data.size());
 }
 
 uint64_t Sqex::Sqpack::MemoryModelEntryProvider::ReadStreamPartial(const RandomAccessStream& stream, uint64_t offset, void* buf, uint64_t length) const {

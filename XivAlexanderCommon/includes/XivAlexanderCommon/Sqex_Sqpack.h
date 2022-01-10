@@ -303,11 +303,12 @@ namespace Sqex::Sqpack {
 
 			LE<uint32_t> BlockCountOrVersion;
 
-			static FileEntryHeader NewEmpty(size_t decompressedSize = 0, size_t compressedSize = 0);
+			static FileEntryHeader NewEmpty(uint64_t decompressedSize = 0, uint64_t compressedSize = 0);
 
-			void SetSpaceUnits(size_t totalEntrySize);
+			void SetSpaceUnits(uint64_t dataSize);
+			[[nodiscard]] uint64_t GetDataSize() const;
 
-			uint32_t GetTotalEntrySize() const;
+			[[nodiscard]] uint64_t GetTotalEntrySize() const;
 		};
 
 		struct TextureBlockHeaderLocator {

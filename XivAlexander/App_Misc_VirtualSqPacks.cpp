@@ -490,7 +490,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 									writer.SetSoundEntry(i, Sqex::Sound::ScdWriter::SoundEntry::EmptyEntry());
 								}
 								EmptyScd = std::make_shared<Sqex::MemoryRandomAccessStream>(
-									Sqex::Sqpack::MemoryBinaryEntryProvider("dummy/dummy", std::make_shared<Sqex::MemoryRandomAccessStream>(writer.Export()))
+									Sqex::Sqpack::MemoryBinaryEntryProvider("dummy/dummy", std::make_shared<Sqex::MemoryRandomAccessStream>(writer.Export()), Config->Runtime.CompressModsWheneverPossible ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION)
 									.ReadStreamIntoVector<uint8_t>(0));
 							}
 
@@ -782,6 +782,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					exhTable.emplace(pair);
 
 				std::string currentCacheKeys("VERSION:3\n");
+				currentCacheKeys += Config->Runtime.CompressModsWheneverPossible ? "compress:true\n" : "compress:false\n";
 				{
 					const auto gameRoot = indexFile.parent_path().parent_path().parent_path();
 					const auto versionFile = Utils::Win32::Handle::FromCreateFile(gameRoot / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
@@ -1375,7 +1376,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 												const auto targetPath = cachedDir / entryPathSpec.FullPath;
 
-												const auto provider = Sqex::Sqpack::MemoryBinaryEntryProvider(entryPathSpec, std::make_shared<Sqex::MemoryRandomAccessStream>(std::move(*reinterpret_cast<std::vector<uint8_t>*>(&data))));
+												const auto provider = Sqex::Sqpack::MemoryBinaryEntryProvider(entryPathSpec, std::make_shared<Sqex::MemoryRandomAccessStream>(std::move(*reinterpret_cast<std::vector<uint8_t>*>(&data))), Config->Runtime.CompressModsWheneverPossible ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION);
 												const auto len = provider.StreamSize();
 												const auto dv = provider.ReadStreamIntoVector<char>(0, static_cast<SSIZE_T>(len));
 
@@ -1584,7 +1585,10 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					const auto gameRoot = indexPath.parent_path().parent_path().parent_path();
 					const auto versionFile = Utils::Win32::Handle::FromCreateFile(gameRoot / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
 					const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetFileSize()));
-					currentCacheKeys += std::format("SQPACK:{}:{}\n", canonical(gameRoot).wstring(), std::string(versionContent.begin(), versionContent.end()));
+					currentCacheKeys += std::format("SQPACK:{}:{}:{}\n",
+						canonical(gameRoot).wstring(),
+						Config->Runtime.CompressModsWheneverPossible ? "compress" : "nocompress",
+						std::string(versionContent.begin(), versionContent.end()));
 				}
 
 				if (const auto& configFile = Config->Runtime.OverrideFontConfig.Value(); !configFile.empty()) {
@@ -1684,9 +1688,9 @@ struct App::Misc::VirtualSqPacks::Implementation {
 									CharLowerW(&extension[0]);
 
 									if (extension == L".tex")
-										provider = std::make_shared<Sqex::Sqpack::MemoryTextureEntryProvider>(entryPathSpec, stream);
+										provider = std::make_shared<Sqex::Sqpack::MemoryTextureEntryProvider>(entryPathSpec, stream, Config->Runtime.CompressModsWheneverPossible ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION);
 									else
-										provider = std::make_shared<Sqex::Sqpack::MemoryBinaryEntryProvider>(entryPathSpec, stream);
+										provider = std::make_shared<Sqex::Sqpack::MemoryBinaryEntryProvider>(entryPathSpec, stream, Config->Runtime.CompressModsWheneverPossible ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION);
 									const auto len = provider->StreamSize();
 									const auto dv = provider->ReadStreamIntoVector<char>(0, static_cast<SSIZE_T>(len));
 									progress += stream->StreamSize();

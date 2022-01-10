@@ -76,6 +76,7 @@ void Sqex::Sqpack::OnTheFlyTextureEntryProvider::Initialize(const RandomAccessSt
 		sizeof entryHeader +
 		std::span(m_blockLocators).size_bytes() +
 		std::span(m_subBlockSizes).size_bytes()));
+	entryHeader.SetSpaceUnits(m_size);
 
 	m_mergedHeader.insert(m_mergedHeader.end(),
 		reinterpret_cast<char*>(&entryHeader),
@@ -92,7 +93,6 @@ void Sqex::Sqpack::OnTheFlyTextureEntryProvider::Initialize(const RandomAccessSt
 		m_texHeaderBytes.end());
 
 	m_size += m_mergedHeader.size();
-	reinterpret_cast<SqData::FileEntryHeader*>(&m_mergedHeader[0])->SetSpaceUnits(m_size);
 }
 
 uint64_t Sqex::Sqpack::OnTheFlyTextureEntryProvider::MaxPossibleStreamSize() const {
@@ -332,6 +332,7 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 		sizeof entryHeader +
 		std::span(blockLocators).size_bytes() +
 		std::span(subBlockSizes).size_bytes()));
+	entryHeader.SetSpaceUnits(texHeaderBytes.size() + entryBody.size());
 
 	m_data.insert(m_data.end(),
 		reinterpret_cast<char*>(&entryHeader),
@@ -349,9 +350,6 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 	m_data.insert(m_data.end(), entryBody.begin(), entryBody.end());
 
 	m_data.resize(Align(m_data.size()));
-
-	auto& fileEntryHeader = *reinterpret_cast<SqData::FileEntryHeader*>(&m_data[0]);
-	reinterpret_cast<SqData::FileEntryHeader*>(&m_data[0])->SetSpaceUnits(m_data.size());
 }
 
 uint64_t Sqex::Sqpack::MemoryTextureEntryProvider::ReadStreamPartial(const RandomAccessStream& stream, uint64_t offset, void* buf, uint64_t length) const {
