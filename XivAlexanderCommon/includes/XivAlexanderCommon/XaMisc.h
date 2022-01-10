@@ -101,7 +101,7 @@ namespace Utils {
 	};
 
 	SYSTEMTIME EpochToLocalSystemTime(int64_t epochMilliseconds);
-	int64_t GetHighPerformanceCounter(int32_t multiplier = 1000);
+	int64_t QpcUs();
 
 	int CompareSockaddr(const void* x, const void* y);
 

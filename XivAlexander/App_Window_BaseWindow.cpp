@@ -158,14 +158,32 @@ LRESULT App::Window::BaseWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 			break;
 
 		case WM_CREATE: {
-			IPropertyStorePtr store;
-			PROPERTYKEY pkey{};
-			PROPVARIANT pv{};
-			if (SUCCEEDED(PSGetPropertyKeyFromName(L"System.AppUserModel.ID", &pkey))
-				&& SUCCEEDED(SHGetPropertyStoreForWindow(hwnd, IID_IPropertyStore, reinterpret_cast<void**>(&store)))
-				&& SUCCEEDED(InitPropVariantFromString(L"Soreepeong.XivAlexander", &pv))) {
-				store->SetValue(pkey, pv);
-				PropVariantClear(&pv);
+			const char* lastStep = "";
+			try {
+				try {
+					IPropertyStorePtr store;
+					PROPVARIANT pv{};
+
+					lastStep = "SHGetPropertyStoreForWindow";
+					if (const auto r = SHGetPropertyStoreForWindow(hwnd, IID_IPropertyStore, reinterpret_cast<void**>(&store)); FAILED(r))
+						throw _com_error(r);
+
+					lastStep = "InitPropVariantFromString";
+					if (const auto r = InitPropVariantFromString(L"Soreepeong.XivAlexander", &pv); FAILED(r))
+						throw _com_error(r);
+
+					lastStep = "store->SetValue";
+					if (const auto r = store->SetValue(PKEY_AppUserModel_ID, pv); FAILED(r))
+						throw _com_error(r);
+
+					PropVariantClear(&pv);
+				} catch (const _com_error& e) {
+					if (e.Error() != HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
+						throw Utils::Win32::Error(e);
+					}
+				}
+			} catch (const Utils::Win32::Error& e) {
+				m_logger->Format<LogLevel::Warning>(LogCategory::General, "Failed to set System.AppUserModel.ID for XivAlexander window at step {}: {}", lastStep, e.what());
 			}
 			break;
 		}

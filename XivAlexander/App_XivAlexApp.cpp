@@ -21,8 +21,6 @@
 #include "DllMain.h"
 #include "resource.h"
 
-constexpr static auto SecondToMicrosecondMultiplier = 1000000;
-
 struct App::XivAlexApp::Implementation_GameWindow final {
 	XivAlexApp* const this_;
 
@@ -34,13 +32,13 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 	std::shared_ptr<Misc::Hooks::WndProcFunction> m_subclassHook;
 
 	Utils::CallOnDestruction::Multiple m_cleanup;
-	
-	const Utils::Win32::Event m_stopEvent;
+
+	const Utils::Win32::Event m_readyEvent = Utils::Win32::Event::Create();
+	const Utils::Win32::Event m_stopEvent = Utils::Win32::Event::Create();
 	const Utils::Win32::Thread m_initThread;  // Must be the last member variable
 
 	Implementation_GameWindow(XivAlexApp* this_)
 		: this_(this_)
-		, m_stopEvent(Utils::Win32::Event::Create())
 		, m_initThread(Utils::Win32::Thread(L"XivAlexApp::Implementation_GameWindow::Initializer", [this]() { InitializeThreadBody(); })) {
 	}
 
@@ -74,25 +72,46 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 		});
 		m_cleanup += [this]() { SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE); };
 
-		IPropertyStorePtr store;
-		PROPERTYKEY pkey{};
-		PROPVARIANT pv{};
-		if (SUCCEEDED(PSGetPropertyKeyFromName(L"System.AppUserModel.ID", &pkey))
-			&& SUCCEEDED(SHGetPropertyStoreForWindow(m_hWnd, IID_IPropertyStore, reinterpret_cast<void**>(&store)))
-			&& SUCCEEDED(InitPropVariantFromString(L"SquareEnix.FFXIV", &pv))) {
-			store->SetValue(pkey, pv);
-			PropVariantClear(&pv);
-		}
+		m_readyEvent.Set();
+		RunOnGameLoop([&]() {
+			const char* lastStep = "";
+			try {
+				try {
+					IPropertyStorePtr store;
+					PROPVARIANT pv{};
+
+					lastStep = "SHGetPropertyStoreForWindow";
+					if (const auto r = SHGetPropertyStoreForWindow(m_hWnd, IID_IPropertyStore, reinterpret_cast<void**>(&store)); FAILED(r))
+						throw _com_error(r);
+
+					lastStep = "InitPropVariantFromString";
+					if (const auto r = InitPropVariantFromString(L"SquareEnix.FFXIV", &pv); FAILED(r))
+						throw _com_error(r);
+
+					lastStep = "store->SetValue";
+					if (const auto r = store->SetValue(PKEY_AppUserModel_ID, pv); FAILED(r))
+						throw _com_error(r);
+
+					PropVariantClear(&pv);
+				} catch (const _com_error& e) {
+					if (e.Error() != HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
+						throw Utils::Win32::Error(e);
+					}
+				}
+			} catch (const Utils::Win32::Error& e) {
+				this_->m_logger->Format<LogLevel::Warning>(LogCategory::General, "Failed to set System.AppUserModel.ID for the game window at step {}: {}", lastStep, e.what());
+			}
+			});
 	}
 
 	HWND GetHwnd(bool wait = false) const {
-		if (wait && m_initThread.Wait(false, {m_stopEvent}) == WAIT_OBJECT_0 + 1)
+		if (wait && m_readyEvent.Wait(false, {m_stopEvent}) == WAIT_OBJECT_0 + 1)
 			return nullptr;
 		return m_hWnd;
 	}
 
 	DWORD GetThreadId(bool wait = false) const {
-		if (wait && m_initThread.Wait(false, { m_stopEvent }) == WAIT_OBJECT_0 + 1)
+		if (wait && m_readyEvent.Wait(false, { m_stopEvent }) == WAIT_OBJECT_0 + 1)
 			return 0;
 		return m_mainThreadId;
 	}
@@ -101,7 +120,7 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 		if (this_->m_bInternalUnloadInitiated)
 			return f();
 		
-		m_initThread.Wait();
+		m_readyEvent.Wait();
 		const auto hEvent = Utils::Win32::Event::Create();
 		{
 			std::lock_guard _lock(m_queueMutex);
@@ -284,6 +303,7 @@ struct App::XivAlexApp::Implementation final {
 
 App::XivAlexApp::Implementation_GameWindow::~Implementation_GameWindow() {
 	m_stopEvent.Set();
+	m_readyEvent.Set();
 	m_initThread.Wait();
 	m_cleanup.Clear();
 }

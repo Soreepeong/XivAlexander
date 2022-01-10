@@ -193,6 +193,17 @@ namespace App {
 			Item<bool> UseHighLatencyMitigationLogging = CreateConfigItem(this, "UseHighLatencyMitigationLogging", true);
 			Item<bool> UseHighLatencyMitigationPreviewMode = CreateConfigItem(this, "UseHighLatencyMitigationPreviewMode", false);
 
+			// Troubleshooting purposes. If you think it's not working, change this to zero, and see if anything's different.
+			// * If you find nothing has changed, try checking stuff in "Network > Troubleshooting".
+			// * If you still find nothing has changed, make an issue with a log from the log window.
+			// Revert before doing anything other than hitting striking dummies.
+			// If you lower this value to an unreasonable extent, expect to get called out and banned from ranking communities.
+			// SE probably doesn't care enough, but other players will.
+			Item<int64_t> ExpectedAnimationLockDurationUs = CreateConfigItem(this, "ExpectedAnimationLockDurationUs", 75000LL);
+
+			// Should be the doubled value of the above.
+			Item<int64_t> MaximumAnimationLockDurationUs = CreateConfigItem(this, "MaximumAnimationLockDurationUs", 150000LL);
+
 			Item<bool> ReducePacketDelay = CreateConfigItem(this, "ReducePacketDelay", true);
 			Item<bool> TakeOverLoopbackAddresses = CreateConfigItem(this, "TakeOverLoopback", false);
 			Item<bool> TakeOverPrivateAddresses = CreateConfigItem(this, "TakeOverPrivateAddresses", false);

@@ -12,17 +12,6 @@
 #include "resource.h"
 
 struct App::Feature::NetworkTimingHandler::Implementation {
-	// Server responses have been usually taking between 50ms and 100ms on below-1ms
-	// latency to server, so 75ms is a good average.
-	// The server will do sanity check on the frequency of action use requests,
-	// and it's very easy to identify whether you're trying to go below allowed minimum value.
-	// This addon is already in gray area. Do NOT decrease this value. You've been warned.
-	// Feel free to increase and see how does it feel like to play on high latency instead, though.
-	static constexpr int64_t DefaultDelayUs = 75000;
-
-	// On unstable network connection, limit the possible overshoot in ExtraDelay.
-	static constexpr int64_t MaximumExtraDelayUs = 150000;
-
 	static constexpr int64_t AutoAttackDelayUs = 100000;
 
 	static constexpr auto SecondToMicrosecondMultiplier = 1000000;
@@ -75,7 +64,7 @@ struct App::Feature::NetworkTimingHandler::Implementation {
 						PendingActions.emplace_back(PendingAction{
 							.ActionId = actionRequest.ActionId,
 							.Sequence = actionRequest.Sequence,
-							.RequestUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier),
+							.RequestUs = Utils::QpcUs(),
 							});
 
 						const auto delayUs = LastAnimationLockEndsAtUs ? PendingActions.back().RequestUs - *LastAnimationLockEndsAtUs : INT64_MAX;
@@ -114,7 +103,7 @@ struct App::Feature::NetworkTimingHandler::Implementation {
 				return true;
 				});
 			conn.AddIncomingFFXIVMessageHandler(this, [&](auto pMessage) {
-				const auto nowUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier);
+				const auto nowUs = Utils::QpcUs();
 
 				if (pMessage->Type == MessageType::Ipc && pMessage->Data.Ipc.Type == IpcType::CustomType) {
 					if (pMessage->Data.Ipc.SubType == static_cast<uint16_t>(IpcCustomSubtype::OriginalWaitTime)) {
@@ -154,11 +143,11 @@ struct App::Feature::NetworkTimingHandler::Implementation {
 
 							if (actionEffect.SourceSequence == 0) {
 								// Process actions originating from server.
-								if (LatestSuccessfulRequest && !LatestSuccessfulRequest->CastFlag && LatestSuccessfulRequest->Sequence && *LastAnimationLockEndsAtUs > nowUs) {
+								if (LatestSuccessfulRequest && !LatestSuccessfulRequest->CastFlag && LatestSuccessfulRequest->Sequence) {
 									LatestSuccessfulRequest->ActionId = actionEffect.ActionId;
 									LatestSuccessfulRequest->Sequence = 0;
 									*LastAnimationLockEndsAtUs += (originalWaitUs + nowUs) - (LatestSuccessfulRequest->OriginalWaitUs + LatestSuccessfulRequest->ResponseUs);
-									*LastAnimationLockEndsAtUs = std::max(*LastAnimationLockEndsAtUs, nowUs + AutoAttackDelayUs);
+									*LastAnimationLockEndsAtUs = Utils::Clamp(*LastAnimationLockEndsAtUs, nowUs + AutoAttackDelayUs, nowUs + AutoAttackDelayUs + originalWaitUs);
 									waitUs = *LastAnimationLockEndsAtUs - nowUs;
 								}
 								description << " serverOriginated";
@@ -378,13 +367,17 @@ struct App::Feature::NetworkTimingHandler::Implementation {
 
 			switch (mode) {
 				case HighLatencyMitigationMode::SubtractLatency:
-					description << std::format(" delay={}us", DefaultDelayUs);
+					description << std::format(" delay={}us", Config->Runtime.ExpectedAnimationLockDurationUs.Value());
 					return nowUs + originalWaitUs - latencyUs;
 
 				case HighLatencyMitigationMode::SimulateNormalizedRttAndLatency: {
 					const auto rttMin = Conn.ApplicationLatencyUs.Min();
+
 					const auto [rttMean, rttDeviation] = Conn.ApplicationLatencyUs.MeanAndDeviation();
+					description << std::format(" rttAvg={}+{}us", rttMean, rttDeviation);
+
 					const auto [latencyMean, latencyDeviation] = !pingTrackerUs || pingLatencyUs > socketLatencyUs ? Conn.SocketLatencyUs.MeanAndDeviation() : pingTrackerUs->MeanAndDeviation();
+					description << std::format(" latAvg={}+{}us", latencyMean, latencyDeviation);
 
 					// Correct latency and server response time values in case of outliers.
 					const auto latencyAdjustedImmediate = Utils::Clamp(latencyUs, latencyMean - latencyDeviation, latencyMean + latencyDeviation);
@@ -392,10 +385,11 @@ struct App::Feature::NetworkTimingHandler::Implementation {
 
 					// Estimate latency based on server response time statistics.
 					const auto latencyEstimate = (rttAdjusted + rttMin + rttMean) / 3 - rttDeviation;
-					description << std::format(" latencyEstimate={}us", latencyEstimate);
+					description << std::format(" latEst={}us", latencyEstimate);
 
 					// Correct latency value based on estimate if server response time is stable.
 					const auto latencyAdjusted = std::max(latencyEstimate, latencyAdjustedImmediate);
+					description << std::format(" latAdj={}us", latencyAdjusted);
 
 					const auto earlyPenalty = runtimeConfig.UseEarlyPenalty ? EarlyRequestsDurationUs.Max() : 0;
 					if (earlyPenalty)
@@ -405,10 +399,10 @@ struct App::Feature::NetworkTimingHandler::Implementation {
 					// If the server is busy, everyone should feel the same effect.
 					// * Only the player's ping is taken out of the equation. (- latencyAdjusted)
 					// * Prevent accidentally too high ExtraDelay. (Clamp above 1us)
-					const auto delay = Utils::Clamp(rttAdjusted - latencyAdjusted + earlyPenalty, 1LL, MaximumExtraDelayUs);
-					description << std::format(" delayAdjusted={}us", delay);
+					const auto delay = Utils::Clamp(rttAdjusted - latencyAdjusted + earlyPenalty, 1LL, Config->Runtime.MaximumAnimationLockDurationUs.Value());
+					description << std::format(" delayAdj={}us", delay);
 
-					if (rttUs > 100 && latencyUs < 5000) {
+					if (rttUs > 80000 && latencyUs < 10000) {
 						Impl.Logger->Format<LogLevel::Warning>(
 							LogCategory::NetworkTimingHandler,
 							Config->Runtime.GetLangId(), IDS_WARNING_ZEROPING,
@@ -418,8 +412,8 @@ struct App::Feature::NetworkTimingHandler::Implementation {
 				}
 			}
 
-			description << std::format(" delay={}us", DefaultDelayUs);
-			return lastAnimationLockEndsAtUs + originalWaitUs + DefaultDelayUs;
+			description << std::format(" delay={}us", Config->Runtime.ExpectedAnimationLockDurationUs.Value());
+			return lastAnimationLockEndsAtUs + originalWaitUs + Config->Runtime.ExpectedAnimationLockDurationUs.Value();
 		}
 	};
 

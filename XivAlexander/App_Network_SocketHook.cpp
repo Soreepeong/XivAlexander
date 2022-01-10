@@ -10,6 +10,8 @@
 #include "App_XivAlexApp.h"
 #include "resource.h"
 
+static constexpr auto SecondToMicrosecondMultiplier = 1000000ULL;
+
 class SingleStream {
 public:
 	bool m_ending = false;
@@ -176,7 +178,7 @@ struct App::Network::SingleConnection::Implementation {
 	std::map<size_t, std::vector<MessageMangler>> m_incomingHandlers{};
 	std::map<size_t, std::vector<MessageMangler>> m_outgoingHandlers{};
 
-	std::deque<uint64_t> m_keepAliveRequestTimestamps{};
+	std::deque<uint64_t> m_keepAliveRequestTimestampsUs{};
 	std::deque<uint64_t> m_observedServerResponseList{};
 	std::deque<int64_t> m_observedConnectionLatencyList{};
 
@@ -263,15 +265,15 @@ struct App::Network::SingleConnection::Implementation {
 
 			switch (pMessage->Type) {
 				case Structures::MessageType::ServerKeepAlive:
-					if (!m_keepAliveRequestTimestamps.empty()) {
-						int64_t delay;
+					if (!m_keepAliveRequestTimestampsUs.empty()) {
+						int64_t delayUs;
 						do {
-							delay = static_cast<int64_t>(Utils::GetHighPerformanceCounter() - m_keepAliveRequestTimestamps.front());
-							m_keepAliveRequestTimestamps.pop_front();
-						} while (!m_keepAliveRequestTimestamps.empty() && delay > 5000);
+							delayUs = static_cast<int64_t>(Utils::QpcUs() - m_keepAliveRequestTimestampsUs.front());
+							m_keepAliveRequestTimestampsUs.pop_front();
+						} while (!m_keepAliveRequestTimestampsUs.empty() && delayUs > 5000000);
 
 						// Add statistics sample
-						this_->ApplicationLatencyUs.AddValue(delay);
+						this_->ApplicationLatencyUs.AddValue(delayUs);
 						if (const auto latency = this_->FetchSocketLatencyUs())
 							this_->SocketLatencyUs.AddValue(latency);
 					}
@@ -295,7 +297,7 @@ struct App::Network::SingleConnection::Implementation {
 
 			switch (pMessage->Type) {
 				case Structures::MessageType::ClientKeepAlive:
-					m_keepAliveRequestTimestamps.push_back(Utils::GetHighPerformanceCounter());
+					m_keepAliveRequestTimestampsUs.push_back(Utils::QpcUs());
 					break;
 
 				case Structures::MessageType::Ipc:
@@ -625,7 +627,7 @@ App::Network::SocketHook::SocketHook(XivAlexApp* pApp)
 							if (GetCurrentThreadId() != m_pImpl->m_dwGameMainThreadId)
 								return select.bridge(nfds, readfds, writefds, exceptfds, timeout);
 
-							m_pImpl->LastSocketSelectCounterUs = Utils::GetHighPerformanceCounter(1000000);
+							m_pImpl->LastSocketSelectCounterUs = Utils::QpcUs();
 							
 							const fd_set readfds_original = *readfds;
 							fd_set readfds_temp = *readfds;
