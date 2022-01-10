@@ -235,7 +235,7 @@ void App::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::string_view
 						of << std::format("{}={}\n", k, v);
 				}
 			} catch (const std::exception& e) {
-				of << "Failed to read command line parameters.\n";
+				of << std::format("Failed to read command line parameters: {}\n", e.what());
 			}
 
 			of << "\nEnvironment Variables:\n";
@@ -243,7 +243,7 @@ void App::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::string_view
 				auto ptr = GetEnvironmentStringsW();
 				const auto ptrFree = Utils::CallOnDestruction([ptr]() { FreeEnvironmentStringsW(ptr); });
 				while (*ptr) {
-					const auto part = std::wstring_view(ptr, wcslen(ptr));
+					const auto part = std::wstring(ptr);
 					of << std::format("{}\n", part);
 					ptr += part.size() + 1;
 				}

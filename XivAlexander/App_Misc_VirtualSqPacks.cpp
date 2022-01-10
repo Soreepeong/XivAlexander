@@ -11,10 +11,14 @@
 #include <XivAlexanderCommon/Sqex_Imc.h>
 #include <XivAlexanderCommon/Sqex_Sound_Reader.h>
 #include <XivAlexanderCommon/Sqex_Sound_Writer.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_BinaryEntryProvider.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Creator.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_EntryProvider.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_EntryRawStream.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_HotSwappableEntryProvider.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_RandomAccessStreamAsEntryProviderView.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_TextureEntryProvider.h>
 #include <XivAlexanderCommon/Sqex_ThirdParty_TexTools.h>
 #include <XivAlexanderCommon/Utils_Win32_Process.h>
 #include <XivAlexanderCommon/Utils_Win32_TaskDialogBuilder.h>
@@ -89,7 +93,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 			const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(it->second->Provider.get());
 			if (!provider)
-				return std::make_shared<Sqex::Sqpack::EntryRawStream>(it->second->Provider.get());
+				return std::make_shared<Sqex::Sqpack::EntryRawStream>(it->second->Provider);
 
 			return std::make_shared<Sqex::Sqpack::EntryRawStream>(provider->GetBaseStream());
 		}

@@ -49,6 +49,12 @@
     <Filter Include="Square Enix Definitions\Game Resource Files\Equipment Deformer Parameter %28.eqdp%29">
       <UniqueIdentifier>{72ce1b0e-dee1-4e18-aa7e-3709043fa2cc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers">
+      <UniqueIdentifier>{1f6cfd51-29bd-4deb-a98b-851565e7efb4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders">
+      <UniqueIdentifier>{7f60c1b7-c106-4e4f-b344-80f4f9ca59a5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -207,6 +213,39 @@
     <ClInclude Include="includes\XivAlexanderCommon\Sqex_Eqdp.h">
       <Filter>Square Enix Definitions\Game Resource Files\Equipment Deformer Parameter %28.eqdp%29</Filter>
     </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_BinaryEntryProvider.h">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_EmptyOrObfuscatedEntryProvider.h">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_HotSwappableEntryProvider.h">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_LazyEntryProvider.h">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_ModelEntryProvider.h">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_RandomAccessStreamAsEntryProviderView.h">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_TextureEntryProvider.h">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_BinaryStreamDecoder.h">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_ModelStreamDecoder.h">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_TextureStreamDecoder.h">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_StreamDecoder.h">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -341,6 +380,39 @@
     </ClCompile>
     <ClCompile Include="Sqex_Eqdp.cpp">
       <Filter>Square Enix Definitions\Game Resource Files\Equipment Deformer Parameter %28.eqdp%29</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Sqpack_ModelEntryProvider.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Sqpack_TextureEntryProvider.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Sqpack_BinaryEntryProvider.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Sqpack_EmptyOrObfuscatedEntryProvider.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Sqpack_LazyEntryProvider.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Sqpack_RandomAccessStreamAsEntryProviderView.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Sqpack_HotSwappableEntryProvider.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Sqpack_BinaryStreamDecoder.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Sqpack_StreamDecoder.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Sqpack_TextureStreamDecoder.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex_Sqpack_ModelStreamDecoder.cpp">
+      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

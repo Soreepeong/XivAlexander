@@ -62,20 +62,37 @@ namespace Sqex {
 		T By;
 		T Alloc;
 		T Pad;
+		T Last;
 
 		operator T() const {
 			return Alloc;
 		}
 
-		void IterateChunked(std::function<void(CountT, T, T)> cb, T baseOffset = 0) const {
+		void IterateChunkedBreakable(std::function<bool(CountT, T, T)> cb, T baseOffset = 0, CountT baseIndex = 0) const {
 			if (Pad == 0) {
-				for (CountT i = 0; i < Count; ++i)
+				for (CountT i = baseIndex; i < Count; ++i)
+					if (!cb(i, baseOffset + i * By, By))
+						return;
+			} else {
+				CountT i = baseIndex;
+				for (; i < Count - 1; ++i)
+					if (!cb(i, baseOffset + i * By, By))
+						return;
+				if (i == Count - 1)
+					cb(i, baseOffset + i * By, Value - i * By);
+			}
+		}
+
+		void IterateChunked(std::function<void(CountT, T, T)> cb, T baseOffset = 0, CountT baseIndex = 0) const {
+			if (Pad == 0) {
+				for (CountT i = baseIndex; i < Count; ++i)
 					cb(i, baseOffset + i * By, By);
 			} else {
-				CountT i = 0;
+				CountT i = baseIndex;
 				for (; i < Count - 1; ++i)
 					cb(i, baseOffset + i * By, By);
-				cb(i, baseOffset + i * By, Value - i * By);
+				if (i == Count - 1)
+					cb(i, baseOffset + i * By, Value - i * By);
 			}
 		}
 	};
@@ -91,6 +108,7 @@ namespace Sqex {
 			.By = by,
 			.Alloc = static_cast<T>(alloc),
 			.Pad = static_cast<T>(pad),
+			.Last = value - (count - 1) * by,
 		};
 	}
 

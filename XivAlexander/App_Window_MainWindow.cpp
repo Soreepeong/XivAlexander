@@ -4,7 +4,7 @@
 #include <XivAlexander/XivAlexander.h>
 #include <XivAlexanderCommon/Sqex_CommandLine.h>
 #include <XivAlexanderCommon/Sqex_FontCsv_CreateConfig.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_EntryProvider.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_BinaryEntryProvider.h>
 #include <XivAlexanderCommon/Sqex_Sound_MusicImporter.h>
 #include <XivAlexanderCommon/Sqex_ThirdParty_TexTools.h>
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>

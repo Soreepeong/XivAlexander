@@ -2,6 +2,7 @@
 #include "Sqex_Sqpack_Reader.h"
 
 #include "Sqex_Sqpack_EntryRawStream.h"
+#include "Sqex_Sqpack_RandomAccessStreamAsEntryProviderView.h"
 
 template<typename HashLocatorT, typename TextLocatorT>
 Sqex::Sqpack::Reader::SqIndexType<HashLocatorT, TextLocatorT>::SqIndexType(const Win32::Handle& hFile, bool strictVerify)

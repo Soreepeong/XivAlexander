@@ -251,6 +251,25 @@ void Sqex::Sqpack::SqData::Header::Verify(uint32_t expectedSpanIndex) const {
 		throw CorruptDataException("Padding_0x3D4 != 0");
 }
 
+Sqex::Sqpack::SqData::FileEntryHeader Sqex::Sqpack::SqData::FileEntryHeader::NewEmpty(size_t decompressedSize, size_t compressedSize) {
+	FileEntryHeader res{
+		.HeaderSize = static_cast<uint32_t>(Align(sizeof FileEntryHeader)),
+		.Type = FileEntryType::EmptyOrObfuscated,
+		.DecompressedSize = static_cast<uint32_t>(decompressedSize),
+		.BlockCountOrVersion = static_cast<uint32_t>(compressedSize),
+	};
+	res.SetSpaceUnits(compressedSize);
+	return res;
+}
+
+void Sqex::Sqpack::SqData::FileEntryHeader::SetSpaceUnits(size_t totalEntrySize) {
+	AllocatedSpaceUnitCount = OccupiedSpaceUnitCount = static_cast<uint32_t>((totalEntrySize - HeaderSize) / EntryAlignment);
+}
+
+uint32_t Sqex::Sqpack::SqData::FileEntryHeader::GetTotalEntrySize() const {
+	return HeaderSize + OccupiedSpaceUnitCount * EntryAlignment;
+}
+
 uint32_t Sqex::Sqpack::SqexHash(const char* data, size_t len) {
 	std::string normalizedText;
 	if (len == SIZE_MAX) {

@@ -136,23 +136,23 @@ namespace Sqex::Sqpack {
 			LEDataLocator(uint32_t index, uint64_t offset)
 				: IsSynonym(0)
 				, DatFileIndex(index)
-				, DatFileOffsetBy8(static_cast<uint32_t>(offset / 128)) {
-				if (offset % 128)
+				, DatFileOffsetBy8(static_cast<uint32_t>(offset / EntryAlignment)) {
+				if (offset % EntryAlignment)
 					throw std::invalid_argument("Offset must be a multiple of 128.");
 				if (offset / 8 > UINT32_MAX)
 					throw std::invalid_argument("Offset is too big.");
 			}
 
 			[[nodiscard]] uint64_t DatFileOffset() const {
-				return DatFileOffsetBy8 * 128ULL;
+				return 1ULL * DatFileOffsetBy8 * EntryAlignment;
 			}
 
 			uint64_t DatFileOffset(uint64_t value) {
-				if (value % 128)
+				if (value % EntryAlignment)
 					throw std::invalid_argument("Offset must be a multiple of 128.");
 				if (value / 8 > UINT32_MAX)
 					throw std::invalid_argument("Offset is too big.");
-				DatFileOffsetBy8 = static_cast<uint32_t>(value / 128);
+				DatFileOffsetBy8 = static_cast<uint32_t>(value / EntryAlignment);
 			}
 
 			bool operator<(const LEDataLocator& r) const {
@@ -244,11 +244,11 @@ namespace Sqex::Sqpack {
 				LE<uint32_t> RawValue;
 
 				DataSizeDivBy8Type& operator=(uint64_t value) {
-					if (value % 128)
+					if (value % EntryAlignment)
 						throw std::invalid_argument("Value must be a multiple of 8.");
-					if (value / 128ULL > UINT32_MAX)
+					if (value / EntryAlignment > UINT32_MAX)
 						throw std::invalid_argument("Value too big.");
-					RawValue = static_cast<uint32_t>(value / 128ULL);
+					RawValue = static_cast<uint32_t>(value / EntryAlignment);
 					return *this;
 				}
 
@@ -257,7 +257,7 @@ namespace Sqex::Sqpack {
 				}
 
 				[[nodiscard]] uint64_t Value() const {
-					return RawValue * 128ULL;
+					return 1ULL * RawValue * EntryAlignment;
 				}
 			} DataSize;  // From end of this header to EOF
 			LE<uint32_t> SpanIndex;  // 0x01 = .dat0, 0x02 = .dat1, 0x03 = .dat2, ...
@@ -298,18 +298,16 @@ namespace Sqex::Sqpack {
 			LE<FileEntryType> Type;
 			LE<uint32_t> DecompressedSize;
 
-			LE<uint32_t> AllocatedSpaceUnitCount; // (Allocation - HeaderSize) / 128
+			LE<uint32_t> AllocatedSpaceUnitCount; // (Allocation - HeaderSize) / OffsetUnit
 			LE<uint32_t> OccupiedSpaceUnitCount;
 
 			LE<uint32_t> BlockCountOrVersion;
 
-			void SetSpaceUnits(size_t totalEntrySize) {
-				AllocatedSpaceUnitCount = OccupiedSpaceUnitCount = static_cast<uint32_t>((totalEntrySize - HeaderSize) / 128);
-			}
+			static FileEntryHeader NewEmpty(size_t decompressedSize = 0, size_t compressedSize = 0);
 
-			uint32_t GetTotalEntrySize() const {
-				return HeaderSize + OccupiedSpaceUnitCount * 128;
-			}
+			void SetSpaceUnits(size_t totalEntrySize);
+
+			uint32_t GetTotalEntrySize() const;
 		};
 
 		struct TextureBlockHeaderLocator {
@@ -353,6 +351,11 @@ namespace Sqex::Sqpack {
 		};
 		static_assert(sizeof ModelBlockLocator == 184);
 	}
+
+	static constexpr uint16_t EntryBlockDataSize = 16000;
+	static constexpr uint16_t EntryBlockValidSize = EntryBlockDataSize + sizeof SqData::BlockHeader;
+	static constexpr uint16_t EntryBlockPadSize = (EntryAlignment - EntryBlockValidSize) % EntryAlignment;
+	static constexpr uint16_t EntryBlockSize = EntryBlockValidSize + EntryBlockPadSize;
 
 	extern const uint32_t SqexHashTable[4][256];
 	uint32_t SqexHash(const char* data, size_t len = SIZE_MAX);

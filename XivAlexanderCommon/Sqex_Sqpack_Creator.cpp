@@ -2,9 +2,14 @@
 #include "Sqex_Sqpack_Creator.h"
 
 #include "Sqex_Model.h"
-#include "Sqex_Sqpack_EntryProvider.h"
+#include "Sqex_Sqpack_BinaryEntryProvider.h"
+#include "Sqex_Sqpack_EmptyOrObfuscatedEntryProvider.h"
 #include "Sqex_Sqpack_EntryRawStream.h"
+#include "Sqex_Sqpack_HotSwappableEntryProvider.h"
+#include "Sqex_Sqpack_ModelEntryProvider.h"
+#include "Sqex_Sqpack_RandomAccessStreamAsEntryProviderView.h"
 #include "Sqex_Sqpack_Reader.h"
+#include "Sqex_Sqpack_TextureEntryProvider.h"
 #include "Sqex_ThirdParty_TexTools.h"
 
 struct Sqex::Sqpack::Creator::Implementation {

@@ -1,0 +1,133 @@
+#include "pch.h"
+#include "Sqex_Sqpack_ModelStreamDecoder.h"
+
+#include "Sqex_Model.h"
+
+Sqex::Sqpack::ModelStreamDecoder::ModelStreamDecoder(const SqData::FileEntryHeader& header, std::shared_ptr<const EntryProvider> stream)
+	: StreamDecoder(std::move(stream)) {
+
+	const auto AsHeader = [this]() { return *reinterpret_cast<Model::Header*>(&m_head[0]); };
+
+	const auto underlyingSize = m_stream->StreamSize();
+	uint64_t readOffset = sizeof SqData::FileEntryHeader;
+	const auto locator = m_stream->ReadStream<SqData::ModelBlockLocator>(readOffset);
+	const auto blockCount = static_cast<size_t>(locator.FirstBlockIndices.Index[2]) + locator.BlockCount.Index[2];
+
+	readOffset += sizeof locator;
+	for (const auto blockSize : m_stream->ReadStreamIntoVector<uint16_t>(readOffset, blockCount)) {
+		m_blocks.emplace_back(BlockInfo{
+			.RequestOffset = 0,
+			.BlockOffset = m_blocks.empty() ? header.HeaderSize.Value() : m_blocks.back().BlockOffset + m_blocks.back().PaddedChunkSize,
+			.PaddedChunkSize = blockSize,
+			.GroupIndex = UINT16_MAX,
+			.GroupBlockIndex = 0,
+			});
+	}
+
+	m_head.resize(sizeof Model::Header);
+	AsHeader() = {
+		.Version = header.BlockCountOrVersion,
+		.VertexDeclarationCount = locator.VertexDeclarationCount,
+		.MaterialCount = locator.MaterialCount,
+		.LodCount = locator.LodCount,
+		.EnableIndexBufferStreaming = locator.EnableIndexBufferStreaming,
+		.EnableEdgeGeometry = locator.EnableEdgeGeometry,
+		.Padding = locator.Padding,
+	};
+
+	if (m_blocks.empty())
+		return;
+
+	for (uint16_t i = 0; i < 11; ++i) {
+		if (!locator.BlockCount.EntryAt(i))
+			continue;
+
+		const size_t blockIndex = locator.FirstBlockIndices.EntryAt(i).Value();
+		auto& firstBlock = m_blocks[blockIndex];
+		firstBlock.GroupIndex = i;
+		firstBlock.GroupBlockIndex = 0;
+
+		for (uint16_t j = 1; j < locator.BlockCount.EntryAt(i); ++j) {
+			if (blockIndex + j >= blockCount)
+				throw CorruptDataException("Out of bounds index information detected");
+
+			auto& block = m_blocks[blockIndex + j];
+			if (block.GroupIndex != UINT16_MAX)
+				throw CorruptDataException("Overlapping index information detected");
+			block.GroupIndex = i;
+			block.GroupBlockIndex = j;
+		}
+	}
+
+	auto lastOffset = 0;
+	for (auto& block : m_blocks) {
+		SqData::BlockHeader blockHeader;
+
+		if (block.BlockOffset == underlyingSize)
+			blockHeader.DecompressedSize = blockHeader.CompressedSize = 0;
+		else
+			m_stream->ReadStream(block.BlockOffset, &blockHeader, sizeof blockHeader);
+
+		if (m_maxBlockSize < sizeof blockHeader + blockHeader.CompressedSize)
+			m_maxBlockSize = static_cast<uint16_t>(sizeof blockHeader + blockHeader.CompressedSize);
+
+		block.DecompressedSize = static_cast<uint16_t>(blockHeader.DecompressedSize);
+		block.RequestOffset = lastOffset;
+		lastOffset += block.DecompressedSize;
+	}
+
+	for (uint16_t i = locator.FirstBlockIndices.Stack.Value(), i_ = locator.FirstBlockIndices.Stack + locator.BlockCount.Stack; i < i_; ++i)
+		AsHeader().StackSize += m_blocks[i].DecompressedSize;
+	for (uint16_t i = locator.FirstBlockIndices.Runtime.Value(), i_ = locator.FirstBlockIndices.Runtime + locator.BlockCount.Runtime; i < i_; ++i)
+		AsHeader().RuntimeSize += m_blocks[i].DecompressedSize;
+	for (int j = 0; j < 3; ++j) {
+		for (uint16_t i = locator.FirstBlockIndices.Vertex[j].Value(), i_ = locator.FirstBlockIndices.Vertex[j] + locator.BlockCount.Vertex[j]; i < i_; ++i)
+			AsHeader().VertexSize[j] += m_blocks[i].DecompressedSize;
+		for (uint16_t i = locator.FirstBlockIndices.Index[j].Value(), i_ = locator.FirstBlockIndices.Index[j] + locator.BlockCount.Index[j]; i < i_; ++i)
+			AsHeader().IndexSize[j] += m_blocks[i].DecompressedSize;
+		AsHeader().VertexOffset[j] = static_cast<uint32_t>(m_head.size() + (locator.FirstBlockIndices.Vertex[j] == m_blocks.size() ? lastOffset : m_blocks[locator.FirstBlockIndices.Vertex[j]].RequestOffset));
+		AsHeader().IndexOffset[j] = static_cast<uint32_t>(m_head.size() + (locator.FirstBlockIndices.Index[j] == m_blocks.size() ? lastOffset : m_blocks[locator.FirstBlockIndices.Index[j]].RequestOffset));
+	}
+}
+
+uint64_t Sqex::Sqpack::ModelStreamDecoder::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) {
+	if (!length)
+		return 0;
+
+	ReadStreamState info{
+		.Underlying = *m_stream,
+		.TargetBuffer = std::span(static_cast<uint8_t*>(buf), static_cast<size_t>(length)),
+		.ReadBuffer = std::vector<uint8_t>(m_maxBlockSize),
+		.RelativeOffset = offset,
+	};
+
+	if (info.RelativeOffset < m_head.size()) {
+		const auto available = std::min(info.TargetBuffer.size_bytes(), static_cast<size_t>(m_head.size() - info.RelativeOffset));
+		const auto src = std::span(m_head).subspan(static_cast<size_t>(info.RelativeOffset), static_cast<size_t>(available));
+		std::copy_n(src.begin(), available, info.TargetBuffer.begin());
+		info.TargetBuffer = info.TargetBuffer.subspan(available);
+		info.RelativeOffset = 0;
+	} else
+		info.RelativeOffset -= m_head.size();
+
+	if (info.TargetBuffer.empty() || m_blocks.empty())
+		return length - info.TargetBuffer.size_bytes();
+
+	auto it = std::lower_bound(m_blocks.begin(), m_blocks.end(), static_cast<uint32_t>(info.RelativeOffset), [&](const BlockInfo& l, uint32_t r) {
+		return l.RequestOffset < r;
+		});
+	if (it == m_blocks.end() || (it != m_blocks.end() && it != m_blocks.begin() && it->RequestOffset > info.RelativeOffset))
+		--it;
+
+	info.RequestOffsetVerify = it->RequestOffset;
+	info.RelativeOffset -= info.RequestOffsetVerify;
+
+	for (; it != m_blocks.end(); ++it) {
+		info.Progress(it->RequestOffset, it->BlockOffset);
+		if (info.TargetBuffer.empty())
+			break;
+	}
+
+	m_maxBlockSize = info.ReadBuffer.size();
+	return length - info.TargetBuffer.size_bytes();
+}

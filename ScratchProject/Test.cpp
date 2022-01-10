@@ -1,13 +1,18 @@
 #include "pch.h"
 
-#include <XivAlexanderCommon/Sqex_ThirdParty_TexTools.h>
+#include <XivAlexanderCommon/Sqex_Model.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_BinaryEntryProvider.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_Creator.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_EmptyOrObfuscatedEntryProvider.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_EntryProvider.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_EntryRawStream.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_ModelEntryProvider.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_RandomAccessStreamAsEntryProviderView.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_Creator.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_TextureEntryProvider.h>
 #include <XivAlexanderCommon/Sqex_Texture_ModifiableTextureStream.h>
+#include <XivAlexanderCommon/Sqex_ThirdParty_TexTools.h>
 #include <XivAlexanderCommon/Utils_Win32_ThreadPool.h>
-#include <XivAlexanderCommon/XaZlib.h>
 
 std::shared_ptr<Sqex::RandomAccessStream> StripSecondaryMipmaps(std::shared_ptr<Sqex::RandomAccessStream> src) {
 	return src;
@@ -222,7 +227,7 @@ int main() {
 				if (i % 64 == 0)
 					std::cout << std::format("{:0>6}/{:0>6}_{}_{:08x}_{:08x}_{:08x}_{:08x}\n", i, reader.EntryInfo.size(), creator.DatName, locator.Value, entry.PathSpec.FullPathHash, entry.PathSpec.PathHash, entry.PathSpec.NameHash);
 
-				buf.resize(entry.Allocation);
+				buf.resize(static_cast<size_t>(entry.Allocation));
 				reader.Data[locator.DatFileIndex].Stream->ReadStream(locator.DatFileOffset(), std::span(buf));
 				auto& eh = *reinterpret_cast<Sqex::Sqpack::SqData::FileEntryHeader*>(&buf[0]);
 				eh.AllocatedSpaceUnitCount = eh.OccupiedSpaceUnitCount;
