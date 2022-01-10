@@ -45,6 +45,7 @@
 #include <iphlpapi.h>
 #include <mstcpip.h>
 #include <PathCch.h>
+#include <propkey.h>
 #include <propvarutil.h>
 #include <Psapi.h>
 #include <shellapi.h>
