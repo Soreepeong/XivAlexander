@@ -2,6 +2,12 @@
 #include "Utils_NumericStatisticsTracker.h"
 #include "XaMisc.h"
 
+Utils::NumericStatisticsTracker::Entry::Entry(int64_t value, int64_t maxAgeUs)
+	: Value(value)
+	, TimestampUs(Utils::QpcUs())
+	, ExpiryUs(maxAgeUs == INT64_MAX ? INT64_MAX : TimestampUs + maxAgeUs) {
+}
+
 Utils::NumericStatisticsTracker::NumericStatisticsTracker(size_t trackCount, int64_t emptyValue, int64_t maxAgeUs)
 	: m_trackCount(trackCount)
 	, m_emptyValue(emptyValue)
@@ -12,13 +18,13 @@ Utils::NumericStatisticsTracker::~NumericStatisticsTracker() = default;
 
 void Utils::NumericStatisticsTracker::AddValue(int64_t v) {
 	m_values.emplace_back(v, m_maxAgeUs);
-	void(RemoveExpired(m_values.back().Timestamp));
+	void(RemoveExpired(m_values.back().TimestampUs));
 }
 
 const std::deque<Utils::NumericStatisticsTracker::Entry>& Utils::NumericStatisticsTracker::RemoveExpired(int64_t nowUs) const {
 	while (!m_values.empty() && (
 		m_values.size() > m_trackCount || 
-		m_values.front().Expiry < nowUs
+		m_values.front().ExpiryUs < nowUs
 	))
 		m_values.pop_front();
 	return m_values;
@@ -40,7 +46,7 @@ int64_t Utils::NumericStatisticsTracker::Min(int64_t sinceUs) const {
 	auto found = false;
 	int64_t minValue{};
 	for (const auto& v : std::ranges::reverse_view(vals)) {
-		if (v.Timestamp < sinceUs)
+		if (v.TimestampUs < sinceUs)
 			break;
 		if (!found || minValue < v.Value)
 			minValue = v.Value;
@@ -54,7 +60,7 @@ int64_t Utils::NumericStatisticsTracker::Max(int64_t sinceUs) const {
 	auto found = false;
 	int64_t maxValue{};
 	for (const auto& v : std::ranges::reverse_view(vals)) {
-		if (v.Timestamp < sinceUs)
+		if (v.TimestampUs < sinceUs)
 			break;
 		if (!found || maxValue > v.Value)
 			maxValue = v.Value;
@@ -69,7 +75,7 @@ int64_t Utils::NumericStatisticsTracker::Median(int64_t sinceUs) const {
 	std::vector<int64_t> sorted;
 	sorted.reserve(vals.size());
 	for (const auto& v : std::ranges::reverse_view(vals)) {
-		if (v.Timestamp < sinceUs)
+		if (v.TimestampUs < sinceUs)
 			break;
 		sorted.emplace_back(v.Value);
 	}
@@ -91,7 +97,7 @@ int64_t Utils::NumericStatisticsTracker::Mean(int64_t sinceUs) const {
 	int64_t count = 0;
 	int64_t acc{};
 	for (const auto& v : std::ranges::reverse_view(vals)) {
-		if (v.Timestamp < sinceUs)
+		if (v.TimestampUs < sinceUs)
 			break;
 		acc += v.Value;
 		++count;
@@ -105,7 +111,7 @@ std::pair<int64_t, int64_t> Utils::NumericStatisticsTracker::MeanAndDeviation(in
 	int64_t count = 0;
 	int64_t acc{};
 	for (const auto& v : std::ranges::reverse_view(vals)) {
-		if (v.Timestamp < sinceUs)
+		if (v.TimestampUs < sinceUs)
 			break;
 		acc += v.Value;
 		++count;
@@ -119,7 +125,7 @@ std::pair<int64_t, int64_t> Utils::NumericStatisticsTracker::MeanAndDeviation(in
 
 	int64_t diffSquaredSum = 0;
 	for (const auto& v : std::ranges::reverse_view(vals)) {
-		if (v.Timestamp < sinceUs)
+		if (v.TimestampUs < sinceUs)
 			break;
 		diffSquaredSum += (v.Value - mean) * (v.Value - mean);
 	}
@@ -138,7 +144,7 @@ size_t Utils::NumericStatisticsTracker::Count(int64_t sinceUs) const {
 
 	size_t count = 0;
 	for (const auto& v : std::ranges::reverse_view(vals)) {
-		if (v.Timestamp < sinceUs)
+		if (v.TimestampUs < sinceUs)
 			break;
 		++count;
 	}
@@ -159,17 +165,17 @@ double Utils::NumericStatisticsTracker::CountFractional(int64_t sinceUs) const {
 	size_t count = 0;
 	int64_t lastTimestamp = INT64_MIN;
 	for (const auto& v : std::ranges::reverse_view(vals)) {
-		if (v.Timestamp < sinceUs) {
+		if (v.TimestampUs < sinceUs) {
 			if (lastTimestamp != INT64_MIN) {
-				const auto window = lastTimestamp - v.Timestamp;
-				const auto elapsed = sinceUs - v.Timestamp;
+				const auto window = lastTimestamp - v.TimestampUs;
+				const auto elapsed = sinceUs - v.TimestampUs;
 				if (window > elapsed)
 					return static_cast<double>(count) + static_cast<double>(elapsed) / static_cast<double>(window);
 			}
 			break;
 		}
 		++count;
-		lastTimestamp = v.Timestamp;
+		lastTimestamp = v.TimestampUs;
 	}
 	return static_cast<double>(count);
 }

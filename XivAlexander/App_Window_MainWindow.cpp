@@ -331,7 +331,7 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 		FillRect(backdc, &rect, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
 		std::wstring str;
 		try {
-			const auto window = Utils::GetHighPerformanceCounter(1000000) - 1000000;
+			const auto window = Utils::QpcUs() - 1000000;
 			uint64_t msgPumpMean{}, msgPumpDev{}, renderMean{}, renderDev{};
 			double msgPumpCount{};
 			if (const auto handler = m_pApp->GetMainThreadTimingHelper()) {

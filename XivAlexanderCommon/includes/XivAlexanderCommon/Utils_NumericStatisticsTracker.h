@@ -7,18 +7,14 @@ namespace Utils {
 	class NumericStatisticsTracker {
 		const size_t m_trackCount;
 		const int64_t m_emptyValue;
-		const uint64_t m_maxAgeUs;
+		const int64_t m_maxAgeUs;
 
 		struct Entry {
 			const int64_t Value;
-			const int64_t Timestamp;
-			const int64_t Expiry;
+			const int64_t TimestampUs;
+			const int64_t ExpiryUs;
 
-			Entry(int64_t value, uint64_t maxAgeUs)
-				: Value(value)
-				, Timestamp(Utils::GetHighPerformanceCounter(1000000))
-				, Expiry(maxAgeUs == INT64_MAX ? INT64_MAX : Timestamp + maxAgeUs) {
-			}
+			Entry(int64_t value, int64_t maxAgeUs);
 		};
 
 		mutable std::deque<Entry> m_values;
@@ -32,7 +28,7 @@ namespace Utils {
 		bool Empty() const { return m_values.empty(); }
 
 	private:
-		[[nodiscard]] const std::deque<Entry>& RemoveExpired(int64_t nowUs = Utils::GetHighPerformanceCounter(1000000)) const;
+		[[nodiscard]] const std::deque<Entry>& RemoveExpired(int64_t nowUs = Utils::QpcUs()) const;
 
 	public:
 		[[nodiscard]] int64_t InvalidValue() const;

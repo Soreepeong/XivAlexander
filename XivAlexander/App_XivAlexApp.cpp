@@ -21,8 +21,6 @@
 #include "DllMain.h"
 #include "resource.h"
 
-constexpr static auto SecondToMicrosecondMultiplier = 1000000;
-
 struct App::XivAlexApp::Implementation_GameWindow final {
 	XivAlexApp* const this_;
 

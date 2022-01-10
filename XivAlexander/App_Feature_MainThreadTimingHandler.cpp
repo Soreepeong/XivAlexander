@@ -45,7 +45,7 @@ struct App::Feature::MainThreadTimingHandler::Implementation {
 				if (LastPeekMessageHadRemoveMsg == wRemoveMsg) {
 					const auto& rt = Config->Runtime;
 
-					auto nowUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier);
+					auto nowUs = Utils::QpcUs();
 
 					if (LastWaitForSingleObjectUs && !LastMessagePumpCounterUs.empty()) {
 						RenderTimeTakenTrackerUs.AddValue(LastWaitForSingleObjectUs - LastMessagePumpCounterUs.back());
@@ -64,7 +64,7 @@ struct App::Feature::MainThreadTimingHandler::Implementation {
 					auto recordPumpInterval = false;
 					if (!waitUntilCounterUs) {
 						uint64_t waitForUs = 0, waitForDrift = 0;
-						const auto test = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier);
+						const auto test = Utils::QpcUs();
 						if (const auto networkingHelper = App.GetNetworkTimingHandler(); networkingHelper && rt.LockFramerateAutomatic) {
 							const auto& group = networkingHelper->GetCooldownGroup(Feature::NetworkTimingHandler::CooldownGroup::Id_Gcd);
 							if (group.DurationUs != UINT64_MAX) {
@@ -92,7 +92,7 @@ struct App::Feature::MainThreadTimingHandler::Implementation {
 								}
 								waitForUs = LastLockedFramerateRenderIntervalUs = frameInterval;
 								waitForDrift = LastLockedFramerateRenderDriftUs;
-								OutputDebugStringW(std::format(L"5. {}us / {} / {}\n", Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier) - test, waitForUs, waitForDrift).c_str());
+								OutputDebugStringW(std::format(L"5. {}us / {} / {}\n", Utils::QpcUs() - test, waitForUs, waitForDrift).c_str());
 							} else {
 								waitForUs = LastLockedFramerateRenderIntervalUs = static_cast<uint64_t>(1000000. / std::min(1000000., std::max(1., rt.LockFramerateTargetFramerateRangeTo.Value())));
 								waitForDrift = 0;
@@ -114,7 +114,7 @@ struct App::Feature::MainThreadTimingHandler::Implementation {
 
 					if (waitUntilCounterUs > 0 && !LastMessagePumpCounterUs.empty()) {
 						const auto useMoreCpuTime = rt.UseMoreCpuTime.Value();
-						while (waitUntilCounterUs > (nowUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier))) {
+						while (waitUntilCounterUs > (nowUs = Utils::QpcUs())) {
 							if (useMoreCpuTime)
 								void(0);
 							else
@@ -154,7 +154,7 @@ struct App::Feature::MainThreadTimingHandler::Implementation {
 			if (ShouldSkipSleep(dwMilliseconds))
 				dwMilliseconds = 0;
 			else if (dwMilliseconds == INFINITE && App.IsRunningOnGameMainThread())
-				LastWaitForSingleObjectUs = Utils::GetHighPerformanceCounter(SecondToMicrosecondMultiplier);
+				LastWaitForSingleObjectUs = Utils::QpcUs();
 			return WaitForSingleObject.bridge(hHandle, dwMilliseconds);
 			});
 
@@ -214,7 +214,7 @@ const Utils::NumericStatisticsTracker& App::Feature::MainThreadTimingHandler::Ge
 
 void App::Feature::MainThreadTimingHandler::GuaranteePumpBeginCounterIn(int64_t nextInUs) {
 	if (nextInUs > 0)
-		m_pImpl->MessagePumpGuaranteeCounterUs.insert(Utils::GetHighPerformanceCounter(1000000) + nextInUs);
+		m_pImpl->MessagePumpGuaranteeCounterUs.insert(Utils::QpcUs() + nextInUs);
 }
 
 void App::Feature::MainThreadTimingHandler::GuaranteePumpBeginCounterAt(int64_t counterUs) {

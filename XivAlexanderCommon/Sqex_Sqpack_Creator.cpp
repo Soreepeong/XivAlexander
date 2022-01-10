@@ -379,7 +379,7 @@ public:
 	}
 
 	uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override {
-		const auto st = Utils::GetHighPerformanceCounter(1000000);
+		const auto st = Utils::QpcUs();
 		m_pLastEntryProviders.clear();
 		m_nLastRequestedOffset = offset;
 		m_nLastRequestedSize = length;
@@ -400,7 +400,7 @@ public:
 			relativeOffset -= m_header.size();
 
 		if (out.empty()) {
-			m_nLastTimeTaken = Utils::GetHighPerformanceCounter(1000000) - st;
+			m_nLastTimeTaken = Utils::QpcUs() - st;
 			return length;
 		}
 
@@ -452,7 +452,7 @@ public:
 			}
 		}
 
-		m_nLastTimeTaken = Utils::GetHighPerformanceCounter(1000000) - st;
+		m_nLastTimeTaken = Utils::QpcUs() - st;
 		return length - out.size_bytes();
 	}
 

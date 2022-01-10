@@ -19,11 +19,27 @@ SYSTEMTIME Utils::EpochToLocalSystemTime(int64_t epochMilliseconds) {
 	return st;
 }
 
-int64_t Utils::GetHighPerformanceCounter(int32_t multiplier) {
-	LARGE_INTEGER time, freq;
+static std::pair<int64_t, int64_t> QpcUs_GetMulDivForUs() {
+	LARGE_INTEGER freq;
 	QueryPerformanceFrequency(&freq);
+	int64_t mul = 1000000;
+	int64_t div = freq.QuadPart;
+
+	auto a = mul, b = div;
+	while (b) {
+		const auto t = a % b;
+		a = b;
+		b = t;
+	}
+
+	return std::make_pair(mul / a, div / a);
+}
+
+int64_t Utils::QpcUs() {
+	static const auto [mul, div] = QpcUs_GetMulDivForUs();
+	LARGE_INTEGER time;
 	QueryPerformanceCounter(&time);
-	return time.QuadPart * multiplier / freq.QuadPart;
+	return time.QuadPart * mul / div;
 }
 
 template<typename T>
