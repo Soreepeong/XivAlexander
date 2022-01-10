@@ -231,7 +231,7 @@ int main() {
 				reader.Data[locator.DatFileIndex].Stream->ReadStream(locator.DatFileOffset(), std::span(buf));
 				auto& eh = *reinterpret_cast<Sqex::Sqpack::SqData::FileEntryHeader*>(&buf[0]);
 				eh.AllocatedSpaceUnitCount = eh.OccupiedSpaceUnitCount;
-				buf.resize(eh.GetTotalEntrySize());
+				buf.resize(static_cast<size_t>(eh.GetTotalEntrySize()));
 
 				auto ep = reader.GetEntryProvider(entry.PathSpec, locator, entry.Allocation);
 				if (ep->EntryType() == Sqex::Sqpack::SqData::FileEntryType::EmptyOrObfuscated) {

@@ -251,7 +251,7 @@ void Sqex::Sqpack::SqData::Header::Verify(uint32_t expectedSpanIndex) const {
 		throw CorruptDataException("Padding_0x3D4 != 0");
 }
 
-Sqex::Sqpack::SqData::FileEntryHeader Sqex::Sqpack::SqData::FileEntryHeader::NewEmpty(size_t decompressedSize, size_t compressedSize) {
+Sqex::Sqpack::SqData::FileEntryHeader Sqex::Sqpack::SqData::FileEntryHeader::NewEmpty(uint64_t decompressedSize, uint64_t compressedSize) {
 	FileEntryHeader res{
 		.HeaderSize = static_cast<uint32_t>(Align(sizeof FileEntryHeader)),
 		.Type = FileEntryType::EmptyOrObfuscated,
@@ -263,7 +263,7 @@ Sqex::Sqpack::SqData::FileEntryHeader Sqex::Sqpack::SqData::FileEntryHeader::New
 }
 
 void Sqex::Sqpack::SqData::FileEntryHeader::SetSpaceUnits(uint64_t dataSize) {
-	AllocatedSpaceUnitCount = OccupiedSpaceUnitCount = Align<size_t, uint32_t>(dataSize, EntryAlignment).Count;
+	AllocatedSpaceUnitCount = OccupiedSpaceUnitCount = Align<uint64_t, uint32_t>(dataSize, EntryAlignment).Count;
 }
 
 uint64_t Sqex::Sqpack::SqData::FileEntryHeader::GetDataSize() const {
