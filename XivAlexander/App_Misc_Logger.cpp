@@ -1,12 +1,14 @@
 #include "pch.h"
 #include "App_Misc_Logger.h"
 
+#include <XivAlexanderCommon/Sqex_CommandLine.h>
 #include <XivAlexanderCommon/Utils_Win32_Handle.h>
+#include <XivAlexanderCommon/Utils_Win32_Process.h>
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
 
+#include "App_ConfigRepository.h"
 #include "DllMain.h"
 #include "resource.h"
-#include "XivAlexanderCommon/Utils_Win32_Process.h"
 
 
 const std::map<App::LogCategory, const char*> App::Misc::Logger::LogCategoryNames{
@@ -216,8 +218,38 @@ void App::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::string_view
 			const auto& process = Utils::Win32::Process::Current();
 			std::ofstream of(newFileName);
 			if (!heading.empty())
-				of << heading << "\n\n";
-			of << "Modules:\n";
+				of << heading << "\n";
+			else
+				of << "Log\n";
+
+			of << "\nCommand Line:\n";
+			try {
+				of << std::format("{}\n", Utils::Win32::Process::Current().PathOf().wstring());
+				for (auto& [k, v] : Sqex::CommandLine::FromString(Dll::GetOriginalCommandLine())) {
+					if (k == "DEV.TestSID") {
+						for (auto& c : v)
+							c = '*';
+						v += std::format("({})", v.size());
+						of << std::format("{}={}({})\n", k, v, v.size());
+					} else
+						of << std::format("{}={}\n", k, v);
+				}
+			} catch (const std::exception& e) {
+				of << "Failed to read command line parameters.\n";
+			}
+
+			of << "\nEnvironment Variables:\n";
+			{
+				auto ptr = GetEnvironmentStringsW();
+				const auto ptrFree = Utils::CallOnDestruction([ptr]() { FreeEnvironmentStringsW(ptr); });
+				while (*ptr) {
+					const auto part = std::wstring_view(ptr, wcslen(ptr));
+					of << std::format("{}\n", part);
+					ptr += part.size() + 1;
+				}
+			}
+
+			of << "\nModules:\n";
 			for (const auto& hModule : process.EnumModules()) {
 				std::wstring name;
 				std::string fileVersion = "-";
@@ -272,6 +304,41 @@ void App::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::string_view
 					name, fileVersion, productVersion
 				);
 			}
+
+			{
+				const auto config = Config::Acquire();
+				if (const auto path = config->Init.GetConfigPath(); exists(path)) {
+					of << "\nInit Config:\n";
+					try {
+						const auto h = Utils::Win32::Handle::FromCreateFile(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING);
+						const auto buf = h.Read<char>(0, static_cast<size_t>(std::min<uint64_t>(h.GetFileSize(), 1048576)));
+						of << std::string(buf) << "\n";
+					} catch (const std::exception& e) {
+						of << std::format("ERROR: Failed to read config file at {}: {}\n", path.wstring(), e.what());
+					}
+				}
+				if (const auto path = config->Runtime.GetConfigPath(); exists(path)) {
+					of << "\nRuntime Config:\n";
+					try {
+						const auto h = Utils::Win32::Handle::FromCreateFile(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING);
+						const auto buf = h.Read<char>(0, static_cast<size_t>(std::min<uint64_t>(h.GetFileSize(), 1048576)));
+						of << std::string(buf) << "\n";
+					} catch (const std::exception& e) {
+						of << std::format("ERROR: Failed to read config file at {}: {}\n", path.wstring(), e.what());
+					}
+				}
+				if (const auto path = config->Game.GetConfigPath(); exists(path)) {
+					of << "\nOpcode Config:\n";
+					try {
+						const auto h = Utils::Win32::Handle::FromCreateFile(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING);
+						const auto buf = h.Read<char>(0, static_cast<size_t>(std::min<uint64_t>(h.GetFileSize(), 1048576)));
+						of << std::string(buf) << "\n";
+					} catch (const std::exception& e) {
+						of << std::format("ERROR: Failed to read config file at {}: {}\n", path.wstring(), e.what());
+					}
+				}
+			}
+
 			of << "\nLogs:\n";
 			if (preformatted.empty())
 				WithLogs([&](const auto& items) {
