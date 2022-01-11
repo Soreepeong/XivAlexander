@@ -16,6 +16,7 @@
 #include <XivAlexanderCommon/Sqex_Sqpack_EntryProvider.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_EntryRawStream.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_HotSwappableEntryProvider.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_ModelEntryProvider.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_RandomAccessStreamAsEntryProviderView.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_TextureEntryProvider.h>
@@ -229,6 +230,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 							"TTMPD.mpd",
 							"choices.json",
 							"disable",
+							"compression",
 						}) {
 						const auto oldPath = ttmp.ListPath.parent_path() / path;
 						if (exists(oldPath))
@@ -360,6 +362,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			std::get<2>(entryIt->second) = ttmp.List.Name;
 		}
 	}
+
 	void ReflectUsedEntries_SetFromBuffer(
 		ReflectUsedEntriesTempData& tempData,
 		const std::string& path,
@@ -436,10 +439,17 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			.Children = std::vector<std::shared_ptr<NestedTtmp>>{},
 		});
 
-		for (const auto& dir : GetPossibleTtmpDirs()) {
-			if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-				throw std::runtime_error("Cancelled");
-			RescanTtmpTree(dir, Ttmps);
+		{
+			const auto loaderThread = Utils::Win32::Thread(L"TTMP Scanner", [&]() {
+				for (const auto& dir : GetPossibleTtmpDirs()) {
+					if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+						throw std::runtime_error("Cancelled");
+					RescanTtmpTree(dir, Ttmps, progressWindow);
+				}
+				});
+			do {
+				progressWindow.UpdateMessage(Config->Runtime.GetStringRes(IDS_TITLE_DISCOVERINGFILES));
+			} while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, { loaderThread }));
 		}
 
 		if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
@@ -490,7 +500,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 									writer.SetSoundEntry(i, Sqex::Sound::ScdWriter::SoundEntry::EmptyEntry());
 								}
 								EmptyScd = std::make_shared<Sqex::MemoryRandomAccessStream>(
-									Sqex::Sqpack::MemoryBinaryEntryProvider("dummy/dummy", std::make_shared<Sqex::MemoryRandomAccessStream>(writer.Export()), Config->Runtime.CompressModsWheneverPossible ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION)
+									Sqex::Sqpack::MemoryBinaryEntryProvider("dummy/dummy", std::make_shared<Sqex::MemoryRandomAccessStream>(writer.Export()), Config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION)
 									.ReadStreamIntoVector<uint8_t>(0));
 							}
 
@@ -608,9 +618,12 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		}
 	}
 
-	void RescanTtmpTree(const std::filesystem::path& path, std::shared_ptr<NestedTtmp> parent) {
+	void RescanTtmpTree(const std::filesystem::path& path, std::shared_ptr<NestedTtmp> parent, Window::ProgressPopupWindow& progressWindow) {
 		try {
 			for (const auto& iter : std::filesystem::directory_iterator(path)) {
+				if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+					return;
+
 				if (!iter.is_directory())
 					continue;
 
@@ -623,7 +636,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 				}
 				if (const auto ttmplPath = iter.path() / "TTMPL.mpl"; exists(ttmplPath)) {
 					if (!current)
-						AddFromTtmpl(ttmplPath, parent, false);
+						AddFromTtmpl(ttmplPath, parent, false, progressWindow);
 				} else {
 					if (!current)
 						current = parent->Children->emplace_back(std::make_shared<NestedTtmp>(NestedTtmp{
@@ -631,7 +644,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 							.Parent = parent,
 							.Children = std::vector<std::shared_ptr<NestedTtmp>>{},
 							}));
-					RescanTtmpTree(iter.path(), current);
+					RescanTtmpTree(iter.path(), current, progressWindow);
 				}
 			}
 		} catch (const std::exception& e) {
@@ -664,21 +677,151 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		parent->Sort();
 	}
 
-	std::shared_ptr<NestedTtmp> AddFromTtmpl(const std::filesystem::path& ttmplPath, const std::shared_ptr<NestedTtmp>& parent, bool checkAllocation) {
+	std::shared_ptr<NestedTtmp> AddFromTtmpl(const std::filesystem::path& ttmplPath, const std::shared_ptr<NestedTtmp>& parent, bool checkAllocation, Window::ProgressPopupWindow& progressWindow) {
 		const auto ttmpDir = ttmplPath.parent_path();
+		const auto ttmpdPath = ttmpDir / "TTMPD.mpd";
 		if (ttmplPath.filename() != "TTMPL.mpl")
 			return nullptr;
 
 		std::shared_ptr<NestedTtmp> added;
 		try {
+			auto list = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{ Utils::Win32::Handle::FromCreateFile(ttmplPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0) });
+			auto dataFile = Utils::Win32::Handle::FromCreateFile(ttmpdPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN);
+			const auto dataStream = std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::Handle{ dataFile, false });
+
+			const auto extractedStateFile = ttmpDir / "compression";
+			bool currentlyCompressed = false, compressAgain = false;
+			if (!exists(extractedStateFile)) {
+				compressAgain = true;
+			} else {
+				std::string s;
+				std::ifstream(extractedStateFile) >> s;
+				currentlyCompressed = s == "true";
+
+				compressAgain = currentlyCompressed != Config->Runtime.CompressModdedFiles;
+			}
+
+			if (compressAgain) {
+				currentlyCompressed = Config->Runtime.CompressModdedFiles.Value();
+
+				uint64_t progressMax = 0, progressCurrent = 0;
+				list.ForEachEntry([&](const auto& entry) { progressMax += entry.ModSize; });
+
+				const auto workerThread = Utils::Win32::Thread(L"CompressTtmpEntry", [&]() {
+					const auto tempTtmplPath = ttmpDir / "TTMPL.mpl.tmp";
+					const auto tempTtmpdPath = ttmpDir / "TTMPD.mpd.tmp";
+
+					auto out = Utils::Win32::Handle::FromCreateFile(tempTtmpdPath, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS);
+					uint64_t outPtr = 0;
+
+					std::mutex writeMtx;
+					Utils::Win32::TpEnvironment pool;
+					list.ForEachEntry([&](Sqex::ThirdParty::TexTools::ModEntry& entry) {
+						pool.SubmitWork([&]() {
+							if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+								return;
+
+							Logger->Format(LogCategory::VirtualSqPacks, "Rewriting {}:{}", ttmplPath.wstring(), entry.FullPath);
+
+							const auto pathSpec = Sqex::Sqpack::EntryPathSpec(entry.FullPath);
+							std::shared_ptr<Sqex::Sqpack::EntryProvider> stream = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(pathSpec, dataStream, entry.ModOffset, entry.ModSize);
+							auto rawStream = std::make_shared<Sqex::Sqpack::EntryRawStream>(stream);
+
+							switch (rawStream->EntryType()) {
+								case Sqex::Sqpack::SqData::FileEntryType::Binary:
+									stream = std::make_shared<Sqex::Sqpack::MemoryBinaryEntryProvider>(pathSpec, std::move(rawStream), currentlyCompressed ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION);
+									break;
+
+								case Sqex::Sqpack::SqData::FileEntryType::Model:
+									stream = std::make_shared<Sqex::Sqpack::MemoryModelEntryProvider>(pathSpec, std::move(rawStream), currentlyCompressed ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION);
+									break;
+
+								case Sqex::Sqpack::SqData::FileEntryType::Texture:
+									stream = std::make_shared<Sqex::Sqpack::MemoryTextureEntryProvider>(pathSpec, std::move(rawStream), currentlyCompressed ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION);
+									break;
+							}
+
+							if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+								return;
+
+							const auto size = stream->StreamSize();
+							progressMax = progressMax + size - entry.ModSize;
+							entry.ModSize = size;
+
+							{
+								const auto _ = std::lock_guard(writeMtx);
+								entry.ModOffset = outPtr;
+								outPtr += size;
+							}
+
+							std::vector<char> buf(65536);
+							Sqex::Align(size, buf.size()).IterateChunkedBreakable([&](uint64_t, uint64_t offset, uint64_t size) {
+								if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+									return false;
+
+								stream->ReadStream(offset, &buf[0], size);
+								out.Write(entry.ModOffset + offset, &buf[0], size);
+								progressCurrent += size;
+
+								return true;
+								});
+							});
+						});
+
+					pool.WaitOutstanding();
+
+					nlohmann::json j;
+					to_json(j, list);
+					Utils::SaveJsonToFile(tempTtmplPath, j);
+					out = {};
+					dataFile = {};
+
+					const auto oldTtmplPath = ttmpDir / "TTMPL.mpl.old";
+					const auto oldTtmpdPath = ttmpDir / "TTMPD.mpd.old";
+					if (exists(oldTtmplPath))
+						remove(oldTtmplPath);
+					if (exists(oldTtmpdPath))
+						remove(oldTtmpdPath);
+					rename(ttmplPath, oldTtmplPath);
+					try {
+						rename(ttmpdPath, oldTtmpdPath);
+						try {
+							rename(tempTtmplPath, ttmplPath);
+							rename(tempTtmpdPath, ttmpdPath);
+							remove(oldTtmplPath);
+							remove(oldTtmpdPath);
+						} catch (...) {
+							if (exists(ttmpdPath))
+								remove(ttmpdPath);
+							rename(oldTtmpdPath, ttmpdPath);
+							throw;
+						}
+					} catch (...) {
+						if (exists(ttmplPath))
+							remove(ttmplPath);
+						rename(oldTtmplPath, ttmplPath);
+						throw;
+					}
+					});
+
+				do {
+					progressWindow.UpdateMessage(Config->Runtime.GetStringRes(IDS_TITLE_DISCOVERINGFILES));
+					progressWindow.UpdateProgress(progressCurrent, progressMax);
+					progressWindow.Show();
+				} while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, { workerThread }));
+
+				std::ofstream(extractedStateFile) << (currentlyCompressed ? "true" : "false");
+				dataFile = Utils::Win32::Handle::FromCreateFile(ttmpdPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN);
+			}
+
 			added = parent->Children->emplace_back(std::make_shared<NestedTtmp>(NestedTtmp{
 				.Path = ttmpDir,
 				.Parent = parent,
 				.Enabled = !exists(ttmpDir / "disable"),
 				.Ttmp = TtmpSet{
 					.ListPath = ttmplPath,
-					.List = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{Utils::Win32::Handle::FromCreateFile(ttmplPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0)}),
-					.DataFile = Utils::Win32::Handle::FromCreateFile(ttmpDir / "TTMPD.mpd", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN)
+					.List = std::move(list),
+					.DataFile = std::move(dataFile),
 				},
 				}));
 		} catch (const std::exception& e) {
@@ -782,7 +925,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					exhTable.emplace(pair);
 
 				std::string currentCacheKeys("VERSION:3\n");
-				currentCacheKeys += Config->Runtime.CompressModsWheneverPossible ? "compress:true\n" : "compress:false\n";
+				currentCacheKeys += Config->Runtime.CompressModdedFiles ? "compress:true\n" : "compress:false\n";
 				{
 					const auto gameRoot = indexFile.parent_path().parent_path().parent_path();
 					const auto versionFile = Utils::Win32::Handle::FromCreateFile(gameRoot / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
@@ -1376,7 +1519,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 
 												const auto targetPath = cachedDir / entryPathSpec.FullPath;
 
-												const auto provider = Sqex::Sqpack::MemoryBinaryEntryProvider(entryPathSpec, std::make_shared<Sqex::MemoryRandomAccessStream>(std::move(*reinterpret_cast<std::vector<uint8_t>*>(&data))), Config->Runtime.CompressModsWheneverPossible ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION);
+												const auto provider = Sqex::Sqpack::MemoryBinaryEntryProvider(entryPathSpec, std::make_shared<Sqex::MemoryRandomAccessStream>(std::move(*reinterpret_cast<std::vector<uint8_t>*>(&data))), Config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION);
 												const auto len = provider.StreamSize();
 												const auto dv = provider.ReadStreamIntoVector<char>(0, static_cast<SSIZE_T>(len));
 
@@ -1587,7 +1730,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetFileSize()));
 					currentCacheKeys += std::format("SQPACK:{}:{}:{}\n",
 						canonical(gameRoot).wstring(),
-						Config->Runtime.CompressModsWheneverPossible ? "compress" : "nocompress",
+						Config->Runtime.CompressModdedFiles ? "compress" : "nocompress",
 						std::string(versionContent.begin(), versionContent.end()));
 				}
 
@@ -1688,9 +1831,9 @@ struct App::Misc::VirtualSqPacks::Implementation {
 									CharLowerW(&extension[0]);
 
 									if (extension == L".tex")
-										provider = std::make_shared<Sqex::Sqpack::MemoryTextureEntryProvider>(entryPathSpec, stream, Config->Runtime.CompressModsWheneverPossible ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION);
+										provider = std::make_shared<Sqex::Sqpack::MemoryTextureEntryProvider>(entryPathSpec, stream, Config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION);
 									else
-										provider = std::make_shared<Sqex::Sqpack::MemoryBinaryEntryProvider>(entryPathSpec, stream, Config->Runtime.CompressModsWheneverPossible ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION);
+										provider = std::make_shared<Sqex::Sqpack::MemoryBinaryEntryProvider>(entryPathSpec, stream, Config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION);
 									const auto len = provider->StreamSize();
 									const auto dv = provider->ReadStreamIntoVector<char>(0, static_cast<SSIZE_T>(len));
 									progress += stream->StreamSize();
@@ -2132,6 +2275,7 @@ void App::Misc::VirtualSqPacks::TtmpSet::TryCleanupUnusedFiles() {
 			ListPath.parent_path() / "TTMPD.mpd",
 			ListPath.parent_path() / "choices.json",
 			ListPath.parent_path() / "disable",
+			ListPath.parent_path() / "compression",
 			ListPath.parent_path(),
 		}) {
 		try {
@@ -2142,14 +2286,14 @@ void App::Misc::VirtualSqPacks::TtmpSet::TryCleanupUnusedFiles() {
 	}
 }
 
-void App::Misc::VirtualSqPacks::AddNewTtmp(const std::filesystem::path & ttmplPath, bool reflectImmediately) {
+void App::Misc::VirtualSqPacks::AddNewTtmp(const std::filesystem::path& ttmplPath, bool reflectImmediately, Window::ProgressPopupWindow& progressWindow) {
 	auto folder = m_pImpl->FindNestedTtmpContainer(ttmplPath, true);
 	if (!folder || folder->Find(ttmplPath))  // already exists
 		return;
 
 	std::shared_ptr<NestedTtmp> added;
 	try {
-		added = m_pImpl->AddFromTtmpl(ttmplPath, folder, true);
+		added = m_pImpl->AddFromTtmpl(ttmplPath, folder, true, progressWindow);
 		folder->Sort();
 	} catch (const std::exception& e) {
 		m_pImpl->Ttmps->RemoveEmptyChildren();
@@ -2177,9 +2321,9 @@ void App::Misc::VirtualSqPacks::DeleteTtmp(const std::filesystem::path & ttmpl, 
 		m_pImpl->ReflectUsedEntries();
 }
 
-void App::Misc::VirtualSqPacks::RescanTtmp() {
+void App::Misc::VirtualSqPacks::RescanTtmp(Window::ProgressPopupWindow& progressWindow) {
 	for (const auto& dir : m_pImpl->GetPossibleTtmpDirs())
-		m_pImpl->RescanTtmpTree(dir, m_pImpl->Ttmps);
+		m_pImpl->RescanTtmpTree(dir, m_pImpl->Ttmps, progressWindow);
 	m_pImpl->ReflectUsedEntries();
 }
 

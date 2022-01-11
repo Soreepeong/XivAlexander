@@ -43,6 +43,7 @@ void Sqex::Sqpack::StreamDecoder::ReadStreamState::Progress(const uint32_t reque
 		auto target = TargetBuffer.subspan(0, std::min(TargetBuffer.size_bytes(), static_cast<size_t>(blockHeader.DecompressedSize - RelativeOffset)));
 		if (blockHeader.CompressedSize == SqData::BlockHeader::CompressedSizeNotCompressed) {
 			std::copy_n(&read[static_cast<size_t>(sizeof blockHeader + RelativeOffset)], target.size(), target.begin());
+
 		} else {
 			if (sizeof blockHeader + blockHeader.CompressedSize > read.size_bytes())
 				throw CorruptDataException("Failed to read block");

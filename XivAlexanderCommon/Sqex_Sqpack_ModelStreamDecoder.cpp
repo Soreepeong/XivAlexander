@@ -6,7 +6,7 @@
 Sqex::Sqpack::ModelStreamDecoder::ModelStreamDecoder(const SqData::FileEntryHeader& header, std::shared_ptr<const EntryProvider> stream)
 	: StreamDecoder(std::move(stream)) {
 
-	const auto AsHeader = [this]() { return *reinterpret_cast<Model::Header*>(&m_head[0]); };
+	const auto AsHeader = [this]() -> Model::Header& { return *reinterpret_cast<Model::Header*>(&m_head[0]); };
 
 	const auto underlyingSize = m_stream->StreamSize();
 	uint64_t readOffset = sizeof SqData::FileEntryHeader;
@@ -76,17 +76,17 @@ Sqex::Sqpack::ModelStreamDecoder::ModelStreamDecoder(const SqData::FileEntryHead
 		lastOffset += block.DecompressedSize;
 	}
 
-	for (uint16_t i = locator.FirstBlockIndices.Stack.Value(), i_ = locator.FirstBlockIndices.Stack + locator.BlockCount.Stack; i < i_; ++i)
-		AsHeader().StackSize += m_blocks[i].DecompressedSize;
-	for (uint16_t i = locator.FirstBlockIndices.Runtime.Value(), i_ = locator.FirstBlockIndices.Runtime + locator.BlockCount.Runtime; i < i_; ++i)
-		AsHeader().RuntimeSize += m_blocks[i].DecompressedSize;
-	for (int j = 0; j < 3; ++j) {
-		for (uint16_t i = locator.FirstBlockIndices.Vertex[j].Value(), i_ = locator.FirstBlockIndices.Vertex[j] + locator.BlockCount.Vertex[j]; i < i_; ++i)
-			AsHeader().VertexSize[j] += m_blocks[i].DecompressedSize;
-		for (uint16_t i = locator.FirstBlockIndices.Index[j].Value(), i_ = locator.FirstBlockIndices.Index[j] + locator.BlockCount.Index[j]; i < i_; ++i)
-			AsHeader().IndexSize[j] += m_blocks[i].DecompressedSize;
-		AsHeader().VertexOffset[j] = static_cast<uint32_t>(m_head.size() + (locator.FirstBlockIndices.Vertex[j] == m_blocks.size() ? lastOffset : m_blocks[locator.FirstBlockIndices.Vertex[j]].RequestOffset));
-		AsHeader().IndexOffset[j] = static_cast<uint32_t>(m_head.size() + (locator.FirstBlockIndices.Index[j] == m_blocks.size() ? lastOffset : m_blocks[locator.FirstBlockIndices.Index[j]].RequestOffset));
+	for (size_t blkI = locator.FirstBlockIndices.Stack.Value(), i_ = blkI + locator.BlockCount.Stack; blkI < i_; ++blkI)
+		AsHeader().StackSize += m_blocks[blkI].DecompressedSize;
+	for (size_t blkI = locator.FirstBlockIndices.Runtime.Value(), i_ = blkI + locator.BlockCount.Runtime; blkI < i_; ++blkI)
+		AsHeader().RuntimeSize += m_blocks[blkI].DecompressedSize;
+	for (size_t lodI = 0; lodI < 3; ++lodI) {
+		for (size_t blkI = locator.FirstBlockIndices.Vertex[lodI].Value(), i_ = blkI + locator.BlockCount.Vertex[lodI]; blkI < i_; ++blkI)
+			AsHeader().VertexSize[lodI] += m_blocks[blkI].DecompressedSize;
+		for (size_t blkI = locator.FirstBlockIndices.Index[lodI].Value(), i_ = blkI + locator.BlockCount.Index[lodI]; blkI < i_; ++blkI)
+			AsHeader().IndexSize[lodI] += m_blocks[blkI].DecompressedSize;
+		AsHeader().VertexOffset[lodI] = static_cast<uint32_t>(m_head.size() + (locator.FirstBlockIndices.Vertex[lodI] == m_blocks.size() ? lastOffset : m_blocks[locator.FirstBlockIndices.Vertex[lodI]].RequestOffset));
+		AsHeader().IndexOffset[lodI] = static_cast<uint32_t>(m_head.size() + (locator.FirstBlockIndices.Index[lodI] == m_blocks.size() ? lastOffset : m_blocks[locator.FirstBlockIndices.Index[lodI]].RequestOffset));
 	}
 }
 

@@ -23,7 +23,7 @@ void Sqex::Sqpack::OnTheFlyModelEntryProvider::Initialize(const RandomAccessStre
 	};
 
 	auto baseFileOffset = static_cast<uint32_t>(sizeof header);
-	const auto generateSet = [&](uint32_t size) {
+	const auto generateSet = [&](const uint32_t size) {
 		const auto alignedDecompressedSize = Align(size).Alloc;
 		const auto alignedBlock = Align<uint32_t, uint16_t>(size, EntryBlockDataSize);
 		const auto firstBlockOffset = size ? getNextBlockOffset() : 0;
@@ -59,6 +59,9 @@ void Sqex::Sqpack::OnTheFlyModelEntryProvider::Initialize(const RandomAccessStre
 		m_header.Model.ChunkSizes.Runtime) = generateSet(header.RuntimeSize);
 
 	for (size_t i = 0; i < 3; i++) {
+		if (!header.VertexOffset[i])
+			break;
+
 		std::tie(m_header.Model.AlignedDecompressedSizes.Vertex[i],
 			m_header.Model.BlockCount.Vertex[i],
 			m_header.Model.FirstBlockOffsets.Vertex[i],
@@ -242,7 +245,7 @@ void Sqex::Sqpack::MemoryModelEntryProvider::Initialize(const RandomAccessStream
 
 	std::vector<uint8_t> tempBuf(EntryBlockDataSize);
 	auto baseFileOffset = static_cast<uint32_t>(sizeof header);
-	const auto generateSet = [&](uint32_t size) {
+	const auto generateSet = [&](const uint32_t size) {
 		const auto alignedDecompressedSize = Align(size).Alloc;
 		const auto alignedBlock = Align<uint32_t, uint16_t>(size, EntryBlockDataSize);
 		const auto firstBlockOffset = size ? getNextBlockOffset() : 0;
@@ -298,6 +301,10 @@ void Sqex::Sqpack::MemoryModelEntryProvider::Initialize(const RandomAccessStream
 		modelHeader.ChunkSizes.Runtime) = generateSet(header.RuntimeSize);
 
 	for (size_t i = 0; i < 3; i++) {
+		if (!header.VertexOffset[i])
+			break;
+
+		baseFileOffset = header.VertexOffset[i];
 		std::tie(modelHeader.AlignedDecompressedSizes.Vertex[i],
 			modelHeader.BlockCount.Vertex[i],
 			modelHeader.FirstBlockOffsets.Vertex[i],
@@ -320,7 +327,7 @@ void Sqex::Sqpack::MemoryModelEntryProvider::Initialize(const RandomAccessStream
 	entryHeader.HeaderSize = Align(static_cast<uint32_t>(sizeof entryHeader + sizeof modelHeader + std::span(paddedBlockSizes).size_bytes()));
 	entryHeader.SetSpaceUnits(entryBody.size());
 
-	m_data.reserve(Align(entryHeader.HeaderSize + getNextBlockOffset()));
+	m_data.reserve(Align(entryHeader.HeaderSize + entryBody.size()));
 	m_data.insert(m_data.end(), reinterpret_cast<char*>(&entryHeader), reinterpret_cast<char*>(&entryHeader + 1));
 	m_data.insert(m_data.end(), reinterpret_cast<char*>(&modelHeader), reinterpret_cast<char*>(&modelHeader + 1));
 	if (!paddedBlockSizes.empty()) {

@@ -85,10 +85,10 @@ namespace App::Window {
 		void ImportMusicImportConfig(const std::filesystem::path& path);
 		void ImportExcelTransformConfig(const std::filesystem::path& path);
 		void AddAdditionalGameRootDirectory(std::filesystem::path path);
-		std::string InstallTTMP(const std::filesystem::path& path, const Utils::Win32::Event& cancelEvent);
+		std::string InstallTTMP(const std::filesystem::path& path, Window::ProgressPopupWindow& progressWindow);
 		void BatchTtmpOperation(Misc::VirtualSqPacks::NestedTtmp& parent, int menuId);
 
-		std::pair<std::filesystem::path, std::string> InstallAnyFile(const std::filesystem::path& path, const Utils::Win32::Event& cancelEvent);
+		std::pair<std::filesystem::path, std::string> InstallAnyFile(const std::filesystem::path& path, Window::ProgressPopupWindow& progressWindow);
 		void InstallMultipleFiles(const std::vector<std::filesystem::path>& paths);
 
 		void EnsureAndOpenDirectory(const std::filesystem::path& path);

@@ -12,6 +12,7 @@ namespace Sqex::Sqpack {
 			std::vector<uint8_t> ReadBuffer;
 			uint64_t RelativeOffset = 0;
 			uint32_t RequestOffsetVerify = 0;
+			bool HadCompressedBlocks = false;
 
 			ZlibReusableInflater Inflater{ -MAX_WBITS };
 

@@ -5,6 +5,9 @@
 #include <XivAlexanderCommon/Sqex_CommandLine.h>
 #include <XivAlexanderCommon/Sqex_FontCsv_CreateConfig.h>
 #include <XivAlexanderCommon/Sqex_Sqpack_BinaryEntryProvider.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_EmptyOrObfuscatedEntryProvider.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_ModelEntryProvider.h>
+#include <XivAlexanderCommon/Sqex_Sqpack_TextureEntryProvider.h>
 #include <XivAlexanderCommon/Sqex_Sound_MusicImporter.h>
 #include <XivAlexanderCommon/Sqex_ThirdParty_TexTools.h>
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
@@ -1014,7 +1017,7 @@ void App::Window::MainWindow::SetMenuStates() const {
 		SetMenuState(hMenu, ID_MODDING_ENABLE, config.UseModding, true);
 		SetMenuState(hMenu, ID_MODDING_LOGALLHASHKEYS, config.UseHashTrackerKeyLogging, true);
 		SetMenuState(hMenu, ID_MODDING_LOGALLFILEACCESS, config.LogAllDataFileRead, true);
-		SetMenuState(hMenu, ID_MODDING_COMPRESSWHENEVERPOSSIBLE, config.CompressModsWheneverPossible, true);
+		SetMenuState(hMenu, ID_MODDING_COMPRESSWHENEVERPOSSIBLE, config.CompressModdedFiles, true);
 
 		const auto languageList = config.GetFallbackLanguageList();
 		SetMenuState(hMenu, ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1, false, true, config.GetLanguageNameLocalized(languageList[0]));
@@ -1385,7 +1388,7 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 			return;
 
 		case ID_MODDING_COMPRESSWHENEVERPOSSIBLE:
-			config.CompressModsWheneverPossible = !config.CompressModsWheneverPossible;
+			config.CompressModdedFiles = !config.CompressModdedFiles;
 			return;
 
 		case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1: {
@@ -1877,7 +1880,7 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 					std::string resultMessage;
 					const auto adderThread = Utils::Win32::Thread(L"TTMP Importer", [&]() {
 						try {
-							resultMessage = InstallTTMP(paths[0], progress.GetCancelEvent());
+							resultMessage = InstallTTMP(paths[0], progress);
 						} catch (const std::exception& e) {
 							progress.Cancel();
 							Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
@@ -1913,10 +1916,25 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 			EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods");
 			return;
 
-		case ID_MODDING_TTMP_REFRESH:
-			if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks())
-				sqpacks->RescanTtmp();
+		case ID_MODDING_TTMP_REFRESH: {
+			if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks()) {
+				m_backgroundWorkerThread = Utils::Win32::Thread(L"RescanTtmpOnOtherThread", [this, sqpacks]{
+					m_backgroundWorkerProgressWindow = std::make_shared<ProgressPopupWindow>(nullptr);
+					const auto workerThread = Utils::Win32::Thread(L"RescanTtmp", [&] {
+						sqpacks->RescanTtmp(*m_backgroundWorkerProgressWindow);
+						});
+
+					do {
+						m_backgroundWorkerProgressWindow->UpdateMessage(m_config->Runtime.GetStringRes(IDS_TITLE_DISCOVERINGFILES));
+						m_backgroundWorkerProgressWindow->Show();
+					} while (WAIT_TIMEOUT == m_backgroundWorkerProgressWindow->DoModalLoop(100, { workerThread }));
+					workerThread.Wait();
+					m_backgroundWorkerThread = nullptr;
+					m_backgroundWorkerProgressWindow = nullptr;
+					});
+			}
 			return;
+		}
 
 		case ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY:
 			EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries");
@@ -1998,9 +2016,15 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 							if (datFile.empty())
 								throw std::runtime_error(std::format("Could not decide where to store {}", relPath));
 
-							const auto provider = Sqex::Sqpack::MemoryBinaryEntryProvider(entryPathSpec, std::make_shared<Sqex::FileRandomAccessStream>(target));
-							const auto len = provider.StreamSize();
-							const auto dv = provider.ReadStreamIntoVector<char>(0, static_cast<SSIZE_T>(len));
+							std::vector<char> dv;
+							if (file_size(target) == 0)
+								dv = Sqex::Sqpack::EmptyOrObfuscatedEntryProvider(entryPathSpec).ReadStreamIntoVector<char>(0);
+							else if (relPath.ends_with(L".tex"))
+								dv = Sqex::Sqpack::MemoryTextureEntryProvider(entryPathSpec, std::make_shared<Sqex::FileRandomAccessStream>(target), m_config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION).ReadStreamIntoVector<char>(0);
+							else if (relPath.ends_with(L".mdl"))
+								dv = Sqex::Sqpack::MemoryModelEntryProvider(entryPathSpec, std::make_shared<Sqex::FileRandomAccessStream>(target), m_config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION).ReadStreamIntoVector<char>(0);
+							else
+								dv = Sqex::Sqpack::MemoryBinaryEntryProvider(entryPathSpec, std::make_shared<Sqex::FileRandomAccessStream>(target), m_config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION).ReadStreamIntoVector<char>(0);
 
 							if (m_backgroundWorkerProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 								return;
@@ -2008,7 +2032,7 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 							const auto entryLine = std::format("{}\n", nlohmann::json::object({
 								{"FullPath", Utils::StringReplaceAll<std::string>(Utils::ToUtf8(entryPathSpec.FullPath.wstring()), "\\", "/")},
 								{"ModOffset", ttmpdPtr},
-								{"ModSize", len},
+								{"ModSize", dv.size()},
 								{"DatFile", datFile},
 								}).dump());
 							ttmplPtr += ttmpl.Write(ttmplPtr, std::span(entryLine));
@@ -2329,7 +2353,7 @@ std::wstring CreateTtmpDirectoryName(const std::string& modPackName, std::wstrin
 	return name;
 }
 
-std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& path, const Utils::Win32::Event& cancelEvent) {
+std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& path, Window::ProgressPopupWindow& progressWindow) {
 	const auto targetDirectory = m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods";
 	if (path.empty())
 		return "";
@@ -2391,7 +2415,7 @@ std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& pa
 				throw std::runtime_error(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_ARCHIVE_MISSING_TTMP)));
 
 			for (const auto& entry : pArc->getEntries()) {
-				if (cancelEvent.Wait(0) == WAIT_OBJECT_0)
+				if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 					return "";
 
 				auto name = Utils::FromUtf8(entry.getName());
@@ -2445,12 +2469,12 @@ std::string App::Window::MainWindow::InstallTTMP(const std::filesystem::path& pa
 	std::filesystem::rename(temporaryTtmpDirectory, targetTtmpDirectory);
 
 	if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks())
-		sqpacks->AddNewTtmp(targetTtmpDirectory / "TTMPL.mpl");
+		sqpacks->AddNewTtmp(targetTtmpDirectory / "TTMPL.mpl", true, progressWindow);
 
 	return offerConfiguration ? Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_NOTIFY_TTMP_HAS_CONFIGURATION)) : "";
 }
 
-std::pair<std::filesystem::path, std::string> App::Window::MainWindow::InstallAnyFile(const std::filesystem::path& path, const Utils::Win32::Event& cancelEvent) {
+std::pair<std::filesystem::path, std::string> App::Window::MainWindow::InstallAnyFile(const std::filesystem::path& path, Window::ProgressPopupWindow& progressWindow) {
 	auto fileNameLower = path.filename().wstring();
 	CharLowerW(&fileNameLower[0]);
 	if (fileNameLower == L"ffxiv_dx11.exe" || fileNameLower == L"ffxiv.exe") {
@@ -2469,7 +2493,7 @@ std::pair<std::filesystem::path, std::string> App::Window::MainWindow::InstallAn
 	char buf[2];
 	file.Read(0, buf, 2);
 	if (buf[0] == 'P' && buf[1] == 'K') {
-		const auto msg = InstallTTMP(path, cancelEvent);
+		const auto msg = InstallTTMP(path, progressWindow);
 		return std::make_pair(path, msg.empty() ? Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_RESULT_TTMP_INSTALLED)) : msg);
 	}
 	const auto fileSize = file.GetFileSize();
@@ -2477,7 +2501,7 @@ std::pair<std::filesystem::path, std::string> App::Window::MainWindow::InstallAn
 		throw std::runtime_error("File too big");
 
 	if (const auto ttmpl = Sqex::ThirdParty::TexTools::TTMPL::FromStream(Sqex::FileRandomAccessStream{ file }); !ttmpl.SimpleModsList.empty() || !ttmpl.ModPackPages.empty()) {
-		const auto msg = InstallTTMP(path, cancelEvent);
+		const auto msg = InstallTTMP(path, progressWindow);
 		return std::make_pair(path, msg.empty() ? Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_RESULT_TTMP_INSTALLED)) : msg);
 	}
 
@@ -2522,9 +2546,9 @@ void App::Window::MainWindow::InstallMultipleFiles(const std::vector<std::filesy
 	std::vector<std::pair<std::filesystem::path, std::string>> success;
 	std::vector<std::pair<std::filesystem::path, std::string>> ignored;
 	{
-		ProgressPopupWindow progress(m_hWnd);
-		progress.UpdateMessage(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_TITLE_IMPORTING)));
-		progress.UpdateProgress(0, 0);
+		ProgressPopupWindow progressWindow(m_hWnd);
+		progressWindow.UpdateMessage(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_TITLE_IMPORTING)));
+		progressWindow.UpdateProgress(0, 0);
 		const auto showAfter = GetTickCount64() + 500;
 
 		const auto adderThread = Utils::Win32::Thread(L"DropFiles Handler", [&]() {
@@ -2535,7 +2559,7 @@ void App::Window::MainWindow::InstallMultipleFiles(const std::vector<std::filesy
 						for (const auto& item : std::filesystem::recursive_directory_iterator(path)) {
 							if (!item.is_directory()) {
 								try {
-									auto res = InstallAnyFile(item.path(), progress.GetCancelEvent());
+									auto res = InstallAnyFile(item.path(), progressWindow);
 									if (!res.second.empty()) {
 										success.emplace_back(std::move(res));
 										anyAdded = true;
@@ -2550,7 +2574,7 @@ void App::Window::MainWindow::InstallMultipleFiles(const std::vector<std::filesy
 							ignored.emplace_back(path, Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_NO_MATCHING_FILES)));
 					} else {
 						try {
-							auto res = InstallAnyFile(path, progress.GetCancelEvent());
+							auto res = InstallAnyFile(path, progressWindow);
 							if (res.second.empty())
 								ignored.emplace_back(path, Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_UNSUPPORTED_FILE_TYPE)));
 							else
@@ -2565,9 +2589,9 @@ void App::Window::MainWindow::InstallMultipleFiles(const std::vector<std::filesy
 			}
 			});
 
-		while (WAIT_TIMEOUT == progress.DoModalLoop(100, { adderThread })) {
+		while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, { adderThread })) {
 			if (showAfter < GetTickCount64())
-				progress.Show();
+				progressWindow.Show();
 		}
 		adderThread.Wait();
 	}
@@ -2626,29 +2650,43 @@ void App::Window::MainWindow::BatchTtmpOperation(Misc::VirtualSqPacks::NestedTtm
 		}
 		if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, msg) == IDYES) {
 			if (const auto sqpacks = Feature::GameResourceOverrider::GetVirtualSqPacks()) {
-				parent.Traverse(false, [&](Misc::VirtualSqPacks::NestedTtmp& nestedTtmp) {
-					if (!nestedTtmp.Ttmp)
-						return;
+				m_backgroundWorkerThread = Utils::Win32::Thread(L"BatchTtmpOperationOnOtherThread", [this, &parent, sqpacks, menuId] {
+					m_backgroundWorkerProgressWindow = std::make_shared<ProgressPopupWindow>(nullptr);
+					const auto workerThread = Utils::Win32::Thread(L"BatchTtmpOperation", [&] {
+						parent.Traverse(false, [&](Misc::VirtualSqPacks::NestedTtmp& nestedTtmp) {
+							if (!nestedTtmp.Ttmp)
+								return;
 
-					auto& set = *nestedTtmp.Ttmp;
-					switch (menuId) {
-						case ID_MODDING_TTMP_REMOVEALL:
-							sqpacks->DeleteTtmp(set.ListPath, false);
-							break;
+							auto& set = *nestedTtmp.Ttmp;
+							switch (menuId) {
+								case ID_MODDING_TTMP_REMOVEALL:
+									sqpacks->DeleteTtmp(set.ListPath, false);
+									break;
 
-						case ID_MODDING_TTMP_ENABLEALL:
-							nestedTtmp.Enabled = true;
-							sqpacks->ApplyTtmpChanges(nestedTtmp, false);
-							break;
+								case ID_MODDING_TTMP_ENABLEALL:
+									nestedTtmp.Enabled = true;
+									sqpacks->ApplyTtmpChanges(nestedTtmp, false);
+									break;
 
-						case ID_MODDING_TTMP_DISABLEALL:
-							nestedTtmp.Enabled = false;
-							sqpacks->ApplyTtmpChanges(nestedTtmp, false);
-							break;
-					}
-					return;
+								case ID_MODDING_TTMP_DISABLEALL:
+									nestedTtmp.Enabled = false;
+									sqpacks->ApplyTtmpChanges(nestedTtmp, false);
+									break;
+							}
+							return;
+							});
+
+						sqpacks->RescanTtmp(*m_backgroundWorkerProgressWindow);
+						});
+
+					do {
+						m_backgroundWorkerProgressWindow->UpdateMessage(m_config->Runtime.GetStringRes(IDS_TITLE_DISCOVERINGFILES));
+						m_backgroundWorkerProgressWindow->Show();
+					} while (WAIT_TIMEOUT == m_backgroundWorkerProgressWindow->DoModalLoop(100, { workerThread }));
+					workerThread.Wait();
+					m_backgroundWorkerThread = nullptr;
+					m_backgroundWorkerProgressWindow = nullptr;
 					});
-				sqpacks->RescanTtmp();
 			}
 		}
 	} catch (const std::exception& e) {

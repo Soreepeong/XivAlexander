@@ -57,6 +57,10 @@ App::Window::ProgressPopupWindow::~ProgressPopupWindow() {
 }
 
 void App::Window::ProgressPopupWindow::UpdateProgress(uint64_t progress, uint64_t max) {
+	if (GetCurrentThreadId() != GetWindowThreadProcessId(m_hWnd, nullptr)) {
+		RunOnUiThread([this, progress, max]() { UpdateProgress(progress, max); });
+		return;
+	}
 	const auto prevStyle = GetWindowLongPtrW(m_hProgressBar, GWL_STYLE);
 	if (!max) {
 		if (!(prevStyle & PBS_MARQUEE)) {

@@ -7,6 +7,10 @@
 
 #include "XivAlexanderCommon/Utils_ListenerManager.h"
 
+namespace App::Window {
+	class ProgressPopupWindow;
+}
+
 namespace App::Misc {
 	class VirtualSqPacks {
 		struct Implementation;
@@ -84,9 +88,9 @@ namespace App::Misc {
 
 		std::shared_ptr<NestedTtmp> GetTtmps() const;
 
-		void AddNewTtmp(const std::filesystem::path& ttmpl, bool reflectImmediately = true);
+		void AddNewTtmp(const std::filesystem::path& ttmpl, bool reflectImmediately, Window::ProgressPopupWindow& progressWindow);
 		void DeleteTtmp(const std::filesystem::path& ttmpl, bool reflectImmediately = true);
-		void RescanTtmp();
+		void RescanTtmp(Window::ProgressPopupWindow& progressWindow);
 		void ApplyTtmpChanges(NestedTtmp& nestedTtmp, bool announce = true);
 
 		Utils::ListenerManager<Implementation, void> OnTtmpSetsChanged;
