@@ -229,7 +229,6 @@ void App::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::string_view
 					if (k == "DEV.TestSID") {
 						for (auto& c : v)
 							c = '*';
-						v += std::format("({})", v.size());
 						of << std::format("{}={}({})\n", k, v, v.size());
 					} else
 						of << std::format("{}={}\n", k, v);
