@@ -1,9 +1,16 @@
 #include "pch.h"
 #include "Utils_Win32_ThreadPool.h"
 
-Utils::Win32::TpEnvironment::TpEnvironment(int maxCores, int threadPriority)
-	: m_threadPriority(threadPriority)
-	, m_maxCores(maxCores)
+static DWORD GetNumberOfProcessors() {
+	SYSTEM_INFO sysInfo;
+	GetNativeSystemInfo(&sysInfo);
+	return sysInfo.dwNumberOfProcessors;
+}
+
+Utils::Win32::TpEnvironment::TpEnvironment(std::wstring name, DWORD preferredThreadCount, int threadPriority)
+	: m_name(std::move(name))
+	, m_threadPriority(threadPriority)
+	, m_maxCores(std::max(std::min(GetNumberOfProcessors(), preferredThreadCount), 1UL))
 	, m_pool(CreateThreadpool(nullptr))
 	, m_group(CreateThreadpoolCleanupGroup()) {
 	if (!m_pool || !m_group) {
@@ -20,10 +27,6 @@ Utils::Win32::TpEnvironment::TpEnvironment(int maxCores, int threadPriority)
 		delete static_cast<std::function<void()>*>(objectCtx);
 	});
 
-	SYSTEM_INFO sysInfo;
-	GetNativeSystemInfo(&sysInfo);
-	if (m_maxCores <= 0)
-		m_maxCores = std::max(static_cast<int>(sysInfo.dwNumberOfProcessors) + m_maxCores, 1);
 	SetThreadpoolThreadMaximum(m_pool, m_maxCores);
 }
 
@@ -45,6 +48,7 @@ void Utils::Win32::TpEnvironment::SubmitWork(std::function<void()> cb) {
 	const auto lock = std::lock_guard(m_workMtx);
 	const auto obj = new std::function([this, cb = std::move(cb)]() {
 		SetThreadPriority(GetCurrentThread(), m_threadPriority);
+		Utils::Win32::SetThreadDescription(GetCurrentThread(), m_name);
 		cb();
 	});
 	const auto work = CreateThreadpoolWork([](PTP_CALLBACK_INSTANCE, void* objectCtx, PTP_WORK) {

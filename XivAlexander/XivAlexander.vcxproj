@@ -160,8 +160,10 @@
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)"
-cmd /c "exit /b 0"
+      <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)" || cd.
+copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(APPDATA)\XivAlexander\" || cd.
+copy /y "$(TargetPath)" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d11.dll" || cd.
+copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
 </Command>
     </PostBuildEvent>
     <CustomBuildStep>
@@ -200,8 +202,10 @@ cmd /c "exit /b 0"
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)"
-cmd /c "exit /b 0"
+      <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)" || cd.
+copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(APPDATA)\XivAlexander\" || cd.
+copy /y "$(TargetPath)" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d9.dll" || cd.
+copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
 </Command>
     </PostBuildEvent>
     <CustomBuildStep>
@@ -244,8 +248,10 @@ cmd /c "exit /b 0"
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)"
-cmd /c "exit /b 0"
+      <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)" || cd.
+copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(APPDATA)\XivAlexander\" || cd.
+copy /y "$(TargetPath)" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d11.dll" || cd.
+copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
 </Command>
     </PostBuildEvent>
     <CustomBuildStep>
@@ -288,8 +294,10 @@ cmd /c "exit /b 0"
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)"
-cmd /c "exit /b 0"
+      <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)" || cd.
+copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(APPDATA)\XivAlexander\" || cd.
+copy /y "$(TargetPath)" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d9.dll" || cd.
+copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
 </Command>
     </PostBuildEvent>
     <CustomBuildStep>
@@ -301,7 +309,6 @@ cmd /c "exit /b 0"
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="App_DalamudHandlerApp.cpp" />
     <ClCompile Include="App_Feature_GameResourceOverrider.cpp" />
     <ClCompile Include="App_Feature_MainThreadTimingHandler.cpp" />
     <ClCompile Include="App_InjectOnCreateProcessApp.cpp" />
@@ -348,7 +355,6 @@ cmd /c "exit /b 0"
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="App_DalamudHandlerApp.h" />
     <ClInclude Include="App_Feature_GameResourceOverrider.h" />
     <ClInclude Include="App_Feature_MainThreadTimingHandler.h" />
     <ClInclude Include="App_InjectOnCreateProcessApp.h" />

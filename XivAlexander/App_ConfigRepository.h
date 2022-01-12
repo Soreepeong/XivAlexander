@@ -38,78 +38,70 @@ namespace App {
 			friend class BaseRepository;
 			template<typename T>
 			friend class Item;
-			const char* m_pszName;
 
-		protected:
 			BaseRepository* const m_pBaseRepository;
 
+		protected:
 			ItemBase(BaseRepository* pRepository, const char* pszName);
 
-			virtual bool LoadFrom(const nlohmann::json&, bool announceChanged = false) = 0;
+			virtual bool LoadFrom(const nlohmann::json&) = 0;
 			virtual void SaveTo(nlohmann::json&) const = 0;
 
-			void AnnounceChanged(bool skipNonLoad) {
-				OnChangeListenerAlsoOnLoad(*this);
-				if (!skipNonLoad)
-					OnChangeListener(*this);
-			}
+			void TriggerOnChange();
 
 		public:
 			virtual ~ItemBase() = default;
 
-			[[nodiscard]] auto Name() const { return m_pszName; }
-
-			Utils::ListenerManager<ItemBase, void, ItemBase&> OnChangeListener;
-			Utils::ListenerManager<ItemBase, void, ItemBase&> OnChangeListenerAlsoOnLoad;
+			const char* const Name;
+			Utils::ListenerManager<ItemBase, void> OnChange;
+			[[nodiscard]] Utils::CallOnDestruction AddAndCallOnChange(std::function<void()> cb);
 		};
 
 		template<typename T>
 		class Item : public ItemBase {
 			friend class BaseRepository;
+
 			T m_value;
-			const std::function<T(const T&)> m_fnValidator;
+			const std::function<T(T)> m_sanitizer;
 
 		protected:
 			Item(BaseRepository* pRepository, const char* pszName, const T& defaultValue)
 				: ItemBase(pRepository, pszName)
 				, m_value(std::move(defaultValue))
-				, m_fnValidator(nullptr) {
+				, m_sanitizer([](T v) { return std::move(v); }) {
+
+				pRepository->m_cleanup += OnChange([pRepository]() { pRepository->Save(); });
 			}
 
 			Item(BaseRepository* pRepository, const char* pszName, const T& defaultValue, std::function<T(const T&)> validator)
 				: ItemBase(pRepository, pszName)
 				, m_value(std::move(defaultValue))
-				, m_fnValidator(validator) {
+				, m_sanitizer(validator) {
+
+				pRepository->m_cleanup += OnChange([pRepository]() { pRepository->Save(); });
 			}
 
-			bool Assign(const T& rv) {
-				const auto sanitized = m_fnValidator ? m_fnValidator(rv) : rv;
-				m_value = sanitized;
-				return sanitized == rv;
-			}
-
-			bool LoadFrom(const nlohmann::json& data, bool announceChanged = false) override;
-
+			bool LoadFrom(const nlohmann::json& data) override;
 			void SaveTo(nlohmann::json& data) const override;
 
 		public:
 			~Item() override = default;
 
 			Item<T>& operator=(const T& rv) {
-				if (m_value == rv)
-					return *this;
-
-				m_value = rv;
-				AnnounceChanged(false);
+				auto sanitized = m_sanitizer(rv);
+				if (m_value != sanitized) {
+					m_value = std::move(sanitized);
+					TriggerOnChange();
+				}
 				return *this;
 			}
 
 			Item<T>& operator=(T&& rv) {
-				if (m_value == rv)
-					return *this;
-
-				m_value = std::move(rv);
-				AnnounceChanged(false);
+				auto sanitized = m_sanitizer(std::move(rv));
+				if (m_value != sanitized) {
+					m_value = std::move(sanitized);
+					TriggerOnChange();
+				}
 				return *this;
 			}
 
@@ -120,6 +112,13 @@ namespace App {
 			[[nodiscard]] const T& Value() const {
 				return m_value;
 			}
+
+			template<typename = std::enable_if_t<std::is_same_v<T, bool>>>
+			Item<T>& Toggle() {
+				m_value = !m_value;
+				TriggerOnChange();
+				return *this;
+			}
 		};
 
 		class BaseRepository {
@@ -128,6 +127,11 @@ namespace App {
 			friend class Item;
 
 			bool m_loaded = false;
+			struct {
+				std::mutex Mtx;
+				bool PendingSave = false;
+				size_t SupressionCounter = 0;
+			} m_suppressSave;
 
 			const Config* m_pConfig;
 			const std::filesystem::path m_sConfigPath;
@@ -136,7 +140,9 @@ namespace App {
 			const std::shared_ptr<Misc::Logger> m_logger;
 
 			std::vector<ItemBase*> m_allItems;
-			std::vector<Utils::CallOnDestruction> m_destructionCallbacks;
+
+		protected:
+			Utils::CallOnDestruction::Multiple m_cleanup;
 
 		public:
 			BaseRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
@@ -144,8 +150,10 @@ namespace App {
 
 			[[nodiscard]] auto Loaded() const { return m_loaded; }
 
+			Utils::CallOnDestruction WithSuppressSave();
+
 			void Save(const std::filesystem::path& to = {});
-			virtual void Reload(const std::filesystem::path& from, bool announceChange = false);
+			virtual void Reload(const std::filesystem::path& from = {});
 
 			[[nodiscard]] auto GetConfigPath() const { return m_sConfigPath; }
 
@@ -172,8 +180,6 @@ namespace App {
 		class RuntimeRepository : public BaseRepository {
 			friend class Config;
 			using BaseRepository::BaseRepository;
-
-			Utils::CallOnDestruction::Multiple m_cleanup;
 
 		public:
 
@@ -226,7 +232,6 @@ namespace App {
 
 			Item<bool> UseMoreCpuTime = CreateConfigItem(this, "UseMoreCpuPower", false);
 			Item<bool> SynchronizeProcessing = CreateConfigItem(this, "SynchronizeProcessing", false);
-			Item<bool> TerminateOnExitProcess = CreateConfigItem(this, "TerminateOnExitProcess", false);
 
 			Item<uint64_t> LockFramerateInterval = CreateConfigItem<uint64_t>(this, "LockFramerate", 0, [](const uint64_t& val) {
 				return std::min<uint64_t>(std::max<uint64_t>(0, val), 1000000);
@@ -278,7 +283,7 @@ namespace App {
 			RuntimeRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
 			~RuntimeRepository() override;
 			
-			void Reload(const std::filesystem::path& from, bool announceChange = false) override;
+			void Reload(const std::filesystem::path& from = {}) override;
 
 			[[nodiscard]] WORD GetLangId() const;
 			[[nodiscard]] LPCWSTR GetStringRes(UINT uId) const;
@@ -360,7 +365,6 @@ namespace App {
 
 	protected:
 		static std::weak_ptr<Config> s_instance;
-		bool m_bSuppressSave = false;
 
 		Config(std::filesystem::path initializationConfigPath);
 
@@ -371,7 +375,7 @@ namespace App {
 
 		virtual ~Config();
 
-		void SuppressSave(bool suppress);
+		void Reload();
 
 		static std::shared_ptr<Config> Acquire();
 	};

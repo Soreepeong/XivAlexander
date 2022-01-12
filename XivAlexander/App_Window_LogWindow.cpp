@@ -61,13 +61,13 @@ App::Window::LogWindow::LogWindow()
 	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Warning), RGB(160, 160, 0));
 	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Error), RGB(255, 80, 80));
 
-	m_cleanup += m_config->Runtime.AlwaysOnTop_XivAlexLogWindow.OnChangeListener([this](auto&) {
+	m_cleanup += m_config->Runtime.AlwaysOnTop_XivAlexLogWindow.OnChange([this]() {
 		SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexLogWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 		});
-	m_cleanup += m_config->Runtime.UseWordWrap_XivAlexLogWindow.OnChangeListener([this](auto&) {
+	m_cleanup += m_config->Runtime.UseWordWrap_XivAlexLogWindow.OnChange([this]() {
 		m_direct(m_directPtr, SCI_SETWRAPMODE, m_config->Runtime.UseWordWrap_XivAlexLogWindow ? SC_WRAP_CHAR : SC_WRAP_NONE, 0);
 		});
-	m_cleanup += m_config->Runtime.UseMonospaceFont_XivAlexLogWindow.OnChangeListener([this](auto&) {
+	m_cleanup += m_config->Runtime.UseMonospaceFont_XivAlexLogWindow.OnChange([this]() {
 		if (m_config->Runtime.UseMonospaceFont_XivAlexLogWindow) {
 			m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>("Courier New"));
 		} else {

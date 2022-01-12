@@ -56,15 +56,24 @@ App::Config::BaseRepository::BaseRepository(__in_opt const Config* pConfig, std:
 App::Config::BaseRepository::~BaseRepository() = default;
 
 App::Config::ItemBase::ItemBase(BaseRepository * pRepository, const char* pszName)
-	: m_pszName(pszName)
+	: Name(pszName)
 	, m_pBaseRepository(pRepository) {
 	pRepository->m_allItems.push_back(this);
 }
 
-void App::Config::BaseRepository::Reload(const std::filesystem::path & from, bool announceChange) {
+void App::Config::ItemBase::TriggerOnChange() {
+	OnChange();
+}
+
+Utils::CallOnDestruction App::Config::ItemBase::AddAndCallOnChange(std::function<void()> cb) {
+	auto r = OnChange(cb);
+	cb();
+	return r;
+}
+
+void App::Config::BaseRepository::Reload(const std::filesystem::path & from) {
 	m_loaded = true;
 
-	bool changed = false;
 	nlohmann::json totalConfig;
 	if (exists(from.empty() ? m_sConfigPath : from)) {
 		try {
@@ -73,27 +82,20 @@ void App::Config::BaseRepository::Reload(const std::filesystem::path & from, boo
 				throw std::runtime_error("Root must be an object.");  // TODO: string resource
 		} catch (const std::exception& e) {
 			totalConfig = nlohmann::json::object();
-			changed = true;
 			m_logger->FormatDefaultLanguage<LogLevel::Warning>(LogCategory::General,
 				IDS_ERROR_CONFIGURATION_LOAD,
 				e.what());
 		}
 	} else {
 		totalConfig = nlohmann::json::object();
-		changed = true;
 		m_logger->FormatDefaultLanguage(LogCategory::General, IDS_LOG_NEW_CONFIG, Utils::ToUtf8((from.empty() ? m_sConfigPath : from).wstring()));
 	}
 
 	const auto& currentConfig = m_parentKey.empty() ? totalConfig : totalConfig[m_parentKey];
 
-	m_destructionCallbacks.clear();
-	for (const auto& item : m_allItems) {
-		changed |= item->LoadFrom(currentConfig, announceChange);
-		m_destructionCallbacks.push_back(item->OnChangeListenerAlsoOnLoad([this](ItemBase&) { Save(); }));
-	}
-
-	if (changed)
-		Save();
+	const auto suppressSave = WithSuppressSave();
+	for (const auto& item : m_allItems)
+		item->LoadFrom(currentConfig);
 }
 
 class App::Config::ConfigCreator : public Config {
@@ -122,10 +124,12 @@ std::shared_ptr<App::Config> App::Config::Acquire() {
 
 App::Config::RuntimeRepository::RuntimeRepository(__in_opt const Config * pConfig, std::filesystem::path path, std::string parentKey)
 	: BaseRepository(pConfig, std::move(path), std::move(parentKey)) {
-	m_cleanup += Language.OnChangeListenerAlsoOnLoad([&](auto&) {
+
+	m_cleanup += Language.AddAndCallOnChange([&]() {
 		Utils::Win32::Error::SetDefaultLanguageId(GetLangId());
 		});
-	m_cleanup += MusicImportConfig.OnChangeListenerAlsoOnLoad([&](auto&) {
+
+	m_cleanup += MusicImportConfig.AddAndCallOnChange([&]() {
 		std::set<std::string> newKeys;
 		m_musicDirectoryPurchaseWebsites.clear();
 		for (const auto& path : MusicImportConfig.Value()) {
@@ -141,7 +145,7 @@ App::Config::RuntimeRepository::RuntimeRepository(__in_opt const Config * pConfi
 			}
 		}
 		if (!newKeys.empty()) {
-			auto newValue = MusicImportConfig_Directories.Value();
+			auto newValue{ MusicImportConfig_Directories.Value() };
 			for (const auto& newKey : newKeys)
 				newValue[newKey].clear();
 			MusicImportConfig_Directories = newValue;
@@ -153,8 +157,8 @@ App::Config::RuntimeRepository::~RuntimeRepository() {
 	m_cleanup.Clear();
 }
 
-void App::Config::RuntimeRepository::Reload(const std::filesystem::path & from, bool announceChange) {
-	BaseRepository::Reload(from, announceChange);
+void App::Config::RuntimeRepository::Reload(const std::filesystem::path & from) {
+	BaseRepository::Reload(from);
 	Utils::Win32::Error::SetDefaultLanguageId(GetLangId());
 }
 
@@ -270,7 +274,7 @@ uint64_t App::Config::RuntimeRepository::CalculateLockFramerateIntervalUs(double
 
 std::filesystem::path App::Config::InitRepository::ResolveConfigStorageDirectoryPath() {
 	if (!Loaded())
-		Reload({});
+		Reload();
 
 	if (!FixedConfigurationFolderPath.Value().empty())
 		return Utils::Win32::EnsureDirectory(TranslatePath(FixedConfigurationFolderPath.Value()));
@@ -280,7 +284,7 @@ std::filesystem::path App::Config::InitRepository::ResolveConfigStorageDirectory
 
 std::filesystem::path App::Config::InitRepository::ResolveXivAlexInstallationPath() {
 	if (!Loaded())
-		Reload({});
+		Reload();
 
 	if (!XivAlexFolderPath.Value().empty())
 		return Utils::Win32::EnsureDirectory(TranslatePath(XivAlexFolderPath.Value()));
@@ -305,23 +309,48 @@ App::Config::Config(std::filesystem::path initializationConfigPath)
 	: Init(this, std::move(initializationConfigPath), "")
 	, Runtime(this, Init.ResolveRuntimeConfigPath(), Utils::ToUtf8(Utils::Win32::Process::Current().PathOf().wstring()))
 	, Game(this, Init.ResolveGameOpcodeConfigPath(), "") {
-	Runtime.Reload({});
-	Game.Reload({});
+	Runtime.Reload();
+	Game.Reload();
 }
 
 App::Config::~Config() = default;
 
-void App::Config::SuppressSave(bool suppress) {
-	m_bSuppressSave = suppress;
+
+void App::Config::Reload() {
+	Init.Reload();
+	Runtime.Reload();
+	Game.Reload();
+}
+
+Utils::CallOnDestruction App::Config::BaseRepository::WithSuppressSave() {
+	const auto _ = std::lock_guard(m_suppressSave.Mtx);
+	m_suppressSave.SupressionCounter += 1;
+
+	return { [this]() {
+		{
+			const auto _ = std::lock_guard(m_suppressSave.Mtx);
+			m_suppressSave.SupressionCounter -= 1;
+			if (m_suppressSave.SupressionCounter || !m_suppressSave.PendingSave)
+				return;
+		}
+
+		Save();
+	} };
 }
 
 void App::Config::BaseRepository::Save(const std::filesystem::path & to) {
-	if (to.empty() && (!m_pConfig || m_pConfig->m_bSuppressSave))
+	if (m_suppressSave.SupressionCounter) {
+		m_suppressSave.PendingSave = true;
+		return;
+	}
+
+	const auto& targetPath = to.empty() ? m_sConfigPath : to;
+	if (targetPath.empty())
 		return;
 
 	nlohmann::json totalConfig;
 	try {
-		totalConfig = Utils::ParseJsonFromFile(to.empty() ? m_sConfigPath : to);
+		totalConfig = Utils::ParseJsonFromFile(targetPath);
 		if (totalConfig.type() != nlohmann::detail::value_t::object)
 			throw std::runtime_error("Root must be an object.");  // TODO: string resource
 	} catch (const std::exception&) {
@@ -333,14 +362,14 @@ void App::Config::BaseRepository::Save(const std::filesystem::path & to) {
 		item->SaveTo(currentConfig);
 
 	try {
-		Utils::SaveJsonToFile(to.empty() ? m_sConfigPath : to, totalConfig);
+		Utils::SaveJsonToFile(targetPath, totalConfig);
 	} catch (const std::exception& e) {
 		m_logger->FormatDefaultLanguage<LogLevel::Error>(LogCategory::General, IDS_ERROR_CONFIGURATION_SAVE, e.what());
 	}
 }
 
-bool App::Config::Item<uint16_t>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
-	if (const auto it = data.find(Name()); it != data.end()) {
+bool App::Config::Item<uint16_t>::LoadFrom(const nlohmann::json & data) {
+	if (const auto it = data.find(Name); it != data.end()) {
 		uint16_t newValue;
 		std::string strVal;
 		try {
@@ -354,18 +383,14 @@ bool App::Config::Item<uint16_t>::LoadFrom(const nlohmann::json & data, bool ann
 		} catch (const std::exception& e) {
 			m_pBaseRepository->m_logger->FormatDefaultLanguage(LogCategory::General, IDS_ERROR_CONFIGURATION_PARSE_VALUE, strVal, e.what());
 		}
-		if (announceChanged)
-			this->operator=(newValue);
-		else {
-			Assign(newValue);
-			AnnounceChanged(true);
-		}
+
+		*this = newValue;
 	}
 	return false;
 }
 
 void App::Config::Item<uint16_t>::SaveTo(nlohmann::json & data) const {
-	data[Name()] = std::format("0x{:04x}", m_value);
+	data[Name] = std::format("0x{:04x}", m_value);
 }
 
 void App::to_json(nlohmann::json & j, const Language & value) {
@@ -437,8 +462,8 @@ void App::from_json(const nlohmann::json & it, HighLatencyMitigationMode & value
 }
 
 template<typename T>
-bool App::Config::Item<T>::LoadFrom(const nlohmann::json & data, bool announceChanged) {
-	if (const auto it = data.find(Name()); it != data.end()) {
+bool App::Config::Item<T>::LoadFrom(const nlohmann::json & data) {
+	if (const auto it = data.find(Name); it != data.end()) {
 		T newValue;
 		try {
 			newValue = it->template get<T>();
@@ -449,17 +474,12 @@ bool App::Config::Item<T>::LoadFrom(const nlohmann::json & data, bool announceCh
 			throw;
 #endif
 		}
-		if (announceChanged)
-			this->operator=(newValue);
-		else {
-			Assign(newValue);
-			AnnounceChanged(true);
-		}
+		*this = newValue;
 	}
 	return false;
 }
 
 template<typename T>
 void App::Config::Item<T>::SaveTo(nlohmann::json & data) const {
-	data[Name()] = m_value;
+	data[Name] = m_value;
 }

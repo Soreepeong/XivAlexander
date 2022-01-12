@@ -70,7 +70,7 @@ App::Window::BaseWindow::BaseWindow(const WNDCLASSEXW& wndclassex,
 
 	s_allBaseWindows.insert(this);
 	m_cleanup += [this]() { s_allBaseWindows.erase(this); };
-	m_cleanup += m_config->Runtime.Language.OnChangeListener([this](const auto&) {
+	m_cleanup += m_config->Runtime.Language.OnChange([this]() {
 		this->ApplyLanguage(m_config->Runtime.GetLangId());
 	});
 }

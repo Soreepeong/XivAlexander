@@ -113,11 +113,11 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 
 	SetTimer(m_hWnd, TimerIdRepaint, 1000, nullptr);
 
-	m_cleanup += m_config->Runtime.AlwaysOnTop_XivAlexMainWindow.OnChangeListener([this](auto&) {
+	m_cleanup += m_config->Runtime.AlwaysOnTop_XivAlexMainWindow.OnChange([this]() {
 		SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexMainWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 		});
 
-	m_cleanup += m_config->Runtime.ShowControlWindow.OnChangeListener([this](auto&) {
+	m_cleanup += m_config->Runtime.ShowControlWindow.OnChange([this]() {
 		ShowWindow(m_hWnd, m_config->Runtime.ShowControlWindow ? SW_SHOWNORMAL : SW_HIDE);
 		if (m_config->Runtime.ShowControlWindow)
 			SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexMainWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
@@ -126,28 +126,28 @@ App::Window::MainWindow::MainWindow(XivAlexApp* pApp, std::function<void()> unlo
 		ShowWindow(m_hWnd, SW_SHOW);
 		SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexMainWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 	}
-	m_cleanup += m_config->Runtime.AdditionalSqpackRootDirectories.OnChangeListener([this](auto&) {
+	m_cleanup += m_config->Runtime.AdditionalSqpackRootDirectories.OnChange([this]() {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
-	m_cleanup += m_config->Runtime.ExcelTransformConfigFiles.OnChangeListener([this](auto&) {
+	m_cleanup += m_config->Runtime.ExcelTransformConfigFiles.OnChange([this]() {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
-	m_cleanup += m_config->Runtime.OverrideFontConfig.OnChangeListener([this](auto&) {
+	m_cleanup += m_config->Runtime.OverrideFontConfig.OnChange([this]() {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
-	m_cleanup += m_config->Runtime.MusicImportConfig.OnChangeListener([this](auto&) {
+	m_cleanup += m_config->Runtime.MusicImportConfig.OnChange([this]() {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
-	m_cleanup += m_config->Runtime.MusicImportConfig_Directories.OnChangeListener([this](auto&) {
+	m_cleanup += m_config->Runtime.MusicImportConfig_Directories.OnChange([this]() {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
-	m_cleanup += m_config->Runtime.TtmpShowDedicatedMenu.OnChangeListener([this](auto&) {
+	m_cleanup += m_config->Runtime.TtmpShowDedicatedMenu.OnChange([this]() {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
-	m_cleanup += m_config->Runtime.TtmpUseSubdirectoryTogglingOnFlattenedView.OnChangeListener([this](auto&) {
+	m_cleanup += m_config->Runtime.TtmpUseSubdirectoryTogglingOnFlattenedView.OnChange([this]() {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
-	m_cleanup += m_config->Runtime.TtmpFlattenSubdirectoryDisplay.OnChangeListener([this](auto&) {
+	m_cleanup += m_config->Runtime.TtmpFlattenSubdirectoryDisplay.OnChange([this]() {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
 
@@ -299,7 +299,7 @@ LRESULT App::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 			const auto now = GetTickCount64();
 			auto willShowControlWindow = false;
 			if (m_lastTrayIconLeftButtonUp + GetDoubleClickTime() > now) {
-				if ((m_config->Runtime.ShowControlWindow = !m_config->Runtime.ShowControlWindow))
+				if (m_config->Runtime.ShowControlWindow.Toggle())
 					SetForegroundWindow(m_hWnd);
 				m_lastTrayIconLeftButtonUp = 0;
 			} else
@@ -1069,7 +1069,6 @@ void App::Window::MainWindow::SetMenuStates() const {
 		else
 			SetMenuState(hMenu, ID_CONFIGURE_LOCKFRAMERATE, false, true, m_config->Runtime.GetStringRes(IDS_MENU_LOCKFRAMERATE_DISABLED));
 		SetMenuState(hMenu, ID_CONFIGURE_SYNCHRONIZEPROCESSING, config.SynchronizeProcessing, true);
-		SetMenuState(hMenu, ID_CONFIGURE_QUICKGAMETERMINATION, config.TerminateOnExitProcess, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT, config.Language == Language::SystemDefault, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_ENGLISH, config.Language == Language::English, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_KOREAN, config.Language == Language::Korean, true);
@@ -1167,11 +1166,11 @@ void App::Window::MainWindow::OnCommand_Menu_File(int menuId) {
 			return;
 
 		case ID_FILE_SHOWLOGGINGWINDOW:
-			config.ShowLoggingWindow = !config.ShowLoggingWindow;
+			config.ShowLoggingWindow.Toggle();
 			return;
 
 		case ID_FILE_SHOWCONTROLWINDOW:
-			config.ShowControlWindow = !config.ShowControlWindow;
+			config.ShowControlWindow.Toggle();
 			SetForegroundWindow(m_hWnd);
 			return;
 
@@ -1304,7 +1303,7 @@ void App::Window::MainWindow::OnCommand_Menu_Network(int menuId) {
 
 	switch (menuId) {
 		case ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE:
-			config.UseNetworkTimingHandler = !config.UseNetworkTimingHandler;
+			config.UseNetworkTimingHandler.Toggle();
 			return;
 
 		case ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1:
@@ -1320,31 +1319,31 @@ void App::Window::MainWindow::OnCommand_Menu_Network(int menuId) {
 			return;
 
 		case ID_NETWORK_HIGHLATENCYMITIGATION_USEEARLYPENALTY:
-			config.UseEarlyPenalty = !config.UseEarlyPenalty;
+			config.UseEarlyPenalty.Toggle();
 			return;
 
 		case ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING:
-			config.UseHighLatencyMitigationLogging = !config.UseHighLatencyMitigationLogging;
+			config.UseHighLatencyMitigationLogging.Toggle();
 			return;
 
 		case ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE:
-			config.UseHighLatencyMitigationPreviewMode = !config.UseHighLatencyMitigationPreviewMode;
+			config.UseHighLatencyMitigationPreviewMode.Toggle();
 			return;
 
 		case ID_NETWORK_USEALLIPCMESSAGELOGGER:
-			config.UseAllIpcMessageLogger = !config.UseAllIpcMessageLogger;
+			config.UseAllIpcMessageLogger.Toggle();
 			return;
 
 		case ID_NETWORK_USEIPCTYPEFINDER:
-			config.UseOpcodeFinder = !config.UseOpcodeFinder;
+			config.UseOpcodeFinder.Toggle();
 			return;
 
 		case ID_NETWORK_LOGEFFECTAPPLICATIONDELAY:
-			config.UseEffectApplicationDelayLogger = !config.UseEffectApplicationDelayLogger;
+			config.UseEffectApplicationDelayLogger.Toggle();
 			return;
 
 		case ID_NETWORK_REDUCEPACKETDELAY:
-			config.ReducePacketDelay = !config.ReducePacketDelay;
+			config.ReducePacketDelay.Toggle();
 			return;
 
 		case ID_NETWORK_RELEASEALLCONNECTIONS:
@@ -1354,19 +1353,19 @@ void App::Window::MainWindow::OnCommand_Menu_Network(int menuId) {
 			return;
 
 		case ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES:
-			config.TakeOverLoopbackAddresses = !config.TakeOverLoopbackAddresses;
+			config.TakeOverLoopbackAddresses.Toggle();
 			return;
 
 		case ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES:
-			config.TakeOverPrivateAddresses = !config.TakeOverPrivateAddresses;
+			config.TakeOverPrivateAddresses.Toggle();
 			return;
 
 		case ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES:
-			config.TakeOverAllAddresses = !config.TakeOverAllAddresses;
+			config.TakeOverAllAddresses.Toggle();
 			return;
 
 		case ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS:
-			config.TakeOverAllPorts = !config.TakeOverAllPorts;
+			config.TakeOverAllPorts.Toggle();
 			return;
 	}
 }
@@ -1376,19 +1375,19 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 
 	switch (menuId) {
 		case ID_MODDING_ENABLE:
-			config.UseModding = !config.UseModding;
+			config.UseModding.Toggle();
 			return;
 
 		case ID_MODDING_LOGALLHASHKEYS:
-			config.UseHashTrackerKeyLogging = !config.UseHashTrackerKeyLogging;
+			config.UseHashTrackerKeyLogging.Toggle();
 			return;
 
 		case ID_MODDING_LOGALLFILEACCESS:
-			config.LogAllDataFileRead = !config.LogAllDataFileRead;
+			config.LogAllDataFileRead.Toggle();
 			return;
 
 		case ID_MODDING_COMPRESSWHENEVERPOSSIBLE:
-			config.CompressModdedFiles = !config.CompressModdedFiles;
+			config.CompressModdedFiles.Toggle();
 			return;
 
 		case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1: {
@@ -1491,19 +1490,19 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 			return;
 
 		case ID_MODDING_MUTEVOICE_BATTLE:
-			config.MuteVoice_Battle = !config.MuteVoice_Battle;
+			config.MuteVoice_Battle.Toggle();
 			return;
 
 		case ID_MODDING_MUTEVOICE_CM:
-			config.MuteVoice_Cm = !config.MuteVoice_Cm;
+			config.MuteVoice_Cm.Toggle();
 			return;
 
 		case ID_MODDING_MUTEVOICE_EMOTE:
-			config.MuteVoice_Emote = !config.MuteVoice_Emote;
+			config.MuteVoice_Emote.Toggle();
 			return;
 
 		case ID_MODDING_MUTEVOICE_LINE:
-			config.MuteVoice_Line = !config.MuteVoice_Line;
+			config.MuteVoice_Line.Toggle();
 			return;
 
 		case ID_MODDING_CHANGEFONT_OPENPRESETDIRECTORY:
@@ -1765,7 +1764,7 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 						}
 					}
 
-					auto tp = Utils::Win32::TpEnvironment(0, THREAD_PRIORITY_IDLE);
+					auto tp = Utils::Win32::TpEnvironment(L"ReplaceMusicGenerator/pool");
 					for (const auto& item : items) {
 						for (const auto& target : item.target) {
 							if (!target.enable)
@@ -1851,15 +1850,15 @@ void App::Window::MainWindow::OnCommand_Menu_Modding(int menuId) {
 			return;
 
 		case ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY:
-			m_config->Runtime.TtmpFlattenSubdirectoryDisplay = !m_config->Runtime.TtmpFlattenSubdirectoryDisplay;
+			m_config->Runtime.TtmpFlattenSubdirectoryDisplay.Toggle();
 			return;
 
 		case ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW:
-			m_config->Runtime.TtmpUseSubdirectoryTogglingOnFlattenedView = !m_config->Runtime.TtmpUseSubdirectoryTogglingOnFlattenedView;
+			m_config->Runtime.TtmpUseSubdirectoryTogglingOnFlattenedView.Toggle();
 			return;
 
 		case ID_MODDING_TTMP_SHOWDEDICATEDMENU:
-			m_config->Runtime.TtmpShowDedicatedMenu = !m_config->Runtime.TtmpShowDedicatedMenu;
+			m_config->Runtime.TtmpShowDedicatedMenu.Toggle();
 			return;
 
 		case ID_MODDING_TTMP_IMPORT: {
@@ -2080,7 +2079,7 @@ void App::Window::MainWindow::OnCommand_Menu_Configure(int menuId) {
 			return;
 
 		case ID_CONFIGURE_USEMORECPUTIME:
-			config.UseMoreCpuTime = !config.UseMoreCpuTime;
+			config.UseMoreCpuTime.Toggle();
 			return;
 
 		case ID_CONFIGURE_LOCKFRAMERATE:
@@ -2088,11 +2087,7 @@ void App::Window::MainWindow::OnCommand_Menu_Configure(int menuId) {
 			return;
 
 		case ID_CONFIGURE_SYNCHRONIZEPROCESSING:
-			config.SynchronizeProcessing = !config.SynchronizeProcessing;
-			return;
-
-		case ID_CONFIGURE_QUICKGAMETERMINATION:
-			config.TerminateOnExitProcess = !config.TerminateOnExitProcess;
+			config.SynchronizeProcessing.Toggle();
 			return;
 
 		case ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT:
@@ -2116,7 +2111,7 @@ void App::Window::MainWindow::OnCommand_Menu_Configure(int menuId) {
 			return;
 
 		case ID_CONFIGURE_RELOAD:
-			config.Reload({});
+			m_config->Reload();
 			return;
 	}
 }
@@ -2126,15 +2121,15 @@ void App::Window::MainWindow::OnCommand_Menu_View(int menuId) {
 
 	switch (menuId) {
 		case ID_VIEW_ALWAYSONTOP:
-			m_config->Runtime.AlwaysOnTop_XivAlexMainWindow = !m_config->Runtime.AlwaysOnTop_XivAlexMainWindow;
+			config.AlwaysOnTop_XivAlexMainWindow.Toggle();
 			return;
 
 		case ID_VIEW_ALWAYSONTOPGAME:
-			config.AlwaysOnTop_GameMainWindow = !config.AlwaysOnTop_GameMainWindow;
+			config.AlwaysOnTop_GameMainWindow.Toggle();
 			return;
 
 		case ID_VIEW_HIDEONMINIMIZE:
-			config.HideOnMinimize_XivAlexMainWindow = !config.HideOnMinimize_XivAlexMainWindow;
+			config.HideOnMinimize_XivAlexMainWindow.Toggle();
 			return;
 	}
 }
@@ -2304,7 +2299,7 @@ void App::Window::MainWindow::ImportExcelTransformConfig(const std::filesystem::
 			throw Utils::Win32::Error("CopyFileW");
 	}
 
-	auto arr = m_config->Runtime.ExcelTransformConfigFiles.Value();
+	auto arr{ m_config->Runtime.ExcelTransformConfigFiles.Value() };
 	while (true) {
 		const auto it = std::ranges::find(arr, targetFileName);
 		if (it != arr.end())
@@ -2323,7 +2318,7 @@ void App::Window::MainWindow::AddAdditionalGameRootDirectory(std::filesystem::pa
 		return;
 	}
 
-	auto arr = m_config->Runtime.AdditionalSqpackRootDirectories.Value();
+	auto arr{ m_config->Runtime.AdditionalSqpackRootDirectories.Value() };
 	if (std::ranges::find(arr, path) != arr.end())
 		return;
 	while (true) {

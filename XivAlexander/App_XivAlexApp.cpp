@@ -64,7 +64,7 @@ struct App::XivAlexApp::Implementation_GameWindow final {
 			SetWindowPos(m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 		else
 			SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-		m_cleanup += config.AlwaysOnTop_GameMainWindow.OnChangeListener([&](Config::ItemBase&) {
+		m_cleanup += config.AlwaysOnTop_GameMainWindow.OnChange([&]() {
 			if (config.AlwaysOnTop_GameMainWindow)
 				SetWindowPos(m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 			else
@@ -229,7 +229,7 @@ struct App::XivAlexApp::Implementation final {
 
 		if (config.UseNetworkTimingHandler)
 			m_networkTimingHandler = std::make_unique<Feature::NetworkTimingHandler>(*This);
-		m_cleanup += config.UseNetworkTimingHandler.OnChangeListener([&](Config::ItemBase&) {
+		m_cleanup += config.UseNetworkTimingHandler.OnChange([&]() {
 			if (config.UseNetworkTimingHandler)
 				m_networkTimingHandler = std::make_unique<Feature::NetworkTimingHandler>(*This);
 			else
@@ -243,7 +243,7 @@ struct App::XivAlexApp::Implementation final {
 
 		if (config.UseOpcodeFinder)
 			m_ipcTypeFinder = std::make_unique<Feature::IpcTypeFinder>(m_socketHook.get());
-		m_cleanup += config.UseOpcodeFinder.OnChangeListener([&](Config::ItemBase&) {
+		m_cleanup += config.UseOpcodeFinder.OnChange([&]() {
 			if (config.UseOpcodeFinder)
 				m_ipcTypeFinder = std::make_unique<Feature::IpcTypeFinder>(m_socketHook.get());
 			else
@@ -253,7 +253,7 @@ struct App::XivAlexApp::Implementation final {
 
 		if (config.UseAllIpcMessageLogger)
 			m_allIpcMessageLogger = std::make_unique<Feature::AllIpcMessageLogger>(m_socketHook.get());
-		m_cleanup += config.UseAllIpcMessageLogger.OnChangeListener([&](Config::ItemBase&) {
+		m_cleanup += config.UseAllIpcMessageLogger.OnChange([&]() {
 			if (config.UseAllIpcMessageLogger)
 				m_allIpcMessageLogger = std::make_unique<Feature::AllIpcMessageLogger>(m_socketHook.get());
 			else
@@ -263,7 +263,7 @@ struct App::XivAlexApp::Implementation final {
 
 		if (config.UseEffectApplicationDelayLogger)
 			m_effectApplicationDelayLogger = std::make_unique<Feature::EffectApplicationDelayLogger>(m_socketHook.get());
-		m_cleanup += config.UseEffectApplicationDelayLogger.OnChangeListener([&](Config::ItemBase&) {
+		m_cleanup += config.UseEffectApplicationDelayLogger.OnChange([&]() {
 			if (config.UseEffectApplicationDelayLogger)
 				m_effectApplicationDelayLogger = std::make_unique<Feature::EffectApplicationDelayLogger>(m_socketHook.get());
 			else
@@ -273,7 +273,7 @@ struct App::XivAlexApp::Implementation final {
 
 		if (config.ShowLoggingWindow)
 			m_logWindow = std::make_unique<Window::LogWindow>();
-		m_cleanup += config.ShowLoggingWindow.OnChangeListener([&](Config::ItemBase&) {
+		m_cleanup += config.ShowLoggingWindow.OnChange([&]() {
 			if (config.ShowLoggingWindow)
 				m_logWindow = std::make_unique<Window::LogWindow>();
 			else
@@ -282,21 +282,13 @@ struct App::XivAlexApp::Implementation final {
 		m_cleanup += [this]() { m_logWindow = nullptr; };
 
 		m_cleanup += ExitProcess.SetHook([this](UINT exitCode) {
-			const auto quickTerminate = This->m_config->Runtime.TerminateOnExitProcess.Value();
-
 			this->This->m_bInternalUnloadInitiated = true;
 
 			if (this->m_trayWindow)
-				SendMessageW(this->m_trayWindow->Handle(), WM_CLOSE, exitCode, quickTerminate ? 2 : 1);
+				SendMessageW(this->m_trayWindow->Handle(), WM_CLOSE, exitCode, 2);
 			WaitForSingleObject(this->This->m_hCustomMessageLoop, INFINITE);
 
-			if (quickTerminate)
-				TerminateProcess(GetCurrentProcess(), exitCode);
-
-			XivAlexDll::DisableAllApps(nullptr);
-
-			// hook is released, and "this" should be invalid at this point.
-			::ExitProcess(exitCode);
+			TerminateProcess(GetCurrentProcess(), exitCode);
 		});
 	}
 };
@@ -484,7 +476,7 @@ size_t __stdcall XivAlexDll::EnableXivAlexander(size_t bEnable) {
 
 size_t __stdcall XivAlexDll::ReloadConfiguration(void* lpReserved) {
 	const auto config = App::Config::Acquire();
-	config->Runtime.Reload({}, true);
-	config->Game.Reload({}, true);
+	config->Runtime.Reload();
+	config->Game.Reload();
 	return 0;
 }

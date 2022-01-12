@@ -347,16 +347,16 @@ struct App::Network::SocketHook::Implementation {
 		, this_(this_)
 		, m_pApp(pApp)
 		, m_dwGameMainThreadId(pApp->GetGameWindowThreadId()) {
-		auto reparse = [this](Config::ItemBase&) {
+		auto reparse = [this]() {
 			ParseTakeOverAddresses();
 			this->this_->ReleaseSockets();
 		};
-		m_cleanupList += m_config->Game.Server_IpRange.OnChangeListener(reparse);
-		m_cleanupList += m_config->Game.Server_PortRange.OnChangeListener(reparse);
-		m_cleanupList += m_config->Runtime.TakeOverAllAddresses.OnChangeListener(reparse);
-		m_cleanupList += m_config->Runtime.TakeOverPrivateAddresses.OnChangeListener(reparse);
-		m_cleanupList += m_config->Runtime.TakeOverLoopbackAddresses.OnChangeListener(reparse);
-		m_cleanupList += m_config->Runtime.TakeOverAllPorts.OnChangeListener(reparse);
+		m_cleanupList += m_config->Game.Server_IpRange.OnChange(reparse);
+		m_cleanupList += m_config->Game.Server_PortRange.OnChange(reparse);
+		m_cleanupList += m_config->Runtime.TakeOverAllAddresses.OnChange(reparse);
+		m_cleanupList += m_config->Runtime.TakeOverPrivateAddresses.OnChange(reparse);
+		m_cleanupList += m_config->Runtime.TakeOverLoopbackAddresses.OnChange(reparse);
+		m_cleanupList += m_config->Runtime.TakeOverAllPorts.OnChange(reparse);
 		ParseTakeOverAddresses();
 	}
 

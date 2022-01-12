@@ -9,7 +9,6 @@
 #include <XivAlexanderCommon/Utils_Win32_Resource.h>
 
 #include "App_ConfigRepository.h"
-#include "App_DalamudHandlerApp.h"
 #include "App_Feature_GameResourceOverrider.h"
 #include "App_Misc_DebuggerDetectionDisabler.h"
 #include "App_Misc_Hooks.h"
@@ -444,9 +443,6 @@ static void InitializeBeforeOriginalEntryPoint() {
 
 	if (filename != XivAlexDll::GameExecutableNameW)
 		return;  // not the game process; don't load XivAlex app
-
-	// Delay Initialize call to Dalamud Boot if Dalamud is being used
-	App::DalamudHandlerApp::LoadDalamudHandler();
 
 	// Load game resource overrider before the game starts to load files.
 	App::Feature::GameResourceOverrider::Enable();

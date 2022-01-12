@@ -199,7 +199,7 @@ int main() {
 	//		.write(reinterpret_cast<const char*>(buf3.data()), buf3.size());
 	//}
 
-	Utils::Win32::TpEnvironment tpenv;
+	Utils::Win32::TpEnvironment tpenv(L"Sqpack Repacker");
 	for (const auto& index : std::filesystem::recursive_directory_iterator(std::filesystem::path(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\)"))) {
 		if (index.path().extension() != ".index")
 			continue;

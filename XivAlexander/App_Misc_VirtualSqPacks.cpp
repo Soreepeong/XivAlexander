@@ -72,10 +72,10 @@ struct App::Misc::VirtualSqPacks::Implementation {
 		InitializeSqPacks(progressWindow);
 		ReflectUsedEntries(true);
 
-		Cleanup += Config->Runtime.MuteVoice_Battle.OnChangeListener([this](auto&) { ReflectUsedEntries(); });
-		Cleanup += Config->Runtime.MuteVoice_Cm.OnChangeListener([this](auto&) { ReflectUsedEntries(); });
-		Cleanup += Config->Runtime.MuteVoice_Emote.OnChangeListener([this](auto&) { ReflectUsedEntries(); });
-		Cleanup += Config->Runtime.MuteVoice_Line.OnChangeListener([this](auto&) { ReflectUsedEntries(); });
+		Cleanup += Config->Runtime.MuteVoice_Battle.OnChange([this]() { ReflectUsedEntries(); });
+		Cleanup += Config->Runtime.MuteVoice_Cm.OnChange([this]() { ReflectUsedEntries(); });
+		Cleanup += Config->Runtime.MuteVoice_Emote.OnChange([this]() { ReflectUsedEntries(); });
+		Cleanup += Config->Runtime.MuteVoice_Line.OnChange([this]() { ReflectUsedEntries(); });
 	}
 
 	~Implementation() {
@@ -466,9 +466,9 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			std::atomic_size_t progressValue = 0;
 			std::atomic_size_t fileIndex = 0;
 
-			Utils::Win32::TpEnvironment pool;
+			Utils::Win32::TpEnvironment pool(L"InitializeSqPacks Initializer/Pool");
 			const std::filesystem::path* pLastStartedIndexFile = &creators.begin()->first;
-			const auto loaderThread = Utils::Win32::Thread(L"VirtualSqPack Constructor", [&]() {
+			const auto loaderThread = Utils::Win32::Thread(L"InitializeSqPacks Initializer", [&]() {
 				for (const auto& indexFile : creators | std::views::keys) {
 					pool.SubmitWork([&, &creator = *creators.at(indexFile)]() {
 						try {
@@ -594,8 +594,8 @@ struct App::Misc::VirtualSqPacks::Implementation {
 			const auto progressMax = creators.size();
 			size_t progressValue = 0;
 			const auto dataViewBuffer = std::make_shared<Sqex::Sqpack::Creator::SqpackViewEntryCache>();
-			const auto workerThread = Utils::Win32::Thread(L"VirtualSqPacks Element Finalizer", [&]() {
-				Utils::Win32::TpEnvironment pool;
+			const auto workerThread = Utils::Win32::Thread(L"InitializeSqPacks Finalizer", [&]() {
+				Utils::Win32::TpEnvironment pool(L"InitializeSqPacks Finalizer/Pool");
 				std::mutex resLock;
 				for (const auto& [indexFile, pCreator] : creators) {
 					if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
@@ -715,7 +715,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					uint64_t outPtr = 0;
 
 					std::mutex writeMtx;
-					Utils::Win32::TpEnvironment pool;
+					Utils::Win32::TpEnvironment pool(L"CompressTtmpEntry/pool");
 					list.ForEachEntry([&](Sqex::ThirdParty::TexTools::ModEntry& entry) {
 						pool.SubmitWork([&]() {
 							if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
@@ -1048,7 +1048,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					}
 
 					const auto actCtx = Dll::ActivationContext().With();
-					Utils::Win32::TpEnvironment pool;
+					Utils::Win32::TpEnvironment pool(L"SetUpMergedExd");
 					progressWindow.UpdateMessage(Utils::ToUtf8(Config->Runtime.GetStringRes(IDS_TITLE_GENERATING_EXD_FILES)));
 
 					static constexpr auto ProgressMaxPerTask = 1000;
@@ -1803,7 +1803,7 @@ struct App::Misc::VirtualSqPacks::Implementation {
 					}
 					if (progressWindow.GetCancelEvent().Wait(0) != WAIT_OBJECT_0) {
 						progressWindow.UpdateMessage(Utils::ToUtf8(Config->Runtime.GetStringRes(IDS_TITLE_COMPRESSING)));
-						Utils::Win32::TpEnvironment pool;
+						Utils::Win32::TpEnvironment pool(L"SetUpGeneratedFonts");
 						const auto streams = fontCreator.GetResult().GetAllStreams();
 
 						std::atomic_int64_t progress = 0;

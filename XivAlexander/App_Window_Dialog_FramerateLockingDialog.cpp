@@ -118,7 +118,7 @@ void App::Window::Dialog::FramerateLockingDialog::ShowModal(XivAlexApp* app, HWN
 			SetDlgItemTextW(Hwnd, IDC_ESTIMATEDURATION_NUMGCD_EDIT, L"120");
 			Automatic_OnChange();
 
-			Cleanup += Config->Runtime.UseNetworkTimingHandler.OnChangeListener([&](const auto&) {
+			Cleanup += Config->Runtime.UseNetworkTimingHandler.OnChange([&]() {
 				if (Config->Runtime.UseNetworkTimingHandler) {
 					void(Utils::Win32::Thread(L"UseNetworkTimingHandler/OnCooldownGroupUpdateListener Waiter", [&]() {
 						while (!TryRegisterTimingHandler())

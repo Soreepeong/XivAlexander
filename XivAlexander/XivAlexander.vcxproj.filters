@@ -146,9 +146,6 @@
     <ClCompile Include="App_Misc_GameInstallationDetector.cpp">
       <Filter>App\Misc</Filter>
     </ClCompile>
-    <ClCompile Include="App_DalamudHandlerApp.cpp">
-      <Filter>App\Apps</Filter>
-    </ClCompile>
     <ClCompile Include="App_Window_Dialog_FramerateLockingDialog.cpp">
       <Filter>App\Window\Dialog</Filter>
     </ClCompile>
@@ -274,9 +271,6 @@
     </ClInclude>
     <ClInclude Include="App_Misc_GameInstallationDetector.h">
       <Filter>App\Misc</Filter>
-    </ClInclude>
-    <ClInclude Include="App_DalamudHandlerApp.h">
-      <Filter>App\Apps</Filter>
     </ClInclude>
     <ClInclude Include="App_Window_Dialog_FramerateLockingDialog.h">
       <Filter>App\Window\Dialog</Filter>

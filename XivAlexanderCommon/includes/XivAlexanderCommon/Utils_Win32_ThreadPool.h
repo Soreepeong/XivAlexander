@@ -4,11 +4,13 @@
 
 namespace Utils::Win32 {
 	class TpEnvironment {
+		const std::wstring m_name;
+
+		const int m_threadPriority;
+		const DWORD m_maxCores;
+		const PTP_POOL m_pool;
+		const PTP_CLEANUP_GROUP m_group;
 		TP_CALLBACK_ENVIRON m_environ{};
-		int m_threadPriority;
-		int m_maxCores;
-		PTP_POOL m_pool;
-		PTP_CLEANUP_GROUP m_group;
 		PTP_WORK m_lastWork = nullptr;
 
 		std::mutex m_workMtx;
@@ -16,7 +18,7 @@ namespace Utils::Win32 {
 		bool m_cancelling = false;
 
 	public:
-		TpEnvironment(int maxCores = 0, int threadPriority = THREAD_PRIORITY_BELOW_NORMAL);
+		TpEnvironment(std::wstring name, DWORD preferredThreadCount = UINT32_MAX, int threadPriority = THREAD_PRIORITY_BELOW_NORMAL);
 		~TpEnvironment();
 
 		[[nodiscard]] size_t ThreadCount() const;

@@ -68,7 +68,7 @@ public:
 };
 
 struct Sqex::FontCsv::FontCsvCreator::Implementation {
-	Win32::TpEnvironment WorkPool;
+	Win32::TpEnvironment WorkPool = { L"FontCsvCreator::Implementation::WorkPool" };
 	bool Cancelled = false;
 	Win32::Semaphore CoreLimitSemaphore;
 
@@ -564,7 +564,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 	std::mutex ResultMtx;
 	std::map<std::string, std::map<std::string, std::unique_ptr<FontCsvCreator>>> ResultWork;
 
-	Win32::TpEnvironment WorkPool;
+	Win32::TpEnvironment WorkPool = { L"FontSetsCreator::Implementation::WorkPool" };
 	std::map<std::string, std::unique_ptr<Win32::TpEnvironment>> TextureGroupWorkPools;
 	Win32::Semaphore CoreLimitSemaphore;
 	std::string LastErrorMessage;
@@ -757,7 +757,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 			const auto& textureGroupFilenamePattern = target.first;
 			const auto& fonts = target.second;
 			renderTargets.emplace(textureGroupFilenamePattern, std::make_unique<FontCsvCreator::RenderTarget>(Config.textureWidth, Config.textureHeight, Config.glyphGap));
-			TextureGroupWorkPools.emplace(textureGroupFilenamePattern, std::make_unique<Win32::TpEnvironment>());
+			TextureGroupWorkPools.emplace(textureGroupFilenamePattern, std::make_unique<Win32::TpEnvironment>(L"FontCsvCreator::Implementation::TextureGroupWorkPools"));
 			Result.Result.emplace(textureGroupFilenamePattern, ResultFontSet{});
 			auto& remainingFonts = ResultWork.emplace(textureGroupFilenamePattern, std::map<std::string, std::unique_ptr<FontCsvCreator>>()).first->second;
 			for (const auto& fontName : fonts.fontTargets | std::views::keys) {

@@ -97,7 +97,7 @@ bool App::Window::ConfigWindow::TrySave() {
 			m_direct(m_directPtr, SCI_ADDSELECTION, selections[i].first, selections[i].second);
 		m_direct(m_directPtr, SCI_SETFIRSTVISIBLELINE, firstVisibleLine, 0);
 		m_originalConfig = std::move(buf2);
-		m_pRepository->Reload({}, true);
+		m_pRepository->Reload();
 	} catch (nlohmann::json::exception& e) {
 		Dll::MessageBoxF(m_hWnd, MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_CONFIGURATION_SAVE, e.what()));
 		return false;
