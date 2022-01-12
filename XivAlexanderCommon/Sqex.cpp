@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Sqex.h"
+#include "XivAlexanderCommon/Sqex.h"
 
 void Sqex::to_json(nlohmann::json& j, const Language& value) {
 	switch (value) {

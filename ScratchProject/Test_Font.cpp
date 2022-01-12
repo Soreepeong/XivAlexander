@@ -1,18 +1,18 @@
-﻿#include "pch.h"
+#include "pch.h"
 
-#include <XivAlexanderCommon/Sqex_FontCsv_CreateConfig.h>
-#include <XivAlexanderCommon/Sqex_FontCsv_Creator.h>
-#include <XivAlexanderCommon/Sqex_FontCsv_DirectWriteFont.h>
-#include <XivAlexanderCommon/Sqex_FontCsv_FreeTypeFont.h>
-#include <XivAlexanderCommon/Sqex_FontCsv_GdiFont.h>
-#include <XivAlexanderCommon/Sqex_FontCsv_ModifiableFontCsvStream.h>
-#include <XivAlexanderCommon/Sqex_FontCsv_SeCompatibleDrawableFont.h>
-#include <XivAlexanderCommon/Sqex_FontCsv_SeCompatibleFont.h>
-#include <XivAlexanderCommon/Sqex_Sqpack.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_Creator.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_EntryRawStream.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
-#include <XivAlexanderCommon/Sqex_Texture_Mipmap.h>
+#include <XivAlexanderCommon/Sqex/FontCsv/CreateConfig.h>
+#include <XivAlexanderCommon/Sqex/FontCsv/Creator.h>
+#include <XivAlexanderCommon/Sqex/FontCsv/DirectWriteFont.h>
+#include <XivAlexanderCommon/Sqex/FontCsv/FreeTypeFont.h>
+#include <XivAlexanderCommon/Sqex/FontCsv/GdiFont.h>
+#include <XivAlexanderCommon/Sqex/FontCsv/ModifiableFontCsvStream.h>
+#include <XivAlexanderCommon/Sqex/FontCsv/SeCompatibleDrawableFont.h>
+#include <XivAlexanderCommon/Sqex/FontCsv/SeCompatibleFont.h>
+#include <XivAlexanderCommon/Sqex/Sqpack.h>
+#include <XivAlexanderCommon/Sqex/Sqpack/Creator.h>
+#include <XivAlexanderCommon/Sqex/Sqpack/EntryRawStream.h>
+#include <XivAlexanderCommon/Sqex/Sqpack/Reader.h>
+#include <XivAlexanderCommon/Sqex/Texture/Mipmap.h>
 
 static const auto* const pszTestString = reinterpret_cast<const char*>(
 	u8"Uppercase: ABCDEFGHIJKLMNOPQRSTUVWXYZ\n"

@@ -77,6 +77,6 @@
 
 #pragma warning(pop)
 
-#include "XaFormat.h"
+#include "XivAlexanderCommon/Utils/StringUtils.h"
 
 #endif //PCH_H

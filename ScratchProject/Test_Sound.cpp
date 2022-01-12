@@ -1,9 +1,9 @@
 #include "pch.h"
 
-#include <XivAlexanderCommon/Sqex_Sound_MusicImporter.h>
-#include <XivAlexanderCommon/Sqex_Sound_Reader.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
-#include <XivAlexanderCommon/Utils_Win32_ThreadPool.h>
+#include <XivAlexanderCommon/Sqex/Sound/MusicImporter.h>
+#include <XivAlexanderCommon/Sqex/Sound/Reader.h>
+#include <XivAlexanderCommon/Sqex/Sqpack/Reader.h>
+#include <XivAlexanderCommon/Utils/Win32/ThreadPool.h>
 
 int main() {
 	const Sqex::Sqpack::Reader sfxReader(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\070000.win32.index)");

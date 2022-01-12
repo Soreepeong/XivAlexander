@@ -77,7 +77,7 @@
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>$(SolutionDir)XivAlexanderCommon\includes;$(ProjectDir)includes;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir);$(SolutionDir);$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
     <LibraryPath>$(OutDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
@@ -85,7 +85,7 @@
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>$(SolutionDir)XivAlexanderCommon\includes;$(ProjectDir)includes;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir);$(SolutionDir);$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
     <LibraryPath>$(OutDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
@@ -93,7 +93,7 @@
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>$(SolutionDir)XivAlexanderCommon\includes;$(ProjectDir)includes;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir);$(SolutionDir);$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
     <LibraryPath>$(OutDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
@@ -101,7 +101,7 @@
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>$(SolutionDir)XivAlexanderCommon\includes;$(ProjectDir)includes;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir);$(SolutionDir);$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
     <LibraryPath>$(OutDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
@@ -146,6 +146,7 @@
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <PreprocessorDefinitions>XIVALEXANDER_DLLEXPORT_SET;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>26812</DisableSpecificWarnings>
+      <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -188,6 +189,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <PreprocessorDefinitions>XIVALEXANDER_DLLEXPORT_SET;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>26812</DisableSpecificWarnings>
+      <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -232,6 +234,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <PreprocessorDefinitions>XIVALEXANDER_DLLEXPORT_SET;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>26812</DisableSpecificWarnings>
+      <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -278,6 +281,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <PreprocessorDefinitions>XIVALEXANDER_DLLEXPORT_SET;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>26812</DisableSpecificWarnings>
+      <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -309,44 +313,42 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="App_Feature_GameResourceOverrider.cpp" />
-    <ClCompile Include="App_Feature_MainThreadTimingHandler.cpp" />
-    <ClCompile Include="App_InjectOnCreateProcessApp.cpp" />
-    <ClCompile Include="App_LoaderApp.cpp" />
-    <ClCompile Include="App_LoaderApp_Actions_Inject.cpp" />
-    <ClCompile Include="App_LoaderApp_Actions_InstallUninstall.cpp" />
-    <ClCompile Include="App_LoaderApp_Actions_Interactive.cpp" />
-    <ClCompile Include="App_LoaderApp_Actions_LoadUnload.cpp" />
-    <ClCompile Include="App_LoaderApp_Actions_RunLauncher.cpp" />
-    <ClCompile Include="App_LoaderApp_Actions_Update.cpp" />
-    <ClCompile Include="App_LoaderApp_Arguments.cpp" />
-    <ClCompile Include="App_LoaderApp_LoaderApp.cpp" />
-    <ClCompile Include="App_Misc_CrashMessageBoxHandler.cpp" />
-    <ClCompile Include="App_Misc_DebuggerDetectionDisabler.cpp" />
-    <ClCompile Include="App_Misc_ExcelTransformConfig.cpp" />
-    <ClCompile Include="App_Misc_GameInstallationDetector.cpp" />
-    <ClCompile Include="App_Misc_VirtualSqPacks.cpp" />
-    <ClCompile Include="App_Network_IcmpPingTracker.cpp" />
-    <ClCompile Include="App_Window_Dialog_FramerateLockingDialog.cpp" />
-    <ClCompile Include="App_Window_ProgressPopupWindow.cpp" />
-    <ClCompile Include="AutoLoadAsDependencyModule.cpp" />
-    <ClCompile Include="DllMain.cpp" />
-    <ClCompile Include="App_XivAlexApp.cpp" />
-    <ClCompile Include="App_ConfigRepository.cpp" />
-    <ClCompile Include="App_Feature_NetworkTimingHandler.cpp" />
-    <ClCompile Include="App_Feature_EffectApplicationDelayLogger.cpp" />
-    <ClCompile Include="App_Feature_IpcTypeFinder.cpp" />
-    <ClCompile Include="App_Feature_AllIpcMessageLogger.cpp" />
-    <ClCompile Include="App_Misc_FreeGameMutex.cpp" />
-    <ClCompile Include="App_Misc_Logger.cpp" />
-    <ClCompile Include="App_Network_SocketHook.cpp" />
-    <ClCompile Include="App_Network_Structures.cpp" />
-    <ClCompile Include="App_Misc_Hooks.cpp" />
-    <ClCompile Include="App_Misc_Signatures.cpp" />
-    <ClCompile Include="App_Window_BaseWindow.cpp" />
-    <ClCompile Include="App_Window_ConfigWindow.cpp" />
-    <ClCompile Include="App_Window_LogWindow.cpp" />
-    <ClCompile Include="App_Window_MainWindow.cpp" />
+    <ClCompile Include="Apps\EntryPointApp\App.cpp" />
+    <ClCompile Include="Apps\LoaderApp\App.cpp" />
+    <ClCompile Include="Apps\LoaderApp\Actions\Inject.cpp" />
+    <ClCompile Include="Apps\LoaderApp\Actions\InstallUninstall.cpp" />
+    <ClCompile Include="Apps\LoaderApp\Actions\Interactive.cpp" />
+    <ClCompile Include="Apps\LoaderApp\Actions\LoadUnload.cpp" />
+    <ClCompile Include="Apps\LoaderApp\Actions\RunLauncher.cpp" />
+    <ClCompile Include="Apps\LoaderApp\Actions\Update.cpp" />
+    <ClCompile Include="Apps\LoaderApp\Arguments.cpp" />
+    <ClCompile Include="Apps\MainApp\App.cpp" />
+    <ClCompile Include="Apps\MainApp\Internal\GameResourceOverrider.cpp" />
+    <ClCompile Include="Apps\MainApp\Internal\MainThreadTimingHandler.cpp" />
+    <ClCompile Include="Misc\CrashMessageBoxHandler.cpp" />
+    <ClCompile Include="Misc\DebuggerDetectionDisabler.cpp" />
+    <ClCompile Include="Misc\ExcelTransformConfig.cpp" />
+    <ClCompile Include="Misc\GameInstallationDetector.cpp" />
+    <ClCompile Include="Apps\MainApp\Internal\VirtualSqPacks.cpp" />
+    <ClCompile Include="Misc\IcmpPingTracker.cpp" />
+    <ClCompile Include="Apps\MainApp\Window\Dialog\FramerateLockingDialog.cpp" />
+    <ClCompile Include="Apps\MainApp\Window\ProgressPopupWindow.cpp" />
+    <ClCompile Include="ExportCompatibles.cpp" />
+    <ClCompile Include="XivAlexander.cpp" />
+    <ClCompile Include="Config.cpp" />
+    <ClCompile Include="Apps\MainApp\Internal\NetworkTimingHandler.cpp" />
+    <ClCompile Include="Apps\MainApp\Internal\EffectApplicationDelayLogger.cpp" />
+    <ClCompile Include="Apps\MainApp\Internal\IpcTypeFinder.cpp" />
+    <ClCompile Include="Apps\MainApp\Internal\AllIpcMessageLogger.cpp" />
+    <ClCompile Include="Misc\FreeGameMutex.cpp" />
+    <ClCompile Include="Misc\Logger.cpp" />
+    <ClCompile Include="Apps\MainApp\Internal\SocketHook.cpp" />
+    <ClCompile Include="Misc\Hooks.cpp" />
+    <ClCompile Include="Misc\Signatures.cpp" />
+    <ClCompile Include="Apps\MainApp\Window\BaseWindow.cpp" />
+    <ClCompile Include="Apps\MainApp\Window\ConfigWindow.cpp" />
+    <ClCompile Include="Apps\MainApp\Window\LogWindow.cpp" />
+    <ClCompile Include="Apps\MainApp\Window\MainWindow.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
@@ -355,48 +357,45 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="App_Feature_GameResourceOverrider.h" />
-    <ClInclude Include="App_Feature_MainThreadTimingHandler.h" />
-    <ClInclude Include="App_InjectOnCreateProcessApp.h" />
-    <ClInclude Include="App_InjectOnCreateProcessApp_x64.h" />
-    <ClInclude Include="App_InjectOnCreateProcessApp_x86.h" />
-    <ClInclude Include="App_LoaderApp.h" />
-    <ClInclude Include="App_LoaderApp_Actions_Inject.h" />
-    <ClInclude Include="App_LoaderApp_Actions_InstallUninstall.h" />
-    <ClInclude Include="App_LoaderApp_Actions_Interactive.h" />
-    <ClInclude Include="App_LoaderApp_Actions_LoadUnload.h" />
-    <ClInclude Include="App_LoaderApp_Actions_RunLauncher.h" />
-    <ClInclude Include="App_LoaderApp_Actions_Update.h" />
-    <ClInclude Include="App_LoaderApp_Arguments.h" />
-    <ClInclude Include="App_LoaderApp_LoaderApp.h" />
-    <ClInclude Include="App_Misc_CrashMessageBoxHandler.h" />
-    <ClInclude Include="App_Misc_DebuggerDetectionDisabler.h" />
-    <ClInclude Include="App_Misc_ExcelTransformConfig.h" />
-    <ClInclude Include="App_Misc_GameInstallationDetector.h" />
-    <ClInclude Include="App_Misc_VirtualSqPacks.h" />
-    <ClInclude Include="App_Window_Dialog_FramerateLockingDialog.h" />
-    <ClInclude Include="App_Window_ProgressPopupWindow.h" />
-    <ClInclude Include="App_XivAlexApp.h" />
-    <ClInclude Include="App_ConfigRepository.h" />
-    <ClInclude Include="App_Feature_NetworkTimingHandler.h" />
-    <ClInclude Include="App_Feature_EffectApplicationDelayLogger.h" />
-    <ClInclude Include="App_Feature_IpcTypeFinder.h" />
-    <ClInclude Include="App_Feature_AllIpcMessageLogger.h" />
-    <ClInclude Include="App_Misc_FreeGameMutex.h" />
-    <ClInclude Include="App_Misc_Logger.h" />
-    <ClInclude Include="App_Network_IcmpPingTracker.h" />
-    <ClInclude Include="App_Network_SocketHook.h" />
-    <ClInclude Include="App_Network_Structures.h" />
-    <ClInclude Include="App_Misc_Hooks.h" />
-    <ClInclude Include="App_Misc_Signatures.h" />
-    <ClInclude Include="App_Window_BaseWindow.h" />
-    <ClInclude Include="App_Window_ConfigWindow.h" />
-    <ClInclude Include="App_Window_LogWindow.h" />
-    <ClInclude Include="App_Window_MainWindow.h" />
-    <ClInclude Include="DllMain.h" />
-    <ClInclude Include="includes\XivAlexander\XivAlexander.h" />
+    <ClInclude Include="Apps\EntryPointApp\App.h" />
+    <ClInclude Include="Apps\EntryPointApp\x64.h" />
+    <ClInclude Include="Apps\EntryPointApp\x86.h" />
+    <ClInclude Include="Apps\LoaderApp\App.h" />
+    <ClInclude Include="Apps\LoaderApp\Actions\Inject.h" />
+    <ClInclude Include="Apps\LoaderApp\Actions\InstallUninstall.h" />
+    <ClInclude Include="Apps\LoaderApp\Actions\Interactive.h" />
+    <ClInclude Include="Apps\LoaderApp\Actions\LoadUnload.h" />
+    <ClInclude Include="Apps\LoaderApp\Actions\RunLauncher.h" />
+    <ClInclude Include="Apps\LoaderApp\Actions\Update.h" />
+    <ClInclude Include="Apps\LoaderApp\Arguments.h" />
+    <ClInclude Include="Apps\MainApp\App.h" />
+    <ClInclude Include="Apps\MainApp\Internal\GameResourceOverrider.h" />
+    <ClInclude Include="Apps\MainApp\Internal\MainThreadTimingHandler.h" />
+    <ClInclude Include="Misc\CrashMessageBoxHandler.h" />
+    <ClInclude Include="Misc\DebuggerDetectionDisabler.h" />
+    <ClInclude Include="Misc\ExcelTransformConfig.h" />
+    <ClInclude Include="Misc\GameInstallationDetector.h" />
+    <ClInclude Include="Apps\MainApp\Internal\VirtualSqPacks.h" />
+    <ClInclude Include="Apps\MainApp\Window\Dialog\FramerateLockingDialog.h" />
+    <ClInclude Include="Apps\MainApp\Window\ProgressPopupWindow.h" />
+    <ClInclude Include="Config.h" />
+    <ClInclude Include="Apps\MainApp\Internal\NetworkTimingHandler.h" />
+    <ClInclude Include="Apps\MainApp\Internal\EffectApplicationDelayLogger.h" />
+    <ClInclude Include="Apps\MainApp\Internal\IpcTypeFinder.h" />
+    <ClInclude Include="Apps\MainApp\Internal\AllIpcMessageLogger.h" />
+    <ClInclude Include="Misc\FreeGameMutex.h" />
+    <ClInclude Include="Misc\Logger.h" />
+    <ClInclude Include="Misc\IcmpPingTracker.h" />
+    <ClInclude Include="Apps\MainApp\Internal\SocketHook.h" />
+    <ClInclude Include="Misc\Hooks.h" />
+    <ClInclude Include="Misc\Signatures.h" />
+    <ClInclude Include="Apps\MainApp\Window\BaseWindow.h" />
+    <ClInclude Include="Apps\MainApp\Window\ConfigWindow.h" />
+    <ClInclude Include="Apps\MainApp\Window\LogWindow.h" />
+    <ClInclude Include="Apps\MainApp\Window\MainWindow.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="XivAlexander.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="XivAlexander.rc">

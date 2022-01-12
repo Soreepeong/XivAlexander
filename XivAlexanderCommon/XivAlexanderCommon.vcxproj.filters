@@ -1,418 +1,423 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Project Items">
       <UniqueIdentifier>{5414d1f9-ea36-49e7-9889-80e52683e767}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Windows API Wrappers">
+    <Filter Include="Utils">
+      <UniqueIdentifier>{ebd6c91a-3058-49ca-9c2c-c5e16671cb71}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils\Win32">
       <UniqueIdentifier>{0410d4d2-87ce-4c44-ab8d-6f291e90fa04}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Utility Classes">
-      <UniqueIdentifier>{fb3faa0c-99de-4bc7-a260-a0e96bdf543a}</UniqueIdentifier>
+    <Filter Include="Utils\Win32\Closeables">
+      <UniqueIdentifier>{d39d325d-07cb-46f9-884e-2cee0f358a48}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Square Enix Definitions">
+    <Filter Include="Sqex">
       <UniqueIdentifier>{168fc05a-7df1-4d84-a1d5-5f17ef42040e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Utility Functions">
-      <UniqueIdentifier>{b7e5751c-b37d-4bf8-892b-e263b03e9cd3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Square Enix Definitions\Game Resource Files">
+    <Filter Include="Sqex\Game Resource Files">
       <UniqueIdentifier>{ade84eab-1151-42fb-a0df-f3904367280b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Square Enix Definitions\Game Resource Files\Texture %28.tex%29">
+    <Filter Include="Sqex\Game Resource Files\Texture %28.tex%29">
       <UniqueIdentifier>{af403510-02b3-40bc-8446-bf5c09b85738}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29">
+    <Filter Include="Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29">
       <UniqueIdentifier>{8b7c10fb-b24b-45bd-9692-9cdb1b369eab}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Square Enix Definitions\Game Resource Files\Model %28.mdl%29">
-      <UniqueIdentifier>{8c4c35c7-a38b-4b9b-989c-62c79f7856db}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29">
-      <UniqueIdentifier>{2e64594b-fceb-4f41-a5d7-476d2263bcb3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Square Enix Definitions\Third Party Formats">
-      <UniqueIdentifier>{9552314c-ee3c-4b6c-bca7-a02e07d81a53}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Square Enix Definitions\Third Party Formats\TexTools">
-      <UniqueIdentifier>{682c3f75-f414-4d2b-b327-59a9c52a5b1f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29">
-      <UniqueIdentifier>{efb71632-499e-4880-875e-ddbd81be0ea3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Square Enix Definitions\Game Resource Files\Sound %28.scd%29">
-      <UniqueIdentifier>{63c632e9-165b-493d-a2de-5f20d1ebc928}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Square Enix Definitions\Game Resource Files\Equipment/Gimmick Parameters %28.eqp, .gmp%29">
-      <UniqueIdentifier>{a320a006-2a67-4604-8375-f0b88b656646}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Square Enix Definitions\Game Resource Files\Equipment Deformer Parameter %28.eqdp%29">
-      <UniqueIdentifier>{72ce1b0e-dee1-4e18-aa7e-3709043fa2cc}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers">
+    <Filter Include="Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers">
       <UniqueIdentifier>{1f6cfd51-29bd-4deb-a98b-851565e7efb4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders">
+    <Filter Include="Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders">
       <UniqueIdentifier>{7f60c1b7-c106-4e4f-b344-80f4f9ca59a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sqex\Game Resource Files\Model %28.mdl%29">
+      <UniqueIdentifier>{8c4c35c7-a38b-4b9b-989c-62c79f7856db}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sqex\Game Resource Files\FontCsv %28.fdt%29">
+      <UniqueIdentifier>{2e64594b-fceb-4f41-a5d7-476d2263bcb3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sqex\Game Resource Files\Excel %28.exd, .exh, .exl%29">
+      <UniqueIdentifier>{efb71632-499e-4880-875e-ddbd81be0ea3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sqex\Game Resource Files\Sound %28.scd%29">
+      <UniqueIdentifier>{63c632e9-165b-493d-a2de-5f20d1ebc928}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sqex\Game Resource Files\Equipment/Gimmick Parameters %28.eqp, .gmp%29">
+      <UniqueIdentifier>{a320a006-2a67-4604-8375-f0b88b656646}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sqex\Game Resource Files\Equipment Deformer Parameter %28.eqdp%29">
+      <UniqueIdentifier>{72ce1b0e-dee1-4e18-aa7e-3709043fa2cc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sqex\Third Party Formats">
+      <UniqueIdentifier>{9552314c-ee3c-4b6c-bca7-a02e07d81a53}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sqex\Third Party Formats\TexTools">
+      <UniqueIdentifier>{682c3f75-f414-4d2b-b327-59a9c52a5b1f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sqex\Network">
+      <UniqueIdentifier>{87aa06a8-528a-4e49-8fee-3db824d68687}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
       <Filter>Project Items</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex.h">
-      <Filter>Square Enix Definitions</Filter>
+    <ClInclude Include="Sqex.h">
+      <Filter>Sqex</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\XaMisc.h">
-      <Filter>Utility Functions</Filter>
+    <ClInclude Include="Utils\Win32.h">
+      <Filter>Utils\Win32</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\XaStrings.h">
-      <Filter>Utility Functions</Filter>
+    <ClInclude Include="Utils\Win32\Closeable.h">
+      <Filter>Utils\Win32</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\XaZlib.h">
-      <Filter>Utility Functions</Filter>
+    <ClInclude Include="Sqex\CommandLine.h">
+      <Filter>Sqex</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Utils_CallOnDestruction.h">
-      <Filter>Utility Classes</Filter>
+    <ClInclude Include="Sqex\FontCsv.h">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Utils_ListenerManager.h">
-      <Filter>Utility Classes</Filter>
+    <ClInclude Include="Sqex\FontCsv\ModifiableFontCsvStream.h">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Utils_NumericStatisticsTracker.h">
-      <Filter>Utility Classes</Filter>
+    <ClInclude Include="Sqex\Sqpack\Creator.h">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32.h">
-      <Filter>Windows API Wrappers</Filter>
+    <ClInclude Include="Sqex\Sqpack.h">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_Closeable.h">
-      <Filter>Windows API Wrappers</Filter>
+    <ClInclude Include="Sqex\Sqpack\Reader.h">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_Handle.h">
-      <Filter>Windows API Wrappers</Filter>
+    <ClInclude Include="Sqex\Model.h">
+      <Filter>Sqex\Game Resource Files\Model %28.mdl%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_HeapAllocator.h">
-      <Filter>Windows API Wrappers</Filter>
+    <ClInclude Include="Sqex\Texture.h">
+      <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_InjectedModule.h">
-      <Filter>Windows API Wrappers</Filter>
+    <ClInclude Include="Sqex\Texture\Mipmap.h">
+      <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_LoadedModule.h">
-      <Filter>Windows API Wrappers</Filter>
+    <ClInclude Include="Sqex\Sqpack\EntryProvider.h">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_Process.h">
-      <Filter>Windows API Wrappers</Filter>
+    <ClInclude Include="Sqex\ThirdParty\TexTools.h">
+      <Filter>Sqex\Third Party Formats\TexTools</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_Resource.h">
-      <Filter>Windows API Wrappers</Filter>
+    <ClInclude Include="Sqex\Sqpack\EntryRawStream.h">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_CommandLine.h">
-      <Filter>Square Enix Definitions</Filter>
+    <ClInclude Include="Sqex\FontCsv\SeCompatibleFont.h">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv.h">
-      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    <ClInclude Include="Sqex\FontCsv\SeCompatibleDrawableFont.h">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_ModifiableFontCsvStream.h">
-      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    <ClInclude Include="Sqex\FontCsv\Creator.h">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_Creator.h">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
+    <ClInclude Include="Sqex\FontCsv\GdiFont.h">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack.h">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
+    <ClInclude Include="Sqex\FontCsv\DirectWriteFont.h">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_Reader.h">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
+    <ClInclude Include="Sqex\Texture\ModifiableTextureStream.h">
+      <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Model.h">
-      <Filter>Square Enix Definitions\Game Resource Files\Model %28.mdl%29</Filter>
+    <ClInclude Include="Sqex\FontCsv\FreeTypeFont.h">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Texture.h">
-      <Filter>Square Enix Definitions\Game Resource Files\Texture %28.tex%29</Filter>
+    <ClInclude Include="Sqex\FontCsv\CreateConfig.h">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\XaFormat.h">
-      <Filter>Utility Functions</Filter>
+    <ClInclude Include="Sqex\Excel.h">
+      <Filter>Sqex\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Texture_Mipmap.h">
-      <Filter>Square Enix Definitions\Game Resource Files\Texture %28.tex%29</Filter>
+    <ClInclude Include="Sqex\Excel\Reader.h">
+      <Filter>Sqex\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\XaDxtDecompression.h">
-      <Filter>Utility Functions</Filter>
+    <ClInclude Include="Sqex\Excel\Generator.h">
+      <Filter>Sqex\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_EntryProvider.h">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
+    <ClInclude Include="Sqex\SeString.h">
+      <Filter>Sqex</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_ThirdParty_TexTools.h">
-      <Filter>Square Enix Definitions\Third Party Formats\TexTools</Filter>
+    <ClInclude Include="Sqex\Sound.h">
+      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_EntryRawStream.h">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
+    <ClInclude Include="Sqex\Sound\Reader.h">
+      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_SeCompatibleFont.h">
-      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    <ClInclude Include="Sqex\Sound\Writer.h">
+      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_SeCompatibleDrawableFont.h">
-      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    <ClInclude Include="Sqex\Sound\MusicImporter.h">
+      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_Creator.h">
-      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    <ClInclude Include="Sqex\Imc.h">
+      <Filter>Sqex\Game Resource Files</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_ThreadPool.h">
-      <Filter>Windows API Wrappers</Filter>
+    <ClInclude Include="Sqex\Est.h">
+      <Filter>Sqex\Game Resource Files</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_GdiFont.h">
-      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    <ClInclude Include="Sqex\EqpGmp.h">
+      <Filter>Sqex\Game Resource Files\Equipment/Gimmick Parameters %28.eqp, .gmp%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_DirectWriteFont.h">
-      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    <ClInclude Include="Sqex\Eqdp.h">
+      <Filter>Sqex\Game Resource Files\Equipment Deformer Parameter %28.eqdp%29</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Texture_ModifiableTextureStream.h">
-      <Filter>Square Enix Definitions\Game Resource Files\Texture %28.tex%29</Filter>
+    <ClInclude Include="Sqex\Sqpack\BinaryEntryProvider.h">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_FreeTypeFont.h">
-      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    <ClInclude Include="Sqex\Sqpack\EmptyOrObfuscatedEntryProvider.h">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_FontCsv_CreateConfig.h">
-      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    <ClInclude Include="Sqex\Sqpack\HotSwappableEntryProvider.h">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Excel.h">
-      <Filter>Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
+    <ClInclude Include="Sqex\Sqpack\LazyEntryProvider.h">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Excel_Reader.h">
-      <Filter>Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
+    <ClInclude Include="Sqex\Sqpack\ModelEntryProvider.h">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Excel_Generator.h">
-      <Filter>Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
+    <ClInclude Include="Sqex\Sqpack\RandomAccessStreamAsEntryProviderView.h">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_SeString.h">
-      <Filter>Square Enix Definitions</Filter>
+    <ClInclude Include="Sqex\Sqpack\TextureEntryProvider.h">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Utils_Win32_TaskDialogBuilder.h">
-      <Filter>Windows API Wrappers</Filter>
+    <ClInclude Include="Sqex\Sqpack\BinaryStreamDecoder.h">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sound.h">
-      <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
+    <ClInclude Include="Sqex\Sqpack\ModelStreamDecoder.h">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sound_Reader.h">
-      <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
+    <ClInclude Include="Sqex\Sqpack\TextureStreamDecoder.h">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sound_Writer.h">
-      <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
+    <ClInclude Include="Sqex\Sqpack\StreamDecoder.h">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sound_MusicImporter.h">
-      <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
+    <ClInclude Include="Utils\ZlibWrapper.h">
+      <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Imc.h">
-      <Filter>Square Enix Definitions\Game Resource Files</Filter>
+    <ClInclude Include="Utils\Utils.h">
+      <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Est.h">
-      <Filter>Square Enix Definitions\Game Resource Files</Filter>
+    <ClInclude Include="Utils\StringUtils.h">
+      <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_EqpGmp.h">
-      <Filter>Square Enix Definitions\Game Resource Files\Equipment/Gimmick Parameters %28.eqp, .gmp%29</Filter>
+    <ClInclude Include="Utils\Win32\Handle.h">
+      <Filter>Utils\Win32\Closeables</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Eqdp.h">
-      <Filter>Square Enix Definitions\Game Resource Files\Equipment Deformer Parameter %28.eqdp%29</Filter>
+    <ClInclude Include="Utils\Win32\HeapAllocator.h">
+      <Filter>Utils\Win32\Closeables</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_BinaryEntryProvider.h">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    <ClInclude Include="Utils\Win32\InjectedModule.h">
+      <Filter>Utils\Win32\Closeables</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_EmptyOrObfuscatedEntryProvider.h">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    <ClInclude Include="Utils\Win32\LoadedModule.h">
+      <Filter>Utils\Win32\Closeables</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_HotSwappableEntryProvider.h">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    <ClInclude Include="Utils\Win32\Process.h">
+      <Filter>Utils\Win32\Closeables</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_LazyEntryProvider.h">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    <ClInclude Include="Utils\Win32\Resource.h">
+      <Filter>Utils\Win32\Closeables</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_ModelEntryProvider.h">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    <ClInclude Include="Utils\Win32\TaskDialogBuilder.h">
+      <Filter>Utils\Win32\Closeables</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_RandomAccessStreamAsEntryProviderView.h">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    <ClInclude Include="Utils\Win32\ThreadPool.h">
+      <Filter>Utils\Win32\Closeables</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_TextureEntryProvider.h">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    <ClInclude Include="Utils\CallOnDestruction.h">
+      <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_BinaryStreamDecoder.h">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
+    <ClInclude Include="Utils\ListenerManager.h">
+      <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_ModelStreamDecoder.h">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
+    <ClInclude Include="Utils\NumericStatisticsTracker.h">
+      <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_TextureStreamDecoder.h">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
+    <ClInclude Include="Utils\Dxt.h">
+      <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="includes\XivAlexanderCommon\Sqex_Sqpack_StreamDecoder.h">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
+    <ClInclude Include="Sqex\Network\Structure.h">
+      <Filter>Sqex\Network</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
       <Filter>Project Items</Filter>
     </ClCompile>
-    <ClCompile Include="Utils_Win32.cpp">
-      <Filter>Windows API Wrappers</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils_Win32_InjectedModule.cpp">
-      <Filter>Windows API Wrappers</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils_CallOnDestruction.cpp">
-      <Filter>Utility Classes</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils_NumericStatisticsTracker.cpp">
-      <Filter>Utility Classes</Filter>
-    </ClCompile>
-    <ClCompile Include="XaStrings.cpp">
-      <Filter>Utility Functions</Filter>
-    </ClCompile>
-    <ClCompile Include="XaZlib.cpp">
-      <Filter>Utility Functions</Filter>
-    </ClCompile>
-    <ClCompile Include="XaMisc.cpp">
-      <Filter>Utility Functions</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils_Win32_LoadedModule.cpp">
-      <Filter>Windows API Wrappers</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils_Win32_Process.cpp">
-      <Filter>Windows API Wrappers</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils_Win32_Handle.cpp">
-      <Filter>Windows API Wrappers</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils_Win32_Resource.cpp">
-      <Filter>Windows API Wrappers</Filter>
+    <ClCompile Include="Utils\Win32.cpp">
+      <Filter>Utils\Win32</Filter>
     </ClCompile>
     <ClCompile Include="Sqex.cpp">
-      <Filter>Square Enix Definitions</Filter>
+      <Filter>Sqex</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_CommandLine.cpp">
-      <Filter>Square Enix Definitions</Filter>
+    <ClCompile Include="Sqex\CommandLine.cpp">
+      <Filter>Sqex</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_FontCsv.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    <ClCompile Include="Sqex\FontCsv.cpp">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_FontCsv_ModifiableFontCsvStream.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    <ClCompile Include="Sqex\FontCsv\ModifiableFontCsvStream.cpp">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sqpack_Reader.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
+    <ClCompile Include="Sqex\Sqpack\Reader.cpp">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sqpack_Creator.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
+    <ClCompile Include="Sqex\Sqpack\Creator.cpp">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sqpack.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
+    <ClCompile Include="Sqex\Sqpack.cpp">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Texture_Mipmap.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\Texture %28.tex%29</Filter>
+    <ClCompile Include="Sqex\Texture\Mipmap.cpp">
+      <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
     </ClCompile>
-    <ClCompile Include="XaDxtDecompression.cpp">
-      <Filter>Utility Functions</Filter>
+    <ClCompile Include="Sqex\Sqpack\EntryProvider.cpp">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sqpack_EntryProvider.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
+    <ClCompile Include="Sqex\ThirdParty\TexTools.cpp">
+      <Filter>Sqex\Third Party Formats\TexTools</Filter>
     </ClCompile>
-    <ClCompile Include="XivAlexDefaultHeapAllocator.cpp" />
-    <ClCompile Include="Sqex_ThirdParty_TexTools.cpp">
-      <Filter>Square Enix Definitions\Third Party Formats\TexTools</Filter>
+    <ClCompile Include="Sqex\Sqpack\EntryRawStream.cpp">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sqpack_EntryRawStream.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
+    <ClCompile Include="Sqex\Texture.cpp">
+      <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Texture.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\Texture %28.tex%29</Filter>
+    <ClCompile Include="Sqex\FontCsv\SeCompatibleFont.cpp">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_FontCsv_SeCompatibleFont.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    <ClCompile Include="Sqex\FontCsv\Creator.cpp">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_FontCsv_Creator.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    <ClCompile Include="Sqex\FontCsv\GdiFont.cpp">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_FontCsv_GdiFont.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    <ClCompile Include="Sqex\FontCsv\DirectWriteFont.cpp">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_FontCsv_DirectWriteFont.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    <ClCompile Include="Sqex\FontCsv\CreateConfig.cpp">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_FontCsv_CreateConfig.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    <ClCompile Include="Sqex\Texture\ModifiableTextureStream.cpp">
+      <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Texture_ModifiableTextureStream.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\Texture %28.tex%29</Filter>
+    <ClCompile Include="Sqex\FontCsv\FreeTypeFont.cpp">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_FontCsv_FreeTypeFont.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    <ClCompile Include="Sqex\Excel.cpp">
+      <Filter>Sqex\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Excel.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
+    <ClCompile Include="Sqex\Excel\Reader.cpp">
+      <Filter>Sqex\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Excel_Reader.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
+    <ClCompile Include="Sqex\Excel\Generator.cpp">
+      <Filter>Sqex\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Excel_Generator.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
+    <ClCompile Include="Sqex\SeString.cpp">
+      <Filter>Sqex</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_SeString.cpp">
-      <Filter>Square Enix Definitions</Filter>
+    <ClCompile Include="Sqex\Sound\Reader.cpp">
+      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
     </ClCompile>
-    <ClCompile Include="Utils_Win32_TaskDialogBuilder.cpp">
-      <Filter>Windows API Wrappers</Filter>
+    <ClCompile Include="Sqex\Sound.cpp">
+      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sound_Reader.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
+    <ClCompile Include="Sqex\Sound\Writer.cpp">
+      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sound.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
+    <ClCompile Include="Sqex\Sound\MusicImporter.cpp">
+      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sound_Writer.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
+    <ClCompile Include="Sqex\EqpGmp.cpp">
+      <Filter>Sqex\Game Resource Files\Equipment/Gimmick Parameters %28.eqp, .gmp%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sound_MusicImporter.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\Sound %28.scd%29</Filter>
+    <ClCompile Include="Sqex\Eqdp.cpp">
+      <Filter>Sqex\Game Resource Files\Equipment Deformer Parameter %28.eqdp%29</Filter>
     </ClCompile>
-    <ClCompile Include="Utils_Win32_ThreadPool.cpp">
-      <Filter>Windows API Wrappers</Filter>
+    <ClCompile Include="Sqex\Sqpack\ModelEntryProvider.cpp">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_EqpGmp.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\Equipment/Gimmick Parameters %28.eqp, .gmp%29</Filter>
+    <ClCompile Include="Sqex\Sqpack\TextureEntryProvider.cpp">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Eqdp.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\Equipment Deformer Parameter %28.eqdp%29</Filter>
+    <ClCompile Include="Sqex\Sqpack\BinaryEntryProvider.cpp">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sqpack_ModelEntryProvider.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    <ClCompile Include="Sqex\Sqpack\EmptyOrObfuscatedEntryProvider.cpp">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sqpack_TextureEntryProvider.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    <ClCompile Include="Sqex\Sqpack\LazyEntryProvider.cpp">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sqpack_BinaryEntryProvider.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    <ClCompile Include="Sqex\Sqpack\RandomAccessStreamAsEntryProviderView.cpp">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sqpack_EmptyOrObfuscatedEntryProvider.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    <ClCompile Include="Sqex\Sqpack\HotSwappableEntryProvider.cpp">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sqpack_LazyEntryProvider.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    <ClCompile Include="Sqex\Sqpack\BinaryStreamDecoder.cpp">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sqpack_RandomAccessStreamAsEntryProviderView.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    <ClCompile Include="Sqex\Sqpack\StreamDecoder.cpp">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sqpack_HotSwappableEntryProvider.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
+    <ClCompile Include="Sqex\Sqpack\TextureStreamDecoder.cpp">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sqpack_BinaryStreamDecoder.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
+    <ClCompile Include="Sqex\Sqpack\ModelStreamDecoder.cpp">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sqpack_StreamDecoder.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
+    <ClCompile Include="Utils\ZlibWrapper.cpp">
+      <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sqpack_TextureStreamDecoder.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
+    <ClCompile Include="Utils\Utils.cpp">
+      <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex_Sqpack_ModelStreamDecoder.cpp">
-      <Filter>Square Enix Definitions\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
+    <ClCompile Include="Utils\StringUtils.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Win32\Handle.cpp">
+      <Filter>Utils\Win32\Closeables</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Win32\InjectedModule.cpp">
+      <Filter>Utils\Win32\Closeables</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Win32\LoadedModule.cpp">
+      <Filter>Utils\Win32\Closeables</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Win32\Process.cpp">
+      <Filter>Utils\Win32\Closeables</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Win32\Resource.cpp">
+      <Filter>Utils\Win32\Closeables</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Win32\TaskDialogBuilder.cpp">
+      <Filter>Utils\Win32\Closeables</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Win32\ThreadPool.cpp">
+      <Filter>Utils\Win32\Closeables</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\CallOnDestruction.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\NumericStatisticsTracker.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Dxt.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex\Network\Structure.cpp">
+      <Filter>Sqex\Network</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

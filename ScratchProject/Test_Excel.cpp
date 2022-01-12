@@ -1,11 +1,11 @@
-﻿#include "pch.h"
+#include "pch.h"
 
 #include <set>
-#include <XivAlexanderCommon/Sqex_EscapedString.h>
-#include <XivAlexanderCommon/Sqex_Excel.h>
-#include <XivAlexanderCommon/Sqex_Excel_Reader.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_EntryRawStream.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
+#include <XivAlexanderCommon/Sqex/EscapedString.h>
+#include <XivAlexanderCommon/Sqex/Excel.h>
+#include <XivAlexanderCommon/Sqex/Excel/Reader.h>
+#include <XivAlexanderCommon/Sqex/Sqpack/EntryRawStream.h>
+#include <XivAlexanderCommon/Sqex/Sqpack/Reader.h>
 
 const auto QuoteStartU8 = u8"“";
 const auto QuoteEndU8 = u8"”";

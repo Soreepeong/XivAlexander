@@ -1,13 +1,13 @@
 #include "pch.h"
 
-#include <XivAlexanderCommon/Sqex_Sqpack_Creator.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_EntryRawStream.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
-#include <XivAlexanderCommon/Sqex_ThirdParty_TexTools.h>
-#include "XivAlexanderCommon/Sqex_Est.h"
-#include "XivAlexanderCommon/Sqex_EqpGmp.h"
-#include "XivAlexanderCommon/Sqex_Imc.h"
-#include "XivAlexanderCommon/Sqex_Eqdp.h"
+#include <XivAlexanderCommon/Sqex/Sqpack/Creator.h>
+#include <XivAlexanderCommon/Sqex/Sqpack/EntryRawStream.h>
+#include <XivAlexanderCommon/Sqex/Sqpack/Reader.h>
+#include <XivAlexanderCommon/Sqex/ThirdParty/TexTools.h>
+#include "XivAlexanderCommon/Sqex/Est.h"
+#include "XivAlexanderCommon/Sqex/EqpGmp.h"
+#include "XivAlexanderCommon/Sqex/Imc.h"
+#include "XivAlexanderCommon/Sqex/Eqdp.h"
 
 int main() {
 	const Sqex::Sqpack::Reader reader(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\ffxiv\040000.win32.index)");

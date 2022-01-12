@@ -1,18 +1,18 @@
 #include "pch.h"
 
-#include <XivAlexanderCommon/Sqex_Model.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_BinaryEntryProvider.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_Creator.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_EmptyOrObfuscatedEntryProvider.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_EntryProvider.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_EntryRawStream.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_ModelEntryProvider.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_RandomAccessStreamAsEntryProviderView.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_Reader.h>
-#include <XivAlexanderCommon/Sqex_Sqpack_TextureEntryProvider.h>
-#include <XivAlexanderCommon/Sqex_Texture_ModifiableTextureStream.h>
-#include <XivAlexanderCommon/Sqex_ThirdParty_TexTools.h>
-#include <XivAlexanderCommon/Utils_Win32_ThreadPool.h>
+#include <XivAlexanderCommon/Sqex/Model.h>
+#include <XivAlexanderCommon/Sqex/Sqpack/BinaryEntryProvider.h>
+#include <XivAlexanderCommon/Sqex/Sqpack/Creator.h>
+#include <XivAlexanderCommon/Sqex/Sqpack/EmptyOrObfuscatedEntryProvider.h>
+#include <XivAlexanderCommon/Sqex/Sqpack/EntryProvider.h>
+#include <XivAlexanderCommon/Sqex/Sqpack/EntryRawStream.h>
+#include <XivAlexanderCommon/Sqex/Sqpack/ModelEntryProvider.h>
+#include <XivAlexanderCommon/Sqex/Sqpack/RandomAccessStreamAsEntryProviderView.h>
+#include <XivAlexanderCommon/Sqex/Sqpack/Reader.h>
+#include <XivAlexanderCommon/Sqex/Sqpack/TextureEntryProvider.h>
+#include <XivAlexanderCommon/Sqex/Texture/ModifiableTextureStream.h>
+#include <XivAlexanderCommon/Sqex/ThirdParty/TexTools.h>
+#include <XivAlexanderCommon/Utils/Win32/ThreadPool.h>
 
 std::shared_ptr<Sqex::RandomAccessStream> StripSecondaryMipmaps(std::shared_ptr<Sqex::RandomAccessStream> src) {
 	return src;
