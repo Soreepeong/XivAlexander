@@ -249,6 +249,9 @@
     <ClInclude Include="Sqex\Network\Structure.h">
       <Filter>Sqex\Network</Filter>
     </ClInclude>
+    <ClInclude Include="Sqex\Sqpack\EmptyOrObfuscatedStreamDecoder.h">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -418,6 +421,9 @@
     </ClCompile>
     <ClCompile Include="Sqex\Network\Structure.cpp">
       <Filter>Sqex\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="EmptyOrObfuscatedStreamDecoder.cpp">
+      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

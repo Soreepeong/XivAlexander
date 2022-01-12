@@ -2,6 +2,7 @@
 #include "XivAlexanderCommon/Sqex/Sqpack/StreamDecoder.h"
 
 #include "XivAlexanderCommon/Sqex/Sqpack/BinaryStreamDecoder.h"
+#include "XivAlexanderCommon/Sqex/Sqpack/EmptyOrObfuscatedStreamDecoder.h"
 #include "XivAlexanderCommon/Sqex/Sqpack/ModelStreamDecoder.h"
 #include "XivAlexanderCommon/Sqex/Sqpack/TextureStreamDecoder.h"
 
@@ -76,7 +77,7 @@ std::unique_ptr<Sqex::Sqpack::StreamDecoder> Sqex::Sqpack::StreamDecoder::Create
 
 	switch (header.Type) {
 		case SqData::FileEntryType::EmptyOrObfuscated:
-			return nullptr;
+			return std::make_unique<EmptyStreamDecoder>(header, std::move(stream));
 
 		case SqData::FileEntryType::Binary:
 			return std::make_unique<BinaryStreamDecoder>(header, std::move(stream));

@@ -6,10 +6,10 @@ Sqex::Sqpack::EmptyOrObfuscatedEntryProvider::EmptyOrObfuscatedEntryProvider(Ent
 	, m_header(SqData::FileEntryHeader::NewEmpty()) {
 }
 
-Sqex::Sqpack::EmptyOrObfuscatedEntryProvider::EmptyOrObfuscatedEntryProvider(EntryPathSpec pathSpec, uint32_t decompressedSize, std::shared_ptr<const RandomAccessStream> stream)
+Sqex::Sqpack::EmptyOrObfuscatedEntryProvider::EmptyOrObfuscatedEntryProvider(EntryPathSpec pathSpec, std::shared_ptr<const RandomAccessStream> stream, uint32_t decompressedSize)
 	: EntryProvider(std::move(pathSpec))
 	, m_stream(std::move(stream))
-	, m_header(SqData::FileEntryHeader::NewEmpty(decompressedSize, static_cast<size_t>(m_stream->StreamSize()))) {
+	, m_header(SqData::FileEntryHeader::NewEmpty(decompressedSize == UINT32_MAX ? static_cast<uint32_t>(m_stream->StreamSize()) : decompressedSize, static_cast<size_t>(m_stream->StreamSize()))) {
 }
 
 uint64_t Sqex::Sqpack::EmptyOrObfuscatedEntryProvider::StreamSize() const {

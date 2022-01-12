@@ -219,12 +219,12 @@ namespace Sqex {
 	};
 
 	class RandomAccessStreamPartialView : public RandomAccessStream {
-		const std::shared_ptr<RandomAccessStream> m_stream;
+		const std::shared_ptr<const RandomAccessStream> m_stream;
 		const uint64_t m_offset;
 		const uint64_t m_size;
 
 	public:
-		RandomAccessStreamPartialView(std::shared_ptr<RandomAccessStream> stream, uint64_t offset = 0, uint64_t length = UINT64_MAX)
+		RandomAccessStreamPartialView(std::shared_ptr<const RandomAccessStream> stream, uint64_t offset = 0, uint64_t length = UINT64_MAX)
 			: m_stream(std::move(stream))
 			, m_offset(offset)
 			, m_size(std::min(length, m_stream->StreamSize() - offset)) {

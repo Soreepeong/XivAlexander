@@ -9,7 +9,7 @@ namespace Sqex::Sqpack {
 
 	public:
 		EmptyOrObfuscatedEntryProvider(EntryPathSpec pathSpec);
-		EmptyOrObfuscatedEntryProvider(EntryPathSpec pathSpec, uint32_t decompressedSize, std::shared_ptr<const RandomAccessStream> stream);
+		EmptyOrObfuscatedEntryProvider(EntryPathSpec pathSpec, std::shared_ptr<const RandomAccessStream> stream, uint32_t decompressedSize = UINT32_MAX);
 
 		[[nodiscard]] uint64_t StreamSize() const override;
 		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;

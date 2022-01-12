@@ -42,6 +42,7 @@
     <ClInclude Include="Sqex\Sqpack\BinaryEntryProvider.h" />
     <ClInclude Include="Sqex\Sqpack\BinaryStreamDecoder.h" />
     <ClInclude Include="Sqex\Sqpack\EmptyOrObfuscatedEntryProvider.h" />
+    <ClInclude Include="Sqex\Sqpack\EmptyOrObfuscatedStreamDecoder.h" />
     <ClInclude Include="Sqex\Sqpack\EntryProvider.h" />
     <ClInclude Include="Sqex\Sqpack\EntryRawStream.h" />
     <ClInclude Include="Sqex\Sqpack\HotSwappableEntryProvider.h" />
@@ -82,6 +83,7 @@
     <ClInclude Include="Utils\StringUtils.h" />
     <ClInclude Include="Utils\ZlibWrapper.h" />
     <ClInclude Include="pch.h" />
+    <ClCompile Include="EmptyOrObfuscatedStreamDecoder.cpp" />
     <ClCompile Include="Sqex\Network\Structure.cpp" />
     <ClCompile Include="Sqex\Eqdp.cpp" />
     <ClCompile Include="Sqex\EqpGmp.cpp" />
