@@ -273,7 +273,12 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 				size_t offset = mipmapOffsets[i] + mipmapSizes[i] * repeatI;
 				auto mipmapSize = mipmapSizes[i];
 				readBuffer.resize(mipmapSize);
-				stream.ReadStream(offset, std::span(readBuffer));
+
+				const auto read = stream.ReadStreamPartial(offset, &readBuffer[0], mipmapSize);
+				// <caused by TexTools export>
+				std::fill_n(&readBuffer[read], mipmapSize - read, 0);
+				// </caused by TexTools export>
+
 				for (auto nextSize = mipmapSize;; mipmapSize = nextSize) {
 					nextSize /= 2;
 					if (nextSize < minSize)

@@ -13,7 +13,6 @@
 #include <XivAlexanderCommon/Sqex/Sound/Writer.h>
 #include <XivAlexanderCommon/Sqex/Sqpack/BinaryEntryProvider.h>
 #include <XivAlexanderCommon/Sqex/Sqpack/Creator.h>
-#include <XivAlexanderCommon/Sqex/Sqpack/EmptyOrObfuscatedEntryProvider.h>
 #include <XivAlexanderCommon/Sqex/Sqpack/EntryProvider.h>
 #include <XivAlexanderCommon/Sqex/Sqpack/EntryRawStream.h>
 #include <XivAlexanderCommon/Sqex/Sqpack/HotSwappableEntryProvider.h>
@@ -376,8 +375,8 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 		if (entryIt == tempData.Replacements.end())
 			return;
 
-		// std::get<1>(entryIt->second) = std::make_shared<Sqex::Sqpack::OnTheFlyBinaryEntryProvider>(path, std::make_shared<Sqex::MemoryRandomAccessStream>(data));
-		std::get<1>(entryIt->second) = std::make_shared<Sqex::Sqpack::EmptyOrObfuscatedEntryProvider>(path, std::make_shared<Sqex::MemoryRandomAccessStream>(data));
+		std::get<1>(entryIt->second) = std::make_shared<Sqex::Sqpack::OnTheFlyBinaryEntryProvider>(path, std::make_shared<Sqex::MemoryRandomAccessStream>(data));
+		// std::get<1>(entryIt->second) = std::make_shared<Sqex::Sqpack::EmptyOrObfuscatedEntryProvider>(path, std::make_shared<Sqex::MemoryRandomAccessStream>(data));
 		std::get<2>(entryIt->second) = "Metadata";
 	}
 
@@ -502,12 +501,12 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 								for (size_t i = 0; i < 256; ++i) {
 									writer.SetSoundEntry(i, Sqex::Sound::ScdWriter::SoundEntry::EmptyEntry());
 								}
-								//EmptyScd = std::make_shared<Sqex::MemoryRandomAccessStream>(
-								//	Sqex::Sqpack::MemoryBinaryEntryProvider("dummy/dummy", std::make_shared<Sqex::MemoryRandomAccessStream>(writer.Export()), Config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION)
-								//	.ReadStreamIntoVector<uint8_t>(0));
 								EmptyScd = std::make_shared<Sqex::MemoryRandomAccessStream>(
-									Sqex::Sqpack::EmptyOrObfuscatedEntryProvider("dummy/dummy", std::make_shared<Sqex::MemoryRandomAccessStream>(writer.Export()))
+									Sqex::Sqpack::MemoryBinaryEntryProvider("dummy/dummy", std::make_shared<Sqex::MemoryRandomAccessStream>(writer.Export()), Config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION)
 									.ReadStreamIntoVector<uint8_t>(0));
+								//EmptyScd = std::make_shared<Sqex::MemoryRandomAccessStream>(
+								//	Sqex::Sqpack::EmptyOrObfuscatedEntryProvider("dummy/dummy", std::make_shared<Sqex::MemoryRandomAccessStream>(writer.Export()))
+								//	.ReadStreamIntoVector<uint8_t>(0));
 							}
 
 							if (creator.DatExpac != "ffxiv" || creator.DatName != "0a0000") {
@@ -742,10 +741,10 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 									[[fallthrough]];
 
 								case Sqex::Sqpack::SqData::FileEntryType::Binary:
-									if (currentlyCompressed)
+									//if (currentlyCompressed)
 										stream = std::make_shared<Sqex::Sqpack::MemoryBinaryEntryProvider>(pathSpec, std::move(rawStream), currentlyCompressed ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION);
-									else
-										stream = std::make_shared<Sqex::Sqpack::EmptyOrObfuscatedEntryProvider>(pathSpec, rawStream);
+									//else
+									//	stream = std::make_shared<Sqex::Sqpack::EmptyOrObfuscatedEntryProvider>(pathSpec, rawStream);
 									break;
 
 								case Sqex::Sqpack::SqData::FileEntryType::Model:
@@ -1538,10 +1537,10 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 												const auto targetPath = cachedDir / entryPathSpec.FullPath;
 
 												std::unique_ptr<Sqex::Sqpack::EntryProvider> provider;
-												if (Config->Runtime.CompressModdedFiles)
+												//if (Config->Runtime.CompressModdedFiles)
 													provider = std::make_unique<Sqex::Sqpack::MemoryBinaryEntryProvider>(entryPathSpec, std::make_shared<Sqex::MemoryRandomAccessStream>(std::move(*reinterpret_cast<std::vector<uint8_t>*>(&data))), Config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION);
-												else
-													provider = std::make_unique<Sqex::Sqpack::EmptyOrObfuscatedEntryProvider>(entryPathSpec, std::make_shared<Sqex::MemoryRandomAccessStream>(std::move(*reinterpret_cast<std::vector<uint8_t>*>(&data))));
+												//else
+												//	provider = std::make_unique<Sqex::Sqpack::EmptyOrObfuscatedEntryProvider>(entryPathSpec, std::make_shared<Sqex::MemoryRandomAccessStream>(std::move(*reinterpret_cast<std::vector<uint8_t>*>(&data))));
 												const auto len = provider->StreamSize();
 												const auto dv = provider->ReadStreamIntoVector<char>(0, static_cast<SSIZE_T>(len));
 
@@ -1856,10 +1855,10 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 										provider = std::make_unique<Sqex::Sqpack::MemoryTextureEntryProvider>(entryPathSpec, stream, Config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION);
 										// provider = std::make_unique<Sqex::Sqpack::EmptyOrObfuscatedEntryProvider>(entryPathSpec, static_cast<uint32_t>(stream->StreamSize()), stream);
 									} else {
-										if (Config->Runtime.CompressModdedFiles)
+										//if (Config->Runtime.CompressModdedFiles)
 											provider = std::make_unique<Sqex::Sqpack::MemoryBinaryEntryProvider>(entryPathSpec, stream, Config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION);
-										else
-											provider = std::make_unique<Sqex::Sqpack::EmptyOrObfuscatedEntryProvider>(entryPathSpec, stream);
+										//else
+										//	provider = std::make_unique<Sqex::Sqpack::EmptyOrObfuscatedEntryProvider>(entryPathSpec, stream);
 									}
 
 									const auto len = provider->StreamSize();
