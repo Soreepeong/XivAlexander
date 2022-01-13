@@ -204,7 +204,7 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 								description << std::format(" wait={}us->{}us", originalWaitUs, waitUs);
 							} else
 								description << std::format(" wait={}us", originalWaitUs);
-							description << std::format(" next={:%H:%M:%S}", std::chrono::system_clock::now() + std::chrono::milliseconds(waitUs));
+							description << std::format(" next={:%H:%M:%S}", std::chrono::system_clock::now() + std::chrono::microseconds(waitUs));
 
 							if (runtimeConfig.UseHighLatencyMitigationLogging)
 								Impl.Logger->Log(LogCategory::NetworkTimingHandler, description.str());
