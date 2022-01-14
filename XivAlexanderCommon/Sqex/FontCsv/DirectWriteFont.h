@@ -95,8 +95,8 @@ namespace Sqex::FontCsv {
 			const auto bbox = DrawCharacter(c, srcBuf, true).Translate(x, y);
 
 			if (!srcBuf.empty()) {
-				const auto destWidth = static_cast<SSIZE_T>(to->Width());
-				const auto destHeight = static_cast<SSIZE_T>(to->Height());
+				const auto destWidth = static_cast<SSIZE_T>(to->Width);
+				const auto destHeight = static_cast<SSIZE_T>(to->Height);
 				const auto srcWidth = bbox.Width();
 				const auto srcHeight = bbox.Height();
 

@@ -32,8 +32,21 @@ void Sqex::Sqpack::OnTheFlyTextureEntryProvider::Initialize(const RandomAccessSt
 	for (size_t i = 0; i < mipmapOffsets.size(); ++i)
 		m_mipmapSizes[i] = static_cast<uint32_t>(Texture::RawDataLength(AsTexHeader(), i));
 
-	while (mipmapOffsets.empty() || mipmapOffsets.back() + m_mipmapSizes.back() * repeatCount < entryHeader.DecompressedSize) {
+	// Actual data exists but the mipmap offset array after texture header does not bother to refer
+	// to the ones after the first set of mipmaps?
+	// For example: if there are mipmaps of 4x4, 2x2, 1x1, 4x4, 2x2, 1x2, 4x4, 2x2, and 1x1,
+	// then it will record mipmap offsets only up to the first occurrence of 1x1.
+	for (auto forceQuit = false; !forceQuit && (mipmapOffsets.empty() || mipmapOffsets.back() + m_mipmapSizes.back() * repeatCount < entryHeader.DecompressedSize);) {
 		for (size_t i = 0, i_ = AsTexHeader().MipmapCount; i < i_; ++i) {
+
+			// <caused by TexTools export>
+			const auto size = static_cast<uint32_t>(Texture::RawDataLength(AsTexHeader(), i));
+			if (mipmapOffsets.back() + m_mipmapSizes.back() + size > entryHeader.DecompressedSize) {
+				forceQuit = true;
+				break;
+			}
+			// </caused by TexTools export>
+
 			mipmapOffsets.push_back(mipmapOffsets.back() + m_mipmapSizes.back());
 			m_mipmapSizes.push_back(static_cast<uint32_t>(Texture::RawDataLength(AsTexHeader(), i)));
 		}
@@ -241,6 +254,7 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 	for (size_t i = 0; i < mipmapOffsets.size(); ++i)
 		mipmapSizes[i] = static_cast<uint32_t>(Texture::RawDataLength(AsTexHeader(), i));
 
+	// See above OnTheFlyTextureEntryProvider for comments.
 	for (auto forceQuit = false; !forceQuit && (mipmapOffsets.empty() || mipmapOffsets.back() + mipmapSizes.back() * repeatCount < entryHeader.DecompressedSize);) {
 		for (size_t i = 0, i_ = AsTexHeader().MipmapCount; i < i_; ++i) {
 
@@ -267,17 +281,18 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 	for (size_t i = 0; i < mipmapOffsets.size(); ++i) {
 		uint32_t maxMipmapSize = 0;
 
-		const auto minSize = std::max(4U, static_cast<uint32_t>(Texture::RawDataLength(AsTexHeader().Type, 1, 1, AsTexHeader().Layers, i)));
+		const auto minSize = std::max(4U, static_cast<uint32_t>(Texture::RawDataLength(AsTexHeader().Type, 1, 1, AsTexHeader().Depth, i)));
 		if (mipmapSizes[i] > minSize) {
 			for (size_t repeatI = 0; repeatI < repeatCount; repeatI++) {
 				size_t offset = mipmapOffsets[i] + mipmapSizes[i] * repeatI;
 				auto mipmapSize = mipmapSizes[i];
 				readBuffer.resize(mipmapSize);
 
-				const auto read = stream.ReadStreamPartial(offset, &readBuffer[0], mipmapSize);
-				// <caused by TexTools export>
-				std::fill_n(&readBuffer[read], mipmapSize - read, 0);
-				// </caused by TexTools export>
+				if (const auto read = stream.ReadStreamPartial(offset, &readBuffer[0], mipmapSize); read != mipmapSize) {
+					// <caused by TexTools export>
+					std::fill_n(&readBuffer[read], mipmapSize - read, 0);
+					// </caused by TexTools export>
+				}
 
 				for (auto nextSize = mipmapSize;; mipmapSize = nextSize) {
 					nextSize /= 2;
@@ -311,10 +326,11 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 
 			blockAlignment.IterateChunked([&](uint32_t, const uint32_t offset, const uint32_t length) {
 				const auto sourceBuf = std::span(readBuffer).subspan(0, length);
-				const auto read = stream.ReadStreamPartial(offset, &sourceBuf[0], length);
-				// <caused by TexTools export>
-				std::fill_n(&sourceBuf[read], length - read, 0);
-				// </caused by TexTools export>
+				if (const auto read = stream.ReadStreamPartial(offset, &sourceBuf[0], length); read != length) {
+					// <caused by TexTools export>
+					std::fill_n(&sourceBuf[read], length - read, 0);
+					// </caused by TexTools export>
+				}
 
 				if (deflater)
 					deflater->Deflate(sourceBuf);

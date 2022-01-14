@@ -8,6 +8,7 @@
 #include "XivAlexanderCommon/Sqex/Sqpack/Reader.h"
 #include "XivAlexanderCommon/Utils/Win32/Process.h"
 #include "XivAlexanderCommon/Utils/Win32/ThreadPool.h"
+#include "../Texture/ModifiableTextureStream.h"
 
 inline void DebugThrowError(const std::exception& e) {
 #ifdef _DEBUG
@@ -277,10 +278,10 @@ struct Sqex::FontCsv::FontCsvCreator::RenderTarget::Implementation {
 	void Finalize() {
 		auto mipmaps{std::move(Mipmaps)};
 		while (mipmaps.size() % 4)
-			mipmaps.push_back(std::make_shared<Texture::MemoryBackedMipmap>(mipmaps[0]->Width(), mipmaps[0]->Height(), 1, Texture::Format::L8));
+			mipmaps.push_back(std::make_shared<Texture::MemoryBackedMipmap>(mipmaps[0]->Width, mipmaps[0]->Height, 1, Texture::Format::L8));
 
 		for (size_t i = 0; i < mipmaps.size() / 4; ++i) {
-			Mipmaps.push_back(std::make_shared<Texture::MemoryBackedMipmap>(mipmaps[0]->Width(), mipmaps[0]->Height(), 1, TextureFormat));
+			Mipmaps.push_back(std::make_shared<Texture::MemoryBackedMipmap>(mipmaps[0]->Width, mipmaps[0]->Height, 1, TextureFormat));
 
 			const auto target = Mipmaps.back()->View<TextureTypeSupportingRGBA>();
 			const auto b = mipmaps[i * 4 + 0]->View<uint8_t>();
@@ -330,8 +331,8 @@ std::vector<std::shared_ptr<const Sqex::Texture::MipmapStream>> Sqex::FontCsv::F
 std::vector<std::shared_ptr<Sqex::Texture::ModifiableTextureStream>> Sqex::FontCsv::FontCsvCreator::RenderTarget::AsTextureStreamVector() const {
 	std::vector<std::shared_ptr<Texture::ModifiableTextureStream>> res;
 	for (const auto& i : m_pImpl->Mipmaps) {
-		auto texture = std::make_shared<Texture::ModifiableTextureStream>(i->Type(), i->Width(), i->Height());
-		texture->AppendMipmap(i);
+		auto texture = std::make_shared<Texture::ModifiableTextureStream>(i->Type, i->Width, i->Height);
+		texture->SetMipmap(0, 0, i);
 		res.emplace_back(std::move(texture));
 	}
 	return res;
@@ -633,8 +634,8 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 					try {
 						const auto texturePath = std::format(source.texturePath.string(), i + 1);
 						auto provider = reader->second->GetEntryProvider(texturePath);
-						auto rawTextureStream = std::make_shared<Sqpack::EntryRawStream>(std::move(provider));
-						auto mipmap = Texture::MipmapStream::FromTexture(std::move(rawTextureStream), 0);
+						auto rawStream = std::make_shared<Sqpack::EntryRawStream>(std::move(provider));
+						auto mipmap = Texture::ModifiableTextureStream(std::move(rawStream)).GetMipmap(0, 0);
 
 						// preload sqex entry layout so that we can process stuff multithreaded later
 						void(mipmap->ReadStreamIntoVector<char>(0));

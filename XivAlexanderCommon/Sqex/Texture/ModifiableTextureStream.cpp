@@ -3,73 +3,89 @@
 
 #include "XivAlexanderCommon/Sqex/Sqpack.h"
 
-Sqex::Texture::ModifiableTextureStream::ModifiableTextureStream(Format type, uint16_t width, uint16_t height, uint16_t layers)
+Sqex::Texture::ModifiableTextureStream::ModifiableTextureStream(Format type, uint16_t width, uint16_t height, uint16_t depth, uint16_t mipmapCount, uint16_t repeatCount)
 	: m_header{
 		.Unknown1 = 0,
 		.HeaderSize = static_cast<uint16_t>(Align(sizeof m_header)),
 		.Type = type,
 		.Width = width,
 		.Height = height,
-		.Layers = layers,
+		.Depth = depth,
 		.MipmapCount = 0,
 		.Unknown2 = {}
-	} {
+	}
+	, m_repeats(0)
+	, m_repeatedUnitSize(0) {
+	Resize(mipmapCount, repeatCount);
 }
 
 Sqex::Texture::ModifiableTextureStream::ModifiableTextureStream(const std::shared_ptr<RandomAccessStream>& stream)
-	: m_header{ stream->ReadStream<Texture::Header>(0) } {
+	: m_header{ stream->ReadStream<Texture::Header>(0) }
+	, m_repeats(0)
+	, m_repeatedUnitSize(0) {
+	
 	const auto mipmapLocators = stream->ReadStreamIntoVector<uint32_t>(sizeof m_header, m_header.MipmapCount);
-	for (size_t i = 0; i < mipmapLocators.size(); ++i) {
-		const auto w = std::max(1, m_header.Width >> i);
-		const auto h = std::max(1, m_header.Height >> i);
-		const auto l = std::max(1, m_header.Layers >> i);
-		const auto mipmapSize = RawDataLength(m_header.Type, w, h, l);
-		auto mipmapDataView = std::make_shared<Sqex::RandomAccessStreamPartialView>(stream, mipmapLocators[i], mipmapSize);
-		auto mipmapView = std::make_shared<WrappedMipmapStream>(w, h, l, m_header.Type, mipmapDataView);
-		AppendMipmap(mipmapView);
+	const auto repeatUnitSize = CalculateRepeatUnitSize(m_header.MipmapCount);
+	Resize(mipmapLocators.size(), (stream->StreamSize() - mipmapLocators[0] + repeatUnitSize - 1) / repeatUnitSize);
+	for (size_t repeatI = 0; repeatI < m_repeats.size(); ++repeatI) {
+		for (size_t mipmapI = 0; mipmapI < mipmapLocators.size(); ++mipmapI) {
+			const auto mipmapSize = RawDataLength(m_header, mipmapI);
+			auto mipmapDataView = std::make_shared<Sqex::RandomAccessStreamPartialView>(stream, repeatUnitSize * repeatI + mipmapLocators[mipmapI], mipmapSize);
+			auto mipmapView = std::make_shared<WrappedMipmapStream>(m_header, mipmapI, std::move(mipmapDataView));
+			SetMipmap(mipmapI, repeatI, std::move(mipmapView));
+		}
 	}
 }
 
 Sqex::Texture::ModifiableTextureStream::~ModifiableTextureStream() = default;
 
-void Sqex::Texture::ModifiableTextureStream::AppendMipmap(std::shared_ptr<MipmapStream> mipmap) {
-	const auto w = std::max(1, m_header.Width >> m_mipmaps.size());
-	const auto h = std::max(1, m_header.Height >> m_mipmaps.size());
-	const auto l = std::max(1, m_header.Layers >> m_mipmaps.size());
-
-	if (mipmap->Width() != w)
-		throw std::invalid_argument("invalid mipmap width");
-	if (mipmap->Height() != h)
-		throw std::invalid_argument("invalid mipmap height");
-	if (mipmap->Layers() != l)
-		throw std::invalid_argument("invalid mipmap layers");
-	if (mipmap->Type() != m_header.Type)
-		throw std::invalid_argument("invalid mipmap type");
-	if (mipmap->StreamSize() != RawDataLength(mipmap->Type(), w, h, l))
-		throw std::invalid_argument("invalid mipmap size");
-	m_mipmaps.emplace_back(std::move(mipmap));
-	m_header.MipmapCount = static_cast<uint16_t>(m_mipmaps.size());
-
-	m_mipmapOffsets.clear();
-	m_mipmapOffsets.push_back(static_cast<uint32_t>(Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes())));
-	for (size_t i = 0; i < m_mipmaps.size() - 1; ++i)
-		m_mipmapOffsets.push_back(static_cast<uint32_t>(m_mipmapOffsets[i] + Align(m_mipmaps[i]->StreamSize()).Alloc));
-	m_header.HeaderSize = static_cast<uint32_t>(Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes()));
+std::shared_ptr<Sqex::Texture::MipmapStream> Sqex::Texture::ModifiableTextureStream::GetMipmap(size_t mipmapIndex, size_t repeatIndex) const {
+	return m_repeats.at(repeatIndex).at(mipmapIndex);
 }
 
-void Sqex::Texture::ModifiableTextureStream::TruncateMipmap(size_t count) {
-	if (m_mipmaps.size() < count)
-		throw std::invalid_argument("only truncation is supported");
-	m_mipmaps.resize(count);
-	m_mipmapOffsets.resize(count);
-	m_header.MipmapCount = static_cast<uint16_t>(count);
+void Sqex::Texture::ModifiableTextureStream::SetMipmap(size_t mipmapIndex, size_t repeatIndex, std::shared_ptr<MipmapStream> mipmap) {
+	auto& mipmaps = m_repeats.at(repeatIndex);
+	const auto w = std::max(1, m_header.Width >> mipmapIndex);
+	const auto h = std::max(1, m_header.Height >> mipmapIndex);
+	const auto d = std::max(1, m_header.Depth >> mipmapIndex);
+
+	if (mipmap->Width != w)
+		throw std::invalid_argument("invalid mipmap width");
+	if (mipmap->Height != h)
+		throw std::invalid_argument("invalid mipmap height");
+	if (mipmap->Depth != d)
+		throw std::invalid_argument("invalid mipmap layers");
+	if (mipmap->Type != m_header.Type)
+		throw std::invalid_argument("invalid mipmap type");
+	if (mipmap->StreamSize() != RawDataLength(mipmap->Type, w, h, d))
+		throw std::invalid_argument("invalid mipmap size");
+
+	mipmaps.at(mipmapIndex) = std::move(mipmap);
+}
+
+void Sqex::Texture::ModifiableTextureStream::Resize(size_t mipmapCount, size_t repeatCount) {
+	if (mipmapCount == 0)
+		throw std::invalid_argument("mipmap count must be a positive integer");
+	if (repeatCount == 0)
+		throw std::invalid_argument("repeat count must be a positive integer");
+
+	m_repeats.resize(repeatCount);
+	for (auto& mipmaps : m_repeats)
+		mipmaps.resize(mipmapCount);
+
+	m_header.MipmapCount = static_cast<uint16_t>(mipmapCount);
+	m_header.HeaderSize = static_cast<uint32_t>(Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes()));
+
+	m_mipmapOffsets.clear();
+	m_repeatedUnitSize = 0;
+	for (size_t i = 0; i < mipmapCount; ++i) {
+		m_mipmapOffsets.push_back(m_header.HeaderSize + m_repeatedUnitSize);
+		m_repeatedUnitSize += static_cast<uint32_t>(Align(RawDataLength(m_header, i)).Alloc);
+	}
 }
 
 uint64_t Sqex::Texture::ModifiableTextureStream::StreamSize() const {
-	uint64_t res = Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes());
-	for (const auto& mipmap : m_mipmaps)
-		res += Align(mipmap->StreamSize());
-	return res;
+	return Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes()) + m_repeats.size() * m_repeatedUnitSize;
 }
 
 uint64_t Sqex::Texture::ModifiableTextureStream::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {
@@ -119,10 +135,13 @@ uint64_t Sqex::Texture::ModifiableTextureStream::ReadStreamPartial(uint64_t offs
 	} else
 		relativeOffset -= padSize;
 
-	relativeOffset += headerPadInfo.Alloc;
-
-	if (m_mipmaps.empty())
+	if (m_repeats.empty())
 		return length - out.size_bytes();
+
+	auto beginningRepeatIndex = relativeOffset / m_repeatedUnitSize;
+	relativeOffset %= m_repeatedUnitSize;
+
+	relativeOffset += headerPadInfo.Alloc;
 
 	auto it = std::ranges::lower_bound(m_mipmapOffsets,
 		static_cast<uint32_t>(relativeOffset),
@@ -135,33 +154,73 @@ uint64_t Sqex::Texture::ModifiableTextureStream::ReadStreamPartial(uint64_t offs
 
 	relativeOffset -= *it;
 
-	for (auto i = it - m_mipmapOffsets.begin(); it != m_mipmapOffsets.end(); ++it, ++i) {
-		const auto& mipmapStream = *m_mipmaps[i];
+	for (auto repeatI = beginningRepeatIndex; repeatI < m_repeats.size(); ++repeatI) {
+		for (auto mipmapI = it - m_mipmapOffsets.begin(); it != m_mipmapOffsets.end(); ++it, ++mipmapI) {
+			uint64_t padSize;
+			if (const auto& mipmap = m_repeats[repeatI][mipmapI]) {
+				const auto mipmapSize = mipmap->StreamSize();
+				padSize = Sqex::Align(mipmapSize).Pad;
 
-		const auto padInfo = Align(mipmapStream.StreamSize());
-		if (relativeOffset < mipmapStream.StreamSize()) {
-			const auto available = static_cast<size_t>(std::min<uint64_t>(out.size_bytes(), mipmapStream.StreamSize() - relativeOffset));
-			mipmapStream.ReadStream(relativeOffset, out.data(), available);
-			out = out.subspan(available);
-			relativeOffset = 0;
+				if (relativeOffset < mipmapSize) {
+					const auto available = static_cast<size_t>(std::min<uint64_t>(out.size_bytes(), mipmapSize - relativeOffset));
+					mipmap->ReadStream(relativeOffset, out.data(), available);
+					out = out.subspan(available);
+					relativeOffset = 0;
 
-			if (out.empty())
-				return length;
-		} else
-			relativeOffset -= mipmapStream.StreamSize();
+					if (out.empty())
+						return length;
+				} else {
+					relativeOffset -= mipmapSize;
+				}
 
-		if (const auto padSize = padInfo.Pad;
-			relativeOffset < padSize) {
-			const auto available = std::min(out.size_bytes(), static_cast<size_t>(padSize - relativeOffset));
-			std::fill_n(out.begin(), available, 0);
-			out = out.subspan(static_cast<size_t>(available));
-			relativeOffset = 0;
+			} else {
+				padSize = Sqex::Align(RawDataLength(m_header, mipmapI)).Alloc;
+			}
 
-			if (out.empty())
-				return length;
-		} else
-			relativeOffset -= padSize;
+			if (relativeOffset < padSize) {
+				const auto available = std::min(out.size_bytes(), static_cast<size_t>(padSize - relativeOffset));
+				std::fill_n(out.begin(), available, 0);
+				out = out.subspan(static_cast<size_t>(available));
+				relativeOffset = 0;
+
+				if (out.empty())
+					return length;
+			} else
+				relativeOffset -= padSize;
+		}
+		it = m_mipmapOffsets.begin();
 	}
 
 	return length - out.size_bytes();
+}
+
+Sqex::Texture::Format Sqex::Texture::ModifiableTextureStream::GetType() const {
+	return m_header.Type;
+}
+
+uint16_t Sqex::Texture::ModifiableTextureStream::GetWidth() const {
+	return m_header.Width;
+}
+
+uint16_t Sqex::Texture::ModifiableTextureStream::GetHeight() const {
+	return m_header.Height;
+}
+
+uint16_t Sqex::Texture::ModifiableTextureStream::GetDepth() const {
+	return m_header.Depth;
+}
+
+uint16_t Sqex::Texture::ModifiableTextureStream::GetMipmapCount() const {
+	return m_header.MipmapCount;
+}
+
+uint16_t Sqex::Texture::ModifiableTextureStream::GetRepeatCount() const {
+	return static_cast<uint16_t>(m_repeats.size());
+}
+
+size_t Sqex::Texture::ModifiableTextureStream::CalculateRepeatUnitSize(size_t mipmapCount) const {
+	size_t res = 0;
+	for (size_t i = 0; i < mipmapCount; ++i)
+		res += static_cast<uint32_t>(Align(RawDataLength(m_header, i)).Alloc);
+	return res;
 }

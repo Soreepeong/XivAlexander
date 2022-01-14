@@ -3,42 +3,31 @@
 
 #include "XivAlexanderCommon/Utils/Dxt.h"
 
+Sqex::Texture::MipmapStream::MipmapStream(size_t width, size_t height, size_t layers, Format type)
+	: Width(static_cast<uint16_t>(width))
+	, Height(static_cast<uint16_t>(height))
+	, Depth(static_cast<uint16_t>(layers))
+	, Type(type) {
+	if (Width != width || Height != height || Depth != layers)
+		throw std::invalid_argument("dimensions can hold only uint16 ranges");
+}
+
 std::shared_ptr<const Sqex::Texture::MipmapStream> Sqex::Texture::MipmapStream::ViewARGB8888(Format type) const {
 	if (type != Format::A8R8G8B8 && type != Format::X8R8G8B8 && type != Format::Unknown)
 		throw std::invalid_argument("invalid argb8888 compression type");
 
-	if (m_type == Format::A8R8G8B8 || m_type == Format::X8R8G8B8) {
+	if (Type == Format::A8R8G8B8 || Type == Format::X8R8G8B8) {
 		auto res = std::static_pointer_cast<const MipmapStream>(shared_from_this());
-		if (m_type == type || type == Format::Unknown)
+		if (Type == type || type == Format::Unknown)
 			return res;
 		else
-			return std::make_shared<WrappedMipmapStream>(this->Width(), this->Height(), this->Layers(), type, std::move(res));
+			return std::make_shared<WrappedMipmapStream>(Width, Height, Depth, type, std::move(res));
 	}
 
 	if (type == Format::Unknown)
 		return MemoryBackedMipmap::NewARGB8888From(this, Format::A8R8G8B8);
 	else
 		return MemoryBackedMipmap::NewARGB8888From(this, type);
-}
-
-std::shared_ptr<Sqex::Texture::MipmapStream> Sqex::Texture::MipmapStream::FromTexture(std::shared_ptr<RandomAccessStream> stream, size_t mipmapIndex) {
-	const auto header = stream->ReadStream<Header>(0);
-	const auto offsets = stream->ReadStreamIntoVector<uint16_t>(sizeof header, header.MipmapCount);
-	if (mipmapIndex >= offsets.size())
-		throw std::invalid_argument(std::format("mipmapIndex={} > mipmapCount={}", mipmapIndex, offsets.size()));
-
-	const auto dataSize = RawDataLength(header, mipmapIndex);
-	if (mipmapIndex == offsets.size() - 1) {
-		if (stream->StreamSize() - offsets[mipmapIndex] < dataSize)
-			throw std::runtime_error("overlapping mipmap data detected");
-	} else {
-		if (static_cast<size_t>(offsets[mipmapIndex + 1] - offsets[mipmapIndex]) < dataSize)
-			throw std::runtime_error("overlapping mipmap data detected");
-	}
-
-	return std::make_shared<WrappedMipmapStream>(header.Width >> mipmapIndex, header.Height >> mipmapIndex, header.Layers, header.Type,
-		std::make_shared<RandomAccessStreamPartialView>(stream, offsets[mipmapIndex], dataSize)
-		);
 }
 
 void Sqex::Texture::MipmapStream::Show(std::string title) const {
@@ -81,13 +70,13 @@ void Sqex::Texture::MipmapStream::Show(std::string title) const {
 			if (newdc)
 				hdc = GetDC(hwnd);
 			const auto zoom = GetZoom();
-			const auto dw = static_cast<int>(stream->Width() * zoom);
-			const auto dh = static_cast<int>(stream->Height() * zoom);
+			const auto dw = static_cast<int>(stream->Width * zoom);
+			const auto dh = static_cast<int>(stream->Height * zoom);
 			IntersectClipRect(hdc, clip.left, clip.top, clip.right, clip.bottom);
 			if (showmode == 0)
 				SetStretchBltMode(hdc, zoomFactor < 0 ? HALFTONE : COLORONCOLOR);
 			SetBrushOrgEx(hdc, renderOffset.x, renderOffset.y, nullptr);
-			StretchDIBits(hdc, renderOffset.x, renderOffset.y, dw, dh, 0, 0, stream->Width(), stream->Height(), showmode == 0 ? &transparent[0] : &buf[0], &bmi, DIB_RGB_COLORS, SRCCOPY);
+			StretchDIBits(hdc, renderOffset.x, renderOffset.y, dw, dh, 0, 0, stream->Width, stream->Height, showmode == 0 ? &transparent[0] : &buf[0], &bmi, DIB_RGB_COLORS, SRCCOPY);
 			if (renderOffset.x > 0) {
 				const auto rt = RECT{ 0, clip.top, renderOffset.x, clip.bottom };
 				FillRect(hdc, &rt, GetStockBrush(WHITE_BRUSH));
@@ -127,8 +116,8 @@ void Sqex::Texture::MipmapStream::Show(std::string title) const {
 		void ClipPan() {
 			RECT rt;
 			GetClientRect(hwnd, &rt);
-			const auto zwidth = static_cast<int>(stream->Width() * GetZoom());
-			const auto zheight = static_cast<int>(stream->Height() * GetZoom());
+			const auto zwidth = static_cast<int>(stream->Width * GetZoom());
+			const auto zheight = static_cast<int>(stream->Height * GetZoom());
 			if (renderOffset.x < rt.right - rt.left - Margin - zwidth)
 				renderOffset.x = rt.right - rt.left - Margin - zwidth;
 			if (renderOffset.x > Margin)
@@ -167,8 +156,8 @@ void Sqex::Texture::MipmapStream::Show(std::string title) const {
 	state.buf = ViewARGB8888()->ReadStreamIntoVector<uint8_t>(0);
 	{
 		state.transparent = state.buf;
-		const auto w = static_cast<size_t>(Width());
-		const auto h = static_cast<size_t>(Height());
+		const auto w = static_cast<size_t>(Width);
+		const auto h = static_cast<size_t>(Height);
 		const auto view = std::span(reinterpret_cast<RGBA8888*>(&state.transparent[0]), w * h);
 		for (size_t i = 0; i < h; ++i) {
 			for (size_t j = 0; j < w; ++j) {
@@ -183,8 +172,8 @@ void Sqex::Texture::MipmapStream::Show(std::string title) const {
 	state.stream = this;
 
 	state.bmih.biSize = sizeof state.bmih;
-	state.bmih.biWidth = Width();
-	state.bmih.biHeight = -Height();
+	state.bmih.biWidth = Width;
+	state.bmih.biHeight = -Height;
 	state.bmih.biPlanes = 1;
 	state.bmih.biBitCount = 32;
 	state.bmih.biCompression = BI_BITFIELDS;
@@ -288,8 +277,8 @@ void Sqex::Texture::MipmapStream::Show(std::string title) const {
 								return 0;
 							state.dragMoved = true;
 						}
-						const auto zwidth = static_cast<int>(state.stream->Width() * state.GetZoom());
-						const auto zheight = static_cast<int>(state.stream->Height() * state.GetZoom());
+						const auto zwidth = static_cast<int>(state.stream->Width * state.GetZoom());
+						const auto zheight = static_cast<int>(state.stream->Height * state.GetZoom());
 						if (state.renderOffset.x + displaceX * speed < rt.right - rt.left - Margin - zwidth)
 							displaceX = (rt.right - rt.left - Margin - zwidth - state.renderOffset.x) / speed;
 						if (state.renderOffset.x + displaceX * speed > Margin)
@@ -372,9 +361,9 @@ void Sqex::Texture::MipmapStream::Show(std::string title) const {
 
 	const auto unreg = CallOnDestruction([&]() {
 		UnregisterClassW(wcex.lpszClassName, wcex.hInstance);
-	});
+		});
 
-	RECT rc{ 0, 0, Width(), Height() };
+	RECT rc{ 0, 0, Width, Height };
 	AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
 	state.hwnd = CreateWindowExW(0, wcex.lpszClassName, state.title.c_str(), WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, CW_USEDEFAULT,
@@ -402,8 +391,8 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 	if (type != Format::A8R8G8B8 && type != Format::X8R8G8B8)
 		throw std::invalid_argument("invalid argb8888 compression type");
 
-	const auto width = stream->Width();
-	const auto height = stream->Height();
+	const auto width = stream->Width;
+	const auto height = stream->Height;
 	const auto pixelCount = static_cast<size_t>(width) * height;
 	const auto cbSource = static_cast<size_t>(stream->StreamSize());
 
@@ -411,7 +400,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 	const auto rgba8888view = std::span(reinterpret_cast<RGBA8888*>(&result[0]), result.size() / sizeof RGBA8888);
 	uint32_t pos = 0, read = 0;
 	uint8_t buf8[8192];
-	switch (stream->Type()) {
+	switch (stream->Type) {
 		case Format::L8:
 		case Format::A8:
 		{
@@ -555,7 +544,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 			throw std::runtime_error("Unsupported type");
 	}
 
-	return std::make_shared<MemoryBackedMipmap>(stream->Width(), stream->Height(), stream->Layers(), type, std::move(result));
+	return std::make_shared<MemoryBackedMipmap>(stream->Width, stream->Height, stream->Depth, type, std::move(result));
 }
 
 uint64_t Sqex::Texture::MemoryBackedMipmap::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {

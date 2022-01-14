@@ -109,12 +109,14 @@
     "dwrite:SourceHanSansK:9.6": {
       "familyName": "Source Han Sans K",
       "height": 10,
+      "renderMode": "DWRITE_RENDERING_MODE_NATURAL",
       "weight": 600
     },
     "dwrite:SourceHanSansK:12": {
       "familyName": "Source Han Sans K",
       "height": 12,
-      "weight": 500
+      "renderMode": "DWRITE_RENDERING_MODE_NATURAL",
+      "weight": 600
     },
     "dwrite:SourceHanSansK:14": {
       "familyName": "Source Han Sans K",
@@ -126,13 +128,11 @@
     },
     "dwrite:SourceHanSansK:24": {
       "familyName": "Source Han Sans K",
-      "height": 24,
-      "weight": 500
+      "height": 24
     },
     "dwrite:SourceHanSansK:36": {
       "familyName": "Source Han Sans K",
-      "height": 36,
-      "weight": 500
+      "height": 36
     }
   },
   "ranges": {

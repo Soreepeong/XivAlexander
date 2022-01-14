@@ -160,8 +160,8 @@ namespace Sqex::FontCsv {
 			const auto srcBuf = std::span(target.buffer, bbox.Area());
 
 			if (!srcBuf.empty()) {
-				const auto destWidth = static_cast<SSIZE_T>(to->Width());
-				const auto destHeight = static_cast<SSIZE_T>(to->Height());
+				const auto destWidth = static_cast<SSIZE_T>(to->Width);
+				const auto destHeight = static_cast<SSIZE_T>(to->Height);
 				const auto srcWidth = bbox.Width();
 				const auto srcHeight = bbox.Height();
 

@@ -50,14 +50,9 @@ namespace Sqex::Sqpack {
 
 	public:
 		struct Entry {
-			uint32_t DataFileIndex{};
 			uint32_t EntrySize{};
-			uint32_t PadSize{};
 			SqIndex::LEDataLocator Locator{};
 
-			uint32_t EntryReservedSize{};
-
-			uint64_t OffsetAfterHeaders{};
 			std::shared_ptr<EntryProvider> Provider;
 		};
 
@@ -133,6 +128,7 @@ namespace Sqex::Sqpack {
 		};
 
 		SqpackViews AsViews(bool strict, const std::shared_ptr<SqpackViewEntryCache>& buffer = nullptr);
+		void WriteToFiles(const std::filesystem::path& dir, bool strict = false);
 
 		std::shared_ptr<RandomAccessStream> operator[](const EntryPathSpec& pathSpec) const;
 		std::vector<EntryPathSpec> AllPathSpec() const;

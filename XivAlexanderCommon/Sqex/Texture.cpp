@@ -78,38 +78,38 @@ void Sqex::Texture::from_json(const nlohmann::json& j, Format& o) {
 	}
 }
 
-size_t Sqex::Texture::RawDataLength(Format type, size_t width, size_t height, size_t layers, size_t mipmapIndex) {
+size_t Sqex::Texture::RawDataLength(Format type, size_t width, size_t height, size_t depth, size_t mipmapIndex) {
 	width = std::max<size_t>(1, width >> mipmapIndex);
 	height = std::max<size_t>(1, height >> mipmapIndex);
-	layers = std::max<size_t>(1, layers >> mipmapIndex);
+	depth = std::max<size_t>(1, depth >> mipmapIndex);
 	switch (type) {
 		case Format::L8:
 		case Format::A8:
-			return width * height * layers;
+			return width * height * depth;
 
 		case Format::A4R4G4B4:
 		case Format::A1R5G5B5:
-			return width * height * layers * 2;
+			return width * height * depth * 2;
 
 		case Format::A8R8G8B8:
 		case Format::X8R8G8B8:
 		case Format::R32F:
 		case Format::G16R16F:
-			return width * height * layers * 4;
+			return width * height * depth * 4;
 
 		case Format::A16B16G16R16F:
 		case Format::G32R32F:
-			return width * height * layers * 8;
+			return width * height * depth * 8;
 
 		case Format::A32B32G32R32F:
-			return width * height * layers * 16;
+			return width * height * depth * 16;
 
 		case Format::DXT1:
-			return layers * std::max<size_t>(1, ((width + 3) / 4)) * std::max<size_t>(1, ((height + 3) / 4)) * 8;
+			return depth * std::max<size_t>(1, ((width + 3) / 4)) * std::max<size_t>(1, ((height + 3) / 4)) * 8;
 
 		case Format::DXT3:
 		case Format::DXT5:
-			return layers * std::max<size_t>(1, ((width + 3) / 4)) * std::max<size_t>(1, ((height + 3) / 4)) * 16;
+			return depth * std::max<size_t>(1, ((width + 3) / 4)) * std::max<size_t>(1, ((height + 3) / 4)) * 16;
 
 		case Format::D16:
 		case Format::Unknown:

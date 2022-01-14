@@ -125,8 +125,8 @@ namespace Sqex::FontCsv {
 			if (srcBuf.empty())
 				return { true };
 
-			const auto destWidth = static_cast<SSIZE_T>(to->Width());
-			const auto destHeight = static_cast<SSIZE_T>(to->Height());
+			const auto destWidth = static_cast<SSIZE_T>(to->Width);
+			const auto destHeight = static_cast<SSIZE_T>(to->Height);
 
 			GlyphMeasurement src = { false, 0, 0, bbox.Width(), bbox.Height() };
 			auto dest = bbox;

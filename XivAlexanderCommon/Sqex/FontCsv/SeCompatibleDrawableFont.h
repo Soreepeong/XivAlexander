@@ -254,8 +254,8 @@ namespace Sqex::FontCsv {
 		GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, const FontTableEntry& entry, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity = MaxOpacity, OpacityType bgOpacity = MaxOpacity) const {
 			const auto bbox = Measure(x, y, entry);
 			if (to) {
-				const auto destWidth = static_cast<SSIZE_T>(to->Width());
-				const auto destHeight = static_cast<SSIZE_T>(to->Height());
+				const auto destWidth = static_cast<SSIZE_T>(to->Width);
+				const auto destHeight = static_cast<SSIZE_T>(to->Height);
 				const auto srcWidth = static_cast<SSIZE_T>(GetStream().TextureWidth());
 				const auto srcHeight = static_cast<SSIZE_T>(GetStream().TextureHeight());
 
@@ -438,15 +438,15 @@ namespace Sqex::FontCsv {
 			const auto tex2basetop = size2.top > 0 ? 0 : -size2.top;
 			Texture::MemoryBackedMipmap tex2(static_cast<uint16_t>(tex2baseleft + size2.right), static_cast<uint16_t>(tex2basetop + size2.bottom), 1, Texture::Format::L8);
 			auto buf2 = tex2.View<uint8_t>();
-			for (SSIZE_T i = 0; i < tex2.Height(); ++i) {
-				for (SSIZE_T j = 0; j < tex2.Width(); ++j) {
+			for (SSIZE_T i = 0; i < tex2.Height; ++i) {
+				for (SSIZE_T j = 0; j < tex2.Width; ++j) {
 					int accumulator = 0, cnt = 0;
-					for (SSIZE_T i2 = i * m_scale, i2_ = std::min<SSIZE_T>(i2 + m_scale, tex1.Height()); i2 < i2_; i2++)
-						for (SSIZE_T j2 = j * m_scale, j2_ = std::min<SSIZE_T>(j2 + m_scale, tex1.Width()); j2 < j2_; j2++) {
-							accumulator += buf1[i2 * tex1.Width() + j2];
+					for (SSIZE_T i2 = i * m_scale, i2_ = std::min<SSIZE_T>(i2 + m_scale, tex1.Height); i2 < i2_; i2++)
+						for (SSIZE_T j2 = j * m_scale, j2_ = std::min<SSIZE_T>(j2 + m_scale, tex1.Width); j2 < j2_; j2++) {
+							accumulator += buf1[i2 * tex1.Width + j2];
 							cnt++;
 						}
-					buf2[i * tex2.Width() + j] = cnt ? static_cast<uint8_t>(accumulator / cnt) : 0;
+					buf2[i * tex2.Width + j] = cnt ? static_cast<uint8_t>(accumulator / cnt) : 0;
 				}
 			}
 
@@ -454,7 +454,7 @@ namespace Sqex::FontCsv {
 			destSize.Translate(x, y);
 			auto destBuf = to->View<DestPixFmt>();
 
-			RgbBitmapCopy<uint8_t, ResolverFunction, DestPixFmt, OpacityType>::CopyTo(size2, destSize, &buf2[0], &destBuf[0], tex2.Width(), tex2.Height(), to->Width(), fgColor, bgColor, fgOpacity, bgOpacity);
+			RgbBitmapCopy<uint8_t, ResolverFunction, DestPixFmt, OpacityType>::CopyTo(size2, destSize, &buf2[0], &destBuf[0], tex2.Width, tex2.Height, to->Width, fgColor, bgColor, fgOpacity, bgOpacity);
 			return destSize;
 		}
 	};

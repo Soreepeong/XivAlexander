@@ -4,27 +4,15 @@
 
 namespace Sqex::Texture {
 	class MipmapStream : public RandomAccessStream {
-		const uint16_t m_width;
-		const uint16_t m_height;
-		const uint16_t m_layers;
-		const Format m_type;
-
 	public:
-		MipmapStream(uint16_t width, uint16_t height, uint16_t layers, Format type)
-			: m_width(width)
-			, m_height(height)
-			, m_layers(layers)
-			, m_type(type) {
-		}
+		const uint16_t Width;
+		const uint16_t Height;
+		const uint16_t Depth;
+		const Format Type;
 
-		[[nodiscard]] auto Width() const { return m_width; }
-		[[nodiscard]] auto Height() const { return m_height; }
-		[[nodiscard]] auto Layers() const { return m_layers; }
-		[[nodiscard]] auto Type() const { return m_type; }
+		MipmapStream(size_t width, size_t height, size_t layers, Format type);
 
 		std::shared_ptr<const MipmapStream> ViewARGB8888(Format type = Format::Unknown) const;
-
-		static std::shared_ptr<MipmapStream> FromTexture(std::shared_ptr<RandomAccessStream> stream, size_t mipmapIndex);
 
 		void Show(std::string title = std::string("Preview")) const;
 	};
@@ -33,7 +21,16 @@ namespace Sqex::Texture {
 		std::shared_ptr<const RandomAccessStream> m_underlying;
 
 	public:
-		WrappedMipmapStream(uint16_t width, uint16_t height, uint16_t layers, Format type, std::shared_ptr<const RandomAccessStream> underlying)
+		WrappedMipmapStream(Header header, size_t mipmapIndex, std::shared_ptr<const RandomAccessStream> underlying)
+			: MipmapStream(
+				std::max(1, header.Width >> mipmapIndex),
+				std::max(1, header.Height >> mipmapIndex),
+				std::max(1, header.Depth >> mipmapIndex),
+				header.Type)
+			, m_underlying(std::move(underlying)) {
+		}
+
+		WrappedMipmapStream(size_t width, size_t height, size_t layers, Format type, std::shared_ptr<const RandomAccessStream> underlying)
 			: MipmapStream(width, height, layers, type)
 			, m_underlying(std::move(underlying)) {
 		}
@@ -46,12 +43,12 @@ namespace Sqex::Texture {
 		std::vector<uint8_t> m_data;
 
 	public:
-		MemoryBackedMipmap(uint16_t width, uint16_t height, uint16_t layers, Format type)
+		MemoryBackedMipmap(size_t width, size_t height, size_t layers, Format type)
 			: MipmapStream(width, height, layers, type)
 			, m_data(RawDataLength(type, width, layers, height)) {
 		}
 
-		MemoryBackedMipmap(uint16_t width, uint16_t height, uint16_t layers, Format type, std::vector<uint8_t> data)
+		MemoryBackedMipmap(size_t width, size_t height, size_t layers, Format type, std::vector<uint8_t> data)
 			: MipmapStream(width, height, layers, type)
 			, m_data(std::move(data)) {
 		}
@@ -75,7 +72,7 @@ namespace Sqex::Texture {
 		const Win32::Handle m_file;
 
 	public:
-		FileBackedReadOnlyMipmap(uint16_t width, uint16_t height, uint16_t layers, Format type, Win32::Handle file)
+		FileBackedReadOnlyMipmap(size_t width, size_t height, size_t layers, Format type, Win32::Handle file)
 			: MipmapStream(width, height, layers, type)
 			, m_file(std::move(file)) {
 		}

@@ -2007,6 +2007,8 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Modding(int
 
 					for (const auto& [target, relPath] : worklist) {
 						pLastStartedTargetFile = &relPath;
+						auto extensionLower = std::filesystem::path(relPath).extension().wstring();
+						CharLowerW(&extensionLower[0]);
 						try {
 							const auto entryPathSpec = Sqex::Sqpack::EntryPathSpec(relPath);
 							const auto datFile = entryPathSpec.DatFile();
@@ -2016,9 +2018,9 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Modding(int
 							std::vector<char> dv;
 							if (file_size(target) == 0)
 								dv = Sqex::Sqpack::EmptyOrObfuscatedEntryProvider(entryPathSpec).ReadStreamIntoVector<char>(0);
-							else if (relPath.ends_with(L".tex"))
+							else if (extensionLower == L".tex" || extensionLower == L".atex")
 								dv = Sqex::Sqpack::MemoryTextureEntryProvider(entryPathSpec, std::make_shared<Sqex::FileRandomAccessStream>(target), m_config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION).ReadStreamIntoVector<char>(0);
-							else if (relPath.ends_with(L".mdl"))
+							else if (extensionLower == L".mdl")
 								dv = Sqex::Sqpack::MemoryModelEntryProvider(entryPathSpec, std::make_shared<Sqex::FileRandomAccessStream>(target), m_config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION).ReadStreamIntoVector<char>(0);
 							else
 								dv = Sqex::Sqpack::MemoryBinaryEntryProvider(entryPathSpec, std::make_shared<Sqex::FileRandomAccessStream>(target), m_config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION).ReadStreamIntoVector<char>(0);

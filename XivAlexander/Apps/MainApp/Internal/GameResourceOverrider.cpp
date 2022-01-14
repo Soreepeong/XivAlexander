@@ -11,17 +11,17 @@
 #include "Misc/Logger.h"
 #include "XivAlexander.h"
 
-class ReEnterPreventer {
+class AntiReentry {
 	std::mutex m_lock;
 	std::set<DWORD> m_tids;
 
 public:
 	class Lock {
-		ReEnterPreventer& p;
+		AntiReentry& p;
 		bool re = false;
 
 	public:
-		explicit Lock(ReEnterPreventer& p)
+		explicit Lock(AntiReentry& p)
 			: p(p) {
 			const auto tid = GetCurrentThreadId();
 
@@ -52,43 +52,45 @@ public:
 
 struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementation {
 	Apps::MainApp::App& App;
-	const std::shared_ptr<Config> m_config;
-	const std::shared_ptr<Misc::Logger> m_logger;
-	const std::shared_ptr<Misc::DebuggerDetectionDisabler> m_debugger;
-	const std::filesystem::path m_sqpackPath;
-	std::optional<Internal::VirtualSqPacks> m_sqpacks;
-	bool m_bSqpackFailed = false;
+	const std::shared_ptr<XivAlexander::Config> Config;
+	const std::shared_ptr<Misc::Logger> Logger;
+	const std::shared_ptr<Misc::DebuggerDetectionDisabler> AntiDebugger;
+	const std::filesystem::path SqpackPath;
+	std::optional<Internal::VirtualSqPacks> Sqpacks;
 
-	std::vector<std::unique_ptr<Misc::Hooks::PointerFunction<size_t, uint32_t, const char*, size_t>>> fns{};
-	std::vector<std::string> m_lastLoggedPaths;
-	std::mutex m_lastLoggedPathMtx;
-	Utils::CallOnDestruction::Multiple m_cleanup;
+	std::vector<std::unique_ptr<Misc::Hooks::PointerFunction<size_t, uint32_t, const char*, size_t>>> FoundPathHashFunctions{};
+	std::vector<std::string> LastLoggedPaths;
+	std::mutex LastLoggedPathMtx;
+	Utils::CallOnDestruction::Multiple Cleanup;
 
 	Misc::Hooks::ImportedFunction<HANDLE, LPCWSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE> CreateFileW{"kernel32::CreateFileW", "kernel32.dll", "CreateFileW"};
 	Misc::Hooks::ImportedFunction<BOOL, HANDLE> CloseHandle{"kernel32::CloseHandle", "kernel32.dll", "CloseHandle"};
 	Misc::Hooks::ImportedFunction<BOOL, HANDLE, LPVOID, DWORD, LPDWORD, LPOVERLAPPED> ReadFile{"kernel32::ReadFile", "kernel32.dll", "ReadFile"};
 	Misc::Hooks::ImportedFunction<BOOL, HANDLE, LARGE_INTEGER, PLARGE_INTEGER, DWORD> SetFilePointerEx{"kernel32::SetFilePointerEx", "kernel32.dll", "SetFilePointerEx"};
 
-	ReEnterPreventer m_repCreateFileW, m_repReadFile;
+	AntiReentry CreateFileWAntiReentry, ReadFileAntiReentry;
 	
 	Utils::Win32::Thread VirtualSqPackInitThread;
 	Utils::ListenerManager<Implementation, void> OnVirtualSqPacksInitialized;
 
 	Implementation(Apps::MainApp::App& app)
 		: App(app)
-		, m_config(Config::Acquire())
-		, m_logger(Misc::Logger::Acquire())
-		, m_debugger(Misc::DebuggerDetectionDisabler::Acquire())
-		, m_sqpackPath(Utils::Win32::Process::Current().PathOf().remove_filename() / L"sqpack") {
+		, Config(XivAlexander::Config::Acquire())
+		, Logger(Misc::Logger::Acquire())
+		, AntiDebugger(Misc::DebuggerDetectionDisabler::Acquire())
+		, SqpackPath(Utils::Win32::Process::Current().PathOf().remove_filename() / L"sqpack") {
 
 		VirtualSqPackInitThread = Utils::Win32::Thread(L"VirtualSqPackInitThread", [&]() {
 			if (!Dll::IsLoadedAsDependency() && !Dll::IsLoadedFromEntryPoint())
 				return;
 
+			if (!Config->Runtime.UseModding)
+				return;
+
 			try {
-				m_sqpacks.emplace(App, Utils::Win32::Process::Current().PathOf().remove_filename() / L"sqpack");
+				Sqpacks.emplace(App, Utils::Win32::Process::Current().PathOf().remove_filename() / L"sqpack");
 			} catch (const std::exception& e) {
-				m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"Failed to load VirtualSqPacks: {}", e.what());
+				Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"Failed to load VirtualSqPacks: {}", e.what());
 				return;
 			}
 
@@ -96,7 +98,7 @@ struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementat
 
 			});
 
-		m_cleanup += CreateFileW.SetHook([this](
+		Cleanup += CreateFileW.SetHook([this](
 			_In_ LPCWSTR lpFileName,
 			_In_ DWORD dwDesiredAccess,
 			_In_ DWORD dwShareMode,
@@ -105,39 +107,39 @@ struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementat
 			_In_ DWORD dwFlagsAndAttributes,
 			_In_opt_ HANDLE hTemplateFile
 			) {
-				if (const auto lock = ReEnterPreventer::Lock(m_repCreateFileW); lock &&
+				if (const auto lock = AntiReentry::Lock(CreateFileWAntiReentry); lock &&
 					!(dwDesiredAccess & GENERIC_WRITE) &&
 					dwCreationDisposition == OPEN_EXISTING &&
 					!hTemplateFile) {
 
 					VirtualSqPackInitThread.Wait();
-					if (const auto res = m_sqpacks ? m_sqpacks->Open(lpFileName) : nullptr)
+					if (const auto res = Sqpacks ? Sqpacks->Open(lpFileName) : nullptr)
 						return res;
 				}
 
 				return CreateFileW.bridge(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 			});
 
-		m_cleanup += CloseHandle.SetHook([this](
+		Cleanup += CloseHandle.SetHook([this](
 			HANDLE handle
 		) {
-				if (m_sqpacks && m_sqpacks->Close(handle))
+				if (Sqpacks && Sqpacks->Close(handle))
 					return 0;
 
 				return CloseHandle.bridge(handle);
 			});
 
-		m_cleanup += ReadFile.SetHook([this](
+		Cleanup += ReadFile.SetHook([this](
 			_In_ HANDLE hFile,
 			_Out_writes_bytes_to_opt_(nNumberOfBytesToRead, *lpNumberOfBytesRead) __out_data_source(FILE) LPVOID lpBuffer,
 			_In_ DWORD nNumberOfBytesToRead,
 			_Out_opt_ LPDWORD lpNumberOfBytesRead,
 			_Inout_opt_ LPOVERLAPPED lpOverlapped
 			) {
-				if (const auto pvpath = m_sqpacks ? m_sqpacks->Get(hFile) : nullptr) {
+				if (const auto pvpath = Sqpacks ? Sqpacks->Get(hFile) : nullptr) {
 					auto& vpath = *pvpath;
 					try {
-						m_sqpacks->MarkIoRequest();
+						Sqpacks->MarkIoRequest();
 						const auto fp = lpOverlapped ? ((static_cast<uint64_t>(lpOverlapped->OffsetHigh) << 32) | lpOverlapped->Offset) : vpath.FilePointer.QuadPart;
 						const auto read = vpath.Stream->ReadStreamPartial(fp, lpBuffer, nNumberOfBytesToRead);
 
@@ -145,11 +147,11 @@ struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementat
 							*lpNumberOfBytesRead = static_cast<DWORD>(read);
 
 						if (read != nNumberOfBytesToRead) {
-							m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, requested {} bytes, read {} bytes; state: {}",
+							Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, requested {} bytes, read {} bytes; state: {}",
 								vpath.Path.filename(), nNumberOfBytesToRead, read, vpath.Stream->DescribeState());
 						} else {
-							if (m_config->Runtime.LogAllDataFileRead) {
-								m_logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, L"ReadFile: {}, requested {} bytes; state: {}",
+							if (Config->Runtime.LogAllDataFileRead) {
+								Logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, L"ReadFile: {}, requested {} bytes; state: {}",
 									vpath.Path.filename(), nNumberOfBytesToRead, vpath.Stream->DescribeState());
 							}
 						}
@@ -166,13 +168,13 @@ struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementat
 
 					} catch (const Utils::Win32::Error& e) {
 						if (e.Code() != ERROR_IO_PENDING)
-							m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, Message: {}",
+							Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, Message: {}",
 								vpath.Path.filename(), e.what());
 						SetLastError(e.Code());
 						return FALSE;
 
 					} catch (const std::exception& e) {
-						m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, Message: {}",
+						Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, Message: {}",
 							vpath.Path.filename(), e.what());
 						SetLastError(ERROR_READ_FAULT);
 						return FALSE;
@@ -181,18 +183,18 @@ struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementat
 				return ReadFile.bridge(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
 			});
 
-		m_cleanup += SetFilePointerEx.SetHook([this](
+		Cleanup += SetFilePointerEx.SetHook([this](
 			_In_ HANDLE hFile,
 			_In_ LARGE_INTEGER liDistanceToMove,
 			_Out_opt_ PLARGE_INTEGER lpNewFilePointer,
 			_In_ DWORD dwMoveMethod) {
-				if (const auto pvpath = m_sqpacks ? m_sqpacks->Get(hFile) : nullptr) {
+				if (const auto pvpath = Sqpacks ? Sqpacks->Get(hFile) : nullptr) {
 					if (lpNewFilePointer)
 						*lpNewFilePointer = {};
 
 					auto& vpath = *pvpath;
 					try {
-						m_sqpacks->MarkIoRequest();
+						Sqpacks->MarkIoRequest();
 						const auto len = vpath.Stream->StreamSize();
 
 						if (dwMoveMethod == FILE_BEGIN)
@@ -213,13 +215,13 @@ struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementat
 							*lpNewFilePointer = vpath.FilePointer;
 
 					} catch (const Utils::Win32::Error& e) {
-						m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"SetFilePointerEx: {}, Message: {}",
+						Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"SetFilePointerEx: {}, Message: {}",
 							vpath.Path.filename(), e.what());
 						SetLastError(e.Code());
 						return FALSE;
 
 					} catch (const std::exception& e) {
-						m_logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, Message: {}",
+						Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, Message: {}",
 							vpath.Path.filename(), e.what());
 						SetLastError(ERROR_READ_FAULT);
 						return FALSE;
@@ -239,11 +241,11 @@ struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementat
 				34,
 				{}
 			)) {
-			fns.emplace_back(std::make_unique<Misc::Hooks::PointerFunction<size_t, uint32_t, const char*, size_t>>(
+			FoundPathHashFunctions.emplace_back(std::make_unique<Misc::Hooks::PointerFunction<size_t, uint32_t, const char*, size_t>>(
 				"FFXIV::GeneralHashCalcFn",
 				reinterpret_cast<size_t(__stdcall*)(uint32_t, const char*, size_t)>(ptr)
 			));
-			m_cleanup += fns.back()->SetHook([this, ptr, self = fns.back().get()](uint32_t initVal, const char* str, size_t len) {
+			Cleanup += FoundPathHashFunctions.back()->SetHook([this, ptr, self = FoundPathHashFunctions.back().get()](uint32_t initVal, const char* str, size_t len) {
 				if (!str || !*str || len >= 512 || !MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, str, static_cast<int>(len), nullptr, 0))
 					return self->bridge(initVal, str, len);
 
@@ -273,9 +275,9 @@ struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementat
 				auto overrideLanguage = Sqex::Language::Unspecified;
 				if (extLower == ".scd") {
 					if (nameLower.starts_with("cut/") || nameLower.starts_with("sound/voice/vo_line"))
-						overrideLanguage = m_config->Runtime.VoiceResourceLanguageOverride;
+						overrideLanguage = Config->Runtime.VoiceResourceLanguageOverride;
 				} else {
-					overrideLanguage = m_config->Runtime.ResourceLanguageOverride;
+					overrideLanguage = Config->Runtime.ResourceLanguageOverride;
 				}
 
 				std::string description;
@@ -306,7 +308,7 @@ struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementat
 							}
 						}
 					}
-					if (!newName.empty() && name != newName && m_sqpacks && m_sqpacks->EntryExists(std::format("{}{}", newName, ext))) {
+					if (!newName.empty() && name != newName && Sqpacks && Sqpacks->EntryExists(std::format("{}{}", newName, ext))) {
 						const auto newStr = std::format("{}{}{}", newName, ext, rest);
 						description = std::format("{} => {}", std::string_view(str, len), newStr);
 						Utils::Win32::Process::Current().WriteMemory(const_cast<char*>(str), newStr.c_str(), newStr.size() + 1, true);
@@ -315,23 +317,23 @@ struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementat
 				}
 				const auto res = self->bridge(initVal, str, len);
 
-				if (m_config->Runtime.UseHashTrackerKeyLogging || !description.empty()) {
+				if (Config->Runtime.UseHashTrackerKeyLogging || !description.empty()) {
 					auto current = std::string(str, len);
 
-					const auto lock = std::lock_guard(m_lastLoggedPathMtx);
-					if (const auto it = std::ranges::find(m_lastLoggedPaths, current); it != m_lastLoggedPaths.end()) {
-						m_lastLoggedPaths.erase(it);
+					const auto lock = std::lock_guard(LastLoggedPathMtx);
+					if (const auto it = std::ranges::find(LastLoggedPaths, current); it != LastLoggedPaths.end()) {
+						LastLoggedPaths.erase(it);
 					} else {
 						const auto pathSpec = Sqex::Sqpack::EntryPathSpec(current);
-						m_logger->Format(LogCategory::GameResourceOverrider,
+						Logger->Format(LogCategory::GameResourceOverrider,
 							"{} (~{:08x}/~{:08x}, ~{:08x}) => ~{:08x} (f={:x}, iv={:x})",
 							description.empty() ? current : description,
 							pathSpec.PathHash, pathSpec.NameHash, pathSpec.FullPathHash,
 							res, reinterpret_cast<size_t>(ptr), initVal);
 					}
-					m_lastLoggedPaths.push_back(std::move(current));
-					while (m_lastLoggedPaths.size() > 16)
-						m_lastLoggedPaths.erase(m_lastLoggedPaths.begin());
+					LastLoggedPaths.push_back(std::move(current));
+					while (LastLoggedPaths.size() > 16)
+						LastLoggedPaths.erase(LastLoggedPaths.begin());
 				}
 
 				return res;
@@ -340,7 +342,7 @@ struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementat
 	}
 
 	~Implementation() {
-		m_cleanup.Clear();
+		Cleanup.Clear();
 	}
 };
 
@@ -351,7 +353,7 @@ XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::GameResourceOverri
 XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::~GameResourceOverrider() = default;
 
 std::optional<XivAlexander::Apps::MainApp::Internal::VirtualSqPacks>& XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::GetVirtualSqPacks() {
-	return m_pImpl->m_sqpacks;
+	return m_pImpl->Sqpacks;
 }
 
 Utils::CallOnDestruction XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::OnVirtualSqPacksInitialized(std::function<void()> f) {

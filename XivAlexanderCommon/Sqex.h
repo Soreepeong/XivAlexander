@@ -277,9 +277,15 @@ namespace Sqex {
 			r.m_view = {};
 		}
 
-		MemoryRandomAccessStream(const MemoryRandomAccessStream& r) 
+		MemoryRandomAccessStream(const MemoryRandomAccessStream& r)
 			: m_buffer(r.m_buffer)
 			, m_view(r.OwnsData() ? std::span(m_buffer) : r.m_view) {
+		}
+
+		MemoryRandomAccessStream(const RandomAccessStream& r)
+			: m_buffer(static_cast<size_t>(r.StreamSize()))
+			, m_view(std::span(m_buffer)) {
+			r.ReadStream(0, m_view);
 		}
 
 		MemoryRandomAccessStream(std::vector<uint8_t> buffer)
