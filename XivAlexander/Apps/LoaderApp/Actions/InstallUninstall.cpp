@@ -84,6 +84,8 @@ void XivAlexander::LoaderApp::Actions::InstallUninstall::Install(const std::file
 				config64.ChainLoadPath_d3d11 = list;
 			}
 			remove(gamePath / "config.xivalexinit.json");
+			remove(dataPath / "config.xivalexinit.json");
+			remove(exePath / "config.xivalexinit.json");
 			copy_file(cdir / Dll::XivAlexDll64NameW, d3d11);
 			revert += [d3d11, &success]() { if (!success) remove(d3d11); };
 			copy_file(cdir / Dll::XivAlexDll32NameW, d3d9);
@@ -106,6 +108,8 @@ void XivAlexander::LoaderApp::Actions::InstallUninstall::Install(const std::file
 				config32.ChainLoadPath_dinput8 = list;
 			}
 			remove(gamePath / "config.xivalexinit.json");
+			remove(dataPath / "config.xivalexinit.json");
+			remove(exePath / "config.xivalexinit.json");
 			copy_file(cdir / Dll::XivAlexDll32NameW, dinput8);
 			revert += [dinput8, &success]() { if (!success) remove(dinput8); };
 			break;
@@ -126,6 +130,8 @@ void XivAlexander::LoaderApp::Actions::InstallUninstall::Install(const std::file
 				config64.ChainLoadPath_dinput8 = list;
 			}
 			remove(gamePath / "config.xivalexinit.json");
+			remove(dataPath / "config.xivalexinit.json");
+			remove(exePath / "config.xivalexinit.json");
 			copy_file(cdir / Dll::XivAlexDll64NameW, dinput8);
 			revert += [dinput8, &success]() { if (!success) remove(dinput8); };
 			break;
