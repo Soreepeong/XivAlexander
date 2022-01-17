@@ -772,12 +772,12 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 							}
 
 							std::vector<char> buf(65536);
-							Sqex::Align(size, buf.size()).IterateChunkedBreakable([&](uint64_t, uint64_t offset, uint64_t size) {
+							Sqex::Align<uint64_t>(size, buf.size()).IterateChunkedBreakable([&](uint64_t, uint64_t offset, uint64_t size) {
 								if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 									return false;
 
 								stream->ReadStream(offset, &buf[0], size);
-								out.Write(entry.ModOffset + offset, &buf[0], size);
+								out.Write(entry.ModOffset + offset, &buf[0], static_cast<size_t>(size));
 								progressCurrent += size;
 
 								return true;
