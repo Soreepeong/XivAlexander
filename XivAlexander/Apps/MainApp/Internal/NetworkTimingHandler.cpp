@@ -31,7 +31,7 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 			int64_t ResponseUs{};
 			int64_t OriginalWaitUs{};
 			int64_t WaitTimeUs{};
-			bool CastFlag{};
+			int64_t CastTimeUs{};
 		};
 
 	public:
@@ -43,7 +43,6 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 		std::optional<PendingAction> LatestSuccessfulRequest;
 		std::optional<int64_t> LastAnimationLockEndsAtUs;
 		std::map<int, int64_t> OriginalWaitUsMap;
-		Utils::NumericStatisticsTracker EarlyRequestsDurationUs{ 32, 0 };
 
 		SingleConnectionHandler(Implementation* pImpl, SingleConnection& conn)
 			: Config(Config::Acquire())
@@ -67,25 +66,8 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 							.RequestUs = Utils::QpcUs(),
 							});
 
-						const auto delayUs = LastAnimationLockEndsAtUs ? PendingActions.back().RequestUs - *LastAnimationLockEndsAtUs : INT64_MAX;
-
-						if (LastAnimationLockEndsAtUs && delayUs < 0) {
-							if (runtimeConfig.UseEarlyPenalty) {
-								// If somehow latest action request has been made before last animation lock end time,
-								// penalize by forcing the next action to be usable after the early duration passes.
-								LastAnimationLockEndsAtUs = *LastAnimationLockEndsAtUs - delayUs;
-
-								// Record how early did the game let the user user action, and reflect that when deciding next extraDelay.
-								EarlyRequestsDurationUs.AddValue(-delayUs);
-							}
-
-						} else {
-							// Otherwise, if there was no action queued to begin with before the current one, update the base lock time to now.
-							if (PendingActions.size() == 1)
-								LastAnimationLockEndsAtUs = PendingActions.back().RequestUs;
-						}
-
 						if (runtimeConfig.UseHighLatencyMitigationLogging) {
+							const auto delayUs = LastAnimationLockEndsAtUs ? PendingActions.back().RequestUs - *LastAnimationLockEndsAtUs : INT64_MAX;
 							const auto prevRelativeUs = LatestSuccessfulRequest ? PendingActions.back().RequestUs - LatestSuccessfulRequest->RequestUs : INT64_MAX;
 
 							Impl.Logger->Format(
@@ -98,6 +80,10 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 								delayUs > 10 * SecondToMicrosecondMultiplier ? "" : std::format(" delay={}s", static_cast<double>(delayUs) / SecondToMicrosecondMultiplier),
 								prevRelativeUs > 10 * SecondToMicrosecondMultiplier ? "" : std::format(" prevRelative={}s", static_cast<double>(prevRelativeUs) / SecondToMicrosecondMultiplier));
 						}
+
+						// If there was no action queued to begin with before the current one, update the base lock time to now.
+						if (PendingActions.size() == 1 && (!PendingActions.back().RequestUs || *LastAnimationLockEndsAtUs < PendingActions.back().RequestUs))
+							LastAnimationLockEndsAtUs = PendingActions.back().RequestUs;
 					}
 				}
 				return true;
@@ -135,7 +121,7 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 								actionEffect.SourceSequence);
 
 							if (const auto it = OriginalWaitUsMap.find(actionEffect.SourceSequence); it == OriginalWaitUsMap.end())
-								waitUs = originalWaitUs = static_cast<int64_t>(static_cast<double>(actionEffect.AnimationLockDuration) * SecondToMicrosecondMultiplier);
+								waitUs = originalWaitUs = actionEffect.AnimationLockDurationUs();
 							else {
 								waitUs = originalWaitUs = it->second;
 								OriginalWaitUsMap.erase(it);
@@ -143,12 +129,14 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 
 							if (actionEffect.SourceSequence == 0) {
 								// Process actions originating from server.
-								if (LatestSuccessfulRequest && !LatestSuccessfulRequest->CastFlag && LatestSuccessfulRequest->Sequence) {
+								if (LatestSuccessfulRequest && !LatestSuccessfulRequest->CastTimeUs && LatestSuccessfulRequest->Sequence) {
 									LatestSuccessfulRequest->ActionId = actionEffect.ActionId;
 									LatestSuccessfulRequest->Sequence = 0;
 									*LastAnimationLockEndsAtUs += (originalWaitUs + nowUs) - (LatestSuccessfulRequest->OriginalWaitUs + LatestSuccessfulRequest->ResponseUs);
-									*LastAnimationLockEndsAtUs = Utils::Clamp(*LastAnimationLockEndsAtUs, nowUs + AutoAttackDelayUs, nowUs + AutoAttackDelayUs + originalWaitUs);
-									waitUs = *LastAnimationLockEndsAtUs - nowUs;
+									LastAnimationLockEndsAtUs = Utils::Clamp(*LastAnimationLockEndsAtUs, nowUs + AutoAttackDelayUs, nowUs + AutoAttackDelayUs + originalWaitUs);
+
+								} else {
+									LastAnimationLockEndsAtUs = nowUs + waitUs;
 								}
 								description << " serverOriginated";
 
@@ -170,41 +158,53 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 
 									// 100ms animation lock after cast ends stays. Modify animation lock duration for instant actions only.
 									// Since no other action is in progress right before the cast ends, we can safely replace the animation lock with the latest after-cast lock.
-									if (!LatestSuccessfulRequest->CastFlag) {
+									if (!LatestSuccessfulRequest->CastTimeUs) {
 										const auto rttUs = static_cast<int64_t>(nowUs - LatestSuccessfulRequest->RequestUs);
 										conn.ApplicationLatencyUs.AddValue(rttUs);
 										description << std::format(" rtt={}us", rttUs);
 										LastAnimationLockEndsAtUs = ResolveNextAnimationLockEndUs(*LastAnimationLockEndsAtUs, nowUs, originalWaitUs, rttUs, description);
-										waitUs = *LastAnimationLockEndsAtUs - nowUs;
+
+									} else {
+										LastAnimationLockEndsAtUs = LatestSuccessfulRequest->RequestUs + LatestSuccessfulRequest->CastTimeUs + waitUs;
 									}
 									PendingActions.pop_front();
+
+								} else {
+									LastAnimationLockEndsAtUs = nowUs + waitUs;
 								}
 							}
 
-							// Animation locks may not increase above twice of original.
-							waitUs = std::min(originalWaitUs * 2, waitUs);
-							LastAnimationLockEndsAtUs = nowUs + waitUs;
+							waitUs = *LastAnimationLockEndsAtUs - nowUs;
+							if (waitUs == originalWaitUs || (LatestSuccessfulRequest && LatestSuccessfulRequest->CastTimeUs)) {
+								description << std::format(" wait={}us", originalWaitUs);
+							} else if (waitUs < 0) {
+								const auto invalidWaitUs = waitUs;
+								waitUs = 0;
+								description << std::format(" wait={}us->{}us->{}us (ping/jitter too high)", originalWaitUs, invalidWaitUs, waitUs);
 
-							if (waitUs < 0) {
 								if (!runtimeConfig.UseHighLatencyMitigationPreviewMode) {
-									actionEffect.AnimationLockDuration = 0;
+									actionEffect.AnimationLockDurationUs(0);
 									if (LatestSuccessfulRequest)
 										LatestSuccessfulRequest->WaitTimeUs = -LatestSuccessfulRequest->OriginalWaitUs;
 								}
-								description << std::format(" wait={}us->{}us->0us (ping/jitter too high)",
-									originalWaitUs, waitUs);
+
 							} else if (waitUs < originalWaitUs) {
+								description << std::format(" wait={}us->{}us", originalWaitUs, waitUs);
+
 								if (!runtimeConfig.UseHighLatencyMitigationPreviewMode) {
-									actionEffect.AnimationLockDuration = static_cast<float>(waitUs) / static_cast<float>(SecondToMicrosecondMultiplier);
+									actionEffect.AnimationLockDurationUs(waitUs);
 									if (LatestSuccessfulRequest)
 										LatestSuccessfulRequest->WaitTimeUs = waitUs - originalWaitUs;
-									if (auto& handler = Impl.App.GetMainThreadTimingHelper(); handler && Config->Runtime.SynchronizeProcessing)
-										handler->GuaranteePumpBeginCounterIn(waitUs);
 								}
-								description << std::format(" wait={}us->{}us", originalWaitUs, waitUs);
-							} else
-								description << std::format(" wait={}us", originalWaitUs);
+
+							}
 							description << std::format(" next={:%H:%M:%S}", std::chrono::system_clock::now() + std::chrono::microseconds(waitUs));
+
+							if (Config->Runtime.SynchronizeProcessing) {
+								if (auto& handler = Impl.App.GetMainThreadTimingHelper()) {
+									handler->GuaranteePumpBeginCounterAt(*LastAnimationLockEndsAtUs + (LatestSuccessfulRequest ? LatestSuccessfulRequest->CastTimeUs : 0));
+								}
+							}
 
 							if (runtimeConfig.UseHighLatencyMitigationLogging)
 								Impl.Logger->Log(LogCategory::NetworkTimingHandler, description.str());
@@ -229,21 +229,21 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 									if (Config->Runtime.SynchronizeProcessing) {
 										if (group.Id != CooldownGroup::Id_Gcd || !(Config->Runtime.LockFramerateAutomatic || Config->Runtime.LockFramerateInterval)) {
 											if (auto& handler = Impl.App.GetMainThreadTimingHelper())
-												handler->GuaranteePumpBeginCounterAt(PendingActions.front().RequestUs + cooldown.Duration * 10000LL);
+												handler->GuaranteePumpBeginCounterAt(PendingActions.front().RequestUs + cooldown.DurationUs());
 										}
 									}
 
 									if (runtimeConfig.UseHighLatencyMitigationLogging) {
 										Impl.Logger->Format(
 											LogCategory::NetworkTimingHandler,
-											"{:x}: S2C_ActorControlSelf/Cooldown: actionId={:04x} group={:04x} duration={}.{:02}s",
+											"{:x}: S2C_ActorControlSelf/Cooldown: actionId={:04x} group={:04x} duration={:.02f}s",
 											conn.Socket(),
 											cooldown.ActionId, cooldown.CooldownGroupId,
-											cooldown.Duration / 100, cooldown.Duration % 100);
+											cooldown.DurationF());
 									}
 								}
 
-								group.DurationUs = cooldown.Duration * 10000LL;
+								group.DurationUs = cooldown.DurationUs();
 								Impl.CallOnCooldownGroupUpdateListener(group.Id, newDriftItem);
 
 							} else if (actorControlSelf.Category == S2C_ActorControlSelfCategory::ActionRejected) {
@@ -311,7 +311,7 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 							// If it indeed is a cast, the game UI will block the user from generating additional requests,
 							// so first item is guaranteed to be the cast action.
 							if (!PendingActions.empty())
-								PendingActions.front().CastFlag = true;
+								PendingActions.front().CastTimeUs = actorCast.CastTimeUs();
 
 							if (runtimeConfig.UseHighLatencyMitigationLogging)
 								Impl.Logger->Format(
@@ -319,7 +319,7 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 									"{:x}: S2C_ActorCast: actionId={:04x} time={:.3f} target={:08x}",
 									conn.Socket(),
 									actorCast.ActionId,
-									actorCast.CastTime,
+									actorCast.CastTimeF,
 									actorCast.TargetId);
 						}
 					}
@@ -336,9 +336,9 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 			const auto& runtimeConfig = Config->Runtime;
 			const auto pingTrackerUs = Conn.GetPingLatencyTrackerUs();
 
-			const auto socketLatencyUs = Conn.FetchSocketLatencyUs();
+			const auto socketLatencyUs = Conn.FetchSocketLatencyUs().value_or(INT64_MAX);
 			const auto pingLatencyUs = pingTrackerUs ? pingTrackerUs->Latest() : INT64_MAX;
-			auto latencyUs = std::min(pingLatencyUs, socketLatencyUs);
+			const auto latencyUs = std::min(pingLatencyUs, socketLatencyUs);
 
 			auto mode = runtimeConfig.HighLatencyMitigationMode.Value();
 
@@ -346,23 +346,10 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 				mode = HighLatencyMitigationMode::SimulateRtt;
 				description << " latencyUnavailable";
 			} else {
-				if (latencyUs > rttUs)
-					Conn.ExaggeratedNetworkLatencyUs.AddValue(latencyUs - rttUs);
-
-				if (const auto exaggerationUs = Conn.ExaggeratedNetworkLatencyUs.Median();
-					exaggerationUs != Conn.ExaggeratedNetworkLatencyUs.InvalidValue() && latencyUs >= exaggerationUs) {
-					// Reported latency is higher than rtt, which means latency measurement is unreliable.
-					if (socketLatencyUs < pingLatencyUs)
-						description << std::format(" socketLatency={}->{}us", latencyUs, latencyUs - exaggerationUs);
-					else
-						description << std::format(" pingLatency={}->{}us", latencyUs, latencyUs - exaggerationUs);
-					latencyUs -= exaggerationUs;
-				} else {
-					if (socketLatencyUs < pingLatencyUs)
-						description << std::format(" pingLatency={}us", latencyUs);
-					else
-						description << std::format(" socketLatency={}us", latencyUs);
-				}
+				if (socketLatencyUs < pingLatencyUs)
+					description << std::format(" pingLatency={}us", latencyUs);
+				else
+					description << std::format(" socketLatency={}us", latencyUs);
 			}
 
 			switch (mode) {
@@ -391,15 +378,11 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 					const auto latencyAdjusted = std::max(latencyEstimate, latencyAdjustedImmediate);
 					description << std::format(" latAdj={}us", latencyAdjusted);
 
-					const auto earlyPenalty = runtimeConfig.UseEarlyPenalty ? EarlyRequestsDurationUs.Max() : 0;
-					if (earlyPenalty)
-						description << std::format(" earlyPenalty={}us", earlyPenalty);
-
 					// This delay is based on server's processing time.
 					// If the server is busy, everyone should feel the same effect.
 					// * Only the player's ping is taken out of the equation. (- latencyAdjusted)
 					// * Prevent accidentally too high ExtraDelay. (Clamp above 1us)
-					const auto delay = Utils::Clamp(rttAdjusted - latencyAdjusted + earlyPenalty, 1LL, Config->Runtime.MaximumAnimationLockDurationUs.Value());
+					const auto delay = Utils::Clamp(rttAdjusted - latencyAdjusted, 1LL, Config->Runtime.MaximumAnimationLockDurationUs.Value());
 					description << std::format(" delayAdj={}us", delay);
 
 					if (rttUs > 80000 && latencyUs < 10000) {

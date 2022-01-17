@@ -63,7 +63,7 @@ namespace Sqex::Network::Structure {
 				uint16_t EffectId;
 				uint16_t Unknown_0x004;
 				uint16_t Unknown_0x006;
-				float Duration;
+				float DurationF;
 				uint32_t SourceActorId;
 			} Effects[4];
 		};
@@ -95,7 +95,7 @@ namespace Sqex::Network::Structure {
 				uint16_t EffectId;
 				uint16_t Unknown_0x004;
 				uint16_t Unknown_0x006;
-				float Duration;
+				float DurationF;
 				uint32_t SourceActorId;
 			} Effects[4];
 		};
@@ -105,7 +105,7 @@ namespace Sqex::Network::Structure {
 			uint32_t Unknown1;
 			uint32_t ActionId;
 			uint32_t GlobalEffectCounter;
-			float AnimationLockDuration;
+			float AnimationLockDurationF;
 			uint32_t UnknownTargetId;
 			uint16_t SourceSequence;
 			uint16_t Rotation;
@@ -115,6 +115,9 @@ namespace Sqex::Network::Structure {
 			uint8_t Unknown2;
 			uint8_t EffectCount;
 			uint16_t Padding1;
+
+			int64_t AnimationLockDurationUs() const { return static_cast<int64_t>(static_cast<double>(AnimationLockDurationF) * 1000000.); }
+			void AnimationLockDurationUs(int64_t v) { AnimationLockDurationF = static_cast<float>(static_cast<double>(v) / 1000000.); }
 		};
 
 		struct S2C_ActorControl {
@@ -176,11 +179,16 @@ namespace Sqex::Network::Structure {
 					uint16_t Padding1;
 					uint32_t CooldownGroupId;
 					uint32_t ActionId;
-					uint32_t Duration;  // in 10 milliseconds unit
+					int32_t Duration10ms;  // in 10 milliseconds unit
 					uint32_t Param4;
 					uint32_t Param5;
 					uint32_t Param6;
 					uint32_t Padding2;
+
+					void DurationF(double v) { Duration10ms = static_cast<uint32_t>(100. * v); }
+					double DurationF() const { return static_cast<double>(Duration10ms) / 100.; }
+					void DurationUs(int64_t v) { Duration10ms = static_cast<int32_t>(v / 10000ULL); }
+					int64_t DurationUs() const { return Duration10ms * 10000ULL; };
 				} Cooldown;
 			};
 		};
@@ -191,7 +199,7 @@ namespace Sqex::Network::Structure {
 			uint8_t Unknown1;
 			uint16_t ActionId2;
 			uint16_t Unknown2;
-			float CastTime;
+			float CastTimeF;
 			uint32_t TargetId;
 			float Rotation;  // rad
 			uint16_t Flag;  // 1 = interruptible blinking
@@ -200,6 +208,9 @@ namespace Sqex::Network::Structure {
 			uint16_t Y;
 			uint16_t Z;
 			uint16_t Unknown4;
+
+			void CastTimeUs(int64_t v) { CastTimeF = static_cast<float>(static_cast<double>(v) / 1000000.); }
+			int64_t CastTimeUs() const { return static_cast<int64_t>(static_cast<double>(CastTimeF) * 1000000.); };
 		};
 
 		struct C2S_ActionRequest {

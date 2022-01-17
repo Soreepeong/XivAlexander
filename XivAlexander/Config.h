@@ -221,7 +221,6 @@ namespace XivAlexander {
 
 			Item<bool> UseNetworkTimingHandler = CreateConfigItem(this, "UseNetworkTimingHandler", true);
 			Item<HighLatencyMitigationMode> HighLatencyMitigationMode = CreateConfigItem(this, "HighLatencyMitigationMode", HighLatencyMitigationMode::SimulateNormalizedRttAndLatency);
-			Item<bool> UseEarlyPenalty = CreateConfigItem(this, "UseEarlyPenalty", false);
 			Item<bool> UseHighLatencyMitigationLogging = CreateConfigItem(this, "UseHighLatencyMitigationLogging", true);
 			Item<bool> UseHighLatencyMitigationPreviewMode = CreateConfigItem(this, "UseHighLatencyMitigationPreviewMode", false);
 

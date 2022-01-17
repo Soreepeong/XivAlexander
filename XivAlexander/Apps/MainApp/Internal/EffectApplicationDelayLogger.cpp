@@ -36,12 +36,12 @@ struct XivAlexander::Apps::MainApp::Internal::EffectApplicationDelayLogger::Impl
 						const auto& actionEffect = pMessage->Data.Ipc.Data.S2C_ActionEffect;
 						Impl.Logger->Format(
 							LogCategory::EffectApplicationDelayLogger,
-							"{:x}: S2C_ActionEffect({:04x}): actionId={:04x} sourceSequence={:04x} wait={}ms",
+							"{:x}: S2C_ActionEffect({:04x}): actionId={:04x} sourceSequence={:04x} wait={}us",
 							conn.Socket(),
 							pMessage->Data.Ipc.SubType,
 							actionEffect.ActionId,
 							actionEffect.SourceSequence,
-							static_cast<int>(1000 * actionEffect.AnimationLockDuration));
+							actionEffect.AnimationLockDurationUs());
 
 					} else if (pMessage->Data.Ipc.SubType == config.S2C_EffectResult5) {
 						const auto& effectResult = pMessage->Data.Ipc.Data.S2C_EffectResult5;
@@ -51,7 +51,7 @@ struct XivAlexander::Apps::MainApp::Internal::EffectApplicationDelayLogger::Impl
 							effects += std::format(
 								"\n\teffectId={:04x} duration={:.3f} sourceActorId={:08x}",
 								entry.EffectId,
-								entry.Duration,
+								entry.DurationF,
 								entry.SourceActorId
 							);
 						}
@@ -75,7 +75,7 @@ struct XivAlexander::Apps::MainApp::Internal::EffectApplicationDelayLogger::Impl
 							effects += std::format(
 								"\n\teffectId={:04x} duration={:.3f} sourceActorId={:08x}",
 								entry.EffectId,
-								entry.Duration,
+								entry.DurationF,
 								entry.SourceActorId
 							);
 						}

@@ -997,7 +997,6 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1, config.HighLatencyMitigationMode == HighLatencyMitigationMode::SubtractLatency, true);
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2, config.HighLatencyMitigationMode == HighLatencyMitigationMode::SimulateRtt, true, config.FormatStringRes(IDS_MENU_NETWORKLATENCYHANDLEMODE_2, config.ExpectedAnimationLockDurationUs.Value()));
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_MODE_3, config.HighLatencyMitigationMode == HighLatencyMitigationMode::SimulateNormalizedRttAndLatency, true);
-		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_USEEARLYPENALTY, config.UseEarlyPenalty, true);
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING, config.UseHighLatencyMitigationLogging, true);
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE, config.UseHighLatencyMitigationPreviewMode, true);
 		SetMenuState(hMenu, ID_NETWORK_USEIPCTYPEFINDER, config.UseOpcodeFinder, true);
@@ -1314,10 +1313,6 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Network(int
 
 		case ID_NETWORK_HIGHLATENCYMITIGATION_MODE_3:
 			config.HighLatencyMitigationMode = HighLatencyMitigationMode::SimulateNormalizedRttAndLatency;
-			return;
-
-		case ID_NETWORK_HIGHLATENCYMITIGATION_USEEARLYPENALTY:
-			config.UseEarlyPenalty.Toggle();
 			return;
 
 		case ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING:

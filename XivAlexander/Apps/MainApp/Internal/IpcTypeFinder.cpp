@@ -52,7 +52,7 @@ struct XivAlexander::Apps::MainApp::Internal::IpcTypeFinder::Implementation {
 								pMessage->Length,
 								actionEffect.ActionId,
 								actionEffect.SourceSequence,
-								actionEffect.AnimationLockDuration,
+								actionEffect.AnimationLockDurationF,
 								pMessage->Represent(true));
 
 						} else if (pMessage->Length == sizeof XivMessageHeader + sizeof XivIpcHeader + sizeof XivIpcs::S2C_ActorControlSelf) {
@@ -67,11 +67,11 @@ struct XivAlexander::Apps::MainApp::Internal::IpcTypeFinder::Implementation {
 								const auto& cooldown = actorControlSelf.Cooldown;
 								Impl.Logger->Format(
 									LogCategory::IpcTypeFinder,
-									"{:x}: S2C_ActorControlSelf(0x{:04x}): Cooldown: actionId={:04x} duration={}\n{}",
+									"{:x}: S2C_ActorControlSelf(0x{:04x}): Cooldown: actionId={:04x} duration={:.02f}s\n{}",
 									conn.Socket(),
 									pMessage->Data.Ipc.SubType,
 									cooldown.ActionId,
-									cooldown.Duration,
+									cooldown.DurationF(),
 									pMessage->Represent(true));
 
 							} else if (pMessage->Data.Ipc.Data.S2C_ActorControlSelf.Category == S2C_ActorControlSelfCategory::ActionRejected) {
@@ -95,7 +95,7 @@ struct XivAlexander::Apps::MainApp::Internal::IpcTypeFinder::Implementation {
 								conn.Socket(),
 								pMessage->Data.Ipc.SubType,
 								pMessage->Data.Ipc.Data.S2C_ActorCast.ActionId,
-								pMessage->Data.Ipc.Data.S2C_ActorCast.CastTime,
+								pMessage->Data.Ipc.Data.S2C_ActorCast.CastTimeF,
 								pMessage->Data.Ipc.Data.S2C_ActorCast.TargetId,
 								pMessage->Represent(true));
 
@@ -122,7 +122,7 @@ struct XivAlexander::Apps::MainApp::Internal::IpcTypeFinder::Implementation {
 							effects += std::format(
 								"\n\teffectId={:04x} duration={:g} sourceActorId={:08x}",
 								entry.EffectId,
-								entry.Duration,
+								entry.DurationF,
 								entry.SourceActorId
 							);
 						}
@@ -147,7 +147,7 @@ struct XivAlexander::Apps::MainApp::Internal::IpcTypeFinder::Implementation {
 							effects += std::format(
 								"\n\teffectId={:04x} duration={:g} sourceActorId={:08x}",
 								entry.EffectId,
-								entry.Duration,
+								entry.DurationF,
 								entry.SourceActorId
 							);
 						}

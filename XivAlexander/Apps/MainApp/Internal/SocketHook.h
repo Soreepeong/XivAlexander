@@ -31,6 +31,8 @@ namespace XivAlexander::Apps::MainApp::Internal {
 		struct Implementation;
 		const std::unique_ptr<Implementation> m_pImpl;
 
+		class SingleStream;
+
 	public:
 		SingleConnection(SocketHook& hook, SOCKET s);
 		~SingleConnection();
@@ -43,11 +45,10 @@ namespace XivAlexander::Apps::MainApp::Internal {
 
 		[[nodiscard]] auto Socket() const { return m_socket; }
 
-		[[nodiscard]] int64_t FetchSocketLatencyUs();
+		[[nodiscard]] std::optional<int64_t> FetchSocketLatencyUs();
 
 		Utils::NumericStatisticsTracker SocketLatencyUs{ 10, 0 };
 		Utils::NumericStatisticsTracker ApplicationLatencyUs{ 10, 0 };
-		Utils::NumericStatisticsTracker ExaggeratedNetworkLatencyUs{ 10, INT64_MAX, 30 * 1000 * 1000 };
 		const Utils::NumericStatisticsTracker* GetPingLatencyTrackerUs() const;
 	};
 
@@ -59,12 +60,7 @@ namespace XivAlexander::Apps::MainApp::Internal {
 		bool m_unloading = false;
 		Utils::Win32::Thread m_hThreadSetupHook;
 
-	public:
 		std::shared_ptr<Misc::Logger> const m_logger;
-		Utils::ListenerManager<Implementation, void, SingleConnection&> OnSocketFound;
-		Utils::ListenerManager<Implementation, void, SingleConnection&> OnSocketGone;
-
-	private:
 		std::unique_ptr<Implementation> m_pImpl;
 
 		Misc::Hooks::ImportedFunction<SOCKET, int, int, int> socket{ "socket::socket", "ws2_32.dll", "socket", 23 };
@@ -82,8 +78,10 @@ namespace XivAlexander::Apps::MainApp::Internal {
 		SocketHook& operator=(SocketHook&&) = delete;
 		~SocketHook();
 
+		Utils::ListenerManager<Implementation, void, SingleConnection&> OnSocketFound;
+		Utils::ListenerManager<Implementation, void, SingleConnection&> OnSocketGone;
+
 		[[nodiscard]] bool IsUnloadable() const;
-		[[nodiscard]] int64_t GetLastSocketSelectCounterUs() const;
 
 		void ReleaseSockets();
 

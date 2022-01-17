@@ -4,29 +4,22 @@
 #include <XivAlexanderCommon/Sqex/Network/Structure.h>
 #include <XivAlexanderCommon/Utils/ZlibWrapper.h>
 
+#include "Apps/MainApp/App.h"
 #include "Config.h"
 #include "Misc/IcmpPingTracker.h"
 #include "Misc/Logger.h"
-#include "Apps/MainApp/App.h"
 #include "resource.h"
 
 using namespace Sqex::Network::Structure;
 
-static constexpr auto SecondToMicrosecondMultiplier = 1000000ULL;
-
-class SingleStream {
-	std::shared_ptr<XivAlexander::Misc::Logger> const m_logger;
-
-public:
-	bool m_ending = false;
-	bool m_closed = false;
-
+class XivAlexander::Apps::MainApp::Internal::SingleConnection::SingleStream {
+	Misc::Logger& m_logger;
 	Utils::ZlibReusableInflater m_inflater;
 
-	std::vector<uint8_t> m_pending{};
-	std::vector<size_t> m_reservedOffset{};
-	size_t m_pendingStartPos = 0;
+	std::vector<uint8_t> m_buffer{};
+	size_t m_pointer = 0;
 
+public:
 	class SingleStreamWriter {
 		SingleStream& m_stream;
 		const size_t m_offset;
@@ -35,13 +28,13 @@ public:
 	public:
 		SingleStreamWriter(SingleStream& stream)
 			: m_stream(stream)
-			, m_offset(stream.m_pending.size()) {
+			, m_offset(stream.m_buffer.size()) {
 		}
 
 		template<typename T>
 		T* Allocate(size_t length) {
-			m_stream.m_pending.resize(m_offset + m_commitLength + length);
-			return reinterpret_cast<T*>(&m_stream.m_pending[m_offset + m_commitLength]);
+			m_stream.m_buffer.resize(m_offset + m_commitLength + length);
+			return reinterpret_cast<T*>(&m_stream.m_buffer[m_offset + m_commitLength]);
 		}
 
 		size_t Write(size_t length) {
@@ -50,12 +43,12 @@ public:
 		}
 
 		~SingleStreamWriter() {  // NOLINT(bugprone-exception-escape)
-			m_stream.m_pending.resize(m_offset + m_commitLength);
+			m_stream.m_buffer.resize(m_offset + m_commitLength);
 		}
 	};
 
-	SingleStream(std::shared_ptr<XivAlexander::Misc::Logger> logger)
-		: m_logger(std::move(logger)) {
+	SingleStream(Misc::Logger& logger)
+		: m_logger(logger) {
 	}
 
 	SingleStreamWriter Write() {
@@ -64,7 +57,7 @@ public:
 
 	void Write(const void* buf, size_t length) {
 		const auto uint8buf = static_cast<const uint8_t*>(buf);
-		m_pending.insert(m_pending.end(), uint8buf, uint8buf + length);
+		m_buffer.insert(m_buffer.end(), uint8buf, uint8buf + length);
 	}
 
 	template<typename T, typename = std::enable_if_t<std::is_standard_layout_v<T>>>
@@ -79,36 +72,38 @@ public:
 
 	template<typename T = uint8_t, typename = std::enable_if_t<std::is_standard_layout_v<T>>>
 	[[nodiscard]] std::span<const T> Peek(size_t count = SIZE_MAX) const {
-		if (m_pending.empty())
+		if (m_buffer.empty())
 			return {};
 		return {
-			reinterpret_cast<const T*>(&m_pending[m_pendingStartPos]),
-			count == SIZE_MAX ? (m_pending.size() - m_pendingStartPos) / sizeof T : count
+			reinterpret_cast<const T*>(&m_buffer[m_pointer]),
+			count == SIZE_MAX ? (m_buffer.size() - m_pointer) / sizeof T : count
 		};
 	}
 
 	template<typename T = uint8_t, typename = std::enable_if_t<std::is_standard_layout_v<T>>>
 	void Consume(size_t count) {
-		m_pendingStartPos += count * sizeof T;
-		if (m_pendingStartPos == m_pending.size()) {
-			m_pending.clear();
-			m_pendingStartPos = 0;
-		} else if (m_pendingStartPos > m_pending.size()) {
-			__debugbreak();
+		m_pointer += count * sizeof T;
+		if (m_pointer == m_buffer.size()) {
+			m_buffer.clear();
+			m_pointer = 0;
+		} else if (m_pointer > m_buffer.size()) {
+			m_buffer.clear();
+			m_pointer = 0;
+			m_logger.Log(LogCategory::SocketHook, "SingleStream: overconsuming", LogLevel::Warning);
 		}
 	}
 
 	template<typename T, typename = std::enable_if_t<std::is_standard_layout_v<T>>>
 	size_t Read(T* buf, size_t count) {
-		count = std::min(count, (m_pending.size() - m_pendingStartPos) / sizeof T);
-		memcpy(buf, &m_pending[m_pendingStartPos], count * sizeof T);
+		count = std::min(count, (m_buffer.size() - m_pointer) / sizeof T);
+		memcpy(buf, &m_buffer[m_pointer], count * sizeof T);
 		Consume<T>(count);
 		return count;
 	}
 
 	template<typename T = uint8_t, typename = std::enable_if_t<std::is_standard_layout_v<T>>>
 	[[nodiscard]] size_t Available() const {
-		return (m_pending.size() - m_pendingStartPos) / sizeof T;
+		return (m_buffer.size() - m_pointer) / sizeof T;
 	}
 
 	void TunnelXivStream(SingleStream& target, const XivAlexander::Apps::MainApp::Internal::SingleConnection::MessageMangler& messageMangler) {
@@ -166,7 +161,7 @@ public:
 						target.Write(std::span(message));
 				}
 			} catch (const std::exception& e) {
-				m_logger->Format<XivAlexander::LogLevel::Warning>(XivAlexander::LogCategory::SocketHook, "Error: {}\n{}", e.what(), pGamePacket->Represent());
+				m_logger.Format<XivAlexander::LogLevel::Warning>(XivAlexander::LogCategory::SocketHook, "Error: {}\n{}", e.what(), pGamePacket->Represent());
 				target.Write(pGamePacket, pGamePacket->TotalLength);
 			}
 
@@ -176,11 +171,9 @@ public:
 };
 
 struct XivAlexander::Apps::MainApp::Internal::SingleConnection::Implementation {
-	std::shared_ptr<Misc::Logger> const Logger;
-	std::shared_ptr<XivAlexander::Config> const Config;
 	Internal::SingleConnection& SingleConnection;
 	Internal::SocketHook& SocketHook;
-	bool Unloading = false;
+	bool Detaching = false;
 
 	std::map<size_t, std::vector<MessageMangler>> IncomingHandlers{};
 	std::map<size_t, std::vector<MessageMangler>> OutgoingHandlers{};
@@ -202,19 +195,7 @@ struct XivAlexander::Apps::MainApp::Internal::SingleConnection::Implementation {
 	mutable int IoctlTcpInfoFailureCount = 0;
 	uint64_t NextTcpDelaySetAttempt = 0;
 
-	Implementation(Internal::SingleConnection& singleConnection, Internal::SocketHook& socketHook)
-		: Logger(Misc::Logger::Acquire())
-		, Config(XivAlexander::Config::Acquire())
-		, SingleConnection(singleConnection)
-		, SocketHook(socketHook)
-		, RecvRaw(Logger)
-		, RecvProcessed(Logger)
-		, SendRaw(Logger)
-		, SendProcessed(Logger) {
-
-		Logger->Format(LogCategory::SocketHook, Config->Runtime.GetLangId(), IDS_SOCKETHOOK_SOCKET_FOUND, SingleConnection.m_socket);
-		ResolveAddresses();
-	}
+	Implementation(Internal::SingleConnection& singleConnection, Internal::SocketHook& socketHook);
 
 	void SetTCPDelay() {
 		if (NextTcpDelaySetAttempt > GetTickCount64())
@@ -240,14 +221,6 @@ struct XivAlexander::Apps::MainApp::Internal::SingleConnection::Implementation {
 	}
 
 	void ResolveAddresses();
-
-	void Unload() {
-		RecvRaw.m_ending = true;
-		SendRaw.m_ending = true;
-		RecvProcessed.m_ending = true;
-		SendProcessed.m_ending = true;
-		Unloading = true;
-	}
 
 	void AttemptReceive() {
 		if (auto write = RecvRaw.Write();
@@ -285,7 +258,7 @@ struct XivAlexander::Apps::MainApp::Internal::SingleConnection::Implementation {
 						// Add statistics sample
 						SingleConnection.ApplicationLatencyUs.AddValue(delayUs);
 						if (const auto latency = SingleConnection.FetchSocketLatencyUs())
-							SingleConnection.SocketLatencyUs.AddValue(latency);
+							SingleConnection.SocketLatencyUs.AddValue(*latency);
 					}
 					break;
 
@@ -322,20 +295,8 @@ struct XivAlexander::Apps::MainApp::Internal::SingleConnection::Implementation {
 			});
 	}
 
-	bool CloseRecvIfPossible() {
-		if (!RecvRaw.Available() && !RecvProcessed.Available() && Unloading)
-			RecvRaw.m_closed = RecvProcessed.m_closed = true;
-		return IsFinished();
-	}
-
-	bool CloseSendIfPossible() {
-		if (!SendRaw.Available() && !SendProcessed.Available() && Unloading)
-			SendRaw.m_closed = SendProcessed.m_closed = true;
-		return IsFinished();
-	}
-
-	bool IsFinished() const {
-		return RecvRaw.m_closed && SendRaw.m_closed;
+	bool CanCompleteDetach() const {
+		return !RecvRaw.Available() && !RecvProcessed.Available() && !SendRaw.Available() && !SendProcessed.Available() && Detaching;
 	}
 };
 
@@ -345,12 +306,11 @@ struct XivAlexander::Apps::MainApp::Internal::SocketHook::Implementation {
 	Apps::MainApp::App& App;
 	const DWORD GameMainThreadId;
 	Misc::IcmpPingTracker PingTracker;
-	std::map<SOCKET, std::unique_ptr<SingleConnection>> Sockets{};
-	std::set<SOCKET> NonGameSockets{};
-	std::vector<std::pair<uint32_t, uint32_t>> AllowedIpRange{};
-	std::vector<std::pair<uint32_t, uint32_t>> AllowedPortRange{};
+	std::map<SOCKET, std::unique_ptr<SingleConnection>> Sockets;
+	std::set<SOCKET> NonGameSockets;
+	std::vector<std::pair<uint32_t, uint32_t>> AllowedIpRange;
+	std::vector<std::pair<uint32_t, uint32_t>> AllowedPortRange;
 	Utils::CallOnDestruction::Multiple Cleanup;
-	int64_t LastSocketSelectCounterUs{};
 
 	Implementation(Internal::SocketHook& socketHook, Apps::MainApp::App& app)
 		: Config(XivAlexander::Config::Acquire())
@@ -477,7 +437,7 @@ void XivAlexander::Apps::MainApp::Internal::SingleConnection::Implementation::Re
 	socklen_t addrlen = sizeof local;
 	if (0 == getsockname(SingleConnection.m_socket, reinterpret_cast<sockaddr*>(&local), &addrlen) && Utils::CompareSockaddr(&LocalAddress, &local)) {
 		LocalAddress = local;
-		Logger->Format(LogCategory::SocketHook, "{:x}: Local={}", SingleConnection.m_socket, Utils::ToString(local));
+		SocketHook.m_logger->Format(LogCategory::SocketHook, "{:x}: Local={}", SingleConnection.m_socket, Utils::ToString(local));
 
 		// Set TCP delay here because SIO_TCP_SET_ACK_FREQUENCY seems to work only when localAddress is not 0.0.0.0.
 		if (SocketHook.m_pImpl->Config->Runtime.ReducePacketDelay && reinterpret_cast<sockaddr_in*>(&local)->sin_addr.s_addr != INADDR_ANY) {
@@ -491,7 +451,7 @@ void XivAlexander::Apps::MainApp::Internal::SingleConnection::Implementation::Re
 	addrlen = sizeof remote;
 	if (0 == getpeername(SingleConnection.m_socket, reinterpret_cast<sockaddr*>(&remote), &addrlen) && Utils::CompareSockaddr(&RemoteAddress, &remote)) {
 		RemoteAddress = remote;
-		Logger->Format(LogCategory::SocketHook, "{:x}: Remote={}", SingleConnection.m_socket, Utils::ToString(remote));
+		SocketHook.m_logger->Format(LogCategory::SocketHook, "{:x}: Remote={}", SingleConnection.m_socket, Utils::ToString(remote));
 	}
 
 	const auto& local4 = *reinterpret_cast<const sockaddr_in*>(&LocalAddress);
@@ -501,6 +461,17 @@ void XivAlexander::Apps::MainApp::Internal::SingleConnection::Implementation::Re
 			reinterpret_cast<sockaddr_in*>(&LocalAddress)->sin_addr,
 			reinterpret_cast<sockaddr_in*>(&RemoteAddress)->sin_addr
 		);
+}
+
+XivAlexander::Apps::MainApp::Internal::SingleConnection::Implementation::Implementation(Internal::SingleConnection& singleConnection, Internal::SocketHook& socketHook)
+	: SingleConnection(singleConnection)
+	, SocketHook(socketHook)
+	, RecvRaw(*socketHook.m_logger)
+	, RecvProcessed(*socketHook.m_logger)
+	, SendRaw(*socketHook.m_logger)
+	, SendProcessed(*socketHook.m_logger) {
+	socketHook.m_logger->Format(LogCategory::SocketHook, socketHook.m_pImpl->Config->Runtime.GetLangId(), IDS_SOCKETHOOK_SOCKET_FOUND, SingleConnection.m_socket);
+	ResolveAddresses();
 }
 
 XivAlexander::Apps::MainApp::Internal::SingleConnection::SingleConnection(Internal::SocketHook& hook, SOCKET s)
@@ -527,26 +498,29 @@ void XivAlexander::Apps::MainApp::Internal::SingleConnection::ResolveAddresses()
 	m_pImpl->ResolveAddresses();
 }
 
-int64_t XivAlexander::Apps::MainApp::Internal::SingleConnection::FetchSocketLatencyUs() {
+std::optional<int64_t> XivAlexander::Apps::MainApp::Internal::SingleConnection::FetchSocketLatencyUs() {
+	// Give up after 5 consecutive failures on measuring socket latency
 	if (m_pImpl->IoctlTcpInfoFailureCount >= 5)
-		return INT64_MAX;
+		return {};
 
 	TCP_INFO_v0 info{};
 	DWORD tcpInfoVersion = 0, cb = 0;
 	if (0 != WSAIoctl(m_socket, SIO_TCP_INFO, &tcpInfoVersion, sizeof tcpInfoVersion, &info, sizeof info, &cb, nullptr, nullptr)) {
 		const auto err = WSAGetLastError();
-		m_pImpl->Logger->Format<LogLevel::Info>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0: {:08x} ({})", m_socket,
+		m_pImpl->SocketHook.m_logger->Format<LogLevel::Info>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0: {:08x} ({})", m_socket,
 			err, Utils::Win32::FormatWindowsErrorMessage(err));
 		m_pImpl->IoctlTcpInfoFailureCount++;
-		return INT64_MAX;
+		return {};
+
 	} else if (cb != sizeof info) {
-		m_pImpl->Logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0: buffer size mismatch ({} != {})", m_socket, cb, sizeof info);
+		m_pImpl->SocketHook.m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "{:x}: WSAIoctl SIO_TCP_INFO v0: buffer size mismatch ({} != {})", m_socket, cb, sizeof info);
 		m_pImpl->IoctlTcpInfoFailureCount++;
-		return INT64_MAX;
+		return {};
+
 	} else {
-		const auto latency = info.RttUs;
+		const auto latency = static_cast<int64_t>(info.RttUs);
 		SocketLatencyUs.AddValue(latency);
-		return latency;
+		return std::make_optional(latency);
 	}
 };
 
@@ -562,24 +536,16 @@ const Utils::NumericStatisticsTracker* XivAlexander::Apps::MainApp::Internal::Si
 
 XivAlexander::Apps::MainApp::Internal::SocketHook::SocketHook(Apps::MainApp::App & app)
 	: m_logger(Misc::Logger::Acquire())
-	, OnSocketFound([this](const auto& cb) {
-	if (m_pImpl) {
-		for (const auto& val : m_pImpl->Sockets | std::views::values)
-			cb(*val);
-	}
-		}) {
+	, OnSocketFound([this](const auto& cb) { if (m_pImpl) { for (const auto& val : m_pImpl->Sockets | std::views::values) cb(*val); } }) {
 
-	m_hThreadSetupHook = Utils::Win32::Thread(L"SocketHook::SocketHook", [this, &app]() {
+	m_hThreadSetupHook = Utils::Win32::Thread(L"SocketHook::SocketHook/WaitGameWindow", [this, &app]() {
 		m_logger->Log(LogCategory::SocketHook, "Waiting for game window to stabilize before setting up redirecting network operations.");
 		app.RunOnGameLoop([&]() {
 			m_pImpl = std::make_unique<Implementation>(*this, app);
 			if (m_unloading)
 				return;
 
-			void(Utils::Win32::Thread(L"SocketHook::SocketHook", [this, &app]() {
-				// TODO
-				// MessageBoxW(nullptr, L"Test: continuing will load XivAlexander's networking features.", L"XivAlexander DEBUG", MB_OK);
-
+			void(Utils::Win32::Thread(L"SocketHook::SocketHook/InitRunner", [this, &app]() {
 				app.RunOnGameLoop([&]() {
 					try {
 						m_pImpl->Cleanup += std::move(socket.SetHook([&](_In_ int af, _In_ int type, _In_ int protocol) {
@@ -626,7 +592,7 @@ XivAlexander::Apps::MainApp::Internal::SocketHook::SocketHook(Apps::MainApp::App
 							conn->m_pImpl->AttemptReceive();
 
 							const auto result = conn->m_pImpl->RecvProcessed.Read(reinterpret_cast<uint8_t*>(buf), len);
-							if (conn->m_pImpl->CloseRecvIfPossible())
+							if (conn->m_pImpl->CanCompleteDetach())
 								m_pImpl->CleanupSocket(s);
 
 							return static_cast<int>(result);
@@ -635,8 +601,6 @@ XivAlexander::Apps::MainApp::Internal::SocketHook::SocketHook(Apps::MainApp::App
 						m_pImpl->Cleanup += std::move(select.SetHook([&](int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const timeval* timeout) {
 							if (GetCurrentThreadId() != m_pImpl->GameMainThreadId)
 								return select.bridge(nfds, readfds, writefds, exceptfds, timeout);
-
-							m_pImpl->LastSocketSelectCounterUs = Utils::QpcUs();
 
 							const fd_set readfds_original = *readfds;
 							fd_set readfds_temp = *readfds;
@@ -659,14 +623,14 @@ XivAlexander::Apps::MainApp::Internal::SocketHook::SocketHook(Apps::MainApp::App
 								if (conn->m_pImpl->RecvProcessed.Available())
 									FD_SET(s, readfds);
 
-								if (conn->m_pImpl->CloseRecvIfPossible())
+								if (conn->m_pImpl->CanCompleteDetach())
 									m_pImpl->CleanupSocket(s);
 							}
 
 							for (auto it = m_pImpl->Sockets.begin(); it != m_pImpl->Sockets.end();) {
 								it->second->m_pImpl->AttemptSend();
 
-								if (it->second->m_pImpl->CloseSendIfPossible())
+								if (it->second->m_pImpl->CanCompleteDetach())
 									it = m_pImpl->CleanupSocket(it->first);
 								else
 									++it;
@@ -725,20 +689,16 @@ bool XivAlexander::Apps::MainApp::Internal::SocketHook::IsUnloadable() const {
 		&& closesocket.IsDisableable();
 }
 
-int64_t XivAlexander::Apps::MainApp::Internal::SocketHook::GetLastSocketSelectCounterUs() const {
-	return m_pImpl ? m_pImpl->LastSocketSelectCounterUs : 0;
-}
-
 void XivAlexander::Apps::MainApp::Internal::SocketHook::ReleaseSockets() {
 	if (!m_pImpl)
 		return;
 
 	for (const auto& entry : m_pImpl->Sockets) {
-		if (entry.second->m_pImpl->Unloading)
+		if (entry.second->m_pImpl->Detaching)
 			continue;
 
 		m_logger->Format(LogCategory::SocketHook, m_pImpl->Config->Runtime.GetLangId(), IDS_SOCKETHOOK_SOCKET_DETACH, entry.first);
-		entry.second->m_pImpl->Unload();
+		entry.second->m_pImpl->Detaching = true;
 	}
 	m_pImpl->NonGameSockets.clear();
 }
@@ -760,7 +720,7 @@ std::wstring XivAlexander::Apps::MainApp::Internal::SocketHook::Describe() const
 				if (const auto latency = conn->FetchSocketLatencyUs()) {
 					const auto [mean, dev] = conn->SocketLatencyUs.MeanAndDeviation();
 					result += m_pImpl->Config->Runtime.FormatStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY,
-						latency, conn->SocketLatencyUs.Median(), mean, dev);
+						*latency, conn->SocketLatencyUs.Median(), mean, dev);
 				} else
 					result += m_pImpl->Config->Runtime.GetStringRes(IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY_FAILURE);
 
