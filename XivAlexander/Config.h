@@ -235,7 +235,7 @@ namespace XivAlexander {
 			// Should be the doubled value of the above.
 			Item<int64_t> MaximumAnimationLockDurationUs = CreateConfigItem(this, "MaximumAnimationLockDurationUs", 150000LL);
 
-			Item<bool> ReducePacketDelay = CreateConfigItem(this, "ReducePacketDelay", true);
+			Item<bool> ReducePacketDelay = CreateConfigItem(this, "ReducePacketDelay", false);
 			Item<bool> TakeOverLoopbackAddresses = CreateConfigItem(this, "TakeOverLoopback", false);
 			Item<bool> TakeOverPrivateAddresses = CreateConfigItem(this, "TakeOverPrivateAddresses", false);
 			Item<bool> TakeOverAllAddresses = CreateConfigItem(this, "TakeOverAllAddresses", false);
