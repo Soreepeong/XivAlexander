@@ -252,6 +252,9 @@
     <ClInclude Include="Sqex\Sqpack\EmptyOrObfuscatedStreamDecoder.h">
       <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
     </ClInclude>
+    <ClInclude Include="span_cast.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">

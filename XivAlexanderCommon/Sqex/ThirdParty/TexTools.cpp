@@ -273,7 +273,7 @@ Sqex::ThirdParty::TexTools::ItemMetadata::ItemMetadata(std::string gamePath, con
 	, TargetPath(std::move(gamePath))
 	, SourcePath(reinterpret_cast<const char*>(&Data[sizeof Version]))
 	, Header(*reinterpret_cast<const MetaDataHeader*>(&Data[sizeof Version + SourcePath.size() + 1]))
-	, AllEntries(reinterpret_cast<const MetaDataEntryLocator*>(Data.data() + Header.FirstEntryLocatorOffset), Header.EntryCount) {
+	, AllEntries(span_cast<MetaDataEntryLocator>(Data, Header.FirstEntryLocatorOffset, Header.EntryCount)) {
 	if (srell::u8csmatch matches;
 		srell::regex_search(TargetPath, matches, CharacterMetaPathTest)) {
 		PrimaryType = matches["PrimaryType"].str();

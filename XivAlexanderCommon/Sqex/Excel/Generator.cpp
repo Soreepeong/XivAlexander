@@ -69,7 +69,7 @@ void Sqex::Excel::Depth2ExhExdCreator::SetRow(uint32_t id, Language language, st
 
 std::pair<Sqex::Sqpack::EntryPathSpec, std::vector<char>> Sqex::Excel::Depth2ExhExdCreator::Flush(uint32_t startId, std::map<uint32_t, std::vector<char>> rows, Language language) {
 	Exd::Header exdHeader;
-	const auto exdHeaderSpan = std::span(reinterpret_cast<char*>(&exdHeader), sizeof exdHeader);
+	const auto exdHeaderSpan = span_cast<char>(1, &exdHeader);
 	memcpy(exdHeader.Signature, Exd::Header::Signature_Value, 4);
 	exdHeader.Version = Exd::Header::Version_Value;
 
@@ -84,7 +84,7 @@ std::pair<Sqex::Sqpack::EntryPathSpec, std::vector<char>> Sqex::Excel::Depth2Exh
 		locators.emplace_back(row.first, offsetAccumulator);
 		offsetAccumulator += static_cast<uint32_t>(row.second.size());
 	}
-	const auto locatorSpan = std::span(reinterpret_cast<char*>(&locators[0]), std::span(locators).size_bytes());
+	const auto locatorSpan = span_cast<char>(locators);
 	exdHeader.IndexSize = static_cast<uint32_t>(locatorSpan.size_bytes());
 
 	std::vector<char> exdFile;
@@ -249,7 +249,7 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>, Sqex::Sqpack::EntryPath
 
 	{
 		Exh::Header exhHeader;
-		const auto exhHeaderSpan = std::span(reinterpret_cast<char*>(&exhHeader), sizeof exhHeader);
+		const auto exhHeaderSpan = span_cast<char>(1, &exhHeader);
 		memcpy(exhHeader.Signature, Exh::Header::Signature_Value, 4);
 		exhHeader.Version = Exh::Header::Version_Value;
 		exhHeader.FixedDataSize = static_cast<uint16_t>(FixedDataSize);
@@ -260,12 +260,12 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>, Sqex::Sqpack::EntryPath
 		exhHeader.Depth = Exh::Level2;
 		exhHeader.RowCountWithoutSkip = static_cast<uint32_t>(Data.size());
 
-		const auto columnSpan = std::span(reinterpret_cast<const char*>(&Columns[0]), std::span(Columns).size_bytes());
+		const auto columnSpan = span_cast<char>(Columns);
 		std::vector<Exh::Pagination> paginations;
 		for (const auto& pagination : pages | std::views::keys)
 			paginations.emplace_back(pagination);
-		const auto paginationSpan = std::span(reinterpret_cast<const char*>(&paginations[0]), std::span(paginations).size_bytes());
-		const auto languageSpan = std::span(reinterpret_cast<const char*>(&Languages[0]), std::span(Languages).size_bytes());
+		const auto paginationSpan = span_cast<char>(paginations);
+		const auto languageSpan = span_cast<char>(Languages);
 
 		std::vector<char> exhFile;
 		exhFile.reserve(exhHeaderSpan.size_bytes() + columnSpan.size_bytes() + paginationSpan.size_bytes() + languageSpan.size_bytes());

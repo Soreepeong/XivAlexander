@@ -559,7 +559,7 @@ Dll::InjectEntryPointParameters* Dll::PatchEntryPointForInjection(HANDLE hProces
 
 	auto path = Dll::Module().PathOf().wstring();
 	path.resize(path.size() + 1);  // add null character
-	const auto pathBytes = std::span(reinterpret_cast<const uint8_t*>(path.c_str()), path.size() * sizeof path[0]);
+	const auto pathBytes = span_cast<uint8_t>(path);
 
 	std::vector<uint8_t> trampolineBuffer;
 	TrampolineTemplate* trampoline;

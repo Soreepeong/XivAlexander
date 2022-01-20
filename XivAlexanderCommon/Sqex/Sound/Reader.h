@@ -22,8 +22,10 @@ namespace Sqex::Sound {
 		const uint32_t m_endOfTable1;
 		const uint32_t m_endOfTable4;
 
-		[[nodiscard]] std::vector<uint8_t> ReadEntry(const std::span<const uint32_t>& offsets, uint32_t endOffset, uint32_t index) const;
+		[[nodiscard]] std::vector<uint8_t> ReadEntry(const std::span<const uint32_t>& offsets, uint32_t endOffset, size_t index) const;
 		[[nodiscard]] std::vector<std::vector<uint8_t>> ReadEntries(const std::span<const uint32_t>& offsets, uint32_t endOffset) const;
+
+		[[nodiscard]] static std::vector<uint8_t> GetHeaderBytes(const RandomAccessStream& stream);
 
 	public:
 		ScdReader(std::shared_ptr<RandomAccessStream> stream);

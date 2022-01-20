@@ -111,12 +111,12 @@ std::string DumpSqtexInfo(std::span<uint8_t> buf) {
 	ss << std::format("HeaderSize={} Type={} Decompressed={} AllocUnit={} OccupiedUnit={} Blocks={}\n",
 		entryHeader.HeaderSize.Value(), static_cast<int>(entryHeader.Type.Value()), entryHeader.DecompressedSize.Value(),
 		entryHeader.AllocatedSpaceUnitCount.Value(), entryHeader.OccupiedSpaceUnitCount.Value(), entryHeader.BlockCountOrVersion.Value());
-	const auto locators = std::span(reinterpret_cast<TextureBlockHeaderLocator*>(&buf[sizeof entryHeader]), entryHeader.BlockCountOrVersion.Value());
-	const auto subBlocks = std::span(reinterpret_cast<uint16_t*>(&buf[sizeof entryHeader + locators.size_bytes()]), locators.back().FirstSubBlockIndex.Value() + locators.back().SubBlockCount.Value());
+	const auto locators = span_cast<TextureBlockHeaderLocator>(buf, sizeof entryHeader, entryHeader.BlockCountOrVersion.Value());
+	const auto subBlocks = span_cast<uint16_t>(buf, sizeof entryHeader + locators.size_bytes(), locators.back().FirstSubBlockIndex.Value() + locators.back().SubBlockCount.Value());
 	const auto& texHeader = *reinterpret_cast<Sqex::Texture::Header*>(&buf[entryHeader.HeaderSize]);
 	ss << std::format("Unk1={} Header={} Type={} Width={} Height={} Layers={} Mipmaps={}\n",
 		texHeader.Unknown1.Value(), texHeader.HeaderSize.Value(), static_cast<uint32_t>(texHeader.Type.Value()), texHeader.Width.Value(), texHeader.Height.Value(), texHeader.Depth.Value(), texHeader.MipmapCount.Value());
-	const auto mipmapOffsets = std::span(reinterpret_cast<uint32_t*>(&buf[entryHeader.HeaderSize + sizeof texHeader]), texHeader.MipmapCount);
+	const auto mipmapOffsets = span_cast<uint32_t>(buf, entryHeader.HeaderSize + sizeof texHeader, texHeader.MipmapCount);
 
 	ss << "Locators:\n";
 	size_t lastOffset = 0;

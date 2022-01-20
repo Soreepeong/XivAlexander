@@ -13,7 +13,7 @@ static std::vector<uint8_t> CreateHeaderForNonCompressedBinaryEntryProvider(size
 	
 	std::vector<uint8_t> res(headerAlignment.Alloc);
 	auto& header = *reinterpret_cast<FileEntryHeader*>(&res[0]);
-	const auto locators = std::span(reinterpret_cast<BlockHeaderLocator*>(&res[sizeof header]), blockAlignment.Count);
+	const auto locators = span_cast<BlockHeaderLocator>(res, sizeof header, blockAlignment.Count);
 
 	header = {
 		.HeaderSize = static_cast<uint32_t>(headerAlignment),
@@ -80,8 +80,7 @@ uint64_t Sqex::Sqpack::OnTheFlyBinaryEntryProvider::ReadStreamPartial(const Rand
 					.CompressedSize = SqData::BlockHeader::CompressedSizeNotCompressed,
 					.DecompressedSize = static_cast<uint32_t>(size),
 				};
-				const auto src = std::span(reinterpret_cast<const char*>(&header), sizeof header)
-					.subspan(static_cast<size_t>(relativeOffset));
+				const auto src = span_cast<uint8_t>(1, &header).subspan(static_cast<size_t>(relativeOffset));
 				const auto available = std::min(out.size_bytes(), src.size_bytes());
 				std::copy_n(src.begin(), available, out.begin());
 				out = out.subspan(available);

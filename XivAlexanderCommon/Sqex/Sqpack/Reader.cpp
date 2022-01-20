@@ -9,12 +9,9 @@ Sqex::Sqpack::Reader::SqIndexType<HashLocatorT, TextLocatorT>::SqIndexType(const
 	: Data(hFile.Read<uint8_t>(0, static_cast<size_t>(hFile.GetFileSize())))
 	, Header(*reinterpret_cast<const SqpackHeader*>(&Data[0]))
 	, IndexHeader(*reinterpret_cast<const SqIndex::Header*>(&Data[Header.HeaderSize]))
-	, HashLocators(reinterpret_cast<const HashLocatorT*>(&Data[IndexHeader.HashLocatorSegment.Offset]),
-		IndexHeader.HashLocatorSegment.Size / sizeof HashLocatorT)
-	, TextLocators(reinterpret_cast<const TextLocatorT*>(&Data[IndexHeader.TextLocatorSegment.Offset]),
-		IndexHeader.TextLocatorSegment.Size / sizeof TextLocatorT)
-	, Segment3(reinterpret_cast<const SqIndex::Segment3Entry*>(&Data[IndexHeader.UnknownSegment3.Offset]),
-		IndexHeader.UnknownSegment3.Size / sizeof SqIndex::Segment3Entry) {
+	, HashLocators(span_cast<HashLocatorT>(Data, IndexHeader.HashLocatorSegment.Offset, IndexHeader.HashLocatorSegment.Size, 1))
+	, TextLocators(span_cast<TextLocatorT>(Data, IndexHeader.TextLocatorSegment.Offset, IndexHeader.TextLocatorSegment.Size, 1))
+	, Segment3(span_cast<SqIndex::Segment3Entry>(Data, IndexHeader.UnknownSegment3.Offset, IndexHeader.UnknownSegment3.Size, 1)) {
 
 	if (strictVerify) {
 		Header.VerifySqpackHeader(SqpackType::SqIndex);
@@ -33,8 +30,7 @@ Sqex::Sqpack::Reader::SqIndexType<HashLocatorT, TextLocatorT>::SqIndexType(const
 
 Sqex::Sqpack::Reader::SqIndex1Type::SqIndex1Type(const Win32::Handle& hFile, bool strictVerify)
 	: SqIndexType<SqIndex::PairHashLocator, SqIndex::PairHashWithTextLocator>(hFile, strictVerify)
-	, PathHashLocators(reinterpret_cast<const SqIndex::PathHashLocator*>(IndexHeader.PathHashLocatorSegment.Size ? &Data[IndexHeader.PathHashLocatorSegment.Offset] : 0),
-		IndexHeader.PathHashLocatorSegment.Size / sizeof SqIndex::PathHashLocator) {
+	, PathHashLocators(span_cast<SqIndex::PathHashLocator>(Data, IndexHeader.PathHashLocatorSegment.Offset, IndexHeader.PathHashLocatorSegment.Size, 1)) {
 	if (strictVerify) {
 		if (IndexHeader.PathHashLocatorSegment.Size % sizeof SqIndex::PathHashLocator)
 			throw CorruptDataException("PathHashLocators has an invalid size alignment");
@@ -47,10 +43,7 @@ std::span<const Sqex::Sqpack::SqIndex::PairHashLocator> Sqex::Sqpack::Reader::Sq
 	if (it == PathHashLocators.end() || it->PathHash != pathHash)
 		throw std::out_of_range(std::format("PathHash {:08x} not found", pathHash));
 
-	return {
-		reinterpret_cast<const SqIndex::PairHashLocator*>(&Data[it->PairHashLocatorOffset]),
-		it->PairHashLocatorSize / sizeof SqIndex::PairHashLocator
-	};
+	return span_cast<SqIndex::PairHashLocator>(Data, it->PairHashLocatorOffset, it->PairHashLocatorSize, 1);
 }
 
 const Sqex::Sqpack::SqIndex::LEDataLocator& Sqex::Sqpack::Reader::SqIndex1Type::GetLocator(uint32_t pathHash, uint32_t nameHash) const {
@@ -229,4 +222,53 @@ std::shared_ptr<Sqex::RandomAccessStream> Sqex::Sqpack::Reader::GetFile(const En
 
 std::shared_ptr<Sqex::RandomAccessStream> Sqex::Sqpack::Reader::operator[](const EntryPathSpec& pathSpec) const {
 	return std::make_shared<BufferedRandomAccessStream>(std::make_shared<EntryRawStream>(GetEntryProvider(pathSpec)));
+}
+
+Sqex::Sqpack::GameReader::GameReader(std::filesystem::path gamePath)
+	: m_gamePath(std::move(gamePath)) {
+}
+
+std::shared_ptr<Sqex::Sqpack::EntryProvider> Sqex::Sqpack::GameReader::GetEntryProvider(const EntryPathSpec& pathSpec) const {
+	if (pathSpec.HasOriginal())
+		return GetReaderForPath(pathSpec).GetEntryProvider(pathSpec);
+
+	PreloadAllSqpackFiles();
+	for (const auto& reader : m_readers | std::views::values) {
+		try {
+			return reader->GetEntryProvider(pathSpec);
+		} catch (const std::out_of_range&) {
+			// pass
+		}
+	}
+	throw std::out_of_range("File not found in any sqpack file");
+}
+
+std::shared_ptr<Sqex::RandomAccessStream> Sqex::Sqpack::GameReader::GetFile(const EntryPathSpec& pathSpec) const {
+	return std::make_shared<BufferedRandomAccessStream>(std::make_shared<EntryRawStream>(GetEntryProvider(pathSpec)));
+}
+
+std::shared_ptr<Sqex::RandomAccessStream> Sqex::Sqpack::GameReader::operator[](const EntryPathSpec& pathSpec) const {
+	return GetFile(pathSpec);
+}
+
+Sqex::Sqpack::Reader& Sqex::Sqpack::GameReader::GetReaderForPath(const EntryPathSpec& rawPathSpec) const {
+	const auto lock = std::lock_guard(m_readersMtx);
+	const auto datFileName = rawPathSpec.DatFile();
+	auto& item = m_readers[datFileName];
+	if (!item)
+		item.emplace(m_gamePath / "sqpack" / rawPathSpec.DatExpac() / (datFileName + ".win32.index"));
+	return *item;
+}
+
+void Sqex::Sqpack::GameReader::PreloadAllSqpackFiles() const {
+	const auto lock = std::lock_guard(m_readersMtx);
+
+	for (const auto& iter : std::filesystem::recursive_directory_iterator(m_gamePath / "sqpack")) {
+		if (iter.is_directory() || !iter.path().wstring().ends_with(L".win32.index"))
+			continue;
+		const auto datFileName = std::filesystem::path{ iter.path() }.replace_extension("").replace_extension("").string();
+		auto& item = m_readers[datFileName];
+		if (!item)
+			item.emplace(iter.path());
+	}
 }

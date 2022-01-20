@@ -234,7 +234,7 @@ void Sqex::Sqpack::SqIndex::PathHashLocator::Verify() const {
 void Sqex::Sqpack::SqData::Header::Verify(uint32_t expectedSpanIndex) const {
 	if (HeaderSize != sizeof Header)
 		throw CorruptDataException("sizeof IndexHeader != 0x400");
-	Sha1.Verify(std::span(reinterpret_cast<const char*>(this), offsetof(Sqex::Sqpack::SqData::Header, Sha1)), "IndexHeader SHA-1");
+	Sha1.Verify(span_cast<char>(1, this).subspan(0, offsetof(Sqex::Sqpack::SqData::Header, Sha1)), "IndexHeader SHA-1");
 	if (Null1.Value())
 		throw CorruptDataException("Null1 != 0");
 	if (Unknown1 != Unknown1_Value)

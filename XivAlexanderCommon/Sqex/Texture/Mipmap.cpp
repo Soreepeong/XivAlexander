@@ -158,7 +158,7 @@ void Sqex::Texture::MipmapStream::Show(std::string title) const {
 		state.transparent = state.buf;
 		const auto w = static_cast<size_t>(Width);
 		const auto h = static_cast<size_t>(Height);
-		const auto view = std::span(reinterpret_cast<RGBA8888*>(&state.transparent[0]), w * h);
+		const auto view = span_cast<RGBA8888>(state.transparent, 0, w * h);
 		for (size_t i = 0; i < h; ++i) {
 			for (size_t j = 0; j < w; ++j) {
 				auto& v = view[i * w + j];
@@ -397,7 +397,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 	const auto cbSource = static_cast<size_t>(stream->StreamSize());
 
 	std::vector<uint8_t> result(pixelCount * sizeof RGBA8888);
-	const auto rgba8888view = std::span(reinterpret_cast<RGBA8888*>(&result[0]), result.size() / sizeof RGBA8888);
+	const auto rgba8888view = span_cast<RGBA8888>(result);
 	uint32_t pos = 0, read = 0;
 	uint8_t buf8[8192];
 	switch (stream->Type) {
@@ -421,7 +421,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 		{
 			if (cbSource < pixelCount * sizeof RGBA4444)
 				throw std::runtime_error("Truncated data detected");
-			const auto view = std::span(reinterpret_cast<RGBA4444*>(buf8), sizeof buf8 / sizeof RGBA4444);
+			const auto view = span_cast<RGBA4444>(buf8);
 			while (const auto len = static_cast<uint32_t>(std::min<uint64_t>(cbSource - read, sizeof buf8))) {
 				stream->ReadStream(read, buf8, len);
 				read += len;
@@ -435,7 +435,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 		{
 			if (cbSource < pixelCount * sizeof RGBA5551)
 				throw std::runtime_error("Truncated data detected");
-			const auto view = std::span(reinterpret_cast<RGBA5551*>(buf8), sizeof buf8 / sizeof RGBA5551);
+			const auto view = span_cast<RGBA5551>(buf8);
 			while (const auto len = static_cast<uint32_t>(std::min<uint64_t>(cbSource - read, sizeof buf8))) {
 				stream->ReadStream(read, buf8, len);
 				read += len;
@@ -457,7 +457,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 			if (cbSource < pixelCount * sizeof RGBAHHHH)
 				throw std::runtime_error("Truncated data detected");
 			stream->ReadStream(0, std::span(rgba8888view));
-			const auto view = std::span(reinterpret_cast<RGBAHHHH*>(buf8), sizeof buf8 / sizeof RGBAHHHH);
+			const auto view = span_cast<RGBAHHHH>(buf8);
 			while (const auto len = static_cast<uint32_t>(std::min<uint64_t>(cbSource - read, sizeof buf8))) {
 				stream->ReadStream(read, buf8, len);
 				read += len;
@@ -472,7 +472,7 @@ std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> Sqex::Texture::MemoryBackedMi
 			if (cbSource < pixelCount * sizeof RGBAFFFF)
 				throw std::runtime_error("Truncated data detected");
 			stream->ReadStream(0, std::span(rgba8888view));
-			const auto view = std::span(reinterpret_cast<RGBAFFFF*>(buf8), sizeof buf8 / sizeof RGBAFFFF);
+			const auto view = span_cast<RGBAFFFF>(buf8);
 			while (const auto len = static_cast<uint32_t>(std::min<uint64_t>(cbSource - read, sizeof buf8))) {
 				stream->ReadStream(read, buf8, len);
 				read += len;

@@ -11,8 +11,8 @@ std::vector<uint8_t> Sqex::Eqdp::ExpandCollapse(const File* file, bool expand) {
 	std::vector<uint8_t> newData;
 	newData.resize(baseOffset + sizeof uint16_t * header.BlockCount * header.BlockMemberCount);
 	*reinterpret_cast<Header*>(&newData[0]) = header;
-	const auto newIndices = std::span(reinterpret_cast<uint16_t*>(&newData[sizeof header]), header.BlockCount);
-	const auto newBody = std::span(reinterpret_cast<uint16_t*>(&newData[baseOffset]), size_t{ 1 } * header.BlockCount * header.BlockMemberCount);
+	const auto newIndices = span_cast<uint16_t>(newData, sizeof header, header.BlockCount.Value());
+	const auto newBody = span_cast<uint16_t>(newData, baseOffset, size_t{ 1 } * header.BlockCount * header.BlockMemberCount);
 	uint16_t newBodyIndex = 0;
 
 	for (size_t i = 0; i < indices.size(); ++i) {

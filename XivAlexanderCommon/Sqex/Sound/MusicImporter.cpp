@@ -396,7 +396,7 @@ std::span<float> Sqex::Sound::MusicImporter::Implementation::FloatPcmSource::ope
 		throw std::runtime_error("EOF");
 	if (m_buffer.empty())
 		return {};
-	return std::span(reinterpret_cast<float*>(&m_buffer[0]), m_buffer.size() * sizeof(m_buffer[0])).subspan(0, availableSampleCount);
+	return span_cast<float>(m_buffer, 0, availableSampleCount);
 }
 
 nlohmann::json Sqex::Sound::MusicImporter::Implementation::RunProbe(const std::filesystem::path& path, const std::filesystem::path& ffprobePath, std::function<void(const std::string&)> stderrCallback) {
@@ -807,7 +807,7 @@ void Sqex::Sound::MusicImporter::Implementation::Merge(const std::function<void(
 			const auto segmentEndBlockIndex = segment.length ? currentBlockIndex + static_cast<uint32_t>(targetRate * *segment.length) : endBlockIndex;
 			auto stopSegment = currentBlockIndex >= segmentEndBlockIndex;
 			float** buf = nullptr;
-			uint32_t bufptr = 0;
+			size_t bufptr = 0;
 			while (!stopSegment) {
 				if (buf == nullptr) {
 					if (CancelEvent.Wait(0) == WAIT_OBJECT_0)
@@ -868,7 +868,7 @@ void Sqex::Sound::MusicImporter::Implementation::Merge(const std::function<void(
 				if (bufptr == BufferedBlockCount || stopSegment || currentBlockIndex == loopStartBlockIndex) {
 
 					if (originalEntry.Header->Format == Sqex::Sound::SoundEntryHeader::EntryFormat_Ogg) {
-						if (const auto res = vorbis_analysis_wrote(&vd, bufptr); res < 0)
+						if (const auto res = vorbis_analysis_wrote(&vd, static_cast<int>(bufptr)); res < 0)
 							throw std::runtime_error(std::format("vorbis_analysis_wrote: {}", res));
 						buf = nullptr;
 
@@ -977,7 +977,7 @@ void Sqex::Sound::MusicImporter::Implementation::Merge(const std::function<void(
 					} else {
 						dataBuffers.emplace_back();
 						dataBuffers.back().resize(sizeof int16_t * originalInfo.Channels * bufptr);
-						const auto view = std::span(reinterpret_cast<int16_t*>(&dataBuffers.back()[0]), bufptr * originalInfo.Channels);
+						const auto view = span_cast<int16_t>(dataBuffers.back(), 0, bufptr * originalInfo.Channels);
 						for (size_t i = 0, ptr = 0; i < bufptr; ++i) {
 							for (size_t ch = 0; ch < originalInfo.Channels; ++ch)
 								view[ptr++] = (static_cast<int16_t>(buf[ch][i] * 32767.));
@@ -1019,7 +1019,7 @@ void Sqex::Sound::MusicImporter::Implementation::Merge(const std::function<void(
 				.wBitsPerSample = sizeof uint16_t * 8,
 			};
 
-			const auto header = std::span(reinterpret_cast<const uint8_t*>(&wf), sizeof wf);
+			const auto header = span_cast<uint8_t>(1, &wf);
 			const auto data = std::span(dataBuffers[0]);
 			std::vector<uint8_t> res;
 			const auto insert = [&res](const auto& v) {
@@ -1054,7 +1054,7 @@ void Sqex::Sound::MusicImporter::Implementation::Merge(const std::function<void(
 				.LoopEndSampleBlockIndex = loopEndBlockIndex,
 				.Count = static_cast<uint32_t>(marks.size()),
 			};
-			const auto span = std::span(reinterpret_cast<uint32_t*>(&buf[3 * 4]), marks.size());
+			const auto span = span_cast<uint32_t>(buf, 3 * 4, marks.size());
 			size_t i = 0;
 			for (const auto blockIndex : originalEntry.GetMarkedSampleBlockIndices())
 				span[i++] = static_cast<uint32_t>(1ULL * blockIndex * targetRate / originalInfo.Rate);

@@ -12,7 +12,7 @@ Sqex::Sqpack::TextureStreamDecoder::TextureStreamDecoder(const SqData::FileEntry
 	m_head = m_stream->ReadStreamIntoVector<uint8_t>(header.HeaderSize, locators[0].FirstBlockOffset);
 
 	const auto& texHeader = *reinterpret_cast<const Texture::Header*>(&m_head[0]);
-	const auto mipmapOffsets = std::span(reinterpret_cast<const uint32_t*>(&m_head[sizeof texHeader]), texHeader.MipmapCount);
+	const auto mipmapOffsets = span_cast<uint32_t>(m_head, sizeof texHeader, texHeader.MipmapCount);
 
 	const auto repeatCount = mipmapOffsets.size() < 2 ? 1 : (mipmapOffsets[1] - mipmapOffsets[0]) / static_cast<uint32_t>(Texture::RawDataLength(texHeader, 0));
 

@@ -270,7 +270,7 @@ std::map<std::pair<char32_t, char32_t>, SSIZE_T> Utils::ParseKerningTable(
 					const auto& kernFormat0 = *reinterpret_cast<const KernFormat0*>(format0Ptr.data());
 					format0Ptr = format0Ptr.subspan(sizeof kernFormat0);
 
-					const auto pairs = std::span(reinterpret_cast<const KernFormat0Pair*>(format0Ptr.data()), kernFormat0.nPairs);
+					const auto pairs = span_cast<KernFormat0Pair>(format0Ptr, 0, kernFormat0.nPairs);
 					if (pairs.size_bytes() > format0Ptr.size_bytes())
 						return {};  // invalid kern table
 
@@ -310,7 +310,7 @@ std::map<std::pair<char32_t, char32_t>, SSIZE_T> Utils::ParseKerningTable(
 				const auto& kernFormat0 = *reinterpret_cast<const KernFormat0*>(format0Ptr.data());
 				format0Ptr = format0Ptr.subspan(sizeof kernFormat0);
 
-				const auto pairs = std::span(reinterpret_cast<const KernFormat0Pair*>(format0Ptr.data()), kernFormat0.nPairs);
+				const auto pairs = span_cast<KernFormat0Pair>(format0Ptr, 0, kernFormat0.nPairs);
 				if (pairs.size_bytes() > format0Ptr.size_bytes())
 					return {};  // invalid kern table
 

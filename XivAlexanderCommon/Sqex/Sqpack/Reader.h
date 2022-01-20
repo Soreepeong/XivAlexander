@@ -74,4 +74,21 @@ namespace Sqex::Sqpack {
 		[[nodiscard]] std::shared_ptr<Sqex::RandomAccessStream> GetFile(const EntryPathSpec& pathSpec) const;
 		std::shared_ptr<RandomAccessStream> operator[](const EntryPathSpec& pathSpec) const;
 	};
+
+	class GameReader {
+		const std::filesystem::path m_gamePath;
+		mutable std::mutex m_readersMtx;
+		mutable std::map<std::string, std::optional<Reader>> m_readers;
+
+	public:
+		GameReader(std::filesystem::path gamePath);
+
+		[[nodiscard]] std::shared_ptr<EntryProvider> GetEntryProvider(const EntryPathSpec& pathSpec) const;
+		[[nodiscard]] std::shared_ptr<RandomAccessStream> GetFile(const EntryPathSpec& pathSpec) const;
+		[[nodiscard]] std::shared_ptr<RandomAccessStream> operator[](const EntryPathSpec& pathSpec) const;
+
+		[[nodiscard]] Reader& GetReaderForPath(const EntryPathSpec& rawPathSpec) const;
+
+		void PreloadAllSqpackFiles() const;
+	};
 }

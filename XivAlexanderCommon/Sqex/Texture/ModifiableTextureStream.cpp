@@ -96,8 +96,7 @@ uint64_t Sqex::Texture::ModifiableTextureStream::ReadStreamPartial(uint64_t offs
 	auto out = std::span(static_cast<char*>(buf), static_cast<size_t>(length));
 
 	if (relativeOffset < sizeof m_header) {
-		const auto src = std::span(reinterpret_cast<const char*>(&m_header), sizeof m_header)
-			.subspan(static_cast<size_t>(relativeOffset));
+		const auto src = span_cast<uint8_t>(1, &m_header).subspan(static_cast<size_t>(relativeOffset));
 		const auto available = std::min(out.size_bytes(), src.size_bytes());
 		std::copy_n(src.begin(), available, out.begin());
 		out = out.subspan(available);
@@ -110,8 +109,7 @@ uint64_t Sqex::Texture::ModifiableTextureStream::ReadStreamPartial(uint64_t offs
 
 	if (const auto srcTyped = std::span(m_mipmapOffsets);
 		relativeOffset < srcTyped.size_bytes()) {
-		const auto src = std::span(reinterpret_cast<const char*>(srcTyped.data()), srcTyped.size_bytes())
-			.subspan(static_cast<size_t>(relativeOffset));
+		const auto src = span_cast<uint8_t>(srcTyped).subspan(static_cast<size_t>(relativeOffset));
 		const auto available = std::min(out.size_bytes(), src.size_bytes());
 		std::copy_n(src.begin(), available, out.begin());
 		out = out.subspan(available);

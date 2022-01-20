@@ -103,7 +103,7 @@ size_t Sqex::SeExpressionUint32::Length() const {
 }
 
 inline size_t Sqex::SeExpressionUint32::EncodeTo(std::span<char> s) const {
-	const auto res = std::span(reinterpret_cast<uint8_t*>(s.data()), s.size());
+	const auto res = span_cast<uint8_t>(s);
 	if (m_value < 0xCF) {
 		res[0] = m_value + 1;
 		return 1;
@@ -132,7 +132,7 @@ size_t Sqex::SeExpressionUint32::ExpressionLength(char firstByte) {
 }
 
 uint32_t Sqex::SeExpressionUint32::Decode(std::string_view escaped) {
-	const auto data = std::span(reinterpret_cast<const uint8_t*>(escaped.data()), escaped.size());
+	const auto data = span_cast<uint8_t>(escaped);
 	auto marker = static_cast<uint8_t>(escaped[0]);
 	if (0x00 < data[0] && data[0] < 0xD0) {
 		return data[0] - 1;

@@ -60,11 +60,11 @@ namespace Sqex::Texture {
 
 		template<typename T>
 		[[nodiscard]] auto View() {
-			return std::span(reinterpret_cast<T*>(&m_data[0]), m_data.size() / sizeof T);
+			return span_cast<T>(m_data);
 		}
 		template<typename T>
 		[[nodiscard]] auto View() const {
-			return std::span(reinterpret_cast<T*>(&m_data[0]), m_data.size() / sizeof T);
+			return span_cast<const T>(m_data);
 		}
 	};
 

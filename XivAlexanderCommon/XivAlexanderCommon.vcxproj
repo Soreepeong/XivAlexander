@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="span_cast.h" />
     <ClInclude Include="Sqex\Network\Structure.h" />
     <ClInclude Include="Sqex\Eqdp.h" />
     <ClInclude Include="Sqex\EqpGmp.h" />

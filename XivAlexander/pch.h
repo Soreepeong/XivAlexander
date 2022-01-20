@@ -90,6 +90,7 @@ _COM_SMARTPTR_TYPEDEF(ITaskbarList3, __uuidof(ITaskbarList3));
 _COM_SMARTPTR_TYPEDEF(IPropertyStore, __uuidof(IPropertyStore));
 
 // Infrequently changed utility headers
+#include <XivAlexanderCommon/span_cast.h>
 #include <XivAlexanderCommon/Utils/StringUtils.h>
 
 #endif //PCH_H

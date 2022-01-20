@@ -127,11 +127,11 @@ namespace Sqex::EqpGmp {
 		}
 
 		std::span<uint8_t> ParameterBytes(size_t primaryId) {
-			return std::span(reinterpret_cast<uint8_t*>(&m_data[primaryId]), 8);
+			return span_cast<uint8_t>(m_data, primaryId, 8);
 		}
 
 		std::span<const uint8_t> ParameterBytes(size_t primaryId) const {
-			return std::span(reinterpret_cast<const uint8_t*>(&m_data[primaryId]), 8);
+			return span_cast<uint8_t>(m_data, primaryId, 8);
 		}
 	};
 

@@ -72,7 +72,7 @@ Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromOgg(
 	std::vector<uint8_t> oggHeaderBytes;
 	oggHeaderBytes.reserve(sizeof SoundEntryOggHeader + std::span(seekTable).size_bytes() + headerPages.size());
 	oggHeaderBytes.resize(sizeof SoundEntryOggHeader);
-	const auto seekTableSpan = std::span(reinterpret_cast<const uint8_t*>(&seekTable[0]), seekTable.size() * sizeof seekTable[0]);
+	const auto seekTableSpan = span_cast<uint8_t>(seekTable);
 	oggHeaderBytes.insert(oggHeaderBytes.end(), seekTableSpan.begin(), seekTableSpan.end());
 	oggHeaderBytes.insert(oggHeaderBytes.end(), headerPages.begin(), headerPages.end());
 	auto& oggHeader = *reinterpret_cast<SoundEntryOggHeader*>(&oggHeaderBytes[0]);

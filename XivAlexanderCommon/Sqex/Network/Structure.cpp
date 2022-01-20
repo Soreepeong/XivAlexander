@@ -55,7 +55,7 @@ std::vector<std::vector<uint8_t>> Sqex::Network::Structure::XivBundle::SplitMess
 }
 
 std::vector<std::vector<uint8_t>> Sqex::Network::Structure::XivBundle::GetMessages(Utils::ZlibReusableInflater& inflater) const {
-	const std::span view(reinterpret_cast<const uint8_t*>(this) + sizeof XivBundleHeader, TotalLength - sizeof XivBundleHeader);
+	const auto view = span_cast<uint8_t>(1, this).subspan(sizeof XivBundleHeader, TotalLength - sizeof XivBundleHeader);
 
 	if (GzipCompressed)
 		return SplitMessages(MessageCount, inflater(view));

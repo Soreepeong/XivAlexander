@@ -6,7 +6,7 @@
 
 void Sqex::Sqpack::OnTheFlyTextureEntryProvider::Initialize(const RandomAccessStream& stream) {
 	const auto AsTexHeader = [&]() { return *reinterpret_cast<const Texture::Header*>(&m_texHeaderBytes[0]); };
-	const auto AsMipmapOffsets = [&]() { return std::span(reinterpret_cast<const uint32_t*>(&m_texHeaderBytes[sizeof Texture::Header]), AsTexHeader().MipmapCount); };
+	const auto AsMipmapOffsets = [&]() { return span_cast<uint32_t>(m_texHeaderBytes, sizeof Texture::Header, AsTexHeader().MipmapCount.Value()); };
 
 	auto entryHeader = SqData::FileEntryHeader{
 		.HeaderSize = sizeof SqData::FileEntryHeader,
@@ -118,7 +118,7 @@ uint64_t Sqex::Sqpack::OnTheFlyTextureEntryProvider::MaxPossibleStreamSize() con
 
 uint64_t Sqex::Sqpack::OnTheFlyTextureEntryProvider::ReadStreamPartial(const RandomAccessStream& stream, uint64_t offset, void* buf, uint64_t length) const {
 	const auto AsTexHeader = [&]() { return *reinterpret_cast<const Texture::Header*>(&m_texHeaderBytes[0]); };
-	const auto AsMipmapOffsets = [&]() { return std::span(reinterpret_cast<const uint32_t*>(&m_texHeaderBytes[sizeof Texture::Header]), AsTexHeader().MipmapCount); };
+	const auto AsMipmapOffsets = [&]() { return span_cast<uint32_t>(m_texHeaderBytes, sizeof Texture::Header, AsTexHeader().MipmapCount); };
 
 	if (!length)
 		return 0;
@@ -178,8 +178,7 @@ uint64_t Sqex::Sqpack::OnTheFlyTextureEntryProvider::ReadStreamPartial(const Ran
 						.CompressedSize = SqData::BlockHeader::CompressedSizeNotCompressed,
 						.DecompressedSize = decompressedSize,
 					};
-					const auto src = std::span(reinterpret_cast<const char*>(&header), sizeof header)
-						.subspan(static_cast<size_t>(relativeOffset));
+					const auto src = span_cast<uint8_t>(1, &header).subspan(static_cast<size_t>(relativeOffset));
 					const auto available = std::min(out.size_bytes(), src.size_bytes());
 					std::copy_n(src.begin(), available, out.begin());
 					out = out.subspan(available);
@@ -229,7 +228,7 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 	std::vector<uint8_t> texHeaderBytes;
 
 	auto AsTexHeader = [&]() { return *reinterpret_cast<const Texture::Header*>(&texHeaderBytes[0]); };
-	auto AsMipmapOffsets = [&]() { return std::span(reinterpret_cast<const uint32_t*>(&texHeaderBytes[sizeof Texture::Header]), AsTexHeader().MipmapCount); };
+	auto AsMipmapOffsets = [&]() { return span_cast<uint32_t>(texHeaderBytes, sizeof Texture::Header, AsTexHeader().MipmapCount); };
 
 	auto entryHeader = SqData::FileEntryHeader{
 		.Type = SqData::FileEntryType::Texture,

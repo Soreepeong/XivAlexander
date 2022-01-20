@@ -64,8 +64,7 @@ uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offs
 	auto out = std::span(static_cast<char*>(buf), static_cast<size_t>(length));
 
 	if (relativeOffset < sizeof m_fcsv) {
-		const auto src = std::span(reinterpret_cast<const char*>(&m_fcsv), sizeof m_fcsv)
-			.subspan(static_cast<size_t>(relativeOffset));
+		const auto src = span_cast<char>(1, &m_fcsv).subspan(static_cast<size_t>(relativeOffset));
 		const auto available = std::min(out.size_bytes(), src.size_bytes());
 		std::copy_n(src.begin(), available, out.begin());
 		out = out.subspan(available);
@@ -77,8 +76,7 @@ uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offs
 		relativeOffset -= sizeof m_fcsv;
 
 	if (relativeOffset < sizeof m_fthd) {
-		const auto src = std::span(reinterpret_cast<const char*>(&m_fthd), sizeof m_fthd)
-			.subspan(static_cast<size_t>(relativeOffset));
+		const auto src = span_cast<char>(1, &m_fthd).subspan(static_cast<size_t>(relativeOffset));
 		const auto available = std::min(out.size_bytes(), src.size_bytes());
 		std::copy_n(src.begin(), available, out.begin());
 		out = out.subspan(available);
@@ -91,8 +89,7 @@ uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offs
 
 	if (const auto srcTyped = std::span(m_fontTableEntries);
 		relativeOffset < srcTyped.size_bytes()) {
-		const auto src = std::span(reinterpret_cast<const char*>(srcTyped.data()), srcTyped.size_bytes())
-			.subspan(static_cast<size_t>(relativeOffset));
+		const auto src = span_cast<char>(srcTyped).subspan(static_cast<size_t>(relativeOffset));
 		const auto available = std::min(out.size_bytes(), src.size_bytes());
 		std::copy_n(src.begin(), available, out.begin());
 		out = out.subspan(available);
@@ -104,8 +101,7 @@ uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offs
 		relativeOffset -= srcTyped.size_bytes();
 
 	if (relativeOffset < sizeof m_knhd) {
-		const auto src = std::span(reinterpret_cast<const char*>(&m_knhd), sizeof m_knhd)
-			.subspan(static_cast<size_t>(relativeOffset));
+		const auto src = span_cast<char>(1, &m_knhd).subspan(static_cast<size_t>(relativeOffset));
 		const auto available = std::min(out.size_bytes(), src.size_bytes());
 		std::copy_n(src.begin(), available, out.begin());
 		out = out.subspan(available);
@@ -118,8 +114,7 @@ uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offs
 
 	if (const auto srcTyped = std::span(m_kerningEntries);
 		relativeOffset < srcTyped.size_bytes()) {
-		const auto src = std::span(reinterpret_cast<const char*>(srcTyped.data()), srcTyped.size_bytes())
-			.subspan(static_cast<size_t>(relativeOffset));
+		const auto src = span_cast<char>(srcTyped).subspan(static_cast<size_t>(relativeOffset));
 		const auto available = std::min(out.size_bytes(), src.size_bytes());
 		std::copy_n(src.begin(), available, out.begin());
 		out = out.subspan(available);

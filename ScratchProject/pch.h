@@ -35,4 +35,5 @@
 #include <comdef.h>
 #include <dwrite_3.h>
 
+#include <XivAlexanderCommon/span_cast.h>
 #include <XivAlexanderCommon/Utils/StringUtils.h>

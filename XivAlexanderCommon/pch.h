@@ -77,6 +77,7 @@
 
 #pragma warning(pop)
 
+#include "span_cast.h"
 #include "XivAlexanderCommon/Utils/StringUtils.h"
 
 #endif //PCH_H

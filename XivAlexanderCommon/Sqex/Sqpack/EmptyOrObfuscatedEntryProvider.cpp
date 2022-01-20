@@ -24,8 +24,7 @@ uint64_t Sqex::Sqpack::EmptyOrObfuscatedEntryProvider::ReadStreamPartial(uint64_
 	auto out = std::span(static_cast<char*>(buf), static_cast<size_t>(length));
 
 	if (relativeOffset < sizeof m_header) {
-		const auto src = std::span(reinterpret_cast<const char*>(&m_header), sizeof m_header)
-			.subspan(static_cast<size_t>(relativeOffset));
+		const auto src = span_cast<uint8_t>(1, &m_header).subspan(static_cast<size_t>(relativeOffset));
 		const auto available = std::min(out.size_bytes(), src.size_bytes());
 		std::copy_n(src.begin(), available, out.begin());
 		out = out.subspan(available);
