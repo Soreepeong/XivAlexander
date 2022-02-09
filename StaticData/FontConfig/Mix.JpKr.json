@@ -170,38 +170,10 @@
       "height": 9.6,
       "weight": 500
     },
-    "dwrite:SourceHanSansK:12": {
-      "familyName": "Source Han Sans K",
-      "height": 12,
-      "weight": 500
-    },
-    "dwrite:SourceHanSansK:14": {
-      "familyName": "Source Han Sans K",
-      "height": 14,
-      "weight": 500
-    },
-    "dwrite:SourceHanSansK:18": {
-      "familyName": "Source Han Sans K",
-      "height": 18,
-      "weight": 400
-    },
     "dwrite:SourceHanSansK:24": {
       "familyName": "Source Han Sans K",
       "height": 24,
       "weight": 400
-    },
-    "dwrite:SourceHanSansK:36": {
-      "familyName": "Source Han Sans K",
-      "height": 36,
-      "weight": 400
-    }
-  },
-  "ranges": {
-    "Hangul Jamo": {
-      "Hangul Jamo": [
-        "U+1100",
-        "U+11FF"
-      ]
     }
   },
   "targets": {
@@ -237,13 +209,6 @@
             "name": "game:AXIS_12"
           },
           {
-            "name": "dwrite:SourceHanSansK:12",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
-          },
-          {
             "name": "game:KrnAXIS_120",
             "offsetXModifier": -1,
             "offsetYModifier": 1
@@ -257,13 +222,6 @@
         "sources": [
           {
             "name": "game:AXIS_14"
-          },
-          {
-            "name": "dwrite:SourceHanSansK:14",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
           },
           {
             "name": "game:KrnAXIS_140",
@@ -280,13 +238,6 @@
             "name": "game:AXIS_18"
           },
           {
-            "name": "dwrite:SourceHanSansK:18",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
-          },
-          {
             "name": "game:KrnAXIS_180",
             "offsetXModifier": -1
           }
@@ -299,13 +250,6 @@
         "sources": [
           {
             "name": "game:AXIS_36"
-          },
-          {
-            "name": "dwrite:SourceHanSansK:36",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
           },
           {
             "name": "game:KrnAXIS_360",
@@ -321,13 +265,6 @@
         "sources": [
           {
             "name": "game:Jupiter_16"
-          },
-          {
-            "name": "dwrite:SourceHanSansK:18",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
           },
           {
             "name": "game:KrnAXIS_180",
@@ -400,13 +337,6 @@
         "sources": [
           {
             "name": "game:Jupiter_46"
-          },
-          {
-            "name": "dwrite:SourceHanSansK:36",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
           },
           {
             "name": "game:KrnAXIS_360",
@@ -491,13 +421,6 @@
             "name": "game:MiedingerMid_12"
           },
           {
-            "name": "dwrite:SourceHanSansK:12",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
-          },
-          {
             "name": "game:KrnAXIS_120",
             "offsetXModifier": -1,
             "offsetYModifier": 1
@@ -512,13 +435,6 @@
         "sources": [
           {
             "name": "game:MiedingerMid_14"
-          },
-          {
-            "name": "dwrite:SourceHanSansK:14",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
           },
           {
             "name": "game:KrnAXIS_140",
@@ -536,13 +452,6 @@
             "name": "game:MiedingerMid_18"
           },
           {
-            "name": "dwrite:SourceHanSansK:18",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
-          },
-          {
             "name": "game:KrnAXIS_180",
             "offsetXModifier": -1
           }
@@ -558,13 +467,6 @@
             "name": "game:MiedingerMid_36"
           },
           {
-            "name": "dwrite:SourceHanSansK:36",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
-          },
-          {
             "name": "game:KrnAXIS_360",
             "offsetXModifier": -1
           }
@@ -578,13 +480,6 @@
         "sources": [
           {
             "name": "game:TrumpGothic_184"
-          },
-          {
-            "name": "dwrite:SourceHanSansK:18",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
           },
           {
             "name": "game:KrnAXIS_180",
@@ -625,13 +520,6 @@
             "name": "game:TrumpGothic_34"
           },
           {
-            "name": "dwrite:SourceHanSansK:36",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
-          },
-          {
             "name": "game:KrnAXIS_360",
             "offsetXModifier": -1
           }
@@ -645,13 +533,6 @@
         "sources": [
           {
             "name": "game:TrumpGothic_68"
-          },
-          {
-            "name": "dwrite:SourceHanSansK:36",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
           },
           {
             "name": "game:KrnAXIS_360",
@@ -670,13 +551,6 @@
             "name": "game:AXIS_12"
           },
           {
-            "name": "dwrite:SourceHanSansK:12",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
-          },
-          {
             "name": "game:KrnAXIS_120",
             "offsetXModifier": -1,
             "offsetYModifier": 1
@@ -690,13 +564,6 @@
         "sources": [
           {
             "name": "game:AXIS_14"
-          },
-          {
-            "name": "dwrite:SourceHanSansK:14",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
           },
           {
             "name": "game:KrnAXIS_140",
@@ -713,13 +580,6 @@
             "name": "game:AXIS_18"
           },
           {
-            "name": "dwrite:SourceHanSansK:18",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
-          },
-          {
             "name": "game:KrnAXIS_180",
             "offsetXModifier": -1
           }
@@ -732,13 +592,6 @@
         "sources": [
           {
             "name": "game:AXIS_36"
-          },
-          {
-            "name": "dwrite:SourceHanSansK:36",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
           },
           {
             "name": "game:KrnAXIS_360",
@@ -754,13 +607,6 @@
         "sources": [
           {
             "name": "game:Jupiter_16"
-          },
-          {
-            "name": "dwrite:SourceHanSansK:18",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
           },
           {
             "name": "game:KrnAXIS_180",
@@ -833,13 +679,6 @@
         "sources": [
           {
             "name": "game:Jupiter_46"
-          },
-          {
-            "name": "dwrite:SourceHanSansK:36",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
           },
           {
             "name": "game:KrnAXIS_360",
@@ -924,13 +763,6 @@
             "name": "game:MiedingerMid_12"
           },
           {
-            "name": "dwrite:SourceHanSansK:12",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
-          },
-          {
             "name": "game:KrnAXIS_120",
             "offsetXModifier": -1,
             "offsetYModifier": 1
@@ -945,13 +777,6 @@
         "sources": [
           {
             "name": "game:MiedingerMid_14"
-          },
-          {
-            "name": "dwrite:SourceHanSansK:14",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
           },
           {
             "name": "game:KrnAXIS_140",
@@ -969,13 +794,6 @@
             "name": "game:MiedingerMid_18"
           },
           {
-            "name": "dwrite:SourceHanSansK:18",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
-          },
-          {
             "name": "game:KrnAXIS_180",
             "offsetXModifier": -1
           }
@@ -991,13 +809,6 @@
             "name": "game:MiedingerMid_36"
           },
           {
-            "name": "dwrite:SourceHanSansK:36",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
-          },
-          {
             "name": "game:KrnAXIS_360",
             "offsetXModifier": -1
           }
@@ -1011,13 +822,6 @@
         "sources": [
           {
             "name": "game:TrumpGothic_184"
-          },
-          {
-            "name": "dwrite:SourceHanSansK:18",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
           },
           {
             "name": "game:KrnAXIS_180",
@@ -1058,13 +862,6 @@
             "name": "game:TrumpGothic_34"
           },
           {
-            "name": "dwrite:SourceHanSansK:36",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
-          },
-          {
             "name": "game:KrnAXIS_360",
             "offsetXModifier": -1
           }
@@ -1078,13 +875,6 @@
         "sources": [
           {
             "name": "game:TrumpGothic_68"
-          },
-          {
-            "name": "dwrite:SourceHanSansK:36",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
           },
           {
             "name": "game:KrnAXIS_360",
@@ -1106,14 +896,6 @@
             "name": "game:KrnAXIS_120",
             "offsetXModifier": -1,
             "offsetYModifier": 1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:12",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ],
-            "replace": true
           }
         ]
       },
@@ -1128,14 +910,6 @@
           {
             "name": "game:KrnAXIS_140",
             "offsetXModifier": -1
-          },
-          {
-            "name": "dwrite:SourceHanSansK:14",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ],
-            "replace": true
           }
         ]
       },
@@ -1146,13 +920,6 @@
         "sources": [
           {
             "name": "game:AXIS_18"
-          },
-          {
-            "name": "dwrite:SourceHanSansK:18",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
           },
           {
             "name": "game:KrnAXIS_180",
@@ -1167,13 +934,6 @@
         "sources": [
           {
             "name": "game:AXIS_36"
-          },
-          {
-            "name": "dwrite:SourceHanSansK:36",
-            "offsetXModifier": -1,
-            "ranges": [
-              "Hangul Jamo"
-            ]
           },
           {
             "name": "game:KrnAXIS_360",

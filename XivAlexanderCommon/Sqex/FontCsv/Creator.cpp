@@ -149,21 +149,16 @@ void Sqex::FontCsv::FontCsvCreator::AddCharacter(char32_t codePoint, const BaseD
 		return;
 
 	const auto pos = std::lower_bound(m_pImpl->Plans.begin(), m_pImpl->Plans.end(), codePoint);
-
-	if (!extendRange) {
-		if (pos == m_pImpl->Plans.end() || *pos != codePoint || !replace)
-			return;
-		pos->Font = font;
+	const auto found = pos != m_pImpl->Plans.end() && *pos == codePoint;
+	if (found && !replace)
 		return;
-	}
-
-	if (pos != m_pImpl->Plans.end() && *pos == codePoint) {
-		if (replace)
-			pos->Font = font;
+	else if (!found && !extendRange)
 		return;
-	}
 
-	m_pImpl->Plans.insert(pos, CharacterPlan(codePoint, font, offsetXModifier, offsetYModifier, alignment));
+	if (found)
+		*pos = CharacterPlan(codePoint, font, offsetXModifier, offsetYModifier, alignment);
+	else
+		m_pImpl->Plans.emplace(pos, CharacterPlan(codePoint, font, offsetXModifier, offsetYModifier, alignment));
 }
 
 void Sqex::FontCsv::FontCsvCreator::AddCharacter(const BaseDrawableFont<uint8_t>* font, bool replace, bool extendRange, int offsetXModifier, int offsetYModifier, CreateConfig::VerticalAlignment alignment) {

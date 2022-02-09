@@ -135,10 +135,10 @@ void compile() {
 	Sqex::FontCsv::FontSetsCreator::ResultFontSets result;
 	bool isArgb32;
 	try {
-		// std::ifstream fin(R"(..\StaticData\FontConfig\SourceHanSansK.json)");
+		std::ifstream fin(R"(..\StaticData\FontConfig\SourceHanSansK.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Original.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Gulim.dwrite.json)");
-		std::ifstream fin(R"(..\StaticData\FontConfig\Mix.JpKr.json)");
+		// std::ifstream fin(R"(..\StaticData\FontConfig\Mix.JpKr.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Gulim.gdi.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Gulimche.dwrite_file.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.ComicGulim.json)");

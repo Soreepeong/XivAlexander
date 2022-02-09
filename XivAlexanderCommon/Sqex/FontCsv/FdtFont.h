@@ -30,6 +30,8 @@ namespace Sqex::FontCsv {
 		[[nodiscard]] const ModifiableFontCsvStream& GetStream() const;
 	};
 
+#pragma warning(push)
+#pragma warning(disable: 4250)
 	template<typename SrcPixFmt = Texture::RGBA4444, typename DestPixFmt = Texture::RGBA8888, typename OpacityType = uint8_t>
 	class FdtDrawableFont : public FdtFont, public BaseDrawableFont<DestPixFmt, OpacityType> {
 		std::vector<std::shared_ptr<const Texture::MipmapStream>> m_mipmaps;
@@ -175,4 +177,5 @@ namespace Sqex::FontCsv {
 			return std::distance(leftEmptys.begin(), std::ranges::max_element(leftEmptys));
 		}
 	};
+#pragma warning(pop)
 }
