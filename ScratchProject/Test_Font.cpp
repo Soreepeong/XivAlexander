@@ -3,11 +3,12 @@
 #include <XivAlexanderCommon/Sqex/FontCsv/CreateConfig.h>
 #include <XivAlexanderCommon/Sqex/FontCsv/Creator.h>
 #include <XivAlexanderCommon/Sqex/FontCsv/DirectWriteFont.h>
+#include <XivAlexanderCommon/Sqex/FontCsv/FdtFont.h>
 #include <XivAlexanderCommon/Sqex/FontCsv/FreeTypeFont.h>
 #include <XivAlexanderCommon/Sqex/FontCsv/GdiFont.h>
 #include <XivAlexanderCommon/Sqex/FontCsv/ModifiableFontCsvStream.h>
-#include <XivAlexanderCommon/Sqex/FontCsv/SeCompatibleDrawableFont.h>
-#include <XivAlexanderCommon/Sqex/FontCsv/SeCompatibleFont.h>
+#include <XivAlexanderCommon/Sqex/FontCsv/BaseDrawableFont.h>
+#include <XivAlexanderCommon/Sqex/FontCsv/BaseFont.h>
 #include <XivAlexanderCommon/Sqex/Sqpack.h>
 #include <XivAlexanderCommon/Sqex/Sqpack/Creator.h>
 #include <XivAlexanderCommon/Sqex/Sqpack/EntryRawStream.h>
@@ -50,9 +51,9 @@ static const auto* const pszTestString = reinterpret_cast<const char*>(
 	u8"Az Fv Fw Fy TV TW TY Tv Tw Ty VT WT YT tv tw ty vt wt yt\n"
 	u8"A\u200cz F\u200cv F\u200cw F\u200cy T\u200cV T\u200cW T\u200cY T\u200cv T\u200cw T\u200cy V\u200cT W\u200cT Y\u200cT t\u200cv t\u200cw t\u200cy v\u200ct w\u200ct y\u200ct\n"
 	u8"\n"
-	u8"테스트 게임을 종료하시겠습니까?\n"
-	u8"ㅌㅅㅌ nj\n"
-	u8"“elemental”"
+	u8"(테스트) (테스트test) (test테스트) (test)\n"
+	u8"(ㅌㅅㅌ) nj\n"
+	u8"게임을 종료하시겠습니까? “elemental”"
 );
 
 template<bool Create>
@@ -73,12 +74,12 @@ void test_showcase(const char* testString = nullptr) {
 
 			std::shared_ptr<Sqex::Texture::MemoryBackedMipmap> mm32a = nullptr;
 
-			for (const auto& [desc, fs, color] : std::vector<std::tuple<std::string, std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<T>>, Sqex::Texture::RGBA8888>>{
+			for (const auto& [desc, fs, color] : std::vector<std::tuple<std::string, std::shared_ptr<Sqex::FontCsv::BaseDrawableFont<T>>, Sqex::Texture::RGBA8888>>{
 					std::make_tuple("FreeType", std::make_shared<Sqex::FontCsv::FreeTypeDrawingFont<T>>(fname, fsize), Sqex::Texture::RGBA8888(255, 0, 0, 255)),
 					std::make_tuple("GDI", std::make_shared<Sqex::FontCsv::GdiDrawingFont<T>>(lf), Sqex::Texture::RGBA8888(0, 255, 0, 255)),
 					std::make_tuple("DirectWrite", std::make_shared<Sqex::FontCsv::DirectWriteDrawingFont<T>>(fname, fsize, DWRITE_FONT_WEIGHT_REGULAR, DWRITE_FONT_STRETCH_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_RENDERING_MODE_NATURAL), Sqex::Texture::RGBA8888(0, 0, 255, 255)),
 				}) {
-				std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<>> f;
+				std::shared_ptr<Sqex::FontCsv::FdtDrawableFont<>> f;
 				if constexpr (Create) {
 					auto creator = Sqex::FontCsv::FontCsvCreator(Utils::Win32::Semaphore::Create(nullptr, 4, 4));
 					creator.SizePoints = fs->Size();
@@ -95,7 +96,7 @@ void test_showcase(const char* testString = nullptr) {
 					target.Finalize();
 
 					const auto newFontMipmaps = target.AsMipmapStreamVector();
-					f = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(newFontCsv, newFontMipmaps);
+					f = std::make_shared<Sqex::FontCsv::FdtDrawableFont<>>(newFontCsv, newFontMipmaps);
 				} else
 					f = fs;
 
@@ -103,13 +104,13 @@ void test_showcase(const char* testString = nullptr) {
 				/*const auto cw = static_cast<uint16_t>(size.Width() + 32);
 				const auto ch = static_cast<uint16_t>(size.Height() + 32);*/
 				const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::Format::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
-				std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width() * mm32->Height(), 0x80000000);
+				std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width * mm32->Height, 0x80000000);
 				for (auto i = 16; i < ch - 16; ++i)
 					for (auto j = 16; j < cw - 16; ++j)
 						mm32->View<uint32_t>()[i * cw + j] = 0xFF000000;
 				if (!mm32a) {
 					mm32a = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::Format::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
-					std::fill_n(mm32a->View<uint32_t>().begin(), mm32a->Width() * mm32a->Height(), 0x80000000);
+					std::fill_n(mm32a->View<uint32_t>().begin(), mm32a->Width * mm32a->Height, 0x80000000);
 					for (auto i = 16; i < ch - 16; ++i)
 						for (auto j = 16; j < cw - 16; ++j)
 							mm32a->View<uint32_t>()[i * cw + j] = 0xFF000000;
@@ -134,10 +135,10 @@ void compile() {
 	Sqex::FontCsv::FontSetsCreator::ResultFontSets result;
 	bool isArgb32;
 	try {
-		std::ifstream fin(R"(..\StaticData\FontConfig\Test.json)");
+		// std::ifstream fin(R"(..\StaticData\FontConfig\SourceHanSansK.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Original.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Gulim.dwrite.json)");
-		// std::ifstream fin(R"(..\StaticData\FontConfig\Mix.JpKrCn.json)");
+		std::ifstream fin(R"(..\StaticData\FontConfig\Mix.JpKr.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Gulim.gdi.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.Gulimche.dwrite_file.json)");
 		// std::ifstream fin(R"(..\StaticData\FontConfig\International.ComicGulim.json)");
@@ -151,10 +152,11 @@ void compile() {
 		nlohmann::json j;
 		fin >> j;
 		auto cfg = j.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>();
-		isArgb32 = cfg.textureFormat != Sqex::Texture::Format::RGBA4444;
+		isArgb32 = cfg.textureFormat != Sqex::Texture::Format::A4R4G4B4;
 
 		Sqex::FontCsv::FontSetsCreator creator(cfg, R"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game)");
-		// Sqex::FontCsv::FontSetsCreator creator(cfg, R"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game\)");
+		creator.ProvideGameDirectory(Sqex::GameReleaseRegion::Korean, R"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game\)");
+		creator.VerifyRequirements(nullptr, nullptr);
 		creator.Start();
 		while (!creator.Wait(100)) {
 			const auto progress = creator.GetProgress();
@@ -174,20 +176,20 @@ void compile() {
 	for (const auto& fontSet : result.Result | std::views::values) {
 		std::vector<std::shared_ptr<const Sqex::Texture::MipmapStream>> newMipmaps;
 		for (const auto& texture : fontSet.Textures) {
-			auto mipmap = Sqex::Texture::MipmapStream::FromTexture(texture, 0);
-			mipmap->Show();
+			auto mipmap = texture->GetMipmap(0, 0);
+			// mipmap->Show();
 			newMipmaps.emplace_back(std::move(mipmap));
 		}
 
 		if (isArgb32) {
 			for (const auto& [fontName, newFontCsv] : fontSet.Fonts) {
-				std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<Sqex::Texture::RGBA8888>> newFont = std::make_shared<Sqex::FontCsv::SeDrawableFont<Sqex::Texture::RGBA8888>>(newFontCsv, newMipmaps);
+				auto newFont = std::make_shared<Sqex::FontCsv::FdtDrawableFont<Sqex::Texture::RGBA8888>>(newFontCsv, 0, newMipmaps);
 				{
 					const auto lines = Utils::StringSplit<std::string>(pszTestString, "\n");
 					const auto cw = static_cast<uint16_t>(newFont->Measure(5, 5, pszTestString).Width() + 10);
 					const auto ch = static_cast<uint16_t>(5 * (lines.size() + 1) + newFont->LineHeight() * lines.size());
-					const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::Format::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
-					std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width() * mm32->Height(), 0xFF000000);
+					const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, 1, Sqex::Texture::Format::A8R8G8B8, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
+					std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width * mm32->Height, 0xFF000000);
 
 					SSIZE_T yptr = 5;
 					auto j = 0;
@@ -212,13 +214,13 @@ void compile() {
 			}
 		} else {
 			for (const auto& [fontName, newFontCsv] : fontSet.Fonts) {
-				std::shared_ptr<Sqex::FontCsv::SeCompatibleDrawableFont<>> newFont = std::make_shared<Sqex::FontCsv::SeDrawableFont<>>(newFontCsv, newMipmaps);
+				auto newFont = std::make_shared<Sqex::FontCsv::FdtDrawableFont<>>(newFontCsv, 0, newMipmaps);
 				{
 					const auto lines = Utils::StringSplit<std::string>(pszTestString, "\n");
 					const auto cw = static_cast<uint16_t>(newFont->Measure(5, 5, pszTestString).Width() + 10);
 					const auto ch = static_cast<uint16_t>(5 * (lines.size() + 1) + newFont->LineHeight() * lines.size());
-					const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, Sqex::Texture::Format::RGBA_1, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
-					std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width() * mm32->Height(), 0xFF000000);
+					const auto mm32 = std::make_shared<Sqex::Texture::MemoryBackedMipmap>(cw, ch, 1, Sqex::Texture::Format::A8R8G8B8, std::vector<uint8_t>(sizeof Sqex::Texture::RGBA8888 * cw * ch));
+					std::fill_n(mm32->View<uint32_t>().begin(), mm32->Width * mm32->Height, 0xFF000000);
 
 					SSIZE_T yptr = 5;
 					auto j = 0;
@@ -231,6 +233,20 @@ void compile() {
 							mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + newFont->Ascent()) + i].SetFrom(0, 255, 0, 255);
 							mm32->View<Sqex::Texture::RGBA8888>()[cw * (yptr + newFont->LineHeight()) + i].SetFrom(0, 255, 0, 255);
 						}
+						
+						SSIZE_T xptr = 5;
+						for (char32_t cprev = 0; const auto c : Sqex::FontCsv::ToU32(line)) {
+							auto m = newFont->Measure(0, 0, c);
+							for (auto i = yptr; i < yptr + newFont->LineHeight(); ++i)
+								mm32->View<Sqex::Texture::RGBA8888>()[cw * i + xptr + m.left].SetFrom(120, 180, 0, 255);
+							for (auto i = yptr; i < yptr + newFont->LineHeight(); ++i)
+								mm32->View<Sqex::Texture::RGBA8888>()[cw * i + xptr + m.right].SetFrom(180, 120, 0, 255);
+							xptr += m.advanceX + newFont->GetKerning(cprev, c);
+							cprev = c;
+						}
+						for (auto i = yptr; i < yptr + newFont->LineHeight(); ++i)
+							mm32->View<Sqex::Texture::RGBA8888>()[cw * i + xptr].SetFrom(180, 180, 0, 255);
+
 						newFont->Draw(mm32.get(), 5, yptr, line, 0xFFFFFFFF, 0);
 						yptr += newFont->LineHeight();
 						for (SSIZE_T i = 0; i < cw; ++i)

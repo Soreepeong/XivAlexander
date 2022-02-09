@@ -1,9 +1,9 @@
 #pragma once
 
-#include "XivAlexanderCommon/Sqex/FontCsv/SeCompatibleDrawableFont.h"
+#include "XivAlexanderCommon/Sqex/FontCsv/BaseDrawableFont.h"
 
 namespace Sqex::FontCsv {
-	class GdiFont : public virtual SeCompatibleFont {
+	class GdiFont : public virtual BaseFont {
 		struct Implementation;
 		const std::unique_ptr<Implementation> m_pImpl;
 
@@ -18,7 +18,7 @@ namespace Sqex::FontCsv {
 		[[nodiscard]] uint32_t LineHeight() const override;
 		[[nodiscard]] const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& GetKerningTable() const override;
 
-		using SeCompatibleFont::Measure;
+		using BaseFont::Measure;
 		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const override;
 
 	protected:
@@ -103,7 +103,7 @@ namespace Sqex::FontCsv {
 #pragma warning(push)
 #pragma warning(disable: 4250)
 	template<typename DestPixFmt = Texture::RGBA8888, typename OpacityType = uint8_t>
-	class GdiDrawingFont : public GdiFont, public SeCompatibleDrawableFont<DestPixFmt, OpacityType> {
+	class GdiDrawingFont : public GdiFont, public BaseDrawableFont<DestPixFmt, OpacityType> {
 
 		static uint32_t GetEffectiveOpacity(const Texture::RGBA8888& src) {
 			return src.R;
@@ -114,7 +114,7 @@ namespace Sqex::FontCsv {
 	public:
 		using GdiFont::GdiFont;
 
-		using SeCompatibleDrawableFont<DestPixFmt, OpacityType>::Draw;
+		using BaseDrawableFont<DestPixFmt, OpacityType>::Draw;
 		GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, char32_t c, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity, OpacityType bgOpacity) const override {
 			if (!HasCharacter(c))
 				return { true };

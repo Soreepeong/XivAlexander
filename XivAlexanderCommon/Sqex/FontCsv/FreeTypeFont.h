@@ -1,12 +1,12 @@
 #pragma once
 
-#include "XivAlexanderCommon/Sqex/FontCsv/SeCompatibleDrawableFont.h"
-#include "XivAlexanderCommon/Sqex/FontCsv/SeCompatibleFont.h"
+#include "XivAlexanderCommon/Sqex/FontCsv/BaseDrawableFont.h"
+#include "XivAlexanderCommon/Sqex/FontCsv/BaseFont.h"
 #include "XivAlexanderCommon/Sqex/Texture.h"
 
 namespace Sqex::FontCsv {
 
-	class FreeTypeFont : public virtual SeCompatibleFont {
+	class FreeTypeFont : public virtual BaseFont {
 	protected:
 		const FT_Int32 m_loadFlags;
 
@@ -131,12 +131,12 @@ namespace Sqex::FontCsv {
 #pragma warning(push)
 #pragma warning(disable: 4250)
 	template<typename DestPixFmt = Texture::RGBA8888, typename OpacityType = uint8_t>
-	class FreeTypeDrawingFont : public FreeTypeFont, public SeCompatibleDrawableFont<DestPixFmt, OpacityType> {
+	class FreeTypeDrawingFont : public FreeTypeFont, public BaseDrawableFont<DestPixFmt, OpacityType> {
 
 	public:
 		using FreeTypeFont::FreeTypeFont;
 
-		using SeCompatibleDrawableFont<DestPixFmt, OpacityType>::Draw;
+		using BaseDrawableFont<DestPixFmt, OpacityType>::Draw;
 
 		GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, char32_t c, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity, OpacityType bgOpacity) const override {
 			const auto face = GetFace(c, FT_LOAD_RENDER);

@@ -2,6 +2,7 @@
 #include "XivAlexanderCommon/Sqex/FontCsv/Creator.h"
 
 #include "XivAlexanderCommon/Sqex/FontCsv/DirectWriteFont.h"
+#include "XivAlexanderCommon/Sqex/FontCsv/FdtFont.h"
 #include "XivAlexanderCommon/Sqex/FontCsv/FreeTypeFont.h"
 #include "XivAlexanderCommon/Sqex/FontCsv/GdiFont.h"
 #include "XivAlexanderCommon/Sqex/Sqpack/EntryRawStream.h"
@@ -24,14 +25,16 @@ private:
 	char32_t m_codePoint;
 	int m_offsetXModifier;
 	int m_offsetYModifier;
+	CreateConfig::VerticalAlignment m_alignment;
 
 public:
-	const SeCompatibleDrawableFont<uint8_t>* Font;
+	const BaseDrawableFont<uint8_t>* Font;
 
-	CharacterPlan(char32_t character, const SeCompatibleDrawableFont<uint8_t>* font, int offsetXModifier, int offsetYModifier)
+	CharacterPlan(char32_t character, const BaseDrawableFont<uint8_t>* font, int offsetXModifier, int offsetYModifier, CreateConfig::VerticalAlignment alignment)
 		: m_codePoint(character)
 		, m_offsetXModifier(offsetXModifier)
 		, m_offsetYModifier(offsetYModifier)
+		, m_alignment(alignment)
 		, Font(font) {
 	}
 
@@ -66,6 +69,10 @@ public:
 	[[nodiscard]] int OffsetYModifier() const {
 		return m_offsetYModifier;
 	}
+
+	[[nodiscard]] CreateConfig::VerticalAlignment Alignment() const {
+		return m_alignment;
+	}
 };
 
 struct Sqex::FontCsv::FontCsvCreator::Implementation {
@@ -74,7 +81,7 @@ struct Sqex::FontCsv::FontCsvCreator::Implementation {
 	Win32::Semaphore CoreLimitSemaphore;
 
 	std::vector<CharacterPlan> Plans;
-	std::map<std::tuple<const SeCompatibleDrawableFont<uint8_t>*, char32_t, char32_t>, int> Kernings;
+	std::map<std::tuple<const BaseDrawableFont<uint8_t>*, char32_t, char32_t>, int> Kernings;
 
 	const std::shared_ptr<ModifiableFontCsvStream> Result = std::make_shared<ModifiableFontCsvStream>();
 
@@ -135,7 +142,7 @@ Sqex::FontCsv::FontCsvCreator::FontCsvCreator(const Win32::Semaphore& semaphore)
 
 Sqex::FontCsv::FontCsvCreator::~FontCsvCreator() = default;
 
-void Sqex::FontCsv::FontCsvCreator::AddCharacter(char32_t codePoint, const SeCompatibleDrawableFont<uint8_t>* font, bool replace, bool extendRange, int offsetXModifier, int offsetYModifier) {
+void Sqex::FontCsv::FontCsvCreator::AddCharacter(char32_t codePoint, const BaseDrawableFont<uint8_t>* font, bool replace, bool extendRange, int offsetXModifier, int offsetYModifier, CreateConfig::VerticalAlignment alignment) {
 	if (codePoint == '\n' || codePoint == '\r')
 		return;
 	if (!font->HasCharacter(codePoint))
@@ -156,29 +163,29 @@ void Sqex::FontCsv::FontCsvCreator::AddCharacter(char32_t codePoint, const SeCom
 		return;
 	}
 
-	m_pImpl->Plans.insert(pos, CharacterPlan(codePoint, font, offsetXModifier, offsetYModifier));
+	m_pImpl->Plans.insert(pos, CharacterPlan(codePoint, font, offsetXModifier, offsetYModifier, alignment));
 }
 
-void Sqex::FontCsv::FontCsvCreator::AddCharacter(const SeCompatibleDrawableFont<uint8_t>* font, bool replace, bool extendRange, int offsetXModifier, int offsetYModifier) {
+void Sqex::FontCsv::FontCsvCreator::AddCharacter(const BaseDrawableFont<uint8_t>* font, bool replace, bool extendRange, int offsetXModifier, int offsetYModifier, CreateConfig::VerticalAlignment alignment) {
 	for (const auto c : font->GetAllCharacters())
-		AddCharacter(c, font, replace, extendRange, offsetXModifier, offsetYModifier);
+		AddCharacter(c, font, replace, extendRange, offsetXModifier, offsetYModifier, alignment);
 }
 
-void Sqex::FontCsv::FontCsvCreator::AddKerning(const SeCompatibleDrawableFont<uint8_t>* font, char32_t left, char32_t right, int distance, bool replace) {
+void Sqex::FontCsv::FontCsvCreator::AddKerning(const BaseDrawableFont<uint8_t>* font, char32_t left, char32_t right, int distance, bool replace) {
 	if (replace)
 		m_pImpl->Kernings.insert_or_assign(std::make_tuple(font, left, right), distance);
 	else
 		m_pImpl->Kernings.emplace(std::make_tuple(font, left, right), distance);
 }
 
-void Sqex::FontCsv::FontCsvCreator::AddKerning(const SeCompatibleDrawableFont<uint8_t>* font, bool replace) {
+void Sqex::FontCsv::FontCsvCreator::AddKerning(const BaseDrawableFont<uint8_t>* font, bool replace) {
 	for (const auto& pair : font->GetKerningTable())
 		AddKerning(font, pair.first.first, pair.first.second, static_cast<int>(pair.second), replace);
 }
 
-void Sqex::FontCsv::FontCsvCreator::AddFont(const SeCompatibleDrawableFont<uint8_t>* font, bool replace, bool extendRange, int offsetXModifier, int offsetYModifier) {
+void Sqex::FontCsv::FontCsvCreator::AddFont(const BaseDrawableFont<uint8_t>* font, bool replace, bool extendRange, int offsetXModifier, int offsetYModifier, CreateConfig::VerticalAlignment alignment) {
 	for (const auto c : font->GetAllCharacters())
-		AddCharacter(c, font, replace, extendRange, offsetXModifier, offsetYModifier);
+		AddCharacter(c, font, replace, extendRange, offsetXModifier, offsetYModifier, alignment);
 	for (const auto& pair : font->GetKerningTable())
 		AddKerning(font, pair.first.first, pair.first.second, static_cast<int>(pair.second), replace);
 }
@@ -206,14 +213,14 @@ struct Sqex::FontCsv::FontCsvCreator::RenderTarget::Implementation {
 	uint16_t CurrentLineHeight;
 
 	std::vector<std::shared_ptr<Texture::MemoryBackedMipmap>> Mipmaps;
-	std::map<std::tuple<char32_t, const SeCompatibleDrawableFont<uint8_t>*, uint8_t, uint8_t, uint8_t, uint8_t>, AllocatedSpace> DrawnGlyphs;
+	std::map<std::tuple<char32_t, const BaseDrawableFont<uint8_t>*, uint8_t, uint8_t, uint8_t, uint8_t>, AllocatedSpace> DrawnGlyphs;
 
 	struct WorkItem {
 		Texture::MemoryBackedMipmap* mipmap;
 		SSIZE_T x;
 		SSIZE_T y;
 		char32_t c;
-		const SeCompatibleDrawableFont<uint8_t>* font;
+		const BaseDrawableFont<uint8_t>* font;
 		uint8_t borderThickness;
 		uint8_t borderOpacity;
 
@@ -231,7 +238,7 @@ struct Sqex::FontCsv::FontCsvCreator::RenderTarget::Implementation {
 	std::deque<WorkItem> WorkItems;
 	std::atomic_size_t ProcessedWorkItemIndex;
 
-	std::pair<AllocatedSpace, bool> AllocateSpace(char32_t c, const SeCompatibleDrawableFont<uint8_t>* font, uint8_t boundingWidth, uint8_t boundingHeight, uint8_t borderThickness, uint8_t borderOpacity) {
+	std::pair<AllocatedSpace, bool> AllocateSpace(char32_t c, const BaseDrawableFont<uint8_t>* font, uint8_t boundingWidth, uint8_t boundingHeight, uint8_t borderThickness, uint8_t borderOpacity) {
 		const auto actualGlyphGap = static_cast<uint16_t>(GlyphGap + borderThickness);
 
 		const auto [it, isNewEntry] = DrawnGlyphs.emplace(std::make_tuple(c, font, borderThickness, borderOpacity, boundingWidth, boundingHeight), AllocatedSpace{});
@@ -340,7 +347,7 @@ std::vector<std::shared_ptr<Sqex::Texture::ModifiableTextureStream>> Sqex::FontC
 
 Sqex::FontCsv::FontCsvCreator::RenderTarget::AllocatedSpace Sqex::FontCsv::FontCsvCreator::RenderTarget::QueueDraw(
 	char32_t c,
-	const SeCompatibleDrawableFont<uint8_t>* font,
+	const BaseDrawableFont<uint8_t>* font,
 	SSIZE_T drawOffsetX, SSIZE_T drawOffsetY,
 	uint8_t boundingWidth, uint8_t boundingHeight,
 	uint8_t borderThickness, uint8_t borderOpacity
@@ -461,15 +468,53 @@ void Sqex::FontCsv::FontCsvCreator::Step2_Layout(RenderTarget& renderTarget) {
 			if (bbox.empty)
 				continue;
 
-			const auto leftExtension = std::max<SSIZE_T>(-bbox.left, m_pImpl->Step0Result.globalOffsetX);
-			const auto boundingWidth = static_cast<uint8_t>(leftExtension + bbox.right + borderThickness + borderThickness);
-			const auto nextOffsetX = static_cast<int8_t>(bbox.advanceX + leftExtension - boundingWidth - m_pImpl->Step0Result.globalOffsetX);
-			auto currentOffsetY = static_cast<int8_t>(
-				(AlignToBaseline ? m_pImpl->Result->Ascent() - plan.Font->Ascent() : (0LL + m_pImpl->Result->LineHeight() - plan.Font->LineHeight()) / 2)
-				+ m_pImpl->Step0Result.globalOffsetY
-				+ GlobalOffsetYModifier
-				- borderThickness
-			);
+			const auto leftExtension = std::max<SSIZE_T>(bbox.left, 0);
+			const auto boundingWidth = static_cast<uint8_t>(bbox.Width() + m_pImpl->Step0Result.globalOffsetX + bbox.left + borderThickness + borderThickness);
+			const auto nextOffsetX = static_cast<int8_t>(bbox.advanceX - boundingWidth);
+			
+			int8_t currentOffsetY = 0;
+			switch (plan.Alignment()) {
+				case CreateConfig::VerticalAlignment::Baseline:
+					currentOffsetY = static_cast<int8_t>(
+						0LL
+						+ m_pImpl->Result->Ascent() - plan.Font->Ascent()
+						+ m_pImpl->Step0Result.globalOffsetY
+						+ GlobalOffsetYModifier
+						- borderThickness
+						);
+					break;
+
+				case CreateConfig::VerticalAlignment::Top:
+					currentOffsetY = static_cast<int8_t>(
+						0LL
+						+ m_pImpl->Step0Result.globalOffsetY
+						+ GlobalOffsetYModifier
+						- borderThickness
+						);
+					break;
+
+				case CreateConfig::VerticalAlignment::Middle:
+					currentOffsetY = static_cast<int8_t>(
+						((0LL + m_pImpl->Result->LineHeight() - plan.Font->LineHeight()) / 2)
+						+ m_pImpl->Step0Result.globalOffsetY
+						+ GlobalOffsetYModifier
+						- borderThickness
+						);
+					break;
+
+				case CreateConfig::VerticalAlignment::Bottom:
+					currentOffsetY = static_cast<int8_t>(
+						0LL
+						+ m_pImpl->Result->LineHeight() - plan.Font->LineHeight()
+						+ m_pImpl->Step0Result.globalOffsetY
+						+ GlobalOffsetYModifier
+						- borderThickness
+						);
+					break;
+
+				default:
+					std::abort();  // cannot reach
+			}
 
 			auto boundingHeight = m_pImpl->Step0Result.boundingHeight;
 			auto drawOffsetY = 0;
@@ -484,7 +529,7 @@ void Sqex::FontCsv::FontCsvCreator::Step2_Layout(RenderTarget& renderTarget) {
 
 			boundingHeight += static_cast<SSIZE_T>(2) * borderThickness;
 			const auto space = renderTarget.QueueDraw(plan.Character(), plan.Font,
-				leftExtension, drawOffsetY,
+				m_pImpl->Step0Result.globalOffsetX, drawOffsetY,
 				boundingWidth, boundingHeight, borderThickness, borderOpacity);
 
 			boundingHeight = std::min(space.BoundingHeight, boundingHeight);
@@ -558,7 +603,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 	std::mutex SourceFontMapAccessMtx, SourceFontLoadMtx;
 	std::map<std::filesystem::path, std::unique_ptr<Sqpack::Reader>> SqpackReaders;
 	std::map<std::tuple<std::filesystem::path, std::filesystem::path>, std::vector<std::shared_ptr<const Texture::MipmapStream>>> GameTextures;
-	std::map<std::string, std::shared_ptr<const SeCompatibleDrawableFont<uint8_t>>> SourceFonts;
+	std::map<std::string, std::shared_ptr<const BaseDrawableFont<uint8_t>>> SourceFonts;
 	std::map<std::string, std::filesystem::path> ResolvedGameIndexFiles;
 
 	ResultFontSets Result;
@@ -592,7 +637,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 		});
 	}
 
-	const SeCompatibleDrawableFont<uint8_t>& GetSourceFont(const std::string& name) {
+	const BaseDrawableFont<uint8_t>& GetSourceFont(const std::string& name) {
 		{
 			const auto lock = std::lock_guard(SourceFontMapAccessMtx);
 			if (const auto it = SourceFonts.find(name); it != SourceFonts.end())
@@ -608,9 +653,10 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 					return *it->second;
 			}
 
-			std::shared_ptr<SeCompatibleDrawableFont<uint8_t>> newFont;
+			std::shared_ptr<BaseDrawableFont<uint8_t>> newFont;
 			const auto& inputFontSource = Config.sources.at(name);
-			if (const auto& source = inputFontSource.gameSource; inputFontSource.isGameSource) {
+			if (inputFontSource.gameSource) {
+				const auto& source = *inputFontSource.gameSource;
 				std::filesystem::path indexFilePath;
 				if (source.indexFile.empty() && source.gameIndexFileName.empty())
 					indexFilePath = GamePath / LR"(sqpack\ffxiv\000000.win32.index)";
@@ -646,20 +692,28 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 					}
 				}
 
-				newFont = std::make_shared<SeDrawableFont<Texture::RGBA4444, uint8_t>>(
-					std::make_shared<ModifiableFontCsvStream>(Sqpack::EntryRawStream(reader->second->GetEntryProvider(source.fdtPath))), textures->second);
+				auto font = std::make_shared<FdtDrawableFont<Texture::RGBA4444, uint8_t>>(
+					std::make_shared<ModifiableFontCsvStream>(Sqpack::EntryRawStream(reader->second->GetEntryProvider(source.fdtPath))), 0, textures->second);
+				if (source.leftSideBearing)
+					font->SetLeftSideBearing(*source.leftSideBearing);
+				else
+					font->SetLeftSideBearing(font->FindLeftSideBearing());
+				OutputDebugStringW(std::format(L"{}: left {}px\n", source.fdtPath, font->GetLeftSideBearing()).c_str());
+
+				newFont = std::move(font);
 				newFont->AdvanceWidthDelta(source.advanceWidthDelta);
 
-			} else if (const auto& source = inputFontSource.gdiSource; inputFontSource.isGdiSource) {
-				auto s2(source);
-				s2.lfHeight *= source.oversampleScale;
-				newFont = std::make_shared<GdiDrawingFont<uint8_t>>(s2);
+			} else if (inputFontSource.gdiSource) {
+				auto source{ *inputFontSource.gdiSource };
+				source.lfHeight *= source.oversampleScale;
+				newFont = std::make_shared<GdiDrawingFont<uint8_t>>(source);
 				newFont->AdvanceWidthDelta(source.advanceWidthDelta);
 
 				if (source.oversampleScale > 1)
-					newFont = std::make_shared<Sqex::FontCsv::SeOversampledFont<uint8_t>>(std::move(newFont), source.oversampleScale);
+					newFont = std::make_shared<Sqex::FontCsv::OversampledFont<uint8_t>>(std::move(newFont), source.oversampleScale);
 
-			} else if (const auto& source = inputFontSource.directWriteSource; inputFontSource.isDirectWriteSource) {
+			} else if (inputFontSource.directWriteSource) {
+				const auto& source = *inputFontSource.directWriteSource;
 				std::shared_ptr<DirectWriteDrawingFont<uint8_t>> dfont;
 
 				if (source.fontFile.empty() && source.familyName.empty())
@@ -699,9 +753,10 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				newFont->AdvanceWidthDelta(source.advanceWidthDelta * source.oversampleScale);
 
 				if (source.oversampleScale > 1)
-					newFont = std::make_shared<Sqex::FontCsv::SeOversampledFont<uint8_t>>(std::move(newFont), source.oversampleScale);
+					newFont = std::make_shared<Sqex::FontCsv::OversampledFont<uint8_t>>(std::move(newFont), source.oversampleScale);
 
-			} else if (const auto& source = inputFontSource.freeTypeSource; inputFontSource.isFreeTypeSource) {
+			} else if (inputFontSource.freeTypeSource) {
+				const auto& source = *inputFontSource.freeTypeSource;
 				if (source.fontFile.empty() && source.familyName.empty())
 					throw std::invalid_argument("Neither of fontFile nor familyName was specified.");
 
@@ -736,7 +791,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				newFont->AdvanceWidthDelta(source.advanceWidthDelta * source.oversampleScale);
 
 				if (source.oversampleScale > 1)
-					newFont = std::make_shared<Sqex::FontCsv::SeOversampledFont<uint8_t>>(std::move(newFont), source.oversampleScale);
+					newFont = std::make_shared<Sqex::FontCsv::OversampledFont<uint8_t>>(std::move(newFont), source.oversampleScale);
 
 			} else
 				throw std::invalid_argument("Could not identify which font to load.");
@@ -825,7 +880,6 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 								creator.MaxGlobalOffsetX = plan.maxGlobalOffsetX;
 								creator.GlobalOffsetYModifier = plan.globalOffsetY;
 								creator.AlwaysApplyKerningCharacters.insert(plan.charactersToKernAcrossFonts.begin(), plan.charactersToKernAcrossFonts.end());
-								creator.AlignToBaseline = plan.alignToBaseline;
 								creator.BorderThickness = plan.borderThickness;
 								creator.BorderOpacity = plan.borderOpacity;
 								creator.CompactLayout = plan.compactLayout == CreateConfig::SingleFontTarget::CompactLayout_NoOverride ? Config.compactLayout : (plan.compactLayout == CreateConfig::SingleFontTarget::CompactLayout_Override_Enable);
@@ -833,14 +887,14 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 								for (const auto& source : plan.sources) {
 									const auto& sourceFont = GetSourceFont(source.name);
 									if (source.ranges.empty()) {
-										creator.AddFont(&sourceFont, source.replace, source.extendRange, source.offsetXModifier, source.offsetYModifier);
+										creator.AddFont(&sourceFont, source.replace, source.extendRange, source.offsetXModifier, source.offsetYModifier, source.alignment);
 									} else {
 										for (const auto& rangeName : source.ranges) {
 											for (const auto& range : Config.ranges.at(rangeName).ranges | std::views::values) {
 												for (auto i = range.from; i < range.to; ++i)
-													creator.AddCharacter(i, &sourceFont, source.replace, source.extendRange, source.offsetXModifier, source.offsetYModifier);
+													creator.AddCharacter(i, &sourceFont, source.replace, source.extendRange, source.offsetXModifier, source.offsetYModifier, source.alignment);
 												// separate line to prevent overflow (i < range.to might never be false)
-												creator.AddCharacter(range.to, &sourceFont, source.replace, source.extendRange, source.offsetXModifier, source.offsetYModifier);
+												creator.AddCharacter(range.to, &sourceFont, source.replace, source.extendRange, source.offsetXModifier, source.offsetYModifier, source.alignment);
 
 												if (Cancelled)
 													return;
@@ -1011,8 +1065,8 @@ void Sqex::FontCsv::FontSetsCreator::VerifyRequirements(
 		for (const auto& target : singleTextureTarget.fontTargets | std::views::values) {
 			for (const auto& sourceInfo : target.sources) {
 				auto& sourceOuter = m_pImpl->Config.sources.at(sourceInfo.name);
-				if (sourceOuter.isGameSource) {
-					auto& source = sourceOuter.gameSource;
+				if (sourceOuter.gameSource) {
+					auto& source = *sourceOuter.gameSource;
 					if (!source.indexFile.empty() && exists(Win32::TranslatePath(source.indexFile, relativeTo)))
 						continue;
 					for (const auto& [name, gameIndexFile] : m_pImpl->Config.gameIndexFiles) {
@@ -1055,14 +1109,14 @@ void Sqex::FontCsv::FontSetsCreator::VerifyRequirements(
 							m_pImpl->ResolvedGameIndexFiles.emplace(name, std::move(path));
 						}
 					}
-				} else if (sourceOuter.isDirectWriteSource || (
-					sourceOuter.isFreeTypeSource
-					&& (sourceOuter.freeTypeSource.fontFile.empty()
-						|| !exists(Win32::TranslatePath(sourceOuter.freeTypeSource.fontFile, relativeTo))
+				} else if (sourceOuter.directWriteSource || (
+					sourceOuter.freeTypeSource
+					&& (sourceOuter.freeTypeSource->fontFile.empty()
+						|| !exists(Win32::TranslatePath(sourceOuter.freeTypeSource->fontFile, relativeTo))
 					)
-					&& !sourceOuter.freeTypeSource.familyName.empty())) {
+					&& !sourceOuter.freeTypeSource->familyName.empty())) {
 
-					const auto familyName = FromUtf8(sourceOuter.isDirectWriteSource ? sourceOuter.directWriteSource.familyName : sourceOuter.freeTypeSource.familyName);
+					const auto familyName = FromUtf8(sourceOuter.directWriteSource ? sourceOuter.directWriteSource->familyName : sourceOuter.freeTypeSource->familyName);
 					for (const auto& rule : m_pImpl->Config.fontRequirements) {
 						const auto wname = FromUtf8(rule.name);
 						if (lstrcmpiW(wname.c_str(), familyName.c_str()) == 0) {

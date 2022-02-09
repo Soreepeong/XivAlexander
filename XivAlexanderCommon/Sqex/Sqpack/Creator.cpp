@@ -685,9 +685,9 @@ void Sqex::Sqpack::Creator::WriteToFiles(const std::filesystem::path & dir, bool
 			if (strict && !dataSubheaders.empty()) {
 				CryptoPP::SHA1 sha1;
 				Align<uint64_t>(dataSubheaders.back().DataSize, buf.size()).IterateChunked([&](uint64_t index, uint64_t offset, uint64_t size) {
-					const auto bufSpan = std::span(buf).subspan(0, size);
+					const auto bufSpan = std::span(buf).subspan(0, static_cast<size_t>(size));
 					dataFile.Read(offset, bufSpan);
-					sha1.Update(&bufSpan[0], size);
+					sha1.Update(&bufSpan[0], static_cast<size_t>(size));
 					dataFile.Write(entry.Locator.DatFileOffset() + offset, bufSpan);
 					}, sizeof SqpackHeader + sizeof SqData::Header);
 
@@ -711,7 +711,7 @@ void Sqex::Sqpack::Creator::WriteToFiles(const std::filesystem::path & dir, bool
 
 		entry.Locator = { static_cast<uint32_t>(dataSubheaders.size() - 1), sizeof SqpackHeader + sizeof SqData::Header + dataSubheaders.back().DataSize };
 		Align<uint64_t>(entrySize, buf.size()).IterateChunked([&](uint64_t index, uint64_t offset, uint64_t size) {
-			const auto bufSpan = std::span(buf).subspan(0, size);
+			const auto bufSpan = std::span(buf).subspan(0, static_cast<size_t>(size));
 			provider->ReadStream(offset, bufSpan);
 			dataFile.Write(entry.Locator.DatFileOffset() + offset, bufSpan);
 			});
@@ -723,9 +723,9 @@ void Sqex::Sqpack::Creator::WriteToFiles(const std::filesystem::path & dir, bool
 		if (strict) {
 			CryptoPP::SHA1 sha1;
 			Align<uint64_t>(dataSubheaders.back().DataSize, buf.size()).IterateChunked([&](uint64_t index, uint64_t offset, uint64_t size) {
-				const auto bufSpan = std::span(buf).subspan(0, size);
+				const auto bufSpan = std::span(buf).subspan(0, static_cast<size_t>(size));
 				dataFile.Read(offset, bufSpan);
-				sha1.Update(&bufSpan[0], size);
+				sha1.Update(&bufSpan[0], static_cast<size_t>(size));
 				}, sizeof SqpackHeader + sizeof SqData::Header);
 
 			sha1.Final(reinterpret_cast<byte*>(dataSubheaders.back().DataSha1.Value));

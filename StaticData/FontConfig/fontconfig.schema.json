@@ -203,6 +203,11 @@
               "description": "Adjust advance width of this source font face.",
               "type": "integer",
               "default": 0
+            },
+            "leftSideBearing": {
+              "description": "Left side bearing for every glyph. Set it to null (default) to calculate it automatically.",
+              "type": ["integer", "null"],
+              "default": null
             }
           },
           "required": [
@@ -466,10 +471,6 @@
                   "type": "string",
                   "default": " "
                 },
-                "alignToBaseline": {
-                  "type": "boolean",
-                  "default": true
-                },
                 "compactLayout": {
                   "description": "Let each glyph have different height to save space. If set, overrides global config.",
                   "type": ["boolean", "null"],
@@ -503,6 +504,19 @@
                         "description": "Whether to extend the character coverage of this font. If false, then will only replace font if replace is true. If replace is false and this is true, then this entry will do nothing.",
                         "type": "boolean",
                         "default": true
+                      },
+                      "offsetXModifier": {
+                        "type": "int",
+                        "default": 0
+                      },
+                      "offsetYModifier": {
+                        "type": "int",
+                        "default": 0
+                      },
+                      "alignment": {
+                        "type": "string",
+                        "default": "baseline",
+                        "enum": ["baseline", "top", "middle", "bottom"]
                       }
                     },
                     "required": [

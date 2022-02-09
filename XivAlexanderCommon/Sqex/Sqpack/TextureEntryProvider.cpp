@@ -287,7 +287,7 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 				auto mipmapSize = mipmapSizes[i];
 				readBuffer.resize(mipmapSize);
 
-				if (const auto read = stream.ReadStreamPartial(offset, &readBuffer[0], mipmapSize); read != mipmapSize) {
+				if (const auto read = static_cast<size_t>(stream.ReadStreamPartial(offset, &readBuffer[0], mipmapSize)); read != mipmapSize) {
 					// <caused by TexTools export>
 					std::fill_n(&readBuffer[read], mipmapSize - read, 0);
 					// </caused by TexTools export>
@@ -325,7 +325,7 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 
 			blockAlignment.IterateChunked([&](uint32_t, const uint32_t offset, const uint32_t length) {
 				const auto sourceBuf = std::span(readBuffer).subspan(0, length);
-				if (const auto read = stream.ReadStreamPartial(offset, &sourceBuf[0], length); read != length) {
+				if (const auto read = static_cast<size_t>(stream.ReadStreamPartial(offset, &sourceBuf[0], length)); read != length) {
 					// <caused by TexTools export>
 					std::fill_n(&sourceBuf[read], length - read, 0);
 					// </caused by TexTools export>

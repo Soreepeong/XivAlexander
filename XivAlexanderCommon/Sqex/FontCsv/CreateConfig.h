@@ -2,6 +2,7 @@
 
 #include <dwrite_3.h>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 #include <nlohmann/json.hpp>
@@ -34,6 +35,7 @@ namespace Sqex::FontCsv::CreateConfig {
 		std::filesystem::path fdtPath;
 		std::filesystem::path texturePath;
 		int advanceWidthDelta{};
+		std::optional<int> leftSideBearing{};
 	};
 	void to_json(nlohmann::json& j, const GameSource& o);
 	void from_json(const nlohmann::json& j, GameSource& o);
@@ -77,14 +79,10 @@ namespace Sqex::FontCsv::CreateConfig {
 	void from_json(const nlohmann::json& j, GdiSource& o);
 
 	struct InputFontSource {
-		bool isGameSource = false;
-		bool isDirectWriteSource = false;
-		bool isGdiSource = false;
-		bool isFreeTypeSource = false;
-		GameSource gameSource;
-		DirectWriteSource directWriteSource;
-		GdiSource gdiSource;
-		FreeTypeSource freeTypeSource;
+		std::optional<GameSource> gameSource;
+		std::optional<DirectWriteSource> directWriteSource;
+		std::optional<GdiSource> gdiSource;
+		std::optional<FreeTypeSource> freeTypeSource;
 	};
 
 	struct SingleRange {
@@ -100,6 +98,15 @@ namespace Sqex::FontCsv::CreateConfig {
 	void to_json(nlohmann::json& j, const RangeSet& o);
 	void from_json(const nlohmann::json& j, RangeSet& o);
 
+	enum class VerticalAlignment {
+		Baseline,
+		Top,
+		Middle,
+		Bottom,
+	};
+	void to_json(nlohmann::json& j, const VerticalAlignment& o);
+	void from_json(const nlohmann::json& j, VerticalAlignment& o);
+
 	struct SingleTargetComponent {
 		std::string name;
 		std::vector<std::string> ranges;
@@ -107,6 +114,7 @@ namespace Sqex::FontCsv::CreateConfig {
 		bool extendRange{};
 		int offsetXModifier;
 		int offsetYModifier;
+		VerticalAlignment alignment{ VerticalAlignment::Baseline };
 	};
 	void to_json(nlohmann::json& j, const SingleTargetComponent& o);
 	void from_json(const nlohmann::json& j, SingleTargetComponent& o);
@@ -133,7 +141,6 @@ namespace Sqex::FontCsv::CreateConfig {
 
 		uint8_t borderThickness{};
 		uint8_t borderOpacity{};
-		bool alignToBaseline{};
 
 		std::u32string charactersToKernAcrossFonts;
 		std::vector<SingleTargetComponent> sources;

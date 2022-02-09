@@ -108,10 +108,10 @@
     <ClInclude Include="Sqex\Sqpack\EntryRawStream.h">
       <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\SeCompatibleFont.h">
+    <ClInclude Include="Sqex\FontCsv\BaseFont.h">
       <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\SeCompatibleDrawableFont.h">
+    <ClInclude Include="Sqex\FontCsv\BaseDrawableFont.h">
       <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
     <ClInclude Include="Sqex\FontCsv\Creator.h">
@@ -255,6 +255,9 @@
     <ClInclude Include="span_cast.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="Sqex\FontCsv\FdtFont.h">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -299,7 +302,7 @@
     <ClCompile Include="Sqex\Texture.cpp">
       <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex\FontCsv\SeCompatibleFont.cpp">
+    <ClCompile Include="Sqex\FontCsv\BaseFont.cpp">
       <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
     <ClCompile Include="Sqex\FontCsv\Creator.cpp">
@@ -427,6 +430,9 @@
     </ClCompile>
     <ClCompile Include="EmptyOrObfuscatedStreamDecoder.cpp">
       <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
+    </ClCompile>
+    <ClCompile Include="FdtFont.cpp">
+      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

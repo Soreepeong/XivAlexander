@@ -89,6 +89,8 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const GameSource& o
 		{"texturePath", o.texturePath},
 		{"advanceWidthDelta", o.advanceWidthDelta},
 	});
+	if (o.leftSideBearing)
+		j["leftSideBearing"] = *o.leftSideBearing;
 }
 
 void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, GameSource& o) {
@@ -99,6 +101,8 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, GameSource&
 		o.fdtPath = j.at(lastAttempt = "fdtPath").get<decltype(o.fdtPath)>();
 		o.texturePath = j.at(lastAttempt = "texturePath").get<decltype(o.texturePath)>();
 		o.advanceWidthDelta = j.value(lastAttempt = "advanceWidthDelta", 0);
+		if (const auto it = j.find(lastAttempt = "leftSideBearing"); it != j.end() && !it->is_null())
+			o.leftSideBearing = it->get<int>();
 	} catch (const std::exception& e) {
 		throw std::invalid_argument(std::format("[{}] {}", lastAttempt, e.what()));
 	}
@@ -367,6 +371,42 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, RangeSet& o
 	o.ranges = j.get<decltype(o.ranges)>();
 }
 
+void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const VerticalAlignment& o) {
+	switch (o) {
+		case VerticalAlignment::Baseline:
+			j = "baseline";
+			break;
+
+		case VerticalAlignment::Top:
+			j = "top";
+			break;
+
+		case VerticalAlignment::Middle:
+			j = "middle";
+			break;
+
+		case VerticalAlignment::Bottom:
+			j = "bottom";
+			break;
+	}
+}
+
+void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, VerticalAlignment& o) {
+	auto s = j.get<std::string>();
+	CharUpperA(&s[0]);
+
+	if (strncmp(s.c_str(), "BASELINE", s.size()) == 0)
+		o = VerticalAlignment::Baseline;
+	else if (strncmp(s.c_str(), "TOP", s.size()) == 0)
+		o = VerticalAlignment::Top;
+	else if (strncmp(s.c_str(), "MIDDLE", s.size()) == 0)
+		o = VerticalAlignment::Middle;
+	else if (strncmp(s.c_str(), "BOTTOM", s.size()) == 0)
+		o = VerticalAlignment::Bottom;
+	else
+		throw std::invalid_argument(std::format("Unexpected value {} for vertical alignment (tried to interpret from {})", j.get<std::string>(), s));
+}
+
 void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const SingleTargetComponent& o) {
 	j = nlohmann::json::object({
 		{"name", o.name},
@@ -375,6 +415,7 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const SingleTargetC
 		{"extendRange", o.extendRange},
 		{"offsetXModifier", o.offsetXModifier},
 		{"offsetYModifier", o.offsetYModifier},
+		{"alignment", o.alignment},
 	});
 }
 
@@ -387,6 +428,7 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, SingleTarge
 		o.extendRange = j.value(lastAttempt = "extendRange", true);
 		o.offsetXModifier = j.value(lastAttempt = "offsetXModifier", 0);
 		o.offsetYModifier = j.value(lastAttempt = "offsetYModifier", 0);
+		o.alignment = j.value(lastAttempt = "alignment", VerticalAlignment::Baseline);
 	} catch (const std::exception& e) {
 		throw std::invalid_argument(std::format("[{}] {}", lastAttempt, e.what()));
 	}
@@ -402,7 +444,6 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const SingleFontTar
 		{"globalOffsetY", o.globalOffsetY},
 		{"compactLayout", nullptr},
 		{"charactersToKernAcrossFonts", o.charactersToKernAcrossFonts},
-		{"alignToBaseline", o.alignToBaseline},
 		{"borderThickness", o.borderThickness},
 		{"borderOpacity", o.borderOpacity},
 		{"sources", o.sources},
@@ -452,7 +493,6 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, SingleFontT
 		o.minGlobalOffsetX = j.value<uint8_t>(lastAttempt = "minGlobalOffsetX", 0);
 		o.globalOffsetY = j.value<uint8_t>(lastAttempt = "globalOffsetY", 0);
 		o.charactersToKernAcrossFonts = ToU32(j.value(lastAttempt = "charactersToKernAcrossFonts", std::string(" ")));
-		o.alignToBaseline = j.value(lastAttempt = "alignToBaseline", true);
 		o.borderThickness = j.value<uint8_t>(lastAttempt = "borderThickness", 0);
 		o.borderOpacity = j.value<uint8_t>(lastAttempt = "borderOpacity", 0);
 		o.sources = j.at(lastAttempt = "sources").get<decltype(o.sources)>();
@@ -489,14 +529,14 @@ void Sqex::FontCsv::CreateConfig::to_json(nlohmann::json& j, const FontCreateCon
 	});
 	auto& sources = j.at("sources");
 	for (const auto& [key, value] : o.sources) {
-		if (value.isGameSource)
-			sources.emplace(key, value.gameSource);
-		else if (value.isDirectWriteSource)
-			sources.emplace(key, value.directWriteSource);
-		else if (value.isGdiSource)
-			sources.emplace(key, value.gdiSource);
-		else if (value.isFreeTypeSource)
-			sources.emplace(key, value.freeTypeSource);
+		if (value.gameSource)
+			sources.emplace(key, *value.gameSource);
+		else if (value.directWriteSource)
+			sources.emplace(key, *value.directWriteSource);
+		else if (value.gdiSource)
+			sources.emplace(key, *value.gdiSource);
+		else if (value.freeTypeSource)
+			sources.emplace(key, *value.freeTypeSource);
 	}
 }
 
@@ -521,22 +561,22 @@ void Sqex::FontCsv::CreateConfig::from_json(const nlohmann::json& j, FontCreateC
 			if (key.starts_with("gdi:")) {
 				GdiSource source;
 				from_json(value, source);
-				o.sources.emplace(key, InputFontSource{.isGdiSource = true, .gdiSource = source});
+				o.sources.emplace(key, InputFontSource{.gdiSource = std::move(source)});
 
 			} else if (key.starts_with("dwrite:")) {
 				DirectWriteSource source;
 				from_json(value, source);
-				o.sources.emplace(key, InputFontSource{.isDirectWriteSource = true, .directWriteSource = source});
+				o.sources.emplace(key, InputFontSource{.directWriteSource = std::move(source)});
 
 			} else if (key.starts_with("freetype:")) {
 				FreeTypeSource source;
 				from_json(value, source);
-				o.sources.emplace(key, InputFontSource{.isFreeTypeSource = true, .freeTypeSource = source});
+				o.sources.emplace(key, InputFontSource{.freeTypeSource = std::move(source)});
 
 			} else if (key.starts_with("game:")) {
 				GameSource source;
 				from_json(value, source);
-				o.sources.emplace(key, InputFontSource{.isGameSource = true, .gameSource = source});
+				o.sources.emplace(key, InputFontSource{.gameSource = std::move(source)});
 
 			} else
 				throw std::invalid_argument(std::format("target font name \"{}\" has an unsupported prefix", key));
@@ -682,9 +722,9 @@ void from_json(const nlohmann::json& j, DWRITE_FONT_STRETCH& o) {
 
 void Sqex::FontCsv::CreateConfig::FontCreateConfig::ValidateOrThrow() const {
 	for (const auto& [sourceName, source] : sources) {
-		if (source.isGameSource && !source.gameSource.gameIndexFileName.empty()) {
-			if (!gameIndexFiles.contains(source.gameSource.gameIndexFileName))
-				throw std::runtime_error(std::format("gameIndexFileName \"{}\" not in gameIndexFileNames", source.gameSource.gameIndexFileName));
+		if (source.gameSource && !source.gameSource->gameIndexFileName.empty()) {
+			if (!gameIndexFiles.contains(source.gameSource->gameIndexFileName))
+				throw std::runtime_error(std::format("gameIndexFileName \"{}\" not in gameIndexFileNames", source.gameSource->gameIndexFileName));
 		}
 	}
 	for (const auto& [targetName, singleTextureTarget] : targets) {

@@ -26,7 +26,7 @@ Sqex::Texture::ModifiableTextureStream::ModifiableTextureStream(const std::share
 	
 	const auto mipmapLocators = stream->ReadStreamIntoVector<uint32_t>(sizeof m_header, m_header.MipmapCount);
 	const auto repeatUnitSize = CalculateRepeatUnitSize(m_header.MipmapCount);
-	Resize(mipmapLocators.size(), (stream->StreamSize() - mipmapLocators[0] + repeatUnitSize - 1) / repeatUnitSize);
+	Resize(mipmapLocators.size(), (static_cast<size_t>(stream->StreamSize()) - mipmapLocators[0] + repeatUnitSize - 1) / repeatUnitSize);
 	for (size_t repeatI = 0; repeatI < m_repeats.size(); ++repeatI) {
 		for (size_t mipmapI = 0; mipmapI < mipmapLocators.size(); ++mipmapI) {
 			const auto mipmapSize = RawDataLength(m_header, mipmapI);
@@ -136,7 +136,7 @@ uint64_t Sqex::Texture::ModifiableTextureStream::ReadStreamPartial(uint64_t offs
 	if (m_repeats.empty())
 		return length - out.size_bytes();
 
-	auto beginningRepeatIndex = relativeOffset / m_repeatedUnitSize;
+	auto beginningRepeatIndex = static_cast<size_t>(relativeOffset / m_repeatedUnitSize);
 	relativeOffset %= m_repeatedUnitSize;
 
 	relativeOffset += headerPadInfo.Alloc;

@@ -4,7 +4,7 @@
 #include <set>
 
 #include "XivAlexanderCommon/Sqex/FontCsv/CreateConfig.h"
-#include "XivAlexanderCommon/Sqex/FontCsv/SeCompatibleDrawableFont.h"
+#include "XivAlexanderCommon/Sqex/FontCsv/BaseDrawableFont.h"
 #include "XivAlexanderCommon/Sqex/Texture/Mipmap.h"
 #include "XivAlexanderCommon/Sqex/Texture/ModifiableTextureStream.h"
 #include "XivAlexanderCommon/Utils/ListenerManager.h"
@@ -47,7 +47,6 @@ namespace Sqex::FontCsv {
 		int MinGlobalOffsetX = 0;
 		int MaxGlobalOffsetX = 255;
 		std::set<char32_t> AlwaysApplyKerningCharacters = {U' '};
-		bool AlignToBaseline = true;
 		uint8_t BorderThickness = 0;
 		uint8_t BorderOpacity = 0;
 		bool CompactLayout = false;
@@ -55,11 +54,11 @@ namespace Sqex::FontCsv {
 		FontCsvCreator(const Win32::Semaphore& semaphore = nullptr);
 		~FontCsvCreator();
 
-		void AddCharacter(char32_t codePoint, const SeCompatibleDrawableFont<uint8_t>* font, bool replace = false, bool extendRange = true, int offsetXModifier = 0, int offsetYModifier = 0);
-		void AddCharacter(const SeCompatibleDrawableFont<uint8_t>* font, bool replace = false, bool extendRange = true, int offsetXModifier = 0, int offsetYModifier = 0);
-		void AddKerning(const SeCompatibleDrawableFont<uint8_t>* font, char32_t left, char32_t right, int distance, bool replace = false);
-		void AddKerning(const SeCompatibleDrawableFont<uint8_t>* font, bool replace = false);
-		void AddFont(const SeCompatibleDrawableFont<uint8_t>* font, bool replace = false, bool extendRange = true, int offsetXModifier = 0, int offsetYModifier = 0);
+		void AddCharacter(char32_t codePoint, const BaseDrawableFont<uint8_t>* font, bool replace = false, bool extendRange = true, int offsetXModifier = 0, int offsetYModifier = 0, CreateConfig::VerticalAlignment alignment = CreateConfig::VerticalAlignment::Baseline);
+		void AddCharacter(const BaseDrawableFont<uint8_t>* font, bool replace = false, bool extendRange = true, int offsetXModifier = 0, int offsetYModifier = 0, CreateConfig::VerticalAlignment alignment = CreateConfig::VerticalAlignment::Baseline);
+		void AddKerning(const BaseDrawableFont<uint8_t>* font, char32_t left, char32_t right, int distance, bool replace = false);
+		void AddKerning(const BaseDrawableFont<uint8_t>* font, bool replace = false);
+		void AddFont(const BaseDrawableFont<uint8_t>* font, bool replace = false, bool extendRange = true, int offsetXModifier = 0, int offsetYModifier = 0, CreateConfig::VerticalAlignment alignment = CreateConfig::VerticalAlignment::Baseline);
 
 		ListenerManager<FontCsvCreator, void, const std::exception&> OnError;
 
@@ -89,7 +88,7 @@ namespace Sqex::FontCsv {
 				uint8_t BoundingHeight;
 			};
 
-			AllocatedSpace QueueDraw(char32_t c, const SeCompatibleDrawableFont<uint8_t>* font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint8_t boundingWidth, uint8_t boundingHeight, uint8_t borderThickness, uint8_t borderOpacity);
+			AllocatedSpace QueueDraw(char32_t c, const BaseDrawableFont<uint8_t>* font, SSIZE_T drawOffsetX, SSIZE_T drawOffsetY, uint8_t boundingWidth, uint8_t boundingHeight, uint8_t borderThickness, uint8_t borderOpacity);
 			bool WorkOnNextItem();
 		};
 

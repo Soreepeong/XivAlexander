@@ -1,8 +1,8 @@
 #pragma once
-#include "XivAlexanderCommon/Sqex/FontCsv/SeCompatibleDrawableFont.h"
+#include "XivAlexanderCommon/Sqex/FontCsv/BaseDrawableFont.h"
 
 namespace Sqex::FontCsv {
-	class DirectWriteFont : public virtual SeCompatibleFont {
+	class DirectWriteFont : public virtual BaseFont {
 		struct Implementation;
 		const std::unique_ptr<Implementation> m_pImpl;
 
@@ -33,7 +33,7 @@ namespace Sqex::FontCsv {
 		[[nodiscard]] uint32_t LineHeight() const override;
 		[[nodiscard]] const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& GetKerningTable() const override;
 
-		using SeCompatibleFont::Measure;
+		using BaseFont::Measure;
 		[[nodiscard]] GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const override;
 
 		void SetMeasureWithFreeType();
@@ -78,7 +78,7 @@ namespace Sqex::FontCsv {
 #pragma warning(push)
 #pragma warning(disable: 4250)
 	template<typename DestPixFmt = Texture::RGBA8888, typename OpacityType = uint8_t>
-	class DirectWriteDrawingFont : public DirectWriteFont, public SeCompatibleDrawableFont<DestPixFmt, OpacityType> {
+	class DirectWriteDrawingFont : public DirectWriteFont, public BaseDrawableFont<DestPixFmt, OpacityType> {
 
 		static uint32_t GetEffectiveOpacity(const uint8_t& src) {
 			return src;
@@ -87,7 +87,7 @@ namespace Sqex::FontCsv {
 	public:
 		using DirectWriteFont::DirectWriteFont;
 
-		using SeCompatibleDrawableFont<DestPixFmt, OpacityType>::Draw;
+		using BaseDrawableFont<DestPixFmt, OpacityType>::Draw;
 
 		GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, char32_t c, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity, OpacityType bgOpacity) const override {
 			const auto srcBufCtx = AllocateBuffer();
