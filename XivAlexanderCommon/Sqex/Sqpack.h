@@ -273,6 +273,7 @@ namespace Sqex::Sqpack {
 		static_assert(offsetof(Header, Sha1) == 0x3c0, "Bad SqDataHeader definition");
 
 		enum class FileEntryType {
+			None = 0,
 			EmptyOrObfuscated = 1,
 			Binary = 2,
 			Model = 3,

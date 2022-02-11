@@ -210,8 +210,10 @@ class BlockHeader(ctypes.LittleEndianStructure):
         return self.compressed_size != BlockHeader.COMPRESSED_SIZE_NOT_COMPRESSED and self.decompressed_size != 1
 
     @classmethod
-    def from_fp(cls, segment: 'FileSegmentItem', offset: int, fp: typing.Union[typing.BinaryIO, io.RawIOBase]):
-        fp.seek(segment.dat_offset + segment.data_entry_header.header_length + offset)
+    def from_fp(cls, segment: typing.Optional['FileSegmentItem'], offset: typing.Optional[int],
+                fp: typing.Union[typing.BinaryIO, io.RawIOBase]):
+        if segment is not None and offset is not None:
+            fp.seek(segment.dat_offset + segment.data_entry_header.header_length + offset)
         self = cls()
         fp.readinto(self)
         if self.is_compressed():

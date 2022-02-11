@@ -11,6 +11,7 @@
     <ClCompile Include="Test_TtmpMeta.cpp" />
     <ClCompile Include="Test_DecompressSqpack.cpp" />
     <ClCompile Include="Test_ExtractMusic.cpp" />
+    <ClCompile Include="Test_Sqpatch.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />

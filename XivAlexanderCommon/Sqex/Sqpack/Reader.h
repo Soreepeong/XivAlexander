@@ -24,7 +24,7 @@ namespace Sqex::Sqpack {
 
 		protected:
 			friend struct Reader;
-			SqIndexType(const Win32::Handle& hFile, bool strictVerify);
+			SqIndexType(const RandomAccessStream& stream, bool strictVerify);
 		};
 
 		struct SqIndex1Type : SqIndexType<SqIndex::PairHashLocator, SqIndex::PairHashWithTextLocator> {
@@ -35,7 +35,7 @@ namespace Sqex::Sqpack {
 
 		protected:
 			friend struct Reader;
-			SqIndex1Type(const Win32::Handle& hFile, bool strictVerify);
+			SqIndex1Type(const RandomAccessStream& stream, bool strictVerify);
 		};
 
 		struct SqIndex2Type : SqIndexType<SqIndex::FullHashLocator, SqIndex::FullHashWithTextLocator> {
@@ -43,17 +43,17 @@ namespace Sqex::Sqpack {
 
 		protected:
 			friend struct Reader;
-			SqIndex2Type(const Win32::Handle& hFile, bool strictVerify);
+			SqIndex2Type(const RandomAccessStream& stream, bool strictVerify);
 		};
 
 		struct SqDataType {
 			SqpackHeader Header{};
 			SqData::Header DataHeader{};
-			std::shared_ptr<FileRandomAccessStream> Stream;
+			std::shared_ptr<RandomAccessStream> Stream;
 
 		private:
 			friend struct Reader;
-			SqDataType(Win32::Handle hFile, uint32_t datIndex, bool strictVerify);
+			SqDataType(std::shared_ptr<RandomAccessStream> stream, uint32_t datIndex, bool strictVerify);
 		};
 
 		struct EntryInfoType {
@@ -66,6 +66,7 @@ namespace Sqex::Sqpack {
 		std::vector<SqDataType> Data;
 		std::vector<std::pair<SqIndex::LEDataLocator, EntryInfoType>> EntryInfo;
 
+		Reader(std::shared_ptr<RandomAccessStream> indexStream1, std::shared_ptr<RandomAccessStream> indexStream2, std::vector<std::shared_ptr< RandomAccessStream>> dataStreams, bool strictVerify = false);
 		Reader(const std::filesystem::path& indexFile, bool strictVerify = false);
 
 		[[nodiscard]] const SqIndex::LEDataLocator& GetLocator(const EntryPathSpec& pathSpec) const;
