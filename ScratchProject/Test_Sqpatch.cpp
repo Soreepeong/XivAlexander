@@ -186,16 +186,21 @@ const char Sqex::ZiPatch::Chunk::PlatformNames[3][6]{
 };
 
 struct FilePart {
-	static constexpr uint32_t SourceIndex_Zeros = 0x7FFFFFFF;
-	static constexpr uint32_t SourceIndex_EmptyBlock = 0x7FFFFFFE;
+	static constexpr uint16_t SourceIndex_Zeros = UINT16_MAX;
+	static constexpr uint16_t SourceIndex_EmptyBlock = UINT16_MAX - 1;
 
 	uint64_t TargetOffset;
 	uint64_t TargetSize;
-	uint32_t SourceIndex : 31;
-	uint32_t SourceIsBlock : 1;
+	
+	uint32_t SourceIndex;
 	uint32_t SourceOffset;
 	uint32_t SourceSize;
 	uint32_t SplitFrom;
+
+	uint32_t Crc32;
+	uint32_t SourceIsDeflated : 1;
+	uint32_t CrcAvailable : 1;
+	uint32_t Reserved : 30;
 
 	bool operator <(const FilePart& r) const {
 		return TargetOffset < r.TargetOffset;
@@ -268,14 +273,16 @@ void ReplaceBlock(std::vector<FilePart>& parts, const FilePart& part) {
 			const auto insertAt = i--;
 			const auto prevTargetSize = i->TargetSize;
 			i->TargetSize = splitOffset - i->TargetOffset;
+			i->Crc32 = 0;
+			i->CrcAvailable = 0;
 			parts.emplace(insertAt, FilePart{
 				.TargetOffset = splitOffset,
 				.TargetSize = i->TargetOffset + prevTargetSize - splitOffset,
 				.SourceIndex = i->SourceIndex,
-				.SourceIsBlock = i->SourceIsBlock,
 				.SourceOffset = i->SourceOffset,
 				.SourceSize = i->SourceSize,
 				.SplitFrom = static_cast<uint32_t>(i->SplitFrom + splitOffset - i->TargetOffset),
+				.SourceIsDeflated = i->SourceIsDeflated,
 				});
 		}
 	}
@@ -366,32 +373,25 @@ public:
 			} else {
 				auto& in = m_files[part.SourceIndex];
 
-				if (part.SourceIsBlock) {
+				if (part.SourceIsDeflated) {
 					std::vector<uint8_t> buf2(part.SourceSize);
 					in->ReadStream(part.SourceOffset, &buf2[0], buf2.size());
-					const auto& blockHeader = *reinterpret_cast<Sqex::Sqpack::SqData::BlockHeader*>(&buf2[0]);
 
-					std::span<uint8_t> src;
-					if (blockHeader.CompressedSize != Sqex::Sqpack::SqData::BlockHeader::CompressedSizeNotCompressed) {
-						if (!inflater) {
-							const auto lock = std::lock_guard(m_inflaterMtx);
-							for (auto& item : m_inflaters) {
-								if (item) {
-									inflater = std::move(item);
-									break;
-								}
+					if (!inflater) {
+						const auto lock = std::lock_guard(m_inflaterMtx);
+						for (auto& item : m_inflaters) {
+							if (item) {
+								inflater = std::move(item);
+								break;
 							}
 						}
-						if (!inflater)
-							inflater = std::make_unique<Utils::ZlibReusableInflater>(-MAX_WBITS);
-
-						src = (*inflater)(std::span(buf2).subspan(blockHeader.HeaderSize).subspan(0, blockHeader.CompressedSize));
-					} else {
-						src = std::span(buf2).subspan(blockHeader.HeaderSize).subspan(0, blockHeader.DecompressedSize);
 					}
+					if (!inflater)
+						inflater = std::make_unique<Utils::ZlibReusableInflater>(-MAX_WBITS);
 
-					src = src.subspan(part.SplitFrom, part.TargetSize).subspan(static_cast<size_t>(relativeOffset));
-
+					const auto src = (*inflater)(buf2)
+						.subspan(part.SplitFrom, part.TargetSize)
+						.subspan(static_cast<size_t>(relativeOffset));
 					const auto available = std::min(out.size_bytes(), src.size_bytes());
 					std::copy_n(src.begin(), available, out.begin());
 					out = out.subspan(available);
@@ -411,6 +411,39 @@ public:
 	}
 };
 
+std::pair<std::vector<std::string>, std::map<std::string, std::vector<FilePart>>> LoadFileParts(const std::filesystem::path& patchFileIndexPath) {
+	std::ifstream in2(patchFileIndexPath, std::ios::binary);
+
+	std::vector<std::string> sourceFiles;
+	do {
+		sourceFiles.emplace_back(MAX_PATH, '\0');
+		in2.read(sourceFiles.back().data(), MAX_PATH);
+		sourceFiles.back().resize(strlen(sourceFiles.back().c_str()));
+	} while (!sourceFiles.back().empty());
+	sourceFiles.pop_back();
+
+	std::map<std::string, std::vector<FilePart>> fileParts;
+	while (true) {
+		uint32_t nameLength = 0;
+		in2.read(reinterpret_cast<char*>(&nameLength), sizeof nameLength);
+
+		uint32_t partCount = 0;
+		in2.read(reinterpret_cast<char*>(&partCount), sizeof partCount);
+
+		if (nameLength == 0)
+			break;
+
+		char name[MAX_PATH]{};
+		in2.read(name, nameLength);
+		auto& parts = fileParts[name];
+
+		parts.resize(partCount);
+		in2.read(reinterpret_cast<char*>(&parts[0]), std::span(parts).size_bytes());
+	}
+
+	return std::make_pair(std::move(sourceFiles), std::move(fileParts));
+}
+
 void Update(const std::filesystem::path& sourcePath, const std::filesystem::path& targetPath, const std::filesystem::path& versionPath) {
 	std::vector<std::filesystem::path> patchFiles;
 	for (const auto& path : std::filesystem::directory_iterator(sourcePath)) {
@@ -418,36 +451,21 @@ void Update(const std::filesystem::path& sourcePath, const std::filesystem::path
 			continue;
 		patchFiles.emplace_back(path.path());
 	}
-
 	std::sort(patchFiles.begin(), patchFiles.end(), [](const auto& l, const auto& r) { return 0 > wcscmp(l.filename().c_str() + 1, r.filename().c_str() + 1); });
+	std::vector<std::shared_ptr<Sqex::RandomAccessStream>> patchFileStreams;
+	for (const auto& patchFile : patchFiles)
+		patchFileStreams.emplace_back(std::make_shared<Sqex::FileRandomAccessStream>(patchFile));
 
 	std::map<std::string, std::vector<FilePart>> fileParts;
-
-	for (uint32_t i = 0; i < patchFiles.size(); ++i) {
+	for (uint16_t i = 0; i < patchFiles.size(); ++i) {
 		const auto& patchFilePath = patchFiles[i];
 		std::cout << std::format("{}\n", patchFilePath.string());
 		std::ifstream in(patchFilePath, std::ios::binary);
 
 		const auto patchFileIndexPath = std::filesystem::path(patchFilePath.wstring() + L".index");
 		if (exists(patchFileIndexPath)) {
-			std::ifstream in2(patchFileIndexPath, std::ios::binary);
-			while (true) {
-				uint32_t nameLength = 0;
-				in2.read(reinterpret_cast<char*>(&nameLength), sizeof nameLength);
-
-				uint32_t partCount = 0;
-				in2.read(reinterpret_cast<char*>(&partCount), sizeof partCount);
-
-				if (nameLength == 0)
-					break;
-
-				char name[MAX_PATH]{};
-				in2.read(name, nameLength);
-				auto& parts = fileParts[name];
-
-				parts.resize(partCount);
-				in2.read(reinterpret_cast<char*>(&parts[0]), std::span(parts).size_bytes());
-			}
+			std::vector<std::string> unused;
+			std::tie(unused, fileParts) = LoadFileParts(patchFileIndexPath);
 
 		} else {
 			auto platform = Sqex::ZiPatch::Chunk::Platform::Win32;
@@ -551,15 +569,25 @@ void Update(const std::filesystem::path& sourcePath, const std::filesystem::path
 									const auto blockDataSize = blockHeader.CompressedSize == Sqex::Sqpack::SqData::BlockHeader::CompressedSizeNotCompressed ? blockHeader.DecompressedSize : blockHeader.CompressedSize;
 									const auto align = Sqex::Align(blockHeader.HeaderSize + blockDataSize);
 									in.seekg(align.Alloc - sizeof blockHeader, std::ios::cur);
-									ReplaceBlock(parts, FilePart{
-										.TargetOffset = targetOffset,
-										.TargetSize = blockHeader.DecompressedSize,
-										.SourceIndex = i,
-										.SourceIsBlock = 1,
-										.SourceOffset = currentOffset,
-										.SourceSize = align.Alloc,
-										.SplitFrom = 0,
-										});
+									
+									if (blockHeader.CompressedSize == Sqex::Sqpack::SqData::BlockHeader::CompressedSizeNotCompressed) {
+										ReplaceBlock(parts, FilePart{
+											.TargetOffset = targetOffset,
+											.TargetSize = blockHeader.DecompressedSize,
+											.SourceIndex = i,
+											.SourceOffset = currentOffset + blockHeader.HeaderSize,
+											.SourceSize = blockHeader.DecompressedSize,
+											});
+									} else {
+										ReplaceBlock(parts, FilePart{
+											.TargetOffset = targetOffset,
+											.TargetSize = blockHeader.DecompressedSize,
+											.SourceIndex = i,
+											.SourceOffset = currentOffset + blockHeader.HeaderSize,
+											.SourceSize = blockHeader.CompressedSize,
+											.SourceIsDeflated = 1,
+											});
+									}
 								}
 								break;
 							}
@@ -727,8 +755,30 @@ void Update(const std::filesystem::path& sourcePath, const std::filesystem::path
 			}
 
 			{
-				std::ofstream out(patchFileIndexPath, std::ios::binary);
-				for (const auto& [path, parts] : fileParts) {
+				const auto tmpPath = std::filesystem::path(patchFileIndexPath.wstring() + L".tmp");
+				std::ofstream out(tmpPath, std::ios::binary);
+
+				char patchFileName[MAX_PATH]{};
+				for (auto j = 0; j < i; ++j) {
+					strncpy_s(patchFileName, patchFiles[j].filename().string().c_str(), MAX_PATH);
+					out.write(patchFileName, MAX_PATH);
+				}
+				memset(patchFileName, 0, sizeof patchFileName);
+				out.write(patchFileName, MAX_PATH);
+
+				std::vector<uint8_t> buf;
+				for (auto& [path, parts] : fileParts) {
+					const auto stream = std::make_shared<MergedFilePartStream>(patchFileStreams, parts);
+					for (auto& part : parts) {
+						if (part.SourceIndex == FilePart::SourceIndex_EmptyBlock || part.SourceIndex == FilePart::SourceIndex_Zeros)
+							continue;
+						if (part.CrcAvailable)
+							continue;
+						buf.resize(part.TargetSize);
+						stream->ReadStream(part.TargetOffset, std::span(buf));
+						part.Crc32 = crc32_z(0, &buf[0], buf.size());
+						part.CrcAvailable = 1;
+					}
 					uint32_t val = static_cast<uint32_t>(path.size());
 					out.write(reinterpret_cast<const char*>(&val), sizeof val);
 					val = static_cast<uint32_t>(parts.size());
@@ -737,14 +787,14 @@ void Update(const std::filesystem::path& sourcePath, const std::filesystem::path
 					out.write(reinterpret_cast<const char*>(&parts[0]), std::span(parts).size_bytes());
 				}
 				out.write("\0\0\0\0\0\0\0\0", 8);
+
+				out.close();
+				rename(tmpPath, patchFileIndexPath);
 			}
 		}
 
+		/*
 		{
-			std::vector<std::shared_ptr<Sqex::RandomAccessStream>> patchFileStreams;
-			for (const auto& patchFile : patchFiles)
-				patchFileStreams.emplace_back(std::make_shared<Sqex::FileRandomAccessStream>(patchFile));
-
 			std::map<std::string, std::shared_ptr<MergedFilePartStream>> mergedStreams;
 			for (const auto& [path, parts] : fileParts)
 				mergedStreams.emplace(path, std::make_shared<MergedFilePartStream>(patchFileStreams, parts));
@@ -857,17 +907,65 @@ void Update(const std::filesystem::path& sourcePath, const std::filesystem::path
 			}
 			tpEnv.WaitOutstanding();
 		}
+		//*/
 	}
 
 	// std::ofstream(targetPath / versionPath) << std::filesystem::path(patchFiles.back()).replace_extension("").filename().string().substr(1);
 	// std::ofstream((targetPath / versionPath).replace_extension(".bck")) << std::filesystem::path(patchFiles.back()).replace_extension("").filename().string().substr(1);
 }
 
+void Verify(const std::filesystem::path& patchFileIndexPath, const std::filesystem::path& targetPath) {
+	const auto [patchFileNames, fileParts] = LoadFileParts(patchFileIndexPath);
+	std::vector<char> buf;
+	for (const auto& [pathStr, parts] : fileParts) {
+		const auto path = targetPath / pathStr;
+		std::cout << std::format("Checking {}...\n", pathStr);
+		
+		std::ifstream in(path, std::ios::binary);
+		for (const auto& part : parts) {
+			buf.resize(part.TargetSize);
+			in.read(&buf[0], buf.size());
+
+			if (part.CrcAvailable) {
+				const auto cz = crc32_z(0, reinterpret_cast<uint8_t*>(&buf[0]), buf.size());
+				if (part.Crc32 != cz)
+					std::cout << std::format("{}~{} bad crc\n", part.TargetOffset, part.TargetOffset + part.TargetSize);
+
+			} else if (part.SourceIndex == FilePart::SourceIndex_Zeros) {
+				if (std::any_of(buf.begin(), buf.end(), [](const auto& c) { return !!c; }))
+					std::cout << std::format("{}~{} not all zero\n", part.TargetOffset, part.TargetOffset + part.TargetSize);
+
+			} else if (part.SourceIndex == FilePart::SourceIndex_EmptyBlock) {
+				uint8_t srcbuf[256]{};
+				*reinterpret_cast<Sqex::Sqpack::SqData::FileEntryHeader*>(srcbuf) = {
+						.HeaderSize = Sqex::EntryAlignment,
+						.Type = Sqex::Sqpack::SqData::FileEntryType::None,
+						.AllocatedSpaceUnitCount = part.SourceSize,
+				};
+				const auto src = std::span(srcbuf).subspan(part.SplitFrom, part.TargetSize);
+				if (0 != memcmp(&src[0], &buf[0], buf.size()))
+					std::cout << std::format("{}~{} bad empty block\n", part.TargetOffset, part.TargetOffset + part.TargetSize);
+			}
+		}
+	}
+}
+
 int main() {
-	// Update(LR"(Z:\patch-dl.ffxiv.com\boot\2b5cbc63)", LR"(Z:\xivrtest\boot)", LR"(ffxivboot.ver)");
-	Update(LR"(Z:\patch-dl.ffxiv.com\game\4e9a232b)", LR"(Z:\xivrtest\game)", LR"(ffxivgame.ver)");
-	Update(LR"(Z:\patch-dl.ffxiv.com\game\ex1\6b936f08)", LR"(Z:\xivrtest\game)", LR"(sqpack\ex1\ex1.ver)");
-	Update(LR"(Z:\patch-dl.ffxiv.com\game\ex2\f29a3eb2)", LR"(Z:\xivrtest\game)", LR"(sqpack\ex2\ex2.ver)");
-	Update(LR"(Z:\patch-dl.ffxiv.com\game\ex3\859d0e24)", LR"(Z:\xivrtest\game)", LR"(sqpack\ex3\ex3.ver)");
-	Update(LR"(Z:\patch-dl.ffxiv.com\game\ex4\1bf99b87)", LR"(Z:\xivrtest\game)", LR"(sqpack\ex4\ex4.ver)");
+	Update(LR"(Z:\patch-dl.ffxiv.com\boot\2b5cbc63)", LR"(C:\Temp\ffxivtest\boot)", LR"(ffxivboot.ver)");
+	Verify(LR"(Z:\patch-dl.ffxiv.com\boot\2b5cbc63\D2021.11.16.0000.0001.patch.index)", LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\boot)");
+	
+	Update(LR"(Z:\patch-dl.ffxiv.com\game\4e9a232b)", LR"(C:\Temp\ffxivtest\game)", LR"(ffxivgame.ver)");
+	Verify(LR"(Z:\patch-dl.ffxiv.com\game\4e9a232b\D2022.01.25.0000.0000.patch.index)", LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game)");
+	
+	Update(LR"(Z:\patch-dl.ffxiv.com\game\ex1\6b936f08)", LR"(C:\Temp\ffxivtest\game)", LR"(sqpack\ex1\ex1.ver)");
+	Verify(LR"(Z:\patch-dl.ffxiv.com\game\ex1\6b936f08\D2021.11.21.0000.0000.patch.index)", LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game)");
+	
+	Update(LR"(Z:\patch-dl.ffxiv.com\game\ex2\f29a3eb2)", LR"(C:\Temp\ffxivtest\game)", LR"(sqpack\ex2\ex2.ver)");
+	Verify(LR"(Z:\patch-dl.ffxiv.com\game\ex2\f29a3eb2\D2021.12.14.0000.0000.patch.index)", LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game)");
+	
+	Update(LR"(Z:\patch-dl.ffxiv.com\game\ex3\859d0e24)", LR"(C:\Temp\ffxivtest\game)", LR"(sqpack\ex3\ex3.ver)");
+	Verify(LR"(Z:\patch-dl.ffxiv.com\game\ex3\859d0e24\D2021.12.14.0000.0000.patch.index)", LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game)");
+	
+	Update(LR"(Z:\patch-dl.ffxiv.com\game\ex4\1bf99b87)", LR"(C:\Temp\ffxivtest\game)", LR"(sqpack\ex4\ex4.ver)");
+	Verify(LR"(Z:\patch-dl.ffxiv.com\game\ex4\1bf99b87\D2022.01.18.0000.0000.patch.index)", LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game)");
 }
