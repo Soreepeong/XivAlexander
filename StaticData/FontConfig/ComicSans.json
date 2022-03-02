@@ -106,6 +106,10 @@
       "familyName": "Comic Sans MS",
       "height": 9.6
     },
+    "dwrite:ComicSans:10": {
+      "familyName": "Comic Sans MS",
+      "height": 10
+    },
     "dwrite:ComicSans:12": {
       "familyName": "Comic Sans MS",
       "height": 12
@@ -122,6 +126,10 @@
       "familyName": "Comic Sans MS",
       "height": 18
     },
+    "dwrite:ComicSans:18.4": {
+      "familyName": "Comic Sans MS",
+      "height": 18.4
+    },
     "dwrite:ComicSans:20": {
       "familyName": "Comic Sans MS",
       "height": 20
@@ -133,6 +141,10 @@
     "dwrite:ComicSans:24": {
       "familyName": "Comic Sans MS",
       "height": 24
+    },
+    "dwrite:ComicSans:34": {
+      "familyName": "Comic Sans MS",
+      "height": 34
     },
     "dwrite:ComicSans:36": {
       "familyName": "Comic Sans MS",
@@ -380,7 +392,7 @@
             "name": "game:MiedingerMid_10"
           },
           {
-            "name": "dwrite:ComicSans:9.6",
+            "name": "dwrite:ComicSans:10",
             "extendRange": false,
             "replace": true
           }
@@ -455,7 +467,7 @@
             "name": "game:TrumpGothic_184"
           },
           {
-            "name": "dwrite:ComicSans:18",
+            "name": "dwrite:ComicSans:18.4",
             "extendRange": false,
             "replace": true
           }
@@ -470,7 +482,7 @@
             "name": "game:TrumpGothic_23"
           },
           {
-            "name": "dwrite:ComicSans:24",
+            "name": "dwrite:ComicSans:23",
             "extendRange": false,
             "replace": true
           }
@@ -485,7 +497,7 @@
             "name": "game:TrumpGothic_34"
           },
           {
-            "name": "dwrite:ComicSans:36",
+            "name": "dwrite:ComicSans:34",
             "extendRange": false,
             "replace": true
           }
@@ -712,7 +724,7 @@
             "name": "game:MiedingerMid_10"
           },
           {
-            "name": "dwrite:ComicSans:9.6",
+            "name": "dwrite:ComicSans:10",
             "extendRange": false,
             "replace": true
           }
@@ -787,7 +799,7 @@
             "name": "game:TrumpGothic_184"
           },
           {
-            "name": "dwrite:ComicSans:18",
+            "name": "dwrite:ComicSans:18.4",
             "extendRange": false,
             "replace": true
           }
@@ -802,7 +814,7 @@
             "name": "game:TrumpGothic_23"
           },
           {
-            "name": "dwrite:ComicSans:24",
+            "name": "dwrite:ComicSans:23",
             "extendRange": false,
             "replace": true
           }
@@ -817,7 +829,7 @@
             "name": "game:TrumpGothic_34"
           },
           {
-            "name": "dwrite:ComicSans:36",
+            "name": "dwrite:ComicSans:34",
             "extendRange": false,
             "replace": true
           }

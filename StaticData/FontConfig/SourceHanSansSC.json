@@ -107,6 +107,10 @@
       "fdtPath": "common/font/TrumpGothic_68.fdt",
       "texturePath": "common/font/font{}.tex"
     },
+    "dwrite:SourceHanSansSC:9.6": {
+      "familyName": "Source Han Sans SC",
+      "height": 9.6
+    },
     "dwrite:SourceHanSansSC:12": {
       "familyName": "Source Han Sans SC",
       "height": 12
@@ -147,10 +151,11 @@
             "name": "game:AXIS_96"
           },
           {
-            "name": "dwrite:SourceHanSansSC:12",
+            "name": "dwrite:SourceHanSansSC:9.6",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true
           }
         ]
       },
@@ -166,7 +171,8 @@
             "name": "dwrite:SourceHanSansSC:12",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true
           }
         ]
       },
@@ -182,7 +188,9 @@
             "name": "dwrite:SourceHanSansSC:14",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -198,7 +206,9 @@
             "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -214,7 +224,9 @@
             "name": "dwrite:SourceHanSansSC:36",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -230,7 +242,9 @@
             "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -246,7 +260,9 @@
             "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -262,7 +278,9 @@
             "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -288,7 +306,9 @@
             "name": "dwrite:SourceHanSansSC:36",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -341,10 +361,11 @@
             "name": "game:MiedingerMid_10"
           },
           {
-            "name": "dwrite:SourceHanSansSC:12",
+            "name": "dwrite:SourceHanSansSC:9.6",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true
           }
         ]
       },
@@ -360,7 +381,8 @@
             "name": "dwrite:SourceHanSansSC:12",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true
           }
         ]
       },
@@ -376,7 +398,9 @@
             "name": "dwrite:SourceHanSansSC:14",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -392,7 +416,9 @@
             "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -408,7 +434,9 @@
             "name": "dwrite:SourceHanSansSC:36",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -424,7 +452,9 @@
             "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -440,7 +470,9 @@
             "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -456,7 +488,9 @@
             "name": "dwrite:SourceHanSansSC:36",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -472,7 +506,9 @@
             "name": "dwrite:SourceHanSansSC:36",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       }
@@ -490,7 +526,8 @@
             "name": "dwrite:SourceHanSansSC:12",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true
           }
         ]
       },
@@ -506,7 +543,9 @@
             "name": "dwrite:SourceHanSansSC:14",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -522,7 +561,9 @@
             "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -538,7 +579,9 @@
             "name": "dwrite:SourceHanSansSC:36",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -554,7 +597,9 @@
             "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -570,7 +615,9 @@
             "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -586,7 +633,9 @@
             "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -612,7 +661,9 @@
             "name": "dwrite:SourceHanSansSC:36",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -665,10 +716,11 @@
             "name": "game:MiedingerMid_10"
           },
           {
-            "name": "dwrite:SourceHanSansSC:12",
+            "name": "dwrite:SourceHanSansSC:9.6",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true
           }
         ]
       },
@@ -684,7 +736,8 @@
             "name": "dwrite:SourceHanSansSC:12",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true
           }
         ]
       },
@@ -700,7 +753,9 @@
             "name": "dwrite:SourceHanSansSC:14",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -716,7 +771,9 @@
             "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -732,7 +789,9 @@
             "name": "dwrite:SourceHanSansSC:36",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -748,7 +807,9 @@
             "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -764,7 +825,9 @@
             "name": "dwrite:SourceHanSansSC:18",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -780,7 +843,9 @@
             "name": "dwrite:SourceHanSansSC:36",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -796,7 +861,9 @@
             "name": "dwrite:SourceHanSansSC:36",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       }
@@ -814,7 +881,8 @@
             "name": "dwrite:SourceHanSansSC:12",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true
           }
         ]
       },
@@ -830,7 +898,9 @@
             "name": "dwrite:SourceHanSansSC:14",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       },
@@ -846,7 +916,9 @@
             "name": "dwrite:SourceHanSansSC:36",
             "ranges": [
               "ChineseSimplified"
-            ]
+            ],
+            "replace": true,
+            "offsetYModifier": 1
           }
         ]
       }
