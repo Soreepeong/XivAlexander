@@ -255,6 +255,8 @@ namespace XivAlexander {
 			Item<Sqex::Language> RememberedGameLaunchLanguage = CreateConfigItem(this, "RememberedGameLaunchLanguage", Sqex::Language::Unspecified);
 			Item<Sqex::Region> RememberedGameLaunchRegion = CreateConfigItem(this, "RememberedGameLaunchRegion", Sqex::Region::Unspecified);
 
+			Item<bool> CheckForUpdatedOpcodesOnStartup = CreateConfigItem(this, "CheckForUpdatedOpcodesOnStartup", true);
+
 			Item<bool> UseMoreCpuTime = CreateConfigItem(this, "UseMoreCpuPower", false);
 			Item<bool> SynchronizeProcessing = CreateConfigItem(this, "SynchronizeProcessing", false);
 

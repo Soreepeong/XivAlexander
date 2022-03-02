@@ -174,6 +174,9 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(Apps::MainApp::App& 
 	ChangeWindowMessageFilterEx(m_hWnd, WM_DROPFILES, MSGFLT_ALLOW, nullptr);
 	ChangeWindowMessageFilterEx(m_hWnd, WM_COPYDATA, MSGFLT_ALLOW, nullptr);
 	ChangeWindowMessageFilterEx(m_hWnd, WM_COPYGLOBALDATA, MSGFLT_ALLOW, nullptr);
+
+	if (m_config->Runtime.CheckForUpdatedOpcodesOnStartup)
+		CheckUpdatedOpcodes(false);
 }
 
 XivAlexander::Apps::MainApp::Window::MainWindow::~MainWindow() {
@@ -1058,6 +1061,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
 
 	// Configure
 	{
+		SetMenuState(hMenu, ID_CONFIGURE_CHECKFORUPDATEDOPCODESONSTARTUP, config.CheckForUpdatedOpcodesOnStartup, true);
 		SetMenuState(hMenu, ID_CONFIGURE_USEMORECPUTIME, config.UseMoreCpuTime, true);
 		if (config.LockFramerateAutomatic)
 			SetMenuState(hMenu, ID_CONFIGURE_LOCKFRAMERATE, true, true, m_config->Runtime.GetStringRes(IDS_MENU_LOCKFRAMERATE_AUTOMATIC));
@@ -2073,6 +2077,14 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Configure(i
 				m_gameConfigEditor = std::make_unique<ConfigWindow>(IDS_WINDOW_OPCODE_CONFIG_EDITOR, &m_config->Game);
 			return;
 
+		case ID_CONFIGURE_CHECKFORUPDATEDOPCODES:
+			CheckUpdatedOpcodes(true);
+			return;
+
+		case ID_CONFIGURE_CHECKFORUPDATEDOPCODESONSTARTUP:
+			config.CheckForUpdatedOpcodesOnStartup.Toggle();
+			return;
+
 		case ID_CONFIGURE_USEMORECPUTIME:
 			config.UseMoreCpuTime.Toggle();
 			return;
@@ -2620,6 +2632,83 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::EnsureAndOpenDirectory(con
 	};
 	if (!ShellExecuteExW(&se))
 		throw Utils::Win32::Error("ShellExecuteExW");
+}
+
+void XivAlexander::Apps::MainApp::Window::MainWindow::CheckUpdatedOpcodes(bool showResultMessageBox) {
+	void(Utils::Win32::Thread(L"CheckUpdatedOpcodes", [&]() {
+		try {
+			const auto releaseInfo = Misc::GameInstallationDetector::GetGameReleaseInfo();
+
+			curlpp::Easy req;
+			req.setOpt(curlpp::options::Url(std::format("https://raw.githubusercontent.com/Soreepeong/XivAlexander/main/StaticData/OpcodeDefinition/game.{}.{}.json", releaseInfo.CountryCode, releaseInfo.GameVersion)));
+			req.setOpt(curlpp::options::UserAgent("Mozilla/5.0"));
+			req.setOpt(curlpp::options::FollowLocation(true));
+
+			if (WINHTTP_CURRENT_USER_IE_PROXY_CONFIG proxyInfo{}; WinHttpGetIEProxyConfigForCurrentUser(&proxyInfo)) {
+				std::wstring proxy;
+				std::vector<std::wstring> proxyBypass;
+				if (proxyInfo.lpszProxy) {
+					proxy = proxyInfo.lpszProxy;
+					GlobalFree(proxyInfo.lpszProxy);
+				}
+				if (proxyInfo.lpszProxyBypass) {
+					proxyBypass = Utils::StringSplit<std::wstring>(Utils::StringReplaceAll<std::wstring>(proxyInfo.lpszProxyBypass, L";", L" "), L" ");
+					GlobalFree(proxyInfo.lpszProxyBypass);
+				}
+				if (proxyInfo.lpszAutoConfigUrl)
+					GlobalFree(proxyInfo.lpszAutoConfigUrl);
+				bool noProxy = proxy.empty();
+				for (const auto& v : proxyBypass) {
+					if (lstrcmpiW(&v[0], L"raw.githubusercontent.com") == 0) {
+						noProxy = true;
+					}
+				}
+				if (!noProxy) {
+					req.setOpt(curlpp::options::Proxy(Utils::ToUtf8(proxy)));
+				}
+			}
+
+			std::string prev;
+			try {
+				const auto prevFile = Utils::Win32::Handle::FromCreateFile(m_config->Game.GetConfigPath(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING);
+				prev.resize(prevFile.GetFileSize());
+				prevFile.Read(0, &prev[0], prev.size());
+				prev = nlohmann::json::parse(prev).dump();
+			} catch (...) {
+				prev.clear();
+			}
+
+			std::string updated;
+			{
+				std::stringstream out;
+				out << req;
+				updated = nlohmann::json::parse(out.str()).dump();
+			}
+
+			if (updated == prev) {
+				m_logger->Log(LogCategory::General, "No updates to opcodes.");
+				if (showResultMessageBox) {
+					Dll::MessageBoxF(m_hWnd, MB_OK, "No updates");
+				}
+				return;
+			}
+
+			std::ofstream(m_config->Game.GetConfigPath()) << updated;
+
+			m_config->Game.Reload();
+
+			m_logger->Log(LogCategory::General, "Opcodes updated.");
+			if (showResultMessageBox)
+				Dll::MessageBoxF(m_hWnd, MB_OK, "Updated");
+
+		} catch (const std::exception& e) {
+			m_logger->Format<LogLevel::Error>(LogCategory::General, "Opcode update check failed: {}", e.what());
+
+			if (showResultMessageBox)
+				Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+		}
+		// TODO
+		}));
 }
 
 void XivAlexander::Apps::MainApp::Window::MainWindow::BatchTtmpOperation(Internal::VirtualSqPacks::NestedTtmp& parent, int menuId) {

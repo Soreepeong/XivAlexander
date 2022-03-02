@@ -92,5 +92,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void InstallMultipleFiles(const std::vector<std::filesystem::path>& paths);
 
 		void EnsureAndOpenDirectory(const std::filesystem::path& path);
+
+		void CheckUpdatedOpcodes(bool showResultMessageBox);
 	};
 }
