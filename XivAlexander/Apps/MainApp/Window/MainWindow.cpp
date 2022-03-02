@@ -2635,38 +2635,9 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::EnsureAndOpenDirectory(con
 }
 
 void XivAlexander::Apps::MainApp::Window::MainWindow::CheckUpdatedOpcodes(bool showResultMessageBox) {
-	void(Utils::Win32::Thread(L"CheckUpdatedOpcodes", [&]() {
+	void(Utils::Win32::Thread(L"CheckUpdatedOpcodes", [this, showResultMessageBox]() {
 		try {
 			const auto releaseInfo = Misc::GameInstallationDetector::GetGameReleaseInfo();
-
-			curlpp::Easy req;
-			req.setOpt(curlpp::options::Url(std::format("https://raw.githubusercontent.com/Soreepeong/XivAlexander/main/StaticData/OpcodeDefinition/game.{}.{}.json", releaseInfo.CountryCode, releaseInfo.GameVersion)));
-			req.setOpt(curlpp::options::UserAgent("Mozilla/5.0"));
-			req.setOpt(curlpp::options::FollowLocation(true));
-
-			if (WINHTTP_CURRENT_USER_IE_PROXY_CONFIG proxyInfo{}; WinHttpGetIEProxyConfigForCurrentUser(&proxyInfo)) {
-				std::wstring proxy;
-				std::vector<std::wstring> proxyBypass;
-				if (proxyInfo.lpszProxy) {
-					proxy = proxyInfo.lpszProxy;
-					GlobalFree(proxyInfo.lpszProxy);
-				}
-				if (proxyInfo.lpszProxyBypass) {
-					proxyBypass = Utils::StringSplit<std::wstring>(Utils::StringReplaceAll<std::wstring>(proxyInfo.lpszProxyBypass, L";", L" "), L" ");
-					GlobalFree(proxyInfo.lpszProxyBypass);
-				}
-				if (proxyInfo.lpszAutoConfigUrl)
-					GlobalFree(proxyInfo.lpszAutoConfigUrl);
-				bool noProxy = proxy.empty();
-				for (const auto& v : proxyBypass) {
-					if (lstrcmpiW(&v[0], L"raw.githubusercontent.com") == 0) {
-						noProxy = true;
-					}
-				}
-				if (!noProxy) {
-					req.setOpt(curlpp::options::Proxy(Utils::ToUtf8(proxy)));
-				}
-			}
 
 			std::string prev;
 			try {
@@ -2681,15 +2652,58 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::CheckUpdatedOpcodes(bool s
 			std::string updated;
 			{
 				std::stringstream out;
-				out << req;
-				updated = nlohmann::json::parse(out.str()).dump();
+				curlpp::Easy req;
+				req.setOpt(curlpp::options::Url(std::format("https://raw.githubusercontent.com/Soreepeong/XivAlexander/main/StaticData/OpcodeDefinition/game.{}.{}.json", releaseInfo.CountryCode, releaseInfo.GameVersion)));
+				req.setOpt(curlpp::options::UserAgent("Mozilla/5.0"));
+				req.setOpt(curlpp::options::FollowLocation(true));
+				req.setOpt(curlpp::options::WriteStream(&out));
+
+				if (WINHTTP_CURRENT_USER_IE_PROXY_CONFIG proxyInfo{}; WinHttpGetIEProxyConfigForCurrentUser(&proxyInfo)) {
+					std::wstring proxy;
+					std::vector<std::wstring> proxyBypass;
+					if (proxyInfo.lpszProxy) {
+						proxy = proxyInfo.lpszProxy;
+						GlobalFree(proxyInfo.lpszProxy);
+					}
+					if (proxyInfo.lpszProxyBypass) {
+						proxyBypass = Utils::StringSplit<std::wstring>(Utils::StringReplaceAll<std::wstring>(proxyInfo.lpszProxyBypass, L";", L" "), L" ");
+						GlobalFree(proxyInfo.lpszProxyBypass);
+					}
+					if (proxyInfo.lpszAutoConfigUrl)
+						GlobalFree(proxyInfo.lpszAutoConfigUrl);
+					bool noProxy = proxy.empty();
+					for (const auto& v : proxyBypass) {
+						if (lstrcmpiW(&v[0], L"raw.githubusercontent.com") == 0) {
+							noProxy = true;
+						}
+					}
+					if (!noProxy) {
+						req.setOpt(curlpp::options::Proxy(Utils::ToUtf8(proxy)));
+					}
+				}
+
+				req.perform();
+
+				switch (int respCode = curlpp::infos::ResponseCode::get(req)) {
+					case 200:
+						updated = nlohmann::json::parse(out.str()).dump();
+						break;
+
+					case 404:
+						m_logger->Log(LogCategory::General, "No updates to opcodes yet.");
+						if (showResultMessageBox)
+							Dll::MessageBoxF(m_hWnd, MB_OK, m_config->Runtime.FormatStringRes(IDS_OPCODEUPDATE_ERROR_404));
+						return;
+
+					default:
+						throw std::runtime_error(std::format("HTTP Error {}", respCode));
+				}
 			}
 
 			if (updated == prev) {
 				m_logger->Log(LogCategory::General, "No updates to opcodes.");
-				if (showResultMessageBox) {
-					Dll::MessageBoxF(m_hWnd, MB_OK, "No updates");
-				}
+				if (showResultMessageBox)
+					Dll::MessageBoxF(m_hWnd, MB_OK, m_config->Runtime.FormatStringRes(IDS_OPCODEUPDATE_OK_NOTCHANGED));
 				return;
 			}
 
@@ -2699,7 +2713,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::CheckUpdatedOpcodes(bool s
 
 			m_logger->Log(LogCategory::General, "Opcodes updated.");
 			if (showResultMessageBox)
-				Dll::MessageBoxF(m_hWnd, MB_OK, "Updated");
+				Dll::MessageBoxF(m_hWnd, MB_OK, m_config->Runtime.FormatStringRes(IDS_OPCODEUPDATE_OK_CHANGED));
 
 		} catch (const std::exception& e) {
 			m_logger->Format<LogLevel::Error>(LogCategory::General, "Opcode update check failed: {}", e.what());

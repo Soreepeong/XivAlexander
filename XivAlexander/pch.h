@@ -72,6 +72,7 @@
 #include <cryptopp/sha.h>
 #include <curlpp/cURLpp.hpp>
 #include <curlpp/Easy.hpp>
+#include <curlpp/Infos.hpp>
 #include <curlpp/Options.hpp>
 #include <libzippp/libzippp.h>
 #include <nlohmann/json.hpp>

@@ -693,6 +693,9 @@ BEGIN
     IDS_MENU_LOCKFRAMERATE_DISABLED "FPS‚ÌŒÅ’èF–¢Žg—p"
     IDS_MENU_LOCKFRAMERATE_AUTOMATIC "FPS‚ÌŒÅ’èFŽ©“®"
     IDS_MENU_NETWORKLATENCYHANDLEMODE_2 "ƒ‚[ƒh&2FƒT[ƒo‚©‚ç‚Ì‰ž“š‚É‚©‚©‚éŽžŠÔ‚ð{}us‚ÉŒÅ’è"
+    IDS_OPCODEUPDATE_ERROR_404 "Opcode‚ÌÝ’è‚ª‚Ü‚¾ƒAƒbƒvƒf[ƒg‚³‚ê‚Ä‚¢‚Ü‚¹‚ñBŒã‚Å‚à‚¤ˆê“x‚µ‚Ä‚­‚¾‚³‚¢B"
+    IDS_OPCODEUPDATE_OK_NOTCHANGED "Œ»Ý‚ÌOpcode‚ÌÝ’è‚ª‚à‚¤ÅV‚Å‚·B"
+    IDS_OPCODEUPDATE_OK_CHANGED "Opcode‚ÌÝ’è‚ðƒAƒbƒvƒf[ƒg‚µ‚Ü‚µ‚½B"
 END
 
 #endif    // Japanese (Japan) resources
@@ -1397,6 +1400,9 @@ BEGIN
     IDS_MENU_LOCKFRAMERATE_DISABLED "FPS °íÁ¤ »ç¿ë ¾ÈÇÔ"
     IDS_MENU_LOCKFRAMERATE_AUTOMATIC "FPS °íÁ¤: ÀÚµ¿"
     IDS_MENU_NETWORKLATENCYHANDLEMODE_2 "¸ðµå &2: ¼­¹ö ÀÀ´ä ½Ã°£À» {}us·Î °íÁ¤"
+    IDS_OPCODEUPDATE_ERROR_404 "¿ÉÄÚµå ¼³Á¤ÀÌ ¾ÆÁ÷ ¾÷µ¥ÀÌÆ®µÇÁö ¾Ê¾Ò½À´Ï´Ù. ³ªÁß¿¡ ´Ù½Ã ½ÃµµÇØ ÁÖ¼¼¿ä."
+    IDS_OPCODEUPDATE_OK_NOTCHANGED "ÇöÀç ¿ÉÄÚµå ¼³Á¤ÀÌ ÀÌ¹Ì ÃÖ½ÅÀÔ´Ï´Ù."
+    IDS_OPCODEUPDATE_OK_CHANGED "¿ÉÄÚµå ¼³Á¤ÀÌ ¾÷µ¥ÀÌÆ®µÇ¾ú½À´Ï´Ù."
 END
 
 #endif    // Korean (Korea) resources
@@ -2249,6 +2255,10 @@ BEGIN
     IDS_MENU_LOCKFRAMERATE_DISABLED "Lock Framerate: Disabled"
     IDS_MENU_LOCKFRAMERATE_AUTOMATIC "Lock Framerate: Automatic"
     IDS_MENU_NETWORKLATENCYHANDLEMODE_2 "Mode &2: Simulate RTT ({}us)"
+    IDS_OPCODEUPDATE_ERROR_404 
+                            "No updated opcodes file has been found. Please try again later."
+    IDS_OPCODEUPDATE_OK_NOTCHANGED "Your current opcode file is up to date."
+    IDS_OPCODEUPDATE_OK_CHANGED "Your opcode file has been updated."
 END
 
 #endif    // English (United States) resources
