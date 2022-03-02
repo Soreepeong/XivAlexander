@@ -1742,7 +1742,7 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 				return;
 
 			try {
-				const auto cachedDir = Config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / GameReleaseInfo.CountryCode / creator.DatExpac / creator.DatName;
+				const auto cachedDir = Config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / GameReleaseInfo.CountryCode / "Font" / fontConfigPath.filename().replace_extension("");
 
 				std::string currentCacheKeys("VERSION:2\n");
 				{
