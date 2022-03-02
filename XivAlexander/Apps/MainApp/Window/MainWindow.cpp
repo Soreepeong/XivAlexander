@@ -2642,7 +2642,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::CheckUpdatedOpcodes(bool s
 			std::string prev;
 			try {
 				const auto prevFile = Utils::Win32::Handle::FromCreateFile(m_config->Game.GetConfigPath(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING);
-				prev.resize(prevFile.GetFileSize());
+				prev.resize(static_cast<size_t>(prevFile.GetFileSize()));
 				prevFile.Read(0, &prev[0], prev.size());
 				prev = nlohmann::json::parse(prev).dump();
 			} catch (...) {
