@@ -1744,7 +1744,7 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 			try {
 				const auto cachedDir = Config->Init.ResolveConfigStorageDirectoryPath() / "Cached" / GameReleaseInfo.CountryCode / creator.DatExpac / creator.DatName;
 
-				std::string currentCacheKeys;
+				std::string currentCacheKeys("VERSION:2\n");
 				{
 					const auto gameRoot = indexPath.parent_path().parent_path().parent_path();
 					const auto versionFile = Utils::Win32::Handle::FromCreateFile(gameRoot / "ffxivgame.ver", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);

@@ -128,13 +128,23 @@ namespace Sqex::FontCsv {
 		return src ? 255 : 0;
 	}
 
-#pragma warning(push)
-#pragma warning(disable: 4250)
 	template<typename DestPixFmt = Texture::RGBA8888, typename OpacityType = uint8_t>
 	class FreeTypeDrawingFont : public FreeTypeFont, public BaseDrawableFont<DestPixFmt, OpacityType> {
-
 	public:
-		using FreeTypeFont::FreeTypeFont;
+		FreeTypeDrawingFont(const std::filesystem::path& path, int faceIndex, float size, FT_Int32 loadFlags = FT_LOAD_DEFAULT)
+			: FreeTypeFont(path, faceIndex, size, loadFlags)
+			, BaseDrawableFont<DestPixFmt, OpacityType>(this) {
+		}
+
+		FreeTypeDrawingFont(const wchar_t* fontName,
+			float size,
+			DWRITE_FONT_WEIGHT weight = DWRITE_FONT_WEIGHT_REGULAR,
+			DWRITE_FONT_STRETCH stretch = DWRITE_FONT_STRETCH_NORMAL,
+			DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE_NORMAL,
+			FT_Int32 loadFlags = FT_LOAD_DEFAULT)
+			: FreeTypeFont(fontName, size, weight, stretch, style, loadFlags)
+			, BaseDrawableFont<DestPixFmt, OpacityType>(this) {
+		}
 
 		using BaseDrawableFont<DestPixFmt, OpacityType>::Draw;
 
@@ -173,16 +183,16 @@ namespace Sqex::FontCsv {
 					auto destBuf = to->View<DestPixFmt>();
 					switch (target.num_grays) {
 						case 2:
-							RgbBitmapCopy<uint8_t, FreeTypeDrawingFont_GetEffectiveOpacity<2>, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity);
+							RgbBitmapCopy<uint8_t, FreeTypeDrawingFont_GetEffectiveOpacity<2>, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity, BaseDrawableFont<DestPixFmt, OpacityType>::Gamma());
 							break;
 						case 4:
-							RgbBitmapCopy<uint8_t, FreeTypeDrawingFont_GetEffectiveOpacity<4>, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity);
+							RgbBitmapCopy<uint8_t, FreeTypeDrawingFont_GetEffectiveOpacity<4>, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity, BaseDrawableFont<DestPixFmt, OpacityType>::Gamma());
 							break;
 						case 16:
-							RgbBitmapCopy<uint8_t, FreeTypeDrawingFont_GetEffectiveOpacity<16>, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity);
+							RgbBitmapCopy<uint8_t, FreeTypeDrawingFont_GetEffectiveOpacity<16>, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity, BaseDrawableFont<DestPixFmt, OpacityType>::Gamma());
 							break;
 						case 256:
-							RgbBitmapCopy<uint8_t, FreeTypeDrawingFont_GetEffectiveOpacity<256>, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity);
+							RgbBitmapCopy<uint8_t, FreeTypeDrawingFont_GetEffectiveOpacity<256>, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity, BaseDrawableFont<DestPixFmt, OpacityType>::Gamma());
 							break;
 						default:
 							throw std::invalid_argument("invalid num_grays");
@@ -192,5 +202,4 @@ namespace Sqex::FontCsv {
 			return bbox;
 		}
 	};
-#pragma warning(pop)
 }

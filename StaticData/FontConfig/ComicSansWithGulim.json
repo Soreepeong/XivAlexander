@@ -113,75 +113,61 @@
     },
     "freetype:Gulim:9.6": {
       "familyName": "Gulim",
-      "height": 9.6,
-      "weight": 400
+      "height": 9.6
     },
     "freetype:Gulim:12": {
       "familyName": "Gulim",
-      "height": 12,
-      "weight": 400
+      "height": 12
     },
     "freetype:Gulim:14": {
       "familyName": "Gulim",
-      "height": 14,
-      "weight": 400
+      "height": 14
     },
     "freetype:Gulim:18": {
       "familyName": "Gulim",
-      "height": 18,
-      "weight": 400
+      "height": 18
     },
     "freetype:Gulim:24": {
       "familyName": "Gulim",
-      "height": 24,
-      "weight": 400
+      "height": 24
     },
     "freetype:Gulim:36": {
       "familyName": "Gulim",
-      "height": 36,
-      "weight": 400
+      "height": 36
     },
     "freetype:Gulim:68": {
       "familyName": "Gulim",
-      "height": 68,
-      "weight": 400
+      "height": 68
     },
     "dwrite:ComicSans:9.6": {
       "familyName": "Comic Sans MS",
       "height": 9.6,
-      "weight": 400,
       "renderMode": "DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC"
     },
     "dwrite:ComicSans:12": {
       "familyName": "Comic Sans MS",
       "height": 12,
-      "weight": 400,
       "renderMode": "DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC"
     },
     "dwrite:ComicSans:14": {
       "familyName": "Comic Sans MS",
-      "height": 14,
-      "weight": 400
+      "height": 14
     },
     "dwrite:ComicSans:18": {
       "familyName": "Comic Sans MS",
-      "height": 18,
-      "weight": 400
+      "height": 18
     },
     "dwrite:ComicSans:24": {
       "familyName": "Comic Sans MS",
-      "height": 24,
-      "weight": 400
+      "height": 24
     },
     "dwrite:ComicSans:36": {
       "familyName": "Comic Sans MS",
-      "height": 36,
-      "weight": 400
+      "height": 36
     },
     "dwrite:ComicSans:68": {
       "familyName": "Comic Sans MS",
-      "height": 68,
-      "weight": 400
+      "height": 68
     }
   },
   "ranges": {

@@ -75,8 +75,6 @@ namespace Sqex::FontCsv {
 		DwriteRenderBufferCtxMgr AllocateBuffer() const;
 	};
 
-#pragma warning(push)
-#pragma warning(disable: 4250)
 	template<typename DestPixFmt = Texture::RGBA8888, typename OpacityType = uint8_t>
 	class DirectWriteDrawingFont : public DirectWriteFont, public BaseDrawableFont<DestPixFmt, OpacityType> {
 
@@ -85,7 +83,23 @@ namespace Sqex::FontCsv {
 		}
 
 	public:
-		using DirectWriteFont::DirectWriteFont;
+		DirectWriteDrawingFont(const wchar_t* fontName,
+			float size,
+			DWRITE_FONT_WEIGHT weight = DWRITE_FONT_WEIGHT_REGULAR,
+			DWRITE_FONT_STRETCH stretch = DWRITE_FONT_STRETCH_NORMAL,
+			DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_RENDERING_MODE renderMode = DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC)
+			: DirectWriteFont(fontName, size, weight, stretch, style, renderMode)
+			, BaseDrawableFont<DestPixFmt, OpacityType>::BaseDrawableFont(this) {
+		}
+
+		DirectWriteDrawingFont(const std::filesystem::path& path,
+			uint32_t faceIndex,
+			float size,
+			DWRITE_RENDERING_MODE renderMode = DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC)
+			: DirectWriteFont(path, faceIndex, size, renderMode)
+			, BaseDrawableFont<DestPixFmt, OpacityType>::BaseDrawableFont(this) {
+		}
 
 		using BaseDrawableFont<DestPixFmt, OpacityType>::Draw;
 
@@ -106,11 +120,10 @@ namespace Sqex::FontCsv {
 
 				if (!src.EffectivelyEmpty() && !dest.EffectivelyEmpty()) {
 					auto destBuf = to->View<DestPixFmt>();
-					RgbBitmapCopy<uint8_t, GetEffectiveOpacity, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity);
+					RgbBitmapCopy<uint8_t, GetEffectiveOpacity, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity, BaseDrawableFont<DestPixFmt, OpacityType>::Gamma());
 				}
 			}
 			return bbox;
 		}
 	};
-#pragma warning(pop)
 }

@@ -107,13 +107,11 @@
     },
     "dwrite:SUIT:9.6": {
       "familyName": "SUIT",
-      "height": 10,
-      "weight": 600
+      "height": 9.6
     },
     "dwrite:SUIT:12": {
       "familyName": "SUIT",
-      "height": 12,
-      "weight": 500
+      "height": 12
     },
     "dwrite:SUIT:14": {
       "familyName": "SUIT",
@@ -125,13 +123,11 @@
     },
     "dwrite:SUIT:24": {
       "familyName": "SUIT",
-      "height": 24,
-      "weight": 500
+      "height": 24
     },
     "dwrite:SUIT:36": {
       "familyName": "SUIT",
-      "height": 36,
-      "weight": 500
+      "height": 36
     }
   },
   "ranges": {

@@ -18,9 +18,9 @@ namespace Sqex::FontCsv {
 		static constexpr auto Scaler = 0xFFUL;
 		static constexpr auto MaxOpacity = std::numeric_limits<OpacityType>::max();
 
-		static void DrawLineToRgb(DestPixFmt* destPtr, const SrcPixFmt* srcPtr, size_t regionWidth, const DestPixFmt& fgColor, const DestPixFmt& bgColor) {
+		static inline void DrawLineToRgb(DestPixFmt* destPtr, const SrcPixFmt* srcPtr, size_t regionWidth, const DestPixFmt& fgColor, const DestPixFmt& bgColor, double gamma) {
 			while (regionWidth--) {
-				const auto opacityScaled = ResolverFunction(*srcPtr);
+				const auto opacityScaled = (uint32_t)(std::pow(1.0 * ResolverFunction(*srcPtr) / Scaler, gamma) * Scaler);
 				const auto blendedBgColor = DestPixFmt{
 					(bgColor.R * bgColor.A + destPtr->R * (DestPixFmt::MaxA - bgColor.A)) / DestPixFmt::MaxA,
 					(bgColor.G * bgColor.A + destPtr->G * (DestPixFmt::MaxA - bgColor.A)) / DestPixFmt::MaxA,
@@ -54,9 +54,9 @@ namespace Sqex::FontCsv {
 			}
 		}
 
-		static void DrawLineToRgbOpaque(DestPixFmt* destPtr, const SrcPixFmt* srcPtr, size_t regionWidth, const DestPixFmt& fgColor, const DestPixFmt& bgColor) {
+		static inline void DrawLineToRgbOpaque(DestPixFmt* destPtr, const SrcPixFmt* srcPtr, size_t regionWidth, const DestPixFmt& fgColor, const DestPixFmt& bgColor, double gamma) {
 			while (regionWidth--) {
-				const auto opacityScaled = ResolverFunction(*srcPtr);
+				const auto opacityScaled = (uint32_t)(std::pow(1.0 * ResolverFunction(*srcPtr) / Scaler, gamma) * Scaler);
 				destPtr->R = (bgColor.R * (Scaler - opacityScaled) + fgColor.R * opacityScaled) / Scaler;
 				destPtr->G = (bgColor.G * (Scaler - opacityScaled) + fgColor.G * opacityScaled) / Scaler;
 				destPtr->B = (bgColor.B * (Scaler - opacityScaled) + fgColor.B * opacityScaled) / Scaler;
@@ -67,9 +67,10 @@ namespace Sqex::FontCsv {
 		}
 
 		template<bool ColorIsForeground>
-		static void DrawLineToRgbBinaryOpacity(DestPixFmt* destPtr, const SrcPixFmt* srcPtr, size_t regionWidth, const DestPixFmt& color) {
+		static inline void DrawLineToRgbBinaryOpacity(DestPixFmt* destPtr, const SrcPixFmt* srcPtr, size_t regionWidth, const DestPixFmt& color, double gamma) {
 			while (regionWidth--) {
-				const auto opacity = DestPixFmt::MaxA * (ColorIsForeground ? ResolverFunction(*srcPtr) : Scaler - ResolverFunction(*srcPtr)) / Scaler;
+				const auto opacityScaled = (uint32_t)(std::pow(1.0 * ResolverFunction(*srcPtr) / Scaler, gamma) * Scaler);
+				const auto opacity = DestPixFmt::MaxA * (ColorIsForeground ? opacityScaled : Scaler - opacityScaled) / Scaler;
 				if (opacity) {
 					const auto blendedDestColor = DestPixFmt{
 						(destPtr->R * destPtr->A + color.R * (DestPixFmt::MaxA - destPtr->A)) / DestPixFmt::MaxA,
@@ -87,11 +88,11 @@ namespace Sqex::FontCsv {
 			}
 		}
 
-		static void DrawLineToL8(DestPixFmt* destPtr, const SrcPixFmt* srcPtr, size_t regionWidth, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity, OpacityType bgOpacity) {
+		static inline void DrawLineToL8(DestPixFmt* destPtr, const SrcPixFmt* srcPtr, size_t regionWidth, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity, OpacityType bgOpacity, double gamma) {
 			constexpr auto DestPixFmtMax = std::numeric_limits<DestPixFmt>::max();
 
 			while (regionWidth--) {
-				const auto opacityScaled = ResolverFunction(*srcPtr);
+				const auto opacityScaled = (uint32_t)(std::pow(1.0 * ResolverFunction(*srcPtr) / Scaler, gamma) * Scaler);
 				const auto blendedBgColor = (1 * bgColor * bgOpacity + 1 * *destPtr * (MaxOpacity - bgOpacity)) / MaxOpacity;
 				const auto blendedFgColor = (1 * fgColor * fgOpacity + 1 * *destPtr * (MaxOpacity - fgOpacity)) / MaxOpacity;
 				*destPtr = static_cast<DestPixFmt>((blendedBgColor * (Scaler - opacityScaled) + blendedFgColor * opacityScaled) / Scaler);
@@ -100,89 +101,104 @@ namespace Sqex::FontCsv {
 			}
 		}
 
-		static void DrawLineToL8Opaque(DestPixFmt* destPtr, const SrcPixFmt* srcPtr, size_t regionWidth) {
+		static inline void DrawLineToL8Opaque(DestPixFmt* destPtr, const SrcPixFmt* srcPtr, size_t regionWidth, double gamma) {
 			constexpr auto DestPixFmtMax = std::numeric_limits<DestPixFmt>::max();
 
 			while (regionWidth--) {
-				*destPtr = static_cast<DestPixFmt>(MaxOpacity * ResolverFunction(*srcPtr) / Scaler);
+				const auto opacityScaled = (uint32_t)(std::pow(1.0 * ResolverFunction(*srcPtr) / Scaler, gamma) * Scaler);
+				*destPtr = static_cast<DestPixFmt>(MaxOpacity * opacityScaled / Scaler);
 				++destPtr;
 				++srcPtr;
 			}
 		}
 
 		template<bool ColorIsForeground>
-		static void DrawLineToL8BinaryOpacity(DestPixFmt* destPtr, const SrcPixFmt* srcPtr, size_t regionWidth, const DestPixFmt& color) {
+		static inline void DrawLineToL8BinaryOpacity(DestPixFmt* destPtr, const SrcPixFmt* srcPtr, size_t regionWidth, const DestPixFmt& color, double gamma) {
 			constexpr auto DestPixFmtMax = std::numeric_limits<DestPixFmt>::max();
 
 			while (regionWidth--) {
-				const auto opacityScaled = ColorIsForeground ? ResolverFunction(*srcPtr) : Scaler - ResolverFunction(*srcPtr);
-				*destPtr = static_cast<DestPixFmt>((*destPtr * (Scaler - opacityScaled) + 1 * color * opacityScaled) / Scaler);
+				const auto opacityScaled = (uint32_t)(std::pow(1.0 * ResolverFunction(*srcPtr) / Scaler, gamma) * Scaler);
+				const auto opacityScaled2 = ColorIsForeground ? opacityScaled : Scaler - opacityScaled;
+				*destPtr = static_cast<DestPixFmt>((*destPtr * (Scaler - opacityScaled2) + 1 * color * opacityScaled2) / Scaler);
 				++destPtr;
 				++srcPtr;
 			}
 		}
 
 	public:
-		static void CopyTo(const GlyphMeasurement& src, const GlyphMeasurement& dest, const SrcPixFmt* srcBuf, DestPixFmt* destBuf, SSIZE_T srcWidth, SSIZE_T srcHeight, SSIZE_T destWidth, DestPixFmt fgColor, DestPixFmt bgColor, OpacityType fgOpacity, OpacityType bgOpacity) {
+		static inline void CopyTo(const GlyphMeasurement& src, const GlyphMeasurement& dest, const SrcPixFmt* srcBuf, DestPixFmt* destBuf, SSIZE_T srcWidth, SSIZE_T srcHeight, SSIZE_T destWidth, DestPixFmt fgColor, DestPixFmt bgColor, OpacityType fgOpacity, OpacityType bgOpacity, double gamma) {
 			auto destPtrBegin = &destBuf[static_cast<size_t>(1) * dest.top * destWidth + dest.left];
 			auto srcPtrBegin = &srcBuf[static_cast<size_t>(1) * (VerticalDirection == 1 ? src.top : srcHeight - src.top - 1) * srcWidth + src.left];
 			const auto srcPtrDelta = srcWidth * VerticalDirection;
 			const auto regionWidth = src.right - src.left;
 			const auto regionHeight = src.bottom - src.top;
+
+			gamma = 1.0 / gamma;
+
 			if constexpr (std::is_integral_v<DestPixFmt>) {
 				constexpr auto DestPixFmtMax = std::numeric_limits<DestPixFmt>::max();
 
 				if (fgOpacity == MaxOpacity && bgOpacity == MaxOpacity && fgColor == DestPixFmtMax && bgColor == 0) {
 					for (auto i = 0; i < regionHeight; ++i, destPtrBegin += destWidth, srcPtrBegin += srcPtrDelta)
-						DrawLineToL8Opaque(destPtrBegin, srcPtrBegin, regionWidth);
+						DrawLineToL8Opaque(destPtrBegin, srcPtrBegin, regionWidth, gamma);
 				} else if (fgOpacity == MaxOpacity && bgOpacity == 0) {
 					for (auto i = 0; i < regionHeight; ++i, destPtrBegin += destWidth, srcPtrBegin += srcPtrDelta)
-						DrawLineToL8BinaryOpacity<true>(destPtrBegin, srcPtrBegin, regionWidth, fgColor);
+						DrawLineToL8BinaryOpacity<true>(destPtrBegin, srcPtrBegin, regionWidth, fgColor, gamma);
 				} else if (fgOpacity == 0 && bgOpacity == MaxOpacity) {
 					for (auto i = 0; i < regionHeight; ++i, destPtrBegin += destWidth, srcPtrBegin += srcPtrDelta)
-						DrawLineToL8BinaryOpacity<false>(destPtrBegin, srcPtrBegin, regionWidth, bgColor);
+						DrawLineToL8BinaryOpacity<false>(destPtrBegin, srcPtrBegin, regionWidth, bgColor, gamma);
 				} else {
 					for (auto i = 0; i < regionHeight; ++i, destPtrBegin += destWidth, srcPtrBegin += srcPtrDelta)
-						DrawLineToL8(destPtrBegin, srcPtrBegin, regionWidth, fgColor, bgColor, fgOpacity, bgOpacity);
+						DrawLineToL8(destPtrBegin, srcPtrBegin, regionWidth, fgColor, bgColor, fgOpacity, bgOpacity, gamma);
 				}
 			} else {
 				fgColor.A = fgColor.A * fgOpacity / std::numeric_limits<OpacityType>::max();
 				bgColor.A = bgColor.A * bgOpacity / std::numeric_limits<OpacityType>::max();
 				if (fgColor.A == DestPixFmt::MaxA && bgColor.A == DestPixFmt::MaxA) {
 					for (auto i = 0; i < regionHeight; ++i, destPtrBegin += destWidth, srcPtrBegin += srcPtrDelta)
-						DrawLineToRgbOpaque(destPtrBegin, srcPtrBegin, regionWidth, fgColor, bgColor);
+						DrawLineToRgbOpaque(destPtrBegin, srcPtrBegin, regionWidth, fgColor, bgColor, gamma);
 				} else if (fgColor.A == DestPixFmt::MaxA && bgColor.A == 0) {
 					for (auto i = 0; i < regionHeight; ++i, destPtrBegin += destWidth, srcPtrBegin += srcPtrDelta)
-						DrawLineToRgbBinaryOpacity<true>(destPtrBegin, srcPtrBegin, regionWidth, fgColor);
+						DrawLineToRgbBinaryOpacity<true>(destPtrBegin, srcPtrBegin, regionWidth, fgColor, gamma);
 				} else if (fgColor.A == 0 && bgColor.A == DestPixFmt::MaxA) {
 					for (auto i = 0; i < regionHeight; ++i, destPtrBegin += destWidth, srcPtrBegin += srcPtrDelta)
-						DrawLineToRgbBinaryOpacity<false>(destPtrBegin, srcPtrBegin, regionWidth, bgColor);
+						DrawLineToRgbBinaryOpacity<false>(destPtrBegin, srcPtrBegin, regionWidth, bgColor, gamma);
 				} else {
 					for (auto i = 0; i < regionHeight; ++i, destPtrBegin += destWidth, srcPtrBegin += srcPtrDelta)
-						DrawLineToRgb(destPtrBegin, srcPtrBegin, regionWidth, fgColor, bgColor);
+						DrawLineToRgb(destPtrBegin, srcPtrBegin, regionWidth, fgColor, bgColor, gamma);
 				}
 			}
 		}
 
 	};
 
-#pragma warning(push)
-#pragma warning(disable: 4250)
 	template<typename DestPixFmt = Texture::RGBA8888, typename OpacityType = uint8_t>
-	class BaseDrawableFont : public virtual BaseFont {
+	class BaseDrawableFont {
 	public:
 		static constexpr auto MaxOpacity = std::numeric_limits<OpacityType>::max();
 
-		BaseDrawableFont() = default;
-		~BaseDrawableFont() override = default;
+	protected:
+		double m_gamma = 1.0;
+
+	public:
+		BaseFont& Base;
+
+		BaseDrawableFont(BaseFont* font)
+			: Base(*font) {
+		}
+
+		void Gamma(double gamma) { m_gamma = gamma; }
+
+		double Gamma() const { return m_gamma; }
 
 		virtual GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, char32_t c, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity = MaxOpacity, OpacityType bgOpacity = MaxOpacity) const = 0;
+
 		virtual GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, const std::u32string& s, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity = MaxOpacity, OpacityType bgOpacity = MaxOpacity) const {
 			if (s.empty())
 				return {};
 
 			char32_t lastChar = 0;
-			const auto iHeight = static_cast<SSIZE_T>(LineHeight());
+			const auto iHeight = static_cast<SSIZE_T>(Base.LineHeight());
 
 			GlyphMeasurement result{};
 			SSIZE_T currX = x, currY = y;
@@ -200,7 +216,7 @@ namespace Sqex::FontCsv {
 					continue;
 				}
 
-				const auto kerning = GetKerning(lastChar, currChar);
+				const auto kerning = Base.GetKerning(lastChar, currChar);
 				const auto currBbox = Draw(to, currX + kerning, currY, currChar, fgColor, bgColor, fgOpacity, bgOpacity);
 				currX += kerning + currBbox.advanceX;
 				result.ExpandToFit(currBbox);
@@ -211,6 +227,7 @@ namespace Sqex::FontCsv {
 			
 			return result;
 		}
+
 		virtual GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, const std::string& s, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity = MaxOpacity, OpacityType bgOpacity = MaxOpacity) const {
 			return Draw(to, x, y, ToU32(s), fgColor, bgColor, fgOpacity, bgOpacity);
 		}
@@ -231,15 +248,18 @@ namespace Sqex::FontCsv {
 
 		CascadingDrawableFont(std::vector<std::shared_ptr<BaseDrawableFont<DestPixFmt>>> fontList)
 			: CascadingFont(ConvertVector(std::move(fontList)))
-			, BaseDrawableFont<DestPixFmt>() {
+			, BaseDrawableFont<DestPixFmt, OpacityType>(this) {
 		}
+
 		CascadingDrawableFont(std::vector<std::shared_ptr<BaseDrawableFont<DestPixFmt>>> fontList, float normalizedSize, uint32_t ascent, uint32_t lineHeight)
 			: CascadingFont(ConvertVector(std::move(fontList)), normalizedSize, ascent, lineHeight)
-			, BaseDrawableFont<DestPixFmt>() {
+			, BaseDrawableFont<DestPixFmt, OpacityType>(this) {
 		}
+
 		~CascadingDrawableFont() override = default;
 
 		using BaseDrawableFont<DestPixFmt>::Draw;
+
 		GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, char32_t c, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity = MaxOpacity, OpacityType bgOpacity = MaxOpacity) const override {
 			for (const auto& f : GetFontList()) {
 				const auto df = dynamic_cast<BaseDrawableFont<DestPixFmt>*>(f.get());
@@ -252,7 +272,7 @@ namespace Sqex::FontCsv {
 	};
 
 	template<typename DestPixFmt = Texture::RGBA8888, typename OpacityType = uint8_t>
-	class OversampledFont : public BaseDrawableFont<DestPixFmt, OpacityType> {
+	class OversampledFont : public BaseFont, public BaseDrawableFont<DestPixFmt, OpacityType> {
 		const std::shared_ptr<BaseDrawableFont<DestPixFmt, OpacityType>> m_underlying;
 		const int m_scale;
 
@@ -266,34 +286,36 @@ namespace Sqex::FontCsv {
 		using BaseDrawableFont<DestPixFmt, OpacityType>::MaxOpacity;
 
 		OversampledFont(std::shared_ptr<BaseDrawableFont<DestPixFmt, OpacityType>> underlying, int scale)
-			: m_underlying(std::move(underlying))
+			: BaseFont()
+			, BaseDrawableFont<DestPixFmt, OpacityType>(this)
+			, m_underlying(std::move(underlying))
 			, m_scale(scale) {
 		}
 
 		bool HasCharacter(char32_t c) const override {
-			return m_underlying->HasCharacter(c);
+			return m_underlying->BaseDrawableFont<DestPixFmt, OpacityType>::Base.HasCharacter(c);
 		}
 
 		float Size() const override {
-			return (m_underlying->Size() + m_scale - 1) / m_scale;
+			return (m_underlying->BaseDrawableFont<DestPixFmt, OpacityType>::Base.Size() + m_scale - 1) / m_scale;
 		}
 
 		const std::vector<char32_t>& GetAllCharacters() const override {
-			return m_underlying->GetAllCharacters();
+			return m_underlying->BaseDrawableFont<DestPixFmt, OpacityType>::Base.GetAllCharacters();
 		}
 
 		uint32_t Ascent() const override {
-			return (m_underlying->Ascent() + m_scale - 1) / m_scale;
+			return (m_underlying->BaseDrawableFont<DestPixFmt, OpacityType>::Base.Ascent() + m_scale - 1) / m_scale;
 		}
 
 		uint32_t LineHeight() const override {
-			return (m_underlying->LineHeight() + m_scale - 1) / m_scale;
+			return (m_underlying->BaseDrawableFont<DestPixFmt, OpacityType>::Base.LineHeight() + m_scale - 1) / m_scale;
 		}
 
 		const std::map<std::pair<char32_t, char32_t>, SSIZE_T>& GetKerningTable() const override {
 			if (!m_kerningTable) {
 				m_kerningTable = std::map<std::pair<char32_t, char32_t>, SSIZE_T>{};
-				for (const auto& [k, v] : m_underlying->GetKerningTable()) {
+				for (const auto& [k, v] : m_underlying->BaseDrawableFont<DestPixFmt, OpacityType>::Base.GetKerningTable()) {
 					if (v / m_scale)
 						m_kerningTable->insert_or_assign(k, v / m_scale);
 				}
@@ -310,7 +332,7 @@ namespace Sqex::FontCsv {
 		}
 
 		GlyphMeasurement Measure(SSIZE_T x, SSIZE_T y, char32_t c) const override {
-			auto size2 = m_underlying->Measure(0, 0, c);
+			auto size2 = m_underlying->BaseDrawableFont<DestPixFmt, OpacityType>::Base.Measure(0, 0, c);
 			size2.left /= m_scale;
 			size2.top /= m_scale;
 			size2.right = (size2.right + m_scale - 1) / m_scale;
@@ -321,8 +343,9 @@ namespace Sqex::FontCsv {
 		}
 
 		using BaseDrawableFont<DestPixFmt, OpacityType>::Draw;
+
 		GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, char32_t c, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity = MaxOpacity, OpacityType bgOpacity = MaxOpacity) const override {
-			auto size1 = m_underlying->Measure(0, 0, c);
+			auto size1 = m_underlying->BaseDrawableFont<DestPixFmt, OpacityType>::Base.Measure(0, 0, c);
 			auto size2 = GlyphMeasurement(size1);
 			size2.left /= m_scale;
 			size2.top /= m_scale;
@@ -358,9 +381,8 @@ namespace Sqex::FontCsv {
 			destSize.Translate(x, y);
 			auto destBuf = to->View<DestPixFmt>();
 
-			RgbBitmapCopy<uint8_t, ResolverFunction, DestPixFmt, OpacityType>::CopyTo(size2, destSize, &buf2[0], &destBuf[0], tex2.Width, tex2.Height, to->Width, fgColor, bgColor, fgOpacity, bgOpacity);
+			RgbBitmapCopy<uint8_t, ResolverFunction, DestPixFmt, OpacityType>::CopyTo(size2, destSize, &buf2[0], &destBuf[0], tex2.Width, tex2.Height, to->Width, fgColor, bgColor, fgOpacity, bgOpacity, BaseDrawableFont<DestPixFmt, OpacityType>::Gamma());
 			return destSize;
 		}
 	};
-#pragma warning(pop)
 }

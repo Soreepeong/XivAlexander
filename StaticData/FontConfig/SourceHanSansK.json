@@ -108,15 +108,11 @@
     },
     "dwrite:SourceHanSansK:9.6": {
       "familyName": "Source Han Sans K",
-      "height": 10,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL",
-      "weight": 600
+      "height": 9.6
     },
     "dwrite:SourceHanSansK:12": {
       "familyName": "Source Han Sans K",
-      "height": 12,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL",
-      "weight": 600
+      "height": 12
     },
     "dwrite:SourceHanSansK:14": {
       "familyName": "Source Han Sans K",

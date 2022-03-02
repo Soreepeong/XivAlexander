@@ -198,38 +198,31 @@
     },
     "dwrite:SourceHanSansK:9.6": {
       "familyName": "Source Han Sans K",
-      "height": 9.6,
-      "weight": 400
+      "height": 9.6
     },
     "dwrite:SourceHanSansK:12": {
       "familyName": "Source Han Sans K",
-      "height": 12,
-      "weight": 400
+      "height": 12
     },
     "dwrite:SourceHanSansK:14": {
       "familyName": "Source Han Sans K",
-      "height": 14,
-      "weight": 400
+      "height": 14
     },
     "dwrite:SourceHanSansK:18": {
       "familyName": "Source Han Sans K",
-      "height": 18,
-      "weight": 400
+      "height": 18
     },
     "dwrite:SourceHanSansK:24": {
       "familyName": "Source Han Sans K",
-      "height": 24,
-      "weight": 400
+      "height": 24
     },
     "dwrite:SourceHanSansK:36": {
       "familyName": "Source Han Sans K",
-      "height": 36,
-      "weight": 400
+      "height": 36
     },
     "dwrite:SourceHanSansSC:36": {
       "familyName": "Source Han Sans SC",
-      "height": 36,
-      "weight": 400
+      "height": 36
     }
   },
   "ranges": {

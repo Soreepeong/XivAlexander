@@ -109,23 +109,19 @@
     },
     "dwrite:SourceHanSansSC:12": {
       "familyName": "Source Han Sans SC",
-      "height": 12,
-      "weight": 400
+      "height": 12
     },
     "dwrite:SourceHanSansSC:14": {
       "familyName": "Source Han Sans SC",
-      "height": 14,
-      "weight": 400
+      "height": 14
     },
     "dwrite:SourceHanSansSC:18": {
       "familyName": "Source Han Sans SC",
-      "height": 18,
-      "weight": 400
+      "height": 18
     },
     "dwrite:SourceHanSansSC:36": {
       "familyName": "Source Han Sans SC",
-      "height": 36,
-      "weight": 400
+      "height": 36
     }
   },
   "ranges": {

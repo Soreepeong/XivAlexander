@@ -108,63 +108,51 @@
     },
     "freetype:Gulim:9.6": {
       "familyName": "Gulim",
-      "height": 9.6,
-      "weight": 400
+      "height": 9.6
     },
     "freetype:Gulim:12": {
       "familyName": "Gulim",
-      "height": 12,
-      "weight": 400
+      "height": 12
     },
     "freetype:Gulim:14": {
       "familyName": "Gulim",
-      "height": 14,
-      "weight": 400
+      "height": 14
     },
     "freetype:Gulim:16": {
       "familyName": "Gulim",
-      "height": 16,
-      "weight": 400
+      "height": 16
     },
     "freetype:Gulim:18": {
       "familyName": "Gulim",
-      "height": 18,
-      "weight": 400
+      "height": 18
     },
     "freetype:Gulim:20": {
       "familyName": "Gulim",
-      "height": 20,
-      "weight": 400
+      "height": 20
     },
     "freetype:Gulim:24": {
       "familyName": "Gulim",
-      "height": 24,
-      "weight": 400
+      "height": 24
     },
     "freetype:Gulim:36": {
       "familyName": "Gulim",
-      "height": 36,
-      "weight": 400
+      "height": 36
     },
     "freetype:Gulim:40": {
       "familyName": "Gulim",
-      "height": 40,
-      "weight": 400
+      "height": 40
     },
     "freetype:Gulim:45": {
       "familyName": "Gulim",
-      "height": 45,
-      "weight": 400
+      "height": 45
     },
     "freetype:Gulim:68": {
       "familyName": "Gulim",
-      "height": 68,
-      "weight": 400
+      "height": 68
     },
     "freetype:Gulim:90": {
       "familyName": "Gulim",
-      "height": 90,
-      "weight": 400
+      "height": 90
     }
   },
   "ranges": {

@@ -40,7 +40,7 @@ public:
 
 	const GlyphMeasurement& GetBbox() const {
 		if (m_bbox.empty) {
-			m_bbox = Font->Measure(0, 0, m_codePoint);
+			m_bbox = Font->Base.Measure(0, 0, m_codePoint);
 			m_bbox.advanceX += m_offsetXModifier;
 		}
 		return m_bbox;
@@ -145,7 +145,7 @@ Sqex::FontCsv::FontCsvCreator::~FontCsvCreator() = default;
 void Sqex::FontCsv::FontCsvCreator::AddCharacter(char32_t codePoint, const BaseDrawableFont<uint8_t>* font, bool replace, bool extendRange, int offsetXModifier, int offsetYModifier, CreateConfig::VerticalAlignment alignment) {
 	if (codePoint == '\n' || codePoint == '\r')
 		return;
-	if (!font->HasCharacter(codePoint))
+	if (!font->Base.HasCharacter(codePoint))
 		return;
 
 	const auto pos = std::lower_bound(m_pImpl->Plans.begin(), m_pImpl->Plans.end(), codePoint);
@@ -162,7 +162,7 @@ void Sqex::FontCsv::FontCsvCreator::AddCharacter(char32_t codePoint, const BaseD
 }
 
 void Sqex::FontCsv::FontCsvCreator::AddCharacter(const BaseDrawableFont<uint8_t>* font, bool replace, bool extendRange, int offsetXModifier, int offsetYModifier, CreateConfig::VerticalAlignment alignment) {
-	for (const auto c : font->GetAllCharacters())
+	for (const auto c : font->Base.GetAllCharacters())
 		AddCharacter(c, font, replace, extendRange, offsetXModifier, offsetYModifier, alignment);
 }
 
@@ -174,14 +174,14 @@ void Sqex::FontCsv::FontCsvCreator::AddKerning(const BaseDrawableFont<uint8_t>* 
 }
 
 void Sqex::FontCsv::FontCsvCreator::AddKerning(const BaseDrawableFont<uint8_t>* font, bool replace) {
-	for (const auto& pair : font->GetKerningTable())
+	for (const auto& pair : font->Base.GetKerningTable())
 		AddKerning(font, pair.first.first, pair.first.second, static_cast<int>(pair.second), replace);
 }
 
 void Sqex::FontCsv::FontCsvCreator::AddFont(const BaseDrawableFont<uint8_t>* font, bool replace, bool extendRange, int offsetXModifier, int offsetYModifier, CreateConfig::VerticalAlignment alignment) {
-	for (const auto c : font->GetAllCharacters())
+	for (const auto c : font->Base.GetAllCharacters())
 		AddCharacter(c, font, replace, extendRange, offsetXModifier, offsetYModifier, alignment);
-	for (const auto& pair : font->GetKerningTable())
+	for (const auto& pair : font->Base.GetKerningTable())
 		AddKerning(font, pair.first.first, pair.first.second, static_cast<int>(pair.second), replace);
 }
 
@@ -403,8 +403,8 @@ void Sqex::FontCsv::FontCsvCreator::Step1_CalcBbox() {
 						m_pImpl->Progress.Progress_Bbox++;
 
 						box.ExpandToFit(m_pImpl->Plans[i].GetBbox());
-						ascent = std::max(ascent, m_pImpl->Plans[i].Font->Ascent());
-						lineHeight = std::max(lineHeight, m_pImpl->Plans[i].Font->LineHeight());
+						ascent = std::max(ascent, m_pImpl->Plans[i].Font->Base.Ascent());
+						lineHeight = std::max(lineHeight, m_pImpl->Plans[i].Font->Base.LineHeight());
 					}
 				} catch (const std::exception& e) {
 					OnError(e);
@@ -472,7 +472,7 @@ void Sqex::FontCsv::FontCsvCreator::Step2_Layout(RenderTarget& renderTarget) {
 				case CreateConfig::VerticalAlignment::Baseline:
 					currentOffsetY = static_cast<int8_t>(
 						0LL
-						+ m_pImpl->Result->Ascent() - plan.Font->Ascent()
+						+ m_pImpl->Result->Ascent() - plan.Font->Base.Ascent()
 						+ m_pImpl->Step0Result.globalOffsetY
 						+ GlobalOffsetYModifier
 						- borderThickness
@@ -490,7 +490,7 @@ void Sqex::FontCsv::FontCsvCreator::Step2_Layout(RenderTarget& renderTarget) {
 
 				case CreateConfig::VerticalAlignment::Middle:
 					currentOffsetY = static_cast<int8_t>(
-						((0LL + m_pImpl->Result->LineHeight() - plan.Font->LineHeight()) / 2)
+						((0LL + m_pImpl->Result->LineHeight() - plan.Font->Base.LineHeight()) / 2)
 						+ m_pImpl->Step0Result.globalOffsetY
 						+ GlobalOffsetYModifier
 						- borderThickness
@@ -500,7 +500,7 @@ void Sqex::FontCsv::FontCsvCreator::Step2_Layout(RenderTarget& renderTarget) {
 				case CreateConfig::VerticalAlignment::Bottom:
 					currentOffsetY = static_cast<int8_t>(
 						0LL
-						+ m_pImpl->Result->LineHeight() - plan.Font->LineHeight()
+						+ m_pImpl->Result->LineHeight() - plan.Font->Base.LineHeight()
 						+ m_pImpl->Step0Result.globalOffsetY
 						+ GlobalOffsetYModifier
 						- borderThickness
@@ -696,13 +696,15 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				OutputDebugStringW(std::format(L"{}: left {}px\n", source.fdtPath, font->GetLeftSideBearing()).c_str());
 
 				newFont = std::move(font);
-				newFont->AdvanceWidthDelta(source.advanceWidthDelta);
+				newFont->Base.AdvanceWidthDelta(source.advanceWidthDelta);
+				newFont->Gamma(source.gamma);
 
 			} else if (inputFontSource.gdiSource) {
 				auto source{ *inputFontSource.gdiSource };
 				source.lfHeight *= source.oversampleScale;
 				newFont = std::make_shared<GdiDrawingFont<uint8_t>>(source);
-				newFont->AdvanceWidthDelta(source.advanceWidthDelta);
+				newFont->Base.AdvanceWidthDelta(source.advanceWidthDelta);
+				newFont->Gamma(source.gamma);
 
 				if (source.oversampleScale > 1)
 					newFont = std::make_shared<Sqex::FontCsv::OversampledFont<uint8_t>>(std::move(newFont), source.oversampleScale);
@@ -745,7 +747,8 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				if (source.measureUsingFreeType)
 					dfont->SetMeasureWithFreeType();
 				newFont = std::move(dfont);
-				newFont->AdvanceWidthDelta(source.advanceWidthDelta * source.oversampleScale);
+				newFont->Base.AdvanceWidthDelta(source.advanceWidthDelta * source.oversampleScale);
+				newFont->Gamma(source.gamma);
 
 				if (source.oversampleScale > 1)
 					newFont = std::make_shared<Sqex::FontCsv::OversampledFont<uint8_t>>(std::move(newFont), source.oversampleScale);
@@ -783,7 +786,8 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				if (!newFont)
 					throw std::invalid_argument(accumulatedError);
 
-				newFont->AdvanceWidthDelta(source.advanceWidthDelta * source.oversampleScale);
+				newFont->Base.AdvanceWidthDelta(source.advanceWidthDelta* source.oversampleScale);
+				newFont->Gamma(source.gamma);
 
 				if (source.oversampleScale > 1)
 					newFont = std::make_shared<Sqex::FontCsv::OversampledFont<uint8_t>>(std::move(newFont), source.oversampleScale);
@@ -792,8 +796,8 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 				throw std::invalid_argument("Could not identify which font to load.");
 
 			// preload for multithreading
-			void(newFont->GetAllCharacters());
-			void(newFont->GetKerningTable());
+			void(newFont->Base.GetAllCharacters());
+			void(newFont->Base.GetKerningTable());
 
 			const auto lockAccess = std::lock_guard(SourceFontMapAccessMtx);
 			const auto newFontRawPtr = newFont.get();
@@ -862,13 +866,13 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 								if (plan.autoAscent)
 									creator.AscentPixels = FontCsvCreator::AutoVerticalValues;
 								else if (!plan.ascentFrom.empty())
-									creator.AscentPixels = GetSourceFont(plan.ascentFrom).Ascent();
+									creator.AscentPixels = GetSourceFont(plan.ascentFrom).Base.Ascent();
 								else
 									creator.AscentPixels = 0;
 								if (plan.autoLineHeight)
 									creator.LineHeightPixels = FontCsvCreator::AutoVerticalValues;
 								else if (!plan.ascentFrom.empty())
-									creator.LineHeightPixels = GetSourceFont(plan.lineHeightFrom).LineHeight();
+									creator.LineHeightPixels = GetSourceFont(plan.lineHeightFrom).Base.LineHeight();
 								else
 									creator.LineHeightPixels = 0;
 								creator.MinGlobalOffsetX = plan.minGlobalOffsetX;

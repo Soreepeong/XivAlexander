@@ -100,8 +100,6 @@ namespace Sqex::FontCsv {
 		void FreeDeviceContext(std::unique_ptr<DeviceContextWrapper> wrapper) const;
 	};
 
-#pragma warning(push)
-#pragma warning(disable: 4250)
 	template<typename DestPixFmt = Texture::RGBA8888, typename OpacityType = uint8_t>
 	class GdiDrawingFont : public GdiFont, public BaseDrawableFont<DestPixFmt, OpacityType> {
 
@@ -112,7 +110,10 @@ namespace Sqex::FontCsv {
 		DeviceContextWrapperContext buffer;
 
 	public:
-		using GdiFont::GdiFont;
+		GdiDrawingFont(const LOGFONTW& logfont)
+			: GdiFont(logfont)
+			, BaseDrawableFont<DestPixFmt, OpacityType>(this) {
+		}
 
 		using BaseDrawableFont<DestPixFmt, OpacityType>::Draw;
 		GlyphMeasurement Draw(Texture::MemoryBackedMipmap* to, SSIZE_T x, SSIZE_T y, char32_t c, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity, OpacityType bgOpacity) const override {
@@ -134,10 +135,9 @@ namespace Sqex::FontCsv {
 
 			if (!src.empty && !dest.empty) {
 				auto destBuf = to->View<DestPixFmt>();
-				RgbBitmapCopy<Texture::RGBA8888, GetEffectiveOpacity, DestPixFmt, OpacityType, -1>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity);
+				RgbBitmapCopy<Texture::RGBA8888, GetEffectiveOpacity, DestPixFmt, OpacityType, -1>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity, BaseDrawableFont<DestPixFmt, OpacityType>::Gamma());
 			}
 			return bbox;
 		}
 	};
-#pragma warning(pop)
 }

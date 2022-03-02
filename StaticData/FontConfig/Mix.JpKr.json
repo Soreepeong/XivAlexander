@@ -172,8 +172,7 @@
     },
     "dwrite:SourceHanSansK:24": {
       "familyName": "Source Han Sans K",
-      "height": 24,
-      "weight": 400
+      "height": 24
     }
   },
   "targets": {

@@ -30,8 +30,6 @@ namespace Sqex::FontCsv {
 		[[nodiscard]] const ModifiableFontCsvStream& GetStream() const;
 	};
 
-#pragma warning(push)
-#pragma warning(disable: 4250)
 	template<typename SrcPixFmt = Texture::RGBA4444, typename DestPixFmt = Texture::RGBA8888, typename OpacityType = uint8_t>
 	class FdtDrawableFont : public FdtFont, public BaseDrawableFont<DestPixFmt, OpacityType> {
 		std::vector<std::shared_ptr<const Texture::MipmapStream>> m_mipmaps;
@@ -60,10 +58,11 @@ namespace Sqex::FontCsv {
 
 		FdtDrawableFont(std::shared_ptr<const ModifiableFontCsvStream> stream, SSIZE_T leftSideBearing, std::vector<std::shared_ptr<const Texture::MipmapStream>> mipmaps)
 			: FdtFont(std::move(stream), leftSideBearing)
-			, BaseDrawableFont<DestPixFmt>()
+			, BaseDrawableFont<DestPixFmt, OpacityType>(this)
 			, m_mipmaps(std::move(mipmaps))
 			, m_mipmapBuffers(m_mipmaps.size()) {
 		}
+
 		~FdtDrawableFont() override = default;
 
 		using BaseDrawableFont<DestPixFmt>::Draw;
@@ -106,13 +105,13 @@ namespace Sqex::FontCsv {
 				src.AdjustToIntersection(dest, srcWidth, srcHeight, destWidth, destHeight);
 				if (!src.empty && !dest.empty) {
 					if (channelIndex == 0)
-						RgbBitmapCopy<SrcPixFmt, GetEffectiveOpacity<0>, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity);
+						RgbBitmapCopy<SrcPixFmt, GetEffectiveOpacity<0>, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity, BaseDrawableFont<DestPixFmt, OpacityType>::Gamma());
 					else if (channelIndex == 1)
-						RgbBitmapCopy<SrcPixFmt, GetEffectiveOpacity<1>, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity);
+						RgbBitmapCopy<SrcPixFmt, GetEffectiveOpacity<1>, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity, BaseDrawableFont<DestPixFmt, OpacityType>::Gamma());
 					else if (channelIndex == 2)
-						RgbBitmapCopy<SrcPixFmt, GetEffectiveOpacity<2>, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity);
+						RgbBitmapCopy<SrcPixFmt, GetEffectiveOpacity<2>, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity, BaseDrawableFont<DestPixFmt, OpacityType>::Gamma());
 					else if (channelIndex == 3)
-						RgbBitmapCopy<SrcPixFmt, GetEffectiveOpacity<3>, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity);
+						RgbBitmapCopy<SrcPixFmt, GetEffectiveOpacity<3>, DestPixFmt, OpacityType>::CopyTo(src, dest, &srcBuf[0], &destBuf[0], srcWidth, srcHeight, destWidth, fgColor, bgColor, fgOpacity, bgOpacity, BaseDrawableFont<DestPixFmt, OpacityType>::Gamma());
 					else
 						std::abort();  // Cannot reach
 				}
@@ -177,5 +176,4 @@ namespace Sqex::FontCsv {
 			return std::distance(leftEmptys.begin(), std::ranges::max_element(leftEmptys));
 		}
 	};
-#pragma warning(pop)
 }

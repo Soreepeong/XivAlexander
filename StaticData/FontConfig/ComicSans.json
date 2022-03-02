@@ -104,75 +104,59 @@
     },
     "dwrite:ComicSans:9.6": {
       "familyName": "Comic Sans MS",
-      "height": 9.6,
-      "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC"
+      "height": 9.6
     },
     "dwrite:ComicSans:12": {
       "familyName": "Comic Sans MS",
-      "height": 12,
-      "weight": 400,
-      "renderMode": "DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC"
+      "height": 12
     },
     "dwrite:ComicSans:14": {
       "familyName": "Comic Sans MS",
-      "height": 14,
-      "weight": 400
+      "height": 14
     },
     "dwrite:ComicSans:16": {
       "familyName": "Comic Sans MS",
-      "height": 16,
-      "weight": 400
+      "height": 16
     },
     "dwrite:ComicSans:18": {
       "familyName": "Comic Sans MS",
-      "height": 18,
-      "weight": 400
+      "height": 18
     },
     "dwrite:ComicSans:20": {
       "familyName": "Comic Sans MS",
-      "height": 20,
-      "weight": 400
+      "height": 20
     },
     "dwrite:ComicSans:23": {
       "familyName": "Comic Sans MS",
-      "height": 24,
-      "weight": 400
+      "height": 24
     },
     "dwrite:ComicSans:24": {
       "familyName": "Comic Sans MS",
-      "height": 24,
-      "weight": 400
+      "height": 24
     },
     "dwrite:ComicSans:36": {
       "familyName": "Comic Sans MS",
-      "height": 36,
-      "weight": 400
+      "height": 36
     },
     "dwrite:ComicSans:40": {
       "familyName": "Comic Sans MS",
-      "height": 40,
-      "weight": 400
+      "height": 40
     },
     "dwrite:ComicSans:45": {
       "familyName": "Comic Sans MS",
-      "height": 45,
-      "weight": 400
+      "height": 45
     },
     "dwrite:ComicSans:46": {
       "familyName": "Comic Sans MS",
-      "height": 46,
-      "weight": 400
+      "height": 46
     },
     "dwrite:ComicSans:68": {
       "familyName": "Comic Sans MS",
-      "height": 68,
-      "weight": 400
+      "height": 68
     },
     "dwrite:ComicSans:90": {
       "familyName": "Comic Sans MS",
-      "height": 90,
-      "weight": 400
+      "height": 90
     }
   },
   "targets": {
