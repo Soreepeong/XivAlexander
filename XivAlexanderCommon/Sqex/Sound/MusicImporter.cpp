@@ -319,24 +319,25 @@ Sqex::Sound::MusicImporter::Implementation::FloatPcmSource::FloatPcmSource(
 			builder.WithAppendArgument("-i").WithAppendArgument(resolvedPaths[i].wstring());
 	}
 	builder.WithAppendArgument("-f").WithAppendArgument("f32le");
+	builder.WithAppendArgument("-resampler").WithAppendArgument("soxr");
 	if (sourceItem.filterComplex.empty()) {
 		if (forceSamplingRate && audioFilters.empty())
-			builder.WithAppendArgument("-filter:a").WithAppendArgument("aresample={}:resampler=soxr", forceSamplingRate);
+			builder.WithAppendArgument("-filter:a").WithAppendArgument("aresample={}", forceSamplingRate);
 		else if (forceSamplingRate && !audioFilters.empty())
-			builder.WithAppendArgument("-filter:a").WithAppendArgument("aresample={}:resampler=soxr,{}", forceSamplingRate, audioFilters);
+			builder.WithAppendArgument("-filter:a").WithAppendArgument("aresample={},{}", forceSamplingRate, audioFilters);
 		else if (!forceSamplingRate && !audioFilters.empty())
 			builder.WithAppendArgument("-filter:a").WithAppendArgument(audioFilters);
 	} else {
 		if (!forceSamplingRate && audioFilters.empty())
 			builder.WithAppendArgument("-map").WithAppendArgument(sourceItem.filterComplexOutName);
 		else if (forceSamplingRate && audioFilters.empty())
-			builder.WithAppendArgument("-filter_complex").WithAppendArgument("{}; {} aresample={}:resampler=soxr [_xa_final_output]", sourceItem.filterComplex, sourceItem.filterComplexOutName, forceSamplingRate)
+			builder.WithAppendArgument("-filter_complex").WithAppendArgument("{}; {} aresample={} [_xa_final_output]", sourceItem.filterComplex, sourceItem.filterComplexOutName, forceSamplingRate)
 			.WithAppendArgument("-map").WithAppendArgument("[_xa_final_output]");
 		else if (!forceSamplingRate && !audioFilters.empty())
 			builder.WithAppendArgument("-filter_complex").WithAppendArgument("{}; {} {} [_xa_final_output]", sourceItem.filterComplex, sourceItem.filterComplexOutName, audioFilters)
 			.WithAppendArgument("-map").WithAppendArgument("[_xa_final_output]");
 		else if (forceSamplingRate && !audioFilters.empty())
-			builder.WithAppendArgument("-filter_complex").WithAppendArgument("{}; {} aresample={}:resampler=soxr,{} [_xa_final_output]", sourceItem.filterComplex, sourceItem.filterComplexOutName, forceSamplingRate, audioFilters)
+			builder.WithAppendArgument("-filter_complex").WithAppendArgument("{}; {} aresample={},{} [_xa_final_output]", sourceItem.filterComplex, sourceItem.filterComplexOutName, forceSamplingRate, audioFilters)
 			.WithAppendArgument("-map").WithAppendArgument("[_xa_final_output]");
 	}
 	if (forceSamplingRate)

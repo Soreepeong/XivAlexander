@@ -1888,7 +1888,8 @@
       "target": {
         "path": [
           "music/ffxiv/BGM_Event_Protector.scd",
-          "music/ffxiv/Orchestrion/BGM_ORCH_075.scd"
+          "music/ffxiv/Orchestrion/BGM_ORCH_075.scd",
+          "music/ex4/BGM_EX4_Field_Lab_Doc.scd"
         ]
       }
     },

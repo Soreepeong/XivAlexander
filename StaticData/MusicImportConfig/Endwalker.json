@@ -1,0 +1,969 @@
+{
+  "name": "Final Fantasy XIV - 6.0 - Endwalker",
+  "searchDirectories": {
+    "Endwalker": {
+      "default": true,
+      "purchaseLinks": {
+        "amazon.co.jp": "https://www.amazon.co.jp/dp/B09PW4VVHN/"
+      }
+    }
+  },
+  "items": [
+    {
+      "source": {
+        "source": {
+          "inputFiles": [
+            [],
+            [
+              "00000",
+              "ENDWALKER_001",
+              "Endwalker - Footfalls"
+            ],
+            [
+              "00050",
+              "ENDWALKER_051",
+              "想いが動かす力",
+              "With Hearts Aligned"
+            ]
+          ],
+          "filterComplex": "[2:a]atrim=0:10.211,asetpts=PTS-STARTPTS,adelay=243307:all=1[tr1];[2:a]atrim=10.211:15.617,asetpts=PTS-STARTPTS,volume='1-t/5.406':eval=frame,adelay=253518:all=1[tr2];[1:a]atrim=253.518:260.025,asetpts=PTS-STARTPTS,volume='0.562+0.068*t/6.507':eval=frame,adelay=253518:all=1[tr3];[1:a]atrim=260.024:336.808,asetpts=PTS-STARTPTS,volume=0.63,adelay=260024:all=1[tr4];[0:a]atrim=91.702:100.023,asetpts=PTS-STARTPTS,volume='1-pow(t/8.321,0.5)':eval=frame,adelay=336808:all=1,aresample=96000[tr5];[1:a]atrim=0:9.130,asetpts=PTS-STARTPTS,volume='0.63*pow(t/9.13,0.5)':eval=frame,adelay=336000:all=1[tr6];[1:a]atrim=9.130:354.260,asetpts=PTS-STARTPTS,volume=0.63,adelay=345130:all=1[tr7];[tr1][tr2][tr3][tr4][tr5][tr6][tr7]amix=inputs=7:duration=longest:normalize=0,atrim=start=245.107[res]",
+          "filterComplexOutName": "[res]"
+        }
+      },
+      "target": {
+        "path": "music/ex4/BGM_EX4_Event_18.scd",
+        "loopOffsetDelta": 20
+      }
+    },
+    {
+      "source": [
+        "00001",
+        "ENDWALKER_002",
+        "暁月のプレリュード",
+        "Prelude - Tales"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_System_Title.scd"
+      }
+    },
+    {
+      "source": [
+        "00002",
+        "ENDWALKER_003",
+        "知恵の水瓶 ～オールド・シャーレアン：昼～",
+        "The Ewer Brimmeth"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Town_O_Day.scd"
+      }
+    },
+    {
+      "source": [
+        "00003",
+        "ENDWALKER_004",
+        "語り継がれる言葉",
+        "Spoken without End"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Event_08.scd"
+      }
+    },
+    {
+      "source": [
+        "00004",
+        "ENDWALKER_005",
+        "いつの日かきっと ～暁月～",
+        "The Day Will Come"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Town_O_Room.scd"
+      }
+    },
+    {
+      "source": [
+        "00005",
+        "ENDWALKER_006",
+        "知恵の巻貝 ～オールド・シャーレアン：夜～",
+        "The Nautilus Knoweth"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Town_O_Night.scd"
+      }
+    },
+    {
+      "source": [
+        "00006",
+        "ENDWALKER_007",
+        "迷宮 ～ラヴィリンソス：昼～",
+        "The Labyrinth"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Field_Lab_Day.scd"
+      }
+    },
+    {
+      "source": [
+        "00007",
+        "ENDWALKER_008",
+        "上り階段をくだれ ～星海観測 逆さの塔～",
+        "Down the Up Staircase"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Field_Lab_Sakasa.scd"
+      }
+    },
+    {
+      "source": [
+        "00008",
+        "ENDWALKER_009",
+        "抗戦",
+        "Unbowed"
+      ],
+      "target": {
+        "path": [
+          "music/ex4/BGM_EX4_Field_Elp_Battle.scd",
+          "music/ex4/BGM_EX4_Field_Gar_Battle.scd",
+          "music/ex4/BGM_EX4_Field_Lab_Battle.scd",
+          "music/ex4/BGM_EX4_Field_Thav_Battle.scd"
+        ]
+      }
+    },
+    {
+      "source": [
+        "00009",
+        "ENDWALKER_010",
+        "迷夢 ～ラヴィリンソス：夜～",
+        "Dreams of Man"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Field_Lab_Night.scd"
+      }
+    },
+    {
+      "source": [
+        "00010",
+        "ENDWALKER_011",
+        "微笑む幽霊",
+        "Shade's Delight"
+      ],
+      "target": {
+        "path": "music/ffxiv/BGM_Event_Shinayashii.scd"
+      }
+    },
+    {
+      "source": [
+        "00011",
+        "ENDWALKER_012",
+        "神々の訓え ～サベネア島：昼～",
+        "Divine Words"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Field_Thav_Day.scd"
+      }
+    },
+    {
+      "source": [
+        "00012",
+        "ENDWALKER_013",
+        "落日の都 ～ラザハン～",
+        "Twilit Terraces"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Town_R_Day2.scd"
+      }
+    },
+    {
+      "source": [
+        "00013",
+        "ENDWALKER_014",
+        "ゾットの塔 ～暁月～",
+        "Tower of Zot"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Dan_D02.scd"
+      }
+    },
+    {
+      "source": [
+        "00014",
+        "ENDWALKER_015",
+        "震える刃",
+        "On Blade's Edge"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Boss_Battle01.scd"
+      }
+    },
+    {
+      "source": [
+        "00015",
+        "ENDWALKER_016",
+        "人々の祈り ～サベネア島：夜～",
+        "Prayers Repeated"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Field_Thav_Night.scd"
+      }
+    },
+    {
+      "source": [
+        "00016",
+        "ENDWALKER_017",
+        "白雪と黒鉄 ～ガレマルド：昼～",
+        "White Snow, Black Steel"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Field_Gar_Day.scd"
+      }
+    },
+    {
+      "source": [
+        "00017",
+        "ENDWALKER_018",
+        "護るべき営み",
+        "Those We Can Yet Save"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Field_Safe01.scd"
+      }
+    },
+    {
+      "source": [
+        "00018",
+        "ENDWALKER_019",
+        "帰らん、地平の彼方へ",
+        "Home Beyond the Horizon"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Event_16.scd",
+        "loopOffsetDelta": 2.3,
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": {
+        "source": {
+          "inputFiles": [
+            [
+              "00018",
+              "ENDWALKER_019",
+              "帰らん、地平の彼方へ",
+              "Home Beyond the Horizon"
+            ]
+          ],
+          "filterComplex": "[0:a]atrim=218.817:222.632,asetpts=PTS-STARTPTS,afade=t=in:d=0.043,afade=t=out:st=3.512:d=0.303:curve=cbr,adelay=218817:all=1[tr1];[0:a]atrim=start=116.242,asetpts=PTS-STARTPTS,afade=t=in:d=0.303:curve=cbr,adelay=222329:all=1[tr2];[tr1][tr2]amix=inputs=2:duration=longest:normalize=0,atrim=start=218.640[res]",
+          "filterComplexOutName": "[res]"
+        }
+      },
+      "target": {
+        "path": "music/ex4/BGM_EX4_Event_10.scd",
+        "loopOffsetDelta": 3,
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": [
+        "00019",
+        "ENDWALKER_020",
+        "黒闇と黒鉄 ～ガレマルド：夜～",
+        "Black Steel, Cold Embers"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Field_Gar_Night.scd"
+      }
+    },
+    {
+      "source": {
+        "source": {
+          "inputFiles": [
+            [
+              "00020",
+              "ENDWALKER_021",
+              "恐怖の波動",
+              "Tremble"
+            ]
+          ],
+          "filterComplex": "[0:a]afade=t=in:st=65.04525:d=2[tr1];[0:a]adelay=75195:all=1[tr2];[0:a]adelay=150390:all=1[tr3];[tr1][tr2][tr3]amix=inputs=3:duration=longest:normalize=0,atrim=start=65.04525,asetpts=PTS-STARTPTS[res]",
+          "filterComplexOutName": "[res]"
+        }
+      },
+      "target": {
+        "path": "music/ex4/BGM_EX4_Event_15.scd"
+      }
+    },
+    {
+      "source": [
+        "00021",
+        "ENDWALKER_022",
+        "小さな命",
+        "Each Drop"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Event_03.scd"
+      }
+    },
+    {
+      "source": [
+        "00022",
+        "ENDWALKER_023",
+        "ガレマルド急行 ～ 魔導神門 バブイルの塔～",
+        "Garlemald Express"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Dan_D04.scd"
+      }
+    },
+    {
+      "source": [
+        "00023",
+        "ENDWALKER_024",
+        "終の戦",
+        "Finality"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Boss_Battle02.scd"
+      }
+    },
+    {
+      "source": [
+        "00024",
+        "ENDWALKER_025",
+        "小さな一歩 ～嘆きの海～",
+        "One Small Step"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Field_Mar_Day.scd"
+      }
+    },
+    {
+      "source": [
+        "00025",
+        "ENDWALKER_026",
+        "冥き水底 \\(Scions & Sinners\\) 〜テンペスト：深部〜",
+        "'Neath Dark Waters \\(Scions & Sinners\\)"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Event_12.scd",
+        "segments": [
+          {
+            "sourceOffsets": {
+              "source": 0
+            },
+            "sourceThresholds": {
+              "target": 0.03,
+              "source": 0.03
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": [
+        "00026",
+        "ENDWALKER_027",
+        "ENDCALLER ～ゾディアーク討滅戦～",
+        "Endcaller"
+      ],
+      "target": {
+        "path": [
+          "music/ex4/BGM_EX4_Ban_01.scd",
+          "music/ffxiv/BGM_Ride_Zodiark.scd"
+        ]
+      }
+    },
+    {
+      "source": [
+        "00027",
+        "ENDWALKER_028",
+        "イマジネーション \\(Duality\\) 〜蒼天聖戦 魔科学研究所〜",
+        "Imagination \\(Duality\\)"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Event_13.scd",
+        "segments": [
+          {
+            "sourceOffsets": {
+              "source": 0
+            },
+            "sourceThresholds": {
+              "target": 0.03,
+              "source": 0.03
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": [
+        "00028",
+        "ENDWALKER_029",
+        "街のテーマ ～暁月～",
+        "Welcome to Our Town!"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Field_Safe02.scd"
+      }
+    },
+    {
+      "source": [
+        "00029",
+        "ENDWALKER_030",
+        "バトル1 from FINAL FANTASY IV",
+        "Battle 1 from FINAL FANTASY IV"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Field_Mar_Lep_battle.scd"
+      }
+    },
+    {
+      "source": [
+        "00030",
+        "ENDWALKER_031",
+        "絶望の果て",
+        "What Comes of Despair"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Event_09.scd",
+        "loopOffsetDelta": 3
+      }
+    },
+    {
+      "source": [
+        "00031",
+        "ENDWALKER_032",
+        "空が燃える日 ～終末樹海 ヴァナスパティ～",
+        "As the Sky Burns"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Dan_D03.scd"
+      }
+    },
+    {
+      "source": [
+        "00032",
+        "ENDWALKER_033",
+        "英雄に続け",
+        "Heroes Forge Ahead"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Event_06.scd"
+      }
+    },
+    {
+      "source": [
+        "00033",
+        "ENDWALKER_034",
+        "古の空 ～エルピス：昼～",
+        "Sky Unsundered"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Field_Elp_Day.scd"
+      }
+    },
+    {
+      "source": {
+        "source": {
+          "inputFiles": [
+            [
+              "00034",
+              "ENDWALKER_035",
+              "Flow Together"
+            ]
+          ],
+          "filterComplex": "[0:a]adelay=250367:all=1[tr2];[0:a][tr2]amix=inputs=2:duration=longest:normalize=0[res]",
+          "filterComplexOutName": "[res]"
+        }
+      },
+      "target": {
+        "path": "music/ex4/BGM_EX4_Event_20.scd"
+      }
+    },
+    {
+      "source": [
+        "00035",
+        "ENDWALKER_036",
+        "創造の奇跡 ～創造環境 ヒュペルボレア造物院～",
+        "Miracle Works"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Dan_D05.scd"
+      }
+    },
+    {
+      "source": [
+        "00036",
+        "ENDWALKER_037",
+        "古の星空 ～エルピス：夜～",
+        "Stars Long Dead"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Field_Elp_Night.scd"
+      }
+    },
+    {
+      "source": [
+        "00037",
+        "ENDWALKER_038",
+        "地より昇りし力",
+        "From Below"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Field_Lab_Ten.scd"
+      }
+    },
+    {
+      "source": [
+        "00039",
+        "ENDWALKER_040",
+        "^((?!Piano).)*Answers((?!Piano).)*$"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Event_21.scd",
+        "segments": [
+          {
+            "sourceOffsets": {
+              "source": 211.9909792
+            },
+            "sourceThresholds": {
+              "target": 0,
+              "source": 0
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": {
+        "source": {
+          "inputFiles": [
+            [
+              "00039",
+              "ENDWALKER_040",
+              "^((?!Piano).)*Answers((?!Piano).)*$"
+            ],
+            [],
+            [
+              "00038",
+              "ENDWALKER_039",
+              "灰より生まれし者",
+              "From the Ashes"
+            ]
+          ],
+          "filterComplex": "[0:a]atrim=0:219.829,asetpts=PTS-STARTPTS,afade=t=out:st=217.881:d=1.948:curve=squ[tr1];[1:a]atrim=217.382:222.454,asetpts=PTS-STARTPTS,afade=t=in:st=0:d=1.948:curve=squ,afade=t=out:st=2.938:d=2.134:curve=squ,adelay=217881:all=1,aresample=96000[tr2];[2:a]atrim=start=2.438,asetpts=PTS-STARTPTS,afade=t=in:st=0:d=2.134:curve=squ,adelay=220820:all=1[tr3];[tr1][tr2][tr3]amix=inputs=3:duration=longest:normalize=0,atrim=start=0.499208[res]",
+          "filterComplexOutName": "[res]"
+        }
+      },
+      "target": {
+        "path": "music/ex4/BGM_EX4_Event_14.scd",
+        "segments": [
+          {
+            "sourceThresholds": {
+              "target": 0,
+              "source": 0
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": [
+        "00040",
+        "ENDWALKER_041",
+        "星の海 ～星海潜航 アイティオン星晶鏡～",
+        "The Aetherial Sea"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Dan_D01.scd"
+      }
+    },
+    {
+      "source": [
+        "00041",
+        "ENDWALKER_042",
+        "Your Answer ～ハイデリン討滅戦～",
+        "Your Answer"
+      ],
+      "target": {
+        "path": [
+          "music/ex4/BGM_EX4_Ban_02.scd",
+          "music/ffxiv/BGM_Ride_Hydaelyn.scd"
+        ]
+      }
+    },
+    {
+      "source": [
+        "00042",
+        "ENDWALKER_043",
+        "Answers.*Piano"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Event_04.scd"
+      }
+    },
+    {
+      "source": [
+        "00043",
+        "ENDWALKER_044",
+        "ラストスタンド",
+        "The Last Stand"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Event_05.scd"
+      }
+    },
+    {
+      "source": [
+        "00044",
+        "ENDWALKER_045",
+        "Echoes in the Distance"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Field_Ult_Day01.scd"
+      }
+    },
+    {
+      "source": [
+        "00045",
+        "ENDWALKER_046",
+        "Close in the Distance.*Instrumental"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Field_Ult_Day02.scd"
+      }
+    },
+    {
+      "source": [
+        "00046",
+        "ENDWALKER_047",
+        "^((?!Instrumental).)*Close in the Distance((?!Instrumental).)*$"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Field_Ult_Day03.scd"
+      }
+    },
+    {
+      "source": [
+        "00047",
+        "ENDWALKER_048",
+        "デュナミスの欠片",
+        "Dynamis"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Event_07.scd"
+      }
+    },
+    {
+      "source": [
+        "00048",
+        "ENDWALKER_049",
+        "先ゆく星々 ～最終幻想 レムナント～",
+        "Of Countless Stars"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Dan_D06.scd"
+      }
+    },
+    {
+      "source": [
+        "00049",
+        "ENDWALKER_050",
+        "終焉の戦い",
+        "The Final Day"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Ban_04.scd"
+      }
+    },
+    {
+      "source": [
+        "00050",
+        "ENDWALKER_051",
+        "想いが動かす力",
+        "With Hearts Aligned"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Ban_05.scd"
+      }
+    },
+    {
+      "source": [
+        "00051",
+        "ENDWALKER_052",
+        "^((?!Together).)*Flow((?!Together).)*$"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Event_01.scd",
+        "segments": [
+          {
+            "sourceOffsets": {
+              "source": 1.699
+            },
+            "sourceThresholds": {
+              "target": 0,
+              "source": 0
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ],
+            "length": 300.7469161
+          },
+          {
+            "sourceFilters": {
+              "target": "volume=-4dB"
+            },
+            "sourceOffsets": {
+              "target": 300.7469161
+            },
+            "sourceThresholds": {
+              "target": 0,
+              "source": 0
+            },
+            "channels": [
+              {
+                "source": "target",
+                "channel": 0
+              },
+              {
+                "source": "target",
+                "channel": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": [
+        "00052",
+        "ENDWALKER_053",
+        "^((?!Footfalls).)*Endwalker((?!Footfalls).)*$"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_",
+        "enable": false
+      }
+    },
+    {
+      "source": [
+        "00053",
+        "ENDWALKER_054",
+        "星と命を巡る物語",
+        "The Tale of the Star"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Event_11.scd"
+      }
+    },
+    {
+      "source": [
+        "00055",
+        "ENDWALKER_055",
+        "多彩なる都 ～ラザハン：昼～",
+        "Vibrant Voices"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Town_R_Day.scd"
+      }
+    },
+    {
+      "source": [
+        "00056",
+        "ENDWALKER_056",
+        "薫香の都 ～ラザハン：夜～",
+        "Perfumed Eves"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Town_R_Night.scd"
+      }
+    },
+    {
+      "source": [
+        "00057",
+        "ENDWALKER_057",
+        "ハピネスキャロット ～楽園都市 スマイルトン～",
+        "Carrots of Happiness"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Dan_D07.scd"
+      }
+    },
+    {
+      "source": [
+        "00058",
+        "ENDWALKER_058",
+        "エスケープ \\(Journeys\\) 〜次元の狭間オメガ：アルファ編〜",
+        "eScape \\(Journeys\\)"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Dan_D08.scd",
+        "# comment": "Looped in-game version has cymbals at end",
+        "segments": [
+          {
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ],
+            "length": 240
+          },
+          {
+            "sourceOffsets": {
+              "target": 240
+            },
+            "channels": [
+              {
+                "source": "target",
+                "channel": 0
+              },
+              {
+                "source": "target",
+                "channel": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": [
+        "00059",
+        "ENDWALKER_059",
+        "旅を駆け抜けて",
+        "Roads Less Traveled"
+      ],
+      "target": {
+        "path": [
+          "music/ex4/BGM_EX4_Event_17.scd",
+          "music/ffxiv/BGM_Ride_Ex4common.scd"
+        ]
+      }
+    },
+    {
+      "source": [
+        "00060",
+        "ENDWALKER_060",
+        "魔のすべて",
+        "Where Dæmons Abide"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Raid_01.scd"
+      }
+    },
+    {
+      "source": [
+        "00061",
+        "ENDWALKER_061",
+        "縛めの鎖 ～万魔殿パンデモニウム：辺獄編～",
+        "Ancient Shackles"
+      ],
+      "target": {
+        "path": "music/ex4/BGM_EX4_Raid_02.scd"
+      }
+    },
+    {
+      "source": [
+        "00062",
+        "ENDWALKER_062",
+        "此処に獅子あり ～万魔殿パンデモニウム：辺獄編～",
+        "Hic Svnt Leones"
+      ],
+      "target": {
+        "path": [
+          "music/ex4/BGM_EX4_Raid_03.scd",
+          "music/ffxiv/BGM_Ride_Pandemonium01.scd"
+        ],
+        "loopOffsetDelta": 3.5
+      }
+    },
+    {
+      "source": [
+        "00065",
+        "ENDWALKER_063",
+        "Endwalker \\(Chiptune Version\\)"
+      ],
+      "target": {
+        "enable": false,
+        "path": "",
+        "# comment": "Unused in-game (maybe exists as an Orchestrion?)"
+      }
+    }
+  ]
+}
