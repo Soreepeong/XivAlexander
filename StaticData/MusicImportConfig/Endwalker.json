@@ -757,53 +757,83 @@
         "ENDWALKER_052",
         "^((?!Together).)*Flow((?!Together).)*$"
       ],
-      "target": {
-        "path": "music/ex4/BGM_EX4_Event_01.scd",
-        "segments": [
-          {
-            "sourceOffsets": {
-              "source": 1.699
-            },
-            "sourceThresholds": {
-              "target": 0,
-              "source": 0
-            },
-            "channels": [
-              {
-                "source": "source",
-                "channel": 0
+      "target": [
+        {
+          "path": "music/ex4/BGM_EX4_Event_02.scd",
+          "loopOffsetDelta": 9.029,
+          "segments": [
+            {
+              "sourceOffsets": {
+                "source": 1.699
               },
-              {
-                "source": "source",
-                "channel": 1
-              }
-            ],
-            "length": 300.7469161
-          },
-          {
-            "sourceFilters": {
-              "target": "volume=-4dB"
-            },
-            "sourceOffsets": {
-              "target": 300.7469161
-            },
-            "sourceThresholds": {
-              "target": 0,
-              "source": 0
-            },
-            "channels": [
-              {
-                "source": "target",
-                "channel": 0
+              "sourceFilters": {
+                "source": "afade=t=out:st=311.045:d=1.81"
               },
-              {
-                "source": "target",
-                "channel": 1
-              }
-            ]
-          }
-        ]
-      }
+              "sourceThresholds": {
+                "target": 0,
+                "source": 0
+              },
+              "channels": [
+                {
+                  "source": "source",
+                  "channel": 0
+                },
+                {
+                  "source": "source",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "music/ex4/BGM_EX4_Event_01.scd",
+          "segments": [
+            {
+              "sourceOffsets": {
+                "source": 1.699
+              },
+              "sourceThresholds": {
+                "target": 0,
+                "source": 0
+              },
+              "channels": [
+                {
+                  "source": "source",
+                  "channel": 0
+                },
+                {
+                  "source": "source",
+                  "channel": 1
+                }
+              ],
+              "length": 300.7469161
+            },
+            {
+              "sourceFilters": {
+                "target": "volume=-4dB"
+              },
+              "sourceOffsets": {
+                "target": 300.7469161
+              },
+              "sourceThresholds": {
+                "target": 0,
+                "source": 0
+              },
+              "channels": [
+                {
+                  "source": "target",
+                  "channel": 0
+                },
+                {
+                  "source": "target",
+                  "channel": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "source": [
