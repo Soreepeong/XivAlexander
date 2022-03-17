@@ -554,7 +554,7 @@
       "source": [
         "00036",
         "SHADOWBRINGERS_37",
-        "Shadowbringers"
+        "^Shadowbringers$"
       ],
       "target": [
         {
