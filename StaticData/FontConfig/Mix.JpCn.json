@@ -1,6 +1,6 @@
 {
-  "name": "AXIS+ChnAXIS+Source Han Sans SC(DirectWrite)",
-  "description": "Mixes ChnAXIS from Chinese game client to International game client, and falls back to Source Han Sans SC where corresponding font size isn't available. You may have to change game installation paths.",
+  "name": "AXIS+ChnAXIS",
+  "description": "Mixes ChnAXIS from Chinese game client to International game client.",
   "textureWidth": 4096,
   "textureHeight": 4096,
   "compactLayout": true,
@@ -15,22 +15,11 @@
     "cn": {
       "autoDetectRegion": "Chinese",
       "fallbackPathList": [
-        "C:\\Program Files (x86)\\上海数龙科技有限公司\\最终幻想XIV\\game\\sqpack\\ffxiv\\000000.win32.index",
+        "C:\\Program Files (x86)\\最终幻想XIV\\game\\sqpack\\ffxiv\\000000.win32.index",
         "C:\\Program Files (x86)\\SNDA\\FFXIV\\game\\sqpack\\ffxiv\\000000.win32.index"
       ]
     }
   },
-  "fontRequirements": [
-    {
-      "name": "Source Han Sans SC",
-      "homepage": "https://github.com/adobe-fonts/source-han-sans",
-      "installInstructions": {
-        "^en($|-)": "1. Download \"Language Specific OTFs Simplified Chinese (简体中文)\" (about 90MB) from <a href=\"https://github.com/adobe-fonts/source-han-sans/releases\">Source Han Sans official distribution page at GitHub</a>.\n2. Extract all files.\n3. Navigate into \"OTF\\Korean\"\n4. Select everything (press Ctrl+A).\n5. Right click on any of the items.\n6. Click \"Install\" or \"Install for all users\".",
-        "^ja($|-)": "1. <a href=\"https://github.com/adobe-fonts/source-han-sans/releases\">Source Han Sansの公式ダウンロードページ(GitHub)</a>で「Language Specific OTFs Simplified Chinese (简体中文)」を選択してダウンロードします。\n2. すべてのファイルの圧縮を解除します。\n3. 「OTF\\Korean」フォルダーを開けます。\n4. すべてのファイルを選択します。（ショートカットキーはCtrl+Aです。）\n5. あるファイルを右クリックします。\n6. 「インストール」あるいは「すべてのユーザーに対してインストール」を選択します。",
-        "^ko($|-)": "1. <a href=\"https://github.com/adobe-fonts/source-han-sans/releases\">Source Han Sans 공식 다운로드 페이지 (GitHub)</a>에서 \"Language Specific OTFs Simplified Chinese (简体中文)\"를 선택해서 받습니다.\n2. 모든 파일의 압축을 풉니다.\n3. \"OTF\\Korean\" 폴더로 들어갑니다.\n4. 모든 파일을 선택합니다. (Ctrl+A를 누르세요.)\n5. 아무 파일이나 마우스 오른쪽 버튼 클릭을 합니다.\n6. \"설치\" 혹은 \"모든 사용자용으로 설치\"를 선택해 주세요."
-      }
-    }
-  ],
   "sources": {
     "game:AXIS_96": {
       "gameIndexFileName": "jp",
@@ -70,6 +59,11 @@
     "game:ChnAXIS_180": {
       "gameIndexFileName": "cn",
       "fdtPath": "common/font/ChnAXIS_180.fdt",
+      "texturePath": "common/font/font_chn_{}.tex"
+    },
+    "game:ChnAXIS_360": {
+      "gameIndexFileName": "cn",
+      "fdtPath": "common/font/ChnAXIS_360.fdt",
       "texturePath": "common/font/font_chn_{}.tex"
     },
     "game:Jupiter_16": {
@@ -161,85 +155,77 @@
       "gameIndexFileName": "jp",
       "fdtPath": "common/font/TrumpGothic_68.fdt",
       "texturePath": "common/font/font{}.tex"
-    },
-    "dwrite:SourceHanSansSC:36": {
-      "familyName": "Source Han Sans SC",
-      "height": 36
     }
   },
   "targets": {
     "font{}.tex": {
       "AXIS_96.fdt": {
-        "height": 9.6,
-        "ascent": "game:AXIS_96",
-        "lineHeight": "game:AXIS_96",
+        "height": 12,
+        "ascent": "game:ChnAXIS_120",
+        "lineHeight": "game:ChnAXIS_120",
         "sources": [
           {
-            "name": "game:AXIS_96"
+            "name": "game:ChnAXIS_120"
           },
           {
-            "name": "game:ChnAXIS_120",
-            "offsetYModifier": 2
+            "name": "game:AXIS_12",
+            "offsetYModifier": -2
           }
         ]
       },
       "AXIS_12.fdt": {
         "height": 12,
-        "ascent": "game:AXIS_12",
-        "lineHeight": "game:AXIS_12",
+        "ascent": "game:ChnAXIS_120",
+        "lineHeight": "game:ChnAXIS_120",
         "sources": [
           {
-            "name": "game:AXIS_12"
+            "name": "game:ChnAXIS_120"
           },
           {
-            "name": "game:ChnAXIS_120",
-            "offsetYModifier": 2
+            "name": "game:AXIS_12",
+            "offsetYModifier": -2
           }
         ]
       },
       "AXIS_14.fdt": {
         "height": 14,
-        "ascent": "game:AXIS_14",
-        "lineHeight": "game:AXIS_14",
+        "ascent": "game:ChnAXIS_140",
+        "lineHeight": "game:ChnAXIS_140",
         "sources": [
           {
-            "name": "game:AXIS_14"
+            "name": "game:ChnAXIS_140"
           },
           {
-            "name": "game:ChnAXIS_140"
+            "name": "game:AXIS_14",
+            "offsetYModifier": -1
           }
         ]
       },
       "AXIS_18.fdt": {
         "height": 18,
-        "ascent": "game:AXIS_18",
-        "lineHeight": "game:AXIS_18",
+        "ascent": "game:ChnAXIS_180",
+        "lineHeight": "game:ChnAXIS_180",
         "sources": [
           {
-            "name": "game:AXIS_18"
+            "name": "game:ChnAXIS_180"
           },
           {
-            "name": "game:ChnAXIS_180"
+            "name": "game:AXIS_18",
+            "offsetYModifier": -1
           }
         ]
       },
       "AXIS_36.fdt": {
         "height": 36,
-        "ascent": "game:AXIS_36",
-        "lineHeight": "game:AXIS_36",
+        "ascent": "game:ChnAXIS_360",
+        "lineHeight": "game:ChnAXIS_360",
         "sources": [
           {
-            "name": "game:ChnAXIS_180",
-            "offsetYModifier": 3
-          },
-          {
-            "name": "dwrite:SourceHanSansSC:36",
-            "replace": true,
-            "extendRange": false
+            "name": "game:ChnAXIS_360"
           },
           {
             "name": "game:AXIS_36",
-            "replace": true
+            "offsetYModifier": -1
           }
         ]
       },
@@ -247,7 +233,6 @@
         "height": 16,
         "ascent": "game:Jupiter_16",
         "lineHeight": "game:Jupiter_16",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_16"
@@ -261,7 +246,6 @@
         "height": 20,
         "ascent": "game:Jupiter_20",
         "lineHeight": "game:Jupiter_20",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_20"
@@ -275,7 +259,6 @@
         "height": 23,
         "ascent": "game:Jupiter_23",
         "lineHeight": "game:Jupiter_23",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_23"
@@ -289,7 +272,6 @@
         "height": 45,
         "ascent": "game:Jupiter_45",
         "lineHeight": "game:Jupiter_45",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_45"
@@ -300,19 +282,12 @@
         "height": 46,
         "ascent": "game:Jupiter_46",
         "lineHeight": "game:Jupiter_46",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
-            "name": "game:ChnAXIS_180"
+            "name": "game:Jupiter_46"
           },
           {
-            "name": "dwrite:SourceHanSansSC:36",
-            "replace": true,
-            "extendRange": false
-          },
-          {
-            "name": "game:Jupiter_46",
-            "replace": true
+            "name": "game:ChnAXIS_360"
           }
         ]
       },
@@ -320,7 +295,6 @@
         "height": 90,
         "ascent": "game:Jupiter_90",
         "lineHeight": "game:Jupiter_90",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_90"
@@ -331,7 +305,6 @@
         "height": 16,
         "ascent": "game:Meidinger_16",
         "lineHeight": "game:Meidinger_16",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Meidinger_16"
@@ -342,7 +315,6 @@
         "height": 20,
         "ascent": "game:Meidinger_20",
         "lineHeight": "game:Meidinger_20",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Meidinger_20"
@@ -353,7 +325,6 @@
         "height": 40,
         "ascent": "game:Meidinger_40",
         "lineHeight": "game:Meidinger_40",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Meidinger_40"
@@ -364,13 +335,13 @@
         "height": 10,
         "ascent": "game:MiedingerMid_10",
         "lineHeight": "game:MiedingerMid_10",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:MiedingerMid_10"
           },
           {
-            "name": "game:ChnAXIS_120"
+            "name": "game:ChnAXIS_120",
+            "offsetYModifier": 2
           }
         ]
       },
@@ -378,13 +349,13 @@
         "height": 12,
         "ascent": "game:MiedingerMid_12",
         "lineHeight": "game:MiedingerMid_12",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:MiedingerMid_12"
           },
           {
-            "name": "game:ChnAXIS_120"
+            "name": "game:ChnAXIS_120",
+            "offsetYModifier": 1
           }
         ]
       },
@@ -392,13 +363,13 @@
         "height": 14,
         "ascent": "game:MiedingerMid_14",
         "lineHeight": "game:MiedingerMid_14",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:MiedingerMid_14"
           },
           {
-            "name": "game:ChnAXIS_140"
+            "name": "game:ChnAXIS_140",
+            "offsetYModifier": 1
           }
         ]
       },
@@ -406,7 +377,6 @@
         "height": 18,
         "ascent": "game:MiedingerMid_18",
         "lineHeight": "game:MiedingerMid_18",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:MiedingerMid_18"
@@ -420,19 +390,12 @@
         "height": 36,
         "ascent": "game:MiedingerMid_36",
         "lineHeight": "game:MiedingerMid_36",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
-            "name": "game:ChnAXIS_180"
+            "name": "game:MiedingerMid_36"
           },
           {
-            "name": "dwrite:SourceHanSansSC:36",
-            "replace": true,
-            "extendRange": false
-          },
-          {
-            "name": "game:MiedingerMid_36",
-            "replace": true
+            "name": "game:ChnAXIS_360"
           }
         ]
       },
@@ -440,7 +403,6 @@
         "height": 18.4,
         "ascent": "game:TrumpGothic_184",
         "lineHeight": "game:TrumpGothic_184",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:TrumpGothic_184"
@@ -454,7 +416,6 @@
         "height": 23,
         "ascent": "game:TrumpGothic_23",
         "lineHeight": "game:TrumpGothic_23",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:TrumpGothic_23"
@@ -468,19 +429,12 @@
         "height": 34,
         "ascent": "game:TrumpGothic_34",
         "lineHeight": "game:TrumpGothic_34",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
-            "name": "game:ChnAXIS_180"
+            "name": "game:TrumpGothic_34"
           },
           {
-            "name": "dwrite:SourceHanSansSC:36",
-            "replace": true,
-            "extendRange": false
-          },
-          {
-            "name": "game:TrumpGothic_34",
-            "replace": true
+            "name": "game:ChnAXIS_360"
           }
         ]
       },
@@ -488,19 +442,12 @@
         "height": 68,
         "ascent": "game:TrumpGothic_68",
         "lineHeight": "game:TrumpGothic_68",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
-            "name": "game:ChnAXIS_180"
+            "name": "game:TrumpGothic_68"
           },
           {
-            "name": "dwrite:SourceHanSansSC:36",
-            "replace": true,
-            "extendRange": false
-          },
-          {
-            "name": "game:TrumpGothic_68",
-            "replace": true
+            "name": "game:ChnAXIS_360"
           }
         ]
       }
@@ -508,61 +455,57 @@
     "font_lobby{}.tex": {
       "AXIS_12_lobby.fdt": {
         "height": 12,
-        "ascent": "game:AXIS_12",
-        "lineHeight": "game:AXIS_12",
+        "ascent": "game:ChnAXIS_120",
+        "lineHeight": "game:ChnAXIS_120",
         "sources": [
           {
-            "name": "game:AXIS_12"
+            "name": "game:ChnAXIS_120"
           },
           {
-            "name": "game:ChnAXIS_120",
-            "offsetYModifier": 2
+            "name": "game:AXIS_12",
+            "offsetYModifier": -2
           }
         ]
       },
       "AXIS_14_lobby.fdt": {
         "height": 14,
-        "ascent": "game:AXIS_14",
-        "lineHeight": "game:AXIS_14",
+        "ascent": "game:ChnAXIS_140",
+        "lineHeight": "game:ChnAXIS_140",
         "sources": [
           {
-            "name": "game:AXIS_14"
+            "name": "game:ChnAXIS_140"
           },
           {
-            "name": "game:ChnAXIS_140"
+            "name": "game:AXIS_14",
+            "offsetYModifier": -1
           }
         ]
       },
       "AXIS_18_lobby.fdt": {
         "height": 18,
-        "ascent": "game:AXIS_18",
-        "lineHeight": "game:AXIS_18",
+        "ascent": "game:ChnAXIS_180",
+        "lineHeight": "game:ChnAXIS_180",
         "sources": [
           {
-            "name": "game:AXIS_18"
+            "name": "game:ChnAXIS_180"
           },
           {
-            "name": "game:ChnAXIS_180"
+            "name": "game:AXIS_18",
+            "offsetYModifier": -1
           }
         ]
       },
       "AXIS_36_lobby.fdt": {
         "height": 36,
-        "ascent": "game:AXIS_36",
-        "lineHeight": "game:AXIS_36",
+        "ascent": "game:ChnAXIS_360",
+        "lineHeight": "game:ChnAXIS_360",
         "sources": [
           {
-            "name": "game:ChnAXIS_180",
-            "offsetYModifier": 3
-          },
-          {
-            "name": "dwrite:SourceHanSansSC:36",
-            "replace": true,
-            "extendRange": false
+            "name": "game:ChnAXIS_360"
           },
           {
             "name": "game:AXIS_36",
-            "replace": true
+            "offsetYModifier": -1
           }
         ]
       },
@@ -570,7 +513,6 @@
         "height": 16,
         "ascent": "game:Jupiter_16",
         "lineHeight": "game:Jupiter_16",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_16"
@@ -584,7 +526,6 @@
         "height": 20,
         "ascent": "game:Jupiter_20",
         "lineHeight": "game:Jupiter_20",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_20"
@@ -598,7 +539,6 @@
         "height": 23,
         "ascent": "game:Jupiter_23",
         "lineHeight": "game:Jupiter_23",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_23"
@@ -612,7 +552,6 @@
         "height": 45,
         "ascent": "game:Jupiter_45",
         "lineHeight": "game:Jupiter_45",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_45"
@@ -623,19 +562,12 @@
         "height": 46,
         "ascent": "game:Jupiter_46",
         "lineHeight": "game:Jupiter_46",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
-            "name": "game:ChnAXIS_180"
+            "name": "game:Jupiter_46"
           },
           {
-            "name": "dwrite:SourceHanSansSC:36",
-            "replace": true,
-            "extendRange": false
-          },
-          {
-            "name": "game:Jupiter_46",
-            "replace": true
+            "name": "game:ChnAXIS_360"
           }
         ]
       },
@@ -643,7 +575,6 @@
         "height": 90,
         "ascent": "game:Jupiter_90",
         "lineHeight": "game:Jupiter_90",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Jupiter_90"
@@ -654,7 +585,6 @@
         "height": 16,
         "ascent": "game:Meidinger_16",
         "lineHeight": "game:Meidinger_16",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Meidinger_16"
@@ -665,7 +595,6 @@
         "height": 20,
         "ascent": "game:Meidinger_20",
         "lineHeight": "game:Meidinger_20",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Meidinger_20"
@@ -676,7 +605,6 @@
         "height": 40,
         "ascent": "game:Meidinger_40",
         "lineHeight": "game:Meidinger_40",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:Meidinger_40"
@@ -687,13 +615,13 @@
         "height": 10,
         "ascent": "game:MiedingerMid_10",
         "lineHeight": "game:MiedingerMid_10",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:MiedingerMid_10"
           },
           {
-            "name": "game:ChnAXIS_120"
+            "name": "game:ChnAXIS_120",
+            "offsetYModifier": 2
           }
         ]
       },
@@ -701,13 +629,13 @@
         "height": 12,
         "ascent": "game:MiedingerMid_12",
         "lineHeight": "game:MiedingerMid_12",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:MiedingerMid_12"
           },
           {
-            "name": "game:ChnAXIS_120"
+            "name": "game:ChnAXIS_120",
+            "offsetYModifier": 1
           }
         ]
       },
@@ -715,13 +643,13 @@
         "height": 14,
         "ascent": "game:MiedingerMid_14",
         "lineHeight": "game:MiedingerMid_14",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:MiedingerMid_14"
           },
           {
-            "name": "game:ChnAXIS_140"
+            "name": "game:ChnAXIS_140",
+            "offsetYModifier": 1
           }
         ]
       },
@@ -729,7 +657,6 @@
         "height": 18,
         "ascent": "game:MiedingerMid_18",
         "lineHeight": "game:MiedingerMid_18",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:MiedingerMid_18"
@@ -743,19 +670,12 @@
         "height": 36,
         "ascent": "game:MiedingerMid_36",
         "lineHeight": "game:MiedingerMid_36",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
-            "name": "game:ChnAXIS_180"
+            "name": "game:MiedingerMid_36"
           },
           {
-            "name": "dwrite:SourceHanSansSC:36",
-            "replace": true,
-            "extendRange": false
-          },
-          {
-            "name": "game:MiedingerMid_36",
-            "replace": true
+            "name": "game:ChnAXIS_360"
           }
         ]
       },
@@ -763,7 +683,6 @@
         "height": 18.4,
         "ascent": "game:TrumpGothic_184",
         "lineHeight": "game:TrumpGothic_184",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:TrumpGothic_184"
@@ -777,7 +696,6 @@
         "height": 23,
         "ascent": "game:TrumpGothic_23",
         "lineHeight": "game:TrumpGothic_23",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
             "name": "game:TrumpGothic_23"
@@ -791,19 +709,12 @@
         "height": 34,
         "ascent": "game:TrumpGothic_34",
         "lineHeight": "game:TrumpGothic_34",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
-            "name": "game:ChnAXIS_180"
+            "name": "game:TrumpGothic_34"
           },
           {
-            "name": "dwrite:SourceHanSansSC:36",
-            "replace": true,
-            "extendRange": false
-          },
-          {
-            "name": "game:TrumpGothic_34",
-            "replace": true
+            "name": "game:ChnAXIS_360"
           }
         ]
       },
@@ -811,19 +722,12 @@
         "height": 68,
         "ascent": "game:TrumpGothic_68",
         "lineHeight": "game:TrumpGothic_68",
-        "maxGlobalOffsetX": 0,
         "sources": [
           {
-            "name": "game:ChnAXIS_180"
+            "name": "game:TrumpGothic_68"
           },
           {
-            "name": "dwrite:SourceHanSansSC:36",
-            "replace": true,
-            "extendRange": false
-          },
-          {
-            "name": "game:TrumpGothic_68",
-            "replace": true
+            "name": "game:ChnAXIS_360"
           }
         ]
       }
@@ -831,49 +735,57 @@
     "font_chn_{}.tex": {
       "ChnAXIS_120.fdt": {
         "height": 12,
-        "ascent": "game:AXIS_12",
-        "lineHeight": "game:AXIS_12",
+        "ascent": "game:ChnAXIS_120",
+        "lineHeight": "game:ChnAXIS_120",
         "sources": [
           {
-            "name": "game:AXIS_12"
+            "name": "game:ChnAXIS_120"
           },
           {
-            "name": "game:ChnAXIS_120",
-            "offsetYModifier": 2
+            "name": "game:AXIS_12",
+            "offsetYModifier": -2
           }
         ]
       },
       "ChnAXIS_140.fdt": {
         "height": 14,
-        "ascent": "game:AXIS_14",
-        "lineHeight": "game:AXIS_14",
+        "ascent": "game:ChnAXIS_140",
+        "lineHeight": "game:ChnAXIS_140",
         "sources": [
           {
-            "name": "game:AXIS_14"
+            "name": "game:ChnAXIS_140"
           },
           {
-            "name": "game:ChnAXIS_140",
-            "offsetYModifier": 2
+            "name": "game:AXIS_14",
+            "offsetYModifier": -1
           }
         ]
       },
       "ChnAXIS_180.fdt": {
         "height": 18,
-        "ascent": "game:AXIS_18",
-        "lineHeight": "game:AXIS_18",
+        "ascent": "game:ChnAXIS_180",
+        "lineHeight": "game:ChnAXIS_180",
         "sources": [
           {
-            "name": "game:ChnAXIS_180",
-            "offsetYModifier": 3
+            "name": "game:ChnAXIS_180"
           },
           {
-            "name": "dwrite:SourceHanSansSC:36",
-            "replace": true,
-            "extendRange": false
+            "name": "game:AXIS_18",
+            "offsetYModifier": -1
+          }
+        ]
+      },
+      "ChnAXIS_360.fdt": {
+        "height": 36,
+        "ascent": "game:ChnAXIS_360",
+        "lineHeight": "game:ChnAXIS_360",
+        "sources": [
+          {
+            "name": "game:ChnAXIS_360"
           },
           {
             "name": "game:AXIS_36",
-            "replace": true
+            "offsetYModifier": -1
           }
         ]
       }
