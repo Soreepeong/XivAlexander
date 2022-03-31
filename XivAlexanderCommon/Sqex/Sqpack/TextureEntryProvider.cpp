@@ -1,6 +1,5 @@
-#include "pch.h"
-#include "XivAlexanderCommon/Sqex/Sqpack/TextureEntryProvider.h"
 
+#include "XivAlexanderCommon/Sqex/Sqpack/TextureEntryProvider.h"
 #include "XivAlexanderCommon/Sqex/Texture.h"
 #include "XivAlexanderCommon/Utils/ZlibWrapper.h"
 

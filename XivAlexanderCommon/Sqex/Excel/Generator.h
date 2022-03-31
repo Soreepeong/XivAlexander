@@ -1,4 +1,8 @@
 #pragma once
+
+#include <map>
+#include <set>
+
 #include "XivAlexanderCommon/Sqex/Excel.h"
 #include "XivAlexanderCommon/Sqex/Sqpack.h"
 

@@ -1,5 +1,3 @@
-#include "pch.h"
-
 #include "XivAlexanderCommon/Sqex/EqpGmp.h"
 
 std::vector<uint64_t> Sqex::EqpGmp::ExpandCollapse(const std::vector<uint64_t>& data, bool expand) {

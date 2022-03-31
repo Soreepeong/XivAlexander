@@ -1,9 +1,7 @@
 #pragma once
-
 #include <cstdint>
 #include <span>
 #include <vector>
-
 #include "XivAlexanderCommon/Sqex.h"
 
 namespace Sqex::Eqdp {
@@ -109,6 +107,6 @@ namespace Sqex::Eqdp {
 			return Block(setId / Header().BlockMemberCount)[setId % Header().BlockMemberCount];
 		}
 	};
-	
+
 	inline File::File(ExpandedFile& data) : m_data(ExpandCollapse(dynamic_cast<File*>(&data), false)) {}
 }

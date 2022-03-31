@@ -1,5 +1,7 @@
 #pragma once
 
+#include <set>
+
 #include "XivAlexanderCommon/Sqex.h"
 #include "XivAlexanderCommon/Sqex/Sound.h"
 

@@ -1,5 +1,4 @@
 #pragma once
-
 #include "XivAlexanderCommon/Sqex/Sqpack/EntryProvider.h"
 
 namespace Sqex::Sqpack {
@@ -13,9 +12,8 @@ namespace Sqex::Sqpack {
 	public:
 		RandomAccessStreamAsEntryProviderView(EntryPathSpec pathSpec, std::shared_ptr<const RandomAccessStream> stream, uint64_t offset = 0, uint64_t length = UINT64_MAX);
 
-		[[nodiscard]] uint64_t StreamSize() const override;
-		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
+		[[nodiscard]] std::streamsize StreamSize() const override;
+		std::streamsize ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) const override;
 		[[nodiscard]] SqData::FileEntryType EntryType() const override;
-		[[nodiscard]] std::string DescribeState() const override;
 	};
 }

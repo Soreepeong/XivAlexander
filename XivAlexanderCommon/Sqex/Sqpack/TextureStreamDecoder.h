@@ -1,5 +1,4 @@
 #pragma once
-
 #include "XivAlexanderCommon/Sqex/Sqpack/StreamDecoder.h"
 
 namespace Sqex::Sqpack {
@@ -15,6 +14,6 @@ namespace Sqex::Sqpack {
 
 	public:
 		TextureStreamDecoder(const SqData::FileEntryHeader& header, std::shared_ptr<const EntryProvider> stream);
-		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) override;
+		std::streamsize ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) override;
 	};
 }

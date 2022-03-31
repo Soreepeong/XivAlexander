@@ -1,5 +1,4 @@
 #pragma once
-
 #include "XivAlexanderCommon/Sqex/Texture.h"
 
 namespace Sqex::Texture {
@@ -13,8 +12,6 @@ namespace Sqex::Texture {
 		MipmapStream(size_t width, size_t height, size_t layers, Format type);
 
 		std::shared_ptr<const MipmapStream> ViewARGB8888(Format type = Format::Unknown) const;
-
-		void Show(std::string title = std::string("Preview")) const;
 	};
 
 	class WrappedMipmapStream : public MipmapStream {
@@ -35,8 +32,8 @@ namespace Sqex::Texture {
 			, m_underlying(std::move(underlying)) {
 		}
 
-		[[nodiscard]] uint64_t StreamSize() const override { return m_underlying->StreamSize(); }
-		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override { return m_underlying->ReadStreamPartial(offset, buf, length); }
+		[[nodiscard]] std::streamsize StreamSize() const override { return m_underlying->StreamSize(); }
+		std::streamsize ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) const override { return m_underlying->ReadStreamPartial(offset, buf, length); }
 	};
 
 	class MemoryBackedMipmap : public MipmapStream {
@@ -55,29 +52,17 @@ namespace Sqex::Texture {
 
 		static std::shared_ptr<MemoryBackedMipmap> NewARGB8888From(const MipmapStream* stream, Format type = Format::A8R8G8B8);
 
-		[[nodiscard]] uint64_t StreamSize() const override { return static_cast<uint32_t>(m_data.size());  }
-		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
+		[[nodiscard]] std::streamsize StreamSize() const override { return static_cast<uint32_t>(m_data.size()); }
+		std::streamsize ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) const override;
 
 		template<typename T>
 		[[nodiscard]] auto View() {
 			return span_cast<T>(m_data);
 		}
+
 		template<typename T>
 		[[nodiscard]] auto View() const {
 			return span_cast<const T>(m_data);
 		}
-	};
-
-	class FileBackedReadOnlyMipmap : public MipmapStream {
-		const Win32::Handle m_file;
-
-	public:
-		FileBackedReadOnlyMipmap(size_t width, size_t height, size_t layers, Format type, Win32::Handle file)
-			: MipmapStream(width, height, layers, type)
-			, m_file(std::move(file)) {
-		}
-
-		[[nodiscard]] uint64_t StreamSize() const override { return static_cast<uint32_t>(m_file.GetFileSize()); }
-		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override { return m_file.Read(offset, buf, static_cast<size_t>(length)); }
 	};
 }

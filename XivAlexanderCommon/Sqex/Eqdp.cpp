@@ -1,5 +1,3 @@
-#include "pch.h"
-
 #include "XivAlexanderCommon/Sqex/Eqdp.h"
 
 std::vector<uint8_t> Sqex::Eqdp::ExpandCollapse(const File* file, bool expand) {
@@ -11,7 +9,7 @@ std::vector<uint8_t> Sqex::Eqdp::ExpandCollapse(const File* file, bool expand) {
 	std::vector<uint8_t> newData;
 	newData.resize(baseOffset + sizeof uint16_t * header.BlockCount * header.BlockMemberCount);
 	*reinterpret_cast<Header*>(&newData[0]) = header;
-	const auto newIndices = span_cast<uint16_t>(newData, sizeof header, header.BlockCount.Value());
+	const auto newIndices = span_cast<uint16_t>(newData, sizeof header, header.BlockCount);
 	const auto newBody = span_cast<uint16_t>(newData, baseOffset, size_t{ 1 } * header.BlockCount * header.BlockMemberCount);
 	uint16_t newBodyIndex = 0;
 

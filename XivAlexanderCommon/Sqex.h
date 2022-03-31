@@ -1,16 +1,13 @@
 #pragma once
-
 #include <algorithm>
+#include <fstream>
+#include <functional>
 #include <mutex>
+#include <filesystem>
 #include <span>
 #include <type_traits>
 
-#include "XivAlexanderCommon/Utils/Win32/Handle.h"
-#include "XivAlexanderCommon/Utils/Utils.h"
-
 namespace Sqex {
-	using namespace Utils;
-
 	// when used as game launch parameter, subtract by one.
 	enum class Language : uint16_t {
 		Unspecified = 0,
@@ -23,37 +20,262 @@ namespace Sqex {
 		Korean = 7,
 	};
 
-	void to_json(nlohmann::json&, const Language&);
-	void from_json(const nlohmann::json&, Language&);
+	static constexpr uint32_t EntryAlignment = 128;
 
-	enum class Region {
-		Unspecified = 0,
-		Japan = 1,
-		NorthAmerica = 2,
-		Europe = 3,
-		China = 4,
-		Korea = 5,
+	template<typename T>
+	union ByteOrderStorage {
+		T Value;
+		char Bytes[sizeof T];
+
+		static ByteOrderStorage<T> FromWithoutSwap(T value) {
+			return ByteOrderStorage<T>(value);
+		}
+
+		static T ToWithoutSwap(ByteOrderStorage<T> storage) {
+			return storage.Value;
+		}
+
+		static ByteOrderStorage<T> FromWithSwap(T value);
+
+		static T ToWithSwap(ByteOrderStorage<T> storage);
 	};
 
-	void to_json(nlohmann::json&, const Region&);
-	void from_json(const nlohmann::json&, Region&);
+	template<typename T>
+	inline ByteOrderStorage<T> ByteOrderStorage<T>::FromWithSwap(T value) {
+		if constexpr (std::is_same_v<T, uint8_t> || std::is_same_v<T, int8_t>)
+			return ByteOrderStorage<T>(value);
 
-	enum class GameReleaseRegion {
-		Unspecified,
-		International,
-		Korean,
-		Chinese,
+		else if constexpr (std::is_same_v<T, uint16_t> || std::is_same_v<T, int16_t>)
+			return ByteOrderStorage<T>(static_cast<T>(_byteswap_ushort(static_cast<uint16_t>(value))));
+
+		else if constexpr (std::is_same_v<T, uint32_t> || std::is_same_v<T, int32_t>)
+			return ByteOrderStorage<T>(static_cast<T>(_byteswap_ulong(static_cast<uint32_t>(value))));
+
+		else if constexpr (std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>)
+			return ByteOrderStorage<T>(static_cast<T>(_byteswap_uint64(static_cast<uint64_t>(value))));
+
+		else {
+			auto storage = ByteOrderStorage(value);
+			std::reverse(storage.Bytes, storage.Bytes + sizeof T);
+			return storage;
+		}
+	}
+
+	template<typename T>
+	inline T ByteOrderStorage<T>::ToWithSwap(ByteOrderStorage<T> storage) {
+		if constexpr (std::is_same_v<T, uint8_t> || std::is_same_v<T, int8_t>)
+			return storage.Value;
+
+		else if constexpr (std::is_same_v<T, uint16_t> || std::is_same_v<T, int16_t>)
+			return static_cast<T>(_byteswap_ushort(static_cast<uint16_t>(storage.Value)));
+
+		else if constexpr (std::is_same_v<T, uint32_t> || std::is_same_v<T, int32_t>)
+			return static_cast<T>(_byteswap_ulong(static_cast<uint32_t>(storage.Value)));
+
+		else if constexpr (std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>)
+			return static_cast<T>(_byteswap_uint64(static_cast<uint64_t>(storage.Value)));
+
+		else {
+			std::reverse(storage.Bytes, storage.Bytes + sizeof T);
+			return storage.Value;
+		}
+	}
+
+	template<typename T, ByteOrderStorage<T> FromNative(T), T ToNative(ByteOrderStorage<T>)>
+	union ByteOrder {
+	private:
+		ByteOrderStorage<T> m_value;
+
+	public:
+		ByteOrder(T defaultValue = 0)
+			: m_value(FromNative(defaultValue)) {
+		}
+
+		ByteOrder<T, FromNative, ToNative>& operator= (T newValue) {
+			m_value = FromNative(newValue);
+			return *this;
+		}
+
+		ByteOrder<T, FromNative, ToNative>& operator+= (T newValue) {
+			m_value = FromNative(ToNative(m_value) + newValue);
+			return *this;
+		}
+
+		ByteOrder<T, FromNative, ToNative>& operator-= (T newValue) {
+			m_value = FromNative(ToNative(m_value) - newValue);
+			return *this;
+		}
+
+		ByteOrder<T, FromNative, ToNative>& operator*= (T newValue) {
+			m_value = FromNative(ToNative(m_value) * newValue);
+			return *this;
+		}
+
+		ByteOrder<T, FromNative, ToNative>& operator/= (T newValue) {
+			m_value = FromNative(ToNative(m_value) / newValue);
+			return *this;
+		}
+
+		ByteOrder<T, FromNative, ToNative>& operator%= (T newValue) {
+			m_value = FromNative(ToNative(m_value) % newValue);
+			return *this;
+		}
+
+		ByteOrder<T, FromNative, ToNative>& operator&= (T newValue) {
+			m_value = FromNative(ToNative(m_value) & newValue);
+			return *this;
+		}
+
+		ByteOrder<T, FromNative, ToNative>& operator|= (T newValue) {
+			m_value = FromNative(ToNative(m_value) | newValue);
+			return *this;
+		}
+
+		ByteOrder<T, FromNative, ToNative>& operator^= (T newValue) {
+			m_value = FromNative(ToNative(m_value) ^ newValue);
+			return *this;
+		}
+
+		ByteOrder<T, FromNative, ToNative>& operator<<= (T newValue) {
+			m_value = FromNative(ToNative(m_value) << newValue);
+			return *this;
+		}
+
+		ByteOrder<T, FromNative, ToNative>& operator>>= (T newValue) {
+			m_value = FromNative(ToNative(m_value) >> newValue);
+			return *this;
+		}
+
+		ByteOrder<T, FromNative, ToNative>& operator++ () {
+			m_value = FromNative(ToNative(m_value) + 1);
+			return *this;
+		}
+
+		ByteOrder<T, FromNative, ToNative>& operator-- () {
+			m_value = FromNative(ToNative(m_value) - 1);
+			return *this;
+		}
+
+		T operator++ (int) {
+			const auto v = ToNative(m_value);
+			m_value = FromNative(v + 1);
+			return v;
+		}
+
+		T operator-- (int) {
+			const auto v = ToNative(m_value);
+			m_value = FromNative(v - 1);
+			return v;
+		}
+
+		T operator+() const {
+			return ToNative(m_value);
+		}
+
+		T operator-() const {
+			return -ToNative(m_value);
+		}
+
+		T operator~() const {
+			return ~ToNative(m_value);
+		}
+
+		T operator!() const {
+			return !ToNative(m_value);
+		}
+
+		operator T() const {
+			return ToNative(m_value);
+		}
+
+		T operator *() const {
+			return ToNative(m_value);
+		}
 	};
 
-	void to_json(nlohmann::json&, const GameReleaseRegion&);
-	void from_json(const nlohmann::json&, GameReleaseRegion&);
+	template<typename T>
+	using LE = ByteOrder<T, ByteOrderStorage<T>::FromWithoutSwap, ByteOrderStorage<T>::ToWithoutSwap>;
+	template<typename T>
+	using BE = ByteOrder<T, ByteOrderStorage<T>::FromWithSwap, ByteOrderStorage<T>::ToWithSwap>;
+
+	template<typename T>
+	T Clamp(T value, T minValue, T maxValue) {
+		return (std::min)(maxValue, (std::max)(minValue, value));
+	}
+
+	template<typename TTarget, typename TSource>
+	std::span<TTarget> span_cast(size_t sourceCount, TSource* source, size_t sourceIndex = 0, size_t targetCount = SIZE_MAX, size_t targetCountUnitSize = sizeof TTarget) {
+		if (targetCount == SIZE_MAX) {
+			targetCountUnitSize = 1;
+			targetCount = (sourceCount - sourceIndex) * sizeof TSource;
+		}
+
+		if (targetCount == 0)
+			return {};
+
+		if (targetCount * targetCountUnitSize + sourceIndex * sizeof TSource > sourceCount * sizeof TSource)
+			throw std::out_of_range("target range exceeds source range");
+
+		if (targetCount * targetCountUnitSize % sizeof TTarget)
+			throw std::out_of_range("target size does not align to target type size");
+
+		return { reinterpret_cast<TTarget*>(&source[sourceIndex]), targetCount * targetCountUnitSize / sizeof TTarget };
+	}
+
+	template<typename TTarget, typename TSource, typename = std::enable_if_t<!std::is_const_v<TSource>>>
+	std::span<const TTarget> span_cast(size_t sourceCount, const TSource* source, size_t sourceIndex = 0, size_t targetCount = SIZE_MAX, size_t targetCountUnitSize = sizeof TTarget) {
+		return span_cast<const TTarget, const TSource>(sourceCount, source, sourceIndex, targetCount, targetCountUnitSize);
+	}
+
+	template<typename TTarget, typename TSource, size_t TSourceCount>
+	std::span<TTarget> span_cast(TSource(&source)[TSourceCount], size_t sourceIndex = 0, size_t targetCount = SIZE_MAX, size_t targetCountUnitSize = sizeof TTarget) {
+		return span_cast<TTarget, TSource>(TSourceCount, source, sourceIndex, targetCount, targetCountUnitSize);
+	}
+
+	template<typename TTarget, typename TSource, size_t TSourceCount>
+	std::span<const TTarget> span_cast(const TSource(&source)[TSourceCount], size_t sourceIndex = 0, size_t targetCount = SIZE_MAX, size_t targetCountUnitSize = sizeof TTarget) {
+		return span_cast<const TTarget, const TSource>(TSourceCount, source, sourceIndex, targetCount, targetCountUnitSize);
+	}
+
+	template<typename TTarget, typename TSource>
+	std::span<const TTarget> span_cast(const std::span<const TSource>& source, size_t sourceIndex = 0, size_t targetCount = SIZE_MAX, size_t targetCountUnitSize = sizeof TTarget) {
+		return span_cast<const TTarget, const TSource>(source.size(), &source[0], sourceIndex, targetCount, targetCountUnitSize);
+	}
+
+	template<typename TTarget, typename TSource>
+	std::span<TTarget> span_cast(const std::span<TSource>& source, size_t sourceIndex = 0, size_t targetCount = SIZE_MAX, size_t targetCountUnitSize = sizeof TTarget) {
+		return span_cast<TTarget, TSource>(source.size(), &source[0], sourceIndex, targetCount, targetCountUnitSize);
+	}
+
+	template<typename TTarget, typename TSource>
+	std::span<const TTarget> span_cast(const std::vector<TSource>& source, size_t sourceIndex = 0, size_t targetCount = SIZE_MAX, size_t targetCountUnitSize = sizeof TTarget) {
+		return span_cast<const TTarget, const TSource>(source.size(), &source[0], sourceIndex, targetCount, targetCountUnitSize);
+	}
+
+	template<typename TTarget, typename TSource>
+	std::span<TTarget> span_cast(std::vector<TSource>& source, size_t sourceIndex = 0, size_t targetCount = SIZE_MAX, size_t targetCountUnitSize = sizeof TTarget) {
+		return span_cast<TTarget, TSource>(source.size(), &source[0], sourceIndex, targetCount, targetCountUnitSize);
+	}
+
+	template<typename TTarget, typename TSource, class TSourceTraits = std::char_traits<TSource>, class TSourceAlloc = std::allocator<TSource>>
+	std::span<TTarget> span_cast(std::basic_string<TSource, TSourceTraits, TSourceAlloc>& source, size_t sourceIndex = 0, size_t targetCount = SIZE_MAX, size_t targetCountUnitSize = sizeof TTarget) {
+		return span_cast<TTarget, TSource>(source.size(), &source[0], sourceIndex, targetCount, targetCountUnitSize);
+	}
+
+	template<typename TTarget, typename TSource, class TSourceTraits = std::char_traits<TSource>, class TSourceAlloc = std::allocator<TSource>>
+	std::span<const TTarget> span_cast(const std::basic_string<TSource, TSourceTraits, TSourceAlloc>& source, size_t sourceIndex = 0, size_t targetCount = SIZE_MAX, size_t targetCountUnitSize = sizeof TTarget) {
+		return span_cast<const TTarget, const TSource>(source.size(), &source[0], sourceIndex, targetCount, targetCountUnitSize);
+	}
+
+	template<typename TTarget, typename TSource>
+	std::span<const TTarget> span_cast(const std::basic_string_view<TSource>& source, size_t sourceIndex = 0, size_t targetCount = SIZE_MAX, size_t targetCountUnitSize = sizeof TTarget) {
+		return span_cast<const TTarget, const TSource>(source.size(), &source[0], sourceIndex, targetCount, targetCountUnitSize);
+	}
 
 	class CorruptDataException : public std::runtime_error {
 	public:
 		using std::runtime_error::runtime_error;
 	};
-
-	static constexpr uint32_t EntryAlignment = 128;
 
 	template<typename T, typename CountT = T>
 	struct AlignResult {
@@ -129,35 +351,40 @@ namespace Sqex {
 				return false;
 		return true;
 	}
-	
+	class RandomAccessStreamPartialView;
+
 	class RandomAccessStream : public std::enable_shared_from_this<RandomAccessStream> {
 	public:
-		RandomAccessStream();
+		RandomAccessStream() = default;
 		RandomAccessStream(RandomAccessStream&&) = delete;
 		RandomAccessStream(const RandomAccessStream&) = delete;
 		RandomAccessStream& operator=(RandomAccessStream&&) = delete;
 		RandomAccessStream& operator=(const RandomAccessStream&) = delete;
-		virtual ~RandomAccessStream();
+		virtual ~RandomAccessStream() = default;
 
-		[[nodiscard]] virtual uint64_t StreamSize() const = 0;
-		virtual uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const = 0;
+		[[nodiscard]] virtual std::streamsize StreamSize() const = 0;
 
-		void ReadStream(uint64_t offset, void* buf, uint64_t length) const;
+		virtual std::streamsize ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) const = 0;
+
+		void ReadStream(std::streamoff offset, void* buf, std::streamsize length) const {
+			if (ReadStreamPartial(offset, buf, length) != length)
+				throw std::runtime_error("Reached end of stream before reading all of the requested data.");
+		}
 
 		template<typename T>
-		T ReadStream(uint64_t offset) const {
+		T ReadStream(std::streamoff offset) const {
 			T buf;
 			ReadStream(offset, &buf, sizeof T);
 			return buf;
 		}
 
 		template<typename T>
-		void ReadStream(uint64_t offset, std::span<T> buf) const {
+		void ReadStream(std::streamoff offset, std::span<T> buf) const {
 			ReadStream(offset, buf.data(), buf.size_bytes());
 		}
 
 		template<typename T>
-		std::vector<T> ReadStreamIntoVector(uint64_t offset, size_t count = SIZE_MAX, size_t maxCount = SIZE_MAX) const {
+		std::vector<T> ReadStreamIntoVector(std::streamoff offset, size_t count = SIZE_MAX, size_t maxCount = SIZE_MAX) const {
 			if (count > maxCount)
 				throw std::runtime_error("trying to read too many");
 			if (count == SIZE_MAX)
@@ -167,100 +394,110 @@ namespace Sqex {
 			return result;
 		}
 
-		template<typename T>
-		std::function<std::span<T>(size_t len, bool throwOnIncompleteRead)> AsLinearReader() const {
-			return [this, buf = std::vector<T>(), ptr = uint64_t(), to = StreamSize()](size_t len, bool throwOnIncompleteRead) mutable {
-				if (ptr == to)
-					return std::span<T>();
-				buf.resize(static_cast<size_t>(std::min<uint64_t>(len, to - ptr)));
-				const auto read = ReadStreamPartial(ptr, buf.data(), buf.size());
-				if (read < buf.size() && throwOnIncompleteRead)
-					throw std::runtime_error("incomplete read");
-				ptr += buf.size();
-				return std::span(buf);
-			};
-		}
-
-		virtual std::string DescribeState() const { return {}; }
-
 		virtual void EnableBuffering(bool bEnable) {}
 
 		virtual void Flush() const {}
-	};
 
-	class BufferedRandomAccessStream : public RandomAccessStream {
-		const std::shared_ptr<RandomAccessStream> m_stream;
-		const size_t m_bufferSize;
-		const uint64_t m_streamSize;
-#if INTPTR_MAX == INT64_MAX
-		bool m_bEnableBuffering = true;
-#else
-		bool m_bEnableBuffering = false;
-#endif
-		mutable std::vector<void*> m_buffers;
+		virtual RandomAccessStreamPartialView SubStream(std::streamoff offset, std::streamsize length = std::numeric_limits<std::streamsize>::max());
 
-	public:
-		BufferedRandomAccessStream(std::shared_ptr<RandomAccessStream> stream, size_t bufferSize = 16384)
-			: m_stream(std::move(stream))
-			, m_bufferSize(bufferSize)
-			, m_streamSize(m_stream->StreamSize())
-			, m_buffers(Align<uint64_t, size_t>(m_streamSize, m_bufferSize).Count) {
-		}
-
-		~BufferedRandomAccessStream() override;
-
-		[[nodiscard]] uint64_t StreamSize() const override { return m_streamSize; }
-
-		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
-
-		void EnableBuffering(bool bEnable) override;
-
-		void Flush() const override;
+		virtual std::shared_ptr<RandomAccessStreamPartialView> SubStreamShared(std::streamoff offset, std::streamsize length = std::numeric_limits<std::streamsize>::max());
 	};
 
 	class RandomAccessStreamPartialView : public RandomAccessStream {
-		const std::shared_ptr<const RandomAccessStream> m_stream;
-		const uint64_t m_offset;
-		const uint64_t m_size;
+		const std::shared_ptr<const RandomAccessStream> m_streamSharedPtr;
 
 	public:
-		RandomAccessStreamPartialView(std::shared_ptr<const RandomAccessStream> stream, uint64_t offset = 0, uint64_t length = UINT64_MAX)
-			: m_stream(std::move(stream))
-			, m_offset(offset)
-			, m_size(std::min(length, m_stream->StreamSize() - offset)) {
+		const RandomAccessStream& BaseStream;
+		const std::streamoff BaseOffset;
+
+	private:
+		const std::streamsize m_size;
+
+	public:
+		RandomAccessStreamPartialView(const RandomAccessStream& stream, std::streamoff offset = 0, std::streamsize length = std::numeric_limits<std::streamsize>::max())
+			: BaseStream(stream)
+			, BaseOffset(offset)
+			, m_size(std::min(length, BaseStream.StreamSize() - offset)) {
 		}
 
-		[[nodiscard]] uint64_t StreamSize() const override { return m_size; }
+		RandomAccessStreamPartialView(const RandomAccessStreamPartialView&) = default;
 
-		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override {
+		RandomAccessStreamPartialView(std::shared_ptr<const RandomAccessStream> stream, std::streamoff offset = 0, std::streamsize length = std::numeric_limits<std::streamsize>::max())
+			: m_streamSharedPtr(std::move(stream))
+			, BaseStream(*m_streamSharedPtr)
+			, BaseOffset(offset)
+			, m_size(std::min(length, BaseStream.StreamSize() - offset)) {
+		}
+
+		[[nodiscard]] std::streamsize StreamSize() const override {
+			return m_size;
+		}
+
+		std::streamsize ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) const override {
 			if (offset >= m_size)
 				return 0;
 			length = std::min(length, m_size - offset);
-			return m_stream->ReadStreamPartial(m_offset + offset, buf, length);
-		}
-
-		std::string DescribeState() const override {
-			return std::format("RandomAccessStreamPartialView({}, {}, {})", m_stream->DescribeState(), m_offset, m_size);
+			return BaseStream.ReadStreamPartial(BaseOffset + offset, buf, length);
 		}
 	};
 
+	inline RandomAccessStreamPartialView RandomAccessStream::SubStream(std::streamoff offset, std::streamsize length) {
+		return RandomAccessStreamPartialView(*this, offset, length);
+	}
+
+	inline std::shared_ptr<RandomAccessStreamPartialView> RandomAccessStream::SubStreamShared(std::streamoff offset, std::streamsize length) {
+		return std::make_shared<RandomAccessStreamPartialView>(shared_from_this(), offset, length);
+	}
+
 	class FileRandomAccessStream : public RandomAccessStream {
 		const std::filesystem::path m_path;
-		mutable std::shared_ptr<std::mutex> m_initializationMutex;
-		mutable Win32::Handle m_file;
-		const uint64_t m_offset;
-		const uint64_t m_size;
+		mutable std::mutex m_mutex;
+		mutable std::vector<std::ifstream> m_streams;
+
+		class PooledObject {
+			const FileRandomAccessStream& m_parent;
+			mutable std::ifstream m_stream;
+
+		public:
+			PooledObject(const FileRandomAccessStream& parent)
+				: m_parent(parent) {
+				const auto lock = std::lock_guard(parent.m_mutex);
+				if (parent.m_streams.empty())
+					m_stream = std::ifstream(parent.m_path, std::ios::binary);
+				else {
+					m_stream = std::move(parent.m_streams.back());
+					parent.m_streams.pop_back();
+				}
+			}
+
+			~PooledObject() {
+				const auto lock = std::lock_guard(m_parent.m_mutex);
+				m_parent.m_streams.emplace_back(std::move(m_stream));
+			}
+
+			std::ifstream* operator->() const {
+				return &m_stream;
+			}
+		};
 
 	public:
-		FileRandomAccessStream(Win32::Handle file, uint64_t offset = 0, uint64_t length = UINT64_MAX);
-		FileRandomAccessStream(std::filesystem::path path, uint64_t offset = 0, uint64_t length = UINT64_MAX, bool openImmediately = true);
-		~FileRandomAccessStream() override;
+		FileRandomAccessStream(std::filesystem::path path, bool openImmediately = true)
+			: m_path(std::move(path)) {
+			if (openImmediately)
+				m_streams.emplace_back(m_path, std::ios::binary);
+		}
 
-		[[nodiscard]] uint64_t StreamSize() const override;
-		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
+		[[nodiscard]] std::streamsize StreamSize() const override {
+			PooledObject stream(*this);
+			stream->seekg(0, std::ios::end);
+			return stream->tellg();
+		}
 
-		std::string DescribeState() const override {
-			return std::format("FileRandomAccessStream({}, {}, {})", m_file.GetPathName(), m_offset, m_size);
+		std::streamsize ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) const override {
+			PooledObject stream(*this);
+			stream->seekg(offset, std::ios::beg);
+			stream->read(static_cast<char*>(buf), length);
+			return stream->gcount();
 		}
 	};
 
@@ -327,9 +564,9 @@ namespace Sqex {
 			return *this;
 		}
 
-		[[nodiscard]] uint64_t StreamSize() const override { return m_view.size(); }
+		[[nodiscard]] std::streamsize StreamSize() const override { return m_view.size(); }
 
-		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override {
+		std::streamsize ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) const override {
 			if (offset >= m_view.size())
 				return 0;
 			if (offset + length > m_view.size())

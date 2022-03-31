@@ -1,9 +1,7 @@
 #pragma once
-
 #include <cstdint>
 #include <span>
 #include <vector>
-
 #include "XivAlexanderCommon/Sqex.h"
 
 namespace Sqex::Imc {
@@ -69,7 +67,7 @@ namespace Sqex::Imc {
 		size_t EntryCountPerSet() const {
 			size_t entryCountPerSet = 0;
 			for (size_t i = 0; i < 16; i++) {
-				if (static_cast<uint16_t>(Header().Type.Value()) & (1 << i))
+				if (static_cast<uint16_t>(*Header().Type) & (1 << i))
 					entryCountPerSet++;
 			}
 			return entryCountPerSet;
@@ -106,7 +104,7 @@ namespace Sqex::Imc {
 			if (subsetCount > Header().SubsetCount && Header().SubsetCount > 0) {
 				m_data.resize(sizeof Imc::Header + sizeof Imc::Entry * countPerSet * (size_t{ 1 } + Header().SubsetCount));
 				m_data.reserve(sizeof Imc::Header + sizeof Imc::Entry * countPerSet * (1 + subsetCount));
-				for (auto i = Header().SubsetCount.Value(); i < subsetCount; ++i) {
+				for (auto i = *Header().SubsetCount; i < subsetCount; ++i) {
 					m_data.insert(m_data.end(), &m_data[sizeof Imc::Header], &m_data[sizeof Imc::Header + sizeof Imc::Entry * countPerSet]);
 				}
 			} else {

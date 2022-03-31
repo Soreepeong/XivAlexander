@@ -21,9 +21,6 @@ namespace Sqex::Texture {
 		D16 = 16704,
 	};
 
-	void to_json(nlohmann::json& j, const Format& o);
-	void from_json(const nlohmann::json& j, Format& o);
-
 	struct RGBA4444 {
 		static constexpr size_t ChannelCount = 4;
 		static constexpr uint8_t MaxR = 15;
@@ -196,7 +193,46 @@ namespace Sqex::Texture {
 		char Unknown2[0xC]{};
 	};
 
-	size_t RawDataLength(Format type, size_t width, size_t height, size_t depth, size_t mipmapIndex = 0);
+	inline size_t RawDataLength(Format type, size_t width, size_t height, size_t depth, size_t mipmapIndex = 0) {
+		width = std::max<size_t>(1, width >> mipmapIndex);
+		height = std::max<size_t>(1, height >> mipmapIndex);
+		depth = std::max<size_t>(1, depth >> mipmapIndex);
+		switch (type) {
+			case Format::L8:
+			case Format::A8:
+				return width * height * depth;
+
+			case Format::A4R4G4B4:
+			case Format::A1R5G5B5:
+				return width * height * depth * 2;
+
+			case Format::A8R8G8B8:
+			case Format::X8R8G8B8:
+			case Format::R32F:
+			case Format::G16R16F:
+				return width * height * depth * 4;
+
+			case Format::A16B16G16R16F:
+			case Format::G32R32F:
+				return width * height * depth * 8;
+
+			case Format::A32B32G32R32F:
+				return width * height * depth * 16;
+
+			case Format::DXT1:
+				return depth * std::max<size_t>(1, ((width + 3) / 4)) * std::max<size_t>(1, ((height + 3) / 4)) * 8;
+
+			case Format::DXT3:
+			case Format::DXT5:
+				return depth * std::max<size_t>(1, ((width + 3) / 4)) * std::max<size_t>(1, ((height + 3) / 4)) * 16;
+
+			case Format::D16:
+			case Format::Unknown:
+			default:
+				throw std::invalid_argument("Unsupported type");
+		}
+	}
+
 	inline size_t RawDataLength(const Header& header, size_t mipmapIndex = 0) {
 		return RawDataLength(header.Type, header.Width, header.Height, header.Depth, mipmapIndex);
 	}

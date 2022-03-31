@@ -1,7 +1,5 @@
 #pragma once
-
 #include <mmreg.h>
-
 #include "XivAlexanderCommon/Sqex.h"
 #include "XivAlexanderCommon/Sqex/Sound.h"
 

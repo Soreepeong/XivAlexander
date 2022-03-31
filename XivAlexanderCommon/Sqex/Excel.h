@@ -1,5 +1,4 @@
 #pragma once
-
 #include "XivAlexanderCommon/Sqex.h"
 #include "XivAlexanderCommon/Sqex/SeString.h"
 

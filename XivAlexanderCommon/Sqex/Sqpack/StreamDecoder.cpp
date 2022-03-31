@@ -1,6 +1,5 @@
-#include "pch.h"
-#include "XivAlexanderCommon/Sqex/Sqpack/StreamDecoder.h"
 
+#include "XivAlexanderCommon/Sqex/Sqpack/StreamDecoder.h"
 #include "XivAlexanderCommon/Sqex/Sqpack/BinaryStreamDecoder.h"
 #include "XivAlexanderCommon/Sqex/Sqpack/EmptyOrObfuscatedStreamDecoder.h"
 #include "XivAlexanderCommon/Sqex/Sqpack/ModelStreamDecoder.h"

@@ -1,6 +1,5 @@
-#include "pch.h"
-#include "XivAlexanderCommon/Sqex/FontCsv/ModifiableFontCsvStream.h"
 
+#include "XivAlexanderCommon/Sqex/FontCsv/ModifiableFontCsvStream.h"
 #include "XivAlexanderCommon/Sqex/Sqpack.h"
 
 Sqex::FontCsv::ModifiableFontCsvStream::ModifiableFontCsvStream() {
@@ -56,7 +55,7 @@ uint64_t Sqex::FontCsv::ModifiableFontCsvStream::StreamSize() const {
 		+ std::span(m_kerningEntries).size_bytes();
 }
 
-uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {
+uint64_t Sqex::FontCsv::ModifiableFontCsvStream::ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) const {
 	if (!length)
 		return 0;
 

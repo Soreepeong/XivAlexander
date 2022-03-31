@@ -1,6 +1,5 @@
-#include "pch.h"
-#include "XivAlexanderCommon/Sqex/Sqpack/TextureStreamDecoder.h"
 
+#include "XivAlexanderCommon/Sqex/Sqpack/TextureStreamDecoder.h"
 #include "XivAlexanderCommon/Sqex/Texture.h"
 
 Sqex::Sqpack::TextureStreamDecoder::TextureStreamDecoder(const SqData::FileEntryHeader& header, std::shared_ptr<const EntryProvider> stream)
@@ -39,7 +38,7 @@ Sqex::Sqpack::TextureStreamDecoder::TextureStreamDecoder(const SqData::FileEntry
 	}
 }
 
-uint64_t Sqex::Sqpack::TextureStreamDecoder::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) {
+uint64_t Sqex::Sqpack::TextureStreamDecoder::ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) {
 	if (!length)
 		return 0;
 

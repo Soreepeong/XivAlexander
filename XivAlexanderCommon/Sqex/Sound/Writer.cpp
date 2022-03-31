@@ -1,4 +1,3 @@
-#include "pch.h"
 #include "XivAlexanderCommon/Sqex/Sound/Writer.h"
 
 Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::FromWave(const std::function<std::span<uint8_t>(size_t len, bool throwOnIncompleteRead)>& reader) {

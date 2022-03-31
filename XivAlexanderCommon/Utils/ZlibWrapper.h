@@ -1,6 +1,7 @@
 #pragma once
-
+#include <cstdint>
 #include <stdexcept>
+#include <span>
 #include <vector>
 #include <zlib.h>
 

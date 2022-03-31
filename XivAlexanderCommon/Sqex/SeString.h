@@ -1,6 +1,10 @@
 #pragma once
-
-#include "XivAlexanderCommon/Utils/Win32/Handle.h"
+#include <cstdint>
+#include <format>
+#include <string>
+#include <span>
+#include <utility>
+#include <vector>
 
 namespace Sqex {
 	class SeExpression {

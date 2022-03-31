@@ -7,12 +7,6 @@
     <Filter Include="Utils">
       <UniqueIdentifier>{ebd6c91a-3058-49ca-9c2c-c5e16671cb71}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Utils\Win32">
-      <UniqueIdentifier>{0410d4d2-87ce-4c44-ab8d-6f291e90fa04}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Utils\Win32\Closeables">
-      <UniqueIdentifier>{d39d325d-07cb-46f9-884e-2cee0f358a48}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Sqex">
       <UniqueIdentifier>{168fc05a-7df1-4d84-a1d5-5f17ef42040e}</UniqueIdentifier>
     </Filter>
@@ -49,30 +43,12 @@
     <Filter Include="Sqex\Game Resource Files\Equipment Deformer Parameter %28.eqdp%29">
       <UniqueIdentifier>{72ce1b0e-dee1-4e18-aa7e-3709043fa2cc}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Sqex\Third Party Formats">
-      <UniqueIdentifier>{9552314c-ee3c-4b6c-bca7-a02e07d81a53}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Sqex\Third Party Formats\TexTools">
-      <UniqueIdentifier>{682c3f75-f414-4d2b-b327-59a9c52a5b1f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Sqex\Network">
-      <UniqueIdentifier>{87aa06a8-528a-4e49-8fee-3db824d68687}</UniqueIdentifier>
+    <Filter Include="Sqex\Internal">
+      <UniqueIdentifier>{7d18043f-e824-44d4-841c-14f1a8cf3b05}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="pch.h">
-      <Filter>Project Items</Filter>
-    </ClInclude>
     <ClInclude Include="Sqex.h">
-      <Filter>Sqex</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\Win32.h">
-      <Filter>Utils\Win32</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\Win32\Closeable.h">
-      <Filter>Utils\Win32</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\CommandLine.h">
       <Filter>Sqex</Filter>
     </ClInclude>
     <ClInclude Include="Sqex\FontCsv.h">
@@ -102,35 +78,11 @@
     <ClInclude Include="Sqex\Sqpack\EntryProvider.h">
       <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\ThirdParty\TexTools.h">
-      <Filter>Sqex\Third Party Formats\TexTools</Filter>
-    </ClInclude>
     <ClInclude Include="Sqex\Sqpack\EntryRawStream.h">
       <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\BaseFont.h">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\BaseDrawableFont.h">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\Creator.h">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\GdiFont.h">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\DirectWriteFont.h">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClInclude>
     <ClInclude Include="Sqex\Texture\ModifiableTextureStream.h">
       <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\FreeTypeFont.h">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\CreateConfig.h">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
     <ClInclude Include="Sqex\Excel.h">
       <Filter>Sqex\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
@@ -151,9 +103,6 @@
       <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
     </ClInclude>
     <ClInclude Include="Sqex\Sound\Writer.h">
-      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sound\MusicImporter.h">
       <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
     </ClInclude>
     <ClInclude Include="Sqex\Imc.h">
@@ -210,118 +159,34 @@
     <ClInclude Include="Utils\StringUtils.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\Win32\Handle.h">
-      <Filter>Utils\Win32\Closeables</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\Win32\HeapAllocator.h">
-      <Filter>Utils\Win32\Closeables</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\Win32\InjectedModule.h">
-      <Filter>Utils\Win32\Closeables</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\Win32\LoadedModule.h">
-      <Filter>Utils\Win32\Closeables</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\Win32\Process.h">
-      <Filter>Utils\Win32\Closeables</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\Win32\Resource.h">
-      <Filter>Utils\Win32\Closeables</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\Win32\TaskDialogBuilder.h">
-      <Filter>Utils\Win32\Closeables</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\Win32\ThreadPool.h">
-      <Filter>Utils\Win32\Closeables</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\CallOnDestruction.h">
       <Filter>Utils</Filter>
     </ClInclude>
     <ClInclude Include="Utils\ListenerManager.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\NumericStatisticsTracker.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\Dxt.h">
       <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Network\Structure.h">
-      <Filter>Sqex\Network</Filter>
     </ClInclude>
     <ClInclude Include="Sqex\Sqpack\EmptyOrObfuscatedStreamDecoder.h">
       <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
     </ClInclude>
-    <ClInclude Include="span_cast.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\FdtFont.h">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    <ClInclude Include="Sqex\internal\sha1.h">
+      <Filter>Sqex\Internal</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="pch.cpp">
-      <Filter>Project Items</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils\Win32.cpp">
-      <Filter>Utils\Win32</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex.cpp">
-      <Filter>Sqex</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\CommandLine.cpp">
-      <Filter>Sqex</Filter>
-    </ClCompile>
     <ClCompile Include="Sqex\FontCsv.cpp">
       <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
     <ClCompile Include="Sqex\FontCsv\ModifiableFontCsvStream.cpp">
       <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex\Sqpack\Reader.cpp">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Sqpack\Creator.cpp">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Sqpack.cpp">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
-    </ClCompile>
     <ClCompile Include="Sqex\Texture\Mipmap.cpp">
       <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex\Sqpack\EntryProvider.cpp">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\ThirdParty\TexTools.cpp">
-      <Filter>Sqex\Third Party Formats\TexTools</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Sqpack\EntryRawStream.cpp">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Texture.cpp">
-      <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\FontCsv\BaseFont.cpp">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\FontCsv\Creator.cpp">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\FontCsv\GdiFont.cpp">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\FontCsv\DirectWriteFont.cpp">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\FontCsv\CreateConfig.cpp">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClCompile>
     <ClCompile Include="Sqex\Texture\ModifiableTextureStream.cpp">
       <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\FontCsv\FreeTypeFont.cpp">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
     <ClCompile Include="Sqex\Excel.cpp">
       <Filter>Sqex\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
@@ -344,9 +209,6 @@
     <ClCompile Include="Sqex\Sound\Writer.cpp">
       <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex\Sound\MusicImporter.cpp">
-      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
-    </ClCompile>
     <ClCompile Include="Sqex\EqpGmp.cpp">
       <Filter>Sqex\Game Resource Files\Equipment/Gimmick Parameters %28.eqp, .gmp%29</Filter>
     </ClCompile>
@@ -359,19 +221,7 @@
     <ClCompile Include="Sqex\Sqpack\TextureEntryProvider.cpp">
       <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex\Sqpack\BinaryEntryProvider.cpp">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Sqpack\EmptyOrObfuscatedEntryProvider.cpp">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Sqpack\LazyEntryProvider.cpp">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
-    </ClCompile>
     <ClCompile Include="Sqex\Sqpack\RandomAccessStreamAsEntryProviderView.cpp">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Sqpack\HotSwappableEntryProvider.cpp">
       <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
     </ClCompile>
     <ClCompile Include="Sqex\Sqpack\BinaryStreamDecoder.cpp">
@@ -389,51 +239,16 @@
     <ClCompile Include="Utils\ZlibWrapper.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\Utils.cpp">
-      <Filter>Utils</Filter>
-    </ClCompile>
     <ClCompile Include="Utils\StringUtils.cpp">
-      <Filter>Utils</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils\Win32\Handle.cpp">
-      <Filter>Utils\Win32\Closeables</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils\Win32\InjectedModule.cpp">
-      <Filter>Utils\Win32\Closeables</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils\Win32\LoadedModule.cpp">
-      <Filter>Utils\Win32\Closeables</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils\Win32\Process.cpp">
-      <Filter>Utils\Win32\Closeables</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils\Win32\Resource.cpp">
-      <Filter>Utils\Win32\Closeables</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils\Win32\TaskDialogBuilder.cpp">
-      <Filter>Utils\Win32\Closeables</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils\Win32\ThreadPool.cpp">
-      <Filter>Utils\Win32\Closeables</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils\CallOnDestruction.cpp">
-      <Filter>Utils</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils\NumericStatisticsTracker.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
     <ClCompile Include="Utils\Dxt.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex\Network\Structure.cpp">
-      <Filter>Sqex\Network</Filter>
-    </ClCompile>
     <ClCompile Include="EmptyOrObfuscatedStreamDecoder.cpp">
       <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
     </ClCompile>
-    <ClCompile Include="FdtFont.cpp">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClCompile>
+    <ClCompile Include="Sqex.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json">

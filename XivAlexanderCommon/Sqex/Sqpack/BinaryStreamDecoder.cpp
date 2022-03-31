@@ -1,6 +1,5 @@
-#include "pch.h"
-#include "XivAlexanderCommon/Sqex/Sqpack/BinaryStreamDecoder.h"
 
+#include "XivAlexanderCommon/Sqex/Sqpack/BinaryStreamDecoder.h"
 #include "XivAlexanderCommon/Utils/ZlibWrapper.h"
 
 Sqex::Sqpack::BinaryStreamDecoder::BinaryStreamDecoder(const SqData::FileEntryHeader& header, std::shared_ptr<const EntryProvider> stream)
@@ -21,7 +20,7 @@ Sqex::Sqpack::BinaryStreamDecoder::BinaryStreamDecoder(const SqData::FileEntryHe
 		throw CorruptDataException("Data truncated (sum(BlockHeaderLocator.DecompressedDataSize) < FileEntryHeader.DecompresedSize)");
 }
 
-uint64_t Sqex::Sqpack::BinaryStreamDecoder::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) {
+uint64_t Sqex::Sqpack::BinaryStreamDecoder::ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) {
 	if (!length)
 		return 0;
 

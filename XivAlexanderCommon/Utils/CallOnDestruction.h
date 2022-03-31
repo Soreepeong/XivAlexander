@@ -1,5 +1,4 @@
 #pragma once
-
 #include <functional>
 
 namespace Utils {
@@ -10,44 +9,114 @@ namespace Utils {
 		std::function<void()> m_fn;
 
 	public:
-		CallOnDestruction() noexcept;
-		CallOnDestruction(std::function<void()> fn);
+		CallOnDestruction() noexcept = default;
 		CallOnDestruction(const CallOnDestruction&) = delete;
 		CallOnDestruction& operator=(const CallOnDestruction&) = delete;
 
-		CallOnDestruction(CallOnDestruction&& r) noexcept;
-		CallOnDestruction& operator=(CallOnDestruction&& r) noexcept;
+		CallOnDestruction(std::function<void()> fn)
+			: m_fn(std::move(fn)) {
+		}
 
-		CallOnDestruction(std::nullptr_t) noexcept;
-		CallOnDestruction& operator=(std::nullptr_t) noexcept;
+		CallOnDestruction(CallOnDestruction&& r) noexcept {
+			m_fn = std::move(r.m_fn);
+			r.m_fn = nullptr;
+		}
 
-		CallOnDestruction& operator=(std::function<void()>&& fn) noexcept;
-		CallOnDestruction& operator=(const std::function<void()>& fn);
+		CallOnDestruction& operator=(CallOnDestruction&& r) noexcept {
+			if (m_fn)
+				m_fn();
+			m_fn = std::move(r.m_fn);
+			r.m_fn = nullptr;
+			return *this;
+		}
 
-		CallOnDestruction& Wrap(std::function<void(std::function<void()>)>);
+		CallOnDestruction(std::nullptr_t) noexcept {
+		}
 
-		virtual ~CallOnDestruction();
+		CallOnDestruction& operator=(std::nullptr_t) noexcept {
+			Clear();
+			return *this;
+		}
 
-		CallOnDestruction& Clear();
-		void Cancel();
+		CallOnDestruction& operator=(std::function<void()>&& fn) noexcept {
+			if (m_fn)
+				m_fn();
+			m_fn = std::move(fn);
+			return *this;
+		}
 
-		operator bool() const;
+		CallOnDestruction& operator=(const std::function<void()>& fn) {
+			if (m_fn)
+				m_fn();
+			m_fn = fn;
+			return *this;
+		}
+
+		CallOnDestruction& Wrap(std::function<void(std::function<void()>)> wrapper) {
+			m_fn = [fn = std::move(m_fn), wrapper = std::move(wrapper)]() {
+				wrapper(fn);
+			};
+			return *this;
+		}
+
+		virtual ~CallOnDestruction() {
+			if (m_fn)
+				m_fn();
+		}
+
+		CallOnDestruction& Clear() {
+			if (m_fn) {
+				m_fn();
+				m_fn = nullptr;
+			}
+			return *this;
+		}
+
+		void Cancel() {
+			m_fn = nullptr;
+		}
+
+		operator bool() const {
+			return !!m_fn;
+		}
 
 		class Multiple {
 			std::vector<CallOnDestruction> m_list;
 
 		public:
-			Multiple();
+			Multiple() = default;
+			Multiple(const Multiple&) = delete;
+			Multiple(Multiple&&) = delete;
+			Multiple(const Multiple&) = delete;
+			Multiple& operator=(const Multiple&) = delete;
 
-			~Multiple();
+			~Multiple() {
+				Clear();
+			}
 
-			Multiple& operator+=(CallOnDestruction o);
+			Multiple& operator+=(CallOnDestruction o) {
+				if (o)
+					m_list.emplace_back(std::move(o));
+				return *this;
+			}
 
-			Multiple& operator+=(std::function<void()> f);
+			Multiple& operator+=(std::function<void()> f) {
+				m_list.emplace_back(f);
+				return *this;
+			}
 
-			Multiple& operator+=(Multiple r);
+			Multiple& operator+=(Multiple r) {
+				m_list.insert(m_list.end(), std::make_move_iterator(r.m_list.begin()), std::make_move_iterator(r.m_list.end()));
+				r.m_list.clear();
+				return *this;
+			}
 
-			void Clear();
+			void Clear() {
+				while (!m_list.empty()) {
+					m_list.back().Clear();
+					m_list.pop_back();
+				}
+			}
 		};
 	};
 
@@ -97,11 +166,11 @@ namespace Utils {
 
 		~CallOnDestructionWithValue() override = default;
 
-		operator T&() {
+		operator T& () {
 			return m_value;
 		}
 
-		operator const T&() const {
+		operator const T& () const {
 			return m_value;
 		}
 	};

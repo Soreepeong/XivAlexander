@@ -1,10 +1,8 @@
 #pragma once
-
 #include <cstdint>
 #include <map>
 #include <span>
 #include <vector>
-
 #include "XivAlexanderCommon/Sqex.h"
 
 namespace Sqex::Est {

@@ -1,4 +1,4 @@
-#include "pch.h"
+
 #include "XivAlexanderCommon/Sqex/Sqpack/RandomAccessStreamAsEntryProviderView.h"
 
 Sqex::Sqpack::RandomAccessStreamAsEntryProviderView::RandomAccessStreamAsEntryProviderView(EntryPathSpec pathSpec, std::shared_ptr<const RandomAccessStream> stream, uint64_t offset, uint64_t length)
@@ -14,7 +14,7 @@ uint64_t Sqex::Sqpack::RandomAccessStreamAsEntryProviderView::StreamSize() const
 	return m_size;
 }
 
-uint64_t Sqex::Sqpack::RandomAccessStreamAsEntryProviderView::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {
+uint64_t Sqex::Sqpack::RandomAccessStreamAsEntryProviderView::ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) const {
 	if (offset >= m_size)
 		return 0;
 

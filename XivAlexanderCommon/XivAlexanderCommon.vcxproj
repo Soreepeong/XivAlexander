@@ -19,26 +19,16 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="span_cast.h" />
-    <ClInclude Include="Sqex\FontCsv\FdtFont.h" />
-    <ClInclude Include="Sqex\Network\Structure.h" />
     <ClInclude Include="Sqex\Eqdp.h" />
     <ClInclude Include="Sqex\EqpGmp.h" />
     <ClInclude Include="Sqex\Est.h" />
     <ClInclude Include="Sqex\Imc.h" />
+    <ClInclude Include="Sqex\internal\sha1.h" />
     <ClInclude Include="Sqex\SeString.h" />
     <ClInclude Include="Sqex\Excel.h" />
     <ClInclude Include="Sqex\Excel\Generator.h" />
     <ClInclude Include="Sqex\Excel\Reader.h" />
-    <ClInclude Include="Sqex\FontCsv\CreateConfig.h" />
-    <ClInclude Include="Sqex\FontCsv\Creator.h" />
-    <ClInclude Include="Sqex\FontCsv\DirectWriteFont.h" />
-    <ClInclude Include="Sqex\FontCsv\FreeTypeFont.h" />
-    <ClInclude Include="Sqex\FontCsv\GdiFont.h" />
-    <ClInclude Include="Sqex\FontCsv\BaseDrawableFont.h" />
-    <ClInclude Include="Sqex\FontCsv\BaseFont.h" />
     <ClInclude Include="Sqex\Sound.h" />
-    <ClInclude Include="Sqex\Sound\MusicImporter.h" />
     <ClInclude Include="Sqex\Sound\Reader.h" />
     <ClInclude Include="Sqex\Sound\Writer.h" />
     <ClInclude Include="Sqex\Sqpack\BinaryEntryProvider.h" />
@@ -57,11 +47,7 @@
     <ClInclude Include="Sqex\Sqpack\TextureStreamDecoder.h" />
     <ClInclude Include="Sqex\Texture\Mipmap.h" />
     <ClInclude Include="Sqex\Texture\ModifiableTextureStream.h" />
-    <ClInclude Include="Sqex\ThirdParty\TexTools.h" />
-    <ClInclude Include="Utils\Win32\TaskDialogBuilder.h" />
-    <ClInclude Include="Utils\Win32\ThreadPool.h" />
     <ClInclude Include="Utils\Dxt.h" />
-    <ClInclude Include="Sqex\CommandLine.h" />
     <ClInclude Include="Sqex.h" />
     <ClInclude Include="Sqex\FontCsv.h" />
     <ClInclude Include="Sqex\FontCsv\ModifiableFontCsvStream.h" />
@@ -72,22 +58,11 @@
     <ClInclude Include="Sqex\Texture.h" />
     <ClInclude Include="Utils\CallOnDestruction.h" />
     <ClInclude Include="Utils\ListenerManager.h" />
-    <ClInclude Include="Utils\NumericStatisticsTracker.h" />
-    <ClInclude Include="Utils\Win32.h" />
-    <ClInclude Include="Utils\Win32\Closeable.h" />
-    <ClInclude Include="Utils\Win32\Handle.h" />
-    <ClInclude Include="Utils\Win32\HeapAllocator.h" />
-    <ClInclude Include="Utils\Win32\InjectedModule.h" />
-    <ClInclude Include="Utils\Win32\LoadedModule.h" />
-    <ClInclude Include="Utils\Win32\Process.h" />
-    <ClInclude Include="Utils\Win32\Resource.h" />
     <ClInclude Include="Utils\Utils.h" />
     <ClInclude Include="Utils\StringUtils.h" />
     <ClInclude Include="Utils\ZlibWrapper.h" />
-    <ClInclude Include="pch.h" />
     <ClCompile Include="EmptyOrObfuscatedStreamDecoder.cpp" />
-    <ClCompile Include="FdtFont.cpp" />
-    <ClCompile Include="Sqex\Network\Structure.cpp" />
+    <ClCompile Include="Sqex.cpp" />
     <ClCompile Include="Sqex\Eqdp.cpp" />
     <ClCompile Include="Sqex\EqpGmp.cpp" />
     <ClCompile Include="Sqex\Sound.cpp" />
@@ -97,59 +72,22 @@
     <ClCompile Include="Sqex\Excel.cpp" />
     <ClCompile Include="Sqex\Excel\Generator.cpp" />
     <ClCompile Include="Sqex\Excel\Reader.cpp" />
-    <ClCompile Include="Sqex\FontCsv\CreateConfig.cpp" />
-    <ClCompile Include="Sqex\FontCsv\Creator.cpp" />
-    <ClCompile Include="Sqex\FontCsv\DirectWriteFont.cpp" />
-    <ClCompile Include="Sqex\FontCsv\FreeTypeFont.cpp" />
-    <ClCompile Include="Sqex\FontCsv\GdiFont.cpp" />
-    <ClCompile Include="Sqex\FontCsv\BaseFont.cpp" />
-    <ClCompile Include="Sqex\Sound\MusicImporter.cpp" />
     <ClCompile Include="Sqex\Sound\Reader.cpp" />
     <ClCompile Include="Sqex\Sound\Writer.cpp" />
     <ClCompile Include="Sqex\Sqpack\BinaryStreamDecoder.cpp" />
-    <ClCompile Include="Sqex\Sqpack\BinaryEntryProvider.cpp" />
-    <ClCompile Include="Sqex\Sqpack\EmptyOrObfuscatedEntryProvider.cpp" />
-    <ClCompile Include="Sqex\Sqpack\EntryRawStream.cpp" />
-    <ClCompile Include="Sqex\Sqpack\HotSwappableEntryProvider.cpp" />
-    <ClCompile Include="Sqex\Sqpack\LazyEntryProvider.cpp" />
     <ClCompile Include="Sqex\Sqpack\ModelEntryProvider.cpp" />
     <ClCompile Include="Sqex\Sqpack\ModelStreamDecoder.cpp" />
     <ClCompile Include="Sqex\Sqpack\RandomAccessStreamAsEntryProviderView.cpp" />
     <ClCompile Include="Sqex\Sqpack\StreamDecoder.cpp" />
     <ClCompile Include="Sqex\Sqpack\TextureEntryProvider.cpp" />
     <ClCompile Include="Sqex\Sqpack\TextureStreamDecoder.cpp" />
-    <ClCompile Include="Sqex\Texture.cpp" />
     <ClCompile Include="Sqex\Texture\ModifiableTextureStream.cpp" />
-    <ClCompile Include="Sqex\ThirdParty\TexTools.cpp" />
-    <ClCompile Include="Utils\Win32\TaskDialogBuilder.cpp" />
-    <ClCompile Include="Utils\Win32\ThreadPool.cpp" />
-    <ClCompile Include="Sqex\CommandLine.cpp" />
-    <ClCompile Include="Sqex.cpp" />
     <ClCompile Include="Sqex\FontCsv\ModifiableFontCsvStream.cpp" />
-    <ClCompile Include="Sqex\Sqpack\EntryProvider.cpp" />
-    <ClCompile Include="Sqex\Sqpack\Reader.cpp" />
     <ClCompile Include="Sqex\FontCsv.cpp" />
-    <ClCompile Include="Sqex\Sqpack.cpp" />
     <ClCompile Include="Sqex\Texture\Mipmap.cpp" />
-    <ClCompile Include="Utils\CallOnDestruction.cpp" />
-    <ClCompile Include="pch.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="Utils\Win32\LoadedModule.cpp" />
-    <ClCompile Include="Utils\Win32\Handle.cpp" />
-    <ClCompile Include="Utils\Win32\Process.cpp" />
-    <ClCompile Include="Utils\Win32\Resource.cpp" />
     <ClCompile Include="Utils\Dxt.cpp" />
-    <ClCompile Include="Utils\Utils.cpp" />
     <ClCompile Include="Utils\StringUtils.cpp" />
-    <ClCompile Include="Utils\NumericStatisticsTracker.cpp" />
-    <ClCompile Include="Utils\Win32.cpp" />
-    <ClCompile Include="Utils\Win32\InjectedModule.cpp" />
     <ClCompile Include="Utils\ZlibWrapper.cpp" />
-    <ClCompile Include="Sqex\Sqpack\Creator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />
@@ -268,7 +206,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
@@ -293,7 +231,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
@@ -318,7 +256,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -347,7 +285,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>

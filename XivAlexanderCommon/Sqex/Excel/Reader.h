@@ -51,8 +51,6 @@ namespace Sqex::Excel {
 		ExhReader(std::string name, const RandomAccessStream& stream, bool strict = false);
 
 		[[nodiscard]] Sqpack::EntryPathSpec GetDataPathSpec(const Exh::Pagination& page, Language language) const;
-
-		void Dump() const;
 	};
 
 	class ExdReader {

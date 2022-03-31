@@ -1,5 +1,0 @@
-https://github.com/Soreepeong/XivAlexander/issues/153#issuecomment-927326382
-
-JP: neolobby{:02}.ffxiv.com
-CN: ffxivlobby{:02}.ff14.sdo.com
-KR: lobbyf-live.ff14.co.kr

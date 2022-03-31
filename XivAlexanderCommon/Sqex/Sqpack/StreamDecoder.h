@@ -1,5 +1,4 @@
 #pragma once
-
 #include "XivAlexanderCommon/Sqex/Sqpack/EntryProvider.h"
 #include "XivAlexanderCommon/Utils/ZlibWrapper.h"
 
@@ -14,7 +13,7 @@ namespace Sqex::Sqpack {
 			uint32_t RequestOffsetVerify = 0;
 			bool HadCompressedBlocks = false;
 
-			ZlibReusableInflater Inflater{ -MAX_WBITS };
+			Utils::ZlibReusableInflater Inflater{ -MAX_WBITS };
 
 			[[nodiscard]] const auto& AsHeader() const {
 				return *reinterpret_cast<const SqData::BlockHeader*>(&ReadBuffer[0]);
@@ -36,7 +35,7 @@ namespace Sqex::Sqpack {
 			, m_maxBlockSize(sizeof SqData::BlockHeader) {
 		}
 
-		virtual uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) = 0;
+		virtual std::streamsize ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) = 0;
 		virtual ~StreamDecoder() = default;
 
 		static std::unique_ptr<StreamDecoder> CreateNew(const SqData::FileEntryHeader& header, std::shared_ptr<const EntryProvider> stream);

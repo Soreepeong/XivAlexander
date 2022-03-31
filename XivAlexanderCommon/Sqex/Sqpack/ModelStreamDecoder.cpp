@@ -1,6 +1,5 @@
-#include "pch.h"
-#include "XivAlexanderCommon/Sqex/Sqpack/ModelStreamDecoder.h"
 
+#include "XivAlexanderCommon/Sqex/Sqpack/ModelStreamDecoder.h"
 #include "XivAlexanderCommon/Sqex/Model.h"
 
 Sqex::Sqpack::ModelStreamDecoder::ModelStreamDecoder(const SqData::FileEntryHeader& header, std::shared_ptr<const EntryProvider> stream)
@@ -90,7 +89,7 @@ Sqex::Sqpack::ModelStreamDecoder::ModelStreamDecoder(const SqData::FileEntryHead
 	}
 }
 
-uint64_t Sqex::Sqpack::ModelStreamDecoder::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) {
+uint64_t Sqex::Sqpack::ModelStreamDecoder::ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) {
 	if (!length)
 		return 0;
 

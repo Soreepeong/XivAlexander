@@ -1,6 +1,5 @@
-#include "pch.h"
-#include "XivAlexanderCommon/Sqex/Texture/ModifiableTextureStream.h"
 
+#include "XivAlexanderCommon/Sqex/Texture/ModifiableTextureStream.h"
 #include "XivAlexanderCommon/Sqex/Sqpack.h"
 
 Sqex::Texture::ModifiableTextureStream::ModifiableTextureStream(Format type, uint16_t width, uint16_t height, uint16_t depth, uint16_t mipmapCount, uint16_t repeatCount)
@@ -88,7 +87,7 @@ uint64_t Sqex::Texture::ModifiableTextureStream::StreamSize() const {
 	return Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes()) + m_repeats.size() * m_repeatedUnitSize;
 }
 
-uint64_t Sqex::Texture::ModifiableTextureStream::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {
+uint64_t Sqex::Texture::ModifiableTextureStream::ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) const {
 	if (!length)
 		return 0;
 

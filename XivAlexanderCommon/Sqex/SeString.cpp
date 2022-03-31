@@ -1,5 +1,5 @@
-#include "pch.h"
-#include "XivAlexanderCommon/Sqex/SeString.h"
+#include "Sqex.h"
+#include "Sqex/SeString.h"
 
 void Sqex::SeString::Parse() const {
 	if (!m_parsed.empty() || m_escaped.empty())

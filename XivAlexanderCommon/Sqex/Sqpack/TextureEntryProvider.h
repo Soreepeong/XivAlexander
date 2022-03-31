@@ -1,5 +1,4 @@
 #pragma once
-
 #include "XivAlexanderCommon/Sqex/Sqpack/LazyEntryProvider.h"
 
 namespace Sqex::Texture {
@@ -41,8 +40,8 @@ namespace Sqex::Sqpack {
 	protected:
 		void Initialize(const RandomAccessStream&) override;
 		[[nodiscard]] uint64_t MaxPossibleStreamSize() const override;
-		[[nodiscard]] uint64_t StreamSize(const RandomAccessStream&) const override { return static_cast<uint32_t>(m_size); }
-		uint64_t ReadStreamPartial(const RandomAccessStream&, uint64_t offset, void* buf, uint64_t length) const override;
+		[[nodiscard]] std::streamsize StreamSize(const RandomAccessStream&) const override { return static_cast<uint32_t>(m_size); }
+		std::streamsize ReadStreamPartial(const RandomAccessStream&, uint64_t offset, void* buf, uint64_t length) const override;
 	};
 
 	class MemoryTextureEntryProvider : public LazyFileOpeningEntryProvider {
@@ -59,7 +58,7 @@ namespace Sqex::Sqpack {
 
 	protected:
 		void Initialize(const RandomAccessStream& stream) override;
-		[[nodiscard]] uint64_t StreamSize(const RandomAccessStream& stream) const override { return static_cast<uint32_t>(m_data.size()); }
-		uint64_t ReadStreamPartial(const RandomAccessStream& stream, uint64_t offset, void* buf, uint64_t length) const override;
+		[[nodiscard]] std::streamsize StreamSize(const RandomAccessStream& stream) const override { return static_cast<uint32_t>(m_data.size()); }
+		std::streamsize ReadStreamPartial(const RandomAccessStream& stream, uint64_t offset, void* buf, uint64_t length) const override;
 	};
 }

@@ -1,5 +1,3 @@
-#include "pch.h"
-
 #include "XivAlexanderCommon/Sqex/Sound/Reader.h"
 
 std::vector<uint8_t> Sqex::Sound::ScdReader::ReadEntry(const std::span<const uint32_t>& offsets, uint32_t endOffset, size_t index) const {
@@ -19,7 +17,7 @@ std::vector<std::vector<uint8_t>> Sqex::Sound::ScdReader::ReadEntries(const std:
 std::vector<uint8_t> Sqex::Sound::ScdReader::GetHeaderBytes(const RandomAccessStream& stream) {
 	constexpr auto InitialBufferSize = 8192ULL;
 	std::vector<uint8_t> res;
-	res.resize(static_cast<size_t>(std::min(InitialBufferSize, stream.StreamSize())));
+	res.resize(static_cast<size_t>(std::min<uint64_t>(InitialBufferSize, stream.StreamSize())));
 	stream.ReadStream(0, std::span(res));
 
 	const auto& header = *reinterpret_cast<ScdHeader*>(&res[0]);
@@ -56,8 +54,8 @@ std::set<uint32_t> Sqex::Sound::ScdReader::SoundEntry::GetMarkedSampleBlockIndic
 		if (memcmp(chunk->Name, SoundEntryAuxChunk::Name_Mark, sizeof chunk->Name) != 0)
 			continue;
 
-		const auto span = std::span(chunk->Data.Mark.SampleBlockIndices, chunk->Data.Mark.Count);
-		res.insert(span.begin(), span.end());
+		for (uint32_t i = 0, i_ = *chunk->Data.Mark.Count; i < i_; i++)
+			res.insert(*chunk->Data.Mark.SampleBlockIndices[i]);
 	}
 	return res;
 }
@@ -86,14 +84,14 @@ std::vector<uint8_t> Sqex::Sound::ScdReader::SoundEntry::GetMsAdpcmWavFile() con
 		+ 8 + Data.size()  // "data"####<data>
 		);
 	res.reserve(totalLength);
-	insert(LE(0x46464952U));  // "RIFF"
-	insert(LE(totalLength - 8));
-	insert(LE(0x45564157U));  // "WAVE"
-	insert(LE(0x20746D66U));  // "fmt "
-	insert(LE(static_cast<uint32_t>(headerSpan.size())));
+	insert(LE<uint32_t>(0x46464952U));  // "RIFF"
+	insert(LE<uint32_t>(totalLength - 8));
+	insert(LE<uint32_t>(0x45564157U));  // "WAVE"
+	insert(LE<uint32_t>(0x20746D66U));  // "fmt "
+	insert(LE<uint32_t>(static_cast<uint32_t>(headerSpan.size())));
 	res.insert(res.end(), headerSpan.begin(), headerSpan.end());
-	insert(LE(0x61746164U));  // "data"
-	insert(LE(static_cast<uint32_t>(Data.size())));
+	insert(LE<uint32_t>(0x61746164U));  // "data"
+	insert(LE<uint32_t>(static_cast<uint32_t>(Data.size())));
 	res.insert(res.end(), Data.begin(), Data.end());
 	return res;
 }

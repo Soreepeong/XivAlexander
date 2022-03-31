@@ -1,4 +1,5 @@
-#include "pch.h"
+#include <ranges>
+
 #include "XivAlexanderCommon/Sqex/Excel/Reader.h"
 
 Sqex::Excel::ExlReader::ExlReader(const RandomAccessStream& stream) {
@@ -81,32 +82,7 @@ Sqex::Sqpack::EntryPathSpec Sqex::Excel::ExhReader::GetDataPathSpec(const Exh::P
 		default:
 			throw std::invalid_argument("Invalid language");
 	}
-	return std::format("exd/{}_{}{}.exd", Name, page.StartId.Value(), languageCode);
-}
-
-void Sqex::Excel::ExhReader::Dump() const {
-	std::cout << std::format("Signature: {}\n", std::string(Header.Signature, 4));
-	std::cout << std::format("Version: {}\n", Header.Version.Value());
-	std::cout << std::format("FixedDataSize: {}\n", Header.FixedDataSize.Value());
-	std::cout << std::format("ColumnCount: {}\n", Header.ColumnCount.Value());
-	std::cout << std::format("PageCount: {}\n", Header.PageCount.Value());
-	std::cout << std::format("LanguageCount: {}\n", Header.LanguageCount.Value());
-	std::cout << std::format("SomeSortOfBufferSize: {}\n", Header.SomeSortOfBufferSize.Value());
-	std::cout << std::format("Padding_0x010: {}\n", Header.Padding_0x010.Value());
-	std::cout << std::format("Depth: {}\n", static_cast<uint8_t>(Header.Depth.Value()));
-	std::cout << std::format("Padding_0x012: {}\n", Header.Padding_0x012.Value());
-	std::cout << std::format("RowCountWithoutSkip: {}\n", Header.RowCountWithoutSkip.Value());
-	std::cout << std::format("Padding_0x018: {}\n", Header.Padding_0x018.Value());
-
-	for (const auto& column : *Columns)
-		std::cout << std::format("Column: Type {}, Offset {}\n", static_cast<uint16_t>(column.Type.Value()), column.Offset.Value());
-	for (const auto& page : Pages)
-		std::cout << std::format("Page: StartId {}, RowCountWithSkip {}\n", page.StartId.Value(), page.RowCountWithSkip.Value());
-	for (const auto& lang : Languages)
-		std::cout << std::format("Language: {}\n", static_cast<uint16_t>(lang));
-	for (const auto& page : Pages)
-		for (const auto& lang : Languages)
-			std::cout << std::format("Example Entry: {}\n", GetDataPathSpec(page, lang));
+	return std::format("exd/{}_{}{}.exd", Name, *page.StartId, languageCode);
 }
 
 Sqex::Excel::ExdReader::ExdReader(const ExhReader& exh, std::shared_ptr<const RandomAccessStream> stream, bool strict): m_stream(std::move(stream))
@@ -117,7 +93,7 @@ Sqex::Excel::ExdReader::ExdReader(const ExhReader& exh, std::shared_ptr<const Ra
 	const auto count = Header.IndexSize / sizeof Exd::RowLocator;
 	m_rowLocators.reserve(count);
 	for (const auto& locator : m_stream->ReadStreamIntoVector<Exd::RowLocator>(sizeof Header, count)) {
-		m_rowLocators.emplace_back(std::make_pair(locator.RowId.Value(), locator.Offset.Value()));
+		m_rowLocators.emplace_back(std::make_pair(*locator.RowId, *locator.Offset));
 	}
 	std::ranges::sort(m_rowLocators);
 }

@@ -1,6 +1,5 @@
-#include "pch.h"
-#include "XivAlexanderCommon/Sqex/FontCsv.h"
 
+#include "XivAlexanderCommon/Sqex/FontCsv.h"
 #include "XivAlexanderCommon/Sqex/Sqpack.h"
 
 const char Sqex::FontCsv::FontCsvHeader::Signature_Value[8] = {

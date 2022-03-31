@@ -1,5 +1,3 @@
-#include "pch.h"
-
 #include "XivAlexanderCommon/Sqex/Sound.h"
 
 const char Sqex::Sound::ScdHeader::SedbSignature_Value[4]{'S', 'E', 'D', 'B'};

@@ -1,9 +1,7 @@
 #pragma once
-
 #include <cstdint>
 #include <span>
 #include <vector>
-
 #include "XivAlexanderCommon/Sqex.h"
 
 namespace Sqex::EqpGmp {

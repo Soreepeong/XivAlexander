@@ -1,4 +1,4 @@
-#include "pch.h"
+
 #include "XivAlexanderCommon/Sqex/Sqpack/EmptyOrObfuscatedStreamDecoder.h"
 
 Sqex::Sqpack::EmptyStreamDecoder::EmptyStreamDecoder(const Sqex::Sqpack::SqData::FileEntryHeader& header, std::shared_ptr<const Sqex::Sqpack::EntryProvider> stream)
@@ -16,6 +16,6 @@ Sqex::Sqpack::EmptyStreamDecoder::EmptyStreamDecoder(const Sqex::Sqpack::SqData:
 	}
 }
 
-uint64_t Sqex::Sqpack::EmptyStreamDecoder::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) {
+std::streamsize Sqex::Sqpack::EmptyStreamDecoder::ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) {
 	return m_provider->ReadStreamPartial(offset, buf, length);
 }

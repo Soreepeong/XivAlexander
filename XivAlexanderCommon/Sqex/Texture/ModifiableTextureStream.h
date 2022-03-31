@@ -19,8 +19,8 @@ namespace Sqex::Texture {
 		void SetMipmap(size_t mipmapIndex, size_t repeatIndex, std::shared_ptr<MipmapStream> mipmap);
 		void Resize(size_t mipmapCount, size_t repeatCount);
 
-		[[nodiscard]] uint64_t StreamSize() const override;
-		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
+		[[nodiscard]] std::streamsize StreamSize() const override;
+		std::streamsize ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) const override;
 
 		[[nodiscard]] Format GetType() const;
 		[[nodiscard]] uint16_t GetWidth() const;

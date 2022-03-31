@@ -1,4 +1,5 @@
-#include "pch.h"
+#include <ranges>
+
 #include "XivAlexanderCommon/Sqex/Excel/Generator.h"
 
 Sqex::Excel::Depth2ExhExdCreator::Depth2ExhExdCreator(std::string name, std::vector<Exh::Column> columns, int someSortOfBufferSize, size_t divideUnit)
@@ -181,7 +182,7 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>, Sqex::Sqpack::EntryPath
 					switch (columnDefinition.Type) {
 						case Exh::String:
 						{
-							const auto stringOffset = BE(static_cast<uint32_t>(row.size() - variableDataOffset));
+							const auto stringOffset = BE<uint32_t>(static_cast<uint32_t>(row.size() - variableDataOffset));
 							std::copy_n(reinterpret_cast<const char*>(&stringOffset), 4, &row[fixedDataOffset + columnDefinition.Offset]);
 							row.insert(row.end(), column.String.Escaped().begin(), column.String.Escaped().end());
 							row.push_back(0);

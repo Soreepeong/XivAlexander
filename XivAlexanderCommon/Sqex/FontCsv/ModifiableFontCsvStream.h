@@ -1,5 +1,4 @@
 #pragma once
-
 #include "XivAlexanderCommon/Sqex/FontCsv.h"
 
 namespace Sqex::FontCsv {
@@ -14,8 +13,8 @@ namespace Sqex::FontCsv {
 		ModifiableFontCsvStream();
 		ModifiableFontCsvStream(const RandomAccessStream& stream, bool strict = false);
 		
-		[[nodiscard]] uint64_t StreamSize() const override;
-		uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const override;
+		[[nodiscard]] std::streamsize StreamSize() const override;
+		std::streamsize ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) const override;
 
 		[[nodiscard]] const FontTableEntry* GetFontEntry(char32_t c) const;
 		[[nodiscard]] int GetKerningDistance(char32_t l, char32_t r) const;
