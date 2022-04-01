@@ -5,11 +5,13 @@
 
 #include <zlib.h>
 
-#include "../Sqex.h"
+#include "Common.h"
+#include "internal/ByteOrder.h"
+#include "internal/TinySha1.h"
+#include "internal/SpanCast.h"
+#include "internal/Misc.h"
 
-#include "internal/sha1.h"
-
-namespace Sqex::Sqpack {
+namespace XivRes {
 	struct Sha1Value {
 		uint8_t Value[20]{};
 
@@ -46,7 +48,7 @@ namespace Sqex::Sqpack {
 		}
 
 		[[nodiscard]] bool IsZero() const {
-			return IsAllSameValue(Value);
+			return Internal::IsAllSameValue(Value);
 		}
 
 		void SetFromPointer(const void* data, size_t size) {
@@ -69,7 +71,7 @@ namespace Sqex::Sqpack {
 			Sha1Value t;
 			t.SetFromPointer(data, size);
 			if (*this != t) {
-				if (!size && IsAllSameValue(Value))  // all zero values can be in place of SHA-1 value of empty value
+				if (!size && Internal::IsAllSameValue(Value))  // all zero values can be in place of SHA-1 value of empty value
 					return;
 				throw CorruptDataException(errorMessage);
 			}
@@ -111,10 +113,10 @@ namespace Sqex::Sqpack {
 				throw CorruptDataException("sizeof Header != 0x400");
 			if (memcmp(Signature, Signature_Value, sizeof Signature) != 0)
 				throw CorruptDataException("Invalid SqPack signature");
-			Sha1.Verify(this, offsetof(Sqex::Sqpack::SqpackHeader, Sha1), "SqPack Header SHA-1");
-			if (!IsAllSameValue(Padding_0x024))
+			Sha1.Verify(this, offsetof(XivRes::SqpackHeader, Sha1), "SqPack Header SHA-1");
+			if (!Internal::IsAllSameValue(Padding_0x024))
 				throw CorruptDataException("Padding_0x024 != 0");
-			if (!IsAllSameValue(Padding_0x3D4))
+			if (!Internal::IsAllSameValue(Padding_0x3D4))
 				throw CorruptDataException("Padding_0x3D4 != 0");
 			if (supposedType != SqpackType::Unspecified && supposedType != Type)
 				throw CorruptDataException(std::format("Invalid SqpackType (expected {}, file is {})",
@@ -134,88 +136,6 @@ namespace Sqex::Sqpack {
 			char Padding_0x020[0x28]{};
 		};
 		static_assert(sizeof SegmentDescriptor == 0x48);
-
-		/*
-		 * Segment 1
-		 * * Stands for files
-		 * * Descriptor.Count = 1
-		 *
-		 * Segment 2
-		 * * Descriptor.Count stands for number of .dat files
-		 * * Descriptor.Size is multiple of 0x100; each entry is sized 0x100
-		 * * Data is always 8x00s, 4xFFs, and the rest is 0x00s
-		 *
-		 * Segment 3
-		 * * Descriptor.Count = 0
-		 *
-		 * Segment 4
-		 * * Stands for folders
-		 * * Descriptor.Count = 0
-		 */
-
-		struct Header {
-			enum class IndexType : uint32_t {
-				Unspecified = UINT32_MAX,
-				Index = 0,
-				Index2 = 2,
-			};
-
-			LE<uint32_t> HeaderSize;
-			SegmentDescriptor HashLocatorSegment;
-			char Padding_0x04C[4]{};
-			SegmentDescriptor TextLocatorSegment;
-			SegmentDescriptor UnknownSegment3;
-			SegmentDescriptor PathHashLocatorSegment;
-			char Padding_0x128[4]{};
-			LE<IndexType> Type;
-			char Padding_0x130[0x3c0 - 0x130]{};
-			Sha1Value Sha1;
-			char Padding_0x3D4[0x2c]{};
-
-			void VerifySqpackIndexHeader(IndexType expectedIndexType) const {
-				if (HeaderSize != sizeof Header)
-					throw CorruptDataException("sizeof IndexHeader != 0x400");
-				if (expectedIndexType != IndexType::Unspecified && expectedIndexType != Type)
-					throw CorruptDataException(std::format("Invalid SqpackType (expected {}, file is {})",
-						static_cast<uint32_t>(expectedIndexType),
-						static_cast<uint32_t>(*Type)));
-				Sha1.Verify(this, offsetof(Sqex::Sqpack::SqIndex::Header, Sha1), "SqIndex Header SHA-1");
-				if (!IsAllSameValue(Padding_0x04C))
-					throw CorruptDataException("Padding_0x04C");
-				if (!IsAllSameValue(Padding_0x128))
-					throw CorruptDataException("Padding_0x128");
-				if (!IsAllSameValue(Padding_0x130))
-					throw CorruptDataException("Padding_0x130");
-				if (!IsAllSameValue(Padding_0x3D4))
-					throw CorruptDataException("Padding_0x3D4");
-
-				if (!IsAllSameValue(HashLocatorSegment.Padding_0x020))
-					throw CorruptDataException("HashLocatorSegment.Padding_0x020");
-				if (!IsAllSameValue(TextLocatorSegment.Padding_0x020))
-					throw CorruptDataException("TextLocatorSegment.Padding_0x020");
-				if (!IsAllSameValue(UnknownSegment3.Padding_0x020))
-					throw CorruptDataException("UnknownSegment3.Padding_0x020");
-				if (!IsAllSameValue(PathHashLocatorSegment.Padding_0x020))
-					throw CorruptDataException("PathHashLocatorSegment.Padding_0x020");
-
-				if (Type == IndexType::Index && HashLocatorSegment.Size % sizeof PairHashLocator)
-					throw CorruptDataException("HashLocatorSegment.size % sizeof FileSegmentEntry != 0");
-				else if (Type == IndexType::Index2 && HashLocatorSegment.Size % sizeof FullHashLocator)
-					throw CorruptDataException("HashLocatorSegment.size % sizeof FileSegmentEntry2 != 0");
-				if (UnknownSegment3.Size % sizeof Segment3Entry)
-					throw CorruptDataException("UnknownSegment3.size % sizeof Segment3Entry != 0");
-				if (PathHashLocatorSegment.Size % sizeof PathHashLocator)
-					throw CorruptDataException("PathHashLocatorSegment.size % sizeof FolderSegmentEntry != 0");
-
-				if (HashLocatorSegment.Count != 1)
-					throw CorruptDataException("Segment1.Count == 1");
-				if (UnknownSegment3.Count != 0)
-					throw CorruptDataException("Segment3.Count == 0");
-				if (PathHashLocatorSegment.Count != 0)
-					throw CorruptDataException("Segment4.Count == 0");
-			}
-		};
-		static_assert(sizeof(Header) == 1024);
 
 		union LEDataLocator {
 			static LEDataLocator Synonym() {
@@ -325,7 +245,7 @@ namespace Sqex::Sqpack {
 			// TODO: following two can actually be in reverse order; find it out when the game data file actually contains a conflict in .index file
 			LE<uint32_t> NameHash;
 			LE<uint32_t> PathHash;
-			Sqex::Sqpack::SqIndex::LEDataLocator Locator;
+			XivRes::SqIndex::LEDataLocator Locator;
 			LE<uint32_t> ConflictIndex;
 			char FullPath[0xF0];
 		};
@@ -335,10 +255,91 @@ namespace Sqex::Sqpack {
 
 			LE<uint32_t> FullPathHash;
 			LE<uint32_t> UnusedHash;
-			Sqex::Sqpack::SqIndex::LEDataLocator Locator;
+			XivRes::SqIndex::LEDataLocator Locator;
 			LE<uint32_t> ConflictIndex;
 			char FullPath[0xF0];
 		};
+
+		/*
+		 * Segment 1
+		 * * Stands for files
+		 * * Descriptor.Count = 1
+		 *
+		 * Segment 2
+		 * * Descriptor.Count stands for number of .dat files
+		 * * Descriptor.Size is multiple of 0x100; each entry is sized 0x100
+		 * * Data is always 8x00s, 4xFFs, and the rest is 0x00s
+		 *
+		 * Segment 3
+		 * * Descriptor.Count = 0
+		 *
+		 * Segment 4
+		 * * Stands for folders
+		 * * Descriptor.Count = 0
+		 */
+		struct Header {
+			enum class IndexType : uint32_t {
+				Unspecified = UINT32_MAX,
+				Index = 0,
+				Index2 = 2,
+			};
+
+			LE<uint32_t> HeaderSize;
+			SegmentDescriptor HashLocatorSegment;
+			char Padding_0x04C[4]{};
+			SegmentDescriptor TextLocatorSegment;
+			SegmentDescriptor UnknownSegment3;
+			SegmentDescriptor PathHashLocatorSegment;
+			char Padding_0x128[4]{};
+			LE<IndexType> Type;
+			char Padding_0x130[0x3c0 - 0x130]{};
+			Sha1Value Sha1;
+			char Padding_0x3D4[0x2c]{};
+
+			void VerifySqpackIndexHeader(IndexType expectedIndexType) const {
+				if (HeaderSize != sizeof Header)
+					throw CorruptDataException("sizeof IndexHeader != 0x400");
+				if (expectedIndexType != IndexType::Unspecified && expectedIndexType != Type)
+					throw CorruptDataException(std::format("Invalid SqpackType (expected {}, file is {})",
+						static_cast<uint32_t>(expectedIndexType),
+						static_cast<uint32_t>(*Type)));
+				Sha1.Verify(this, offsetof(XivRes::SqIndex::Header, Sha1), "SqIndex Header SHA-1");
+				if (!Internal::IsAllSameValue(Padding_0x04C))
+					throw CorruptDataException("Padding_0x04C");
+				if (!Internal::IsAllSameValue(Padding_0x128))
+					throw CorruptDataException("Padding_0x128");
+				if (!Internal::IsAllSameValue(Padding_0x130))
+					throw CorruptDataException("Padding_0x130");
+				if (!Internal::IsAllSameValue(Padding_0x3D4))
+					throw CorruptDataException("Padding_0x3D4");
+
+				if (!Internal::IsAllSameValue(HashLocatorSegment.Padding_0x020))
+					throw CorruptDataException("HashLocatorSegment.Padding_0x020");
+				if (!Internal::IsAllSameValue(TextLocatorSegment.Padding_0x020))
+					throw CorruptDataException("TextLocatorSegment.Padding_0x020");
+				if (!Internal::IsAllSameValue(UnknownSegment3.Padding_0x020))
+					throw CorruptDataException("UnknownSegment3.Padding_0x020");
+				if (!Internal::IsAllSameValue(PathHashLocatorSegment.Padding_0x020))
+					throw CorruptDataException("PathHashLocatorSegment.Padding_0x020");
+
+				if (Type == IndexType::Index && HashLocatorSegment.Size % sizeof PairHashLocator)
+					throw CorruptDataException("HashLocatorSegment.size % sizeof FileSegmentEntry != 0");
+				else if (Type == IndexType::Index2 && HashLocatorSegment.Size % sizeof FullHashLocator)
+					throw CorruptDataException("HashLocatorSegment.size % sizeof FileSegmentEntry2 != 0");
+				if (UnknownSegment3.Size % sizeof Segment3Entry)
+					throw CorruptDataException("UnknownSegment3.size % sizeof Segment3Entry != 0");
+				if (PathHashLocatorSegment.Size % sizeof PathHashLocator)
+					throw CorruptDataException("PathHashLocatorSegment.size % sizeof FolderSegmentEntry != 0");
+
+				if (HashLocatorSegment.Count != 1)
+					throw CorruptDataException("Segment1.Count == 1");
+				if (UnknownSegment3.Count != 0)
+					throw CorruptDataException("Segment3.Count == 0");
+				if (PathHashLocatorSegment.Count != 0)
+					throw CorruptDataException("Segment4.Count == 0");
+			}
+		};
+		static_assert(sizeof(Header) == 1024);
 	}
 
 	namespace SqData {
@@ -381,7 +382,7 @@ namespace Sqex::Sqpack {
 			void Verify(uint32_t expectedSpanIndex) const {
 				if (HeaderSize != sizeof Header)
 					throw CorruptDataException("sizeof IndexHeader != 0x400");
-				Sha1.Verify(span_cast<char>(1, this).subspan(0, offsetof(Sqex::Sqpack::SqData::Header, Sha1)), "IndexHeader SHA-1");
+				Sha1.Verify(Internal::span_cast<char>(1, this).subspan(0, offsetof(XivRes::SqData::Header, Sha1)), "IndexHeader SHA-1");
 				if (*Null1)
 					throw CorruptDataException("Null1 != 0");
 				if (Unknown1 != Unknown1_Value)
@@ -392,15 +393,15 @@ namespace Sqex::Sqpack {
 					throw CorruptDataException("Null2 != 0");
 				if (MaxFileSize > MaxFileSize_MaxValue)
 					throw CorruptDataException(std::format("MaxFileSize({:x}) != MaxFileSize_MaxValue({:x})", *MaxFileSize, MaxFileSize_MaxValue));
-				if (!IsAllSameValue(Padding_0x034))
+				if (!Internal::IsAllSameValue(Padding_0x034))
 					throw CorruptDataException("Padding_0x034 != 0");
-				if (!IsAllSameValue(Padding_0x3D4))
+				if (!Internal::IsAllSameValue(Padding_0x3D4))
 					throw CorruptDataException("Padding_0x3D4 != 0");
 			}
 		};
 		static_assert(offsetof(Header, Sha1) == 0x3c0, "Bad SqDataHeader definition");
 
-		enum class FileEntryType {
+		enum class PackedFileType {
 			None = 0,
 			EmptyOrObfuscated = 1,
 			Binary = 2,
@@ -420,20 +421,32 @@ namespace Sqex::Sqpack {
 			LE<uint32_t> Version;
 			LE<uint32_t> CompressedSize;
 			LE<uint32_t> DecompressedSize;
+
+			bool IsCompressed() const {
+				return *CompressedSize != CompressedSizeNotCompressed;
+			}
+
+			uint32_t PackedDataSize() const {
+				return *CompressedSize == CompressedSizeNotCompressed ? DecompressedSize : CompressedSize;
+			}
+
+			uint32_t TotalBlockSize() const {
+				return sizeof BlockHeader + PackedDataSize();
+			}
 		};
 
-		struct FileEntryHeader {
+		struct PackedFileHeader {
 			LE<uint32_t> HeaderSize;
-			LE<FileEntryType> Type;
+			LE<PackedFileType> Type;
 			LE<uint32_t> DecompressedSize;
 			LE<uint32_t> AllocatedSpaceUnitCount; // (Allocation - HeaderSize) / OffsetUnit
 			LE<uint32_t> OccupiedSpaceUnitCount;
 			LE<uint32_t> BlockCountOrVersion;
 
-			static FileEntryHeader NewEmpty(uint64_t decompressedSize = 0, uint64_t compressedSize = 0) {
-				FileEntryHeader res{
-					.HeaderSize = static_cast<uint32_t>(Align(sizeof FileEntryHeader)),
-					.Type = FileEntryType::EmptyOrObfuscated,
+			static PackedFileHeader NewEmpty(uint64_t decompressedSize = 0, uint64_t compressedSize = 0) {
+				PackedFileHeader res{
+					.HeaderSize = static_cast<uint32_t>(Align(sizeof PackedFileHeader)),
+					.Type = PackedFileType::EmptyOrObfuscated,
 					.DecompressedSize = static_cast<uint32_t>(decompressedSize),
 					.BlockCountOrVersion = static_cast<uint32_t>(compressedSize),
 				};
@@ -449,7 +462,7 @@ namespace Sqex::Sqpack {
 				return 1ULL * OccupiedSpaceUnitCount * EntryAlignment;
 			}
 
-			[[nodiscard]] uint64_t GetTotalEntrySize() const {
+			[[nodiscard]] uint64_t GetTotalPackedFileSize() const {
 				return HeaderSize + GetDataSize();
 			}
 		};
@@ -503,7 +516,7 @@ namespace Sqex::Sqpack {
 	static constexpr uint16_t EntryBlockPadSize = (EntryAlignment - EntryBlockValidSize) % EntryAlignment;
 	static constexpr uint16_t EntryBlockSize = EntryBlockValidSize + EntryBlockPadSize;
 
-	struct EntryPathSpec {
+	struct SqpackPathSpec {
 		static constexpr uint32_t EmptyHashValue = 0xFFFFFFFFU;
 		static constexpr uint8_t EmptyId = 0xFF;
 		static constexpr uint32_t SlashHashValue = 0x862C2D2BU;
@@ -519,7 +532,7 @@ namespace Sqex::Sqpack {
 		std::string m_text;
 
 	public:
-		EntryPathSpec()
+		SqpackPathSpec()
 			: m_empty(true)
 			, m_categoryId(EmptyId)
 			, m_expacId(EmptyId)
@@ -530,7 +543,7 @@ namespace Sqex::Sqpack {
 			, m_text() {
 		}
 
-		EntryPathSpec(EntryPathSpec&& r)
+		SqpackPathSpec(SqpackPathSpec&& r)
 			: m_empty(r.m_empty)
 			, m_categoryId(r.m_categoryId)
 			, m_expacId(r.m_expacId)
@@ -542,7 +555,7 @@ namespace Sqex::Sqpack {
 			r.clear();
 		}
 
-		EntryPathSpec(const EntryPathSpec& r)
+		SqpackPathSpec(const SqpackPathSpec& r)
 			: m_empty(r.m_empty)
 			, m_categoryId(r.m_categoryId)
 			, m_expacId(r.m_expacId)
@@ -553,7 +566,7 @@ namespace Sqex::Sqpack {
 			, m_text(r.m_text) {
 		}
 
-		EntryPathSpec(uint32_t pathHash, uint32_t nameHash, uint32_t fullPathHash, uint8_t categoryId, uint8_t expacId, uint8_t partId)
+		SqpackPathSpec(uint32_t pathHash, uint32_t nameHash, uint32_t fullPathHash, uint8_t categoryId, uint8_t expacId, uint8_t partId)
 			: m_empty(false)
 			, m_categoryId(categoryId)
 			, m_expacId(expacId)
@@ -563,17 +576,21 @@ namespace Sqex::Sqpack {
 			, m_fullPathHash(fullPathHash) {
 		}
 
-		EntryPathSpec(std::string fullPath) : EntryPathSpec() {
+		SqpackPathSpec(const char* fullPath) : SqpackPathSpec(std::string(fullPath)) {}
+
+		SqpackPathSpec(std::string fullPath) : SqpackPathSpec() {
+			const auto test = crc32_z(0, reinterpret_cast<const uint8_t*>(&fullPath[0]), fullPath.size());
+
 			auto pos = fullPath.find('/');
-			std::vector<std::string_view> parts;
+			std::vector<std::span<char>> parts;
 			size_t previousOffset = 0, offset;
 			while ((offset = fullPath.find_first_of("/\\", previousOffset)) != std::string::npos) {
-				auto part = std::string_view(fullPath).substr(previousOffset, offset - previousOffset);
+				auto part = std::span(fullPath).subspan(previousOffset, offset - previousOffset);
 				previousOffset = offset + 1;
 
-				if (part.empty() || part == ".")
+				if (part.empty() || (part.size() == 1 && part[0] == '.'))
 					void();
-				else if (part == "..") {
+				else if (part.size() == 2 && part[0] == '.' && part[1] == '.') {
 					if (!parts.empty())
 						parts.pop_back();
 				} else {
@@ -581,9 +598,9 @@ namespace Sqex::Sqpack {
 				}
 			}
 
-			if (auto part = std::string_view(fullPath).substr(previousOffset); part.empty() || part == ".")
+			if (auto part = std::span(fullPath).subspan(previousOffset); part.empty() || (part.size() == 1 && part[0] == '.'))
 				void();
-			else if (part == "..") {
+			else if (part.size() == 2 && part[0] == '.' && part[1] == '.') {
 				if (!parts.empty())
 					parts.pop_back();
 			} else {
@@ -594,15 +611,22 @@ namespace Sqex::Sqpack {
 				return;
 
 			m_empty = false;
-			m_text.reserve(std::accumulate(parts.begin(), parts.end(), SIZE_MAX, [](size_t curr, const std::wstring_view& view) { return curr + view.size() + 1; }));
+			m_text.reserve(std::accumulate(parts.begin(), parts.end(), SIZE_MAX, [](size_t curr, const std::string_view& view) { return curr + view.size() + 1; }));
 
 			m_pathHash = m_nameHash = 0;
 			for (size_t i = 0; i < parts.size(); i++) {
 				if (i > 0) {
 					m_text += "/";
-					m_pathHash = crc32_combine(crc32_combine(m_pathHash, ~SlashHashValue, 1), m_nameHash, static_cast<long>(parts[i - 1].size()));
+					if (i == 1)
+						m_pathHash = m_nameHash;
+					else
+						m_pathHash = crc32_combine(crc32_combine(m_pathHash, ~SlashHashValue, 1), m_nameHash, static_cast<long>(parts[i - 1].size()));
 				}
 				m_text += parts[i];
+				for (auto& p : parts[i]) {
+					if ('A' <= p && p <= 'Z')
+						p += 'a' - 'A';
+				}
 				m_nameHash = crc32_z(0, reinterpret_cast<const uint8_t*>(parts[i].data()), parts[i].size());
 			}
 
@@ -613,54 +637,59 @@ namespace Sqex::Sqpack {
 			m_nameHash = ~m_nameHash;
 
 			if (!parts.empty()) {
+				std::vector<std::string_view> views;
+				views.reserve(parts.size());
+				for (const auto& part : parts)
+					views.emplace_back(part);
+
 				m_expacId = m_partId = 0;
 
-				if (parts[0] == "common") {
+				if (views[0] == "common") {
 					m_categoryId = 0x00;
 
-				} else if (parts[0] == "bgcommon") {
+				} else if (views[0] == "bgcommon") {
 					m_categoryId = 0x01;
 
-				} else if (parts[0] == "bg") {
+				} else if (views[0] == "bg") {
 					m_categoryId = 0x02;
-					m_expacId = parts.size() >= 2 && parts[1].starts_with("ex") ? std::strtol(&parts[1][2], nullptr, 10) : 0;
-					m_partId = parts.size() >= 3 && m_expacId > 0 ? std::strtol(&parts[2][0], nullptr, 10) : 0;
+					m_expacId = views.size() >= 2 && views[1].starts_with("ex") ? static_cast<uint8_t>(std::strtol(&views[1][2], nullptr, 10)) : 0;
+					m_partId = views.size() >= 3 && m_expacId > 0 ? static_cast<uint8_t>(std::strtol(&views[2][0], nullptr, 10)) : 0;
 
-				} else if (parts[0] == "cut") {
+				} else if (views[0] == "cut") {
 					m_categoryId = 0x03;
-					m_expacId = parts.size() >= 2 && parts[1].starts_with("ex") ? std::strtol(&parts[1][2], nullptr, 10) : 0;
+					m_expacId = views.size() >= 2 && views[1].starts_with("ex") ? static_cast<uint8_t>(std::strtol(&views[1][2], nullptr, 10)) : 0;
 
-				} else if (parts[0] == "chara") {
+				} else if (views[0] == "chara") {
 					m_categoryId = 0x04;
 
-				} else if (parts[0] == "shader") {
+				} else if (views[0] == "shader") {
 					m_categoryId = 0x05;
 
-				} else if (parts[0] == "ui") {
+				} else if (views[0] == "ui") {
 					m_categoryId = 0x06;
 
-				} else if (parts[0] == "sound") {
+				} else if (views[0] == "sound") {
 					m_categoryId = 0x07;
 
-				} else if (parts[0] == "vfx") {
+				} else if (views[0] == "vfx") {
 					m_categoryId = 0x08;
 
-				} else if (parts[0] == "exd") {
+				} else if (views[0] == "exd") {
 					m_categoryId = 0x0a;
 
-				} else if (parts[0] == "game_script") {
+				} else if (views[0] == "game_script") {
 					m_categoryId = 0x0b;
 
-				} else if (parts[0] == "music") {
+				} else if (views[0] == "music") {
 					m_categoryId = 0x0c;
-					m_expacId = parts.size() >= 2 && parts[1].starts_with("ex") ? std::strtol(&parts[1][2], nullptr, 10) : 0;
+					m_expacId = views.size() >= 2 && views[1].starts_with("ex") ? static_cast<uint8_t>(std::strtol(&views[1][2], nullptr, 10)) : 0;
 
 				} else
 					m_categoryId = 0x00;
 			}
 		}
 
-		EntryPathSpec& operator=(EntryPathSpec&& r) {
+		SqpackPathSpec& operator=(SqpackPathSpec&& r) {
 			m_empty = r.m_empty;
 			m_categoryId = r.m_categoryId;
 			m_expacId = r.m_expacId;
@@ -673,7 +702,7 @@ namespace Sqex::Sqpack {
 			return *this;
 		}
 
-		EntryPathSpec& operator=(const EntryPathSpec& r) {
+		SqpackPathSpec& operator=(const SqpackPathSpec& r) {
 			m_empty = r.m_empty;
 			m_categoryId = r.m_categoryId;
 			m_expacId = r.m_expacId;
@@ -723,7 +752,7 @@ namespace Sqex::Sqpack {
 			return std::format("{:0>6x}", PackNameValue());
 		}
 
-		bool operator==(const EntryPathSpec& r) const {
+		bool operator==(const SqpackPathSpec& r) const {
 			if (m_empty && r.m_empty)
 				return true;
 
@@ -736,12 +765,12 @@ namespace Sqex::Sqpack {
 				&& (m_text.empty() || r.m_text.empty() || FullPathComparator::Compare(*this, r) == 0);
 		}
 
-		bool operator!=(const EntryPathSpec& r) const {
+		bool operator!=(const SqpackPathSpec& r) const {
 			return !this->operator==(r);
 		}
 
 		struct AllHashComparator {
-			static int Compare(const EntryPathSpec& l, const EntryPathSpec& r) {
+			static int Compare(const SqpackPathSpec& l, const SqpackPathSpec& r) {
 				if (l.m_empty && r.m_empty)
 					return 0;
 				if (l.m_empty && !r.m_empty)
@@ -763,13 +792,13 @@ namespace Sqex::Sqpack {
 				return 0;
 			}
 
-			bool operator()(const EntryPathSpec& l, const EntryPathSpec& r) const {
+			bool operator()(const SqpackPathSpec& l, const SqpackPathSpec& r) const {
 				return Compare(l, r) < 0;
 			}
 		};
 
 		struct FullHashComparator {
-			static int Compare(const EntryPathSpec& l, const EntryPathSpec& r) {
+			static int Compare(const SqpackPathSpec& l, const SqpackPathSpec& r) {
 				if (l.m_empty && r.m_empty)
 					return 0;
 				if (l.m_empty && !r.m_empty)
@@ -783,13 +812,13 @@ namespace Sqex::Sqpack {
 				return 0;
 			}
 
-			bool operator()(const EntryPathSpec& l, const EntryPathSpec& r) const {
+			bool operator()(const SqpackPathSpec& l, const SqpackPathSpec& r) const {
 				return Compare(l, r) < 0;
 			}
 		};
 
 		struct PairHashComparator {
-			static int Compare(const EntryPathSpec& l, const EntryPathSpec& r) {
+			static int Compare(const SqpackPathSpec& l, const SqpackPathSpec& r) {
 				if (l.m_empty && r.m_empty)
 					return 0;
 				if (l.m_empty && !r.m_empty)
@@ -807,13 +836,13 @@ namespace Sqex::Sqpack {
 				return 0;
 			}
 
-			bool operator()(const EntryPathSpec& l, const EntryPathSpec& r) const {
+			bool operator()(const SqpackPathSpec& l, const SqpackPathSpec& r) const {
 				return Compare(l, r) < 0;
 			}
 		};
 
 		struct FullPathComparator {
-			static int Compare(const EntryPathSpec& l, const EntryPathSpec& r) {
+			static int Compare(const SqpackPathSpec& l, const SqpackPathSpec& r) {
 				if (l.m_empty && r.m_empty)
 					return 0;
 				if (l.m_empty && !r.m_empty)
@@ -835,59 +864,59 @@ namespace Sqex::Sqpack {
 				return 0;
 			}
 
-			bool operator()(const EntryPathSpec& l, const EntryPathSpec& r) const {
+			bool operator()(const SqpackPathSpec& l, const SqpackPathSpec& r) const {
 				return Compare(l, r) < 0;
 			}
 		};
-	};
 
-	struct PathSpecComparator {
-		bool operator()(const SqIndex::PairHashLocator& l, uint32_t r) const {
-			return l.NameHash < r;
-		}
+		struct LocatorComparator {
+			bool operator()(const SqIndex::PairHashLocator& l, uint32_t r) const {
+				return l.NameHash < r;
+			}
 
-		bool operator()(uint32_t l, const SqIndex::PairHashLocator& r) const {
-			return l < r.NameHash;
-		}
+			bool operator()(uint32_t l, const SqIndex::PairHashLocator& r) const {
+				return l < r.NameHash;
+			}
 
-		bool operator()(const SqIndex::PathHashLocator& l, uint32_t r) const {
-			return l.PathHash < r;
-		}
+			bool operator()(const SqIndex::PathHashLocator& l, uint32_t r) const {
+				return l.PathHash < r;
+			}
 
-		bool operator()(uint32_t l, const SqIndex::PathHashLocator& r) const {
-			return l < r.PathHash;
-		}
+			bool operator()(uint32_t l, const SqIndex::PathHashLocator& r) const {
+				return l < r.PathHash;
+			}
 
-		bool operator()(const SqIndex::FullHashLocator& l, uint32_t r) const {
-			return l.FullPathHash < r;
-		}
+			bool operator()(const SqIndex::FullHashLocator& l, uint32_t r) const {
+				return l.FullPathHash < r;
+			}
 
-		bool operator()(uint32_t l, const SqIndex::FullHashLocator& r) const {
-			return l < r.FullPathHash;
-		}
+			bool operator()(uint32_t l, const SqIndex::FullHashLocator& r) const {
+				return l < r.FullPathHash;
+			}
 
-		bool operator()(const SqIndex::PairHashWithTextLocator& l, const char* rt) const {
-			return _strcmpi(l.FullPath, rt);
-		}
+			bool operator()(const SqIndex::PairHashWithTextLocator& l, const char* rt) const {
+				return _strcmpi(l.FullPath, rt);
+			}
 
-		bool operator()(const char* lt, const SqIndex::PairHashWithTextLocator& r) const {
-			return _strcmpi(lt, r.FullPath);
-		}
+			bool operator()(const char* lt, const SqIndex::PairHashWithTextLocator& r) const {
+				return _strcmpi(lt, r.FullPath);
+			}
 
-		bool operator()(const SqIndex::FullHashWithTextLocator& l, const char* rt) const {
-			return _strcmpi(l.FullPath, rt);
-		}
+			bool operator()(const SqIndex::FullHashWithTextLocator& l, const char* rt) const {
+				return _strcmpi(l.FullPath, rt);
+			}
 
-		bool operator()(const char* lt, const SqIndex::FullHashWithTextLocator& r) const {
-			return _strcmpi(lt, r.FullPath);
-		}
+			bool operator()(const char* lt, const SqIndex::FullHashWithTextLocator& r) const {
+				return _strcmpi(lt, r.FullPath);
+			}
+		};
 	};
 }
 
 template<>
-struct std::formatter<Sqex::Sqpack::EntryPathSpec, char> : std::formatter<std::basic_string<char>, char> {
+struct std::formatter<XivRes::SqpackPathSpec, char> : std::formatter<std::basic_string<char>, char> {
 	template<class FormatContext>
-	auto format(const Sqex::Sqpack::EntryPathSpec& t, FormatContext& fc) {
-		return std::formatter<std::basic_string<char>, char>::format(std::format("{}({:08x}/{:08x}, {:08x})", t.m_text.wstring(), t.m_pathHash, t.m_nameHash, t.m_fullPathHash), fc);
+	auto format(const XivRes::SqpackPathSpec& t, FormatContext& fc) {
+		return std::formatter<std::basic_string<char>, char>::format(std::format("{}({:08x}/{:08x}, {:08x})", t.Path(), t.PathHash(), t.NameHash(), t.FullPathHash()), fc);
 	}
 };

@@ -4,255 +4,156 @@
     <Filter Include="Project Items">
       <UniqueIdentifier>{5414d1f9-ea36-49e7-9889-80e52683e767}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Utils">
-      <UniqueIdentifier>{ebd6c91a-3058-49ca-9c2c-c5e16671cb71}</UniqueIdentifier>
+    <Filter Include="Headers">
+      <UniqueIdentifier>{bbec9cf7-3df8-471b-98d8-c11a09a41f08}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Sqex">
-      <UniqueIdentifier>{168fc05a-7df1-4d84-a1d5-5f17ef42040e}</UniqueIdentifier>
+    <Filter Include="Headers\Internal">
+      <UniqueIdentifier>{e85d0ad4-6102-4282-a237-b9e6aa5c925c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Sqex\Game Resource Files">
-      <UniqueIdentifier>{ade84eab-1151-42fb-a0df-f3904367280b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Sqex\Game Resource Files\Texture %28.tex%29">
-      <UniqueIdentifier>{af403510-02b3-40bc-8446-bf5c09b85738}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29">
-      <UniqueIdentifier>{8b7c10fb-b24b-45bd-9692-9cdb1b369eab}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers">
-      <UniqueIdentifier>{1f6cfd51-29bd-4deb-a98b-851565e7efb4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders">
-      <UniqueIdentifier>{7f60c1b7-c106-4e4f-b344-80f4f9ca59a5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Sqex\Game Resource Files\Model %28.mdl%29">
-      <UniqueIdentifier>{8c4c35c7-a38b-4b9b-989c-62c79f7856db}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Sqex\Game Resource Files\FontCsv %28.fdt%29">
-      <UniqueIdentifier>{2e64594b-fceb-4f41-a5d7-476d2263bcb3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Sqex\Game Resource Files\Excel %28.exd, .exh, .exl%29">
-      <UniqueIdentifier>{efb71632-499e-4880-875e-ddbd81be0ea3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Sqex\Game Resource Files\Sound %28.scd%29">
-      <UniqueIdentifier>{63c632e9-165b-493d-a2de-5f20d1ebc928}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Sqex\Game Resource Files\Equipment/Gimmick Parameters %28.eqp, .gmp%29">
-      <UniqueIdentifier>{a320a006-2a67-4604-8375-f0b88b656646}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Sqex\Game Resource Files\Equipment Deformer Parameter %28.eqdp%29">
-      <UniqueIdentifier>{72ce1b0e-dee1-4e18-aa7e-3709043fa2cc}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Sqex\Internal">
-      <UniqueIdentifier>{7d18043f-e824-44d4-841c-14f1a8cf3b05}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Sqex.h">
-      <Filter>Sqex</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\FontCsv.h">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\ModifiableFontCsvStream.h">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sqpack\Creator.h">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sqpack.h">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sqpack\Reader.h">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Model.h">
-      <Filter>Sqex\Game Resource Files\Model %28.mdl%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Texture.h">
-      <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Texture\Mipmap.h">
-      <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sqpack\EntryProvider.h">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sqpack\EntryRawStream.h">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Texture\ModifiableTextureStream.h">
-      <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Excel.h">
-      <Filter>Sqex\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Excel\Reader.h">
-      <Filter>Sqex\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Excel\Generator.h">
-      <Filter>Sqex\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\SeString.h">
-      <Filter>Sqex</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sound.h">
-      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sound\Reader.h">
-      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sound\Writer.h">
-      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Imc.h">
-      <Filter>Sqex\Game Resource Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Est.h">
-      <Filter>Sqex\Game Resource Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\EqpGmp.h">
-      <Filter>Sqex\Game Resource Files\Equipment/Gimmick Parameters %28.eqp, .gmp%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Eqdp.h">
-      <Filter>Sqex\Game Resource Files\Equipment Deformer Parameter %28.eqdp%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sqpack\BinaryEntryProvider.h">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sqpack\EmptyOrObfuscatedEntryProvider.h">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sqpack\HotSwappableEntryProvider.h">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sqpack\LazyEntryProvider.h">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sqpack\ModelEntryProvider.h">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sqpack\RandomAccessStreamAsEntryProviderView.h">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sqpack\TextureEntryProvider.h">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sqpack\BinaryStreamDecoder.h">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sqpack\ModelStreamDecoder.h">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sqpack\TextureStreamDecoder.h">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sqpack\StreamDecoder.h">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\ZlibWrapper.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\Utils.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\StringUtils.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\CallOnDestruction.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\ListenerManager.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\Dxt.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sqpack\EmptyOrObfuscatedStreamDecoder.h">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\internal\sha1.h">
-      <Filter>Sqex\Internal</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="Sqex\FontCsv.cpp">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\FontCsv\ModifiableFontCsvStream.cpp">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Texture\Mipmap.cpp">
-      <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Texture\ModifiableTextureStream.cpp">
-      <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Excel.cpp">
-      <Filter>Sqex\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Excel\Reader.cpp">
-      <Filter>Sqex\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Excel\Generator.cpp">
-      <Filter>Sqex\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\SeString.cpp">
-      <Filter>Sqex</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Sound\Reader.cpp">
-      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Sound.cpp">
-      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Sound\Writer.cpp">
-      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\EqpGmp.cpp">
-      <Filter>Sqex\Game Resource Files\Equipment/Gimmick Parameters %28.eqp, .gmp%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Eqdp.cpp">
-      <Filter>Sqex\Game Resource Files\Equipment Deformer Parameter %28.eqdp%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Sqpack\ModelEntryProvider.cpp">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Sqpack\TextureEntryProvider.cpp">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Sqpack\RandomAccessStreamAsEntryProviderView.cpp">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Providers</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Sqpack\BinaryStreamDecoder.cpp">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Sqpack\StreamDecoder.cpp">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Sqpack\TextureStreamDecoder.cpp">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Sqpack\ModelStreamDecoder.cpp">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils\ZlibWrapper.cpp">
-      <Filter>Utils</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils\StringUtils.cpp">
-      <Filter>Utils</Filter>
-    </ClCompile>
-    <ClCompile Include="Utils\Dxt.cpp">
-      <Filter>Utils</Filter>
-    </ClCompile>
-    <ClCompile Include="EmptyOrObfuscatedStreamDecoder.cpp">
-      <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json">
       <Filter>Project Items</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Sqex\Common.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\Eqdp.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\EqpGmp.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\Est.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\Excel.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\ExcelGenerator.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\ExcelReader.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\FontCsv.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\FontCsvStream.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\Imc.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\MipmapStream.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\Model.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\RandomAccessStream.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\ScdReader.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\ScdWriter.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\SeString.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\Scd.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\Sqpack.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\SqpackBinaryEntryProvider.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\SqpackBinaryStreamDecoder.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\SqpackGenerator.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\SqpackEmptyOrObfuscatedEntryProvider.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\SqpackEmptyOrObfuscatedStreamDecoder.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\SqpackEntryProvider.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\SqpackEntryRawStream.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\SqpackHotSwappableEntryProvider.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\SqpackLazyEntryProvider.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\SqpackModelEntryProvider.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\SqpackModelStreamDecoder.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\SqpackRandomAccessStreamAsEntryProviderView.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\SqpackReader.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\SqpackStreamDecoder.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\SqpackTextureEntryProvider.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\SqpackTextureStreamDecoder.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\Texture.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\TextureStream.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\internal\ByteOrder.h">
+      <Filter>Headers\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\internal\CallOnDestruction.h">
+      <Filter>Headers\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\internal\Dxt.h">
+      <Filter>Headers\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\internal\ListenerManager.h">
+      <Filter>Headers\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\internal\Misc.h">
+      <Filter>Headers\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\internal\TinySha1.h">
+      <Filter>Headers\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\internal\SpanCast.h">
+      <Filter>Headers\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\internal\String.h">
+      <Filter>Headers\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\internal\ZlibWrapper.h">
+      <Filter>Headers\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\PixelFormats.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

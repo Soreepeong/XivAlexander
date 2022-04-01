@@ -1,61 +1,80 @@
-#pragma once
+#ifndef _XIVRES_EST_H_
+#define _XIVRES_EST_H_
+
 #include <cstdint>
 #include <map>
 #include <span>
 #include <vector>
-#include "XivAlexanderCommon/Sqex.h"
 
-namespace Sqex::Est {
-	struct EntryDescriptor {
+#include "RandomAccessStream.h"
+
+namespace XivRes {
+	struct EstEntryDescriptor {
 		uint16_t SetId;
 		uint16_t RaceCode;
 
-		bool operator<(const EntryDescriptor& r) const {
+		bool operator<(const EstEntryDescriptor& r) const {
 			return RaceCode == r.RaceCode ? SetId < r.SetId : RaceCode < r.RaceCode;
 		}
 
-		bool operator<=(const EntryDescriptor& r) const {
+		bool operator<=(const EstEntryDescriptor& r) const {
 			return RaceCode == r.RaceCode ? SetId <= r.SetId : RaceCode <= r.RaceCode;
 		}
 
-		bool operator>(const EntryDescriptor& r) const {
+		bool operator>(const EstEntryDescriptor& r) const {
 			return RaceCode == r.RaceCode ? SetId > r.SetId : RaceCode > r.RaceCode;
 		}
 
-		bool operator>=(const EntryDescriptor& r) const {
+		bool operator>=(const EstEntryDescriptor& r) const {
 			return RaceCode == r.RaceCode ? SetId >= r.SetId : RaceCode >= r.RaceCode;
 		}
 
-		bool operator==(const EntryDescriptor& r) const {
+		bool operator==(const EstEntryDescriptor& r) const {
 			return SetId == r.SetId && RaceCode == r.RaceCode;
 		}
 
-		bool operator!=(const EntryDescriptor& r) const {
+		bool operator!=(const EstEntryDescriptor& r) const {
 			return SetId != r.SetId || RaceCode != r.RaceCode;
 		}
 	};
 
-	class File {
+	class EstFile {
 		std::vector<uint8_t> m_data;
 
 	public:
-		File() : m_data(4) {}
-		File(std::vector<uint8_t> data) : m_data(std::move(data)) {}
-		File(const RandomAccessStream& stream) : m_data(stream.ReadStreamIntoVector<uint8_t>(0)) {}
-		File(const std::map<EntryDescriptor, uint16_t>& pairs)
+		EstFile()
+			: m_data(4) {
+		}
+
+		EstFile(std::vector<uint8_t> data)
+			: m_data(std::move(data)) {
+		}
+
+		EstFile(const RandomAccessStream& stream)
+			: m_data(stream.ReadStreamIntoVector<uint8_t>(0)) {
+		}
+
+		EstFile(const std::map<EstEntryDescriptor, uint16_t>& pairs)
 			: m_data(4) {
 			Update(pairs);
 		}
-		File(File&& file) : m_data(std::move(file.m_data)) {
+
+		EstFile(EstFile&& file)
+			: m_data(std::move(file.m_data)) {
 			file.m_data.resize(4);
 		}
-		File(const File&& file) : m_data(file.m_data) {}
-		File& operator=(File&& file) {
+
+		EstFile(const EstFile& file)
+			: m_data(file.m_data) {
+		}
+
+		EstFile& operator=(EstFile&& file) {
 			m_data = std::move(file.m_data);
 			file.m_data.resize(4);
 			return *this;
 		}
-		File& operator=(const File&& file) {
+
+		EstFile& operator=(const EstFile& file) {
 			m_data = file.m_data;
 			return *this;
 		}
@@ -72,20 +91,20 @@ namespace Sqex::Est {
 			return *reinterpret_cast<const uint32_t*>(&m_data[0]);
 		}
 
-		EntryDescriptor& Descriptor(size_t index) {
-			return reinterpret_cast<EntryDescriptor*>(&m_data[4])[index];
+		EstEntryDescriptor& Descriptor(size_t index) {
+			return reinterpret_cast<EstEntryDescriptor*>(&m_data[4])[index];
 		}
 
-		const EntryDescriptor& Descriptor(size_t index) const {
-			return reinterpret_cast<const EntryDescriptor*>(&m_data[4])[index];
+		const EstEntryDescriptor& Descriptor(size_t index) const {
+			return reinterpret_cast<const EstEntryDescriptor*>(&m_data[4])[index];
 		}
 
-		std::span<EntryDescriptor> Descriptors() {
-			return { reinterpret_cast<EntryDescriptor*>(&m_data[4]), Count() };
+		std::span<EstEntryDescriptor> Descriptors() {
+			return { reinterpret_cast<EstEntryDescriptor*>(&m_data[4]), Count() };
 		}
 
-		std::span<const EntryDescriptor> Descriptors() const {
-			return { reinterpret_cast<const EntryDescriptor*>(&m_data[4]), Count() };
+		std::span<const EstEntryDescriptor> Descriptors() const {
+			return { reinterpret_cast<const EstEntryDescriptor*>(&m_data[4]), Count() };
 		}
 
 		uint16_t& SkelId(size_t index) {
@@ -104,14 +123,14 @@ namespace Sqex::Est {
 			return { reinterpret_cast<const uint16_t*>(&m_data[4 + Descriptors().size_bytes()]), Count() };
 		}
 
-		std::map<EntryDescriptor, uint16_t> ToPairs() const {
-			std::map<EntryDescriptor, uint16_t> res;
+		std::map<EstEntryDescriptor, uint16_t> ToPairs() const {
+			std::map<EstEntryDescriptor, uint16_t> res;
 			for (size_t i = 0, i_ = Count(); i < i_; ++i)
 				res.emplace(Descriptor(i), SkelId(i));
 			return res;
 		}
 
-		void Update(const std::map<EntryDescriptor, uint16_t>& pairs) {
+		void Update(const std::map<EstEntryDescriptor, uint16_t>& pairs) {
 			m_data.resize(4 + pairs.size() * 6);
 			Count() = static_cast<uint32_t>(pairs.size());
 
@@ -124,3 +143,5 @@ namespace Sqex::Est {
 		}
 	};
 }
+
+#endif

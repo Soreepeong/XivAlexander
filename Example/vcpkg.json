@@ -1,0 +1,8 @@
+{
+  "name": "xivalexander-utils",
+  "version-string": "_",
+  "builtin-baseline": "b6b6a8b63007df2ff37167a1974652a8e948f045",
+  "dependencies": [
+    "zlib"
+  ]
+}

@@ -2,9 +2,12 @@
 #include <cstdint>
 #include <span>
 #include <vector>
-#include "XivAlexanderCommon/Sqex.h"
 
-namespace Sqex::Imc {
+#include "Common.h"
+#include "RandomAccessStream.h"
+#include "internal/ByteOrder.h"
+
+namespace XivRes::Imc {
 	enum class Type : uint16_t {
 		Unknown = 0,
 		NonSet = 1,

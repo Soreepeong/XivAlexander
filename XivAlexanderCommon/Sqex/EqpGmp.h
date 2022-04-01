@@ -1,38 +1,64 @@
-#pragma once
+#ifndef _XIVRES_EQPGMP_H_
+#define _XIVRES_EQPGMP_H_
+
 #include <cstdint>
 #include <span>
 #include <vector>
-#include "XivAlexanderCommon/Sqex.h"
 
-namespace Sqex::EqpGmp {
-	static constexpr size_t CountPerBlock = 160;
+#include "Common.h"
+#include "RandomAccessStream.h"
 
-	class ExpandedFile;
+#include "internal/ByteOrder.h"
+#include "internal/SpanCast.h"
 
-	std::vector<uint64_t> ExpandCollapse(const std::vector<uint64_t>& data, bool expand);
+namespace XivRes {
+	class EqpGmpFile {
+		static constexpr size_t CountPerBlock = 160;
 
-	class CollapsedFile {
 		std::vector<uint64_t> m_data;
+		std::vector<size_t> m_populatedIndices;
 
 	public:
-		CollapsedFile() : m_data(CountPerBlock) { m_data[0] = 1; }
-		CollapsedFile(std::vector<uint64_t> data) : m_data(std::move(data)) {}
-		CollapsedFile(const RandomAccessStream& stream) : m_data(stream.ReadStreamIntoVector<uint64_t>(0)) {}
-		CollapsedFile(const CollapsedFile& file) : m_data(file.m_data) {}
-		CollapsedFile(CollapsedFile&& file) : m_data(std::move(file.m_data)) {
-			file.m_data.resize(CountPerBlock);
-			file.m_data[0] = 1;
+		EqpGmpFile() {
+			Clear();
 		}
-		CollapsedFile(const ExpandedFile& file);
-		CollapsedFile& operator=(const CollapsedFile& file) {
+
+		EqpGmpFile(std::vector<uint64_t> data)
+			: m_data(std::move(data)) {
+
+			size_t populatedIndex = 0;
+			for (size_t i = 0; i < 64; i++) {
+				if (BlockBits() & (uint64_t{ 1 } << i))
+					m_populatedIndices.push_back(populatedIndex++);
+				else
+					m_populatedIndices.push_back(SIZE_MAX);
+			}
+		}
+
+		EqpGmpFile(const RandomAccessStream& stream)
+			: EqpGmpFile(stream.ReadStreamIntoVector<uint64_t>(0)) {
+		}
+
+		EqpGmpFile& operator=(const EqpGmpFile& file) {
 			m_data = file.m_data;
+			m_populatedIndices = file.m_populatedIndices;
 			return *this;
 		}
-		CollapsedFile& operator=(CollapsedFile&& file) {
+
+		EqpGmpFile& operator=(EqpGmpFile&& file) {
 			m_data = std::move(file.m_data);
-			file.m_data.resize(CountPerBlock);
-			file.m_data[0] = 1;
+			m_populatedIndices = std::move(file.m_populatedIndices);
+			file.Clear();
 			return *this;
+		}
+
+		void Clear() {
+			m_data.clear();
+			m_populatedIndices.clear();
+			m_data.resize(CountPerBlock);
+			m_data[0] = 1;
+			m_populatedIndices.resize(64, SIZE_MAX);
+			m_populatedIndices[0] = 0;
 		}
 
 		const std::vector<uint64_t>& Data() const {
@@ -54,84 +80,86 @@ namespace Sqex::EqpGmp {
 		}
 
 		std::span<uint64_t> Block(size_t index) {
-			if (!(BlockBits() & (uint64_t{ 1 } << index)))
+			const auto populatedIndex = m_populatedIndices.at(index);
+			if (populatedIndex == SIZE_MAX)
 				return {};
-			size_t populatedIndex = 0;
-			for (size_t i = 0; i < index; i++) {
-				if (BlockBits() & (uint64_t{ 1 } << i))
-					populatedIndex++;
-			}
 			return std::span(m_data).subspan(CountPerBlock * populatedIndex, CountPerBlock);
 		}
 
 		std::span<const uint64_t> Block(size_t index) const {
-			if (!(BlockBits() & (uint64_t{ 1 } << index)))
+			const auto populatedIndex = m_populatedIndices.at(index);
+			if (populatedIndex == SIZE_MAX)
 				return {};
-			size_t populatedIndex = 0;
-			for (size_t i = 0; i < index; i++) {
-				if (BlockBits() & (uint64_t{ 1 } << i))
-					populatedIndex++;
-			}
 			return std::span(m_data).subspan(CountPerBlock * populatedIndex, CountPerBlock);
-		}
-	};
-
-	class ExpandedFile {
-		std::vector<uint64_t> m_data;
-
-	public:
-		ExpandedFile() : m_data(CountPerBlock * 64) { m_data[0] = UINT64_MAX; }
-		ExpandedFile(const ExpandedFile& file) : m_data(file.m_data) {}
-		ExpandedFile(ExpandedFile&& file) : m_data(std::move(file.m_data)) {
-			file.m_data.resize(CountPerBlock * 64);
-			file.m_data[0] = UINT64_MAX;
-		}
-		ExpandedFile(const CollapsedFile& file) : m_data(ExpandCollapse(file.Data(), true)) {}
-		ExpandedFile& operator=(const ExpandedFile& file) {
-			m_data = file.m_data;
-			return *this;
-		}
-		ExpandedFile& operator=(ExpandedFile&& file) {
-			m_data = std::move(file.m_data);
-			file.m_data.resize(CountPerBlock);
-			file.m_data[0] = 1;
-			return *this;
-		}
-
-		const std::vector<uint64_t>& Data() const {
-			return m_data;
-		}
-
-		std::vector<uint8_t> DataBytes() const {
-			std::vector<uint8_t> res(std::span(m_data).size_bytes());
-			memcpy(&res[0], &m_data[0], res.size());
-			return res;
-		}
-
-		std::span<uint64_t> Block(size_t index) {
-			return std::span(m_data).subspan(CountPerBlock * index, CountPerBlock);
-		}
-
-		std::span<const uint64_t> Block(size_t index) const {
-			return std::span(m_data).subspan(CountPerBlock * index, CountPerBlock);
 		}
 
 		uint64_t& Parameter(size_t primaryId) {
-			return m_data[primaryId];
+			const auto blockIndex = primaryId / CountPerBlock;
+			const auto subIndex = primaryId % CountPerBlock;
+			const auto block = Block(blockIndex);
+			if (block.empty())
+				throw std::runtime_error("Must be expanded before accessing parameter for modification.");
+			return block[subIndex];
 		}
 
-		const uint64_t& Parameter(size_t primaryId) const {
-			return m_data[primaryId];
+		uint64_t Parameter(size_t primaryId) const {
+			return GetParameter(primaryId);
+		}
+
+		uint64_t GetParameter(size_t primaryId) const {
+			const auto blockIndex = primaryId / CountPerBlock;
+			const auto subIndex = primaryId % CountPerBlock;
+			const auto block = Block(blockIndex);
+			if (block.empty())
+				return 0;
+			return block[subIndex];
 		}
 
 		std::span<uint8_t> ParameterBytes(size_t primaryId) {
-			return span_cast<uint8_t>(m_data, primaryId, 8);
+			return Internal::span_cast<uint8_t>(m_data, primaryId, 8);
 		}
 
 		std::span<const uint8_t> ParameterBytes(size_t primaryId) const {
-			return span_cast<uint8_t>(m_data, primaryId, 8);
+			return Internal::span_cast<uint8_t>(m_data, primaryId, 8);
+		}
+
+		std::vector<uint64_t> ExpandCollapse(bool expand) {
+			std::vector<uint64_t> newData;
+			newData.reserve(CountPerBlock * 64);
+
+			uint64_t populatedBits = 0;
+
+			size_t sourceIndex = 0, targetIndex = 0;
+			for (size_t i = 0; i < 64; i++) {
+				if (m_data[0] & (1ULL << i)) {
+					const auto currentSourceIndex = sourceIndex;
+					sourceIndex++;
+
+					if (!expand) {
+						bool isAllZeros = true;
+						for (size_t j = currentSourceIndex * CountPerBlock, j_ = j + CountPerBlock; isAllZeros && j < j_; ++j) {
+							isAllZeros = m_data[j] == 0;
+						}
+						if (isAllZeros)
+							continue;
+					}
+					populatedBits |= 1ULL << i;
+					newData.resize(newData.size() + CountPerBlock);
+					std::copy_n(&m_data[currentSourceIndex * CountPerBlock], CountPerBlock, &newData[targetIndex * CountPerBlock]);
+					targetIndex++;
+				} else {
+					if (expand) {
+						populatedBits |= 1ULL << i;
+						newData.resize(newData.size() + CountPerBlock);
+						targetIndex++;
+					}
+				}
+			}
+			newData[0] = populatedBits;
+
+			return newData;
 		}
 	};
-
-	inline CollapsedFile::CollapsedFile(const ExpandedFile& file) : m_data(ExpandCollapse(file.Data(), false)) {}
 }
+
+#endif

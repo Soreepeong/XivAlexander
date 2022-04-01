@@ -1,7 +1,8 @@
 #pragma once
-#include "XivAlexanderCommon/Sqex.h"
 
-namespace Sqex::Model {
+#include "internal/ByteOrder.h"
+
+namespace XivRes::Model {
 	struct Header {
 		LE<uint32_t> Version;
 		LE<uint32_t> StackSize;

@@ -19,78 +19,60 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <None Include="vcpkg.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Example\Example.vcxproj">
+      <Project>{7e0615c0-f086-4fcb-9df0-e381cbb684f5}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Sqex\Common.h" />
     <ClInclude Include="Sqex\Eqdp.h" />
     <ClInclude Include="Sqex\EqpGmp.h" />
     <ClInclude Include="Sqex\Est.h" />
-    <ClInclude Include="Sqex\Imc.h" />
-    <ClInclude Include="Sqex\internal\sha1.h" />
-    <ClInclude Include="Sqex\SeString.h" />
     <ClInclude Include="Sqex\Excel.h" />
-    <ClInclude Include="Sqex\Excel\Generator.h" />
-    <ClInclude Include="Sqex\Excel\Reader.h" />
-    <ClInclude Include="Sqex\Sound.h" />
-    <ClInclude Include="Sqex\Sound\Reader.h" />
-    <ClInclude Include="Sqex\Sound\Writer.h" />
-    <ClInclude Include="Sqex\Sqpack\BinaryEntryProvider.h" />
-    <ClInclude Include="Sqex\Sqpack\BinaryStreamDecoder.h" />
-    <ClInclude Include="Sqex\Sqpack\EmptyOrObfuscatedEntryProvider.h" />
-    <ClInclude Include="Sqex\Sqpack\EmptyOrObfuscatedStreamDecoder.h" />
-    <ClInclude Include="Sqex\Sqpack\EntryProvider.h" />
-    <ClInclude Include="Sqex\Sqpack\EntryRawStream.h" />
-    <ClInclude Include="Sqex\Sqpack\HotSwappableEntryProvider.h" />
-    <ClInclude Include="Sqex\Sqpack\LazyEntryProvider.h" />
-    <ClInclude Include="Sqex\Sqpack\ModelEntryProvider.h" />
-    <ClInclude Include="Sqex\Sqpack\ModelStreamDecoder.h" />
-    <ClInclude Include="Sqex\Sqpack\RandomAccessStreamAsEntryProviderView.h" />
-    <ClInclude Include="Sqex\Sqpack\StreamDecoder.h" />
-    <ClInclude Include="Sqex\Sqpack\TextureEntryProvider.h" />
-    <ClInclude Include="Sqex\Sqpack\TextureStreamDecoder.h" />
-    <ClInclude Include="Sqex\Texture\Mipmap.h" />
-    <ClInclude Include="Sqex\Texture\ModifiableTextureStream.h" />
-    <ClInclude Include="Utils\Dxt.h" />
-    <ClInclude Include="Sqex.h" />
+    <ClInclude Include="Sqex\ExcelGenerator.h" />
+    <ClInclude Include="Sqex\ExcelReader.h" />
     <ClInclude Include="Sqex\FontCsv.h" />
-    <ClInclude Include="Sqex\FontCsv\ModifiableFontCsvStream.h" />
+    <ClInclude Include="Sqex\FontCsvStream.h" />
+    <ClInclude Include="Sqex\Imc.h" />
+    <ClInclude Include="Sqex\internal\ByteOrder.h" />
+    <ClInclude Include="Sqex\internal\CallOnDestruction.h" />
+    <ClInclude Include="Sqex\internal\Dxt.h" />
+    <ClInclude Include="Sqex\internal\ListenerManager.h" />
+    <ClInclude Include="Sqex\internal\Misc.h" />
+    <ClInclude Include="Sqex\internal\TinySha1.h" />
+    <ClInclude Include="Sqex\internal\SpanCast.h" />
+    <ClInclude Include="Sqex\internal\String.h" />
+    <ClInclude Include="Sqex\internal\ZlibWrapper.h" />
+    <ClInclude Include="Sqex\MipmapStream.h" />
     <ClInclude Include="Sqex\Model.h" />
+    <ClInclude Include="Sqex\PixelFormats.h" />
+    <ClInclude Include="Sqex\RandomAccessStream.h" />
+    <ClInclude Include="Sqex\ScdReader.h" />
+    <ClInclude Include="Sqex\ScdWriter.h" />
+    <ClInclude Include="Sqex\SeString.h" />
+    <ClInclude Include="Sqex\Scd.h" />
     <ClInclude Include="Sqex\Sqpack.h" />
-    <ClInclude Include="Sqex\Sqpack\Reader.h" />
-    <ClInclude Include="Sqex\Sqpack\Creator.h" />
+    <ClInclude Include="Sqex\SqpackBinaryEntryProvider.h" />
+    <ClInclude Include="Sqex\SqpackBinaryStreamDecoder.h" />
+    <ClInclude Include="Sqex\SqpackGenerator.h" />
+    <ClInclude Include="Sqex\SqpackEmptyOrObfuscatedEntryProvider.h" />
+    <ClInclude Include="Sqex\SqpackEmptyOrObfuscatedStreamDecoder.h" />
+    <ClInclude Include="Sqex\SqpackEntryProvider.h" />
+    <ClInclude Include="Sqex\SqpackEntryRawStream.h" />
+    <ClInclude Include="Sqex\SqpackHotSwappableEntryProvider.h" />
+    <ClInclude Include="Sqex\SqpackLazyEntryProvider.h" />
+    <ClInclude Include="Sqex\SqpackModelEntryProvider.h" />
+    <ClInclude Include="Sqex\SqpackModelStreamDecoder.h" />
+    <ClInclude Include="Sqex\SqpackRandomAccessStreamAsEntryProviderView.h" />
+    <ClInclude Include="Sqex\SqpackReader.h" />
+    <ClInclude Include="Sqex\SqpackStreamDecoder.h" />
+    <ClInclude Include="Sqex\SqpackTextureEntryProvider.h" />
+    <ClInclude Include="Sqex\SqpackTextureStreamDecoder.h" />
     <ClInclude Include="Sqex\Texture.h" />
-    <ClInclude Include="Utils\CallOnDestruction.h" />
-    <ClInclude Include="Utils\ListenerManager.h" />
-    <ClInclude Include="Utils\Utils.h" />
-    <ClInclude Include="Utils\StringUtils.h" />
-    <ClInclude Include="Utils\ZlibWrapper.h" />
-    <ClCompile Include="EmptyOrObfuscatedStreamDecoder.cpp" />
-    <ClCompile Include="Sqex.cpp" />
-    <ClCompile Include="Sqex\Eqdp.cpp" />
-    <ClCompile Include="Sqex\EqpGmp.cpp" />
-    <ClCompile Include="Sqex\Sound.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="Sqex\SeString.cpp" />
-    <ClCompile Include="Sqex\Excel.cpp" />
-    <ClCompile Include="Sqex\Excel\Generator.cpp" />
-    <ClCompile Include="Sqex\Excel\Reader.cpp" />
-    <ClCompile Include="Sqex\Sound\Reader.cpp" />
-    <ClCompile Include="Sqex\Sound\Writer.cpp" />
-    <ClCompile Include="Sqex\Sqpack\BinaryStreamDecoder.cpp" />
-    <ClCompile Include="Sqex\Sqpack\ModelEntryProvider.cpp" />
-    <ClCompile Include="Sqex\Sqpack\ModelStreamDecoder.cpp" />
-    <ClCompile Include="Sqex\Sqpack\RandomAccessStreamAsEntryProviderView.cpp" />
-    <ClCompile Include="Sqex\Sqpack\StreamDecoder.cpp" />
-    <ClCompile Include="Sqex\Sqpack\TextureEntryProvider.cpp" />
-    <ClCompile Include="Sqex\Sqpack\TextureStreamDecoder.cpp" />
-    <ClCompile Include="Sqex\Texture\ModifiableTextureStream.cpp" />
-    <ClCompile Include="Sqex\FontCsv\ModifiableFontCsvStream.cpp" />
-    <ClCompile Include="Sqex\FontCsv.cpp" />
-    <ClCompile Include="Sqex\Texture\Mipmap.cpp" />
-    <ClCompile Include="Utils\Dxt.cpp" />
-    <ClCompile Include="Utils\StringUtils.cpp" />
-    <ClCompile Include="Utils\ZlibWrapper.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="vcpkg.json" />
+    <ClInclude Include="Sqex\TextureStream.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
