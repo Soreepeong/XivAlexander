@@ -89,8 +89,8 @@ namespace XivRes::Internal {
 			Multiple() = default;
 			Multiple(const Multiple&) = delete;
 			Multiple(Multiple&&) = delete;
-			Multiple(const Multiple&) = delete;
 			Multiple& operator=(const Multiple&) = delete;
+			Multiple& operator=(Multiple&&) = delete;
 
 			~Multiple() {
 				Clear();

@@ -1,10 +1,10 @@
 #ifndef _XIVRES_EXCEL_H_
 #define _XIVRES_EXCEL_H_
 
+#include "internal/ByteOrder.h"
+
 #include "Common.h"
 #include "SeString.h"
-
-#include "internal/ByteOrder.h"
 
 namespace XivRes {
 	// https://xiv.dev/game-data/file-formats/excel

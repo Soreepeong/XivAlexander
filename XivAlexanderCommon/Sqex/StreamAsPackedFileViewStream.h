@@ -1,14 +1,16 @@
-#pragma once
-#include "SqpackEntryProvider.h"
+#ifndef _XIVRES_STREAMASPACKEDFILESTREAM_H_
+#define _XIVRES_STREAMASPACKEDFILESTREAM_H_
+
+#include "PackedFileStream.h"
 
 namespace XivRes {
-	class RandomAccessStreamAsPackedFileView : public PackedFileStream {
-		const std::shared_ptr<const RandomAccessStream> m_stream;
+	class StreamAsPackedFileViewStream : public PackedFileStream {
+		const std::shared_ptr<const Stream> m_stream;
 
-		mutable std::optional<SqData::PackedFileType> m_entryType;
+		mutable std::optional<PackedFileType> m_entryType;
 
 	public:
-		RandomAccessStreamAsPackedFileView(SqpackPathSpec pathSpec, std::shared_ptr<const RandomAccessStream> stream)
+		StreamAsPackedFileViewStream(SqpackPathSpec pathSpec, std::shared_ptr<const Stream> stream)
 			: PackedFileStream(std::move(pathSpec))
 			, m_stream(std::move(stream)) {
 		}
@@ -21,12 +23,14 @@ namespace XivRes {
 			return m_stream->ReadStreamPartial(offset, buf, length);
 		}
 
-		[[nodiscard]] SqData::PackedFileType PackedFileType() const override {
+		[[nodiscard]] PackedFileType GetPackedFileType() const override {
 			if (!m_entryType) {
 				// operation that should be lightweight enough that lock should not be needed
-				m_entryType = m_stream->ReadStream<SqData::PackedFileHeader>(0).Type;
+				m_entryType = m_stream->ReadStream<PackedFileHeader>(0).Type;
 			}
 			return *m_entryType;
 		}
 	};
 }
+
+#endif

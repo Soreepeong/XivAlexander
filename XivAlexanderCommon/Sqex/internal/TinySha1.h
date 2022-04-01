@@ -19,32 +19,45 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef _TINY_SHA1_HPP_
-#define _TINY_SHA1_HPP_
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <stdint.h>
+#ifndef _XIVRES_INTERNAL_TINYSHA1_H_
+#define _XIVRES_INTERNAL_TINYSHA1_H_
+
+#include <cstdint>
+#include <memory>
+#include <span>
+
+#include "Misc.h"
 
 namespace XivRes::Internal {
 	class SHA1 {
 	public:
 		typedef uint32_t digest32_t[5];
 		typedef uint8_t digest8_t[20];
-		inline static uint32_t LeftRotate(uint32_t value, size_t count) {
-			return (value << count) ^ (value >> (32 - count));
+
+	private:
+		digest32_t m_digest;
+		uint8_t m_block[64];
+		size_t m_blockByteIndex;
+		size_t m_byteCount;
+
+	public:
+		SHA1() {
+			Reset();
 		}
-		SHA1() { reset(); }
-		virtual ~SHA1() {}
-		SHA1(const SHA1& s) { *this = s; }
-		const SHA1& operator = (const SHA1& s) {
+
+		SHA1(const SHA1& s) {
+			*this = s;
+		}
+
+		const SHA1& operator=(const SHA1& s) {
 			memcpy(m_digest, s.m_digest, 5 * sizeof(uint32_t));
 			memcpy(m_block, s.m_block, 64);
 			m_blockByteIndex = s.m_blockByteIndex;
 			m_byteCount = s.m_byteCount;
 			return *this;
 		}
-		SHA1& reset() {
+
+		SHA1& Reset() {
 			m_digest[0] = 0x67452301;
 			m_digest[1] = 0xEFCDAB89;
 			m_digest[2] = 0x98BADCFE;
@@ -54,59 +67,64 @@ namespace XivRes::Internal {
 			m_byteCount = 0;
 			return *this;
 		}
-		SHA1& processByte(uint8_t octet) {
+
+		SHA1& ProcessByte(uint8_t octet) {
 			this->m_block[this->m_blockByteIndex++] = octet;
 			++this->m_byteCount;
 			if (m_blockByteIndex == 64) {
 				this->m_blockByteIndex = 0;
-				processBlock();
+				ProcessBlock();
 			}
 			return *this;
 		}
-		SHA1& processBlock(const void* const start, const void* const end) {
+
+		SHA1& ProcessBlock(const void* const start, const void* const end) {
 			const uint8_t* begin = static_cast<const uint8_t*>(start);
 			const uint8_t* finish = static_cast<const uint8_t*>(end);
 			while (begin != finish) {
-				processByte(*begin);
+				ProcessByte(*begin);
 				begin++;
 			}
 			return *this;
 		}
-		SHA1& processBytes(const void* const data, size_t len) {
+
+		SHA1& ProcessBytes(const void* const data, size_t len) {
 			const uint8_t* block = static_cast<const uint8_t*>(data);
-			processBlock(block, block + len);
+			ProcessBlock(block, block + len);
 			return *this;
 		}
-		const uint32_t* getDigest(digest32_t digest) {
+
+		const uint32_t* GetDigest(digest32_t digest) {
 			size_t bitCount = this->m_byteCount * 8;
-			processByte(0x80);
+			ProcessByte(0x80);
 			if (this->m_blockByteIndex > 56) {
 				while (m_blockByteIndex != 0) {
-					processByte(0);
+					ProcessByte(0);
 				}
 				while (m_blockByteIndex < 56) {
-					processByte(0);
+					ProcessByte(0);
 				}
 			} else {
 				while (m_blockByteIndex < 56) {
-					processByte(0);
+					ProcessByte(0);
 				}
 			}
-			processByte(0);
-			processByte(0);
-			processByte(0);
-			processByte(0);
-			processByte(static_cast<unsigned char>((bitCount >> 24) & 0xFF));
-			processByte(static_cast<unsigned char>((bitCount >> 16) & 0xFF));
-			processByte(static_cast<unsigned char>((bitCount >> 8) & 0xFF));
-			processByte(static_cast<unsigned char>((bitCount) & 0xFF));
+			ProcessByte(0);
+			ProcessByte(0);
+			ProcessByte(0);
+			ProcessByte(0);
+			ProcessByte(static_cast<unsigned char>((bitCount >> 24) & 0xFF));
+			ProcessByte(static_cast<unsigned char>((bitCount >> 16) & 0xFF));
+			ProcessByte(static_cast<unsigned char>((bitCount >> 8) & 0xFF));
+			ProcessByte(static_cast<unsigned char>((bitCount) & 0xFF));
 
 			memcpy(digest, m_digest, 5 * sizeof(uint32_t));
 			return digest;
 		}
-		const uint8_t* getDigestBytes(digest8_t digest) {
+
+		const uint8_t* GetDigestBytes(digest8_t digest) {
 			digest32_t d32;
-			getDigest(d32);
+			GetDigest(d32);
 			size_t di = 0;
 			digest[di++] = ((d32[0] >> 24) & 0xFF);
 			digest[di++] = ((d32[0] >> 16) & 0xFF);
@@ -135,8 +153,8 @@ namespace XivRes::Internal {
 			return digest;
 		}
 
-	protected:
-		void processBlock() {
+	private:
+		void ProcessBlock() {
 			uint32_t w[80];
 			for (size_t i = 0; i < 16; i++) {
 				w[i] = (m_block[i * 4 + 0] << 24);
@@ -185,11 +203,84 @@ namespace XivRes::Internal {
 			m_digest[3] += d;
 			m_digest[4] += e;
 		}
-	private:
-		digest32_t m_digest;
-		uint8_t m_block[64];
-		size_t m_blockByteIndex;
-		size_t m_byteCount;
+
+		static uint32_t LeftRotate(uint32_t value, size_t count) {
+			return (value << count) ^ (value >> (32 - count));
+		}
 	};
 }
+
+namespace XivRes {
+	struct Sha1Value {
+		uint8_t Value[20]{};
+
+		bool operator==(const Sha1Value& r) const {
+			return memcmp(r.Value, Value, sizeof Value) == 0;
+		}
+
+		bool operator!=(const Sha1Value& r) const {
+			return memcmp(r.Value, Value, sizeof Value) != 0;
+		}
+
+		bool operator<(const Sha1Value& r) const {
+			return memcmp(r.Value, Value, sizeof Value) < 0;
+		}
+
+		bool operator<=(const Sha1Value& r) const {
+			return memcmp(r.Value, Value, sizeof Value) <= 0;
+		}
+
+		bool operator>(const Sha1Value& r) const {
+			return memcmp(r.Value, Value, sizeof Value) > 0;
+		}
+
+		bool operator>=(const Sha1Value& r) const {
+			return memcmp(r.Value, Value, sizeof Value) >= 0;
+		}
+
+		bool operator==(const char(&r)[20]) const {
+			return memcmp(r, Value, sizeof Value) == 0;
+		}
+
+		bool operator!=(const char(&r)[20]) const {
+			return memcmp(r, Value, sizeof Value) != 0;
+		}
+
+		[[nodiscard]] bool IsZero() const {
+			return Internal::IsAllSameValue(Value);
+		}
+
+		void SetFromPointer(const void* data, size_t size) {
+			Internal::SHA1 hasher;
+			hasher.ProcessBytes(data, size);
+			hasher.GetDigestBytes(Value);
+		}
+
+		template<typename T>
+		void SetFrom(std::span<T> data) {
+			SetFromPointer(data.data(), data.size_bytes());
+		}
+
+		template<typename ...Args>
+		void SetFromSpan(Args...args) {
+			SetFrom(std::span(std::forward<Args>(args)...));
+		}
+
+		void Verify(const void* data, size_t size, const char* errorMessage) const {
+			Sha1Value t;
+			t.SetFromPointer(data, size);
+			if (*this != t) {
+				if (!size && Internal::IsAllSameValue(Value))  // all zero values can be in place of SHA-1 value of empty value
+					return;
+				throw CorruptDataException(errorMessage);
+			}
+		}
+
+		template<typename T>
+		void Verify(std::span<T> data, const char* errorMessage) const {
+			Verify(data.data(), data.size_bytes(), errorMessage);
+		}
+	};
+}
+
 #endif

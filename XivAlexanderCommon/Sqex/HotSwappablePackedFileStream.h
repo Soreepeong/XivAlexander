@@ -1,6 +1,7 @@
-#pragma once
-#include "SqpackEntryProvider.h"
-#include "SqpackEmptyOrObfuscatedEntryProvider.h"
+#ifndef _XIVRES_HOTSWAPPABLEPACKEDFILESTREAM_H_
+#define _XIVRES_HOTSWAPPABLEPACKEDFILESTREAM_H_
+
+#include "EmptyOrObfuscatedPackedFileStream.h"
 
 namespace XivRes {
 	class HotSwappablePackedFileStream : public PackedFileStream {
@@ -55,8 +56,10 @@ namespace XivRes {
 			return length;
 		}
 
-		[[nodiscard]] SqData::PackedFileType PackedFileType() const override {
-			return m_stream ? m_stream->PackedFileType() : (m_baseStream ? m_baseStream->PackedFileType() : EmptyOrObfuscatedPackedFileStream::Instance().EntryType());
+		[[nodiscard]] PackedFileType GetPackedFileType() const override {
+			return m_stream ? m_stream->GetPackedFileType() : (m_baseStream ? m_baseStream->GetPackedFileType() : EmptyOrObfuscatedPackedFileStream::Instance().GetPackedFileType());
 		}
 	};
 }
+
+#endif

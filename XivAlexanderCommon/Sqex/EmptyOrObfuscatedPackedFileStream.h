@@ -1,21 +1,23 @@
-#pragma once
-#include "SqpackEntryProvider.h"
+#ifndef _XIVRES_EMPTYOROBFUSCATEDPACKEDFILESTREAM_H_
+#define _XIVRES_EMPTYOROBFUSCATEDPACKEDFILESTREAM_H_
+
+#include "PackedFileStream.h"
 
 namespace XivRes {
 	class EmptyOrObfuscatedPackedFileStream : public PackedFileStream {
-		const std::shared_ptr<const RandomAccessStream> m_stream;
-		const SqData::PackedFileHeader m_header;
+		const std::shared_ptr<const Stream> m_stream;
+		const PackedFileHeader m_header;
 
 	public:
 		EmptyOrObfuscatedPackedFileStream(SqpackPathSpec pathSpec)
 			: PackedFileStream(std::move(pathSpec))
-			, m_header(SqData::PackedFileHeader::NewEmpty()) {
+			, m_header(PackedFileHeader::NewEmpty()) {
 		}
 
-		EmptyOrObfuscatedPackedFileStream(SqpackPathSpec pathSpec, std::shared_ptr<const RandomAccessStream> stream, uint32_t decompressedSize = UINT32_MAX)
+		EmptyOrObfuscatedPackedFileStream(SqpackPathSpec pathSpec, std::shared_ptr<const Stream> stream, uint32_t decompressedSize = UINT32_MAX)
 			: PackedFileStream(std::move(pathSpec))
 			, m_stream(std::move(stream))
-			, m_header(SqData::PackedFileHeader::NewEmpty(decompressedSize == UINT32_MAX ? static_cast<uint32_t>(m_stream->StreamSize()) : decompressedSize, static_cast<size_t>(m_stream->StreamSize()))) {
+			, m_header(PackedFileHeader::NewEmpty(decompressedSize == UINT32_MAX ? static_cast<uint32_t>(m_stream->StreamSize()) : decompressedSize, static_cast<size_t>(m_stream->StreamSize()))) {
 		}
 
 		[[nodiscard]] std::streamsize StreamSize() const override {
@@ -40,9 +42,9 @@ namespace XivRes {
 			} else
 				relativeOffset -= sizeof m_header;
 
-			if (const auto afterHeaderPad = m_header.HeaderSize - sizeof m_header;
+			if (const auto afterHeaderPad = static_cast<std::streamoff>(m_header.HeaderSize - sizeof m_header);
 				relativeOffset < afterHeaderPad) {
-				const auto available = (std::min)(out.size_bytes(), afterHeaderPad);
+				const auto available = (std::min<size_t>)(out.size_bytes(), afterHeaderPad);
 				std::fill_n(out.begin(), available, 0);
 				out = out.subspan(available);
 				relativeOffset = 0;
@@ -78,8 +80,8 @@ namespace XivRes {
 			return length - out.size_bytes();
 		}
 
-		[[nodiscard]] SqData::PackedFileType EntryType() const override {
-			return SqData::PackedFileType::EmptyOrObfuscated;
+		[[nodiscard]] PackedFileType GetPackedFileType() const override {
+			return PackedFileType::EmptyOrObfuscated;
 		}
 
 		static const EmptyOrObfuscatedPackedFileStream& Instance() {
@@ -88,3 +90,5 @@ namespace XivRes {
 		}
 	};
 }
+
+#endif

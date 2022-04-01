@@ -1,13 +1,15 @@
-#pragma once
-#include "SqpackLazyEntryProvider.h"
-#include "XivAlexanderCommon/Sqex/Model.h"
+#ifndef _XIVRES_MODELPACKEDFILESTREAM_H_
+#define _XIVRES_MODELPACKEDFILESTREAM_H_
+
 #include "internal/ZlibWrapper.h"
+
+#include "LazyPackedFileStream.h"
 
 namespace XivRes {
 	class ModelPackedFileViewStream : public LazyPackedFileStream {
 		struct ModelEntryHeader {
-			SqData::PackedFileHeader Entry;
-			SqData::ModelBlockLocator Model;
+			PackedFileHeader Entry;
+			SqpackModelPackedFileBlockLocator Model;
 		} m_header{};
 		std::vector<uint32_t> m_blockOffsets;
 		std::vector<uint16_t> m_blockDataSizes;
@@ -19,14 +21,16 @@ namespace XivRes {
 		using LazyPackedFileStream::StreamSize;
 		using LazyPackedFileStream::ReadStreamPartial;
 
-		[[nodiscard]] SqData::PackedFileType EntryType() const override { return SqData::PackedFileType::Model; }
+		[[nodiscard]] PackedFileType GetPackedFileType() const override {
+			return PackedFileType::Model;
+		}
 
 	protected:
-		void Initialize(const RandomAccessStream& stream) override {
+		void Initialize(const Stream& stream) override {
 			Model::Header header;
 			stream.ReadStream(0, &header, sizeof header);
 
-			m_header.Entry.Type = SqData::PackedFileType::Model;
+			m_header.Entry.Type = PackedFileType::Model;
 			m_header.Entry.DecompressedSize = static_cast<uint32_t>(stream.StreamSize());
 			m_header.Entry.BlockCountOrVersion = header.Version;
 
@@ -49,9 +53,9 @@ namespace XivRes {
 				alignedBlock.IterateChunked([&](auto, uint32_t offset, uint32_t size) {
 					m_blockOffsets.push_back(getNextBlockOffset());
 					m_blockDataSizes.push_back(size);
-					m_paddedBlockSizes.push_back(static_cast<uint32_t>(Align(sizeof SqData::BlockHeader + size)));
+					m_paddedBlockSizes.push_back(static_cast<uint32_t>(Align(sizeof PackedBlockHeader + size)));
 					m_actualFileOffsets.push_back(offset);
-					}, baseFileOffset);
+				}, baseFileOffset);
 				const auto chunkSize = size ? getNextBlockOffset() - firstBlockOffset : 0;
 				baseFileOffset += size;
 
@@ -112,13 +116,14 @@ namespace XivRes {
 			return headerSize + blockCount * EntryBlockSize;
 		}
 
-		[[nodiscard]] std::streamsize StreamSize(const RandomAccessStream&) const override { return MaxPossibleStreamSize(); }
+		[[nodiscard]] std::streamsize StreamSize(const Stream&) const override { 
+			return MaxPossibleStreamSize(); }
 
-		std::streamsize ReadStreamPartial(const RandomAccessStream& stream, uint64_t offset, void* buf, uint64_t length) const override {
+		std::streamsize ReadStreamPartial(const Stream& stream, std::streamoff offset, void* buf, std::streamsize length) const override {
 			if (!length)
 				return 0;
 
-			auto relativeOffset = offset;
+			auto relativeOffset = static_cast<uint64_t>(offset);
 			auto out = std::span(static_cast<char*>(buf), static_cast<size_t>(length));
 
 			if (relativeOffset < sizeof m_header) {
@@ -158,8 +163,8 @@ namespace XivRes {
 			auto it = std::ranges::lower_bound(m_blockOffsets,
 				static_cast<uint32_t>(relativeOffset),
 				[&](uint32_t l, uint32_t r) {
-					return l < r;
-				});
+				return l < r;
+			});
 
 			if (it == m_blockOffsets.end())
 				--it;
@@ -179,11 +184,11 @@ namespace XivRes {
 			relativeOffset -= *it;
 
 			for (auto i = it - m_blockOffsets.begin(); it != m_blockOffsets.end(); ++it, ++i) {
-				if (relativeOffset < sizeof SqData::BlockHeader) {
-					const auto header = SqData::BlockHeader{
-						.HeaderSize = sizeof SqData::BlockHeader,
+				if (relativeOffset < sizeof PackedBlockHeader) {
+					const auto header = PackedBlockHeader{
+						.HeaderSize = sizeof PackedBlockHeader,
 						.Version = 0,
-						.CompressedSize = SqData::BlockHeader::CompressedSizeNotCompressed,
+						.CompressedSize = PackedBlockHeader::CompressedSizeNotCompressed,
 						.DecompressedSize = m_blockDataSizes[i],
 					};
 					const auto src = Internal::span_cast<uint8_t>(1, &header).subspan(static_cast<size_t>(relativeOffset));
@@ -194,7 +199,7 @@ namespace XivRes {
 
 					if (out.empty()) return length;
 				} else
-					relativeOffset -= sizeof SqData::BlockHeader;
+					relativeOffset -= sizeof PackedBlockHeader;
 
 				if (relativeOffset < m_blockDataSizes[i]) {
 					const auto available = (std::min)(out.size_bytes(), static_cast<size_t>(m_blockDataSizes[i] - relativeOffset));
@@ -206,7 +211,7 @@ namespace XivRes {
 				} else
 					relativeOffset -= m_blockDataSizes[i];
 
-				if (const auto padSize = m_paddedBlockSizes[i] - m_blockDataSizes[i] - sizeof SqData::BlockHeader;
+				if (const auto padSize = m_paddedBlockSizes[i] - m_blockDataSizes[i] - sizeof PackedBlockHeader;
 					relativeOffset < padSize) {
 					const auto available = (std::min)(out.size_bytes(), static_cast<size_t>(padSize - relativeOffset));
 					std::fill_n(out.begin(), available, 0);
@@ -220,7 +225,7 @@ namespace XivRes {
 
 			if (!out.empty()) {
 				const auto actualDataSize = m_header.Entry.HeaderSize + (m_paddedBlockSizes.empty() ? 0 : m_blockOffsets.back() + m_paddedBlockSizes.back());
-				const auto endPadSize = MaxPossibleStreamSize() - actualDataSize;
+				const auto endPadSize = static_cast<uint64_t>(MaxPossibleStreamSize() - actualDataSize);
 				if (relativeOffset < endPadSize) {
 					const auto available = (std::min)(out.size_bytes(), static_cast<size_t>(endPadSize - relativeOffset));
 					std::fill_n(out.begin(), available, 0);
@@ -240,19 +245,21 @@ namespace XivRes {
 		using LazyPackedFileStream::StreamSize;
 		using LazyPackedFileStream::ReadStreamPartial;
 
-		[[nodiscard]] SqData::PackedFileType EntryType() const override { return SqData::PackedFileType::Model; }
+		[[nodiscard]] PackedFileType GetPackedFileType() const override {
+			return PackedFileType::Model;
+		}
 
 	protected:
-		void Initialize(const RandomAccessStream& stream) override {
+		void Initialize(const Stream& stream) override {
 			Model::Header header;
 			stream.ReadStream(0, &header, sizeof header);
 
-			SqData::PackedFileHeader entryHeader{
-				.Type = SqData::PackedFileType::Model,
+			PackedFileHeader entryHeader{
+				.Type = PackedFileType::Model,
 				.DecompressedSize = static_cast<uint32_t>(stream.StreamSize()),
 				.BlockCountOrVersion = header.Version,
 			};
-			SqData::ModelBlockLocator modelHeader{
+			SqpackModelPackedFileBlockLocator modelHeader{
 				.VertexDeclarationCount = header.VertexDeclarationCount,
 				.MaterialCount = header.MaterialCount,
 				.LodCount = header.LodCount,
@@ -287,10 +294,10 @@ namespace XivRes {
 					const auto useCompressed = deflater && deflater->Result().size() < sourceBuf.size();
 					const auto targetBuf = useCompressed ? deflater->Result() : sourceBuf;
 
-					SqData::BlockHeader header{
-						.HeaderSize = sizeof SqData::BlockHeader,
+					PackedBlockHeader header{
+						.HeaderSize = sizeof PackedBlockHeader,
 						.Version = 0,
-						.CompressedSize = useCompressed ? static_cast<uint32_t>(targetBuf.size()) : SqData::BlockHeader::CompressedSizeNotCompressed,
+						.CompressedSize = useCompressed ? static_cast<uint32_t>(targetBuf.size()) : PackedBlockHeader::CompressedSizeNotCompressed,
 						.DecompressedSize = static_cast<uint32_t>(sourceBuf.size()),
 					};
 					const auto alignmentInfo = Align(sizeof header + targetBuf.size());
@@ -304,7 +311,7 @@ namespace XivRes {
 
 					blockOffsets.push_back(getNextBlockOffset());
 					paddedBlockSizes.push_back(static_cast<uint32_t>(alignmentInfo.Alloc));
-					}, baseFileOffset);
+				}, baseFileOffset);
 				const auto chunkSize = size ? getNextBlockOffset() - firstBlockOffset : 0;
 				baseFileOffset += size;
 
@@ -369,10 +376,11 @@ namespace XivRes {
 			m_data.resize(Align(m_data.size()));
 		}
 
-		[[nodiscard]] std::streamsize StreamSize(const RandomAccessStream& stream) const override { return static_cast<uint32_t>(m_data.size()); }
+		[[nodiscard]] std::streamsize StreamSize(const Stream& stream) const override {
+			return static_cast<uint32_t>(m_data.size()); }
 
-		std::streamsize ReadStreamPartial(const RandomAccessStream& stream, uint64_t offset, void* buf, uint64_t length) const {
-			const auto available = static_cast<size_t>((std::min)(length, m_data.size() - offset));
+		std::streamsize ReadStreamPartial(const Stream& stream, std::streamoff offset, void* buf, std::streamsize length) const {
+			const auto available = static_cast<size_t>((std::min<std::streamsize>)(length, m_data.size() - offset));
 			if (!available)
 				return 0;
 
@@ -381,3 +389,5 @@ namespace XivRes {
 		}
 	};
 }
+
+#endif

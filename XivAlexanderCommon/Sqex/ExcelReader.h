@@ -4,13 +4,13 @@
 #include <map>
 #include <ranges>
 
-#include "Sqex/internal/String.h"
+#include "internal/String.h"
 
 #include "Common.h"
 #include "Excel.h"
-#include "RandomAccessStream.h"
+#include "Stream.h"
 #include "SqpackReader.h"
-#include "SqpackEntryRawStream.h"
+#include "PackedFileUnpackingStream.h"
 
 namespace XivRes {
 	class ExlReader {
@@ -19,7 +19,7 @@ namespace XivRes {
 		std::map<int, std::string> m_idToNameMap;
 
 	public:
-		ExlReader(const RandomAccessStream& stream) {
+		ExlReader(const Stream& stream) {
 			std::string data(static_cast<size_t>(stream.StreamSize()), '\0');
 			stream.ReadStream(0, std::span(data));
 			std::istringstream in(std::move(data));
@@ -83,7 +83,7 @@ namespace XivRes {
 		std::vector<Language> m_languages;
 
 	public:
-		ExhReader(std::string name, const RandomAccessStream& stream, bool strict = false)
+		ExhReader(std::string name, const Stream& stream, bool strict = false)
 			: m_name(std::move(name))
 			, m_header(stream.ReadStream<ExhHeader>(0))
 			, m_columns(stream.ReadStreamIntoVector<ExhColHeader>(sizeof m_header, m_header.ColumnCount))
@@ -100,15 +100,25 @@ namespace XivRes {
 			}
 		}
 
-		const std::string& Name() const { return m_name; }
+		const std::string& Name() const {
+			return m_name;
+		}
 
-		const ExhHeader& Header() const { return m_header; }
+		const ExhHeader& Header() const {
+			return m_header;
+		}
 
-		const std::vector<ExhColHeader>& Columns() const { return m_columns; }
+		const std::vector<ExhColHeader>& Columns() const {
+			return m_columns;
+		}
 
-		const std::vector<ExhPagination>& Pages() const { return m_pages; }
+		const std::vector<ExhPagination>& Pages() const {
+			return m_pages;
+		}
 
-		const std::vector<Language>& Languages() const { return m_languages; }
+		const std::vector<Language>& Languages() const {
+			return m_languages;
+		}
 
 		size_t GetPageIndex(uint32_t rowId) const {
 			auto it = std::lower_bound(m_pages.begin(), m_pages.end(), rowId, [](const ExhPagination& l, uint32_t r) { return l.StartId + l.RowCountWithSkip <= r; });
@@ -167,8 +177,7 @@ namespace XivRes {
 			: m_fixedData(fixedData)
 			, m_fullData(fullData)
 			, m_cells(columns.size())
-			, Columns(columns) {
-		}
+			, Columns(columns) {}
 
 		ExcelCell& operator[](size_t index) {
 			return ResolveCell(index);
@@ -211,13 +220,11 @@ namespace XivRes {
 		public:
 			base_iterator(TParent* parent, difference_type index)
 				: m_parent(parent)
-				, m_index(CheckBoundaryOrThrow(index)) {
-			}
+				, m_index(CheckBoundaryOrThrow(index)) {}
 
 			base_iterator(const iterator& r)
 				: m_parent(r.m_parent)
-				, m_index(r.m_index) {
-			}
+				, m_index(r.m_index) {}
 
 			~base_iterator() = default;
 
@@ -243,7 +250,7 @@ namespace XivRes {
 			iterator operator++(int) { //postfix increment
 				const auto index = m_index;
 				m_index = CheckBoundaryOrThrow(m_index + 1);
-				return {m_parent, index};
+				return { m_parent, index };
 			}
 
 			pointer operator->() const {
@@ -452,10 +459,9 @@ namespace XivRes {
 
 	public:
 		ExdRowBuffer()
-			: m_rowId(UINT32_MAX) {
-		}
+			: m_rowId(UINT32_MAX) {}
 
-		ExdRowBuffer(uint32_t rowId, const ExhReader& exh, const RandomAccessStream& stream, std::streamoff offset)
+		ExdRowBuffer(uint32_t rowId, const ExhReader& exh, const Stream& stream, std::streamoff offset)
 			: m_rowId(rowId)
 			, m_rowHeader(stream.ReadStream<ExdRowHeader>(offset))
 			, m_buffer(stream.ReadStreamIntoVector<char>(offset + sizeof m_rowHeader, m_rowHeader.DataSize)) {
@@ -514,13 +520,11 @@ namespace XivRes {
 		public:
 			base_iterator(TParent* parent, difference_type index)
 				: m_parent(parent)
-				, m_index(CheckBoundaryOrThrow(index)) {
-			}
+				, m_index(CheckBoundaryOrThrow(index)) {}
 
 			base_iterator(const iterator& r)
 				: m_parent(r.m_parent)
-				, m_index(r.m_index) {
-			}
+				, m_index(r.m_index) {}
 
 			~base_iterator() = default;
 
@@ -689,7 +693,7 @@ namespace XivRes {
 
 	class ExdReader {
 	public:
-		const std::shared_ptr<const RandomAccessStream> Stream;
+		const std::shared_ptr<const XivRes::Stream> Stream;
 		const ExhReader& Exh;
 		const ExdHeader Header;
 
@@ -701,7 +705,7 @@ namespace XivRes {
 		mutable std::mutex m_populateMtx;
 
 	public:
-		ExdReader(const ExhReader& exh, std::shared_ptr<const RandomAccessStream> stream)
+		ExdReader(const ExhReader& exh, std::shared_ptr<const XivRes::Stream> stream)
 			: Stream(std::move(stream))
 			, Exh(exh)
 			, Header(Stream->ReadStream<ExdHeader>(0)) {
@@ -763,13 +767,11 @@ namespace XivRes {
 		public:
 			base_iterator(TParent* parent, difference_type index)
 				: m_parent(parent)
-				, m_index(CheckBoundaryOrThrow(index)) {
-			}
+				, m_index(CheckBoundaryOrThrow(index)) {}
 
 			base_iterator(const iterator& r)
 				: m_parent(r.m_parent)
-				, m_index(r.m_index) {
-			}
+				, m_index(r.m_index) {}
 
 			~base_iterator() = default;
 
@@ -838,7 +840,7 @@ namespace XivRes {
 		using iterator = base_iterator<const ExdReader, const ExdRowBuffer, false>;
 		using reverse_iterator = base_iterator<const ExdReader, const ExdRowBuffer, true>;
 
-		iterator begin() {
+		iterator begin() const {
 			return iterator(this, 0);
 		}
 
@@ -846,7 +848,7 @@ namespace XivRes {
 			return iterator(this, 0);
 		}
 
-		iterator end() {
+		iterator end() const {
 			return iterator(this, m_rowIds.size());
 		}
 
@@ -854,7 +856,7 @@ namespace XivRes {
 			return iterator(this, m_rowIds.size());
 		}
 
-		reverse_iterator rbegin() {
+		reverse_iterator rbegin() const {
 			return reverse_iterator(this, 0);
 		}
 
@@ -862,7 +864,7 @@ namespace XivRes {
 			return reverse_iterator(this, 0);
 		}
 
-		reverse_iterator rend() {
+		reverse_iterator rend() const {
 			return reverse_iterator(this, m_rowIds.size());
 		}
 
@@ -873,21 +875,77 @@ namespace XivRes {
 
 	class ExcelReader {
 		const SqpackReader* m_sqpackReader;
-		ExhReader m_exhReader;
-		XivRes::Language m_language;
-		mutable std::vector<std::optional<ExdReader>> m_exdReaders;
+		std::optional<ExhReader> m_exhReader;
+		Language m_language;
+		mutable std::vector<std::unique_ptr<ExdReader>> m_exdReaders;
 		mutable std::mutex m_populateMtx;
 
 	public:
+		ExcelReader()
+			: m_sqpackReader(nullptr)
+			, m_language(Language::Unspecified) {}
+
+		ExcelReader(const ExcelReader& r)
+			: m_sqpackReader(r.m_sqpackReader)
+			, m_exhReader(r.m_exhReader)
+			, m_language(r.m_language)
+			, m_exdReaders(m_exhReader ? m_exhReader->Pages().size() : 0) {}
+
+		ExcelReader(ExcelReader&& r)
+			: m_sqpackReader(r.m_sqpackReader)
+			, m_exhReader(std::move(r.m_exhReader))
+			, m_language(r.m_language)
+			, m_exdReaders(std::move(r.m_exdReaders)) {
+			r.Clear();
+		}
+
 		ExcelReader(const SqpackReader* sqpackReader, const std::string& name)
 			: m_sqpackReader(sqpackReader)
-			, m_exhReader(name, sqpackReader->GetPackedFileStream(std::format("exd/{}.exh", name))->GetUnpackedStream())
-			, m_language(m_exhReader.Languages().front())
-			, m_exdReaders(m_exhReader.Pages().size()) {
+			, m_exhReader(std::in_place, name, sqpackReader->GetPackedFileStream(std::format("exd/{}.exh", name))->GetUnpackedStream())
+			, m_language(m_exhReader->Languages().front())
+			, m_exdReaders(m_exhReader->Pages().size()) {}
+
+		ExcelReader& operator=(const ExcelReader& r) {
+			if (this == &r)
+				return *this;
+
+			m_sqpackReader = r.m_sqpackReader;
+			m_exhReader = r.m_exhReader;
+			m_language = r.m_language;
+			m_exdReaders.clear();
+			if (m_exhReader)
+				m_exdReaders.resize(m_exhReader->Pages().size());
+			return *this;
+		}
+
+		ExcelReader& operator=(ExcelReader&& r) {
+			if (this == &r)
+				return *this;
+
+			m_sqpackReader = r.m_sqpackReader;
+			m_exhReader = std::move(r.m_exhReader);
+			m_language = r.m_language;
+			m_exdReaders = std::move(r.m_exdReaders);
+			r.Clear();
+			return *this;
+		}
+
+		void Clear() {
+			m_sqpackReader = nullptr;
+			m_exhReader.reset();
+			m_language = Language::Unspecified;
+			m_exdReaders.clear();
 		}
 
 		const XivRes::Language& GetLanguage() const {
 			return m_language;
+		}
+
+		ExcelReader NewReaderWithLanguage(Language language) {
+			if (m_language == language)
+				return *this;
+
+			return ExcelReader(*this).WithLanguage(language);
 		}
 
 		ExcelReader& WithLanguage(Language language) {
@@ -902,27 +960,23 @@ namespace XivRes {
 		}
 
 		const ExhReader& Exh() const {
-			return m_exhReader;
+			return *m_exhReader;
 		}
 
 		const ExdReader& Page(size_t index) const {
 			if (!m_exdReaders[index]) {
 				const auto lock = std::lock_guard(m_populateMtx);
 				if (!m_exdReaders[index])
-					m_exdReaders[index].emplace(m_exhReader, m_sqpackReader->GetPackedFileStream(m_exhReader.GetDataPathSpec(m_exhReader.Pages().at(index), m_language))->GetUnpackedStreamPtr());
+					m_exdReaders[index] = std::make_unique<ExdReader>(*m_exhReader, m_sqpackReader->GetPackedFileStream(m_exhReader->GetDataPathSpec(m_exhReader->Pages().at(index), m_language))->GetUnpackedStreamPtr());
 			}
 
 			return *m_exdReaders[index];
 		}
 
 		[[nodiscard]] const ExdRowBuffer& operator[](uint32_t rowId) const {
-			return Page(m_exhReader.GetPageIndex(rowId))[rowId];
+			return Page(m_exhReader->GetPageIndex(rowId))[rowId];
 		}
 	};
-
-	[[nodiscard]] inline ExcelReader GameReader::GetExcelReader(const std::string& name) const {
-		return ExcelReader(&GetSqpackReader(0x0a0000), name);
-	}
 }
 
 #endif

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SqpackEntryProvider.h"
+#include "PackedFileStream.h"
 
 #include "internal/ZlibWrapper.h"
 
@@ -20,7 +20,7 @@ namespace XivRes {
 			Internal::ZlibReusableInflater Inflater{ -MAX_WBITS };
 
 			[[nodiscard]] const auto& AsHeader() const {
-				return *reinterpret_cast<const SqData::BlockHeader*>(ReadBuffer);
+				return *reinterpret_cast<const PackedBlockHeader*>(ReadBuffer);
 			}
 
 		private:
@@ -43,7 +43,7 @@ namespace XivRes {
 			}
 
 		public:
-			void ProgressRead(const RandomAccessStream& stream, uint32_t blockOffset, size_t knownBlockSize = ReadBufferMaxSize) {
+			void ProgressRead(const Stream& stream, uint32_t blockOffset, size_t knownBlockSize = ReadBufferMaxSize) {
 				ReadBufferValidSize = static_cast<size_t>(stream.ReadStreamPartial(blockOffset, ReadBuffer, knownBlockSize));
 
 				if (ReadBufferValidSize < sizeof AsHeader() || ReadBufferValidSize < AsHeader().TotalBlockSize())
@@ -106,30 +106,30 @@ namespace XivRes {
 
 		virtual ~BasePackedFileStreamDecoder() = default;
 
-		static std::unique_ptr<BasePackedFileStreamDecoder> CreateNew(const SqData::PackedFileHeader& header, std::shared_ptr<const PackedFileStream> stream, std::span<uint8_t> obfuscatedHeaderRewrite = {});
+		static std::unique_ptr<BasePackedFileStreamDecoder> CreateNew(const PackedFileHeader& header, std::shared_ptr<const PackedFileStream> stream, std::span<uint8_t> obfuscatedHeaderRewrite = {});
 	};
 }
 
-#include "SqpackBinaryStreamDecoder.h"
-#include "SqpackEmptyOrObfuscatedStreamDecoder.h"
-#include "SqpackModelStreamDecoder.h"
-#include "SqpackTextureStreamDecoder.h"
+#include "BinaryPackedFileStreamDecoder.h"
+#include "EmptyOrObfuscatedPackedFileStreamDecoder.h"
+#include "ModelPackedFileStreamDecoder.h"
+#include "TexturePackedFileStreamDecoder.h"
 
-inline std::unique_ptr<XivRes::BasePackedFileStreamDecoder> XivRes::BasePackedFileStreamDecoder::CreateNew(const SqData::PackedFileHeader& header, std::shared_ptr<const PackedFileStream> stream, std::span<uint8_t> obfuscatedHeaderRewrite) {
+inline std::unique_ptr<XivRes::BasePackedFileStreamDecoder> XivRes::BasePackedFileStreamDecoder::CreateNew(const PackedFileHeader& header, std::shared_ptr<const PackedFileStream> stream, std::span<uint8_t> obfuscatedHeaderRewrite) {
 	if (header.DecompressedSize == 0)
 		return nullptr;
 
 	switch (header.Type) {
-		case SqData::PackedFileType::EmptyOrObfuscated:
-			return std::make_unique<EmptyPackedFileStreamDecoder>(header, std::move(stream), obfuscatedHeaderRewrite);
+		case PackedFileType::EmptyOrObfuscated:
+			return std::make_unique<EmptyOrObfuscatedPackedFileStreamDecoder>(header, std::move(stream), obfuscatedHeaderRewrite);
 
-		case SqData::PackedFileType::Binary:
+		case PackedFileType::Binary:
 			return std::make_unique<BinaryPackedFileStreamDecoder>(header, std::move(stream));
 
-		case SqData::PackedFileType::Texture:
+		case PackedFileType::Texture:
 			return std::make_unique<TexturePackedFileStreamDecoder>(header, std::move(stream));
 
-		case SqData::PackedFileType::Model:
+		case PackedFileType::Model:
 			return std::make_unique<ModelPackedFileStreamDecoder>(header, std::move(stream));
 
 		default:

@@ -1,8 +1,11 @@
-#pragma once
-#include "SqpackLazyEntryProvider.h"
-#include "Texture.h"
+#ifndef _XIVRES_TEXTUREPACKEDFILESTREAM_H_
+#define _XIVRES_TEXTUREPACKEDFILESTREAM_H_
+
 #include "internal/SpanCast.h"
 #include "internal/ZlibWrapper.h"
+
+#include "LazyPackedFileStream.h"
+#include "Texture.h"
 
 namespace XivRes {
 	class TexturePackedFileViewStream : public LazyPackedFileStream {
@@ -18,7 +21,7 @@ namespace XivRes {
 		 * - - [ExtraHeader]
 		 * [BlockHeader, Data] * TextureBlockHeaderLocator.SubBlockCount * TextureHeader.MipmapCount
 		 */
-		std::vector<SqData::TextureBlockHeaderLocator> m_blockLocators;
+		std::vector<SqpackTexturePackedFileBlockLocator> m_blockLocators;
 		std::vector<uint16_t> m_subBlockSizes;
 		std::vector<uint8_t> m_texHeaderBytes;
 
@@ -32,25 +35,27 @@ namespace XivRes {
 		using LazyPackedFileStream::StreamSize;
 		using LazyPackedFileStream::ReadStreamPartial;
 
-		[[nodiscard]] SqData::PackedFileType EntryType() const override { return SqData::PackedFileType; }
+		[[nodiscard]] PackedFileType GetPackedFileType() const override {
+			return PackedFileType::Texture;
+		}
 
 	protected:
-		void Initialize(const RandomAccessStream& stream) override {
-			const auto AsTexHeader = [&]() { return *reinterpret_cast<const Texture::TextureHeader*>(&m_texHeaderBytes[0]); };
-			const auto AsMipmapOffsets = [&]() { return Internal::span_cast<uint32_t>(m_texHeaderBytes, sizeof Texture::TextureHeader, *AsTexHeader().MipmapCount); };
+		void Initialize(const Stream& stream) override {
+			const auto AsTexHeader = [&]() { return *reinterpret_cast<const TextureHeader*>(&m_texHeaderBytes[0]); };
+			const auto AsMipmapOffsets = [&]() { return Internal::span_cast<uint32_t>(m_texHeaderBytes, sizeof TextureHeader, *AsTexHeader().MipmapCount); };
 
-			auto entryHeader = SqData::PackedFileHeader{
-				.HeaderSize = sizeof SqData::PackedFileHeader,
-				.Type = SqData::PackedFileType,
+			auto entryHeader = PackedFileHeader{
+				.HeaderSize = sizeof PackedFileHeader,
+				.Type = PackedFileType::Texture,
 				.DecompressedSize = static_cast<uint32_t>(stream.StreamSize()),
 			};
 
-			m_texHeaderBytes.resize(sizeof Texture::TextureHeader);
+			m_texHeaderBytes.resize(sizeof TextureHeader);
 			stream.ReadStream(0, std::span(m_texHeaderBytes));
 
-			m_texHeaderBytes.resize(sizeof Texture::TextureHeader + AsTexHeader().MipmapCount * sizeof uint32_t);
-			stream.ReadStream(sizeof Texture::TextureHeader, std::span(
-				reinterpret_cast<uint32_t*>(&m_texHeaderBytes[sizeof Texture::TextureHeader]),
+			m_texHeaderBytes.resize(sizeof TextureHeader + AsTexHeader().MipmapCount * sizeof uint32_t);
+			stream.ReadStream(sizeof TextureHeader, std::span(
+				reinterpret_cast<uint32_t*>(&m_texHeaderBytes[sizeof TextureHeader]),
 				*AsTexHeader().MipmapCount
 			));
 
@@ -59,9 +64,9 @@ namespace XivRes {
 
 			std::vector<uint32_t> mipmapOffsets(AsMipmapOffsets().begin(), AsMipmapOffsets().end());;
 			m_mipmapSizes.resize(mipmapOffsets.size());
-			const auto repeatCount = mipmapOffsets.size() < 2 ? 1 : (size_t{} + mipmapOffsets[1] - mipmapOffsets[0]) / Texture::TextureRawDataLength(AsTexHeader(), 0);
+			const auto repeatCount = mipmapOffsets.size() < 2 ? 1 : (size_t{} + mipmapOffsets[1] - mipmapOffsets[0]) / TextureRawDataLength(AsTexHeader(), 0);
 			for (size_t i = 0; i < mipmapOffsets.size(); ++i)
-				m_mipmapSizes[i] = static_cast<uint32_t>(Texture::TextureRawDataLength(AsTexHeader(), i));
+				m_mipmapSizes[i] = static_cast<uint32_t>(TextureRawDataLength(AsTexHeader(), i));
 
 			// Actual data exists but the mipmap offset array after texture header does not bother to refer
 			// to the ones after the first set of mipmaps?
@@ -71,7 +76,7 @@ namespace XivRes {
 				for (size_t i = 0, i_ = AsTexHeader().MipmapCount; i < i_; ++i) {
 
 					// <caused by TexTools export>
-					const auto size = static_cast<uint32_t>(Texture::TextureRawDataLength(AsTexHeader(), i));
+					const auto size = static_cast<uint32_t>(TextureRawDataLength(AsTexHeader(), i));
 					if (mipmapOffsets.back() + m_mipmapSizes.back() + size > entryHeader.DecompressedSize) {
 						forceQuit = true;
 						break;
@@ -79,7 +84,7 @@ namespace XivRes {
 					// </caused by TexTools export>
 
 					mipmapOffsets.push_back(mipmapOffsets.back() + m_mipmapSizes.back());
-					m_mipmapSizes.push_back(static_cast<uint32_t>(Texture::TextureRawDataLength(AsTexHeader(), i)));
+					m_mipmapSizes.push_back(static_cast<uint32_t>(TextureRawDataLength(AsTexHeader(), i)));
 				}
 			}
 
@@ -88,7 +93,7 @@ namespace XivRes {
 				const auto mipmapSize = m_mipmapSizes[i];
 				for (uint32_t repeatI = 0; repeatI < repeatCount; repeatI++) {
 					const auto blockAlignment = Align<uint32_t>(mipmapSize, EntryBlockDataSize);
-					SqData::TextureBlockHeaderLocator loc{
+					SqpackTexturePackedFileBlockLocator loc{
 						.FirstBlockOffset = blockOffsetCounter,
 						.TotalSize = 0,
 						.DecompressedSize = mipmapSize,
@@ -96,10 +101,10 @@ namespace XivRes {
 						.SubBlockCount = blockAlignment.Count,
 					};
 					blockAlignment.IterateChunked([&](uint32_t, const uint32_t offset, const uint32_t length) {
-						SqData::BlockHeader header{
-							.HeaderSize = sizeof SqData::BlockHeader,
+						PackedBlockHeader header{
+							.HeaderSize = sizeof PackedBlockHeader,
 							.Version = 0,
-							.CompressedSize = SqData::BlockHeader::CompressedSizeNotCompressed,
+							.CompressedSize = PackedBlockHeader::CompressedSizeNotCompressed,
 							.DecompressedSize = length,
 						};
 						const auto alignmentInfo = Align(sizeof header + length);
@@ -109,7 +114,7 @@ namespace XivRes {
 						blockOffsetCounter += m_subBlockSizes.back();
 						loc.TotalSize += m_subBlockSizes.back();
 
-						}, mipmapOffsets[i] + m_mipmapSizes[i] * repeatI);
+					}, mipmapOffsets[i] + m_mipmapSizes[i] * repeatI);
 
 					m_blockLocators.emplace_back(loc);
 				}
@@ -141,22 +146,24 @@ namespace XivRes {
 
 		[[nodiscard]] std::streamsize MaxPossibleStreamSize() const override {
 			const auto blockCount = MaxMipmapCountPerTexture + Align<uint64_t>(m_originalSize, EntryBlockDataSize).Count;
-			const auto headerSize = sizeof SqData::PackedFileHeader
+			const auto headerSize = sizeof PackedFileHeader
 				+ blockCount * sizeof m_subBlockSizes[0]
 				+ MaxMipmapCountPerTexture * sizeof m_blockLocators[0];
 			return headerSize + blockCount * EntryBlockSize;
 		}
 
-		[[nodiscard]] std::streamsize StreamSize(const RandomAccessStream&) const override { return static_cast<uint32_t>(m_size); }
+		[[nodiscard]] std::streamsize StreamSize(const Stream&) const override {
+			return static_cast<uint32_t>(m_size);
+		}
 
-		std::streamsize ReadStreamPartial(const RandomAccessStream& stream, uint64_t offset, void* buf, uint64_t length) const override {
-			const auto AsTexHeader = [&]() { return *reinterpret_cast<const Texture::TextureHeader*>(&m_texHeaderBytes[0]); };
-			const auto AsMipmapOffsets = [&]() { return span_cast<uint32_t>(m_texHeaderBytes, sizeof Texture::TextureHeader, AsTexHeader().MipmapCount); };
+		std::streamsize ReadStreamPartial(const Stream& stream, std::streamoff offset, void* buf, std::streamsize length) const override {
+			const auto AsTexHeader = [&]() { return *reinterpret_cast<const TextureHeader*>(&m_texHeaderBytes[0]); };
+			const auto AsMipmapOffsets = [&]() { return span_cast<uint32_t>(m_texHeaderBytes, sizeof TextureHeader, AsTexHeader().MipmapCount); };
 
 			if (!length)
 				return 0;
 
-			auto relativeOffset = offset;
+			auto relativeOffset = static_cast<uint64_t>(offset);
 			auto out = std::span(static_cast<char*>(buf), static_cast<size_t>(length));
 
 			if (relativeOffset < m_mergedHeader.size()) {
@@ -174,10 +181,10 @@ namespace XivRes {
 			if (relativeOffset < m_size - m_mergedHeader.size()) {
 				relativeOffset += std::span(m_texHeaderBytes).size_bytes();
 				auto it = std::lower_bound(m_blockLocators.begin(), m_blockLocators.end(),
-					SqData::TextureBlockHeaderLocator{ .FirstBlockOffset = static_cast<uint32_t>(relativeOffset) },
-					[&](const SqData::TextureBlockHeaderLocator& l, const SqData::TextureBlockHeaderLocator& r) {
-						return l.FirstBlockOffset < r.FirstBlockOffset;
-					});
+					SqpackTexturePackedFileBlockLocator{ .FirstBlockOffset = static_cast<uint32_t>(relativeOffset) },
+					[&](const SqpackTexturePackedFileBlockLocator& l, const SqpackTexturePackedFileBlockLocator& r) {
+					return l.FirstBlockOffset < r.FirstBlockOffset;
+				});
 
 				if (it == m_blockLocators.end())
 					--it;
@@ -198,17 +205,17 @@ namespace XivRes {
 
 				for (; it != m_blockLocators.end(); ++it) {
 					const auto blockIndex = it - m_blockLocators.begin();
-					auto j = relativeOffset / (sizeof SqData::BlockHeader + EntryBlockDataSize);
-					relativeOffset -= j * (sizeof SqData::BlockHeader + EntryBlockDataSize);
+					auto j = relativeOffset / (sizeof PackedBlockHeader + EntryBlockDataSize);
+					relativeOffset -= j * (sizeof PackedBlockHeader + EntryBlockDataSize);
 					for (; j < it->SubBlockCount; ++j) {
 						const auto decompressedSize = j == it->SubBlockCount - 1 ? m_mipmapSizes[blockIndex] % EntryBlockDataSize : EntryBlockDataSize;
-						const auto pad = Align(sizeof SqData::BlockHeader + decompressedSize).Pad;
+						const auto pad = Align(sizeof PackedBlockHeader + decompressedSize).Pad;
 
-						if (relativeOffset < sizeof SqData::BlockHeader) {
-							const auto header = SqData::BlockHeader{
-								.HeaderSize = sizeof SqData::BlockHeader,
+						if (relativeOffset < sizeof PackedBlockHeader) {
+							const auto header = PackedBlockHeader{
+								.HeaderSize = sizeof PackedBlockHeader,
 								.Version = 0,
-								.CompressedSize = SqData::BlockHeader::CompressedSizeNotCompressed,
+								.CompressedSize = PackedBlockHeader::CompressedSizeNotCompressed,
 								.DecompressedSize = decompressedSize,
 							};
 							const auto src = Internal::span_cast<uint8_t>(1, &header).subspan(static_cast<size_t>(relativeOffset));
@@ -219,7 +226,7 @@ namespace XivRes {
 
 							if (out.empty()) return length;
 						} else
-							relativeOffset -= sizeof SqData::BlockHeader;
+							relativeOffset -= sizeof PackedBlockHeader;
 
 						if (relativeOffset < decompressedSize) {
 							const auto available = (std::min)(out.size_bytes(), static_cast<size_t>(decompressedSize - relativeOffset));
@@ -245,7 +252,7 @@ namespace XivRes {
 				}
 			}
 
-			if (const auto endPadSize = StreamSize() - StreamSize(stream); relativeOffset < endPadSize) {
+			if (const auto endPadSize = static_cast<uint64_t>(StreamSize() - StreamSize(stream)); relativeOffset < endPadSize) {
 				const auto available = (std::min)(out.size_bytes(), static_cast<size_t>(endPadSize - relativeOffset));
 				std::fill_n(out.begin(), available, 0);
 				out = out.subspan(static_cast<size_t>(available));
@@ -263,29 +270,31 @@ namespace XivRes {
 		using LazyPackedFileStream::StreamSize;
 		using LazyPackedFileStream::ReadStreamPartial;
 
-		[[nodiscard]] SqData::PackedFileType EntryType() const override { return SqData::PackedFileType::Binary; }
+		[[nodiscard]] PackedFileType GetPackedFileType() const override {
+			return PackedFileType::Texture;
+		}
 
 	protected:
-		void Initialize(const RandomAccessStream& stream) override {
-			std::vector<SqData::TextureBlockHeaderLocator> blockLocators;
+		void Initialize(const Stream& stream) override {
+			std::vector<SqpackTexturePackedFileBlockLocator> blockLocators;
 			std::vector<uint8_t> readBuffer(EntryBlockDataSize);
 			std::vector<uint16_t> subBlockSizes;
 			std::vector<uint8_t> texHeaderBytes;
 
-			auto AsTexHeader = [&]() { return *reinterpret_cast<const Texture::TextureHeader*>(&texHeaderBytes[0]); };
-			auto AsMipmapOffsets = [&]() { return span_cast<uint32_t>(texHeaderBytes, sizeof Texture::TextureHeader, AsTexHeader().MipmapCount); };
+			auto AsTexHeader = [&]() { return *reinterpret_cast<const TextureHeader*>(&texHeaderBytes[0]); };
+			auto AsMipmapOffsets = [&]() { return span_cast<uint32_t>(texHeaderBytes, sizeof TextureHeader, AsTexHeader().MipmapCount); };
 
-			auto entryHeader = SqData::PackedFileHeader{
-				.Type = SqData::PackedFileType,
+			auto entryHeader = PackedFileHeader{
+				.Type = PackedFileType::Texture,
 				.DecompressedSize = static_cast<uint32_t>(stream.StreamSize()),
 			};
 
-			texHeaderBytes.resize(sizeof Texture::TextureHeader);
+			texHeaderBytes.resize(sizeof TextureHeader);
 			stream.ReadStream(0, std::span(texHeaderBytes));
 
-			texHeaderBytes.resize(sizeof Texture::TextureHeader + AsTexHeader().MipmapCount * sizeof uint32_t);
-			stream.ReadStream(sizeof Texture::TextureHeader, std::span(
-				reinterpret_cast<uint32_t*>(&texHeaderBytes[sizeof Texture::TextureHeader]),
+			texHeaderBytes.resize(sizeof TextureHeader + AsTexHeader().MipmapCount * sizeof uint32_t);
+			stream.ReadStream(sizeof TextureHeader, std::span(
+				reinterpret_cast<uint32_t*>(&texHeaderBytes[sizeof TextureHeader]),
 				*AsTexHeader().MipmapCount
 			));
 
@@ -294,16 +303,16 @@ namespace XivRes {
 
 			std::vector<uint32_t> mipmapOffsets(AsMipmapOffsets().begin(), AsMipmapOffsets().end());;
 			std::vector<uint32_t> mipmapSizes(mipmapOffsets.size());
-			const auto repeatCount = mipmapOffsets.size() < 2 ? 1 : (size_t{} + mipmapOffsets[1] - mipmapOffsets[0]) / Texture::TextureRawDataLength(AsTexHeader(), 0);
+			const auto repeatCount = mipmapOffsets.size() < 2 ? 1 : (size_t{} + mipmapOffsets[1] - mipmapOffsets[0]) / TextureRawDataLength(AsTexHeader(), 0);
 			for (size_t i = 0; i < mipmapOffsets.size(); ++i)
-				mipmapSizes[i] = static_cast<uint32_t>(Texture::TextureRawDataLength(AsTexHeader(), i));
+				mipmapSizes[i] = static_cast<uint32_t>(TextureRawDataLength(AsTexHeader(), i));
 
 			// See above OnTheFlyTextureEntryProvider for comments.
 			for (auto forceQuit = false; !forceQuit && (mipmapOffsets.empty() || mipmapOffsets.back() + mipmapSizes.back() * repeatCount < entryHeader.DecompressedSize);) {
 				for (size_t i = 0, i_ = AsTexHeader().MipmapCount; i < i_; ++i) {
 
 					// <caused by TexTools export>
-					const auto size = static_cast<uint32_t>(Texture::TextureRawDataLength(AsTexHeader(), i));
+					const auto size = static_cast<uint32_t>(TextureRawDataLength(AsTexHeader(), i));
 					if (mipmapOffsets.back() + mipmapSizes.back() + size > entryHeader.DecompressedSize) {
 						forceQuit = true;
 						break;
@@ -325,7 +334,7 @@ namespace XivRes {
 			for (size_t i = 0; i < mipmapOffsets.size(); ++i) {
 				uint32_t maxMipmapSize = 0;
 
-				const auto minSize = (std::max)(4U, static_cast<uint32_t>(Texture::TextureRawDataLength(AsTexHeader().Type, 1, 1, AsTexHeader().Depth, i)));
+				const auto minSize = (std::max)(4U, static_cast<uint32_t>(TextureRawDataLength(AsTexHeader().Type, 1, 1, AsTexHeader().Depth, i)));
 				if (mipmapSizes[i] > minSize) {
 					for (size_t repeatI = 0; repeatI < repeatCount; repeatI++) {
 						size_t offset = mipmapOffsets[i] + mipmapSizes[i] * repeatI;
@@ -360,7 +369,7 @@ namespace XivRes {
 				for (uint32_t repeatI = 0; repeatI < repeatCount; repeatI++) {
 					const auto blockAlignment = Align<uint32_t>(maxMipmapSize, EntryBlockDataSize);
 
-					SqData::TextureBlockHeaderLocator loc{
+					SqpackTexturePackedFileBlockLocator loc{
 						.FirstBlockOffset = blockOffsetCounter,
 						.TotalSize = 0,
 						.DecompressedSize = maxMipmapSize,
@@ -381,10 +390,10 @@ namespace XivRes {
 						const auto useCompressed = deflater && deflater->Result().size() < sourceBuf.size();
 						const auto targetBuf = useCompressed ? deflater->Result() : sourceBuf;
 
-						SqData::BlockHeader header{
-							.HeaderSize = sizeof SqData::BlockHeader,
+						PackedBlockHeader header{
+							.HeaderSize = sizeof PackedBlockHeader,
 							.Version = 0,
-							.CompressedSize = useCompressed ? static_cast<uint32_t>(targetBuf.size()) : SqData::BlockHeader::CompressedSizeNotCompressed,
+							.CompressedSize = useCompressed ? static_cast<uint32_t>(targetBuf.size()) : PackedBlockHeader::CompressedSizeNotCompressed,
 							.DecompressedSize = length,
 						};
 						const auto alignmentInfo = Align(sizeof header + targetBuf.size());
@@ -398,7 +407,7 @@ namespace XivRes {
 						ptr = std::copy_n(reinterpret_cast<uint8_t*>(&header), sizeof header, ptr);
 						ptr = std::copy(targetBuf.begin(), targetBuf.end(), ptr);
 						std::fill_n(ptr, alignmentInfo.Pad, 0);
-						}, mipmapOffsets[i] + mipmapSizes[i] * repeatI);
+					}, mipmapOffsets[i] + mipmapSizes[i] * repeatI);
 
 					blockLocators.emplace_back(loc);
 				}
@@ -429,10 +438,12 @@ namespace XivRes {
 			m_data.resize(Align(m_data.size()));
 		}
 
-		[[nodiscard]] std::streamsize StreamSize(const RandomAccessStream& stream) const override { return static_cast<uint32_t>(m_data.size()); }
+		[[nodiscard]] std::streamsize StreamSize(const Stream& stream) const override {
+			return static_cast<uint32_t>(m_data.size());
+		}
 
-		std::streamsize ReadStreamPartial(const RandomAccessStream& stream, uint64_t offset, void* buf, uint64_t length) const override {
-			const auto available = static_cast<size_t>((std::min)(length, m_data.size() - offset));
+		std::streamsize ReadStreamPartial(const Stream& stream, std::streamoff offset, void* buf, std::streamsize length) const override {
+			const auto available = static_cast<size_t>((std::min<std::streamsize>)(length, m_data.size() - offset));
 			if (!available)
 				return 0;
 
@@ -441,3 +452,5 @@ namespace XivRes {
 		}
 	};
 }
+
+#endif

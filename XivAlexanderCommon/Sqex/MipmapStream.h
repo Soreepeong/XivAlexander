@@ -3,11 +3,11 @@
 #include "internal/Dxt.h"
 
 #include "PixelFormats.h"
-#include "RandomAccessStream.h"
+#include "Stream.h"
 #include "Texture.h"
 
 namespace XivRes {
-	class MipmapStream : public RandomAccessStream {
+	class MipmapStream : public Stream {
 	public:
 		const uint16_t Width;
 		const uint16_t Height;
@@ -24,22 +24,20 @@ namespace XivRes {
 	};
 
 	class WrappedMipmapStream : public MipmapStream {
-		std::shared_ptr<const RandomAccessStream> m_underlying;
+		std::shared_ptr<const Stream> m_underlying;
 
 	public:
-		WrappedMipmapStream(TextureHeader header, size_t mipmapIndex, std::shared_ptr<const RandomAccessStream> underlying)
+		WrappedMipmapStream(TextureHeader header, size_t mipmapIndex, std::shared_ptr<const Stream> underlying)
 			: MipmapStream(
 				(std::max)(1, header.Width >> mipmapIndex),
 				(std::max)(1, header.Height >> mipmapIndex),
 				(std::max)(1, header.Depth >> mipmapIndex),
 				header.Type)
-			, m_underlying(std::move(underlying)) {
-		}
+			, m_underlying(std::move(underlying)) {}
 
-		WrappedMipmapStream(size_t width, size_t height, size_t layers, TextureFormat type, std::shared_ptr<const RandomAccessStream> underlying)
+		WrappedMipmapStream(size_t width, size_t height, size_t layers, TextureFormat type, std::shared_ptr<const Stream> underlying)
 			: MipmapStream(width, height, layers, type)
-			, m_underlying(std::move(underlying)) {
-		}
+			, m_underlying(std::move(underlying)) {}
 
 		[[nodiscard]] std::streamsize StreamSize() const override {
 			return m_underlying->StreamSize();
@@ -56,15 +54,16 @@ namespace XivRes {
 	public:
 		MemoryBackedMipmap(size_t width, size_t height, size_t layers, TextureFormat type)
 			: MipmapStream(width, height, layers, type)
-			, m_data(TextureRawDataLength(type, width, layers, height)) {
-		}
+			, m_data(TextureRawDataLength(type, width, layers, height)) {}
 
 		MemoryBackedMipmap(size_t width, size_t height, size_t layers, TextureFormat type, std::vector<uint8_t> data)
 			: MipmapStream(width, height, layers, type)
-			, m_data(std::move(data)) {
+			, m_data(std::move(data)) {}
+
+		[[nodiscard]] std::streamsize StreamSize() const override {
+			return static_cast<uint32_t>(m_data.size());
 		}
 
-		[[nodiscard]] std::streamsize StreamSize() const override { return static_cast<uint32_t>(m_data.size()); }
 		std::streamsize ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) const override {
 			const auto available = (std::min)(static_cast<std::streamsize>(m_data.size() - offset), length);
 			std::copy_n(&m_data[static_cast<size_t>(offset)], available, static_cast<char*>(buf));

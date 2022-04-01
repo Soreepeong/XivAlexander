@@ -5,11 +5,11 @@
 #include <span>
 #include <vector>
 
-#include "Common.h"
-#include "RandomAccessStream.h"
-
 #include "internal/ByteOrder.h"
 #include "internal/SpanCast.h"
+
+#include "Common.h"
+#include "Stream.h"
 
 namespace XivRes {
 	class EqpGmpFile {
@@ -35,7 +35,7 @@ namespace XivRes {
 			}
 		}
 
-		EqpGmpFile(const RandomAccessStream& stream)
+		EqpGmpFile(const Stream& stream)
 			: EqpGmpFile(stream.ReadStreamIntoVector<uint64_t>(0)) {
 		}
 

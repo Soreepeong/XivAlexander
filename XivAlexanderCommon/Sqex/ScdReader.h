@@ -1,17 +1,18 @@
-#pragma once
+#ifndef _XIVRES_SCDREADER_H_
+#define _XIVRES_SCDREADER_H_
 
 #include <set>
 #include <vector>
 
 #include "Common.h"
 #include "Scd.h"
-#include "RandomAccessStream.h"
+#include "Stream.h"
 
 #include "internal/SpanCast.h"
 
 namespace XivRes {
 	class ScdReader {
-		const std::shared_ptr<RandomAccessStream> m_stream;
+		const std::shared_ptr<Stream> m_stream;
 		const std::vector<uint8_t> m_headerBuffer;
 		const ScdHeader& m_header;
 		const ScdOffsets& m_offsets;
@@ -42,7 +43,7 @@ namespace XivRes {
 			return res;
 		}
 
-		[[nodiscard]] static std::vector<uint8_t> GetHeaderBytes(const RandomAccessStream& stream) {
+		[[nodiscard]] static std::vector<uint8_t> GetHeaderBytes(const Stream& stream) {
 			constexpr auto InitialBufferSize = 8192ULL;
 			std::vector<uint8_t> res;
 			res.resize(static_cast<size_t>((std::min<uint64_t>)(InitialBufferSize, stream.StreamSize())));
@@ -60,7 +61,7 @@ namespace XivRes {
 		}
 
 	public:
-		ScdReader(std::shared_ptr<RandomAccessStream> stream)
+		ScdReader(std::shared_ptr<Stream> stream)
 			: m_stream(std::move(stream))
 			, m_headerBuffer(GetHeaderBytes(*m_stream))
 			, m_header(*reinterpret_cast<const ScdHeader*>(&m_headerBuffer[0]))
@@ -220,3 +221,5 @@ namespace XivRes {
 		}
 	};
 }
+
+#endif

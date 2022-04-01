@@ -6,7 +6,7 @@
 #include <span>
 #include <vector>
 
-#include "RandomAccessStream.h"
+#include "Stream.h"
 
 namespace XivRes {
 	struct EstEntryDescriptor {
@@ -50,7 +50,7 @@ namespace XivRes {
 			: m_data(std::move(data)) {
 		}
 
-		EstFile(const RandomAccessStream& stream)
+		EstFile(const Stream& stream)
 			: m_data(stream.ReadStreamIntoVector<uint8_t>(0)) {
 		}
 

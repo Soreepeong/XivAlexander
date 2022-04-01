@@ -1,4 +1,6 @@
-#pragma once
+#ifndef _XIVRES_TEXTUREPACKEDFILESTREAMDECODER_H_
+#define _XIVRES_TEXTUREPACKEDFILESTREAMDECODER_H_
+
 #include "SqpackStreamDecoder.h"
 #include "Texture.h"
 
@@ -19,10 +21,10 @@ namespace XivRes {
 		std::vector<BlockInfo> m_blocks;
 
 	public:
-		TexturePackedFileStreamDecoder(const SqData::PackedFileHeader& header, std::shared_ptr<const PackedFileStream> stream)
+		TexturePackedFileStreamDecoder(const PackedFileHeader& header, std::shared_ptr<const PackedFileStream> stream)
 			: BasePackedFileStreamDecoder(std::move(stream)) {
-			uint64_t readOffset = sizeof SqData::PackedFileHeader;
-			const auto locators = m_stream->ReadStreamIntoVector<SqData::TextureBlockHeaderLocator>(readOffset, header.BlockCountOrVersion);
+			uint64_t readOffset = sizeof PackedFileHeader;
+			const auto locators = m_stream->ReadStreamIntoVector<SqpackTexturePackedFileBlockLocator>(readOffset, header.BlockCountOrVersion);
 			readOffset += std::span(locators).size_bytes();
 
 			m_head = m_stream->ReadStreamIntoVector<uint8_t>(header.HeaderSize, locators[0].FirstBlockOffset);
@@ -114,3 +116,5 @@ namespace XivRes {
 		}
 	};
 }
+
+#endif

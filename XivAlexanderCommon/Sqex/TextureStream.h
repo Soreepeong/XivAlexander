@@ -1,17 +1,19 @@
-#pragma once
+#ifndef _XIVRES_TEXTURESTREAM_H_
+#define _XIVRES_TEXTURESTREAM_H_
+
 #include "Common.h"
 #include "Texture.h"
 #include "MipmapStream.h"
 
 namespace XivRes {
-	class TextureStream : public RandomAccessStream {
+	class TextureStream : public Stream {
 		TextureHeader m_header;
 		std::vector<std::vector<std::shared_ptr<MipmapStream>>> m_repeats;
 		std::vector<uint32_t> m_mipmapOffsets;
 		uint32_t m_repeatedUnitSize;
 
 	public:
-		TextureStream(const std::shared_ptr<RandomAccessStream>& stream)
+		TextureStream(const std::shared_ptr<Stream>& stream)
 			: m_header(stream->ReadStream<TextureHeader>(0))
 			, m_repeats(0)
 			, m_repeatedUnitSize(0) {
@@ -22,7 +24,7 @@ namespace XivRes {
 			for (size_t repeatI = 0; repeatI < m_repeats.size(); ++repeatI) {
 				for (size_t mipmapI = 0; mipmapI < mipmapLocators.size(); ++mipmapI) {
 					const auto mipmapSize = TextureRawDataLength(m_header, mipmapI);
-					auto mipmapDataView = std::make_shared<XivRes::RandomAccessStreamPartialView>(stream, repeatUnitSize * repeatI + mipmapLocators[mipmapI], mipmapSize);
+					auto mipmapDataView = std::make_shared<XivRes::PartialViewStream>(stream, repeatUnitSize * repeatI + mipmapLocators[mipmapI], mipmapSize);
 					auto mipmapView = std::make_shared<WrappedMipmapStream>(m_header, mipmapI, std::move(mipmapDataView));
 					SetMipmap(mipmapI, repeatI, std::move(mipmapView));
 				}
@@ -226,3 +228,5 @@ namespace XivRes {
 		}
 	};
 }
+
+#endif

@@ -1,7 +1,9 @@
-#pragma once
+#ifndef _XIVRES_SCD_H_
+#define _XIVRES_SCD_H_
+
+#include "internal/ByteOrder.h"
 
 #include "Common.h"
-#include "internal/ByteOrder.h"
 
 namespace XivRes {
 	enum class ScdHeaderEndiannessFlag : uint8_t {
@@ -141,3 +143,5 @@ namespace XivRes {
 	};
 #pragma pack(pop)
 }
+
+#endif

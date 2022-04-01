@@ -15,6 +15,9 @@
     <None Include="vcpkg.json">
       <Filter>Project Items</Filter>
     </None>
+    <None Include=".editorconfig">
+      <Filter>Project Items</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Sqex\Common.h">
@@ -41,7 +44,7 @@
     <ClInclude Include="Sqex\FontCsv.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\FontCsvStream.h">
+    <ClInclude Include="Sqex\FdtStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="Sqex\Imc.h">
@@ -53,7 +56,7 @@
     <ClInclude Include="Sqex\Model.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\RandomAccessStream.h">
+    <ClInclude Include="Sqex\Stream.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="Sqex\ScdReader.h">
@@ -71,40 +74,40 @@
     <ClInclude Include="Sqex\Sqpack.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\SqpackBinaryEntryProvider.h">
+    <ClInclude Include="Sqex\BinaryPackedFileStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\SqpackBinaryStreamDecoder.h">
+    <ClInclude Include="Sqex\BinaryPackedFileStreamDecoder.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="Sqex\SqpackGenerator.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\SqpackEmptyOrObfuscatedEntryProvider.h">
+    <ClInclude Include="Sqex\EmptyOrObfuscatedPackedFileStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\SqpackEmptyOrObfuscatedStreamDecoder.h">
+    <ClInclude Include="Sqex\EmptyOrObfuscatedPackedFileStreamDecoder.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\SqpackEntryProvider.h">
+    <ClInclude Include="Sqex\PackedFileStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\SqpackEntryRawStream.h">
+    <ClInclude Include="Sqex\PackedFileUnpackingStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\SqpackHotSwappableEntryProvider.h">
+    <ClInclude Include="Sqex\HotSwappablePackedFileStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\SqpackLazyEntryProvider.h">
+    <ClInclude Include="Sqex\LazyPackedFileStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\SqpackModelEntryProvider.h">
+    <ClInclude Include="Sqex\ModelPackedFileStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\SqpackModelStreamDecoder.h">
+    <ClInclude Include="Sqex\ModelPackedFileStreamDecoder.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\SqpackRandomAccessStreamAsEntryProviderView.h">
+    <ClInclude Include="Sqex\StreamAsPackedFileViewStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="Sqex\SqpackReader.h">
@@ -113,10 +116,10 @@
     <ClInclude Include="Sqex\SqpackStreamDecoder.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\SqpackTextureEntryProvider.h">
+    <ClInclude Include="Sqex\TexturePackedFileStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\SqpackTextureStreamDecoder.h">
+    <ClInclude Include="Sqex\TexturePackedFileStreamDecoder.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="Sqex\Texture.h">
@@ -153,6 +156,12 @@
       <Filter>Headers\Internal</Filter>
     </ClInclude>
     <ClInclude Include="Sqex\PixelFormats.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\internal\Codepoint.h">
+      <Filter>Headers\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\GameReader.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>

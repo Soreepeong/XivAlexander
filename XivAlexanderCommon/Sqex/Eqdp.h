@@ -5,11 +5,11 @@
 #include <span>
 #include <vector>
 
-#include "Common.h"
-#include "RandomAccessStream.h"
-
 #include "internal/ByteOrder.h"
 #include "internal/SpanCast.h"
+
+#include "Common.h"
+#include "Stream.h"
 
 namespace XivRes {
 	struct EqdpHeader {
@@ -23,15 +23,22 @@ namespace XivRes {
 		std::vector<uint8_t> m_data;
 
 	public:
-		EqdpFile() : m_data(sizeof EqdpHeader) {}
+		EqdpFile()
+			: m_data(sizeof EqdpHeader) {}
 
-		EqdpFile(std::vector<uint8_t> data) : m_data(std::move(data)) {}
+		EqdpFile(std::vector<uint8_t> data)
+			: m_data(std::move(data)) {}
 
-		EqdpFile(const RandomAccessStream& stream) : m_data(stream.ReadStreamIntoVector<uint8_t>(0)) {}
+		EqdpFile(const Stream& stream)
+			: m_data(stream.ReadStreamIntoVector<uint8_t>(0)) {}
 
-		EqdpFile(EqdpFile&& file) : m_data(std::move(file.m_data)) { file.m_data.resize(sizeof EqdpHeader); }
+		EqdpFile(EqdpFile&& file)
+			: m_data(std::move(file.m_data)) {
+			file.m_data.resize(sizeof EqdpHeader);
+		}
 
-		EqdpFile(const EqdpFile& file) : m_data(file.m_data) {}
+		EqdpFile(const EqdpFile& file)
+			: m_data(file.m_data) {}
 
 		EqdpFile& operator=(EqdpFile&& file) {
 			m_data = std::move(file.m_data);

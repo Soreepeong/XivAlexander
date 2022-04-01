@@ -1,23 +1,24 @@
-#pragma once
+#ifndef _XIVRES_BINARYPACKEDFILESTREAMDECODER_H_
+#define _XIVRES_BINARYPACKEDFILESTREAMDECODER_H_
 
 #include <ranges>
 #include <vector>
 
+#include "BinaryPackedFileStream.h"
 #include "Sqpack.h"
-#include "SqpackBinaryEntryProvider.h"
 #include "SqpackStreamDecoder.h"
 
 namespace XivRes {
 	class BinaryPackedFileStreamDecoder : public BasePackedFileStreamDecoder {
-		const std::vector<SqData::BlockHeaderLocator> m_locators;
+		const std::vector<SqpackBinaryPackedFileBlockLocator> m_locators;
 		const uint32_t m_headerSize;
 		std::vector<uint32_t> m_offsets;
 
 	public:
-		BinaryPackedFileStreamDecoder(const SqData::PackedFileHeader& header, std::shared_ptr<const PackedFileStream> stream)
+		BinaryPackedFileStreamDecoder(const PackedFileHeader& header, std::shared_ptr<const PackedFileStream> stream)
 			: BasePackedFileStreamDecoder(std::move(stream))
 			, m_headerSize(header.HeaderSize)
-			, m_locators(m_stream->ReadStreamIntoVector<SqData::BlockHeaderLocator>(sizeof SqData::PackedFileHeader, header.BlockCountOrVersion)) {
+			, m_locators(m_stream->ReadStreamIntoVector<SqpackBinaryPackedFileBlockLocator>(sizeof PackedFileHeader, header.BlockCountOrVersion)) {
 
 			m_offsets.resize(m_locators.size() + 1);
 			for (size_t i = 1; i < m_offsets.size(); ++i)
@@ -51,3 +52,5 @@ namespace XivRes {
 		}
 	};
 }
+
+#endif

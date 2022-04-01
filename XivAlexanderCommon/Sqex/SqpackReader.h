@@ -1,14 +1,14 @@
-#pragma once
+#ifndef _XIVRES_SQPACKREADER_H_
+#define _XIVRES_SQPACKREADER_H_
 
 #include <map>
 #include <mutex>
 #include <optional>
 #include <ranges>
 
+#include "PackedFileUnpackingStream.h"
 #include "Sqpack.h"
-#include "SqpackEntryProvider.h"
-#include "SqpackEntryRawStream.h"
-#include "SqpackRandomAccessStreamAsEntryProviderView.h"
+#include "StreamAsPackedFileViewStream.h"
 
 namespace XivRes {
 	class SqpackReader {
@@ -22,8 +22,8 @@ namespace XivRes {
 				return *reinterpret_cast<const SqpackHeader*>(&Data[0]);
 			}
 
-			const SqIndex::Header& IndexHeader() const {
-				return *reinterpret_cast<const SqIndex::Header*>(&Data[Header().HeaderSize]);
+			const SqpackIndexHeader& IndexHeader() const {
+				return *reinterpret_cast<const SqpackIndexHeader*>(&Data[Header().HeaderSize]);
 			}
 
 			std::span<const HashLocatorT> HashLocators() const {
@@ -34,11 +34,11 @@ namespace XivRes {
 				return Internal::span_cast<TextLocatorT>(Data, IndexHeader().TextLocatorSegment.Offset, IndexHeader().TextLocatorSegment.Size, 1);
 			}
 
-			std::span<const SqIndex::Segment3Entry> Segment3() const {
-				return Internal::span_cast<SqIndex::Segment3Entry>(Data, IndexHeader().UnknownSegment3.Offset, IndexHeader().UnknownSegment3.Size, 1);
+			std::span<const SqpackSegment3Entry> Segment3() const {
+				return Internal::span_cast<SqpackSegment3Entry>(Data, IndexHeader().UnknownSegment3.Offset, IndexHeader().UnknownSegment3.Size, 1);
 			}
 
-			const SqIndex::LEDataLocator& GetLocatorFromTextLocators(const char* fullPath) const {
+			const SqpackDataLocator& GetLocatorFromTextLocators(const char* fullPath) const {
 				const auto it = std::lower_bound(TextLocators().begin(), TextLocators().end(), fullPath, SqpackPathSpec::LocatorComparator());
 				if (it == TextLocators().end() || _strcmpi(it->FullPath, fullPath) != 0)
 					throw std::out_of_range(std::format("Entry {} not found", fullPath));
@@ -48,17 +48,17 @@ namespace XivRes {
 		protected:
 			friend class SqpackReader;
 
-			SqIndexType(const RandomAccessStream& stream, bool strictVerify)
+			SqIndexType(const Stream& stream, bool strictVerify)
 				: Data(stream.ReadStreamIntoVector<uint8_t>()) {
 
 				if (strictVerify) {
 					Header().VerifySqpackHeader(SqpackType::SqIndex);
-					IndexHeader().VerifySqpackIndexHeader(SqIndex::Header::IndexType::Index);
+					IndexHeader().VerifySqpackIndexHeader(SqpackIndexHeader::IndexType::Index);
 					if (IndexHeader().HashLocatorSegment.Size % sizeof HashLocatorT)
 						throw CorruptDataException("HashLocators has an invalid size alignment");
 					if (IndexHeader().TextLocatorSegment.Size % sizeof TextLocatorT)
 						throw CorruptDataException("TextLocators has an invalid size alignment");
-					if (IndexHeader().UnknownSegment3.Size % sizeof SqIndex::Segment3Entry)
+					if (IndexHeader().UnknownSegment3.Size % sizeof SqpackSegment3Entry)
 						throw CorruptDataException("Segment3 has an invalid size alignment");
 					IndexHeader().HashLocatorSegment.Sha1.Verify(HashLocators(), "HashLocatorSegment has invalid data SHA-1");
 					IndexHeader().TextLocatorSegment.Sha1.Verify(TextLocators(), "TextLocatorSegment has invalid data SHA-1");
@@ -67,21 +67,21 @@ namespace XivRes {
 			}
 		};
 
-		class SqIndex1Type : SqIndexType<SqIndex::PairHashLocator, SqIndex::PairHashWithTextLocator> {
+		class SqIndex1Type : public SqIndexType<SqpackPairHashLocator, SqpackPairHashWithTextLocator> {
 		public:
-			const std::span<const SqIndex::PathHashLocator> PathHashLocators() const {
-				return Internal::span_cast<SqIndex::PathHashLocator>(Data, IndexHeader().PathHashLocatorSegment.Offset, IndexHeader().PathHashLocatorSegment.Size, 1);
+			const std::span<const SqpackPathHashLocator> PathHashLocators() const {
+				return Internal::span_cast<SqpackPathHashLocator>(Data, IndexHeader().PathHashLocatorSegment.Offset, IndexHeader().PathHashLocatorSegment.Size, 1);
 			}
 
-			std::span<const SqIndex::PairHashLocator> GetPairHashLocators(uint32_t pathHash) const {
+			std::span<const SqpackPairHashLocator> GetPairHashLocators(uint32_t pathHash) const {
 				const auto it = std::lower_bound(PathHashLocators().begin(), PathHashLocators().end(), pathHash, SqpackPathSpec::LocatorComparator());
 				if (it == PathHashLocators().end() || it->PathHash != pathHash)
 					throw std::out_of_range(std::format("PathHash {:08x} not found", pathHash));
 
-				return Internal::span_cast<SqIndex::PairHashLocator>(Data, it->PairHashLocatorOffset, it->PairHashLocatorSize, 1);
+				return Internal::span_cast<SqpackPairHashLocator>(Data, it->PairHashLocatorOffset, it->PairHashLocatorSize, 1);
 			}
 
-			const SqIndex::LEDataLocator& GetLocator(uint32_t pathHash, uint32_t nameHash) const {
+			const SqpackDataLocator& GetLocator(uint32_t pathHash, uint32_t nameHash) const {
 				const auto locators = GetPairHashLocators(pathHash);
 				const auto it = std::lower_bound(locators.begin(), locators.end(), nameHash, SqpackPathSpec::LocatorComparator());
 				if (it == locators.end() || it->NameHash != nameHash)
@@ -92,19 +92,19 @@ namespace XivRes {
 		protected:
 			friend class SqpackReader;
 
-			SqIndex1Type(const RandomAccessStream& stream, bool strictVerify)
-				: SqIndexType<SqIndex::PairHashLocator, SqIndex::PairHashWithTextLocator>(stream, strictVerify)  {
+			SqIndex1Type(const Stream& stream, bool strictVerify)
+				: SqIndexType<SqpackPairHashLocator, SqpackPairHashWithTextLocator>(stream, strictVerify)  {
 				if (strictVerify) {
-					if (IndexHeader().PathHashLocatorSegment.Size % sizeof SqIndex::PathHashLocator)
+					if (IndexHeader().PathHashLocatorSegment.Size % sizeof SqpackPathHashLocator)
 						throw CorruptDataException("PathHashLocators has an invalid size alignment");
 					IndexHeader().PathHashLocatorSegment.Sha1.Verify(PathHashLocators(), "PathHashLocatorSegment has invalid data SHA-1");
 				}
 			}
 		};
 
-		class SqIndex2Type : SqIndexType<SqIndex::FullHashLocator, SqIndex::FullHashWithTextLocator> {
+		class SqIndex2Type : public SqIndexType<SqpackFullHashLocator, SqpackFullHashWithTextLocator> {
 		public:
-			const SqIndex::LEDataLocator& GetLocator(uint32_t fullPathHash) const {
+			const SqpackDataLocator& GetLocator(uint32_t fullPathHash) const {
 				const auto it = std::lower_bound(HashLocators().begin(), HashLocators().end(), fullPathHash, SqpackPathSpec::LocatorComparator());
 				if (it == HashLocators().end() || it->FullPathHash != fullPathHash)
 					throw std::out_of_range(std::format("FullPathHash {:08x} not found", fullPathHash));
@@ -114,20 +114,20 @@ namespace XivRes {
 		protected:
 			friend class SqpackReader;
 
-			SqIndex2Type(const RandomAccessStream& stream, bool strictVerify)
-				: SqIndexType<SqIndex::FullHashLocator, SqIndex::FullHashWithTextLocator>(stream, strictVerify) {
+			SqIndex2Type(const Stream& stream, bool strictVerify)
+				: SqIndexType<SqpackFullHashLocator, SqpackFullHashWithTextLocator>(stream, strictVerify) {
 			}
 		};
 
 		struct SqDataType {
 			SqpackHeader Header{};
-			SqData::Header DataHeader{};
-			std::shared_ptr<RandomAccessStream> Stream;
+			SqpackDataHeader DataHeader{};
+			std::shared_ptr<XivRes::Stream> Stream;
 
 		private:
 			friend class SqpackReader;
 
-			SqDataType(std::shared_ptr<RandomAccessStream> stream, const uint32_t datIndex, bool strictVerify)
+			SqDataType(std::shared_ptr<XivRes::Stream> stream, const uint32_t datIndex, bool strictVerify)
 				: Stream(std::move(stream)) {
 
 				// The following line loads both Header and DataHeader as they are adjacent to each other
@@ -150,7 +150,7 @@ namespace XivRes {
 		};
 
 		struct EntryInfoType {
-			SqIndex::LEDataLocator Locator;
+			SqpackDataLocator Locator;
 			SqpackPathSpec PathSpec;
 			uint64_t Allocation;
 		};
@@ -160,7 +160,7 @@ namespace XivRes {
 		std::vector<SqDataType> Data;
 		std::vector<EntryInfoType> EntryInfo;
 
-		SqpackReader(const std::string& fileName, std::shared_ptr<RandomAccessStream> indexStream1, std::shared_ptr<RandomAccessStream> indexStream2, std::vector<std::shared_ptr<RandomAccessStream>> dataStreams, bool strictVerify = false)
+		SqpackReader(const std::string& fileName, std::shared_ptr<Stream> indexStream1, std::shared_ptr<Stream> indexStream2, std::vector<std::shared_ptr<Stream>> dataStreams, bool strictVerify = false)
 			: Index1(*indexStream1, strictVerify)
 			, Index2(*indexStream2, strictVerify) {
 
@@ -168,7 +168,7 @@ namespace XivRes {
 			const auto expacId = std::strtol(fileName.substr(2, 2).c_str(), nullptr, 16);
 			const auto partId = std::strtol(fileName.substr(4, 2).c_str(), nullptr, 16);
 
-			std::vector<std::pair<SqIndex::LEDataLocator, std::tuple<uint32_t, uint32_t, const char*>>> offsets1;
+			std::vector<std::pair<SqpackDataLocator, std::tuple<uint32_t, uint32_t, const char*>>> offsets1;
 			offsets1.reserve(
 				(std::max)(Index1.HashLocators().size() + Index1.TextLocators().size(), Index2.HashLocators().size() + Index2.TextLocators().size())
 				+ Index1.IndexHeader().TextLocatorSegment.Count
@@ -179,7 +179,7 @@ namespace XivRes {
 			for (const auto& item : Index1.TextLocators())
 				offsets1.emplace_back(item.Locator, std::make_tuple(item.PathHash, item.NameHash, item.FullPath));
 
-			std::vector<std::pair<SqIndex::LEDataLocator, std::tuple<uint32_t, const char*>>> offsets2;
+			std::vector<std::pair<SqpackDataLocator, std::tuple<uint32_t, const char*>>> offsets2;
 			for (const auto& item : Index2.HashLocators())
 				if (!item.Locator.IsSynonym)
 					offsets2.emplace_back(item.Locator, std::make_tuple(item.FullPathHash, static_cast<const char*>(nullptr)));
@@ -196,12 +196,12 @@ namespace XivRes {
 					i,
 					strictVerify,
 					});
-				offsets1.emplace_back(SqIndex::LEDataLocator(i, Data[i].Stream->StreamSize()), std::make_tuple(UINT32_MAX, UINT32_MAX, static_cast<const char*>(nullptr)));
-				offsets2.emplace_back(SqIndex::LEDataLocator(i, Data[i].Stream->StreamSize()), std::make_tuple(UINT32_MAX, static_cast<const char*>(nullptr)));
+				offsets1.emplace_back(SqpackDataLocator(i, Data[i].Stream->StreamSize()), std::make_tuple(UINT32_MAX, UINT32_MAX, static_cast<const char*>(nullptr)));
+				offsets2.emplace_back(SqpackDataLocator(i, Data[i].Stream->StreamSize()), std::make_tuple(UINT32_MAX, static_cast<const char*>(nullptr)));
 			}
 
 			struct Comparator {
-				bool operator()(const SqIndex::LEDataLocator& l, const SqIndex::LEDataLocator& r) const {
+				bool operator()(const SqpackDataLocator& l, const SqpackDataLocator& r) const {
 					if (l.DatFileIndex != r.DatFileIndex)
 						return l.DatFileIndex < r.DatFileIndex;
 					if (l.DatFileOffset() != r.DatFileOffset())
@@ -209,11 +209,11 @@ namespace XivRes {
 					return false;
 				}
 
-				bool operator()(const std::pair<SqIndex::LEDataLocator, std::tuple<uint32_t, uint32_t, const char*>>& l, const std::pair<SqIndex::LEDataLocator, std::tuple<uint32_t, uint32_t, const char*>>& r) const {
+				bool operator()(const std::pair<SqpackDataLocator, std::tuple<uint32_t, uint32_t, const char*>>& l, const std::pair<SqpackDataLocator, std::tuple<uint32_t, uint32_t, const char*>>& r) const {
 					return (*this)(l.first, r.first);
 				}
 
-				bool operator()(const std::pair<SqIndex::LEDataLocator, std::tuple<uint32_t, const char*>>& l, const std::pair<SqIndex::LEDataLocator, std::tuple<uint32_t, const char*>>& r) const {
+				bool operator()(const std::pair<SqpackDataLocator, std::tuple<uint32_t, const char*>>& l, const std::pair<SqpackDataLocator, std::tuple<uint32_t, const char*>>& r) const {
 					return (*this)(l.first, r.first);
 				}
 
@@ -261,23 +261,23 @@ namespace XivRes {
 		}
 
 		static SqpackReader FromPath(const std::filesystem::path& indexFile, bool strictVerify = false) {
-			std::vector<std::shared_ptr<RandomAccessStream>> dataStreams;
+			std::vector<std::shared_ptr<Stream>> dataStreams;
 			for (int i = 0; i < 8; ++i) {
 				auto dataPath = std::filesystem::path(indexFile);
 				dataPath.replace_extension(std::format(".dat{}", i));
 				if (!exists(dataPath))
 					break;
-				dataStreams.emplace_back(std::make_shared<FileRandomAccessStream>(dataPath));
+				dataStreams.emplace_back(std::make_shared<FileStream>(dataPath));
 			}
 
 			return SqpackReader(indexFile.filename().string(),
-				std::make_shared<FileRandomAccessStream>(std::filesystem::path(indexFile).replace_extension(".index")),
-				std::make_shared<FileRandomAccessStream>(std::filesystem::path(indexFile).replace_extension(".index2")),
+				std::make_shared<FileStream>(std::filesystem::path(indexFile).replace_extension(".index")),
+				std::make_shared<FileStream>(std::filesystem::path(indexFile).replace_extension(".index2")),
 				std::move(dataStreams),
 				strictVerify);
 		}
 
-		[[nodiscard]] const SqIndex::LEDataLocator& GetLocator1(const SqpackPathSpec& pathSpec) const {
+		[[nodiscard]] const SqpackDataLocator& GetLocator1(const SqpackPathSpec& pathSpec) const {
 			try {
 				const auto& locator = Index1.GetLocator(pathSpec.PathHash(), pathSpec.NameHash());
 				if (locator.IsSynonym)
@@ -290,7 +290,7 @@ namespace XivRes {
 			throw std::out_of_range(std::format("Path spec is empty"));
 		}
 
-		[[nodiscard]] const SqIndex::LEDataLocator& GetLocator2(const SqpackPathSpec& pathSpec) const {
+		[[nodiscard]] const SqpackDataLocator& GetLocator2(const SqpackPathSpec& pathSpec) const {
 			try {
 				const auto& locator = Index2.GetLocator(pathSpec.FullPathHash());
 				if (locator.IsSynonym)
@@ -304,16 +304,16 @@ namespace XivRes {
 		}
 
 		[[nodiscard]] std::shared_ptr<PackedFileStream> GetPackedFileStream(const EntryInfoType& info) const {
-			return std::make_unique<RandomAccessStreamAsPackedFileView>(info.PathSpec, std::make_shared<RandomAccessStreamPartialView>(Data.at(info.Locator.DatFileIndex).Stream, info.Locator.DatFileOffset(), info.Allocation));
+			return std::make_unique<StreamAsPackedFileViewStream>(info.PathSpec, std::make_shared<PartialViewStream>(Data.at(info.Locator.DatFileIndex).Stream, info.Locator.DatFileOffset(), info.Allocation));
 		}
 
 		[[nodiscard]] std::shared_ptr<PackedFileStream> GetPackedFileStream(const SqpackPathSpec& pathSpec) const {
 			struct Comparator {
-				bool operator()(const EntryInfoType& l, const SqIndex::LEDataLocator& r) const {
+				bool operator()(const EntryInfoType& l, const SqpackDataLocator& r) const {
 					return l.Locator < r;
 				}
 
-				bool operator()(const SqIndex::LEDataLocator& l, const EntryInfoType& r) const {
+				bool operator()(const SqpackDataLocator& l, const EntryInfoType& r) const {
 					return l < r.Locator;
 				}
 			};
@@ -331,66 +331,6 @@ namespace XivRes {
 			return std::make_shared<PackedFileUnpackingStream>(GetPackedFileStream(pathSpec), obfuscatedHeaderRewrite);
 		}
 	};
-
-	class ExcelReader;
-
-	class GameReader {
-		const std::filesystem::path m_gamePath;
-		mutable std::map<uint32_t, std::optional<SqpackReader>> m_readers;
-		mutable std::mutex m_populateMtx;
-
-	public:
-		GameReader(std::filesystem::path gamePath)
-			: m_gamePath(std::move(gamePath)) {
-			for (const auto& iter : std::filesystem::recursive_directory_iterator(m_gamePath / "sqpack")) {
-				if (iter.is_directory() || !iter.path().wstring().ends_with(L".win32.index"))
-					continue;
-
-				auto packFileName = std::filesystem::path{ iter.path() }.replace_extension("").replace_extension("").string();
-				if (packFileName.size() < 6)
-					continue;
-
-				packFileName.resize(6);
-
-				const auto packFileId = std::strtol(&packFileName[0], nullptr, 16);
-				m_readers.emplace(packFileId, std::optional<SqpackReader>());
-			}
-		}
-
-		[[nodiscard]] std::shared_ptr<PackedFileStream> GetPackedFileStream(const SqpackPathSpec& pathSpec) const {
-			return GetSqpackReader(pathSpec).GetPackedFileStream(pathSpec);
-		}
-
-		[[nodiscard]] std::shared_ptr<PackedFileUnpackingStream> GetFileStream(const SqpackPathSpec& pathSpec, std::span<uint8_t> obfuscatedHeaderRewrite = {}) const {
-			return std::make_shared<PackedFileUnpackingStream>(GetSqpackReader(pathSpec).GetPackedFileStream(pathSpec), obfuscatedHeaderRewrite);
-		}
-
-		[[nodiscard]] const SqpackReader& GetSqpackReader(const SqpackPathSpec& rawPathSpec) const {
-			return GetSqpackReader(rawPathSpec.PackNameValue());
-		}
-
-		[[nodiscard]] const SqpackReader& GetSqpackReader(uint32_t packId) const {
-			auto& item = m_readers[packId];
-			if (item)
-				return *item;
-
-			const auto lock = std::lock_guard(m_populateMtx);
-			if (item)
-				return *item;
-
-			const auto expacId = (packId >> 8) & 0xFF;
-			if (expacId == 0)
-				return item.emplace(SqpackReader::FromPath(m_gamePath / std::format("sqpack/ffxiv/{:0>6x}.win32.index", packId)));
-			else
-				return item.emplace(SqpackReader::FromPath(m_gamePath / std::format("sqpack/ex{}/{:0>6x}.win32.index", expacId, packId)));
-		}
-
-		[[nodiscard]] inline ExcelReader GetExcelReader(const std::string& name) const;
-
-		void PreloadAllSqpackFiles() const {
-			const auto lock = std::lock_guard(m_populateMtx);
-			for (const auto& key : m_readers | std::views::keys)
-				void(GetSqpackReader(key));
-		}
-	};
 }
+
+#endif

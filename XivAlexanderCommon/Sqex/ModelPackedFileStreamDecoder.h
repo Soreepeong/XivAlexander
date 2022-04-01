@@ -1,4 +1,6 @@
-#pragma once
+#ifndef _XIVRES_MODELPACKEDFILESTREAMDECODER_H_
+#define _XIVRES_MODELPACKEDFILESTREAMDECODER_H_
+
 #include "SqpackStreamDecoder.h"
 #include "Model.h"
 
@@ -17,14 +19,14 @@ namespace XivRes {
 		std::vector<BlockInfo> m_blocks;
 
 	public:
-		ModelPackedFileStreamDecoder(const SqData::PackedFileHeader& header, std::shared_ptr<const PackedFileStream> stream)
+		ModelPackedFileStreamDecoder(const PackedFileHeader& header, std::shared_ptr<const PackedFileStream> stream)
 			: BasePackedFileStreamDecoder(std::move(stream))
 		{
 			const auto AsHeader = [this]() -> Model::Header& { return *reinterpret_cast<Model::Header*>(&m_head[0]); };
 
 			const auto underlyingSize = m_stream->StreamSize();
-			uint64_t readOffset = sizeof SqData::PackedFileHeader;
-			const auto locator = m_stream->ReadStream<SqData::ModelBlockLocator>(readOffset);
+			uint64_t readOffset = sizeof PackedFileHeader;
+			const auto locator = m_stream->ReadStream<SqpackModelPackedFileBlockLocator>(readOffset);
 			const auto blockCount = static_cast<size_t>(locator.FirstBlockIndices.Index[2]) + locator.BlockCount.Index[2];
 
 			readOffset += sizeof locator;
@@ -75,7 +77,7 @@ namespace XivRes {
 
 			auto lastOffset = 0;
 			for (auto& block : m_blocks) {
-				SqData::BlockHeader blockHeader;
+				PackedBlockHeader blockHeader;
 
 				if (block.BlockOffset == underlyingSize)
 					blockHeader.DecompressedSize = blockHeader.CompressedSize = 0;
@@ -142,3 +144,5 @@ namespace XivRes {
 		}
 	};
 }
+
+#endif

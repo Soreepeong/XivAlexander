@@ -1,6 +1,9 @@
-#pragma once
+#ifndef _XIVRES_LAZYPACKEDFILESTREAM_H_
+#define _XIVRES_LAZYPACKEDFILESTREAM_H_
+
 #include <zlib.h>
-#include "SqpackEntryProvider.h"
+
+#include "PackedFileStream.h"
 
 namespace XivRes {
 	class LazyPackedFileStream : public PackedFileStream {
@@ -9,7 +12,7 @@ namespace XivRes {
 
 	protected:
 		const std::filesystem::path m_path;
-		const std::shared_ptr<const RandomAccessStream> m_stream;
+		const std::shared_ptr<const Stream> m_stream;
 		const uint64_t m_originalSize;
 		const int m_compressionLevel;
 
@@ -17,12 +20,12 @@ namespace XivRes {
 		LazyPackedFileStream(SqpackPathSpec spec, std::filesystem::path path, int compressionLevel = Z_BEST_COMPRESSION)
 			: PackedFileStream(std::move(spec))
 			, m_path(std::move(path))
-			, m_stream(std::make_shared<FileRandomAccessStream>(m_path))
+			, m_stream(std::make_shared<FileStream>(m_path))
 			, m_originalSize(m_stream->StreamSize())
 			, m_compressionLevel(compressionLevel) {
 		}
 
-		LazyPackedFileStream(SqpackPathSpec spec, std::shared_ptr<const RandomAccessStream> stream, int compressionLevel = Z_BEST_COMPRESSION)
+		LazyPackedFileStream(SqpackPathSpec spec, std::shared_ptr<const Stream> stream, int compressionLevel = Z_BEST_COMPRESSION)
 			: PackedFileStream(std::move(spec))
 			, m_path()
 			, m_stream(std::move(stream))
@@ -32,7 +35,7 @@ namespace XivRes {
 
 		[[nodiscard]] std::streamsize StreamSize() const final {
 			if (const auto estimate = MaxPossibleStreamSize();
-				estimate != SqData::Header::MaxFileSize_MaxValue)
+				estimate != SqpackDataHeader::MaxFileSize_MaxValue)
 				return estimate;
 
 			ResolveConst();
@@ -57,7 +60,7 @@ namespace XivRes {
 				const auto read = static_cast<size_t>(ReadStreamPartial(*m_stream, offset, &target[0], (std::min<uint64_t>)(size - offset, target.size())));
 				target = target.subspan(read);
 			}
-			// size ... estimate
+
 			const auto remaining = static_cast<size_t>((std::min<uint64_t>)(estimate - size, target.size()));
 			std::ranges::fill(target.subspan(0, remaining), 0);
 			return length - (target.size() - remaining);
@@ -80,16 +83,18 @@ namespace XivRes {
 			const_cast<LazyPackedFileStream*>(this)->Resolve();
 		}
 
-		virtual void Initialize(const RandomAccessStream& stream) {
+		virtual void Initialize(const Stream& stream) {
 			// does nothing
 		}
 
 		[[nodiscard]] virtual std::streamsize MaxPossibleStreamSize() const {
-			return SqData::Header::MaxFileSize_MaxValue;
+			return SqpackDataHeader::MaxFileSize_MaxValue;
 		}
 
-		[[nodiscard]] virtual std::streamsize StreamSize(const RandomAccessStream& stream) const = 0;
+		[[nodiscard]] virtual std::streamsize StreamSize(const Stream& stream) const = 0;
 
-		virtual std::streamsize ReadStreamPartial(const RandomAccessStream& stream, uint64_t offset, void* buf, uint64_t length) const = 0;
+		virtual std::streamsize ReadStreamPartial(const Stream& stream, std::streamoff offset, void* buf, std::streamsize length) const = 0;
 	};
 }
+
+#endif

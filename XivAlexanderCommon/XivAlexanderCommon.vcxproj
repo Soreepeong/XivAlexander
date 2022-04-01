@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <None Include=".editorconfig" />
     <None Include="vcpkg.json" />
   </ItemGroup>
   <ItemGroup>
@@ -35,7 +36,8 @@
     <ClInclude Include="Sqex\ExcelGenerator.h" />
     <ClInclude Include="Sqex\ExcelReader.h" />
     <ClInclude Include="Sqex\FontCsv.h" />
-    <ClInclude Include="Sqex\FontCsvStream.h" />
+    <ClInclude Include="Sqex\FdtStream.h" />
+    <ClInclude Include="Sqex\GameReader.h" />
     <ClInclude Include="Sqex\Imc.h" />
     <ClInclude Include="Sqex\internal\ByteOrder.h" />
     <ClInclude Include="Sqex\internal\CallOnDestruction.h" />
@@ -49,30 +51,33 @@
     <ClInclude Include="Sqex\MipmapStream.h" />
     <ClInclude Include="Sqex\Model.h" />
     <ClInclude Include="Sqex\PixelFormats.h" />
-    <ClInclude Include="Sqex\RandomAccessStream.h" />
+    <ClInclude Include="Sqex\Stream.h" />
     <ClInclude Include="Sqex\ScdReader.h" />
     <ClInclude Include="Sqex\ScdWriter.h" />
     <ClInclude Include="Sqex\SeString.h" />
     <ClInclude Include="Sqex\Scd.h" />
     <ClInclude Include="Sqex\Sqpack.h" />
-    <ClInclude Include="Sqex\SqpackBinaryEntryProvider.h" />
-    <ClInclude Include="Sqex\SqpackBinaryStreamDecoder.h" />
+    <ClInclude Include="Sqex\BinaryPackedFileStream.h" />
+    <ClInclude Include="Sqex\BinaryPackedFileStreamDecoder.h" />
     <ClInclude Include="Sqex\SqpackGenerator.h" />
-    <ClInclude Include="Sqex\SqpackEmptyOrObfuscatedEntryProvider.h" />
-    <ClInclude Include="Sqex\SqpackEmptyOrObfuscatedStreamDecoder.h" />
-    <ClInclude Include="Sqex\SqpackEntryProvider.h" />
-    <ClInclude Include="Sqex\SqpackEntryRawStream.h" />
-    <ClInclude Include="Sqex\SqpackHotSwappableEntryProvider.h" />
-    <ClInclude Include="Sqex\SqpackLazyEntryProvider.h" />
-    <ClInclude Include="Sqex\SqpackModelEntryProvider.h" />
-    <ClInclude Include="Sqex\SqpackModelStreamDecoder.h" />
-    <ClInclude Include="Sqex\SqpackRandomAccessStreamAsEntryProviderView.h" />
+    <ClInclude Include="Sqex\EmptyOrObfuscatedPackedFileStream.h" />
+    <ClInclude Include="Sqex\EmptyOrObfuscatedPackedFileStreamDecoder.h" />
+    <ClInclude Include="Sqex\PackedFileStream.h" />
+    <ClInclude Include="Sqex\PackedFileUnpackingStream.h" />
+    <ClInclude Include="Sqex\HotSwappablePackedFileStream.h" />
+    <ClInclude Include="Sqex\LazyPackedFileStream.h" />
+    <ClInclude Include="Sqex\ModelPackedFileStream.h" />
+    <ClInclude Include="Sqex\ModelPackedFileStreamDecoder.h" />
+    <ClInclude Include="Sqex\StreamAsPackedFileViewStream.h" />
     <ClInclude Include="Sqex\SqpackReader.h" />
     <ClInclude Include="Sqex\SqpackStreamDecoder.h" />
-    <ClInclude Include="Sqex\SqpackTextureEntryProvider.h" />
-    <ClInclude Include="Sqex\SqpackTextureStreamDecoder.h" />
+    <ClInclude Include="Sqex\TexturePackedFileStream.h" />
+    <ClInclude Include="Sqex\TexturePackedFileStreamDecoder.h" />
     <ClInclude Include="Sqex\Texture.h" />
     <ClInclude Include="Sqex\TextureStream.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Sqex\internal\Codepoint.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

@@ -1,11 +1,14 @@
-#pragma once
+#ifndef _XIVRES_IMC_H_
+#define _XIVRES_IMC_H_
+
 #include <cstdint>
 #include <span>
 #include <vector>
 
-#include "Common.h"
-#include "RandomAccessStream.h"
 #include "internal/ByteOrder.h"
+
+#include "Common.h"
+#include "Stream.h"
 
 namespace XivRes::Imc {
 	enum class Type : uint16_t {
@@ -35,7 +38,7 @@ namespace XivRes::Imc {
 			: m_data(sizeof Imc::Header) {
 		}
 
-		File(const RandomAccessStream& stream)
+		File(const Stream& stream)
 			: m_data(stream.ReadStreamIntoVector<uint8_t>(0)) {
 			if (m_data.size() < sizeof Imc::Header) {
 				m_data.clear();
@@ -122,3 +125,5 @@ namespace XivRes::Imc {
 		}
 	};
 }
+
+#endif

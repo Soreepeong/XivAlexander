@@ -1,14 +1,15 @@
-#pragma once
+#ifndef _XIVRES_SCDWRITER_H_
+#define _XIVRES_SCDWRITER_H_
 
 #include <format>
 #include <map>
 #include <ranges>
 #include <stdexcept>
 
+#include "internal/SpanCast.h"
+
 #include "Common.h"
 #include "Scd.h"
-
-#include "internal/SpanCast.h"
 
 namespace XivRes {
 	class ScdWriter {
@@ -385,3 +386,5 @@ namespace XivRes {
 		}
 	};
 }
+
+#endif

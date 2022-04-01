@@ -1,6 +1,9 @@
-#pragma once
-#include "Common.h"
+#ifndef _XIVRES_TEXTURE_H_
+#define _XIVRES_TEXTURE_H_
+
 #include "internal/ByteOrder.h"
+
+#include "Common.h"
 
 namespace XivRes {
 	enum class TextureFormat : uint32_t {
@@ -77,3 +80,5 @@ namespace XivRes {
 		return TextureRawDataLength(header.Type, header.Width, header.Height, header.Depth, mipmapIndex);
 	}
 }
+
+#endif

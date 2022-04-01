@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _XIVRES_STREAM_H_
+#define _XIVRES_STREAM_H_
 
 #include <algorithm>
 #include <fstream>
@@ -8,21 +9,21 @@
 #include <span>
 #include <type_traits>
 
-#include "Sqex/internal/ByteOrder.h"
-#include "Sqex/internal/SpanCast.h"
-#include "Sqex/internal/Misc.h"
+#include "internal/ByteOrder.h"
+#include "internal/SpanCast.h"
+#include "internal/Misc.h"
 
 namespace XivRes {
-	class RandomAccessStreamPartialView;
+	class PartialViewStream;
 
-	class RandomAccessStream : public std::enable_shared_from_this<RandomAccessStream> {
+	class Stream : public std::enable_shared_from_this<Stream> {
 	public:
-		RandomAccessStream() = default;
-		RandomAccessStream(RandomAccessStream&&) = delete;
-		RandomAccessStream(const RandomAccessStream&) = delete;
-		RandomAccessStream& operator=(RandomAccessStream&&) = delete;
-		RandomAccessStream& operator=(const RandomAccessStream&) = delete;
-		virtual ~RandomAccessStream() = default;
+		Stream() = default;
+		Stream(Stream&&) = delete;
+		Stream(const Stream&) = delete;
+		Stream& operator=(Stream&&) = delete;
+		Stream& operator=(const Stream&) = delete;
+		virtual ~Stream() = default;
 
 		[[nodiscard]] virtual std::streamsize StreamSize() const = 0;
 
@@ -63,36 +64,34 @@ namespace XivRes {
 
 		virtual void Flush() const {}
 
-		virtual RandomAccessStreamPartialView SubStream(std::streamoff offset, std::streamsize length = (std::numeric_limits<std::streamsize>::max)());
+		virtual PartialViewStream SubStream(std::streamoff offset, std::streamsize length = (std::numeric_limits<std::streamsize>::max)());
 
-		virtual std::shared_ptr<RandomAccessStreamPartialView> SubStreamShared(std::streamoff offset, std::streamsize length = (std::numeric_limits<std::streamsize>::max)());
+		virtual std::shared_ptr<PartialViewStream> SubStreamShared(std::streamoff offset, std::streamsize length = (std::numeric_limits<std::streamsize>::max)());
 	};
 
-	class RandomAccessStreamPartialView : public RandomAccessStream {
-		const std::shared_ptr<const RandomAccessStream> m_streamSharedPtr;
+	class PartialViewStream : public Stream {
+		const std::shared_ptr<const Stream> m_streamSharedPtr;
 
 	public:
-		const RandomAccessStream& m_stream;
+		const Stream& m_stream;
 		const std::streamoff m_offset;
 
 	private:
 		const std::streamsize m_size;
 
 	public:
-		RandomAccessStreamPartialView(const RandomAccessStream& stream, std::streamoff offset = 0, std::streamsize length = (std::numeric_limits<std::streamsize>::max)())
+		PartialViewStream(const Stream& stream, std::streamoff offset = 0, std::streamsize length = (std::numeric_limits<std::streamsize>::max)())
 			: m_stream(stream)
 			, m_offset(offset)
-			, m_size((std::min)(length, m_stream.StreamSize() < offset ? 0 : m_stream.StreamSize() - offset)) {
-		}
+			, m_size((std::min)(length, m_stream.StreamSize() < offset ? 0 : m_stream.StreamSize() - offset)) {}
 
-		RandomAccessStreamPartialView(const RandomAccessStreamPartialView&) = default;
+		PartialViewStream(const PartialViewStream&) = default;
 
-		RandomAccessStreamPartialView(std::shared_ptr<const RandomAccessStream> stream, std::streamoff offset = 0, std::streamsize length = (std::numeric_limits<std::streamsize>::max)())
+		PartialViewStream(std::shared_ptr<const Stream> stream, std::streamoff offset = 0, std::streamsize length = (std::numeric_limits<std::streamsize>::max)())
 			: m_streamSharedPtr(std::move(stream))
 			, m_stream(*m_streamSharedPtr)
 			, m_offset(offset)
-			, m_size((std::min)(length, m_stream.StreamSize() < offset ? 0 : m_stream.StreamSize() - offset)) {
-		}
+			, m_size((std::min)(length, m_stream.StreamSize() < offset ? 0 : m_stream.StreamSize() - offset)) {}
 
 		[[nodiscard]] std::streamsize StreamSize() const override {
 			return m_size;
@@ -105,31 +104,31 @@ namespace XivRes {
 			return m_stream.ReadStreamPartial(m_offset + offset, buf, length);
 		}
 
-		RandomAccessStreamPartialView SubStream(std::streamoff offset, std::streamsize length = (std::numeric_limits<std::streamsize>::max)()) override {
-			return RandomAccessStreamPartialView(m_stream, m_offset + offset, (std::min)(length, m_size));
+		PartialViewStream SubStream(std::streamoff offset, std::streamsize length = (std::numeric_limits<std::streamsize>::max)()) override {
+			return PartialViewStream(m_stream, m_offset + offset, (std::min)(length, m_size));
 		}
 
-		std::shared_ptr<RandomAccessStreamPartialView> SubStreamShared(std::streamoff offset, std::streamsize length = (std::numeric_limits<std::streamsize>::max)()) override {
-			return std::make_shared<RandomAccessStreamPartialView>(m_streamSharedPtr, m_offset + offset, (std::min)(length, m_size));
+		std::shared_ptr<PartialViewStream> SubStreamShared(std::streamoff offset, std::streamsize length = (std::numeric_limits<std::streamsize>::max)()) override {
+			return std::make_shared<PartialViewStream>(m_streamSharedPtr, m_offset + offset, (std::min)(length, m_size));
 		}
 	};
 
-	inline RandomAccessStreamPartialView RandomAccessStream::SubStream(std::streamoff offset, std::streamsize length) {
-		return RandomAccessStreamPartialView(*this, offset, length);
+	inline PartialViewStream Stream::SubStream(std::streamoff offset, std::streamsize length) {
+		return PartialViewStream(*this, offset, length);
 	}
 
-	inline std::shared_ptr<RandomAccessStreamPartialView> RandomAccessStream::SubStreamShared(std::streamoff offset, std::streamsize length) {
-		return std::make_shared<RandomAccessStreamPartialView>(shared_from_this(), offset, length);
+	inline std::shared_ptr<PartialViewStream> Stream::SubStreamShared(std::streamoff offset, std::streamsize length) {
+		return std::make_shared<PartialViewStream>(shared_from_this(), offset, length);
 	}
 
 #ifdef _WINDOWS_
-	class FileRandomAccessStream : public RandomAccessStream {
+	class FileStream : public Stream {
 		const std::filesystem::path m_path;
 		const HANDLE m_hFile;
 		HANDLE m_hDummyEvent{};
 
 	public:
-		FileRandomAccessStream(std::filesystem::path path)
+		FileStream(std::filesystem::path path)
 			: m_path(std::move(path))
 			, m_hFile(CreateFileW(m_path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr)) {
 
@@ -144,7 +143,7 @@ namespace XivRes {
 			}
 		}
 
-		~FileRandomAccessStream() {
+		~FileStream() {
 			CloseHandle(m_hDummyEvent);
 			CloseHandle(m_hFile);
 		}
@@ -185,17 +184,17 @@ namespace XivRes {
 	};
 
 #else
-	class FileRandomAccessStream : public RandomAccessStream {
+	class FileStream : public Stream {
 		const std::filesystem::path m_path;
 		mutable std::mutex m_mutex;
 		mutable std::vector<std::ifstream> m_streams;
 
 		class PooledObject {
-			const FileRandomAccessStream& m_parent;
+			const FileStream& m_parent;
 			mutable std::ifstream m_stream;
 
 		public:
-			PooledObject(const FileRandomAccessStream& parent)
+			PooledObject(const FileStream& parent)
 				: m_parent(parent) {
 				const auto lock = std::lock_guard(parent.m_mutex);
 				if (parent.m_streams.empty())
@@ -217,7 +216,7 @@ namespace XivRes {
 		};
 
 	public:
-		FileRandomAccessStream(std::filesystem::path path)
+		FileStream(std::filesystem::path path)
 			: m_path(std::move(path)) {
 			m_streams.emplace_back(m_path, std::ios::binary);
 		}
@@ -237,59 +236,56 @@ namespace XivRes {
 	};
 #endif
 
-	class MemoryRandomAccessStream : public RandomAccessStream {
+	class MemoryStream : public Stream {
 		std::vector<uint8_t> m_buffer;
 		std::span<uint8_t> m_view;
 
 	public:
-		MemoryRandomAccessStream() = default;
-		
-		MemoryRandomAccessStream(MemoryRandomAccessStream&& r) noexcept
+		MemoryStream() = default;
+
+		MemoryStream(MemoryStream&& r) noexcept
 			: m_buffer(std::move(r.m_buffer))
 			, m_view(std::move(r.m_view)) {
 			r.m_view = {};
 		}
 
-		MemoryRandomAccessStream(const MemoryRandomAccessStream& r)
+		MemoryStream(const MemoryStream& r)
 			: m_buffer(r.m_buffer)
-			, m_view(r.OwnsData() ? std::span(m_buffer) : r.m_view) {
-		}
+			, m_view(r.OwnsData() ? std::span(m_buffer) : r.m_view) {}
 
-		MemoryRandomAccessStream(const RandomAccessStream& r)
+		MemoryStream(const Stream& r)
 			: m_buffer(static_cast<size_t>(r.StreamSize()))
 			, m_view(std::span(m_buffer)) {
 			r.ReadStream(0, m_view);
 		}
 
-		MemoryRandomAccessStream(std::vector<uint8_t> buffer)
+		MemoryStream(std::vector<uint8_t> buffer)
 			: m_buffer(std::move(buffer))
-			, m_view(m_buffer) {
-		}
+			, m_view(m_buffer) {}
 
-		MemoryRandomAccessStream(std::span<uint8_t> view)
-			: m_view(view) {
-		}
-		
-		MemoryRandomAccessStream& operator=(std::vector<uint8_t>&& buf) noexcept {
+		MemoryStream(std::span<uint8_t> view)
+			: m_view(view) {}
+
+		MemoryStream& operator=(std::vector<uint8_t>&& buf) noexcept {
 			m_buffer = std::move(buf);
 			m_view = std::span(m_buffer);
 			return *this;
 		}
 
-		MemoryRandomAccessStream& operator=(const std::vector<uint8_t>& buf) {
+		MemoryStream& operator=(const std::vector<uint8_t>& buf) {
 			m_buffer = buf;
 			m_view = std::span(m_buffer);
 			return *this;
 		}
-		
-		MemoryRandomAccessStream& operator=(MemoryRandomAccessStream&& r) noexcept {
+
+		MemoryStream& operator=(MemoryStream&& r) noexcept {
 			m_buffer = std::move(r.m_buffer);
 			m_view = std::move(r.m_view);
 			r.m_view = {};
 			return *this;
 		}
-		
-		MemoryRandomAccessStream& operator=(const MemoryRandomAccessStream& r) {
+
+		MemoryStream& operator=(const MemoryStream& r) {
 			if (r.OwnsData()) {
 				m_buffer = r.m_buffer;
 				m_view = std::span(m_buffer);
@@ -300,7 +296,9 @@ namespace XivRes {
 			return *this;
 		}
 
-		[[nodiscard]] std::streamsize StreamSize() const override { return m_view.size(); }
+		[[nodiscard]] std::streamsize StreamSize() const override {
+			return m_view.size();
+		}
 
 		std::streamsize ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) const override {
 			if (offset >= static_cast<std::streamoff>(m_view.size()))
@@ -311,8 +309,10 @@ namespace XivRes {
 			return length;
 		}
 
-		bool OwnsData() const {
+		[[nodiscard]] bool OwnsData() const {
 			return !m_buffer.empty() && m_view.data() == m_buffer.data();
 		}
 	};
 }
+
+#endif

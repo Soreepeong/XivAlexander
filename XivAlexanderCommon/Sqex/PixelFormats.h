@@ -1,9 +1,7 @@
 #ifndef _XIVRES_PIXELFORMATS_H_
 #define _XIVRES_PIXELFORMATS_H_
 
-#include <filesystem>
-#include <string>
-#include <vector>
+#include <cinttypes>
 
 namespace XivRes {
 	struct RGBA4444 {

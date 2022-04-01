@@ -1,21 +1,21 @@
-#pragma once
+#ifndef _XIVRES_PACKEDFILEUNPACKINGSTREAM_H_
+#define _XIVRES_PACKEDFILEUNPACKINGSTREAM_H_
 
-#include "Sqpack.h"
-#include "SqpackEntryProvider.h"
+#include "PackedFileStream.h"
 #include "SqpackStreamDecoder.h"
 
 namespace XivRes {
 	class BasePackedFileStreamDecoder;
 
-	class PackedFileUnpackingStream : public RandomAccessStream {
+	class PackedFileUnpackingStream : public Stream {
 		const std::shared_ptr<const PackedFileStream> m_provider;
-		const SqData::PackedFileHeader m_entryHeader;
+		const PackedFileHeader m_entryHeader;
 		const std::unique_ptr<BasePackedFileStreamDecoder> m_decoder;
 
 	public:
 		PackedFileUnpackingStream(std::shared_ptr<const PackedFileStream> provider, std::span<uint8_t> obfuscatedHeaderRewrite = {})
 			: m_provider(std::move(provider))
-			, m_entryHeader(m_provider->ReadStream<SqData::PackedFileHeader>(0))
+			, m_entryHeader(m_provider->ReadStream<PackedFileHeader>(0))
 			, m_decoder(BasePackedFileStreamDecoder::CreateNew(m_entryHeader, m_provider, obfuscatedHeaderRewrite)) {
 		}
 
@@ -23,8 +23,8 @@ namespace XivRes {
 			return m_decoder ? *m_entryHeader.DecompressedSize : 0;
 		}
 
-		[[nodiscard]] SqData::PackedFileType PackedFileType() const {
-			return m_provider->PackedFileType();
+		[[nodiscard]] PackedFileType PackedFileType() const {
+			return m_provider->GetPackedFileType();
 		}
 
 		[[nodiscard]] const SqpackPathSpec& PathSpec() const {
@@ -49,3 +49,13 @@ namespace XivRes {
 		}
 	};
 }
+
+inline XivRes::PackedFileUnpackingStream XivRes::PackedFileStream::GetUnpackedStream(std::span<uint8_t> obfuscatedHeaderRewrite) const {
+	return XivRes::PackedFileUnpackingStream(std::static_pointer_cast<const PackedFileStream>(shared_from_this()), obfuscatedHeaderRewrite);
+}
+
+inline std::unique_ptr<XivRes::PackedFileUnpackingStream> XivRes::PackedFileStream::GetUnpackedStreamPtr(std::span<uint8_t> obfuscatedHeaderRewrite) const {
+	return std::make_unique<XivRes::PackedFileUnpackingStream>(std::static_pointer_cast<const PackedFileStream>(shared_from_this()), obfuscatedHeaderRewrite);
+}
+
+#endif

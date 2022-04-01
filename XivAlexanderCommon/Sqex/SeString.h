@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _XIVRES_SESTRING_H_
+#define _XIVRES_SESTRING_H_
 
 #include <cstdint>
 #include <format>
@@ -392,3 +393,5 @@ namespace XivRes {
 		}
 	};
 }
+
+#endif

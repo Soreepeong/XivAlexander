@@ -1,17 +1,19 @@
-#pragma once
-#include "SqpackStreamDecoder.h"
-#include "SqpackRandomAccessStreamAsEntryProviderView.h"
+#ifndef _XIVRES_EMPTYOROBFUSCATEDPACKEDFILESTREAMDECODER_H_
+#define _XIVRES_EMPTYOROBFUSCATEDPACKEDFILESTREAMDECODER_H_
 
 #include "internal/ZlibWrapper.h"
 
+#include "SqpackStreamDecoder.h"
+#include "StreamAsPackedFileViewStream.h"
+
 namespace XivRes {
-	class EmptyPackedFileStreamDecoder : public BasePackedFileStreamDecoder {
+	class EmptyOrObfuscatedPackedFileStreamDecoder : public BasePackedFileStreamDecoder {
 		std::optional<Internal::ZlibReusableInflater> m_inflater;
-		std::shared_ptr<RandomAccessStreamPartialView> m_partialView;
-		std::optional<RandomAccessStreamAsPackedFileView> m_provider;
+		std::shared_ptr<PartialViewStream> m_partialView;
+		std::optional<StreamAsPackedFileViewStream> m_provider;
 
 	public:
-		EmptyPackedFileStreamDecoder(const XivRes::SqData::PackedFileHeader& header, std::shared_ptr<const XivRes::PackedFileStream> stream, std::span<uint8_t> headerRewrite = {})
+		EmptyOrObfuscatedPackedFileStreamDecoder(const XivRes::PackedFileHeader& header, std::shared_ptr<const XivRes::PackedFileStream> stream, std::span<uint8_t> headerRewrite = {})
 			: BasePackedFileStreamDecoder(std::move(stream)) {
 
 			if (header.DecompressedSize < header.BlockCountOrVersion) {
@@ -19,10 +21,10 @@ namespace XivRes {
 				if (!headerRewrite.empty())
 					std::copy(headerRewrite.begin(), headerRewrite.begin() + (std::min)(headerRewrite.size(), src.size()), src.begin());
 				m_inflater.emplace(-MAX_WBITS, header.DecompressedSize);
-				m_provider.emplace(m_stream->PathSpec(), std::make_shared<XivRes::MemoryRandomAccessStream>((*m_inflater)(src)));
+				m_provider.emplace(m_stream->PathSpec(), std::make_shared<XivRes::MemoryStream>((*m_inflater)(src)));
 
 			} else {
-				m_partialView = std::make_shared<XivRes::RandomAccessStreamPartialView>(m_stream, header.HeaderSize);
+				m_partialView = std::make_shared<XivRes::PartialViewStream>(m_stream, header.HeaderSize);
 				m_provider.emplace(m_stream->PathSpec(), m_partialView);
 			}
 		}
@@ -32,3 +34,5 @@ namespace XivRes {
 		}
 	};
 }
+
+#endif
