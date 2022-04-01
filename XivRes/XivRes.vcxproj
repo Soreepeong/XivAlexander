@@ -28,64 +28,64 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Sqex\Common.h" />
-    <ClInclude Include="Sqex\Eqdp.h" />
-    <ClInclude Include="Sqex\EqpGmp.h" />
-    <ClInclude Include="Sqex\Est.h" />
-    <ClInclude Include="Sqex\Excel.h" />
-    <ClInclude Include="Sqex\ExcelGenerator.h" />
-    <ClInclude Include="Sqex\ExcelReader.h" />
-    <ClInclude Include="Sqex\FontCsv.h" />
-    <ClInclude Include="Sqex\FdtStream.h" />
-    <ClInclude Include="Sqex\GameReader.h" />
-    <ClInclude Include="Sqex\Imc.h" />
-    <ClInclude Include="Sqex\internal\ByteOrder.h" />
-    <ClInclude Include="Sqex\internal\CallOnDestruction.h" />
-    <ClInclude Include="Sqex\internal\Dxt.h" />
-    <ClInclude Include="Sqex\internal\ListenerManager.h" />
-    <ClInclude Include="Sqex\internal\Misc.h" />
-    <ClInclude Include="Sqex\internal\TinySha1.h" />
-    <ClInclude Include="Sqex\internal\SpanCast.h" />
-    <ClInclude Include="Sqex\internal\String.h" />
-    <ClInclude Include="Sqex\internal\ZlibWrapper.h" />
-    <ClInclude Include="Sqex\MipmapStream.h" />
-    <ClInclude Include="Sqex\Model.h" />
-    <ClInclude Include="Sqex\PixelFormats.h" />
-    <ClInclude Include="Sqex\Stream.h" />
-    <ClInclude Include="Sqex\ScdReader.h" />
-    <ClInclude Include="Sqex\ScdWriter.h" />
-    <ClInclude Include="Sqex\SeString.h" />
-    <ClInclude Include="Sqex\Scd.h" />
-    <ClInclude Include="Sqex\Sqpack.h" />
-    <ClInclude Include="Sqex\BinaryPackedFileStream.h" />
-    <ClInclude Include="Sqex\BinaryPackedFileStreamDecoder.h" />
-    <ClInclude Include="Sqex\SqpackGenerator.h" />
-    <ClInclude Include="Sqex\EmptyOrObfuscatedPackedFileStream.h" />
-    <ClInclude Include="Sqex\EmptyOrObfuscatedPackedFileStreamDecoder.h" />
-    <ClInclude Include="Sqex\PackedFileStream.h" />
-    <ClInclude Include="Sqex\PackedFileUnpackingStream.h" />
-    <ClInclude Include="Sqex\HotSwappablePackedFileStream.h" />
-    <ClInclude Include="Sqex\LazyPackedFileStream.h" />
-    <ClInclude Include="Sqex\ModelPackedFileStream.h" />
-    <ClInclude Include="Sqex\ModelPackedFileStreamDecoder.h" />
-    <ClInclude Include="Sqex\StreamAsPackedFileViewStream.h" />
-    <ClInclude Include="Sqex\SqpackReader.h" />
-    <ClInclude Include="Sqex\SqpackStreamDecoder.h" />
-    <ClInclude Include="Sqex\TexturePackedFileStream.h" />
-    <ClInclude Include="Sqex\TexturePackedFileStreamDecoder.h" />
-    <ClInclude Include="Sqex\Texture.h" />
-    <ClInclude Include="Sqex\TextureStream.h" />
+    <ClInclude Include="xivres\Common.h" />
+    <ClInclude Include="xivres\Eqdp.h" />
+    <ClInclude Include="xivres\EqpGmp.h" />
+    <ClInclude Include="xivres\Est.h" />
+    <ClInclude Include="xivres\Excel.h" />
+    <ClInclude Include="xivres\ExcelGenerator.h" />
+    <ClInclude Include="xivres\ExcelReader.h" />
+    <ClInclude Include="xivres\FontCsv.h" />
+    <ClInclude Include="xivres\FdtStream.h" />
+    <ClInclude Include="xivres\GameReader.h" />
+    <ClInclude Include="xivres\Imc.h" />
+    <ClInclude Include="xivres\internal\ByteOrder.h" />
+    <ClInclude Include="xivres\internal\CallOnDestruction.h" />
+    <ClInclude Include="xivres\internal\Dxt.h" />
+    <ClInclude Include="xivres\internal\ListenerManager.h" />
+    <ClInclude Include="xivres\internal\Misc.h" />
+    <ClInclude Include="xivres\internal\TinySha1.h" />
+    <ClInclude Include="xivres\internal\SpanCast.h" />
+    <ClInclude Include="xivres\internal\String.h" />
+    <ClInclude Include="xivres\internal\ZlibWrapper.h" />
+    <ClInclude Include="xivres\MipmapStream.h" />
+    <ClInclude Include="xivres\Model.h" />
+    <ClInclude Include="xivres\PixelFormats.h" />
+    <ClInclude Include="xivres\Stream.h" />
+    <ClInclude Include="xivres\ScdReader.h" />
+    <ClInclude Include="xivres\ScdWriter.h" />
+    <ClInclude Include="xivres\SeString.h" />
+    <ClInclude Include="xivres\Scd.h" />
+    <ClInclude Include="xivres\Sqpack.h" />
+    <ClInclude Include="xivres\BinaryPackedFileStream.h" />
+    <ClInclude Include="xivres\BinaryPackedFileStreamDecoder.h" />
+    <ClInclude Include="xivres\SqpackGenerator.h" />
+    <ClInclude Include="xivres\EmptyOrObfuscatedPackedFileStream.h" />
+    <ClInclude Include="xivres\EmptyOrObfuscatedPackedFileStreamDecoder.h" />
+    <ClInclude Include="xivres\PackedFileStream.h" />
+    <ClInclude Include="xivres\PackedFileUnpackingStream.h" />
+    <ClInclude Include="xivres\HotSwappablePackedFileStream.h" />
+    <ClInclude Include="xivres\LazyPackedFileStream.h" />
+    <ClInclude Include="xivres\ModelPackedFileStream.h" />
+    <ClInclude Include="xivres\ModelPackedFileStreamDecoder.h" />
+    <ClInclude Include="xivres\StreamAsPackedFileViewStream.h" />
+    <ClInclude Include="xivres\SqpackReader.h" />
+    <ClInclude Include="xivres\SqpackStreamDecoder.h" />
+    <ClInclude Include="xivres\TexturePackedFileStream.h" />
+    <ClInclude Include="xivres\TexturePackedFileStreamDecoder.h" />
+    <ClInclude Include="xivres\Texture.h" />
+    <ClInclude Include="xivres\TextureStream.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Sqex\internal\Codepoint.h" />
+    <ClInclude Include="xivres\internal\Codepoint.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{58DADDF6-5733-40E0-855C-CC3B4BF235EB}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>XivAlexanderCommon</RootNamespace>
+    <RootNamespace>XivRes</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>XivAlexanderCommon</ProjectName>
+    <ProjectName>XivRes</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">

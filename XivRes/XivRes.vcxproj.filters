@@ -20,148 +20,148 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Sqex\Common.h">
+    <ClInclude Include="xivres\Common.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\Eqdp.h">
+    <ClInclude Include="xivres\Eqdp.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\EqpGmp.h">
+    <ClInclude Include="xivres\EqpGmp.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\Est.h">
+    <ClInclude Include="xivres\Est.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\Excel.h">
+    <ClInclude Include="xivres\Excel.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\ExcelGenerator.h">
+    <ClInclude Include="xivres\ExcelGenerator.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\ExcelReader.h">
+    <ClInclude Include="xivres\ExcelReader.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\FontCsv.h">
+    <ClInclude Include="xivres\FontCsv.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\FdtStream.h">
+    <ClInclude Include="xivres\FdtStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\Imc.h">
+    <ClInclude Include="xivres\Imc.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\MipmapStream.h">
+    <ClInclude Include="xivres\MipmapStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\Model.h">
+    <ClInclude Include="xivres\Model.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\Stream.h">
+    <ClInclude Include="xivres\Stream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\ScdReader.h">
+    <ClInclude Include="xivres\ScdReader.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\ScdWriter.h">
+    <ClInclude Include="xivres\ScdWriter.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\SeString.h">
+    <ClInclude Include="xivres\SeString.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\Scd.h">
+    <ClInclude Include="xivres\Scd.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\Sqpack.h">
+    <ClInclude Include="xivres\Sqpack.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\BinaryPackedFileStream.h">
+    <ClInclude Include="xivres\BinaryPackedFileStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\BinaryPackedFileStreamDecoder.h">
+    <ClInclude Include="xivres\BinaryPackedFileStreamDecoder.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\SqpackGenerator.h">
+    <ClInclude Include="xivres\SqpackGenerator.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\EmptyOrObfuscatedPackedFileStream.h">
+    <ClInclude Include="xivres\EmptyOrObfuscatedPackedFileStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\EmptyOrObfuscatedPackedFileStreamDecoder.h">
+    <ClInclude Include="xivres\EmptyOrObfuscatedPackedFileStreamDecoder.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\PackedFileStream.h">
+    <ClInclude Include="xivres\PackedFileStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\PackedFileUnpackingStream.h">
+    <ClInclude Include="xivres\PackedFileUnpackingStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\HotSwappablePackedFileStream.h">
+    <ClInclude Include="xivres\HotSwappablePackedFileStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\LazyPackedFileStream.h">
+    <ClInclude Include="xivres\LazyPackedFileStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\ModelPackedFileStream.h">
+    <ClInclude Include="xivres\ModelPackedFileStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\ModelPackedFileStreamDecoder.h">
+    <ClInclude Include="xivres\ModelPackedFileStreamDecoder.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\StreamAsPackedFileViewStream.h">
+    <ClInclude Include="xivres\StreamAsPackedFileViewStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\SqpackReader.h">
+    <ClInclude Include="xivres\SqpackReader.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\SqpackStreamDecoder.h">
+    <ClInclude Include="xivres\SqpackStreamDecoder.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\TexturePackedFileStream.h">
+    <ClInclude Include="xivres\TexturePackedFileStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\TexturePackedFileStreamDecoder.h">
+    <ClInclude Include="xivres\TexturePackedFileStreamDecoder.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\Texture.h">
+    <ClInclude Include="xivres\Texture.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\TextureStream.h">
+    <ClInclude Include="xivres\TextureStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\internal\ByteOrder.h">
+    <ClInclude Include="xivres\internal\ByteOrder.h">
       <Filter>Headers\Internal</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\internal\CallOnDestruction.h">
+    <ClInclude Include="xivres\internal\CallOnDestruction.h">
       <Filter>Headers\Internal</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\internal\Dxt.h">
+    <ClInclude Include="xivres\internal\Dxt.h">
       <Filter>Headers\Internal</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\internal\ListenerManager.h">
+    <ClInclude Include="xivres\internal\ListenerManager.h">
       <Filter>Headers\Internal</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\internal\Misc.h">
+    <ClInclude Include="xivres\internal\Misc.h">
       <Filter>Headers\Internal</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\internal\TinySha1.h">
+    <ClInclude Include="xivres\internal\TinySha1.h">
       <Filter>Headers\Internal</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\internal\SpanCast.h">
+    <ClInclude Include="xivres\internal\SpanCast.h">
       <Filter>Headers\Internal</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\internal\String.h">
+    <ClInclude Include="xivres\internal\String.h">
       <Filter>Headers\Internal</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\internal\ZlibWrapper.h">
+    <ClInclude Include="xivres\internal\ZlibWrapper.h">
       <Filter>Headers\Internal</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\PixelFormats.h">
+    <ClInclude Include="xivres\PixelFormats.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\internal\Codepoint.h">
+    <ClInclude Include="xivres\internal\Codepoint.h">
       <Filter>Headers\Internal</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\GameReader.h">
+    <ClInclude Include="xivres\GameReader.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>

@@ -9,9 +9,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Files", "Solution 
 		README.md = README.md
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XivAlexanderCommon", "XivAlexanderCommon\XivAlexanderCommon.vcxproj", "{58DADDF6-5733-40E0-855C-CC3B4BF235EB}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XivRes", "XivRes\XivRes.vcxproj", "{58DADDF6-5733-40E0-855C-CC3B4BF235EB}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Example", "Example\Example.vcxproj", "{7E0615C0-F086-4FCB-9DF0-E381CBB684F5}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XivResExample", "XivResExample\XivResExample.vcxproj", "{7E0615C0-F086-4FCB-9DF0-E381CBB684F5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

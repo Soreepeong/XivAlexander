@@ -4,6 +4,6 @@
     <None Include="vcpkg.json" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Example.cpp" />
+    <ClCompile Include="XivResExample.cpp" />
   </ItemGroup>
 </Project>

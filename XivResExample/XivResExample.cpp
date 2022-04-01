@@ -3,12 +3,12 @@
 #include <iostream>
 #include <Windows.h>
 
-#include "Sqex/GameReader.h"
-#include "Sqex/FdtStream.h"
-#include "Sqex/ScdReader.h"
-#include "Sqex/PackedFileUnpackingStream.h"
-#include "Sqex/SqpackGenerator.h"
-#include "Sqex/TextureStream.h"
+#include "XivRes/GameReader.h"
+#include "XivRes/FdtStream.h"
+#include "XivRes/ScdReader.h"
+#include "XivRes/PackedFileUnpackingStream.h"
+#include "XivRes/SqpackGenerator.h"
+#include "XivRes/TextureStream.h"
 
 void TestDecompressAll(const XivRes::SqpackReader& reader) {
 	const auto start = std::chrono::steady_clock::now();
