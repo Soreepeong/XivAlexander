@@ -14,44 +14,23 @@
 #include <XivAlexanderCommon/Sqex/ThirdParty/TexTools.h>
 #include <XivAlexanderCommon/Utils/Win32/ThreadPool.h>
 
-std::shared_ptr<Sqex::RandomAccessStream> StripSecondaryMipmaps(std::shared_ptr<Sqex::RandomAccessStream> src) {
-	return src;
-
-	auto stream = std::make_shared<Sqex::Texture::ModifiableTextureStream>(std::make_shared<Sqex::MemoryRandomAccessStream>(*src));
-	stream->Resize(1, stream->GetRepeatCount());
-	return stream;
-}
-
-std::shared_ptr<Sqex::RandomAccessStream> StripLodModels(std::shared_ptr<Sqex::RandomAccessStream> src) {
-	return src;
-
-	auto data = src->ReadStreamIntoVector<uint8_t>(0);
-	auto& header = *reinterpret_cast<Sqex::Model::Header*>(&data[0]);
-	header.VertexOffset[1] = header.VertexOffset[2] = header.IndexOffset[1] = header.IndexOffset[2] = 0;
-	header.VertexSize[1] = header.VertexSize[2] = header.IndexSize[1] = header.IndexSize[2] = 0;
-	header.LodCount = 1;
-	data.resize(header.IndexOffset[0] + header.IndexSize[0]);
-	src = std::make_shared<Sqex::MemoryRandomAccessStream>(data);
-	return src;
-}
-
 std::shared_ptr<Sqex::Sqpack::EntryProvider> ToDecompressedEntryProvider(std::shared_ptr<Sqex::Sqpack::EntryProvider> src) {
+	const auto header = src->ReadStream<Sqex::Sqpack::SqData::FileEntryHeader>(0);
 	const auto& pathSpec = src->PathSpec();
-	switch (src->EntryType()) {
-		case Sqex::Sqpack::SqData::FileEntryType::EmptyOrObfuscated:
-			if (src->ReadStream<Sqex::Sqpack::SqData::FileEntryHeader>(0).DecompressedSize == 0)
-				return std::make_shared<Sqex::Sqpack::EmptyOrObfuscatedEntryProvider>(pathSpec);
-			else
-				return src;  // obfuscated; not applicable
+	if (header.Type == Sqex::Sqpack::SqData::FileEntryType::EmptyOrObfuscated || header.DecompressedSize == 0)
+		return src;
 
+	auto raw = std::make_shared<Sqex::Sqpack::EntryRawStream>(std::move(src));
+
+	switch (header.Type) {
 		case Sqex::Sqpack::SqData::FileEntryType::Binary:
-			return std::make_shared<Sqex::Sqpack::MemoryBinaryEntryProvider>(pathSpec, std::make_shared<Sqex::Sqpack::EntryRawStream>(std::move(src)), Z_NO_COMPRESSION);
+			return std::make_shared<Sqex::Sqpack::EmptyOrObfuscatedEntryProvider>(pathSpec, std::move(raw), header.DecompressedSize);
 
 		case Sqex::Sqpack::SqData::FileEntryType::Model:
-			return std::make_shared<Sqex::Sqpack::MemoryModelEntryProvider>(pathSpec, StripLodModels(std::make_shared<Sqex::Sqpack::EntryRawStream>(std::move(src))), Z_NO_COMPRESSION);
+			return std::make_shared<Sqex::Sqpack::MemoryModelEntryProvider>(pathSpec, std::move(raw), Z_NO_COMPRESSION);
 
 		case Sqex::Sqpack::SqData::FileEntryType::Texture:
-			return std::make_shared<Sqex::Sqpack::MemoryTextureEntryProvider>(pathSpec, StripSecondaryMipmaps(std::make_shared<Sqex::Sqpack::EntryRawStream>(std::move(src))), Z_NO_COMPRESSION);
+			return std::make_shared<Sqex::Sqpack::MemoryTextureEntryProvider>(pathSpec, std::move(raw), Z_NO_COMPRESSION);
 	}
 	throw std::runtime_error("Unknown entry type");
 }
@@ -150,50 +129,53 @@ std::string DumpSqtexInfo(std::span<uint8_t> buf) {
 }
 
 int main() {
+	const auto sourcePath = std::filesystem::path(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\)");
+	const auto targetPath = std::filesystem::path(LR"(Z:\sqpacktest)");
+
 	Utils::Win32::TpEnvironment tpenv(L"Sqpack Repacker");
-	for (const auto& index : std::filesystem::recursive_directory_iterator(std::filesystem::path(LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\sqpack\)"))) {
-		if (index.path().extension() != ".index")
+	for (const auto& index : std::filesystem::recursive_directory_iterator(sourcePath)) {
+		if (index.is_directory())
 			continue;
 
-		tpenv.SubmitWork([path = index.path()]() {
-			const auto expac = path.parent_path().filename().string();
-			const auto dir = std::filesystem::path(LR"(Z:\sqpacktest\game\sqpack)") / expac;
-			std::filesystem::create_directories(dir);
+		const auto path = index.path();
+		const auto ext = path.extension().wstring();
+		const auto copyToPath = targetPath / relative(index.path(), sourcePath);
+		const auto copyToDir = copyToPath.parent_path();
 
-			if (std::filesystem::exists(dir / path.filename()))
-				return;
+		if (ext.starts_with(L".dat") || ext == L".index2")
+			continue;
 
-			Sqex::Sqpack::Creator creator(expac, std::filesystem::path(path).replace_extension("").replace_extension("").filename().string());
-			creator.AddEntriesFromSqPack(path, true, true);
+		if (exists(copyToPath) && std::filesystem::last_write_time(path) <= std::filesystem::last_write_time(copyToPath))
+			continue;
 
-			const auto reader = Sqex::Sqpack::Reader(path);
+		std::filesystem::create_directories(copyToPath.parent_path());
 
-			std::vector<uint8_t> buf, buf2, buf3;
-			std::map<Sqex::Sqpack::SqIndex::LEDataLocator, Sqex::Sqpack::SqIndex::LEDataLocator> locatorMap;
-			for (size_t i = 0; i < reader.EntryInfo.size(); ++i) {
-				const auto& [locator, entry] = reader.EntryInfo[i];
-				if (!locator.Value)
-					continue;
+		if (ext == L".index") {
+			tpenv.SubmitWork([path, copyToDir, copyToPath]() {
+				const auto expac = path.parent_path().filename().string();
+				const auto reader = Sqex::Sqpack::Reader(path);
 
-				if (i % 64 == 0)
-					std::cout << std::format("{:0>6}/{:0>6}_{}_{:08x}_{:08x}_{:08x}_{:08x}\n", i, reader.EntryInfo.size(), creator.DatName, locator.Value, entry.PathSpec.FullPathHash, entry.PathSpec.PathHash, entry.PathSpec.NameHash);
+				Sqex::Sqpack::Creator creator(expac, std::filesystem::path(path).replace_extension("").replace_extension("").filename().string());
+				creator.AddEntriesFromSqPack(path, true, true);
 
-				buf.resize(static_cast<size_t>(entry.Allocation));
-				reader.Data[locator.DatFileIndex].Stream->ReadStream(locator.DatFileOffset(), std::span(buf));
-				auto& eh = *reinterpret_cast<Sqex::Sqpack::SqData::FileEntryHeader*>(&buf[0]);
-				eh.AllocatedSpaceUnitCount = eh.OccupiedSpaceUnitCount;
-				buf.resize(static_cast<size_t>(eh.GetTotalEntrySize()));
+				for (size_t i = 0; i < reader.EntryInfo.size(); ++i) {
+					const auto& [locator, entry] = reader.EntryInfo[i];
+					if (!locator.Value)
+						continue;
 
-				auto ep = reader.GetEntryProvider(entry.PathSpec, locator, entry.Allocation);
-				if (ep->EntryType() == Sqex::Sqpack::SqData::FileEntryType::EmptyOrObfuscated) {
-					creator.AddEntry(ep);
-					continue;
+					if (i % 512 == 0)
+						std::cout << std::format("{:0>6}/{:0>6}_{}_{:08x}_{:08x}_{:08x}_{:08x}\n", i, reader.EntryInfo.size(), creator.DatName, locator.Value, entry.PathSpec.FullPathHash, entry.PathSpec.PathHash, entry.PathSpec.NameHash);
+
+					creator.AddEntry(ToDecompressedEntryProvider(reader.GetEntryProvider(entry.PathSpec, locator, entry.Allocation)));
 				}
-				creator.AddEntry(ToDecompressedEntryProvider(ep));
-			}
 
-			creator.WriteToFiles(dir);
-		});
+				creator.WriteToFiles(copyToDir);
+				std::filesystem::last_write_time(path, std::filesystem::last_write_time(copyToPath));
+			});
+			continue;
+		}
+
+		std::filesystem::copy_file(path, copyToPath, std::filesystem::copy_options::update_existing);
 	}
 	tpenv.WaitOutstanding();
 	return 0;

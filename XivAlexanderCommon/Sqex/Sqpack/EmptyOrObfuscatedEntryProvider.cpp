@@ -13,7 +13,7 @@ Sqex::Sqpack::EmptyOrObfuscatedEntryProvider::EmptyOrObfuscatedEntryProvider(Ent
 }
 
 uint64_t Sqex::Sqpack::EmptyOrObfuscatedEntryProvider::StreamSize() const {
-	return m_header.HeaderSize + (m_stream ? m_stream->StreamSize() : 0);
+	return m_header.HeaderSize + (m_stream ? Align(m_stream->StreamSize()).Alloc : 0);
 }
 
 uint64_t Sqex::Sqpack::EmptyOrObfuscatedEntryProvider::ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) const {
@@ -55,6 +55,18 @@ uint64_t Sqex::Sqpack::EmptyOrObfuscatedEntryProvider::ReadStreamPartial(uint64_
 			if (out.empty()) return length;
 		} else
 			relativeOffset -= dataSize;
+	}
+
+	if (const auto pad = m_stream ? Align(m_stream->StreamSize()).Pad : 0) {
+		if (relativeOffset < pad) {
+			const auto available = std::min(out.size_bytes(), static_cast<size_t>(pad));
+			std::fill_n(out.begin(), available, 0);
+			out = out.subspan(available);
+			relativeOffset = 0;
+
+			if (out.empty()) return length;
+		} else
+			relativeOffset -= pad;
 	}
 
 	return length - out.size_bytes();

@@ -538,6 +538,27 @@
           "music/ex1/BGM_EX1_Ban_Bismark_02.scd",
           "music/ffxiv/BGM_Ride_Bismark.scd",
           "music/ffxiv/Orchestrion/BGM_ORCH_144.scd"
+        ],
+        "segments": [
+          {
+            "sourceOffsets": {
+              "source": 0
+            },
+            "sourceThresholds": {
+              "target": 0.01,
+              "source": 0.01
+            },
+            "channels": [
+              {
+                "source": "source",
+                "channel": 0
+              },
+              {
+                "source": "source",
+                "channel": 1
+              }
+            ]
+          }
         ]
       }
     },
