@@ -393,6 +393,19 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 					}
 					return lastAnimationLockEndsAtUs + originalWaitUs + delay;
 				}
+
+				case HighLatencyMitigationMode::StandardGcdDivision: {
+					// Calculate new animation lock values based on equal GCD time division by animation lock value.
+					const auto gcdUs = 2500000;
+
+					const auto split = static_cast<int>(std::floor((gcdUs - originalWaitUs) / originalWaitUs));
+					description << std::format(" split={}", split);
+
+					const auto delay = split > 0 ? (gcdUs % originalWaitUs) / split : 0;
+					description << std::format(" delay={}us", delay);
+
+					return nowUs + (originalWaitUs - rttUs) + delay;
+				}
 			}
 
 			description << std::format(" delay={}us", Config->Runtime.ExpectedAnimationLockDurationUs.Value());
