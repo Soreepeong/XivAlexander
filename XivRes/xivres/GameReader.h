@@ -56,6 +56,10 @@ namespace XivRes {
 				return item.emplace(SqpackReader::FromPath(m_gamePath / std::format("sqpack/ex{}/{:0>6x}.win32.index", expacId, packId)));
 		}
 
+		[[nodiscard]] const SqpackReader& GetSqpackReader(uint8_t categoryId, uint8_t expacId, uint8_t partId) const {
+			return GetSqpackReader((categoryId << 16) | (expacId << 8) | partId);
+		}
+
 		[[nodiscard]] inline ExcelReader GetExcelReader(const std::string& name) const;
 
 		void PreloadAllSqpackFiles() const {

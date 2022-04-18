@@ -160,13 +160,16 @@ namespace XivRes {
 		std::vector<SqDataType> Data;
 		std::vector<EntryInfoType> EntryInfo;
 
+		uint8_t CategoryId;
+		uint8_t ExpacId;
+		uint8_t PartId;
+
 		SqpackReader(const std::string& fileName, std::shared_ptr<Stream> indexStream1, std::shared_ptr<Stream> indexStream2, std::vector<std::shared_ptr<Stream>> dataStreams, bool strictVerify = false)
 			: Index1(*indexStream1, strictVerify)
-			, Index2(*indexStream2, strictVerify) {
-
-			const auto categoryId = std::strtol(fileName.substr(0, 2).c_str(), nullptr, 16);
-			const auto expacId = std::strtol(fileName.substr(2, 2).c_str(), nullptr, 16);
-			const auto partId = std::strtol(fileName.substr(4, 2).c_str(), nullptr, 16);
+			, Index2(*indexStream2, strictVerify)
+			, CategoryId(static_cast<uint8_t>(std::strtol(fileName.substr(0, 2).c_str(), nullptr, 16)))
+			, ExpacId(static_cast<uint8_t>(std::strtol(fileName.substr(2, 2).c_str(), nullptr, 16)))
+			, PartId(static_cast<uint8_t>(std::strtol(fileName.substr(4, 2).c_str(), nullptr, 16))) {
 
 			std::vector<std::pair<SqpackDataLocator, std::tuple<uint32_t, uint32_t, const char*>>> offsets1;
 			offsets1.reserve(
@@ -252,9 +255,9 @@ namespace XivRes {
 						std::get<0>(offsets1[prev].second),
 						std::get<1>(offsets1[prev].second),
 						std::get<0>(offsets2[prev].second),
-						static_cast<uint8_t>(categoryId),
-						static_cast<uint8_t>(expacId),
-						static_cast<uint8_t>(partId));
+						static_cast<uint8_t>(CategoryId),
+						static_cast<uint8_t>(ExpacId),
+						static_cast<uint8_t>(PartId));
 			}
 
 			std::sort(EntryInfo.begin(), EntryInfo.end(), Comparator());
@@ -275,6 +278,10 @@ namespace XivRes {
 				std::make_shared<FileStream>(std::filesystem::path(indexFile).replace_extension(".index2")),
 				std::move(dataStreams),
 				strictVerify);
+		}
+
+		[[nodiscard]] const uint32_t PackId() const {
+			return (CategoryId << 16) | (ExpacId << 8) | PartId;
 		}
 
 		[[nodiscard]] const SqpackDataLocator& GetLocator1(const SqpackPathSpec& pathSpec) const {

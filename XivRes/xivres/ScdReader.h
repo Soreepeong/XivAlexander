@@ -108,7 +108,8 @@ namespace XivRes {
 				return header;
 			}
 
-			[[nodiscard]] std::vector<uint8_t> GetMsAdpcmWavFile() const {
+			template<typename T = uint8_t, typename = std::enable_if_t<sizeof T == 1>>
+			[[nodiscard]] std::vector<T> GetMsAdpcmWavFile() const {
 				const auto& hdr = GetMsAdpcmHeader();
 				const auto headerSpan = ExtraData.subspan(0, sizeof hdr.wfx + hdr.wfx.cbSize);
 				std::vector<uint8_t> res;
@@ -130,7 +131,7 @@ namespace XivRes {
 				insert(LE<uint32_t>(0x61746164U));  // "data"
 				insert(LE<uint32_t>(static_cast<uint32_t>(Data.size())));
 				res.insert(res.end(), Data.begin(), Data.end());
-				return res;
+				return std::move(*reinterpret_cast<std::vector<T>*>(&res));;
 			}
 
 			[[nodiscard]] const ScdSoundEntryOggHeader& GetOggSeekTableHeader() const {
@@ -150,7 +151,8 @@ namespace XivRes {
 				return Internal::span_cast<uint32_t>(span);
 			}
 
-			[[nodiscard]] std::vector<uint8_t> GetOggFile() const {
+			template<typename T = uint8_t, typename = std::enable_if_t<sizeof T == 1>>
+			[[nodiscard]] std::vector<T> GetOggFile() const {
 				const auto& tbl = GetOggSeekTableHeader();
 				const auto header = ExtraData.subspan(tbl.HeaderSize + tbl.SeekTableSize, tbl.VorbisHeaderSize);
 				std::vector<uint8_t> res;
@@ -171,7 +173,7 @@ namespace XivRes {
 				} else {
 					throw CorruptDataException(std::format("Unsupported scd ogg header version: {}", tbl.Version));
 				}
-				return res;
+				return std::move(*reinterpret_cast<std::vector<T>*>(&res));
 			}
 		};
 
