@@ -395,14 +395,17 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 				}
 
 				case HighLatencyMitigationMode::StandardGcdDivision: {
-					// Calculate new animation lock values based on equal GCD time division by animation lock value.
+					// Calculate new animation lock values based on equal slices of a 2.5 GCD.
+					// Assume GCD has 600ms lock time, and remove it from the total GCD time (this will be the weave window).
 					const auto gcdUs = 2500000;
 					const auto gcdWaitUs = 600000;
 					const auto gcdWeaveUs = (gcdUs - gcdWaitUs);
 
+					// Determine how many weaves we can do given the lock time.
 					const auto split = static_cast<int>(std::floor(gcdWeaveUs / originalWaitUs));
 					description << std::format(" split={}", split);
 
+					// Calculate the delay value to add on the original lock time.
 					const auto delay = split > 0 ? (gcdWeaveUs % originalWaitUs) / split : 0;
 					description << std::format(" delay={}us", delay);
 
