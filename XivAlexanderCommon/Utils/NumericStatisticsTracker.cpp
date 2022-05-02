@@ -48,7 +48,7 @@ int64_t Utils::NumericStatisticsTracker::Min(int64_t sinceUs) const {
 	for (const auto& v : std::ranges::reverse_view(vals)) {
 		if (v.TimestampUs < sinceUs)
 			break;
-		if (!found || minValue < v.Value)
+		if (!found || minValue > v.Value)
 			minValue = v.Value;
 		found = true;
 	}
@@ -62,7 +62,7 @@ int64_t Utils::NumericStatisticsTracker::Max(int64_t sinceUs) const {
 	for (const auto& v : std::ranges::reverse_view(vals)) {
 		if (v.TimestampUs < sinceUs)
 			break;
-		if (!found || maxValue > v.Value)
+		if (!found || maxValue < v.Value)
 			maxValue = v.Value;
 		found = true;
 	}
