@@ -19,6 +19,7 @@ namespace XivAlexander {
 		SubtractLatency,
 		SimulateRtt,
 		SimulateNormalizedRttAndLatency,
+		StandardGcdDivision,
 	};
 
 	void to_json(nlohmann::json&, const Language&);
