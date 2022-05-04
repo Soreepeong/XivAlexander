@@ -347,7 +347,7 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 			// Additionally, obtain estimated latency for use as fallback.
 			const auto rttMinUs = Conn.ApplicationLatencyUs.Min();
 			const auto [rttMeanUs, rttDeviationUs] = Conn.ApplicationLatencyUs.MeanAndDeviation();
-			const auto latencyEstimateUs = ((rttMinUs + rttMeanUs) / 2) - ((rttDeviationUs + 30000) / 2);
+			const auto latencyEstimateUs = ((rttMinUs + rttMeanUs) / 2) - ((rttDeviationUs + 25000) / 2);
 
 			// Replace latency with estimated latency under certain circumstances:
 			// - Failed to obtain measurement
@@ -392,7 +392,7 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 					// Assume GCD has 600ms lock time, and remove it from the total GCD time (this will be the weave window).
 					const auto gcdUs = 2500000;
 					const auto gcdWaitUs = 600000;
-					const auto gcdWeaveUs = (gcdUs - gcdWaitUs);
+					const auto gcdWeaveUs = (gcdUs - gcdWaitUs) - ((gcdUs % gcdWaitUs) / (static_cast<int>(std::floor(gcdUs / gcdWaitUs))));
 
 					// Determine how many weaves we can do given the lock time.
 					const auto split = static_cast<int>(std::floor(gcdWeaveUs / originalWaitUs));
