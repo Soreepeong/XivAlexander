@@ -3,20 +3,11 @@
 
 #include <cstdint>
 
+#include "../PixelFormats.h"
+
 // From https://github.com/Benjamin-Dobell/s3tc-dxt-decompression/blob/master/s3tc.h
 #pragma warning(push, 0)
 namespace XivRes::Internal {
-	// uint32_t PackRGBA(): Helper method that packs RGBA channels into a single 4 byte pixel.
-	//
-	// uint8_t r:     red channel.
-	// uint8_t g:     green channel.
-	// uint8_t b:     blue channel.
-	// uint8_t a:     alpha channel.
-
-	inline uint32_t PackRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-		return ((r << 24) | (g << 16) | (b << 8) | a);
-	}
-
 	// void DecompressBlockDXT1(): Decompresses one block of a DXT1 texture and stores the resulting pixels at the appropriate offset in 'image'.
 	//
 	// uint32_t x:                     x-coordinate of the first pixel in the block.
@@ -26,7 +17,7 @@ namespace XivRes::Internal {
 	// const uint8_t *blockStorage:   pointer to the block to decompress.
 	// uint32_t *image:                pointer to image where the decompressed pixel data should be stored.
 
-	static void DecompressBlockDXT1(uint32_t x, uint32_t y, uint32_t width, const uint8_t* blockStorage, uint32_t* image) {
+	static void DecompressBlockDXT1(uint32_t x, uint32_t y, uint32_t width, const uint8_t* blockStorage, LE<RGBA8888>* image) {
 		uint16_t color0 = *reinterpret_cast<const uint16_t*>(blockStorage);
 		uint16_t color1 = *reinterpret_cast<const uint16_t*>(blockStorage + 2);
 
@@ -50,37 +41,37 @@ namespace XivRes::Internal {
 
 		for (int j = 0; j < 4; j++) {
 			for (int i = 0; i < 4; i++) {
-				uint32_t finalColor = 0;
+				RGBA8888 finalColor;
 				uint8_t positionCode = (code >> 2 * (4 * j + i)) & 0x03;
 
 				if (color0 > color1) {
 					switch (positionCode) {
 						case 0:
-							finalColor = PackRGBA(r0, g0, b0, 255);
+							finalColor = RGBA8888(r0, g0, b0, 255);
 							break;
 						case 1:
-							finalColor = PackRGBA(r1, g1, b1, 255);
+							finalColor = RGBA8888(r1, g1, b1, 255);
 							break;
 						case 2:
-							finalColor = PackRGBA((2 * r0 + r1) / 3, (2 * g0 + g1) / 3, (2 * b0 + b1) / 3, 255);
+							finalColor = RGBA8888((2 * r0 + r1) / 3, (2 * g0 + g1) / 3, (2 * b0 + b1) / 3, 255);
 							break;
 						case 3:
-							finalColor = PackRGBA((r0 + 2 * r1) / 3, (g0 + 2 * g1) / 3, (b0 + 2 * b1) / 3, 255);
+							finalColor = RGBA8888((r0 + 2 * r1) / 3, (g0 + 2 * g1) / 3, (b0 + 2 * b1) / 3, 255);
 							break;
 					}
 				} else {
 					switch (positionCode) {
 						case 0:
-							finalColor = PackRGBA(r0, g0, b0, 255);
+							finalColor = RGBA8888(r0, g0, b0, 255);
 							break;
 						case 1:
-							finalColor = PackRGBA(r1, g1, b1, 255);
+							finalColor = RGBA8888(r1, g1, b1, 255);
 							break;
 						case 2:
-							finalColor = PackRGBA((r0 + r1) / 2, (g0 + g1) / 2, (b0 + b1) / 2, 255);
+							finalColor = RGBA8888((r0 + r1) / 2, (g0 + g1) / 2, (b0 + b1) / 2, 255);
 							break;
 						case 3:
-							finalColor = PackRGBA(0, 0, 0, 255);
+							finalColor = RGBA8888(0, 0, 0, 255);
 							break;
 					}
 				}
@@ -98,7 +89,7 @@ namespace XivRes::Internal {
 	// const uint8_t *blockStorage:   pointer to compressed DXT1 blocks.
 	// uint32_t *image:                pointer to the image where the decompressed pixels will be stored.
 
-	static void BlockDecompressImageDXT1(uint32_t width, uint32_t height, const uint8_t* blockStorage, uint32_t* image) {
+	static void BlockDecompressImageDXT1(uint32_t width, uint32_t height, const uint8_t* blockStorage, LE<RGBA8888>* image) {
 		uint32_t blockCountX = (width + 3) / 4;
 		uint32_t blockCountY = (height + 3) / 4;
 		uint32_t blockWidth = (width < 4) ? width : 4;
@@ -119,7 +110,7 @@ namespace XivRes::Internal {
 	// const uint8_t *blockStorage:   pointer to the block to decompress.
 	// uint32_t *image:                pointer to image where the decompressed pixel data should be stored.
 
-	static void DecompressBlockDXT5(uint32_t x, uint32_t y, uint32_t width, const uint8_t* blockStorage, uint32_t* image) {
+	static void DecompressBlockDXT5(uint32_t x, uint32_t y, uint32_t width, const uint8_t* blockStorage, LE<RGBA8888>* image) {
 		uint8_t alpha0 = *reinterpret_cast<const uint8_t*>(blockStorage);
 		uint8_t alpha1 = *reinterpret_cast<const uint8_t*>(blockStorage + 1);
 
@@ -182,19 +173,19 @@ namespace XivRes::Internal {
 
 				uint8_t colorCode = (code >> 2 * (4 * j + i)) & 0x03;
 
-				uint32_t finalColor;
+				RGBA8888 finalColor;
 				switch (colorCode) {
 					case 0:
-						finalColor = PackRGBA(r0, g0, b0, finalAlpha);
+						finalColor = RGBA8888(r0, g0, b0, finalAlpha);
 						break;
 					case 1:
-						finalColor = PackRGBA(r1, g1, b1, finalAlpha);
+						finalColor = RGBA8888(r1, g1, b1, finalAlpha);
 						break;
 					case 2:
-						finalColor = PackRGBA((2 * r0 + r1) / 3, (2 * g0 + g1) / 3, (2 * b0 + b1) / 3, finalAlpha);
+						finalColor = RGBA8888((2 * r0 + r1) / 3, (2 * g0 + g1) / 3, (2 * b0 + b1) / 3, finalAlpha);
 						break;
 					case 3:
-						finalColor = PackRGBA((r0 + 2 * r1) / 3, (g0 + 2 * g1) / 3, (b0 + 2 * b1) / 3, finalAlpha);
+						finalColor = RGBA8888((r0 + 2 * r1) / 3, (g0 + 2 * g1) / 3, (b0 + 2 * b1) / 3, finalAlpha);
 						break;
 				}
 
@@ -211,7 +202,7 @@ namespace XivRes::Internal {
 	// const uint8_t *blockStorage:   pointer to compressed DXT5 blocks.
 	// uint32_t *image:                pointer to the image where the decompressed pixels will be stored.
 
-	static void BlockDecompressImageDXT5(uint32_t width, uint32_t height, const uint8_t* blockStorage, uint32_t* image) {
+	static void BlockDecompressImageDXT5(uint32_t width, uint32_t height, const uint8_t* blockStorage, LE<RGBA8888>* image) {
 		uint32_t blockCountX = (width + 3) / 4;
 		uint32_t blockCountY = (height + 3) / 4;
 		uint32_t blockWidth = (width < 4) ? width : 4;

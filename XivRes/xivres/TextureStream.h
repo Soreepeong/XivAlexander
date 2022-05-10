@@ -51,17 +51,17 @@ namespace XivRes {
 			auto& mipmaps = m_repeats.at(repeatIndex);
 			const auto w = (std::max)(1, m_header.Width >> mipmapIndex);
 			const auto h = (std::max)(1, m_header.Height >> mipmapIndex);
-			const auto d = (std::max)(1, m_header.Depth >> mipmapIndex);
+			const auto l = (std::max)(1, m_header.Depth >> mipmapIndex);
 
 			if (mipmap->Width != w)
 				throw std::invalid_argument("invalid mipmap width");
 			if (mipmap->Height != h)
 				throw std::invalid_argument("invalid mipmap height");
-			if (mipmap->Depth != d)
-				throw std::invalid_argument("invalid mipmap layers");
+			if (mipmap->Depth != l)
+				throw std::invalid_argument("invalid mipmap depths");
 			if (mipmap->Type != m_header.Type)
 				throw std::invalid_argument("invalid mipmap type");
-			if (mipmap->StreamSize() != TextureRawDataLength(mipmap->Type, w, h, d))
+			if (mipmap->StreamSize() != TextureRawDataLength(mipmap->Type, w, h, l))
 				throw std::invalid_argument("invalid mipmap size");
 
 			mipmaps.at(mipmapIndex) = std::move(mipmap);
@@ -225,6 +225,10 @@ namespace XivRes {
 			for (size_t i = 0; i < mipmapCount; ++i)
 				res += static_cast<uint32_t>(Align(TextureRawDataLength(m_header, i)).Alloc);
 			return res;
+		}
+
+		[[nodiscard]] std::shared_ptr<MipmapStream> GetMipmap(size_t repeatIndex, size_t mipmapIndex) const {
+			return m_repeats.at(repeatIndex).at(mipmapIndex);
 		}
 	};
 }
