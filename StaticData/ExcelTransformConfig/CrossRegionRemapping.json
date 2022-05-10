@@ -1,29 +1,21 @@
 {
   "name": "Maps column across regions.",
   "description": "",
-  "targetLanguage": "Korean",
+  "targetLanguage": "English",
   "sourceLanguages": [
-    "Korean",
+    "English",
     "Japanese"
   ],
   "columnMap": {
-    "^ContentFinderCondition$": {
-      "Japanese": [38, 39],
-      "English": [38, 39],
-      "German": [38, 39],
-      "French": [38, 39],
-      "ChineseSimplified": [37, 38],
-      "Korean": [37, 38]
+    "^DawnMemberUiParam$": {
+      "Japanese": [1],
+      "English": [1],
+      "German": [1],
+      "French": [1],
+      "ChineseSimplified": [2],
+      "Korean": [2]
     },
-    "^ContentGauge$": {
-      "Japanese": [1, 4],
-      "English": [1, 4],
-      "German": [1, 4],
-      "French": [1, 4],
-      "ChineseSimplified": [0, 3],
-      "Korean": [0, 3]
-    },
-    "^InclusionShop$": {
+    "^DescriptionStandaloneTransient": {
       "Japanese": [1],
       "English": [1],
       "German": [1],
@@ -32,32 +24,31 @@
       "Korean": [0]
     },
     "^NpcYell$": {
-      "Japanese": [9],
-      "English": [9],
-      "German": [9],
-      "French": [9],
-      "ChineseSimplified": [10],
-      "Korean": [10]
+      "Japanese": [10],
+      "English": [10],
+      "German": [10],
+      "French": [10],
+      "ChineseSimplified": [9],
+      "Korean": [9]
+    },
+    "^MainCommand": {
+      "Japanese": [5, 6],
+      "English": [5, 6],
+      "German": [5, 6],
+      "French": [5, 6],
+      "ChineseSimplified": [4, 5],
+      "Korean": [4, 5]
+    },
+    "^Ornament": {
+      "Japanese": [9, 11],
+      "English": [9, 11],
+      "German": [9, 11],
+      "French": [9, 11],
+      "ChineseSimplified": [7, 9],
+      "Korean": [7, 9]
     }
   },
-  "pluralMap": {
-    "^BNpcName$": [0, 2],
-    "^BuddyEquip$": [0, 2, 8],
-    "^DeepDungeonEquipment$": [1, 3, 9],
-    "^DeepDungeonItem$": [1, 3, 9],
-    "^DeepDungeonMagicStone$": [1, 3, 9],
-    "^ENpcResident$": [0, 2],
-    "^EObjName$": [0, 2],
-    "^EventItem$": [0, 2, 9],
-    "^GatheringPointName$": [0, 2],
-    "^GCRank(Gridania|Limsa|Uldah)(Male|Female)Text$": [0, 2],
-    "^Item$": [0, 2, 9],
-    "^Mount$": [0, 2],
-    "^Ornament$": [7, 9],
-    "^PlaceName$": [0, 2, null, 8],
-    "^Treasure$": [0, 2],
-    "^Tribe$": [0, 1]
-  },
+  "pluralMap": {},
   "targetGroups": {},
   "rules": []
 }

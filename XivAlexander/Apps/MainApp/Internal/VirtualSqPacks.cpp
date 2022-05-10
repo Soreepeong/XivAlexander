@@ -941,7 +941,7 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 				for (const auto& pair : Sqex::Excel::ExlReader(*creator["exd/root.exl"]))
 					exhTable.emplace(pair);
 
-				std::string currentCacheKeys("VERSION:3\n");
+				std::string currentCacheKeys("VERSION:4\n");
 				currentCacheKeys += Config->Runtime.CompressModdedFiles ? "compress:true\n" : "compress:false\n";
 				{
 					const auto gameRoot = indexFile.parent_path().parent_path().parent_path();
@@ -1195,7 +1195,6 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 										for (const auto& reader : readers) {
 											try {
 												const auto exhReaderCurrent = Sqex::Excel::ExhReader(exhName, *(*reader)[exhPath]);
-
 												currentProgressMax = 1ULL * exhReaderCurrent.Languages.size() * exhReaderCurrent.Pages.size();
 												for (const auto language : exhReaderCurrent.Languages) {
 													for (const auto& page : exhReaderCurrent.Pages) {
@@ -1247,6 +1246,8 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 																		continue;
 																	}
 																	if (prevRow[otherColIndex].String.Empty())
+																		continue;
+																	if (prevRow[otherColIndex].String.Escaped().starts_with("_rsv_"))
 																		continue;
 																	row[j].String = std::move(prevRow[otherColIndex].String);
 																}

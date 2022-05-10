@@ -6,24 +6,6 @@
     "Japanese",
     "ChineseSimplified"
   ],
-  "columnMap": {
-    "^ContentFinderCondition$": {
-      "Japanese": [38, 39],
-      "ChineseSimplified": [37, 38]
-    },
-    "^ContentGauge$": {
-      "Japanese": [1, 4],
-      "ChineseSimplified": [0, 3]
-    },
-    "^InclusionShop$": {
-      "Japanese": [1],
-      "ChineseSimplified": [0]
-    },
-    "^NpcYell$": {
-      "Japanese": [9],
-      "ChineseSimplified": [10]
-    }
-  },
   "pluralMap": {
     "# comment 1": [
       "singularColumnIndex",

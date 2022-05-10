@@ -45,7 +45,7 @@ Sqex::Excel::Depth2ExhExdCreator::Depth2ExhExdCreator(std::string name, std::vec
 					throw std::invalid_argument(std::format("Invald column type {}", static_cast<uint32_t>(col.Type)));
 			}
 		}
-		return Sqex::Align<uint32_t>(size, 4).Alloc;
+		return Sqex::Align<uint32_t>(size, 8).Alloc;
 	}()) {
 }
 
@@ -83,6 +83,8 @@ std::pair<Sqex::Sqpack::EntryPathSpec, std::vector<char>> Sqex::Excel::Depth2Exh
 	for (const auto& row : rows) {
 		locators.emplace_back(row.first, offsetAccumulator);
 		offsetAccumulator += static_cast<uint32_t>(row.second.size());
+		if (reinterpret_cast<const Exd::RowHeader*>(&row.second[0])->DataSize != row.second.size() - 6)
+			__debugbreak();
 	}
 	const auto locatorSpan = span_cast<char>(locators);
 	exdHeader.IndexSize = static_cast<uint32_t>(locatorSpan.size_bytes());
@@ -183,6 +185,7 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>, Sqex::Sqpack::EntryPath
 						{
 							const auto stringOffset = BE(static_cast<uint32_t>(row.size() - variableDataOffset));
 							std::copy_n(reinterpret_cast<const char*>(&stringOffset), 4, &row[fixedDataOffset + columnDefinition.Offset]);
+							row.reserve(row.size() + column.String.Escaped().size() + 1);
 							row.insert(row.end(), column.String.Escaped().begin(), column.String.Escaped().end());
 							row.push_back(0);
 							column.ValidSize = 0;
@@ -238,6 +241,9 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>, Sqex::Sqpack::EntryPath
 				auto& rowHeader = *reinterpret_cast<Exd::RowHeader*>(&row[0]);
 				rowHeader.DataSize = static_cast<uint32_t>(row.size() - sizeof rowHeader);
 				rowHeader.SubRowCount = 1;
+
+				if (reinterpret_cast<const Exd::RowHeader*>(&row[0])->DataSize != row.size() - 6)
+					__debugbreak();
 
 				rows.emplace(id, std::move(row));
 			}

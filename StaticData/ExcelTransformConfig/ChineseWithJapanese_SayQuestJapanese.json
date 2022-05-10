@@ -44,7 +44,7 @@
     "^GCRank(Gridania|Limsa|Uldah)(Male|Female)Text$": [0, 2],
     "^Item$": [0, 2, 9],
     "^Mount$": [0, 2],
-    "^Ornament$": [7, 9],
+    "^Ornament$": [9, 11],
     "^PlaceName$": [0, 2, null, 8],
     "^Treasure$": [0, 2],
     "^Tribe$": [0, 1]
@@ -116,7 +116,7 @@
       "^OpenContentCandidateName$": [0],
       "^Orchestrion$": [0],
       "^OrchestrionCategory$": [0],
-      "^Ornament$": [7, 9],
+      "^Ornament$": [9, 11],
       "^PartyContentTextData$": [0],
       "^Pet$": [0],
       "^PetAction$": [0],
