@@ -43,14 +43,7 @@ struct XivAlexander::Apps::MainApp::Internal::AllIpcMessageLogger::Implementatio
 							pszPossibleMessageType = "ActorControlSelf, ActorCast";
 							break;
 						case (sizeof XivMessageHeader + sizeof XivIpcHeader + sizeof XivIpcs::S2C_ActorControl):
-							static_assert(sizeof XivIpcs::S2C_ActorControl == sizeof XivIpcs::S2C_EffectResult6Basic);
-							pszPossibleMessageType = "ActorControl, EffectResult6Basic";
-							break;
-						case (sizeof XivMessageHeader + sizeof XivIpcHeader + sizeof XivIpcs::S2C_EffectResult5):
-							pszPossibleMessageType = "EffectResult5";
-							break;
-						case (sizeof XivMessageHeader + sizeof XivIpcHeader + sizeof XivIpcs::S2C_EffectResult6):
-							pszPossibleMessageType = "EffectResult6";
+							pszPossibleMessageType = "ActorControl";
 							break;
 						default:
 							pszPossibleMessageType = nullptr;

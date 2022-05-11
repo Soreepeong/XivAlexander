@@ -1004,7 +1004,6 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
 		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE, config.UseHighLatencyMitigationPreviewMode, true);
 		SetMenuState(hMenu, ID_NETWORK_USEIPCTYPEFINDER, config.UseOpcodeFinder, true);
 		SetMenuState(hMenu, ID_NETWORK_USEALLIPCMESSAGELOGGER, config.UseAllIpcMessageLogger, true);
-		SetMenuState(hMenu, ID_NETWORK_LOGEFFECTAPPLICATIONDELAY, config.UseEffectApplicationDelayLogger, true);
 		SetMenuState(hMenu, ID_NETWORK_REDUCEPACKETDELAY, config.ReducePacketDelay, true);
 		SetMenuState(hMenu, ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES, config.TakeOverLoopbackAddresses, true);
 		SetMenuState(hMenu, ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES, config.TakeOverPrivateAddresses, true);
@@ -1333,10 +1332,6 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Network(int
 
 		case ID_NETWORK_USEIPCTYPEFINDER:
 			config.UseOpcodeFinder.Toggle();
-			return;
-
-		case ID_NETWORK_LOGEFFECTAPPLICATIONDELAY:
-			config.UseEffectApplicationDelayLogger.Toggle();
 			return;
 
 		case ID_NETWORK_REDUCEPACKETDELAY:

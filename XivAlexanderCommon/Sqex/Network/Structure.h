@@ -45,61 +45,6 @@ namespace Sqex::Network::Structure {
 		// See: https://github.com/ravahn/machina/blob/NetworkStructs/Machina.FFXIV/Headers/Global/Server_ActionEffect.cs
 		// See: https://github.com/SapphireServer/Sapphire/blob/develop/src/common/Network/PacketDef/Zone/ServerZoneDef.h#L557-L563
 
-		struct S2C_EffectResult6 {
-			uint32_t Unknown_0x000;
-			uint32_t RelatedActionSequence;
-			uint32_t ActorId;
-			uint32_t CurrentHp;
-			uint32_t MaxHp;
-			uint16_t CurentMp;
-			uint16_t Unknown_0x016;
-			uint8_t DamageShield;
-			uint8_t EffectCount;
-			uint16_t Unknown_0x01a;
-
-			struct Effect {
-				uint8_t EffectIndex;
-				uint8_t Unknown_0x001;
-				uint16_t EffectId;
-				uint16_t Unknown_0x004;
-				uint16_t Unknown_0x006;
-				float DurationF;
-				uint32_t SourceActorId;
-			} Effects[4];
-		};
-
-		struct S2C_EffectResult6Basic {
-			uint32_t Unknown_0x000;
-			uint32_t RelatedActionSequence;
-			uint32_t ActorId;
-			uint32_t CurrentHp;
-			uint32_t Unknown_0x010;
-			uint16_t Unknown_0x014;
-			uint16_t Unknown_0x016;
-		};
-
-		struct S2C_EffectResult5 {
-			uint32_t RelatedActionSequence;
-			uint32_t ActorId;
-			uint32_t CurrentHp;
-			uint32_t MaxHp;
-			uint16_t CurentMp;
-			uint16_t Unknown_0x012;
-			uint8_t DamageShield;
-			uint8_t EffectCount;
-			uint16_t Unknown_0x016;
-
-			struct Effect {
-				uint8_t EffectIndex;
-				uint8_t Unknown_0x001;
-				uint16_t EffectId;
-				uint16_t Unknown_0x004;
-				uint16_t Unknown_0x006;
-				float DurationF;
-				uint32_t SourceActorId;
-			} Effects[4];
-		};
-
 		struct S2C_ActionEffect {
 			uint32_t AnimationTargetActor;
 			uint32_t Unknown1;
@@ -247,9 +192,6 @@ namespace Sqex::Network::Structure {
 			uint8_t Raw[1];
 			XivIpcs::S2C_ActionEffect S2C_ActionEffect;
 			XivIpcs::S2C_ActorControl S2C_ActorControl;
-			XivIpcs::S2C_EffectResult5 S2C_EffectResult5;
-			XivIpcs::S2C_EffectResult6 S2C_EffectResult6;
-			XivIpcs::S2C_EffectResult6Basic S2C_EffectResult6Basic;
 			XivIpcs::S2C_ActorControlSelf S2C_ActorControlSelf;
 			XivIpcs::S2C_ActorCast S2C_ActorCast;
 			XivIpcs::C2S_ActionRequest C2S_ActionRequest;

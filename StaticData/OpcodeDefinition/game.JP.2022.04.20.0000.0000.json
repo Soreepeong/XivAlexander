@@ -9,9 +9,6 @@
 	"S2C_ActorCast": "0x0163",
 	"S2C_ActorControl": "0x016f",
 	"S2C_ActorControlSelf": "0x03ae",
-	"S2C_EffectResult5": "0x93db",
-	"S2C_EffectResult6": "0x93db",
-	"S2C_EffectResult6Basic": "0x016f",
 	"Server_IpRange": "124.150.157.0/24, 195.82.50.0/24, 204.2.229.0/24, 153.254.80.0/24",
 	"Server_PortRange": "1025-65535"
 }

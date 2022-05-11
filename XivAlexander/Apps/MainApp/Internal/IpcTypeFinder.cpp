@@ -114,68 +114,6 @@ struct XivAlexander::Apps::MainApp::Internal::IpcTypeFinder::Implementation {
 							}
 						}
 					}
-					if (pMessage->Length == sizeof XivMessageHeader + sizeof XivIpcHeader + sizeof XivIpcs::S2C_EffectResult5) {
-						const auto& effectResult = pMessage->Data.Ipc.Data.S2C_EffectResult5;
-						std::string effects;
-						for (int i = 0; i < effectResult.EffectCount; ++i) {
-							const auto& entry = effectResult.Effects[i];
-							effects += std::format(
-								"\n\teffectId={:04x} duration={:g} sourceActorId={:08x}",
-								entry.EffectId,
-								entry.DurationF,
-								entry.SourceActorId
-							);
-						}
-						Impl.Logger->Format(
-							LogCategory::IpcTypeFinder,
-							"{:x}: S2C_EffectResult5(0x{:04x}): relatedActionSequence={:08x} actorId={:08x} HP={}/{} MP={} shield={}{}",
-							conn.Socket(),
-							pMessage->Data.Ipc.SubType,
-							effectResult.RelatedActionSequence,
-							effectResult.ActorId,
-							effectResult.CurrentHp,
-							effectResult.MaxHp,
-							effectResult.CurentMp,
-							effectResult.DamageShield,
-							effects
-						);
-					} else if (pMessage->Length == sizeof XivMessageHeader + sizeof XivIpcHeader + sizeof XivIpcs::S2C_EffectResult6) {
-						const auto& effectResult = pMessage->Data.Ipc.Data.S2C_EffectResult6;
-						std::string effects;
-						for (int i = 0; i < effectResult.EffectCount; ++i) {
-							const auto& entry = effectResult.Effects[i];
-							effects += std::format(
-								"\n\teffectId={:04x} duration={:g} sourceActorId={:08x}",
-								entry.EffectId,
-								entry.DurationF,
-								entry.SourceActorId
-							);
-						}
-						Impl.Logger->Format(
-							LogCategory::IpcTypeFinder,
-							"{:x}: S2C_EffectResult6(0x{:04x}): relatedActionSequence={:08x} actorId={:08x} HP={}/{} MP={} shield={}{}",
-							conn.Socket(),
-							pMessage->Data.Ipc.SubType,
-							effectResult.RelatedActionSequence,
-							effectResult.ActorId,
-							effectResult.CurrentHp,
-							effectResult.MaxHp,
-							effectResult.CurentMp,
-							effectResult.DamageShield,
-							effects
-						);
-					} else if (pMessage->Length == sizeof XivMessageHeader + sizeof XivIpcHeader + sizeof XivIpcs::S2C_EffectResult6Basic) {
-						const auto& effectResult = pMessage->Data.Ipc.Data.S2C_EffectResult6Basic;
-						Impl.Logger->Format(
-							LogCategory::IpcTypeFinder,
-							"{:x}: S2C_EffectResult6Basic(0x{:04x}): relatedActionSequence={:08x} actorId={:08x} HP={}",
-							conn.Socket(),
-							pMessage->Data.Ipc.SubType,
-							effectResult.RelatedActionSequence,
-							effectResult.ActorId,
-							effectResult.CurrentHp
-						);
-					}
 				}
 				return true;
 			});

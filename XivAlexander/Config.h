@@ -242,7 +242,6 @@ namespace XivAlexander {
 			Item<bool> TakeOverAllPorts = CreateConfigItem(this, "TakeOverAllPorts", false);
 
 			Item<bool> UseOpcodeFinder = CreateConfigItem(this, "UseOpcodeFinder", false);
-			Item<bool> UseEffectApplicationDelayLogger = CreateConfigItem(this, "UseEffectApplicationDelayLogger", false);
 			Item<bool> ShowLoggingWindow = CreateConfigItem(this, "ShowLoggingWindow", true);
 			Item<bool> ShowControlWindow = CreateConfigItem(this, "ShowControlWindow", true);
 			Item<bool> UseAllIpcMessageLogger = CreateConfigItem(this, "UseAllIpcMessageLogger", false);
@@ -359,9 +358,6 @@ namespace XivAlexander {
 			Item<uint16_t> S2C_ActorControl = CreateConfigItem(this, "S2C_ActorControl", InvalidIpcType);
 			Item<uint16_t> S2C_ActorControlSelf = CreateConfigItem(this, "S2C_ActorControlSelf", InvalidIpcType);
 			Item<uint16_t> S2C_ActorCast = CreateConfigItem(this, "S2C_ActorCast", InvalidIpcType);
-			Item<uint16_t> S2C_EffectResult5 = CreateConfigItem(this, "S2C_EffectResult5", InvalidIpcType);
-			Item<uint16_t> S2C_EffectResult6 = CreateConfigItem(this, "S2C_EffectResult6", InvalidIpcType);
-			Item<uint16_t> S2C_EffectResult6Basic = CreateConfigItem(this, "S2C_EffectResult6Basic", InvalidIpcType);
 			Item<uint16_t> C2S_ActionRequest[2]{
 				CreateConfigItem(this, "C2S_ActionRequest", InvalidIpcType),
 				CreateConfigItem(this, "C2S_ActionRequestGroundTargeted", InvalidIpcType),

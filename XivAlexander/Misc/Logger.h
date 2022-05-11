@@ -16,7 +16,6 @@ namespace XivAlexander {
 		SocketHook,
 		AllIpcMessageLogger,
 		NetworkTimingHandler,
-		EffectApplicationDelayLogger,
 		IpcTypeFinder,
 		GameResourceOverrider,
 		VirtualSqPacks,

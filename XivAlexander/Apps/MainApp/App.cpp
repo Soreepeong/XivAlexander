@@ -8,7 +8,6 @@
 #include "Apps/MainApp/Internal/AllIpcMessageLogger.h"
 #include "Apps/MainApp/Internal/MainThreadTimingHandler.h"
 #include "Apps/MainApp/Internal/NetworkTimingHandler.h"
-#include "Apps/MainApp/Internal/EffectApplicationDelayLogger.h"
 #include "Apps/MainApp/Internal/GameResourceOverrider.h"
 #include "Apps/MainApp/Internal/IpcTypeFinder.h"
 #include "Apps/MainApp/Internal/SocketHook.h"
@@ -68,7 +67,6 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 	std::optional<Internal::MainThreadTimingHandler> MainThreadTimingHandler;
 	std::optional<Internal::IpcTypeFinder> IpcTypeFinder;
 	std::optional<Internal::AllIpcMessageLogger> AllIpcMessageLogger;
-	std::optional<Internal::EffectApplicationDelayLogger> EffectApplicationDelayLogger;
 
 	std::optional<Window::LogWindow> LogWindow;
 	std::optional<Window::MainWindow> MainWindow;
@@ -148,10 +146,6 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 		Cleanup += Config->Runtime.UseAllIpcMessageLogger.AddAndCallOnBoolChange(
 			[this]() { AllIpcMessageLogger.emplace(App); },
 			[this]() { AllIpcMessageLogger.reset(); });
-
-		Cleanup += Config->Runtime.UseEffectApplicationDelayLogger.AddAndCallOnBoolChange(
-			[this]() { EffectApplicationDelayLogger.emplace(App); },
-			[this]() { EffectApplicationDelayLogger.reset(); });
 
 		Cleanup += Config->Runtime.ShowLoggingWindow.AddAndCallOnBoolChange(
 			[this]() { LogWindow.emplace(); },

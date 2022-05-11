@@ -15,7 +15,6 @@ const std::map<XivAlexander::LogCategory, const char*> XivAlexander::Misc::Logge
 	{XivAlexander::LogCategory::SocketHook, "SocketHook"},
 	{XivAlexander::LogCategory::AllIpcMessageLogger, "AllIpcMessageLogger"},
 	{XivAlexander::LogCategory::NetworkTimingHandler, "NetworkTimingHandler"},
-	{XivAlexander::LogCategory::EffectApplicationDelayLogger, "EffectApplicationDelayLogger"},
 	{XivAlexander::LogCategory::IpcTypeFinder, "IpcTypeFinder"},
 	{XivAlexander::LogCategory::GameResourceOverrider, "GameResourceOverrider"},
 	{XivAlexander::LogCategory::VirtualSqPacks, "VirtualSqPacks"},

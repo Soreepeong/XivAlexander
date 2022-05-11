@@ -337,7 +337,6 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="XivAlexander.cpp" />
     <ClCompile Include="Config.cpp" />
     <ClCompile Include="Apps\MainApp\Internal\NetworkTimingHandler.cpp" />
-    <ClCompile Include="Apps\MainApp\Internal\EffectApplicationDelayLogger.cpp" />
     <ClCompile Include="Apps\MainApp\Internal\IpcTypeFinder.cpp" />
     <ClCompile Include="Apps\MainApp\Internal\AllIpcMessageLogger.cpp" />
     <ClCompile Include="Misc\FreeGameMutex.cpp" />
@@ -380,7 +379,6 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="Apps\MainApp\Window\ProgressPopupWindow.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="Apps\MainApp\Internal\NetworkTimingHandler.h" />
-    <ClInclude Include="Apps\MainApp\Internal\EffectApplicationDelayLogger.h" />
     <ClInclude Include="Apps\MainApp\Internal\IpcTypeFinder.h" />
     <ClInclude Include="Apps\MainApp\Internal\AllIpcMessageLogger.h" />
     <ClInclude Include="Misc\FreeGameMutex.h" />

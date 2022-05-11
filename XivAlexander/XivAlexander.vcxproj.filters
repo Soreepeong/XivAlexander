@@ -111,9 +111,6 @@
     <ClCompile Include="Apps\MainApp\Internal\AllIpcMessageLogger.cpp">
       <Filter>Apps\MainApp\Internal</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\MainApp\Internal\EffectApplicationDelayLogger.cpp">
-      <Filter>Apps\MainApp\Internal</Filter>
-    </ClCompile>
     <ClCompile Include="Apps\MainApp\Internal\GameResourceOverrider.cpp">
       <Filter>Apps\MainApp\Internal</Filter>
     </ClCompile>
@@ -227,9 +224,6 @@
       <Filter>Apps\MainApp\Internal</Filter>
     </ClInclude>
     <ClInclude Include="Apps\MainApp\Internal\AllIpcMessageLogger.h">
-      <Filter>Apps\MainApp\Internal</Filter>
-    </ClInclude>
-    <ClInclude Include="Apps\MainApp\Internal\EffectApplicationDelayLogger.h">
       <Filter>Apps\MainApp\Internal</Filter>
     </ClInclude>
     <ClInclude Include="Apps\MainApp\Internal\GameResourceOverrider.h">
