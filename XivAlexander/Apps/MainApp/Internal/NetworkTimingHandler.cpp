@@ -340,7 +340,7 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 			// Obtain actual connection latency statistics.
 			// Preference for socket latency measurement if available.
 			const auto pingTrackerUs = Conn.GetPingLatencyTrackerUs();
-			const auto socketLatencyUs = Conn.FetchSocketLatencyUs().value_or(INT64_MAX);
+			const auto socketLatencyUs = (std::max)(Conn.FetchSocketLatencyUs().value_or(INT64_MAX) - 20000, 1LL);  // Socket latency can be any higher value up to 40ms.
 			const auto pingLatencyUs = pingTrackerUs ? pingTrackerUs->Latest() : INT64_MAX;
 			auto latencyUs = socketLatencyUs != INT64_MAX ? socketLatencyUs : pingLatencyUs;
 
@@ -381,32 +381,6 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 
 					// Estimate server delay, using modulus to handle high ping rtt multipliers.
 					delay = bestLatencyUs > 0 ? ((rttUs % bestLatencyUs) + (rttUs - bestLatencyUs)) / 2 : rttUs;
-					break;
-				}
-
-				case HighLatencyMitigationMode::StandardGcdDivision: {
-					// Client-side focused mode. Emphasizes enforced time slices for animation locks.
-					// Advantage is consistent gameplay, however may be disadvantageous in situations where oGCD -> GCD (from downtime for example) may be needed.
-
-					// Calculate new animation lock values based on equal slices of a 2.5 GCD.
-					// Assume GCD has 600ms lock time, and remove it from the total GCD time (this will be the weave window).
-					const auto gcdUs = 2500000;
-					const auto gcdWaitUs = 600000;
-					const auto gcdWeaveUs = (gcdUs - gcdWaitUs) - ((gcdUs % gcdWaitUs) / (static_cast<int>(std::floor(gcdUs / gcdWaitUs))));
-
-					// Determine how many weaves we can do given the lock time.
-					const auto split = static_cast<int>(std::floor(gcdWeaveUs / originalWaitUs));
-					description << std::format(" gcdsplit={}", split);
-
-					// Determine best animation lock value.
-					// Calculate the delay value to add on the original lock time.
-					// Fallback to latency subtraction if multiple weaving is not possible.
-					if(split > 1) {
-						delay = (gcdWeaveUs % originalWaitUs) / split;
-					} else {
-						delay = latencyUs > 0 ? ((rttUs % latencyUs) + (rttUs - latencyUs)) / 2 : rttUs;
-					}
-
 					break;
 				}
 			}

@@ -443,10 +443,6 @@ void XivAlexander::to_json(nlohmann::json & j, const HighLatencyMitigationMode &
 			j = "SimulateRtt";
 			break;
 		
-		case HighLatencyMitigationMode::StandardGcdDivision:
-			j = "StandardGcdDivision";
-			break;
-
 		case HighLatencyMitigationMode::SimulateNormalizedRttAndLatency:
 		default:
 			j = "SimulateNormalizedRttAndLatency";
@@ -467,8 +463,6 @@ void XivAlexander::from_json(const nlohmann::json & it, HighLatencyMitigationMod
 		value = HighLatencyMitigationMode::SimulateRtt;
 	else if (newValueString.substr(0, std::min<size_t>(16, newValueString.size())) == L"subtractlatency")
 		value = HighLatencyMitigationMode::SubtractLatency;
-	else if (newValueString.substr(0, std::min<size_t>(19, newValueString.size())) == L"standardgcddivision")
-		value = HighLatencyMitigationMode::StandardGcdDivision;
 }
 
 template<typename T>
