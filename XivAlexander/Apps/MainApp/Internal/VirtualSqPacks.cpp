@@ -1112,7 +1112,7 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 												return;
 											}
 
-											exCreator = std::make_unique<Sqex::Excel::Depth2ExhExdCreator>(exhName, *exhReaderSource.Columns, exhReaderSource.Header.SomeSortOfBufferSize);
+											exCreator = std::make_unique<Sqex::Excel::Depth2ExhExdCreator>(exhName, *exhReaderSource.Columns, exhReaderSource.Header.Flags.Value());
 											exCreator->FillMissingLanguageFrom = fallbackLanguageList;
 											exCreator->AddLanguage(Sqex::Language::Japanese);
 											exCreator->AddLanguage(Sqex::Language::English);
