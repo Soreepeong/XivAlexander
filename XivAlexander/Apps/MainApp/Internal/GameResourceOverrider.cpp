@@ -59,6 +59,7 @@ struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementat
 	std::optional<Internal::VirtualSqPacks> Sqpacks;
 
 	std::vector<std::unique_ptr<Misc::Hooks::PointerFunction<size_t, uint32_t, const char*, size_t>>> FoundPathHashFunctions{};
+	std::vector<std::unique_ptr<Misc::Hooks::PointerFunction<const char8_t*, const char8_t*>>> FoundStringIndirectionResolverFunctions{};
 	std::vector<std::string> LastLoggedPaths;
 	std::mutex LastLoggedPathMtx;
 	Utils::CallOnDestruction::Multiple Cleanup;
@@ -233,9 +234,7 @@ struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementat
 			});
 
 
-		for (auto ptr : Misc::Signatures::LookupForData([](const IMAGE_SECTION_HEADER& p) {
-					return strncmp(reinterpret_cast<const char*>(p.Name), ".text", 5) == 0;
-				},
+		for (auto ptr : Misc::Signatures::LookupForData(Misc::Signatures::SectionFilterTextOnly,
 				"\x40\x57\x48\x8d\x3d\x00\x00\x00\x00\x00\x8b\xd8\x4c\x8b\xd2\xf7\xd1\x00\x85\xc0\x74\x25\x41\xf6\xc2\x03\x74\x1f\x41\x0f\xb6\x12\x8b\xc1",
 				"\xFF\xFF\xFF\xFF\xFF\x00\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF",
 				34,
@@ -339,6 +338,65 @@ struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementat
 				return res;
 			});
 		}
+		
+		for (auto ptr : Misc::Signatures::LookupForData(
+			Misc::Signatures::SectionFilterTextOnly,
+			"\x8b\x01\x25\xff\xff\xff\x00\x48\x03\xc1",
+			"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF",
+			10, {})) {
+			FoundStringIndirectionResolverFunctions.emplace_back(std::make_unique<Misc::Hooks::PointerFunction<const char8_t*, const char8_t*>>(
+				"FFXIV::StringIndirectionResolverFunctions",
+				reinterpret_cast<const char8_t* (__stdcall*)(const char8_t*)>(ptr)
+				));
+			Cleanup += FoundStringIndirectionResolverFunctions.back()->SetHook([this, ptr, self = FoundStringIndirectionResolverFunctions.back().get()](const char8_t* s) {
+				auto error = true;
+
+				__try {
+					s = self->bridge(s);
+					error = false;
+					goto done;
+				} __except(EXCEPTION_EXECUTE_HANDLER) {
+					// pass
+				}
+
+				Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "Invalid ptr to string indirection resolving function(0x{:x}); trying again with -0xE", reinterpret_cast<size_t>(ptr));
+				__try {
+					s = self->bridge(s - 0x0e);
+					goto done;
+				} __except (EXCEPTION_EXECUTE_HANDLER) {
+					// pass
+				}
+
+				Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "Attempt failed, just returning +2");
+				s = s + 2;
+				static const auto SeStringTester = [](const char8_t* ptr) {
+					try {
+						void(Sqex::SeString(reinterpret_cast<const char*>(ptr)).Parsed());
+						return true;
+					} catch (...) {
+						return false;
+					}
+				};
+
+			done:
+				if (error) {
+					auto pass = false;
+					__try {
+						pass = SeStringTester(s);
+					} __except (EXCEPTION_EXECUTE_HANDLER) {
+						// pass
+					}
+
+					if (pass)
+						Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "Rolling with {}", (char*)s);
+					else {
+						s = u8"<error>";
+						Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "Could not resolve text; displaying <error>");
+					}
+				}
+				return s;
+			});
+		};
 	}
 
 	~Implementation() {

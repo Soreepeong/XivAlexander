@@ -1,11 +1,10 @@
 #include "pch.h"
 #include "XivAlexanderCommon/Sqex/Excel/Generator.h"
 
-Sqex::Excel::Depth2ExhExdCreator::Depth2ExhExdCreator(std::string name, std::vector<Exh::Column> columns, int someSortOfBufferSize, size_t divideUnit)
+Sqex::Excel::Depth2ExhExdCreator::Depth2ExhExdCreator(std::string name, std::vector<Exh::Column> columns, const Exh::ExhFlag& flag)
 	: Name(std::move(name))
 	, Columns(std::move(columns))
-	, SomeSortOfBufferSize(someSortOfBufferSize)
-	, DivideUnit(divideUnit)
+	, Flags(flag)
 	, FixedDataSize([&columns = Columns]() {
 		uint16_t size = 0;
 		for (const auto& col : columns) {
@@ -130,14 +129,13 @@ std::pair<Sqex::Sqpack::EntryPathSpec, std::vector<char>> Sqex::Excel::Depth2Exh
 	);
 }
 
-std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>, Sqex::Sqpack::EntryPathSpec::FullPathComparator> Sqex::Excel::Depth2ExhExdCreator::Compile() {
+std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>, Sqex::Sqpack::EntryPathSpec::FullPathComparator> Sqex::Excel::Depth2ExhExdCreator::Compile(size_t divideUnit) {
 	std::map<Sqpack::EntryPathSpec, std::vector<char>, Sqpack::EntryPathSpec::FullPathComparator> result;
-
 	std::vector<std::pair<Exh::Pagination, std::vector<uint32_t>>> pages;
 	for (const auto id : Data | std::views::keys) {
 		if (pages.empty()) {
 			pages.emplace_back();
-		} else if (pages.back().second.size() == DivideUnit || DivideAtIds.find(id) != DivideAtIds.end()) {
+		} else if (pages.back().second.size() == divideUnit || DivideAtIds.find(id) != DivideAtIds.end()) {
 			pages.back().first.RowCountWithSkip = pages.back().second.back() - pages.back().second.front() + 1;
 			pages.emplace_back();
 		}
@@ -262,7 +260,7 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::vector<char>, Sqex::Sqpack::EntryPath
 		exhHeader.ColumnCount = static_cast<uint16_t>(Columns.size());
 		exhHeader.PageCount = static_cast<uint16_t>(pages.size());
 		exhHeader.LanguageCount = static_cast<uint16_t>(Languages.size());
-		exhHeader.SomeSortOfBufferSize = SomeSortOfBufferSize;
+		exhHeader.Flags = Flags;
 		exhHeader.Depth = Exh::Level2;
 		exhHeader.RowCountWithoutSkip = static_cast<uint32_t>(Data.size());
 

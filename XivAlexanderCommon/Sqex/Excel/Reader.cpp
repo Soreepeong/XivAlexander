@@ -87,12 +87,12 @@ Sqex::Sqpack::EntryPathSpec Sqex::Excel::ExhReader::GetDataPathSpec(const Exh::P
 void Sqex::Excel::ExhReader::Dump() const {
 	std::cout << std::format("Signature: {}\n", std::string(Header.Signature, 4));
 	std::cout << std::format("Version: {}\n", Header.Version.Value());
-	std::cout << std::format("FixedDataSize: {}\n", Header.FixedDataSize.Value());
+	std::cout << std::format("FixedDataSize: {:x}\n", Header.FixedDataSize.Value());
 	std::cout << std::format("ColumnCount: {}\n", Header.ColumnCount.Value());
 	std::cout << std::format("PageCount: {}\n", Header.PageCount.Value());
 	std::cout << std::format("LanguageCount: {}\n", Header.LanguageCount.Value());
-	std::cout << std::format("SomeSortOfBufferSize: {}\n", Header.SomeSortOfBufferSize.Value());
-	std::cout << std::format("Padding_0x010: {}\n", Header.Padding_0x010.Value());
+	const auto flag = Header.Flags.Value();
+	std::cout << std::format("Flags: {:02x}\n", *reinterpret_cast<const uint16_t*>(&flag));
 	std::cout << std::format("Depth: {}\n", static_cast<uint8_t>(Header.Depth.Value()));
 	std::cout << std::format("Padding_0x012: {}\n", Header.Padding_0x012.Value());
 	std::cout << std::format("RowCountWithoutSkip: {}\n", Header.RowCountWithoutSkip.Value());

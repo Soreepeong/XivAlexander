@@ -41,10 +41,18 @@ namespace Sqex::Excel {
 			BE<uint32_t> RowCountWithSkip;
 		};
 
-		enum Depth : uint8_t {
+		enum Depth : uint16_t {
 			Unknown = 0,
 			Level2 = 1,
 			Level3 = 2,
+		};
+
+		struct ExhFlag {
+			uint16_t SomeCount : 14;
+			uint16_t SomeMode : 2;
+
+			// SomeCount is treated as 0 if SomeMode is not 1
+			// only 0 and 1 are valid values for SomeMode
 		};
 
 		struct Header {
@@ -57,8 +65,7 @@ namespace Sqex::Excel {
 			BE<uint16_t> ColumnCount;
 			BE<uint16_t> PageCount;
 			BE<uint16_t> LanguageCount;
-			BE<uint16_t> SomeSortOfBufferSize;
-			BE<uint8_t> Padding_0x010;
+			BE<ExhFlag> Flags;
 			BE<Depth> Depth;
 			BE<uint16_t> Padding_0x012;
 			BE<uint32_t> RowCountWithoutSkip;

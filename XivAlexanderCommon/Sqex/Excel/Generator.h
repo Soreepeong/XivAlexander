@@ -7,15 +7,14 @@ namespace Sqex::Excel {
 	public:
 		const std::string Name;
 		const std::vector<Exh::Column> Columns;
-		const int SomeSortOfBufferSize;
-		const size_t DivideUnit;
+		const Exh::ExhFlag Flags;
 		const uint32_t FixedDataSize;
 		std::map<uint32_t, std::map<Language, std::vector<ExdColumn>>> Data;
 		std::set<uint32_t> DivideAtIds;
 		std::vector<Language> Languages;
 		std::vector<Language> FillMissingLanguageFrom;
 
-		Depth2ExhExdCreator(std::string name, std::vector<Exh::Column> columns, int someSortOfBufferSize, size_t divideUnit = SIZE_MAX);
+		Depth2ExhExdCreator(std::string name, std::vector<Exh::Column> columns, const Exh::ExhFlag& flag);
 
 		void AddLanguage(Language language);
 
@@ -26,6 +25,6 @@ namespace Sqex::Excel {
 		std::pair<Sqpack::EntryPathSpec, std::vector<char>> Flush(uint32_t startId, std::map<uint32_t, std::vector<char>> rows, Language language);
 
 	public:
-		std::map<Sqpack::EntryPathSpec, std::vector<char>, Sqpack::EntryPathSpec::FullPathComparator> Compile();
+		std::map<Sqpack::EntryPathSpec, std::vector<char>, Sqpack::EntryPathSpec::FullPathComparator> Compile(size_t divideUnit = SIZE_MAX);
 	};
 }
