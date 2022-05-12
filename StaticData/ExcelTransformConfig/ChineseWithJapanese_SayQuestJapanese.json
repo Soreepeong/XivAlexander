@@ -24,31 +24,6 @@
       "ChineseSimplified": [10]
     }
   },
-  "pluralMap": {
-    "# comment 1": [
-      "singularColumnIndex",
-      "pluralColumnIndex",
-      "optionalCapitalizedColumnIndex",
-      "languageSpecificColumnIndex"
-    ],
-    "# comment 2": "Priority if the language does not have plural forms: optionalCapitalized, singular, plural",
-    "^BNpcName$": [0, 2],
-    "^BuddyEquip$": [0, 2, 8],
-    "^DeepDungeonEquipment$": [1, 3, 9],
-    "^DeepDungeonItem$": [1, 3, 9],
-    "^DeepDungeonMagicStone$": [1, 3, 9],
-    "^ENpcResident$": [0, 2],
-    "^EObjName$": [0, 2],
-    "^EventItem$": [0, 2, 9],
-    "^GatheringPointName$": [0, 2],
-    "^GCRank(Gridania|Limsa|Uldah)(Male|Female)Text$": [0, 2],
-    "^Item$": [0, 2, 9],
-    "^Mount$": [0, 2],
-    "^Ornament$": [9, 11],
-    "^PlaceName$": [0, 2, null, 8],
-    "^Treasure$": [0, 2],
-    "^Tribe$": [0, 1]
-  },
   "targetGroups": {
     "object": {
       "^Achievement$": [1],

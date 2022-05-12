@@ -609,6 +609,15 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 					pool.SubmitWork([&]() {
 						auto v = pCreator->AsViews(false, pCreator->DatName.starts_with("0c") ? nullptr : dataViewBuffer);
 
+						//if (pCreator->DatName.starts_with("0a")) {
+						//	auto t = v.Index1->ReadStreamIntoVector<char>(0);
+						//	std::ofstream("Z:/0a0000.win32.index", std::ios::binary).write(&t[0], t.size());
+						//	t = v.Index2->ReadStreamIntoVector<char>(0);
+						//	std::ofstream("Z:/0a0000.win32.index2", std::ios::binary).write(&t[0], t.size());
+						//	t = v.Data[0]->ReadStreamIntoVector<char>(0);
+						//	std::ofstream("Z:/0a0000.win32.dat0", std::ios::binary).write(&t[0], t.size());
+						//}
+
 						const auto lock = std::lock_guard(resLock);
 						SqpackViews.emplace(indexFile, std::move(v));
 						progressValue += 1;
@@ -1149,7 +1158,7 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 
 										lastStep = "Load basic stuff";
 										const auto sourceLanguages{ exCreator->Languages };
-										const auto pluralColummIndices = [&]() {
+										const auto pluralColumnIndices = [&]() {
 											for (const auto& [pattern, data] : pluralColumns) {
 												if (srell::regex_search(exhName, pattern))
 													return data;
@@ -1191,82 +1200,124 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 											return toIter->second.at(it - fromIter->second.begin());
 										};
 
-										lastStep = "Load external EXH/D files";
-										for (const auto& reader : readers) {
-											try {
-												const auto exhReaderCurrent = Sqex::Excel::ExhReader(exhName, *(*reader)[exhPath]);
-												currentProgressMax = 1ULL * exhReaderCurrent.Languages.size() * exhReaderCurrent.Pages.size();
-												for (const auto language : exhReaderCurrent.Languages) {
-													for (const auto& page : exhReaderCurrent.Pages) {
-														if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-															return;
-														currentProgress++;
-														publishProgress();
+										if (exhName == "CustomTalk") {
+											// discard CustomTalk from external EXH/D files, or it will effectively disable the unending journey
 
-														const auto exdPathSpec = exhReaderCurrent.GetDataPathSpec(page, language);
-														try {
-															Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
-																"[{}] Adding {}", exhName, exdPathSpec);
-															const auto exdReader = Sqex::Excel::ExdReader(exhReaderCurrent, (*reader)[exdPathSpec]);
-															exCreator->AddLanguage(language);
-															for (const auto i : exdReader.GetIds()) {
-																auto row = exdReader.ReadDepth2(i);
-																const auto& rowSet = exCreator->Data.at(i);
-																auto referenceRowLanguage = Sqex::Language::Unspecified;
-																const std::vector<Sqex::Excel::ExdColumn>* referenceRowPtr = nullptr;
-																for (const auto& l : exCreator->FillMissingLanguageFrom) {
-																	if (auto it = rowSet.find(l);
-																		it != rowSet.end()) {
-																		referenceRowLanguage = l;
-																		referenceRowPtr = &it->second;
-																		break;
-																	}
-																}
-																if (!referenceRowPtr)
-																	continue;
-																const auto& referenceRow = *referenceRowPtr;
+										} else {
+											lastStep = "Load external EXH/D files";
+											for (const auto& reader : readers) {
+												try {
+													const auto exhReaderCurrent = Sqex::Excel::ExhReader(exhName, *(*reader)[exhPath]);
+													currentProgressMax = 1ULL * exhReaderCurrent.Languages.size() * exhReaderCurrent.Pages.size();
+													for (const auto language : exhReaderCurrent.Languages) {
+														for (const auto& page : exhReaderCurrent.Pages) {
+															if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+																return;
+															currentProgress++;
+															publishProgress();
 
-																auto prevRow{ std::move(row) };
-																row = referenceRow;
-																for (size_t j = 0; j < row.size(); ++j) {
-																	if (row[j].Type != Sqex::Excel::Exh::ColumnDataType::String)
+															const auto exdPathSpec = exhReaderCurrent.GetDataPathSpec(page, language);
+															try {
+																Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+																	"[{}] Adding {}", exhName, exdPathSpec);
+																const auto exdReader = Sqex::Excel::ExdReader(exhReaderCurrent, (*reader)[exdPathSpec]);
+																exCreator->AddLanguage(language);
+																for (const auto i : exdReader.GetIds()) {
+																	auto row = exdReader.ReadDepth2(i);
+																	const auto rowSetIt = exCreator->Data.find(i);
+																	if (rowSetIt == exCreator->Data.end())
 																		continue;
-																	const auto otherColIndex = translateColumnIndex(referenceRowLanguage, language, j);
-																	if (otherColIndex >= prevRow.size()) {
-																		if (otherColIndex != j)
+
+																	const auto& rowSet = rowSetIt->second;
+																	auto referenceRowLanguage = Sqex::Language::Unspecified;
+																	const std::vector<Sqex::Excel::ExdColumn>* referenceRowPtr = nullptr;
+																	for (const auto& l : exCreator->FillMissingLanguageFrom) {
+																		if (auto it = rowSet.find(l);
+																			it != rowSet.end()) {
+																			referenceRowLanguage = l;
+																			referenceRowPtr = &it->second;
+																			break;
+																		}
+																	}
+																	if (!referenceRowPtr)
+																		continue;
+																	const auto& referenceRow = *referenceRowPtr;
+
+																	auto prevRow{ std::move(row) };
+																	row = referenceRow;
+
+																	Sqex::SeString pluralBaseString;
+																	{
+																		constexpr auto N = Misc::ExcelTransformConfig::PluralColumns::Index_NoColumn;
+																		size_t cols[]{
+																			pluralColumnIndices.capitalizedColumnIndex == N ? N : translateColumnIndex(referenceRowLanguage, language, pluralColumnIndices.capitalizedColumnIndex),
+																			pluralColumnIndices.singularColumnIndex == N ? N : translateColumnIndex(referenceRowLanguage, language, pluralColumnIndices.singularColumnIndex),
+																			pluralColumnIndices.pluralColumnIndex == N ? N : translateColumnIndex(referenceRowLanguage, language, pluralColumnIndices.pluralColumnIndex),
+																			pluralColumnIndices.languageSpecificColumnIndex == N ? N : translateColumnIndex(referenceRowLanguage, language, pluralColumnIndices.languageSpecificColumnIndex),
+																		};
+																		for (auto& col : cols) {
+																			if (col == N || col >= prevRow.size() || prevRow[col].Type != Sqex::Excel::Exh::ColumnDataType::String)
+																				col = N;
+																			else if (!prevRow[col].String.Empty() && pluralBaseString.Empty())
+																				pluralBaseString = prevRow[col].String;
+																		}
+																	}
+
+																	for (size_t j = 0; j < row.size(); ++j) {
+																		if (row[j].Type != Sqex::Excel::Exh::ColumnDataType::String)
+																			continue;
+
+																		const auto otherColIndex = translateColumnIndex(referenceRowLanguage, language, j);
+																		if (otherColIndex >= prevRow.size()) {
+																			if (otherColIndex != j)
+																				Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+																					"[{}] Skipping column: Column {} of language {} is was requested but there are {} columns",
+																					exhName, j, otherColIndex, static_cast<int>(language), prevRow.size());
+																			continue;
+																		}
+
+																		if (prevRow[otherColIndex].Type != Sqex::Excel::Exh::ColumnDataType::String) {
 																			Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-																				"[{}] Skipping column: Column {} of language {} is was requested but there are {} columns",
-																				exhName, j, otherColIndex, static_cast<int>(language), prevRow.size());
-																		continue;
+																				"[{}] Skipping column: Column {} of language {} is string but column {} of language {} is not a string",
+																				exhName, j, static_cast<int>(referenceRowLanguage), otherColIndex, static_cast<int>(language));
+																			continue;
+																		}
+
+																		if (prevRow[otherColIndex].String.Empty()) {
+																			if (pluralBaseString.Empty())
+																				continue;
+
+																			if (j != pluralColumnIndices.singularColumnIndex
+																				&& j != pluralColumnIndices.pluralColumnIndex
+																				&& j != pluralColumnIndices.capitalizedColumnIndex
+																				&& j != pluralColumnIndices.languageSpecificColumnIndex) {
+																				continue;
+																			}
+
+																			row[j].String = pluralBaseString;
+																			continue;
+																		}
+
+																		if (prevRow[otherColIndex].String.Escaped().starts_with("_rsv_"))
+																			continue;
+
+																		row[j].String = std::move(prevRow[otherColIndex].String);
 																	}
-																	if (prevRow[otherColIndex].Type != Sqex::Excel::Exh::ColumnDataType::String) {
-																		Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-																			"[{}] Skipping column: Column {} of language {} is string but column {} of language {} is not a string",
-																			exhName, j, static_cast<int>(referenceRowLanguage), otherColIndex, static_cast<int>(language));
-																		continue;
-																	}
-																	if (prevRow[otherColIndex].String.Empty())
-																		continue;
-																	if (prevRow[otherColIndex].String.Escaped().starts_with("_rsv_"))
-																		continue;
-																	row[j].String = std::move(prevRow[otherColIndex].String);
+																	exCreator->SetRow(i, language, std::move(row), false);
 																}
-																exCreator->SetRow(i, language, std::move(row), false);
+															} catch (const std::exception& e) {
+																Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+																	"[{}] Skipping {} because of error: {}", exhName, exdPathSpec, e.what());
 															}
-														} catch (const std::out_of_range&) {
-															// pass
-														} catch (const std::exception& e) {
-															Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-																"[{}] Skipping {} because of error: {}", exhName, exdPathSpec, e.what());
 														}
 													}
+												} catch (const std::out_of_range&) {
+													// pass
 												}
-											} catch (const std::out_of_range&) {
-												// pass
+												currentProgress = 0;
+												progressIndex++;
+												publishProgress();
 											}
-											currentProgress = 0;
-											progressIndex++;
-											publishProgress();
 										}
 
 										lastStep = "Ensure that there are no missing rows from externally sourced exd files";
@@ -1297,6 +1348,36 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 													rowSet[language] = referenceRow;
 												else {
 													auto& row = it->second;
+
+													// Pass 1. Fill missing columns if we have plural information
+													{
+														auto copyFromColumnIndex = pluralColumnIndices.capitalizedColumnIndex;
+														if (copyFromColumnIndex == Misc::ExcelTransformConfig::PluralColumns::Index_NoColumn || copyFromColumnIndex >= row.size() || row[copyFromColumnIndex].Type != Sqex::Excel::Exh::String || row[copyFromColumnIndex].String.Empty())
+															copyFromColumnIndex = pluralColumnIndices.singularColumnIndex;
+														if (copyFromColumnIndex == Misc::ExcelTransformConfig::PluralColumns::Index_NoColumn || copyFromColumnIndex >= row.size() || row[copyFromColumnIndex].Type != Sqex::Excel::Exh::String || row[copyFromColumnIndex].String.Empty())
+															copyFromColumnIndex = pluralColumnIndices.pluralColumnIndex;
+														if (copyFromColumnIndex == Misc::ExcelTransformConfig::PluralColumns::Index_NoColumn || copyFromColumnIndex >= row.size() || row[copyFromColumnIndex].Type != Sqex::Excel::Exh::String || row[copyFromColumnIndex].String.Empty())
+															copyFromColumnIndex = pluralColumnIndices.languageSpecificColumnIndex;
+
+														if (copyFromColumnIndex != Misc::ExcelTransformConfig::PluralColumns::Index_NoColumn) {
+															size_t targetColumnIndices[]{
+																pluralColumnIndices.capitalizedColumnIndex,
+																pluralColumnIndices.singularColumnIndex,
+																pluralColumnIndices.pluralColumnIndex,
+																pluralColumnIndices.languageSpecificColumnIndex,
+															};
+															for (const auto targetColumnIndex : targetColumnIndices) {
+																if (targetColumnIndex != Misc::ExcelTransformConfig::PluralColumns::Index_NoColumn
+																	&& targetColumnIndex < row.size()
+																	&& row[targetColumnIndex].Type == Sqex::Excel::Exh::String
+																	&& row[targetColumnIndex].String.Empty()) {
+																	row[targetColumnIndex].String = row[copyFromColumnIndex].String;
+																}
+															}
+														}
+													}
+
+													// Pass 2. Fill missing columns from columns of reference language
 													for (size_t i = 0; i < row.size(); ++i) {
 														if (referenceRow[i].Type != Sqex::Excel::Exh::String) {
 															row[i] = referenceRow[i];
@@ -1418,13 +1499,13 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 																	}
 																}
 																if (normalizeToCapital) {
-																	if (pluralColummIndices.capitalizedColumnIndex != Misc::ExcelTransformConfig::PluralColumns::Index_NoColumn) {
-																		if (readColumnIndex == pluralColummIndices.pluralColumnIndex
-																			|| readColumnIndex == pluralColummIndices.singularColumnIndex)
-																			readColumnIndex = pluralColummIndices.capitalizedColumnIndex;
+																	if (pluralColumnIndices.capitalizedColumnIndex != Misc::ExcelTransformConfig::PluralColumns::Index_NoColumn) {
+																		if (readColumnIndex == pluralColumnIndices.pluralColumnIndex
+																			|| readColumnIndex == pluralColumnIndices.singularColumnIndex)
+																			readColumnIndex = pluralColumnIndices.capitalizedColumnIndex;
 																	} else {
-																		if (readColumnIndex == pluralColummIndices.pluralColumnIndex)
-																			readColumnIndex = pluralColummIndices.singularColumnIndex;
+																		if (readColumnIndex == pluralColumnIndices.pluralColumnIndex)
+																			readColumnIndex = pluralColumnIndices.singularColumnIndex;
 																	}
 																}
 																if (const auto rules = rule.preprocessReplacements.find(ruleSourceLanguage); rules != rule.preprocessReplacements.end()) {
@@ -1512,8 +1593,10 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 														Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] ColumnCount: new {}, was {}", exhName, reader1.Header.ColumnCount.Value(), reader2.Header.ColumnCount.Value());
 													if (reader1.Header.PageCount != reader2.Header.PageCount)
 														Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] PageCount: new {}, was {}", exhName, reader1.Header.PageCount.Value(), reader2.Header.PageCount.Value());
-													if (reader1.Header.SomeSortOfBufferSize != reader2.Header.SomeSortOfBufferSize)
-														Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] SomeSortOfBufferSize: new {}, was {}", exhName, reader1.Header.SomeSortOfBufferSize.Value(), reader2.Header.SomeSortOfBufferSize.Value());
+													if (reader1.Header.Flags.Value().SomeCount != reader2.Header.Flags.Value().SomeCount)
+														Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Flags.SomeCount: new {}, was {}", exhName, reader1.Header.Flags.Value().SomeCount, reader2.Header.Flags.Value().SomeCount);
+													if (reader1.Header.Flags.Value().SomeMode != reader2.Header.Flags.Value().SomeMode)
+														Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Flags.SomeMode: new {}, was {}", exhName, reader1.Header.Flags.Value().SomeMode, reader2.Header.Flags.Value().SomeMode);
 													if (reader1.Header.RowCountWithoutSkip != reader2.Header.RowCountWithoutSkip)
 														Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] RowCountWithoutSkip: new {}, was {}", exhName, reader1.Header.RowCountWithoutSkip.Value(), reader2.Header.RowCountWithoutSkip.Value());
 													if (reader1.Columns->size() != reader2.Columns->size())
