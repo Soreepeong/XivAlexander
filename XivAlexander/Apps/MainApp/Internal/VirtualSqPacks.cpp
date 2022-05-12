@@ -1200,11 +1200,122 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 											return toIter->second.at(it - fromIter->second.begin());
 										};
 
+										lastStep = "Load external EXH/D files";
 										if (exhName == "CustomTalk") {
 											// discard CustomTalk from external EXH/D files, or it will effectively disable the unending journey
 
+										} else if (exhName == "CompleteJournal") {
+											// Row ID does not persist across versions. Use first 4 columns as the alternate key.
+
+											const auto ToMapKey = [](const std::vector<Sqex::Excel::ExdColumn>& columns) {
+												// 20, 20, 16, 8
+												return 0
+													| (columns[0].uint64 << 44)
+													| (columns[1].uint64 << 24)
+													| (columns[2].uint64 << 8)
+													| (columns[3].uint64 << 0);
+											};
+
+											do {
+												auto cannotProceed = false;
+												for (size_t i = 0; i < 4; i++) {
+													if (!exCreator->Columns[i].IsInteger()) {
+														Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Skipping because column #{} of target file is not an integer, but is of type code {}.", exhName, i, static_cast<int>(exCreator->Columns[i].Type.Value()));
+														cannotProceed = true;
+														break;
+													}
+												}
+												if (cannotProceed)
+													break;
+												if (!exCreator->Columns[5].IsString()) {
+													Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Skipping because column #5 of target file is not a string, but is of type code {}.", exhName, static_cast<int>(exCreator->Columns[5].Type.Value()));
+													break;
+												}
+
+												std::map<uint64_t, uint32_t> questTitleIdMap;
+												for (const auto& [rowId, rowSet] : exCreator->Data) {
+													for (const auto& row : rowSet | std::views::values) {
+														if (row[5].String.Empty())
+															continue;
+
+														questTitleIdMap[ToMapKey(row)] = rowId;
+														break; // intentional; first 4 columns should be same for all languages across regions.
+													}
+												}
+
+												for (const auto& reader : readers) {
+													try {
+														const auto exhReaderCurrent = Sqex::Excel::ExhReader(exhName, *(*reader)[exhPath]);
+
+														cannotProceed = false;
+														for (size_t i = 0; i < 4; i++) {
+															if (!(*exhReaderCurrent.Columns)[i].IsInteger())
+																Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Skipping because column #{} of source file is not an integer, but is of type code {}.", exhName, i, static_cast<int>(exCreator->Columns[i].Type.Value()));
+														}
+														if (cannotProceed)
+															continue;
+														if (!(*exhReaderCurrent.Columns)[5].IsString()) {
+															Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] Skipping because column #5 of source file is not a string, but is of type code {}.", exhName, static_cast<int>(exCreator->Columns[5].Type.Value()));
+															break;
+														}
+
+														currentProgressMax = 1ULL * exhReaderCurrent.Languages.size() * exhReaderCurrent.Pages.size();
+														for (const auto language : exhReaderCurrent.Languages) {
+															for (const auto& page : exhReaderCurrent.Pages) {
+																if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+																	return;
+																currentProgress++;
+																publishProgress();
+
+																const auto exdPathSpec = exhReaderCurrent.GetDataPathSpec(page, language);
+																try {
+																	Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+																		"[{}] Adding {}", exhName, exdPathSpec);
+
+																	const auto exdReader = Sqex::Excel::ExdReader(exhReaderCurrent, (*reader)[exdPathSpec]);
+																	exCreator->AddLanguage(language);
+
+																	for (const auto i : exdReader.GetIds()) {
+																		auto addingRow = exdReader.ReadDepth2(i);
+																		if (addingRow[5].String.Empty())
+																			continue;
+
+																		const auto targetRowIdIt = questTitleIdMap.find(ToMapKey(addingRow));
+																		if (targetRowIdIt == questTitleIdMap.end())
+																			continue;
+																		const auto targetRowId = targetRowIdIt->second;
+
+																		auto& rowSet = exCreator->Data.at(targetRowId);
+																		std::vector<Sqex::Excel::ExdColumn> *pRow = nullptr;
+																		if (const auto it = rowSet.find(language); it != rowSet.end())
+																			pRow = &it->second;
+																		else {
+																			for (const auto& l : exCreator->FillMissingLanguageFrom) {
+																				if (auto it = rowSet.find(l); it != rowSet.end()) {
+																					pRow = &rowSet[language];
+																					*pRow = it->second;
+																					break;
+																				}
+																			}
+																		}
+																		if (!pRow)
+																			continue;
+
+																		(*pRow)[5].String = std::move(addingRow[5].String);
+																	}
+																} catch (const std::exception& e) {
+																	Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+																		"[{}] Skipping {} because of error: {}", exhName, exdPathSpec, e.what());
+																}
+															}
+														}
+													} catch (const std::out_of_range&) {
+														// pass
+													}
+												}
+											} while (false);
+
 										} else {
-											lastStep = "Load external EXH/D files";
 											for (const auto& reader : readers) {
 												try {
 													const auto exhReaderCurrent = Sqex::Excel::ExhReader(exhName, *(*reader)[exhPath]);

@@ -34,6 +34,27 @@ namespace Sqex::Excel {
 		struct Column {
 			BE<ColumnDataType> Type;
 			BE<uint16_t> Offset;
+
+			bool IsInteger() const {
+				switch (Type.Value()) {
+					case ColumnDataType::Int8:
+					case ColumnDataType::UInt8:
+					case ColumnDataType::Int16:
+					case ColumnDataType::UInt16:
+					case ColumnDataType::Int32:
+					case ColumnDataType::UInt32:
+					case ColumnDataType::Int64:
+					case ColumnDataType::UInt64:
+						return true;
+						
+					default:
+						return false;
+				}
+			}
+
+			bool IsString() const {
+				return Type.Value() == ColumnDataType::String;
+			}
 		};
 
 		struct Pagination {
