@@ -134,7 +134,7 @@
             "type": "integer"
           },
           "forceLanguage": {
-            "type": "string",
+            "type": ["string", "null"],
             "enum": [
               "Japanese",
               "English",
@@ -144,6 +144,9 @@
               "ChineseTraditional",
               "Korean"
             ]
+          },
+          "forceString": {
+            "type": ["string", "null"]
           }
         },
         "required": [

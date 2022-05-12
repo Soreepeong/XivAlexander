@@ -46,6 +46,7 @@
       "^CompanyAction$": [0],
       "^CompanyCraftDraft$": [0],
       "^Completion$": [3, 4],
+      "^CompleteJournal$": [5],
       "^ContentFinderCondition$": [38, 39],
       "^ContentGauge$": [0],
       "^ContentRoulette$": [0, 1],

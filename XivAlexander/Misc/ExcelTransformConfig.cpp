@@ -58,15 +58,27 @@ void XivAlexander::Misc::ExcelTransformConfig::to_json(nlohmann::json& j, const 
 		{"name", o.name},
 		{"id", o.id},
 		{"column", o.column},
-		{"forceLanguage", o.forceLanguage},
-	});
+		});
+	if (o.forceLanguage.has_value())
+		j["forceLanguage"] = o.forceLanguage.value();
+	if (o.forceString.has_value())
+		j["forceString"] = o.forceString.value();
 }
 
 void XivAlexander::Misc::ExcelTransformConfig::from_json(const nlohmann::json& j, IgnoredCell& o) {
 	o.name = j.at("name").get<std::string>();
 	o.id = j.at("id").get<int>();
 	o.column = j.at("column").get<int>();
-	o.forceLanguage = j.at("forceLanguage").get<Sqex::Language>();
+
+	if (const auto it = j.find("forceLanguage"); it == j.end())
+		o.forceLanguage = std::nullopt;
+	else
+		o.forceLanguage = it->get<Sqex::Language>();
+
+	if (const auto it = j.find("forceString"); it == j.end())
+		o.forceString = std::nullopt;
+	else
+		o.forceString = it->get<std::string>();
 }
 
 void XivAlexander::Misc::ExcelTransformConfig::to_json(nlohmann::json& j, const Rule& o) {

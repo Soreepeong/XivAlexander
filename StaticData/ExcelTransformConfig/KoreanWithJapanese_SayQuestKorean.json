@@ -21,6 +21,7 @@
       "^CompanyAction$": [0],
       "^CompanyCraftDraft$": [0],
       "^Completion$": [3, 4],
+      "^CompleteJournal$": [5],
       "^ContentFinderCondition$": [38, 39],
       "^ContentGauge$": [0],
       "^ContentRoulette$": [0, 1],
@@ -197,6 +198,7 @@
     }
   },
   "ignoredCells": [
+    {"name": "MainCommand", "id": 32, "column": 5, "forceString": "고객지원"},
     {"name": "quest/002/FesNyr102_00287", "id": 96, "column": 1, "forceLanguage": "Korean"},
     {"name": "quest/004/SubSea075_00487", "id": 54, "column": 1, "forceLanguage": "Korean"},
     {"name": "quest/004/SubSea075_00487", "id": 63, "column": 1, "forceLanguage": "Korean"},

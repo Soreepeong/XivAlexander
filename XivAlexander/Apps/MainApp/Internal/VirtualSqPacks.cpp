@@ -1559,14 +1559,19 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 													if (currentIgnoredCells) {
 														if (const auto it = currentIgnoredCells->find(Misc::ExcelTransformConfig::IgnoredCell{ exhName, static_cast<int>(id), static_cast<int>(columnIndex) });
 															it != currentIgnoredCells->end()) {
-															if (const auto it2 = rowSet.find(it->forceLanguage);
-																it2 != rowSet.end()) {
-																Logger->Format(LogCategory::VirtualSqPacks, "Using \"{}\" in place of \"{}\" per rules, at {}({}, {})",
-																	it2->second[columnIndex].String.Parsed(),
-																	row[columnIndex].String.Parsed(),
-																	exhName, id, columnIndex);
-																row[columnIndex].String = it2->second[columnIndex].String;
+															if (it->forceString) {
+																row[columnIndex].String = Sqex::SeString(*it->forceString);
 																continue;
+															} else if (it->forceLanguage) {
+																if (const auto it2 = rowSet.find(*it->forceLanguage);
+																	it2 != rowSet.end()) {
+																	Logger->Format(LogCategory::VirtualSqPacks, "Using \"{}\" in place of \"{}\" per rules, at {}({}, {})",
+																		it2->second[columnIndex].String.Parsed(),
+																		row[columnIndex].String.Parsed(),
+																		exhName, id, columnIndex);
+																	row[columnIndex].String = it2->second[columnIndex].String;
+																	continue;
+																}
 															}
 														}
 													}
