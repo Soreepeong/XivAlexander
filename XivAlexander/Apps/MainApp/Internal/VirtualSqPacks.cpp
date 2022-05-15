@@ -1540,12 +1540,13 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 											std::map<Sqex::Language, std::vector<Sqex::Excel::ExdColumn>> pendingReplacements;
 											for (const auto& language : exCreator->Languages) {
 												const auto& rules = exhRowReplacementRules.at(language);
-												if (rules.empty())
-													continue;
 
 												std::set<Misc::ExcelTransformConfig::IgnoredCell>* currentIgnoredCells = nullptr;
 												if (const auto it = ignoredCells.find(language); it != ignoredCells.end())
 													currentIgnoredCells = &it->second;
+
+												if (rules.empty() && !currentIgnoredCells)
+													continue;
 
 												auto row{ rowSet.at(language) };
 
