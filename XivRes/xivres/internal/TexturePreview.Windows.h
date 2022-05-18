@@ -10,7 +10,7 @@
 #include "../Internal/CallOnDestruction.h"
 
 namespace XivRes::Internal {
-	void ShowTextureStream(const XivRes::TextureStream& texStream) {
+	void ShowTextureStream(const XivRes::TextureStream& texStream, std::wstring title = L"Preview") {
 		static constexpr int Margin = 0;
 
 		struct State {
@@ -24,7 +24,7 @@ namespace XivRes::Internal {
 				};
 				BITMAPINFO bmi{};
 			};
-			std::wstring title = L"Preview";
+			std::wstring title;
 			int showmode;
 			int repeatIndex, mipmapIndex, depthIndex;
 			std::vector<uint8_t> buf;
@@ -202,7 +202,7 @@ namespace XivRes::Internal {
 			int DepthCount() const {
 				return (std::max)(1, texStream.GetDepth() / (1 << mipmapIndex));
 			}
-		} state{ .texStream = texStream };
+		} state{ .texStream = texStream, .title = std::move(title), };
 
 		state.LoadMipmap(0, 0, 0);
 

@@ -36,6 +36,7 @@
     <ClInclude Include="xivres\FontGenerator\FontdataPacker.h" />
     <ClInclude Include="xivres\FontGenerator\GameFontdataFixedSizeFont.h" />
     <ClInclude Include="xivres\FontGenerator\IFixedSizeFont.h" />
+    <ClInclude Include="xivres\FontGenerator\MergedFixedSizeFont.h" />
     <ClInclude Include="xivres\FontGenerator\TextMeasurer.h" />
     <ClInclude Include="xivres\GameReader.h" />
     <ClInclude Include="xivres\Imc.h" />
@@ -52,6 +53,7 @@
     <ClInclude Include="xivres\Internal\TeamHypersomnia-rectpack2D\src\insert_and_split.h" />
     <ClInclude Include="xivres\Internal\TeamHypersomnia-rectpack2D\src\rect_structs.h" />
     <ClInclude Include="xivres\internal\TexturePreview.Windows.h" />
+    <ClInclude Include="xivres\Internal\ThreadPool.h" />
     <ClInclude Include="xivres\internal\TinySha1.h" />
     <ClInclude Include="xivres\internal\SpanCast.h" />
     <ClInclude Include="xivres\internal\String.h" />

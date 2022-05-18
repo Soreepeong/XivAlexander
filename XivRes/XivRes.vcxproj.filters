@@ -209,5 +209,11 @@
     <ClInclude Include="xivres\FontGenerator\CodepointLimitingFixedSizeFont.h">
       <Filter>Headers\FontGenerator</Filter>
     </ClInclude>
+    <ClInclude Include="xivres\FontGenerator\MergedFixedSizeFont.h">
+      <Filter>Headers\FontGenerator</Filter>
+    </ClInclude>
+    <ClInclude Include="xivres\Internal\ThreadPool.h">
+      <Filter>Headers\Internal</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

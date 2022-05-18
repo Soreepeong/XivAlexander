@@ -170,14 +170,17 @@ namespace XivRes {
 			return m_kerningEntries;
 		}
 
-		void ReserveStorage(size_t fontEntryCount, size_t kerningEntryCount) {
-			m_fontTableEntries.reserve(fontEntryCount);
-			m_kerningEntries.reserve(kerningEntryCount);
+		void ReserveFontEntries(size_t count) {
+			m_fontTableEntries.reserve(count);
+		}
+
+		void ReserveKerningEntries(size_t count) {
+			m_kerningEntries.reserve(count);
 		}
 
 		void AddFontEntry(char32_t c, uint16_t textureIndex, uint16_t textureOffsetX, uint16_t textureOffsetY, uint8_t boundingWidth, uint8_t boundingHeight, int8_t nextOffsetX, int8_t currentOffsetY) {
 			const auto val = Internal::UnicodeCodePointToUtf8Uint32(c);
-			
+
 			auto it = std::lower_bound(m_fontTableEntries.begin(), m_fontTableEntries.end(), val, [](const FontdataGlyphEntry& l, uint32_t r) {
 				return l.Utf8Value < r;
 			});
@@ -197,6 +200,19 @@ namespace XivRes {
 			it->BoundingHeight = boundingHeight;
 			it->NextOffsetX = nextOffsetX;
 			it->CurrentOffsetY = currentOffsetY;
+		}
+
+		void AddFontEntry(const FontdataGlyphEntry& entry) {
+			auto it = std::lower_bound(m_fontTableEntries.begin(), m_fontTableEntries.end(), entry.Utf8Value, [](const FontdataGlyphEntry& l, uint32_t r) {
+				return l.Utf8Value < r;
+			});
+
+			if (it == m_fontTableEntries.end() || it->Utf8Value != entry.Utf8Value) {
+				it = m_fontTableEntries.insert(it, entry);
+				m_fcsv.KerningHeaderOffset += sizeof entry;
+				m_fthd.FontTableEntryCount += 1;
+			} else
+				*it = entry;
 		}
 
 		void AddKerning(char32_t l, char32_t r, int rightOffset) {

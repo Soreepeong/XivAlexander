@@ -126,10 +126,10 @@ namespace XivRes::FontGenerator {
 			m_gammaTable = gammaTable;
 		}
 
-		void Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const override {
+		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const override {
 			const auto pEntry = m_stream->GetFontEntry(codepoint);
 			if (!pEntry)
-				return;
+				return false;
 
 			auto src = GlyphMetrics{ false, *pEntry->TextureOffsetX, *pEntry->TextureOffsetY, *pEntry->TextureOffsetX + *pEntry->BoundingWidth, *pEntry->TextureOffsetY + *pEntry->BoundingHeight };
 			auto dest = GlyphMetricsFromEntry(pEntry, drawX, drawY);
@@ -142,12 +142,13 @@ namespace XivRes::FontGenerator {
 				.WithBackgroundColor(bgColor)
 				.WithGammaTable(m_gammaTable)
 				.CopyTo(src.X1, src.Y1, src.X2, src.Y2, dest.X1, dest.Y1);
+			return true;
 		}
 
-		void Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const override {
+		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const override {
 			const auto pEntry = m_stream->GetFontEntry(codepoint);
 			if (!pEntry)
-				return;
+				return false;
 
 			auto src = GlyphMetrics{ false, *pEntry->TextureOffsetX, *pEntry->TextureOffsetY, *pEntry->TextureOffsetX + *pEntry->BoundingWidth, *pEntry->TextureOffsetY + *pEntry->BoundingHeight };
 			auto dest = GlyphMetricsFromEntry(pEntry, drawX, drawY);
@@ -162,6 +163,7 @@ namespace XivRes::FontGenerator {
 				.WithBackgroundOpacity(bgOpacity)
 				.WithGammaTable(m_gammaTable)
 				.CopyTo(src.X1, src.Y1, src.X2, src.Y2, dest.X1, dest.Y1);
+			return true;
 		}
 
 	private:

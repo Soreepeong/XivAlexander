@@ -79,19 +79,25 @@ namespace XivRes::FontGenerator {
 		}
 
 		const std::array<uint8_t, 256>& GetGammaTable() const override {
-			return m_pFont->GetGammaTable();
+			return LinearGammaTable;
 		}
 
 		void SetGammaTable(const std::array<uint8_t, 256>& gammaTable) override {
 			throw std::runtime_error("CodepointLimitingFixedSizeFont does not support changing gamma table.");
 		}
 
-		void Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const override {
-			m_pFont->Draw(codepoint, pBuf, drawX, drawY, destWidth, destHeight, fgColor, bgColor);
+		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const override {
+			if (!m_codepoints.contains(codepoint))
+				return false;
+
+			return m_pFont->Draw(codepoint, pBuf, drawX, drawY, destWidth, destHeight, fgColor, bgColor);
 		}
 
-		void Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const override {
-			m_pFont->Draw(codepoint, pBuf, stride, drawX, drawY, destWidth, destHeight, fgColor, bgColor, fgOpacity, bgOpacity);
+		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const override {
+			if (!m_codepoints.contains(codepoint))
+				return false;
+
+			return m_pFont->Draw(codepoint, pBuf, stride, drawX, drawY, destWidth, destHeight, fgColor, bgColor, fgOpacity, bgOpacity);
 		}
 	};
 }
