@@ -1,6 +1,6 @@
 #pragma once
 
-#include "internal/Dxt.h"
+#include "Internal/Dxt.h"
 
 #include "PixelFormats.h"
 #include "IStream.h"

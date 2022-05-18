@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include "internal/SpanCast.h"
+#include "Internal/SpanCast.h"
 
 namespace XivRes {
 	class SeExpression {

@@ -1,7 +1,7 @@
 #ifndef _XIVRES_TEXTURE_H_
 #define _XIVRES_TEXTURE_H_
 
-#include "internal/ByteOrder.h"
+#include "Internal/ByteOrder.h"
 
 #include "Common.h"
 

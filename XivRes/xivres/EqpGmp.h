@@ -5,8 +5,8 @@
 #include <span>
 #include <vector>
 
-#include "internal/ByteOrder.h"
-#include "internal/SpanCast.h"
+#include "Internal/ByteOrder.h"
+#include "Internal/SpanCast.h"
 
 #include "Common.h"
 #include "IStream.h"

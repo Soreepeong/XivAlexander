@@ -32,6 +32,11 @@
     <ClInclude Include="xivres\ExcelReader.h" />
     <ClInclude Include="xivres\Fontdata.h" />
     <ClInclude Include="xivres\FontdataStream.h" />
+    <ClInclude Include="xivres\FontGenerator\CodepointLimitingFixedSizeFont.h" />
+    <ClInclude Include="xivres\FontGenerator\FontdataPacker.h" />
+    <ClInclude Include="xivres\FontGenerator\GameFontdataFixedSizeFont.h" />
+    <ClInclude Include="xivres\FontGenerator\IFixedSizeFont.h" />
+    <ClInclude Include="xivres\FontGenerator\TextMeasurer.h" />
     <ClInclude Include="xivres\GameReader.h" />
     <ClInclude Include="xivres\Imc.h" />
     <ClInclude Include="xivres\internal\ByteOrder.h" />
@@ -39,6 +44,14 @@
     <ClInclude Include="xivres\internal\Dxt.h" />
     <ClInclude Include="xivres\internal\ListenerManager.h" />
     <ClInclude Include="xivres\internal\Misc.h" />
+    <ClInclude Include="xivres\Internal\BitmapCopy.h" />
+    <ClInclude Include="xivres\Internal\TeamHypersomnia-rectpack2D\src\best_bin_finder.h" />
+    <ClInclude Include="xivres\Internal\TeamHypersomnia-rectpack2D\src\empty_spaces.h" />
+    <ClInclude Include="xivres\Internal\TeamHypersomnia-rectpack2D\src\empty_space_allocators.h" />
+    <ClInclude Include="xivres\Internal\TeamHypersomnia-rectpack2D\src\finders_interface.h" />
+    <ClInclude Include="xivres\Internal\TeamHypersomnia-rectpack2D\src\insert_and_split.h" />
+    <ClInclude Include="xivres\Internal\TeamHypersomnia-rectpack2D\src\rect_structs.h" />
+    <ClInclude Include="xivres\internal\TexturePreview.Windows.h" />
     <ClInclude Include="xivres\internal\TinySha1.h" />
     <ClInclude Include="xivres\internal\SpanCast.h" />
     <ClInclude Include="xivres\internal\String.h" />

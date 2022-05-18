@@ -1,7 +1,7 @@
 #ifndef _XIVRES_EXCEL_H_
 #define _XIVRES_EXCEL_H_
 
-#include "internal/ByteOrder.h"
+#include "Internal/ByteOrder.h"
 
 #include "Common.h"
 #include "SeString.h"

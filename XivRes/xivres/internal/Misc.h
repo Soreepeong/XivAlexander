@@ -10,6 +10,15 @@ namespace XivRes::Internal {
 		return (std::min)(maxValue, (std::max)(minValue, value));
 	}
 
+	template<typename T, typename TFrom>
+	T RangeCheckedCast(TFrom value) {
+		if (value < (std::numeric_limits<T>::min)())
+			throw std::range_error("Out of range");
+		if (value > (std::numeric_limits<T>::max)())
+			throw std::range_error("Out of range");
+		return static_cast<T>(value);
+	}
+
 	template<typename T, size_t C>
 	bool IsAllSameValue(T(&arr)[C], std::remove_cv_t<T> supposedValue = 0) {
 		for (size_t i = 0; i < C; ++i) {

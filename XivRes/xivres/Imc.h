@@ -5,7 +5,7 @@
 #include <span>
 #include <vector>
 
-#include "internal/ByteOrder.h"
+#include "Internal/ByteOrder.h"
 
 #include "Common.h"
 #include "IStream.h"

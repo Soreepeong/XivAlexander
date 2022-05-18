@@ -6,7 +6,7 @@
 #include <ranges>
 #include <stdexcept>
 
-#include "internal/SpanCast.h"
+#include "Internal/SpanCast.h"
 
 #include "Common.h"
 #include "Scd.h"

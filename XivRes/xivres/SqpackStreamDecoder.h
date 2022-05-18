@@ -2,7 +2,7 @@
 
 #include "PackedFileStream.h"
 
-#include "internal/ZlibWrapper.h"
+#include "Internal/ZlibWrapper.h"
 
 namespace XivRes {
 	class BasePackedFileStreamDecoder {

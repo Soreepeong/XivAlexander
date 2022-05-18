@@ -1,8 +1,8 @@
 #ifndef _XIVRES_TEXTUREPACKEDFILESTREAM_H_
 #define _XIVRES_TEXTUREPACKEDFILESTREAM_H_
 
-#include "internal/SpanCast.h"
-#include "internal/ZlibWrapper.h"
+#include "Internal/SpanCast.h"
+#include "Internal/ZlibWrapper.h"
 
 #include "LazyPackedFileStream.h"
 #include "Texture.h"

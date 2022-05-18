@@ -4,8 +4,8 @@
 #include <map>
 #include <stdexcept>
 
-#include "internal/ByteOrder.h"
-#include "internal/Codepoint.h"
+#include "Internal/ByteOrder.h"
+#include "Internal/Codepoint.h"
 
 #include "Common.h"
 

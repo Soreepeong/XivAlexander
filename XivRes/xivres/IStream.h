@@ -9,9 +9,9 @@
 #include <span>
 #include <type_traits>
 
-#include "internal/ByteOrder.h"
-#include "internal/SpanCast.h"
-#include "internal/Misc.h"
+#include "Internal/ByteOrder.h"
+#include "Internal/SpanCast.h"
+#include "Internal/Misc.h"
 
 namespace XivRes {
 	class PartialViewStream;

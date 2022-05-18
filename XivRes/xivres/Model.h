@@ -1,6 +1,6 @@
 #pragma once
 
-#include "internal/ByteOrder.h"
+#include "Internal/ByteOrder.h"
 
 namespace XivRes::Model {
 	struct Header {

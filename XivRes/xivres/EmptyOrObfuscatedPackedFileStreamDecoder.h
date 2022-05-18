@@ -1,7 +1,7 @@
 #ifndef _XIVRES_EMPTYOROBFUSCATEDPACKEDFILESTREAMDECODER_H_
 #define _XIVRES_EMPTYOROBFUSCATEDPACKEDFILESTREAMDECODER_H_
 
-#include "internal/ZlibWrapper.h"
+#include "Internal/ZlibWrapper.h"
 
 #include "SqpackStreamDecoder.h"
 #include "StreamAsPackedFileViewStream.h"

@@ -1,7 +1,7 @@
 #ifndef _XIVRES_SCD_H_
 #define _XIVRES_SCD_H_
 
-#include "internal/ByteOrder.h"
+#include "Internal/ByteOrder.h"
 
 #include "Common.h"
 

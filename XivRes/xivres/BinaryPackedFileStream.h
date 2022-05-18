@@ -1,7 +1,7 @@
 #ifndef _XIVRES_BINARYPACKEDFILESTREAM_H_
 #define _XIVRES_BINARYPACKEDFILESTREAM_H_
 
-#include "internal/ZlibWrapper.h"
+#include "Internal/ZlibWrapper.h"
 
 #include "LazyPackedFileStream.h"
 

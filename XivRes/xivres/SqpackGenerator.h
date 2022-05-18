@@ -1,7 +1,7 @@
 #ifndef _XIVRES_SQPACKGENERATOR_H_
 #define _XIVRES_SQPACKGENERATOR_H_
 
-#include "internal/ListenerManager.h"
+#include "Internal/ListenerManager.h"
 
 #include "BinaryPackedFileStream.h"
 #include "EmptyOrObfuscatedPackedFileStream.h"

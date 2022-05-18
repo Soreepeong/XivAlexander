@@ -8,7 +8,7 @@
 #include "Scd.h"
 #include "IStream.h"
 
-#include "internal/SpanCast.h"
+#include "Internal/SpanCast.h"
 
 namespace XivRes {
 	class ScdReader {

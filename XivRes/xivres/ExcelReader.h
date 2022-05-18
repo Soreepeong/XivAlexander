@@ -4,7 +4,7 @@
 #include <map>
 #include <ranges>
 
-#include "internal/String.h"
+#include "Internal/String.h"
 
 #include "Common.h"
 #include "Excel.h"

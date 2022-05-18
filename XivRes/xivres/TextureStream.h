@@ -31,14 +31,14 @@ namespace XivRes {
 			}
 		}
 
-		TextureStream(TextureFormat type, uint16_t width, uint16_t height, uint16_t depth = 1, uint16_t mipmapCount = 1, uint16_t repeatCount = 1)
+		TextureStream(TextureFormat type, size_t width, size_t height, size_t depth = 1, size_t mipmapCount = 1, size_t repeatCount = 1)
 			: m_header({
 				.Unknown1 = 0,
 				.HeaderSize = static_cast<uint16_t>(Align(sizeof m_header)),
 				.Type = type,
-				.Width = width,
-				.Height = height,
-				.Depth = depth,
+				.Width = Internal::RangeCheckedCast<uint16_t>(width),
+				.Height = Internal::RangeCheckedCast<uint16_t>(height),
+				.Depth = Internal::RangeCheckedCast<uint16_t>(depth),
 				.MipmapCount = 0,
 				.Unknown2 = {}
 				})
@@ -73,12 +73,12 @@ namespace XivRes {
 			if (repeatCount == 0)
 				throw std::invalid_argument("repeat count must be a positive integer");
 
-			m_repeats.resize(repeatCount);
+			m_header.MipmapCount = Internal::RangeCheckedCast<uint16_t>(mipmapCount);
+			m_header.HeaderSize = static_cast<uint32_t>(Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes()));
+
+			m_repeats.resize(repeatCount = Internal::RangeCheckedCast<uint16_t>(repeatCount));
 			for (auto& mipmaps : m_repeats)
 				mipmaps.resize(mipmapCount);
-
-			m_header.MipmapCount = static_cast<uint16_t>(mipmapCount);
-			m_header.HeaderSize = static_cast<uint32_t>(Align(sizeof m_header + std::span(m_mipmapOffsets).size_bytes()));
 
 			m_mipmapOffsets.clear();
 			m_repeatedUnitSize = 0;

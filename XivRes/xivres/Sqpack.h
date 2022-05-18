@@ -7,10 +7,10 @@
 #include <zlib.h>
 
 #include "Common.h"
-#include "internal/ByteOrder.h"
-#include "internal/TinySha1.h"
-#include "internal/SpanCast.h"
-#include "internal/Misc.h"
+#include "Internal/ByteOrder.h"
+#include "Internal/TinySha1.h"
+#include "Internal/SpanCast.h"
+#include "Internal/Misc.h"
 
 namespace XivRes {
 	enum class SqpackType : uint32_t {

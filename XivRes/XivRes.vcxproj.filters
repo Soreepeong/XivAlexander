@@ -10,6 +10,12 @@
     <Filter Include="Headers\Internal">
       <UniqueIdentifier>{e85d0ad4-6102-4282-a237-b9e6aa5c925c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Headers\FontGenerator">
+      <UniqueIdentifier>{75bdb42a-7dac-4d23-8d6a-5ed75cc1bd2a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Headers\Internal\TeamHypersomnia-rectpack2D">
+      <UniqueIdentifier>{aa5f07d6-60e1-4122-a2e1-a0525ace5e35}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json">
@@ -163,6 +169,45 @@
     </ClInclude>
     <ClInclude Include="xivres\GameReader.h">
       <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="xivres\internal\TexturePreview.Windows.h">
+      <Filter>Headers\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="xivres\FontGenerator\IFixedSizeFont.h">
+      <Filter>Headers\FontGenerator</Filter>
+    </ClInclude>
+    <ClInclude Include="xivres\Internal\BitmapCopy.h">
+      <Filter>Headers\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="xivres\FontGenerator\TextMeasurer.h">
+      <Filter>Headers\FontGenerator</Filter>
+    </ClInclude>
+    <ClInclude Include="xivres\FontGenerator\GameFontdataFixedSizeFont.h">
+      <Filter>Headers\FontGenerator</Filter>
+    </ClInclude>
+    <ClInclude Include="xivres\Internal\TeamHypersomnia-rectpack2D\src\empty_space_allocators.h">
+      <Filter>Headers\Internal\TeamHypersomnia-rectpack2D</Filter>
+    </ClInclude>
+    <ClInclude Include="xivres\Internal\TeamHypersomnia-rectpack2D\src\empty_spaces.h">
+      <Filter>Headers\Internal\TeamHypersomnia-rectpack2D</Filter>
+    </ClInclude>
+    <ClInclude Include="xivres\Internal\TeamHypersomnia-rectpack2D\src\finders_interface.h">
+      <Filter>Headers\Internal\TeamHypersomnia-rectpack2D</Filter>
+    </ClInclude>
+    <ClInclude Include="xivres\Internal\TeamHypersomnia-rectpack2D\src\insert_and_split.h">
+      <Filter>Headers\Internal\TeamHypersomnia-rectpack2D</Filter>
+    </ClInclude>
+    <ClInclude Include="xivres\Internal\TeamHypersomnia-rectpack2D\src\rect_structs.h">
+      <Filter>Headers\Internal\TeamHypersomnia-rectpack2D</Filter>
+    </ClInclude>
+    <ClInclude Include="xivres\Internal\TeamHypersomnia-rectpack2D\src\best_bin_finder.h">
+      <Filter>Headers\Internal\TeamHypersomnia-rectpack2D</Filter>
+    </ClInclude>
+    <ClInclude Include="xivres\FontGenerator\FontdataPacker.h">
+      <Filter>Headers\FontGenerator</Filter>
+    </ClInclude>
+    <ClInclude Include="xivres\FontGenerator\CodepointLimitingFixedSizeFont.h">
+      <Filter>Headers\FontGenerator</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
