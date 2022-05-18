@@ -18,7 +18,7 @@
 namespace XivRes::FontGenerator {
 	class FontdataPacker {
 		size_t m_nThreads = 8;
-		int m_nSideLength = 4096;
+		int m_nSideLength = 1024;
 		std::vector<std::shared_ptr<IFixedSizeFont>> m_fonts;
 
 	public:
@@ -151,9 +151,11 @@ namespace XivRes::FontGenerator {
 					auto pSuccesses = std::make_shared<std::vector<RectangleInfo*>>(std::move(successes));
 					successes = {};
 
-					for (size_t nBase = 0; nBase < m_nThreads; nBase++) {
-						pool.Submit([this, pSuccesses, nBase, pCurrentTargetBuffer, w = pStream->Width, h = pStream->Height]() {
-							for (size_t i = nBase; i < pSuccesses->size(); i += m_nThreads) {
+					const auto divideUnit = (std::max<size_t>)(1, static_cast<size_t>(std::sqrt(static_cast<double>(pSuccesses->size()))));
+
+					for (size_t nBase = 0; nBase < divideUnit; nBase++) {
+						pool.Submit([divideUnit, pSuccesses, nBase, pCurrentTargetBuffer, w = pStream->Width, h = pStream->Height]() {
+							for (size_t i = nBase; i < pSuccesses->size(); i += divideUnit) {
 								const auto pInfo = (*pSuccesses)[i];
 								pInfo->SourceFont->Draw(
 									pInfo->Entry.Char(),
