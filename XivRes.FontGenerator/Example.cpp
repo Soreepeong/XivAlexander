@@ -168,172 +168,178 @@ namespace XivRes::FontGenerator {
 			return *this;
 		}
 	};
-	template<
-		typename SrcPixFmt,
-		uint32_t ResolverFunction(const SrcPixFmt&),
-		typename DestPixFmt,
-		typename OpacityType,
-		int VerticalDirection = 1
-	> class RgbBitmapCopy {
-		static_assert(VerticalDirection == 1 || VerticalDirection == -1);
 
-		static constexpr auto Scaler = 0xFFUL;
-		static constexpr auto MaxOpacity = (std::numeric_limits<OpacityType>::max)();
-
-		static inline void DrawLineToRgb(DestPixFmt* destPtr, const SrcPixFmt* srcPtr, size_t regionWidth, const DestPixFmt& fgColor, const DestPixFmt& bgColor, double gamma) {
-			while (regionWidth--) {
-				const auto opacityScaled = (uint32_t)(std::pow(1.0 * ResolverFunction(*srcPtr) / Scaler, gamma) * Scaler);
-				const auto blendedBgColor = DestPixFmt{
-					(bgColor.R * bgColor.A + destPtr->R * (DestPixFmt::MaxA - bgColor.A)) / DestPixFmt::MaxA,
-					(bgColor.G * bgColor.A + destPtr->G * (DestPixFmt::MaxA - bgColor.A)) / DestPixFmt::MaxA,
-					(bgColor.B * bgColor.A + destPtr->B * (DestPixFmt::MaxA - bgColor.A)) / DestPixFmt::MaxA,
-					DestPixFmt::MaxA - ((DestPixFmt::MaxA - bgColor.A) * (DestPixFmt::MaxA - destPtr->A)) / DestPixFmt::MaxA,
-				};
-				const auto blendedFgColor = DestPixFmt{
-					(fgColor.R * fgColor.A + destPtr->R * (DestPixFmt::MaxA - fgColor.A)) / DestPixFmt::MaxA,
-					(fgColor.G * fgColor.A + destPtr->G * (DestPixFmt::MaxA - fgColor.A)) / DestPixFmt::MaxA,
-					(fgColor.B * fgColor.A + destPtr->B * (DestPixFmt::MaxA - fgColor.A)) / DestPixFmt::MaxA,
-					DestPixFmt::MaxA - ((DestPixFmt::MaxA - fgColor.A) * (DestPixFmt::MaxA - destPtr->A)) / DestPixFmt::MaxA,
-				};
-				const auto currentColor = DestPixFmt{
-					(blendedBgColor.R * (Scaler - opacityScaled) + blendedFgColor.R * opacityScaled) / Scaler,
-					(blendedBgColor.G * (Scaler - opacityScaled) + blendedFgColor.G * opacityScaled) / Scaler,
-					(blendedBgColor.B * (Scaler - opacityScaled) + blendedFgColor.B * opacityScaled) / Scaler,
-					(blendedBgColor.A * (Scaler - opacityScaled) + blendedFgColor.A * opacityScaled) / Scaler,
-				};
-				const auto blendedDestColor = DestPixFmt{
-					(destPtr->R * destPtr->A + currentColor.R * (DestPixFmt::MaxA - destPtr->A)) / DestPixFmt::MaxA,
-					(destPtr->G * destPtr->A + currentColor.G * (DestPixFmt::MaxA - destPtr->A)) / DestPixFmt::MaxA,
-					(destPtr->B * destPtr->A + currentColor.B * (DestPixFmt::MaxA - destPtr->A)) / DestPixFmt::MaxA,
-					DestPixFmt::MaxA - ((DestPixFmt::MaxA - destPtr->A) * (DestPixFmt::MaxA - currentColor.A)) / DestPixFmt::MaxA,
-				};
-				destPtr->R = (blendedDestColor.R * (DestPixFmt::MaxA - currentColor.A) + currentColor.R * currentColor.A) / DestPixFmt::MaxR;
-				destPtr->G = (blendedDestColor.G * (DestPixFmt::MaxA - currentColor.A) + currentColor.G * currentColor.A) / DestPixFmt::MaxG;
-				destPtr->B = (blendedDestColor.B * (DestPixFmt::MaxA - currentColor.A) + currentColor.B * currentColor.A) / DestPixFmt::MaxB;
-				destPtr->A = blendedDestColor.A;
-				++destPtr;
-				++srcPtr;
-			}
-		}
-
-		static inline void DrawLineToRgbOpaque(DestPixFmt* destPtr, const SrcPixFmt* srcPtr, size_t regionWidth, const DestPixFmt& fgColor, const DestPixFmt& bgColor, double gamma) {
-			while (regionWidth--) {
-				const auto opacityScaled = (uint32_t)(std::pow(1.0 * ResolverFunction(*srcPtr) / Scaler, gamma) * Scaler);
-				destPtr->R = (bgColor.R * (Scaler - opacityScaled) + fgColor.R * opacityScaled) / Scaler;
-				destPtr->G = (bgColor.G * (Scaler - opacityScaled) + fgColor.G * opacityScaled) / Scaler;
-				destPtr->B = (bgColor.B * (Scaler - opacityScaled) + fgColor.B * opacityScaled) / Scaler;
-				destPtr->A = DestPixFmt::MaxA;
-				++destPtr;
-				++srcPtr;
-			}
-		}
-
-		template<bool ColorIsForeground>
-		static inline void DrawLineToRgbBinaryOpacity(DestPixFmt* destPtr, const SrcPixFmt* srcPtr, size_t regionWidth, const DestPixFmt& color, double gamma) {
-			while (regionWidth--) {
-				const auto opacityScaled = (uint32_t)(std::pow(1.0 * ResolverFunction(*srcPtr) / Scaler, gamma) * Scaler);
-				const auto opacity = DestPixFmt::MaxA * (ColorIsForeground ? opacityScaled : Scaler - opacityScaled) / Scaler;
-				if (opacity) {
-					const auto blendedDestColor = DestPixFmt{
-						(destPtr->R * destPtr->A + color.R * (DestPixFmt::MaxA - destPtr->A)) / DestPixFmt::MaxA,
-						(destPtr->G * destPtr->A + color.G * (DestPixFmt::MaxA - destPtr->A)) / DestPixFmt::MaxA,
-						(destPtr->B * destPtr->A + color.B * (DestPixFmt::MaxA - destPtr->A)) / DestPixFmt::MaxA,
-						DestPixFmt::MaxA - ((DestPixFmt::MaxA - destPtr->A) * (DestPixFmt::MaxA - opacity)) / DestPixFmt::MaxA,
-					};
-					destPtr->R = (blendedDestColor.R * (DestPixFmt::MaxA - opacity) + color.R * opacity) / DestPixFmt::MaxR;
-					destPtr->G = (blendedDestColor.G * (DestPixFmt::MaxA - opacity) + color.G * opacity) / DestPixFmt::MaxG;
-					destPtr->B = (blendedDestColor.B * (DestPixFmt::MaxA - opacity) + color.B * opacity) / DestPixFmt::MaxB;
-					destPtr->A = blendedDestColor.A;
-				}
-				++destPtr;
-				++srcPtr;
-			}
-		}
-
-		static inline void DrawLineToL8(DestPixFmt* destPtr, const SrcPixFmt* srcPtr, size_t regionWidth, const DestPixFmt& fgColor, const DestPixFmt& bgColor, OpacityType fgOpacity, OpacityType bgOpacity, double gamma) {
-			constexpr auto DestPixFmtMax = (std::numeric_limits<DestPixFmt>::max)();
-
-			while (regionWidth--) {
-				const auto opacityScaled = (uint32_t)(std::pow(1.0 * ResolverFunction(*srcPtr) / Scaler, gamma) * Scaler);
-				const auto blendedBgColor = (1 * bgColor * bgOpacity + 1 * *destPtr * (MaxOpacity - bgOpacity)) / MaxOpacity;
-				const auto blendedFgColor = (1 * fgColor * fgOpacity + 1 * *destPtr * (MaxOpacity - fgOpacity)) / MaxOpacity;
-				*destPtr = static_cast<DestPixFmt>((blendedBgColor * (Scaler - opacityScaled) + blendedFgColor * opacityScaled) / Scaler);
-				++destPtr;
-				++srcPtr;
-			}
-		}
-
-		static inline void DrawLineToL8Opaque(DestPixFmt* destPtr, const SrcPixFmt* srcPtr, size_t regionWidth, double gamma) {
-			constexpr auto DestPixFmtMax = (std::numeric_limits<DestPixFmt>::max)();
-
-			while (regionWidth--) {
-				const auto opacityScaled = (uint32_t)(std::pow(1.0 * ResolverFunction(*srcPtr) / Scaler, gamma) * Scaler);
-				*destPtr = static_cast<DestPixFmt>(MaxOpacity * opacityScaled / Scaler);
-				++destPtr;
-				++srcPtr;
-			}
-		}
-
-		template<bool ColorIsForeground>
-		static inline void DrawLineToL8BinaryOpacity(DestPixFmt* destPtr, const SrcPixFmt* srcPtr, size_t regionWidth, const DestPixFmt& color, double gamma) {
-			constexpr auto DestPixFmtMax = (std::numeric_limits<DestPixFmt>::max)();
-
-			while (regionWidth--) {
-				const auto opacityScaled = (uint32_t)(std::pow(1.0 * ResolverFunction(*srcPtr) / Scaler, gamma) * Scaler);
-				const auto opacityScaled2 = ColorIsForeground ? opacityScaled : Scaler - opacityScaled;
-				*destPtr = static_cast<DestPixFmt>((*destPtr * (Scaler - opacityScaled2) + 1 * color * opacityScaled2) / Scaler);
-				++destPtr;
-				++srcPtr;
-			}
-		}
-
-	public:
-		static inline void CopyTo(const GlyphMetrics& src, const GlyphMetrics& dest, const SrcPixFmt* srcBuf, DestPixFmt* destBuf, SSIZE_T srcWidth, SSIZE_T srcHeight, SSIZE_T destWidth, DestPixFmt fgColor, DestPixFmt bgColor, OpacityType fgOpacity, OpacityType bgOpacity, double gamma) {
-			auto destPtrBegin = &destBuf[static_cast<size_t>(1) * dest.Y1 * destWidth + dest.X1];
-			auto srcPtrBegin = &srcBuf[static_cast<size_t>(1) * (VerticalDirection == 1 ? src.Y1 : srcHeight - src.Y1 - 1) * srcWidth + src.X1];
-			const auto srcPtrDelta = srcWidth * VerticalDirection;
-			const auto regionWidth = src.GetWidth();
-			const auto regionHeight = src.GetHeight();
-
-			gamma = 1.0 / gamma;
-
-			if constexpr (std::is_integral_v<DestPixFmt>) {
-				constexpr auto DestPixFmtMax = (std::numeric_limits<DestPixFmt>::max)();
-
-				if (fgOpacity == MaxOpacity && bgOpacity == MaxOpacity && fgColor == DestPixFmtMax && bgColor == 0) {
-					for (auto i = 0; i < regionHeight; ++i, destPtrBegin += destWidth, srcPtrBegin += srcPtrDelta)
-						DrawLineToL8Opaque(destPtrBegin, srcPtrBegin, regionWidth, gamma);
-				} else if (fgOpacity == MaxOpacity && bgOpacity == 0) {
-					for (auto i = 0; i < regionHeight; ++i, destPtrBegin += destWidth, srcPtrBegin += srcPtrDelta)
-						DrawLineToL8BinaryOpacity<true>(destPtrBegin, srcPtrBegin, regionWidth, fgColor, gamma);
-				} else if (fgOpacity == 0 && bgOpacity == MaxOpacity) {
-					for (auto i = 0; i < regionHeight; ++i, destPtrBegin += destWidth, srcPtrBegin += srcPtrDelta)
-						DrawLineToL8BinaryOpacity<false>(destPtrBegin, srcPtrBegin, regionWidth, bgColor, gamma);
-				} else {
-					for (auto i = 0; i < regionHeight; ++i, destPtrBegin += destWidth, srcPtrBegin += srcPtrDelta)
-						DrawLineToL8(destPtrBegin, srcPtrBegin, regionWidth, fgColor, bgColor, fgOpacity, bgOpacity, gamma);
-				}
-			} else {
-				fgColor.A = fgColor.A * fgOpacity / (std::numeric_limits<OpacityType>::max)();
-				bgColor.A = bgColor.A * bgOpacity / (std::numeric_limits<OpacityType>::max)();
-				if (fgColor.A == DestPixFmt::MaxA && bgColor.A == DestPixFmt::MaxA) {
-					for (auto i = 0; i < regionHeight; ++i, destPtrBegin += destWidth, srcPtrBegin += srcPtrDelta)
-						DrawLineToRgbOpaque(destPtrBegin, srcPtrBegin, regionWidth, fgColor, bgColor, gamma);
-				} else if (fgColor.A == DestPixFmt::MaxA && bgColor.A == 0) {
-					for (auto i = 0; i < regionHeight; ++i, destPtrBegin += destWidth, srcPtrBegin += srcPtrDelta)
-						DrawLineToRgbBinaryOpacity<true>(destPtrBegin, srcPtrBegin, regionWidth, fgColor, gamma);
-				} else if (fgColor.A == 0 && bgColor.A == DestPixFmt::MaxA) {
-					for (auto i = 0; i < regionHeight; ++i, destPtrBegin += destWidth, srcPtrBegin += srcPtrDelta)
-						DrawLineToRgbBinaryOpacity<false>(destPtrBegin, srcPtrBegin, regionWidth, bgColor, gamma);
-				} else {
-					for (auto i = 0; i < regionHeight; ++i, destPtrBegin += destWidth, srcPtrBegin += srcPtrDelta)
-						DrawLineToRgb(destPtrBegin, srcPtrBegin, regionWidth, fgColor, bgColor, gamma);
-				}
-			}
-		}
-
+	enum class BitmapVerticalDirection : int {
+		TopRowFirst = 1,
+		Undefined = 0,
+		BottomRowFirst = -1,
 	};
 
+	class RgbBitmapCopy {
+
+		float m_fInverseGamma = 1.f;
+		RGBA8888 m_colorForeground = RGBA8888(0, 0, 0, 255);
+		RGBA8888 m_colorBackground = RGBA8888(0, 0, 0, 0);
+
+		const uint8_t* m_pSource = nullptr;
+		size_t m_nSourceWidth = 0;
+		size_t m_nSourceHeight = 0;
+		size_t m_nSourceStride = 0;
+		BitmapVerticalDirection m_nSourceVerticalDirection = BitmapVerticalDirection::Undefined;
+
+		RGBA8888* m_pTarget = nullptr;
+		size_t m_nTargetWidth = 0;
+		size_t m_nTargetHeight = 0;
+		BitmapVerticalDirection m_nTargetVerticalDirection = BitmapVerticalDirection::Undefined;
+
+	public:
+		RgbBitmapCopy& From(const void* pBuf, size_t width, size_t height, size_t stride, BitmapVerticalDirection verticalDirection) {
+			m_pSource = static_cast<const uint8_t*>(pBuf);
+			m_nSourceWidth = width;
+			m_nSourceHeight = height;
+			m_nSourceStride = stride;
+			m_nSourceVerticalDirection = verticalDirection;
+			return *this;
+		}
+
+		RgbBitmapCopy& To(RGBA8888* pBuf, size_t width, size_t height, BitmapVerticalDirection verticalDirection) {
+			m_pTarget = pBuf;
+			m_nTargetWidth = width;
+			m_nTargetHeight = height;
+			m_nTargetVerticalDirection = verticalDirection;
+			return *this;
+		}
+
+		RgbBitmapCopy& WithGamma(float gamma_) {
+			m_fInverseGamma = 1.0f / gamma_;
+			return *this;
+		}
+
+		RgbBitmapCopy& WithForegroundColor(RGBA8888 color) {
+			m_colorForeground = color;
+			return *this;
+		}
+
+		RgbBitmapCopy& WithBackgroundColor(RGBA8888 color) {
+			m_colorBackground = color;
+			return *this;
+		}
+
+		void CopyTo(const GlyphMetrics& src, const GlyphMetrics& dest) {
+			auto destPtrBegin = &m_pTarget[(m_nTargetVerticalDirection == BitmapVerticalDirection::TopRowFirst ? dest.Y1 : m_nTargetHeight - dest.Y1 - 1) * m_nTargetWidth + dest.X1];
+			const auto destPtrDelta = m_nTargetWidth * static_cast<int>(m_nTargetVerticalDirection);
+
+			auto srcPtrBegin = &m_pSource[m_nSourceStride * ((m_nSourceVerticalDirection == BitmapVerticalDirection::TopRowFirst ? src.Y1 : m_nSourceHeight - src.Y1 - 1) * m_nSourceWidth + src.X1)];
+			const auto srcPtrDelta = m_nSourceStride * m_nSourceWidth * static_cast<int>(m_nSourceVerticalDirection);
+
+			const auto nCols = src.GetWidth();
+			auto nRemainingRows = src.GetHeight();
+
+			if (m_colorForeground.A == 255 && m_colorBackground.A == 255) {
+				while (nRemainingRows--) {
+					DrawLineToRgbOpaque(destPtrBegin, srcPtrBegin, nCols);
+					destPtrBegin += destPtrDelta;
+					srcPtrBegin += srcPtrDelta;
+				}
+
+			} else if (m_colorForeground.A == 255 && m_colorBackground.A == 0) {
+				while (nRemainingRows--) {
+					DrawLineToRgbBinaryOpacity<true>(destPtrBegin, srcPtrBegin, nCols);
+					destPtrBegin += destPtrDelta;
+					srcPtrBegin += srcPtrDelta;
+				}
+
+			} else if (m_colorForeground.A == 0 && m_colorBackground.A == 255) {
+				while (nRemainingRows--) {
+					DrawLineToRgbBinaryOpacity<false>(destPtrBegin, srcPtrBegin, nCols);
+					destPtrBegin += destPtrDelta;
+					srcPtrBegin += srcPtrDelta;
+				}
+
+			} else if (m_colorForeground.A == 0 && m_colorBackground.A == 0) {
+				return;
+
+			} else {
+				while (nRemainingRows--) {
+					DrawLineToRgb(destPtrBegin, srcPtrBegin, nCols);
+					destPtrBegin += destPtrDelta;
+					srcPtrBegin += srcPtrDelta;
+				}
+			}
+		}
+
+	private:
+		void DrawLineToRgb(RGBA8888* pTarget, const uint8_t* pSource, size_t nPixelCount) {
+			while (nPixelCount--) {
+				const auto opacityScaled = static_cast<uint32_t>(std::powf(static_cast<float>(*pSource) / 255.f, m_fInverseGamma) * 255.f);
+				const auto blendedBgColor = RGBA8888{
+					(m_colorBackground.R * m_colorBackground.A + pTarget->R * (255 - m_colorBackground.A)) / 255,
+					(m_colorBackground.G * m_colorBackground.A + pTarget->G * (255 - m_colorBackground.A)) / 255,
+					(m_colorBackground.B * m_colorBackground.A + pTarget->B * (255 - m_colorBackground.A)) / 255,
+					255 - ((255 - m_colorBackground.A) * (255 - pTarget->A)) / 255,
+				};
+				const auto blendedFgColor = RGBA8888{
+					(m_colorForeground.R * m_colorForeground.A + pTarget->R * (255 - m_colorForeground.A)) / 255,
+					(m_colorForeground.G * m_colorForeground.A + pTarget->G * (255 - m_colorForeground.A)) / 255,
+					(m_colorForeground.B * m_colorForeground.A + pTarget->B * (255 - m_colorForeground.A)) / 255,
+					255 - ((255 - m_colorForeground.A) * (255 - pTarget->A)) / 255,
+				};
+				const auto currentColor = RGBA8888{
+					(blendedBgColor.R * (255 - opacityScaled) + blendedFgColor.R * opacityScaled) / 255,
+					(blendedBgColor.G * (255 - opacityScaled) + blendedFgColor.G * opacityScaled) / 255,
+					(blendedBgColor.B * (255 - opacityScaled) + blendedFgColor.B * opacityScaled) / 255,
+					(blendedBgColor.A * (255 - opacityScaled) + blendedFgColor.A * opacityScaled) / 255,
+				};
+				const auto blendedDestColor = RGBA8888{
+					(pTarget->R * pTarget->A + currentColor.R * (255 - pTarget->A)) / 255,
+					(pTarget->G * pTarget->A + currentColor.G * (255 - pTarget->A)) / 255,
+					(pTarget->B * pTarget->A + currentColor.B * (255 - pTarget->A)) / 255,
+					255 - ((255 - pTarget->A) * (255 - currentColor.A)) / 255,
+				};
+				pTarget->R = (blendedDestColor.R * (255 - currentColor.A) + currentColor.R * currentColor.A) / 255;
+				pTarget->G = (blendedDestColor.G * (255 - currentColor.A) + currentColor.G * currentColor.A) / 255;
+				pTarget->B = (blendedDestColor.B * (255 - currentColor.A) + currentColor.B * currentColor.A) / 255;
+				pTarget->A = blendedDestColor.A;
+				++pTarget;
+				pSource += m_nSourceStride;
+			}
+		}
+
+		void DrawLineToRgbOpaque(RGBA8888* pTarget, const uint8_t* pSource, size_t nPixelCount) {
+			while (nPixelCount--) {
+				const auto opacityScaled = static_cast<uint32_t>(std::powf(static_cast<float>(*pSource) / 255.f, m_fInverseGamma) * 255.f);
+				pTarget->R = (m_colorBackground.R * (255 - opacityScaled) + m_colorForeground.R * opacityScaled) / 255;
+				pTarget->G = (m_colorBackground.G * (255 - opacityScaled) + m_colorForeground.G * opacityScaled) / 255;
+				pTarget->B = (m_colorBackground.B * (255 - opacityScaled) + m_colorForeground.B * opacityScaled) / 255;
+				pTarget->A = 255;
+				++pTarget;
+				pSource += m_nSourceStride;
+			}
+		}
+
+		template<bool ColorIsForeground>
+		void DrawLineToRgbBinaryOpacity(RGBA8888* pTarget, const uint8_t* pSource, size_t nPixelCount) {
+			const auto color = ColorIsForeground ? m_colorForeground : m_colorBackground;
+			while (nPixelCount--) {
+				const auto opacityScaled = static_cast<uint32_t>(std::powf(static_cast<float>(*pSource) / 255.f, m_fInverseGamma) * 255.f);
+				const auto opacity = 255 * (ColorIsForeground ? opacityScaled : 255 - opacityScaled) / 255;
+				if (opacity) {
+					const auto blendedDestColor = RGBA8888{
+						(pTarget->R * pTarget->A + color.R * (255 - pTarget->A)) / 255,
+						(pTarget->G * pTarget->A + color.G * (255 - pTarget->A)) / 255,
+						(pTarget->B * pTarget->A + color.B * (255 - pTarget->A)) / 255,
+						255 - ((255 - pTarget->A) * (255 - opacity)) / 255,
+					};
+					pTarget->R = (blendedDestColor.R * (255 - opacity) + color.R * opacity) / 255;
+					pTarget->G = (blendedDestColor.G * (255 - opacity) + color.G * opacity) / 255;
+					pTarget->B = (blendedDestColor.B * (255 - opacity) + color.B * opacity) / 255;
+					pTarget->A = blendedDestColor.A;
+				}
+				++pTarget;
+				pSource += m_nSourceStride;
+			}
+		}
+	};
 
 	class IFontFace {
 	public:
@@ -351,7 +357,7 @@ namespace XivRes::FontGenerator {
 
 		virtual int GetAdjustedAdvanceX(char32_t left, char32_t right) const = 0;
 
-		virtual void Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor, uint8_t fgOpacity = 255, uint8_t bgOpacity = 255) const = 0;
+		virtual void Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const = 0;
 	};
 
 	struct TextMeasureResult {
@@ -366,16 +372,15 @@ namespace XivRes::FontGenerator {
 		GlyphMetrics Occupied;
 		std::vector<CharacterInfo> Characters;
 
-		std::shared_ptr<XivRes::MemoryMipmapStream> CreateMipmap(const IFontFace& fontFace, RGBA8888 fgColor, RGBA8888 bgColor, uint8_t fgOpacity = 255, uint8_t bgOpacity = 255) const {
+		std::shared_ptr<XivRes::MemoryMipmapStream> CreateMipmap(const IFontFace& fontFace, RGBA8888 fgColor, RGBA8888 bgColor) const {
 			auto res = std::make_shared<XivRes::MemoryMipmapStream>(Occupied.GetWidth(), Occupied.GetHeight(), 1, XivRes::TextureFormat::A8R8G8B8);
 			auto buf = res->View<RGBA8888>();
-			bgColor.A = 255 - ((255 - bgColor.A) * (255 - bgOpacity)) / 255;
 			std::ranges::fill(buf, bgColor);
 			for (const auto& c : Characters) {
 				if (c.Metrics.IsEffectivelyEmpty())
 					continue;
 
-				fontFace.Draw(c.Displayed, &buf[0], c.X - Occupied.X1, c.Y - Occupied.Y1, res->Width, res->Height, fgColor, {}, fgOpacity, 0);
+				fontFace.Draw(c.Displayed, &buf[0], c.X - Occupied.X1, c.Y - Occupied.Y1, res->Width, res->Height, fgColor, {});
 			}
 			return res;
 		}
@@ -561,34 +566,27 @@ namespace XivRes::FontGenerator {
 					continue;
 
 				const auto& mipmapStream = *m_mipmapStreams.at(pEntry->TextureFileIndex());
-				const auto srcBuf = mipmapStream.View<RGBA8888>();
+				const auto pOpacityArray = &mipmapStream.View<uint8_t>()[3 - pEntry->TexturePlaneIndex()];
 
-				for (size_t x = *pEntry->TextureOffsetX, x_ = x + (std::min<int>)(m_dx, *pEntry->BoundingWidth); x < x_; x++) {
+				m_dx = (std::min<int>)(m_dx, *pEntry->BoundingWidth);
+				for (size_t x = *pEntry->TextureOffsetX, x_ = x + m_dx; x < x_; x++) {
 					auto pass = true;
-					for (size_t y = *pEntry->TextureOffsetY, y_ = *pEntry->TextureOffsetY + *pEntry->BoundingWidth; pass && y < y_; y++) {
-						switch (pEntry->TexturePlaneIndex()) {
-							case 0:
-								pass = GetEffectiveOpacity<0>(srcBuf[y * mipmapStream.Width + x]) == 0;
-								break;
-							case 1:
-								pass = GetEffectiveOpacity<1>(srcBuf[y * mipmapStream.Width + x]) == 0;
-								break;
-							case 2:
-								pass = GetEffectiveOpacity<2>(srcBuf[y * mipmapStream.Width + x]) == 0;
-								break;
-							case 3:
-								pass = GetEffectiveOpacity<3>(srcBuf[y * mipmapStream.Width + x]) == 0;
-								break;
-							default:
-								std::abort();  // Cannot reach
-						}
-					}
+					for (size_t y = *pEntry->TextureOffsetY, y_ = *pEntry->TextureOffsetY + *pEntry->BoundingWidth; pass && y < y_; y++)
+						pass = pOpacityArray[4 * (y * mipmapStream.Width + x)] == 0;
 					if (!pass) {
 						m_dx = static_cast<int>(x - pEntry->TextureOffsetX) - 1;
 						break;
 					}
 				}
 			}
+		}
+
+		int GetHorizontalOffset() const {
+			return m_dx;
+		}
+
+		void SetHorizontalOffset(int offset) {
+			m_dx = offset;
 		}
 
 		float GetSizePt() const override {
@@ -638,7 +636,7 @@ namespace XivRes::FontGenerator {
 			return gm.AdvanceX + m_stream->GetKerningDistance(left, right);
 		}
 
-		void Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor, uint8_t fgOpacity = 255, uint8_t bgOpacity = 255) const override {
+		void Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const override {
 			const auto pEntry = m_stream->GetFontEntry(codepoint);
 			if (!pEntry)
 				return;
@@ -647,19 +645,13 @@ namespace XivRes::FontGenerator {
 			auto dest = GlyphMetricsFromEntry(pEntry, drawX, drawY);
 			const auto& mipmapStream = *m_mipmapStreams.at(pEntry->TextureFileIndex());
 			src.AdjustToIntersection(dest, mipmapStream.Width, mipmapStream.Height, destWidth, destHeight);
-			const auto srcBuf = mipmapStream.View<RGBA8888>();
-			switch (pEntry->TexturePlaneIndex()) {
-				case 0:
-					return RgbBitmapCopy<RGBA8888, GetEffectiveOpacity<0>, RGBA8888, uint8_t>::CopyTo(src, dest, &srcBuf[0], pBuf, mipmapStream.Width, mipmapStream.Height, destWidth, fgColor, bgColor, fgOpacity, bgOpacity, 1.0);
-				case 1:
-					return RgbBitmapCopy<RGBA8888, GetEffectiveOpacity<1>, RGBA8888, uint8_t>::CopyTo(src, dest, &srcBuf[0], pBuf, mipmapStream.Width, mipmapStream.Height, destWidth, fgColor, bgColor, fgOpacity, bgOpacity, 1.0);
-				case 2:
-					return RgbBitmapCopy<RGBA8888, GetEffectiveOpacity<2>, RGBA8888, uint8_t>::CopyTo(src, dest, &srcBuf[0], pBuf, mipmapStream.Width, mipmapStream.Height, destWidth, fgColor, bgColor, fgOpacity, bgOpacity, 1.0);
-				case 3:
-					return RgbBitmapCopy<RGBA8888, GetEffectiveOpacity<3>, RGBA8888, uint8_t>::CopyTo(src, dest, &srcBuf[0], pBuf, mipmapStream.Width, mipmapStream.Height, destWidth, fgColor, bgColor, fgOpacity, bgOpacity, 1.0);
-				default:
-					std::abort();  // Cannot reach
-			}
+			RgbBitmapCopy()
+				.From(&mipmapStream.View<uint8_t>()[3 - pEntry->TexturePlaneIndex()], mipmapStream.Width, mipmapStream.Height, 4, BitmapVerticalDirection::TopRowFirst)
+				.To(pBuf, destWidth, destHeight, BitmapVerticalDirection::TopRowFirst)
+				.WithForegroundColor(fgColor)
+				.WithBackgroundColor(bgColor)
+				.WithGamma(1.0)
+				.CopyTo(src, dest);
 		}
 
 	private:
@@ -673,20 +665,6 @@ namespace XivRes::FontGenerator {
 				.AdvanceX = pEntry->BoundingWidth + pEntry->NextOffsetX,
 			};
 			return src;
-		}
-
-		template<int ChannelIndex>
-		static uint32_t GetEffectiveOpacity(const RGBA8888& src) {
-			if constexpr (ChannelIndex == 0)
-				return src.R;
-			else if constexpr (ChannelIndex == 1)
-				return src.G;
-			else if constexpr (ChannelIndex == 2)
-				return src.B;
-			else if constexpr (ChannelIndex == 3)
-				return src.A;
-			else
-				return 0;  // cannot happen
 		}
 	};
 }
@@ -780,25 +758,25 @@ void ShowMipmapStream(const XivRes::TextureStream& texStream) {
 			switch (showmode) {
 				case 0:
 				case 1:
-					reinterpret_cast<XivRes::RGBA8888*>(&bitfields[0])->SetFrom(0xff, 0, 0, 0);
-					reinterpret_cast<XivRes::RGBA8888*>(&bitfields[1])->SetFrom(0, 0xff, 0, 0);
-					reinterpret_cast<XivRes::RGBA8888*>(&bitfields[2])->SetFrom(0, 0, 0xff, 0);
+					reinterpret_cast<XivRes::RGBA8888*>(&bitfields[0])->SetFrom(255, 0, 0, 0);
+					reinterpret_cast<XivRes::RGBA8888*>(&bitfields[1])->SetFrom(0, 255, 0, 0);
+					reinterpret_cast<XivRes::RGBA8888*>(&bitfields[2])->SetFrom(0, 0, 255, 0);
 					break;
 				case 2:
 					for (auto& bitfield : bitfields)
-						reinterpret_cast<XivRes::RGBA8888*>(&bitfield)->SetFrom(0xff, 0, 0, 0);
+						reinterpret_cast<XivRes::RGBA8888*>(&bitfield)->SetFrom(255, 0, 0, 0);
 					break;
 				case 3:
 					for (auto& bitfield : bitfields)
-						reinterpret_cast<XivRes::RGBA8888*>(&bitfield)->SetFrom(0, 0xff, 0, 0);
+						reinterpret_cast<XivRes::RGBA8888*>(&bitfield)->SetFrom(0, 255, 0, 0);
 					break;
 				case 4:
 					for (auto& bitfield : bitfields)
-						reinterpret_cast<XivRes::RGBA8888*>(&bitfield)->SetFrom(0, 0, 0xff, 0);
+						reinterpret_cast<XivRes::RGBA8888*>(&bitfield)->SetFrom(0, 0, 255, 0);
 					break;
 				case 5:
 					for (auto& bitfield : bitfields)
-						reinterpret_cast<XivRes::RGBA8888*>(&bitfield)->SetFrom(0, 0, 0, 0xff);
+						reinterpret_cast<XivRes::RGBA8888*>(&bitfield)->SetFrom(0, 0, 0, 255);
 					break;
 			}
 			StretchDIBits(hdc, renderOffset.x, renderOffset.y, dw, dh, 0, 0, stream->Width, stream->Height, showmode == 0 ? &transparent[0] : &buf[0], &bmi, DIB_RGB_COLORS, SRCCOPY);
@@ -1136,7 +1114,7 @@ static const auto* const pszTestString = (
 	u8"W\u200cA W\u200ce W\u200cq Y\u200cA Y\u200ca Y\u200cc Y\u200cd Y\u200ce Y\u200cg Y\u200cm Y\u200cn Y\u200co Y\u200cp Y\u200cq Y\u200cr Y\u200cu e\u200cT o\u200cT\n"
 	u8"Az Fv Fw Fy TV TW TY Tv Tw Ty VT WT YT tv tw ty vt wt yt\n"
 	u8"A\u200cz F\u200cv F\u200cw F\u200cy T\u200cV T\u200cW T\u200cY T\u200cv T\u200cw T\u200cy V\u200cT W\u200cT Y\u200cT t\u200cv t\u200cw t\u200cy v\u200ct w\u200ct y\u200ct\n"
-);
+	);
 
 int main() {
 	std::vector<char> tmp;
@@ -1155,7 +1133,7 @@ int main() {
 	auto tex = XivRes::FontGenerator::TextMeasurer(*face)
 		// .WithMaxWidth(320)
 		.Measure(pszTestString)
-		.CreateMipmap(*face, XivRes::RGBA8888(255, 255, 255, 255), XivRes::RGBA8888(0, 0, 0, 200), 255, 150)
+		.CreateMipmap(*face, XivRes::RGBA8888(255, 255, 255, 255), XivRes::RGBA8888(0, 0, 0, 200))
 		->ToSingleTextureStream();
 	ShowMipmapStream(*tex);
 	return 0;
