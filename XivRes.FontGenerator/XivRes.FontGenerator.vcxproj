@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{7e0615c0-f086-4fcb-9df0-e381cbb684f5}</ProjectGuid>
-    <RootNamespace>XivResExample</RootNamespace>
+    <ProjectGuid>{C53D1DF1-A5ED-4F17-BC96-2A8C5462D3D9}</ProjectGuid>
+    <RootNamespace>XivRes.FontGen</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -186,7 +186,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="XivResExample.cpp" />
+    <ClCompile Include="Example.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />

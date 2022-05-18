@@ -466,7 +466,7 @@ namespace XivRes {
 			, m_fullPathHash(EmptyHashValue)
 			, m_text() {}
 
-		SqpackPathSpec(SqpackPathSpec&& r)
+		SqpackPathSpec(SqpackPathSpec&& r) noexcept
 			: m_empty(r.m_empty)
 			, m_categoryId(r.m_categoryId)
 			, m_expacId(r.m_expacId)
@@ -610,7 +610,7 @@ namespace XivRes {
 			}
 		}
 
-		SqpackPathSpec& operator=(SqpackPathSpec&& r) {
+		SqpackPathSpec& operator=(SqpackPathSpec&& r) noexcept {
 			m_empty = r.m_empty;
 			m_categoryId = r.m_categoryId;
 			m_expacId = r.m_expacId;
@@ -635,7 +635,7 @@ namespace XivRes {
 			return *this;
 		}
 
-		void Clear() {
+		void Clear() noexcept {
 			m_text.clear();
 			m_fullPathHash = m_pathHash = m_nameHash = EmptyHashValue;
 		}

@@ -6,7 +6,7 @@
 #include <span>
 #include <vector>
 
-#include "Stream.h"
+#include "IStream.h"
 
 namespace XivRes {
 	struct EstEntryDescriptor {
@@ -50,8 +50,8 @@ namespace XivRes {
 			: m_data(std::move(data)) {
 		}
 
-		EstFile(const Stream& stream)
-			: m_data(stream.ReadStreamIntoVector<uint8_t>(0)) {
+		EstFile(const IStream& stream)
+			: m_data(ReadStreamIntoVector<uint8_t>(stream, 0)) {
 		}
 
 		EstFile(const std::map<EstEntryDescriptor, uint16_t>& pairs)

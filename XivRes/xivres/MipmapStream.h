@@ -3,11 +3,13 @@
 #include "internal/Dxt.h"
 
 #include "PixelFormats.h"
-#include "Stream.h"
+#include "IStream.h"
 #include "Texture.h"
 
 namespace XivRes {
-	class MipmapStream : public Stream {
+	class TextureStream;
+
+	class MipmapStream : public DefaultAbstractStream {
 	public:
 		const uint16_t Width;
 		const uint16_t Height;
@@ -27,13 +29,15 @@ namespace XivRes {
 		[[nodiscard]] std::streamsize StreamSize() const override {
 			return SupposedMipmapLength;
 		}
+
+		std::shared_ptr<TextureStream> ToSingleTextureStream();
 	};
 
 	class WrappedMipmapStream : public MipmapStream {
-		std::shared_ptr<const Stream> m_underlying;
+		std::shared_ptr<const IStream> m_underlying;
 
 	public:
-		WrappedMipmapStream(TextureHeader header, size_t mipmapIndex, std::shared_ptr<const Stream> underlying)
+		WrappedMipmapStream(TextureHeader header, size_t mipmapIndex, std::shared_ptr<const IStream> underlying)
 			: MipmapStream(
 				(std::max)(1, header.Width >> mipmapIndex),
 				(std::max)(1, header.Height >> mipmapIndex),
@@ -41,7 +45,7 @@ namespace XivRes {
 				header.Type)
 			, m_underlying(std::move(underlying)) {}
 
-		WrappedMipmapStream(size_t width, size_t height, size_t depths, TextureFormat type, std::shared_ptr<const Stream> underlying)
+		WrappedMipmapStream(size_t width, size_t height, size_t depths, TextureFormat type, std::shared_ptr<const IStream> underlying)
 			: MipmapStream(width, height, depths, type)
 			, m_underlying(std::move(underlying)) {}
 
@@ -55,15 +59,15 @@ namespace XivRes {
 		}
 	};
 
-	class MemoryBackedMipmap : public MipmapStream {
+	class MemoryMipmapStream : public MipmapStream {
 		std::vector<uint8_t> m_data;
 
 	public:
-		MemoryBackedMipmap(size_t width, size_t height, size_t depths, TextureFormat type)
+		MemoryMipmapStream(size_t width, size_t height, size_t depths, TextureFormat type)
 			: MipmapStream(width, height, depths, type)
 			, m_data(SupposedMipmapLength) {}
 
-		MemoryBackedMipmap(size_t width, size_t height, size_t depths, TextureFormat type, std::vector<uint8_t> data)
+		MemoryMipmapStream(size_t width, size_t height, size_t depths, TextureFormat type, std::vector<uint8_t> data)
 			: MipmapStream(width, height, depths, type)
 			, m_data(std::move(data)) {
 			m_data.resize(SupposedMipmapLength);
@@ -85,21 +89,21 @@ namespace XivRes {
 			return Internal::span_cast<const T>(m_data);
 		}
 
-		static std::shared_ptr<MemoryBackedMipmap> AsARGB8888(const MipmapStream* stream) {
-			const auto pixelCount = TextureRawDataLength(TextureFormat::L8, stream->Width, stream->Height, stream->Depth);
-			const auto cbSource = std::min(static_cast<size_t>(stream->StreamSize()), TextureRawDataLength(stream->Type, stream->Width, stream->Height, stream->Depth));
+		static std::shared_ptr<MemoryMipmapStream> AsARGB8888(const MipmapStream& stream) {
+			const auto pixelCount = TextureRawDataLength(TextureFormat::L8, stream.Width, stream.Height, stream.Depth);
+			const auto cbSource = (std::min)(static_cast<size_t>(stream.StreamSize()), TextureRawDataLength(stream.Type, stream.Width, stream.Height, stream.Depth));
 
 			std::vector<uint8_t> result(pixelCount * sizeof RGBA8888);
 			const auto rgba8888view = Internal::span_cast<LE<RGBA8888>>(result);
 			uint32_t pos = 0, read = 0;
 			uint8_t buf8[8192];
-			switch (stream->Type) {
+			switch (stream.Type) {
 				case TextureFormat::L8:
 				{
 					if (cbSource < pixelCount)
 						throw std::runtime_error("Truncated data detected");
 					while (const auto len = static_cast<uint32_t>((std::min<uint64_t>)(cbSource - read, sizeof buf8))) {
-						stream->ReadStream(read, buf8, len);
+						ReadStream(stream, read, buf8, len);
 						read += len;
 						for (size_t i = 0; i < len; ++pos, ++i)
 							rgba8888view[pos] = RGBA8888(buf8[i], buf8[i], buf8[i], 255);
@@ -112,7 +116,7 @@ namespace XivRes {
 					if (cbSource < pixelCount)
 						throw std::runtime_error("Truncated data detected");
 					while (const auto len = static_cast<uint32_t>((std::min<uint64_t>)(cbSource - read, sizeof buf8))) {
-						stream->ReadStream(read, buf8, len);
+						ReadStream(stream, read, buf8, len);
 						read += len;
 						for (size_t i = 0; i < len; ++pos, ++i)
 							rgba8888view[pos] = RGBA8888(255, 255, 255, buf8[i]);
@@ -126,7 +130,7 @@ namespace XivRes {
 						throw std::runtime_error("Truncated data detected");
 					const auto view = Internal::span_cast<LE<RGBA4444>>(buf8);
 					while (const auto len = static_cast<uint32_t>((std::min<uint64_t>)(cbSource - read, sizeof buf8))) {
-						stream->ReadStream(read, buf8, len);
+						ReadStream(stream, read, buf8, len);
 						read += len;
 						for (size_t i = 0, count = len / sizeof RGBA4444; i < count; ++pos, ++i)
 							rgba8888view[pos] = RGBA8888((*view[i]).R * 17, (*view[i]).G * 17, (*view[i]).B * 17, (*view[i]).A * 17);
@@ -140,7 +144,7 @@ namespace XivRes {
 						throw std::runtime_error("Truncated data detected");
 					const auto view = Internal::span_cast<LE<RGBA5551>>(buf8);
 					while (const auto len = static_cast<uint32_t>((std::min<uint64_t>)(cbSource - read, sizeof buf8))) {
-						stream->ReadStream(read, buf8, len);
+						ReadStream(stream, read, buf8, len);
 						read += len;
 						for (size_t i = 0, count = len / sizeof RGBA5551; i < count; ++pos, ++i)
 							rgba8888view[pos] = RGBA8888((*view[i]).R * 255 / 31, (*view[i]).G * 255 / 31, (*view[i]).B * 255 / 31, (*view[i]).A * 255);
@@ -151,13 +155,13 @@ namespace XivRes {
 				case TextureFormat::A8R8G8B8:
 					if (cbSource < pixelCount * sizeof RGBA8888)
 						throw std::runtime_error("Truncated data detected");
-					stream->ReadStream(0, std::span(rgba8888view));
+					ReadStream(stream, 0, std::span(rgba8888view));
 					break;
 
 				case TextureFormat::X8R8G8B8:
 					if (cbSource < pixelCount * sizeof RGBA8888)
 						throw std::runtime_error("Truncated data detected");
-					stream->ReadStream(0, std::span(rgba8888view));
+					ReadStream(stream, 0, std::span(rgba8888view));
 					for (auto& item : rgba8888view) {
 						const auto native = *item;
 						item = RGBA8888(native.R, native.G, native.B, 0xFF);
@@ -168,10 +172,10 @@ namespace XivRes {
 				{
 					if (cbSource < pixelCount * sizeof RGBAF16)
 						throw std::runtime_error("Truncated data detected");
-					stream->ReadStream(0, std::span(rgba8888view));
+					ReadStream(stream, 0, std::span(rgba8888view));
 					const auto view = Internal::span_cast<RGBAF16>(buf8);
 					while (const auto len = static_cast<uint32_t>((std::min<uint64_t>)(cbSource - read, sizeof buf8))) {
-						stream->ReadStream(read, buf8, len);
+						ReadStream(stream, read, buf8, len);
 						read += len;
 						for (size_t i = 0, count = len / sizeof RGBAF16; i < count; ++pos, ++i) {
 							rgba8888view[pos] = RGBA8888(
@@ -189,10 +193,10 @@ namespace XivRes {
 				{
 					if (cbSource < pixelCount * sizeof RGBAF32)
 						throw std::runtime_error("Truncated data detected");
-					stream->ReadStream(0, std::span(rgba8888view));
+					ReadStream(stream, 0, std::span(rgba8888view));
 					const auto view = Internal::span_cast<RGBAF32>(buf8);
 					while (const auto len = static_cast<uint32_t>((std::min<uint64_t>)(cbSource - read, sizeof buf8))) {
-						stream->ReadStream(read, buf8, len);
+						ReadStream(stream, read, buf8, len);
 						read += len;
 						for (size_t i = 0, count = len / sizeof RGBAF32; i < count; ++pos, ++i)
 							rgba8888view[pos] = RGBA8888(
@@ -210,13 +214,13 @@ namespace XivRes {
 					if (cbSource * 2 < pixelCount)
 						throw std::runtime_error("Truncated data detected");
 					while (const auto len = static_cast<uint32_t>((std::min<uint64_t>)(cbSource - read, sizeof buf8))) {
-						stream->ReadStream(read, buf8, len);
+						ReadStream(stream, read, buf8, len);
 						read += len;
 						for (size_t i = 0, count = len; i < count; i += 8, pos += 8) {
 							Internal::DecompressBlockDXT1(
-								pos / 2 % stream->Width,
-								pos / 2 / stream->Width * 4,
-								stream->Width, &buf8[i], &rgba8888view[0]);
+								pos / 2 % stream.Width,
+								pos / 2 / stream.Width * 4,
+								stream.Width, &buf8[i], &rgba8888view[0]);
 						}
 					}
 					break;
@@ -227,20 +231,20 @@ namespace XivRes {
 					if (cbSource * 4 < pixelCount)
 						throw std::runtime_error("Truncated data detected");
 					while (const auto len = static_cast<uint32_t>((std::min<uint64_t>)(cbSource - read, sizeof buf8))) {
-						stream->ReadStream(read, buf8, len);
+						ReadStream(stream, read, buf8, len);
 						read += len;
 						for (size_t i = 0, count = len; i < count; i += 16, pos += 16) {
 							Internal::DecompressBlockDXT1(
-								pos / 4 % stream->Width,
-								pos / 4 / stream->Width * 4,
-								stream->Width, &buf8[i], &rgba8888view[0]);
+								pos / 4 % stream.Width,
+								pos / 4 / stream.Width * 4,
+								stream.Width, &buf8[i], &rgba8888view[0]);
 							for (size_t dy = 0; dy < 4; dy += 1) {
 								for (size_t dx = 0; dx < 4; dx += 2) {
-									const auto native1 = *rgba8888view[dy * stream->Width + dx];
-									rgba8888view[dy * stream->Width + dx] = RGBA8888(native1.R, native1.G, native1.B, 17 * (buf8[i + dy * 2 + dx / 2] & 0xF));
+									const auto native1 = *rgba8888view[dy * stream.Width + dx];
+									rgba8888view[dy * stream.Width + dx] = RGBA8888(native1.R, native1.G, native1.B, 17 * (buf8[i + dy * 2 + dx / 2] & 0xF));
 
-									const auto native2 = *rgba8888view[dy * stream->Width + dx + 1];
-									rgba8888view[dy * stream->Width + dx + 1] = RGBA8888(native2.R, native2.G, native2.B, 17 * (buf8[i + dy * 2 + dx / 2] >> 4));
+									const auto native2 = *rgba8888view[dy * stream.Width + dx + 1];
+									rgba8888view[dy * stream.Width + dx + 1] = RGBA8888(native2.R, native2.G, native2.B, 17 * (buf8[i + dy * 2 + dx / 2] >> 4));
 								}
 							}
 						}
@@ -253,13 +257,13 @@ namespace XivRes {
 					if (cbSource * 4 < pixelCount)
 						throw std::runtime_error("Truncated data detected");
 					while (const auto len = static_cast<uint32_t>((std::min<uint64_t>)(cbSource - read, sizeof buf8))) {
-						stream->ReadStream(read, buf8, len);
+						ReadStream(stream, read, buf8, len);
 						read += len;
 						for (size_t i = 0, count = len; i < count; i += 16, pos += 16) {
 							Internal::DecompressBlockDXT5(
-								pos / 4 % stream->Width,
-								pos / 4 / stream->Width * 4,
-								stream->Width, &buf8[i], &rgba8888view[0]);
+								pos / 4 % stream.Width,
+								pos / 4 / stream.Width * 4,
+								stream.Width, &buf8[i], &rgba8888view[0]);
 						}
 					}
 					break;
@@ -270,14 +274,14 @@ namespace XivRes {
 					throw std::runtime_error("Unsupported type");
 			}
 
-			return std::make_shared<MemoryBackedMipmap>(stream->Width, stream->Height, stream->Depth, TextureFormat::A8R8G8B8, std::move(result));
+			return std::make_shared<MemoryMipmapStream>(stream.Width, stream.Height, stream.Depth, TextureFormat::A8R8G8B8, std::move(result));
 		}
 
 		static std::shared_ptr<const MipmapStream> AsConstARGB8888(std::shared_ptr<const MipmapStream> stream) {
 			if (stream->Type == TextureFormat::A8R8G8B8)
 				return std::make_shared<WrappedMipmapStream>(stream->Width, stream->Height, stream->Depth, stream->Type, std::move(stream));
 
-			return MemoryBackedMipmap::AsARGB8888(stream.get());
+			return MemoryMipmapStream::AsARGB8888(*stream);
 		}
 	};
 }

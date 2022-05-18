@@ -5,12 +5,12 @@
 
 namespace XivRes {
 	class StreamAsPackedFileViewStream : public PackedFileStream {
-		const std::shared_ptr<const Stream> m_stream;
+		const std::shared_ptr<const IStream> m_stream;
 
 		mutable std::optional<PackedFileType> m_entryType;
 
 	public:
-		StreamAsPackedFileViewStream(SqpackPathSpec pathSpec, std::shared_ptr<const Stream> stream)
+		StreamAsPackedFileViewStream(SqpackPathSpec pathSpec, std::shared_ptr<const IStream> stream)
 			: PackedFileStream(std::move(pathSpec))
 			, m_stream(std::move(stream)) {
 		}
@@ -26,7 +26,7 @@ namespace XivRes {
 		[[nodiscard]] PackedFileType GetPackedFileType() const override {
 			if (!m_entryType) {
 				// operation that should be lightweight enough that lock should not be needed
-				m_entryType = m_stream->ReadStream<PackedFileHeader>(0).Type;
+				m_entryType = ReadStream<PackedFileHeader>(*m_stream, 0).Type;
 			}
 			return *m_entryType;
 		}

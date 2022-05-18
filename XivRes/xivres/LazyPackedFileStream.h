@@ -12,7 +12,7 @@ namespace XivRes {
 
 	protected:
 		const std::filesystem::path m_path;
-		const std::shared_ptr<const Stream> m_stream;
+		const std::shared_ptr<const IStream> m_stream;
 		const uint64_t m_originalSize;
 		const int m_compressionLevel;
 
@@ -25,7 +25,7 @@ namespace XivRes {
 			, m_compressionLevel(compressionLevel) {
 		}
 
-		LazyPackedFileStream(SqpackPathSpec spec, std::shared_ptr<const Stream> stream, int compressionLevel = Z_BEST_COMPRESSION)
+		LazyPackedFileStream(SqpackPathSpec spec, std::shared_ptr<const IStream> stream, int compressionLevel = Z_BEST_COMPRESSION)
 			: PackedFileStream(std::move(spec))
 			, m_path()
 			, m_stream(std::move(stream))
@@ -83,7 +83,7 @@ namespace XivRes {
 			const_cast<LazyPackedFileStream*>(this)->Resolve();
 		}
 
-		virtual void Initialize(const Stream& stream) {
+		virtual void Initialize(const IStream& stream) {
 			// does nothing
 		}
 
@@ -91,9 +91,9 @@ namespace XivRes {
 			return SqpackDataHeader::MaxFileSize_MaxValue;
 		}
 
-		[[nodiscard]] virtual std::streamsize StreamSize(const Stream& stream) const = 0;
+		[[nodiscard]] virtual std::streamsize StreamSize(const IStream& stream) const = 0;
 
-		virtual std::streamsize ReadStreamPartial(const Stream& stream, std::streamoff offset, void* buf, std::streamsize length) const = 0;
+		virtual std::streamsize ReadStreamPartial(const IStream& stream, std::streamoff offset, void* buf, std::streamsize length) const = 0;
 	};
 }
 

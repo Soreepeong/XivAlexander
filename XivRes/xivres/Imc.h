@@ -8,7 +8,7 @@
 #include "internal/ByteOrder.h"
 
 #include "Common.h"
-#include "Stream.h"
+#include "IStream.h"
 
 namespace XivRes::Imc {
 	enum class Type : uint16_t {
@@ -38,8 +38,8 @@ namespace XivRes::Imc {
 			: m_data(sizeof Imc::Header) {
 		}
 
-		File(const Stream& stream)
-			: m_data(stream.ReadStreamIntoVector<uint8_t>(0)) {
+		File(const IStream& stream)
+			: m_data(ReadStreamIntoVector<uint8_t>(stream, 0)) {
 			if (m_data.size() < sizeof Imc::Header) {
 				m_data.clear();
 				m_data.resize(sizeof Imc::Header);

@@ -48,8 +48,8 @@ namespace XivRes {
 		protected:
 			friend class SqpackReader;
 
-			SqIndexType(const Stream& stream, bool strictVerify)
-				: Data(stream.ReadStreamIntoVector<uint8_t>()) {
+			SqIndexType(const IStream& stream, bool strictVerify)
+				: Data(ReadStreamIntoVector<uint8_t>(stream)) {
 
 				if (strictVerify) {
 					Header().VerifySqpackHeader(SqpackType::SqIndex);
@@ -92,7 +92,7 @@ namespace XivRes {
 		protected:
 			friend class SqpackReader;
 
-			SqIndex1Type(const Stream& stream, bool strictVerify)
+			SqIndex1Type(const IStream& stream, bool strictVerify)
 				: SqIndexType<SqpackPairHashLocator, SqpackPairHashWithTextLocator>(stream, strictVerify)  {
 				if (strictVerify) {
 					if (IndexHeader().PathHashLocatorSegment.Size % sizeof SqpackPathHashLocator)
@@ -114,7 +114,7 @@ namespace XivRes {
 		protected:
 			friend class SqpackReader;
 
-			SqIndex2Type(const Stream& stream, bool strictVerify)
+			SqIndex2Type(const IStream& stream, bool strictVerify)
 				: SqIndexType<SqpackFullHashLocator, SqpackFullHashWithTextLocator>(stream, strictVerify) {
 			}
 		};
@@ -122,16 +122,16 @@ namespace XivRes {
 		struct SqDataType {
 			SqpackHeader Header{};
 			SqpackDataHeader DataHeader{};
-			std::shared_ptr<XivRes::Stream> Stream;
+			std::shared_ptr<IStream> Stream;
 
 		private:
 			friend class SqpackReader;
 
-			SqDataType(std::shared_ptr<XivRes::Stream> stream, const uint32_t datIndex, bool strictVerify)
+			SqDataType(std::shared_ptr<IStream> stream, const uint32_t datIndex, bool strictVerify)
 				: Stream(std::move(stream)) {
 
 				// The following line loads both Header and DataHeader as they are adjacent to each other
-				Stream->ReadStream(0, &Header, sizeof Header + sizeof DataHeader);
+				ReadStream(*Stream, 0, &Header, sizeof Header + sizeof DataHeader);
 				if (strictVerify) {
 					if (datIndex == 0) {
 						Header.VerifySqpackHeader(SqpackType::SqData);
@@ -164,7 +164,7 @@ namespace XivRes {
 		uint8_t ExpacId;
 		uint8_t PartId;
 
-		SqpackReader(const std::string& fileName, std::shared_ptr<Stream> indexStream1, std::shared_ptr<Stream> indexStream2, std::vector<std::shared_ptr<Stream>> dataStreams, bool strictVerify = false)
+		SqpackReader(const std::string& fileName, std::shared_ptr<IStream> indexStream1, std::shared_ptr<IStream> indexStream2, std::vector<std::shared_ptr<IStream>> dataStreams, bool strictVerify = false)
 			: Index1(*indexStream1, strictVerify)
 			, Index2(*indexStream2, strictVerify)
 			, CategoryId(static_cast<uint8_t>(std::strtol(fileName.substr(0, 2).c_str(), nullptr, 16)))
@@ -264,7 +264,7 @@ namespace XivRes {
 		}
 
 		static SqpackReader FromPath(const std::filesystem::path& indexFile, bool strictVerify = false) {
-			std::vector<std::shared_ptr<Stream>> dataStreams;
+			std::vector<std::shared_ptr<IStream>> dataStreams;
 			for (int i = 0; i < 8; ++i) {
 				auto dataPath = std::filesystem::path(indexFile);
 				dataPath.replace_extension(std::format(".dat{}", i));

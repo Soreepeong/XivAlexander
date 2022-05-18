@@ -18,7 +18,7 @@ namespace XivRes {
 		BinaryPackedFileStreamDecoder(const PackedFileHeader& header, std::shared_ptr<const PackedFileStream> stream)
 			: BasePackedFileStreamDecoder(std::move(stream))
 			, m_headerSize(header.HeaderSize)
-			, m_locators(m_stream->ReadStreamIntoVector<SqpackBinaryPackedFileBlockLocator>(sizeof PackedFileHeader, header.BlockCountOrVersion)) {
+			, m_locators(ReadStreamIntoVector<SqpackBinaryPackedFileBlockLocator>(*m_stream, sizeof PackedFileHeader, header.BlockCountOrVersion)) {
 
 			m_offsets.resize(m_locators.size() + 1);
 			for (size_t i = 1; i < m_offsets.size(); ++i)

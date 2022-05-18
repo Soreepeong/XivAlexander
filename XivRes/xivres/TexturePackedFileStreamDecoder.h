@@ -24,10 +24,10 @@ namespace XivRes {
 		TexturePackedFileStreamDecoder(const PackedFileHeader& header, std::shared_ptr<const PackedFileStream> stream)
 			: BasePackedFileStreamDecoder(std::move(stream)) {
 			uint64_t readOffset = sizeof PackedFileHeader;
-			const auto locators = m_stream->ReadStreamIntoVector<SqpackTexturePackedFileBlockLocator>(readOffset, header.BlockCountOrVersion);
+			const auto locators = ReadStreamIntoVector<SqpackTexturePackedFileBlockLocator>(*m_stream, readOffset, header.BlockCountOrVersion);
 			readOffset += std::span(locators).size_bytes();
 
-			m_head = m_stream->ReadStreamIntoVector<uint8_t>(header.HeaderSize, locators[0].FirstBlockOffset);
+			m_head = ReadStreamIntoVector<uint8_t>(*m_stream, header.HeaderSize, locators[0].FirstBlockOffset);
 
 			const auto& texHeader = *reinterpret_cast<const TextureHeader*>(&m_head[0]);
 			const auto mipmapOffsets = Internal::span_cast<uint32_t>(m_head, sizeof texHeader, texHeader.MipmapCount);
@@ -50,7 +50,7 @@ namespace XivRes {
 					.RequestOffset = baseRequestOffset,
 					.BlockOffset = header.HeaderSize + locator.FirstBlockOffset,
 					.RemainingDecompressedSize = locator.DecompressedSize,
-					.RemainingBlockSizes = m_stream->ReadStreamIntoVector<uint16_t>(readOffset, locator.SubBlockCount),
+					.RemainingBlockSizes = ReadStreamIntoVector<uint16_t>(*m_stream, readOffset, locator.SubBlockCount),
 					});
 				readOffset += std::span(m_blocks.back().RemainingBlockSizes).size_bytes();
 				baseRequestOffset += mipmapPlaneSize;

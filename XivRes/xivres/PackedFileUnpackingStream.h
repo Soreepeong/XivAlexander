@@ -7,7 +7,7 @@
 namespace XivRes {
 	class BasePackedFileStreamDecoder;
 
-	class PackedFileUnpackingStream : public Stream {
+	class PackedFileUnpackingStream : public DefaultAbstractStream {
 		const std::shared_ptr<const PackedFileStream> m_provider;
 		const PackedFileHeader m_entryHeader;
 		const std::unique_ptr<BasePackedFileStreamDecoder> m_decoder;
@@ -15,7 +15,7 @@ namespace XivRes {
 	public:
 		PackedFileUnpackingStream(std::shared_ptr<const PackedFileStream> provider, std::span<uint8_t> obfuscatedHeaderRewrite = {})
 			: m_provider(std::move(provider))
-			, m_entryHeader(m_provider->ReadStream<PackedFileHeader>(0))
+			, m_entryHeader(ReadStream<PackedFileHeader>(*m_provider, 0))
 			, m_decoder(BasePackedFileStreamDecoder::CreateNew(m_entryHeader, m_provider, obfuscatedHeaderRewrite)) {
 		}
 

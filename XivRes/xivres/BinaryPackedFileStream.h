@@ -16,7 +16,7 @@ namespace XivRes {
 			: LazyPackedFileStream(std::move(pathSpec), std::move(path), compressionLevel)
 			, m_header(CreateHeaderForNonCompressedBinaryEntryProvider(static_cast<size_t>(m_stream->StreamSize()))) {}
 
-		BinaryPackedFileViewStream(SqpackPathSpec pathSpec, std::shared_ptr<const Stream> stream, int compressionLevel = Z_BEST_COMPRESSION)
+		BinaryPackedFileViewStream(SqpackPathSpec pathSpec, std::shared_ptr<const IStream> stream, int compressionLevel = Z_BEST_COMPRESSION)
 			: LazyPackedFileStream(std::move(pathSpec), std::move(stream), compressionLevel)
 			, m_header(CreateHeaderForNonCompressedBinaryEntryProvider(static_cast<size_t>(m_stream->StreamSize()))) {}
 
@@ -32,11 +32,11 @@ namespace XivRes {
 			return reinterpret_cast<const PackedFileHeader*>(&m_header[0])->GetTotalPackedFileSize();
 		}
 
-		[[nodiscard]] std::streamsize StreamSize(const Stream& stream) const override {
+		[[nodiscard]] std::streamsize StreamSize(const IStream& stream) const override {
 			return MaxPossibleStreamSize();
 		}
 
-		std::streamsize ReadStreamPartial(const Stream& stream, std::streamoff offset, void* buf, std::streamsize length) const override {
+		std::streamsize ReadStreamPartial(const IStream& stream, std::streamoff offset, void* buf, std::streamsize length) const override {
 			if (!length)
 				return 0;
 
@@ -81,7 +81,7 @@ namespace XivRes {
 
 					if (relativeOffset < size) {
 						const auto available = (std::min)(out.size_bytes(), static_cast<size_t>(size - relativeOffset));
-						stream.ReadStream(offset + relativeOffset, &out[0], available);
+						ReadStream(stream, offset + relativeOffset, &out[0], available);
 						out = out.subspan(available);
 						relativeOffset = 0;
 
@@ -147,7 +147,7 @@ namespace XivRes {
 		}
 
 	protected:
-		void Initialize(const Stream& stream) override {
+		void Initialize(const IStream& stream) override {
 			const auto rawSize = static_cast<uint32_t>(stream.StreamSize());
 			PackedFileHeader entryHeader = {
 				.HeaderSize = sizeof entryHeader,
@@ -166,7 +166,7 @@ namespace XivRes {
 			std::vector<uint8_t> sourceBuf(EntryBlockDataSize);
 			Align<uint32_t>(rawSize, EntryBlockDataSize).IterateChunked([&](uint32_t index, uint32_t offset, uint32_t size) {
 				sourceBuf.resize(size);
-				stream.ReadStream(offset, std::span(sourceBuf));
+				ReadStream(stream, offset, std::span(sourceBuf));
 				if (deflater)
 					deflater->Deflate(sourceBuf);
 				const auto useCompressed = deflater && deflater->Result().size() < sourceBuf.size();
@@ -209,11 +209,11 @@ namespace XivRes {
 			m_data.resize(Align(m_data.size()));
 		}
 
-		[[nodiscard]] std::streamsize StreamSize(const Stream& stream) const override {
+		[[nodiscard]] std::streamsize StreamSize(const IStream& stream) const override {
 			return static_cast<uint32_t>(m_data.size());
 		}
 
-		std::streamsize ReadStreamPartial(const Stream& stream, std::streamoff offset, void* buf, std::streamsize length) const override {
+		std::streamsize ReadStreamPartial(const IStream& stream, std::streamoff offset, void* buf, std::streamsize length) const override {
 			const auto available = static_cast<size_t>((std::min<std::streamsize>)(length, m_data.size() - offset));
 			if (!available)
 				return 0;

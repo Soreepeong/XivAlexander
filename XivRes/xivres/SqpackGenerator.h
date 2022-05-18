@@ -73,9 +73,9 @@ namespace XivRes {
 		};
 
 		struct SqpackViews {
-			std::shared_ptr<XivRes::Stream> Index1;
-			std::shared_ptr<XivRes::Stream> Index2;
-			std::vector<std::shared_ptr<XivRes::Stream>> Data;
+			std::shared_ptr<IStream> Index1;
+			std::shared_ptr<IStream> Index2;
+			std::vector<std::shared_ptr<IStream>> Data;
 			std::vector<Entry*> Entries;
 			std::map<SqpackPathSpec, std::unique_ptr<Entry>, SqpackPathSpec::AllHashComparator> HashOnlyEntries;
 			std::map<SqpackPathSpec, std::unique_ptr<Entry>, SqpackPathSpec::FullPathComparator> FullPathEntries;
@@ -127,7 +127,7 @@ namespace XivRes {
 						m_bufferTemporary.resize(entry->EntrySize);
 						m_bufferActive = std::span(m_bufferTemporary);
 					}
-					entry->Provider->ReadStream(0, m_bufferActive);
+					ReadStream(*entry->Provider, 0, m_bufferActive);
 				}
 
 				const auto& Buffer() const {
@@ -320,7 +320,7 @@ namespace XivRes {
 							uint8_t buf[4096];
 							for (std::streamoff j = 0; j < length; j += sizeof buf) {
 								const auto readlen = static_cast<size_t>((std::min<uint64_t>)(sizeof buf, length - j));
-								provider.ReadStream(j, buf, readlen);
+								ReadStream(provider, j, buf, readlen);
 								sha1.ProcessBytes(buf, readlen);
 							}
 						}
@@ -352,7 +352,7 @@ namespace XivRes {
 					uint8_t buf[4096];
 					for (std::streamoff j = 0; j < length; j += sizeof buf) {
 						const auto readlen = static_cast<size_t>((std::min<uint64_t>)(sizeof buf, length - j));
-						provider.ReadStream(j, buf, readlen);
+						ReadStream(provider, j, buf, readlen);
 						sha1.ProcessBytes(buf, readlen);
 					}
 				}
@@ -509,7 +509,7 @@ namespace XivRes {
 				dataFile.seekg(entry.Locator.DatFileOffset(), std::ios::beg);
 				Align<uint64_t>(entrySize, buf.size()).IterateChunked([&](uint64_t index, uint64_t offset, uint64_t size) {
 					const auto bufSpan = std::span(buf).subspan(0, static_cast<size_t>(size));
-					provider->ReadStream(offset, bufSpan);
+					ReadStream(*provider, offset, bufSpan);
 					dataFile.write(&buf[0], bufSpan.size());
 					if (!dataFile)
 						throw std::runtime_error("Failed to write to output data file.");
@@ -602,7 +602,7 @@ namespace XivRes {
 			std::ofstream(dir / std::format("{}.win32.index2", DatName), std::ios::binary).write(reinterpret_cast<const char*>(&indexData[0]), indexData.size());
 		}
 
-		[[nodiscard]] std::unique_ptr<Stream> GetFile(const SqpackPathSpec& pathSpec) const {
+		[[nodiscard]] std::unique_ptr<DefaultAbstractStream> GetFile(const SqpackPathSpec& pathSpec) const {
 			if (const auto it = m_hashOnlyEntries.find(pathSpec); it != m_hashOnlyEntries.end())
 				return std::make_unique<PackedFileUnpackingStream>(it->second->Provider);
 			if (const auto it = m_fullEntries.find(pathSpec); it != m_fullEntries.end())
@@ -709,7 +709,7 @@ namespace XivRes {
 		}
 	};
 
-	class SqpackGenerator::DataViewStream : public Stream {
+	class SqpackGenerator::DataViewStream : public DefaultAbstractStream {
 		const std::vector<uint8_t> m_header;
 		const std::span<Entry*> m_entries;
 
@@ -780,7 +780,7 @@ namespace XivRes {
 						if (buf)
 							std::copy_n(&buf->Buffer()[static_cast<size_t>(relativeOffset)], available, &out[0]);
 						else
-							entry.Provider->ReadStream(relativeOffset, out.data(), available);
+							ReadStream(*entry.Provider, relativeOffset, out.data(), available);
 						out = out.subspan(available);
 						relativeOffset = 0;
 

@@ -6,7 +6,7 @@
 #include <windowsx.h>
 
 #include "XivRes/GameReader.h"
-#include "XivRes/FdtStream.h"
+#include "XivRes/FontdataStream.h"
 #include "XivRes/ScdReader.h"
 #include "XivRes/PackedFileUnpackingStream.h"
 #include "XivRes/SqpackGenerator.h"
@@ -26,7 +26,7 @@ void TestDecompressAll(const XivRes::SqpackReader& reader) {
 
 		auto stream = provider->GetUnpackedStream();
 		buf.resize(static_cast<size_t>(stream.StreamSize()));
-		stream.ReadStream(0, &buf[0], buf.size());
+		ReadStream(stream, 0, &buf[0], buf.size());
 		accumulatedDecompressedSize += buf.size();
 
 		if (++i == 128) {
@@ -37,7 +37,7 @@ void TestDecompressAll(const XivRes::SqpackReader& reader) {
 	std::cout << std::format("\r{:06x}: {:>8.02f}M -> {:>8.02f}M: Took {}us.\n", reader.PackId(), accumulatedCompressedSize / 1048576., accumulatedDecompressedSize / 1048576., std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start).count());
 }
 
-void DumpGlyphRange(const XivRes::FdtStream& stream, const std::filesystem::path& outPath) {
+void DumpGlyphRange(const XivRes::FontdataStream& stream, const std::filesystem::path& outPath) {
 	std::ofstream out(outPath);
 
 	out << std::format("{} glyphs\n\n", stream.GetFontTableEntries().size());
@@ -98,9 +98,9 @@ void ShowMipmapStream(const XivRes::TextureStream& texStream) {
 			this->mipmapIndex = mipmapIndex = std::min(texStream.GetMipmapCount() - 1, std::max(0, mipmapIndex));
 			this->depthIndex = depthIndex = std::min(DepthCount() - 1, std::max(0, depthIndex));
 
-			stream = XivRes::MemoryBackedMipmap::AsARGB8888(texStream.GetMipmap(repeatIndex, mipmapIndex).get());
+			stream = XivRes::MemoryMipmapStream::AsARGB8888(*texStream.GetMipmap(repeatIndex, mipmapIndex));
 			const auto planeSize = XivRes::TextureRawDataLength(stream->Type, stream->Width, stream->Height, 1);
-			buf = stream->ReadStreamIntoVector<uint8_t>(depthIndex * planeSize, planeSize);
+			buf = ReadStreamIntoVector<uint8_t>(*stream, depthIndex * planeSize, planeSize);
 			{
 				transparent = buf;
 				const auto w = static_cast<size_t>(stream->Width);
@@ -475,11 +475,34 @@ int main()
 	XivRes::GameReader gameReaderCn(R"(C:\Program Files (x86)\SNDA\FFXIV\game)");
 	XivRes::GameReader gameReaderKr(R"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game)");
 
+	{
+		auto ts = XivRes::TextureStream(XivRes::TextureFormat::A8R8G8B8, 1024, 1024);
+		auto mipmap = std::make_shared<XivRes::MemoryMipmapStream>(ts.GetWidth(), ts.GetHeight(), ts.GetDepth(), ts.GetType());
+		std::ranges::fill(mipmap->View<uint8_t>(), 0x40);
+		ts.Resize(1, 1);
+		ts.SetMipmap(0, 0, mipmap);
+		tmp = ReadStreamIntoVector<char>(ts);
+		std::ofstream("font1.tex", std::ios::binary).write(tmp.data(), tmp.size());
+		std::ofstream("font2.tex", std::ios::binary).write(tmp.data(), tmp.size());
+		std::ofstream("font3.tex", std::ios::binary).write(tmp.data(), tmp.size());
+		std::ofstream("font4.tex", std::ios::binary).write(tmp.data(), tmp.size());
+		std::ofstream("font5.tex", std::ios::binary).write(tmp.data(), tmp.size());
+		std::ofstream("font6.tex", std::ios::binary).write(tmp.data(), tmp.size());
+		std::ofstream("font7.tex", std::ios::binary).write(tmp.data(), tmp.size());
+		std::ofstream("font_lobby1.tex", std::ios::binary).write(tmp.data(), tmp.size());
+		std::ofstream("font_lobby2.tex", std::ios::binary).write(tmp.data(), tmp.size());
+		std::ofstream("font_lobby3.tex", std::ios::binary).write(tmp.data(), tmp.size());
+		std::ofstream("font_lobby4.tex", std::ios::binary).write(tmp.data(), tmp.size());
+		std::ofstream("font_lobby5.tex", std::ios::binary).write(tmp.data(), tmp.size());
+		std::ofstream("font_lobby6.tex", std::ios::binary).write(tmp.data(), tmp.size());
+		ShowMipmapStream(ts);
+	}
+
 	// ShowMipmapStream(XivRes::TextureStream(gameReader.GetFileStream("common/font/font1.tex")));
 	// ShowMipmapStream(XivRes::TextureStream(gameReader.GetFileStream("ui/icon/000000/000003_hr1.tex")));
 	// ShowMipmapStream(XivRes::TextureStream(gameReader.GetFileStream("ui/uld/charaselect_hr1.tex")));
 	// ShowMipmapStream(XivRes::TextureStream(gameReader.GetFileStream("ui/uld/achievement.tex")));
-	ShowMipmapStream(XivRes::TextureStream(gameReader.GetFileStream("common/graphics/texture/-omni_shadow_index_table.tex")));
+	// ShowMipmapStream(XivRes::TextureStream(gameReader.GetFileStream("common/graphics/texture/-omni_shadow_index_table.tex")));
 	// ShowMipmapStream(XivRes::TextureStream(gameReader.GetFileStream("common/graphics/texture/-caustics.tex")));
 	// ShowMipmapStream(XivRes::TextureStream(gameReader.GetFileStream("common/graphics/texture/-mogu_anime_en.tex")));
 	// ShowMipmapStream(XivRes::TextureStream(gameReader.GetFileStream("chara/human/c0101/obj/face/f0001/texture/--c0101f0001_fac_d.tex")));
@@ -495,11 +518,11 @@ int main()
 	TestDecompressAll(gameReader.GetSqpackReader(0x0a, 0x00, 0x00));
 	TestDecompressAll(gameReader.GetSqpackReader(0x0c, 0x04, 0x00));
 
-	std::cout << std::format("AXIS_96: {}pt\n", XivRes::FdtStream(*gameReader.GetFileStream("common/font/AXIS_96.fdt")).Points());
-	std::cout << std::format("AXIS_12: {}pt\n", XivRes::FdtStream(*gameReader.GetFileStream("common/font/AXIS_12.fdt")).Points());
-	std::cout << std::format("AXIS_14: {}pt\n", XivRes::FdtStream(*gameReader.GetFileStream("common/font/AXIS_14.fdt")).Points());
-	std::cout << std::format("AXIS_18: {}pt\n", XivRes::FdtStream(*gameReader.GetFileStream("common/font/AXIS_18.fdt")).Points());
-	std::cout << std::format("AXIS_36: {}pt\n", XivRes::FdtStream(*gameReader.GetFileStream("common/font/AXIS_36.fdt")).Points());
+	std::cout << std::format("AXIS_96: {}pt\n", XivRes::FontdataStream(*gameReader.GetFileStream("common/font/AXIS_96.fdt")).Points());
+	std::cout << std::format("AXIS_12: {}pt\n", XivRes::FontdataStream(*gameReader.GetFileStream("common/font/AXIS_12.fdt")).Points());
+	std::cout << std::format("AXIS_14: {}pt\n", XivRes::FontdataStream(*gameReader.GetFileStream("common/font/AXIS_14.fdt")).Points());
+	std::cout << std::format("AXIS_18: {}pt\n", XivRes::FontdataStream(*gameReader.GetFileStream("common/font/AXIS_18.fdt")).Points());
+	std::cout << std::format("AXIS_36: {}pt\n", XivRes::FontdataStream(*gameReader.GetFileStream("common/font/AXIS_36.fdt")).Points());
 
 	for (size_t i = 1; i <= 7; i++) {
 		const auto atlas = XivRes::TextureStream(gameReader.GetFileStream(std::format("common/font/font{}.tex", i)));

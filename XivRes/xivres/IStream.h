@@ -16,78 +16,89 @@
 namespace XivRes {
 	class PartialViewStream;
 
-	class Stream : public std::enable_shared_from_this<Stream> {
+	class IStream {
 	public:
-		Stream() = default;
-		Stream(Stream&&) = delete;
-		Stream(const Stream&) = delete;
-		Stream& operator=(Stream&&) = delete;
-		Stream& operator=(const Stream&) = delete;
-		virtual ~Stream() = default;
+		[[nodiscard]] virtual std::streamsize StreamSize() const = 0;
+
+		[[nodiscard]] virtual std::streamsize ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) const = 0;
+
+		virtual void EnableBuffering(bool bEnable) = 0;
+
+		virtual void Flush() const = 0;
+
+		virtual std::unique_ptr<IStream> SubStream(std::streamoff offset, std::streamsize length = (std::numeric_limits<std::streamsize>::max)()) = 0;
+	};
+
+	void ReadStream(const IStream& stream, std::streamoff offset, void* buf, std::streamsize length) {
+		if (stream.ReadStreamPartial(offset, buf, length) != length)
+			throw std::runtime_error("Reached end of stream before reading all of the requested data.");
+	}
+
+	template<typename T>
+	T ReadStream(const IStream& stream, std::streamoff offset) {
+		T buf;
+		ReadStream(stream, offset, &buf, sizeof T);
+		return buf;
+	}
+
+	template<typename T>
+	void ReadStream(const IStream& stream, std::streamoff offset, std::span<T> buf) {
+		ReadStream(stream, offset, buf.data(), buf.size_bytes());
+	}
+
+	template<typename T>
+	std::vector<T> ReadStreamIntoVector(const IStream& stream, std::streamoff offset, size_t count, size_t maxCount = SIZE_MAX) {
+		if (count > maxCount)
+			throw std::runtime_error("trying to read too many");
+		std::vector<T> result(count);
+		ReadStream(stream, offset, std::span(result));
+		return result;
+	}
+
+	template<typename T>
+	std::vector<T> ReadStreamIntoVector(const IStream& stream, size_t maxCount = SIZE_MAX) {
+		return ReadStreamIntoVector<T>(stream, 0, (std::min)(maxCount, static_cast<size_t>(stream.StreamSize() / sizeof T)));
+	}
+
+	class DefaultAbstractStream : public IStream, public std::enable_shared_from_this<DefaultAbstractStream> {
+	public:
+		DefaultAbstractStream() = default;
+		DefaultAbstractStream(IStream&&) = delete;
+		DefaultAbstractStream(const IStream&) = delete;
+		IStream& operator=(IStream&&) = delete;
+		IStream& operator=(const IStream&) = delete;
+		virtual ~DefaultAbstractStream() = default;
 
 		[[nodiscard]] virtual std::streamsize StreamSize() const = 0;
 
 		virtual std::streamsize ReadStreamPartial(std::streamoff offset, void* buf, std::streamsize length) const = 0;
 
-		void ReadStream(std::streamoff offset, void* buf, std::streamsize length) const {
-			if (ReadStreamPartial(offset, buf, length) != length)
-				throw std::runtime_error("Reached end of stream before reading all of the requested data.");
-		}
-
-		template<typename T>
-		T ReadStream(std::streamoff offset) const {
-			T buf;
-			ReadStream(offset, &buf, sizeof T);
-			return buf;
-		}
-
-		template<typename T>
-		void ReadStream(std::streamoff offset, std::span<T> buf) const {
-			ReadStream(offset, buf.data(), buf.size_bytes());
-		}
-
-		template<typename T>
-		std::vector<T> ReadStreamIntoVector(std::streamoff offset, size_t count, size_t maxCount = SIZE_MAX) const {
-			if (count > maxCount)
-				throw std::runtime_error("trying to read too many");
-			std::vector<T> result(count);
-			ReadStream(offset, std::span(result));
-			return result;
-		}
-
-		template<typename T>
-		std::vector<T> ReadStreamIntoVector(size_t maxCount = SIZE_MAX) const {
-			return ReadStreamIntoVector<T>(0, (std::min)(maxCount, static_cast<size_t>(StreamSize() / sizeof T)));
-		}
-
 		virtual void EnableBuffering(bool bEnable) {}
 
 		virtual void Flush() const {}
 
-		virtual PartialViewStream SubStream(std::streamoff offset, std::streamsize length = (std::numeric_limits<std::streamsize>::max)());
-
-		virtual std::shared_ptr<PartialViewStream> SubStreamShared(std::streamoff offset, std::streamsize length = (std::numeric_limits<std::streamsize>::max)());
+		virtual std::unique_ptr<IStream> SubStream(std::streamoff offset, std::streamsize length = (std::numeric_limits<std::streamsize>::max)());
 	};
 
-	class PartialViewStream : public Stream {
-		const std::shared_ptr<const Stream> m_streamSharedPtr;
+	class PartialViewStream : public DefaultAbstractStream {
+		const std::shared_ptr<const IStream> m_streamSharedPtr;
 
 	public:
-		const Stream& m_stream;
+		const IStream& m_stream;
 		const std::streamoff m_offset;
 
 	private:
 		const std::streamsize m_size;
 
 	public:
-		PartialViewStream(const Stream& stream, std::streamoff offset = 0, std::streamsize length = (std::numeric_limits<std::streamsize>::max)())
+		PartialViewStream(const IStream& stream, std::streamoff offset = 0, std::streamsize length = (std::numeric_limits<std::streamsize>::max)())
 			: m_stream(stream)
 			, m_offset(offset)
 			, m_size((std::min)(length, m_stream.StreamSize() < offset ? 0 : m_stream.StreamSize() - offset)) {}
 
 		PartialViewStream(const PartialViewStream&) = default;
 
-		PartialViewStream(std::shared_ptr<const Stream> stream, std::streamoff offset = 0, std::streamsize length = (std::numeric_limits<std::streamsize>::max)())
+		PartialViewStream(std::shared_ptr<const IStream> stream, std::streamoff offset = 0, std::streamsize length = (std::numeric_limits<std::streamsize>::max)())
 			: m_streamSharedPtr(std::move(stream))
 			, m_stream(*m_streamSharedPtr)
 			, m_offset(offset)
@@ -104,25 +115,17 @@ namespace XivRes {
 			return m_stream.ReadStreamPartial(m_offset + offset, buf, length);
 		}
 
-		PartialViewStream SubStream(std::streamoff offset, std::streamsize length = (std::numeric_limits<std::streamsize>::max)()) override {
-			return PartialViewStream(m_stream, m_offset + offset, (std::min)(length, m_size));
-		}
-
-		std::shared_ptr<PartialViewStream> SubStreamShared(std::streamoff offset, std::streamsize length = (std::numeric_limits<std::streamsize>::max)()) override {
-			return std::make_shared<PartialViewStream>(m_streamSharedPtr, m_offset + offset, (std::min)(length, m_size));
+		std::unique_ptr<IStream> SubStream(std::streamoff offset, std::streamsize length = (std::numeric_limits<std::streamsize>::max)()) override {
+			return std::make_unique<PartialViewStream>(m_streamSharedPtr, m_offset + offset, (std::min)(length, m_size));
 		}
 	};
 
-	inline PartialViewStream Stream::SubStream(std::streamoff offset, std::streamsize length) {
-		return PartialViewStream(*this, offset, length);
-	}
-
-	inline std::shared_ptr<PartialViewStream> Stream::SubStreamShared(std::streamoff offset, std::streamsize length) {
-		return std::make_shared<PartialViewStream>(shared_from_this(), offset, length);
+	inline std::unique_ptr<IStream> DefaultAbstractStream::SubStream(std::streamoff offset, std::streamsize length) {
+		return std::make_unique<PartialViewStream>(shared_from_this(), offset, length);
 	}
 
 #ifdef _WINDOWS_
-	class FileStream : public Stream {
+	class FileStream : public DefaultAbstractStream {
 		const std::filesystem::path m_path;
 		const HANDLE m_hFile;
 		HANDLE m_hDummyEvent{};
@@ -143,7 +146,7 @@ namespace XivRes {
 			}
 		}
 
-		~FileStream() {
+		~FileStream() override {
 			CloseHandle(m_hDummyEvent);
 			CloseHandle(m_hFile);
 		}
@@ -184,7 +187,7 @@ namespace XivRes {
 	};
 
 #else
-	class FileStream : public Stream {
+	class FileStream : public DefaultAbstractStream {
 		const std::filesystem::path m_path;
 		mutable std::mutex m_mutex;
 		mutable std::vector<std::ifstream> m_streams;
@@ -221,6 +224,8 @@ namespace XivRes {
 			m_streams.emplace_back(m_path, std::ios::binary);
 		}
 
+		~FileStream() override = default;
+
 		[[nodiscard]] std::streamsize StreamSize() const override {
 			PooledObject stream(*this);
 			stream->seekg(0, std::ios::end);
@@ -236,7 +241,7 @@ namespace XivRes {
 	};
 #endif
 
-	class MemoryStream : public Stream {
+	class MemoryStream : public DefaultAbstractStream {
 		std::vector<uint8_t> m_buffer;
 		std::span<uint8_t> m_view;
 
@@ -253,10 +258,10 @@ namespace XivRes {
 			: m_buffer(r.m_buffer)
 			, m_view(r.OwnsData() ? std::span(m_buffer) : r.m_view) {}
 
-		MemoryStream(const Stream& r)
+		MemoryStream(const IStream& r)
 			: m_buffer(static_cast<size_t>(r.StreamSize()))
 			, m_view(std::span(m_buffer)) {
-			r.ReadStream(0, m_view);
+			ReadStream(r, 0, m_view);
 		}
 
 		MemoryStream(std::vector<uint8_t> buffer)

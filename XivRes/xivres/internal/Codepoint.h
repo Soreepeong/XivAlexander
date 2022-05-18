@@ -7,12 +7,12 @@ namespace XivRes::Internal {
 	inline char32_t Utf8Uint32ToUnicodeCodePoint(uint32_t n) {
 		if ((n & 0xFFFFFF80) == 0)
 			return static_cast<char32_t>(n & 0x7F);
-		else if ((n & 0xFFFFE0C0) == 0xC080)
+		else if ((n & 0xFFFFE0C0) == 0x0000C080)
 			return static_cast<char32_t>(
 				(((n >> 0x08) & 0x1F) << 6) |
 				(((n >> 0x00) & 0x3F) << 0)
 				);
-		else if ((n & 0xF0C0C0) == 0xE08080)
+		else if ((n & 0xFFF0C0C0) == 0x00E08080)
 			return static_cast<char32_t>(
 				(((n >> 0x10) & 0x0F) << 12) |
 				(((n >> 0x08) & 0x3F) << 6) |
@@ -26,11 +26,13 @@ namespace XivRes::Internal {
 				(((n >> 0x00) & 0x3F) << 0)
 				);
 		else
-			return 0xFFFF;  // Guaranteed non-unicode
+			return U'\uFFFD';  // Replacement character
 	}
 
 	inline uint32_t UnicodeCodePointToUtf8Uint32(char32_t codepoint) {
-		if (codepoint <= 0x7F) {
+		if (codepoint < 0)
+			throw std::invalid_argument("Negative codepoints are not valid.");
+		else if (codepoint <= 0x7F) {
 			return codepoint;
 		} else if (codepoint <= 0x7FF) {
 			return ((0xC0 | ((codepoint >> 6))) << 8)
@@ -46,6 +48,54 @@ namespace XivRes::Internal {
 				| ((0x80 | ((codepoint >> 0) & 0x3F)) << 0);
 		} else
 			throw std::invalid_argument("Unicode code point is currently capped at 0x10FFFF.");
+	}
+
+	inline char32_t DecodeUtf8(const char8_t* p, size_t& pConsumed) {
+		if (!pConsumed)
+			return 0;
+
+		if (0 == (*p & 0x80)) {
+			pConsumed = 1;
+			return *p;
+		}
+
+		if (0xC0 == (*p & 0xE0)) {
+			if (pConsumed < 2) goto invalid;
+			if (0x80 != (p[1] & 0xC0)) goto invalid;
+			pConsumed = 2;
+			return static_cast<char32_t>(
+				((p[0] & 0x1F) << 6) |
+				((p[1] & 0x3F) << 0)
+				);
+		}
+		if (0xE0 == (*p & 0xF0)) {
+			if (pConsumed < 3) goto invalid;
+			if (0x80 != (p[1] & 0xC0)) goto invalid;
+			if (0x80 != (p[2] & 0xC0)) goto invalid;
+			pConsumed = 3;
+			return static_cast<char32_t>(
+				((p[0] & 0x0F) << 12) |
+				((p[1] & 0x3F) << 6) |
+				((p[2] & 0x3F) << 0)
+				);
+		}
+		if (0xF0 == (*p & 0xF8)) {
+			if (pConsumed < 4) goto invalid;
+			if (0x80 != (p[1] & 0xC0)) goto invalid;
+			if (0x80 != (p[2] & 0xC0)) goto invalid;
+			if (0x80 != (p[3] & 0xC0)) goto invalid;
+			pConsumed = 4;
+			return static_cast<char32_t>(
+				((p[0] & 0x07) << 18) |
+				((p[1] & 0x3F) << 12) |
+				((p[2] & 0x3F) << 6) |
+				((p[3] & 0x3F) << 0)
+				);
+		}
+
+	invalid:
+		pConsumed = 1;
+		return U'\uFFFD';  // Replacement character
 	}
 
 	inline uint16_t UnicodeCodePointToShiftJisUint16(char32_t codepoint) {

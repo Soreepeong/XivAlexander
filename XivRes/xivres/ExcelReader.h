@@ -8,7 +8,7 @@
 
 #include "Common.h"
 #include "Excel.h"
-#include "Stream.h"
+#include "IStream.h"
 #include "SqpackReader.h"
 #include "PackedFileUnpackingStream.h"
 
@@ -19,9 +19,9 @@ namespace XivRes {
 		std::map<int, std::string> m_idToNameMap;
 
 	public:
-		ExlReader(const Stream& stream) {
+		ExlReader(const IStream& stream) {
 			std::string data(static_cast<size_t>(stream.StreamSize()), '\0');
-			stream.ReadStream(0, std::span(data));
+			ReadStream(stream, 0, std::span(data));
 			std::istringstream in(std::move(data));
 
 			std::string line;
@@ -83,12 +83,12 @@ namespace XivRes {
 		std::vector<Language> m_languages;
 
 	public:
-		ExhReader(std::string name, const Stream& stream, bool strict = false)
+		ExhReader(std::string name, const IStream& stream, bool strict = false)
 			: m_name(std::move(name))
-			, m_header(stream.ReadStream<ExhHeader>(0))
-			, m_columns(stream.ReadStreamIntoVector<ExhColHeader>(sizeof m_header, m_header.ColumnCount))
-			, m_pages(stream.ReadStreamIntoVector<ExhPagination>(sizeof m_header + std::span(m_columns).size_bytes(), m_header.PageCount))
-			, m_languages(stream.ReadStreamIntoVector<Language>(sizeof m_header + std::span(m_columns).size_bytes() + std::span(m_pages).size_bytes(), m_header.LanguageCount)) {
+			, m_header(ReadStream<ExhHeader>(stream, 0))
+			, m_columns(ReadStreamIntoVector<ExhColHeader>(stream, sizeof m_header, m_header.ColumnCount))
+			, m_pages(ReadStreamIntoVector<ExhPagination>(stream, sizeof m_header + std::span(m_columns).size_bytes(), m_header.PageCount))
+			, m_languages(ReadStreamIntoVector<Language>(stream, sizeof m_header + std::span(m_columns).size_bytes() + std::span(m_pages).size_bytes(), m_header.LanguageCount)) {
 
 			if (strict) {
 				const auto dataLength = static_cast<size_t>(stream.StreamSize());
@@ -461,10 +461,10 @@ namespace XivRes {
 		ExdRowBuffer()
 			: m_rowId(UINT32_MAX) {}
 
-		ExdRowBuffer(uint32_t rowId, const ExhReader& exh, const Stream& stream, std::streamoff offset)
+		ExdRowBuffer(uint32_t rowId, const ExhReader& exh, const IStream& stream, std::streamoff offset)
 			: m_rowId(rowId)
-			, m_rowHeader(stream.ReadStream<ExdRowHeader>(offset))
-			, m_buffer(stream.ReadStreamIntoVector<char>(offset + sizeof m_rowHeader, m_rowHeader.DataSize)) {
+			, m_rowHeader(ReadStream<ExdRowHeader>(stream, offset))
+			, m_buffer(ReadStreamIntoVector<char>(stream, offset + sizeof m_rowHeader, m_rowHeader.DataSize)) {
 
 			m_rows.reserve(m_rowHeader.SubRowCount);
 
@@ -693,7 +693,7 @@ namespace XivRes {
 
 	class ExdReader {
 	public:
-		const std::shared_ptr<const XivRes::Stream> Stream;
+		const std::shared_ptr<const IStream> Stream;
 		const ExhReader& Exh;
 		const ExdHeader Header;
 
@@ -705,10 +705,10 @@ namespace XivRes {
 		mutable std::mutex m_populateMtx;
 
 	public:
-		ExdReader(const ExhReader& exh, std::shared_ptr<const XivRes::Stream> stream)
+		ExdReader(const ExhReader& exh, std::shared_ptr<const IStream> stream)
 			: Stream(std::move(stream))
 			, Exh(exh)
-			, Header(Stream->ReadStream<ExdHeader>(0)) {
+			, Header(ReadStream<ExdHeader>(*Stream, 0)) {
 
 			const auto count = Header.IndexSize / sizeof ExdRowLocator;
 			m_rowIds.reserve(count);
@@ -717,7 +717,7 @@ namespace XivRes {
 
 			std::vector<std::pair<uint32_t, uint32_t>> locators;
 			locators.reserve(count);
-			for (const auto& locator : Stream->ReadStreamIntoVector<ExdRowLocator>(sizeof Header, count))
+			for (const auto& locator : ReadStreamIntoVector<ExdRowLocator>(*Stream, sizeof Header, count))
 				locators.emplace_back(std::make_pair(*locator.RowId, *locator.Offset));
 			std::ranges::sort(locators);
 

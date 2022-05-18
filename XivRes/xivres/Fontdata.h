@@ -1,5 +1,5 @@
-#ifndef _XIVRES_FONTCSV_H_
-#define _XIVRES_FONTCSV_H_
+#ifndef _XIVRES_Fontdata_H_
+#define _XIVRES_Fontdata_H_
 
 #include <map>
 #include <stdexcept>
@@ -10,7 +10,7 @@
 #include "Common.h"
 
 namespace XivRes {
-	struct FdtHeader {
+	struct FontdataHeader {
 		static constexpr char Signature_Value[8] = {
 			'f', 'c', 's', 'v', '0', '1', '0', '0',
 		};
@@ -20,9 +20,9 @@ namespace XivRes {
 		LE<uint32_t> KerningHeaderOffset;
 		uint8_t Padding_0x10[0x10]{};
 	};
-	static_assert(sizeof FdtHeader == 0x20);
+	static_assert(sizeof FontdataHeader == 0x20);
 
-	struct FdtGlyphTableHeader {
+	struct FontdataGlyphTableHeader {
 		static constexpr char Signature_Value[4] = {
 			'f', 't', 'h', 'd',
 		};
@@ -37,9 +37,9 @@ namespace XivRes {
 		LE<uint32_t> LineHeight;
 		LE<uint32_t> Ascent;
 	};
-	static_assert(sizeof FdtGlyphTableHeader == 0x20);
+	static_assert(sizeof FontdataGlyphTableHeader == 0x20);
 
-	struct FdtGlyphEntry {
+	struct FontdataGlyphEntry {
 		LE<uint32_t> Utf8Value;
 		LE<uint16_t> ShiftJisValue;
 		LE<uint16_t> TextureIndex;
@@ -59,10 +59,18 @@ namespace XivRes {
 			ShiftJisValue = Internal::UnicodeCodePointToShiftJisUint16(newValue);
 			return newValue;
 		}
-	};
-	static_assert(sizeof FdtGlyphEntry == 0x10);
 
-	struct FdtKerningTableHeader {
+		uint16_t TextureFileIndex() const {
+			return *TextureIndex >> 2;
+		}
+
+		uint16_t TexturePlaneIndex() const {
+			return *TextureIndex & 3;
+		}
+	};
+	static_assert(sizeof FontdataGlyphEntry == 0x10);
+
+	struct FontdataKerningTableHeader {
 		static constexpr char Signature_Value[4] = {
 			'k', 'n', 'h', 'd',
 		};
@@ -71,9 +79,9 @@ namespace XivRes {
 		LE<uint32_t> EntryCount;
 		uint8_t Padding_0x08[8]{};
 	};
-	static_assert(sizeof FdtKerningTableHeader == 0x10);
+	static_assert(sizeof FontdataKerningTableHeader == 0x10);
 
-	struct FdtKerningEntry {
+	struct FontdataKerningEntry {
 		LE<uint32_t> LeftUtf8Value;
 		LE<uint32_t> RightUtf8Value;
 		LE<uint16_t> LeftShiftJisValue;
@@ -100,7 +108,7 @@ namespace XivRes {
 			return newValue;
 		}
 	};
-	static_assert(sizeof FdtKerningEntry == 0x10);
+	static_assert(sizeof FontdataKerningEntry == 0x10);
 }
 
 #endif

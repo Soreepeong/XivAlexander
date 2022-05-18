@@ -11,7 +11,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Files", "Solution 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XivRes", "XivRes\XivRes.vcxproj", "{58DADDF6-5733-40E0-855C-CC3B4BF235EB}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XivResExample", "XivResExample\XivResExample.vcxproj", "{7E0615C0-F086-4FCB-9DF0-E381CBB684F5}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XivRes.Example", "XivRes.Example\XivRes.Example.vcxproj", "{7E0615C0-F086-4FCB-9DF0-E381CBB684F5}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XivRes.FontGenerator", "XivRes.FontGenerator\XivRes.FontGenerator.vcxproj", "{C53D1DF1-A5ED-4F17-BC96-2A8C5462D3D9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -47,6 +49,18 @@ Global
 		{7E0615C0-F086-4FCB-9DF0-E381CBB684F5}.ReleaseWithoutAsm|Win32.Build.0 = Release|Win32
 		{7E0615C0-F086-4FCB-9DF0-E381CBB684F5}.ReleaseWithoutAsm|x64.ActiveCfg = Release|x64
 		{7E0615C0-F086-4FCB-9DF0-E381CBB684F5}.ReleaseWithoutAsm|x64.Build.0 = Release|x64
+		{C53D1DF1-A5ED-4F17-BC96-2A8C5462D3D9}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C53D1DF1-A5ED-4F17-BC96-2A8C5462D3D9}.Debug|Win32.Build.0 = Debug|Win32
+		{C53D1DF1-A5ED-4F17-BC96-2A8C5462D3D9}.Debug|x64.ActiveCfg = Debug|x64
+		{C53D1DF1-A5ED-4F17-BC96-2A8C5462D3D9}.Debug|x64.Build.0 = Debug|x64
+		{C53D1DF1-A5ED-4F17-BC96-2A8C5462D3D9}.Release|Win32.ActiveCfg = Release|Win32
+		{C53D1DF1-A5ED-4F17-BC96-2A8C5462D3D9}.Release|Win32.Build.0 = Release|Win32
+		{C53D1DF1-A5ED-4F17-BC96-2A8C5462D3D9}.Release|x64.ActiveCfg = Release|x64
+		{C53D1DF1-A5ED-4F17-BC96-2A8C5462D3D9}.Release|x64.Build.0 = Release|x64
+		{C53D1DF1-A5ED-4F17-BC96-2A8C5462D3D9}.ReleaseWithoutAsm|Win32.ActiveCfg = Release|Win32
+		{C53D1DF1-A5ED-4F17-BC96-2A8C5462D3D9}.ReleaseWithoutAsm|Win32.Build.0 = Release|Win32
+		{C53D1DF1-A5ED-4F17-BC96-2A8C5462D3D9}.ReleaseWithoutAsm|x64.ActiveCfg = Release|x64
+		{C53D1DF1-A5ED-4F17-BC96-2A8C5462D3D9}.ReleaseWithoutAsm|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

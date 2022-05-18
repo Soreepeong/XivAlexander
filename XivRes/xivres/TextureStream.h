@@ -6,19 +6,19 @@
 #include "MipmapStream.h"
 
 namespace XivRes {
-	class TextureStream : public Stream {
+	class TextureStream : public DefaultAbstractStream {
 		TextureHeader m_header;
 		std::vector<std::vector<std::shared_ptr<MipmapStream>>> m_repeats;
 		std::vector<uint32_t> m_mipmapOffsets;
 		uint32_t m_repeatedUnitSize;
 
 	public:
-		TextureStream(const std::shared_ptr<Stream>& stream)
-			: m_header(stream->ReadStream<TextureHeader>(0))
+		TextureStream(const std::shared_ptr<IStream>& stream)
+			: m_header(ReadStream<TextureHeader>(*stream, 0))
 			, m_repeats(0)
 			, m_repeatedUnitSize(0) {
 
-			const auto mipmapLocators = stream->ReadStreamIntoVector<uint32_t>(sizeof m_header, m_header.MipmapCount);
+			const auto mipmapLocators = ReadStreamIntoVector<uint32_t>(*stream, sizeof m_header, m_header.MipmapCount);
 			const auto repeatUnitSize = CalculateRepeatUnitSize(m_header.MipmapCount);
 			Resize(mipmapLocators.size(), (static_cast<size_t>(stream->StreamSize()) - mipmapLocators[0] + repeatUnitSize - 1) / repeatUnitSize);
 			for (size_t repeatI = 0; repeatI < m_repeats.size(); ++repeatI) {
@@ -165,7 +165,7 @@ namespace XivRes {
 
 						if (relativeOffset < mipmapSize) {
 							const auto available = static_cast<size_t>((std::min<uint64_t>)(out.size_bytes(), mipmapSize - relativeOffset));
-							mipmap->ReadStream(relativeOffset, out.data(), available);
+							ReadStream(*mipmap, relativeOffset, out.data(), available);
 							out = out.subspan(available);
 							relativeOffset = 0;
 
@@ -231,6 +231,12 @@ namespace XivRes {
 			return m_repeats.at(repeatIndex).at(mipmapIndex);
 		}
 	};
+
+	std::shared_ptr<TextureStream> MipmapStream::ToSingleTextureStream() {
+		auto res = std::make_shared<TextureStream>(Type, Width, Height);
+		res->SetMipmap(0, 0, std::dynamic_pointer_cast<MipmapStream>(this->shared_from_this()));
+		return res;
+	}
 }
 
 #endif

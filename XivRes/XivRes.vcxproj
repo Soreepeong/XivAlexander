@@ -23,11 +23,6 @@
     <None Include="vcpkg.json" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Example\Example.vcxproj">
-      <Project>{7e0615c0-f086-4fcb-9df0-e381cbb684f5}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="xivres\Common.h" />
     <ClInclude Include="xivres\Eqdp.h" />
     <ClInclude Include="xivres\EqpGmp.h" />
@@ -35,8 +30,8 @@
     <ClInclude Include="xivres\Excel.h" />
     <ClInclude Include="xivres\ExcelGenerator.h" />
     <ClInclude Include="xivres\ExcelReader.h" />
-    <ClInclude Include="xivres\FontCsv.h" />
-    <ClInclude Include="xivres\FdtStream.h" />
+    <ClInclude Include="xivres\Fontdata.h" />
+    <ClInclude Include="xivres\FontdataStream.h" />
     <ClInclude Include="xivres\GameReader.h" />
     <ClInclude Include="xivres\Imc.h" />
     <ClInclude Include="xivres\internal\ByteOrder.h" />
@@ -51,7 +46,7 @@
     <ClInclude Include="xivres\MipmapStream.h" />
     <ClInclude Include="xivres\Model.h" />
     <ClInclude Include="xivres\PixelFormats.h" />
-    <ClInclude Include="xivres\Stream.h" />
+    <ClInclude Include="xivres\IStream.h" />
     <ClInclude Include="xivres\ScdReader.h" />
     <ClInclude Include="xivres\ScdWriter.h" />
     <ClInclude Include="xivres\SeString.h" />

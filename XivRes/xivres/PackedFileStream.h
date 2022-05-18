@@ -2,12 +2,12 @@
 #define _XIVRES_PACKEDFILESTREAM_H_
 
 #include "Sqpack.h"
-#include "Stream.h"
+#include "IStream.h"
 
 namespace XivRes {
 	class PackedFileUnpackingStream;
 
-	class PackedFileStream : public Stream {
+	class PackedFileStream : public DefaultAbstractStream {
 		SqpackPathSpec m_pathSpec;
 
 	public:

@@ -9,7 +9,7 @@
 #include "internal/SpanCast.h"
 
 #include "Common.h"
-#include "Stream.h"
+#include "IStream.h"
 
 namespace XivRes {
 	struct EqdpHeader {
@@ -29,8 +29,8 @@ namespace XivRes {
 		EqdpFile(std::vector<uint8_t> data)
 			: m_data(std::move(data)) {}
 
-		EqdpFile(const Stream& stream)
-			: m_data(stream.ReadStreamIntoVector<uint8_t>(0)) {}
+		EqdpFile(const IStream& stream)
+			: m_data(ReadStreamIntoVector<uint8_t>(stream, 0)) {}
 
 		EqdpFile(EqdpFile&& file)
 			: m_data(std::move(file.m_data)) {

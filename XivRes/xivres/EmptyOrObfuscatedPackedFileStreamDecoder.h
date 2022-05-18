@@ -17,7 +17,7 @@ namespace XivRes {
 			: BasePackedFileStreamDecoder(std::move(stream)) {
 
 			if (header.DecompressedSize < header.BlockCountOrVersion) {
-				auto src = m_stream->ReadStreamIntoVector<uint8_t>(header.HeaderSize, header.DecompressedSize);
+				auto src = ReadStreamIntoVector<uint8_t>(*m_stream, header.HeaderSize, header.DecompressedSize);
 				if (!headerRewrite.empty())
 					std::copy(headerRewrite.begin(), headerRewrite.begin() + (std::min)(headerRewrite.size(), src.size()), src.begin());
 				m_inflater.emplace(-MAX_WBITS, header.DecompressedSize);

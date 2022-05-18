@@ -41,10 +41,10 @@
     <ClInclude Include="xivres\ExcelReader.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="xivres\FontCsv.h">
+    <ClInclude Include="xivres\Fontdata.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="xivres\FdtStream.h">
+    <ClInclude Include="xivres\FontdataStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="xivres\Imc.h">
@@ -56,7 +56,7 @@
     <ClInclude Include="xivres\Model.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="xivres\Stream.h">
+    <ClInclude Include="xivres\IStream.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="xivres\ScdReader.h">

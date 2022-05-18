@@ -5,7 +5,7 @@
 
 namespace XivRes {
 	class EmptyOrObfuscatedPackedFileStream : public PackedFileStream {
-		const std::shared_ptr<const Stream> m_stream;
+		const std::shared_ptr<const IStream> m_stream;
 		const PackedFileHeader m_header;
 
 	public:
@@ -14,7 +14,7 @@ namespace XivRes {
 			, m_header(PackedFileHeader::NewEmpty()) {
 		}
 
-		EmptyOrObfuscatedPackedFileStream(SqpackPathSpec pathSpec, std::shared_ptr<const Stream> stream, uint32_t decompressedSize = UINT32_MAX)
+		EmptyOrObfuscatedPackedFileStream(SqpackPathSpec pathSpec, std::shared_ptr<const IStream> stream, uint32_t decompressedSize = UINT32_MAX)
 			: PackedFileStream(std::move(pathSpec))
 			, m_stream(std::move(stream))
 			, m_header(PackedFileHeader::NewEmpty(decompressedSize == UINT32_MAX ? static_cast<uint32_t>(m_stream->StreamSize()) : decompressedSize, static_cast<size_t>(m_stream->StreamSize()))) {
@@ -56,7 +56,7 @@ namespace XivRes {
 			if (const auto dataSize = m_stream ? m_stream->StreamSize() : 0) {
 				if (relativeOffset < dataSize) {
 					const auto available = (std::min)(out.size_bytes(), static_cast<size_t>(dataSize - relativeOffset));
-					m_stream->ReadStreamPartial(relativeOffset, &out[0], available);
+					ReadStream(*m_stream, relativeOffset, &out[0], available);
 					out = out.subspan(available);
 					relativeOffset = 0;
 

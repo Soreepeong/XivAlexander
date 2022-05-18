@@ -26,11 +26,11 @@ namespace XivRes {
 
 			const auto underlyingSize = m_stream->StreamSize();
 			uint64_t readOffset = sizeof PackedFileHeader;
-			const auto locator = m_stream->ReadStream<SqpackModelPackedFileBlockLocator>(readOffset);
+			const auto locator = ReadStream<SqpackModelPackedFileBlockLocator>(*m_stream, readOffset);
 			const auto blockCount = static_cast<size_t>(locator.FirstBlockIndices.Index[2]) + locator.BlockCount.Index[2];
 
 			readOffset += sizeof locator;
-			for (const auto blockSize : m_stream->ReadStreamIntoVector<uint16_t>(readOffset, blockCount)) {
+			for (const auto blockSize : ReadStreamIntoVector<uint16_t>(*m_stream, readOffset, blockCount)) {
 				m_blocks.emplace_back(BlockInfo{
 					.RequestOffset = 0,
 					.BlockOffset = m_blocks.empty() ? *header.HeaderSize : m_blocks.back().BlockOffset + m_blocks.back().PaddedChunkSize,
@@ -82,7 +82,7 @@ namespace XivRes {
 				if (block.BlockOffset == underlyingSize)
 					blockHeader.DecompressedSize = blockHeader.CompressedSize = 0;
 				else
-					m_stream->ReadStream(block.BlockOffset, &blockHeader, sizeof blockHeader);
+					ReadStream(*m_stream, block.BlockOffset, &blockHeader, sizeof blockHeader);
 
 				block.DecompressedSize = static_cast<uint16_t>(blockHeader.DecompressedSize);
 				block.RequestOffset = lastOffset;

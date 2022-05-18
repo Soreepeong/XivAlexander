@@ -26,9 +26,9 @@ namespace XivRes {
 		}
 
 	protected:
-		void Initialize(const Stream& stream) override {
+		void Initialize(const IStream& stream) override {
 			Model::Header header;
-			stream.ReadStream(0, &header, sizeof header);
+			ReadStream(stream, 0, &header, sizeof header);
 
 			m_header.Entry.Type = PackedFileType::Model;
 			m_header.Entry.DecompressedSize = static_cast<uint32_t>(stream.StreamSize());
@@ -116,10 +116,10 @@ namespace XivRes {
 			return headerSize + blockCount * EntryBlockSize;
 		}
 
-		[[nodiscard]] std::streamsize StreamSize(const Stream&) const override { 
+		[[nodiscard]] std::streamsize StreamSize(const IStream&) const override { 
 			return MaxPossibleStreamSize(); }
 
-		std::streamsize ReadStreamPartial(const Stream& stream, std::streamoff offset, void* buf, std::streamsize length) const override {
+		std::streamsize ReadStreamPartial(const IStream& stream, std::streamoff offset, void* buf, std::streamsize length) const override {
 			if (!length)
 				return 0;
 
@@ -203,7 +203,7 @@ namespace XivRes {
 
 				if (relativeOffset < m_blockDataSizes[i]) {
 					const auto available = (std::min)(out.size_bytes(), static_cast<size_t>(m_blockDataSizes[i] - relativeOffset));
-					stream.ReadStream(m_actualFileOffsets[i] + relativeOffset, &out[0], available);
+					ReadStream(stream, m_actualFileOffsets[i] + relativeOffset, &out[0], available);
 					out = out.subspan(available);
 					relativeOffset = 0;
 
@@ -250,9 +250,9 @@ namespace XivRes {
 		}
 
 	protected:
-		void Initialize(const Stream& stream) override {
+		void Initialize(const IStream& stream) override {
 			Model::Header header;
-			stream.ReadStream(0, &header, sizeof header);
+			ReadStream(stream, 0, &header, sizeof header);
 
 			PackedFileHeader entryHeader{
 				.Type = PackedFileType::Model,
@@ -288,7 +288,7 @@ namespace XivRes {
 				const auto firstBlockIndex = static_cast<uint16_t>(blockOffsets.size());
 				alignedBlock.IterateChunked([&](auto, uint32_t offset, uint32_t size) {
 					const auto sourceBuf = std::span(tempBuf).subspan(0, size);
-					stream.ReadStream(offset, sourceBuf);
+					ReadStream(stream, offset, sourceBuf);
 					if (deflater)
 						deflater->Deflate(sourceBuf);
 					const auto useCompressed = deflater && deflater->Result().size() < sourceBuf.size();
@@ -376,10 +376,10 @@ namespace XivRes {
 			m_data.resize(Align(m_data.size()));
 		}
 
-		[[nodiscard]] std::streamsize StreamSize(const Stream& stream) const override {
+		[[nodiscard]] std::streamsize StreamSize(const IStream& stream) const override {
 			return static_cast<uint32_t>(m_data.size()); }
 
-		std::streamsize ReadStreamPartial(const Stream& stream, std::streamoff offset, void* buf, std::streamsize length) const {
+		std::streamsize ReadStreamPartial(const IStream& stream, std::streamoff offset, void* buf, std::streamsize length) const {
 			const auto available = static_cast<size_t>((std::min<std::streamsize>)(length, m_data.size() - offset));
 			if (!available)
 				return 0;

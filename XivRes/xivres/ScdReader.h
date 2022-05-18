@@ -6,13 +6,13 @@
 
 #include "Common.h"
 #include "Scd.h"
-#include "Stream.h"
+#include "IStream.h"
 
 #include "internal/SpanCast.h"
 
 namespace XivRes {
 	class ScdReader {
-		const std::shared_ptr<Stream> m_stream;
+		const std::shared_ptr<IStream> m_stream;
 		const std::vector<uint8_t> m_headerBuffer;
 		const ScdHeader& m_header;
 		const ScdOffsets& m_offsets;
@@ -33,7 +33,7 @@ namespace XivRes {
 			if (!offsets[index])
 				return {};
 			const auto next = index == offsets.size() - 1 || offsets[index + 1] == 0 ? endOffset : offsets[index + 1];
-			return m_stream->ReadStreamIntoVector<uint8_t>(offsets[index], next - offsets[index]);
+			return ReadStreamIntoVector<uint8_t>(*m_stream, offsets[index], next - offsets[index]);
 		}
 
 		[[nodiscard]] std::vector<std::vector<uint8_t>> ReadEntries(const std::span<const uint32_t>& offsets, uint32_t endOffset) const {
@@ -43,11 +43,11 @@ namespace XivRes {
 			return res;
 		}
 
-		[[nodiscard]] static std::vector<uint8_t> GetHeaderBytes(const Stream& stream) {
+		[[nodiscard]] static std::vector<uint8_t> GetHeaderBytes(const IStream& stream) {
 			constexpr auto InitialBufferSize = 8192ULL;
 			std::vector<uint8_t> res;
 			res.resize(static_cast<size_t>((std::min<uint64_t>)(InitialBufferSize, stream.StreamSize())));
-			stream.ReadStream(0, std::span(res));
+			ReadStream(stream, 0, std::span(res));
 
 			const auto& header = *reinterpret_cast<ScdHeader*>(&res[0]);
 			if (header.HeaderSize != sizeof header)
@@ -56,12 +56,12 @@ namespace XivRes {
 			const auto& offsets = *reinterpret_cast<ScdOffsets*>(&res[header.HeaderSize]);
 			res.resize(static_cast<size_t>(0) + offsets.Table5Offset + 16);
 			if (res.size() > InitialBufferSize)
-				stream.ReadStream(InitialBufferSize, std::span(res).subspan(InitialBufferSize));
+				ReadStream(stream, InitialBufferSize, std::span(res).subspan(InitialBufferSize));
 			return res;
 		}
 
 	public:
-		ScdReader(std::shared_ptr<Stream> stream)
+		ScdReader(std::shared_ptr<IStream> stream)
 			: m_stream(std::move(stream))
 			, m_headerBuffer(GetHeaderBytes(*m_stream))
 			, m_header(*reinterpret_cast<const ScdHeader*>(&m_headerBuffer[0]))

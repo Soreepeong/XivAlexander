@@ -43,7 +43,7 @@ namespace XivRes {
 			}
 
 		public:
-			void ProgressRead(const Stream& stream, uint32_t blockOffset, size_t knownBlockSize = ReadBufferMaxSize) {
+			void ProgressRead(const IStream& stream, uint32_t blockOffset, size_t knownBlockSize = ReadBufferMaxSize) {
 				ReadBufferValidSize = static_cast<size_t>(stream.ReadStreamPartial(blockOffset, ReadBuffer, knownBlockSize));
 
 				if (ReadBufferValidSize < sizeof AsHeader() || ReadBufferValidSize < AsHeader().TotalBlockSize())

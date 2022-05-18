@@ -9,7 +9,7 @@
 #include "internal/SpanCast.h"
 
 #include "Common.h"
-#include "Stream.h"
+#include "IStream.h"
 
 namespace XivRes {
 	class EqpGmpFile {
@@ -35,8 +35,8 @@ namespace XivRes {
 			}
 		}
 
-		EqpGmpFile(const Stream& stream)
-			: EqpGmpFile(stream.ReadStreamIntoVector<uint64_t>(0)) {
+		EqpGmpFile(const IStream& stream)
+			: EqpGmpFile(ReadStreamIntoVector<uint64_t>(stream, 0)) {
 		}
 
 		EqpGmpFile& operator=(const EqpGmpFile& file) {

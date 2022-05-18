@@ -40,7 +40,7 @@ namespace XivRes {
 		}
 
 	protected:
-		void Initialize(const Stream& stream) override {
+		void Initialize(const IStream& stream) override {
 			const auto AsTexHeader = [&]() { return *reinterpret_cast<const TextureHeader*>(&m_texHeaderBytes[0]); };
 			const auto AsMipmapOffsets = [&]() { return Internal::span_cast<uint32_t>(m_texHeaderBytes, sizeof TextureHeader, *AsTexHeader().MipmapCount); };
 
@@ -51,16 +51,16 @@ namespace XivRes {
 			};
 
 			m_texHeaderBytes.resize(sizeof TextureHeader);
-			stream.ReadStream(0, std::span(m_texHeaderBytes));
+			ReadStream(stream, 0, std::span(m_texHeaderBytes));
 
 			m_texHeaderBytes.resize(sizeof TextureHeader + AsTexHeader().MipmapCount * sizeof uint32_t);
-			stream.ReadStream(sizeof TextureHeader, std::span(
+			ReadStream(stream, sizeof TextureHeader, std::span(
 				reinterpret_cast<uint32_t*>(&m_texHeaderBytes[sizeof TextureHeader]),
 				*AsTexHeader().MipmapCount
 			));
 
 			m_texHeaderBytes.resize(AsMipmapOffsets()[0]);
-			stream.ReadStream(0, std::span(m_texHeaderBytes).subspan(0, AsMipmapOffsets()[0]));
+			ReadStream(stream, 0, std::span(m_texHeaderBytes).subspan(0, AsMipmapOffsets()[0]));
 
 			std::vector<uint32_t> mipmapOffsets(AsMipmapOffsets().begin(), AsMipmapOffsets().end());;
 			m_mipmapSizes.resize(mipmapOffsets.size());
@@ -152,11 +152,11 @@ namespace XivRes {
 			return headerSize + blockCount * EntryBlockSize;
 		}
 
-		[[nodiscard]] std::streamsize StreamSize(const Stream&) const override {
+		[[nodiscard]] std::streamsize StreamSize(const IStream&) const override {
 			return static_cast<uint32_t>(m_size);
 		}
 
-		std::streamsize ReadStreamPartial(const Stream& stream, std::streamoff offset, void* buf, std::streamsize length) const override {
+		std::streamsize ReadStreamPartial(const IStream& stream, std::streamoff offset, void* buf, std::streamsize length) const override {
 			const auto AsTexHeader = [&]() { return *reinterpret_cast<const TextureHeader*>(&m_texHeaderBytes[0]); };
 			const auto AsMipmapOffsets = [&]() { return span_cast<uint32_t>(m_texHeaderBytes, sizeof TextureHeader, AsTexHeader().MipmapCount); };
 
@@ -230,7 +230,7 @@ namespace XivRes {
 
 						if (relativeOffset < decompressedSize) {
 							const auto available = (std::min)(out.size_bytes(), static_cast<size_t>(decompressedSize - relativeOffset));
-							stream.ReadStream(AsMipmapOffsets()[blockIndex] + j * EntryBlockDataSize + relativeOffset, &out[0], available);
+							ReadStream(stream, AsMipmapOffsets()[blockIndex] + j * EntryBlockDataSize + relativeOffset, &out[0], available);
 							out = out.subspan(available);
 							relativeOffset = 0;
 
@@ -275,7 +275,7 @@ namespace XivRes {
 		}
 
 	protected:
-		void Initialize(const Stream& stream) override {
+		void Initialize(const IStream& stream) override {
 			std::vector<SqpackTexturePackedFileBlockLocator> blockLocators;
 			std::vector<uint8_t> readBuffer(EntryBlockDataSize);
 			std::vector<uint16_t> subBlockSizes;
@@ -290,16 +290,16 @@ namespace XivRes {
 			};
 
 			texHeaderBytes.resize(sizeof TextureHeader);
-			stream.ReadStream(0, std::span(texHeaderBytes));
+			ReadStream(stream, 0, std::span(texHeaderBytes));
 
 			texHeaderBytes.resize(sizeof TextureHeader + AsTexHeader().MipmapCount * sizeof uint32_t);
-			stream.ReadStream(sizeof TextureHeader, std::span(
+			ReadStream(stream, sizeof TextureHeader, std::span(
 				reinterpret_cast<uint32_t*>(&texHeaderBytes[sizeof TextureHeader]),
 				*AsTexHeader().MipmapCount
 			));
 
 			texHeaderBytes.resize(AsMipmapOffsets()[0]);
-			stream.ReadStream(0, std::span(texHeaderBytes).subspan(0, AsMipmapOffsets()[0]));
+			ReadStream(stream, 0, std::span(texHeaderBytes).subspan(0, AsMipmapOffsets()[0]));
 
 			std::vector<uint32_t> mipmapOffsets(AsMipmapOffsets().begin(), AsMipmapOffsets().end());;
 			std::vector<uint32_t> mipmapSizes(mipmapOffsets.size());
@@ -438,11 +438,11 @@ namespace XivRes {
 			m_data.resize(Align(m_data.size()));
 		}
 
-		[[nodiscard]] std::streamsize StreamSize(const Stream& stream) const override {
+		[[nodiscard]] std::streamsize StreamSize(const IStream& stream) const override {
 			return static_cast<uint32_t>(m_data.size());
 		}
 
-		std::streamsize ReadStreamPartial(const Stream& stream, std::streamoff offset, void* buf, std::streamsize length) const override {
+		std::streamsize ReadStreamPartial(const IStream& stream, std::streamoff offset, void* buf, std::streamsize length) const override {
 			const auto available = static_cast<size_t>((std::min<std::streamsize>)(length, m_data.size() - offset));
 			if (!available)
 				return 0;

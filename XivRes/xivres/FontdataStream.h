@@ -1,48 +1,48 @@
-#ifndef _XIVRES_FDTSTREAM_H_
-#define _XIVRES_FDTSTREAM_H_
+#ifndef _XIVRES_FontdataStream_H_
+#define _XIVRES_FontdataStream_H_
 
 #include <memory>
 
-#include "FontCsv.h"
-#include "Stream.h"
+#include "Fontdata.h"
+#include "IStream.h"
 
 namespace XivRes {
-	class FdtStream : public Stream {
-		FdtHeader m_fcsv;
-		FdtGlyphTableHeader m_fthd;
-		std::vector<FdtGlyphEntry> m_fontTableEntries;
-		FdtKerningTableHeader m_knhd;
-		std::vector<FdtKerningEntry> m_kerningEntries;
+	class FontdataStream : public DefaultAbstractStream {
+		FontdataHeader m_fcsv;
+		FontdataGlyphTableHeader m_fthd;
+		std::vector<FontdataGlyphEntry> m_fontTableEntries;
+		FontdataKerningTableHeader m_knhd;
+		std::vector<FontdataKerningEntry> m_kerningEntries;
 
 	public:
-		FdtStream() {
-			memcpy(m_fcsv.Signature, FdtHeader::Signature_Value, sizeof m_fcsv.Signature);
-			memcpy(m_fthd.Signature, FdtGlyphTableHeader::Signature_Value, sizeof m_fthd.Signature);
-			memcpy(m_knhd.Signature, FdtKerningTableHeader::Signature_Value, sizeof m_knhd.Signature);
+		FontdataStream() {
+			memcpy(m_fcsv.Signature, FontdataHeader::Signature_Value, sizeof m_fcsv.Signature);
+			memcpy(m_fthd.Signature, FontdataGlyphTableHeader::Signature_Value, sizeof m_fthd.Signature);
+			memcpy(m_knhd.Signature, FontdataKerningTableHeader::Signature_Value, sizeof m_knhd.Signature);
 			m_fcsv.FontTableHeaderOffset = static_cast<uint32_t>(sizeof m_fcsv);
 			m_fcsv.KerningHeaderOffset = static_cast<uint32_t>(sizeof m_fcsv + sizeof m_fthd);
 		}
 
-		FdtStream(const Stream& stream, bool strict = false)
-			: m_fcsv(stream.ReadStream<FdtHeader>(0))
-			, m_fthd(stream.ReadStream<FdtGlyphTableHeader>(m_fcsv.FontTableHeaderOffset))
-			, m_fontTableEntries(stream.ReadStreamIntoVector<FdtGlyphEntry>(m_fcsv.FontTableHeaderOffset + sizeof m_fthd, m_fthd.FontTableEntryCount, 0x1000000))
-			, m_knhd(stream.ReadStream<FdtKerningTableHeader>(m_fcsv.KerningHeaderOffset))
-			, m_kerningEntries(stream.ReadStreamIntoVector<FdtKerningEntry>(m_fcsv.KerningHeaderOffset + sizeof m_knhd, (std::min)(m_knhd.EntryCount, m_fthd.KerningEntryCount), 0x1000000)) {
+		FontdataStream(const IStream& stream, bool strict = false)
+			: m_fcsv(ReadStream<FontdataHeader>(stream, 0))
+			, m_fthd(ReadStream<FontdataGlyphTableHeader>(stream, m_fcsv.FontTableHeaderOffset))
+			, m_fontTableEntries(ReadStreamIntoVector<FontdataGlyphEntry>(stream, m_fcsv.FontTableHeaderOffset + sizeof m_fthd, m_fthd.FontTableEntryCount, 0x1000000))
+			, m_knhd(ReadStream<FontdataKerningTableHeader>(stream, m_fcsv.KerningHeaderOffset))
+			, m_kerningEntries(ReadStreamIntoVector<FontdataKerningEntry>(stream, m_fcsv.KerningHeaderOffset + sizeof m_knhd, (std::min)(m_knhd.EntryCount, m_fthd.KerningEntryCount), 0x1000000)) {
 			if (strict) {
-				if (0 != memcmp(m_fcsv.Signature, FdtHeader::Signature_Value, sizeof m_fcsv.Signature))
+				if (0 != memcmp(m_fcsv.Signature, FontdataHeader::Signature_Value, sizeof m_fcsv.Signature))
 					throw CorruptDataException("fcsv.Signature != \"fcsv0100\"");
-				if (m_fcsv.FontTableHeaderOffset != sizeof FdtHeader)
-					throw CorruptDataException("FontTableHeaderOffset != sizeof FontCsvHeader");
+				if (m_fcsv.FontTableHeaderOffset != sizeof FontdataHeader)
+					throw CorruptDataException("FontTableHeaderOffset != sizeof FontdataHeader");
 				if (!Internal::IsAllSameValue(m_fcsv.Padding_0x10))
 					throw CorruptDataException("fcsv.Padding_0x10 != 0");
 
-				if (0 != memcmp(m_fthd.Signature, FdtGlyphTableHeader::Signature_Value, sizeof m_fthd.Signature))
+				if (0 != memcmp(m_fthd.Signature, FontdataGlyphTableHeader::Signature_Value, sizeof m_fthd.Signature))
 					throw CorruptDataException("fthd.Signature != \"fthd\"");
 				if (!Internal::IsAllSameValue(m_fthd.Padding_0x0C))
 					throw CorruptDataException("fthd.Padding_0x0C != 0");
 
-				if (0 != memcmp(m_knhd.Signature, FdtKerningTableHeader::Signature_Value, sizeof m_knhd.Signature))
+				if (0 != memcmp(m_knhd.Signature, FontdataKerningTableHeader::Signature_Value, sizeof m_knhd.Signature))
 					throw CorruptDataException("knhd.Signature != \"knhd\"");
 				if (!Internal::IsAllSameValue(m_knhd.Padding_0x08))
 					throw CorruptDataException("knhd.Padding_0x08 != 0");
@@ -50,10 +50,10 @@ namespace XivRes {
 				if (m_knhd.EntryCount != m_fthd.KerningEntryCount)
 					throw std::runtime_error("knhd.EntryCount != fthd.KerningEntryCount");
 			}
-			std::ranges::sort(m_fontTableEntries, [](const FdtGlyphEntry& l, const FdtGlyphEntry& r) {
+			std::ranges::sort(m_fontTableEntries, [](const FontdataGlyphEntry& l, const FontdataGlyphEntry& r) {
 				return l.Utf8Value < r.Utf8Value;
 			});
-			std::ranges::sort(m_kerningEntries, [](const FdtKerningEntry& l, const FdtKerningEntry& r) {
+			std::ranges::sort(m_kerningEntries, [](const FontdataKerningEntry& l, const FontdataKerningEntry& r) {
 				if (l.LeftUtf8Value == r.LeftUtf8Value)
 					return l.RightUtf8Value < r.RightUtf8Value;
 				return l.LeftUtf8Value < r.LeftUtf8Value;
@@ -138,10 +138,10 @@ namespace XivRes {
 			return length - out.size_bytes();
 		}
 
-		[[nodiscard]] const FdtGlyphEntry* GetFontEntry(char32_t c) const {
+		[[nodiscard]] const FontdataGlyphEntry* GetFontEntry(char32_t c) const {
 			const auto val = Internal::UnicodeCodePointToUtf8Uint32(c);
 			const auto it = std::lower_bound(m_fontTableEntries.begin(), m_fontTableEntries.end(), val,
-				[](const FdtGlyphEntry& l, uint32_t r) {
+				[](const FontdataGlyphEntry& l, uint32_t r) {
 				return l.Utf8Value < r;
 			});
 			if (it == m_fontTableEntries.end() || it->Utf8Value != val)
@@ -152,7 +152,7 @@ namespace XivRes {
 		[[nodiscard]] int GetKerningDistance(char32_t l, char32_t r) const {
 			const auto pair = std::make_pair(Internal::UnicodeCodePointToUtf8Uint32(l), Internal::UnicodeCodePointToUtf8Uint32(r));
 			const auto it = std::lower_bound(m_kerningEntries.begin(), m_kerningEntries.end(), pair,
-				[](const FdtKerningEntry& l, const std::pair<uint32_t, uint32_t>& r) {
+				[](const FontdataKerningEntry& l, const std::pair<uint32_t, uint32_t>& r) {
 				if (l.LeftUtf8Value == r.first)
 					return l.RightUtf8Value < r.second;
 				return l.LeftUtf8Value < r.first;
@@ -162,11 +162,11 @@ namespace XivRes {
 			return it->RightOffset;
 		}
 
-		[[nodiscard]] const std::vector<FdtGlyphEntry>& GetFontTableEntries() const {
+		[[nodiscard]] const std::vector<FontdataGlyphEntry>& GetFontTableEntries() const {
 			return m_fontTableEntries;
 		}
 
-		[[nodiscard]] const std::vector<FdtKerningEntry>& GetKerningEntries() const {
+		[[nodiscard]] const std::vector<FontdataKerningEntry>& GetKerningEntries() const {
 			return m_kerningEntries;
 		}
 
@@ -178,12 +178,12 @@ namespace XivRes {
 		void AddFontEntry(char32_t c, uint16_t textureIndex, uint16_t textureOffsetX, uint16_t textureOffsetY, uint8_t boundingWidth, uint8_t boundingHeight, int8_t nextOffsetX, int8_t currentOffsetY) {
 			const auto val = Internal::UnicodeCodePointToUtf8Uint32(c);
 			
-			auto it = std::lower_bound(m_fontTableEntries.begin(), m_fontTableEntries.end(), val, [](const FdtGlyphEntry& l, uint32_t r) {
+			auto it = std::lower_bound(m_fontTableEntries.begin(), m_fontTableEntries.end(), val, [](const FontdataGlyphEntry& l, uint32_t r) {
 				return l.Utf8Value < r;
 			});
 
 			if (it == m_fontTableEntries.end() || it->Utf8Value != val) {
-				auto entry = FdtGlyphEntry();
+				auto entry = FontdataGlyphEntry();
 				entry.Utf8Value = val;
 				it = m_fontTableEntries.insert(it, entry);
 				m_fcsv.KerningHeaderOffset += sizeof entry;
@@ -200,12 +200,12 @@ namespace XivRes {
 		}
 
 		void AddKerning(char32_t l, char32_t r, int rightOffset) {
-			auto entry = FdtKerningEntry();
+			auto entry = FontdataKerningEntry();
 			entry.Left(l);
 			entry.Right(r);
 			entry.RightOffset = rightOffset;
 
-			const auto it = std::ranges::lower_bound(m_kerningEntries, entry, [](const FdtKerningEntry& l, const FdtKerningEntry& r) {
+			const auto it = std::ranges::lower_bound(m_kerningEntries, entry, [](const FontdataKerningEntry& l, const FontdataKerningEntry& r) {
 				if (l.LeftUtf8Value == r.LeftUtf8Value)
 					return l.RightUtf8Value < r.RightUtf8Value;
 				return l.LeftUtf8Value < r.LeftUtf8Value;
