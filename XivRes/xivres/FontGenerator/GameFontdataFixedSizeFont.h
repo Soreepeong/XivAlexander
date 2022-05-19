@@ -27,32 +27,10 @@ namespace XivRes::FontGenerator {
 					throw std::invalid_argument("All mipmap streams must be in A8R8G8B8 format.");
 			}
 
-			m_dx = -1;
-			for (const auto c : U"-0") {
-				const auto pEntry = m_stream->GetFontEntry(c);
-				if (!pEntry)
-					continue;
-
-				const auto& mipmapStream = *m_mipmapStreams.at(pEntry->TextureFileIndex());
-				const auto pOpacityArray = &mipmapStream.View<uint8_t>()[3 - pEntry->TexturePlaneIndex()];
-
-				if (m_dx == -1)
-					m_dx = *pEntry->BoundingWidth;
-				else
-					m_dx = (std::min<int>)(m_dx, *pEntry->BoundingWidth);
-				for (size_t x = *pEntry->TextureOffsetX, x_ = x + m_dx; x < x_; x++) {
-					auto pass = true;
-					for (size_t y = *pEntry->TextureOffsetY, y_ = *pEntry->TextureOffsetY + *pEntry->BoundingWidth; pass && y < y_; y++)
-						pass = pOpacityArray[4 * (y * mipmapStream.Width + x)] == 0;
-					if (!pass) {
-						m_dx = static_cast<int>(x - pEntry->TextureOffsetX) - 1;
-						break;
-					}
-				}
-			}
-
-			if (m_dx == -1)
-				m_dx = 0;
+			if (const auto pEntry = m_stream->GetFontEntry(U'_'))
+				m_dx = -pEntry->NextOffsetX;
+			else if (const auto pEntry = m_stream->GetFontEntry(U'0'))
+				m_dx = -pEntry->NextOffsetX;
 		}
 
 		int GetHorizontalOffset() const {
@@ -63,8 +41,8 @@ namespace XivRes::FontGenerator {
 			m_dx = offset;
 		}
 
-		float GetSizePt() const override {
-			return m_stream->Points();
+		float GetSize() const override {
+			return m_stream->Size();
 		}
 
 		int GetAscent() const override {
@@ -167,6 +145,10 @@ namespace XivRes::FontGenerator {
 				.WithGammaTable(m_gammaTable)
 				.CopyTo(src.X1, src.Y1, src.X2, src.Y2, dest.X1, dest.Y1);
 			return true;
+		}
+
+		std::shared_ptr<IFixedSizeFont> GetThreadSafeView() const override {
+			return std::make_shared<FixedSizeFontConstView>(this);
 		}
 
 	private:
@@ -279,13 +261,13 @@ std::vector<std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont>> X
 			return GetFonts(fdtListFont, "common/font/font{}.tex");
 
 		case XivRes::GameFontType::font_lobby:
-			return GetFonts(fdtListFont, "common/font/font_lobby{}.tex");
+			return GetFonts(fdtListFontLobby, "common/font/font_lobby{}.tex");
 
 		case XivRes::GameFontType::chn_axis:
-			return GetFonts(fdtListFont, "common/font/font_chn_{}.tex");
+			return GetFonts(fdtListChnAxis, "common/font/font_chn_{}.tex");
 
 		case XivRes::GameFontType::krn_axis:
-			return GetFonts(fdtListFont, "common/font/font_krn_{}.tex");
+			return GetFonts(fdtListKrnAxis, "common/font/font_krn_{}.tex");
 
 		default:
 			throw std::invalid_argument("Invalid font specified");

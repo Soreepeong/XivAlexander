@@ -34,6 +34,7 @@
     <ClInclude Include="xivres\FontdataStream.h" />
     <ClInclude Include="xivres\FontGenerator\CodepointLimitingFixedSizeFont.h" />
     <ClInclude Include="xivres\FontGenerator\FontdataPacker.h" />
+    <ClInclude Include="xivres\FontGenerator\FreeTypeFixedSizeFont.h" />
     <ClInclude Include="xivres\FontGenerator\GameFontdataFixedSizeFont.h" />
     <ClInclude Include="xivres\FontGenerator\IFixedSizeFont.h" />
     <ClInclude Include="xivres\FontGenerator\MergedFixedSizeFont.h" />

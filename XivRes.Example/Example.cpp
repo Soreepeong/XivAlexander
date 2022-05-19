@@ -5,6 +5,7 @@
 #include <Windows.h>
 #include <windowsx.h>
 
+#include "XivRes/ExcelReader.h"
 #include "XivRes/GameReader.h"
 #include "XivRes/FontdataStream.h"
 #include "XivRes/ScdReader.h"
@@ -518,11 +519,11 @@ int main()
 	TestDecompressAll(gameReader.GetSqpackReader(0x0a, 0x00, 0x00));
 	TestDecompressAll(gameReader.GetSqpackReader(0x0c, 0x04, 0x00));
 
-	std::cout << std::format("AXIS_96: {}pt\n", XivRes::FontdataStream(*gameReader.GetFileStream("common/font/AXIS_96.fdt")).Points());
-	std::cout << std::format("AXIS_12: {}pt\n", XivRes::FontdataStream(*gameReader.GetFileStream("common/font/AXIS_12.fdt")).Points());
-	std::cout << std::format("AXIS_14: {}pt\n", XivRes::FontdataStream(*gameReader.GetFileStream("common/font/AXIS_14.fdt")).Points());
-	std::cout << std::format("AXIS_18: {}pt\n", XivRes::FontdataStream(*gameReader.GetFileStream("common/font/AXIS_18.fdt")).Points());
-	std::cout << std::format("AXIS_36: {}pt\n", XivRes::FontdataStream(*gameReader.GetFileStream("common/font/AXIS_36.fdt")).Points());
+	std::cout << std::format("AXIS_96: {}pt\n", XivRes::FontdataStream(*gameReader.GetFileStream("common/font/AXIS_96.fdt")).Size());
+	std::cout << std::format("AXIS_12: {}pt\n", XivRes::FontdataStream(*gameReader.GetFileStream("common/font/AXIS_12.fdt")).Size());
+	std::cout << std::format("AXIS_14: {}pt\n", XivRes::FontdataStream(*gameReader.GetFileStream("common/font/AXIS_14.fdt")).Size());
+	std::cout << std::format("AXIS_18: {}pt\n", XivRes::FontdataStream(*gameReader.GetFileStream("common/font/AXIS_18.fdt")).Size());
+	std::cout << std::format("AXIS_36: {}pt\n", XivRes::FontdataStream(*gameReader.GetFileStream("common/font/AXIS_36.fdt")).Size());
 
 	for (size_t i = 1; i <= 7; i++) {
 		const auto atlas = XivRes::TextureStream(gameReader.GetFileStream(std::format("common/font/font{}.tex", i)));

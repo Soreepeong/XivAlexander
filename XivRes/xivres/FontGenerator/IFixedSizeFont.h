@@ -189,7 +189,7 @@ namespace XivRes::FontGenerator {
 			0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
 		} };
 
-		static constexpr std::array<uint8_t, 256> WindowsGammaTable[256]{ {
+		static constexpr std::array<uint8_t, 256> WindowsGammaTable{ {
 			0x00, 0x05, 0x08, 0x0b, 0x0d, 0x0f, 0x12, 0x14, 0x16, 0x17, 0x19, 0x1b, 0x1d, 0x1e, 0x20, 0x22,
 			0x23, 0x25, 0x26, 0x28, 0x29, 0x2b, 0x2c, 0x2e, 0x2f, 0x31, 0x32, 0x33, 0x35, 0x36, 0x37, 0x39,
 			0x3a, 0x3b, 0x3c, 0x3e, 0x3f, 0x40, 0x41, 0x43, 0x44, 0x45, 0x46, 0x48, 0x49, 0x4a, 0x4b, 0x4c,
@@ -209,7 +209,7 @@ namespace XivRes::FontGenerator {
 		} };
 
 	public:
-		virtual float GetSizePt() const = 0;
+		virtual float GetSize() const = 0;
 
 		virtual int GetAscent() const = 0;
 
@@ -236,10 +236,80 @@ namespace XivRes::FontGenerator {
 		virtual bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const = 0;
 
 		virtual bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const = 0;
+
+		virtual std::shared_ptr<IFixedSizeFont> GetThreadSafeView() const = 0;
 	};
 
 	class DefaultAbstractFixedSizeFont : public IFixedSizeFont {
 
+	};
+
+	class FixedSizeFontConstView : public IFixedSizeFont {
+		const IFixedSizeFont* m_pFont;
+
+	public:
+		FixedSizeFontConstView(const IFixedSizeFont* pFont) 
+			: m_pFont(pFont) {}
+
+		float GetSize() const override {
+			return m_pFont->GetSize();
+		}
+
+		int GetAscent() const override {
+			return m_pFont->GetAscent();
+		}
+
+		int GetLineHeight() const override {
+			return m_pFont->GetLineHeight();
+		}
+
+		size_t GetCodepointCount() const override {
+			return m_pFont->GetCodepointCount();
+		}
+
+		std::set<char32_t> GetAllCodepoints() const override {
+			return m_pFont->GetAllCodepoints();
+		}
+
+		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const override {
+			return m_pFont->GetGlyphMetrics(codepoint, gm);
+		}
+
+		const void* GetGlyphUniqid(char32_t c) const override {
+			return m_pFont->GetGlyphUniqid(c);
+		}
+
+		size_t GetKerningEntryCount() const override {
+			return m_pFont->GetKerningEntryCount();
+		}
+
+		std::map<std::pair<char32_t, char32_t>, int> GetKerningPairs() const override {
+			return m_pFont->GetKerningPairs();
+		}
+
+		int GetAdjustedAdvanceX(char32_t left, char32_t right) const override {
+			return m_pFont->GetAdjustedAdvanceX(left, right);
+		}
+
+		const std::array<uint8_t, 256>& GetGammaTable() const override {
+			return m_pFont->GetGammaTable();
+		}
+
+		void SetGammaTable(const std::array<uint8_t, 256>& gammaTable) override {
+			throw std::runtime_error("FixedSizeFontConstView does not support changing gamma table.");
+		}
+
+		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const override {
+			return m_pFont->Draw(codepoint, pBuf, drawX, drawY, destWidth, destHeight, fgColor, bgColor);
+		}
+
+		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const override {
+			return m_pFont->Draw(codepoint, pBuf, stride, drawX, drawY, destWidth, destHeight, fgColor, bgColor, fgOpacity, bgOpacity);
+		}
+
+		std::shared_ptr<IFixedSizeFont> GetThreadSafeView() const override {
+			return m_pFont->GetThreadSafeView();
+		}
 	};
 }
 

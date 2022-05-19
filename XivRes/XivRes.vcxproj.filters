@@ -215,5 +215,8 @@
     <ClInclude Include="xivres\Internal\ThreadPool.h">
       <Filter>Headers\Internal</Filter>
     </ClInclude>
+    <ClInclude Include="xivres\FontGenerator\FreeTypeFixedSizeFont.h">
+      <Filter>Headers\FontGenerator</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

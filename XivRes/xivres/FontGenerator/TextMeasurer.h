@@ -16,15 +16,15 @@ namespace XivRes::FontGenerator {
 		GlyphMetrics Occupied;
 		std::vector<CharacterInfo> Characters;
 
-		std::shared_ptr<XivRes::MemoryMipmapStream> CreateMipmap(const IFixedSizeFont& fontFace, RGBA8888 fgColor, RGBA8888 bgColor) const {
-			auto res = std::make_shared<XivRes::MemoryMipmapStream>(Occupied.GetWidth(), Occupied.GetHeight(), 1, XivRes::TextureFormat::A8R8G8B8);
+		std::shared_ptr<XivRes::MemoryMipmapStream> CreateMipmap(const IFixedSizeFont& fontFace, RGBA8888 fgColor, RGBA8888 bgColor, int pad = 0) const {
+			auto res = std::make_shared<XivRes::MemoryMipmapStream>(pad * 2 + Occupied.GetWidth(), pad * 2 + Occupied.GetHeight(), 1, XivRes::TextureFormat::A8R8G8B8);
 			auto buf = res->View<RGBA8888>();
 			std::ranges::fill(buf, bgColor);
 			for (const auto& c : Characters) {
 				if (c.Metrics.IsEffectivelyEmpty())
 					continue;
 
-				fontFace.Draw(c.Displayed, &buf[0], c.X - Occupied.X1, c.Y - Occupied.Y1, res->Width, res->Height, fgColor, {});
+				fontFace.Draw(c.Displayed, &buf[0], pad + c.X - Occupied.X1, pad + c.Y - Occupied.Y1, res->Width, res->Height, fgColor, {});
 			}
 			return res;
 		}

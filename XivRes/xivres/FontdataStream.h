@@ -215,12 +215,16 @@ namespace XivRes {
 				*it = entry;
 		}
 
-		void AddKerning(char32_t l, char32_t r, int rightOffset) {
+		void AddKerning(char32_t l, char32_t r, int rightOffset, bool cumulative = false) {
 			auto entry = FontdataKerningEntry();
 			entry.Left(l);
 			entry.Right(r);
 			entry.RightOffset = rightOffset;
 
+			AddKerning(entry, cumulative);
+		}
+
+		void AddKerning(const FontdataKerningEntry& entry, bool cumulative = false) {
 			const auto it = std::ranges::lower_bound(m_kerningEntries, entry, [](const FontdataKerningEntry& l, const FontdataKerningEntry& r) {
 				if (l.LeftUtf8Value == r.LeftUtf8Value)
 					return l.RightUtf8Value < r.RightUtf8Value;
@@ -228,13 +232,13 @@ namespace XivRes {
 			});
 
 			if (it != m_kerningEntries.end() && it->LeftUtf8Value == entry.LeftUtf8Value && it->RightUtf8Value == entry.RightUtf8Value) {
-				if (rightOffset)
-					it->RightOffset = rightOffset;
+				if (entry.RightOffset)
+					it->RightOffset = entry.RightOffset + (cumulative ? *it->RightOffset : 0);
 				else
 					m_kerningEntries.erase(it);
-			} else if (rightOffset)
+			} else if (entry.RightOffset)
 				m_kerningEntries.insert(it, entry);
-			
+
 			m_fthd.KerningEntryCount = m_knhd.EntryCount = static_cast<uint32_t>(m_kerningEntries.size());
 		}
 
@@ -254,12 +258,12 @@ namespace XivRes {
 			m_fthd.TextureHeight = v;
 		}
 
-		[[nodiscard]] float Points() const {
-			return m_fthd.Points;
+		[[nodiscard]] float Size() const {
+			return m_fthd.Size;
 		}
 
-		void Points(float v) {
-			m_fthd.Points = v;
+		void Size(float v) {
+			m_fthd.Size = v;
 		}
 
 		[[nodiscard]] uint32_t LineHeight() const {

@@ -33,7 +33,7 @@ namespace XivRes {
 		uint8_t Padding_0x0C[4]{};
 		LE<uint16_t> TextureWidth;
 		LE<uint16_t> TextureHeight;
-		LE<float> Points{ 0.f };
+		LE<float> Size{ 0.f };
 		LE<uint32_t> LineHeight;
 		LE<uint32_t> Ascent;
 	};
