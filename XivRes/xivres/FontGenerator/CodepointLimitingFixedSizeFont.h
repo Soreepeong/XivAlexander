@@ -33,6 +33,14 @@ namespace XivRes::FontGenerator {
 
 		CodepointLimitingFixedSizeFont& operator=(CodepointLimitingFixedSizeFont&& r) = default;
 
+		int GetHorizontalOffset() const override {
+			return m_pFont->GetHorizontalOffset();
+		}
+
+		void SetHorizontalOffset(int offset) override {
+			throw std::runtime_error("FixedSizeFontConstView does not support changing horizontal offset.");
+		}
+
 		float GetSize() const override {
 			return m_pFont->GetSize();
 		}

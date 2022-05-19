@@ -158,17 +158,21 @@ namespace XivRes::FontGenerator {
 
 				pool.SubmitDoneAndWait();
 
-				std::map<const Internal::UnicodeBlocks::BlockDefinition*, std::vector<CharacterPlan*>> excessiveHorizontalOffsetCharacters;
+				std::map<Internal::UnicodeBlocks::NegativeLsbGroup, std::vector<CharacterPlan*>> negativeLsbChars;
+				std::vector<bool> codepointAvailable;
+				codepointAvailable.resize(Internal::UnicodeBlocks::Blocks[_countof(Internal::UnicodeBlocks::Blocks) - 1].Last, false);
 				for (auto& info : rectangleInfoList) {
-					if (info.Entry.Char() == 3655)
-						__debugbreak();
+					codepointAvailable[info.Entry.Char()] = true;
 
 					if (info.X1 < -m_nHorizontalOffset) {
 						info.Entry.BoundingWidth = Internal::RangeCheckedCast<uint8_t>(info.X2 - info.X1);
 						info.X1 = -info.X1;
 						info.X2 = info.X1 - m_nHorizontalOffset;
 						info.Entry.NextOffsetX += info.X2 - info.Entry.BoundingWidth;
-						excessiveHorizontalOffsetCharacters[info.UnicodeBlock].emplace_back(&info);
+
+						if (info.UnicodeBlock->NegativeLsbGroup != Internal::UnicodeBlocks::None)
+							negativeLsbChars[info.UnicodeBlock->NegativeLsbGroup].emplace_back(&info);
+
 					} else {
 						info.Entry.BoundingWidth = Internal::RangeCheckedCast<uint8_t>((std::max)(0, info.X2 + m_nHorizontalOffset));
 						info.Entry.NextOffsetX -= info.Entry.BoundingWidth;
@@ -177,28 +181,29 @@ namespace XivRes::FontGenerator {
 					}
 				}
 
-				for (const auto& [pBlock, chars] : excessiveHorizontalOffsetCharacters) {
-					if (strstr(pBlock->Name, "Thai"))
-						__debugbreak();
+				for (const auto& [group, chars] : negativeLsbChars) {
 					for (const auto& charPlan : chars) {
 						auto entry = FontdataKerningEntry();
 						entry.RightUtf8Value = charPlan->Entry.Utf8Value;
 						entry.RightShiftJisValue = charPlan->Entry.ShiftJisValue;
 						entry.RightOffset = -charPlan->X2;
 
-						for (const auto& targetFont : charPlan->TargetFonts) {
-							for (auto leftc = pBlock->First; leftc <= pBlock->Last; leftc++) {
-								if (!targetFont->GetFontEntry(leftc))
-									continue;
+						for (const auto& block : Internal::UnicodeBlocks::Blocks) {
+							if (block.NegativeLsbGroup != group && (group != Internal::UnicodeBlocks::Combining || !(block.Flags & Internal::UnicodeBlocks::UsedWithCombining)))
+								continue;
 
-								entry.Left(leftc);
-								targetFont->AddKerning(entry, true);
+							for (const auto& targetFont : charPlan->TargetFonts) {
+								for (auto leftc = block.First; leftc <= block.Last; leftc++) {
+									if (!codepointAvailable[leftc])
+										continue;
+
+									entry.Left(leftc);
+									targetFont->AddKerning(entry, true);
+								}
 							}
 						}
 					}
 				}
-
-				// __debugbreak();
 			}
 
 			size_t nPlaneCount = 0;

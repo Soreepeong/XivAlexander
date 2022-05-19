@@ -50,6 +50,28 @@ namespace XivRes::Internal {
 			throw std::invalid_argument("Unicode code point is currently capped at 0x10FFFF.");
 	}
 
+	inline char32_t DecodeUtf16(const char16_t* p, size_t& pConsumed) {
+		if (!pConsumed)
+			return 0;
+
+		if ((*p & 0xFC00) == 0xD800) {
+			if (pConsumed < 2 || (p[1] & 0xFC00) != 0xDC00)
+				goto invalid;
+			pConsumed = 2;
+			return static_cast<char32_t>(
+				((p[0] & 0x03FF) << 10) |
+				((p[1] & 0x03FF) << 0)
+				) + 0x10000;
+		}
+
+		pConsumed = 1;
+		return *p;
+
+	invalid:
+		pConsumed = 1;
+		return U'\uFFFD';  // Replacement character
+	}
+
 	inline char32_t DecodeUtf8(const char8_t* p, size_t& pConsumed) {
 		if (!pConsumed)
 			return 0;
@@ -68,6 +90,7 @@ namespace XivRes::Internal {
 				((p[1] & 0x3F) << 0)
 				);
 		}
+
 		if (0xE0 == (*p & 0xF0)) {
 			if (pConsumed < 3) goto invalid;
 			if (0x80 != (p[1] & 0xC0)) goto invalid;
@@ -79,6 +102,7 @@ namespace XivRes::Internal {
 				((p[2] & 0x3F) << 0)
 				);
 		}
+
 		if (0xF0 == (*p & 0xF8)) {
 			if (pConsumed < 4) goto invalid;
 			if (0x80 != (p[1] & 0xC0)) goto invalid;
@@ -99,16 +123,29 @@ namespace XivRes::Internal {
 	}
 
 	namespace UnicodeBlocks {
-		enum LanguagePurposes : uint64_t {
+		enum BlockPurpose : uint64_t {
 			LTR = 0,
 			RTL = 1 << 0,
+			UsedWithCombining = 1 << 1,
+		};
+
+		inline constexpr BlockPurpose operator|(BlockPurpose a, BlockPurpose b) {
+			return static_cast<BlockPurpose>(static_cast<uint64_t>(a) | static_cast<uint64_t>(b));
+		}
+
+		enum NegativeLsbGroup {
+			None,
+			Combining,
+			Cyrillic,
+			Thai,
 		};
 
 		struct BlockDefinition {
 			char32_t First;
 			char32_t Last;
 			const char* Name;
-			LanguagePurposes Flags;
+			BlockPurpose Flags;
+			NegativeLsbGroup NegativeLsbGroup = None;
 		};
 
 		/*
@@ -118,16 +155,16 @@ namespace XivRes::Internal {
 		 * Replace to: `{ 0x$1, 0x$2, "$3", LTR },`
 		 */
 		constexpr BlockDefinition Blocks[]{
-			{ 0x0000, 0x007F, "Basic Latin", LTR },
-			{ 0x0080, 0x00FF, "Latin-1 Supplement", LTR },
-			{ 0x0100, 0x017F, "Latin Extended-A", LTR },
-			{ 0x0180, 0x024F, "Latin Extended-B", LTR },
-			{ 0x0250, 0x02AF, "IPA Extensions", LTR },
+			{ 0x0000, 0x007F, "Basic Latin", LTR | UsedWithCombining },
+			{ 0x0080, 0x00FF, "Latin-1 Supplement", LTR | UsedWithCombining },
+			{ 0x0100, 0x017F, "Latin Extended-A", LTR | UsedWithCombining },
+			{ 0x0180, 0x024F, "Latin Extended-B", LTR | UsedWithCombining },
+			{ 0x0250, 0x02AF, "IPA Extensions", LTR | UsedWithCombining },
 			{ 0x02B0, 0x02FF, "Spacing Modifier Letters", LTR },
-			{ 0x0300, 0x036F, "Combining Diacritical Marks", LTR },
-			{ 0x0370, 0x03FF, "Greek and Coptic", LTR },
-			{ 0x0400, 0x04FF, "Cyrillic", LTR },
-			{ 0x0500, 0x052F, "Cyrillic Supplement", LTR },
+			{ 0x0300, 0x036F, "Combining Diacritical Marks", LTR, Combining },
+			{ 0x0370, 0x03FF, "Greek and Coptic", LTR | UsedWithCombining },
+			{ 0x0400, 0x04FF, "Cyrillic", LTR, Cyrillic },
+			{ 0x0500, 0x052F, "Cyrillic Supplement", LTR, Cyrillic },
 			{ 0x0530, 0x058F, "Armenian", LTR },
 			{ 0x0590, 0x05FF, "Hebrew", RTL },
 			{ 0x0600, 0x06FF, "Arabic", RTL },
@@ -150,7 +187,7 @@ namespace XivRes::Internal {
 			{ 0x0C80, 0x0CFF, "Kannada", LTR },
 			{ 0x0D00, 0x0D7F, "Malayalam", LTR },
 			{ 0x0D80, 0x0DFF, "Sinhala", LTR },
-			{ 0x0E00, 0x0E7F, "Thai", LTR },
+			{ 0x0E00, 0x0E7F, "Thai", LTR, Thai },
 			{ 0x0E80, 0x0EFF, "Lao", LTR },
 			{ 0x0F00, 0x0FFF, "Tibetan", LTR },
 			{ 0x1000, 0x109F, "Myanmar", LTR },
@@ -175,25 +212,25 @@ namespace XivRes::Internal {
 			{ 0x19E0, 0x19FF, "Khmer Symbols", LTR },
 			{ 0x1A00, 0x1A1F, "Buginese", LTR },
 			{ 0x1A20, 0x1AAF, "Tai Tham", LTR },
-			{ 0x1AB0, 0x1AFF, "Combining Diacritical Marks Extended", LTR },
+			{ 0x1AB0, 0x1AFF, "Combining Diacritical Marks Extended", LTR, Combining },
 			{ 0x1B00, 0x1B7F, "Balinese", LTR },
 			{ 0x1B80, 0x1BBF, "Sundanese", LTR },
 			{ 0x1BC0, 0x1BFF, "Batak", LTR },
 			{ 0x1C00, 0x1C4F, "Lepcha", LTR },
 			{ 0x1C50, 0x1C7F, "Ol Chiki", LTR },
-			{ 0x1C80, 0x1C8F, "Cyrillic Extended-C", LTR },
+			{ 0x1C80, 0x1C8F, "Cyrillic Extended-C", LTR, Cyrillic },
 			{ 0x1C90, 0x1CBF, "Georgian Extended", LTR },
 			{ 0x1CC0, 0x1CCF, "Sundanese Supplement", LTR },
 			{ 0x1CD0, 0x1CFF, "Vedic Extensions", LTR },
 			{ 0x1D00, 0x1D7F, "Phonetic Extensions", LTR },
 			{ 0x1D80, 0x1DBF, "Phonetic Extensions Supplement", LTR },
-			{ 0x1DC0, 0x1DFF, "Combining Diacritical Marks Supplement", LTR },
-			{ 0x1E00, 0x1EFF, "Latin Extended Additional", LTR },
+			{ 0x1DC0, 0x1DFF, "Combining Diacritical Marks Supplement", LTR, Combining },
+			{ 0x1E00, 0x1EFF, "Latin Extended Additional", LTR | UsedWithCombining },
 			{ 0x1F00, 0x1FFF, "Greek Extended", LTR },
 			{ 0x2000, 0x206F, "General Punctuation", LTR },
 			{ 0x2070, 0x209F, "Superscripts and Subscripts", LTR },
 			{ 0x20A0, 0x20CF, "Currency Symbols", LTR },
-			{ 0x20D0, 0x20FF, "Combining Diacritical Marks for Symbols", LTR },
+			{ 0x20D0, 0x20FF, "Combining Diacritical Marks for Symbols", LTR, Combining },
 			{ 0x2100, 0x214F, "Letterlike Symbols", LTR },
 			{ 0x2150, 0x218F, "Number Forms", LTR },
 			{ 0x2190, 0x21FF, "Arrows", LTR },
@@ -215,12 +252,12 @@ namespace XivRes::Internal {
 			{ 0x2A00, 0x2AFF, "Supplemental Mathematical Operators", LTR },
 			{ 0x2B00, 0x2BFF, "Miscellaneous Symbols and Arrows", LTR },
 			{ 0x2C00, 0x2C5F, "Glagolitic", LTR },
-			{ 0x2C60, 0x2C7F, "Latin Extended-C", LTR },
+			{ 0x2C60, 0x2C7F, "Latin Extended-C", LTR | UsedWithCombining },
 			{ 0x2C80, 0x2CFF, "Coptic", LTR },
 			{ 0x2D00, 0x2D2F, "Georgian Supplement", LTR },
 			{ 0x2D30, 0x2D7F, "Tifinagh", LTR },
 			{ 0x2D80, 0x2DDF, "Ethiopic Extended", LTR },
-			{ 0x2DE0, 0x2DFF, "Cyrillic Extended-A", LTR },
+			{ 0x2DE0, 0x2DFF, "Cyrillic Extended-A", LTR, Cyrillic },
 			{ 0x2E00, 0x2E7F, "Supplemental Punctuation", LTR },
 			{ 0x2E80, 0x2EFF, "CJK Radicals Supplement", LTR },
 			{ 0x2F00, 0x2FDF, "Kangxi Radicals", LTR },
@@ -243,10 +280,10 @@ namespace XivRes::Internal {
 			{ 0xA490, 0xA4CF, "Yi Radicals", LTR },
 			{ 0xA4D0, 0xA4FF, "Lisu", LTR },
 			{ 0xA500, 0xA63F, "Vai", LTR },
-			{ 0xA640, 0xA69F, "Cyrillic Extended-B", LTR },
+			{ 0xA640, 0xA69F, "Cyrillic Extended-B", LTR, Cyrillic },
 			{ 0xA6A0, 0xA6FF, "Bamum", LTR },
 			{ 0xA700, 0xA71F, "Modifier Tone Letters", LTR },
-			{ 0xA720, 0xA7FF, "Latin Extended-D", LTR },
+			{ 0xA720, 0xA7FF, "Latin Extended-D", LTR | UsedWithCombining },
 			{ 0xA800, 0xA82F, "Syloti Nagri", LTR },
 			{ 0xA830, 0xA83F, "Common Indic Number Forms", LTR },
 			{ 0xA840, 0xA87F, "Phags-pa", LTR },
@@ -262,7 +299,7 @@ namespace XivRes::Internal {
 			{ 0xAA80, 0xAADF, "Tai Viet", LTR },
 			{ 0xAAE0, 0xAAFF, "Meetei Mayek Extensions", LTR },
 			{ 0xAB00, 0xAB2F, "Ethiopic Extended-A", LTR },
-			{ 0xAB30, 0xAB6F, "Latin Extended-E", LTR },
+			{ 0xAB30, 0xAB6F, "Latin Extended-E", LTR | UsedWithCombining },
 			{ 0xAB70, 0xABBF, "Cherokee Supplement", LTR },
 			{ 0xABC0, 0xABFF, "Meetei Mayek", LTR },
 			{ 0xAC00, 0xD7AF, "Hangul Syllables", LTR },
@@ -276,7 +313,7 @@ namespace XivRes::Internal {
 			{ 0xFB50, 0xFDFF, "Arabic Presentation Forms-A", RTL },
 			{ 0xFE00, 0xFE0F, "Variation Selectors", LTR },
 			{ 0xFE10, 0xFE1F, "Vertical Forms", LTR },
-			{ 0xFE20, 0xFE2F, "Combining Half Marks", LTR },
+			{ 0xFE20, 0xFE2F, "Combining Half Marks", LTR, Combining },
 			{ 0xFE30, 0xFE4F, "CJK Compatibility Forms", LTR },
 			{ 0xFE50, 0xFE6F, "Small Form Variants", LTR },
 			{ 0xFE70, 0xFEFF, "Arabic Presentation Forms-B", RTL },
@@ -304,7 +341,7 @@ namespace XivRes::Internal {
 			{ 0x10530, 0x1056F, "Caucasian Albanian", LTR },
 			{ 0x10570, 0x105BF, "Vithkuqi", LTR },
 			{ 0x10600, 0x1077F, "Linear A", LTR },
-			{ 0x10780, 0x107BF, "Latin Extended-F", LTR },
+			{ 0x10780, 0x107BF, "Latin Extended-F", LTR | UsedWithCombining },
 			{ 0x10800, 0x1083F, "Cypriot Syllabary", LTR },
 			{ 0x10840, 0x1085F, "Imperial Aramaic", RTL },
 			{ 0x10860, 0x1087F, "Palmyrene", LTR },
@@ -400,7 +437,7 @@ namespace XivRes::Internal {
 			{ 0x1D360, 0x1D37F, "Counting Rod Numerals", LTR },
 			{ 0x1D400, 0x1D7FF, "Mathematical Alphanumeric Symbols", LTR },
 			{ 0x1D800, 0x1DAAF, "Sutton SignWriting", LTR },
-			{ 0x1DF00, 0x1DFFF, "Latin Extended-G", LTR },
+			{ 0x1DF00, 0x1DFFF, "Latin Extended-G", LTR | UsedWithCombining },
 			{ 0x1E000, 0x1E02F, "Glagolitic Supplement", LTR },
 			{ 0x1E100, 0x1E14F, "Nyiakeng Puachue Hmong", LTR },
 			{ 0x1E290, 0x1E2BF, "Toto", LTR },

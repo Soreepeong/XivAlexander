@@ -287,6 +287,7 @@ namespace XivRes::FontGenerator {
 	class FreeTypeFixedSizeFont : public DefaultAbstractFixedSizeFont {
 		FreeTypeInternal::FreeTypeFaceWrapper m_face;
 		std::array<uint8_t, 256> m_gammaTable;
+		int m_dx = 0;
 
 	public:
 		FreeTypeFixedSizeFont(const std::filesystem::path& path, int faceIndex, float fSize, int nLoadFlags = FT_LOAD_DEFAULT | FT_LOAD_TARGET_LIGHT)
@@ -296,27 +297,41 @@ namespace XivRes::FontGenerator {
 			: m_face(std::move(data), faceIndex, fSize, nLoadFlags)
 			, m_gammaTable(WindowsGammaTable) {}
 
-		FreeTypeFixedSizeFont(FreeTypeFixedSizeFont&& r)
+		FreeTypeFixedSizeFont(FreeTypeFixedSizeFont&& r) noexcept
 			: m_face(std::move(r.m_face))
-			, m_gammaTable(r.m_gammaTable) {
+			, m_gammaTable(r.m_gammaTable)
+			, m_dx(r.m_dx) {
 			r.m_gammaTable = WindowsGammaTable;
+			r.m_dx = 0;
 		}
 
 		FreeTypeFixedSizeFont(const FreeTypeFixedSizeFont& r)
 			: m_face(r.m_face)
-			, m_gammaTable(r.m_gammaTable) {}
+			, m_gammaTable(r.m_gammaTable)
+			, m_dx(r.m_dx) {}
 
-		FreeTypeFixedSizeFont& operator=(FreeTypeFixedSizeFont&& r) {
+		FreeTypeFixedSizeFont& operator=(FreeTypeFixedSizeFont&& r) noexcept {
 			m_face = std::move(r.m_face);
 			m_gammaTable = r.m_gammaTable;
+			m_dx = r.m_dx;
 			r.m_gammaTable = WindowsGammaTable;
+			r.m_dx = 0;
 			return *this;
 		}
 
 		FreeTypeFixedSizeFont& operator=(const FreeTypeFixedSizeFont& r) {
 			m_face = r.m_face;
 			m_gammaTable = r.m_gammaTable;
+			m_dx = r.m_dx;
 			return *this;
+		}
+
+		int GetHorizontalOffset() const override {
+			return m_dx;
+		}
+
+		void SetHorizontalOffset(int offset) override {
+			m_dx = offset;
 		}
 
 		float GetSize() const override {
@@ -453,7 +468,7 @@ namespace XivRes::FontGenerator {
 		GlyphMetrics GlyphMetricsFromCurrentGlyph(int x = 0, int y = 0) const {
 			GlyphMetrics src{
 				.Empty = false,
-				.X1 = x + m_face->glyph->bitmap_left,
+				.X1 = x + m_face->glyph->bitmap_left - m_dx,
 				.Y1 = y + GetAscent() - m_face->glyph->bitmap_top,
 				.X2 = src.X1 + static_cast<int>(m_face->glyph->bitmap.width),
 				.Y2 = src.Y1 + static_cast<int>(m_face->glyph->bitmap.rows),

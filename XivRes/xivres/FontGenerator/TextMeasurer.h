@@ -16,16 +16,36 @@ namespace XivRes::FontGenerator {
 		GlyphMetrics Occupied;
 		std::vector<CharacterInfo> Characters;
 
-		std::shared_ptr<XivRes::MemoryMipmapStream> CreateMipmap(const IFixedSizeFont& fontFace, RGBA8888 fgColor, RGBA8888 bgColor, int pad = 0) const {
-			auto res = std::make_shared<XivRes::MemoryMipmapStream>(pad * 2 + Occupied.GetWidth(), pad * 2 + Occupied.GetHeight(), 1, XivRes::TextureFormat::A8R8G8B8);
-			auto buf = res->View<RGBA8888>();
-			std::ranges::fill(buf, bgColor);
+		void DrawTo(XivRes::MemoryMipmapStream& mipmapStream, const IFixedSizeFont& fontFace, int x, int y, RGBA8888 fgColor, RGBA8888 bgColor) const {
+			const auto buf = mipmapStream.View<RGBA8888>();
 			for (const auto& c : Characters) {
 				if (c.Metrics.IsEffectivelyEmpty())
 					continue;
 
-				fontFace.Draw(c.Displayed, &buf[0], pad + c.X - Occupied.X1, pad + c.Y - Occupied.Y1, res->Width, res->Height, fgColor, {});
+				fontFace.Draw(
+					c.Displayed,
+					&buf[0],
+					x + c.X, y + c.Y,
+					mipmapStream.Width, mipmapStream.Height,
+					fgColor,
+					{});
 			}
+		}
+
+		std::shared_ptr<XivRes::MemoryMipmapStream> CreateMipmap(const IFixedSizeFont& fontFace, RGBA8888 fgColor, RGBA8888 bgColor, int pad = 0) const {
+			auto res = std::make_shared<XivRes::MemoryMipmapStream>(
+				pad * 2 + Occupied.X2 - (std::min)(0, Occupied.X1),
+				pad * 2 + Occupied.Y2 - (std::min)(0, Occupied.Y1),
+				1,
+				XivRes::TextureFormat::A8R8G8B8);
+			std::ranges::fill(res->View<RGBA8888>(), bgColor);
+			DrawTo(
+				*res,
+				fontFace,
+				pad - (std::min)(0, Occupied.X1),
+				pad - (std::min)(0, Occupied.Y1),
+				fgColor,
+				bgColor);
 			return res;
 		}
 	};
@@ -99,6 +119,38 @@ namespace XivRes::FontGenerator {
 			}
 
 			return Measure(res);
+		}
+
+		TextMeasureResult Measure(const wchar_t* pcszString, size_t nLength = (std::numeric_limits<size_t>::max)()) const {
+			return Measure(reinterpret_cast<const char16_t*>(pcszString), nLength);
+		}
+
+		TextMeasureResult Measure(const char16_t* pcszString, size_t nLength = (std::numeric_limits<size_t>::max)()) const {
+			if (nLength == (std::numeric_limits<size_t>::max)())
+				nLength = std::char_traits<char16_t>::length(pcszString);
+
+			TextMeasureResult res{};
+			res.Characters.reserve(nLength);
+			for (auto pc = pcszString, pc_ = pc + nLength; pc < pc_; pc++) {
+				char32_t c = *pc;
+				if (c == '\r') {
+					if (pc + 1 < pc_ && *(pc + 1) == '\n')
+						continue;
+					c = '\n';
+				}
+
+				auto consumed = static_cast<size_t>(pc_ - pc);
+				c = Internal::DecodeUtf16(pc, consumed);
+				pc += consumed - 1;
+
+				res.Characters.emplace_back(c, c, 0, 0, GlyphMetrics{});
+			}
+
+			return Measure(res);
+		}
+
+		TextMeasureResult Measure(const char* pcszString, size_t nLength = (std::numeric_limits<size_t>::max)()) const {
+			return Measure(reinterpret_cast<const char8_t*>(pcszString), nLength);
 		}
 
 		TextMeasureResult Measure(const char8_t* pcszString, size_t nLength = (std::numeric_limits<size_t>::max)()) const {

@@ -95,7 +95,7 @@ namespace XivRes::Internal {
 				IntersectClipRect(hdc, clip.left, clip.top, clip.right, clip.bottom);
 				if (showmode == 0)
 					SetStretchBltMode(hdc, zoomFactor < 0 ? HALFTONE : COLORONCOLOR);
-				SetBrushOrgEx(hdc, renderOffset.x, renderOffset.y, nullptr);
+				(hdc, renderOffset.x, renderOffset.y, nullptr);
 				switch (showmode) {
 					case 0:
 					case 1:

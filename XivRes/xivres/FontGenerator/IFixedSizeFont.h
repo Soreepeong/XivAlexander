@@ -209,6 +209,10 @@ namespace XivRes::FontGenerator {
 		} };
 
 	public:
+		virtual int GetHorizontalOffset() const = 0;
+
+		virtual void SetHorizontalOffset(int offset) = 0;
+
 		virtual float GetSize() const = 0;
 
 		virtual int GetAscent() const = 0;
@@ -244,12 +248,102 @@ namespace XivRes::FontGenerator {
 
 	};
 
+	class EmptyFixedSizeFont : public IFixedSizeFont {
+		float m_size;
+		int m_ascent;
+		int m_lineHeight;
+		int m_dx = 0;
+
+	public:
+		EmptyFixedSizeFont(float size, int ascent, int lineHeight)
+			: m_size(size)
+			, m_ascent(ascent)
+			, m_lineHeight(lineHeight) {}
+
+		int GetHorizontalOffset() const override {
+			return m_dx;
+		}
+
+		void SetHorizontalOffset(int offset) override {
+			m_dx = offset;
+		}
+
+		float GetSize() const override {
+			return m_size;
+		}
+
+		int GetAscent() const override {
+			return m_ascent;
+		}
+
+		int GetLineHeight() const override {
+			return m_lineHeight;
+		}
+
+		size_t GetCodepointCount() const override {
+			return 0;
+		}
+
+		std::set<char32_t> GetAllCodepoints() const override {
+			return {};
+		}
+
+		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const override {
+			gm.Clear();
+			return false;
+		}
+
+		const void* GetGlyphUniqid(char32_t c) const override {
+			return nullptr;
+		}
+
+		size_t GetKerningEntryCount() const override {
+			return 0;
+		}
+
+		std::map<std::pair<char32_t, char32_t>, int> GetKerningPairs() const override {
+			return {};
+		}
+
+		int GetAdjustedAdvanceX(char32_t left, char32_t right) const override {
+			return 0;
+		}
+
+		const std::array<uint8_t, 256>& GetGammaTable() const override {
+			return LinearGammaTable;
+		}
+
+		void SetGammaTable(const std::array<uint8_t, 256>& gammaTable) override {
+			throw std::runtime_error("EmptyFixedSizeFont does not support changing gamma table.");
+		}
+
+		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const override {
+			return false;
+		}
+
+		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const override {
+			return false;
+		}
+
+		std::shared_ptr<IFixedSizeFont> GetThreadSafeView() const override {
+			return std::make_shared<EmptyFixedSizeFont>(m_size, m_ascent, m_lineHeight);
+		}
+	};
+
 	class FixedSizeFontConstView : public IFixedSizeFont {
 		const IFixedSizeFont* m_pFont;
 
 	public:
 		FixedSizeFontConstView(const IFixedSizeFont* pFont) 
 			: m_pFont(pFont) {}
+
+		int GetHorizontalOffset() const override {
+			return m_pFont->GetHorizontalOffset();
+		}
+
+		void SetHorizontalOffset(int offset) override {
+			throw std::runtime_error("FixedSizeFontConstView does not support changing horizontal offset.");
+		}
 
 		float GetSize() const override {
 			return m_pFont->GetSize();

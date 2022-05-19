@@ -33,11 +33,11 @@ namespace XivRes::FontGenerator {
 				m_dx = -pEntry->NextOffsetX;
 		}
 
-		int GetHorizontalOffset() const {
+		int GetHorizontalOffset() const override {
 			return m_dx;
 		}
 
-		void SetHorizontalOffset(int offset) {
+		void SetHorizontalOffset(int offset) override {
 			m_dx = offset;
 		}
 

@@ -18,6 +18,7 @@ namespace XivRes::FontGenerator {
 			float m_fSize{};
 			int m_nAscent{};
 			int m_nLineHeight{};
+			int m_dx{};
 			MergedFontVerticalAlignment m_alignment = MergedFontVerticalAlignment::Baseline;
 			std::vector<int> m_verticalAdjustments;
 		};
@@ -58,7 +59,15 @@ namespace XivRes::FontGenerator {
 
 		MergedFixedSizeFont& operator=(const MergedFixedSizeFont & r) = default;
 
-		MergedFixedSizeFont& operator=(MergedFixedSizeFont && r) = default;
+		MergedFixedSizeFont& operator=(MergedFixedSizeFont&& r) = default;
+
+		int GetHorizontalOffset() const override {
+			return m_info->m_dx;
+		}
+
+		void SetHorizontalOffset(int offset) override {
+			m_info->m_dx = offset;
+		}
 
 		int GetIndividualVerticalAdjustment(size_t index) const {
 			return m_info->m_verticalAdjustments.at(index);
@@ -99,7 +108,7 @@ namespace XivRes::FontGenerator {
 		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const override {
 			for (size_t i = 0; i < m_fonts.size(); i++) {
 				if (m_fonts[i]->GetGlyphMetrics(codepoint, gm)) {
-					gm.Translate(0, GetVerticalAdjustment(i));
+					gm.Translate(-m_info->m_dx, GetVerticalAdjustment(i));
 					return true;
 				}
 			}
@@ -145,7 +154,7 @@ namespace XivRes::FontGenerator {
 
 		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const override {
 			for (size_t i = 0; i < m_fonts.size(); i++) {
-				if (m_fonts[i]->Draw(codepoint, pBuf, drawX, drawY + GetVerticalAdjustment(i), destWidth, destHeight, fgColor, bgColor))
+				if (m_fonts[i]->Draw(codepoint, pBuf, drawX - m_info->m_dx, drawY + GetVerticalAdjustment(i), destWidth, destHeight, fgColor, bgColor))
 					return true;
 			}
 
@@ -154,7 +163,7 @@ namespace XivRes::FontGenerator {
 
 		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const override {
 			for (size_t i = 0; i < m_fonts.size(); i++) {
-				if (m_fonts[i]->Draw(codepoint, pBuf, stride, drawX, drawY + GetVerticalAdjustment(i), destWidth, destHeight, fgColor, bgColor, fgOpacity, bgOpacity))
+				if (m_fonts[i]->Draw(codepoint, pBuf, stride, drawX - m_info->m_dx, drawY + GetVerticalAdjustment(i), destWidth, destHeight, fgColor, bgColor, fgOpacity, bgOpacity))
 					return true;
 			}
 
