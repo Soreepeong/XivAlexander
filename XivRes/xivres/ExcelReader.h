@@ -7,6 +7,7 @@
 #include "Internal/String.h"
 
 #include "Common.h"
+#include "GameReader.h"
 #include "Excel.h"
 #include "IStream.h"
 #include "SqpackReader.h"
@@ -977,6 +978,10 @@ namespace XivRes {
 			return Page(m_exhReader->GetPageIndex(rowId))[rowId];
 		}
 	};
+}
+
+[[nodiscard]] XivRes::ExcelReader XivRes::GameReader::GetExcelReader(const std::string& name) const {
+	return ExcelReader(&GetSqpackReader(0x0a0000), name);
 }
 
 #endif

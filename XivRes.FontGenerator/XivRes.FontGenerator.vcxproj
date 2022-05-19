@@ -187,6 +187,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Example.cpp" />
+    <ClCompile Include="TestString.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />

@@ -5,6 +5,17 @@
 namespace XivRes {
 	class ExcelReader;
 
+	namespace FontGenerator {
+		class GameFontdataFixedSizeFont;
+	}
+
+	enum class GameFontType {
+		font,
+		font_lobby,
+		chn_axis,
+		krn_axis,
+	};
+
 	class GameReader {
 		const std::filesystem::path m_gamePath;
 		mutable std::map<uint32_t, std::optional<SqpackReader>> m_readers;
@@ -60,7 +71,10 @@ namespace XivRes {
 			return GetSqpackReader((categoryId << 16) | (expacId << 8) | partId);
 		}
 
-		[[nodiscard]] inline ExcelReader GetExcelReader(const std::string& name) const;
+		[[nodiscard]] ExcelReader GetExcelReader(const std::string& name) const;
+
+		std::vector<std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont>> GetFonts(const char* const* ppcszFontdataPath, const char* pcszTexturePathPattern) const;
+		std::vector<std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont>> GetFonts(GameFontType fontType = GameFontType::font) const;
 
 		void PreloadAllSqpackFiles() const {
 			const auto lock = std::lock_guard(m_populateMtx);
@@ -68,10 +82,4 @@ namespace XivRes {
 				void(GetSqpackReader(key));
 		}
 	};
-}
-
-#include "ExcelReader.h"
-
-[[nodiscard]] inline XivRes::ExcelReader XivRes::GameReader::GetExcelReader(const std::string& name) const {
-	return ExcelReader(&GetSqpackReader(0x0a0000), name);
 }
