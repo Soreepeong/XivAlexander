@@ -43,97 +43,6 @@ namespace XivRes::Internal::TrueType {
 	};
 	static_assert(sizeof DirectoryTableEntry == 0x10);
 
-	struct Head {
-		// https://docs.microsoft.com/en-us/typography/opentype/spec/head
-		// https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6head.html
-
-		static constexpr TagStruct DirectoryTableTag{ { 'h', 'e', 'a', 'd' } };
-		static constexpr uint32_t MagicNumberValue = 0x5F0F3CF5;
-
-		enum class HeadFlags : uint16_t {
-			BaselineForFontAtZeroY = 1 << 0,
-			LeftSideBearingAtZeroX = 1 << 1,
-			InstructionsDependOnPointSize = 1 << 2,
-			ForcePpemsInteger = 1 << 3,
-			InstructionsAlterAdvanceWidth = 1 << 4,
-			VerticalLayout = 1 << 5,
-			Reserved6 = 1 << 6,
-			RequiresLayoutForCorrectLinguisticRendering = 1 << 7,
-			IsAatFont = 1 << 8,
-			ContainsRtlGlyph = 1 << 9,
-			ContainsIndicStyleRearrangementEffects = 1 << 10,
-			Lossless = 1 << 11,
-			ProduceCompatibleMetrics = 1 << 12,
-			OptimizedForClearType = 1 << 13,
-			IsLastResortFont = 1 << 14,
-			Reserved15 = 1 << 15,
-		};
-
-		enum class MacStyleFlags : uint16_t {
-			Bold = 1 << 0,
-			Italic = 1 << 1,
-			Underline = 1 << 2,
-			Outline = 1 << 3,
-			Shadow = 1 << 4,
-			Condensed = 1 << 5,
-			Extended = 1 << 6,
-		};
-
-		Fixed Version;
-		Fixed FontRevision;
-		BE<uint32_t> ChecksumAdjustment;
-		BE<uint32_t> MagicNumber;
-		BE<uint16_t> Flags;
-		BE<uint16_t> UnitsPerEm;
-		BE<uint64_t> CreatedTimestamp;
-		BE<uint64_t> ModifiedTimestamp;
-		BE<int16_t> MinX;
-		BE<int16_t> MinY;
-		BE<int16_t> MaxX;
-		BE<int16_t> MaxY;
-		BE<MacStyleFlags> MacStyle;
-		BE<uint16_t> LowestRecommendedPpem;
-		BE<int16_t> FontDirectionHint;
-		BE<int16_t> IndexToLocFormat;
-		BE<int16_t> GlyphDataFormat;
-
-		static const Head* TryCast(const void* pData, size_t length) {
-			const auto pHead = reinterpret_cast<const Head*>(pData);
-
-			if (sizeof(*pHead) > length)
-				return nullptr;
-			if (pHead->Version.Major != 1)
-				return nullptr;
-			if (pHead->MagicNumber != MagicNumberValue)
-				return nullptr;
-			return pHead;
-		}
-	};
-
-	inline constexpr Head::HeadFlags operator|(Head::HeadFlags a, Head::HeadFlags b) {
-		return static_cast<Head::HeadFlags>(static_cast<uint16_t>(a) | static_cast<uint16_t>(b));
-	}
-
-	inline constexpr Head::HeadFlags operator&(Head::HeadFlags a, Head::HeadFlags b) {
-		return static_cast<Head::HeadFlags>(static_cast<uint16_t>(a) & static_cast<uint16_t>(b));
-	}
-
-	inline constexpr Head::HeadFlags operator~(Head::HeadFlags a) {
-		return static_cast<Head::HeadFlags>(~static_cast<uint16_t>(a));
-	}
-
-	inline constexpr Head::MacStyleFlags operator|(Head::MacStyleFlags a, Head::MacStyleFlags b) {
-		return static_cast<Head::MacStyleFlags>(static_cast<uint16_t>(a) | static_cast<uint16_t>(b));
-	}
-
-	inline constexpr Head::MacStyleFlags operator&(Head::MacStyleFlags a, Head::MacStyleFlags b) {
-		return static_cast<Head::MacStyleFlags>(static_cast<uint16_t>(a) & static_cast<uint16_t>(b));
-	}
-
-	inline constexpr Head::MacStyleFlags operator~(Head::MacStyleFlags a) {
-		return static_cast<Head::MacStyleFlags>(~static_cast<uint16_t>(a));
-	}
-
 	enum class PlatformId : uint16_t {
 		Unicode = 0,
 		Macintosh = 1,  // discouraged
@@ -173,11 +82,553 @@ namespace XivRes::Internal::TrueType {
 		UnicodeFullRepertoire = 10,
 	};
 
+	struct LookupList {
+		BE<uint16_t> Count;
+		BE<uint16_t> Offsets[1];
+
+		class View {
+			union {
+				const LookupList* m_obj;
+				const char* m_bytes;
+			};
+			size_t m_length;
+
+		public:
+			View() : m_obj(nullptr), m_length(0) {}
+			View(std::nullptr_t) : View() {}
+			View(decltype(m_obj) pObject, size_t length)
+				: m_obj(pObject), m_length(length) {}
+			View(View&&) = default;
+			View(const View&) = default;
+			View& operator=(View&&) = default;
+			View& operator=(const View&) = default;
+			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View() {
+				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
+
+				if (length < sizeof uint16_t)
+					return;
+
+				if (2 * (*obj->Count + 1) > length)
+					return;
+
+				m_obj = obj;
+				m_length = length;
+			}
+
+			operator bool() const {
+				return !!m_obj;
+			}
+
+			decltype(m_obj) operator*() const {
+				return m_obj;
+			}
+
+			decltype(m_obj) operator->() const {
+				return m_obj;
+			}
+
+			std::span<const BE<uint16_t>> Offsets() const {
+				return { m_obj->Offsets, *m_obj->Count };
+			}
+		};
+	};
+
+	struct LookupTable {
+		struct LookupFlags {
+			uint8_t RightToLeft : 1;
+			uint8_t IgnoreBaseGlyphs : 1;
+			uint8_t IgnoreLigatures : 1;
+			uint8_t IgnoreMarks : 1;
+			uint8_t UseMarkFilteringSet : 1;
+			uint8_t Reserved : 3;
+		};
+		static_assert(sizeof LookupFlags == 1);
+
+		struct LookupTableHeader {
+			BE<uint16_t> LookupType;
+			uint8_t MarkAttachmentType;
+			LookupFlags LookupFlag;
+			BE<uint16_t> SubtableCount;
+		};
+
+		LookupTableHeader Header;
+		BE<uint16_t> SubtableOffsets[1];
+
+		class View {
+			union {
+				const LookupTable* m_obj;
+				const char* m_bytes;
+			};
+			size_t m_length;
+
+		public:
+			View() : m_obj(nullptr), m_length(0) {}
+			View(std::nullptr_t) : View() {}
+			View(decltype(m_obj) pObject, size_t length)
+				: m_obj(pObject), m_length(length) {}
+			View(View&&) = default;
+			View(const View&) = default;
+			View& operator=(View&&) = default;
+			View& operator=(const View&) = default;
+			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View() {
+				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
+
+				if (length < sizeof Header)
+					return;
+
+				if (length < sizeof Header + static_cast<size_t>(2) * (*obj->Header.SubtableCount) + (obj->Header.LookupFlag.UseMarkFilteringSet ? 2 : 0))
+					return;
+
+				m_obj = obj;
+				m_length = length;
+			}
+
+			operator bool() const {
+				return !!m_obj;
+			}
+
+			decltype(m_obj) operator*() const {
+				return m_obj;
+			}
+
+			decltype(m_obj) operator->() const {
+				return m_obj;
+			}
+
+			std::span<const BE<uint16_t>> SubtableOffsets() const {
+				return { m_obj->SubtableOffsets, *m_obj->Header.SubtableCount };
+			}
+
+			std::span<const char> SubtableSpan(size_t index) const {
+				const auto offset = *m_obj->SubtableOffsets[index];
+				return { m_bytes + offset, m_length - offset };
+			}
+
+			uint16_t MarkFilteringSet() const {
+				if (m_obj->Header.LookupFlag.UseMarkFilteringSet)
+					return m_obj->SubtableOffsets[*m_obj->Header.SubtableCount];
+				return (std::numeric_limits<uint16_t>::max)();
+			}
+		};
+	};
+
+	struct CoverageTable {
+		struct FormatHeader {
+			BE<uint16_t> FormatId;
+			BE<uint16_t> Count;
+		};
+
+		struct RangeRecord {
+			BE<uint16_t> StartGlyphId;
+			BE<uint16_t> EndGlyphId;
+			BE<uint16_t> StartCoverageIndex;
+		};
+
+		FormatHeader Header;
+		union {
+			BE<uint16_t> Glyphs[1];
+			RangeRecord RangeRecords[1];
+		};
+
+		class View {
+			union {
+				const CoverageTable* m_obj;
+				const char* m_bytes;
+			};
+			size_t m_length;
+
+		public:
+			View() : m_obj(nullptr), m_length(0) {}
+			View(std::nullptr_t) : View() {}
+			View(decltype(m_obj) pObject, size_t length)
+				: m_obj(pObject), m_length(length) {}
+			View(View&&) = default;
+			View(const View&) = default;
+			View& operator=(View&&) = default;
+			View& operator=(const View&) = default;
+			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View() {
+				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
+
+				if (length < sizeof FormatHeader)
+					return;
+
+				const auto count = static_cast<size_t>(*obj->Header.Count);
+				switch (obj->Header.FormatId) {
+					case 1:
+						if (length < sizeof FormatHeader + sizeof uint16_t * count)
+							return;
+						break;
+
+					case 2:
+						if (length < sizeof FormatHeader + sizeof RangeRecord * count)
+							return;
+						break;
+
+					default:
+						return;
+				}
+
+				m_obj = obj;
+				m_length = length;
+			}
+
+			operator bool() const {
+				return !!m_obj;
+			}
+
+			decltype(m_obj) operator*() const {
+				return m_obj;
+			}
+
+			decltype(m_obj) operator->() const {
+				return m_obj;
+			}
+
+			std::span<const BE<uint16_t>> GlyphSpan() const {
+				return { m_obj->Glyphs, m_obj->Header.Count };
+			}
+
+			std::span<const RangeRecord> RangeRecordSpan() const {
+				return { m_obj->RangeRecords, m_obj->Header.Count };
+			}
+
+			size_t GetCoverageIndex(size_t glyphId) const {
+				switch (m_obj->Header.FormatId) {
+					case 1:
+					{
+						const auto glyphSpan = GlyphSpan();
+						const auto bec = BE<uint16_t>(static_cast<uint16_t>(glyphId));
+						const auto it = std::lower_bound(glyphSpan.begin(), glyphSpan.end(), bec, [](const BE<uint16_t>& l, const BE<uint16_t>& r) { return *l < *r; });
+						if (it != glyphSpan.end() && **it == glyphId)
+							return it - glyphSpan.begin();
+
+						break;
+					}
+
+					case 2:
+					{
+						const auto rangeSpan = RangeRecordSpan();
+						const auto bec = RangeRecord{ .EndGlyphId = static_cast<uint16_t>(glyphId) };
+						const auto i = std::upper_bound(rangeSpan.begin(), rangeSpan.end(), bec, [](const RangeRecord& l, const RangeRecord& r) { return *l.EndGlyphId < *r.EndGlyphId; }) - rangeSpan.begin() - 1;
+						if (i >= 0 && rangeSpan[i].StartGlyphId <= glyphId && glyphId <= rangeSpan[i].EndGlyphId)
+							return rangeSpan[i].StartCoverageIndex + glyphId - rangeSpan[i].StartGlyphId;
+
+						break;
+					}
+				}
+
+				return (std::numeric_limits<size_t>::max)();
+			}
+		};
+	};
+
+	struct ClassDefTable {
+		struct Format1ClassArray {
+			struct FormatHeader {
+				BE<uint16_t> FormatId;
+				BE<uint16_t> StartGlyphId;
+				BE<uint16_t> GlyphCount;
+			};
+
+			FormatHeader Header;
+			BE<uint16_t> ClassValueArray[1];
+		};
+
+		struct Format2ClassRanges {
+			struct FormatHeader {
+				BE<uint16_t> FormatId;
+				BE<uint16_t> ClassRangeCount;
+			};
+
+			struct ClassRangeRecord {
+				BE<uint16_t> StartGlyphId;
+				BE<uint16_t> EndGlyphId;
+				BE<uint16_t> Class;
+			};
+
+			FormatHeader Header;
+			ClassRangeRecord ClassValueArray[1];
+		};
+
+		union {
+			BE<uint16_t> FormatId;
+			Format1ClassArray Format1;
+			Format2ClassRanges Format2;
+		};
+
+		class View {
+			union {
+				const ClassDefTable* m_obj;
+				const char* m_bytes;
+			};
+			size_t m_length;
+
+		public:
+			View() : m_obj(nullptr), m_length(0) {}
+			View(std::nullptr_t) : View() {}
+			View(decltype(m_obj) pObject, size_t length)
+				: m_obj(pObject), m_length(length) {}
+			View(View&&) = default;
+			View(const View&) = default;
+			View& operator=(View&&) = default;
+			View& operator=(const View&) = default;
+			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View() {
+				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
+
+				if (length < sizeof FormatId)
+					return;
+
+				switch (*obj->FormatId) {
+					case 1:
+						if (length < sizeof(Format1ClassArray::FormatHeader) + sizeof(BE<uint16_t>) * (*obj->Format1.Header.GlyphCount))
+							return;
+						break;
+
+					case 2:
+						if (length < sizeof(Format2ClassRanges::FormatHeader) + sizeof(Format2ClassRanges::ClassRangeRecord) * (*obj->Format2.Header.ClassRangeCount))
+							return;
+						break;
+
+					default:
+						return;
+				}
+
+				m_obj = obj;
+				m_length = length;
+			}
+
+			operator bool() const {
+				return !!m_obj;
+			}
+
+			decltype(m_obj) operator*() const {
+				return m_obj;
+			}
+
+			decltype(m_obj) operator->() const {
+				return m_obj;
+			}
+
+			std::map<uint16_t, std::set<uint16_t>> ClassToGlyphMap() const {
+				std::map<uint16_t, std::set<uint16_t>> res;
+				switch (m_obj->FormatId) {
+					case 1:
+					{
+						const auto startId = *m_obj->Format1.Header.StartGlyphId;
+						const auto count = *m_obj->Format1.Header.GlyphCount;
+						for (auto i = 0; i < count; i++)
+							res[*m_obj->Format1.ClassValueArray[i]].insert(startId + i);
+						break;
+					}
+
+					case 2:
+					{
+						for (const auto& range : std::span(m_obj->Format2.ClassValueArray, m_obj->Format2.Header.ClassRangeCount)) {
+							auto& target = res[*range.Class];
+							for (auto i = *range.StartGlyphId, i_ = *range.EndGlyphId; i <= i_; i++)
+								target.insert(i);
+						}
+						break;
+					}
+				}
+				return res;
+			}
+
+			std::map<uint16_t, uint16_t> GlyphToClassMap() const {
+				std::map<uint16_t, uint16_t> res;
+				switch (m_obj->FormatId) {
+					case 1:
+					{
+						const auto startId = *m_obj->Format1.Header.StartGlyphId;
+						const auto count = *m_obj->Format1.Header.GlyphCount;
+						for (auto i = 0; i < count; i++)
+							res[startId + i] = *m_obj->Format1.ClassValueArray[i];
+						break;
+					}
+
+					case 2:
+					{
+						for (const auto& range : std::span(m_obj->Format2.ClassValueArray, m_obj->Format2.Header.ClassRangeCount)) {
+							const auto classValue = *range.Class;
+							for (auto i = *range.StartGlyphId, i_ = *range.EndGlyphId; i <= i_; i++)
+								res[i] = classValue;
+						}
+						break;
+					}
+				}
+				return res;
+			}
+
+			uint16_t GetClass(uint16_t glyphId) const {
+				switch (m_obj->FormatId) {
+					case 1:
+					{
+						const auto startId = *m_obj->Format1.Header.StartGlyphId;
+						if (startId <= glyphId && glyphId < startId + *m_obj->Format1.Header.GlyphCount)
+							return m_obj->Format1.ClassValueArray[glyphId - startId];
+
+						return 0;
+					}
+
+					case 2:
+					{
+						const auto rangeSpan = std::span(m_obj->Format2.ClassValueArray, m_obj->Format2.Header.ClassRangeCount);
+						const auto bec = Format2ClassRanges::ClassRangeRecord{ .EndGlyphId = glyphId };
+						const auto i = std::upper_bound(rangeSpan.begin(), rangeSpan.end(), bec, [](const Format2ClassRanges::ClassRangeRecord& l, const Format2ClassRanges::ClassRangeRecord& r) { return *l.EndGlyphId < *r.EndGlyphId; }) - rangeSpan.begin() - 1;
+						if (i >= 0 && rangeSpan[i].StartGlyphId <= glyphId && glyphId <= rangeSpan[i].EndGlyphId)
+							return rangeSpan[i].Class;
+
+						return 0;
+					}
+				}
+
+				return 0;
+			}
+		};
+	};
+
+	struct Head {
+		// https://docs.microsoft.com/en-us/typography/opentype/spec/head
+		// https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6head.html
+
+		static constexpr TagStruct DirectoryTableTag{ { 'h', 'e', 'a', 'd' } };
+		static constexpr uint32_t MagicNumberValue = 0x5F0F3CF5;
+
+		struct HeadFlags {
+			uint16_t BaselineForFontAtZeroY : 1;
+			uint16_t LeftSideBearingAtZeroX : 1;
+			uint16_t InstructionsDependOnPointSize : 1;
+			uint16_t ForcePpemsInteger : 1;
+
+			uint16_t InstructionsAlterAdvanceWidth : 1;
+			uint16_t VerticalLayout : 1;
+			uint16_t Reserved6 : 1;
+			uint16_t RequiresLayoutForCorrectLinguisticRendering : 1;
+
+			uint16_t IsAatFont : 1;
+			uint16_t ContainsRtlGlyph : 1;
+			uint16_t ContainsIndicStyleRearrangementEffects : 1;
+			uint16_t Lossless : 1;
+
+			uint16_t ProduceCompatibleMetrics : 1;
+			uint16_t OptimizedForClearType : 1;
+			uint16_t IsLastResortFont : 1;
+			uint16_t Reserved15 : 1;
+		};
+		static_assert(sizeof HeadFlags == 2);
+
+		struct MacStyleFlags {
+			uint16_t Bold : 1;
+			uint16_t Italic : 1;
+			uint16_t Underline : 1;
+			uint16_t Outline : 1;
+			uint16_t Shadow : 1;
+			uint16_t Condensed : 1;
+			uint16_t Extended : 1;
+			uint16_t Reserved : 9;
+		};
+		static_assert(sizeof MacStyleFlags == 2);
+
+		Fixed Version;
+		Fixed FontRevision;
+		BE<uint32_t> ChecksumAdjustment;
+		BE<uint32_t> MagicNumber;
+		BE<HeadFlags> Flags;
+		BE<uint16_t> UnitsPerEm;
+		BE<uint64_t> CreatedTimestamp;
+		BE<uint64_t> ModifiedTimestamp;
+		BE<int16_t> MinX;
+		BE<int16_t> MinY;
+		BE<int16_t> MaxX;
+		BE<int16_t> MaxY;
+		BE<MacStyleFlags> MacStyle;
+		BE<uint16_t> LowestRecommendedPpem;
+		BE<int16_t> FontDirectionHint;
+		BE<int16_t> IndexToLocFormat;
+		BE<int16_t> GlyphDataFormat;
+
+		class View {
+			union {
+				const Head* m_obj;
+				const char* m_bytes;
+			};
+			size_t m_length;
+
+		public:
+			View() : m_obj(nullptr), m_length(0) {}
+			View(std::nullptr_t) : View() {}
+			View(decltype(m_obj) pObject, size_t length)
+				: m_obj(pObject), m_length(length) {}
+			View(View&&) = default;
+			View(const View&) = default;
+			View& operator=(View&&) = default;
+			View& operator=(const View&) = default;
+			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View() {
+				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
+
+				if (sizeof(*obj) > length)
+					return;
+				if (obj->Version.Major != 1)
+					return;
+				if (obj->MagicNumber != MagicNumberValue)
+					return;
+
+				m_obj = obj;
+				m_length = length;
+			}
+
+			operator bool() const {
+				return !!m_obj;
+			}
+
+			decltype(m_obj) operator*() const {
+				return m_obj;
+			}
+
+			decltype(m_obj) operator->() const {
+				return m_obj;
+			}
+		};
+	};
+
 	struct Name {
 		// https://docs.microsoft.com/en-us/typography/opentype/spec/name
 		// https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6name.html
 
 		static constexpr TagStruct DirectoryTableTag{ { 'n', 'a', 'm', 'e' } };
+
+		enum class NameId : uint16_t {
+			CopyrightNotice = 0,
+			FamilyName = 1,
+			SubfamilyName = 2,
+			UniqueId = 3,
+			FullFontName = 4,
+			VersionString = 5,
+			PostScriptName = 6,
+			Trademark = 7,
+			Manufacturer = 8,
+			Designer = 9,
+			Description = 10,
+			UrlVendor = 11,
+			UrlDesigner = 12,
+			LicenseDescription = 13,
+			LicenseInfoUrl = 14,
+			TypographicFamilyName = 16,
+			TypographicSubfamilyName = 17,
+			CompatibleFullMac = 18,
+			SampleText = 19,
+			PoscSriptCidFindFontName = 20,
+			WwsFamilyName = 21,
+			WwsSubfamilyName = 22,
+			LightBackgroundPalette = 23,
+			DarkBackgroundPalette = 24,
+			VariationPostScriptNamePrefix = 25,
+		};
 
 		struct NameHeader {
 			BE<uint16_t> Version;
@@ -195,7 +646,7 @@ namespace XivRes::Internal::TrueType {
 				BE<WindowsPlatformEncodingId> WindowsEncoding;
 			};
 			BE<uint16_t> LanguageId;
-			BE<uint16_t> NameId;
+			BE<NameId> NameId;
 			BE<uint16_t> Length;
 			BE<uint16_t> StringOffset;
 		};
@@ -212,118 +663,169 @@ namespace XivRes::Internal::TrueType {
 		NameHeader Header;
 		NameRecord Record[1];
 
-		std::span<const NameRecord> RecordSpan() const { return { Record, *Header.Count }; }
+		class View {
+			union {
+				const Name* m_obj;
+				const char* m_bytes;
+			};
+			size_t m_length;
 
-		uint16_t LanguageCount() const { return *Header.Version >= 1 ? **reinterpret_cast<const BE<uint16_t>*>(&Record[*Header.Count]) : 0; }
-		std::span<const LanguageRecord> LanguageSpan() const {
-			if (*Header.Version == 0)
-				return {};
-			return { reinterpret_cast<const LanguageRecord*>(reinterpret_cast<const char*>(&Record[*Header.Count]) + 2), LanguageCount() };
-		}
-		const LanguageRecord& Language(size_t i) {
-			return reinterpret_cast<const LanguageRecord*>(reinterpret_cast<const char*>(&Record[*Header.Count]) + 2)[i];
-		}
+		public:
+			View() : m_obj(nullptr), m_length(0) {}
+			View(std::nullptr_t) : View() {}
+			View(decltype(m_obj) pObject, size_t length) : m_obj(pObject), m_length(length) {}
+			View(View&&) = default;
+			View(const View&) = default;
+			View& operator=(View&&) = default;
+			View& operator=(const View&) = default;
+			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View() {
+				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
-		static const Name* TryCast(const void* pData, size_t length) {
-			const auto pName = reinterpret_cast<const Name*>(pData);
-			if (length < sizeof NameHeader)
-				return nullptr;
+				if (length < sizeof NameHeader)
+					return;
 
-			return pName;
-		}
+				m_obj = obj;
+				m_length = length;
+			}
 
-		std::u8string GetUnicodeName(uint16_t preferredLanguageId, uint16_t nameId, size_t tableSize) const {
-			const auto recordSpans = RecordSpan();
-			for (const auto usePreferredLanguageId : { true, false }) {
-				for (const auto& record : recordSpans) {
-					if (record.LanguageId != preferredLanguageId && usePreferredLanguageId)
-						continue;
+			operator bool() const {
+				return !!m_obj;
+			}
 
-					if (record.NameId != nameId)
-						continue;
+			decltype(m_obj) operator*() const {
+				return m_obj;
+			}
 
-					const auto offsetStart = static_cast<size_t>(*Header.StorageOffset) + *record.StringOffset;
-					const auto offsetEnd = offsetStart + *record.Length;
-					if (offsetEnd > tableSize)
-						continue;
+			decltype(m_obj) operator->() const {
+				return m_obj;
+			}
 
-					switch (record.Platform) {
-						case PlatformId::Unicode:
-							switch (*record.UnicodeEncoding) {
-								case UnicodePlatformEncodingId::Unicode_2_0_Bmp:
-								case UnicodePlatformEncodingId::Unicode_2_0_Full:
-									goto decode_utf16be;
-							}
-							break;
+			std::span<const NameRecord> RecordSpan() const {
+				return { m_obj->Record, *m_obj->Header.Count };
+			}
 
-						case PlatformId::Macintosh:
-							switch (*record.MacintoshEncoding) {
-								case MacintoshPlatformEncodingId::Roman:
-									goto decode_ascii;
-							}
-							break;
+			uint16_t LanguageCount() const {
+				return *m_obj->Header.Version >= 1 ? **reinterpret_cast<const BE<uint16_t>*>(&m_obj->Record[*m_obj->Header.Count]) : 0;
+			}
 
-						case PlatformId::Windows:
-							switch (*record.WindowsEncoding) {
-								case WindowsPlatformEncodingId::Symbol:
-								case WindowsPlatformEncodingId::UnicodeBmp:
-								case WindowsPlatformEncodingId::UnicodeFullRepertoire:
-									goto decode_utf16be;
-							}
-							break;
-					}
+			std::span<const LanguageRecord> LanguageSpan() const {
+				if (*m_obj->Header.Version == 0)
+					return {};
+				return { reinterpret_cast<const LanguageRecord*>(reinterpret_cast<const char*>(&m_obj->Record[*m_obj->Header.Count]) + 2), LanguageCount() };
+			}
 
-					continue;
+			const LanguageRecord& Language(size_t i) {
+				return reinterpret_cast<const LanguageRecord*>(reinterpret_cast<const char*>(&m_obj->Record[*m_obj->Header.Count]) + 2)[i];
+			}
 
-				decode_ascii:
-					{
-						const auto pString = reinterpret_cast<const char*>(reinterpret_cast<const char*>(this) + offsetStart);
-						const auto pStringEnd = reinterpret_cast<const char*>(reinterpret_cast<const char*>(this) + offsetEnd);
-						std::u8string res;
-						res.reserve(pStringEnd - pString);
-						for (auto x = pString; x < pStringEnd; x++) {
-							if (0 < *x && *x < 0x80 && *x != '\\') {
-								res.push_back(*x);
-							} else if (*x == '\\') {
-								res.push_back('\\');
-								res.push_back('\\');
-							} else {
-								res.push_back('\\');
-								res.push_back('x');
-								res.push_back(((*x >> 4) > 10) ? ('A' + (*x >> 4) - 10) : ('0' + (*x >> 4)));
-								res.push_back(((*x & 0xF) > 10) ? ('A' + (*x & 0xF) - 10) : ('0' + (*x & 0xF)));
-							}
-						}
-						return res;
-					}
+			std::u8string GetUnicodeName(uint16_t preferredLanguageId, NameId nameId) const {
+				const auto recordSpans = RecordSpan();
+				for (const auto usePreferredLanguageId : { true, false }) {
+					for (const auto& record : recordSpans) {
+						if (record.LanguageId != preferredLanguageId && usePreferredLanguageId)
+							continue;
 
-				decode_utf16be:
-					{
-						const auto pString = reinterpret_cast<const BE<char16_t>*>(reinterpret_cast<const char*>(this) + offsetStart);
-						const auto pStringEnd = reinterpret_cast<const BE<char16_t>*>(reinterpret_cast<const char*>(this) + offsetEnd);
-						std::u16string u16;
-						u16.reserve(pStringEnd - pString);
-						for (auto x = pString; x < pStringEnd; x++)
-							u16.push_back(*x);
+						if (record.NameId != nameId)
+							continue;
 
-						std::u8string u8;
-						u8.reserve(4 * u16.size());
-						for (auto ptr = &u16[0]; ptr < &u16[0] + u16.size();) {
-							size_t remaining = &u16[0] + u16.size() - ptr;
-							const auto c = Internal::DecodeUtf16(ptr, remaining);
-							ptr += remaining;
+						const auto offsetStart = static_cast<size_t>(*m_obj->Header.StorageOffset) + *record.StringOffset;
+						const auto offsetEnd = offsetStart + *record.Length;
+						if (offsetEnd > m_length)
+							continue;
 
-							const auto u8p = u8.size();
-							u8.resize(u8p + Internal::EncodeUtf8Length(c));
-							Internal::EncodeUtf8(&u8[u8p], c);
+						switch (record.Platform) {
+							case PlatformId::Unicode:
+								switch (*record.UnicodeEncoding) {
+									case UnicodePlatformEncodingId::Unicode_2_0_Bmp:
+									case UnicodePlatformEncodingId::Unicode_2_0_Full:
+										goto decode_utf16be;
+								}
+								break;
+
+							case PlatformId::Macintosh:
+								switch (*record.MacintoshEncoding) {
+									case MacintoshPlatformEncodingId::Roman:
+										goto decode_ascii;
+								}
+								break;
+
+							case PlatformId::Windows:
+								switch (*record.WindowsEncoding) {
+									case WindowsPlatformEncodingId::Symbol:
+									case WindowsPlatformEncodingId::UnicodeBmp:
+									case WindowsPlatformEncodingId::UnicodeFullRepertoire:
+										goto decode_utf16be;
+								}
+								break;
 						}
 
-						return u8;
+						continue;
+
+					decode_ascii:
+						{
+							const auto pString = &m_bytes[offsetStart];
+							const auto pStringEnd = &m_bytes[offsetEnd];
+							std::u8string res;
+							res.reserve(pStringEnd - pString);
+							for (auto x = pString; x < pStringEnd; x++) {
+								if (0 < *x && *x < 0x80 && *x != '\\') {
+									res.push_back(*x);
+								} else if (*x == '\\') {
+									res.push_back('\\');
+									res.push_back('\\');
+								} else {
+									res.push_back('\\');
+									res.push_back('x');
+									res.push_back(((*x >> 4) > 10) ? ('A' + (*x >> 4) - 10) : ('0' + (*x >> 4)));
+									res.push_back(((*x & 0xF) > 10) ? ('A' + (*x & 0xF) - 10) : ('0' + (*x & 0xF)));
+								}
+							}
+							return res;
+						}
+
+					decode_utf16be:
+						{
+							const auto pString = reinterpret_cast<const BE<char16_t>*>(&m_bytes[offsetStart]);
+							const auto pStringEnd = reinterpret_cast<const BE<char16_t>*>(&m_bytes[offsetEnd]);
+							std::u16string u16;
+							u16.reserve(pStringEnd - pString);
+							for (auto x = pString; x < pStringEnd; x++)
+								u16.push_back(*x);
+
+							std::u8string u8;
+							u8.reserve(4 * u16.size());
+							for (auto ptr = &u16[0]; ptr < &u16[0] + u16.size();) {
+								size_t remaining = &u16[0] + u16.size() - ptr;
+								const auto c = Internal::DecodeUtf16(ptr, remaining);
+								ptr += remaining;
+
+								const auto u8p = u8.size();
+								u8.resize(u8p + Internal::EncodeUtf8Length(c));
+								Internal::EncodeUtf8(&u8[u8p], c);
+							}
+
+							return u8;
+						}
 					}
 				}
+				return {};
 			}
-			return {};
-		}
+
+			std::u8string GetPreferredFamilyName(uint16_t preferredLanguageId) const {
+				auto r = GetUnicodeName(preferredLanguageId, NameId::TypographicFamilyName);
+				if (!r.empty())
+					return r;
+				return GetUnicodeName(preferredLanguageId, NameId::FamilyName);
+			}
+
+			std::u8string GetPreferredSubfamilyName(uint16_t preferredLanguageId) const {
+				auto r = GetUnicodeName(preferredLanguageId, NameId::TypographicSubfamilyName);
+				if (!r.empty())
+					return r;
+				return GetUnicodeName(preferredLanguageId, NameId::SubfamilyName);
+			}
+		};
 	};
 
 	struct Cmap {
@@ -332,7 +834,7 @@ namespace XivRes::Internal::TrueType {
 
 		static constexpr TagStruct DirectoryTableTag{ { 'c', 'm', 'a', 'p' } };
 
-		struct TableHeader {
+		struct CmapHeader {
 			BE<uint16_t> Version;
 			BE<uint16_t> SubtableCount;
 		};
@@ -353,36 +855,75 @@ namespace XivRes::Internal::TrueType {
 			BE<uint16_t> FormatId;
 
 			struct Format0 {
-				struct Header {
+				static constexpr uint16_t FormatId_Value = 0;
+
+				struct FormatHeader {
 					BE<uint16_t> FormatId;
 					BE<uint16_t> Length;
 					BE<uint16_t> Language;  // Only used for Macintosh platforms
 				};
 
-				Header FormatHeader;
+				FormatHeader Header;
 				uint8_t GlyphIdArray[256];
 
-				uint16_t CharToGlyph(uint32_t c) const {
-					return c >= 256 ? 0 : GlyphIdArray[c];
-				}
+				class View {
+					union {
+						const Format0* m_obj;
+						const char* m_bytes;
+					};
+					size_t m_length;
 
-				static const Format0* TryCast(const void* pData, size_t length) {
-					const auto pFormat = static_cast<const Format0*>(pData);
-					if (length < sizeof Format0 || *pFormat->FormatHeader.FormatId != 0 || length < *pFormat->FormatHeader.Length)
-						return nullptr;
+				public:
+					View() : m_obj(nullptr), m_length(0) {}
+					View(std::nullptr_t) : View() {}
+					View(decltype(m_obj) pObject, size_t length)
+						: m_obj(pObject), m_length(length) {}
+					View(View&&) = default;
+					View(const View&) = default;
+					View& operator=(View&&) = default;
+					View& operator=(const View&) = default;
+					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					View(const void* pData, size_t length) : View() {
+						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
-					return static_cast<const Format0*>(pData);
-				}
+						if (length < sizeof FormatHeader || *obj->Header.FormatId != FormatId_Value || length < *obj->Header.Length)
+							return;
 
-				void Parse(std::vector<char32_t>& result) const {
-					for (char32_t i = 0; i < 256; i++)
-						if (GlyphIdArray[i])
-							result[GlyphIdArray[i]] = i;
-				}
+						if (length < sizeof Format0)
+							return;
+
+						m_obj = obj;
+						m_length = length;
+					}
+
+					operator bool() const {
+						return !!m_obj;
+					}
+
+					decltype(m_obj) operator*() const {
+						return m_obj;
+					}
+
+					decltype(m_obj) operator->() const {
+						return m_obj;
+					}
+
+					uint16_t CharToGlyph(uint32_t c) const {
+						return c >= 256 ? 0 : m_obj->GlyphIdArray[c];
+					}
+
+					void Parse(std::vector<char32_t>& result) const {
+						for (char32_t i = 0; i < 256; i++)
+							if (m_obj->GlyphIdArray[i])
+								result[m_obj->GlyphIdArray[i]] = i;
+					}
+				};
 			};
 
 			struct Format2 {
-				struct Header {
+				static constexpr uint16_t FormatId_Value = 2;
+
+				struct FormatHeader {
 					BE<uint16_t> FormatId;
 					BE<uint16_t> Length;
 					BE<uint16_t> Language;  // Only used for Macintosh platforms
@@ -396,60 +937,94 @@ namespace XivRes::Internal::TrueType {
 					BE<uint16_t> IdRangeOffset;
 				};
 
-				Header FormatHeader;
+				FormatHeader Header;
 				SubHeader SubHeaders[1];
 
-				uint16_t CharToGlyph(uint32_t c) const {
-					if (c >= 0x10000)
-						return 0;
+				class View {
+					union {
+						const Format2* m_obj;
+						const char* m_bytes;
+					};
+					size_t m_length;
 
-					const auto& subHeader = SubHeaders[FormatHeader.SubHeaderKeys[c >> 8] / sizeof SubHeader];
-					if (reinterpret_cast<const char*>(&subHeader) + sizeof(subHeader) > reinterpret_cast<const char*>(this) + *FormatHeader.Length)
-						return 0; // overflow
+				public:
+					View() : m_obj(nullptr), m_length(0) {}
+					View(std::nullptr_t) : View() {}
+					View(decltype(m_obj) pObject, size_t length)
+						: m_obj(pObject), m_length(length) {}
+					View(View&&) = default;
+					View(const View&) = default;
+					View& operator=(View&&) = default;
+					View& operator=(const View&) = default;
+					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					View(const void* pData, size_t length) : View() {
+						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
-					c = c & 0xFF;
-					if (c < *subHeader.FirstCode || c >= static_cast<uint32_t>(*subHeader.FirstCode + *subHeader.EntryCount))
-						return 0;
+						if (length < sizeof FormatHeader || *obj->Header.FormatId != FormatId_Value || length < *obj->Header.Length)
+							return;
 
-					const auto glyphArray = reinterpret_cast<const BE<uint16_t>*>(reinterpret_cast<const char*>(&subHeader.IdRangeOffset) + sizeof subHeader.IdRangeOffset + subHeader.IdRangeOffset);
-					const auto pGlyphIndex = &glyphArray[c - subHeader.FirstCode];
-					if (reinterpret_cast<const char*>(pGlyphIndex) + sizeof(*pGlyphIndex) > reinterpret_cast<const char*>(this) + *FormatHeader.Length)
-						return 0; // overflow
+						m_obj = obj;
+						m_length = length;
+					}
 
-					c = **pGlyphIndex;
-					return c == 0 ? 0 : (c + subHeader.IdDelta) & 0xFFFF;
-				}
+					operator bool() const {
+						return !!m_obj;
+					}
 
-				static const Format2* TryCast(const void* pData, size_t length) {
-					const auto pFormat = static_cast<const Format2*>(pData);
-					if (length < sizeof Header || *pFormat->FormatHeader.FormatId != 2 || length < *pFormat->FormatHeader.Length)
-						return nullptr;
+					decltype(m_obj) operator*() const {
+						return m_obj;
+					}
 
-					return pFormat;
-				}
+					decltype(m_obj) operator->() const {
+						return m_obj;
+					}
 
-				void Parse(std::vector<char32_t>& result) const {
-					for (char32_t c = 0; c < 0x10000; c += 0x100) {
-						const auto& subHeader = SubHeaders[FormatHeader.SubHeaderKeys[c >> 8] / sizeof SubHeader];
-						if (reinterpret_cast<const char*>(&subHeader) + sizeof(subHeader) > reinterpret_cast<const char*>(this) + *FormatHeader.Length)
-							continue;  // overflow
+					uint16_t CharToGlyph(uint32_t c) const {
+						if (c >= 0x10000)
+							return 0;
+
+						const auto& subHeader = m_obj->SubHeaders[m_obj->Header.SubHeaderKeys[c >> 8] / sizeof SubHeader];
+						if (reinterpret_cast<const char*>(&subHeader) + sizeof(subHeader) > m_bytes + *m_obj->Header.Length)
+							return 0; // overflow
+
+						c = c & 0xFF;
+						if (c < *subHeader.FirstCode || c >= static_cast<uint32_t>(*subHeader.FirstCode + *subHeader.EntryCount))
+							return 0;
 
 						const auto glyphArray = reinterpret_cast<const BE<uint16_t>*>(reinterpret_cast<const char*>(&subHeader.IdRangeOffset) + sizeof subHeader.IdRangeOffset + subHeader.IdRangeOffset);
-						for (char32_t c2 = c + subHeader.FirstCode, c2_ = c2 + subHeader.EntryCount; c2 < c2_; c2++) {
-							const auto pGlyphIndex = &glyphArray[c - subHeader.FirstCode];
-							if (reinterpret_cast<const char*>(pGlyphIndex) + sizeof(*pGlyphIndex) > reinterpret_cast<const char*>(this) + *FormatHeader.Length)
-								continue; // overflow
+						const auto pGlyphIndex = &glyphArray[c - subHeader.FirstCode];
+						if (reinterpret_cast<const char*>(pGlyphIndex) + sizeof(*pGlyphIndex) > m_bytes + *m_obj->Header.Length)
+							return 0; // overflow
 
-							const auto glyphIndex = **pGlyphIndex;
-							if (glyphIndex)
-								result[(c + subHeader.IdDelta) & 0xFFFF] = c2;
+						c = **pGlyphIndex;
+						return c == 0 ? 0 : (c + subHeader.IdDelta) & 0xFFFF;
+					}
+
+					void Parse(std::vector<char32_t>& result) const {
+						for (char32_t c = 0; c < 0x10000; c += 0x100) {
+							const auto& subHeader = m_obj->SubHeaders[m_obj->Header.SubHeaderKeys[c >> 8] / sizeof SubHeader];
+							if (reinterpret_cast<const char*>(&subHeader) + sizeof(subHeader) > m_bytes + *m_obj->Header.Length)
+								continue;  // overflow
+
+							const auto glyphArray = reinterpret_cast<const BE<uint16_t>*>(reinterpret_cast<const char*>(&subHeader.IdRangeOffset) + sizeof subHeader.IdRangeOffset + subHeader.IdRangeOffset);
+							for (char32_t c2 = c + subHeader.FirstCode, c2_ = c2 + subHeader.EntryCount; c2 < c2_; c2++) {
+								const auto pGlyphIndex = &glyphArray[c - subHeader.FirstCode];
+								if (reinterpret_cast<const char*>(pGlyphIndex) + sizeof(*pGlyphIndex) > m_bytes + *m_obj->Header.Length)
+									continue; // overflow
+
+								const auto glyphIndex = **pGlyphIndex;
+								if (glyphIndex)
+									result[(c + subHeader.IdDelta) & 0xFFFF] = c2;
+							}
 						}
 					}
-				}
+				};
 			};
 
 			struct Format4 {
-				struct Header {
+				static constexpr uint16_t FormatId_Value = 4;
+
+				struct FormatHeader {
 					BE<uint16_t> FormatId;
 					BE<uint16_t> Length;
 					BE<uint16_t> Language;  // Only used for Macintosh platforms
@@ -459,89 +1034,127 @@ namespace XivRes::Internal::TrueType {
 					BE<uint16_t> RangeShift;
 				};
 
-				Header FormatHeader;
+				FormatHeader Header;
 				char VariableData[1];
-				std::span<const BE<uint16_t>> EndCodeSpan() const { return { reinterpret_cast<const BE<uint16_t>*>(&VariableData[0]), static_cast<size_t>(*FormatHeader.SegCountX2 / 2) }; }
-				std::span<const BE<uint16_t>> StartCodeSpan() const { return { reinterpret_cast<const BE<uint16_t>*>(&VariableData[2 + *FormatHeader.SegCountX2 * 1]), static_cast<size_t>(*FormatHeader.SegCountX2 / 2) }; }
-				std::span<const BE<uint16_t>> IdDeltaSpan() const { return { reinterpret_cast<const BE<uint16_t>*>(&VariableData[2 + *FormatHeader.SegCountX2 * 2]), static_cast<size_t>(*FormatHeader.SegCountX2 / 2) }; }
-				std::span<const BE<uint16_t>> IdRangeSpan() const { return { reinterpret_cast<const BE<uint16_t>*>(&VariableData[2 + *FormatHeader.SegCountX2 * 3]), static_cast<size_t>(*FormatHeader.SegCountX2 / 2) }; }
 
-				const BE<uint16_t>& EndCode(size_t i) const { return reinterpret_cast<const BE<uint16_t>*>(&VariableData[0])[i]; }
-				const BE<uint16_t>& StartCode(size_t i) const { return reinterpret_cast<const BE<uint16_t>*>(&VariableData[2 + *FormatHeader.SegCountX2 * 1])[i]; }
-				const BE<uint16_t>& IdDelta(size_t i) const { return reinterpret_cast<const BE<uint16_t>*>(&VariableData[2 + *FormatHeader.SegCountX2 * 2])[i]; }
-				const BE<uint16_t>& IdRangeOffset(size_t i) const { return reinterpret_cast<const BE<uint16_t>*>(&VariableData[2 + *FormatHeader.SegCountX2 * 3])[i]; }
+				class View {
+					union {
+						const Format4* m_obj;
+						const char* m_bytes;
+					};
+					size_t m_length;
 
-				uint16_t CharToGlyph(uint32_t c) const {
-					if (c >= 0x10000)
-						return 0;
+				public:
+					View() : m_obj(nullptr), m_length(0) {}
+					View(std::nullptr_t) : View() {}
+					View(decltype(m_obj) pObject, size_t length)
+						: m_obj(pObject), m_length(length) {}
+					View(View&&) = default;
+					View(const View&) = default;
+					View& operator=(View&&) = default;
+					View& operator=(const View&) = default;
+					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					View(const void* pData, size_t length) : View() {
+						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
-					const auto bec = BE<uint16_t>(static_cast<uint16_t>(c));
-					const auto i = std::ranges::upper_bound(EndCodeSpan(), bec, [](const auto& l, const auto& r) { return *l < *r; }) - EndCodeSpan().begin() - 1;
-					if (i < 0)
-						return 0;
+						if (length < sizeof FormatHeader || *obj->Header.FormatId != FormatId_Value || length < *obj->Header.Length)
+							return;
 
-					const auto startCode = *StartCode(i);
-					if (c < startCode || c > EndCode(i))
-						return 0;
+						if (sizeof Header + 4 + *obj->Header.SegCountX2 * 3 > length)
+							return;
 
-					const auto pIdRangeOffset = &IdRangeOffset(i);
-					if (reinterpret_cast<const char*>(pIdRangeOffset) + sizeof(*pIdRangeOffset) > reinterpret_cast<const char*>(this) + *FormatHeader.Length)
-						return 0; // overflow
+						if (reinterpret_cast<const char*>(reinterpret_cast<const BE<uint16_t>*>(&obj->VariableData[2 + *obj->Header.SegCountX2 * 3]) + static_cast<size_t>(*obj->Header.SegCountX2 / 2)) > static_cast<const char*>(pData) + length)
+							return;
 
-					const auto idRangeOffset = **pIdRangeOffset;
-					const auto idDelta = *IdDelta(i);
-					if (idRangeOffset == 0)
-						return (idDelta + c) & 0xFFFF;
+						m_obj = obj;
+						m_length = length;
+					}
 
-					const auto pGlyphIndex = &pIdRangeOffset[idRangeOffset / 2 + c - startCode];
-					if (reinterpret_cast<const char*>(pGlyphIndex) + sizeof(*pGlyphIndex) > reinterpret_cast<const char*>(this) + *FormatHeader.Length)
-						return 0; // overflow
+					operator bool() const {
+						return !!m_obj;
+					}
 
-					const auto glyphIndex = **pGlyphIndex;
-					return glyphIndex == 0 ? 0 : (idDelta + glyphIndex) & 0xFFFF;
-				}
+					decltype(m_obj) operator*() const {
+						return m_obj;
+					}
 
-				static const Format4* TryCast(const void* pData, size_t length) {
-					const auto pFormat = static_cast<const Format4*>(pData);
-					if (length < sizeof Header || *pFormat->FormatHeader.FormatId != 4 || length < *pFormat->FormatHeader.Length)
-						return nullptr;
+					decltype(m_obj) operator->() const {
+						return m_obj;
+					}
 
-					if (reinterpret_cast<const char*>(pFormat->IdRangeSpan().data() + pFormat->IdRangeSpan().size()) > static_cast<const char*>(pData) + length)
-						return nullptr;
+					std::span<const BE<uint16_t>> EndCodeSpan() const { return { reinterpret_cast<const BE<uint16_t>*>(&m_obj->VariableData[0]), static_cast<size_t>(*m_obj->Header.SegCountX2 / 2) }; }
+					std::span<const BE<uint16_t>> StartCodeSpan() const { return { reinterpret_cast<const BE<uint16_t>*>(&m_obj->VariableData[2 + *m_obj->Header.SegCountX2 * 1]), static_cast<size_t>(*m_obj->Header.SegCountX2 / 2) }; }
+					std::span<const BE<uint16_t>> IdDeltaSpan() const { return { reinterpret_cast<const BE<uint16_t>*>(&m_obj->VariableData[2 + *m_obj->Header.SegCountX2 * 2]), static_cast<size_t>(*m_obj->Header.SegCountX2 / 2) }; }
+					std::span<const BE<uint16_t>> IdRangeSpan() const { return { reinterpret_cast<const BE<uint16_t>*>(&m_obj->VariableData[2 + *m_obj->Header.SegCountX2 * 3]), static_cast<size_t>(*m_obj->Header.SegCountX2 / 2) }; }
 
-					return pFormat;
-				}
+					const BE<uint16_t>& EndCode(size_t i) const { return reinterpret_cast<const BE<uint16_t>*>(&m_obj->VariableData[0])[i]; }
+					const BE<uint16_t>& StartCode(size_t i) const { return reinterpret_cast<const BE<uint16_t>*>(&m_obj->VariableData[2 + *m_obj->Header.SegCountX2 * 1])[i]; }
+					const BE<uint16_t>& IdDelta(size_t i) const { return reinterpret_cast<const BE<uint16_t>*>(&m_obj->VariableData[2 + *m_obj->Header.SegCountX2 * 2])[i]; }
+					const BE<uint16_t>& IdRangeOffset(size_t i) const { return reinterpret_cast<const BE<uint16_t>*>(&m_obj->VariableData[2 + *m_obj->Header.SegCountX2 * 3])[i]; }
 
-				void Parse(std::vector<char32_t>& result) const {
-					for (size_t i = 0, i_ = FormatHeader.SegCountX2 / 2; i < i_; i++) {
+					uint16_t CharToGlyph(uint32_t c) const {
+						if (c >= 0x10000)
+							return 0;
+
+						const auto bec = BE<uint16_t>(static_cast<uint16_t>(c));
+						const auto i = std::ranges::upper_bound(EndCodeSpan(), bec, [](const auto& l, const auto& r) { return *l < *r; }) - EndCodeSpan().begin() - 1;
+						if (i < 0)
+							return 0;
+
+						const auto startCode = *StartCode(i);
+						if (c < startCode || c > EndCode(i))
+							return 0;
+
 						const auto pIdRangeOffset = &IdRangeOffset(i);
-						if (reinterpret_cast<const char*>(pIdRangeOffset) + sizeof(*pIdRangeOffset) > reinterpret_cast<const char*>(this) + *FormatHeader.Length)
-							continue; // overflow
+						if (reinterpret_cast<const char*>(pIdRangeOffset) + sizeof(*pIdRangeOffset) > m_bytes + *m_obj->Header.Length)
+							return 0; // overflow
 
 						const auto idRangeOffset = **pIdRangeOffset;
 						const auto idDelta = *IdDelta(i);
+						if (idRangeOffset == 0)
+							return (idDelta + c) & 0xFFFF;
 
-						if (idRangeOffset == 0) {
-							for (char32_t startCode = *StartCode(i), endCode = *EndCode(i), c = startCode; c <= endCode; c++)
-								result[(idDelta + c) & 0xFFFF] = c;
+						const auto pGlyphIndex = &pIdRangeOffset[idRangeOffset / 2 + c - startCode];
+						if (reinterpret_cast<const char*>(pGlyphIndex) + sizeof(*pGlyphIndex) > m_bytes + *m_obj->Header.Length)
+							return 0; // overflow
 
-						} else {
-							for (char32_t startCode = *StartCode(i), endCode = *EndCode(i), c = startCode; c <= endCode; c++) {
-								const auto pGlyphIndex = &pIdRangeOffset[idRangeOffset / 2 + c - startCode];
-								if (reinterpret_cast<const char*>(pGlyphIndex) + sizeof(*pGlyphIndex) > reinterpret_cast<const char*>(this) + *FormatHeader.Length)
-									break; // overflow
+						const auto glyphIndex = **pGlyphIndex;
+						return glyphIndex == 0 ? 0 : (idDelta + glyphIndex) & 0xFFFF;
+					}
 
-								const auto glyphIndex = **pGlyphIndex;
-								if (glyphIndex)
-									result[(idDelta + glyphIndex) & 0xFFFF] = c;
+					void Parse(std::vector<char32_t>& result) const {
+						for (size_t i = 0, i_ = m_obj->Header.SegCountX2 / 2; i < i_; i++) {
+							const auto pIdRangeOffset = &IdRangeOffset(i);
+							if (reinterpret_cast<const char*>(pIdRangeOffset) + sizeof(*pIdRangeOffset) > m_bytes + *m_obj->Header.Length)
+								continue; // overflow
+
+							const auto idRangeOffset = **pIdRangeOffset;
+							const auto idDelta = *IdDelta(i);
+
+							if (idRangeOffset == 0) {
+								for (char32_t startCode = *StartCode(i), endCode = *EndCode(i), c = startCode; c <= endCode; c++)
+									result[(idDelta + c) & 0xFFFF] = c;
+
+							} else {
+								for (char32_t startCode = *StartCode(i), endCode = *EndCode(i), c = startCode; c <= endCode; c++) {
+									const auto pGlyphIndex = &pIdRangeOffset[idRangeOffset / 2 + c - startCode];
+									if (reinterpret_cast<const char*>(pGlyphIndex) + sizeof(*pGlyphIndex) > m_bytes + *m_obj->Header.Length)
+										break; // overflow
+
+									const auto glyphIndex = **pGlyphIndex;
+									if (glyphIndex)
+										result[(idDelta + glyphIndex) & 0xFFFF] = c;
+								}
 							}
 						}
 					}
-				}
+				};
 			};
 
 			struct Format6 {
-				struct Header {
+				static constexpr uint16_t FormatId_Value = 6;
+
+				struct FormatHeader {
 					BE<uint16_t> FormatId;
 					BE<uint16_t> Length;
 					BE<uint16_t> Language;  // Only used for Macintosh platforms
@@ -549,33 +1162,66 @@ namespace XivRes::Internal::TrueType {
 					BE<uint16_t> EntryCount;
 				};
 
-				Header FormatHeader;
+				FormatHeader Header;
 				BE<uint16_t> GlyphId[1];
-				std::span<const BE<uint16_t>> GlyphIdSpan() const { return { GlyphId, *FormatHeader.EntryCount }; }
 
-				uint16_t CharToGlyph(uint32_t c) const {
-					if (c < *FormatHeader.FirstCode || c >= static_cast<uint32_t>(*FormatHeader.FirstCode + *FormatHeader.EntryCount))
-						return 0;
+				class View {
+					union {
+						const Format6* m_obj;
+						const char* m_bytes;
+					};
+					size_t m_length;
 
-					return GlyphId[c - FormatHeader.FirstCode];
-				}
+				public:
+					View() : m_obj(nullptr), m_length(0) {}
+					View(std::nullptr_t) : View() {}
+					View(decltype(m_obj) pObject, size_t length)
+						: m_obj(pObject), m_length(length) {}
+					View(View&&) = default;
+					View(const View&) = default;
+					View& operator=(View&&) = default;
+					View& operator=(const View&) = default;
+					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					View(const void* pData, size_t length) : View() {
+						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
-				static const Format6* TryCast(const void* pData, size_t length) {
-					const auto pFormat = static_cast<const Format6*>(pData);
-					if (length < sizeof Header || *pFormat->FormatHeader.FormatId != 6 || length < *pFormat->FormatHeader.Length)
-						return nullptr;
+						if (length < sizeof FormatHeader || *obj->Header.FormatId != FormatId_Value || length < *obj->Header.Length)
+							return;
 
-					if (reinterpret_cast<const char*>(&pFormat->GlyphId[*pFormat->FormatHeader.EntryCount]) > static_cast<const char*>(pData) + length)
-						return nullptr;
+						if (reinterpret_cast<const char*>(&obj->GlyphId[*obj->Header.EntryCount]) > static_cast<const char*>(pData) + length)
+							return;
 
-					return pFormat;
-				}
+						m_obj = obj;
+						m_length = length;
+					}
 
-				void Parse(std::vector<char32_t>& result) const {
-					for (char32_t c = *FormatHeader.FirstCode, c_ = c + *FormatHeader.EntryCount; c < c_; c++)
-						if (const auto glyphId = *GlyphId[c])
-							result[glyphId] = c;
-				}
+					operator bool() const {
+						return !!m_obj;
+					}
+
+					decltype(m_obj) operator*() const {
+						return m_obj;
+					}
+
+					decltype(m_obj) operator->() const {
+						return m_obj;
+					}
+
+					std::span<const BE<uint16_t>> GlyphIdSpan() const { return { m_obj->GlyphId, *m_obj->Header.EntryCount }; }
+
+					uint16_t CharToGlyph(uint32_t c) const {
+						if (c < *m_obj->Header.FirstCode || c >= static_cast<uint32_t>(*m_obj->Header.FirstCode + *m_obj->Header.EntryCount))
+							return 0;
+
+						return m_obj->GlyphId[c - m_obj->Header.FirstCode];
+					}
+
+					void Parse(std::vector<char32_t>& result) const {
+						for (char32_t c = *m_obj->Header.FirstCode, c_ = c + *m_obj->Header.EntryCount; c < c_; c++)
+							if (const auto glyphId = *m_obj->GlyphId[c])
+								result[glyphId] = c;
+					}
+				};
 			};
 
 			struct SequentialMapGroup {
@@ -591,7 +1237,9 @@ namespace XivRes::Internal::TrueType {
 			};
 
 			struct Format8 {
-				struct Header {
+				static constexpr uint16_t FormatId_Value = 8;
+
+				struct FormatHeader {
 					BE<uint16_t> FormatId;
 					BE<uint16_t> Reserved;
 					BE<uint32_t> Length;
@@ -600,40 +1248,75 @@ namespace XivRes::Internal::TrueType {
 					BE<uint32_t> GroupCount;
 				};
 
-				Header FormatHeader;
+				FormatHeader Header;
 				SequentialMapGroup Group[1];
-				std::span<const SequentialMapGroup> GroupSpan() const { return { Group, static_cast<size_t>(*FormatHeader.GroupCount) }; }
 
-				uint16_t CharToGlyph(uint32_t c) const {
-					SequentialMapGroup tmp;
-					tmp.EndCharCode = c;
-					const auto& group = std::upper_bound(GroupSpan().begin(), GroupSpan().end(), tmp, [](const SequentialMapGroup& l, const SequentialMapGroup& r) { return *l.EndCharCode < *r.EndCharCode; })[-1];
-					if (&group < Group || c < *group.StartCharCode || c > *group.EndCharCode)
-						return 0;
+				class View {
+					union {
+						const Format8* m_obj;
+						const char* m_bytes;
+					};
+					size_t m_length;
 
-					return group.StartGlyphId + c - group.StartCharCode;
-				}
+				public:
+					View() : m_obj(nullptr), m_length(0) {}
+					View(std::nullptr_t) : View() {}
+					View(decltype(m_obj) pObject, size_t length)
+						: m_obj(pObject), m_length(length) {}
+					View(View&&) = default;
+					View(const View&) = default;
+					View& operator=(View&&) = default;
+					View& operator=(const View&) = default;
+					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					View(const void* pData, size_t length) : View() {
+						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
-				static const Format8* TryCast(const void* pData, size_t length) {
-					const auto pFormat = static_cast<const Format8*>(pData);
-					if (length < sizeof Header || *pFormat->FormatHeader.FormatId != 8 || length < *pFormat->FormatHeader.Length)
-						return nullptr;
+						if (length < sizeof FormatHeader || *obj->Header.FormatId != FormatId_Value || length < *obj->Header.Length)
+							return;
 
-					if (reinterpret_cast<const char*>(&pFormat->Group[*pFormat->FormatHeader.GroupCount]) > static_cast<const char*>(pData) + length)
-						return nullptr;
+						if (reinterpret_cast<const char*>(&obj->Group[*obj->Header.GroupCount]) > static_cast<const char*>(pData) + length)
+							return;
 
-					return pFormat;
-				}
+						m_obj = obj;
+						m_length = length;
+					}
 
-				void Parse(std::vector<char32_t>& result) const {
-					for (const auto& group : GroupSpan())
-						for (char32_t c = *group.StartCharCode, c_ = *group.EndCharCode; c <= c_; c++)
-							result[group.StartGlyphId + c - group.StartCharCode] = c;
-				}
+					operator bool() const {
+						return !!m_obj;
+					}
+
+					decltype(m_obj) operator*() const {
+						return m_obj;
+					}
+
+					decltype(m_obj) operator->() const {
+						return m_obj;
+					}
+
+					std::span<const SequentialMapGroup> GroupSpan() const { return { m_obj->Group, static_cast<size_t>(*m_obj->Header.GroupCount) }; }
+
+					uint16_t CharToGlyph(uint32_t c) const {
+						SequentialMapGroup tmp;
+						tmp.EndCharCode = c;
+						const auto& group = std::upper_bound(GroupSpan().begin(), GroupSpan().end(), tmp, [](const SequentialMapGroup& l, const SequentialMapGroup& r) { return *l.EndCharCode < *r.EndCharCode; })[-1];
+						if (&group < m_obj->Group || c < *group.StartCharCode || c > *group.EndCharCode)
+							return 0;
+
+						return group.StartGlyphId + c - group.StartCharCode;
+					}
+
+					void Parse(std::vector<char32_t>& result) const {
+						for (const auto& group : GroupSpan())
+							for (char32_t c = *group.StartCharCode, c_ = *group.EndCharCode; c <= c_; c++)
+								result[group.StartGlyphId + c - group.StartCharCode] = c;
+					}
+				};
 			};
 
 			struct Format10 {
-				struct Header {
+				static constexpr uint16_t FormatId_Value = 10;
+
+				struct FormatHeader {
 					BE<uint16_t> FormatId;
 					BE<uint16_t> Reserved;
 					BE<uint32_t> Length;
@@ -642,37 +1325,72 @@ namespace XivRes::Internal::TrueType {
 					BE<uint32_t> EntryCount;
 				};
 
-				Header FormatHeader;
+				FormatHeader Header;
 				BE<uint16_t> GlyphId[1];
-				std::span<const BE<uint16_t>> GlyphIdSpan() const { return { GlyphId, *FormatHeader.EntryCount }; }
 
-				uint16_t CharToGlyph(uint32_t c) const {
-					if (c < FormatHeader.FirstCode || c >= FormatHeader.FirstCode + FormatHeader.EntryCount)
-						return 0;
+				class View {
+					union {
+						const Format10* m_obj;
+						const char* m_bytes;
+					};
+					size_t m_length;
 
-					return GlyphId[c];
-				}
+				public:
+					View() : m_obj(nullptr), m_length(0) {}
+					View(std::nullptr_t) : View() {}
+					View(decltype(m_obj) pObject, size_t length)
+						: m_obj(pObject), m_length(length) {}
+					View(View&&) = default;
+					View(const View&) = default;
+					View& operator=(View&&) = default;
+					View& operator=(const View&) = default;
+					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					View(const void* pData, size_t length) : View() {
+						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
-				static const Format10* TryCast(const void* pData, size_t length) {
-					const auto pFormat = static_cast<const Format10*>(pData);
-					if (length < sizeof Header || *pFormat->FormatHeader.FormatId != 10 || length < *pFormat->FormatHeader.Length)
-						return nullptr;
+						if (length < sizeof FormatHeader || *obj->Header.FormatId != FormatId_Value || length < *obj->Header.Length)
+							return;
 
-					if (reinterpret_cast<const char*>(&pFormat->GlyphId[*pFormat->FormatHeader.EntryCount]) > static_cast<const char*>(pData) + length)
-						return nullptr;
+						if (reinterpret_cast<const char*>(&obj->GlyphId[*obj->Header.EntryCount]) > static_cast<const char*>(pData) + length)
+							return;
 
-					return pFormat;
-				}
+						m_obj = obj;
+						m_length = length;
+					}
 
-				void Parse(std::vector<char32_t>& result) const {
-					for (char32_t c = *FormatHeader.FirstCode, c_ = c + *FormatHeader.EntryCount; c < c_; c++)
-						if (const auto glyphId = *GlyphId[c])
-							result[glyphId] = c;
-				}
+					operator bool() const {
+						return !!m_obj;
+					}
+
+					decltype(m_obj) operator*() const {
+						return m_obj;
+					}
+
+					decltype(m_obj) operator->() const {
+						return m_obj;
+					}
+
+					std::span<const BE<uint16_t>> GlyphIdSpan() const { return { m_obj->GlyphId, *m_obj->Header.EntryCount }; }
+
+					uint16_t CharToGlyph(uint32_t c) const {
+						if (c < m_obj->Header.FirstCode || c >= m_obj->Header.FirstCode + m_obj->Header.EntryCount)
+							return 0;
+
+						return m_obj->GlyphId[c];
+					}
+
+					void Parse(std::vector<char32_t>& result) const {
+						for (char32_t c = *m_obj->Header.FirstCode, c_ = c + *m_obj->Header.EntryCount; c < c_; c++)
+							if (const auto glyphId = *m_obj->GlyphId[c])
+								result[glyphId] = c;
+					}
+				};
 			};
 
 			struct Format12And13 {
-				struct Header {
+				static constexpr uint16_t FormatId_Values[]{ 12, 13 };
+
+				struct FormatHeader {
 					BE<uint16_t> FormatId;
 					BE<uint16_t> Reserved;
 					BE<uint32_t> Length;
@@ -680,168 +1398,238 @@ namespace XivRes::Internal::TrueType {
 					BE<uint32_t> GroupCount;
 				};
 
-				Header FormatHeader;
+				FormatHeader Header;
 				union {
 					SequentialMapGroup SequentialGroup[1];
 					ConstantMapGroup ConstantGroup[1];
 				};
-				std::span<const SequentialMapGroup> SequentialGroupSpan() const { return { SequentialGroup, *FormatHeader.GroupCount }; }
-				std::span<const ConstantMapGroup> ConstantGroupSpan() const { return { ConstantGroup, *FormatHeader.GroupCount }; }
 
-				uint16_t CharToGlyph(uint32_t c) const {
-					SequentialMapGroup tmp;
-					tmp.EndCharCode = c;
-					const auto& group = std::upper_bound(SequentialGroupSpan().begin(), SequentialGroupSpan().end(), tmp, [](const SequentialMapGroup& l, const SequentialMapGroup& r) { return *l.EndCharCode < *r.EndCharCode; })[-1];
-					if (&group < SequentialGroup || c < *group.StartCharCode || c > *group.EndCharCode)
-						return 0;
+				class View {
+					union {
+						const Format12And13* m_obj;
+						const char* m_bytes;
+					};
+					size_t m_length;
 
-					if (*FormatHeader.FormatId == 12)
-						return group.StartGlyphId + c - group.StartCharCode;
-					else
-						return group.StartGlyphId;
-				}
+				public:
+					View() : m_obj(nullptr), m_length(0) {}
+					View(std::nullptr_t) : View() {}
+					View(decltype(m_obj) pObject, size_t length)
+						: m_obj(pObject), m_length(length) {}
+					View(View&&) = default;
+					View(const View&) = default;
+					View& operator=(View&&) = default;
+					View& operator=(const View&) = default;
+					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					View(const void* pData, size_t length) : View() {
+						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
-				static const Format12And13* TryCast(const void* pData, size_t length) {
-					const auto pFormat = static_cast<const Format12And13*>(pData);
-					if (length < sizeof Header || (*pFormat->FormatHeader.FormatId != 12 && *pFormat->FormatHeader.FormatId != 13) || length < *pFormat->FormatHeader.Length)
-						return nullptr;
+						if (length < sizeof FormatHeader || (*obj->Header.FormatId != FormatId_Values[0] && *obj->Header.FormatId != FormatId_Values[1]) || length < *obj->Header.Length)
+							return;
 
-					if (reinterpret_cast<const char*>(&pFormat->SequentialGroup[*pFormat->FormatHeader.GroupCount]) > static_cast<const char*>(pData) + length)
-						return nullptr;
+						if (reinterpret_cast<const char*>(&obj->SequentialGroup[*obj->Header.GroupCount]) > static_cast<const char*>(pData) + length)
+							return;
 
-					return pFormat;
-				}
-
-				void Parse(std::vector<char32_t>& result) const {
-					if (*FormatHeader.FormatId == 12) {
-						for (const auto& group : SequentialGroupSpan())
-							for (char32_t c = *group.StartCharCode, c_ = *group.EndCharCode; c <= c_; c++)
-								result[group.StartGlyphId + c - group.StartCharCode] = c;
-					} else {
-						for (const auto& group : ConstantGroupSpan())
-							for (char32_t c = *group.StartCharCode, c_ = *group.EndCharCode; c <= c_; c++)
-								result[group.GlyphId] = c;
+						m_obj = obj;
+						m_length = length;
 					}
-				}
+
+					operator bool() const {
+						return !!m_obj;
+					}
+
+					decltype(m_obj) operator*() const {
+						return m_obj;
+					}
+
+					decltype(m_obj) operator->() const {
+						return m_obj;
+					}
+
+					std::span<const SequentialMapGroup> SequentialGroupSpan() const { return { m_obj->SequentialGroup, *m_obj->Header.GroupCount }; }
+					std::span<const ConstantMapGroup> ConstantGroupSpan() const { return { m_obj->ConstantGroup, *m_obj->Header.GroupCount }; }
+
+					uint16_t CharToGlyph(uint32_t c) const {
+						SequentialMapGroup tmp;
+						tmp.EndCharCode = c;
+						const auto& group = std::upper_bound(SequentialGroupSpan().begin(), SequentialGroupSpan().end(), tmp, [](const SequentialMapGroup& l, const SequentialMapGroup& r) { return *l.EndCharCode < *r.EndCharCode; })[-1];
+						if (&group < m_obj->SequentialGroup || c < *group.StartCharCode || c > *group.EndCharCode)
+							return 0;
+
+						if (*m_obj->Header.FormatId == 12)
+							return group.StartGlyphId + c - group.StartCharCode;
+						else
+							return group.StartGlyphId;
+					}
+
+					void Parse(std::vector<char32_t>& result) const {
+						if (*m_obj->Header.FormatId == 12) {
+							for (const auto& group : SequentialGroupSpan())
+								for (char32_t c = *group.StartCharCode, c_ = *group.EndCharCode; c <= c_; c++)
+									result[group.StartGlyphId + c - group.StartCharCode] = c;
+						} else {
+							for (const auto& group : ConstantGroupSpan())
+								for (char32_t c = *group.StartCharCode, c_ = *group.EndCharCode; c <= c_; c++)
+									result[group.GlyphId] = c;
+						}
+					}
+				};
 			};
 		};
 
-		TableHeader CmapHeader;
+		CmapHeader Header;
 		EncodingRecord EncodingRecords[1];
 
-		std::vector<char32_t> Parse() const {
-			std::vector<char32_t> result;
-			result.resize(65536, (std::numeric_limits<char32_t>::max)());
+		class View {
+			union {
+				const Cmap* m_obj;
+				const char* m_bytes;
+			};
+			size_t m_length;
 
-			for (size_t i = 0, i_ = *CmapHeader.SubtableCount; i < i_; ++i) {
-				const auto& encRec = EncodingRecords[i];
-				if (encRec.Platform == PlatformId::Unicode)
-					void();
-				else if (encRec.Platform == PlatformId::Windows && encRec.WindowsEncoding == WindowsPlatformEncodingId::UnicodeBmp)
-					void();
-				else if (encRec.Platform == PlatformId::Windows && encRec.WindowsEncoding == WindowsPlatformEncodingId::UnicodeFullRepertoire)
-					void();
-				else
-					continue;
+		public:
+			View() : m_obj(nullptr), m_length(0) {}
+			View(std::nullptr_t) : View() {}
+			View(decltype(m_obj) pObject, size_t length)
+				: m_obj(pObject), m_length(length) {}
+			View(View&&) = default;
+			View(const View&) = default;
+			View& operator=(View&&) = default;
+			View& operator=(const View&) = default;
+			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View() {
+				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
-				const auto& nFormat = *reinterpret_cast<const BE<uint16_t>*>(reinterpret_cast<const char*>(this) + *encRec.SubtableOffset);
-				switch (*nFormat) {
-					case 0:
-						reinterpret_cast<const Format::Format0*>(&nFormat)->Parse(result);
-						break;
+				if (length < sizeof(*obj))
+					return;
+				if (length < sizeof(OffsetTableStruct) + sizeof(EncodingRecord) * obj->Header.SubtableCount)
+					return;
 
-					case 2:
-						reinterpret_cast<const Format::Format2*>(&nFormat)->Parse(result);
-						break;
+				for (size_t i = 0, i_ = *obj->Header.SubtableCount; i < i_; ++i) {
+					const auto& encRec = obj->EncodingRecords[i];
+					if (encRec.SubtableOffset + sizeof uint16_t > length)
+						return;
 
-					case 4:
-						reinterpret_cast<const Format::Format4*>(&nFormat)->Parse(result);
-						break;
+					const auto remainingSpan = std::span(static_cast<const char*>(pData), length).subspan(*encRec.SubtableOffset);
+					const auto& nFormat = *reinterpret_cast<const BE<uint16_t>*>(static_cast<const char*>(pData) + *encRec.SubtableOffset);
+					switch (*nFormat) {
+						case 0:
+							if (Format::Format0::View view(&nFormat, length); !view)
+								return;
+							break;
 
-					case 6:
-						reinterpret_cast<const Format::Format6*>(&nFormat)->Parse(result);
-						break;
+						case 2:
+							if (Format::Format2::View view(&nFormat, length); !view)
+								return;
+							break;
 
-					case 8:
-						reinterpret_cast<const Format::Format8*>(&nFormat)->Parse(result);
-						break;
+						case 4:
+							if (Format::Format4::View view(&nFormat, length); !view)
+								return;
+							break;
 
-					case 10:
-						reinterpret_cast<const Format::Format10*>(&nFormat)->Parse(result);
-						break;
+						case 6:
+							if (Format::Format6::View view(&nFormat, length); !view)
+								return;
+							break;
 
-					case 12:
-					case 13:
-						reinterpret_cast<const Format::Format12And13*>(&nFormat)->Parse(result);
-						break;
+						case 8:
+							if (Format::Format8::View view(&nFormat, length); !view)
+								return;
+							break;
+
+						case 10:
+							if (Format::Format10::View view(&nFormat, length); !view)
+								return;
+							break;
+
+						case 12:
+						case 13:
+							if (Format::Format12And13::View view(&nFormat, length); !view)
+								return;
+							break;
+
+						case 14:
+						default:
+							// possibly valid but unsupported, so skip it
+							break;
+					}
 				}
+
+				m_obj = obj;
+				m_length = length;
 			}
 
-			return result;
-		}
-
-		static const Cmap* TryCast(const void* pData, size_t length) {
-			const auto pCmap = reinterpret_cast<const Cmap*>(pData);
-			if (length < sizeof(*pCmap))
-				return nullptr;
-			if (length < sizeof(OffsetTableStruct) + sizeof(EncodingRecord) * pCmap->CmapHeader.SubtableCount)
-				return nullptr;
-
-			for (size_t i = 0, i_ = *pCmap->CmapHeader.SubtableCount; i < i_; ++i) {
-				const auto& encRec = pCmap->EncodingRecords[i];
-				if (encRec.SubtableOffset + sizeof uint16_t > length)
-					return nullptr;
-
-				const auto remainingSpan = std::span(static_cast<const char*>(pData), length).subspan(*encRec.SubtableOffset);
-				const auto nFormat = **reinterpret_cast<const BE<uint16_t>*>(static_cast<const char*>(pData) + *encRec.SubtableOffset);
-				switch (nFormat) {
-					case 0:
-						if (!Format::Format0::TryCast(&remainingSpan[0], remainingSpan.size_bytes()))
-							return nullptr;
-						break;
-
-					case 2:
-						if (!Format::Format2::TryCast(&remainingSpan[0], remainingSpan.size_bytes()))
-							return nullptr;
-						break;
-
-					case 4:
-						if (!Format::Format4::TryCast(&remainingSpan[0], remainingSpan.size_bytes()))
-							return nullptr;
-						break;
-
-					case 6:
-						if (!Format::Format6::TryCast(&remainingSpan[0], remainingSpan.size_bytes()))
-							return nullptr;
-						break;
-
-					case 8:
-						if (!Format::Format8::TryCast(&remainingSpan[0], remainingSpan.size_bytes()))
-							return nullptr;
-						break;
-
-					case 10:
-						if (!Format::Format10::TryCast(&remainingSpan[0], remainingSpan.size_bytes()))
-							return nullptr;
-						break;
-
-					case 12:
-					case 13:
-						if (!Format::Format12And13::TryCast(&remainingSpan[0], remainingSpan.size_bytes()))
-							return nullptr;
-						break;
-
-					case 14:
-						// valid but unsupported, so skip it
-						break;
-
-					default:
-						return nullptr;
-				}
+			operator bool() const {
+				return !!m_obj;
 			}
 
-			return pCmap;
-		}
+			decltype(m_obj) operator*() const {
+				return m_obj;
+			}
+
+			decltype(m_obj) operator->() const {
+				return m_obj;
+			}
+
+			std::vector<char32_t> Parse() const {
+				std::vector<char32_t> result;
+				result.resize(65536, (std::numeric_limits<char32_t>::max)());
+
+				for (size_t i = 0, i_ = *m_obj->Header.SubtableCount; i < i_; ++i) {
+					const auto& encRec = m_obj->EncodingRecords[i];
+					if (encRec.Platform == PlatformId::Unicode)
+						void();
+					else if (encRec.Platform == PlatformId::Windows && encRec.WindowsEncoding == WindowsPlatformEncodingId::UnicodeBmp)
+						void();
+					else if (encRec.Platform == PlatformId::Windows && encRec.WindowsEncoding == WindowsPlatformEncodingId::UnicodeFullRepertoire)
+						void();
+					else
+						continue;
+
+					const auto& nFormat = *reinterpret_cast<const BE<uint16_t>*>(m_bytes + *encRec.SubtableOffset);
+					switch (*nFormat) {
+						case 0:
+							if (Format::Format0::View view(&nFormat, m_length); view)
+								view.Parse(result);
+							break;
+
+						case 2:
+							if (Format::Format2::View view(&nFormat, m_length); view)
+								view.Parse(result);
+							break;
+
+						case 4:
+							if (Format::Format4::View view(&nFormat, m_length); view)
+								view.Parse(result);
+							break;
+
+						case 6:
+							if (Format::Format6::View view(&nFormat, m_length); view)
+								view.Parse(result);
+							break;
+
+						case 8:
+							if (Format::Format8::View view(&nFormat, m_length); view)
+								view.Parse(result);
+							break;
+
+						case 10:
+							if (Format::Format10::View view(&nFormat, m_length); view)
+								view.Parse(result);
+							break;
+
+						case 12:
+						case 13:
+							if (Format::Format12And13::View view(&nFormat, m_length); view)
+								view.Parse(result);
+							break;
+					}
+				}
+
+				return result;
+			}
+		};
 	};
 
 	struct Kern {
@@ -864,45 +1652,74 @@ namespace XivRes::Internal::TrueType {
 				BE<int16_t> Value;
 			};
 
-			Header FormatHeader;
+			Header Header;
 			Pair Pairs[1];
 
-			static const Format0* TryCast(const void* pData, size_t length) {
-				if (length < sizeof Header)
-					return nullptr;
+			class View {
+				union {
+					const Format0* m_obj;
+					const char* m_bytes;
+				};
+				size_t m_length;
 
-				const auto pFormat = static_cast<const Format0*>(pData);
-				if (reinterpret_cast<const char*>(&pFormat->Pairs[pFormat->FormatHeader.PairCount]) > static_cast<const char*>(pData) + length)
-					return nullptr;
+			public:
+				View() : m_obj(nullptr), m_length(0) {}
+				View(std::nullptr_t) : View() {}
+				View(decltype(m_obj) pObject, size_t length)
+					: m_obj(pObject), m_length(length) {}
+				View(View&&) = default;
+				View(const View&) = default;
+				View& operator=(View&&) = default;
+				View& operator=(const View&) = default;
+				View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+				View(const void* pData, size_t length) : View() {
+					const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
-				return pFormat;
-			}
+					if (reinterpret_cast<const char*>(&obj->Pairs[obj->Header.PairCount]) > static_cast<const char*>(pData) + length)
+						return;
 
-			void Parse(
-				std::map<std::pair<char32_t, char32_t>, int>& result,
-				const std::vector<char32_t>& GlyphIndexToCharCodeMap,
-				bool cumulative
-			) const {
-				for (auto pPair = Pairs, pPair_ = Pairs + FormatHeader.PairCount; pPair < pPair_; pPair++) {
-					const auto l = GlyphIndexToCharCodeMap[*pPair->Left];
-					if (l == (std::numeric_limits<char32_t>::max)())
-						continue;
-
-					const auto r = GlyphIndexToCharCodeMap[*pPair->Right];
-					if (r == (std::numeric_limits<char32_t>::max)())
-						continue;
-
-					auto& target = result[std::make_pair(l, r)];
-					if (cumulative)
-						target += *pPair->Value;
-					else
-						target = *pPair->Value;
+					m_obj = obj;
+					m_length = length;
 				}
-			}
+
+				operator bool() const {
+					return !!m_obj;
+				}
+
+				decltype(m_obj) operator*() const {
+					return m_obj;
+				}
+
+				decltype(m_obj) operator->() const {
+					return m_obj;
+				}
+
+				void Parse(
+					std::map<std::pair<char32_t, char32_t>, int>& result,
+					const std::vector<char32_t>& glyphToCharMap,
+					bool cumulative
+				) const {
+					for (auto pPair = m_obj->Pairs, pPair_ = m_obj->Pairs + m_obj->Header.PairCount; pPair < pPair_; pPair++) {
+						const auto l = glyphToCharMap[*pPair->Left];
+						if (l == (std::numeric_limits<char32_t>::max)())
+							continue;
+
+						const auto r = glyphToCharMap[*pPair->Right];
+						if (r == (std::numeric_limits<char32_t>::max)())
+							continue;
+
+						auto& target = result[std::make_pair(l, r)];
+						if (cumulative)
+							target += *pPair->Value;
+						else
+							target = *pPair->Value;
+					}
+				}
+			};
 		};
 
 		struct Version0 {
-			struct TableHeader {
+			struct KernHeader {
 				BE<uint16_t> Version;
 				BE<uint16_t> SubtableCount;
 			};
@@ -922,43 +1739,84 @@ namespace XivRes::Internal::TrueType {
 				BE<CoverageBitpacked> Coverage;
 			};
 
-			static void Parse(
-				std::map<std::pair<char32_t, char32_t>, int>& result,
-				std::span<const char> data,
-				const std::vector<char32_t>& GlyphIndexToCharCodeMap
-			) {
-				const auto& tableHeader = *reinterpret_cast<const TableHeader*>(data.data());
-				data = data.subspan(sizeof tableHeader);
+			KernHeader Header;
+			SubtableHeader FirstSubtable;
 
-				for (size_t i = 0; i < tableHeader.SubtableCount; ++i) {
-					if (data.size_bytes() < sizeof SubtableHeader)
-						return;  // invalid kern table
+			class View {
+				union {
+					const Version0* m_obj;
+					const char* m_bytes;
+				};
+				size_t m_length;
 
-					const auto& kernSubtableHeader = *reinterpret_cast<const SubtableHeader*>(data.data());
-					if (data.size_bytes() < kernSubtableHeader.Length)
-						return;  // invalid kern table
+			public:
+				View() : m_obj(nullptr), m_length(0) {}
+				View(std::nullptr_t) : View() {}
+				View(decltype(m_obj) pObject, size_t length)
+					: m_obj(pObject), m_length(length) {}
+				View(View&&) = default;
+				View(const View&) = default;
+				View& operator=(View&&) = default;
+				View& operator=(const View&) = default;
+				View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+				View(const void* pData, size_t length) : View() {
+					const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
-					const auto coverage = *kernSubtableHeader.Coverage;
-					if (kernSubtableHeader.Version == 0 && coverage.Horizontal) {
-						const auto formatData = data.subspan(sizeof kernSubtableHeader, kernSubtableHeader.Length - sizeof kernSubtableHeader);
-						switch (coverage.Format) {
-							case 0:
-								if (const auto pFormat = Format0::TryCast(&formatData[0], formatData.size_bytes()))
-									pFormat->Parse(result, GlyphIndexToCharCodeMap, !coverage.Override);
-								break;
+					if (length < sizeof KernHeader)
+						return;
 
-							default:
-								__debugbreak();
-						}
-					}
+					if (obj->Header.Version != 0)
+						return;
 
-					data = data.subspan(kernSubtableHeader.Length);
+					m_obj = obj;
+					m_length = length;
 				}
-			}
+
+				operator bool() const {
+					return !!m_obj;
+				}
+
+				decltype(m_obj) operator*() const {
+					return m_obj;
+				}
+
+				decltype(m_obj) operator->() const {
+					return m_obj;
+				}
+
+				void Parse(
+					std::map<std::pair<char32_t, char32_t>, int>& result,
+					const std::vector<char32_t>& glyphToCharMap
+				) {
+					std::span<const char> data{ reinterpret_cast<const char*>(&m_obj->FirstSubtable), m_length - sizeof KernHeader };
+
+					for (size_t i = 0; i < m_obj->Header.SubtableCount; ++i) {
+						if (data.size_bytes() < sizeof SubtableHeader)
+							return;  // invalid kern table
+
+						const auto& kernSubtableHeader = *reinterpret_cast<const SubtableHeader*>(data.data());
+						if (data.size_bytes() < kernSubtableHeader.Length)
+							return;  // invalid kern table
+
+						const auto coverage = *kernSubtableHeader.Coverage;
+						if (kernSubtableHeader.Version == 0 && coverage.Horizontal) {
+							const auto formatData = data.subspan(sizeof kernSubtableHeader, kernSubtableHeader.Length - sizeof kernSubtableHeader);
+							switch (coverage.Format) {
+								case 0:
+									if (Format0::View view(&formatData[0], formatData.size_bytes()); view)
+										view.Parse(result, glyphToCharMap, !coverage.Override);
+									break;
+							}
+						}
+
+						data = data.subspan(kernSubtableHeader.Length);
+					}
+				}
+			};
 		};
 
 		struct Version1 {
-			struct TableHeader {
+			struct KernHeader {
 				BE<uint32_t> Version;
 				BE<uint32_t> SubtableCount;
 			};
@@ -977,17 +1835,60 @@ namespace XivRes::Internal::TrueType {
 				BE<uint16_t> TupleIndex;
 			};
 
-			static void Parse(
-				std::map<std::pair<char32_t, char32_t>, int>& result,
-				std::span<const char> data,
-				const std::vector<char32_t>& GlyphIndexToCharCodeMap
-			) {
-				// Untested
+			KernHeader Header;
+			SubtableHeader FirstSubtable;
 
-				const auto& tableHeader = *reinterpret_cast<const TableHeader*>(data.data());
-				if (tableHeader.Version == 0x10000 && data.size_bytes() >= 8) {
-					data = data.subspan(sizeof tableHeader);
-					for (size_t i = 0; i < tableHeader.SubtableCount; ++i) {
+			class View {
+				union {
+					const Version1* m_obj;
+					const char* m_bytes;
+				};
+				size_t m_length;
+
+			public:
+				View() : m_obj(nullptr), m_length(0) {}
+				View(std::nullptr_t) : View() {}
+				View(decltype(m_obj) pObject, size_t length)
+					: m_obj(pObject), m_length(length) {}
+				View(View&&) = default;
+				View(const View&) = default;
+				View& operator=(View&&) = default;
+				View& operator=(const View&) = default;
+				View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+				View(const void* pData, size_t length) : View() {
+					const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
+
+					if (length < sizeof KernHeader)
+						return;
+
+					if (obj->Header.Version != 0x00010000)
+						return;
+
+					m_obj = obj;
+					m_length = length;
+				}
+
+				operator bool() const {
+					return !!m_obj;
+				}
+
+				decltype(m_obj) operator*() const {
+					return m_obj;
+				}
+
+				decltype(m_obj) operator->() const {
+					return m_obj;
+				}
+
+				void Parse(
+					std::map<std::pair<char32_t, char32_t>, int>& result,
+					const std::vector<char32_t>& glyphToCharMap
+				) {
+					// Untested
+
+					std::span<const char> data{ reinterpret_cast<const char*>(&m_obj->FirstSubtable), m_length - sizeof KernHeader };
+
+					for (size_t i = 0; i < m_obj->Header.SubtableCount; ++i) {
 						if (data.size_bytes() < sizeof SubtableHeader)
 							return;  // invalid kern table
 
@@ -1000,8 +1901,8 @@ namespace XivRes::Internal::TrueType {
 							const auto formatData = data.subspan(sizeof kernSubtableHeader, kernSubtableHeader.Length - sizeof kernSubtableHeader);
 							switch (coverage.Format) {
 								case 0:
-									if (const auto pFormat = Format0::TryCast(&formatData[0], formatData.size_bytes()))
-										pFormat->Parse(result, GlyphIndexToCharCodeMap, false);
+									if (Format0::View view(&formatData[0], formatData.size_bytes()); view)
+										view.Parse(result, glyphToCharMap, false);
 									break;
 
 								default:
@@ -1012,95 +1913,643 @@ namespace XivRes::Internal::TrueType {
 						data = data.subspan(kernSubtableHeader.Length);
 					}
 				}
-			}
+			};
 		};
 
-		std::map<std::pair<char32_t, char32_t>, int> Parse(const std::vector<char32_t>& glyphIndexToCharCodeMap, size_t length) const {
-			std::map<std::pair<char32_t, char32_t>, int> result;
+		union {
+			Version0 V0;
+			Version1 V1;
+		};
 
-			switch (reinterpret_cast<const Version0::TableHeader*>(this)->Version) {
-				case 0:
-					Version0::Parse(result, std::span(reinterpret_cast<const char*>(this), length), glyphIndexToCharCodeMap);
-					break;
+		class View {
+			union {
+				const Kern* m_obj;
+				const char* m_bytes;
+			};
+			size_t m_length;
 
-				case 1:
-					Version1::Parse(result, std::span(reinterpret_cast<const char*>(this), length), glyphIndexToCharCodeMap);
-					break;
+		public:
+			View() : m_obj(nullptr), m_length(0) {}
+			View(std::nullptr_t) : View() {}
+			View(decltype(m_obj) pObject, size_t length)
+				: m_obj(pObject), m_length(length) {}
+			View(View&&) = default;
+			View(const View&) = default;
+			View& operator=(View&&) = default;
+			View& operator=(const View&) = default;
+			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View() {
+				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
+
+				if (length < sizeof Version0::KernHeader)
+					return;
+
+				m_obj = obj;
+				m_length = length;
 			}
 
-			return result;
-		}
+			operator bool() const {
+				return !!m_obj;
+			}
 
-		static const Kern* TryCast(const void* pData, size_t length) {
-			const auto pKern = reinterpret_cast<const Kern*>(pData);
-			if (length < sizeof Version0::TableHeader)
-				return nullptr;
+			decltype(m_obj) operator*() const {
+				return m_obj;
+			}
 
-			return pKern;
-		}
+			decltype(m_obj) operator->() const {
+				return m_obj;
+			}
+
+			std::map<std::pair<char32_t, char32_t>, int> Parse(const std::vector<char32_t>& glyphToCharMap) const {
+				std::map<std::pair<char32_t, char32_t>, int> result;
+
+				switch (*m_obj->V0.Header.Version) {
+					case 0:
+						if (Version0::View v(m_bytes, m_length); v)
+							v.Parse(result, glyphToCharMap);
+						break;
+
+					case 1:
+						if (Version1::View v(m_bytes, m_length); v)
+							v.Parse(result, glyphToCharMap);
+						break;
+				}
+
+				return result;
+			}
+		};
 	};
 
-	// http://formats.kaitai.io/ttf/ttf.svg
-	struct SfntFileView {
-		SfntFileView() = delete;
-		SfntFileView(SfntFileView&&) = delete;
-		SfntFileView(const SfntFileView&) = delete;
-		SfntFileView& operator=(SfntFileView&&) = delete;
-		SfntFileView& operator=(const SfntFileView&) = delete;
+	struct Gpos {
+		// https://docs.microsoft.com/en-us/typography/opentype/spec/gpos
+
+		static constexpr TagStruct DirectoryTableTag{ { 'G', 'P', 'O', 'S' } };
+
+		struct GposHeaderV1_0 {
+			Fixed Version;
+			BE<uint16_t> ScriptListOffset;
+			BE<uint16_t> FeatureListOffset;
+			BE<uint16_t> LookupListOffset;
+		};
+
+		struct GposHeaderV1_1 : GposHeaderV1_0 {
+			BE<uint32_t> FeatureVariationsOffset;
+		};
+
+		union ValueFormatFlags {
+			uint16_t Value;
+			struct {
+				uint16_t PlacementX : 1;
+				uint16_t PlacementY : 1;
+				uint16_t AdvanceX : 1;
+				uint16_t AdvanceY : 1;
+				uint16_t PlaDeviceOffsetX : 1;
+				uint16_t PlaDeviceOffsetY : 1;
+				uint16_t AdvDeviceOffsetX : 1;
+				uint16_t AdvDeviceOffsetY : 1;
+				uint16_t Reserved : 8;
+			};
+		};
+		static_assert(sizeof ValueFormatFlags == 2);
+
+		union PairAdjustmentPositioningSubtable {
+			struct Format1 {
+				struct FormatHeader {
+					BE<uint16_t> FormatId;
+					BE<uint16_t> CoverageOffset;
+					BE<ValueFormatFlags> ValueFormat1;
+					BE<ValueFormatFlags> ValueFormat2;
+					BE<uint16_t> PairSetCount;
+				};
+
+				struct PairSet {
+					BE<uint16_t> Count;
+					BE<uint16_t> Records[1];
+
+					class View {
+						union {
+							const PairSet* m_obj;
+							const char* m_bytes;
+						};
+						size_t m_length;
+						ValueFormatFlags m_format1;
+						ValueFormatFlags m_format2;
+						uint32_t m_bit;
+						size_t m_valueCountPerPairValueRecord;
+
+					public:
+						View() : m_obj(nullptr), m_length(0), m_format1{ 0 }, m_format2{ 0 }, m_bit(0), m_valueCountPerPairValueRecord(0) {}
+						View(std::nullptr_t) : View() {}
+						View(decltype(m_obj) pObject, size_t length, ValueFormatFlags format1, ValueFormatFlags format2, uint32_t bit, size_t valueCountPerPairValueRecord)
+							: m_obj(pObject), m_length(length), m_format1(format1), m_format2(format2), m_bit(bit), m_valueCountPerPairValueRecord(valueCountPerPairValueRecord) {}
+						View(View&&) = default;
+						View(const View&) = default;
+						View& operator=(View&&) = default;
+						View& operator=(const View&) = default;
+						View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+						View(const void* pData, size_t length, ValueFormatFlags format1, ValueFormatFlags format2) : View() {
+							const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
+
+							if (length < 2)
+								return;
+
+							const auto bit = (format2.Value << 16) | format1.Value;
+							const auto valueCountPerPairValueRecord = static_cast<size_t>(1 + std::popcount<uint32_t>(bit));
+
+							if (length < static_cast<size_t>(2) + 2 * valueCountPerPairValueRecord * (*obj->Count))
+								return;
+
+							m_obj = obj;
+							m_length = length;
+							m_format1 = format1;
+							m_format2 = format2;
+							m_bit = bit;
+							m_valueCountPerPairValueRecord = valueCountPerPairValueRecord;
+						}
+
+						operator bool() const {
+							return !!m_obj;
+						}
+
+						decltype(m_obj) operator*() const {
+							return m_obj;
+						}
+
+						decltype(m_obj) operator->() const {
+							return m_obj;
+						}
+
+						const BE<uint16_t>* GetPairValueRecord(size_t index) const {
+							return &m_obj->Records[m_valueCountPerPairValueRecord * index];
+						}
+
+						uint16_t GetSecondGlyph(size_t index) const {
+							return **GetPairValueRecord(index);
+						}
+
+						uint16_t GetValueRecord1(size_t index, ValueFormatFlags desiredRecord) const {
+							if (!(m_format1.Value & desiredRecord.Value))
+								return 0;
+							auto bit = m_bit;
+							auto pRecord = GetPairValueRecord(index);
+							for (auto i = static_cast<uint32_t>(desiredRecord.Value); i && bit; i >>= 1, bit >>= 1) {
+								if (bit & 1)
+									pRecord++;
+							}
+							return *pRecord;
+						}
+
+						uint16_t GetValueRecord2(size_t index, ValueFormatFlags desiredRecord) const {
+							if (!(m_format2.Value & desiredRecord.Value))
+								return 0;
+							auto bit = m_bit;
+							auto pRecord = GetPairValueRecord(index);
+							for (auto i = static_cast<uint32_t>(desiredRecord.Value) << 16; i && bit; i >>= 1, bit >>= 1) {
+								if (bit & 1)
+									pRecord++;
+							}
+							return *pRecord;
+						}
+					};
+				};
+
+				FormatHeader Header;
+				BE<uint16_t> PairSetOffsets[1];
+
+				class View {
+					union {
+						const Format1* m_obj;
+						const char* m_bytes;
+					};
+					size_t m_length;
+
+				public:
+					View() : m_obj(nullptr), m_length(0) {}
+					View(std::nullptr_t) : View() {}
+					View(decltype(m_obj) pObject, size_t length)
+						: m_obj(pObject), m_length(length) {}
+					View(View&&) = default;
+					View(const View&) = default;
+					View& operator=(View&&) = default;
+					View& operator=(const View&) = default;
+					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					View(const void* pData, size_t length) : View() {
+						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
+
+						if (length < sizeof FormatHeader)
+							return;
+
+						if (obj->Header.FormatId != 1)
+							return;
+
+						if (length < sizeof FormatHeader + static_cast<size_t>(2) * (*obj->Header.PairSetCount))
+							return;
+
+						if (CoverageTable::View coverageTable(reinterpret_cast<const char*>(pData) + *obj->Header.CoverageOffset, m_length - *obj->Header.CoverageOffset); !coverageTable)
+							return;
+
+						for (size_t i = 0, i_ = *obj->Header.PairSetCount; i < i_; i++) {
+							const auto off = static_cast<size_t>(*obj->PairSetOffsets[i]);
+							if (length < off + 2)
+								return;
+
+							const auto pPairSet = reinterpret_cast<const PairSet*>(reinterpret_cast<const char*>(pData) + off);
+							if (length < off + 2 + static_cast<size_t>(2) * (*pPairSet->Count))
+								return;
+						}
+
+						m_obj = obj;
+						m_length = length;
+					}
+
+					operator bool() const {
+						return !!m_obj;
+					}
+
+					decltype(m_obj) operator*() const {
+						return m_obj;
+					}
+
+					decltype(m_obj) operator->() const {
+						return m_obj;
+					}
+
+					std::span<const BE<uint16_t>> PairSetOffsetSpan() const {
+						return { m_obj->PairSetOffsets, m_obj->Header.PairSetCount };
+					}
+
+					PairSet::View PairSetView(size_t index) const {
+						const auto offset = static_cast<size_t>(*m_obj->PairSetOffsets[index]);
+						return { reinterpret_cast<const char*>(m_obj) + offset, m_length - offset, m_obj->Header.ValueFormat1, m_obj->Header.ValueFormat2 };
+					}
+
+					CoverageTable::View CoverageTableView() const {
+						const auto offset = static_cast<size_t>(*m_obj->Header.CoverageOffset);
+						return { reinterpret_cast<const char*>(m_obj) + offset, m_length - offset };
+					}
+				};
+			};
+
+			struct Format2 {
+				struct FormatHeader {
+					BE<uint16_t> FormatId;
+					BE<uint16_t> CoverageOffset;
+					BE<ValueFormatFlags> ValueFormat1;
+					BE<ValueFormatFlags> ValueFormat2;
+					BE<uint16_t> ClassDef1Offset;
+					BE<uint16_t> ClassDef2Offset;
+					BE<uint16_t> Class1Count;
+					BE<uint16_t> Class2Count;
+				};
+
+				// Note:
+				// ClassRecord1 { Class2Record[Class2Count]; }
+				// ClassRecord2 { ValueFormat1; ValueFormat2; }
+
+				FormatHeader Header;
+				BE<uint16_t> Records[1];
+
+				class View {
+					union {
+						const Format2* m_obj;
+						const char* m_bytes;
+					};
+					size_t m_length;
+					uint32_t m_bit;
+					size_t m_valueCountPerPairValueRecord;
+
+				public:
+					View() : m_obj(nullptr), m_length(0), m_bit(0), m_valueCountPerPairValueRecord(0) {}
+					View(std::nullptr_t) : View() {}
+					View(decltype(m_obj) pObject, size_t length, uint32_t bit, size_t valueCountPerPairValueRecord)
+						: m_obj(pObject), m_length(length), m_bit(bit), m_valueCountPerPairValueRecord(valueCountPerPairValueRecord) {}
+					View(View&&) = default;
+					View(const View&) = default;
+					View& operator=(View&&) = default;
+					View& operator=(const View&) = default;
+					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					View(const void* pData, size_t length) : View() {
+						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
+
+						if (length < 2)
+							return;
+
+						const auto bit = ((*obj->Header.ValueFormat2).Value << 16) | (*obj->Header.ValueFormat1).Value;
+						const auto valueCountPerPairValueRecord = static_cast<size_t>(1 + std::popcount<uint32_t>(bit));
+
+						if (length < sizeof FormatHeader + sizeof BE<uint16_t> *valueCountPerPairValueRecord * (*obj->Header.Class1Count) * (*obj->Header.Class2Count))
+							return;
+
+						if (ClassDefTable::View v(reinterpret_cast<const char*>(pData) + *obj->Header.ClassDef1Offset, length - *obj->Header.ClassDef1Offset); !v)
+							return;
+						if (ClassDefTable::View v(reinterpret_cast<const char*>(pData) + *obj->Header.ClassDef2Offset, length - *obj->Header.ClassDef2Offset); !v)
+							return;
+
+						m_obj = obj;
+						m_length = length;
+						m_bit = bit;
+						m_valueCountPerPairValueRecord = valueCountPerPairValueRecord;
+					}
+
+					operator bool() const {
+						return !!m_obj;
+					}
+
+					decltype(m_obj) operator*() const {
+						return m_obj;
+					}
+
+					decltype(m_obj) operator->() const {
+						return m_obj;
+					}
+
+					const BE<uint16_t>* GetPairValueRecord(size_t class1, size_t class2) const {
+						return &m_obj->Records[m_valueCountPerPairValueRecord * (class1 * *m_obj->Header.Class2Count + class2)];
+					}
+
+					uint16_t GetValueRecord1(size_t class1, size_t class2, ValueFormatFlags desiredRecord) const {
+						if (!((*m_obj->Header.ValueFormat1).Value & desiredRecord.Value))
+							return 0;
+						auto bit = m_bit;
+						auto pRecord = GetPairValueRecord(class1, class2);
+						for (auto i = static_cast<uint32_t>(desiredRecord.Value); i && bit; i >>= 1, bit >>= 1) {
+							if (bit & 1)
+								pRecord++;
+						}
+						return **pRecord;
+					}
+
+					uint16_t GetValueRecord2(size_t class1, size_t class2, ValueFormatFlags desiredRecord) const {
+						if (!((*m_obj->Header.ValueFormat2).Value & desiredRecord.Value))
+							return 0;
+						auto bit = m_bit;
+						auto pRecord = GetPairValueRecord(class1, class2);
+						for (auto i = static_cast<uint32_t>(desiredRecord.Value) << 16; i && bit; i >>= 1, bit >>= 1) {
+							if (bit & 1)
+								pRecord++;
+						}
+						return **pRecord;
+					}
+
+					ClassDefTable::View GetClassTableDefinition1() const {
+						return { m_bytes + *m_obj->Header.ClassDef1Offset, m_length - *m_obj->Header.ClassDef1Offset };
+					}
+
+					ClassDefTable::View GetClassTableDefinition2() const {
+						return { m_bytes + *m_obj->Header.ClassDef2Offset, m_length - *m_obj->Header.ClassDef2Offset };
+					}
+				};
+			};
+		};
+
+		union {
+			Fixed Version;
+			GposHeaderV1_0 HeaderV1_1;
+			GposHeaderV1_1 HeaderV1_0;
+		};
+
+		class View {
+			union {
+				const Gpos* m_obj;
+				const char* m_bytes;
+			};
+			size_t m_length;
+
+		public:
+			View() : m_obj(nullptr), m_length(0) {}
+			View(std::nullptr_t) : View() {}
+			View(decltype(m_obj) pObject, size_t length)
+				: m_obj(pObject), m_length(length) {}
+			View(View&&) = default;
+			View(const View&) = default;
+			View& operator=(View&&) = default;
+			View& operator=(const View&) = default;
+			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View() {
+				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
+
+				if (length < sizeof GposHeaderV1_0)
+					return;
+
+				if (obj->Version.Major < 1)
+					return;
+
+				if (obj->Version.Major > 1 || (obj->Version.Major == 1 && obj->Version.Minor >= 1)) {
+					if (length < sizeof GposHeaderV1_1)
+						return;
+				}
+
+				m_obj = obj;
+				m_length = length;
+			}
+
+			operator bool() const {
+				return !!m_obj;
+			}
+
+			decltype(m_obj) operator*() const {
+				return m_obj;
+			}
+
+			decltype(m_obj) operator->() const {
+				return m_obj;
+			}
+
+			std::span<const BE<uint16_t>> LookupListOffsets() const {
+				const BE<uint16_t>* p = reinterpret_cast<const BE<uint16_t>*>(m_bytes + *m_obj->HeaderV1_0.LookupListOffset);
+				return { p + 1, **p };
+			}
+
+			std::map<std::pair<char32_t, char32_t>, int> ExtractAdvanceX(const std::vector<char32_t>& glyphToCharMap) const {
+				std::map<std::pair<char32_t, char32_t>, int> result;
+
+				const auto lookupListOffset = *m_obj->HeaderV1_0.LookupListOffset;
+				LookupList::View lookupList(m_bytes + lookupListOffset, m_length - lookupListOffset);
+				if (!lookupList)
+					return {};
+
+				for (const auto& lookupTableOffset : lookupList.Offsets()) {
+					const auto offset = lookupListOffset + *lookupTableOffset;
+					LookupTable::View lookupTable(m_bytes + offset, m_length - offset);
+					if (!lookupTable)
+						continue;
+					if (*lookupTable->Header.LookupType != 2)
+						continue;  // Not Pair Adjustment Positioning Subtable
+
+					for (size_t i = 0, i_ = *lookupTable->Header.SubtableCount; i < i_; i++) {
+						const auto subtableSpan = lookupTable.SubtableSpan(i);
+						if (PairAdjustmentPositioningSubtable::Format1::View v(&subtableSpan[0], subtableSpan.size_bytes()); v) {
+							if (!(*v->Header.ValueFormat1).AdvanceX && !(*v->Header.ValueFormat2).PlacementX)
+								continue;
+
+							const auto coverageTable = v.CoverageTableView();
+							if (coverageTable->Header.FormatId == 1) {
+								const auto glyphSpan = coverageTable.GlyphSpan();
+								for (size_t coverageIndex = 0; coverageIndex < glyphSpan.size(); coverageIndex++) {
+									const auto glyph1Id = *glyphSpan[coverageIndex];
+									const auto c1 = glyphToCharMap[glyph1Id];
+									if (c1 == (std::numeric_limits<char32_t>::max)())
+										continue;
+
+									const auto pairSetView = v.PairSetView(coverageIndex);
+									for (size_t j = 0, j_ = *pairSetView->Count; j < j_; j++) {
+										const auto c2 = glyphToCharMap[pairSetView.GetSecondGlyph(j)];
+										if (c2 == (std::numeric_limits<char32_t>::max)())
+											continue;
+
+										const auto val = static_cast<int16_t>(pairSetView.GetValueRecord1(j, { .AdvanceX = 1 }))
+											+ static_cast<int16_t>(pairSetView.GetValueRecord2(j, { .PlacementX = 1 }));
+										if (val)
+											result[std::make_pair(c1, c2)] = val;
+									}
+								}
+
+							} else if (coverageTable->Header.FormatId == 2) {
+								for (const auto& rangeRecord : coverageTable.RangeRecordSpan()) {
+									const auto startGlyphId = static_cast<size_t>(*rangeRecord.StartGlyphId);
+									const auto endGlyphId = static_cast<size_t>(*rangeRecord.EndGlyphId);
+									const auto startCoverageIndex = static_cast<size_t>(*rangeRecord.StartCoverageIndex);
+									for (size_t i = 0, i_ = endGlyphId - startGlyphId; i < i_; i++) {
+										const auto glyph1Id = startGlyphId + i;
+										const auto c1 = glyphToCharMap[glyph1Id];
+										if (c1 == (std::numeric_limits<char32_t>::max)())
+											continue;
+
+										const auto pairSetView = v.PairSetView(startCoverageIndex + i);
+										for (size_t j = 0, j_ = *pairSetView->Count; j < j_; j++) {
+											const auto c2 = glyphToCharMap[pairSetView.GetSecondGlyph(j)];
+											if (c2 == (std::numeric_limits<char32_t>::max)())
+												continue;
+
+											const auto val = static_cast<int16_t>(pairSetView.GetValueRecord1(j, { .AdvanceX = 1 }))
+												+ static_cast<int16_t>(pairSetView.GetValueRecord2(j, { .PlacementX = 1 }));
+											if (val)
+												result[std::make_pair(c1, c2)] = val;
+										}
+									}
+								}
+							}
+
+						} else if (PairAdjustmentPositioningSubtable::Format2::View v(&subtableSpan[0], subtableSpan.size_bytes()); v) {
+							if (!(*v->Header.ValueFormat1).AdvanceX && !(*v->Header.ValueFormat2).PlacementX)
+								continue;
+
+							for (const auto& [class1, glyphs1] : v.GetClassTableDefinition1().ClassToGlyphMap()) {
+								if (class1 >= v->Header.Class1Count)
+									continue;
+
+								for (const auto& [class2, glyphs2] : v.GetClassTableDefinition2().ClassToGlyphMap()) {
+									if (class2 >= v->Header.Class1Count)
+										continue;
+
+									const auto val = static_cast<int>(
+										static_cast<int16_t>(v.GetValueRecord1(class1, class2, { .AdvanceX = 1 }))
+										+ static_cast<int16_t>(v.GetValueRecord2(class1, class2, { .PlacementX = 1 })));
+									if (!val)
+										continue;
+
+									for (const auto glyph1 : glyphs1) {
+										const auto c1 = glyphToCharMap[glyph1];
+										if (c1 == (std::numeric_limits<char32_t>::max)())
+											continue;
+
+										for (const auto glyph2 : glyphs2) {
+											const auto c2 = glyphToCharMap[glyph2];
+											if (c2 == (std::numeric_limits<char32_t>::max)())
+												continue;
+
+											result[std::make_pair(c1, c2)] = val;
+										}
+									}
+								}
+							}
+						}
+					};
+				}
+
+				return result;
+			}
+		};
+	};
+
+	struct SfntFile {
+		// http://formats.kaitai.io/ttf/ttf.svg
 
 		OffsetTableStruct OffsetTable;
 		DirectoryTableEntry DirectoryTable[1];
 
-		std::span<const DirectoryTableEntry> DirectoryTableSpan() const {
-			return { DirectoryTable, *OffsetTable.TableCount };
-		}
+		class View {
+			union {
+				const SfntFile* m_obj;
+				const char* m_bytes;
+			};
+			size_t m_length;
+			size_t m_offsetInCollection;
 
-		std::span<const char> GetDirectoryTable(const TagStruct& tag, size_t nOffsetInTtc = 0)  const {
-			for (const auto& table : DirectoryTableSpan())
-				if (table.Tag == tag)
-					return { reinterpret_cast<const char*>(this) + *table.Offset - nOffsetInTtc, *table.Length };
-			return {};
-		}
+		public:
+			View() : m_obj(nullptr), m_length(0), m_offsetInCollection(0) {}
+			View(std::nullptr_t) : View() {}
+			View(decltype(m_obj) pObject, size_t length, size_t offsetInCollection = 0)
+				: m_obj(pObject), m_length(length), m_offsetInCollection(offsetInCollection) {}
+			View(View&&) = default;
+			View(const View&) = default;
+			View& operator=(View&&) = default;
+			View& operator=(const View&) = default;
+			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length, size_t offsetInCollection = 0) : View() {
+				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
-		template<typename Table>
-		std::pair<const Table*, size_t> TryGetTable(size_t offsetInTtc = 0) const {
-			const auto s = GetDirectoryTable(Table::DirectoryTableTag, offsetInTtc);
-			return std::make_pair<const Table*, size_t>(s.empty() ? nullptr : Table::TryCast(&s[0], s.size_bytes()), s.size_bytes());
-		}
+				if (length < sizeof OffsetTable)
+					return;
+				if (length < sizeof OffsetTable + sizeof DirectoryTableEntry * obj->OffsetTable.TableCount)
+					return;
 
-		size_t RequiredLength() const {
-			size_t offset = sizeof(OffsetTableStruct) + sizeof(DirectoryTableEntry) * *OffsetTable.TableCount;
-			for (size_t i = 0, i_ = *OffsetTable.TableCount; i < i_; i++)
-				offset = (std::max)(offset, static_cast<size_t>(*DirectoryTable[i].Offset) + *DirectoryTable[i].Length);
-			return offset;
-		}
+				size_t requiredLength = sizeof(OffsetTableStruct) + sizeof(DirectoryTableEntry) * *obj->OffsetTable.TableCount;
+				for (size_t i = 0, i_ = *obj->OffsetTable.TableCount; i < i_; i++)
+					requiredLength = (std::max)(requiredLength, static_cast<size_t>(*obj->DirectoryTable[i].Offset) + *obj->DirectoryTable[i].Length);
+				if (requiredLength > length)
+					return;
 
-		bool IsValid(size_t length) const {
-			if (length < sizeof OffsetTable)
-				return false;
-			if (length < sizeof OffsetTable + sizeof DirectoryTableEntry * OffsetTable.TableCount)
-				return false;
-			if (RequiredLength() > length)
-				return false;
-			return true;
-		}
+				m_obj = obj;
+				m_length = length;
+				m_offsetInCollection = offsetInCollection;
+			}
 
-		static const SfntFileView* TryCast(const void* pData, size_t length) {
-			const auto p = static_cast<const SfntFileView*>(pData);
-			if (length < sizeof SfntFileView || !p->IsValid(length))
-				return nullptr;
+			operator bool() const {
+				return !!m_obj;
+			}
 
-			return p;
-		}
+			decltype(m_obj) operator*() const {
+				return m_obj;
+			}
+
+			decltype(m_obj) operator->() const {
+				return m_obj;
+			}
+
+			std::span<const DirectoryTableEntry> DirectoryTableSpan() const {
+				return { m_obj->DirectoryTable, *m_obj->OffsetTable.TableCount };
+			}
+
+			std::span<const char> GetDirectoryTable(const TagStruct& tag) const {
+				for (const auto& table : DirectoryTableSpan())
+					if (table.Tag == tag)
+						return { m_bytes + *table.Offset - m_offsetInCollection, *table.Length };
+				return {};
+			}
+
+			template<typename Table>
+			Table::View TryGetTable() const {
+				const auto s = GetDirectoryTable(Table::DirectoryTableTag);
+				if (s.empty())
+					return {};
+
+				return Table::View(&s[0], s.size_bytes());
+			}
+		};
 	};
 
-	struct TtcFileView {
-		TtcFileView() = delete;
-		TtcFileView(TtcFileView&&) = delete;
-		TtcFileView(const TtcFileView&) = delete;
-		TtcFileView& operator=(TtcFileView&&) = delete;
-		TtcFileView& operator=(const TtcFileView&) = delete;
-
+	struct TtcFile {
 		struct Header {
 			static constexpr TagStruct HeaderTag{ { 't', 't', 'c', 'f' } };
 
@@ -1121,50 +2570,82 @@ namespace XivRes::Internal::TrueType {
 		Header FileHeader;
 		BE<uint32_t> FontOffsets[1];
 
-		const SfntFileView& GetFont(size_t index) const {
-			if (index >= FileHeader.FontCount)
-				throw std::out_of_range("Font index of range");
+		class View {
+			union {
+				const TtcFile* m_obj;
+				const char* m_bytes;
+			};
+			size_t m_length;
+			size_t m_offsetInCollection;
 
-			return *reinterpret_cast<const SfntFileView*>(reinterpret_cast<const char*>(this) + FontOffsets[index]);
-		}
+		public:
+			View() : m_obj(nullptr), m_length(0), m_offsetInCollection(0) {}
+			View(std::nullptr_t) : View() {}
+			View(decltype(m_obj) pObject, size_t length, size_t offsetInCollection = 0)
+				: m_obj(pObject), m_length(length), m_offsetInCollection(offsetInCollection) {}
+			View(View&&) = default;
+			View(const View&) = default;
+			View& operator=(View&&) = default;
+			View& operator=(const View&) = default;
+			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View() {
+				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
-		bool IsValid(size_t length) const {
-			if (length < sizeof Header)
-				return false;
-			if (FileHeader.Tag != Header::HeaderTag)
-				return false;
-			if (FileHeader.MajorVersion == 0)
-				return false;
-			if (length < sizeof Header + sizeof uint32_t * FileHeader.FontCount)
-				return false;
-			if (FileHeader.MajorVersion >= 2) {
-				if (length < sizeof Header + sizeof uint32_t * FileHeader.FontCount + sizeof DigitalSignatureHeader)
-					return false;
+				if (length < sizeof Header)
+					return;
+				if (obj->FileHeader.Tag != Header::HeaderTag)
+					return;
+				if (obj->FileHeader.MajorVersion == 0)
+					return;
+				if (length < sizeof Header + sizeof uint32_t * obj->FileHeader.FontCount)
+					return;
+				if (obj->FileHeader.MajorVersion >= 2) {
+					if (length < sizeof Header + sizeof uint32_t * obj->FileHeader.FontCount + sizeof DigitalSignatureHeader)
+						return;
 
-				const auto pDsig = reinterpret_cast<const DigitalSignatureHeader*>(&FontOffsets[*FileHeader.FontCount]);
-				if (pDsig->Tag.IntValue == 0)
-					void();
-				else if (pDsig->Tag == DigitalSignatureHeader::HeaderTag) {
-					if (length < static_cast<size_t>(*pDsig->Offset) + *pDsig->Length)
-						return false;
-				} else
-					return false;
+					const auto pDsig = reinterpret_cast<const DigitalSignatureHeader*>(&obj->FontOffsets[*obj->FileHeader.FontCount]);
+					if (pDsig->Tag.IntValue == 0)
+						void();
+					else if (pDsig->Tag == DigitalSignatureHeader::HeaderTag) {
+						if (length < static_cast<size_t>(*pDsig->Offset) + *pDsig->Length)
+							return;
+					} else
+						return;
+				}
+				for (size_t i = 0, i_ = *obj->FileHeader.FontCount; i < i_; i++) {
+					const auto offset = static_cast<size_t>(*obj->FontOffsets[i]);
+					if (SfntFile::View v(reinterpret_cast<const char*>(pData) + offset, length - offset, offset); !v)
+						return;
+				}
+
+				m_obj = obj;
+				m_length = length;
 			}
-			for (size_t i = 0, i_ = *FileHeader.FontCount; i < i_; i++) {
-				const auto& font = GetFont(i);
-				if (*FontOffsets[i] + font.RequiredLength() > length)
-					return false;
+
+			operator bool() const {
+				return !!m_obj;
 			}
-			return true;
-		}
 
-		static const TtcFileView* TryCast(const void* pData, size_t length) {
-			const auto p = static_cast<const TtcFileView*>(pData);
-			if (length < sizeof TtcFileView || !p->IsValid(length))
-				return nullptr;
+			decltype(m_obj) operator*() const {
+				return m_obj;
+			}
 
-			return p;
-		}
+			decltype(m_obj) operator->() const {
+				return m_obj;
+			}
+
+			size_t GetFontCount() const {
+				return *m_obj->FileHeader.FontCount;
+			}
+
+			SfntFile::View GetFont(size_t index) const {
+				if (index >= m_obj->FileHeader.FontCount)
+					throw std::out_of_range("Font index of range");
+
+				const auto offset = static_cast<size_t>(*m_obj->FontOffsets[index]);
+				return SfntFile::View(m_bytes + offset, m_length - offset, offset);
+			}
+		};
 	};
 }
 #pragma pack(pop)

@@ -29,25 +29,25 @@ namespace XivRes {
 		virtual std::unique_ptr<IStream> SubStream(std::streamoff offset, std::streamsize length = (std::numeric_limits<std::streamsize>::max)()) = 0;
 	};
 
-	void ReadStream(const IStream& stream, std::streamoff offset, void* buf, std::streamsize length) {
+	inline void ReadStream(const IStream& stream, std::streamoff offset, void* buf, std::streamsize length) {
 		if (stream.ReadStreamPartial(offset, buf, length) != length)
 			throw std::runtime_error("Reached end of stream before reading all of the requested data.");
 	}
 
 	template<typename T>
-	T ReadStream(const IStream& stream, std::streamoff offset) {
+	inline T ReadStream(const IStream& stream, std::streamoff offset) {
 		T buf;
 		ReadStream(stream, offset, &buf, sizeof T);
 		return buf;
 	}
 
 	template<typename T>
-	void ReadStream(const IStream& stream, std::streamoff offset, std::span<T> buf) {
+	inline void ReadStream(const IStream& stream, std::streamoff offset, std::span<T> buf) {
 		ReadStream(stream, offset, buf.data(), buf.size_bytes());
 	}
 
 	template<typename T>
-	std::vector<T> ReadStreamIntoVector(const IStream& stream, std::streamoff offset, size_t count, size_t maxCount = SIZE_MAX) {
+	inline std::vector<T> ReadStreamIntoVector(const IStream& stream, std::streamoff offset, size_t count, size_t maxCount = SIZE_MAX) {
 		if (count > maxCount)
 			throw std::runtime_error("trying to read too many");
 		std::vector<T> result(count);
@@ -56,7 +56,7 @@ namespace XivRes {
 	}
 
 	template<typename T>
-	std::vector<T> ReadStreamIntoVector(const IStream& stream, size_t maxCount = SIZE_MAX) {
+	inline std::vector<T> ReadStreamIntoVector(const IStream& stream, size_t maxCount = SIZE_MAX) {
 		return ReadStreamIntoVector<T>(stream, 0, (std::min)(maxCount, static_cast<size_t>(stream.StreamSize() / sizeof T)));
 	}
 

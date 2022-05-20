@@ -539,7 +539,7 @@ namespace XivRes::Internal {
 			{ 0x100000, 0x10FFFF, "Supplementary Private Use Area-B", LTR },
 		};
 
-		const BlockDefinition& GetCorrespondingBlock(char32_t c) {
+		inline const BlockDefinition& GetCorrespondingBlock(char32_t c) {
 			auto p = std::lower_bound(&Blocks[0], &Blocks[_countof(Blocks) - 1], c, [](const BlockDefinition& b, char32_t c) { return b.Last < c; });
 			if (p->First <= c && c <= p->Last)
 				return *p;

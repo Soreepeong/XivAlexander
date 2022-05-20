@@ -1,4 +1,6 @@
-﻿extern const char8_t* const g_pszTestString = (
+﻿#include "pch.h"
+
+extern const char8_t* const g_pszTestString = (
 	u8"Uppercase: ABCDEFGHIJKLMNOPQRSTUVWXYZ\n"
 	u8"Lowercase: abcdefghijklmnopqrstuvwxyz\n"
 	u8"Numbers: 0123456789 ０１２３４５６７８９\n"

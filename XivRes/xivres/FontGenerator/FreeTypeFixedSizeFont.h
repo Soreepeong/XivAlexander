@@ -40,8 +40,8 @@ namespace XivRes::FontGenerator {
 				return m_library;
 			}
 
-			std::unique_lock<std::mutex> Lock() {
-				return std::unique_lock<std::mutex>(m_mtx);
+			std::mutex& Mutex() {
+				return m_mtx;
 			}
 		};
 
@@ -71,31 +71,36 @@ namespace XivRes::FontGenerator {
 				info->Size = fSize;
 				info->LoadFlags = nLoadFlags;
 
-				const auto pTrueType = Internal::TrueType::SfntFileView::TryCast(&info->Data[0], info->Data.size());
-				if (!pTrueType)
+				const Internal::TrueType::SfntFile::View sfnt(&info->Data[0], info->Data.size());
+				if (!sfnt)
 					throw std::runtime_error("Invalid SFNT file");
 
-				const auto [pCmap, nCmapSize] = pTrueType->TryGetTable<Internal::TrueType::Cmap>();
-				if (!pCmap)
+				const auto cmap = sfnt.TryGetTable<Internal::TrueType::Cmap>();
+				if (!cmap)
 					throw std::runtime_error("cmap missing");
 
 				m_face = CreateFace(*m_library, *info);
 
-				const auto cmapVector = pCmap->Parse();
+				info->Characters.insert(' ');
+				const auto cmapVector = cmap.Parse();
 				for (const auto c : cmapVector) {
 					if (c != (std::numeric_limits<char32_t>::max)())
 						info->Characters.insert(c);
 				}
 
-				if (const auto [pKern, nKernSize] = pTrueType->TryGetTable<Internal::TrueType::Kern>(); pKern) {
-					info->KerningPairs = pKern->Parse(cmapVector, nKernSize);
-					for (auto it = info->KerningPairs.begin(); it != info->KerningPairs.end(); ) {
-						it->second = static_cast<int>(it->second * info->Size / static_cast<float>(m_face->size->face->units_per_EM));
-						if (it->second)
-							++it;
-						else
-							it = info->KerningPairs.erase(it);
-					}
+				if (const auto kern = sfnt.TryGetTable<Internal::TrueType::Kern>(); kern)
+					info->KerningPairs = kern.Parse(cmapVector);
+				if (const auto gpos = sfnt.TryGetTable<Internal::TrueType::Gpos>(); gpos) {
+					const auto pairs = gpos.ExtractAdvanceX(cmapVector);
+					// do not overwrite
+					info->KerningPairs.insert(pairs.begin(), pairs.end());
+				}
+				for (auto it = info->KerningPairs.begin(); it != info->KerningPairs.end(); ) {
+					it->second = static_cast<int>(it->second * info->Size / static_cast<float>(m_face->size->face->units_per_EM));
+					if (it->second)
+						++it;
+					else
+						it = info->KerningPairs.erase(it);
 				}
 
 				m_info = std::move(info);
@@ -151,7 +156,7 @@ namespace XivRes::FontGenerator {
 					return *this;
 
 				{
-					const auto lock = m_library->Lock();
+					const auto lock = std::lock_guard(m_library->Mutex());
 					SuccessOrThrow(FT_Done_Face(m_face));
 				}
 
@@ -212,7 +217,7 @@ namespace XivRes::FontGenerator {
 		private:
 			static FT_Face CreateFace(FreeTypeLibraryWrapper& m_library, const InfoStruct& info) {
 				FT_Face face;
-				const auto lock = m_library.Lock();
+				const auto lock = std::lock_guard(m_library.Mutex());
 				SuccessOrThrow(FT_New_Memory_Face(*m_library, &info.Data[0], static_cast<FT_Long>(info.Data.size()), info.FaceIndex, &face));
 				try {
 					SuccessOrThrow(FT_Set_Char_Size(face, 0, static_cast<FT_F26Dot6>(64.f * info.Size), 72, 72));
@@ -240,7 +245,7 @@ namespace XivRes::FontGenerator {
 			FreeTypeBitmapWrapper& operator=(const FreeTypeBitmapWrapper&) = delete;
 
 			~FreeTypeBitmapWrapper() {
-				const auto lock = m_library.Lock();
+				const auto lock = std::lock_guard(m_library.Mutex());
 				SuccessOrThrow(FT_Bitmap_Done(*m_library, &m_bitmap));
 			}
 

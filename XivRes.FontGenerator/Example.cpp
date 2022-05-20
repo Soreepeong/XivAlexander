@@ -1,33 +1,12 @@
-﻿#define WIN32_LEAN_AND_MEAN
+﻿#include "pch.h"
 
-#include <iostream>
-#include <Windows.h>
-#include <windowsx.h>
-#include <CommCtrl.h>
-
-#pragma comment(lib, "Comctl32.lib")
-
-#include <ft2build.h>
-#include FT_FREETYPE_H
-#include FT_BITMAP_H
-#include FT_OUTLINE_H 
-#include FT_GLYPH_H
-
-#include "XivRes/FontdataStream.h"
-#include "XivRes/GameReader.h"
-#include "XivRes/MipmapStream.h"
-#include "XivRes/PackedFileUnpackingStream.h"
-#include "XivRes/PixelFormats.h"
-#include "XivRes/TextureStream.h"
 #include "XivRes/FontGenerator/WrappingFixedSizeFont.h"
 #include "XivRes/FontGenerator/FontdataPacker.h"
 #include "XivRes/FontGenerator/FreeTypeFixedSizeFont.h"
 #include "XivRes/FontGenerator/GameFontdataFixedSizeFont.h"
 #include "XivRes/FontGenerator/MergedFixedSizeFont.h"
 #include "XivRes/FontGenerator/TextMeasurer.h"
-#include "XivRes/Internal/TexturePreview.Windows.h"
 
-/*
 extern const char8_t* const g_pszTestString;
 
 const auto fontGlos = XivRes::GameReader(R"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game)").GetFonts(XivRes::GameFontType::font);
@@ -215,8 +194,7 @@ class WindowImpl {
 			item.iItem = 1;
 			item.iSubItem = 0;
 			item.pszText = const_cast<wchar_t*>(L"Source Han Sans K Regular");
-			// item.lParam = reinterpret_cast<LPARAM>(new std::wstring(LR"(C:\Windows\Fonts\SourceHanSansK-Regular.otf)"));
-			item.lParam = reinterpret_cast<LPARAM>(new std::wstring(LR"(C:\Windows\Fonts\times.ttf)"));
+			item.lParam = reinterpret_cast<LPARAM>(new std::wstring(LR"(C:\Windows\Fonts\SourceHanSansK-Regular.otf)"));
 			ListView_InsertItem(m_hExtraFontsList, &item);
 			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"18px"));
 			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"22px"));
@@ -507,30 +485,51 @@ void ShowExampleWindow() {
 		}
 	}
 }
-*/
 
-int main() {
-	system("chcp 65001");
-
+void InspectFonts() {
 	using namespace XivRes::Internal::TrueType;
 
-	const auto testSfnt = [](const SfntFileView& sfnt, size_t offsetInTtc = 0) {
-		const auto [pHead, nHeadSize] = sfnt.TryGetTable<Head>(offsetInTtc);
-		const auto [pName, nNameSize] = sfnt.TryGetTable<Name>(offsetInTtc);
-		const auto [pCmap, nCmapSize] = sfnt.TryGetTable<Cmap>(offsetInTtc);
-		const auto cmapVector = pCmap->Parse();
+	const auto testSfnt = [](const std::u8string& filename, int fontIndex, SfntFile::View sfnt) {
+		const auto head = sfnt.TryGetTable<Head>();
+		const auto name = sfnt.TryGetTable<Name>();
+		const auto cmap = sfnt.TryGetTable<Cmap>();
+
+		/*if (fontIndex >= 0)
+			std::cout << std::format("{}({})", (char*)filename.c_str(), fontIndex);
+		else
+			std::cout << std::format("{}", (char*)filename.c_str());*/
+		std::cout << std::format("{:<32} {:<24}\t", (char*)(name.GetPreferredFamilyName(0)).c_str(), (char*)name.GetPreferredSubfamilyName(0).c_str());
+
+		const auto cmapVector = cmap.Parse();
 		int numc = 0;
 		for (const auto c : cmapVector) {
 			if (c != (std::numeric_limits<char32_t>::max)())
 				numc++;
 		}
+		std::cout << std::format("c({})", numc);
 
-		if (const auto [pKern, nKernSize] = sfnt.TryGetTable<Kern>(offsetInTtc); pKern) {
-			const auto kerningPairs = pKern->Parse(cmapVector, nKernSize);
-			std::cout << std::format("{}: {} chars, {} kerns\n", (char*)pName->GetUnicodeName(0, 4, nNameSize).c_str(), numc, kerningPairs.size());
-		} else {
-			std::cout << std::format("{}: {} chars\n", (char*)pName->GetUnicodeName(0, 4, nNameSize).c_str(), numc);
+		std::map<std::pair<char32_t, char32_t>, int> kernPairs, gposPairs;
+		if (auto kern = sfnt.TryGetTable<Kern>(); kern) {
+			kernPairs = kern.Parse(cmapVector);
+			std::cout << std::format(" k({})", kernPairs.size());
 		}
+
+		if (auto gpos = sfnt.TryGetTable<Gpos>(); gpos) {
+			gposPairs = gpos.ExtractAdvanceX(cmapVector);
+			if (!gposPairs.empty()) {
+				std::cout << std::format(" g({})", gposPairs.size());
+
+				std::set<std::pair<char32_t, char32_t>> kerned;
+				for (const auto& p : kernPairs)
+					kerned.insert(p.first);
+				for (const auto& p : gposPairs)
+					kerned.insert(p.first);
+
+				std::cout << std::format(" t({})", kerned.size());
+			}
+		}
+
+		std::cout << std::endl;
 	};
 
 	std::vector<uint8_t> buf;
@@ -542,25 +541,24 @@ int main() {
 			buf.resize(file.file_size());
 			ReadStream(XivRes::FileStream(file), 0, std::span(buf));
 
-			if (const auto pTtc = TtcFileView::TryCast(&buf[0], buf.size())) {
-				for (size_t i = 0; i < pTtc->FileHeader.FontCount; i++) {
-					std::wcout << std::format(L"Testing: {} : {} / {}b\n", file.path().wstring(), i, buf.size());
-					testSfnt(pTtc->GetFont(i), *pTtc->FontOffsets[i]);
+			if (TtcFile::View ttc(&buf[0], buf.size()); ttc) {
+				for (int i = 0; i < (int)ttc.GetFontCount(); i++) {
+					testSfnt(file.path().filename().u8string(), i, ttc.GetFont(i));
 				}
-			} else
-				std::wcout << std::format(L"Invalid ttc file: {}\n", file.path().wstring());
-
+			}
 		} else if (_wcsicmp(file.path().extension().c_str(), L".ttf") == 0 || _wcsicmp(file.path().extension().c_str(), L".otf") == 0) {
-			std::wcout << std::format(L"Testing: {}\n", file.path().wstring());
 			buf.resize(file.file_size());
 			ReadStream(XivRes::FileStream(file), 0, std::span(buf));
-			if (const auto pSfnt = SfntFileView::TryCast(&buf[0], buf.size()))
-				testSfnt(*pSfnt);
-			else
-				std::wcout << std::format(L"Invalid sfnt file: {}\n", file.path().wstring());
+
+			if (SfntFile::View sfnt(&buf[0], buf.size()); sfnt)
+				testSfnt(file.path().filename().u8string(), -1, sfnt);
 		}
 	}
+}
 
-	// ShowExampleWindow();
+int main() {
+	system("chcp 65001");
+	// InspectFonts();
+	ShowExampleWindow();
 	return 0;
 }
