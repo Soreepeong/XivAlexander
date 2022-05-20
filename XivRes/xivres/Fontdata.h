@@ -67,6 +67,14 @@ namespace XivRes {
 		uint16_t TexturePlaneIndex() const {
 			return *TextureIndex & 3;
 		}
+
+		auto operator<=>(const FontdataGlyphEntry& r) const {
+			return *Utf8Value <=> *r.Utf8Value;
+		}
+
+		auto operator<=>(uint32_t r) const {
+			return *Utf8Value <=> r;
+		}
 	};
 	static_assert(sizeof FontdataGlyphEntry == 0x10);
 
@@ -106,6 +114,12 @@ namespace XivRes {
 			RightUtf8Value = Internal::UnicodeCodePointToUtf8Uint32(newValue);
 			RightShiftJisValue = Internal::UnicodeCodePointToShiftJisUint16(newValue);
 			return newValue;
+		}
+
+		auto operator<=>(const FontdataKerningEntry& r) const {
+			if (const auto v = (*LeftUtf8Value <=> *r.LeftUtf8Value); v != std::strong_ordering::equal)
+				return v;
+			return *RightUtf8Value <=> *r.RightUtf8Value;
 		}
 	};
 	static_assert(sizeof FontdataKerningEntry == 0x10);

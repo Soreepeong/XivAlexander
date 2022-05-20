@@ -57,7 +57,7 @@ namespace XivRes::FontGenerator {
 			threadSafeSourceFonts.reserve(m_fonts.size());
 			size_t nMaxCharacterCount = 0;
 			for (const auto& font : m_fonts) {
-				nMaxCharacterCount += font->GetCodepointCount();
+				nMaxCharacterCount += font->GetAllCodepoints().size();
 				threadSafeSourceFonts.emplace_back();
 				threadSafeSourceFonts.back().resize(m_nThreads);
 				threadSafeSourceFonts.back()[0] = font;
@@ -73,37 +73,24 @@ namespace XivRes::FontGenerator {
 			std::vector<CharacterPlan> rectangleInfoList;
 			rectangleInfoList.reserve(nMaxCharacterCount);
 			{
-				std::vector<std::set<char32_t>> codepointsPerFont;
-				codepointsPerFont.resize(m_fonts.size());
-
 				{
 					Internal::ThreadPool pool(m_nThreads);
 
 					for (size_t i = 0; i < m_fonts.size(); i++) {
 						auto& targetFont = *(targetFonts[i] = std::make_shared<FontdataStream>());
-
-						pool.Submit([this, i, &targetFont, &codepointsPerFont, &GetThreadSafeSourceFont](size_t nThreadIndex) {
-							const auto& font = GetThreadSafeSourceFont(i, nThreadIndex);
-
-							targetFont.TextureWidth(m_nSideLength);
-							targetFont.TextureHeight(m_nSideLength);
-							targetFont.Size(font.GetSize());
-							targetFont.LineHeight(font.GetLineHeight());
-							targetFont.Ascent(font.GetAscent());
-
-							codepointsPerFont[i] = font.GetAllCodepoints();
-							targetFont.ReserveFontEntries(codepointsPerFont[i].size());
-						});
-
-						pool.Submit([&targetFont, i, &GetThreadSafeSourceFont](size_t nThreadIndex) {
-							const auto& font = GetThreadSafeSourceFont(i, nThreadIndex);
-							const auto pairs = font.GetKerningPairs();
-							targetFont.ReserveKerningEntries(pairs.size());
-							for (const auto& kerning : pairs) {
-								if (kerning.second)
-									targetFont.AddKerning(kerning.first.first, kerning.first.second, kerning.second);
-							}
-						});
+						
+						const auto& font = *m_fonts[i];
+						targetFont.TextureWidth(m_nSideLength);
+						targetFont.TextureHeight(m_nSideLength);
+						targetFont.Size(font.GetSize());
+						targetFont.LineHeight(font.GetLineHeight());
+						targetFont.Ascent(font.GetAscent());
+						targetFont.ReserveFontEntries(font.GetAllCodepoints().size());
+						targetFont.ReserveKerningEntries(font.GetKerningPairs().size());
+						for (const auto& kerning : font.GetKerningPairs()) {
+							if (kerning.second)
+								targetFont.AddKerning(kerning.first.first, kerning.first.second, kerning.second);
+						}
 					}
 
 					pool.SubmitDoneAndWait();
@@ -112,7 +99,7 @@ namespace XivRes::FontGenerator {
 				std::map<const void*, CharacterPlan*> rectangleInfoMap;
 				for (size_t i = 0; i < m_fonts.size(); i++) {
 					const auto& font = m_fonts[i];
-					for (const auto& codepoint : codepointsPerFont[i]) {
+					for (const auto& codepoint : font->GetAllCodepoints()) {
 						auto& block = XivRes::Internal::UnicodeBlocks::GetCorrespondingBlock(codepoint);
 						if (block.Flags & XivRes::Internal::UnicodeBlocks::RTL)
 							continue;
@@ -297,7 +284,7 @@ namespace XivRes::FontGenerator {
 										pInfo->Entry.TextureOffsetY - pInfo->Entry.CurrentOffsetY,
 										w,
 										h,
-										255, 0, 255, 255
+										255, 0, 255, 255, 1.0f
 									);
 								}
 							});

@@ -12,61 +12,69 @@
 
 namespace XivRes::FontGenerator {
 	class GameFontdataFixedSizeFont : public DefaultAbstractFixedSizeFont {
-		std::array<uint8_t, 256> m_gammaTable;
-		std::shared_ptr<const FontdataStream> m_stream;
-		std::vector<std::shared_ptr<MemoryMipmapStream>> m_mipmapStreams;
-		int m_dx = 0;
+		struct InfoStruct {
+			std::shared_ptr<const FontdataStream> Font;
+			std::vector<std::shared_ptr<MemoryMipmapStream>> Mipmaps;
+			std::set<char32_t> Codepoints;
+			std::map<std::pair<char32_t, char32_t>, int> KerningPairs;
+			int HorizontalOffset = 0;
+		};
+
+		std::shared_ptr<const InfoStruct> m_info;
 
 	public:
-		GameFontdataFixedSizeFont(std::shared_ptr<const FontdataStream> stream, std::vector<std::shared_ptr<MemoryMipmapStream>> mipmapStreams)
-			: m_gammaTable(LinearGammaTable)
-			, m_stream(std::move(stream))
-			, m_mipmapStreams(std::move(mipmapStreams)) {
-			for (const auto& mipmapStream : m_mipmapStreams) {
+		GameFontdataFixedSizeFont(std::shared_ptr<const FontdataStream> stream, std::vector<std::shared_ptr<MemoryMipmapStream>> mipmapStreams) {
+			for (const auto& mipmapStream : mipmapStreams) {
 				if (mipmapStream->Type != TextureFormat::A8R8G8B8)
 					throw std::invalid_argument("All mipmap streams must be in A8R8G8B8 format.");
 			}
 
-			if (const auto pEntry = m_stream->GetFontEntry(U'_'))
-				m_dx = -pEntry->NextOffsetX;
-			else if (const auto pEntry = m_stream->GetFontEntry(U'0'))
-				m_dx = -pEntry->NextOffsetX;
+			auto info = std::make_shared<InfoStruct>();
+			info->Font = std::move(stream);
+			info->Mipmaps = std::move(mipmapStreams);
+
+			for (const auto& entry : info->Font->GetFontTableEntries())
+				info->Codepoints.insert(info->Codepoints.end(), entry.Char());
+
+			for (const auto& entry : info->Font->GetKerningEntries())
+				info->KerningPairs.emplace_hint(info->KerningPairs.end(), std::make_pair(entry.Left(), entry.Right()), entry.RightOffset);
+
+			if (const auto pEntry = info->Font->GetFontEntry(U'_'))
+				info->HorizontalOffset = -pEntry->NextOffsetX;
+			else if (const auto pEntry = info->Font->GetFontEntry(U'0'))
+				info->HorizontalOffset = -pEntry->NextOffsetX;
+
+			m_info = std::move(info);
 		}
 
-		int GetHorizontalOffset() const override {
-			return m_dx;
-		}
+		GameFontdataFixedSizeFont() = default;
+		GameFontdataFixedSizeFont(GameFontdataFixedSizeFont&&) = default;
+		GameFontdataFixedSizeFont(const GameFontdataFixedSizeFont & r) = default;
+		GameFontdataFixedSizeFont& operator=(GameFontdataFixedSizeFont&&) = default;
+		GameFontdataFixedSizeFont& operator=(const GameFontdataFixedSizeFont&) = default;
 
-		void SetHorizontalOffset(int offset) override {
-			m_dx = offset;
+		int GetHorizontalOffset() const {
+			return m_info->HorizontalOffset;
 		}
 
 		float GetSize() const override {
-			return m_stream->Size();
+			return m_info->Font->Size();
 		}
 
 		int GetAscent() const override {
-			return m_stream->Ascent();
+			return m_info->Font->Ascent();
 		}
 
 		int GetLineHeight() const override {
-			return m_stream->LineHeight();
+			return m_info->Font->LineHeight();
 		}
 
-		size_t GetCodepointCount() const override {
-			return m_stream->GetFontTableEntries().size();
-		}
-
-		std::set<char32_t> GetAllCodepoints() const override {
-			std::vector<char32_t> all;
-			all.reserve(m_stream->GetFontTableEntries().size());
-			for (const auto& entry : m_stream->GetFontTableEntries())
-				all.emplace_back(entry.Char());
-			return { all.begin(), all.end() };
+		const std::set<char32_t>& GetAllCodepoints() const override {
+			return m_info->Codepoints;
 		}
 
 		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const override {
-			const auto pEntry = m_stream->GetFontEntry(codepoint);
+			const auto pEntry = m_info->Font->GetFontEntry(codepoint);
 			if (!pEntry) {
 				gm.Clear();
 				return false;
@@ -77,18 +85,11 @@ namespace XivRes::FontGenerator {
 		}
 
 		const void* GetGlyphUniqid(char32_t c) const override {
-			return m_stream->GetFontEntry(c);
+			return m_info->Font->GetFontEntry(c);
 		}
 
-		size_t GetKerningEntryCount() const override {
-			return m_stream->GetKerningEntries().size();
-		}
-
-		std::map<std::pair<char32_t, char32_t>, int> GetKerningPairs() const override {
-			std::map<std::pair<char32_t, char32_t>, int> res;
-			for (const auto& entry : m_stream->GetKerningEntries())
-				res.emplace_hint(res.end(), std::make_pair(entry.Left(), entry.Right()), entry.RightOffset);
-			return res;
+		const std::map<std::pair<char32_t, char32_t>, int>& GetKerningPairs() const override {
+			return m_info->KerningPairs;
 		}
 
 		int GetAdjustedAdvanceX(char32_t left, char32_t right) const override {
@@ -96,66 +97,58 @@ namespace XivRes::FontGenerator {
 			if (!GetGlyphMetrics(left, gm))
 				return 0;
 
-			return gm.AdvanceX + m_stream->GetKerningDistance(left, right);
+			return gm.AdvanceX + m_info->Font->GetKerningDistance(left, right);
 		}
 
-		const std::array<uint8_t, 256>& GetGammaTable() const override {
-			return m_gammaTable;
-		}
-
-		void SetGammaTable(const std::array<uint8_t, 256>& gammaTable) override {
-			m_gammaTable = gammaTable;
-		}
-
-		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const override {
-			const auto pEntry = m_stream->GetFontEntry(codepoint);
+		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor, float gamma) const override {
+			const auto pEntry = m_info->Font->GetFontEntry(codepoint);
 			if (!pEntry)
 				return false;
 
 			auto src = GlyphMetrics{ false, *pEntry->TextureOffsetX, *pEntry->TextureOffsetY, *pEntry->TextureOffsetX + *pEntry->BoundingWidth, *pEntry->TextureOffsetY + *pEntry->BoundingHeight };
 			auto dest = GlyphMetricsFromEntry(pEntry, drawX, drawY);
-			const auto& mipmapStream = *m_mipmapStreams.at(pEntry->TextureFileIndex());
+			const auto& mipmapStream = *m_info->Mipmaps.at(pEntry->TextureFileIndex());
 			src.AdjustToIntersection(dest, mipmapStream.Width, mipmapStream.Height, destWidth, destHeight);
-			Internal::BitmapCopy()
+			Internal::BitmapCopy::ToRGBA8888()
 				.From(&mipmapStream.View<uint8_t>()[3 - pEntry->TexturePlaneIndex()], mipmapStream.Width, mipmapStream.Height, 4, Internal::BitmapVerticalDirection::TopRowFirst)
 				.To(pBuf, destWidth, destHeight, Internal::BitmapVerticalDirection::TopRowFirst)
 				.WithForegroundColor(fgColor)
 				.WithBackgroundColor(bgColor)
-				.WithGammaTable(m_gammaTable)
+				.WithGamma(gamma)
 				.CopyTo(src.X1, src.Y1, src.X2, src.Y2, dest.X1, dest.Y1);
 			return true;
 		}
 
-		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const override {
-			const auto pEntry = m_stream->GetFontEntry(codepoint);
+		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity, float gamma) const override {
+			const auto pEntry = m_info->Font->GetFontEntry(codepoint);
 			if (!pEntry)
 				return false;
 
 			auto src = GlyphMetrics{ false, *pEntry->TextureOffsetX, *pEntry->TextureOffsetY, *pEntry->TextureOffsetX + *pEntry->BoundingWidth, *pEntry->TextureOffsetY + *pEntry->BoundingHeight };
 			auto dest = GlyphMetricsFromEntry(pEntry, drawX, drawY);
-			const auto& mipmapStream = *m_mipmapStreams.at(pEntry->TextureFileIndex());
+			const auto& mipmapStream = *m_info->Mipmaps.at(pEntry->TextureFileIndex());
 			src.AdjustToIntersection(dest, mipmapStream.Width, mipmapStream.Height, destWidth, destHeight);
-			Internal::L8BitmapCopy()
+			Internal::BitmapCopy::ToL8()
 				.From(&mipmapStream.View<uint8_t>()[3 - pEntry->TexturePlaneIndex()], mipmapStream.Width, mipmapStream.Height, 4, Internal::BitmapVerticalDirection::TopRowFirst)
 				.To(pBuf, destWidth, destHeight, 4, Internal::BitmapVerticalDirection::TopRowFirst)
 				.WithForegroundColor(fgColor)
 				.WithForegroundOpacity(fgOpacity)
 				.WithBackgroundColor(bgColor)
 				.WithBackgroundOpacity(bgOpacity)
-				.WithGammaTable(m_gammaTable)
+				.WithGamma(gamma)
 				.CopyTo(src.X1, src.Y1, src.X2, src.Y2, dest.X1, dest.Y1);
 			return true;
 		}
 
 		std::shared_ptr<IFixedSizeFont> GetThreadSafeView() const override {
-			return std::make_shared<FixedSizeFontConstView>(this);
+			return std::make_shared<GameFontdataFixedSizeFont>(*this);
 		}
 
 	private:
 		GlyphMetrics GlyphMetricsFromEntry(const FontdataGlyphEntry* pEntry, int x = 0, int y = 0) const {
 			GlyphMetrics src{
 				.Empty = false,
-				.X1 = x - m_dx,
+				.X1 = x - m_info->HorizontalOffset,
 				.Y1 = y + pEntry->CurrentOffsetY,
 				.X2 = src.X1 + pEntry->BoundingWidth,
 				.Y2 = src.Y1 + pEntry->BoundingHeight,

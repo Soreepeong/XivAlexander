@@ -19,7 +19,7 @@
 #include "XivRes/PackedFileUnpackingStream.h"
 #include "XivRes/PixelFormats.h"
 #include "XivRes/TextureStream.h"
-#include "XivRes/FontGenerator/CodepointLimitingFixedSizeFont.h"
+#include "XivRes/FontGenerator/WrappingFixedSizeFont.h"
 #include "XivRes/FontGenerator/FontdataPacker.h"
 #include "XivRes/FontGenerator/FreeTypeFixedSizeFont.h"
 #include "XivRes/FontGenerator/GameFontdataFixedSizeFont.h"
@@ -27,6 +27,7 @@
 #include "XivRes/FontGenerator/TextMeasurer.h"
 #include "XivRes/Internal/TexturePreview.Windows.h"
 
+/*
 extern const char8_t* const g_pszTestString;
 
 const auto fontGlos = XivRes::GameReader(R"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game)").GetFonts(XivRes::GameFontType::font);
@@ -214,7 +215,8 @@ class WindowImpl {
 			item.iItem = 1;
 			item.iSubItem = 0;
 			item.pszText = const_cast<wchar_t*>(L"Source Han Sans K Regular");
-			item.lParam = reinterpret_cast<LPARAM>(new std::wstring(LR"(C:\Windows\Fonts\SourceHanSansK-Regular.otf)"));
+			// item.lParam = reinterpret_cast<LPARAM>(new std::wstring(LR"(C:\Windows\Fonts\SourceHanSansK-Regular.otf)"));
+			item.lParam = reinterpret_cast<LPARAM>(new std::wstring(LR"(C:\Windows\Fonts\times.ttf)"));
 			ListView_InsertItem(m_hExtraFontsList, &item);
 			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"18px"));
 			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"22px"));
@@ -432,7 +434,8 @@ public:
 
 		m_fontMerged = merge;
 		XivRes::FontGenerator::FontdataPacker packer;
-		packer.SetHorizontalOffset(m_fontBase->GetHorizontalOffset());
+		if (const auto p = dynamic_cast<const XivRes::FontGenerator::GameFontdataFixedSizeFont*>(m_fontBase.get()))
+			packer.SetHorizontalOffset(p->GetHorizontalOffset());
 		packer.AddFont(merge);
 		auto [fdts, texs] = packer.Compile();
 		auto res = std::make_shared<XivRes::TextureStream>(texs[0]->Type, texs[0]->Width, texs[0]->Height, 1, 1, texs.size());
@@ -441,7 +444,7 @@ public:
 		m_fontPacked = std::make_shared<XivRes::FontGenerator::GameFontdataFixedSizeFont>(fdts[0], texs);
 	}
 
-	void TestFontLsb() {
+	void TestFontLsb(int horizontalOffset) {
 		const auto cps = m_fontMerged->GetAllCodepoints();
 		std::set<const XivRes::Internal::UnicodeBlocks::BlockDefinition*> visitedBlocks;
 		std::set<char32_t> ignoreDist;
@@ -453,7 +456,7 @@ public:
 
 			XivRes::FontGenerator::GlyphMetrics gm;
 			m_fontMerged->GetGlyphMetrics(c, gm);
-			if (gm.X1 < -m_fontBase->GetHorizontalOffset()) {
+			if (gm.X1 < -horizontalOffset) {
 				auto& block = XivRes::Internal::UnicodeBlocks::GetCorrespondingBlock(c);
 				if (block.Flags & XivRes::Internal::UnicodeBlocks::RTL)
 					continue;
@@ -495,8 +498,7 @@ public:
 
 std::weak_ptr<ATOM> WindowImpl::s_pAtom;
 
-int main() {
-	system("chcp 65001");
+void ShowExampleWindow() {
 	WindowImpl window;
 	for (MSG msg{}; GetMessageW(&msg, nullptr, 0, 0);) {
 		if (!IsDialogMessageW(window.Handle(), &msg)) {
@@ -504,117 +506,61 @@ int main() {
 			DispatchMessageW(&msg);
 		}
 	}
-	return 0;
 }
+*/
 
-int Test2() {
-	std::set<char32_t> codepointsGlo, codepointsKrn, codepointsChn;
-	codepointsGlo = fontGlos[0]->GetAllCodepoints();
-	for (char32_t i = 'A'; i <= 'Z'; i += 3) {
-		codepointsGlo.erase(i + 1);
-		codepointsGlo.erase(i + 2);
-	}
-	for (char32_t i = 'a'; i <= 'z'; i += 3) {
-		codepointsGlo.erase(i + 1);
-		codepointsGlo.erase(i + 2);
-	}
-	for (char32_t i = '0'; i <= '9'; i += 3) {
-		codepointsGlo.erase(i + 1);
-		codepointsGlo.erase(i + 2);
-	}
-	std::ranges::set_difference(fontKrns[0]->GetAllCodepoints(), codepointsGlo, std::inserter(codepointsKrn, codepointsKrn.end()));
-	for (char32_t i = 'A'; i <= 'Z'; i += 3) {
-		codepointsKrn.erase(i + 2);
-	}
-	for (char32_t i = 'a'; i <= 'z'; i += 3) {
-		codepointsKrn.erase(i + 2);
-	}
-	for (char32_t i = '0'; i <= '9'; i += 3) {
-		codepointsKrn.erase(i + 2);
-	}
-	std::ranges::set_difference(fontChns[0]->GetAllCodepoints(), codepointsGlo, std::inserter(codepointsChn, codepointsChn.end()));
+int main() {
+	system("chcp 65001");
 
-	XivRes::FontGenerator::FontdataPacker packer;
-	packer.AddFont(fontGlos[0]);
-	packer.AddFont(std::make_shared<XivRes::FontGenerator::MergedFixedSizeFont>(std::vector<std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>>({
-		std::make_shared<XivRes::FontGenerator::CodepointLimitingFixedSizeFont>(fontGlos[1], codepointsGlo),
-		std::make_shared<XivRes::FontGenerator::CodepointLimitingFixedSizeFont>(fontKrns[0], codepointsKrn),
-		std::make_shared<XivRes::FontGenerator::CodepointLimitingFixedSizeFont>(fontChns[0], codepointsChn),
-		})));
-	packer.AddFont(std::make_shared<XivRes::FontGenerator::MergedFixedSizeFont>(std::vector<std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>>({
-		std::make_shared<XivRes::FontGenerator::CodepointLimitingFixedSizeFont>(fontGlos[2], codepointsGlo),
-		std::make_shared<XivRes::FontGenerator::CodepointLimitingFixedSizeFont>(fontKrns[1], codepointsKrn),
-		std::make_shared<XivRes::FontGenerator::CodepointLimitingFixedSizeFont>(fontChns[1], codepointsChn),
-		})));
-	packer.AddFont(std::make_shared<XivRes::FontGenerator::MergedFixedSizeFont>(std::vector<std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>>({
-		std::make_shared<XivRes::FontGenerator::CodepointLimitingFixedSizeFont>(fontGlos[3], codepointsGlo),
-		std::make_shared<XivRes::FontGenerator::CodepointLimitingFixedSizeFont>(fontKrns[2], codepointsKrn),
-		std::make_shared<XivRes::FontGenerator::CodepointLimitingFixedSizeFont>(fontChns[2], codepointsChn),
-		})));
-	packer.AddFont(std::make_shared<XivRes::FontGenerator::MergedFixedSizeFont>(std::vector<std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>>({
-		std::make_shared<XivRes::FontGenerator::CodepointLimitingFixedSizeFont>(fontGlos[4], codepointsGlo),
-		std::make_shared<XivRes::FontGenerator::CodepointLimitingFixedSizeFont>(fontKrns[3], codepointsKrn),
-		std::make_shared<XivRes::FontGenerator::CodepointLimitingFixedSizeFont>(fontChns[3], codepointsChn),
-		})));
-	for (int i = 5; i < 23; i++) {
-		packer.AddFont(fontGlos[i]);
+	using namespace XivRes::Internal::TrueType;
+
+	const auto testSfnt = [](const SfntFileView& sfnt, size_t offsetInTtc = 0) {
+		const auto [pHead, nHeadSize] = sfnt.TryGetTable<Head>(offsetInTtc);
+		const auto [pName, nNameSize] = sfnt.TryGetTable<Name>(offsetInTtc);
+		const auto [pCmap, nCmapSize] = sfnt.TryGetTable<Cmap>(offsetInTtc);
+		const auto cmapVector = pCmap->Parse();
+		int numc = 0;
+		for (const auto c : cmapVector) {
+			if (c != (std::numeric_limits<char32_t>::max)())
+				numc++;
+		}
+
+		if (const auto [pKern, nKernSize] = sfnt.TryGetTable<Kern>(offsetInTtc); pKern) {
+			const auto kerningPairs = pKern->Parse(cmapVector, nKernSize);
+			std::cout << std::format("{}: {} chars, {} kerns\n", (char*)pName->GetUnicodeName(0, 4, nNameSize).c_str(), numc, kerningPairs.size());
+		} else {
+			std::cout << std::format("{}: {} chars\n", (char*)pName->GetUnicodeName(0, 4, nNameSize).c_str(), numc);
+		}
+	};
+
+	std::vector<uint8_t> buf;
+	for (const auto& file : std::filesystem::directory_iterator(LR"(C:\Windows\Fonts)")) {
+		if (file.is_directory())
+			continue;
+
+		if (_wcsicmp(file.path().extension().c_str(), L".ttc") == 0 || _wcsicmp(file.path().extension().c_str(), L".otc") == 0) {
+			buf.resize(file.file_size());
+			ReadStream(XivRes::FileStream(file), 0, std::span(buf));
+
+			if (const auto pTtc = TtcFileView::TryCast(&buf[0], buf.size())) {
+				for (size_t i = 0; i < pTtc->FileHeader.FontCount; i++) {
+					std::wcout << std::format(L"Testing: {} : {} / {}b\n", file.path().wstring(), i, buf.size());
+					testSfnt(pTtc->GetFont(i), *pTtc->FontOffsets[i]);
+				}
+			} else
+				std::wcout << std::format(L"Invalid ttc file: {}\n", file.path().wstring());
+
+		} else if (_wcsicmp(file.path().extension().c_str(), L".ttf") == 0 || _wcsicmp(file.path().extension().c_str(), L".otf") == 0) {
+			std::wcout << std::format(L"Testing: {}\n", file.path().wstring());
+			buf.resize(file.file_size());
+			ReadStream(XivRes::FileStream(file), 0, std::span(buf));
+			if (const auto pSfnt = SfntFileView::TryCast(&buf[0], buf.size()))
+				testSfnt(*pSfnt);
+			else
+				std::wcout << std::format(L"Invalid sfnt file: {}\n", file.path().wstring());
+		}
 	}
-	dynamic_cast<XivRes::FontGenerator::MergedFixedSizeFont*>(packer.GetFont(1).get())->SetIndividualVerticalAdjustment(1, 1);
-	dynamic_cast<XivRes::FontGenerator::MergedFixedSizeFont*>(packer.GetFont(4).get())->SetIndividualVerticalAdjustment(1, 1);
-	dynamic_cast<XivRes::FontGenerator::MergedFixedSizeFont*>(packer.GetFont(1).get())->SetIndividualVerticalAdjustment(2, 1);
-	dynamic_cast<XivRes::FontGenerator::MergedFixedSizeFont*>(packer.GetFont(4).get())->SetIndividualVerticalAdjustment(2, 1);
 
-	{
-		std::vector<std::thread> threads;
-
-		threads.emplace_back([&]() {
-			auto face = packer.GetFont(0);
-			XivRes::Internal::ShowTextureStream(*XivRes::FontGenerator::TextMeasurer(*face)
-				.Measure(g_pszTestString)
-				.CreateMipmap(*face, XivRes::RGBA8888(255, 255, 255, 255), XivRes::RGBA8888(0, 0, 0, 200))
-				->ToSingleTextureStream(), L"AXIS_12");
-		});
-		threads.emplace_back([&]() {
-			auto face = packer.GetFont(1);
-			XivRes::Internal::ShowTextureStream(*XivRes::FontGenerator::TextMeasurer(*face)
-				.Measure(g_pszTestString)
-				.CreateMipmap(*face, XivRes::RGBA8888(255, 255, 255, 255), XivRes::RGBA8888(0, 0, 0, 200))
-				->ToSingleTextureStream(), L"AXIS_14");
-		});
-		threads.emplace_back([&]() {
-			auto face = packer.GetFont(2);
-			XivRes::Internal::ShowTextureStream(*XivRes::FontGenerator::TextMeasurer(*face)
-				.Measure(g_pszTestString)
-				.CreateMipmap(*face, XivRes::RGBA8888(255, 255, 255, 255), XivRes::RGBA8888(0, 0, 0, 200))
-				->ToSingleTextureStream(), L"AXIS_18");
-		});
-		threads.emplace_back([&]() {
-			auto face = packer.GetFont(3);
-			XivRes::Internal::ShowTextureStream(*XivRes::FontGenerator::TextMeasurer(*face)
-				.Measure(g_pszTestString)
-				.CreateMipmap(*face, XivRes::RGBA8888(255, 255, 255, 255), XivRes::RGBA8888(0, 0, 0, 200))
-				->ToSingleTextureStream(), L"AXIS_36");
-		});
-
-		//*
-		auto [fdts, texs] = packer.Compile();
-		auto res = std::make_shared<XivRes::TextureStream>(texs[0]->Type, texs[0]->Width, texs[0]->Height, 1, 1, texs.size());
-		for (size_t i = 0; i < texs.size(); i++)
-			res->SetMipmap(0, i, texs[i]);
-
-		threads.emplace_back([&]() { XivRes::Internal::ShowTextureStream(*res); });
-
-		auto face = std::make_shared<XivRes::FontGenerator::GameFontdataFixedSizeFont>(fdts[0], texs);
-		threads.emplace_back([&]() {
-			XivRes::Internal::ShowTextureStream(*XivRes::FontGenerator::TextMeasurer(*face)
-				.Measure(g_pszTestString)
-				.CreateMipmap(*face, XivRes::RGBA8888(255, 255, 255, 255), XivRes::RGBA8888(0, 0, 0, 200))
-				->ToSingleTextureStream());
-		});
-		//*/
-
-		for (auto& t : threads)
-			t.join();
-	}
+	// ShowExampleWindow();
 	return 0;
 }

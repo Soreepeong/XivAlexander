@@ -203,9 +203,14 @@ namespace XivRes {
 		}
 
 		void AddFontEntry(const FontdataGlyphEntry& entry) {
-			auto it = std::lower_bound(m_fontTableEntries.begin(), m_fontTableEntries.end(), entry.Utf8Value, [](const FontdataGlyphEntry& l, uint32_t r) {
-				return l.Utf8Value < r;
-			});
+			auto it = m_fontTableEntries.end();
+
+			if (m_fontTableEntries.empty() || m_fontTableEntries.back() < entry)
+				void();
+			else if (entry < m_fontTableEntries.front())
+				it = m_fontTableEntries.begin();
+			else
+				it = std::lower_bound(m_fontTableEntries.begin(), m_fontTableEntries.end(), entry);
 
 			if (it == m_fontTableEntries.end() || it->Utf8Value != entry.Utf8Value) {
 				it = m_fontTableEntries.insert(it, entry);
@@ -225,11 +230,14 @@ namespace XivRes {
 		}
 
 		void AddKerning(const FontdataKerningEntry& entry, bool cumulative = false) {
-			const auto it = std::ranges::lower_bound(m_kerningEntries, entry, [](const FontdataKerningEntry& l, const FontdataKerningEntry& r) {
-				if (l.LeftUtf8Value == r.LeftUtf8Value)
-					return l.RightUtf8Value < r.RightUtf8Value;
-				return l.LeftUtf8Value < r.LeftUtf8Value;
-			});
+			auto it = m_kerningEntries.end();
+
+			if (m_kerningEntries.empty() || m_kerningEntries.back() < entry)
+				void();
+			else if (entry < m_kerningEntries.front())
+				it = m_kerningEntries.begin();
+			else
+				it = std::lower_bound(m_kerningEntries.begin(), m_kerningEntries.end(), entry);
 
 			if (it != m_kerningEntries.end() && it->LeftUtf8Value == entry.LeftUtf8Value && it->RightUtf8Value == entry.RightUtf8Value) {
 				if (entry.RightOffset)

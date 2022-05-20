@@ -16,7 +16,7 @@ namespace XivRes::FontGenerator {
 		GlyphMetrics Occupied;
 		std::vector<CharacterInfo> Characters;
 
-		void DrawTo(XivRes::MemoryMipmapStream& mipmapStream, const IFixedSizeFont& fontFace, int x, int y, RGBA8888 fgColor, RGBA8888 bgColor) const {
+		void DrawTo(XivRes::MemoryMipmapStream& mipmapStream, const IFixedSizeFont& fontFace, int x, int y, RGBA8888 fgColor, RGBA8888 bgColor, float gamma = 1.f) const {
 			const auto buf = mipmapStream.View<RGBA8888>();
 			for (const auto& c : Characters) {
 				if (c.Metrics.IsEffectivelyEmpty())
@@ -28,11 +28,12 @@ namespace XivRes::FontGenerator {
 					x + c.X, y + c.Y,
 					mipmapStream.Width, mipmapStream.Height,
 					fgColor,
-					{});
+					{},
+					gamma);
 			}
 		}
 
-		std::shared_ptr<XivRes::MemoryMipmapStream> CreateMipmap(const IFixedSizeFont& fontFace, RGBA8888 fgColor, RGBA8888 bgColor, int pad = 0) const {
+		std::shared_ptr<XivRes::MemoryMipmapStream> CreateMipmap(const IFixedSizeFont& fontFace, RGBA8888 fgColor, RGBA8888 bgColor, int pad = 0, float gamma = 1.f) const {
 			auto res = std::make_shared<XivRes::MemoryMipmapStream>(
 				pad * 2 + Occupied.X2 - (std::min)(0, Occupied.X1),
 				pad * 2 + Occupied.Y2 - (std::min)(0, Occupied.Y1),
@@ -45,7 +46,8 @@ namespace XivRes::FontGenerator {
 				pad - (std::min)(0, Occupied.X1),
 				pad - (std::min)(0, Occupied.Y1),
 				fgColor,
-				bgColor);
+				bgColor,
+				gamma);
 			return res;
 		}
 	};

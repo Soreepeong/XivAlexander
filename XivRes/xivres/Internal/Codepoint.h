@@ -122,6 +122,60 @@ namespace XivRes::Internal {
 		return U'\uFFFD';  // Replacement character
 	}
 
+	inline constexpr size_t EncodeUtf8Length(char32_t c) {
+		if (c < 0x80)
+			return 1;
+		if (c < 0x800)
+			return 2;
+		if (c < 0x10000)
+			return 3;
+		if (c < 0x110000)
+			return 4;
+		return EncodeUtf8Length(U'\uFFFD');
+	}
+
+	inline constexpr size_t EncodeUtf16Length(char32_t c) {
+		if (c < 0x10000)
+			return 1;
+		if (c < 0x110000)
+			return 2;
+		return EncodeUtf16Length(U'\uFFFD');
+	}
+
+	inline char8_t* EncodeUtf8(char8_t* ptr, char32_t c) {
+		if (c < 0x80) {
+			*(ptr++) = static_cast<char8_t>(c);
+		} else if (c < 0x800) {
+			*(ptr++) = 0xC0 | static_cast<char8_t>(c >> 6);
+			*(ptr++) = 0x80 | static_cast<char8_t>((c >> 0) & 0x3F);
+		} else if (c < 0x10000) {
+			*(ptr++) = 0xE0 | static_cast<char8_t>(c >> 12);
+			*(ptr++) = 0x80 | static_cast<char8_t>((c >> 6) & 0x3F);
+			*(ptr++) = 0x80 | static_cast<char8_t>((c >> 0) & 0x3F);
+		} else if (c < 0x110000) {
+			*(ptr++) = 0xF0 | static_cast<char8_t>(c >> 18);
+			*(ptr++) = 0x80 | static_cast<char8_t>((c >> 12) & 0x3F);
+			*(ptr++) = 0x80 | static_cast<char8_t>((c >> 6) & 0x3F);
+			*(ptr++) = 0x80 | static_cast<char8_t>((c >> 0) & 0x3F);
+		} else
+			ptr = EncodeUtf8(ptr, U'\uFFFD');
+		return ptr;
+	}
+
+	inline char16_t* EncodeUtf16(char16_t* ptr, char32_t c, bool treatSurrogateInputAsError = true) {
+		if (c < 0x10000) {
+			if (0xD800 <= c && c <= 0xDFFF && treatSurrogateInputAsError)
+				*(ptr++) = 0xFFFD;
+			else
+				*(ptr++) = static_cast<char16_t>(c);
+		} else if (c < 0x110000) {
+			*(ptr++) = 0xD800 | static_cast<char16_t>(c >> 10);
+			*(ptr++) = 0xDC00 | static_cast<char16_t>(c & 0x3FF);
+		} else
+			*(ptr++) = 0xFFFD;
+		return ptr;
+	}
+
 	namespace UnicodeBlocks {
 		enum BlockPurpose : uint64_t {
 			LTR = 0,
@@ -131,6 +185,14 @@ namespace XivRes::Internal {
 
 		inline constexpr BlockPurpose operator|(BlockPurpose a, BlockPurpose b) {
 			return static_cast<BlockPurpose>(static_cast<uint64_t>(a) | static_cast<uint64_t>(b));
+		}
+
+		inline constexpr BlockPurpose operator&(BlockPurpose a, BlockPurpose b) {
+			return static_cast<BlockPurpose>(static_cast<uint64_t>(a) & static_cast<uint64_t>(b));
+		}
+
+		inline constexpr BlockPurpose operator~(BlockPurpose a) {
+			return static_cast<BlockPurpose>(~static_cast<uint64_t>(a));
 		}
 
 		enum NegativeLsbGroup {

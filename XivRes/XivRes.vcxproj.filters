@@ -206,7 +206,7 @@
     <ClInclude Include="xivres\FontGenerator\FontdataPacker.h">
       <Filter>Headers\FontGenerator</Filter>
     </ClInclude>
-    <ClInclude Include="xivres\FontGenerator\CodepointLimitingFixedSizeFont.h">
+    <ClInclude Include="xivres\FontGenerator\WrappingFixedSizeFont.h">
       <Filter>Headers\FontGenerator</Filter>
     </ClInclude>
     <ClInclude Include="xivres\FontGenerator\MergedFixedSizeFont.h">
@@ -217,6 +217,9 @@
     </ClInclude>
     <ClInclude Include="xivres\FontGenerator\FreeTypeFixedSizeFont.h">
       <Filter>Headers\FontGenerator</Filter>
+    </ClInclude>
+    <ClInclude Include="xivres\Internal\TrueTypeUtils.h">
+      <Filter>Headers\Internal</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

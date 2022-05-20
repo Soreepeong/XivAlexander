@@ -12,103 +12,76 @@ namespace XivRes::FontGenerator {
 	};
 
 	class MergedFixedSizeFont : public IFixedSizeFont {
-		struct MergeInfo {
-			std::set<char32_t> m_codepoints;
-			std::map<std::pair<char32_t, char32_t>, int> m_kerningPairs;
-			float m_fSize{};
-			int m_nAscent{};
-			int m_nLineHeight{};
-			int m_dx{};
-			MergedFontVerticalAlignment m_alignment = MergedFontVerticalAlignment::Baseline;
-			std::vector<int> m_verticalAdjustments;
+		struct InfoStruct {
+			std::set<char32_t> Codepoints;
+			std::map<std::pair<char32_t, char32_t>, int> KerningPairs;
+			float Size{};
+			int Ascent{};
+			int LineHeight{};
+			MergedFontVerticalAlignment Alignment = MergedFontVerticalAlignment::Baseline;
 		};
 
 		std::vector<std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>> m_fonts;
-		std::shared_ptr<MergeInfo> m_info;
+		std::shared_ptr<const InfoStruct> m_info;
 
 	public:
-		MergedFixedSizeFont(std::vector<std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>> fonts)
-			: m_fonts(std::move(fonts))
-			, m_info(std::make_shared<MergeInfo>()) {
+		MergedFixedSizeFont() = default;
+		MergedFixedSizeFont(MergedFixedSizeFont&&) = default;
+		MergedFixedSizeFont(const MergedFixedSizeFont&) = default;
+		MergedFixedSizeFont& operator=(MergedFixedSizeFont&&) = default;
+		MergedFixedSizeFont& operator=(const MergedFixedSizeFont&) = default;
+
+		MergedFixedSizeFont(std::vector<std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>> fonts, MergedFontVerticalAlignment verticalAlignment = MergedFontVerticalAlignment::Baseline)
+			: m_fonts(std::move(fonts)) {
 
 			if (m_fonts.empty())
 				throw std::invalid_argument("At least 1 font is required.");
 
-			m_info->m_fSize = m_fonts.front()->GetSize();
-			m_info->m_nAscent = m_fonts.front()->GetAscent();
-			m_info->m_nLineHeight = m_fonts.front()->GetLineHeight();
+			auto info = std::make_shared<InfoStruct>();
+			info->Size = m_fonts.front()->GetSize();
+			info->Ascent = m_fonts.front()->GetAscent();
+			info->LineHeight = m_fonts.front()->GetLineHeight();
+			info->Alignment = verticalAlignment;
 
 			std::set<uint32_t> newCodepoints;
 			for (const auto& font : m_fonts) {
 				newCodepoints.clear();
-				std::ranges::set_difference(font->GetAllCodepoints(), m_info->m_codepoints, std::inserter(newCodepoints, newCodepoints.end()));
-				m_info->m_codepoints.insert(newCodepoints.begin(), newCodepoints.end());
+				std::ranges::set_difference(font->GetAllCodepoints(), info->Codepoints, std::inserter(newCodepoints, newCodepoints.end()));
+				info->Codepoints.insert(newCodepoints.begin(), newCodepoints.end());
 
 				for (const auto& kerningPair : font->GetKerningPairs()) {
 					if (newCodepoints.contains(kerningPair.first.first) && newCodepoints.contains(kerningPair.first.second))
-						m_info->m_kerningPairs.emplace(kerningPair);
+						info->KerningPairs.emplace(kerningPair);
 				}
 			}
 
-			m_info->m_verticalAdjustments.resize(m_fonts.size());
-		}
-
-		MergedFixedSizeFont(const MergedFixedSizeFont& r) = default;
-
-		MergedFixedSizeFont(MergedFixedSizeFont && r) = default;
-
-		MergedFixedSizeFont& operator=(const MergedFixedSizeFont & r) = default;
-
-		MergedFixedSizeFont& operator=(MergedFixedSizeFont&& r) = default;
-
-		int GetHorizontalOffset() const override {
-			return m_info->m_dx;
-		}
-
-		void SetHorizontalOffset(int offset) override {
-			m_info->m_dx = offset;
-		}
-
-		int GetIndividualVerticalAdjustment(size_t index) const {
-			return m_info->m_verticalAdjustments.at(index);
-		}
-
-		void SetIndividualVerticalAdjustment(size_t index, int adjustment) {
-			m_info->m_verticalAdjustments.at(index) = adjustment;
+			m_info = std::move(info);
 		}
 
 		MergedFontVerticalAlignment GetComponentVerticalAlignment() const {
-			return m_info->m_alignment;
-		}
-
-		void SetComponentVerticalAlignment(MergedFontVerticalAlignment newAlignment) {
-			m_info->m_alignment = newAlignment;
+			return m_info->Alignment;
 		}
 
 		float GetSize() const override {
-			return m_info->m_fSize;
+			return m_info->Size;
 		}
 
 		int GetAscent() const override {
-			return m_info->m_nAscent;
+			return m_info->Ascent;
 		}
 
 		int GetLineHeight() const override {
-			return m_info->m_nLineHeight;
+			return m_info->LineHeight;
 		}
 
-		size_t GetCodepointCount() const override {
-			return m_info->m_codepoints.size();
-		}
-
-		std::set<char32_t> GetAllCodepoints() const override {
-			return m_info->m_codepoints;
+		const std::set<char32_t>& GetAllCodepoints() const override {
+			return m_info->Codepoints;
 		}
 
 		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const override {
 			for (size_t i = 0; i < m_fonts.size(); i++) {
 				if (m_fonts[i]->GetGlyphMetrics(codepoint, gm)) {
-					gm.Translate(-m_info->m_dx, GetVerticalAdjustment(i));
+					gm.Translate(0, GetVerticalAdjustment(i));
 					return true;
 				}
 			}
@@ -124,12 +97,8 @@ namespace XivRes::FontGenerator {
 			return nullptr;
 		}
 
-		size_t GetKerningEntryCount() const override {
-			return m_info->m_kerningPairs.size();
-		}
-
-		std::map<std::pair<char32_t, char32_t>, int> GetKerningPairs() const override {
-			return m_info->m_kerningPairs;
+		const std::map<std::pair<char32_t, char32_t>, int>& GetKerningPairs() const override {
+			return m_info->KerningPairs;
 		}
 
 		int GetAdjustedAdvanceX(char32_t left, char32_t right) const override {
@@ -138,32 +107,24 @@ namespace XivRes::FontGenerator {
 				return 0;
 
 			int kerningDistance = 0;
-			if (auto it = m_info->m_kerningPairs.find(std::make_pair(left, right)); it != m_info->m_kerningPairs.end())
+			if (auto it = m_info->KerningPairs.find(std::make_pair(left, right)); it != m_info->KerningPairs.end())
 				kerningDistance = it->second;
 
 			return gm.AdvanceX + kerningDistance;
 		}
 
-		const std::array<uint8_t, 256>& GetGammaTable() const override {
-			return LinearGammaTable;
-		}
-
-		void SetGammaTable(const std::array<uint8_t, 256>& gammaTable) override {
-			throw std::runtime_error("MergedFixedSizeFont does not support changing gamma table.");
-		}
-
-		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const override {
+		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor, float gamma) const override {
 			for (size_t i = 0; i < m_fonts.size(); i++) {
-				if (m_fonts[i]->Draw(codepoint, pBuf, drawX - m_info->m_dx, drawY + GetVerticalAdjustment(i), destWidth, destHeight, fgColor, bgColor))
+				if (m_fonts[i]->Draw(codepoint, pBuf, drawX, drawY + GetVerticalAdjustment(i), destWidth, destHeight, fgColor, bgColor, gamma))
 					return true;
 			}
 
 			return false;
 		}
 
-		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const override {
+		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity, float gamma) const override {
 			for (size_t i = 0; i < m_fonts.size(); i++) {
-				if (m_fonts[i]->Draw(codepoint, pBuf, stride, drawX - m_info->m_dx, drawY + GetVerticalAdjustment(i), destWidth, destHeight, fgColor, bgColor, fgOpacity, bgOpacity))
+				if (m_fonts[i]->Draw(codepoint, pBuf, stride, drawX, drawY + GetVerticalAdjustment(i), destWidth, destHeight, fgColor, bgColor, fgOpacity, bgOpacity, gamma))
 					return true;
 			}
 
@@ -180,15 +141,15 @@ namespace XivRes::FontGenerator {
 
 	private:
 		int GetVerticalAdjustment(size_t index) const {
-			switch (m_info->m_alignment) {
+			switch (m_info->Alignment) {
 				case MergedFontVerticalAlignment::Top:
-					return m_info->m_verticalAdjustments[index];
+					return 0;
 				case MergedFontVerticalAlignment::Middle:
-					return m_info->m_verticalAdjustments[index] + (m_info->m_nLineHeight - m_fonts[index]->GetLineHeight()) / 2;
+					return 0 + (m_info->LineHeight - m_fonts[index]->GetLineHeight()) / 2;
 				case MergedFontVerticalAlignment::Baseline:
-					return m_info->m_verticalAdjustments[index] + m_info->m_nAscent - m_fonts[index]->GetAscent();
+					return 0 + m_info->Ascent - m_fonts[index]->GetAscent();
 				case MergedFontVerticalAlignment::Bottom:
-					return m_info->m_verticalAdjustments[index] + m_info->m_nLineHeight - m_fonts[index]->GetLineHeight();
+					return 0 + m_info->LineHeight - m_fonts[index]->GetLineHeight();
 				default:
 					throw std::runtime_error("Invalid alignment value set");
 			}

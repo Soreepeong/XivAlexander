@@ -9,8 +9,9 @@
 
 #include "IFixedSizeFont.h"
 
-namespace XivRes::FontGenerator {
+#include "../Internal/TrueTypeUtils.h"
 
+namespace XivRes::FontGenerator {
 	namespace FreeTypeInternal {
 		static void SuccessOrThrow(FT_Error error) {
 			if (error)
@@ -45,74 +46,75 @@ namespace XivRes::FontGenerator {
 		};
 
 		class FreeTypeFaceWrapper {
+			struct InfoStruct {
+				std::vector<uint8_t> Data;
+				std::set<char32_t> Characters;
+				std::map<std::pair<char32_t, char32_t>, int> KerningPairs;
+				int FaceIndex{};
+				float Size{};
+				int LoadFlags{};
+			};
+
 			std::shared_ptr<FreeTypeLibraryWrapper> m_library;
-			std::shared_ptr<std::vector<uint8_t>> m_data;
-			std::shared_ptr<std::set<char32_t>> m_characters;
-			int m_nFaceIndex{};
-			float m_fSize{};
-			int m_nLoadFlags{};
+			std::shared_ptr<const InfoStruct> m_info;
 			FT_Face m_face{};
 
 		public:
 			FreeTypeFaceWrapper() = default;
 
-			FreeTypeFaceWrapper(std::shared_ptr<std::vector<uint8_t>> data, int faceIndex, float fSize, int nLoadFlags)
-				: m_library(std::make_shared<FreeTypeLibraryWrapper>())
-				, m_data(std::move(data))
-				, m_characters(std::make_shared<std::set<char32_t>>())
-				, m_nFaceIndex(faceIndex)
-				, m_fSize(fSize)
-				, m_nLoadFlags(nLoadFlags) {
+			FreeTypeFaceWrapper(std::vector<uint8_t> data, int faceIndex, float fSize, int nLoadFlags)
+				: m_library(std::make_shared<FreeTypeLibraryWrapper>()) {
 
-				const auto lock = m_library->Lock();
-				SuccessOrThrow(FT_New_Memory_Face(**m_library, &(*m_data)[0], static_cast<FT_Long>(m_data->size()), m_nFaceIndex, &m_face));
-				try {
-					SuccessOrThrow(FT_Set_Char_Size(m_face, 0, static_cast<FT_F26Dot6>(64.f * m_fSize), 72, 72));
+				auto info = std::make_shared<InfoStruct>();
+				info->Data = std::move(data);
+				info->FaceIndex = faceIndex;
+				info->Size = fSize;
+				info->LoadFlags = nLoadFlags;
 
-					FT_UInt glyphIndex;
-					for (char32_t c = FT_Get_First_Char(m_face, &glyphIndex); glyphIndex; c = FT_Get_Next_Char(m_face, c, &glyphIndex))
-						m_characters->insert(c);
+				const auto pTrueType = Internal::TrueType::SfntFileView::TryCast(&info->Data[0], info->Data.size());
+				if (!pTrueType)
+					throw std::runtime_error("Invalid SFNT file");
 
-				} catch (...) {
-					SuccessOrThrow(FT_Done_Face(m_face));
-					throw;
+				const auto [pCmap, nCmapSize] = pTrueType->TryGetTable<Internal::TrueType::Cmap>();
+				if (!pCmap)
+					throw std::runtime_error("cmap missing");
+
+				m_face = CreateFace(*m_library, *info);
+
+				const auto cmapVector = pCmap->Parse();
+				for (const auto c : cmapVector) {
+					if (c != (std::numeric_limits<char32_t>::max)())
+						info->Characters.insert(c);
 				}
+
+				if (const auto [pKern, nKernSize] = pTrueType->TryGetTable<Internal::TrueType::Kern>(); pKern) {
+					info->KerningPairs = pKern->Parse(cmapVector, nKernSize);
+					for (auto it = info->KerningPairs.begin(); it != info->KerningPairs.end(); ) {
+						it->second = static_cast<int>(it->second * info->Size / static_cast<float>(m_face->size->face->units_per_EM));
+						if (it->second)
+							++it;
+						else
+							it = info->KerningPairs.erase(it);
+					}
+				}
+
+				m_info = std::move(info);
 			}
 
 			FreeTypeFaceWrapper(FreeTypeFaceWrapper&& r) noexcept
 				: m_library(std::move(r.m_library))
-				, m_data(std::move(r.m_data))
-				, m_characters(std::move(r.m_characters))
-				, m_nFaceIndex(std::move(r.m_nFaceIndex))
-				, m_fSize(std::move(r.m_fSize))
-				, m_nLoadFlags(std::move(r.m_nLoadFlags))
-				, m_face(std::move(r.m_face)) {
+				, m_info(std::move(r.m_info))
+				, m_face(r.m_face) {
 
-				r.m_nFaceIndex = 0;
-				r.m_fSize = 0.f;
-				r.m_nLoadFlags = 0;
 				r.m_face = nullptr;
 			}
 
 			FreeTypeFaceWrapper(const FreeTypeFaceWrapper& r)
 				: m_library(r.m_library)
-				, m_data(r.m_data)
-				, m_characters(r.m_characters)
-				, m_nFaceIndex(r.m_nFaceIndex)
-				, m_fSize(r.m_fSize)
-				, m_nLoadFlags(r.m_nLoadFlags) {
+				, m_info(r.m_info) {
 
-				if (!m_library)
-					return;
-
-				const auto lock = m_library->Lock();
-				SuccessOrThrow(FT_New_Memory_Face(**m_library, &(*m_data)[0], static_cast<FT_Long>(m_data->size()), m_nFaceIndex, &m_face));
-				try {
-					SuccessOrThrow(FT_Set_Char_Size(m_face, 0, static_cast<FT_F26Dot6>(64.f * m_fSize), 72, 72));
-				} catch (...) {
-					SuccessOrThrow(FT_Done_Face(m_face));
-					throw;
-				}
+				if (r.m_face)
+					m_face = CreateFace(*m_library, *m_info);
 			}
 
 			FreeTypeFaceWrapper& operator=(FreeTypeFaceWrapper&& r) noexcept {
@@ -120,14 +122,12 @@ namespace XivRes::FontGenerator {
 					return *this;
 
 				*this = nullptr;
+
 				m_library = std::move(r.m_library);
-				m_data = std::move(r.m_data);
-				m_characters = std::move(r.m_characters);
-				m_nFaceIndex = std::move(r.m_nFaceIndex);
-				m_fSize = std::move(r.m_fSize);
-				m_nLoadFlags = std::move(r.m_nLoadFlags);
-				m_face = std::move(r.m_face);
-				r = nullptr;
+				m_info = std::move(r.m_info);
+				m_face = r.m_face;
+				r.m_face = nullptr;
+
 				return *this;
 			}
 
@@ -135,24 +135,14 @@ namespace XivRes::FontGenerator {
 				if (this == &r)
 					return *this;
 
-				const auto lock = r.m_library->Lock();
-				FT_Face face;
-				SuccessOrThrow(FT_New_Memory_Face(**r.m_library, &(*r.m_data)[0], static_cast<FT_Long>(r.m_data->size()), r.m_nFaceIndex, &face));
-				try {
-					SuccessOrThrow(FT_Set_Char_Size(face, 0, static_cast<FT_F26Dot6>(64.f * r.m_fSize), 72, 72));
-				} catch (...) {
-					SuccessOrThrow(FT_Done_Face(face));
-					throw;
-				}
+				const auto face = CreateFace(*r.m_library, *r.m_info);
 
 				*this = nullptr;
+
 				m_library = r.m_library;
-				m_data = r.m_data;
-				m_characters = r.m_characters;
-				m_nFaceIndex = r.m_nFaceIndex;
-				m_fSize = r.m_fSize;
-				m_nLoadFlags = r.m_nLoadFlags;
-				m_face = face;
+				m_info = r.m_info;
+				m_face = r.m_face;
+
 				return *this;
 			}
 
@@ -165,13 +155,10 @@ namespace XivRes::FontGenerator {
 					SuccessOrThrow(FT_Done_Face(m_face));
 				}
 
-				m_nFaceIndex = 0;
-				m_fSize = 0.f;
-				m_nLoadFlags = 0;
-				m_characters = nullptr;
 				m_face = nullptr;
-				m_data = nullptr;
+				m_info = nullptr;
 				m_library = nullptr;
+
 				return *this;
 			}
 
@@ -195,7 +182,7 @@ namespace XivRes::FontGenerator {
 				if (m_face->glyph->glyph_index == glyphIndex && !bRender)
 					return;
 
-				SuccessOrThrow(FT_Load_Glyph(m_face, glyphIndex, m_nLoadFlags | (bRender ? FT_LOAD_RENDER : 0)));
+				SuccessOrThrow(FT_Load_Glyph(m_face, glyphIndex, m_info->LoadFlags | (bRender ? FT_LOAD_RENDER : 0)));
 			}
 
 			FreeTypeLibraryWrapper& GetLibrary() const {
@@ -203,24 +190,37 @@ namespace XivRes::FontGenerator {
 			}
 
 			float GetSize() const {
-				return m_fSize;
-			}
-
-			void SetSize(float newSize) {
-				SuccessOrThrow(FT_Set_Char_Size(m_face, 0, static_cast<FT_F26Dot6>(64.f * newSize), 72, 72));
-				m_fSize = newSize;
+				return m_info->Size;
 			}
 
 			const std::set<char32_t>& GetAllCharacters() const {
-				return *m_characters;
+				return m_info->Characters;
+			}
+
+			const std::map<std::pair<char32_t, char32_t>, int>& GetKerningPairs() const {
+				return m_info->KerningPairs;
 			}
 
 			int GetLoadFlags() const {
-				return m_nLoadFlags;
+				return m_info->LoadFlags;
 			}
 
 			std::span<const uint8_t> GetRawData() const {
-				return *m_data;
+				return m_info->Data;
+			}
+
+		private:
+			static FT_Face CreateFace(FreeTypeLibraryWrapper& m_library, const InfoStruct& info) {
+				FT_Face face;
+				const auto lock = m_library.Lock();
+				SuccessOrThrow(FT_New_Memory_Face(*m_library, &info.Data[0], static_cast<FT_Long>(info.Data.size()), info.FaceIndex, &face));
+				try {
+					SuccessOrThrow(FT_Set_Char_Size(face, 0, static_cast<FT_F26Dot6>(64.f * info.Size), 72, 72));
+					return face;
+				} catch (...) {
+					SuccessOrThrow(FT_Done_Face(face));
+					throw;
+				}
 			}
 		};
 
@@ -286,53 +286,18 @@ namespace XivRes::FontGenerator {
 
 	class FreeTypeFixedSizeFont : public DefaultAbstractFixedSizeFont {
 		FreeTypeInternal::FreeTypeFaceWrapper m_face;
-		std::array<uint8_t, 256> m_gammaTable;
-		int m_dx = 0;
 
 	public:
 		FreeTypeFixedSizeFont(const std::filesystem::path& path, int faceIndex, float fSize, int nLoadFlags = FT_LOAD_DEFAULT | FT_LOAD_TARGET_LIGHT)
-			: FreeTypeFixedSizeFont(std::make_shared<std::vector<uint8_t>>(ReadStreamIntoVector<uint8_t>(FileStream(path))), faceIndex, fSize, nLoadFlags) {}
+			: FreeTypeFixedSizeFont(ReadStreamIntoVector<uint8_t>(FileStream(path)), faceIndex, fSize, nLoadFlags) {}
 
-		FreeTypeFixedSizeFont(std::shared_ptr<std::vector<uint8_t>> data, int faceIndex, float fSize, int nLoadFlags = FT_LOAD_DEFAULT | FT_LOAD_TARGET_LIGHT)
-			: m_face(std::move(data), faceIndex, fSize, nLoadFlags)
-			, m_gammaTable(WindowsGammaTable) {}
+		FreeTypeFixedSizeFont(std::vector<uint8_t> data, int faceIndex, float fSize, int nLoadFlags = FT_LOAD_DEFAULT | FT_LOAD_TARGET_LIGHT)
+			: m_face(std::move(data), faceIndex, fSize, nLoadFlags) {}
 
-		FreeTypeFixedSizeFont(FreeTypeFixedSizeFont&& r) noexcept
-			: m_face(std::move(r.m_face))
-			, m_gammaTable(r.m_gammaTable)
-			, m_dx(r.m_dx) {
-			r.m_gammaTable = WindowsGammaTable;
-			r.m_dx = 0;
-		}
-
-		FreeTypeFixedSizeFont(const FreeTypeFixedSizeFont& r)
-			: m_face(r.m_face)
-			, m_gammaTable(r.m_gammaTable)
-			, m_dx(r.m_dx) {}
-
-		FreeTypeFixedSizeFont& operator=(FreeTypeFixedSizeFont&& r) noexcept {
-			m_face = std::move(r.m_face);
-			m_gammaTable = r.m_gammaTable;
-			m_dx = r.m_dx;
-			r.m_gammaTable = WindowsGammaTable;
-			r.m_dx = 0;
-			return *this;
-		}
-
-		FreeTypeFixedSizeFont& operator=(const FreeTypeFixedSizeFont& r) {
-			m_face = r.m_face;
-			m_gammaTable = r.m_gammaTable;
-			m_dx = r.m_dx;
-			return *this;
-		}
-
-		int GetHorizontalOffset() const override {
-			return m_dx;
-		}
-
-		void SetHorizontalOffset(int offset) override {
-			m_dx = offset;
-		}
+		FreeTypeFixedSizeFont(FreeTypeFixedSizeFont&& r) = default;
+		FreeTypeFixedSizeFont(const FreeTypeFixedSizeFont& r) = default;
+		FreeTypeFixedSizeFont& operator=(FreeTypeFixedSizeFont&& r) = default;
+		FreeTypeFixedSizeFont& operator=(const FreeTypeFixedSizeFont& r) = default;
 
 		float GetSize() const override {
 			return m_face.GetSize();
@@ -346,11 +311,7 @@ namespace XivRes::FontGenerator {
 			return m_face->size->metrics.height / 64;
 		}
 
-		size_t GetCodepointCount() const override {
-			return m_face.GetAllCharacters().size();
-		}
-
-		std::set<char32_t> GetAllCodepoints() const override {
+		const std::set<char32_t>& GetAllCodepoints() const override {
 			return m_face.GetAllCharacters();
 		}
 
@@ -370,12 +331,8 @@ namespace XivRes::FontGenerator {
 			return m_face.GetAllCharacters().contains(c) ? &m_face.GetRawData()[c] : nullptr;
 		}
 
-		size_t GetKerningEntryCount() const override {
-			return 0;  // TODO
-		}
-
-		std::map<std::pair<char32_t, char32_t>, int> GetKerningPairs() const override {
-			return {};  // TODO
+		const std::map<std::pair<char32_t, char32_t>, int>& GetKerningPairs() const override {
+			return m_face.GetKerningPairs();
 		}
 
 		int GetAdjustedAdvanceX(char32_t left, char32_t right) const override {
@@ -393,15 +350,7 @@ namespace XivRes::FontGenerator {
 			return gm.AdvanceX + (FT_IS_SCALABLE(*m_face) ? vec.x / 64 : vec.x);
 		}
 
-		const std::array<uint8_t, 256>& GetGammaTable() const override {
-			return m_gammaTable;
-		}
-
-		void SetGammaTable(const std::array<uint8_t, 256>& gammaTable) override {
-			m_gammaTable = gammaTable;
-		}
-
-		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const override {
+		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor, float gamma) const override {
 			const auto glyphIndex = m_face.GetCharIndex(codepoint);
 			if (!glyphIndex)
 				return false;
@@ -417,17 +366,17 @@ namespace XivRes::FontGenerator {
 			FreeTypeInternal::FreeTypeBitmapWrapper bitmapWrapper(m_face.GetLibrary());
 			bitmapWrapper.ConvertFrom(m_face->glyph->bitmap, 1);
 
-			Internal::BitmapCopy()
+			Internal::BitmapCopy::ToRGBA8888()
 				.From(bitmapWrapper->buffer, bitmapWrapper->pitch, bitmapWrapper->rows, 1, Internal::BitmapVerticalDirection::TopRowFirst)
 				.To(pBuf, destWidth, destHeight, Internal::BitmapVerticalDirection::TopRowFirst)
 				.WithForegroundColor(fgColor)
 				.WithBackgroundColor(bgColor)
-				.WithGammaTable(m_gammaTable)
+				.WithGamma(gamma)
 				.CopyTo(src.X1, src.Y1, src.X2, src.Y2, dest.X1, dest.Y1);
 			return true;
 		}
 
-		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const override {
+		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity, float gamma) const override {
 			const auto glyphIndex = m_face.GetCharIndex(codepoint);
 			if (!glyphIndex)
 				return false;
@@ -448,14 +397,14 @@ namespace XivRes::FontGenerator {
 			FreeTypeInternal::FreeTypeBitmapWrapper bitmapWrapper(m_face.GetLibrary());
 			bitmapWrapper.ConvertFrom(m_face->glyph->bitmap, 1);
 
-			Internal::L8BitmapCopy()
+			Internal::BitmapCopy::ToL8()
 				.From(bitmapWrapper->buffer, bitmapWrapper->pitch, bitmapWrapper->rows, 1, Internal::BitmapVerticalDirection::TopRowFirst)
 				.To(pBuf, destWidth, destHeight, 4, Internal::BitmapVerticalDirection::TopRowFirst)
 				.WithForegroundColor(fgColor)
 				.WithForegroundOpacity(fgOpacity)
 				.WithBackgroundColor(bgColor)
 				.WithBackgroundOpacity(bgOpacity)
-				.WithGammaTable(m_gammaTable)
+				.WithGamma(gamma)
 				.CopyTo(src.X1, src.Y1, src.X2, src.Y2, dest.X1, dest.Y1);
 			return true;
 		}
@@ -468,7 +417,7 @@ namespace XivRes::FontGenerator {
 		GlyphMetrics GlyphMetricsFromCurrentGlyph(int x = 0, int y = 0) const {
 			GlyphMetrics src{
 				.Empty = false,
-				.X1 = x + m_face->glyph->bitmap_left - m_dx,
+				.X1 = x + m_face->glyph->bitmap_left,
 				.Y1 = y + GetAscent() - m_face->glyph->bitmap_top,
 				.X2 = src.X1 + static_cast<int>(m_face->glyph->bitmap.width),
 				.Y2 = src.Y1 + static_cast<int>(m_face->glyph->bitmap.rows),
