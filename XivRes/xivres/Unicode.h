@@ -1,9 +1,13 @@
-#ifndef _XIVRES_INTERNAL_CODEPOINT_H_
-#define _XIVRES_INTERNAL_CODEPOINT_H_
+#ifndef _XIVRES_UNICODE_H_
+#define _XIVRES_UNICODE_H_
 
+#include <array>
 #include <cstdint>
 
-namespace XivRes::Internal {
+namespace XivRes::Unicode {
+	constexpr char32_t UReplacement = U'\uFFFD';
+	constexpr char32_t UInvalid = U'\uFFFF';
+
 	inline char32_t Utf8Uint32ToUnicodeCodePoint(uint32_t n) {
 		if ((n & 0xFFFFFF80) == 0)
 			return static_cast<char32_t>(n & 0x7F);
@@ -26,10 +30,10 @@ namespace XivRes::Internal {
 				(((n >> 0x00) & 0x3F) << 0)
 				);
 		else
-			return U'\uFFFD';  // Replacement character
+			return UReplacement;
 	}
 
-	inline uint32_t UnicodeCodePointToUtf8Uint32(char32_t codepoint) {
+	inline uint32_t CodePointToUtf8Uint32(char32_t codepoint) {
 		if (codepoint < 0)
 			throw std::invalid_argument("Negative codepoints are not valid.");
 		else if (codepoint <= 0x7F) {
@@ -50,137 +54,296 @@ namespace XivRes::Internal {
 			throw std::invalid_argument("Unicode code point is currently capped at 0x10FFFF.");
 	}
 
-	inline char32_t DecodeUtf16(const char16_t* p, size_t& pConsumed) {
-		if (!pConsumed)
+	template<typename T> struct EncodingTag {};
+
+	inline size_t Decode(EncodingTag<char8_t>, char32_t& out, const char8_t* in, size_t nRemainingBytes, bool strict) {
+		if (nRemainingBytes == 0) {
+			out = 0;
 			return 0;
-
-		if ((*p & 0xFC00) == 0xD800) {
-			if (pConsumed < 2 || (p[1] & 0xFC00) != 0xDC00)
-				goto invalid;
-			pConsumed = 2;
-			return static_cast<char32_t>(
-				((p[0] & 0x03FF) << 10) |
-				((p[1] & 0x03FF) << 0)
-				) + 0x10000;
 		}
 
-		pConsumed = 1;
-		return *p;
-
-	invalid:
-		pConsumed = 1;
-		return U'\uFFFD';  // Replacement character
-	}
-
-	inline char32_t DecodeUtf8(const char8_t* p, size_t& pConsumed) {
-		if (!pConsumed)
-			return 0;
-
-		if (0 == (*p & 0x80)) {
-			pConsumed = 1;
-			return *p;
-		}
-
-		if (0xC0 == (*p & 0xE0)) {
-			if (pConsumed < 2) goto invalid;
-			if (0x80 != (p[1] & 0xC0)) goto invalid;
-			pConsumed = 2;
-			return static_cast<char32_t>(
-				((p[0] & 0x1F) << 6) |
-				((p[1] & 0x3F) << 0)
-				);
-		}
-
-		if (0xE0 == (*p & 0xF0)) {
-			if (pConsumed < 3) goto invalid;
-			if (0x80 != (p[1] & 0xC0)) goto invalid;
-			if (0x80 != (p[2] & 0xC0)) goto invalid;
-			pConsumed = 3;
-			return static_cast<char32_t>(
-				((p[0] & 0x0F) << 12) |
-				((p[1] & 0x3F) << 6) |
-				((p[2] & 0x3F) << 0)
-				);
-		}
-
-		if (0xF0 == (*p & 0xF8)) {
-			if (pConsumed < 4) goto invalid;
-			if (0x80 != (p[1] & 0xC0)) goto invalid;
-			if (0x80 != (p[2] & 0xC0)) goto invalid;
-			if (0x80 != (p[3] & 0xC0)) goto invalid;
-			pConsumed = 4;
-			return static_cast<char32_t>(
-				((p[0] & 0x07) << 18) |
-				((p[1] & 0x3F) << 12) |
-				((p[2] & 0x3F) << 6) |
-				((p[3] & 0x3F) << 0)
-				);
-		}
-
-	invalid:
-		pConsumed = 1;
-		return U'\uFFFD';  // Replacement character
-	}
-
-	inline constexpr size_t EncodeUtf8Length(char32_t c) {
-		if (c < 0x80)
+		if (0 == (*in & 0x80)) {
+			out = *in;
 			return 1;
-		if (c < 0x800)
+		}
+
+		if (0xC0 == (*in & 0xE0)) {
+			if (nRemainingBytes < 2) goto invalid;
+			if (0x80 != (in[1] & 0xC0)) goto invalid;
+			out = (
+				((static_cast<char32_t>(in[0]) & 0x1F) << 6) |
+				((static_cast<char32_t>(in[1]) & 0x3F) << 0));
 			return 2;
-		if (c < 0x10000)
+		}
+
+		if (0xE0 == (*in & 0xF0)) {
+			if (nRemainingBytes < 3) goto invalid;
+			if (0x80 != (in[1] & 0xC0)) goto invalid;
+			if (0x80 != (in[2] & 0xC0)) goto invalid;
+			out = static_cast<char32_t>(
+				((static_cast<char32_t>(in[0]) & 0x0F) << 12) |
+				((static_cast<char32_t>(in[1]) & 0x3F) << 6) |
+				((static_cast<char32_t>(in[2]) & 0x3F) << 0));
 			return 3;
-		if (c < 0x110000)
+		}
+
+		if (0xF0 == (*in & 0xF8)) {
+			if (nRemainingBytes < 4) goto invalid;
+			if (0x80 != (in[1] & 0xC0)) goto invalid;
+			if (0x80 != (in[2] & 0xC0)) goto invalid;
+			if (0x80 != (in[3] & 0xC0)) goto invalid;
+			out = (
+				((static_cast<char32_t>(in[0]) & 0x07) << 18) |
+				((static_cast<char32_t>(in[1]) & 0x3F) << 12) |
+				((static_cast<char32_t>(in[2]) & 0x3F) << 6) |
+				((static_cast<char32_t>(in[3]) & 0x3F) << 0));
 			return 4;
-		return EncodeUtf8Length(U'\uFFFD');
+		}
+
+		if (!strict) {
+			if (0xF8 == (*in & 0xFC)) {
+				if (nRemainingBytes < 5) goto invalid;
+				if (0x80 != (in[1] & 0xC0)) goto invalid;
+				if (0x80 != (in[2] & 0xC0)) goto invalid;
+				if (0x80 != (in[3] & 0xC0)) goto invalid;
+				if (0x80 != (in[4] & 0xC0)) goto invalid;
+				out = (
+					((static_cast<char32_t>(in[0]) & 0x07) << 24) |
+					((static_cast<char32_t>(in[1]) & 0x3F) << 18) |
+					((static_cast<char32_t>(in[2]) & 0x3F) << 12) |
+					((static_cast<char32_t>(in[3]) & 0x3F) << 6) |
+					((static_cast<char32_t>(in[4]) & 0x3F) << 0));
+				return 4;
+			}
+
+			if (0xFC == (*in & 0xFE)) {
+				if (nRemainingBytes < 6) goto invalid;
+				if (0x80 != (in[1] & 0xC0)) goto invalid;
+				if (0x80 != (in[2] & 0xC0)) goto invalid;
+				if (0x80 != (in[3] & 0xC0)) goto invalid;
+				if (0x80 != (in[4] & 0xC0)) goto invalid;
+				if (0x80 != (in[5] & 0xC0)) goto invalid;
+				out = (
+					((static_cast<char32_t>(in[0]) & 0x07) << 30) |
+					((static_cast<char32_t>(in[1]) & 0x3F) << 24) |
+					((static_cast<char32_t>(in[2]) & 0x3F) << 18) |
+					((static_cast<char32_t>(in[3]) & 0x3F) << 12) |
+					((static_cast<char32_t>(in[4]) & 0x3F) << 6) |
+					((static_cast<char32_t>(in[5]) & 0x3F) << 0));
+				return 5;
+			}
+		}
+
+	invalid:
+		out = UReplacement;
+		return 1;
 	}
 
-	inline constexpr size_t EncodeUtf16Length(char32_t c) {
-		if (c < 0x10000)
-			return 1;
-		if (c < 0x110000)
+	inline size_t Decode(EncodingTag<char16_t>, char32_t& out, const char16_t* in, size_t nRemainingBytes, bool strict) {
+		if (nRemainingBytes == 0) {
+			out = 0;
+			return 0;
+		}
+
+		if ((*in & 0xFC00) == 0xD800) {
+			if (nRemainingBytes < 2 || (in[1] & 0xFC00) != 0xDC00)
+				goto invalid;
+			out = 0x10000 + (
+				((static_cast<char32_t>(in[0]) & 0x03FF) << 10) |
+				((static_cast<char32_t>(in[1]) & 0x03FF) << 0)
+				);
 			return 2;
-		return EncodeUtf16Length(U'\uFFFD');
+		}
+
+		if (0xD800 <= *in && *in <= 0xDFFF && strict)
+			out = UReplacement;
+		else
+			out = *in;
+		return 1;
+
+	invalid:
+		out = UReplacement;
+		return 1;
 	}
 
-	inline char8_t* EncodeUtf8(char8_t* ptr, char32_t c) {
-		if (c < 0x80) {
-			*(ptr++) = static_cast<char8_t>(c);
-		} else if (c < 0x800) {
-			*(ptr++) = 0xC0 | static_cast<char8_t>(c >> 6);
-			*(ptr++) = 0x80 | static_cast<char8_t>((c >> 0) & 0x3F);
-		} else if (c < 0x10000) {
-			*(ptr++) = 0xE0 | static_cast<char8_t>(c >> 12);
-			*(ptr++) = 0x80 | static_cast<char8_t>((c >> 6) & 0x3F);
-			*(ptr++) = 0x80 | static_cast<char8_t>((c >> 0) & 0x3F);
-		} else if (c < 0x110000) {
-			*(ptr++) = 0xF0 | static_cast<char8_t>(c >> 18);
+	inline size_t Decode(EncodingTag<char32_t>, char32_t& out, const char32_t* in, size_t nRemainingBytes, bool strict) {
+		if (nRemainingBytes == 0) {
+			out = 0;
+			return 0;
+		}
+
+		out = *in;
+		return 1;
+	}
+
+	inline size_t Decode(EncodingTag<char>, char32_t& out, const char* in, size_t nRemainingBytes, bool strict) {
+		return Decode(EncodingTag<char8_t>(), out, reinterpret_cast<const char8_t*>(in), nRemainingBytes, strict);
+	}
+
+	inline size_t Decode(EncodingTag<wchar_t>, char32_t& out, const wchar_t* in, size_t nRemainingBytes, bool strict) {
+		return Decode(EncodingTag<char16_t>(), out, reinterpret_cast<const char16_t*>(in), nRemainingBytes, strict);
+	}
+
+	template<typename T>
+	inline size_t Decode(char32_t& out, const T* in, size_t nRemainingBytes, bool strict = true) {
+		return Decode(EncodingTag<T>(), out, in, nRemainingBytes, strict);
+	}
+
+	inline size_t Encode(EncodingTag<char8_t>, char8_t* ptr, char32_t c, bool strict) {
+		if (c < (1 << 7)) {
+			if (ptr)
+				*(ptr++) = static_cast<char8_t>(c);
+			return 1;
+		}
+
+		if (c < (1 << (5 + 6))) {
+			if (ptr) {
+				*(ptr++) = 0xC0 | static_cast<char8_t>(c >> 6);
+				*(ptr++) = 0x80 | static_cast<char8_t>((c >> 0) & 0x3F);
+			}
+			return 2;
+		}
+		if (c < (1 << (4 + 6 + 6))) {
+			if (ptr) {
+				*(ptr++) = 0xE0 | static_cast<char8_t>(c >> 12);
+				*(ptr++) = 0x80 | static_cast<char8_t>((c >> 6) & 0x3F);
+				*(ptr++) = 0x80 | static_cast<char8_t>((c >> 0) & 0x3F);
+			}
+			return 3;
+		}
+
+		if (c < (1 << (3 + 6 + 6 + 6))) {
+			if (ptr) {
+				*(ptr++) = 0xF0 | static_cast<char8_t>(c >> 18);
+				*(ptr++) = 0x80 | static_cast<char8_t>((c >> 12) & 0x3F);
+				*(ptr++) = 0x80 | static_cast<char8_t>((c >> 6) & 0x3F);
+				*(ptr++) = 0x80 | static_cast<char8_t>((c >> 0) & 0x3F);
+			}
+			return 4;
+		}
+
+		if (strict) {
+			if (ptr) { // Replacement character U+FFFD
+				*(ptr++) = 0xEF;
+				*(ptr++) = 0xBF;
+				*(ptr++) = 0xBD;
+			}
+			return 3;
+		}
+
+		if (c < (1 << (3 + 6 + 6 + 6 + 6))) {
+			if (ptr) {
+				*(ptr++) = 0xF8 | static_cast<char8_t>(c >> 24);
+				*(ptr++) = 0x80 | static_cast<char8_t>((c >> 18) & 0x3F);
+				*(ptr++) = 0x80 | static_cast<char8_t>((c >> 12) & 0x3F);
+				*(ptr++) = 0x80 | static_cast<char8_t>((c >> 6) & 0x3F);
+				*(ptr++) = 0x80 | static_cast<char8_t>((c >> 0) & 0x3F);
+			}
+			return 5;
+		}
+
+		if (ptr) {
+			*(ptr++) = 0xFC | static_cast<char8_t>(c >> 30);
+			*(ptr++) = 0x80 | static_cast<char8_t>((c >> 24) & 0x3F);
+			*(ptr++) = 0x80 | static_cast<char8_t>((c >> 18) & 0x3F);
 			*(ptr++) = 0x80 | static_cast<char8_t>((c >> 12) & 0x3F);
 			*(ptr++) = 0x80 | static_cast<char8_t>((c >> 6) & 0x3F);
 			*(ptr++) = 0x80 | static_cast<char8_t>((c >> 0) & 0x3F);
-		} else
-			ptr = EncodeUtf8(ptr, U'\uFFFD');
-		return ptr;
+		}
+		return 6;
 	}
 
-	inline char16_t* EncodeUtf16(char16_t* ptr, char32_t c, bool treatSurrogateInputAsError = true) {
+	inline size_t Encode(EncodingTag<char16_t>, char16_t* ptr, char32_t c, bool strict) {
 		if (c < 0x10000) {
-			if (0xD800 <= c && c <= 0xDFFF && treatSurrogateInputAsError)
-				*(ptr++) = 0xFFFD;
-			else
-				*(ptr++) = static_cast<char16_t>(c);
-		} else if (c < 0x110000) {
-			*(ptr++) = 0xD800 | static_cast<char16_t>(c >> 10);
-			*(ptr++) = 0xDC00 | static_cast<char16_t>(c & 0x3FF);
-		} else
-			*(ptr++) = 0xFFFD;
-		return ptr;
+			if (ptr) {
+				if (0xD800 <= c && c <= 0xDFFF && strict)
+					*(ptr++) = 0xFFFD;
+				else
+					*(ptr++) = static_cast<char16_t>(c);
+			}
+			return 1;
+		}
+
+		c -= 0x10000;
+
+		if (c < (1 << 20)) {
+			if (ptr) {
+				*(ptr++) = 0xD800 | static_cast<char16_t>((c >> 10) & 0x3FF);
+				*(ptr++) = 0xDC00 | static_cast<char16_t>((c >> 0) & 0x3FF);
+			}
+			return 2;
+		}
+
+		*(ptr++) = 0xFFFD;
+		return 1;
+	}
+
+	inline size_t Encode(EncodingTag<char32_t>, char32_t* ptr, char32_t c, bool strict) {
+		if (ptr)
+			*ptr = c;
+		return 1;
+	}
+
+	inline size_t Encode(EncodingTag<char>, char* ptr, char32_t c, bool strict) {
+		return Encode(EncodingTag<char8_t>(), reinterpret_cast<char8_t*>(ptr), c, strict);
+	}
+
+	inline size_t Encode(EncodingTag<wchar_t>, wchar_t* ptr, char32_t c, bool strict) {
+		return Encode(EncodingTag<char16_t>(), reinterpret_cast<char16_t*>(ptr), c, strict);
+	}
+
+	template<typename T>
+	inline size_t Encode(T* ptr, char32_t c, bool strict = true) {
+		return Encode(EncodingTag<T>(), ptr, c, strict);
+	}
+
+	template<class TTo, class TFrom>
+	inline TTo Convert(const TFrom& in, bool strict = true) {
+		TTo out{};
+		out.reserve(in.size() * 4 / sizeof(in[0]) / sizeof(out[0]));
+
+		char32_t c{};
+		for (size_t decLen = 0, decIdx = 0; (decLen = Unicode::Decode(c, &in[decIdx], in.size() - decIdx, strict)); decIdx += decLen) {
+			const auto encIdx = out.size();
+			const auto encLen = Unicode::Encode<TTo::value_type>(nullptr, c, strict);
+			out.resize(encIdx + encLen);
+			Unicode::Encode(&out[encIdx], c, strict);
+		}
+
+		return out;
+	}
+
+	template<>
+	inline const std::u8string& Convert(const std::u8string& in, bool strict) {
+		return in;
+	}
+
+	template<>
+	inline const std::u16string& Convert(const std::u16string& in, bool strict) {
+		return in;
+	}
+
+	template<>
+	inline const std::u32string& Convert(const std::u32string& in, bool strict) {
+		return in;
+	}
+
+	template<>
+	inline const std::string& Convert(const std::string& in, bool strict) {
+		return in;
+	}
+
+	template<>
+	inline const std::wstring& Convert(const std::wstring& in, bool strict) {
+		return in;
 	}
 
 	namespace UnicodeBlocks {
 		enum BlockPurpose : uint64_t {
 			LTR = 0,
 			RTL = 1 << 0,
-			UsedWithCombining = 1 << 1,
+			Invalid = 1 << 1,
+			UsedWithCombining = 1 << 22,
 		};
 
 		inline constexpr BlockPurpose operator|(BlockPurpose a, BlockPurpose b) {
@@ -216,7 +379,7 @@ namespace XivRes::Internal {
 		 * Replace from: `^([0-9a-f]+)\.\.([0-9a-f]+); (.*?)$`
 		 * Replace to: `{ 0x$1, 0x$2, "$3", LTR },`
 		 */
-		constexpr BlockDefinition Blocks[]{
+		constexpr std::array<BlockDefinition, 321> Blocks{ {
 			{ 0x0000, 0x007F, "Basic Latin", LTR | UsedWithCombining },
 			{ 0x0080, 0x00FF, "Latin-1 Supplement", LTR | UsedWithCombining },
 			{ 0x0100, 0x017F, "Latin Extended-A", LTR | UsedWithCombining },
@@ -366,8 +529,8 @@ namespace XivRes::Internal {
 			{ 0xABC0, 0xABFF, "Meetei Mayek", LTR },
 			{ 0xAC00, 0xD7AF, "Hangul Syllables", LTR },
 			{ 0xD7B0, 0xD7FF, "Hangul Jamo Extended-B", LTR },
-			{ 0xD800, 0xDB7F, "High Surrogates", LTR },
-			{ 0xDB80, 0xDBFF, "High Private Use Surrogates", LTR },
+			{ 0xD800, 0xDB7F, "High Surrogates", Invalid },
+			{ 0xDB80, 0xDBFF, "High Private Use Surrogates", Invalid },
 			{ 0xDC00, 0xDFFF, "Low Surrogates", LTR },
 			{ 0xE000, 0xF8FF, "Private Use Area", LTR },
 			{ 0xF900, 0xFAFF, "CJK Compatibility Ideographs", LTR },
@@ -537,18 +700,19 @@ namespace XivRes::Internal {
 			{ 0xE0100, 0xE01EF, "Variation Selectors Supplement", LTR },
 			{ 0xF0000, 0xFFFFF, "Supplementary Private Use Area-A", LTR },
 			{ 0x100000, 0x10FFFF, "Supplementary Private Use Area-B", LTR },
-		};
+			{ 0x110000, 0xFFFFFFFF, "Unallocated", Invalid },
+		} };
 
 		inline const BlockDefinition& GetCorrespondingBlock(char32_t c) {
-			auto p = std::lower_bound(&Blocks[0], &Blocks[_countof(Blocks) - 1], c, [](const BlockDefinition& b, char32_t c) { return b.Last < c; });
+			auto p = std::lower_bound(Blocks.begin(), Blocks.end(), c, [](const BlockDefinition& b, char32_t c) { return b.Last < c; });
 			if (p->First <= c && c <= p->Last)
 				return *p;
 
-			throw std::out_of_range("Codepoint not in array");
+			return Blocks.back();
 		}
 	}
 
-	inline uint16_t UnicodeCodePointToShiftJisUint16(char32_t codepoint) {
+	inline uint16_t CodePointToShiftJisUint16(char32_t codepoint) {
 		// http://ftp.unicode.org/Public/MAPPINGS/OBSOLETE/EASTASIA/JIS/SHIFTJIS.TXT
 #pragma region "UTF-32 to Shift-JIS Map"
 		switch (codepoint) {

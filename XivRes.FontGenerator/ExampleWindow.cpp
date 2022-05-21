@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "XivRes/FontGenerator/WrappingFixedSizeFont.h"
+#include "XivRes/FontGenerator/DirectWriteFixedSizeFont.h"
 #include "XivRes/FontGenerator/FontdataPacker.h"
 #include "XivRes/FontGenerator/FreeTypeFixedSizeFont.h"
 #include "XivRes/FontGenerator/GameFontdataFixedSizeFont.h"
@@ -27,7 +28,7 @@ class WindowImpl {
 
 	std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> m_fontBase;
 	std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> m_fontMerged;
-	std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> m_fontPacked;
+	// std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> m_fontPacked;
 
 	static std::weak_ptr<ATOM> s_pAtom;
 	std::shared_ptr<ATOM> m_pAtom;
@@ -192,7 +193,9 @@ class WindowImpl {
 			item.iItem = 1;
 			item.iSubItem = 0;
 			item.pszText = const_cast<wchar_t*>(L"Source Han Sans K Regular");
-			item.lParam = reinterpret_cast<LPARAM>(new std::wstring(LR"(C:\Windows\Fonts\SourceHanSansK-Regular.otf)"));
+			item.lParam = reinterpret_cast<LPARAM>(new std::wstring(LR"(C:\Windows\Fonts\segoeui.ttf)"));
+			// item.lParam = reinterpret_cast<LPARAM>(new std::wstring(LR"(C:\Windows\Fonts\SourceHanSansK-Regular.otf)"));
+			// item.lParam = reinterpret_cast<LPARAM>(new std::wstring(LR"(C:\Windows\Fonts\gulim.ttc)"));
 			ListView_InsertItem(m_hExtraFontsList, &item);
 			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"18px"));
 			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"22px"));
@@ -318,10 +321,10 @@ class WindowImpl {
 			s.resize(Edit_GetText(m_hEdit, &s[0], static_cast<int>(s.size())));
 
 			auto m1 = XivRes::FontGenerator::TextMeasurer(*m_fontMerged).WithMaxWidth(m_pMipmap->Width - pad * 2).Measure(&s[0], s.size());
-			auto m2 = XivRes::FontGenerator::TextMeasurer(*m_fontPacked).WithMaxWidth(m_pMipmap->Width - pad * 2).Measure(&s[0], s.size());
+			// auto m2 = XivRes::FontGenerator::TextMeasurer(*m_fontPacked).WithMaxWidth(m_pMipmap->Width - pad * 2).Measure(&s[0], s.size());
 
 			m1.DrawTo(*m_pMipmap, *m_fontMerged, 16, 16, { 0xFF, 0xFF, 0xFF, 0xFF }, { 0, 0, 0, 0 });
-			m2.DrawTo(*m_pMipmap, *m_fontPacked, 16, 16 + m1.Occupied.GetHeight(), { 0xFF, 0xFF, 0xFF, 0xFF }, { 0, 0, 0, 0 });
+			// m2.DrawTo(*m_pMipmap, *m_fontPacked, 16, 16 + m1.Occupied.GetHeight(), { 0xFF, 0xFF, 0xFF, 0xFF }, { 0, 0, 0, 0 });
 		}
 
 		bmih.biSize = sizeof bmih;
@@ -403,26 +406,35 @@ public:
 			item.iItem = i;
 			item.iSubItem = 0;
 			ListView_GetItem(m_hExtraFontsList, &item);
+			/*
 			mergeFontList.emplace_back(std::make_shared<XivRes::FontGenerator::FreeTypeFixedSizeFont>(*reinterpret_cast<const std::wstring*>(item.lParam), 0, m_fontBase->GetSize()));
+			/*/
+			mergeFontList.emplace_back(std::make_shared<XivRes::FontGenerator::DirectWriteFixedSizeFont>(*reinterpret_cast<const std::wstring*>(item.lParam), XivRes::FontGenerator::DirectWriteFixedSizeFont::CreateStruct
+			{
+				.Size = m_fontBase->GetSize(),
+				.RenderMode = DWRITE_RENDERING_MODE_GDI_NATURAL,
+				.MeasureMode = DWRITE_MEASURING_MODE_NATURAL,
+			}));
+			//*/
 		}
 
 		auto merge = std::make_shared<XivRes::FontGenerator::MergedFixedSizeFont>(std::move(mergeFontList));
 
 		m_fontMerged = merge;
-		XivRes::FontGenerator::FontdataPacker packer;
-		if (const auto p = dynamic_cast<const XivRes::FontGenerator::GameFontdataFixedSizeFont*>(m_fontBase.get()))
-			packer.SetHorizontalOffset(p->GetHorizontalOffset());
-		packer.AddFont(merge);
-		auto [fdts, texs] = packer.Compile();
-		auto res = std::make_shared<XivRes::TextureStream>(texs[0]->Type, texs[0]->Width, texs[0]->Height, 1, 1, texs.size());
-		for (size_t i = 0; i < texs.size(); i++)
-			res->SetMipmap(0, i, texs[i]);
-		m_fontPacked = std::make_shared<XivRes::FontGenerator::GameFontdataFixedSizeFont>(fdts[0], texs);
+		//XivRes::FontGenerator::FontdataPacker packer;
+		//if (const auto p = dynamic_cast<const XivRes::FontGenerator::GameFontdataFixedSizeFont*>(m_fontBase.get()))
+		//	packer.SetHorizontalOffset(p->GetHorizontalOffset());
+		//packer.AddFont(merge);
+		//auto [fdts, texs] = packer.Compile();
+		//auto res = std::make_shared<XivRes::TextureStream>(texs[0]->Type, texs[0]->Width, texs[0]->Height, 1, 1, texs.size());
+		//for (size_t i = 0; i < texs.size(); i++)
+		//	res->SetMipmap(0, i, texs[i]);
+		//m_fontPacked = std::make_shared<XivRes::FontGenerator::GameFontdataFixedSizeFont>(fdts[0], texs);
 	}
 
 	void TestFontLsb(int horizontalOffset) {
-		const auto cps = m_fontMerged->GetAllCodepoints();
-		std::set<const XivRes::Internal::UnicodeBlocks::BlockDefinition*> visitedBlocks;
+		const auto& cps = m_fontMerged->GetAllCodepoints();
+		std::set<const XivRes::Unicode::UnicodeBlocks::BlockDefinition*> visitedBlocks;
 		std::set<char32_t> ignoreDist;
 
 		int nOffenders = 0;
@@ -433,8 +445,8 @@ public:
 			XivRes::FontGenerator::GlyphMetrics gm;
 			m_fontMerged->GetGlyphMetrics(c, gm);
 			if (gm.X1 < -horizontalOffset) {
-				auto& block = XivRes::Internal::UnicodeBlocks::GetCorrespondingBlock(c);
-				if (block.Flags & XivRes::Internal::UnicodeBlocks::RTL)
+				auto& block = XivRes::Unicode::UnicodeBlocks::GetCorrespondingBlock(c);
+				if (block.Flags & XivRes::Unicode::UnicodeBlocks::RTL)
 					continue;
 
 				nOffenders++;
@@ -447,7 +459,7 @@ public:
 					uint32_t u8u32v;
 					char b[5]{};
 				};
-				u8u32v = XivRes::Internal::UnicodeCodePointToUtf8Uint32(c);
+				u8u32v = XivRes::Unicode::CodePointToUtf8Uint32(c);
 				std::reverse(b, b + strlen(b));
 
 				if (gm.AdvanceX)

@@ -182,7 +182,7 @@ namespace XivRes::FontGenerator {
 
 		virtual const void* GetGlyphUniqid(char32_t c) const = 0;
 
-		virtual const std::map<std::pair<char32_t, char32_t>, int>& GetKerningPairs() const = 0;
+		virtual const std::map<std::pair<char32_t, char32_t>, int>& GetAllKerningPairs() const = 0;
 
 		virtual int GetAdjustedAdvanceX(char32_t left, char32_t right) const = 0;
 
@@ -240,7 +240,7 @@ namespace XivRes::FontGenerator {
 			return nullptr;
 		}
 
-		const std::map<std::pair<char32_t, char32_t>, int>& GetKerningPairs() const override {
+		const std::map<std::pair<char32_t, char32_t>, int>& GetAllKerningPairs() const override {
 			static const std::map<std::pair<char32_t, char32_t>, int> s_empty;
 			return s_empty;
 		}

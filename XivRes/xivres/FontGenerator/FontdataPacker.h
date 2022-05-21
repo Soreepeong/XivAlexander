@@ -45,7 +45,7 @@ namespace XivRes::FontGenerator {
 				size_t SourceFontIndex{};
 				std::vector<FontdataStream*> TargetFonts{};
 				FontdataGlyphEntry Entry{};
-				const Internal::UnicodeBlocks::BlockDefinition* UnicodeBlock{};
+				const Unicode::UnicodeBlocks::BlockDefinition* UnicodeBlock{};
 				int X1{};
 				int X2{};
 			};
@@ -73,35 +73,29 @@ namespace XivRes::FontGenerator {
 			std::vector<CharacterPlan> rectangleInfoList;
 			rectangleInfoList.reserve(nMaxCharacterCount);
 			{
-				{
-					Internal::ThreadPool pool(m_nThreads);
+				for (size_t i = 0; i < m_fonts.size(); i++) {
+					auto& targetFont = *(targetFonts[i] = std::make_shared<FontdataStream>());
 
-					for (size_t i = 0; i < m_fonts.size(); i++) {
-						auto& targetFont = *(targetFonts[i] = std::make_shared<FontdataStream>());
-						
-						const auto& font = *m_fonts[i];
-						targetFont.TextureWidth(m_nSideLength);
-						targetFont.TextureHeight(m_nSideLength);
-						targetFont.Size(font.GetSize());
-						targetFont.LineHeight(font.GetLineHeight());
-						targetFont.Ascent(font.GetAscent());
-						targetFont.ReserveFontEntries(font.GetAllCodepoints().size());
-						targetFont.ReserveKerningEntries(font.GetKerningPairs().size());
-						for (const auto& kerning : font.GetKerningPairs()) {
-							if (kerning.second)
-								targetFont.AddKerning(kerning.first.first, kerning.first.second, kerning.second);
-						}
+					const auto& font = *m_fonts[i];
+					targetFont.TextureWidth(m_nSideLength);
+					targetFont.TextureHeight(m_nSideLength);
+					targetFont.Size(font.GetSize());
+					targetFont.LineHeight(font.GetLineHeight());
+					targetFont.Ascent(font.GetAscent());
+					targetFont.ReserveFontEntries(font.GetAllCodepoints().size());
+					targetFont.ReserveKerningEntries(font.GetAllKerningPairs().size());
+					for (const auto& kerning : font.GetAllKerningPairs()) {
+						if (kerning.second)
+							targetFont.AddKerning(kerning.first.first, kerning.first.second, kerning.second);
 					}
-
-					pool.SubmitDoneAndWait();
 				}
 
 				std::map<const void*, CharacterPlan*> rectangleInfoMap;
 				for (size_t i = 0; i < m_fonts.size(); i++) {
 					const auto& font = m_fonts[i];
 					for (const auto& codepoint : font->GetAllCodepoints()) {
-						auto& block = XivRes::Internal::UnicodeBlocks::GetCorrespondingBlock(codepoint);
-						if (block.Flags & XivRes::Internal::UnicodeBlocks::RTL)
+						auto& block = Unicode::UnicodeBlocks::GetCorrespondingBlock(codepoint);
+						if (block.Flags & Unicode::UnicodeBlocks::RTL)
 							continue;
 
 						auto& pInfo = rectangleInfoMap[font->GetGlyphUniqid(codepoint)];
@@ -121,10 +115,12 @@ namespace XivRes::FontGenerator {
 			{
 				Internal::ThreadPool pool(m_nThreads);
 
+				size_t remaining = rectangleInfoList.size();
 				const auto divideUnit = (std::max<size_t>)(1, static_cast<size_t>(std::sqrt(static_cast<double>(rectangleInfoList.size()))));
 				for (size_t nBase = 0; nBase < divideUnit; nBase++) {
-					pool.Submit([divideUnit, &rectangleInfoList, &pool, nBase, &GetThreadSafeSourceFont](size_t nThreadIndex) {
+					pool.Submit([&remaining, divideUnit, &rectangleInfoList, &pool, nBase, &GetThreadSafeSourceFont](size_t nThreadIndex) {
 						for (size_t i = nBase; i < rectangleInfoList.size(); i += divideUnit) {
+							remaining -= 1;
 							pool.AbortIfErrorOccurred();
 
 							auto& info = rectangleInfoList[i];
@@ -145,9 +141,9 @@ namespace XivRes::FontGenerator {
 
 				pool.SubmitDoneAndWait();
 
-				std::map<Internal::UnicodeBlocks::NegativeLsbGroup, std::vector<CharacterPlan*>> negativeLsbChars;
+				std::map<Unicode::UnicodeBlocks::NegativeLsbGroup, std::vector<CharacterPlan*>> negativeLsbChars;
 				std::vector<bool> codepointAvailable;
-				codepointAvailable.resize(Internal::UnicodeBlocks::Blocks[_countof(Internal::UnicodeBlocks::Blocks) - 1].Last, false);
+				codepointAvailable.resize(Unicode::UnicodeBlocks::Blocks.back().First, false);
 				for (auto& info : rectangleInfoList) {
 					codepointAvailable[info.Entry.Char()] = true;
 
@@ -157,7 +153,7 @@ namespace XivRes::FontGenerator {
 						info.X2 = info.X1 - m_nHorizontalOffset;
 						info.Entry.NextOffsetX += info.X2 - info.Entry.BoundingWidth;
 
-						if (info.UnicodeBlock->NegativeLsbGroup != Internal::UnicodeBlocks::None)
+						if (info.UnicodeBlock->NegativeLsbGroup != Unicode::UnicodeBlocks::None)
 							negativeLsbChars[info.UnicodeBlock->NegativeLsbGroup].emplace_back(&info);
 
 					} else {
@@ -175,8 +171,8 @@ namespace XivRes::FontGenerator {
 						entry.RightShiftJisValue = charPlan->Entry.ShiftJisValue;
 						entry.RightOffset = -charPlan->X2;
 
-						for (const auto& block : Internal::UnicodeBlocks::Blocks) {
-							if (block.NegativeLsbGroup != group && (group != Internal::UnicodeBlocks::Combining || !(block.Flags & Internal::UnicodeBlocks::UsedWithCombining)))
+						for (const auto& block : Unicode::UnicodeBlocks::Blocks) {
+							if (block.NegativeLsbGroup != group && (group != Unicode::UnicodeBlocks::Combining || !(block.Flags & Unicode::UnicodeBlocks::UsedWithCombining)))
 								continue;
 
 							for (const auto& targetFont : charPlan->TargetFonts) {

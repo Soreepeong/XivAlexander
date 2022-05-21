@@ -85,8 +85,8 @@ namespace XivRes::FontGenerator {
 			return m_font->GetGlyphUniqid(c);
 		}
 
-		const std::map<std::pair<char32_t, char32_t>, int>& GetKerningPairs() const override {
-			return m_info->KerningPairs.value_or(m_font->GetKerningPairs());
+		const std::map<std::pair<char32_t, char32_t>, int>& GetAllKerningPairs() const override {
+			return m_info->KerningPairs.value_or(m_font->GetAllKerningPairs());
 		}
 
 		int GetAdjustedAdvanceX(char32_t left, char32_t right) const override {
@@ -94,7 +94,7 @@ namespace XivRes::FontGenerator {
 			if (!GetGlyphMetrics(left, gm))
 				return 0;
 
-			const auto& kerningPairs = m_info->KerningPairs.value_or(m_font->GetKerningPairs());
+			const auto& kerningPairs = m_info->KerningPairs.value_or(m_font->GetAllKerningPairs());
 			int kerningDistance = 0;
 			if (auto it = kerningPairs.find(std::make_pair(left, right)); it != kerningPairs.end())
 				kerningDistance = it->second;

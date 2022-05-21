@@ -139,7 +139,7 @@ namespace XivRes {
 		}
 
 		[[nodiscard]] const FontdataGlyphEntry* GetFontEntry(char32_t c) const {
-			const auto val = Internal::UnicodeCodePointToUtf8Uint32(c);
+			const auto val = Unicode::CodePointToUtf8Uint32(c);
 			const auto it = std::lower_bound(m_fontTableEntries.begin(), m_fontTableEntries.end(), val,
 				[](const FontdataGlyphEntry& l, uint32_t r) {
 				return l.Utf8Value < r;
@@ -150,7 +150,7 @@ namespace XivRes {
 		}
 
 		[[nodiscard]] int GetKerningDistance(char32_t l, char32_t r) const {
-			const auto pair = std::make_pair(Internal::UnicodeCodePointToUtf8Uint32(l), Internal::UnicodeCodePointToUtf8Uint32(r));
+			const auto pair = std::make_pair(Unicode::CodePointToUtf8Uint32(l), Unicode::CodePointToUtf8Uint32(r));
 			const auto it = std::lower_bound(m_kerningEntries.begin(), m_kerningEntries.end(), pair,
 				[](const FontdataKerningEntry& l, const std::pair<uint32_t, uint32_t>& r) {
 				if (l.LeftUtf8Value == r.first)
@@ -179,7 +179,7 @@ namespace XivRes {
 		}
 
 		void AddFontEntry(char32_t c, uint16_t textureIndex, uint16_t textureOffsetX, uint16_t textureOffsetY, uint8_t boundingWidth, uint8_t boundingHeight, int8_t nextOffsetX, int8_t currentOffsetY) {
-			const auto val = Internal::UnicodeCodePointToUtf8Uint32(c);
+			const auto val = Unicode::CodePointToUtf8Uint32(c);
 
 			auto it = std::lower_bound(m_fontTableEntries.begin(), m_fontTableEntries.end(), val, [](const FontdataGlyphEntry& l, uint32_t r) {
 				return l.Utf8Value < r;

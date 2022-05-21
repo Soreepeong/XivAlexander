@@ -164,9 +164,6 @@
     <ClInclude Include="xivres\PixelFormats.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="xivres\internal\Codepoint.h">
-      <Filter>Headers\Internal</Filter>
-    </ClInclude>
     <ClInclude Include="xivres\GameReader.h">
       <Filter>Headers</Filter>
     </ClInclude>
@@ -220,6 +217,12 @@
     </ClInclude>
     <ClInclude Include="xivres\Internal\TrueTypeUtils.h">
       <Filter>Headers\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="xivres\FontGenerator\DirectWriteFixedSizeFont.h">
+      <Filter>Headers\FontGenerator</Filter>
+    </ClInclude>
+    <ClInclude Include="xivres\Unicode.h">
+      <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

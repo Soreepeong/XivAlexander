@@ -2,17 +2,22 @@
 #define _XIVRES_FONTGENERATOR_FREETYPEFIXEDSIZEFONT_H_
 
 #ifndef FT2BUILD_H_
-#pragma error("Freetype must be included to use this header file.")
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#include FT_BITMAP_H
+#include FT_OUTLINE_H 
+#include FT_GLYPH_H
 #endif
 
 #include <filesystem>
 
 #include "IFixedSizeFont.h"
 
+#include "../Internal/BitmapCopy.h"
 #include "../Internal/TrueTypeUtils.h"
 
 namespace XivRes::FontGenerator {
-	namespace FreeTypeInternal {
+	class FreeTypeFixedSizeFont : public DefaultAbstractFixedSizeFont {
 		static void SuccessOrThrow(FT_Error error) {
 			if (error)
 				throw std::runtime_error(std::format("FreeType Error: {:x}", error));
@@ -71,42 +76,43 @@ namespace XivRes::FontGenerator {
 				info->Size = fSize;
 				info->LoadFlags = nLoadFlags;
 
-				const Internal::TrueType::SfntFile::View sfnt(&info->Data[0], info->Data.size());
-				if (!sfnt)
-					throw std::runtime_error("Invalid SFNT file");
-
-				const auto cmap = sfnt.TryGetTable<Internal::TrueType::Cmap>();
-				if (!cmap)
-					throw std::runtime_error("cmap missing");
-
 				m_face = CreateFace(*m_library, *info);
-
-				info->Characters.insert(' ');
-				const auto cmapVector = cmap.GetGlyphToCharMap();
-				for (const auto& cs : cmapVector) {
-					for (const auto c : cs)
-						info->Characters.insert(c);
-				}
-
-				std::vector<char32_t> resultr;
 				FT_UInt glyphIndex;
-				for (char32_t c = FT_Get_First_Char(&*m_face, &glyphIndex); glyphIndex; c = FT_Get_Next_Char(&*m_face, c, &glyphIndex))
-					resultr.push_back(c);
+				for (char32_t c = FT_Get_First_Char(m_face, &glyphIndex); glyphIndex; c = FT_Get_Next_Char(m_face, c, &glyphIndex))
+					info->Characters.insert(c);
 
-				if (const auto kern = sfnt.TryGetTable<Internal::TrueType::Kern>(); kern)
-					info->KerningPairs = kern.Parse(cmapVector);
-				if (const auto gpos = sfnt.TryGetTable<Internal::TrueType::Gpos>(); gpos) {
-					const auto pairs = gpos.ExtractAdvanceX(cmapVector);
-					// do not overwrite
-					info->KerningPairs.insert(pairs.begin(), pairs.end());
-				}
-				for (auto it = info->KerningPairs.begin(); it != info->KerningPairs.end(); ) {
-					it->second = static_cast<int>(it->second * info->Size / static_cast<float>(m_face->size->face->units_per_EM));
-					if (it->second)
-						++it;
+				do {
+					Internal::TrueType::SfntFile::View sfnt;
+					if (Internal::TrueType::TtcFile::View ttc(std::span(info->Data)); ttc)
+						sfnt = ttc.GetFont(faceIndex);
+					else if (faceIndex == 0)
+						sfnt = std::span(info->Data);
 					else
-						it = info->KerningPairs.erase(it);
-				}
+						break;
+
+					const auto cmap = sfnt.TryGetTable<Internal::TrueType::Cmap>();
+					if (!cmap)
+						break;
+
+					const auto cmapVector = cmap.GetGlyphToCharMap();
+
+					if (const auto kern = sfnt.TryGetTable<Internal::TrueType::Kern>(); kern)
+						info->KerningPairs = kern.Parse(cmapVector);
+
+					if (const auto gpos = sfnt.TryGetTable<Internal::TrueType::Gpos>(); gpos) {
+						const auto pairs = gpos.ExtractAdvanceX(cmapVector);
+						// do not overwrite
+						info->KerningPairs.insert(pairs.begin(), pairs.end());
+					}
+
+					for (auto it = info->KerningPairs.begin(); it != info->KerningPairs.end(); ) {
+						it->second = static_cast<int>(it->second * info->Size / static_cast<float>(m_face->size->face->units_per_EM));
+						if (it->second)
+							++it;
+						else
+							it = info->KerningPairs.erase(it);
+					}
+				} while (false);
 
 				m_info = std::move(info);
 			}
@@ -207,7 +213,7 @@ namespace XivRes::FontGenerator {
 				return m_info->Characters;
 			}
 
-			const std::map<std::pair<char32_t, char32_t>, int>& GetKerningPairs() const {
+			const std::map<std::pair<char32_t, char32_t>, int>& GetAllKerningPairs() const {
 				return m_info->KerningPairs;
 			}
 
@@ -292,10 +298,8 @@ namespace XivRes::FontGenerator {
 				return std::span(m_bitmap.buffer, m_bitmap.rows * m_bitmap.pitch);
 			}
 		};
-	}
 
-	class FreeTypeFixedSizeFont : public DefaultAbstractFixedSizeFont {
-		FreeTypeInternal::FreeTypeFaceWrapper m_face;
+		FreeTypeFaceWrapper m_face;
 
 	public:
 		FreeTypeFixedSizeFont(const std::filesystem::path& path, int faceIndex, float fSize, int nLoadFlags = FT_LOAD_DEFAULT | FT_LOAD_TARGET_LIGHT)
@@ -314,11 +318,11 @@ namespace XivRes::FontGenerator {
 		}
 
 		int GetAscent() const override {
-			return m_face->size->metrics.ascender / 64;
+			return (m_face->size->metrics.ascender + 63) / 64;
 		}
 
 		int GetLineHeight() const override {
-			return m_face->size->metrics.height / 64;
+			return (m_face->size->metrics.height + 63) / 64;
 		}
 
 		const std::set<char32_t>& GetAllCodepoints() const override {
@@ -341,8 +345,8 @@ namespace XivRes::FontGenerator {
 			return m_face.GetAllCharacters().contains(c) ? &m_face.GetRawData()[c] : nullptr;
 		}
 
-		const std::map<std::pair<char32_t, char32_t>, int>& GetKerningPairs() const override {
-			return m_face.GetKerningPairs();
+		const std::map<std::pair<char32_t, char32_t>, int>& GetAllKerningPairs() const override {
+			return m_face.GetAllKerningPairs();
 		}
 
 		int GetAdjustedAdvanceX(char32_t left, char32_t right) const override {
@@ -350,14 +354,10 @@ namespace XivRes::FontGenerator {
 			if (!GetGlyphMetrics(left, gm))
 				return 0;
 
-			const auto glyphIndexRight = m_face.GetCharIndex(right);
-			if (!glyphIndexRight)
-				return gm.AdvanceX;
-
-			const auto glyphIndexLeft = m_face.GetCharIndex(left);
-			FT_Vector vec{};
-			FreeTypeInternal::SuccessOrThrow(FT_Get_Kerning(*m_face, glyphIndexLeft, glyphIndexRight, 0, &vec));
-			return gm.AdvanceX + (FT_IS_SCALABLE(*m_face) ? vec.x / 64 : vec.x);
+			if (const auto it = m_face.GetAllKerningPairs().find(std::make_pair(left, right)); it != m_face.GetAllKerningPairs().end())
+				return gm.AdvanceX + it->second;
+			
+			return gm.AdvanceX;
 		}
 
 		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor, float gamma) const override {
@@ -373,7 +373,7 @@ namespace XivRes::FontGenerator {
 			if (src.IsEffectivelyEmpty() || dest.IsEffectivelyEmpty())
 				return true;
 
-			FreeTypeInternal::FreeTypeBitmapWrapper bitmapWrapper(m_face.GetLibrary());
+			FreeTypeBitmapWrapper bitmapWrapper(m_face.GetLibrary());
 			bitmapWrapper.ConvertFrom(m_face->glyph->bitmap, 1);
 
 			Internal::BitmapCopy::ToRGBA8888()
@@ -392,24 +392,19 @@ namespace XivRes::FontGenerator {
 				return false;
 
 			m_face.LoadGlyph(glyphIndex, true);
-			GlyphMetrics src{
-				.Empty = false,
-				.X1 = 0,
-				.Y1 = 0,
-				.X2 = static_cast<int>(m_face->glyph->bitmap.width),
-				.Y2 = static_cast<int>(m_face->glyph->bitmap.rows),
-			};
 			auto dest = GlyphMetricsFromCurrentGlyph(drawX, drawY);
+			auto src = dest;
+			src.Translate(-src.X1, -src.Y1);
 			src.AdjustToIntersection(dest, src.GetWidth(), src.GetHeight(), destWidth, destHeight);
 			if (src.IsEffectivelyEmpty() || dest.IsEffectivelyEmpty())
 				return true;
 
-			FreeTypeInternal::FreeTypeBitmapWrapper bitmapWrapper(m_face.GetLibrary());
+			FreeTypeBitmapWrapper bitmapWrapper(m_face.GetLibrary());
 			bitmapWrapper.ConvertFrom(m_face->glyph->bitmap, 1);
 
 			Internal::BitmapCopy::ToL8()
 				.From(bitmapWrapper->buffer, bitmapWrapper->pitch, bitmapWrapper->rows, 1, Internal::BitmapVerticalDirection::TopRowFirst)
-				.To(pBuf, destWidth, destHeight, 4, Internal::BitmapVerticalDirection::TopRowFirst)
+				.To(pBuf, destWidth, destHeight, stride, Internal::BitmapVerticalDirection::TopRowFirst)
 				.WithForegroundColor(fgColor)
 				.WithForegroundOpacity(fgOpacity)
 				.WithBackgroundColor(bgColor)
@@ -431,7 +426,7 @@ namespace XivRes::FontGenerator {
 				.Y1 = y + GetAscent() - m_face->glyph->bitmap_top,
 				.X2 = src.X1 + static_cast<int>(m_face->glyph->bitmap.width),
 				.Y2 = src.Y1 + static_cast<int>(m_face->glyph->bitmap.rows),
-				.AdvanceX = FT_IS_SCALABLE(*m_face) ? m_face->glyph->advance.x / 64 : m_face->glyph->advance.x,
+				.AdvanceX = (m_face->glyph->advance.x + 63) / 64,
 			};
 			return src;
 		}

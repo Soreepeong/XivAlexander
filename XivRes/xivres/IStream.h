@@ -317,6 +317,10 @@ namespace XivRes {
 		[[nodiscard]] bool OwnsData() const {
 			return !m_buffer.empty() && m_view.data() == m_buffer.data();
 		}
+
+		std::span<const uint8_t> View(std::streamoff offset, std::streamsize length = (std::numeric_limits<std::streamsize>::max)()) const {
+			return m_view.subspan(static_cast<size_t>(offset), static_cast<size_t>(length));
+		}
 	};
 }
 

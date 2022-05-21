@@ -103,19 +103,19 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 			template<typename T>
-			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-			View(const void* pData, size_t length) : View() {
-				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
+			View(std::span<T> data) : View() {
+				const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
 
-				if (length < sizeof uint16_t)
+				if (data.size_bytes() < sizeof uint16_t)
 					return;
 
-				if (2 * (*obj->Count + 1) > length)
+				if (2 * (*obj->Count + 1) > data.size_bytes())
 					return;
 
 				m_obj = obj;
-				m_length = length;
+				m_length = data.size_bytes();
 			}
 
 			operator bool() const {
@@ -174,19 +174,19 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 			template<typename T>
-			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-			View(const void* pData, size_t length) : View() {
-				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-				if (length < sizeof Header)
+			View(std::span<T> data) : View() {
+				if (data.size_bytes() < sizeof Header)
 					return;
 
-				if (length < sizeof Header + static_cast<size_t>(2) * (*obj->Header.SubtableCount) + (obj->Header.LookupFlag.UseMarkFilteringSet ? 2 : 0))
+				const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
+
+				if (data.size_bytes() < sizeof Header + static_cast<size_t>(2) * (*obj->Header.SubtableCount) + (obj->Header.LookupFlag.UseMarkFilteringSet ? 2 : 0))
 					return;
 
 				m_obj = obj;
-				m_length = length;
+				m_length = data.size_bytes();
 			}
 
 			operator bool() const {
@@ -253,23 +253,23 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 			template<typename T>
-			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-			View(const void* pData, size_t length) : View() {
-				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-				if (length < sizeof FormatHeader)
+			View(std::span<T> data) : View() {
+				if (data.size_bytes() < sizeof FormatHeader)
 					return;
+
+				const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
 
 				const auto count = static_cast<size_t>(*obj->Header.Count);
 				switch (obj->Header.FormatId) {
 					case 1:
-						if (length < sizeof FormatHeader + sizeof uint16_t * count)
+						if (data.size_bytes() < sizeof FormatHeader + sizeof uint16_t * count)
 							return;
 						break;
 
 					case 2:
-						if (length < sizeof FormatHeader + sizeof RangeRecord * count)
+						if (data.size_bytes() < sizeof FormatHeader + sizeof RangeRecord * count)
 							return;
 						break;
 
@@ -278,7 +278,7 @@ namespace XivRes::Internal::TrueType {
 				}
 
 				m_obj = obj;
-				m_length = length;
+				m_length = data.size_bytes();
 			}
 
 			operator bool() const {
@@ -382,22 +382,22 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 			template<typename T>
-			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-			View(const void* pData, size_t length) : View() {
-				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-				if (length < sizeof FormatId)
+			View(std::span<T> data) : View() {
+				if (data.size_bytes() < sizeof FormatId)
 					return;
+
+				const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
 
 				switch (*obj->FormatId) {
 					case 1:
-						if (length < sizeof(Format1ClassArray::FormatHeader) + sizeof(BE<uint16_t>) * (*obj->Format1.Header.GlyphCount))
+						if (data.size_bytes() < sizeof(Format1ClassArray::FormatHeader) + sizeof(BE<uint16_t>) * (*obj->Format1.Header.GlyphCount))
 							return;
 						break;
 
 					case 2:
-						if (length < sizeof(Format2ClassRanges::FormatHeader) + sizeof(Format2ClassRanges::ClassRangeRecord) * (*obj->Format2.Header.ClassRangeCount))
+						if (data.size_bytes() < sizeof(Format2ClassRanges::FormatHeader) + sizeof(Format2ClassRanges::ClassRangeRecord) * (*obj->Format2.Header.ClassRangeCount))
 							return;
 						break;
 
@@ -406,7 +406,7 @@ namespace XivRes::Internal::TrueType {
 				}
 
 				m_obj = obj;
-				m_length = length;
+				m_length = data.size_bytes();
 			}
 
 			operator bool() const {
@@ -576,20 +576,21 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 			template<typename T>
-			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-			View(const void* pData, size_t length) : View() {
-				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-				if (sizeof(*obj) > length)
+			View(std::span<T> data) : View() {
+				if (sizeof(*m_obj) > data.size_bytes())
 					return;
+
+				const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
+
 				if (obj->Version.Major != 1)
 					return;
 				if (obj->MagicNumber != MagicNumberValue)
 					return;
 
 				m_obj = obj;
-				m_length = length;
+				m_length = data.size_bytes();
 			}
 
 			operator bool() const {
@@ -689,16 +690,16 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 			template<typename T>
-			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-			View(const void* pData, size_t length) : View() {
-				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-				if (length < sizeof NameHeader)
+			View(std::span<T> data) : View() {
+				if (data.size_bytes() < sizeof NameHeader)
 					return;
 
+				const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
+
 				m_obj = obj;
-				m_length = length;
+				m_length = data.size_bytes();
 			}
 
 			operator bool() const {
@@ -731,7 +732,8 @@ namespace XivRes::Internal::TrueType {
 				return reinterpret_cast<const LanguageRecord*>(reinterpret_cast<const char*>(&m_obj->Record[*m_obj->Header.Count]) + 2)[i];
 			}
 
-			std::u8string GetUnicodeName(uint16_t preferredLanguageId, NameId nameId) const {
+			template<typename TUnicodeString = std::string>
+			TUnicodeString GetUnicodeName(uint16_t preferredLanguageId, NameId nameId) const {
 				const auto recordSpans = RecordSpan();
 				for (const auto usePreferredLanguageId : { true, false }) {
 					for (const auto& record : recordSpans) {
@@ -793,7 +795,8 @@ namespace XivRes::Internal::TrueType {
 									res.push_back(((*x & 0xF) > 10) ? ('A' + (*x & 0xF) - 10) : ('0' + (*x & 0xF)));
 								}
 							}
-							return res;
+
+							return Unicode::Convert<TUnicodeString>(res);
 						}
 
 					decode_utf16be:
@@ -805,37 +808,27 @@ namespace XivRes::Internal::TrueType {
 							for (auto x = pString; x < pStringEnd; x++)
 								u16.push_back(*x);
 
-							std::u8string u8;
-							u8.reserve(4 * u16.size());
-							for (auto ptr = &u16[0]; ptr < &u16[0] + u16.size();) {
-								size_t remaining = &u16[0] + u16.size() - ptr;
-								const auto c = Internal::DecodeUtf16(ptr, remaining);
-								ptr += remaining;
-
-								const auto u8p = u8.size();
-								u8.resize(u8p + Internal::EncodeUtf8Length(c));
-								Internal::EncodeUtf8(&u8[u8p], c);
-							}
-
-							return u8;
+							return Unicode::Convert<TUnicodeString>(u16);
 						}
 					}
 				}
 				return {};
 			}
 
-			std::u8string GetPreferredFamilyName(uint16_t preferredLanguageId) const {
-				auto r = GetUnicodeName(preferredLanguageId, NameId::TypographicFamilyName);
+			template<typename TUnicodeString = std::string>
+			TUnicodeString GetPreferredFamilyName(uint16_t preferredLanguageId) const {
+				auto r = GetUnicodeName<TUnicodeString>(preferredLanguageId, NameId::TypographicFamilyName);
 				if (!r.empty())
 					return r;
-				return GetUnicodeName(preferredLanguageId, NameId::FamilyName);
+				return GetUnicodeName<TUnicodeString>(preferredLanguageId, NameId::FamilyName);
 			}
 
-			std::u8string GetPreferredSubfamilyName(uint16_t preferredLanguageId) const {
-				auto r = GetUnicodeName(preferredLanguageId, NameId::TypographicSubfamilyName);
+			template<typename TUnicodeString = std::string>
+			TUnicodeString GetPreferredSubfamilyName(uint16_t preferredLanguageId) const {
+				auto r = GetUnicodeName<TUnicodeString>(preferredLanguageId, NameId::TypographicSubfamilyName);
 				if (!r.empty())
 					return r;
-				return GetUnicodeName(preferredLanguageId, NameId::SubfamilyName);
+				return GetUnicodeName<TUnicodeString>(preferredLanguageId, NameId::SubfamilyName);
 			}
 		};
 	};
@@ -914,19 +907,22 @@ namespace XivRes::Internal::TrueType {
 					View& operator=(View&&) = default;
 					View& operator=(const View&) = default;
 					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 					template<typename T>
-					View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-					View(const void* pData, size_t length) : View() {
-						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-						if (length < sizeof FormatHeader || *obj->Header.FormatId != FormatId_Value || length < *obj->Header.Length)
+					View(std::span<T> data) : View() {
+						if (data.size_bytes() < sizeof FormatHeader)
 							return;
 
-						if (length < sizeof Format0)
+						const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
+
+						if (*obj->Header.FormatId != FormatId_Value || data.size_bytes() < *obj->Header.Length)
+							return;
+
+						if (data.size_bytes() < sizeof Format0)
 							return;
 
 						m_obj = obj;
-						m_length = length;
+						m_length = data.size_bytes();
 					}
 
 					operator bool() const override {
@@ -990,16 +986,19 @@ namespace XivRes::Internal::TrueType {
 					View& operator=(View&&) = default;
 					View& operator=(const View&) = default;
 					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 					template<typename T>
-					View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-					View(const void* pData, size_t length) : View() {
-						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
+					View(std::span<T> data) : View() {
+						if (data.size_bytes() < sizeof FormatHeader)
+							return;
 
-						if (length < sizeof FormatHeader || *obj->Header.FormatId != FormatId_Value || length < *obj->Header.Length)
+						const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
+
+						if (*obj->Header.FormatId != FormatId_Value || data.size_bytes() < *obj->Header.Length)
 							return;
 
 						m_obj = obj;
-						m_length = length;
+						m_length = data.size_bytes();
 					}
 
 					operator bool() const override {
@@ -1093,22 +1092,25 @@ namespace XivRes::Internal::TrueType {
 					View& operator=(View&&) = default;
 					View& operator=(const View&) = default;
 					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 					template<typename T>
-					View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-					View(const void* pData, size_t length) : View() {
-						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-						if (length < sizeof FormatHeader || *obj->Header.FormatId != FormatId_Value || length < *obj->Header.Length)
+					View(std::span<T> data) : View() {
+						if (data.size_bytes() < sizeof FormatHeader)
 							return;
 
-						if (sizeof Header + 4 + *obj->Header.SegCountX2 * 3 > length)
+						const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
+
+						if (*obj->Header.FormatId != FormatId_Value || data.size_bytes() < *obj->Header.Length)
 							return;
 
-						if (reinterpret_cast<const char*>(&obj->Data[1 + obj->Header.SegCount() * 4]) > static_cast<const char*>(pData) + length)
+						if (sizeof Header + 4 + *obj->Header.SegCountX2 * 3 > data.size_bytes())
+							return;
+
+						if (reinterpret_cast<const char*>(&obj->Data[1 + obj->Header.SegCount() * 4]) > reinterpret_cast<const char*>(obj) + data.size_bytes())
 							return;
 
 						m_obj = obj;
-						m_length = length;
+						m_length = data.size_bytes();
 					}
 
 					operator bool() const override {
@@ -1198,7 +1200,7 @@ namespace XivRes::Internal::TrueType {
 									const auto glyphIndex = **pGlyphIndex;
 									if (!glyphIndex)
 										continue;
-									
+
 									const auto glyphId = (idDelta + glyphIndex) & 0xFFFF;
 									result[glyphId].insert(c);
 								}
@@ -1239,19 +1241,22 @@ namespace XivRes::Internal::TrueType {
 					View& operator=(View&&) = default;
 					View& operator=(const View&) = default;
 					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 					template<typename T>
-					View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-					View(const void* pData, size_t length) : View() {
-						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-						if (length < sizeof FormatHeader || *obj->Header.FormatId != FormatId_Value || length < *obj->Header.Length)
+					View(std::span<T> data) : View() {
+						if (data.size_bytes() < sizeof FormatHeader)
 							return;
 
-						if (reinterpret_cast<const char*>(&obj->GlyphId[*obj->Header.EntryCount]) > static_cast<const char*>(pData) + length)
+						const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
+
+						if (*obj->Header.FormatId != FormatId_Value || data.size_bytes() < *obj->Header.Length)
+							return;
+
+						if (reinterpret_cast<const char*>(&obj->GlyphId[*obj->Header.EntryCount]) > reinterpret_cast<const char*>(obj) + data.size_bytes())
 							return;
 
 						m_obj = obj;
-						m_length = length;
+						m_length = data.size_bytes();
 					}
 
 					operator bool() const override {
@@ -1315,19 +1320,22 @@ namespace XivRes::Internal::TrueType {
 					View& operator=(View&&) = default;
 					View& operator=(const View&) = default;
 					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 					template<typename T>
-					View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-					View(const void* pData, size_t length) : View() {
-						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-						if (length < sizeof FormatHeader || *obj->Header.FormatId != FormatId_Value || length < *obj->Header.Length)
+					View(std::span<T> data) : View() {
+						if (data.size_bytes() < sizeof FormatHeader)
 							return;
 
-						if (reinterpret_cast<const char*>(&obj->Group[*obj->Header.GroupCount]) > static_cast<const char*>(pData) + length)
+						const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
+
+						if (*obj->Header.FormatId != FormatId_Value || data.size_bytes() < *obj->Header.Length)
+							return;
+
+						if (reinterpret_cast<const char*>(&obj->Group[*obj->Header.GroupCount]) > reinterpret_cast<const char*>(obj) + data.size_bytes())
 							return;
 
 						m_obj = obj;
-						m_length = length;
+						m_length = data.size_bytes();
 					}
 
 					operator bool() const override {
@@ -1394,19 +1402,22 @@ namespace XivRes::Internal::TrueType {
 					View& operator=(View&&) = default;
 					View& operator=(const View&) = default;
 					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 					template<typename T>
-					View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-					View(const void* pData, size_t length) : View() {
-						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-						if (length < sizeof FormatHeader || *obj->Header.FormatId != FormatId_Value || length < *obj->Header.Length)
+					View(std::span<T> data) : View() {
+						if (data.size_bytes() < sizeof FormatHeader)
 							return;
 
-						if (reinterpret_cast<const char*>(&obj->GlyphId[*obj->Header.EntryCount]) > static_cast<const char*>(pData) + length)
+						const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
+
+						if (*obj->Header.FormatId != FormatId_Value || data.size_bytes() < *obj->Header.Length)
+							return;
+
+						if (reinterpret_cast<const char*>(&obj->GlyphId[*obj->Header.EntryCount]) > reinterpret_cast<const char*>(obj) + data.size_bytes())
 							return;
 
 						m_obj = obj;
-						m_length = length;
+						m_length = data.size_bytes();
 					}
 
 					operator bool() const override {
@@ -1469,19 +1480,22 @@ namespace XivRes::Internal::TrueType {
 					View& operator=(View&&) = default;
 					View& operator=(const View&) = default;
 					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 					template<typename T>
-					View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-					View(const void* pData, size_t length) : View() {
-						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-						if (length < sizeof FormatHeader || (*obj->Header.FormatId != FormatId_Values[0] && *obj->Header.FormatId != FormatId_Values[1]) || length < *obj->Header.Length)
+					View(std::span<T> data) : View() {
+						if (data.size_bytes() < sizeof FormatHeader)
 							return;
 
-						if (reinterpret_cast<const char*>(&obj->MapGroups[*obj->Header.GroupCount]) > static_cast<const char*>(pData) + length)
+						const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
+
+						if ((*obj->Header.FormatId != FormatId_Values[0] && *obj->Header.FormatId != FormatId_Values[1]) || data.size_bytes() < *obj->Header.Length)
+							return;
+
+						if (reinterpret_cast<const char*>(&obj->MapGroups[*obj->Header.GroupCount]) > reinterpret_cast<const char*>(obj) + data.size_bytes())
 							return;
 
 						m_obj = obj;
-						m_length = length;
+						m_length = data.size_bytes();
 					}
 
 					operator bool() const override {
@@ -1574,28 +1588,29 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 			template<typename T>
-			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-			View(const void* pData, size_t length) : View() {
-				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-				if (length < sizeof(*obj))
+			View(std::span<T> data) : View() {
+				if (data.size_bytes() < sizeof(*m_obj))
 					return;
-				if (length < sizeof(OffsetTableStruct) + sizeof(EncodingRecord) * obj->Header.SubtableCount)
+
+				const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
+
+				if (data.size_bytes() < sizeof(OffsetTableStruct) + sizeof(EncodingRecord) * obj->Header.SubtableCount)
 					return;
 
 				for (size_t i = 0, i_ = *obj->Header.SubtableCount; i < i_; ++i) {
 					const auto& encRec = obj->EncodingRecords[i];
-					if (encRec.SubtableOffset + sizeof uint16_t > length)
+					if (encRec.SubtableOffset + sizeof uint16_t > data.size_bytes())
 						return;
 
-					const auto pFormatView = Format::GetFormatView(std::span(static_cast<const char*>(pData), length).subspan(*encRec.SubtableOffset));
+					const auto pFormatView = Format::GetFormatView(std::span(reinterpret_cast<const char*>(obj), data.size_bytes()).subspan(*encRec.SubtableOffset));
 					if (!*pFormatView)
 						return;
 				}
 
 				m_obj = obj;
-				m_length = length;
+				m_length = data.size_bytes();
 			}
 
 			operator bool() const {
@@ -1673,16 +1688,19 @@ namespace XivRes::Internal::TrueType {
 				View& operator=(View&&) = default;
 				View& operator=(const View&) = default;
 				View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+				View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 				template<typename T>
-				View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-				View(const void* pData, size_t length) : View() {
-					const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
+				View(std::span<T> data) : View() {
+					if (sizeof Header > data.size_bytes())
+						return;
 
-					if (reinterpret_cast<const char*>(&obj->Pairs[obj->Header.PairCount]) > static_cast<const char*>(pData) + length)
+					const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
+
+					if (reinterpret_cast<const char*>(&obj->Pairs[obj->Header.PairCount]) > reinterpret_cast<const char*>(obj) + data.size_bytes())
 						return;
 
 					m_obj = obj;
-					m_length = length;
+					m_length = data.size_bytes();
 				}
 
 				operator bool() const {
@@ -1758,19 +1776,19 @@ namespace XivRes::Internal::TrueType {
 				View& operator=(View&&) = default;
 				View& operator=(const View&) = default;
 				View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+				View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 				template<typename T>
-				View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-				View(const void* pData, size_t length) : View() {
-					const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-					if (length < sizeof KernHeader)
+				View(std::span<T> data) : View() {
+					if (data.size_bytes() < sizeof KernHeader)
 						return;
+
+					const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
 
 					if (obj->Header.Version != 0)
 						return;
 
 					m_obj = obj;
-					m_length = length;
+					m_length = data.size_bytes();
 				}
 
 				operator bool() const {
@@ -1856,19 +1874,19 @@ namespace XivRes::Internal::TrueType {
 				View& operator=(View&&) = default;
 				View& operator=(const View&) = default;
 				View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+				View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 				template<typename T>
-				View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-				View(const void* pData, size_t length) : View() {
-					const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-					if (length < sizeof KernHeader)
+				View(std::span<T> data) : View() {
+					if (data.size_bytes() < sizeof KernHeader)
 						return;
+
+					const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
 
 					if (obj->Header.Version != 0x00010000)
 						return;
 
 					m_obj = obj;
-					m_length = length;
+					m_length = data.size_bytes();
 				}
 
 				operator bool() const {
@@ -1941,16 +1959,16 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 			template<typename T>
-			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-			View(const void* pData, size_t length) : View() {
-				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-				if (length < sizeof Version0::KernHeader)
+			View(std::span<T> data) : View() {
+				if (data.size_bytes() < sizeof Version0::KernHeader)
 					return;
 
+				const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
+
 				m_obj = obj;
-				m_length = length;
+				m_length = data.size_bytes();
 			}
 
 			operator bool() const {
@@ -2052,22 +2070,22 @@ namespace XivRes::Internal::TrueType {
 						View& operator=(View&&) = default;
 						View& operator=(const View&) = default;
 						View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+						View(const void* pData, size_t length, ValueFormatFlags format1, ValueFormatFlags format2) : View(std::span(reinterpret_cast<const char*>(pData), length), format1, format2) {}
 						template<typename T>
-						View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-						View(const void* pData, size_t length, ValueFormatFlags format1, ValueFormatFlags format2) : View() {
-							const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-							if (length < 2)
+						View(std::span<T> data, ValueFormatFlags format1, ValueFormatFlags format2) : View() {
+							if (data.size_bytes() < 2)
 								return;
+
+							const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
 
 							const auto bit = (format2.Value << 16) | format1.Value;
 							const auto valueCountPerPairValueRecord = static_cast<size_t>(1 + std::popcount<uint32_t>(bit));
 
-							if (length < static_cast<size_t>(2) + 2 * valueCountPerPairValueRecord * (*obj->Count))
+							if (data.size_bytes() < static_cast<size_t>(2) + 2 * valueCountPerPairValueRecord * (*obj->Count))
 								return;
 
 							m_obj = obj;
-							m_length = length;
+							m_length = data.size_bytes();
 							m_format1 = format1;
 							m_format2 = format2;
 							m_bit = bit;
@@ -2140,35 +2158,35 @@ namespace XivRes::Internal::TrueType {
 					View& operator=(View&&) = default;
 					View& operator=(const View&) = default;
 					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 					template<typename T>
-					View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-					View(const void* pData, size_t length) : View() {
-						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-						if (length < sizeof FormatHeader)
+					View(std::span<T> data) : View() {
+						if (data.size_bytes() < sizeof FormatHeader)
 							return;
+
+						const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
 
 						if (obj->Header.FormatId != 1)
 							return;
 
-						if (length < sizeof FormatHeader + static_cast<size_t>(2) * (*obj->Header.PairSetCount))
+						if (data.size_bytes() < sizeof FormatHeader + static_cast<size_t>(2) * (*obj->Header.PairSetCount))
 							return;
 
-						if (CoverageTable::View coverageTable(reinterpret_cast<const char*>(pData) + *obj->Header.CoverageOffset, m_length - *obj->Header.CoverageOffset); !coverageTable)
+						if (CoverageTable::View coverageTable(reinterpret_cast<const char*>(obj) + *obj->Header.CoverageOffset, data.size_bytes() - *obj->Header.CoverageOffset); !coverageTable)
 							return;
 
 						for (size_t i = 0, i_ = *obj->Header.PairSetCount; i < i_; i++) {
 							const auto off = static_cast<size_t>(*obj->PairSetOffsets[i]);
-							if (length < off + 2)
+							if (data.size_bytes() < off + 2)
 								return;
 
-							const auto pPairSet = reinterpret_cast<const PairSet*>(reinterpret_cast<const char*>(pData) + off);
-							if (length < off + 2 + static_cast<size_t>(2) * (*pPairSet->Count))
+							const auto pPairSet = reinterpret_cast<const PairSet*>(reinterpret_cast<const char*>(obj) + off);
+							if (data.size_bytes() < off + 2 + static_cast<size_t>(2) * (*pPairSet->Count))
 								return;
 						}
 
 						m_obj = obj;
-						m_length = length;
+						m_length = data.size_bytes();
 					}
 
 					operator bool() const {
@@ -2237,27 +2255,27 @@ namespace XivRes::Internal::TrueType {
 					View& operator=(View&&) = default;
 					View& operator=(const View&) = default;
 					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 					template<typename T>
-					View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-					View(const void* pData, size_t length) : View() {
-						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-						if (length < 2)
+					View(std::span<T> data) : View() {
+						if (data.size_bytes() < 2)
 							return;
+
+						const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
 
 						const auto bit = ((*obj->Header.ValueFormat2).Value << 16) | (*obj->Header.ValueFormat1).Value;
 						const auto valueCountPerPairValueRecord = static_cast<size_t>(1 + std::popcount<uint32_t>(bit));
 
-						if (length < sizeof FormatHeader + sizeof BE<uint16_t> *valueCountPerPairValueRecord * (*obj->Header.Class1Count) * (*obj->Header.Class2Count))
+						if (data.size_bytes() < sizeof FormatHeader + sizeof BE<uint16_t> *valueCountPerPairValueRecord * (*obj->Header.Class1Count) * (*obj->Header.Class2Count))
 							return;
 
-						if (ClassDefTable::View v(reinterpret_cast<const char*>(pData) + *obj->Header.ClassDef1Offset, length - *obj->Header.ClassDef1Offset); !v)
+						if (ClassDefTable::View v(reinterpret_cast<const char*>(obj) + *obj->Header.ClassDef1Offset, data.size_bytes() - *obj->Header.ClassDef1Offset); !v)
 							return;
-						if (ClassDefTable::View v(reinterpret_cast<const char*>(pData) + *obj->Header.ClassDef2Offset, length - *obj->Header.ClassDef2Offset); !v)
+						if (ClassDefTable::View v(reinterpret_cast<const char*>(obj) + *obj->Header.ClassDef2Offset, data.size_bytes() - *obj->Header.ClassDef2Offset); !v)
 							return;
 
 						m_obj = obj;
-						m_length = length;
+						m_length = data.size_bytes();
 						m_bit = bit;
 						m_valueCountPerPairValueRecord = valueCountPerPairValueRecord;
 					}
@@ -2336,24 +2354,24 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 			template<typename T>
-			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-			View(const void* pData, size_t length) : View() {
-				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-				if (length < sizeof GposHeaderV1_0)
+			View(std::span<T> data) : View() {
+				if (data.size_bytes() < sizeof GposHeaderV1_0)
 					return;
+
+				const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
 
 				if (obj->Version.Major < 1)
 					return;
 
 				if (obj->Version.Major > 1 || (obj->Version.Major == 1 && obj->Version.Minor >= 1)) {
-					if (length < sizeof GposHeaderV1_1)
+					if (data.size_bytes() < sizeof GposHeaderV1_1)
 						return;
 				}
 
 				m_obj = obj;
-				m_length = length;
+				m_length = data.size_bytes();
 			}
 
 			operator bool() const {
@@ -2497,24 +2515,25 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length, size_t offsetInCollection = 0) : View(std::span(reinterpret_cast<const char*>(pData), length), offsetInCollection) {}
 			template<typename T>
-			View(std::span<T> data, size_t offsetInCollection = 0) : View(&data[0], data.size_bytes(), offsetInCollection) {}
-			View(const void* pData, size_t length, size_t offsetInCollection = 0) : View() {
-				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-				if (length < sizeof OffsetTable)
+			View(std::span<T> data, size_t offsetInCollection = 0) : View() {
+				if (data.size_bytes() < sizeof OffsetTable)
 					return;
-				if (length < sizeof OffsetTable + sizeof DirectoryTableEntry * obj->OffsetTable.TableCount)
+
+				const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
+
+				if (data.size_bytes() < sizeof OffsetTable + sizeof DirectoryTableEntry * obj->OffsetTable.TableCount)
 					return;
 
 				size_t requiredLength = sizeof(OffsetTableStruct) + sizeof(DirectoryTableEntry) * *obj->OffsetTable.TableCount;
 				for (size_t i = 0, i_ = *obj->OffsetTable.TableCount; i < i_; i++)
 					requiredLength = (std::max)(requiredLength, static_cast<size_t>(*obj->DirectoryTable[i].Offset) + *obj->DirectoryTable[i].Length);
-				if (requiredLength > length)
+				if (requiredLength > data.size_bytes())
 					return;
 
 				m_obj = obj;
-				m_length = length;
+				m_length = data.size_bytes();
 				m_offsetInCollection = offsetInCollection;
 			}
 
@@ -2591,40 +2610,41 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			View(const void* pData, size_t length) : View(std::span(reinterpret_cast<const char*>(pData), length)) {}
 			template<typename T>
-			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
-			View(const void* pData, size_t length) : View() {
-				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
-
-				if (length < sizeof Header)
+			View(std::span<T> data) : View() {
+				if (data.size_bytes() < sizeof Header)
 					return;
+
+				const auto obj = reinterpret_cast<decltype(m_obj)>(&data[0]);
+
 				if (obj->FileHeader.Tag != Header::HeaderTag)
 					return;
 				if (obj->FileHeader.MajorVersion == 0)
 					return;
-				if (length < sizeof Header + sizeof uint32_t * obj->FileHeader.FontCount)
+				if (data.size_bytes() < sizeof Header + sizeof uint32_t * obj->FileHeader.FontCount)
 					return;
 				if (obj->FileHeader.MajorVersion >= 2) {
-					if (length < sizeof Header + sizeof uint32_t * obj->FileHeader.FontCount + sizeof DigitalSignatureHeader)
+					if (data.size_bytes() < sizeof Header + sizeof uint32_t * obj->FileHeader.FontCount + sizeof DigitalSignatureHeader)
 						return;
 
 					const auto pDsig = reinterpret_cast<const DigitalSignatureHeader*>(&obj->FontOffsets[*obj->FileHeader.FontCount]);
 					if (pDsig->Tag.IntValue == 0)
 						void();
 					else if (pDsig->Tag == DigitalSignatureHeader::HeaderTag) {
-						if (length < static_cast<size_t>(*pDsig->Offset) + *pDsig->Length)
+						if (data.size_bytes() < static_cast<size_t>(*pDsig->Offset) + *pDsig->Length)
 							return;
 					} else
 						return;
 				}
 				for (size_t i = 0, i_ = *obj->FileHeader.FontCount; i < i_; i++) {
 					const auto offset = static_cast<size_t>(*obj->FontOffsets[i]);
-					if (SfntFile::View v(reinterpret_cast<const char*>(pData) + offset, length - offset, offset); !v)
+					if (SfntFile::View v(reinterpret_cast<const char*>(obj) + offset, data.size_bytes() - offset, offset); !v)
 						return;
 				}
 
 				m_obj = obj;
-				m_length = length;
+				m_length = data.size_bytes();
 			}
 
 			operator bool() const {
@@ -2645,7 +2665,7 @@ namespace XivRes::Internal::TrueType {
 
 			SfntFile::View GetFont(size_t index) const {
 				if (index >= m_obj->FileHeader.FontCount)
-					throw std::out_of_range("Font index of range");
+					return {};
 
 				const auto offset = static_cast<size_t>(*m_obj->FontOffsets[index]);
 				return SfntFile::View(m_bytes + offset, m_length - offset, offset);

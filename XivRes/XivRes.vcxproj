@@ -32,6 +32,7 @@
     <ClInclude Include="xivres\ExcelReader.h" />
     <ClInclude Include="xivres\Fontdata.h" />
     <ClInclude Include="xivres\FontdataStream.h" />
+    <ClInclude Include="xivres\FontGenerator\DirectWriteFixedSizeFont.h" />
     <ClInclude Include="xivres\FontGenerator\WrappingFixedSizeFont.h" />
     <ClInclude Include="xivres\FontGenerator\FontdataPacker.h" />
     <ClInclude Include="xivres\FontGenerator\FreeTypeFixedSizeFont.h" />
@@ -87,9 +88,7 @@
     <ClInclude Include="xivres\TexturePackedFileStreamDecoder.h" />
     <ClInclude Include="xivres\Texture.h" />
     <ClInclude Include="xivres\TextureStream.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="xivres\internal\Codepoint.h" />
+    <ClInclude Include="xivres\Unicode.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

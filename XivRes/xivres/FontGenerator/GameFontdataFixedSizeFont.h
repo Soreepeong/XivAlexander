@@ -107,7 +107,7 @@ namespace XivRes::FontGenerator {
 			return m_info->Font->GetFontEntry(c);
 		}
 
-		const std::map<std::pair<char32_t, char32_t>, int>& GetKerningPairs() const override {
+		const std::map<std::pair<char32_t, char32_t>, int>& GetAllKerningPairs() const override {
 			return m_info->KerningPairs;
 		}
 

@@ -49,7 +49,7 @@ namespace XivRes::FontGenerator {
 				std::ranges::set_difference(font->GetAllCodepoints(), info->Codepoints, std::inserter(newCodepoints, newCodepoints.end()));
 				info->Codepoints.insert(newCodepoints.begin(), newCodepoints.end());
 
-				for (const auto& kerningPair : font->GetKerningPairs()) {
+				for (const auto& kerningPair : font->GetAllKerningPairs()) {
 					if (newCodepoints.contains(kerningPair.first.first) && newCodepoints.contains(kerningPair.first.second))
 						info->KerningPairs.emplace(kerningPair);
 				}
@@ -97,7 +97,7 @@ namespace XivRes::FontGenerator {
 			return nullptr;
 		}
 
-		const std::map<std::pair<char32_t, char32_t>, int>& GetKerningPairs() const override {
+		const std::map<std::pair<char32_t, char32_t>, int>& GetAllKerningPairs() const override {
 			return m_info->KerningPairs;
 		}
 

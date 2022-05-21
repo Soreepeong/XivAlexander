@@ -2,10 +2,10 @@
 
 #include "XivRes/FontGenerator/WrappingFixedSizeFont.h"
 #include "XivRes/FontGenerator/FontdataPacker.h"
-#include "XivRes/FontGenerator/FreeTypeFixedSizeFont.h"
 #include "XivRes/FontGenerator/GameFontdataFixedSizeFont.h"
 #include "XivRes/FontGenerator/MergedFixedSizeFont.h"
 #include "XivRes/FontGenerator/TextMeasurer.h"
+#include "XivRes/Internal/TrueTypeUtils.h"
 
 #include "ExampleWindow.h"
 
@@ -17,11 +17,7 @@ void InspectFonts() {
 		const auto name = sfnt.TryGetTable<Name>();
 		const auto cmap = sfnt.TryGetTable<Cmap>();
 
-		/*if (fontIndex >= 0)
-			std::cout << std::format("{}({})", (char*)filename.c_str(), fontIndex);
-		else
-			std::cout << std::format("{}", (char*)filename.c_str());*/
-		std::cout << std::format("{:<32} {:<24}\t", (char*)(name.GetPreferredFamilyName(0)).c_str(), (char*)name.GetPreferredSubfamilyName(0).c_str());
+		std::cout << std::format("{:<32} {:<24}\t", name.GetPreferredFamilyName(0), name.GetPreferredSubfamilyName(0));
 
 		const auto cmapVector = cmap.GetGlyphToCharMap();
 		size_t numc = 0;
@@ -78,7 +74,7 @@ void InspectFonts() {
 }
 
 void TestSourceHanSansK() {
-	using namespace XivRes::Internal;
+	using namespace XivRes::Unicode;
 	using namespace XivRes::Internal::TrueType;
 
 	const auto buf = ReadStreamIntoVector<char>(XivRes::FileStream(LR"(C:\windows\fonts\SourceHanSansK-Regular.otf)"));
@@ -101,7 +97,7 @@ void TestSourceHanSansK() {
 				uint32_t u8u32v;
 				char b[5]{};
 			};
-			u8u32v = XivRes::Internal::UnicodeCodePointToUtf8Uint32(charId);
+			u8u32v = XivRes::Unicode::CodePointToUtf8Uint32(charId);
 			std::reverse(b, b + strlen(b));
 			std::cout << b;
 

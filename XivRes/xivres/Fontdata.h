@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 #include "Internal/ByteOrder.h"
-#include "Internal/Codepoint.h"
+#include "Unicode.h"
 
 #include "Common.h"
 
@@ -51,12 +51,12 @@ namespace XivRes {
 		LE<int8_t> CurrentOffsetY;
 
 		[[nodiscard]] char32_t Char() const {
-			return Internal::Utf8Uint32ToUnicodeCodePoint(Utf8Value);
+			return Unicode::Utf8Uint32ToUnicodeCodePoint(Utf8Value);
 		}
 
 		char32_t Char(char32_t newValue) {
-			Utf8Value = Internal::UnicodeCodePointToUtf8Uint32(newValue);
-			ShiftJisValue = Internal::UnicodeCodePointToShiftJisUint16(newValue);
+			Utf8Value = Unicode::CodePointToUtf8Uint32(newValue);
+			ShiftJisValue = Unicode::CodePointToShiftJisUint16(newValue);
 			return newValue;
 		}
 
@@ -97,22 +97,22 @@ namespace XivRes {
 		LE<int32_t> RightOffset;
 
 		[[nodiscard]] char32_t Left() const {
-			return Internal::Utf8Uint32ToUnicodeCodePoint(LeftUtf8Value);
+			return Unicode::Utf8Uint32ToUnicodeCodePoint(LeftUtf8Value);
 		}
 
 		char32_t Left(char32_t newValue) {
-			LeftUtf8Value = Internal::UnicodeCodePointToUtf8Uint32(newValue);
-			LeftShiftJisValue = Internal::UnicodeCodePointToShiftJisUint16(newValue);
+			LeftUtf8Value = Unicode::CodePointToUtf8Uint32(newValue);
+			LeftShiftJisValue = Unicode::CodePointToShiftJisUint16(newValue);
 			return newValue;
 		}
 
 		[[nodiscard]] char32_t Right() const {
-			return Internal::Utf8Uint32ToUnicodeCodePoint(RightUtf8Value);
+			return Unicode::Utf8Uint32ToUnicodeCodePoint(RightUtf8Value);
 		}
 
 		char32_t Right(char32_t newValue) {
-			RightUtf8Value = Internal::UnicodeCodePointToUtf8Uint32(newValue);
-			RightShiftJisValue = Internal::UnicodeCodePointToShiftJisUint16(newValue);
+			RightUtf8Value = Unicode::CodePointToUtf8Uint32(newValue);
+			RightShiftJisValue = Unicode::CodePointToShiftJisUint16(newValue);
 			return newValue;
 		}
 

@@ -103,33 +103,20 @@ namespace XivRes::FontGenerator {
 			return *this;
 		}
 
-		TextMeasureResult Measure(const char32_t* pcszString, size_t nLength = (std::numeric_limits<size_t>::max)()) const {
-			if (nLength == (std::numeric_limits<size_t>::max)())
-				nLength = std::char_traits<char32_t>::length(pcszString);
-
-			TextMeasureResult res{};
-			res.Characters.reserve(nLength);
-			for (auto pc = pcszString, pc_ = pc + nLength; pc < pc_; pc++) {
-				auto c = *pc;
-				if (c == '\r') {
-					if (pc + 1 < pc_ && *(pc + 1) == '\n')
-						continue;
-					c = '\n';
-				}
-
-				res.Characters.emplace_back(c, c, 0, 0, GlyphMetrics{});
-			}
-
-			return Measure(res);
+		template <class TStringElem, class TStringTraits = std::char_traits<TStringElem>, class TStringAlloc = std::allocator<TStringElem>>
+		TextMeasureResult Measure(const std::basic_string<TStringElem, TStringTraits, TStringAlloc>& pcszString) const {
+			return Measure(&pcszString[0], pcszString.size());
 		}
 
-		TextMeasureResult Measure(const wchar_t* pcszString, size_t nLength = (std::numeric_limits<size_t>::max)()) const {
-			return Measure(reinterpret_cast<const char16_t*>(pcszString), nLength);
+		template <class TStringElem, class TStringTraits = std::char_traits<TStringElem>>
+		TextMeasureResult Measure(const std::basic_string_view<TStringElem, TStringTraits>& pcszString) const {
+			return Measure(&pcszString[0], pcszString.size());
 		}
 
-		TextMeasureResult Measure(const char16_t* pcszString, size_t nLength = (std::numeric_limits<size_t>::max)()) const {
+		template<typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
+		TextMeasureResult Measure(const T* pcszString, size_t nLength = (std::numeric_limits<size_t>::max)()) const {
 			if (nLength == (std::numeric_limits<size_t>::max)())
-				nLength = std::char_traits<char16_t>::length(pcszString);
+				nLength = std::char_traits<T>::length(pcszString);
 
 			TextMeasureResult res{};
 			res.Characters.reserve(nLength);
@@ -141,38 +128,7 @@ namespace XivRes::FontGenerator {
 					c = '\n';
 				}
 
-				auto consumed = static_cast<size_t>(pc_ - pc);
-				c = Internal::DecodeUtf16(pc, consumed);
-				pc += consumed - 1;
-
-				res.Characters.emplace_back(c, c, 0, 0, GlyphMetrics{});
-			}
-
-			return Measure(res);
-		}
-
-		TextMeasureResult Measure(const char* pcszString, size_t nLength = (std::numeric_limits<size_t>::max)()) const {
-			return Measure(reinterpret_cast<const char8_t*>(pcszString), nLength);
-		}
-
-		TextMeasureResult Measure(const char8_t* pcszString, size_t nLength = (std::numeric_limits<size_t>::max)()) const {
-			if (nLength == (std::numeric_limits<size_t>::max)())
-				nLength = std::char_traits<char8_t>::length(pcszString);
-
-			TextMeasureResult res{};
-			res.Characters.reserve(nLength);
-			for (auto pc = pcszString, pc_ = pc + nLength; pc < pc_; pc++) {
-				char32_t c = *pc;
-				if (c == '\r') {
-					if (pc + 1 < pc_ && *(pc + 1) == '\n')
-						continue;
-					c = '\n';
-				}
-
-				auto consumed = static_cast<size_t>(pc_ - pc);
-				c = Internal::DecodeUtf8(pc, consumed);
-				pc += consumed - 1;
-
+				pc += Unicode::Decode(c, pc, pc_ - pc) - 1;
 				res.Characters.emplace_back(c, c, 0, 0, GlyphMetrics{});
 			}
 
