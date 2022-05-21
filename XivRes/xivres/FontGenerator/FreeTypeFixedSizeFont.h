@@ -82,11 +82,16 @@ namespace XivRes::FontGenerator {
 				m_face = CreateFace(*m_library, *info);
 
 				info->Characters.insert(' ');
-				const auto cmapVector = cmap.Parse();
-				for (const auto c : cmapVector) {
-					if (c != (std::numeric_limits<char32_t>::max)())
+				const auto cmapVector = cmap.GetGlyphToCharMap();
+				for (const auto& cs : cmapVector) {
+					for (const auto c : cs)
 						info->Characters.insert(c);
 				}
+
+				std::vector<char32_t> resultr;
+				FT_UInt glyphIndex;
+				for (char32_t c = FT_Get_First_Char(&*m_face, &glyphIndex); glyphIndex; c = FT_Get_Next_Char(&*m_face, c, &glyphIndex))
+					resultr.push_back(c);
 
 				if (const auto kern = sfnt.TryGetTable<Internal::TrueType::Kern>(); kern)
 					info->KerningPairs = kern.Parse(cmapVector);

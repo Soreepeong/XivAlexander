@@ -103,6 +103,8 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			template<typename T>
+			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 			View(const void* pData, size_t length) : View() {
 				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -172,6 +174,8 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			template<typename T>
+			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 			View(const void* pData, size_t length) : View() {
 				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -249,6 +253,8 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			template<typename T>
+			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 			View(const void* pData, size_t length) : View() {
 				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -376,6 +382,8 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			template<typename T>
+			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 			View(const void* pData, size_t length) : View() {
 				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -568,6 +576,8 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			template<typename T>
+			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 			View(const void* pData, size_t length) : View() {
 				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -679,6 +689,8 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			template<typename T>
+			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 			View(const void* pData, size_t length) : View() {
 				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -854,6 +866,25 @@ namespace XivRes::Internal::TrueType {
 		union Format {
 			BE<uint16_t> FormatId;
 
+			struct MapGroup {
+				BE<uint32_t> StartCharCode;
+				BE<uint32_t> EndCharCode;
+				BE<uint32_t> GlyphId;
+			};
+
+			class IFormatView {
+			public:
+				virtual void GetGlyphToCharMap(std::vector<std::set<char32_t>>& result) const = 0;
+
+				virtual operator bool() const = 0;
+			};
+
+			class ValidButUnsupportedFormatView : public IFormatView {
+			public:
+				void GetGlyphToCharMap(std::vector<std::set<char32_t>>& result) const {}
+				operator bool() const override { return true; }
+			};
+
 			struct Format0 {
 				static constexpr uint16_t FormatId_Value = 0;
 
@@ -866,7 +897,7 @@ namespace XivRes::Internal::TrueType {
 				FormatHeader Header;
 				uint8_t GlyphIdArray[256];
 
-				class View {
+				class View : public IFormatView {
 					union {
 						const Format0* m_obj;
 						const char* m_bytes;
@@ -883,6 +914,8 @@ namespace XivRes::Internal::TrueType {
 					View& operator=(View&&) = default;
 					View& operator=(const View&) = default;
 					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					template<typename T>
+					View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 					View(const void* pData, size_t length) : View() {
 						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -896,7 +929,7 @@ namespace XivRes::Internal::TrueType {
 						m_length = length;
 					}
 
-					operator bool() const {
+					operator bool() const override {
 						return !!m_obj;
 					}
 
@@ -912,10 +945,10 @@ namespace XivRes::Internal::TrueType {
 						return c >= 256 ? 0 : m_obj->GlyphIdArray[c];
 					}
 
-					void Parse(std::vector<char32_t>& result) const {
+					void GetGlyphToCharMap(std::vector<std::set<char32_t>>& result) const override {
 						for (char32_t i = 0; i < 256; i++)
 							if (m_obj->GlyphIdArray[i])
-								result[m_obj->GlyphIdArray[i]] = i;
+								result[m_obj->GlyphIdArray[i]].insert(i);
 					}
 				};
 			};
@@ -940,7 +973,7 @@ namespace XivRes::Internal::TrueType {
 				FormatHeader Header;
 				SubHeader SubHeaders[1];
 
-				class View {
+				class View : public IFormatView {
 					union {
 						const Format2* m_obj;
 						const char* m_bytes;
@@ -957,6 +990,8 @@ namespace XivRes::Internal::TrueType {
 					View& operator=(View&&) = default;
 					View& operator=(const View&) = default;
 					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					template<typename T>
+					View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 					View(const void* pData, size_t length) : View() {
 						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -967,7 +1002,7 @@ namespace XivRes::Internal::TrueType {
 						m_length = length;
 					}
 
-					operator bool() const {
+					operator bool() const override {
 						return !!m_obj;
 					}
 
@@ -1000,21 +1035,21 @@ namespace XivRes::Internal::TrueType {
 						return c == 0 ? 0 : (c + subHeader.IdDelta) & 0xFFFF;
 					}
 
-					void Parse(std::vector<char32_t>& result) const {
-						for (char32_t c = 0; c < 0x10000; c += 0x100) {
-							const auto& subHeader = m_obj->SubHeaders[m_obj->Header.SubHeaderKeys[c >> 8] / sizeof SubHeader];
+					void GetGlyphToCharMap(std::vector<std::set<char32_t>>& result) const override {
+						for (char32_t baseChar = 0; baseChar < 0x10000; baseChar += 0x100) {
+							const auto& subHeader = m_obj->SubHeaders[m_obj->Header.SubHeaderKeys[baseChar >> 8] / sizeof SubHeader];
 							if (reinterpret_cast<const char*>(&subHeader) + sizeof(subHeader) > m_bytes + *m_obj->Header.Length)
 								continue;  // overflow
 
 							const auto glyphArray = reinterpret_cast<const BE<uint16_t>*>(reinterpret_cast<const char*>(&subHeader.IdRangeOffset) + sizeof subHeader.IdRangeOffset + subHeader.IdRangeOffset);
-							for (char32_t c2 = c + subHeader.FirstCode, c2_ = c2 + subHeader.EntryCount; c2 < c2_; c2++) {
-								const auto pGlyphIndex = &glyphArray[c - subHeader.FirstCode];
+							for (char32_t c = baseChar + subHeader.FirstCode, c2_ = c + subHeader.EntryCount; c < c2_; c++) {
+								const auto pGlyphIndex = &glyphArray[baseChar - subHeader.FirstCode];
 								if (reinterpret_cast<const char*>(pGlyphIndex) + sizeof(*pGlyphIndex) > m_bytes + *m_obj->Header.Length)
 									continue; // overflow
 
 								const auto glyphIndex = **pGlyphIndex;
 								if (glyphIndex)
-									result[(c + subHeader.IdDelta) & 0xFFFF] = c2;
+									result[(baseChar + subHeader.IdDelta) & 0xFFFF].insert(c);
 							}
 						}
 					}
@@ -1032,12 +1067,16 @@ namespace XivRes::Internal::TrueType {
 					BE<uint16_t> SearchRange;
 					BE<uint16_t> EntrySelector;
 					BE<uint16_t> RangeShift;
+
+					const size_t SegCount() const {
+						return *SegCountX2 / 2;
+					}
 				};
 
 				FormatHeader Header;
-				char VariableData[1];
+				BE<uint16_t> Data[1];
 
-				class View {
+				class View : public IFormatView {
 					union {
 						const Format4* m_obj;
 						const char* m_bytes;
@@ -1054,6 +1093,8 @@ namespace XivRes::Internal::TrueType {
 					View& operator=(View&&) = default;
 					View& operator=(const View&) = default;
 					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					template<typename T>
+					View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 					View(const void* pData, size_t length) : View() {
 						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -1063,14 +1104,14 @@ namespace XivRes::Internal::TrueType {
 						if (sizeof Header + 4 + *obj->Header.SegCountX2 * 3 > length)
 							return;
 
-						if (reinterpret_cast<const char*>(reinterpret_cast<const BE<uint16_t>*>(&obj->VariableData[2 + *obj->Header.SegCountX2 * 3]) + static_cast<size_t>(*obj->Header.SegCountX2 / 2)) > static_cast<const char*>(pData) + length)
+						if (reinterpret_cast<const char*>(&obj->Data[1 + obj->Header.SegCount() * 4]) > static_cast<const char*>(pData) + length)
 							return;
 
 						m_obj = obj;
 						m_length = length;
 					}
 
-					operator bool() const {
+					operator bool() const override {
 						return !!m_obj;
 					}
 
@@ -1082,15 +1123,17 @@ namespace XivRes::Internal::TrueType {
 						return m_obj;
 					}
 
-					std::span<const BE<uint16_t>> EndCodeSpan() const { return { reinterpret_cast<const BE<uint16_t>*>(&m_obj->VariableData[0]), static_cast<size_t>(*m_obj->Header.SegCountX2 / 2) }; }
-					std::span<const BE<uint16_t>> StartCodeSpan() const { return { reinterpret_cast<const BE<uint16_t>*>(&m_obj->VariableData[2 + *m_obj->Header.SegCountX2 * 1]), static_cast<size_t>(*m_obj->Header.SegCountX2 / 2) }; }
-					std::span<const BE<uint16_t>> IdDeltaSpan() const { return { reinterpret_cast<const BE<uint16_t>*>(&m_obj->VariableData[2 + *m_obj->Header.SegCountX2 * 2]), static_cast<size_t>(*m_obj->Header.SegCountX2 / 2) }; }
-					std::span<const BE<uint16_t>> IdRangeSpan() const { return { reinterpret_cast<const BE<uint16_t>*>(&m_obj->VariableData[2 + *m_obj->Header.SegCountX2 * 3]), static_cast<size_t>(*m_obj->Header.SegCountX2 / 2) }; }
+					const BE<uint16_t>& EndCode(size_t i) const { return m_obj->Data[0 + m_obj->Header.SegCount() * 0 + i]; }
+					const BE<uint16_t>& StartCode(size_t i) const { return m_obj->Data[1 + m_obj->Header.SegCount() * 1 + i]; }
+					const BE<uint16_t>& IdDelta(size_t i) const { return m_obj->Data[1 + m_obj->Header.SegCount() * 2 + i]; }
+					const BE<uint16_t>& IdRangeOffset(size_t i) const { return m_obj->Data[1 + m_obj->Header.SegCount() * 3 + i]; }
+					const BE<uint16_t>& GlyphIndex(size_t i) const { return m_obj->Data[1 + m_obj->Header.SegCount() * 4 + i]; }
 
-					const BE<uint16_t>& EndCode(size_t i) const { return reinterpret_cast<const BE<uint16_t>*>(&m_obj->VariableData[0])[i]; }
-					const BE<uint16_t>& StartCode(size_t i) const { return reinterpret_cast<const BE<uint16_t>*>(&m_obj->VariableData[2 + *m_obj->Header.SegCountX2 * 1])[i]; }
-					const BE<uint16_t>& IdDelta(size_t i) const { return reinterpret_cast<const BE<uint16_t>*>(&m_obj->VariableData[2 + *m_obj->Header.SegCountX2 * 2])[i]; }
-					const BE<uint16_t>& IdRangeOffset(size_t i) const { return reinterpret_cast<const BE<uint16_t>*>(&m_obj->VariableData[2 + *m_obj->Header.SegCountX2 * 3])[i]; }
+					std::span<const BE<uint16_t>> EndCodeSpan() const { return { &EndCode(0), m_obj->Header.SegCount() }; }
+					std::span<const BE<uint16_t>> StartCodeSpan() const { return { &StartCode(0), m_obj->Header.SegCount() }; }
+					std::span<const BE<uint16_t>> IdDeltaSpan() const { return { &IdDelta(0), m_obj->Header.SegCount() }; }
+					std::span<const BE<uint16_t>> IdRangeOffsetSpan() const { return { &IdRangeOffset(0), m_obj->Header.SegCount() }; }
+					std::span<const BE<uint16_t>> GlyphIndexSpan() const { return { &GlyphIndex(0), static_cast<size_t>((m_bytes + m_length - reinterpret_cast<const char*>(&GlyphIndex(0))) / 2) }; }
 
 					uint16_t CharToGlyph(uint32_t c) const {
 						if (c >= 0x10000)
@@ -1122,28 +1165,42 @@ namespace XivRes::Internal::TrueType {
 						return glyphIndex == 0 ? 0 : (idDelta + glyphIndex) & 0xFFFF;
 					}
 
-					void Parse(std::vector<char32_t>& result) const {
-						for (size_t i = 0, i_ = m_obj->Header.SegCountX2 / 2; i < i_; i++) {
-							const auto pIdRangeOffset = &IdRangeOffset(i);
-							if (reinterpret_cast<const char*>(pIdRangeOffset) + sizeof(*pIdRangeOffset) > m_bytes + *m_obj->Header.Length)
-								continue; // overflow
+					void GetGlyphToCharMap(std::vector<std::set<char32_t>>& result) const override {
+						const auto startCodes = StartCodeSpan();
+						const auto endCodes = EndCodeSpan();
+						const auto idDeltas = IdDeltaSpan();
+						const auto idRangeOffsets = IdRangeOffsetSpan();
+						const auto glyphIndices = GlyphIndexSpan();
 
-							const auto idRangeOffset = **pIdRangeOffset;
-							const auto idDelta = *IdDelta(i);
+						for (size_t i = 0, i_ = m_obj->Header.SegCount(); i < i_; i++) {
+							const auto startCode = static_cast<char32_t>(*startCodes[i]);
+							const auto endCode = static_cast<char32_t>(*endCodes[i]);
+							const auto idDelta = static_cast<size_t>(*idDeltas[i]);
+							const auto idRangeOffset = static_cast<size_t>(*idRangeOffsets[i]);
 
 							if (idRangeOffset == 0) {
-								for (char32_t startCode = *StartCode(i), endCode = *EndCode(i), c = startCode; c <= endCode; c++)
-									result[(idDelta + c) & 0xFFFF] = c;
+								for (auto c = startCode; c <= endCode; c++) {
+									const auto glyphId = (idDelta + c) & 0xFFFF;
+									result[glyphId].insert(c);
+								}
 
 							} else {
-								for (char32_t startCode = *StartCode(i), endCode = *EndCode(i), c = startCode; c <= endCode; c++) {
+								const auto pIdRangeOffset = &IdRangeOffset(i);
+
+								if (reinterpret_cast<const char*>(pIdRangeOffset) + sizeof(*pIdRangeOffset) > m_bytes + *m_obj->Header.Length)
+									continue; // overflow
+
+								for (auto c = startCode; c <= endCode; c++) {
 									const auto pGlyphIndex = &pIdRangeOffset[idRangeOffset / 2 + c - startCode];
 									if (reinterpret_cast<const char*>(pGlyphIndex) + sizeof(*pGlyphIndex) > m_bytes + *m_obj->Header.Length)
 										break; // overflow
 
 									const auto glyphIndex = **pGlyphIndex;
-									if (glyphIndex)
-										result[(idDelta + glyphIndex) & 0xFFFF] = c;
+									if (!glyphIndex)
+										continue;
+									
+									const auto glyphId = (idDelta + glyphIndex) & 0xFFFF;
+									result[glyphId].insert(c);
 								}
 							}
 						}
@@ -1165,7 +1222,7 @@ namespace XivRes::Internal::TrueType {
 				FormatHeader Header;
 				BE<uint16_t> GlyphId[1];
 
-				class View {
+				class View : public IFormatView {
 					union {
 						const Format6* m_obj;
 						const char* m_bytes;
@@ -1182,6 +1239,8 @@ namespace XivRes::Internal::TrueType {
 					View& operator=(View&&) = default;
 					View& operator=(const View&) = default;
 					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					template<typename T>
+					View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 					View(const void* pData, size_t length) : View() {
 						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -1195,7 +1254,7 @@ namespace XivRes::Internal::TrueType {
 						m_length = length;
 					}
 
-					operator bool() const {
+					operator bool() const override {
 						return !!m_obj;
 					}
 
@@ -1216,24 +1275,12 @@ namespace XivRes::Internal::TrueType {
 						return m_obj->GlyphId[c - m_obj->Header.FirstCode];
 					}
 
-					void Parse(std::vector<char32_t>& result) const {
+					void GetGlyphToCharMap(std::vector<std::set<char32_t>>& result) const override {
 						for (char32_t c = *m_obj->Header.FirstCode, c_ = c + *m_obj->Header.EntryCount; c < c_; c++)
 							if (const auto glyphId = *m_obj->GlyphId[c])
-								result[glyphId] = c;
+								result[glyphId].insert(c);
 					}
 				};
-			};
-
-			struct SequentialMapGroup {
-				BE<uint32_t> StartCharCode;
-				BE<uint32_t> EndCharCode;
-				BE<uint32_t> StartGlyphId;
-			};
-
-			struct ConstantMapGroup {
-				BE<uint32_t> StartCharCode;
-				BE<uint32_t> EndCharCode;
-				BE<uint32_t> GlyphId;
 			};
 
 			struct Format8 {
@@ -1249,9 +1296,9 @@ namespace XivRes::Internal::TrueType {
 				};
 
 				FormatHeader Header;
-				SequentialMapGroup Group[1];
+				MapGroup Group[1];
 
-				class View {
+				class View : public IFormatView {
 					union {
 						const Format8* m_obj;
 						const char* m_bytes;
@@ -1268,6 +1315,8 @@ namespace XivRes::Internal::TrueType {
 					View& operator=(View&&) = default;
 					View& operator=(const View&) = default;
 					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					template<typename T>
+					View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 					View(const void* pData, size_t length) : View() {
 						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -1281,7 +1330,7 @@ namespace XivRes::Internal::TrueType {
 						m_length = length;
 					}
 
-					operator bool() const {
+					operator bool() const override {
 						return !!m_obj;
 					}
 
@@ -1293,22 +1342,22 @@ namespace XivRes::Internal::TrueType {
 						return m_obj;
 					}
 
-					std::span<const SequentialMapGroup> GroupSpan() const { return { m_obj->Group, static_cast<size_t>(*m_obj->Header.GroupCount) }; }
+					std::span<const MapGroup> GroupSpan() const { return { const_cast<MapGroup*>(m_obj->Group), static_cast<size_t>(*m_obj->Header.GroupCount) }; }
 
 					uint16_t CharToGlyph(uint32_t c) const {
-						SequentialMapGroup tmp;
+						MapGroup tmp;
 						tmp.EndCharCode = c;
-						const auto& group = std::upper_bound(GroupSpan().begin(), GroupSpan().end(), tmp, [](const SequentialMapGroup& l, const SequentialMapGroup& r) { return *l.EndCharCode < *r.EndCharCode; })[-1];
+						const auto& group = std::upper_bound(GroupSpan().begin(), GroupSpan().end(), tmp, [](const MapGroup& l, const MapGroup& r) { return *l.EndCharCode < *r.EndCharCode; })[-1];
 						if (&group < m_obj->Group || c < *group.StartCharCode || c > *group.EndCharCode)
 							return 0;
 
-						return group.StartGlyphId + c - group.StartCharCode;
+						return group.GlyphId + c - group.StartCharCode;
 					}
 
-					void Parse(std::vector<char32_t>& result) const {
+					void GetGlyphToCharMap(std::vector<std::set<char32_t>>& result) const override {
 						for (const auto& group : GroupSpan())
 							for (char32_t c = *group.StartCharCode, c_ = *group.EndCharCode; c <= c_; c++)
-								result[group.StartGlyphId + c - group.StartCharCode] = c;
+								result[group.GlyphId + c - group.StartCharCode].insert(c);
 					}
 				};
 			};
@@ -1328,7 +1377,7 @@ namespace XivRes::Internal::TrueType {
 				FormatHeader Header;
 				BE<uint16_t> GlyphId[1];
 
-				class View {
+				class View : public IFormatView {
 					union {
 						const Format10* m_obj;
 						const char* m_bytes;
@@ -1345,6 +1394,8 @@ namespace XivRes::Internal::TrueType {
 					View& operator=(View&&) = default;
 					View& operator=(const View&) = default;
 					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					template<typename T>
+					View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 					View(const void* pData, size_t length) : View() {
 						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -1358,7 +1409,7 @@ namespace XivRes::Internal::TrueType {
 						m_length = length;
 					}
 
-					operator bool() const {
+					operator bool() const override {
 						return !!m_obj;
 					}
 
@@ -1379,10 +1430,10 @@ namespace XivRes::Internal::TrueType {
 						return m_obj->GlyphId[c];
 					}
 
-					void Parse(std::vector<char32_t>& result) const {
+					void GetGlyphToCharMap(std::vector<std::set<char32_t>>& result) const override {
 						for (char32_t c = *m_obj->Header.FirstCode, c_ = c + *m_obj->Header.EntryCount; c < c_; c++)
 							if (const auto glyphId = *m_obj->GlyphId[c])
-								result[glyphId] = c;
+								result[glyphId].insert(c);
 					}
 				};
 			};
@@ -1399,12 +1450,9 @@ namespace XivRes::Internal::TrueType {
 				};
 
 				FormatHeader Header;
-				union {
-					SequentialMapGroup SequentialGroup[1];
-					ConstantMapGroup ConstantGroup[1];
-				};
+				MapGroup MapGroups[1];
 
-				class View {
+				class View : public IFormatView {
 					union {
 						const Format12And13* m_obj;
 						const char* m_bytes;
@@ -1421,20 +1469,22 @@ namespace XivRes::Internal::TrueType {
 					View& operator=(View&&) = default;
 					View& operator=(const View&) = default;
 					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					template<typename T>
+					View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 					View(const void* pData, size_t length) : View() {
 						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
 						if (length < sizeof FormatHeader || (*obj->Header.FormatId != FormatId_Values[0] && *obj->Header.FormatId != FormatId_Values[1]) || length < *obj->Header.Length)
 							return;
 
-						if (reinterpret_cast<const char*>(&obj->SequentialGroup[*obj->Header.GroupCount]) > static_cast<const char*>(pData) + length)
+						if (reinterpret_cast<const char*>(&obj->MapGroups[*obj->Header.GroupCount]) > static_cast<const char*>(pData) + length)
 							return;
 
 						m_obj = obj;
 						m_length = length;
 					}
 
-					operator bool() const {
+					operator bool() const override {
 						return !!m_obj;
 					}
 
@@ -1446,35 +1496,62 @@ namespace XivRes::Internal::TrueType {
 						return m_obj;
 					}
 
-					std::span<const SequentialMapGroup> SequentialGroupSpan() const { return { m_obj->SequentialGroup, *m_obj->Header.GroupCount }; }
-					std::span<const ConstantMapGroup> ConstantGroupSpan() const { return { m_obj->ConstantGroup, *m_obj->Header.GroupCount }; }
+					std::span<const MapGroup> MapGroupSpan() const { return { const_cast<MapGroup*>(m_obj->MapGroups), *m_obj->Header.GroupCount }; }
 
 					uint16_t CharToGlyph(uint32_t c) const {
-						SequentialMapGroup tmp;
+						MapGroup tmp;
 						tmp.EndCharCode = c;
-						const auto& group = std::upper_bound(SequentialGroupSpan().begin(), SequentialGroupSpan().end(), tmp, [](const SequentialMapGroup& l, const SequentialMapGroup& r) { return *l.EndCharCode < *r.EndCharCode; })[-1];
-						if (&group < m_obj->SequentialGroup || c < *group.StartCharCode || c > *group.EndCharCode)
+						const auto& group = std::upper_bound(MapGroupSpan().begin(), MapGroupSpan().end(), tmp, [](const MapGroup& l, const MapGroup& r) { return *l.EndCharCode < *r.EndCharCode; })[-1];
+						if (&group < m_obj->MapGroups || c < *group.StartCharCode || c > *group.EndCharCode)
 							return 0;
 
 						if (*m_obj->Header.FormatId == 12)
-							return group.StartGlyphId + c - group.StartCharCode;
+							return group.GlyphId + c - group.StartCharCode;
 						else
-							return group.StartGlyphId;
+							return group.GlyphId;
 					}
 
-					void Parse(std::vector<char32_t>& result) const {
+					void GetGlyphToCharMap(std::vector<std::set<char32_t>>& result) const override {
 						if (*m_obj->Header.FormatId == 12) {
-							for (const auto& group : SequentialGroupSpan())
+							for (const auto& group : MapGroupSpan())
 								for (char32_t c = *group.StartCharCode, c_ = *group.EndCharCode; c <= c_; c++)
-									result[group.StartGlyphId + c - group.StartCharCode] = c;
+									result[group.GlyphId + c - group.StartCharCode].insert(c);
 						} else {
-							for (const auto& group : ConstantGroupSpan())
+							for (const auto& group : MapGroupSpan())
 								for (char32_t c = *group.StartCharCode, c_ = *group.EndCharCode; c <= c_; c++)
-									result[group.GlyphId] = c;
+									result[group.GlyphId].insert(c);
 						}
 					}
 				};
 			};
+
+			static std::unique_ptr<IFormatView> GetFormatView(const void* pData, size_t length) {
+				if (length < sizeof FormatId)
+					return nullptr;
+				switch (*static_cast<const Format*>(pData)->FormatId) {
+					case 0: return TryMakeUniqueFormatView<Format::Format0::View>(pData, length);
+					case 2: return TryMakeUniqueFormatView<Format::Format2::View>(pData, length);
+					case 4: return TryMakeUniqueFormatView<Format::Format4::View>(pData, length);
+					case 6: return TryMakeUniqueFormatView<Format::Format6::View>(pData, length);
+					case 8: return TryMakeUniqueFormatView<Format::Format8::View>(pData, length);
+					case 10: return TryMakeUniqueFormatView<Format::Format10::View>(pData, length);
+					case 12:
+					case 13: return TryMakeUniqueFormatView<Format::Format12And13::View>(pData, length);
+					default: return std::make_unique<ValidButUnsupportedFormatView>();
+				}
+			}
+
+			template<typename T>
+			static std::unique_ptr<IFormatView> GetFormatView(std::span<T> data) { return GetFormatView(&data[0], data.size_bytes()); }
+
+		private:
+			template<typename TFormatView>
+			static std::unique_ptr<IFormatView> TryMakeUniqueFormatView(const void* pData, size_t length) {
+				std::unique_ptr<IFormatView> p = std::make_unique<TFormatView>(pData, length);
+				if (p && *p)
+					return p;
+				return nullptr;
+			}
 		};
 
 		CmapHeader Header;
@@ -1497,6 +1574,8 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			template<typename T>
+			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 			View(const void* pData, size_t length) : View() {
 				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -1510,50 +1589,9 @@ namespace XivRes::Internal::TrueType {
 					if (encRec.SubtableOffset + sizeof uint16_t > length)
 						return;
 
-					const auto remainingSpan = std::span(static_cast<const char*>(pData), length).subspan(*encRec.SubtableOffset);
-					const auto& nFormat = *reinterpret_cast<const BE<uint16_t>*>(static_cast<const char*>(pData) + *encRec.SubtableOffset);
-					switch (*nFormat) {
-						case 0:
-							if (Format::Format0::View view(&nFormat, length); !view)
-								return;
-							break;
-
-						case 2:
-							if (Format::Format2::View view(&nFormat, length); !view)
-								return;
-							break;
-
-						case 4:
-							if (Format::Format4::View view(&nFormat, length); !view)
-								return;
-							break;
-
-						case 6:
-							if (Format::Format6::View view(&nFormat, length); !view)
-								return;
-							break;
-
-						case 8:
-							if (Format::Format8::View view(&nFormat, length); !view)
-								return;
-							break;
-
-						case 10:
-							if (Format::Format10::View view(&nFormat, length); !view)
-								return;
-							break;
-
-						case 12:
-						case 13:
-							if (Format::Format12And13::View view(&nFormat, length); !view)
-								return;
-							break;
-
-						case 14:
-						default:
-							// possibly valid but unsupported, so skip it
-							break;
-					}
+					const auto pFormatView = Format::GetFormatView(std::span(static_cast<const char*>(pData), length).subspan(*encRec.SubtableOffset));
+					if (!*pFormatView)
+						return;
 				}
 
 				m_obj = obj;
@@ -1572,9 +1610,9 @@ namespace XivRes::Internal::TrueType {
 				return m_obj;
 			}
 
-			std::vector<char32_t> Parse() const {
-				std::vector<char32_t> result;
-				result.resize(65536, (std::numeric_limits<char32_t>::max)());
+			std::vector<std::set<char32_t>> GetGlyphToCharMap() const {
+				std::vector<std::set<char32_t>> result;
+				result.resize(65536);
 
 				for (size_t i = 0, i_ = *m_obj->Header.SubtableCount; i < i_; ++i) {
 					const auto& encRec = m_obj->EncodingRecords[i];
@@ -1587,44 +1625,7 @@ namespace XivRes::Internal::TrueType {
 					else
 						continue;
 
-					const auto& nFormat = *reinterpret_cast<const BE<uint16_t>*>(m_bytes + *encRec.SubtableOffset);
-					switch (*nFormat) {
-						case 0:
-							if (Format::Format0::View view(&nFormat, m_length); view)
-								view.Parse(result);
-							break;
-
-						case 2:
-							if (Format::Format2::View view(&nFormat, m_length); view)
-								view.Parse(result);
-							break;
-
-						case 4:
-							if (Format::Format4::View view(&nFormat, m_length); view)
-								view.Parse(result);
-							break;
-
-						case 6:
-							if (Format::Format6::View view(&nFormat, m_length); view)
-								view.Parse(result);
-							break;
-
-						case 8:
-							if (Format::Format8::View view(&nFormat, m_length); view)
-								view.Parse(result);
-							break;
-
-						case 10:
-							if (Format::Format10::View view(&nFormat, m_length); view)
-								view.Parse(result);
-							break;
-
-						case 12:
-						case 13:
-							if (Format::Format12And13::View view(&nFormat, m_length); view)
-								view.Parse(result);
-							break;
-					}
+					Format::GetFormatView(std::span(m_bytes, m_length).subspan(*encRec.SubtableOffset))->GetGlyphToCharMap(result);
 				}
 
 				return result;
@@ -1672,6 +1673,8 @@ namespace XivRes::Internal::TrueType {
 				View& operator=(View&&) = default;
 				View& operator=(const View&) = default;
 				View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+				template<typename T>
+				View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 				View(const void* pData, size_t length) : View() {
 					const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -1696,23 +1699,19 @@ namespace XivRes::Internal::TrueType {
 
 				void Parse(
 					std::map<std::pair<char32_t, char32_t>, int>& result,
-					const std::vector<char32_t>& glyphToCharMap,
+					const std::vector<std::set<char32_t>>& glyphToCharMap,
 					bool cumulative
 				) const {
 					for (auto pPair = m_obj->Pairs, pPair_ = m_obj->Pairs + m_obj->Header.PairCount; pPair < pPair_; pPair++) {
-						const auto l = glyphToCharMap[*pPair->Left];
-						if (l == (std::numeric_limits<char32_t>::max)())
-							continue;
-
-						const auto r = glyphToCharMap[*pPair->Right];
-						if (r == (std::numeric_limits<char32_t>::max)())
-							continue;
-
-						auto& target = result[std::make_pair(l, r)];
-						if (cumulative)
-							target += *pPair->Value;
-						else
-							target = *pPair->Value;
+						for (const auto l : glyphToCharMap[*pPair->Left]) {
+							for (const auto r : glyphToCharMap[*pPair->Right]) {
+								auto& target = result[std::make_pair(l, r)];
+								if (cumulative)
+									target += *pPair->Value;
+								else
+									target = *pPair->Value;
+							}
+						}
 					}
 				}
 			};
@@ -1759,6 +1758,8 @@ namespace XivRes::Internal::TrueType {
 				View& operator=(View&&) = default;
 				View& operator=(const View&) = default;
 				View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+				template<typename T>
+				View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 				View(const void* pData, size_t length) : View() {
 					const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -1786,7 +1787,7 @@ namespace XivRes::Internal::TrueType {
 
 				void Parse(
 					std::map<std::pair<char32_t, char32_t>, int>& result,
-					const std::vector<char32_t>& glyphToCharMap
+					const std::vector<std::set<char32_t>>& glyphToCharMap
 				) {
 					std::span<const char> data{ reinterpret_cast<const char*>(&m_obj->FirstSubtable), m_length - sizeof KernHeader };
 
@@ -1803,7 +1804,7 @@ namespace XivRes::Internal::TrueType {
 							const auto formatData = data.subspan(sizeof kernSubtableHeader, kernSubtableHeader.Length - sizeof kernSubtableHeader);
 							switch (coverage.Format) {
 								case 0:
-									if (Format0::View view(&formatData[0], formatData.size_bytes()); view)
+									if (Format0::View view(formatData); view)
 										view.Parse(result, glyphToCharMap, !coverage.Override);
 									break;
 							}
@@ -1855,6 +1856,8 @@ namespace XivRes::Internal::TrueType {
 				View& operator=(View&&) = default;
 				View& operator=(const View&) = default;
 				View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+				template<typename T>
+				View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 				View(const void* pData, size_t length) : View() {
 					const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -1882,7 +1885,7 @@ namespace XivRes::Internal::TrueType {
 
 				void Parse(
 					std::map<std::pair<char32_t, char32_t>, int>& result,
-					const std::vector<char32_t>& glyphToCharMap
+					const std::vector<std::set<char32_t>>& glyphToCharMap
 				) {
 					// Untested
 
@@ -1901,7 +1904,7 @@ namespace XivRes::Internal::TrueType {
 							const auto formatData = data.subspan(sizeof kernSubtableHeader, kernSubtableHeader.Length - sizeof kernSubtableHeader);
 							switch (coverage.Format) {
 								case 0:
-									if (Format0::View view(&formatData[0], formatData.size_bytes()); view)
+									if (Format0::View view(formatData); view)
 										view.Parse(result, glyphToCharMap, false);
 									break;
 
@@ -1938,6 +1941,8 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			template<typename T>
+			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 			View(const void* pData, size_t length) : View() {
 				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -1960,7 +1965,7 @@ namespace XivRes::Internal::TrueType {
 				return m_obj;
 			}
 
-			std::map<std::pair<char32_t, char32_t>, int> Parse(const std::vector<char32_t>& glyphToCharMap) const {
+			std::map<std::pair<char32_t, char32_t>, int> Parse(const std::vector<std::set<char32_t>>& glyphToCharMap) const {
 				std::map<std::pair<char32_t, char32_t>, int> result;
 
 				switch (*m_obj->V0.Header.Version) {
@@ -2047,6 +2052,8 @@ namespace XivRes::Internal::TrueType {
 						View& operator=(View&&) = default;
 						View& operator=(const View&) = default;
 						View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+						template<typename T>
+						View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 						View(const void* pData, size_t length, ValueFormatFlags format1, ValueFormatFlags format2) : View() {
 							const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -2133,6 +2140,8 @@ namespace XivRes::Internal::TrueType {
 					View& operator=(View&&) = default;
 					View& operator=(const View&) = default;
 					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					template<typename T>
+					View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 					View(const void* pData, size_t length) : View() {
 						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -2228,6 +2237,8 @@ namespace XivRes::Internal::TrueType {
 					View& operator=(View&&) = default;
 					View& operator=(const View&) = default;
 					View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+					template<typename T>
+					View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 					View(const void* pData, size_t length) : View() {
 						const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -2325,6 +2336,8 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			template<typename T>
+			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 			View(const void* pData, size_t length) : View() {
 				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -2360,7 +2373,7 @@ namespace XivRes::Internal::TrueType {
 				return { p + 1, **p };
 			}
 
-			std::map<std::pair<char32_t, char32_t>, int> ExtractAdvanceX(const std::vector<char32_t>& glyphToCharMap) const {
+			std::map<std::pair<char32_t, char32_t>, int> ExtractAdvanceX(const std::vector<std::set<char32_t>>& glyphToCharMap) const {
 				std::map<std::pair<char32_t, char32_t>, int> result;
 
 				const auto lookupListOffset = *m_obj->HeaderV1_0.LookupListOffset;
@@ -2376,9 +2389,9 @@ namespace XivRes::Internal::TrueType {
 					if (*lookupTable->Header.LookupType != 2)
 						continue;  // Not Pair Adjustment Positioning Subtable
 
-					for (size_t i = 0, i_ = *lookupTable->Header.SubtableCount; i < i_; i++) {
-						const auto subtableSpan = lookupTable.SubtableSpan(i);
-						if (PairAdjustmentPositioningSubtable::Format1::View v(&subtableSpan[0], subtableSpan.size_bytes()); v) {
+					for (size_t subtableIndex = 0, i_ = *lookupTable->Header.SubtableCount; subtableIndex < i_; subtableIndex++) {
+						const auto subtableSpan = lookupTable.SubtableSpan(subtableIndex);
+						if (PairAdjustmentPositioningSubtable::Format1::View v(subtableSpan); v) {
 							if (!(*v->Header.ValueFormat1).AdvanceX && !(*v->Header.ValueFormat2).PlacementX)
 								continue;
 
@@ -2387,20 +2400,16 @@ namespace XivRes::Internal::TrueType {
 								const auto glyphSpan = coverageTable.GlyphSpan();
 								for (size_t coverageIndex = 0; coverageIndex < glyphSpan.size(); coverageIndex++) {
 									const auto glyph1Id = *glyphSpan[coverageIndex];
-									const auto c1 = glyphToCharMap[glyph1Id];
-									if (c1 == (std::numeric_limits<char32_t>::max)())
-										continue;
-
-									const auto pairSetView = v.PairSetView(coverageIndex);
-									for (size_t j = 0, j_ = *pairSetView->Count; j < j_; j++) {
-										const auto c2 = glyphToCharMap[pairSetView.GetSecondGlyph(j)];
-										if (c2 == (std::numeric_limits<char32_t>::max)())
-											continue;
-
-										const auto val = static_cast<int16_t>(pairSetView.GetValueRecord1(j, { .AdvanceX = 1 }))
-											+ static_cast<int16_t>(pairSetView.GetValueRecord2(j, { .PlacementX = 1 }));
-										if (val)
-											result[std::make_pair(c1, c2)] = val;
+									for (const auto c1 : glyphToCharMap[glyph1Id]) {
+										const auto pairSetView = v.PairSetView(coverageIndex);
+										for (size_t pairIndex = 0, j_ = *pairSetView->Count; pairIndex < j_; pairIndex++) {
+											for (const auto c2 : glyphToCharMap[pairSetView.GetSecondGlyph(pairIndex)]) {
+												const auto val = static_cast<int16_t>(pairSetView.GetValueRecord1(pairIndex, { .AdvanceX = 1 }))
+													+ static_cast<int16_t>(pairSetView.GetValueRecord2(pairIndex, { .PlacementX = 1 }));
+												if (val)
+													result[std::make_pair(c1, c2)] = val;
+											}
+										}
 									}
 								}
 
@@ -2409,28 +2418,24 @@ namespace XivRes::Internal::TrueType {
 									const auto startGlyphId = static_cast<size_t>(*rangeRecord.StartGlyphId);
 									const auto endGlyphId = static_cast<size_t>(*rangeRecord.EndGlyphId);
 									const auto startCoverageIndex = static_cast<size_t>(*rangeRecord.StartCoverageIndex);
-									for (size_t i = 0, i_ = endGlyphId - startGlyphId; i < i_; i++) {
-										const auto glyph1Id = startGlyphId + i;
-										const auto c1 = glyphToCharMap[glyph1Id];
-										if (c1 == (std::numeric_limits<char32_t>::max)())
-											continue;
-
-										const auto pairSetView = v.PairSetView(startCoverageIndex + i);
-										for (size_t j = 0, j_ = *pairSetView->Count; j < j_; j++) {
-											const auto c2 = glyphToCharMap[pairSetView.GetSecondGlyph(j)];
-											if (c2 == (std::numeric_limits<char32_t>::max)())
-												continue;
-
-											const auto val = static_cast<int16_t>(pairSetView.GetValueRecord1(j, { .AdvanceX = 1 }))
-												+ static_cast<int16_t>(pairSetView.GetValueRecord2(j, { .PlacementX = 1 }));
-											if (val)
-												result[std::make_pair(c1, c2)] = val;
+									for (size_t glyphIndex = 0, i_ = endGlyphId - startGlyphId; glyphIndex < i_; glyphIndex++) {
+										const auto glyph1Id = startGlyphId + glyphIndex;
+										for (const auto c1 : glyphToCharMap[glyph1Id]) {
+											const auto pairSetView = v.PairSetView(startCoverageIndex + glyphIndex);
+											for (size_t pairIndex = 0, j_ = *pairSetView->Count; pairIndex < j_; pairIndex++) {
+												for (const auto c2 : glyphToCharMap[pairSetView.GetSecondGlyph(pairIndex)]) {
+													const auto val = static_cast<int16_t>(pairSetView.GetValueRecord1(pairIndex, { .AdvanceX = 1 }))
+														+ static_cast<int16_t>(pairSetView.GetValueRecord2(pairIndex, { .PlacementX = 1 }));
+													if (val)
+														result[std::make_pair(c1, c2)] = val;
+												}
+											}
 										}
 									}
 								}
 							}
 
-						} else if (PairAdjustmentPositioningSubtable::Format2::View v(&subtableSpan[0], subtableSpan.size_bytes()); v) {
+						} else if (PairAdjustmentPositioningSubtable::Format2::View v(subtableSpan); v) {
 							if (!(*v->Header.ValueFormat1).AdvanceX && !(*v->Header.ValueFormat2).PlacementX)
 								continue;
 
@@ -2449,16 +2454,12 @@ namespace XivRes::Internal::TrueType {
 										continue;
 
 									for (const auto glyph1 : glyphs1) {
-										const auto c1 = glyphToCharMap[glyph1];
-										if (c1 == (std::numeric_limits<char32_t>::max)())
-											continue;
-
-										for (const auto glyph2 : glyphs2) {
-											const auto c2 = glyphToCharMap[glyph2];
-											if (c2 == (std::numeric_limits<char32_t>::max)())
-												continue;
-
-											result[std::make_pair(c1, c2)] = val;
+										for (const auto c1 : glyphToCharMap[glyph1]) {
+											for (const auto glyph2 : glyphs2) {
+												for (const auto c2 : glyphToCharMap[glyph2]) {
+													result[std::make_pair(c1, c2)] = val;
+												}
+											}
 										}
 									}
 								}
@@ -2496,6 +2497,8 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			template<typename T>
+			View(std::span<T> data, size_t offsetInCollection = 0) : View(&data[0], data.size_bytes(), offsetInCollection) {}
 			View(const void* pData, size_t length, size_t offsetInCollection = 0) : View() {
 				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 
@@ -2544,7 +2547,7 @@ namespace XivRes::Internal::TrueType {
 				if (s.empty())
 					return {};
 
-				return Table::View(&s[0], s.size_bytes());
+				return Table::View(s);
 			}
 		};
 	};
@@ -2588,6 +2591,8 @@ namespace XivRes::Internal::TrueType {
 			View& operator=(View&&) = default;
 			View& operator=(const View&) = default;
 			View& operator=(std::nullptr_t) { m_obj = nullptr; m_length = 0; }
+			template<typename T>
+			View(std::span<T> data) : View(&data[0], data.size_bytes()) {}
 			View(const void* pData, size_t length) : View() {
 				const auto obj = reinterpret_cast<decltype(m_obj)>(pData);
 

@@ -20,3 +20,5 @@
 #include "XivRes/PixelFormats.h"
 #include "XivRes/TextureStream.h"
 #include "XivRes/Internal/TexturePreview.Windows.h"
+
+extern const char8_t* const g_pszTestString;

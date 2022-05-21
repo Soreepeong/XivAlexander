@@ -7,6 +7,7 @@
     <ClCompile Include="Example.cpp" />
     <ClCompile Include="TestString.cpp" />
     <ClCompile Include="pch.cpp" />
+    <ClCompile Include="ExampleWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Project Items">
@@ -15,5 +16,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="ExampleWindow.h" />
   </ItemGroup>
 </Project>

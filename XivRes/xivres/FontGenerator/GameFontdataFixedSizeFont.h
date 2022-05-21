@@ -11,6 +11,25 @@
 #include "../Internal/BitmapCopy.h"
 
 namespace XivRes::FontGenerator {
+	class GameFontdataSet {
+		const XivRes::GameFontType m_gameFontType;
+		const std::vector<std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont>> m_data;
+
+	public:
+		GameFontdataSet(XivRes::GameFontType gameFontType, std::vector<std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont>> data)
+			: m_gameFontType(gameFontType)
+			, m_data(std::move(data)) {
+		}
+
+		std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont> operator[](size_t i) const {
+			return m_data[i];
+		}
+
+		size_t Count() const {
+			return m_data.size();
+		}
+	};
+
 	class GameFontdataFixedSizeFont : public DefaultAbstractFixedSizeFont {
 		struct InfoStruct {
 			std::shared_ptr<const FontdataStream> Font;
@@ -159,7 +178,7 @@ namespace XivRes::FontGenerator {
 	};
 }
 
-std::vector<std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont>> XivRes::GameReader::GetFonts(const char* const* ppcszFontdataPath, const char* pcszTexturePathPattern) const {
+inline XivRes::FontGenerator::GameFontdataSet XivRes::GameReader::GetFonts(XivRes::GameFontType gameFontType, const char* const* ppcszFontdataPath, const char* pcszTexturePathPattern) const {
 	std::vector<std::shared_ptr<XivRes::MemoryMipmapStream>> textures;
 	try {
 		for (int i = 1; ; i++)
@@ -176,10 +195,10 @@ std::vector<std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont>> X
 		ppcszFontdataPath++;
 	}
 
-	return fonts;
+	return { gameFontType, fonts };
 }
 
-std::vector<std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont>> XivRes::GameReader::GetFonts(XivRes::GameFontType fontType) const {
+inline XivRes::FontGenerator::GameFontdataSet XivRes::GameReader::GetFonts(XivRes::GameFontType fontType) const {
 	static const char* const fdtListFont[]{
 		"common/font/AXIS_96.fdt",
 		"common/font/AXIS_12.fdt",
@@ -251,16 +270,16 @@ std::vector<std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont>> X
 
 	switch (fontType) {
 		case XivRes::GameFontType::font:
-			return GetFonts(fdtListFont, "common/font/font{}.tex");
+			return GetFonts(fontType, fdtListFont, "common/font/font{}.tex");
 
 		case XivRes::GameFontType::font_lobby:
-			return GetFonts(fdtListFontLobby, "common/font/font_lobby{}.tex");
+			return GetFonts(fontType, fdtListFontLobby, "common/font/font_lobby{}.tex");
 
 		case XivRes::GameFontType::chn_axis:
-			return GetFonts(fdtListChnAxis, "common/font/font_chn_{}.tex");
+			return GetFonts(fontType, fdtListChnAxis, "common/font/font_chn_{}.tex");
 
 		case XivRes::GameFontType::krn_axis:
-			return GetFonts(fdtListKrnAxis, "common/font/font_krn_{}.tex");
+			return GetFonts(fontType, fdtListKrnAxis, "common/font/font_krn_{}.tex");
 
 		default:
 			throw std::invalid_argument("Invalid font specified");

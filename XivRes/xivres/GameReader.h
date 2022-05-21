@@ -7,9 +7,11 @@ namespace XivRes {
 
 	namespace FontGenerator {
 		class GameFontdataFixedSizeFont;
+		class GameFontdataSet;
 	}
 
 	enum class GameFontType {
+		undefined,
 		font,
 		font_lobby,
 		chn_axis,
@@ -73,8 +75,8 @@ namespace XivRes {
 
 		[[nodiscard]] ExcelReader GetExcelReader(const std::string& name) const;
 
-		std::vector<std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont>> GetFonts(const char* const* ppcszFontdataPath, const char* pcszTexturePathPattern) const;
-		std::vector<std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont>> GetFonts(GameFontType fontType = GameFontType::font) const;
+		FontGenerator::GameFontdataSet GetFonts(XivRes::GameFontType gameFontType, const char* const* ppcszFontdataPath, const char* pcszTexturePathPattern) const;
+		FontGenerator::GameFontdataSet GetFonts(GameFontType fontType = GameFontType::font) const;
 
 		void PreloadAllSqpackFiles() const {
 			const auto lock = std::lock_guard(m_populateMtx);
