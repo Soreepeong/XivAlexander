@@ -406,7 +406,7 @@ public:
 			item.iItem = i;
 			item.iSubItem = 0;
 			ListView_GetItem(m_hExtraFontsList, &item);
-			/*
+			//*
 			mergeFontList.emplace_back(std::make_shared<XivRes::FontGenerator::FreeTypeFixedSizeFont>(*reinterpret_cast<const std::wstring*>(item.lParam), 0, m_fontBase->GetSize()));
 			/*/
 			mergeFontList.emplace_back(std::make_shared<XivRes::FontGenerator::DirectWriteFixedSizeFont>(*reinterpret_cast<const std::wstring*>(item.lParam), XivRes::FontGenerator::DirectWriteFixedSizeFont::CreateStruct

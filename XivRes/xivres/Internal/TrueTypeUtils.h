@@ -13,10 +13,11 @@
 namespace XivRes::Internal::TrueType {
 	union TagStruct {
 		char Tag[4];
-		uint32_t IntValue;
+		uint32_t NativeValue;
+		RNE<uint32_t> ReverseNativeValue;
 
 		bool operator==(const TagStruct& r) const {
-			return IntValue == r.IntValue;
+			return NativeValue == r.NativeValue;
 		}
 	};
 
@@ -2629,7 +2630,7 @@ namespace XivRes::Internal::TrueType {
 						return;
 
 					const auto pDsig = reinterpret_cast<const DigitalSignatureHeader*>(&obj->FontOffsets[*obj->FileHeader.FontCount]);
-					if (pDsig->Tag.IntValue == 0)
+					if (pDsig->Tag.NativeValue == 0)
 						void();
 					else if (pDsig->Tag == DigitalSignatureHeader::HeaderTag) {
 						if (data.size_bytes() < static_cast<size_t>(*pDsig->Offset) + *pDsig->Length)

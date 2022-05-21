@@ -297,9 +297,9 @@ namespace XivRes::FontGenerator {
 				for (uint32_t i = range.first; i <= range.last; ++i)
 					info->Characters.insert(static_cast<char32_t>(i));
 
-			DWriteFontTable kernDataRef(m_fontFace, Internal::TrueType::Kern::DirectoryTableTag.IntValue);
-			DWriteFontTable gposDataRef(m_fontFace, Internal::TrueType::Gpos::DirectoryTableTag.IntValue);
-			DWriteFontTable cmapDataRef(m_fontFace, Internal::TrueType::Cmap::DirectoryTableTag.IntValue);
+			DWriteFontTable kernDataRef(m_fontFace, Internal::TrueType::Kern::DirectoryTableTag.NativeValue);
+			DWriteFontTable gposDataRef(m_fontFace, Internal::TrueType::Gpos::DirectoryTableTag.NativeValue);
+			DWriteFontTable cmapDataRef(m_fontFace, Internal::TrueType::Cmap::DirectoryTableTag.NativeValue);
 			Internal::TrueType::Kern::View kern(kernDataRef.GetSpan<char>());
 			Internal::TrueType::Gpos::View gpos(gposDataRef.GetSpan<char>());
 			Internal::TrueType::Cmap::View cmap(cmapDataRef.GetSpan<char>());

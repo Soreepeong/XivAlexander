@@ -3,11 +3,13 @@
 
 #ifndef FT2BUILD_H_
 #include <ft2build.h>
+#endif
+
 #include FT_FREETYPE_H
 #include FT_BITMAP_H
 #include FT_OUTLINE_H 
 #include FT_GLYPH_H
-#endif
+#include FT_TRUETYPE_TABLES_H
 
 #include <filesystem>
 
@@ -18,9 +20,16 @@
 
 namespace XivRes::FontGenerator {
 	class FreeTypeFixedSizeFont : public DefaultAbstractFixedSizeFont {
-		static void SuccessOrThrow(FT_Error error) {
-			if (error)
-				throw std::runtime_error(std::format("FreeType Error: {:x}", error));
+		static FT_Error SuccessOrThrow(FT_Error error, std::initializer_list<FT_Error> acceptables = {}) {
+			if (!error)
+				return error;
+
+			for (const auto& er : acceptables) {
+				if (er == error)
+					return error;
+			}
+
+			throw std::runtime_error(std::format("FreeType Error: 0x{:x}", error));
 		}
 
 		class FreeTypeLibraryWrapper {
@@ -47,6 +56,33 @@ namespace XivRes::FontGenerator {
 
 			std::mutex& Mutex() {
 				return m_mtx;
+			}
+		};
+
+		class FreeTypeFontTable {
+			std::vector<uint8_t> m_buf;
+
+		public:
+			FreeTypeFontTable(FT_Face face, uint32_t tag)  {
+				FT_ULong len = 0;
+				if (SuccessOrThrow(FT_Load_Sfnt_Table(face, tag, 0, nullptr, &len), { FT_Err_Table_Missing }))
+					return;
+
+				m_buf.resize(len);
+				if (SuccessOrThrow(FT_Load_Sfnt_Table(face, tag, 0, &m_buf[0], &len), { FT_Err_Table_Missing }))
+					return;
+			}
+
+			operator bool() const {
+				return !m_buf.empty();
+			}
+
+			template<typename T = uint8_t>
+			std::span<const T> GetSpan() const {
+				if (m_buf.empty())
+					return {};
+
+				return { reinterpret_cast<const T*>(&m_buf[0]), m_buf.size() / sizeof T };
 			}
 		};
 
@@ -81,25 +117,19 @@ namespace XivRes::FontGenerator {
 				for (char32_t c = FT_Get_First_Char(m_face, &glyphIndex); glyphIndex; c = FT_Get_Next_Char(m_face, c, &glyphIndex))
 					info->Characters.insert(c);
 
-				do {
-					Internal::TrueType::SfntFile::View sfnt;
-					if (Internal::TrueType::TtcFile::View ttc(std::span(info->Data)); ttc)
-						sfnt = ttc.GetFont(faceIndex);
-					else if (faceIndex == 0)
-						sfnt = std::span(info->Data);
-					else
-						break;
-
-					const auto cmap = sfnt.TryGetTable<Internal::TrueType::Cmap>();
-					if (!cmap)
-						break;
-
+				FreeTypeFontTable kernDataRef(m_face, Internal::TrueType::Kern::DirectoryTableTag.ReverseNativeValue);
+				FreeTypeFontTable gposDataRef(m_face, Internal::TrueType::Gpos::DirectoryTableTag.ReverseNativeValue);
+				FreeTypeFontTable cmapDataRef(m_face, Internal::TrueType::Cmap::DirectoryTableTag.ReverseNativeValue);
+				Internal::TrueType::Kern::View kern(kernDataRef.GetSpan<char>());
+				Internal::TrueType::Gpos::View gpos(gposDataRef.GetSpan<char>());
+				Internal::TrueType::Cmap::View cmap(cmapDataRef.GetSpan<char>());
+				if (cmap && (kern || gpos)) {
 					const auto cmapVector = cmap.GetGlyphToCharMap();
 
-					if (const auto kern = sfnt.TryGetTable<Internal::TrueType::Kern>(); kern)
+					if (kern)
 						info->KerningPairs = kern.Parse(cmapVector);
 
-					if (const auto gpos = sfnt.TryGetTable<Internal::TrueType::Gpos>(); gpos) {
+					if (gpos) {
 						const auto pairs = gpos.ExtractAdvanceX(cmapVector);
 						// do not overwrite
 						info->KerningPairs.insert(pairs.begin(), pairs.end());
@@ -112,7 +142,7 @@ namespace XivRes::FontGenerator {
 						else
 							it = info->KerningPairs.erase(it);
 					}
-				} while (false);
+				}
 
 				m_info = std::move(info);
 			}

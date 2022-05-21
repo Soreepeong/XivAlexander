@@ -179,6 +179,10 @@ namespace XivRes {
 	using LE = Internal::ByteOrder<T, Internal::ByteOrderStorage<T>::FromWithoutSwap, Internal::ByteOrderStorage<T>::ToWithoutSwap>;
 	template<typename T>
 	using BE = Internal::ByteOrder<T, Internal::ByteOrderStorage<T>::FromWithSwap, Internal::ByteOrderStorage<T>::ToWithSwap>;
+	template<typename T>
+	using NE = LE<T>;
+	template<typename T>
+	using RNE = BE<T>;
 }
 
 #endif
