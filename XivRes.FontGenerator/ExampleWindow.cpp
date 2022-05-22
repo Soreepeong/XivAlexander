@@ -1,3 +1,5 @@
+#include <ranges>
+
 #include "pch.h"
 
 #include "XivRes/FontGenerator/WrappingFixedSizeFont.h"
@@ -38,7 +40,7 @@ class WindowImpl {
 	HFONT m_hUiFont{};
 
 	HWND m_hBaseFontStatic{};
-	HWND m_hExtraFontsList{};
+	HWND m_hListView{};
 	HWND m_hEdit{};
 
 	int m_nDrawTop{};
@@ -237,13 +239,20 @@ class WindowImpl {
 				}
 				break;
 
+			case WM_NOTIFY:
+				return OnNotify(*reinterpret_cast<NMHDR*>(lParam));
+
+			case WM_MOUSEMOVE:
+				return OnMouseMove(static_cast<uint16_t>(wParam), LOWORD(lParam), HIWORD(lParam));
+
+			case WM_LBUTTONUP:
+				return OnMouseLButtonUp(static_cast<uint16_t>(wParam), LOWORD(lParam), HIWORD(lParam));
+
 			case WM_SIZE:
-				OnSize();
-				return 0;
+				return OnSize();
 
 			case WM_PAINT:
-				OnPaint();
-				return 0;
+				return OnPaint();
 
 			case WM_DESTROY:
 				DeleteFont(m_hUiFont);
@@ -262,17 +271,17 @@ class WindowImpl {
 		m_hBaseFontStatic = CreateWindowExW(0, WC_STATICW, L"Base font: ",
 			WS_CHILD | WS_TABSTOP | WS_VISIBLE | SS_LEFT | SS_CENTERIMAGE,
 			0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(Id_None), reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(m_hWnd, GWLP_HINSTANCE)), nullptr);
-		m_hExtraFontsList = CreateWindowExW(0, WC_LISTVIEWW, nullptr,
+		m_hListView = CreateWindowExW(0, WC_LISTVIEWW, nullptr,
 			WS_CHILD | WS_TABSTOP | WS_BORDER | WS_VISIBLE | LVS_REPORT,
 			0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(Id_List), reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(m_hWnd, GWLP_HINSTANCE)), nullptr);
 		m_hEdit = CreateWindowExW(0, WC_EDITW, nullptr,
 			WS_CHILD | WS_TABSTOP | WS_BORDER | WS_VISIBLE | WS_VSCROLL | ES_LEFT | ES_AUTOVSCROLL | ES_MULTILINE | ES_WANTRETURN,
 			0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(Id_Edit), reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(m_hWnd, GWLP_HINSTANCE)), nullptr);
 
-		ListView_SetExtendedListViewStyle(m_hExtraFontsList, LVS_EX_FULLROWSELECT);
+		ListView_SetExtendedListViewStyle(m_hListView, LVS_EX_FULLROWSELECT);
 
 		SendMessage(m_hBaseFontStatic, WM_SETFONT, reinterpret_cast<WPARAM>(m_hUiFont), FALSE);
-		SendMessage(m_hExtraFontsList, WM_SETFONT, reinterpret_cast<WPARAM>(m_hUiFont), FALSE);
+		SendMessage(m_hListView, WM_SETFONT, reinterpret_cast<WPARAM>(m_hUiFont), FALSE);
 		SendMessage(m_hEdit, WM_SETFONT, reinterpret_cast<WPARAM>(m_hUiFont), FALSE);
 
 		SetWindowSubclass(m_hEdit, [](HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) -> LRESULT {
@@ -290,53 +299,50 @@ class WindowImpl {
 
 			col.cx = 180;
 			col.pszText = const_cast<wchar_t*>(L"Name");
-			ListView_InsertColumn(m_hExtraFontsList, colIndex++, &col);
+			ListView_InsertColumn(m_hListView, colIndex++, &col);
 
 			col.cx = 80;
 			col.pszText = const_cast<wchar_t*>(L"Family");
-			ListView_InsertColumn(m_hExtraFontsList, colIndex++, &col);
+			ListView_InsertColumn(m_hListView, colIndex++, &col);
 
 			col.cx = 40;
 			col.pszText = const_cast<wchar_t*>(L"Size");
-			ListView_InsertColumn(m_hExtraFontsList, colIndex++, &col);
+			ListView_InsertColumn(m_hListView, colIndex++, &col);
 
 			col.cx = 80;
 			col.pszText = const_cast<wchar_t*>(L"Line Height");
-			ListView_InsertColumn(m_hExtraFontsList, colIndex++, &col);
+			ListView_InsertColumn(m_hListView, colIndex++, &col);
 
 			col.cx = 60;
 			col.pszText = const_cast<wchar_t*>(L"Ascent");
-			ListView_InsertColumn(m_hExtraFontsList, colIndex++, &col);
+			ListView_InsertColumn(m_hListView, colIndex++, &col);
 
 			col.cx = 100;
 			col.pszText = const_cast<wchar_t*>(L"Letter Spacing");
-			ListView_InsertColumn(m_hExtraFontsList, colIndex++, &col);
+			ListView_InsertColumn(m_hListView, colIndex++, &col);
 
 			col.cx = 170;
 			col.pszText = const_cast<wchar_t*>(L"Codepoints/Unicode Blocks");
-			ListView_InsertColumn(m_hExtraFontsList, colIndex++, &col);
+			ListView_InsertColumn(m_hListView, colIndex++, &col);
 
 			col.cx = 60;
 			col.pszText = const_cast<wchar_t*>(L"Glyphs");
-			ListView_InsertColumn(m_hExtraFontsList, colIndex++, &col);
+			ListView_InsertColumn(m_hListView, colIndex++, &col);
 
 			col.cx = 70;
 			col.pszText = const_cast<wchar_t*>(L"Overwrite");
-			ListView_InsertColumn(m_hExtraFontsList, colIndex++, &col);
+			ListView_InsertColumn(m_hListView, colIndex++, &col);
 
 			col.cx = 180;
 			col.pszText = const_cast<wchar_t*>(L"Renderer");
-			ListView_InsertColumn(m_hExtraFontsList, colIndex++, &col);
+			ListView_InsertColumn(m_hListView, colIndex++, &col);
 
 			col.cx = 60;
 			col.pszText = const_cast<wchar_t*>(L"Gamma");
-			ListView_InsertColumn(m_hExtraFontsList, colIndex++, &col);
+			ListView_InsertColumn(m_hListView, colIndex++, &col);
 
-			FaceElement::AddToList(m_hExtraFontsList, ListView_GetItemCount(m_hExtraFontsList), {
+			FaceElement::AddToList(m_hListView, ListView_GetItemCount(m_hListView), {
 				.Size = 18.f,
-				.WrapModifiers = {
-					.LetterSpacing = -2,
-				},
 				.Renderer = FaceElement::RendererEnum::PrerenderedGameInstallation,
 				.RendererSpecific = {
 					.PrerenderedGame = {
@@ -345,7 +351,7 @@ class WindowImpl {
 				},
 				});
 
-			FaceElement::AddToList(m_hExtraFontsList, ListView_GetItemCount(m_hExtraFontsList), {
+			FaceElement::AddToList(m_hListView, ListView_GetItemCount(m_hListView), {
 				.Path = LR"(C:\Windows\Fonts\segoeui.ttf)",
 				.Size = 18.f,
 				.Renderer = FaceElement::RendererEnum::FreeType,
@@ -357,15 +363,18 @@ class WindowImpl {
 				},
 				});
 
-			FaceElement::AddToList(m_hExtraFontsList, ListView_GetItemCount(m_hExtraFontsList), {
+			FaceElement::AddToList(m_hListView, ListView_GetItemCount(m_hListView), {
 				.Path = LR"(C:\Windows\Fonts\SourceHanSansK-Regular.otf)",
 				.Size = 18.f,
+				.WrapModifiers = {
+					.LetterSpacing = -1,
+				},
 				.Renderer = FaceElement::RendererEnum::DirectWrite,
 				.RendererSpecific = {
 					.DirectWrite = {
 						.FamilyIndex = 0,
 						.FontIndex = 0,
-						.RenderMode = DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL,
+						.RenderMode = DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC,
 						.MeasureMode = DWRITE_MEASURING_MODE_GDI_CLASSIC,
 						.GridFitMode = DWRITE_GRID_FIT_MODE_ENABLED,
 					},
@@ -438,7 +447,7 @@ class WindowImpl {
 
 		auto hdwp = BeginDeferWindowPos(Id__Last);
 		hdwp = DeferWindowPos(hdwp, m_hBaseFontStatic, nullptr, 0, 0, 80, 0, SWP_NOZORDER | SWP_NOACTIVATE);
-		hdwp = DeferWindowPos(hdwp, m_hExtraFontsList, nullptr, 0, 0, (std::max<int>)(0, rc.right - rc.left), ListViewHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+		hdwp = DeferWindowPos(hdwp, m_hListView, nullptr, 0, 0, (std::max<int>)(0, rc.right - rc.left), ListViewHeight, SWP_NOZORDER | SWP_NOACTIVATE);
 		hdwp = DeferWindowPos(hdwp, m_hEdit, nullptr, 0, ListViewHeight, (std::max<int>)(0, rc.right - rc.left), EditHeight, SWP_NOZORDER | SWP_NOACTIVATE);
 		EndDeferWindowPos(hdwp);
 
@@ -500,6 +509,148 @@ class WindowImpl {
 		return 0;
 	}
 
+	class ListViewDragStruct {
+		WindowImpl& Window;
+
+		bool IsDragging = false;
+		bool IsChanged = false;
+
+	public:
+		ListViewDragStruct(WindowImpl& window) : Window(window) {}
+
+		LRESULT OnListViewBeginDrag(NM_LISTVIEW& nmlv) {
+			IsDragging = true;
+			IsChanged = false;
+			SetCapture(Window.m_hWnd);
+			SetCursor(LoadCursorW(nullptr, IDC_SIZENS));
+			return 0;
+		}
+
+		bool ProcessMouseUp(int16_t x, int16_t y) {
+			if (!IsDragging)
+				return false;
+
+			IsDragging = false;
+			ReleaseCapture();
+			if (IsChanged |= ProcessDragging(x, y)) {
+				Window.LoadFonts();
+				Window.m_bNeedRedraw = true;
+				InvalidateRect(Window.m_hWnd, nullptr, FALSE);
+			}
+			return true;
+		}
+
+		bool ProcessMouseMove(int16_t x, int16_t y) {
+			if (!IsDragging)
+				return false;
+
+			IsChanged |= ProcessDragging(x, y);
+			return true;
+		}
+
+	private:
+		bool ProcessDragging(int16_t x, int16_t y) {
+			const auto hListView = Window.m_hListView;
+
+			// Determine the dropped item
+			LVHITTESTINFO lvhti{
+				.pt = {x, y},
+			};
+			ClientToScreen(Window.m_hWnd, &lvhti.pt);
+			ScreenToClient(hListView, &lvhti.pt);
+			ListView_HitTest(hListView, &lvhti);
+
+			// Out of the ListView?
+			if (lvhti.iItem == -1) {
+				POINT ptRef{};
+				ListView_GetItemPosition(hListView, 0, &ptRef);
+				if (lvhti.pt.y < ptRef.y)
+					lvhti.iItem = 0;
+				else {
+					RECT rcListView;
+					GetClientRect(hListView, &rcListView);
+					ListView_GetItemPosition(hListView, ListView_GetItemCount(hListView) - 1, &ptRef);
+					if (lvhti.pt.y >= ptRef.y || lvhti.pt.y >= rcListView.bottom - rcListView.top)
+						lvhti.iItem = ListView_GetItemCount(hListView) - 1;
+					else
+						return false;
+				}
+			}
+
+			// Rearrange the items
+			std::set<int> sourceIndices;
+			for (auto iPos = -1; -1 != (iPos = ListView_GetNextItem(hListView, iPos, LVNI_SELECTED));)
+				sourceIndices.insert(iPos);
+
+			struct SortInfoType {
+				std::vector<int> oldIndices;
+				std::vector<int> newIndices;
+				std::map<LPARAM, int> sourcePtrs;
+			} sortInfo;
+			sortInfo.oldIndices.reserve(ListView_GetItemCount(hListView));
+			for (int i = 0, i_ = ListView_GetItemCount(hListView); i < i_; i++) {
+				LVITEMW lvi{ .mask = LVIF_PARAM, .iItem = i, };
+				ListView_GetItem(hListView, &lvi);
+				sortInfo.sourcePtrs[lvi.lParam] = i;
+				if (!sourceIndices.contains(i))
+					sortInfo.oldIndices.push_back(i);
+			}
+			{
+				int i = (std::max<int>)(0, 1 + lvhti.iItem - static_cast<int>(sourceIndices.size()));
+				for (const auto sourceIndex : sourceIndices)
+					sortInfo.oldIndices.insert(sortInfo.oldIndices.begin() + i++, sourceIndex);
+			}
+			sortInfo.newIndices.resize(sortInfo.oldIndices.size());
+			auto changed = false;
+			for (int i = 0, i_ = static_cast<int>(sortInfo.oldIndices.size()); i < i_; i++) {
+				changed |= i != sortInfo.oldIndices[i];
+				sortInfo.newIndices[sortInfo.oldIndices[i]] = i;
+			}
+
+			if (!changed)
+				return false;
+
+			auto k = [](LPARAM lp1, LPARAM lp2, LPARAM ctx) -> int {
+				auto& sortInfo = *reinterpret_cast<SortInfoType*>(ctx);
+				const auto il = sortInfo.sourcePtrs[lp1];
+				const auto ir = sortInfo.sourcePtrs[lp2];
+				const auto nl = sortInfo.newIndices[il];
+				const auto nr = sortInfo.newIndices[ir];
+				return nl == nr ? 0 : (nl > nr ? 1 : -1);
+			};
+			ListView_SortItems(hListView, k, &sortInfo);
+
+			return true;
+		}
+	} m_listViewDrag{ *this };
+
+	LRESULT OnNotify(NMHDR& hdr) {
+		switch (hdr.idFrom) {
+			case Id_List:
+				switch (hdr.code) {
+					case LVN_BEGINDRAG:
+						return m_listViewDrag.OnListViewBeginDrag(*(reinterpret_cast<NM_LISTVIEW*>(&hdr)));
+				}
+				break;
+		}
+
+		return 0;
+	}
+
+	LRESULT OnMouseMove(uint16_t states, int16_t x, int16_t y) {
+		if (m_listViewDrag.ProcessMouseMove(x, y))
+			return 0;
+
+		return 0;
+	}
+
+	LRESULT OnMouseLButtonUp(uint16_t states, int16_t x, int16_t y) {
+		if (m_listViewDrag.ProcessMouseUp(x, y))
+			return 0;
+
+		return 0;
+	}
+
 	static LRESULT WINAPI WndProcStatic(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 		return reinterpret_cast<WindowImpl*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA))->WndProc(hwnd, msg, wParam, lParam);
 	}
@@ -544,12 +695,12 @@ public:
 	void LoadFonts() {
 		std::vector<std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>> mergeFontList;
 
-		for (int i = 0, i_ = ListView_GetItemCount(m_hExtraFontsList); i < i_; i++) {
+		for (int i = 0, i_ = ListView_GetItemCount(m_hListView); i < i_; i++) {
 			LVITEMW item{};
 			item.mask = LVIF_PARAM;
 			item.iItem = i;
 			item.iSubItem = 0;
-			ListView_GetItem(m_hExtraFontsList, &item);
+			ListView_GetItem(m_hListView, &item);
 
 			auto& element = *reinterpret_cast<FaceElement*>(item.lParam);
 			mergeFontList.emplace_back(element.Font);
