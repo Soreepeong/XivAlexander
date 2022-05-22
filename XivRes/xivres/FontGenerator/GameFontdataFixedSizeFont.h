@@ -11,28 +11,28 @@
 #include "../Internal/BitmapCopy.h"
 
 namespace XivRes::FontGenerator {
-	class GameFontdataSet {
-		const XivRes::GameFontType m_gameFontType;
-		const std::vector<std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont>> m_data;
+	enum class GameFontFamily {
+		AXIS,
+		Jupiter,
+		JupiterN,
+		MiedingerMid,
+		Meidinger,
+		TrumpGothic,
+		ChnAXIS,
+		KrnAXIS,
+	};
 
-	public:
-		GameFontdataSet(XivRes::GameFontType gameFontType, std::vector<std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont>> data)
-			: m_gameFontType(gameFontType)
-			, m_data(std::move(data)) {
-		}
-
-		std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont> operator[](size_t i) const {
-			return m_data[i];
-		}
-
-		size_t Count() const {
-			return m_data.size();
-		}
+	struct GameFontdataDefinition {
+		const char* Path;
+		const char* Name;
+		const char* Family;
 	};
 
 	class GameFontdataFixedSizeFont : public DefaultAbstractFixedSizeFont {
 		struct InfoStruct {
 			std::shared_ptr<const FontdataStream> Font;
+			std::string FamilyName;
+			std::string SubfamilyName;
 			std::vector<std::shared_ptr<MemoryMipmapStream>> Mipmaps;
 			std::set<char32_t> Codepoints;
 			std::map<std::pair<char32_t, char32_t>, int> KerningPairs;
@@ -42,7 +42,7 @@ namespace XivRes::FontGenerator {
 		std::shared_ptr<const InfoStruct> m_info;
 
 	public:
-		GameFontdataFixedSizeFont(std::shared_ptr<const FontdataStream> stream, std::vector<std::shared_ptr<MemoryMipmapStream>> mipmapStreams) {
+		GameFontdataFixedSizeFont(std::shared_ptr<const FontdataStream> stream, std::vector<std::shared_ptr<MemoryMipmapStream>> mipmapStreams, std::string familyName, std::string subfamilyName) {
 			for (const auto& mipmapStream : mipmapStreams) {
 				if (mipmapStream->Type != TextureFormat::A8R8G8B8)
 					throw std::invalid_argument("All mipmap streams must be in A8R8G8B8 format.");
@@ -50,6 +50,8 @@ namespace XivRes::FontGenerator {
 
 			auto info = std::make_shared<InfoStruct>();
 			info->Font = std::move(stream);
+			info->FamilyName = std::move(familyName);
+			info->SubfamilyName = std::move(subfamilyName);
 			info->Mipmaps = std::move(mipmapStreams);
 
 			for (const auto& entry : info->Font->GetFontTableEntries())
@@ -71,6 +73,14 @@ namespace XivRes::FontGenerator {
 		GameFontdataFixedSizeFont(const GameFontdataFixedSizeFont & r) = default;
 		GameFontdataFixedSizeFont& operator=(GameFontdataFixedSizeFont&&) = default;
 		GameFontdataFixedSizeFont& operator=(const GameFontdataFixedSizeFont&) = default;
+
+		std::string GetFamilyName() const override {
+			return m_info->FamilyName;
+		}
+
+		std::string GetSubfamilyName() const override {
+			return m_info->SubfamilyName;
+		}
 
 		int GetHorizontalOffset() const {
 			return m_info->HorizontalOffset;
@@ -176,9 +186,75 @@ namespace XivRes::FontGenerator {
 			return src;
 		}
 	};
+
+	class GameFontdataSet {
+		XivRes::GameFontType m_gameFontType;
+		std::vector<std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont>> m_data;
+
+	public:
+		GameFontdataSet() = default;
+		GameFontdataSet(GameFontdataSet&&) = default;
+		GameFontdataSet(const GameFontdataSet&) = default;
+		GameFontdataSet& operator=(GameFontdataSet&&) = default;
+		GameFontdataSet& operator=(const GameFontdataSet&) = default;
+
+		GameFontdataSet(XivRes::GameFontType gameFontType, std::vector<std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont>> data)
+			: m_gameFontType(gameFontType)
+			, m_data(std::move(data)) {}
+
+		std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont> operator[](size_t i) const {
+			return m_data[i];
+		}
+
+		std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont> GetFont(size_t i) const {
+			return m_data[i];
+		}
+
+		std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont> GetFont(GameFontFamily family, float size) const {
+			std::vector<size_t> candidates;
+			candidates.reserve(5);
+
+			for (size_t i = 0; i < m_data.size(); i++) {
+				const auto name = m_data[i]->GetFamilyName();
+				if (family == GameFontFamily::AXIS && name == "AXIS")
+					candidates.push_back(i);
+				else if (family == GameFontFamily::Jupiter && name == "Jupiter")
+					candidates.push_back(i);
+				else if (family == GameFontFamily::JupiterN && name == "JupiterN")
+					candidates.push_back(i);
+				else if (family == GameFontFamily::Meidinger && name == "Meidinger")
+					candidates.push_back(i);
+				else if (family == GameFontFamily::MiedingerMid && name == "MiedingerMid")
+					candidates.push_back(i);
+				else if (family == GameFontFamily::TrumpGothic && name == "TrumpGothic")
+					candidates.push_back(i);
+				else if (family == GameFontFamily::ChnAXIS && name == "ChnAXIS")
+					candidates.push_back(i);
+				else if (family == GameFontFamily::KrnAXIS && name == "KrnAXIS")
+					candidates.push_back(i);
+			}
+
+			if (candidates.empty())
+				return {};
+
+			std::ranges::sort(candidates, [this, size](const auto& l, const auto& r) {
+				return std::fabsf(size - m_data[l]->GetSize()) < std::fabsf(size - m_data[r]->GetSize());
+			});
+
+			return m_data[candidates[0]];
+		}
+
+		size_t Count() const {
+			return m_data.size();
+		}
+
+		operator bool() const {
+			return !m_data.empty();
+		}
+	};
 }
 
-inline XivRes::FontGenerator::GameFontdataSet XivRes::GameReader::GetFonts(XivRes::GameFontType gameFontType, const char* const* ppcszFontdataPath, const char* pcszTexturePathPattern) const {
+inline XivRes::FontGenerator::GameFontdataSet XivRes::GameReader::GetFonts(XivRes::GameFontType gameFontType, const FontGenerator::GameFontdataDefinition* pGameFontdataDefinitions, size_t count, const char* pcszTexturePathPattern) const {
 	std::vector<std::shared_ptr<XivRes::MemoryMipmapStream>> textures;
 	try {
 		for (int i = 1; ; i++)
@@ -188,98 +264,96 @@ inline XivRes::FontGenerator::GameFontdataSet XivRes::GameReader::GetFonts(XivRe
 	}
 
 	std::vector<std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont>> fonts;
-	while (*ppcszFontdataPath) {
+	fonts.reserve(count);
+	for (size_t i = 0; i < count; i++) {
 		fonts.emplace_back(std::make_shared<FontGenerator::GameFontdataFixedSizeFont>(
-			std::make_shared<FontdataStream>(*GetFileStream(*ppcszFontdataPath)),
-			textures));
-		ppcszFontdataPath++;
+			std::make_shared<FontdataStream>(*GetFileStream(pGameFontdataDefinitions[i].Path)),
+			textures,
+			pGameFontdataDefinitions[i].Name,
+			pGameFontdataDefinitions[i].Family));
 	}
 
 	return { gameFontType, fonts };
 }
 
 inline XivRes::FontGenerator::GameFontdataSet XivRes::GameReader::GetFonts(XivRes::GameFontType fontType) const {
-	static const char* const fdtListFont[]{
-		"common/font/AXIS_96.fdt",
-		"common/font/AXIS_12.fdt",
-		"common/font/AXIS_14.fdt",
-		"common/font/AXIS_18.fdt",
-		"common/font/AXIS_36.fdt",
-		"common/font/Jupiter_16.fdt",
-		"common/font/Jupiter_20.fdt",
-		"common/font/Jupiter_23.fdt",
-		"common/font/Jupiter_45.fdt",
-		"common/font/Jupiter_46.fdt",
-		"common/font/Jupiter_90.fdt",
-		"common/font/Meidinger_16.fdt",
-		"common/font/Meidinger_20.fdt",
-		"common/font/Meidinger_40.fdt",
-		"common/font/MiedingerMid_10.fdt",
-		"common/font/MiedingerMid_12.fdt",
-		"common/font/MiedingerMid_14.fdt",
-		"common/font/MiedingerMid_18.fdt",
-		"common/font/MiedingerMid_36.fdt",
-		"common/font/TrumpGothic_184.fdt",
-		"common/font/TrumpGothic_23.fdt",
-		"common/font/TrumpGothic_34.fdt",
-		"common/font/TrumpGothic_68.fdt",
-		nullptr,
+	static const FontGenerator::GameFontdataDefinition fdtListFont[] {
+		{"common/font/AXIS_96.fdt", "AXIS", "Regular"},
+		{"common/font/AXIS_12.fdt", "AXIS", "Regular"},
+		{"common/font/AXIS_14.fdt", "AXIS", "Regular"},
+		{"common/font/AXIS_18.fdt", "AXIS", "Regular"},
+		{"common/font/AXIS_36.fdt", "AXIS", "Regular"},
+		{"common/font/Jupiter_16.fdt", "Jupiter", "Regular"},
+		{"common/font/Jupiter_20.fdt", "Jupiter", "Regular"},
+		{"common/font/Jupiter_23.fdt", "Jupiter", "Regular"},
+		{"common/font/Jupiter_45.fdt", "JupiterN", "Regular"},
+		{"common/font/Jupiter_46.fdt", "Jupiter", "Regular"},
+		{"common/font/Jupiter_90.fdt", "JupiterN", "Regular"},
+		{"common/font/Meidinger_16.fdt", "Meidinger", "Regular"},
+		{"common/font/Meidinger_20.fdt", "Meidinger", "Regular"},
+		{"common/font/Meidinger_40.fdt", "Meidinger", "Regular"},
+		{"common/font/MiedingerMid_10.fdt", "MiedingerMid", "Medium"},
+		{"common/font/MiedingerMid_12.fdt", "MiedingerMid", "Medium"},
+		{"common/font/MiedingerMid_14.fdt", "MiedingerMid", "Medium"},
+		{"common/font/MiedingerMid_18.fdt", "MiedingerMid", "Medium"},
+		{"common/font/MiedingerMid_36.fdt", "MiedingerMid", "Medium"},
+		{"common/font/TrumpGothic_184.fdt", "TrumpGothic", "Regular"},
+		{"common/font/TrumpGothic_23.fdt", "TrumpGothic", "Regular"},
+		{"common/font/TrumpGothic_34.fdt", "TrumpGothic", "Regular"},
+		{"common/font/TrumpGothic_68.fdt", "TrumpGothic", "Regular"},
 	};
 
-	static const char* const fdtListFontLobby[]{
-		"common/font/AXIS_12_lobby.fdt",
-		"common/font/AXIS_14_lobby.fdt",
-		"common/font/AXIS_18_lobby.fdt",
-		"common/font/AXIS_36_lobby.fdt",
-		"common/font/Jupiter_16_lobby.fdt",
-		"common/font/Jupiter_20_lobby.fdt",
-		"common/font/Jupiter_23_lobby.fdt",
-		"common/font/Jupiter_45_lobby.fdt",
-		"common/font/Jupiter_46_lobby.fdt",
-		"common/font/Jupiter_90_lobby.fdt",
-		"common/font/Meidinger_16_lobby.fdt",
-		"common/font/Meidinger_20_lobby.fdt",
-		"common/font/Meidinger_40_lobby.fdt",
-		"common/font/MiedingerMid_10_lobby.fdt",
-		"common/font/MiedingerMid_12_lobby.fdt",
-		"common/font/MiedingerMid_14_lobby.fdt",
-		"common/font/MiedingerMid_18_lobby.fdt",
-		"common/font/MiedingerMid_36_lobby.fdt",
-		"common/font/TrumpGothic_184_lobby.fdt",
-		"common/font/TrumpGothic_23_lobby.fdt",
-		"common/font/TrumpGothic_34_lobby.fdt",
-		"common/font/TrumpGothic_68_lobby.fdt",
-		nullptr,
+	static const FontGenerator::GameFontdataDefinition fdtListFontLobby[]{
+		{"common/font/AXIS_12_lobby.fdt", "AXIS", "Regular"},
+		{"common/font/AXIS_14_lobby.fdt", "AXIS", "Regular"},
+		{"common/font/AXIS_18_lobby.fdt", "AXIS", "Regular"},
+		{"common/font/AXIS_36_lobby.fdt", "AXIS", "Regular"},
+		{"common/font/Jupiter_16_lobby.fdt", "Jupiter", "Regular"},
+		{"common/font/Jupiter_20_lobby.fdt", "Jupiter", "Regular"},
+		{"common/font/Jupiter_23_lobby.fdt", "Jupiter", "Regular"},
+		{"common/font/Jupiter_45_lobby.fdt", "JupiterN", "Regular"},
+		{"common/font/Jupiter_46_lobby.fdt", "Jupiter", "Regular"},
+		{"common/font/Jupiter_90_lobby.fdt", "JupiterN", "Regular"},
+		{"common/font/Meidinger_16_lobby.fdt", "Meidinger", "Regular"},
+		{"common/font/Meidinger_20_lobby.fdt", "Meidinger", "Regular"},
+		{"common/font/Meidinger_40_lobby.fdt", "Meidinger", "Regular"},
+		{"common/font/MiedingerMid_10_lobby.fdt", "MiedingerMid", "Medium"},
+		{"common/font/MiedingerMid_12_lobby.fdt", "MiedingerMid", "Medium"},
+		{"common/font/MiedingerMid_14_lobby.fdt", "MiedingerMid", "Medium"},
+		{"common/font/MiedingerMid_18_lobby.fdt", "MiedingerMid", "Medium"},
+		{"common/font/MiedingerMid_36_lobby.fdt", "MiedingerMid", "Medium"},
+		{"common/font/TrumpGothic_184_lobby.fdt", "TrumpGothic", "Regular"},
+		{"common/font/TrumpGothic_23_lobby.fdt", "TrumpGothic", "Regular"},
+		{"common/font/TrumpGothic_34_lobby.fdt", "TrumpGothic", "Regular"},
+		{"common/font/TrumpGothic_68_lobby.fdt", "TrumpGothic", "Regular"},
 	};
 
-	static const char* const fdtListKrnAxis[]{
-		"common/font/KrnAXIS_120.fdt",
-		"common/font/KrnAXIS_140.fdt",
-		"common/font/KrnAXIS_180.fdt",
-		"common/font/KrnAXIS_360.fdt",
-		nullptr,
+	static const FontGenerator::GameFontdataDefinition fdtListKrnAxis[]{
+		{"common/font/KrnAXIS_120.fdt", "KrnAXIS", "Regular"},
+		{"common/font/KrnAXIS_140.fdt", "KrnAXIS", "Regular"},
+		{"common/font/KrnAXIS_180.fdt", "KrnAXIS", "Regular"},
+		{"common/font/KrnAXIS_360.fdt", "KrnAXIS", "Regular"},
 	};
 
-	static const char* const fdtListChnAxis[]{
-		"common/font/ChnAXIS_120.fdt",
-		"common/font/ChnAXIS_140.fdt",
-		"common/font/ChnAXIS_180.fdt",
-		"common/font/ChnAXIS_360.fdt",
-		nullptr,
+	static const FontGenerator::GameFontdataDefinition fdtListChnAxis[]{
+		{"common/font/ChnAXIS_120.fdt", "ChnAXIS", "Regular"},
+		{"common/font/ChnAXIS_140.fdt", "ChnAXIS", "Regular"},
+		{"common/font/ChnAXIS_180.fdt", "ChnAXIS", "Regular"},
+		{"common/font/ChnAXIS_360.fdt", "ChnAXIS", "Regular"},
 	};
 
 	switch (fontType) {
 		case XivRes::GameFontType::font:
-			return GetFonts(fontType, fdtListFont, "common/font/font{}.tex");
+			return GetFonts(fontType, fdtListFont, _countof(fdtListFont), "common/font/font{}.tex");
 
 		case XivRes::GameFontType::font_lobby:
-			return GetFonts(fontType, fdtListFontLobby, "common/font/font_lobby{}.tex");
+			return GetFonts(fontType, fdtListFontLobby, _countof(fdtListFontLobby), "common/font/font_lobby{}.tex");
 
 		case XivRes::GameFontType::chn_axis:
-			return GetFonts(fontType, fdtListChnAxis, "common/font/font_chn_{}.tex");
+			return GetFonts(fontType, fdtListChnAxis, _countof(fdtListChnAxis), "common/font/font_chn_{}.tex");
 
 		case XivRes::GameFontType::krn_axis:
-			return GetFonts(fontType, fdtListKrnAxis, "common/font/font_krn_{}.tex");
+			return GetFonts(fontType, fdtListKrnAxis, _countof(fdtListKrnAxis), "common/font/font_krn_{}.tex");
 
 		default:
 			throw std::invalid_argument("Invalid font specified");

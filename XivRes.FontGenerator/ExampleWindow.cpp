@@ -7,6 +7,7 @@
 #include "XivRes/FontGenerator/GameFontdataFixedSizeFont.h"
 #include "XivRes/FontGenerator/MergedFixedSizeFont.h"
 #include "XivRes/FontGenerator/TextMeasurer.h"
+#include "XivRes/FontGenerator/WrappingFixedSizeFont.h"
 
 class WindowImpl {
 	static constexpr auto ClassName = L"ExampleWindowClass";
@@ -18,7 +19,6 @@ class WindowImpl {
 
 	enum : size_t {
 		Id_None,
-		Id_Combo,
 		Id_List,
 		Id_Edit,
 		Id__Last,
@@ -26,7 +26,6 @@ class WindowImpl {
 	static constexpr auto ListViewHeight = 100;
 	static constexpr auto EditHeight = 100;
 
-	std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> m_fontBase;
 	std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> m_fontMerged;
 	// std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> m_fontPacked;
 
@@ -39,11 +38,185 @@ class WindowImpl {
 	HFONT m_hUiFont{};
 
 	HWND m_hBaseFontStatic{};
-	HWND m_hBaseFontCombo{};
 	HWND m_hExtraFontsList{};
 	HWND m_hEdit{};
 
 	int m_nDrawTop{};
+
+	struct FaceElement {
+		static const std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont> Test(XivRes::FontGenerator::GameFontFamily family, float size) {
+			static std::map<XivRes::GameFontType, std::weak_ptr<XivRes::FontGenerator::GameFontdataSet>> s_fontSet;
+
+			std::shared_ptr<XivRes::FontGenerator::GameFontdataSet> strong;
+
+			switch (family) {
+				case XivRes::FontGenerator::GameFontFamily::AXIS:
+				case XivRes::FontGenerator::GameFontFamily::Jupiter:
+				case XivRes::FontGenerator::GameFontFamily::JupiterN:
+				case XivRes::FontGenerator::GameFontFamily::MiedingerMid:
+				case XivRes::FontGenerator::GameFontFamily::Meidinger:
+				case XivRes::FontGenerator::GameFontFamily::TrumpGothic:
+				{
+					auto& weak = s_fontSet[XivRes::GameFontType::font];
+					strong = weak.lock();
+					if (!strong)
+						weak = strong = std::make_shared<XivRes::FontGenerator::GameFontdataSet>(XivRes::GameReader(R"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game)").GetFonts(XivRes::GameFontType::font));
+					break;
+				}
+
+				case XivRes::FontGenerator::GameFontFamily::ChnAXIS:
+				{
+					auto& weak = s_fontSet[XivRes::GameFontType::chn_axis];
+					strong = weak.lock();
+					if (!strong)
+						weak = strong = std::make_shared<XivRes::FontGenerator::GameFontdataSet>(XivRes::GameReader(R"(C:\Program Files (x86)\SNDA\FFXIV\game)").GetFonts(XivRes::GameFontType::chn_axis));
+					break;
+				}
+
+				case XivRes::FontGenerator::GameFontFamily::KrnAXIS:
+				{
+					auto& weak = s_fontSet[XivRes::GameFontType::krn_axis];
+					strong = weak.lock();
+					if (!strong)
+						weak = strong = std::make_shared<XivRes::FontGenerator::GameFontdataSet>(XivRes::GameReader(R"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game)").GetFonts(XivRes::GameFontType::krn_axis));
+					break;
+				}
+			}
+
+			return strong ? strong->GetFont(family, size) : nullptr;
+		}
+
+		enum class RendererEnum : uint8_t {
+			Empty,
+			PrerenderedGameInstallation,
+			DirectWrite,
+			FreeType,
+		};
+
+		struct EmptyFontDef {
+			int Ascent = 0;
+			int LineHeight = 0;
+		};
+
+		struct PrerenderedGameFontDef {
+			XivRes::FontGenerator::GameFontFamily FontFamily;
+		};
+
+		std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> BaseFont;
+		std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> Font;
+		std::filesystem::path Path;
+		std::vector<char32_t> UnicodeBlocks;
+		std::vector<std::pair<char32_t, char32_t>> CustomRanges;
+		float Size = 0.f;
+		bool Overwrite = false;
+		XivRes::FontGenerator::WrapModifiers WrapModifiers;
+		RendererEnum Renderer = RendererEnum::PrerenderedGameInstallation;
+
+		struct RendererSpecificStruct {
+			XivRes::FontGenerator::EmptyFixedSizeFont::CreateStruct Empty;
+			PrerenderedGameFontDef PrerenderedGame;
+			XivRes::FontGenerator::FreeTypeFixedSizeFont::CreateStruct FreeType;
+			XivRes::FontGenerator::DirectWriteFixedSizeFont::CreateStruct DirectWrite;
+		} RendererSpecific;
+
+		void RefreshFont() {
+			if (!BaseFont)
+				return RefreshBaseFont();
+
+			Font = std::make_shared<XivRes::FontGenerator::WrappingFixedSizeFont>(BaseFont, WrapModifiers);
+		}
+
+		void RefreshBaseFont() {
+			switch (Renderer) {
+				case RendererEnum::Empty:
+					BaseFont = std::make_shared<XivRes::FontGenerator::EmptyFixedSizeFont>(Size, RendererSpecific.Empty);
+					break;
+
+				case RendererEnum::PrerenderedGameInstallation:
+					BaseFont = Test(RendererSpecific.PrerenderedGame.FontFamily, Size);
+					break;
+
+				case RendererEnum::DirectWrite:
+					BaseFont = std::make_shared<XivRes::FontGenerator::DirectWriteFixedSizeFont>(Path, Size, RendererSpecific.DirectWrite);
+					break;
+
+				case RendererEnum::FreeType:
+					BaseFont = std::make_shared<XivRes::FontGenerator::FreeTypeFixedSizeFont>(Path, Size, RendererSpecific.FreeType);
+					break;
+
+				default:
+					BaseFont = std::make_shared<XivRes::FontGenerator::EmptyFixedSizeFont>();
+					break;
+			}
+			RefreshFont();
+		}
+
+		static void AddToList(HWND hListView, int nListIndex, FaceElement element) {
+			auto pElement = new FaceElement(std::move(element));
+			LVITEMW item{};
+			item.mask = LVIF_PARAM;
+			item.iItem = nListIndex;
+			item.lParam = reinterpret_cast<LPARAM>(pElement);
+			ListView_InsertItem(hListView, &item);
+
+			if (!pElement->Font)
+				pElement->RefreshFont();
+			pElement->UpdateText(hListView, nListIndex);
+		}
+
+		void UpdateText(HWND hListView, int nListIndex) const {
+			int colIndex = 0;
+			std::wstring buf;
+			ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = XivRes::Unicode::Convert<std::wstring>(BaseFont->GetFamilyName()))[0]);
+			ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = XivRes::Unicode::Convert<std::wstring>(BaseFont->GetSubfamilyName()))[0]);
+			ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = std::format(L"{:g}px", BaseFont->GetSize()))[0]);
+			ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = std::format(L"{}px", BaseFont->GetLineHeight()))[0]);
+			ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = std::format(L"{}px", BaseFont->GetAscent() + WrapModifiers.BaselineShift))[0]);
+			ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = std::format(L"{}px", WrapModifiers.LetterSpacing))[0]);
+			ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = GetRangeRepresentation())[0]);
+			ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = std::format(L"{}", BaseFont->GetAllCodepoints().size()))[0]);
+			ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = Overwrite ? L"Yes" : L"No")[0]);
+			ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = GetRendererRepresentation())[0]);
+			ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = std::format(L"{:g}", WrapModifiers.Gamma))[0]);
+		}
+
+		std::wstring GetRangeRepresentation() const {
+			if (UnicodeBlocks.empty()) {
+				if (CustomRanges.empty())
+					return L"(All)";
+
+				return L"(Custom ranges)";
+			}
+
+			if (CustomRanges.empty())
+				return L"(Blocks)";
+
+			return L"(Mixed)";
+		}
+
+		std::wstring GetRendererRepresentation() const {
+			switch (Renderer) {
+				case RendererEnum::Empty:
+					return L"Empty";
+
+				case RendererEnum::PrerenderedGameInstallation:
+					return L"Prerendered (Game)";
+
+				case RendererEnum::DirectWrite:
+					return std::format(L"DirectWrite (Render={}, Measure={}, GridFit={})",
+						RendererSpecific.DirectWrite.GetRenderModeString(),
+						RendererSpecific.DirectWrite.GetMeasuringModeString(),
+						RendererSpecific.DirectWrite.GetGridFitModeString()
+					);
+
+				case RendererEnum::FreeType:
+					return std::format(L"FreeType ({})", RendererSpecific.FreeType.GetLoadFlagsString());
+
+				default:
+					return L"INVALID";
+			}
+		}
+	};
 
 	LRESULT WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 		switch (msg) {
@@ -53,16 +226,6 @@ class WindowImpl {
 
 			case WM_COMMAND:
 				switch (LOWORD(wParam)) {
-					case Id_Combo:
-						switch (HIWORD(wParam)) {
-							case CBN_SELCHANGE:
-								LoadFonts();
-								m_bNeedRedraw = true;
-								InvalidateRect(hwnd, nullptr, FALSE);
-								return 0;
-						}
-						break;
-
 					case Id_Edit:
 						switch (HIWORD(wParam)) {
 							case EN_CHANGE:
@@ -99,9 +262,6 @@ class WindowImpl {
 		m_hBaseFontStatic = CreateWindowExW(0, WC_STATICW, L"Base font: ",
 			WS_CHILD | WS_TABSTOP | WS_VISIBLE | SS_LEFT | SS_CENTERIMAGE,
 			0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(Id_None), reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(m_hWnd, GWLP_HINSTANCE)), nullptr);
-		m_hBaseFontCombo = CreateWindowExW(0, WC_COMBOBOXW, nullptr,
-			WS_CHILD | WS_TABSTOP | WS_VISIBLE | CBS_HASSTRINGS | CBS_DROPDOWNLIST,
-			0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(Id_Combo), reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(m_hWnd, GWLP_HINSTANCE)), nullptr);
 		m_hExtraFontsList = CreateWindowExW(0, WC_LISTVIEWW, nullptr,
 			WS_CHILD | WS_TABSTOP | WS_BORDER | WS_VISIBLE | LVS_REPORT,
 			0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(Id_List), reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(m_hWnd, GWLP_HINSTANCE)), nullptr);
@@ -112,7 +272,6 @@ class WindowImpl {
 		ListView_SetExtendedListViewStyle(m_hExtraFontsList, LVS_EX_FULLROWSELECT);
 
 		SendMessage(m_hBaseFontStatic, WM_SETFONT, reinterpret_cast<WPARAM>(m_hUiFont), FALSE);
-		SendMessage(m_hBaseFontCombo, WM_SETFONT, reinterpret_cast<WPARAM>(m_hUiFont), FALSE);
 		SendMessage(m_hExtraFontsList, WM_SETFONT, reinterpret_cast<WPARAM>(m_hUiFont), FALSE);
 		SendMessage(m_hEdit, WM_SETFONT, reinterpret_cast<WPARAM>(m_hUiFont), FALSE);
 
@@ -133,6 +292,10 @@ class WindowImpl {
 			col.pszText = const_cast<wchar_t*>(L"Name");
 			ListView_InsertColumn(m_hExtraFontsList, colIndex++, &col);
 
+			col.cx = 80;
+			col.pszText = const_cast<wchar_t*>(L"Family");
+			ListView_InsertColumn(m_hExtraFontsList, colIndex++, &col);
+
 			col.cx = 40;
 			col.pszText = const_cast<wchar_t*>(L"Size");
 			ListView_InsertColumn(m_hExtraFontsList, colIndex++, &col);
@@ -147,10 +310,6 @@ class WindowImpl {
 
 			col.cx = 100;
 			col.pszText = const_cast<wchar_t*>(L"Letter Spacing");
-			ListView_InsertColumn(m_hExtraFontsList, colIndex++, &col);
-
-			col.cx = 80;
-			col.pszText = const_cast<wchar_t*>(L"¥Ä Current Y");
 			ListView_InsertColumn(m_hExtraFontsList, colIndex++, &col);
 
 			col.cx = 170;
@@ -173,40 +332,45 @@ class WindowImpl {
 			col.pszText = const_cast<wchar_t*>(L"Gamma");
 			ListView_InsertColumn(m_hExtraFontsList, colIndex++, &col);
 
-			LVITEMW item{};
-			item.mask = LVIF_TEXT | LVIF_PARAM;
-			item.iItem = 0;
-			item.iSubItem = 0;
-			item.pszText = const_cast<wchar_t*>(LR"(AXIS_18)");
-			ListView_InsertItem(m_hExtraFontsList, &item);
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"18px"));
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"24px"));
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"19px"));
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"0px"));
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"0px"));
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"(All)"));
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"1234"));
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"No"));
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"Prerendered(Game)"));
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"1.4"));
+			FaceElement::AddToList(m_hExtraFontsList, ListView_GetItemCount(m_hExtraFontsList), {
+				.Size = 18.f,
+				.WrapModifiers = {
+					.LetterSpacing = -2,
+				},
+				.Renderer = FaceElement::RendererEnum::PrerenderedGameInstallation,
+				.RendererSpecific = {
+					.PrerenderedGame = {
+						.FontFamily = XivRes::FontGenerator::GameFontFamily::AXIS,
+					},
+				},
+				});
 
-			item.iItem = 1;
-			item.iSubItem = 0;
-			item.pszText = const_cast<wchar_t*>(L"Source Han Sans K Regular");
-			item.lParam = reinterpret_cast<LPARAM>(new std::wstring(LR"(C:\Windows\Fonts\segoeui.ttf)"));
-			// item.lParam = reinterpret_cast<LPARAM>(new std::wstring(LR"(C:\Windows\Fonts\SourceHanSansK-Regular.otf)"));
-			// item.lParam = reinterpret_cast<LPARAM>(new std::wstring(LR"(C:\Windows\Fonts\gulim.ttc)"));
-			ListView_InsertItem(m_hExtraFontsList, &item);
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"18px"));
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"22px"));
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"18px"));
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"0px"));
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"0px"));
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"Hangul Compatibility Jamo, Hangul Jamo, Hangul Jamo Extended-A, Hangul Jamo Extended-B, Hangul Syllables"));
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"5678"));
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"No"));
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"DirectWrite(Natural Symmetric)"));
-			ListView_SetItemText(m_hExtraFontsList, item.iItem, ++item.iSubItem, const_cast<wchar_t*>(L"1.4"));
+			FaceElement::AddToList(m_hExtraFontsList, ListView_GetItemCount(m_hExtraFontsList), {
+				.Path = LR"(C:\Windows\Fonts\segoeui.ttf)",
+				.Size = 18.f,
+				.Renderer = FaceElement::RendererEnum::FreeType,
+				.RendererSpecific = {
+					.FreeType = {
+						.FaceIndex = 0,
+						.LoadFlags = FT_LOAD_DEFAULT | FT_LOAD_TARGET_LIGHT
+					},
+				},
+				});
+
+			FaceElement::AddToList(m_hExtraFontsList, ListView_GetItemCount(m_hExtraFontsList), {
+				.Path = LR"(C:\Windows\Fonts\SourceHanSansK-Regular.otf)",
+				.Size = 18.f,
+				.Renderer = FaceElement::RendererEnum::DirectWrite,
+				.RendererSpecific = {
+					.DirectWrite = {
+						.FamilyIndex = 0,
+						.FontIndex = 0,
+						.RenderMode = DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL,
+						.MeasureMode = DWRITE_MEASURING_MODE_GDI_CLASSIC,
+						.GridFitMode = DWRITE_GRID_FIT_MODE_ENABLED,
+					},
+				},
+				});
 		}
 
 		for (const auto& pcsz : {
@@ -258,10 +422,7 @@ class WindowImpl {
 			L"None (68)",
 			L"None (90)",
 			}) {
-			ComboBox_AddString(m_hBaseFontCombo, pcsz);
 		}
-
-		ComboBox_SetCurSel(m_hBaseFontCombo, 3);
 
 		OnSize();
 		LoadFonts();
@@ -276,15 +437,12 @@ class WindowImpl {
 		GetClientRect(m_hWnd, &rc);
 
 		auto hdwp = BeginDeferWindowPos(Id__Last);
-		const auto nComboItemHeight = ComboBox_GetItemHeight(m_hBaseFontCombo);
-		const auto nComboboxHeight = nComboItemHeight + 8;
-		hdwp = DeferWindowPos(hdwp, m_hBaseFontStatic, nullptr, 0, 0, 80, nComboboxHeight, SWP_NOZORDER | SWP_NOACTIVATE);
-		hdwp = DeferWindowPos(hdwp, m_hBaseFontCombo, nullptr, 80, 0, 160, nComboItemHeight * (ComboBox_GetCount(m_hBaseFontCombo) + 1) + nComboboxHeight, SWP_NOZORDER | SWP_NOACTIVATE);
-		hdwp = DeferWindowPos(hdwp, m_hExtraFontsList, nullptr, 0, nComboboxHeight, (std::max<int>)(0, rc.right - rc.left), ListViewHeight, SWP_NOZORDER | SWP_NOACTIVATE);
-		hdwp = DeferWindowPos(hdwp, m_hEdit, nullptr, 0, nComboboxHeight + ListViewHeight, (std::max<int>)(0, rc.right - rc.left), EditHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+		hdwp = DeferWindowPos(hdwp, m_hBaseFontStatic, nullptr, 0, 0, 80, 0, SWP_NOZORDER | SWP_NOACTIVATE);
+		hdwp = DeferWindowPos(hdwp, m_hExtraFontsList, nullptr, 0, 0, (std::max<int>)(0, rc.right - rc.left), ListViewHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+		hdwp = DeferWindowPos(hdwp, m_hEdit, nullptr, 0, ListViewHeight, (std::max<int>)(0, rc.right - rc.left), EditHeight, SWP_NOZORDER | SWP_NOACTIVATE);
 		EndDeferWindowPos(hdwp);
 
-		m_nDrawTop = static_cast<int>(nComboboxHeight + EditHeight + ListViewHeight);
+		m_nDrawTop = static_cast<int>(EditHeight + ListViewHeight);
 		m_pMipmap = std::make_shared<XivRes::MemoryMipmapStream>(
 			(std::max<int>)(32, rc.right - rc.left),
 			(std::max<int>)(32, rc.bottom - rc.top - m_nDrawTop),
@@ -384,38 +542,17 @@ public:
 	}
 
 	void LoadFonts() {
-		size_t fontIndex = ComboBox_GetCurSel(m_hBaseFontCombo);
-		if (fontIndex < fontGlos.Count())
-			m_fontBase = fontGlos[fontIndex];
-		else if ((fontIndex -= fontGlos.Count()) < fontChns.Count())
-			m_fontBase = fontChns[fontIndex];
-		else if ((fontIndex -= fontChns.Count()) < fontKrns.Count())
-			m_fontBase = fontKrns[fontIndex];
-		else if ((fontIndex -= fontKrns.Count()) < _countof(NoBaseFontSizes))
-			m_fontBase = std::make_shared<XivRes::FontGenerator::EmptyFixedSizeFont>(
-				NoBaseFontSizes[fontIndex],
-				static_cast<int>(std::round(NoBaseFontSizes[fontIndex] * 4 / 3 * 4 / 5)),
-				static_cast<int>(std::round(NoBaseFontSizes[fontIndex] * 4 / 3)));
-
 		std::vector<std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>> mergeFontList;
-		mergeFontList.emplace_back(m_fontBase);
 
-		for (int i = 1, i_ = ListView_GetItemCount(m_hExtraFontsList); i < i_; i++) {
+		for (int i = 0, i_ = ListView_GetItemCount(m_hExtraFontsList); i < i_; i++) {
 			LVITEMW item{};
 			item.mask = LVIF_PARAM;
 			item.iItem = i;
 			item.iSubItem = 0;
 			ListView_GetItem(m_hExtraFontsList, &item);
-			//*
-			mergeFontList.emplace_back(std::make_shared<XivRes::FontGenerator::FreeTypeFixedSizeFont>(*reinterpret_cast<const std::wstring*>(item.lParam), 0, m_fontBase->GetSize()));
-			/*/
-			mergeFontList.emplace_back(std::make_shared<XivRes::FontGenerator::DirectWriteFixedSizeFont>(*reinterpret_cast<const std::wstring*>(item.lParam), XivRes::FontGenerator::DirectWriteFixedSizeFont::CreateStruct
-			{
-				.Size = m_fontBase->GetSize(),
-				.RenderMode = DWRITE_RENDERING_MODE_GDI_NATURAL,
-				.MeasureMode = DWRITE_MEASURING_MODE_NATURAL,
-			}));
-			//*/
+
+			auto& element = *reinterpret_cast<FaceElement*>(item.lParam);
+			mergeFontList.emplace_back(element.Font);
 		}
 
 		auto merge = std::make_shared<XivRes::FontGenerator::MergedFixedSizeFont>(std::move(mergeFontList));

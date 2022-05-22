@@ -62,6 +62,14 @@ namespace XivRes::FontGenerator {
 			return m_info->Alignment;
 		}
 
+		std::string GetFamilyName() const override {
+			return "Merged";
+		}
+
+		std::string GetSubfamilyName() const override {
+			return {};
+		}
+
 		float GetSize() const override {
 			return m_info->Size;
 		}

@@ -170,6 +170,10 @@ namespace XivRes::FontGenerator {
 
 	class IFixedSizeFont {
 	public:
+		virtual std::string GetFamilyName() const = 0;
+
+		virtual std::string GetSubfamilyName() const = 0;
+
 		virtual float GetSize() const = 0;
 
 		virtual int GetAscent() const = 0;
@@ -198,32 +202,45 @@ namespace XivRes::FontGenerator {
 	};
 
 	class EmptyFixedSizeFont : public IFixedSizeFont {
-		float m_size;
-		int m_ascent;
-		int m_lineHeight;
+	public:
+		struct CreateStruct {
+			int Ascent = 0;
+			int LineHeight = 0;
+		};
+
+	private:
+		float m_size = 0.f;
+		CreateStruct m_fontDef;
 
 	public:
-		EmptyFixedSizeFont(float size, int ascent, int lineHeight)
+		EmptyFixedSizeFont(float size, CreateStruct fontDef)
 			: m_size(size)
-			, m_ascent(ascent)
-			, m_lineHeight(lineHeight) {}
+			, m_fontDef(fontDef) {}
 
-		EmptyFixedSizeFont() : EmptyFixedSizeFont(0.f, 0, 0) {}
+		EmptyFixedSizeFont() = default;
 		EmptyFixedSizeFont(EmptyFixedSizeFont&&) = default;
 		EmptyFixedSizeFont(const EmptyFixedSizeFont& r) = default;
 		EmptyFixedSizeFont& operator=(EmptyFixedSizeFont&&) = default;
 		EmptyFixedSizeFont& operator=(const EmptyFixedSizeFont&) = default;
+
+		std::string GetFamilyName() const override {
+			return "Empty";
+		}
+
+		std::string GetSubfamilyName() const override {
+			return "Regular";
+		}
 
 		float GetSize() const override {
 			return m_size;
 		}
 
 		int GetAscent() const override {
-			return m_ascent;
+			return m_fontDef.Ascent;
 		}
 
 		int GetLineHeight() const override {
-			return m_lineHeight;
+			return m_fontDef.LineHeight;
 		}
 
 		const std::set<char32_t>& GetAllCodepoints() const override {

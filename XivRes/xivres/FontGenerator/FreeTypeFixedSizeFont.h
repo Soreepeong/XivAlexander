@@ -9,7 +9,7 @@
 #include FT_BITMAP_H
 #include FT_OUTLINE_H 
 #include FT_GLYPH_H
-#include FT_TRUETYPE_TABLES_H
+#include FT_TRUETYPE_TABLES_H\
 
 #include <filesystem>
 
@@ -86,14 +86,33 @@ namespace XivRes::FontGenerator {
 			}
 		};
 
+	public:
+		struct CreateStruct {
+			int FaceIndex = 0;
+			int LoadFlags = FT_LOAD_DEFAULT | FT_LOAD_TARGET_LIGHT;
+
+			std::wstring GetLoadFlagsString() const {
+				std::wstring res;
+				if (LoadFlags & FT_LOAD_NO_SCALE) res += L", no scale";
+				if (LoadFlags & FT_LOAD_NO_HINTING) res += L", no hinting";
+				if (LoadFlags & FT_LOAD_NO_BITMAP) res += L", no bitmap";
+				if (LoadFlags & FT_LOAD_FORCE_AUTOHINT) res += L", force autohint";
+				if (LoadFlags & FT_LOAD_NO_AUTOHINT) res += L", no autohint";
+
+				if (res.empty())
+					return L"Default";
+				return res.substr(2);
+			}
+		};
+
+	private:
 		class FreeTypeFaceWrapper {
 			struct InfoStruct {
 				std::vector<uint8_t> Data;
 				std::set<char32_t> Characters;
 				std::map<std::pair<char32_t, char32_t>, int> KerningPairs;
-				int FaceIndex{};
 				float Size{};
-				int LoadFlags{};
+				CreateStruct Params{};
 			};
 
 			std::shared_ptr<FreeTypeLibraryWrapper> m_library;
@@ -103,14 +122,18 @@ namespace XivRes::FontGenerator {
 		public:
 			FreeTypeFaceWrapper() = default;
 
-			FreeTypeFaceWrapper(std::vector<uint8_t> data, int faceIndex, float fSize, int nLoadFlags)
+			FreeTypeFaceWrapper(std::vector<uint8_t> data, float fSize, CreateStruct createStruct)
 				: m_library(std::make_shared<FreeTypeLibraryWrapper>()) {
 
 				auto info = std::make_shared<InfoStruct>();
 				info->Data = std::move(data);
-				info->FaceIndex = faceIndex;
 				info->Size = fSize;
-				info->LoadFlags = nLoadFlags;
+				info->Params = createStruct;
+				info->Params.LoadFlags &= (FT_LOAD_NO_SCALE |
+					FT_LOAD_NO_HINTING |
+					FT_LOAD_NO_BITMAP |
+					FT_LOAD_FORCE_AUTOHINT |
+					FT_LOAD_NO_AUTOHINT);
 
 				m_face = CreateFace(*m_library, *info);
 				FT_UInt glyphIndex;
@@ -228,7 +251,7 @@ namespace XivRes::FontGenerator {
 				if (m_face->glyph->glyph_index == glyphIndex && !bRender)
 					return;
 
-				SuccessOrThrow(FT_Load_Glyph(m_face, glyphIndex, m_info->LoadFlags | (bRender ? FT_LOAD_RENDER : 0)));
+				SuccessOrThrow(FT_Load_Glyph(m_face, glyphIndex, m_info->Params.LoadFlags | (bRender ? FT_LOAD_RENDER : 0)));
 			}
 
 			FreeTypeLibraryWrapper& GetLibrary() const {
@@ -248,7 +271,7 @@ namespace XivRes::FontGenerator {
 			}
 
 			int GetLoadFlags() const {
-				return m_info->LoadFlags;
+				return m_info->Params.LoadFlags;
 			}
 
 			std::span<const uint8_t> GetRawData() const {
@@ -259,7 +282,7 @@ namespace XivRes::FontGenerator {
 			static FT_Face CreateFace(FreeTypeLibraryWrapper& m_library, const InfoStruct& info) {
 				FT_Face face;
 				const auto lock = std::lock_guard(m_library.Mutex());
-				SuccessOrThrow(FT_New_Memory_Face(*m_library, &info.Data[0], static_cast<FT_Long>(info.Data.size()), info.FaceIndex, &face));
+				SuccessOrThrow(FT_New_Memory_Face(*m_library, &info.Data[0], static_cast<FT_Long>(info.Data.size()), info.Params.FaceIndex, &face));
 				try {
 					SuccessOrThrow(FT_Set_Char_Size(face, 0, static_cast<FT_F26Dot6>(64.f * info.Size), 72, 72));
 					return face;
@@ -332,16 +355,34 @@ namespace XivRes::FontGenerator {
 		FreeTypeFaceWrapper m_face;
 
 	public:
-		FreeTypeFixedSizeFont(const std::filesystem::path& path, int faceIndex, float fSize, int nLoadFlags = FT_LOAD_DEFAULT | FT_LOAD_TARGET_LIGHT)
-			: FreeTypeFixedSizeFont(ReadStreamIntoVector<uint8_t>(FileStream(path)), faceIndex, fSize, nLoadFlags) {}
+		FreeTypeFixedSizeFont(const std::filesystem::path& path, float fSize, CreateStruct createStruct)
+			: FreeTypeFixedSizeFont(ReadStreamIntoVector<uint8_t>(FileStream(path)), fSize, createStruct) {}
 
-		FreeTypeFixedSizeFont(std::vector<uint8_t> data, int faceIndex, float fSize, int nLoadFlags = FT_LOAD_DEFAULT | FT_LOAD_TARGET_LIGHT)
-			: m_face(std::move(data), faceIndex, fSize, nLoadFlags) {}
+		FreeTypeFixedSizeFont(std::vector<uint8_t> data, float fSize, CreateStruct createStruct)
+			: m_face(std::move(data), fSize, createStruct) {}
 
 		FreeTypeFixedSizeFont(FreeTypeFixedSizeFont&& r) = default;
 		FreeTypeFixedSizeFont(const FreeTypeFixedSizeFont& r) = default;
 		FreeTypeFixedSizeFont& operator=(FreeTypeFixedSizeFont&& r) = default;
 		FreeTypeFixedSizeFont& operator=(const FreeTypeFixedSizeFont& r) = default;
+
+		std::string GetFamilyName() const override {
+			FreeTypeFontTable nameDataRef(*m_face, Internal::TrueType::Name::DirectoryTableTag.ReverseNativeValue);
+			Internal::TrueType::Name::View name(nameDataRef.GetSpan<char>());
+			if (!name)
+				return {};
+
+			return name.GetPreferredFamilyName<std::string>(0);
+		}
+
+		std::string GetSubfamilyName() const override {
+			FreeTypeFontTable nameDataRef(*m_face, Internal::TrueType::Name::DirectoryTableTag.ReverseNativeValue);
+			Internal::TrueType::Name::View name(nameDataRef.GetSpan<char>());
+			if (!name)
+				return {};
+
+			return name.GetPreferredSubfamilyName<std::string>(0);
+		}
 
 		float GetSize() const override {
 			return m_face.GetSize();

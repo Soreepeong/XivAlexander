@@ -6,8 +6,8 @@
 namespace XivRes::FontGenerator {
 	struct WrapModifiers {
 		std::optional<std::vector<char32_t>> Codepoints;
-		int OffsetAdvanceX = 0;
-		int OffsetCurrentY = 0;
+		int LetterSpacing = 0;
+		int BaselineShift = 0;
 		float Gamma = 1.f;
 	};
 
@@ -15,8 +15,8 @@ namespace XivRes::FontGenerator {
 		struct InfoStruct {
 			std::optional<std::set<char32_t>> Codepoints;
 			std::optional<std::map<std::pair<char32_t, char32_t>, int>> KerningPairs;
-			int OffsetAdvanceX{};
-			int OffsetCurrentY{};
+			int LetterSpacing{};
+			int BaselineShift{};
 			float Gamma{};
 		};
 
@@ -40,8 +40,8 @@ namespace XivRes::FontGenerator {
 				}
 			}
 
-			info->OffsetAdvanceX = wrapModifiers.OffsetAdvanceX;
-			info->OffsetCurrentY = wrapModifiers.OffsetCurrentY;
+			info->LetterSpacing = wrapModifiers.LetterSpacing;
+			info->BaselineShift = wrapModifiers.BaselineShift;
 			info->Gamma = wrapModifiers.Gamma;
 
 			m_info = std::move(info);
@@ -52,6 +52,14 @@ namespace XivRes::FontGenerator {
 		WrappingFixedSizeFont(WrappingFixedSizeFont&& r) = default;
 		WrappingFixedSizeFont& operator=(const WrappingFixedSizeFont& r) = default;
 		WrappingFixedSizeFont& operator=(WrappingFixedSizeFont&& r) = default;
+
+		std::string GetFamilyName() const override {
+			return m_font->GetFamilyName();
+		}
+
+		std::string GetSubfamilyName() const override {
+			return m_font->GetSubfamilyName();
+		}
 
 		float GetSize() const override {
 			return m_font->GetSize();
@@ -66,7 +74,10 @@ namespace XivRes::FontGenerator {
 		}
 
 		const std::set<char32_t>& GetAllCodepoints() const override {
-			return m_info->Codepoints.value_or(m_font->GetAllCodepoints());
+			if (m_info->Codepoints)
+				return *m_info->Codepoints;
+			else
+				return m_font->GetAllCodepoints();
 		}
 
 		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const override {
@@ -75,7 +86,13 @@ namespace XivRes::FontGenerator {
 				return false;
 			}
 
-			return m_font->GetGlyphMetrics(codepoint, gm);
+			if (!m_font->GetGlyphMetrics(codepoint, gm))
+				return false;
+
+			gm.AdvanceX += m_info->LetterSpacing;
+			gm.Translate(0, m_info->BaselineShift);
+
+			return true;
 		}
 
 		const void* GetGlyphUniqid(char32_t c) const override {
@@ -86,7 +103,10 @@ namespace XivRes::FontGenerator {
 		}
 
 		const std::map<std::pair<char32_t, char32_t>, int>& GetAllKerningPairs() const override {
-			return m_info->KerningPairs.value_or(m_font->GetAllKerningPairs());
+			if (m_info->KerningPairs)
+				return *m_info->KerningPairs;
+			else
+				return m_font->GetAllKerningPairs();
 		}
 
 		int GetAdjustedAdvanceX(char32_t left, char32_t right) const override {
@@ -106,14 +126,14 @@ namespace XivRes::FontGenerator {
 			if (m_info->Codepoints && !m_info->Codepoints->contains(codepoint))
 				return false;
 
-			return m_font->Draw(codepoint, pBuf, drawX, drawY, destWidth, destHeight, fgColor, bgColor, gamma);
+			return m_font->Draw(codepoint, pBuf, drawX, drawY, destWidth, destHeight, fgColor, bgColor, gamma * m_info->Gamma);
 		}
 
 		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity, float gamma) const override {
 			if (m_info->Codepoints && !m_info->Codepoints->contains(codepoint))
 				return false;
 
-			return m_font->Draw(codepoint, pBuf, stride, drawX, drawY, destWidth, destHeight, fgColor, bgColor, fgOpacity, bgOpacity, gamma);
+			return m_font->Draw(codepoint, pBuf, stride, drawX, drawY, destWidth, destHeight, fgColor, bgColor, fgOpacity, bgOpacity, gamma * m_info->Gamma);
 		}
 
 		std::shared_ptr<IFixedSizeFont> GetThreadSafeView() const override {
