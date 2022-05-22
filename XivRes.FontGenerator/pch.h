@@ -22,3 +22,4 @@
 #include "XivRes/Internal/TexturePreview.Windows.h"
 
 extern const char8_t* const g_pszTestString;
+extern HINSTANCE g_hInstance;

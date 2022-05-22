@@ -298,6 +298,15 @@ namespace XivRes::Unicode {
 	}
 
 	template<class TTo, class TFrom>
+	inline TTo ConvertFromChar(TFrom c, bool strict = true) {
+		TTo out{};
+		const auto encLen = Unicode::Encode<TTo::value_type>(nullptr, c, strict);
+		out.resize(encLen);
+		Unicode::Encode(&out[0], c, strict);
+		return out;
+	}
+
+	template<class TTo, class TFrom>
 	inline TTo Convert(const TFrom& in, bool strict = true) {
 		TTo out{};
 		out.reserve(in.size() * 4 / sizeof(in[0]) / sizeof(out[0]));

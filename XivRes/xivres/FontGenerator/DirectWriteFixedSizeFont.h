@@ -24,52 +24,14 @@ _COM_SMARTPTR_TYPEDEF(IDWriteFontFaceReference, __uuidof(IDWriteFontFaceReferenc
 _COM_SMARTPTR_TYPEDEF(IDWriteFontFamily, __uuidof(IDWriteFontFamily));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontFile, __uuidof(IDWriteFontFile));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontFileLoader, __uuidof(IDWriteFontFileLoader));
+_COM_SMARTPTR_TYPEDEF(IDWriteFontFileStream, __uuidof(IDWriteFontFileStream));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontSetBuilder, __uuidof(IDWriteFontSetBuilder));
 _COM_SMARTPTR_TYPEDEF(IDWriteGdiInterop, __uuidof(IDWriteGdiInterop));
 _COM_SMARTPTR_TYPEDEF(IDWriteGlyphRunAnalysis, __uuidof(IDWriteGlyphRunAnalysis));
-_COM_SMARTPTR_TYPEDEF(IDWriteLocalFontFileLoader, __uuidof(IDWriteLocalFontFileLoader));
 _COM_SMARTPTR_TYPEDEF(IDWriteLocalizedStrings, __uuidof(IDWriteLocalizedStrings));
 
 namespace XivRes::FontGenerator {
 	class DirectWriteFixedSizeFont : public DefaultAbstractFixedSizeFont {
-		static HRESULT SuccessOrThrow(HRESULT hr, std::initializer_list<HRESULT> acceptables = {}) {
-			if (SUCCEEDED(hr))
-				return hr;
-
-			for (const auto& h : acceptables) {
-				if (h == hr)
-					return hr;
-			}
-
-			const auto err = _com_error(hr);
-			wchar_t* pszMsg = nullptr;
-			FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER |
-							  FORMAT_MESSAGE_FROM_SYSTEM |
-							  FORMAT_MESSAGE_IGNORE_INSERTS,
-						  nullptr,
-						  hr,
-						  MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
-						  reinterpret_cast<LPWSTR>(&pszMsg),
-						  0,
-						  NULL);
-			if (pszMsg) {
-				std::unique_ptr<wchar_t, decltype(LocalFree)*> pszMsgFree(pszMsg, LocalFree);
-
-				throw std::runtime_error(std::format(
-					"DirectWrite Error (HRESULT=0x{:08X}): {}",
-					static_cast<uint32_t>(hr),
-					Unicode::Convert<std::string>(std::wstring(pszMsg))
-				));
-
-			} else {
-				throw std::runtime_error(std::format(
-					"DirectWrite Error (HRESULT=0x{:08X})",
-					static_cast<uint32_t>(hr),
-					Unicode::Convert<std::string>(std::wstring(pszMsg))
-				));
-			}
-		}
-
 		class IStreamBasedDWriteFontFileLoader : public IDWriteFontFileLoader {
 			class IStreamAsDWriteFontFileStream : public IDWriteFontFileStream {
 				const std::shared_ptr<IStream> m_stream;
@@ -345,8 +307,6 @@ namespace XivRes::FontGenerator {
 
 	public:
 		struct CreateStruct {
-			int FamilyIndex = 0;
-			int FontIndex = 0;
 			DWRITE_RENDERING_MODE RenderMode = DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL;
 			DWRITE_MEASURING_MODE MeasureMode = DWRITE_MEASURING_MODE_GDI_CLASSIC;
 			DWRITE_GRID_FIT_MODE GridFitMode = DWRITE_GRID_FIT_MODE_ENABLED;
@@ -390,6 +350,7 @@ namespace XivRes::FontGenerator {
 			std::map<std::pair<char32_t, char32_t>, int> KerningPairs;
 			DWRITE_FONT_METRICS1 Metrics;
 			CreateStruct Params;
+			int FontIndex = 0;
 			float Size = 0.f;
 
 			int ScaleFromFontUnit(int fontUnitValue) const {
@@ -412,17 +373,17 @@ namespace XivRes::FontGenerator {
 		mutable std::vector<uint8_t> m_drawBuffer;
 
 	public:
-		DirectWriteFixedSizeFont(std::filesystem::path path, float size, CreateStruct params)
-			: DirectWriteFixedSizeFont(std::make_shared<MemoryStream>(FileStream(path)), size, std::move(params)) {}
+		DirectWriteFixedSizeFont(std::filesystem::path path, int fontIndex, float size, CreateStruct params)
+			: DirectWriteFixedSizeFont(std::make_shared<MemoryStream>(FileStream(path)), fontIndex, size, std::move(params)) {}
 
-		DirectWriteFixedSizeFont(std::shared_ptr<IStream> stream, float size, CreateStruct params) {
+		DirectWriteFixedSizeFont(std::shared_ptr<IStream> stream, int fontIndex, float size, CreateStruct params) {
 			if (!stream)
 				return;
-
 
 			auto info = std::make_shared<ParsedInfoStruct>();
 			info->Stream = std::move(stream);
 			info->Params = std::move(params);
+			info->FontIndex = fontIndex;
 			info->Size = size;
 
 			m_dwrite = FaceFromInfoStruct(*info);
@@ -644,6 +605,44 @@ namespace XivRes::FontGenerator {
 			return std::make_shared<DirectWriteFixedSizeFont>(*this);
 		}
 
+		static HRESULT SuccessOrThrow(HRESULT hr, std::initializer_list<HRESULT> acceptables = {}) {
+			if (SUCCEEDED(hr))
+				return hr;
+
+			for (const auto& h : acceptables) {
+				if (h == hr)
+					return hr;
+			}
+
+			const auto err = _com_error(hr);
+			wchar_t* pszMsg = nullptr;
+			FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+							  FORMAT_MESSAGE_FROM_SYSTEM |
+							  FORMAT_MESSAGE_IGNORE_INSERTS,
+						  nullptr,
+						  hr,
+						  MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
+						  reinterpret_cast<LPWSTR>(&pszMsg),
+						  0,
+						  NULL);
+			if (pszMsg) {
+				std::unique_ptr<wchar_t, decltype(LocalFree)*> pszMsgFree(pszMsg, LocalFree);
+
+				throw std::runtime_error(std::format(
+					"DirectWrite Error (HRESULT=0x{:08X}): {}",
+					static_cast<uint32_t>(hr),
+					Unicode::Convert<std::string>(std::wstring(pszMsg))
+				));
+
+			} else {
+				throw std::runtime_error(std::format(
+					"DirectWrite Error (HRESULT=0x{:08X})",
+					static_cast<uint32_t>(hr),
+					Unicode::Convert<std::string>(std::wstring(pszMsg))
+				));
+			}
+		}
+
 	private:
 		static DWriteInterfaceStruct FaceFromInfoStruct(const ParsedInfoStruct& info) {
 			DWriteInterfaceStruct res{};
@@ -653,8 +652,8 @@ namespace XivRes::FontGenerator {
 			SuccessOrThrow(res.Factory->RegisterFontCollectionLoader(&IStreamBasedDWriteFontCollectionLoader::GetInstance()), { DWRITE_E_ALREADYREGISTERED });
 			SuccessOrThrow(res.Factory.QueryInterface(decltype(res.Factory3)::GetIID(), &res.Factory3), { E_NOINTERFACE });
 			SuccessOrThrow(res.Factory->CreateCustomFontCollection(&IStreamBasedDWriteFontCollectionLoader::GetInstance(), &info.Stream, sizeof info.Stream, &res.Collection));
-			SuccessOrThrow(res.Collection->GetFontFamily(info.Params.FamilyIndex, &res.Family));
-			SuccessOrThrow(res.Family->GetFont(info.Params.FontIndex, &res.Font));
+			SuccessOrThrow(res.Collection->GetFontFamily(0, &res.Family));
+			SuccessOrThrow(res.Family->GetFont(info.FontIndex, &res.Font));
 			SuccessOrThrow(res.Font->CreateFontFace(&res.Face));
 			SuccessOrThrow(res.Face.QueryInterface(decltype(res.Face1)::GetIID(), &res.Face1));
 
@@ -662,44 +661,50 @@ namespace XivRes::FontGenerator {
 		}
 
 		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm, IDWriteGlyphRunAnalysisPtr& analysis) const {
-			uint16_t glyphIndex;
-			SuccessOrThrow(m_dwrite.Face->GetGlyphIndices(reinterpret_cast<const uint32_t*>(&codepoint), 1, &glyphIndex));
-			if (!glyphIndex) {
+			try {
+				uint16_t glyphIndex;
+				SuccessOrThrow(m_dwrite.Face->GetGlyphIndices(reinterpret_cast<const uint32_t*>(&codepoint), 1, &glyphIndex));
+				if (!glyphIndex) {
+					gm.Clear();
+					return false;
+				}
+
+				int32_t glyphAdvanceI;
+				SuccessOrThrow(m_dwrite.Face1->GetGdiCompatibleGlyphAdvances(m_info->Size, 1.f, nullptr, TRUE, FALSE, 1, &glyphIndex, &glyphAdvanceI));
+
+				float glyphAdvance{};
+				DWRITE_GLYPH_OFFSET glyphOffset{};
+				const DWRITE_GLYPH_RUN run{
+					.fontFace = m_dwrite.Face,
+					.fontEmSize = m_info->Size,
+					.glyphCount = 1,
+					.glyphIndices = &glyphIndex,
+					.glyphAdvances = &glyphAdvance,
+					.glyphOffsets = &glyphOffset,
+					.isSideways = FALSE,
+					.bidiLevel = 0,
+				};
+
+				SuccessOrThrow(m_dwrite.Factory3->CreateGlyphRunAnalysis(
+					&run,
+					nullptr,
+					m_info->Params.RenderMode,
+					m_info->Params.MeasureMode,
+					m_info->Params.GridFitMode,
+					DWRITE_TEXT_ANTIALIAS_MODE_GRAYSCALE,
+					0,
+					0,
+					&analysis));
+
+				SuccessOrThrow(analysis->GetAlphaTextureBounds(DWRITE_TEXTURE_ALIASED_1x1, gm.AsMutableRectPtr()));
+				gm.AdvanceX = m_info->ScaleFromFontUnit(glyphAdvanceI);
+				gm.Empty = false;
+				return gm;
+
+			} catch (...) {
 				gm.Clear();
 				return false;
 			}
-
-			int32_t glyphAdvanceI;
-			SuccessOrThrow(m_dwrite.Face1->GetGdiCompatibleGlyphAdvances(m_info->Size, 1.f, nullptr, TRUE, FALSE, 1, &glyphIndex, &glyphAdvanceI));
-
-			float glyphAdvance{};
-			DWRITE_GLYPH_OFFSET glyphOffset{};
-			const DWRITE_GLYPH_RUN run{
-				.fontFace = m_dwrite.Face,
-				.fontEmSize = m_info->Size,
-				.glyphCount = 1,
-				.glyphIndices = &glyphIndex,
-				.glyphAdvances = &glyphAdvance,
-				.glyphOffsets = &glyphOffset,
-				.isSideways = FALSE,
-				.bidiLevel = 0,
-			};
-
-			SuccessOrThrow(m_dwrite.Factory3->CreateGlyphRunAnalysis(
-				&run,
-				nullptr,
-				m_info->Params.RenderMode,
-				m_info->Params.MeasureMode,
-				m_info->Params.GridFitMode,
-				DWRITE_TEXT_ANTIALIAS_MODE_GRAYSCALE,
-				0,
-				0,
-				&analysis));
-
-			SuccessOrThrow(analysis->GetAlphaTextureBounds(DWRITE_TEXTURE_ALIASED_1x1, gm.AsMutableRectPtr()));
-			gm.AdvanceX = m_info->ScaleFromFontUnit(glyphAdvanceI);
-			gm.Empty = false;
-			return gm;
 		}
 	};
 }

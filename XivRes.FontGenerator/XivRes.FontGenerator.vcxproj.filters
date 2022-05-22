@@ -2,6 +2,7 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <None Include="vcpkg.json" />
+    <None Include="rt_manif.bin" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Example.cpp" />
@@ -17,5 +18,9 @@
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="ExampleWindow.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="XivRes.FontGenerator.rc" />
   </ItemGroup>
 </Project>

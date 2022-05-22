@@ -7,6 +7,7 @@ namespace XivRes::FontGenerator {
 	struct WrapModifiers {
 		std::optional<std::vector<char32_t>> Codepoints;
 		int LetterSpacing = 0;
+		int HorizontalOffset = 0;
 		int BaselineShift = 0;
 		float Gamma = 1.f;
 	};
@@ -15,9 +16,7 @@ namespace XivRes::FontGenerator {
 		struct InfoStruct {
 			std::optional<std::set<char32_t>> Codepoints;
 			std::optional<std::map<std::pair<char32_t, char32_t>, int>> KerningPairs;
-			int LetterSpacing{};
-			int BaselineShift{};
-			float Gamma{};
+			WrapModifiers Modifiers;
 		};
 
 		std::shared_ptr<const IFixedSizeFont> m_font;
@@ -40,9 +39,7 @@ namespace XivRes::FontGenerator {
 				}
 			}
 
-			info->LetterSpacing = wrapModifiers.LetterSpacing;
-			info->BaselineShift = wrapModifiers.BaselineShift;
-			info->Gamma = wrapModifiers.Gamma;
+			info->Modifiers = wrapModifiers;
 
 			m_info = std::move(info);
 		}
@@ -89,8 +86,8 @@ namespace XivRes::FontGenerator {
 			if (!m_font->GetGlyphMetrics(codepoint, gm))
 				return false;
 
-			gm.AdvanceX += m_info->LetterSpacing;
-			gm.Translate(0, m_info->BaselineShift);
+			gm.AdvanceX += m_info->Modifiers.LetterSpacing;
+			gm.Translate(m_info->Modifiers.HorizontalOffset, m_info->Modifiers.BaselineShift);
 
 			return true;
 		}
@@ -126,14 +123,14 @@ namespace XivRes::FontGenerator {
 			if (m_info->Codepoints && !m_info->Codepoints->contains(codepoint))
 				return false;
 
-			return m_font->Draw(codepoint, pBuf, drawX, drawY, destWidth, destHeight, fgColor, bgColor, gamma * m_info->Gamma);
+			return m_font->Draw(codepoint, pBuf, drawX + m_info->Modifiers.HorizontalOffset, drawY + m_info->Modifiers.BaselineShift, destWidth, destHeight, fgColor, bgColor, gamma * m_info->Modifiers.Gamma);
 		}
 
 		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity, float gamma) const override {
 			if (m_info->Codepoints && !m_info->Codepoints->contains(codepoint))
 				return false;
 
-			return m_font->Draw(codepoint, pBuf, stride, drawX, drawY, destWidth, destHeight, fgColor, bgColor, fgOpacity, bgOpacity, gamma * m_info->Gamma);
+			return m_font->Draw(codepoint, pBuf, stride, drawX + m_info->Modifiers.HorizontalOffset, drawY + m_info->Modifiers.BaselineShift, destWidth, destHeight, fgColor, bgColor, fgOpacity, bgOpacity, gamma * m_info->Modifiers.Gamma);
 		}
 
 		std::shared_ptr<IFixedSizeFont> GetThreadSafeView() const override {

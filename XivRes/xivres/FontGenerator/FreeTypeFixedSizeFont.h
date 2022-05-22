@@ -88,7 +88,6 @@ namespace XivRes::FontGenerator {
 
 	public:
 		struct CreateStruct {
-			int FaceIndex = 0;
 			int LoadFlags = FT_LOAD_DEFAULT | FT_LOAD_TARGET_LIGHT;
 
 			std::wstring GetLoadFlagsString() const {
@@ -113,6 +112,7 @@ namespace XivRes::FontGenerator {
 				std::map<std::pair<char32_t, char32_t>, int> KerningPairs;
 				float Size{};
 				CreateStruct Params{};
+				int FaceIndex = 0;
 			};
 
 			std::shared_ptr<FreeTypeLibraryWrapper> m_library;
@@ -122,13 +122,14 @@ namespace XivRes::FontGenerator {
 		public:
 			FreeTypeFaceWrapper() = default;
 
-			FreeTypeFaceWrapper(std::vector<uint8_t> data, float fSize, CreateStruct createStruct)
+			FreeTypeFaceWrapper(std::vector<uint8_t> data, int faceIndex, float fSize, CreateStruct createStruct)
 				: m_library(std::make_shared<FreeTypeLibraryWrapper>()) {
 
 				auto info = std::make_shared<InfoStruct>();
 				info->Data = std::move(data);
 				info->Size = fSize;
 				info->Params = createStruct;
+				info->FaceIndex = faceIndex;
 				info->Params.LoadFlags &= (FT_LOAD_NO_SCALE |
 					FT_LOAD_NO_HINTING |
 					FT_LOAD_NO_BITMAP |
@@ -282,7 +283,7 @@ namespace XivRes::FontGenerator {
 			static FT_Face CreateFace(FreeTypeLibraryWrapper& m_library, const InfoStruct& info) {
 				FT_Face face;
 				const auto lock = std::lock_guard(m_library.Mutex());
-				SuccessOrThrow(FT_New_Memory_Face(*m_library, &info.Data[0], static_cast<FT_Long>(info.Data.size()), info.Params.FaceIndex, &face));
+				SuccessOrThrow(FT_New_Memory_Face(*m_library, &info.Data[0], static_cast<FT_Long>(info.Data.size()), info.FaceIndex, &face));
 				try {
 					SuccessOrThrow(FT_Set_Char_Size(face, 0, static_cast<FT_F26Dot6>(64.f * info.Size), 72, 72));
 					return face;
@@ -355,11 +356,14 @@ namespace XivRes::FontGenerator {
 		FreeTypeFaceWrapper m_face;
 
 	public:
-		FreeTypeFixedSizeFont(const std::filesystem::path& path, float fSize, CreateStruct createStruct)
-			: FreeTypeFixedSizeFont(ReadStreamIntoVector<uint8_t>(FileStream(path)), fSize, createStruct) {}
+		FreeTypeFixedSizeFont(const std::filesystem::path& path, int faceIndex, float fSize, CreateStruct createStruct)
+			: FreeTypeFixedSizeFont(ReadStreamIntoVector<uint8_t>(FileStream(path)), faceIndex, fSize, createStruct) {}
 
-		FreeTypeFixedSizeFont(std::vector<uint8_t> data, float fSize, CreateStruct createStruct)
-			: m_face(std::move(data), fSize, createStruct) {}
+		FreeTypeFixedSizeFont(IStream& stream, int faceIndex, float fSize, CreateStruct createStruct)
+			: m_face(ReadStreamIntoVector<uint8_t>(stream), faceIndex, fSize, createStruct) {}
+
+		FreeTypeFixedSizeFont(std::vector<uint8_t> data, int faceIndex, float fSize, CreateStruct createStruct)
+			: m_face(std::move(data), faceIndex, fSize, createStruct) {}
 
 		FreeTypeFixedSizeFont(FreeTypeFixedSizeFont&& r) = default;
 		FreeTypeFixedSizeFont(const FreeTypeFixedSizeFont& r) = default;
