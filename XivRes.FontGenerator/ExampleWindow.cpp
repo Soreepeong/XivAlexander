@@ -91,9 +91,6 @@ struct FaceElement {
 	};
 
 	struct FontLookupStruct {
-		std::filesystem::path Path;
-		int FontIndex;
-
 		std::string Name;
 		DWRITE_FONT_WEIGHT Weight = DWRITE_FONT_WEIGHT_REGULAR;
 		DWRITE_FONT_STRETCH Stretch = DWRITE_FONT_STRETCH_NORMAL;
@@ -143,9 +140,6 @@ struct FaceElement {
 
 		std::pair<std::shared_ptr<XivRes::IStream>, int> ResolveStream() const {
 			using namespace XivRes::FontGenerator;
-
-			if (!Path.empty() && exists(Path))
-				return { std::make_shared<XivRes::MemoryStream>(XivRes::FileStream(Path)), FontIndex };
 
 			IDWriteFactory3Ptr factory;
 			SuccessOrThrow(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), reinterpret_cast<IUnknown**>(&factory)));
@@ -206,7 +200,6 @@ struct FaceElement {
 
 	std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> BaseFont;
 	std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> Font;
-	std::vector<std::pair<char32_t, char32_t>> Codepoints;
 	float Size = 0.f;
 	bool Overwrite = false;
 	XivRes::FontGenerator::WrapModifiers WrapModifiers;
@@ -294,10 +287,58 @@ struct FaceElement {
 	}
 
 	std::wstring GetRangeRepresentation() const {
-		if (Codepoints.empty())
-			return L"(Blocks)";
+		if (WrapModifiers.Codepoints.empty())
+			return L"(All)";
 
-		return L"(Mixed)";
+		if (WrapModifiers.Codepoints.size() == 1) {
+			std::vector<char32_t> charVec(BaseFont->GetAllCodepoints().begin(), BaseFont->GetAllCodepoints().end());
+			for (const auto& [c1, c2] : WrapModifiers.Codepoints) {
+				const auto left = std::ranges::lower_bound(charVec, c1);
+				const auto right = std::ranges::upper_bound(charVec, c2);
+				const auto count = right - left;
+
+				const auto blk = std::lower_bound(XivRes::Unicode::UnicodeBlocks::Blocks.begin(), XivRes::Unicode::UnicodeBlocks::Blocks.end(), c1, [](const auto& l, const auto& r) { return l.First < r; });
+				if (blk != XivRes::Unicode::UnicodeBlocks::Blocks.end() && blk->First == c1 && blk->Last == c2) {
+					if (c1 == c2) {
+						return std::format(
+							L"U+{:04X} {} ({}) [{}]",
+							static_cast<int>(c1),
+							XivRes::Unicode::Convert<std::wstring>(blk->Name),
+							count,
+							XivRes::Unicode::ConvertFromChar<std::wstring>(c1)
+						).c_str();
+					} else {
+						return std::format(
+							L"U+{:04X} ~ U+{:04X} {} ({}) [{}] ~ [{}]",
+							static_cast<int>(c1),
+							static_cast<int>(c2),
+							XivRes::Unicode::Convert<std::wstring>(blk->Name),
+							count,
+							XivRes::Unicode::ConvertFromChar<std::wstring>(c1),
+							XivRes::Unicode::ConvertFromChar<std::wstring>(c2)
+						);
+					}
+				} else if (c1 == c2) {
+					return std::format(
+						L"U+{:04X} ({}) [{}]",
+						static_cast<int>(c1),
+						count,
+						XivRes::Unicode::ConvertFromChar<std::wstring>(c1)
+					);
+				} else {
+					return std::format(
+						L"U+{:04X} ~ U+{:04X} ({}) [{}] ~ [{}]",
+						static_cast<int>(c1),
+						static_cast<int>(c2),
+						count,
+						XivRes::Unicode::ConvertFromChar<std::wstring>(c1),
+						XivRes::Unicode::ConvertFromChar<std::wstring>(c2)
+					);
+				}
+			}
+		}
+
+		return std::format(L"{} ranges", WrapModifiers.Codepoints.size());
 	}
 
 	std::wstring GetRendererRepresentation() const {
@@ -327,9 +368,7 @@ struct FaceElement {
 		switch (Renderer) {
 			case RendererEnum::DirectWrite:
 			case RendererEnum::FreeType:
-				if (!Lookup.Path.empty() && exists(Lookup.Path))
-					return std::format(L"{}:{}", Lookup.Path.c_str(), Lookup.FontIndex);
-				return std::format(L"{} (Weight={}, Style={}, Stretch={})",
+				return std::format(L"{} ({}, {}, {})",
 					XivRes::Unicode::Convert<std::wstring>(Lookup.Name),
 					Lookup.GetWeightString(),
 					Lookup.GetStyleString(),
@@ -347,8 +386,8 @@ struct FaceElement {
 class FaceElement::EditorDialog {
 	FaceElement& m_element;
 	FaceElement m_elementOriginal;
+	HWND m_hParentWnd;
 	bool m_bOpened = false;
-	std::thread m_runnerThread;
 	std::function<void()> m_onFontChanged;
 
 	enum : UINT {
@@ -361,9 +400,6 @@ class FaceElement::EditorDialog {
 		HWND OkButton = GetDlgItem(Window, IDOK);
 		HWND CancelButton = GetDlgItem(Window, IDCANCEL);
 		HWND FontRendererCombo = GetDlgItem(Window, IDC_COMBO_FONT_RENDERER);
-		HWND FontFilePathEdit = GetDlgItem(Window, IDC_EDIT_FONT_PATH);
-		HWND FontFaceIndexEdit = GetDlgItem(Window, IDC_EDIT_FONT_FACEINDEX);
-		HWND FontLocateButton = GetDlgItem(Window, IDC_BUTTON_LOCATEFILE);
 		HWND FontCombo = GetDlgItem(Window, IDC_COMBO_FONT);
 		HWND FontSizeCombo = GetDlgItem(Window, IDC_COMBO_FONT_SIZE);
 		HWND FontWeightCombo = GetDlgItem(Window, IDC_COMBO_FONT_WEIGHT);
@@ -386,30 +422,32 @@ class FaceElement::EditorDialog {
 		HWND CodepointsDeleteButton = GetDlgItem(Window, IDC_BUTTON_CODEPOINTS_DELETE);
 		HWND CodepointsOverwriteCheck = GetDlgItem(Window, IDC_CHECK_CODEPOINTS_OVERWRITE);
 		HWND UnicodeBlockSearchNameEdit = GetDlgItem(Window, IDC_EDIT_UNICODEBLOCKS_SEARCH);
+		HWND UnicodeBlockSearchShowBlocksWithAnyOfCharactersInput = GetDlgItem(Window, IDC_CHECK_UNICODEBLOCKS_SHOWBLOCKSWITHANYOFCHARACTERSINPUT);
 		HWND UnicodeBlockSearchResultList = GetDlgItem(Window, IDC_LIST_UNICODEBLOCKS_SEARCHRESULTS);
+		HWND UnicodeBlockSearchSelectedPreviewEdit = GetDlgItem(Window, IDC_EDIT_UNICODEBLOCKS_RANGEPREVIEW);
 		HWND UnicodeBlockSearchAdd = GetDlgItem(Window, IDC_BUTTON_UNICODEBLOCKS_ADD);
 		HWND CustomRangeEdit = GetDlgItem(Window, IDC_EDIT_ADDCUSTOMRANGE_INPUT);
+		HWND CustomRangePreview = GetDlgItem(Window, IDC_EDIT_ADDCUSTOMRANGE_PREVIEW);
 		HWND CustomRangeAdd = GetDlgItem(Window, IDC_BUTTON_ADDCUSTOMRANGE_ADD);
 	} *m_controls = nullptr;
 
 public:
-	EditorDialog(FaceElement& element, std::function<void()> onFontChanged)
-		: m_element(element)
+	EditorDialog(HWND hParentWnd, FaceElement& element, std::function<void()> onFontChanged)
+		: m_hParentWnd(hParentWnd)
+		, m_element(element)
 		, m_elementOriginal(element)
 		, m_onFontChanged(onFontChanged) {
-		m_runnerThread = std::thread([this]() {
-			std::unique_ptr<std::remove_pointer<HGLOBAL>::type, decltype(FreeResource)*> hglob(LoadResource(g_hInstance, FindResourceW(g_hInstance, MAKEINTRESOURCE(IDD_FACEELEMENTEDITOR), RT_DIALOG)), FreeResource);
-			DialogBoxIndirectParamW(
-				g_hInstance,
-				reinterpret_cast<LPCDLGTEMPLATE>(LockResource(hglob.get())),
-				nullptr,
-				DlgProcStatic,
-				reinterpret_cast<LPARAM>(this));
-		});
+
+		std::unique_ptr<std::remove_pointer<HGLOBAL>::type, decltype(FreeResource)*> hglob(LoadResource(g_hInstance, FindResourceW(g_hInstance, MAKEINTRESOURCE(IDD_FACEELEMENTEDITOR), RT_DIALOG)), FreeResource);
+		CreateDialogIndirectParamW(
+			g_hInstance,
+			reinterpret_cast<DLGTEMPLATE*>(LockResource(hglob.get())),
+			m_hParentWnd,
+			DlgProcStatic,
+			reinterpret_cast<LPARAM>(this));
 	}
 
 	~EditorDialog() {
-		m_runnerThread.join();
 		delete m_controls;
 	}
 
@@ -421,15 +459,21 @@ public:
 		BringWindowToTop(m_controls->Window);
 	}
 
+	bool ConsumeDialogMessage(MSG& msg) {
+		return m_controls && IsDialogMessage(m_controls->Window, &msg);
+	}
+
 private:
 	INT_PTR OkButton_OnCommand(uint16_t notiCode) {
 		EndDialog(m_controls->Window, 0);
+		m_bOpened = false;
 		return 0;
 	}
 
 	INT_PTR CancelButton_OnCommand(uint16_t notiCode) {
 		m_element = std::move(m_elementOriginal);
 		EndDialog(m_controls->Window, 0);
+		m_bOpened = false;
 		OnWrappedFontChanged();
 		return 0;
 	}
@@ -442,10 +486,6 @@ private:
 		SetControlsEnabledOrDisabled();
 		RepopulateFontCombobox();
 		OnBaseFontChanged();
-		return 0;
-	}
-
-	INT_PTR FontLocateButton_OnCommand(uint16_t notiCode) {
 		return 0;
 	}
 
@@ -651,7 +691,26 @@ private:
 		return 0;
 	}
 
+	INT_PTR CodepointsList_OnCommand(uint16_t notiCode) {
+		if (notiCode == LBN_DBLCLK)
+			return CodepointsDeleteButton_OnCommand(BN_CLICKED);
+
+		return 0;
+	}
+
 	INT_PTR CodepointsDeleteButton_OnCommand(uint16_t notiCode) {
+		std::vector<int> selItems(ListBox_GetSelCount(m_controls->CodepointsList));
+		if (selItems.empty())
+			return 0;
+
+		ListBox_GetSelItems(m_controls->CodepointsList, static_cast<int>(selItems.size()), &selItems[0]);
+		std::ranges::sort(selItems, std::greater<>());
+		for (const auto itemIndex : selItems) {
+			m_element.WrapModifiers.Codepoints.erase(m_element.WrapModifiers.Codepoints.begin() + itemIndex);
+			ListBox_DeleteString(m_controls->CodepointsList, itemIndex);
+		}
+
+		OnWrappedFontChanged();
 		return 0;
 	}
 
@@ -661,7 +720,107 @@ private:
 		return 0;
 	}
 
+	INT_PTR UnicodeBlockSearchNameEdit_OnCommand(uint16_t notiCode) {
+		if (notiCode != EN_CHANGE)
+			return 0;
+		
+		RefreshUnicodeBlockSearchResults();
+		return 0;
+	}
+
+	INT_PTR UnicodeBlockSearchShowBlocksWithAnyOfCharactersInput_OnCommand(uint16_t notiCode) {
+		RefreshUnicodeBlockSearchResults();
+		return 0;
+	}
+
+	INT_PTR UnicodeBlockSearchResultList_OnCommand(uint16_t notiCode) {
+		if (notiCode == LBN_SELCHANGE || notiCode == LBN_SELCANCEL) {
+			std::vector<int> selItems(ListBox_GetSelCount(m_controls->UnicodeBlockSearchResultList));
+			if (selItems.empty())
+				return 0;
+
+			ListBox_GetSelItems(m_controls->UnicodeBlockSearchResultList, static_cast<int>(selItems.size()), &selItems[0]);
+
+			std::vector<char32_t> charVec(m_element.BaseFont->GetAllCodepoints().begin(), m_element.BaseFont->GetAllCodepoints().end());
+			std::wstring containingChars;
+
+			containingChars.reserve(8192);
+
+			for (const auto itemIndex : selItems) {
+				const auto& block = *reinterpret_cast<XivRes::Unicode::UnicodeBlocks::BlockDefinition*>(ListBox_GetItemData(m_controls->UnicodeBlockSearchResultList, itemIndex));
+
+				for (auto it = std::ranges::lower_bound(charVec, block.First), it_ = std::ranges::upper_bound(charVec, block.Last); it != it_; ++it) {
+					if (*it < 0x10000)
+						containingChars.push_back(static_cast<wchar_t>(*it));
+					else {
+						const auto ptr = containingChars.size();
+						containingChars.resize(ptr + 2);
+						containingChars.resize(ptr + XivRes::Unicode::Encode(&containingChars[ptr], *it));
+					}
+					if (containingChars.size() >= 8192)
+						break;
+				}
+
+				if (containingChars.size() >= 8192)
+					break;
+			}
+
+			Static_SetText(m_controls->UnicodeBlockSearchSelectedPreviewEdit, containingChars.c_str());
+		} else if (notiCode == LBN_DBLCLK) {
+			return UnicodeBlockSearchAdd_OnCommand(BN_CLICKED);
+		}
+		return 0;
+	}
+
+	INT_PTR UnicodeBlockSearchAdd_OnCommand(uint16_t notiCode) {
+		std::vector<int> selItems(ListBox_GetSelCount(m_controls->UnicodeBlockSearchResultList));
+		if (selItems.empty())
+			return 0;
+
+		ListBox_GetSelItems(m_controls->UnicodeBlockSearchResultList, static_cast<int>(selItems.size()), &selItems[0]);
+
+		auto changed = false;
+		std::vector<char32_t> charVec(m_element.BaseFont->GetAllCodepoints().begin(), m_element.BaseFont->GetAllCodepoints().end());
+		for (const auto itemIndex : selItems) {
+			const auto& block = *reinterpret_cast<const XivRes::Unicode::UnicodeBlocks::BlockDefinition*>(ListBox_GetItemData(m_controls->UnicodeBlockSearchResultList, itemIndex));
+			changed |= AddNewCodepointRange(block.First, block.Last, charVec);
+		}
+
+		if (changed)
+			OnWrappedFontChanged();
+
+		return 0;
+	}
+
+	INT_PTR CustomRangeEdit_OnCommand(uint16_t notiCode) {
+		if (notiCode != EN_CHANGE)
+			return 0;
+
+		std::wstring description;
+		for (const auto& [c1, c2] : ParseCustomRangeString()) {
+			if (!description.empty())
+				description += L", ";
+			if (c1 == c2)
+				description += std::format(L"U+{:04X}", static_cast<uint32_t>(c1));
+			else
+				description += std::format(L"U+{:04X} ~ U+{:04X}", static_cast<uint32_t>(c1), static_cast<uint32_t>(c2));
+		}
+
+		Edit_SetText(m_controls->CustomRangePreview, &description[0]);
+
+		return 0;
+	}
+
 	INT_PTR CustomRangeAdd_OnCommand(uint16_t notiCode) {
+		std::vector<char32_t> charVec(m_element.BaseFont->GetAllCodepoints().begin(), m_element.BaseFont->GetAllCodepoints().end());
+
+		auto changed = false;
+		for (const auto& [c1, c2] : ParseCustomRangeString())
+			changed |= AddNewCodepointRange(c1, c2, charVec);
+
+		if (changed)
+			OnWrappedFontChanged();
+
 		return 0;
 	}
 
@@ -674,8 +833,6 @@ private:
 		ComboBox_AddString(m_controls->FontRendererCombo, L"DirectWrite");
 		ComboBox_AddString(m_controls->FontRendererCombo, L"FreeType");
 		ComboBox_SetCurSel(m_controls->FontRendererCombo, static_cast<int>(m_element.Renderer));
-		Edit_SetText(m_controls->FontFilePathEdit, m_element.Lookup.Path.c_str());
-		Edit_SetText(m_controls->FontFaceIndexEdit, std::format(L"{}", m_element.Lookup.FontIndex).c_str());
 		ComboBox_SetText(m_controls->FontCombo, XivRes::Unicode::Convert<std::wstring>(m_element.Lookup.Name).c_str());
 		ComboBox_SetText(m_controls->FontSizeCombo, std::format(L"{:g}", m_element.Size).c_str());
 		Edit_SetText(m_controls->EmptyAscentEdit, std::format(L"{}", m_element.RendererSpecific.Empty.Ascent).c_str());
@@ -699,37 +856,219 @@ private:
 		ComboBox_AddString(m_controls->DirectWriteGridFitModeCombo, L"Disabled");
 		ComboBox_AddString(m_controls->DirectWriteGridFitModeCombo, L"Enabled");
 		ComboBox_SetCurSel(m_controls->DirectWriteGridFitModeCombo, static_cast<int>(m_element.RendererSpecific.DirectWrite.GridFitMode));
+
 		Edit_SetText(m_controls->AdjustmentBaselineShiftEdit, std::format(L"{}", m_element.WrapModifiers.BaselineShift).c_str());
 		Edit_SetText(m_controls->AdjustmentLetterSpacingEdit, std::format(L"{}", m_element.WrapModifiers.LetterSpacing).c_str());
 		Edit_SetText(m_controls->AdjustmentHorizontalOffsetEdit, std::format(L"{}", m_element.WrapModifiers.HorizontalOffset).c_str());
 		Edit_SetText(m_controls->AdjustmentGammaEdit, std::format(L"{:g}", m_element.WrapModifiers.Gamma).c_str());
-		for (const auto& [c1, c2] : m_element.Codepoints) {
+
+		for (const auto& controlHwnd : {
+			m_controls->AdjustmentBaselineShiftEdit,
+			m_controls->AdjustmentLetterSpacingEdit,
+			m_controls->AdjustmentHorizontalOffsetEdit
+			}) {
+			SetWindowSubclass(controlHwnd, [](HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) -> LRESULT {
+				if (msg == WM_KEYDOWN && wParam == VK_DOWN)
+					SetWindowInt(hWnd, (std::max)(-128, GetWindowInt(hWnd) + 1));
+				else if (msg == WM_KEYDOWN && wParam == VK_UP)
+					SetWindowInt(hWnd, (std::min)(127, GetWindowInt(hWnd) - 1));
+				else
+					return DefSubclassProc(hWnd, msg, wParam, lParam);
+				return 0;
+			}, 1, 0);
+		}
+		SetWindowSubclass(m_controls->AdjustmentGammaEdit, [](HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) -> LRESULT {
+			if (msg == WM_KEYDOWN && wParam == VK_DOWN)
+				SetWindowFloat(hWnd, (std::max)(0.1f, GetWindowFloat(hWnd) + 0.1f));
+			else if (msg == WM_KEYDOWN && wParam == VK_UP)
+				SetWindowFloat(hWnd, (std::min)(3.0f, GetWindowFloat(hWnd) - 0.1f));
+			else
+				return DefSubclassProc(hWnd, msg, wParam, lParam);
+			return 0;
+		}, 1, 0);
+
+		std::vector<char32_t> charVec(m_element.BaseFont->GetAllCodepoints().begin(), m_element.BaseFont->GetAllCodepoints().end());
+		for (int i = 0, i_ = static_cast<int>(m_element.WrapModifiers.Codepoints.size()); i < i_; i++)
+			AddCodepointRangeToListBox(i, m_element.WrapModifiers.Codepoints[i].first, m_element.WrapModifiers.Codepoints[i].second, charVec);
+
+		Button_SetCheck(m_controls->CodepointsOverwriteCheck, m_element.Overwrite ? TRUE : FALSE);
+	
+		RECT rc, rcParent;
+		GetWindowRect(m_controls->Window, &rc);
+		GetWindowRect(m_hParentWnd, &rcParent);
+		rc.right -= rc.left;
+		rc.bottom -= rc.top;
+		rc.left = (rcParent.left + rcParent.right - rc.right) / 2;
+		rc.top = (rcParent.top + rcParent.bottom - rc.bottom) / 2;
+		rc.right += rc.left;
+		rc.bottom += rc.top;
+		SetWindowPos(m_controls->Window, nullptr, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, SWP_NOACTIVATE | SWP_NOZORDER);
+
+		ShowWindow(m_controls->Window, SW_SHOW);
+		
+		return 0;
+	}
+
+	std::vector<std::pair<char32_t, char32_t>> ParseCustomRangeString() {
+		const auto input = XivRes::Unicode::Convert<std::u32string>(GetWindowString(m_controls->CustomRangeEdit));
+		size_t next = 0;
+		std::vector<std::pair<char32_t, char32_t>> ranges;
+		for (size_t i = 0; i < input.size(); i = next + 1) {
+			next = input.find_first_of(U",;", i);
+			std::u32string_view part;
+			if (next == std::u32string::npos) {
+				next = input.size() - 1;
+				part = std::u32string_view(input).substr(i);
+			} else
+				part = std::u32string_view(input).substr(i, next - i);
+
+			while (!part.empty() && part.front() < 128 && std::isspace(part.front()))
+				part = part.substr(1);
+			while (!part.empty() && part.front() < 128 && std::isspace(part.back()))
+				part = part.substr(0, part.size() - 1);
+
+			if (part.empty())
+				continue;
+
+			if (part.starts_with(U"0x") || part.starts_with(U"0X") || part.starts_with(U"U+") || part.starts_with(U"u+") || part.starts_with(U"\\x") || part.starts_with(U"\\X")) {
+				if (const auto sep = part.find_first_of(U"-~:"); sep != std::u32string::npos) {
+					auto c1 = std::strtol(XivRes::Unicode::Convert<std::string>(part.substr(2, sep - 2)).c_str(), nullptr, 16);
+					auto part2 = part.substr(sep + 1);
+					while (!part2.empty() && part2.front() < 128 && std::isspace(part2.front()))
+						part2 = part2.substr(1);
+					if (part2.starts_with(U"0x") || part2.starts_with(U"0X") || part2.starts_with(U"U+") || part2.starts_with(U"u+") || part2.starts_with(U"\\x") || part2.starts_with(U"\\X"))
+						part2 = part2.substr(2);
+					auto c2 = std::strtol(XivRes::Unicode::Convert<std::string>(part2).c_str(), nullptr, 16);
+					if (c1 < c2)
+						ranges.emplace_back(c1, c2);
+					else
+						ranges.emplace_back(c2, c1);
+				} else {
+					const auto c = std::strtol(XivRes::Unicode::Convert<std::string>(part.substr(2)).c_str(), nullptr, 16);
+					ranges.emplace_back(c, c);
+				}
+			} else {
+				for (const auto c : part)
+					ranges.emplace_back(c, c);
+			}
+		}
+		std::sort(ranges.begin(), ranges.end());
+		for (size_t i = 1; i < ranges.size();) {
+			if (ranges[i - 1].second + 1 >= ranges[i].first) {
+				ranges[i - 1].second = (std::max)(ranges[i - 1].second, ranges[i].second);
+				ranges.erase(ranges.begin() + i);
+			} else
+				++i;
+		}
+		return ranges;
+	}
+
+	bool AddNewCodepointRange(char32_t c1, char32_t c2, const std::vector<char32_t>& charVec) {
+		const auto newItem = std::make_pair(c1, c2);
+		const auto it = std::ranges::lower_bound(m_element.WrapModifiers.Codepoints, newItem);
+		if (it != m_element.WrapModifiers.Codepoints.end() && *it == newItem)
+			return false;
+
+		const auto newIndex = static_cast<int>(it - m_element.WrapModifiers.Codepoints.begin());
+		m_element.WrapModifiers.Codepoints.insert(it, newItem);
+		AddCodepointRangeToListBox(newIndex, c1, c2, charVec);
+		return true;
+	}
+
+	void AddCodepointRangeToListBox(int index, char32_t c1, char32_t c2, const std::vector<char32_t>& charVec) {
+		const auto left = std::ranges::lower_bound(charVec, c1);
+		const auto right = std::ranges::upper_bound(charVec, c2);
+		const auto count = right - left;
+
+		const auto block = std::lower_bound(XivRes::Unicode::UnicodeBlocks::Blocks.begin(), XivRes::Unicode::UnicodeBlocks::Blocks.end(), c1, [](const auto& l, const auto& r) { return l.First < r; });
+		if (block != XivRes::Unicode::UnicodeBlocks::Blocks.end() && block->First == c1 && block->Last == c2) {
 			if (c1 == c2) {
 				ListBox_AddString(m_controls->CodepointsList, std::format(
-					L"U+{:04X} [{}]",
+					L"U+{:04X} {} ({}) [{}]",
 					static_cast<int>(c1),
+					XivRes::Unicode::Convert<std::wstring>(block->Name),
+					count,
 					XivRes::Unicode::ConvertFromChar<std::wstring>(c1)
 				).c_str());
 			} else {
 				ListBox_AddString(m_controls->CodepointsList, std::format(
-					L"U+{:04X} ~ U+{:04X} [{}] ~ [{}]",
+					L"U+{:04X} ~ U+{:04X} {} ({}) [{}] ~ [{}]",
 					static_cast<int>(c1),
 					static_cast<int>(c2),
+					XivRes::Unicode::Convert<std::wstring>(block->Name),
+					count,
 					XivRes::Unicode::ConvertFromChar<std::wstring>(c1),
 					XivRes::Unicode::ConvertFromChar<std::wstring>(c2)
 				).c_str());
 			}
+		} else if (c1 == c2) {
+			ListBox_AddString(m_controls->CodepointsList, std::format(
+				L"U+{:04X} ({}) [{}]",
+				static_cast<int>(c1),
+				count,
+				XivRes::Unicode::ConvertFromChar<std::wstring>(c1)
+			).c_str());
+		} else {
+			ListBox_AddString(m_controls->CodepointsList, std::format(
+				L"U+{:04X} ~ U+{:04X} ({}) [{}] ~ [{}]",
+				static_cast<int>(c1),
+				static_cast<int>(c2),
+				count,
+				XivRes::Unicode::ConvertFromChar<std::wstring>(c1),
+				XivRes::Unicode::ConvertFromChar<std::wstring>(c2)
+			).c_str());
 		}
-		Button_SetCheck(m_controls->CodepointsOverwriteCheck, m_element.Overwrite ? TRUE : FALSE);
-		return 0;
+	}
+
+	void RefreshUnicodeBlockSearchResults() {
+		const auto input = XivRes::Unicode::Convert<std::string>(GetWindowString(m_controls->UnicodeBlockSearchNameEdit));
+		const auto input32 = XivRes::Unicode::Convert<std::u32string>(input);
+		ListBox_ResetContent(m_controls->UnicodeBlockSearchResultList);
+
+		const auto searchByChar = Button_GetCheck(m_controls->UnicodeBlockSearchShowBlocksWithAnyOfCharactersInput);
+
+		std::vector<char32_t> charVec(m_element.BaseFont->GetAllCodepoints().begin(), m_element.BaseFont->GetAllCodepoints().end());
+		for (const auto& block : XivRes::Unicode::UnicodeBlocks::Blocks) {
+			const auto nameView = std::string_view(block.Name);
+			const auto it = std::search(nameView.begin(), nameView.end(), input.begin(), input.end(), [](char ch1, char ch2) {
+				return std::toupper(ch1) == std::toupper(ch2);
+			});
+			if (it == nameView.end()) {
+				if (searchByChar) {
+					auto contains = false;
+					for (const auto& c : input32) {
+						if (block.First <= c && block.Last >= c) {
+							contains = true;
+							break;
+						}
+					}
+					if (!contains)
+						continue;
+				} else
+					continue;
+			}
+
+			const auto left = std::ranges::lower_bound(charVec, block.First);
+			const auto right = std::ranges::upper_bound(charVec, block.Last);
+			if (left == right)
+				continue;
+
+			ListBox_AddString(m_controls->UnicodeBlockSearchResultList, std::format(
+				L"U+{:04X} ~ U+{:04X} {} ({}) [{}] ~ [{}]",
+				static_cast<uint32_t>(block.First),
+				static_cast<uint32_t>(block.Last),
+				XivRes::Unicode::Convert<std::wstring>(nameView),
+				right - left,
+				XivRes::Unicode::ConvertFromChar<std::wstring>(block.First),
+				XivRes::Unicode::ConvertFromChar<std::wstring>(block.Last)
+			).c_str());
+			ListBox_SetItemData(m_controls->UnicodeBlockSearchResultList, ListBox_GetCount(m_controls->UnicodeBlockSearchResultList) - 1, &block);
+		}
 	}
 
 	void SetControlsEnabledOrDisabled() {
 		switch (m_element.Renderer) {
 			case RendererEnum::Empty:
-				EnableWindow(m_controls->FontFilePathEdit, FALSE);
-				EnableWindow(m_controls->FontFaceIndexEdit, FALSE);
-				EnableWindow(m_controls->FontLocateButton, FALSE);
 				EnableWindow(m_controls->FontCombo, FALSE);
 				EnableWindow(m_controls->FontSizeCombo, TRUE);
 				EnableWindow(m_controls->FontWeightCombo, FALSE);
@@ -759,9 +1098,6 @@ private:
 				break;
 
 			case RendererEnum::PrerenderedGameInstallation:
-				EnableWindow(m_controls->FontFilePathEdit, TRUE);
-				EnableWindow(m_controls->FontFaceIndexEdit, FALSE);
-				EnableWindow(m_controls->FontLocateButton, TRUE);
 				EnableWindow(m_controls->FontCombo, TRUE);
 				EnableWindow(m_controls->FontSizeCombo, TRUE);
 				EnableWindow(m_controls->FontWeightCombo, FALSE);
@@ -791,9 +1127,6 @@ private:
 				break;
 
 			case RendererEnum::DirectWrite:
-				EnableWindow(m_controls->FontFilePathEdit, TRUE);
-				EnableWindow(m_controls->FontFaceIndexEdit, TRUE);
-				EnableWindow(m_controls->FontLocateButton, TRUE);
 				EnableWindow(m_controls->FontCombo, TRUE);
 				EnableWindow(m_controls->FontSizeCombo, TRUE);
 				EnableWindow(m_controls->FontWeightCombo, TRUE);
@@ -823,9 +1156,6 @@ private:
 				break;
 
 			case RendererEnum::FreeType:
-				EnableWindow(m_controls->FontFilePathEdit, TRUE);
-				EnableWindow(m_controls->FontFaceIndexEdit, TRUE);
-				EnableWindow(m_controls->FontLocateButton, TRUE);
 				EnableWindow(m_controls->FontCombo, TRUE);
 				EnableWindow(m_controls->FontSizeCombo, TRUE);
 				EnableWindow(m_controls->FontWeightCombo, TRUE);
@@ -944,6 +1274,7 @@ private:
 		ComboBox_ResetContent(m_controls->FontWeightCombo);
 		ComboBox_ResetContent(m_controls->FontStyleCombo);
 		ComboBox_ResetContent(m_controls->FontStretchCombo);
+		ComboBox_ResetContent(m_controls->FontSizeCombo);
 
 		switch (m_element.Renderer) {
 			case RendererEnum::PrerenderedGameInstallation:
@@ -985,7 +1316,6 @@ private:
 
 				auto closestIndex = std::ranges::min_element(sizes, [prevSize = m_element.Size](const auto& n1, const auto& n2) { return std::fabs(n1 - prevSize) < std::fabs(n2 - prevSize); }) - sizes.begin();
 
-				ComboBox_ResetContent(m_controls->FontSizeCombo);
 				for (size_t i = 0; i < sizes.size(); i++) {
 					ComboBox_AddString(m_controls->FontSizeCombo, std::format(L"{:g}", sizes[i]).c_str());
 					if (i == closestIndex) {
@@ -1009,7 +1339,8 @@ private:
 			case RendererEnum::DirectWrite:
 			case RendererEnum::FreeType:
 			{
-				const auto& family = m_fontFamilies[ComboBox_GetCurSel(m_controls->FontCombo)];
+				const auto curSel = (std::max)(0, (std::min)(static_cast<int>(m_fontFamilies.size() - 1), ComboBox_GetCurSel(m_controls->FontCombo)));
+				const auto& family = m_fontFamilies[curSel];
 				std::set<DWRITE_FONT_WEIGHT> weights;
 				std::set<DWRITE_FONT_STYLE> styles;
 				std::set<DWRITE_FONT_STRETCH> stretches;
@@ -1106,6 +1437,8 @@ private:
 			default:
 				break;
 		}
+
+		RefreshUnicodeBlockSearchResults();
 	}
 
 	void OnBaseFontChanged() {
@@ -1130,9 +1463,6 @@ private:
 					case IDOK: return OkButton_OnCommand(HIWORD(wParam));
 					case IDCANCEL: return CancelButton_OnCommand(HIWORD(wParam));
 					case IDC_COMBO_FONT_RENDERER: return FontRendererCombo_OnCommand(HIWORD(wParam));
-					case IDC_EDIT_FONT_PATH: return 0;
-					case IDC_EDIT_FONT_FACEINDEX: return 0;
-					case IDC_BUTTON_LOCATEFILE: return FontLocateButton_OnCommand(HIWORD(wParam));
 					case IDC_COMBO_FONT: return FontCombo_OnCommand(HIWORD(wParam));
 					case IDC_COMBO_FONT_SIZE: return FontSizeCombo_OnCommand(HIWORD(wParam));
 					case IDC_COMBO_FONT_WEIGHT: return FontWeightCombo_OnCommand(HIWORD(wParam));
@@ -1151,13 +1481,14 @@ private:
 					case IDC_EDIT_ADJUSTMENT_LETTERSPACING: return AdjustmentLetterSpacingEdit_OnChange(HIWORD(wParam));
 					case IDC_EDIT_ADJUSTMENT_HORIZONTALOFFSET: return AdjustmentHorizontalOffsetEdit_OnChange(HIWORD(wParam));
 					case IDC_EDIT_ADJUSTMENT_GAMMA: return AdjustmentGammaEdit_OnChange(HIWORD(wParam));
-					case IDC_LIST_CODEPOINTS: return 0;
+					case IDC_LIST_CODEPOINTS: return CodepointsList_OnCommand(HIWORD(wParam));
 					case IDC_BUTTON_CODEPOINTS_DELETE: return CodepointsDeleteButton_OnCommand(HIWORD(wParam));
 					case IDC_CHECK_CODEPOINTS_OVERWRITE: return CodepointsOverwriteCheck_OnCommand(HIWORD(wParam));
-					case IDC_EDIT_UNICODEBLOCKS_SEARCH: return 0;
-					case IDC_LIST_UNICODEBLOCKS_SEARCHRESULTS: return 0;
-					case IDC_BUTTON_UNICODEBLOCKS_ADD: return 0;
-					case IDC_EDIT_ADDCUSTOMRANGE_INPUT: return 0;
+					case IDC_EDIT_UNICODEBLOCKS_SEARCH: return UnicodeBlockSearchNameEdit_OnCommand(HIWORD(wParam));
+					case IDC_CHECK_UNICODEBLOCKS_SHOWBLOCKSWITHANYOFCHARACTERSINPUT: return UnicodeBlockSearchShowBlocksWithAnyOfCharactersInput_OnCommand(HIWORD(wParam));
+					case IDC_LIST_UNICODEBLOCKS_SEARCHRESULTS: return UnicodeBlockSearchResultList_OnCommand(HIWORD(wParam));
+					case IDC_BUTTON_UNICODEBLOCKS_ADD: return UnicodeBlockSearchAdd_OnCommand(HIWORD(wParam));
+					case IDC_EDIT_ADDCUSTOMRANGE_INPUT: return CustomRangeEdit_OnCommand(HIWORD(wParam));
 					case IDC_BUTTON_ADDCUSTOMRANGE_ADD: return CustomRangeAdd_OnCommand(HIWORD(wParam));
 
 				}
@@ -1167,6 +1498,12 @@ private:
 			{
 				const auto def = DefWindowProcW(m_controls->Window, message, wParam, lParam);
 				return def == HTCLIENT ? HTCAPTION : def;
+			}
+			case WM_CLOSE:
+			{
+				EndDialog(m_controls->Window, 0);
+				m_bOpened = false;
+				return 0;
 			}
 			case WM_DESTROY:
 			{
@@ -1212,25 +1549,31 @@ private:
 		return std::wcstof(GetWindowString(hwnd).c_str(), nullptr);
 	}
 
-	static double GetWindowDouble(HWND hwnd) {
-		return std::wcstod(GetWindowString(hwnd).c_str(), nullptr);
+	static void SetWindowFloat(HWND hwnd, float v) {
+		SetWindowTextW(hwnd, std::format(L"{:g}", v).c_str());
 	}
 
 	static int GetWindowInt(HWND hwnd) {
 		return std::wcstol(GetWindowString(hwnd).c_str(), nullptr, 0);
 	}
+
+	static void SetWindowInt(HWND hwnd, int v) {
+		SetWindowTextW(hwnd, std::format(L"{}", v).c_str());
+	}
 };
 
 class WindowImpl {
-	static constexpr auto ClassName = L"ExampleWindowClass";
+	static constexpr auto ClassName = L"FontEditorWindowClass";
 	static constexpr float NoBaseFontSizes[]{ 9.6f, 10.f, 12.f, 14.f, 16.f, 18.f, 18.4f, 20.f, 23.f, 34.f, 36.f, 40.f, 45.f, 46.f, 68.f, 90.f, };
 
 	enum : size_t {
 		Id_None,
-		Id_List,
+		Id_FaceListBox,
+		Id_FaceElementListView,
 		Id_Edit,
 		Id__Last,
 	};
+	static constexpr auto FaceListBoxWidth = 160;
 	static constexpr auto ListViewHeight = 160;
 	static constexpr auto EditHeight = 40;
 
@@ -1246,9 +1589,11 @@ class WindowImpl {
 	HWND m_hWnd{};
 	HFONT m_hUiFont{};
 
-	HWND m_hListView{};
+	HWND m_hFacesListBox{};
+	HWND m_hFaceElementsListView{};
 	HWND m_hEdit{};
 
+	int m_nDrawLeft{};
 	int m_nDrawTop{};
 
 	LRESULT WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -1299,16 +1644,20 @@ class WindowImpl {
 		SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof ncm, &ncm, 0);
 		m_hUiFont = CreateFontIndirectW(&ncm.lfMessageFont);
 
-		m_hListView = CreateWindowExW(0, WC_LISTVIEWW, nullptr,
+		m_hFacesListBox = CreateWindowExW(0, WC_LISTBOXW, nullptr,
+			WS_CHILD | WS_TABSTOP | WS_BORDER | WS_VISIBLE | LBS_NOINTEGRALHEIGHT,
+			0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(Id_FaceListBox), reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(m_hWnd, GWLP_HINSTANCE)), nullptr);
+		m_hFaceElementsListView = CreateWindowExW(0, WC_LISTVIEWW, nullptr,
 			WS_CHILD | WS_TABSTOP | WS_BORDER | WS_VISIBLE | LVS_REPORT,
-			0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(Id_List), reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(m_hWnd, GWLP_HINSTANCE)), nullptr);
+			0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(Id_FaceElementListView), reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(m_hWnd, GWLP_HINSTANCE)), nullptr);
 		m_hEdit = CreateWindowExW(0, WC_EDITW, nullptr,
 			WS_CHILD | WS_TABSTOP | WS_BORDER | WS_VISIBLE | WS_VSCROLL | ES_LEFT | ES_AUTOVSCROLL | ES_MULTILINE | ES_WANTRETURN,
 			0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(Id_Edit), reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(m_hWnd, GWLP_HINSTANCE)), nullptr);
 
-		ListView_SetExtendedListViewStyle(m_hListView, LVS_EX_FULLROWSELECT);
+		ListView_SetExtendedListViewStyle(m_hFaceElementsListView, LVS_EX_FULLROWSELECT);
 
-		SendMessage(m_hListView, WM_SETFONT, reinterpret_cast<WPARAM>(m_hUiFont), FALSE);
+		SendMessage(m_hFacesListBox, WM_SETFONT, reinterpret_cast<WPARAM>(m_hUiFont), FALSE);
+		SendMessage(m_hFaceElementsListView, WM_SETFONT, reinterpret_cast<WPARAM>(m_hUiFont), FALSE);
 		SendMessage(m_hEdit, WM_SETFONT, reinterpret_cast<WPARAM>(m_hUiFont), FALSE);
 
 		SetWindowSubclass(m_hEdit, [](HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) -> LRESULT {
@@ -1325,7 +1674,7 @@ class WindowImpl {
 				.cx = width,
 				.pszText = const_cast<wchar_t*>(name),
 			};
-			ListView_InsertColumn(m_hListView, columnIndex, &col);
+			ListView_InsertColumn(m_hFaceElementsListView, columnIndex, &col);
 		};
 		AddColumn(ListViewCols::FamilyName, 120, L"Family");
 		AddColumn(ListViewCols::SubfamilyName, 80, L"Subfamily");
@@ -1342,7 +1691,7 @@ class WindowImpl {
 		AddColumn(ListViewCols::Renderer, 180, L"Renderer");
 		AddColumn(ListViewCols::Lookup, 300, L"Lookup");
 
-		FaceElement::AddToList(m_hListView, ListView_GetItemCount(m_hListView), {
+		FaceElement::AddToList(m_hFaceElementsListView, ListView_GetItemCount(m_hFaceElementsListView), {
 			.Size = 36.f,
 			.Renderer = FaceElement::RendererEnum::PrerenderedGameInstallation,
 			.Lookup = {
@@ -1355,38 +1704,38 @@ class WindowImpl {
 			},
 			});
 
-		FaceElement::AddToList(m_hListView, ListView_GetItemCount(m_hListView), {
-			.Size = 36.f,
-			.Renderer = FaceElement::RendererEnum::FreeType,
-			.Lookup = {
-				.Name = "Segoe UI",
-			},
-			.RendererSpecific = {
-				.FreeType = {
-					.LoadFlags = FT_LOAD_DEFAULT | FT_LOAD_TARGET_LIGHT
-				},
-			},
-			});
+		//FaceElement::AddToList(m_hFaceElementsListView, ListView_GetItemCount(m_hFaceElementsListView), {
+		//	.Size = 36.f,
+		//	.Renderer = FaceElement::RendererEnum::FreeType,
+		//	.Lookup = {
+		//		.Name = "Segoe UI",
+		//	},
+		//	.RendererSpecific = {
+		//		.FreeType = {
+		//			.LoadFlags = FT_LOAD_DEFAULT | FT_LOAD_TARGET_LIGHT
+		//		},
+		//	},
+		//	});
 
-		FaceElement::AddToList(m_hListView, ListView_GetItemCount(m_hListView), {
-			.Size = 36.f,
-			.WrapModifiers = {
-				.LetterSpacing = -1,
-			},
-			.Renderer = FaceElement::RendererEnum::DirectWrite,
-			.Lookup = {
-				.Name = "Source Han Sans K",
-			},
-			.RendererSpecific = {
-				.DirectWrite = {
-					.RenderMode = DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC,
-					.MeasureMode = DWRITE_MEASURING_MODE_GDI_CLASSIC,
-					.GridFitMode = DWRITE_GRID_FIT_MODE_ENABLED,
-				},
-			},
-			});
+		//FaceElement::AddToList(m_hFaceElementsListView, ListView_GetItemCount(m_hFaceElementsListView), {
+		//	.Size = 36.f,
+		//	.WrapModifiers = {
+		//		.LetterSpacing = -1,
+		//	},
+		//	.Renderer = FaceElement::RendererEnum::DirectWrite,
+		//	.Lookup = {
+		//		.Name = "Source Han Sans K",
+		//	},
+		//	.RendererSpecific = {
+		//		.DirectWrite = {
+		//			.RenderMode = DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC,
+		//			.MeasureMode = DWRITE_MEASURING_MODE_GDI_CLASSIC,
+		//			.GridFitMode = DWRITE_GRID_FIT_MODE_ENABLED,
+		//		},
+		//	},
+		//	});
 
-		FaceElement::AddToList(m_hListView, ListView_GetItemCount(m_hListView), {
+		FaceElement::AddToList(m_hFaceElementsListView, ListView_GetItemCount(m_hFaceElementsListView), {
 			.Size = 36.f,
 			.WrapModifiers = {
 				.LetterSpacing = -1,
@@ -1417,13 +1766,15 @@ class WindowImpl {
 		GetClientRect(m_hWnd, &rc);
 
 		auto hdwp = BeginDeferWindowPos(Id__Last);
-		hdwp = DeferWindowPos(hdwp, m_hListView, nullptr, 0, 0, (std::max<int>)(0, rc.right - rc.left), ListViewHeight, SWP_NOZORDER | SWP_NOACTIVATE);
-		hdwp = DeferWindowPos(hdwp, m_hEdit, nullptr, 0, ListViewHeight, (std::max<int>)(0, rc.right - rc.left), EditHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+		hdwp = DeferWindowPos(hdwp, m_hFacesListBox, nullptr, 0, 0, FaceListBoxWidth, rc.bottom - rc.top, SWP_NOZORDER | SWP_NOACTIVATE);
+		hdwp = DeferWindowPos(hdwp, m_hFaceElementsListView, nullptr, FaceListBoxWidth, 0, (std::max<int>)(0, rc.right - rc.left - FaceListBoxWidth), ListViewHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+		hdwp = DeferWindowPos(hdwp, m_hEdit, nullptr, FaceListBoxWidth, ListViewHeight, (std::max<int>)(0, rc.right - rc.left - FaceListBoxWidth), EditHeight, SWP_NOZORDER | SWP_NOACTIVATE);
 		EndDeferWindowPos(hdwp);
 
+		m_nDrawLeft = FaceListBoxWidth;
 		m_nDrawTop = static_cast<int>(EditHeight + ListViewHeight);
 		m_pMipmap = std::make_shared<XivRes::MemoryMipmapStream>(
-			(std::max<int>)(32, rc.right - rc.left),
+			(std::max<int>)(32, rc.right - rc.left - FaceListBoxWidth),
 			(std::max<int>)(32, rc.bottom - rc.top - m_nDrawTop),
 			1,
 			XivRes::TextureFormat::A8R8G8B8);
@@ -1473,7 +1824,7 @@ class WindowImpl {
 		reinterpret_cast<XivRes::RGBA8888*>(&bitfields[0])->SetFrom(255, 0, 0, 0);
 		reinterpret_cast<XivRes::RGBA8888*>(&bitfields[1])->SetFrom(0, 255, 0, 0);
 		reinterpret_cast<XivRes::RGBA8888*>(&bitfields[2])->SetFrom(0, 0, 255, 0);
-		StretchDIBits(hdc, 0, m_nDrawTop, m_pMipmap->Width, m_pMipmap->Height, 0, 0, m_pMipmap->Width, m_pMipmap->Height, &m_pMipmap->View<XivRes::RGBA8888>()[0], &bmi, DIB_RGB_COLORS, SRCCOPY);
+		StretchDIBits(hdc, m_nDrawLeft, m_nDrawTop, m_pMipmap->Width, m_pMipmap->Height, 0, 0, m_pMipmap->Width, m_pMipmap->Height, &m_pMipmap->View<XivRes::RGBA8888>()[0], &bmi, DIB_RGB_COLORS, SRCCOPY);
 		EndPaint(m_hWnd, &ps);
 
 		return 0;
@@ -1518,7 +1869,7 @@ class WindowImpl {
 
 	private:
 		bool ProcessDragging(int16_t x, int16_t y) {
-			const auto hListView = Window.m_hListView;
+			const auto hListView = Window.m_hFaceElementsListView;
 
 			// Determine the dropped item
 			LVHITTESTINFO lvhti{
@@ -1597,16 +1948,16 @@ class WindowImpl {
 			return 0;
 
 		LVITEMW lvi{ .mask = LVIF_PARAM, .iItem = nmia.iItem };
-		ListView_GetItem(m_hListView, &lvi);
+		ListView_GetItem(m_hFaceElementsListView, &lvi);
 
 		auto& element = *reinterpret_cast<FaceElement*>(lvi.lParam);
 		auto& pEditorWindow = m_editors[&element];
 		if (pEditorWindow && pEditorWindow->IsOpened())
 			pEditorWindow->Activate();
 		else {
-			pEditorWindow = std::make_unique<FaceElement::EditorDialog>(element, [this, &element, iItem = lvi.iItem]() {
+			pEditorWindow = std::make_unique<FaceElement::EditorDialog>(m_hWnd, element, [this, &element, iItem = lvi.iItem]() {
 				OnFontChanged();
-				element.UpdateText(m_hListView, iItem);
+				element.UpdateText(m_hFaceElementsListView, iItem);
 			});
 		}
 		return 0;
@@ -1614,7 +1965,7 @@ class WindowImpl {
 
 	LRESULT OnNotify(NMHDR& hdr) {
 		switch (hdr.idFrom) {
-			case Id_List:
+			case Id_FaceElementListView:
 				switch (hdr.code) {
 					case LVN_BEGINDRAG:
 						return m_listViewDrag.OnListViewBeginDrag(*(reinterpret_cast<NM_LISTVIEW*>(&hdr)));
@@ -1670,6 +2021,7 @@ public:
 			wcex.hCursor = LoadCursorW(nullptr, IDC_ARROW);
 			wcex.hbrBackground = GetStockBrush(WHITE_BRUSH);
 			wcex.lpszClassName = ClassName;
+			wcex.lpszMenuName = MAKEINTRESOURCEW(IDR_FONTEDITOR);
 			wcex.lpfnWndProc = WindowImpl::WndProcInitial;
 
 			const auto res = RegisterClassExW(&wcex);
@@ -1679,7 +2031,7 @@ public:
 			s_pAtom = m_pAtom = std::make_shared<ATOM>(res);
 		}
 
-		CreateWindowExW(0, reinterpret_cast<LPCWSTR>(*m_pAtom), L"Testing", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
+		CreateWindowExW(0, reinterpret_cast<LPCWSTR>(*m_pAtom), L"Font Editor", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
 			CW_USEDEFAULT, CW_USEDEFAULT, 1200, 640,
 			nullptr, nullptr, nullptr, this);
 	}
@@ -1687,12 +2039,12 @@ public:
 	void OnFontChanged() {
 		std::vector<std::pair<std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>, bool>> mergeFontList;
 
-		for (int i = 0, i_ = ListView_GetItemCount(m_hListView); i < i_; i++) {
+		for (int i = 0, i_ = ListView_GetItemCount(m_hFaceElementsListView); i < i_; i++) {
 			LVITEMW item{};
 			item.mask = LVIF_PARAM;
 			item.iItem = i;
 			item.iSubItem = 0;
-			ListView_GetItem(m_hListView, &item);
+			ListView_GetItem(m_hFaceElementsListView, &item);
 
 			auto& element = *reinterpret_cast<FaceElement*>(item.lParam);
 			mergeFontList.emplace_back(element.Font, element.Overwrite);
@@ -1761,8 +2113,15 @@ public:
 			UnregisterClassW(reinterpret_cast<LPCWSTR>(atom), nullptr);
 	}
 
-	HWND Handle() const {
-		return m_hWnd;
+	bool ConsumeDialogMessage(MSG& msg) {
+		if (IsDialogMessage(m_hWnd, &msg))
+			return true;
+
+		for (const auto& e : m_editors | std::views::values)
+			if (e && e->IsOpened() && e->ConsumeDialogMessage(msg))
+				return true;
+
+		return false;
 	}
 };
 
@@ -1771,7 +2130,7 @@ std::weak_ptr<ATOM> WindowImpl::s_pAtom;
 void ShowExampleWindow() {
 	WindowImpl window;
 	for (MSG msg{}; GetMessageW(&msg, nullptr, 0, 0);) {
-		if (!IsDialogMessageW(window.Handle(), &msg)) {
+		if (!window.ConsumeDialogMessage(msg)) {
 			TranslateMessage(&msg);
 			DispatchMessageW(&msg);
 		}

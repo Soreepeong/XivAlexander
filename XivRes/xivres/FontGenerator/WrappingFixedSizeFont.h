@@ -5,7 +5,7 @@
 
 namespace XivRes::FontGenerator {
 	struct WrapModifiers {
-		std::optional<std::vector<char32_t>> Codepoints;
+		std::vector<std::pair<char32_t, char32_t>> Codepoints;
 		int LetterSpacing = 0;
 		int HorizontalOffset = 0;
 		int BaselineShift = 0;
@@ -30,8 +30,15 @@ namespace XivRes::FontGenerator {
 
 			auto info = std::make_shared<InfoStruct>();
 			info->Modifiers = wrapModifiers;
-			if (wrapModifiers.Codepoints) {
-				std::ranges::set_intersection(*wrapModifiers.Codepoints, m_font->GetAllCodepoints(), std::inserter(info->Codepoints, info->Codepoints.begin()));
+			if (!wrapModifiers.Codepoints.empty()) {
+				std::set<char32_t> codepoints;
+				for (const auto& [c1, c2] : info->Modifiers.Codepoints) {
+					for (auto c = c1; c <= c2; c++)
+						codepoints.insert(c);
+				}
+				std::ranges::set_intersection(codepoints, m_font->GetAllCodepoints(), std::inserter(info->Codepoints, info->Codepoints.begin()));
+
+				info->KerningPairs = m_font->GetAllKerningPairs();
 				for (auto it = info->KerningPairs.begin(); it != info->KerningPairs.end(); ) {
 					if (info->Codepoints.contains(it->first.first) && info->Codepoints.contains(it->first.second))
 						++it;

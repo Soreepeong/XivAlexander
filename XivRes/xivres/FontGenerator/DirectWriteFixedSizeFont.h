@@ -461,9 +461,10 @@ namespace XivRes::FontGenerator {
 					horzOffsets[n]++;
 					horzOffsets.push_back(n);
 					info->MaximumRequiredHorizontalOffset = (std::max)(info->MaximumRequiredHorizontalOffset, n);
-
-					info->RecommendedHorizontalOffset = static_cast<int>(std::accumulate(horzOffsets.begin(), horzOffsets.end(), 0ULL) / horzOffsets.size());
 				}
+
+				if (!horzOffsets.empty())
+					info->RecommendedHorizontalOffset = static_cast<int>(std::accumulate(horzOffsets.begin(), horzOffsets.end(), 0ULL) / horzOffsets.size());
 			}
 
 			{

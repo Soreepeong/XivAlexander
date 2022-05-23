@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cstdint>
+#include <type_traits>
 
 namespace XivRes::Unicode {
 	constexpr char32_t UReplacement = U'\uFFFD';
@@ -306,13 +307,48 @@ namespace XivRes::Unicode {
 		return out;
 	}
 
-	template<class TTo, class TFrom>
-	inline TTo Convert(const TFrom& in, bool strict = true) {
+	template<class TTo, class TFromElem, typename = std::enable_if_t<std::is_integral_v<TFromElem>>>
+	inline TTo Convert(const TFromElem* in, size_t length = (std::numeric_limits<size_t>::max)(), bool strict = true) {
+		if (length == (std::numeric_limits<size_t>::max)())
+			length = std::char_traits<TFromElem>::length(in);
+
+		TTo out{};
+		out.reserve(length * 4 / sizeof(in[0]) / sizeof(out[0]));
+
+		char32_t c{};
+		for (size_t decLen = 0, decIdx = 0; decIdx < length && (decLen = Unicode::Decode(c, &in[decIdx], length - decIdx, strict)); decIdx += decLen) {
+			const auto encIdx = out.size();
+			const auto encLen = Unicode::Encode<TTo::value_type>(nullptr, c, strict);
+			out.resize(encIdx + encLen);
+			Unicode::Encode(&out[encIdx], c, strict);
+		}
+
+		return out;
+	}
+
+	template<class TTo, class TFromElem, class TFromTraits = std::char_traits<TFromElem>>
+	inline TTo Convert(const std::basic_string_view<TFromElem, TFromTraits>& in, bool strict = true) {
 		TTo out{};
 		out.reserve(in.size() * 4 / sizeof(in[0]) / sizeof(out[0]));
 
 		char32_t c{};
-		for (size_t decLen = 0, decIdx = 0; (decLen = Unicode::Decode(c, &in[decIdx], in.size() - decIdx, strict)); decIdx += decLen) {
+		for (size_t decLen = 0, decIdx = 0; decIdx < in.size() && (decLen = Unicode::Decode(c, &in[decIdx], in.size() - decIdx, strict)); decIdx += decLen) {
+			const auto encIdx = out.size();
+			const auto encLen = Unicode::Encode<TTo::value_type>(nullptr, c, strict);
+			out.resize(encIdx + encLen);
+			Unicode::Encode(&out[encIdx], c, strict);
+		}
+
+		return out;
+	}
+
+	template<class TTo, class TFromElem, class TFromTraits = std::char_traits<TFromElem>, class TFromAlloc = std::allocator<TFromElem>>
+	inline TTo Convert(const std::basic_string<TFromElem, TFromTraits, TFromAlloc>& in, bool strict = true) {
+		TTo out{};
+		out.reserve(in.size() * 4 / sizeof(in[0]) / sizeof(out[0]));
+
+		char32_t c{};
+		for (size_t decLen = 0, decIdx = 0; decIdx < in.size() && (decLen = Unicode::Decode(c, &in[decIdx], in.size() - decIdx, strict)); decIdx += decLen) {
 			const auto encIdx = out.size();
 			const auto encLen = Unicode::Encode<TTo::value_type>(nullptr, c, strict);
 			out.resize(encIdx + encLen);

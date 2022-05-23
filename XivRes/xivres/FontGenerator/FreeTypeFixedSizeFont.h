@@ -166,7 +166,8 @@ namespace XivRes::FontGenerator {
 					info->MaximumRequiredHorizontalOffset = (std::max)(info->MaximumRequiredHorizontalOffset, n);
 				}
 
-				info->RecommendedHorizontalOffset = static_cast<int>(std::accumulate(horzOffsets.begin(), horzOffsets.end(), 0ULL) / horzOffsets.size());
+				if (!horzOffsets.empty())
+					info->RecommendedHorizontalOffset = static_cast<int>(std::accumulate(horzOffsets.begin(), horzOffsets.end(), 0ULL) / horzOffsets.size());
 
 				FreeTypeFontTable kernDataRef(m_face, Internal::TrueType::Kern::DirectoryTableTag.ReverseNativeValue);
 				FreeTypeFontTable gposDataRef(m_face, Internal::TrueType::Gpos::DirectoryTableTag.ReverseNativeValue);

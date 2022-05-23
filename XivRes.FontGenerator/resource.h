@@ -3,6 +3,7 @@
 // Used by XivRes.FontGenerator.rc
 //
 #define IDD_FACEELEMENTEDITOR           101
+#define IDR_FONTEDITOR                  106
 #define IDC_COMBO_FONT_RENDERER         1001
 #define IDC_COMBO_FONT                  1002
 #define IDC_COMBO_DIRECTWRITE_RENDERMODE 1004
@@ -35,14 +36,53 @@
 #define IDC_COMBO_FONT_SIZE             1031
 #define IDC_EDIT_ADJUSTMENT_LETTERSPACING2 1032
 #define IDC_EDIT_ADJUSTMENT_HORIZONTALOFFSET 1032
+#define IDC_EDIT_ADDCUSTOMRANGE_PREVIEW 1034
+#define IDC_CHECK_UNICODEBLOCKS_SHOWBLOCKSWITHANYOFCHARACTERSINPUT 1035
+#define IDC_EDIT_UNICODEBLOCKS_RANGEPREVIEW 1036
+#define ID_FILE_NEW                     40002
+#define ID_FILE_OPEN                    40003
+#define ID_FILE_SAVE                    40004
+#define ID_FILE_SAVEAS                  40005
+#define ID_FILE_SAVECOPYAS              40006
+#define ID_NEW_FONT                     40007
+#define ID_NEW_LOBBYFONT                40008
+#define ID_NEW_KRNAXIS                  40009
+#define ID_NEW_KRNAXIS40010             40010
+#define ID_NEW_STARTFROMSCRATCH         40011
+#define ID_FILE_NEW_MAINGAMEFONT        40012
+#define ID_FILE_NEW_LOBBYFONT           40013
+#define ID_FILE_NEW_CHNAXIS             40014
+#define ID_FILE_NEW_KRNAXIS             40015
+#define ID_FILE_NEW_STARTFROMSCRATCH    40016
+#define ID_FILE_EXPORT                  40017
+#define ID_FILE_CLOSE                   40018
+#define ID_FONTS_ADD                    40019
+#define ID_FONTS_COPY                   40020
+#define ID_FONTS_DUPLICATEMULTIPLE      40021
+#define ID_FONTS_REMOVE                 40022
+#define ID_FONTS_DUPLICATE              40023
+#define ID_FONTELEMENTS_ADD             40024
+#define ID_FONTELEMENTS_DUPLICATE       40025
+#define ID_FONTELEMENTS_DUPLICATEMULTIPLE 40026
+#define ID_FONTELEMENTS_REMOVE          40027
+#define ID_EXPORT_EXPORTTO              40028
+#define ID_EXPORT_EXPORTTO40029         40029
+#define ID_EXPORT_COMPRESS              40030
+#define ID_EXPORT_EXPORTTO40031         40031
+#define ID_EXPORT_EXPORTTOFDT           40032
+#define ID_FILE_EXPORT_TOFDT            40033
+#define ID_FILE_EXPORT_TOTTMPCOMPRESSED 40034
+#define ID_FILE_EXPORT_TOTTMPUNCOMPRESSED 40035
+#define ID_FILE_EXIT                    40036
+#define ID_FONTS_RENAME                 40037
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        106
-#define _APS_NEXT_COMMAND_VALUE         40002
-#define _APS_NEXT_CONTROL_VALUE         1032
+#define _APS_NEXT_RESOURCE_VALUE        107
+#define _APS_NEXT_COMMAND_VALUE         40038
+#define _APS_NEXT_CONTROL_VALUE         1036
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
