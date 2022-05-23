@@ -277,7 +277,11 @@ struct FaceElement {
 		ListView_SetItemText(hListView, nListIndex, ListViewCols::SubfamilyName, &(buf = XivRes::Unicode::Convert<std::wstring>(Font->GetSubfamilyName()))[0]);
 		ListView_SetItemText(hListView, nListIndex, ListViewCols::Size, &(buf = std::format(L"{:g}px", Font->GetSize()))[0]);
 		ListView_SetItemText(hListView, nListIndex, ListViewCols::LineHeight, &(buf = std::format(L"{}px", Font->GetLineHeight()))[0]);
-		ListView_SetItemText(hListView, nListIndex, ListViewCols::Ascent, &(buf = std::format(L"{}px", BaseFont->GetAscent() + WrapModifiers.BaselineShift))[0]);
+		if (WrapModifiers.BaselineShift) {
+			ListView_SetItemText(hListView, nListIndex, ListViewCols::Ascent, &(buf = std::format(L"{}px({:+}px)", BaseFont->GetAscent(), WrapModifiers.BaselineShift))[0]);
+		} else {
+			ListView_SetItemText(hListView, nListIndex, ListViewCols::Ascent, &(buf = std::format(L"{}px", BaseFont->GetAscent()))[0]);
+		}
 		ListView_SetItemText(hListView, nListIndex, ListViewCols::HorizontalOffset, &(buf = std::format(L"{}px (avg {}, max {})", WrapModifiers.HorizontalOffset, BaseFont->GetRecommendedHorizontalOffset(), BaseFont->GetMaximumRequiredHorizontalOffset()))[0]);
 		ListView_SetItemText(hListView, nListIndex, ListViewCols::LetterSpacing, &(buf = std::format(L"{}px", WrapModifiers.LetterSpacing))[0]);
 		ListView_SetItemText(hListView, nListIndex, ListViewCols::Codepoints, &(buf = GetRangeRepresentation())[0]);
@@ -1327,7 +1331,7 @@ class WindowImpl {
 		AddColumn(ListViewCols::SubfamilyName, 80, L"Subfamily");
 		AddColumn(ListViewCols::Size, 40, L"Size");
 		AddColumn(ListViewCols::LineHeight, 80, L"Line Height");
-		AddColumn(ListViewCols::Ascent, 60, L"Ascent");
+		AddColumn(ListViewCols::Ascent, 80, L"Ascent");
 		AddColumn(ListViewCols::HorizontalOffset, 120, L"Horizontal Offset");
 		AddColumn(ListViewCols::LetterSpacing, 100, L"Letter Spacing");
 		AddColumn(ListViewCols::Gamma, 60, L"Gamma");
