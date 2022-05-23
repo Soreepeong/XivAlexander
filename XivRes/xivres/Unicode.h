@@ -367,7 +367,7 @@ namespace XivRes::Unicode {
 			return static_cast<BlockPurpose>(~static_cast<uint64_t>(a));
 		}
 
-		enum NegativeLsbGroup {
+		enum NegativeLsbGroup : uint64_t {
 			None,
 			Combining,
 			Cyrillic,

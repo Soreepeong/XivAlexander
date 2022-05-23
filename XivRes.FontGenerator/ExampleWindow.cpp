@@ -1,4 +1,4 @@
-#include <ranges>
+﻿#include <ranges>
 
 #include "pch.h"
 #include "resource.h"
@@ -11,6 +11,25 @@
 #include "XivRes/FontGenerator/MergedFixedSizeFont.h"
 #include "XivRes/FontGenerator/TextMeasurer.h"
 #include "XivRes/FontGenerator/WrappingFixedSizeFont.h"
+
+struct ListViewCols {
+	enum : int {
+		FamilyName,
+		SubfamilyName,
+		Size,
+		LineHeight,
+		Ascent,
+		HorizontalOffset,
+		LetterSpacing,
+		Gamma,
+		Codepoints,
+		GlyphCount,
+		KerningPairCount,
+		Overwrite,
+		Renderer,
+		Lookup,
+	};
+};
 
 struct FaceElement {
 	static const std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont> Test(XivRes::FontGenerator::GameFontFamily family, float size) {
@@ -123,52 +142,53 @@ struct FaceElement {
 		}
 
 		std::pair<std::shared_ptr<XivRes::IStream>, int> ResolveStream() const {
+			using namespace XivRes::FontGenerator;
+
 			if (!Path.empty() && exists(Path))
 				return { std::make_shared<XivRes::MemoryStream>(XivRes::FileStream(Path)), FontIndex };
 
-			using dw = XivRes::FontGenerator::DirectWriteFixedSizeFont;
 			IDWriteFactory3Ptr factory;
-			dw::SuccessOrThrow(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), reinterpret_cast<IUnknown**>(&factory)));
+			SuccessOrThrow(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), reinterpret_cast<IUnknown**>(&factory)));
 
 			IDWriteFontCollectionPtr coll;
-			dw::SuccessOrThrow(factory->GetSystemFontCollection(&coll));
+			SuccessOrThrow(factory->GetSystemFontCollection(&coll));
 
 			uint32_t index;
 			BOOL exists;
-			dw::SuccessOrThrow(coll->FindFamilyName(XivRes::Unicode::Convert<std::wstring>(Name).c_str(), &index, &exists));
+			SuccessOrThrow(coll->FindFamilyName(XivRes::Unicode::Convert<std::wstring>(Name).c_str(), &index, &exists));
 			if (!exists)
 				throw std::invalid_argument("Font not found");
 
 			IDWriteFontFamilyPtr family;
-			dw::SuccessOrThrow(coll->GetFontFamily(index, &family));
+			SuccessOrThrow(coll->GetFontFamily(index, &family));
 
 			IDWriteFontPtr font;
-			dw::SuccessOrThrow(family->GetFirstMatchingFont(Weight, Stretch, Style, &font));
+			SuccessOrThrow(family->GetFirstMatchingFont(Weight, Stretch, Style, &font));
 
 			IDWriteFontFacePtr face;
-			dw::SuccessOrThrow(font->CreateFontFace(&face));
+			SuccessOrThrow(font->CreateFontFace(&face));
 
 			IDWriteFontFile* pFontFileTmp;
 			uint32_t nFiles = 1;
-			dw::SuccessOrThrow(face->GetFiles(&nFiles, &pFontFileTmp));
+			SuccessOrThrow(face->GetFiles(&nFiles, &pFontFileTmp));
 			IDWriteFontFilePtr file(pFontFileTmp, false);
 
 			IDWriteFontFileLoaderPtr loader;
-			dw::SuccessOrThrow(file->GetLoader(&loader));
+			SuccessOrThrow(file->GetLoader(&loader));
 
 			void const* refKey;
 			UINT32 refKeySize;
-			dw::SuccessOrThrow(file->GetReferenceKey(&refKey, &refKeySize));
+			SuccessOrThrow(file->GetReferenceKey(&refKey, &refKeySize));
 
 			IDWriteFontFileStreamPtr stream;
-			dw::SuccessOrThrow(loader->CreateStreamFromKey(refKey, refKeySize, &stream));
+			SuccessOrThrow(loader->CreateStreamFromKey(refKey, refKeySize, &stream));
 
 			auto res = std::make_shared<XivRes::MemoryStream>();
 			uint64_t fileSize;
-			dw::SuccessOrThrow(stream->GetFileSize(&fileSize));
+			SuccessOrThrow(stream->GetFileSize(&fileSize));
 			const void* pFragmentStart;
 			void* pFragmentContext;
-			dw::SuccessOrThrow(stream->ReadFileFragment(&pFragmentStart, 0, fileSize, &pFragmentContext));
+			SuccessOrThrow(stream->ReadFileFragment(&pFragmentStart, 0, fileSize, &pFragmentContext));
 			std::vector<uint8_t> buf(static_cast<size_t>(fileSize));
 			memcpy(&buf[0], pFragmentStart, buf.size());
 			stream->ReleaseFileFragment(pFragmentContext);
@@ -252,21 +272,21 @@ struct FaceElement {
 	}
 
 	void UpdateText(HWND hListView, int nListIndex) const {
-		int colIndex = 0;
 		std::wstring buf;
-		ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = XivRes::Unicode::Convert<std::wstring>(BaseFont->GetFamilyName()))[0]);
-		ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = XivRes::Unicode::Convert<std::wstring>(BaseFont->GetSubfamilyName()))[0]);
-		ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = std::format(L"{:g}px", BaseFont->GetSize()))[0]);
-		ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = std::format(L"{}px", BaseFont->GetLineHeight()))[0]);
-		ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = std::format(L"{}px", BaseFont->GetAscent() + WrapModifiers.BaselineShift))[0]);
-		ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = std::format(L"{}px", WrapModifiers.HorizontalOffset))[0]);
-		ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = std::format(L"{}px", WrapModifiers.LetterSpacing))[0]);
-		ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = GetRangeRepresentation())[0]);
-		ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = std::format(L"{}", BaseFont->GetAllCodepoints().size()))[0]);
-		ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = Overwrite ? L"Yes" : L"No")[0]);
-		ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = std::format(L"{:g}", WrapModifiers.Gamma))[0]);
-		ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = GetRendererRepresentation())[0]);
-		ListView_SetItemText(hListView, nListIndex, colIndex++, &(buf = GetLookupRepresentation())[0]);
+		ListView_SetItemText(hListView, nListIndex, ListViewCols::FamilyName, &(buf = XivRes::Unicode::Convert<std::wstring>(Font->GetFamilyName()))[0]);
+		ListView_SetItemText(hListView, nListIndex, ListViewCols::SubfamilyName, &(buf = XivRes::Unicode::Convert<std::wstring>(Font->GetSubfamilyName()))[0]);
+		ListView_SetItemText(hListView, nListIndex, ListViewCols::Size, &(buf = std::format(L"{:g}px", Font->GetSize()))[0]);
+		ListView_SetItemText(hListView, nListIndex, ListViewCols::LineHeight, &(buf = std::format(L"{}px", Font->GetLineHeight()))[0]);
+		ListView_SetItemText(hListView, nListIndex, ListViewCols::Ascent, &(buf = std::format(L"{}px", BaseFont->GetAscent() + WrapModifiers.BaselineShift))[0]);
+		ListView_SetItemText(hListView, nListIndex, ListViewCols::HorizontalOffset, &(buf = std::format(L"{}px (avg {}, max {})", WrapModifiers.HorizontalOffset, BaseFont->GetRecommendedHorizontalOffset(), BaseFont->GetMaximumRequiredHorizontalOffset()))[0]);
+		ListView_SetItemText(hListView, nListIndex, ListViewCols::LetterSpacing, &(buf = std::format(L"{}px", WrapModifiers.LetterSpacing))[0]);
+		ListView_SetItemText(hListView, nListIndex, ListViewCols::Codepoints, &(buf = GetRangeRepresentation())[0]);
+		ListView_SetItemText(hListView, nListIndex, ListViewCols::GlyphCount, &(buf = std::format(L"{}", Font->GetAllCodepoints().size()))[0]);
+		ListView_SetItemText(hListView, nListIndex, ListViewCols::KerningPairCount, &(buf = std::format(L"{}", Font->GetAllKerningPairs().size()))[0]);
+		ListView_SetItemText(hListView, nListIndex, ListViewCols::Overwrite, &(buf = Overwrite ? L"Yes" : L"No")[0]);
+		ListView_SetItemText(hListView, nListIndex, ListViewCols::Gamma, &(buf = std::format(L"{:g}", WrapModifiers.Gamma))[0]);
+		ListView_SetItemText(hListView, nListIndex, ListViewCols::Renderer, &(buf = GetRendererRepresentation())[0]);
+		ListView_SetItemText(hListView, nListIndex, ListViewCols::Lookup, &(buf = GetLookupRepresentation())[0]);
 	}
 
 	std::wstring GetRangeRepresentation() const {
@@ -347,7 +367,6 @@ class FaceElement::EditorDialog {
 		HWND FontStretchCombo = GetDlgItem(Window, IDC_COMBO_FONT_STRETCH);
 		HWND EmptyAscentEdit = GetDlgItem(Window, IDC_EDIT_EMPTY_ASCENT);
 		HWND EmptyLineHeightEdit = GetDlgItem(Window, IDC_EDIT_EMPTY_LINEHEIGHT);
-		HWND FreeTypeNoScaleCheck = GetDlgItem(Window, IDC_CHECK_FREETYPE_NOSCALE);
 		HWND FreeTypeNoHintingCheck = GetDlgItem(Window, IDC_CHECK_FREETYPE_NOHINTING);
 		HWND FreeTypeNoBitmapCheck = GetDlgItem(Window, IDC_CHECK_FREETYPE_NOBITMAP);
 		HWND FreeTypeForceAutohintCheck = GetDlgItem(Window, IDC_CHECK_FREETYPE_FORCEAUTOHINT);
@@ -536,7 +555,6 @@ private:
 			return 0;
 
 		const auto newFlags = 0
-			| (Button_GetCheck(m_controls->FreeTypeNoScaleCheck) ? FT_LOAD_NO_SCALE : 0)
 			| (Button_GetCheck(m_controls->FreeTypeNoHintingCheck) ? FT_LOAD_NO_HINTING : 0)
 			| (Button_GetCheck(m_controls->FreeTypeNoBitmapCheck) ? FT_LOAD_NO_BITMAP : 0)
 			| (Button_GetCheck(m_controls->FreeTypeForceAutohintCheck) ? FT_LOAD_FORCE_AUTOHINT : 0)
@@ -633,6 +651,12 @@ private:
 		return 0;
 	}
 
+	INT_PTR CodepointsOverwriteCheck_OnCommand(uint16_t notiCode) {
+		m_element.Overwrite = Button_GetCheck(m_controls->CodepointsOverwriteCheck);
+		OnWrappedFontChanged();
+		return 0;
+	}
+
 	INT_PTR CustomRangeAdd_OnCommand(uint16_t notiCode) {
 		return 0;
 	}
@@ -652,7 +676,6 @@ private:
 		ComboBox_SetText(m_controls->FontSizeCombo, std::format(L"{:g}", m_element.Size).c_str());
 		Edit_SetText(m_controls->EmptyAscentEdit, std::format(L"{}", m_element.RendererSpecific.Empty.Ascent).c_str());
 		Edit_SetText(m_controls->EmptyLineHeightEdit, std::format(L"{}", m_element.RendererSpecific.Empty.LineHeight).c_str());
-		Button_SetCheck(m_controls->FreeTypeNoScaleCheck, (m_element.RendererSpecific.FreeType.LoadFlags & FT_LOAD_NO_SCALE) ? TRUE : FALSE);
 		Button_SetCheck(m_controls->FreeTypeNoHintingCheck, (m_element.RendererSpecific.FreeType.LoadFlags & FT_LOAD_NO_HINTING) ? TRUE : FALSE);
 		Button_SetCheck(m_controls->FreeTypeNoBitmapCheck, (m_element.RendererSpecific.FreeType.LoadFlags & FT_LOAD_NO_BITMAP) ? TRUE : FALSE);
 		Button_SetCheck(m_controls->FreeTypeForceAutohintCheck, (m_element.RendererSpecific.FreeType.LoadFlags & FT_LOAD_FORCE_AUTOHINT) ? TRUE : FALSE);
@@ -663,7 +686,6 @@ private:
 		ComboBox_AddString(m_controls->DirectWriteRenderModeCombo, L"GDI Natural");
 		ComboBox_AddString(m_controls->DirectWriteRenderModeCombo, L"Natural");
 		ComboBox_AddString(m_controls->DirectWriteRenderModeCombo, L"Natural Symmetric");
-		ComboBox_AddString(m_controls->DirectWriteRenderModeCombo, L"Outline");
 		ComboBox_SetCurSel(m_controls->DirectWriteRenderModeCombo, static_cast<int>(m_element.RendererSpecific.DirectWrite.RenderMode));
 		ComboBox_AddString(m_controls->DirectWriteMeasureModeCombo, L"Natural");
 		ComboBox_AddString(m_controls->DirectWriteMeasureModeCombo, L"GDI Classic");
@@ -711,7 +733,6 @@ private:
 				EnableWindow(m_controls->FontStretchCombo, FALSE);
 				EnableWindow(m_controls->EmptyAscentEdit, TRUE);
 				EnableWindow(m_controls->EmptyLineHeightEdit, TRUE);
-				EnableWindow(m_controls->FreeTypeNoScaleCheck, FALSE);
 				EnableWindow(m_controls->FreeTypeNoHintingCheck, FALSE);
 				EnableWindow(m_controls->FreeTypeNoBitmapCheck, FALSE);
 				EnableWindow(m_controls->FreeTypeForceAutohintCheck, FALSE);
@@ -744,7 +765,6 @@ private:
 				EnableWindow(m_controls->FontStretchCombo, FALSE);
 				EnableWindow(m_controls->EmptyAscentEdit, FALSE);
 				EnableWindow(m_controls->EmptyLineHeightEdit, FALSE);
-				EnableWindow(m_controls->FreeTypeNoScaleCheck, FALSE);
 				EnableWindow(m_controls->FreeTypeNoHintingCheck, FALSE);
 				EnableWindow(m_controls->FreeTypeNoBitmapCheck, FALSE);
 				EnableWindow(m_controls->FreeTypeForceAutohintCheck, FALSE);
@@ -777,7 +797,6 @@ private:
 				EnableWindow(m_controls->FontStretchCombo, TRUE);
 				EnableWindow(m_controls->EmptyAscentEdit, FALSE);
 				EnableWindow(m_controls->EmptyLineHeightEdit, FALSE);
-				EnableWindow(m_controls->FreeTypeNoScaleCheck, FALSE);
 				EnableWindow(m_controls->FreeTypeNoHintingCheck, FALSE);
 				EnableWindow(m_controls->FreeTypeNoBitmapCheck, FALSE);
 				EnableWindow(m_controls->FreeTypeForceAutohintCheck, FALSE);
@@ -810,7 +829,6 @@ private:
 				EnableWindow(m_controls->FontStretchCombo, TRUE);
 				EnableWindow(m_controls->EmptyAscentEdit, FALSE);
 				EnableWindow(m_controls->EmptyLineHeightEdit, FALSE);
-				EnableWindow(m_controls->FreeTypeNoScaleCheck, TRUE);
 				EnableWindow(m_controls->FreeTypeNoHintingCheck, TRUE);
 				EnableWindow(m_controls->FreeTypeNoBitmapCheck, TRUE);
 				EnableWindow(m_controls->FreeTypeForceAutohintCheck, TRUE);
@@ -857,12 +875,13 @@ private:
 			case RendererEnum::DirectWrite:
 			case RendererEnum::FreeType:
 			{
-				using dw = XivRes::FontGenerator::DirectWriteFixedSizeFont;
+				using namespace XivRes::FontGenerator;
+
 				IDWriteFactory3Ptr factory;
-				dw::SuccessOrThrow(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), reinterpret_cast<IUnknown**>(&factory)));
+				SuccessOrThrow(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), reinterpret_cast<IUnknown**>(&factory)));
 
 				IDWriteFontCollectionPtr coll;
-				dw::SuccessOrThrow(factory->GetSystemFontCollection(&coll));
+				SuccessOrThrow(factory->GetSystemFontCollection(&coll));
 
 				m_fontFamilies.clear();
 				std::vector<std::wstring> names;
@@ -1097,7 +1116,7 @@ private:
 			m_onFontChanged();
 	}
 
-	INT_PTR __stdcall DlgProc(UINT message, WPARAM wParam, LPARAM lParam) {
+	INT_PTR DlgProc(UINT message, WPARAM wParam, LPARAM lParam) {
 		switch (message) {
 			case WM_INITDIALOG:
 				return Dialog_OnInitDialog();
@@ -1117,7 +1136,6 @@ private:
 					case IDC_COMBO_FONT_STRETCH: return FontStretchCombo_OnCommand(HIWORD(wParam));
 					case IDC_EDIT_EMPTY_ASCENT: return EmptyAscentEdit_OnChange(HIWORD(wParam));
 					case IDC_EDIT_EMPTY_LINEHEIGHT: return EmptyLineHeightEdit_OnChange(HIWORD(wParam));
-					case IDC_CHECK_FREETYPE_NOSCALE:
 					case IDC_CHECK_FREETYPE_NOHINTING:
 					case IDC_CHECK_FREETYPE_NOBITMAP:
 					case IDC_CHECK_FREETYPE_FORCEAUTOHINT:
@@ -1131,7 +1149,7 @@ private:
 					case IDC_EDIT_ADJUSTMENT_GAMMA: return AdjustmentGammaEdit_OnChange(HIWORD(wParam));
 					case IDC_LIST_CODEPOINTS: return 0;
 					case IDC_BUTTON_CODEPOINTS_DELETE: return CodepointsDeleteButton_OnCommand(HIWORD(wParam));
-					case IDC_CHECK_CODEPOINTS_OVERWRITE: return 0;
+					case IDC_CHECK_CODEPOINTS_OVERWRITE: return CodepointsOverwriteCheck_OnCommand(HIWORD(wParam));
 					case IDC_EDIT_UNICODEBLOCKS_SEARCH: return 0;
 					case IDC_LIST_UNICODEBLOCKS_SEARCHRESULTS: return 0;
 					case IDC_BUTTON_UNICODEBLOCKS_ADD: return 0;
@@ -1143,7 +1161,8 @@ private:
 			}
 			case WM_NCHITTEST:
 			{
-				return HTCAPTION;
+				const auto def = DefWindowProcW(m_controls->Window, message, wParam, lParam);
+				return def == HTCLIENT ? HTCAPTION : def;
 			}
 			case WM_DESTROY:
 			{
@@ -1208,8 +1227,8 @@ class WindowImpl {
 		Id_Edit,
 		Id__Last,
 	};
-	static constexpr auto ListViewHeight = 100;
-	static constexpr auto EditHeight = 100;
+	static constexpr auto ListViewHeight = 160;
+	static constexpr auto EditHeight = 40;
 
 	std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> m_fontMerged;
 	// std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> m_fontPacked;
@@ -1296,158 +1315,90 @@ class WindowImpl {
 			return DefSubclassProc(hWnd, msg, wParam, lParam);
 		}, 1, 0);
 
-		{
-			int colIndex = 0;
-			LVCOLUMNW col{};
-			col.mask = LVCF_TEXT | LVCF_WIDTH;
+		const auto AddColumn = [this](int columnIndex, int width, const wchar_t* name) {
+			LVCOLUMNW col{
+				.mask = LVCF_TEXT | LVCF_WIDTH,
+				.cx = width,
+				.pszText = const_cast<wchar_t*>(name),
+			};
+			ListView_InsertColumn(m_hListView, columnIndex, &col);
+		};
+		AddColumn(ListViewCols::FamilyName, 120, L"Family");
+		AddColumn(ListViewCols::SubfamilyName, 80, L"Subfamily");
+		AddColumn(ListViewCols::Size, 40, L"Size");
+		AddColumn(ListViewCols::LineHeight, 80, L"Line Height");
+		AddColumn(ListViewCols::Ascent, 60, L"Ascent");
+		AddColumn(ListViewCols::HorizontalOffset, 120, L"Horizontal Offset");
+		AddColumn(ListViewCols::LetterSpacing, 100, L"Letter Spacing");
+		AddColumn(ListViewCols::Gamma, 60, L"Gamma");
+		AddColumn(ListViewCols::Codepoints, 80, L"Codepoints");
+		AddColumn(ListViewCols::Overwrite, 70, L"Overwrite");
+		AddColumn(ListViewCols::GlyphCount, 60, L"Glyphs");
+		AddColumn(ListViewCols::KerningPairCount, 60, L"Kerning Pairs");
+		AddColumn(ListViewCols::Renderer, 180, L"Renderer");
+		AddColumn(ListViewCols::Lookup, 300, L"Lookup");
 
-			col.cx = 120;
-			col.pszText = const_cast<wchar_t*>(L"Name");
-			ListView_InsertColumn(m_hListView, colIndex++, &col);
-
-			col.cx = 80;
-			col.pszText = const_cast<wchar_t*>(L"Family");
-			ListView_InsertColumn(m_hListView, colIndex++, &col);
-
-			col.cx = 40;
-			col.pszText = const_cast<wchar_t*>(L"Size");
-			ListView_InsertColumn(m_hListView, colIndex++, &col);
-
-			col.cx = 80;
-			col.pszText = const_cast<wchar_t*>(L"Line Height");
-			ListView_InsertColumn(m_hListView, colIndex++, &col);
-
-			col.cx = 60;
-			col.pszText = const_cast<wchar_t*>(L"Ascent");
-			ListView_InsertColumn(m_hListView, colIndex++, &col);
-
-			col.cx = 120;
-			col.pszText = const_cast<wchar_t*>(L"Horizontal Offset");
-			ListView_InsertColumn(m_hListView, colIndex++, &col);
-
-			col.cx = 100;
-			col.pszText = const_cast<wchar_t*>(L"Letter Spacing");
-			ListView_InsertColumn(m_hListView, colIndex++, &col);
-
-			col.cx = 80;
-			col.pszText = const_cast<wchar_t*>(L"Codepoints");
-			ListView_InsertColumn(m_hListView, colIndex++, &col);
-
-			col.cx = 60;
-			col.pszText = const_cast<wchar_t*>(L"Glyphs");
-			ListView_InsertColumn(m_hListView, colIndex++, &col);
-
-			col.cx = 70;
-			col.pszText = const_cast<wchar_t*>(L"Overwrite");
-			ListView_InsertColumn(m_hListView, colIndex++, &col);
-
-			col.cx = 60;
-			col.pszText = const_cast<wchar_t*>(L"Gamma");
-			ListView_InsertColumn(m_hListView, colIndex++, &col);
-
-			col.cx = 180;
-			col.pszText = const_cast<wchar_t*>(L"Renderer");
-			ListView_InsertColumn(m_hListView, colIndex++, &col);
-
-			col.cx = 300;
-			col.pszText = const_cast<wchar_t*>(L"Lookup");
-			ListView_InsertColumn(m_hListView, colIndex++, &col);
-
-			FaceElement::AddToList(m_hListView, ListView_GetItemCount(m_hListView), {
-				.Size = 18.f,
-				.Renderer = FaceElement::RendererEnum::PrerenderedGameInstallation,
-				.Lookup = {
-					.Name = "AXIS",
+		FaceElement::AddToList(m_hListView, ListView_GetItemCount(m_hListView), {
+			.Size = 36.f,
+			.Renderer = FaceElement::RendererEnum::PrerenderedGameInstallation,
+			.Lookup = {
+				.Name = "AXIS",
+			},
+			.RendererSpecific = {
+				.PrerenderedGame = {
+					.FontFamily = XivRes::FontGenerator::GameFontFamily::AXIS,
 				},
-				.RendererSpecific = {
-					.PrerenderedGame = {
-						.FontFamily = XivRes::FontGenerator::GameFontFamily::AXIS,
-					},
-				},
-				});
+			},
+			});
 
-			FaceElement::AddToList(m_hListView, ListView_GetItemCount(m_hListView), {
-				.Size = 18.f,
-				.Renderer = FaceElement::RendererEnum::FreeType,
-				.Lookup = {
-					.Name = "Segoe UI",
+		FaceElement::AddToList(m_hListView, ListView_GetItemCount(m_hListView), {
+			.Size = 36.f,
+			.Renderer = FaceElement::RendererEnum::FreeType,
+			.Lookup = {
+				.Name = "Segoe UI",
+			},
+			.RendererSpecific = {
+				.FreeType = {
+					.LoadFlags = FT_LOAD_DEFAULT | FT_LOAD_TARGET_LIGHT
 				},
-				.RendererSpecific = {
-					.FreeType = {
-						.LoadFlags = FT_LOAD_DEFAULT | FT_LOAD_TARGET_LIGHT
-					},
-				},
-				});
+			},
+			});
 
-			FaceElement::AddToList(m_hListView, ListView_GetItemCount(m_hListView), {
-				.Size = 18.f,
-				.WrapModifiers = {
-					.LetterSpacing = -1,
+		FaceElement::AddToList(m_hListView, ListView_GetItemCount(m_hListView), {
+			.Size = 36.f,
+			.WrapModifiers = {
+				.LetterSpacing = -1,
+			},
+			.Renderer = FaceElement::RendererEnum::DirectWrite,
+			.Lookup = {
+				.Name = "Source Han Sans K",
+			},
+			.RendererSpecific = {
+				.DirectWrite = {
+					.RenderMode = DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC,
+					.MeasureMode = DWRITE_MEASURING_MODE_GDI_CLASSIC,
+					.GridFitMode = DWRITE_GRID_FIT_MODE_ENABLED,
 				},
-				.Renderer = FaceElement::RendererEnum::DirectWrite,
-				.Lookup = {
-					.Name = "Source Han Sans K",
-				},
-				.RendererSpecific = {
-					.DirectWrite = {
-						.RenderMode = DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC,
-						.MeasureMode = DWRITE_MEASURING_MODE_GDI_CLASSIC,
-						.GridFitMode = DWRITE_GRID_FIT_MODE_ENABLED,
-					},
-				},
-				});
-		}
+			},
+			});
 
-		for (const auto& pcsz : {
-			L"AXIS_96",
-			L"AXIS_12",
-			L"AXIS_14",
-			L"AXIS_18",
-			L"AXIS_36",
-			L"Jupiter_16",
-			L"Jupiter_20",
-			L"Jupiter_23",
-			L"Jupiter_45",
-			L"Jupiter_46",
-			L"Jupiter_90",
-			L"Meidinger_16",
-			L"Meidinger_20",
-			L"Meidinger_40",
-			L"MiedingerMid_10",
-			L"MiedingerMid_12",
-			L"MiedingerMid_14",
-			L"MiedingerMid_18",
-			L"MiedingerMid_36",
-			L"TrumpGothic_184",
-			L"TrumpGothic_23",
-			L"TrumpGothic_34",
-			L"TrumpGothic_68",
-			L"ChnAXIS_120",
-			L"ChnAXIS_140",
-			L"ChnAXIS_180",
-			L"ChnAXIS_360",
-			L"KrnAXIS_120",
-			L"KrnAXIS_140",
-			L"KrnAXIS_180",
-			L"KrnAXIS_360",
-			L"None (9.6)",
-			L"None (10)",
-			L"None (12)",
-			L"None (14)",
-			L"None (16)",
-			L"None (18)",
-			L"None (18.4)",
-			L"None (20)",
-			L"None (23)",
-			L"None (34)",
-			L"None (36)",
-			L"None (40)",
-			L"None (45)",
-			L"None (46)",
-			L"None (68)",
-			L"None (90)",
-			}) {
-		}
+		FaceElement::AddToList(m_hListView, ListView_GetItemCount(m_hListView), {
+			.Size = 36.f,
+			.WrapModifiers = {
+				.LetterSpacing = -1,
+			},
+			.Renderer = FaceElement::RendererEnum::DirectWrite,
+			.Lookup = {
+				.Name = "Sarabun",
+			},
+			.RendererSpecific = {
+				.DirectWrite = {
+					.RenderMode = DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC,
+					.MeasureMode = DWRITE_MEASURING_MODE_GDI_CLASSIC,
+					.GridFitMode = DWRITE_GRID_FIT_MODE_ENABLED,
+				},
+			},
+			});
 
 		OnSize();
 		OnFontChanged();
@@ -1730,7 +1681,7 @@ public:
 	}
 
 	void OnFontChanged() {
-		std::vector<std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>> mergeFontList;
+		std::vector<std::pair<std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>, bool>> mergeFontList;
 
 		for (int i = 0, i_ = ListView_GetItemCount(m_hListView); i < i_; i++) {
 			LVITEMW item{};
@@ -1740,24 +1691,23 @@ public:
 			ListView_GetItem(m_hListView, &item);
 
 			auto& element = *reinterpret_cast<FaceElement*>(item.lParam);
-			mergeFontList.emplace_back(element.Font);
+			mergeFontList.emplace_back(element.Font, element.Overwrite);
 		}
 
 		auto merge = std::make_shared<XivRes::FontGenerator::MergedFixedSizeFont>(std::move(mergeFontList));
 
-		m_fontMerged = merge;
-		m_bNeedRedraw = true;
-		InvalidateRect(m_hWnd, nullptr, FALSE);
-
 		//XivRes::FontGenerator::FontdataPacker packer;
-		//if (const auto p = dynamic_cast<const XivRes::FontGenerator::GameFontdataFixedSizeFont*>(m_fontBase.get()))
-		//	packer.SetHorizontalOffset(p->GetHorizontalOffset());
 		//packer.AddFont(merge);
 		//auto [fdts, texs] = packer.Compile();
 		//auto res = std::make_shared<XivRes::TextureStream>(texs[0]->Type, texs[0]->Width, texs[0]->Height, 1, 1, texs.size());
 		//for (size_t i = 0; i < texs.size(); i++)
 		//	res->SetMipmap(0, i, texs[i]);
-		//m_fontPacked = std::make_shared<XivRes::FontGenerator::GameFontdataFixedSizeFont>(fdts[0], texs);
+		//m_fontMerged = std::make_shared<XivRes::FontGenerator::GameFontdataFixedSizeFont>(fdts[0], texs, "Test", "Test");
+
+		m_fontMerged = merge;
+
+		m_bNeedRedraw = true;
+		InvalidateRect(m_hWnd, nullptr, FALSE);
 	}
 
 	void TestFontLsb(int horizontalOffset) {

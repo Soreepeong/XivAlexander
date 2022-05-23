@@ -4,6 +4,7 @@
 #define _XIVRES_FONTGENERATOR_DIRECTWRITEFIXEDSIZEFONT_H_
 
 #include <filesystem>
+#include <numeric>
 
 #include "IFixedSizeFont.h"
 
@@ -31,6 +32,44 @@ _COM_SMARTPTR_TYPEDEF(IDWriteGlyphRunAnalysis, __uuidof(IDWriteGlyphRunAnalysis)
 _COM_SMARTPTR_TYPEDEF(IDWriteLocalizedStrings, __uuidof(IDWriteLocalizedStrings));
 
 namespace XivRes::FontGenerator {
+	static HRESULT SuccessOrThrow(HRESULT hr, std::initializer_list<HRESULT> acceptables = {}) {
+		if (SUCCEEDED(hr))
+			return hr;
+
+		for (const auto& h : acceptables) {
+			if (h == hr)
+				return hr;
+		}
+
+		const auto err = _com_error(hr);
+		wchar_t* pszMsg = nullptr;
+		FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+						  FORMAT_MESSAGE_FROM_SYSTEM |
+						  FORMAT_MESSAGE_IGNORE_INSERTS,
+					  nullptr,
+					  hr,
+					  MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
+					  reinterpret_cast<LPWSTR>(&pszMsg),
+					  0,
+					  NULL);
+		if (pszMsg) {
+			std::unique_ptr<wchar_t, decltype(LocalFree)*> pszMsgFree(pszMsg, LocalFree);
+
+			throw std::runtime_error(std::format(
+				"DirectWrite Error (HRESULT=0x{:08X}): {}",
+				static_cast<uint32_t>(hr),
+				Unicode::Convert<std::string>(std::wstring(pszMsg))
+			));
+
+		} else {
+			throw std::runtime_error(std::format(
+				"DirectWrite Error (HRESULT=0x{:08X})",
+				static_cast<uint32_t>(hr),
+				Unicode::Convert<std::string>(std::wstring(pszMsg))
+			));
+		}
+	}
+
 	class DirectWriteFixedSizeFont : public DefaultAbstractFixedSizeFont {
 		class IStreamBasedDWriteFontFileLoader : public IDWriteFontFileLoader {
 			class IStreamAsDWriteFontFileStream : public IDWriteFontFileStream {
@@ -328,7 +367,6 @@ namespace XivRes::FontGenerator {
 					case DWRITE_RENDERING_MODE_GDI_NATURAL: return L"GDI Natural";
 					case DWRITE_RENDERING_MODE_NATURAL: return L"Natural";
 					case DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC: return L"Natural Symmetric";
-					case DWRITE_RENDERING_MODE_OUTLINE: return L"Outline";
 					default: return L"Invalid";
 				}
 			}
@@ -348,13 +386,17 @@ namespace XivRes::FontGenerator {
 			std::shared_ptr<IStream> Stream;
 			std::set<char32_t> Characters;
 			std::map<std::pair<char32_t, char32_t>, int> KerningPairs;
+			std::map<char32_t, GlyphMetrics> AllGlyphMetrics;
 			DWRITE_FONT_METRICS1 Metrics;
 			CreateStruct Params;
 			int FontIndex = 0;
 			float Size = 0.f;
+			int RecommendedHorizontalOffset = 0;
+			int MaximumRequiredHorizontalOffset = 0;
 
+			template<decltype(std::roundf) TIntCastFn = std::roundf>
 			int ScaleFromFontUnit(int fontUnitValue) const {
-				return static_cast<int>(std::roundf(static_cast<float>(fontUnitValue) * Size / static_cast<float>(Metrics.designUnitsPerEm)));
+				return static_cast<int>(TIntCastFn(static_cast<float>(fontUnitValue) * Size / static_cast<float>(Metrics.designUnitsPerEm)));
 			}
 		};
 
@@ -398,6 +440,30 @@ namespace XivRes::FontGenerator {
 				for (const auto& range : ranges)
 					for (uint32_t i = range.first; i <= range.last; ++i)
 						info->Characters.insert(static_cast<char32_t>(i));
+			}
+			{
+				const auto ascent = info->ScaleFromFontUnit(info->Metrics.ascent);
+				std::vector<uint64_t> horzOffsets;
+				horzOffsets.reserve(info->Characters.size());
+				for (const auto c : info->Characters) {
+					IDWriteGlyphRunAnalysisPtr analysis;
+					auto& gm = info->AllGlyphMetrics[c];
+					if (!GetGlyphMetrics(m_dwrite, *info, c, gm, analysis))
+						continue;
+
+					gm.Translate(0, ascent);
+
+					const auto n = gm.X1;
+					if (n <= 0)
+						continue;
+					if (n >= horzOffsets.size())
+						horzOffsets.resize(n + static_cast<size_t>(1));
+					horzOffsets[n]++;
+					horzOffsets.push_back(n);
+					info->MaximumRequiredHorizontalOffset = (std::max)(info->MaximumRequiredHorizontalOffset, n);
+
+					info->RecommendedHorizontalOffset = static_cast<int>(std::accumulate(horzOffsets.begin(), horzOffsets.end(), 0ULL) / horzOffsets.size());
+				}
 			}
 
 			{
@@ -499,6 +565,14 @@ namespace XivRes::FontGenerator {
 			return Unicode::Convert<std::string>(res);
 		}
 
+		int GetRecommendedHorizontalOffset() const override {
+			return m_info->RecommendedHorizontalOffset;
+		}
+
+		int GetMaximumRequiredHorizontalOffset() const override {
+			return m_info->MaximumRequiredHorizontalOffset;
+		}
+
 		float GetSize() const override {
 			return m_info->Size;
 		}
@@ -515,39 +589,18 @@ namespace XivRes::FontGenerator {
 			return m_info->Characters;
 		}
 
-		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const override {
-			IDWriteGlyphRunAnalysisPtr analysis;
-			if (!GetGlyphMetrics(codepoint, gm, analysis))
-				return false;
-
-			gm.Translate(0, GetAscent());
-			return true;
-		}
-
-		const void* GetGlyphUniqid(char32_t c) const override {
-			const auto it = m_info->Characters.find(c);
-			return it == m_info->Characters.end() ? nullptr : &*it;
+		const std::map<char32_t, GlyphMetrics>& GetAllGlyphMetrics() const override {
+			return m_info->AllGlyphMetrics;
 		}
 
 		const std::map<std::pair<char32_t, char32_t>, int>& GetAllKerningPairs() const override {
 			return m_info->KerningPairs;
 		}
 
-		int GetAdjustedAdvanceX(char32_t left, char32_t right) const override {
-			GlyphMetrics gm;
-			if (!GetGlyphMetrics(left, gm))
-				return 0;
-
-			if (const auto it = m_info->KerningPairs.find(std::make_pair(left, right)); it != m_info->KerningPairs.end())
-				return gm.AdvanceX + it->second;
-
-			return gm.AdvanceX;
-		}
-
 		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor, float gamma) const override {
 			IDWriteGlyphRunAnalysisPtr analysis;
 			GlyphMetrics gm;
-			if (!GetGlyphMetrics(codepoint, gm, analysis))
+			if (!GetGlyphMetrics(m_dwrite, *m_info, codepoint, gm, analysis))
 				return false;
 
 			auto src = gm;
@@ -575,7 +628,7 @@ namespace XivRes::FontGenerator {
 		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity, float gamma) const override {
 			IDWriteGlyphRunAnalysisPtr analysis;
 			GlyphMetrics gm;
-			if (!GetGlyphMetrics(codepoint, gm, analysis))
+			if (!GetGlyphMetrics(m_dwrite, *m_info, codepoint, gm, analysis))
 				return false;
 
 			auto src = gm;
@@ -605,44 +658,6 @@ namespace XivRes::FontGenerator {
 			return std::make_shared<DirectWriteFixedSizeFont>(*this);
 		}
 
-		static HRESULT SuccessOrThrow(HRESULT hr, std::initializer_list<HRESULT> acceptables = {}) {
-			if (SUCCEEDED(hr))
-				return hr;
-
-			for (const auto& h : acceptables) {
-				if (h == hr)
-					return hr;
-			}
-
-			const auto err = _com_error(hr);
-			wchar_t* pszMsg = nullptr;
-			FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER |
-							  FORMAT_MESSAGE_FROM_SYSTEM |
-							  FORMAT_MESSAGE_IGNORE_INSERTS,
-						  nullptr,
-						  hr,
-						  MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
-						  reinterpret_cast<LPWSTR>(&pszMsg),
-						  0,
-						  NULL);
-			if (pszMsg) {
-				std::unique_ptr<wchar_t, decltype(LocalFree)*> pszMsgFree(pszMsg, LocalFree);
-
-				throw std::runtime_error(std::format(
-					"DirectWrite Error (HRESULT=0x{:08X}): {}",
-					static_cast<uint32_t>(hr),
-					Unicode::Convert<std::string>(std::wstring(pszMsg))
-				));
-
-			} else {
-				throw std::runtime_error(std::format(
-					"DirectWrite Error (HRESULT=0x{:08X})",
-					static_cast<uint32_t>(hr),
-					Unicode::Convert<std::string>(std::wstring(pszMsg))
-				));
-			}
-		}
-
 	private:
 		static DWriteInterfaceStruct FaceFromInfoStruct(const ParsedInfoStruct& info) {
 			DWriteInterfaceStruct res{};
@@ -660,23 +675,26 @@ namespace XivRes::FontGenerator {
 			return res;
 		}
 
-		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm, IDWriteGlyphRunAnalysisPtr& analysis) const {
+		static bool GetGlyphMetrics(const DWriteInterfaceStruct& iface, const ParsedInfoStruct& info, char32_t codepoint, GlyphMetrics& gm, IDWriteGlyphRunAnalysisPtr& analysis) {
 			try {
 				uint16_t glyphIndex;
-				SuccessOrThrow(m_dwrite.Face->GetGlyphIndices(reinterpret_cast<const uint32_t*>(&codepoint), 1, &glyphIndex));
+				SuccessOrThrow(iface.Face->GetGlyphIndices(reinterpret_cast<const uint32_t*>(&codepoint), 1, &glyphIndex));
 				if (!glyphIndex) {
 					gm.Clear();
 					return false;
 				}
 
-				int32_t glyphAdvanceI;
-				SuccessOrThrow(m_dwrite.Face1->GetGdiCompatibleGlyphAdvances(m_info->Size, 1.f, nullptr, TRUE, FALSE, 1, &glyphIndex, &glyphAdvanceI));
+				DWRITE_GLYPH_METRICS dgm;
+				SuccessOrThrow(iface.Face->GetGdiCompatibleGlyphMetrics(
+					info.Size, 1.0f, nullptr,
+					info.Params.MeasureMode == DWRITE_MEASURING_MODE_GDI_NATURAL ? TRUE : FALSE,
+					&glyphIndex, 1, &dgm));
 
 				float glyphAdvance{};
 				DWRITE_GLYPH_OFFSET glyphOffset{};
 				const DWRITE_GLYPH_RUN run{
-					.fontFace = m_dwrite.Face,
-					.fontEmSize = m_info->Size,
+					.fontFace = iface.Face,
+					.fontEmSize = info.Size,
 					.glyphCount = 1,
 					.glyphIndices = &glyphIndex,
 					.glyphAdvances = &glyphAdvance,
@@ -685,21 +703,26 @@ namespace XivRes::FontGenerator {
 					.bidiLevel = 0,
 				};
 
-				SuccessOrThrow(m_dwrite.Factory3->CreateGlyphRunAnalysis(
+				auto renderMode = info.Params.RenderMode;
+				if (renderMode == DWRITE_RENDERING_MODE_DEFAULT)
+					SuccessOrThrow(iface.Face->GetRecommendedRenderingMode(info.Size, 1.f, info.Params.MeasureMode, nullptr, &renderMode));
+				
+				SuccessOrThrow(iface.Factory3->CreateGlyphRunAnalysis(
 					&run,
 					nullptr,
-					m_info->Params.RenderMode,
-					m_info->Params.MeasureMode,
-					m_info->Params.GridFitMode,
+					renderMode,
+					info.Params.MeasureMode,
+					info.Params.GridFitMode,
 					DWRITE_TEXT_ANTIALIAS_MODE_GRAYSCALE,
 					0,
 					0,
 					&analysis));
-
+				
 				SuccessOrThrow(analysis->GetAlphaTextureBounds(DWRITE_TEXTURE_ALIASED_1x1, gm.AsMutableRectPtr()));
-				gm.AdvanceX = m_info->ScaleFromFontUnit(glyphAdvanceI);
-				gm.Empty = false;
-				return gm;
+				
+				gm.AdvanceX = info.ScaleFromFontUnit(dgm.advanceWidth);
+
+				return true;
 
 			} catch (...) {
 				gm.Clear();

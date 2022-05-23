@@ -19,19 +19,19 @@
 #include "../Internal/TrueTypeUtils.h"
 
 namespace XivRes::FontGenerator {
-	class FreeTypeFixedSizeFont : public DefaultAbstractFixedSizeFont {
-		static FT_Error SuccessOrThrow(FT_Error error, std::initializer_list<FT_Error> acceptables = {}) {
-			if (!error)
+	static FT_Error SuccessOrThrow(FT_Error error, std::initializer_list<FT_Error> acceptables = {}) {
+		if (!error)
+			return error;
+
+		for (const auto& er : acceptables) {
+			if (er == error)
 				return error;
-
-			for (const auto& er : acceptables) {
-				if (er == error)
-					return error;
-			}
-
-			throw std::runtime_error(std::format("FreeType Error: 0x{:x}", error));
 		}
 
+		throw std::runtime_error(std::format("FreeType Error: 0x{:x}", error));
+	}
+
+	class FreeTypeFixedSizeFont : public DefaultAbstractFixedSizeFont {
 		class FreeTypeLibraryWrapper {
 			FT_Library m_library{};
 			std::mutex m_mtx;
@@ -110,9 +110,12 @@ namespace XivRes::FontGenerator {
 				std::vector<uint8_t> Data;
 				std::set<char32_t> Characters;
 				std::map<std::pair<char32_t, char32_t>, int> KerningPairs;
+				std::map<char32_t, GlyphMetrics> AllGlyphMetrics;
 				float Size{};
 				CreateStruct Params{};
 				int FaceIndex = 0;
+				int RecommendedHorizontalOffset = 0;
+				int MaximumRequiredHorizontalOffset = 0;
 			};
 
 			std::shared_ptr<FreeTypeLibraryWrapper> m_library;
@@ -130,7 +133,7 @@ namespace XivRes::FontGenerator {
 				info->Size = fSize;
 				info->Params = createStruct;
 				info->FaceIndex = faceIndex;
-				info->Params.LoadFlags &= (FT_LOAD_NO_SCALE |
+				info->Params.LoadFlags &= (0 |
 					FT_LOAD_NO_HINTING |
 					FT_LOAD_NO_BITMAP |
 					FT_LOAD_FORCE_AUTOHINT |
@@ -138,8 +141,32 @@ namespace XivRes::FontGenerator {
 
 				m_face = CreateFace(*m_library, *info);
 				FT_UInt glyphIndex;
-				for (char32_t c = FT_Get_First_Char(m_face, &glyphIndex); glyphIndex; c = FT_Get_Next_Char(m_face, c, &glyphIndex))
+				std::vector<uint64_t> horzOffsets;
+				const auto ascent = (m_face->size->metrics.ascender + 63) / 64 - m_face->glyph->bitmap_top;
+				for (char32_t c = FT_Get_First_Char(m_face, &glyphIndex); glyphIndex; c = FT_Get_Next_Char(m_face, c, &glyphIndex)) {
+					SuccessOrThrow(FT_Load_Glyph(m_face, glyphIndex, info->Params.LoadFlags));
 					info->Characters.insert(c);
+
+					GlyphMetrics src{
+						.X1 = m_face->glyph->bitmap_left,
+						.Y1 = ascent,
+						.X2 = src.X1 + static_cast<int>(m_face->glyph->bitmap.width),
+						.Y2 = src.Y1 + static_cast<int>(m_face->glyph->bitmap.rows),
+						.AdvanceX = (m_face->glyph->advance.x + 63) / 64,
+					};
+					info->AllGlyphMetrics[c] = src;
+
+					const auto n = -src.X1;
+					if (n <= 0)
+						continue;
+					if (n >= horzOffsets.size())
+						horzOffsets.resize(n + static_cast<size_t>(1));
+					horzOffsets[n]++;
+					horzOffsets.push_back(n);
+					info->MaximumRequiredHorizontalOffset = (std::max)(info->MaximumRequiredHorizontalOffset, n);
+				}
+
+				info->RecommendedHorizontalOffset = static_cast<int>(std::accumulate(horzOffsets.begin(), horzOffsets.end(), 0ULL) / horzOffsets.size());
 
 				FreeTypeFontTable kernDataRef(m_face, Internal::TrueType::Kern::DirectoryTableTag.ReverseNativeValue);
 				FreeTypeFontTable gposDataRef(m_face, Internal::TrueType::Gpos::DirectoryTableTag.ReverseNativeValue);
@@ -244,6 +271,14 @@ namespace XivRes::FontGenerator {
 				return m_face;
 			}
 
+			int GetRecommendedHorizontalOffset() const {
+				return m_info->RecommendedHorizontalOffset;
+			}
+
+			int GetMaximumRequiredHorizontalOffset() const {
+				return m_info->MaximumRequiredHorizontalOffset;
+			}
+
 			int GetCharIndex(char32_t codepoint) const {
 				return FT_Get_Char_Index(m_face, codepoint);
 			}
@@ -253,6 +288,10 @@ namespace XivRes::FontGenerator {
 					return;
 
 				SuccessOrThrow(FT_Load_Glyph(m_face, glyphIndex, m_info->Params.LoadFlags | (bRender ? FT_LOAD_RENDER : 0)));
+			}
+
+			const std::map<char32_t, GlyphMetrics>& GetAllGlyphMetrics() const {
+				return m_info->AllGlyphMetrics;
 			}
 
 			FreeTypeLibraryWrapper& GetLibrary() const {
@@ -388,6 +427,14 @@ namespace XivRes::FontGenerator {
 			return name.GetPreferredSubfamilyName<std::string>(0);
 		}
 
+		int GetRecommendedHorizontalOffset() const override {
+			return m_face.GetRecommendedHorizontalOffset();
+		}
+
+		int GetMaximumRequiredHorizontalOffset() const override {
+			return m_face.GetMaximumRequiredHorizontalOffset();
+		}
+
 		float GetSize() const override {
 			return m_face.GetSize();
 		}
@@ -404,16 +451,8 @@ namespace XivRes::FontGenerator {
 			return m_face.GetAllCharacters();
 		}
 
-		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const override {
-			const auto glyphIndex = m_face.GetCharIndex(codepoint);
-			if (!glyphIndex) {
-				gm.Clear();
-				return false;
-			}
-
-			m_face.LoadGlyph(glyphIndex);
-			gm = GlyphMetricsFromCurrentGlyph();
-			return true;
+		const std::map<char32_t, GlyphMetrics>& GetAllGlyphMetrics() const override {
+			return m_face.GetAllGlyphMetrics();
 		}
 
 		const void* GetGlyphUniqid(char32_t c) const override {
@@ -496,7 +535,6 @@ namespace XivRes::FontGenerator {
 	private:
 		GlyphMetrics GlyphMetricsFromCurrentGlyph(int x = 0, int y = 0) const {
 			GlyphMetrics src{
-				.Empty = false,
 				.X1 = x + m_face->glyph->bitmap_left,
 				.Y1 = y + GetAscent() - m_face->glyph->bitmap_top,
 				.X2 = src.X1 + static_cast<int>(m_face->glyph->bitmap.width),

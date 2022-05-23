@@ -19,7 +19,6 @@ namespace XivRes::FontGenerator {
 	class FontdataPacker {
 		size_t m_nThreads = std::thread::hardware_concurrency();
 		int m_nSideLength = 1024;
-		int m_nHorizontalOffset = 0;
 		std::vector<std::shared_ptr<IFixedSizeFont>> m_fonts;
 
 	public:
@@ -32,10 +31,6 @@ namespace XivRes::FontGenerator {
 			return m_fonts.at(index);
 		}
 
-		void SetHorizontalOffset(int horizontalOffset) {
-			m_nHorizontalOffset = horizontalOffset;
-		}
-
 		auto Compile() {
 			using namespace rectpack2D;
 			using spaces_type = rectpack2D::empty_spaces<false, default_empty_spaces>;
@@ -46,8 +41,7 @@ namespace XivRes::FontGenerator {
 				std::vector<FontdataStream*> TargetFonts{};
 				FontdataGlyphEntry Entry{};
 				const Unicode::UnicodeBlocks::BlockDefinition* UnicodeBlock{};
-				int X1{};
-				int X2{};
+				int CurrentOffsetX{};
 			};
 
 			std::vector<std::shared_ptr<FontdataStream>> targetFonts;
@@ -131,62 +125,15 @@ namespace XivRes::FontGenerator {
 								throw std::runtime_error("Font reported to have a codepoint but it's failing to report glyph metrics");
 
 							info.Entry.CurrentOffsetY = gm.Y1;
-							info.Entry.BoundingHeight = Internal::RangeCheckedCast<uint8_t>(gm.Y2 - info.Entry.CurrentOffsetY);
-							info.Entry.NextOffsetX = gm.AdvanceX;
-							info.X1 = gm.X1;
-							info.X2 = gm.X2;
+							info.Entry.BoundingHeight = Internal::RangeCheckedCast<uint8_t>(gm.Y2 - gm.Y1);
+							info.CurrentOffsetX = (std::min)(0, gm.X1);
+							info.Entry.BoundingWidth = Internal::RangeCheckedCast<uint8_t>(gm.X2 - info.CurrentOffsetX);
+							info.Entry.NextOffsetX = gm.AdvanceX - gm.X2;
 						}
 					});
 				}
 
 				pool.SubmitDoneAndWait();
-
-				std::map<Unicode::UnicodeBlocks::NegativeLsbGroup, std::vector<CharacterPlan*>> negativeLsbChars;
-				std::vector<bool> codepointAvailable;
-				codepointAvailable.resize(Unicode::UnicodeBlocks::Blocks.back().First, false);
-				for (auto& info : rectangleInfoList) {
-					codepointAvailable[info.Entry.Char()] = true;
-
-					if (info.X1 < -m_nHorizontalOffset) {
-						info.Entry.BoundingWidth = Internal::RangeCheckedCast<uint8_t>(info.X2 - info.X1);
-						info.X1 = -info.X1;
-						info.X2 = info.X1 - m_nHorizontalOffset;
-						info.Entry.NextOffsetX += info.X2 - info.Entry.BoundingWidth;
-
-						if (info.UnicodeBlock->NegativeLsbGroup != Unicode::UnicodeBlocks::None)
-							negativeLsbChars[info.UnicodeBlock->NegativeLsbGroup].emplace_back(&info);
-
-					} else {
-						info.Entry.BoundingWidth = Internal::RangeCheckedCast<uint8_t>((std::max)(0, info.X2 + m_nHorizontalOffset));
-						info.Entry.NextOffsetX -= info.Entry.BoundingWidth;
-						info.X1 = m_nHorizontalOffset;
-						info.X2 = 0;
-					}
-				}
-
-				for (const auto& [group, chars] : negativeLsbChars) {
-					for (const auto& charPlan : chars) {
-						auto entry = FontdataKerningEntry();
-						entry.RightUtf8Value = charPlan->Entry.Utf8Value;
-						entry.RightShiftJisValue = charPlan->Entry.ShiftJisValue;
-						entry.RightOffset = -charPlan->X2;
-
-						for (const auto& block : Unicode::UnicodeBlocks::Blocks) {
-							if (block.NegativeLsbGroup != group && (group != Unicode::UnicodeBlocks::Combining || !(block.Flags & Unicode::UnicodeBlocks::UsedWithCombining)))
-								continue;
-
-							for (const auto& targetFont : charPlan->TargetFonts) {
-								for (auto leftc = block.First; leftc <= block.Last; leftc++) {
-									if (!codepointAvailable[leftc])
-										continue;
-
-									entry.Left(leftc);
-									targetFont->AddKerning(entry, true);
-								}
-							}
-						}
-					}
-				}
 			}
 
 			size_t nPlaneCount = 0;
@@ -276,7 +223,7 @@ namespace XivRes::FontGenerator {
 										pInfo->Entry.Char(),
 										pCurrentTargetBuffer,
 										4,
-										pInfo->Entry.TextureOffsetX + pInfo->X1,
+										pInfo->Entry.TextureOffsetX - pInfo->CurrentOffsetX,
 										pInfo->Entry.TextureOffsetY - pInfo->Entry.CurrentOffsetY,
 										w,
 										h,

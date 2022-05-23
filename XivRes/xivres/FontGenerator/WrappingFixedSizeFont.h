@@ -12,10 +12,12 @@ namespace XivRes::FontGenerator {
 		float Gamma = 1.f;
 	};
 
-	class WrappingFixedSizeFont : public IFixedSizeFont {
+	class WrappingFixedSizeFont : public DefaultAbstractFixedSizeFont {
 		struct InfoStruct {
-			std::optional<std::set<char32_t>> Codepoints;
-			std::optional<std::map<std::pair<char32_t, char32_t>, int>> KerningPairs;
+			std::set<char32_t> Codepoints;
+			std::map<char32_t, int> NetHorizontalOffsets;
+			std::map<char32_t, GlyphMetrics> AllGlyphMetrics;
+			std::map<std::pair<char32_t, char32_t>, int> KerningPairs;
 			WrapModifiers Modifiers;
 		};
 
@@ -27,19 +29,71 @@ namespace XivRes::FontGenerator {
 			: m_font(std::move(font)) {
 
 			auto info = std::make_shared<InfoStruct>();
+			info->Modifiers = wrapModifiers;
 			if (wrapModifiers.Codepoints) {
-				info->Codepoints.emplace();
-				info->KerningPairs.emplace();
-				std::ranges::set_intersection(*wrapModifiers.Codepoints, m_font->GetAllCodepoints(), std::inserter(*info->Codepoints, info->Codepoints->begin()));
-				for (auto it = info->KerningPairs->begin(); it != info->KerningPairs->end(); ) {
-					if (info->Codepoints->contains(it->first.first) && info->Codepoints->contains(it->first.second))
+				std::ranges::set_intersection(*wrapModifiers.Codepoints, m_font->GetAllCodepoints(), std::inserter(info->Codepoints, info->Codepoints.begin()));
+				for (auto it = info->KerningPairs.begin(); it != info->KerningPairs.end(); ) {
+					if (info->Codepoints.contains(it->first.first) && info->Codepoints.contains(it->first.second))
 						++it;
 					else
-						it = info->KerningPairs->erase(it);
+						it = info->KerningPairs.erase(it);
+				}
+			} else {
+				info->Codepoints = m_font->GetAllCodepoints();
+				info->KerningPairs = m_font->GetAllKerningPairs();
+			}
+
+			std::map<Unicode::UnicodeBlocks::NegativeLsbGroup, std::map<char32_t, int>> negativeLsbChars;
+			GlyphMetrics gmSrc;
+			for (const auto& [codepoint, gmSrc] : m_font->GetAllGlyphMetrics()) {
+				if (!info->Codepoints.contains(codepoint))
+					continue;
+
+				auto& gmDst = info->AllGlyphMetrics[codepoint];
+				gmDst = gmSrc;
+
+				const auto remainingOffset = gmSrc.X1 + info->Modifiers.HorizontalOffset;
+				if (remainingOffset >= 0) {
+					info->NetHorizontalOffsets[codepoint] = info->Modifiers.HorizontalOffset;
+					gmDst.AdvanceX = gmSrc.AdvanceX + info->Modifiers.LetterSpacing;
+
+				} else {
+					info->NetHorizontalOffsets[codepoint] = -gmSrc.X1;
+					gmDst.AdvanceX = gmSrc.AdvanceX + info->Modifiers.LetterSpacing - remainingOffset;
+
+					do {
+						const auto& block = Unicode::UnicodeBlocks::GetCorrespondingBlock(codepoint);
+						if (block.NegativeLsbGroup == Unicode::UnicodeBlocks::None)
+							break;
+
+						if (block.Flags & Unicode::UnicodeBlocks::UsedWithCombining)
+							break;
+
+						negativeLsbChars[block.NegativeLsbGroup][codepoint] = remainingOffset;
+					} while (false);
+				}
+
+				gmDst.Translate(info->NetHorizontalOffsets.at(codepoint), info->Modifiers.BaselineShift);
+			}
+
+#pragma warning(push)
+#pragma warning(disable: 26812)
+
+			for (const auto& [group, chars] : negativeLsbChars) {
+				for (const auto& [rightc, offset] : chars) {
+					for (const auto& block : Unicode::UnicodeBlocks::Blocks) {
+						if (block.NegativeLsbGroup != group && (group != Unicode::UnicodeBlocks::Combining || !(block.Flags & Unicode::UnicodeBlocks::UsedWithCombining)))
+							continue;
+						for (auto leftc = block.First; leftc <= block.Last; leftc++) {
+							if (!info->Codepoints.contains(leftc))
+								continue;
+							info->KerningPairs[std::make_pair(leftc, rightc)] += offset;
+						}
+					}
 				}
 			}
 
-			info->Modifiers = wrapModifiers;
+#pragma warning(pop)
 
 			m_info = std::move(info);
 		}
@@ -58,6 +112,14 @@ namespace XivRes::FontGenerator {
 			return m_font->GetSubfamilyName();
 		}
 
+		int GetRecommendedHorizontalOffset() const override {
+			return 0;
+		}
+
+		int GetMaximumRequiredHorizontalOffset() const override {
+			return 0;
+		}
+
 		float GetSize() const override {
 			return m_font->GetSize();
 		}
@@ -71,66 +133,38 @@ namespace XivRes::FontGenerator {
 		}
 
 		const std::set<char32_t>& GetAllCodepoints() const override {
-			if (m_info->Codepoints)
-				return *m_info->Codepoints;
-			else
-				return m_font->GetAllCodepoints();
+			return m_info->Codepoints;
 		}
 
-		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const override {
-			if (m_info->Codepoints && !m_info->Codepoints->contains(codepoint)) {
-				gm.Clear();
-				return false;
-			}
-
-			if (!m_font->GetGlyphMetrics(codepoint, gm))
-				return false;
-
-			gm.AdvanceX += m_info->Modifiers.LetterSpacing;
-			gm.Translate(m_info->Modifiers.HorizontalOffset, m_info->Modifiers.BaselineShift);
-
-			return true;
+		const std::map<char32_t, GlyphMetrics>& GetAllGlyphMetrics() const override {
+			return m_info->AllGlyphMetrics;
 		}
 
 		const void* GetGlyphUniqid(char32_t c) const override {
-			if (m_info->Codepoints && !m_info->Codepoints->contains(c))
+			if (!m_info->Codepoints.contains(c))
 				return nullptr;
 
 			return m_font->GetGlyphUniqid(c);
 		}
 
 		const std::map<std::pair<char32_t, char32_t>, int>& GetAllKerningPairs() const override {
-			if (m_info->KerningPairs)
-				return *m_info->KerningPairs;
-			else
-				return m_font->GetAllKerningPairs();
-		}
-
-		int GetAdjustedAdvanceX(char32_t left, char32_t right) const override {
-			GlyphMetrics gm;
-			if (!GetGlyphMetrics(left, gm))
-				return 0;
-
-			const auto& kerningPairs = m_info->KerningPairs.value_or(m_font->GetAllKerningPairs());
-			int kerningDistance = 0;
-			if (auto it = kerningPairs.find(std::make_pair(left, right)); it != kerningPairs.end())
-				kerningDistance = it->second;
-
-			return gm.AdvanceX + kerningDistance;
+			return m_info->KerningPairs;
 		}
 
 		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor, float gamma) const override {
-			if (m_info->Codepoints && !m_info->Codepoints->contains(codepoint))
+			GlyphMetrics gm;
+			if (!m_info->Codepoints.contains(codepoint))
 				return false;
 
-			return m_font->Draw(codepoint, pBuf, drawX + m_info->Modifiers.HorizontalOffset, drawY + m_info->Modifiers.BaselineShift, destWidth, destHeight, fgColor, bgColor, gamma * m_info->Modifiers.Gamma);
+			return m_font->Draw(codepoint, pBuf, drawX + m_info->NetHorizontalOffsets.at(codepoint), drawY + m_info->Modifiers.BaselineShift, destWidth, destHeight, fgColor, bgColor, gamma * m_info->Modifiers.Gamma);
 		}
 
 		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity, float gamma) const override {
-			if (m_info->Codepoints && !m_info->Codepoints->contains(codepoint))
+			GlyphMetrics gm;
+			if (!m_info->Codepoints.contains(codepoint))
 				return false;
 
-			return m_font->Draw(codepoint, pBuf, stride, drawX + m_info->Modifiers.HorizontalOffset, drawY + m_info->Modifiers.BaselineShift, destWidth, destHeight, fgColor, bgColor, fgOpacity, bgOpacity, gamma * m_info->Modifiers.Gamma);
+			return m_font->Draw(codepoint, pBuf, stride, drawX + m_info->NetHorizontalOffsets.at(codepoint), drawY + m_info->Modifiers.BaselineShift, destWidth, destHeight, fgColor, bgColor, fgOpacity, bgOpacity, gamma * m_info->Modifiers.Gamma);
 		}
 
 		std::shared_ptr<IFixedSizeFont> GetThreadSafeView() const override {

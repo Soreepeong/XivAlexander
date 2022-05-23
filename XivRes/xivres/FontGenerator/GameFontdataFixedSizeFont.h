@@ -36,7 +36,9 @@ namespace XivRes::FontGenerator {
 			std::vector<std::shared_ptr<MemoryMipmapStream>> Mipmaps;
 			std::set<char32_t> Codepoints;
 			std::map<std::pair<char32_t, char32_t>, int> KerningPairs;
-			int HorizontalOffset = 0;
+			std::map<char32_t, GlyphMetrics> AllMetrics;
+			int RecommendedHorizontalOffset = 0;
+			int MaximumRequiredHorizontalOffset = 0;
 		};
 
 		std::shared_ptr<const InfoStruct> m_info;
@@ -60,17 +62,30 @@ namespace XivRes::FontGenerator {
 			for (const auto& entry : info->Font->GetKerningEntries())
 				info->KerningPairs.emplace_hint(info->KerningPairs.end(), std::make_pair(entry.Left(), entry.Right()), entry.RightOffset);
 
-			if (const auto pEntry = info->Font->GetFontEntry(U'_'))
-				info->HorizontalOffset = -pEntry->NextOffsetX;
-			else if (const auto pEntry = info->Font->GetFontEntry(U'0'))
-				info->HorizontalOffset = -pEntry->NextOffsetX;
+			std::vector<uint64_t> horzOffsets;
+			horzOffsets.reserve(info->Codepoints.size());
+
+			for (const auto& e : info->Font->GetFontTableEntries()) {
+				info->AllMetrics[e.Char()] = GlyphMetricsFromEntry(&e);
+
+				const auto n = static_cast<int>(-e.NextOffsetX);
+				if (n <= 0)
+					continue;
+				if (n >= horzOffsets.size())
+					horzOffsets.resize(n + static_cast<size_t>(1));
+				horzOffsets[n]++;
+				horzOffsets.push_back(n);
+				info->MaximumRequiredHorizontalOffset = (std::max)(info->MaximumRequiredHorizontalOffset, n);
+			}
+
+			info->RecommendedHorizontalOffset = static_cast<int>(std::accumulate(horzOffsets.begin(), horzOffsets.end(), 0ULL) / horzOffsets.size());
 
 			m_info = std::move(info);
 		}
 
 		GameFontdataFixedSizeFont() = default;
 		GameFontdataFixedSizeFont(GameFontdataFixedSizeFont&&) = default;
-		GameFontdataFixedSizeFont(const GameFontdataFixedSizeFont & r) = default;
+		GameFontdataFixedSizeFont(const GameFontdataFixedSizeFont& r) = default;
 		GameFontdataFixedSizeFont& operator=(GameFontdataFixedSizeFont&&) = default;
 		GameFontdataFixedSizeFont& operator=(const GameFontdataFixedSizeFont&) = default;
 
@@ -82,8 +97,12 @@ namespace XivRes::FontGenerator {
 			return m_info->SubfamilyName;
 		}
 
-		int GetHorizontalOffset() const {
-			return m_info->HorizontalOffset;
+		int GetRecommendedHorizontalOffset() const override {
+			return m_info->RecommendedHorizontalOffset;
+		}
+
+		int GetMaximumRequiredHorizontalOffset() const override {
+			return m_info->MaximumRequiredHorizontalOffset;
 		}
 
 		float GetSize() const override {
@@ -102,15 +121,8 @@ namespace XivRes::FontGenerator {
 			return m_info->Codepoints;
 		}
 
-		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const override {
-			const auto pEntry = m_info->Font->GetFontEntry(codepoint);
-			if (!pEntry) {
-				gm.Clear();
-				return false;
-			}
-
-			gm = GlyphMetricsFromEntry(pEntry);
-			return true;
+		const std::map<char32_t, GlyphMetrics>& GetAllGlyphMetrics() const override {
+			return m_info->AllMetrics;
 		}
 
 		const void* GetGlyphUniqid(char32_t c) const override {
@@ -134,7 +146,7 @@ namespace XivRes::FontGenerator {
 			if (!pEntry)
 				return false;
 
-			auto src = GlyphMetrics{ false, *pEntry->TextureOffsetX, *pEntry->TextureOffsetY, *pEntry->TextureOffsetX + *pEntry->BoundingWidth, *pEntry->TextureOffsetY + *pEntry->BoundingHeight };
+			auto src = GlyphMetrics{ *pEntry->TextureOffsetX, *pEntry->TextureOffsetY, *pEntry->TextureOffsetX + *pEntry->BoundingWidth, *pEntry->TextureOffsetY + *pEntry->BoundingHeight };
 			auto dest = GlyphMetricsFromEntry(pEntry, drawX, drawY);
 			const auto& mipmapStream = *m_info->Mipmaps.at(pEntry->TextureFileIndex());
 			src.AdjustToIntersection(dest, mipmapStream.Width, mipmapStream.Height, destWidth, destHeight);
@@ -153,7 +165,7 @@ namespace XivRes::FontGenerator {
 			if (!pEntry)
 				return false;
 
-			auto src = GlyphMetrics{ false, *pEntry->TextureOffsetX, *pEntry->TextureOffsetY, *pEntry->TextureOffsetX + *pEntry->BoundingWidth, *pEntry->TextureOffsetY + *pEntry->BoundingHeight };
+			auto src = GlyphMetrics{ *pEntry->TextureOffsetX, *pEntry->TextureOffsetY, *pEntry->TextureOffsetX + *pEntry->BoundingWidth, *pEntry->TextureOffsetY + *pEntry->BoundingHeight };
 			auto dest = GlyphMetricsFromEntry(pEntry, drawX, drawY);
 			const auto& mipmapStream = *m_info->Mipmaps.at(pEntry->TextureFileIndex());
 			src.AdjustToIntersection(dest, mipmapStream.Width, mipmapStream.Height, destWidth, destHeight);
@@ -176,8 +188,7 @@ namespace XivRes::FontGenerator {
 	private:
 		GlyphMetrics GlyphMetricsFromEntry(const FontdataGlyphEntry* pEntry, int x = 0, int y = 0) const {
 			GlyphMetrics src{
-				.Empty = false,
-				.X1 = x - m_info->HorizontalOffset,
+				.X1 = x,
 				.Y1 = y + pEntry->CurrentOffsetY,
 				.X2 = src.X1 + pEntry->BoundingWidth,
 				.Y2 = src.Y1 + pEntry->BoundingHeight,
@@ -277,7 +288,7 @@ inline XivRes::FontGenerator::GameFontdataSet XivRes::GameReader::GetFonts(XivRe
 }
 
 inline XivRes::FontGenerator::GameFontdataSet XivRes::GameReader::GetFonts(XivRes::GameFontType fontType) const {
-	static const FontGenerator::GameFontdataDefinition fdtListFont[] {
+	static const FontGenerator::GameFontdataDefinition fdtListFont[]{
 		{"common/font/AXIS_96.fdt", "AXIS", "Regular"},
 		{"common/font/AXIS_12.fdt", "AXIS", "Regular"},
 		{"common/font/AXIS_14.fdt", "AXIS", "Regular"},

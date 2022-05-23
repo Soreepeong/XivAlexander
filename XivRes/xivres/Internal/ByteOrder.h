@@ -65,6 +65,8 @@ namespace XivRes::Internal {
 
 	template<typename T, ByteOrderStorage<T> FromNative(T), T ToNative(ByteOrderStorage<T>)>
 	union ByteOrder {
+		using Type = T;
+
 		ByteOrderStorage<T> Storage;
 
 		ByteOrder(T defaultValue = static_cast<T>(0))

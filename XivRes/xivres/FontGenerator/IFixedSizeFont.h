@@ -13,7 +13,6 @@ namespace XivRes::FontGenerator {
 	struct GlyphMetrics {
 		using MetricType = int;
 
-		bool Empty = true;
 		MetricType X1 = 0;
 		MetricType Y1 = 0;
 		MetricType X2 = 0;
@@ -59,7 +58,6 @@ namespace XivRes::FontGenerator {
 		}
 
 		void Clear() {
-			Empty = true;
 			X1 = Y1 = X2 = Y2 = AdvanceX = 0;
 		}
 
@@ -69,25 +67,14 @@ namespace XivRes::FontGenerator {
 
 		[[nodiscard]] MetricType GetArea() const { return GetWidth() * GetHeight(); }
 
-		[[nodiscard]] bool IsEffectivelyEmpty() const { return Empty || X1 == X2 || Y1 == Y2; }
-
-		operator bool() const {
-			return !Empty;
-		}
+		[[nodiscard]] bool IsEffectivelyEmpty() const { return X1 == X2 || Y1 == Y2; }
 
 #ifdef _WINDOWS_
-		GlyphMetrics& SetFrom(const RECT& r, bool keepAdvanceXIfNotEmpty = true) {
-			Empty = !r.left && !r.top && !r.right && !r.bottom;
-			if (!Empty) {
-				X1 = r.left;
-				Y1 = r.top;
-				X2 = r.right;
-				Y2 = r.bottom;
-				if (!keepAdvanceXIfNotEmpty)
-					AdvanceX = 0;
-			} else {
-				X1 = Y2 = X2 = Y2 = AdvanceX = 0;
-			}
+		GlyphMetrics& SetFrom(const RECT& r) {
+			X1 = r.left;
+			Y1 = r.top;
+			X2 = r.right;
+			Y2 = r.bottom;
 			return *this;
 		}
 
@@ -98,20 +85,18 @@ namespace XivRes::FontGenerator {
 		struct AsMutableRectPtrType {
 			GlyphMetrics& m;
 			RECT r;
-			const bool keepAdvanceXIfNotEmpty;
 			operator RECT* () {
 				return &r;
 			}
 
-			AsMutableRectPtrType(GlyphMetrics& m, bool keepAdvanceXIfNotEmpty)
+			AsMutableRectPtrType(GlyphMetrics& m)
 				: m(m)
-				, r(m)
-				, keepAdvanceXIfNotEmpty(keepAdvanceXIfNotEmpty) {
+				, r(m) {
 
 			}
-			~AsMutableRectPtrType() { m.SetFrom(r, keepAdvanceXIfNotEmpty); }
-		} AsMutableRectPtr(bool keepAdvanceXIfNotEmpty = true) {
-			return AsMutableRectPtrType(*this, keepAdvanceXIfNotEmpty);
+			~AsMutableRectPtrType() { m.SetFrom(r); }
+		} AsMutableRectPtr() {
+			return AsMutableRectPtrType(*this);
 		}
 
 		[[nodiscard]] struct AsConstRectPtrType {
@@ -144,26 +129,15 @@ namespace XivRes::FontGenerator {
 		}
 
 		GlyphMetrics& ExpandToFit(const GlyphMetrics& r) {
-			if (r.Empty)
-				return *this;
-			if (Empty) {
-				X1 = r.X1;
-				Y1 = r.Y1;
-				X2 = r.X2;
-				Y2 = r.Y2;
-				AdvanceX = r.AdvanceX;
-				Empty = false;
-			} else {
-				const auto prevLeft = X1;
-				X1 = (std::min)(X1, r.X1);
-				Y1 = (std::min)(Y1, r.Y1);
-				X2 = (std::max)(X2, r.X2);
-				Y2 = (std::max)(Y2, r.Y2);
-				if (prevLeft + AdvanceX > r.X1 + r.AdvanceX)
-					AdvanceX = prevLeft + AdvanceX - X1;
-				else
-					AdvanceX = r.X1 + AdvanceX - X1;
-			}
+			const auto prevLeft = X1;
+			X1 = (std::min)(X1, r.X1);
+			Y1 = (std::min)(Y1, r.Y1);
+			X2 = (std::max)(X2, r.X2);
+			Y2 = (std::max)(Y2, r.Y2);
+			if (prevLeft + AdvanceX > r.X1 + r.AdvanceX)
+				AdvanceX = prevLeft + AdvanceX - X1;
+			else
+				AdvanceX = r.X1 + AdvanceX - X1;
 			return *this;
 		}
 	};
@@ -174,6 +148,10 @@ namespace XivRes::FontGenerator {
 
 		virtual std::string GetSubfamilyName() const = 0;
 
+		virtual int GetRecommendedHorizontalOffset() const = 0;
+
+		virtual int GetMaximumRequiredHorizontalOffset() const = 0;
+
 		virtual float GetSize() const = 0;
 
 		virtual int GetAscent() const = 0;
@@ -183,6 +161,8 @@ namespace XivRes::FontGenerator {
 		virtual const std::set<char32_t>& GetAllCodepoints() const = 0;
 
 		virtual bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const = 0;
+
+		virtual const std::map<char32_t, GlyphMetrics>& GetAllGlyphMetrics() const = 0;
 
 		virtual const void* GetGlyphUniqid(char32_t c) const = 0;
 
@@ -198,7 +178,43 @@ namespace XivRes::FontGenerator {
 	};
 
 	class DefaultAbstractFixedSizeFont : public IFixedSizeFont {
+	public:
+		int GetRecommendedHorizontalOffset() const override {
+			return 0;
+		}
 
+		int GetMaximumRequiredHorizontalOffset() const override {
+			return 0;
+		}
+
+		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const override final {
+			const auto& m = GetAllGlyphMetrics();
+			if (const auto it = m.find(codepoint); it == m.end()) {
+				gm.Clear();
+				return false;
+			} else {
+				gm = it->second;
+				return true;
+			}
+		}
+
+		const void* GetGlyphUniqid(char32_t c) const override {
+			const auto& codepoints = GetAllCodepoints();
+			const auto it = codepoints.find(c);
+			return it == codepoints.end() ? nullptr : &*it;
+		}
+
+		int GetAdjustedAdvanceX(char32_t left, char32_t right) const override {
+			GlyphMetrics gm;
+			if (!GetGlyphMetrics(left, gm))
+				return 0;
+
+			const auto& kerningPairs = GetAllKerningPairs();
+			if (const auto it = kerningPairs.find(std::make_pair(left, right)); it != kerningPairs.end())
+				return gm.AdvanceX + it->second;
+
+			return gm.AdvanceX;
+		}
 	};
 
 	class EmptyFixedSizeFont : public IFixedSizeFont {
@@ -231,6 +247,14 @@ namespace XivRes::FontGenerator {
 			return "Regular";
 		}
 
+		int GetRecommendedHorizontalOffset() const override {
+			return 0;
+		}
+
+		int GetMaximumRequiredHorizontalOffset() const override {
+			return 0;
+		}
+
 		float GetSize() const override {
 			return m_size;
 		}
@@ -251,6 +275,11 @@ namespace XivRes::FontGenerator {
 		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const override {
 			gm.Clear();
 			return false;
+		}
+
+		const std::map<char32_t, GlyphMetrics>& GetAllGlyphMetrics() const override {
+			static const std::map<char32_t, GlyphMetrics> s_empty;
+			return s_empty;
 		}
 
 		const void* GetGlyphUniqid(char32_t c) const override {
