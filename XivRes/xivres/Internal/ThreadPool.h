@@ -48,7 +48,25 @@ namespace XivRes::Internal {
 		}
 
 		~ThreadPool() {
-			SubmitDoneAndWait();
+			if (!IsAnyWorkerThreadRunning())
+				return;
+
+			if (!m_bErrorOccurred) {
+				m_bErrorOccurred = true;
+				m_sFirstError = "Cancelled via dtor";
+			}
+
+			{
+				const auto lock = std::lock_guard(m_queuedTaskLock);
+				m_bNoMoreTasks = true;
+				for (const auto& _ : m_threads)
+					m_queuedTasks.emplace_back();
+			}
+
+			m_queuedTaskAvailable.notify_all();
+			for (auto& th : m_threads)
+				if (th.joinable())
+					th.join();
 		}
 
 		void AddOnNewThreadCallback(std::function<void(size_t)> cb) {
@@ -257,7 +275,6 @@ namespace XivRes::Internal {
 						return;
 
 					} catch (const std::exception& e) {
-						throw;
 						SubmitDone(std::format("Task: {}", e.what()));
 						return;
 					}

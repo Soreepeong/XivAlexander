@@ -14,8 +14,16 @@ namespace XivRes::Internal {
 	};
 
 	namespace BitmapCopy {
+		static std::vector<uint8_t> CreateGammaTable(float gamma) {
+			std::vector<uint8_t> res(256);
+			for (int i = 0; i < 256; i++)
+				res[i] = static_cast<uint8_t>(std::powf(static_cast<float>(i) / 255.f, 1 / gamma) * 255.f);
+			return res;
+		}
+
 		class ToRGBA8888 {
-			float m_fInverseGamma = 1.f;
+			std::span<const uint8_t> m_gammaTable;
+
 			RGBA8888 m_colorForeground = RGBA8888(0, 0, 0, 255);
 			RGBA8888 m_colorBackground = RGBA8888(0, 0, 0, 0);
 
@@ -48,8 +56,8 @@ namespace XivRes::Internal {
 				return *this;
 			}
 
-			ToRGBA8888& WithGamma(float gamma) {
-				m_fInverseGamma = 1.f / gamma;
+			ToRGBA8888& WithGammaTable(std::span<const uint8_t> gammaTable) {
+				m_gammaTable = gammaTable;
 				return *this;
 			}
 
@@ -107,13 +115,9 @@ namespace XivRes::Internal {
 			}
 
 		private:
-			uint8_t ApplyGamma(uint8_t n) const {
-				return static_cast<uint8_t>(std::powf(static_cast<float>(n) / 255.f, m_fInverseGamma) * 255.f);
-			}
-
 			void DrawLineToRgb(RGBA8888* pTarget, const uint8_t* pSource, size_t nPixelCount) {
 				while (nPixelCount--) {
-					const auto opacityScaled = ApplyGamma(*pSource);
+					const auto opacityScaled = m_gammaTable[*pSource];
 					const auto blendedBgColor = RGBA8888{
 						(m_colorBackground.R * m_colorBackground.A + pTarget->R * (255 - m_colorBackground.A)) / 255,
 						(m_colorBackground.G * m_colorBackground.A + pTarget->G * (255 - m_colorBackground.A)) / 255,
@@ -149,7 +153,7 @@ namespace XivRes::Internal {
 
 			void DrawLineToRgbOpaque(RGBA8888* pTarget, const uint8_t* pSource, size_t nPixelCount) {
 				while (nPixelCount--) {
-					const auto opacityScaled = ApplyGamma(*pSource);
+					const auto opacityScaled = m_gammaTable[*pSource];
 					pTarget->R = (m_colorBackground.R * (255 - opacityScaled) + m_colorForeground.R * opacityScaled) / 255;
 					pTarget->G = (m_colorBackground.G * (255 - opacityScaled) + m_colorForeground.G * opacityScaled) / 255;
 					pTarget->B = (m_colorBackground.B * (255 - opacityScaled) + m_colorForeground.B * opacityScaled) / 255;
@@ -163,7 +167,7 @@ namespace XivRes::Internal {
 			void DrawLineToRgbBinaryOpacity(RGBA8888* pTarget, const uint8_t* pSource, size_t nPixelCount) {
 				const auto color = ColorIsForeground ? m_colorForeground : m_colorBackground;
 				while (nPixelCount--) {
-					const auto opacityScaled = ApplyGamma(*pSource);
+					const auto opacityScaled = m_gammaTable[*pSource];
 					const auto opacity = 255 * (ColorIsForeground ? opacityScaled : 255 - opacityScaled) / 255;
 					if (opacity) {
 						const auto blendedDestColor = RGBA8888{
@@ -184,7 +188,8 @@ namespace XivRes::Internal {
 		};
 
 		class ToL8 {
-			float m_fInverseGamma = 1.f;
+			std::span<const uint8_t> m_gammaTable;
+
 			uint8_t m_colorForeground = 255;
 			uint8_t m_colorBackground = 0;
 			uint8_t m_opacityForeground = 255;
@@ -221,8 +226,8 @@ namespace XivRes::Internal {
 				return *this;
 			}
 
-			ToL8& WithGamma(float gamma) {
-				m_fInverseGamma = 1.f / gamma;
+			ToL8& WithGammaTable(std::span<const uint8_t> gammaTable) {
+				m_gammaTable = gammaTable;
 				return *this;
 			}
 
@@ -290,13 +295,9 @@ namespace XivRes::Internal {
 			}
 
 		private:
-			uint8_t ApplyGamma(uint8_t n) const {
-				return static_cast<uint8_t>(std::powf(static_cast<float>(n) / 255.f, m_fInverseGamma) * 255.f);
-			}
-
 			void DrawLineToL8(uint8_t* pTarget, const uint8_t* pSource, size_t regionWidth) {
 				while (regionWidth--) {
-					const auto opacityScaled = ApplyGamma(*pSource);
+					const auto opacityScaled = m_gammaTable[*pSource];
 					const auto blendedBgColor = (1 * m_colorBackground * m_opacityBackground + 1 * *pTarget * (255 - m_opacityBackground)) / 255;
 					const auto blendedFgColor = (1 * m_colorForeground * m_opacityForeground + 1 * *pTarget * (255 - m_opacityForeground)) / 255;
 					*pTarget = static_cast<uint8_t>((blendedBgColor * (255 - opacityScaled) + blendedFgColor * opacityScaled) / 255);
@@ -307,7 +308,7 @@ namespace XivRes::Internal {
 
 			void DrawLineToL8Opaque(uint8_t* pTarget, const uint8_t* pSource, size_t regionWidth) {
 				while (regionWidth--) {
-					*pTarget = ApplyGamma(*pSource);
+					*pTarget = m_gammaTable[*pSource];
 					pTarget += m_nTargetStride;
 					pSource += m_nSourceStride;
 				}
@@ -317,7 +318,7 @@ namespace XivRes::Internal {
 			void DrawLineToL8BinaryOpacity(uint8_t* pTarget, const uint8_t* pSource, size_t regionWidth) {
 				const auto color = ColorIsForeground ? m_colorForeground : m_colorBackground;
 				while (regionWidth--) {
-					const auto opacityScaled = ApplyGamma(*pSource);
+					const auto opacityScaled = m_gammaTable[*pSource];
 					const auto opacityScaled2 = ColorIsForeground ? opacityScaled : 255 - opacityScaled;
 					*pTarget = static_cast<uint8_t>((*pTarget * (255 - opacityScaled2) + 1 * color * opacityScaled2) / 255);
 					pTarget += m_nTargetStride;

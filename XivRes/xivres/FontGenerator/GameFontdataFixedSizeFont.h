@@ -37,6 +37,7 @@ namespace XivRes::FontGenerator {
 			std::vector<std::shared_ptr<MemoryMipmapStream>> Mipmaps;
 			std::set<char32_t> Codepoints;
 			std::map<std::pair<char32_t, char32_t>, int> KerningPairs;
+			std::vector<uint8_t> GammaTable;
 		};
 
 		std::shared_ptr<const InfoStruct> m_info;
@@ -53,6 +54,7 @@ namespace XivRes::FontGenerator {
 			info->FamilyName = std::move(familyName);
 			info->SubfamilyName = std::move(subfamilyName);
 			info->Mipmaps = std::move(mipmapStreams);
+			info->GammaTable = Internal::BitmapCopy::CreateGammaTable(1.f);
 
 			for (const auto& entry : info->Font->GetFontTableEntries())
 				info->Codepoints.insert(info->Codepoints.end(), entry.Char());
@@ -93,7 +95,7 @@ namespace XivRes::FontGenerator {
 			return m_info->Codepoints;
 		}
 
-		const void* GetGlyphUniqid(char32_t c) const override {
+		const void* GetBaseFontGlyphUniqid(char32_t c) const override {
 			return m_info->Font->GetFontEntry(c);
 		}
 
@@ -118,7 +120,7 @@ namespace XivRes::FontGenerator {
 			return gm.AdvanceX + m_info->Font->GetKerningDistance(left, right);
 		}
 
-		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor, float gamma) const override {
+		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const override {
 			const auto pEntry = m_info->Font->GetFontEntry(codepoint);
 			if (!pEntry)
 				return false;
@@ -126,18 +128,19 @@ namespace XivRes::FontGenerator {
 			auto src = GlyphMetrics{ *pEntry->TextureOffsetX, *pEntry->TextureOffsetY, *pEntry->TextureOffsetX + *pEntry->BoundingWidth, *pEntry->TextureOffsetY + *pEntry->BoundingHeight };
 			auto dest = GlyphMetricsFromEntry(pEntry, drawX, drawY);
 			const auto& mipmapStream = *m_info->Mipmaps.at(pEntry->TextureFileIndex());
+			const auto planeIndex = FontdataGlyphEntry::ChannelMap[pEntry->TexturePlaneIndex()];
 			src.AdjustToIntersection(dest, mipmapStream.Width, mipmapStream.Height, destWidth, destHeight);
 			Internal::BitmapCopy::ToRGBA8888()
-				.From(&mipmapStream.View<uint8_t>()[3 - pEntry->TexturePlaneIndex()], mipmapStream.Width, mipmapStream.Height, 4, Internal::BitmapVerticalDirection::TopRowFirst)
+				.From(&mipmapStream.View<uint8_t>()[planeIndex], mipmapStream.Width, mipmapStream.Height, 4, Internal::BitmapVerticalDirection::TopRowFirst)
 				.To(pBuf, destWidth, destHeight, Internal::BitmapVerticalDirection::TopRowFirst)
 				.WithForegroundColor(fgColor)
 				.WithBackgroundColor(bgColor)
-				.WithGamma(gamma)
+				.WithGammaTable(m_info->GammaTable)
 				.CopyTo(src.X1, src.Y1, src.X2, src.Y2, dest.X1, dest.Y1);
 			return true;
 		}
 
-		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity, float gamma) const override {
+		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const override {
 			const auto pEntry = m_info->Font->GetFontEntry(codepoint);
 			if (!pEntry)
 				return false;
@@ -145,15 +148,16 @@ namespace XivRes::FontGenerator {
 			auto src = GlyphMetrics{ *pEntry->TextureOffsetX, *pEntry->TextureOffsetY, *pEntry->TextureOffsetX + *pEntry->BoundingWidth, *pEntry->TextureOffsetY + *pEntry->BoundingHeight };
 			auto dest = GlyphMetricsFromEntry(pEntry, drawX, drawY);
 			const auto& mipmapStream = *m_info->Mipmaps.at(pEntry->TextureFileIndex());
+			const auto planeIndex = FontdataGlyphEntry::ChannelMap[pEntry->TexturePlaneIndex()];
 			src.AdjustToIntersection(dest, mipmapStream.Width, mipmapStream.Height, destWidth, destHeight);
 			Internal::BitmapCopy::ToL8()
-				.From(&mipmapStream.View<uint8_t>()[3 - pEntry->TexturePlaneIndex()], mipmapStream.Width, mipmapStream.Height, 4, Internal::BitmapVerticalDirection::TopRowFirst)
+				.From(&mipmapStream.View<uint8_t>()[planeIndex], mipmapStream.Width, mipmapStream.Height, 4, Internal::BitmapVerticalDirection::TopRowFirst)
 				.To(pBuf, destWidth, destHeight, 4, Internal::BitmapVerticalDirection::TopRowFirst)
 				.WithForegroundColor(fgColor)
 				.WithForegroundOpacity(fgOpacity)
 				.WithBackgroundColor(bgColor)
 				.WithBackgroundOpacity(bgOpacity)
-				.WithGamma(gamma)
+				.WithGammaTable(m_info->GammaTable)
 				.CopyTo(src.X1, src.Y1, src.X2, src.Y2, dest.X1, dest.Y1);
 			return true;
 		}

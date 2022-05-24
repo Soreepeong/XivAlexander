@@ -103,16 +103,21 @@ namespace XivRes::FontGenerator {
 			return m_info->Codepoints;
 		}
 
-		const void* GetGlyphUniqid(char32_t c) const override {
+		const void* GetBaseFontGlyphUniqid(char32_t c) const override {
 			if (const auto it = m_info->UsedFonts.find(c); it != m_info->UsedFonts.end())
-				return it->second->GetGlyphUniqid(c);
+				return it->second->GetBaseFontGlyphUniqid(c);
 
 			return nullptr;
 		}
 
 		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const override {
-			if (const auto it = m_info->UsedFonts.find(codepoint); it != m_info->UsedFonts.end())
-				return it->second->GetGlyphMetrics(codepoint, gm);
+			if (const auto it = m_info->UsedFonts.find(codepoint); it != m_info->UsedFonts.end()) {
+				if (!it->second->GetGlyphMetrics(codepoint, gm))
+					return false;
+
+				gm.Translate(0, GetVerticalAdjustment(*m_info, *it->second));
+				return true;
+			}
 
 			return false;
 		}
@@ -121,16 +126,16 @@ namespace XivRes::FontGenerator {
 			return m_info->KerningPairs;
 		}
 
-		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor, float gamma) const override {
+		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const override {
 			if (const auto it = m_info->UsedFonts.find(codepoint); it != m_info->UsedFonts.end())
-				return it->second->Draw(codepoint, pBuf, drawX, drawY + GetVerticalAdjustment(*m_info, *it->second), destWidth, destHeight, fgColor, bgColor, gamma);
+				return it->second->Draw(codepoint, pBuf, drawX, drawY + GetVerticalAdjustment(*m_info, *it->second), destWidth, destHeight, fgColor, bgColor);
 
 			return false;
 		}
 
-		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity, float gamma) const override {
+		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const override {
 			if (const auto it = m_info->UsedFonts.find(codepoint); it != m_info->UsedFonts.end())
-				return it->second->Draw(codepoint, pBuf, stride, drawX, drawY + GetVerticalAdjustment(*m_info, *it->second), destWidth, destHeight, fgColor, bgColor, fgOpacity, bgOpacity, gamma);
+				return it->second->Draw(codepoint, pBuf, stride, drawX, drawY + GetVerticalAdjustment(*m_info, *it->second), destWidth, destHeight, fgColor, bgColor, fgOpacity, bgOpacity);
 
 			return false;
 		}

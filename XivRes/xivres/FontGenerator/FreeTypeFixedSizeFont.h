@@ -110,9 +110,10 @@ namespace XivRes::FontGenerator {
 				std::set<char32_t> Characters;
 				std::map<std::pair<char32_t, char32_t>, int> KerningPairs;
 				std::map<char32_t, GlyphMetrics> AllGlyphMetrics;
-				float Size{};
+				std::vector<uint8_t> GammaTable;
 				CreateStruct Params{};
 				int FaceIndex = 0;
+				float Size = 0.f;
 			};
 
 			std::shared_ptr<FreeTypeLibraryWrapper> m_library;
@@ -122,12 +123,13 @@ namespace XivRes::FontGenerator {
 		public:
 			FreeTypeFaceWrapper() = default;
 
-			FreeTypeFaceWrapper(std::vector<uint8_t> data, int faceIndex, float fSize, CreateStruct createStruct)
+			FreeTypeFaceWrapper(std::vector<uint8_t> data, int faceIndex, float size, float gamma, CreateStruct createStruct)
 				: m_library(std::make_shared<FreeTypeLibraryWrapper>()) {
 
 				auto info = std::make_shared<InfoStruct>();
 				info->Data = std::move(data);
-				info->Size = fSize;
+				info->Size = size;
+				info->GammaTable = Internal::BitmapCopy::CreateGammaTable(gamma);
 				info->Params = createStruct;
 				info->FaceIndex = faceIndex;
 				info->Params.LoadFlags &= (0 |
@@ -263,6 +265,10 @@ namespace XivRes::FontGenerator {
 				return m_info->Size;
 			}
 
+			std::span<const uint8_t> GetGammaTable() const {
+				return std::span(m_info->GammaTable);
+			}
+
 			const std::set<char32_t>& GetAllCharacters() const {
 				return m_info->Characters;
 			}
@@ -356,14 +362,14 @@ namespace XivRes::FontGenerator {
 		FreeTypeFaceWrapper m_face;
 
 	public:
-		FreeTypeFixedSizeFont(const std::filesystem::path& path, int faceIndex, float fSize, CreateStruct createStruct)
-			: FreeTypeFixedSizeFont(ReadStreamIntoVector<uint8_t>(FileStream(path)), faceIndex, fSize, createStruct) {}
+		FreeTypeFixedSizeFont(const std::filesystem::path& path, int faceIndex, float size, float gamma, CreateStruct createStruct)
+			: FreeTypeFixedSizeFont(ReadStreamIntoVector<uint8_t>(FileStream(path)), faceIndex, size, gamma, createStruct) {}
 
-		FreeTypeFixedSizeFont(IStream& stream, int faceIndex, float fSize, CreateStruct createStruct)
-			: m_face(ReadStreamIntoVector<uint8_t>(stream), faceIndex, fSize, createStruct) {}
+		FreeTypeFixedSizeFont(IStream& stream, int faceIndex, float fSize, float gamma, CreateStruct createStruct)
+			: m_face(ReadStreamIntoVector<uint8_t>(stream), faceIndex, fSize, gamma, createStruct) {}
 
-		FreeTypeFixedSizeFont(std::vector<uint8_t> data, int faceIndex, float fSize, CreateStruct createStruct)
-			: m_face(std::move(data), faceIndex, fSize, createStruct) {}
+		FreeTypeFixedSizeFont(std::vector<uint8_t> data, int faceIndex, float fSize, float gamma, CreateStruct createStruct)
+			: m_face(std::move(data), faceIndex, fSize, gamma, createStruct) {}
 
 		FreeTypeFixedSizeFont(FreeTypeFixedSizeFont&& r) = default;
 		FreeTypeFixedSizeFont(const FreeTypeFixedSizeFont& r) = default;
@@ -404,7 +410,7 @@ namespace XivRes::FontGenerator {
 			return m_face.GetAllCharacters();
 		}
 
-		const void* GetGlyphUniqid(char32_t c) const override {
+		const void* GetBaseFontGlyphUniqid(char32_t c) const override {
 			return m_face.GetAllCharacters().contains(c) ? &m_face.GetRawData()[c] : nullptr;
 		}
 
@@ -433,7 +439,7 @@ namespace XivRes::FontGenerator {
 			return gm.AdvanceX;
 		}
 
-		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor, float gamma) const override {
+		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const override {
 			const auto glyphIndex = m_face.GetCharIndex(codepoint);
 			if (!glyphIndex)
 				return false;
@@ -454,12 +460,12 @@ namespace XivRes::FontGenerator {
 				.To(pBuf, destWidth, destHeight, Internal::BitmapVerticalDirection::TopRowFirst)
 				.WithForegroundColor(fgColor)
 				.WithBackgroundColor(bgColor)
-				.WithGamma(gamma)
+				.WithGammaTable(m_face.GetGammaTable())
 				.CopyTo(src.X1, src.Y1, src.X2, src.Y2, dest.X1, dest.Y1);
 			return true;
 		}
 
-		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity, float gamma) const override {
+		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const override {
 			const auto glyphIndex = m_face.GetCharIndex(codepoint);
 			if (!glyphIndex)
 				return false;
@@ -482,7 +488,7 @@ namespace XivRes::FontGenerator {
 				.WithForegroundOpacity(fgOpacity)
 				.WithBackgroundColor(bgColor)
 				.WithBackgroundOpacity(bgOpacity)
-				.WithGamma(gamma)
+				.WithGammaTable(m_face.GetGammaTable())
 				.CopyTo(src.X1, src.Y1, src.X2, src.Y2, dest.X1, dest.Y1);
 			return true;
 		}

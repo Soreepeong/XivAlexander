@@ -191,7 +191,7 @@ namespace XivRes {
 			static_cast<uint32_t>(std::round(Internal::Clamp(255. * v.A, 0., 255.))));
 	}
 
-	struct RGBA4444 : ARGBNNNN<uint16_t, 4, 4, 4, 4> { using TRGBA::ARGBNNNN; };
+	struct RGBA4444 : RGBANNNN<uint16_t, 4, 4, 4, 4> { using TRGBA::RGBANNNN; };
 	static_assert(sizeof RGBA4444 == 2);
 	struct RGBA5551 : ARGBNNNN<uint16_t, 5, 5, 5, 1> { using TRGBA::ARGBNNNN; };
 	static_assert(sizeof RGBA5551 == 2);

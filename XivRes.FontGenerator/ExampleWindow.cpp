@@ -58,6 +58,9 @@ static void SetWindowInt(HWND hwnd, int v) {
 
 static const std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont> GetGameFont(XivRes::FontGenerator::GameFontFamily family, float size) {
 	static std::map<XivRes::GameFontType, XivRes::FontGenerator::GameFontdataSet> s_fontSet;
+	static std::mutex s_mtx;
+
+	const auto lock = std::lock_guard(s_mtx);
 
 	std::shared_ptr<XivRes::FontGenerator::GameFontdataSet> strong;
 
@@ -222,12 +225,20 @@ struct FontSet {
 			std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> Font;
 
 			float Size = 0.f;
+			float Gamma = 1.f;
 			bool Overwrite = false;
 			XivRes::FontGenerator::WrapModifiers WrapModifiers;
 			RendererEnum Renderer = RendererEnum::Empty;
 
 			FontLookupStruct Lookup;
 			RendererSpecificStruct RendererSpecific;
+
+			const std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>& EnsureFont() {
+				if (!Font)
+					RefreshFont();
+
+				return Font;
+			}
 
 			void RefreshFont() {
 				if (!BaseFont)
@@ -267,14 +278,14 @@ struct FontSet {
 						case RendererEnum::DirectWrite:
 						{
 							auto [pStream, index] = Lookup.ResolveStream();
-							BaseFont = std::make_shared<XivRes::FontGenerator::DirectWriteFixedSizeFont>(pStream, index, Size, RendererSpecific.DirectWrite);
+							BaseFont = std::make_shared<XivRes::FontGenerator::DirectWriteFixedSizeFont>(pStream, index, Size, Gamma, RendererSpecific.DirectWrite);
 							break;
 						}
 
 						case RendererEnum::FreeType:
 						{
 							auto [pStream, index] = Lookup.ResolveStream();
-							BaseFont = std::make_shared<XivRes::FontGenerator::FreeTypeFixedSizeFont>(*pStream, index, Size, RendererSpecific.FreeType);
+							BaseFont = std::make_shared<XivRes::FontGenerator::FreeTypeFixedSizeFont>(*pStream, index, Size, Gamma, RendererSpecific.FreeType);
 							break;
 						}
 
@@ -309,7 +320,7 @@ struct FontSet {
 				ListView_SetItemText(hListView, nListIndex, ListViewCols::GlyphCount, &(buf = std::format(L"{}", Font->GetAllCodepoints().size()))[0]);
 				ListView_SetItemText(hListView, nListIndex, ListViewCols::KerningPairCount, &(buf = std::format(L"{}", Font->GetAllKerningPairs().size()))[0]);
 				ListView_SetItemText(hListView, nListIndex, ListViewCols::Overwrite, &(buf = Overwrite ? L"Yes" : L"No")[0]);
-				ListView_SetItemText(hListView, nListIndex, ListViewCols::Gamma, &(buf = std::format(L"{:g}", WrapModifiers.Gamma))[0]);
+				ListView_SetItemText(hListView, nListIndex, ListViewCols::Gamma, &(buf = std::format(L"{:g}", Gamma))[0]);
 				ListView_SetItemText(hListView, nListIndex, ListViewCols::Renderer, &(buf = GetRendererRepresentation())[0]);
 				ListView_SetItemText(hListView, nListIndex, ListViewCols::Lookup, &(buf = GetLookupRepresentation())[0]);
 			}
@@ -401,23 +412,20 @@ struct FontSet {
 		std::vector<Element> Elements;
 		std::string PreviewText;
 
+		const std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>& EnsureFont() {
+			if (!MergedFont)
+				RefreshFont();
+
+			return MergedFont;
+		}
+
 		void RefreshFont() {
 			std::vector<std::pair<std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>, bool>> mergeFontList;
 
-			for (auto& e : Elements) {
-				e.RefreshFont();
-				mergeFontList.emplace_back(e.Font, e.Overwrite);
-			}
+			for (auto& e : Elements)
+				mergeFontList.emplace_back(e.EnsureFont(), e.Overwrite);
 
 			MergedFont = std::make_shared<XivRes::FontGenerator::MergedFixedSizeFont>(std::move(mergeFontList));
-
-			//XivRes::FontGenerator::FontdataPacker packer;
-			//packer.AddFont(merge);
-			//auto [fdts, texs] = packer.Compile();
-			//auto res = std::make_shared<XivRes::TextureStream>(texs[0]->Type, texs[0]->Width, texs[0]->Height, 1, 1, texs.size());
-			//for (size_t i = 0; i < texs.size(); i++)
-			//	res->SetMipmap(0, i, texs[i]);
-			//m_fontMerged = std::make_shared<XivRes::FontGenerator::GameFontdataFixedSizeFont>(fdts[0], texs, "Test", "Test");
 		}
 	};
 
@@ -435,7 +443,6 @@ void to_json(nlohmann::json& json, const XivRes::FontGenerator::WrapModifiers& v
 	json["letterSpacing"] = value.LetterSpacing;
 	json["horizontalOffset"] = value.HorizontalOffset;
 	json["baselineShift"] = value.BaselineShift;
-	json["gamma"] = value.Gamma;
 }
 
 void from_json(const nlohmann::json& json, XivRes::FontGenerator::WrapModifiers& value) {
@@ -465,7 +472,6 @@ void from_json(const nlohmann::json& json, XivRes::FontGenerator::WrapModifiers&
 	value.LetterSpacing = json.value<int>("letterSpacing", 0);
 	value.HorizontalOffset = json.value<int>("horizontalOffset", 0);
 	value.BaselineShift = json.value<int>("baselineShift", 0);
-	value.Gamma = json.value<float>("gamma", 0);
 }
 
 void to_json(nlohmann::json& json, const FontSet::Face::Element::FontLookupStruct& value) {
@@ -537,6 +543,7 @@ void from_json(const nlohmann::json& json, FontSet::Face::Element::RendererSpeci
 void to_json(nlohmann::json& json, const FontSet::Face::Element& value) {
 	json = nlohmann::json::object();
 	json["size"] = value.Size;
+	json["gamma"] = value.Gamma;
 	json["overwrite"] = value.Overwrite;
 	to_json(json["wrapModifiers"], value.WrapModifiers);
 	json["renderer"] = static_cast<int>(value.Renderer);
@@ -551,6 +558,7 @@ void from_json(const nlohmann::json& json, FontSet::Face::Element& value) {
 	}
 
 	value.Size = json.value<float>("size", 0.f);
+	value.Gamma = json.value<float>("gamma", 1.f);
 	value.Overwrite = json.value<bool>("overwrite", false);
 	if (const auto it = json.find("wrapModifiers"); it != json.end())
 		from_json(*it, value.WrapModifiers);
@@ -935,8 +943,8 @@ private:
 		if (notiCode != EN_CHANGE)
 			return 0;
 
-		if (const auto n = GetWindowFloat(m_controls->AdjustmentGammaEdit); n != m_element.WrapModifiers.Gamma) {
-			m_element.WrapModifiers.Gamma = n;
+		if (const auto n = GetWindowFloat(m_controls->AdjustmentGammaEdit); n != m_element.Gamma) {
+			m_element.Gamma = n;
 			OnWrappedFontChanged();
 		}
 		return 0;
@@ -1130,7 +1138,7 @@ private:
 		Edit_SetText(m_controls->AdjustmentBaselineShiftEdit, std::format(L"{}", m_element.WrapModifiers.BaselineShift).c_str());
 		Edit_SetText(m_controls->AdjustmentLetterSpacingEdit, std::format(L"{}", m_element.WrapModifiers.LetterSpacing).c_str());
 		Edit_SetText(m_controls->AdjustmentHorizontalOffsetEdit, std::format(L"{}", m_element.WrapModifiers.HorizontalOffset).c_str());
-		Edit_SetText(m_controls->AdjustmentGammaEdit, std::format(L"{:g}", m_element.WrapModifiers.Gamma).c_str());
+		Edit_SetText(m_controls->AdjustmentGammaEdit, std::format(L"{:g}", m_element.Gamma).c_str());
 
 		for (const auto& controlHwnd : {
 			m_controls->AdjustmentBaselineShiftEdit,
@@ -1384,7 +1392,7 @@ private:
 				EnableWindow(m_controls->AdjustmentBaselineShiftEdit, TRUE);
 				EnableWindow(m_controls->AdjustmentLetterSpacingEdit, TRUE);
 				EnableWindow(m_controls->AdjustmentHorizontalOffsetEdit, TRUE);
-				EnableWindow(m_controls->AdjustmentGammaEdit, TRUE);
+				EnableWindow(m_controls->AdjustmentGammaEdit, FALSE);
 				EnableWindow(m_controls->CodepointsList, TRUE);
 				EnableWindow(m_controls->CodepointsDeleteButton, TRUE);
 				EnableWindow(m_controls->CodepointsOverwriteCheck, TRUE);
@@ -1823,9 +1831,10 @@ void FontSet::ConsolidateFonts() {
 					fontKey = std::format("game:{}:{:g}", elem.Lookup.Name, elem.Size);
 					break;
 				case Face::Element::RendererEnum::DirectWrite:
-					fontKey = std::format("directwrite:{}:{:g}:{}:{}:{}:{}:{}:{}",
+					fontKey = std::format("directwrite:{}:{:g}:{:g}:{}:{}:{}:{}:{}:{}",
 						elem.Lookup.Name,
 						elem.Size,
+						elem.Gamma,
 						static_cast<uint32_t>(elem.Lookup.Weight),
 						static_cast<uint32_t>(elem.Lookup.Stretch),
 						static_cast<uint32_t>(elem.Lookup.Style),
@@ -1835,9 +1844,10 @@ void FontSet::ConsolidateFonts() {
 						);
 					break;
 				case Face::Element::RendererEnum::FreeType:
-					fontKey = std::format("freetype:{}:{:g}:{}:{}:{}:{}",
+					fontKey = std::format("freetype:{}:{:g}:{:g}:{}:{}:{}:{}",
 						elem.Lookup.Name,
 						elem.Size,
+						elem.Gamma,
 						static_cast<uint32_t>(elem.Lookup.Weight),
 						static_cast<uint32_t>(elem.Lookup.Stretch),
 						static_cast<uint32_t>(elem.Lookup.Style),
@@ -1900,7 +1910,266 @@ FontSet NewFromTemplateFont(XivRes::GameFontType fontType) {
 	return res;
 }
 
-class WindowImpl {
+class BaseWindow {
+	static std::set<BaseWindow*> s_windows;
+
+public:
+	BaseWindow() {
+		s_windows.insert(this);
+	}
+
+	virtual ~BaseWindow() {
+		s_windows.erase(this);
+	}
+
+	virtual bool ConsumeDialogMessage(MSG& msg) = 0;
+
+	virtual bool ConsumeAccelerator(MSG& msg) = 0;
+
+	static bool ConsumeMessage(MSG& msg) {
+		for (auto& window : s_windows) {
+			if (window->ConsumeAccelerator(msg))
+				return true;
+			if (window->ConsumeDialogMessage(msg))
+				return true;
+		}
+		return false;
+	}
+};
+
+std::set<BaseWindow*> BaseWindow::s_windows;
+
+class ExportPreviewWindow : public BaseWindow {
+	static constexpr auto ClassName = L"ExportPreviewWindowClass";
+
+	enum : size_t {
+		Id_None,
+		Id_FaceListBox,
+		Id_Edit,
+		Id__Last,
+	};
+	static constexpr auto FaceListBoxWidth = 160;
+	static constexpr auto EditHeight = 160;
+
+	std::shared_ptr<XivRes::MemoryMipmapStream> m_pMipmap;
+	bool m_bNeedRedraw = false;
+
+	std::vector<std::pair<std::string, std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>>> m_fonts;
+
+	HWND m_hWnd{};
+	HFONT m_hUiFont{};
+
+	HWND m_hFacesListBox{};
+	HWND m_hEdit{};
+
+	int m_nDrawLeft{};
+	int m_nDrawTop{};
+
+	LRESULT Window_OnCreate(HWND hwnd) {
+		m_hWnd = hwnd;
+
+		NONCLIENTMETRICSW ncm = { sizeof(NONCLIENTMETRICSW) };
+		SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof ncm, &ncm, 0);
+		m_hUiFont = CreateFontIndirectW(&ncm.lfMessageFont);
+
+		m_hFacesListBox = CreateWindowExW(0, WC_LISTBOXW, nullptr,
+			WS_CHILD | WS_TABSTOP | WS_BORDER | WS_VISIBLE | LBS_NOINTEGRALHEIGHT | LBS_NOTIFY,
+			0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(Id_FaceListBox), reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(m_hWnd, GWLP_HINSTANCE)), nullptr);
+		m_hEdit = CreateWindowExW(0, WC_EDITW, nullptr,
+			WS_CHILD | WS_TABSTOP | WS_BORDER | WS_VISIBLE | WS_VSCROLL | ES_LEFT | ES_AUTOVSCROLL | ES_MULTILINE | ES_WANTRETURN,
+			0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(Id_Edit), reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(m_hWnd, GWLP_HINSTANCE)), nullptr);
+
+		SendMessage(m_hFacesListBox, WM_SETFONT, reinterpret_cast<WPARAM>(m_hUiFont), FALSE);
+		SendMessage(m_hEdit, WM_SETFONT, reinterpret_cast<WPARAM>(m_hUiFont), FALSE);
+
+		for (const auto& font : m_fonts)
+			ListBox_AddString(m_hFacesListBox, XivRes::Unicode::Convert<std::wstring>(font.first).c_str());
+		ListBox_SetCurSel(m_hFacesListBox, 0);
+
+		SetWindowSubclass(m_hEdit, [](HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) -> LRESULT {
+			if (msg == WM_GETDLGCODE && wParam == VK_TAB)
+				return 0;
+			if (msg == WM_KEYDOWN && wParam == 'A' && (GetKeyState(VK_CONTROL) & 0x8000) && !(GetKeyState(VK_SHIFT) & 0x8000) && !(GetKeyState(VK_MENU) & 0x8000) && !(GetKeyState(VK_LWIN) & 0x8000) && !(GetKeyState(VK_RWIN) & 0x8000))
+				Edit_SetSel(hWnd, 0, Edit_GetTextLength(hWnd));
+			return DefSubclassProc(hWnd, msg, wParam, lParam);
+		}, 1, 0);
+
+		Window_OnSize();
+		ShowWindow(m_hWnd, SW_SHOW);
+		return 0;
+	}
+
+	LRESULT Window_OnSize() {
+		RECT rc;
+		GetClientRect(m_hWnd, &rc);
+
+		auto hdwp = BeginDeferWindowPos(Id__Last);
+		hdwp = DeferWindowPos(hdwp, m_hFacesListBox, nullptr, 0, 0, FaceListBoxWidth, rc.bottom - rc.top, SWP_NOZORDER | SWP_NOACTIVATE);
+		hdwp = DeferWindowPos(hdwp, m_hEdit, nullptr, FaceListBoxWidth, 0, (std::max<int>)(0, rc.right - rc.left - FaceListBoxWidth), EditHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+		EndDeferWindowPos(hdwp);
+
+		m_nDrawLeft = FaceListBoxWidth;
+		m_nDrawTop = EditHeight;
+		m_pMipmap = std::make_shared<XivRes::MemoryMipmapStream>(
+			(std::max<int>)(32, rc.right - rc.left - m_nDrawLeft),
+			(std::max<int>)(32, rc.bottom - rc.top - m_nDrawTop),
+			1,
+			XivRes::TextureFormat::A8R8G8B8);
+
+		m_bNeedRedraw = true;
+		InvalidateRect(m_hWnd, nullptr, FALSE);
+
+		return 0;
+	}
+
+	LRESULT Window_OnPaint() {
+		union {
+			struct {
+				BITMAPINFOHEADER bmih;
+				DWORD bitfields[3];
+			};
+			BITMAPINFO bmi{};
+		};
+
+		PAINTSTRUCT ps;
+		const auto hdc = BeginPaint(m_hWnd, &ps);
+		if (m_bNeedRedraw) {
+			m_bNeedRedraw = false;
+			const auto pad = 16;
+			const auto buf = m_pMipmap->View<XivRes::RGBA8888>();
+			std::ranges::fill(buf, XivRes::RGBA8888{ 0x88, 0x88, 0x88, 0xFF });
+
+			for (int y = pad; y < m_pMipmap->Height - pad; y++) {
+				for (int x = pad; x < m_pMipmap->Width - pad; x++)
+					buf[y * m_pMipmap->Width + x] = { 0x00, 0x00, 0x00, 0xFF };
+			}
+
+			auto sel = ListBox_GetCurSel(m_hFacesListBox);
+			sel = (std::max)(0, (std::min)(static_cast<int>(m_fonts.size() - 1), sel));
+			if (sel < m_fonts.size()) {
+				const auto& font = *m_fonts.at(sel).second;
+				XivRes::FontGenerator::TextMeasurer(font)
+					.WithMaxWidth(m_pMipmap->Width - pad * 2)
+					.Measure(GetWindowString(m_hEdit))
+					.DrawTo(*m_pMipmap, font, 16, 16, { 0xFF, 0xFF, 0xFF, 0xFF }, { 0, 0, 0, 0 });
+			}
+		}
+
+		bmih.biSize = sizeof bmih;
+		bmih.biWidth = m_pMipmap->Width;
+		bmih.biHeight = -m_pMipmap->Height;
+		bmih.biPlanes = 1;
+		bmih.biBitCount = 32;
+		bmih.biCompression = BI_BITFIELDS;
+		reinterpret_cast<XivRes::RGBA8888*>(&bitfields[0])->SetFrom(255, 0, 0, 0);
+		reinterpret_cast<XivRes::RGBA8888*>(&bitfields[1])->SetFrom(0, 255, 0, 0);
+		reinterpret_cast<XivRes::RGBA8888*>(&bitfields[2])->SetFrom(0, 0, 255, 0);
+		StretchDIBits(hdc, m_nDrawLeft, m_nDrawTop, m_pMipmap->Width, m_pMipmap->Height, 0, 0, m_pMipmap->Width, m_pMipmap->Height, &m_pMipmap->View<XivRes::RGBA8888>()[0], &bmi, DIB_RGB_COLORS, SRCCOPY);
+		EndPaint(m_hWnd, &ps);
+
+		return 0;
+	}
+
+	LRESULT Window_OnDestroy() {
+		DeleteFont(m_hUiFont);
+		SetWindowLongPtrW(m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(DefWindowProcW));
+		delete this;
+		return 0;
+	}
+
+	LRESULT Edit_OnCommand(uint16_t commandId) {
+		switch (commandId) {
+			case EN_CHANGE:
+				m_bNeedRedraw = true;
+				InvalidateRect(m_hWnd, nullptr, FALSE);
+				return 0;
+		}
+
+		return 0;
+	}
+
+	LRESULT FaceListBox_OnCommand(uint16_t commandId) {
+		switch (commandId) {
+			case LBN_SELCHANGE:
+			{
+				m_bNeedRedraw = true;
+				InvalidateRect(m_hWnd, nullptr, FALSE);
+				return 0;
+			}
+		}
+		return 0;
+	}
+
+	LRESULT WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+		switch (msg) {
+			case WM_COMMAND:
+				switch (LOWORD(wParam)) {
+					case Id_Edit: return Edit_OnCommand(HIWORD(wParam));
+					case Id_FaceListBox: return FaceListBox_OnCommand(HIWORD(wParam));
+				}
+				break;
+
+			case WM_CREATE: return Window_OnCreate(hwnd);
+			case WM_SIZE: return Window_OnSize();
+			case WM_PAINT: return Window_OnPaint();
+			case WM_DESTROY: return Window_OnDestroy();
+		}
+
+		return DefWindowProcW(hwnd, msg, wParam, lParam);
+	}
+
+	static LRESULT WINAPI WndProcStatic(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+		return reinterpret_cast<ExportPreviewWindow*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA))->WndProc(hwnd, msg, wParam, lParam);
+	}
+
+	static LRESULT WINAPI WndProcInitial(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+		if (msg != WM_NCCREATE)
+			return DefWindowProcW(hwnd, msg, wParam, lParam);
+
+		const auto pCreateStruct = reinterpret_cast<CREATESTRUCTW*>(lParam);
+		const auto pImpl = reinterpret_cast<ExportPreviewWindow*>(pCreateStruct->lpCreateParams);
+		SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pImpl));
+		SetWindowLongPtrW(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(WndProcStatic));
+
+		return pImpl->WndProc(hwnd, msg, wParam, lParam);
+	}
+
+	ExportPreviewWindow(std::vector<std::pair<std::string, std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>>> fonts)
+		: m_fonts(fonts) {
+			WNDCLASSEXW wcex{};
+			wcex.cbSize = sizeof(WNDCLASSEX);
+			wcex.style = CS_HREDRAW | CS_VREDRAW;
+			wcex.hInstance = g_hInstance;
+			wcex.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+			wcex.hbrBackground = GetStockBrush(WHITE_BRUSH);
+			wcex.lpszClassName = ClassName;
+			wcex.lpfnWndProc = ExportPreviewWindow::WndProcInitial;
+
+			RegisterClassExW(&wcex);
+
+		CreateWindowExW(0, ClassName, L"Export Preview", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
+			CW_USEDEFAULT, CW_USEDEFAULT, 1200, 640,
+			nullptr, nullptr, nullptr, this);
+	}
+
+public:
+	static void ShowNew(std::vector<std::pair<std::string, std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>>> fonts) {
+		new ExportPreviewWindow(std::move(fonts));
+	}
+
+	bool ConsumeDialogMessage(MSG& msg) override {
+		if (IsDialogMessage(m_hWnd, &msg))
+			return true;
+
+		return false;
+	}
+
+	bool ConsumeAccelerator(MSG& msg) override {
+		return false;
+	}
+};
+
+class FontEditorWindow : public BaseWindow {
 	static constexpr auto ClassName = L"FontEditorWindowClass";
 	static constexpr float NoBaseFontSizes[]{ 9.6f, 10.f, 12.f, 14.f, 16.f, 18.f, 18.4f, 20.f, 23.f, 34.f, 36.f, 40.f, 45.f, 46.f, 68.f, 90.f, };
 
@@ -1925,8 +2194,6 @@ class WindowImpl {
 	FontSet m_fontSet;
 	FontSet::Face* m_pActiveFace = nullptr;
 
-	static std::weak_ptr<ATOM> s_pAtom;
-	std::shared_ptr<ATOM> m_pAtom;
 	std::shared_ptr<XivRes::MemoryMipmapStream> m_pMipmap;
 	std::map<void**, std::unique_ptr<FontSet::Face::Element::EditorDialog>> m_editors;
 	bool m_bNeedRedraw = false;
@@ -2020,7 +2287,7 @@ class WindowImpl {
 		m_nDrawLeft = FaceListBoxWidth;
 		m_nDrawTop = static_cast<int>(EditHeight + ListViewHeight);
 		m_pMipmap = std::make_shared<XivRes::MemoryMipmapStream>(
-			(std::max<int>)(32, rc.right - rc.left - FaceListBoxWidth),
+			(std::max<int>)(32, rc.right - rc.left - m_nDrawLeft),
 			(std::max<int>)(32, rc.bottom - rc.top - m_nDrawTop),
 			1,
 			XivRes::TextureFormat::A8R8G8B8);
@@ -2135,6 +2402,14 @@ class WindowImpl {
 		m_bChanged = false;
 		m_path.clear();
 		m_fontSet = NewFromTemplateFont(fontType);
+
+		{
+			XivRes::Internal::ThreadPool pool;
+			for (auto& face : m_fontSet.Faces)
+				pool.Submit([&face]() { face.EnsureFont(); });
+			pool.SubmitDoneAndWait();
+		}
+
 		ReflectFontSetChange();
 
 		return 0;
@@ -2183,6 +2458,13 @@ class WindowImpl {
 				face.RuntimeTag = std::make_shared<void*>();
 				for (auto& element : face.Elements)
 					element.RuntimeTag = std::make_shared<void*>();
+			}
+
+			{
+				XivRes::Internal::ThreadPool pool;
+				for (auto& face : fontSet.Faces)
+					pool.Submit([&face]() { face.EnsureFont(); });
+				pool.SubmitDoneAndWait();
 			}
 
 			m_fontSet = std::move(fontSet);
@@ -2263,14 +2545,42 @@ class WindowImpl {
 		return 0;
 	}
 
+	LRESULT Menu_Export_Preview() {
+		using namespace XivRes::FontGenerator;
+
+		try {
+			XivRes::FontGenerator::FontdataPacker packer;
+			for (auto& face : m_fontSet.Faces) {
+				face.EnsureFont();
+				packer.AddFont(face.MergedFont);
+			}
+
+			auto [fdts, mips] = packer.Compile();
+			if (mips.empty())
+				throw std::runtime_error("No mipmap produced");
+
+			auto texturesAll = std::make_shared<XivRes::TextureStream>(mips[0]->Type, mips[0]->Width, mips[0]->Height, 1, 1, mips.size());
+			for (size_t i = 0; i < mips.size(); i++)
+				texturesAll->SetMipmap(0, i, mips[i]);
+
+			std::vector<std::pair<std::string, std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>>> resultFonts;
+			for (size_t i = 0; i < fdts.size(); i++)
+				resultFonts.emplace_back(m_fontSet.Faces[i].Name, std::make_shared<XivRes::FontGenerator::GameFontdataFixedSizeFont>(fdts[i], mips, m_fontSet.Faces[i].Name, ""));
+
+			ExportPreviewWindow::ShowNew(std::move(resultFonts));
+			std::thread([texturesAll]() {XivRes::Internal::ShowTextureStream(*texturesAll); }).detach();
+			return 0;
+
+		} catch (const std::exception& e) {
+			MessageBoxW(m_hWnd, std::format(L"Failed to export: {}", XivRes::Unicode::Convert<std::wstring>(e.what())).c_str(), GetWindowString(m_hWnd).c_str(), MB_OK | MB_ICONERROR);
+			return 1;
+		}
+	}
+
 	LRESULT Menu_Export_Raw() {
 		using namespace XivRes::FontGenerator;
 
 		try {
-			nlohmann::json json;
-			to_json(json, m_fontSet);
-			const auto dump = json.dump();
-
 			IFileOpenDialogPtr pDialog;
 			DWORD dwFlags;
 			SuccessOrThrow(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
@@ -2294,7 +2604,7 @@ class WindowImpl {
 
 			XivRes::FontGenerator::FontdataPacker packer;
 			for (auto& face : m_fontSet.Faces) {
-				face.RefreshFont();
+				face.EnsureFont();
 				packer.AddFont(face.MergedFont);
 			}
 
@@ -2303,27 +2613,27 @@ class WindowImpl {
 				throw std::runtime_error("No mipmap produced");
 
 			std::vector<char> buf(32768);
-			for (size_t i = 0; i < m_fontSet.Faces.size(); i++) {
-				std::ofstream out(basePath / std::format("{}.fdt", m_fontSet.Faces[i].Name), std::ios::binary);
 
+			XivRes::TextureStream textureOne(mips[0]->Type, mips[0]->Width, mips[0]->Height, 1, 1, 1);
+			for (size_t i = 0; i < mips.size(); i++) {
+				textureOne.SetMipmap(0, 0, mips[i]);
+
+				std::ofstream out(basePath / std::format(m_fontSet.TexFilenameFormat, i + 1), std::ios::binary);
+				size_t pos = 0;
+				for (size_t read, pos = 0; (read = textureOne.ReadStreamPartial(pos, &buf[0], buf.size())); pos += read)
+					out.write(&buf[0], read);
+			}
+			for (size_t i = 0; i < mips.size(); i++)
+				std::filesystem::copy(basePath / std::format(m_fontSet.TexFilenameFormat, i + 1), (basePath / std::format(L"font_lobby{}.tex", i + 1)), std::filesystem::copy_options::overwrite_existing);
+
+			for (size_t i = 0; i < fdts.size(); i++) {
+				std::ofstream out(basePath / std::format("{}.fdt", m_fontSet.Faces[i].Name), std::ios::binary);
 				size_t pos = 0;
 				for (size_t read, pos = 0; (read = fdts[i]->ReadStreamPartial(pos, &buf[0], buf.size())); pos += read)
 					out.write(&buf[0], read);
 			}
-
-			auto tex = std::make_shared<XivRes::TextureStream>(mips[0]->Type, mips[0]->Width, mips[0]->Height, 1, 1, 1);
-			auto tex2 = std::make_shared<XivRes::TextureStream>(mips[0]->Type, mips[0]->Width, mips[0]->Height, 1, 1, mips.size());
-			for (size_t i = 0; i < mips.size(); i++) {
-				tex->SetMipmap(0, 0, mips[i]);
-				tex2->SetMipmap(0, i, mips[i]);
-
-				std::ofstream out(basePath / std::format(m_fontSet.TexFilenameFormat, i + 1), std::ios::binary);
-				size_t pos = 0;
-				for (size_t read, pos = 0; (read = tex->ReadStreamPartial(pos, &buf[0], buf.size())); pos += read)
-					out.write(&buf[0], read);
-			}
-
-			XivRes::Internal::ShowTextureStream(*tex2);
+			for (size_t i = 0; i < fdts.size(); i++)
+				std::filesystem::copy(basePath / std::format("{}.fdt", m_fontSet.Faces[i].Name), (basePath / std::format("{}_lobby.fdt", m_fontSet.Faces[i].Name)), std::filesystem::copy_options::overwrite_existing);
 
 		} catch (const std::exception& e) {
 			MessageBoxW(m_hWnd, std::format(L"Failed to export: {}", XivRes::Unicode::Convert<std::wstring>(e.what())).c_str(), GetWindowString(m_hWnd).c_str(), MB_OK | MB_ICONERROR);
@@ -2675,7 +2985,7 @@ class WindowImpl {
 	}
 
 	void ShowEditor(FontSet::Face::Element& element) {
-		auto& pEditorWindow = m_editors[m_pActiveFace->RuntimeTag.get()];
+		auto& pEditorWindow = m_editors[element.RuntimeTag.get()];
 		if (pEditorWindow && pEditorWindow->IsOpened()) {
 			pEditorWindow->Activate();
 		} else {
@@ -2778,9 +3088,6 @@ class WindowImpl {
 					case ID_FILE_SAVE: return Menu_File_Save();
 					case ID_FILE_SAVEAS: return Menu_File_SaveAs(true);
 					case ID_FILE_SAVECOPYAS: return Menu_File_SaveAs(false);
-					case ID_EXPORT_RAW: return Menu_Export_Raw();
-					case ID_EXPORT_TOTTMPCOMPRESSED: return Menu_Export_TTMP(true);
-					case ID_EXPORT_TOTTMPUNCOMPRESSED: return Menu_Export_TTMP(false);
 					case ID_FILE_EXIT: return Menu_File_Exit();
 					case ID_FONTELEMENTS_EDIT:return Menu_FontElements_Edit();
 					case ID_FONTELEMENTS_ADD:return Menu_FontElements_Add();
@@ -2789,6 +3096,10 @@ class WindowImpl {
 					case ID_FONTELEMENTS_CUT: return Menu_FontElements_Cut();
 					case ID_FONTELEMENTS_PASTE: return Menu_FontElements_Paste();
 					case ID_FONTELEMENTS_SELECTALL:return Menu_FontElements_SelectAll();
+					case ID_EXPORT_PREVIEW: return Menu_Export_Preview();
+					case ID_EXPORT_RAW: return Menu_Export_Raw();
+					case ID_EXPORT_TOTTMPCOMPRESSED: return Menu_Export_TTMP(true);
+					case ID_EXPORT_TOTTMPUNCOMPRESSED: return Menu_Export_TTMP(false);
 				}
 				break;
 
@@ -2817,7 +3128,7 @@ class WindowImpl {
 	}
 
 	static LRESULT WINAPI WndProcStatic(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-		return reinterpret_cast<WindowImpl*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA))->WndProc(hwnd, msg, wParam, lParam);
+		return reinterpret_cast<FontEditorWindow*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA))->WndProc(hwnd, msg, wParam, lParam);
 	}
 
 	static LRESULT WINAPI WndProcInitial(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -2825,7 +3136,7 @@ class WindowImpl {
 			return DefWindowProcW(hwnd, msg, wParam, lParam);
 
 		const auto pCreateStruct = reinterpret_cast<CREATESTRUCTW*>(lParam);
-		const auto pImpl = reinterpret_cast<WindowImpl*>(pCreateStruct->lpCreateParams);
+		const auto pImpl = reinterpret_cast<FontEditorWindow*>(pCreateStruct->lpCreateParams);
 		SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pImpl));
 		SetWindowLongPtrW(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(WndProcStatic));
 
@@ -2833,39 +3144,25 @@ class WindowImpl {
 	}
 
 public:
-	WindowImpl() {
-		auto atom = s_pAtom.lock();
-		if (!atom) {
-			WNDCLASSEXW wcex{};
-			wcex.cbSize = sizeof(WNDCLASSEX);
-			wcex.style = CS_HREDRAW | CS_VREDRAW;
-			wcex.hInstance = GetModuleHandleW(nullptr);
-			wcex.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-			wcex.hbrBackground = GetStockBrush(WHITE_BRUSH);
-			wcex.lpszClassName = ClassName;
-			wcex.lpszMenuName = MAKEINTRESOURCEW(IDR_FONTEDITOR);
-			wcex.lpfnWndProc = WindowImpl::WndProcInitial;
+	FontEditorWindow() {
+		WNDCLASSEXW wcex{};
+		wcex.cbSize = sizeof(WNDCLASSEX);
+		wcex.style = CS_HREDRAW | CS_VREDRAW;
+		wcex.hInstance = g_hInstance;
+		wcex.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+		wcex.hbrBackground = GetStockBrush(WHITE_BRUSH);
+		wcex.lpszClassName = ClassName;
+		wcex.lpszMenuName = MAKEINTRESOURCEW(IDR_FONTEDITOR);
+		wcex.lpfnWndProc = FontEditorWindow::WndProcInitial;
 
-			const auto res = RegisterClassExW(&wcex);
-			if (!res)
-				throw std::runtime_error("");
+		RegisterClassExW(&wcex);
 
-			s_pAtom = m_pAtom = std::make_shared<ATOM>(res);
-		}
-
-		CreateWindowExW(0, reinterpret_cast<LPCWSTR>(*m_pAtom), L"Font Editor", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
+		CreateWindowExW(0, ClassName, L"Font Editor", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
 			CW_USEDEFAULT, CW_USEDEFAULT, 1200, 640,
 			nullptr, nullptr, nullptr, this);
 	}
 
-	~WindowImpl() {
-		auto atom = *m_pAtom;
-		m_pAtom = nullptr;
-		if (!s_pAtom.lock())
-			UnregisterClassW(reinterpret_cast<LPCWSTR>(atom), nullptr);
-	}
-
-	bool ConsumeDialogMessage(MSG& msg) {
+	bool ConsumeDialogMessage(MSG& msg) override {
 		if (IsDialogMessage(m_hWnd, &msg))
 			return true;
 
@@ -2876,7 +3173,7 @@ public:
 		return false;
 	}
 
-	bool ConsumeAccelerator(MSG& msg) {
+	bool ConsumeAccelerator(MSG& msg) override {
 		if (!m_hAccelerator)
 			return false;
 
@@ -2890,14 +3187,13 @@ public:
 	}
 };
 
-std::weak_ptr<ATOM> WindowImpl::s_pAtom;
-
 void ShowExampleWindow() {
-	WindowImpl window;
+	FontEditorWindow window;
 	for (MSG msg{}; GetMessageW(&msg, nullptr, 0, 0);) {
-		if (!window.ConsumeAccelerator(msg) && !window.ConsumeDialogMessage(msg)) {
-			TranslateMessage(&msg);
-			DispatchMessageW(&msg);
-		}
+		if (BaseWindow::ConsumeMessage(msg))
+			continue;
+
+		TranslateMessage(&msg);
+		DispatchMessageW(&msg);
 	}
 }

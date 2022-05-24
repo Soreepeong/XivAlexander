@@ -188,6 +188,7 @@ namespace XivRes {
 			if (it == m_fontTableEntries.end() || it->Utf8Value != val) {
 				auto entry = FontdataGlyphEntry();
 				entry.Utf8Value = val;
+				entry.ShiftJisValue = Unicode::CodePointToShiftJisUint16(val);
 				it = m_fontTableEntries.insert(it, entry);
 				m_fcsv.KerningHeaderOffset += sizeof entry;
 				m_fthd.FontTableEntryCount += 1;

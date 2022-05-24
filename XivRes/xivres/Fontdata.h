@@ -40,6 +40,8 @@ namespace XivRes {
 	static_assert(sizeof FontdataGlyphTableHeader == 0x20);
 
 	struct FontdataGlyphEntry {
+		static constexpr size_t ChannelMap[4]{ 2, 1, 0, 3 };
+
 		LE<uint32_t> Utf8Value;
 		LE<uint16_t> ShiftJisValue;
 		LE<uint16_t> TextureIndex;

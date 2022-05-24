@@ -212,7 +212,7 @@ namespace XivRes::Internal {
 		wcex.hInstance = GetModuleHandleW(nullptr);
 		wcex.hCursor = LoadCursorW(nullptr, IDC_ARROW);
 		wcex.hbrBackground = GetStockBrush(WHITE_BRUSH);
-		wcex.lpszClassName = L"Sqex::Texture::MipmapStream::Show";
+		wcex.lpszClassName = L"XivRes::Internal::ShowTextureStream";
 
 		wcex.lpfnWndProc = [](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) -> LRESULT {
 			if (const auto pState = reinterpret_cast<State*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA))) {

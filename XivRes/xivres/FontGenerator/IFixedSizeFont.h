@@ -158,15 +158,15 @@ namespace XivRes::FontGenerator {
 
 		virtual bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const = 0;
 
-		virtual const void* GetGlyphUniqid(char32_t c) const = 0;
+		virtual const void* GetBaseFontGlyphUniqid(char32_t c) const = 0;
 
 		virtual const std::map<std::pair<char32_t, char32_t>, int>& GetAllKerningPairs() const = 0;
 
 		virtual int GetAdjustedAdvanceX(char32_t left, char32_t right) const = 0;
 
-		virtual bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor, float gamma) const = 0;
+		virtual bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const = 0;
 
-		virtual bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity, float gamma) const = 0;
+		virtual bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const = 0;
 
 		virtual std::shared_ptr<IFixedSizeFont> GetThreadSafeView() const = 0;
 
@@ -175,7 +175,7 @@ namespace XivRes::FontGenerator {
 
 	class DefaultAbstractFixedSizeFont : public IFixedSizeFont {
 	public:
-		const void* GetGlyphUniqid(char32_t c) const override {
+		const void* GetBaseFontGlyphUniqid(char32_t c) const override {
 			const auto& codepoints = GetAllCodepoints();
 			const auto it = codepoints.find(c);
 			return it == codepoints.end() ? nullptr : &*it;
@@ -246,7 +246,7 @@ namespace XivRes::FontGenerator {
 			return false;
 		}
 
-		const void* GetGlyphUniqid(char32_t c) const override {
+		const void* GetBaseFontGlyphUniqid(char32_t c) const override {
 			return nullptr;
 		}
 
@@ -259,11 +259,11 @@ namespace XivRes::FontGenerator {
 			return 0;
 		}
 
-		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor, float gamma) const override {
+		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const override {
 			return false;
 		}
 
-		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity, float gamma) const override {
+		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const override {
 			return false;
 		}
 

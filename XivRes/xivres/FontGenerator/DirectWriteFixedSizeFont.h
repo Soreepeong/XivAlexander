@@ -386,6 +386,7 @@ namespace XivRes::FontGenerator {
 			std::shared_ptr<IStream> Stream;
 			std::set<char32_t> Characters;
 			std::map<std::pair<char32_t, char32_t>, int> KerningPairs;
+			std::vector<uint8_t> GammaTable;
 			DWRITE_FONT_METRICS1 Metrics;
 			CreateStruct Params;
 			int FontIndex = 0;
@@ -412,10 +413,10 @@ namespace XivRes::FontGenerator {
 		mutable std::vector<uint8_t> m_drawBuffer;
 
 	public:
-		DirectWriteFixedSizeFont(std::filesystem::path path, int fontIndex, float size, CreateStruct params)
-			: DirectWriteFixedSizeFont(std::make_shared<MemoryStream>(FileStream(path)), fontIndex, size, std::move(params)) {}
+		DirectWriteFixedSizeFont(std::filesystem::path path, int fontIndex, float size, float gamma, CreateStruct params)
+			: DirectWriteFixedSizeFont(std::make_shared<MemoryStream>(FileStream(path)), fontIndex, size, gamma, std::move(params)) {}
 
-		DirectWriteFixedSizeFont(std::shared_ptr<IStream> stream, int fontIndex, float size, CreateStruct params) {
+		DirectWriteFixedSizeFont(std::shared_ptr<IStream> stream, int fontIndex, float size, float gamma, CreateStruct params) {
 			if (!stream)
 				return;
 
@@ -424,6 +425,7 @@ namespace XivRes::FontGenerator {
 			info->Params = std::move(params);
 			info->FontIndex = fontIndex;
 			info->Size = size;
+			info->GammaTable = Internal::BitmapCopy::CreateGammaTable(gamma);
 
 			m_dwrite = FaceFromInfoStruct(*info);
 			m_dwrite.Face->GetMetrics(&info->Metrics);
@@ -566,7 +568,7 @@ namespace XivRes::FontGenerator {
 			return m_info->KerningPairs;
 		}
 
-		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor, float gamma) const override {
+		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const override {
 			IDWriteGlyphRunAnalysisPtr analysis;
 			GlyphMetrics gm;
 			if (!GetGlyphMetrics(codepoint, gm, analysis))
@@ -588,13 +590,13 @@ namespace XivRes::FontGenerator {
 				.To(pBuf, destWidth, destHeight, Internal::BitmapVerticalDirection::TopRowFirst)
 				.WithForegroundColor(fgColor)
 				.WithBackgroundColor(bgColor)
-				.WithGamma(gamma)
+				.WithGammaTable(m_info->GammaTable)
 				.CopyTo(src.X1, src.Y1, src.X2, src.Y2, dest.X1, dest.Y1);
 
 			return true;
 		}
 
-		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity, float gamma) const override {
+		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const override {
 			IDWriteGlyphRunAnalysisPtr analysis;
 			GlyphMetrics gm;
 			if (!GetGlyphMetrics(codepoint, gm, analysis))
@@ -618,7 +620,7 @@ namespace XivRes::FontGenerator {
 				.WithForegroundOpacity(fgOpacity)
 				.WithBackgroundColor(bgColor)
 				.WithBackgroundOpacity(bgOpacity)
-				.WithGamma(gamma)
+				.WithGammaTable(m_info->GammaTable)
 				.CopyTo(src.X1, src.Y1, src.X2, src.Y2, dest.X1, dest.Y1);
 			return true;
 		}

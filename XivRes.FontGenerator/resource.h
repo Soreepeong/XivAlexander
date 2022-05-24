@@ -86,13 +86,14 @@
 #define ID_EXPORT_RAW                   40059
 #define ID_EXPORT_TOTTMPCOMPRESSED      40060
 #define ID_EXPORT_TOTTMPUNCOMPRESSED    40061
+#define ID_EXPORT_PREVIEW               40062
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        108
-#define _APS_NEXT_COMMAND_VALUE         40062
+#define _APS_NEXT_COMMAND_VALUE         40063
 #define _APS_NEXT_CONTROL_VALUE         1036
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

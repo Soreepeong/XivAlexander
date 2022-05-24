@@ -9,7 +9,6 @@ namespace XivRes::FontGenerator {
 		int LetterSpacing = 0;
 		int HorizontalOffset = 0;
 		int BaselineShift = 0;
-		float Gamma = 1.f;
 	};
 
 	class WrappingFixedSizeFont : public DefaultAbstractFixedSizeFont {
@@ -21,7 +20,6 @@ namespace XivRes::FontGenerator {
 			int LetterSpacing = 0;
 			int HorizontalOffset = 0;
 			int BaselineShift = 0;
-			float Gamma = 1.f;
 		};
 
 		std::shared_ptr<const IFixedSizeFont> m_font;
@@ -35,7 +33,6 @@ namespace XivRes::FontGenerator {
 			info->LetterSpacing = wrapModifiers.LetterSpacing;
 			info->HorizontalOffset = wrapModifiers.HorizontalOffset;
 			info->BaselineShift = wrapModifiers.BaselineShift;
-			info->Gamma = wrapModifiers.Gamma;
 
 			std::set<char32_t> codepoints;
 			for (const auto& [c1, c2] : wrapModifiers.Codepoints) {
@@ -147,31 +144,31 @@ namespace XivRes::FontGenerator {
 			return false;
 		}
 
-		const void* GetGlyphUniqid(char32_t c) const override {
+		const void* GetBaseFontGlyphUniqid(char32_t c) const override {
 			if (!m_info->Codepoints.contains(c))
 				return nullptr;
 
-			return m_font->GetGlyphUniqid(c);
+			return m_font->GetBaseFontGlyphUniqid(c);
 		}
 
 		const std::map<std::pair<char32_t, char32_t>, int>& GetAllKerningPairs() const override {
 			return m_info->KerningPairs;
 		}
 
-		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor, float gamma) const override {
+		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const override {
 			GlyphMetrics gm;
 			if (!m_info->Codepoints.contains(codepoint))
 				return false;
 
-			return m_font->Draw(codepoint, pBuf, drawX + m_info->NetHorizontalOffsets.at(codepoint), drawY + m_info->BaselineShift, destWidth, destHeight, fgColor, bgColor, gamma * m_info->Gamma);
+			return m_font->Draw(codepoint, pBuf, drawX + m_info->NetHorizontalOffsets.at(codepoint), drawY + m_info->BaselineShift, destWidth, destHeight, fgColor, bgColor);
 		}
 
-		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity, float gamma) const override {
+		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const override {
 			GlyphMetrics gm;
 			if (!m_info->Codepoints.contains(codepoint))
 				return false;
 
-			return m_font->Draw(codepoint, pBuf, stride, drawX + m_info->NetHorizontalOffsets.at(codepoint), drawY + m_info->BaselineShift, destWidth, destHeight, fgColor, bgColor, fgOpacity, bgOpacity, gamma * m_info->Gamma);
+			return m_font->Draw(codepoint, pBuf, stride, drawX + m_info->NetHorizontalOffsets.at(codepoint), drawY + m_info->BaselineShift, destWidth, destHeight, fgColor, bgColor, fgOpacity, bgOpacity);
 		}
 
 		std::shared_ptr<IFixedSizeFont> GetThreadSafeView() const override {

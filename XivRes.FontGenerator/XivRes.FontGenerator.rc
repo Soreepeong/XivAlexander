@@ -277,6 +277,8 @@ BEGIN
     END
     POPUP "&Export"
     BEGIN
+        MENUITEM "&Preview\tCtrl+P",            ID_EXPORT_PREVIEW
+        MENUITEM SEPARATOR
         MENUITEM "Export to .&fdt and .tex files", ID_EXPORT_RAW
         MENUITEM "Export to .&ttmp2 TexTools ModPack file (Compressed)", ID_EXPORT_TOTTMPCOMPRESSED
         MENUITEM "Export to .&ttmp2 TexTools ModPack file (Uncompressed)", ID_EXPORT_TOTTMPUNCOMPRESSED
