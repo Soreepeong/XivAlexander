@@ -1,6 +1,4 @@
-﻿#include <ranges>
-
-#include "pch.h"
+﻿#include "pch.h"
 #include "resource.h"
 
 #include "XivRes/FontGenerator/WrappingFixedSizeFont.h"
@@ -11,6 +9,11 @@
 #include "XivRes/FontGenerator/MergedFixedSizeFont.h"
 #include "XivRes/FontGenerator/TextMeasurer.h"
 #include "XivRes/FontGenerator/WrappingFixedSizeFont.h"
+
+_COM_SMARTPTR_TYPEDEF(IFileSaveDialog, __uuidof(IFileSaveDialog));
+_COM_SMARTPTR_TYPEDEF(IFileOpenDialog, __uuidof(IFileOpenDialog));
+_COM_SMARTPTR_TYPEDEF(IShellItem, __uuidof(IShellItem));
+_COM_SMARTPTR_TYPEDEF(IShellItemArray, __uuidof(IShellItemArray));
 
 struct ListViewCols {
 	enum : int {
@@ -31,364 +34,605 @@ struct ListViewCols {
 	};
 };
 
-struct FaceElement {
-	static const std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont> Test(XivRes::FontGenerator::GameFontFamily family, float size) {
-		static std::map<XivRes::GameFontType, std::weak_ptr<XivRes::FontGenerator::GameFontdataSet>> s_fontSet;
+static std::wstring GetWindowString(HWND hwnd) {
+	std::wstring buf(GetWindowTextLengthW(hwnd) + static_cast<size_t>(1), L'\0');
+	buf.resize(GetWindowTextW(hwnd, &buf[0], static_cast<int>(buf.size())));
+	return buf;
+}
 
-		std::shared_ptr<XivRes::FontGenerator::GameFontdataSet> strong;
+static float GetWindowFloat(HWND hwnd) {
+	return std::wcstof(GetWindowString(hwnd).c_str(), nullptr);
+}
 
-		switch (family) {
-			case XivRes::FontGenerator::GameFontFamily::AXIS:
-			case XivRes::FontGenerator::GameFontFamily::Jupiter:
-			case XivRes::FontGenerator::GameFontFamily::JupiterN:
-			case XivRes::FontGenerator::GameFontFamily::MiedingerMid:
-			case XivRes::FontGenerator::GameFontFamily::Meidinger:
-			case XivRes::FontGenerator::GameFontFamily::TrumpGothic:
-			{
-				auto& weak = s_fontSet[XivRes::GameFontType::font];
-				strong = weak.lock();
-				if (!strong)
-					weak = strong = std::make_shared<XivRes::FontGenerator::GameFontdataSet>(XivRes::GameReader(R"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game)").GetFonts(XivRes::GameFontType::font));
-				break;
-			}
+static void SetWindowFloat(HWND hwnd, float v) {
+	SetWindowTextW(hwnd, std::format(L"{:g}", v).c_str());
+}
 
-			case XivRes::FontGenerator::GameFontFamily::ChnAXIS:
-			{
-				auto& weak = s_fontSet[XivRes::GameFontType::chn_axis];
-				strong = weak.lock();
-				if (!strong)
-					weak = strong = std::make_shared<XivRes::FontGenerator::GameFontdataSet>(XivRes::GameReader(R"(C:\Program Files (x86)\SNDA\FFXIV\game)").GetFonts(XivRes::GameFontType::chn_axis));
-				break;
-			}
+static int GetWindowInt(HWND hwnd) {
+	return std::wcstol(GetWindowString(hwnd).c_str(), nullptr, 0);
+}
 
-			case XivRes::FontGenerator::GameFontFamily::KrnAXIS:
-			{
-				auto& weak = s_fontSet[XivRes::GameFontType::krn_axis];
-				strong = weak.lock();
-				if (!strong)
-					weak = strong = std::make_shared<XivRes::FontGenerator::GameFontdataSet>(XivRes::GameReader(R"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game)").GetFonts(XivRes::GameFontType::krn_axis));
-				break;
-			}
+static void SetWindowInt(HWND hwnd, int v) {
+	SetWindowTextW(hwnd, std::format(L"{}", v).c_str());
+}
+
+static const std::shared_ptr<XivRes::FontGenerator::GameFontdataFixedSizeFont> GetGameFont(XivRes::FontGenerator::GameFontFamily family, float size) {
+	static std::map<XivRes::GameFontType, XivRes::FontGenerator::GameFontdataSet> s_fontSet;
+
+	std::shared_ptr<XivRes::FontGenerator::GameFontdataSet> strong;
+
+	switch (family) {
+		case XivRes::FontGenerator::GameFontFamily::AXIS:
+		case XivRes::FontGenerator::GameFontFamily::Jupiter:
+		case XivRes::FontGenerator::GameFontFamily::JupiterN:
+		case XivRes::FontGenerator::GameFontFamily::MiedingerMid:
+		case XivRes::FontGenerator::GameFontFamily::Meidinger:
+		case XivRes::FontGenerator::GameFontFamily::TrumpGothic:
+		{
+			auto& font = s_fontSet[XivRes::GameFontType::font];
+			if (!font)
+				font = XivRes::GameReader(R"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game)").GetFonts(XivRes::GameFontType::font);
+			return font.GetFont(family, size);
 		}
 
-		return strong ? strong->GetFont(family, size) : nullptr;
+		case XivRes::FontGenerator::GameFontFamily::ChnAXIS:
+		{
+			auto& font = s_fontSet[XivRes::GameFontType::chn_axis];
+			if (!font)
+				font = XivRes::GameReader(R"(C:\Program Files (x86)\SNDA\FFXIV\game)").GetFonts(XivRes::GameFontType::chn_axis);
+			return font.GetFont(family, size);
+		}
+
+		case XivRes::FontGenerator::GameFontFamily::KrnAXIS:
+		{
+			auto& font = s_fontSet[XivRes::GameFontType::krn_axis];
+			if (!font)
+				font = XivRes::GameReader(R"(C:\Program Files (x86)\FINAL FANTASY XIV - KOREA\game)").GetFonts(XivRes::GameFontType::krn_axis);
+			return font.GetFont(family, size);
+		}
 	}
 
-	enum class RendererEnum : uint8_t {
-		Empty,
-		PrerenderedGameInstallation,
-		DirectWrite,
-		FreeType,
-	};
+	return nullptr;
+}
 
-	struct EmptyFontDef {
-		int Ascent = 0;
-		int LineHeight = 0;
-	};
+struct FontSet {
+	struct Face {
+		struct Element {
+			enum class RendererEnum : uint8_t {
+				Empty,
+				PrerenderedGameInstallation,
+				DirectWrite,
+				FreeType,
+			};
 
-	struct PrerenderedGameFontDef {
-		XivRes::FontGenerator::GameFontFamily FontFamily;
-	};
+			struct EmptyFontDef {
+				int Ascent = 0;
+				int LineHeight = 0;
+			};
 
-	struct FontLookupStruct {
-		std::string Name;
-		DWRITE_FONT_WEIGHT Weight = DWRITE_FONT_WEIGHT_REGULAR;
-		DWRITE_FONT_STRETCH Stretch = DWRITE_FONT_STRETCH_NORMAL;
-		DWRITE_FONT_STYLE Style = DWRITE_FONT_STYLE_NORMAL;
+			struct FontLookupStruct {
+				std::string Name;
+				DWRITE_FONT_WEIGHT Weight = DWRITE_FONT_WEIGHT_REGULAR;
+				DWRITE_FONT_STRETCH Stretch = DWRITE_FONT_STRETCH_NORMAL;
+				DWRITE_FONT_STYLE Style = DWRITE_FONT_STYLE_NORMAL;
 
-		std::wstring GetWeightString() const {
-			switch (Weight) {
-				case DWRITE_FONT_WEIGHT_THIN: return L"Thin";
-				case DWRITE_FONT_WEIGHT_EXTRA_LIGHT: return L"Extra Light";
-				case DWRITE_FONT_WEIGHT_LIGHT: return L"Light";
-				case DWRITE_FONT_WEIGHT_SEMI_LIGHT: return L"Semi Light";
-				case DWRITE_FONT_WEIGHT_NORMAL: return L"Normal";
-				case DWRITE_FONT_WEIGHT_MEDIUM: return L"Medium";
-				case DWRITE_FONT_WEIGHT_SEMI_BOLD: return L"Semi Bold";
-				case DWRITE_FONT_WEIGHT_BOLD: return L"Bold";
-				case DWRITE_FONT_WEIGHT_EXTRA_BOLD:return L"Extra Bold";
-				case DWRITE_FONT_WEIGHT_BLACK: return L"Black";
-				case DWRITE_FONT_WEIGHT_EXTRA_BLACK: return L"Extra Black";
-				default: return std::format(L"{}", static_cast<int>(Weight));
+				std::wstring GetWeightString() const {
+					switch (Weight) {
+						case DWRITE_FONT_WEIGHT_THIN: return L"Thin";
+						case DWRITE_FONT_WEIGHT_EXTRA_LIGHT: return L"Extra Light";
+						case DWRITE_FONT_WEIGHT_LIGHT: return L"Light";
+						case DWRITE_FONT_WEIGHT_SEMI_LIGHT: return L"Semi Light";
+						case DWRITE_FONT_WEIGHT_NORMAL: return L"Normal";
+						case DWRITE_FONT_WEIGHT_MEDIUM: return L"Medium";
+						case DWRITE_FONT_WEIGHT_SEMI_BOLD: return L"Semi Bold";
+						case DWRITE_FONT_WEIGHT_BOLD: return L"Bold";
+						case DWRITE_FONT_WEIGHT_EXTRA_BOLD:return L"Extra Bold";
+						case DWRITE_FONT_WEIGHT_BLACK: return L"Black";
+						case DWRITE_FONT_WEIGHT_EXTRA_BLACK: return L"Extra Black";
+						default: return std::format(L"{}", static_cast<int>(Weight));
+					}
+				}
+
+				std::wstring GetStretchString() const {
+					switch (Stretch) {
+						case DWRITE_FONT_STRETCH_UNDEFINED: return L"Undefined";
+						case DWRITE_FONT_STRETCH_ULTRA_CONDENSED: return L"Ultra Condensed";
+						case DWRITE_FONT_STRETCH_EXTRA_CONDENSED: return L"Extra Condensed";
+						case DWRITE_FONT_STRETCH_CONDENSED: return L"Condensed";
+						case DWRITE_FONT_STRETCH_SEMI_CONDENSED: return L"Semi Condensed";
+						case DWRITE_FONT_STRETCH_NORMAL: return L"Normal";
+						case DWRITE_FONT_STRETCH_SEMI_EXPANDED: return L"Semi Expanded";
+						case DWRITE_FONT_STRETCH_EXPANDED: return L"Expanded";
+						case DWRITE_FONT_STRETCH_EXTRA_EXPANDED: return L"Extra Expanded";
+						case DWRITE_FONT_STRETCH_ULTRA_EXPANDED: return L"Ultra Expanded";
+						default: return L"Invalid";
+					}
+				}
+
+				std::wstring GetStyleString() const {
+					switch (Style) {
+						case DWRITE_FONT_STYLE_NORMAL: return L"Normal";
+						case DWRITE_FONT_STYLE_OBLIQUE: return L"Oblique";
+						case DWRITE_FONT_STYLE_ITALIC: return L"Italic";
+						default: return L"Invalid";
+					}
+				}
+
+				std::pair<std::shared_ptr<XivRes::IStream>, int> ResolveStream() const {
+					using namespace XivRes::FontGenerator;
+
+					IDWriteFactory3Ptr factory;
+					SuccessOrThrow(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), reinterpret_cast<IUnknown**>(&factory)));
+
+					IDWriteFontCollectionPtr coll;
+					SuccessOrThrow(factory->GetSystemFontCollection(&coll));
+
+					uint32_t index;
+					BOOL exists;
+					SuccessOrThrow(coll->FindFamilyName(XivRes::Unicode::Convert<std::wstring>(Name).c_str(), &index, &exists));
+					if (!exists)
+						throw std::invalid_argument("Font not found");
+
+					IDWriteFontFamilyPtr family;
+					SuccessOrThrow(coll->GetFontFamily(index, &family));
+
+					IDWriteFontPtr font;
+					SuccessOrThrow(family->GetFirstMatchingFont(Weight, Stretch, Style, &font));
+
+					IDWriteFontFacePtr face;
+					SuccessOrThrow(font->CreateFontFace(&face));
+
+					IDWriteFontFile* pFontFileTmp;
+					uint32_t nFiles = 1;
+					SuccessOrThrow(face->GetFiles(&nFiles, &pFontFileTmp));
+					IDWriteFontFilePtr file(pFontFileTmp, false);
+
+					IDWriteFontFileLoaderPtr loader;
+					SuccessOrThrow(file->GetLoader(&loader));
+
+					void const* refKey;
+					UINT32 refKeySize;
+					SuccessOrThrow(file->GetReferenceKey(&refKey, &refKeySize));
+
+					IDWriteFontFileStreamPtr stream;
+					SuccessOrThrow(loader->CreateStreamFromKey(refKey, refKeySize, &stream));
+
+					auto res = std::make_shared<XivRes::MemoryStream>();
+					uint64_t fileSize;
+					SuccessOrThrow(stream->GetFileSize(&fileSize));
+					const void* pFragmentStart;
+					void* pFragmentContext;
+					SuccessOrThrow(stream->ReadFileFragment(&pFragmentStart, 0, fileSize, &pFragmentContext));
+					std::vector<uint8_t> buf(static_cast<size_t>(fileSize));
+					memcpy(&buf[0], pFragmentStart, buf.size());
+					stream->ReleaseFileFragment(pFragmentContext);
+
+					return { std::make_shared<XivRes::MemoryStream>(std::move(buf)), face->GetIndex() };
+				}
+			};
+
+			struct RendererSpecificStruct {
+				XivRes::FontGenerator::EmptyFixedSizeFont::CreateStruct Empty;
+				XivRes::FontGenerator::FreeTypeFixedSizeFont::CreateStruct FreeType;
+				XivRes::FontGenerator::DirectWriteFixedSizeFont::CreateStruct DirectWrite;
+			};
+
+			std::shared_ptr<void*> RuntimeTag;
+			std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> BaseFont;
+			std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> Font;
+
+			float Size = 0.f;
+			bool Overwrite = false;
+			XivRes::FontGenerator::WrapModifiers WrapModifiers;
+			RendererEnum Renderer = RendererEnum::Empty;
+
+			FontLookupStruct Lookup;
+			RendererSpecificStruct RendererSpecific;
+
+			void RefreshFont() {
+				if (!BaseFont)
+					return RefreshBaseFont();
+
+				Font = std::make_shared<XivRes::FontGenerator::WrappingFixedSizeFont>(BaseFont, WrapModifiers);
 			}
-		}
 
-		std::wstring GetStretchString() const {
-			switch (Stretch) {
-				case DWRITE_FONT_STRETCH_UNDEFINED: return L"Undefined";
-				case DWRITE_FONT_STRETCH_ULTRA_CONDENSED: return L"Ultra Condensed";
-				case DWRITE_FONT_STRETCH_EXTRA_CONDENSED: return L"Extra Condensed";
-				case DWRITE_FONT_STRETCH_CONDENSED: return L"Condensed";
-				case DWRITE_FONT_STRETCH_SEMI_CONDENSED: return L"Semi Condensed";
-				case DWRITE_FONT_STRETCH_NORMAL: return L"Normal";
-				case DWRITE_FONT_STRETCH_SEMI_EXPANDED: return L"Semi Expanded";
-				case DWRITE_FONT_STRETCH_EXPANDED: return L"Expanded";
-				case DWRITE_FONT_STRETCH_EXTRA_EXPANDED: return L"Extra Expanded";
-				case DWRITE_FONT_STRETCH_ULTRA_EXPANDED: return L"Ultra Expanded";
-				default: return L"Invalid";
-			}
-		}
+			void RefreshBaseFont() {
+				try {
+					switch (Renderer) {
+						case RendererEnum::Empty:
+							BaseFont = std::make_shared<XivRes::FontGenerator::EmptyFixedSizeFont>(Size, RendererSpecific.Empty);
+							break;
 
-		std::wstring GetStyleString() const {
-			switch (Style) {
-				case DWRITE_FONT_STYLE_NORMAL: return L"Normal";
-				case DWRITE_FONT_STYLE_OBLIQUE: return L"Oblique";
-				case DWRITE_FONT_STYLE_ITALIC: return L"Italic";
-				default: return L"Invalid";
-			}
-		}
+						case RendererEnum::PrerenderedGameInstallation:
+							if (Lookup.Name == "AXIS")
+								BaseFont = GetGameFont(XivRes::FontGenerator::GameFontFamily::AXIS, Size);
+							else if (Lookup.Name == "Jupiter")
+								BaseFont = GetGameFont(XivRes::FontGenerator::GameFontFamily::Jupiter, Size);
+							else if (Lookup.Name == "JupiterN")
+								BaseFont = GetGameFont(XivRes::FontGenerator::GameFontFamily::JupiterN, Size);
+							else if (Lookup.Name == "Meidinger")
+								BaseFont = GetGameFont(XivRes::FontGenerator::GameFontFamily::Meidinger, Size);
+							else if (Lookup.Name == "MiedingerMid")
+								BaseFont = GetGameFont(XivRes::FontGenerator::GameFontFamily::MiedingerMid, Size);
+							else if (Lookup.Name == "TrumpGothic")
+								BaseFont = GetGameFont(XivRes::FontGenerator::GameFontFamily::TrumpGothic, Size);
+							else if (Lookup.Name == "ChnAXIS")
+								BaseFont = GetGameFont(XivRes::FontGenerator::GameFontFamily::ChnAXIS, Size);
+							else if (Lookup.Name == "KrnAXIS")
+								BaseFont = GetGameFont(XivRes::FontGenerator::GameFontFamily::KrnAXIS, Size);
+							else
+								throw std::runtime_error("Invalid name");
+							break;
 
-		std::pair<std::shared_ptr<XivRes::IStream>, int> ResolveStream() const {
-			using namespace XivRes::FontGenerator;
+						case RendererEnum::DirectWrite:
+						{
+							auto [pStream, index] = Lookup.ResolveStream();
+							BaseFont = std::make_shared<XivRes::FontGenerator::DirectWriteFixedSizeFont>(pStream, index, Size, RendererSpecific.DirectWrite);
+							break;
+						}
 
-			IDWriteFactory3Ptr factory;
-			SuccessOrThrow(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), reinterpret_cast<IUnknown**>(&factory)));
+						case RendererEnum::FreeType:
+						{
+							auto [pStream, index] = Lookup.ResolveStream();
+							BaseFont = std::make_shared<XivRes::FontGenerator::FreeTypeFixedSizeFont>(*pStream, index, Size, RendererSpecific.FreeType);
+							break;
+						}
 
-			IDWriteFontCollectionPtr coll;
-			SuccessOrThrow(factory->GetSystemFontCollection(&coll));
+						default:
+							BaseFont = std::make_shared<XivRes::FontGenerator::EmptyFixedSizeFont>();
+							break;
+					}
 
-			uint32_t index;
-			BOOL exists;
-			SuccessOrThrow(coll->FindFamilyName(XivRes::Unicode::Convert<std::wstring>(Name).c_str(), &index, &exists));
-			if (!exists)
-				throw std::invalid_argument("Font not found");
-
-			IDWriteFontFamilyPtr family;
-			SuccessOrThrow(coll->GetFontFamily(index, &family));
-
-			IDWriteFontPtr font;
-			SuccessOrThrow(family->GetFirstMatchingFont(Weight, Stretch, Style, &font));
-
-			IDWriteFontFacePtr face;
-			SuccessOrThrow(font->CreateFontFace(&face));
-
-			IDWriteFontFile* pFontFileTmp;
-			uint32_t nFiles = 1;
-			SuccessOrThrow(face->GetFiles(&nFiles, &pFontFileTmp));
-			IDWriteFontFilePtr file(pFontFileTmp, false);
-
-			IDWriteFontFileLoaderPtr loader;
-			SuccessOrThrow(file->GetLoader(&loader));
-
-			void const* refKey;
-			UINT32 refKeySize;
-			SuccessOrThrow(file->GetReferenceKey(&refKey, &refKeySize));
-
-			IDWriteFontFileStreamPtr stream;
-			SuccessOrThrow(loader->CreateStreamFromKey(refKey, refKeySize, &stream));
-
-			auto res = std::make_shared<XivRes::MemoryStream>();
-			uint64_t fileSize;
-			SuccessOrThrow(stream->GetFileSize(&fileSize));
-			const void* pFragmentStart;
-			void* pFragmentContext;
-			SuccessOrThrow(stream->ReadFileFragment(&pFragmentStart, 0, fileSize, &pFragmentContext));
-			std::vector<uint8_t> buf(static_cast<size_t>(fileSize));
-			memcpy(&buf[0], pFragmentStart, buf.size());
-			stream->ReleaseFileFragment(pFragmentContext);
-
-			return { std::make_shared<XivRes::MemoryStream>(std::move(buf)), face->GetIndex() };
-		}
-	};
-
-	struct RendererSpecificStruct {
-		XivRes::FontGenerator::EmptyFixedSizeFont::CreateStruct Empty;
-		PrerenderedGameFontDef PrerenderedGame;
-		XivRes::FontGenerator::FreeTypeFixedSizeFont::CreateStruct FreeType;
-		XivRes::FontGenerator::DirectWriteFixedSizeFont::CreateStruct DirectWrite;
-	};
-
-	std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> BaseFont;
-	std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> Font;
-	float Size = 0.f;
-	bool Overwrite = false;
-	XivRes::FontGenerator::WrapModifiers WrapModifiers;
-	RendererEnum Renderer = RendererEnum::PrerenderedGameInstallation;
-
-	FontLookupStruct Lookup;
-	RendererSpecificStruct RendererSpecific;
-
-	void RefreshFont() {
-		if (!BaseFont)
-			return RefreshBaseFont();
-
-		Font = std::make_shared<XivRes::FontGenerator::WrappingFixedSizeFont>(BaseFont, WrapModifiers);
-	}
-
-	void RefreshBaseFont() {
-		try {
-			switch (Renderer) {
-				case RendererEnum::Empty:
+				} catch (...) {
 					BaseFont = std::make_shared<XivRes::FontGenerator::EmptyFixedSizeFont>(Size, RendererSpecific.Empty);
-					break;
-
-				case RendererEnum::PrerenderedGameInstallation:
-					BaseFont = Test(RendererSpecific.PrerenderedGame.FontFamily, Size);
-					break;
-
-				case RendererEnum::DirectWrite:
-				{
-					auto [pStream, index] = Lookup.ResolveStream();
-					BaseFont = std::make_shared<XivRes::FontGenerator::DirectWriteFixedSizeFont>(pStream, index, Size, RendererSpecific.DirectWrite);
-					break;
 				}
-
-				case RendererEnum::FreeType:
-				{
-					auto [pStream, index] = Lookup.ResolveStream();
-					BaseFont = std::make_shared<XivRes::FontGenerator::FreeTypeFixedSizeFont>(*pStream, index, Size, RendererSpecific.FreeType);
-					break;
-				}
-
-				default:
-					BaseFont = std::make_shared<XivRes::FontGenerator::EmptyFixedSizeFont>();
-					break;
+				RefreshFont();
 			}
 
-		} catch (...) {
-			BaseFont = std::make_shared<XivRes::FontGenerator::EmptyFixedSizeFont>(Size, RendererSpecific.Empty);
-		}
-		RefreshFont();
-	}
+			void UpdateText(HWND hListView, int nListIndex) {
+				if (!Font)
+					RefreshFont();
 
-	static void AddToList(HWND hListView, int nListIndex, FaceElement element) {
-		auto pElement = new FaceElement(std::move(element));
-		LVITEMW item{};
-		item.mask = LVIF_PARAM;
-		item.iItem = nListIndex;
-		item.lParam = reinterpret_cast<LPARAM>(pElement);
-		ListView_InsertItem(hListView, &item);
+				std::wstring buf;
+				ListView_SetItemText(hListView, nListIndex, ListViewCols::FamilyName, &(buf = XivRes::Unicode::Convert<std::wstring>(Font->GetFamilyName()))[0]);
+				ListView_SetItemText(hListView, nListIndex, ListViewCols::SubfamilyName, &(buf = XivRes::Unicode::Convert<std::wstring>(Font->GetSubfamilyName()))[0]);
+				ListView_SetItemText(hListView, nListIndex, ListViewCols::Size, &(buf = std::format(L"{:g}px", Font->GetSize()))[0]);
+				ListView_SetItemText(hListView, nListIndex, ListViewCols::LineHeight, &(buf = std::format(L"{}px", Font->GetLineHeight()))[0]);
+				if (WrapModifiers.BaselineShift) {
+					ListView_SetItemText(hListView, nListIndex, ListViewCols::Ascent, &(buf = std::format(L"{}px({:+}px)", BaseFont->GetAscent(), WrapModifiers.BaselineShift))[0]);
+				} else {
+					ListView_SetItemText(hListView, nListIndex, ListViewCols::Ascent, &(buf = std::format(L"{}px", BaseFont->GetAscent()))[0]);
+				}
+				ListView_SetItemText(hListView, nListIndex, ListViewCols::HorizontalOffset, &(buf = std::format(L"{}px", WrapModifiers.HorizontalOffset))[0]);
+				ListView_SetItemText(hListView, nListIndex, ListViewCols::LetterSpacing, &(buf = std::format(L"{}px", WrapModifiers.LetterSpacing))[0]);
+				ListView_SetItemText(hListView, nListIndex, ListViewCols::Codepoints, &(buf = GetRangeRepresentation())[0]);
+				ListView_SetItemText(hListView, nListIndex, ListViewCols::GlyphCount, &(buf = std::format(L"{}", Font->GetAllCodepoints().size()))[0]);
+				ListView_SetItemText(hListView, nListIndex, ListViewCols::KerningPairCount, &(buf = std::format(L"{}", Font->GetAllKerningPairs().size()))[0]);
+				ListView_SetItemText(hListView, nListIndex, ListViewCols::Overwrite, &(buf = Overwrite ? L"Yes" : L"No")[0]);
+				ListView_SetItemText(hListView, nListIndex, ListViewCols::Gamma, &(buf = std::format(L"{:g}", WrapModifiers.Gamma))[0]);
+				ListView_SetItemText(hListView, nListIndex, ListViewCols::Renderer, &(buf = GetRendererRepresentation())[0]);
+				ListView_SetItemText(hListView, nListIndex, ListViewCols::Lookup, &(buf = GetLookupRepresentation())[0]);
+			}
 
-		if (!pElement->Font)
-			pElement->RefreshFont();
-		pElement->UpdateText(hListView, nListIndex);
-	}
+			std::wstring GetRangeRepresentation() const {
+				if (WrapModifiers.Codepoints.empty())
+					return L"(None)";
 
-	void UpdateText(HWND hListView, int nListIndex) const {
-		std::wstring buf;
-		ListView_SetItemText(hListView, nListIndex, ListViewCols::FamilyName, &(buf = XivRes::Unicode::Convert<std::wstring>(Font->GetFamilyName()))[0]);
-		ListView_SetItemText(hListView, nListIndex, ListViewCols::SubfamilyName, &(buf = XivRes::Unicode::Convert<std::wstring>(Font->GetSubfamilyName()))[0]);
-		ListView_SetItemText(hListView, nListIndex, ListViewCols::Size, &(buf = std::format(L"{:g}px", Font->GetSize()))[0]);
-		ListView_SetItemText(hListView, nListIndex, ListViewCols::LineHeight, &(buf = std::format(L"{}px", Font->GetLineHeight()))[0]);
-		if (WrapModifiers.BaselineShift) {
-			ListView_SetItemText(hListView, nListIndex, ListViewCols::Ascent, &(buf = std::format(L"{}px({:+}px)", BaseFont->GetAscent(), WrapModifiers.BaselineShift))[0]);
-		} else {
-			ListView_SetItemText(hListView, nListIndex, ListViewCols::Ascent, &(buf = std::format(L"{}px", BaseFont->GetAscent()))[0]);
-		}
-		ListView_SetItemText(hListView, nListIndex, ListViewCols::HorizontalOffset, &(buf = std::format(L"{}px (avg {}, max {})", WrapModifiers.HorizontalOffset, BaseFont->GetRecommendedHorizontalOffset(), BaseFont->GetMaximumRequiredHorizontalOffset()))[0]);
-		ListView_SetItemText(hListView, nListIndex, ListViewCols::LetterSpacing, &(buf = std::format(L"{}px", WrapModifiers.LetterSpacing))[0]);
-		ListView_SetItemText(hListView, nListIndex, ListViewCols::Codepoints, &(buf = GetRangeRepresentation())[0]);
-		ListView_SetItemText(hListView, nListIndex, ListViewCols::GlyphCount, &(buf = std::format(L"{}", Font->GetAllCodepoints().size()))[0]);
-		ListView_SetItemText(hListView, nListIndex, ListViewCols::KerningPairCount, &(buf = std::format(L"{}", Font->GetAllKerningPairs().size()))[0]);
-		ListView_SetItemText(hListView, nListIndex, ListViewCols::Overwrite, &(buf = Overwrite ? L"Yes" : L"No")[0]);
-		ListView_SetItemText(hListView, nListIndex, ListViewCols::Gamma, &(buf = std::format(L"{:g}", WrapModifiers.Gamma))[0]);
-		ListView_SetItemText(hListView, nListIndex, ListViewCols::Renderer, &(buf = GetRendererRepresentation())[0]);
-		ListView_SetItemText(hListView, nListIndex, ListViewCols::Lookup, &(buf = GetLookupRepresentation())[0]);
-	}
+				std::wstring res;
+				std::vector<char32_t> charVec(BaseFont->GetAllCodepoints().begin(), BaseFont->GetAllCodepoints().end());
+				for (const auto& [c1, c2] : WrapModifiers.Codepoints) {
+					if (!res.empty())
+						res += L", ";
 
-	std::wstring GetRangeRepresentation() const {
-		if (WrapModifiers.Codepoints.empty())
-			return L"(All)";
+					const auto left = std::ranges::lower_bound(charVec, c1);
+					const auto right = std::ranges::upper_bound(charVec, c2);
+					const auto count = right - left;
 
-		if (WrapModifiers.Codepoints.size() == 1) {
-			std::vector<char32_t> charVec(BaseFont->GetAllCodepoints().begin(), BaseFont->GetAllCodepoints().end());
-			for (const auto& [c1, c2] : WrapModifiers.Codepoints) {
-				const auto left = std::ranges::lower_bound(charVec, c1);
-				const auto right = std::ranges::upper_bound(charVec, c2);
-				const auto count = right - left;
-
-				const auto blk = std::lower_bound(XivRes::Unicode::UnicodeBlocks::Blocks.begin(), XivRes::Unicode::UnicodeBlocks::Blocks.end(), c1, [](const auto& l, const auto& r) { return l.First < r; });
-				if (blk != XivRes::Unicode::UnicodeBlocks::Blocks.end() && blk->First == c1 && blk->Last == c2) {
-					if (c1 == c2) {
-						return std::format(
-							L"U+{:04X} {} ({}) [{}]",
-							static_cast<int>(c1),
-							XivRes::Unicode::Convert<std::wstring>(blk->Name),
-							count,
-							XivRes::Unicode::ConvertFromChar<std::wstring>(c1)
-						).c_str();
+					const auto blk = std::lower_bound(XivRes::Unicode::UnicodeBlocks::Blocks.begin(), XivRes::Unicode::UnicodeBlocks::Blocks.end(), c1, [](const auto& l, const auto& r) { return l.First < r; });
+					if (blk != XivRes::Unicode::UnicodeBlocks::Blocks.end() && blk->First == c1 && blk->Last == c2) {
+						res += std::format(L"{}({})", XivRes::Unicode::Convert<std::wstring>(blk->Name), count);
+					} else if (c1 == c2) {
+						res += std::format(
+							L"U+{:04X} [{}]",
+							static_cast<uint32_t>(c1),
+							XivRes::Unicode::RepresentChar<std::wstring>(c1)
+						);
 					} else {
-						return std::format(
-							L"U+{:04X} ~ U+{:04X} {} ({}) [{}] ~ [{}]",
-							static_cast<int>(c1),
-							static_cast<int>(c2),
-							XivRes::Unicode::Convert<std::wstring>(blk->Name),
+						res += std::format(
+							L"U+{:04X}~{:04X} ({}) {} ~ {}",
+							static_cast<uint32_t>(c1),
+							static_cast<uint32_t>(c2),
 							count,
-							XivRes::Unicode::ConvertFromChar<std::wstring>(c1),
-							XivRes::Unicode::ConvertFromChar<std::wstring>(c2)
+							XivRes::Unicode::RepresentChar<std::wstring>(c1),
+							XivRes::Unicode::RepresentChar<std::wstring>(c2)
 						);
 					}
-				} else if (c1 == c2) {
-					return std::format(
-						L"U+{:04X} ({}) [{}]",
-						static_cast<int>(c1),
-						count,
-						XivRes::Unicode::ConvertFromChar<std::wstring>(c1)
-					);
-				} else {
-					return std::format(
-						L"U+{:04X} ~ U+{:04X} ({}) [{}] ~ [{}]",
-						static_cast<int>(c1),
-						static_cast<int>(c2),
-						count,
-						XivRes::Unicode::ConvertFromChar<std::wstring>(c1),
-						XivRes::Unicode::ConvertFromChar<std::wstring>(c2)
-					);
+				}
+
+				return res;
+			}
+
+			std::wstring GetRendererRepresentation() const {
+				switch (Renderer) {
+					case RendererEnum::Empty:
+						return L"Empty";
+
+					case RendererEnum::PrerenderedGameInstallation:
+						return L"Prerendered (Game)";
+
+					case RendererEnum::DirectWrite:
+						return std::format(L"DirectWrite (Render={}, Measure={}, GridFit={})",
+							RendererSpecific.DirectWrite.GetRenderModeString(),
+							RendererSpecific.DirectWrite.GetMeasuringModeString(),
+							RendererSpecific.DirectWrite.GetGridFitModeString()
+						);
+
+					case RendererEnum::FreeType:
+						return std::format(L"FreeType ({})", RendererSpecific.FreeType.GetLoadFlagsString());
+
+					default:
+						return L"INVALID";
 				}
 			}
+
+			std::wstring GetLookupRepresentation() const {
+				switch (Renderer) {
+					case RendererEnum::DirectWrite:
+					case RendererEnum::FreeType:
+						return std::format(L"{} ({}, {}, {})",
+							XivRes::Unicode::Convert<std::wstring>(Lookup.Name),
+							Lookup.GetWeightString(),
+							Lookup.GetStyleString(),
+							Lookup.GetStretchString()
+						);
+
+					default:
+						return L"-";
+				}
+			}
+
+			class EditorDialog;
+		};
+
+		std::shared_ptr<void*> RuntimeTag;
+		std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> MergedFont;
+
+		std::string Name;
+		std::vector<Element> Elements;
+		std::string PreviewText;
+
+		void RefreshFont() {
+			std::vector<std::pair<std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>, bool>> mergeFontList;
+
+			for (auto& e : Elements) {
+				e.RefreshFont();
+				mergeFontList.emplace_back(e.Font, e.Overwrite);
+			}
+
+			MergedFont = std::make_shared<XivRes::FontGenerator::MergedFixedSizeFont>(std::move(mergeFontList));
+
+			//XivRes::FontGenerator::FontdataPacker packer;
+			//packer.AddFont(merge);
+			//auto [fdts, texs] = packer.Compile();
+			//auto res = std::make_shared<XivRes::TextureStream>(texs[0]->Type, texs[0]->Width, texs[0]->Height, 1, 1, texs.size());
+			//for (size_t i = 0; i < texs.size(); i++)
+			//	res->SetMipmap(0, i, texs[i]);
+			//m_fontMerged = std::make_shared<XivRes::FontGenerator::GameFontdataFixedSizeFont>(fdts[0], texs, "Test", "Test");
 		}
+	};
 
-		return std::format(L"{} ranges", WrapModifiers.Codepoints.size());
-	}
-
-	std::wstring GetRendererRepresentation() const {
-		switch (Renderer) {
-			case RendererEnum::Empty:
-				return L"Empty";
-
-			case RendererEnum::PrerenderedGameInstallation:
-				return L"Prerendered (Game)";
-
-			case RendererEnum::DirectWrite:
-				return std::format(L"DirectWrite (Render={}, Measure={}, GridFit={})",
-					RendererSpecific.DirectWrite.GetRenderModeString(),
-					RendererSpecific.DirectWrite.GetMeasuringModeString(),
-					RendererSpecific.DirectWrite.GetGridFitModeString()
-				);
-
-			case RendererEnum::FreeType:
-				return std::format(L"FreeType ({})", RendererSpecific.FreeType.GetLoadFlagsString());
-
-			default:
-				return L"INVALID";
-		}
-	}
-
-	std::wstring GetLookupRepresentation() const {
-		switch (Renderer) {
-			case RendererEnum::DirectWrite:
-			case RendererEnum::FreeType:
-				return std::format(L"{} ({}, {}, {})",
-					XivRes::Unicode::Convert<std::wstring>(Lookup.Name),
-					Lookup.GetWeightString(),
-					Lookup.GetStyleString(),
-					Lookup.GetStretchString()
-				);
-
-			default:
-				return L"-";
-		}
-	}
-
-	class EditorDialog;
+	std::string TexFilenameFormat;
+	std::vector<Face> Faces;
 };
 
-class FaceElement::EditorDialog {
-	FaceElement& m_element;
-	FaceElement m_elementOriginal;
+void to_json(nlohmann::json& json, const XivRes::FontGenerator::WrapModifiers& value) {
+	json = nlohmann::json::object();
+	auto& codepoints = json["codepoints"] = nlohmann::json::array();
+	for (const auto& c : value.Codepoints)
+		codepoints.emplace_back(nlohmann::json::array({ static_cast<uint32_t>(c.first), static_cast<uint32_t>(c.second) }));
+	json["letterSpacing"] = value.LetterSpacing;
+	json["horizontalOffset"] = value.HorizontalOffset;
+	json["baselineShift"] = value.BaselineShift;
+	json["gamma"] = value.Gamma;
+}
+
+void from_json(const nlohmann::json& json, XivRes::FontGenerator::WrapModifiers& value) {
+	if (!json.is_object()) {
+		value = {};
+		return;
+	}
+
+	value.Codepoints.clear();
+	if (const auto it = json.find("codepoints"); it != json.end() && it->is_array()) {
+		for (const auto& v : *it) {
+			if (!v.is_array())
+				continue;
+			switch (v.size()) {
+				case 0:
+					break;
+				case 1:
+					value.Codepoints.emplace_back(static_cast<char32_t>(v[0].get<uint32_t>()), static_cast<char32_t>(v[0].get<uint32_t>()));
+					break;
+				default:
+					value.Codepoints.emplace_back(static_cast<char32_t>(v[0].get<uint32_t>()), static_cast<char32_t>(v[1].get<uint32_t>()));
+					break;
+			}
+		}
+	}
+
+	value.LetterSpacing = json.value<int>("letterSpacing", 0);
+	value.HorizontalOffset = json.value<int>("horizontalOffset", 0);
+	value.BaselineShift = json.value<int>("baselineShift", 0);
+	value.Gamma = json.value<float>("gamma", 0);
+}
+
+void to_json(nlohmann::json& json, const FontSet::Face::Element::FontLookupStruct& value) {
+	json = nlohmann::json::object();
+	json["name"] = value.Name;
+	json["weight"] = static_cast<int>(value.Weight);
+	json["stretch"] = static_cast<int>(value.Stretch);
+	json["style"] = static_cast<int>(value.Style);
+}
+
+void from_json(const nlohmann::json& json, FontSet::Face::Element::FontLookupStruct& value) {
+	if (!json.is_object()) {
+		value = {};
+		return;
+	}
+
+	value.Name = json.value<std::string>("name", "");
+	value.Weight = static_cast<DWRITE_FONT_WEIGHT>(json.value<int>("weight", DWRITE_FONT_WEIGHT_NORMAL));
+	value.Stretch = static_cast<DWRITE_FONT_STRETCH>(json.value<int>("stretch", DWRITE_FONT_STRETCH_NORMAL));
+	value.Style = static_cast<DWRITE_FONT_STYLE>(json.value<int>("style", DWRITE_FONT_STYLE_NORMAL));
+}
+
+void to_json(nlohmann::json& json, const FontSet::Face::Element::RendererSpecificStruct& value) {
+	json = nlohmann::json::object();
+	json["empty"] = nlohmann::json::object({
+		{ "ascent", value.Empty.Ascent },
+		{ "lineHeight", value.Empty.LineHeight },
+		});
+	json["freetype"] = nlohmann::json::object({
+		{ "noHinting", !!(value.FreeType.LoadFlags & FT_LOAD_NO_HINTING) },
+		{ "noBitmap", !!(value.FreeType.LoadFlags & FT_LOAD_NO_BITMAP) },
+		{ "forceAutohint", !!(value.FreeType.LoadFlags & FT_LOAD_FORCE_AUTOHINT) },
+		{ "noAutohint", !!(value.FreeType.LoadFlags & FT_LOAD_NO_AUTOHINT) },
+		});
+	json["directwrite"] = nlohmann::json::object({
+		{ "renderMode", static_cast<int>(value.DirectWrite.RenderMode) },
+		{ "measureMode", static_cast<int>(value.DirectWrite.MeasureMode) },
+		{ "gridFitMode", static_cast<int>(value.DirectWrite.GridFitMode) },
+		});
+}
+
+void from_json(const nlohmann::json& json, FontSet::Face::Element::RendererSpecificStruct& value) {
+	if (!json.is_object()) {
+		value = {};
+		return;
+	}
+
+	if (const auto obj = json.find("empty"); obj != json.end() && obj->is_object()) {
+		value.Empty.Ascent = obj->value<int>("ascent", 0);
+		value.Empty.LineHeight = obj->value<int>("lineHeight", 0);
+	} else
+		value.Empty = {};
+	if (const auto obj = json.find("freetype"); obj != json.end() && obj->is_object()) {
+		value.FreeType.LoadFlags = 0;
+		value.FreeType.LoadFlags |= obj->value<bool>("noHinting", false) ? FT_LOAD_NO_HINTING : 0;
+		value.FreeType.LoadFlags |= obj->value<bool>("noBitmap", false) ? FT_LOAD_NO_BITMAP : 0;
+		value.FreeType.LoadFlags |= obj->value<bool>("forceAutohint", false) ? FT_LOAD_FORCE_AUTOHINT : 0;
+		value.FreeType.LoadFlags |= obj->value<bool>("noAutohint", false) ? FT_LOAD_NO_AUTOHINT : 0;
+	} else
+		value.FreeType = {};
+	if (const auto obj = json.find("directwrite"); obj != json.end() && obj->is_object()) {
+		value.DirectWrite.RenderMode = static_cast<DWRITE_RENDERING_MODE>(obj->value<int>("renderMode", DWRITE_RENDERING_MODE_DEFAULT));
+		value.DirectWrite.MeasureMode = static_cast<DWRITE_MEASURING_MODE>(obj->value<int>("measureMode", DWRITE_MEASURING_MODE_GDI_NATURAL));
+		value.DirectWrite.GridFitMode = static_cast<DWRITE_GRID_FIT_MODE>(obj->value<int>("gridFitMode", DWRITE_GRID_FIT_MODE_DEFAULT));
+	} else
+		value.DirectWrite = {};
+}
+
+void to_json(nlohmann::json& json, const FontSet::Face::Element& value) {
+	json = nlohmann::json::object();
+	json["size"] = value.Size;
+	json["overwrite"] = value.Overwrite;
+	to_json(json["wrapModifiers"], value.WrapModifiers);
+	json["renderer"] = static_cast<int>(value.Renderer);
+	to_json(json["lookup"], value.Lookup);
+	to_json(json["renderSpecific"], value.RendererSpecific);
+}
+
+void from_json(const nlohmann::json& json, FontSet::Face::Element& value) {
+	if (!json.is_object()) {
+		value = {};
+		return;
+	}
+
+	value.Size = json.value<float>("size", 0.f);
+	value.Overwrite = json.value<bool>("overwrite", false);
+	if (const auto it = json.find("wrapModifiers"); it != json.end())
+		from_json(*it, value.WrapModifiers);
+	else
+		value.WrapModifiers = {};
+	value.Renderer = static_cast<FontSet::Face::Element::RendererEnum>(json.value<int>("renderer", static_cast<int>(FontSet::Face::Element::RendererEnum::Empty)));
+	if (const auto it = json.find("lookup"); it != json.end())
+		from_json(*it, value.Lookup);
+	else
+		value.Lookup = {};
+	if (const auto it = json.find("renderSpecific"); it != json.end())
+		from_json(*it, value.RendererSpecific);
+	else
+		value.RendererSpecific = {};
+}
+
+void to_json(nlohmann::json& json, const FontSet::Face& value) {
+	json = nlohmann::json::object();
+	json["name"] = value.Name;
+	auto& elements = json["elements"] = nlohmann::json::array();
+	for (const auto& e : value.Elements) {
+		elements.emplace_back();
+		to_json(elements.back(), e);
+	}
+	json["previewText"] = value.PreviewText;
+}
+
+void from_json(const nlohmann::json& json, FontSet::Face& value) {
+	if (!json.is_object()) {
+		value = {};
+		return;
+	}
+
+	value.Name = json.value<std::string>("name", "");
+	value.Elements.clear();
+	if (const auto it = json.find("elements"); it != json.end() && it->is_array()) {
+		for (const auto& v : *it) {
+			if (!v.is_object())
+				continue;
+
+			value.Elements.emplace_back();
+			from_json(v, value.Elements.back());
+		}
+	}
+	value.PreviewText = json.value<std::string>("previewText", "");
+}
+
+void to_json(nlohmann::json& json, const FontSet& value) {
+	json = nlohmann::json::object();
+	auto& faces = json["faces"] = nlohmann::json::array();
+	for (const auto& e : value.Faces) {
+		faces.emplace_back();
+		to_json(faces.back(), e);
+	}
+	json["texFilenameFormat"] = value.TexFilenameFormat;
+}
+
+void from_json(const nlohmann::json& json, FontSet& value) {
+	if (!json.is_object()) {
+		value = {};
+		return;
+	}
+
+	value.Faces.clear();
+	if (const auto it = json.find("faces"); it != json.end() && it->is_array()) {
+		for (const auto& v : *it) {
+			if (!v.is_object())
+				continue;
+
+			value.Faces.emplace_back();
+			from_json(v, value.Faces.back());
+		}
+	}
+	value.TexFilenameFormat = json.value<std::string>("texFilenameFormat", "");
+}
+
+class FontSet::Face::Element::EditorDialog {
+	Face::Element& m_element;
+	Face::Element m_elementOriginal;
 	HWND m_hParentWnd;
 	bool m_bOpened = false;
 	std::function<void()> m_onFontChanged;
+	bool m_bBaseFontChanged = false;
+	bool m_bWrappedFontChanged = false;
 
 	enum : UINT {
 		WmApp = WM_APP,
@@ -425,6 +669,7 @@ class FaceElement::EditorDialog {
 		HWND UnicodeBlockSearchShowBlocksWithAnyOfCharactersInput = GetDlgItem(Window, IDC_CHECK_UNICODEBLOCKS_SHOWBLOCKSWITHANYOFCHARACTERSINPUT);
 		HWND UnicodeBlockSearchResultList = GetDlgItem(Window, IDC_LIST_UNICODEBLOCKS_SEARCHRESULTS);
 		HWND UnicodeBlockSearchSelectedPreviewEdit = GetDlgItem(Window, IDC_EDIT_UNICODEBLOCKS_RANGEPREVIEW);
+		HWND UnicodeBlockSearchAddAll = GetDlgItem(Window, IDC_BUTTON_UNICODEBLOCKS_ADDALL);
 		HWND UnicodeBlockSearchAdd = GetDlgItem(Window, IDC_BUTTON_UNICODEBLOCKS_ADD);
 		HWND CustomRangeEdit = GetDlgItem(Window, IDC_EDIT_ADDCUSTOMRANGE_INPUT);
 		HWND CustomRangePreview = GetDlgItem(Window, IDC_EDIT_ADDCUSTOMRANGE_PREVIEW);
@@ -432,7 +677,7 @@ class FaceElement::EditorDialog {
 	} *m_controls = nullptr;
 
 public:
-	EditorDialog(HWND hParentWnd, FaceElement& element, std::function<void()> onFontChanged)
+	EditorDialog(HWND hParentWnd, Face::Element& element, std::function<void()> onFontChanged)
 		: m_hParentWnd(hParentWnd)
 		, m_element(element)
 		, m_elementOriginal(element)
@@ -474,7 +719,11 @@ private:
 		m_element = std::move(m_elementOriginal);
 		EndDialog(m_controls->Window, 0);
 		m_bOpened = false;
-		OnWrappedFontChanged();
+
+		if (m_bBaseFontChanged)
+			OnBaseFontChanged();
+		else if (m_bWrappedFontChanged)
+			OnWrappedFontChanged();
 		return 0;
 	}
 
@@ -723,7 +972,7 @@ private:
 	INT_PTR UnicodeBlockSearchNameEdit_OnCommand(uint16_t notiCode) {
 		if (notiCode != EN_CHANGE)
 			return 0;
-		
+
 		RefreshUnicodeBlockSearchResults();
 		return 0;
 	}
@@ -750,13 +999,7 @@ private:
 				const auto& block = *reinterpret_cast<XivRes::Unicode::UnicodeBlocks::BlockDefinition*>(ListBox_GetItemData(m_controls->UnicodeBlockSearchResultList, itemIndex));
 
 				for (auto it = std::ranges::lower_bound(charVec, block.First), it_ = std::ranges::upper_bound(charVec, block.Last); it != it_; ++it) {
-					if (*it < 0x10000)
-						containingChars.push_back(static_cast<wchar_t>(*it));
-					else {
-						const auto ptr = containingChars.size();
-						containingChars.resize(ptr + 2);
-						containingChars.resize(ptr + XivRes::Unicode::Encode(&containingChars[ptr], *it));
-					}
+					XivRes::Unicode::RepresentChar(containingChars, *it);
 					if (containingChars.size() >= 8192)
 						break;
 				}
@@ -769,6 +1012,20 @@ private:
 		} else if (notiCode == LBN_DBLCLK) {
 			return UnicodeBlockSearchAdd_OnCommand(BN_CLICKED);
 		}
+		return 0;
+	}
+
+	INT_PTR UnicodeBlockSearchAddAll_OnCommand(uint16_t notiCode) {
+		auto changed = false;
+		std::vector<char32_t> charVec(m_element.BaseFont->GetAllCodepoints().begin(), m_element.BaseFont->GetAllCodepoints().end());
+		for (int i = 0, i_ = ListBox_GetCount(m_controls->UnicodeBlockSearchResultList); i < i_; i++) {
+			const auto& block = *reinterpret_cast<const XivRes::Unicode::UnicodeBlocks::BlockDefinition*>(ListBox_GetItemData(m_controls->UnicodeBlockSearchResultList, i));
+			changed |= AddNewCodepointRange(block.First, block.Last, charVec);
+		}
+
+		if (changed)
+			OnWrappedFontChanged();
+
 		return 0;
 	}
 
@@ -800,10 +1057,21 @@ private:
 		for (const auto& [c1, c2] : ParseCustomRangeString()) {
 			if (!description.empty())
 				description += L", ";
-			if (c1 == c2)
-				description += std::format(L"U+{:04X}", static_cast<uint32_t>(c1));
-			else
-				description += std::format(L"U+{:04X} ~ U+{:04X}", static_cast<uint32_t>(c1), static_cast<uint32_t>(c2));
+			if (c1 == c2) {
+				description += std::format(
+					L"U+{:04X} {}",
+					static_cast<uint32_t>(c1),
+					XivRes::Unicode::RepresentChar<std::wstring>(c1)
+				);
+			} else {
+				description += std::format(
+					L"U+{:04X}~{:04X} {}~{}",
+					static_cast<uint32_t>(c1),
+					static_cast<uint32_t>(c2),
+					XivRes::Unicode::RepresentChar<std::wstring>(c1),
+					XivRes::Unicode::RepresentChar<std::wstring>(c2)
+				);
+			}
 		}
 
 		Edit_SetText(m_controls->CustomRangePreview, &description[0]);
@@ -892,7 +1160,7 @@ private:
 			AddCodepointRangeToListBox(i, m_element.WrapModifiers.Codepoints[i].first, m_element.WrapModifiers.Codepoints[i].second, charVec);
 
 		Button_SetCheck(m_controls->CodepointsOverwriteCheck, m_element.Overwrite ? TRUE : FALSE);
-	
+
 		RECT rc, rcParent;
 		GetWindowRect(m_controls->Window, &rc);
 		GetWindowRect(m_hParentWnd, &rcParent);
@@ -905,7 +1173,7 @@ private:
 		SetWindowPos(m_controls->Window, nullptr, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, SWP_NOACTIVATE | SWP_NOZORDER);
 
 		ShowWindow(m_controls->Window, SW_SHOW);
-		
+
 		return 0;
 	}
 
@@ -984,38 +1252,36 @@ private:
 		if (block != XivRes::Unicode::UnicodeBlocks::Blocks.end() && block->First == c1 && block->Last == c2) {
 			if (c1 == c2) {
 				ListBox_AddString(m_controls->CodepointsList, std::format(
-					L"U+{:04X} {} ({}) [{}]",
-					static_cast<int>(c1),
+					L"U+{:04X} {} [{}]",
+					static_cast<uint32_t>(c1),
 					XivRes::Unicode::Convert<std::wstring>(block->Name),
-					count,
-					XivRes::Unicode::ConvertFromChar<std::wstring>(c1)
+					XivRes::Unicode::RepresentChar<std::wstring>(c1)
 				).c_str());
 			} else {
 				ListBox_AddString(m_controls->CodepointsList, std::format(
-					L"U+{:04X} ~ U+{:04X} {} ({}) [{}] ~ [{}]",
-					static_cast<int>(c1),
-					static_cast<int>(c2),
+					L"U+{:04X}~{:04X} {} ({}) {} ~ {}",
+					static_cast<uint32_t>(c1),
+					static_cast<uint32_t>(c2),
 					XivRes::Unicode::Convert<std::wstring>(block->Name),
 					count,
-					XivRes::Unicode::ConvertFromChar<std::wstring>(c1),
-					XivRes::Unicode::ConvertFromChar<std::wstring>(c2)
+					XivRes::Unicode::RepresentChar<std::wstring>(c1),
+					XivRes::Unicode::RepresentChar<std::wstring>(c2)
 				).c_str());
 			}
 		} else if (c1 == c2) {
 			ListBox_AddString(m_controls->CodepointsList, std::format(
-				L"U+{:04X} ({}) [{}]",
+				L"U+{:04X} [{}]",
 				static_cast<int>(c1),
-				count,
-				XivRes::Unicode::ConvertFromChar<std::wstring>(c1)
+				XivRes::Unicode::RepresentChar<std::wstring>(c1)
 			).c_str());
 		} else {
 			ListBox_AddString(m_controls->CodepointsList, std::format(
-				L"U+{:04X} ~ U+{:04X} ({}) [{}] ~ [{}]",
-				static_cast<int>(c1),
-				static_cast<int>(c2),
+				L"U+{:04X}~{:04X} ({}) {} ~ {}",
+				static_cast<uint32_t>(c1),
+				static_cast<uint32_t>(c2),
 				count,
-				XivRes::Unicode::ConvertFromChar<std::wstring>(c1),
-				XivRes::Unicode::ConvertFromChar<std::wstring>(c2)
+				XivRes::Unicode::RepresentChar<std::wstring>(c1),
+				XivRes::Unicode::RepresentChar<std::wstring>(c2)
 			).c_str());
 		}
 	}
@@ -1054,13 +1320,13 @@ private:
 				continue;
 
 			ListBox_AddString(m_controls->UnicodeBlockSearchResultList, std::format(
-				L"U+{:04X} ~ U+{:04X} {} ({}) [{}] ~ [{}]",
+				L"U+{:04X}~{:04X} {} ({}) {} ~ {}",
 				static_cast<uint32_t>(block.First),
 				static_cast<uint32_t>(block.Last),
 				XivRes::Unicode::Convert<std::wstring>(nameView),
 				right - left,
-				XivRes::Unicode::ConvertFromChar<std::wstring>(block.First),
-				XivRes::Unicode::ConvertFromChar<std::wstring>(block.Last)
+				XivRes::Unicode::RepresentChar<std::wstring>(block.First),
+				XivRes::Unicode::RepresentChar<std::wstring>(block.Last)
 			).c_str());
 			ListBox_SetItemData(m_controls->UnicodeBlockSearchResultList, ListBox_GetCount(m_controls->UnicodeBlockSearchResultList) - 1, &block);
 		}
@@ -1092,6 +1358,7 @@ private:
 				EnableWindow(m_controls->CodepointsOverwriteCheck, FALSE);
 				EnableWindow(m_controls->UnicodeBlockSearchNameEdit, FALSE);
 				EnableWindow(m_controls->UnicodeBlockSearchResultList, FALSE);
+				EnableWindow(m_controls->UnicodeBlockSearchAddAll, FALSE);
 				EnableWindow(m_controls->UnicodeBlockSearchAdd, FALSE);
 				EnableWindow(m_controls->CustomRangeEdit, FALSE);
 				EnableWindow(m_controls->CustomRangeAdd, FALSE);
@@ -1121,6 +1388,7 @@ private:
 				EnableWindow(m_controls->CodepointsOverwriteCheck, TRUE);
 				EnableWindow(m_controls->UnicodeBlockSearchNameEdit, TRUE);
 				EnableWindow(m_controls->UnicodeBlockSearchResultList, TRUE);
+				EnableWindow(m_controls->UnicodeBlockSearchAddAll, TRUE);
 				EnableWindow(m_controls->UnicodeBlockSearchAdd, TRUE);
 				EnableWindow(m_controls->CustomRangeEdit, TRUE);
 				EnableWindow(m_controls->CustomRangeAdd, TRUE);
@@ -1150,6 +1418,7 @@ private:
 				EnableWindow(m_controls->CodepointsOverwriteCheck, TRUE);
 				EnableWindow(m_controls->UnicodeBlockSearchNameEdit, TRUE);
 				EnableWindow(m_controls->UnicodeBlockSearchResultList, TRUE);
+				EnableWindow(m_controls->UnicodeBlockSearchAddAll, TRUE);
 				EnableWindow(m_controls->UnicodeBlockSearchAdd, TRUE);
 				EnableWindow(m_controls->CustomRangeEdit, TRUE);
 				EnableWindow(m_controls->CustomRangeAdd, TRUE);
@@ -1179,6 +1448,7 @@ private:
 				EnableWindow(m_controls->CodepointsOverwriteCheck, TRUE);
 				EnableWindow(m_controls->UnicodeBlockSearchNameEdit, TRUE);
 				EnableWindow(m_controls->UnicodeBlockSearchResultList, TRUE);
+				EnableWindow(m_controls->UnicodeBlockSearchAddAll, TRUE);
 				EnableWindow(m_controls->UnicodeBlockSearchAdd, TRUE);
 				EnableWindow(m_controls->CustomRangeEdit, TRUE);
 				EnableWindow(m_controls->CustomRangeAdd, TRUE);
@@ -1442,12 +1712,14 @@ private:
 	}
 
 	void OnBaseFontChanged() {
+		m_bBaseFontChanged = true;
 		m_element.RefreshBaseFont();
 		if (m_onFontChanged)
 			m_onFontChanged();
 	}
 
 	void OnWrappedFontChanged() {
+		m_bWrappedFontChanged = true;
 		m_element.RefreshFont();
 		if (m_onFontChanged)
 			m_onFontChanged();
@@ -1487,6 +1759,7 @@ private:
 					case IDC_EDIT_UNICODEBLOCKS_SEARCH: return UnicodeBlockSearchNameEdit_OnCommand(HIWORD(wParam));
 					case IDC_CHECK_UNICODEBLOCKS_SHOWBLOCKSWITHANYOFCHARACTERSINPUT: return UnicodeBlockSearchShowBlocksWithAnyOfCharactersInput_OnCommand(HIWORD(wParam));
 					case IDC_LIST_UNICODEBLOCKS_SEARCHRESULTS: return UnicodeBlockSearchResultList_OnCommand(HIWORD(wParam));
+					case IDC_BUTTON_UNICODEBLOCKS_ADDALL: return UnicodeBlockSearchAddAll_OnCommand(HIWORD(wParam));
 					case IDC_BUTTON_UNICODEBLOCKS_ADD: return UnicodeBlockSearchAdd_OnCommand(HIWORD(wParam));
 					case IDC_EDIT_ADDCUSTOMRANGE_INPUT: return CustomRangeEdit_OnCommand(HIWORD(wParam));
 					case IDC_BUTTON_ADDCUSTOMRANGE_ADD: return CustomRangeAdd_OnCommand(HIWORD(wParam));
@@ -1533,38 +1806,50 @@ private:
 		}
 		return 0;
 	}
-
-	static std::wstring GetWindowString(HWND hwnd) {
-		std::wstring buf;
-		int capacity = 128;
-		do {
-			capacity *= 2;
-			buf.resize(capacity);
-			buf.resize(GetWindowTextW(hwnd, &buf[0], capacity));
-		} while (buf.size() == capacity);
-		return buf;
-	}
-
-	static float GetWindowFloat(HWND hwnd) {
-		return std::wcstof(GetWindowString(hwnd).c_str(), nullptr);
-	}
-
-	static void SetWindowFloat(HWND hwnd, float v) {
-		SetWindowTextW(hwnd, std::format(L"{:g}", v).c_str());
-	}
-
-	static int GetWindowInt(HWND hwnd) {
-		return std::wcstol(GetWindowString(hwnd).c_str(), nullptr, 0);
-	}
-
-	static void SetWindowInt(HWND hwnd, int v) {
-		SetWindowTextW(hwnd, std::format(L"{}", v).c_str());
-	}
 };
+
+FontSet NewFromTemplateFont(XivRes::GameFontType fontType) {
+	FontSet res{};
+	if (const auto pcszFmt = XivRes::FontGenerator::GetFontTexFilenameFormat(fontType))
+		res.TexFilenameFormat = pcszFmt;
+	else
+		res.TexFilenameFormat = "font{}.tex";
+
+	for (const auto& def : XivRes::FontGenerator::GetFontDefinition(fontType)) {
+		std::string_view filename(def.Path);
+		filename = filename.substr(filename.rfind('/') + 1);
+		filename = filename.substr(0, filename.find('.'));
+		res.Faces.emplace_back(FontSet::Face{
+			.RuntimeTag = std::make_shared<void*>(),
+			.Name = std::string(filename),
+			.Elements = {{
+				.RuntimeTag = std::make_shared<void*>(),
+				.Size = def.Size,
+				.WrapModifiers = {
+					.Codepoints = {
+						{ 0x0000, 0x10FFFF },
+					},
+				},
+				.Renderer = FontSet::Face::Element::RendererEnum::PrerenderedGameInstallation,
+				.Lookup = {
+					.Name = def.Name,
+				},
+			}},
+			.PreviewText = std::format("{} {:g} Preview Text", def.Name, def.Size),
+			});
+	}
+
+	return res;
+}
 
 class WindowImpl {
 	static constexpr auto ClassName = L"FontEditorWindowClass";
 	static constexpr float NoBaseFontSizes[]{ 9.6f, 10.f, 12.f, 14.f, 16.f, 18.f, 18.4f, 20.f, 23.f, 34.f, 36.f, 40.f, 45.f, 46.f, 68.f, 90.f, };
+
+	enum : uint32_t {
+		WmApp = WM_APP,
+		WmOnFaceElementChanged,
+	};
 
 	enum : size_t {
 		Id_None,
@@ -1577,16 +1862,19 @@ class WindowImpl {
 	static constexpr auto ListViewHeight = 160;
 	static constexpr auto EditHeight = 40;
 
-	std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> m_fontMerged;
-	// std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont> m_fontPacked;
+	bool m_bChanged = false;
+	std::filesystem::path m_path;
+	FontSet m_fontSet;
+	FontSet::Face* m_pActiveFace = nullptr;
 
 	static std::weak_ptr<ATOM> s_pAtom;
 	std::shared_ptr<ATOM> m_pAtom;
 	std::shared_ptr<XivRes::MemoryMipmapStream> m_pMipmap;
-	std::map<FaceElement*, std::unique_ptr<FaceElement::EditorDialog>> m_editors;
+	std::map<void**, std::unique_ptr<FontSet::Face::Element::EditorDialog>> m_editors;
 	bool m_bNeedRedraw = false;
 
 	HWND m_hWnd{};
+	HACCEL m_hAccelerator{};
 	HFONT m_hUiFont{};
 
 	HWND m_hFacesListBox{};
@@ -1596,59 +1884,22 @@ class WindowImpl {
 	int m_nDrawLeft{};
 	int m_nDrawTop{};
 
-	LRESULT WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-		switch (msg) {
-			case WM_CREATE:
-				m_hWnd = hwnd;
-				return OnCreate();
+	bool m_bIsReorderingFaceElementList = false;
 
-			case WM_COMMAND:
-				switch (LOWORD(wParam)) {
-					case Id_Edit:
-						switch (HIWORD(wParam)) {
-							case EN_CHANGE:
-								m_bNeedRedraw = true;
-								InvalidateRect(hwnd, nullptr, FALSE);
-								return 0;
-						}
-						break;
-				}
-				break;
+	LRESULT Window_OnCreate(HWND hwnd) {
+		m_hWnd = hwnd;
 
-			case WM_NOTIFY:
-				return OnNotify(*reinterpret_cast<NMHDR*>(lParam));
+		m_hAccelerator = LoadAcceleratorsW(g_hInstance, MAKEINTRESOURCEW(IDR_ACCELERATOR_FACEELEMENTEDITOR));
 
-			case WM_MOUSEMOVE:
-				return OnMouseMove(static_cast<uint16_t>(wParam), LOWORD(lParam), HIWORD(lParam));
-
-			case WM_LBUTTONUP:
-				return OnMouseLButtonUp(static_cast<uint16_t>(wParam), LOWORD(lParam), HIWORD(lParam));
-
-			case WM_SIZE:
-				return OnSize();
-
-			case WM_PAINT:
-				return OnPaint();
-
-			case WM_DESTROY:
-				DeleteFont(m_hUiFont);
-				PostQuitMessage(0);
-				return 0;
-		}
-
-		return DefWindowProcW(hwnd, msg, wParam, lParam);
-	}
-
-	LRESULT OnCreate() {
 		NONCLIENTMETRICSW ncm = { sizeof(NONCLIENTMETRICSW) };
 		SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof ncm, &ncm, 0);
 		m_hUiFont = CreateFontIndirectW(&ncm.lfMessageFont);
 
 		m_hFacesListBox = CreateWindowExW(0, WC_LISTBOXW, nullptr,
-			WS_CHILD | WS_TABSTOP | WS_BORDER | WS_VISIBLE | LBS_NOINTEGRALHEIGHT,
+			WS_CHILD | WS_TABSTOP | WS_BORDER | WS_VISIBLE | LBS_NOINTEGRALHEIGHT | LBS_NOTIFY,
 			0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(Id_FaceListBox), reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(m_hWnd, GWLP_HINSTANCE)), nullptr);
 		m_hFaceElementsListView = CreateWindowExW(0, WC_LISTVIEWW, nullptr,
-			WS_CHILD | WS_TABSTOP | WS_BORDER | WS_VISIBLE | LVS_REPORT,
+			WS_CHILD | WS_TABSTOP | WS_BORDER | WS_VISIBLE | LVS_REPORT | LVS_SHOWSELALWAYS,
 			0, 0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(Id_FaceElementListView), reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(m_hWnd, GWLP_HINSTANCE)), nullptr);
 		m_hEdit = CreateWindowExW(0, WC_EDITW, nullptr,
 			WS_CHILD | WS_TABSTOP | WS_BORDER | WS_VISIBLE | WS_VSCROLL | ES_LEFT | ES_AUTOVSCROLL | ES_MULTILINE | ES_WANTRETURN,
@@ -1691,77 +1942,14 @@ class WindowImpl {
 		AddColumn(ListViewCols::Renderer, 180, L"Renderer");
 		AddColumn(ListViewCols::Lookup, 300, L"Lookup");
 
-		FaceElement::AddToList(m_hFaceElementsListView, ListView_GetItemCount(m_hFaceElementsListView), {
-			.Size = 36.f,
-			.Renderer = FaceElement::RendererEnum::PrerenderedGameInstallation,
-			.Lookup = {
-				.Name = "AXIS",
-			},
-			.RendererSpecific = {
-				.PrerenderedGame = {
-					.FontFamily = XivRes::FontGenerator::GameFontFamily::AXIS,
-				},
-			},
-			});
+		Menu_File_New(XivRes::GameFontType::font);
 
-		//FaceElement::AddToList(m_hFaceElementsListView, ListView_GetItemCount(m_hFaceElementsListView), {
-		//	.Size = 36.f,
-		//	.Renderer = FaceElement::RendererEnum::FreeType,
-		//	.Lookup = {
-		//		.Name = "Segoe UI",
-		//	},
-		//	.RendererSpecific = {
-		//		.FreeType = {
-		//			.LoadFlags = FT_LOAD_DEFAULT | FT_LOAD_TARGET_LIGHT
-		//		},
-		//	},
-		//	});
-
-		//FaceElement::AddToList(m_hFaceElementsListView, ListView_GetItemCount(m_hFaceElementsListView), {
-		//	.Size = 36.f,
-		//	.WrapModifiers = {
-		//		.LetterSpacing = -1,
-		//	},
-		//	.Renderer = FaceElement::RendererEnum::DirectWrite,
-		//	.Lookup = {
-		//		.Name = "Source Han Sans K",
-		//	},
-		//	.RendererSpecific = {
-		//		.DirectWrite = {
-		//			.RenderMode = DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC,
-		//			.MeasureMode = DWRITE_MEASURING_MODE_GDI_CLASSIC,
-		//			.GridFitMode = DWRITE_GRID_FIT_MODE_ENABLED,
-		//		},
-		//	},
-		//	});
-
-		FaceElement::AddToList(m_hFaceElementsListView, ListView_GetItemCount(m_hFaceElementsListView), {
-			.Size = 36.f,
-			.WrapModifiers = {
-				.LetterSpacing = -1,
-			},
-			.Renderer = FaceElement::RendererEnum::DirectWrite,
-			.Lookup = {
-				.Name = "Sarabun",
-			},
-			.RendererSpecific = {
-				.DirectWrite = {
-					.RenderMode = DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC,
-					.MeasureMode = DWRITE_MEASURING_MODE_GDI_CLASSIC,
-					.GridFitMode = DWRITE_GRID_FIT_MODE_ENABLED,
-				},
-			},
-			});
-
-		OnSize();
-		OnFontChanged();
-
+		Window_OnSize();
 		ShowWindow(m_hWnd, SW_SHOW);
-
 		return 0;
 	}
 
-	LRESULT OnSize() {
+	LRESULT Window_OnSize() {
 		RECT rc;
 		GetClientRect(m_hWnd, &rc);
 
@@ -1783,7 +1971,7 @@ class WindowImpl {
 		return 0;
 	}
 
-	LRESULT OnPaint() {
+	LRESULT Window_OnPaint() {
 		union {
 			struct {
 				BITMAPINFOHEADER bmih;
@@ -1805,14 +1993,18 @@ class WindowImpl {
 					buf[y * m_pMipmap->Width + x] = { 0x00, 0x00, 0x00, 0xFF };
 			}
 
-			std::wstring s(Edit_GetTextLength(m_hEdit) + 1, L'\0');
-			s.resize(Edit_GetText(m_hEdit, &s[0], static_cast<int>(s.size())));
+			if (m_pActiveFace) {
+				auto& face = *m_pActiveFace;
+				if (!face.PreviewText.empty()) {
+					if (!face.MergedFont)
+						face.RefreshFont();
 
-			auto m1 = XivRes::FontGenerator::TextMeasurer(*m_fontMerged).WithMaxWidth(m_pMipmap->Width - pad * 2).Measure(&s[0], s.size());
-			// auto m2 = XivRes::FontGenerator::TextMeasurer(*m_fontPacked).WithMaxWidth(m_pMipmap->Width - pad * 2).Measure(&s[0], s.size());
-
-			m1.DrawTo(*m_pMipmap, *m_fontMerged, 16, 16, { 0xFF, 0xFF, 0xFF, 0xFF }, { 0, 0, 0, 0 });
-			// m2.DrawTo(*m_pMipmap, *m_fontPacked, 16, 16 + m1.Occupied.GetHeight(), { 0xFF, 0xFF, 0xFF, 0xFF }, { 0, 0, 0, 0 });
+					XivRes::FontGenerator::TextMeasurer(*face.MergedFont)
+						.WithMaxWidth(m_pMipmap->Width - pad * 2)
+						.Measure(face.PreviewText)
+						.DrawTo(*m_pMipmap, *face.MergedFont, 16, 16, { 0xFF, 0xFF, 0xFF, 0xFF }, { 0, 0, 0, 0 });
+				}
+			}
 		}
 
 		bmih.biSize = sizeof bmih;
@@ -1830,175 +2022,688 @@ class WindowImpl {
 		return 0;
 	}
 
-	class ListViewDragStruct {
-		WindowImpl& Window;
+	LRESULT Window_OnFaceElementChanged(FontSet::Face::Element& element) {
+		m_bChanged = true;
+		LVFINDINFOW lvfi{ .flags = LVFI_PARAM, .lParam = reinterpret_cast<LPARAM>(element.RuntimeTag.get()) };
+		const auto index = ListView_FindItem(m_hFaceElementsListView, -1, &lvfi);
+		if (index != -1)
+			element.UpdateText(m_hFaceElementsListView, index);
 
-		bool IsDragging = false;
-		bool IsChanged = false;
+		m_pActiveFace->RefreshFont();
+		Redraw();
+		return 0;
+	}
 
-	public:
-		ListViewDragStruct(WindowImpl& window) : Window(window) {}
+	LRESULT Window_OnMouseMove(uint16_t states, int16_t x, int16_t y) {
+		if (FaceElementsListView_OnDragProcessMouseMove(x, y))
+			return 0;
 
-		LRESULT OnListViewBeginDrag(NM_LISTVIEW& nmlv) {
-			IsDragging = true;
-			IsChanged = false;
-			SetCapture(Window.m_hWnd);
-			SetCursor(LoadCursorW(nullptr, IDC_SIZENS));
+		return 0;
+	}
+
+	LRESULT Window_OnMouseLButtonUp(uint16_t states, int16_t x, int16_t y) {
+		if (FaceElementsListView_OnDragProcessMouseUp(x, y))
+			return 0;
+
+		return 0;
+	}
+
+	LRESULT Window_OnDestroy() {
+		DeleteFont(m_hUiFont);
+		PostQuitMessage(0);
+		return 0;
+	}
+
+	bool ConfirmIfChanged() {
+		if (m_bChanged) {
+			switch (MessageBoxW(m_hWnd, L"There are unsaved changes. Do you want to save your changes?", GetWindowString(m_hWnd).c_str(), MB_YESNOCANCEL)) {
+				case IDYES:
+					if (Menu_File_Save())
+						return true;
+					break;
+				case IDNO:
+					break;
+				case IDCANCEL:
+					return true;
+			}
+		}
+		return false;
+	}
+
+	LRESULT Menu_File_New(XivRes::GameFontType fontType) {
+		if (ConfirmIfChanged())
+			return 1;
+
+		m_bChanged = false;
+		m_path.clear();
+		m_fontSet = NewFromTemplateFont(fontType);
+		ReflectFontSetChange();
+
+		return 0;
+	}
+
+	LRESULT Menu_File_Open() {
+		using namespace XivRes::FontGenerator;
+		static constexpr COMDLG_FILTERSPEC fileTypes[] = {
+			{ L"Preset JSON Files (*.json)", L"*.json" },
+			{ L"All files (*.*)", L"*" },
+		};
+		const auto fileTypesSpan = std::span(fileTypes);
+
+		if (ConfirmIfChanged())
+			return 1;
+
+		try {
+			IFileOpenDialogPtr pDialog;
+			DWORD dwFlags;
+			SuccessOrThrow(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
+			SuccessOrThrow(pDialog->SetFileTypes(static_cast<UINT>(fileTypesSpan.size()), fileTypesSpan.data()));
+			SuccessOrThrow(pDialog->SetFileTypeIndex(0));
+			SuccessOrThrow(pDialog->SetTitle(L"Open"));
+			SuccessOrThrow(pDialog->GetOptions(&dwFlags));
+			SuccessOrThrow(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
+			switch (SuccessOrThrow(pDialog->Show(m_hWnd), { HRESULT_FROM_WIN32(ERROR_CANCELLED) })){
+				case HRESULT_FROM_WIN32(ERROR_CANCELLED):
+					return 0;
+			}
+
+			IShellItemPtr pResult;
+			PWSTR pszFileName;
+			SuccessOrThrow(pDialog->GetResult(&pResult));
+			SuccessOrThrow(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
+			if (!pszFileName)
+				throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
+
+			std::unique_ptr<std::remove_pointer<PWSTR>::type, decltype(CoTaskMemFree)*> pszFileNamePtr(pszFileName, CoTaskMemFree);
+
+			const auto s = ReadStreamIntoVector<char>(XivRes::FileStream(pszFileName));
+			const auto j = nlohmann::json::parse(s.begin(), s.end());
+			FontSet fontSet;
+			from_json(j, fontSet);
+
+			for (auto& face : fontSet.Faces) {
+				face.RuntimeTag = std::make_shared<void*>();
+				for (auto& element : face.Elements)
+					element.RuntimeTag = std::make_shared<void*>();
+			}
+
+			m_fontSet = std::move(fontSet);
+			m_path = pszFileName;
+
+		} catch (const std::exception& e) {
+			MessageBoxW(m_hWnd, std::format(L"Failed to open file: {}", XivRes::Unicode::Convert<std::wstring>(e.what())).c_str(), GetWindowString(m_hWnd).c_str(), MB_OK | MB_ICONERROR);
+			return 1;
+		}
+
+		ReflectFontSetChange();
+		return 0;
+	}
+
+	LRESULT Menu_File_Save() {
+		if (m_path.empty())
+			return Menu_File_SaveAs(true);
+
+		try {
+			nlohmann::json json;
+			to_json(json, m_fontSet);
+			const auto dump = json.dump();
+			std::ofstream(m_path, std::ios::binary).write(&dump[0], dump.size());
+			m_bChanged = false;
+		} catch (const std::exception& e) {
+			MessageBoxW(m_hWnd, std::format(L"Failed to save file: {}", XivRes::Unicode::Convert<std::wstring>(e.what())).c_str(), GetWindowString(m_hWnd).c_str(), MB_OK | MB_ICONERROR);
+			return 1;
+		}
+
+		return 0;
+	}
+
+	LRESULT Menu_File_SaveAs(bool changeCurrentFile) {
+		using namespace XivRes::FontGenerator;
+		static constexpr COMDLG_FILTERSPEC fileTypes[] = {
+			{ L"Preset JSON Files (*.json)", L"*.json" },
+			{ L"All files (*.*)", L"*" },
+		};
+		const auto fileTypesSpan = std::span(fileTypes);
+
+		try {
+			nlohmann::json json;
+			to_json(json, m_fontSet);
+			const auto dump = json.dump();
+
+			IFileSaveDialogPtr pDialog;
+			DWORD dwFlags;
+			SuccessOrThrow(pDialog.CreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER));
+			SuccessOrThrow(pDialog->SetFileTypes(static_cast<UINT>(fileTypesSpan.size()), fileTypesSpan.data()));
+			SuccessOrThrow(pDialog->SetFileTypeIndex(0));
+			SuccessOrThrow(pDialog->SetTitle(L"Save"));
+			SuccessOrThrow(pDialog->SetDefaultExtension(L"json"));
+			SuccessOrThrow(pDialog->GetOptions(&dwFlags));
+			SuccessOrThrow(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
+			switch (SuccessOrThrow(pDialog->Show(m_hWnd), { HRESULT_FROM_WIN32(ERROR_CANCELLED) })) {
+				case HRESULT_FROM_WIN32(ERROR_CANCELLED):
+					return 0;
+			}
+
+			IShellItemPtr pResult;
+			PWSTR pszFileName;
+			SuccessOrThrow(pDialog->GetResult(&pResult));
+			SuccessOrThrow(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
+			if (!pszFileName)
+				throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
+
+			std::unique_ptr<std::remove_pointer<PWSTR>::type, decltype(CoTaskMemFree)*> pszFileNamePtr(pszFileName, CoTaskMemFree);
+
+			std::ofstream(pszFileName, std::ios::binary).write(&dump[0], dump.size());
+			m_path = pszFileName;
+			m_bChanged = false;
+
+		} catch (const std::exception& e) {
+			MessageBoxW(m_hWnd, std::format(L"Failed to open file: {}", XivRes::Unicode::Convert<std::wstring>(e.what())).c_str(), GetWindowString(m_hWnd).c_str(), MB_OK | MB_ICONERROR);
+			return 1;
+		}
+
+		return 0;
+	}
+
+	LRESULT Menu_File_Export_RawFiles() {
+		return 0;
+	}
+
+	LRESULT Menu_File_Export_TTMP(bool useCompression) {
+		return 0;
+	}
+
+	LRESULT Menu_File_Exit() {
+		if (ConfirmIfChanged())
+			return 1;
+
+		DestroyWindow(m_hWnd);
+		return 0;
+	}
+
+	LRESULT Menu_FontElements_Edit() {
+		for (auto i = -1; -1 != (i = ListView_GetNextItem(m_hFaceElementsListView, i, LVNI_SELECTED));)
+			ShowEditor(m_pActiveFace->Elements[i]);
+		return 0;
+	}
+
+	LRESULT Menu_FontElements_Add() {
+		if (!m_pActiveFace)
+			return 0;
+
+		std::set<int> indices;
+		for (auto i = -1; -1 != (i = ListView_GetNextItem(m_hFaceElementsListView, i, LVNI_SELECTED));)
+			indices.insert(i);
+
+		const auto count = ListView_GetItemCount(m_hFaceElementsListView);
+		if (indices.empty())
+			indices.insert(count);
+
+		ListView_SetItemState(m_hFaceElementsListView, -1, 0, LVIS_SELECTED);
+
+		auto& elements = m_pActiveFace->Elements;
+		for (const auto pos : indices | std::views::reverse) {
+			FontSet::Face::Element newElement{ .RuntimeTag = std::make_shared<void*>() };
+			if (pos > 0) {
+				const auto& ref = elements[static_cast<size_t>(pos) - 1];
+				newElement.BaseFont = ref.BaseFont;
+				newElement.Size = ref.Size;
+				newElement.WrapModifiers = ref.WrapModifiers;
+				newElement.WrapModifiers.Codepoints.clear();
+				newElement.Renderer = ref.Renderer;
+				newElement.Lookup = ref.Lookup;
+				newElement.RendererSpecific = ref.RendererSpecific;
+			}
+			elements.emplace(elements.begin() + pos, std::move(newElement));
+
+			auto& element = elements[pos];
+			LVITEMW lvi{ .mask = LVIF_PARAM | LVIF_STATE, .iItem = pos, .state = LVIS_SELECTED, .stateMask = LVIS_SELECTED, .lParam = reinterpret_cast<LPARAM>(element.RuntimeTag.get()) };
+			ListView_InsertItem(m_hFaceElementsListView, &lvi);
+			element.UpdateText(m_hFaceElementsListView, lvi.iItem);
+		}
+
+		m_bChanged = true;
+		m_pActiveFace->RefreshFont();
+		Redraw();
+
+		return 0;
+	}
+
+	LRESULT Menu_FontElements_Delete() {
+		if (!m_pActiveFace)
+			return 0;
+		std::set<int> indices;
+		for (auto i = -1; -1 != (i = ListView_GetNextItem(m_hFaceElementsListView, i, LVNI_SELECTED));)
+			indices.insert(i);
+		if (indices.empty())
+			return 0;
+
+		for (const auto index : indices | std::views::reverse) {
+			ListView_DeleteItem(m_hFaceElementsListView, index);
+			m_pActiveFace->Elements.erase(m_pActiveFace->Elements.begin() + index);
+		}
+
+		m_bChanged = true;
+		m_pActiveFace->RefreshFont();
+		Redraw();
+
+		return 0;
+	}
+
+	LRESULT Menu_FontElements_Copy() {
+		if (!m_pActiveFace)
+			return 1;
+
+		auto objs = nlohmann::json::array();
+		for (auto i = -1; -1 != (i = ListView_GetNextItem(m_hFaceElementsListView, i, LVNI_SELECTED));) {
+			objs.emplace_back();
+			to_json(objs.back(), m_pActiveFace->Elements[i]);
+		}
+
+		const auto wstr = XivRes::Unicode::Convert<std::wstring>(objs.dump());
+
+		const auto clipboard = OpenClipboard(m_hWnd);
+		if (!clipboard)
+			return 1;
+		EmptyClipboard();
+
+		bool copied = false;
+		HGLOBAL hg = GlobalAlloc(GMEM_MOVEABLE, (wstr.size() + 1) * 2);
+		if (hg) {
+			if (const auto pLock = GlobalLock(hg)) {
+				memcpy(pLock, &wstr[0], (wstr.size() + 1) * 2);
+				copied = SetClipboardData(CF_UNICODETEXT, pLock);
+			}
+			GlobalUnlock(hg);
+			if (!copied)
+				GlobalFree(hg);
+		}
+		CloseClipboard();
+		return copied ? 0 : 1;
+	}
+
+	LRESULT Menu_FontElements_Cut() {
+		if (Menu_FontElements_Copy())
+			return 1;
+		
+		Menu_FontElements_Delete();
+		return 0;
+	}
+
+	LRESULT Menu_FontElements_Paste() {
+		const auto clipboard = OpenClipboard(m_hWnd);
+		if (!clipboard)
+			return 0;
+
+		std::string data;
+		if (const auto pData = GetClipboardData(CF_UNICODETEXT))
+			data = XivRes::Unicode::Convert<std::string>(reinterpret_cast<const wchar_t*>(pData));
+		CloseClipboard();
+
+		nlohmann::json parsed;
+		std::vector<FontSet::Face::Element> parsedTemplateElements;
+		try {
+			parsed = nlohmann::json::parse(data);
+			if (!parsed.is_array())
+				return 0;
+			for (const auto& p : parsed) {
+				parsedTemplateElements.emplace_back();
+				from_json(p, parsedTemplateElements.back());
+			}
+			if (parsedTemplateElements.empty())
+				return 0;
+		} catch (const nlohmann::json::exception&) {
 			return 0;
 		}
 
-		bool ProcessMouseUp(int16_t x, int16_t y) {
-			if (!IsDragging)
-				return false;
+		std::set<int> indices;
+		for (auto i = -1; -1 != (i = ListView_GetNextItem(m_hFaceElementsListView, i, LVNI_SELECTED));)
+			indices.insert(i);
 
-			IsDragging = false;
-			ReleaseCapture();
-			if (IsChanged |= ProcessDragging(x, y)) {
-				Window.OnFontChanged();
+		const auto count = ListView_GetItemCount(m_hFaceElementsListView);
+		if (indices.empty())
+			indices.insert(count);
+
+		ListView_SetItemState(m_hFaceElementsListView, -1, 0, LVIS_SELECTED);
+
+		auto& elements = m_pActiveFace->Elements;
+		for (const auto pos : indices | std::views::reverse) {
+			for (const auto& templateElement : parsedTemplateElements) {
+				FontSet::Face::Element newElement{ templateElement };
+				newElement.RuntimeTag = std::make_shared<void*>();
+				elements.emplace(elements.begin() + pos, std::move(newElement));
+
+				auto& element = elements[pos];
+				LVITEMW lvi{ .mask = LVIF_PARAM | LVIF_STATE, .iItem = pos, .state = LVIS_SELECTED, .stateMask = LVIS_SELECTED, .lParam = reinterpret_cast<LPARAM>(element.RuntimeTag.get()) };
+				ListView_InsertItem(m_hFaceElementsListView, &lvi);
+				element.UpdateText(m_hFaceElementsListView, lvi.iItem);
 			}
-			return true;
 		}
 
-		bool ProcessMouseMove(int16_t x, int16_t y) {
-			if (!IsDragging)
-				return false;
+		m_bChanged = true;
+		m_pActiveFace->RefreshFont();
+		Redraw();
 
-			IsChanged |= ProcessDragging(x, y);
-			return true;
+		return 0;
+	}
+
+	LRESULT Menu_FontElements_SelectAll() {
+		ListView_SetItemState(m_hFaceElementsListView, -1, LVIS_SELECTED, LVIS_SELECTED);
+		return 0;
+	}
+
+	LRESULT Edit_OnCommand(uint16_t commandId) {
+		switch (commandId) {
+			case EN_CHANGE:
+				if (m_pActiveFace) {
+					auto& face = *m_pActiveFace;
+					face.PreviewText = XivRes::Unicode::Convert<std::string>(GetWindowString(m_hEdit));
+					m_bChanged = true;
+					Redraw();
+				} else
+					return -1;
+				return 0;
 		}
 
-	private:
-		bool ProcessDragging(int16_t x, int16_t y) {
-			const auto hListView = Window.m_hFaceElementsListView;
+		return 0;
+	}
 
-			// Determine the dropped item
-			LVHITTESTINFO lvhti{
-				.pt = {x, y},
-			};
-			ClientToScreen(Window.m_hWnd, &lvhti.pt);
-			ScreenToClient(hListView, &lvhti.pt);
-			ListView_HitTest(hListView, &lvhti);
-
-			// Out of the ListView?
-			if (lvhti.iItem == -1) {
-				POINT ptRef{};
-				ListView_GetItemPosition(hListView, 0, &ptRef);
-				if (lvhti.pt.y < ptRef.y)
-					lvhti.iItem = 0;
-				else {
-					RECT rcListView;
-					GetClientRect(hListView, &rcListView);
-					ListView_GetItemPosition(hListView, ListView_GetItemCount(hListView) - 1, &ptRef);
-					if (lvhti.pt.y >= ptRef.y || lvhti.pt.y >= rcListView.bottom - rcListView.top)
-						lvhti.iItem = ListView_GetItemCount(hListView) - 1;
-					else
-						return false;
-				}
-			}
-
-			// Rearrange the items
-			std::set<int> sourceIndices;
-			for (auto iPos = -1; -1 != (iPos = ListView_GetNextItem(hListView, iPos, LVNI_SELECTED));)
-				sourceIndices.insert(iPos);
-
-			struct SortInfoType {
-				std::vector<int> oldIndices;
-				std::vector<int> newIndices;
-				std::map<LPARAM, int> sourcePtrs;
-			} sortInfo;
-			sortInfo.oldIndices.reserve(ListView_GetItemCount(hListView));
-			for (int i = 0, i_ = ListView_GetItemCount(hListView); i < i_; i++) {
-				LVITEMW lvi{ .mask = LVIF_PARAM, .iItem = i, };
-				ListView_GetItem(hListView, &lvi);
-				sortInfo.sourcePtrs[lvi.lParam] = i;
-				if (!sourceIndices.contains(i))
-					sortInfo.oldIndices.push_back(i);
-			}
+	LRESULT FaceListBox_OnCommand(uint16_t commandId) {
+		switch (commandId) {
+			case LBN_SELCHANGE:
 			{
-				int i = (std::max<int>)(0, 1 + lvhti.iItem - static_cast<int>(sourceIndices.size()));
-				for (const auto sourceIndex : sourceIndices)
-					sortInfo.oldIndices.insert(sortInfo.oldIndices.begin() + i++, sourceIndex);
+				const auto iItem = ListBox_GetCurSel(m_hFacesListBox);
+				if (iItem != LB_ERR) {
+					m_pActiveFace = &m_fontSet.Faces[iItem];
+					ReflectFontElementChange();
+				}
+				return 0;
 			}
-			sortInfo.newIndices.resize(sortInfo.oldIndices.size());
-			auto changed = false;
-			for (int i = 0, i_ = static_cast<int>(sortInfo.oldIndices.size()); i < i_; i++) {
-				changed |= i != sortInfo.oldIndices[i];
-				sortInfo.newIndices[sortInfo.oldIndices[i]] = i;
-			}
-
-			if (!changed)
-				return false;
-
-			auto k = [](LPARAM lp1, LPARAM lp2, LPARAM ctx) -> int {
-				auto& sortInfo = *reinterpret_cast<SortInfoType*>(ctx);
-				const auto il = sortInfo.sourcePtrs[lp1];
-				const auto ir = sortInfo.sourcePtrs[lp2];
-				const auto nl = sortInfo.newIndices[il];
-				const auto nr = sortInfo.newIndices[ir];
-				return nl == nr ? 0 : (nl > nr ? 1 : -1);
-			};
-			ListView_SortItems(hListView, k, &sortInfo);
-
-			return true;
 		}
-	} m_listViewDrag{ *this };
+		return 0;
+	}
 
-	LRESULT OnListViewDblClick(NMITEMACTIVATE& nmia) {
+	LRESULT FaceElementsListView_OnBeginDrag(NM_LISTVIEW& nmlv) {
+		if (!m_pActiveFace)
+			return -1;
+
+		m_bIsReorderingFaceElementList = true;
+		SetCapture(m_hWnd);
+		SetCursor(LoadCursorW(nullptr, IDC_SIZENS));
+		return 0;
+	}
+
+	bool FaceElementsListView_OnDragProcessMouseUp(int16_t x, int16_t y) {
+		if (!m_bIsReorderingFaceElementList)
+			return false;
+
+		m_bIsReorderingFaceElementList = false;
+		ReleaseCapture();
+		FaceElementsListView_DragProcessDragging(x, y);
+		return true;
+	}
+
+	bool FaceElementsListView_OnDragProcessMouseMove(int16_t x, int16_t y) {
+		if (!m_bIsReorderingFaceElementList)
+			return false;
+
+		FaceElementsListView_DragProcessDragging(x, y);
+		return true;
+	}
+
+	bool FaceElementsListView_DragProcessDragging(int16_t x, int16_t y) {
+		// Determine the dropped item
+		LVHITTESTINFO lvhti{
+			.pt = {x, y},
+		};
+		ClientToScreen(m_hWnd, &lvhti.pt);
+		ScreenToClient(m_hFaceElementsListView, &lvhti.pt);
+		ListView_HitTest(m_hFaceElementsListView, &lvhti);
+
+		// Out of the ListView?
+		if (lvhti.iItem == -1) {
+			POINT ptRef{};
+			ListView_GetItemPosition(m_hFaceElementsListView, 0, &ptRef);
+			if (lvhti.pt.y < ptRef.y)
+				lvhti.iItem = 0;
+			else {
+				RECT rcListView;
+				GetClientRect(m_hFaceElementsListView, &rcListView);
+				ListView_GetItemPosition(m_hFaceElementsListView, ListView_GetItemCount(m_hFaceElementsListView) - 1, &ptRef);
+				if (lvhti.pt.y >= ptRef.y || lvhti.pt.y >= rcListView.bottom - rcListView.top)
+					lvhti.iItem = ListView_GetItemCount(m_hFaceElementsListView) - 1;
+				else
+					return false;
+			}
+		}
+
+		auto& face = *m_pActiveFace;
+
+		// Rearrange the items
+		std::set<int> sourceIndices;
+		for (auto iPos = -1; -1 != (iPos = ListView_GetNextItem(m_hFaceElementsListView, iPos, LVNI_SELECTED));)
+			sourceIndices.insert(iPos);
+
+		struct SortInfoType {
+			std::vector<int> oldIndices;
+			std::vector<int> newIndices;
+			std::map<LPARAM, int> sourcePtrs;
+		} sortInfo;
+		sortInfo.oldIndices.reserve(face.Elements.size());
+		for (int i = 0, i_ = static_cast<int>(face.Elements.size()); i < i_; i++) {
+			LVITEMW lvi{ .mask = LVIF_PARAM, .iItem = i, .lParam = reinterpret_cast<LPARAM>(face.RuntimeTag.get()) };
+			ListView_GetItem(m_hFaceElementsListView, &lvi);
+			sortInfo.sourcePtrs[lvi.lParam] = i;
+			if (!sourceIndices.contains(i))
+				sortInfo.oldIndices.push_back(i);
+		}
+
+		{
+			int i = (std::max<int>)(0, 1 + lvhti.iItem - static_cast<int>(sourceIndices.size()));
+			for (const auto sourceIndex : sourceIndices)
+				sortInfo.oldIndices.insert(sortInfo.oldIndices.begin() + i++, sourceIndex);
+		}
+
+		sortInfo.newIndices.resize(sortInfo.oldIndices.size());
+		auto changed = false;
+		for (int i = 0, i_ = static_cast<int>(sortInfo.oldIndices.size()); i < i_; i++) {
+			changed |= i != sortInfo.oldIndices[i];
+			sortInfo.newIndices[sortInfo.oldIndices[i]] = i;
+		}
+
+		if (!changed)
+			return false;
+
+		const auto listViewSortCallback = [](LPARAM lp1, LPARAM lp2, LPARAM ctx) -> int {
+			auto& sortInfo = *reinterpret_cast<SortInfoType*>(ctx);
+			const auto il = sortInfo.sourcePtrs[lp1];
+			const auto ir = sortInfo.sourcePtrs[lp2];
+			const auto nl = sortInfo.newIndices[il];
+			const auto nr = sortInfo.newIndices[ir];
+			return nl == nr ? 0 : (nl > nr ? 1 : -1);
+		};
+		ListView_SortItems(m_hFaceElementsListView, listViewSortCallback, &sortInfo);
+
+		std::sort(face.Elements.begin(), face.Elements.end(), [&sortInfo](const FontSet::Face::Element& l, const FontSet::Face::Element& r) -> bool {
+			const auto il = sortInfo.sourcePtrs[reinterpret_cast<LPARAM>(l.RuntimeTag.get())];
+			const auto ir = sortInfo.sourcePtrs[reinterpret_cast<LPARAM>(r.RuntimeTag.get())];
+			const auto nl = sortInfo.newIndices[il];
+			const auto nr = sortInfo.newIndices[ir];
+			return nl < nr;
+		});
+
+		m_bChanged = true;
+		m_pActiveFace->RefreshFont();
+		Redraw();
+
+		return true;
+	}
+
+	LRESULT FaceElementsListView_OnDblClick(NMITEMACTIVATE& nmia) {
 		if (nmia.iItem == -1)
 			return 0;
+		if (m_pActiveFace == nullptr)
+			return 0;
+		if (nmia.iItem >= m_pActiveFace->Elements.size())
+			return 0;
+		ShowEditor(m_pActiveFace->Elements[nmia.iItem]);
+		return 0;
+	}
 
-		LVITEMW lvi{ .mask = LVIF_PARAM, .iItem = nmia.iItem };
-		ListView_GetItem(m_hFaceElementsListView, &lvi);
-
-		auto& element = *reinterpret_cast<FaceElement*>(lvi.lParam);
-		auto& pEditorWindow = m_editors[&element];
-		if (pEditorWindow && pEditorWindow->IsOpened())
+	void ShowEditor(FontSet::Face::Element& element) {
+		auto& pEditorWindow = m_editors[m_pActiveFace->RuntimeTag.get()];
+		if (pEditorWindow && pEditorWindow->IsOpened()) {
 			pEditorWindow->Activate();
-		else {
-			pEditorWindow = std::make_unique<FaceElement::EditorDialog>(m_hWnd, element, [this, &element, iItem = lvi.iItem]() {
-				OnFontChanged();
-				element.UpdateText(m_hFaceElementsListView, iItem);
+		} else {
+			pEditorWindow = std::make_unique<FontSet::Face::Element::EditorDialog>(m_hWnd, element, [this, &element]() {
+				PostMessageW(m_hWnd, WmOnFaceElementChanged, 0, reinterpret_cast<LPARAM>(&element));
 			});
 		}
-		return 0;
 	}
 
-	LRESULT OnNotify(NMHDR& hdr) {
-		switch (hdr.idFrom) {
-			case Id_FaceElementListView:
-				switch (hdr.code) {
-					case LVN_BEGINDRAG:
-						return m_listViewDrag.OnListViewBeginDrag(*(reinterpret_cast<NM_LISTVIEW*>(&hdr)));
+	void ReflectFontSetChange() {
+		void** currentTag = nullptr;
+		if (int curSel = ListBox_GetCurSel(m_hFacesListBox); curSel != LB_ERR)
+			currentTag = reinterpret_cast<void**>(ListBox_GetItemData(m_hFacesListBox, curSel));
 
-					case NM_DBLCLK:
-						OnListViewDblClick(*(reinterpret_cast<NMITEMACTIVATE*>(&hdr)));
-						return 0;
-				}
-				break;
+		ListBox_ResetContent(m_hFacesListBox);
+		auto selectionRestored = false;
+		for (int i = 0, i_ = static_cast<int>(m_fontSet.Faces.size()); i < i_; i++) {
+			auto& face = m_fontSet.Faces[i];
+			ListBox_AddString(m_hFacesListBox, XivRes::Unicode::Convert<std::wstring>(face.Name).c_str());
+			ListBox_SetItemData(m_hFacesListBox, i, face.RuntimeTag.get());
+			if (currentTag == face.RuntimeTag.get()) {
+				ListBox_SetCurSel(m_hFacesListBox, i);
+				selectionRestored = true;
+			}
 		}
 
-		return 0;
+		if (!selectionRestored) {
+			if (m_fontSet.Faces.empty())
+				m_pActiveFace = nullptr;
+			else {
+				ListBox_SetCurSel(m_hFacesListBox, 0);
+				m_pActiveFace = m_fontSet.Faces.empty() ? nullptr : &m_fontSet.Faces[0];
+			}
+
+			ReflectFontElementChange();
+			Redraw();
+		}
 	}
 
-	LRESULT OnMouseMove(uint16_t states, int16_t x, int16_t y) {
-		if (m_listViewDrag.ProcessMouseMove(x, y))
-			return 0;
+	void ReflectFontElementChange() {
+		if (!m_pActiveFace) {
+			ListView_DeleteAllItems(m_hFaceElementsListView);
+			return;
+		}
 
-		return 0;
+		std::map<LPARAM, size_t> activeElementTags;
+		for (auto& element : m_pActiveFace->Elements) {
+			const auto lp = reinterpret_cast<LPARAM>(element.RuntimeTag.get());
+			activeElementTags[lp] = activeElementTags.size();
+			if (LVFINDINFOW lvfi{ .flags = LVFI_PARAM, .lParam = lp };
+				ListView_FindItem(m_hFaceElementsListView, -1, &lvfi) != -1)
+				continue;
+
+			LVITEMW lvi{ .mask = LVIF_PARAM, .iItem = ListView_GetItemCount(m_hFaceElementsListView), .lParam = lp };
+			ListView_InsertItem(m_hFaceElementsListView, &lvi);
+			element.UpdateText(m_hFaceElementsListView, lvi.iItem);
+		}
+
+		for (int i = 0, i_ = ListView_GetItemCount(m_hFaceElementsListView); i < i_;) {
+			LVITEMW lvi{ .mask = LVIF_PARAM, .iItem = i };
+			ListView_GetItem(m_hFaceElementsListView, &lvi);
+			if (!activeElementTags.contains(lvi.lParam)) {
+				i_--;
+				ListView_DeleteItem(m_hFaceElementsListView, i);
+			} else
+				i++;
+		}
+
+		const auto listViewSortCallback = [](LPARAM lp1, LPARAM lp2, LPARAM ctx) -> int {
+			const auto& activeElementTags = *reinterpret_cast<const std::map<LPARAM, size_t>*>(ctx);
+			const auto nl = activeElementTags.at(lp1);
+			const auto nr = activeElementTags.at(lp2);
+			return nl == nr ? 0 : (nl > nr ? 1 : -1);
+		};
+		ListView_SortItems(m_hFaceElementsListView, listViewSortCallback, &activeElementTags);
+
+		Edit_SetText(m_hEdit, XivRes::Unicode::Convert<std::wstring>(m_pActiveFace->PreviewText).c_str());
+		Redraw();
 	}
 
-	LRESULT OnMouseLButtonUp(uint16_t states, int16_t x, int16_t y) {
-		if (m_listViewDrag.ProcessMouseUp(x, y))
-			return 0;
+	void Redraw() {
+		//XivRes::FontGenerator::FontdataPacker packer;
+		//packer.AddFont(merge);
+		//auto [fdts, texs] = packer.Compile();
+		//auto res = std::make_shared<XivRes::TextureStream>(texs[0]->Type, texs[0]->Width, texs[0]->Height, 1, 1, texs.size());
+		//for (size_t i = 0; i < texs.size(); i++)
+		//	res->SetMipmap(0, i, texs[i]);
+		//m_fontMerged = std::make_shared<XivRes::FontGenerator::GameFontdataFixedSizeFont>(fdts[0], texs, "Test", "Test");
 
-		return 0;
+		if (!m_pActiveFace)
+			return;
+
+		m_bNeedRedraw = true;
+		InvalidateRect(m_hWnd, nullptr, FALSE);
+	}
+
+	LRESULT WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+		switch (msg) {
+			case WM_COMMAND:
+				switch (LOWORD(wParam)) {
+					case Id_Edit: return Edit_OnCommand(HIWORD(wParam));
+					case Id_FaceListBox: return FaceListBox_OnCommand(HIWORD(wParam));
+					case ID_FILE_NEW_MAINGAMEFONT: return Menu_File_New(XivRes::GameFontType::font);
+					case ID_FILE_NEW_LOBBYFONT: return Menu_File_New(XivRes::GameFontType::font_lobby);
+					case ID_FILE_NEW_CHNAXIS: return Menu_File_New(XivRes::GameFontType::chn_axis);
+					case ID_FILE_NEW_KRNAXIS: return Menu_File_New(XivRes::GameFontType::krn_axis);
+					case ID_FILE_OPEN: return Menu_File_Open();
+					case ID_FILE_SAVE: return Menu_File_Save();
+					case ID_FILE_SAVEAS: return Menu_File_SaveAs(true);
+					case ID_FILE_SAVECOPYAS: return Menu_File_SaveAs(false);
+					case ID_FILE_EXPORT_TOFDT: return Menu_File_Export_RawFiles();
+					case ID_FILE_EXPORT_TOTTMPCOMPRESSED: return Menu_File_Export_TTMP(true);
+					case ID_FILE_EXPORT_TOTTMPUNCOMPRESSED: return Menu_File_Export_TTMP(false);
+					case ID_FILE_EXIT: return Menu_File_Exit();
+					case ID_FONTELEMENTS_EDIT:return Menu_FontElements_Edit();
+					case ID_FONTELEMENTS_ADD:return Menu_FontElements_Add();
+					case ID_FONTELEMENTS_DELETE: return Menu_FontElements_Delete();
+					case ID_FONTELEMENTS_COPY: return Menu_FontElements_Copy();
+					case ID_FONTELEMENTS_CUT: return Menu_FontElements_Cut();
+					case ID_FONTELEMENTS_PASTE: return Menu_FontElements_Paste();
+					case ID_FONTELEMENTS_SELECTALL:return Menu_FontElements_SelectAll();
+				}
+				break;
+
+			case WM_NOTIFY:
+				switch (auto& hdr = *reinterpret_cast<NMHDR*>(lParam); hdr.idFrom) {
+					case Id_FaceElementListView:
+						switch (hdr.code) {
+							case LVN_BEGINDRAG: return FaceElementsListView_OnBeginDrag(*(reinterpret_cast<NM_LISTVIEW*>(lParam)));
+							case NM_DBLCLK: return FaceElementsListView_OnDblClick(*(reinterpret_cast<NMITEMACTIVATE*>(lParam)));
+						}
+						break;
+				}
+				return 0;
+
+			case WM_CREATE: return Window_OnCreate(hwnd);
+			case WmOnFaceElementChanged: return Window_OnFaceElementChanged(*reinterpret_cast<FontSet::Face::Element*>(lParam));
+			case WM_MOUSEMOVE: return Window_OnMouseMove(static_cast<uint16_t>(wParam), LOWORD(lParam), HIWORD(lParam));
+			case WM_LBUTTONUP: return Window_OnMouseLButtonUp(static_cast<uint16_t>(wParam), LOWORD(lParam), HIWORD(lParam));
+			case WM_SIZE: return Window_OnSize();
+			case WM_PAINT: return Window_OnPaint();
+			case WM_CLOSE: return Menu_File_Exit();
+			case WM_DESTROY: return Window_OnDestroy();
+		}
+
+		return DefWindowProcW(hwnd, msg, wParam, lParam);
 	}
 
 	static LRESULT WINAPI WndProcStatic(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 		return reinterpret_cast<WindowImpl*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA))->WndProc(hwnd, msg, wParam, lParam);
 	}
 
-public:
 	static LRESULT WINAPI WndProcInitial(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 		if (msg != WM_NCCREATE)
 			return DefWindowProcW(hwnd, msg, wParam, lParam);
@@ -2011,6 +2716,7 @@ public:
 		return pImpl->WndProc(hwnd, msg, wParam, lParam);
 	}
 
+public:
 	WindowImpl() {
 		auto atom = s_pAtom.lock();
 		if (!atom) {
@@ -2036,76 +2742,6 @@ public:
 			nullptr, nullptr, nullptr, this);
 	}
 
-	void OnFontChanged() {
-		std::vector<std::pair<std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>, bool>> mergeFontList;
-
-		for (int i = 0, i_ = ListView_GetItemCount(m_hFaceElementsListView); i < i_; i++) {
-			LVITEMW item{};
-			item.mask = LVIF_PARAM;
-			item.iItem = i;
-			item.iSubItem = 0;
-			ListView_GetItem(m_hFaceElementsListView, &item);
-
-			auto& element = *reinterpret_cast<FaceElement*>(item.lParam);
-			mergeFontList.emplace_back(element.Font, element.Overwrite);
-		}
-
-		auto merge = std::make_shared<XivRes::FontGenerator::MergedFixedSizeFont>(std::move(mergeFontList));
-
-		//XivRes::FontGenerator::FontdataPacker packer;
-		//packer.AddFont(merge);
-		//auto [fdts, texs] = packer.Compile();
-		//auto res = std::make_shared<XivRes::TextureStream>(texs[0]->Type, texs[0]->Width, texs[0]->Height, 1, 1, texs.size());
-		//for (size_t i = 0; i < texs.size(); i++)
-		//	res->SetMipmap(0, i, texs[i]);
-		//m_fontMerged = std::make_shared<XivRes::FontGenerator::GameFontdataFixedSizeFont>(fdts[0], texs, "Test", "Test");
-
-		m_fontMerged = merge;
-
-		m_bNeedRedraw = true;
-		InvalidateRect(m_hWnd, nullptr, FALSE);
-	}
-
-	void TestFontLsb(int horizontalOffset) {
-		const auto& cps = m_fontMerged->GetAllCodepoints();
-		std::set<const XivRes::Unicode::UnicodeBlocks::BlockDefinition*> visitedBlocks;
-		std::set<char32_t> ignoreDist;
-
-		int nOffenders = 0;
-		for (const auto& c : cps) {
-			if (ignoreDist.contains(c))
-				continue;
-
-			XivRes::FontGenerator::GlyphMetrics gm;
-			m_fontMerged->GetGlyphMetrics(c, gm);
-			if (gm.X1 < -horizontalOffset) {
-				auto& block = XivRes::Unicode::UnicodeBlocks::GetCorrespondingBlock(c);
-				if (block.Flags & XivRes::Unicode::UnicodeBlocks::RTL)
-					continue;
-
-				nOffenders++;
-				if (!visitedBlocks.contains(&block)) {
-					std::cout << std::format("{}\n", block.Name);
-					visitedBlocks.insert(&block);
-				}
-
-				union {
-					uint32_t u8u32v;
-					char b[5]{};
-				};
-				u8u32v = XivRes::Unicode::CodePointToUtf8Uint32(c);
-				std::reverse(b, b + strlen(b));
-
-				if (gm.AdvanceX)
-					std::cout << std::format("* {}\tU+{:04x} {}~{} +{}\n", b, (int)c, gm.X1, gm.X2, gm.AdvanceX);
-				else
-					std::cout << std::format("* {}\tU+{:04x} {}~{}\n", b, (int)c, gm.X1, gm.X2);
-			}
-		}
-
-		std::cout << std::format("Total {} * {}\n", nOffenders, cps.size());
-	}
-
 	~WindowImpl() {
 		auto atom = *m_pAtom;
 		m_pAtom = nullptr;
@@ -2123,6 +2759,19 @@ public:
 
 		return false;
 	}
+
+	bool ConsumeAccelerator(MSG& msg) {
+		if (!m_hAccelerator)
+			return false;
+
+		if (msg.message == WM_KEYDOWN && (msg.hwnd == m_hEdit || GetForegroundWindow() != m_hWnd)) {
+			if (msg.wParam == VK_RETURN || msg.wParam == VK_INSERT || msg.wParam == VK_DELETE)
+				return false;
+			if (msg.wParam == 'C' || msg.wParam == 'X' || msg.wParam == 'V' || msg.wParam == 'A')
+				return false;
+		}
+		return TranslateAccelerator(m_hWnd, m_hAccelerator, &msg);
+	}
 };
 
 std::weak_ptr<ATOM> WindowImpl::s_pAtom;
@@ -2130,7 +2779,7 @@ std::weak_ptr<ATOM> WindowImpl::s_pAtom;
 void ShowExampleWindow() {
 	WindowImpl window;
 	for (MSG msg{}; GetMessageW(&msg, nullptr, 0, 0);) {
-		if (!window.ConsumeDialogMessage(msg)) {
+		if (!window.ConsumeAccelerator(msg) && !window.ConsumeDialogMessage(msg)) {
 			TranslateMessage(&msg);
 			DispatchMessageW(&msg);
 		}

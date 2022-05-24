@@ -1,9 +1,12 @@
 #define WIN32_LEAN_AND_MEAN
 
 #include <iostream>
+#include <ranges>
+
 #include <Windows.h>
 #include <windowsx.h>
 #include <CommCtrl.h>
+#include <ShObjIdl.h>
 
 #pragma comment(lib, "Comctl32.lib")
 
@@ -12,6 +15,8 @@
 #include FT_BITMAP_H
 #include FT_OUTLINE_H 
 #include FT_GLYPH_H
+
+#include <nlohmann/json.hpp>
 
 #include "XivRes/FontdataStream.h"
 #include "XivRes/GameReader.h"

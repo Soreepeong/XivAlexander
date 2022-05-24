@@ -386,13 +386,10 @@ namespace XivRes::FontGenerator {
 			std::shared_ptr<IStream> Stream;
 			std::set<char32_t> Characters;
 			std::map<std::pair<char32_t, char32_t>, int> KerningPairs;
-			std::map<char32_t, GlyphMetrics> AllGlyphMetrics;
 			DWRITE_FONT_METRICS1 Metrics;
 			CreateStruct Params;
 			int FontIndex = 0;
 			float Size = 0.f;
-			int RecommendedHorizontalOffset = 0;
-			int MaximumRequiredHorizontalOffset = 0;
 
 			template<decltype(std::roundf) TIntCastFn = std::roundf>
 			int ScaleFromFontUnit(int fontUnitValue) const {
@@ -441,32 +438,6 @@ namespace XivRes::FontGenerator {
 					for (uint32_t i = range.first; i <= range.last; ++i)
 						info->Characters.insert(static_cast<char32_t>(i));
 			}
-			{
-				const auto ascent = info->ScaleFromFontUnit(info->Metrics.ascent);
-				std::vector<uint64_t> horzOffsets;
-				horzOffsets.reserve(info->Characters.size());
-				for (const auto c : info->Characters) {
-					IDWriteGlyphRunAnalysisPtr analysis;
-					auto& gm = info->AllGlyphMetrics[c];
-					if (!GetGlyphMetrics(m_dwrite, *info, c, gm, analysis))
-						continue;
-
-					gm.Translate(0, ascent);
-
-					const auto n = gm.X1;
-					if (n <= 0)
-						continue;
-					if (n >= horzOffsets.size())
-						horzOffsets.resize(n + static_cast<size_t>(1));
-					horzOffsets[n]++;
-					horzOffsets.push_back(n);
-					info->MaximumRequiredHorizontalOffset = (std::max)(info->MaximumRequiredHorizontalOffset, n);
-				}
-
-				if (!horzOffsets.empty())
-					info->RecommendedHorizontalOffset = static_cast<int>(std::accumulate(horzOffsets.begin(), horzOffsets.end(), 0ULL) / horzOffsets.size());
-			}
-
 			{
 				DWriteFontTable kernDataRef(m_dwrite.Face, Internal::TrueType::Kern::DirectoryTableTag.NativeValue);
 				DWriteFontTable gposDataRef(m_dwrite.Face, Internal::TrueType::Gpos::DirectoryTableTag.NativeValue);
@@ -566,14 +537,6 @@ namespace XivRes::FontGenerator {
 			return Unicode::Convert<std::string>(res);
 		}
 
-		int GetRecommendedHorizontalOffset() const override {
-			return m_info->RecommendedHorizontalOffset;
-		}
-
-		int GetMaximumRequiredHorizontalOffset() const override {
-			return m_info->MaximumRequiredHorizontalOffset;
-		}
-
 		float GetSize() const override {
 			return m_info->Size;
 		}
@@ -590,8 +553,13 @@ namespace XivRes::FontGenerator {
 			return m_info->Characters;
 		}
 
-		const std::map<char32_t, GlyphMetrics>& GetAllGlyphMetrics() const override {
-			return m_info->AllGlyphMetrics;
+		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const override {
+			IDWriteGlyphRunAnalysisPtr analysis;
+			if (!GetGlyphMetrics(codepoint, gm, analysis))
+				return false;
+
+			gm.Translate(0, GetAscent());
+			return true;
 		}
 
 		const std::map<std::pair<char32_t, char32_t>, int>& GetAllKerningPairs() const override {
@@ -601,7 +569,7 @@ namespace XivRes::FontGenerator {
 		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor, float gamma) const override {
 			IDWriteGlyphRunAnalysisPtr analysis;
 			GlyphMetrics gm;
-			if (!GetGlyphMetrics(m_dwrite, *m_info, codepoint, gm, analysis))
+			if (!GetGlyphMetrics(codepoint, gm, analysis))
 				return false;
 
 			auto src = gm;
@@ -629,7 +597,7 @@ namespace XivRes::FontGenerator {
 		bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity, float gamma) const override {
 			IDWriteGlyphRunAnalysisPtr analysis;
 			GlyphMetrics gm;
-			if (!GetGlyphMetrics(m_dwrite, *m_info, codepoint, gm, analysis))
+			if (!GetGlyphMetrics(codepoint, gm, analysis))
 				return false;
 
 			auto src = gm;
@@ -676,26 +644,24 @@ namespace XivRes::FontGenerator {
 			return res;
 		}
 
-		static bool GetGlyphMetrics(const DWriteInterfaceStruct& iface, const ParsedInfoStruct& info, char32_t codepoint, GlyphMetrics& gm, IDWriteGlyphRunAnalysisPtr& analysis) {
+		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm, IDWriteGlyphRunAnalysisPtr& analysis) const {
 			try {
 				uint16_t glyphIndex;
-				SuccessOrThrow(iface.Face->GetGlyphIndices(reinterpret_cast<const uint32_t*>(&codepoint), 1, &glyphIndex));
-				if (!glyphIndex) {
-					gm.Clear();
+				SuccessOrThrow(m_dwrite.Face->GetGlyphIndices(reinterpret_cast<const uint32_t*>(&codepoint), 1, &glyphIndex));
+				if (!glyphIndex)
 					return false;
-				}
 
 				DWRITE_GLYPH_METRICS dgm;
-				SuccessOrThrow(iface.Face->GetGdiCompatibleGlyphMetrics(
-					info.Size, 1.0f, nullptr,
-					info.Params.MeasureMode == DWRITE_MEASURING_MODE_GDI_NATURAL ? TRUE : FALSE,
+				SuccessOrThrow(m_dwrite.Face->GetGdiCompatibleGlyphMetrics(
+					m_info->Size, 1.0f, nullptr,
+					m_info->Params.MeasureMode == DWRITE_MEASURING_MODE_GDI_NATURAL ? TRUE : FALSE,
 					&glyphIndex, 1, &dgm));
 
 				float glyphAdvance{};
 				DWRITE_GLYPH_OFFSET glyphOffset{};
 				const DWRITE_GLYPH_RUN run{
-					.fontFace = iface.Face,
-					.fontEmSize = info.Size,
+					.fontFace = m_dwrite.Face,
+					.fontEmSize = m_info->Size,
 					.glyphCount = 1,
 					.glyphIndices = &glyphIndex,
 					.glyphAdvances = &glyphAdvance,
@@ -704,16 +670,16 @@ namespace XivRes::FontGenerator {
 					.bidiLevel = 0,
 				};
 
-				auto renderMode = info.Params.RenderMode;
+				auto renderMode = m_info->Params.RenderMode;
 				if (renderMode == DWRITE_RENDERING_MODE_DEFAULT)
-					SuccessOrThrow(iface.Face->GetRecommendedRenderingMode(info.Size, 1.f, info.Params.MeasureMode, nullptr, &renderMode));
+					SuccessOrThrow(m_dwrite.Face->GetRecommendedRenderingMode(m_info->Size, 1.f, m_info->Params.MeasureMode, nullptr, &renderMode));
 				
-				SuccessOrThrow(iface.Factory3->CreateGlyphRunAnalysis(
+				SuccessOrThrow(m_dwrite.Factory3->CreateGlyphRunAnalysis(
 					&run,
 					nullptr,
 					renderMode,
-					info.Params.MeasureMode,
-					info.Params.GridFitMode,
+					m_info->Params.MeasureMode,
+					m_info->Params.GridFitMode,
 					DWRITE_TEXT_ANTIALIAS_MODE_GRAYSCALE,
 					0,
 					0,
@@ -721,12 +687,11 @@ namespace XivRes::FontGenerator {
 				
 				SuccessOrThrow(analysis->GetAlphaTextureBounds(DWRITE_TEXTURE_ALIASED_1x1, gm.AsMutableRectPtr()));
 				
-				gm.AdvanceX = info.ScaleFromFontUnit(dgm.advanceWidth);
+				gm.AdvanceX = m_info->ScaleFromFontUnit(dgm.advanceWidth);
 
 				return true;
 
 			} catch (...) {
-				gm.Clear();
 				return false;
 			}
 		}

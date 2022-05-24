@@ -205,7 +205,6 @@
     <ClCompile Include="TestString.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="rt_manif.bin" />
     <None Include="vcpkg.json" />
   </ItemGroup>
   <ItemGroup>

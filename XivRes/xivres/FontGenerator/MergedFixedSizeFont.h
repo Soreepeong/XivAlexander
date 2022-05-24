@@ -87,14 +87,6 @@ namespace XivRes::FontGenerator {
 			return {};
 		}
 
-		int GetRecommendedHorizontalOffset() const override {
-			return 0;
-		}
-
-		int GetMaximumRequiredHorizontalOffset() const override {
-			return 0;
-		}
-
 		float GetSize() const override {
 			return m_info->Size;
 		}
@@ -111,15 +103,18 @@ namespace XivRes::FontGenerator {
 			return m_info->Codepoints;
 		}
 
-		const std::map<char32_t, GlyphMetrics>& GetAllGlyphMetrics() const {
-			return m_info->AllGlyphMetrics;
-		}
-
 		const void* GetGlyphUniqid(char32_t c) const override {
 			if (const auto it = m_info->UsedFonts.find(c); it != m_info->UsedFonts.end())
 				return it->second->GetGlyphUniqid(c);
 
 			return nullptr;
+		}
+
+		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const override {
+			if (const auto it = m_info->UsedFonts.find(codepoint); it != m_info->UsedFonts.end())
+				return it->second->GetGlyphMetrics(codepoint, gm);
+
+			return false;
 		}
 
 		const std::map<std::pair<char32_t, char32_t>, int>& GetAllKerningPairs() const override {

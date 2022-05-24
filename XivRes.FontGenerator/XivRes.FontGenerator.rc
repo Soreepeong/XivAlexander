@@ -108,6 +108,7 @@ BEGIN
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,288,174,144,12
     LISTBOX         IDC_LIST_UNICODEBLOCKS_SEARCHRESULTS,180,191,252,97,LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL | WS_VSCROLL | WS_TABSTOP
     EDITTEXT        IDC_EDIT_UNICODEBLOCKS_RANGEPREVIEW,180,294,180,36,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    PUSHBUTTON      "Add All",IDC_BUTTON_UNICODEBLOCKS_ADDALL,366,294,68,18
     PUSHBUTTON      "Add Selected",IDC_BUTTON_UNICODEBLOCKS_ADD,366,312,68,18
     GROUPBOX        "Add Custom Range",IDC_STATIC,174,342,264,54
     EDITTEXT        IDC_EDIT_ADDCUSTOMRANGE_INPUT,180,354,252,12,ES_AUTOHSCROLL
@@ -254,8 +255,6 @@ BEGIN
             MENUITEM "&Lobby Font",                 ID_FILE_NEW_LOBBYFONT
             MENUITEM "&ChnAXIS",                    ID_FILE_NEW_CHNAXIS
             MENUITEM "&KrnAXIS",                    ID_FILE_NEW_KRNAXIS
-            MENUITEM SEPARATOR
-            MENUITEM "&Start from Scratch",         ID_FILE_NEW_STARTFROMSCRATCH
         END
         MENUITEM "&Open\tCtrl+O",               ID_FILE_OPEN
         MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
@@ -269,23 +268,41 @@ BEGIN
             MENUITEM "Export to .&ttmp2 TexTools ModPack file (Uncompressed)", ID_FILE_EXPORT_TOTTMPUNCOMPRESSED
         END
         MENUITEM SEPARATOR
-        MENUITEM "E&xit\tAlt+F4",               ID_FILE_EXIT
-    END
-    POPUP "F&onts"
-    BEGIN
-        MENUITEM "&Add\tCtrl+F",                ID_FONTS_ADD
-        MENUITEM "&Rename\tCtrl+R",             ID_FONTS_RENAME
-        MENUITEM "&Duplicate\tCtrl+D",          ID_FONTS_DUPLICATE
-        MENUITEM "Duplicate &multiple...\tCtrl+Shift+D", ID_FONTS_DUPLICATEMULTIPLE
-        MENUITEM "&Remove\tCtrl+R",             ID_FONTS_REMOVE
+        MENUITEM "E&xit\tCtrl+Q",               ID_FILE_EXIT
     END
     POPUP "Font &Elements"
     BEGIN
-        MENUITEM "&Add\tCtrl+E",                ID_FONTELEMENTS_ADD
-        MENUITEM "&Duplicate\tCtrl+U",          ID_FONTELEMENTS_DUPLICATE
-        MENUITEM "Duplicate &multiple\tCtrl+Shift+U", ID_FONTELEMENTS_DUPLICATEMULTIPLE
-        MENUITEM "&Remove\tCtrl+Shift+R",       ID_FONTELEMENTS_REMOVE
+        MENUITEM "&Edit\tEnter",                ID_FONTELEMENTS_EDIT
+        MENUITEM "&Add\tIns",                   ID_FONTELEMENTS_ADD
+        MENUITEM "&Delete\tDel",                ID_FONTELEMENTS_DELETE
+        MENUITEM SEPARATOR
+        MENUITEM "&Copy\tCtrl+C",               ID_FONTELEMENTS_COPY
+        MENUITEM "&Cut\tCtrl+X",                ID_FONTELEMENTS_CUT
+        MENUITEM "&Paste\tCtrl+V",              ID_FONTELEMENTS_PASTE
+        MENUITEM SEPARATOR
+        MENUITEM "&Select All\tCtrl+A",         ID_FONTELEMENTS_SELECTALL
     END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Accelerator
+//
+
+IDR_ACCELERATOR_FACEELEMENTEDITOR ACCELERATORS
+BEGIN
+    "O",            ID_FILE_OPEN,           VIRTKEY, CONTROL, NOINVERT
+    "S",            ID_FILE_SAVE,           VIRTKEY, CONTROL, NOINVERT
+    "S",            ID_FILE_SAVEAS,         VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "Q",            ID_FILE_EXIT,           VIRTKEY, CONTROL, NOINVERT
+    "C",            ID_FONTELEMENTS_COPY,   VIRTKEY, CONTROL, NOINVERT
+    "X",            ID_FONTELEMENTS_CUT,    VIRTKEY, CONTROL, NOINVERT
+    "V",            ID_FONTELEMENTS_PASTE,  VIRTKEY, CONTROL, NOINVERT
+    VK_DELETE,      ID_FONTELEMENTS_DELETE, VIRTKEY, NOINVERT
+    VK_INSERT,      ID_FONTELEMENTS_ADD,    VIRTKEY, NOINVERT
+    "A",            ID_FONTELEMENTS_SELECTALL, VIRTKEY, CONTROL, NOINVERT
+    VK_RETURN,      ID_FONTELEMENTS_EDIT,   VIRTKEY, NOINVERT
 END
 
 #endif    // English (United States) resources

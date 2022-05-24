@@ -148,10 +148,6 @@ namespace XivRes::FontGenerator {
 
 		virtual std::string GetSubfamilyName() const = 0;
 
-		virtual int GetRecommendedHorizontalOffset() const = 0;
-
-		virtual int GetMaximumRequiredHorizontalOffset() const = 0;
-
 		virtual float GetSize() const = 0;
 
 		virtual int GetAscent() const = 0;
@@ -161,8 +157,6 @@ namespace XivRes::FontGenerator {
 		virtual const std::set<char32_t>& GetAllCodepoints() const = 0;
 
 		virtual bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const = 0;
-
-		virtual const std::map<char32_t, GlyphMetrics>& GetAllGlyphMetrics() const = 0;
 
 		virtual const void* GetGlyphUniqid(char32_t c) const = 0;
 
@@ -179,25 +173,6 @@ namespace XivRes::FontGenerator {
 
 	class DefaultAbstractFixedSizeFont : public IFixedSizeFont {
 	public:
-		int GetRecommendedHorizontalOffset() const override {
-			return 0;
-		}
-
-		int GetMaximumRequiredHorizontalOffset() const override {
-			return 0;
-		}
-
-		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const override final {
-			const auto& m = GetAllGlyphMetrics();
-			if (const auto it = m.find(codepoint); it == m.end()) {
-				gm.Clear();
-				return false;
-			} else {
-				gm = it->second;
-				return true;
-			}
-		}
-
 		const void* GetGlyphUniqid(char32_t c) const override {
 			const auto& codepoints = GetAllCodepoints();
 			const auto it = codepoints.find(c);
@@ -247,14 +222,6 @@ namespace XivRes::FontGenerator {
 			return "Regular";
 		}
 
-		int GetRecommendedHorizontalOffset() const override {
-			return 0;
-		}
-
-		int GetMaximumRequiredHorizontalOffset() const override {
-			return 0;
-		}
-
 		float GetSize() const override {
 			return m_size;
 		}
@@ -275,11 +242,6 @@ namespace XivRes::FontGenerator {
 		bool GetGlyphMetrics(char32_t codepoint, GlyphMetrics& gm) const override {
 			gm.Clear();
 			return false;
-		}
-
-		const std::map<char32_t, GlyphMetrics>& GetAllGlyphMetrics() const override {
-			static const std::map<char32_t, GlyphMetrics> s_empty;
-			return s_empty;
 		}
 
 		const void* GetGlyphUniqid(char32_t c) const override {

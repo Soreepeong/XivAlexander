@@ -76,7 +76,8 @@ namespace XivRes {
 
 		[[nodiscard]] ExcelReader GetExcelReader(const std::string& name) const;
 
-		FontGenerator::GameFontdataSet GetFonts(XivRes::GameFontType gameFontType, const FontGenerator::GameFontdataDefinition* pGameFontdataDefinitions, size_t count, const char* pcszTexturePathPattern) const;
+		FontGenerator::GameFontdataSet GetFonts(XivRes::GameFontType gameFontType, std::span<const FontGenerator::GameFontdataDefinition> gameFontdataDefinitions, const char* pcszTexturePathPattern) const;
+
 		FontGenerator::GameFontdataSet GetFonts(GameFontType fontType = GameFontType::font) const;
 
 		void PreloadAllSqpackFiles() const {

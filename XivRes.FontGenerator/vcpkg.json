@@ -3,6 +3,7 @@
   "version-string": "_",
   "builtin-baseline": "2247b397faefc8266e545bd86330d2192d6b6247",
   "dependencies": [
+    "nlohmann-json",
     "freetype",
     "zlib"
   ]

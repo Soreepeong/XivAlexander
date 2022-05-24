@@ -298,38 +298,121 @@ namespace XivRes::Unicode {
 		return Encode(EncodingTag<T>(), ptr, c, strict);
 	}
 
-	template<class TTo, class TFrom>
-	inline TTo ConvertFromChar(TFrom c, bool strict = true) {
-		TTo out{};
+	template<class TTo>
+	inline TTo& ConvertFromChar(TTo& out, char32_t c, bool strict = true) {
 		const auto encLen = Unicode::Encode<TTo::value_type>(nullptr, c, strict);
-		out.resize(encLen);
-		Unicode::Encode(&out[0], c, strict);
+		const auto baseIndex = out.size();
+		out.resize(baseIndex + encLen);
+		Unicode::Encode(&out[baseIndex], c, strict);
 		return out;
 	}
 
-	template<class TTo, class TFromElem, typename = std::enable_if_t<std::is_integral_v<TFromElem>>>
-	inline TTo Convert(const TFromElem* in, size_t length = (std::numeric_limits<size_t>::max)(), bool strict = true) {
-		if (length == (std::numeric_limits<size_t>::max)())
-			length = std::char_traits<TFromElem>::length(in);
-
+	template<class TTo>
+	inline TTo ConvertFromChar(char32_t c, bool strict = true) {
 		TTo out{};
-		out.reserve(length * 4 / sizeof(in[0]) / sizeof(out[0]));
+		return ConvertFromChar(out, c, strict);
+	}
 
-		char32_t c{};
-		for (size_t decLen = 0, decIdx = 0; decIdx < length && (decLen = Unicode::Decode(c, &in[decIdx], length - decIdx, strict)); decIdx += decLen) {
-			const auto encIdx = out.size();
-			const auto encLen = Unicode::Encode<TTo::value_type>(nullptr, c, strict);
-			out.resize(encIdx + encLen);
-			Unicode::Encode(&out[encIdx], c, strict);
+	template<class TTo>
+	inline TTo& RepresentChar(TTo& out, char32_t c, bool strict = true) {
+		switch (c) {
+			case 0x0000: return Convert<TTo>(out, U"[NUL]");
+			case 0x0001: return Convert<TTo>(out, U"[SOH]");
+			case 0x0002: return Convert<TTo>(out, U"[STX]");
+			case 0x0003: return Convert<TTo>(out, U"[ETX]");
+			case 0x0004: return Convert<TTo>(out, U"[EOT]");
+			case 0x0005: return Convert<TTo>(out, U"[ENQ]");
+			case 0x0006: return Convert<TTo>(out, U"[ACK]");
+			case 0x0007: return Convert<TTo>(out, U"[BEL]");
+			case 0x0008: return Convert<TTo>(out, U"[BS]");
+			case 0x0009: return Convert<TTo>(out, U"[HT]");
+			case 0x000a: return Convert<TTo>(out, U"[LF]");
+			case 0x000b: return Convert<TTo>(out, U"[VT]");
+			case 0x000c: return Convert<TTo>(out, U"[FF]");
+			case 0x000d: return Convert<TTo>(out, U"[CR]");
+			case 0x000e: return Convert<TTo>(out, U"[SO]");
+			case 0x000f: return Convert<TTo>(out, U"[SI]");
+			case 0x0010: return Convert<TTo>(out, U"[DLE]");
+			case 0x0011: return Convert<TTo>(out, U"[DC1]");
+			case 0x0012: return Convert<TTo>(out, U"[DC2]");
+			case 0x0013: return Convert<TTo>(out, U"[DC3]");
+			case 0x0014: return Convert<TTo>(out, U"[DC4]");
+			case 0x0015: return Convert<TTo>(out, U"[NAK]");
+			case 0x0016: return Convert<TTo>(out, U"[SYN]");
+			case 0x0017: return Convert<TTo>(out, U"[ACK]");
+			case 0x0018: return Convert<TTo>(out, U"[CAN]");
+			case 0x0019: return Convert<TTo>(out, U"[EM]");
+			case 0x001A: return Convert<TTo>(out, U"[SUB]");
+			case 0x001B: return Convert<TTo>(out, U"[ESC]");
+			case 0x001C: return Convert<TTo>(out, U"[FS]");
+			case 0x001D: return Convert<TTo>(out, U"[GS]");
+			case 0x001E: return Convert<TTo>(out, U"[RS]");
+			case 0x001F: return Convert<TTo>(out, U"[US]");
+			case 0x007F: return Convert<TTo>(out, U"[DEL]");
+			case 0x0080: return Convert<TTo>(out, U"[PAD]");
+			case 0x0081: return Convert<TTo>(out, U"[HOP]");
+			case 0x0082: return Convert<TTo>(out, U"[BPH]");
+			case 0x0083: return Convert<TTo>(out, U"[NBD]");
+			case 0x0084: return Convert<TTo>(out, U"[IND]");
+			case 0x0085: return Convert<TTo>(out, U"[NEL]");
+			case 0x0086: return Convert<TTo>(out, U"[SSA]");
+			case 0x0087: return Convert<TTo>(out, U"[ESA]");
+			case 0x0088: return Convert<TTo>(out, U"[HTS]");
+			case 0x0089: return Convert<TTo>(out, U"[HTJ]");
+			case 0x008A: return Convert<TTo>(out, U"[VTS]");
+			case 0x008B: return Convert<TTo>(out, U"[PLD]");
+			case 0x008C: return Convert<TTo>(out, U"[PLU]");
+			case 0x008D: return Convert<TTo>(out, U"[RI]");
+			case 0x008E: return Convert<TTo>(out, U"[SS2]");
+			case 0x008F: return Convert<TTo>(out, U"[SS3]");
+			case 0x0090: return Convert<TTo>(out, U"[DCS]");
+			case 0x0091: return Convert<TTo>(out, U"[PU1]");
+			case 0x0092: return Convert<TTo>(out, U"[PU2]");
+			case 0x0093: return Convert<TTo>(out, U"[STS]");
+			case 0x0094: return Convert<TTo>(out, U"[CCH]");
+			case 0x0095: return Convert<TTo>(out, U"[MW]");
+			case 0x0096: return Convert<TTo>(out, U"[SPA]");
+			case 0x0097: return Convert<TTo>(out, U"[EPA]");
+			case 0x0098: return Convert<TTo>(out, U"[SOS]");
+			case 0x0099: return Convert<TTo>(out, U"[SGC]");
+			case 0x009A: return Convert<TTo>(out, U"[SCI]");
+			case 0x009B: return Convert<TTo>(out, U"[CSI]");
+			case 0x009C: return Convert<TTo>(out, U"[ST]");
+			case 0x009D: return Convert<TTo>(out, U"[OSC]");
+			case 0x009E: return Convert<TTo>(out, U"[PM]");
+			case 0x009F: return Convert<TTo>(out, U"[APC]");
+			case 0x00AD: return Convert<TTo>(out, U"[SHY]");
+			case 0x061C: return Convert<TTo>(out, U"[ALM]");
+			case 0x180E: return Convert<TTo>(out, U"[MVS]");
+			case 0x200B: return Convert<TTo>(out, U"[ZWSP]");
+			case 0x200C: return Convert<TTo>(out, U"[ZWNJ]");
+			case 0x200D: return Convert<TTo>(out, U"[ZWJ]");
+			case 0x200E: return Convert<TTo>(out, U"[LRM]");
+			case 0x200F: return Convert<TTo>(out, U"[RLM]");
+			case 0x202A: return Convert<TTo>(out, U"[LRE]");
+			case 0x202B: return Convert<TTo>(out, U"[RLE]");
+			case 0x202C: return Convert<TTo>(out, U"[PDF]");
+			case 0x202D: return Convert<TTo>(out, U"[LRO]");
+			case 0x202E: return Convert<TTo>(out, U"[RLO]");
+			case 0x2060: return Convert<TTo>(out, U"[WJ]");
+			case 0x2066: return Convert<TTo>(out, U"[LRI]");
+			case 0x2067: return Convert<TTo>(out, U"[RLI]");
+			case 0x2068: return Convert<TTo>(out, U"[FSI]");
+			case 0x2069: return Convert<TTo>(out, U"[PDI]");
+			case 0xFEFF: return Convert<TTo>(out, U"[BOM]");
+			default: return ConvertFromChar<TTo>(out, c, strict);
 		}
+	}
 
-		return out;
+	template<class TTo>
+	inline TTo RepresentChar(char32_t c, bool strict = true) {
+		TTo out{};
+		return RepresentChar(out, c, strict);
 	}
 
 	template<class TTo, class TFromElem, class TFromTraits = std::char_traits<TFromElem>>
-	inline TTo Convert(const std::basic_string_view<TFromElem, TFromTraits>& in, bool strict = true) {
-		TTo out{};
-		out.reserve(in.size() * 4 / sizeof(in[0]) / sizeof(out[0]));
+	inline TTo& Convert(TTo& out, const std::basic_string_view<TFromElem, TFromTraits>& in, bool strict = true) {
+		out.reserve(out.size() + in.size() * 4 / sizeof(in[0]) / sizeof(out[0]));
 
 		char32_t c{};
 		for (size_t decLen = 0, decIdx = 0; decIdx < in.size() && (decLen = Unicode::Decode(c, &in[decIdx], in.size() - decIdx, strict)); decIdx += decLen) {
@@ -343,19 +426,37 @@ namespace XivRes::Unicode {
 	}
 
 	template<class TTo, class TFromElem, class TFromTraits = std::char_traits<TFromElem>, class TFromAlloc = std::allocator<TFromElem>>
+	inline TTo& Convert(TTo& out, const std::basic_string<TFromElem, TFromTraits, TFromAlloc>& in, bool strict = true) {
+		return Convert(out, std::basic_string_view<TFromElem, TFromTraits>(in), strict);
+	}
+
+	template<class TTo, class TFromElem, typename = std::enable_if_t<std::is_integral_v<TFromElem>>>
+	inline TTo& Convert(TTo& out, const TFromElem* in, size_t length = (std::numeric_limits<size_t>::max)(), bool strict = true) {
+		if (length == (std::numeric_limits<size_t>::max)())
+			length = std::char_traits<TFromElem>::length(in);
+
+		return Convert(out, std::basic_string_view<TFromElem>(in, length), strict);
+	}
+
+	template<class TTo, class TFromElem, class TFromTraits = std::char_traits<TFromElem>>
+	inline TTo Convert(const std::basic_string_view<TFromElem, TFromTraits>& in, bool strict = true) {
+		TTo out{};
+		return Convert(out, in, strict);
+	}
+
+	template<class TTo, class TFromElem, class TFromTraits = std::char_traits<TFromElem>, class TFromAlloc = std::allocator<TFromElem>>
 	inline TTo Convert(const std::basic_string<TFromElem, TFromTraits, TFromAlloc>& in, bool strict = true) {
 		TTo out{};
-		out.reserve(in.size() * 4 / sizeof(in[0]) / sizeof(out[0]));
+		return Convert(out, std::basic_string_view<TFromElem, TFromTraits>(in), strict);
+	}
 
-		char32_t c{};
-		for (size_t decLen = 0, decIdx = 0; decIdx < in.size() && (decLen = Unicode::Decode(c, &in[decIdx], in.size() - decIdx, strict)); decIdx += decLen) {
-			const auto encIdx = out.size();
-			const auto encLen = Unicode::Encode<TTo::value_type>(nullptr, c, strict);
-			out.resize(encIdx + encLen);
-			Unicode::Encode(&out[encIdx], c, strict);
-		}
+	template<class TTo, class TFromElem, typename = std::enable_if_t<std::is_integral_v<TFromElem>>>
+	inline TTo Convert(const TFromElem* in, size_t length = (std::numeric_limits<size_t>::max)(), bool strict = true) {
+		if (length == (std::numeric_limits<size_t>::max)())
+			length = std::char_traits<TFromElem>::length(in);
 
-		return out;
+		TTo out{};
+		return Convert(out, std::basic_string_view<TFromElem>(in, length), strict);
 	}
 
 	template<>
