@@ -34,14 +34,14 @@ namespace XivRes::FontGenerator {
 		MergedFixedSizeFont& operator=(const MergedFixedSizeFont&) = default;
 
 		MergedFixedSizeFont(std::vector<std::pair<std::shared_ptr<IFixedSizeFont>, bool>> fonts, MergedFontVerticalAlignment verticalAlignment = MergedFontVerticalAlignment::Baseline) {
-			if (fonts.empty())
-				return;
-
 			auto info = std::make_shared<InfoStruct>();
+			if (fonts.empty())
+				fonts.emplace_back(std::make_shared<EmptyFixedSizeFont>(), false);
+
+			info->Alignment = verticalAlignment;
 			info->Size = fonts.front().first->GetSize();
 			info->Ascent = fonts.front().first->GetAscent();
 			info->LineHeight = fonts.front().first->GetLineHeight();
-			info->Alignment = verticalAlignment;
 
 			for (auto& [font, overwrite] : fonts) {
 				for (const auto c : font->GetAllCodepoints()) {
@@ -141,6 +141,13 @@ namespace XivRes::FontGenerator {
 			for (const auto& font : m_fonts)
 				res->m_fonts.emplace_back(font->GetThreadSafeView());
 			return res;
+		}
+
+		const IFixedSizeFont* GetBaseFont(char32_t codepoint) const override {
+			if (const auto it = m_info->UsedFonts.find(codepoint); it != m_info->UsedFonts.end())
+				return it->second->GetBaseFont(codepoint);
+			
+			return nullptr;
 		}
 
 	private:

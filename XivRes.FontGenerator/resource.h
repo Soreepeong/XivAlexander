@@ -4,7 +4,6 @@
 //
 #define IDD_FACEELEMENTEDITOR           101
 #define IDR_FONTEDITOR                  106
-#define IDR_ACCELERATOR1                107
 #define IDR_ACCELERATOR_FACEELEMENTEDITOR 107
 #define IDC_COMBO_FONT_RENDERER         1001
 #define IDC_COMBO_FONT                  1002
@@ -84,13 +83,16 @@
 #define ID_FONTELEMENTS_DELETE          40041
 #define ID_FONTELEMENTS_SELECTALL       40055
 #define ID_FONTELEMENTS_EDIT            40056
+#define ID_EXPORT_RAW                   40059
+#define ID_EXPORT_TOTTMPCOMPRESSED      40060
+#define ID_EXPORT_TOTTMPUNCOMPRESSED    40061
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        108
-#define _APS_NEXT_COMMAND_VALUE         40059
+#define _APS_NEXT_COMMAND_VALUE         40062
 #define _APS_NEXT_CONTROL_VALUE         1036
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

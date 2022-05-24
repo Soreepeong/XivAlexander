@@ -179,6 +179,13 @@ namespace XivRes::FontGenerator {
 			res->m_font = m_font->GetThreadSafeView();
 			return res;
 		}
+
+		const IFixedSizeFont* GetBaseFont(char32_t codepoint) const override {
+			if (!m_info->Codepoints.contains(codepoint))
+				return nullptr;
+
+			return m_font->GetBaseFont(codepoint);
+		}
 	};
 }
 

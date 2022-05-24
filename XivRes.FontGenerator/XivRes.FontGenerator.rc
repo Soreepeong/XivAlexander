@@ -261,13 +261,6 @@ BEGIN
         MENUITEM "Save &As\tCtrl+Shift+S",      ID_FILE_SAVEAS
         MENUITEM "Save &Copy As",               ID_FILE_SAVECOPYAS
         MENUITEM SEPARATOR
-        POPUP "&Export"
-        BEGIN
-            MENUITEM "Export to .&fdt and .tex files", ID_FILE_EXPORT_TOFDT
-            MENUITEM "Export to .&ttmp2 TexTools ModPack file (Compressed)", ID_FILE_EXPORT_TOTTMPCOMPRESSED
-            MENUITEM "Export to .&ttmp2 TexTools ModPack file (Uncompressed)", ID_FILE_EXPORT_TOTTMPUNCOMPRESSED
-        END
-        MENUITEM SEPARATOR
         MENUITEM "E&xit\tCtrl+Q",               ID_FILE_EXIT
     END
     POPUP "Font &Elements"
@@ -281,6 +274,12 @@ BEGIN
         MENUITEM "&Paste\tCtrl+V",              ID_FONTELEMENTS_PASTE
         MENUITEM SEPARATOR
         MENUITEM "&Select All\tCtrl+A",         ID_FONTELEMENTS_SELECTALL
+    END
+    POPUP "&Export"
+    BEGIN
+        MENUITEM "Export to .&fdt and .tex files", ID_EXPORT_RAW
+        MENUITEM "Export to .&ttmp2 TexTools ModPack file (Compressed)", ID_EXPORT_TOTTMPCOMPRESSED
+        MENUITEM "Export to .&ttmp2 TexTools ModPack file (Uncompressed)", ID_EXPORT_TOTTMPUNCOMPRESSED
     END
 END
 

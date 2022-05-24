@@ -162,6 +162,10 @@ namespace XivRes::FontGenerator {
 			return std::make_shared<GameFontdataFixedSizeFont>(*this);
 		}
 
+		const IFixedSizeFont* GetBaseFont(char32_t codepoint) const override {
+			return this;
+		}
+
 	private:
 		GlyphMetrics GlyphMetricsFromEntry(const FontdataGlyphEntry* pEntry, int x = 0, int y = 0) const {
 			GlyphMetrics src{

@@ -18,7 +18,7 @@
 namespace XivRes::FontGenerator {
 	class FontdataPacker {
 		size_t m_nThreads = std::thread::hardware_concurrency();
-		int m_nSideLength = 1024;
+		int m_nSideLength = 4096;
 		std::vector<std::shared_ptr<IFixedSizeFont>> m_fonts;
 
 	public:
@@ -37,17 +37,21 @@ namespace XivRes::FontGenerator {
 			using rect_type = output_rect_t<spaces_type>;
 
 			struct CharacterPlan {
-				size_t SourceFontIndex{};
-				std::vector<FontdataStream*> TargetFonts{};
-				FontdataGlyphEntry Entry{};
+				char32_t Codepoint;
+				const IFixedSizeFont* BaseFont{};
+				FontdataGlyphEntry BaseEntry{};
+				std::map<FontdataStream*, std::pair<FontdataGlyphEntry, size_t>> TargetFonts{};
 				const Unicode::UnicodeBlocks::BlockDefinition* UnicodeBlock{};
+				int BaseWidth{};
 				int CurrentOffsetX{};
 			};
 
 			std::vector<std::shared_ptr<FontdataStream>> targetFonts;
 			targetFonts.resize(m_fonts.size());
 
+			std::map<const IFixedSizeFont*, std::vector<std::shared_ptr<IFixedSizeFont>>> threadSafeBaseFonts;
 			std::vector<std::vector<std::shared_ptr<IFixedSizeFont>>> threadSafeSourceFonts;
+
 			threadSafeSourceFonts.reserve(m_fonts.size());
 			size_t nMaxCharacterCount = 0;
 			for (const auto& font : m_fonts) {
@@ -57,10 +61,17 @@ namespace XivRes::FontGenerator {
 				threadSafeSourceFonts.back()[0] = font;
 			}
 
-			const auto GetThreadSafeSourceFont = [&threadSafeSourceFonts](size_t sourceFontIndex, size_t threadIndex) -> const IFixedSizeFont& {
-				auto& copy = threadSafeSourceFonts[sourceFontIndex][threadIndex];
+			const auto GetThreadSafeBaseFont = [&threadSafeBaseFonts](const IFixedSizeFont* font, size_t threadIndex) -> const IFixedSizeFont& {
+				auto& copy = threadSafeBaseFonts[font][threadIndex];
 				if (!copy)
-					copy = threadSafeSourceFonts[sourceFontIndex][0]->GetThreadSafeView();
+					copy = threadSafeBaseFonts[font][0]->GetThreadSafeView();
+				return *copy;
+			};
+
+			const auto GetThreadSafeSourceFont = [&threadSafeSourceFonts](size_t fontIndex, size_t threadIndex) -> const IFixedSizeFont& {
+				auto& copy = threadSafeSourceFonts[fontIndex][threadIndex];
+				if (!copy)
+					copy = threadSafeSourceFonts[fontIndex][0]->GetThreadSafeView();
 				return *copy;
 			};
 
@@ -96,11 +107,19 @@ namespace XivRes::FontGenerator {
 						if (!pInfo) {
 							rectangleInfoList.emplace_back();
 							pInfo = &rectangleInfoList.back();
-							pInfo->SourceFontIndex = i;
+							pInfo->Codepoint = codepoint;
+							pInfo->BaseFont = font->GetBaseFont(codepoint);
+							if (threadSafeBaseFonts[pInfo->BaseFont].empty()) {
+								threadSafeBaseFonts[pInfo->BaseFont].resize(m_nThreads);
+								threadSafeBaseFonts[pInfo->BaseFont][0] = pInfo->BaseFont->GetThreadSafeView();
+							}
 							pInfo->UnicodeBlock = &block;
-							pInfo->Entry.Char(codepoint);
+							pInfo->BaseEntry.Char(codepoint);
 						}
-						pInfo->TargetFonts.emplace_back(targetFonts[i].get());
+						pInfo->TargetFonts[targetFonts[i].get()] = std::make_pair(FontdataGlyphEntry{
+							.Utf8Value = pInfo->BaseEntry.Utf8Value,
+							.ShiftJisValue = pInfo->BaseEntry.ShiftJisValue,
+						}, i);
 						targetFonts[i]->AddFontEntry(codepoint, 0, 0, 0, 0, 0, 0, 0);
 					}
 				}
@@ -112,23 +131,42 @@ namespace XivRes::FontGenerator {
 				size_t remaining = rectangleInfoList.size();
 				const auto divideUnit = (std::max<size_t>)(1, static_cast<size_t>(std::sqrt(static_cast<double>(rectangleInfoList.size()))));
 				for (size_t nBase = 0; nBase < divideUnit; nBase++) {
-					pool.Submit([&remaining, divideUnit, &rectangleInfoList, &pool, nBase, &GetThreadSafeSourceFont](size_t nThreadIndex) {
+					pool.Submit([&remaining, divideUnit, &rectangleInfoList, &pool, nBase, &GetThreadSafeSourceFont, &GetThreadSafeBaseFont](size_t nThreadIndex) {
 						for (size_t i = nBase; i < rectangleInfoList.size(); i += divideUnit) {
 							remaining -= 1;
 							pool.AbortIfErrorOccurred();
 
 							auto& info = rectangleInfoList[i];
-							const auto& font = GetThreadSafeSourceFont(info.SourceFontIndex, nThreadIndex);
+							const auto& baseFont = GetThreadSafeBaseFont(info.BaseFont, nThreadIndex);
 
 							GlyphMetrics gm;
-							if (!font.GetGlyphMetrics(info.Entry.Char(), gm))
-								throw std::runtime_error("Font reported to have a codepoint but it's failing to report glyph metrics");
-
-							info.Entry.CurrentOffsetY = gm.Y1;
-							info.Entry.BoundingHeight = Internal::RangeCheckedCast<uint8_t>(gm.Y2 - gm.Y1);
+							if (!baseFont.GetGlyphMetrics(info.Codepoint, gm))
+								throw std::runtime_error("Base font reported to have a codepoint but it's failing to report glyph metrics");
 							info.CurrentOffsetX = (std::min)(0, gm.X1);
-							info.Entry.BoundingWidth = Internal::RangeCheckedCast<uint8_t>(gm.X2 - info.CurrentOffsetX);
-							info.Entry.NextOffsetX = gm.AdvanceX - gm.X2;
+							info.BaseEntry.CurrentOffsetY = gm.Y1;
+							info.BaseEntry.BoundingHeight = Internal::RangeCheckedCast<uint8_t>(gm.Y2 - gm.Y1);
+							info.BaseEntry.BoundingWidth = Internal::RangeCheckedCast<uint8_t>(gm.X2 - info.CurrentOffsetX);
+							info.BaseEntry.NextOffsetX = gm.AdvanceX - gm.X2;
+							info.BaseWidth = *info.BaseEntry.BoundingWidth;
+
+							for (auto& [fdt, entryAndSourceFontIndex] : info.TargetFonts) {
+								auto& [entry, sourceFontIndex] = entryAndSourceFontIndex;
+								const auto& sourceFont = GetThreadSafeSourceFont(sourceFontIndex, nThreadIndex);
+								if (!sourceFont.GetGlyphMetrics(info.Codepoint, gm)) {
+									sourceFont.GetGlyphMetrics(info.Codepoint, gm);
+									throw std::runtime_error("Font reported to have a codepoint but it's failing to report glyph metrics");
+								}
+
+								entry.CurrentOffsetY = gm.Y1;
+								entry.BoundingHeight = Internal::RangeCheckedCast<uint8_t>(gm.Y2 - gm.Y1);
+								entry.BoundingWidth = Internal::RangeCheckedCast<uint8_t>(gm.X2 - (std::min)(0, gm.X1));
+								entry.NextOffsetX = gm.AdvanceX - gm.X2;
+
+								if (*info.BaseEntry.BoundingWidth < *entry.BoundingWidth) {
+									info.CurrentOffsetX -= *entry.BoundingWidth - *info.BaseEntry.BoundingWidth;
+									info.BaseEntry.BoundingWidth = *entry.BoundingWidth;
+								}
+							}
 						}
 					});
 				}
@@ -148,12 +186,25 @@ namespace XivRes::FontGenerator {
 				const auto index = &r - &pendingRectangles.front();
 				const auto pInfo = pendingPlans[index];
 
-				pInfo->Entry.TextureIndex = Internal::RangeCheckedCast<uint16_t>(nPlaneCount);
-				pInfo->Entry.TextureOffsetX = Internal::RangeCheckedCast<uint16_t>(r.x + 1);
-				pInfo->Entry.TextureOffsetY = Internal::RangeCheckedCast<uint16_t>(r.y + 1);
+				pInfo->BaseEntry.TextureIndex = Internal::RangeCheckedCast<uint16_t>(nPlaneCount);
+				pInfo->BaseEntry.TextureOffsetX = Internal::RangeCheckedCast<uint16_t>(r.x + 1);
+				pInfo->BaseEntry.TextureOffsetY = Internal::RangeCheckedCast<uint16_t>(r.y + 1);
 
-				for (auto& pFontdata : pInfo->TargetFonts)
-					pFontdata->AddFontEntry(pInfo->Entry);
+				for (auto& [pFontdata, entryAndMore] : pInfo->TargetFonts) {
+					auto& [entry, _] = entryAndMore;
+					entry.TextureIndex = pInfo->BaseEntry.TextureIndex;
+					entry.TextureOffsetX = pInfo->BaseEntry.TextureOffsetX;
+					entry.TextureOffsetY = pInfo->BaseEntry.TextureOffsetY;
+
+					if (const auto extra = *entry.BoundingWidth - pInfo->BaseWidth; extra > 0) {
+						entry.BoundingWidth = *entry.BoundingWidth + extra;
+						entry.TextureOffsetX = *entry.TextureOffsetX - extra;
+					}
+					if (const auto diff = *entry.CurrentOffsetY - pInfo->BaseEntry.CurrentOffsetY)
+						entry.TextureOffsetY = *entry.TextureOffsetY + diff;
+
+					pFontdata->AddFontEntry(entry);
+				}
 
 				successfulPlans.emplace_back(pInfo);
 
@@ -170,7 +221,7 @@ namespace XivRes::FontGenerator {
 				Internal::ThreadPool pool(m_nThreads);
 
 				for (auto& rectangleInfo : rectangleInfoList) {
-					pendingRectangles.emplace_back(0, 0, rectangleInfo.Entry.BoundingWidth + 1, rectangleInfo.Entry.BoundingHeight + 1);
+					pendingRectangles.emplace_back(0, 0, rectangleInfo.BaseEntry.BoundingWidth + 1, rectangleInfo.BaseEntry.BoundingHeight + 1);
 					pendingPlans.emplace_back(&rectangleInfo);
 				}
 
@@ -215,16 +266,16 @@ namespace XivRes::FontGenerator {
 						const auto divideUnit = (std::max<size_t>)(1, static_cast<size_t>(std::sqrt(static_cast<double>(pSuccesses->size()))));
 
 						for (size_t nBase = 0; nBase < divideUnit; nBase++) {
-							pool.Submit([divideUnit, pSuccesses, nBase, pCurrentTargetBuffer, w = pStream->Width, h = pStream->Height, &GetThreadSafeSourceFont](size_t nThreadIndex) {
+							pool.Submit([divideUnit, pSuccesses, nBase, pCurrentTargetBuffer, w = pStream->Width, h = pStream->Height, &GetThreadSafeBaseFont](size_t nThreadIndex) {
 								for (size_t i = nBase; i < pSuccesses->size(); i += divideUnit) {
 									const auto pInfo = (*pSuccesses)[i];
-									const auto& font = GetThreadSafeSourceFont(pInfo->SourceFontIndex, nThreadIndex);
+									const auto& font = GetThreadSafeBaseFont(pInfo->BaseFont, nThreadIndex);
 									font.Draw(
-										pInfo->Entry.Char(),
+										pInfo->BaseEntry.Char(),
 										pCurrentTargetBuffer,
 										4,
-										pInfo->Entry.TextureOffsetX - pInfo->CurrentOffsetX,
-										pInfo->Entry.TextureOffsetY - pInfo->Entry.CurrentOffsetY,
+										pInfo->BaseEntry.TextureOffsetX - pInfo->CurrentOffsetX,
+										pInfo->BaseEntry.TextureOffsetY - pInfo->BaseEntry.CurrentOffsetY,
 										w,
 										h,
 										255, 0, 255, 255, 1.0f
@@ -237,7 +288,7 @@ namespace XivRes::FontGenerator {
 					pendingRectangles.clear();
 					pendingPlans.clear();
 					for (const auto pInfo : failedPlans) {
-						pendingRectangles.emplace_back(0, 0, pInfo->Entry.BoundingWidth + 1, pInfo->Entry.BoundingHeight + 1);
+						pendingRectangles.emplace_back(0, 0, pInfo->BaseEntry.BoundingWidth + 1, pInfo->BaseEntry.BoundingHeight + 1);
 						pendingPlans.emplace_back(pInfo);
 					}
 					failedPlans.clear();

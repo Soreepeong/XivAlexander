@@ -257,6 +257,7 @@ namespace XivRes::Internal {
 						return;
 
 					} catch (const std::exception& e) {
+						throw;
 						SubmitDone(std::format("Task: {}", e.what()));
 						return;
 					}

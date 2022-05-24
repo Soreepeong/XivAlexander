@@ -169,6 +169,8 @@ namespace XivRes::FontGenerator {
 		virtual bool Draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity, float gamma) const = 0;
 
 		virtual std::shared_ptr<IFixedSizeFont> GetThreadSafeView() const = 0;
+
+		virtual const IFixedSizeFont* GetBaseFont(char32_t codepoint) const = 0;
 	};
 
 	class DefaultAbstractFixedSizeFont : public IFixedSizeFont {
@@ -267,6 +269,10 @@ namespace XivRes::FontGenerator {
 
 		std::shared_ptr<IFixedSizeFont> GetThreadSafeView() const override {
 			return std::make_shared<EmptyFixedSizeFont>(*this);
+		}
+
+		const IFixedSizeFont* GetBaseFont(char32_t codepoint) const override {
+			return this;
 		}
 	};
 }

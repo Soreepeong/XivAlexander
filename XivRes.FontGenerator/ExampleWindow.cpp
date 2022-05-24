@@ -423,6 +423,8 @@ struct FontSet {
 
 	std::string TexFilenameFormat;
 	std::vector<Face> Faces;
+
+	void ConsolidateFonts();
 };
 
 void to_json(nlohmann::json& json, const XivRes::FontGenerator::WrapModifiers& value) {
@@ -1808,11 +1810,67 @@ private:
 	}
 };
 
+void FontSet::ConsolidateFonts() {
+	std::map<std::string, std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>> knownFonts;
+	for (auto& face : Faces) {
+		for (auto& elem : face.Elements) {
+			std::string fontKey;
+			switch (elem.Renderer) {
+				case Face::Element::RendererEnum::Empty:
+					fontKey = std::format("empty:{:g}:{}:{}", elem.Size, elem.RendererSpecific.Empty.Ascent, elem.RendererSpecific.Empty.LineHeight);
+					break;
+				case Face::Element::RendererEnum::PrerenderedGameInstallation:
+					fontKey = std::format("game:{}:{:g}", elem.Lookup.Name, elem.Size);
+					break;
+				case Face::Element::RendererEnum::DirectWrite:
+					fontKey = std::format("directwrite:{}:{:g}:{}:{}:{}:{}:{}:{}",
+						elem.Lookup.Name,
+						elem.Size,
+						static_cast<uint32_t>(elem.Lookup.Weight),
+						static_cast<uint32_t>(elem.Lookup.Stretch),
+						static_cast<uint32_t>(elem.Lookup.Style),
+						static_cast<uint32_t>(elem.RendererSpecific.DirectWrite.RenderMode),
+						static_cast<uint32_t>(elem.RendererSpecific.DirectWrite.MeasureMode),
+						static_cast<uint32_t>(elem.RendererSpecific.DirectWrite.GridFitMode)
+						);
+					break;
+				case Face::Element::RendererEnum::FreeType:
+					fontKey = std::format("freetype:{}:{:g}:{}:{}:{}:{}",
+						elem.Lookup.Name,
+						elem.Size,
+						static_cast<uint32_t>(elem.Lookup.Weight),
+						static_cast<uint32_t>(elem.Lookup.Stretch),
+						static_cast<uint32_t>(elem.Lookup.Style),
+						static_cast<uint32_t>(elem.RendererSpecific.FreeType.LoadFlags)
+					);
+					break;
+				default:
+					throw std::runtime_error("Invalid renderer");
+			}
+
+			auto& known = knownFonts[fontKey];
+			auto& base = elem.BaseFont;
+			if (known) {
+				base = known;
+				elem.RefreshFont();
+			} else if (base) {
+				known = base;
+			} else {
+				elem.RefreshBaseFont();
+				known = base;
+			}
+		}
+		face.RefreshFont();
+	}
+}
+
 FontSet NewFromTemplateFont(XivRes::GameFontType fontType) {
 	FontSet res{};
-	if (const auto pcszFmt = XivRes::FontGenerator::GetFontTexFilenameFormat(fontType))
-		res.TexFilenameFormat = pcszFmt;
-	else
+	if (const auto pcszFmt = XivRes::FontGenerator::GetFontTexFilenameFormat(fontType)) {
+		std::string_view filename(pcszFmt);
+		filename = filename.substr(filename.rfind('/') + 1);
+		res.TexFilenameFormat = filename;
+	} else
 		res.TexFilenameFormat = "font{}.tex";
 
 	for (const auto& def : XivRes::FontGenerator::GetFontDefinition(fontType)) {
@@ -2102,7 +2160,7 @@ class WindowImpl {
 			SuccessOrThrow(pDialog->SetTitle(L"Open"));
 			SuccessOrThrow(pDialog->GetOptions(&dwFlags));
 			SuccessOrThrow(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM));
-			switch (SuccessOrThrow(pDialog->Show(m_hWnd), { HRESULT_FROM_WIN32(ERROR_CANCELLED) })){
+			switch (SuccessOrThrow(pDialog->Show(m_hWnd), { HRESULT_FROM_WIN32(ERROR_CANCELLED) })) {
 				case HRESULT_FROM_WIN32(ERROR_CANCELLED):
 					return 0;
 			}
@@ -2198,18 +2256,84 @@ class WindowImpl {
 			m_bChanged = false;
 
 		} catch (const std::exception& e) {
-			MessageBoxW(m_hWnd, std::format(L"Failed to open file: {}", XivRes::Unicode::Convert<std::wstring>(e.what())).c_str(), GetWindowString(m_hWnd).c_str(), MB_OK | MB_ICONERROR);
+			MessageBoxW(m_hWnd, std::format(L"Failed to save file: {}", XivRes::Unicode::Convert<std::wstring>(e.what())).c_str(), GetWindowString(m_hWnd).c_str(), MB_OK | MB_ICONERROR);
 			return 1;
 		}
 
 		return 0;
 	}
 
-	LRESULT Menu_File_Export_RawFiles() {
+	LRESULT Menu_Export_Raw() {
+		using namespace XivRes::FontGenerator;
+
+		try {
+			nlohmann::json json;
+			to_json(json, m_fontSet);
+			const auto dump = json.dump();
+
+			IFileOpenDialogPtr pDialog;
+			DWORD dwFlags;
+			SuccessOrThrow(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
+			SuccessOrThrow(pDialog->SetTitle(L"Export raw"));
+			SuccessOrThrow(pDialog->GetOptions(&dwFlags));
+			SuccessOrThrow(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM | FOS_PICKFOLDERS));
+			switch (SuccessOrThrow(pDialog->Show(m_hWnd), { HRESULT_FROM_WIN32(ERROR_CANCELLED) })) {
+				case HRESULT_FROM_WIN32(ERROR_CANCELLED):
+					return 0;
+			}
+
+			IShellItemPtr pResult;
+			PWSTR pszFileName;
+			SuccessOrThrow(pDialog->GetResult(&pResult));
+			SuccessOrThrow(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
+			if (!pszFileName)
+				throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
+
+			std::unique_ptr<std::remove_pointer<PWSTR>::type, decltype(CoTaskMemFree)*> pszFileNamePtr(pszFileName, CoTaskMemFree);
+			const auto basePath = std::filesystem::path(pszFileName);
+
+			XivRes::FontGenerator::FontdataPacker packer;
+			for (auto& face : m_fontSet.Faces) {
+				face.RefreshFont();
+				packer.AddFont(face.MergedFont);
+			}
+
+			auto [fdts, mips] = packer.Compile();
+			if (mips.empty())
+				throw std::runtime_error("No mipmap produced");
+
+			std::vector<char> buf(32768);
+			for (size_t i = 0; i < m_fontSet.Faces.size(); i++) {
+				std::ofstream out(basePath / std::format("{}.fdt", m_fontSet.Faces[i].Name), std::ios::binary);
+
+				size_t pos = 0;
+				for (size_t read, pos = 0; (read = fdts[i]->ReadStreamPartial(pos, &buf[0], buf.size())); pos += read)
+					out.write(&buf[0], read);
+			}
+
+			auto tex = std::make_shared<XivRes::TextureStream>(mips[0]->Type, mips[0]->Width, mips[0]->Height, 1, 1, 1);
+			auto tex2 = std::make_shared<XivRes::TextureStream>(mips[0]->Type, mips[0]->Width, mips[0]->Height, 1, 1, mips.size());
+			for (size_t i = 0; i < mips.size(); i++) {
+				tex->SetMipmap(0, 0, mips[i]);
+				tex2->SetMipmap(0, i, mips[i]);
+
+				std::ofstream out(basePath / std::format(m_fontSet.TexFilenameFormat, i + 1), std::ios::binary);
+				size_t pos = 0;
+				for (size_t read, pos = 0; (read = tex->ReadStreamPartial(pos, &buf[0], buf.size())); pos += read)
+					out.write(&buf[0], read);
+			}
+
+			XivRes::Internal::ShowTextureStream(*tex2);
+
+		} catch (const std::exception& e) {
+			MessageBoxW(m_hWnd, std::format(L"Failed to export: {}", XivRes::Unicode::Convert<std::wstring>(e.what())).c_str(), GetWindowString(m_hWnd).c_str(), MB_OK | MB_ICONERROR);
+			return 1;
+		}
+
 		return 0;
 	}
 
-	LRESULT Menu_File_Export_TTMP(bool useCompression) {
+	LRESULT Menu_Export_TTMP(bool useCompression) {
 		return 0;
 	}
 
@@ -2325,7 +2449,7 @@ class WindowImpl {
 	LRESULT Menu_FontElements_Cut() {
 		if (Menu_FontElements_Copy())
 			return 1;
-		
+
 		Menu_FontElements_Delete();
 		return 0;
 	}
@@ -2633,14 +2757,6 @@ class WindowImpl {
 	}
 
 	void Redraw() {
-		//XivRes::FontGenerator::FontdataPacker packer;
-		//packer.AddFont(merge);
-		//auto [fdts, texs] = packer.Compile();
-		//auto res = std::make_shared<XivRes::TextureStream>(texs[0]->Type, texs[0]->Width, texs[0]->Height, 1, 1, texs.size());
-		//for (size_t i = 0; i < texs.size(); i++)
-		//	res->SetMipmap(0, i, texs[i]);
-		//m_fontMerged = std::make_shared<XivRes::FontGenerator::GameFontdataFixedSizeFont>(fdts[0], texs, "Test", "Test");
-
 		if (!m_pActiveFace)
 			return;
 
@@ -2662,9 +2778,9 @@ class WindowImpl {
 					case ID_FILE_SAVE: return Menu_File_Save();
 					case ID_FILE_SAVEAS: return Menu_File_SaveAs(true);
 					case ID_FILE_SAVECOPYAS: return Menu_File_SaveAs(false);
-					case ID_FILE_EXPORT_TOFDT: return Menu_File_Export_RawFiles();
-					case ID_FILE_EXPORT_TOTTMPCOMPRESSED: return Menu_File_Export_TTMP(true);
-					case ID_FILE_EXPORT_TOTTMPUNCOMPRESSED: return Menu_File_Export_TTMP(false);
+					case ID_EXPORT_RAW: return Menu_Export_Raw();
+					case ID_EXPORT_TOTTMPCOMPRESSED: return Menu_Export_TTMP(true);
+					case ID_EXPORT_TOTTMPUNCOMPRESSED: return Menu_Export_TTMP(false);
 					case ID_FILE_EXIT: return Menu_File_Exit();
 					case ID_FONTELEMENTS_EDIT:return Menu_FontElements_Edit();
 					case ID_FONTELEMENTS_ADD:return Menu_FontElements_Add();

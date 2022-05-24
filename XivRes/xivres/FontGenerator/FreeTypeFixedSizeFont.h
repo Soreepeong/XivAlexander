@@ -491,6 +491,10 @@ namespace XivRes::FontGenerator {
 			return std::make_shared<FreeTypeFixedSizeFont>(*this);
 		}
 
+		const IFixedSizeFont* GetBaseFont(char32_t codepoint) const override {
+			return this;
+		}
+
 	private:
 		GlyphMetrics GlyphMetricsFromCurrentGlyph(int x = 0, int y = 0) const {
 			GlyphMetrics src{

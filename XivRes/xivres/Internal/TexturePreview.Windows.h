@@ -10,7 +10,7 @@
 #include "../Internal/CallOnDestruction.h"
 
 namespace XivRes::Internal {
-	void ShowTextureStream(const XivRes::TextureStream& texStream, std::wstring title = L"Preview") {
+	static void ShowTextureStream(const XivRes::TextureStream& texStream, std::wstring title = L"Preview") {
 		static constexpr int Margin = 0;
 
 		struct State {

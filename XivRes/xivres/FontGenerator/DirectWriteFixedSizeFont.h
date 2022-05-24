@@ -56,14 +56,14 @@ namespace XivRes::FontGenerator {
 			std::unique_ptr<wchar_t, decltype(LocalFree)*> pszMsgFree(pszMsg, LocalFree);
 
 			throw std::runtime_error(std::format(
-				"DirectWrite Error (HRESULT=0x{:08X}): {}",
+				"Error (HRESULT=0x{:08X}): {}",
 				static_cast<uint32_t>(hr),
 				Unicode::Convert<std::string>(std::wstring(pszMsg))
 			));
 
 		} else {
 			throw std::runtime_error(std::format(
-				"DirectWrite Error (HRESULT=0x{:08X})",
+				"Error (HRESULT=0x{:08X})",
 				static_cast<uint32_t>(hr),
 				Unicode::Convert<std::string>(std::wstring(pszMsg))
 			));
@@ -625,6 +625,10 @@ namespace XivRes::FontGenerator {
 
 		std::shared_ptr<IFixedSizeFont> GetThreadSafeView() const override {
 			return std::make_shared<DirectWriteFixedSizeFont>(*this);
+		}
+
+		const IFixedSizeFont* GetBaseFont(char32_t codepoint) const override {
+			return this;
 		}
 
 	private:
