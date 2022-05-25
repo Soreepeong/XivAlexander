@@ -4,10 +4,8 @@
     <None Include="vcpkg.json" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Example.cpp" />
-    <ClCompile Include="TestString.cpp" />
     <ClCompile Include="pch.cpp" />
-    <ClCompile Include="ExampleWindow.cpp" />
+    <ClCompile Include="FontGenerator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Project Items">
@@ -16,7 +14,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
-    <ClInclude Include="ExampleWindow.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>

@@ -1,4 +1,5 @@
 enc_temp_folder
+*.ttmp2
 
 # Ignore all IDEA related files for now
 .idea

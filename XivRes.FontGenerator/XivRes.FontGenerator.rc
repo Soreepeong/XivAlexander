@@ -280,8 +280,9 @@ BEGIN
         MENUITEM "&Preview\tCtrl+P",            ID_EXPORT_PREVIEW
         MENUITEM SEPARATOR
         MENUITEM "Export to .&fdt and .tex files", ID_EXPORT_RAW
-        MENUITEM "Export to .&ttmp2 TexTools ModPack file (Compressed)", ID_EXPORT_TOTTMPCOMPRESSED
-        MENUITEM "Export to .&ttmp2 TexTools ModPack file (Uncompressed)", ID_EXPORT_TOTTMPUNCOMPRESSED
+        MENUITEM "Export to .ttmp2 TexTools ModPack file (Compress &while packing)", ID_EXPORT_TOTTMP_COMPRESSWHILEPACKING
+        MENUITEM "Export to .ttmp2 TexTools ModPack file (Compress &after packing)", ID_EXPORT_TOTTMP_COMPRESSAFTERPACKING
+        MENUITEM "Export to .ttmp2 TexTools ModPack file (Do &not compress)", ID_EXPORT_TOTTMP_DONOTCOMPRESS
     END
 END
 
@@ -293,17 +294,18 @@ END
 
 IDR_ACCELERATOR_FACEELEMENTEDITOR ACCELERATORS
 BEGIN
+    "Q",            ID_FILE_EXIT,           VIRTKEY, CONTROL, NOINVERT
     "O",            ID_FILE_OPEN,           VIRTKEY, CONTROL, NOINVERT
     "S",            ID_FILE_SAVE,           VIRTKEY, CONTROL, NOINVERT
     "S",            ID_FILE_SAVEAS,         VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "Q",            ID_FILE_EXIT,           VIRTKEY, CONTROL, NOINVERT
+    VK_INSERT,      ID_FONTELEMENTS_ADD,    VIRTKEY, NOINVERT
     "C",            ID_FONTELEMENTS_COPY,   VIRTKEY, CONTROL, NOINVERT
     "X",            ID_FONTELEMENTS_CUT,    VIRTKEY, CONTROL, NOINVERT
-    "V",            ID_FONTELEMENTS_PASTE,  VIRTKEY, CONTROL, NOINVERT
     VK_DELETE,      ID_FONTELEMENTS_DELETE, VIRTKEY, NOINVERT
-    VK_INSERT,      ID_FONTELEMENTS_ADD,    VIRTKEY, NOINVERT
-    "A",            ID_FONTELEMENTS_SELECTALL, VIRTKEY, CONTROL, NOINVERT
     VK_RETURN,      ID_FONTELEMENTS_EDIT,   VIRTKEY, NOINVERT
+    "V",            ID_FONTELEMENTS_PASTE,  VIRTKEY, CONTROL, NOINVERT
+    "A",            ID_FONTELEMENTS_SELECTALL, VIRTKEY, CONTROL, NOINVERT
+    "P",            ID_EXPORT_PREVIEW,      VIRTKEY, CONTROL, NOINVERT
 END
 
 #endif    // English (United States) resources

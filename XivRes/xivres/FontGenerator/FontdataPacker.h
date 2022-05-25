@@ -40,6 +40,14 @@ namespace XivRes::FontGenerator {
 		std::map<const IFixedSizeFont*, std::vector<std::shared_ptr<IFixedSizeFont>>> m_threadSafeBaseFonts;
 		std::vector<std::vector<std::shared_ptr<IFixedSizeFont>>> m_threadSafeSourceFonts;
 
+		uint64_t m_nMaxProgress = 1;
+		uint64_t m_nCurrentProgress = 0;
+		const char* m_pszProgressString = nullptr;
+
+		bool m_bCancelRequested = false;
+		std::thread m_workerThread;
+		std::timed_mutex m_runningMtx;
+
 		const IFixedSizeFont& GetThreadSafeBaseFont(const IFixedSizeFont* font, size_t threadIndex) {
 			auto& copy = m_threadSafeBaseFonts[font][threadIndex];
 			if (!copy)
@@ -127,7 +135,8 @@ namespace XivRes::FontGenerator {
 			const auto divideUnit = (std::max<size_t>)(1, static_cast<size_t>(std::sqrt(static_cast<double>(m_targetPlans.size()))));
 			for (size_t nBase = 0; nBase < divideUnit; nBase++) {
 				pool.Submit([this, divideUnit, &pool, nBase](size_t nThreadIndex) {
-					for (size_t i = nBase; i < m_targetPlans.size(); i += divideUnit) {
+					for (size_t i = nBase; i < m_targetPlans.size() && !m_bCancelRequested; i += divideUnit) {
+						++m_nCurrentProgress;
 						pool.AbortIfErrorOccurred();
 
 						auto& info = m_targetPlans[i];
@@ -186,7 +195,8 @@ namespace XivRes::FontGenerator {
 
 			for (size_t nBase = 0; nBase < divideUnit; nBase++) {
 				pool.Submit([this, planeIndex, divideUnit, pSuccesses, nBase, pCurrentTargetBuffer](size_t nThreadIndex) {
-					for (size_t i = nBase; i < pSuccesses->size(); i += divideUnit) {
+					for (size_t i = nBase; i < pSuccesses->size() && !m_bCancelRequested; i += divideUnit) {
+						++m_nCurrentProgress;
 						const auto& info = *(*pSuccesses)[i];
 						const auto& font = GetThreadSafeBaseFont(info.BaseFont, nThreadIndex);
 						font.Draw(
@@ -221,7 +231,7 @@ namespace XivRes::FontGenerator {
 			for (auto& rectangleInfo : m_targetPlans)
 				plansToTryAgain.emplace_back(&rectangleInfo);
 
-			for (size_t planeIndex = 0; !plansToTryAgain.empty(); planeIndex++) {
+			for (size_t planeIndex = 0; !m_bCancelRequested && !plansToTryAgain.empty(); planeIndex++) {
 				std::vector<TargetPlan*> successfulPlans;
 				successfulPlans.reserve(m_targetPlans.size());
 
@@ -233,8 +243,8 @@ namespace XivRes::FontGenerator {
 				}
 				plansToTryAgain.clear();
 
-				std::cout << GetTickCount64() << " Plane " << planeIndex << ": " << plansInProgress.size() << std::endl;
 				const auto onPackedRectangle = [this, planeIndex, &successfulPlans, &pendingRectangles, &plansInProgress](rect_type& r) {
+					++m_nCurrentProgress;
 					const auto index = &r - &pendingRectangles.front();
 					auto& info = *plansInProgress[index];
 
@@ -288,7 +298,7 @@ namespace XivRes::FontGenerator {
 
 				if (successfulPlans.empty())
 					throw std::runtime_error("Failed to pack some characters");
-				
+
 				DrawLayouttedGlyphs(planeIndex, pool, std::move(successfulPlans));
 			}
 
@@ -296,6 +306,11 @@ namespace XivRes::FontGenerator {
 		}
 
 	public:
+		~FontdataPacker() {
+			m_bCancelRequested = true;
+			Wait();
+		}
+
 		size_t AddFont(std::shared_ptr<IFixedSizeFont> font) {
 			m_sourceFonts.emplace_back(std::move(font));
 			return m_sourceFonts.size() - 1;
@@ -305,18 +320,87 @@ namespace XivRes::FontGenerator {
 			return m_sourceFonts.at(index);
 		}
 
-		auto Compile() {
-			std::cout << "Prepare 1..." << std::endl;
-			PrepareThreadSafeSourceFonts();
-			std::cout << "Prepare 2..." << std::endl;
-			PrepareTargetFontBasicInfo();
-			std::cout << "Prepare codepoints..." << std::endl;
-			PrepareTargetCodepoints();
-			std::cout << "Measuring..." << std::endl;
-			MeasureGlyphs();
-			std::cout << "Layoutting..." << std::endl;
-			LayoutGlyphs();
-			return std::make_pair(m_targetFonts, m_targetMipmapStreams);
+		void Compile() {
+			if (m_pszProgressString)
+				throw std::runtime_error("Compile already in progress");
+
+			m_nMaxProgress = 1;
+			m_nCurrentProgress = 0;
+			m_bCancelRequested = false;
+			m_workerThread = std::thread([this, lock = std::unique_lock(m_runningMtx)]() {
+				m_pszProgressString = "Preparing source fonts";
+				PrepareThreadSafeSourceFonts();
+				if (m_bCancelRequested) {
+					m_pszProgressString = nullptr;
+					return;
+				}
+
+				m_pszProgressString = "Preparing target fonts";
+				PrepareTargetFontBasicInfo();
+				if (m_bCancelRequested) {
+					m_pszProgressString = nullptr;
+					return;
+				}
+
+				m_pszProgressString = "Discovering glyphs";
+				PrepareTargetCodepoints();
+				if (m_bCancelRequested) {
+					m_pszProgressString = nullptr;
+					return;
+				}
+
+				m_nMaxProgress = 3 * m_targetPlans.size();
+				m_pszProgressString = "Measuring glyphs";
+				MeasureGlyphs();
+				if (m_bCancelRequested) {
+					m_pszProgressString = nullptr;
+					return;
+				}
+
+				m_pszProgressString = "Laying out and drawing glyphs";
+				LayoutGlyphs();
+				m_pszProgressString = nullptr;
+
+				m_workerThread.detach();
+			});
+		}
+
+		const std::vector<std::shared_ptr<FontdataStream>>& GetTargetFonts() const {
+			return m_targetFonts;
+		}
+
+		const std::vector<std::shared_ptr<MemoryMipmapStream>>& GetMipmapStreams() const {
+			return m_targetMipmapStreams;
+		}
+
+		bool IsRunning() const {
+			return m_pszProgressString;
+		}
+
+		void Wait() {
+			void(std::lock_guard(m_runningMtx));
+		}
+
+		void RequestCancel() {
+			m_bCancelRequested = true;
+		}
+
+		template <class _Rep, class _Period>
+		[[nodiscard]] bool Wait(const std::chrono::duration<_Rep, _Period>& t) {
+			return std::unique_lock(m_runningMtx, std::defer_lock).try_lock_for(t);
+		}
+
+		template <class _Clock, class _Duration>
+		[[nodiscard]] bool Wait(const std::chrono::time_point<_Clock, _Duration>& t) {
+			return std::unique_lock(m_runningMtx, std::defer_lock).try_lock_until(t);
+		}
+
+		const char* GetProgressDescription() {
+			return m_pszProgressString;
+		}
+
+		float GetProgress() const {
+			return 1.f * m_nCurrentProgress / m_nMaxProgress;
 		}
 	};
 }

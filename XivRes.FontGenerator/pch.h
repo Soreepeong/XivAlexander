@@ -10,6 +10,10 @@
 
 #pragma comment(lib, "Comctl32.lib")
 
+#include <zlib.h>
+#include <minizip/zip.h>
+#include <minizip/iowin32.h>
+
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include FT_BITMAP_H
