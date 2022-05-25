@@ -275,7 +275,8 @@ namespace XivRes::Unicode {
 			return 2;
 		}
 
-		*(ptr++) = 0xFFFD;
+		if (ptr)
+			*(ptr++) = 0xFFFD;
 		return 1;
 	}
 
