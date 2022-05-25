@@ -263,19 +263,52 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "E&xit\tCtrl+Q",               ID_FILE_EXIT
     END
-    POPUP "Font &Elements"
+    POPUP "&Edit"
     BEGIN
-        MENUITEM "&Edit\tEnter",                ID_FONTELEMENTS_EDIT
-        MENUITEM "&Add\tIns",                   ID_FONTELEMENTS_ADD
-        MENUITEM "&Delete\tDel",                ID_FONTELEMENTS_DELETE
+        MENUITEM "&Add\tIns",                   ID_EDIT_ADD
+        MENUITEM "&Cut\tCtrl+X",                ID_EDIT_CUT
+        MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
+        MENUITEM "&Paste\tCtrl+V",              ID_EDIT_PASTE
+        MENUITEM "&Delete\tDel",                ID_EDIT_DELETE
+        MENUITEM "&Select All\tCtrl+A",         ID_EDIT_SELECTALL
         MENUITEM SEPARATOR
-        MENUITEM "&Copy\tCtrl+C",               ID_FONTELEMENTS_COPY
-        MENUITEM "&Cut\tCtrl+X",                ID_FONTELEMENTS_CUT
-        MENUITEM "&Paste\tCtrl+V",              ID_FONTELEMENTS_PASTE
+        MENUITEM "D&etails\tEnter",             ID_EDIT_DETAILS
         MENUITEM SEPARATOR
-        MENUITEM "&Select All\tCtrl+A",         ID_FONTELEMENTS_SELECTALL
+        MENUITEM "Decrease Baseline Shift(Upwards)\tW", ID_EDIT_DECREASEBASELINESHIFT
+        MENUITEM "Increase Baseline Shift(Downwards)\tS", ID_EDIT_INCREASEBASELINESHIFT
+        MENUITEM "Decrease Horizontal Offset(Leftwards)\tA", ID_EDIT_DECREASEHORIZONTALOFFSET
+        MENUITEM "Increase Horizontal Offset(Rightwards)\tD", ID_EDIT_INCREASEHORIZONTALOFFSET
+        MENUITEM "Decrease Letter Spacing\tQ",  ID_EDIT_DECREASELETTERSPACING
+        MENUITEM "Increase Letter Spacing\tE",  ID_EDIT_INCREASELETTERSPACING
+        MENUITEM "Decrease Font Size by 1px\t[", ID_EDIT_DECREASEFONTSIZEBY1
+        MENUITEM "Increase Font Size by 1px\t]", ID_EDIT_INCREASEFONTSIZEBY1
+        MENUITEM "Decrease Font Size by 0.2px\tShift+[", ID_EDIT_DECREASEFONTSIZEBY0_2
+        MENUITEM "Increase Font Size by 0.2px\tShift+]", ID_EDIT_INCREASEFONTSIZEBY0_2
+        MENUITEM "Toggle Overwrite\tO",         ID_EDIT_TOGGLEOVERWRITE
+        MENUITEM "Move Up\t,",                  ID_EDIT_MOVEUP
+        MENUITEM "Move Down\t.",                ID_EDIT_MOVEDOWN
+        MENUITEM "Create Empty Copy From Selection\tC", ID_EDIT_CREATEEMPTYCOPYFROMSELECTION
     END
-    POPUP "&Export"
+    POPUP "&View"
+    BEGIN
+        MENUITEM "&Next Font\tCtrl+Tab",        ID_VIEW_NEXTFONT
+        MENUITEM "&Previous Font\tCtrl+Shift+Tab", ID_VIEW_PREVIOUSFONT
+        MENUITEM SEPARATOR
+        MENUITEM "Preview with &Word Wrap\tP",  ID_VIEW_WORDWRAP, CHECKED
+        MENUITEM "Preview with &Kerning\tK",    ID_VIEW_KERNING, CHECKED
+        MENUITEM "Show &Line Metrics\tL",       ID_VIEW_SHOWLINEMETRICS, CHECKED
+        MENUITEM SEPARATOR
+        MENUITEM "&100%\t1",                    ID_VIEW_100
+        MENUITEM "&200%\t2",                    ID_VIEW_200
+        MENUITEM "&300%\t3",                    ID_VIEW_300
+        MENUITEM "&400%\t4",                    ID_VIEW_400
+        MENUITEM "&500%\t5",                    ID_VIEW_500
+        MENUITEM "&600%\t6",                    ID_VIEW_600
+        MENUITEM "&700%\t7",                    ID_VIEW_700
+        MENUITEM "&800%\t8",                    ID_VIEW_800
+        MENUITEM "&900%\t9",                    ID_VIEW_900
+    END
+    POPUP "E&xport"
     BEGIN
         MENUITEM "&Preview\tCtrl+P",            ID_EXPORT_PREVIEW
         MENUITEM SEPARATOR
@@ -294,18 +327,46 @@ END
 
 IDR_ACCELERATOR_FACEELEMENTEDITOR ACCELERATORS
 BEGIN
+    VK_INSERT,      ID_EDIT_ADD,            VIRTKEY, NOINVERT
+    "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
+    "C",            ID_EDIT_CREATEEMPTYCOPYFROMSELECTION, VIRTKEY, NOINVERT
+    "X",            ID_EDIT_CUT,            VIRTKEY, CONTROL, NOINVERT
+    "W",            ID_EDIT_DECREASEBASELINESHIFT, VIRTKEY, NOINVERT
+    VK_OEM_4,       ID_EDIT_DECREASEFONTSIZEBY0_2, VIRTKEY, SHIFT, NOINVERT
+    VK_OEM_4,       ID_EDIT_DECREASEFONTSIZEBY1, VIRTKEY, NOINVERT
+    "A",            ID_EDIT_DECREASEHORIZONTALOFFSET, VIRTKEY, NOINVERT
+    "Q",            ID_EDIT_DECREASELETTERSPACING, VIRTKEY, NOINVERT
+    VK_DELETE,      ID_EDIT_DELETE,         VIRTKEY, NOINVERT
+    VK_RETURN,      ID_EDIT_DETAILS,        VIRTKEY, NOINVERT
+    "S",            ID_EDIT_INCREASEBASELINESHIFT, VIRTKEY, NOINVERT
+    VK_OEM_6,       ID_EDIT_INCREASEFONTSIZEBY0_2, VIRTKEY, SHIFT, NOINVERT
+    VK_OEM_6,       ID_EDIT_INCREASEFONTSIZEBY1, VIRTKEY, NOINVERT
+    "D",            ID_EDIT_INCREASEHORIZONTALOFFSET, VIRTKEY, NOINVERT
+    "E",            ID_EDIT_INCREASELETTERSPACING, VIRTKEY, NOINVERT
+    VK_OEM_PERIOD,  ID_EDIT_MOVEDOWN,       VIRTKEY, NOINVERT
+    VK_OEM_COMMA,   ID_EDIT_MOVEUP,         VIRTKEY, NOINVERT
+    "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL, NOINVERT
+    "A",            ID_EDIT_SELECTALL,      VIRTKEY, CONTROL, NOINVERT
+    "O",            ID_EDIT_TOGGLEOVERWRITE, VIRTKEY, NOINVERT
+    "P",            ID_EXPORT_PREVIEW,      VIRTKEY, CONTROL, NOINVERT
     "Q",            ID_FILE_EXIT,           VIRTKEY, CONTROL, NOINVERT
     "O",            ID_FILE_OPEN,           VIRTKEY, CONTROL, NOINVERT
     "S",            ID_FILE_SAVE,           VIRTKEY, CONTROL, NOINVERT
     "S",            ID_FILE_SAVEAS,         VIRTKEY, SHIFT, CONTROL, NOINVERT
-    VK_INSERT,      ID_FONTELEMENTS_ADD,    VIRTKEY, NOINVERT
-    "C",            ID_FONTELEMENTS_COPY,   VIRTKEY, CONTROL, NOINVERT
-    "X",            ID_FONTELEMENTS_CUT,    VIRTKEY, CONTROL, NOINVERT
-    VK_DELETE,      ID_FONTELEMENTS_DELETE, VIRTKEY, NOINVERT
-    VK_RETURN,      ID_FONTELEMENTS_EDIT,   VIRTKEY, NOINVERT
-    "V",            ID_FONTELEMENTS_PASTE,  VIRTKEY, CONTROL, NOINVERT
-    "A",            ID_FONTELEMENTS_SELECTALL, VIRTKEY, CONTROL, NOINVERT
-    "P",            ID_EXPORT_PREVIEW,      VIRTKEY, CONTROL, NOINVERT
+    "1",            ID_VIEW_100,            VIRTKEY, NOINVERT
+    "2",            ID_VIEW_200,            VIRTKEY, NOINVERT
+    "3",            ID_VIEW_300,            VIRTKEY, NOINVERT
+    "4",            ID_VIEW_400,            VIRTKEY, NOINVERT
+    "5",            ID_VIEW_500,            VIRTKEY, NOINVERT
+    "6",            ID_VIEW_600,            VIRTKEY, NOINVERT
+    "7",            ID_VIEW_700,            VIRTKEY, NOINVERT
+    "8",            ID_VIEW_800,            VIRTKEY, NOINVERT
+    "9",            ID_VIEW_900,            VIRTKEY, NOINVERT
+    "K",            ID_VIEW_KERNING,        VIRTKEY, NOINVERT
+    VK_TAB,         ID_VIEW_NEXTFONT,       VIRTKEY, CONTROL, NOINVERT
+    VK_TAB,         ID_VIEW_PREVIOUSFONT,   VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "L",            ID_VIEW_SHOWLINEMETRICS, VIRTKEY, NOINVERT
+    "P",            ID_VIEW_WORDWRAP,       VIRTKEY, NOINVERT
 END
 
 #endif    // English (United States) resources

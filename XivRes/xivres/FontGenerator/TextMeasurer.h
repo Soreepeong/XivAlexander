@@ -54,6 +54,7 @@ namespace XivRes::FontGenerator {
 		const IFixedSizeFont& FontFace;
 		int MaxWidth = (std::numeric_limits<int>::max)();
 		int MaxHeight = (std::numeric_limits<int>::max)();
+		bool UseKerning = true;
 		std::optional<int> LineHeight = std::nullopt;
 		const char32_t* FallbackCharacters = U"\u3013-?";
 		std::vector<bool> IsCharacterWhiteSpace;
@@ -79,6 +80,11 @@ namespace XivRes::FontGenerator {
 			IsCharacterControlCharacter[U'\n'] = true;
 			IsCharacterControlCharacter[U'\t'] = true;
 			IsCharacterControlCharacter[U'\x200c'] = true;  // Zero-width non joiner
+		}
+
+		TextMeasurer& WithUseKerning(bool use) {
+			UseKerning = use;
+			return *this;
 		}
 
 		TextMeasurer& WithMaxWidth(int width = (std::numeric_limits<int>::max)()) {
@@ -140,13 +146,13 @@ namespace XivRes::FontGenerator {
 			if (res.Characters.empty())
 				return res;
 
-			for (auto& pair : res.Characters) {
-				if (pair.Codepoint < IsCharacterControlCharacter.size() && IsCharacterControlCharacter[pair.Codepoint])
+			for (auto& curr : res.Characters) {
+				if (curr.Codepoint < IsCharacterControlCharacter.size() && IsCharacterControlCharacter[curr.Codepoint])
 					continue;
 
-				if (!FontFace.GetGlyphMetrics(pair.Displayed, pair.Metrics)) {
-					for (auto pfc = FallbackCharacters; (pair.Displayed = *pfc); pfc++) {
-						if (FontFace.GetGlyphMetrics(pair.Displayed, pair.Metrics))
+				if (!FontFace.GetGlyphMetrics(curr.Displayed, curr.Metrics)) {
+					for (auto pfc = FallbackCharacters; (curr.Displayed = *pfc); pfc++) {
+						if (FontFace.GetGlyphMetrics(curr.Displayed, curr.Metrics))
 							break;
 					}
 				}
@@ -162,7 +168,7 @@ namespace XivRes::FontGenerator {
 					curr.X = 0;
 					curr.Y = prev.Y + LineHeight.value_or(FontFace.GetLineHeight());
 				} else {
-					curr.X = prev.X + FontFace.GetAdjustedAdvanceX(prev.Displayed, curr.Displayed);
+					curr.X = prev.X + (UseKerning ? FontFace.GetAdjustedAdvanceX(prev.Displayed, curr.Displayed) : prev.Metrics.AdvanceX);
 					curr.Y = prev.Y;
 				}
 

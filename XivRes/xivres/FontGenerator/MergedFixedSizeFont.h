@@ -14,8 +14,6 @@ namespace XivRes::FontGenerator {
 	class MergedFixedSizeFont : public DefaultAbstractFixedSizeFont {
 		struct InfoStruct {
 			std::set<char32_t> Codepoints;
-			std::map<std::pair<char32_t, char32_t>, int> KerningPairs;
-			std::map<char32_t, GlyphMetrics> AllGlyphMetrics;
 			std::map<char32_t, IFixedSizeFont*> UsedFonts;
 			float Size{};
 			int Ascent{};
@@ -25,6 +23,7 @@ namespace XivRes::FontGenerator {
 
 		std::vector<std::shared_ptr<XivRes::FontGenerator::IFixedSizeFont>> m_fonts;
 		std::shared_ptr<const InfoStruct> m_info;
+		mutable std::optional<std::map<std::pair<char32_t, char32_t>, int>> m_kerningPairs;
 
 	public:
 		MergedFixedSizeFont() = default;
@@ -53,23 +52,6 @@ namespace XivRes::FontGenerator {
 				}
 
 				m_fonts.emplace_back(std::move(font));
-			}
-
-			std::map<IFixedSizeFont*, std::set<char32_t>> charsPerFonts;
-			for (const auto& [c, f] : info->UsedFonts)
-				charsPerFonts[f].insert(c);
-
-			for (const auto& [font, chars] : charsPerFonts) {
-				for (const auto& kerningPair : font->GetAllKerningPairs()) {
-					if (chars.contains(kerningPair.first.first) && chars.contains(kerningPair.first.second))
-						info->KerningPairs.emplace(kerningPair);
-				}
-
-				for (const auto& c : chars) {
-					auto& gm = info->AllGlyphMetrics[c];
-					if (font->GetGlyphMetrics(c, gm))
-						gm.Translate(0, GetVerticalAdjustment(*info, *font));
-				}
 			}
 
 			m_info = std::move(info);
@@ -123,7 +105,22 @@ namespace XivRes::FontGenerator {
 		}
 
 		const std::map<std::pair<char32_t, char32_t>, int>& GetAllKerningPairs() const override {
-			return m_info->KerningPairs;
+			if (m_kerningPairs)
+				return *m_kerningPairs;
+
+			std::map<IFixedSizeFont*, std::set<char32_t>> charsPerFonts;
+			for (const auto& [c, f] : m_info->UsedFonts)
+				charsPerFonts[f].insert(c);
+
+			m_kerningPairs.emplace();
+			for (const auto& [font, chars] : charsPerFonts) {
+				for (const auto& kerningPair : font->GetAllKerningPairs()) {
+					if (chars.contains(kerningPair.first.first) && chars.contains(kerningPair.first.second))
+						m_kerningPairs->emplace(kerningPair);
+				}
+			}
+
+			return *m_kerningPairs;
 		}
 
 		bool Draw(char32_t codepoint, RGBA8888* pBuf, int drawX, int drawY, int destWidth, int destHeight, RGBA8888 fgColor, RGBA8888 bgColor) const override {
@@ -151,7 +148,7 @@ namespace XivRes::FontGenerator {
 		const IFixedSizeFont* GetBaseFont(char32_t codepoint) const override {
 			if (const auto it = m_info->UsedFonts.find(codepoint); it != m_info->UsedFonts.end())
 				return it->second->GetBaseFont(codepoint);
-			
+
 			return nullptr;
 		}
 
