@@ -313,6 +313,10 @@ struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementat
 						Utils::Win32::Process::Current().WriteMemory(const_cast<char*>(str), newStr.c_str(), newStr.size() + 1, true);
 						len = newStr.size();
 					}
+
+					if (!Sqpacks->EntryExists(str)) {
+						__debugbreak();
+					}
 				}
 				const auto res = self->bridge(initVal, str, len);
 
