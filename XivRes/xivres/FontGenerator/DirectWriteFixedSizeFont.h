@@ -21,6 +21,7 @@ _COM_SMARTPTR_TYPEDEF(IDWriteFont, __uuidof(IDWriteFont));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontCollection, __uuidof(IDWriteFontCollection));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontFace, __uuidof(IDWriteFontFace));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontFace1, __uuidof(IDWriteFontFace1));
+_COM_SMARTPTR_TYPEDEF(IDWriteFontFace3, __uuidof(IDWriteFontFace3));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontFaceReference, __uuidof(IDWriteFontFaceReference));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontFamily, __uuidof(IDWriteFontFamily));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontFile, __uuidof(IDWriteFontFile));
@@ -383,6 +384,8 @@ namespace XivRes::FontGenerator {
 
 	private:
 		struct ParsedInfoStruct {
+			IDWriteFactoryPtr Factory;
+			IDWriteFontPtr Font;
 			std::shared_ptr<IStream> Stream;
 			std::set<char32_t> Characters;
 			std::map<std::pair<char32_t, char32_t>, int> KerningPairs;
@@ -415,6 +418,62 @@ namespace XivRes::FontGenerator {
 	public:
 		DirectWriteFixedSizeFont(std::filesystem::path path, int fontIndex, float size, float gamma, CreateStruct params)
 			: DirectWriteFixedSizeFont(std::make_shared<MemoryStream>(FileStream(path)), fontIndex, size, gamma, std::move(params)) {}
+
+		DirectWriteFixedSizeFont(IDWriteFactoryPtr factory, IDWriteFontPtr font, float size, float gamma, CreateStruct params) {
+			if (!font)
+				return;
+
+			auto info = std::make_shared<ParsedInfoStruct>();
+			info->Factory = std::move(factory);
+			info->Font = std::move(font);
+			info->Params = std::move(params);
+			info->Size = size;
+			info->GammaTable = Internal::BitmapCopy::CreateGammaTable(gamma);
+
+			m_dwrite = FaceFromInfoStruct(*info);
+			m_dwrite.Face->GetMetrics(&info->Metrics);
+
+			{
+				uint32_t rangeCount;
+				SuccessOrThrow(m_dwrite.Face1->GetUnicodeRanges(0, nullptr, &rangeCount), { E_NOT_SUFFICIENT_BUFFER });
+				std::vector<DWRITE_UNICODE_RANGE> ranges(rangeCount);
+				SuccessOrThrow(m_dwrite.Face1->GetUnicodeRanges(rangeCount, &ranges[0], &rangeCount));
+
+				for (const auto& range : ranges)
+					for (uint32_t i = range.first; i <= range.last; ++i)
+						info->Characters.insert(static_cast<char32_t>(i));
+			}
+			{
+				DWriteFontTable kernDataRef(m_dwrite.Face, Internal::TrueType::Kern::DirectoryTableTag.NativeValue);
+				DWriteFontTable gposDataRef(m_dwrite.Face, Internal::TrueType::Gpos::DirectoryTableTag.NativeValue);
+				DWriteFontTable cmapDataRef(m_dwrite.Face, Internal::TrueType::Cmap::DirectoryTableTag.NativeValue);
+				Internal::TrueType::Kern::View kern(kernDataRef.GetSpan<char>());
+				Internal::TrueType::Gpos::View gpos(gposDataRef.GetSpan<char>());
+				Internal::TrueType::Cmap::View cmap(cmapDataRef.GetSpan<char>());
+				if (cmap && (kern || gpos)) {
+					const auto cmapVector = cmap.GetGlyphToCharMap();
+
+					if (kern)
+						info->KerningPairs = kern.Parse(cmapVector);
+
+					if (gpos) {
+						const auto pairs = gpos.ExtractAdvanceX(cmapVector);
+						// do not overwrite
+						info->KerningPairs.insert(pairs.begin(), pairs.end());
+					}
+
+					for (auto it = info->KerningPairs.begin(); it != info->KerningPairs.end(); ) {
+						it->second = info->ScaleFromFontUnit(it->second);
+						if (it->second)
+							++it;
+						else
+							it = info->KerningPairs.erase(it);
+					}
+				}
+			}
+
+			m_info = std::move(info);
+		}
 
 		DirectWriteFixedSizeFont(std::shared_ptr<IStream> stream, int fontIndex, float size, float gamma, CreateStruct params) {
 			if (!stream)
@@ -637,15 +696,29 @@ namespace XivRes::FontGenerator {
 		static DWriteInterfaceStruct FaceFromInfoStruct(const ParsedInfoStruct& info) {
 			DWriteInterfaceStruct res{};
 
-			SuccessOrThrow(DWriteCreateFactory(DWRITE_FACTORY_TYPE_ISOLATED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&res.Factory)));
-			SuccessOrThrow(res.Factory->RegisterFontFileLoader(&IStreamBasedDWriteFontFileLoader::GetInstance()), { DWRITE_E_ALREADYREGISTERED });
-			SuccessOrThrow(res.Factory->RegisterFontCollectionLoader(&IStreamBasedDWriteFontCollectionLoader::GetInstance()), { DWRITE_E_ALREADYREGISTERED });
-			SuccessOrThrow(res.Factory.QueryInterface(decltype(res.Factory3)::GetIID(), &res.Factory3), { E_NOINTERFACE });
-			SuccessOrThrow(res.Factory->CreateCustomFontCollection(&IStreamBasedDWriteFontCollectionLoader::GetInstance(), &info.Stream, sizeof info.Stream, &res.Collection));
-			SuccessOrThrow(res.Collection->GetFontFamily(0, &res.Family));
-			SuccessOrThrow(res.Family->GetFont(info.FontIndex, &res.Font));
-			SuccessOrThrow(res.Font->CreateFontFace(&res.Face));
-			SuccessOrThrow(res.Face.QueryInterface(decltype(res.Face1)::GetIID(), &res.Face1));
+			if (!!info.Font != !!info.Factory)
+				throw std::invalid_argument("Both Font and Factory either must be set or not set.");
+
+			if (info.Font) {
+				res.Font = info.Font;
+				res.Factory = info.Factory;
+				SuccessOrThrow(res.Factory.QueryInterface(decltype(res.Factory3)::GetIID(), &res.Factory3), { E_NOINTERFACE });
+				SuccessOrThrow(res.Font->GetFontFamily(&res.Family));
+				SuccessOrThrow(res.Family->GetFontCollection(&res.Collection));
+				SuccessOrThrow(res.Font->CreateFontFace(&res.Face));
+				SuccessOrThrow(res.Face.QueryInterface(decltype(res.Face1)::GetIID(), &res.Face1));
+
+			} else {
+				SuccessOrThrow(DWriteCreateFactory(DWRITE_FACTORY_TYPE_ISOLATED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&res.Factory)));
+				SuccessOrThrow(res.Factory->RegisterFontFileLoader(&IStreamBasedDWriteFontFileLoader::GetInstance()), { DWRITE_E_ALREADYREGISTERED });
+				SuccessOrThrow(res.Factory->RegisterFontCollectionLoader(&IStreamBasedDWriteFontCollectionLoader::GetInstance()), { DWRITE_E_ALREADYREGISTERED });
+				SuccessOrThrow(res.Factory.QueryInterface(decltype(res.Factory3)::GetIID(), &res.Factory3), { E_NOINTERFACE });
+				SuccessOrThrow(res.Factory->CreateCustomFontCollection(&IStreamBasedDWriteFontCollectionLoader::GetInstance(), &info.Stream, sizeof info.Stream, &res.Collection));
+				SuccessOrThrow(res.Collection->GetFontFamily(0, &res.Family));
+				SuccessOrThrow(res.Family->GetFont(info.FontIndex, &res.Font));
+				SuccessOrThrow(res.Font->CreateFontFace(&res.Face));
+				SuccessOrThrow(res.Face.QueryInterface(decltype(res.Face1)::GetIID(), &res.Face1));
+			}
 
 			return res;
 		}

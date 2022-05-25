@@ -233,7 +233,7 @@ namespace XivRes::FontGenerator {
 				}
 				plansToTryAgain.clear();
 
-				std::cout << "Plane " << planeIndex << ": " << plansInProgress.size() << std::endl;
+				std::cout << GetTickCount64() << " Plane " << planeIndex << ": " << plansInProgress.size() << std::endl;
 				const auto onPackedRectangle = [this, planeIndex, &successfulPlans, &pendingRectangles, &plansInProgress](rect_type& r) {
 					const auto index = &r - &pendingRectangles.front();
 					auto& info = *plansInProgress[index];

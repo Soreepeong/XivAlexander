@@ -161,11 +161,11 @@ struct FontSet {
 					}
 				}
 
-				std::pair<std::shared_ptr<XivRes::IStream>, int> ResolveStream() const {
+				std::pair<IDWriteFactoryPtr, IDWriteFontPtr> ResolveFont() const {
 					using namespace XivRes::FontGenerator;
 
-					IDWriteFactory3Ptr factory;
-					SuccessOrThrow(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), reinterpret_cast<IUnknown**>(&factory)));
+					IDWriteFactoryPtr factory;
+					SuccessOrThrow(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&factory)));
 
 					IDWriteFontCollectionPtr coll;
 					SuccessOrThrow(factory->GetSystemFontCollection(&coll));
@@ -181,6 +181,14 @@ struct FontSet {
 
 					IDWriteFontPtr font;
 					SuccessOrThrow(family->GetFirstMatchingFont(Weight, Stretch, Style, &font));
+
+					return std::make_pair(std::move(factory), std::move(font));
+				}
+
+				std::pair<std::shared_ptr<XivRes::IStream>, int> ResolveStream() const {
+					using namespace XivRes::FontGenerator;
+
+					auto [factory, font] = ResolveFont();
 
 					IDWriteFontFacePtr face;
 					SuccessOrThrow(font->CreateFontFace(&face));
@@ -277,8 +285,8 @@ struct FontSet {
 
 						case RendererEnum::DirectWrite:
 						{
-							auto [pStream, index] = Lookup.ResolveStream();
-							BaseFont = std::make_shared<XivRes::FontGenerator::DirectWriteFixedSizeFont>(pStream, index, Size, Gamma, RendererSpecific.DirectWrite);
+							auto [factory, font] = Lookup.ResolveFont();
+							BaseFont = std::make_shared<XivRes::FontGenerator::DirectWriteFixedSizeFont>(std::move(factory), std::move(font), Size, Gamma, RendererSpecific.DirectWrite);
 							break;
 						}
 
@@ -745,6 +753,7 @@ private:
 		SetControlsEnabledOrDisabled();
 		RepopulateFontCombobox();
 		OnBaseFontChanged();
+		RefreshUnicodeBlockSearchResults();
 		return 0;
 	}
 
@@ -755,6 +764,7 @@ private:
 		RepopulateFontSubComboBox();
 		m_element.Lookup.Name = XivRes::Unicode::Convert<std::string>(GetWindowString(m_controls->FontCombo));
 		OnBaseFontChanged();
+		RefreshUnicodeBlockSearchResults();
 		return 0;
 	}
 
@@ -1106,13 +1116,13 @@ private:
 		m_bOpened = true;
 		SetControlsEnabledOrDisabled();
 		RepopulateFontCombobox();
+		RefreshUnicodeBlockSearchResults();
 		ComboBox_AddString(m_controls->FontRendererCombo, L"Empty");
 		ComboBox_AddString(m_controls->FontRendererCombo, L"Prerendered (Game)");
 		ComboBox_AddString(m_controls->FontRendererCombo, L"DirectWrite");
 		ComboBox_AddString(m_controls->FontRendererCombo, L"FreeType");
 		ComboBox_SetCurSel(m_controls->FontRendererCombo, static_cast<int>(m_element.Renderer));
 		ComboBox_SetText(m_controls->FontCombo, XivRes::Unicode::Convert<std::wstring>(m_element.Lookup.Name).c_str());
-		ComboBox_SetText(m_controls->FontSizeCombo, std::format(L"{:g}", m_element.Size).c_str());
 		Edit_SetText(m_controls->EmptyAscentEdit, std::format(L"{}", m_element.RendererSpecific.Empty.Ascent).c_str());
 		Edit_SetText(m_controls->EmptyLineHeightEdit, std::format(L"{}", m_element.RendererSpecific.Empty.LineHeight).c_str());
 		Button_SetCheck(m_controls->FreeTypeNoHintingCheck, (m_element.RendererSpecific.FreeType.LoadFlags & FT_LOAD_NO_HINTING) ? TRUE : FALSE);
@@ -1541,6 +1551,8 @@ private:
 					c = std::tolower(c);
 				if (const auto it = std::ranges::lower_bound(names, curNameLower); it != names.end() && *it == curNameLower)
 					ComboBox_SetCurSel(m_controls->FontCombo, it - names.begin());
+				else
+					ComboBox_SetCurSel(m_controls->FontCombo, -1);
 				break;
 			}
 			default:
@@ -1705,11 +1717,26 @@ private:
 						m_element.Lookup.Stretch = v;
 					}
 				}
-
-				for (const auto size : {
+				constexpr std::array<float, 31> sizes{ {
 					8.f, 9.f, 9.6f, 10.f, 11.f, 12.f, 13.f, 14.f, 15.f, 16.f, 17.f, 18.f, 18.4f, 19.f,
-					20.f, 21.f, 22.f, 23.f, 24.f, 26.f, 28.f, 30.f, 32.f, 34.f, 36.f, 38.f, 40.f, 45.f, 46.f, 68.f, 90.f })
+					20.f, 21.f, 22.f, 23.f, 24.f, 26.f, 28.f, 30.f, 32.f, 34.f, 36.f, 38.f, 40.f, 45.f, 46.f, 68.f, 90.f } };
+
+				for (const auto size : sizes)
 					ComboBox_AddString(m_controls->FontSizeCombo, std::format(L"{:g}", size).c_str());
+
+				auto fontSizeRestored = false;
+				const auto prevSize = m_element.Size;
+				for (size_t i = 0; i < sizes.size(); i++) {
+					ComboBox_AddString(m_controls->FontSizeCombo, std::format(L"{:g}", sizes[i]).c_str());
+					if (sizes[i] >= m_element.Size && !fontSizeRestored) {
+						ComboBox_SetCurSel(m_controls->FontSizeCombo, i);
+						m_element.Size = sizes[i];
+						fontSizeRestored = true;
+					}
+				}
+				if (!fontSizeRestored)
+					ComboBox_SetCurSel(m_controls->FontSizeCombo, ComboBox_GetCount(m_controls->FontSizeCombo));
+				ComboBox_SetText(m_controls->FontSizeCombo, std::format(L"{:g}", prevSize).c_str());
 
 				break;
 			}
@@ -1717,8 +1744,6 @@ private:
 			default:
 				break;
 		}
-
-		RefreshUnicodeBlockSearchResults();
 	}
 
 	void OnBaseFontChanged() {
@@ -1874,6 +1899,17 @@ void FontSet::ConsolidateFonts() {
 	}
 }
 
+static const char* const DefaultPreviewText = reinterpret_cast<const char*>(
+	u8"0123456789?!%+-./\r\n"
+	u8"1英en-US: _The_ (89) quick brown foxes jump over the [01] lazy dogs.\r\n"
+	u8"2日ja-JP: _パングラム_(pangram)で[23]つの字体（フォント）をテストします。\r\n"
+	u8"3中zh-CN: _(天)地玄黃_，宇[宙]洪荒。蓋此身髮，4大5常。\r\n"
+	u8"4韓ko-KR: 45 _다(람)쥐_ 67 헌 쳇바퀴에 타[고]파.\r\n"
+	u8"5露ru-RU: Съешь (ж)е ещё этих мягких 23 [ф]ранцузских булок да 45 выпей чаю.\r\n"
+	u8"6泰th-TH: เป็นมนุษย์สุดประเสริฐเลิศคุณค่า\r\n"  // very few number of triple character gpos entries
+	// any script covered by Nirmala UI has too much triple character gpos entries to be usable in game, so don't bother
+	);
+
 FontSet NewFromTemplateFont(XivRes::GameFontType fontType) {
 	FontSet res{};
 	if (const auto pcszFmt = XivRes::FontGenerator::GetFontTexFilenameFormat(fontType)) {
@@ -1887,6 +1923,15 @@ FontSet NewFromTemplateFont(XivRes::GameFontType fontType) {
 		std::string_view filename(def.Path);
 		filename = filename.substr(filename.rfind('/') + 1);
 		filename = filename.substr(0, filename.find('.'));
+
+		std::string previewText;
+		if (filename == "Jupiter_45" || filename == "Jupiter_90") {
+			previewText = "0123456789!!!";
+		} else if (filename.starts_with("Meidinger_")) {
+			previewText = "0123456789?!%+-./";
+		} else {
+			previewText = DefaultPreviewText;
+		}
 		res.Faces.emplace_back(FontSet::Face{
 			.RuntimeTag = std::make_shared<void*>(),
 			.Name = std::string(filename),
@@ -1903,7 +1948,7 @@ FontSet NewFromTemplateFont(XivRes::GameFontType fontType) {
 					.Name = def.Name,
 				},
 			}},
-			.PreviewText = std::format("{} {:g} Preview Text", def.Name, def.Size),
+			.PreviewText = previewText,
 			});
 	}
 
@@ -1981,6 +2026,7 @@ class ExportPreviewWindow : public BaseWindow {
 
 		SendMessage(m_hFacesListBox, WM_SETFONT, reinterpret_cast<WPARAM>(m_hUiFont), FALSE);
 		SendMessage(m_hEdit, WM_SETFONT, reinterpret_cast<WPARAM>(m_hUiFont), FALSE);
+		Edit_SetText(m_hEdit, XivRes::Unicode::Convert<std::wstring>(DefaultPreviewText).c_str());
 
 		for (const auto& font : m_fonts)
 			ListBox_AddString(m_hFacesListBox, XivRes::Unicode::Convert<std::wstring>(font.first).c_str());
@@ -2623,8 +2669,6 @@ class FontEditorWindow : public BaseWindow {
 				for (size_t read, pos = 0; (read = textureOne.ReadStreamPartial(pos, &buf[0], buf.size())); pos += read)
 					out.write(&buf[0], read);
 			}
-			for (size_t i = 0; i < mips.size(); i++)
-				std::filesystem::copy(basePath / std::format(m_fontSet.TexFilenameFormat, i + 1), (basePath / std::format(L"font_lobby{}.tex", i + 1)), std::filesystem::copy_options::overwrite_existing);
 
 			for (size_t i = 0; i < fdts.size(); i++) {
 				std::ofstream out(basePath / std::format("{}.fdt", m_fontSet.Faces[i].Name), std::ios::binary);
@@ -2632,8 +2676,6 @@ class FontEditorWindow : public BaseWindow {
 				for (size_t read, pos = 0; (read = fdts[i]->ReadStreamPartial(pos, &buf[0], buf.size())); pos += read)
 					out.write(&buf[0], read);
 			}
-			for (size_t i = 0; i < fdts.size(); i++)
-				std::filesystem::copy(basePath / std::format("{}.fdt", m_fontSet.Faces[i].Name), (basePath / std::format("{}_lobby.fdt", m_fontSet.Faces[i].Name)), std::filesystem::copy_options::overwrite_existing);
 
 		} catch (const std::exception& e) {
 			MessageBoxW(m_hWnd, std::format(L"Failed to export: {}", XivRes::Unicode::Convert<std::wstring>(e.what())).c_str(), GetWindowString(m_hWnd).c_str(), MB_OK | MB_ICONERROR);
@@ -2699,6 +2741,9 @@ class FontEditorWindow : public BaseWindow {
 		m_bChanged = true;
 		m_pActiveFace->RefreshFont();
 		Redraw();
+
+		if (indices.size() == 1)
+			ShowEditor(elements[*indices.begin()]);
 
 		return 0;
 	}
@@ -2802,7 +2847,7 @@ class FontEditorWindow : public BaseWindow {
 
 		auto& elements = m_pActiveFace->Elements;
 		for (const auto pos : indices | std::views::reverse) {
-			for (const auto& templateElement : parsedTemplateElements) {
+			for (const auto& templateElement : parsedTemplateElements | std::views::reverse) {
 				FontSet::Face::Element newElement{ templateElement };
 				newElement.RuntimeTag = std::make_shared<void*>();
 				elements.emplace(elements.begin() + pos, std::move(newElement));
