@@ -37,7 +37,8 @@ namespace XivAlexander::Misc::ExcelTransformConfig {
 		std::string name;
 		int id;
 		int column;
-		Sqex::Language forceLanguage{};
+		std::optional<Sqex::Language> forceLanguage;
+		std::optional<std::string> forceString;
 
 		bool operator<(const IgnoredCell& r) const {
 			if (const auto eq = _stricmp(name.c_str(), r.name.c_str()); eq != 0)
