@@ -568,49 +568,59 @@ XivAlexander::Apps::MainApp::Internal::SocketHook::SocketHook(Apps::MainApp::App
 	: m_logger(Misc::Logger::Acquire())
 	, OnSocketFound([this](const auto& cb) { if (m_pImpl) { for (const auto& val : m_pImpl->Sockets | std::views::values) cb(*val); } }) {
 
-	ZydisDecoder decoder;
-	ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64);
-	
-	auto basePtr = static_cast<uint8_t*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
+	if (const auto oodleFirst = Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
 		"\x48\x83\x7b\x00\x00\x75\x00\xb9\x00\x00\x00\x00\xe8\x00\x00\x00\x00\x45\x33\xc0\x33\xd2\x48\x8b\xc8\xe8",
 		"\xff\xff\xff\x00\xff\xff\x00\xff\x00\xff\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff",
-		26, {}).front());
-	s_oodle.htbits = basePtr[8];
-	
-	std::vector<void*> callTargetAddresses;
-	ZydisDecodedInstruction instruction;
-	for (
-		size_t offset = 0, funclen = 32768;
-		callTargetAddresses.size() < 6 && ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, &basePtr[offset], funclen - offset, &instruction));
-		offset += instruction.length
-	) {
-		if (instruction.meta.category != ZYDIS_CATEGORY_CALL)
-			continue;
-		if (uint64_t resultAddress;
-			instruction.operand_count >= 1
-			&& ZYAN_STATUS_SUCCESS == ZydisCalcAbsoluteAddress(&instruction, &instruction.operands[0],
-				reinterpret_cast<size_t>(&basePtr[offset]), &resultAddress)) {
+		26, {}); !oodleFirst.empty()) {
 
-			callTargetAddresses.push_back(reinterpret_cast<void*>(resultAddress));
+		try {
+
+			ZydisDecoder decoder;
+			ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64);
+
+			auto basePtr = static_cast<uint8_t*>(oodleFirst.front());
+			s_oodle.htbits = basePtr[8];
+
+			std::vector<void*> callTargetAddresses;
+			ZydisDecodedInstruction instruction;
+			for (
+				size_t offset = 0, funclen = 32768;
+				callTargetAddresses.size() < 6 && ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, &basePtr[offset], funclen - offset, &instruction));
+				offset += instruction.length
+				) {
+				if (instruction.meta.category != ZYDIS_CATEGORY_CALL)
+					continue;
+				if (uint64_t resultAddress;
+					instruction.operand_count >= 1
+					&& ZYAN_STATUS_SUCCESS == ZydisCalcAbsoluteAddress(&instruction, &instruction.operands[0],
+						reinterpret_cast<size_t>(&basePtr[offset]), &resultAddress)) {
+
+					callTargetAddresses.push_back(reinterpret_cast<void*>(resultAddress));
+				}
+			}
+
+			s_oodle.OodleNetwork1_Shared_Size = static_cast<Utils::OodleNetwork1_Shared_Size*>(callTargetAddresses[0]);
+			s_oodle.OodleNetwork1_Shared_SetWindow = static_cast<Utils::OodleNetwork1_Shared_SetWindow*>(callTargetAddresses[2]);
+			s_oodle.OodleNetwork1UDP_State_Size = static_cast<Utils::OodleNetwork1UDP_State_Size*>(callTargetAddresses[3]);
+			s_oodle.OodleNetwork1UDP_Train = static_cast<Utils::OodleNetwork1UDP_Train*>(callTargetAddresses[5]);
+			s_oodle.OodleNetwork1UDP_Decode = static_cast<Utils::OodleNetwork1UDP_Decode*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
+				"\x40\x53\x48\x83\xec\x00\x48\x8b\x44\x24\x68\x49\x8b\xd9\x48\x85\xc0\x7e",
+				"\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
+				18, {}).front());
+
+			basePtr = static_cast<uint8_t*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
+				"\x48\x8b\x57\x00\x4c\x8b\xce\x48\x8b\x4f\x00\x4c\x8b\xc5\x4c\x89\x74\x24\x20\xe8",
+				"\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff",
+				20, {}).front()) + 19;
+			basePtr = basePtr + 5 + *reinterpret_cast<int*>(basePtr + 1);
+			s_oodle.OodleNetwork1UDP_Encode = reinterpret_cast<Utils::OodleNetwork1UDP_Encode*>(basePtr);
+			s_oodle.found = true;
+		} catch (const std::exception& e) {
+			m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "Failed to find oodle stuff: {}", e.what());
 		}
-	}
-	
-	s_oodle.OodleNetwork1_Shared_Size = static_cast<Utils::OodleNetwork1_Shared_Size*>(callTargetAddresses[0]);
-	s_oodle.OodleNetwork1_Shared_SetWindow = static_cast<Utils::OodleNetwork1_Shared_SetWindow*>(callTargetAddresses[2]);
-	s_oodle.OodleNetwork1UDP_State_Size = static_cast<Utils::OodleNetwork1UDP_State_Size*>(callTargetAddresses[3]);
-	s_oodle.OodleNetwork1UDP_Train = static_cast<Utils::OodleNetwork1UDP_Train*>(callTargetAddresses[5]);
-	s_oodle.OodleNetwork1UDP_Decode = static_cast<Utils::OodleNetwork1UDP_Decode*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
-		"\x40\x53\x48\x83\xec\x00\x48\x8b\x44\x24\x68\x49\x8b\xd9\x48\x85\xc0\x7e",
-		"\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
-		18, {}).front());
+	} else
+		m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "Oodle signatures could not be found.");
 
-	basePtr = static_cast<uint8_t*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
-		"\x48\x8b\x57\x00\x4c\x8b\xce\x48\x8b\x4f\x00\x4c\x8b\xc5\x4c\x89\x74\x24\x20\xe8",
-		"\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff",
-		20, {}).front()) + 19;
-	basePtr = basePtr + 5 + *reinterpret_cast<int*>(basePtr + 1);
-	s_oodle.OodleNetwork1UDP_Encode = reinterpret_cast<Utils::OodleNetwork1UDP_Encode*>(basePtr);
-	
 	m_hThreadSetupHook = Utils::Win32::Thread(L"SocketHook::SocketHook/WaitGameWindow", [this, &app]() {
 		m_logger->Log(LogCategory::SocketHook, "Waiting for game window to stabilize before setting up redirecting network operations.");
 		app.RunOnGameLoop([&]() {

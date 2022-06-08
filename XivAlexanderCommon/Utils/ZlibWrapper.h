@@ -25,7 +25,8 @@ namespace Utils {
 		OodleNetwork1UDP_Decode* OodleNetwork1UDP_Decode;
 		OodleNetwork1UDP_Encode* OodleNetwork1UDP_Encode;
 		OodleNetwork1UDP_State_Size* OodleNetwork1UDP_State_Size;
-		int htbits;
+		int htbits = 0;
+		bool found = false;
 	};
 	
 	class Oodler {
@@ -42,16 +43,20 @@ namespace Utils {
 	public:
 		Oodler(const OodleNetworkFunctions& funcs)
 			: m_funcs(funcs)
-			, m_state(m_funcs.OodleNetwork1UDP_State_Size())
-			, m_shared(m_funcs.OodleNetwork1_Shared_Size(m_funcs.htbits))
-			, m_window(WindowSize)
-			, m_buffer(65536) {
+			, m_state(!m_funcs.found ? 0 : m_funcs.OodleNetwork1UDP_State_Size())
+			, m_shared(!m_funcs.found ? 0 : m_funcs.OodleNetwork1_Shared_Size(m_funcs.htbits))
+			, m_window(!m_funcs.found ? 0 : WindowSize)
+			, m_buffer(!m_funcs.found ? 0 : 65536) {
 
-			m_funcs.OodleNetwork1_Shared_SetWindow(&m_shared[0], m_funcs.htbits, &m_window[0], static_cast<int>(m_window.size()));
-			m_funcs.OodleNetwork1UDP_Train(&m_state[0], &m_shared[0], nullptr, nullptr, 0);
+			if (m_funcs.found) {
+				m_funcs.OodleNetwork1_Shared_SetWindow(&m_shared[0], m_funcs.htbits, &m_window[0], static_cast<int>(m_window.size()));
+				m_funcs.OodleNetwork1UDP_Train(&m_state[0], &m_shared[0], nullptr, nullptr, 0);
+			}
 		}
 
 		std::span<uint8_t> decode(std::span<const uint8_t> source, size_t decodedLength) {
+			if (!m_funcs.found)
+				throw std::runtime_error("Oodle not initialized");
 			m_buffer.resize(decodedLength);
 			if (!m_funcs.OodleNetwork1UDP_Decode(&m_state[0], &m_shared[0], &source[0], static_cast<int>(source.size()), &m_buffer[0], static_cast<int>(decodedLength)))
 				throw std::runtime_error("OodleNetwork1UDP_Decode error");
@@ -59,6 +64,8 @@ namespace Utils {
 		}
 
 		std::span<uint8_t> encode(std::span<const uint8_t> source) {
+			if (!m_funcs.found)
+				throw std::runtime_error("Oodle not initialized");
 			m_buffer.resize(source.size());
 			const auto size = m_funcs.OodleNetwork1UDP_Encode(&m_state[0], &m_shared[0], &source[0], static_cast<int>(source.size()), &m_buffer[0]);
 			if (!size)

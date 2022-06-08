@@ -16,12 +16,12 @@
       "Korean": [2]
     },
     "^DescriptionStandaloneTransient": {
-      "Japanese": [1],
-      "English": [1],
-      "German": [1],
-      "French": [1],
-      "ChineseSimplified": [0],
-      "Korean": [0]
+      "Japanese": [1, 2],
+      "English": [1, 2],
+      "German": [1, 2],
+      "French": [1, 2],
+      "ChineseSimplified": [0, 1],
+      "Korean": [0, 1]
     },
     "^NpcYell$": {
       "Japanese": [10],
