@@ -11,12 +11,12 @@ namespace Utils {
 		explicit ZlibError(int returnCode);
 	};
 
-	using OodleNetwork1_Shared_Size = int(int htbits);
-	using OodleNetwork1_Shared_SetWindow = void(void* data, int htbits, void* window, int windowSize);
-	using OodleNetwork1UDP_Train = void(void* state, void* shared, const void* const* trainingPacketPointers, const int* trainingPacketSizes, int trainingPacketCount);
-	using OodleNetwork1UDP_Decode = bool(void* state, void* shared, const void* compressed, size_t compressedSize, void* raw, size_t rawSize);
-	using OodleNetwork1UDP_Encode = int(const void* state, const void* shared, const void* raw, size_t rawSize, void* compressed);
-	using OodleNetwork1UDP_State_Size = int();
+	using OodleNetwork1_Shared_Size = int(__stdcall)(int htbits);
+	using OodleNetwork1_Shared_SetWindow = void(__stdcall)(void* data, int htbits, void* window, int windowSize);
+	using OodleNetwork1UDP_Train = void(__stdcall)(void* state, void* shared, const void* const* trainingPacketPointers, const int* trainingPacketSizes, int trainingPacketCount);
+	using OodleNetwork1UDP_Decode = bool(__stdcall)(void* state, void* shared, const void* compressed, size_t compressedSize, void* raw, size_t rawSize);
+	using OodleNetwork1UDP_Encode = int(__stdcall)(const void* state, const void* shared, const void* raw, size_t rawSize, void* compressed);
+	using OodleNetwork1UDP_State_Size = int(__stdcall)();
 
 	struct OodleNetworkFunctions {
 		OodleNetwork1_Shared_Size* OodleNetwork1_Shared_Size;
