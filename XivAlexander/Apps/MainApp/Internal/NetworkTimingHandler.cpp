@@ -82,7 +82,7 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 						}
 
 						// If there was no action queued to begin with before the current one, update the base lock time to now.
-						if (PendingActions.size() == 1 && (!PendingActions.back().RequestUs || *LastAnimationLockEndsAtUs < PendingActions.back().RequestUs))
+						if (PendingActions.size() == 1 && (!PendingActions.back().RequestUs || (!LastAnimationLockEndsAtUs || *LastAnimationLockEndsAtUs < PendingActions.back().RequestUs)))
 							LastAnimationLockEndsAtUs = PendingActions.back().RequestUs;
 					}
 				}
