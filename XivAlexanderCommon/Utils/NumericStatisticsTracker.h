@@ -17,6 +17,7 @@ namespace Utils {
 			Entry(int64_t value, int64_t maxAgeUs);
 		};
 
+		mutable std::mutex m_mtx;
 		mutable std::deque<Entry> m_values;
 
 	public:

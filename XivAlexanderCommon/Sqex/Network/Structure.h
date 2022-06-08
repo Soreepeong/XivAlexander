@@ -2,6 +2,7 @@
 
 namespace Utils {
 	class ZlibReusableInflater;
+	class Oodler;
 }
 
 namespace Sqex::Network::Structure {
@@ -217,6 +218,12 @@ namespace Sqex::Network::Structure {
 		std::string Represent(bool dump = false) const;
 	};
 
+	enum class CompressionType : uint8_t {
+		None = 0,
+		Deflate = 1,
+		Oodle = 2,
+	};
+
 	struct XivBundleHeader {
 		uint8_t Magic[16];
 		int64_t Timestamp;		// 16 ~ 23
@@ -224,9 +231,9 @@ namespace Sqex::Network::Structure {
 		uint16_t ConnType;		// 28 ~ 29
 		uint16_t MessageCount;	// 30 ~ 31
 		uint8_t Encoding;		// 32
-		uint8_t GzipCompressed;	// 33
+		CompressionType CompressionType;	// 33
 		uint16_t Unknown2;		// 34 ~ 35
-		uint32_t Unknown3;		// 36 ~ 39
+		uint32_t DecodedBodyLength; // 36 ~ 39
 	};
 
 	struct XivBundle : XivBundleHeader {
@@ -239,6 +246,6 @@ namespace Sqex::Network::Structure {
 		std::string Represent() const;
 
 		[[nodiscard]] static std::vector<std::vector<uint8_t>> SplitMessages(uint16_t expectedMessageCount, const std::span<const uint8_t>& buf);
-		[[nodiscard]] std::vector<std::vector<uint8_t>> GetMessages(Utils::ZlibReusableInflater&) const;
+		[[nodiscard]] std::vector<std::vector<uint8_t>> GetMessages(Utils::ZlibReusableInflater&, Utils::Oodler&) const;
 	};
 }

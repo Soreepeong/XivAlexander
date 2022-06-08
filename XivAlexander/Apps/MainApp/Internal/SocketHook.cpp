@@ -12,9 +12,14 @@
 
 using namespace Sqex::Network::Structure;
 
+static Utils::OodleNetworkFunctions s_oodle{};
+
 class XivAlexander::Apps::MainApp::Internal::SingleConnection::SingleStream {
 	Misc::Logger& m_logger;
+	const std::string m_name;
+	Utils::ZlibReusableDeflater m_deflater;
 	Utils::ZlibReusableInflater m_inflater;
+	Utils::Oodler m_oodler, m_unoodler;
 
 	std::vector<uint8_t> m_buffer{};
 	size_t m_pointer = 0;
@@ -47,8 +52,11 @@ public:
 		}
 	};
 
-	SingleStream(Misc::Logger& logger)
-		: m_logger(logger) {
+	SingleStream(Misc::Logger& logger, std::string name)
+		: m_logger(logger)
+		, m_name(name)
+		, m_unoodler(s_oodle)
+		, m_oodler(s_oodle) {
 	}
 
 	SingleStreamWriter Write() {
@@ -136,11 +144,12 @@ public:
 				break;
 
 			try {
-				auto messages = pGamePacket->GetMessages(m_inflater);
+				auto messages = pGamePacket->GetMessages(m_inflater, m_unoodler);
 				auto header = *pGamePacket;
 				header.TotalLength = static_cast<uint32_t>(sizeof XivBundleHeader);
 				header.MessageCount = 0;
-				header.GzipCompressed = 0;
+				header.CompressionType = pGamePacket->CompressionType;
+				header.DecodedBodyLength = 0;
 
 				for (auto& message : messages) {
 					const auto pMessage = reinterpret_cast<XivMessage*>(&message[0]);
@@ -151,17 +160,38 @@ public:
 					if (!pMessage->Length)
 						continue;
 
-					header.TotalLength += pMessage->Length;
+					header.DecodedBodyLength += pMessage->Length;
 					header.MessageCount += 1;
 				}
 
-				target.Write(&header, sizeof XivBundleHeader);
+				std::vector<uint8_t> body;
+				body.reserve(header.DecodedBodyLength);
 				for (const auto& message : messages) {
-					if (reinterpret_cast<const XivMessage*>(&message[0])->Length)
-						target.Write(std::span(message));
+					if (!reinterpret_cast<const XivMessage*>(&message[0])->Length)
+						continue;
+					body.insert(body.end(), message.begin(), message.end());
 				}
+
+				std::span<uint8_t> encoded;
+				switch (header.CompressionType) {
+					case CompressionType::None:
+						encoded = { body };
+						break;
+					case CompressionType::Deflate:
+						encoded = m_deflater(body);
+						break;
+					case CompressionType::Oodle:
+						encoded = m_oodler.encode(body);
+						break;
+					default:
+						throw std::runtime_error("Unsupported compression method");
+				}
+
+				header.TotalLength += static_cast<uint32_t>(encoded.size());
+				target.Write(&header, sizeof XivBundleHeader);
+				target.Write(encoded);
 			} catch (const std::exception& e) {
-				m_logger.Format<XivAlexander::LogLevel::Warning>(XivAlexander::LogCategory::SocketHook, "Error: {}\n{}", e.what(), pGamePacket->Represent());
+				m_logger.Format<XivAlexander::LogLevel::Warning>(XivAlexander::LogCategory::SocketHook, "{}: Error: {}\n{}", m_name, e.what(), pGamePacket->Represent());
 				target.Write(pGamePacket, pGamePacket->TotalLength);
 			}
 
@@ -466,10 +496,10 @@ void XivAlexander::Apps::MainApp::Internal::SingleConnection::Implementation::Re
 XivAlexander::Apps::MainApp::Internal::SingleConnection::Implementation::Implementation(Internal::SingleConnection& singleConnection, Internal::SocketHook& socketHook)
 	: SingleConnection(singleConnection)
 	, SocketHook(socketHook)
-	, RecvRaw(*socketHook.m_logger)
-	, RecvProcessed(*socketHook.m_logger)
-	, SendRaw(*socketHook.m_logger)
-	, SendProcessed(*socketHook.m_logger) {
+	, RecvRaw(*socketHook.m_logger, "S2C_Raw")
+	, RecvProcessed(*socketHook.m_logger, "S2C_Processed")
+	, SendRaw(*socketHook.m_logger, "C2S_Raw")
+	, SendProcessed(*socketHook.m_logger, "C2S_Processed") {
 	socketHook.m_logger->Format(LogCategory::SocketHook, socketHook.m_pImpl->Config->Runtime.GetLangId(), IDS_SOCKETHOOK_SOCKET_FOUND, SingleConnection.m_socket);
 	ResolveAddresses();
 }
@@ -538,6 +568,49 @@ XivAlexander::Apps::MainApp::Internal::SocketHook::SocketHook(Apps::MainApp::App
 	: m_logger(Misc::Logger::Acquire())
 	, OnSocketFound([this](const auto& cb) { if (m_pImpl) { for (const auto& val : m_pImpl->Sockets | std::views::values) cb(*val); } }) {
 
+	ZydisDecoder decoder;
+	ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64);
+	
+	auto basePtr = static_cast<uint8_t*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
+		"\x48\x83\x7b\x00\x00\x75\x00\xb9\x00\x00\x00\x00\xe8\x00\x00\x00\x00\x45\x33\xc0\x33\xd2\x48\x8b\xc8\xe8",
+		"\xff\xff\xff\x00\xff\xff\x00\xff\x00\xff\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff",
+		26, {}).front());
+	s_oodle.htbits = basePtr[8];
+	
+	std::vector<void*> callTargetAddresses;
+	ZydisDecodedInstruction instruction;
+	for (
+		size_t offset = 0, funclen = 32768;
+		callTargetAddresses.size() < 6 && ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, &basePtr[offset], funclen - offset, &instruction));
+		offset += instruction.length
+	) {
+		if (instruction.meta.category != ZYDIS_CATEGORY_CALL)
+			continue;
+		if (uint64_t resultAddress;
+			instruction.operand_count >= 1
+			&& ZYAN_STATUS_SUCCESS == ZydisCalcAbsoluteAddress(&instruction, &instruction.operands[0],
+				reinterpret_cast<size_t>(&basePtr[offset]), &resultAddress)) {
+
+			callTargetAddresses.push_back(reinterpret_cast<void*>(resultAddress));
+		}
+	}
+	
+	s_oodle.OodleNetwork1_Shared_Size = static_cast<Utils::OodleNetwork1_Shared_Size*>(callTargetAddresses[0]);
+	s_oodle.OodleNetwork1_Shared_SetWindow = static_cast<Utils::OodleNetwork1_Shared_SetWindow*>(callTargetAddresses[2]);
+	s_oodle.OodleNetwork1UDP_State_Size = static_cast<Utils::OodleNetwork1UDP_State_Size*>(callTargetAddresses[3]);
+	s_oodle.OodleNetwork1UDP_Train = static_cast<Utils::OodleNetwork1UDP_Train*>(callTargetAddresses[5]);
+	s_oodle.OodleNetwork1UDP_Decode = static_cast<Utils::OodleNetwork1UDP_Decode*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
+		"\x40\x53\x48\x83\xec\x00\x48\x8b\x44\x24\x68\x49\x8b\xd9\x48\x85\xc0\x7e",
+		"\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
+		18, {}).front());
+
+	basePtr = static_cast<uint8_t*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
+		"\x48\x8b\x57\x00\x4c\x8b\xce\x48\x8b\x4f\x00\x4c\x8b\xc5\x4c\x89\x74\x24\x20\xe8",
+		"\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff",
+		20, {}).front()) + 19;
+	basePtr = basePtr + 5 + *reinterpret_cast<int*>(basePtr + 1);
+	s_oodle.OodleNetwork1UDP_Encode = reinterpret_cast<Utils::OodleNetwork1UDP_Encode*>(basePtr);
+	
 	m_hThreadSetupHook = Utils::Win32::Thread(L"SocketHook::SocketHook/WaitGameWindow", [this, &app]() {
 		m_logger->Log(LogCategory::SocketHook, "Waiting for game window to stabilize before setting up redirecting network operations.");
 		app.RunOnGameLoop([&]() {

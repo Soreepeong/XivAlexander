@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Structure.h"
 
+#include "Sqex.h"
 #include "Utils/Utils.h"
 #include "Utils/ZlibWrapper.h"
 
@@ -31,11 +32,11 @@ std::span<const uint8_t> Sqex::Network::Structure::XivBundle::ExtractFrontTrash(
 std::string Sqex::Network::Structure::XivBundle::Represent() const {
 	const auto st = Utils::EpochToLocalSystemTime(Timestamp);
 	return std::format(
-		"[{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}] Length={} ConnType={} Count={} Gzip={}",
+		"[{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}] Length={} ConnType={} Count={} CompressionType={}",
 		st.wYear, st.wMonth, st.wDay,
 		st.wHour, st.wMinute, st.wSecond,
 		st.wMilliseconds,
-		TotalLength, ConnType, MessageCount, GzipCompressed
+		TotalLength, ConnType, MessageCount, static_cast<int>(CompressionType)
 	);
 }
 
@@ -54,13 +55,19 @@ std::vector<std::vector<uint8_t>> Sqex::Network::Structure::XivBundle::SplitMess
 	return result;
 }
 
-std::vector<std::vector<uint8_t>> Sqex::Network::Structure::XivBundle::GetMessages(Utils::ZlibReusableInflater& inflater) const {
-	const auto view = span_cast<uint8_t>(1, this).subspan(sizeof XivBundleHeader, TotalLength - sizeof XivBundleHeader);
+std::vector<std::vector<uint8_t>> Sqex::Network::Structure::XivBundle::GetMessages(Utils::ZlibReusableInflater& inflater, Utils::Oodler& oodler) const {
+	const auto view = std::span(Data, TotalLength - sizeof XivBundleHeader);
 
-	if (GzipCompressed)
-		return SplitMessages(MessageCount, inflater(view));
-	else
-		return SplitMessages(MessageCount, view);
+	switch (CompressionType) {
+		case CompressionType::None:
+			return SplitMessages(MessageCount, view);
+		case CompressionType::Deflate:
+			return SplitMessages(MessageCount, inflater(view));
+		case CompressionType::Oodle:
+			return SplitMessages(MessageCount, oodler.decode(view, DecodedBodyLength));
+		default:
+			throw CorruptDataException(std::format("Unsupported compression type {}", static_cast<int>(CompressionType)));
+	}
 }
 
 std::string Sqex::Network::Structure::XivMessage::Represent(bool dump) const {
