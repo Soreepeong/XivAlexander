@@ -12,6 +12,7 @@
     <ClCompile Include="Test_DecompressSqpack.cpp" />
     <ClCompile Include="Test_ExtractMusic.cpp" />
     <ClCompile Include="Test_Sqpatch.cpp" />
+    <ClCompile Include="oodlenaywhere.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />
