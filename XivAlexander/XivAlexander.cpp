@@ -81,7 +81,7 @@ DWORD Dll::LaunchXivAlexLoaderWithTargetHandles(
 	const auto companion = companionPath / whichLoader;
 
 	if (!exists(companion))
-		throw std::runtime_error(Utils::ToUtf8(std::format(FindStringResourceEx(Dll::Module(), IDS_ERROR_LOADER_NOT_FOUND) + 1, companion)));
+		throw std::runtime_error(Utils::ToUtf8(std::vformat(FindStringResourceEx(Dll::Module(), IDS_ERROR_LOADER_NOT_FOUND) + 1, std::make_wformat_args(companion))));
 
 	Utils::Win32::Process companionProcess;
 	{

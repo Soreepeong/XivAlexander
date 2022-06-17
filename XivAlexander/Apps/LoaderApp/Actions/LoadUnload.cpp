@@ -116,7 +116,7 @@ int XivAlexander::LoaderApp::Actions::LoadUnload::Run() {
 		if (!m_args.m_quiet) {
 			std::wstring errors;
 			if (m_args.m_targetPids.empty() && m_args.m_targetSuffix.empty())
-				errors = std::format(Utils::Win32::FindStringResourceEx(Dll::Module(), IDS_ERROR_NO_FFXIV_PROCESS) + 1, Dll::GameExecutableNameW);
+				errors = std::vformat(Utils::Win32::FindStringResourceEx(Dll::Module(), IDS_ERROR_NO_FFXIV_PROCESS) + 1, std::make_wformat_args(Dll::GameExecutableNameW));
 			else
 				errors = FindStringResourceEx(Dll::Module(), IDS_ERROR_NO_MATCHING_PROCESS) + 1;
 			Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, errors);
@@ -128,7 +128,7 @@ int XivAlexander::LoaderApp::Actions::LoadUnload::Run() {
 	try {
 		Utils::Win32::AddDebugPrivilege();
 	} catch (const std::exception& err) {
-		debugPrivilegeError = Utils::ToUtf8(std::format(FindStringResourceEx(Dll::Module(), IDS_ERROR_SEDEBUGPRIVILEGE) + 1, err.what()));
+		debugPrivilegeError = Utils::ToUtf8(std::vformat(FindStringResourceEx(Dll::Module(), IDS_ERROR_SEDEBUGPRIVILEGE) + 1, std::make_wformat_args(err.what())));
 	}
 
 	for (const auto pid : pids) {

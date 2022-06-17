@@ -648,7 +648,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_UpgradeMusi
 					} catch (const std::exception& e) {
 						Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 					}
-					}), std::format(RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_BUYFROM), websiteName).c_str());
+					}), std::vformat(RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_BUYFROM), std::make_wformat_args(websiteName)).c_str());
 			}
 			AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
 		}

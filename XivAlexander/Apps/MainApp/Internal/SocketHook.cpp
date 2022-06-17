@@ -84,13 +84,13 @@ public:
 			return {};
 		return {
 			reinterpret_cast<const T*>(&m_buffer[m_pointer]),
-			count == SIZE_MAX ? (m_buffer.size() - m_pointer) / sizeof T : count
+			count == SIZE_MAX ? (m_buffer.size() - m_pointer) / sizeof(T) : count
 		};
 	}
 
 	template<typename T = uint8_t, typename = std::enable_if_t<std::is_standard_layout_v<T>>>
 	void Consume(size_t count) {
-		m_pointer += count * sizeof T;
+		m_pointer += count * sizeof(T);
 		if (m_pointer == m_buffer.size()) {
 			m_buffer.clear();
 			m_pointer = 0;
@@ -103,15 +103,15 @@ public:
 
 	template<typename T, typename = std::enable_if_t<std::is_standard_layout_v<T>>>
 	size_t Read(T* buf, size_t count) {
-		count = std::min(count, (m_buffer.size() - m_pointer) / sizeof T);
-		memcpy(buf, &m_buffer[m_pointer], count * sizeof T);
+		count = std::min(count, (m_buffer.size() - m_pointer) / sizeof(T));
+		memcpy(buf, &m_buffer[m_pointer], count * sizeof(T));
 		Consume<T>(count);
 		return count;
 	}
 
 	template<typename T = uint8_t, typename = std::enable_if_t<std::is_standard_layout_v<T>>>
 	[[nodiscard]] size_t Available() const {
-		return (m_buffer.size() - m_pointer) / sizeof T;
+		return (m_buffer.size() - m_pointer) / sizeof(T);
 	}
 
 	void TunnelXivStream(SingleStream& target, const XivAlexander::Apps::MainApp::Internal::SingleConnection::MessageMangler& messageMangler) {

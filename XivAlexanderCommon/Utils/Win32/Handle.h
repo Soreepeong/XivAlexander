@@ -64,7 +64,7 @@ namespace Utils::Win32 {
 
 		template<typename T>
 		size_t Read(uint64_t offset, std::span<T> buf, PartialIoMode readMode = PartialIoMode::AlwaysFull) const {
-			return Read(offset, buf.data(), buf.size_bytes(), readMode) / sizeof T;
+			return Read(offset, buf.data(), buf.size_bytes(), readMode) / sizeof(T);
 		}
 
 		template<typename T>
@@ -86,7 +86,7 @@ namespace Utils::Win32 {
 
 		template<typename T>
 		size_t Write(uint64_t offset, std::span<T> buf, PartialIoMode writeMode = PartialIoMode::AlwaysFull) const {
-			return Write(offset, buf.data(), buf.size_bytes(), writeMode) / sizeof T;
+			return Write(offset, buf.data(), buf.size_bytes(), writeMode) / sizeof(T);
 		}
 
 		[[nodiscard]] uint64_t GetFileSize() const;
@@ -185,12 +185,12 @@ namespace Utils::Win32 {
 			
 			template<typename T>
 			[[nodiscard]] std::span<T> AsSpan(size_t truncateAt = SIZE_MAX) {
-				return {static_cast<T*>(m_object), std::min(truncateAt, Size() / sizeof T)};
+				return {static_cast<T*>(m_object), std::min(truncateAt, Size() / sizeof(T))};
 			}
 
 			template<typename T>
 			[[nodiscard]] std::span<const T> AsSpan(size_t truncateAt = SIZE_MAX) const {
-				return {static_cast<const T*>(m_object), std::min(truncateAt, Size() / sizeof T)};
+				return {static_cast<const T*>(m_object), std::min(truncateAt, Size() / sizeof(T))};
 			}
 		};
 	};

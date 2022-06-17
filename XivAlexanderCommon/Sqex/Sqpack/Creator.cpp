@@ -30,12 +30,12 @@ struct Sqex::Sqpack::Creator::Implementation {
 
 	virtual ~Implementation() = default;
 
-	template<typename...Args>
-	void Log(Args ...args) {
+	template<typename Arg, typename...Args>
+	void Log(Arg&& arg, Args&& ...args) {
 		if (this_->Log.Empty())
 			return;
 
-		this_->Log(std::format(std::forward<Args>(args)...));
+		this_->Log(std::vformat(std::forward<Arg>(arg), std::make_format_args(std::forward<Args>(args)...)));
 	}
 };
 

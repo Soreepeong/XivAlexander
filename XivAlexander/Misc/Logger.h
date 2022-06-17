@@ -71,18 +71,18 @@ namespace XivAlexander::Misc {
 		Utils::ListenerManager<Logger, void, const std::deque<LogItem>&> OnNewLogItem;
 
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
-		void Format(LogCategory category, const char* format, Args ... args) {
-			Log(category, std::format(format, std::forward<Args>(args)...), Level);
+		void Format(LogCategory category, const char* format, Args&&...args) {
+			Log(category, std::vformat(format, std::make_format_args(std::forward<Args>(args)...)), Level);
 		}
 
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
-		void Format(LogCategory category, const wchar_t* format, Args ... args) {
-			Log(category, std::format(format, std::forward<Args>(args)...), Level);
+		void Format(LogCategory category, const wchar_t* format, Args&&...args) {
+			Log(category, std::vformat(format, std::make_wformat_args(std::forward<Args>(args)...)), Level);
 		}
 
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
-		void Format(LogCategory category, const char8_t* format, Args ... args) {
-			Log(category, std::format(reinterpret_cast<const char*>(format), std::forward<Args>(args)...), Level);
+		void Format(LogCategory category, const char8_t* format, Args&&...args) {
+			Log(category, std::vformat(reinterpret_cast<const char*>(format), std::make_format_args(std::forward<Args>(args)...)), Level);
 		}
 
 	private:
@@ -90,13 +90,13 @@ namespace XivAlexander::Misc {
 
 	public:
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
-		void Format(LogCategory category, WORD wLanguage, UINT uStringResFormatId, Args ... args) {
-			Log(category, std::format(GetStringResource(uStringResFormatId, wLanguage), std::forward<Args>(args)...), Level);
+		void Format(LogCategory category, WORD wLanguage, UINT uStringResFormatId, Args&&...args) {
+			Log(category, std::vformat(GetStringResource(uStringResFormatId, wLanguage), std::make_wformat_args(std::forward<Args>(args)...)), Level);
 		}
 
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
-		void FormatDefaultLanguage(LogCategory category, UINT uStringResFormatId, Args ... args) {
-			Log(category, std::format(GetStringResource(uStringResFormatId), std::forward<Args>(args)...), Level);
+		void FormatDefaultLanguage(LogCategory category, UINT uStringResFormatId, Args&&...args) {
+			Log(category, std::vformat(GetStringResource(uStringResFormatId), std::make_wformat_args(std::forward<Args>(args)...)), Level);
 		}
 	};
 }

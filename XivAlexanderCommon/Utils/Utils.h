@@ -51,13 +51,13 @@ namespace Utils {
 	private:
 		union {
 			T value;
-			char buf[sizeof T];
+			char buf[sizeof(T)];
 		};
 
 	public:
 		BE(T defaultValue = DefaultValue)
 			: value(defaultValue) {
-			std::reverse(buf, buf + sizeof T);
+			std::reverse(buf, buf + sizeof(T));
 		}
 
 		operator T() const {
@@ -81,22 +81,22 @@ namespace Utils {
 
 		T Value() const {
 			union {
-				char tmp[sizeof T];
+				char tmp[sizeof(T)];
 				T tval;
 			};
-			memcpy(tmp, buf, sizeof T);
-			std::reverse(tmp, tmp + sizeof T);
+			memcpy(tmp, buf, sizeof(T));
+			std::reverse(tmp, tmp + sizeof(T));
 			return tval;
 		}
 
 		void Value(T newValue) {
 			union {
-				char tmp[sizeof T];
+				char tmp[sizeof(T)];
 				T tval;
 			};
 			tval = newValue;
-			std::reverse(tmp, tmp + sizeof T);
-			memcpy(buf, tmp, sizeof T);
+			std::reverse(tmp, tmp + sizeof(T));
+			memcpy(buf, tmp, sizeof(T));
 		}
 	};
 
@@ -120,7 +120,7 @@ namespace Utils {
 
 	template<typename T, typename = std::enable_if_t<std::is_pod_v<T>>>
 	void WriteToUnalignedPtr(T val, void* to) {
-		for (size_t i = 0; i < sizeof T; ++i)
+		for (size_t i = 0; i < sizeof(T); ++i)
 			static_cast<char*>(to)[i] = reinterpret_cast<const char*>(&val)[i];
 	}
 

@@ -1659,7 +1659,7 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 														else if (nonEmptySize <= 1)
 															out = p[lastNonEmptyIndex];
 														else
-															out = std::format(rule.replaceTo, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
+															out = std::vformat(rule.replaceTo, std::make_format_args(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]));
 
 														Sqex::SeString escaped(out);
 														escaped.NewlineAsCarriageReturn(true);

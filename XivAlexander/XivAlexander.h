@@ -39,18 +39,18 @@ namespace Dll {
 	int MessageBoxF(HWND hWnd, UINT uType, UINT stringResId);
 
 	template <typename ... Args>
-	int MessageBoxF(HWND hWnd, UINT uType, UINT formatStringResId, Args ... args) {
-		return MessageBoxF(hWnd, uType, std::format(GetStringResFromId(formatStringResId), std::forward<Args>(args)...).c_str());
+	int MessageBoxF(HWND hWnd, UINT uType, UINT formatStringResId, Args&& ... args) {
+		return MessageBoxF(hWnd, uType, std::vformat(GetStringResFromId(formatStringResId), std::make_wformat_args(std::forward<Args>(args)...)).c_str());
 	}
 
 	template <typename ... Args>
-	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* format, Args ... args) {
-		return MessageBoxF(hWnd, uType, std::format(format, std::forward<Args>(args)...).c_str());
+	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* format, Args&& ... args) {
+		return MessageBoxF(hWnd, uType, std::vformat(format, std::make_wformat_args(std::forward<Args>(args)...)).c_str());
 	}
 
 	template <typename ... Args>
-	int MessageBoxF(HWND hWnd, UINT uType, const char* format, Args ... args) {
-		return MessageBoxF(hWnd, uType, FromUtf8(std::format(format, std::forward<Args>(args)...)).c_str());
+	int MessageBoxF(HWND hWnd, UINT uType, const char* format, Args&& ... args) {
+		return MessageBoxF(hWnd, uType, FromUtf8(std::vformat(format, std::make_format_args(std::forward<Args>(args)...))).c_str());
 	}
 
 	std::wstring GetOriginalCommandLine();

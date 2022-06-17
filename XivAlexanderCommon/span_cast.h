@@ -9,19 +9,19 @@ template<typename TTarget, typename TSource>
 std::span<TTarget> span_cast(size_t sourceCount, TSource* source, size_t sourceIndex = 0, size_t targetCount = SIZE_MAX, size_t targetCountUnitSize = sizeof TTarget) {
 	if (targetCount == SIZE_MAX) {
 		targetCountUnitSize = 1;
-		targetCount = (sourceCount - sourceIndex) * sizeof TSource;
+		targetCount = (sourceCount - sourceIndex) * sizeof(TSource);
 	}
 
 	if (targetCount == 0)
 		return {};
 
-	if (targetCount * targetCountUnitSize + sourceIndex * sizeof TSource > sourceCount * sizeof TSource)
+	if (targetCount * targetCountUnitSize + sourceIndex * sizeof(TSource) > sourceCount * sizeof(TSource))
 		throw std::out_of_range("target range exceeds source range");
 
-	if (targetCount * targetCountUnitSize % sizeof TTarget)
+	if (targetCount * targetCountUnitSize % sizeof(TTarget))
 		throw std::out_of_range("target size does not align to target type size");
 
-	return { reinterpret_cast<TTarget*>(&source[sourceIndex]), targetCount * targetCountUnitSize / sizeof TTarget };
+	return { reinterpret_cast<TTarget*>(&source[sourceIndex]), targetCount * targetCountUnitSize / sizeof(TTarget) };
 }
 
 template<typename TTarget, typename TSource, typename = std::enable_if_t<!std::is_const_v<TSource>>>

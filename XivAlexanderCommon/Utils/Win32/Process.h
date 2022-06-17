@@ -64,7 +64,7 @@ namespace Utils::Win32 {
 
 		template<typename T>
 		size_t ReadMemory(void* lpBase, size_t offset, std::span<T> buf, bool readFull = true) const {
-			return ReadMemory(lpBase, offset, buf.data(), buf.size_bytes(), readFull) / sizeof T;
+			return ReadMemory(lpBase, offset, buf.data(), buf.size_bytes(), readFull) / sizeof(T);
 		}
 
 		template<typename T>
@@ -168,12 +168,12 @@ namespace Utils::Win32 {
 		ProcessBuilder& WithAppendArgument(std::initializer_list<std::string>);
 		ProcessBuilder& WithAppendArgument(std::initializer_list<std::wstring>);
 		template<typename ... Args>
-		ProcessBuilder& WithAppendArgument(const char* format, Args ... args) {
-			return WithAppendArgument(std::format(format, std::forward<Args>(args)...));
+		ProcessBuilder& WithAppendArgument(const char* format, Args&& ... args) {
+			return WithAppendArgument(std::vformat(format, std::make_format_args(std::forward<Args>(args)...)));
 		}
 		template<typename ... Args>
-		ProcessBuilder& WithAppendArgument(const wchar_t* format, Args ... args) {
-			return WithAppendArgument(std::format(format, std::forward<Args>(args)...));
+		ProcessBuilder& WithAppendArgument(const wchar_t* format, Args&& ... args) {
+			return WithAppendArgument(std::vformat(format, std::make_wformat_args(std::forward<Args>(args)...)));
 		}
 		ProcessBuilder& WithSize(DWORD width, DWORD height, bool use = true);
 		ProcessBuilder& WithUnspecifiedSize();
@@ -232,10 +232,10 @@ namespace Utils::Win32 {
 	public:
 		template<typename T>
 		std::vector<T> ReadAligned(size_t rva, size_t maxCount = SIZE_MAX) {
-			const auto r = Read(rva, maxCount * sizeof T);
+			const auto r = Read(rva, maxCount * sizeof(T));
 			std::vector<T> res;
-			res.resize(r.size() / sizeof T);
-			memcpy(&res[0], &r[0], res.size() * sizeof T);
+			res.resize(r.size() / sizeof(T));
+			memcpy(&res[0], &r[0], res.size() * sizeof(T));
 			return res;
 		}
 

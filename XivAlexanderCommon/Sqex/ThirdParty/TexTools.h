@@ -193,7 +193,7 @@ namespace Sqex::ThirdParty::TexTools {
 				if (entry.Type != type)
 					continue;
 				const auto spanBytes = std::span(Data).subspan(entry.Offset, entry.Size);
-				return { reinterpret_cast<const T*>(spanBytes.data()), spanBytes.size_bytes() / sizeof T };
+				return { reinterpret_cast<const T*>(spanBytes.data()), spanBytes.size_bytes() / sizeof(T) };
 			}
 			return {};
 		}

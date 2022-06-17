@@ -147,7 +147,7 @@ namespace Sqex {
 		template<typename T>
 		T ReadStream(uint64_t offset) const {
 			T buf;
-			ReadStream(offset, &buf, sizeof T);
+			ReadStream(offset, &buf, sizeof(T));
 			return buf;
 		}
 
@@ -161,7 +161,7 @@ namespace Sqex {
 			if (count > maxCount)
 				throw std::runtime_error("trying to read too many");
 			if (count == SIZE_MAX)
-				count = static_cast<size_t>(StreamSize() / sizeof T);
+				count = static_cast<size_t>(StreamSize() / sizeof(T));
 			std::vector<T> result(count);
 			ReadStream(offset, std::span(result));
 			return result;

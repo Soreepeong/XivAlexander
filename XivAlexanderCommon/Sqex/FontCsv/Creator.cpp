@@ -673,7 +673,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 
 				for (size_t i = textures->second.size(); ; ++i) {
 					try {
-						const auto texturePath = std::format(source.texturePath.string(), i + 1);
+						const auto texturePath = std::vformat(source.texturePath.string(), std::make_format_args(i + 1));
 						auto provider = reader->second->GetEntryProvider(texturePath);
 						auto rawStream = std::make_shared<Sqpack::EntryRawStream>(std::move(provider));
 						auto mipmap = Texture::ModifiableTextureStream(std::move(rawStream)).GetMipmap(0, 0);
@@ -1031,7 +1031,7 @@ std::map<Sqex::Sqpack::EntryPathSpec, std::shared_ptr<const Sqex::RandomAccessSt
 
 	for (const auto& fontSet : Result) {
 		for (size_t i = 0; i < fontSet.second.Textures.size(); ++i)
-			result.emplace(std::format("common/font/{}", std::format(fontSet.first, i + 1)), fontSet.second.Textures[i]);
+			result.emplace(std::format("common/font/{}", std::vformat(fontSet.first, std::make_format_args(i + 1))), fontSet.second.Textures[i]);
 
 		for (const auto& entry : fontSet.second.Fonts)
 			result.emplace(std::format("common/font/{}", entry.first), entry.second);
