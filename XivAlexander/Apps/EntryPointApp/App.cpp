@@ -485,7 +485,7 @@ static void InitializeBeforeOriginalEntryPoint() {
 		}
 	}
 
-	void(Utils::Win32::Thread(L"XivAlexDllEnableXivAlexander", []() { Dll::EnableXivAlexander(1); }));
+	Dll::EnableXivAlexander(1);
 }
 
 void __stdcall Dll::InjectEntryPoint(InjectEntryPointParameters * pParam) {

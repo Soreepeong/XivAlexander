@@ -250,6 +250,8 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 	void HandleExceptionPointers(PEXCEPTION_POINTERS excInfo, std::wstring addInfo = L"Unexpected error occurred.") {
 		std::wostringstream errStr;
 		errStr << addInfo << L"\n\n";
+
+		auto stackTraceDisplayed = false;
 		if (excInfo && !IsBadReadPtr(excInfo, sizeof * excInfo)) {
 			try {
 				std::vector<Utils::Win32::LoadedModule> modules;
@@ -263,16 +265,20 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 					}
 				}
 				errStr << L"Stack trace:\n" << DumpStackTrace(*excInfo->ContextRecord);
+				stackTraceDisplayed = true;
 			} catch (const std::exception& e) {
 				errStr << L"An error has occurred while trying to display information about the error.\n" << e.what();
 			}
 		}
-		try {
-			CONTEXT ctx{};
-			RtlCaptureContext(&ctx);
-			errStr << L"Stack trace from error handler:\n" << DumpStackTrace(ctx);
-		} catch (const std::exception& e) {
-			errStr << L"An error has occurred while trying to display stack trace from error handler.\n" << e.what();
+
+		if (!stackTraceDisplayed) {
+			try {
+				CONTEXT ctx{};
+				RtlCaptureContext(&ctx);
+				errStr << L"Stack trace from error handler:\n" << DumpStackTrace(ctx);
+			} catch (const std::exception& e) {
+				errStr << L"An error has occurred while trying to display stack trace from error handler.\n" << e.what();
+			}
 		}
 
 		ShowMessage(errStr.str());
