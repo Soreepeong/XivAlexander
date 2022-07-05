@@ -279,10 +279,10 @@ int wmain(int argc, wchar_t** argv) {
 
 			for (const auto& offB : candidates) {
 				const auto& opBs = fnToOpcodeMapB[offB];
-				opcodeItem["rva1"] = offB;
-				opcodeItem["rva1h"] = std::format("0x{:x}", offB);
-				opcodeItem["va1"] = baseB + offB;
-				opcodeItem["va1h"] = std::format("0x{:x}", baseB + offB);
+				opcodeItem["rva2"] = offB;
+				opcodeItem["rva2h"] = std::format("0x{:x}", offB);
+				opcodeItem["va2"] = baseB + offB;
+				opcodeItem["va2h"] = std::format("0x{:x}", baseB + offB);
 				opcodeItem["opcodes2"] = opBs;
 				auto& opctarget = opcodeItem["opcodes2h"] = nlohmann::json::array();
 				for (const auto& x : opBs)
