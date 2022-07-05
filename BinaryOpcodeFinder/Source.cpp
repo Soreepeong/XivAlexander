@@ -126,6 +126,7 @@ int wmain(int argc, wchar_t** argv) {
 		const auto maxOpcodeB = minOpcodeB + *(int*)(switchB + opcodeCountOffset);
 		std::map<int, std::set<int>> fnToOpcodeMapB;
 		std::set<int> unusedOpcodesB;
+		std::set<size_t> claimedOffsetsB;
 #if INTPTR_MAX == INT64_MAX
 		const auto switchTableB = std::span((const int*)(pModB + *(int*)(switchB + switchTableOffset)), maxOpcodeB - minOpcodeB);
 		for (int i = 0; i < static_cast<int>(switchTableB.size()); i++)
@@ -381,6 +382,7 @@ int wmain(int argc, wchar_t** argv) {
 						opctarget.emplace_back(std::format("0x{:x}", x));
 						unusedOpcodesB.erase(x);
 					}
+					claimedOffsetsB.insert(offB.BaseOffset);
 				}
 			} else {
 				auto& candidatesArray = opcodeItem["candidates"] = nlohmann::json::array();
@@ -401,6 +403,32 @@ int wmain(int argc, wchar_t** argv) {
 					auto& stacktarget = target["stackrvah"] = nlohmann::json::array();
 					for (const auto& x : offB.Offset)
 						stacktarget.emplace_back(std::format("0x{:x}", baseB + x));
+				}
+			}
+		}
+
+		for (size_t n = 0, m = claimedOffsetsB.size(); n != m; n = m, m = claimedOffsetsB.size()) {
+			for (auto& v : res) {
+				const auto it = v.find("candidates");
+				if (it == v.end())
+					continue;
+				for (auto it2 = it->begin(); it2 != it->end(); ) {
+					if (claimedOffsetsB.contains(it2->value<size_t>("rva", 0)))
+						it2 = it->erase(it2);
+					else
+						++it2;
+				}
+				if (it->size() == 1) {
+					claimedOffsetsB.insert(it->front().value<size_t>("rva", 0));
+
+					v["rva2"] = it->front()["rva2"];
+					v["rva2h"] = it->front()["rva2h"];
+					v["va2"] = it->front()["va2"];
+					v["va2h"] = it->front()["va2h"];
+					v["opcodes2"] = it->front()["opcodes2"];
+					v["opcodes2h"] = it->front()["opcodes2h"];
+
+					v.erase(it);
 				}
 			}
 		}
