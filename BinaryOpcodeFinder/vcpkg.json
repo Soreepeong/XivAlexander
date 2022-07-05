@@ -1,0 +1,9 @@
+{
+  "name": "xivalexander-binaryopcodefinder",
+  "version-string": "_",
+  "builtin-baseline": "a2d8a7cbb15cac91d6c59cd967ef9d85105832c3",
+  "dependencies": [
+    "nlohmann-json",
+    "zydis"
+  ]
+}
