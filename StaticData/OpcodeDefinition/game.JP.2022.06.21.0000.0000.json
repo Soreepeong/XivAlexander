@@ -1,6 +1,6 @@
 {
-  "C2S_ActionRequest": "0x344",
-  "C2S_ActionRequestGroundTargeted": "0x0208",
+  "C2S_ActionRequest": "0x0344",
+  "C2S_ActionRequestGroundTargeted": "0x018d",
   "S2C_ActionEffect01": "0x00ee",
   "S2C_ActionEffect08": "0x03aa",
   "S2C_ActionEffect16": "0x02ba",
