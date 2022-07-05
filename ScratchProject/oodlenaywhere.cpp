@@ -122,7 +122,7 @@ struct IMAGE_NT_HEADERS_SIZED {
 };
 
 struct IMAGE_SECTION_HEADER {
-	uint8_t Name[IMAGE_SIZEOF_SHORT_NAME];
+	char Name[IMAGE_SIZEOF_SHORT_NAME];
 	union {
 		uint32_t PhysicalAddress;
 		uint32_t VirtualSize;
@@ -142,17 +142,16 @@ struct IMAGE_BASE_RELOCATION {
 	uint32_t SizeOfBlock;
 };
 
+#define FIELD_OFFSET(type, field)    ((int32_t)(int64_t)&(((type *)0)->field))
+#define IMAGE_FIRST_SECTION( ntheader ) ((IMAGE_SECTION_HEADER*)        \
+    ((const char*)(ntheader) +                                            \
+     FIELD_OFFSET( IMAGE_NT_HEADERS, OptionalHeader ) +                 \
+     ((ntheader))->FileHeader.SizeOfOptionalHeader   \
+    ))
+
 #if defined(_WIN64)
 #define STDCALL __stdcall
 const auto GamePath = LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\ffxiv_dx11.exe)";
-constexpr size_t off_OodleMalloc = 0x1f21cf8;
-constexpr size_t off_OodleFree = 0x1f21d00;
-constexpr size_t off_OodleNetwork1_Shared_Size = 0x153edf0;
-constexpr size_t off_OodleNetwork1_Shared_SetWindow = 0x153ecc0;
-constexpr size_t off_OodleNetwork1UDP_Train = 0x153d920;
-constexpr size_t off_OodleNetwork1UDP_Decode = 0x153cdd0;
-constexpr size_t off_OodleNetwork1UDP_Encode = 0x153ce20;
-constexpr size_t off_OodleNetwork1UDP_State_Size = 0x153d470;
 
 extern "C" void* __stdcall VirtualAlloc(void* lpAddress, size_t dwSize, uint32_t flAllocationType, uint32_t flProtect);
 void* executable_allocate(size_t size) {
@@ -164,14 +163,6 @@ using IMAGE_NT_HEADERS = IMAGE_NT_HEADERS_SIZED<IMAGE_OPTIONAL_HEADER64>;
 #elif defined(_WIN32)
 #define STDCALL __stdcall
 const auto GamePath = LR"(C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\ffxiv.exe)";
-constexpr size_t off_OodleMalloc = 0x1576dc4;
-constexpr size_t off_OodleFree = 0x1576dc8;
-constexpr size_t off_OodleNetwork1_Shared_Size = 0x1171cc0;
-constexpr size_t off_OodleNetwork1_Shared_SetWindow = 0x1171ba0;
-constexpr size_t off_OodleNetwork1UDP_Train = 0x1170bb0;
-constexpr size_t off_OodleNetwork1UDP_Decode = 0x11701a0;
-constexpr size_t off_OodleNetwork1UDP_Encode = 0x11701e0;
-constexpr size_t off_OodleNetwork1UDP_State_Size = 0x1170880;
 
 extern "C" void* __stdcall VirtualAlloc(void* lpAddress, size_t dwSize, uint32_t flAllocationType, uint32_t flProtect);
 void* executable_allocate(size_t size) {
@@ -183,14 +174,6 @@ using IMAGE_NT_HEADERS = IMAGE_NT_HEADERS_SIZED<IMAGE_OPTIONAL_HEADER32>;
 #elif defined(__linux__)
 #define STDCALL __attribute__((stdcall))
 const auto GamePath = R"(ffxiv.exe)";
-constexpr size_t off_OodleMalloc = 0x1576dc4;
-constexpr size_t off_OodleFree = 0x1576dc8;
-constexpr size_t off_OodleNetwork1_Shared_Size = 0x1171cc0;
-constexpr size_t off_OodleNetwork1_Shared_SetWindow = 0x1171ba0;
-constexpr size_t off_OodleNetwork1UDP_Train = 0x1170bb0;
-constexpr size_t off_OodleNetwork1UDP_Decode = 0x11701a0;
-constexpr size_t off_OodleNetwork1UDP_Encode = 0x11701e0;
-constexpr size_t off_OodleNetwork1UDP_State_Size = 0x1170880;
 
 #include <stdlib.h>
 #include <malloc.h>
@@ -213,6 +196,9 @@ using OodleNetwork1UDP_Train = std::remove_pointer_t<void(STDCALL*)(void* state,
 using OodleNetwork1UDP_Decode = std::remove_pointer_t<bool(STDCALL*)(void* state, void* shared, const void* compressed, size_t compressedSize, void* raw, size_t rawSize)>;
 using OodleNetwork1UDP_Encode = std::remove_pointer_t<int(STDCALL*)(const void* state, const void* shared, const void* raw, size_t rawSize, void* compressed)>;
 using OodleNetwork1UDP_State_Size = std::remove_pointer_t<int(STDCALL*)(void)>;
+using Oodle_Malloc = std::remove_pointer_t<void*(STDCALL*)(size_t size, int align)>;
+using Oodle_Free = std::remove_pointer_t<void(STDCALL*)(void* p)>;
+using Oodle_SetMallocFree = std::remove_pointer_t<void(STDCALL*)(Oodle_Malloc* pfnMalloc, Oodle_Free* pfnFree)>;
 
 void* STDCALL my_malloc(size_t size, int align) {
 	const auto pRaw = (char*)malloc(size + align + sizeof(void*) - 1);
@@ -226,6 +212,34 @@ void* STDCALL my_malloc(size_t size, int align) {
 
 void STDCALL my_free(void* p) {
 	free(*((void**)p - 1));
+}
+
+const char* lookup_in_text(const char* pBaseAddress, const char* sPattern, const char* sMask, size_t length) {
+	std::vector<void*> result;
+	const std::string_view mask(sMask, length);
+	const std::string_view pattern(sPattern, length);
+
+	const auto& dosh = *(IMAGE_DOS_HEADER*)(&pBaseAddress[0]);
+	const auto& nth = *(IMAGE_NT_HEADERS*)(&pBaseAddress[dosh.e_lfanew]);
+
+	const auto pSectionHeaders = IMAGE_FIRST_SECTION(&nth);
+	for (size_t i = 0; i < nth.FileHeader.NumberOfSections; ++i) {
+		if (strncmp(pSectionHeaders[i].Name, ".text", 8) == 0) {
+			std::string_view section(pBaseAddress + pSectionHeaders[i].VirtualAddress, pSectionHeaders[i].Misc.VirtualSize);
+			const auto nUpperLimit = section.length() - pattern.length();
+			for (size_t i = 0; i < nUpperLimit; ++i) {
+				for (size_t j = 0; j < pattern.length(); ++j) {
+					if ((section[i + j] & mask[j]) != (pattern[j] & mask[j]))
+						goto next_char;
+				}
+				return section.data() + i;
+			next_char:;
+			}
+		}
+	}
+	std::cerr << "Could not find signature" << std::endl;
+	exit(-1);
+	return nullptr;
 }
 
 int main() {
@@ -272,58 +286,104 @@ int main() {
 		i += page.SizeOfBlock;
 	}
 
+	const auto cpfnOodleSetMallocFree = lookup_in_text(
+		&virt[0],
+		"\x75\x16\x68\x00\x00\x00\x00\x68\x00\x00\x00\x00\xe8",
+		"\xff\xff\xff\x00\x00\x00\x00\xff\x00\x00\x00\x00\xe8",
+		13) + 12;
+	const auto pfnOodleSetMallocFree = (Oodle_SetMallocFree*)(cpfnOodleSetMallocFree + 5 + *(int*)(cpfnOodleSetMallocFree + 1));
+
+	std::vector<const char*> calls;
+	for (auto sig1 = lookup_in_text(
+		&virt[0],
+		"\x83\x7e\x00\x00\x75\x00\x6a\x13\xe8\x00\x00\x00\x00\x6a\x00\x6a\x00\x50\xe8",
+		"\xff\xff\x00\x00\xff\x00\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff",
+		19), sig2 = sig1 + 1024; calls.size() < 6 && sig1 < sig2; sig1++) {
+		if (*sig1 != (char)0xe8)
+			continue;
+		const auto pTargetAddress = sig1 + 5 + *(int*)(sig1 + 1);
+		if (pTargetAddress < virt.data() || pTargetAddress >= virt.data() + virt.size())
+			continue;
+		calls.push_back(pTargetAddress);
+	}
+	if (calls.size() < 6) {
+		std::cerr << "Could not find signature" << std::endl;
+		return -1;
+	}
+	const auto pfnOodleNetwork1_Shared_Size = (OodleNetwork1_Shared_Size*)calls[0];
+	const auto pfnOodleNetwork1_Shared_SetWindow = (OodleNetwork1_Shared_SetWindow*)calls[2];
+	const auto pfnOodleNetwork1UDP_State_Size= (OodleNetwork1UDP_State_Size*)calls[3];
+	const auto pfnOodleNetwork1UDP_Train = (OodleNetwork1UDP_Train*)calls[5];
+
+	const auto pfnOodleNetwork1UDP_Decode = (OodleNetwork1UDP_Decode*)lookup_in_text(
+		&virt[0],
+		"\x8b\x44\x24\x18\x56\x85\xc0\x7e\x00\x8b\x74\x24\x14\x85\xf6\x7e\x00\x3b\xf0",
+		"\xff\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff",
+		19);
+
+	const auto cpfnOodleNetwork1UDP_Encode = lookup_in_text(
+		&virt[0],
+		"\x57\xff\x15\x00\x00\x00\x00\xff\x75\x08\x56\xff\x75\x10\xff\x77\x1c\xff\x77\x18\xe8",
+		"\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
+		21) + 20;
+	const auto pfnOodleNetwork1UDP_Encode = (OodleNetwork1UDP_Encode*)(cpfnOodleNetwork1UDP_Encode + 5 + *(int*)(cpfnOodleNetwork1UDP_Encode + 1));
+
 	int htbits = 19;
-	*(void**)&virt[off_OodleMalloc] = (void*)&my_malloc;
-	*(void**)&virt[off_OodleFree] = (void*)&my_free;
-	std::vector<uint8_t> state(((OodleNetwork1UDP_State_Size*)&virt[off_OodleNetwork1UDP_State_Size])());
-	std::vector<uint8_t> shared(((OodleNetwork1_Shared_Size*)&virt[off_OodleNetwork1_Shared_Size])(htbits));
+	std::vector<uint8_t> state(pfnOodleNetwork1UDP_State_Size());
+	std::vector<uint8_t> shared(pfnOodleNetwork1_Shared_Size(htbits));
 	std::vector<uint8_t> window(0x8000);
 
-	((OodleNetwork1_Shared_SetWindow*)&virt[off_OodleNetwork1_Shared_SetWindow])(&shared[0], htbits, &window[0], static_cast<int>(window.size()));
-	((OodleNetwork1UDP_Train*)&virt[off_OodleNetwork1UDP_Train])(&state[0], &shared[0], nullptr, nullptr, 0);
+	pfnOodleSetMallocFree(&my_malloc, &my_free);
+	pfnOodleNetwork1_Shared_SetWindow(&shared[0], htbits, &window[0], static_cast<int>(window.size()));
+	pfnOodleNetwork1UDP_Train(&state[0], &shared[0], nullptr, nullptr, 0);
 
-	/*
 	std::vector<uint8_t> src, dst;
+	src.resize(256);
+	for (int i = 0; i < 256; i++)
+		src[i] = i;
+	dst.resize(src.size());
+	dst.resize(pfnOodleNetwork1UDP_Encode(&state[0], &shared[0], &src[0], src.size(), &dst[0]));
+	if (!pfnOodleNetwork1UDP_Decode(&state[0], &shared[0], &dst[0], dst.size(), &src[0], src.size())) {
+		std::cerr << "Oodle encode/decode test failure" << std::endl;
+		return -1;
+	} else {
+		std::cerr << "Oodle encode test: 256 -> " << dst.size() << std::endl;
+	}
+	for (int i = 0; i < 256; i++) {
+		if (src[i] != i) {
+			std::cerr << "Oodle encode/decode test failure" << std::endl;
+			break;
+		}
+	}
+
+	std::cerr << "Oodle helper running: state=" << state.size() << " shared=" << shared.size() << " window=" << window.size() << std::endl;
 	while (true) {
 		struct my_header_t {
 			uint32_t SourceLength;
 			uint32_t TargetLength;
-		} hdr;
+		} hdr{};
 		fread(&hdr, sizeof(hdr), 1, stdin);
+		if (!hdr.SourceLength)
+			return 0;
+
+		// std::cerr << "Request: src=0x" << hdr.SourceLength << " dst=0x" << hdr.TargetLength << std::endl;
 		src.resize(hdr.SourceLength);
-		fread(&src, 1, src.size(), stdin);
-		
+		fread(&src[0], 1, src.size(), stdin);
+
 		if (hdr.TargetLength == 0xFFFFFFFFU) {
 			dst.resize(src.size());
-			dst.resize(((OodleNetwork1UDP_Encode*)&virt[off_OodleNetwork1UDP_Encode])(state.data(), shared.data(), src.data(), src.size(), dst.data()));
+			dst.resize(pfnOodleNetwork1UDP_Encode(&state[0], &shared[0], &src[0], src.size(), &dst[0]));
+			// std::cerr << "Encoded: res=0x" << dst.size() << std::endl;
 		} else {
 			dst.resize(hdr.TargetLength);
-			((OodleNetwork1UDP_Decode*)&virt[off_OodleNetwork1UDP_Decode])(&state[0], &shared[0], &src[0], src.size(), &dst[0], dst.size());
+			if (!pfnOodleNetwork1UDP_Decode(&state[0], &shared[0], &src[0], src.size(), &dst[0], dst.size())) {
+				dst.resize(0);
+				dst.resize(hdr.TargetLength);
+			}
 		}
 		uint32_t size = (uint32_t)dst.size();
 		fwrite(&size, sizeof(size), 1, stdout);
 		fwrite(&dst[0], 1, dst.size(), stdout);
 		fflush(stdout);
 	}
-	/*/
-	std::vector<uint8_t> src(16000), enc, dec;
-	for (size_t i = 0;; i++) {
-		for (auto& c : src)
-			c = rand();
-
-		enc.clear();
-		enc.resize(src.size());
-		enc.resize(((OodleNetwork1UDP_Encode*)&virt[off_OodleNetwork1UDP_Encode])(state.data(), shared.data(), src.data(), src.size(), enc.data()));
-
-		dec.clear();
-		dec.resize(src.size());
-		((OodleNetwork1UDP_Decode*)&virt[off_OodleNetwork1UDP_Decode])(&state[0], &shared[0], &enc[0], enc.size(), &dec[0], dec.size());
-
-		if (memcmp(&src[0], &dec[0], src.size()) != 0)
-			std::abort();
-
-		if ((i & 0xFF) == 0xFF)
-			std::cout << "Passed 0x" << (i + 1) << " iterations" << std::endl;
-	}
-	//*/
 }
