@@ -156,8 +156,6 @@ int wmain(int argc, wchar_t** argv) {
 			for (const auto& [offB, opBs] : fnToOpcodeMapB) {
 				if (pModA[offA] != pModB[offB])
 					continue;
-				if (opAs.size() != opBs.size())
-					continue;
 
 				candidates.emplace_back().BaseOffset = offB;
 				candidates.back().Offset.emplace_back(static_cast<size_t>(offB));
