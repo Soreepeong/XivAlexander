@@ -125,6 +125,7 @@ int wmain(int argc, wchar_t** argv) {
 		const auto minOpcodeB = (int)-*(char*)(switchB + opcodeMinOffset);
 		const auto maxOpcodeB = minOpcodeB + *(int*)(switchB + opcodeCountOffset);
 		std::map<int, std::set<int>> fnToOpcodeMapB;
+		std::set<int> unusedOpcodesB;
 #if INTPTR_MAX == INT64_MAX
 		const auto switchTableB = std::span((const int*)(pModB + *(int*)(switchB + switchTableOffset)), maxOpcodeB - minOpcodeB);
 		for (int i = 0; i < static_cast<int>(switchTableB.size()); i++)
@@ -134,136 +135,226 @@ int wmain(int argc, wchar_t** argv) {
 		for (int i = 0; i < static_cast<int>(switchTableB.size()); i++)
 			fnToOpcodeMapB[switchTableB[i] - reinterpret_cast<int>(pModB)].insert(i + minOpcodeB);
 #endif
+		for (const auto& [k, v] : fnToOpcodeMapB)
+			unusedOpcodesB.insert(v.begin(), v.end());
 
 		auto res = nlohmann::json::array();
+		struct candidate_info_t {
+			int BaseOffset = 0;
+			bool MarkedForRemoval = false;
+			std::vector<size_t> Offset;
+		};
+		std::vector<candidate_info_t> candidates;
+		std::vector<size_t> opptrA;
 		for (const auto& [offA, opAs] : fnToOpcodeMapA) {
-			std::vector<int> candidates;
-			size_t opptr = 0;
+			candidates.clear();
+			opptrA.clear();
+			opptrA.push_back(static_cast<size_t>(offA));
+
 			candidates.reserve(fnToOpcodeMapB.size());
 			for (const auto& [offB, opBs] : fnToOpcodeMapB) {
 				if (pModA[offA] != pModB[offB])
 					continue;
-				candidates.emplace_back(offB);
+				if (opAs.size() != opBs.size())
+					continue;
+
+				candidates.emplace_back().BaseOffset = offB;
+				candidates.back().Offset.emplace_back(static_cast<size_t>(offB));
 			}
+
+			/*if (opAs.contains(0x354))
+				__debugbreak();*/
 
 			ZydisDecodedInstruction instA;
 			ZydisDecodedInstruction instB;
-			std::vector<size_t> callOffsets;
-			while (candidates.size() > 1) {
-				if (!ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, &pModA[offA + opptr], 1024, &instA)))
+			while (candidates.size() > 1 && !opptrA.empty()) {
+				if (!ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, &pModA[opptrA.back()], 1024, &instA)))
 					break;
 
-				for (auto it = candidates.begin(); it != candidates.end();) {
-					const auto& offB = *it;
-					const auto& opBs = fnToOpcodeMapB[offB];
+				auto remaining = candidates.size();
+				for (auto & candidate : candidates) {
+					const auto& offB = candidate;
+					auto& opptrB = candidate.Offset;
+					const auto& opBs = fnToOpcodeMapB[candidate.BaseOffset];
 
 					auto fail = false;
 
-					if (!ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, &pModB[offB + opptr], 1024, &instB)))
+					if (!ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, &pModB[opptrB.back()], 1024, &instB)))
 						break;
 
 					if (instA.opcode != instB.opcode || instA.operand_count != instB.operand_count) {
 						fail = true;
 					}
 
-					for (size_t i = 0; !fail && i < instA.operand_count; i++) {
-						const auto& opA = instA.operands[i];
-						const auto& opB = instB.operands[i];
-						if (opA.type != opB.type) {
-							fail = true;
-							break;
-						}
+					if ((instB.meta.category == ZYDIS_CATEGORY_UNCOND_BR || instB.meta.category == ZYDIS_CATEGORY_COND_BR || instB.meta.category == ZYDIS_CATEGORY_CALL) && instB.operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+						void();  // don't care
+#if INTPTR_MAX == INT64_MAX
+					} else if (instB.mnemonic == ZYDIS_MNEMONIC_MOV
+						&& instB.operand_count == 2
+						&& instB.operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER
+						&& instB.operands[0].reg.value == ZYDIS_REGISTER_R8D
+						&& instB.operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE
+						&& opAs.contains(static_cast<int>(instA.operands[1].imm.value.s))
+						&& opBs.contains(static_cast<int>(instB.operands[1].imm.value.s))) {
+						void();  // redirect to a common function accepting opcode as its 3rd parameter
+#elif INTPTR_MAX == INT32_MAX
+					} else if (instB.mnemonic == ZYDIS_MNEMONIC_PUSH
+						&& instB.operand_count == 1
+						&& instB.operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE
+						&& opAs.contains(static_cast<int>(instA.operands[0].imm.value.s))
+						&& opBs.contains(static_cast<int>(instB.operands[0].imm.value.s))) {
+						void();  // redirect to a common function accepting opcode as its 3rd parameter
+#endif
+					} else if (instB.mnemonic == ZYDIS_MNEMONIC_CMP
+						&& instB.operand_count >= 2
+						&& instB.operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER
+						&& instB.operands[0].reg.value == ZYDIS_REGISTER_EAX
+						&& instB.operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE
+						&& opAs.contains(static_cast<int>(instA.operands[1].imm.value.s))
+						&& opBs.contains(static_cast<int>(instB.operands[1].imm.value.s))) {
+						void();  // CMP EAX, <opcode>
+					} else {
+						for (size_t i = 0; !fail && i < instA.operand_count; i++) {
+							const auto& opA = instA.operands[i];
+							const auto& opB = instB.operands[i];
+							if (opA.type != opB.type) {
+								fail = true;
+								break;
+							}
 
-						switch (opA.type) {
-							case ZYDIS_OPERAND_TYPE_REGISTER:
-								if (opA.reg.value != opB.reg.value)
-									fail = true;
-								break;
-							case ZYDIS_OPERAND_TYPE_MEMORY:
-								if (opA.mem.base != opB.mem.base)
-									fail = true;
-								break;
-							case ZYDIS_OPERAND_TYPE_POINTER:
-								if (opA.ptr.offset != opB.ptr.offset || opA.ptr.segment != opB.ptr.segment)
-									fail = true;
-								break;
-							case ZYDIS_OPERAND_TYPE_IMMEDIATE:
-								if (opA.imm.is_relative != opB.imm.is_relative)
-									fail = true;
-								else if (!opA.imm.is_relative && !opB.imm.is_relative && opA.imm.value.s != opB.imm.value.s)
-									fail = true;
-								break;
+							switch (opA.type) {
+								case ZYDIS_OPERAND_TYPE_REGISTER:
+									if (opA.reg.value != opB.reg.value)
+										fail = true;
+									break;
+								case ZYDIS_OPERAND_TYPE_MEMORY:
+									if (opA.mem.base != opB.mem.base)
+										fail = true;
+									else if (opA.mem.index != opB.mem.index)
+										fail = true;
+									else if (opA.mem.scale != opB.mem.scale)
+										fail = true;
+									else if (opA.mem.disp.has_displacement != opB.mem.disp.has_displacement)
+										fail = true;
+									else if (opA.mem.disp.has_displacement && opB.mem.disp.has_displacement
+										&& opA.mem.disp.value != opB.mem.disp.value
+#if INTPTR_MAX == INT64_MAX
+										&& opA.mem.base != ZYDIS_REGISTER_RIP
+#elif INTPTR_MAX == INT32_MAX
+										&& opA.mem.base != ZYDIS_REGISTER_EIP
+#endif
+										)
+										fail = true;
+									break;
+								case ZYDIS_OPERAND_TYPE_POINTER:
+									if (opA.ptr.offset != opB.ptr.offset || opA.ptr.segment != opB.ptr.segment)
+										fail = true;
+									break;
+								case ZYDIS_OPERAND_TYPE_IMMEDIATE:
+									if (opA.imm.is_relative != opB.imm.is_relative)
+										fail = true;
+									else if (!opA.imm.is_relative && !opB.imm.is_relative && opA.imm.value.s != opB.imm.value.s)
+										fail = true;
+									break;
+							}
 						}
 					}
 
-					if (fail)
+					if (fail) {
+						candidate.MarkedForRemoval = true;
+						remaining--;
+					} else {
+						if (instB.meta.category == ZYDIS_CATEGORY_UNCOND_BR || instB.meta.category == ZYDIS_CATEGORY_CALL) {
+							uint64_t resaddr;
+							if (ZYAN_SUCCESS(ZydisCalcAbsoluteAddress(&instB, &instB.operands[0], reinterpret_cast<size_t>(pModB) + opptrB.back(), &resaddr))) {
+								if (instB.meta.category == ZYDIS_CATEGORY_UNCOND_BR) {
+									opptrB.pop_back();
+								} else {
+									opptrB.back() += instB.length;
+								}
+								opptrB.push_back(resaddr - reinterpret_cast<size_t>(pModB));
+							} else {
+								if (instB.meta.category == ZYDIS_CATEGORY_CALL)
+									opptrB.back() += instB.length;
+								else
+									candidate.MarkedForRemoval = true;
+							}
+						} else if (instB.meta.category == ZYDIS_CATEGORY_RET) {
+							opptrB.pop_back();
+							if (opptrB.empty()) {
+								candidate.MarkedForRemoval = true;
+								remaining--;
+							}
+						} else {
+							opptrB.back() += instB.length;
+						}
+					}
+
+					while (opptrB.size() > 2)
+						opptrB.pop_back();
+				}
+
+				if (remaining == 0) {
+					if (opptrA.empty())
+						break;
+
+					opptrA.pop_back();
+					for (auto it = candidates.begin(); it != candidates.end();) {
+						if (!it->MarkedForRemoval && it->Offset.size() <= 1) {
+							it->MarkedForRemoval = true;
+							remaining--;
+						} else {
+							if (!it->Offset.empty())
+								it->Offset.pop_back();
+							++it;
+						}
+					}
+
+					if (remaining == 0)
+						break;
+
+					for (auto it = candidates.begin(); it != candidates.end();) {
+						if (it->MarkedForRemoval)
+							it = candidates.erase(it);
+						else
+							++it;
+					}
+					continue;
+				}
+
+				for (auto it = candidates.begin(); it != candidates.end();) {
+					if (it->MarkedForRemoval)
 						it = candidates.erase(it);
 					else
 						++it;
 				}
 
-				// unconditional jump
-				if (instA.meta.category == ZYDIS_CATEGORY_UNCOND_BR)
-					break;
-
-				// unconditional call
-				if (instA.meta.category == ZYDIS_CATEGORY_CALL)
-					callOffsets.push_back(opptr);
-
-				opptr += instA.length;
-			}
-
-			if (candidates.size() > 1 && !callOffsets.empty()) {
-				for (const auto& callOffset : callOffsets) {
-					int len1 = 0;
-					if (!ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, &pModA[offA + callOffset], 1024, &instA)))
-						continue;
-
-					uint64_t nSubBase1;
-					if (!ZYAN_SUCCESS(ZydisCalcAbsoluteAddress(&instA, &instA.operands[0], reinterpret_cast<size_t>(&pModA[offA + callOffset]), &nSubBase1)))
-						continue;
-					const auto pSubBase1 = reinterpret_cast<const char*>(nSubBase1);
-					for (int i = 0, j = 0; i < 1024 && j < 8; j++) {
-						if (!ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, &pSubBase1[i], 1024, &instA)))
-							break;
-						if (instA.mnemonic == ZYDIS_MNEMONIC_MOV && instA.operand_count == 2 && instA.operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-							len1 = (int)instA.operands[1].imm.value.s;
-							break;
+				if (instA.meta.category == ZYDIS_CATEGORY_UNCOND_BR || instA.meta.category == ZYDIS_CATEGORY_CALL) {
+					uint64_t resaddr;
+					if (ZYAN_SUCCESS(ZydisCalcAbsoluteAddress(&instA, &instA.operands[0], reinterpret_cast<size_t>(pModA) + opptrA.back(), &resaddr))) {
+						if (instA.meta.category == ZYDIS_CATEGORY_UNCOND_BR) {
+							opptrA.pop_back();
+						} else {
+							opptrA.back() += instA.length;
 						}
-						i += instA.length;
-					}
-					if (len1 == 0)
-						continue;
-
-					for (auto it = candidates.begin(); it != candidates.end();) {
-						const auto& offB = *it;
-
-						int len2 = 0;
-						if (!ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, &pModB[offB + callOffset], 1024, &instB)))
-							continue;
-
-						uint64_t nSubBase2;
-						if (!ZYAN_SUCCESS(ZydisCalcAbsoluteAddress(&instB, &instB.operands[0], reinterpret_cast<size_t>(&pModB[offB + callOffset]), &nSubBase2)))
-							continue;
-						const auto pSubBase2 = reinterpret_cast<const char*>(nSubBase2);
-						for (int i = 0, j = 0; i < 1024 && j < 8; j++) {
-							if (!ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, &pSubBase2[i], 1024, &instB)))
-								break;
-							if (instB.mnemonic == ZYDIS_MNEMONIC_MOV && instB.operand_count == 2 && instB.operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-								len2 = (int)instB.operands[1].imm.value.s;
-								break;
-							}
-							i += instB.length;
-						}
-
-						if (len2 != len1)
-							it = candidates.erase(it);
+						opptrA.push_back(resaddr - reinterpret_cast<size_t>(pModA));
+					} else {
+						if (instA.meta.category == ZYDIS_CATEGORY_CALL)
+							opptrA.back() += instA.length;
 						else
-							++it;
+							break;
 					}
+				} else if (instA.meta.category == ZYDIS_CATEGORY_RET) {
+					opptrA.pop_back();
+				} else {
+					opptrA.back() += instA.length;
 				}
+
+				while (opptrA.size() > 2)
+					opptrA.pop_back();
 			}
 
+			std::cerr << offA << std::endl;
 			auto& opcodeItem = res.emplace_back(nlohmann::json::object());
 
 			opcodeItem["rva1"] = offA;
@@ -277,19 +368,53 @@ int wmain(int argc, wchar_t** argv) {
 					opctarget.emplace_back(std::format("0x{:x}", x));
 			}
 
-			for (const auto& offB : candidates) {
-				const auto& opBs = fnToOpcodeMapB[offB];
-				opcodeItem["rva2"] = offB;
-				opcodeItem["rva2h"] = std::format("0x{:x}", offB);
-				opcodeItem["va2"] = baseB + offB;
-				opcodeItem["va2h"] = std::format("0x{:x}", baseB + offB);
-				opcodeItem["opcodes2"] = opBs;
-				auto& opctarget = opcodeItem["opcodes2h"] = nlohmann::json::array();
-				for (const auto& x : opBs)
-					opctarget.emplace_back(std::format("0x{:x}", x));
+			if (candidates.size() == 1) {
+				for (const auto& offB : candidates) {
+					const auto& opBs = fnToOpcodeMapB[offB.BaseOffset];
+					opcodeItem["rva2"] = offB.BaseOffset;
+					opcodeItem["rva2h"] = std::format("0x{:x}", offB.BaseOffset);
+					opcodeItem["va2"] = baseB + offB.BaseOffset;
+					opcodeItem["va2h"] = std::format("0x{:x}", baseB + offB.BaseOffset);
+					opcodeItem["opcodes2"] = opBs;
+					auto& opctarget = opcodeItem["opcodes2h"] = nlohmann::json::array();
+					for (const auto& x : opBs) {
+						opctarget.emplace_back(std::format("0x{:x}", x));
+						unusedOpcodesB.erase(x);
+					}
+				}
+			} else {
+				auto& candidatesArray = opcodeItem["candidates"] = nlohmann::json::array();
+				for (const auto& offB : candidates) {
+					const auto& opBs = fnToOpcodeMapB[offB.BaseOffset];
+					auto& target = candidatesArray.emplace_back();
+					target["rva"] = offB.BaseOffset;
+					target["rvah"] = std::format("0x{:x}", offB.BaseOffset);
+					target["va"] = baseB + offB.BaseOffset;
+					target["vah"] = std::format("0x{:x}", baseB + offB.BaseOffset);
+					target["opcodes"] = opBs;
+					auto& opctarget = target["opcodesh"] = nlohmann::json::array();
+					for (const auto& x : opBs) {
+						opctarget.emplace_back(std::format("0x{:x}", x));
+						unusedOpcodesB.erase(x);
+					}
+					target["stack"] = offB.Offset;
+					auto& stacktarget = target["stackrvah"] = nlohmann::json::array();
+					for (const auto& x : offB.Offset)
+						stacktarget.emplace_back(std::format("0x{:x}", baseB + x));
+				}
 			}
 		}
 
+		res = nlohmann::json::object({
+			{
+				"found",
+				std::move(res),
+			},
+			{
+				"unused",
+				std::vector(unusedOpcodesB.begin(), unusedOpcodesB.end()),
+			}
+			});
 		std::cout << res.dump(1, '\t') << std::endl;
 	}
 	return 0;
