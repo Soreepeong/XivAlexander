@@ -577,8 +577,8 @@ XivAlexander::Apps::MainApp::Internal::SocketHook::SocketHook(Apps::MainApp::App
 #else
 	// 83 7e ?? ?? 75 ?? 6a 13 e8 ?? ?? ?? ?? 6a 00 6a 00 50 e8
 	if (const auto oodleFirst = Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
-		"\x83\x7e\x00\x00\x75\x00\x6a\x13\xe8\x00\x00\x00\x00\x6a\x00\x6a\x00\x50\xe8",
-		"\xff\xff\x00\x00\xff\x00\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff",
+		"\x83\x7e\x00\x00\x75\x00\x6a\x00\xe8\x00\x00\x00\x00\x6a\x00\x6a\x00\x50\xe8",
+		"\xff\xff\x00\x00\xff\x00\xff\x00\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff",
 		19, {}); !oodleFirst.empty()) {
 		static constexpr size_t htbitsIndex = 7;
 #endif
@@ -610,33 +610,45 @@ XivAlexander::Apps::MainApp::Internal::SocketHook::SocketHook(Apps::MainApp::App
 
 			s_oodle.OodleNetwork1_Shared_Size = static_cast<Utils::OodleNetwork1_Shared_Size*>(callTargetAddresses[0]);
 			s_oodle.OodleNetwork1_Shared_SetWindow = static_cast<Utils::OodleNetwork1_Shared_SetWindow*>(callTargetAddresses[2]);
-			s_oodle.OodleNetwork1UDP_State_Size = static_cast<Utils::OodleNetwork1UDP_State_Size*>(callTargetAddresses[3]);
-			s_oodle.OodleNetwork1UDP_Train = static_cast<Utils::OodleNetwork1UDP_Train*>(callTargetAddresses[5]);
+			basePtr = static_cast<uint8_t*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
+				"\xcc\xb8\x00\xb4\x2e\x00\xc3",
+				"\xff\xff\xff\xff\xff\xff",
+				6, {}).front()) + 1;
+
+			s_oodle.OodleNetwork1UDP_State_Size = reinterpret_cast<Utils::OodleNetwork1UDP_State_Size*>(basePtr);
+
 #ifdef _WIN64
+			s_oodle.OodleNetwork1UDP_Train = static_cast<Utils::OodleNetwork1UDP_Train*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
+				"\x48\x89\x5c\x24\x08\x48\x89\x6c\x24\x10\x48\x89\x74\x24\x18\x48\x89\x7c\x24\x20\x41\x56\x48\x83\xec\x30\x48\x8b\xf2",
+				"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
+				29, {}).front());
+
 			s_oodle.OodleNetwork1UDP_Decode = static_cast<Utils::OodleNetwork1UDP_Decode*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
 				"\x40\x53\x48\x83\xec\x00\x48\x8b\x44\x24\x68\x49\x8b\xd9\x48\x85\xc0\x7e",
 				"\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
 				18, {}).front());
 
-			basePtr = static_cast<uint8_t*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
-				"\x48\x8b\x57\x00\x4c\x8b\xce\x48\x8b\x4f\x00\x4c\x8b\xc5\x4c\x89\x74\x24\x20\xe8",
-				"\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff",
-				20, {}).front()) + 20;
-			s_oodle.OodleNetwork1UDP_Encode = reinterpret_cast<Utils::OodleNetwork1UDP_Encode*>(basePtr);
+			s_oodle.OodleNetwork1UDP_Encode = reinterpret_cast<Utils::OodleNetwork1UDP_Encode*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
+				"\x4c\x89\x4c\x24\x20\x4c\x89\x44\x24\x18\x48\x89\x4c\x24\x08\x55\x56\x57\x41\x55\x41\x57\x48\x8d\x6c\x24\xd1",
+				"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
+				27, {}).front());
 #else
+			s_oodle.OodleNetwork1UDP_Train = static_cast<Utils::OodleNetwork1UDP_Train*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
+				"\x56\x6a\x08\x68\x00\x84\x4a\x00",
+				"\xff\xff\xff\xff\xff\xff\xff\xff",
+				8, {}).front());
+
 			s_oodle.OodleNetwork1UDP_Decode = static_cast<Utils::OodleNetwork1UDP_Decode*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
 				"\x8b\x44\x24\x18\x56\x85\xc0\x7e\x00\x8b\x74\x24\x14\x85\xf6\x7e\x00\x3b\xf0",
 				"\xff\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff",
 				19, {}).front());
 
-			basePtr = static_cast<uint8_t*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
-				"\x57\xff\x15\x00\x00\x00\x00\xff\x75\x08\x56\xff\x75\x10\xff\x77\x1c\xff\x77\x18\xe8",
-				"\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
-				21, {}).front()) + 21;
+			s_oodle.OodleNetwork1UDP_Encode = reinterpret_cast<Utils::OodleNetwork1UDP_Encode*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
+				"\xff\x74\x24\x14\x8b\x4c\x24\x08\xff\x74\x24\x14\xff\x74\x24\x14\xff\x74\x24\x14\xe8\x00\x00\x00\x00\xc2\x14\x00\xcc\xcc\xcc\xcc\xb8",
+				"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff",
+				33, {}).front());
+			
 #endif
-			basePtr = basePtr + 4 + *reinterpret_cast<int*>(basePtr);
-			s_oodle.OodleNetwork1UDP_Encode = reinterpret_cast<Utils::OodleNetwork1UDP_Encode*>(basePtr);
-
 			s_oodle.found = true;
 		} catch (const std::exception& e) {
 			m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "Failed to find oodle stuff: {}", e.what());

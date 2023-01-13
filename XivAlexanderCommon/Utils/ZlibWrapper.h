@@ -30,7 +30,7 @@ namespace Utils {
 	};
 	
 	class Oodler {
-		static constexpr int WindowSize = 0x8000;
+		static constexpr int WindowSize = 0x100000;
 		
 		const OodleNetworkFunctions m_funcs;
 		
