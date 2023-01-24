@@ -18,8 +18,8 @@ namespace XivAlexander::Apps::MainApp::Window {
 		const std::function<void()> m_triggerUnload;
 		const uint32_t m_uTaskbarRestartMessage;
 
-		std::unique_ptr<ConfigWindow> m_runtimeConfigEditor{ nullptr };
-		std::unique_ptr<ConfigWindow> m_gameConfigEditor{ nullptr };
+		ConfigWindow* m_runtimeConfigEditor{ nullptr };
+		ConfigWindow* m_gameConfigEditor{ nullptr };
 
 		std::filesystem::path m_path;
 		Misc::GameInstallationDetector::GameReleaseInfo m_gameReleaseInfo;
@@ -65,6 +65,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void RepopulateMenu_ExdfTransformationRules(HMENU hParentMenu);
 		void RepopulateMenu_UpgradeMusicQuality(HMENU hParentMenu);
 		void RepopulateMenu_Ttmp(HMENU hParentMenu, HMENU hTtmpMenu);
+		void RepopulateMenu_GameFix(HMENU hParentMenu);
 		void SetMenuStates() const;
 		void RegisterTrayIcon();
 		void RemoveTrayIcon();

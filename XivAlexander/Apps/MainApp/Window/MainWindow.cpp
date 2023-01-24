@@ -150,6 +150,9 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(Apps::MainApp::App& 
 	m_cleanup += m_config->Runtime.TtmpFlattenSubdirectoryDisplay.OnChange([this]() {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
+	m_cleanup += m_config->Runtime.EnabledPatchCodes.OnChange([this]() {
+		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
+		});
 
 	if (!m_sqpacksLoaded) {
 		if (auto& sqpacks = m_app.GetGameResourceOverrider().GetVirtualSqPacks()) {
@@ -390,7 +393,11 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnDestroy() {
 	if (const auto replaceMusicsThread = decltype(m_backgroundWorkerThread)(m_backgroundWorkerThread))
 		replaceMusicsThread.Wait();
 
+	if (m_runtimeConfigEditor)
+		delete m_runtimeConfigEditor;
 	m_runtimeConfigEditor = nullptr;
+	if (m_gameConfigEditor)
+		delete m_gameConfigEditor;
 	m_gameConfigEditor = nullptr;
 	RemoveTrayIcon();
 	BaseWindow::OnDestroy();
@@ -450,6 +457,9 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu() {
 		RepopulateMenu_UpgradeMusicQuality(hUpgradeMusicQualityMenu);
 		RepopulateMenu_Ttmp(hInnerTtmpMenu, hOuterTtmpMenu);
 	}
+
+	RepopulateMenu_GameFix(GetSubMenu(GetSubMenu(menu, 5), 5));
+
 	menu.AttachAndSwap(m_hWnd);
 }
 
@@ -958,6 +968,27 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_Ttmp(HMENU 
 			DeleteMenu(hInnerTtmpMenu, ID_MODDING_TTMP_NOTREADY, MF_BYCOMMAND);
 		if (count || !ready)
 			DeleteMenu(hInnerTtmpMenu, ID_MODDING_TTMP_NOENTRY, MF_BYCOMMAND);
+	}
+}
+
+void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_GameFix(HMENU hParentMenu) {
+	const auto& patchCodes = m_config->Game.PatchCode.Value();
+	if (patchCodes.empty())
+		return;
+
+	const auto& namesVector = m_config->Runtime.EnabledPatchCodes.Value();
+	std::set names(namesVector.begin(), namesVector.end());
+
+	RemoveMenu(hParentMenu, 0, MF_BYPOSITION);
+	for (const auto& pc : patchCodes) {
+		AppendMenuW(hParentMenu, MF_STRING | (names.contains(pc.Name) ? MF_CHECKED : 0), RepopulateMenu_AllocateMenuId([this, name = pc.Name]() {
+			auto pcs{ m_config->Runtime.EnabledPatchCodes.Value() };
+			if (const auto it = std::find(pcs.begin(), pcs.end(), name); it == pcs.end())
+				pcs.emplace_back(name);
+			else
+				pcs.erase(it);
+			m_config->Runtime.EnabledPatchCodes = pcs;
+			}), Utils::FromUtf8(pc.Name).c_str());
 	}
 }
 
@@ -2061,15 +2092,21 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Configure(i
 		case ID_CONFIGURE_EDITRUNTIMECONFIGURATION:
 			if (m_runtimeConfigEditor && !m_runtimeConfigEditor->IsDestroyed())
 				SetForegroundWindow(m_runtimeConfigEditor->Handle());
-			else
-				m_runtimeConfigEditor = std::make_unique<ConfigWindow>(IDS_WINDOW_RUNTIME_CONFIG_EDITOR, &m_config->Runtime);
+			else {
+				if (m_runtimeConfigEditor)
+					delete m_runtimeConfigEditor;
+				m_runtimeConfigEditor = new ConfigWindow(IDS_WINDOW_RUNTIME_CONFIG_EDITOR, &m_config->Runtime);
+			}
 			return;
 
 		case ID_CONFIGURE_EDITOPCODECONFIGURATION:
 			if (m_gameConfigEditor && !m_gameConfigEditor->IsDestroyed())
 				SetForegroundWindow(m_gameConfigEditor->Handle());
-			else
-				m_gameConfigEditor = std::make_unique<ConfigWindow>(IDS_WINDOW_OPCODE_CONFIG_EDITOR, &m_config->Game);
+			else {
+				if (m_gameConfigEditor)
+					delete m_gameConfigEditor;
+				m_gameConfigEditor = new ConfigWindow(IDS_WINDOW_OPCODE_CONFIG_EDITOR, &m_config->Game);
+			}
 			return;
 
 		case ID_CONFIGURE_CHECKFORUPDATEDOPCODES:

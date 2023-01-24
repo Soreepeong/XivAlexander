@@ -20,6 +20,7 @@ namespace XivAlexander {
 		GameResourceOverrider,
 		VirtualSqPacks,
 		MusicImporter,
+		PatchCode,
 	};
 }
 

@@ -21,10 +21,20 @@ namespace XivAlexander {
 		SimulateNormalizedRttAndLatency,
 	};
 
+	struct PatchInstruction {
+		std::string Name;
+		std::vector<std::vector<std::string>> X64;
+		std::vector<std::vector<std::string>> X86;
+
+		auto operator<=>(const PatchInstruction&) const = default;
+	};
+
 	void to_json(nlohmann::json&, const Language&);
 	void from_json(const nlohmann::json&, Language&);
 	void to_json(nlohmann::json&, const HighLatencyMitigationMode&);
 	void from_json(const nlohmann::json&, HighLatencyMitigationMode&);
+	void to_json(nlohmann::json&, const PatchInstruction&);
+	void from_json(const nlohmann::json&, PatchInstruction&);
 
 	class Config {
 	public:
@@ -245,6 +255,8 @@ namespace XivAlexander {
 			Item<bool> ShowLoggingWindow = CreateConfigItem(this, "ShowLoggingWindow", true);
 			Item<bool> ShowControlWindow = CreateConfigItem(this, "ShowControlWindow", true);
 			Item<bool> UseAllIpcMessageLogger = CreateConfigItem(this, "UseAllIpcMessageLogger", false);
+
+			Item<std::vector<std::string>> EnabledPatchCodes = CreateConfigItem(this, "EnabledPatchCodes", std::vector<std::string>());
 			
 			Item<bool> UseHashTrackerKeyLogging = CreateConfigItem(this, "UseHashTrackerKeyLogging", false);
 			Item<bool> LogAllDataFileRead = CreateConfigItem(this, "LogAllDataFileRead", false);
@@ -341,6 +353,8 @@ namespace XivAlexander {
 			using BaseRepository::BaseRepository;
 
 		public:
+			Item<std::vector<PatchInstruction>> PatchCode = CreateConfigItem(this, "PatchCode", std::vector<PatchInstruction>());
+			
 			// Make the program consume all network connections by default.
 			Item<std::string> Server_IpRange = CreateConfigItem(this, "Server_IpRange", std::string("0.0.0.0/0"));
 			Item<std::string> Server_PortRange = CreateConfigItem(this, "Server_PortRange", std::string("1-65535"));

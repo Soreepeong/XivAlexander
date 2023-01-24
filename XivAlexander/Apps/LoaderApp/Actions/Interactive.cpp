@@ -191,7 +191,7 @@ std::function<Utils::Win32::TaskDialog::ActionHandled(Utils::Win32::TaskDialog&)
 			const auto process = OpenProcessForInformation(m_state.Pid);
 			auto tryElevate = false;
 			try {
-				void(OpenProcessForManipulation(m_state.Pid));
+				OpenProcessForManipulation(m_state.Pid);
 			} catch (const Utils::Win32::Error& e) {
 				if (e.Code() == ERROR_ACCESS_DENIED && !Utils::Win32::IsUserAnAdmin()) {
 					tryElevate = true;

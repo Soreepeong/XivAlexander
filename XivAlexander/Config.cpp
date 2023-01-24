@@ -465,6 +465,22 @@ void XivAlexander::from_json(const nlohmann::json & it, HighLatencyMitigationMod
 		value = HighLatencyMitigationMode::SubtractLatency;
 }
 
+void XivAlexander::to_json(nlohmann::json & j, const PatchInstruction & value) {
+	j = nlohmann::json::object({
+		{"Name", value.Name},
+		{"x64", value.X64},
+		{"x86", value.X86},
+	});
+}
+
+void XivAlexander::from_json(const nlohmann::json & it, PatchInstruction & value) {
+	value = {
+		.Name = it.value("Name", "(unnamed)"),
+		.X64 = it.value<std::vector<std::vector<std::string>>>("x64", {}),
+		.X86 = it.value<std::vector<std::vector<std::string>>>("x86", {}),
+	};
+}
+
 template<typename T>
 bool XivAlexander::Config::Item<T>::LoadFrom(const nlohmann::json & data) {
 	if (const auto it = data.find(Name); it != data.end()) {

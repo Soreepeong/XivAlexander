@@ -329,6 +329,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="Apps\MainApp\App.cpp" />
     <ClCompile Include="Apps\MainApp\Internal\GameResourceOverrider.cpp" />
     <ClCompile Include="Apps\MainApp\Internal\MainThreadTimingHandler.cpp" />
+    <ClCompile Include="Apps\MainApp\Internal\PatchCode.cpp" />
     <ClCompile Include="Misc\CrashMessageBoxHandler.cpp" />
     <ClCompile Include="Misc\DebuggerDetectionDisabler.cpp" />
     <ClCompile Include="Misc\ExcelTransformConfig.cpp" />
@@ -374,6 +375,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="Apps\MainApp\App.h" />
     <ClInclude Include="Apps\MainApp\Internal\GameResourceOverrider.h" />
     <ClInclude Include="Apps\MainApp\Internal\MainThreadTimingHandler.h" />
+    <ClInclude Include="Apps\MainApp\Internal\PatchCode.h" />
     <ClInclude Include="Misc\CrashMessageBoxHandler.h" />
     <ClInclude Include="Misc\DebuggerDetectionDisabler.h" />
     <ClInclude Include="Misc\ExcelTransformConfig.h" />

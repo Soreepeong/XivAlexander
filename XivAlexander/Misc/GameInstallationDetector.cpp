@@ -104,7 +104,8 @@ XivAlexander::Misc::GameInstallationDetector::GameReleaseInfo XivAlexander::Misc
 
 	GameReleaseInfo result{};
 	result.RootPath = std::move(deepestLookupPath);
-	result.GameVersion = Utils::Win32::Handle::FromCreateFile(gameVersionPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0).Read<char>(0, 256, Utils::Win32::Handle::PartialIoMode::AllowPartial);
+	const auto gvBuffer = Utils::Win32::Handle::FromCreateFile(gameVersionPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0).Read<char>(0, 256, Utils::Win32::Handle::PartialIoMode::AllowPartial);
+	result.GameVersion = std::string(gvBuffer.begin(), gvBuffer.end());
 	for (auto& chr : result.PathSafeGameVersion = result.GameVersion) {
 		for (auto i : "<>:\"/\\|?*") {
 			if (chr == i || chr < 32)

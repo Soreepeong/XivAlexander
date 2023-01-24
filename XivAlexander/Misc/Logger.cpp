@@ -19,6 +19,7 @@ const std::map<XivAlexander::LogCategory, const char*> XivAlexander::Misc::Logge
 	{XivAlexander::LogCategory::GameResourceOverrider, "GameResourceOverrider"},
 	{XivAlexander::LogCategory::VirtualSqPacks, "VirtualSqPacks"},
 	{XivAlexander::LogCategory::MusicImporter, "MusicImporter"},
+	{XivAlexander::LogCategory::PatchCode, "PatchCode"},
 };
 
 std::weak_ptr<XivAlexander::Misc::Logger> XivAlexander::Misc::Logger::s_instance;
@@ -309,7 +310,7 @@ void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::st
 					try {
 						const auto h = Utils::Win32::Handle::FromCreateFile(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING);
 						const auto buf = h.Read<char>(0, static_cast<size_t>(std::min<uint64_t>(h.GetFileSize(), 1048576)));
-						of << std::string(buf) << "\n";
+						of << std::string_view(buf.begin(), buf.end()) << "\n";
 					} catch (const std::exception& e) {
 						of << std::format("ERROR: Failed to read config file at {}: {}\n", path.wstring(), e.what());
 					}
@@ -319,7 +320,7 @@ void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::st
 					try {
 						const auto h = Utils::Win32::Handle::FromCreateFile(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING);
 						const auto buf = h.Read<char>(0, static_cast<size_t>(std::min<uint64_t>(h.GetFileSize(), 1048576)));
-						of << std::string(buf) << "\n";
+						of << std::string_view(buf.begin(), buf.end()) << "\n";
 					} catch (const std::exception& e) {
 						of << std::format("ERROR: Failed to read config file at {}: {}\n", path.wstring(), e.what());
 					}
@@ -329,7 +330,7 @@ void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::st
 					try {
 						const auto h = Utils::Win32::Handle::FromCreateFile(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING);
 						const auto buf = h.Read<char>(0, static_cast<size_t>(std::min<uint64_t>(h.GetFileSize(), 1048576)));
-						of << std::string(buf) << "\n";
+						of << std::string_view(buf.begin(), buf.end()) << "\n";
 					} catch (const std::exception& e) {
 						of << std::format("ERROR: Failed to read config file at {}: {}\n", path.wstring(), e.what());
 					}

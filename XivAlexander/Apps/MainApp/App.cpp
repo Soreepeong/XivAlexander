@@ -11,6 +11,7 @@
 #include "Apps/MainApp/Internal/GameResourceOverrider.h"
 #include "Apps/MainApp/Internal/IpcTypeFinder.h"
 #include "Apps/MainApp/Internal/SocketHook.h"
+#include "Apps/MainApp/Internal/PatchCode.h"
 #include "Misc/DebuggerDetectionDisabler.h"
 #include "Misc/FreeGameMutex.h"
 #include "Misc/Hooks.h"
@@ -58,6 +59,8 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 
 	Utils::CallOnDestruction::Multiple Cleanup;
 
+	std::optional<Internal::PatchCode> PatchCode;
+	
 	// Mandatory, but initialize late
 	std::optional<Internal::SocketHook> SocketHook;
 	std::optional<Internal::GameResourceOverrider> GameResourceOverrider;
@@ -113,6 +116,8 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 	}
 
 	void LoadAfterThisConstruct() {
+		PatchCode.emplace(App);
+		
 		SocketHook.emplace(App);
 		Cleanup += [this]() { SocketHook.reset(); };
 

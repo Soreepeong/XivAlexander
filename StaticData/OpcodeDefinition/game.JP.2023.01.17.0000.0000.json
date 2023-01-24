@@ -1,6 +1,43 @@
 ﻿{
 	"C2S_ActionRequest": "0x0383",
 	"C2S_ActionRequestGroundTargeted": "0x01a0",
+	"PatchCode": [
+		{
+			"Name": "actions with double cooldowns fix",
+			"x64": [
+				[
+					"find",
+					"code",
+					"0",
+					"f6 ?? ?? 02 74 ?? 8d 83 83 c1 ff ff"
+				],
+				[
+					"offset",
+					"4"
+				],
+				[
+					"write",
+					"0x75"
+				]
+			],
+			"x86": [
+				[
+					"find",
+					"code",
+					"0",
+					"f6 ?? ?? 02 74 ?? 81 fe 7d 3e 00 00"
+				],
+				[
+					"offset",
+					"4"
+				],
+				[
+					"write",
+					"0x75"
+				]
+			]
+		}
+	],
 	"S2C_ActionEffect01": "0x03c1",
 	"S2C_ActionEffect08": "0x0078",
 	"S2C_ActionEffect16": "0x0398",

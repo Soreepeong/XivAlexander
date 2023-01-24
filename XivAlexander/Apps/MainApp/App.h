@@ -12,6 +12,7 @@ namespace XivAlexander::Apps::MainApp::Internal {
 	class NetworkTimingHandler;
 	class MainThreadTimingHandler;
 	class SocketHook;
+	class PatchCode;
 }
 
 namespace XivAlexander::Misc {
