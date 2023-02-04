@@ -418,6 +418,10 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu() {
 
 	m_menuIdCallbacks.clear();
 	{
+		RepopulateMenu_GameFix(GetSubMenu(GetSubMenu(menu, 5), 5));
+
+		// note: ttmp top-level menu gets deleted so top menu index changes
+
 		const auto hModMenu = GetSubMenu(menu, 3);
 		const auto hOuterTtmpMenu = GetSubMenu(menu, 4);
 
@@ -457,8 +461,6 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu() {
 		RepopulateMenu_UpgradeMusicQuality(hUpgradeMusicQualityMenu);
 		RepopulateMenu_Ttmp(hInnerTtmpMenu, hOuterTtmpMenu);
 	}
-
-	RepopulateMenu_GameFix(GetSubMenu(GetSubMenu(menu, 5), 5));
 
 	menu.AttachAndSwap(m_hWnd);
 }
