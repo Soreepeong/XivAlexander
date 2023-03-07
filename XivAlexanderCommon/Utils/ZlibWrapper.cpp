@@ -20,6 +20,54 @@ Utils::ZlibError::ZlibError(int returnCode)
 	: std::runtime_error(DescribeReturnCode(returnCode)) {
 }
 
+Utils::Oodler::Oodler(const OodleNetworkFunctions& funcs, bool udp): m_funcs(funcs)
+	, m_udp(udp)
+	, m_state(!m_funcs.Found ? 0 : (udp ? m_funcs.UdpStateSize() : m_funcs.TcpStateSize()))
+	, m_shared(!m_funcs.Found ? 0 : m_funcs.SharedSize(m_funcs.HtBits))
+	, m_window(!m_funcs.Found ? 0 : m_funcs.WindowSize)
+	, m_buffer(!m_funcs.Found ? 0 : 65536) {
+
+	if (m_funcs.Found) {
+		m_funcs.SharedSetWindow(m_shared.data(), m_funcs.HtBits, m_window.data(), static_cast<int>(m_window.size()));
+		if (udp)
+			m_funcs.UdpTrain(m_state.data(), m_shared.data(), nullptr, nullptr, 0);
+		else
+			m_funcs.TcpTrain(m_state.data(), m_shared.data(), nullptr, nullptr, 0);
+	}
+}
+
+std::span<uint8_t> Utils::Oodler::Decode(std::span<const uint8_t> source, size_t decodedLength) {
+	if (!m_funcs.Found)
+		throw std::runtime_error("Oodle not initialized");
+	m_buffer.resize(decodedLength);
+	if (m_udp) {
+		if (!m_funcs.UdpDecode(m_state.data(), m_shared.data(), source.data(), source.size(), m_buffer.data(), decodedLength))
+			throw std::runtime_error("OodleNetwork1UDP_Decode error");
+	} else {
+		if (!m_funcs.TcpDecode(m_state.data(), m_shared.data(), source.data(), source.size(), m_buffer.data(), decodedLength))
+			throw std::runtime_error("OodleNetwork1TCP_Decode error");
+	}
+	return { m_buffer };
+}
+
+std::span<uint8_t> Utils::Oodler::Encode(std::span<const uint8_t> source) {
+	if (!m_funcs.Found)
+		throw std::runtime_error("Oodle not initialized");
+	if (m_buffer.size() < MaxEncodedSize(source.size()))
+		m_buffer.resize(MaxEncodedSize(source.size()));
+	size_t size;
+	if (m_udp) {
+		size = m_funcs.UdpEncode(m_state.data(), m_shared.data(), source.data(), source.size(), m_buffer.data());
+		if (!size)
+			throw std::runtime_error("OodleNetwork1UDP_Encode error");
+	} else {
+		size = m_funcs.TcpEncode(m_state.data(), m_shared.data(), source.data(), source.size(), m_buffer.data());
+		if (!size)
+			throw std::runtime_error("OodleNetwork1TCP_Encode error");
+	}
+	return std::span(m_buffer).subspan(0, size);
+}
+
 void Utils::ZlibReusableInflater::Initialize() {
 	int res;
 	if (!m_initialized) {

@@ -31,3 +31,21 @@ std::vector<void*> XivAlexander::Misc::Signatures::LookupForData(SectionFilter l
 	}
 	return result;
 }
+
+bool XivAlexander::Misc::Signatures::RegexSignature::Lookup(const void* data, size_t length, ScanResult& result, bool next) const {
+	srell::cmatch match;
+
+	if (next) {
+		const auto end = static_cast<const char*>(data) + length;
+		const auto prevEnd = result.end(0);
+		if (prevEnd >= end)
+			return false;
+		data = prevEnd;
+	}
+
+	if (!srell::regex_search(static_cast<const char*>(data), static_cast<const char*>(data) + length, match, m_pattern))
+		return false;
+
+	result = ScanResult(std::move(match));
+	return true;
+}

@@ -354,6 +354,8 @@ namespace XivAlexander {
 
 		public:
 			Item<std::vector<PatchInstruction>> PatchCode = CreateConfigItem(this, "PatchCode", std::vector<PatchInstruction>());
+
+			Item<bool> Common_UseOodleTcp = CreateConfigItem(this, "Common_UseOodleTcp", true);
 			
 			// Make the program consume all network connections by default.
 			Item<std::string> Server_IpRange = CreateConfigItem(this, "Server_IpRange", std::string("0.0.0.0/0"));

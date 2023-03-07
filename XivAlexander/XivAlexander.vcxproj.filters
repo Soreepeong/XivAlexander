@@ -141,6 +141,9 @@
     <ClCompile Include="Apps\MainApp\Internal\PatchCode.cpp">
       <Filter>Apps\MainApp\Internal</Filter>
     </ClCompile>
+    <ClCompile Include="Misc\OodleLookup.cpp">
+      <Filter>Misc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -255,6 +258,9 @@
     </ClInclude>
     <ClInclude Include="Apps\MainApp\Internal\PatchCode.h">
       <Filter>Apps\MainApp\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="Misc\OodleLookup.h">
+      <Filter>Misc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

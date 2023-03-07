@@ -64,7 +64,7 @@ std::vector<std::vector<uint8_t>> Sqex::Network::Structure::XivBundle::GetMessag
 		case CompressionType::Deflate:
 			return SplitMessages(MessageCount, inflater(view));
 		case CompressionType::Oodle:
-			return SplitMessages(MessageCount, oodler.decode(view, DecodedBodyLength));
+			return SplitMessages(MessageCount, oodler.Decode(view, DecodedBodyLength));
 		default:
 			throw CorruptDataException(std::format("Unsupported compression type {}", static_cast<int>(CompressionType)));
 	}

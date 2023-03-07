@@ -42,6 +42,7 @@
 
 // Windows API, part 2
 #include <DbgHelp.h>
+#include <dwmapi.h>
 #include <iphlpapi.h>
 #include <mstcpip.h>
 #include <PathCch.h>

@@ -9,6 +9,7 @@
 #include "Misc/IcmpPingTracker.h"
 #include "Misc/Logger.h"
 #include "resource.h"
+#include "Misc/OodleLookup.h"
 
 using namespace Sqex::Network::Structure;
 
@@ -52,11 +53,11 @@ public:
 		}
 	};
 
-	SingleStream(Misc::Logger& logger, std::string name)
+	SingleStream(Misc::Logger& logger, std::string name, bool oodleTcp)
 		: m_logger(logger)
-		, m_name(name)
-		, m_unoodler(s_oodle)
-		, m_oodler(s_oodle) {
+		, m_name(std::move(name))
+		, m_oodler(s_oodle, !oodleTcp)
+		, m_unoodler(s_oodle, !oodleTcp) {
 	}
 
 	SingleStreamWriter Write() {
@@ -181,7 +182,7 @@ public:
 						encoded = m_deflater(body);
 						break;
 					case CompressionType::Oodle:
-						encoded = m_oodler.encode(body);
+						encoded = m_oodler.Encode(body);
 						break;
 					default:
 						throw std::runtime_error("Unsupported compression method");
@@ -496,10 +497,10 @@ void XivAlexander::Apps::MainApp::Internal::SingleConnection::Implementation::Re
 XivAlexander::Apps::MainApp::Internal::SingleConnection::Implementation::Implementation(Internal::SingleConnection& singleConnection, Internal::SocketHook& socketHook)
 	: SingleConnection(singleConnection)
 	, SocketHook(socketHook)
-	, RecvRaw(*socketHook.m_logger, "S2C_Raw")
-	, RecvProcessed(*socketHook.m_logger, "S2C_Processed")
-	, SendRaw(*socketHook.m_logger, "C2S_Raw")
-	, SendProcessed(*socketHook.m_logger, "C2S_Processed") {
+	, RecvRaw(*socketHook.m_logger, "S2C_Raw", socketHook.m_pImpl->Config->Game.Common_UseOodleTcp)
+	, RecvProcessed(*socketHook.m_logger, "S2C_Processed", socketHook.m_pImpl->Config->Game.Common_UseOodleTcp)
+	, SendRaw(*socketHook.m_logger, "C2S_Raw", socketHook.m_pImpl->Config->Game.Common_UseOodleTcp)
+	, SendProcessed(*socketHook.m_logger, "C2S_Processed", socketHook.m_pImpl->Config->Game.Common_UseOodleTcp) {
 	socketHook.m_logger->Format(LogCategory::SocketHook, socketHook.m_pImpl->Config->Runtime.GetLangId(), IDS_SOCKETHOOK_SOCKET_FOUND, SingleConnection.m_socket);
 	ResolveAddresses();
 }
@@ -568,92 +569,7 @@ XivAlexander::Apps::MainApp::Internal::SocketHook::SocketHook(Apps::MainApp::App
 	: m_logger(Misc::Logger::Acquire())
 	, OnSocketFound([this](const auto& cb) { if (m_pImpl) { for (const auto& val : m_pImpl->Sockets | std::views::values) cb(*val); } }) {
 
-#ifdef _WIN64
-	if (const auto oodleFirst = Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
-		"\x48\x83\x7b\x00\x00\x75\x00\xb9\x00\x00\x00\x00\xe8\x00\x00\x00\x00\x45\x33\xc0\x33\xd2\x48\x8b\xc8\xe8",
-		"\xff\xff\xff\x00\xff\xff\x00\xff\x00\xff\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff",
-		26, {}); !oodleFirst.empty()) {
-		static constexpr size_t htbitsIndex = 8;
-#else
-	// 83 7e ?? ?? 75 ?? 6a 13 e8 ?? ?? ?? ?? 6a 00 6a 00 50 e8
-	if (const auto oodleFirst = Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
-		"\x83\x7e\x00\x00\x75\x00\x6a\x00\xe8\x00\x00\x00\x00\x6a\x00\x6a\x00\x50\xe8",
-		"\xff\xff\x00\x00\xff\x00\xff\x00\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff",
-		19, {}); !oodleFirst.empty()) {
-		static constexpr size_t htbitsIndex = 7;
-#endif
-
-		try {
-			ZydisDecoder decoder;
-			ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64);
-
-			auto basePtr = static_cast<uint8_t*>(oodleFirst.front());
-			s_oodle.htbits = basePtr[htbitsIndex];
-
-			std::vector<void*> callTargetAddresses;
-			ZydisDecodedInstruction instruction;
-			for (
-				size_t offset = 0, funclen = 32768;
-				callTargetAddresses.size() < 6 && ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, &basePtr[offset], funclen - offset, &instruction));
-				offset += instruction.length
-				) {
-				if (instruction.meta.category != ZYDIS_CATEGORY_CALL)
-					continue;
-				if (uint64_t resultAddress;
-					instruction.operand_count >= 1
-					&& ZYAN_STATUS_SUCCESS == ZydisCalcAbsoluteAddress(&instruction, &instruction.operands[0],
-						reinterpret_cast<size_t>(&basePtr[offset]), &resultAddress)) {
-
-					callTargetAddresses.push_back(reinterpret_cast<void*>(static_cast<size_t>(resultAddress)));
-				}
-			}
-
-			s_oodle.OodleNetwork1_Shared_Size = static_cast<Utils::OodleNetwork1_Shared_Size*>(callTargetAddresses[0]);
-			s_oodle.OodleNetwork1_Shared_SetWindow = static_cast<Utils::OodleNetwork1_Shared_SetWindow*>(callTargetAddresses[2]);
-			basePtr = static_cast<uint8_t*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
-				"\xcc\xb8\x00\xb4\x2e\x00\xc3",
-				"\xff\xff\xff\xff\xff\xff",
-				6, {}).front()) + 1;
-
-			s_oodle.OodleNetwork1UDP_State_Size = reinterpret_cast<Utils::OodleNetwork1UDP_State_Size*>(basePtr);
-
-#ifdef _WIN64
-			s_oodle.OodleNetwork1UDP_Train = static_cast<Utils::OodleNetwork1UDP_Train*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
-				"\x48\x89\x5c\x24\x08\x48\x89\x6c\x24\x10\x48\x89\x74\x24\x18\x48\x89\x7c\x24\x20\x41\x56\x48\x83\xec\x30\x48\x8b\xf2",
-				"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
-				29, {}).front());
-
-			s_oodle.OodleNetwork1UDP_Decode = static_cast<Utils::OodleNetwork1UDP_Decode*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
-				"\x40\x53\x48\x83\xec\x00\x48\x8b\x44\x24\x68\x49\x8b\xd9\x48\x85\xc0\x7e",
-				"\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
-				18, {}).front());
-
-			s_oodle.OodleNetwork1UDP_Encode = reinterpret_cast<Utils::OodleNetwork1UDP_Encode*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
-				"\x4c\x89\x4c\x24\x20\x4c\x89\x44\x24\x18\x48\x89\x4c\x24\x08\x55\x56\x57\x41\x55\x41\x57\x48\x8d\x6c\x24\xd1",
-				"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
-				27, {}).front());
-#else
-			s_oodle.OodleNetwork1UDP_Train = static_cast<Utils::OodleNetwork1UDP_Train*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
-				"\x56\x6a\x08\x68\x00\x84\x4a\x00",
-				"\xff\xff\xff\xff\xff\xff\xff\xff",
-				8, {}).front());
-
-			s_oodle.OodleNetwork1UDP_Decode = static_cast<Utils::OodleNetwork1UDP_Decode*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
-				"\x8b\x44\x24\x18\x56\x85\xc0\x7e\x00\x8b\x74\x24\x14\x85\xf6\x7e\x00\x3b\xf0",
-				"\xff\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff",
-				19, {}).front());
-
-			s_oodle.OodleNetwork1UDP_Encode = reinterpret_cast<Utils::OodleNetwork1UDP_Encode*>(Misc::Hooks::LookupForData(&Misc::Hooks::SectionFilterTextOnly,
-				"\xff\x74\x24\x14\x8b\x4c\x24\x08\xff\x74\x24\x14\xff\x74\x24\x14\xff\x74\x24\x14\xe8\x00\x00\x00\x00\xc2\x14\x00\xcc\xcc\xcc\xcc\xb8",
-				"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff",
-				33, {}).front());
-			
-#endif
-			s_oodle.found = true;
-		} catch (const std::exception& e) {
-			m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "Failed to find oodle stuff: {}", e.what());
-		}
-	} else {
+	if (!Misc::OodleLookup::Search(s_oodle)) {
 		m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "Oodle signatures could not be found.");
 	}
 
