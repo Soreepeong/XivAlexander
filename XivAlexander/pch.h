@@ -69,8 +69,11 @@
 #pragma warning(disable: 26819)  // Unannotated fallthrough between switch labels (es.78).
 #include <MinHook.h>
 #include <argparse/argparse.hpp>
+#include <cryptopp/base64.h>
 #include <cryptopp/hex.h>
+#include <cryptopp/hmac.h>
 #include <cryptopp/sha.h>
+#include <cryptopp/osrng.h>
 #include <curlpp/cURLpp.hpp>
 #include <curlpp/Easy.hpp>
 #include <curlpp/Infos.hpp>

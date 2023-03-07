@@ -55,11 +55,11 @@ struct XivAlexander::Apps::MainApp::Internal::PatchCode::Implementation {
 
 		Unapply();
 		
-		const auto& namesVector = Config->Runtime.EnabledPatchCodes.Value();
-		std::set names(namesVector.begin(), namesVector.end());
+		const auto& digestsVector = Config->Runtime.EnabledPatchCodes.Value();
+		std::set digests(digestsVector.begin(), digestsVector.end());
 		
 		for (auto& p : Config->Game.PatchCode.Value()) {
-			if (!names.contains(p.Name))
+			if (!digests.contains(p.Digest()))
 				continue;
 #ifdef _WIN64
 			const auto& searchInstructions = p.X64;

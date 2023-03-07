@@ -397,6 +397,70 @@ void XivAlexander::Config::Item<uint16_t>::SaveTo(nlohmann::json & data) const {
 	data[Name] = std::format("0x{:04x}", m_value);
 }
 
+bool XivAlexander::PatchInstruction::CreateNewHmacKeyIfInvalid() {
+	try {
+		CryptoPP::Base64Decoder b64d;
+		b64d.Put(reinterpret_cast<const byte*>(HmacKey.data()), HmacKey.size());
+		b64d.MessageEnd();
+		if (b64d.MaxRetrievable() == HmacKeySize)
+			return false;
+	} catch (...) {
+		// pass
+	}
+
+	byte hmacKey[HmacKeySize];
+	CryptoPP::OS_GenerateRandomBlock(false, hmacKey, HmacKeySize);
+	
+	CryptoPP::Base64Encoder b64e(nullptr, false);
+	b64e.Put(hmacKey, sizeof hmacKey);
+	b64e.MessageEnd();
+
+	HmacKey.resize(static_cast<size_t>(b64e.MaxRetrievable()), 0);
+	b64e.Get(reinterpret_cast<byte*>(HmacKey.data()), HmacKey.size());
+	return true;
+}
+
+std::string XivAlexander::PatchInstruction::Digest() const {
+	byte hmacResult[HmacKeySize + CryptoPP::HMAC<CryptoPP::SHA512>::DIGESTSIZE];
+	
+	CryptoPP::Base64Decoder b64d;
+	b64d.Put(reinterpret_cast<const byte*>(HmacKey.data()), HmacKey.size());
+	b64d.MessageEnd();
+	if (b64d.MaxRetrievable() != HmacKeySize)
+		return {};
+	b64d.Get(hmacResult, HmacKeySize);
+	
+	CryptoPP::HMAC<CryptoPP::SHA512> hmac(hmacResult, HmacKeySize);
+
+	auto nbuf = Name.size();
+	hmac.Update(reinterpret_cast<const byte*>(&nbuf), sizeof nbuf);
+	hmac.Update(reinterpret_cast<const byte*>(Name.data()), Name.size());
+
+	for (const auto& bitness : {X64, X86}) {
+		nbuf = bitness.size();
+		hmac.Update(reinterpret_cast<const byte*>(&nbuf), sizeof nbuf);
+		for (const auto& b1 : bitness) {
+			nbuf = b1.size();
+			hmac.Update(reinterpret_cast<const byte*>(&nbuf), sizeof nbuf);
+			for (const auto& b2 : b1) {
+				nbuf = b2.size();
+				hmac.Update(reinterpret_cast<const byte*>(&nbuf), sizeof nbuf);
+				hmac.Update(reinterpret_cast<const byte*>(b2.data()), b2.size());
+			}
+		}
+	}
+
+	hmac.Final(&hmacResult[HmacKeySize]);
+	
+	CryptoPP::Base64Encoder b64e(nullptr, false);
+	b64e.Put(hmacResult, sizeof hmacResult);
+	b64e.MessageEnd();
+
+	std::string buf(static_cast<size_t>(b64e.MaxRetrievable()), 0);
+	b64e.Get(reinterpret_cast<byte*>(buf.data()), buf.size());
+	return buf;
+}
+
 void XivAlexander::to_json(nlohmann::json & j, const Language & value) {
 	switch (value) {
 		case Language::English:
@@ -468,6 +532,7 @@ void XivAlexander::from_json(const nlohmann::json & it, HighLatencyMitigationMod
 void XivAlexander::to_json(nlohmann::json & j, const PatchInstruction & value) {
 	j = nlohmann::json::object({
 		{"Name", value.Name},
+		{"HmacKey", value.HmacKey},
 		{"x64", value.X64},
 		{"x86", value.X86},
 	});
@@ -476,9 +541,11 @@ void XivAlexander::to_json(nlohmann::json & j, const PatchInstruction & value) {
 void XivAlexander::from_json(const nlohmann::json & it, PatchInstruction & value) {
 	value = {
 		.Name = it.value("Name", "(unnamed)"),
+		.HmacKey = it.value("HmacKey", ""),
 		.X64 = it.value<std::vector<std::vector<std::string>>>("x64", {}),
 		.X86 = it.value<std::vector<std::vector<std::string>>>("x86", {}),
 	};
+	value.CreateNewHmacKeyIfInvalid();
 }
 
 template<typename T>

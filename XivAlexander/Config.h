@@ -22,9 +22,17 @@ namespace XivAlexander {
 	};
 
 	struct PatchInstruction {
+		static constexpr auto HmacKeySize = 32;
+
 		std::string Name;
+		std::string HmacKey;
 		std::vector<std::vector<std::string>> X64;
 		std::vector<std::vector<std::string>> X86;
+
+		bool CreateNewHmacKeyIfInvalid();
+
+		[[nodiscard]]
+		std::string Digest() const;
 
 		auto operator<=>(const PatchInstruction&) const = default;
 	};

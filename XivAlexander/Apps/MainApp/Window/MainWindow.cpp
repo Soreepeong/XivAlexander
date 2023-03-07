@@ -153,6 +153,9 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(Apps::MainApp::App& 
 	m_cleanup += m_config->Runtime.EnabledPatchCodes.OnChange([this]() {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
+	m_cleanup += m_config->Game.PatchCode.OnChange([this]() {
+		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
+		});
 
 	if (!m_sqpacksLoaded) {
 		if (auto& sqpacks = m_app.GetGameResourceOverrider().GetVirtualSqPacks()) {
@@ -978,15 +981,18 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_GameFix(HME
 	if (patchCodes.empty())
 		return;
 
-	const auto& namesVector = m_config->Runtime.EnabledPatchCodes.Value();
-	std::set names(namesVector.begin(), namesVector.end());
+	const auto& digestsVector = m_config->Runtime.EnabledPatchCodes.Value();
+	const std::set digests(digestsVector.begin(), digestsVector.end());
 
 	RemoveMenu(hParentMenu, 0, MF_BYPOSITION);
 	for (const auto& pc : patchCodes) {
-		AppendMenuW(hParentMenu, MF_STRING | (names.contains(pc.Name) ? MF_CHECKED : 0), RepopulateMenu_AllocateMenuId([this, name = pc.Name]() {
+		auto digest = pc.Digest();
+		const auto active = digests.contains(digest);
+		
+		AppendMenuW(hParentMenu, MF_STRING | (active ? MF_CHECKED : 0), RepopulateMenu_AllocateMenuId([this, digest = std::move(digest)]() {
 			auto pcs{ m_config->Runtime.EnabledPatchCodes.Value() };
-			if (const auto it = std::find(pcs.begin(), pcs.end(), name); it == pcs.end())
-				pcs.emplace_back(name);
+			if (const auto it = std::ranges::find(pcs, digest); it == pcs.end())
+				pcs.emplace_back(digest);
 			else
 				pcs.erase(it);
 			m_config->Runtime.EnabledPatchCodes = pcs;
