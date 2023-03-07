@@ -1,6 +1,7 @@
 {
 	"C2S_ActionRequest": "0x0334",
 	"C2S_ActionRequestGroundTargeted": "0x0318",
+	"Common_UseOodleTcp": false,
 	"S2C_ActionEffect01": "0x00ec",
 	"S2C_ActionEffect08": "0x0078",
 	"S2C_ActionEffect16": "0x033e",
