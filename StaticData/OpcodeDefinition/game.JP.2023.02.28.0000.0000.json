@@ -1,6 +1,7 @@
 {
 	"C2S_ActionRequest": "0x0197",
 	"C2S_ActionRequestGroundTargeted": "0x0089",
+	"Common_UseOodleTcp": true,
 	"PatchCode": [],
 	"S2C_ActionEffect01": "0x00d4",
 	"S2C_ActionEffect08": "0x01a4",
