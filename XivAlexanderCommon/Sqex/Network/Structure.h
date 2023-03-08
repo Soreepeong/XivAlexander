@@ -2,7 +2,9 @@
 
 namespace Utils {
 	class ZlibReusableInflater;
-	class Oodler;
+	namespace Oodle {
+		class Oodler;
+	}
 }
 
 namespace Sqex::Network::Structure {
@@ -246,6 +248,6 @@ namespace Sqex::Network::Structure {
 		std::string Represent() const;
 
 		[[nodiscard]] static std::vector<std::vector<uint8_t>> SplitMessages(uint16_t expectedMessageCount, const std::span<const uint8_t>& buf);
-		[[nodiscard]] std::vector<std::vector<uint8_t>> GetMessages(Utils::ZlibReusableInflater&, Utils::Oodler&) const;
+		[[nodiscard]] std::vector<std::vector<uint8_t>> GetMessages(Utils::ZlibReusableInflater&, Utils::Oodle::Oodler&) const;
 	};
 }

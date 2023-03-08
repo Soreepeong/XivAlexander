@@ -234,7 +234,7 @@ struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementat
 			});
 
 
-		for (auto ptr : Misc::Signatures::LookupForData(Misc::Signatures::SectionFilterTextOnly,
+		for (auto ptr : Utils::Signatures::LookupForData(Utils::Signatures::SectionFilterTextOnly,
 				"\x40\x57\x48\x8d\x3d\x00\x00\x00\x00\x00\x8b\xd8\x4c\x8b\xd2\xf7\xd1\x00\x85\xc0\x74\x25\x41\xf6\xc2\x03\x74\x1f\x41\x0f\xb6\x12\x8b\xc1",
 				"\xFF\xFF\xFF\xFF\xFF\x00\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF",
 				34,
@@ -339,8 +339,8 @@ struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementat
 			});
 		}
 		
-		for (auto ptr : Misc::Signatures::LookupForData(
-			Misc::Signatures::SectionFilterTextOnly,
+		for (auto ptr : Utils::Signatures::LookupForData(
+			Utils::Signatures::SectionFilterTextOnly,
 			"\x8b\x01\x25\xff\xff\xff\x00\x48\x03\xc1",
 			"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF",
 			10, {})) {

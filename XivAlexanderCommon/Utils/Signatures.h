@@ -2,7 +2,7 @@
 
 #include <vector>
 
-namespace XivAlexander::Misc::Signatures {
+namespace Utils::Signatures {
 
 	typedef bool (*SectionFilter)(const IMAGE_SECTION_HEADER&);
 	bool SectionFilterTextOnly(const IMAGE_SECTION_HEADER& pSectionHeader);

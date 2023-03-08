@@ -58,6 +58,8 @@
     <ClInclude Include="Sqex\Texture\Mipmap.h" />
     <ClInclude Include="Sqex\Texture\ModifiableTextureStream.h" />
     <ClInclude Include="Sqex\ThirdParty\TexTools.h" />
+    <ClInclude Include="Utils\Oodle.h" />
+    <ClInclude Include="Utils\Signatures.h" />
     <ClInclude Include="Utils\Win32\TaskDialogBuilder.h" />
     <ClInclude Include="Utils\Win32\ThreadPool.h" />
     <ClInclude Include="Utils\Dxt.h" />
@@ -121,6 +123,8 @@
     <ClCompile Include="Sqex\Texture.cpp" />
     <ClCompile Include="Sqex\Texture\ModifiableTextureStream.cpp" />
     <ClCompile Include="Sqex\ThirdParty\TexTools.cpp" />
+    <ClCompile Include="Utils\Oodle.cpp" />
+    <ClCompile Include="Utils\Signatures.cpp" />
     <ClCompile Include="Utils\Win32\TaskDialogBuilder.cpp" />
     <ClCompile Include="Utils\Win32\ThreadPool.cpp" />
     <ClCompile Include="Sqex\CommandLine.cpp" />

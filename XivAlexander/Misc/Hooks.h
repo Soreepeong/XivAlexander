@@ -3,11 +3,11 @@
 #include <XivAlexanderCommon/Utils/CallOnDestruction.h>
 #include <XivAlexanderCommon/Utils/Win32/HeapAllocator.h>
 #include <XivAlexanderCommon/Utils/Win32/Process.h>
-#include "Misc/Signatures.h"
+#include <XivAlexanderCommon/Utils/Signatures.h>
 
 namespace XivAlexander::Misc::Hooks {
 
-	using namespace Signatures;
+	using namespace Utils::Signatures;
 
 	class Binder {
 	public:

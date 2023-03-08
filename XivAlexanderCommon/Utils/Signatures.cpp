@@ -1,11 +1,11 @@
 #include "pch.h"
-#include "Misc/Signatures.h"
+#include "Signatures.h"
 
-bool XivAlexander::Misc::Signatures::SectionFilterTextOnly(const IMAGE_SECTION_HEADER& pSectionHeader) {
+bool Utils::Signatures::SectionFilterTextOnly(const IMAGE_SECTION_HEADER& pSectionHeader) {
 	return 0 == strncmp(reinterpret_cast<const char*>(pSectionHeader.Name), ".text", 6);
 }
 
-std::vector<void*> XivAlexander::Misc::Signatures::LookupForData(SectionFilter lookupInSection, const char* sPattern, const char* sMask, size_t length, [[maybe_unused]] const std::vector<size_t>& nextOffsets) {
+std::vector<void*> Utils::Signatures::LookupForData(SectionFilter lookupInSection, const char* sPattern, const char* sMask, size_t length, [[maybe_unused]] const std::vector<size_t>& nextOffsets) {
 	std::vector<void*> result;
 	const std::string_view mask(sMask, length);
 	const std::string_view pattern(sPattern, length);
@@ -32,7 +32,7 @@ std::vector<void*> XivAlexander::Misc::Signatures::LookupForData(SectionFilter l
 	return result;
 }
 
-bool XivAlexander::Misc::Signatures::RegexSignature::Lookup(const void* data, size_t length, ScanResult& result, bool next) const {
+bool Utils::Signatures::RegexSignature::Lookup(const void* data, size_t length, ScanResult& result, bool next) const {
 	srell::cmatch match;
 
 	if (next) {

@@ -2,6 +2,7 @@
 #include "SocketHook.h"
 
 #include <XivAlexanderCommon/Sqex/Network/Structure.h>
+#include <XivAlexanderCommon/Utils/Oodle.h>
 #include <XivAlexanderCommon/Utils/ZlibWrapper.h>
 
 #include "Apps/MainApp/App.h"
@@ -9,18 +10,15 @@
 #include "Misc/IcmpPingTracker.h"
 #include "Misc/Logger.h"
 #include "resource.h"
-#include "Misc/OodleLookup.h"
 
 using namespace Sqex::Network::Structure;
-
-static Utils::OodleNetworkFunctions s_oodle{};
 
 class XivAlexander::Apps::MainApp::Internal::SingleConnection::SingleStream {
 	Misc::Logger& m_logger;
 	const std::string m_name;
 	Utils::ZlibReusableDeflater m_deflater;
 	Utils::ZlibReusableInflater m_inflater;
-	Utils::Oodler m_oodler, m_unoodler;
+	Utils::Oodle::Oodler m_oodler, m_unoodler;
 
 	std::vector<uint8_t> m_buffer{};
 	size_t m_pointer = 0;
@@ -53,11 +51,11 @@ public:
 		}
 	};
 
-	SingleStream(Misc::Logger& logger, std::string name, bool oodleTcp)
+	SingleStream(Misc::Logger& logger, std::string name, const Utils::Oodle::OodleModule& oodleModule, bool oodleTcp)
 		: m_logger(logger)
 		, m_name(std::move(name))
-		, m_oodler(s_oodle, !oodleTcp)
-		, m_unoodler(s_oodle, !oodleTcp) {
+		, m_oodler(oodleModule, !oodleTcp)
+		, m_unoodler(oodleModule, !oodleTcp) {
 	}
 
 	SingleStreamWriter Write() {
@@ -343,6 +341,8 @@ struct XivAlexander::Apps::MainApp::Internal::SocketHook::Implementation {
 	std::vector<std::pair<uint32_t, uint32_t>> AllowedPortRange;
 	Utils::CallOnDestruction::Multiple Cleanup;
 
+	Utils::Oodle::OodleModule OodleModule;
+
 	Implementation(Internal::SocketHook& socketHook, Apps::MainApp::App& app)
 		: Config(XivAlexander::Config::Acquire())
 		, SocketHook(socketHook)
@@ -497,10 +497,10 @@ void XivAlexander::Apps::MainApp::Internal::SingleConnection::Implementation::Re
 XivAlexander::Apps::MainApp::Internal::SingleConnection::Implementation::Implementation(Internal::SingleConnection& singleConnection, Internal::SocketHook& socketHook)
 	: SingleConnection(singleConnection)
 	, SocketHook(socketHook)
-	, RecvRaw(*socketHook.m_logger, "S2C_Raw", socketHook.m_pImpl->Config->Game.Common_UseOodleTcp)
-	, RecvProcessed(*socketHook.m_logger, "S2C_Processed", socketHook.m_pImpl->Config->Game.Common_UseOodleTcp)
-	, SendRaw(*socketHook.m_logger, "C2S_Raw", socketHook.m_pImpl->Config->Game.Common_UseOodleTcp)
-	, SendProcessed(*socketHook.m_logger, "C2S_Processed", socketHook.m_pImpl->Config->Game.Common_UseOodleTcp) {
+	, RecvRaw(*socketHook.m_logger, "S2C_Raw", socketHook.m_pImpl->OodleModule, socketHook.m_pImpl->Config->Game.Common_UseOodleTcp)
+	, RecvProcessed(*socketHook.m_logger, "S2C_Processed", socketHook.m_pImpl->OodleModule, socketHook.m_pImpl->Config->Game.Common_UseOodleTcp)
+	, SendRaw(*socketHook.m_logger, "C2S_Raw", socketHook.m_pImpl->OodleModule, socketHook.m_pImpl->Config->Game.Common_UseOodleTcp)
+	, SendProcessed(*socketHook.m_logger, "C2S_Processed", socketHook.m_pImpl->OodleModule, socketHook.m_pImpl->Config->Game.Common_UseOodleTcp) {
 	socketHook.m_logger->Format(LogCategory::SocketHook, socketHook.m_pImpl->Config->Runtime.GetLangId(), IDS_SOCKETHOOK_SOCKET_FOUND, SingleConnection.m_socket);
 	ResolveAddresses();
 }
@@ -569,18 +569,19 @@ XivAlexander::Apps::MainApp::Internal::SocketHook::SocketHook(Apps::MainApp::App
 	: m_logger(Misc::Logger::Acquire())
 	, OnSocketFound([this](const auto& cb) { if (m_pImpl) { for (const auto& val : m_pImpl->Sockets | std::views::values) cb(*val); } }) {
 
-	if (!Misc::OodleLookup::Search(s_oodle)) {
-		m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "Oodle signatures could not be found.");
-	}
-
 	m_hThreadSetupHook = Utils::Win32::Thread(L"SocketHook::SocketHook/WaitGameWindow", [this, &app]() {
 		m_logger->Log(LogCategory::SocketHook, "Waiting for game window to stabilize before setting up redirecting network operations.");
 		app.RunOnGameLoop([&]() {
 			m_pImpl = std::make_unique<Implementation>(*this, app);
+
 			if (m_unloading)
 				return;
 
 			void(Utils::Win32::Thread(L"SocketHook::SocketHook/InitRunner", [this, &app]() {
+				if (!m_pImpl->OodleModule.Found)
+					m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "Oodle signatures could not be found.");
+			Utils::Oodle::Oodler(m_pImpl->OodleModule, false);
+
 				app.RunOnGameLoop([&]() {
 					try {
 						m_pImpl->Cleanup += std::move(socket.SetHook([&](_In_ int af, _In_ int type, _In_ int protocol) {

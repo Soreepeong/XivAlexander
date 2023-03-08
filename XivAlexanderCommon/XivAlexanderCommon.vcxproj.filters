@@ -258,6 +258,12 @@
     <ClInclude Include="Sqex\FontCsv\FdtFont.h">
       <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
+    <ClInclude Include="Utils\Oodle.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Signatures.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -433,6 +439,12 @@
     </ClCompile>
     <ClCompile Include="FdtFont.cpp">
       <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Oodle.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Signatures.cpp">
+      <Filter>Utils</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

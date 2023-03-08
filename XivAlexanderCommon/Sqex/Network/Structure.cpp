@@ -3,6 +3,7 @@
 
 #include "Sqex.h"
 #include "Utils/Utils.h"
+#include "Utils/Oodle.h"
 #include "Utils/ZlibWrapper.h"
 
 const uint8_t Sqex::Network::Structure::XivBundle::MagicConstant1[]{
@@ -55,7 +56,7 @@ std::vector<std::vector<uint8_t>> Sqex::Network::Structure::XivBundle::SplitMess
 	return result;
 }
 
-std::vector<std::vector<uint8_t>> Sqex::Network::Structure::XivBundle::GetMessages(Utils::ZlibReusableInflater& inflater, Utils::Oodler& oodler) const {
+std::vector<std::vector<uint8_t>> Sqex::Network::Structure::XivBundle::GetMessages(Utils::ZlibReusableInflater& inflater, Utils::Oodle::Oodler& oodler) const {
 	const auto view = std::span(Data, TotalLength - sizeof XivBundleHeader);
 
 	switch (CompressionType) {
