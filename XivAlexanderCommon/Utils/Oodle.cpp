@@ -120,8 +120,8 @@ Utils::Oodle::OodleModule::OodleModule() {
 		} else
 			return;
 #else
-		const auto TcpCodecOodle = Signatures::RegexSignature("\x85\xc0\x74.\x50\xe8(....)\x57\x8b\xf0\xff\x15");
-		const auto UdpCodecOodle = Signatures::RegexSignature("\xff\x71\x04\xe8(....)\x57\x8b\xf0\xff\x15");
+		const auto TcpCodecOodle = Signatures::RegexSignature(R"(\x85\xc0\x74.\x50\xe8(....)\x57\x8b\xf0\xff\x15)");
+		const auto UdpCodecOodle = Signatures::RegexSignature(R"(\xff\x71\x04\xe8(....)\x57\x8b\xf0\xff\x15)");
 		if (Signatures::ScanResult sr1, sr2; TcpCodecOodle.Lookup(codeSection, sr1) && UdpCodecOodle.Lookup(codeSection, sr2)) {
 			sr1.ResolveAddressInto(TcpEncode, 1);
 			sr2.ResolveAddressInto(UdpEncode, 1);
