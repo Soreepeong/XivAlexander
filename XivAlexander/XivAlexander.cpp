@@ -168,7 +168,9 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 					.lpResourceName = MAKEINTRESOURCE(IDR_RT_MANIFEST_LATE_ACTIVATION),
 					.hModule = Dll::Module(),
 				});
-				
+
+				MH_Initialize();
+
 				if (s_bLoadedAsDependency && lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), Dll::GameExecutableNameW) == 0) {
 					GetEnvironmentVariableW(L"XIVALEXANDER_DISABLE", nullptr, 0);
 					if (GetLastError() == ERROR_ENVVAR_NOT_FOUND) {
@@ -178,7 +180,6 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 						params->LoadInstalledXivAlexDllOnly = true;
 					}
 				} else {
-					MH_Initialize();
 					CheckObfuscatedArguments();
 					s_crashMessageBoxHandler = std::make_unique<XivAlexander::Misc::CrashMessageBoxHandler>();
 				}

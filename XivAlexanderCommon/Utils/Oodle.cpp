@@ -4,7 +4,15 @@
 #include "Win32/Handle.h"
 #include "Win32/Process.h"
 
-Utils::Oodle::OodleModule::OodleModule() {
+static void* __stdcall OodleAlignedAlloc(size_t size, size_t align) {
+	return _aligned_malloc(size, align);
+}
+
+static void __stdcall OodleAlignedFree(void* ptr){
+	return _aligned_free(ptr);
+}
+
+Utils::Oodle::OodleModule::OodleModule() : ErrorStep("Start") {
 	try {
 		const auto& currentProcess = Win32::Process::Current();
 		const auto f = Win32::Handle::FromCreateFile(currentProcess.PathOf(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
@@ -27,7 +35,7 @@ Utils::Oodle::OodleModule::OodleModule() {
 
 		if (const auto displacement = reinterpret_cast<size_t>(m_mem.data()) - nt.OptionalHeader.ImageBase) {
 			const auto relocDir = nt.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC];
-			*const_cast<size_t*>(&nt.OptionalHeader.ImageBase) += displacement;
+			*const_cast<size_t*>(static_cast<const size_t*>(static_cast<const void*>(&nt.OptionalHeader.ImageBase))) += displacement;
 			for (size_t i = relocDir.VirtualAddress, i_ = i + relocDir.Size; i < i_; ) {
 				const auto& page = *reinterpret_cast<IMAGE_BASE_RELOCATION*>(&m_mem[i]);
 				i += sizeof page;
@@ -82,6 +90,7 @@ Utils::Oodle::OodleModule::OodleModule() {
 			}
 		}
 
+		ErrorStep = "InitOodle";
 #ifdef _WIN64
 		const auto InitOodle = Signatures::RegexSignature(R"(\x75.\x48\x8d\x15....\x48\x8d\x0d....\xe8(....)\xc6\x05....\x01.{0,256}\x75.\xb9(....)\xe8(....)\x45\x33\xc0\x33\xd2\x48\x8b\xc8\xe8.....{0,6}\x41\xb9(....)\xba.....{0,6}\x48\x8b\xc8\xe8(....))");
 #else
@@ -96,8 +105,9 @@ Utils::Oodle::OodleModule::OodleModule() {
 		} else
 			return;
 
+		ErrorStep = "SetUpStatesAndTrain";
 #ifdef _WIN64
-		const auto SetUpStatesAndTrain = Signatures::RegexSignature(R"(\x75\x04\x48\x89\x7e.\xe8(....)\x4c..\xe8(....).{0,256}\x01\x75\x0a\x48\x8b\x0f\xe8(....)\xeb\x09\x48\x8b\x4f\x08\xe8(....))");
+		const auto SetUpStatesAndTrain = Signatures::RegexSignature(R"(\x75\x04\x48\x89..\xe8(....)\x4c..\xe8(....).{0,256}\x01\x75\x0a\x48\x8b.\xe8(....)\xeb\x09\x48\x8b.\x08\xe8(....))");
 #else
 		const auto SetUpStatesAndTrain = Signatures::RegexSignature(R"(\xe8(....)\x8b\xd8\xe8(....)\x83\x7d\x10\x01.{0,256}\x83\x7d\x10\x01\x6a\x00\x6a\x00\x6a\x00\xff\x77.\x75\x09\xff.\xe8(....)\xeb\x08\xff\x76.\xe8(....))");
 #endif
@@ -109,6 +119,7 @@ Utils::Oodle::OodleModule::OodleModule() {
 		} else
 			return;
 
+		ErrorStep = "CodecOodle";
 #ifdef _WIN64
 		const auto DecodeOodle = Signatures::RegexSignature(R"(\x4d\x85\xd2\x74\x0a\x49\x8b\xca\xe8(....)\xeb\x09\x48\x8b\x49\x08\xe8(....))");
 		const auto EncodeOodle = Signatures::RegexSignature(R"(\x48\x85\xc0\x74\x0d\x48\x8b\xc8\xe8(....)\x48..\xeb\x0b\x48\x8b\x49\x08\xe8(....))");
@@ -135,11 +146,11 @@ Utils::Oodle::OodleModule::OodleModule() {
 			return;
 #endif
 
-		SetMallocFree(&_aligned_malloc, &_aligned_free);
+		SetMallocFree(&OodleAlignedAlloc, &OodleAlignedFree);
 
-		Found = true;
-	} catch (...) {
-		Found = false;
+		ErrorStep.clear();
+	} catch (const std::exception& e) {
+		ErrorStep = e.what();
 	}
 }
 
@@ -149,7 +160,7 @@ Utils::Oodle::Oodler::Oodler(const OodleModule& funcs, bool udp)
 	: m_funcs(funcs)
 	, m_udp(udp) {
 
-	if (!m_funcs.Found)
+	if (!m_funcs.ErrorStep.empty())
 		return;
 	m_state.resize(udp ? m_funcs.UdpStateSize() : m_funcs.TcpStateSize());
 	m_shared.resize(m_funcs.SharedSize(m_funcs.HtBits));
@@ -166,7 +177,7 @@ Utils::Oodle::Oodler::Oodler(const OodleModule& funcs, bool udp)
 Utils::Oodle::Oodler::~Oodler() = default;
 
 std::span<uint8_t> Utils::Oodle::Oodler::Decode(std::span<const uint8_t> source, size_t decodedLength) {
-	if (!m_funcs.Found)
+	if (!m_funcs.ErrorStep.empty())
 		throw std::runtime_error("Oodle not initialized");
 	m_buffer.resize(decodedLength);
 	if (m_udp) {
@@ -180,7 +191,7 @@ std::span<uint8_t> Utils::Oodle::Oodler::Decode(std::span<const uint8_t> source,
 }
 
 std::span<uint8_t> Utils::Oodle::Oodler::Encode(std::span<const uint8_t> source) {
-	if (!m_funcs.Found)
+	if (!m_funcs.ErrorStep.empty())
 		throw std::runtime_error("Oodle not initialized");
 	if (m_buffer.size() < MaxEncodedSize(source.size()))
 		m_buffer.resize(MaxEncodedSize(source.size()));

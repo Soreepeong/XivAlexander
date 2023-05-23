@@ -38,7 +38,7 @@ namespace Utils::Oodle {
 		Oodle_SetMallocFree* SetMallocFree{};
 		int HtBits{};
 		int WindowSize{};
-		bool Found{};
+		std::string ErrorStep;
 
 	public:
 		OodleModule();

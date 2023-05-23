@@ -578,8 +578,8 @@ XivAlexander::Apps::MainApp::Internal::SocketHook::SocketHook(Apps::MainApp::App
 				return;
 
 			void(Utils::Win32::Thread(L"SocketHook::SocketHook/InitRunner", [this, &app]() {
-				if (!m_pImpl->OodleModule.Found)
-					m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "Oodle signatures could not be found.");
+				if (!m_pImpl->OodleModule.ErrorStep.empty())
+					m_logger->Format<LogLevel::Warning>(LogCategory::SocketHook, "Oodle signatures could not be found: {}", m_pImpl->OodleModule.ErrorStep);
 			Utils::Oodle::Oodler(m_pImpl->OodleModule, false);
 
 				app.RunOnGameLoop([&]() {
