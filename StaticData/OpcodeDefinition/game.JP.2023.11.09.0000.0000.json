@@ -2,7 +2,59 @@
 	"C2S_ActionRequest": "0x03ab",
 	"C2S_ActionRequestGroundTargeted": "0x02a2",
 	"Common_UseOodleTcp": true,
-	"PatchCode": [],
+	"PatchCode": [
+		{
+			"Name": "anti odin cape physics disabling",
+			"x64": [
+				[
+					"find",
+					"code",
+					"0",
+					"66 83 bb ?? ?? ?? ?? 64 75 ?? 80 bb ?? ?? ?? ?? 02 75 ?? 48"
+				],
+				[
+					"offset",
+					"10"
+				],
+				[
+					"write",
+					"0xc6 0x83"
+				],
+				[
+					"offset",
+					"4"
+				],
+				[
+					"write",
+					"0x01 0x74"
+				]
+			],
+			"x86": [
+				[
+					"find",
+					"code",
+					"0",
+					"66 83 be ?? ?? ?? ?? 64 75 ?? 80 be ?? ?? ?? ?? 02 75 ?? 8b"
+				],
+				[
+					"offset",
+					"10"
+				],
+				[
+					"write",
+					"0xc6 0x86"
+				],
+				[
+					"offset",
+					"4"
+				],
+				[
+					"write",
+					"0x01 0x74"
+				]
+			]
+		}
+	],
 	"S2C_ActionEffect01": "0x019f",
 	"S2C_ActionEffect08": "0x03a2",
 	"S2C_ActionEffect16": "0x0126",
