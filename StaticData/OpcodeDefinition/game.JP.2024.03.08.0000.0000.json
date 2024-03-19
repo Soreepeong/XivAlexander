@@ -1,6 +1,6 @@
 {
-	"C2S_ActionRequest": "0x0279",
-	"C2S_ActionRequestGroundTargeted": "0x014c",
+	"C2S_ActionRequest": "0x017f",
+	"C2S_ActionRequestGroundTargeted": "0x02c7",
 	"Common_UseOodleTcp": true,
 	"PatchCode": [
 		{
@@ -19,30 +19,6 @@
 				[
 					"write",
 					"0xc6 0x83"
-				],
-				[
-					"offset",
-					"4"
-				],
-				[
-					"write",
-					"0x01 0x74"
-				]
-			],
-			"x86": [
-				[
-					"find",
-					"code",
-					"0",
-					"66 83 be ?? ?? ?? ?? 64 75 ?? 80 be ?? ?? ?? ?? 02 75 ?? 8b"
-				],
-				[
-					"offset",
-					"10"
-				],
-				[
-					"write",
-					"0xc6 0x86"
 				],
 				[
 					"offset",
