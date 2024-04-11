@@ -36,7 +36,7 @@ enum : UINT {
 	WmRepopulateMenu,
 };
 
-static const int TrayItemId = 1;
+static const int TrayItemId = 0x4c19fd7a;
 static const int TimerIdReregisterTrayIcon = 100;
 static const int TimerIdRepaint = 101;
 
@@ -1130,7 +1130,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RegisterTrayIcon() {
 	nid.uVersion = NOTIFYICON_VERSION_4;
 	nid.uID = TrayItemId;
 	nid.hWnd = this->m_hWnd;
-	nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP | NIF_GUID;
+	nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
 	nid.uCallbackMessage = WmTrayCallback;
 	nid.hIcon = hIcon;
 	wcscpy_s(nid.szTip, std::format(L"XivAlexander({})", GetCurrentProcessId()).c_str());
@@ -1142,7 +1142,6 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RemoveTrayIcon() {
 	NOTIFYICONDATAW nid = { sizeof(NOTIFYICONDATAW) };
 	nid.uID = TrayItemId;
 	nid.hWnd = m_hWnd;
-	nid.uFlags = NIF_GUID;
 	Shell_NotifyIconW(NIM_DELETE, &nid);
 }
 

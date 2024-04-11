@@ -7,6 +7,7 @@
 
 #include "XivAlexanderCommon/Utils/Win32/Handle.h"
 #include "XivAlexanderCommon/Utils/Utils.h"
+#include "XivAlexanderCommon/Utils/StringUtils.h"
 
 namespace Sqex {
 	using namespace Utils;

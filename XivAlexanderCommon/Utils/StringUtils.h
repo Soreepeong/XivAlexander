@@ -67,7 +67,7 @@ namespace Utils {
 template<>
 struct std::formatter<std::filesystem::path, wchar_t> : std::formatter<std::wstring, wchar_t> {
 	template<class FormatContext>
-	auto format(const std::filesystem::path& t, FormatContext& fc) {
+	auto format(const std::filesystem::path& t, FormatContext& fc) const {
 		return std::formatter<std::wstring, wchar_t>::format(t.c_str(), fc);
 	}
 };
@@ -75,7 +75,7 @@ struct std::formatter<std::filesystem::path, wchar_t> : std::formatter<std::wstr
 template<>
 struct std::formatter<std::filesystem::path, char> : std::formatter<std::string, char> {
 	template<class FormatContext>
-	auto format(const std::filesystem::path& t, FormatContext& fc) {
+	auto format(const std::filesystem::path& t, FormatContext& fc) const {
 		return std::formatter<std::string, char>::format(Utils::ToUtf8(t.wstring()), fc);
 	}
 };
@@ -83,7 +83,7 @@ struct std::formatter<std::filesystem::path, char> : std::formatter<std::string,
 template<>
 struct std::formatter<std::wstring, char> : std::formatter<std::string, char> {
 	template<class FormatContext>
-	auto format(const std::wstring& t, FormatContext& fc) {
+	auto format(const std::wstring& t, FormatContext& fc) const {
 		return std::formatter<std::string, char>::format(Utils::ToUtf8(t), fc);
 	}
 };
@@ -91,7 +91,7 @@ struct std::formatter<std::wstring, char> : std::formatter<std::string, char> {
 template<>
 struct std::formatter<std::string, wchar_t> : std::formatter<std::wstring, wchar_t> {
 	template<class FormatContext>
-	auto format(const std::string& t, FormatContext& fc) {
+	auto format(const std::string& t, FormatContext& fc) const {
 		return std::formatter<std::wstring, wchar_t>::format(Utils::FromUtf8(t), fc);
 	}
 };
@@ -99,7 +99,7 @@ struct std::formatter<std::string, wchar_t> : std::formatter<std::wstring, wchar
 template<>
 struct std::formatter<const wchar_t*, char> : std::formatter<std::string, char> {
 	template<class FormatContext>
-	auto format(const wchar_t* t, FormatContext& fc) {
+	auto format(const wchar_t* t, FormatContext& fc) const {
 		return std::formatter<std::string, char>::format(Utils::ToUtf8(t), fc);
 	}
 };
@@ -107,7 +107,7 @@ struct std::formatter<const wchar_t*, char> : std::formatter<std::string, char> 
 template<>
 struct std::formatter<const char*, wchar_t> : std::formatter<std::wstring, wchar_t> {
 	template<class FormatContext>
-	auto format(const char* t, FormatContext& fc) {
+	auto format(const char* t, FormatContext& fc) const {
 		return std::formatter<std::wstring, wchar_t>::format(Utils::FromUtf8(t), fc);
 	}
 };

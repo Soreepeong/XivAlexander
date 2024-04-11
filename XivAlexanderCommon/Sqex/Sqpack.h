@@ -620,7 +620,7 @@ namespace Sqex::Sqpack {
 template<>
 struct std::formatter<Sqex::Sqpack::EntryPathSpec, char> : std::formatter<std::basic_string<char>, char> {
 	template<class FormatContext>
-	auto format(const Sqex::Sqpack::EntryPathSpec& t, FormatContext& fc) {
+	auto format(const Sqex::Sqpack::EntryPathSpec& t, FormatContext& fc) const {
 		return std::formatter<std::basic_string<char>, char>::format(std::format("{}({:08x}/{:08x}, {:08x})", t.FullPath.wstring(), t.PathHash, t.NameHash, t.FullPathHash), fc);
 	}
 };
