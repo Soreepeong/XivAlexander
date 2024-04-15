@@ -53,6 +53,7 @@ XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::ProgressPopupWindow(HW
 }
 
 XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::~ProgressPopupWindow() {
+	m_taskBarList3.Release();
 	Destroy();
 }
 

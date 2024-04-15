@@ -24,7 +24,7 @@ namespace Sqex::Sqpack {
 
 		protected:
 			friend struct Reader;
-			SqIndexType(const RandomAccessStream& stream, bool strictVerify);
+			SqIndexType(const RandomAccessStream* stream, bool strictVerify);
 		};
 
 		struct SqIndex1Type : SqIndexType<SqIndex::PairHashLocator, SqIndex::PairHashWithTextLocator> {
@@ -35,7 +35,7 @@ namespace Sqex::Sqpack {
 
 		protected:
 			friend struct Reader;
-			SqIndex1Type(const RandomAccessStream& stream, bool strictVerify);
+			SqIndex1Type(const RandomAccessStream* stream, bool strictVerify);
 		};
 
 		struct SqIndex2Type : SqIndexType<SqIndex::FullHashLocator, SqIndex::FullHashWithTextLocator> {
@@ -43,7 +43,7 @@ namespace Sqex::Sqpack {
 
 		protected:
 			friend struct Reader;
-			SqIndex2Type(const RandomAccessStream& stream, bool strictVerify);
+			SqIndex2Type(const RandomAccessStream* stream, bool strictVerify);
 		};
 
 		struct SqDataType {

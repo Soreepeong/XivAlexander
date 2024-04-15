@@ -69,10 +69,12 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 		, GameReleaseInfo(Misc::GameInstallationDetector::GetGameReleaseInfo()) {
 
 		const auto actCtx = Dll::ActivationContext().With();
-		Apps::MainApp::Window::ProgressPopupWindow progressWindow(Dll::FindGameMainWindow(false));
-		progressWindow.Show();
-		InitializeSqPacks(progressWindow);
-		ReflectUsedEntries(true);
+		{
+			Apps::MainApp::Window::ProgressPopupWindow progressWindow(Dll::FindGameMainWindow(false));
+			progressWindow.Show();
+			InitializeSqPacks(progressWindow);
+			ReflectUsedEntries(true);
+		}
 
 		Cleanup += Config->Runtime.MuteVoice_Battle.OnChange([this]() { ReflectUsedEntries(); });
 		Cleanup += Config->Runtime.MuteVoice_Cm.OnChange([this]() { ReflectUsedEntries(); });
@@ -153,7 +155,7 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 		const auto voCm = Sqex::Sqpack::SqexHash("sound/voice/vo_cm", SIZE_MAX);
 		const auto voEmote = Sqex::Sqpack::SqexHash("sound/voice/vo_emote", SIZE_MAX);
 		const auto voLine = Sqex::Sqpack::SqexHash("sound/voice/vo_line", SIZE_MAX);
-		for (const auto& entry : SqpackViews.at(SqpackPath / L"ffxiv/070000.win32.index").Entries) {
+		for (const auto& entry : SqpackViews.at(SqpackPath / L"ffxiv/070000.win32.index2").Entries) {
 			const auto provider = dynamic_cast<Sqex::Sqpack::HotSwappableEntryProvider*>(entry->Provider.get());
 			if (!provider)
 				continue;
@@ -179,7 +181,7 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 
 			// Step. Find placeholders to adjust
 			ttmp.ForEachEntryInterruptible(false, [&](const auto& entry) {
-				const auto v = SqpackPath / std::format(L"{}.win32.index", entry.ToExpacDatPath());
+				const auto v = SqpackPath / std::format(L"{}.win32.index2", entry.ToExpacDatPath());
 				const auto it = SqpackViews.find(v);
 				if (it == SqpackViews.end()) {
 					Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "Failed to find {} as a sqpack file", v.c_str());
@@ -427,7 +429,7 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 
 				auto ext = sqpack.path().extension().wstring();
 				CharLowerW(&ext[0]);
-				if (ext != L".index")
+				if (ext != L".index2")
 					continue;
 
 				creators.emplace(sqpack, std::make_unique<Sqex::Sqpack::Creator>(
@@ -493,20 +495,24 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 							}
 
 							if (creator.DatExpac == "ffxiv" && creator.DatName == "070000") {
-								const auto reader = Sqex::Sound::ScdReader(creator["sound/system/sample_system.scd"]);
-								Sqex::Sound::ScdWriter writer;
-								writer.SetTable1(reader.ReadTable1Entries());
-								writer.SetTable4(reader.ReadTable4Entries());
-								writer.SetTable2(reader.ReadTable2Entries());
-								for (size_t i = 0; i < 256; ++i) {
-									writer.SetSoundEntry(i, Sqex::Sound::ScdWriter::SoundEntry::EmptyEntry());
+								try {
+									const auto reader = Sqex::Sound::ScdReader(creator["sound/system/sample_system.scd"]);
+									Sqex::Sound::ScdWriter writer;
+									writer.SetTable1(reader.ReadTable1Entries());
+									writer.SetTable4(reader.ReadTable4Entries());
+									writer.SetTable2(reader.ReadTable2Entries());
+									for (size_t i = 0; i < 256; ++i) {
+										writer.SetSoundEntry(i, Sqex::Sound::ScdWriter::SoundEntry::EmptyEntry());
+									}
+									EmptyScd = std::make_shared<Sqex::MemoryRandomAccessStream>(
+										Sqex::Sqpack::MemoryBinaryEntryProvider("dummy/dummy", std::make_shared<Sqex::MemoryRandomAccessStream>(writer.Export()), Config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION)
+										.ReadStreamIntoVector<uint8_t>(0));
+									//EmptyScd = std::make_shared<Sqex::MemoryRandomAccessStream>(
+									//	Sqex::Sqpack::EmptyOrObfuscatedEntryProvider("dummy/dummy", std::make_shared<Sqex::MemoryRandomAccessStream>(writer.Export()))
+									//	.ReadStreamIntoVector<uint8_t>(0));
+								} catch(std::out_of_range&) {
+									// ignore
 								}
-								EmptyScd = std::make_shared<Sqex::MemoryRandomAccessStream>(
-									Sqex::Sqpack::MemoryBinaryEntryProvider("dummy/dummy", std::make_shared<Sqex::MemoryRandomAccessStream>(writer.Export()), Config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION)
-									.ReadStreamIntoVector<uint8_t>(0));
-								//EmptyScd = std::make_shared<Sqex::MemoryRandomAccessStream>(
-								//	Sqex::Sqpack::EmptyOrObfuscatedEntryProvider("dummy/dummy", std::make_shared<Sqex::MemoryRandomAccessStream>(writer.Export()))
-								//	.ReadStreamIntoVector<uint8_t>(0));
 							}
 
 							if (creator.DatExpac != "ffxiv" || creator.DatName != "0a0000") {
@@ -588,7 +594,7 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 
 			if (pCreator->DatExpac == "ffxiv" && pCreator->DatName == "000000")
 				SetUpGeneratedFonts(progressWindow, *pCreator, indexFile);
-			else if (pCreator->DatExpac == "ffxiv" && pCreator->DatName == "070000") {
+			else if (pCreator->DatExpac == "ffxiv" && pCreator->DatName == "070000" && EmptyScd) {
 				for (const auto& pathSpec : pCreator->AllPathSpec())
 					pCreator->ReserveSwappableSpace(pathSpec, static_cast<uint32_t>(EmptyScd->StreamSize()));
 			} else if (pCreator->DatExpac == "ffxiv" && pCreator->DatName == "0a0000")
@@ -912,7 +918,7 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 
 	void CheckTtmpAllocation(TtmpSet& item) {
 		item.Allocated = Sqex::ThirdParty::TexTools::TTMPL::Continue == item.ForEachEntryInterruptible(false, [&](const auto& entry) {
-			const auto it = SqpackViews.find(SqpackPath / std::format(L"{}.win32.index", entry.ToExpacDatPath()));
+			const auto it = SqpackViews.find(SqpackPath / std::format(L"{}.win32.index2", entry.ToExpacDatPath()));
 			if (it == SqpackViews.end())
 				return Sqex::ThirdParty::TexTools::TTMPL::Break;
 
@@ -2296,7 +2302,7 @@ HANDLE XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Open(const std::fi
 		const auto recreatedFilePath = m_pImpl->SqpackPath / fileToOpen.parent_path().filename() / fileToOpen.filename();
 		const auto indexFile = std::filesystem::path(recreatedFilePath).replace_extension(L".index");
 		const auto index2File = std::filesystem::path(recreatedFilePath).replace_extension(L".index2");
-		if (!exists(indexFile) || !exists(index2File))
+		if (!exists(indexFile) && !exists(index2File))
 			return nullptr;
 
 		int pathType = Implementation::PathTypeInvalid;
@@ -2321,7 +2327,8 @@ HANDLE XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Open(const std::fi
 		auto overlayedHandle = std::make_unique<OverlayedHandleData>(Utils::Win32::Event::Create(), fileToOpen, LARGE_INTEGER{}, nullptr);
 
 		for (const auto& view : m_pImpl->SqpackViews) {
-			if (equivalent(view.first, indexFile)) {
+			if ((exists(indexFile) && equivalent(view.first, indexFile))
+				|| (exists(index2File) && equivalent(view.first, index2File))) {
 				switch (pathType) {
 					case Implementation::PathTypeIndex:
 						overlayedHandle->Stream = view.second.Index1;

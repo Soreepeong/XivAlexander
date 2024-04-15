@@ -5,13 +5,13 @@
 #include "XivAlexanderCommon/Sqex/Sqpack/RandomAccessStreamAsEntryProviderView.h"
 
 template<typename HashLocatorT, typename TextLocatorT>
-Sqex::Sqpack::Reader::SqIndexType<HashLocatorT, TextLocatorT>::SqIndexType(const RandomAccessStream& stream, bool strictVerify)
-	: Data(stream.ReadStreamIntoVector<uint8_t>(0))
-	, Header(*reinterpret_cast<const SqpackHeader*>(&Data[0]))
-	, IndexHeader(*reinterpret_cast<const SqIndex::Header*>(&Data[Header.HeaderSize]))
-	, HashLocators(span_cast<HashLocatorT>(Data, IndexHeader.HashLocatorSegment.Offset, IndexHeader.HashLocatorSegment.Size, 1))
-	, TextLocators(span_cast<TextLocatorT>(Data, IndexHeader.TextLocatorSegment.Offset, IndexHeader.TextLocatorSegment.Size, 1))
-	, Segment3(span_cast<SqIndex::Segment3Entry>(Data, IndexHeader.UnknownSegment3.Offset, IndexHeader.UnknownSegment3.Size, 1)) {
+Sqex::Sqpack::Reader::SqIndexType<HashLocatorT, TextLocatorT>::SqIndexType(const RandomAccessStream* stream, bool strictVerify)
+	: Data(stream ? stream->ReadStreamIntoVector<uint8_t>(0) : std::vector<uint8_t>())
+	, Header(Data.empty() ? SqpackHeader{} : *reinterpret_cast<const SqpackHeader*>(&Data[0]))
+	, IndexHeader(Data.empty() ? SqIndex::Header{} : *reinterpret_cast<const SqIndex::Header*>(&Data[Header.HeaderSize]))
+	, HashLocators(Data.empty() ? std::span<const HashLocatorT>() : span_cast<HashLocatorT>(Data, IndexHeader.HashLocatorSegment.Offset, IndexHeader.HashLocatorSegment.Size, 1))
+	, TextLocators(Data.empty() ? std::span<const TextLocatorT>() : span_cast<TextLocatorT>(Data, IndexHeader.TextLocatorSegment.Offset, IndexHeader.TextLocatorSegment.Size, 1))
+	, Segment3(Data.empty() ? std::span<const SqIndex::Segment3Entry>() : span_cast<SqIndex::Segment3Entry>(Data, IndexHeader.UnknownSegment3.Offset, IndexHeader.UnknownSegment3.Size, 1)) {
 
 	if (strictVerify) {
 		Header.VerifySqpackHeader(SqpackType::SqIndex);
@@ -28,9 +28,9 @@ Sqex::Sqpack::Reader::SqIndexType<HashLocatorT, TextLocatorT>::SqIndexType(const
 	}
 }
 
-Sqex::Sqpack::Reader::SqIndex1Type::SqIndex1Type(const RandomAccessStream& stream, bool strictVerify)
+Sqex::Sqpack::Reader::SqIndex1Type::SqIndex1Type(const RandomAccessStream* stream, bool strictVerify)
 	: SqIndexType<SqIndex::PairHashLocator, SqIndex::PairHashWithTextLocator>(stream, strictVerify)
-	, PathHashLocators(span_cast<SqIndex::PathHashLocator>(Data, IndexHeader.PathHashLocatorSegment.Offset, IndexHeader.PathHashLocatorSegment.Size, 1)) {
+	, PathHashLocators(Data.empty() ? std::span<const SqIndex::PathHashLocator>() : span_cast<SqIndex::PathHashLocator>(Data, IndexHeader.PathHashLocatorSegment.Offset, IndexHeader.PathHashLocatorSegment.Size, 1)) {
 	if (strictVerify) {
 		if (IndexHeader.PathHashLocatorSegment.Size % sizeof SqIndex::PathHashLocator)
 			throw CorruptDataException("PathHashLocators has an invalid size alignment");
@@ -54,7 +54,7 @@ const Sqex::Sqpack::SqIndex::LEDataLocator& Sqex::Sqpack::Reader::SqIndex1Type::
 	return it->Locator;
 }
 
-Sqex::Sqpack::Reader::SqIndex2Type::SqIndex2Type(const RandomAccessStream& stream, bool strictVerify)
+Sqex::Sqpack::Reader::SqIndex2Type::SqIndex2Type(const RandomAccessStream* stream, bool strictVerify)
 	: SqIndexType<SqIndex::FullHashLocator, SqIndex::FullHashWithTextLocator>(stream, strictVerify) {
 }
 
@@ -88,8 +88,8 @@ Sqex::Sqpack::Reader::SqDataType::SqDataType(std::shared_ptr<RandomAccessStream>
 
 Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strictVerify)
 	: Reader(
-		std::make_shared<FileRandomAccessStream>(std::filesystem::path(indexFile).replace_extension(".index")),
-		std::make_shared<FileRandomAccessStream>(std::filesystem::path(indexFile).replace_extension(".index2")),
+		exists(std::filesystem::path(indexFile).replace_extension(".index")) ? std::make_shared<FileRandomAccessStream>(std::filesystem::path(indexFile).replace_extension(".index")) : nullptr,
+		exists(std::filesystem::path(indexFile).replace_extension(".index2")) ? std::make_shared<FileRandomAccessStream>(std::filesystem::path(indexFile).replace_extension(".index2")) : nullptr,
 		[&]() {
 			std::vector<std::shared_ptr<RandomAccessStream>> streams;
 			for (int i = 0; i < 8; ++i) {
@@ -104,8 +104,8 @@ Sqex::Sqpack::Reader::Reader(const std::filesystem::path& indexFile, bool strict
 }
 
 Sqex::Sqpack::Reader::Reader(std::shared_ptr<RandomAccessStream> indexStream1, std::shared_ptr<RandomAccessStream> indexStream2, std::vector<std::shared_ptr<RandomAccessStream>> dataStreams, bool strictVerify)
-	: Index1(*indexStream1, strictVerify)
-	, Index2(*indexStream2, strictVerify) {
+	: Index1(indexStream1.get(), strictVerify)
+	, Index2(indexStream2.get(), strictVerify) {
 
 	std::vector<std::pair<SqIndex::LEDataLocator, std::tuple<uint32_t, uint32_t, const char*>>> offsets1;
 	offsets1.reserve(
@@ -125,18 +125,22 @@ Sqex::Sqpack::Reader::Reader(std::shared_ptr<RandomAccessStream> indexStream1, s
 	for (const auto& item : Index2.TextLocators)
 		offsets2.emplace_back(item.Locator, std::make_tuple(item.FullPathHash, item.FullPath));
 
-	if (offsets1.size() != offsets2.size())
+	if (strictVerify && offsets1.size() != offsets2.size())
 		throw CorruptDataException(".index and .index2 do not have the same number of files contained");
 
-	Data.reserve(Index1.IndexHeader.TextLocatorSegment.Count);
-	for (uint32_t i = 0; i < Index1.IndexHeader.TextLocatorSegment.Count; ++i) {
-		Data.emplace_back(SqDataType{
-			dataStreams[i],
-			i,
-			strictVerify,
-			});
-		offsets1.emplace_back(SqIndex::LEDataLocator(i, Data[i].Stream->StreamSize()), std::make_tuple(UINT32_MAX, UINT32_MAX, static_cast<const char*>(nullptr)));
-		offsets2.emplace_back(SqIndex::LEDataLocator(i, Data[i].Stream->StreamSize()), std::make_tuple(UINT32_MAX, static_cast<const char*>(nullptr)));
+	const auto numDat = (std::max)(Index1.IndexHeader.TextLocatorSegment.Count, Index2.IndexHeader.TextLocatorSegment.Count);
+	Data.reserve(numDat);
+	for (uint32_t i = 0; i < numDat; ++i)
+		Data.emplace_back(SqDataType{ dataStreams[i], i, strictVerify });
+
+	if (indexStream1) {
+		for (uint32_t i = 0; i < Index1.IndexHeader.TextLocatorSegment.Count; ++i)
+			offsets1.emplace_back(SqIndex::LEDataLocator(i, Data[i].Stream->StreamSize()), std::make_tuple(UINT32_MAX, UINT32_MAX, static_cast<const char*>(nullptr)));
+	}
+
+	if (indexStream2) {
+		for (uint32_t i = 0; i < Index2.IndexHeader.TextLocatorSegment.Count; ++i)
+			offsets2.emplace_back(SqIndex::LEDataLocator(i, Data[i].Stream->StreamSize()), std::make_tuple(UINT32_MAX, static_cast<const char*>(nullptr)));
 	}
 
 	struct Comparator {
@@ -163,7 +167,7 @@ Sqex::Sqpack::Reader::Reader(std::shared_ptr<RandomAccessStream> indexStream1, s
 
 	std::sort(offsets1.begin(), offsets1.end(), Comparator());
 	std::sort(offsets2.begin(), offsets2.end(), Comparator());
-	EntryInfo.reserve(offsets1.size());
+	EntryInfo.reserve((std::max)(offsets1.size(), offsets2.size()));
 
 	if (strictVerify) {
 		for (size_t i = 0; i < offsets1.size(); ++i) {
@@ -174,20 +178,55 @@ Sqex::Sqpack::Reader::Reader(std::shared_ptr<RandomAccessStream> indexStream1, s
 		}
 	}
 
-	for (size_t curr = 1, prev = 0; curr < offsets1.size(); ++curr, ++prev) {
-		if (offsets1[prev].first.DatFileIndex != offsets1[curr].first.DatFileIndex)
-			continue;
-		EntryInfo.emplace_back(offsets1[prev].first, EntryInfoType{
-			.PathSpec = EntryPathSpec(
-				std::get<0>(offsets1[prev].second),
-				std::get<1>(offsets1[prev].second),
-				std::get<0>(offsets2[prev].second),
-				std::get<2>(offsets1[prev].second) ? std::string(std::get<2>(offsets1[prev].second)) :
-					std::get<1>(offsets2[prev].second) ? std::string(std::get<1>(offsets2[prev].second)) :
-						std::string()
-			),
-			.Allocation = offsets1[curr].first.DatFileOffset() - offsets1[prev].first.DatFileOffset(),
-			});
+	if (offsets1.empty()) {
+		for (size_t curr = 1, prev = 0; curr < offsets2.size(); ++curr, ++prev) {
+			if (offsets2[prev].first.DatFileIndex != offsets2[curr].first.DatFileIndex)
+				continue;
+			if (std::get<0>(offsets2[prev].second) == EntryPathSpec::EmptyHashValue)
+				continue;
+			EntryInfo.emplace_back(offsets2[prev].first, EntryInfoType{
+				.PathSpec = EntryPathSpec(
+					EntryPathSpec::EmptyHashValue,
+					EntryPathSpec::EmptyHashValue,
+					std::get<0>(offsets2[prev].second),
+					std::get<1>(offsets2[prev].second) ? std::string(std::get<1>(offsets2[prev].second)) : std::string()
+				),
+				.Allocation = offsets2[curr].first.DatFileOffset() - offsets2[prev].first.DatFileOffset(),
+				});
+		}
+	} else if (offsets2.empty()) {
+		for (size_t curr = 1, prev = 0; curr < offsets1.size(); ++curr, ++prev) {
+			if (offsets1[prev].first.DatFileIndex != offsets1[curr].first.DatFileIndex)
+				continue;
+			if (std::get<0>(offsets1[prev].second) == EntryPathSpec::EmptyHashValue
+				&& std::get<1>(offsets1[prev].second) == EntryPathSpec::EmptyHashValue)
+				continue;
+			EntryInfo.emplace_back(offsets1[prev].first, EntryInfoType{
+				.PathSpec = EntryPathSpec(
+					std::get<0>(offsets1[prev].second),
+					std::get<1>(offsets1[prev].second),
+					EntryPathSpec::EmptyHashValue,
+					std::get<2>(offsets1[prev].second) ? std::string(std::get<2>(offsets1[prev].second)) : std::string()
+				),
+				.Allocation = offsets1[curr].first.DatFileOffset() - offsets1[prev].first.DatFileOffset(),
+				});
+		}
+	} else {
+		for (size_t curr = 1, prev = 0; curr < offsets1.size(); ++curr, ++prev) {
+			if (offsets1[prev].first.DatFileIndex != offsets1[curr].first.DatFileIndex)
+				continue;
+			EntryInfo.emplace_back(offsets1[prev].first, EntryInfoType{
+				.PathSpec = EntryPathSpec(
+					std::get<0>(offsets1[prev].second),
+					std::get<1>(offsets1[prev].second),
+					std::get<0>(offsets2[prev].second),
+					std::get<2>(offsets1[prev].second) ? std::string(std::get<2>(offsets1[prev].second)) :
+						std::get<1>(offsets2[prev].second) ? std::string(std::get<1>(offsets2[prev].second)) :
+							std::string()
+				),
+				.Allocation = offsets1[curr].first.DatFileOffset() - offsets1[prev].first.DatFileOffset(),
+				});
+		}
 	}
 
 	std::sort(EntryInfo.begin(), EntryInfo.end(), Comparator());

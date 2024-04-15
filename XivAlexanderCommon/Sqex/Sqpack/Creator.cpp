@@ -245,22 +245,31 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntry(std::share
 }
 
 void Sqex::Sqpack::Creator::ReserveSwappableSpace(EntryPathSpec pathSpec, uint32_t size) {
-	if (const auto it = m_pImpl->m_hashOnlyEntries.find(pathSpec); it != m_pImpl->m_hashOnlyEntries.end()) {
+	if (const auto it = m_pImpl->m_fullEntries.find(pathSpec); it != m_pImpl->m_fullEntries.end()) {
+		it->second->EntrySize = std::max(it->second->EntrySize, size);
+		return;
+	}
+
+	auto it = m_pImpl->m_hashOnlyEntries.find(pathSpec);
+	if (it == m_pImpl->m_hashOnlyEntries.end())
+		it = m_pImpl->m_hashOnlyEntries.find(EntryPathSpec(pathSpec.FullPathHash));
+	if (it == m_pImpl->m_hashOnlyEntries.end())
+		it = m_pImpl->m_hashOnlyEntries.find(EntryPathSpec(pathSpec.PathHash, pathSpec.NameHash));
+	if (it != m_pImpl->m_hashOnlyEntries.end()) {
 		it->second->EntrySize = std::max(it->second->EntrySize, size);
 		if (!it->second->Provider->PathSpec().HasOriginal() && pathSpec.HasOriginal()) {
 			it->second->Provider->UpdatePathSpec(pathSpec);
 			m_pImpl->m_fullEntries.emplace(pathSpec, std::move(it->second));
 			m_pImpl->m_hashOnlyEntries.erase(it);
 		}
-	} else if (const auto it = m_pImpl->m_fullEntries.find(pathSpec); it != m_pImpl->m_fullEntries.end()) {
-		it->second->EntrySize = std::max(it->second->EntrySize, size);
-	} else {
-		auto entry = std::make_unique<Entry>(size, SqIndex::LEDataLocator{ 0, 0 }, std::make_shared<EmptyOrObfuscatedEntryProvider>(std::move(pathSpec)));
-		if (entry->Provider->PathSpec().HasOriginal())
-			m_pImpl->m_fullEntries.emplace(entry->Provider->PathSpec(), std::move(entry));
-		else
-			m_pImpl->m_hashOnlyEntries.emplace(entry->Provider->PathSpec(), std::move(entry));
+		return;
 	}
+
+	auto entry = std::make_unique<Entry>(size, SqIndex::LEDataLocator{ 0, 0 }, std::make_shared<EmptyOrObfuscatedEntryProvider>(std::move(pathSpec)));
+	if (entry->Provider->PathSpec().HasOriginal())
+		m_pImpl->m_fullEntries.emplace(entry->Provider->PathSpec(), std::move(entry));
+	else
+		m_pImpl->m_hashOnlyEntries.emplace(entry->Provider->PathSpec(), std::move(entry));
 }
 
 template<Sqex::Sqpack::SqIndex::Header::IndexType IndexType, typename FileEntryType, typename ConflictEntryType, bool UseFolders>
