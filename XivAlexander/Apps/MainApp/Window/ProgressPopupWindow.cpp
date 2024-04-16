@@ -53,7 +53,8 @@ XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::ProgressPopupWindow(HW
 }
 
 XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::~ProgressPopupWindow() {
-	m_taskBarList3.Release();
+	if (m_taskBarList3)
+		m_taskBarList3.Release();
 	Destroy();
 }
 
@@ -223,6 +224,8 @@ void XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::OnLayout(double z
 
 void XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::OnDestroy() {
 	m_hCancelEvent.Set();
+	if (m_taskBarList3)
+		m_taskBarList3.Release();
 	BaseWindow::OnDestroy();
 	if (m_hFont)
 		DeleteFont(m_hFont);

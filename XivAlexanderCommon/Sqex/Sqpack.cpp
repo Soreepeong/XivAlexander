@@ -275,32 +275,28 @@ uint64_t Sqex::Sqpack::SqData::FileEntryHeader::GetTotalEntrySize() const {
 }
 
 uint32_t Sqex::Sqpack::SqexHash(const char* data, size_t len) {
-	std::string normalizedText;
+	if (len > UINT32_MAX)
+		return EntryPathSpec::EmptyHashValue;
+
 	if (len == SIZE_MAX) {
-		normalizedText = data;
-		len = normalizedText.size();
-	} else
-		normalizedText = {data, len};
-	for (auto& c : normalizedText) {
+		len = 0;
+		while (data[len])
+			len++;
+	}
+
+	const auto buf = static_cast<char*>(_malloca(len));
+	if (!buf)
+		return EntryPathSpec::EmptyHashValue;
+
+	for (size_t i = 0; i < len; i++) {
+		auto& c = buf[i] = data[i];
 		if ('A' <= c && c <= 'Z')
 			c -= 'A' - 'a';
 		else if (c == '\\')
 			c = '/';
 	}
-	size_t i = 0;
-	uint32_t result = 0xFFFFFFFFUL;
-	for (; i < (len & ~3); i += 4) {
-		result ^= *reinterpret_cast<const uint32_t*>(&normalizedText[i]);
-		result = SqexHashTable[3][result & 0xFF] ^
-			SqexHashTable[2][(result >> 8) & 0xFF] ^
-			SqexHashTable[1][(result >> 16) & 0xFF] ^
-			SqexHashTable[0][(result >> 24) & 0xFF];
-	}
 
-	for (; i < len; ++i)
-		result = SqexHashTable[0][(result ^ normalizedText[i]) & 0xFF] ^ (result >> 8);
-
-	return result;
+	return ~crc32(0, reinterpret_cast<Bytef*>(buf), static_cast<uint32_t>(len));
 }
 
 uint32_t Sqex::Sqpack::SqexHash(const std::string& text) {

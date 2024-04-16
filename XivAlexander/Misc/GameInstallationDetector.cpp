@@ -115,6 +115,7 @@ XivAlexander::Misc::GameInstallationDetector::GameReleaseInfo XivAlexander::Misc
 
 	std::map<std::string, size_t> publisherCountries;
 	for (const auto& [path, filenamePattern] : std::vector<std::pair<std::filesystem::path, std::wregex>>{
+			{result.RootPath, std::wregex(LR"(^ffxiv.*bench.*\.exe$)", std::regex::icase)},
 			{result.RootPath / L"boot", std::wregex(LR"(^ffxiv.*\.exe$)", std::regex::icase)},
 			{result.RootPath / L"sdo", std::wregex(LR"(^sdologinentry\.dll$)", std::regex::icase)},
 		}) {

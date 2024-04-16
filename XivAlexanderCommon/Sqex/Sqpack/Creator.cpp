@@ -136,7 +136,7 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::Implementation::Add
 }
 
 Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntriesFromSqPack(const std::filesystem::path & indexPath, bool overwriteExisting, bool overwriteUnknownSegments) {
-	Reader reader{ indexPath, false };
+	const auto reader = Reader::FromPath(indexPath, false);
 
 	if (overwriteUnknownSegments) {
 		m_pImpl->m_sqpackIndexSegment3 = { reader.Index1.Segment3.begin(), reader.Index1.Segment3.end() };

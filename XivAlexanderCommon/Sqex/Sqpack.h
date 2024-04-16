@@ -366,7 +366,7 @@ namespace Sqex::Sqpack {
 	uint32_t SqexHash(const std::filesystem::path& path);
 
 	struct EntryPathSpec {
-		static constexpr auto EmptyHashValue = 0xFFFFFFFF;
+		static constexpr auto EmptyHashValue = 0xFFFFFFFFU;
 
 		std::filesystem::path FullPath;
 

@@ -164,7 +164,7 @@
     <PostBuildEvent>
       <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)" || cd.
 copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(APPDATA)\XivAlexander\" || cd.
-copy /y "$(TargetPath)" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d11.dll" || cd.
+copy /y "$(TargetPath)" "$(LocalDebuggerWorkingDirectory)d3d11.dll" || cd.
 copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
 </Command>
     </PostBuildEvent>
@@ -208,7 +208,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <PostBuildEvent>
       <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)" || cd.
 copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(APPDATA)\XivAlexander\" || cd.
-copy /y "$(TargetPath)" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d9.dll" || cd.
+copy /y "$(TargetPath)" "$(LocalDebuggerWorkingDirectory)d3d9.dll" || cd.
 copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
 </Command>
     </PostBuildEvent>
@@ -256,7 +256,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <PostBuildEvent>
       <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)" || cd.
 copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(APPDATA)\XivAlexander\" || cd.
-copy /y "$(TargetPath)" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d11.dll" || cd.
+copy /y "$(TargetPath)" "$(LocalDebuggerWorkingDirectory)d3d11.dll" || cd.
 copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
 </Command>
     </PostBuildEvent>
@@ -304,7 +304,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <PostBuildEvent>
       <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)" || cd.
 copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(APPDATA)\XivAlexander\" || cd.
-copy /y "$(TargetPath)" "C:\Program Files (x86)\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\d3d9.dll" || cd.
+copy /y "$(TargetPath)" "$(LocalDebuggerWorkingDirectory)d3d9.dll" || cd.
 copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
 </Command>
     </PostBuildEvent>

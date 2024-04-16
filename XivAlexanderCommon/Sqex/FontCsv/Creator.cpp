@@ -664,7 +664,7 @@ struct Sqex::FontCsv::FontSetsCreator::Implementation {
 
 				auto reader = SqpackReaders.find(indexFilePath);
 				if (reader == SqpackReaders.end())
-					reader = SqpackReaders.emplace(indexFilePath, std::make_unique<Sqpack::Reader>(indexFilePath)).first;
+					reader = SqpackReaders.emplace(indexFilePath, std::make_unique<Sqpack::Reader>(Sqpack::Reader::FromPath(indexFilePath))).first;
 
 				auto textureKey = std::make_tuple(indexFilePath, source.texturePath);
 				auto textures = GameTextures.find(textureKey);

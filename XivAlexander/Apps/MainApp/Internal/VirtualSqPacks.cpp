@@ -562,11 +562,12 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 
 								creator.ReserveSpacesFromTTMP(ttmp.List, std::make_shared<Sqex::FileRandomAccessStream>(Utils::Win32::Handle(ttmp.DataFile, false)));
 								return NestedTtmp::Continue;
-								}) == NestedTtmp::Break)
+								}) == NestedTtmp::Break) {
 								return;
+							}
 
-								SetUpVirtualFileFromFileEntries(creator, indexFile);
-								progressValue += 1;
+							SetUpVirtualFileFromFileEntries(creator, indexFile);
+							progressValue += 1;
 						} catch (const std::exception& e) {
 							pool.Cancel();
 							Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
@@ -744,7 +745,17 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 							Logger->Format(LogCategory::VirtualSqPacks, "Rewriting {}:{}", ttmplPath.wstring(), entry.FullPath);
 
 							const auto pathSpec = Sqex::Sqpack::EntryPathSpec(entry.FullPath);
-							std::shared_ptr<Sqex::Sqpack::EntryProvider> stream = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(pathSpec, dataStream, entry.ModOffset, entry.ModSize);
+
+							std::shared_ptr<Sqex::Sqpack::EntryProvider> stream;
+							{
+								std::vector<uint8_t> buf(entry.ModSize);
+								dataStream->ReadStreamPartial(entry.ModOffset, buf.data(), entry.ModSize);
+
+								stream = std::make_shared<Sqex::Sqpack::RandomAccessStreamAsEntryProviderView>(
+									pathSpec,
+									std::make_shared<Sqex::MemoryRandomAccessStream>(std::move(buf)));
+							}
+
 							auto rawStream = std::make_shared<Sqex::Sqpack::EntryRawStream>(stream);
 
 							switch (rawStream->EntryType()) {
@@ -980,7 +991,7 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 					const auto versionContent = versionFile.Read<char>(0, static_cast<size_t>(versionFile.GetFileSize()));
 					currentCacheKeys += std::format("SQPACK:{}:{}\n", canonical(additionalSqpackRootDirectory).wstring(), std::string(versionContent.begin(), versionContent.end()));
 
-					readers.emplace_back(std::make_unique<Sqex::Sqpack::Reader>(file));
+					readers.emplace_back(std::make_unique<Sqex::Sqpack::Reader>(Sqex::Sqpack::Reader::FromPath(file)));
 				}
 
 				for (const auto& configFile : excelTransformConfigFiles) {

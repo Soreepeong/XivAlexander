@@ -66,8 +66,9 @@ namespace Sqex::Sqpack {
 		std::vector<SqDataType> Data;
 		std::vector<std::pair<SqIndex::LEDataLocator, EntryInfoType>> EntryInfo;
 
-		Reader(std::shared_ptr<RandomAccessStream> indexStream1, std::shared_ptr<RandomAccessStream> indexStream2, std::vector<std::shared_ptr< RandomAccessStream>> dataStreams, bool strictVerify = false);
-		Reader(const std::filesystem::path& indexFile, bool strictVerify = false);
+		Reader(const RandomAccessStream& indexStream1, const RandomAccessStream& indexStream2, std::vector<std::shared_ptr<RandomAccessStream>> dataStreams, bool strictVerify = false);
+		
+		static Reader FromPath(const std::filesystem::path& indexFile, bool strictVerify = false);
 
 		[[nodiscard]] const SqIndex::LEDataLocator& GetLocator(const EntryPathSpec& pathSpec) const;
 		[[nodiscard]] std::shared_ptr<EntryProvider> GetEntryProvider(const EntryPathSpec& pathSpec, SqIndex::LEDataLocator locator, uint64_t allocation) const;
