@@ -528,8 +528,12 @@ namespace Sqex::Sqpack {
 
 		struct FullComparator {
 			bool operator()(const EntryPathSpec& l, const EntryPathSpec& r) const {
-				if (l.FullPath != r.FullPath)
-					return l.FullPath < r.FullPath;
+				if (l.HasOriginal() && r.HasOriginal()) {
+					const auto cmp = lstrcmpiW(l.FullPath.c_str(), r.FullPath.c_str());
+					if (cmp != 0)
+						return cmp < 0;
+				}
+
 				if (l.FullPathHash != r.FullPathHash)
 					return l.FullPathHash < r.FullPathHash;
 				if (l.PathHash != r.PathHash)
@@ -569,7 +573,8 @@ namespace Sqex::Sqpack {
 
 		struct FullPathComparator {
 			bool operator()(const EntryPathSpec& l, const EntryPathSpec& r) const {
-				return l.FullPath < r.FullPath;
+				const auto cmp = lstrcmpiW(l.FullPath.c_str(), r.FullPath.c_str());
+				return cmp < 0;
 			}
 		};
 	};
