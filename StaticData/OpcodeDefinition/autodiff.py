@@ -46,7 +46,7 @@ def __main__(argv):
             entry = int(single(entry["new"]), 0)
             data[k] = f'0x{entry:04x}'
         elif k == "Server_IpRange":
-            ips = set()
+            ips = {"119.252.37.0/24"}
             try:
                 for i in range(1, 100):
                     ips.add(".".join(socket.gethostbyname(f"neolobby{i:02}.ffxiv.com").split(".")[:3]) + ".0/24")
