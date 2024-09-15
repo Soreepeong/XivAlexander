@@ -14,12 +14,12 @@ namespace Utils::Win32 {
 
 	template <typename ... Args>
 	void SetThreadDescription(HANDLE hThread, const wchar_t* format, Args&& ... args) {
-		SetThreadDescription(hThread, std::vformat(format, std::make_wformat_args(std::forward<Args>(args)...)));
+		SetThreadDescription(hThread, std::vformat(format, std::make_wformat_args(std::forward<Args&>(args)...)));
 	}
 
 	template <typename ... Args>
 	void DebugPrint(const wchar_t* format, Args&& ... args) {
-		OutputDebugStringW(std::format(L"{}\n", std::vformat(format, std::make_wformat_args(std::forward<Args>(args)...))).c_str());
+		OutputDebugStringW(std::format(L"{}\n", std::vformat(format, std::make_wformat_args(std::forward<Args&>(args)...))).c_str());
 	}
 
 	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const std::wstring& text);
@@ -33,12 +33,12 @@ namespace Utils::Win32 {
 
 	template <typename ... Args>
 	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const wchar_t* format, Args&& ... args) {
-		return MessageBoxF(hWnd, uType, lpCaption, std::vformat(format, std::make_wformat_args(std::forward<Args>(args)...)).c_str());
+		return MessageBoxF(hWnd, uType, lpCaption, std::vformat(format, std::make_wformat_args(std::forward<Args&>(args)...)).c_str());
 	}
 
 	template <typename ... Args>
 	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const char* format, Args&& ... args) {
-		return MessageBoxF(hWnd, uType, lpCaption, FromUtf8(std::vformat(format, std::make_format_args(std::forward<Args>(args)...))).c_str());
+		return MessageBoxF(hWnd, uType, lpCaption, FromUtf8(std::vformat(format, std::make_format_args(std::forward<Args&>(args)...))).c_str());
 	}
 
 	void SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked, bool bEnabled, std::wstring newText = {});
@@ -112,11 +112,11 @@ namespace Utils::Win32 {
 
 		template<typename Arg, typename ... Args>
 		Error(const char* format, Arg&& arg1, Args&&...args)
-			: Error(std::vformat(format, std::make_format_args(std::forward<Arg>(arg1), std::forward<Args>(args)...))) {
+			: Error(std::vformat(format, std::make_format_args(std::forward<Arg&>(arg1), std::forward<Args&>(args)...))) {
 		}
 		template<typename Arg, typename ... Args>
 		Error(DWORD errorCode, const char* format, Arg&& arg1, Args&&...args)
-			: Error(errorCode, std::vformat(format, std::make_format_args(std::forward<Arg>(arg1), std::forward<Args>(args)...))) {
+			: Error(errorCode, std::vformat(format, std::make_format_args(std::forward<Arg&>(arg1), std::forward<Args&>(args)...))) {
 		}
 
 		[[nodiscard]] auto Code() const { return m_nErrorCode; }

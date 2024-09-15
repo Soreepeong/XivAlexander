@@ -16,7 +16,7 @@ template<typename...Args>
 Utils::CallOnDestruction ShowLazyProgress(bool explicitCancel, const UINT nFormatResId, Args&&...args) {
 	const auto format = FindStringResourceEx(Dll::Module(), nFormatResId) + 1;
 	auto cont = std::make_shared<bool>(true);
-	auto t = Utils::Win32::Thread(L"UpdateStatus", [explicitCancel, msg = std::vformat(format, std::make_wformat_args(std::forward<Args>(args)...)), cont]() {
+	auto t = Utils::Win32::Thread(L"UpdateStatus", [explicitCancel, msg = std::vformat(format, std::make_wformat_args(std::forward<Args&>(args)...)), cont]() {
 		while (*cont) {
 			if (Dll::MessageBoxF(nullptr, (explicitCancel ? MB_OKCANCEL : MB_OK) | MB_ICONINFORMATION, msg) == (explicitCancel ? IDCANCEL : IDOK)) {
 				if (*cont)

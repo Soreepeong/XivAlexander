@@ -175,7 +175,8 @@ void XivAlexander::LoaderApp::Arguments::Parse() {
 }
 
 std::wstring XivAlexander::LoaderApp::Arguments::GetHelpMessage() const {
-	return std::vformat(FindStringResourceEx(Dll::Module(), IDS_APP_DESCRIPTION) + 1, std::make_wformat_args(argp.help().str()));
+	const auto s = argp.help().str();
+	return std::vformat(FindStringResourceEx(Dll::Module(), IDS_APP_DESCRIPTION) + 1, std::make_wformat_args(s));
 }
 
 std::set<DWORD> XivAlexander::LoaderApp::Arguments::GetTargetPidList() const {

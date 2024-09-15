@@ -44,19 +44,19 @@ Utils::Oodle::OodleModule::OodleModule() : ErrorStep("Start") {
 					const auto entry = *reinterpret_cast<uint16_t*>(&m_mem[i]);
 					const auto addr = static_cast<void*>(&m_mem[static_cast<size_t>(page.VirtualAddress) + (entry & 0xFFF)]);
 					switch (entry >> 12) {
-					case 0:
-						break;
-					case 3: {
-						*static_cast<uint32_t*>(addr) += static_cast<uint32_t>(displacement);
-						break;
-					}
-					case 10: {
-						*static_cast<uint64_t*>(addr) += static_cast<uint64_t>(displacement);
-						break;
-					}
-					default:
-						// Should not happen (probably an error), but _hopefully_ irrelevant for oodling purposes
-						break;
+						case 0:
+							break;
+						case 3: {
+							*static_cast<uint32_t*>(addr) += static_cast<uint32_t>(displacement);
+							break;
+						}
+						case 10: {
+							*static_cast<uint64_t*>(addr) += static_cast<uint64_t>(displacement);
+							break;
+						}
+						default:
+							// Should not happen (probably an error), but _hopefully_ irrelevant for oodling purposes
+							break;
 					}
 				}
 			}
@@ -89,6 +89,9 @@ Utils::Oodle::OodleModule::OodleModule() : ErrorStep("Start") {
 				break;
 			}
 		}
+
+		if (codeSection.empty())
+			throw std::runtime_error(__FUNCTION__ ": failed to find a code section?");
 
 		ErrorStep = "InitOodle";
 #ifdef _WIN64

@@ -169,11 +169,11 @@ namespace Utils::Win32 {
 		ProcessBuilder& WithAppendArgument(std::initializer_list<std::wstring>);
 		template<typename ... Args>
 		ProcessBuilder& WithAppendArgument(const char* format, Args&& ... args) {
-			return WithAppendArgument(std::vformat(format, std::make_format_args(std::forward<Args>(args)...)));
+			return WithAppendArgument(std::vformat(format, std::make_format_args(std::forward<Args&>(args)...)));
 		}
 		template<typename ... Args>
 		ProcessBuilder& WithAppendArgument(const wchar_t* format, Args&& ... args) {
-			return WithAppendArgument(std::vformat(format, std::make_wformat_args(std::forward<Args>(args)...)));
+			return WithAppendArgument(std::vformat(format, std::make_wformat_args(std::forward<Args&>(args)...)));
 		}
 		ProcessBuilder& WithSize(DWORD width, DWORD height, bool use = true);
 		ProcessBuilder& WithUnspecifiedSize();

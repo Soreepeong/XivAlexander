@@ -128,7 +128,8 @@ int XivAlexander::LoaderApp::Actions::LoadUnload::Run() {
 	try {
 		Utils::Win32::AddDebugPrivilege();
 	} catch (const std::exception& err) {
-		debugPrivilegeError = Utils::ToUtf8(std::vformat(FindStringResourceEx(Dll::Module(), IDS_ERROR_SEDEBUGPRIVILEGE) + 1, std::make_wformat_args(err.what())));
+		const auto s = err.what();
+		debugPrivilegeError = Utils::ToUtf8(std::vformat(FindStringResourceEx(Dll::Module(), IDS_ERROR_SEDEBUGPRIVILEGE) + 1, std::make_wformat_args(s)));
 	}
 
 	for (const auto pid : pids) {

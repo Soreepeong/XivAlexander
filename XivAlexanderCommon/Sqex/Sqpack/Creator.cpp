@@ -35,7 +35,7 @@ struct Sqex::Sqpack::Creator::Implementation {
 		if (this_->Log.Empty())
 			return;
 
-		this_->Log(std::vformat(std::forward<Arg>(arg), std::make_format_args(std::forward<Args>(args)...)));
+		this_->Log(std::vformat(std::forward<Arg>(arg), std::make_format_args(std::forward<Args&>(args)...)));
 	}
 };
 

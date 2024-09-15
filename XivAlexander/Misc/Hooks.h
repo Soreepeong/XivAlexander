@@ -69,11 +69,11 @@ namespace XivAlexander::Misc::Hooks {
 		}
 
 		virtual R bridge(Args ...args) {
-			return m_bridge(std::forward<Args>(args)...);
+			return m_bridge(std::forward<Args&>(args)...);
 		}
 
 		R operator()(Args...args) const {
-			return this->m_pAddress(std::forward<Args>(args)...);
+			return this->m_pAddress(std::forward<Args&>(args)...);
 		}
 
 		[[nodiscard]] virtual bool IsDisableable() const {
@@ -111,9 +111,9 @@ namespace XivAlexander::Misc::Hooks {
 		virtual R DetouredGateway(Args...args) {
 			const auto _hookCounterRelease = AcquireHookCounter();
 			if (m_detour)
-				return m_detour(std::forward<Args>(args)...);
+				return m_detour(std::forward<Args&>(args)...);
 			else
-				return bridge(std::forward<Args>(args)...);
+				return bridge(std::forward<Args&>(args)...);
 		}
 
 		virtual void HookEnable() = 0;

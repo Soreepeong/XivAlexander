@@ -21,7 +21,7 @@ namespace Sqex::Sqpack {
 		}
 		template<typename ...Args>
 		void SetFromSpan(Args...args) {
-			SetFrom(std::span(std::forward<Args>(args)...));
+			SetFrom(std::span(std::forward<Args&>(args)...));
 		}
 
 		bool operator==(const Sha1Value& r) const;

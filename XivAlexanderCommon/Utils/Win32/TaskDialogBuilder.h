@@ -245,7 +245,7 @@ namespace Utils::Win32 {
 
 		template<typename...Args>
 		Builder& WithWindowTitleFormat(const StringOrResId& s, Args ...args) {
-			return WithWindowTitle(std::format(GetResString(s), std::forward<Args>(args...)));
+			return WithWindowTitle(std::format(GetResString(s), std::forward<Args&>(args...)));
 		}
 
 		Builder& WithMainIcon(HIconOrRes s) {
@@ -260,7 +260,7 @@ namespace Utils::Win32 {
 
 		template<typename...Args>
 		Builder& WithMainInstructionFormat(const StringOrResId& s, Args ...args) {
-			return WithMainInstruction(std::format(GetResString(s), std::forward<Args>(args...)));
+			return WithMainInstruction(std::format(GetResString(s), std::forward<Args&>(args...)));
 		}
 
 		Builder& WithContent(StringOrResId s) {
@@ -270,7 +270,7 @@ namespace Utils::Win32 {
 
 		template<typename...Args>
 		Builder& WithContentFormat(const StringOrResId& s, Args ...args) {
-			return WithContent(std::format(GetResString(s), std::forward<Args>(args...)));
+			return WithContent(std::format(GetResString(s), std::forward<Args&>(args...)));
 		}
 
 		Builder& WithButton(Button b) {
@@ -330,7 +330,7 @@ namespace Utils::Win32 {
 
 		template<typename...Args>
 		Builder& WithCheckboxFormat(const StringOrResId& s, Args ...args) {
-			return WithCheckbox(std::format(GetResString(s), std::forward<Args>(args...)));
+			return WithCheckbox(std::format(GetResString(s), std::forward<Args&>(args...)));
 		}
 
 		Builder& WithCheckboxDefault(bool set = true) {
@@ -344,7 +344,7 @@ namespace Utils::Win32 {
 
 		template<typename...Args>
 		Builder& WithExpandedInformationFormat(const StringOrResId& s, Args ...args) {
-			return WithExpandedInformation(std::format(GetResString(s), std::forward<Args>(args...)));
+			return WithExpandedInformation(std::format(GetResString(s), std::forward<Args&>(args...)));
 		}
 
 		Builder& WithExpandedByDefault(bool set = true) {
@@ -362,7 +362,7 @@ namespace Utils::Win32 {
 
 		template<typename...Args>
 		Builder& WithExpandedControlTextFormat(const StringOrResId& s, Args ...args) {
-			return WithExpandedControlText(std::format(GetResString(s), std::forward<Args>(args...)));
+			return WithExpandedControlText(std::format(GetResString(s), std::forward<Args&>(args...)));
 		}
 
 		Builder& WithCollapsedControlText(StringOrResId s) {
@@ -372,7 +372,7 @@ namespace Utils::Win32 {
 
 		template<typename...Args>
 		Builder& WithCollapsedControlTextFormat(const StringOrResId& s, Args ...args) {
-			return WithCollapsedControlText(std::format(GetResString(s), std::forward<Args>(args...)));
+			return WithCollapsedControlText(std::format(GetResString(s), std::forward<Args&>(args...)));
 		}
 
 		Builder& WithFooterIcon(HIconOrRes s) {
@@ -387,7 +387,7 @@ namespace Utils::Win32 {
 
 		template<typename...Args>
 		Builder& WithFooterFormat(const StringOrResId& s, Args ...args) {
-			return WithFooter(std::format(GetResString(s), std::forward<Args>(args...)));
+			return WithFooter(std::format(GetResString(s), std::forward<Args&>(args...)));
 		}
 
 		TaskDialog Build();

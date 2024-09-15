@@ -144,7 +144,8 @@ public:
 		try {
 			Utils::Win32::AddDebugPrivilege();
 		} catch (const std::exception& err) {
-			m_errorClaimingSeDebugPrivilege = Utils::ToUtf8(std::vformat(FindStringResourceEx(Dll::Module(), IDS_ERROR_SEDEBUGPRIVILEGE) + 1, std::make_wformat_args(err.what())));
+			const auto s = err.what();
+			m_errorClaimingSeDebugPrivilege = Utils::ToUtf8(std::vformat(FindStringResourceEx(Dll::Module(), IDS_ERROR_SEDEBUGPRIVILEGE) + 1, std::make_wformat_args(s)));
 		}
 	}
 

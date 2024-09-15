@@ -337,7 +337,7 @@ namespace XivAlexander {
 			[[nodiscard]] LPCWSTR GetStringRes(UINT uId) const;
 			template <typename ... Args>
 			[[nodiscard]] std::wstring FormatStringRes(UINT uId, Args&&... args) const {
-				return std::vformat(GetStringRes(uId), std::make_wformat_args(std::forward<Args>(args)...));
+				return std::vformat(GetStringRes(uId), std::make_wformat_args(std::forward<Args&>(args)...));
 			}
 			[[nodiscard]] std::wstring GetLanguageNameLocalized(Sqex::Language gameLanguage) const;
 			[[nodiscard]] std::wstring GetRegionNameLocalized(Sqex::Region gameRegion) const;

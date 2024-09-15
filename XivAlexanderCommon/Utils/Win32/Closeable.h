@@ -40,12 +40,12 @@ namespace Utils::Win32 {
 			: m_object(object == invalidValue ? nullptr : object)
 			, m_bOwnership(object != invalidValue) {
 			if (object == invalidValue)
-				throw Error(std::vformat(errorMessageFormat, std::make_format_args(std::forward<Args>(args)...)));
+				throw Error(std::vformat(errorMessageFormat, std::make_format_args(std::forward<Args&>(args)...)));
 		}
 
 		template <typename ... Args>
 		Closeable(T object, T invalidValue, const wchar_t* errorMessageFormat, Args&& ... args)
-			: Closeable(object, invalidValue, Utils::ToUtf8(std::vformat(errorMessageFormat, std::make_wformat_args(std::forward<Args>(args)...)))) {
+			: Closeable(object, invalidValue, Utils::ToUtf8(std::vformat(errorMessageFormat, std::make_wformat_args(std::forward<Args&>(args)...)))) {
 		}
 
 		Closeable(Closeable&& r) noexcept

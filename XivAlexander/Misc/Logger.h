@@ -73,17 +73,17 @@ namespace XivAlexander::Misc {
 
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
 		void Format(LogCategory category, const char* format, Args&&...args) {
-			Log(category, std::vformat(format, std::make_format_args(std::forward<Args>(args)...)), Level);
+			Log(category, std::vformat(format, std::make_format_args(std::forward<Args&>(args)...)), Level);
 		}
 
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
 		void Format(LogCategory category, const wchar_t* format, Args&&...args) {
-			Log(category, std::vformat(format, std::make_wformat_args(std::forward<Args>(args)...)), Level);
+			Log(category, std::vformat(format, std::make_wformat_args(std::forward<Args&>(args)...)), Level);
 		}
 
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
 		void Format(LogCategory category, const char8_t* format, Args&&...args) {
-			Log(category, std::vformat(reinterpret_cast<const char*>(format), std::make_format_args(std::forward<Args>(args)...)), Level);
+			Log(category, std::vformat(reinterpret_cast<const char*>(format), std::make_format_args(std::forward<Args&>(args)...)), Level);
 		}
 
 	private:
@@ -92,12 +92,12 @@ namespace XivAlexander::Misc {
 	public:
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
 		void Format(LogCategory category, WORD wLanguage, UINT uStringResFormatId, Args&&...args) {
-			Log(category, std::vformat(GetStringResource(uStringResFormatId, wLanguage), std::make_wformat_args(std::forward<Args>(args)...)), Level);
+			Log(category, std::vformat(GetStringResource(uStringResFormatId, wLanguage), std::make_wformat_args(std::forward<Args&>(args)...)), Level);
 		}
 
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
 		void FormatDefaultLanguage(LogCategory category, UINT uStringResFormatId, Args&&...args) {
-			Log(category, std::vformat(GetStringResource(uStringResFormatId), std::make_wformat_args(std::forward<Args>(args)...)), Level);
+			Log(category, std::vformat(GetStringResource(uStringResFormatId), std::make_wformat_args(std::forward<Args&>(args)...)), Level);
 		}
 	};
 }

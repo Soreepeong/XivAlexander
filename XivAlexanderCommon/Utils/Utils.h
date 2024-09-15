@@ -132,7 +132,7 @@ namespace Utils {
 	template<typename T, typename ... Args>
 	void ClearStdContainer(T& c, Args ... args) {
 		T().swap(c);
-		ClearStdContainer(std::forward<Args>(args)...);
+		ClearStdContainer(std::forward<Args&>(args)...);
 	}
 
 	std::map<std::pair<char32_t, char32_t>, SSIZE_T> ParseKerningTable(std::span<const char> data, const std::map<uint16_t, char32_t>& GlyphIndexToCharCodeMap);
