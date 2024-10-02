@@ -2358,8 +2358,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::ImportExcelTransformConfig
 }
 
 void XivAlexander::Apps::MainApp::Window::MainWindow::AddAdditionalGameRootDirectory(std::filesystem::path path) {
-	if (!exists(path / "ffxiv_dx11.exe")
-		|| !exists(path / "ffxiv.exe")) {
+	if (!exists(path / "ffxiv_dx11.exe") && !exists(path / "ffxiv.exe")) {
 		Dll::MessageBoxF(m_hWnd, MB_ICONWARNING, m_config->Runtime.GetStringRes(IDS_ERROR_NOT_GAME_DIRECTORY), path.wstring());
 		return;
 	}

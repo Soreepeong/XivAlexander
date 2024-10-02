@@ -46,7 +46,7 @@ struct XivAlexander::Apps::MainApp::Internal::MainThreadTimingHandler::Implement
 			Utils::Signatures::ScanResult sr;
 			if (!messageLoopSignature.Lookup(mainModuleSpan, sr))
 				throw std::runtime_error(__FUNCTION__ ": failed to find message loop");
-			SingleMessageLoop.emplace("SingleMessageLoop", sr.ResolveAddress<bool(*)()>(1));
+			SingleMessageLoop.emplace("SingleMessageLoop", sr.ResolveAddress<bool(__stdcall *)()>(1));
 			Cleanup += SingleMessageLoop->SetHook([this]() { BeforePeekMessage(); return SingleMessageLoop->bridge(); });
 
 		} catch (const std::exception& e) {
