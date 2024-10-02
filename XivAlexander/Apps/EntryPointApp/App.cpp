@@ -397,7 +397,6 @@ static void InitializeAsStubBeforeOriginalEntryPoint() {
 		loadPath = conf->Init.ResolveXivAlexInstallationPath() / Dll::XivAlexDllNameW;
 		const auto loadTarget = Utils::Win32::LoadedModule(loadPath);
 		const auto params = Dll::PatchEntryPointForInjection(GetCurrentProcess());
-		params->SkipFree = true;
 		loadTarget.SetPinned();
 		loadTarget.GetProcAddress<decltype(&Dll::InjectEntryPoint)>("XA_InjectEntryPoint")(params);
 
@@ -488,57 +487,30 @@ static void InitializeBeforeOriginalEntryPoint() {
 	Dll::EnableXivAlexander(1);
 }
 
-void __stdcall Dll::InjectEntryPoint(InjectEntryPointParameters * pParam) {
-	DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &pParam->Internal.hMainThread, 0, FALSE, DUPLICATE_SAME_ACCESS);
-	pParam->Internal.hWorkerThread = CreateThread(nullptr, 0, [](void* pParam) -> DWORD {
-		Utils::Win32::SetThreadDescription(GetCurrentThread(), L"InjectEntryPoint::WorkerThread");
-		// ReSharper disable once CppInitializedValueIsAlwaysRewritten
-		auto skipFree = false;
-		{
-			const auto& process = Utils::Win32::Process::Current();
+void __stdcall Dll::InjectEntryPoint(InjectEntryPointParameters* pParam) {
+	const auto& process = Utils::Win32::Process::Current();
 
-			try {
-				const auto activationContextCleanup = Dll::ActivationContext().With();
-				const auto p = static_cast<InjectEntryPointParameters*>(pParam);
-				const auto hMainThread = Utils::Win32::Thread(p->Internal.hMainThread, true);
-
-				skipFree = p->SkipFree;
+	try {
+		const auto activationContextCleanup = Dll::ActivationContext().With();
+		const auto p = static_cast<InjectEntryPointParameters*>(pParam);
 
 #ifdef _DEBUG
-				Dll::MessageBoxF(nullptr, MB_OK,
-					L"PID: {}\nPath: {}\nCommand Line: {}", process.GetId(), process.PathOf().wstring(), Dll::GetOriginalCommandLine());
+		Dll::MessageBoxF(nullptr, MB_OK,
+			L"PID: {}\nPath: {}\nCommand Line: {}", process.GetId(), process.PathOf().wstring(), Dll::GetOriginalCommandLine());
 #endif
 
-				process.WriteMemory(p->EntryPoint, p->EntryPointOriginalBytes, p->EntryPointOriginalLength, true);
-				if (p->LoadInstalledXivAlexDllOnly)
-					InitializeAsStubBeforeOriginalEntryPoint();
-				else
-					InitializeBeforeOriginalEntryPoint();
-			} catch (const std::exception& e) {
-				Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR,
-					1 + FindStringResourceEx(Dll::Module(), IDS_ERROR_INJECT),
-					e.what(), process.GetId(), process.PathOf().wstring(), Dll::GetOriginalCommandLine());
+		process.WriteMemory(p->EntryPoint, p->EntryPointOriginalBytes, p->EntryPointOriginalLength, true);
+		if (p->LoadInstalledXivAlexDllOnly)
+			InitializeAsStubBeforeOriginalEntryPoint();
+		else
+			InitializeBeforeOriginalEntryPoint();
+	} catch (const std::exception& e) {
+		Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR,
+			1 + FindStringResourceEx(Dll::Module(), IDS_ERROR_INJECT),
+			e.what(), process.GetId(), process.PathOf().wstring(), Dll::GetOriginalCommandLine());
 
-#ifdef _DEBUG
-				throw;
-#else
-				TerminateProcess(GetCurrentProcess(), 1);
-#endif
-			}
-		}
-
-		if (!skipFree) {
-			// All stack allocated objects must be gone at this point
-			FreeLibraryAndExitThread(Dll::Module(), 0);
-		}
-		return 0;
-		}, pParam, 0, nullptr);
-	assert(pParam->Internal.hWorkerThread);
-	WaitForSingleObject(pParam->Internal.hWorkerThread, INFINITE);
-	CloseHandle(pParam->Internal.hWorkerThread);
-
-	// this invalidates "p" too
-	VirtualFree(pParam->TrampolineAddress, 0, MEM_RELEASE);
+		TerminateProcess(GetCurrentProcess(), 1);
+	}
 }
 
 Dll::InjectEntryPointParameters* Dll::PatchEntryPointForInjection(HANDLE hProcess) {

@@ -118,13 +118,7 @@ namespace Dll {
 		void* EntryPointOriginalBytes;
 		size_t EntryPointOriginalLength;
 		void* TrampolineAddress;
-		bool SkipFree;
 		bool LoadInstalledXivAlexDllOnly;
-
-		struct {
-			HANDLE hWorkerThread;
-			HANDLE hMainThread;
-		} Internal;
 	};
 
 	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall InjectEntryPoint(InjectEntryPointParameters* pParam);

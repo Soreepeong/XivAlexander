@@ -176,7 +176,6 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 					if (GetLastError() == ERROR_ENVVAR_NOT_FOUND) {
 						Dll::DisableUnloading(std::format("Loaded as DLL dependency in place of {}", Dll::Module().PathOf().filename()).c_str());
 						const auto params = Dll::PatchEntryPointForInjection(GetCurrentProcess());
-						params->SkipFree = true;
 						params->LoadInstalledXivAlexDllOnly = true;
 					}
 				} else {
