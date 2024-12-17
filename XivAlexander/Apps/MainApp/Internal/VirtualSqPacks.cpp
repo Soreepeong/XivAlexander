@@ -221,7 +221,7 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 
 					const auto newListPath = (*nestedTtmp.RenameTo / L"TTMPL.mpl").wstring();
 					std::vector<char> renameInfoBuffer;
-					renameInfoBuffer.resize(sizeof FILE_RENAME_INFO + newListPath.size());
+					renameInfoBuffer.resize(sizeof(FILE_RENAME_INFO) + newListPath.size());
 					auto renameInfo = *reinterpret_cast<FILE_RENAME_INFO*>(&renameInfoBuffer[0]);
 					renameInfo.ReplaceIfExists = true;
 					renameInfo.RootDirectory = renameToDirHandle;
@@ -1162,7 +1162,7 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 														for (const auto i : exdReader.GetIds())
 															exCreator->SetRow(i, language, exdReader.ReadDepth2(i));
 													} catch (const std::out_of_range&) {
-														// pass
+														Logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[{}] File not found: {}", exhName, exdPathSpec);
 													} catch (const std::exception& e) {
 														throw std::runtime_error(std::format("Error occurred while processing {}: {}", exdPathSpec, e.what()));
 													}

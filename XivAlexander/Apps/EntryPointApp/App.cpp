@@ -552,7 +552,7 @@ Dll::InjectEntryPointParameters* Dll::PatchEntryPointForInjection(HANDLE hProces
 
 	std::copy_n(pathBytes.begin(), pathBytesTarget.size_bytes(), pathBytesTarget.begin());
 	process.ReadMemory(mem.CurrentModule, rvaEntryPoint,
-		std::span(trampoline->buf_EntryPointBackup, sizeof trampoline->buf_EntryPointBackup));
+		std::span(trampoline->buf_EntryPointBackup, sizeof(trampoline->buf_EntryPointBackup)));
 
 	const auto pRemote = process.VirtualAlloc<char>(nullptr, trampolineBuffer.size(), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 

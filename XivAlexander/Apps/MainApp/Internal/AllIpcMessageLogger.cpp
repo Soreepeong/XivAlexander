@@ -38,11 +38,11 @@ struct XivAlexander::Apps::MainApp::Internal::AllIpcMessageLogger::Implementatio
 						case 0x95c:
 							pszPossibleMessageType = "ActionEffect32";
 							break;
-						case (sizeof XivMessageHeader + sizeof XivIpcHeader + sizeof XivIpcs::S2C_ActorControlSelf):
-							static_assert(sizeof XivIpcs::S2C_ActorControlSelf == sizeof XivIpcs::S2C_ActorCast);
+						case (sizeof(XivMessageHeader) + sizeof(XivIpcHeader) + sizeof(XivIpcs::S2C_ActorControlSelf)):
+							static_assert(sizeof(XivIpcs::S2C_ActorControlSelf) == sizeof(XivIpcs::S2C_ActorCast));
 							pszPossibleMessageType = "ActorControlSelf, ActorCast";
 							break;
-						case (sizeof XivMessageHeader + sizeof XivIpcHeader + sizeof XivIpcs::S2C_ActorControl):
+						case (sizeof(XivMessageHeader) + sizeof(XivIpcHeader) + sizeof(XivIpcs::S2C_ActorControl)):
 							pszPossibleMessageType = "ActorControl";
 							break;
 						default:

@@ -6,7 +6,7 @@
 
 void Sqex::Sqpack::OnTheFlyTextureEntryProvider::Initialize(const RandomAccessStream& stream) {
 	const auto AsTexHeader = [&]() { return *reinterpret_cast<const Texture::Header*>(&m_texHeaderBytes[0]); };
-	const auto AsMipmapOffsets = [&]() { return span_cast<uint32_t>(m_texHeaderBytes, sizeof Texture::Header, AsTexHeader().MipmapCount.Value()); };
+	const auto AsMipmapOffsets = [&]() { return span_cast<uint32_t>(m_texHeaderBytes, sizeof(Texture::Header), AsTexHeader().MipmapCount.Value()); };
 
 	auto entryHeader = SqData::FileEntryHeader{
 		.HeaderSize = sizeof SqData::FileEntryHeader,
@@ -14,12 +14,12 @@ void Sqex::Sqpack::OnTheFlyTextureEntryProvider::Initialize(const RandomAccessSt
 		.DecompressedSize = static_cast<uint32_t>(stream.StreamSize()),
 	};
 
-	m_texHeaderBytes.resize(sizeof Texture::Header);
+	m_texHeaderBytes.resize(sizeof(Texture::Header));
 	stream.ReadStream(0, std::span(m_texHeaderBytes));
 
-	m_texHeaderBytes.resize(sizeof Texture::Header + AsTexHeader().MipmapCount * sizeof uint32_t);
-	stream.ReadStream(sizeof Texture::Header, std::span(
-		reinterpret_cast<uint32_t*>(&m_texHeaderBytes[sizeof Texture::Header]),
+	m_texHeaderBytes.resize(sizeof(Texture::Header) + AsTexHeader().MipmapCount * sizeof(uint32_t));
+	stream.ReadStream(sizeof(Texture::Header), std::span(
+		reinterpret_cast<uint32_t*>(&m_texHeaderBytes[sizeof(Texture::Header)]),
 		AsTexHeader().MipmapCount.Value()
 	));
 
@@ -66,7 +66,7 @@ void Sqex::Sqpack::OnTheFlyTextureEntryProvider::Initialize(const RandomAccessSt
 			};
 			blockAlignment.IterateChunked([&](uint32_t, const uint32_t offset, const uint32_t length) {
 				SqData::BlockHeader header{
-					.HeaderSize = sizeof SqData::BlockHeader,
+					.HeaderSize = sizeof(SqData::BlockHeader),
 					.Version = 0,
 					.CompressedSize = SqData::BlockHeader::CompressedSizeNotCompressed,
 					.DecompressedSize = length,
@@ -118,7 +118,7 @@ uint64_t Sqex::Sqpack::OnTheFlyTextureEntryProvider::MaxPossibleStreamSize() con
 
 uint64_t Sqex::Sqpack::OnTheFlyTextureEntryProvider::ReadStreamPartial(const RandomAccessStream& stream, uint64_t offset, void* buf, uint64_t length) const {
 	const auto AsTexHeader = [&]() { return *reinterpret_cast<const Texture::Header*>(&m_texHeaderBytes[0]); };
-	const auto AsMipmapOffsets = [&]() { return span_cast<uint32_t>(m_texHeaderBytes, sizeof Texture::Header, AsTexHeader().MipmapCount); };
+	const auto AsMipmapOffsets = [&]() { return span_cast<uint32_t>(m_texHeaderBytes, sizeof(Texture::Header), AsTexHeader().MipmapCount); };
 
 	if (!length)
 		return 0;
@@ -165,15 +165,15 @@ uint64_t Sqex::Sqpack::OnTheFlyTextureEntryProvider::ReadStreamPartial(const Ran
 
 		for (; it != m_blockLocators.end(); ++it) {
 			const auto blockIndex = it - m_blockLocators.begin();
-			auto j = relativeOffset / (sizeof SqData::BlockHeader + EntryBlockDataSize);
-			relativeOffset -= j * (sizeof SqData::BlockHeader + EntryBlockDataSize);
+			auto j = relativeOffset / (sizeof(SqData::BlockHeader) + EntryBlockDataSize);
+			relativeOffset -= j * (sizeof(SqData::BlockHeader) + EntryBlockDataSize);
 			for (; j < it->SubBlockCount; ++j) {
 				const auto decompressedSize = j == it->SubBlockCount - 1 ? m_mipmapSizes[blockIndex] % EntryBlockDataSize : EntryBlockDataSize;
-				const auto pad = Align(sizeof SqData::BlockHeader + decompressedSize).Pad;
+				const auto pad = Align(sizeof(SqData::BlockHeader) + decompressedSize).Pad;
 
-				if (relativeOffset < sizeof SqData::BlockHeader) {
+				if (relativeOffset < sizeof(SqData::BlockHeader)) {
 					const auto header = SqData::BlockHeader{
-						.HeaderSize = sizeof SqData::BlockHeader,
+						.HeaderSize = sizeof(SqData::BlockHeader),
 						.Version = 0,
 						.CompressedSize = SqData::BlockHeader::CompressedSizeNotCompressed,
 						.DecompressedSize = decompressedSize,
@@ -186,7 +186,7 @@ uint64_t Sqex::Sqpack::OnTheFlyTextureEntryProvider::ReadStreamPartial(const Ran
 
 					if (out.empty()) return length;
 				} else
-					relativeOffset -= sizeof SqData::BlockHeader;
+					relativeOffset -= sizeof(SqData::BlockHeader);
 
 				if (relativeOffset < decompressedSize) {
 					const auto available = std::min(out.size_bytes(), static_cast<size_t>(decompressedSize - relativeOffset));
@@ -228,19 +228,19 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 	std::vector<uint8_t> texHeaderBytes;
 
 	auto AsTexHeader = [&]() { return *reinterpret_cast<const Texture::Header*>(&texHeaderBytes[0]); };
-	auto AsMipmapOffsets = [&]() { return span_cast<uint32_t>(texHeaderBytes, sizeof Texture::Header, AsTexHeader().MipmapCount); };
+	auto AsMipmapOffsets = [&]() { return span_cast<uint32_t>(texHeaderBytes, sizeof(Texture::Header), AsTexHeader().MipmapCount); };
 
 	auto entryHeader = SqData::FileEntryHeader{
 		.Type = SqData::FileEntryType::Texture,
 		.DecompressedSize = static_cast<uint32_t>(stream.StreamSize()),
 	};
 
-	texHeaderBytes.resize(sizeof Texture::Header);
+	texHeaderBytes.resize(sizeof(Texture::Header));
 	stream.ReadStream(0, std::span(texHeaderBytes));
 
-	texHeaderBytes.resize(sizeof Texture::Header + AsTexHeader().MipmapCount * sizeof uint32_t);
-	stream.ReadStream(sizeof Texture::Header, std::span(
-		reinterpret_cast<uint32_t*>(&texHeaderBytes[sizeof Texture::Header]),
+	texHeaderBytes.resize(sizeof(Texture::Header) + AsTexHeader().MipmapCount * sizeof(uint32_t));
+	stream.ReadStream(sizeof(Texture::Header), std::span(
+		reinterpret_cast<uint32_t*>(&texHeaderBytes[sizeof(Texture::Header)]),
 		AsTexHeader().MipmapCount.Value()
 	));
 
@@ -337,7 +337,7 @@ void Sqex::Sqpack::MemoryTextureEntryProvider::Initialize(const RandomAccessStre
 				const auto targetBuf = useCompressed ? deflater->Result() : sourceBuf;
 
 				SqData::BlockHeader header{
-					.HeaderSize = sizeof SqData::BlockHeader,
+					.HeaderSize = sizeof(SqData::BlockHeader),
 					.Version = 0,
 					.CompressedSize = useCompressed ? static_cast<uint32_t>(targetBuf.size()) : SqData::BlockHeader::CompressedSizeNotCompressed,
 					.DecompressedSize = length,

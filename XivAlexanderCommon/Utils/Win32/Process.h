@@ -213,7 +213,7 @@ namespace Utils::Win32 {
 			const WORD OptionalHeaderMagic;
 			const IMAGE_OPTIONAL_HEADER32 OptionalHeader32;
 			const IMAGE_OPTIONAL_HEADER64 OptionalHeader64;
-			char OptionalHeaderRaw[sizeof IMAGE_OPTIONAL_HEADER64];
+			char OptionalHeaderRaw[sizeof(IMAGE_OPTIONAL_HEADER64)];
 		};
 		const std::vector<IMAGE_SECTION_HEADER> SectionHeaders;
 

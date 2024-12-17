@@ -21,7 +21,7 @@ static std::vector<uint8_t> CreateHeaderForNonCompressedBinaryEntryProvider(size
 		.DecompressedSize = static_cast<uint32_t>(size),
 		.BlockCountOrVersion = blockAlignment.Count,
 	};
-	header.SetSpaceUnits((static_cast<size_t>(blockAlignment.Count) - 1) * EntryBlockSize + sizeof SqData::BlockHeader + blockAlignment.Last);
+	header.SetSpaceUnits((static_cast<size_t>(blockAlignment.Count) - 1) * EntryBlockSize + sizeof(SqData::BlockHeader) + blockAlignment.Last);
 
 	blockAlignment.IterateChunked([&](uint32_t index, uint32_t offset, uint32_t size) {
 		locators[index] = {
@@ -73,9 +73,9 @@ uint64_t Sqex::Sqpack::OnTheFlyBinaryEntryProvider::ReadStreamPartial(const Rand
 		relativeOffset -= i * EntryBlockSize;
 
 		blockAlignment.IterateChunkedBreakable([&](uint32_t, uint32_t offset, uint32_t size) {
-			if (relativeOffset < sizeof SqData::BlockHeader) {
+			if (relativeOffset < sizeof(SqData::BlockHeader)) {
 				const auto header = SqData::BlockHeader{
-					.HeaderSize = sizeof SqData::BlockHeader,
+					.HeaderSize = sizeof(SqData::BlockHeader),
 					.Version = 0,
 					.CompressedSize = SqData::BlockHeader::CompressedSizeNotCompressed,
 					.DecompressedSize = static_cast<uint32_t>(size),
@@ -88,7 +88,7 @@ uint64_t Sqex::Sqpack::OnTheFlyBinaryEntryProvider::ReadStreamPartial(const Rand
 
 				if (out.empty()) return false;
 			} else
-				relativeOffset -= sizeof SqData::BlockHeader;
+				relativeOffset -= sizeof(SqData::BlockHeader);
 
 			if (relativeOffset < size) {
 				const auto available = std::min(out.size_bytes(), static_cast<size_t>(size - relativeOffset));
@@ -100,7 +100,7 @@ uint64_t Sqex::Sqpack::OnTheFlyBinaryEntryProvider::ReadStreamPartial(const Rand
 			} else
 				relativeOffset -= size;
 
-			if (const auto pad = Align(sizeof SqData::BlockHeader + size).Pad; relativeOffset < pad) {
+			if (const auto pad = Align(sizeof(SqData::BlockHeader) + size).Pad; relativeOffset < pad) {
 				const auto available = std::min(out.size_bytes(), static_cast<size_t>(pad - relativeOffset));
 				std::fill_n(out.begin(), available, 0);
 				out = out.subspan(static_cast<size_t>(available));
@@ -143,7 +143,7 @@ void Sqex::Sqpack::MemoryBinaryEntryProvider::Initialize(const RandomAccessStrea
 		const auto targetBuf = useCompressed ? deflater->Result() : sourceBuf;
 
 		SqData::BlockHeader header{
-			.HeaderSize = sizeof SqData::BlockHeader,
+			.HeaderSize = sizeof(SqData::BlockHeader),
 			.Version = 0,
 			.CompressedSize = useCompressed ? static_cast<uint32_t>(targetBuf.size()) : SqData::BlockHeader::CompressedSizeNotCompressed,
 			.DecompressedSize = static_cast<uint32_t>(sourceBuf.size()),

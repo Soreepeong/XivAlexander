@@ -93,7 +93,7 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 
 	static inline std::wstring DumpStackTrace(const CONTEXT& context, HANDLE hThread = GetCurrentThread()) {
 		union Symbol {
-			char Buffer[sizeof SYMBOL_INFOW + sizeof(wchar_t) * 1024]{};
+			char Buffer[sizeof(SYMBOL_INFOW) + sizeof(wchar_t) * 1024]{};
 			SYMBOL_INFOW Data;
 
 		public:

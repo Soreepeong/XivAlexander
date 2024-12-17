@@ -55,9 +55,9 @@ struct XivAlexander::Apps::MainApp::Internal::IpcTypeFinder::Implementation {
 								actionEffect.AnimationLockDurationF,
 								pMessage->Represent(true));
 
-						} else if (pMessage->Length == sizeof XivMessageHeader + sizeof XivIpcHeader + sizeof XivIpcs::S2C_ActorControlSelf) {
+						} else if (pMessage->Length == sizeof(XivMessageHeader) + sizeof(XivIpcHeader) + sizeof(XivIpcs::S2C_ActorControlSelf)) {
 							// Two possibilities: ActorControlSelf and ActorCast
-							static_assert(sizeof XivIpcs::S2C_ActorControlSelf == sizeof XivIpcs::S2C_ActorCast);
+							static_assert(sizeof(XivIpcs::S2C_ActorControlSelf) == sizeof(XivIpcs::S2C_ActorCast));
 
 							//
 							// Test ActorControlSelf

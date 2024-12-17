@@ -355,7 +355,7 @@ namespace Sqex::Sqpack {
 	}
 
 	static constexpr uint16_t EntryBlockDataSize = 16000;
-	static constexpr uint16_t EntryBlockValidSize = EntryBlockDataSize + sizeof SqData::BlockHeader;
+	static constexpr uint16_t EntryBlockValidSize = EntryBlockDataSize + sizeof(SqData::BlockHeader);
 	static constexpr uint16_t EntryBlockPadSize = (EntryAlignment - EntryBlockValidSize) % EntryAlignment;
 	static constexpr uint16_t EntryBlockSize = EntryBlockValidSize + EntryBlockPadSize;
 

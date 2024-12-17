@@ -16,11 +16,11 @@ Sqex::Sqpack::Reader::SqIndexType<HashLocatorT, TextLocatorT>::SqIndexType(const
 	if (strictVerify) {
 		Header.VerifySqpackHeader(SqpackType::SqIndex);
 		IndexHeader.VerifySqpackIndexHeader(SqIndex::Header::IndexType::Index);
-		if (IndexHeader.HashLocatorSegment.Size % sizeof HashLocatorT)
+		if (IndexHeader.HashLocatorSegment.Size % sizeof(HashLocatorT))
 			throw CorruptDataException("HashLocators has an invalid size alignment");
-		if (IndexHeader.TextLocatorSegment.Size % sizeof TextLocatorT)
+		if (IndexHeader.TextLocatorSegment.Size % sizeof(TextLocatorT))
 			throw CorruptDataException("TextLocators has an invalid size alignment");
-		if (IndexHeader.UnknownSegment3.Size % sizeof SqIndex::Segment3Entry)
+		if (IndexHeader.UnknownSegment3.Size % sizeof(SqIndex::Segment3Entry))
 			throw CorruptDataException("Segment3 has an invalid size alignment");
 		IndexHeader.HashLocatorSegment.Sha1.Verify(HashLocators, "HashLocatorSegment has invalid data SHA-1");
 		IndexHeader.TextLocatorSegment.Sha1.Verify(TextLocators, "TextLocatorSegment has invalid data SHA-1");

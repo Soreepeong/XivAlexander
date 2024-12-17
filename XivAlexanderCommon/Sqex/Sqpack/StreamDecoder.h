@@ -33,7 +33,7 @@ namespace Sqex::Sqpack {
 	public:
 		StreamDecoder(std::shared_ptr<const EntryProvider> stream)
 			: m_stream(std::move(stream))
-			, m_maxBlockSize(sizeof SqData::BlockHeader) {
+			, m_maxBlockSize(sizeof(SqData::BlockHeader)) {
 		}
 
 		virtual uint64_t ReadStreamPartial(uint64_t offset, void* buf, uint64_t length) = 0;
