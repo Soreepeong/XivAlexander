@@ -1,6 +1,6 @@
 {
-	"C2S_ActionRequest": "0x0213",
-	"C2S_ActionRequestGroundTargeted": "0x00cf",
+	"C2S_ActionRequest": "0x0361",
+	"C2S_ActionRequestGroundTargeted": "0x02e2",
 	"Common_UseOodleTcp": true,
 	"PatchCode": [
 		{
@@ -55,14 +55,14 @@
 			"x86": []
 		}
 	],
-	"S2C_ActionEffect01": "0x0071",
-	"S2C_ActionEffect08": "0x013b",
-	"S2C_ActionEffect16": "0x02cc",
-	"S2C_ActionEffect24": "0x0224",
-	"S2C_ActionEffect32": "0x025b",
-	"S2C_ActorCast": "0x03ce",
-	"S2C_ActorControl": "0x038e",
-	"S2C_ActorControlSelf": "0x018c",
+	"S2C_ActionEffect01": "0x0311",
+	"S2C_ActionEffect08": "0x022e",
+	"S2C_ActionEffect16": "0x012d",
+	"S2C_ActionEffect24": "0x030f",
+	"S2C_ActionEffect32": "0x0330",
+	"S2C_ActorCast": "0x017a",
+	"S2C_ActorControl": "0x0208",
+	"S2C_ActorControlSelf": "0x016f",
 	"Server_IpRange": "119.252.36.0/24, 119.252.37.0/24, 153.254.80.0/24, 204.2.29.0/24, 80.239.145.0/24",
 	"Server_PortRange": "1025-65535"
 }
