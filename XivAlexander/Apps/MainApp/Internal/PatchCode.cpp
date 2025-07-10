@@ -48,9 +48,9 @@ struct XivAlexander::Apps::MainApp::Internal::PatchCode::Implementation {
 	void Apply() {
 		ZydisDecoder decoder;
 #if INTPTR_MAX == INT64_MAX
-		ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64);
+		ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
 #elif INTPTR_MAX == INT32_MAX
-		ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_COMPAT_32, ZYDIS_ADDRESS_WIDTH_32);
+		ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_COMPAT_32, ZYDIS_STACK_WIDTH_32);
 #endif
 
 		Unapply();
@@ -139,12 +139,13 @@ struct XivAlexander::Apps::MainApp::Internal::PatchCode::Implementation {
 
 					} else if (instruction.at(0) == "resolve_ip") {
 						ZydisDecodedInstruction inst;
+						ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
 						if (IsBadReadPtr(pointer, 16))
 							throw std::runtime_error(std::format("0x{:X}: bad read ptr", reinterpret_cast<size_t>(pointer)));
-						if (!ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, pointer, 16, &inst)))
+						if (!ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, pointer, 16, &inst, operands)))
 							throw std::runtime_error(std::format("0x{:X}: bad instruction", reinterpret_cast<size_t>(pointer)));
-						if ((inst.meta.category == ZYDIS_CATEGORY_UNCOND_BR || inst.meta.category == ZYDIS_CATEGORY_COND_BR || inst.meta.category == ZYDIS_CATEGORY_CALL) && inst.operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-							if (uint64_t resultAddress; ZYAN_STATUS_SUCCESS == ZydisCalcAbsoluteAddress(&inst, &inst.operands[0], reinterpret_cast<size_t>(pointer), &resultAddress)) {
+						if ((inst.meta.category == ZYDIS_CATEGORY_UNCOND_BR || inst.meta.category == ZYDIS_CATEGORY_COND_BR || inst.meta.category == ZYDIS_CATEGORY_CALL) && operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+							if (uint64_t resultAddress; ZYAN_STATUS_SUCCESS == ZydisCalcAbsoluteAddress(&inst, &operands[0], reinterpret_cast<size_t>(pointer), &resultAddress)) {
 								pointer = reinterpret_cast<char*>(static_cast<size_t>(resultAddress));
 							} else {
 								throw std::runtime_error(std::format("0x{:X}: failed to resolve branch target", reinterpret_cast<size_t>(pointer)));

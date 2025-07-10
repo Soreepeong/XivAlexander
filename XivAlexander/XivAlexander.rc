@@ -222,109 +222,6 @@ BEGIN
     BEGIN
         MENUITEM "—LŒø‰»(&E)",                     ID_MODDING_ENABLE
         MENUITEM SEPARATOR
-        MENUITEM "ƒQ[ƒ€‚ª“Ç‚Ýž‚Þ‚·‚×‚Ä‚Ìƒtƒ@ƒCƒ‹‚ÌƒpƒX‚ðƒƒO‚É‹L˜^(&P)\t(Ctrl+Alt+)K", ID_MODDING_LOGALLHASHKEYS
-        MENUITEM "‚·‚×‚Ä‚Ìƒtƒ@ƒCƒ‹‚ÌƒAƒNƒZƒX‚ðƒƒO‚É‹L˜^(I)",      ID_MODDING_LOGALLFILEACCESS
-        MENUITEM "ƒtƒ@ƒCƒ‹‚ðˆ³k‚µ‚ÄŠÇ—(&C)",             ID_MODDING_COMPRESSWHENEVERPOSSIBLE
-        MENUITEM SEPARATOR
-        POPUP "Œ¾Œê‚Ì—Dæ‡ˆÊ(&L)"
-        BEGIN
-            MENUITEM "ƒƒjƒ…[€–Ú‚ð‘I‘ð‚·‚é‚Æˆê”Ôã‚ÉˆÚ“®‚µ‚Ü‚·B",      ID_MODDING_FALLBACKLANGUAGEPRIORITY_GUIDE, INACTIVE
-            MENUITEM SEPARATOR
-            MENUITEM "(entry 1)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1
-            MENUITEM "(entry 2)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY2
-            MENUITEM "(entry 3)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY3
-            MENUITEM "(entry 4)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY4
-            MENUITEM "(entry 5)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY5
-            MENUITEM "(entry 6)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY6
-        END
-        POPUP "•\Ž¦Œ¾Œê‚Ì‹­§(&D) (64ƒrƒbƒgê—p)"
-        BEGIN
-            MENUITEM "Žg—p‚µ‚È‚¢(&U)",                   ID_MODDING_DISPLAYLANGUAGE_DISABLE, CHECKED
-            MENUITEM SEPARATOR
-            MENUITEM "“ú–{Œê(&J)",                     ID_MODDING_DISPLAYLANGUAGE_JAPANESE
-            MENUITEM "‰pŒê(&E)",                      ID_MODDING_DISPLAYLANGUAGE_ENGLISH
-            MENUITEM "ƒhƒCƒcŒê(&D)",                    ID_MODDING_DISPLAYLANGUAGE_GERMAN
-            MENUITEM "ƒtƒ‰ƒ“ƒXŒê(&F)",                   ID_MODDING_DISPLAYLANGUAGE_FRENCH
-            MENUITEM "’†‘Œê(ŠÈ‘ÌŽš)(&C)",                ID_MODDING_DISPLAYLANGUAGE_CHINESESIMPLIFIED
-            MENUITEM "ŠØ‘Œê(&K)",                     ID_MODDING_DISPLAYLANGUAGE_KOREAN
-        END
-        POPUP "‰¹ºŒ¾Œê‚Ì‹­§(&A) (64ƒrƒbƒgê—p)"
-        BEGIN
-            MENUITEM "Žg—p‚µ‚È‚¢(&U)",                   ID_MODDING_AUDIOLANGUAGE_DISABLE, CHECKED
-            MENUITEM SEPARATOR
-            MENUITEM "“ú–{Œê(&J)",                     ID_MODDING_AUDIOLANGUAGE_JAPANESE
-            MENUITEM "‰pŒê(&E)",                      ID_MODDING_AUDIOLANGUAGE_ENGLISH
-            MENUITEM "ƒhƒCƒcŒê(&D)",                    ID_MODDING_AUDIOLANGUAGE_GERMAN
-            MENUITEM "ƒtƒ‰ƒ“ƒXŒê(&F)",                   ID_MODDING_AUDIOLANGUAGE_FRENCH
-            MENUITEM "’†‘Œê(ŠÈ‘ÌŽš)(&C)",                ID_MODDING_AUDIOLANGUAGE_CHINESESIMPLIFIED
-            MENUITEM "ŠØ‘Œê(&K)",                     ID_MODDING_AUDIOLANGUAGE_KOREAN
-        END
-        POPUP "º‚Ìƒ~ƒ…[ƒg(&V)"
-        BEGIN
-            MENUITEM "í“¬(&B)",                      ID_MODDING_MUTEVOICE_BATTLE
-            MENUITEM "CM(ŠÂ‹«‚ÌºH)(&C)",               ID_MODDING_MUTEVOICE_CM
-            MENUITEM "ƒGƒ‚[ƒg(&E)",                    ID_MODDING_MUTEVOICE_EMOTE
-            MENUITEM "í“¬’†‚ÌNPC‚ÌƒZƒŠƒt(&D)",             ID_MODDING_MUTEVOICE_LINE
-        END
-        MENUITEM SEPARATOR
-        MENUITEM "!! modify MainWindow if this section changes !!", ID_MODDING_SUBMENUMARKER, INACTIVE
-        POPUP "ƒtƒHƒ“ƒg‚Ì•ÏX(&F)"
-        BEGIN
-            MENUITEM "ƒvƒŠƒZƒbƒg‚Ì“Ç‚Ýž‚Þ(&I)",              ID_MODDING_CHANGEFONT_IMPORTPRESET
-            MENUITEM "ƒvƒŠƒZƒbƒgƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚é(&O)",          ID_MODDING_CHANGEFONT_OPENPRESETDIRECTORY
-            MENUITEM SEPARATOR
-            MENUITEM "Žg—p‚µ‚È‚¢(&D)",                   ID_MODDING_CHANGEFONT_DISABLE, CHECKED
-            MENUITEM SEPARATOR
-            MENUITEM "(ƒvƒŠƒZƒbƒg€–Ú‚È‚µ)",                 ID_MODDING_CHANGEFONT_NOENTRY, INACTIVE
-            MENUITEM "(Example entry)",             ID_MODDING_CHANGEFONT_ENTRY
-        END
-        POPUP "’Ç‰Á‚ÌƒQ[ƒ€ƒ‹[ƒgƒtƒHƒ‹ƒ_[(&G)"
-        BEGIN
-            POPUP "’Ç‰Á(&A)"
-            BEGIN
-                MENUITEM "’¼Ú‚É‘I‘ðc(&S)",                  ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD_SELECTFOLDER
-                MENUITEM SEPARATOR
-                MENUITEM "(Ž©“®‚Å’T‚¹‚½ƒQ[ƒ€ƒ‹[ƒgƒtƒHƒ‹ƒ_[‚È‚µ)",       ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD_EMPTY, INACTIVE
-            END
-            MENUITEM "‹ó‚É‚·‚é(&R)",                    ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_REMOVEALL
-            MENUITEM SEPARATOR
-            MENUITEM "(’Ç‰Á‚ÌƒQ[ƒ€ƒ‹[ƒgƒtƒHƒ‹[ƒ_‚È‚µ)",          ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_NOENTRY, INACTIVE
-            MENUITEM "(Example entry)",             ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ENTRY
-        END
-        POPUP "EXDF(ƒeƒLƒXƒg)‚Ì’u‚«Š·‚¦‹K‘¥(&X)"
-        BEGIN
-            MENUITEM "’è‹`ƒtƒ@ƒCƒ‹‚Ì“Ç‚Ýž‚Ý(&I)",             ID_MODDING_EXDFTRANSFORMATIONRULES_ADD
-            MENUITEM "‹ó‚É‚·‚é(&R)",                    ID_MODDING_EXDFTRANSFORMATIONRULES_REMOVEALL
-            MENUITEM "’è‹`ƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚é(&O)",             ID_MODDING_EXDFTRANSFORMATIONRULES_OPENPRESETDIRECTORY
-            MENUITEM SEPARATOR
-            MENUITEM "(EXDF‚Ì’u‚«Š·‚¦‹K‘¥‚È‚µ)",             ID_MODDING_EXDFTRANSFORMATIONRULES_NOENTRY, INACTIVE
-            MENUITEM "(Example entry)",             ID_MODDING_EXDFTRANSFORMATIONRULES_ENTRY
-        END
-        POPUP "‰¹Šy‚Ì‰¹ŽÀ‚ÌŒüã(&M)"
-        BEGIN
-            POPUP "(template entry to be inserted at bottom)"
-            BEGIN
-                MENUITEM "ƒtƒHƒ‹ƒ_[‚ð’Ç‰Á(&A)",                ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_ADD
-                MENUITEM "‹ó‚É‚·‚é(&C)",                    ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_CLEAR
-                MENUITEM SEPARATOR
-                MENUITEM "{}‚Å”ƒ‚¤(&B)",                   ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_BUYFROM
-                MENUITEM SEPARATOR
-                MENUITEM "(Œ´–{‚Ì‰¹Šyƒtƒ@ƒCƒ‹‚ÌƒtƒHƒ‹ƒ_[‚È‚µ)",         ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_EMPTY, INACTIVE
-            END
-            MENUITEM "’è‹`ƒtƒ@ƒCƒ‹‚Ì“Ç‚Ýž‚Ý(&I)",             ID_MODDING_REPLACEMUSICS_IMPORT
-            MENUITEM "‹ó‚É‚·‚é(&R)",                    ID_MODDING_REPLACEMUSICS_REMOVEALL
-            MENUITEM "‰¹Šyƒtƒ@ƒCƒ‹‚ðƒGƒ“ƒR[ƒh(&G)",            ID_MODDING_REPLACEMUSICS_GENERATE
-            POPUP "ƒTƒ“ƒvƒ‹ƒŒ[ƒg(&S)"
-            BEGIN
-                MENUITEM "Å‘å(&H)",                      ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_HIGHESTPOSSIBLE
-                MENUITEM "48KHz(&8)",                   ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_48000
-                MENUITEM "44.1KHz(&4)",                 ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_44100
-            END
-            MENUITEM SEPARATOR
-            MENUITEM "(‹K‘¥‚È‚µ)",                      ID_MODDING_REPLACEMUSICS_NORULESCONFIGURED, INACTIVE
-            MENUITEM SEPARATOR
-            MENUITEM "(Œ´–{‚Ì‰¹Šyƒtƒ@ƒCƒ‹‚ÌƒtƒHƒ‹ƒ_[‚È‚µ)",         ID_MODDING_REPLACEMUSICS_NOSOUCEDIRECTORIESCONFIGURED, INACTIVE
-        END
         POPUP "TexTools MODƒpƒbƒN(&T)"
         BEGIN
             POPUP "(template entry to be inserted at bottom)"
@@ -351,9 +248,17 @@ BEGIN
             MENUITEM "‚·‚×‚Ä‚ÌMODƒpƒbƒN‚ðíœ(&L)",           ID_MODDING_TTMP_REMOVEALL
             MENUITEM "Ä“Ç‚Ýž‚Ý(&R)",                   ID_MODDING_TTMP_REFRESH
         END
-        MENUITEM SEPARATOR
         MENUITEM "’u‚«Š·‚¦ƒtƒ@ƒCƒ‹‚ÌƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚é(&R)",      ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
         MENUITEM "TTMPL/TTMPDƒtƒ@ƒCƒ‹‚É•ÏŠ·‚µ‚Ä•Û‘¶(&O)",  ID_MODDING_EXPORTTOTTMP
+        MENUITEM SEPARATOR
+        MENUITEM "‚·‚×‚Ä‚Ìƒtƒ@ƒCƒ‹‚ÌƒAƒNƒZƒX‚ðƒƒO‚É‹L˜^(I)",      ID_MODDING_LOGALLFILEACCESS
+        POPUP "º‚Ìƒ~ƒ…[ƒg(&V)"
+        BEGIN
+            MENUITEM "í“¬(&B)",                      ID_MODDING_MUTEVOICE_BATTLE
+            MENUITEM "CM(ŠÂ‹«‚ÌºH)(&C)",               ID_MODDING_MUTEVOICE_CM
+            MENUITEM "ƒGƒ‚[ƒg(&E)",                    ID_MODDING_MUTEVOICE_EMOTE
+            MENUITEM "í“¬’†‚ÌNPC‚ÌƒZƒŠƒt(&D)",             ID_MODDING_MUTEVOICE_LINE
+        END
         MENUITEM SEPARATOR
         MENUITEM "ƒQ[ƒ€‚ðÄ‹N“®‚·‚é‚Ü‚Å“K—p‚³‚ê‚È‚¢ê‡‚ª‚ ‚è‚Ü‚·B",   ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
     END
@@ -480,7 +385,6 @@ BEGIN
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "ŠÂ‹«Ý’è"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcode‚ÌÝ’è"
     IDS_WINDOW_LOG          "ƒƒO‚Ì•\Ž¦"
-    IDS_TITLE_GENERATING_FONTS "ƒtƒHƒ“ƒgƒtƒ@ƒCƒ‹‚ðì¬‚µ‚Ä‚¢‚Ü‚·c"
     IDS_LANGUAGE_NAME_ENGLISH "‰pŒê"
     IDS_LANGUAGE_NAME_JAPANESE "“ú–{Œê"
     IDS_LANGUAGE_NAME_GERMAN "ƒhƒCƒcŒê"
@@ -543,23 +447,13 @@ BEGIN
     IDS_HELP_DISABLE_RUNAS  "‚Ç‚Ìê‡‚Å‚àŠÇ—ŽÒŒ ŒÀ‚ÅŽÀs‚µ‚Ü‚¹‚ñB"
     IDS_HELP_INTERNAL_USE_ONLY "“à•”Žg—p‚Ì‚ÝiŽg—p‹ÖŽ~j"
     IDS_HELP_TARGETS        "ƒ[ƒh‚Ü‚½‚ÍI—¹‚Ìê‡ƒvƒƒZƒXID‚Ü‚½‚ÍƒvƒƒZƒXƒpƒX‚ÌƒTƒtƒBƒbƒNƒXA‹N“®‚Ìê‡‹N“®‚·‚éƒvƒƒZƒX‚ÌƒpƒX‚Å‚·B"
-    IDS_TITLE_IMPORT_FONTCONFIG_PRESET "“Ç‚Ýž‚ÞƒtƒHƒ“ƒg‚ÌƒvƒŠƒZƒbƒgƒtƒ@ƒCƒ‹‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
-    IDS_TITLE_ADD_EXTERNAL_GAME_DIRECTORY "ŠO•”‚ÌƒQ[ƒ€ƒtƒHƒ‹ƒ_[‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
-    IDS_ERROR_NOT_GAME_DIRECTORY 
-                            "‘I‘ð‚µ‚½ƒpƒX ""{}"" ‚ÍƒQ[ƒ€ƒtƒHƒ‹ƒ_[‚Å‚Í‚ ‚è‚Ü‚¹‚ñB""ffxiv.exe""‚¨‚æ‚Ñ""ffxiv_dx11.exe""‚ÌŽÀsƒtƒ@ƒCƒ‹‚ª‘¶Ý‚·‚éƒtƒHƒ‹ƒ_[‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢B"
     IDS_NOTIFY_TTMP_HAS_CONFIGURATION 
                             "‚½‚¾‚¢‚ÜƒCƒ“ƒXƒg[ƒ‹‚µ‚½TexTools MODƒpƒbƒN‚É‚ÍƒJƒXƒ^ƒ}ƒCƒY‰Â”\‚Èƒ†[ƒU[Ý’è‚ª‘¶Ý‚µ‚Ü‚·Bƒƒjƒ…[‚ÅÝ’è‚ðs‚Á‚Ä‚­‚¾‚³‚¢B"
-    IDS_TITLE_GENERATING_EXD_FILES "EXDFƒtƒ@ƒCƒ‹‚ðì¬‚µ‚Ä‚¢‚Ü‚·c"
-    IDS_CONFIRM_REMOVE_ADDITIONAL_ROOT "’Ç‰Á‚ÌƒQ[ƒ€ƒtƒHƒ‹ƒ_[""{}""‚ðƒŠƒXƒg‚©‚çŠO‚µ‚Ü‚·B"
 END
 
 STRINGTABLE
 BEGIN
-    IDS_CONFIRM_REMOVE_EXCEL_TRANSFORM_CONFIG_FILE 
-                            "ƒeƒLƒXƒg’u‚«Š·‚¦’è‹`ƒtƒ@ƒCƒ‹ """"{}""""‚ðƒŠƒXƒg‚©‚çŠO‚µ‚Ü‚·B"
-    IDS_FILTERSPEC_FONTPRESETJSON "ƒtƒHƒ“ƒgƒvƒŠƒZƒbƒgƒtƒ@ƒCƒ‹ (*.json)"
     IDS_FILTERSPEC_ALLFILES "‚·‚×‚Ä‚Ìƒtƒ@ƒCƒ‹ (*.*)"
-    IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON "ƒeƒLƒXƒg’u‚«Š·‚¦’è‹`ƒtƒ@ƒCƒ‹ (*.json)"
     IDS_FILTERSPEC_TTMP     "TexTools MODƒpƒbƒNƒtƒ@ƒCƒ‹ (*.ttmp, *.ttmp2, *.mpl)"
     IDS_CONFIRM_REMOVEALLTTMP "u{}vƒtƒHƒ‹ƒ_[‚É‚ ‚é‘S‚Ä‚ÌTexTools MODƒpƒbƒN‚ðíœ‚µ‚Ü‚·B"
     IDS_URL_ISSUES          "https://github.com/Soreepeong/XivAlexander/issues"
@@ -572,19 +466,16 @@ BEGIN
     IDS_ERROR_TTMPD_MISSING "‘I‘ð‚µ‚½TTMPL.mpl‚É‘Î‰ž‚·‚éTTMPD.mpd‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñ‚Å‚µ‚½B"
     IDS_ERROR_ARCHIVE_MISSING_TTMP 
                             "‘I‘ð‚µ‚½ˆ³kƒtƒ@ƒCƒ‹‚É‚ÍTTMPD.mpd‚Ü‚½‚ÍTTMPL.mpl‚ªŠÜ‚Ü‚ê‚Ä‚¨‚è‚Ü‚¹‚ñB"
-    IDS_RESULT_ADDADDITIONALGAMEROOTDIRECTORY "’Ç‰Á‚ÌƒQ[ƒ€ƒtƒHƒ‹ƒ_‚ðƒŠƒXƒg‚É’Ç‰Á‚µ‚Ü‚µ‚½B"
     IDS_RESULT_TTMP_INSTALLED "TexTools MODƒpƒbƒN‚ðƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚µ‚½B"
 END
 
 STRINGTABLE
 BEGIN
     IDS_RESULT_EXCELCONFIGFILE_INSTALLED "ƒeƒLƒXƒg’u‚«Š·‚¦’è‹`ƒtƒ@ƒCƒ‹‚ðƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚µ‚½B"
-    IDS_RESULT_FONTCONFIG_INSTALLED "ƒtƒHƒ“ƒgƒvƒŠƒZƒbƒg‚ðƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚µ‚½B"
     IDS_ERROR_UNSUPPORTED_FILE_TYPE "ƒTƒ|[ƒg‚³‚ê‚È‚¢ƒtƒ@ƒCƒ‹Œ`Ž®‚Å‚·B"
     IDS_TITLE_COMPRESSING   "ƒf[ƒ^‚ðˆ³k‚µ‚Ä‚¢‚Ü‚·c"
     IDS_CONFIGURE           "Ý’è"
     IDS_ERROR_NO_MATCHING_FILES "‚±‚ÌƒtƒHƒ‹ƒ_‚Å‘Î‰ž‚Ìƒtƒ@ƒCƒ‹‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñ‚Å‚µ‚½"
-    IDS_TITLE_ADD_EXCELTRANSFORMCONFIG "EXDF(ƒeƒLƒXƒg)‚Ì’u‚«Š·‚¦‹K‘¥ƒtƒ@ƒCƒ‹‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
     IDS_TITLE_IMPORT_TTMP   "TexTools MODƒpƒbƒN‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
     IDS_TITLE_IMPORTING     "ƒCƒ“ƒ|[ƒg’†c"
     IDS_UNRECOVERABLEERROR_EXPORTLOG "ƒƒO‚ð•Û‘¶(&L)"
@@ -642,10 +533,6 @@ BEGIN
                             "XivAlexander‚ðŽŸ‚ÌŒo˜H‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚µ‚½B\n\n{}"
     IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE 
                             "XivAlexander‚ðŽŸ‚ÌŒo˜H‚©‚çƒAƒ“ƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚µ‚½B\n\n{}\n\nÝ’èƒtƒ@ƒCƒ‹‚È‚Ç‚Í’¼Ú‚ÉŠm”F‚µ‚Äíœ‚µ‚Ä‚­‚¾‚³‚¢BÝ’èƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚Ü‚·B"
-    IDS_CONFIRM_UNREGISTERALLADDITIONALGAMEROOTDIRECTORIES 
-                            "“o˜^‚³‚ê‚½‚·‚×‚Ä‚Ì’Ç‰Á‚ÌƒQ[ƒ€ƒ‹[ƒgƒtƒHƒ‹ƒ_[‚ðƒŠƒXƒg‚©‚çŠO‚µ‚Ü‚·B"
-    IDS_CONFIRM_UNREGISTERALLEXCELTRANSFORMATIONRULES 
-                            "“o˜^‚³‚ê‚½‚·‚×‚Ä‚ÌEXDF‚Ì’u‚«Š·‚¦‹K‘¥‚ðƒŠƒXƒg‚©‚çŠO‚µ‚Ü‚·B"
     IDS_HELP_INSTALL_MODE   "ƒCƒ“ƒXƒg[ƒ‹ƒ‚[ƒh‚ðŽw’è‚µ‚Ü‚·B—LŒø‚È’l‚Íd3diŠî–{jAdinput8x86Adinput8x64‚Å‚·B"
     IDS_ERROR_INVALID_INSTALL_MODE 
                             "ƒCƒ“ƒXƒg[ƒ‹ƒ‚[ƒh‚ªŠÔˆá‚Á‚Ä‚¢‚Ü‚·BŽg‚¦‚é‚Ì‚Íd3dAdinput8x86Adinput8x64‚Å‚·B"
@@ -653,9 +540,6 @@ BEGIN
                             "XivAlexander‚ðdinput8(x86)‚ÅƒCƒ“ƒXƒg[ƒ‹‚·‚é(&I)\nXivAlexander‚ð‘I‘ð‚µ‚½ƒQ[ƒ€ƒtƒHƒ‹ƒ_[‚Édinput8.dll‚ÅƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·BƒQ[ƒ€‚ÌDirectX9ƒo[ƒWƒ‡ƒ“‚¾‚¯‚Å“K—p‚É‚È‚è‚Ü‚·B"
     IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X64 
                             "XivAlexander‚ðdinput8(x64)‚ÅƒCƒ“ƒXƒg[ƒ‹‚·‚é(&I)\nXivAlexander‚ð‘I‘ð‚µ‚½ƒQ[ƒ€ƒtƒHƒ‹ƒ_[‚Édinput8.dll‚ÅƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·BƒQ[ƒ€‚ÌDirectX11ƒo[ƒWƒ‡ƒ“‚¾‚¯‚Å“K—p‚É‚È‚è‚Ü‚·B"
-    IDS_ERROR_GENERATEFONT  "ƒtƒHƒ“ƒg‚Ì¶¬‚ª‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B‚à‚¤ˆê‰ñ¶¬‚µ‚Ä‚¢Œ©‚Ü‚·B\n\nƒGƒ‰[F{}"
-    IDS_GENERATEFONT_FONTINSTALLATIONREQUIRED "ƒtƒHƒ“‚ðƒCƒ“ƒXƒg[ƒ‹‚µ‚Ä‚­‚¾‚³‚¢B"
-    IDS_GENERATEFONT_CHECKAGAIN "ƒCƒ“ƒXƒg[ƒ‹ó‘Ô‚ðÄŠm”F"
     IDS_TITLE_DISCOVERINGFILES "ƒtƒ@ƒCƒ‹‚ð’Tõ‚µ‚Ä‚¢‚Ü‚·c"
 END
 
@@ -663,30 +547,12 @@ STRINGTABLE
 BEGIN
     IDS_TITLE_INDEXINGFILES "ƒtƒ@ƒCƒ‹‚ðõˆø‚µ‚Ä‚¢‚Ü‚·c({1}/{2}): {0}"
     IDS_TITLE_FINALIZING    "ƒtƒ@ƒCƒ‹‚Ì€”õ‚ðŠ®—¹‚µ‚Ä‚¢‚Ü‚·c"
-    IDS_CONFIRM_REMOVE_MUSICIMPORTCONFIG "‰¹Šy‚Ì•ÔŠÒÝ’èƒtƒ@ƒCƒ‹""{}""‚ðƒŠƒXƒg‚©‚çŠO‚µ‚Ü‚·B"
-    IDS_TITLE_ADD_MUSICDIRECTORY """{}""‚ÌŒ³‚Ì‰¹Šyƒtƒ@ƒCƒ‹‚ÌƒtƒHƒ‹ƒ_[‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
-    IDS_CONFIRM_REMOVE_MUSICSOURCEDIRECTORY 
-                            "Œ³‚Ì‰¹Šyƒtƒ@ƒCƒ‹‚ÌƒtƒHƒ‹ƒ_[""{}""‚ð""{}""‚ÌƒŠƒXƒg‚©‚çŠO‚µ‚Ü‚·B"
-    IDS_CONFIRM_UNREGISTERALLMUSICSOURCEDIRECTORIES 
-                            "“o˜^‚³‚ê‚½‚·‚×‚Ä‚Ì""{}""‚ÌŒ³‚Ì‰¹Šyƒtƒ@ƒCƒ‹‚ÌƒtƒHƒ‹ƒ_[‚ðƒŠƒXƒg‚©‚çŠO‚µ‚Ü‚·B"
-    IDS_TITLE_ADD_MUSICIMPORTCONFIG "‰¹Šy‚Ì•ÔŠÒÝ’èƒtƒ@ƒCƒ‹‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
-    IDS_CONFIRM_UNREGISTERALLMUSICIMPORTCONFIG 
-                            "“o˜^‚³‚ê‚½‚·‚×‚Ä‚Ì‰¹Šy‚Ì•ÔŠÒÝ’èƒtƒ@ƒCƒ‹‚ðƒŠƒXƒg‚©‚çŠO‚µ‚Ü‚·B"
     IDS_ERROR_MODDINGACTIVEREQUIRED "‚±‚Ì‹@”\‚Ì‚½‚ß‚É‚ÍMOD‚ª•K—v‚Å‚·B"
     IDS_ERROR_CANCELLING_TRYAGAINLATER "‘O‚ÌƒIƒyƒŒ[ƒVƒ‡ƒ“‚ðƒLƒƒƒ“ƒZƒ‹’†‚Å‚·B‚¿‚å‚Á‚ÆŒã‚Å‚à‚¤ˆê‰ñ‚µ‚Ä‚­‚¾‚³‚¢B"
-    IDS_TITLE_MUSICIMPORTPROGRESS "‰¹Šyƒtƒ@ƒCƒ‹‚ðƒGƒ“ƒR[ƒh‚µ‚Ä‚¢‚Ü‚·c({1}/{2}): {0}"
-    IDS_FFMPEGREQUIRED_CONTENT 
-                            "‚±‚ÌƒIƒyƒŒ[ƒVƒ‡ƒ“‚Ì‚½‚ß‚É‚ÍFFmpeg‚ª•K—v‚Å‚·Bƒ_ƒEƒ“ƒ[ƒh‚µ‚Ä‰º‚Ìƒ{ƒ^ƒ“‚ÅŠJ‚¯‚ç‚ê‚éƒtƒHƒ‹ƒ_[‚Éffprobe.exe‚Æffmpeg.exe‚ðƒJƒs‚µ‚Ä“ü‚ê‚Ä‚­‚¾‚³‚¢B\n\nWindows builds‚Ì’†‚Ìgyan.dev‚âBtbN‚â‰½‚Å‚àŽg‚Á‚Ä‚àOK‚Å‚·Bufullv‚âugplvƒo[ƒWƒ‡ƒ“‚ðƒ_ƒEƒ“ƒ[ƒh‚µ‚Ä‚­‚¾‚³‚¢B"
-    IDS_FFMPEGREQUIRED_MAININSTRUCTIONS "FFmpeg‚ÌƒCƒ“ƒXƒg[ƒ‹"
-    IDS_FFMPEGREQUIRED_OPENDOWNLOADSITE "ƒ_ƒEƒ“ƒ[ƒhƒy[ƒW‚ðŠJ‚¯‚é"
-    IDS_FFMPEGREQUIRED_OPENTARGETDIR "ƒtƒHƒ‹ƒ_[‚ðŠJ‚¯‚é"
-    IDS_FFMPEGREQUIRED_CONFIRMINSTALLATION "ƒCƒ“ƒXƒg[ƒ‹Šm”F"
 END
 
 STRINGTABLE
 BEGIN
-    IDS_FFMPEGREQUIRED_NOTFOUND """{}""ƒtƒ@ƒCƒ‹‚ð’T‚¹‚Ü‚¹‚ñB"
-    IDS_ERROR_GENERATEFONT2 "EXDFƒtƒ@ƒCƒ‹‚Ì¶¬‚ª‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B‚à‚¤ˆê‰ñ¶¬‚µ‚Ä‚¢Œ©‚Ü‚·B\n\nƒGƒ‰[F{}"
     IDS_TITLE_EXPORTTTMPDIRECTORY "TTMPL/TTMPDƒtƒ@ƒCƒ‹‚Ì•Û‘¶ƒtƒHƒ‹ƒ_[‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
     IDS_TITLE_EXPORTTTMPPROGRESS "TTMPƒtƒ@ƒCƒ‹ƒZƒbƒg‚É•ÏŠ·‚µ‚Ä‚¢‚Ü‚·c({1}/{2}): {0}"
     IDS_UPDATE_CONFIRM_NOAUTO 
@@ -873,109 +739,10 @@ BEGIN
     BEGIN
         MENUITEM "»ç¿ë(&E)",                      ID_MODDING_ENABLE
         MENUITEM SEPARATOR
-        MENUITEM "°ÔÀÓÀÌ Á¢±ÙÇÏ´Â ³»ºÎ ÆÄÀÏ °æ·Î ¸ðµÎ ±â·ÏÇÏ±â(&P)\t(Ctrl+Alt+)K", ID_MODDING_LOGALLHASHKEYS
         MENUITEM "¸ðµç ÆÄÀÏ Á¢±Ù ±â·ÏÇÏ±â(&I)",           ID_MODDING_LOGALLFILEACCESS
-        MENUITEM "ÆÄÀÏ ¾ÐÃàÇØ¼­ °ü¸®(&C)",              ID_MODDING_COMPRESSWHENEVERPOSSIBLE
+        MENUITEM "±³Ã¼ ÆÄÀÏ Æú´õ ¿­±â(&R)",             ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
+        MENUITEM "TTMPL/TTMPDÆÄÀÏ·Î ³»º¸³»±â(&O)",     ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
-        POPUP "¾ð¾î ¿ì¼±¼øÀ§(&L)"
-        BEGIN
-            MENUITEM "Ç×¸ñÀ» ¼±ÅÃÇÏ¸é ¸Ç À§·Î ¼ø¼­¸¦ ÀÌµ¿ÇÒ ¼ö ÀÖ½À´Ï´Ù.", ID_MODDING_FALLBACKLANGUAGEPRIORITY_GUIDE, INACTIVE
-            MENUITEM SEPARATOR
-            MENUITEM "(entry 1)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1
-            MENUITEM "(entry 2)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY2
-            MENUITEM "(entry 3)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY3
-            MENUITEM "(entry 4)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY4
-            MENUITEM "(entry 5)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY5
-            MENUITEM "(entry 6)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY6
-        END
-        POPUP "Ç¥½Ã ¾ð¾î °íÁ¤(&D) (64ºñÆ® Àü¿ë)"
-        BEGIN
-            MENUITEM "»ç¿ëÇÏÁö ¾ÊÀ½(&U)",                 ID_MODDING_DISPLAYLANGUAGE_DISABLE, CHECKED
-            MENUITEM SEPARATOR
-            MENUITEM "ÀÏº»¾î(&J)",                     ID_MODDING_DISPLAYLANGUAGE_JAPANESE
-            MENUITEM "¿µ¾î(&E)",                      ID_MODDING_DISPLAYLANGUAGE_ENGLISH
-            MENUITEM "µ¶ÀÏ¾î(&D)",                     ID_MODDING_DISPLAYLANGUAGE_GERMAN
-            MENUITEM "ÇÁ¶û½º¾î(&F)",                    ID_MODDING_DISPLAYLANGUAGE_FRENCH
-            MENUITEM "Áß±¹¾î(°£Ã¼)(&C)",                 ID_MODDING_DISPLAYLANGUAGE_CHINESESIMPLIFIED
-            MENUITEM "ÇÑ±¹¾î(&K)",                     ID_MODDING_DISPLAYLANGUAGE_KOREAN
-        END
-        POPUP "À½¼º ¾ð¾î °íÁ¤(&A) (64ºñÆ® Àü¿ë)"
-        BEGIN
-            MENUITEM "»ç¿ëÇÏÁö ¾ÊÀ½(&U)",                 ID_MODDING_AUDIOLANGUAGE_DISABLE, CHECKED
-            MENUITEM SEPARATOR
-            MENUITEM "ÀÏº»¾î(&J)",                     ID_MODDING_AUDIOLANGUAGE_JAPANESE
-            MENUITEM "¿µ¾î(&E)",                      ID_MODDING_AUDIOLANGUAGE_ENGLISH
-            MENUITEM "µ¶ÀÏ¾î(&D)",                     ID_MODDING_AUDIOLANGUAGE_GERMAN
-            MENUITEM "ÇÁ¶û½º¾î(&F)",                    ID_MODDING_AUDIOLANGUAGE_FRENCH
-            MENUITEM "Áß±¹¾î(°£Ã¼)(&C)",                 ID_MODDING_AUDIOLANGUAGE_CHINESESIMPLIFIED
-            MENUITEM "ÇÑ±¹¾î(&K)",                     ID_MODDING_AUDIOLANGUAGE_KOREAN
-        END
-        POPUP "¸ñ¼Ò¸® ºÐ·ù À½¼Ò°Å(&V)"
-        BEGIN
-            MENUITEM "ÀüÅõ(&B)",                      ID_MODDING_MUTEVOICE_BATTLE
-            MENUITEM "CM(È¯°æ ¼Ó ¸ñ¼Ò¸®·Î ÃßÃø)(&C)",        ID_MODDING_MUTEVOICE_CM
-            MENUITEM "°¨Á¤ Ç¥Çö(&E)",                   ID_MODDING_MUTEVOICE_EMOTE
-            MENUITEM "ÀüÅõ Áß NPC ´ë»ç(&D)",             ID_MODDING_MUTEVOICE_LINE
-        END
-        MENUITEM SEPARATOR
-        MENUITEM "!! modify MainWindow if this section changes !!", ID_MODDING_SUBMENUMARKER, INACTIVE
-        POPUP "ÆùÆ® º¯°æ(&F)"
-        BEGIN
-            MENUITEM "ÇÁ¸®¼Â ºÒ·¯¿À±â(&I)",                ID_MODDING_CHANGEFONT_IMPORTPRESET
-            MENUITEM "ÇÁ¸®¼Â Æú´õ ¿­±â(&O)",               ID_MODDING_CHANGEFONT_OPENPRESETDIRECTORY
-            MENUITEM SEPARATOR
-            MENUITEM "»ç¿ëÇÏÁö ¾ÊÀ½(&D)",                 ID_MODDING_CHANGEFONT_DISABLE, CHECKED
-            MENUITEM SEPARATOR
-            MENUITEM "(ÇÁ¸®¼Â ÆÄÀÏ ¾øÀ½)",                 ID_MODDING_CHANGEFONT_NOENTRY, INACTIVE
-            MENUITEM "(Example entry)",             ID_MODDING_CHANGEFONT_ENTRY
-        END
-        POPUP "Ãß°¡ °ÔÀÓ ·çÆ® µð·ºÅä¸®(&G)"
-        BEGIN
-            POPUP "Ãß°¡(&A)"
-            BEGIN
-                MENUITEM "Ã£¾Æº¸±â...(&S)",                 ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD_SELECTFOLDER
-                MENUITEM SEPARATOR
-                MENUITEM "(°ÔÀÓ ·çÆ® µð·ºÅä¸® ÀÚµ¿À¸·Î Ã£À» ¼ö ¾øÀ½)",   ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD_EMPTY, INACTIVE
-            END
-            MENUITEM "ºñ¿ì±â(&R)",                     ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_REMOVEALL
-            MENUITEM SEPARATOR
-            MENUITEM "(Ãß°¡ °ÔÀÓ ·çÆ® µð·ºÅä¸® ¾øÀ½)",          ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_NOENTRY, INACTIVE
-            MENUITEM "(Example entry)",             ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ENTRY
-        END
-        POPUP "EXDF(¹®ÀÚ¿­) º¯È¯ ±ÔÄ¢(&X)"
-        BEGIN
-            MENUITEM "±ÔÄ¢ ÆÄÀÏ ºÒ·¯¿À±â(&I)",              ID_MODDING_EXDFTRANSFORMATIONRULES_ADD
-            MENUITEM "ºñ¿ì±â(&R)",                     ID_MODDING_EXDFTRANSFORMATIONRULES_REMOVEALL
-            MENUITEM "±ÔÄ¢ Æú´õ ¿­±â(&O)",                ID_MODDING_EXDFTRANSFORMATIONRULES_OPENPRESETDIRECTORY
-            MENUITEM SEPARATOR
-            MENUITEM "(EXDF º¯È¯ ±ÔÄ¢ ¾øÀ½)",             ID_MODDING_EXDFTRANSFORMATIONRULES_NOENTRY, INACTIVE
-            MENUITEM "(Example entry)",             ID_MODDING_EXDFTRANSFORMATIONRULES_ENTRY
-        END
-        POPUP "À½¾Ç À½Áú Çâ»ó(&M)"
-        BEGIN
-            POPUP "(template entry to be inserted at bottom)"
-            BEGIN
-                MENUITEM "Æú´õ Ãß°¡(&A)",                   ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_ADD
-                MENUITEM "ºñ¿ì±â(&C)",                     ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_CLEAR
-                MENUITEM SEPARATOR
-                MENUITEM "{}¿¡¼­ ±¸¸ÅÇÏ±â(&B)",               ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_BUYFROM
-                MENUITEM SEPARATOR
-                MENUITEM "(¼³Á¤µÈ À½¾Ç ¿øº» Æú´õ ¾øÀ½)",           ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_EMPTY, INACTIVE
-            END
-            MENUITEM "±ÔÄ¢ ºÒ·¯¿À±â(&I)",                 ID_MODDING_REPLACEMUSICS_IMPORT
-            MENUITEM "ºñ¿ì±â(&R)",                     ID_MODDING_REPLACEMUSICS_REMOVEALL
-            MENUITEM "À½¾Ç ÆÄÀÏ º¯È¯ÇÏ±â(&G)",              ID_MODDING_REPLACEMUSICS_GENERATE
-            POPUP "»ùÇÃ¸µ ·¹ÀÌÆ®(&S)"
-            BEGIN
-                MENUITEM "ÃÖ´ë(&H)",                      ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_HIGHESTPOSSIBLE
-                MENUITEM "48KHz(&8)",                   ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_48000
-                MENUITEM "44.1KHz(&4)",                 ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_44100
-            END
-            MENUITEM SEPARATOR
-            MENUITEM "(¼³Á¤µÈ ±ÔÄ¢ ¾øÀ½)",                 ID_MODDING_REPLACEMUSICS_NORULESCONFIGURED, INACTIVE
-            MENUITEM SEPARATOR
-            MENUITEM "(¼³Á¤µÈ À½¾Ç ¿øº» Æú´õ ¾øÀ½)",           ID_MODDING_REPLACEMUSICS_NOSOUCEDIRECTORIESCONFIGURED, INACTIVE
-        END
         POPUP "TexTools ¸ðµåÆÑ(&T)"
         BEGIN
             POPUP "(template entry to be inserted at bottom)"
@@ -1002,9 +769,13 @@ BEGIN
             MENUITEM "¸ðµÎ Á¦°Å(&L)",                   ID_MODDING_TTMP_REMOVEALL
             MENUITEM "¸ñ·Ï ´Ù½Ã ºÒ·¯¿À±â(&R)",              ID_MODDING_TTMP_REFRESH
         END
-        MENUITEM SEPARATOR
-        MENUITEM "±³Ã¼ ÆÄÀÏ Æú´õ ¿­±â(&R)",             ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
-        MENUITEM "TTMPL/TTMPDÆÄÀÏ·Î ³»º¸³»±â(&O)",     ID_MODDING_EXPORTTOTTMP
+        POPUP "¸ñ¼Ò¸® ºÐ·ù À½¼Ò°Å(&V)"
+        BEGIN
+            MENUITEM "ÀüÅõ(&B)",                      ID_MODDING_MUTEVOICE_BATTLE
+            MENUITEM "CM(È¯°æ ¼Ó ¸ñ¼Ò¸®·Î ÃßÃø)(&C)",        ID_MODDING_MUTEVOICE_CM
+            MENUITEM "°¨Á¤ Ç¥Çö(&E)",                   ID_MODDING_MUTEVOICE_EMOTE
+            MENUITEM "ÀüÅõ Áß NPC ´ë»ç(&D)",             ID_MODDING_MUTEVOICE_LINE
+        END
         MENUITEM SEPARATOR
         MENUITEM "°ÔÀÓ Àç½ÃÀÛ±îÁö º¯°æ »çÇ×ÀÌ ¹Ý¿µµÇÁö ¾ÊÀ» ¼öµµ ÀÖ½À´Ï´Ù.", ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
     END
@@ -1256,22 +1027,13 @@ BEGIN
     IDS_HELP_TARGETS        "ºÒ·¯µéÀÌ°Å³ª Á¾·á ½Ã¿¡´Â ÇÁ·Î¼¼½º ID ¶Ç´Â ÇÁ·Î¼¼½º °æ·Î Á¢¹Ì»ç, ½ÇÇà ½Ã¿¡´Â ½ÇÇàÇÒ ÇÁ·Î¼¼½ºÀÇ °æ·ÎÀÔ´Ï´Ù."
     IDS_TITLE_IMPORT_FONTCONFIG_PRESET "ÆùÆ® ÇÁ¸®¼Â ÆÄÀÏ ºÒ·¯¿À±â"
     IDS_TITLE_ADD_EXTERNAL_GAME_DIRECTORY "¿ÜºÎ °ÔÀÓ ¼³Ä¡ Æú´õ Ãß°¡ÇÏ±â"
-    IDS_ERROR_NOT_GAME_DIRECTORY 
-                            "¼±ÅÃÇÑ Æú´õ ""{}"" ´Â °ÔÀÓ Æú´õ°¡ ¾Æ´Õ´Ï´Ù. ""ffxiv_dx11.exe"" ¹× ""ffxiv.exe""°¡ µé¾îÀÖ´Â Æú´õ¸¦ ¼±ÅÃÇØ ÁÖ¼¼¿ä."
     IDS_NOTIFY_TTMP_HAS_CONFIGURATION 
                             "¹æ±Ý ¼³Ä¡ÇÑ TexTools ¸ðµåÆÑ ÆÄÀÏÀº Ãß°¡ ¼³Á¤ÀÌ ÇÊ¿äÇÕ´Ï´Ù. ¸Þ´º¿¡¼­ ¼³Á¤ÇØ ÁÖ¼¼¿ä."
-    IDS_TITLE_GENERATING_EXD_FILES "EXDF ÆÄÀÏ »ý¼º Áß..."
-    IDS_CONFIRM_REMOVE_ADDITIONAL_ROOT 
-                            "°ÔÀÓ ¼³Ä¡ Æú´õ ""{}""¸¦ Ãß°¡ °ÔÀÓ ¼³Ä¡ Æú´õ ¸ñ·Ï¿¡¼­ Á¦¿ÜÇÕ´Ï´Ù."
 END
 
 STRINGTABLE
 BEGIN
-    IDS_CONFIRM_REMOVE_EXCEL_TRANSFORM_CONFIG_FILE 
-                            "¹®ÀÚ¿­ º¯°æ ±ÔÄ¢ ÆÄÀÏ ""{}""À» ±ÔÄ¢ ¸ñ·Ï¿¡¼­ Á¦¿ÜÇÕ´Ï´Ù."
-    IDS_FILTERSPEC_FONTPRESETJSON "ÆùÆ® ÇÁ¸®¼Â JSON ÆÄÀÏ (*.json)"
     IDS_FILTERSPEC_ALLFILES "¸ðµç ÆÄÀÏ (*.*)"
-    IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON "¹®ÀÚ¿­ º¯°æ ±ÔÄ¢ JSON ÆÄÀÏ (*.json)"
     IDS_FILTERSPEC_TTMP     "TexTools ¸ðµåÆÑ ÆÄÀÏ (*.ttmp, *.ttmp2, *.mpl)"
     IDS_CONFIRM_REMOVEALLTTMP """{}"" Æú´õ¿¡ ÀÖ´Â ¸ðµç TexTools ¸ðµåÆÑ ÆÄÀÏÀ» Á¦°ÅÇÕ´Ï´Ù."
     IDS_URL_ISSUES          "https://github.com/Soreepeong/XivAlexander/issues"
@@ -1284,7 +1046,6 @@ BEGIN
     IDS_ERROR_TTMPD_MISSING "¼±ÅÃÇÑ TTMPL.mpl ÆÄÀÏ¿¡ ÇØ´çÇÏ´Â TTMPD.mpd ÆÄÀÏÀ» Ã£À» ¼ö ¾ø½À´Ï´Ù."
     IDS_ERROR_ARCHIVE_MISSING_TTMP 
                             "¼±ÅÃÇÑ ¾ÐÃà ÆÄÀÏÀº TTMPD.mpd, TTMPL.mpl, È¤Àº µÑ ´Ù Æ÷ÇÔÇÏ°í ÀÖÁö ¾Ê½À´Ï´Ù."
-    IDS_RESULT_ADDADDITIONALGAMEROOTDIRECTORY "Ãß°¡ °ÔÀÓ ·çÆ® Æú´õ·Î Ãß°¡ÇÏ¿´½À´Ï´Ù."
     IDS_RESULT_TTMP_INSTALLED "TexTools ¸ðµåÆÑÀ¸·Î ¼³Ä¡ÇÏ¿´½À´Ï´Ù."
 END
 
@@ -1296,7 +1057,6 @@ BEGIN
     IDS_TITLE_COMPRESSING   "¾ÐÃà Áß..."
     IDS_CONFIGURE           "¼³Á¤"
     IDS_ERROR_NO_MATCHING_FILES "ÀÌ Æú´õ ¾È¿¡¼­ Áö¿øÇÏ´Â ÆÄÀÏÀ» Ã£À» ¼ö ¾ø¾ú½À´Ï´Ù."
-    IDS_TITLE_ADD_EXCELTRANSFORMCONFIG "EXDF º¯È¯ ±ÔÄ¢ ÆÄÀÏ ºÒ·¯¿À±â"
     IDS_TITLE_IMPORT_TTMP   "TexTools ¸ðµåÆÑ ÆÄÀÏ °¡Á®¿À±â"
     IDS_TITLE_IMPORTING     "°¡Á®¿À´Â Áß..."
     IDS_UNRECOVERABLEERROR_EXPORTLOG "·Î±× ÀúÀå(&L)"
@@ -1353,10 +1113,6 @@ BEGIN
                             "XivAlexander¸¦ ´ÙÀ½ °æ·Î¿¡ ¼³Ä¡ÇÏ¿´½À´Ï´Ù.\n\n{}"
     IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE 
                             "XivAlexander¸¦ ´ÙÀ½ °æ·Î¿¡¼­ Á¦°ÅÇÏ¿´½À´Ï´Ù.\n\n{}\n\n»ç¿ëÀÚ ¼³Á¤ ÆÄÀÏ µîÀº ¼öµ¿À¸·Î Á¦°ÅÇØ¾ß ÇÕ´Ï´Ù. ¼³Á¤ ÆÄÀÏ ÀúÀå Æú´õ¸¦ Áö±Ý È®ÀÎÇÏ½Ã°Ú½À´Ï±î?"
-    IDS_CONFIRM_UNREGISTERALLADDITIONALGAMEROOTDIRECTORIES 
-                            "¸ðµç Ãß°¡ °ÔÀÓ ·çÆ® Æú´õÀÇ µî·ÏÀ» ÇØÁ¦ÇÕ´Ï´Ù."
-    IDS_CONFIRM_UNREGISTERALLEXCELTRANSFORMATIONRULES 
-                            "¸ðµç EXDF º¯°æ ±ÔÄ¢À» ¸ñ·Ï¿¡¼­ Á¦°ÅÇÕ´Ï´Ù. (ÆÄÀÏÀº »èÁ¦ÇÏÁö ¾Ê½À´Ï´Ù.)"
     IDS_HELP_INSTALL_MODE   "¼³Ä¡ ¸ðµå¸¦ ÁöÁ¤ÇÕ´Ï´Ù. (°¡´ÉÇÑ °ª: d3d (default), dinput8x86, dinput8x64)"
     IDS_ERROR_INVALID_INSTALL_MODE 
                             "¼³Ä¡ ¸ðµå ÁöÁ¤ÀÌ Àß¸øµÇ¾ú½À´Ï´Ù. »ç¿ë °¡´ÉÇÑ °ªÀº d3d, dinput8x86, dinput8x64 ÀÔ´Ï´Ù."
@@ -1374,30 +1130,12 @@ STRINGTABLE
 BEGIN
     IDS_TITLE_INDEXINGFILES "ÆÄÀÏ »öÀÎ Áß... ({1}/{2}): {0}"
     IDS_TITLE_FINALIZING    "ÆÄÀÏ ÁØºñ ¿Ï·á Áß..."
-    IDS_CONFIRM_REMOVE_MUSICIMPORTCONFIG "À½¾Ç º¯È¯ ¼³Á¤ ÆÄÀÏ ""{}""À» ¸ñ·Ï¿¡¼­ Á¦°ÅÇÕ´Ï´Ù."
-    IDS_TITLE_ADD_MUSICDIRECTORY """{}""¿¡ ÇØ´çÇÏ´Â ¿øº» À½¾Ç Æú´õ ¼±ÅÃÇÏ±â"
-    IDS_CONFIRM_REMOVE_MUSICSOURCEDIRECTORY 
-                            "¿øº» À½¾Ç Æú´õ ""{}""À» ""{}""ÀÇ ¸ñ·Ï¿¡¼­ Á¦°ÅÇÕ´Ï´Ù."
-    IDS_CONFIRM_UNREGISTERALLMUSICSOURCEDIRECTORIES 
-                            "¸ðµç ¿øº» À½¾Ç Æú´õ¸¦ ""{}""ÀÇ ¸ñ·Ï¿¡¼­ Á¦°ÅÇÕ´Ï´Ù."
-    IDS_TITLE_ADD_MUSICIMPORTCONFIG "À½¾Ç º¯È¯ ¼³Á¤ ÆÄÀÏ ¼±ÅÃÇÏ±â"
-    IDS_CONFIRM_UNREGISTERALLMUSICIMPORTCONFIG 
-                            "¸ðµç À½¾Ç º¯È¯ ¼³Á¤ ÆÄÀÏÀ» Á¦°ÅÇÕ´Ï´Ù. (ÆÄÀÏÀº »èÁ¦ÇÏÁö ¾Ê½À´Ï´Ù.)"
     IDS_ERROR_MODDINGACTIVEREQUIRED "¸ðµùÀÌ ÄÑÁ® ÀÖ¾î¾ß »ç¿ëÇÒ ¼ö ÀÖ´Â ±â´ÉÀÔ´Ï´Ù."
     IDS_ERROR_CANCELLING_TRYAGAINLATER "¸¶Áö¸· ÀÛ¾÷À» Ãë¼Ò ÁßÀÔ´Ï´Ù. Àá½Ã ÈÄ ´Ù½Ã ½ÃµµÇØ ÁÖ¼¼¿ä."
-    IDS_TITLE_MUSICIMPORTPROGRESS "À½¾Ç ÆÄÀÏÀ» º¯È¯ Áß... ({1}/{2}): {0}"
-    IDS_FFMPEGREQUIRED_CONTENT 
-                            "ÀÌ ÀÛ¾÷À» À§ÇØ¼­´Â FFmpeg°¡ ÇÊ¿äÇÕ´Ï´Ù. ´Ù¿î·Îµå ÈÄ ¾Æ·¡ ¹öÆ°À¸·Î ¿­ ¼ö ÀÖ´Â Æú´õ¿¡ ffmpeg.exeÇÏ°í ffprobe.exe¸¦ º¹»çÇØ ³Ö¾î ÁÖ¼¼¿ä.\n\nWindows builds ¾ÈÀÌ¶ó¸é gyan.dev³ª BtbN³ª ¾î¶² ¼±ÅÃÁö¸¦ ½áµµ »ó°ü ¾ø½À´Ï´Ù. ""full"" ¶Ç´Â ""gpl"" ¹öÀüÀ» ´Ù¿î·Îµå¹Þ¾Æ ÁÖ¼¼¿ä."
-    IDS_FFMPEGREQUIRED_MAININSTRUCTIONS "FFmpeg ¼³Ä¡ÇÏ±â"
-    IDS_FFMPEGREQUIRED_OPENDOWNLOADSITE "´Ù¿î·Îµå À¥ÆäÀÌÁö ¿­±â"
-    IDS_FFMPEGREQUIRED_OPENTARGETDIR "Æú´õ ¿­±â"
-    IDS_FFMPEGREQUIRED_CONFIRMINSTALLATION "¼³Ä¡ ¿©ºÎ È®ÀÎ"
 END
 
 STRINGTABLE
 BEGIN
-    IDS_FFMPEGREQUIRED_NOTFOUND """{}"" ÆÄÀÏÀ» Ã£À» ¼ö ¾ø½À´Ï´Ù."
-    IDS_ERROR_GENERATEFONT2 "EXDF ÆÄÀÏ »ý¼º/ºÒ·¯¿À±â Áß ¿À·ù°¡ ¹ß»ýÇß½À´Ï´Ù. ´Ù½Ã ½ÃµµÇÏ½Ã°Ú½À´Ï±î?\n\n¿À·ù: {}"
     IDS_TITLE_EXPORTTTMPDIRECTORY "TTMPL/TTMPD ÆÄÀÏÀ» ÀúÀåÇÒ °æ·Î ¼±ÅÃÇÏ±â"
     IDS_TITLE_EXPORTTTMPPROGRESS "TTMP ÆÄÀÏ·Î ³»º¸³»´Â Áß... ({1}/{2}): {0}"
     IDS_UPDATE_CONFIRM_NOAUTO 
@@ -1584,109 +1322,6 @@ BEGIN
     BEGIN
         MENUITEM "&Enable",                     ID_MODDING_ENABLE
         MENUITEM SEPARATOR
-        MENUITEM "Log All &Path Plaintext Before Hash\t(Ctrl+Alt+)K", ID_MODDING_LOGALLHASHKEYS
-        MENUITEM "Log All F&ile Access",        ID_MODDING_LOGALLFILEACCESS
-        MENUITEM "&Compress Whenever Possible", ID_MODDING_COMPRESSWHENEVERPOSSIBLE
-        MENUITEM SEPARATOR
-        POPUP "Fallback &Language Priority"
-        BEGIN
-            MENUITEM "Click on an item to bring to the top.", ID_MODDING_FALLBACKLANGUAGEPRIORITY_GUIDE, INACTIVE
-            MENUITEM SEPARATOR
-            MENUITEM "(entry 1)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1
-            MENUITEM "(entry 2)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY2
-            MENUITEM "(entry 3)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY3
-            MENUITEM "(entry 4)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY4
-            MENUITEM "(entry 5)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY5
-            MENUITEM "(entry 6)",                   ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY6
-        END
-        POPUP "Force &Display Language (x64 only)"
-        BEGIN
-            MENUITEM "&Disable",                    ID_MODDING_DISPLAYLANGUAGE_DISABLE, CHECKED
-            MENUITEM SEPARATOR
-            MENUITEM "&Japanese",                   ID_MODDING_DISPLAYLANGUAGE_JAPANESE
-            MENUITEM "&English",                    ID_MODDING_DISPLAYLANGUAGE_ENGLISH
-            MENUITEM "&German",                     ID_MODDING_DISPLAYLANGUAGE_GERMAN
-            MENUITEM "&French",                     ID_MODDING_DISPLAYLANGUAGE_FRENCH
-            MENUITEM "&Chinese (Simplified)",       ID_MODDING_DISPLAYLANGUAGE_CHINESESIMPLIFIED
-            MENUITEM "&Korean",                     ID_MODDING_DISPLAYLANGUAGE_KOREAN
-        END
-        POPUP "Force &Audio Language (x64 only)"
-        BEGIN
-            MENUITEM "&Disable",                    ID_MODDING_AUDIOLANGUAGE_DISABLE, CHECKED
-            MENUITEM SEPARATOR
-            MENUITEM "&Japanese",                   ID_MODDING_AUDIOLANGUAGE_JAPANESE
-            MENUITEM "&English",                    ID_MODDING_AUDIOLANGUAGE_ENGLISH
-            MENUITEM "&German",                     ID_MODDING_AUDIOLANGUAGE_GERMAN
-            MENUITEM "&French",                     ID_MODDING_AUDIOLANGUAGE_FRENCH
-            MENUITEM "&Chinese (Simplified)",       ID_MODDING_AUDIOLANGUAGE_CHINESESIMPLIFIED
-            MENUITEM "&Korean",                     ID_MODDING_AUDIOLANGUAGE_KOREAN
-        END
-        POPUP "Mute &Voice"
-        BEGIN
-            MENUITEM "&Battle",                     ID_MODDING_MUTEVOICE_BATTLE
-            MENUITEM "&CM (Probably environmental voices)", ID_MODDING_MUTEVOICE_CM
-            MENUITEM "&Emote",                      ID_MODDING_MUTEVOICE_EMOTE
-            MENUITEM "NPC &Dialogue During Battle", ID_MODDING_MUTEVOICE_LINE
-        END
-        MENUITEM SEPARATOR
-        MENUITEM "!! modify MainWindow if this section changes !!", ID_MODDING_SUBMENUMARKER, INACTIVE
-        POPUP "Change &Font"
-        BEGIN
-            MENUITEM "&Import Preset",              ID_MODDING_CHANGEFONT_IMPORTPRESET
-            MENUITEM "&Open Preset Directory",      ID_MODDING_CHANGEFONT_OPENPRESETDIRECTORY
-            MENUITEM SEPARATOR
-            MENUITEM "&Disable",                    ID_MODDING_CHANGEFONT_DISABLE, CHECKED
-            MENUITEM SEPARATOR
-            MENUITEM "(No font configuration found)", ID_MODDING_CHANGEFONT_NOENTRY, INACTIVE
-            MENUITEM "(Example entry)",             ID_MODDING_CHANGEFONT_ENTRY
-        END
-        POPUP "Additional &Game Root Directories"
-        BEGIN
-            POPUP "&Add"
-            BEGIN
-                MENUITEM "&Select folder...",           ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD_SELECTFOLDER
-                MENUITEM SEPARATOR
-                MENUITEM "(Game installation could not be automatically detected)", 40465, INACTIVE
-            END
-            MENUITEM "&Remove All",                 ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_REMOVEALL
-            MENUITEM SEPARATOR
-            MENUITEM "(No additional game root directories configured)", ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_NOENTRY, INACTIVE
-            MENUITEM "(Example entry)",             ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ENTRY
-        END
-        POPUP "E&XDF(Text) Transformation Rules"
-        BEGIN
-            MENUITEM "&Import",                     ID_MODDING_EXDFTRANSFORMATIONRULES_ADD
-            MENUITEM "&Remove All",                 ID_MODDING_EXDFTRANSFORMATIONRULES_REMOVEALL
-            MENUITEM "&Open Preset Directory",      ID_MODDING_EXDFTRANSFORMATIONRULES_OPENPRESETDIRECTORY
-            MENUITEM SEPARATOR
-            MENUITEM "(No EXDF transformation rules configured)", ID_MODDING_EXDFTRANSFORMATIONRULES_NOENTRY, INACTIVE
-            MENUITEM "(Example entry)",             ID_MODDING_EXDFTRANSFORMATIONRULES_ENTRY
-        END
-        POPUP "Upgrade &Music Quality"
-        BEGIN
-            POPUP "(template entry to be inserted at bottom)"
-            BEGIN
-                MENUITEM "&Add Directories",            ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_ADD
-                MENUITEM "&Clear",                      ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_CLEAR
-                MENUITEM SEPARATOR
-                MENUITEM "&Buy from {}",                ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_BUYFROM
-                MENUITEM SEPARATOR
-                MENUITEM "(No source directory configured)", ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_EMPTY, INACTIVE
-            END
-            MENUITEM "&Import Rules",               ID_MODDING_REPLACEMUSICS_IMPORT
-            MENUITEM "&Remove All Rules",           ID_MODDING_REPLACEMUSICS_REMOVEALL
-            MENUITEM "&Generate Music Files",       ID_MODDING_REPLACEMUSICS_GENERATE
-            POPUP "&Sampling Rate"
-            BEGIN
-                MENUITEM "&Highest possible",           ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_HIGHESTPOSSIBLE
-                MENUITEM "4&8KHz",                      ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_48000
-                MENUITEM "4&4.1KHz",                    ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_44100
-            END
-            MENUITEM SEPARATOR
-            MENUITEM "(No rules configured)",       ID_MODDING_REPLACEMUSICS_NORULESCONFIGURED, INACTIVE
-            MENUITEM SEPARATOR
-            MENUITEM "(No source directories configured)", ID_MODDING_REPLACEMUSICS_NOSOUCEDIRECTORIESCONFIGURED, INACTIVE
-        END
         POPUP "&TexTools ModPacks"
         BEGIN
             POPUP "(template entry to be inserted at bottom)"
@@ -1713,9 +1348,17 @@ BEGIN
             MENUITEM "&Open Directory",             ID_MODDING_TTMP_OPENDIRECTORY
             MENUITEM "&Refresh",                    ID_MODDING_TTMP_REFRESH
         END
-        MENUITEM SEPARATOR
         MENUITEM "Open &Replacement File Entries Directory", ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
         MENUITEM "Exp&ort to TTMPL/TTMPD Files", ID_MODDING_EXPORTTOTTMP
+        MENUITEM SEPARATOR
+        MENUITEM "Log All F&ile Access",        ID_MODDING_LOGALLFILEACCESS
+        POPUP "Mute &Voice"
+        BEGIN
+            MENUITEM "&Battle",                     ID_MODDING_MUTEVOICE_BATTLE
+            MENUITEM "&CM (Probably environmental voices)", ID_MODDING_MUTEVOICE_CM
+            MENUITEM "&Emote",                      ID_MODDING_MUTEVOICE_EMOTE
+            MENUITEM "NPC &Dialogue During Battle", ID_MODDING_MUTEVOICE_LINE
+        END
         MENUITEM SEPARATOR
         MENUITEM "Anything here will not be fully applied until game restart.", ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
     END
@@ -1880,11 +1523,11 @@ IDR_TRAY_ACCELERATOR ACCELERATORS
 BEGIN
     "O",            ID_CONFIGURE_EDITOPCODECONFIGURATION, VIRTKEY, NOINVERT
     "R",            ID_CONFIGURE_EDITRUNTIMECONFIGURATION, VIRTKEY, NOINVERT
+    VK_F5,          ID_CONFIGURE_RELOAD,    VIRTKEY, NOINVERT
     "U",            ID_FILE_CHECKFORUPDATES, VIRTKEY, CONTROL, NOINVERT
     "W",            ID_FILE_SHOWCONTROLWINDOW, VIRTKEY, CONTROL, NOINVERT
     "L",            ID_FILE_SHOWLOGGINGWINDOW, VIRTKEY, NOINVERT
     "Q",            ID_FILE_UNLOADXIVALEXANDER, VIRTKEY, CONTROL, NOINVERT
-    "K",            ID_MODDING_LOGALLHASHKEYS, VIRTKEY, NOINVERT
     "H",            ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE, VIRTKEY, NOINVERT
     "P",            ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE, VIRTKEY, CONTROL, NOINVERT
     "E",            ID_NETWORK_HIGHLATENCYMITIGATION_USEEARLYPENALTY, VIRTKEY, CONTROL, NOINVERT
@@ -1902,7 +1545,6 @@ BEGIN
     "A",            ID_RESTART_USEELEVATION, VIRTKEY, NOINVERT
     "P",            ID_RESTART_USEPARAMETEROBFUSCATION, VIRTKEY, NOINVERT
     "X",            ID_RESTART_USEXIVALEXANDER, VIRTKEY, NOINVERT
-    VK_F5,          ID_CONFIGURE_RELOAD,    VIRTKEY, NOINVERT
     "T",            ID_VIEW_ALWAYSONTOP,    VIRTKEY, CONTROL, NOINVERT
 END
 
@@ -1910,13 +1552,13 @@ IDR_TRAY_GLOBAL_ACCELERATOR ACCELERATORS
 BEGIN
     "O",            ID_CONFIGURE_EDITOPCODECONFIGURATION, VIRTKEY, CONTROL, ALT, NOINVERT
     "R",            ID_CONFIGURE_EDITRUNTIMECONFIGURATION, VIRTKEY, CONTROL, ALT, NOINVERT
+    VK_F5,          ID_CONFIGURE_RELOAD,    VIRTKEY, SHIFT, CONTROL, NOINVERT
     "U",            ID_FILE_CHECKFORUPDATES, VIRTKEY, CONTROL, ALT, NOINVERT
     "Q",            ID_FILE_FORCEEXITGAME,  VIRTKEY, SHIFT, CONTROL, NOINVERT
     "W",            ID_FILE_SHOWCONTROLWINDOW, VIRTKEY, CONTROL, ALT, NOINVERT
     "L",            ID_FILE_SHOWLOGGINGWINDOW, VIRTKEY, SHIFT, CONTROL, NOINVERT
     "Q",            ID_FILE_UNLOADXIVALEXANDER, VIRTKEY, CONTROL, ALT, NOINVERT
     VK_F1,          ID_GLOBAL_SHOW_TRAYMENU, VIRTKEY, NOINVERT
-    "K",            ID_MODDING_LOGALLHASHKEYS, VIRTKEY, SHIFT, CONTROL, NOINVERT
     "H",            ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE, VIRTKEY, SHIFT, CONTROL, NOINVERT
     "P",            ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE, VIRTKEY, CONTROL, ALT, NOINVERT
     "E",            ID_NETWORK_HIGHLATENCYMITIGATION_USEEARLYPENALTY, VIRTKEY, CONTROL, ALT, NOINVERT
@@ -1935,7 +1577,6 @@ BEGIN
     "A",            ID_RESTART_USEELEVATION, VIRTKEY, SHIFT, CONTROL, NOINVERT
     "P",            ID_RESTART_USEPARAMETEROBFUSCATION, VIRTKEY, SHIFT, CONTROL, NOINVERT
     "X",            ID_RESTART_USEXIVALEXANDER, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    VK_F5,          ID_CONFIGURE_RELOAD,    VIRTKEY, SHIFT, CONTROL, NOINVERT
     "T",            ID_VIEW_ALWAYSONTOPGAME, VIRTKEY, SHIFT, CONTROL, NOINVERT
 END
 
@@ -2027,7 +1668,6 @@ BEGIN
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "Runtime Configuration Editor"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcode Configuration Editor"
     IDS_WINDOW_LOG          "Log Viewer"
-    IDS_TITLE_GENERATING_FONTS "Generating font files..."
     IDS_LANGUAGE_NAME_ENGLISH "English"
     IDS_LANGUAGE_NAME_JAPANESE "Japanese"
     IDS_LANGUAGE_NAME_GERMAN "German"
@@ -2096,27 +1736,15 @@ BEGIN
     IDS_HELP_DISABLE_RUNAS  "disable run as administrator"
     IDS_HELP_INTERNAL_USE_ONLY "internal use only. Do not use."
     IDS_HELP_TARGETS        "List of target process ID or path suffix if loading. Path of program to execute if launching."
-    IDS_TITLE_IMPORT_FONTCONFIG_PRESET 
-                            "Select font config preset file to import"
-    IDS_TITLE_ADD_EXTERNAL_GAME_DIRECTORY "Select external game directory"
     IDS_ERROR_NOT_GAME_DIRECTORY 
                             "Selected path ""{}"" does not seem to be a game directory. A game directory should have ""ffxiv.exe"" and ""ffxiv_dx11.exe"" in it."
     IDS_NOTIFY_TTMP_HAS_CONFIGURATION 
                             "Installed TexTools ModPack file has user configurable settings attached to it. Use menu to change settings."
-    IDS_TITLE_GENERATING_EXD_FILES 
-                            "Generating merged exd files (string tables)..."
-    IDS_CONFIRM_REMOVE_ADDITIONAL_ROOT 
-                            "Continue removing additional game root folder ""{}""?\n\nThis will not delete the files in the folder."
 END
 
 STRINGTABLE
 BEGIN
-    IDS_CONFIRM_REMOVE_EXCEL_TRANSFORM_CONFIG_FILE 
-                            "Continue removing excel transform configuration file ""{}"" from the list?\n\nThis will not delete the file."
-    IDS_FILTERSPEC_FONTPRESETJSON "Font preset JSON files (*.json)"
     IDS_FILTERSPEC_ALLFILES "All files (*.*)"
-    IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON 
-                            "Excel transformation configuration JSON files (*.json)"
     IDS_FILTERSPEC_TTMP     "Process ID: {}\nGame Path: {}\nArguments: {}\nGame Release: {} ({})\nMessage Pump: {:06}+{:06}us ({}/s)\nRender Time: {:06}+{:06}us ({}/s if without FPS limits)\n\n{}"
     IDS_CONFIRM_REMOVEALLTTMP 
                             "Do you want to remove all TexTools ModPacks in ""{}""?"
@@ -2134,16 +1762,11 @@ BEGIN
     IDS_ERROR_TTMPD_MISSING "Cannot find companion file TTMPD.mpd to selected TTMPL.mpl file."
     IDS_ERROR_ARCHIVE_MISSING_TTMP 
                             "Selected archive file does not contain TTMPD.mpd and/or TTMPL.mpl files."
-    IDS_RESULT_ADDADDITIONALGAMEROOTDIRECTORY 
-                            "Added to additional game root directory."
     IDS_RESULT_TTMP_INSTALLED "Installed as a TexTools ModPack."
 END
 
 STRINGTABLE
 BEGIN
-    IDS_RESULT_EXCELCONFIGFILE_INSTALLED 
-                            "Installed as an excel transform configuration file."
-    IDS_RESULT_FONTCONFIG_INSTALLED "Installed as a font config file."
     IDS_ERROR_UNSUPPORTED_FILE_TYPE "Unsupported file type."
     IDS_TITLE_COMPRESSING   "Compressing data..."
     IDS_CONFIGURE           "Configure"
@@ -2208,10 +1831,6 @@ BEGIN
                             "XivAlexander is now installed for {}."
     IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE 
                             "XivAlexander is now uninstalled from {}.\nFor complete removal of files, you will have to remove configuration files manually. Do you want to open the configuration folder?"
-    IDS_CONFIRM_UNREGISTERALLADDITIONALGAMEROOTDIRECTORIES 
-                            "Continue unregistering all additional game root directories?"
-    IDS_CONFIRM_UNREGISTERALLEXCELTRANSFORMATIONRULES 
-                            "Continue unregistering all EXDF transformation rules?"
     IDS_HELP_INSTALL_MODE   "specify install mode (possible values: d3d (default), dinput8x86, dinput8x64)"
     IDS_ERROR_INVALID_INSTALL_MODE 
                             "Invalid install mode specified. Accepted values are d3d, dinput8x86, and dinput8x64."
@@ -2219,9 +1838,6 @@ BEGIN
                             "&Install XivAlexander as dinput8.dll for DirectX 9 version\nInstall XivAlexander for the selected game installation in DirectX 9 version, taking place of dinput8.dll."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X64 
                             "&Install XivAlexander as dinput8.dll for DirectX 11 version\nInstall XivAlexander for the selected game installation in DirectX 11 version, taking place of dinput8.dll."
-    IDS_ERROR_GENERATEFONT  "An error has occurred while generating or loading fonts. Do you want to retry?\n\nError: {}"
-    IDS_GENERATEFONT_FONTINSTALLATIONREQUIRED "Font installation required"
-    IDS_GENERATEFONT_CHECKAGAIN "Check again"
     IDS_TITLE_DISCOVERINGFILES "Discovering files..."
 END
 
@@ -2229,32 +1845,14 @@ STRINGTABLE
 BEGIN
     IDS_TITLE_INDEXINGFILES "Indexing files... ({1}/{2}): {0}"
     IDS_TITLE_FINALIZING    "Finalizing..."
-    IDS_CONFIRM_REMOVE_MUSICIMPORTCONFIG 
-                            "Continue removing music import configuration file ""{}"" from the list?\n\nThis will not delete the file."
-    IDS_TITLE_ADD_MUSICDIRECTORY "Select music source directory for ""{}"""
-    IDS_CONFIRM_REMOVE_MUSICSOURCEDIRECTORY 
-                            "Continue removing music source directory ""{}"" from the list for ""{}""?\n\nThis will not delete the file."
-    IDS_CONFIRM_UNREGISTERALLMUSICSOURCEDIRECTORIES 
-                            "Continue unregistering all music source directories for ""{}""?"
-    IDS_TITLE_ADD_MUSICIMPORTCONFIG "Select music import configuration file"
-    IDS_CONFIRM_UNREGISTERALLMUSICIMPORTCONFIG 
-                            "Continue unregistering all music import configuration files?"
     IDS_ERROR_MODDINGACTIVEREQUIRED 
                             "Modding must be active to use this feature."
     IDS_ERROR_CANCELLING_TRYAGAINLATER 
                             "Cancelling previous operation. Please try again later."
-    IDS_TITLE_MUSICIMPORTPROGRESS "Encoding files... ({1}/{2}): {0}"
-    IDS_FFMPEGREQUIRED_CONTENT 
-                            "FFmpeg is required for this operation. Please download and copy ffmpeg.exe and ffprobe.exe into the directory accessible from the button below.\n\nYou can use either gyan.dev or BtbN Windows builds. Use ""full"" or ""gpl"" version when you are given options with which file to download."
-    IDS_FFMPEGREQUIRED_MAININSTRUCTIONS "Install FFmpeg"
-    IDS_FFMPEGREQUIRED_OPENDOWNLOADSITE "Open Webpage"
-    IDS_FFMPEGREQUIRED_OPENTARGETDIR "Open Directory"
-    IDS_FFMPEGREQUIRED_CONFIRMINSTALLATION "Confirm Installation"
 END
 
 STRINGTABLE
 BEGIN
-    IDS_FFMPEGREQUIRED_NOTFOUND """{}"" could not be found."
     IDS_ERROR_GENERATESTRINGTABLES 
                             "An error has occurred while generating or loading string tables. Do you want to retry?\n\nError: {}"
     IDS_TITLE_EXPORTTTMPDIRECTORY "Select a folder to save TTMPL/TTMPD files"

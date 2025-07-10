@@ -62,18 +62,8 @@
 #include <curlpp/cURLpp.hpp>
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
-#include <freetype/freetype.h>
 #include <nlohmann/json.hpp>
 #include <srell.hpp>
-#include <vorbis/codec.h>
-#include <vorbis/vorbisenc.h>
-
-// FreeType
-#include <ft2build.h>
-#include FT_FREETYPE_H
-#include FT_BITMAP_H
-#include FT_GLYPH_H
-#include FT_OUTLINE_H
 
 #pragma warning(pop)
 

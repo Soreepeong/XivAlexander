@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "Config.h"
 
-#include <XivAlexanderCommon/Sqex/Sound/MusicImporter.h>
 #include <XivAlexanderCommon/Utils/Win32/Process.h>
 #include <XivAlexanderCommon/Utils/Win32/Resource.h>
 
@@ -129,29 +128,6 @@ XivAlexander::Config::RuntimeRepository::RuntimeRepository(__in_opt const Config
 		Utils::Win32::Error::SetDefaultLanguageId(GetLangId());
 		});
 
-	m_cleanup += MusicImportConfig.AddAndCallOnChange([&]() {
-		std::set<std::string> newKeys;
-		m_musicDirectoryPurchaseWebsites.clear();
-		for (const auto& path : MusicImportConfig.Value()) {
-			try {
-				const auto importConfig = Utils::ParseJsonFromFile(TranslatePath(path)).get<Sqex::Sound::MusicImportConfig>();
-				for (const auto& [dirName, dirInfo] : importConfig.searchDirectories) {
-					m_musicDirectoryPurchaseWebsites[dirName].insert(dirInfo.purchaseLinks.begin(), dirInfo.purchaseLinks.end());
-					if (!MusicImportConfig_Directories.Value().contains(dirName))
-						newKeys.insert(dirName);
-				}
-			} catch (...) {
-				// pass
-			}
-		}
-		if (!newKeys.empty()) {
-			auto newValue{ MusicImportConfig_Directories.Value() };
-			for (const auto& newKey : newKeys)
-				newValue[newKey].clear();
-			MusicImportConfig_Directories = newValue;
-		}
-		});
-
 	m_cleanup += SynchronizeProcessing.AddAndCallOnChange([&]() { UseMainThreadTimingHandler = SynchronizeProcessing || LockFramerateAutomatic || LockFramerateInterval; });
 	m_cleanup += LockFramerateAutomatic.AddAndCallOnChange([&]() { UseMainThreadTimingHandler = SynchronizeProcessing || LockFramerateAutomatic || LockFramerateInterval; });
 	m_cleanup += LockFramerateInterval.AddAndCallOnChange([&]() { UseMainThreadTimingHandler = SynchronizeProcessing || LockFramerateAutomatic || LockFramerateInterval; });
@@ -222,26 +198,6 @@ std::vector<std::pair<WORD, std::string>> XivAlexander::Config::RuntimeRepositor
 		res.emplace_back(languageId, Utils::ToUtf8(buf));
 	}
 	return res;
-}
-
-std::vector<Sqex::Language> XivAlexander::Config::RuntimeRepository::GetFallbackLanguageList() const {
-	std::vector<Sqex::Language> result;
-	for (const auto lang : FallbackLanguagePriority.Value()) {
-		if (std::ranges::find(result, lang) == result.end() && lang != Sqex::Language::ChineseTraditional && lang != Sqex::Language::Unspecified)
-			result.push_back(lang);
-	}
-	for (const auto lang : {
-			Sqex::Language::Japanese,
-			Sqex::Language::English,
-			Sqex::Language::German,
-			Sqex::Language::French,
-			Sqex::Language::ChineseSimplified,
-			Sqex::Language::Korean,
-		}) {
-		if (std::ranges::find(result, lang) == result.end())
-			result.push_back(lang);
-	}
-	return result;
 }
 
 uint64_t XivAlexander::Config::RuntimeRepository::CalculateLockFramerateIntervalUs(double fromFps, double toFps, uint64_t gcdUs, uint64_t renderIntervalDeviation) {

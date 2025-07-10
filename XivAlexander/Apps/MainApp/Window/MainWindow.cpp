@@ -1,10 +1,7 @@
 ﻿#include "pch.h"
 #include "Apps/MainApp/Window/MainWindow.h"
 
-#include <XivAlexander/XivAlexander.h>
 #include <XivAlexanderCommon/Sqex/CommandLine.h>
-#include <XivAlexanderCommon/Sqex/FontCsv/CreateConfig.h>
-#include <XivAlexanderCommon/Sqex/Sound/MusicImporter.h>
 #include <XivAlexanderCommon/Sqex/Sqpack/BinaryEntryProvider.h>
 #include <XivAlexanderCommon/Sqex/Sqpack/EmptyOrObfuscatedEntryProvider.h>
 #include <XivAlexanderCommon/Sqex/Sqpack/ModelEntryProvider.h>
@@ -22,7 +19,6 @@
 #include "Apps/MainApp/Window/ConfigWindow.h"
 #include "Apps/MainApp/Window/Dialog/FramerateLockingDialog.h"
 #include "Apps/MainApp/Window/ProgressPopupWindow.h"
-#include "Misc/ExcelTransformConfig.h"
 #include "Misc/GameInstallationDetector.h"
 #include "Misc/Logger.h"
 #include "resource.h"
@@ -59,7 +55,7 @@ static WNDCLASSEXW WindowClass() {
 }
 
 XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(Apps::MainApp::App& app, std::function<void()> unloadFunction)
-	: BaseWindow(WindowClass(), nullptr, WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, 480, 160, nullptr, nullptr)
+	: BaseWindow(WindowClass(), nullptr, WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr)
 	, m_app(app)
 	, m_triggerUnload(std::move(unloadFunction))
 	, m_uTaskbarRestartMessage(RegisterWindowMessageW(L"TaskbarCreated"))
@@ -108,6 +104,8 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(Apps::MainApp::App& 
 
 	RegisterTrayIcon();
 
+	SetWindowPos(m_hWnd, nullptr, 0, 0, static_cast<int>(480 * GetZoom()), static_cast<int>(160 * GetZoom()), SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+
 	// Try to restore tray icon every 5 seconds in case things go wrong
 	SetTimer(m_hWnd, TimerIdReregisterTrayIcon, 5000, nullptr);
 
@@ -126,21 +124,6 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(Apps::MainApp::App& 
 		ShowWindow(m_hWnd, SW_SHOW);
 		SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexMainWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 	}
-	m_cleanup += m_config->Runtime.AdditionalSqpackRootDirectories.OnChange([this]() {
-		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
-		});
-	m_cleanup += m_config->Runtime.ExcelTransformConfigFiles.OnChange([this]() {
-		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
-		});
-	m_cleanup += m_config->Runtime.OverrideFontConfig.OnChange([this]() {
-		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
-		});
-	m_cleanup += m_config->Runtime.MusicImportConfig.OnChange([this]() {
-		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
-		});
-	m_cleanup += m_config->Runtime.MusicImportConfig_Directories.OnChange([this]() {
-		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
-		});
 	m_cleanup += m_config->Runtime.TtmpShowDedicatedMenu.OnChange([this]() {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
@@ -427,23 +410,12 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu() {
 
 		const auto hModMenu = GetSubMenu(menu, 3);
 		const auto hOuterTtmpMenu = GetSubMenu(menu, 4);
-
-		int index = 0;
-		for (const auto menuItemCount = GetMenuItemCount(hModMenu); index < menuItemCount; index++) {
-			if (GetMenuItemID(hModMenu, index) == ID_MODDING_SUBMENUMARKER)
-				break;
-		}
-		DeleteMenu(hModMenu, index, MF_BYPOSITION);
-		const auto hFontConfigMenu = GetSubMenu(hModMenu, index++);
-		const auto hAdditionalSqpackRootDirectoriesMenu = GetSubMenu(hModMenu, index++);
-		const auto hExdfTransformationRulesMenu = GetSubMenu(hModMenu, index++);
-		const auto hUpgradeMusicQualityMenu = GetSubMenu(hModMenu, index++);
-		const auto hInnerTtmpMenu = GetSubMenu(hModMenu, index++);
+		const auto hInnerTtmpMenu = GetSubMenu(hModMenu, 2);
 
 		if (m_config->Runtime.TtmpShowDedicatedMenu) {
 			while (GetMenuItemCount(hOuterTtmpMenu))
 				DeleteMenu(hOuterTtmpMenu, 0, MF_BYPOSITION);
-			for (index = 0; index < GetMenuItemCount(hInnerTtmpMenu); ++index) {
+			for (int index = 0; index < GetMenuItemCount(hInnerTtmpMenu); ++index) {
 				MENUITEMINFOW mii = {
 					.cbSize = sizeof mii,
 					.fMask = MIIM_TYPE,
@@ -458,10 +430,6 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu() {
 			DeleteMenu(menu, 4, MF_BYPOSITION);
 		}
 
-		RepopulateMenu_FontConfig(hFontConfigMenu);
-		RepopulateMenu_AdditionalSqpackRootDirectories(hAdditionalSqpackRootDirectoriesMenu);
-		RepopulateMenu_ExdfTransformationRules(hExdfTransformationRulesMenu);
-		RepopulateMenu_UpgradeMusicQuality(hUpgradeMusicQualityMenu);
 		RepopulateMenu_Ttmp(hInnerTtmpMenu, hOuterTtmpMenu);
 	}
 
@@ -487,209 +455,6 @@ std::wstring XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_Get
 	std::wstring res(static_cast<size_t>(1) + GetMenuStringW(hParentMenu, commandId, nullptr, 0, MF_BYCOMMAND), '\0');
 	GetMenuStringW(hParentMenu, commandId, &res[0], static_cast<int>(res.size()), MF_BYCOMMAND);
 	return res;
-}
-
-void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_FontConfig(HMENU hParentMenu) {
-	const auto currentConfig = m_config->TranslatePath(m_config->Runtime.OverrideFontConfig.Value());
-
-	auto count = 0;
-	bool foundEq = false;
-	try {
-		for (const auto& entry : std::filesystem::directory_iterator(m_config->Init.ResolveConfigStorageDirectoryPath() / "FontConfig")) {
-			auto lower = entry.path().wstring();
-			CharLowerW(&lower[0]);
-			if (!lower.ends_with(L".json") || entry.is_directory())
-				continue;
-			auto eq = false;
-			try {
-				eq = equivalent(entry.path(), currentConfig);
-				foundEq |= eq;
-			} catch (...) {
-				// pass
-			}
-			AppendMenuW(hParentMenu, MF_STRING | (eq ? MF_CHECKED : 0), RepopulateMenu_AllocateMenuId([this, path = entry.path()]() {
-				m_config->Runtime.OverrideFontConfig = path;
-			}), entry.path().filename().wstring().c_str());
-			count++;
-		}
-	} catch (const std::filesystem::filesystem_error&) {
-		// pass
-	}
-	if (!foundEq && !currentConfig.empty()) {
-		AppendMenuW(hParentMenu, MF_STRING | MF_CHECKED, RepopulateMenu_AllocateMenuId([]() { /* do nothing */ }), currentConfig.wstring().c_str());
-		count++;
-	}
-	if (count)
-		DeleteMenu(hParentMenu, ID_MODDING_CHANGEFONT_NOENTRY, MF_BYCOMMAND);
-	DeleteMenu(hParentMenu, ID_MODDING_CHANGEFONT_ENTRY, MF_BYCOMMAND);
-}
-
-void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_AdditionalSqpackRootDirectories(HMENU hParentMenu) {
-	auto count = 0;
-	std::set existing{ m_gameReleaseInfo.GamePath() };
-	for (const auto& additionalRoot : m_config->Runtime.AdditionalSqpackRootDirectories.Value()) {
-		existing.insert(additionalRoot);
-		AppendMenuW(hParentMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, additionalRoot]() {
-			if (Dll::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_ADDITIONAL_ROOT, additionalRoot.wstring())) == IDNO)
-				return;
-
-			std::vector<std::filesystem::path> newValue;
-			for (const auto& path : m_config->Runtime.AdditionalSqpackRootDirectories.Value()) {
-				if (path != additionalRoot)
-					newValue.emplace_back(path);
-			}
-			m_config->Runtime.AdditionalSqpackRootDirectories = std::move(newValue);
-			}), additionalRoot.wstring().c_str());
-		count++;
-	}
-	if (count)
-		DeleteMenu(hParentMenu, ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_NOENTRY, MF_BYCOMMAND);
-	DeleteMenu(hParentMenu, ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ENTRY, MF_BYCOMMAND);
-
-	const auto hAddMenu = GetSubMenu(hParentMenu, 0);
-	count = 0;
-	for (const auto& info : Misc::GameInstallationDetector::FindInstallations()) {
-		if (existing.contains(info.GamePath()))
-			continue;
-		AppendMenuW(hAddMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, info]() {
-			AddAdditionalGameRootDirectory(info.GamePath());
-			}), std::format(L"{} ({}, {})", info.GamePath().wstring(), info.CountryCode, info.GameVersion).c_str());
-		count++;
-	}
-	if (count)
-		DeleteMenu(hAddMenu, ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD_EMPTY, MF_BYCOMMAND);
-}
-
-void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_ExdfTransformationRules(HMENU hParentMenu) {
-	auto count = 0;
-	for (const auto& file : m_config->Runtime.ExcelTransformConfigFiles.Value()) {
-		AppendMenuW(hParentMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, file]() {
-			if (Dll::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_EXCEL_TRANSFORM_CONFIG_FILE, file.wstring())) == IDNO)
-				return;
-
-			std::vector<std::filesystem::path> newValue;
-			for (const auto& path : m_config->Runtime.ExcelTransformConfigFiles.Value()) {
-				if (path != file)
-					newValue.emplace_back(path);
-			}
-			m_config->Runtime.ExcelTransformConfigFiles = std::move(newValue);
-			}), file.wstring().c_str());
-		count++;
-	}
-	if (count)
-		DeleteMenu(hParentMenu, ID_MODDING_EXDFTRANSFORMATIONRULES_NOENTRY, MF_BYCOMMAND);
-	DeleteMenu(hParentMenu, ID_MODDING_EXDFTRANSFORMATIONRULES_ENTRY, MF_BYCOMMAND);
-}
-
-void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_UpgradeMusicQuality(HMENU hParentMenu) {
-	const auto hTemplateEntryMenu = GetSubMenu(hParentMenu, 0);
-	RemoveMenu(hParentMenu, 0, MF_BYPOSITION);
-	const auto deleteTemplateMenu = Utils::CallOnDestruction([hTemplateEntryMenu]() { DestroyMenu(hTemplateEntryMenu); });
-
-	int index = 0;
-	for (const auto menuItemCount = GetMenuItemCount(hParentMenu); index < menuItemCount; index++) {
-		if (GetMenuItemID(hParentMenu, index) == ID_MODDING_REPLACEMUSICS_NORULESCONFIGURED)
-			break;
-	}
-	for (const auto& file : m_config->Runtime.MusicImportConfig.Value()) {
-		InsertMenu(hParentMenu, index++, MF_STRING | MF_BYPOSITION, RepopulateMenu_AllocateMenuId([this, file] {
-			if (Dll::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_MUSICIMPORTCONFIG, file.wstring())) == IDNO)
-				return;
-
-			std::vector<std::filesystem::path> newValue;
-			for (const auto& path : m_config->Runtime.MusicImportConfig.Value()) {
-				if (path != file)
-					newValue.emplace_back(path);
-			}
-			m_config->Runtime.MusicImportConfig = std::move(newValue);
-			}), file.wstring().c_str());
-	}
-
-	index = 0;
-	for (const auto menuItemCount = GetMenuItemCount(hParentMenu); index < menuItemCount; index++) {
-		if (GetMenuItemID(hParentMenu, index) == ID_MODDING_REPLACEMUSICS_NOSOUCEDIRECTORIESCONFIGURED)
-			break;
-	}
-	for (const auto& [name, paths] : m_config->Runtime.MusicImportConfig_Directories.Value()) {
-		const auto hSubMenu = CreatePopupMenu();
-		AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, name, paths = paths]() mutable {
-			try {
-				IFileOpenDialogPtr pDialog;
-				DWORD dwFlags;
-				Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
-				Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(m_config->Runtime.FormatStringRes(IDS_TITLE_ADD_MUSICDIRECTORY, name).c_str()));
-				Utils::Win32::Error::ThrowIfFailed(pDialog->GetOptions(&dwFlags));
-				Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM | FOS_PICKFOLDERS));
-				Utils::Win32::Error::ThrowIfFailed(pDialog->Show(m_hWnd), true);
-
-				IShellItemPtr pResult;
-				PWSTR pszFileName;
-				Utils::Win32::Error::ThrowIfFailed(pDialog->GetResult(&pResult));
-				Utils::Win32::Error::ThrowIfFailed(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
-				if (!pszFileName)
-					throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
-				const auto freeFileName = Utils::CallOnDestruction([pszFileName]() { CoTaskMemFree(pszFileName); });
-
-				paths.emplace_back(pszFileName);
-
-				auto newValue = m_config->Runtime.MusicImportConfig_Directories.Value();
-				newValue.insert_or_assign(name, paths);
-				m_config->Runtime.MusicImportConfig_Directories = newValue;
-
-			} catch (const Utils::Win32::CancelledError&) {
-				// pass
-
-			} catch (const std::exception& e) {
-				Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
-			}
-			}), RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_ADD).c_str());
-
-		AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, name]() {
-			if (Dll::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.FormatStringRes(IDS_CONFIRM_UNREGISTERALLMUSICSOURCEDIRECTORIES, name)) == IDNO)
-				return;
-
-			auto newValue = m_config->Runtime.MusicImportConfig_Directories.Value();
-			newValue.insert_or_assign(name, std::vector<std::filesystem::path>());
-			m_config->Runtime.MusicImportConfig_Directories = newValue;
-			}), RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_CLEAR).c_str());
-
-		AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
-
-		if (const auto purchaseWebsites = m_config->Runtime.GetMusicDirectoryPurchaseWebsites(name); !purchaseWebsites.empty()) {
-			for (const auto& [websiteName, websiteUrl] : purchaseWebsites) {
-				AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, websiteUrl]() mutable {
-					try {
-						Utils::Win32::ShellExecutePathOrThrow(websiteUrl, m_hWnd);
-					} catch (const std::exception& e) {
-						Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
-					}
-					}), std::vformat(RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_BUYFROM), std::make_wformat_args(websiteName)).c_str());
-			}
-			AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
-		}
-
-		for (const auto& path : paths) {
-			AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, name, path, paths = paths]() mutable {
-				if (Dll::MessageBoxF(m_hWnd, MB_YESNO, m_config->Runtime.FormatStringRes(IDS_CONFIRM_REMOVE_MUSICSOURCEDIRECTORY, name, path)) == IDNO)
-					return;
-
-				paths.erase(std::remove_if(paths.begin(), paths.end(), [&path](const auto& r) { return path == r; }), paths.end());
-
-				auto newValue = m_config->Runtime.MusicImportConfig_Directories.Value();
-				newValue.insert_or_assign(name, paths);
-				m_config->Runtime.MusicImportConfig_Directories = newValue;
-				}), path.c_str());
-		}
-		if (paths.empty())
-			AppendMenuW(hSubMenu, MF_STRING | MF_DISABLED, 0, RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_REPLACEMUSICS_SOURCEDIRECTORY_EMPTY).c_str());
-
-		InsertMenuW(hParentMenu, index++, MF_STRING | MF_POPUP | MF_BYPOSITION, reinterpret_cast<UINT_PTR>(hSubMenu), Utils::FromUtf8(name).c_str());
-	}
-
-	if (!m_config->Runtime.MusicImportConfig.Value().empty())
-		DeleteMenu(hParentMenu, ID_MODDING_REPLACEMUSICS_NORULESCONFIGURED, MF_BYCOMMAND);
-	if (!m_config->Runtime.MusicImportConfig_Directories.Value().empty())
-		DeleteMenu(hParentMenu, ID_MODDING_REPLACEMUSICS_NOSOUCEDIRECTORIESCONFIGURED, MF_BYCOMMAND);
 }
 
 void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_Ttmp(HMENU hInnerTtmpMenu, HMENU hOuterTtmpMenu) {
@@ -1053,48 +818,16 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
 	// Modding
 	{
 		SetMenuState(hMenu, ID_MODDING_ENABLE, config.UseModding, true);
-		SetMenuState(hMenu, ID_MODDING_LOGALLHASHKEYS, config.UseHashTrackerKeyLogging, true);
 		SetMenuState(hMenu, ID_MODDING_LOGALLFILEACCESS, config.LogAllDataFileRead, true);
-		SetMenuState(hMenu, ID_MODDING_COMPRESSWHENEVERPOSSIBLE, config.CompressModdedFiles, true);
-
-		const auto languageList = config.GetFallbackLanguageList();
-		SetMenuState(hMenu, ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1, false, true, config.GetLanguageNameLocalized(languageList[0]));
-		SetMenuState(hMenu, ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY2, false, true, config.GetLanguageNameLocalized(languageList[1]));
-		SetMenuState(hMenu, ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY3, false, true, config.GetLanguageNameLocalized(languageList[2]));
-		SetMenuState(hMenu, ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY4, false, true, config.GetLanguageNameLocalized(languageList[3]));
-		SetMenuState(hMenu, ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY5, false, true, config.GetLanguageNameLocalized(languageList[4]));
-		SetMenuState(hMenu, ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY6, false, true, config.GetLanguageNameLocalized(languageList[5]));
-
-		SetMenuState(hMenu, ID_MODDING_DISPLAYLANGUAGE_DISABLE, config.ResourceLanguageOverride == Sqex::Language::Unspecified, true);
-		SetMenuState(hMenu, ID_MODDING_DISPLAYLANGUAGE_ENGLISH, config.ResourceLanguageOverride == Sqex::Language::English, true);
-		SetMenuState(hMenu, ID_MODDING_DISPLAYLANGUAGE_GERMAN, config.ResourceLanguageOverride == Sqex::Language::German, true);
-		SetMenuState(hMenu, ID_MODDING_DISPLAYLANGUAGE_FRENCH, config.ResourceLanguageOverride == Sqex::Language::French, true);
-		SetMenuState(hMenu, ID_MODDING_DISPLAYLANGUAGE_JAPANESE, config.ResourceLanguageOverride == Sqex::Language::Japanese, true);
-		SetMenuState(hMenu, ID_MODDING_DISPLAYLANGUAGE_CHINESESIMPLIFIED, config.ResourceLanguageOverride == Sqex::Language::ChineseSimplified, true);
-		SetMenuState(hMenu, ID_MODDING_DISPLAYLANGUAGE_KOREAN, config.ResourceLanguageOverride == Sqex::Language::Korean, true);
-
-		SetMenuState(hMenu, ID_MODDING_AUDIOLANGUAGE_DISABLE, config.VoiceResourceLanguageOverride == Sqex::Language::Unspecified, true);
-		SetMenuState(hMenu, ID_MODDING_AUDIOLANGUAGE_ENGLISH, config.VoiceResourceLanguageOverride == Sqex::Language::English, true);
-		SetMenuState(hMenu, ID_MODDING_AUDIOLANGUAGE_GERMAN, config.VoiceResourceLanguageOverride == Sqex::Language::German, true);
-		SetMenuState(hMenu, ID_MODDING_AUDIOLANGUAGE_FRENCH, config.VoiceResourceLanguageOverride == Sqex::Language::French, true);
-		SetMenuState(hMenu, ID_MODDING_AUDIOLANGUAGE_JAPANESE, config.VoiceResourceLanguageOverride == Sqex::Language::Japanese, true);
-		SetMenuState(hMenu, ID_MODDING_AUDIOLANGUAGE_CHINESESIMPLIFIED, config.VoiceResourceLanguageOverride == Sqex::Language::ChineseSimplified, true);
-		SetMenuState(hMenu, ID_MODDING_AUDIOLANGUAGE_KOREAN, config.VoiceResourceLanguageOverride == Sqex::Language::Korean, true);
 
 		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_BATTLE, config.MuteVoice_Battle, true);
 		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_CM, config.MuteVoice_Cm, true);
 		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_EMOTE, config.MuteVoice_Emote, true);
 		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_LINE, config.MuteVoice_Line, true);
 
-		SetMenuState(hMenu, ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_HIGHESTPOSSIBLE, config.MusicImportTargetSamplingRate == 0, true);
-		SetMenuState(hMenu, ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_44100, config.MusicImportTargetSamplingRate == 44100, true);
-		SetMenuState(hMenu, ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_48000, config.MusicImportTargetSamplingRate == 48000, true);
-
 		SetMenuState(hMenu, ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY, config.TtmpFlattenSubdirectoryDisplay, true);
 		SetMenuState(hMenu, ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW, config.TtmpUseSubdirectoryTogglingOnFlattenedView, config.TtmpFlattenSubdirectoryDisplay);
 		SetMenuState(hMenu, ID_MODDING_TTMP_SHOWDEDICATEDMENU, config.TtmpShowDedicatedMenu, true);
-
-		SetMenuState(hMenu, ID_MODDING_CHANGEFONT_DISABLE, config.OverrideFontConfig.Value().empty(), true);
 	}
 
 	// Configure
@@ -1408,115 +1141,8 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Modding(int
 			config.UseModding.Toggle();
 			return;
 
-		case ID_MODDING_LOGALLHASHKEYS:
-			config.UseHashTrackerKeyLogging.Toggle();
-			return;
-
 		case ID_MODDING_LOGALLFILEACCESS:
 			config.LogAllDataFileRead.Toggle();
-			return;
-
-		case ID_MODDING_COMPRESSWHENEVERPOSSIBLE:
-			config.CompressModdedFiles.Toggle();
-			return;
-
-		case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY1: {
-			auto languageList = config.GetFallbackLanguageList();
-			languageList.insert(languageList.begin(), languageList[0]);
-			languageList.erase(languageList.begin() + 1);
-			config.FallbackLanguagePriority = languageList;
-			return;
-		}
-		case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY2: {
-			auto languageList = config.GetFallbackLanguageList();
-			languageList.insert(languageList.begin(), languageList[1]);
-			languageList.erase(languageList.begin() + 2);
-			config.FallbackLanguagePriority = languageList;
-			return;
-		}
-		case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY3: {
-			auto languageList = config.GetFallbackLanguageList();
-			languageList.insert(languageList.begin(), languageList[2]);
-			languageList.erase(languageList.begin() + 3);
-			config.FallbackLanguagePriority = languageList;
-			return;
-		}
-		case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY4: {
-			auto languageList = config.GetFallbackLanguageList();
-			languageList.insert(languageList.begin(), languageList[3]);
-			languageList.erase(languageList.begin() + 4);
-			config.FallbackLanguagePriority = languageList;
-			return;
-		}
-		case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY5: {
-			auto languageList = config.GetFallbackLanguageList();
-			languageList.insert(languageList.begin(), languageList[4]);
-			languageList.erase(languageList.begin() + 5);
-			config.FallbackLanguagePriority = languageList;
-			return;
-		}
-		case ID_MODDING_FALLBACKLANGUAGEPRIORITY_ENTRY6: {
-			auto languageList = config.GetFallbackLanguageList();
-			languageList.insert(languageList.begin(), languageList[5]);
-			languageList.erase(languageList.begin() + 6);
-			config.FallbackLanguagePriority = languageList;
-			return;
-		}
-
-		case ID_MODDING_DISPLAYLANGUAGE_DISABLE:
-			config.ResourceLanguageOverride = Sqex::Language::Unspecified;
-			return;
-
-		case ID_MODDING_DISPLAYLANGUAGE_ENGLISH:
-			config.ResourceLanguageOverride = Sqex::Language::English;
-			return;
-
-		case ID_MODDING_DISPLAYLANGUAGE_GERMAN:
-			config.ResourceLanguageOverride = Sqex::Language::German;
-			return;
-
-		case ID_MODDING_DISPLAYLANGUAGE_FRENCH:
-			config.ResourceLanguageOverride = Sqex::Language::French;
-			return;
-
-		case ID_MODDING_DISPLAYLANGUAGE_JAPANESE:
-			config.ResourceLanguageOverride = Sqex::Language::Japanese;
-			return;
-
-		case ID_MODDING_DISPLAYLANGUAGE_CHINESESIMPLIFIED:
-			config.ResourceLanguageOverride = Sqex::Language::ChineseSimplified;
-			return;
-
-		case ID_MODDING_DISPLAYLANGUAGE_KOREAN:
-			config.ResourceLanguageOverride = Sqex::Language::Korean;
-			return;
-
-		case ID_MODDING_AUDIOLANGUAGE_DISABLE:
-			config.VoiceResourceLanguageOverride = Sqex::Language::Unspecified;
-			return;
-
-		case ID_MODDING_AUDIOLANGUAGE_ENGLISH:
-			config.VoiceResourceLanguageOverride = Sqex::Language::English;
-			return;
-
-		case ID_MODDING_AUDIOLANGUAGE_GERMAN:
-			config.VoiceResourceLanguageOverride = Sqex::Language::German;
-			return;
-
-		case ID_MODDING_AUDIOLANGUAGE_FRENCH:
-			config.VoiceResourceLanguageOverride = Sqex::Language::French;
-			return;
-
-		case ID_MODDING_AUDIOLANGUAGE_JAPANESE:
-			config.VoiceResourceLanguageOverride = Sqex::Language::Japanese;
-			return;
-
-		case ID_MODDING_AUDIOLANGUAGE_CHINESESIMPLIFIED:
-			config.VoiceResourceLanguageOverride = Sqex::Language::ChineseSimplified;
-			return;
-
-		case ID_MODDING_AUDIOLANGUAGE_KOREAN:
-			config.VoiceResourceLanguageOverride = Sqex::Language::Korean;
 			return;
 
 		case ID_MODDING_MUTEVOICE_BATTLE:
@@ -1533,350 +1159,6 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Modding(int
 
 		case ID_MODDING_MUTEVOICE_LINE:
 			config.MuteVoice_Line.Toggle();
-			return;
-
-		case ID_MODDING_CHANGEFONT_OPENPRESETDIRECTORY:
-			EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "FontConfig");
-			return;
-
-		case ID_MODDING_CHANGEFONT_IMPORTPRESET: {
-			const auto defaultPath = m_config->Init.ResolveConfigStorageDirectoryPath() / "FontConfig";
-			try {
-				if (!is_directory(defaultPath))
-					create_directories(defaultPath);
-			} catch (...) {
-				// pass
-			}
-
-			const COMDLG_FILTERSPEC fileTypes[] = {
-				{ m_config->Runtime.GetStringRes(IDS_FILTERSPEC_FONTPRESETJSON), L"*.json" },
-				{ m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*" },
-			};
-			const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_IMPORT_FONTCONFIG_PRESET, defaultPath);
-			switch (paths.size()) {
-				case 0:
-					return;
-
-				case 1:
-					ImportFontConfig(paths[0]);
-					return;
-
-				default:
-					InstallMultipleFiles(paths);
-			}
-			return;
-		}
-
-		case ID_MODDING_CHANGEFONT_DISABLE:
-			m_config->Runtime.OverrideFontConfig = std::filesystem::path();
-			return;
-
-		case ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_ADD_SELECTFOLDER:
-			while (true) {
-				try {
-					IFileOpenDialogPtr pDialog;
-					DWORD dwFlags;
-					Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
-					Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(m_config->Runtime.GetStringRes(IDS_TITLE_ADD_EXTERNAL_GAME_DIRECTORY)));
-					Utils::Win32::Error::ThrowIfFailed(pDialog->GetOptions(&dwFlags));
-					Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM | FOS_PICKFOLDERS));
-					Utils::Win32::Error::ThrowIfFailed(pDialog->Show(m_hWnd), true);
-
-					IShellItemPtr pResult;
-					PWSTR pszFileName;
-					Utils::Win32::Error::ThrowIfFailed(pDialog->GetResult(&pResult));
-					Utils::Win32::Error::ThrowIfFailed(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
-					if (!pszFileName)
-						throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
-					const auto freeFileName = Utils::CallOnDestruction([pszFileName]() { CoTaskMemFree(pszFileName); });
-
-					AddAdditionalGameRootDirectory(pszFileName);
-					break;
-
-				} catch (const Utils::Win32::CancelledError&) {
-					break;
-
-				} catch (const std::exception& e) {
-					Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
-				}
-			}
-			return;
-
-		case ID_MODDING_ADDITIONALGAMEROOTDIRECTORIES_REMOVEALL:
-			if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, IDS_CONFIRM_UNREGISTERALLADDITIONALGAMEROOTDIRECTORIES) == IDYES) {
-				m_config->Runtime.AdditionalSqpackRootDirectories = std::vector<std::filesystem::path>();
-			}
-			return;
-
-		case ID_MODDING_EXDFTRANSFORMATIONRULES_OPENPRESETDIRECTORY:
-			EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "ExcelTransformConfig");
-			return;
-
-		case ID_MODDING_EXDFTRANSFORMATIONRULES_ADD: {
-			const auto defaultPath = m_config->Init.ResolveConfigStorageDirectoryPath() / "ExcelTransformConfig";
-			try {
-				if (!is_directory(defaultPath))
-					create_directories(defaultPath);
-			} catch (...) {
-				// pass
-			}
-
-			static const COMDLG_FILTERSPEC fileTypes[] = {
-				{ m_config->Runtime.GetStringRes(IDS_FILTERSPEC_EXCELTRANSFORMCONFIGJSON), L"*.json" },
-				{ m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*" },
-			};
-			const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_ADD_EXCELTRANSFORMCONFIG, defaultPath);
-			switch (paths.size()) {
-				case 0:
-					return;
-
-				case 1:
-					ImportExcelTransformConfig(paths[0]);
-					return;
-
-				default:
-					InstallMultipleFiles(paths);
-			}
-			return;
-		}
-
-		case ID_MODDING_EXDFTRANSFORMATIONRULES_REMOVEALL:
-			if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, IDS_CONFIRM_UNREGISTERALLEXCELTRANSFORMATIONRULES) == IDYES) {
-				m_config->Runtime.ExcelTransformConfigFiles = std::vector<std::filesystem::path>();
-			}
-			return;
-
-		case ID_MODDING_REPLACEMUSICS_IMPORT: {
-			const auto defaultPath = m_config->Init.ResolveConfigStorageDirectoryPath() / "MusicImportConfig";
-			try {
-				if (!is_directory(defaultPath))
-					create_directories(defaultPath);
-			} catch (...) {
-				// pass
-			}
-
-			static const COMDLG_FILTERSPEC fileTypes[] = {
-				{ L"Music Import Config (*.json)", L"*.json" },
-				{ m_config->Runtime.GetStringRes(IDS_FILTERSPEC_ALLFILES), L"*" },
-			};
-			const auto paths = ChooseFileToOpen(std::span(fileTypes), IDS_TITLE_ADD_MUSICIMPORTCONFIG, defaultPath);
-			switch (paths.size()) {
-				case 0:
-					return;
-
-				case 1:
-					ImportMusicImportConfig(paths[0]);
-					return;
-
-				default:
-					InstallMultipleFiles(paths);
-			}
-			return;
-		}
-
-		case ID_MODDING_REPLACEMUSICS_REMOVEALL: {
-			if (Dll::MessageBoxF(m_hWnd, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2, IDS_CONFIRM_UNREGISTERALLMUSICIMPORTCONFIG) == IDYES) {
-				m_config->Runtime.MusicImportConfig = std::vector<std::filesystem::path>{};
-			}
-			return;
-		}
-
-		case ID_MODDING_REPLACEMUSICS_GENERATE: {
-			if (m_backgroundWorkerThread) {
-				const auto window = decltype(m_backgroundWorkerProgressWindow)(m_backgroundWorkerProgressWindow);
-				if (window && window->GetCancelEvent().Wait(0) == WAIT_TIMEOUT)
-					SetForegroundWindow(m_backgroundWorkerProgressWindow->Handle());
-				else
-					Dll::MessageBoxF(m_hWnd, MB_ICONWARNING, IDS_ERROR_CANCELLING_TRYAGAINLATER);
-				return;
-			}
-
-			auto& sqpacks = m_app.GetGameResourceOverrider().GetVirtualSqPacks();
-			if (!sqpacks) {
-				Dll::MessageBoxF(m_hWnd, MB_ICONWARNING, IDS_ERROR_MODDINGACTIVEREQUIRED);
-				return;
-			}
-
-			auto ffmpeg = m_config->Init.ResolveXivAlexInstallationPath() / L"ffmpeg.exe";
-			auto ffprobe = m_config->Init.ResolveXivAlexInstallationPath() / L"ffprobe.exe";
-
-			if (!exists(ffmpeg) || !exists(ffprobe)) {
-				const auto res = Utils::Win32::TaskDialog::Builder()
-					.WithWindowTitle(Dll::GetGenericMessageBoxTitle())
-					.WithParentWindow(m_hWnd)
-					.WithInstance(Dll::Module())
-					.WithAllowDialogCancellation()
-					.WithCanBeMinimized()
-					.WithHyperlinkShellExecute()
-					.WithMainIcon(IDI_TRAY_ICON)
-					.WithMainInstruction(m_config->Runtime.GetStringRes(IDS_FFMPEGREQUIRED_MAININSTRUCTIONS))
-					.WithContent(m_config->Runtime.GetStringRes(IDS_FFMPEGREQUIRED_CONTENT))
-					.WithButton({
-						.Id = 1001,
-						.Text = m_config->Runtime.GetStringRes(IDS_FFMPEGREQUIRED_OPENDOWNLOADSITE),
-						.Callback = [](const auto& dialog) {
-							try {
-								Utils::Win32::ShellExecutePathOrThrow(L"https://ffmpeg.org/download.html", dialog.GetHwnd());
-							} catch (const std::exception& e) {
-								Dll::MessageBoxF(dialog.GetHwnd(), MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
-							}
-							return Utils::Win32::TaskDialog::ActionHandled::Handled;
-						},
-						})
-					.WithButton({
-						.Id = 1002,
-						.Text = m_config->Runtime.GetStringRes(IDS_FFMPEGREQUIRED_OPENTARGETDIR),
-						.Callback = [this](const auto& dialog) {
-							try {
-								Utils::Win32::ShellExecutePathOrThrow(m_config->Init.ResolveXivAlexInstallationPath(), dialog.GetHwnd());
-							} catch (const std::exception& e) {
-								Dll::MessageBoxF(dialog.GetHwnd(), MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
-							}
-							return Utils::Win32::TaskDialog::ActionHandled::Handled;
-						},
-						})
-					.WithButton({
-						.Id = 1003,
-						.Text = m_config->Runtime.GetStringRes(IDS_FFMPEGREQUIRED_CONFIRMINSTALLATION),
-						.Callback = [&ffmpeg, &ffprobe](const auto& dialog) {
-							if (!exists(ffmpeg)) {
-								Dll::MessageBoxF(dialog.GetHwnd(), MB_OK | MB_ICONWARNING, IDS_FFMPEGREQUIRED_NOTFOUND, ffmpeg);
-								return Utils::Win32::TaskDialog::ActionHandled::Handled;
-							}
-							if (!exists(ffprobe)) {
-								Dll::MessageBoxF(dialog.GetHwnd(), MB_OK | MB_ICONWARNING, IDS_FFMPEGREQUIRED_NOTFOUND, ffprobe);
-								return Utils::Win32::TaskDialog::ActionHandled::Handled;
-							}
-							return Utils::Win32::TaskDialog::ActionHandled::NotHandled;
-						},
-						})
-					.WithButtonDefault(1001)
-							.Build()
-							.Show();
-						if (res.Button == IDCANCEL)
-							return;
-			}
-
-			m_backgroundWorkerThread = Utils::Win32::Thread(L"ReplaceMusicGeneratorOnOtherThread", [this, &sqpacks, ffmpeg = ffmpeg, ffprobe = ffprobe] {
-				const auto targetBasePath = m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries";
-
-				m_backgroundWorkerProgressWindow = std::make_shared<ProgressPopupWindow>(nullptr);
-
-				size_t index = 0;
-				size_t count = 0;
-				const std::filesystem::path* pLastStartedTargetFile = nullptr;
-				const auto workerThread = Utils::Win32::Thread(L"ReplaceMusicGenerator", [&] {
-					std::vector<Sqex::Sound::MusicImportItem> items;
-					for (const auto& confFile : m_config->Runtime.MusicImportConfig.Value()) {
-						try {
-							Sqex::Sound::MusicImportConfig conf;
-							from_json(Utils::ParseJsonFromFile(Config::TranslatePath(confFile)), conf);
-
-							std::string defaultDir;
-							for (const auto& [dirName, dirConfig] : conf.searchDirectories) {
-								if (dirConfig.default_)
-									defaultDir = dirName;
-							}
-
-							for (auto& item : conf.items) {
-								for (auto& source : item.source | std::views::values) {
-									for (auto& fileList : source.inputFiles) {
-										for (auto& patternList : fileList) {
-											if (!patternList.directory.has_value())
-												patternList.directory = defaultDir;
-										}
-									}
-								}
-								items.emplace_back(std::move(item));
-							}
-						} catch (const std::exception& e) {
-							m_logger->Format<LogLevel::Warning>(LogCategory::MusicImporter, "{}: {}", confFile.filename().wstring(), e.what());
-						}
-					}
-
-					auto tp = Utils::Win32::TpEnvironment(L"ReplaceMusicGenerator/pool");
-					for (const auto& item : items) {
-						for (const auto& target : item.target) {
-							if (!target.enable)
-								continue;
-
-							auto allTargetExists = true;
-							for (const auto& path : target.path)
-								allTargetExists &= exists(targetBasePath / path);
-							if (allTargetExists)
-								continue;
-
-							count++;
-							tp.SubmitWork([&] {
-								if (m_backgroundWorkerProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-									return;
-
-								pLastStartedTargetFile = &target.path.front();
-								++index;
-
-								try {
-									Sqex::Sound::MusicImporter importer(item.source, target, ffmpeg, ffprobe, m_backgroundWorkerProgressWindow->GetCancelEvent());
-									const auto logger = importer.OnWarningLog([&](const std::string& s) {
-										m_logger->Format<LogLevel::Error>(LogCategory::MusicImporter, "{}: {}\n", target.path.front(), s);
-										});
-
-									importer.SetSamplingRate(m_config->Runtime.MusicImportTargetSamplingRate);
-									for (const auto& path : target.path)
-										importer.AppendReader(std::make_shared<Sqex::Sound::ScdReader>(sqpacks->GetOriginalEntry(path)));
-									if (m_backgroundWorkerProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-										return;
-
-									auto resolved = false;
-									for (const auto& [dirName, dirPaths] : m_config->Runtime.MusicImportConfig_Directories.Value()) {
-										for (const auto& dirPath : dirPaths)
-											resolved |= importer.ResolveSources(dirName, Config::TranslatePath(dirPath));
-									}
-									if (m_backgroundWorkerProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-										return;
-									if (!resolved)
-										throw std::runtime_error("Not all source files are found");
-
-									importer.Merge([&targetBasePath](std::filesystem::path path, std::vector<uint8_t> data) {
-										const auto targetPath = targetBasePath / path;
-										create_directories(targetPath.parent_path());
-										Utils::Win32::Handle::FromCreateFile(targetPath, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, 0).Write(0, std::span(data));
-										});
-									if (m_backgroundWorkerProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-										return;
-								} catch (const std::exception& e) {
-									m_logger->Format<LogLevel::Error>(LogCategory::MusicImporter, "{}: {}\n", target.path.front(), e.what());
-								}
-								});
-						}
-					}
-					tp.WaitOutstanding();
-					});
-
-				do {
-					m_backgroundWorkerProgressWindow->UpdateMessage(m_config->Runtime.FormatStringRes(IDS_TITLE_MUSICIMPORTPROGRESS, pLastStartedTargetFile ? *pLastStartedTargetFile : std::filesystem::path{}, index, count));
-					if (index == count)
-						m_backgroundWorkerProgressWindow->UpdateProgress(0, 0);
-					else
-						m_backgroundWorkerProgressWindow->UpdateProgress(index, count);
-					m_backgroundWorkerProgressWindow->Show();
-				} while (WAIT_TIMEOUT == m_backgroundWorkerProgressWindow->DoModalLoop(100, { workerThread }));
-				workerThread.Wait();
-				m_backgroundWorkerThread = nullptr;
-				m_backgroundWorkerProgressWindow = nullptr;
-				});
-			return;
-		}
-
-		case ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_HIGHESTPOSSIBLE:
-			m_config->Runtime.MusicImportTargetSamplingRate = 0;
-			return;
-
-		case ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_44100:
-			m_config->Runtime.MusicImportTargetSamplingRate = 44100;
-			return;
-
-		case ID_MODDING_REPLACEMUSICS_SAMPLINGRATE_48000:
-			m_config->Runtime.MusicImportTargetSamplingRate = 48000;
 			return;
 
 		case ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY:
@@ -2051,11 +1333,11 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Modding(int
 							if (file_size(target) == 0)
 								dv = Sqex::Sqpack::EmptyOrObfuscatedEntryProvider(entryPathSpec).ReadStreamIntoVector<char>(0);
 							else if (extensionLower == L".tex" || extensionLower == L".atex")
-								dv = Sqex::Sqpack::MemoryTextureEntryProvider(entryPathSpec, std::make_shared<Sqex::FileRandomAccessStream>(target), m_config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION).ReadStreamIntoVector<char>(0);
+								dv = Sqex::Sqpack::MemoryTextureEntryProvider(entryPathSpec, std::make_shared<Sqex::FileRandomAccessStream>(target), Z_BEST_COMPRESSION).ReadStreamIntoVector<char>(0);
 							else if (extensionLower == L".mdl")
-								dv = Sqex::Sqpack::MemoryModelEntryProvider(entryPathSpec, std::make_shared<Sqex::FileRandomAccessStream>(target), m_config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION).ReadStreamIntoVector<char>(0);
+								dv = Sqex::Sqpack::MemoryModelEntryProvider(entryPathSpec, std::make_shared<Sqex::FileRandomAccessStream>(target), Z_BEST_COMPRESSION).ReadStreamIntoVector<char>(0);
 							else
-								dv = Sqex::Sqpack::MemoryBinaryEntryProvider(entryPathSpec, std::make_shared<Sqex::FileRandomAccessStream>(target), m_config->Runtime.CompressModdedFiles ? Z_BEST_COMPRESSION : Z_NO_COMPRESSION).ReadStreamIntoVector<char>(0);
+								dv = Sqex::Sqpack::MemoryBinaryEntryProvider(entryPathSpec, std::make_shared<Sqex::FileRandomAccessStream>(target), Z_BEST_COMPRESSION).ReadStreamIntoVector<char>(0);
 
 							if (m_backgroundWorkerProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 								return;
@@ -2261,122 +1543,6 @@ static bool FileEquals(const std::filesystem::path& filename1, const std::filesy
 	return true;
 }
 
-void XivAlexander::Apps::MainApp::Window::MainWindow::ImportFontConfig(const std::filesystem::path& path) {
-	const auto targetDirectory = m_config->Init.ResolveConfigStorageDirectoryPath() / "FontConfig";
-	auto targetFileName = targetDirectory / path.filename().replace_extension(".json");
-	auto alreadyExists = false;
-	if (exists(targetFileName)) {
-		for (int i = 0; exists(targetFileName); i++) {
-			if (FileEquals(path, targetFileName)) {
-				alreadyExists = true;
-				break;
-			}
-			targetFileName = targetDirectory / std::format(L"{}_{}.json", path.filename().replace_extension("").wstring(), i);
-		}
-	}
-
-	if (!alreadyExists) {
-		// Test file
-		void(Utils::ParseJsonFromFile(path).get<Sqex::FontCsv::CreateConfig::FontCreateConfig>());
-
-		create_directories(targetDirectory);
-		if (!CopyFileW(path.c_str(), targetFileName.c_str(), TRUE))
-			throw Utils::Win32::Error("CopyFileW");
-	}
-
-	m_config->Runtime.OverrideFontConfig = targetFileName;
-}
-
-void XivAlexander::Apps::MainApp::Window::MainWindow::ImportMusicImportConfig(const std::filesystem::path& path) {
-	const auto targetDirectory = m_config->Init.ResolveConfigStorageDirectoryPath() / "MusicImportConfig";
-	auto targetFileName = targetDirectory / path.filename().replace_extension(".json");
-	auto alreadyExists = false;
-	if (exists(targetFileName)) {
-		for (int i = 0; exists(targetFileName); i++) {
-			if (FileEquals(path, targetFileName)) {
-				alreadyExists = true;
-				break;
-			}
-			targetFileName = targetDirectory / std::format(L"{}_{}.json", path.filename().replace_extension("").wstring(), i);
-		}
-	}
-
-	if (!alreadyExists) {
-		// Test file
-		void(Utils::ParseJsonFromFile(path).get<Sqex::Sound::MusicImportConfig>());
-
-		create_directories(targetDirectory);
-		if (!CopyFileW(path.c_str(), targetFileName.c_str(), TRUE))
-			throw Utils::Win32::Error("CopyFileW");
-	}
-
-	auto arr = m_config->Runtime.MusicImportConfig.Value();
-	while (true) {
-		const auto it = std::ranges::find(arr, targetFileName);
-		if (it != arr.end())
-			arr.erase(it);
-		else
-			break;
-	}
-	arr.emplace(arr.begin(), std::move(targetFileName));
-	m_config->Runtime.MusicImportConfig = arr;
-}
-
-void XivAlexander::Apps::MainApp::Window::MainWindow::ImportExcelTransformConfig(const std::filesystem::path& path) {
-	const auto targetDirectory = m_config->Init.ResolveConfigStorageDirectoryPath() / "ExcelTransformConfig";
-	auto targetFileName = targetDirectory / path.filename().replace_extension(".json");
-	auto alreadyExists = false;
-	if (exists(targetFileName)) {
-		for (int i = 0; exists(targetFileName); i++) {
-			if (FileEquals(path, targetFileName)) {
-				alreadyExists = true;
-				break;
-			}
-			targetFileName = targetDirectory / std::format(L"{}_{}.json", path.filename().replace_extension("").wstring(), i);
-		}
-	}
-
-	if (!alreadyExists) {
-		// Test file
-		void(Utils::ParseJsonFromFile(path).get<Misc::ExcelTransformConfig::Config>());
-
-		create_directories(targetDirectory);
-		if (!CopyFileW(path.c_str(), targetFileName.c_str(), TRUE))
-			throw Utils::Win32::Error("CopyFileW");
-	}
-
-	auto arr{ m_config->Runtime.ExcelTransformConfigFiles.Value() };
-	while (true) {
-		const auto it = std::ranges::find(arr, targetFileName);
-		if (it != arr.end())
-			arr.erase(it);
-		else
-			break;
-	}
-	arr.emplace(arr.begin(), std::move(targetFileName));
-	m_config->Runtime.ExcelTransformConfigFiles = arr;
-}
-
-void XivAlexander::Apps::MainApp::Window::MainWindow::AddAdditionalGameRootDirectory(std::filesystem::path path) {
-	if (!exists(path / "ffxiv_dx11.exe") && !exists(path / "ffxiv.exe")) {
-		Dll::MessageBoxF(m_hWnd, MB_ICONWARNING, m_config->Runtime.GetStringRes(IDS_ERROR_NOT_GAME_DIRECTORY), path.wstring());
-		return;
-	}
-
-	auto arr{ m_config->Runtime.AdditionalSqpackRootDirectories.Value() };
-	if (std::ranges::find(arr, path) != arr.end())
-		return;
-	while (true) {
-		const auto it = std::ranges::find(arr, path);
-		if (it != arr.end())
-			arr.erase(it);
-		else
-			break;
-	}
-	arr.emplace(arr.begin(), std::move(path));
-	m_config->Runtime.AdditionalSqpackRootDirectories = arr;
-}
-
 std::wstring CreateTtmpDirectoryName(const std::string& modPackName, std::wstring fileName) {
 	auto name = Utils::FromUtf8(modPackName);
 	if (name.empty())
@@ -2517,10 +1683,6 @@ std::string XivAlexander::Apps::MainApp::Window::MainWindow::InstallTTMP(const s
 std::pair<std::filesystem::path, std::string> XivAlexander::Apps::MainApp::Window::MainWindow::InstallAnyFile(const std::filesystem::path& path, Apps::MainApp::Window::ProgressPopupWindow& progressWindow) {
 	auto fileNameLower = path.filename().wstring();
 	CharLowerW(&fileNameLower[0]);
-	if (fileNameLower == L"ffxiv_dx11.exe" || fileNameLower == L"ffxiv.exe") {
-		AddAdditionalGameRootDirectory(path.parent_path());
-		return std::make_pair(path, Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_RESULT_ADDADDITIONALGAMEROOTDIRECTORY)));
-	}
 	if (fileNameLower == L"ttmpd.mpd" || fileNameLower == L"choices.json")
 		return { path, {} };
 	if (!fileNameLower.ends_with(L".json")
@@ -2545,38 +1707,7 @@ std::pair<std::filesystem::path, std::string> XivAlexander::Apps::MainApp::Windo
 		return std::make_pair(path, msg.empty() ? Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_RESULT_TTMP_INSTALLED)) : msg);
 	}
 
-	// Test file
-	const auto json = Utils::ParseJsonFromFile(path);
-	auto isPossiblyExcelTransformConfig = false, isPossiblyFontConfig = false, isPossiblyMusicImportConfig = false;
-	try {
-		void(json.get<Misc::ExcelTransformConfig::Config>());
-		isPossiblyExcelTransformConfig = true;
-	} catch (...) {
-		// pass
-	}
-	try {
-		void(json.get<Sqex::FontCsv::CreateConfig::FontCreateConfig>());
-		isPossiblyFontConfig = true;
-	} catch (...) {
-		// pass
-	}
-	try {
-		void(json.get<Sqex::Sound::MusicImportConfig>());
-		isPossiblyMusicImportConfig = true;
-	} catch (...) {
-		// pass
-	}
-	if (isPossiblyExcelTransformConfig) {
-		ImportExcelTransformConfig(path);
-		return std::make_pair(path, Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_RESULT_EXCELCONFIGFILE_INSTALLED)));
-	} else if (isPossiblyFontConfig) {
-		ImportFontConfig(path);
-		return std::make_pair(path, Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_RESULT_FONTCONFIG_INSTALLED)));
-	} else if (isPossiblyMusicImportConfig) {
-		ImportMusicImportConfig(path);
-		return std::make_pair(path, std::string("MusicImportConfig installed"));
-	} else
-		throw std::runtime_error(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_UNSUPPORTED_FILE_TYPE)));
+	throw std::runtime_error(Utils::ToUtf8(m_config->Runtime.GetStringRes(IDS_ERROR_UNSUPPORTED_FILE_TYPE)));
 }
 
 void XivAlexander::Apps::MainApp::Window::MainWindow::InstallMultipleFiles(const std::vector<std::filesystem::path>& paths) {

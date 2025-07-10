@@ -68,9 +68,6 @@
     <ClCompile Include="Apps\MainApp\Window\ProgressPopupWindow.cpp">
       <Filter>Apps\MainApp\Window</Filter>
     </ClCompile>
-    <ClCompile Include="Misc\ExcelTransformConfig.cpp">
-      <Filter>Misc</Filter>
-    </ClCompile>
     <ClCompile Include="Misc\CrashMessageBoxHandler.cpp">
       <Filter>Misc</Filter>
     </ClCompile>
@@ -172,9 +169,6 @@
     </ClInclude>
     <ClInclude Include="Apps\MainApp\Window\ProgressPopupWindow.h">
       <Filter>Apps\MainApp\Window</Filter>
-    </ClInclude>
-    <ClInclude Include="Misc\ExcelTransformConfig.h">
-      <Filter>Misc</Filter>
     </ClInclude>
     <ClInclude Include="Misc\CrashMessageBoxHandler.h">
       <Filter>Misc</Filter>

@@ -3,7 +3,7 @@
   "version-string": "1.10",
   "homepage": "https://github.com/Soreepeong/XivAlexander",
   "description": "Double weaving on high latency.",
-  "builtin-baseline": "91393faf123c4f1d22ef3dbfb4ec03531bac907a",
+  "builtin-baseline": "96fd599859beaed2ae891a2b2982746f28611b07",
   "dependencies": [
     "zlib",
     "scintilla",
@@ -14,8 +14,6 @@
     "cryptopp",
     "argparse",
     "libzippp",
-    "freetype",
-    "libvorbis",
     "srell"
   ]
 }

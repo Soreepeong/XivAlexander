@@ -43,7 +43,7 @@ XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::ProgressPopupWindow(HW
 
 	NONCLIENTMETRICS ncm = {.cbSize = sizeof(NONCLIENTMETRICS)};
 	SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
-	ncm.lfMessageFont.lfHeight = static_cast<LONG>(ncm.lfMessageFont.lfHeight * GetZoom());
+	ncm.lfMessageFont.lfHeight = static_cast<LONG>(ncm.lfMessageFont.lfHeight);
 	m_hFont = CreateFontIndirectW(&ncm.lfMessageFont);
 	SendMessageW(m_hMessage, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), TRUE);
 	SendMessageW(m_hCancelButton, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), TRUE);
@@ -181,6 +181,8 @@ void XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::OnLayout(double z
 			double bottom;
 		};
 
+		width /= zoom;
+		height /= zoom;
 		const auto targets = std::map<HWND, RECTLF>{
 			{
 				m_hMessage, {
@@ -262,7 +264,7 @@ LRESULT XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::WndProc(HWND h
 				DeleteFont(m_hFont);
 			NONCLIENTMETRICS ncm = {.cbSize = sizeof(NONCLIENTMETRICS)};
 			SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
-			ncm.lfMessageFont.lfHeight = static_cast<LONG>(ncm.lfMessageFont.lfHeight * GetZoom());
+			ncm.lfMessageFont.lfHeight = static_cast<LONG>(ncm.lfMessageFont.lfHeight);
 			m_hFont = CreateFontIndirectW(&ncm.lfMessageFont);
 			SendMessageW(m_hMessage, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), TRUE);
 			SendMessageW(m_hCancelButton, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), TRUE);

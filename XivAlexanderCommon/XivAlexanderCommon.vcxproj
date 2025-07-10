@@ -20,7 +20,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="span_cast.h" />
-    <ClInclude Include="Sqex\FontCsv\FdtFont.h" />
     <ClInclude Include="Sqex\Network\Structure.h" />
     <ClInclude Include="Sqex\Eqdp.h" />
     <ClInclude Include="Sqex\EqpGmp.h" />
@@ -30,15 +29,7 @@
     <ClInclude Include="Sqex\Excel.h" />
     <ClInclude Include="Sqex\Excel\Generator.h" />
     <ClInclude Include="Sqex\Excel\Reader.h" />
-    <ClInclude Include="Sqex\FontCsv\CreateConfig.h" />
-    <ClInclude Include="Sqex\FontCsv\Creator.h" />
-    <ClInclude Include="Sqex\FontCsv\DirectWriteFont.h" />
-    <ClInclude Include="Sqex\FontCsv\FreeTypeFont.h" />
-    <ClInclude Include="Sqex\FontCsv\GdiFont.h" />
-    <ClInclude Include="Sqex\FontCsv\BaseDrawableFont.h" />
-    <ClInclude Include="Sqex\FontCsv\BaseFont.h" />
     <ClInclude Include="Sqex\Sound.h" />
-    <ClInclude Include="Sqex\Sound\MusicImporter.h" />
     <ClInclude Include="Sqex\Sound\Reader.h" />
     <ClInclude Include="Sqex\Sound\Writer.h" />
     <ClInclude Include="Sqex\Sqpack\BinaryEntryProvider.h" />
@@ -88,7 +79,6 @@
     <ClInclude Include="Utils\ZlibWrapper.h" />
     <ClInclude Include="pch.h" />
     <ClCompile Include="EmptyOrObfuscatedStreamDecoder.cpp" />
-    <ClCompile Include="FdtFont.cpp" />
     <ClCompile Include="Sqex\Network\Structure.cpp" />
     <ClCompile Include="Sqex\Eqdp.cpp" />
     <ClCompile Include="Sqex\EqpGmp.cpp" />
@@ -99,13 +89,6 @@
     <ClCompile Include="Sqex\Excel.cpp" />
     <ClCompile Include="Sqex\Excel\Generator.cpp" />
     <ClCompile Include="Sqex\Excel\Reader.cpp" />
-    <ClCompile Include="Sqex\FontCsv\CreateConfig.cpp" />
-    <ClCompile Include="Sqex\FontCsv\Creator.cpp" />
-    <ClCompile Include="Sqex\FontCsv\DirectWriteFont.cpp" />
-    <ClCompile Include="Sqex\FontCsv\FreeTypeFont.cpp" />
-    <ClCompile Include="Sqex\FontCsv\GdiFont.cpp" />
-    <ClCompile Include="Sqex\FontCsv\BaseFont.cpp" />
-    <ClCompile Include="Sqex\Sound\MusicImporter.cpp" />
     <ClCompile Include="Sqex\Sound\Reader.cpp" />
     <ClCompile Include="Sqex\Sound\Writer.cpp" />
     <ClCompile Include="Sqex\Sqpack\BinaryStreamDecoder.cpp" />

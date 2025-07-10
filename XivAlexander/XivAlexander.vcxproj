@@ -171,7 +171,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <CustomBuildStep>
       <Command>set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
 "$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha256 /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha1 /as /v /fd sha1 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt;&gt; "$(TargetPath).sign.txt"</Command>
+</Command>
       <Message>Signing $(TargetPath)</Message>
       <Outputs>$(TargetPath).sign.txt</Outputs>
     </CustomBuildStep>
@@ -215,7 +215,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <CustomBuildStep>
       <Command>set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
 "$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha256 /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha1 /as /v /fd sha1 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt;&gt; "$(TargetPath).sign.txt"</Command>
+</Command>
       <Message>Signing $(TargetPath)</Message>
       <Outputs>$(TargetPath).sign.txt</Outputs>
     </CustomBuildStep>
@@ -263,7 +263,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <CustomBuildStep>
       <Command>set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
 "$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha256 /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha1 /as /v /fd sha1 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt;&gt; "$(TargetPath).sign.txt"</Command>
+</Command>
       <Message>Signing $(TargetPath)</Message>
       <Outputs>$(TargetPath).sign.txt</Outputs>
     </CustomBuildStep>
@@ -311,7 +311,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <CustomBuildStep>
       <Command>set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
 "$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha256 /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha1 /as /v /fd sha1 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt;&gt; "$(TargetPath).sign.txt"</Command>
+</Command>
       <Message>Signing $(TargetPath)</Message>
       <Outputs>$(TargetPath).sign.txt</Outputs>
     </CustomBuildStep>
@@ -332,7 +332,6 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="Apps\MainApp\Internal\PatchCode.cpp" />
     <ClCompile Include="Misc\CrashMessageBoxHandler.cpp" />
     <ClCompile Include="Misc\DebuggerDetectionDisabler.cpp" />
-    <ClCompile Include="Misc\ExcelTransformConfig.cpp" />
     <ClCompile Include="Misc\GameInstallationDetector.cpp" />
     <ClCompile Include="Apps\MainApp\Internal\VirtualSqPacks.cpp" />
     <ClCompile Include="Misc\IcmpPingTracker.cpp" />
@@ -377,7 +376,6 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="Apps\MainApp\Internal\PatchCode.h" />
     <ClInclude Include="Misc\CrashMessageBoxHandler.h" />
     <ClInclude Include="Misc\DebuggerDetectionDisabler.h" />
-    <ClInclude Include="Misc\ExcelTransformConfig.h" />
     <ClInclude Include="Misc\GameInstallationDetector.h" />
     <ClInclude Include="Apps\MainApp\Internal\VirtualSqPacks.h" />
     <ClInclude Include="Apps\MainApp\Window\Dialog\FramerateLockingDialog.h" />

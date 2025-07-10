@@ -41,6 +41,20 @@ namespace XivAlexander::Apps::MainApp::Internal {
 
 		void MarkIoRequest();
 
+		struct TtmpGroupChoices {
+			std::string GroupName;
+			std::vector<bool> Options;
+		};
+
+		struct TtmpPageChoices {
+			std::vector<TtmpGroupChoices> Groups;
+		};
+
+		struct TtmpChoices {
+			bool Enabled;
+			std::string ModName;
+		};
+
 		struct TtmpSet {
 			bool Allocated = false;
 			std::filesystem::path ListPath;

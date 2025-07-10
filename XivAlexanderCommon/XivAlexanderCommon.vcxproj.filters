@@ -108,29 +108,8 @@
     <ClInclude Include="Sqex\Sqpack\EntryRawStream.h">
       <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\BaseFont.h">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\BaseDrawableFont.h">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\Creator.h">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\GdiFont.h">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\DirectWriteFont.h">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClInclude>
     <ClInclude Include="Sqex\Texture\ModifiableTextureStream.h">
       <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\FreeTypeFont.h">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\CreateConfig.h">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClInclude>
     <ClInclude Include="Sqex\Excel.h">
       <Filter>Sqex\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
@@ -148,12 +127,6 @@
       <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
     </ClInclude>
     <ClInclude Include="Sqex\Sound\Reader.h">
-      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sound\Writer.h">
-      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
-    </ClInclude>
-    <ClInclude Include="Sqex\Sound\MusicImporter.h">
       <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
     </ClInclude>
     <ClInclude Include="Sqex\Imc.h">
@@ -255,14 +228,14 @@
     <ClInclude Include="span_cast.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="Sqex\FontCsv\FdtFont.h">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\Oodle.h">
       <Filter>Utils</Filter>
     </ClInclude>
     <ClInclude Include="Utils\Signatures.h">
       <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Sqex\Sound\Writer.h">
+      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -308,26 +281,8 @@
     <ClCompile Include="Sqex\Texture.cpp">
       <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
     </ClCompile>
-    <ClCompile Include="Sqex\FontCsv\BaseFont.cpp">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\FontCsv\Creator.cpp">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\FontCsv\GdiFont.cpp">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\FontCsv\DirectWriteFont.cpp">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\FontCsv\CreateConfig.cpp">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClCompile>
     <ClCompile Include="Sqex\Texture\ModifiableTextureStream.cpp">
       <Filter>Sqex\Game Resource Files\Texture %28.tex%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\FontCsv\FreeTypeFont.cpp">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
     </ClCompile>
     <ClCompile Include="Sqex\Excel.cpp">
       <Filter>Sqex\Game Resource Files\Excel %28.exd, .exh, .exl%29</Filter>
@@ -345,12 +300,6 @@
       <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
     </ClCompile>
     <ClCompile Include="Sqex\Sound.cpp">
-      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Sound\Writer.cpp">
-      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
-    </ClCompile>
-    <ClCompile Include="Sqex\Sound\MusicImporter.cpp">
       <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
     </ClCompile>
     <ClCompile Include="Sqex\EqpGmp.cpp">
@@ -437,14 +386,14 @@
     <ClCompile Include="EmptyOrObfuscatedStreamDecoder.cpp">
       <Filter>Sqex\Game Resource Files\SqPack %28.index, .index2, .dat0, .dat1, ...%29\Entry Decoders</Filter>
     </ClCompile>
-    <ClCompile Include="FdtFont.cpp">
-      <Filter>Sqex\Game Resource Files\FontCsv %28.fdt%29</Filter>
-    </ClCompile>
     <ClCompile Include="Utils\Oodle.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
     <ClCompile Include="Utils\Signatures.cpp">
       <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Sqex\Sound\Writer.cpp">
+      <Filter>Sqex\Game Resource Files\Sound %28.scd%29</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

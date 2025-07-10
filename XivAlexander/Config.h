@@ -266,11 +266,8 @@ namespace XivAlexander {
 
 			Item<std::vector<std::string>> EnabledPatchCodes = CreateConfigItem(this, "EnabledPatchCodes", std::vector<std::string>());
 			
-			Item<bool> UseHashTrackerKeyLogging = CreateConfigItem(this, "UseHashTrackerKeyLogging", false);
 			Item<bool> LogAllDataFileRead = CreateConfigItem(this, "LogAllDataFileRead", false);
-			Item<Sqex::Language> ResourceLanguageOverride = CreateConfigItem(this, "ResourceLanguageOverride", Sqex::Language::Unspecified);
-			Item<Sqex::Language> VoiceResourceLanguageOverride = CreateConfigItem(this, "VoiceResourceLanguageOverride", Sqex::Language::Unspecified);
-
+			
 			Item<Sqex::Language> RememberedGameLaunchLanguage = CreateConfigItem(this, "RememberedGameLaunchLanguage", Sqex::Language::Unspecified);
 			Item<Sqex::Region> RememberedGameLaunchRegion = CreateConfigItem(this, "RememberedGameLaunchRegion", Sqex::Region::Unspecified);
 
@@ -302,32 +299,19 @@ namespace XivAlexander {
 			Item<std::vector<std::filesystem::path>> ChainLoadPath_dinput8 = CreateConfigItem<std::vector<std::filesystem::path>>(this, "ChainLoadPath_dinput8");
 
 			Item<bool> UseModding = CreateConfigItem(this, "UseModding", false);
-			Item<bool> CompressModdedFiles = CreateConfigItem(this, "CompressModdedFiles", false);
 			Item<bool> TtmpFlattenSubdirectoryDisplay = CreateConfigItem(this, "TtmpFlattenSubdirectoryDisplay", false);
 			Item<bool> TtmpUseSubdirectoryTogglingOnFlattenedView = CreateConfigItem(this, "", false);
 			Item<bool> TtmpShowDedicatedMenu = CreateConfigItem(this, "TtmpShowDedicatedMenu", false);
-			Item<std::vector<std::filesystem::path>> AdditionalSqpackRootDirectories =
-				CreateConfigItem<std::vector<std::filesystem::path>>(this, "AdditionalSqpackRootDirectories");
 			Item<std::vector<std::filesystem::path>> AdditionalTexToolsModPackSearchDirectories =
 				CreateConfigItem<std::vector<std::filesystem::path>>(this, "AdditionalTexToolsModPackSearchDirectories");
 			Item<std::vector<std::filesystem::path>> AdditionalGameResourceFileEntryRootDirectories =
 				CreateConfigItem<std::vector<std::filesystem::path>>(this, "AdditionalGameResourceFileEntryRootDirectories");
-			Item<std::vector<std::filesystem::path>> ExcelTransformConfigFiles =
-				CreateConfigItem<std::vector<std::filesystem::path>>(this, "ExcelTransformConfigFiles");
-			Item<std::vector<Sqex::Language>> FallbackLanguagePriority =
-				CreateConfigItem<std::vector<Sqex::Language>>(this, "FallbackLanguagePriority");
-
-			Item<std::filesystem::path> OverrideFontConfig = CreateConfigItem(this, "OverrideFontConfig", std::filesystem::path());
 			
 			Item<bool> MuteVoice_Battle = CreateConfigItem(this, "MuteVoice_Battle", false);
 			Item<bool> MuteVoice_Cm = CreateConfigItem(this, "MuteVoice_Cm", false);
 			Item<bool> MuteVoice_Emote = CreateConfigItem(this, "MuteVoice_Emote", false);
 			Item<bool> MuteVoice_Line = CreateConfigItem(this, "MuteVoice_Line", false);
 
-			Item<std::vector<std::filesystem::path>> MusicImportConfig = CreateConfigItem(this, "MusicImportConfig", std::vector<std::filesystem::path>());
-			Item<std::map<std::string, std::vector<std::filesystem::path>>> MusicImportConfig_Directories = CreateConfigItem(this, "MusicImportConfig_Directories", std::map<std::string, std::vector<std::filesystem::path>>());
-			Item<int> MusicImportTargetSamplingRate = CreateConfigItem(this, "MusicImportTargetSamplingRate", 0);
-			
 			RuntimeRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
 			~RuntimeRepository() override;
 			
@@ -342,8 +326,6 @@ namespace XivAlexander {
 			[[nodiscard]] std::wstring GetLanguageNameLocalized(Sqex::Language gameLanguage) const;
 			[[nodiscard]] std::wstring GetRegionNameLocalized(Sqex::Region gameRegion) const;
 			[[nodiscard]] std::vector<std::pair<WORD, std::string>> GetDisplayLanguagePriorities() const;
-			
-			[[nodiscard]] std::vector<Sqex::Language> GetFallbackLanguageList() const;
 
 			[[nodiscard]] static uint64_t CalculateLockFramerateIntervalUs(double fromFps, double toFps, uint64_t gcdUs, uint64_t maximumRenderIntervalDeviation);
 

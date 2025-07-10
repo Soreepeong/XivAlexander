@@ -44,7 +44,6 @@ XivAlexander::Apps::MainApp::Window::ConfigWindow::ConfigWindow(UINT nTitleStrin
 	m_direct(m_directPtr, SCI_SETMARGINTYPEN, 0, SC_MARGIN_NUMBER);
 	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 1, 0);
 	m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>("Consolas"));
-	m_direct(m_directPtr, SCI_SETLEXERLANGUAGE, 0, reinterpret_cast<sptr_t>("json"));
 
 	Revert();
 	ApplyLanguage(m_config->Runtime.GetLangId());

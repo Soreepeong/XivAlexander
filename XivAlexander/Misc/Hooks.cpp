@@ -18,7 +18,7 @@ std::vector<char, Utils::Win32::HeapAllocator<char>> XivAlexander::Misc::Hooks::
 #endif
 
 	ZydisDecoder decoder;
-	ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64);
+	ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
 
 	std::vector<char, Utils::Win32::HeapAllocator<char>> body(allocator);
 	std::map<size_t, size_t> replacementJumps;
@@ -26,13 +26,13 @@ std::vector<char, Utils::Win32::HeapAllocator<char>> XivAlexander::Misc::Hooks::
 	static_assert(sizeof std::vector<char, Utils::Win32::HeapAllocator<char>>::size_type == sizeof size_t);
 
 	ZydisDecodedInstruction instruction;
+	ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
 	for (size_t offset = 0, funclen = 32768;
-		ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, source + offset, funclen - offset, &instruction));
+		ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, source + offset, funclen - offset, &instruction, operands));
 	) {
-
 		auto relativeAddressHandled = true;
 		for (size_t i = 0; i < instruction.operand_count && relativeAddressHandled; ++i) {
-			const auto& operand = instruction.operands[0];
+			const auto& operand = operands[0];
 			if (operand.type == ZYDIS_OPERAND_TYPE_MEMORY) {
 				switch (operand.mem.base) {
 					case ZYDIS_REGISTER_IP:
@@ -52,12 +52,12 @@ std::vector<char, Utils::Win32::HeapAllocator<char>> XivAlexander::Misc::Hooks::
 		// Just My Code will add additional calls.
 		if (instruction.opcode == 0x8d  // lea rcx, [rip+?]
 			&& instruction.operand_count == 2
-			&& instruction.operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER
-			&& instruction.operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY
-			&& instruction.operands[1].mem.base == ZYDIS_REGISTER_RIP) {
+			&& operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER
+			&& operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY
+			&& operands[1].mem.base == ZYDIS_REGISTER_RIP) {
 			// lea
 			uint64_t resultAddress = 0;
-			ZydisCalcAbsoluteAddress(&instruction, &instruction.operands[1],
+			ZydisCalcAbsoluteAddress(&instruction, &operands[1],
 				reinterpret_cast<size_t>(source) + offset, &resultAddress);
 			replacementJumps[body.size() + 3] = resultAddress;
 			relativeAddressHandled = true;
@@ -70,7 +70,7 @@ std::vector<char, Utils::Win32::HeapAllocator<char>> XivAlexander::Misc::Hooks::
 			case ZYDIS_CATEGORY_CALL: {
 				if (uint64_t resultAddress;
 					instruction.operand_count >= 1
-					&& ZYAN_STATUS_SUCCESS == ZydisCalcAbsoluteAddress(&instruction, &instruction.operands[0],
+					&& ZYAN_STATUS_SUCCESS == ZydisCalcAbsoluteAddress(&instruction, operands,
 						reinterpret_cast<size_t>(source) + offset, &resultAddress)) {
 
 #if INTPTR_MAX == INT32_MAX

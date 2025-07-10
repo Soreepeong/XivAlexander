@@ -60,10 +60,6 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void RepopulateMenu();
 		UINT_PTR RepopulateMenu_AllocateMenuId(std::function<void()>);
 		static std::wstring RepopulateMenu_GetMenuTextById(HMENU hParentMenu, UINT commandId);
-		void RepopulateMenu_FontConfig(HMENU hParentMenu);
-		void RepopulateMenu_AdditionalSqpackRootDirectories(HMENU hParentMenu);
-		void RepopulateMenu_ExdfTransformationRules(HMENU hParentMenu);
-		void RepopulateMenu_UpgradeMusicQuality(HMENU hParentMenu);
 		void RepopulateMenu_Ttmp(HMENU hParentMenu, HMENU hTtmpMenu);
 		void RepopulateMenu_GameFix(HMENU hParentMenu);
 		void SetMenuStates() const;
@@ -82,10 +78,6 @@ namespace XivAlexander::Apps::MainApp::Window {
 
 		[[nodiscard]] std::vector<std::filesystem::path> ChooseFileToOpen(std::span<const COMDLG_FILTERSPEC> fileTypes, UINT nTitleResId, const std::filesystem::path& defaultPath = {}) const;
 
-		void ImportFontConfig(const std::filesystem::path& path);
-		void ImportMusicImportConfig(const std::filesystem::path& path);
-		void ImportExcelTransformConfig(const std::filesystem::path& path);
-		void AddAdditionalGameRootDirectory(std::filesystem::path path);
 		std::string InstallTTMP(const std::filesystem::path& path, Apps::MainApp::Window::ProgressPopupWindow& progressWindow);
 		void BatchTtmpOperation(Internal::VirtualSqPacks::NestedTtmp& parent, int menuId);
 
