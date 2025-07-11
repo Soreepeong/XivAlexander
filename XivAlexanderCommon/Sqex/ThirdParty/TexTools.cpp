@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "XivAlexanderCommon/Sqex/ThirdParty/TexTools.h"
+#include "XivAlexanderCommon/Sqex/Sqpack.h"
 #include "XivAlexanderCommon/Sqex.h"
 
 using namespace std::string_literals;
@@ -235,10 +236,8 @@ Sqex::ThirdParty::TexTools::TTMPL::TraverseCallbackResult Sqex::ThirdParty::TexT
 }
 
 std::string Sqex::ThirdParty::TexTools::ModEntry::ToExpacDatPath() const {
-	const auto expac = std::strtol(DatFile.substr(2, 2).c_str(), 0, 16);
-	if (expac == 0)
-		return std::format("ffxiv/{}", DatFile);
-	return std::format("ex{}/{}", expac, DatFile);
+	Sqpack::EntryPathSpec pathSpec(FullPath);
+	return std::format("{}/{}", pathSpec.DatExpac(), pathSpec.DatFile());
 }
 
 bool Sqex::ThirdParty::TexTools::ModEntry::IsMetadata() const {

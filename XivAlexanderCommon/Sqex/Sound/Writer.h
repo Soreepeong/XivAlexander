@@ -24,6 +24,7 @@ namespace Sqex::Sound {
 			
 			static SoundEntry FromWave(const std::function<std::span<uint8_t>(size_t len, bool throwOnIncompleteRead)>& reader);
 			static SoundEntry EmptyEntry();
+			static SoundEntry EmptyEntry(std::chrono::milliseconds duration);
 
 			[[nodiscard]] size_t CalculateEntrySize() const;
 			void ExportTo(std::vector<uint8_t>& res) const;

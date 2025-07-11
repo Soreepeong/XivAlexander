@@ -1332,7 +1332,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Modding(int
 							std::vector<char> dv;
 							if (file_size(target) == 0)
 								dv = Sqex::Sqpack::EmptyOrObfuscatedEntryProvider(entryPathSpec).ReadStreamIntoVector<char>(0);
-							else if (extensionLower == L".tex" || extensionLower == L".atex")
+							else if (extensionLower == L".tex")
 								dv = Sqex::Sqpack::MemoryTextureEntryProvider(entryPathSpec, std::make_shared<Sqex::FileRandomAccessStream>(target), Z_BEST_COMPRESSION).ReadStreamIntoVector<char>(0);
 							else if (extensionLower == L".mdl")
 								dv = Sqex::Sqpack::MemoryModelEntryProvider(entryPathSpec, std::make_shared<Sqex::FileRandomAccessStream>(target), Z_BEST_COMPRESSION).ReadStreamIntoVector<char>(0);

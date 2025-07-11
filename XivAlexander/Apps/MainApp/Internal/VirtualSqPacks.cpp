@@ -69,7 +69,7 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 		const auto actCtx = Dll::ActivationContext().With();
 		{
 			Apps::MainApp::Window::ProgressPopupWindow progressWindow(Dll::FindGameMainWindow(false));
-			progressWindow.Show();
+			progressWindow.Show(std::chrono::milliseconds(5000));
 			InitializeSqPacks(progressWindow);
 			ReflectUsedEntries(true);
 		}
@@ -496,17 +496,15 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 									const auto reader = Sqex::Sound::ScdReader(creator["sound/system/sample_system.scd"]);
 									Sqex::Sound::ScdWriter writer;
 									writer.SetTable1(reader.ReadTable1Entries());
-									writer.SetTable4(reader.ReadTable4Entries());
 									writer.SetTable2(reader.ReadTable2Entries());
-									for (size_t i = 0; i < 256; ++i) {
-										writer.SetSoundEntry(i, Sqex::Sound::ScdWriter::SoundEntry::EmptyEntry());
-									}
+									writer.SetTable4(reader.ReadTable4Entries());
+									writer.SetTable5(reader.ReadTable5Entries());
+									for (size_t i = 0; i < 256; ++i)
+										writer.SetSoundEntry(i, Sqex::Sound::ScdWriter::SoundEntry::EmptyEntry(std::chrono::milliseconds(100)));
+
 									EmptyScd = std::make_shared<Sqex::MemoryRandomAccessStream>(
-										Sqex::Sqpack::MemoryBinaryEntryProvider("dummy/dummy", std::make_shared<Sqex::MemoryRandomAccessStream>(writer.Export()), Z_NO_COMPRESSION)
+										Sqex::Sqpack::MemoryBinaryEntryProvider("sound/empty256.scd", std::make_shared<Sqex::MemoryRandomAccessStream>(writer.Export()), Z_NO_COMPRESSION)
 										.ReadStreamIntoVector<uint8_t>(0));
-									//EmptyScd = std::make_shared<Sqex::MemoryRandomAccessStream>(
-									//	Sqex::Sqpack::EmptyOrObfuscatedEntryProvider("dummy/dummy", std::make_shared<Sqex::MemoryRandomAccessStream>(writer.Export()))
-									//	.ReadStreamIntoVector<uint8_t>(0));
 								} catch(std::out_of_range&) {
 									// ignore
 								}
@@ -583,15 +581,6 @@ struct XivAlexander::Apps::MainApp::Internal::VirtualSqPacks::Implementation {
 
 					pool.SubmitWork([&]() {
 						auto v = pCreator->AsViews(false, pCreator->DatName.starts_with("0c") ? nullptr : dataViewBuffer);
-
-						//if (pCreator->DatName.starts_with("0a")) {
-						//	auto t = v.Index1->ReadStreamIntoVector<char>(0);
-						//	std::ofstream("Z:/0a0000.win32.index", std::ios::binary).write(&t[0], t.size());
-						//	t = v.Index2->ReadStreamIntoVector<char>(0);
-						//	std::ofstream("Z:/0a0000.win32.index2", std::ios::binary).write(&t[0], t.size());
-						//	t = v.Data[0]->ReadStreamIntoVector<char>(0);
-						//	std::ofstream("Z:/0a0000.win32.dat0", std::ios::binary).write(&t[0], t.size());
-						//}
 
 						const auto lock = std::lock_guard(resLock);
 						SqpackViews.emplace(indexFile, std::move(v));

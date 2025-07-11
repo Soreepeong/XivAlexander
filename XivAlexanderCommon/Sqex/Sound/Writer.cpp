@@ -68,6 +68,19 @@ Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::EmptyEntr
 	};
 }
 
+Sqex::Sound::ScdWriter::SoundEntry Sqex::Sound::ScdWriter::SoundEntry::EmptyEntry(std::chrono::milliseconds duration) {
+	const auto blankLength = static_cast<uint32_t>(duration.count() * 2 * 44100 / 1000);
+	return {
+		.Header = {
+			.StreamSize = blankLength,
+			.ChannelCount = 1,
+			.SamplingRate = 44100,
+			.Format = SoundEntryHeader::EntryFormat_WaveFormatPcm,
+		},
+		.Data = std::vector<uint8_t>(blankLength),
+	};
+}
+
 size_t Sqex::Sound::ScdWriter::SoundEntry::CalculateEntrySize() const {
 	size_t auxLength = 0;
 	for (const auto& aux : AuxChunks | std::views::values)

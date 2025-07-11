@@ -160,7 +160,7 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddEntryFromFile(En
 	CharLowerW(&extensionLower[0]);
 	if (file_size(path) == 0) {
 		provider = std::make_shared<EmptyOrObfuscatedEntryProvider>(std::move(pathSpec));
-	} else if (extensionLower == L".tex" || extensionLower == L".atex") {
+	} else if (extensionLower == L".tex") {
 		provider = std::make_shared<OnTheFlyTextureEntryProvider>(std::move(pathSpec), path);
 	} else if (extensionLower == L".mdl") {
 		provider = std::make_shared<OnTheFlyModelEntryProvider>(std::move(pathSpec), path);
@@ -182,7 +182,8 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddAllEntriesFromSi
 	AddEntryResult result;
 	for (size_t i = 0; i < ttmpl.SimpleModsList.size(); ++i) {
 		const auto& entry = ttmpl.SimpleModsList[i];
-		if (entry.DatFile != DatName)
+		EntryPathSpec entryPathSpec(entry.FullPath);
+		if (entryPathSpec.DatFile() != DatName)
 			continue;
 
 		try {
@@ -197,7 +198,8 @@ Sqex::Sqpack::Creator::AddEntryResult Sqex::Sqpack::Creator::AddAllEntriesFromSi
 
 void Sqex::Sqpack::Creator::ReserveSpacesFromTTMP(const ThirdParty::TexTools::TTMPL & ttmpl, const std::shared_ptr<Sqex::RandomAccessStream>&ttmpd) {
 	for (const auto& entry : ttmpl.SimpleModsList) {
-		if (entry.DatFile != DatName || entry.ModSize > UINT32_MAX)
+		EntryPathSpec entryPathSpec(entry.FullPath);
+		if (entryPathSpec.DatFile() != DatName || entry.ModSize > UINT32_MAX)
 			continue;
 
 		if (entry.IsMetadata()) {
@@ -218,7 +220,8 @@ void Sqex::Sqpack::Creator::ReserveSpacesFromTTMP(const ThirdParty::TexTools::TT
 		for (const auto& modGroup : modPackPage.ModGroups) {
 			for (const auto& option : modGroup.OptionList) {
 				for (const auto& entry : option.ModsJsons) {
-					if (entry.DatFile != DatName || entry.ModSize > UINT32_MAX)
+					EntryPathSpec entryPathSpec(entry.FullPath);
+					if (entryPathSpec.DatFile() != DatName || entry.ModSize > UINT32_MAX)
 						continue;
 
 					if (entry.IsMetadata()) {

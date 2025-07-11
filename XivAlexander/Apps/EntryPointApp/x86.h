@@ -64,7 +64,7 @@ struct TrampolineTemplate {
 		// eax := eax - sizeof thunk (last instruction must be call)
 		struct {
 			const uint8_t op_sub_eax[1]{ 0x2d };
-			const uint32_t displacement = static_cast<uint32_t>(sizeof EntryPointThunkTemplate);
+			const uint32_t displacement = static_cast<uint32_t>(sizeof(EntryPointThunkTemplate));
 		} op_sub_eax_to_entry_point;
 
 		struct {
@@ -78,7 +78,7 @@ struct TrampolineTemplate {
 	} CallInjectEntryPoint;
 
 	const char buf_CallGetProcAddress_lpProcName[20] = "XA_InjectEntryPoint";
-	uint8_t buf_EntryPointBackup[sizeof EntryPointThunkTemplate]{};
+	uint8_t buf_EntryPointBackup[sizeof(EntryPointThunkTemplate)]{};
 
 #pragma pack(push, 4)
 	Dll::InjectEntryPointParameters parameters{};

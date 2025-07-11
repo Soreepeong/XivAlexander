@@ -30,6 +30,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		DWORD DoModalLoop(int ms, std::vector<HANDLE> events = {});
 
 		void Show();
+		void Show(std::chrono::milliseconds delay);
 
 	protected:
 		void OnLayout(double zoom, double width, double height, int resizeType) override;

@@ -77,13 +77,13 @@ struct XivAlexander::Apps::MainApp::Internal::GameResourceOverrider::Implementat
 		, AntiDebugger(Misc::DebuggerDetectionDisabler::Acquire())
 		, SqpackPath(Utils::Win32::Process::Current().PathOf().remove_filename() / L"sqpack") {
 
+		if (!Dll::IsLoadedAsDependency() && !Dll::IsLoadedFromEntryPoint())
+			return;
+
+		if (!Config->Runtime.UseModding)
+			return;
+
 		VirtualSqPackInitThread = Utils::Win32::Thread(L"VirtualSqPackInitThread", [&]() {
-			if (!Dll::IsLoadedAsDependency() && !Dll::IsLoadedFromEntryPoint())
-				return;
-
-			if (!Config->Runtime.UseModding)
-				return;
-
 			try {
 				Sqpacks.emplace(App, Utils::Win32::Process::Current().PathOf().remove_filename() / L"sqpack");
 			} catch (const std::exception& e) {

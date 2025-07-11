@@ -55,22 +55,12 @@ struct XivAlexander::EntryPoint::EntryPointApp::Implementation {
 		auto pardir = path.parent_path();
 		const auto filename = path.filename().wstring();
 		if (equivalent(pardir, Dll::Module().PathOf().parent_path())
-			&& (lstrcmpiW(filename.c_str(), Dll::XivAlexLoader32NameW) == 0 || lstrcmpiW(filename.c_str(), Dll::XivAlexLoader64NameW) == 0))
+			&& (lstrcmpiW(filename.c_str(), Dll::XivAlexLoader64NameW) == 0))
 			return false;
 
-		const auto isGame32 = lstrcmpiW(filename.c_str(), Dll::GameExecutable32NameW) == 0;
 		const auto isGame64 = lstrcmpiW(filename.c_str(), Dll::GameExecutable64NameW) == 0;
 
-		if (isGame32) {
-			for (const auto candidate : { "d3d9.dll", "dinput8.dll" }) {
-				try {
-					if (Dll::IsXivAlexanderDll(pardir / candidate))
-						return false;
-				} catch (...) {
-					// pass
-				}
-			}
-		} else if (isGame64) {
+		if (isGame64) {
 			for (const auto candidate : { "d3d11.dll", "dxgi.dll", "dinput8.dll" }) {
 				try {
 					if (Dll::IsXivAlexanderDll(pardir / candidate))
@@ -85,7 +75,7 @@ struct XivAlexander::EntryPoint::EntryPointApp::Implementation {
 			return true;
 
 		if (InjectGameOnly)
-			return isGame32 || isGame64;
+			return isGame64;
 
 		// check 3 parent directories to determine whether it might have anything to do with FFXIV
 		for (int i = 0; i < 3; ++i) {
@@ -198,8 +188,7 @@ XivAlexander::EntryPoint::EntryPointApp::Implementation::Implementation() {
 
 			try {
 				if (equivalent(applicationPath, Utils::Win32::Process::Current().PathOf())
-					&& (lstrcmpiW(applicationPath.filename().c_str(), Dll::GameExecutable32NameW) == 0
-						|| lstrcmpiW(applicationPath.filename().c_str(), Dll::GameExecutable64NameW) == 0)) {
+					&& (lstrcmpiW(applicationPath.filename().c_str(), Dll::GameExecutable64NameW) == 0)) {
 					if (Dll::IsOriginalCommandLineObfuscated())
 						commandLine = Sqex::CommandLine::ToString(Sqex::CommandLine::FromString(std::format(L"unused.exe {}", commandLine)), true);
 				}

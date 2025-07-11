@@ -9,6 +9,8 @@ constexpr auto margin = 10.;
 constexpr auto elementHeight = 30.;
 constexpr auto buttonWidth = 80.;
 
+constexpr auto WmDelayedShow = WM_APP + 1;
+
 static WNDCLASSEXW WindowClass() {
 	const auto hIcon = Utils::Win32::Icon(LoadIconW(Dll::Module(), MAKEINTRESOURCEW(IDI_TRAY_ICON)),
 		nullptr,
@@ -139,6 +141,7 @@ DWORD XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::DoModalLoop(int 
 }
 
 void XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::Show() {
+	KillTimer(m_hWnd, 1);
 	if (IsWindowVisible(m_hWnd))
 		return;
 
@@ -163,6 +166,17 @@ void XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::Show() {
 		SendMessageW(m_hProgressBar, PBM_SETMARQUEE, TRUE, 0);
 	InvalidateRect(m_hWnd, nullptr, TRUE);
 	SetWindowPos(m_hWnd, m_hParentWindow && (GetWindowLongW(m_hParentWindow, GWL_EXSTYLE) & WS_EX_TOPMOST) ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+}
+
+void XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::Show(std::chrono::milliseconds delay) {
+	KillTimer(m_hWnd, 1);
+	if (IsWindowVisible(m_hWnd))
+		return;
+
+	if (delay.count() == 0)
+		Show();
+	else
+		SetTimer(m_hWnd, 1, static_cast<UINT>(delay.count()), nullptr);
 }
 
 void XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::OnLayout(double zoom, double width, double height, int resizeType) {
@@ -282,6 +296,13 @@ LRESULT XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::WndProc(HWND h
 
 		case WM_NCHITTEST: {
 			return HTCAPTION;
+		}
+
+		case WM_TIMER: {
+			if (wParam == 1) {
+				Show();
+				return 0;
+			}
 		}
 	}
 	return BaseWindow::WndProc(hwnd, msg, wParam, lParam);

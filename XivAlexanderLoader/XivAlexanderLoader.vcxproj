@@ -156,8 +156,7 @@
     </Link>
     <CustomBuildStep>
       <Command>set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha256 /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha1 /as /v /fd sha1 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt;&gt; "$(TargetPath).sign.txt"</Command>
+"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha256 /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"</Command>
       <Message>Signing $(TargetPath)</Message>
       <Outputs>$(TargetPath).sign.txt</Outputs>
     </CustomBuildStep>
@@ -187,8 +186,7 @@
     </Link>
     <CustomBuildStep>
       <Command>set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha256 /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha1 /as /v /fd sha1 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt;&gt; "$(TargetPath).sign.txt"</Command>
+"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha256 /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"</Command>
       <Message>Signing $(TargetPath)</Message>
       <Outputs>$(TargetPath).sign.txt</Outputs>
     </CustomBuildStep>
@@ -222,8 +220,7 @@
     </Link>
     <CustomBuildStep>
       <Command>set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha256 /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha1 /as /v /fd sha1 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt;&gt; "$(TargetPath).sign.txt"</Command>
+"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha256 /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"</Command>
       <Message>Signing $(TargetPath)</Message>
       <Outputs>$(TargetPath).sign.txt</Outputs>
     </CustomBuildStep>
@@ -257,8 +254,7 @@
     </Link>
     <CustomBuildStep>
       <Command>set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha256 /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha1 /as /v /fd sha1 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt;&gt; "$(TargetPath).sign.txt"</Command>
+"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha256 /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"</Command>
       <Message>Signing $(TargetPath)</Message>
       <Outputs>$(TargetPath).sign.txt</Outputs>
     </CustomBuildStep>
