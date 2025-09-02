@@ -431,6 +431,22 @@ static void InitializeBeforeOriginalEntryPoint() {
 		return;  // not the game process; don't load XivAlex app
 
 	static Utils::CallOnDestruction::Multiple s_hooks;
+	
+	// Prevent mutexes from being created
+	static XivAlexander::Misc::Hooks::ImportedFunction<HANDLE, DWORD, BOOL, LPCSTR> s_OpenMutexA("kernel32!OpenMutexA", "kernel32.dll", "OpenMutexA");
+	static XivAlexander::Misc::Hooks::ImportedFunction<HANDLE, LPSECURITY_ATTRIBUTES, BOOL, LPCSTR> s_CreateMutexA("kernel32!CreateMutexA", "kernel32.dll", "CreateMutexA");
+	s_hooks += s_OpenMutexA.SetHook([](DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName) {
+		if (lpName && std::string_view(lpName).starts_with("Global\\6AA83AB5-BAC4-4a36-9F66-A309770760CB_ffxiv_"))
+			return static_cast<HANDLE>(0);
+
+		return s_OpenMutexA.bridge(dwDesiredAccess, bInheritHandle, lpName);
+		});
+	s_hooks += s_CreateMutexA.SetHook([](LPSECURITY_ATTRIBUTES lpMutexAttributes, BOOL bInitialOwner, LPCSTR lpName) {
+		if (lpName && std::string_view(lpName).starts_with("Global\\6AA83AB5-BAC4-4a36-9F66-A309770760CB_ffxiv_"))
+			return s_CreateMutexA.bridge(lpMutexAttributes, bInitialOwner, nullptr);
+
+		return s_CreateMutexA.bridge(lpMutexAttributes, bInitialOwner, lpName);
+		});
 
 	// Prevent the game from restarting to "fix" ACL
 	static XivAlexander::Misc::Hooks::ImportedFunction<HANDLE, DWORD, BOOL, DWORD> s_OpenProcessForXiv("kernel32!OpenProcess", "kernel32.dll", "OpenProcess");
