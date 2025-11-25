@@ -120,6 +120,9 @@ std::pair<Sqex::Sqpack::EntryPathSpec, std::vector<char>> Sqex::Excel::Depth2Exh
 		case Language::Korean:
 			languageCode = "_ko";
 			break;
+		case Language::TraditionalChinese:
+			languageCode = "_tc";
+			break;
 		default:
 			throw std::invalid_argument("Invalid language");
 	}
