@@ -162,16 +162,17 @@ namespace Sqex::Network::Structure {
 		};
 
 		struct C2S_ActionRequest {
-			uint8_t Pad_0000;
-			uint8_t Type;
-			uint8_t Pad_0002[2];
 			uint32_t ActionId;
+			uint8_t Unknown_0002[0x2];
 			uint16_t Sequence;
-			uint8_t Pad_000C[6];
-			uint64_t TargetId;
-			uint16_t ItemSourceSlot;
-			uint16_t ItemSourceContainer;
-			uint32_t Unknown;
+			uint8_t Unknown_0006[0x38];
+		};
+
+		struct C2S_ActionRequestGroundTargeted {
+			uint32_t ActionId;
+			uint8_t Unknown_0002[0x2];
+			uint16_t Sequence;
+			uint8_t Unknown_0006[0x30];
 		};
 
 		struct S2C_Custom_OriginalWaitTime {

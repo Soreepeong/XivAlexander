@@ -119,12 +119,24 @@ struct XivAlexander::Apps::MainApp::Internal::IpcTypeFinder::Implementation {
 			});
 			conn.AddOutgoingFFXIVMessageHandler(this, [&](auto pMessage) {
 				if (pMessage->Type == MessageType::Ipc && pMessage->Data.Ipc.Type == IpcType::InterestedType) {
-					if (pMessage->Length == 0x40) {
+					if (pMessage->Length == sizeof(Sqex::Network::Structure::XivIpcs::C2S_ActionRequest)) {
 						// Test ActionRequest
 						const auto& actionRequest = pMessage->Data.Ipc.Data.C2S_ActionRequest;
 						Impl.Logger->Format(
 							LogCategory::IpcTypeFinder,
-							"{:x}: C2S_ActionRequest/GroundTargeted(0x{:04x}): actionId={:04x} sequence={:04x}\n{}",
+							"{:x}: C2S_ActionRequest(0x{:04x}): actionId={:04x} sequence={:04x}\n{}",
+							conn.Socket(),
+							pMessage->Data.Ipc.SubType,
+							actionRequest.ActionId, actionRequest.Sequence,
+							pMessage->Represent(true));
+					}
+
+					if (pMessage->Length == sizeof(Sqex::Network::Structure::XivIpcs::C2S_ActionRequestGroundTargeted)) {
+						// Test ActionRequest
+						const auto& actionRequest = pMessage->Data.Ipc.Data.C2S_ActionRequest;
+						Impl.Logger->Format(
+							LogCategory::IpcTypeFinder,
+							"{:x}: C2S_ActionRequestGroundTargeted(0x{:04x}): actionId={:04x} sequence={:04x}\n{}",
 							conn.Socket(),
 							pMessage->Data.Ipc.SubType,
 							actionRequest.ActionId, actionRequest.Sequence,
