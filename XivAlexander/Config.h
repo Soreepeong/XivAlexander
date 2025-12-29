@@ -275,6 +275,7 @@ namespace XivAlexander {
 
 			Item<bool> UseMoreCpuTime = CreateConfigItem(this, "UseMoreCpuPower", false);
 			Item<bool> SynchronizeProcessing = CreateConfigItem(this, "SynchronizeProcessing", false);
+			Item<bool> AddProcessIDToGameWindowTitle = CreateConfigItem(this, "AddProcessIDToGameWindowTitle", false);
 
 			Item<uint64_t> LockFramerateInterval = CreateConfigItem<uint64_t>(this, "LockFramerate", 0, [](const uint64_t& val) {
 				return std::min<uint64_t>(std::max<uint64_t>(0, val), 1000000);

@@ -399,6 +399,7 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 	const std::shared_ptr<Misc::Logger> Logger;
 	SocketHook& SocketHook;
 	std::map<SingleConnection*, std::unique_ptr<SingleConnectionHandler>> Handlers{};
+	std::mutex HandlersMutex;
 	Utils::CallOnDestruction::Multiple Cleanup;
 
 	Implementation(NetworkTimingHandler& this_, Apps::MainApp::App& app)
@@ -407,14 +408,25 @@ struct XivAlexander::Apps::MainApp::Internal::NetworkTimingHandler::Implementati
 		, Logger(Misc::Logger::Acquire())
 		, SocketHook(app.GetSocketHook()) {
 		Cleanup += SocketHook.OnSocketFound([&](SingleConnection& conn) {
+			const auto lock = std::lock_guard(HandlersMutex);
 			Handlers.emplace(&conn, std::make_unique<SingleConnectionHandler>(this, conn));
 			});
 		Cleanup += SocketHook.OnSocketGone([&](SingleConnection& conn) {
-			Handlers.erase(&conn);
+			std::unique_ptr<SingleConnectionHandler> sch;
+			{
+				const auto lock = std::lock_guard(HandlersMutex);
+				const auto it = Handlers.find(&conn);
+				if (it == Handlers.end())
+					return;
+
+				sch = std::move(it->second);
+				Handlers.erase(it);
+			}
 			});
 	}
 
 	~Implementation() {
+		Cleanup.Clear();
 		Handlers.clear();
 	}
 

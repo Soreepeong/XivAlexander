@@ -83,7 +83,9 @@ namespace XivAlexander::Apps::MainApp::Internal {
 
 		[[nodiscard]] bool IsUnloadable() const;
 
-		void ReleaseSockets();
+		void ReleaseSockets() const;
+
+		void ResetAllConnections() const;
 
 		[[nodiscard]] std::wstring Describe() const;
 	};

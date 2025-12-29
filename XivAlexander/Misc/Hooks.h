@@ -72,9 +72,7 @@ namespace XivAlexander::Misc::Hooks {
 			return m_bridge(std::forward<Args&>(args)...);
 		}
 
-		R operator()(Args...args) const {
-			return this->m_pAddress(std::forward<Args&>(args)...);
-		}
+		virtual R operator()(Args...args) const = 0;
 
 		[[nodiscard]] virtual bool IsDisableable() const {
 			return true;
@@ -134,6 +132,10 @@ namespace XivAlexander::Misc::Hooks {
 			this->m_bridge = static_cast<FunctionType>(bridge);
 		}
 
+		R operator()(Args...args) const override {
+			return this->m_pAddress(std::forward<Args&>(args)...);
+		}
+
 	protected:
 		void HookEnable() final {
 			MH_EnableHook(this->m_pAddress);
@@ -162,6 +164,10 @@ namespace XivAlexander::Misc::Hooks {
 
 		operator bool() const {
 			return this->m_pAddress;
+		}
+
+		R operator()(Args...args) const override {
+			return (*reinterpret_cast<FunctionType*>(this->m_pAddress))(std::forward<Args&>(args)...);
 		}
 
 	protected:
@@ -197,6 +203,10 @@ namespace XivAlexander::Misc::Hooks {
 		[[nodiscard]] bool IsDisableable() const final;
 
 		LRESULT bridge(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) final;
+
+		LRESULT operator()(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) const final {
+			return SendMessageW(hwnd, msg, wParam, lParam);
+		}
 
 	protected:
 		void HookEnable() final;

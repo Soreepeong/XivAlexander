@@ -400,7 +400,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu() {
 
 	const auto title = std::format(L"{}: {}, {}, {}",
 		m_config->Runtime.GetStringRes(IDS_APP_NAME), GetCurrentProcessId(), m_gameReleaseInfo.CountryCode, m_gameReleaseInfo.GameVersion);
-	ModifyMenuW(menu, ID_FILE_CURRENTINFO, MF_BYCOMMAND | MF_DISABLED, ID_FILE_CURRENTINFO, title.c_str());
+	ModifyMenuW(menu, ID_FILE_CURRENTINFO, MF_BYCOMMAND, ID_FILE_CURRENTINFO, title.c_str());
 
 	m_menuIdCallbacks.clear();
 	{
@@ -841,6 +841,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
 		else
 			SetMenuState(hMenu, ID_CONFIGURE_LOCKFRAMERATE, false, true, m_config->Runtime.GetStringRes(IDS_MENU_LOCKFRAMERATE_DISABLED));
 		SetMenuState(hMenu, ID_CONFIGURE_SYNCHRONIZEPROCESSING, config.SynchronizeProcessing, true);
+		SetMenuState(hMenu, ID_CONFIGURE_ADDPIDTOGAMEWINDOWTITLE, config.AddProcessIDToGameWindowTitle, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT, config.Language == Language::SystemDefault, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_ENGLISH, config.Language == Language::English, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_KOREAN, config.Language == Language::Korean, true);
@@ -934,6 +935,11 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_File(int me
 			for (const auto& w : All())
 				if (w->Handle() == GetForegroundWindow())
 					ShowContextMenu(w);
+			return;
+
+		case ID_FILE_CURRENTINFO:
+			if (const auto hWnd = this->m_app.GetGameWindowHandle())
+				SetForegroundWindow(hWnd);
 			return;
 
 		case ID_FILE_SHOWLOGGINGWINDOW:
@@ -1110,9 +1116,11 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Network(int
 			return;
 
 		case ID_NETWORK_RELEASEALLCONNECTIONS:
-			m_app.RunOnGameLoop([this]() {
-				m_app.GetSocketHook().ReleaseSockets();
-				});
+			m_app.RunOnGameLoop([this]() { m_app.GetSocketHook().ReleaseSockets(); });
+			return;
+
+		case ID_NETWORK_RESETALLCONNECTIONS:
+			m_app.RunOnGameLoop([this]() { m_app.GetSocketHook().ResetAllConnections(); });
 			return;
 
 		case ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES:
@@ -1416,6 +1424,10 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Configure(i
 
 		case ID_CONFIGURE_SYNCHRONIZEPROCESSING:
 			config.SynchronizeProcessing.Toggle();
+			return;
+
+		case ID_CONFIGURE_ADDPIDTOGAMEWINDOWTITLE:
+			config.AddProcessIDToGameWindowTitle.Toggle();
 			return;
 
 		case ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT:

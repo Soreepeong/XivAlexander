@@ -23,6 +23,7 @@
 
 struct XivAlexander::Apps::MainApp::App::Implementation_GameWindow final {
 	MainApp::App& App;
+	const std::shared_ptr<Config> Config;
 
 	std::mutex RunOnGameLoopMtx;
 	std::queue<std::function<void()>> RunOnGameLoopQueue{};
@@ -160,6 +161,7 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 
 XivAlexander::Apps::MainApp::App::Implementation_GameWindow::Implementation_GameWindow(MainApp::App& app)
 	: App(app)
+	, Config(Config::Acquire())
 	, InitThread(Utils::Win32::Thread(L"XivAlexApp::Implementation_GameWindow::Initializer", [this]() { InitializeThreadBody(); })) {
 }
 
@@ -197,6 +199,30 @@ void XivAlexander::Apps::MainApp::App::Implementation_GameWindow::InitializeThre
 			SetWindowPos(Handle, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 		});
 	Cleanup += [this]() { SetWindowPos(Handle, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE); };
+
+	Cleanup += Config->Runtime.AddProcessIDToGameWindowTitle.AddAndCallOnBoolChange(
+		[this]() {
+			std::wstring buf(GetWindowTextLengthW(Handle) + 1, L'\0');
+			buf.resize(GetWindowTextW(Handle, buf.data(), static_cast<int>(buf.size())));
+
+			const auto suffix = std::format(L" ({})", GetCurrentProcessId());
+			if (buf.ends_with(suffix))
+				return;
+
+			buf += suffix;
+			SetWindowTextW(Handle, buf.c_str());
+		},
+		[this]() {
+			std::wstring buf(GetWindowTextLengthW(Handle) + 1, L'\0');
+			buf.resize(GetWindowTextW(Handle, buf.data(), static_cast<int>(buf.size())));
+
+			const auto suffix = std::format(L" ({})", GetCurrentProcessId());
+			if (!buf.ends_with(suffix))
+				return;
+
+			buf.resize(buf.size() - suffix.size());
+			SetWindowTextW(Handle, buf.c_str());
+		});
 
 	ReadyEvent.Set();
 	RunOnGameLoop([&]() {

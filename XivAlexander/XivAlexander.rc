@@ -159,7 +159,7 @@ IDR_TRAY_MENU MENU
 BEGIN
     POPUP "ƒtƒ@ƒCƒ‹(&F)"
     BEGIN
-        MENUITEM "(Current Process Information)", ID_FILE_CURRENTINFO, INACTIVE
+        MENUITEM "(Current Process Information)", ID_FILE_CURRENTINFO
         MENUITEM SEPARATOR
         MENUITEM "ƒRƒ“ƒgƒ[ƒ‹ƒEƒBƒ“ƒhƒE‚Ì•\Ž¦(&C)\tCtrl+(Alt+)W", ID_FILE_SHOWCONTROLWINDOW
         MENUITEM "ƒƒOƒEƒBƒ“ƒhƒE‚Ì•\Ž¦(&L)\t(Ctrl+Alt+)L", ID_FILE_SHOWLOGGINGWINDOW
@@ -209,7 +209,8 @@ BEGIN
         MENUITEM "‚·‚×‚Ä‚ÌIPCƒƒbƒZ[ƒW‚ðƒƒO‚É‹L˜^(&I)\t(Ctrl+Shift+)M", ID_NETWORK_USEALLIPCMESSAGELOGGER
         MENUITEM SEPARATOR
         MENUITEM "ƒpƒPƒbƒg’x‰„‚ÌŒyŒ¸(&R)\t(Ctrl+Shift+)F1", ID_NETWORK_REDUCEPACKETDELAY
-        MENUITEM "‚·‚×‚Ä‚ÌÚ‘±‚Ìˆ—‚ð‰ðœ(&E)\t(Ctrl+Shift+)F2", ID_NETWORK_RELEASEALLCONNECTIONS
+        MENUITEM "‚·‚×‚Ä‚ÌÚ‘±‚Ìˆ—‚ð‰ðœ‚·‚é(&E)\t(Ctrl+Shift+)F2", ID_NETWORK_RELEASEALLCONNECTIONS
+        MENUITEM "‚·‚×‚Ä‚ÌÚ‘±‚ð‹­§‚ÉI—¹‚·‚é(&S)\t(Ctrl+Shift+)F3", ID_NETWORK_RESETALLCONNECTIONS
         POPUP "ƒgƒ‰ƒuƒ‹ƒVƒ…[ƒeƒBƒ“ƒO(&T)"
         BEGIN
             MENUITEM "ƒ‹[ƒvƒoƒbƒNƒAƒhƒŒƒX‚ðˆ—(&L) (127.0.0.0/8)\t(Ctrl+Shift+)1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
@@ -279,8 +280,9 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "ƒQ[ƒ€‚ªCPU‚ð‚Å‚«‚é‚¾‚¯—˜—p‚³‚¹‚é(&C)",      ID_CONFIGURE_USEMORECPUTIME
-        MENUITEM "FPS‚ÌŒÅ’è",                      ID_CONFIGURE_LOCKFRAMERATE
+        MENUITEM "FPS‚ÌŒÅ’è(&F)",                  ID_CONFIGURE_LOCKFRAMERATE
         MENUITEM "ƒŠƒLƒƒƒXƒg‚ÆƒAƒjƒ[ƒVƒ‡ƒ“‘Ò‹@ŽžŠÔ‚ÆƒQ[ƒ€ˆ—‚Ì“¯Šú‰»(&P)", ID_CONFIGURE_SYNCHRONIZEPROCESSING
+        MENUITEM "ƒQ[ƒ€ƒEƒBƒ“ƒhƒE‚Ìƒ^ƒCƒgƒ‹‚ÉPID‚ð•\Ž¦(&I)",    ID_CONFIGURE_ADDPIDTOGAMEWINDOWTITLE
         MENUITEM SEPARATOR
         MENUITEM "ƒVƒXƒeƒ€Œ¾Œê‚ðŽg—p(&S)\t",             ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT
         MENUITEM "Œ¾ŒêF‰pŒê(&E)\t",                 ID_CONFIGURE_LANGUAGE_ENGLISH
@@ -566,6 +568,7 @@ BEGIN
     IDS_OPCODEUPDATE_ERROR_404 "Opcode‚ÌÝ’è‚ª‚Ü‚¾ƒAƒbƒvƒf[ƒg‚³‚ê‚Ä‚¢‚Ü‚¹‚ñBŒã‚Å‚à‚¤ˆê“x‚µ‚Ä‚­‚¾‚³‚¢B"
     IDS_OPCODEUPDATE_OK_NOTCHANGED "Œ»Ý‚ÌOpcode‚ÌÝ’è‚ª‚à‚¤ÅV‚Å‚·B"
     IDS_OPCODEUPDATE_OK_CHANGED "Opcode‚ÌÝ’è‚ðƒAƒbƒvƒf[ƒg‚µ‚Ü‚µ‚½B"
+    IDS_SOCKETHOOK_SOCKET_RESET2 "{:x}: ‹­§I—¹ => {}"
 END
 
 #endif    // Japanese (Japan) resources
@@ -676,7 +679,7 @@ IDR_TRAY_MENU MENU
 BEGIN
     POPUP "ÆÄÀÏ(&F)"
     BEGIN
-        MENUITEM "(Current Process Information)", ID_FILE_CURRENTINFO, INACTIVE
+        MENUITEM "(Current Process Information)", ID_FILE_CURRENTINFO
         MENUITEM SEPARATOR
         MENUITEM "°ü¸® Ã¢ º¸ÀÌ±â(&C)\tCtrl+(Alt+)W",  ID_FILE_SHOWCONTROLWINDOW
         MENUITEM "·Î±× Ã¢ º¸ÀÌ±â(&L)\t(Ctrl+Alt+)L",  ID_FILE_SHOWLOGGINGWINDOW
@@ -726,7 +729,8 @@ BEGIN
         MENUITEM "¸ðµç IPC ¸Þ½ÃÁö ·Î±× »ç¿ë(&I)\t(Ctrl+Shift+)M", ID_NETWORK_USEALLIPCMESSAGELOGGER
         MENUITEM SEPARATOR
         MENUITEM "ÆÐÅ¶ µô·¹ÀÌ °¨¼Ò(&R)\t(Ctrl+Shift+)F1", ID_NETWORK_REDUCEPACKETDELAY
-        MENUITEM "¸ðµç ¿¬°á Ã³¸® ÇØÁ¦(&E)\t(Ctrl+Shift+)F2", ID_NETWORK_RELEASEALLCONNECTIONS
+        MENUITEM "¸ðµç ¿¬°á Ã³¸® ÇØÁ¦ÇÏ±â(&E)\t(Ctrl+Shift+)F2", ID_NETWORK_RELEASEALLCONNECTIONS
+        MENUITEM "¸ðµç Á¢¼Ó °­Á¦ ÇØÁ¦ÇÏ±â(&S)\t(Ctrl+Shift+)F3", ID_NETWORK_RESETALLCONNECTIONS
         POPUP "¹®Á¦ ÇØ°á(&T)"
         BEGIN
             MENUITEM "·çÇÁ¹é ÁÖ¼Ò Ã³¸®(&L) (127.0.0.0/8)\t(Ctrl+Shift+)1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
@@ -798,6 +802,7 @@ BEGIN
         MENUITEM "°ÔÀÓÀÌ °¡´ÉÇÑ ¸¸Å­ CPU¸¦ ¾²µµ·Ï ¸¸µé±â(&C)", ID_CONFIGURE_USEMORECPUTIME
         MENUITEM "FPS °íÁ¤(&F)",                  ID_CONFIGURE_LOCKFRAMERATE
         MENUITEM "Àç»ç¿ë ´ë±â ½Ã°£ ¹× ¾Ö´Ï¸ÞÀÌ¼Ç ½Ã°£¿¡ °ÔÀÓ Ã³¸®¸¦ µ¿±âÈ­ÇÏ±â(&P)", ID_CONFIGURE_SYNCHRONIZEPROCESSING
+        MENUITEM "°ÔÀÓ Ã¢ Á¦¸ñ¿¡ PID Ç¥½Ã(&I)",         ID_CONFIGURE_ADDPIDTOGAMEWINDOWTITLE
         MENUITEM SEPARATOR
         MENUITEM "½Ã½ºÅÛ ±âº» ¾ð¾î »ç¿ë(&S)",            ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT
         MENUITEM "¾ð¾î: ¿µ¾î(&E)",                  ID_CONFIGURE_LANGUAGE_ENGLISH
@@ -961,7 +966,6 @@ BEGIN
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "ÇÁ·Î±×·¥ ¼³Á¤ ÆíÁý"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "¿ÉÄÚµå ¼³Á¤ ÆíÁý"
     IDS_WINDOW_LOG          "·Î±× º¸±â"
-    IDS_TITLE_GENERATING_FONTS "ÆùÆ® ÆÄÀÏ »ý¼º Áß..."
     IDS_LANGUAGE_NAME_ENGLISH "¿µ¾î"
     IDS_LANGUAGE_NAME_JAPANESE "ÀÏº»¾î"
     IDS_LANGUAGE_NAME_GERMAN "µ¶ÀÏ¾î"
@@ -1149,6 +1153,7 @@ BEGIN
     IDS_OPCODEUPDATE_ERROR_404 "¿ÉÄÚµå ¼³Á¤ÀÌ ¾ÆÁ÷ ¾÷µ¥ÀÌÆ®µÇÁö ¾Ê¾Ò½À´Ï´Ù. ³ªÁß¿¡ ´Ù½Ã ½ÃµµÇØ ÁÖ¼¼¿ä."
     IDS_OPCODEUPDATE_OK_NOTCHANGED "ÇöÀç ¿ÉÄÚµå ¼³Á¤ÀÌ ÀÌ¹Ì ÃÖ½ÅÀÔ´Ï´Ù."
     IDS_OPCODEUPDATE_OK_CHANGED "¿ÉÄÚµå ¼³Á¤ÀÌ ¾÷µ¥ÀÌÆ®µÇ¾ú½À´Ï´Ù."
+    IDS_SOCKETHOOK_SOCKET_RESET2 "{:x}: °­Á¦ ¿¬°á ÇØÁ¦ => {}"
 END
 
 #endif    // Korean (Korea) resources
@@ -1259,7 +1264,7 @@ IDR_TRAY_MENU MENU
 BEGIN
     POPUP "&File"
     BEGIN
-        MENUITEM "(Current Process Information)", ID_FILE_CURRENTINFO, INACTIVE
+        MENUITEM "(Current Process Information)", ID_FILE_CURRENTINFO
         MENUITEM SEPARATOR
         MENUITEM "Show &Control Window\tCtrl+(Alt+)W", ID_FILE_SHOWCONTROLWINDOW
         MENUITEM "Show &Logging Window\t(Ctrl+Alt+)L", ID_FILE_SHOWLOGGINGWINDOW
@@ -1310,6 +1315,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Reduce Packet Delay\t(Ctrl+Shift+)F1", ID_NETWORK_REDUCEPACKETDELAY
         MENUITEM "R&elease All Connections\t(Ctrl+Shift+)F2", ID_NETWORK_RELEASEALLCONNECTIONS
+        MENUITEM "Re&set All Connections\t(Ctrl+Shift+)F3", ID_NETWORK_RESETALLCONNECTIONS
         POPUP "&Troubleshooting"
         BEGIN
             MENUITEM "Take Over &Loopback Addresses (127.0.0.0/8)\t(Ctrl+Shift+)1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
@@ -1381,6 +1387,7 @@ BEGIN
         MENUITEM "Force the Game to Use More &CPU Time", ID_CONFIGURE_USEMORECPUTIME
         MENUITEM "Lock &Framerate ",            ID_CONFIGURE_LOCKFRAMERATE
         MENUITEM "Synchronize &Processing to Cooldowns and Animation Locks", ID_CONFIGURE_SYNCHRONIZEPROCESSING
+        MENUITEM "Add Process &ID to Game Window Title", 40537
         MENUITEM SEPARATOR
         MENUITEM "Use &System Default Language", ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT
         MENUITEM "Language: &English",          ID_CONFIGURE_LANGUAGE_ENGLISH
@@ -1869,6 +1876,7 @@ BEGIN
                             "No updated opcodes file has been found. Please try again later."
     IDS_OPCODEUPDATE_OK_NOTCHANGED "Your current opcode file is up to date."
     IDS_OPCODEUPDATE_OK_CHANGED "Your opcode file has been updated."
+    IDS_SOCKETHOOK_SOCKET_RESET "{:x}: Force shutdown => {}"
 END
 
 #endif    // English (United States) resources

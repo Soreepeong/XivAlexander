@@ -725,7 +725,7 @@ bool XivAlexander::Apps::MainApp::Internal::SocketHook::IsUnloadable() const {
 		&& closesocket.IsDisableable();
 }
 
-void XivAlexander::Apps::MainApp::Internal::SocketHook::ReleaseSockets() {
+void XivAlexander::Apps::MainApp::Internal::SocketHook::ReleaseSockets() const {
 	if (!m_pImpl)
 		return;
 
@@ -737,6 +737,29 @@ void XivAlexander::Apps::MainApp::Internal::SocketHook::ReleaseSockets() {
 		entry.second->m_pImpl->Detaching = true;
 	}
 	m_pImpl->NonGameSockets.clear();
+}
+
+void XivAlexander::Apps::MainApp::Internal::SocketHook::ResetAllConnections() const {
+	if (!m_pImpl)
+		return;
+
+	for (const auto& entry : m_pImpl->Sockets | std::views::keys) {
+		m_logger->Format(
+			LogCategory::SocketHook,
+			m_pImpl->Config->Runtime.GetLangId(),
+			IDS_SOCKETHOOK_SOCKET_RESET,
+			entry,
+			closesocket(entry) == SOCKET_ERROR ? WSAGetLastError() : 0);
+	}
+
+	for (const auto& entry : m_pImpl->NonGameSockets) {
+		m_logger->Format(
+			LogCategory::SocketHook,
+			m_pImpl->Config->Runtime.GetLangId(),
+			IDS_SOCKETHOOK_SOCKET_RESET,
+			entry,
+			closesocket(entry) == SOCKET_ERROR ? WSAGetLastError() : 0);
+	}
 }
 
 std::wstring XivAlexander::Apps::MainApp::Internal::SocketHook::Describe() const {
