@@ -99,15 +99,7 @@ namespace Sqex::Network::Structure {
 				S2C_ActorControlSelfCategory Category;
 
 				struct RawType {
-					S2C_ActorControlSelfCategory Category;
-					uint16_t Padding1;
-					uint32_t Param1;
-					uint32_t Param2;
-					uint32_t Param3;
-					uint32_t Param4;
-					uint32_t Param5;
-					uint32_t Param6;
-					uint32_t Padding2;
+					uint32_t Padding[10];
 				} Raw;
 
 				struct RollbackType {
@@ -120,6 +112,8 @@ namespace Sqex::Network::Structure {
 					uint32_t Param5;
 					uint32_t SourceSequence;
 					uint32_t Padding2;
+					uint32_t Padding3;
+					uint32_t Padding4;
 				} Rollback;
 
 				struct CooldownType {
@@ -132,6 +126,8 @@ namespace Sqex::Network::Structure {
 					uint32_t Param5;
 					uint32_t Param6;
 					uint32_t Padding2;
+					uint32_t Padding3;
+					uint32_t Padding4;
 
 					void DurationF(double v) { Duration10ms = static_cast<uint32_t>(100. * v); }
 					double DurationF() const { return static_cast<double>(Duration10ms) / 100.; }

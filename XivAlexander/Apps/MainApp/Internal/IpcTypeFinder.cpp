@@ -56,12 +56,6 @@ struct XivAlexander::Apps::MainApp::Internal::IpcTypeFinder::Implementation {
 								pMessage->Represent(true));
 
 						} else if (pMessage->Length == sizeof(XivMessageHeader) + sizeof(XivIpcHeader) + sizeof(XivIpcs::S2C_ActorControlSelf)) {
-							// Two possibilities: ActorControlSelf and ActorCast
-							static_assert(sizeof(XivIpcs::S2C_ActorControlSelf) == sizeof(XivIpcs::S2C_ActorCast));
-
-							//
-							// Test ActorControlSelf
-							// 
 							const auto& actorControlSelf = pMessage->Data.Ipc.Data.S2C_ActorControlSelf;
 							if (actorControlSelf.Category == S2C_ActorControlSelfCategory::Cooldown) {
 								const auto& cooldown = actorControlSelf.Cooldown;
@@ -86,9 +80,7 @@ struct XivAlexander::Apps::MainApp::Internal::IpcTypeFinder::Implementation {
 									pMessage->Represent(true));
 							}
 
-							//
-							// Test ActorCast
-							//
+						} else if (pMessage->Length == sizeof(XivMessageHeader) + sizeof(XivIpcHeader) + sizeof(XivIpcs::S2C_ActorCast)) {
 							Impl.Logger->Format(
 								LogCategory::IpcTypeFinder,
 								"{:x}: S2C_ActorCast(0x{:04x}): actionId={:04x} time={:.3f} target={:08x}\n{}",

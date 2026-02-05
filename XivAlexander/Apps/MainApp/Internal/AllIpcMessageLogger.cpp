@@ -39,8 +39,10 @@ struct XivAlexander::Apps::MainApp::Internal::AllIpcMessageLogger::Implementatio
 							pszPossibleMessageType = "ActionEffect32";
 							break;
 						case (sizeof(XivMessageHeader) + sizeof(XivIpcHeader) + sizeof(XivIpcs::S2C_ActorControlSelf)):
-							static_assert(sizeof(XivIpcs::S2C_ActorControlSelf) == sizeof(XivIpcs::S2C_ActorCast));
-							pszPossibleMessageType = "ActorControlSelf, ActorCast";
+							pszPossibleMessageType = "ActorControlSelf";
+							break;
+						case (sizeof(XivMessageHeader) + sizeof(XivIpcHeader) + sizeof(XivIpcs::S2C_ActorCast)):
+							pszPossibleMessageType = "ActorCast";
 							break;
 						case (sizeof(XivMessageHeader) + sizeof(XivIpcHeader) + sizeof(XivIpcs::S2C_ActorControl)):
 							pszPossibleMessageType = "ActorControl";
@@ -48,11 +50,12 @@ struct XivAlexander::Apps::MainApp::Internal::AllIpcMessageLogger::Implementatio
 						default:
 							pszPossibleMessageType = nullptr;
 					}
-					Impl.Logger->Format(LogCategory::AllIpcMessageLogger, "source={:08x} current={:08x} subtype={:04x} length={:x} (S2C{}{})",
+					Impl.Logger->Format(LogCategory::AllIpcMessageLogger, "source={:08x} current={:08x} subtype={:04x} length={:x} (S2C{}{})\n{}",
 						pMessage->SourceActor, pMessage->CurrentActor,
 						pMessage->Data.Ipc.SubType, pMessage->Length,
 						pszPossibleMessageType ? ": Possibly " : "",
-						pszPossibleMessageType ? pszPossibleMessageType : "");
+						pszPossibleMessageType ? pszPossibleMessageType : "",
+						pMessage->Represent(true));
 				}
 				return true;
 				});
@@ -69,11 +72,12 @@ struct XivAlexander::Apps::MainApp::Internal::AllIpcMessageLogger::Implementatio
 						default:
 							pszPossibleMessageType = nullptr;
 					}
-					Impl.Logger->Format(LogCategory::AllIpcMessageLogger, "source={:08x} current={:08x} subtype={:04x} length={:x} (C2S{}{})",
+					Impl.Logger->Format(LogCategory::AllIpcMessageLogger, "source={:08x} current={:08x} subtype={:04x} length={:x} (C2S{}{})\n{}",
 						pMessage->SourceActor, pMessage->CurrentActor,
 						pMessage->Data.Ipc.SubType, pMessage->Length,
 						pszPossibleMessageType ? ": Possibly " : "",
-						pszPossibleMessageType ? pszPossibleMessageType : "");
+						pszPossibleMessageType ? pszPossibleMessageType : "",
+						pMessage->Represent(true));
 				}
 				return true;
 				});
