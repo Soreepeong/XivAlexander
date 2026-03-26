@@ -1,5 +1,6 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "Apps/MainApp/Window/MainWindow.h"
+#include "Apps/MainApp/Window/ThemeColors.h"
 
 #include <XivAlexanderCommon/Sqex/CommandLine.h>
 #include <XivAlexanderCommon/Sqex/Sqpack/BinaryEntryProvider.h>
@@ -323,7 +324,9 @@ LRESULT XivAlexander::Apps::MainApp::Window::MainWindow::WndProc(HWND hwnd, UINT
 		gdiRestoreStack.emplace_back(SelectObject(backdc, CreateCompatibleBitmap(hdc, rect.right - rect.left, rect.bottom - rect.top)));
 		gdiRestoreStack.emplace_back(SelectObject(backdc, CreateFontIndirectW(&ncm.lfMessageFont)));
 
-		FillRect(backdc, &rect, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
+		const auto& colors = GetThemeColors(IsDarkModeEnabled());
+		FillRect(backdc, &rect, colors.CreateBackgroundBrush());
+		colors.ApplyToHDC(backdc);
 		std::wstring str;
 		try {
 			const auto window = Utils::QpcUs() - 1000000;
@@ -388,6 +391,11 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnDestroy() {
 	RemoveTrayIcon();
 	BaseWindow::OnDestroy();
 	PostQuitMessage(0);
+}
+
+void XivAlexander::Apps::MainApp::Window::MainWindow::OnThemeChanged() {
+	BaseWindow::OnThemeChanged();
+	InvalidateRect(m_hWnd, nullptr, TRUE);
 }
 
 void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu() {
@@ -846,6 +854,9 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_ENGLISH, config.Language == Language::English, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_KOREAN, config.Language == Language::Korean, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_JAPANESE, config.Language == Language::Japanese, true);
+		SetMenuState(hMenu, ID_CONFIGURE_THEME_SYSTEM, config.ThemeMode == ThemeMode::System, true);
+		SetMenuState(hMenu, ID_CONFIGURE_THEME_LIGHT, config.ThemeMode == ThemeMode::Light, true);
+		SetMenuState(hMenu, ID_CONFIGURE_THEME_DARK, config.ThemeMode == ThemeMode::Dark, true);
 	}
 
 	// View
@@ -1444,6 +1455,18 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Configure(i
 
 		case ID_CONFIGURE_LANGUAGE_JAPANESE:
 			config.Language = Language::Japanese;
+			return;
+
+		case ID_CONFIGURE_THEME_SYSTEM:
+			config.ThemeMode = ThemeMode::System;
+			return;
+
+		case ID_CONFIGURE_THEME_LIGHT:
+			config.ThemeMode = ThemeMode::Light;
+			return;
+
+		case ID_CONFIGURE_THEME_DARK:
+			config.ThemeMode = ThemeMode::Dark;
 			return;
 
 		case ID_CONFIGURE_OPENCONFIGURATIONDIRECTORY:

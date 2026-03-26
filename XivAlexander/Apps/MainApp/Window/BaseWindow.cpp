@@ -1,5 +1,6 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "Apps/MainApp/Window/BaseWindow.h"
+#include "Apps/MainApp/Window/ThemeColors.h"
 
 #include "Config.h"
 #include "Misc/Logger.h"
@@ -67,11 +68,13 @@ XivAlexander::Apps::MainApp::Window::BaseWindow::BaseWindow(const WNDCLASSEXW& w
 	, m_logger(Misc::Logger::Acquire())
 	, m_windowClass(wndclassex)
 	, m_hWnd(InternalCreateWindow(wndclassex, lpWindowName, dwStyle, dwExStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, this)) {
-
 	s_allBaseWindows.insert(this);
 	m_cleanup += [this]() { s_allBaseWindows.erase(this); };
 	m_cleanup += m_config->Runtime.Language.OnChange([this]() {
 		this->ApplyLanguage(m_config->Runtime.GetLangId());
+	});
+	m_cleanup += m_config->Runtime.ThemeMode.OnChange([this]() {
+		OnThemeChanged();
 	});
 }
 
@@ -135,7 +138,39 @@ double XivAlexander::Apps::MainApp::Window::BaseWindow::GetZoom() const {
 	}
 }
 
-void XivAlexander::Apps::MainApp::Window::BaseWindow::ApplyLanguage(WORD languageId) {
+bool XivAlexander::Apps::MainApp::Window::BaseWindow::IsDarkModeEnabled(bool refresh) const {
+	switch (m_config->Runtime.ThemeMode.Value()) {
+		case ThemeMode::Dark:
+			return true;
+		case ThemeMode::Light:
+			return false;
+		default:
+			if (refresh)
+				return m_bDarkMode;
+			return m_bDarkMode = IsSystemDarkModeEnabled();
+	}
+}
+
+void XivAlexander::Apps::MainApp::Window::BaseWindow::ApplyLanguage(WORD languageId) {}
+
+void XivAlexander::Apps::MainApp::Window::BaseWindow::ApplyDarkMode() {
+	static const Utils::Win32::LoadedModule uxTheme(GetModuleHandleW(L"uxtheme.dll"), false);
+
+	const bool dark = IsDarkModeEnabled(true);
+	const BOOL darkBool = dark ? TRUE : FALSE;
+	if (FAILED(DwmSetWindowAttribute(m_hWnd, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, &darkBool, sizeof(darkBool))))
+		(void)DwmSetWindowAttribute(m_hWnd, 19, &darkBool, sizeof(darkBool));
+
+	if (static const auto pSetPreferredAppMode = uxTheme.GetProcAddress<DWORD (WINAPI*)(DWORD)>(135, false))
+		pSetPreferredAppMode(dark ? 1 : 0);
+
+	if (static const auto pAllowDarkModeForWindow = uxTheme.GetProcAddress<bool (WINAPI*)(HWND, bool)>(133, false))
+		pAllowDarkModeForWindow(m_hWnd, dark);
+
+	(void)SetWindowTheme(m_hWnd, dark ? L"DarkMode_Explorer" : nullptr, nullptr);
+
+	if (static const auto pFlushMenuThemes = uxTheme.GetProcAddress<void (WINAPI*)()>(136, false))
+		pFlushMenuThemes();
 }
 
 LRESULT XivAlexander::Apps::MainApp::Window::BaseWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -185,6 +220,13 @@ LRESULT XivAlexander::Apps::MainApp::Window::BaseWindow::WndProc(HWND hwnd, UINT
 			} catch (const Utils::Win32::Error& e) {
 				m_logger->Format<LogLevel::Warning>(LogCategory::General, "Failed to set System.AppUserModel.ID for XivAlexander window at step {}: {}", lastStep, e.what());
 			}
+			ApplyDarkMode();
+			break;
+		}
+
+		case WM_SETTINGCHANGE: {
+			if (lParam && lstrcmpW(reinterpret_cast<LPCWSTR>(lParam), L"ImmersiveColorSet") == 0)
+				OnThemeChanged();
 			break;
 		}
 
@@ -217,12 +259,26 @@ LRESULT XivAlexander::Apps::MainApp::Window::BaseWindow::WndProc(HWND hwnd, UINT
 		case WM_DESTROY:
 			OnDestroy();
 			break;
+
+		case WM_NCPAINT:
+		case WM_NCACTIVATE: {
+			const auto result = DefWindowProcW(m_hWnd, uMsg, wParam, lParam);
+			if (IsDarkModeEnabled())
+				HandleDarkModeWindowMessage(hwnd, uMsg, wParam, lParam);
+			return result;
+		}
+
+		default:
+			if (IsDarkModeEnabled()) {
+				if (const auto result = HandleDarkModeWindowMessage(hwnd, uMsg, wParam, lParam))
+					return *result;
+			}
+			break;
 	}
 	return DefWindowProcW(m_hWnd, uMsg, wParam, lParam);
 }
 
-void XivAlexander::Apps::MainApp::Window::BaseWindow::OnLayout(double zoom, double width, double height, int resizeType) {
-}
+void XivAlexander::Apps::MainApp::Window::BaseWindow::OnLayout(double zoom, double width, double height, int resizeType) {}
 
 LRESULT XivAlexander::Apps::MainApp::Window::BaseWindow::OnNotify(const LPNMHDR nmhdr) {
 	return DefWindowProcW(m_hWnd, WM_NOTIFY, nmhdr->idFrom, reinterpret_cast<LPARAM>(nmhdr));
@@ -251,6 +307,10 @@ void XivAlexander::Apps::MainApp::Window::BaseWindow::Destroy() {
 		return;
 	m_bDestroyed = true;
 	DestroyWindow(m_hWnd);
+}
+
+void XivAlexander::Apps::MainApp::Window::BaseWindow::OnThemeChanged() {
+	ApplyDarkMode();
 }
 
 Utils::CallOnDestruction XivAlexander::Apps::MainApp::Window::BaseWindow::WithTemporaryFocus() const {

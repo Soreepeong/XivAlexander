@@ -135,6 +135,9 @@
     <ClCompile Include="Apps\MainApp\Internal\PatchCode.cpp">
       <Filter>Apps\MainApp\Internal</Filter>
     </ClCompile>
+    <ClCompile Include="Apps\MainApp\Window\ThemeColors.cpp">
+      <Filter>Apps\MainApp\Window</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -243,6 +246,9 @@
     </ClInclude>
     <ClInclude Include="Apps\MainApp\Internal\PatchCode.h">
       <Filter>Apps\MainApp\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="Apps\MainApp\Window\ThemeColors.h">
+      <Filter>Apps\MainApp\Window</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

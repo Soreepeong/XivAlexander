@@ -1,5 +1,6 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "Apps/MainApp/Window/ProgressPopupWindow.h"
+#include "Apps/MainApp/Window/ThemeColors.h"
 
 #include "Config.h"
 #include "resource.h"
@@ -49,6 +50,7 @@ XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::ProgressPopupWindow(HW
 	m_hFont = CreateFontIndirectW(&ncm.lfMessageFont);
 	SendMessageW(m_hMessage, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), TRUE);
 	SendMessageW(m_hCancelButton, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), TRUE);
+	m_hBgBrush = GetThemeColors(IsDarkModeEnabled()).CreateBackgroundBrush();
 
 	ProgressPopupWindow::ApplyLanguage(m_config->Runtime.GetLangId());
 	UpdateProgress(0, 0);
@@ -285,11 +287,21 @@ LRESULT XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::WndProc(HWND h
 			break;
 		}
 
+		case WM_ERASEBKGND: {
+			if (IsDarkModeEnabled()) {
+				RECT rc;
+				GetClientRect(hwnd, &rc);
+				FillRect(reinterpret_cast<HDC>(wParam), &rc, m_hBgBrush);
+				return TRUE;
+			}
+			break;
+		}
+
 		case WM_CTLCOLORSTATIC: {
 			if (reinterpret_cast<HWND>(lParam) == m_hMessage) {
 				const auto hdcStatic = reinterpret_cast<HDC>(wParam);
-				SetBkColor(hdcStatic, GetSysColor(COLOR_WINDOW));
-				return reinterpret_cast<LRESULT>(GetSysColorBrush(COLOR_WINDOW));
+				GetThemeColors(IsDarkModeEnabled()).ApplyToHDC(hdcStatic);
+				return m_hBgBrush.Value<LRESULT>();
 			}
 			break;
 		}
@@ -306,6 +318,12 @@ LRESULT XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::WndProc(HWND h
 		}
 	}
 	return BaseWindow::WndProc(hwnd, msg, wParam, lParam);
+}
+
+void XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::OnThemeChanged() {
+	m_hBgBrush = GetThemeColors(IsDarkModeEnabled()).CreateBackgroundBrush();
+	BaseWindow::OnThemeChanged();
+	InvalidateRect(m_hWnd, nullptr, TRUE);
 }
 
 void XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::ApplyLanguage(WORD languageId) {

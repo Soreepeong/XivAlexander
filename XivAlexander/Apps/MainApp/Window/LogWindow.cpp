@@ -1,5 +1,6 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "Apps/MainApp/Window/LogWindow.h"
+#include "Apps/MainApp/Window/ThemeColors.h"
 
 #include <XivAlexanderCommon/Utils/Win32/Closeable.h>
 #include <XivAlexanderCommon/Utils/Win32/Resource.h>
@@ -56,10 +57,7 @@ XivAlexander::Apps::MainApp::Window::LogWindow::LogWindow()
 		SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
 		m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>(Utils::ToUtf8(ncm.lfMessageFont.lfFaceName).data()));
 	}
-	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Debug), RGB(80, 80, 80));
-	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Info), RGB(0, 0, 0));
-	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Warning), RGB(160, 160, 0));
-	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Error), RGB(255, 80, 80));
+	ApplyScintillaTheme();
 
 	m_cleanup += m_config->Runtime.AlwaysOnTop_XivAlexLogWindow.OnChange([this]() {
 		SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexLogWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
@@ -189,6 +187,27 @@ LRESULT XivAlexander::Apps::MainApp::Window::LogWindow::OnNotify(const LPNMHDR n
 
 void XivAlexander::Apps::MainApp::Window::LogWindow::OnDestroy() {
 	m_config->Runtime.ShowLoggingWindow = false;
+}
+
+void XivAlexander::Apps::MainApp::Window::LogWindow::OnThemeChanged() {
+	BaseWindow::OnThemeChanged();
+	ApplyScintillaTheme();
+}
+
+void XivAlexander::Apps::MainApp::Window::LogWindow::ApplyScintillaTheme() {
+	const auto& colors = GetThemeColors(IsDarkModeEnabled());
+	m_direct(m_directPtr, SCI_STYLESETBACK, STYLE_DEFAULT, colors.GetBackground());
+	m_direct(m_directPtr, SCI_STYLECLEARALL, 0, 0);
+	m_direct(m_directPtr, SCI_STYLESETBACK, STYLE_LINENUMBER, colors.BackgroundWeak);
+	m_direct(m_directPtr, SCI_STYLESETFORE, STYLE_LINENUMBER, colors.ForegroundWeak);
+	m_direct(m_directPtr, SCI_SETCARETFORE, colors.GetForeground(), 0);
+	m_direct(m_directPtr, SCI_SETSELBACK, TRUE, colors.GetBackgroundSelection());
+	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Debug), colors.SciForegroundLogDebug);
+	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Info), colors.SciForegroundLogInfo);
+	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Warning), colors.SciForegroundLogWarning);
+	m_direct(m_directPtr, SCI_STYLESETFORE, LogLevelStyleMap.at(LogLevel::Error), colors.SciForegroundLogError);
+	for (const auto& [level, style] : LogLevelStyleMap)
+		m_direct(m_directPtr, SCI_STYLESETBACK, style, colors.GetBackground());
 }
 
 void XivAlexander::Apps::MainApp::Window::LogWindow::ResizeMargin() {

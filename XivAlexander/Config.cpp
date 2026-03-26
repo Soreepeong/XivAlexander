@@ -453,6 +453,31 @@ void XivAlexander::from_json(const nlohmann::json & it, Language & value) {
 		value = Language::Japanese;
 }
 
+void XivAlexander::to_json(nlohmann::json& j, const ThemeMode& value) {
+	switch (value) {
+		case ThemeMode::Light:
+			j = "Light";
+			break;
+		case ThemeMode::Dark:
+			j = "Dark";
+			break;
+		case ThemeMode::System:
+		default:
+			j = "System";
+	}
+}
+
+void XivAlexander::from_json(const nlohmann::json& it, ThemeMode& value) {
+	auto s = Utils::FromUtf8(it.get<std::string>());
+	CharLowerW(&s[0]);
+	if (s.substr(0, 5) == L"light")
+		value = ThemeMode::Light;
+	else if (s.substr(0, 4) == L"dark")
+		value = ThemeMode::Dark;
+	else
+		value = ThemeMode::System;
+}
+
 void XivAlexander::to_json(nlohmann::json & j, const HighLatencyMitigationMode & value) {
 	switch (value) {
 		case HighLatencyMitigationMode::SubtractLatency:

@@ -29,6 +29,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 			_In_opt_ HMENU hMenu,
 			_In_ BaseWindow* pBase);
 
+		mutable bool m_bDarkMode{};
 		bool m_bDestroyed = false;
 		Utils::CallOnDestruction::Multiple m_cleanup;
 
@@ -86,14 +87,17 @@ namespace XivAlexander::Apps::MainApp::Window {
 		bool RunOnUiThread(std::function<void()>, bool immediateIfNoWindow = true);
 
 		[[nodiscard]] double GetZoom() const;
+		[[nodiscard]] bool IsDarkModeEnabled(bool refresh = false) const;
 
 		virtual void ApplyLanguage(WORD languageId);
+		void ApplyDarkMode();
 
 		virtual LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 		virtual void OnLayout(double zoom, double width, double height, int resizeType);
 		virtual LRESULT OnNotify(const LPNMHDR nmhdr);
 		virtual LRESULT OnSysCommand(WPARAM commandId, short xPos, short yPos);
 		virtual void OnDestroy();
+		virtual void OnThemeChanged();
 		void Destroy();
 	};
 }

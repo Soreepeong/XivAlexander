@@ -1,5 +1,6 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "Apps/MainApp/Window/ConfigWindow.h"
+#include "Apps/MainApp/Window/ThemeColors.h"
 
 #include <XivAlexanderCommon/Utils/Win32/Closeable.h>
 #include <XivAlexanderCommon/Utils/Win32/Resource.h>
@@ -44,6 +45,7 @@ XivAlexander::Apps::MainApp::Window::ConfigWindow::ConfigWindow(UINT nTitleStrin
 	m_direct(m_directPtr, SCI_SETMARGINTYPEN, 0, SC_MARGIN_NUMBER);
 	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 1, 0);
 	m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>("Consolas"));
+	ApplyScintillaTheme();
 
 	Revert();
 	ApplyLanguage(m_config->Runtime.GetLangId());
@@ -167,6 +169,22 @@ LRESULT XivAlexander::Apps::MainApp::Window::ConfigWindow::WndProc(HWND hwnd, UI
 void XivAlexander::Apps::MainApp::Window::ConfigWindow::OnLayout(double zoom, double width, double height, int resizeType) {
 	SetWindowPos(m_hScintilla, nullptr, 0, 0, static_cast<int>(width), static_cast<int>(height), 0);
 	ResizeMargin();
+}
+
+void XivAlexander::Apps::MainApp::Window::ConfigWindow::OnThemeChanged() {
+	BaseWindow::OnThemeChanged();
+	ApplyScintillaTheme();
+}
+
+void XivAlexander::Apps::MainApp::Window::ConfigWindow::ApplyScintillaTheme() {
+	const auto& colors = GetThemeColors(IsDarkModeEnabled());
+	m_direct(m_directPtr, SCI_STYLESETBACK, STYLE_DEFAULT, colors.GetBackground());
+	m_direct(m_directPtr, SCI_STYLESETFORE, STYLE_DEFAULT, colors.GetForeground());
+	m_direct(m_directPtr, SCI_STYLECLEARALL, 0, 0);
+	m_direct(m_directPtr, SCI_STYLESETBACK, STYLE_LINENUMBER, colors.BackgroundWeak);
+	m_direct(m_directPtr, SCI_STYLESETFORE, STYLE_LINENUMBER, colors.ForegroundWeak);
+	m_direct(m_directPtr, SCI_SETCARETFORE, colors.GetForeground(), 0);
+	m_direct(m_directPtr, SCI_SETSELBACK, TRUE, colors.GetBackgroundSelection());
 }
 
 void XivAlexander::Apps::MainApp::Window::ConfigWindow::ResizeMargin() {

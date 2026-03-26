@@ -30,6 +30,17 @@ namespace Utils::Win32 {
 			return result;
 		}
 
+		template<typename T>
+		T GetProcAddress(WORD ordinal, bool throwIfNotFound = false) const {
+#pragma warning(push)
+#pragma warning(disable: 4191)
+			const auto result = reinterpret_cast<T>(::GetProcAddress(m_object, MAKEINTRESOURCEA(ordinal)));
+#pragma warning(pop)
+			if (throwIfNotFound && !result)
+				throw std::runtime_error(std::format("Function #{} not found", ordinal));
+			return result;
+		}
+
 		[[nodiscard]] std::filesystem::path PathOf() const;
 		[[nodiscard]] std::filesystem::path BaseName() const;
 		[[nodiscard]] MODULEINFO ModuleInfo() const;

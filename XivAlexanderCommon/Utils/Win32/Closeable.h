@@ -5,7 +5,7 @@
 #include "XivAlexanderCommon/Utils/StringUtils.h"
 
 namespace Utils::Win32 {
-	template <typename T, auto CloserFunction, T NullValue = (T)0>
+	template <typename T, auto CloserFunction, T NullValue = T()>
 	class Closeable {
 	public:
 		static constexpr T Null = NullValue;
@@ -122,6 +122,7 @@ namespace Utils::Win32 {
 		}
 	};
 
+	using Brush = Closeable<HBRUSH, DeleteObject>;
 	using Icon = Closeable<HICON, DestroyIcon>;
 	using CreatedDC = Closeable<HDC, DeleteDC>;
 	using FindFile = Closeable<HANDLE, FindClose>;

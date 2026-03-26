@@ -56,6 +56,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 
 		LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 		void OnDestroy() override;
+		void OnThemeChanged() override;
 		
 		void RepopulateMenu();
 		UINT_PTR RepopulateMenu_AllocateMenuId(std::function<void()>);

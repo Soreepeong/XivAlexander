@@ -12,6 +12,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		HWND m_hProgressBar = nullptr;
 		HWND m_hCancelButton = nullptr;
 		HFONT m_hFont = nullptr;
+		Utils::Win32::Brush m_hBgBrush;
 
 		const Utils::Win32::Event m_hCancelEvent;
 
@@ -35,6 +36,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 	protected:
 		void OnLayout(double zoom, double width, double height, int resizeType) override;
 		void OnDestroy() override;
+		void OnThemeChanged() override;
 
 		LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 

@@ -28,7 +28,9 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void OnLayout(double zoom, double width, double height, int resizeType) override;
 		LRESULT OnNotify(const LPNMHDR nmhdr) override;
 		void OnDestroy() override;
+		void OnThemeChanged() override;
 
+		void ApplyScintillaTheme();
 		void ResizeMargin();
 
 		void FlushLog(const std::string& logstr, LogLevel level);

@@ -15,6 +15,12 @@ namespace XivAlexander {
 		Japanese,
 	};
 
+	enum class ThemeMode {
+		System,
+		Light,
+		Dark,
+	};
+
 	enum class HighLatencyMitigationMode {
 		SubtractLatency,
 		SimulateRtt,
@@ -39,6 +45,8 @@ namespace XivAlexander {
 
 	void to_json(nlohmann::json&, const Language&);
 	void from_json(const nlohmann::json&, Language&);
+	void to_json(nlohmann::json&, const ThemeMode&);
+	void from_json(const nlohmann::json&, ThemeMode&);
 	void to_json(nlohmann::json&, const HighLatencyMitigationMode&);
 	void from_json(const nlohmann::json&, HighLatencyMitigationMode&);
 	void to_json(nlohmann::json&, const PatchInstruction&);
@@ -68,6 +76,10 @@ namespace XivAlexander {
 			void TriggerOnChange();
 
 		public:
+			ItemBase(const ItemBase&) = delete;
+			ItemBase& operator=(const ItemBase&) = delete;
+			ItemBase(ItemBase&&) = delete;
+			ItemBase& operator=(ItemBase&&) = delete;
 			virtual ~ItemBase() = default;
 
 			const char* const Name;
@@ -105,6 +117,7 @@ namespace XivAlexander {
 		public:
 			~Item() override = default;
 
+			template<typename = std::enable_if_t<!std::is_base_of_v<ItemBase, T>>>
 			Item<T>& operator=(const T& rv) {
 				auto sanitized = m_sanitizer(rv);
 				if (m_value != sanitized) {
@@ -114,6 +127,7 @@ namespace XivAlexander {
 				return *this;
 			}
 
+			template<typename = std::enable_if_t<!std::is_base_of_v<ItemBase, T>>>
 			Item<T>& operator=(T&& rv) {
 				auto sanitized = m_sanitizer(std::move(rv));
 				if (m_value != sanitized) {
@@ -291,6 +305,7 @@ namespace XivAlexander {
 			Item<bool> UseMainThreadTimingHandler = CreateConfigItem(this, "UseMainThreadTimingHandler", false);
 
 			Item<Language> Language = CreateConfigItem(this, "Language", Language::SystemDefault);
+			Item<ThemeMode> ThemeMode = CreateConfigItem(this, "ThemeMode", ThemeMode::System);
 
 			// If not set, default to files in System32 (SysWOW64) in %WINDIR% (GetSystemDirectory)
 			// If set but invalid, show errors.

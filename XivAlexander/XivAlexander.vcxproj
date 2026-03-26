@@ -151,7 +151,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>DbgHelp.lib;Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;Winhttp.lib;XivAlexanderCommon$(PlatformArchitecture).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>DbgHelp.lib;uxtheme.lib;Dwmapi.lib;Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;Winhttp.lib;XivAlexanderCommon$(PlatformArchitecture).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
       <ModuleDefinitionFile>Exports_x64.def</ModuleDefinitionFile>
       <DelayLoadDLLs>
@@ -195,7 +195,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>DbgHelp.lib;Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;Winhttp.lib;XivAlexanderCommon$(PlatformArchitecture).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>DbgHelp.lib;uxtheme.lib;Dwmapi.lib;Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;Winhttp.lib;XivAlexanderCommon$(PlatformArchitecture).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
       <ModuleDefinitionFile>Exports_x86.def</ModuleDefinitionFile>
       <DelayLoadDLLs>
@@ -243,7 +243,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>DbgHelp.lib;Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;Winhttp.lib;XivAlexanderCommon$(PlatformArchitecture).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>DbgHelp.lib;uxtheme.lib;Dwmapi.lib;Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;Winhttp.lib;XivAlexanderCommon$(PlatformArchitecture).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
       <ModuleDefinitionFile>Exports_x64.def</ModuleDefinitionFile>
       <DelayLoadDLLs>
@@ -291,7 +291,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>DbgHelp.lib;Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;Winhttp.lib;XivAlexanderCommon$(PlatformArchitecture).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>DbgHelp.lib;uxtheme.lib;Dwmapi.lib;Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;Winhttp.lib;XivAlexanderCommon$(PlatformArchitecture).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
       <ModuleDefinitionFile>Exports_x86.def</ModuleDefinitionFile>
       <DelayLoadDLLs>
@@ -330,6 +330,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="Apps\MainApp\Internal\GameResourceOverrider.cpp" />
     <ClCompile Include="Apps\MainApp\Internal\MainThreadTimingHandler.cpp" />
     <ClCompile Include="Apps\MainApp\Internal\PatchCode.cpp" />
+    <ClCompile Include="Apps\MainApp\Window\ThemeColors.cpp" />
     <ClCompile Include="Misc\CrashMessageBoxHandler.cpp" />
     <ClCompile Include="Misc\DebuggerDetectionDisabler.cpp" />
     <ClCompile Include="Misc\GameInstallationDetector.cpp" />
@@ -374,6 +375,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="Apps\MainApp\Internal\GameResourceOverrider.h" />
     <ClInclude Include="Apps\MainApp\Internal\MainThreadTimingHandler.h" />
     <ClInclude Include="Apps\MainApp\Internal\PatchCode.h" />
+    <ClInclude Include="Apps\MainApp\Window\ThemeColors.h" />
     <ClInclude Include="Misc\CrashMessageBoxHandler.h" />
     <ClInclude Include="Misc\DebuggerDetectionDisabler.h" />
     <ClInclude Include="Misc\GameInstallationDetector.h" />
