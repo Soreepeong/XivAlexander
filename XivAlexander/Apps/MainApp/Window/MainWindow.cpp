@@ -788,7 +788,6 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
 	// Game
 	{
 		SetMenuState(hMenu, ID_RESTART_RESTART, false, !m_launchParameters.empty());
-		SetMenuState(hMenu, ID_RESTART_USEDIRECTX11, m_bUseDirectX11, !m_launchParameters.empty());
 		SetMenuState(hMenu, ID_RESTART_USEXIVALEXANDER, m_bUseXivAlexander, !m_launchParameters.empty());
 		SetMenuState(hMenu, ID_RESTART_USEPARAMETEROBFUSCATION, m_bUseParameterObfuscation, !m_launchParameters.empty());
 		SetMenuState(hMenu, ID_RESTART_USEELEVATION, m_bUseElevation, !m_launchParameters.empty());
@@ -912,7 +911,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::AskRestartGame(bool onlyOn
 		}
 
 		Utils::Win32::RunProgramParams runParams{
-			.path = Utils::Win32::Process::Current().PathOf().parent_path() / (m_bUseDirectX11 ? Dll::GameExecutable64NameW : Dll::GameExecutable32NameW),
+			.path = Utils::Win32::Process::Current().PathOf().parent_path() / Dll::GameExecutable64NameW,
 			.args = Sqex::CommandLine::ToString(params, m_bUseParameterObfuscation),
 			.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
 		};
@@ -928,7 +927,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::AskRestartGame(bool onlyOn
 
 		if (!Dll::IsLoadedAsDependency() && m_bUseXivAlexander) {
 			runParams.args = std::format(L"-a launcher -l select {} {}", Utils::Win32::ReverseCommandLineToArgv(runParams.path), runParams.args);
-			runParams.path = Dll::Module().PathOf().parent_path() / (m_bUseDirectX11 ? Dll::XivAlexLoader64NameW : Dll::XivAlexLoader32NameW);
+			runParams.path = Dll::Module().PathOf().parent_path() / Dll::XivAlexLoader64NameW;
 		}
 
 		if (Utils::Win32::RunProgram(std::move(runParams))) {
@@ -985,11 +984,6 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Restart(int
 	switch (menuId) {
 		case ID_RESTART_RESTART:
 			AskRestartGame();
-			return;
-
-		case ID_RESTART_USEDIRECTX11:
-			m_bUseDirectX11 = !m_bUseDirectX11;
-			AskRestartGame(true);
 			return;
 
 		case ID_RESTART_USEXIVALEXANDER:

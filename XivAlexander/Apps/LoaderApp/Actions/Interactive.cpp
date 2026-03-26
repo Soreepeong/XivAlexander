@@ -116,12 +116,8 @@ void XivAlexander::LoaderApp::Actions::Interactive::SetupBuilderForInstallation(
 			.Callback = SetupBuilderForInstallation_MakeInstallUninstallOnCommandCallback(true, InstallMode::D3D),
 		})
 		.WithButton({
-			.Text = IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X64,
-			.Callback = SetupBuilderForInstallation_MakeInstallUninstallOnCommandCallback(true, InstallMode::DInput8x64),
-		})
-		.WithButton({
-			.Text = IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X86,
-			.Callback = SetupBuilderForInstallation_MakeInstallUninstallOnCommandCallback(true, InstallMode::DInput8x86),
+			.Text = IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8,
+			.Callback = SetupBuilderForInstallation_MakeInstallUninstallOnCommandCallback(true, InstallMode::DInput8),
 		})
 		.WithButton({
 			.Text = IDS_LOADERAPP_INTERACTIVE_INSTALL_UNINSTALL,
@@ -146,7 +142,7 @@ void XivAlexander::LoaderApp::Actions::Interactive::SetupBuilderForInstallation(
 	for (const auto& gameReleaseInfo : Misc::GameInstallationDetector::FindInstallations()) {
 		auto resId = IDS_INSTALLATIONSTATUS_NOTINSTALLED;
 		const auto selfVersion = Utils::StringSplit<std::string>(Utils::Win32::FormatModuleVersionString(GetModuleHandleW(nullptr)).first, ".");
-		for (const auto name : {"d3d9.dll", "d3d11.dll", "dinput8.dll"}) {
+		for (const auto name : {"d3d11.dll", "dinput8.dll"}) {
 			const auto path = gameReleaseInfo.GamePath() / name;
 			try {
 				if (Dll::IsXivAlexanderDll(path)) {
@@ -198,7 +194,7 @@ std::function<Utils::Win32::TaskDialog::ActionHandled(Utils::Win32::TaskDialog&)
 				}
 			}
 			const auto exitCode = Utils::Win32::RunProgram({
-				.path = Utils::Win32::Process::Current().PathOf().parent_path() / (process.IsProcess64Bits() ? Dll::XivAlexLoader64NameW : Dll::XivAlexLoader32NameW),
+				.path = Utils::Win32::Process::Current().PathOf().parent_path() / XivAlexLoader64NameW,
 				.args = std::format(L"-a {} {}",
 					LoaderActionToString(load ? LoaderAction::Load : LoaderAction::Unload),
 					process.GetId()),
@@ -254,7 +250,7 @@ void XivAlexander::LoaderApp::Actions::Interactive::ShowSelectGameInstallationDi
 	IFileOpenDialogPtr pDialog;
 	DWORD dwFlags;
 	static const COMDLG_FILTERSPEC fileTypes[] = {
-		{FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_FFXIVEXECUTABLEFILES) + 1, L"ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe; ffxiv.exe"},
+		{FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_FFXIVEXECUTABLEFILES) + 1, L"ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe"},
 		{FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_EXECUTABLEFILES) + 1, L"*.exe"},
 		{FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_ALLFILES) + 1, L"*"},
 	};
@@ -281,8 +277,7 @@ void XivAlexander::LoaderApp::Actions::Interactive::ShowSelectGameInstallationDi
 
 	m_state.GamePath = fileName;
 	m_state.BootPathIsInjectable = true;
-	if (lstrcmpiW(m_state.GamePath.filename().wstring().c_str(), Dll::GameExecutable32NameW) == 0
-		|| lstrcmpiW(m_state.GamePath.filename().wstring().c_str(), Dll::GameExecutable64NameW) == 0) {
+	if (lstrcmpiW(m_state.GamePath.filename().wstring().c_str(), GameExecutable64NameW) == 0) {
 		m_state.GamePath = m_state.GamePath.parent_path();
 		if (!exists(m_state.BootPath = m_state.GamePath.parent_path() / "FFXIVBoot.exe"))
 			if (!exists(m_state.BootPath = m_state.GamePath.parent_path() / "boot" / "ffxivboot.exe"))

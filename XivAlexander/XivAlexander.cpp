@@ -52,7 +52,6 @@ DWORD Dll::LaunchXivAlexLoaderWithTargetHandles(
 	LoaderAction action,
 	bool wait,
 	const Utils::Win32::Process& waitForBeforeStarting,
-	WhichLoader which,
 	const std::filesystem::path& loaderPath) {
 
 	const auto companionPath = loaderPath.empty() ? (
@@ -60,25 +59,8 @@ DWORD Dll::LaunchXivAlexLoaderWithTargetHandles(
 		? XivAlexander::Config::Acquire()->Init.ResolveXivAlexInstallationPath()
 		: Dll::Module().PathOf().parent_path()
 	) : loaderPath;
-	const wchar_t* whichLoader;
-	switch (which) {
-		case Current:
-			whichLoader = Dll::XivAlexLoaderNameW;
-			break;
-		case Opposite:
-			whichLoader = Dll::XivAlexLoaderOppositeNameW;
-			break;
-		case Force32:
-			whichLoader = Dll::XivAlexLoader32NameW;
-			break;
-		case Force64:
-			whichLoader = Dll::XivAlexLoader64NameW;
-			break;
-		default:
-			throw std::invalid_argument("Invalid which");
-	}
 
-	const auto companion = companionPath / whichLoader;
+	const auto companion = companionPath / XivAlexLoaderNameW;
 
 	if (!exists(companion))
 		throw std::runtime_error(Utils::ToUtf8(std::vformat(FindStringResourceEx(Dll::Module(), IDS_ERROR_LOADER_NOT_FOUND) + 1, std::make_wformat_args(companion))));
@@ -227,9 +209,7 @@ void __stdcall Dll::CallFreeLibrary(void*) {
 	std::vector<std::pair<std::string, std::string>> modules;
 	try {
 		modules = {
-			Utils::Win32::FormatModuleVersionString(dir / Dll::XivAlexLoader32NameW),
 			Utils::Win32::FormatModuleVersionString(dir / Dll::XivAlexLoader64NameW),
-			Utils::Win32::FormatModuleVersionString(dir / Dll::XivAlexDll32NameW),
 			Utils::Win32::FormatModuleVersionString(dir / Dll::XivAlexDll64NameW),
 		};
 	} catch (const Utils::Win32::Error& e) {

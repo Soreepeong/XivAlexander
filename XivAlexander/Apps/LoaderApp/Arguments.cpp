@@ -169,8 +169,7 @@ void XivAlexander::LoaderApp::Arguments::Parse() {
 	}
 
 	if (m_targetPids.empty() && m_targetSuffix.empty()) {
-		m_targetSuffix.emplace(Dll::GameExecutable32NameW);
-		m_targetSuffix.emplace(Dll::GameExecutable64NameW);
+		m_targetSuffix.emplace(GameExecutable64NameW);
 	}
 }
 

@@ -311,7 +311,6 @@ namespace XivAlexander {
 			// If set but invalid, show errors.
 			Item<std::vector<std::filesystem::path>> ChainLoadPath_d3d11 = CreateConfigItem<std::vector<std::filesystem::path>>(this, "ChainLoadPath_d3d11");
 			Item<std::vector<std::filesystem::path>> ChainLoadPath_dxgi = CreateConfigItem<std::vector<std::filesystem::path>>(this, "ChainLoadPath_dxgi");
-			Item<std::vector<std::filesystem::path>> ChainLoadPath_d3d9 = CreateConfigItem<std::vector<std::filesystem::path>>(this, "ChainLoadPath_d3d9");
 			Item<std::vector<std::filesystem::path>> ChainLoadPath_dinput8 = CreateConfigItem<std::vector<std::filesystem::path>>(this, "ChainLoadPath_dinput8");
 
 			Item<bool> UseModding = CreateConfigItem(this, "UseModding", false);

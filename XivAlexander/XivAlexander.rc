@@ -172,7 +172,6 @@ BEGIN
     BEGIN
         MENUITEM "以下の設定で再起動(&R)\tCtrl+Shift+R", ID_RESTART_RESTART
         MENUITEM SEPARATOR
-        MENUITEM "DirectX11を使用(&I)\t(Ctrl+Shift+)D", ID_RESTART_USEDIRECTX11
         MENUITEM "XivAlexanderを使用(&X)\t(Ctrl+Shift+)X", ID_RESTART_USEXIVALEXANDER
         MENUITEM "コマンドラインの難読化を使用(&P)\t(Ctrl+Shift+)P", ID_RESTART_USEPARAMETEROBFUSCATION
         MENUITEM "管理者として実行(&E)\t(Ctrl+Shift+)A", ID_RESTART_USEELEVATION
@@ -390,7 +389,7 @@ BEGIN
     IDS_TITLE_UNRECOVERABLEERROR_FOOTER 
                             "<a href=""issues"">XivAlexanderのGitHubのIssueページ</a>を開ける"
     IDS_CONFIRM_RESTART_GAME 
-                            "ゲームを強制的に再起動しますか？\n\nDirectX11の使用：{}\nXivAlexanderの使用：{}\nコマンドラインの難読化の使用：{}\n管理者権限で実行：{}\n言語：{}\n地域：{}"
+                            "ゲームを強制的に再起動しますか？\n\nXivAlexanderの使用：{}\nコマンドラインの難読化の使用：{}\n管理者権限で実行：{}\n言語：{}\n地域：{}"
     IDS_MAIN_TEXT           "PID: {}\nゲームのインストール先: {}\nコマンドライン：{}\nゲームのバージョン: {} ({})\nメッセジーループ：{}+{:06}us (毎秒{:.02f}回)\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "環境設定"
@@ -511,7 +510,7 @@ BEGIN
     IDS_LOADERAPP_INTERACTIVE_INSTALL_CONTENT 
                             "XivAlexanderをインストールすると、ゲームの起動と同時にXivAlexanderもロードができます。\n\n・管理者の権限が必要です。\n* Reshadeと同時に使えます。\n* ゲームのデータファイルは変更されません。"
     IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_D3D 
-                            "XivAlexanderをd3d9/d3d11でインストールする(&I)\nXivAlexanderを選択したゲームフォルダーにd3d9.dllとd3d11.dllでインストールします。"
+                            "XivAlexanderをd3d11.dllでインストールする(&I)\nXivAlexanderを選択したゲームフォルダーにd3d11.dllでインストールします。"
     IDS_LOADERAPP_INTERACTIVE_INSTALL_UNINSTALL 
                             "XivAlexanderをアンインストールする(&U)\nXivAlexanderを選択したゲームプログラムからアンインストールします。"
     IDS_LOADERAPP_INTERACTIVE_INSTALL_RUNGAME 
@@ -536,7 +535,7 @@ STRINGTABLE
 BEGIN
     IDS_FILTERSPEC_EXECUTABLEFILES "実行ファイル (*.exe, *.scr)"
     IDS_FILTERSPEC_FFXIVEXECUTABLEFILES 
-                            "FFXIVの実行ファイル (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe; ffxiv.exe)"
+                            "FFXIVの実行ファイル (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe)"
     IDS_FILTERSPEC_FFXIVBOOTFILES 
                             "FFXIVの起動用実行ファイル (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe)"
     IDS_TITLE_SELECT_FFXIVEXECUTABLE "FFXIVの実行ファイルの選択"
@@ -544,13 +543,10 @@ BEGIN
                             "XivAlexanderを次の経路にインストールしました。\n\n{}"
     IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE 
                             "XivAlexanderを次の経路からアンインストールしました。\n\n{}\n\n設定ファイルなどは直接に確認して削除してください。設定フォルダーを開けます。"
-    IDS_HELP_INSTALL_MODE   "インストールモードを指定します。有効な値はd3d（基本）、dinput8x86、dinput8x64です。"
-    IDS_ERROR_INVALID_INSTALL_MODE 
-                            "インストールモードが間違っています。使えるのはd3d、dinput8x86、dinput8x64です。"
-    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X86 
-                            "XivAlexanderをdinput8(x86)でインストールする(&I)\nXivAlexanderを選択したゲームフォルダーにdinput8.dllでインストールします。ゲームのDirectX9バージョンだけで適用になります。"
-    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X64 
-                            "XivAlexanderをdinput8(x64)でインストールする(&I)\nXivAlexanderを選択したゲームフォルダーにdinput8.dllでインストールします。ゲームのDirectX11バージョンだけで適用になります。"
+    IDS_HELP_INSTALL_MODE   "インストールモードを指定します。有効な値はd3d（基本）、dinput8です。"
+    IDS_ERROR_INVALID_INSTALL_MODE "インストールモードが間違っています。使えるのはd3d、dinput8です。"
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8 
+                            "XivAlexanderをdinput8でインストールする(&I)\nXivAlexanderを選択したゲームフォルダーにdinput8.dllでインストールします。"
     IDS_TITLE_DISCOVERINGFILES "ファイルを探索しています…"
 END
 
@@ -700,7 +696,6 @@ BEGIN
     BEGIN
         MENUITEM "아래 설정을 반영해 재시작하기(&R)\tCtrl+Shift+R", ID_RESTART_RESTART
         MENUITEM SEPARATOR
-        MENUITEM "DirectX 11 사용(&I)\t(Ctrl+Shift+)D", ID_RESTART_USEDIRECTX11
         MENUITEM "XivAlexander 사용(&X)\t(Ctrl+Shift+)X", ID_RESTART_USEXIVALEXANDER
         MENUITEM "명령줄 난독화 사용(&P)\t(Ctrl+Shift+)P", ID_RESTART_USEPARAMETEROBFUSCATION
         MENUITEM "관리자 권한으로 실행(&A)\t(Ctrl+Shift+)A", ID_RESTART_USEELEVATION
@@ -978,7 +973,7 @@ BEGIN
     IDS_TITLE_UNRECOVERABLEERROR_FOOTER 
                             "<a href=""issues"">XivAlexander의 GitHub 이슈 페이지</a> 열기"
     IDS_CONFIRM_RESTART_GAME 
-                            "게임을 강제로 재시작하시겠습니까?\n\nDirectX 11 사용: {}\nXivAlexander 사용: {}\n명령줄 난독화 사용: {}\n관리자 권한으로 실행: {}\n언어: {}\n지역: {}"
+                            "게임을 강제로 재시작하시겠습니까?\n\nXivAlexander 사용: {}\n명령줄 난독화 사용: {}\n관리자 권한으로 실행: {}\n언어: {}\n지역: {}"
     IDS_MAIN_TEXT           "PID: {}\n게임 경로: {}\n인자: {}\n게임 버전: {} ({})\n메시지 루프: {}+{:06}us (초당 {:.02f}회)\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "프로그램 설정 편집"
@@ -1103,7 +1098,7 @@ BEGIN
     IDS_LOADERAPP_INTERACTIVE_INSTALL_CONTENT 
                             "XivAlexander를 설치하면 게임 실행과 함께 XivAlexander를 실행할 수 있습니다.\n\n* 관리자 권한이 필요합니다.\n* Reshade하고 같이 쓸 수 있습니다.\n* 게임 데이터 파일은 변경되지 않습니다."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_D3D 
-                            "XivAlexander를 d3d9/d3d11로 설치하기(&I)\nXivAlexander를 선택한 게임 설치 폴더에 d3d9.dll 및 d3d11.dll 파일로 설치합니다."
+                            "XivAlexander를 d3d11.dll로 설치하기(&I)\nXivAlexander를 선택한 게임 설치 폴더에 d3d11.dll 파일로 설치합니다."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_UNINSTALL 
                             "XivAlexander 제거하기(&U)\nXivAlexander를 선택한 게임 설치에서 제거합니다."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_RUNGAME 
@@ -1127,7 +1122,7 @@ STRINGTABLE
 BEGIN
     IDS_FILTERSPEC_EXECUTABLEFILES "실행 파일 (*.exe, *.scr)"
     IDS_FILTERSPEC_FFXIVEXECUTABLEFILES 
-                            "FFXIV 실행 파일 (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe; ffxiv.exe)"
+                            "FFXIV 실행 파일 (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe)"
     IDS_FILTERSPEC_FFXIVBOOTFILES 
                             "FFXIV Boot 실행 파일 (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe)"
     IDS_TITLE_SELECT_FFXIVEXECUTABLE "FFXIV 실행 파일 선택하기"
@@ -1135,13 +1130,11 @@ BEGIN
                             "XivAlexander를 다음 경로에 설치하였습니다.\n\n{}"
     IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE 
                             "XivAlexander를 다음 경로에서 제거하였습니다.\n\n{}\n\n사용자 설정 파일 등은 수동으로 제거해야 합니다. 설정 파일 저장 폴더를 지금 확인하시겠습니까?"
-    IDS_HELP_INSTALL_MODE   "설치 모드를 지정합니다. (가능한 값: d3d (default), dinput8x86, dinput8x64)"
+    IDS_HELP_INSTALL_MODE   "설치 모드를 지정합니다. (가능한 값: d3d (default), dinput8)"
     IDS_ERROR_INVALID_INSTALL_MODE 
-                            "설치 모드 지정이 잘못되었습니다. 사용 가능한 값은 d3d, dinput8x86, dinput8x64 입니다."
-    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X86 
-                            "XivAlexander를 dinput8.dll(x86)로 설치하기(&I)\nXivAlexander를 선택한 게임 설치 폴더에 dinput8.dll 파일로 설치합니다. 게임을 DirectX 9 모드로 켤 때만 적용됩니다."
-    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X64 
-                            "XivAlexander를 dinput8.dll(x64)로 설치하기(&I)\nXivAlexander를 선택한 게임 설치 폴더에 dinput8.dll 파일로 설치합니다. 게임을 DirectX 11 모드로 켤 때만 적용됩니다."
+                            "설치 모드 지정이 잘못되었습니다. 사용 가능한 값은 d3d, dinput8 입니다."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8 
+                            "XivAlexander를 dinput8.dll로 설치하기(&I)\nXivAlexander를 선택한 게임 설치 폴더에 dinput8.dll 파일로 설치합니다."
     IDS_ERROR_GENERATEFONT  "폰트 생성/불러오기 중 오류가 발생했습니다. 다시 시도하시겠습니까?\n\n오류: {}"
     IDS_GENERATEFONT_FONTINSTALLATIONREQUIRED "폰트 설치가 필요합니다."
     IDS_GENERATEFONT_CHECKAGAIN "설치 상태 재확인"
@@ -1294,7 +1287,6 @@ BEGIN
     BEGIN
         MENUITEM "&Restart Using Choices Below\tCtrl+Shift+R", ID_RESTART_RESTART
         MENUITEM SEPARATOR
-        MENUITEM "Use &DirectX 11\t(Ctrl+Shift+)D", ID_RESTART_USEDIRECTX11
         MENUITEM "Use &XivAlexander\t(Ctrl+Shift+)X", ID_RESTART_USEXIVALEXANDER
         MENUITEM "Use &Parameter Obfuscation\t(Ctrl+Shift+)P", ID_RESTART_USEPARAMETEROBFUSCATION
         MENUITEM "Use Elevation (Run as &Administrator)\t(Ctrl+Shift+)A", ID_RESTART_USEELEVATION
@@ -1575,7 +1567,6 @@ BEGIN
     "2",            ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES, VIRTKEY, NOINVERT
     "M",            ID_NETWORK_USEALLIPCMESSAGELOGGER, VIRTKEY, NOINVERT
     "F",            ID_NETWORK_USEIPCTYPEFINDER, VIRTKEY, NOINVERT
-    "D",            ID_RESTART_USEDIRECTX11, VIRTKEY, NOINVERT
     "A",            ID_RESTART_USEELEVATION, VIRTKEY, NOINVERT
     "P",            ID_RESTART_USEPARAMETEROBFUSCATION, VIRTKEY, NOINVERT
     "X",            ID_RESTART_USEXIVALEXANDER, VIRTKEY, NOINVERT
@@ -1607,7 +1598,6 @@ BEGIN
     "M",            ID_NETWORK_USEALLIPCMESSAGELOGGER, VIRTKEY, SHIFT, CONTROL, NOINVERT
     "F",            ID_NETWORK_USEIPCTYPEFINDER, VIRTKEY, SHIFT, CONTROL, NOINVERT
     "R",            ID_RESTART_RESTART,     VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "D",            ID_RESTART_USEDIRECTX11, VIRTKEY, SHIFT, CONTROL, NOINVERT
     "A",            ID_RESTART_USEELEVATION, VIRTKEY, SHIFT, CONTROL, NOINVERT
     "P",            ID_RESTART_USEPARAMETEROBFUSCATION, VIRTKEY, SHIFT, CONTROL, NOINVERT
     "X",            ID_RESTART_USEXIVALEXANDER, VIRTKEY, SHIFT, CONTROL, NOINVERT
@@ -1696,7 +1686,7 @@ BEGIN
     IDS_TITLE_UNRECOVERABLEERROR_FOOTER 
                             "Report to <a href=""issues"">XivAlexander Issues at GitHub</a>"
     IDS_CONFIRM_RESTART_GAME 
-                            "Do you want to force restart the game?\n\nUse DirectX 11: {}\nUse XivAlexander: {}\nUse Parameter Obfuscation: {}\nUse Elevation (Run as Administrator): {}\nGame Language: {}\nRegion: {}"
+                            "Do you want to force restart the game?\n\nUse XivAlexander: {}\nUse Parameter Obfuscation: {}\nUse Elevation (Run as Administrator): {}\nGame Language: {}\nRegion: {}"
     IDS_MAIN_TEXT           "Process ID: {}\nGame Path: {}\nArguments: {}\nGame Release: {} ({})\nMessage Pump: {}+{:06}us ({:.02f}/s)\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "Runtime Configuration Editor"
@@ -1771,7 +1761,7 @@ BEGIN
     IDS_HELP_INTERNAL_USE_ONLY "internal use only. Do not use."
     IDS_HELP_TARGETS        "List of target process ID or path suffix if loading. Path of program to execute if launching."
     IDS_ERROR_NOT_GAME_DIRECTORY 
-                            "Selected path ""{}"" does not seem to be a game directory. A game directory should have ""ffxiv.exe"" and ""ffxiv_dx11.exe"" in it."
+                            "Selected path ""{}"" does not seem to be a game directory. A game directory should have ""ffxiv_dx11.exe"" in it."
     IDS_NOTIFY_TTMP_HAS_CONFIGURATION 
                             "Installed TexTools ModPack file has user configurable settings attached to it. Use menu to change settings."
 END
@@ -1832,7 +1822,7 @@ BEGIN
     IDS_LOADERAPP_INTERACTIVE_INSTALL_CONTENT 
                             "You can install XivAlexander to load XivAlexander along with the game.\n\n* Requires Administrator permissions.\n* Compatible with Reshade.\n* No game data files are modified."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_D3D 
-                            "&Install XivAlexander as d3d9 and d3d11\nInstall XivAlexander for the selected game installation, taking place of d3d9.dll and d3d11.dll."
+                            "&Install XivAlexander as d3d11.dll\nInstall XivAlexander for the selected game installation, taking place of d3d11.dll."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_UNINSTALL 
                             "&Uninstall XivAlexander\nUninstall XivAlexander from the selected game installation."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_RUNGAME 
@@ -1857,7 +1847,7 @@ STRINGTABLE
 BEGIN
     IDS_FILTERSPEC_EXECUTABLEFILES "Executable PE files (*.exe, *.scr)"
     IDS_FILTERSPEC_FFXIVEXECUTABLEFILES 
-                            "FFXIV executable files (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe; ffxiv.exe)"
+                            "FFXIV executable files (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe)"
     IDS_FILTERSPEC_FFXIVBOOTFILES 
                             "FFXIV boot files (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe)"
     IDS_TITLE_SELECT_FFXIVEXECUTABLE "Select FFXIV executable program"
@@ -1865,13 +1855,11 @@ BEGIN
                             "XivAlexander is now installed for {}."
     IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE 
                             "XivAlexander is now uninstalled from {}.\nFor complete removal of files, you will have to remove configuration files manually. Do you want to open the configuration folder?"
-    IDS_HELP_INSTALL_MODE   "specify install mode (possible values: d3d (default), dinput8x86, dinput8x64)"
+    IDS_HELP_INSTALL_MODE   "specify install mode (possible values: d3d (default), dinput8)"
     IDS_ERROR_INVALID_INSTALL_MODE 
-                            "Invalid install mode specified. Accepted values are d3d, dinput8x86, and dinput8x64."
-    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X86 
-                            "&Install XivAlexander as dinput8.dll for DirectX 9 version\nInstall XivAlexander for the selected game installation in DirectX 9 version, taking place of dinput8.dll."
-    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8X64 
-                            "&Install XivAlexander as dinput8.dll for DirectX 11 version\nInstall XivAlexander for the selected game installation in DirectX 11 version, taking place of dinput8.dll."
+                            "Invalid install mode specified. Accepted values are d3d, and dinput8."
+    IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8 
+                            "&Install XivAlexander as dinput8.dll\nInstall XivAlexander for the selected game installation, taking place of dinput8.dll."
     IDS_TITLE_DISCOVERINGFILES "Discovering files..."
 END
 

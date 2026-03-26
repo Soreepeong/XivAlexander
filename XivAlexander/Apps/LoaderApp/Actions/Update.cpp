@@ -164,7 +164,6 @@ int XivAlexander::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(s
 	const auto& currentProcess = Utils::Win32::Process::Current();
 	const auto launcherDir = currentProcess.PathOf().parent_path();
 	const auto tempExtractionDir = launcherDir / L"__UPDATE__";
-	const auto loaderPath32 = launcherDir / Dll::XivAlexLoader32NameW;
 	const auto loaderPath64 = launcherDir / Dll::XivAlexLoader64NameW;
 
 	{
@@ -177,9 +176,7 @@ int XivAlexander::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(s
 						const auto tempPath = launcherDir / L"updatesourcetest.zip";
 						libzippp::ZipArchive arc(tempPath.string());
 						arc.open(libzippp::ZipArchive::Write);
-						arc.addFile(Utils::ToUtf8(Dll::XivAlexDll32NameW), Utils::ToUtf8((launcherDir / Dll::XivAlexDll32NameW).wstring()));
 						arc.addFile(Utils::ToUtf8(Dll::XivAlexDll64NameW), Utils::ToUtf8((launcherDir / Dll::XivAlexDll64NameW).wstring()));
-						arc.addFile(Utils::ToUtf8(Dll::XivAlexLoader32NameW), Utils::ToUtf8((launcherDir / Dll::XivAlexLoader32NameW).wstring()));
 						arc.addFile(Utils::ToUtf8(Dll::XivAlexLoader64NameW), Utils::ToUtf8((launcherDir / Dll::XivAlexLoader64NameW).wstring()));
 						arc.close();
 						copy(tempPath, updateZip);
@@ -287,7 +284,7 @@ int XivAlexander::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(s
 					continue;
 				}
 			}
-			if (lstrcmpiW(processPath.c_str(), loaderPath32.c_str()) == 0 || lstrcmpiW(processPath.c_str(), loaderPath64.c_str()) == 0) {
+			if (lstrcmpiW(processPath.c_str(), loaderPath64.c_str()) == 0) {
 				while (true) {
 					try {
 						const auto hProcess = Utils::Win32::Process(PROCESS_TERMINATE | SYNCHRONIZE, false, pid);
@@ -302,15 +299,14 @@ int XivAlexander::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(s
 					}
 				}
 
-			} else if (lstrcmpiW(processPath.filename().c_str(), Dll::GameExecutable64NameW) == 0 || lstrcmpiW(processPath.filename().c_str(), Dll::GameExecutable32NameW) == 0) {
+			} else if (lstrcmpiW(processPath.filename().c_str(), Dll::GameExecutable64NameW) == 0) {
 				auto process = OpenProcessForManipulation(pid);
 				gameProcesses.emplace_back(process);
 				unloadTargets.emplace_back(std::move(process));
 			} else {
 				try {
 					auto process = OpenProcessForManipulation(pid);
-					const auto is64 = process.IsProcess64Bits();
-					const auto modulePath = launcherDir / (is64 ? Dll::XivAlexDll64NameW : Dll::XivAlexDll32NameW);
+					const auto modulePath = launcherDir / XivAlexDll64NameW;
 					if (process.AddressOf(modulePath, Utils::Win32::Process::ModuleNameCompareMode::FullPath, false))
 						unloadTargets.emplace_back(std::move(process));
 				} catch (...) {
@@ -319,7 +315,7 @@ int XivAlexander::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(s
 		}
 
 		LaunchXivAlexLoaderWithTargetHandles(unloadTargets, LoaderAction::Internal_Inject_UnloadFromHandle, true);
-		LaunchXivAlexLoaderWithTargetHandles(gameProcesses, LoaderAction::Internal_Update_Step2_ReplaceFiles, false, currentProcess, Current, tempExtractionDir);
+		LaunchXivAlexLoaderWithTargetHandles(gameProcesses, LoaderAction::Internal_Update_Step2_ReplaceFiles, false, currentProcess, tempExtractionDir);
 
 		currentProcess.Terminate(0);
 	}
@@ -342,7 +338,7 @@ int XivAlexander::LoaderApp::Actions::Update::UpdateStep_ReplaceFiles() {
 		Dll::MessageBoxF(nullptr, MB_ICONWARNING, IDS_UPDATE_ERROR_ACCESS_DENIED, e.what());
 		return -1;
 	}
-	LaunchXivAlexLoaderWithTargetHandles(m_args.m_targetProcessHandles, LoaderAction::Internal_Update_Step3_CleanupFiles, false, Utils::Win32::Process::Current(), Current, targetUpdatePath);
+	LaunchXivAlexLoaderWithTargetHandles(m_args.m_targetProcessHandles, LoaderAction::Internal_Update_Step3_CleanupFiles, false, Utils::Win32::Process::Current(), targetUpdatePath);
 	return 0;
 }
 

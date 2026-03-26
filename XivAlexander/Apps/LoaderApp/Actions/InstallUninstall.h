@@ -19,7 +19,7 @@ namespace XivAlexander::LoaderApp::Actions {
 			const std::filesystem::path& gamePath,
 			const bool& success,
 			Utils::CallOnDestruction::Multiple& revert,
-			Config::RuntimeRepository& config64, Config::RuntimeRepository& config32);
+			Config::RuntimeRepository& config64);
 		static void RemoveTemporaryFiles(const std::filesystem::path& gamePath);
 	};
 }

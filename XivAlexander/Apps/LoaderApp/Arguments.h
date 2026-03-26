@@ -14,8 +14,7 @@ namespace XivAlexander::LoaderApp {
 
 	enum class InstallMode : int {
 		D3D,
-		DInput8x86,
-		DInput8x64,
+		DInput8,
 		Count_,  // for internal use only
 	};
 

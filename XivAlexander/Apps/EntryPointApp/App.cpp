@@ -97,7 +97,7 @@ struct XivAlexander::EntryPoint::EntryPointApp::Implementation {
 				if (process.IsProcess64Bits() == Utils::Win32::Process::Current().IsProcess64Bits()) {
 					Dll::PatchEntryPointForInjection(process);
 				} else {
-					LaunchXivAlexLoaderWithTargetHandles({ process }, Dll::LoaderAction::Internal_Inject_HookEntryPoint, true, {}, Dll::Opposite);
+					LaunchXivAlexLoaderWithTargetHandles({ process }, Dll::LoaderAction::Internal_Inject_HookEntryPoint, true, {});
 				}
 			}
 		} catch (const std::exception& e) {
@@ -358,10 +358,6 @@ static void InitializeAsStubBeforeOriginalEntryPoint() {
 	CharLowerW(&selfFileNameLower[0]);
 	if (selfFileNameLower == L"d3d11.dll") {
 		for (auto& path : conf->Runtime.ChainLoadPath_d3d11.Value())
-			if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(XivAlexander::Config::Config::TranslatePath(path), 0, false))
-				mod.SetPinned();
-	} else if (selfFileNameLower == L"d3d9.dll") {
-		for (auto& path : conf->Runtime.ChainLoadPath_d3d9.Value())
 			if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(XivAlexander::Config::Config::TranslatePath(path), 0, false))
 				mod.SetPinned();
 	} else if (selfFileNameLower == L"dinput8.dll") {

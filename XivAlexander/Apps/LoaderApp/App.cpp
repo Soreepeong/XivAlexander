@@ -108,8 +108,7 @@ template<>
 std::string argparse::details::repr(XivAlexander::LoaderApp::InstallMode const& val) {
 	switch (val) {
 		case XivAlexander::LoaderApp::InstallMode::D3D: return "d3d";
-		case XivAlexander::LoaderApp::InstallMode::DInput8x86: return "dinput8x86";
-		case XivAlexander::LoaderApp::InstallMode::DInput8x64: return "dinput8x64";
+		case XivAlexander::LoaderApp::InstallMode::DInput8: return "dinput8";
 	}
 	return std::format("({})", static_cast<int>(val));
 }
@@ -242,6 +241,8 @@ private:
 };
 
 extern "C" int Dll::XA_LoaderApp() {
+	const auto activationContextCleanup = Dll::ActivationContext().With();
+
 	// SetThreadUILanguage(MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN));
 	// SetThreadUILanguage(MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN));
 

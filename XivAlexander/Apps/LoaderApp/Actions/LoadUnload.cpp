@@ -13,18 +13,6 @@ using namespace Dll;
 void XivAlexander::LoaderApp::Actions::LoadUnload::RunForPid(DWORD pid) {
 	const auto process = OpenProcessForManipulation(pid);
 
-	if (process.IsProcess64Bits() != Utils::Win32::Process::Current().IsProcess64Bits()) {
-		Utils::Win32::RunProgram({
-			.path = Utils::Win32::Process::Current().PathOf().parent_path() / (process.IsProcess64Bits() ? Dll::XivAlexLoader64NameW : Dll::XivAlexLoader32NameW),
-			.args = std::format(L"{}-a {} {}",
-				m_args.m_quiet ? L"-q " : L"",
-				LoaderActionToString(m_args.m_action),
-				process.GetId()),
-			.wait = true
-		});
-		return;
-	}
-
 	const auto path = process.PathOf();
 	auto loaderAction = m_args.m_action;
 	if (loaderAction == LoaderAction::Ask || loaderAction == LoaderAction::Interactive) {
@@ -81,7 +69,7 @@ void XivAlexander::LoaderApp::Actions::LoadUnload::LoadOrUnload(const Utils::Win
 	if (process.IsProcess64Bits() != Utils::Win32::Process::Current().IsProcess64Bits()
 		|| (!Utils::Win32::IsUserAnAdmin() && TestAdminRequirementForProcessManipulation({process.GetId()}))) {
 		Utils::Win32::RunProgram({
-			.path = Utils::Win32::Process::Current().PathOf().parent_path() / (process.IsProcess64Bits() ? Dll::XivAlexLoader64NameW : Dll::XivAlexLoader32NameW),
+			.path = Utils::Win32::Process::Current().PathOf().parent_path() / XivAlexLoader64NameW,
 			.args = std::format(L"-a {} {}",
 				LoaderActionToString(load ? LoaderAction::Load : LoaderAction::Unload),
 				process.GetId()),

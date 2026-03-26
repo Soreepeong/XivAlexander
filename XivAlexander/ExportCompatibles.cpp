@@ -8,7 +8,6 @@
 #include <XivAlexanderCommon/Utils/Win32.h>
 
 #include "Config.h"
-#include "XivAlexander.h"
 
 static WORD s_wLanguage = MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL);
 
@@ -156,25 +155,6 @@ HRESULT WINAPI FORWARDER_CreateDXGIFactory2(
 			if (ppFactory)
 				(*ppFactory)->Release();
 		}
-		return res;
-	});
-}
-
-#elif INTPTR_MAX == INT32_MAX
-
-#include <d3d9.h>
-
-void WINAPI FORWARDER_D3DPERF_SetOptions(DWORD dwOptions) {
-	return ChainCall<decltype(&D3DPERF_SetOptions), void>("d3d9.dll", "D3DPERF_SetOptions", XivAlexander::Config::Acquire()->Runtime.ChainLoadPath_d3d9.Value(), [&](auto pfn, auto discardImmediately) {
-		pfn(dwOptions);
-	});
-}
-
-IDirect3D9* WINAPI FORWARDER_Direct3DCreate9(UINT SDKVersion) {
-	return ChainCall<decltype(&Direct3DCreate9), IDirect3D9*>("d3d9.dll", "Direct3DCreate9", XivAlexander::Config::Acquire()->Runtime.ChainLoadPath_d3d9.Value(), [&](auto pfn, auto discardImmediately) {
-		const auto res = pfn(SDKVersion);
-		if (res && discardImmediately)
-			res->Release();
 		return res;
 	});
 }

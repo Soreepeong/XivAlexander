@@ -265,9 +265,6 @@
     <None Include="vcpkg.json">
       <Filter>Project Items</Filter>
     </None>
-    <None Include="Exports_x86.def">
-      <Filter>Project Items</Filter>
-    </None>
     <None Include="Exports_x64.def">
       <Filter>Project Items</Filter>
     </None>

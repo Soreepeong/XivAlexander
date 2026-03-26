@@ -32,4 +32,10 @@
       <Filter>Resources</Filter>
     </ResourceCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\graphics\rt_manif.bin" />
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="DummyAssemblyIdentity.manifest" />
+  </ItemGroup>
 </Project>

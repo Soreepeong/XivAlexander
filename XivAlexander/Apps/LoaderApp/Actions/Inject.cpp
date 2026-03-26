@@ -40,7 +40,7 @@ void XivAlexander::LoaderApp::Actions::Inject::HookEntryPoint() {
 		PatchEntryPointForInjection(process);
 
 	if (!defer.empty())
-		LaunchXivAlexLoaderWithTargetHandles(defer, m_args.m_action, true, {}, Opposite);
+		LaunchXivAlexLoaderWithTargetHandles(defer, m_args.m_action, true, {});
 }
 
 void XivAlexander::LoaderApp::Actions::Inject::InjectOrCleanup(bool inject) {
@@ -64,5 +64,5 @@ void XivAlexander::LoaderApp::Actions::Inject::InjectOrCleanup(bool inject) {
 	}
 
 	if (!defer.empty())
-		LaunchXivAlexLoaderWithTargetHandles(defer, m_args.m_action, true, {}, Opposite);
+		LaunchXivAlexLoaderWithTargetHandles(defer, m_args.m_action, true, {});
 }
