@@ -849,7 +849,9 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
 		else
 			SetMenuState(hMenu, ID_CONFIGURE_LOCKFRAMERATE, false, true, m_config->Runtime.GetStringRes(IDS_MENU_LOCKFRAMERATE_DISABLED));
 		SetMenuState(hMenu, ID_CONFIGURE_SYNCHRONIZEPROCESSING, config.SynchronizeProcessing, true);
-		SetMenuState(hMenu, ID_CONFIGURE_ADDPIDTOGAMEWINDOWTITLE, config.AddProcessIDToGameWindowTitle, true);
+		SetMenuState(hMenu, ID_CONFIGURE_WINDOWTITLE_PID_NONE, config.GameWindowTitleMode == GameWindowTitleMode::None, true);
+		SetMenuState(hMenu, ID_CONFIGURE_WINDOWTITLE_PID_PREFIX, config.GameWindowTitleMode == GameWindowTitleMode::Prefix, true);
+		SetMenuState(hMenu, ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX, config.GameWindowTitleMode == GameWindowTitleMode::Suffix, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT, config.Language == Language::SystemDefault, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_ENGLISH, config.Language == Language::English, true);
 		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_KOREAN, config.Language == Language::Korean, true);
@@ -1436,8 +1438,16 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Configure(i
 			config.SynchronizeProcessing.Toggle();
 			return;
 
-		case ID_CONFIGURE_ADDPIDTOGAMEWINDOWTITLE:
-			config.AddProcessIDToGameWindowTitle.Toggle();
+		case ID_CONFIGURE_WINDOWTITLE_PID_NONE:
+			config.GameWindowTitleMode = GameWindowTitleMode::None;
+			return;
+
+		case ID_CONFIGURE_WINDOWTITLE_PID_PREFIX:
+			config.GameWindowTitleMode = GameWindowTitleMode::Prefix;
+			return;
+
+		case ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX:
+			config.GameWindowTitleMode = GameWindowTitleMode::Suffix;
 			return;
 
 		case ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT:

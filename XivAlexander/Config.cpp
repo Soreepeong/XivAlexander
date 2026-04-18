@@ -510,6 +510,30 @@ void XivAlexander::from_json(const nlohmann::json & it, HighLatencyMitigationMod
 		value = HighLatencyMitigationMode::SubtractLatency;
 }
 
+void XivAlexander::to_json(nlohmann::json& j, const GameWindowTitleMode& value) {
+	switch (value) {
+		case GameWindowTitleMode::None: j = "None"; break;
+		case GameWindowTitleMode::Prefix: j = "Prefix"; break;
+		case GameWindowTitleMode::Suffix: j = "Suffix"; break;
+	}
+}
+
+void XivAlexander::from_json(const nlohmann::json& it, GameWindowTitleMode& value) {
+	if (it.is_string()) {
+		const auto s = it.get<std::string>();
+		if (s == "Prefix")
+			value = GameWindowTitleMode::Prefix;
+		else if (s == "Suffix")
+			value = GameWindowTitleMode::Suffix;
+		else
+			value = GameWindowTitleMode::None;
+	} else if (it.is_boolean()) {
+		value = it.get<bool>() ? GameWindowTitleMode::Suffix : GameWindowTitleMode::None;
+	} else {
+		value = GameWindowTitleMode::None;
+	}
+}
+
 void XivAlexander::to_json(nlohmann::json & j, const PatchInstruction & value) {
 	j = nlohmann::json::object({
 		{"Name", value.Name},

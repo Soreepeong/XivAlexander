@@ -27,6 +27,12 @@ namespace XivAlexander {
 		SimulateNormalizedRttAndLatency,
 	};
 
+	enum class GameWindowTitleMode {
+		None,
+		Prefix,
+		Suffix,
+	};
+
 	struct PatchInstruction {
 		static constexpr auto HmacKeySize = 32;
 
@@ -49,6 +55,8 @@ namespace XivAlexander {
 	void from_json(const nlohmann::json&, ThemeMode&);
 	void to_json(nlohmann::json&, const HighLatencyMitigationMode&);
 	void from_json(const nlohmann::json&, HighLatencyMitigationMode&);
+	void to_json(nlohmann::json&, const GameWindowTitleMode&);
+	void from_json(const nlohmann::json&, GameWindowTitleMode&);
 	void to_json(nlohmann::json&, const PatchInstruction&);
 	void from_json(const nlohmann::json&, PatchInstruction&);
 
@@ -289,7 +297,7 @@ namespace XivAlexander {
 
 			Item<bool> UseMoreCpuTime = CreateConfigItem(this, "UseMoreCpuPower", false);
 			Item<bool> SynchronizeProcessing = CreateConfigItem(this, "SynchronizeProcessing", false);
-			Item<bool> AddProcessIDToGameWindowTitle = CreateConfigItem(this, "AddProcessIDToGameWindowTitle", false);
+			Item<GameWindowTitleMode> GameWindowTitleMode = CreateConfigItem(this, "AddProcessIDToGameWindowTitle", GameWindowTitleMode::None);
 
 			Item<uint64_t> LockFramerateInterval = CreateConfigItem<uint64_t>(this, "LockFramerate", 0, [](const uint64_t& val) {
 				return std::min<uint64_t>(std::max<uint64_t>(0, val), 1000000);
