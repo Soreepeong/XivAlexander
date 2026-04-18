@@ -6,8 +6,6 @@
 
 #include "Config.h"
 
-using XivAlexander::GameWindowTitleMode;
-
 #include "Apps/MainApp/Internal/AllIpcMessageLogger.h"
 #include "Apps/MainApp/Internal/MainThreadTimingHandler.h"
 #include "Apps/MainApp/Internal/NetworkTimingHandler.h"
@@ -304,9 +302,7 @@ DWORD XivAlexander::Apps::MainApp::App::Implementation_GameWindow::GetThreadId(b
 }
 
 bool XivAlexander::Apps::MainApp::App::IsGameWindowFocused() const {
-	if (m_pGameWindow)
-		return m_pGameWindow->IsFocused;
-	return false;
+	return m_pGameWindow && m_pGameWindow->IsFocused;
 }
 
 LRESULT CALLBACK XivAlexander::Apps::MainApp::App::Implementation_GameWindow::SubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {

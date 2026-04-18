@@ -512,9 +512,18 @@ void XivAlexander::from_json(const nlohmann::json & it, HighLatencyMitigationMod
 
 void XivAlexander::to_json(nlohmann::json& j, const GameWindowTitleMode& value) {
 	switch (value) {
-		case GameWindowTitleMode::None: j = "None"; break;
-		case GameWindowTitleMode::Prefix: j = "Prefix"; break;
-		case GameWindowTitleMode::Suffix: j = "Suffix"; break;
+		case GameWindowTitleMode::None:
+		default:
+			j = "None";
+			break;
+
+		case GameWindowTitleMode::Prefix:
+			j = "Prefix";
+			break;
+
+		case GameWindowTitleMode::Suffix:
+			j = "Suffix";
+			break;
 	}
 }
 

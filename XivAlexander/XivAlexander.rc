@@ -279,12 +279,12 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "ゲームがCPUをできるだけ利用させる(&C)",      ID_CONFIGURE_USEMORECPUTIME
-        MENUITEM "バックグラウンド時のフレームレートを制限(&B)", ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
+        MENUITEM "バックグラウンド時のフレームレートを制限(&B)",    ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
         POPUP "ウィンドウタイトル(&I)"
         BEGIN
-            MENUITEM "変更しない(&N)",       ID_CONFIGURE_WINDOWTITLE_PID_NONE
-            MENUITEM "前にPIDを追加する(&P)",    ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
-            MENUITEM "後ろにPIDを追加する(&A)",      ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
+            MENUITEM "変更しない(&N)",                   ID_CONFIGURE_WINDOWTITLE_PID_NONE
+            MENUITEM "前にPIDを追加する(&P)",              ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
+            MENUITEM "後ろにPIDを追加する(&A)",             ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
         END
         MENUITEM "FPSの固定(&F)",                  ID_CONFIGURE_LOCKFRAMERATE
         MENUITEM "リキャストとアニメーション待機時間とゲーム処理の同期化(&P)", ID_CONFIGURE_SYNCHRONIZEPROCESSING
@@ -469,6 +469,7 @@ END
 
 STRINGTABLE
 BEGIN
+    IDS_MENU_BACKGROUND_FRAMERATE_TARGET "バックグラウンド時のFPS制限: {:g} fps"
     IDS_FILTERSPEC_ALLFILES "すべてのファイル (*.*)"
     IDS_FILTERSPEC_TTMP     "TexTools MODパックファイル (*.ttmp, *.ttmp2, *.mpl)"
     IDS_CONFIRM_REMOVEALLTTMP "「{}」フォルダーにある全てのTexTools MODパックを削除します。"
@@ -575,7 +576,6 @@ BEGIN
     IDS_MENU_LOCKFRAMERATE  "FPSの固定：{:g} fps"
     IDS_MENU_LOCKFRAMERATE_DISABLED "FPSの固定：未使用"
     IDS_MENU_LOCKFRAMERATE_AUTOMATIC "FPSの固定：自動"
-    IDS_MENU_BACKGROUND_FRAMERATE_TARGET  "バックグラウンド時のFPS制限: {:g} fps"
     IDS_MENU_NETWORKLATENCYHANDLEMODE_2 "モード&2：サーバからの応答にかかる時間を{}usに固定"
     IDS_OPCODEUPDATE_ERROR_404 "Opcodeの設定がまだアップデートされていません。後でもう一度してください。"
     IDS_OPCODEUPDATE_OK_NOTCHANGED "現在のOpcodeの設定がもう最新です。"
@@ -810,12 +810,12 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "게임이 가능한 만큼 CPU를 쓰도록 만들기(&C)", ID_CONFIGURE_USEMORECPUTIME
-        MENUITEM "백그라운드 시 프레임 레이트 제한(&B)", ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
+        MENUITEM "백그라운드 시 프레임 레이트 제한(&B)",      ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
         POPUP "창 제목(&I)"
         BEGIN
-            MENUITEM "변경 안함(&N)",       ID_CONFIGURE_WINDOWTITLE_PID_NONE
-            MENUITEM "접두어로 추가(&P)",    ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
-            MENUITEM "접미어로 추가(&A)",      ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
+            MENUITEM "변경 안함(&N)",                   ID_CONFIGURE_WINDOWTITLE_PID_NONE
+            MENUITEM "접두어로 추가(&P)",                 ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
+            MENUITEM "접미어로 추가(&A)",                 ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
         END
         MENUITEM "FPS 고정(&F)",                  ID_CONFIGURE_LOCKFRAMERATE
         MENUITEM "재사용 대기 시간 및 애니메이션 시간에 게임 처리를 동기화하기(&P)", ID_CONFIGURE_SYNCHRONIZEPROCESSING
@@ -1063,6 +1063,7 @@ END
 
 STRINGTABLE
 BEGIN
+    IDS_MENU_BACKGROUND_FRAMERATE_TARGET "비활성화 시 FPS 제한: {:g} fps"
     IDS_FILTERSPEC_ALLFILES "모든 파일 (*.*)"
     IDS_FILTERSPEC_TTMP     "TexTools 모드팩 파일 (*.ttmp, *.ttmp2, *.mpl)"
     IDS_CONFIRM_REMOVEALLTTMP """{}"" 폴더에 있는 모든 TexTools 모드팩 파일을 제거합니다."
@@ -1173,7 +1174,6 @@ BEGIN
     IDS_MENU_LOCKFRAMERATE  "FPS 고정: {:g} fps"
     IDS_MENU_LOCKFRAMERATE_DISABLED "FPS 고정 사용 안함"
     IDS_MENU_LOCKFRAMERATE_AUTOMATIC "FPS 고정: 자동"
-    IDS_MENU_BACKGROUND_FRAMERATE_TARGET  "비활성화 시 FPS 제한: {:g} fps"
     IDS_MENU_NETWORKLATENCYHANDLEMODE_2 "모드 &2: 서버 응답 시간을 {}us로 고정"
     IDS_OPCODEUPDATE_ERROR_404 "옵코드 설정이 아직 업데이트되지 않았습니다. 나중에 다시 시도해 주세요."
     IDS_OPCODEUPDATE_OK_NOTCHANGED "현재 옵코드 설정이 이미 최신입니다."
@@ -1407,15 +1407,15 @@ BEGIN
             MENUITEM "(None available)",            ID_CONFIGURE_GAMEFIX_EMPTY, INACTIVE
         END
         MENUITEM SEPARATOR
-        MENUITEM "Force the Game to Use More &CPU Time",      ID_CONFIGURE_USEMORECPUTIME
-        MENUITEM "&Background Framerate Limit",               ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
+        MENUITEM "Force the Game to Use More &CPU Time", ID_CONFIGURE_USEMORECPUTIME
+        MENUITEM "&Background Framerate Limit", ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
         POPUP "Game Window T&itle"
         BEGIN
-            MENUITEM "&No Change",       ID_CONFIGURE_WINDOWTITLE_PID_NONE
-            MENUITEM "&Prepend Process ID",     ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
-            MENUITEM "&Append Process PID",     ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
+            MENUITEM "&No Change",                  ID_CONFIGURE_WINDOWTITLE_PID_NONE
+            MENUITEM "&Prepend Process ID",         ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
+            MENUITEM "&Append Process PID",         ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
         END
-        MENUITEM "Lock &Framerate ",                          ID_CONFIGURE_LOCKFRAMERATE
+        MENUITEM "Lock &Framerate ",            ID_CONFIGURE_LOCKFRAMERATE
         MENUITEM "Synchronize &Processing to Cooldowns and Animation Locks", ID_CONFIGURE_SYNCHRONIZEPROCESSING
         MENUITEM SEPARATOR
         POPUP "&Language (言語/언어)"
@@ -1788,6 +1788,8 @@ END
 
 STRINGTABLE
 BEGIN
+    IDS_MENU_BACKGROUND_FRAMERATE_TARGET 
+                            "Background Framerate Limit: {:g} fps"
     IDS_FILTERSPEC_ALLFILES "All files (*.*)"
     IDS_FILTERSPEC_TTMP     "Process ID: {}\nGame Path: {}\nArguments: {}\nGame Release: {} ({})\nMessage Pump: {:06}+{:06}us ({}/s)\nRender Time: {:06}+{:06}us ({}/s if without FPS limits)\n\n{}"
     IDS_CONFIRM_REMOVEALLTTMP 
@@ -1906,7 +1908,6 @@ BEGIN
     IDS_MENU_LOCKFRAMERATE  "Lock Framerate: {:g} fps"
     IDS_MENU_LOCKFRAMERATE_DISABLED "Lock Framerate: Disabled"
     IDS_MENU_LOCKFRAMERATE_AUTOMATIC "Lock Framerate: Automatic"
-    IDS_MENU_BACKGROUND_FRAMERATE_TARGET  "Background Framerate Limit: {:g} fps"
     IDS_MENU_NETWORKLATENCYHANDLEMODE_2 "Mode &2: Simulate RTT ({}us)"
     IDS_OPCODEUPDATE_ERROR_404 
                             "No updated opcodes file has been found. Please try again later."
