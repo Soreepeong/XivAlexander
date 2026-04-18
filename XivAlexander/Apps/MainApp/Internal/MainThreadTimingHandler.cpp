@@ -32,6 +32,7 @@ struct XivAlexander::Apps::MainApp::Internal::MainThreadTimingHandler::Implement
 	UINT LastPeekMessageHadRemoveMsg{};
 	int64_t LastLockedFramerateRenderIntervalUs{};
 	int64_t LastLockedFramerateRenderDriftUs{};
+	Utils::Win32::Handle HighResTimer{};
 
 	Implementation(Apps::MainApp::App& app)
 		: App(app)
@@ -75,6 +76,8 @@ struct XivAlexander::Apps::MainApp::Internal::MainThreadTimingHandler::Implement
 
 			return 0;
 			});
+
+		HighResTimer = Utils::Win32::Handle(CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS), HANDLE());
 	}
 
 	~Implementation() {
@@ -155,13 +158,27 @@ struct XivAlexander::Apps::MainApp::Internal::MainThreadTimingHandler::Implement
 
 		if (waitUntilCounterUs > 0 && !LastMessagePumpCounterUs.empty()) {
 			const auto useMoreCpuTime = rt.UseMoreCpuTime.Value();
-			while (waitUntilCounterUs > (nowUs = Utils::QpcUs())) {
-				if (useMoreCpuTime)
-					void(0);
-				else
-					::Sleep(0);
+			const auto maxMsgWaitDuration =static_cast<DWORD>(
+				rt.UseBackgroundFramerateLimit && rt.BackgroundFramerateLimit > 0 && !App.IsGameWindowFocused()
+					? 1000 / rt.BackgroundFramerateLimit
+					: 0);
+
+			if (maxMsgWaitDuration)
+				(void)MsgWaitForMultipleObjectsEx(0, nullptr, maxMsgWaitDuration, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+			
+			if (useMoreCpuTime) {
+				while (waitUntilCounterUs > Utils::QpcUs())
+					(void)0;
+			} else {
+				const auto remainingUs = waitUntilCounterUs - Utils::QpcUs();
+				if (remainingUs > 0) {
+					// 100-nanosecond intervals, negative for relative time
+					const auto li = LARGE_INTEGER{.QuadPart = remainingUs * -10 };
+					SetWaitableTimer(HighResTimer, &li, 0, nullptr, nullptr, FALSE);
+					WaitForSingleObject(HighResTimer, INFINITE);
+				}
 			}
-			LastMessagePumpCounterUs.push_back(nowUs);
+			LastMessagePumpCounterUs.push_back(Utils::QpcUs());
 		} else {
 			LastMessagePumpCounterUs.push_back(nowUs);
 			recordPumpInterval = true;

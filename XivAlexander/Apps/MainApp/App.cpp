@@ -30,7 +30,8 @@ struct XivAlexander::Apps::MainApp::App::Implementation_GameWindow final {
 
 	HWND Handle{};
 	DWORD ThreadId{};
-	std::shared_ptr<Misc::Hooks::WndProcFunction> SubclassHook;
+	bool IsFocused{};
+	std::shared_ptr<Misc::Hooks::WndProcFunction> SubclassHook{};
 
 	Utils::CallOnDestruction::Multiple Cleanup;
 
@@ -182,6 +183,7 @@ void XivAlexander::Apps::MainApp::App::Implementation_GameWindow::InitializeThre
 	ThreadId = GetWindowThreadProcessId(Handle, nullptr);
 
 	SubclassHook = std::make_shared<Misc::Hooks::WndProcFunction>("GameMainWindow", Handle);
+	IsFocused = GetForegroundWindow() == Handle;
 
 	Cleanup += SubclassHook->SetHook([this](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 		return SubclassProc(hwnd, msg, wParam, lParam);
@@ -297,6 +299,12 @@ DWORD XivAlexander::Apps::MainApp::App::Implementation_GameWindow::GetThreadId(b
 	return ThreadId;
 }
 
+bool XivAlexander::Apps::MainApp::App::IsGameWindowFocused() const {
+	if (m_pGameWindow)
+		return m_pGameWindow->IsFocused;
+	return false;
+}
+
 LRESULT CALLBACK XivAlexander::Apps::MainApp::App::Implementation_GameWindow::SubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 	while (!RunOnGameLoopQueue.empty()) {
 		std::function<void()> fn;
@@ -306,6 +314,15 @@ LRESULT CALLBACK XivAlexander::Apps::MainApp::App::Implementation_GameWindow::Su
 			RunOnGameLoopQueue.pop();
 		}
 		fn();
+	}
+
+	switch (msg) {
+		case WM_SETFOCUS:
+			IsFocused = true;
+			break;
+		case WM_KILLFOCUS:
+			IsFocused = false;
+			break;
 	}
 
 	return SubclassHook->bridge(hwnd, msg, wParam, lParam);

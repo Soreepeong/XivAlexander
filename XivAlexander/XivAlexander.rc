@@ -279,6 +279,7 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "ゲームがCPUをできるだけ利用させる(&C)",      ID_CONFIGURE_USEMORECPUTIME
+        MENUITEM "バックグラウンド時のフレームレートを制限(&B)", ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
         MENUITEM "FPSの固定(&F)",                  ID_CONFIGURE_LOCKFRAMERATE
         MENUITEM "リキャストとアニメーション待機時間とゲーム処理の同期化(&P)", ID_CONFIGURE_SYNCHRONIZEPROCESSING
         MENUITEM "ゲームウィンドウのタイトルにPIDを表示(&I)",    ID_CONFIGURE_ADDPIDTOGAMEWINDOWTITLE
@@ -569,6 +570,7 @@ BEGIN
     IDS_MENU_LOCKFRAMERATE  "FPSの固定：{:g} fps"
     IDS_MENU_LOCKFRAMERATE_DISABLED "FPSの固定：未使用"
     IDS_MENU_LOCKFRAMERATE_AUTOMATIC "FPSの固定：自動"
+    IDS_MENU_BACKGROUND_FRAMERATE_TARGET  "バックグラウンド時のFPS制限: {:g} fps"
     IDS_MENU_NETWORKLATENCYHANDLEMODE_2 "モード&2：サーバからの応答にかかる時間を{}usに固定"
     IDS_OPCODEUPDATE_ERROR_404 "Opcodeの設定がまだアップデートされていません。後でもう一度してください。"
     IDS_OPCODEUPDATE_OK_NOTCHANGED "現在のOpcodeの設定がもう最新です。"
@@ -803,6 +805,7 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "게임이 가능한 만큼 CPU를 쓰도록 만들기(&C)", ID_CONFIGURE_USEMORECPUTIME
+        MENUITEM "백그라운드 시 프레임 레이트 제한(&B)", ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
         MENUITEM "FPS 고정(&F)",                  ID_CONFIGURE_LOCKFRAMERATE
         MENUITEM "재사용 대기 시간 및 애니메이션 시간에 게임 처리를 동기화하기(&P)", ID_CONFIGURE_SYNCHRONIZEPROCESSING
         MENUITEM "게임 창 제목에 PID 표시(&I)",         ID_CONFIGURE_ADDPIDTOGAMEWINDOWTITLE
@@ -1160,6 +1163,7 @@ BEGIN
     IDS_MENU_LOCKFRAMERATE  "FPS 고정: {:g} fps"
     IDS_MENU_LOCKFRAMERATE_DISABLED "FPS 고정 사용 안함"
     IDS_MENU_LOCKFRAMERATE_AUTOMATIC "FPS 고정: 자동"
+    IDS_MENU_BACKGROUND_FRAMERATE_TARGET  "비활성화 시 FPS 제한: {:g} fps"
     IDS_MENU_NETWORKLATENCYHANDLEMODE_2 "모드 &2: 서버 응답 시간을 {}us로 고정"
     IDS_OPCODEUPDATE_ERROR_404 "옵코드 설정이 아직 업데이트되지 않았습니다. 나중에 다시 시도해 주세요."
     IDS_OPCODEUPDATE_OK_NOTCHANGED "현재 옵코드 설정이 이미 최신입니다."
@@ -1393,8 +1397,9 @@ BEGIN
             MENUITEM "(None available)",            ID_CONFIGURE_GAMEFIX_EMPTY, INACTIVE
         END
         MENUITEM SEPARATOR
-        MENUITEM "Force the Game to Use More &CPU Time", ID_CONFIGURE_USEMORECPUTIME
-        MENUITEM "Lock &Framerate ",            ID_CONFIGURE_LOCKFRAMERATE
+        MENUITEM "Force the Game to Use More &CPU Time",      ID_CONFIGURE_USEMORECPUTIME
+        MENUITEM "&Background Framerate Limit",               ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
+        MENUITEM "Lock &Framerate ",                          ID_CONFIGURE_LOCKFRAMERATE
         MENUITEM "Synchronize &Processing to Cooldowns and Animation Locks", ID_CONFIGURE_SYNCHRONIZEPROCESSING
         MENUITEM "Add Process &ID to Game Window Title", 40537
         MENUITEM SEPARATOR
@@ -1886,6 +1891,7 @@ BEGIN
     IDS_MENU_LOCKFRAMERATE  "Lock Framerate: {:g} fps"
     IDS_MENU_LOCKFRAMERATE_DISABLED "Lock Framerate: Disabled"
     IDS_MENU_LOCKFRAMERATE_AUTOMATIC "Lock Framerate: Automatic"
+    IDS_MENU_BACKGROUND_FRAMERATE_TARGET  "Background Framerate Limit: {:g} fps"
     IDS_MENU_NETWORKLATENCYHANDLEMODE_2 "Mode &2: Simulate RTT ({}us)"
     IDS_OPCODEUPDATE_ERROR_404 
                             "No updated opcodes file has been found. Please try again later."

@@ -841,6 +841,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
 	{
 		SetMenuState(hMenu, ID_CONFIGURE_CHECKFORUPDATEDOPCODESONSTARTUP, config.CheckForUpdatedOpcodesOnStartup, true);
 		SetMenuState(hMenu, ID_CONFIGURE_USEMORECPUTIME, config.UseMoreCpuTime, true);
+		SetMenuState(hMenu, ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT, config.UseBackgroundFramerateLimit, true, config.FormatStringRes(IDS_MENU_BACKGROUND_FRAMERATE_TARGET, config.BackgroundFramerateLimit.Value()));
 		if (config.LockFramerateAutomatic)
 			SetMenuState(hMenu, ID_CONFIGURE_LOCKFRAMERATE, true, true, m_config->Runtime.GetStringRes(IDS_MENU_LOCKFRAMERATE_AUTOMATIC));
 		else if (config.LockFramerateInterval)
@@ -1421,6 +1422,10 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Configure(i
 
 		case ID_CONFIGURE_USEMORECPUTIME:
 			config.UseMoreCpuTime.Toggle();
+			return;
+
+		case ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT:
+			config.UseBackgroundFramerateLimit.Toggle();
 			return;
 
 		case ID_CONFIGURE_LOCKFRAMERATE:

@@ -303,6 +303,10 @@ namespace XivAlexander {
 			Item<uint64_t> LockFramerateGlobalCooldown = CreateConfigItem<uint64_t>(this, "LockFramerateGlobalCooldown", 250);
 
 			Item<bool> UseMainThreadTimingHandler = CreateConfigItem(this, "UseMainThreadTimingHandler", false);
+			Item<bool> UseBackgroundFramerateLimit = CreateConfigItem(this, "UseBackgroundFramerateLimit", false);
+			Item<double> BackgroundFramerateLimit = CreateConfigItem<double>(this, "BackgroundFramerateLimit", 5.0, [](const double& val) {
+				return std::min(1000.0, std::max(0.1, val));
+			});
 
 			Item<Language> Language = CreateConfigItem(this, "Language", Language::SystemDefault);
 			Item<ThemeMode> ThemeMode = CreateConfigItem(this, "ThemeMode", ThemeMode::System);

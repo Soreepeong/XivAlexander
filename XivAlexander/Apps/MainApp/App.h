@@ -48,6 +48,7 @@ namespace XivAlexander::Apps::MainApp {
 		[[nodiscard]] HWND GetGameWindowHandle(bool wait = false) const;
 		[[nodiscard]] DWORD GetGameWindowThreadId(bool wait = false) const;
 		[[nodiscard]] bool IsRunningOnGameMainThread() const;
+		[[nodiscard]] bool IsGameWindowFocused() const;
 
 		void RunOnGameLoop(std::function<void()> f);
 		[[nodiscard]] std::string IsUnloadable() const;
