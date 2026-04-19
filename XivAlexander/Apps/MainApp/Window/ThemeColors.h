@@ -18,6 +18,13 @@ namespace XivAlexander::Apps::MainApp::Window {
 		COLORREF SciForegroundLogWarning;
 		COLORREF SciForegroundLogError;
 
+		COLORREF SciForegroundJsonKey;
+		COLORREF SciForegroundJsonValue;
+		COLORREF SciForegroundJsonString;
+		COLORREF SciForegroundJsonNumber;
+		COLORREF SciForegroundJsonBracket;
+		COLORREF SciForegroundJsonEscape;
+
 		COLORREF GetBackground() const;
 		COLORREF GetForeground() const;
 		COLORREF GetBackgroundSelection() const;

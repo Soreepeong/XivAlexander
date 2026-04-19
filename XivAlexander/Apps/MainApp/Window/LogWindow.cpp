@@ -45,7 +45,7 @@ XivAlexander::Apps::MainApp::Window::LogWindow::LogWindow()
 		0, 0, 0, 0, m_hWnd, nullptr, Dll::Module(), nullptr);
 	m_direct = reinterpret_cast<SciFnDirect>(SendMessageW(m_hScintilla, SCI_GETDIRECTFUNCTION, 0, 0));
 	m_directPtr = SendMessageW(m_hScintilla, SCI_GETDIRECTPOINTER, 0, 0);
-	m_direct(m_directPtr, SCI_STYLESETSIZE, STYLE_DEFAULT, static_cast<int>(BaseFontSize * GetZoom()));
+	m_direct(m_directPtr, SCI_STYLESETSIZE, STYLE_DEFAULT, BaseFontSize);
 	m_direct(m_directPtr, SCI_SETREADONLY, TRUE, 0);
 	m_direct(m_directPtr, SCI_SETMARGINTYPEN, 0, SC_MARGIN_NUMBER);
 	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 1, 0);

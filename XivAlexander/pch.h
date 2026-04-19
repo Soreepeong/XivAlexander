@@ -82,6 +82,11 @@
 #include <libzippp/libzippp.h>
 #include <nlohmann/json.hpp>
 #include <scintilla/Scintilla.h>
+
+#include <scintilla/ILexer.h>
+#include <lexilla/SciLexer.h>
+#include <lexilla/Lexilla.h>
+
 #include <srell.hpp>
 #include <Zydis/Zydis.h>
 #pragma warning(pop)

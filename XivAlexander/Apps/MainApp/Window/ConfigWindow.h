@@ -12,6 +12,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		sptr_t m_directPtr = 0;
 		std::string m_originalConfig;
 
+		Utils::CallOnDestruction::Multiple m_cleanup;
 		Utils::CallOnDestruction m_callbackHandle;
 		const UINT m_nTitleStringResourceId;
 

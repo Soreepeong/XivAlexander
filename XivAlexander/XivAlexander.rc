@@ -152,6 +152,8 @@ BEGIN
     POPUP "表示(&V)"
     BEGIN
         MENUITEM "常に手前に表示(&T)\tCtrl+T",         ID_VIEW_ALWAYSONTOP
+        MENUITEM SEPARATOR
+        MENUITEM "ワードラップを使用(&W)\tCtrl+P",       ID_VIEW_USEWORDWRAP
     END
 END
 
@@ -470,6 +472,7 @@ END
 STRINGTABLE
 BEGIN
     IDS_MENU_BACKGROUND_FRAMERATE_TARGET "バックグラウンド時のFPS制限: {:g} fps"
+    IDS_MENU_WORDWRAPCONFIGWINDOW "自動 &改行"
     IDS_FILTERSPEC_ALLFILES "すべてのファイル (*.*)"
     IDS_FILTERSPEC_TTMP     "TexTools MODパックファイル (*.ttmp, *.ttmp2, *.mpl)"
     IDS_CONFIRM_REMOVEALLTTMP "「{}」フォルダーにある全てのTexTools MODパックを削除します。"
@@ -883,6 +886,8 @@ BEGIN
     POPUP "보기(&V)"
     BEGIN
         MENUITEM "항상 위에 표시(&T)\tCtrl+T",        ID_VIEW_ALWAYSONTOP
+        MENUITEM SEPARATOR
+        MENUITEM "줄바꿈 사용(&W)\tCtrl+P",          ID_VIEW_USEWORDWRAP
     END
 END
 
@@ -1064,6 +1069,7 @@ END
 STRINGTABLE
 BEGIN
     IDS_MENU_BACKGROUND_FRAMERATE_TARGET "비활성화 시 FPS 제한: {:g} fps"
+    IDS_MENU_WORDWRAPCONFIGWINDOW "자동 &줄바꿈"
     IDS_FILTERSPEC_ALLFILES "모든 파일 (*.*)"
     IDS_FILTERSPEC_TTMP     "TexTools 모드팩 파일 (*.ttmp, *.ttmp2, *.mpl)"
     IDS_CONFIRM_REMOVEALLTTMP """{}"" 폴더에 있는 모든 TexTools 모드팩 파일을 제거합니다."
@@ -1481,6 +1487,8 @@ BEGIN
     POPUP "&View"
     BEGIN
         MENUITEM "Always on &Top\tCtrl+T",      ID_VIEW_ALWAYSONTOP
+        MENUITEM SEPARATOR
+        MENUITEM "Use &Word Wrap\tCtrl+P",      ID_VIEW_USEWORDWRAP
     END
 END
 
@@ -1553,6 +1561,7 @@ BEGIN
     "R",            ID_FILE_REVERT,         VIRTKEY, CONTROL, NOINVERT
     "S",            ID_FILE_SAVE,           VIRTKEY, CONTROL, NOINVERT
     "T",            ID_VIEW_ALWAYSONTOP,    VIRTKEY, CONTROL, NOINVERT
+    "P",            ID_VIEW_USEWORDWRAP,    VIRTKEY, CONTROL, NOINVERT
 END
 
 IDR_LOG_ACCELERATOR ACCELERATORS
@@ -1790,6 +1799,7 @@ STRINGTABLE
 BEGIN
     IDS_MENU_BACKGROUND_FRAMERATE_TARGET 
                             "Background Framerate Limit: {:g} fps"
+    IDS_MENU_WORDWRAPCONFIGWINDOW "&Word Wrap"
     IDS_FILTERSPEC_ALLFILES "All files (*.*)"
     IDS_FILTERSPEC_TTMP     "Process ID: {}\nGame Path: {}\nArguments: {}\nGame Release: {} ({})\nMessage Pump: {:06}+{:06}us ({}/s)\nRender Time: {:06}+{:06}us ({}/s if without FPS limits)\n\n{}"
     IDS_CONFIRM_REMOVEALLTTMP 

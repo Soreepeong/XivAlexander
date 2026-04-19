@@ -40,12 +40,20 @@ XivAlexander::Apps::MainApp::Window::ConfigWindow::ConfigWindow(UINT nTitleStrin
 		0, 0, 0, 0, m_hWnd, nullptr, Dll::Module(), nullptr);
 	m_direct = reinterpret_cast<SciFnDirect>(SendMessageW(m_hScintilla, SCI_GETDIRECTFUNCTION, 0, 0));
 	m_directPtr = SendMessageW(m_hScintilla, SCI_GETDIRECTPOINTER, 0, 0);
-	m_direct(m_directPtr, SCI_STYLESETSIZE, STYLE_DEFAULT, static_cast<int>(BaseFontSize * GetZoom()));
-	m_direct(m_directPtr, SCI_SETWRAPMODE, SC_WRAP_CHAR, 0);
+	m_direct(m_directPtr, SCI_STYLESETSIZE, STYLE_DEFAULT, BaseFontSize);
+	m_direct(m_directPtr, SCI_SETWRAPMODE, m_config->Runtime.UseWordWrap_ConfigWindow ? SC_WRAP_CHAR : SC_WRAP_NONE, 0);
 	m_direct(m_directPtr, SCI_SETMARGINTYPEN, 0, SC_MARGIN_NUMBER);
 	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 1, 0);
 	m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>("Consolas"));
+	if (const auto pLexer = CreateLexer("json")) {
+		m_direct(m_directPtr, SCI_SETILEXER, 0, reinterpret_cast<sptr_t>(pLexer));
+		m_direct(m_directPtr, SCI_SETKEYWORDS, 0, reinterpret_cast<sptr_t>("true false null"));
+	}
 	ApplyScintillaTheme();
+
+	m_cleanup += m_config->Runtime.UseWordWrap_ConfigWindow.OnChange([this]() {
+		m_direct(m_directPtr, SCI_SETWRAPMODE, m_config->Runtime.UseWordWrap_ConfigWindow ? SC_WRAP_CHAR : SC_WRAP_NONE, 0);
+	});
 
 	Revert();
 	ApplyLanguage(m_config->Runtime.GetLangId());
@@ -60,9 +68,8 @@ XivAlexander::Apps::MainApp::Window::ConfigWindow::~ConfigWindow() {
 LRESULT XivAlexander::Apps::MainApp::Window::ConfigWindow::OnNotify(const LPNMHDR nmhdr) {
 	if (nmhdr->hwndFrom == m_hScintilla) {
 		const auto nm = reinterpret_cast<SCNotification*>(nmhdr);
-		if (nmhdr->code == SCN_ZOOM) {
+		if (nmhdr->code == SCN_ZOOM)
 			ResizeMargin();
-		}
 	}
 	return BaseWindow::OnNotify(nmhdr);
 }
@@ -117,6 +124,7 @@ LRESULT XivAlexander::Apps::MainApp::Window::ConfigWindow::WndProc(HWND hwnd, UI
 	switch (uMsg) {
 		case WM_INITMENUPOPUP: {
 			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST, true);
+			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_USEWORDWRAP, m_config->Runtime.UseWordWrap_ConfigWindow, true);
 			break;
 		}
 
@@ -143,6 +151,10 @@ LRESULT XivAlexander::Apps::MainApp::Window::ConfigWindow::WndProc(HWND hwnd, UI
 						SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 					else
 						SetWindowPos(m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+					return 0;
+
+				case ID_VIEW_USEWORDWRAP:
+					m_config->Runtime.UseWordWrap_ConfigWindow = !m_config->Runtime.UseWordWrap_ConfigWindow;
 					return 0;
 			}
 			break;
@@ -178,15 +190,38 @@ void XivAlexander::Apps::MainApp::Window::ConfigWindow::OnThemeChanged() {
 
 void XivAlexander::Apps::MainApp::Window::ConfigWindow::ApplyScintillaTheme() {
 	const auto& colors = GetThemeColors(IsDarkModeEnabled());
+
 	m_direct(m_directPtr, SCI_STYLESETBACK, STYLE_DEFAULT, colors.GetBackground());
 	m_direct(m_directPtr, SCI_STYLESETFORE, STYLE_DEFAULT, colors.GetForeground());
-	m_direct(m_directPtr, SCI_STYLECLEARALL, 0, 0);
+	m_direct(m_directPtr, SCI_STYLESETBOLD, STYLE_DEFAULT, FALSE);
+	
+	m_direct(m_directPtr, SCI_STYLECLEARALL, 0, 0); // copy from default to all styles
+	
 	m_direct(m_directPtr, SCI_STYLESETBACK, STYLE_LINENUMBER, colors.BackgroundWeak);
 	m_direct(m_directPtr, SCI_STYLESETFORE, STYLE_LINENUMBER, colors.ForegroundWeak);
+
 	m_direct(m_directPtr, SCI_SETCARETFORE, colors.GetForeground(), 0);
 	m_direct(m_directPtr, SCI_SETSELBACK, TRUE, colors.GetBackgroundSelection());
+
+	for (const auto& [style, color] : std::initializer_list<std::pair<int, COLORREF>>{
+		{SCE_JSON_NUMBER, colors.SciForegroundJsonNumber},
+		{SCE_JSON_STRING, colors.SciForegroundJsonString},
+		{SCE_JSON_STRINGEOL, colors.SciForegroundJsonString},
+		{SCE_JSON_PROPERTYNAME, colors.SciForegroundJsonKey},
+		{SCE_JSON_ESCAPESEQUENCE, colors.SciForegroundJsonEscape},
+		{SCE_JSON_LINECOMMENT, colors.ForegroundWeak},
+		{SCE_JSON_BLOCKCOMMENT, colors.ForegroundWeak},
+		{SCE_JSON_OPERATOR, colors.SciForegroundJsonBracket},
+		{SCE_JSON_KEYWORD, colors.SciForegroundJsonValue},
+		{SCE_JSON_ERROR, colors.SciForegroundJsonEscape},
+	}) {
+		// m_direct(m_directPtr, SCI_STYLESETBACK, style, colors.GetBackground());
+		m_direct(m_directPtr, SCI_STYLESETFORE, style, color);
+	}
+
+	m_direct(m_directPtr, SCI_COLOURISE, 0, 0);
 }
 
 void XivAlexander::Apps::MainApp::Window::ConfigWindow::ResizeMargin() {
-	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 0, static_cast<int>(m_direct(m_directPtr, SCI_TEXTWIDTH, uptr_t(STYLE_LINENUMBER), reinterpret_cast<sptr_t>("999999"))));
+	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 0, static_cast<int>(m_direct(m_directPtr, SCI_TEXTWIDTH, static_cast<uptr_t>(STYLE_LINENUMBER), reinterpret_cast<sptr_t>("999999"))));
 }

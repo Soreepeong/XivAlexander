@@ -259,6 +259,8 @@ namespace XivAlexander {
 			Item<bool> UseWordWrap_XivAlexLogWindow = CreateConfigItem(this, "UseWordWrap_XivAlexLogWindow", false);
 			Item<bool> UseMonospaceFont_XivAlexLogWindow = CreateConfigItem(this, "UseMonospaceFont_XivAlexLogWindow", false);
 
+			Item<bool> UseWordWrap_ConfigWindow = CreateConfigItem(this, "UseWordWrap_ConfigWindow", false);
+
 			Item<bool> UseNetworkTimingHandler = CreateConfigItem(this, "UseNetworkTimingHandler", true);
 			Item<HighLatencyMitigationMode> HighLatencyMitigationMode = CreateConfigItem(this, "HighLatencyMitigationMode", HighLatencyMitigationMode::SimulateNormalizedRttAndLatency);
 			Item<bool> UseHighLatencyMitigationLogging = CreateConfigItem(this, "UseHighLatencyMitigationLogging", true);
