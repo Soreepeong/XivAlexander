@@ -20,6 +20,7 @@
 #include <cwctype>
 #include <format>
 #include <functional>
+#include <iostream>
 #include <map>
 #include <numeric>
 #include <ranges>
@@ -34,6 +35,7 @@
 #include <Windows.h>
 
 // Windows API, part 2
+#include <bcrypt.h>
 #include <PathCch.h>
 #include <Psapi.h>
 #include <shellapi.h>
@@ -55,13 +57,6 @@
 #pragma warning(disable: 26819)  // Unannotated fallthrough between switch labels (es.78).
 #define ZLIB_CONST
 #include <zlib.h>
-#include <cryptopp/base64.h>
-#include <cryptopp/blowfish.h>
-#include <cryptopp/modes.h>
-#include <cryptopp/sha.h>
-#include <curlpp/cURLpp.hpp>
-#include <curlpp/Easy.hpp>
-#include <curlpp/Options.hpp>
 #include <nlohmann/json.hpp>
 #include <srell.hpp>
 

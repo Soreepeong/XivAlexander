@@ -68,6 +68,7 @@
     <ClInclude Include="Utils\Win32\Resource.h" />
     <ClInclude Include="Utils\Utils.h" />
     <ClInclude Include="Utils\StringUtils.h" />
+    <ClInclude Include="Utils\Crypt.h" />
     <ClInclude Include="Utils\ZlibWrapper.h" />
     <ClInclude Include="pch.h" />
     <ClCompile Include="EmptyOrObfuscatedStreamDecoder.cpp" />
@@ -125,6 +126,7 @@
     <ClCompile Include="Utils\NumericStatisticsTracker.cpp" />
     <ClCompile Include="Utils\Win32.cpp" />
     <ClCompile Include="Utils\Win32\InjectedModule.cpp" />
+    <ClCompile Include="Utils\Crypt.cpp" />
     <ClCompile Include="Utils\ZlibWrapper.cpp" />
     <ClCompile Include="Sqex\Sqpack\Creator.cpp" />
   </ItemGroup>
@@ -219,7 +221,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>ws2_32.lib;Wldap32.lib;Crypt32.lib;Iphlpapi.lib;Shlwapi.lib;version.lib</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;Wldap32.lib;Crypt32.lib;Iphlpapi.lib;Shlwapi.lib;version.lib;bcrypt.lib</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
     </Lib>
   </ItemDefinitionGroup>
@@ -249,7 +251,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>ws2_32.lib;Wldap32.lib;Crypt32.lib;Iphlpapi.lib;Shlwapi.lib;version.lib</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;Wldap32.lib;Crypt32.lib;Iphlpapi.lib;Shlwapi.lib;version.lib;bcrypt.lib</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
     </Lib>
   </ItemDefinitionGroup>

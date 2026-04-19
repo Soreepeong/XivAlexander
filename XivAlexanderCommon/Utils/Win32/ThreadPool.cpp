@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "XivAlexanderCommon/Utils/Win32/ThreadPool.h"
+#include "XivAlexanderCommon/Utils/Win32.h"
 
 static DWORD GetNumberOfProcessors() {
 	SYSTEM_INFO sysInfo;

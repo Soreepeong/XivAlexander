@@ -1,6 +1,7 @@
 #pragma once
 
 #include <deque>
+#include <mutex>
 #include "XivAlexanderCommon/Utils/Utils.h"
 
 namespace Utils {

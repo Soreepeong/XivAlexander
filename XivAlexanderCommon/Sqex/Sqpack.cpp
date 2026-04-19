@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "XivAlexanderCommon/Sqex/Sqpack.h"
 
+#include "XivAlexanderCommon/Utils/Crypt.h"
+
 const char Sqex::Sqpack::SqpackHeader::Signature_Value[12] = {
 	'S', 'q', 'P', 'a', 'c', 'k', 0, 0, 0, 0, 0, 0,
 };
@@ -139,11 +141,11 @@ void Sqex::Sqpack::Sha1Value::Verify(const void* data, size_t size, const char* 
 }
 
 void Sqex::Sqpack::Sha1Value::SetFromPointer(const void* data, size_t size) {
-	static_assert(CryptoPP::SHA1::DIGESTSIZE == sizeof Value);
-	CryptoPP::SHA1 sha1;
+	static_assert(Crypt::Sha1::DigestSize == sizeof Value);
+	Crypt::Sha1 sha1;
 	if (size)
-		sha1.Update(static_cast<const byte*>(data), size);
-	sha1.Final(reinterpret_cast<byte*>(Value));
+		sha1.Update(data, size);
+	sha1.Final(span_cast<uint8_t>(Value));
 }
 
 bool Sqex::Sqpack::Sha1Value::operator==(const Sha1Value& r) const {

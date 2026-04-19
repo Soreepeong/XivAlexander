@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "InstallUninstall.h"
 
+#include <XivAlexanderCommon/Utils/Crypt.h>
 #include <XivAlexanderCommon/Utils/Win32/TaskDialogBuilder.h>
 
 #include "Apps/LoaderApp/App.h"
@@ -176,7 +177,7 @@ static std::string GetSha1(const std::filesystem::path& f) {
 	uint8_t hash[20]{};
 	{
 		const auto file = Utils::Win32::Handle::FromCreateFile(f, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
-		CryptoPP::SHA1 sha1;
+		Utils::Crypt::Sha1 sha1;
 		std::vector<uint8_t> buf(8192);
 		for (uint64_t i = 0, len = file.GetFileSize(); i < len; i += 8192) {
 			const auto read = file.Read(i, &buf[0], static_cast<size_t>(std::min<uint64_t>(len - i, buf.size())));

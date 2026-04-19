@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Config.h"
 
+#include <XivAlexanderCommon/Utils/Crypt.h>
 #include <XivAlexanderCommon/Utils/Win32/Process.h>
 #include <XivAlexanderCommon/Utils/Win32/Resource.h>
 
@@ -49,12 +50,11 @@ XivAlexander::Config::BaseRepository::BaseRepository(__in_opt const Config* pCon
 	: m_pConfig(pConfig)
 	, m_sConfigPath(std::move(path))
 	, m_parentKey(std::move(parentKey))
-	, m_logger(Misc::Logger::Acquire()) {
-}
+	, m_logger(Misc::Logger::Acquire()) {}
 
 XivAlexander::Config::BaseRepository::~BaseRepository() = default;
 
-XivAlexander::Config::ItemBase::ItemBase(BaseRepository * pRepository, const char* pszName)
+XivAlexander::Config::ItemBase::ItemBase(BaseRepository* pRepository, const char* pszName)
 	: Name(pszName)
 	, m_pBaseRepository(pRepository) {
 	pRepository->m_allItems.push_back(this);
@@ -70,7 +70,7 @@ Utils::CallOnDestruction XivAlexander::Config::ItemBase::AddAndCallOnChange(std:
 	return r;
 }
 
-void XivAlexander::Config::BaseRepository::Reload(const std::filesystem::path & from) {
+void XivAlexander::Config::BaseRepository::Reload(const std::filesystem::path& from) {
 	m_loaded = true;
 
 	nlohmann::json totalConfig;
@@ -100,8 +100,7 @@ void XivAlexander::Config::BaseRepository::Reload(const std::filesystem::path & 
 class XivAlexander::Config::ConfigCreator : public Config {
 public:
 	ConfigCreator(std::filesystem::path initializationConfigPath)
-		: Config(std::move(initializationConfigPath)) {
-	}
+		: Config(std::move(initializationConfigPath)) {}
 
 	~ConfigCreator() override = default;
 };
@@ -121,12 +120,11 @@ std::shared_ptr<XivAlexander::Config> XivAlexander::Config::Acquire() {
 	return r;
 }
 
-XivAlexander::Config::RuntimeRepository::RuntimeRepository(__in_opt const Config * pConfig, std::filesystem::path path, std::string parentKey)
+XivAlexander::Config::RuntimeRepository::RuntimeRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey)
 	: BaseRepository(pConfig, std::move(path), std::move(parentKey)) {
-
 	m_cleanup += Language.AddAndCallOnChange([&]() {
 		Utils::Win32::Error::SetDefaultLanguageId(GetLangId());
-		});
+	});
 
 	m_cleanup += SynchronizeProcessing.AddAndCallOnChange([&]() { UseMainThreadTimingHandler = SynchronizeProcessing || LockFramerateAutomatic || LockFramerateInterval; });
 	m_cleanup += LockFramerateAutomatic.AddAndCallOnChange([&]() { UseMainThreadTimingHandler = SynchronizeProcessing || LockFramerateAutomatic || LockFramerateInterval; });
@@ -137,7 +135,7 @@ XivAlexander::Config::RuntimeRepository::~RuntimeRepository() {
 	m_cleanup.Clear();
 }
 
-void XivAlexander::Config::RuntimeRepository::Reload(const std::filesystem::path & from) {
+void XivAlexander::Config::RuntimeRepository::Reload(const std::filesystem::path& from) {
 	BaseRepository::Reload(from);
 	Utils::Win32::Error::SetDefaultLanguageId(GetLangId());
 }
@@ -261,7 +259,7 @@ std::filesystem::path XivAlexander::Config::InitRepository::ResolveGameOpcodeCon
 	return ResolveConfigStorageDirectoryPath() / std::format(L"game.{}.{}.json", gameReleaseInfo.CountryCode, gameReleaseInfo.PathSafeGameVersion);
 }
 
-std::filesystem::path XivAlexander::Config::TranslatePath(const std::filesystem::path & path, const std::filesystem::path & relativeTo) {
+std::filesystem::path XivAlexander::Config::TranslatePath(const std::filesystem::path& path, const std::filesystem::path& relativeTo) {
 	return Utils::Win32::TranslatePath(path, relativeTo.empty() ? Dll::Module().PathOf().parent_path() : relativeTo);
 }
 
@@ -286,19 +284,21 @@ Utils::CallOnDestruction XivAlexander::Config::BaseRepository::WithSuppressSave(
 	const auto _ = std::lock_guard(m_suppressSave.Mtx);
 	m_suppressSave.SupressionCounter += 1;
 
-	return { [this]() {
-		{
-			const auto _ = std::lock_guard(m_suppressSave.Mtx);
-			m_suppressSave.SupressionCounter -= 1;
-			if (m_suppressSave.SupressionCounter || !m_suppressSave.PendingSave)
-				return;
-		}
+	return {
+		[this]() {
+			{
+				const auto _ = std::lock_guard(m_suppressSave.Mtx);
+				m_suppressSave.SupressionCounter -= 1;
+				if (m_suppressSave.SupressionCounter || !m_suppressSave.PendingSave)
+					return;
+			}
 
-		Save();
-	} };
+			Save();
+		}
+	};
 }
 
-void XivAlexander::Config::BaseRepository::Save(const std::filesystem::path & to) {
+void XivAlexander::Config::BaseRepository::Save(const std::filesystem::path& to) {
 	if (m_suppressSave.SupressionCounter) {
 		m_suppressSave.PendingSave = true;
 		return;
@@ -328,7 +328,7 @@ void XivAlexander::Config::BaseRepository::Save(const std::filesystem::path & to
 	}
 }
 
-bool XivAlexander::Config::Item<uint16_t>::LoadFrom(const nlohmann::json & data) {
+bool XivAlexander::Config::Item<uint16_t>::LoadFrom(const nlohmann::json& data) {
 	if (const auto it = data.find(Name); it != data.end()) {
 		uint16_t newValue;
 		std::string strVal;
@@ -349,75 +349,58 @@ bool XivAlexander::Config::Item<uint16_t>::LoadFrom(const nlohmann::json & data)
 	return false;
 }
 
-void XivAlexander::Config::Item<uint16_t>::SaveTo(nlohmann::json & data) const {
+void XivAlexander::Config::Item<uint16_t>::SaveTo(nlohmann::json& data) const {
 	data[Name] = std::format("0x{:04x}", m_value);
 }
 
 bool XivAlexander::PatchInstruction::CreateNewHmacKeyIfInvalid() {
 	try {
-		CryptoPP::Base64Decoder b64d;
-		b64d.Put(reinterpret_cast<const byte*>(HmacKey.data()), HmacKey.size());
-		b64d.MessageEnd();
-		if (b64d.MaxRetrievable() == HmacKeySize)
+		const auto decoded = Utils::Crypt::Base64Decode(HmacKey);
+		if (decoded.size() == HmacKeySize)
 			return false;
 	} catch (...) {
 		// pass
 	}
 
-	byte hmacKey[HmacKeySize];
-	CryptoPP::OS_GenerateRandomBlock(false, hmacKey, HmacKeySize);
-	
-	CryptoPP::Base64Encoder b64e(nullptr, false);
-	b64e.Put(hmacKey, sizeof hmacKey);
-	b64e.MessageEnd();
-
-	HmacKey.resize(static_cast<size_t>(b64e.MaxRetrievable()), 0);
-	b64e.Get(reinterpret_cast<byte*>(HmacKey.data()), HmacKey.size());
+	uint8_t hmacKey[HmacKeySize];
+	Utils::Crypt::GenerateRandom(hmacKey);
+	HmacKey = Utils::Crypt::Base64Encode(hmacKey);
 	return true;
 }
 
 std::string XivAlexander::PatchInstruction::Digest() const {
-	byte hmacResult[HmacKeySize + CryptoPP::HMAC<CryptoPP::SHA512>::DIGESTSIZE];
-	
-	CryptoPP::Base64Decoder b64d;
-	b64d.Put(reinterpret_cast<const byte*>(HmacKey.data()), HmacKey.size());
-	b64d.MessageEnd();
-	if (b64d.MaxRetrievable() != HmacKeySize)
+	uint8_t hmacResult[HmacKeySize + Utils::Crypt::HmacSha512::DigestSize];
+
+	const auto keyBytes = Utils::Crypt::Base64Decode(HmacKey);
+	if (keyBytes.size() != HmacKeySize)
 		return {};
-	b64d.Get(hmacResult, HmacKeySize);
-	
-	CryptoPP::HMAC<CryptoPP::SHA512> hmac(hmacResult, HmacKeySize);
+	memcpy(hmacResult, keyBytes.data(), HmacKeySize);
+
+	Utils::Crypt::HmacSha512 hmac(std::span(hmacResult).subspan(0, HmacKeySize));
 
 	auto nbuf = Name.size();
-	hmac.Update(reinterpret_cast<const byte*>(&nbuf), sizeof nbuf);
-	hmac.Update(reinterpret_cast<const byte*>(Name.data()), Name.size());
+	hmac.Update(&nbuf, sizeof nbuf);
+	hmac.Update(std::span(Name));
 
 	for (const auto& bitness : {X64, X86}) {
 		nbuf = bitness.size();
-		hmac.Update(reinterpret_cast<const byte*>(&nbuf), sizeof nbuf);
+		hmac.Update(&nbuf, sizeof nbuf);
 		for (const auto& b1 : bitness) {
 			nbuf = b1.size();
-			hmac.Update(reinterpret_cast<const byte*>(&nbuf), sizeof nbuf);
+			hmac.Update(&nbuf, sizeof nbuf);
 			for (const auto& b2 : b1) {
 				nbuf = b2.size();
-				hmac.Update(reinterpret_cast<const byte*>(&nbuf), sizeof nbuf);
-				hmac.Update(reinterpret_cast<const byte*>(b2.data()), b2.size());
+				hmac.Update(&nbuf, sizeof nbuf);
+				hmac.Update(std::span(b2));
 			}
 		}
 	}
 
-	hmac.Final(&hmacResult[HmacKeySize]);
-	
-	CryptoPP::Base64Encoder b64e(nullptr, false);
-	b64e.Put(hmacResult, sizeof hmacResult);
-	b64e.MessageEnd();
-
-	std::string buf(static_cast<size_t>(b64e.MaxRetrievable()), 0);
-	b64e.Get(reinterpret_cast<byte*>(buf.data()), buf.size());
-	return buf;
+	hmac.Final(std::span(hmacResult).subspan(HmacKeySize));
+	return Utils::Crypt::Base64Encode(hmacResult);
 }
 
-void XivAlexander::to_json(nlohmann::json & j, const Language & value) {
+void XivAlexander::to_json(nlohmann::json& j, const Language& value) {
 	switch (value) {
 		case Language::English:
 			j = "English";
@@ -437,7 +420,7 @@ void XivAlexander::to_json(nlohmann::json & j, const Language & value) {
 	}
 }
 
-void XivAlexander::from_json(const nlohmann::json & it, Language & value) {
+void XivAlexander::from_json(const nlohmann::json& it, Language& value) {
 	auto newValueString = Utils::FromUtf8(it.get<std::string>());
 	CharLowerW(&newValueString[0]);
 
@@ -478,7 +461,7 @@ void XivAlexander::from_json(const nlohmann::json& it, ThemeMode& value) {
 		value = ThemeMode::System;
 }
 
-void XivAlexander::to_json(nlohmann::json & j, const HighLatencyMitigationMode & value) {
+void XivAlexander::to_json(nlohmann::json& j, const HighLatencyMitigationMode& value) {
 	switch (value) {
 		case HighLatencyMitigationMode::SubtractLatency:
 			j = "SubtractLatency";
@@ -487,14 +470,14 @@ void XivAlexander::to_json(nlohmann::json & j, const HighLatencyMitigationMode &
 		case HighLatencyMitigationMode::SimulateRtt:
 			j = "SimulateRtt";
 			break;
-		
+
 		case HighLatencyMitigationMode::SimulateNormalizedRttAndLatency:
 		default:
 			j = "SimulateNormalizedRttAndLatency";
 	}
 }
 
-void XivAlexander::from_json(const nlohmann::json & it, HighLatencyMitigationMode & value) {
+void XivAlexander::from_json(const nlohmann::json& it, HighLatencyMitigationMode& value) {
 	auto newValueString = Utils::FromUtf8(it.get<std::string>());
 	CharLowerW(&newValueString[0]);
 
@@ -543,7 +526,7 @@ void XivAlexander::from_json(const nlohmann::json& it, GameWindowTitleMode& valu
 	}
 }
 
-void XivAlexander::to_json(nlohmann::json & j, const PatchInstruction & value) {
+void XivAlexander::to_json(nlohmann::json& j, const PatchInstruction& value) {
 	j = nlohmann::json::object({
 		{"Name", value.Name},
 		{"HmacKey", value.HmacKey},
@@ -552,7 +535,7 @@ void XivAlexander::to_json(nlohmann::json & j, const PatchInstruction & value) {
 	});
 }
 
-void XivAlexander::from_json(const nlohmann::json & it, PatchInstruction & value) {
+void XivAlexander::from_json(const nlohmann::json& it, PatchInstruction& value) {
 	value = {
 		.Name = it.value("Name", "(unnamed)"),
 		.HmacKey = it.value("HmacKey", ""),
@@ -563,7 +546,7 @@ void XivAlexander::from_json(const nlohmann::json & it, PatchInstruction & value
 }
 
 template<typename T>
-bool XivAlexander::Config::Item<T>::LoadFrom(const nlohmann::json & data) {
+bool XivAlexander::Config::Item<T>::LoadFrom(const nlohmann::json& data) {
 	if (const auto it = data.find(Name); it != data.end()) {
 		T newValue;
 		try {
@@ -581,6 +564,6 @@ bool XivAlexander::Config::Item<T>::LoadFrom(const nlohmann::json & data) {
 }
 
 template<typename T>
-void XivAlexander::Config::Item<T>::SaveTo(nlohmann::json & data) const {
+void XivAlexander::Config::Item<T>::SaveTo(nlohmann::json& data) const {
 	data[Name] = m_value;
 }

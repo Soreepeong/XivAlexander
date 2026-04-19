@@ -12,6 +12,7 @@
 #include <XivAlexanderCommon/Utils/Win32/TaskDialogBuilder.h>
 #include <XivAlexanderCommon/Utils/Win32/ThreadPool.h>
 
+#include "Utils/WinHttp.h"
 #include "Apps/MainApp/App.h"
 #include "Apps/MainApp/Internal/GameResourceOverrider.h"
 #include "Apps/MainApp/Internal/MainThreadTimingHandler.h"
@@ -1864,42 +1865,11 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::CheckUpdatedOpcodes(bool s
 
 			std::string updated;
 			{
-				std::stringstream out;
-				curlpp::Easy req;
-				req.setOpt(curlpp::options::Url(std::format("https://raw.githubusercontent.com/Soreepeong/XivAlexander/main/StaticData/OpcodeDefinition/game.{}.{}.json", releaseInfo.CountryCode, releaseInfo.GameVersion)));
-				req.setOpt(curlpp::options::UserAgent("Mozilla/5.0"));
-				req.setOpt(curlpp::options::FollowLocation(true));
-				req.setOpt(curlpp::options::WriteStream(&out));
+				const auto response = Utils::Win32::WinHttp::Get(std::format("https://raw.githubusercontent.com/Soreepeong/XivAlexander/main/StaticData/OpcodeDefinition/game.{}.{}.json", releaseInfo.CountryCode, releaseInfo.GameVersion));
 
-				if (WINHTTP_CURRENT_USER_IE_PROXY_CONFIG proxyInfo{}; WinHttpGetIEProxyConfigForCurrentUser(&proxyInfo)) {
-					std::wstring proxy;
-					std::vector<std::wstring> proxyBypass;
-					if (proxyInfo.lpszProxy) {
-						proxy = proxyInfo.lpszProxy;
-						GlobalFree(proxyInfo.lpszProxy);
-					}
-					if (proxyInfo.lpszProxyBypass) {
-						proxyBypass = Utils::StringSplit<std::wstring>(Utils::StringReplaceAll<std::wstring>(proxyInfo.lpszProxyBypass, L";", L" "), L" ");
-						GlobalFree(proxyInfo.lpszProxyBypass);
-					}
-					if (proxyInfo.lpszAutoConfigUrl)
-						GlobalFree(proxyInfo.lpszAutoConfigUrl);
-					bool noProxy = proxy.empty();
-					for (const auto& v : proxyBypass) {
-						if (lstrcmpiW(&v[0], L"raw.githubusercontent.com") == 0) {
-							noProxy = true;
-						}
-					}
-					if (!noProxy) {
-						req.setOpt(curlpp::options::Proxy(Utils::ToUtf8(proxy)));
-					}
-				}
-
-				req.perform();
-
-				switch (int respCode = curlpp::infos::ResponseCode::get(req)) {
+				switch (static_cast<int>(response.StatusCode)) {
 					case 200:
-						updated = nlohmann::json::parse(out.str()).dump();
+						updated = nlohmann::json::parse(response.Body).dump();
 						break;
 
 					case 404:
@@ -1909,7 +1879,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::CheckUpdatedOpcodes(bool s
 						return;
 
 					default:
-						throw std::runtime_error(std::format("HTTP Error {}", respCode));
+						throw std::runtime_error(std::format("HTTP Error {}", response.StatusCode));
 				}
 			}
 

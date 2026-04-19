@@ -1,6 +1,6 @@
 #pragma once
 
-#include "XivAlexanderCommon/Utils/Win32/Closeable.h"
+#include <mutex>
 
 namespace Utils::Win32 {
 	class TpEnvironment {

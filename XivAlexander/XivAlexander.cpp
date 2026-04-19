@@ -5,6 +5,7 @@
 #include <XivAlexanderCommon/Utils/Win32/Resource.h>
 
 #include "Config.h"
+#include "Utils/WinHttp.h"
 #include "Misc/CrashMessageBoxHandler.h"
 #include "Misc/GameInstallationDetector.h"
 #include "Misc/Hooks.h"
@@ -323,39 +324,8 @@ HWND Dll::FindGameMainWindow(bool throwOnError) {
 }
 
 Dll::VersionInformation Dll::CheckUpdates() {
-	std::ostringstream os;
-
-	curlpp::Easy req;
-	req.setOpt(curlpp::options::Url("https://api.github.com/repos/Soreepeong/XivAlexander/releases/latest"));
-	req.setOpt(curlpp::options::UserAgent("Mozilla/5.0"));
-	req.setOpt(curlpp::options::FollowLocation(true));
-
-	if (WINHTTP_CURRENT_USER_IE_PROXY_CONFIG proxyInfo{}; WinHttpGetIEProxyConfigForCurrentUser(&proxyInfo)) {
-		std::wstring proxy;
-		std::vector<std::wstring> proxyBypass;
-		if (proxyInfo.lpszProxy) {
-			proxy = proxyInfo.lpszProxy;
-			GlobalFree(proxyInfo.lpszProxy);
-		}
-		if (proxyInfo.lpszProxyBypass) {
-			proxyBypass = Utils::StringSplit<std::wstring>(Utils::StringReplaceAll<std::wstring>(proxyInfo.lpszProxyBypass, L";", L" "), L" ");
-			GlobalFree(proxyInfo.lpszProxyBypass);
-		}
-		if (proxyInfo.lpszAutoConfigUrl)
-			GlobalFree(proxyInfo.lpszAutoConfigUrl);
-		bool noProxy = proxy.empty();
-		for (const auto& v : proxyBypass) {
-			if (lstrcmpiW(&v[0], L"api.github.com") == 0) {
-				noProxy = true;
-			}
-		}
-		if (!noProxy) {
-			req.setOpt(curlpp::options::Proxy(Utils::ToUtf8(proxy)));
-		}
-	}
-
-	os << req;
-	const auto parsed = nlohmann::json::parse(os.str());
+	const auto response = Utils::Win32::WinHttp::Get("https://api.github.com/repos/Soreepeong/XivAlexander/releases/latest");
+	const auto parsed = nlohmann::json::parse(response.Body);
 	const auto& item = parsed.at("assets").at(0);
 
 	std::istringstream in(parsed.at("published_at").get<std::string>());

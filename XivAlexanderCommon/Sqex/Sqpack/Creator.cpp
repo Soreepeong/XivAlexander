@@ -2,6 +2,7 @@
 #include "XivAlexanderCommon/Sqex/Sqpack/Creator.h"
 
 #include "XivAlexanderCommon/Sqex/Model.h"
+#include "XivAlexanderCommon/Utils/Crypt.h"
 #include "XivAlexanderCommon/Sqex/Sqpack/BinaryEntryProvider.h"
 #include "XivAlexanderCommon/Sqex/Sqpack/EmptyOrObfuscatedEntryProvider.h"
 #include "XivAlexanderCommon/Sqex/Sqpack/EntryRawStream.h"
@@ -514,7 +515,7 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict, c
 		if (dataSubheaders.empty() ||
 			sizeof(SqpackHeader) + sizeof(SqData::Header) + dataSubheaders.back().DataSize + entry->EntrySize > dataSubheaders.back().MaxFileSize) {
 			if (strict && !dataSubheaders.empty()) {
-				CryptoPP::SHA1 sha1;
+				Crypt::Sha1 sha1;
 				for (auto j = dataEntryRanges.back().first, j_ = j + dataEntryRanges.back().second; j < j_; ++j) {
 					const auto& entry = res.Entries[j];
 					const auto& provider = *entry->Provider;
@@ -526,7 +527,7 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict, c
 						sha1.Update(buf, readlen);
 					}
 				}
-				sha1.Final(reinterpret_cast<byte*>(dataSubheaders.back().DataSha1.Value));
+				sha1.Final(span_cast<uint8_t>(dataSubheaders.back().DataSha1.Value));
 				dataSubheaders.back().Sha1.SetFromSpan(reinterpret_cast<char*>(&dataSubheaders.back()), offsetof(Sqpack::SqData::Header, Sha1));
 			}
 			dataSubheaders.emplace_back(SqData::Header{
@@ -546,7 +547,7 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict, c
 	}
 
 	if (strict && !dataSubheaders.empty()) {
-		CryptoPP::SHA1 sha1;
+		Crypt::Sha1 sha1;
 		for (auto j = dataEntryRanges.back().first, j_ = j + dataEntryRanges.back().second; j < j_; ++j) {
 			const auto& entry = res.Entries[j];
 			const auto& provider = *entry->Provider;
@@ -558,7 +559,7 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict, c
 				sha1.Update(buf, readlen);
 			}
 		}
-		sha1.Final(reinterpret_cast<byte*>(dataSubheaders.back().DataSha1.Value));
+		sha1.Final(span_cast<uint8_t>(dataSubheaders.back().DataSha1.Value));
 		dataSubheaders.back().Sha1.SetFromSpan(reinterpret_cast<char*>(&dataSubheaders.back()), offsetof(Sqpack::SqData::Header, Sha1));
 	}
 
@@ -624,9 +625,9 @@ Sqex::Sqpack::Creator::SqpackViews Sqex::Sqpack::Creator::AsViews(bool strict, c
 	if (strict)
 		dataHeader.Sha1.SetFromSpan(reinterpret_cast<char*>(&dataHeader), offsetof(SqpackHeader, Sha1));
 
-	res.Index1 = std::make_shared<Sqex::MemoryRandomAccessStream>(ExportIndexFileData<Sqex::Sqpack::SqIndex::Header::IndexType::Index, SqIndex::PairHashLocator, SqIndex::PairHashWithTextLocator, true>(
+	res.Index1 = std::make_shared<MemoryRandomAccessStream>(ExportIndexFileData<SqIndex::Header::IndexType::Index, SqIndex::PairHashLocator, SqIndex::PairHashWithTextLocator, true>(
 		dataSubheaders.size(), std::move(fileEntries1), std::move(conflictEntries1), m_pImpl->m_sqpackIndexSegment3, std::vector<SqIndex::PathHashLocator>(), strict));
-	res.Index2 = std::make_shared<Sqex::MemoryRandomAccessStream>(ExportIndexFileData<Sqex::Sqpack::SqIndex::Header::IndexType::Index, SqIndex::FullHashLocator, SqIndex::FullHashWithTextLocator, false>(
+	res.Index2 = std::make_shared<MemoryRandomAccessStream>(ExportIndexFileData<SqIndex::Header::IndexType::Index, SqIndex::FullHashLocator, SqIndex::FullHashWithTextLocator, false>(
 		dataSubheaders.size(), std::move(fileEntries2), std::move(conflictEntries2), m_pImpl->m_sqpackIndex2Segment3, std::vector<SqIndex::PathHashLocator>(), strict));
 	for (size_t i = 0; i < dataSubheaders.size(); ++i)
 		res.Data.emplace_back(std::make_shared<DataView>(dataHeader, dataSubheaders[i], std::span(res.Entries).subspan(dataEntryRanges[i].first, dataEntryRanges[i].second), dataBuffer));
@@ -685,7 +686,7 @@ void Sqex::Sqpack::Creator::WriteToFiles(const std::filesystem::path & dir, bool
 
 	std::vector<SqIndex::LEDataLocator> locators;
 
-	Utils::Win32::Handle dataFile;
+	Win32::Handle dataFile;
 	std::vector<uint8_t> buf(1024 * 1024);
 	for (size_t i = 0; i < entries.size(); ++i) {
 		auto& entry = *entries[i];
@@ -695,7 +696,7 @@ void Sqex::Sqpack::Creator::WriteToFiles(const std::filesystem::path & dir, bool
 		if (dataSubheaders.empty() ||
 			sizeof(SqpackHeader) + sizeof(SqData::Header) + dataSubheaders.back().DataSize + entrySize > dataSubheaders.back().MaxFileSize) {
 			if (strict && !dataSubheaders.empty()) {
-				CryptoPP::SHA1 sha1;
+				Crypt::Sha1 sha1;
 				Align<uint64_t>(dataSubheaders.back().DataSize, buf.size()).IterateChunked([&](uint64_t index, uint64_t offset, uint64_t size) {
 					const auto bufSpan = std::span(buf).subspan(0, static_cast<size_t>(size));
 					dataFile.Read(offset, bufSpan);
@@ -703,14 +704,14 @@ void Sqex::Sqpack::Creator::WriteToFiles(const std::filesystem::path & dir, bool
 					dataFile.Write(entry.Locator.DatFileOffset() + offset, bufSpan);
 					}, sizeof(SqpackHeader) + sizeof(SqData::Header));
 
-				sha1.Final(reinterpret_cast<byte*>(dataSubheaders.back().DataSha1.Value));
+				sha1.Final(span_cast<uint8_t>(dataSubheaders.back().DataSha1.Value));
 				dataSubheaders.back().Sha1.SetFromSpan(reinterpret_cast<char*>(&dataSubheaders.back()), offsetof(Sqpack::SqData::Header, Sha1));
 				dataFile.Write(0, &dataHeader, sizeof dataHeader);
 				dataFile.Write(sizeof dataHeader, &dataSubheaders.back(), sizeof dataSubheaders.back());
 				dataFile.Clear();
 			}
 
-			dataFile = Utils::Win32::Handle::FromCreateFile(dir / std::format("{}.win32.dat{}", DatName, dataSubheaders.size()),
+			dataFile = Win32::Handle::FromCreateFile(dir / std::format("{}.win32.dat{}", DatName, dataSubheaders.size()),
 				GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS);
 			dataSubheaders.emplace_back(SqData::Header{
 				.HeaderSize = sizeof(SqData::Header),
@@ -733,14 +734,14 @@ void Sqex::Sqpack::Creator::WriteToFiles(const std::filesystem::path & dir, bool
 
 	if (dataFile) {
 		if (strict) {
-			CryptoPP::SHA1 sha1;
+			Crypt::Sha1 sha1;
 			Align<uint64_t>(dataSubheaders.back().DataSize, buf.size()).IterateChunked([&](uint64_t index, uint64_t offset, uint64_t size) {
 				const auto bufSpan = std::span(buf).subspan(0, static_cast<size_t>(size));
 				dataFile.Read(offset, bufSpan);
 				sha1.Update(&bufSpan[0], static_cast<size_t>(size));
 				}, sizeof(SqpackHeader) + sizeof(SqData::Header));
 
-			sha1.Final(reinterpret_cast<byte*>(dataSubheaders.back().DataSha1.Value));
+			sha1.Final(span_cast<uint8_t>(dataSubheaders.back().DataSha1.Value));
 			dataSubheaders.back().Sha1.SetFromSpan(reinterpret_cast<char*>(&dataSubheaders.back()), offsetof(Sqpack::SqData::Header, Sha1));
 			dataFile.Write(0, &dataHeader, sizeof dataHeader);
 			dataFile.Write(sizeof dataHeader, &dataSubheaders.back(), sizeof dataSubheaders.back());
@@ -805,11 +806,11 @@ void Sqex::Sqpack::Creator::WriteToFiles(const std::filesystem::path & dir, bool
 		.ConflictIndex = SqIndex::FullHashWithTextLocator::EndOfList,
 		});
 
-	Utils::Win32::Handle::FromCreateFile(dir / std::format("{}.win32.index", DatName), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS)
-		.Write(0, std::span<const uint8_t>(ExportIndexFileData<Sqex::Sqpack::SqIndex::Header::IndexType::Index, SqIndex::PairHashLocator, SqIndex::PairHashWithTextLocator, true>(
+	Win32::Handle::FromCreateFile(dir / std::format("{}.win32.index", DatName), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS)
+		.Write(0, std::span<const uint8_t>(ExportIndexFileData<SqIndex::Header::IndexType::Index, SqIndex::PairHashLocator, SqIndex::PairHashWithTextLocator, true>(
 			dataSubheaders.size(), std::move(fileEntries1), std::move(conflictEntries1), m_pImpl->m_sqpackIndexSegment3, std::vector<SqIndex::PathHashLocator>(), strict)));
-	Utils::Win32::Handle::FromCreateFile(dir / std::format("{}.win32.index2", DatName), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS)
-		.Write(0, std::span<const uint8_t>(ExportIndexFileData<Sqex::Sqpack::SqIndex::Header::IndexType::Index, SqIndex::FullHashLocator, SqIndex::FullHashWithTextLocator, false>(
+	Win32::Handle::FromCreateFile(dir / std::format("{}.win32.index2", DatName), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS)
+		.Write(0, std::span<const uint8_t>(ExportIndexFileData<SqIndex::Header::IndexType::Index, SqIndex::FullHashLocator, SqIndex::FullHashWithTextLocator, false>(
 			dataSubheaders.size(), std::move(fileEntries2), std::move(conflictEntries2), m_pImpl->m_sqpackIndex2Segment3, std::vector<SqIndex::PathHashLocator>(), strict)));
 }
 

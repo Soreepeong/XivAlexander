@@ -190,6 +190,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="Misc\IcmpPingTracker.cpp" />
     <ClCompile Include="Apps\MainApp\Window\Dialog\FramerateLockingDialog.cpp" />
     <ClCompile Include="Apps\MainApp\Window\ProgressPopupWindow.cpp" />
+    <ClCompile Include="Utils\WinHttp.cpp" />
     <ClCompile Include="ExportCompatibles.cpp" />
     <ClCompile Include="XivAlexander.cpp" />
     <ClCompile Include="Config.cpp" />
@@ -245,6 +246,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="Apps\MainApp\Window\ConfigWindow.h" />
     <ClInclude Include="Apps\MainApp\Window\LogWindow.h" />
     <ClInclude Include="Apps\MainApp\Window\MainWindow.h" />
+    <ClInclude Include="Utils\WinHttp.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="XivAlexander.h" />
