@@ -47,6 +47,8 @@ std::vector<std::pair<std::string, std::string>> Sqex::CommandLine::FromString(c
 
 				ReverseEvery4Bytes(decrypted);
 				source.clear();
+				while (!decrypted.empty() && !decrypted.back())
+					decrypted.pop_back();
 
 				for (const auto& item : SplitPreserveDelimiter(decrypted, '/', SIZE_MAX)) {
 					const auto keyValue = SplitPreserveDelimiter(item, '=', 1);
