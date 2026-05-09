@@ -743,16 +743,16 @@ void XivAlexander::Apps::MainApp::Internal::SocketHook::ResetAllConnections() co
 	if (!m_pImpl)
 		return;
 
-	for (const auto& entry : m_pImpl->Sockets | std::views::keys) {
-		m_logger->Format(
-			LogCategory::SocketHook,
-			m_pImpl->Config->Runtime.GetLangId(),
-			IDS_SOCKETHOOK_SOCKET_RESET,
-			entry,
-			closesocket(entry) == SOCKET_ERROR ? WSAGetLastError() : 0);
-	}
+	std::vector<SOCKET> sockets;
+	sockets.reserve(m_pImpl->Sockets.size() + m_pImpl->NonGameSockets.size());
+	std::ranges::copy(m_pImpl->Sockets | std::views::keys, std::back_inserter(sockets));
+	std::ranges::copy(m_pImpl->NonGameSockets, std::back_inserter(sockets));
+	for (const auto& entry : m_pImpl->Sockets | std::views::keys)
+		sockets.push_back(entry);
+	for (const auto& entry : m_pImpl->NonGameSockets)
+		sockets.push_back(entry);
 
-	for (const auto& entry : m_pImpl->NonGameSockets) {
+	for (const auto& entry : sockets) {
 		m_logger->Format(
 			LogCategory::SocketHook,
 			m_pImpl->Config->Runtime.GetLangId(),
