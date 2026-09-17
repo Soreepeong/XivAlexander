@@ -159,7 +159,9 @@ namespace Utils::Win32 {
 			int Button;
 			int Radio;
 			bool Check;
-		} Show();
+		};
+
+		Result Show();
 
 	private:
 		HRESULT TaskDialogProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);

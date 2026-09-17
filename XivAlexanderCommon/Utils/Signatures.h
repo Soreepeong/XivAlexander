@@ -1,13 +1,9 @@
 #pragma once
 
-#include <vector>
+#include <span>
+#include <string>
 
 namespace Utils::Signatures {
-
-	typedef bool (*SectionFilter)(const IMAGE_SECTION_HEADER&);
-	bool SectionFilterTextOnly(const IMAGE_SECTION_HEADER& pSectionHeader);
-
-	[[nodiscard]] std::vector<void*> LookupForData(SectionFilter lookupInSection, const char* sPattern, const char* sMask, size_t length, const std::vector<size_t>& nextOffsets);
 
 	class ScanResult {
 		srell::cmatch m_match;
@@ -21,6 +17,10 @@ namespace Utils::Signatures {
 
 		ScanResult(srell::cmatch match)
 			: m_match(std::move(match)) {
+		}
+
+		bool ready() const {
+			return m_match.ready();
 		}
 
 		template<typename T>
@@ -62,12 +62,17 @@ namespace Utils::Signatures {
 		RegexSignature(const char(&data)[Length])
 			: m_pattern{ data, data + Length - 1, srell::regex_constants::dotall } {
 		}
+		
+		enum LookupFrom {
+			FromNextByte,
+			FromMatchEnd,
+		};
 
-		bool Lookup(const void* data, size_t length, ScanResult& result, bool next = false) const;
+		bool Lookup(const void* data, size_t length, ScanResult& result, LookupFrom lookupFrom = FromNextByte) const;
 
 		template<typename T>
-		bool Lookup(std::span<T> data, ScanResult& result, bool next = false) const {
-			return Lookup(data.data(), data.size_bytes(), result, next);
+		bool Lookup(std::span<T> data, ScanResult& result, LookupFrom lookupFrom = FromNextByte) const {
+			return Lookup(data.data(), data.size_bytes(), result, lookupFrom);
 		}
 	};
 
@@ -89,13 +94,5 @@ namespace Utils::Signatures {
 		}
 
 		operator bool() const { return !!m_pAddress; }
-	};
-
-	template<typename T>
-	class DataSignature : public Signature<T> {
-	public:
-		DataSignature(const char* szName, SectionFilter sectionFilter, const char* sPattern, const char* sMask, size_t length, std::vector<size_t> nextOffsets = {})
-			: Signature(szName, LookupForData(sectionFilter, sPattern, sMask, length, nextOffsets)) {
-		}
 	};
 }

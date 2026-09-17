@@ -18,6 +18,7 @@ namespace XivAlexander::Apps::MainApp::Internal {
 namespace XivAlexander::Misc {
 	class DebuggerDetectionDisabler;
 	class Logger;
+	class OpcodeGuesser;
 }
 
 namespace XivAlexander::Apps::MainApp {

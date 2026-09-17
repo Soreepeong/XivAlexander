@@ -2,6 +2,8 @@
 
 #include <Psapi.h>
 
+#include <string_view>
+
 #include "XivAlexanderCommon/Utils/Win32/Closeable.h"
 
 namespace Utils::Win32 {
@@ -18,6 +20,11 @@ namespace Utils::Win32 {
 		~LoadedModule() override;
 
 		static LoadedModule LoadMore(const LoadedModule& module);
+
+		static const LoadedModule& MainModule() {
+			static const LoadedModule s_module(GetModuleHandle(nullptr), false);
+			return s_module;
+		}
 
 		template<typename T>
 		T GetProcAddress(const char* szName, bool throwIfNotFound = false) const {
@@ -44,7 +51,39 @@ namespace Utils::Win32 {
 		[[nodiscard]] std::filesystem::path PathOf() const;
 		[[nodiscard]] std::filesystem::path BaseName() const;
 		[[nodiscard]] MODULEINFO ModuleInfo() const;
+
+		[[nodiscard]] const IMAGE_DOS_HEADER& DosHeader() const;
+		[[nodiscard]] const IMAGE_NT_HEADERS& NtHeaders() const;
+		[[nodiscard]] std::span<const IMAGE_SECTION_HEADER> SectionHeaders() const;
+
+		[[nodiscard]] std::span<const uint8_t> DataDirectoryAt(size_t index) const;
 		
+		[[nodiscard]] std::span<const uint8_t> FunctionAt(const void* ptr) const;
+
+		[[nodiscard]] std::span<const uint8_t> SectionFrom(const IMAGE_SECTION_HEADER& section) const;
+
+		[[nodiscard]] std::span<const uint8_t> SectionFrom(std::string_view name) const;
+
+		[[nodiscard]] std::span<const uint8_t> SectionAt(size_t index) const;
+
+		template<typename T>
+		[[nodiscard]] std::span<const T> SectionFrom(const IMAGE_SECTION_HEADER& section) const {
+			const auto body = SectionFrom(section);
+			return std::span(reinterpret_cast<const T*>(body.data()), body.size() / sizeof(T));
+		}
+		
+		template<typename T>
+		[[nodiscard]] std::span<const uint8_t> SectionFrom(std::string_view name) const {
+			const auto body = SectionFrom(name);
+			return std::span(reinterpret_cast<const T*>(body.data()), body.size() / sizeof(T));
+		}
+
+		template<typename T>
+		[[nodiscard]] std::span<const T> SectionAt(size_t index) const {
+			const auto body = SectionAt(index);
+			return std::span(reinterpret_cast<const T*>(body.data()), body.size() / sizeof(T));
+		}
+
 		void SetPinned() const;
 
 		bool operator<(const LoadedModule& r) const {

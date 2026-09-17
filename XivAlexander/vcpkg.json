@@ -3,7 +3,7 @@
   "version-string": "1.10",
   "homepage": "https://github.com/Soreepeong/XivAlexander",
   "description": "Double weaving on high latency.",
-  "builtin-baseline": "256acc64012b23a13041d8705805e1f23b43a024",
+  "builtin-baseline": "386d7c478221b7ee0c97bfe6ea61dcf65121d564",
   "dependencies": [
     "zlib",
     "scintilla",

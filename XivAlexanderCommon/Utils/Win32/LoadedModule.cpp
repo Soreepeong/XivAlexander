@@ -87,3 +87,60 @@ MODULEINFO Utils::Win32::LoadedModule::ModuleInfo() const {
 		throw Error("GetModuleInformation");
 	return res;
 }
+
+const IMAGE_DOS_HEADER& Utils::Win32::LoadedModule::DosHeader() const {
+	return *reinterpret_cast<const IMAGE_DOS_HEADER*>(m_object);
+}
+
+const IMAGE_NT_HEADERS& Utils::Win32::LoadedModule::NtHeaders() const {
+	return *reinterpret_cast<const IMAGE_NT_HEADERS*>(reinterpret_cast<const uint8_t*>(m_object) + DosHeader().e_lfanew);
+}
+
+std::span<const IMAGE_SECTION_HEADER> Utils::Win32::LoadedModule::SectionHeaders() const {
+	const auto& nt = NtHeaders();
+	return std::span<const IMAGE_SECTION_HEADER>(IMAGE_FIRST_SECTION(&nt), nt.FileHeader.NumberOfSections);
+}
+
+std::span<const uint8_t> Utils::Win32::LoadedModule::DataDirectoryAt(size_t index) const {
+	const auto& edh = NtHeaders().OptionalHeader.DataDirectory[index];
+	if (!edh.Size || !edh.VirtualAddress)
+		return {};
+	
+	return {reinterpret_cast<const uint8_t*>(m_object) + edh.VirtualAddress, edh.Size};
+}
+
+std::span<const uint8_t> Utils::Win32::LoadedModule::FunctionAt(const void* ptr) const {
+	const auto fns = span_cast<IMAGE_RUNTIME_FUNCTION_ENTRY>(DataDirectoryAt(IMAGE_DIRECTORY_ENTRY_EXCEPTION));
+	const auto va = static_cast<uint32_t>(reinterpret_cast<size_t>(ptr) - reinterpret_cast<size_t>(m_object));
+
+	const auto it = std::ranges::upper_bound(fns, va, {}, &IMAGE_RUNTIME_FUNCTION_ENTRY::BeginAddress);
+	if (it == fns.begin())
+		return {};
+
+	const auto& entry = *std::prev(it);
+	if (va < entry.BeginAddress || entry.EndAddress <= va)
+		return {};
+
+	return {reinterpret_cast<const uint8_t*>(m_object) + entry.BeginAddress, entry.EndAddress - entry.BeginAddress};
+}
+
+std::span<const uint8_t> Utils::Win32::LoadedModule::SectionFrom(const IMAGE_SECTION_HEADER& section) const {
+	return std::span(reinterpret_cast<const uint8_t*>(m_object) + section.VirtualAddress, section.Misc.VirtualSize);
+}
+
+std::span<const uint8_t> Utils::Win32::LoadedModule::SectionFrom(std::string_view name) const {
+	for (const auto& sectionHeader : SectionHeaders()) {
+		if (name.size() > sizeof(sectionHeader.Name) || std::memcmp(sectionHeader.Name, name.data(), name.size()) != 0)
+			continue;
+		if (name.size() < sizeof(sectionHeader.Name) && sectionHeader.Name[name.size()] != '\0')
+			continue;
+
+		return SectionFrom(sectionHeader);
+	}
+
+	throw std::runtime_error(std::format("LoadedModule::SectionFrom: section \"{}\" not found", name));
+}
+
+std::span<const uint8_t> Utils::Win32::LoadedModule::SectionAt(size_t index) const {
+	return SectionFrom(SectionHeaders()[index]);
+}

@@ -17,6 +17,7 @@
 #include "Misc/FreeGameMutex.h"
 #include "Misc/Hooks.h"
 #include "Misc/Logger.h"
+#include "Misc/OpcodeGuesser.h"
 #include "Apps/MainApp/Window/LogWindow.h"
 #include "Apps/MainApp/Window/MainWindow.h"
 #include "resource.h"
@@ -63,6 +64,7 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 	Utils::CallOnDestruction::Multiple Cleanup;
 
 	std::optional<Internal::PatchCode> PatchCode;
+	std::optional<Misc::OpcodeGuesser> OpcodeGuesser;
 	
 	// Mandatory, but initialize late
 	std::optional<Internal::SocketHook> SocketHook;
@@ -120,6 +122,8 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 
 	void LoadAfterThisConstruct() {
 		PatchCode.emplace(App);
+
+		OpcodeGuesser.emplace(App);
 		
 		SocketHook.emplace(App);
 		Cleanup += [this]() { SocketHook.reset(); };

@@ -140,7 +140,8 @@ Utils::Oodle::OodleModule::OodleModule() : ErrorStep("Start") {
 			sr1.ResolveAddressInto(TcpEncode, 1);
 			sr2.ResolveAddressInto(UdpEncode, 1);
 
-			if (TcpCodecOodle.Lookup(codeSection, sr1, true) && UdpCodecOodle.Lookup(codeSection, sr2, true)) {
+			if (TcpCodecOodle.Lookup(codeSection, sr1, Signatures::RegexSignature::FromMatchEnd)
+				&& UdpCodecOodle.Lookup(codeSection, sr2, Signatures::RegexSignature::FromMatchEnd)) {
 				sr1.ResolveAddressInto(TcpDecode, 1);
 				sr2.ResolveAddressInto(UdpDecode, 1);
 			} else

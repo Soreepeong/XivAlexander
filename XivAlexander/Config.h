@@ -366,8 +366,10 @@ namespace XivAlexander {
 		};
 
 		class GameRepository : public BaseRepository {
-			const uint16_t InvalidIpcType = 0x93DB;
+		public:
+			constexpr static uint16_t InvalidIpcType = 0x93DB;
 
+		private:
 			friend class Config;
 			using BaseRepository::BaseRepository;
 
@@ -378,7 +380,7 @@ namespace XivAlexander {
 			
 			// Make the program consume all network connections by default.
 			Item<std::string> Server_IpRange = CreateConfigItem(this, "Server_IpRange", std::string("0.0.0.0/0"));
-			Item<std::string> Server_PortRange = CreateConfigItem(this, "Server_PortRange", std::string("1-65535"));
+			Item<std::string> Server_PortRange = CreateConfigItem(this, "Server_PortRange", std::string("54992-54994, 55006-55007, 55021-55040"));
 
 			// Set defaults so that the values will never be a valid IPC code.
 			// Assumes structure doesn't change too often.

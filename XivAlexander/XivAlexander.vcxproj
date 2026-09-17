@@ -199,6 +199,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="Apps\MainApp\Internal\AllIpcMessageLogger.cpp" />
     <ClCompile Include="Misc\FreeGameMutex.cpp" />
     <ClCompile Include="Misc\Logger.cpp" />
+    <ClCompile Include="Misc\OpcodeGuesser.cpp" />
     <ClCompile Include="Apps\MainApp\Internal\SocketHook.cpp" />
     <ClCompile Include="Misc\Hooks.cpp" />
     <ClCompile Include="Apps\MainApp\Window\BaseWindow.cpp" />
@@ -239,6 +240,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="Apps\MainApp\Internal\AllIpcMessageLogger.h" />
     <ClInclude Include="Misc\FreeGameMutex.h" />
     <ClInclude Include="Misc\Logger.h" />
+    <ClInclude Include="Misc\OpcodeGuesser.h" />
     <ClInclude Include="Misc\IcmpPingTracker.h" />
     <ClInclude Include="Apps\MainApp\Internal\SocketHook.h" />
     <ClInclude Include="Misc\Hooks.h" />

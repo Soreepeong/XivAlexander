@@ -21,6 +21,7 @@ namespace XivAlexander {
 		VirtualSqPacks,
 		MusicImporter,
 		PatchCode,
+		OpcodeGuesser,
 	};
 }
 

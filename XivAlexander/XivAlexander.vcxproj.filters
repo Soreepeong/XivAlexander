@@ -51,6 +51,9 @@
     <ClCompile Include="Misc\Logger.cpp">
       <Filter>Misc</Filter>
     </ClCompile>
+    <ClCompile Include="Misc\OpcodeGuesser.cpp">
+      <Filter>Misc</Filter>
+    </ClCompile>
     <ClCompile Include="Apps\MainApp\Window\ConfigWindow.cpp">
       <Filter>Apps\MainApp\Window</Filter>
     </ClCompile>
@@ -153,6 +156,9 @@
       <Filter>Apps\MainApp\Window</Filter>
     </ClInclude>
     <ClInclude Include="Misc\Logger.h">
+      <Filter>Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="Misc\OpcodeGuesser.h">
       <Filter>Misc</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">

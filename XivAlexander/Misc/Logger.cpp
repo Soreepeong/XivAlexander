@@ -20,6 +20,7 @@ const std::map<XivAlexander::LogCategory, const char*> XivAlexander::Misc::Logge
 	{XivAlexander::LogCategory::VirtualSqPacks, "VirtualSqPacks"},
 	{XivAlexander::LogCategory::MusicImporter, "MusicImporter"},
 	{XivAlexander::LogCategory::PatchCode, "PatchCode"},
+	{XivAlexander::LogCategory::OpcodeGuesser, "OpcodeGuesser"},
 };
 
 std::weak_ptr<XivAlexander::Misc::Logger> XivAlexander::Misc::Logger::s_instance;
