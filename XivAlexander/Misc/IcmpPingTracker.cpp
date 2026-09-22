@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "IcmpPingTracker.h"
 
-#include <XivAlexanderCommon/Utils/NumericStatisticsTracker.h>
-#include <XivAlexanderCommon/Utils/Win32/Closeable.h>
+#include "Utils/NumericStatisticsTracker.h"
+#include "Utils/Win32/Closeable.h"
 
 #include "Config.h"
 #include "Misc/Logger.h"
@@ -25,14 +25,14 @@ struct ConnectionPair {
 struct XivAlexander::Misc::IcmpPingTracker::Implementation {
 	struct SingleTracker;
 
-	const std::shared_ptr<Misc::Logger> Logger;
+	const std::shared_ptr<Logger> Logger;
 	const std::shared_ptr<Config> Config;
 
 	std::mutex TrackersMtx;
 	std::map<ConnectionPair, std::shared_ptr<SingleTracker>> Trackers;
 
 	struct SingleTracker {
-		Misc::IcmpPingTracker& IcmpPingTracker;
+		IcmpPingTracker& IcmpPingTracker;
 		const std::shared_ptr<Utils::NumericStatisticsTracker> Tracker;
 		const Utils::Win32::Event ExitEvent;
 		const ConnectionPair Pair;
@@ -124,7 +124,7 @@ struct XivAlexander::Misc::IcmpPingTracker::Implementation {
 	};
 
 	Implementation()
-		: Logger(Misc::Logger::Acquire())
+		: Logger(Logger::Acquire())
 		, Config(Config::Acquire()) {
 	}
 };
@@ -135,12 +135,12 @@ XivAlexander::Misc::IcmpPingTracker::IcmpPingTracker()
 
 XivAlexander::Misc::IcmpPingTracker::~IcmpPingTracker() = default;
 
-Utils::CallOnDestruction XivAlexander::Misc::IcmpPingTracker::Track(const in_addr& source, const in_addr& destination) {
+xivres::util::on_dtor XivAlexander::Misc::IcmpPingTracker::Track(const in_addr& source, const in_addr& destination) {
 	const auto pair = ConnectionPair{source, destination};
 	std::lock_guard _lock(m_pImpl->TrackersMtx);
 	if (const auto it = m_pImpl->Trackers.find(pair); it == m_pImpl->Trackers.end())
 		m_pImpl->Trackers.emplace(pair, std::make_shared<Implementation::SingleTracker>(*this, pair));
-	return Utils::CallOnDestruction([this, pair]() {
+	return xivres::util::on_dtor([this, pair]() {
 		m_pImpl->Trackers.erase(pair);
 	});
 }

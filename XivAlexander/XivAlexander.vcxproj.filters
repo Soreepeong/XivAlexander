@@ -7,31 +7,28 @@
     <Filter Include="Resources">
       <UniqueIdentifier>{f96ebb19-9c57-4d68-8afe-d887a9e1372b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Apps">
-      <UniqueIdentifier>{8558bf64-2138-4a68-bf1e-d9fec57dafa5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Apps\LoaderApp">
+    <Filter Include="LoaderApp">
       <UniqueIdentifier>{42484399-8036-4d11-88e6-2931debcde39}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Apps\LoaderApp\Actions">
+    <Filter Include="LoaderApp\Actions">
       <UniqueIdentifier>{9ab24cde-20cc-4271-b287-d15be9a77778}</UniqueIdentifier>
     </Filter>
     <Filter Include="Misc">
       <UniqueIdentifier>{2bf35a29-24e3-4da4-a984-7d975faff46f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Apps\EntryPointApp">
+    <Filter Include="EntryPointApp">
       <UniqueIdentifier>{d8fcfcb9-5deb-4701-b08c-92ca88636ee6}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Apps\MainApp">
+    <Filter Include="MainApp">
       <UniqueIdentifier>{ca7e3e97-d02b-44f7-bd44-d1065410a357}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Apps\MainApp\Internal">
+    <Filter Include="MainApp\Features">
       <UniqueIdentifier>{5e7ce527-5f3d-4639-9abe-c56ac9c6f73f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Apps\MainApp\Window">
+    <Filter Include="MainApp\Windows">
       <UniqueIdentifier>{b4121b9e-107c-474d-8bc1-6d8a8dc8be3d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Apps\MainApp\Window\Dialog">
+    <Filter Include="MainApp\Windows\Dialog">
       <UniqueIdentifier>{feceec63-fb91-4d14-9f98-11a3974a5fae}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -42,11 +39,11 @@
     <ClCompile Include="Misc\FreeGameMutex.cpp">
       <Filter>Misc</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\MainApp\Window\BaseWindow.cpp">
-      <Filter>Apps\MainApp\Window</Filter>
+    <ClCompile Include="MainApp\Windows\BaseWindow.cpp">
+      <Filter>MainApp\Windows</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\MainApp\Window\LogWindow.cpp">
-      <Filter>Apps\MainApp\Window</Filter>
+    <ClCompile Include="MainApp\Windows\LogWindow.cpp">
+      <Filter>MainApp\Windows</Filter>
     </ClCompile>
     <ClCompile Include="Misc\Logger.cpp">
       <Filter>Misc</Filter>
@@ -54,11 +51,11 @@
     <ClCompile Include="Misc\OpcodeGuesser.cpp">
       <Filter>Misc</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\MainApp\Window\ConfigWindow.cpp">
-      <Filter>Apps\MainApp\Window</Filter>
+    <ClCompile Include="MainApp\Windows\ConfigWindow.cpp">
+      <Filter>MainApp\Windows</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\MainApp\Window\MainWindow.cpp">
-      <Filter>Apps\MainApp\Window</Filter>
+    <ClCompile Include="MainApp\Windows\MainWindow.cpp">
+      <Filter>MainApp\Windows</Filter>
     </ClCompile>
     <ClCompile Include="Misc\Hooks.cpp">
       <Filter>Misc</Filter>
@@ -68,8 +65,8 @@
     </ClCompile>
     <ClCompile Include="XivAlexander.cpp" />
     <ClCompile Include="ExportCompatibles.cpp" />
-    <ClCompile Include="Apps\MainApp\Window\ProgressPopupWindow.cpp">
-      <Filter>Apps\MainApp\Window</Filter>
+    <ClCompile Include="MainApp\Windows\ProgressPopupWindow.cpp">
+      <Filter>MainApp\Windows</Filter>
     </ClCompile>
     <ClCompile Include="Misc\CrashMessageBoxHandler.cpp">
       <Filter>Misc</Filter>
@@ -77,69 +74,69 @@
     <ClCompile Include="Misc\GameInstallationDetector.cpp">
       <Filter>Misc</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\MainApp\Window\Dialog\FramerateLockingDialog.cpp">
-      <Filter>Apps\MainApp\Window\Dialog</Filter>
+    <ClCompile Include="MainApp\Windows\Dialog\FramerateLockingDialog.cpp">
+      <Filter>MainApp\Windows\Dialog</Filter>
     </ClCompile>
     <ClCompile Include="Config.cpp" />
-    <ClCompile Include="Apps\LoaderApp\Actions\Inject.cpp">
-      <Filter>Apps\LoaderApp\Actions</Filter>
+    <ClCompile Include="LoaderApp\Actions\Inject.cpp">
+      <Filter>LoaderApp\Actions</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\LoaderApp\Actions\InstallUninstall.cpp">
-      <Filter>Apps\LoaderApp\Actions</Filter>
+    <ClCompile Include="LoaderApp\Actions\InstallUninstall.cpp">
+      <Filter>LoaderApp\Actions</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\LoaderApp\Actions\Interactive.cpp">
-      <Filter>Apps\LoaderApp\Actions</Filter>
+    <ClCompile Include="LoaderApp\Actions\Interactive.cpp">
+      <Filter>LoaderApp\Actions</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\LoaderApp\Actions\LoadUnload.cpp">
-      <Filter>Apps\LoaderApp\Actions</Filter>
+    <ClCompile Include="LoaderApp\Actions\LoadUnload.cpp">
+      <Filter>LoaderApp\Actions</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\LoaderApp\Actions\RunLauncher.cpp">
-      <Filter>Apps\LoaderApp\Actions</Filter>
+    <ClCompile Include="LoaderApp\Actions\RunLauncher.cpp">
+      <Filter>LoaderApp\Actions</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\LoaderApp\Actions\Update.cpp">
-      <Filter>Apps\LoaderApp\Actions</Filter>
+    <ClCompile Include="LoaderApp\Actions\Update.cpp">
+      <Filter>LoaderApp\Actions</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\LoaderApp\Arguments.cpp">
-      <Filter>Apps\LoaderApp</Filter>
+    <ClCompile Include="LoaderApp\Arguments.cpp">
+      <Filter>LoaderApp</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\MainApp\App.cpp">
-      <Filter>Apps\MainApp</Filter>
+    <ClCompile Include="MainApp\App.cpp">
+      <Filter>MainApp</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\MainApp\Internal\AllIpcMessageLogger.cpp">
-      <Filter>Apps\MainApp\Internal</Filter>
+    <ClCompile Include="MainApp\Features\AllIpcMessageLogger.cpp">
+      <Filter>MainApp\Features</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\MainApp\Internal\GameResourceOverrider.cpp">
-      <Filter>Apps\MainApp\Internal</Filter>
+    <ClCompile Include="MainApp\Features\Modding\ResourceOverrider.cpp">
+      <Filter>MainApp\Features</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\MainApp\Internal\IpcTypeFinder.cpp">
-      <Filter>Apps\MainApp\Internal</Filter>
+    <ClCompile Include="MainApp\Features\IpcTypeFinder.cpp">
+      <Filter>MainApp\Features</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\MainApp\Internal\MainThreadTimingHandler.cpp">
-      <Filter>Apps\MainApp\Internal</Filter>
+    <ClCompile Include="MainApp\Features\MainThreadTimingHandler.cpp">
+      <Filter>MainApp\Features</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\MainApp\Internal\NetworkTimingHandler.cpp">
-      <Filter>Apps\MainApp\Internal</Filter>
+    <ClCompile Include="MainApp\Features\NetworkTimingHandler.cpp">
+      <Filter>MainApp\Features</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\EntryPointApp\App.cpp">
-      <Filter>Apps\EntryPointApp</Filter>
+    <ClCompile Include="EntryPointApp\App.cpp">
+      <Filter>EntryPointApp</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\LoaderApp\App.cpp">
-      <Filter>Apps\LoaderApp</Filter>
+    <ClCompile Include="LoaderApp\App.cpp">
+      <Filter>LoaderApp</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\MainApp\Internal\SocketHook.cpp">
-      <Filter>Apps\MainApp\Internal</Filter>
+    <ClCompile Include="MainApp\Features\SocketHook.cpp">
+      <Filter>MainApp\Features</Filter>
     </ClCompile>
     <ClCompile Include="Misc\IcmpPingTracker.cpp">
       <Filter>Misc</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\MainApp\Internal\VirtualSqPacks.cpp">
-      <Filter>Apps\MainApp\Internal</Filter>
+    <ClCompile Include="MainApp\Features\Modding\VirtualSqPacks.cpp">
+      <Filter>MainApp\Features</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\MainApp\Internal\PatchCode.cpp">
-      <Filter>Apps\MainApp\Internal</Filter>
+    <ClCompile Include="MainApp\Features\PatchCode.cpp">
+      <Filter>MainApp\Features</Filter>
     </ClCompile>
-    <ClCompile Include="Apps\MainApp\Window\ThemeColors.cpp">
-      <Filter>Apps\MainApp\Window</Filter>
+    <ClCompile Include="MainApp\Windows\ThemeColors.cpp">
+      <Filter>MainApp\Windows</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -149,11 +146,11 @@
     <ClInclude Include="Misc\FreeGameMutex.h">
       <Filter>Misc</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\MainApp\Window\BaseWindow.h">
-      <Filter>Apps\MainApp\Window</Filter>
+    <ClInclude Include="MainApp\Windows\BaseWindow.h">
+      <Filter>MainApp\Windows</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\MainApp\Window\LogWindow.h">
-      <Filter>Apps\MainApp\Window</Filter>
+    <ClInclude Include="MainApp\Windows\LogWindow.h">
+      <Filter>MainApp\Windows</Filter>
     </ClInclude>
     <ClInclude Include="Misc\Logger.h">
       <Filter>Misc</Filter>
@@ -164,11 +161,11 @@
     <ClInclude Include="resource.h">
       <Filter>Resources</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\MainApp\Window\ConfigWindow.h">
-      <Filter>Apps\MainApp\Window</Filter>
+    <ClInclude Include="MainApp\Windows\ConfigWindow.h">
+      <Filter>MainApp\Windows</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\MainApp\Window\MainWindow.h">
-      <Filter>Apps\MainApp\Window</Filter>
+    <ClInclude Include="MainApp\Windows\MainWindow.h">
+      <Filter>MainApp\Windows</Filter>
     </ClInclude>
     <ClInclude Include="Misc\Hooks.h">
       <Filter>Misc</Filter>
@@ -176,8 +173,8 @@
     <ClInclude Include="Misc\DebuggerDetectionDisabler.h">
       <Filter>Misc</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\MainApp\Window\ProgressPopupWindow.h">
-      <Filter>Apps\MainApp\Window</Filter>
+    <ClInclude Include="MainApp\Windows\ProgressPopupWindow.h">
+      <Filter>MainApp\Windows</Filter>
     </ClInclude>
     <ClInclude Include="Misc\CrashMessageBoxHandler.h">
       <Filter>Misc</Filter>
@@ -185,76 +182,76 @@
     <ClInclude Include="Misc\GameInstallationDetector.h">
       <Filter>Misc</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\MainApp\Window\Dialog\FramerateLockingDialog.h">
-      <Filter>Apps\MainApp\Window\Dialog</Filter>
+    <ClInclude Include="MainApp\Windows\Dialog\FramerateLockingDialog.h">
+      <Filter>MainApp\Windows\Dialog</Filter>
     </ClInclude>
     <ClInclude Include="Config.h" />
-    <ClInclude Include="Apps\LoaderApp\Actions\Inject.h">
-      <Filter>Apps\LoaderApp\Actions</Filter>
+    <ClInclude Include="LoaderApp\Actions\Inject.h">
+      <Filter>LoaderApp\Actions</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\LoaderApp\Actions\InstallUninstall.h">
-      <Filter>Apps\LoaderApp\Actions</Filter>
+    <ClInclude Include="LoaderApp\Actions\InstallUninstall.h">
+      <Filter>LoaderApp\Actions</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\LoaderApp\Actions\Interactive.h">
-      <Filter>Apps\LoaderApp\Actions</Filter>
+    <ClInclude Include="LoaderApp\Actions\Interactive.h">
+      <Filter>LoaderApp\Actions</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\LoaderApp\Actions\LoadUnload.h">
-      <Filter>Apps\LoaderApp\Actions</Filter>
+    <ClInclude Include="LoaderApp\Actions\LoadUnload.h">
+      <Filter>LoaderApp\Actions</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\LoaderApp\Actions\RunLauncher.h">
-      <Filter>Apps\LoaderApp\Actions</Filter>
+    <ClInclude Include="LoaderApp\Actions\RunLauncher.h">
+      <Filter>LoaderApp\Actions</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\LoaderApp\Actions\Update.h">
-      <Filter>Apps\LoaderApp\Actions</Filter>
+    <ClInclude Include="LoaderApp\Actions\Update.h">
+      <Filter>LoaderApp\Actions</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\LoaderApp\Arguments.h">
-      <Filter>Apps\LoaderApp</Filter>
+    <ClInclude Include="LoaderApp\Arguments.h">
+      <Filter>LoaderApp</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\EntryPointApp\x64.h">
-      <Filter>Apps\EntryPointApp</Filter>
+    <ClInclude Include="EntryPointApp\x64.h">
+      <Filter>EntryPointApp</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\EntryPointApp\x86.h">
-      <Filter>Apps\EntryPointApp</Filter>
+    <ClInclude Include="EntryPointApp\x86.h">
+      <Filter>EntryPointApp</Filter>
     </ClInclude>
     <ClInclude Include="XivAlexander.h" />
-    <ClInclude Include="Apps\MainApp\App.h">
-      <Filter>Apps\MainApp</Filter>
+    <ClInclude Include="MainApp\App.h">
+      <Filter>MainApp</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\MainApp\Internal\NetworkTimingHandler.h">
-      <Filter>Apps\MainApp\Internal</Filter>
+    <ClInclude Include="MainApp\Features\NetworkTimingHandler.h">
+      <Filter>MainApp\Features</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\MainApp\Internal\AllIpcMessageLogger.h">
-      <Filter>Apps\MainApp\Internal</Filter>
+    <ClInclude Include="MainApp\Features\AllIpcMessageLogger.h">
+      <Filter>MainApp\Features</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\MainApp\Internal\GameResourceOverrider.h">
-      <Filter>Apps\MainApp\Internal</Filter>
+    <ClInclude Include="MainApp\Features\Modding\ResourceOverrider.h">
+      <Filter>MainApp\Features</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\MainApp\Internal\IpcTypeFinder.h">
-      <Filter>Apps\MainApp\Internal</Filter>
+    <ClInclude Include="MainApp\Features\IpcTypeFinder.h">
+      <Filter>MainApp\Features</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\MainApp\Internal\MainThreadTimingHandler.h">
-      <Filter>Apps\MainApp\Internal</Filter>
+    <ClInclude Include="MainApp\Features\MainThreadTimingHandler.h">
+      <Filter>MainApp\Features</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\EntryPointApp\App.h">
-      <Filter>Apps\EntryPointApp</Filter>
+    <ClInclude Include="EntryPointApp\App.h">
+      <Filter>EntryPointApp</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\LoaderApp\App.h">
-      <Filter>Apps\LoaderApp</Filter>
+    <ClInclude Include="LoaderApp\App.h">
+      <Filter>LoaderApp</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\MainApp\Internal\SocketHook.h">
-      <Filter>Apps\MainApp\Internal</Filter>
+    <ClInclude Include="MainApp\Features\SocketHook.h">
+      <Filter>MainApp\Features</Filter>
     </ClInclude>
     <ClInclude Include="Misc\IcmpPingTracker.h">
       <Filter>Misc</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\MainApp\Internal\VirtualSqPacks.h">
-      <Filter>Apps\MainApp\Internal</Filter>
+    <ClInclude Include="MainApp\Features\Modding\VirtualSqPacks.h">
+      <Filter>MainApp\Features</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\MainApp\Internal\PatchCode.h">
-      <Filter>Apps\MainApp\Internal</Filter>
+    <ClInclude Include="MainApp\Features\PatchCode.h">
+      <Filter>MainApp\Features</Filter>
     </ClInclude>
-    <ClInclude Include="Apps\MainApp\Window\ThemeColors.h">
-      <Filter>Apps\MainApp\Window</Filter>
+    <ClInclude Include="MainApp\Windows\ThemeColors.h">
+      <Filter>MainApp\Windows</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

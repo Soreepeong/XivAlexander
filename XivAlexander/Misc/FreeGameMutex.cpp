@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Misc/FreeGameMutex.h"
 
-#include <XivAlexanderCommon/Utils/Win32/Handle.h>
+#include "Utils/Win32/Handle.h"
 
 #include "Config.h"
 #include "Misc/Logger.h"
@@ -181,7 +181,7 @@ void XivAlexander::Misc::FreeGameMutex::FreeGameMutex() {
 				logger->Format(
 					LogCategory::General,
 					"Freed game mutex {}.",
-					Utils::ToUtf8(name));
+					xivres::util::unicode::convert<std::string>(name));
 			}
 		} catch (const std::exception& e) {
 			logger->Format(

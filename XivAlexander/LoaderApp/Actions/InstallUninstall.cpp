@@ -1,0 +1,245 @@
+﻿#include "pch.h"
+#include "InstallUninstall.h"
+
+#include <xivres/util.sha1.h>
+
+#include "Utils/Win32/TaskDialogBuilder.h"
+
+#include "LoaderApp/App.h"
+#include "Config.h"
+#include "resource.h"
+#include "XivAlexander.h"
+
+XivAlexander::LoaderApp::Actions::InstallUninstall::InstallUninstall(const Arguments& args)
+	: m_args(args) {
+}
+
+int XivAlexander::LoaderApp::Actions::InstallUninstall::Run() {
+	switch (m_args.m_action) {
+		case Dll::LoaderAction::Install:
+			Install(m_args.m_runProgram, m_args.m_installMode);
+			return 0;
+		case Dll::LoaderAction::Uninstall:
+			Uninstall(m_args.m_runProgram);
+			return 0;
+		default:
+			throw std::invalid_argument("invalid action for InstallUninstall");
+	}
+}
+
+void XivAlexander::LoaderApp::Actions::InstallUninstall::Install(const std::filesystem::path& gamePath, InstallMode installMode) {
+	if (EnsureNoWow64Emulation())
+		return;
+
+	const auto cdir = Utils::Win32::Process::Current().PathOf().parent_path();
+	const auto dataPath = Utils::Win32::EnsureKnownFolderPath(FOLDERID_RoamingAppData) / L"XivAlexander";
+	const auto exePath = Utils::Win32::EnsureKnownFolderPath(FOLDERID_LocalAppData) / L"XivAlexander";
+	create_directories(dataPath);
+	create_directories(exePath);
+
+	const auto configPath = dataPath / "config.runtime.json";
+	auto config64 = RuntimeConfigRepository(nullptr, {}, xivres::util::unicode::convert<std::string>((gamePath / "ffxiv_dx11.exe").wstring()));
+	config64.Reload(configPath);
+
+	auto success = false;
+	xivres::util::on_dtor::multi revert;
+
+	const auto d3d11 = gamePath / "d3d11.dll";
+	const auto dxgi = gamePath / "dxgi.dll";
+	const auto dinput8 = gamePath / "dinput8.dll";
+	// * Don't use dxgi for now, as d3d11 overriders may choose to call system DLL directly,
+	//   and XIVQuickLauncher warns something about broken GShade install.
+	
+	RevertChainLoadDlls(gamePath, success, revert, config64);
+
+	switch (installMode) {
+		case InstallMode::D3D: {
+			if (exists(d3d11)) {
+				std::filesystem::path fn;
+				for (size_t i = 0; ; i++) {
+					fn = (d3d11.parent_path() / std::format("xivalex.chaindll.{}", i)) / "d3d11.dll";
+					if (!exists(fn))
+						break;
+				}
+				create_directories(fn.parent_path());
+				rename(d3d11, fn);
+				revert += [d3d11, fn, &success]() { if (!success) rename(fn, d3d11); };
+				auto list = config64.ChainLoadPath_d3d11.Value();
+				list.emplace_back(std::move(fn));
+				config64.ChainLoadPath_d3d11 = list;
+			}
+			remove(gamePath / "config.xivalexinit.json");
+			remove(dataPath / "config.xivalexinit.json");
+			remove(exePath / "config.xivalexinit.json");
+			copy_file(cdir / Dll::XivAlexDll64NameW, d3d11);
+			revert += [d3d11, &success]() { if (!success) remove(d3d11); };
+			break;
+		}
+		case InstallMode::DInput8: {
+			if (exists(dinput8)) {
+				std::filesystem::path fn;
+				for (size_t i = 0; ; i++) {
+					fn = (dinput8.parent_path() / std::format("xivalex.chaindll.{}", i)) / "dinput8.dll";
+					if (!exists(fn))
+						break;
+				}
+				create_directories(fn.parent_path());
+				rename(dinput8, fn);
+				revert += [dinput8, fn, &success]() { if (!success) rename(fn, dinput8); };
+				auto list = config64.ChainLoadPath_dinput8.Value();
+				list.emplace_back(std::move(fn));
+				config64.ChainLoadPath_dinput8 = list;
+			}
+			remove(gamePath / "config.xivalexinit.json");
+			remove(dataPath / "config.xivalexinit.json");
+			remove(exePath / "config.xivalexinit.json");
+			copy_file(cdir / Dll::XivAlexDll64NameW, dinput8);
+			revert += [dinput8, &success]() { if (!success) remove(dinput8); };
+			break;
+		}
+	}
+
+	for (const auto& f : std::filesystem::directory_iterator(cdir)) {
+		if (f.is_directory())
+			continue;
+
+		if (f.path().filename().wstring().starts_with(L"game.")
+			&& f.path().filename().wstring().ends_with(L".json"))
+			if (!exists(dataPath / f.path().filename()) || !equivalent(f, dataPath / f.path().filename()))
+				copy_file(f, dataPath / f.path().filename(), std::filesystem::copy_options::overwrite_existing);
+
+		if (f.path().filename().wstring().ends_with(L".exe")
+			|| f.path().filename().wstring().ends_with(L".dll"))
+			if (!exists(exePath / f.path().filename()) || !equivalent(f, exePath / f.path().filename()))
+				copy_file(f, exePath / f.path().filename(), std::filesystem::copy_options::overwrite_existing);
+	}
+
+	config64.Save(configPath);
+
+	success = true;
+	revert.clear();
+
+	RemoveTemporaryFiles(gamePath);
+
+	Dll::MessageBoxF(nullptr, MB_OK, IDS_NOTIFY_XIVALEXINSTALL_INSTALLCOMPLETE, gamePath.wstring());
+}
+
+void XivAlexander::LoaderApp::Actions::InstallUninstall::Uninstall(const std::filesystem::path& gamePath) {
+	if (EnsureNoWow64Emulation())
+		return;
+
+	const auto cdir = Utils::Win32::Process::Current().PathOf().parent_path();
+	const auto dataPath = Utils::Win32::EnsureKnownFolderPath(FOLDERID_RoamingAppData) / L"XivAlexander";
+	const auto exePath = Utils::Win32::EnsureKnownFolderPath(FOLDERID_LocalAppData) / L"XivAlexander";
+
+	const auto configPath = dataPath / "config.runtime.json";
+	auto config64 = RuntimeConfigRepository(nullptr, {}, xivres::util::unicode::convert<std::string>((gamePath / "ffxiv_dx11.exe").wstring()));
+	config64.Reload(configPath);
+	
+	auto success = false;
+	xivres::util::on_dtor::multi revert;
+	
+	RevertChainLoadDlls(gamePath, success, revert, config64);
+
+	config64.Save(configPath);
+
+	success = true;
+	revert.clear();
+
+	RemoveTemporaryFiles(gamePath);
+
+	if (Dll::MessageBoxF(nullptr, MB_YESNO | MB_ICONQUESTION, IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE, gamePath.wstring()) == IDYES)
+		Utils::Win32::ShellExecutePathOrThrow(dataPath);
+}
+
+static void QueueRemoval(const std::filesystem::path& path, const bool& success, xivres::util::on_dtor::multi& revert) {
+	std::filesystem::path temp;
+	for (size_t i = 0; ; i++)
+		if (!exists(temp = std::filesystem::path(path).replace_filename(std::format(L"_temp.{}.dll", i))))
+			break;
+	rename(path, temp);
+	revert += [path, temp, &success]() {
+		if (success) {
+			try {
+				remove(temp);
+			} catch (...) {
+				std::filesystem::path temp2;
+				for (size_t i = 0; ; i++)
+					if (!exists(temp2 = std::filesystem::path(path).replace_filename(std::format(L"_xivalex_temp_delete_me_{}.tmp", i))))
+						break;
+				rename(temp, temp2);
+			}
+		} else
+			rename(temp, path);
+	};
+}
+
+static std::string GetSha1(const std::filesystem::path& f) {
+	uint8_t hash[20]{};
+	{
+		const auto file = Utils::Win32::Handle::FromCreateFile(f, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+		xivres::util::hash_sha1 sha1;
+		std::vector<uint8_t> buf(8192);
+		for (uint64_t i = 0, len = file.GetFileSize(); i < len; i += 8192) {
+			const auto read = file.Read(i, &buf[0], std::min<uint64_t>(len - i, buf.size()));
+			sha1.process_bytes(buf.data(), read);
+		}
+
+		sha1.get_digest_bytes(hash);
+	}
+	return std::string(reinterpret_cast<const char*>(hash), sizeof hash);
+}
+
+void XivAlexander::LoaderApp::Actions::InstallUninstall::RevertChainLoadDlls(
+	const std::filesystem::path& gamePath,
+	const bool& success,
+	xivres::util::on_dtor::multi& revert,
+	RuntimeConfigRepository& config64
+) {
+	const auto d3d11 = gamePath / "d3d11.dll";
+	const auto dxgi = gamePath / "dxgi.dll";
+	const auto dinput8 = gamePath / "dinput8.dll";
+	
+	for (const auto& f : { d3d11, dxgi, dinput8 }) {
+		if (!exists(f))
+			continue;
+
+		const auto hash = GetSha1(f);
+
+		if (Dll::IsXivAlexanderDll(f))
+			QueueRemoval(f, success, revert);
+	}
+
+	if (!exists(d3d11) && config64.ChainLoadPath_d3d11.Value().size() == 1) {
+		std::filesystem::path fn = config64.ChainLoadPath_d3d11.Value().back();
+		rename(fn, d3d11);
+		revert += [d3d11, fn, &success]() { if (!success) rename(d3d11, fn); };
+		config64.ChainLoadPath_d3d11 = std::vector<std::filesystem::path>();
+	}
+	if (!exists(dinput8) && config64.ChainLoadPath_dinput8.Value().size() == 1) {
+		std::filesystem::path fn = config64.ChainLoadPath_dinput8.Value().back();
+		rename(fn, dinput8);
+		revert += [dinput8, fn, &success]() { if (!success) rename(dinput8, fn); };
+		config64.ChainLoadPath_dinput8 = std::vector<std::filesystem::path>();
+	}
+}
+
+void XivAlexander::LoaderApp::Actions::InstallUninstall::RemoveTemporaryFiles(const std::filesystem::path& gamePath) {
+	for (const auto& item : std::filesystem::directory_iterator(gamePath)) {
+		try {
+			if (item.is_directory() && item.path().filename().wstring().starts_with(L"xivalex.chaindll.")) {
+				auto anyFile = false;
+				for (const auto& _ : std::filesystem::directory_iterator(item)) {
+					anyFile = true;
+					break;
+				}
+				if (!anyFile)
+					remove(item);
+			} else if (item.path().filename().wstring().starts_with(L"_xivalex_temp_delete_me_")) {
+				remove_all(item);
+			}
+		} catch (...) {
+			// pass
+		}
+	}
+}

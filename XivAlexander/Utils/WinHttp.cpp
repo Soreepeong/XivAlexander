@@ -1,15 +1,15 @@
 #include "pch.h"
 #include "Utils/WinHttp.h"
 
-#include <XivAlexanderCommon/Utils/Win32.h>
-#include <XivAlexanderCommon/Utils/Win32/Closeable.h>
+#include "Utils/Win32.h"
+#include "Utils/Win32/Closeable.h"
 
 using Internet = Utils::Win32::Closeable<HINTERNET, WinHttpCloseHandle>;
 
 constexpr DWORD BufferSize = 8192;
 
 Utils::Win32::WinHttp::Response Utils::Win32::WinHttp::Get(const std::string& url, const std::function<void(const void*, size_t)>& onData) {
-	const auto wUrl = FromUtf8(url);
+	const auto wUrl = xivres::util::unicode::convert<std::wstring>(url);
 
 	URL_COMPONENTSW urlComp{
 		.dwStructSize = sizeof(urlComp),
@@ -34,7 +34,7 @@ Utils::Win32::WinHttp::Response Utils::Win32::WinHttp::Get(const std::string& ur
 			GlobalFree(proxyInfo.lpszProxy);
 		}
 		if (proxyInfo.lpszProxyBypass) {
-			for (const auto& v : Utils::StringSplit<std::wstring>(Utils::StringReplaceAll<std::wstring>(proxyInfo.lpszProxyBypass, L";", L" "), L" ")) {
+			for (const auto& v : xivres::util::split(xivres::util::replace(std::wstring(proxyInfo.lpszProxyBypass), std::wstring(L";"), std::wstring(L" ")), std::wstring(L" "))) {
 				if (lstrcmpiW(v.c_str(), hostName.c_str()) == 0) {
 					proxyUrl.clear();
 					break;

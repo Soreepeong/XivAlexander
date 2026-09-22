@@ -3,7 +3,7 @@
   "version-string": "1.10",
   "homepage": "https://github.com/Soreepeong/XivAlexander",
   "description": "Double weaving on high latency.",
-  "builtin-baseline": "386d7c478221b7ee0c97bfe6ea61dcf65121d564",
+  "builtin-baseline": "5f96cd15fd745122cf27e0524606d6c1efc5fd07",
   "dependencies": [
     "zlib",
     "scintilla",
@@ -13,6 +13,14 @@
     "argparse",
     "libzippp",
     "srell",
-    "lexilla"
+    "lexilla",
+    {
+      "name": "minizip",
+      "features": [
+        "unofficial-iowin32"
+      ]
+    },
+    "libflac",
+    "soxr"
   ]
 }

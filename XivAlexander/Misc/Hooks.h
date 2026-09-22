@@ -1,13 +1,13 @@
 #pragma once
 
-#include <XivAlexanderCommon/Utils/CallOnDestruction.h>
-#include <XivAlexanderCommon/Utils/Win32/HeapAllocator.h>
-#include <XivAlexanderCommon/Utils/Win32/Process.h>
-#include <XivAlexanderCommon/Utils/Signatures.h>
+#include <xivres/util.on_dtor.h>
+#include "Utils/Win32/HeapAllocator.h"
+#include "Utils/Win32/Process.h"
+#include "Game/Signatures.h"
 
 namespace XivAlexander::Misc::Hooks {
 
-	using namespace Utils::Signatures;
+	using namespace XivAlexander::Game::Signatures;
 
 	class Binder {
 	public:
@@ -39,14 +39,14 @@ namespace XivAlexander::Misc::Hooks {
 	};
 
 	template<typename R, typename ...Args>
-	class Function : public Signature<R(_stdcall*)(Args...)> {
+	class Function : public Signature<R(*)(Args...)> {
 	protected:
-		typedef R(__stdcall* FunctionType)(Args...);
+		typedef R(*FunctionType)(Args...);
 
 		FunctionType m_bridge = nullptr;
 		std::function<std::remove_pointer_t<FunctionType>> m_detour = nullptr;
 
-		static R __stdcall DetouredGatewayTemplateFunction(Args...args) {
+		static R DetouredGatewayTemplateFunction(Args...args) {
 			const volatile auto target = reinterpret_cast<Function<R, Args...>*>(Binder::DummyAddress);
 			return target->DetouredGateway(args...);
 		}
@@ -78,7 +78,7 @@ namespace XivAlexander::Misc::Hooks {
 			return true;
 		}
 
-		Utils::CallOnDestruction SetHook(std::function<std::remove_pointer_t<FunctionType>> pfnDetour) {
+		xivres::util::on_dtor SetHook(std::function<std::remove_pointer_t<FunctionType>> pfnDetour) {
 			if (!pfnDetour)
 				throw std::invalid_argument("pfnDetour cannot be null");
 			if (m_detour)
@@ -86,7 +86,7 @@ namespace XivAlexander::Misc::Hooks {
 			m_detour = std::move(pfnDetour);
 			HookEnable();
 
-			return Utils::CallOnDestruction([this, m_destructed = m_destructed]() {
+			return xivres::util::on_dtor([this, m_destructed = m_destructed]() {
 				if (*m_destructed)
 					return;
 
@@ -98,7 +98,7 @@ namespace XivAlexander::Misc::Hooks {
 	protected:
 		std::atomic_size_t m_hookCounter{};
 
-		Utils::CallOnDestruction AcquireHookCounter() {
+		xivres::util::on_dtor AcquireHookCounter() {
 			m_hookCounter++;
 			return { [this]() {
 				m_hookCounter--;
@@ -146,6 +146,19 @@ namespace XivAlexander::Misc::Hooks {
 		}
 	};
 
+	template<typename TFunctionPointer>
+	struct PointerFunctionOfImpl;
+
+	template<typename R, typename ...Args>
+	struct PointerFunctionOfImpl<R(*)(Args...)> {
+		using Type = PointerFunction<R, Args...>;
+	};
+
+	/// The hook for a function pointer type, so that its signature need not be spelled out again;
+	/// e.g. PointerFunctionOf<decltype(Game::SoundVoiceFunctions::Submit)>.
+	template<typename TFunctionPointer>
+	using PointerFunctionOf = typename PointerFunctionOfImpl<std::remove_cvref_t<TFunctionPointer>>::Type;
+
 	template<typename R, typename ...Args>
 	class ImportedFunction : public Function<R, Args...> {
 		using Function<R, Args...>::FunctionType;
@@ -160,10 +173,6 @@ namespace XivAlexander::Misc::Hooks {
 		[[nodiscard]] bool IsDisableable() const final {
 			return *reinterpret_cast<void**>(this->m_pAddress) == this->m_binder.GetBinder()
 				|| *reinterpret_cast<void**>(this->m_pAddress) == this->m_bridge;
-		}
-
-		operator bool() const {
-			return this->m_pAddress;
 		}
 
 		R operator()(Args...args) const override {

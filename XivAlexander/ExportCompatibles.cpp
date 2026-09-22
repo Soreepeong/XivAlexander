@@ -4,8 +4,8 @@
 
 #include <dinput.h>
 #include <XivAlexander/XivAlexander.h>
-#include <XivAlexanderCommon/Sqex/CommandLine.h>
-#include <XivAlexanderCommon/Utils/Win32.h>
+#include "Game/CommandLine.h"
+#include "Utils/Win32.h"
 
 #include "Config.h"
 

@@ -1,32 +1,35 @@
 #include "pch.h"
 #include "Misc/Logger.h"
 
-#include <XivAlexanderCommon/Sqex/CommandLine.h>
-#include <XivAlexanderCommon/Utils/Win32/Handle.h>
-#include <XivAlexanderCommon/Utils/Win32/Process.h>
-#include <XivAlexanderCommon/Utils/Win32/Resource.h>
+#include "Game/CommandLine.h"
+#include "Utils/Win32/Handle.h"
+#include "Utils/Win32/Process.h"
+#include "Utils/Win32/Resource.h"
 
 #include "Config.h"
 #include "resource.h"
 #include "XivAlexander.h"
 
 const std::map<XivAlexander::LogCategory, const char*> XivAlexander::Misc::Logger::LogCategoryNames{
-	{XivAlexander::LogCategory::General, "General"},
-	{XivAlexander::LogCategory::SocketHook, "SocketHook"},
-	{XivAlexander::LogCategory::AllIpcMessageLogger, "AllIpcMessageLogger"},
-	{XivAlexander::LogCategory::NetworkTimingHandler, "NetworkTimingHandler"},
-	{XivAlexander::LogCategory::IpcTypeFinder, "IpcTypeFinder"},
-	{XivAlexander::LogCategory::GameResourceOverrider, "GameResourceOverrider"},
-	{XivAlexander::LogCategory::VirtualSqPacks, "VirtualSqPacks"},
-	{XivAlexander::LogCategory::MusicImporter, "MusicImporter"},
-	{XivAlexander::LogCategory::PatchCode, "PatchCode"},
-	{XivAlexander::LogCategory::OpcodeGuesser, "OpcodeGuesser"},
+	{LogCategory::General, "General"},
+	{LogCategory::SocketHook, "SocketHook"},
+	{LogCategory::AllIpcMessageLogger, "AllIpcMessageLogger"},
+	{LogCategory::NetworkTimingHandler, "NetworkTimingHandler"},
+	{LogCategory::IpcTypeFinder, "IpcTypeFinder"},
+	{LogCategory::GameResourceOverrider, "GameResourceOverrider"},
+	{LogCategory::VirtualSqPacks, "VirtualSqPacks"},
+	{LogCategory::MusicImporter, "MusicImporter"},
+	{LogCategory::PatchCode, "PatchCode"},
+	{LogCategory::OpcodeGuesser, "OpcodeGuesser"},
+	{LogCategory::AltCodecMusic, "AltCodecMusic"},
+	{LogCategory::AudioResampler, "AudioResampler"},
+	{LogCategory::Signatures, "Signatures"},
 };
 
 std::weak_ptr<XivAlexander::Misc::Logger> XivAlexander::Misc::Logger::s_instance;
 
 struct XivAlexander::Misc::Logger::Implementation final {
-	static const int MaxLogCount = 128 * 1024;
+	static constexpr int MaxLogCount = 128 * 1024;
 	Logger& logger;
 	std::condition_variable m_threadTrigger;
 
@@ -51,7 +54,9 @@ struct XivAlexander::Misc::Logger::Implementation final {
 
 	void AddLogItem(LogItem item) {
 		std::lock_guard lock(m_pendingItemLock);
-		item.id = m_logIdCounter++;
+		item.Id = m_logIdCounter++;
+		if (UseStderr())
+			WriteStderr(item.Format());
 		if (m_hDispatcherThread) {
 			m_pendingItems.push_back(std::move(item));
 			while (m_pendingItems.size() > MaxLogCount)
@@ -72,20 +77,20 @@ struct XivAlexander::Misc::Logger::Implementation final {
 
 		m_hDispatcherThread = Utils::Win32::Thread(std::format(L"XivAlexander::App::Misc::Logger({:x})::Implementation({:x}::DispatcherThreadBody",
 			reinterpret_cast<size_t>(&logger), reinterpret_cast<size_t>(this)
-		), [this]() {
+		), [this] {
 			while (true) {
 				std::deque<LogItem> pendingItems;
 				{
-					std::unique_lock lock(m_pendingItemLock);
+					std::unique_lock pendingLock(m_pendingItemLock);
 					if (m_pendingItems.empty()) {
-						m_threadTrigger.wait(lock);
+						m_threadTrigger.wait(pendingLock);
 						if (m_bQuitting)
 							return;
 					}
 					pendingItems = std::move(m_pendingItems);
 				}
 				{
-					std::lock_guard lock(m_itemLock);
+					std::lock_guard itemLock(m_itemLock);
 					for (auto& item : pendingItems) {
 						m_items.push_back(item);
 						if (m_items.size() > MaxLogCount)
@@ -105,7 +110,7 @@ public:
 };
 
 SYSTEMTIME XivAlexander::Misc::Logger::LogItem::TimestampAsLocalSystemTime() const {
-	return Utils::EpochToLocalSystemTime(std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count());
+	return Utils::EpochToLocalSystemTime(std::chrono::duration_cast<std::chrono::milliseconds>(Timestamp.time_since_epoch()).count());
 }
 
 std::string XivAlexander::Misc::Logger::LogItem::Format() const {
@@ -114,8 +119,8 @@ std::string XivAlexander::Misc::Logger::LogItem::Format() const {
 		st.wYear, st.wMonth, st.wDay,
 		st.wHour, st.wMinute, st.wSecond,
 		st.wMilliseconds,
-		LogCategoryNames.at(category),
-		log);
+		LogCategoryNames.at(Category),
+		Log);
 }
 
 XivAlexander::Misc::Logger::Logger()
@@ -141,6 +146,24 @@ std::shared_ptr<XivAlexander::Misc::Logger> XivAlexander::Misc::Logger::Acquire(
 	return r;
 }
 
+bool XivAlexander::Misc::Logger::UseStderr() {
+	static const bool s_enabled = [] {
+		wchar_t buf[8];
+		return 0 != GetEnvironmentVariableW(L"XIVALEXANDER_STDERR", buf, std::size(buf));
+	}();
+	return s_enabled;
+}
+
+void XivAlexander::Misc::Logger::WriteStderr(std::string_view line) {
+	const auto h = GetStdHandle(STD_ERROR_HANDLE);
+	if (!h || h == INVALID_HANDLE_VALUE)
+		return;
+
+	DWORD written;
+	WriteFile(h, line.data(), static_cast<DWORD>(line.size()), &written, nullptr);
+	WriteFile(h, "\r\n", 2, &written, nullptr);
+}
+
 XivAlexander::Misc::Logger::~Logger() {
 	Utils::Win32::DebugPrint(L"Logger: Destroy");
 }
@@ -154,22 +177,22 @@ void XivAlexander::Misc::Logger::Log(LogCategory category, const char8_t* s, Log
 }
 
 void XivAlexander::Misc::Logger::Log(LogCategory category, const wchar_t* s, LogLevel level) {
-	Log(category, Utils::ToUtf8(s), level);
+	Log(category, xivres::util::unicode::convert<std::string>(s), level);
 }
 
 void XivAlexander::Misc::Logger::Log(LogCategory category, const std::string& s, LogLevel level) {
 	OutputDebugStringW(std::format(L"{}\n", s).c_str());
 	m_pImpl->AddLogItem(LogItem{
-		0,
-		category,
-		std::chrono::system_clock::now(),
-		level,
-		s,
+		.Id = 0,
+		.Category = category,
+		.Timestamp = std::chrono::system_clock::now(),
+		.Level = level,
+		.Log = s,
 	});
 }
 
 void XivAlexander::Misc::Logger::Log(LogCategory category, const std::wstring& s, LogLevel level) {
-	Log(category, Utils::ToUtf8(s), level);
+	Log(category, xivres::util::unicode::convert<std::string>(s), level);
 }
 
 void XivAlexander::Misc::Logger::Log(LogCategory category, WORD wLanguage, UINT uStringResId, LogLevel level) {
@@ -185,8 +208,8 @@ void XivAlexander::Misc::Logger::Clear() {
 
 void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::string_view heading, std::string_view preformatted) {
 	static const COMDLG_FILTERSPEC saveFileTypes[] = {
-		{FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_LOGFILES) + 1, L"*.log"},
-		{FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_ALLFILES) + 1, L"*.*"},
+		{.pszName = FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_LOGFILES) + 1, .pszSpec = L"*.log"},
+		{.pszName = FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_ALLFILES) + 1, .pszSpec = L"*.*"},
 	};
 
 	try {
@@ -225,7 +248,7 @@ void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::st
 			of << "\nCommand Line:\n";
 			try {
 				of << std::format("{}\n", Utils::Win32::Process::Current().PathOf().wstring());
-				for (auto& [k, v] : Sqex::CommandLine::FromString(Dll::GetOriginalCommandLine())) {
+				for (auto& [k, v] : Game::CommandLine::FromString(Dll::GetOriginalCommandLine())) {
 					if (k == "DEV.TestSID") {
 						for (auto& c : v)
 							c = '*';
@@ -240,7 +263,7 @@ void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::st
 			of << "\nEnvironment Variables:\n";
 			{
 				auto ptr = GetEnvironmentStringsW();
-				const auto ptrFree = Utils::CallOnDestruction([ptr]() { FreeEnvironmentStringsW(ptr); });
+				const auto ptrFree = xivres::util::on_dtor([ptr] { FreeEnvironmentStringsW(ptr); });
 				while (*ptr) {
 					const auto part = std::wstring(ptr);
 					of << std::format("{}\n", part);
@@ -274,7 +297,7 @@ void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::st
 						&cbTranslate))
 						continue;
 
-					for (size_t i = 0; i < (cbTranslate / sizeof(struct LANGANDCODEPAGE)); i++) {
+					for (size_t i = 0; i < cbTranslate / sizeof(LANGANDCODEPAGE); i++) {
 						wchar_t* buf = nullptr;
 						UINT size = 0;
 						if (!VerQueryValueW(lpVersionInfo,
@@ -310,7 +333,7 @@ void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::st
 					of << "\nInit Config:\n";
 					try {
 						const auto h = Utils::Win32::Handle::FromCreateFile(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING);
-						const auto buf = h.Read<char>(0, static_cast<size_t>(std::min<uint64_t>(h.GetFileSize(), 1048576)));
+						const auto buf = h.Read<char>(0, std::min<uint64_t>(h.GetFileSize(), 1048576));
 						of << std::string_view(buf.begin(), buf.end()) << "\n";
 					} catch (const std::exception& e) {
 						of << std::format("ERROR: Failed to read config file at {}: {}\n", path.wstring(), e.what());
@@ -320,7 +343,7 @@ void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::st
 					of << "\nRuntime Config:\n";
 					try {
 						const auto h = Utils::Win32::Handle::FromCreateFile(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING);
-						const auto buf = h.Read<char>(0, static_cast<size_t>(std::min<uint64_t>(h.GetFileSize(), 1048576)));
+						const auto buf = h.Read<char>(0, std::min<uint64_t>(h.GetFileSize(), 1048576));
 						of << std::string_view(buf.begin(), buf.end()) << "\n";
 					} catch (const std::exception& e) {
 						of << std::format("ERROR: Failed to read config file at {}: {}\n", path.wstring(), e.what());
@@ -330,7 +353,7 @@ void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::st
 					of << "\nOpcode Config:\n";
 					try {
 						const auto h = Utils::Win32::Handle::FromCreateFile(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING);
-						const auto buf = h.Read<char>(0, static_cast<size_t>(std::min<uint64_t>(h.GetFileSize(), 1048576)));
+						const auto buf = h.Read<char>(0, std::min<uint64_t>(h.GetFileSize(), 1048576));
 						of << std::string_view(buf.begin(), buf.end()) << "\n";
 					} catch (const std::exception& e) {
 						of << std::format("ERROR: Failed to read config file at {}: {}\n", path.wstring(), e.what());
@@ -359,7 +382,7 @@ void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::st
 				throw Utils::Win32::Error("ShellExecuteExW");
 		}
 
-	} catch (const Utils::Win32::CancelledError&) {
+	} catch (const Utils::Win32::CancelledError&) {  // NOLINT(bugprone-empty-catch)
 		// pass
 
 	} catch (const std::exception& e) {

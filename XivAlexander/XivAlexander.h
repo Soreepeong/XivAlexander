@@ -3,7 +3,7 @@
 #ifndef XIVALEXANDER_DLLEXPORT
 
 #include <minwindef.h>
-#include <XivAlexanderCommon/Utils/Win32/Process.h>
+#include "Utils/Win32/Process.h"
 
 #ifdef XIVALEXANDER_DLLEXPORT_SET
 #define XIVALEXANDER_DLLEXPORT __declspec(dllexport)
@@ -50,7 +50,7 @@ namespace Dll {
 
 	template <typename ... Args>
 	int MessageBoxF(HWND hWnd, UINT uType, const char* format, Args&& ... args) {
-		return MessageBoxF(hWnd, uType, FromUtf8(std::vformat(format, std::make_format_args(std::forward<Args&>(args)...))).c_str());
+		return MessageBoxF(hWnd, uType, xivres::util::unicode::convert<std::wstring>(std::vformat(format, std::make_format_args(std::forward<Args&>(args)...))).c_str());
 	}
 
 	std::wstring GetOriginalCommandLine();
@@ -110,7 +110,7 @@ namespace Dll {
 		};
 	};
 
-	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall EnableInjectOnCreateProcess(size_t flags);
+	extern "C" XIVALEXANDER_DLLEXPORT size_t EnableInjectOnCreateProcess(size_t flags);
 
 	struct InjectEntryPointParameters {
 		void* EntryPoint;
@@ -120,11 +120,11 @@ namespace Dll {
 		bool LoadInstalledXivAlexDllOnly;
 	};
 
-	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall InjectEntryPoint(InjectEntryPointParameters* pParam);
-	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall EnableXivAlexander(size_t bEnable);
-	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall ReloadConfiguration(void* lpReserved);
-	extern "C" XIVALEXANDER_DLLEXPORT size_t __stdcall DisableAllApps(void* lpReserved);
-	extern "C" XIVALEXANDER_DLLEXPORT void __stdcall CallFreeLibrary(void*);
+	extern "C" XIVALEXANDER_DLLEXPORT void InjectEntryPoint(InjectEntryPointParameters* pParam);
+	extern "C" XIVALEXANDER_DLLEXPORT size_t EnableXivAlexander(size_t bEnable);
+	extern "C" XIVALEXANDER_DLLEXPORT size_t ReloadConfiguration(void* lpReserved);
+	extern "C" XIVALEXANDER_DLLEXPORT size_t DisableAllApps(void* lpReserved);
+	extern "C" XIVALEXANDER_DLLEXPORT void CallFreeLibrary(void*);
 
 	enum class CheckPackageVersionResult {
 		OK = 0,

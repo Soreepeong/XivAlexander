@@ -1,7 +1,6 @@
 #pragma once
 
-#include <XivAlexanderCommon/Utils/ListenerManager.h>
-#include <XivAlexanderCommon/Utils/Win32/Resource.h>
+#include <xivres/util.listener_manager.h>
 
 namespace XivAlexander {
 	enum class LogLevel {
@@ -22,6 +21,9 @@ namespace XivAlexander {
 		MusicImporter,
 		PatchCode,
 		OpcodeGuesser,
+		AltCodecMusic,
+		AudioResampler,
+		Signatures,
 	};
 }
 
@@ -31,11 +33,11 @@ namespace XivAlexander::Misc {
 		static const std::map<LogCategory, const char*> LogCategoryNames;
 
 		struct LogItem {
-			uint64_t id;
-			LogCategory category;
-			std::chrono::system_clock::time_point timestamp;
-			LogLevel level;
-			std::string log;
+			uint64_t Id;
+			LogCategory Category;
+			std::chrono::system_clock::time_point Timestamp;
+			LogLevel Level;
+			std::string Log;
 
 			[[nodiscard]] SYSTEMTIME TimestampAsLocalSystemTime() const;
 			[[nodiscard]] std::string Format() const;
@@ -52,6 +54,8 @@ namespace XivAlexander::Misc {
 
 	public:
 		static std::shared_ptr<Logger> Acquire();
+		static bool UseStderr();
+		static void WriteStderr(std::string_view line);
 
 		Logger(Logger&&) = delete;
 		Logger(const Logger&) = delete;
@@ -70,7 +74,7 @@ namespace XivAlexander::Misc {
 		void AskAndExportLogs(HWND hwndDialogParent, std::string_view heading = std::string_view(), std::string_view preformatted = std::string_view());
 
 		void WithLogs(const std::function<void(const std::deque<LogItem>& items)>& cb) const;
-		Utils::ListenerManager<Logger, void, const std::deque<LogItem>&> OnNewLogItem;
+		xivres::util::listener_manager<Logger, void, const std::deque<LogItem>&> OnNewLogItem;
 
 		template <LogLevel Level = LogLevel::Info, typename ... Args>
 		void Format(LogCategory category, const char* format, Args&&...args) {

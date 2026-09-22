@@ -1,5 +1,7 @@
 enc_temp_folder
 
+/scratch/local
+
 # Ignore all IDEA related files for now
 .idea
 

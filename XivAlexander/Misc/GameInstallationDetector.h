@@ -1,12 +1,12 @@
 #pragma once
 
-#include <XivAlexanderCommon/Sqex.h>
+#include <xivres/common.h>
 
 namespace XivAlexander::Misc::GameInstallationDetector {
 	struct GameReleaseInfo {
 		std::string CountryCode;
 
-		Sqex::GameReleaseRegion Region{};
+		xivres::game_release_publisher Region{};
 		std::string GameVersion;
 		std::string PathSafeGameVersion;
 

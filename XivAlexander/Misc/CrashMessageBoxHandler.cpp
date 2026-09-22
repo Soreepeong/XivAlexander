@@ -4,10 +4,10 @@
 #include <XivAlexander/XivAlexander.h>
 
 #include "Config.h"
+#include "resource.h"
 #include "Misc/Hooks.h"
 #include "Misc/Logger.h"
-#include "resource.h"
-#include "XivAlexander.h"
+#include "Utils/Win32/Resource.h"
 
 static const std::wstring_view PossibleCrashMessageBoxTitle[]{
 	L"ファイナルファンタジーXIV", // Japanese
@@ -80,7 +80,7 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 	Hooks::ImportedFunction<int, HWND, LPCSTR, LPCSTR, UINT> MessageBoxA{ "user32!MessageBoxA", "user32.dll", "MessageBoxA" };
 	Hooks::PointerFunction<LPTOP_LEVEL_EXCEPTION_FILTER, LPTOP_LEVEL_EXCEPTION_FILTER> SetUnhandledExceptionFilter{ "kernel32!SetUnhandledExceptionFilter", ::SetUnhandledExceptionFilter };
 
-	Utils::CallOnDestruction::Multiple m_cleanup;
+	xivres::util::on_dtor::multi m_cleanup;
 
 	const std::wregex Whitespace{ LR"(\s+)" };
 
@@ -153,7 +153,6 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 			std::sort(modules.begin(), modules.end());
 			int n = 0;
 
-			int frame_number = 0;
 			IMAGEHLP_LINEW64 line = { .SizeOfStruct = sizeof line };
 			std::wostringstream builder;
 			do {
@@ -220,7 +219,7 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 		}
 		if (MessageBoxA) {
 			m_cleanup += MessageBoxA.SetHook([this](HWND hWndParent, LPCSTR body, LPCSTR title, UINT flags) {
-				return ProcessMessageBox(hWndParent, Utils::FromUtf8(body, CP_OEMCP), Utils::FromUtf8(title, CP_OEMCP), flags);
+				return ProcessMessageBox(hWndParent, Utils::FromAnsi(body), Utils::FromAnsi(title), flags);
 				});
 		}
 
@@ -289,6 +288,12 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 		// Prevent modal dialogues from processing messages for other windows
 
 		const auto newBody = std::format(L"Thread: {}\n\n{}", Utils::Win32::TryGetThreadDescription(GetCurrentThread()), message);
+
+		if (Logger::UseStderr()) {
+			Logger::WriteStderr(xivres::util::unicode::convert<std::string>(std::format(L"[{}] {}", title.empty() ? Dll::GetGenericMessageBoxTitle() : title, newBody)));
+			ExitProcess(1);
+		}
+
 		const auto okstr = Utils::Win32::MB_GetString(IDOK - 1);
 
 		Utils::Win32::Thread(L"ShowErrorMessageThread", [&]() {
@@ -324,7 +329,7 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 				.pszFooter = config->Runtime.GetStringRes(IDS_TITLE_UNRECOVERABLEERROR_FOOTER),
 				.pfCallback = [](HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, LONG_PTR lpRefData) -> HRESULT {
 					if (msg == TDN_BUTTON_CLICKED && wParam == 1001) {
-						Logger::Acquire()->AskAndExportLogs(hWnd, Utils::ToUtf8(*reinterpret_cast<std::wstring*>(lpRefData)));
+						Logger::Acquire()->AskAndExportLogs(hWnd, xivres::util::unicode::convert<std::string>(*reinterpret_cast<std::wstring*>(lpRefData)));
 						return S_FALSE;
 					} else if (msg == TDN_HYPERLINK_CLICKED) {
 						const auto target = std::wstring_view(reinterpret_cast<wchar_t*>(lParam));

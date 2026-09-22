@@ -244,15 +244,16 @@ BEGIN
             MENUITEM SEPARATOR
             MENUITEM "すべてを有効化(&E)",                 ID_MODDING_TTMP_ENABLEALL
             MENUITEM "すべてを無効化(&D)",                 ID_MODDING_TTMP_DISABLEALL
+            MENUITEM "すべてのMODパックを削除(&L)",           ID_MODDING_TTMP_REMOVEALL
             MENUITEM SEPARATOR
             MENUITEM "インポート(&I)",                   ID_MODDING_TTMP_IMPORT
             MENUITEM "フォルダーを開ける(&O)",               ID_MODDING_TTMP_OPENDIRECTORY
-            MENUITEM "すべてのMODパックを削除(&L)",           ID_MODDING_TTMP_REMOVEALL
             MENUITEM "再読み込み(&R)",                   ID_MODDING_TTMP_REFRESH
         END
         MENUITEM "置き換えファイルのフォルダーを開ける(&R)",      ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
         MENUITEM "TTMPL/TTMPDファイルに変換して保存(&O)",  ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
+        MENUITEM "別コーデックの.scdを再生可能にする(&C)", ID_MODDING_USEALTCODECMUSICSUPPORT
         MENUITEM "すべてのファイルのアクセスをログに記録(I)",      ID_MODDING_LOGALLFILEACCESS
         POPUP "声のミュート(&V)"
         BEGIN
@@ -580,6 +581,17 @@ BEGIN
     IDS_MENU_LOCKFRAMERATE_DISABLED "FPSの固定：未使用"
     IDS_MENU_LOCKFRAMERATE_AUTOMATIC "FPSの固定：自動"
     IDS_MENU_NETWORKLATENCYHANDLEMODE_2 "モード&2：サーバからの応答にかかる時間を{}usに固定"
+    IDS_MENU_TTMP_PROFILE "プロフィール"
+    IDS_MENU_MODDING_SAMPLINGRATE "オーディオサンプリングレート(&S)"
+    IDS_MENU_SAMPLINGRATE_MATCHDEVICE "Windowsの既定のオーディオ出力デバイスに合わせる ({}Hz)(&0)"
+    IDS_MENU_SAMPLINGRATE_MATCHDEVICE_UNKNOWN "Windowsの既定のオーディオ出力デバイスに合わせる(&0)"
+    IDS_MENU_SAMPLINGRATE_RATE "{}(&{})"
+    IDS_MENU_SAMPLINGRATE_RATE_DEFAULT "{} (既定)(&{})"
+    IDS_MENU_RESAMPLER_BUILTIN "内蔵の線形リサンプラー (既定)(&B)"
+    IDS_MENU_RESAMPLER_SOXR "SoXリサンプラー(&S)"
+    IDS_MENU_RESAMPLER_WINDOWEDSINC "窓付きsincリサンプラー(&W)"
+    IDS_MENU_RESAMPLER_R8BRAIN "r8brainリサンプラー(&R)"
+    IDS_MENU_RESAMPLER_ART "ARTリサンプラー(&A)"
     IDS_OPCODEUPDATE_ERROR_404 "Opcodeの設定がまだアップデートされていません。後でもう一度してください。"
     IDS_OPCODEUPDATE_OK_NOTCHANGED "現在のOpcodeの設定がもう最新です。"
     IDS_OPCODEUPDATE_OK_CHANGED "Opcodeの設定をアップデートしました。"
@@ -756,10 +768,6 @@ BEGIN
     BEGIN
         MENUITEM "사용(&E)",                      ID_MODDING_ENABLE
         MENUITEM SEPARATOR
-        MENUITEM "모든 파일 접근 기록하기(&I)",           ID_MODDING_LOGALLFILEACCESS
-        MENUITEM "교체 파일 폴더 열기(&R)",             ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
-        MENUITEM "TTMPL/TTMPD파일로 내보내기(&O)",     ID_MODDING_EXPORTTOTTMP
-        MENUITEM SEPARATOR
         POPUP "TexTools 모드팩(&T)"
         BEGIN
             POPUP "(template entry to be inserted at bottom)"
@@ -780,12 +788,17 @@ BEGIN
             MENUITEM SEPARATOR
             MENUITEM "모두 활성화(&E)",                  ID_MODDING_TTMP_ENABLEALL
             MENUITEM "모두 비활성화(&D)",                 ID_MODDING_TTMP_DISABLEALL
+            MENUITEM "모두 제거(&L)",                   ID_MODDING_TTMP_REMOVEALL
             MENUITEM SEPARATOR
             MENUITEM "불러오기(&I)",                    ID_MODDING_TTMP_IMPORT
             MENUITEM "폴더 열기(&O)",                   ID_MODDING_TTMP_OPENDIRECTORY
-            MENUITEM "모두 제거(&L)",                   ID_MODDING_TTMP_REMOVEALL
             MENUITEM "목록 다시 불러오기(&R)",              ID_MODDING_TTMP_REFRESH
         END
+        MENUITEM "교체 파일 폴더 열기(&R)",             ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
+        MENUITEM "TTMPL/TTMPD파일로 내보내기(&O)",     ID_MODDING_EXPORTTOTTMP
+        MENUITEM SEPARATOR
+        MENUITEM "타 코덱 포함 음악 .scd 지원(&C)", ID_MODDING_USEALTCODECMUSICSUPPORT
+        MENUITEM "모든 파일 접근 기록하기(&I)",           ID_MODDING_LOGALLFILEACCESS
         POPUP "목소리 분류 음소거(&V)"
         BEGIN
             MENUITEM "전투(&B)",                      ID_MODDING_MUTEVOICE_BATTLE
@@ -1181,6 +1194,17 @@ BEGIN
     IDS_MENU_LOCKFRAMERATE_DISABLED "FPS 고정 사용 안함"
     IDS_MENU_LOCKFRAMERATE_AUTOMATIC "FPS 고정: 자동"
     IDS_MENU_NETWORKLATENCYHANDLEMODE_2 "모드 &2: 서버 응답 시간을 {}us로 고정"
+    IDS_MENU_TTMP_PROFILE "프로파일"
+    IDS_MENU_MODDING_SAMPLINGRATE "오디오 샘플링 레이트(&S)"
+    IDS_MENU_SAMPLINGRATE_MATCHDEVICE "Windows 기본 오디오 출력 장치에 맞춤 ({}Hz)(&0)"
+    IDS_MENU_SAMPLINGRATE_MATCHDEVICE_UNKNOWN "Windows 기본 오디오 출력 장치에 맞춤(&0)"
+    IDS_MENU_SAMPLINGRATE_RATE "{}(&{})"
+    IDS_MENU_SAMPLINGRATE_RATE_DEFAULT "{} (기본값)(&{})"
+    IDS_MENU_RESAMPLER_BUILTIN "내장 선형 리샘플러 (기본값)(&B)"
+    IDS_MENU_RESAMPLER_SOXR "SoX 리샘플러(&S)"
+    IDS_MENU_RESAMPLER_WINDOWEDSINC "Windowed Sinc 리샘플러(&W)"
+    IDS_MENU_RESAMPLER_R8BRAIN "r8brain 리샘플러(&R)"
+    IDS_MENU_RESAMPLER_ART "ART 리샘플러(&A)"
     IDS_OPCODEUPDATE_ERROR_404 "옵코드 설정이 아직 업데이트되지 않았습니다. 나중에 다시 시도해 주세요."
     IDS_OPCODEUPDATE_OK_NOTCHANGED "현재 옵코드 설정이 이미 최신입니다."
     IDS_OPCODEUPDATE_OK_CHANGED "옵코드 설정이 업데이트되었습니다."
@@ -1386,6 +1410,7 @@ BEGIN
         MENUITEM "Open &Replacement File Entries Directory", ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
         MENUITEM "Exp&ort to TTMPL/TTMPD Files", ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
+        MENUITEM "Support Alternate &Codecs for Musics", ID_MODDING_USEALTCODECMUSICSUPPORT
         MENUITEM "Log All F&ile Access",        ID_MODDING_LOGALLFILEACCESS
         POPUP "Mute &Voice"
         BEGIN
@@ -1919,6 +1944,17 @@ BEGIN
     IDS_MENU_LOCKFRAMERATE_DISABLED "Lock Framerate: Disabled"
     IDS_MENU_LOCKFRAMERATE_AUTOMATIC "Lock Framerate: Automatic"
     IDS_MENU_NETWORKLATENCYHANDLEMODE_2 "Mode &2: Simulate RTT ({}us)"
+    IDS_MENU_TTMP_PROFILE "Profile"
+    IDS_MENU_MODDING_SAMPLINGRATE "Audio &Sampling Rate"
+    IDS_MENU_SAMPLINGRATE_MATCHDEVICE "Match Default Windows Audio Output Device ({}Hz)(&0)"
+    IDS_MENU_SAMPLINGRATE_MATCHDEVICE_UNKNOWN "Match Default Windows Audio Output Device(&0)"
+    IDS_MENU_SAMPLINGRATE_RATE "{}(&{})"
+    IDS_MENU_SAMPLINGRATE_RATE_DEFAULT "{} (default)(&{})"
+    IDS_MENU_RESAMPLER_BUILTIN "&Built-in Linear Resampler (default)"
+    IDS_MENU_RESAMPLER_SOXR "&SoX Resampler"
+    IDS_MENU_RESAMPLER_WINDOWEDSINC "&Windowed Sinc Resampler"
+    IDS_MENU_RESAMPLER_R8BRAIN "&r8brain Resampler"
+    IDS_MENU_RESAMPLER_ART "&ART Resampler"
     IDS_OPCODEUPDATE_ERROR_404 
                             "No updated opcodes file has been found. Please try again later."
     IDS_OPCODEUPDATE_OK_NOTCHANGED "Your current opcode file is up to date."

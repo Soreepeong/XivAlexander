@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Misc/GameInstallationDetector.h"
 
-#include "XivAlexanderCommon/Utils/Win32/Process.h"
+#include "Utils/Win32/Process.h"
 
 static std::string TestPublisher(const std::filesystem::path& path) {
 	// See: https://docs.microsoft.com/en-US/troubleshoot/windows/win32/get-information-authenticode-signed-executables
@@ -11,7 +11,7 @@ static std::string TestPublisher(const std::filesystem::path& path) {
 	HCERTSTORE hStore = nullptr;
 	HCRYPTMSG hMsg = nullptr;
 	DWORD dwEncoding = 0, dwContentType = 0, dwFormatType = 0;
-	std::vector<Utils::CallOnDestruction> cleanupList;
+	std::vector<xivres::util::on_dtor> cleanupList;
 	if (!CryptQueryObject(CERT_QUERY_OBJECT_FILE,
 		path.c_str(),
 		CERT_QUERY_CONTENT_FLAG_PKCS7_SIGNED_EMBED,
@@ -59,7 +59,7 @@ static std::string TestPublisher(const std::filesystem::path& path) {
 	country.resize(CertGetNameStringW(pCertContext, CERT_NAME_ATTR_TYPE, 0, pvTypePara, nullptr, 0));
 	country.resize(CertGetNameStringW(pCertContext, CERT_NAME_ATTR_TYPE, 0, pvTypePara, &country[0], static_cast<DWORD>(country.size())) - 1);
 
-	return Utils::ToUtf8(country);
+	return xivres::util::unicode::convert<std::string>(country);
 }
 
 static std::wstring ReadRegistryAsString(const wchar_t* lpSubKey, const wchar_t* lpValueName, int mode = 0) {
@@ -74,7 +74,7 @@ static std::wstring ReadRegistryAsString(const wchar_t* lpSubKey, const wchar_t*
 		lpSubKey,
 		0, KEY_READ | mode, &hKey))
 		return {};
-	Utils::CallOnDestruction c([hKey] { RegCloseKey(hKey); });
+	xivres::util::on_dtor c([hKey] { RegCloseKey(hKey); });
 
 	DWORD buflen = 0;
 	if (RegQueryValueExW(hKey, lpValueName, nullptr, nullptr, nullptr, &buflen))
@@ -135,7 +135,7 @@ XivAlexander::Misc::GameInstallationDetector::GameReleaseInfo XivAlexander::Misc
 	if (!publisherCountries.empty()) {
 		result.CountryCode = std::ranges::max_element(publisherCountries)->first;
 		if (result.CountryCode == "JP") {
-			result.Region = Sqex::GameReleaseRegion::International;
+			result.Region = xivres::game_release_publisher::SquareEnix;
 			result.BootAppDirectlyInjectable = true;
 #if INTPTR_MAX == INT32_MAX
 			result.BootApp = result.RootPath / L"boot" / L"ffxivboot.exe";
@@ -154,7 +154,7 @@ XivAlexander::Misc::GameInstallationDetector::GameReleaseInfo XivAlexander::Misc
 			};
 
 		} else if (result.CountryCode == "CN") {
-			result.Region = Sqex::GameReleaseRegion::Chinese;
+			result.Region = xivres::game_release_publisher::ShandaGames;
 			result.BootApp = result.RootPath / L"FFXIVBoot.exe";
 			result.BootAppRequiresAdmin = true;
 			result.BootAppDirectlyInjectable = true;
@@ -168,7 +168,7 @@ XivAlexander::Misc::GameInstallationDetector::GameReleaseInfo XivAlexander::Misc
 			};
 
 		} else if (result.CountryCode == "KR") {
-			result.Region = Sqex::GameReleaseRegion::Korean;
+			result.Region = xivres::game_release_publisher::ActozSoft;
 			result.BootApp = result.RootPath / L"boot" / L"FFXIV_Boot.exe";
 			result.BootAppRequiresAdmin = true;
 			result.BootAppDirectlyInjectable = true;

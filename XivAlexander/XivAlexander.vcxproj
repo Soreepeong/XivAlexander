@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -48,7 +48,7 @@
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>$(ProjectDir);$(SolutionDir);$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir);$(SolutionDir);$(SolutionDir)xivres\xivres\include\;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
     <LibraryPath>$(OutDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
@@ -56,7 +56,7 @@
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>$(ProjectDir);$(SolutionDir);$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir);$(SolutionDir);$(SolutionDir)xivres\xivres\include\;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
     <LibraryPath>$(OutDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
@@ -95,7 +95,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>DbgHelp.lib;uxtheme.lib;Dwmapi.lib;Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;Winhttp.lib;Security.lib;Secur32.lib;XivAlexanderCommon$(PlatformArchitecture).lib;Scintilla.lib;Lexilla.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>DbgHelp.lib;uxtheme.lib;Dwmapi.lib;Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;Winhttp.lib;Security.lib;Secur32.lib;Scintilla.lib;Lexilla.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
       <ModuleDefinitionFile>Exports_x64.def</ModuleDefinitionFile>
       <DelayLoadDLLs>
@@ -143,7 +143,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>DbgHelp.lib;uxtheme.lib;Dwmapi.lib;Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;Winhttp.lib;Security.lib;Secur32.lib;XivAlexanderCommon$(PlatformArchitecture).lib;Scintilla.lib;Lexilla.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>DbgHelp.lib;uxtheme.lib;Dwmapi.lib;Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;Winhttp.lib;Security.lib;Secur32.lib;Scintilla.lib;Lexilla.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
       <ModuleDefinitionFile>Exports_x64.def</ModuleDefinitionFile>
       <DelayLoadDLLs>
@@ -169,85 +169,211 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Apps\EntryPointApp\App.cpp" />
-    <ClCompile Include="Apps\LoaderApp\App.cpp" />
-    <ClCompile Include="Apps\LoaderApp\Actions\Inject.cpp" />
-    <ClCompile Include="Apps\LoaderApp\Actions\InstallUninstall.cpp" />
-    <ClCompile Include="Apps\LoaderApp\Actions\Interactive.cpp" />
-    <ClCompile Include="Apps\LoaderApp\Actions\LoadUnload.cpp" />
-    <ClCompile Include="Apps\LoaderApp\Actions\RunLauncher.cpp" />
-    <ClCompile Include="Apps\LoaderApp\Actions\Update.cpp" />
-    <ClCompile Include="Apps\LoaderApp\Arguments.cpp" />
-    <ClCompile Include="Apps\MainApp\App.cpp" />
-    <ClCompile Include="Apps\MainApp\Internal\GameResourceOverrider.cpp" />
-    <ClCompile Include="Apps\MainApp\Internal\MainThreadTimingHandler.cpp" />
-    <ClCompile Include="Apps\MainApp\Internal\PatchCode.cpp" />
-    <ClCompile Include="Apps\MainApp\Window\ThemeColors.cpp" />
+    <ClCompile Include="EntryPointApp\App.cpp" />
+    <ClCompile Include="LoaderApp\App.cpp" />
+    <ClCompile Include="LoaderApp\Actions\Inject.cpp" />
+    <ClCompile Include="LoaderApp\Actions\InstallUninstall.cpp" />
+    <ClCompile Include="LoaderApp\Actions\Interactive.cpp" />
+    <ClCompile Include="LoaderApp\Actions\LoadUnload.cpp" />
+    <ClCompile Include="LoaderApp\Actions\RunLauncher.cpp" />
+    <ClCompile Include="LoaderApp\Actions\Update.cpp" />
+    <ClCompile Include="LoaderApp\Arguments.cpp" />
+    <ClCompile Include="MainApp\AltCodecMusicDecoders\FlacDecoder.cpp" />
+    <ClCompile Include="MainApp\AltCodecMusicDecoders\WavDecoder.cpp" />
+    <ClCompile Include="MainApp\App.cpp" />
+    <ClCompile Include="MainApp\AudioResamplers\ArtResampler.cpp" />
+    <ClCompile Include="MainApp\AudioResamplers\R8brainResampler.cpp" />
+    <ClCompile Include="MainApp\AudioResamplers\SoxrResampler.cpp" />
+    <ClCompile Include="MainApp\AudioResamplers\WindowedSincResampler.cpp" />
+    <ClCompile Include="MainApp\Features\MainThreadTimingHandler.cpp" />
+    <ClCompile Include="MainApp\Features\PatchCode.cpp" />
+    <ClCompile Include="MainApp\Modding\DialogueSpeakers.cpp" />
+    <ClCompile Include="MainApp\Modding\FutureReservations.cpp" />
+    <ClCompile Include="MainApp\Modding\GamePause.cpp" />
+    <ClCompile Include="MainApp\Modding\SqpackRebuildLock.cpp" />
+    <ClCompile Include="MainApp\Modding\NestedTtmp.cpp" />
+    <ClCompile Include="MainApp\Modding\PackQueue.cpp" />
+    <ClCompile Include="MainApp\Modding\PackSources.cpp" />
+    <ClCompile Include="MainApp\Modding\PathLogFilter.cpp" />
+    <ClCompile Include="MainApp\Modding\PathRewriter.cpp" />
+    <ClCompile Include="MainApp\Modding\ResourceOverrider.cpp" />
+    <ClCompile Include="MainApp\Modding\SqpackFileHooks.cpp" />
+    <ClCompile Include="MainApp\Modding\SqpackLookupHooks.cpp" />
+    <ClCompile Include="MainApp\Modding\TextHooks.cpp" />
+    <ClCompile Include="MainApp\Modding\TtmpLibrary.cpp" />
+    <ClCompile Include="MainApp\Modding\TtmpSet.cpp" />
+    <ClCompile Include="MainApp\Modding\VirtualSqPacks.cpp" />
+    <ClCompile Include="MainApp\Windows\ThemeColors.cpp" />
     <ClCompile Include="Misc\CrashMessageBoxHandler.cpp" />
     <ClCompile Include="Misc\DebuggerDetectionDisabler.cpp" />
     <ClCompile Include="Misc\GameInstallationDetector.cpp" />
-    <ClCompile Include="Apps\MainApp\Internal\VirtualSqPacks.cpp" />
     <ClCompile Include="Misc\IcmpPingTracker.cpp" />
-    <ClCompile Include="Apps\MainApp\Window\Dialog\FramerateLockingDialog.cpp" />
-    <ClCompile Include="Apps\MainApp\Window\ProgressPopupWindow.cpp" />
+    <ClCompile Include="MainApp\Windows\Dialog\FramerateLockingDialog.cpp" />
+    <ClCompile Include="MainApp\Windows\ProgressPopupWindow.cpp" />
+    <ClCompile Include="Game\Oodle.cpp" />
+    <ClCompile Include="Game\ComplexSignature.cpp" />
+    <ClCompile Include="Game\Signatures.cpp" />
+    <ClCompile Include="Game\SoundEngine.cpp" />
+    <ClCompile Include="Utils\Win32\TaskDialogBuilder.cpp" />
+    <ClCompile Include="Utils\Win32\LoadedModule.cpp" />
+    <ClCompile Include="Utils\Win32\RelocatedImageCopy.cpp" />
+    <ClCompile Include="Utils\Win32\Handle.cpp" />
+    <ClCompile Include="Utils\Win32\Process.cpp" />
+    <ClCompile Include="Utils\Win32\Resource.cpp" />
+    <ClCompile Include="Utils\Utils.cpp" />
+    <ClCompile Include="Utils\StringUtils.cpp" />
+    <ClCompile Include="Utils\NumericStatisticsTracker.cpp" />
+    <ClCompile Include="Utils\Win32.cpp" />
+    <ClCompile Include="Utils\Win32\InjectedModule.cpp" />
+    <ClCompile Include="Utils\Crypt.cpp" />
     <ClCompile Include="Utils\WinHttp.cpp" />
     <ClCompile Include="ExportCompatibles.cpp" />
     <ClCompile Include="XivAlexander.cpp" />
+    <ClCompile Include="Game\SignatureDefinitions.cpp" />
+    <ClCompile Include="Config\ChoicesProfile.cpp" />
+    <ClCompile Include="Game\CommandLine.cpp" />
+    <ClCompile Include="Config\ResourceOverrideRules.cpp" />
     <ClCompile Include="Config.cpp" />
-    <ClCompile Include="Apps\MainApp\Internal\NetworkTimingHandler.cpp" />
-    <ClCompile Include="Apps\MainApp\Internal\IpcTypeFinder.cpp" />
-    <ClCompile Include="Apps\MainApp\Internal\AllIpcMessageLogger.cpp" />
+    <ClCompile Include="Config\AudioResamplerConfigs.cpp" />
+    <ClCompile Include="Config\BaseConfigRepository.cpp" />
+    <ClCompile Include="Config\InitConfigRepository.cpp" />
+    <ClCompile Include="Config\RuntimeConfigRepository.cpp" />
+    <ClCompile Include="Config\Enums.cpp" />
+    <ClCompile Include="Config\PatchInstruction.cpp" />
+    <ClCompile Include="MainApp\Features\NetworkTimingHandler.cpp" />
+    <ClCompile Include="MainApp\Features\IpcTypeFinder.cpp" />
+    <ClCompile Include="MainApp\Features\AllIpcMessageLogger.cpp" />
     <ClCompile Include="Misc\FreeGameMutex.cpp" />
     <ClCompile Include="Misc\Logger.cpp" />
     <ClCompile Include="Misc\OpcodeGuesser.cpp" />
-    <ClCompile Include="Apps\MainApp\Internal\SocketHook.cpp" />
+    <ClCompile Include="MainApp\Features\SocketHook.cpp" />
+    <ClCompile Include="MainApp\Features\AltCodecMusicSupport.cpp" />
+    <ClCompile Include="MainApp\Features\AudioResampler.cpp" />
+    <ClCompile Include="..\r8brain-free-src\r8bbase.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ObjectFileName>$(IntDir)r8brain\</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="..\audio-resampler\resampler.c">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ObjectFileName>$(IntDir)audio-resampler\</ObjectFileName>
+      <DisableSpecificWarnings>4018;4244;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <ClCompile Include="..\audio-resampler\extrapolator.c">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ObjectFileName>$(IntDir)audio-resampler\</ObjectFileName>
+      <DisableSpecificWarnings>4018;4244;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <ClCompile Include="..\audio-resampler\workers.c">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ObjectFileName>$(IntDir)audio-resampler\</ObjectFileName>
+      <DisableSpecificWarnings>4018;4244;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
     <ClCompile Include="Misc\Hooks.cpp" />
-    <ClCompile Include="Apps\MainApp\Window\BaseWindow.cpp" />
-    <ClCompile Include="Apps\MainApp\Window\ConfigWindow.cpp" />
-    <ClCompile Include="Apps\MainApp\Window\LogWindow.cpp" />
-    <ClCompile Include="Apps\MainApp\Window\MainWindow.cpp" />
+    <ClCompile Include="MainApp\Windows\BaseWindow.cpp" />
+    <ClCompile Include="MainApp\Windows\ConfigWindow.cpp" />
+    <ClCompile Include="MainApp\Windows\LogWindow.cpp" />
+    <ClCompile Include="MainApp\Windows\MainWindow.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Apps\EntryPointApp\App.h" />
-    <ClInclude Include="Apps\EntryPointApp\x64.h" />
-    <ClInclude Include="Apps\EntryPointApp\x86.h" />
-    <ClInclude Include="Apps\LoaderApp\App.h" />
-    <ClInclude Include="Apps\LoaderApp\Actions\Inject.h" />
-    <ClInclude Include="Apps\LoaderApp\Actions\InstallUninstall.h" />
-    <ClInclude Include="Apps\LoaderApp\Actions\Interactive.h" />
-    <ClInclude Include="Apps\LoaderApp\Actions\LoadUnload.h" />
-    <ClInclude Include="Apps\LoaderApp\Actions\RunLauncher.h" />
-    <ClInclude Include="Apps\LoaderApp\Actions\Update.h" />
-    <ClInclude Include="Apps\LoaderApp\Arguments.h" />
-    <ClInclude Include="Apps\MainApp\App.h" />
-    <ClInclude Include="Apps\MainApp\Internal\GameResourceOverrider.h" />
-    <ClInclude Include="Apps\MainApp\Internal\MainThreadTimingHandler.h" />
-    <ClInclude Include="Apps\MainApp\Internal\PatchCode.h" />
-    <ClInclude Include="Apps\MainApp\Window\ThemeColors.h" />
+    <ClInclude Include="EntryPointApp\App.h" />
+    <ClInclude Include="EntryPointApp\x64.h" />
+    <ClInclude Include="EntryPointApp\x86.h" />
+    <ClInclude Include="LoaderApp\App.h" />
+    <ClInclude Include="LoaderApp\Actions\Inject.h" />
+    <ClInclude Include="LoaderApp\Actions\InstallUninstall.h" />
+    <ClInclude Include="LoaderApp\Actions\Interactive.h" />
+    <ClInclude Include="LoaderApp\Actions\LoadUnload.h" />
+    <ClInclude Include="LoaderApp\Actions\RunLauncher.h" />
+    <ClInclude Include="LoaderApp\Actions\Update.h" />
+    <ClInclude Include="LoaderApp\Arguments.h" />
+    <ClInclude Include="MainApp\AltCodecMusicDecoders\BufferedDecoder.h" />
+    <ClInclude Include="MainApp\AltCodecMusicDecoders\Decoder.h" />
+    <ClInclude Include="MainApp\AltCodecMusicDecoders\FlacDecoder.h" />
+    <ClInclude Include="MainApp\AltCodecMusicDecoders\WavDecoder.h" />
+    <ClInclude Include="MainApp\App.h" />
+    <ClInclude Include="MainApp\AudioResamplers\ArtResampler.h" />
+    <ClInclude Include="MainApp\AudioResamplers\R8brainResampler.h" />
+    <ClInclude Include="MainApp\AudioResamplers\Resampler.h" />
+    <ClInclude Include="MainApp\AudioResamplers\SoxrResampler.h" />
+    <ClInclude Include="MainApp\AudioResamplers\WindowedSincResampler.h" />
+    <ClInclude Include="MainApp\Features\MainThreadTimingHandler.h" />
+    <ClInclude Include="MainApp\Features\PatchCode.h" />
+    <ClInclude Include="MainApp\Modding\DialogueSpeakers.h" />
+    <ClInclude Include="MainApp\Modding\FutureReservations.h" />
+    <ClInclude Include="MainApp\Modding\GamePause.h" />
+    <ClInclude Include="MainApp\Modding\SqpackRebuildLock.h" />
+    <ClInclude Include="MainApp\Modding\NestedTtmp.h" />
+    <ClInclude Include="MainApp\Modding\PackQueue.h" />
+    <ClInclude Include="MainApp\Modding\PackSources.h" />
+    <ClInclude Include="MainApp\Modding\PathLogFilter.h" />
+    <ClInclude Include="MainApp\Modding\PathRewriter.h" />
+    <ClInclude Include="MainApp\Modding\ResourceOverrider.h" />
+    <ClInclude Include="MainApp\Modding\SqpackFileHooks.h" />
+    <ClInclude Include="MainApp\Modding\SqpackLookupHooks.h" />
+    <ClInclude Include="MainApp\Modding\TextHooks.h" />
+    <ClInclude Include="MainApp\Modding\TtmpLibrary.h" />
+    <ClInclude Include="MainApp\Modding\TtmpSet.h" />
+    <ClInclude Include="MainApp\Modding\VirtualSqPacks.h" />
+    <ClInclude Include="MainApp\Windows\ThemeColors.h" />
+    <ClInclude Include="Game\ComplexSignature.h" />
+    <ClInclude Include="Game\ResolveContext.h" />
+    <ClInclude Include="Game\DynamicStruct.h" />
+    <ClInclude Include="Game\SoundEngine.h" />
     <ClInclude Include="Misc\CrashMessageBoxHandler.h" />
     <ClInclude Include="Misc\DebuggerDetectionDisabler.h" />
     <ClInclude Include="Misc\GameInstallationDetector.h" />
-    <ClInclude Include="Apps\MainApp\Internal\VirtualSqPacks.h" />
-    <ClInclude Include="Apps\MainApp\Window\Dialog\FramerateLockingDialog.h" />
-    <ClInclude Include="Apps\MainApp\Window\ProgressPopupWindow.h" />
+    <ClInclude Include="MainApp\Windows\Dialog\FramerateLockingDialog.h" />
+    <ClInclude Include="MainApp\Windows\ProgressPopupWindow.h" />
+    <ClInclude Include="Game\SignatureDefinitions.h" />
+    <ClInclude Include="Config\ChoicesProfile.h" />
+    <ClInclude Include="Game\CommandLine.h" />
+    <ClInclude Include="Config\ResourceOverrideRules.h" />
     <ClInclude Include="Config.h" />
-    <ClInclude Include="Apps\MainApp\Internal\NetworkTimingHandler.h" />
-    <ClInclude Include="Apps\MainApp\Internal\IpcTypeFinder.h" />
-    <ClInclude Include="Apps\MainApp\Internal\AllIpcMessageLogger.h" />
+    <ClInclude Include="Config\AudioResamplerConfigs.h" />
+    <ClInclude Include="Config\BaseConfigRepository.h" />
+    <ClInclude Include="Config\GameConfigRepository.h" />
+    <ClInclude Include="Config\InitConfigRepository.h" />
+    <ClInclude Include="Config\RuntimeConfigRepository.h" />
+    <ClInclude Include="Config\Enums.h" />
+    <ClInclude Include="Config\PatchInstruction.h" />
+    <ClInclude Include="MainApp\Features\NetworkTimingHandler.h" />
+    <ClInclude Include="MainApp\Features\IpcTypeFinder.h" />
+    <ClInclude Include="MainApp\Features\AllIpcMessageLogger.h" />
     <ClInclude Include="Misc\FreeGameMutex.h" />
     <ClInclude Include="Misc\Logger.h" />
     <ClInclude Include="Misc\OpcodeGuesser.h" />
     <ClInclude Include="Misc\IcmpPingTracker.h" />
-    <ClInclude Include="Apps\MainApp\Internal\SocketHook.h" />
+    <ClInclude Include="MainApp\Features\SocketHook.h" />
+    <ClInclude Include="Game\AsiStream.h" />
+    <ClInclude Include="MainApp\Features\AltCodecMusicSupport.h" />
+    <ClInclude Include="MainApp\Features\AudioResampler.h" />
     <ClInclude Include="Misc\Hooks.h" />
-    <ClInclude Include="Apps\MainApp\Window\BaseWindow.h" />
-    <ClInclude Include="Apps\MainApp\Window\ConfigWindow.h" />
-    <ClInclude Include="Apps\MainApp\Window\LogWindow.h" />
-    <ClInclude Include="Apps\MainApp\Window\MainWindow.h" />
+    <ClInclude Include="MainApp\Windows\BaseWindow.h" />
+    <ClInclude Include="MainApp\Windows\ConfigWindow.h" />
+    <ClInclude Include="MainApp\Windows\LogWindow.h" />
+    <ClInclude Include="MainApp\Windows\MainWindow.h" />
+    <ClInclude Include="Game\Oodle.h" />
+    <ClInclude Include="Utils\RingBuffer.h" />
+    <ClInclude Include="Game\Signatures.h" />
+    <ClInclude Include="Utils\Win32\TaskDialogBuilder.h" />
+    <ClInclude Include="Utils\AntiReentry.h" />
+    <ClInclude Include="Utils\NumericStatisticsTracker.h" />
+    <ClInclude Include="Utils\Win32.h" />
+    <ClInclude Include="Utils\Win32\Closeable.h" />
+    <ClInclude Include="Utils\Win32\Handle.h" />
+    <ClInclude Include="Utils\Win32\HeapAllocator.h" />
+    <ClInclude Include="Utils\Win32\InjectedModule.h" />
+    <ClInclude Include="Utils\Win32\LoadedModule.h" />
+    <ClInclude Include="Utils\Win32\RelocatedImageCopy.h" />
+    <ClInclude Include="Utils\Win32\Process.h" />
+    <ClInclude Include="Utils\Win32\Resource.h" />
+    <ClInclude Include="Utils\Utils.h" />
+    <ClInclude Include="Utils\StringUtils.h" />
+    <ClInclude Include="Utils\Crypt.h" />
     <ClInclude Include="Utils\WinHttp.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
@@ -271,8 +397,8 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <None Include="vcpkg.json" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\XivAlexanderCommon\XivAlexanderCommon.vcxproj">
-      <Project>{58daddf6-5733-40e0-855c-cc3b4bf235eb}</Project>
+    <ProjectReference Include="..\xivres\xivres\xivres.vcxproj">
+      <Project>{58DADDF6-5733-40E0-855C-CC3B4BF235EB}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

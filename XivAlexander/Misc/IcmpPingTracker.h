@@ -1,5 +1,5 @@
 #pragma once
-#include "XivAlexanderCommon/Utils/CallOnDestruction.h"
+#include <xivres/util.on_dtor.h>
 
 namespace Utils {
 	class NumericStatisticsTracker;
@@ -16,7 +16,7 @@ namespace XivAlexander::Misc {
 		IcmpPingTracker();
 		~IcmpPingTracker();
 
-		Utils::CallOnDestruction Track(const in_addr& source, const in_addr& destination);
+		xivres::util::on_dtor Track(const in_addr& source, const in_addr& destination);
 
 		[[nodiscard]] const Utils::NumericStatisticsTracker* GetTrackerUs(const in_addr& source, const in_addr& destination) const;
 	};

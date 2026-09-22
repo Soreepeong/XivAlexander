@@ -4,7 +4,7 @@
 
 struct XivAlexander::Misc::DebuggerDetectionDisabler::Implementation {
 	Hooks::PointerFunction<BOOL> IsDebuggerPresent{"DebuggerDetectionDisabler::IsDebuggerPresent", ::IsDebuggerPresent};
-	Utils::CallOnDestruction::Multiple m_cleanup;
+	xivres::util::on_dtor::multi m_cleanup;
 
 	Implementation() {
 		Utils::Win32::DebugPrint(L"DebuggerDetectionDisabler: New");

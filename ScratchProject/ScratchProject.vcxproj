@@ -293,7 +293,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\XivAlexanderCommon\XivAlexanderCommon.vcxproj">
-      <Project>{58daddf6-5733-40e0-855c-cc3b4bf235eb}</Project>
+      <Project>{035D82F2-3432-45E6-9F56-BF925F950973}</Project>
       <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
     </ProjectReference>
   </ItemGroup>

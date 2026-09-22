@@ -1,8 +1,8 @@
 #include "pch.h"
 
 #include <XivAlexander/XivAlexander.h>
-#include <XivAlexanderCommon/Sqex/CommandLine.h>
-#include <XivAlexanderCommon/Utils/Win32/Resource.h>
+#include "Game/CommandLine.h"
+#include "Utils/Win32/Resource.h"
 
 #include "Config.h"
 #include "Utils/WinHttp.h"
@@ -11,6 +11,8 @@
 #include "Misc/Hooks.h"
 #include "resource.h"
 #include "XivAlexander.h"
+
+namespace Game = XivAlexander::Game;
 
 static Utils::Win32::LoadedModule s_hModule;
 static Utils::Win32::ActivationContext s_hActivationContext;
@@ -56,15 +58,15 @@ DWORD Dll::LaunchXivAlexLoaderWithTargetHandles(
 	const std::filesystem::path& loaderPath) {
 
 	const auto companionPath = loaderPath.empty() ? (
-		lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), Dll::GameExecutableNameW) == 0
+		lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), GameExecutableNameW) == 0
 		? XivAlexander::Config::Acquire()->Init.ResolveXivAlexInstallationPath()
-		: Dll::Module().PathOf().parent_path()
+		: Module().PathOf().parent_path()
 	) : loaderPath;
 
 	const auto companion = companionPath / XivAlexLoaderNameW;
 
 	if (!exists(companion))
-		throw std::runtime_error(Utils::ToUtf8(std::vformat(FindStringResourceEx(Dll::Module(), IDS_ERROR_LOADER_NOT_FOUND) + 1, std::make_wformat_args(companion))));
+		throw std::runtime_error(xivres::util::unicode::convert<std::string>(std::vformat(FindStringResourceEx(Module(), IDS_ERROR_LOADER_NOT_FOUND) + 1, std::make_wformat_args(companion))));
 
 	Utils::Win32::Process companionProcess;
 	{
@@ -107,11 +109,11 @@ static void CheckObfuscatedArguments() {
 		return;  // not the game process
 
 	try {
-		auto params = Sqex::CommandLine::FromString(Dll::GetOriginalCommandLine(), &s_originalCommandLineIsObfuscated);
+		auto params = Game::CommandLine::FromString(Dll::GetOriginalCommandLine(), &s_originalCommandLineIsObfuscated);
 		if (Dll::IsLanguageRegionModifiable()) {
 			auto config = XivAlexander::Config::Acquire();
-			Sqex::CommandLine::WellKnown::SetLanguage(params, config->Runtime.RememberedGameLaunchLanguage);
-			Sqex::CommandLine::WellKnown::SetRegion(params, config->Runtime.RememberedGameLaunchRegion);
+			Game::CommandLine::WellKnown::SetLanguage(params, config->Runtime.RememberedGameLaunchLanguage);
+			Game::CommandLine::WellKnown::SetRegion(params, config->Runtime.RememberedGameLaunchRegion);
 			OutputDebugStringW(std::format(L"Parameters modified (language={} region={})\n",
 				static_cast<int>(config->Runtime.RememberedGameLaunchLanguage.Value()),
 				static_cast<int>(config->Runtime.RememberedGameLaunchRegion.Value())).c_str());
@@ -120,8 +122,8 @@ static void CheckObfuscatedArguments() {
 		// Once this function is called, it means that this dll will stick to the process until it exits,
 		// so it's safe to store stuff into static variables.
 
-		static auto newlyCreatedArgumentsW = std::format(L"\"{}\" {}", process.PathOf().wstring(), Sqex::CommandLine::ToString(params, false));
-		static auto newlyCreatedArgumentsA = Utils::ToUtf8(newlyCreatedArgumentsW, CP_OEMCP);
+		static auto newlyCreatedArgumentsW = std::format(L"\"{}\" {}", process.PathOf().wstring(), Game::CommandLine::ToString(params, false));
+		static auto newlyCreatedArgumentsA = Utils::ToAnsi(newlyCreatedArgumentsW);
 
 		static XivAlexander::Misc::Hooks::ImportedFunction<LPWSTR> GetCommandLineW("kernel32!GetCommandLineW", "kernel32.dll", "GetCommandLineW");
 		static const auto h1 = GetCommandLineW.SetHook([]() -> LPWSTR {
@@ -192,7 +194,7 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 	return TRUE;
 }
 
-size_t __stdcall Dll::DisableAllApps(void*) {
+size_t Dll::DisableAllApps(void*) {
 	if (s_bLoadedAsDependency)
 		return -1;
 
@@ -201,8 +203,8 @@ size_t __stdcall Dll::DisableAllApps(void*) {
 	return 0;
 }
 
-void __stdcall Dll::CallFreeLibrary(void*) {
-	FreeLibraryAndExitThread(Dll::Module(), 0);
+void Dll::CallFreeLibrary(void*) {
+	FreeLibraryAndExitThread(Module(), 0);
 }
 
 [[nodiscard]] Dll::CheckPackageVersionResult Dll::CheckPackageVersion() {
@@ -210,8 +212,8 @@ void __stdcall Dll::CallFreeLibrary(void*) {
 	std::vector<std::pair<std::string, std::string>> modules;
 	try {
 		modules = {
-			Utils::Win32::FormatModuleVersionString(dir / Dll::XivAlexLoader64NameW),
-			Utils::Win32::FormatModuleVersionString(dir / Dll::XivAlexDll64NameW),
+			Utils::Win32::FormatModuleVersionString(dir / XivAlexLoader64NameW),
+			Utils::Win32::FormatModuleVersionString(dir / XivAlexDll64NameW),
 		};
 	} catch (const Utils::Win32::Error& e) {
 		if (e.Code() == ERROR_FILE_NOT_FOUND)
@@ -257,7 +259,7 @@ int Dll::MessageBoxF(HWND hWnd, UINT uType, const std::wstring& text) {
 }
 
 int Dll::MessageBoxF(HWND hWnd, UINT uType, const std::string& text) {
-	return MessageBoxF(hWnd, uType, Utils::FromUtf8(text));
+	return MessageBoxF(hWnd, uType, xivres::util::unicode::convert<std::wstring>(text));
 }
 
 int Dll::MessageBoxF(HWND hWnd, UINT uType, const wchar_t* text) {
@@ -265,7 +267,7 @@ int Dll::MessageBoxF(HWND hWnd, UINT uType, const wchar_t* text) {
 }
 
 int Dll::MessageBoxF(HWND hWnd, UINT uType, const char* text) {
-	return MessageBoxF(hWnd, uType, Utils::FromUtf8(text));
+	return MessageBoxF(hWnd, uType, xivres::util::unicode::convert<std::wstring>(text));
 }
 
 LPCWSTR Dll::GetStringResFromId(UINT resId) {
@@ -293,7 +295,7 @@ bool Dll::IsLanguageRegionModifiable() {
 	static std::optional<bool> s_modifiable;
 	if (!s_modifiable.has_value()) {
 		try {
-			s_modifiable = XivAlexander::Misc::GameInstallationDetector::GetGameReleaseInfo().Region == Sqex::GameReleaseRegion::International;
+			s_modifiable = XivAlexander::Misc::GameInstallationDetector::GetGameReleaseInfo().Region == xivres::game_release_publisher::SquareEnix;
 		} catch (...) {
 			s_modifiable = false;
 		}
@@ -319,7 +321,7 @@ HWND Dll::FindGameMainWindow(bool throwOnError) {
 			break;
 	}
 	if (hwnd == nullptr && throwOnError)
-		throw std::runtime_error(Utils::ToUtf8(FindStringResourceEx(Module(), IDS_ERROR_GAME_WINDOW_NOT_FOUND) + 1));
+		throw std::runtime_error(xivres::util::unicode::convert<std::string>(FindStringResourceEx(Module(), IDS_ERROR_GAME_WINDOW_NOT_FOUND) + 1));
 	return hwnd;
 }
 
