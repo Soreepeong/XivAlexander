@@ -68,7 +68,7 @@ int Utils::CompareSockaddr(const void* x, const void* y) {
 	} else if (family1 == AF_INET6) {
 		const auto addr1 = static_cast<const sockaddr_in6*>(x);
 		const auto addr2 = static_cast<const sockaddr_in6*>(y);
-		if ((n = sockaddr_cmp_helper(memcmp(addr1->sin6_addr.s6_addr, addr2->sin6_addr.s6_addr, sizeof addr1->sin6_addr.s6_addr)))) return n;
+		if ((n = sockaddr_cmp_helper(std::memcmp(addr1->sin6_addr.s6_addr, addr2->sin6_addr.s6_addr, sizeof addr1->sin6_addr.s6_addr)))) return n;
 		if ((n = sockaddr_cmp_helper(ntohs(addr1->sin6_port), ntohs(addr2->sin6_port)))) return n;
 		if ((n = sockaddr_cmp_helper(addr1->sin6_flowinfo, addr2->sin6_flowinfo))) return n;
 		if ((n = sockaddr_cmp_helper(addr1->sin6_scope_id, addr2->sin6_scope_id))) return n;

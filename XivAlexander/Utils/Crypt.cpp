@@ -395,8 +395,8 @@ namespace {
 		uint32_t S[4][256];
 
 		BlowfishContext(std::span<const uint8_t> key) {
-			memcpy(P, BlowfishP, sizeof P);
-			memcpy(S, BlowfishS, sizeof S);
+			std::memcpy(P, BlowfishP, sizeof P);
+			std::memcpy(S, BlowfishS, sizeof S);
 
 			for (int i = 0, j = 0; i < 18; ++i) {
 				uint32_t data = 0;

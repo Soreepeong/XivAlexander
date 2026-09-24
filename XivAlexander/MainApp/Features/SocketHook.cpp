@@ -103,7 +103,7 @@ public:
 	template<typename T, typename = std::enable_if_t<std::is_standard_layout_v<T>>>
 	size_t Read(T* buf, size_t count) {
 		count = std::min(count, (m_buffer.size() - m_pointer) / sizeof(T));
-		memcpy(buf, &m_buffer[m_pointer], count * sizeof(T));
+		std::memcpy(buf, &m_buffer[m_pointer], count * sizeof(T));
 		Consume<T>(count);
 		return count;
 	}

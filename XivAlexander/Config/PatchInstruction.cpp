@@ -24,7 +24,7 @@ std::string XivAlexander::PatchInstruction::Digest() const {
 	const auto keyBytes = Utils::Crypt::Base64Decode(HmacKey);
 	if (keyBytes.size() != HmacKeySize)
 		return {};
-	memcpy(hmacResult, keyBytes.data(), HmacKeySize);
+	std::memcpy(hmacResult, keyBytes.data(), HmacKeySize);
 
 	Utils::Crypt::HmacSha512 hmac(std::span(hmacResult).subspan(0, HmacKeySize));
 

@@ -274,7 +274,7 @@ XivAlexander::EntryPoint::EntryPointApp::Implementation::Implementation() {
 
 		std::vector<uint8_t> buf;
 		buf.resize(lpStartupInfo->cb);
-		memcpy(&buf[0], lpStartupInfo, lpStartupInfo->cb);
+		std::memcpy(&buf[0], lpStartupInfo, lpStartupInfo->cb);
 
 		STARTUPINFOW& siw = *reinterpret_cast<STARTUPINFOW*>(&buf[0]);
 		std::optional<std::wstring> applicationName, commandLine, currentDirectory, reserved, desktop, title;

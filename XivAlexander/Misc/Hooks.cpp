@@ -109,7 +109,7 @@ std::vector<char, Utils::Win32::HeapAllocator<char>> XivAlexander::Misc::Hooks::
 		offset += instruction.length;
 	}
 
-	memcpy(std::search(
+	std::memcpy(std::search(
 		&body[0], &body[0] + body.size(),
 		reinterpret_cast<const char*>(&Binder::DummyAddress), reinterpret_cast<const char*>(&Binder::DummyAddress + 1)
 	), &this_, sizeof this_);
@@ -118,7 +118,7 @@ std::vector<char, Utils::Win32::HeapAllocator<char>> XivAlexander::Misc::Hooks::
 	for (const auto& [pos, ptr] : replacementJumps) {
 		const auto displacement = static_cast<uint32_t>(body.size() - 4 - pos);
 		static_assert(sizeof displacement == 4);
-		memcpy(&body[pos], &displacement, sizeof displacement);
+		std::memcpy(&body[pos], &displacement, sizeof displacement);
 		body.insert(body.end(), reinterpret_cast<const char*>(&ptr), reinterpret_cast<const char*>(&ptr + 1));
 	}
 
@@ -126,7 +126,7 @@ std::vector<char, Utils::Win32::HeapAllocator<char>> XivAlexander::Misc::Hooks::
 	for (const auto& [pos, ptr] : replacementJumps) {
 		const auto displacement = ptr - pos - 4 - reinterpret_cast<size_t>(&body[0]);
 		static_assert(sizeof displacement == 4);
-		memcpy(&body[pos], &displacement, sizeof displacement);
+		std::memcpy(&body[pos], &displacement, sizeof displacement);
 	}
 #endif
 

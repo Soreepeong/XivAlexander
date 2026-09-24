@@ -68,11 +68,19 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 			Queue.Discover(progressWindow);
 			Library.Scan(progressWindow);
 
-			// Read every modpack's data here, before the builders start, as they all want the same reservations.
 			PackReservations = Library.CollectReservations(progressWindow);
 		}
 
 		DataViewBuffer = std::make_shared<xivres::sqpack::generator::sqpack_view_entry_cache>();
+		Cleanup += DataViewBuffer->OnStreamWindowPredicted([this](const xivres::path_spec& pathSpec, std::optional<std::chrono::steady_clock::duration> interval) {
+			if (interval) {
+				Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+					"{}: estimating next read in {:.2f}s", pathSpec, std::chrono::duration<double>(*interval).count());
+			} else {
+				Logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+					"{}: no next read estimation available", pathSpec);
+			}
+		});
 		Queue.Start(BuilderCount, [this](Pack& pack) { BuildPack(pack); });
 
 		Cleanup += Config->Runtime.MuteVoice_Battle.OnChange([this] { ReflectUsedEntries(); });
@@ -93,7 +101,6 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 		Cleanup.clear();
 	}
 
-	/// Builds \p pack from its sources, then applies the current mods to it.
 	void BuildPack(Pack& pack) {
 		auto& creator = *pack.Creator;
 		if (auto emptyScd = Sources.Populate(creator, pack.IndexPath, PackReservations, Reservations))
@@ -105,8 +112,6 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 		ApplyToPacks({&pack}, false);
 	}
 
-	/// \returns Where \p pathSpec is in the game's own files. Waits for its pack to be built, except while mods are
-	///          being applied, when only packs already built are looked in.
 	std::shared_ptr<xivres::stream> GetOriginalEntry(const xivres::path_spec& pathSpec) const {
 		const auto pack = Queue.Find(pathSpec);
 		const auto views = pack ? Queue.EnsureBuilt(*pack) : nullptr;
@@ -253,7 +258,7 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 				else
 					Logger->Format(LogCategory::VirtualSqPacks, "Reset: {}", pathSpec);
 			}
-			// Too large for what the view reserved, so it has to be answered from elsewhere.
+
 			if (newEntry && newEntry->size() > place->entry_size()) {
 				tempData.Unplaced.insert_or_assign(pathSpec, newEntry);
 				place->swap_stream(nullptr);
@@ -334,8 +339,6 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 				std::shared_ptr<const xivres::stream>(ttmp.DataStream->substream(entry.ModOffset, entry.ModSize))
 			);
 
-			// The index never had this path, so there is no entry to sit over and only a stand-in can
-			// answer for it. Adding files this way is what a modpack does with its own shader or ui.
 			const auto entryIt = tempData.Replacements.find(entry.FullPath);
 			if (entryIt == tempData.Replacements.end()) {
 				tempData.Unplaced.insert_or_assign(entry.FullPath, std::move(packed));
@@ -472,7 +475,6 @@ std::shared_ptr<xivres::stream> XivAlexander::Apps::MainApp::Features::Modding::
 }
 
 std::string XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::FindFutureReservationFor(const xivres::path_spec& pathSpec) const {
-	// A pack not built yet has not said what waits on a stand-in.
 	if (const auto pack = m_pImpl->Queue.Find(pathSpec))
 		m_pImpl->Queue.EnsureBuilt(*pack);
 	return m_pImpl->Reservations.Find(pathSpec);
@@ -501,7 +503,6 @@ std::unique_lock<std::recursive_mutex> XivAlexander::Apps::MainApp::Features::Mo
 }
 
 void XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::AddNewTtmp(const std::filesystem::path& ttmplPath, bool reflectImmediately, Window::ProgressPopupWindow& progressWindow) {
-	// Whether it fits where its files go is judged from every pack, which cannot be waited on under the lock.
 	m_pImpl->Queue.EnsureAllBuilt();
 
 	{

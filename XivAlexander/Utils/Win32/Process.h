@@ -236,7 +236,7 @@ namespace Utils::Win32 {
 			const auto r = Read(rva, maxCount * sizeof(T));
 			std::vector<T> res;
 			res.resize(r.size() / sizeof(T));
-			memcpy(&res[0], &r[0], res.size() * sizeof(T));
+			std::memcpy(&res[0], &r[0], res.size() * sizeof(T));
 			return res;
 		}
 
