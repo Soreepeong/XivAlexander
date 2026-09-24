@@ -176,19 +176,24 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 							Gate.OnSqpackRead();
 							const auto len = vpath.Stream->size();
 
+							int64_t target;
 							if (dwMoveMethod == FILE_BEGIN)
-								vpath.FilePointer.QuadPart = liDistanceToMove.QuadPart;
+								target = liDistanceToMove.QuadPart;
 							else if (dwMoveMethod == FILE_CURRENT)
-								vpath.FilePointer.QuadPart += liDistanceToMove.QuadPart;
+								target = vpath.FilePointer.QuadPart + liDistanceToMove.QuadPart;
 							else if (dwMoveMethod == FILE_END)
-								vpath.FilePointer.QuadPart = len - liDistanceToMove.QuadPart;
+								target = static_cast<int64_t>(len) + liDistanceToMove.QuadPart;
 							else {
 								SetLastError(ERROR_INVALID_PARAMETER);
 								return FALSE;
 							}
 
-							if (vpath.FilePointer.QuadPart > static_cast<int64_t>(len))
-								vpath.FilePointer.QuadPart = static_cast<int64_t>(len);
+							if (target < 0) {
+								SetLastError(ERROR_NEGATIVE_SEEK);
+								return FALSE;
+							}
+
+							vpath.FilePointer.QuadPart = (std::min)(target, static_cast<int64_t>(len));
 
 							if (lpNewFilePointer)
 								*lpNewFilePointer = vpath.FilePointer;

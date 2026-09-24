@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <xivres/stream.h>
 #include <xivres/textools.h>
@@ -22,5 +24,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		bool ForEachEntryInterruptible(bool choiceOnly, std::function<bool(const xivres::textools::mods_json&)> cb) const;
 
 		void TryCleanupUnusedFiles();
+
+		[[nodiscard]] static std::vector<std::string> DisableMarkerNames(const std::string& choicesFileName = {});
 	};
 }

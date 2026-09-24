@@ -49,7 +49,6 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		[[nodiscard]] std::vector<std::filesystem::path> GetPossibleTtmpDirs() const;
 		[[nodiscard]] std::string ResolveChoicesFileName() const;
 		[[nodiscard]] bool IsDisabled(const std::filesystem::path& dir) const;
-		[[nodiscard]] static std::filesystem::path MarkerPath(const std::filesystem::path& dir, const std::string& choicesFileName);
 
 		void RescanTree(const std::filesystem::path& path, std::shared_ptr<NestedTtmp> parent, Window::ProgressPopupWindow& progressWindow);
 		std::shared_ptr<NestedTtmp> AddFromTtmpl(const std::filesystem::path& ttmplPath, const std::shared_ptr<NestedTtmp>& parent);

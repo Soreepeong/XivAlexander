@@ -60,9 +60,11 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			if (profile.FileName.empty())
 				continue;
 			paths.emplace_back(ListPath.parent_path() / profile.FileName);
-			paths.emplace_back(ListPath.parent_path() / (profile.FileName + ".disable"));
+			for (const auto& name : DisableMarkerNames(profile.FileName))
+				paths.emplace_back(ListPath.parent_path() / name);
 		}
-		paths.emplace_back(ListPath.parent_path() / "disable");
+		for (const auto& name : DisableMarkerNames())
+			paths.emplace_back(ListPath.parent_path() / name);
 		paths.emplace_back(ListPath.parent_path());
 		for (const auto& path : paths) {
 			try {
@@ -71,5 +73,11 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 				// pass
 			}
 		}
+	}
+
+	std::vector<std::string> TtmpSet::DisableMarkerNames(const std::string& choicesFileName) {
+		if (choicesFileName.empty())
+			return {"disable", "disabled"};
+		return {choicesFileName + ".disable", choicesFileName + ".disabled"};
 	}
 }

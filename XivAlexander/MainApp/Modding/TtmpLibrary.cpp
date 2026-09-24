@@ -167,12 +167,13 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 				SetFileInformationByHandle(dataFile, FileRenameInfo, &renameInfoBuffer[0], static_cast<DWORD>(renameInfoBuffer.size()));
 			}
 
-			std::vector<std::string> sidecars{"TTMPD.mpd", "compression", "disable"};
+			std::vector<std::string> sidecars{"TTMPD.mpd", "compression"};
+			std::ranges::copy(TtmpSet::DisableMarkerNames(), std::back_inserter(sidecars));
 			for (const auto& profile : m_config->Runtime.TtmpChoicesFiles.Value()) {
 				if (profile.FileName.empty())
 					continue;
 				sidecars.emplace_back(profile.FileName);
-				sidecars.emplace_back(profile.FileName + ".disable");
+				std::ranges::copy(TtmpSet::DisableMarkerNames(profile.FileName), std::back_inserter(sidecars));
 			}
 			for (const auto& path : sidecars) {
 				const auto oldPath = ttmp.ListPath.parent_path() / path;
@@ -196,16 +197,18 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 	void TtmpLibrary::SaveChoices(NestedTtmp& ttmp) const {
 		const auto choicesFileName = ResolveChoicesFileName();
-		const auto disableFilePath = ttmp.Path / (choicesFileName + ".disable");
+		const auto profileMarkers = TtmpSet::DisableMarkerNames(choicesFileName);
 		const auto choicesPath = ttmp.Path / choicesFileName;
 
 		if (ttmp.Enabled) {
-			if (const auto unconditionalPath = ttmp.Path / "disable"; exists(unconditionalPath))
-				remove(unconditionalPath);
-			if (exists(disableFilePath))
-				remove(disableFilePath);
-		} else if (!exists(disableFilePath))
-			void(std::ofstream(disableFilePath));
+			for (const auto& markers : {TtmpSet::DisableMarkerNames(), profileMarkers}) {
+				for (const auto& name : markers) {
+					if (const auto path = ttmp.Path / name; exists(path))
+						remove(path);
+				}
+			}
+		} else if (!IsDisabled(ttmp.Path))
+			void(std::ofstream(ttmp.Path / profileMarkers.front()));
 
 		if (ttmp.Ttmp)
 			Utils::SaveJsonToFile(choicesPath, ttmp.Ttmp->Choices);
@@ -262,12 +265,11 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	}
 
 	bool TtmpLibrary::IsDisabled(const std::filesystem::path& dir) const {
-		return exists(MarkerPath(dir, {}))
-			|| exists(MarkerPath(dir, ResolveChoicesFileName()));
-	}
-
-	std::filesystem::path TtmpLibrary::MarkerPath(const std::filesystem::path& dir, const std::string& choicesFileName) {
-		return choicesFileName.empty() ? dir / "disable" : dir / (choicesFileName + ".disable");
+		for (const auto& markers : {TtmpSet::DisableMarkerNames(), TtmpSet::DisableMarkerNames(ResolveChoicesFileName())}) {
+			if (std::ranges::any_of(markers, [&dir](const auto& name) { return exists(dir / name); }))
+				return true;
+		}
+		return false;
 	}
 
 	void TtmpLibrary::RescanTree(const std::filesystem::path& path, std::shared_ptr<NestedTtmp> parent, Window::ProgressPopupWindow& progressWindow) {
