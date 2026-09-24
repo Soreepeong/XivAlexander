@@ -1473,13 +1473,13 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Modding(int
 
 							std::vector<char> dv;
 							if (file_size(target) == 0)
-								dv = xivres::placeholder_packed_stream(entryPathSpec).read_vector<char>(0);
+								dv = xivres::placeholder_packed_stream(entryPathSpec).read_vector<char>();
 							else if (extensionLower == L".tex")
-								dv = xivres::compressing_packed_stream<xivres::texture_compressing_packer>(entryPathSpec, std::make_shared<xivres::file_stream>(target), Z_BEST_COMPRESSION).read_vector<char>(0);
+								dv = xivres::compressing_packed_stream<xivres::texture_compressing_packer>(entryPathSpec, std::make_shared<xivres::file_stream>(target), Z_BEST_COMPRESSION).read_vector<char>();
 							else if (extensionLower == L".mdl")
-								dv = xivres::compressing_packed_stream<xivres::model_compressing_packer>(entryPathSpec, std::make_shared<xivres::file_stream>(target), Z_BEST_COMPRESSION).read_vector<char>(0);
+								dv = xivres::compressing_packed_stream<xivres::model_compressing_packer>(entryPathSpec, std::make_shared<xivres::file_stream>(target), Z_BEST_COMPRESSION).read_vector<char>();
 							else
-								dv = xivres::compressing_packed_stream<xivres::standard_compressing_packer>(entryPathSpec, std::make_shared<xivres::file_stream>(target), Z_BEST_COMPRESSION).read_vector<char>(0);
+								dv = xivres::compressing_packed_stream<xivres::standard_compressing_packer>(entryPathSpec, std::make_shared<xivres::file_stream>(target), Z_BEST_COMPRESSION).read_vector<char>();
 
 							if (m_backgroundWorkerProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 								return;

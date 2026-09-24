@@ -72,6 +72,132 @@ static const std::wstring_view PossibleCrashMessageBody[]{
 	L"DirectX 엔드유저 런타임을 다운로드하여 설치하십시오.",
 };
 
+namespace {
+	struct ErrorCodeName {
+		uint32_t Code;
+		const wchar_t* Name;
+	};
+
+	// What the game shows in place of what failed, as "<message>(%x)".
+	const ErrorCodeName GameErrorCodes[]{
+		{0x10000000, L"Client::Graphics::Kernel::DeviceDX11::Initialize failed"},
+		{0x11000001, L"IDXGISwapChain::Present: DXGI_ERROR_DEVICE_RESET (0x887A0007)"},
+		{0x11000002, L"IDXGISwapChain::Present: DXGI_ERROR_DEVICE_REMOVED (0x887A0005)"},
+		{0x1100000F, L"IDXGISwapChain::Present: failed with something other than DXGI_ERROR_DEVICE_RESET or DXGI_ERROR_DEVICE_REMOVED"},
+	};
+
+	const ErrorCodeName HResultNames[]{
+		{0x80004001, L"E_NOTIMPL"},
+		{0x80004002, L"E_NOINTERFACE"},
+		{0x80004003, L"E_POINTER"},
+		{0x80004004, L"E_ABORT"},
+		{0x80004005, L"E_FAIL"},
+		{0x8000FFFF, L"E_UNEXPECTED"},
+		{0x80070005, L"E_ACCESSDENIED"},
+		{0x80070006, L"E_HANDLE"},
+		{0x8007000E, L"E_OUTOFMEMORY"},
+		{0x80070057, L"E_INVALIDARG"},
+		{0x087A0001, L"DXGI_STATUS_OCCLUDED"},
+		{0x087A0002, L"DXGI_STATUS_CLIPPED"},
+		{0x087A0004, L"DXGI_STATUS_NO_REDIRECTION"},
+		{0x087A0005, L"DXGI_STATUS_NO_DESKTOP_ACCESS"},
+		{0x087A0006, L"DXGI_STATUS_GRAPHICS_VIDPN_SOURCE_IN_USE"},
+		{0x087A0007, L"DXGI_STATUS_MODE_CHANGED"},
+		{0x087A0008, L"DXGI_STATUS_MODE_CHANGE_IN_PROGRESS"},
+		{0x887A0001, L"DXGI_ERROR_INVALID_CALL"},
+		{0x887A0002, L"DXGI_ERROR_NOT_FOUND"},
+		{0x887A0003, L"DXGI_ERROR_MORE_DATA"},
+		{0x887A0004, L"DXGI_ERROR_UNSUPPORTED"},
+		{0x887A0005, L"DXGI_ERROR_DEVICE_REMOVED"},
+		{0x887A0006, L"DXGI_ERROR_DEVICE_HUNG"},
+		{0x887A0007, L"DXGI_ERROR_DEVICE_RESET"},
+		{0x887A000A, L"DXGI_ERROR_WAS_STILL_DRAWING"},
+		{0x887A000B, L"DXGI_ERROR_FRAME_STATISTICS_DISJOINT"},
+		{0x887A000C, L"DXGI_ERROR_GRAPHICS_VIDPN_SOURCE_IN_USE"},
+		{0x887A0020, L"DXGI_ERROR_DRIVER_INTERNAL_ERROR"},
+		{0x887A0021, L"DXGI_ERROR_NONEXCLUSIVE"},
+		{0x887A0022, L"DXGI_ERROR_NOT_CURRENTLY_AVAILABLE"},
+		{0x887A0023, L"DXGI_ERROR_REMOTE_CLIENT_DISCONNECTED"},
+		{0x887A0024, L"DXGI_ERROR_REMOTE_OUTOFMEMORY"},
+		{0x887A0026, L"DXGI_ERROR_ACCESS_LOST"},
+		{0x887A0027, L"DXGI_ERROR_WAIT_TIMEOUT"},
+		{0x887A0028, L"DXGI_ERROR_SESSION_DISCONNECTED"},
+		{0x887A0029, L"DXGI_ERROR_RESTRICT_TO_OUTPUT_STALE"},
+		{0x887A002A, L"DXGI_ERROR_CANNOT_PROTECT_CONTENT"},
+		{0x887A002B, L"DXGI_ERROR_ACCESS_DENIED"},
+		{0x887A002C, L"DXGI_ERROR_NAME_ALREADY_EXISTS"},
+		{0x887A002D, L"DXGI_ERROR_SDK_COMPONENT_MISSING"},
+		{0x887A002E, L"DXGI_ERROR_NOT_CURRENT"},
+		{0x887A0030, L"DXGI_ERROR_HW_PROTECTION_OUTOFMEMORY"},
+		{0x887A0031, L"DXGI_ERROR_DYNAMIC_CODE_POLICY_VIOLATION"},
+		{0x887A0032, L"DXGI_ERROR_NON_COMPOSITED_UI"},
+		{0x887A0033, L"DXGI_ERROR_MODE_CHANGE_IN_PROGRESS"},
+		{0x887A0034, L"DXGI_ERROR_CACHE_CORRUPT"},
+		{0x887A0035, L"DXGI_ERROR_CACHE_FULL"},
+		{0x887A0036, L"DXGI_ERROR_CACHE_HASH_COLLISION"},
+		{0x887A0037, L"DXGI_ERROR_ALREADY_EXISTS"},
+		{0x887C0001, L"D3D11_ERROR_TOO_MANY_UNIQUE_STATE_OBJECTS"},
+		{0x887C0002, L"D3D11_ERROR_FILE_NOT_FOUND"},
+		{0x887C0003, L"D3D11_ERROR_TOO_MANY_UNIQUE_VIEW_OBJECTS"},
+		{0x887C0004, L"D3D11_ERROR_DEFERRED_CONTEXT_MAP_WITHOUT_INITIAL_DISCARD"},
+	};
+
+	const ErrorCodeName FacilityNames[]{
+		{0x000, L"FACILITY_NULL"},
+		{0x001, L"FACILITY_RPC"},
+		{0x002, L"FACILITY_DISPATCH"},
+		{0x003, L"FACILITY_STORAGE"},
+		{0x004, L"FACILITY_ITF"},
+		{0x007, L"FACILITY_WIN32"},
+		{0x008, L"FACILITY_WINDOWS"},
+		{0x00A, L"FACILITY_CONTROL"},
+		{0x87A, L"FACILITY_DXGI"},
+		{0x87B, L"FACILITY_DXGI_DDI"},
+		{0x87C, L"FACILITY_DIRECT3D11"},
+		{0x87D, L"FACILITY_DIRECT3D11_DEBUG"},
+		{0x87E, L"FACILITY_DIRECT3D12"},
+		{0x87F, L"FACILITY_DIRECT3D12_DEBUG"},
+	};
+
+	const wchar_t* FindName(std::span<const ErrorCodeName> names, uint32_t code) {
+		const auto it = std::ranges::find(names, code, &ErrorCodeName::Code);
+		return it == names.end() ? nullptr : it->Name;
+	}
+
+	std::wstring DescribeErrorCode(uint32_t code) {
+		if (const auto name = FindName(GameErrorCodes, code))
+			return name;
+
+		const auto facility = HRESULT_FACILITY(code);
+		std::wstring res;
+		if (const auto name = FindName(HResultNames, code))
+			res = name;
+		else if (const auto facilityName = FindName(FacilityNames, facility); facilityName && FAILED(static_cast<HRESULT>(code)))
+			res = std::format(L"{}, code 0x{:X}", facilityName, HRESULT_CODE(code));
+		else
+			return {};
+
+		if (const auto message = Utils::Win32::FormatWindowsErrorMessage(facility == FACILITY_WIN32 ? HRESULT_CODE(code) : code); !message.empty())
+			res += std::format(L": {}", xivres::util::unicode::convert<std::wstring>(message));
+		return res;
+	}
+
+	std::wstring DescribeErrorCodesIn(const std::wstring& body) {
+		static const std::wregex EightHexDigits{LR"((?:^|[^0-9A-Fa-f])([0-9A-Fa-f]{8})(?![0-9A-Fa-f]))"};
+
+		std::wstring res;
+		std::set<uint32_t> seen;
+		for (auto it = std::wsregex_iterator(body.begin(), body.end(), EightHexDigits); it != std::wsregex_iterator(); ++it) {
+			const auto code = static_cast<uint32_t>(std::wcstoul((*it)[1].str().c_str(), nullptr, 16));
+			if (!seen.insert(code).second)
+				continue;
+			if (const auto description = DescribeErrorCode(code); !description.empty())
+				res += std::format(L"\n{:08x}: {}", code, description);
+		}
+		return res;
+	}
+}
+
 #pragma optimize("", off)
 
 struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
@@ -398,7 +524,7 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 
 				CONTEXT ctx{};
 				RtlCaptureContext(&ctx);
-				ShowMessage(std::format(L"{}\n\n{}", body, DumpStackTrace(ctx)), title);
+				ShowMessage(std::format(L"{}{}\n\n{}", body, DescribeErrorCodesIn(body), DumpStackTrace(ctx)), title);
 				return IDOK;  // since the game originally requested MB_OK
 			}
 		}

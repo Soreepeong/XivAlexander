@@ -26,11 +26,12 @@ namespace Utils {
 		~NumericStatisticsTracker();
 
 		void AddValue(int64_t);
-		void Clear() { m_values.clear(); };
-		bool Empty() const { return m_values.empty(); }
+		void Clear();
+		[[nodiscard]] bool Empty() const;
 
 	private:
-		[[nodiscard]] const std::deque<Entry>& RemoveExpired(int64_t nowUs = QpcUs()) const;
+		void RemoveExpiredLocked(int64_t nowUs) const;
+		[[nodiscard]] std::deque<Entry> RemoveExpired(int64_t nowUs = QpcUs()) const;
 
 	public:
 		[[nodiscard]] int64_t InvalidValue() const;

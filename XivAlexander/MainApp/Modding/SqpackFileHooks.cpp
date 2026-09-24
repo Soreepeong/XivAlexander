@@ -136,10 +136,10 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 							}
 
 							if (lpOverlapped) {
-								if (lpOverlapped->hEvent)
-									SetEvent(lpOverlapped->hEvent);
 								lpOverlapped->Internal = 0;
 								lpOverlapped->InternalHigh = static_cast<DWORD>(read);
+								if (const auto hEvent = lpOverlapped->hEvent)
+									SetEvent(hEvent);
 							} else
 								vpath.FilePointer.QuadPart = fp + read;
 

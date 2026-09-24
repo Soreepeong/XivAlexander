@@ -54,6 +54,8 @@ namespace XivAlexander::Apps::MainApp::Features {
 			int32_t Channels{};
 			VoiceFormat SourceFormat{};
 			double Ratio{};
+
+			std::recursive_mutex Mtx;
 			std::unique_ptr<Resampler> Resampler;
 			const uint8_t* EndOfData{};
 
@@ -293,6 +295,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 			const auto framesIn = bytes / v->SourceFrameBytes();
 			const auto channels = static_cast<size_t>(v->Channels);
+			const auto lock = std::lock_guard(v->Mtx);
 			auto& out = v->Output[v->NextOutput];
 			out.clear();
 
@@ -344,8 +347,10 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 				HookCleanup += FlushHook->SetHook([this](void* voice) -> uint32_t {
 					const auto result = FlushHook->bridge(voice);
-					if (const auto v = Find(voice))
+					if (const auto v = Find(voice)) {
+						const auto lock = std::lock_guard(v->Mtx);
 						v->Resampler->Reset();
+					}
 					return result;
 				});
 

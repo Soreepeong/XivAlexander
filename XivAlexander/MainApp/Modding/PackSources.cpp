@@ -92,9 +92,12 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 				for (size_t i = 0; i < 256; ++i)
 					writer.set_sound_item(i, xivres::sound::writer::sound_item::make_empty(std::chrono::milliseconds(100)));
 
-				emptyScd = std::make_shared<xivres::memory_stream>(
-					xivres::compressing_packed_stream<xivres::standard_compressing_packer>("sound/empty256.scd", std::make_shared<xivres::memory_stream>(writer.export_to_bytes()), Z_NO_COMPRESSION)
-					.read_vector<uint8_t>(0));
+				auto packed = xivres::compressing_packed_stream<xivres::standard_compressing_packer>("sound/empty256.scd", std::make_shared<xivres::memory_stream>(writer.export_to_bytes()), Z_NO_COMPRESSION)
+					.read_vector<uint8_t>();
+
+				if (packed.empty())
+					throw std::out_of_range("empty256.scd came out empty");
+				emptyScd = std::make_shared<xivres::memory_stream>(std::move(packed));
 			} catch (std::out_of_range&) {
 				// ignore
 			}

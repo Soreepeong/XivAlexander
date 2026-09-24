@@ -1,12 +1,22 @@
 #include "pch.h"
 #include "ResourceOverrideRules.h"
 
+#include <mutex>
+
 #include <nlohmann/json.hpp>
 
+namespace {
+	const srell::u8cregex& LazyRegex(std::optional<srell::u8cregex>& regex, const std::string& pattern) {
+		static std::mutex s_mtx;
+		const auto lock = std::lock_guard(s_mtx);
+		if (!regex)
+			regex.emplace(pattern, srell::regex_constants::icase);
+		return *regex;
+	}
+}
+
 const srell::u8cregex& XivAlexander::PathReplacementRule::Regex() const {
-	if (!m_regex)
-		m_regex.emplace(From, srell::regex_constants::icase);
-	return *m_regex;
+	return LazyRegex(m_regex, From);
 }
 
 bool XivAlexander::PathReplacementRule::operator==(const PathReplacementRule& r) const {
@@ -28,9 +38,7 @@ void XivAlexander::from_json(const nlohmann::json& j, PathReplacementRule& v) {
 }
 
 const srell::u8cregex& XivAlexander::LogPathFilter::Regex() const {
-	if (!m_regex)
-		m_regex.emplace(Pattern, srell::regex_constants::icase);
-	return *m_regex;
+	return LazyRegex(m_regex, Pattern);
 }
 
 bool XivAlexander::LogPathFilter::operator==(const LogPathFilter& r) const {

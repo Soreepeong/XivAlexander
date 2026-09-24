@@ -17,20 +17,31 @@ Utils::NumericStatisticsTracker::NumericStatisticsTracker(size_t trackCount, int
 Utils::NumericStatisticsTracker::~NumericStatisticsTracker() = default;
 
 void Utils::NumericStatisticsTracker::AddValue(int64_t v) {
-	{
-		const auto lock = std::lock_guard(m_mtx);
-		m_values.emplace_back(v, m_maxAgeUs);
-	}
-	void(RemoveExpired(m_values.back().TimestampUs));
+	const auto lock = std::lock_guard(m_mtx);
+	RemoveExpiredLocked(m_values.emplace_back(v, m_maxAgeUs).TimestampUs);
 }
 
-const std::deque<Utils::NumericStatisticsTracker::Entry>& Utils::NumericStatisticsTracker::RemoveExpired(int64_t nowUs) const {
+void Utils::NumericStatisticsTracker::Clear() {
 	const auto lock = std::lock_guard(m_mtx);
+	m_values.clear();
+}
+
+bool Utils::NumericStatisticsTracker::Empty() const {
+	const auto lock = std::lock_guard(m_mtx);
+	return m_values.empty();
+}
+
+void Utils::NumericStatisticsTracker::RemoveExpiredLocked(int64_t nowUs) const {
 	while (!m_values.empty() && (
-		m_values.size() > m_trackCount || 
+		m_values.size() > m_trackCount ||
 		m_values.front().ExpiryUs < nowUs
 	))
 		m_values.pop_front();
+}
+
+std::deque<Utils::NumericStatisticsTracker::Entry> Utils::NumericStatisticsTracker::RemoveExpired(int64_t nowUs) const {
+	const auto lock = std::lock_guard(m_mtx);
+	RemoveExpiredLocked(nowUs);
 	return m_values;
 }
 
