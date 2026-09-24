@@ -181,10 +181,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="MainApp\AltCodecMusicDecoders\FlacDecoder.cpp" />
     <ClCompile Include="MainApp\AltCodecMusicDecoders\WavDecoder.cpp" />
     <ClCompile Include="MainApp\App.cpp" />
-    <ClCompile Include="MainApp\AudioResamplers\ArtResampler.cpp" />
-    <ClCompile Include="MainApp\AudioResamplers\R8brainResampler.cpp" />
     <ClCompile Include="MainApp\AudioResamplers\SoxrResampler.cpp" />
-    <ClCompile Include="MainApp\AudioResamplers\WindowedSincResampler.cpp" />
     <ClCompile Include="MainApp\Features\MainThreadTimingHandler.cpp" />
     <ClCompile Include="MainApp\Features\PatchCode.cpp" />
     <ClCompile Include="MainApp\Modding\DialogueSpeakers.cpp" />
@@ -249,25 +246,6 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="MainApp\Features\SocketHook.cpp" />
     <ClCompile Include="MainApp\Features\AltCodecMusicSupport.cpp" />
     <ClCompile Include="MainApp\Features\AudioResampler.cpp" />
-    <ClCompile Include="..\r8brain-free-src\r8bbase.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <ObjectFileName>$(IntDir)r8brain\</ObjectFileName>
-    </ClCompile>
-    <ClCompile Include="..\audio-resampler\resampler.c">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <ObjectFileName>$(IntDir)audio-resampler\</ObjectFileName>
-      <DisableSpecificWarnings>4018;4244;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-    </ClCompile>
-    <ClCompile Include="..\audio-resampler\extrapolator.c">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <ObjectFileName>$(IntDir)audio-resampler\</ObjectFileName>
-      <DisableSpecificWarnings>4018;4244;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-    </ClCompile>
-    <ClCompile Include="..\audio-resampler\workers.c">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <ObjectFileName>$(IntDir)audio-resampler\</ObjectFileName>
-      <DisableSpecificWarnings>4018;4244;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-    </ClCompile>
     <ClCompile Include="Misc\Hooks.cpp" />
     <ClCompile Include="MainApp\Windows\BaseWindow.cpp" />
     <ClCompile Include="MainApp\Windows\ConfigWindow.cpp" />
@@ -295,11 +273,8 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="MainApp\AltCodecMusicDecoders\FlacDecoder.h" />
     <ClInclude Include="MainApp\AltCodecMusicDecoders\WavDecoder.h" />
     <ClInclude Include="MainApp\App.h" />
-    <ClInclude Include="MainApp\AudioResamplers\ArtResampler.h" />
-    <ClInclude Include="MainApp\AudioResamplers\R8brainResampler.h" />
     <ClInclude Include="MainApp\AudioResamplers\Resampler.h" />
     <ClInclude Include="MainApp\AudioResamplers\SoxrResampler.h" />
-    <ClInclude Include="MainApp\AudioResamplers\WindowedSincResampler.h" />
     <ClInclude Include="MainApp\Features\MainThreadTimingHandler.h" />
     <ClInclude Include="MainApp\Features\PatchCode.h" />
     <ClInclude Include="MainApp\Modding\DialogueSpeakers.h" />

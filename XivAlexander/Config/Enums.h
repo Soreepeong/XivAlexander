@@ -28,14 +28,6 @@ namespace XivAlexander {
 		Suffix,
 	};
 
-	enum class AudioResamplerEngine : uint8_t {
-		Disabled,
-		Soxr,
-		WindowedSinc,
-		R8brain,
-		Art,
-	};
-
 	void to_json(nlohmann::json&, const Language&);
 	void from_json(const nlohmann::json&, Language&);
 	void to_json(nlohmann::json&, const ThemeMode&);
@@ -44,6 +36,4 @@ namespace XivAlexander {
 	void from_json(const nlohmann::json&, HighLatencyMitigationMode&);
 	void to_json(nlohmann::json&, const GameWindowTitleMode&);
 	void from_json(const nlohmann::json&, GameWindowTitleMode&);
-	void to_json(nlohmann::json&, const AudioResamplerEngine&);
-	void from_json(const nlohmann::json&, AudioResamplerEngine&);
 }

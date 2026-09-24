@@ -130,15 +130,8 @@ namespace XivAlexander {
 		ConfigItem<bool> MuteVoice_Line{this, "MuteVoice_Line", false};
 
 		ConfigItem<bool> UseAltCodecMusicSupport{this, "UseAltCodecMusicSupport", false};
-		ConfigItem<AudioResamplerEngine> VoiceResampler{this, "VoiceResampler", AudioResamplerEngine::Disabled};
 		ConfigItem<SoxrResamplerConfig> SoxrResampler{
-			this, "SoxrResampler", {}, [](const SoxrResamplerConfig& v) { return v.Sanitized(); }};
-		ConfigItem<WindowedSincResamplerConfig> WindowedSincResampler{
-			this, "WindowedSincResampler", {}, [](const WindowedSincResamplerConfig& v) { return v.Sanitized(); }};
-		ConfigItem<R8brainResamplerConfig> R8brainResampler{
-			this, "R8brainResampler", {}, [](const R8brainResamplerConfig& v) { return v.Sanitized(); }};
-		ConfigItem<ArtResamplerConfig> ArtResampler{
-			this, "ArtResampler", {}, [](const ArtResamplerConfig& v) { return v.Sanitized(); }};
+			this, "SoxrResampler", {},[](const SoxrResamplerConfig& v) { return v.Sanitized(); }};
 		ConfigItem<uint32_t> AudioOutputSamplingRate{this, "AudioOutputSamplingRate", 48000U};
 
 		RuntimeConfigRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);

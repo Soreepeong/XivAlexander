@@ -17,10 +17,7 @@
 
 #include <xivres/util.on_dtor.h>
 
-#include "MainApp/AudioResamplers/ArtResampler.h"
-#include "MainApp/AudioResamplers/R8brainResampler.h"
 #include "MainApp/AudioResamplers/SoxrResampler.h"
-#include "MainApp/AudioResamplers/WindowedSincResampler.h"
 #include "Game/DynamicStruct.h"
 
 namespace XivAlexander::Apps::MainApp::Features {
@@ -70,16 +67,6 @@ namespace XivAlexander::Apps::MainApp::Features {
 				return static_cast<int32_t>(std::llround(static_cast<double>(sourceFrames) * Ratio));
 			}
 		};
-
-		const char* ModeName(AudioResamplerEngine mode) {
-			switch (mode) {
-				case AudioResamplerEngine::Soxr: return "soxr";
-				case AudioResamplerEngine::WindowedSinc: return "windowed sinc";
-				case AudioResamplerEngine::R8brain: return "r8brain";
-				case AudioResamplerEngine::Art: return "ART";
-				default: return "disabled";
-			}
-		}
 	}
 
 	struct AudioResampler::Implementation {
@@ -92,7 +79,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 		uint32_t NativeGlobal{};
 		bool Patched = false;
 
-		std::atomic<AudioResamplerEngine> Mode{AudioResamplerEngine::Disabled};
+		std::atomic_bool Enabled{};
 		std::optional<Misc::Hooks::PointerFunctionOf<decltype(Game::SoundVoiceFunctions::Init)>> InitHook;
 		std::optional<Misc::Hooks::PointerFunctionOf<decltype(Game::SoundVoiceFunctions::Submit)>> SubmitHook;
 		std::optional<Misc::Hooks::PointerFunctionOf<decltype(Game::SoundVoiceFunctions::Flush)>> FlushHook;
@@ -115,8 +102,8 @@ namespace XivAlexander::Apps::MainApp::Features {
 			Cleanup += Config->Runtime.AudioOutputSamplingRate.OnChange([this] { ApplyMixRate(false); });
 			ApplyMixRate(true);
 
-			Cleanup += Config->Runtime.VoiceResampler.OnChange([this] { SetEngine(Config->Runtime.VoiceResampler.Value()); });
-			SetEngine(Config->Runtime.VoiceResampler.Value());
+			Cleanup += Config->Runtime.SoxrResampler.OnChange([this] { SetEnabled(Config->Runtime.SoxrResampler.Value().Enabled); });
+			SetEnabled(Config->Runtime.SoxrResampler.Value().Enabled);
 		}
 
 		~Implementation() {
@@ -210,29 +197,13 @@ namespace XivAlexander::Apps::MainApp::Features {
 			v.reset();
 		}
 
-		std::unique_ptr<Resampler> MakeResampler(AudioResamplerEngine mode, int32_t rate, int32_t mix, int32_t channels, VoiceFormat format) {
+		std::unique_ptr<Resampler> MakeResampler(int32_t rate, int32_t mix, int32_t channels, VoiceFormat format) {
 			const auto sampleFormat = format == VoiceFormat::Int16 ? SampleFormat::Int16 : SampleFormat::Float;
 			std::string error;
-			std::unique_ptr<Resampler> r;
-			switch (mode) {
-				case AudioResamplerEngine::Soxr:
-					r = std::make_unique<AudioResamplers::SoxrResampler>(rate, mix, channels, sampleFormat, Config->Runtime.SoxrResampler.Value(), error);
-					break;
-				case AudioResamplerEngine::WindowedSinc:
-					r = std::make_unique<AudioResamplers::WindowedSincResampler>(rate, mix, channels, sampleFormat, Config->Runtime.WindowedSincResampler.Value());
-					break;
-				case AudioResamplerEngine::R8brain:
-					r = std::make_unique<AudioResamplers::R8brainResampler>(rate, mix, channels, sampleFormat, Config->Runtime.R8brainResampler.Value());
-					break;
-				case AudioResamplerEngine::Art:
-					r = std::make_unique<AudioResamplers::ArtResampler>(rate, mix, channels, sampleFormat, Config->Runtime.ArtResampler.Value(), error);
-					break;
-				default:
-					return nullptr;
-			}
+			auto r = std::make_unique<AudioResamplers::SoxrResampler>(rate, mix, channels, sampleFormat, Config->Runtime.SoxrResampler.Value(), error);
 			if (!error.empty()) {
 				Logger->Format<LogLevel::Error>(LogCategory::AudioResampler,
-					"{} ({} -> {} Hz, {} ch) failed: {}", ModeName(mode), rate, mix, channels, error);
+					"soxr ({} -> {} Hz, {} ch) failed: {}", rate, mix, channels, error);
 				return nullptr;
 			}
 			return r;
@@ -253,13 +224,12 @@ namespace XivAlexander::Apps::MainApp::Features {
 			const SoundVoiceCallback* a5, uint64_t a6, uint64_t a7, uint64_t a8, uint64_t a9, uint64_t a10, uint64_t a11) {
 			Forget(voice);
 
-			const auto mode = Mode.load();
 			const auto mix = static_cast<int32_t>(*Global);
-			if (mode == AudioResamplerEngine::Disabled || rate <= 0 || mix <= 0 || rate == mix
+			if (!Enabled || rate <= 0 || mix <= 0 || rate == mix
 				|| channels <= 0 || channels > VoiceMaxChannels || format == VoiceFormat::None)
 				return InitHook->bridge(voice, rate, channels, format, a5, a6, a7, a8, a9, a10, a11);
 
-			auto resampler = MakeResampler(mode, rate, mix, channels, format);
+			auto resampler = MakeResampler(rate, mix, channels, format);
 			if (!resampler)
 				return InitHook->bridge(voice, rate, channels, format, a5, a6, a7, a8, a9, a10, a11);
 
@@ -383,16 +353,16 @@ namespace XivAlexander::Apps::MainApp::Features {
 			return true;
 		}
 
-		void SetEngine(AudioResamplerEngine engine) {
-			if (engine != AudioResamplerEngine::Disabled && !InstallVoiceHooks())
+		void SetEnabled(bool enabled) {
+			if (enabled && !InstallVoiceHooks())
 				return;
 
-			if (Mode.exchange(engine) == engine)
+			if (Enabled.exchange(enabled) == enabled)
 				return;
 
 			std::lock_guard lock(VoicesLock);
 			Logger->Format<LogLevel::Info>(LogCategory::AudioResampler,
-				"new voices: {}; {} converted voice(s) keep their resampler", ModeName(engine), Voices.size());
+				"new voices: {}; {} converted voice(s) keep their resampler", enabled ? "soxr" : "built-in", Voices.size());
 		}
 	};
 

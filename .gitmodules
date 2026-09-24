@@ -1,9 +1,3 @@
 [submodule "xivres"]
 	path = xivres
 	url = git@github.com:Soreepeong/xivres.git
-[submodule "r8brain-free-src"]
-	path = r8brain-free-src
-	url = https://github.com/avaneev/r8brain-free-src.git
-[submodule "audio-resampler"]
-	path = audio-resampler
-	url = https://github.com/dbry/audio-resampler.git

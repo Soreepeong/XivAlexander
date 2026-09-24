@@ -143,7 +143,7 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(App& app, std::funct
 	m_cleanup += m_config->Runtime.AudioOutputSamplingRate.OnChange([this] {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
-	m_cleanup += m_config->Runtime.VoiceResampler.OnChange([this] {
+	m_cleanup += m_config->Runtime.SoxrResampler.OnChange([this] {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
 
@@ -855,7 +855,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_AudioResamp
 		return;
 
 	const auto currentRate = m_config->Runtime.AudioOutputSamplingRate.Value();
-	const auto currentResampler = m_config->Runtime.VoiceResampler.Value();
+	const auto useSoxr = m_config->Runtime.SoxrResampler.Value().Enabled;
 	const auto hRateMenu = CreatePopupMenu();
 
 	// the device is &0, and the rates &1 onwards in order
@@ -877,17 +877,13 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_AudioResamp
 	}
 
 	AppendMenuW(hRateMenu, MF_SEPARATOR, 0, nullptr);
-	for (const auto& [mode, label] : {
-		std::pair{AudioResamplerEngine::Disabled, IDS_MENU_RESAMPLER_BUILTIN},
-		std::pair{AudioResamplerEngine::Soxr, IDS_MENU_RESAMPLER_SOXR},
-		std::pair{AudioResamplerEngine::WindowedSinc, IDS_MENU_RESAMPLER_WINDOWEDSINC},
-		std::pair{AudioResamplerEngine::R8brain, IDS_MENU_RESAMPLER_R8BRAIN},
-		std::pair{AudioResamplerEngine::Art, IDS_MENU_RESAMPLER_ART},
-	}) {
-		AppendMenuW(hRateMenu, MF_STRING | (mode == currentResampler ? MF_CHECKED : 0),
-			RepopulateMenu_AllocateMenuId([this, mode] { m_config->Runtime.VoiceResampler = mode; }),
-			m_config->Runtime.GetStringRes(label));
-	}
+	AppendMenuW(hRateMenu, MF_STRING | (useSoxr ? MF_CHECKED : 0),
+		RepopulateMenu_AllocateMenuId([this] {
+			auto soxr = m_config->Runtime.SoxrResampler.Value();
+			soxr.Enabled = !soxr.Enabled;
+			m_config->Runtime.SoxrResampler = soxr;
+		}),
+		m_config->Runtime.GetStringRes(IDS_MENU_USESOXRRESAMPLER));
 
 	InsertMenuW(hParent, index, MF_BYPOSITION | MF_STRING | MF_POPUP,
 		reinterpret_cast<UINT_PTR>(hRateMenu), m_config->Runtime.GetStringRes(IDS_MENU_MODDING_SAMPLINGRATE));
