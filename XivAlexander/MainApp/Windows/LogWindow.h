@@ -30,6 +30,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void OnDestroy() override;
 		void OnThemeChanged() override;
 
+		void ApplyScintillaFont();
 		void ApplyScintillaTheme();
 		void ResizeMargin();
 

@@ -50,13 +50,7 @@ XivAlexander::Apps::MainApp::Window::LogWindow::LogWindow()
 	m_direct(m_directPtr, SCI_SETMARGINTYPEN, 0, SC_MARGIN_NUMBER);
 	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 1, 0);
 	m_direct(m_directPtr, SCI_SETWRAPMODE, m_config->Runtime.UseWordWrap_XivAlexLogWindow ? SC_WRAP_CHAR : SC_WRAP_NONE, 0);
-	if (m_config->Runtime.UseMonospaceFont_XivAlexLogWindow) {
-		m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>("Courier New"));
-	} else {
-		NONCLIENTMETRICS ncm = { sizeof(NONCLIENTMETRICS) };
-		SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
-		m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>(xivres::util::unicode::convert<std::string>(ncm.lfMessageFont.lfFaceName).data()));
-	}
+	ApplyScintillaFont();
 	ApplyScintillaTheme();
 
 	m_cleanup += m_config->Runtime.AlwaysOnTop_XivAlexLogWindow.OnChange([this]() {
@@ -66,13 +60,9 @@ XivAlexander::Apps::MainApp::Window::LogWindow::LogWindow()
 		m_direct(m_directPtr, SCI_SETWRAPMODE, m_config->Runtime.UseWordWrap_XivAlexLogWindow ? SC_WRAP_CHAR : SC_WRAP_NONE, 0);
 		});
 	m_cleanup += m_config->Runtime.UseMonospaceFont_XivAlexLogWindow.OnChange([this]() {
-		if (m_config->Runtime.UseMonospaceFont_XivAlexLogWindow) {
-			m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>("Courier New"));
-		} else {
-			NONCLIENTMETRICS ncm = { sizeof(NONCLIENTMETRICS) };
-			SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
-			m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>(xivres::util::unicode::convert<std::string>(ncm.lfMessageFont.lfFaceName).data()));
-		}
+		ApplyScintillaFont();
+		ApplyScintillaTheme();
+		ResizeMargin();
 		});
 	
 	m_cleanup += m_logger->OnNewLogItem([&](const std::deque<Misc::Logger::LogItem>& items) {
@@ -192,6 +182,16 @@ void XivAlexander::Apps::MainApp::Window::LogWindow::OnDestroy() {
 void XivAlexander::Apps::MainApp::Window::LogWindow::OnThemeChanged() {
 	BaseWindow::OnThemeChanged();
 	ApplyScintillaTheme();
+}
+
+void XivAlexander::Apps::MainApp::Window::LogWindow::ApplyScintillaFont() {
+	if (m_config->Runtime.UseMonospaceFont_XivAlexLogWindow) {
+		m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>("Courier New"));
+	} else {
+		NONCLIENTMETRICS ncm = { sizeof(NONCLIENTMETRICS) };
+		SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
+		m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>(xivres::util::unicode::convert<std::string>(ncm.lfMessageFont.lfFaceName).data()));
+	}
 }
 
 void XivAlexander::Apps::MainApp::Window::LogWindow::ApplyScintillaTheme() {
