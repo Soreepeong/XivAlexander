@@ -62,7 +62,7 @@ namespace XivAlexander::Game::Signatures {
 		template<typename T>
 		T InRange(T value, T lo, T hi, std::string_view what) const {
 			if (value < lo || hi <= value)
-				Fail(ResolveError::Invalid, std::format("{} {:#x} is not within [{:#x}, {:#x})", what, value, lo, hi));
+				Fail(ResolveError::Invalid, std::format("{} 0x{:X} is not within [0x{:X}, 0x{:X})", what, value, lo, hi));
 			return value;
 		}
 

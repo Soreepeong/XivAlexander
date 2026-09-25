@@ -7,6 +7,7 @@
 #include <xivres/textools.h>
 
 #include "MainApp/Modding/FutureReservations.h"
+#include "MainApp/Modding/StreamTags.h"
 #include "Config.h"
 #include "Misc/Logger.h"
 
@@ -97,7 +98,9 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 				if (packed.empty())
 					throw std::out_of_range("empty256.scd came out empty");
-				emptyScd = std::make_shared<xivres::memory_stream>(std::move(packed));
+				auto stream = std::make_shared<xivres::memory_stream>(std::move(packed));
+				stream->emplace_tag<SourceNoteTag>("muted");
+				emptyScd = std::move(stream);
 			} catch (std::out_of_range&) {
 				// ignore
 			}

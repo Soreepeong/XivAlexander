@@ -6,7 +6,7 @@
 Utils::Win32::LoadedModule::LoadedModule(const wchar_t* pwszFileName, DWORD dwFlags, bool bRequire)
 	: Closeable<HMODULE, FreeLibrary>(LoadLibraryExW(pwszFileName, nullptr, dwFlags), Null) {
 	if (!m_object && bRequire)
-		throw Error("LoadLibraryExW({}, nullptr, 0x{:x})", pwszFileName, dwFlags);
+		throw Error("LoadLibraryExW({}, nullptr, 0x{:X})", pwszFileName, dwFlags);
 }
 
 Utils::Win32::LoadedModule::LoadedModule(const std::filesystem::path& path, DWORD dwFlags, bool bRequire)
@@ -76,7 +76,7 @@ void Utils::Win32::LoadedModule::SetPinned() const {
 	if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
 		pModuleHandleAsPsz, &dummy)) {
 		throw Error(
-			"GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, 0x{:x})",
+			"GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, 0x{:X})",
 			reinterpret_cast<size_t>(pModuleHandleAsPsz));
 	}
 }

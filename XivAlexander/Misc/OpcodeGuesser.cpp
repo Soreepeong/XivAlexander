@@ -19,14 +19,14 @@ struct XivAlexander::Misc::OpcodeGuesser::Implementation {
 			if (configValue == GameConfigRepository::InvalidIpcType)
 				Log->Format<LogLevel::Warning>(LogCategory::OpcodeGuesser, "{}: failed to guess, need manual resolution", name);
 			else
-				Log->Format<LogLevel::Info>(LogCategory::OpcodeGuesser, "{}: failed to guess; config=0x{:x}", name, configValue.Value());
+				Log->Format<LogLevel::Info>(LogCategory::OpcodeGuesser, "{}: failed to guess; config=0x{:X}", name, configValue.Value());
 		} else if (value == configValue) {
-			Log->Format<LogLevel::Info>(LogCategory::OpcodeGuesser, "{}: guessing 0x{:x} == configured value", name, value);
+			Log->Format<LogLevel::Info>(LogCategory::OpcodeGuesser, "{}: guessing 0x{:X} == configured value", name, value);
 		} else if (configValue == GameConfigRepository::InvalidIpcType) {
-			Log->Format<LogLevel::Info>(LogCategory::OpcodeGuesser, "{}: guessing and using 0x{:x}", name, value);
+			Log->Format<LogLevel::Info>(LogCategory::OpcodeGuesser, "{}: guessing and using 0x{:X}", name, value);
 			configValue = value;
 		} else {
-			Log->Format<LogLevel::Warning>(LogCategory::OpcodeGuesser, "{}: guessing 0x{:x} != configured value 0x{:x}", name, value, configValue.Value());
+			Log->Format<LogLevel::Warning>(LogCategory::OpcodeGuesser, "{}: guessing 0x{:X} != configured value 0x{:X}", name, value, configValue.Value());
 		}
 	}
 

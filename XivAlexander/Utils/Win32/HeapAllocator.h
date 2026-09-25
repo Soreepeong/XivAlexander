@@ -24,7 +24,7 @@ namespace Utils::Win32 {
 			_In_ SIZE_T dwInitialSize = 0,
 			_In_ SIZE_T dwMaximumSize = 0)
 			: m_heap(std::make_shared<Heap>(HeapCreate(flOptions, dwInitialSize, dwMaximumSize), Heap::Null,
-				"HeapCreate(0x{:x}, 0x{:x}, 0x{:}", flOptions, dwInitialSize, dwMaximumSize)) {
+				"HeapCreate(0x{:X}, 0x{:X}, 0x{:}", flOptions, dwInitialSize, dwMaximumSize)) {
 		}
 
 		HeapAllocator(std::shared_ptr<Heap> heap = nullptr)

@@ -302,12 +302,12 @@ namespace XivAlexander::Game::Resolved {
 			return static_cast<size_t>(m->Get<int32_t>(1));
 		});
 		ctx.Require(setMarker.second == r.Layout.State, ResolveError::Mismatch,
-			"submit state +{:#x} != set marker state +{:#x}", r.Layout.State, setMarker.second);
+			"submit state +0x{:X} != set marker state +0x{:X}", r.Layout.State, setMarker.second);
 		r.Layout.SetMarkerSlot = setMarker.first;
 
 		if (const auto render = ctx.TryGet(VoiceRender)) {
 			ctx.Require(render->State == r.Layout.State && render->QueuedBuffers == r.Layout.QueuedBuffers, ResolveError::Mismatch,
-				"submit state +{:#x} and queued buffers +{:#x} != render state +{:#x} and queued buffers +{:#x}",
+				"submit state +0x{:X} and queued buffers +0x{:X} != render state +0x{:X} and queued buffers +0x{:X}",
 				r.Layout.State, r.Layout.QueuedBuffers, render->State, render->QueuedBuffers);
 		}
 

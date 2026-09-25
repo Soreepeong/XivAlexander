@@ -12,6 +12,10 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 	PathRewriter::~PathRewriter() = default;
 
+	std::string PathRewriter::DescribeSource(const std::string& path) const {
+		return m_sqpacks ? m_sqpacks->DescribeEntrySource(xivres::path_spec(path)) : std::string();
+	}
+
 	std::string PathRewriter::Rewrite(const std::string& original, std::string& description) const {
 		auto name = original;
 		std::string replacedFrom;

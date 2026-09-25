@@ -17,7 +17,7 @@ static void OodleAlignedFree(void* ptr){
 std::string XivAlexander::Game::Oodle::to_string(const OodleNetworkFunctions& value) {
 	using xivres::util::module_relative;
 	return std::format(
-		"htbits {}, window {:#x}, set malloc/free {}, shared size {}, shared set window {}, "
+		"htbits {}, window 0x{:X}, set malloc/free {}, shared size {}, shared set window {}, "
 		"udp state size {}, udp train {}, udp decode {}, udp encode {}, "
 		"tcp state size {}, tcp train {}, tcp decode {}, tcp encode {}",
 		value.HtBits, value.WindowSize,

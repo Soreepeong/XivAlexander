@@ -6,6 +6,7 @@
 #include <xivres/stream.oplocking.h>
 #include <xivres/unpacked_stream.h>
 
+#include "MainApp/Modding/StreamTags.h"
 #include "MainApp/Windows/ProgressPopupWindow.h"
 #include "Config.h"
 #include "Misc/Logger.h"
@@ -344,6 +345,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			auto dataStream = std::make_shared<xivres::oplocking_file_stream>(ttmpdPath, false);
 			if (dataStream->done())
 				throw std::runtime_error(std::format("failed to open {}", ttmpdPath.string()));
+			dataStream->emplace_tag<ModpackNameTag>(list.Name);
 
 			added = parent->Children->emplace_back(std::make_shared<NestedTtmp>(NestedTtmp{
 				.Path = ttmpDir,

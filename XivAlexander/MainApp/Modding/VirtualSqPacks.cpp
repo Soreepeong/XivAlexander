@@ -4,6 +4,7 @@
 #include "MainApp/Modding/FutureReservations.h"
 #include "MainApp/Modding/GamePause.h"
 #include "MainApp/Modding/SqpackRebuildLock.h"
+#include "MainApp/Modding/StreamTags.h"
 #include "MainApp/Modding/PackQueue.h"
 #include "MainApp/Modding/PackSources.h"
 #include "MainApp/Modding/TtmpLibrary.h"
@@ -175,13 +176,10 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 				if (pathSpec.path_hash() == voBattle || pathSpec.path_hash() == voCm || pathSpec.path_hash() == voEmote || pathSpec.path_hash() == voLine)
 					tempData.Replacements.insert_or_assign(pathSpec, std::make_tuple(provider, std::shared_ptr<xivres::stream_as_packed_stream>(), std::string()));
 
-				if (pathSpec.path_hash() == voBattle && Config->Runtime.MuteVoice_Battle)
-					std::get<1>(tempData.Replacements.at(pathSpec)) = std::make_shared<xivres::stream_as_packed_stream>(pathSpec, EmptyScd);
-				if (pathSpec.path_hash() == voCm && Config->Runtime.MuteVoice_Cm)
-					std::get<1>(tempData.Replacements.at(pathSpec)) = std::make_shared<xivres::stream_as_packed_stream>(pathSpec, EmptyScd);
-				if (pathSpec.path_hash() == voEmote && Config->Runtime.MuteVoice_Emote)
-					std::get<1>(tempData.Replacements.at(pathSpec)) = std::make_shared<xivres::stream_as_packed_stream>(pathSpec, EmptyScd);
-				if (pathSpec.path_hash() == voLine && Config->Runtime.MuteVoice_Line)
+				if ((pathSpec.path_hash() == voBattle && Config->Runtime.MuteVoice_Battle)
+					|| (pathSpec.path_hash() == voCm && Config->Runtime.MuteVoice_Cm)
+					|| (pathSpec.path_hash() == voEmote && Config->Runtime.MuteVoice_Emote)
+					|| (pathSpec.path_hash() == voLine && Config->Runtime.MuteVoice_Line))
 					std::get<1>(tempData.Replacements.at(pathSpec)) = std::make_shared<xivres::stream_as_packed_stream>(pathSpec, EmptyScd);
 			}
 		}
@@ -361,7 +359,9 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 		if (entryIt == tempData.Replacements.end())
 			return;
 
-		std::get<1>(entryIt->second) = std::make_shared<xivres::passthrough_packed_stream<xivres::standard_passthrough_packer>>(path, std::make_shared<xivres::memory_stream>(data));
+		auto merged = std::make_shared<xivres::memory_stream>(data);
+		merged->emplace_tag<SourceNoteTag>("metadata from modpacks");
+		std::get<1>(entryIt->second) = std::make_shared<xivres::passthrough_packed_stream<xivres::standard_passthrough_packer>>(path, std::move(merged));
 		// std::get<1>(entryIt->second) = std::make_shared<xivres::placeholder_packed_stream>(path, std::make_shared<xivres::memory_stream>(data));
 		std::get<2>(entryIt->second) = "Metadata";
 	}
@@ -468,6 +468,31 @@ bool XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::EntryExists
 		return false;
 	return views->HashOnlyEntries.find(pathSpec) != views->HashOnlyEntries.end()
 		|| (pathSpec.has_original() && views->FullPathEntries.find(pathSpec) != views->FullPathEntries.end());
+}
+
+std::string XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::DescribeEntrySource(const xivres::path_spec& pathSpec) const {
+	const auto pack = m_pImpl->Queue.Find(pathSpec);
+	const auto views = pack ? m_pImpl->Queue.EnsureBuilt(*pack) : nullptr;
+	const auto entry = views ? views->find_entry(pathSpec) : nullptr;
+	if (!entry)
+		return {};
+
+	const auto source = entry->source();
+	std::string text;
+	if (!source.Path.empty()) {
+		const auto relative = source.Path.lexically_relative(m_pImpl->SqpackPath);
+		if (!relative.empty() && !relative.native().starts_with(L".."))
+			return {};
+
+		text = xivres::util::unicode::convert<std::string>(source.Path.wstring());
+		if (source.Offset)
+			text += std::format("@0x{:X}", source.Offset);
+	}
+	if (const auto note = source.find_tag<SourceNoteTag>())
+		text = text.empty() ? note->Value : std::format("{} ({})", note->Value, text);
+	if (const auto modpack = source.find_tag<ModpackNameTag>())
+		text = text.empty() ? modpack->Value : std::format("{} ({})", modpack->Value, text);
+	return text;
 }
 
 std::shared_ptr<xivres::stream> XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::GetOriginalEntry(const xivres::path_spec& pathSpec) const {

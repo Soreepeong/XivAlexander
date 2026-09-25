@@ -51,7 +51,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 						// pass
 					}
 
-					Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "Invalid ptr to string indirection resolving function(0x{:x}); trying again with -0xE", reinterpret_cast<size_t>(ptr));
+					Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "Invalid ptr to string indirection resolving function(0x{:X}); trying again with -0xE", reinterpret_cast<size_t>(ptr));
 					__try {
 						s = self->bridge(s - 0x0e);
 						goto done;

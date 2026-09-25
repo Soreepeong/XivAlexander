@@ -31,6 +31,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		std::shared_ptr<xivres::stream> OpenStream(const std::filesystem::path& path);
 
 		bool EntryExists(const xivres::path_spec& pathSpec) const;
+		[[nodiscard]] std::string DescribeEntrySource(const xivres::path_spec& pathSpec) const;
 		std::shared_ptr<xivres::stream> GetOriginalEntry(const xivres::path_spec& pathSpec) const;
 		std::string FindFutureReservationFor(const xivres::path_spec& pathSpec) const;
 

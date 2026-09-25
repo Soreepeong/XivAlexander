@@ -69,7 +69,7 @@ namespace XivAlexander::Game::Signatures {
 		else if constexpr (std::is_same_v<T, bool>)
 			return value ? "true" : "false";
 		else if constexpr (std::is_arithmetic_v<T>)
-			return std::format("{:#x}", value);
+			return std::format("0x{:X}", value);
 		else if constexpr (std::is_enum_v<T>)
 			return std::format("{}", static_cast<std::underlying_type_t<T>>(value));
 		else if constexpr (HasToString<T>)

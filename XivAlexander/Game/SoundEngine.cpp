@@ -6,13 +6,13 @@
 using xivres::util::module_relative;
 
 std::string XivAlexander::Game::to_string(const SoundVoiceRenderInfo& value) {
-	return std::format("state +{:#x}, queued buffers +{:#x}, mix rate {}",
+	return std::format("state +0x{:X}, queued buffers +0x{:X}, mix rate {}",
 		value.State, value.QueuedBuffers, module_relative(value.MixRate));
 }
 
 std::string XivAlexander::Game::to_string(const SoundVoiceFunctions& value) {
 	return std::format(
-		"init {}, submit {} @{}, flush {} @{}, set marker {} @{}, destructor {} @{}, state +{:#x}, queued buffers +{:#x}",
+		"init {}, submit {} @{}, flush {} @{}, set marker {} @{}, destructor {} @{}, state +0x{:X}, queued buffers +0x{:X}",
 		module_relative(value.Init),
 		module_relative(value.Submit), value.Layout.SubmitSlot,
 		module_relative(value.Flush), value.Layout.FlushSlot,
@@ -23,5 +23,5 @@ std::string XivAlexander::Game::to_string(const SoundVoiceFunctions& value) {
 }
 
 std::string XivAlexander::Game::to_string(const SoundBufferEndInfo& value) {
-	return std::format("handler {}, end of data +{:#x}", module_relative(value.Handler), value.CallbackLayout.EndOfData);
+	return std::format("handler {}, end of data +0x{:X}", module_relative(value.Handler), value.CallbackLayout.EndOfData);
 }

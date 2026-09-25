@@ -326,6 +326,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="Game\AsiStream.h" />
     <ClInclude Include="MainApp\Features\AltCodecMusicSupport.h" />
     <ClInclude Include="MainApp\Features\AudioResampler.h" />
+    <ClInclude Include="MainApp\Modding\StreamTags.h" />
     <ClInclude Include="Misc\Hooks.h" />
     <ClInclude Include="MainApp\Windows\BaseWindow.h" />
     <ClInclude Include="MainApp\Windows\ConfigWindow.h" />

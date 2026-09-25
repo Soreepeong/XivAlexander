@@ -831,8 +831,8 @@ xivres::util::wrap_value_with_context<DWORD> Utils::Win32::Process::WithVirtualP
 		if (DWORD protectBeforeRestoration;
 			!VirtualProtectEx(m_object, lpAddress, length, previousProtect, &protectBeforeRestoration)
 			|| protectBeforeRestoration != newProtect) {
-			DebugPrint(L"Problem restoring memory protect for PID {} at address 0x{:x}(length 0x{:x}): "
-				L"original 0x{:x} => newProtect 0x{:x} => protectBeforeRestoration 0x{:x} => \"restored\" 0x{:x}",
+			DebugPrint(L"Problem restoring memory protect for PID {} at address 0x{:X}(length 0x{:X}): "
+				L"original 0x{:X} => newProtect 0x{:X} => protectBeforeRestoration 0x{:X} => \"restored\" 0x{:X}",
 				GetId(), reinterpret_cast<size_t>(lpAddress), length,
 				previousProtect, newProtect, protectBeforeRestoration, previousProtect
 			);

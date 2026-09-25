@@ -286,7 +286,7 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 					builder << L"* " << ReadableAddress(frame.AddrPC.Offset, modules) << ": " << Symbol(frame.AddrPC.Offset).UndecoratedName();
 					if (DWORD offsetFromSymbol{};
 						SymGetLineFromAddrW64(GetCurrentProcess(), frame.AddrPC.Offset, &offsetFromSymbol, &line))
-						builder << std::format(L" {}:{}(+0x{:x})\n", line.FileName, line.LineNumber, offsetFromSymbol);
+						builder << std::format(L" {}:{}(+0x{:X})\n", line.FileName, line.LineNumber, offsetFromSymbol);
 					else
 						builder << "\n";
 				} else
@@ -321,20 +321,20 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 		if (mod != modules.end() && mod != modules.begin() && mod->Value<DWORD64>() > address)
 			--mod;
 		if (mod == modules.end() || address < mod->Value<DWORD64>() || address >= mod->Value<DWORD64>() + mod->ModuleInfo().SizeOfImage)
-			return std::format(L"0x{:x}", address - mod->Value<DWORD64>());
+			return std::format(L"0x{:X}", address - mod->Value<DWORD64>());
 		
 		const auto path = mod->PathOf();
 		const auto modName = mod->BaseName();
 		if (lstrcmpiW(path.filename().c_str(), modName.c_str()) != 0)
-			return std::format(L"{}({})+0x{:x}", path, modName, address - mod->Value<DWORD64>());
+			return std::format(L"{}({})+0x{:X}", path, modName, address - mod->Value<DWORD64>());
 
 		size_t cnt = 0;
 		for (const auto& mod : modules)
 			cnt += lstrcmpiW(mod.BaseName().c_str(), modName.c_str()) == 0 ? 1 : 0;
 		if (cnt > 1)
-			return std::format(L"{}({})+0x{:x}", path, modName, address - mod->Value<DWORD64>());
+			return std::format(L"{}({})+0x{:X}", path, modName, address - mod->Value<DWORD64>());
 
-		return std::format(L"{}+0x{:x}", path, address - mod->Value<DWORD64>());
+		return std::format(L"{}+0x{:X}", path, address - mod->Value<DWORD64>());
 	}
 
 	Implementation() {
@@ -383,7 +383,7 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 				for (auto excRec = excInfo->ExceptionRecord; excRec && !IsBadReadPtr(excRec, sizeof *excRec); excRec = excRec->ExceptionRecord) {
 					if (excRec != excInfo->ExceptionRecord)
 						errStr << L"\n";
-					errStr << std::format(L"Code: 0x{:x}\nFlags: 0x{:x}\n", excRec->ExceptionCode, excRec->ExceptionFlags);
+					errStr << std::format(L"Code: 0x{:X}\nFlags: 0x{:X}\n", excRec->ExceptionCode, excRec->ExceptionFlags);
 					errStr << std::format(L"Address: {}\n", ReadableAddress(reinterpret_cast<DWORD64>(excRec->ExceptionAddress), modules));
 					for (size_t i = 0; i < excRec->NumberParameters; i++) {
 						errStr << std::format(L"Param #{}: {:x}\n", i, excRec->ExceptionInformation[i]);

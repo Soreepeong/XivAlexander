@@ -24,5 +24,6 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		~PathRewriter();
 
 		[[nodiscard]] std::string Rewrite(const std::string& original, std::string& description) const;
+		[[nodiscard]] std::string DescribeSource(const std::string& path) const;
 	};
 }

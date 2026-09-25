@@ -43,11 +43,19 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 					if (const auto original = std::string(path); LogFilter.ShouldLog(original, !description.empty(), reinterpret_cast<size_t>(fn), original)) {
 						const auto& shown = description.empty() ? original : description;
 						if (found) {
+							const auto source = Rewriter.DescribeSource(replacement.empty() ? original : replacement);
 							Logger->Format(LogCategory::GameResourceOverrider,
-								"{} => dat{}+{:#x} (f={})", shown, *outDatIndex, uint64_t{*outOffset} * 128, xivres::util::module_relative(fn));
+								"[{}] dat{}+0x{:X}: {}{}",
+								xivres::util::module_relative(fn),
+								*outDatIndex,
+								uint64_t{*outOffset} * 128,
+								shown, 
+								source.empty() ? std::string() : std::format(" ({})", source));
 						} else {
 							Logger->Format(LogCategory::GameResourceOverrider,
-								"{} => not found (f={})", shown, xivres::util::module_relative(fn));
+								"[{}] not found: {}",
+								xivres::util::module_relative(fn),
+								shown);
 						}
 					}
 
