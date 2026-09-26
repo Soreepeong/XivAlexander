@@ -47,7 +47,7 @@ struct XivAlexander::Misc::IcmpPingTracker::Implementation {
 			, WorkerThread(std::format(L"XivAlexander::App::Network::IcmpPingTracker({:x})::SingleTracker({:x}: {} <-> {})",
 					reinterpret_cast<size_t>(&icmpPingTracker), reinterpret_cast<size_t>(this),
 					Utils::ToString(pair.Source), Utils::ToString(pair.Destination)
-				), [this]() { Run(); }) {
+				), [this] { Run(); }) {
 		}
 
 		~SingleTracker() {
@@ -140,7 +140,7 @@ xivres::util::on_dtor XivAlexander::Misc::IcmpPingTracker::Track(const in_addr& 
 	std::lock_guard _lock(m_pImpl->TrackersMtx);
 	if (const auto it = m_pImpl->Trackers.find(pair); it == m_pImpl->Trackers.end())
 		m_pImpl->Trackers.emplace(pair, std::make_shared<Implementation::SingleTracker>(*this, pair));
-	return xivres::util::on_dtor([this, pair]() {
+	return xivres::util::on_dtor([this, pair] {
 		m_pImpl->Trackers.erase(pair);
 	});
 }

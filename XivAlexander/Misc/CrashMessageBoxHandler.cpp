@@ -422,7 +422,7 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 
 		const auto okstr = Utils::Win32::MB_GetString(IDOK - 1);
 
-		Utils::Win32::Thread(L"ShowErrorMessageThread", [&]() {
+		Utils::Win32::Thread(L"ShowErrorMessageThread", [&] {
 			const auto config = Config::Acquire();
 
 			const TASKDIALOG_BUTTON tdb[] = {

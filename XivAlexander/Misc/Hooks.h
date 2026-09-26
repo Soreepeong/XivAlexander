@@ -86,7 +86,7 @@ namespace XivAlexander::Misc::Hooks {
 			m_detour = std::move(pfnDetour);
 			HookEnable();
 
-			return xivres::util::on_dtor([this, m_destructed = m_destructed]() {
+			return xivres::util::on_dtor([this, m_destructed = m_destructed] {
 				if (*m_destructed)
 					return;
 
@@ -100,7 +100,7 @@ namespace XivAlexander::Misc::Hooks {
 
 		xivres::util::on_dtor AcquireHookCounter() {
 			m_hookCounter++;
-			return { [this]() {
+			return { [this] {
 				m_hookCounter--;
 			} };
 		}

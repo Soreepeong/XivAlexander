@@ -3,12 +3,12 @@
 #include "Misc/Hooks.h"
 
 struct XivAlexander::Misc::DebuggerDetectionDisabler::Implementation {
-	Hooks::PointerFunction<BOOL> IsDebuggerPresent{"DebuggerDetectionDisabler::IsDebuggerPresent", ::IsDebuggerPresent};
+	Hooks::ImportedFunction<BOOL> IsDebuggerPresent{"kernel32!IsDebuggerPresent", "kernel32.dll", "IsDebuggerPresent"};
 	xivres::util::on_dtor::multi m_cleanup;
 
 	Implementation() {
 		Utils::Win32::DebugPrint(L"DebuggerDetectionDisabler: New");
-		m_cleanup += IsDebuggerPresent.SetHook([]() { return FALSE; });
+		m_cleanup += IsDebuggerPresent.SetHook([] { return FALSE; });
 	}
 
 	~Implementation() {
