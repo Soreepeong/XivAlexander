@@ -257,9 +257,10 @@ namespace XivAlexander::Apps::MainApp::Features {
 				return SubmitHook->bridge(voice, data, bytes, context, startFrame);
 
 			// same check with the game
-			if (const auto& gameVoice = *static_cast<const SoundVoice*>(voice);
-				(gameVoice.State(Functions.Layout) & ~SoundVoiceState::Flushed) == SoundVoiceState::None
-				|| gameVoice.QueuedBuffers(Functions.Layout) >= VoiceMaxQueuedBuffers
+			const auto& gameVoice = *static_cast<const SoundVoice*>(voice);
+			const auto queued = gameVoice.QueuedBuffers(Functions.Layout);
+			if ((gameVoice.State(Functions.Layout) & ~SoundVoiceState::Flushed) == SoundVoiceState::None
+				|| queued >= VoiceMaxQueuedBuffers
 				|| bytes % v->SourceFrameBytes() != 0)
 				return VoiceFailure;
 
@@ -277,9 +278,11 @@ namespace XivAlexander::Apps::MainApp::Features {
 					"voice {:p}: {} failed on {} frames", voice, v->Resampler->Name(), framesIn);
 			}
 
-			const auto produced = out.size() / channels;
-			if (produced == 0)
+			if (out.empty()) {
+				if (queued > 0)
+					return 0;
 				out.assign(channels, 0.f);
+			}
 
 			const auto result = SubmitHook->bridge(voice, out.data(), out.size() * sizeof(float), context, v->ToMixFrames(startFrame));
 			if (result != 0)
