@@ -19,7 +19,6 @@ namespace XivAlexander::LoaderApp::Actions {
 
 		struct TaskDialogState {
 			std::filesystem::path GamePath, BootPath;
-			bool BootPathIsInjectable = false;
 			bool PathRequiresFileOpenDialog = true;
 			DWORD Pid = 0;
 

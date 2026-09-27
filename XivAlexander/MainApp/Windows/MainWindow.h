@@ -26,7 +26,6 @@ namespace XivAlexander::Apps::MainApp::Window {
 
 		uint64_t m_lastTrayIconLeftButtonUp = 0;
 
-		bool m_bUseDirectX11 = INTPTR_MAX == INT64_MAX;
 		bool m_bUseXivAlexander = true;
 		bool m_bUseParameterObfuscation = false;
 		bool m_bUseElevation;
@@ -70,6 +69,9 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void RegisterTrayIcon();
 		void RemoveTrayIcon();
 
+		[[nodiscard]] static std::filesystem::path GameExecutablePath();
+		[[nodiscard]] std::wstring MakeLaunchArguments() const;
+		void CopyLaunchCommandLine();
 		void AskRestartGame(bool onlyOnModifier = false);
 
 		void OnCommand_Menu_File(int menuId);

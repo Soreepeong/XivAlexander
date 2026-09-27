@@ -24,6 +24,7 @@ static const std::map<xivres::game_language, WORD> GameLanguageIdMap{
 	{xivres::game_language::ChineseSimplified, MAKELANGID(LANG_CHINESE_SIMPLIFIED, SUBLANG_CHINESE_SIMPLIFIED)},
 	{xivres::game_language::ChineseTraditional, MAKELANGID(LANG_CHINESE_TRADITIONAL, SUBLANG_CHINESE_TRADITIONAL)},
 	{xivres::game_language::Korean, MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN)},
+	{xivres::game_language::TraditionalChinese, MAKELANGID(LANG_CHINESE_TRADITIONAL, SUBLANG_CHINESE_TRADITIONAL)},
 };
 
 static const std::map<WORD, int> LanguageIdNameResourceIdMap{
@@ -42,8 +43,9 @@ static const std::map<xivres::game_publisher, int> RegionResourceIdMap{
 	{xivres::game_publisher::SquareEnixJapan, IDS_REGION_NAME_JAPAN},
 	{xivres::game_publisher::SquareEnixAmerica, IDS_REGION_NAME_NORTH_AMERICA},
 	{xivres::game_publisher::SquareEnixEurope, IDS_REGION_NAME_EUROPE},
-	{xivres::game_publisher::ShandaGames, IDS_REGION_NAME_CHINA},
+	{xivres::game_publisher::ShengquGames, IDS_REGION_NAME_CHINA},
 	{xivres::game_publisher::ActozSoft, IDS_REGION_NAME_KOREA},
+	{xivres::game_publisher::UserjoyGames, IDS_REGION_NAME_CHINATRAD},
 };
 
 

@@ -11,7 +11,6 @@ using namespace Dll;
 void XivAlexander::LoaderApp::Actions::Interactive::TaskDialogState::SelectFrom(const Misc::GameInstallationDetector::GameReleaseInfo& info) {
 	GamePath = info.RootPath / "game";
 	BootPath = info.BootApp;
-	BootPathIsInjectable = info.BootAppDirectlyInjectable;
 	PathRequiresFileOpenDialog = false;
 }
 
@@ -84,20 +83,15 @@ std::function<Utils::Win32::TaskDialog::ActionHandled(Utils::Win32::TaskDialog&)
 			if (m_state.BootPath.empty())
 				throw std::runtime_error("Unable to detect boot path");
 
-			if (m_state.BootPathIsInjectable || m_state.PathRequiresFileOpenDialog) {
-				const auto isIntl = (lstrcmpiW(m_state.BootPath.filename().c_str(), L"ffxivboot.exe") == 0 || lstrcmpiW(m_state.BootPath.filename().c_str(), L"ffxivboot64.exe") == 0)
-					&& lstrcmpiW(m_state.BootPath.parent_path().filename().wstring().c_str(), L"boot") == 0;
-				Utils::Win32::RunProgram({
-					.args = std::format(L"-a {} -l select {}",
-						LoaderActionToString(LoaderAction::Launcher),
-						Utils::Win32::ReverseCommandLineToArgv(m_state.BootPath.wstring())),
-					.wait = true,
-					.elevateMode = isIntl ? Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated : Utils::Win32::RunProgramParams::NoElevationIfDenied,
-				});
-			} else {
-				Utils::Win32::ShellExecutePathOrThrow(m_state.BootPath, dialog.GetHwnd());
-				MessageBoxF(nullptr, MB_ICONWARNING, IDS_LOADERAPP_INTERACTIVE_NOCHAINLOAD);
-			}
+			const auto isIntl = (lstrcmpiW(m_state.BootPath.filename().c_str(), L"ffxivboot.exe") == 0 || lstrcmpiW(m_state.BootPath.filename().c_str(), L"ffxivboot64.exe") == 0)
+				&& lstrcmpiW(m_state.BootPath.parent_path().filename().wstring().c_str(), L"boot") == 0;
+			Utils::Win32::RunProgram({
+				.args = std::format(L"-a {} -l select {}",
+					LoaderActionToString(LoaderAction::Launcher),
+					Utils::Win32::ReverseCommandLineToArgv(m_state.BootPath.wstring())),
+				.wait = true,
+				.elevateMode = isIntl ? Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated : Utils::Win32::RunProgramParams::NoElevationIfDenied,
+			});
 		} catch (const Utils::Win32::CancelledError&) {
 			// pass
 		} catch (const std::exception& e) {
@@ -250,7 +244,7 @@ void XivAlexander::LoaderApp::Actions::Interactive::ShowSelectGameInstallationDi
 	IFileOpenDialogPtr pDialog;
 	DWORD dwFlags;
 	static const COMDLG_FILTERSPEC fileTypes[] = {
-		{FindStringResourceEx(Module(), IDS_FILTERSPEC_FFXIVEXECUTABLEFILES) + 1, L"ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe"},
+		{FindStringResourceEx(Module(), IDS_FILTERSPEC_FFXIVEXECUTABLEFILES) + 1, L"ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; FfxivLauncherTC.exe; ffxiv_dx11.exe"},
 		{FindStringResourceEx(Module(), IDS_FILTERSPEC_EXECUTABLEFILES) + 1, L"*.exe"},
 		{FindStringResourceEx(Module(), IDS_FILTERSPEC_ALLFILES) + 1, L"*"},
 	};
@@ -276,18 +270,22 @@ void XivAlexander::LoaderApp::Actions::Interactive::ShowSelectGameInstallationDi
 	}
 
 	m_state.GamePath = fileName;
-	m_state.BootPathIsInjectable = true;
 	if (lstrcmpiW(m_state.GamePath.filename().wstring().c_str(), GameExecutable64NameW) == 0) {
 		m_state.GamePath = m_state.GamePath.parent_path();
 		if (!exists(m_state.BootPath = m_state.GamePath.parent_path() / "FFXIVBoot.exe"))
 			if (!exists(m_state.BootPath = m_state.GamePath.parent_path() / "boot" / "ffxivboot.exe"))
 				if (!exists(m_state.BootPath = m_state.GamePath.parent_path() / "boot" / "ffxiv_boot.exe"))
-					m_state.BootPath.clear();
+					if (!exists(m_state.BootPath = m_state.GamePath.parent_path() / "boot" / "FfxivLauncherTC.exe"))
+						m_state.BootPath.clear();
 	} else {
-		m_state.BootPath = m_state.GamePath.parent_path();
-		if (!exists((m_state.GamePath = m_state.BootPath / "game") / "ffxivgame.ver"))
-			if (!exists((m_state.GamePath = m_state.BootPath.parent_path() / "game") / "ffxivgame.ver"))
-				if (!exists((m_state.GamePath = m_state.BootPath.parent_path().parent_path() / "game") / "ffxivgame.ver"))
+		const auto dir = m_state.GamePath.parent_path();
+		const auto isLauncher = std::ranges::any_of(
+			std::initializer_list<const wchar_t*>{L"ffxivboot.exe", L"ffxivboot64.exe", L"ffxiv_boot.exe", L"FfxivLauncherTC.exe"},
+			[name = m_state.GamePath.filename().wstring()](const wchar_t* launcher) { return lstrcmpiW(name.c_str(), launcher) == 0; });
+		m_state.BootPath = isLauncher ? m_state.GamePath : dir;
+		if (!exists((m_state.GamePath = dir / "game") / "ffxivgame.ver"))
+			if (!exists((m_state.GamePath = dir.parent_path() / "game") / "ffxivgame.ver"))
+				if (!exists((m_state.GamePath = dir.parent_path().parent_path() / "game") / "ffxivgame.ver"))
 					m_state.GamePath.clear();
 	}
 }

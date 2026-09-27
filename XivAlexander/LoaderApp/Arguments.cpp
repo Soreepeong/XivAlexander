@@ -42,18 +42,32 @@ XivAlexander::LoaderApp::Arguments::Arguments()
 		.action([](const std::string& val_) {
 			auto val = xivres::util::unicode::convert<std::wstring>(val_);
 			CharLowerW(&val[0]);
+			const auto matches = [&val](std::wstring_view compare) {
+				for (size_t j = 0; j < val.length() && j < compare.length(); ++j)
+					if (val[j] != compare[j])
+						return false;
+				return true;
+			};
+
 			for (size_t i = 0; i < static_cast<size_t>(LauncherType::Count_); ++i) {
 				auto compare = xivres::util::unicode::convert<std::wstring>(argparse::details::repr(static_cast<LauncherType>(i)));
 				CharLowerW(&compare[0]);
-
-				auto equal = true;
-				for (size_t j = 0; equal && j < val.length() && j < compare.length(); ++j)
-					equal = val[j] == compare[j];
-				if (equal)
+				if (matches(compare))
 					return static_cast<LauncherType>(i);
 			}
+
+			// names used before the launchers were named after their publishers
+			for (const auto& [alias, type] : std::initializer_list<std::pair<std::wstring_view, LauncherType>>{
+					{L"international", LauncherType::SquareEnix},
+					{L"korean", LauncherType::ActozSoft},
+					{L"chinese", LauncherType::ShengquGames},
+				}) {
+				if (matches(alias))
+					return type;
+			}
+
 			if (val[0] == L'e' || val[0] == L'd' || val[0] == L'g' || val[0] == L'f' || val[0] == L'j')
-				return LauncherType::International;
+				return LauncherType::SquareEnix;
 
 			throw std::runtime_error(xivres::util::unicode::convert<std::string>(FindStringResourceEx(Module(), IDS_ERROR_INVALID_LAUNCHER_TYPE) + 1));
 		});

@@ -97,9 +97,10 @@ std::string argparse::details::repr(XivAlexander::LoaderApp::LauncherType const&
 	switch (val) {
 		case XivAlexander::LoaderApp::LauncherType::Auto: return "auto";
 		case XivAlexander::LoaderApp::LauncherType::Select: return "select";
-		case XivAlexander::LoaderApp::LauncherType::International: return "international";
-		case XivAlexander::LoaderApp::LauncherType::Korean: return "korean";
-		case XivAlexander::LoaderApp::LauncherType::Chinese: return "chinese";
+		case XivAlexander::LoaderApp::LauncherType::SquareEnix: return "squareenix";
+		case XivAlexander::LoaderApp::LauncherType::ActozSoft: return "actozsoft";
+		case XivAlexander::LoaderApp::LauncherType::ShengquGames: return "shengqugames";
+		case XivAlexander::LoaderApp::LauncherType::UserjoyGames: return "userjoygames";
 	}
 	return std::format("({})", static_cast<int>(val));
 }
@@ -117,8 +118,9 @@ template<>
 std::string argparse::details::repr(xivres::game_release_publisher const& val) {
 	switch (val) {
 		case xivres::game_release_publisher::SquareEnix: return xivres::util::unicode::convert<std::string>(FindStringResourceEx(Module(), IDS_CLIENT_INTERNATIONAL) + 1);
-		case xivres::game_release_publisher::ActozSoft: return xivres::util::unicode::convert<std::string>(FindStringResourceEx(Module(), IDS_CLIENT_KOREAN) + 1);
-		case xivres::game_release_publisher::ShandaGames: return xivres::util::unicode::convert<std::string>(FindStringResourceEx(Module(), IDS_CLIENT_CHINESE) + 1);
+		case xivres::game_release_publisher::ActozSoft: return xivres::util::unicode::convert<std::string>(FindStringResourceEx(Module(), IDS_CLIENT_ACTOZSOFT) + 1);
+		case xivres::game_release_publisher::ShengquGames: return xivres::util::unicode::convert<std::string>(FindStringResourceEx(Module(), IDS_CLIENT_SHENGQUGAMES) + 1);
+		case xivres::game_release_publisher::UserjoyGames: return xivres::util::unicode::convert<std::string>(FindStringResourceEx(Module(), IDS_CLIENT_USERJOYGAMES) + 1);
 	}
 	return std::format("({})", static_cast<int>(val));
 }

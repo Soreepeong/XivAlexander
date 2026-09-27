@@ -22,7 +22,7 @@ bool XivAlexander::LoaderApp::Actions::RunLauncher::SelectAndRunLauncher() {
 		IFileOpenDialogPtr pDialog;
 		DWORD dwFlags;
 		static const COMDLG_FILTERSPEC fileTypes[] = {
-			{FindStringResourceEx(Module(), IDS_FILTERSPEC_FFXIVBOOTFILES) + 1, L"ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe"},
+			{FindStringResourceEx(Module(), IDS_FILTERSPEC_FFXIVBOOTFILES) + 1, L"ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; FfxivLauncherTC.exe"},
 			{FindStringResourceEx(Module(), IDS_FILTERSPEC_EXECUTABLEFILES) + 1, L"*.exe"},
 			{FindStringResourceEx(Module(), IDS_FILTERSPEC_ALLFILES) + 1, L"*.*"},
 		};
@@ -83,23 +83,30 @@ int XivAlexander::LoaderApp::Actions::RunLauncher::Run() {
 			case LauncherType::Select:
 				return SelectAndRunLauncher();
 
-			case LauncherType::International: {
+			case LauncherType::SquareEnix: {
 				for (const auto& launcher : launchers)
 					if (launcher.Region == xivres::game_release_publisher::SquareEnix)
 						return !RunProgramRetryAfterElevatingSelfAsNecessary(launcher.BootApp);
 				throw std::out_of_range(nullptr);
 			}
 
-			case LauncherType::Korean: {
+			case LauncherType::ActozSoft: {
 				for (const auto& launcher : launchers)
 					if (launcher.Region == xivres::game_release_publisher::ActozSoft)
 						return !RunProgramRetryAfterElevatingSelfAsNecessary(launcher.BootApp);
 				throw std::out_of_range(nullptr);
 			}
 
-			case LauncherType::Chinese: {
+			case LauncherType::ShengquGames: {
 				for (const auto& launcher : launchers)
-					if (launcher.Region == xivres::game_release_publisher::ShandaGames)
+					if (launcher.Region == xivres::game_release_publisher::ShengquGames)
+						return !RunProgramRetryAfterElevatingSelfAsNecessary(launcher.BootApp);
+				throw std::out_of_range(nullptr);
+			}
+
+			case LauncherType::UserjoyGames: {
+				for (const auto& launcher : launchers)
+					if (launcher.Region == xivres::game_release_publisher::UserjoyGames)
 						return !RunProgramRetryAfterElevatingSelfAsNecessary(launcher.BootApp);
 				throw std::out_of_range(nullptr);
 			}

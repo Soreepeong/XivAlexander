@@ -93,12 +93,15 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(App& app, std::funct
 		if (m_gameReleaseInfo.Region == xivres::game_release_publisher::SquareEnix && !m_launchParameters.empty()) {
 			m_gameLanguage = Game::CommandLine::WellKnown::GetLanguage(m_launchParameters, xivres::game_language::English);
 			m_gameRegion = Game::CommandLine::WellKnown::GetRegion(m_launchParameters, xivres::game_publisher::SquareEnixAmerica);
-		} else if (m_gameReleaseInfo.Region == xivres::game_release_publisher::ShandaGames) {
+		} else if (m_gameReleaseInfo.Region == xivres::game_release_publisher::ShengquGames) {
 			m_gameLanguage = xivres::game_language::ChineseSimplified;
-			m_gameRegion = xivres::game_publisher::ShandaGames;
+			m_gameRegion = xivres::game_publisher::ShengquGames;
 		} else if (m_gameReleaseInfo.Region == xivres::game_release_publisher::ActozSoft) {
 			m_gameLanguage = xivres::game_language::Korean;
 			m_gameRegion = xivres::game_publisher::ActozSoft;
+		} else if (m_gameReleaseInfo.Region == xivres::game_release_publisher::UserjoyGames) {
+			m_gameLanguage = xivres::game_language::TraditionalChinese;
+			m_gameRegion = xivres::game_publisher::UserjoyGames;
 		}
 	} catch (...) {
 	}
@@ -904,6 +907,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
 	// Game
 	{
 		SetMenuState(hMenu, ID_RESTART_RESTART, false, !m_launchParameters.empty());
+		SetMenuState(hMenu, ID_RESTART_COPYLAUNCHCOMMANDLINE, false, !m_launchParameters.empty());
 		SetMenuState(hMenu, ID_RESTART_USEXIVALEXANDER, m_bUseXivAlexander, !m_launchParameters.empty());
 		SetMenuState(hMenu, ID_RESTART_USEPARAMETEROBFUSCATION, m_bUseParameterObfuscation, !m_launchParameters.empty());
 		SetMenuState(hMenu, ID_RESTART_USEELEVATION, m_bUseElevation, !m_launchParameters.empty());
@@ -915,6 +919,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
 		SetMenuState(hMenu, ID_RESTART_LANGUAGE_JAPANESE, m_gameLanguage == xivres::game_language::Japanese, languageRegionModifiable);
 		SetMenuState(hMenu, ID_RESTART_LANGUAGE_SIMPLIFIEDCHINESE, m_gameLanguage == xivres::game_language::ChineseSimplified, false);
 		SetMenuState(hMenu, ID_RESTART_LANGUAGE_KOREAN, m_gameLanguage == xivres::game_language::Korean, false);
+		SetMenuState(hMenu, ID_RESTART_LANGUAGE_CHINESETRADITIONAL, m_gameLanguage == xivres::game_language::TraditionalChinese, false);
 		SetMenuState(hMenu, ID_RESTART_REGION_REMEMBER, languageRegionModifiable && m_config->Runtime.RememberedGameLaunchRegion != xivres::game_publisher::Unspecified, languageRegionModifiable);
 		SetMenuState(hMenu, ID_RESTART_REGION_JAPAN, m_gameRegion == xivres::game_publisher::SquareEnixJapan, languageRegionModifiable);
 		SetMenuState(hMenu, ID_RESTART_REGION_NORTH_AMERICA, m_gameRegion == xivres::game_publisher::SquareEnixAmerica, languageRegionModifiable);
@@ -1009,6 +1014,48 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RemoveTrayIcon() {
 	Shell_NotifyIconW(NIM_DELETE, &nid);
 }
 
+std::filesystem::path XivAlexander::Apps::MainApp::Window::MainWindow::GameExecutablePath() {
+	return Utils::Win32::Process::Current().PathOf().parent_path() / Dll::GameExecutable64NameW;
+}
+
+std::wstring XivAlexander::Apps::MainApp::Window::MainWindow::MakeLaunchArguments() const {
+	auto params{ m_launchParameters };
+	if (Dll::IsLanguageRegionModifiable()) {
+		Game::CommandLine::WellKnown::SetLanguage(params, m_gameLanguage);
+		Game::CommandLine::WellKnown::SetRegion(params, m_gameRegion);
+	}
+	return Game::CommandLine::ToString(params, m_bUseParameterObfuscation);
+}
+
+void XivAlexander::Apps::MainApp::Window::MainWindow::CopyLaunchCommandLine() {
+	const auto text = std::format(L"{} {}", Utils::Win32::ReverseCommandLineToArgv(GameExecutablePath().wstring()), MakeLaunchArguments());
+	const auto bytes = (text.size() + 1) * sizeof(wchar_t);
+
+	const auto hMem = GlobalAlloc(GMEM_MOVEABLE, bytes);
+	if (!hMem)
+		throw Utils::Win32::Error("GlobalAlloc");
+	if (const auto p = GlobalLock(hMem)) {
+		memcpy(p, text.c_str(), bytes);
+		GlobalUnlock(hMem);
+	} else {
+		GlobalFree(hMem);
+		throw Utils::Win32::Error("GlobalLock");
+	}
+
+	if (!OpenClipboard(m_hWnd)) {
+		GlobalFree(hMem);
+		throw Utils::Win32::Error("OpenClipboard");
+	}
+	EmptyClipboard();
+	if (!SetClipboardData(CF_UNICODETEXT, hMem)) {
+		const auto error = Utils::Win32::Error("SetClipboardData");
+		CloseClipboard();
+		GlobalFree(hMem);
+		throw error;
+	}
+	CloseClipboard();
+}
+
 void XivAlexander::Apps::MainApp::Window::MainWindow::AskRestartGame(bool onlyOnModifier) {
 	if (onlyOnModifier && !((GetKeyState(VK_CONTROL) & 0x8000) || (GetKeyState(VK_SHIFT) & 0x8000))) {
 		return;
@@ -1017,22 +1064,15 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::AskRestartGame(bool onlyOn
 	const auto no = Utils::Win32::MB_GetString(IDNO - 1);
 	if (Dll::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION, m_config->Runtime.FormatStringRes(
 		IDS_CONFIRM_RESTART_GAME,
-		m_bUseDirectX11 ? yes : no,
 		m_bUseXivAlexander ? yes : no,
 		m_bUseParameterObfuscation ? yes : no,
 		m_bUseElevation ? yes : no,
 		m_config->Runtime.GetLanguageNameLocalized(m_gameLanguage),
 		m_config->Runtime.GetRegionNameLocalized(m_gameRegion)
 	)) == IDYES) {
-		auto params{ m_launchParameters };
-		if (Dll::IsLanguageRegionModifiable()) {
-			Game::CommandLine::WellKnown::SetLanguage(params, m_gameLanguage);
-			Game::CommandLine::WellKnown::SetRegion(params, m_gameRegion);
-		}
-
 		Utils::Win32::RunProgramParams runParams{
-			.path = Utils::Win32::Process::Current().PathOf().parent_path() / Dll::GameExecutable64NameW,
-			.args = Game::CommandLine::ToString(params, m_bUseParameterObfuscation),
+			.path = GameExecutablePath(),
+			.args = MakeLaunchArguments(),
 			.elevateMode = m_bUseElevation ? Utils::Win32::RunProgramParams::Force : Utils::Win32::RunProgramParams::NeverUnlessShellIsElevated,
 		};
 
@@ -1106,6 +1146,10 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Restart(int
 			AskRestartGame();
 			return;
 
+		case ID_RESTART_COPYLAUNCHCOMMANDLINE:
+			CopyLaunchCommandLine();
+			return;
+
 		case ID_RESTART_USEXIVALEXANDER:
 			m_bUseXivAlexander = !m_bUseXivAlexander;
 			AskRestartGame(true);
@@ -1165,6 +1209,13 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Restart(int
 
 		case ID_RESTART_LANGUAGE_KOREAN:
 			m_gameLanguage = xivres::game_language::Korean;
+			if (m_config->Runtime.RememberedGameLaunchLanguage != xivres::game_language::Unspecified)
+				m_config->Runtime.RememberedGameLaunchLanguage = m_gameLanguage;
+			AskRestartGame(true);
+			return;
+
+		case ID_RESTART_LANGUAGE_CHINESETRADITIONAL:
+			m_gameLanguage = xivres::game_language::TraditionalChinese;
 			if (m_config->Runtime.RememberedGameLaunchLanguage != xivres::game_language::Unspecified)
 				m_config->Runtime.RememberedGameLaunchLanguage = m_gameLanguage;
 			AskRestartGame(true);

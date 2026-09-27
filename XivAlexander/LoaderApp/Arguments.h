@@ -6,9 +6,10 @@ namespace XivAlexander::LoaderApp {
 	enum class LauncherType : int {
 		Auto,
 		Select,
-		International,
-		Korean,
-		Chinese,
+		SquareEnix,
+		ActozSoft,
+		ShengquGames,
+		UserjoyGames,
 		Count_,  // for internal use only
 	};
 

@@ -62,15 +62,15 @@ static std::string TestPublisher(const std::filesystem::path& path) {
 	return xivres::util::unicode::convert<std::string>(country);
 }
 
-static std::wstring ReadRegistryAsString(const wchar_t* lpSubKey, const wchar_t* lpValueName, int mode = 0) {
+static std::wstring ReadRegistryAsString(const wchar_t* lpSubKey, const wchar_t* lpValueName, HKEY hRoot = HKEY_LOCAL_MACHINE, int mode = 0) {
 	if (mode == 0) {
-		auto res1 = ReadRegistryAsString(lpSubKey, lpValueName, KEY_WOW64_32KEY);
+		auto res1 = ReadRegistryAsString(lpSubKey, lpValueName, hRoot, KEY_WOW64_32KEY);
 		if (res1.empty())
-			res1 = ReadRegistryAsString(lpSubKey, lpValueName, KEY_WOW64_64KEY);
+			res1 = ReadRegistryAsString(lpSubKey, lpValueName, hRoot, KEY_WOW64_64KEY);
 		return res1;
 	}
 	HKEY hKey;
-	if (RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+	if (RegOpenKeyExW(hRoot,
 		lpSubKey,
 		0, KEY_READ | mode, &hKey))
 		return {};
@@ -88,6 +88,44 @@ static std::wstring ReadRegistryAsString(const wchar_t* lpSubKey, const wchar_t*
 	buf.erase(std::ranges::find(buf, L'\0'), buf.end());
 
 	return buf;
+}
+
+static std::vector<std::wstring> ListRegistrySubkeys(const wchar_t* lpSubKey) {
+	HKEY hKey;
+	if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, lpSubKey, 0, KEY_READ | KEY_WOW64_64KEY, &hKey))
+		return {};
+	xivres::util::on_dtor c([hKey] { RegCloseKey(hKey); });
+
+	std::vector<std::wstring> res;
+	std::wstring name(256, L'\0');
+	for (DWORD i = 0;; ++i) {
+		auto length = static_cast<DWORD>(name.size());
+		if (RegEnumKeyExW(hKey, i, name.data(), &length, nullptr, nullptr, nullptr, nullptr))
+			break;
+		res.emplace_back(name.data(), length);
+	}
+	return res;
+}
+
+static std::vector<std::wstring> ListRegistryStringValues(const wchar_t* lpSubKey) {
+	HKEY hKey;
+	if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, lpSubKey, 0, KEY_READ | KEY_WOW64_64KEY, &hKey))
+		return {};
+	xivres::util::on_dtor c([hKey] { RegCloseKey(hKey); });
+
+	std::vector<std::wstring> res;
+	std::wstring name(256, L'\0');
+	std::wstring data(MAX_PATH * 4, L'\0');
+	for (DWORD i = 0;; ++i) {
+		auto nameLength = static_cast<DWORD>(name.size());
+		auto dataBytes = static_cast<DWORD>(data.size() * sizeof(wchar_t));
+		DWORD type{};
+		if (RegEnumValueW(hKey, i, name.data(), &nameLength, nullptr, &type, reinterpret_cast<LPBYTE>(data.data()), &dataBytes))
+			break;
+		if (type == REG_SZ)
+			res.emplace_back(data.data(), wcsnlen(data.data(), dataBytes / sizeof(wchar_t)));
+	}
+	return res;
 }
 
 XivAlexander::Misc::GameInstallationDetector::GameReleaseInfo XivAlexander::Misc::GameInstallationDetector::GetGameReleaseInfo(std::filesystem::path deepestLookupPath) {
@@ -133,10 +171,12 @@ XivAlexander::Misc::GameInstallationDetector::GameReleaseInfo XivAlexander::Misc
 	}
 
 	if (!publisherCountries.empty()) {
-		result.CountryCode = std::ranges::max_element(publisherCountries)->first;
+		// a signer other than Square Enix's only shows up in other publishers' releases
+		result.CountryCode = std::ranges::max_element(publisherCountries, [](const auto& l, const auto& r) {
+			return std::make_pair(l.first != "JP", l.second) < std::make_pair(r.first != "JP", r.second);
+		})->first;
 		if (result.CountryCode == "JP") {
 			result.Region = xivres::game_release_publisher::SquareEnix;
-			result.BootAppDirectlyInjectable = true;
 #if INTPTR_MAX == INT32_MAX
 			result.BootApp = result.RootPath / L"boot" / L"ffxivboot.exe";
 #elif INTPTR_MAX == INT64_MAX
@@ -154,10 +194,8 @@ XivAlexander::Misc::GameInstallationDetector::GameReleaseInfo XivAlexander::Misc
 			};
 
 		} else if (result.CountryCode == "CN") {
-			result.Region = xivres::game_release_publisher::ShandaGames;
+			result.Region = xivres::game_release_publisher::ShengquGames;
 			result.BootApp = result.RootPath / L"FFXIVBoot.exe";
-			result.BootAppRequiresAdmin = true;
-			result.BootAppDirectlyInjectable = true;
 			result.RelatedApps = {
 				result.RootPath / L"LauncherUpdate" / L"LauncherUpdater.exe",
 				result.RootPath / L"FFXIVBoot.exe",
@@ -170,11 +208,16 @@ XivAlexander::Misc::GameInstallationDetector::GameReleaseInfo XivAlexander::Misc
 		} else if (result.CountryCode == "KR") {
 			result.Region = xivres::game_release_publisher::ActozSoft;
 			result.BootApp = result.RootPath / L"boot" / L"FFXIV_Boot.exe";
-			result.BootAppRequiresAdmin = true;
-			result.BootAppDirectlyInjectable = true;
 			result.RelatedApps = {
 				result.RootPath / L"boot" / L"FFXIV_Boot.exe",
 				result.RootPath / L"boot" / L"FFXIV_Launcher.exe",
+			};
+
+		} else if (result.CountryCode == "TW") {
+			result.Region = xivres::game_release_publisher::UserjoyGames;
+			result.BootApp = result.RootPath / L"boot" / L"FfxivLauncherTC.exe";
+			result.RelatedApps = {
+				result.RootPath / L"boot" / L"FfxivLauncherTC.exe",
 			};
 
 		} else
@@ -233,7 +276,40 @@ std::vector<XivAlexander::Misc::GameInstallationDetector::GameReleaseInfo> XivAl
 			// pass
 		}
 	}
-	
+
+	{
+		std::vector<std::filesystem::path> candidates;
+		if (auto dir = ReadRegistryAsString(LR"(Software\Classes\com.userjoy.ffxiv)", L"InstallDir", HKEY_CURRENT_USER); !dir.empty())
+			candidates.emplace_back(std::move(dir));
+
+		constexpr auto UserData = LR"(SOFTWARE\Microsoft\Windows\CurrentVersion\Installer\UserData)";
+		for (const auto& sid : ListRegistrySubkeys(UserData)) {
+			for (auto& path : ListRegistryStringValues(std::format(LR"({}\{}\Components\F5FB90B6D9D62AE0A7D105975A987C2B)", UserData, sid).c_str()))
+				candidates.emplace_back(std::move(path));
+		}
+
+		for (const auto& candidate : candidates) {
+			try {
+				result.emplace_back(GetGameReleaseInfo(candidate));
+			} catch (...) {
+				// pass
+			}
+		}
+
+		PWSTR pszProgramFiles{};
+		const auto hr = SHGetKnownFolderPath(FOLDERID_ProgramFiles, 0, nullptr, &pszProgramFiles);
+		const auto programFiles = SUCCEEDED(hr) ? std::filesystem::path(pszProgramFiles) : std::filesystem::path();
+		CoTaskMemFree(pszProgramFiles);
+		if (const auto root = programFiles / L"USERJOY GAMES" / L"FINAL FANTASY XIV TC";
+			!programFiles.empty() && exists(root / L"game" / L"ffxivgame.ver")) {
+			try {
+				result.emplace_back(GetGameReleaseInfo(root));
+			} catch (...) {
+				// pass
+			}
+		}
+	}
+
     std::set<std::filesystem::path> seen;
     std::erase_if(result, [&seen](const auto& value) {
 		return !seen.insert(value.RootPath).second;

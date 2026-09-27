@@ -173,6 +173,7 @@ BEGIN
     POPUP "再起動(&R)"
     BEGIN
         MENUITEM "以下の設定で再起動(&R)\tCtrl+Shift+R", ID_RESTART_RESTART
+        MENUITEM "起動コマンドラインをコピー(&M)",           ID_RESTART_COPYLAUNCHCOMMANDLINE
         MENUITEM SEPARATOR
         MENUITEM "XivAlexanderを使用(&X)\t(Ctrl+Shift+)X", ID_RESTART_USEXIVALEXANDER
         MENUITEM "コマンドラインの難読化を使用(&P)\t(Ctrl+Shift+)P", ID_RESTART_USEPARAMETEROBFUSCATION
@@ -184,6 +185,7 @@ BEGIN
         MENUITEM "言語：フランス語(&F)",                ID_RESTART_LANGUAGE_FRENCH
         MENUITEM "言語：中国語(簡体字)(&C)",             ID_RESTART_LANGUAGE_SIMPLIFIEDCHINESE
         MENUITEM "言語：韓国語(&K)",                  ID_RESTART_LANGUAGE_KOREAN
+        MENUITEM "言語：繁体字中国語(&T)",               ID_RESTART_LANGUAGE_CHINESETRADITIONAL
         MENUITEM SEPARATOR
         MENUITEM "地域：日本(&1)",                   ID_RESTART_REGION_JAPAN
         MENUITEM "地域：北米(&2)",                   ID_RESTART_REGION_NORTH_AMERICA
@@ -253,7 +255,7 @@ BEGIN
         MENUITEM "置き換えファイルのフォルダーを開ける(&R)",      ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
         MENUITEM "TTMPL/TTMPDファイルに変換して保存(&O)",  ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
-        MENUITEM "別コーデックの.scdを再生可能にする(&C)", ID_MODDING_USEALTCODECMUSICSUPPORT
+        MENUITEM "別コーデックの.scdを再生可能にする(&C)",     ID_MODDING_USEALTCODECMUSICSUPPORT
         MENUITEM "すべてのファイルのアクセスをログに記録(I)",      ID_MODDING_LOGALLFILEACCESS
         POPUP "声のミュート(&V)"
         BEGIN
@@ -424,13 +426,25 @@ BEGIN
     IDS_REGION_NAME_KOREA   "韓国"
     IDS_URL_HOMEPAGE        "https://github.com/Soreepeong/XivAlexander"
     IDS_URL_HELP            "https://github.com/Soreepeong/XivAlexander/wiki/XivAlexander-Help"
-    IDS_CLIENT_INTERNATIONAL "グローバル"
-    IDS_CLIENT_KOREAN       "韓国"
-    IDS_CLIENT_CHINESE      "中国"
+    IDS_CLIENT_INTERNATIONAL "スクウェア・エニックス"
+    IDS_CLIENT_ACTOZSOFT    "Actoz Soft"
+    IDS_CLIENT_SHENGQUGAMES "Shengqu Games"
     IDS_CONFIRM_LAUNCH      "{1}の{0}バージョンのゲームを起動しますか？"
     IDS_ERROR_NOT_FOUND     "ゲームのインストール先を見つけることができませんでした。手動で指定してください。"
     IDS_ERROR_COMMAND_LINE  "コマンドラインの解読に失敗しました。\nエラー：{}\n\n{}"
     IDS_ERROR_SEDEBUGPRIVILEGE "権限の取得に失敗しました。\n・管理者として起動し直してください。\n・{}"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_MENU_SAMPLINGRATE_MATCHDEVICE "Windowsの既定のオーディオ出力デバイスに合わせる ({}Hz)(&0)"
+    IDS_MENU_SAMPLINGRATE_MATCHDEVICE_UNKNOWN 
+                            "Windowsの既定のオーディオ出力デバイスに合わせる(&0)"
+    IDS_MENU_SAMPLINGRATE_RATE "{}(&{})"
+    IDS_MENU_SAMPLINGRATE_RATE_DEFAULT "{} (既定)(&{})"
+    IDS_MENU_USESOXRRESAMPLER "soxrリサンプラーを使用(&S)"
+    IDS_REGION_NAME_CHINATRAD "繁体字版"
+    IDS_CLIENT_USERJOYGAMES "USERJOY GAMES"
 END
 
 STRINGTABLE
@@ -461,7 +475,7 @@ BEGIN
     IDS_UPDATE_FILE_TOO_BIG "アップデートのファイルサイズのがが大きすぎます。アップデートファイルの無欠性を信頼できる場合、手動でファイルを取り換えアップデートしてください。"
     IDS_UPDATE_INVALID_VERSION "バージョン情報の検証に失敗しました。手動でアップデートを確認した後、続けてください。"
     IDS_HELP_ACTION         "作業を指定します。\n\t・auto: すでにゲームが起動中の場合起動中のプロセスにロードし、起動していない場合ゲームを起動して起動したプロセスにロードします。\n\t・ask: ゲームプロセス毎に行う作業を確認します。\n\t・load: ゲームプロセスにXivAlexanderをロードします。\n\t・unload: ゲームプロセスからXivAlexanderを終了します。\n\t・launcher: 指定のゲームランチャーを起動し、起動したゲームにXivAlexanderをロードします。\n\t・update-check: アップデートを確認します。\n\t・web: 配布サイト (https://github.com/Soreepeong/XivAlexander) を開きます。"
-    IDS_HELP_LAUNCHER       "ランチャーを指定します。有効な値はauto（自動）、select（毎回確認）、international（グローバル版）、korean（韓国版）、chinese（中国版）です。"
+    IDS_HELP_LAUNCHER       "ランチャーを指定します。有効な値はauto（自動）、select（毎回確認）、squareenix（スクウェア・エニックス）、actozsoft（Actoz Soft）、shengqugames（Shengqu Games）、userjoygames（USERJOY GAMES）です。"
     IDS_HELP_QUIET          "エラーメッセージを表示しません。"
     IDS_HELP_DISABLE_RUNAS  "どの場合でも管理者権限で実行しません。"
     IDS_HELP_INTERNAL_USE_ONLY "内部使用のみ（使用禁止）"
@@ -515,8 +529,6 @@ BEGIN
     IDS_INSTALLATIONSTATUS_NEWER "今実行中のプログラムより最新"
     IDS_LOADERAPP_INTERACTIVE_FOOTER 
                             "<a href=""refresh"">目録を更新</a> | <a href=""update"">アップデートを確認</a> | <a href=""homepage"">ホームページを表示</a>"
-    IDS_LOADERAPP_INTERACTIVE_NOCHAINLOAD 
-                            "選択されたゲームのプログラムはXivAlexanderがロードされたままでは起動ができません。XivAlexanderをインストールしたり、ゲームを起動した後で目録を更新してXivAlexanderをロードさせてください。"
     IDS_LOADERAPP_INTERACTIVE_INSTALL_MAININSTRUCTION "XivAlexanderのインストール"
     IDS_LOADERAPP_INTERACTIVE_INSTALL_CONTENT 
                             "XivAlexanderをインストールすると、ゲームの起動と同時にXivAlexanderもロードができます。\n\n・管理者の権限が必要です。\n* Reshadeと同時に使えます。\n* ゲームのデータファイルは変更されません。"
@@ -546,9 +558,9 @@ STRINGTABLE
 BEGIN
     IDS_FILTERSPEC_EXECUTABLEFILES "実行ファイル (*.exe, *.scr)"
     IDS_FILTERSPEC_FFXIVEXECUTABLEFILES 
-                            "FFXIVの実行ファイル (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe)"
+                            "FFXIVの実行ファイル (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; FfxivLauncherTC.exe; ffxiv_dx11.exe)"
     IDS_FILTERSPEC_FFXIVBOOTFILES 
-                            "FFXIVの起動用実行ファイル (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe)"
+                            "FFXIVの起動用実行ファイル (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; FfxivLauncherTC.exe)"
     IDS_TITLE_SELECT_FFXIVEXECUTABLE "FFXIVの実行ファイルの選択"
     IDS_NOTIFY_XIVALEXINSTALL_INSTALLCOMPLETE 
                             "XivAlexanderを次の経路にインストールしました。\n\n{}"
@@ -581,17 +593,12 @@ BEGIN
     IDS_MENU_LOCKFRAMERATE_DISABLED "FPSの固定：未使用"
     IDS_MENU_LOCKFRAMERATE_AUTOMATIC "FPSの固定：自動"
     IDS_MENU_NETWORKLATENCYHANDLEMODE_2 "モード&2：サーバからの応答にかかる時間を{}usに固定"
-    IDS_MENU_TTMP_PROFILE "プロフィール"
-    IDS_MENU_MODDING_SAMPLINGRATE "オーディオサンプリングレート(&S)"
-    IDS_MENU_SAMPLINGRATE_MATCHDEVICE "Windowsの既定のオーディオ出力デバイスに合わせる ({}Hz)(&0)"
-    IDS_MENU_SAMPLINGRATE_MATCHDEVICE_UNKNOWN "Windowsの既定のオーディオ出力デバイスに合わせる(&0)"
-    IDS_MENU_SAMPLINGRATE_RATE "{}(&{})"
-    IDS_MENU_SAMPLINGRATE_RATE_DEFAULT "{} (既定)(&{})"
-    IDS_MENU_USESOXRRESAMPLER "soxrリサンプラーを使用(&S)"
     IDS_OPCODEUPDATE_ERROR_404 "Opcodeの設定がまだアップデートされていません。後でもう一度してください。"
     IDS_OPCODEUPDATE_OK_NOTCHANGED "現在のOpcodeの設定がもう最新です。"
     IDS_OPCODEUPDATE_OK_CHANGED "Opcodeの設定をアップデートしました。"
     IDS_SOCKETHOOK_SOCKET_RESET2 "{:x}: 強制終了 => {}"
+    IDS_MENU_TTMP_PROFILE   "プロフィール"
+    IDS_MENU_MODDING_SAMPLINGRATE "オーディオサンプリングレート(&S)"
 END
 
 #endif    // Japanese (Japan) resources
@@ -713,6 +720,7 @@ BEGIN
     POPUP "재시작(&R)"
     BEGIN
         MENUITEM "아래 설정을 반영해 재시작하기(&R)\tCtrl+Shift+R", ID_RESTART_RESTART
+        MENUITEM "실행 명령줄 복사(&M)",               ID_RESTART_COPYLAUNCHCOMMANDLINE
         MENUITEM SEPARATOR
         MENUITEM "XivAlexander 사용(&X)\t(Ctrl+Shift+)X", ID_RESTART_USEXIVALEXANDER
         MENUITEM "명령줄 난독화 사용(&P)\t(Ctrl+Shift+)P", ID_RESTART_USEPARAMETEROBFUSCATION
@@ -724,6 +732,7 @@ BEGIN
         MENUITEM "언어: 프랑스어(&F)",                ID_RESTART_LANGUAGE_FRENCH
         MENUITEM "언어: 중국어(간체)(&C)",             ID_RESTART_LANGUAGE_SIMPLIFIEDCHINESE
         MENUITEM "언어: 한국어(&K)",                 ID_RESTART_LANGUAGE_KOREAN
+        MENUITEM "언어: 번체 중국어(&T)",              ID_RESTART_LANGUAGE_CHINESETRADITIONAL
         MENUITEM SEPARATOR
         MENUITEM "지역: 일본(&1)",                  ID_RESTART_REGION_JAPAN
         MENUITEM "지역: 북미(&2)",                  ID_RESTART_REGION_NORTH_AMERICA
@@ -793,7 +802,7 @@ BEGIN
         MENUITEM "교체 파일 폴더 열기(&R)",             ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
         MENUITEM "TTMPL/TTMPD파일로 내보내기(&O)",     ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
-        MENUITEM "타 코덱 포함 음악 .scd 지원(&C)", ID_MODDING_USEALTCODECMUSICSUPPORT
+        MENUITEM "타 코덱 포함 음악 .scd 지원(&C)",      ID_MODDING_USEALTCODECMUSICSUPPORT
         MENUITEM "모든 파일 접근 기록하기(&I)",           ID_MODDING_LOGALLFILEACCESS
         POPUP "목소리 분류 음소거(&V)"
         BEGIN
@@ -1026,13 +1035,24 @@ BEGIN
     IDS_REGION_NAME_KOREA   "한국"
     IDS_URL_HOMEPAGE        "https://github.com/Soreepeong/XivAlexander"
     IDS_URL_HELP            "https://github.com/Soreepeong/XivAlexander/wiki/XivAlexander-%EB%8F%84%EC%9B%80%EB%A7%90"
-    IDS_CLIENT_INTERNATIONAL "글로벌"
-    IDS_CLIENT_KOREAN       "한국"
-    IDS_CLIENT_CHINESE      "중국"
+    IDS_CLIENT_INTERNATIONAL "스퀘어 에닉스"
+    IDS_CLIENT_ACTOZSOFT    "액토즈소프트"
+    IDS_CLIENT_SHENGQUGAMES "Shengqu Games"
     IDS_CONFIRM_LAUNCH      "{1} 에 있는 {0}판 게임을 실행할까요?"
     IDS_ERROR_NOT_FOUND     "게임 설치 경로를 찾을 수 없었습니다. 수동으로 지정해 주세요."
     IDS_ERROR_COMMAND_LINE  "명령줄을 해석할 수 없었습니다.\n오류: {}\n\n{}"
     IDS_ERROR_SEDEBUGPRIVILEGE "권한을 얻을 수 없었습니다.\n* 관리자 권한으로 다시 실행해 보세요.\n* {}"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_MENU_SAMPLINGRATE_MATCHDEVICE "Windows 기본 오디오 출력 장치에 맞춤 ({}Hz)(&0)"
+    IDS_MENU_SAMPLINGRATE_MATCHDEVICE_UNKNOWN "Windows 기본 오디오 출력 장치에 맞춤(&0)"
+    IDS_MENU_SAMPLINGRATE_RATE "{}(&{})"
+    IDS_MENU_SAMPLINGRATE_RATE_DEFAULT "{} (기본값)(&{})"
+    IDS_MENU_USESOXRRESAMPLER "soxr 리샘플러 사용(&S)"
+    IDS_REGION_NAME_CHINATRAD "번체 중국어판"
+    IDS_CLIENT_USERJOYGAMES "USERJOY GAMES"
 END
 
 STRINGTABLE
@@ -1064,7 +1084,7 @@ BEGIN
     IDS_UPDATE_FILE_TOO_BIG "업데이트 파일이 너무 큽니다. 문제가 없는 업데이트 파일이란 것이 확실하다면 수동으로 파일을 교체해 업데이트해 주세요."
     IDS_UPDATE_INVALID_VERSION "버전 정보를 검증할 수 없었습니다. 수동으로 업데이트 확인 후 진행해 주세요."
     IDS_HELP_ACTION         "작업을 지정합니다.\n\t* auto: 게임이 이미 실행 중이면 실행중인 게임 프로세스로 불러들이고, 아니라면 게임을 실행하고 실행된 게임에 불러들입니다.\n\t* ask: 게임 프로세스 별 작업을 묻습니다.\n\t* load: 게임 프로세스에 XivAlexander를 불러들입니다.\n\t* unload: 게임 프로세스에서 XivAlexander를 종료합니다.\n\t* launcher: 지정한 게임 런처를 실행하고 실행된 게임에 XivAlexander를 불러들입니다.\n\t* update-check: 업데이트를 확인합니다.\n\t* web: 배포 웹페이지 https://github.com/Soreepeong/XivAlexander 를 엽니다."
-    IDS_HELP_LAUNCHER       "런처를 지정합니다. 사용 가능한 값은 auto (감지), select (선택), international (글로벌판), korean (한국판), chinese (중국판) 입니다."
+    IDS_HELP_LAUNCHER       "런처를 지정합니다. 사용 가능한 값은 auto (감지), select (선택), squareenix (스퀘어 에닉스), actozsoft (액토즈소프트), shengqugames (Shengqu Games), userjoygames (USERJOY GAMES) 입니다."
     IDS_HELP_QUIET          "오류 메시지를 보이지 않습니다."
     IDS_HELP_DISABLE_RUNAS  "어떤 경우에도 관리자 권한으로 실행하지 않습니다."
     IDS_HELP_INTERNAL_USE_ONLY "내부 용도입니다. 사용 금지."
@@ -1121,8 +1141,6 @@ BEGIN
     IDS_INSTALLATIONSTATUS_NEWER "현재 실행한 프로그램보다 최신 버전"
     IDS_LOADERAPP_INTERACTIVE_FOOTER 
                             "<a href=""refresh"">새로 고침</a> | <a href=""update"">업데이트 확인</a> | <a href=""homepage"">홈페이지</a>"
-    IDS_LOADERAPP_INTERACTIVE_NOCHAINLOAD 
-                            "선택한 게임 설치본은 XivAlexander이 불러들여진 상태로 켤 수 없습니다. XivAlexander를 설치하거나, 게임 실행 후 새로 고친 후 XivAlexander를 불러들여 주세요."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_MAININSTRUCTION "XivAlexander 설치"
     IDS_LOADERAPP_INTERACTIVE_INSTALL_CONTENT 
                             "XivAlexander를 설치하면 게임 실행과 함께 XivAlexander를 실행할 수 있습니다.\n\n* 관리자 권한이 필요합니다.\n* Reshade하고 같이 쓸 수 있습니다.\n* 게임 데이터 파일은 변경되지 않습니다."
@@ -1151,9 +1169,9 @@ STRINGTABLE
 BEGIN
     IDS_FILTERSPEC_EXECUTABLEFILES "실행 파일 (*.exe, *.scr)"
     IDS_FILTERSPEC_FFXIVEXECUTABLEFILES 
-                            "FFXIV 실행 파일 (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe)"
+                            "FFXIV 실행 파일 (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; FfxivLauncherTC.exe; ffxiv_dx11.exe)"
     IDS_FILTERSPEC_FFXIVBOOTFILES 
-                            "FFXIV Boot 실행 파일 (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe)"
+                            "FFXIV Boot 실행 파일 (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; FfxivLauncherTC.exe)"
     IDS_TITLE_SELECT_FFXIVEXECUTABLE "FFXIV 실행 파일 선택하기"
     IDS_NOTIFY_XIVALEXINSTALL_INSTALLCOMPLETE 
                             "XivAlexander를 다음 경로에 설치하였습니다.\n\n{}"
@@ -1190,17 +1208,12 @@ BEGIN
     IDS_MENU_LOCKFRAMERATE_DISABLED "FPS 고정 사용 안함"
     IDS_MENU_LOCKFRAMERATE_AUTOMATIC "FPS 고정: 자동"
     IDS_MENU_NETWORKLATENCYHANDLEMODE_2 "모드 &2: 서버 응답 시간을 {}us로 고정"
-    IDS_MENU_TTMP_PROFILE "프로파일"
-    IDS_MENU_MODDING_SAMPLINGRATE "오디오 샘플링 레이트(&S)"
-    IDS_MENU_SAMPLINGRATE_MATCHDEVICE "Windows 기본 오디오 출력 장치에 맞춤 ({}Hz)(&0)"
-    IDS_MENU_SAMPLINGRATE_MATCHDEVICE_UNKNOWN "Windows 기본 오디오 출력 장치에 맞춤(&0)"
-    IDS_MENU_SAMPLINGRATE_RATE "{}(&{})"
-    IDS_MENU_SAMPLINGRATE_RATE_DEFAULT "{} (기본값)(&{})"
-    IDS_MENU_USESOXRRESAMPLER "soxr 리샘플러 사용(&S)"
     IDS_OPCODEUPDATE_ERROR_404 "옵코드 설정이 아직 업데이트되지 않았습니다. 나중에 다시 시도해 주세요."
     IDS_OPCODEUPDATE_OK_NOTCHANGED "현재 옵코드 설정이 이미 최신입니다."
     IDS_OPCODEUPDATE_OK_CHANGED "옵코드 설정이 업데이트되었습니다."
     IDS_SOCKETHOOK_SOCKET_RESET2 "{:x}: 강제 연결 해제 => {}"
+    IDS_MENU_TTMP_PROFILE   "프로파일"
+    IDS_MENU_MODDING_SAMPLINGRATE "오디오 샘플링 레이트(&S)"
 END
 
 #endif    // Korean (Korea) resources
@@ -1322,6 +1335,7 @@ BEGIN
     POPUP "&Restart"
     BEGIN
         MENUITEM "&Restart Using Choices Below\tCtrl+Shift+R", ID_RESTART_RESTART
+        MENUITEM "Copy Launch Co&mmand Line",   ID_RESTART_COPYLAUNCHCOMMANDLINE
         MENUITEM SEPARATOR
         MENUITEM "Use &XivAlexander\t(Ctrl+Shift+)X", ID_RESTART_USEXIVALEXANDER
         MENUITEM "Use &Parameter Obfuscation\t(Ctrl+Shift+)P", ID_RESTART_USEPARAMETEROBFUSCATION
@@ -1333,6 +1347,7 @@ BEGIN
         MENUITEM "Language: &French",           ID_RESTART_LANGUAGE_FRENCH
         MENUITEM "Language: &Chinese(Simplified)", ID_RESTART_LANGUAGE_SIMPLIFIEDCHINESE
         MENUITEM "Language: &Korean",           ID_RESTART_LANGUAGE_KOREAN
+        MENUITEM "Language: &Traditional Chinese", ID_RESTART_LANGUAGE_CHINESETRADITIONAL
         MENUITEM SEPARATOR
         MENUITEM "Region: Japan (&1)",          ID_RESTART_REGION_JAPAN
         MENUITEM "Region: North America (&2)",  ID_RESTART_REGION_NORTH_AMERICA
@@ -1758,14 +1773,27 @@ BEGIN
     IDS_REGION_NAME_KOREA   "Korea"
     IDS_URL_HOMEPAGE        "https://github.com/Soreepeong/XivAlexander"
     IDS_URL_HELP            "https://github.com/Soreepeong/XivAlexander/wiki/XivAlexander-Help"
-    IDS_CLIENT_INTERNATIONAL "International"
-    IDS_CLIENT_KOREAN       "Korean"
-    IDS_CLIENT_CHINESE      "Chinese"
+    IDS_CLIENT_INTERNATIONAL "Square Enix"
+    IDS_CLIENT_ACTOZSOFT    "Actoz Soft"
+    IDS_CLIENT_SHENGQUGAMES "Shengqu Games"
     IDS_CONFIRM_LAUNCH      "Launch {} version of the game found at {}?"
     IDS_ERROR_NOT_FOUND     "Game installation could not be found. Please specify launcher path."
     IDS_ERROR_COMMAND_LINE  "Failed to parse command line arguments.\nError: {}\n\n{}"
     IDS_ERROR_SEDEBUGPRIVILEGE 
                             "Failed to obtain permissions.\n* Try running this program as Administrator.\n* {}"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_MENU_SAMPLINGRATE_MATCHDEVICE 
+                            "Match Default Windows Audio Output Device ({}Hz)(&0)"
+    IDS_MENU_SAMPLINGRATE_MATCHDEVICE_UNKNOWN 
+                            "Match Default Windows Audio Output Device(&0)"
+    IDS_MENU_SAMPLINGRATE_RATE "{}(&{})"
+    IDS_MENU_SAMPLINGRATE_RATE_DEFAULT "{} (default)(&{})"
+    IDS_MENU_USESOXRRESAMPLER "Use &soxr Resampler"
+    IDS_REGION_NAME_CHINATRAD "Traditional Chinese"
+    IDS_CLIENT_USERJOYGAMES "USERJOY GAMES"
 END
 
 STRINGTABLE
@@ -1801,7 +1829,7 @@ BEGIN
     IDS_UPDATE_INVALID_VERSION 
                             "Version information could not be confirmed. Manually check and update the program."
     IDS_HELP_ACTION         "specify action\n\t* auto: load into game if already running, otherwise try to detect game installation and run\n\t* ask: confirm action per game process\n\t* load: load XivAlexander into game process\n\t* unload: unload XivAlexander from game process\n\t* launcher: run specified game launcher and load XivAlexander to the game run\n\t* update-check: check for updates\n\t* web: open github repository at https://github.com/Soreepeong/XivAlexander"
-    IDS_HELP_LAUNCHER       "specify launcher (possible values: auto, select, international, korean, chinese)"
+    IDS_HELP_LAUNCHER       "specify launcher (possible values: auto, select, squareenix, actozsoft, shengqugames, userjoygames)"
     IDS_HELP_QUIET          "disable error messages"
     IDS_HELP_DISABLE_RUNAS  "disable run as administrator"
     IDS_HELP_INTERNAL_USE_ONLY "internal use only. Do not use."
@@ -1865,8 +1893,6 @@ BEGIN
     IDS_INSTALLATIONSTATUS_NEWER "Newer than current program"
     IDS_LOADERAPP_INTERACTIVE_FOOTER 
                             "<a href=""refresh"">Refresh</a> | <a href=""update"">Check for updates</a> | <a href=""homepage"">Homepage</a>"
-    IDS_LOADERAPP_INTERACTIVE_NOCHAINLOAD 
-                            "Cannot launch game with XivAlexander enabled. You will have to install XivAlexander, or load XivAlexander after you have started the game and pressed the Refresh link below."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_MAININSTRUCTION "Install XivAlexander"
     IDS_LOADERAPP_INTERACTIVE_INSTALL_CONTENT 
                             "You can install XivAlexander to load XivAlexander along with the game.\n\n* Requires Administrator permissions.\n* Compatible with Reshade.\n* No game data files are modified."
@@ -1896,9 +1922,9 @@ STRINGTABLE
 BEGIN
     IDS_FILTERSPEC_EXECUTABLEFILES "Executable PE files (*.exe, *.scr)"
     IDS_FILTERSPEC_FFXIVEXECUTABLEFILES 
-                            "FFXIV executable files (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; ffxiv_dx11.exe)"
+                            "FFXIV executable files (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; FfxivLauncherTC.exe; ffxiv_dx11.exe)"
     IDS_FILTERSPEC_FFXIVBOOTFILES 
-                            "FFXIV boot files (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe)"
+                            "FFXIV boot files (ffxivboot.exe; ffxivboot64.exe; ffxiv_boot.exe; FfxivLauncherTC.exe)"
     IDS_TITLE_SELECT_FFXIVEXECUTABLE "Select FFXIV executable program"
     IDS_NOTIFY_XIVALEXINSTALL_INSTALLCOMPLETE 
                             "XivAlexander is now installed for {}."
@@ -1936,18 +1962,13 @@ BEGIN
     IDS_MENU_LOCKFRAMERATE_DISABLED "Lock Framerate: Disabled"
     IDS_MENU_LOCKFRAMERATE_AUTOMATIC "Lock Framerate: Automatic"
     IDS_MENU_NETWORKLATENCYHANDLEMODE_2 "Mode &2: Simulate RTT ({}us)"
-    IDS_MENU_TTMP_PROFILE "Profile"
-    IDS_MENU_MODDING_SAMPLINGRATE "Audio &Sampling Rate"
-    IDS_MENU_SAMPLINGRATE_MATCHDEVICE "Match Default Windows Audio Output Device ({}Hz)(&0)"
-    IDS_MENU_SAMPLINGRATE_MATCHDEVICE_UNKNOWN "Match Default Windows Audio Output Device(&0)"
-    IDS_MENU_SAMPLINGRATE_RATE "{}(&{})"
-    IDS_MENU_SAMPLINGRATE_RATE_DEFAULT "{} (default)(&{})"
-    IDS_MENU_USESOXRRESAMPLER "Use &soxr Resampler"
     IDS_OPCODEUPDATE_ERROR_404 
                             "No updated opcodes file has been found. Please try again later."
     IDS_OPCODEUPDATE_OK_NOTCHANGED "Your current opcode file is up to date."
     IDS_OPCODEUPDATE_OK_CHANGED "Your opcode file has been updated."
     IDS_SOCKETHOOK_SOCKET_RESET "{:x}: Force shutdown => {}"
+    IDS_MENU_TTMP_PROFILE   "Profile"
+    IDS_MENU_MODDING_SAMPLINGRATE "Audio &Sampling Rate"
 END
 
 #endif    // English (United States) resources

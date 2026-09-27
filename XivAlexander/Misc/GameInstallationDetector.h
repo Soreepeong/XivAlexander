@@ -12,8 +12,6 @@ namespace XivAlexander::Misc::GameInstallationDetector {
 
 		std::filesystem::path RootPath;
 		std::filesystem::path BootApp;
-		bool BootAppRequiresAdmin{};
-		bool BootAppDirectlyInjectable{};
 		std::set<std::filesystem::path> RelatedApps;
 		
 		std::filesystem::path GamePath() const { return RootPath / "game"; }
