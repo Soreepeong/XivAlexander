@@ -9,14 +9,14 @@
 namespace Utils::Win32 {
 	class LoadedModule : public Closeable<HMODULE, FreeLibrary> {
 	public:
-		using Closeable<HMODULE, FreeLibrary>::Closeable;
+		using Closeable::Closeable;
 		explicit LoadedModule(const wchar_t* pwszFileName, DWORD dwFlags = 0, bool bRequire = true);
 		explicit LoadedModule(const std::filesystem::path& path, DWORD dwFlags = 0, bool bRequire = true);
 		LoadedModule(LoadedModule&& r) noexcept;
 		LoadedModule(const LoadedModule& r);
 		LoadedModule& operator=(LoadedModule&& r) noexcept;
 		LoadedModule& operator=(const LoadedModule& r);
-		LoadedModule& operator=(std::nullptr_t) override;
+		LoadedModule& operator=(std::nullptr_t) noexcept override;
 		~LoadedModule() override;
 
 		static LoadedModule LoadMore(const LoadedModule& module);

@@ -11,6 +11,7 @@
 #include "MainApp/Features/AltCodecMusicSupport.h"
 #include "MainApp/Features/AudioResampler.h"
 #include "MainApp/Features/IpcTypeFinder.h"
+#include "MainApp/Features/LoginSessions.h"
 #include "MainApp/Features/MainThreadTimingHandler.h"
 #include "MainApp/Features/NetworkTimingHandler.h"
 #include "MainApp/Features/PatchCode.h"
@@ -37,6 +38,11 @@ struct XivAlexander::Apps::MainApp::App::Implementation_GameWindow final {
 	bool IsFocused{};
 	std::shared_ptr<Misc::Hooks::WndProcFunction> SubclassHook{};
 
+	std::mutex TitleMtx;
+	std::string TitleAlias;
+	std::wstring OriginalTitle;
+	std::wstring AppliedTitle;
+
 	xivres::util::on_dtor::multi Cleanup;
 
 	const Utils::Win32::Event ReadyEvent = Utils::Win32::Event::Create();
@@ -52,6 +58,9 @@ struct XivAlexander::Apps::MainApp::App::Implementation_GameWindow final {
 	[[nodiscard]] DWORD GetThreadId(bool wait = false) const;
 
 	void RunOnGameLoop(std::function<void()> f);
+
+	void SetTitleAlias(std::string alias);
+	void UpdateWindowTitle(bool removeDecoration = false);
 
 	LRESULT CALLBACK SubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 };
@@ -73,6 +82,7 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 	std::optional<Features::SocketHook> SocketHook;
 	std::optional<Features::Modding::ResourceOverrider> ResourceOverrider;
 	std::optional<Features::AltCodecMusicSupport> AltCodecMusicSupport;
+	std::optional<Features::LoginSessions> LoginSessions;
 
 	// Optional
 	std::optional<Features::NetworkTimingHandler> NetworkTimingHandler;
@@ -112,6 +122,8 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 		, Logger(Misc::Logger::Acquire())
 		, Config(Config::Acquire()) {
 
+		DisableProcessWindowsGhosting();
+
 		Cleanup += [&app] {
 			if (const auto hwnd = app.m_pGameWindow->GetHwnd(false)) {
 				// Make sure our window procedure hook isn't in progress
@@ -140,6 +152,19 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 
 		AltCodecMusicSupport.emplace(App);
 		Cleanup += [this] { AltCodecMusicSupport.reset(); };
+
+		// before the main window, which lists and receives sessions
+		LoginSessions.emplace(App);
+		Cleanup += [this] { LoginSessions.reset(); };
+		{
+			const auto showSelectedAlias = [this] {
+				const auto sessions = LoginSessions->GetSessions();
+				const auto selected = LoginSessions->GetSelectedIndex();
+				App.m_pGameWindow->SetTitleAlias(selected < sessions.size() ? sessions[selected].Alias : std::string());
+			};
+			Cleanup += LoginSessions->OnChange(showSelectedAlias);
+			showSelectedAlias();
+		}
 
 		Scintilla_RegisterClasses(Dll::Module());
 		Cleanup += [] { Scintilla_ReleaseResources(); };
@@ -221,30 +246,10 @@ void XivAlexander::Apps::MainApp::App::Implementation_GameWindow::InitializeThre
 		});
 	Cleanup += [this] { SetWindowPos(Handle, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE); };
 
-	Cleanup += Config->Runtime.GameWindowTitleMode.AddAndCallOnChange([this] {
-		std::wstring newTitle(GetWindowTextLengthW(Handle) + 1, L'\0');
-		newTitle.resize(GetWindowTextW(Handle, newTitle.data(), static_cast<int>(newTitle.size())));
-		
-		const auto prefix = std::format(L"{} - ", GetCurrentProcessId());
-		const auto suffix = std::format(L" ({})", GetCurrentProcessId());
-		if (newTitle.starts_with(prefix))
-			newTitle.erase(0, prefix.length());
-		if (newTitle.ends_with(suffix))
-			newTitle.resize(newTitle.size() - suffix.length());
-
-		switch (Config->Runtime.GameWindowTitleMode) {
-			case GameWindowTitleMode::None:
-				break;
-			case GameWindowTitleMode::Prefix:
-				newTitle = prefix + newTitle;
-				break;
-			case GameWindowTitleMode::Suffix:
-				newTitle = newTitle + suffix;
-				break;
-		}
-		
-		SetWindowTextW(Handle, newTitle.c_str());
-	});
+	Cleanup += Config->Runtime.GameWindowTitleMode.AddAndCallOnChange([this] { UpdateWindowTitle(); });
+	Cleanup += Config->Runtime.GameWindowTitlePrefixFormat.OnChange([this] { UpdateWindowTitle(); });
+	Cleanup += Config->Runtime.GameWindowTitleSuffixFormat.OnChange([this] { UpdateWindowTitle(); });
+	Cleanup += [this] { UpdateWindowTitle(true); };
 
 	ReadyEvent.Set();
 	RunOnGameLoop([&] {
@@ -305,6 +310,78 @@ void XivAlexander::Apps::MainApp::App::Implementation_GameWindow::RunOnGameLoop(
 
 	SendMessageW(Handle, WM_NULL, 0, 0);
 	hEvent.Wait();
+}
+
+void XivAlexander::Apps::MainApp::App::Implementation_GameWindow::SetTitleAlias(std::string alias) {
+	{
+		const auto lock = std::lock_guard(TitleMtx);
+		if (TitleAlias == alias)
+			return;
+		TitleAlias = std::move(alias);
+	}
+	UpdateWindowTitle();
+}
+
+void XivAlexander::Apps::MainApp::App::Implementation_GameWindow::UpdateWindowTitle(bool removeDecoration) {
+	const auto lock = std::lock_guard(TitleMtx);
+	if (!Handle)
+		return;
+
+	std::wstring current(GetWindowTextLengthW(Handle) + 1, L'\0');
+	current.resize(GetWindowTextW(Handle, current.data(), static_cast<int>(current.size())));
+
+	if (AppliedTitle.empty() || current != AppliedTitle) {
+		OriginalTitle = std::move(current);
+
+		const auto pid = GetCurrentProcessId();
+		if (const auto prefix = std::format(L"{} - ", pid); OriginalTitle.starts_with(prefix))
+			OriginalTitle.erase(0, prefix.length());
+		if (const auto suffix = std::format(L" ({})", pid); OriginalTitle.ends_with(suffix))
+			OriginalTitle.resize(OriginalTitle.size() - suffix.length());
+	}
+
+	std::string format;
+	if (!removeDecoration) {
+		switch (Config->Runtime.GameWindowTitleMode) {
+			case GameWindowTitleMode::None:
+				break;
+			case GameWindowTitleMode::Prefix:
+				format = Config->Runtime.GameWindowTitlePrefixFormat.Value();
+				break;
+			case GameWindowTitleMode::Suffix:
+				format = Config->Runtime.GameWindowTitleSuffixFormat.Value();
+				break;
+		}
+	}
+
+	if (format.empty()) {
+		AppliedTitle.clear();
+		SetWindowTextW(Handle, OriginalTitle.c_str());
+		return;
+	}
+
+	const auto pid = std::to_wstring(GetCurrentProcessId());
+	const auto alias = xivres::util::unicode::convert<std::wstring>(TitleAlias);
+	const std::pair<std::wstring_view, std::wstring_view> placeholders[]{
+		{L"{title}", OriginalTitle},
+		{L"{pid}", pid},
+		{L"{alias}", alias},
+		{L"{alias_or_pid}", alias.empty() ? std::wstring_view(pid) : std::wstring_view(alias)},
+	};
+	const auto formatW = xivres::util::unicode::convert<std::wstring>(format);
+	std::wstring title;
+	for (size_t i = 0; i < formatW.size();) {
+		const auto it = std::ranges::find_if(placeholders, [&](const auto& p) { return std::wstring_view(formatW).substr(i).starts_with(p.first); });
+		if (it == std::end(placeholders)) {
+			title += formatW[i++];
+		} else {
+			title += it->second;
+			i += it->first.size();
+		}
+	}
+
+	AppliedTitle = title;
+	SetWindowTextW(Handle, title.c_str());
 }
 
 HWND XivAlexander::Apps::MainApp::App::Implementation_GameWindow::GetHwnd(bool wait /*= false*/) const {
@@ -489,6 +566,10 @@ std::optional<XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler>& X
 	return m_pImpl->MainThreadTimingHandler;
 }
 
+std::optional<XivAlexander::Apps::MainApp::Features::LoginSessions>& XivAlexander::Apps::MainApp::App::GetLoginSessions() {
+	return m_pImpl->LoginSessions;
+}
+
 size_t Dll::EnableXivAlexander(size_t bEnable) {
 	static std::unique_ptr<XivAlexander::Apps::MainApp::App> s_app;
 
@@ -520,5 +601,6 @@ size_t Dll::ReloadConfiguration(void*) {
 	const auto config = XivAlexander::Config::Acquire();
 	config->Runtime.Reload();
 	config->Game.Reload();
+	config->PatchCode.Reload();
 	return 0;
 }

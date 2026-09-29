@@ -4,7 +4,7 @@
 #include "Utils/Win32/Process.h"
 
 Utils::Win32::LoadedModule::LoadedModule(const wchar_t* pwszFileName, DWORD dwFlags, bool bRequire)
-	: Closeable<HMODULE, FreeLibrary>(LoadLibraryExW(pwszFileName, nullptr, dwFlags), Null) {
+	: Closeable(LoadLibraryExW(pwszFileName, nullptr, dwFlags), Null) {
 	if (!m_object && bRequire)
 		throw Error("LoadLibraryExW({}, nullptr, 0x{:X})", pwszFileName, dwFlags);
 }
@@ -46,7 +46,7 @@ Utils::Win32::LoadedModule& Utils::Win32::LoadedModule::operator=(const LoadedMo
 	return *this;
 }
 
-Utils::Win32::LoadedModule& Utils::Win32::LoadedModule::operator=(std::nullptr_t) {
+Utils::Win32::LoadedModule& Utils::Win32::LoadedModule::operator=(std::nullptr_t) noexcept {
 	Clear();
 	return *this;
 }

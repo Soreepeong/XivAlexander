@@ -10,26 +10,28 @@ struct XivAlexander::Apps::MainApp::Features::PatchCode::Implementation {
 	const std::shared_ptr<Config> Config;
 	const std::shared_ptr<Misc::Logger> Logger;
 
+	std::mutex Mtx;
 	std::map<char*, char> OriginalCodes;
 
 	xivres::util::on_dtor::multi Cleanup;
-	
+
 	Implementation(MainApp::App& app)
 		: App(app)
 		, Config(Config::Acquire())
 		, Logger(Misc::Logger::Acquire()) {
 
-		Cleanup += Config->Game.PatchCode.OnChange([&] { Apply(); });
+		Cleanup += Config->PatchCode.OnChange([&] { Apply(); });
 		Cleanup += Config->Runtime.EnabledPatchCodes.OnChange([&] { Apply(); });
+		Config->PatchCode.StartWatching();
 		Apply();
 	}
 
 	~Implementation() {
 		Cleanup.clear();
-		Unapply();
+		Unapply(std::lock_guard(Mtx));
 	}
 
-	void Unapply() {
+	void Unapply([[maybe_unused]] const std::lock_guard<std::mutex>&) {
 		if (OriginalCodes.empty())
 			return;
 
@@ -52,14 +54,17 @@ struct XivAlexander::Apps::MainApp::Features::PatchCode::Implementation {
 		ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_COMPAT_32, ZYDIS_STACK_WIDTH_32);
 #endif
 
-		Unapply();
-		
+		const auto lock = std::lock_guard(Mtx);
+		Unapply(lock);
+
 		const auto& digestsVector = Config->Runtime.EnabledPatchCodes.Value();
 		std::set digests(digestsVector.begin(), digestsVector.end());
-		
-		for (auto& p : Config->Game.PatchCode.Value()) {
-			if (!digests.contains(p.Digest()))
+
+		const auto entries = Config->PatchCode.GetEntries();
+		for (const auto& entry : *entries) {
+			if (!digests.contains(entry.Digest))
 				continue;
+			const auto& p = entry.Patch;
 #ifdef _WIN64
 			const auto& searchInstructions = p.X64;
 #else

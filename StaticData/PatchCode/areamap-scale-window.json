@@ -1,0 +1,21 @@
+{
+	"HmacKey": "VEeWYfsUwoonzVXxO/B3t5hcXMexdQlOdJlrYdckJFg=",
+	"Name": "enable Scale Window on AreaMap",
+	"x64": [
+		[
+			"find",
+			"code",
+			"0",
+			"80 8f a3 01 00 00 08 80 8f a0 01 00 00 20 80 8f a2 01 00 00 10 48 89 97 ?? ?? ?? ?? 48 89 97 ?? ?? ?? ?? 48 89 97 ?? ?? ?? ?? 81 8f c8 01 00 00 00 08 00 00"
+		],
+		[
+			"offset",
+			"49"
+		],
+		[
+			"write",
+			"0x00"
+		]
+	],
+	"x86": []
+}

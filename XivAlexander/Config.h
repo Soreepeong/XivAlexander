@@ -4,6 +4,7 @@
 
 #include "Config/GameConfigRepository.h"
 #include "Config/InitConfigRepository.h"
+#include "Config/PatchCodeRepository.h"
 #include "Config/RuntimeConfigRepository.h"
 
 namespace XivAlexander {
@@ -22,6 +23,7 @@ namespace XivAlexander {
 		InitConfigRepository Init;
 		RuntimeConfigRepository Runtime;
 		GameConfigRepository Game;
+		PatchCodeRepository PatchCode;
 
 		virtual ~Config();
 

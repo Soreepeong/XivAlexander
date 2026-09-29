@@ -249,7 +249,7 @@ void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::st
 			try {
 				of << std::format("{}\n", Utils::Win32::Process::Current().PathOf().wstring());
 				for (auto& [k, v] : Game::CommandLine::FromString(Dll::GetOriginalCommandLine())) {
-					if (k == "DEV.TestSID") {
+					if (k == "DEV.TestSID" || k == "XivAlexander.LoginSessions") {
 						for (auto& c : v)
 							c = '*';
 						of << std::format("{}={}({})\n", k, v, v.size());
@@ -358,6 +358,11 @@ void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::st
 					} catch (const std::exception& e) {
 						of << std::format("ERROR: Failed to read config file at {}: {}\n", path.wstring(), e.what());
 					}
+				}
+				if (const auto entries = config->PatchCode.GetEntries(); !entries->empty()) {
+					of << "\nPatchCode:\n";
+					for (const auto& entry : *entries)
+						of << std::format("{} ({}): {}\n", entry.Patch.Name, entry.FileName, entry.Digest);
 				}
 			}
 

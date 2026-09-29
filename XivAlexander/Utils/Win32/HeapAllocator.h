@@ -38,7 +38,7 @@ namespace Utils::Win32 {
 		}
 
 		template<typename U>
-		HeapAllocator<T>& operator=(HeapAllocator<U>&& r) {
+		HeapAllocator& operator=(HeapAllocator<U>&& r) {
 			m_heap = r.m_heap;
 			// r.m_heap does not change per Allocator specifications.
 			return *this;
@@ -50,7 +50,7 @@ namespace Utils::Win32 {
 		}
 
 		template<typename U>
-		HeapAllocator<T>& operator=(const HeapAllocator<U>& r) {
+		HeapAllocator& operator=(const HeapAllocator<U>& r) {
 			m_heap = r.m_heap;
 			return *this;
 		}

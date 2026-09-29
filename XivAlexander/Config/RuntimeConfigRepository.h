@@ -63,9 +63,13 @@ namespace XivAlexander {
 
 		ConfigItem<bool> CheckForUpdatedOpcodesOnStartup{this, "CheckForUpdatedOpcodesOnStartup", true};
 
+		ConfigItem<uint32_t> ClearCopiedLaunchCommandLineSeconds{this, "ClearCopiedLaunchCommandLineSeconds", 30U, [](const uint32_t& val) { return std::min<uint32_t>(val, 86400); }};
+
 		ConfigItem<bool> UseMoreCpuTime{this, "UseMoreCpuPower", false};
 		ConfigItem<bool> SynchronizeProcessing{this, "SynchronizeProcessing", false};
 		ConfigItem<GameWindowTitleMode> GameWindowTitleMode{this, "AddProcessIDToGameWindowTitle", GameWindowTitleMode::None};
+		ConfigItem<std::string> GameWindowTitlePrefixFormat{this, "GameWindowTitlePrefixFormat", std::string("{alias_or_pid} - {title}")};
+		ConfigItem<std::string> GameWindowTitleSuffixFormat{this, "GameWindowTitleSuffixFormat", std::string("{title} ({alias_or_pid})")};
 
 		ConfigItem<uint64_t> LockFramerateInterval{
 			this, "LockFramerate", 0, [](const uint64_t& val) {
@@ -103,17 +107,13 @@ namespace XivAlexander {
 		ConfigItem<bool> UseHashTrackerKeyLogging{this, "UseHashTrackerKeyLogging", false};
 		ConfigItem<xivres::game_language> ResourceLanguageOverride{this, "ResourceLanguageOverride", xivres::game_language::Unspecified};
 		ConfigItem<xivres::game_language> VoiceResourceLanguageOverride{this, "VoiceResourceLanguageOverride", xivres::game_language::Unspecified};
-		ConfigItem<std::vector<xivres::game_language>> FallbackLanguagePriority =
-			{this, "FallbackLanguagePriority"};
-		ConfigItem<std::vector<std::filesystem::path>> AdditionalSqpackRootDirectories =
-			{this, "AdditionalSqpackRootDirectories"};
+		ConfigItem<std::vector<xivres::game_language>> FallbackLanguagePriority{this, "FallbackLanguagePriority"};
+		ConfigItem<std::vector<std::filesystem::path>> AdditionalSqpackRootDirectories{this, "AdditionalSqpackRootDirectories"};
 		ConfigItem<bool> TtmpFlattenSubdirectoryDisplay{this, "TtmpFlattenSubdirectoryDisplay", false};
 		ConfigItem<bool> TtmpUseSubdirectoryTogglingOnFlattenedView{this, "", false};
 		ConfigItem<bool> TtmpShowDedicatedMenu{this, "TtmpShowDedicatedMenu", false};
-		ConfigItem<std::vector<std::filesystem::path>> AdditionalTexToolsModPackSearchDirectories =
-			{this, "AdditionalTexToolsModPackSearchDirectories"};
-		ConfigItem<std::vector<std::filesystem::path>> AdditionalGameResourceFileEntryRootDirectories =
-			{this, "AdditionalGameResourceFileEntryRootDirectories"};
+		ConfigItem<std::vector<std::filesystem::path>> AdditionalTexToolsModPackSearchDirectories{this, "AdditionalTexToolsModPackSearchDirectories"};
+		ConfigItem<std::vector<std::filesystem::path>> AdditionalGameResourceFileEntryRootDirectories{this, "AdditionalGameResourceFileEntryRootDirectories"};
 		ConfigItem<std::vector<ChoicesProfile>> TtmpChoicesFiles{this, "TtmpChoicesFiles", std::vector<ChoicesProfile>{{.Name = "Default", .FileName = "choices.json"}}};
 		ConfigItem<std::vector<PathReplacementRule>> PathReplacements{this, "PathReplacements"};
 		ConfigItem<std::vector<LogPathFilter>> LogPathFilters{this, "LogPathFilters"};
@@ -130,8 +130,7 @@ namespace XivAlexander {
 		ConfigItem<bool> MuteVoice_Line{this, "MuteVoice_Line", false};
 
 		ConfigItem<bool> UseAltCodecMusicSupport{this, "UseAltCodecMusicSupport", false};
-		ConfigItem<SoxrResamplerConfig> SoxrResampler{
-			this, "SoxrResampler", {},[](const SoxrResamplerConfig& v) { return v.Sanitized(); }};
+		ConfigItem<SoxrResamplerConfig> SoxrResampler{this, "SoxrResampler", {}, [](const SoxrResamplerConfig& v) { return v.Sanitized(); }};
 		ConfigItem<uint32_t> AudioOutputSamplingRate{this, "AudioOutputSamplingRate", 48000U};
 
 		RuntimeConfigRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);

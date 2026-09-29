@@ -3,25 +3,18 @@
 
 #include <xivres/util.on_dtor.h>
 
-Utils::Win32::Process::Process()
-	: Handle() {
-}
+Utils::Win32::Process::Process() noexcept = default;
 
-Utils::Win32::Process::Process(std::nullptr_t)
-	: Process() {
-}
+Utils::Win32::Process::Process(std::nullptr_t) noexcept
+	: Process() {}
 
-Utils::Win32::Process::Process(HANDLE hProcess, bool ownership)
-	: Handle(hProcess, ownership) {
-}
+Utils::Win32::Process::Process(HANDLE hProcess, bool ownership) noexcept
+	: Handle(hProcess, ownership) {}
 
 Utils::Win32::Process::Process(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId)
 	: Handle(OpenProcess(dwDesiredAccess, bInheritHandle, dwProcessId)
 		, Null
-		, "OpenProcess({:x}, {}, {})", dwDesiredAccess, bInheritHandle ? "TRUE" : "FALSE", dwProcessId) {
-}
-
-Utils::Win32::Process::~Process() = default;
+		, "OpenProcess({:x}, {}, {})", dwDesiredAccess, bInheritHandle ? "TRUE" : "FALSE", dwProcessId) {}
 
 Utils::Win32::Process::Process(Process&& r) noexcept
 	: Handle(r.m_object, r.m_bOwnership)
@@ -31,8 +24,9 @@ Utils::Win32::Process::Process(Process&& r) noexcept
 
 Utils::Win32::Process::Process(const Process& r)
 	: Handle(r)
-	, m_moduleMemory(r.m_moduleMemory) {
-}
+	, m_moduleMemory(r.m_moduleMemory) {}
+
+Utils::Win32::Process::~Process() noexcept = default;
 
 Utils::Win32::Process& Utils::Win32::Process::operator=(Process&& r) noexcept {
 	if (&r == this)
@@ -54,7 +48,7 @@ Utils::Win32::Process& Utils::Win32::Process::operator=(const Process& r) {
 	return *this;
 }
 
-Utils::Win32::Process& Utils::Win32::Process::operator=(std::nullptr_t) {
+Utils::Win32::Process& Utils::Win32::Process::operator=(std::nullptr_t) noexcept {
 	Clear();
 	return *this;
 }
@@ -137,7 +131,7 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 		if (siex.lpAttributeList)
 			DeleteProcThreadAttributeList(siex.lpAttributeList);
 	});
-	
+
 	if (!handles.empty() && !UpdateProcThreadAttribute(siex.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, &handles[0], handles.size() * sizeof handles[0], nullptr, nullptr))
 		throw Error("UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_HANDLE_LIST)");
 
@@ -167,7 +161,7 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 		}
 		environString.push_back(0);
 	}
-	
+
 	PROCESS_INFORMATION pi{};
 	if (!CreateProcessW(m_path.c_str(), &args[0],
 		nullptr, nullptr,
@@ -475,12 +469,12 @@ Utils::Win32::Process& Utils::Win32::Process::Attach(HANDLE r, bool ownership, c
 	return *this;
 }
 
-HANDLE Utils::Win32::Process::Detach() {
+HANDLE Utils::Win32::Process::Detach() noexcept {
 	m_moduleMemory.clear();
 	return Handle::Detach();
 }
 
-void Utils::Win32::Process::Clear() {
+void Utils::Win32::Process::Clear() noexcept {
 	m_moduleMemory.clear();
 	Handle::Clear();
 }
@@ -627,7 +621,6 @@ std::pair<void*, void*> Utils::Win32::Process::FindImportedFunction(HMODULE hMod
 			if (IMAGE_SNAP_BY_ORDINAL(pImportLookupTable[j])) {
 				if (!hintOrOrdinal || IMAGE_ORDINAL(pImportLookupTable[j]) != hintOrOrdinal)
 					continue;
-
 			} else {
 				const auto pName = mem.ReadAligned<IMAGE_IMPORT_BY_NAME>(pImportLookupTable[j]);
 				const auto remaining = pName.size() * sizeof pName[0] + reinterpret_cast<const char*>(&pName[0]) - &pName[0].Name[0];
@@ -686,7 +679,6 @@ void* Utils::Win32::Process::FindExportedFunction(HMODULE hModule, const char* p
 			if (hForwardedToModule == hModule)
 				break;  // invalid; will result in infinite recursion
 			return FindExportedFunction(hForwardedToModule, functionName, 0, require);
-
 		} else {
 			// Export RVA
 			return reinterpret_cast<char*>(hModule) + rvaAddress;
@@ -803,7 +795,6 @@ void* Utils::Win32::Process::VirtualAlloc(void* lpBase, size_t size, DWORD flAll
 
 		if (flProtect != flProtectInitial)
 			VirtualProtect(lpAddress, 0, size, flProtect);
-
 	} catch (...) {
 		VirtualFree(lpAddress, 0, MEM_RELEASE);
 		throw;
@@ -857,7 +848,6 @@ Utils::Win32::ModuleMemoryBlocks::ModuleMemoryBlocks(Process process, HMODULE hM
 	, SectionHeaders(CurrentProcess.ReadMemory<IMAGE_SECTION_HEADER>(CurrentModule,
 		DosHeader.e_lfanew + offsetof(IMAGE_NT_HEADERS32, OptionalHeader) + FileHeader.SizeOfOptionalHeader
 		, std::min<size_t>(64, FileHeader.NumberOfSections))) {
-
 	if (const auto optionalHeaderLength = std::min<size_t>(FileHeader.SizeOfOptionalHeader,
 		OptionalHeaderMagic == IMAGE_NT_OPTIONAL_HDR32_MAGIC
 		? sizeof IMAGE_OPTIONAL_HEADER32

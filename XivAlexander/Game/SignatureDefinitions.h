@@ -8,6 +8,10 @@
 #include "Game/Oodle.h"
 #include "Game/SoundEngine.h"
 
+namespace XivAlexander::Game {
+	struct AtkValue;
+}
+
 namespace XivAlexander::Game::Resolved {
 	struct MssAsiFunctions {
 		AsiStreamAttributeFn Attribute{};
@@ -40,6 +44,10 @@ namespace XivAlexander::Game::Resolved {
 	using StringIndirectionResolverFn = const char8_t*(*)(const char8_t* str);
 	using CutSceneLanguageGetterFn = int(*)(void* p);
 	using MessageLoopFn = bool(*)();
+	// Starts a lobby login; sessionId is AgentLobby's Utf8String holding DEV.TestSID, and is only copied from.
+	using LobbyLoginFn = bool(*)(void* self, void* sessionId, void* arg3, void* arg4, void* arg5, void* arg6, uint8_t arg7, uint8_t arg8);
+	// AgentLobby's handler for OK on a lobby error dialog; result is an AtkValue whose low 16 bits are the error code.
+	using LobbyErrorDialogFn = uint64_t(*)(void* self, void* arg2, AtkValue& result);
 
 	extern const Signatures::ComplexSignature<std::vector<SqPackIndexLookupFn>> SqPackIndexLookupFunctions;
 	extern const Signatures::ComplexSignature<std::vector<StringIndirectionResolverFn>> StringIndirectionResolverFunctions;
@@ -57,4 +65,7 @@ namespace XivAlexander::Game::Resolved {
 	extern const Signatures::ComplexSignature<MssAsiFunctions> MssAsiStream;
 
 	extern const Signatures::ComplexSignature<MessageLoopFn> MessageLoopFunction;
+
+	extern const Signatures::ComplexSignature<LobbyLoginFn> LobbyLoginFunction;
+	extern const Signatures::ComplexSignature<LobbyErrorDialogFn> LobbyErrorDialogFunction;
 }

@@ -13,15 +13,15 @@ namespace Utils::Win32 {
 		bool m_bOwnership;
 
 	public:
-		Closeable() : m_object(Null), m_bOwnership(false) {}
-		Closeable(std::nullptr_t) : m_object(Null), m_bOwnership(false) {}
+		Closeable() noexcept : m_object(Null), m_bOwnership(false) {}
+		Closeable(std::nullptr_t) noexcept : m_object(Null), m_bOwnership(false) {}
 
-		Closeable(T object, bool ownership)
+		Closeable(T object, bool ownership) noexcept
 			: m_object(object)
 			, m_bOwnership(object != Null && ownership) {
 		}
 
-		Closeable(T object, T invalidValue)
+		Closeable(T object, T invalidValue) noexcept
 			: m_object(object == invalidValue ? nullptr : object)
 			, m_bOwnership(object != invalidValue) {
 		}
@@ -61,7 +61,7 @@ namespace Utils::Win32 {
 			return *this;
 		}
 
-		virtual Closeable& operator=(nullptr_t) {
+		virtual Closeable& operator=(nullptr_t) noexcept {
 			Clear();
 			return *this;
 		}
@@ -69,7 +69,7 @@ namespace Utils::Win32 {
 		Closeable(const Closeable&) = delete;
 		virtual Closeable& operator=(const Closeable&) = delete;
 
-		virtual ~Closeable() {
+		virtual ~Closeable() noexcept {
 			ClearInternal();
 		}
 
@@ -90,7 +90,7 @@ namespace Utils::Win32 {
 			return prev;
 		}
 
-		virtual void Clear() {
+		virtual void Clear() noexcept {
 			ClearInternal();
 		}
 		
@@ -112,7 +112,7 @@ namespace Utils::Win32 {
 		[[nodiscard]] bool HasOwnership() const { return m_object && m_bOwnership; }
 
 	private:
-		void ClearInternal() {
+		void ClearInternal() noexcept {
 			if (m_object && m_bOwnership)
 				CloserFunction(m_object);
 			m_object = nullptr;

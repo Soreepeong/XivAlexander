@@ -5,7 +5,7 @@
 namespace Utils::Win32 {
 	class GlobalResource : public Closeable<HGLOBAL, FreeResource> {
 	public:
-		using Closeable<HGLOBAL, FreeResource>::Closeable;
+		using Closeable::Closeable;
 		GlobalResource(HINSTANCE hInstance, LPCWSTR lpType, LPCWSTR lpName, WORD wLanguage = MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), bool fallbackToDefault = true);
 
 		[[nodiscard]] void* GetData() const;
@@ -17,7 +17,7 @@ namespace Utils::Win32 {
 
 	class Menu : public Closeable<HMENU, DestroyMenu> {
 	public:
-		using Closeable<HMENU, DestroyMenu>::Closeable;
+		using Closeable::Closeable;
 		Menu(HINSTANCE hInstance, LPCWSTR lpType, LPCWSTR lpName, WORD wLanguage = MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), bool fallbackToDefault = true);
 
 		void AttachAndSwap(HWND hWnd);
@@ -25,7 +25,7 @@ namespace Utils::Win32 {
 
 	class Accelerator : public Closeable<HACCEL, DestroyAcceleratorTable> {
 	public:
-		using Closeable<HACCEL, DestroyAcceleratorTable>::Closeable;
+		using Closeable::Closeable;
 		Accelerator(HINSTANCE hInstance, LPCWSTR lpType, LPCWSTR lpName, WORD wLanguage = MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), bool fallbackToDefault = true);
 	};
 

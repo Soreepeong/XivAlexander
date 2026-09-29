@@ -12,6 +12,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 	class MainThreadTimingHandler;
 	class SocketHook;
 	class PatchCode;
+	class LoginSessions;
 }
 
 namespace XivAlexander::Apps::MainApp::Features::Modding {
@@ -61,6 +62,7 @@ namespace XivAlexander::Apps::MainApp {
 		[[nodiscard]] Features::Modding::ResourceOverrider& GetResourceOverrider();
 		[[nodiscard]] std::optional<Features::NetworkTimingHandler>& GetNetworkTimingHandler();
 		[[nodiscard]] std::optional<Features::MainThreadTimingHandler>& GetMainThreadTimingHelper();
+		[[nodiscard]] std::optional<Features::LoginSessions>& GetLoginSessions();
 
 		static xivres::util::listener_manager<App, void, App&> OnAppCreated;
 	};

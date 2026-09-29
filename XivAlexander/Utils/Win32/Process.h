@@ -10,14 +10,15 @@
 
 namespace Utils::Win32 {
 	class ModuleMemoryBlocks;
+
 	class Process : public Handle {
 		mutable std::mutex m_moduleMemoryMutex;
 		mutable std::map<HMODULE, std::shared_ptr<ModuleMemoryBlocks>> m_moduleMemory;
 
 	public:
-		Process();
-		Process(std::nullptr_t);
-		Process(HANDLE hProcess, bool ownership);
+		Process() noexcept;
+		Process(std::nullptr_t) noexcept;
+		Process(HANDLE hProcess, bool ownership) noexcept;
 		Process(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId);
 		Process(Process&& r) noexcept;
 		Process(const Process& r);
@@ -25,20 +26,21 @@ namespace Utils::Win32 {
 
 		Process& operator=(Process&& r) noexcept;
 		Process& operator=(const Process& r);
-		Process& operator=(std::nullptr_t) override;
+		Process& operator=(std::nullptr_t) noexcept override;
 
 		static Process& Current();
 
 		Process& Attach(HANDLE r, bool ownership, const std::string& errorMessage);
-		HANDLE Detach() override;
+		HANDLE Detach() noexcept override;
 
-		void Clear() override;
+		void Clear() noexcept override;
 
 		enum class ModuleNameCompareMode {
 			FullPath = 0,
 			FileNameWithExtension = 1,
 			FileNameWithoutExtension = 2,
 		};
+
 		[[nodiscard]] std::vector<HMODULE> EnumModules() const;
 		[[nodiscard]] HMODULE AddressOf(std::filesystem::path path, ModuleNameCompareMode compareMode = ModuleNameCompareMode::FullPath, bool require = true) const;
 		[[nodiscard]] std::filesystem::path PathOf(HMODULE hModule = nullptr) const;
@@ -96,6 +98,7 @@ namespace Utils::Win32 {
 		}
 
 		void* VirtualAlloc(void* lpBase, size_t size, DWORD flAllocType, DWORD flProtect, const void* lpSourceData = nullptr, size_t sourceDataSize = 0) const;
+
 		template<typename T>
 		T* VirtualAlloc(void* lpBase, size_t size, DWORD flAllocType, DWORD flProtect, const T* lpSourceData = nullptr, size_t sourceDataSize = 0) const {
 			return static_cast<T*>(VirtualAlloc(lpBase, size, flAllocType, flProtect, static_cast<const void*>(lpSourceData), sourceDataSize));
@@ -143,7 +146,7 @@ namespace Utils::Win32 {
 
 		bool m_environInitialized = false;
 		std::map<std::wstring, std::wstring> m_environ;
-		
+
 		Handle m_hStdin;
 		Handle m_hStdout;
 		Handle m_hStderr;
@@ -168,14 +171,17 @@ namespace Utils::Win32 {
 		ProcessBuilder& WithAppendArgument(const std::wstring&);
 		ProcessBuilder& WithAppendArgument(std::initializer_list<std::string>);
 		ProcessBuilder& WithAppendArgument(std::initializer_list<std::wstring>);
-		template<typename ... Args>
-		ProcessBuilder& WithAppendArgument(const char* format, Args&& ... args) {
+
+		template<typename... Args>
+		ProcessBuilder& WithAppendArgument(const char* format, Args&&... args) {
 			return WithAppendArgument(std::vformat(format, std::make_format_args(std::forward<Args&>(args)...)));
 		}
-		template<typename ... Args>
-		ProcessBuilder& WithAppendArgument(const wchar_t* format, Args&& ... args) {
+
+		template<typename... Args>
+		ProcessBuilder& WithAppendArgument(const wchar_t* format, Args&&... args) {
 			return WithAppendArgument(std::vformat(format, std::make_wformat_args(std::forward<Args&>(args)...)));
 		}
+
 		ProcessBuilder& WithSize(DWORD width, DWORD height, bool use = true);
 		ProcessBuilder& WithUnspecifiedSize();
 		ProcessBuilder& WithPosition(DWORD x, DWORD y, bool use = true);
@@ -193,6 +199,7 @@ namespace Utils::Win32 {
 		ProcessBuilder& WithNoWindow(bool noWindow = true);
 
 		Handle Inherit(HANDLE hSource);
+
 		template<typename T, typename = std::is_base_of<T, Handle>>
 		T Inherit(T source) {
 			return T(Inherit(static_cast<HANDLE>(source)), false);
@@ -210,12 +217,14 @@ namespace Utils::Win32 {
 		const HMODULE CurrentModule;
 		const IMAGE_DOS_HEADER DosHeader;
 		const IMAGE_FILE_HEADER FileHeader;
+
 		union {
 			const WORD OptionalHeaderMagic;
 			const IMAGE_OPTIONAL_HEADER32 OptionalHeader32;
 			const IMAGE_OPTIONAL_HEADER64 OptionalHeader64;
 			char OptionalHeaderRaw[sizeof(IMAGE_OPTIONAL_HEADER64)];
 		};
+
 		const std::vector<IMAGE_SECTION_HEADER> SectionHeaders;
 
 	private:

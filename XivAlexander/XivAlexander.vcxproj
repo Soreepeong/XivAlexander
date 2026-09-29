@@ -108,6 +108,8 @@
     <PostBuildEvent>
       <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)" || cd.
 copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(APPDATA)\XivAlexander\" || cd.
+xcopy /y /i /q "$(SolutionDir)StaticData\PatchCode\*.json" "$(TargetDir)PatchCode\" || cd.
+xcopy /y /i /q "$(SolutionDir)StaticData\PatchCode\*.json" "$(APPDATA)\XivAlexander\PatchCode\" || cd.
 copy /y "$(TargetPath)" "$(LocalDebuggerWorkingDirectory)\d3d11.dll" || cd.
 copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
 </Command>
@@ -156,6 +158,8 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <PostBuildEvent>
       <Command>copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(TargetDir)" || cd.
 copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(APPDATA)\XivAlexander\" || cd.
+xcopy /y /i /q "$(SolutionDir)StaticData\PatchCode\*.json" "$(TargetDir)PatchCode\" || cd.
+xcopy /y /i /q "$(SolutionDir)StaticData\PatchCode\*.json" "$(APPDATA)\XivAlexander\PatchCode\" || cd.
 copy /y "$(TargetPath)" "$(LocalDebuggerWorkingDirectory)\d3d11.dll" || cd.
 copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
 </Command>
@@ -182,6 +186,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="MainApp\AltCodecMusicDecoders\WavDecoder.cpp" />
     <ClCompile Include="MainApp\App.cpp" />
     <ClCompile Include="MainApp\AudioResamplers\SoxrResampler.cpp" />
+    <ClCompile Include="MainApp\Features\LoginSessions.cpp" />
     <ClCompile Include="MainApp\Features\MainThreadTimingHandler.cpp" />
     <ClCompile Include="MainApp\Features\PatchCode.cpp" />
     <ClCompile Include="MainApp\Modding\DialogueSpeakers.cpp" />
@@ -236,6 +241,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="Config\InitConfigRepository.cpp" />
     <ClCompile Include="Config\RuntimeConfigRepository.cpp" />
     <ClCompile Include="Config\Enums.cpp" />
+    <ClCompile Include="Config\PatchCodeRepository.cpp" />
     <ClCompile Include="Config\PatchInstruction.cpp" />
     <ClCompile Include="MainApp\Features\NetworkTimingHandler.cpp" />
     <ClCompile Include="MainApp\Features\IpcTypeFinder.cpp" />
@@ -260,6 +266,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="EntryPointApp\App.h" />
     <ClInclude Include="EntryPointApp\x64.h" />
     <ClInclude Include="EntryPointApp\x86.h" />
+    <ClInclude Include="Game\Structs.h" />
     <ClInclude Include="LoaderApp\App.h" />
     <ClInclude Include="LoaderApp\Actions\Inject.h" />
     <ClInclude Include="LoaderApp\Actions\InstallUninstall.h" />
@@ -276,6 +283,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="MainApp\AudioResamplers\Resampler.h" />
     <ClInclude Include="MainApp\AudioResamplers\SoxrResampler.h" />
     <ClInclude Include="MainApp\Features\MainThreadTimingHandler.h" />
+    <ClInclude Include="MainApp\Features\LoginSessions.h" />
     <ClInclude Include="MainApp\Features\PatchCode.h" />
     <ClInclude Include="MainApp\Modding\DialogueSpeakers.h" />
     <ClInclude Include="MainApp\Modding\FutureReservations.h" />
@@ -312,6 +320,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="Config\BaseConfigRepository.h" />
     <ClInclude Include="Config\GameConfigRepository.h" />
     <ClInclude Include="Config\InitConfigRepository.h" />
+    <ClInclude Include="Config\PatchCodeRepository.h" />
     <ClInclude Include="Config\RuntimeConfigRepository.h" />
     <ClInclude Include="Config\Enums.h" />
     <ClInclude Include="Config\PatchInstruction.h" />

@@ -25,6 +25,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		Misc::GameInstallationDetector::GameReleaseInfo m_gameReleaseInfo;
 
 		uint64_t m_lastTrayIconLeftButtonUp = 0;
+		DWORD m_copiedLaunchCommandLineClipboardSequence = 0;
 
 		bool m_bUseXivAlexander = true;
 		bool m_bUseParameterObfuscation = false;
@@ -64,6 +65,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void RepopulateMenu_TtmpChoicesProfiles(HMENU hTtmpMenu);
 		void RepopulateMenu_TtmpEnable(HMENU hParentMenu, Features::Modding::NestedTtmp& nestedTtmp, const std::wstring& label);
 		void RepopulateMenu_GameFix(HMENU hParentMenu);
+		void RepopulateMenu_LoginSessions(HMENU hMenu);
 		void RepopulateMenu_AudioResampler(HMENU hMenu);
 		void SetMenuStates() const;
 		void RegisterTrayIcon();
@@ -72,6 +74,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		[[nodiscard]] static std::filesystem::path GameExecutablePath();
 		[[nodiscard]] std::wstring MakeLaunchArguments() const;
 		void CopyLaunchCommandLine();
+		void ClearCopiedLaunchCommandLine();
 		void AskRestartGame(bool onlyOnModifier = false);
 
 		void OnCommand_Menu_File(int menuId);

@@ -12,7 +12,7 @@ namespace Utils::Win32 {
 		static HANDLE DuplicateHandleNullable(HANDLE src);
 
 	public:
-		using Closeable<HANDLE, CloseHandle>::Closeable;
+		using Closeable::Closeable;
 		Handle(Handle&& r) noexcept;
 		Handle(const Handle& r);
 		Handle& operator=(Handle&& r) noexcept;
@@ -95,7 +95,7 @@ namespace Utils::Win32 {
 
 	class ActivationContext : public Closeable<HANDLE, ReleaseActCtx> {
 	public:
-		using Closeable<HANDLE, ReleaseActCtx>::Closeable;
+		using Closeable::Closeable;
 		ActivationContext(ActivationContext&& r) noexcept;
 		ActivationContext& operator=(ActivationContext&& r) noexcept;
 		explicit ActivationContext(const ACTCTXW& actctx);
@@ -163,11 +163,11 @@ namespace Utils::Win32 {
 
 		class View : public Closeable<void*, UnmapViewOfFile> {
 		public:
-			using Closeable<void*, UnmapViewOfFile>::Closeable;
-			View(const Closeable<void*, UnmapViewOfFile>&) = delete;
+			using Closeable::Closeable;
+			View(const Closeable&) = delete;
 
-			using Closeable<void*, UnmapViewOfFile>::operator=;
-			View& operator=(const Closeable<void*, UnmapViewOfFile>&) override = delete;
+			using Closeable::operator=;
+			View& operator=(const Closeable&) override = delete;
 
 			static View Create(const FileMapping& mapping, DWORD dwDesiredAccess = FILE_MAP_READ, uint64_t fileOffset = 0, SIZE_T dwNumberOfBytesToMap = 0) {	
 				return View(MapViewOfFile(mapping, dwDesiredAccess, static_cast<DWORD>(fileOffset >> 32), static_cast<DWORD>(fileOffset), dwNumberOfBytesToMap), nullptr, "MapViewOfFile");

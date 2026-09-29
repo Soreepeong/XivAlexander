@@ -284,7 +284,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 				std::shared_ptr<NestedTtmp> current;
 				for (auto& child : *parent->Children) {
-					if (equivalent(child->Path, iter.path())) {
+					if (std::error_code ec; equivalent(child->Path, iter.path(), ec) && !ec) {
 						current = child;
 						break;
 					}

@@ -32,3 +32,7 @@ std::filesystem::path XivAlexander::InitConfigRepository::ResolveGameOpcodeConfi
 	const auto gameReleaseInfo = Misc::GameInstallationDetector::GetGameReleaseInfo();
 	return ResolveConfigStorageDirectoryPath() / std::format(L"game.{}.{}.json", gameReleaseInfo.CountryCode, gameReleaseInfo.PathSafeGameVersion);
 }
+
+std::filesystem::path XivAlexander::InitConfigRepository::ResolvePatchCodeDirectoryPath() {
+	return Utils::Win32::EnsureDirectory(ResolveConfigStorageDirectoryPath() / "PatchCode");
+}

@@ -281,6 +281,8 @@ BEGIN
         POPUP "ゲームのバグのフィックス(&X)"
         BEGIN
             MENUITEM "(なし)",                        ID_CONFIGURE_GAMEFIX_EMPTY, INACTIVE
+            MENUITEM SEPARATOR
+            MENUITEM "フォルダーを開ける(&O)",               ID_CONFIGURE_GAMEFIX_OPENDIRECTORY
         END
         MENUITEM SEPARATOR
         MENUITEM "ゲームがCPUをできるだけ利用させる(&C)",      ID_CONFIGURE_USEMORECPUTIME
@@ -288,8 +290,8 @@ BEGIN
         POPUP "ウィンドウタイトル(&I)"
         BEGIN
             MENUITEM "変更しない(&N)",                   ID_CONFIGURE_WINDOWTITLE_PID_NONE
-            MENUITEM "前にPIDを追加する(&P)",              ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
-            MENUITEM "後ろにPIDを追加する(&A)",             ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
+            MENUITEM "前にセッション名かPIDを追加する(&P)",     ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
+            MENUITEM "後ろにセッション名かPIDを追加する(&A)",    ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
         END
         MENUITEM "FPSの固定(&F)",                  ID_CONFIGURE_LOCKFRAMERATE
         MENUITEM "リキャストとアニメーション待機時間とゲーム処理の同期化(&P)", ID_CONFIGURE_SYNCHRONIZEPROCESSING
@@ -400,7 +402,7 @@ BEGIN
     IDS_TITLE_UNRECOVERABLEERROR_FOOTER 
                             "<a href=""issues"">XivAlexanderのGitHubのIssueページ</a>を開ける"
     IDS_CONFIRM_RESTART_GAME 
-                            "ゲームを強制的に再起動しますか？\n\nXivAlexanderの使用：{}\nコマンドラインの難読化の使用：{}\n管理者権限で実行：{}\n言語：{}\n地域：{}"
+                            "XivAlexanderの使用：{}\nコマンドラインの難読化の使用：{}\n管理者権限で実行：{}\n言語：{}\n地域：{}"
     IDS_MAIN_TEXT           "PID: {}\nゲームのインストール先: {}\nコマンドライン：{}\nゲームのバージョン: {} ({})\nメッセジーループ：{}+{:06}us (毎秒{:.02f}回)\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "環境設定"
@@ -445,6 +447,13 @@ BEGIN
     IDS_MENU_USESOXRRESAMPLER "soxrリサンプラーを使用(&S)"
     IDS_REGION_NAME_CHINATRAD "繁体字版"
     IDS_CLIENT_USERJOYGAMES "USERJOY GAMES"
+    IDS_MENU_LOGINSESSION   "セッション(&S)"
+    IDS_MENU_LOGINSESSION_EXPIRED "{}（期限切れ）"
+    IDS_MENU_LOGINSESSION_LAUNCHARGUMENTS "(起動時のセッション)"
+    IDS_CONFIRM_RESTART_GAME_TITLE "この設定でゲームを起動しますか？"
+    IDS_CONFIRM_RESTART_GAME_LOGINSESSION "\nログインセッション：{}"
+    IDS_RESTART_GAME_RESTART "再起動(&R)\nこのゲームを終了して、もう一度起動します。"
+    IDS_RESTART_GAME_NEWINSTANCE "新しく起動(&N)\nこのゲームはそのままにして、もう一つ起動します。"
 END
 
 STRINGTABLE
@@ -828,6 +837,8 @@ BEGIN
         POPUP "게임 버그 수정(&X)"
         BEGIN
             MENUITEM "(수정 가능한 버그 없음)",              ID_CONFIGURE_GAMEFIX_EMPTY, INACTIVE
+            MENUITEM SEPARATOR
+            MENUITEM "폴더 열기(&O)",                   ID_CONFIGURE_GAMEFIX_OPENDIRECTORY
         END
         MENUITEM SEPARATOR
         MENUITEM "게임이 가능한 만큼 CPU를 쓰도록 만들기(&C)", ID_CONFIGURE_USEMORECPUTIME
@@ -1009,7 +1020,7 @@ BEGIN
     IDS_TITLE_UNRECOVERABLEERROR_FOOTER 
                             "<a href=""issues"">XivAlexander의 GitHub 이슈 페이지</a> 열기"
     IDS_CONFIRM_RESTART_GAME 
-                            "게임을 강제로 재시작하시겠습니까?\n\nXivAlexander 사용: {}\n명령줄 난독화 사용: {}\n관리자 권한으로 실행: {}\n언어: {}\n지역: {}"
+                            "XivAlexander 사용: {}\n명령줄 난독화 사용: {}\n관리자 권한으로 실행: {}\n언어: {}\n지역: {}"
     IDS_MAIN_TEXT           "PID: {}\n게임 경로: {}\n인자: {}\n게임 버전: {} ({})\n메시지 루프: {}+{:06}us (초당 {:.02f}회)\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "프로그램 설정 편집"
@@ -1053,6 +1064,13 @@ BEGIN
     IDS_MENU_USESOXRRESAMPLER "soxr 리샘플러 사용(&S)"
     IDS_REGION_NAME_CHINATRAD "번체 중국어판"
     IDS_CLIENT_USERJOYGAMES "USERJOY GAMES"
+    IDS_MENU_LOGINSESSION   "세션(&S)"
+    IDS_MENU_LOGINSESSION_EXPIRED "{} (만료됨)"
+    IDS_MENU_LOGINSESSION_LAUNCHARGUMENTS "(실행 시 세션)"
+    IDS_CONFIRM_RESTART_GAME_TITLE "이 설정으로 게임을 실행하시겠습니까?"
+    IDS_CONFIRM_RESTART_GAME_LOGINSESSION "\n로그인 세션: {}"
+    IDS_RESTART_GAME_RESTART "재시작(&R)\n이 게임을 종료하고 다시 실행합니다."
+    IDS_RESTART_GAME_NEWINSTANCE "새로 실행(&N)\n이 게임은 그대로 두고 하나 더 실행합니다."
 END
 
 STRINGTABLE
@@ -1443,6 +1461,8 @@ BEGIN
         POPUP "Game Fi&x"
         BEGIN
             MENUITEM "(None available)",            ID_CONFIGURE_GAMEFIX_EMPTY, INACTIVE
+            MENUITEM SEPARATOR
+            MENUITEM "&Open Directory",             ID_CONFIGURE_GAMEFIX_OPENDIRECTORY
         END
         MENUITEM SEPARATOR
         MENUITEM "Force the Game to Use More &CPU Time", ID_CONFIGURE_USEMORECPUTIME
@@ -1450,8 +1470,8 @@ BEGIN
         POPUP "Game Window T&itle"
         BEGIN
             MENUITEM "&No Change",                  ID_CONFIGURE_WINDOWTITLE_PID_NONE
-            MENUITEM "&Prepend Process ID",         ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
-            MENUITEM "&Append Process PID",         ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
+            MENUITEM "&Prepend Session Name or Process ID", ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
+            MENUITEM "&Append Session Name or Process ID", ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
         END
         MENUITEM "Lock &Framerate ",            ID_CONFIGURE_LOCKFRAMERATE
         MENUITEM "Synchronize &Processing to Cooldowns and Animation Locks", ID_CONFIGURE_SYNCHRONIZEPROCESSING
@@ -1747,7 +1767,7 @@ BEGIN
     IDS_TITLE_UNRECOVERABLEERROR_FOOTER 
                             "Report to <a href=""issues"">XivAlexander Issues at GitHub</a>"
     IDS_CONFIRM_RESTART_GAME 
-                            "Do you want to force restart the game?\n\nUse XivAlexander: {}\nUse Parameter Obfuscation: {}\nUse Elevation (Run as Administrator): {}\nGame Language: {}\nRegion: {}"
+                            "Use XivAlexander: {}\nUse Parameter Obfuscation: {}\nUse Elevation (Run as Administrator): {}\nGame Language: {}\nRegion: {}"
     IDS_MAIN_TEXT           "Process ID: {}\nGame Path: {}\nArguments: {}\nGame Release: {} ({})\nMessage Pump: {}+{:06}us ({:.02f}/s)\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "Runtime Configuration Editor"
@@ -1794,6 +1814,13 @@ BEGIN
     IDS_MENU_USESOXRRESAMPLER "Use &soxr Resampler"
     IDS_REGION_NAME_CHINATRAD "Traditional Chinese"
     IDS_CLIENT_USERJOYGAMES "USERJOY GAMES"
+    IDS_MENU_LOGINSESSION   "&Session"
+    IDS_MENU_LOGINSESSION_EXPIRED "{} (expired)"
+    IDS_MENU_LOGINSESSION_LAUNCHARGUMENTS "(Session from launch arguments)"
+    IDS_CONFIRM_RESTART_GAME_TITLE "Start the game with these settings?"
+    IDS_CONFIRM_RESTART_GAME_LOGINSESSION "\nLogin Session: {}"
+    IDS_RESTART_GAME_RESTART "&Restart\nClose this game and start it again."
+    IDS_RESTART_GAME_NEWINSTANCE "Launch a &New Instance\nKeep this game running and start another one."
 END
 
 STRINGTABLE

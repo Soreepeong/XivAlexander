@@ -190,7 +190,7 @@ std::filesystem::path Utils::Win32::Handle::GetPathName(bool bOpenedPath, bool b
 }
 
 Utils::Win32::ActivationContext::ActivationContext(const ACTCTXW & actctx)
-	: Closeable<HANDLE, ReleaseActCtx>(CreateActCtxW(&actctx), INVALID_HANDLE_VALUE, "CreateActCtxW") {
+	: Closeable(CreateActCtxW(&actctx), INVALID_HANDLE_VALUE, "CreateActCtxW") {
 }
 
 Utils::Win32::ActivationContext::~ActivationContext() = default;
@@ -335,7 +335,7 @@ Utils::Win32::ActivationContext::ActivationContext(ActivationContext && r) noexc
 }
 
 Utils::Win32::ActivationContext& Utils::Win32::ActivationContext::operator=(ActivationContext && r) noexcept {
-	Closeable<HANDLE, ReleaseActCtx>::operator=(std::move(r));
+	Closeable::operator=(std::move(r));
 	return *this;
 }
 

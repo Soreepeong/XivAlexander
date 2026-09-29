@@ -2,7 +2,6 @@
 
 #include <xivres/common.h>
 
-#include "PatchInstruction.h"
 #include "BaseConfigRepository.h"
 
 namespace XivAlexander {
@@ -15,8 +14,6 @@ namespace XivAlexander {
 		using BaseConfigRepository::BaseConfigRepository;
 
 	public:
-		ConfigItem<std::vector<PatchInstruction>> PatchCode{this, "PatchCode", std::vector<PatchInstruction>()};
-
 		ConfigItem<bool> Common_UseOodleTcp{this, "Common_UseOodleTcp", true};
 
 		// Make the program consume all network connections by default.

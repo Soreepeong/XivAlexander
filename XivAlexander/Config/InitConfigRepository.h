@@ -25,5 +25,6 @@ namespace XivAlexander {
 		std::filesystem::path ResolveXivAlexInstallationPath();
 		std::filesystem::path ResolveRuntimeConfigPath();
 		std::filesystem::path ResolveGameOpcodeConfigPath();
+		std::filesystem::path ResolvePatchCodeDirectoryPath();
 	};
 }

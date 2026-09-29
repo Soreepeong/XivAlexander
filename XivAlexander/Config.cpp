@@ -36,9 +36,11 @@ std::filesystem::path XivAlexander::Config::TranslatePath(const std::filesystem:
 XivAlexander::Config::Config(std::filesystem::path initializationConfigPath)
 	: Init(this, std::move(initializationConfigPath), "")
 	, Runtime(this, Init.ResolveRuntimeConfigPath(), xivres::util::unicode::convert<std::string>(Utils::Win32::Process::Current().PathOf().wstring()))
-	, Game(this, Init.ResolveGameOpcodeConfigPath(), "") {
+	, Game(this, Init.ResolveGameOpcodeConfigPath(), "")
+	, PatchCode(Init.ResolvePatchCodeDirectoryPath()) {
 	Runtime.Reload();
 	Game.Reload();
+	PatchCode.Reload();
 }
 
 XivAlexander::Config::~Config() = default;
@@ -48,5 +50,6 @@ void XivAlexander::Config::Reload() {
 	Init.Reload();
 	Runtime.Reload();
 	Game.Reload();
+	PatchCode.Reload();
 }
 

@@ -2,6 +2,7 @@
 #include "Game/SignatureDefinitions.h"
 
 #include <algorithm>
+#include <map>
 #include <utility>
 
 #include "Game/ResolveContext.h"
@@ -44,6 +45,15 @@ namespace XivAlexander::Game {
 	const Signatures::RegexSignature SoundBufferEndHandler(R"([\x40\x41][\x50-\x57]\x48\x83\xEC.\x83\x79.\x07[\x48-\x4F]\x8B[\xC0-\xFF]\x74.\x48\x83\xC1\xF8\xE8....[\x40-\x4F]?\x80[\xB8-\xBB\xBD-\xBF](....)\x01)");
 
 	const Signatures::RegexSignature MessageLoop(R"(\xE8(....)\x84\xc0\x75\xf7)");
+
+	// The callers check that the lobby is in state 4 or 0x3B, then call the login. Holds since 6.10; the login itself
+	// is compiled differently often enough that matching its own instructions broke between 7.25 and 7.30.
+	const Signatures::RegexSignature LobbyLoginCaller(R"(\x8B[\x80-\xBF]....\x83\xF8\x04(?:\x74.|\x0F\x84....)\x83\xF8\x3B.{0,80}?\xE8(....))");
+	// Near its start, the login tests its last argument to choose between two ways of logging in.
+	const Signatures::RegexSignature LobbyLoginLastArgumentTest(R"(\x80\xBC\x24....\x00)");
+
+	// Same as what NoKillPlugin (Bluefissure) hooks: reads the error code from the dialog result right away.
+	const Signatures::RegexSignature LobbyErrorDialog(R"(\x40\x53\x48\x83\xEC\x30\x48\x8B\xD9\x49\x8B\xC8\xE8....\x8B\xD0)");
 }
 
 namespace XivAlexander::Game::Resolved {
@@ -368,5 +378,33 @@ namespace XivAlexander::Game::Resolved {
 
 	const Signatures::ComplexSignature<MessageLoopFn> MessageLoopFunction("MessageLoopFunction", [](ResolveContext& ctx) -> MessageLoopFn {
 		return Address(ctx.First(MessageLoop, ctx.Image(), "message loop").ResolveAddress<const void*>(1));
+	});
+
+	const Signatures::ComplexSignature<LobbyLoginFn> LobbyLoginFunction("LobbyLoginFunction", [](ResolveContext& ctx) -> LobbyLoginFn {
+		const void* target = nullptr;
+		for (const auto& call : ctx.All(LobbyLoginCaller, ctx.Text())) {
+			const auto p = call.ResolveAddress<const void*>(1);
+			ctx.Require(!target || target == p, ResolveError::Ambiguous,
+				"lobby login callers call both {} and {}", Signatures::Describe(target), Signatures::Describe(p));
+			target = p;
+		}
+		ctx.Require(target != nullptr, ResolveError::NotFound, "lobby login caller not found");
+		const auto fn = ctx.FunctionStartingAt(target, "lobby login");
+
+		// The hook relies on the argument layout: 8 arguments, the last picking one of two branches that each copy
+		// the three Utf8String arguments with the same function.
+		ctx.Require(ctx.Find(LobbyLoginLastArgumentTest, fn.first((std::min)(fn.size(), static_cast<size_t>(0x60)))).has_value(), ResolveError::Mismatch,
+			"lobby login {} does not test its last argument", Signatures::Describe(target));
+		std::map<const void*, size_t> callees;
+		for (const auto& call : RelativeCall.Lookup(fn))
+			++callees[call.ResolveAddress<const void*>(1)];
+		ctx.Require(std::ranges::any_of(callees, [](const auto& callee) { return callee.second == 6; }), ResolveError::Mismatch,
+			"lobby login {} does not copy three strings on both branches", Signatures::Describe(target));
+		return Address(fn.data());
+	});
+
+	const Signatures::ComplexSignature<LobbyErrorDialogFn> LobbyErrorDialogFunction("LobbyErrorDialogFunction", [](ResolveContext& ctx) -> LobbyErrorDialogFn {
+		const auto match = ctx.Unique(LobbyErrorDialog, ctx.Text(), "lobby error dialog");
+		return Address(ctx.FunctionStartingAt(&match.Get<const uint8_t>(0), "lobby error dialog").data());
 	});
 }

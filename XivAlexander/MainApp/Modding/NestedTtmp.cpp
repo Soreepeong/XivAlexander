@@ -78,7 +78,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	std::shared_ptr<NestedTtmp> NestedTtmp::Find(const std::filesystem::path& path) {
 		if (IsGroup())
 			for (auto& child : *Children)
-				if (equivalent(child->Path, path))
+				if (std::error_code ec; equivalent(child->Path, path, ec) && !ec)
 					return child;
 		return nullptr;
 	}
