@@ -19,20 +19,26 @@ SYSTEMTIME Utils::EpochToLocalSystemTime(int64_t epochMilliseconds) {
 	return st;
 }
 
-static std::pair<int64_t, int64_t> QpcUs_GetMulDivForUs() {
-	LARGE_INTEGER freq;
-	QueryPerformanceFrequency(&freq);
-	int64_t mul = 1000000;
-	int64_t div = freq.QuadPart;
+namespace {
+	std::pair<int64_t, int64_t> QpcUs_GetMulDivForUs() {
+		LARGE_INTEGER freq;
+		QueryPerformanceFrequency(&freq);
+		int64_t mul = 1000000;
+		int64_t div = freq.QuadPart;
 
-	auto a = mul, b = div;
-	while (b) {
-		const auto t = a % b;
-		a = b;
-		b = t;
+		auto a = mul, b = div;
+		while (b) {
+			const auto t = a % b;
+			a = b;
+			b = t;
+		}
+
+		return std::make_pair(mul / a, div / a);
 	}
 
-	return std::make_pair(mul / a, div / a);
+	int sockaddr_cmp_helper(int x) {
+		return x;
+	}
 }
 
 int64_t Utils::QpcUs() {
@@ -49,10 +55,6 @@ int sockaddr_cmp_helper(T x, T y) {
 	else if (x > y)
 		return 1;
 	return 0;
-}
-
-static int sockaddr_cmp_helper(int x) {
-	return x;
 }
 
 int Utils::CompareSockaddr(const void* x, const void* y) {
@@ -78,7 +80,7 @@ int Utils::CompareSockaddr(const void* x, const void* y) {
 
 in_addr Utils::ParseIp(const std::string& s) {
 	in_addr addr{};
-	switch (const auto res = inet_pton(AF_INET, &s[0], &addr); res) {
+	switch (const auto res = inet_pton(AF_INET, s.data(), &addr); res) {
 		case 1:
 			return addr;
 		case 0:
@@ -191,7 +193,7 @@ nlohmann::json Utils::ParseJsonFromFile(const std::filesystem::path& path, size_
 		throw std::runtime_error("File too big");
 
 	std::string buf(size, '\0');
-	f.Read(0, &buf[0], buf.size());
+	f.Read(0, buf.data(), buf.size());
 	return nlohmann::json::parse(buf);
 }
 

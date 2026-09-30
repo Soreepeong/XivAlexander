@@ -454,6 +454,20 @@ BEGIN
     IDS_CONFIRM_RESTART_GAME_LOGINSESSION "\nログインセッション：{}"
     IDS_RESTART_GAME_RESTART "再起動(&R)\nこのゲームを終了して、もう一度起動します。"
     IDS_RESTART_GAME_NEWINSTANCE "新しく起動(&N)\nこのゲームはそのままにして、もう一つ起動します。"
+    IDS_VERSIONSENSITIVE_CONTENT "以下の機能はゲームのコードをフックまたはパッチしますが、このゲームバージョン（{}）ではまだ確認されていません。ゲームがアップデートされたため、ゲームをクラッシュさせる可能性があります。\n{}\n\nMODの変更はゲームの再起動後に反映されます。"
+    IDS_VERSIONSENSITIVE_TITLE "このゲームバージョンで動作しない可能性のある機能を使い続けますか？"
+    IDS_VERSIONSENSITIVE_KEEP "維持(&K)\nこのゲームバージョンではこれらの機能を使い、今後は確認しません。"
+    IDS_VERSIONSENSITIVE_KEEPTEMPORARILY "一時的に維持(&T)\nゲームを終了するまでこれらの機能を使い、次回の起動時にもう一度確認します。"
+    IDS_VERSIONSENSITIVE_DISABLETEMPORARILY "一時的に無効化(&M)\nゲームを終了するまでこれらの機能を使わず、次回の起動時にもう一度確認します。"
+    IDS_VERSIONSENSITIVE_DISABLE "無効化(&D)\nこれらの機能をオフにします。"
+    IDS_VERSIONSENSITIVE_MODDING "MOD"
+    IDS_VERSIONSENSITIVE_LOGINSESSIONS "起動中のゲームでのログインセッション切り替え"
+    IDS_VERSIONSENSITIVE_PATCHCODE "パッチコード：{}"
+    IDS_VERSIONSENSITIVE_SAMPLINGRATE "オーディオのサンプリングレート"
+    IDS_VERSIONSENSITIVE_SOXR "soxrリサンプラー"
+    IDS_VERSIONSENSITIVE_ALTCODEC "別コーデックの.scdの再生"
+    IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART "(!) 一部の機能は再起動するまで無効になっています。"
+    IDS_MENU_MODDING_REQUIRESENABLEANDRESTART "ここの機能はMODを有効化してゲームを再起動するまで適用されません。"
 END
 
 STRINGTABLE
@@ -1071,6 +1085,20 @@ BEGIN
     IDS_CONFIRM_RESTART_GAME_LOGINSESSION "\n로그인 세션: {}"
     IDS_RESTART_GAME_RESTART "재시작(&R)\n이 게임을 종료하고 다시 실행합니다."
     IDS_RESTART_GAME_NEWINSTANCE "새로 실행(&N)\n이 게임은 그대로 두고 하나 더 실행합니다."
+    IDS_VERSIONSENSITIVE_CONTENT "아래 기능들은 게임 코드를 후킹하거나 패치하며, 이 게임 버전({})에서는 아직 확인되지 않았습니다. 게임이 업데이트되었으므로 게임을 강제 종료시킬 수 있습니다.\n{}\n\n모드 관련 변경 사항은 게임을 재시작하면 적용됩니다."
+    IDS_VERSIONSENSITIVE_TITLE "이 게임 버전에서 작동하지 않을 수 있는 기능을 계속 사용하시겠습니까?"
+    IDS_VERSIONSENSITIVE_KEEP "유지(&K)\n이 게임 버전에서 이 기능들을 사용하고, 다시 묻지 않습니다."
+    IDS_VERSIONSENSITIVE_KEEPTEMPORARILY "임시로 유지(&T)\n게임을 종료할 때까지 이 기능들을 사용하고, 다음 실행 시 다시 묻습니다."
+    IDS_VERSIONSENSITIVE_DISABLETEMPORARILY "임시로 끄기(&M)\n게임을 종료할 때까지 이 기능들을 사용하지 않고, 다음 실행 시 다시 묻습니다."
+    IDS_VERSIONSENSITIVE_DISABLE "끄기(&D)\n이 기능들을 끕니다."
+    IDS_VERSIONSENSITIVE_MODDING "모드"
+    IDS_VERSIONSENSITIVE_LOGINSESSIONS "실행 중인 게임에서 로그인 세션 전환"
+    IDS_VERSIONSENSITIVE_PATCHCODE "패치 코드: {}"
+    IDS_VERSIONSENSITIVE_SAMPLINGRATE "오디오 샘플링 레이트"
+    IDS_VERSIONSENSITIVE_SOXR "soxr 리샘플러"
+    IDS_VERSIONSENSITIVE_ALTCODEC "타 코덱 포함 음악 .scd 지원"
+    IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART "(!) 일부 기능이 재시작 전까지 비활성화되었습니다."
+    IDS_MENU_MODDING_REQUIRESENABLEANDRESTART "모드 기능을 사용하고 게임을 재시작해야 여기의 기능들이 적용됩니다."
 END
 
 STRINGTABLE
@@ -1821,6 +1849,20 @@ BEGIN
     IDS_CONFIRM_RESTART_GAME_LOGINSESSION "\nLogin Session: {}"
     IDS_RESTART_GAME_RESTART "&Restart\nClose this game and start it again."
     IDS_RESTART_GAME_NEWINSTANCE "Launch a &New Instance\nKeep this game running and start another one."
+    IDS_VERSIONSENSITIVE_CONTENT "The following features hook or patch the game's code, and have not been confirmed on this game version ({}). As the game has been updated, they may crash the game.\n{}\n\nChanges to modding take effect when the game restarts."
+    IDS_VERSIONSENSITIVE_TITLE "Keep using features that may not work with this game version?"
+    IDS_VERSIONSENSITIVE_KEEP "&Keep\nUse these features on this game version, and do not ask again."
+    IDS_VERSIONSENSITIVE_KEEPTEMPORARILY "Keep &Temporarily\nUse these features until the game exits, and ask again on the next launch."
+    IDS_VERSIONSENSITIVE_DISABLETEMPORARILY "Disable Te&mporarily\nDo not use these features until the game exits, and ask again on the next launch."
+    IDS_VERSIONSENSITIVE_DISABLE "&Disable\nTurn these features off."
+    IDS_VERSIONSENSITIVE_MODDING "Modding"
+    IDS_VERSIONSENSITIVE_LOGINSESSIONS "Switching login sessions in the running game"
+    IDS_VERSIONSENSITIVE_PATCHCODE "Patch code: {}"
+    IDS_VERSIONSENSITIVE_SAMPLINGRATE "Audio sampling rate"
+    IDS_VERSIONSENSITIVE_SOXR "soxr resampler"
+    IDS_VERSIONSENSITIVE_ALTCODEC "Alternate codecs for musics"
+    IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART "(!) Some features are disabled until restart."
+    IDS_MENU_MODDING_REQUIRESENABLEANDRESTART "Anything here requires enabling modding and restarting the game."
 END
 
 STRINGTABLE

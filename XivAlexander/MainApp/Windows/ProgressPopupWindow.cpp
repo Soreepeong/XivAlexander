@@ -12,22 +12,24 @@ constexpr auto buttonWidth = 80.;
 
 constexpr auto WmDelayedShow = WM_APP + 1;
 
-static WNDCLASSEXW WindowClass() {
-	const auto hIcon = Utils::Win32::Icon(LoadIconW(Dll::Module(), MAKEINTRESOURCEW(IDI_TRAY_ICON)),
-		nullptr,
-		"LoadIconW");
-	WNDCLASSEXW wcex{};
-	wcex.cbSize = sizeof(WNDCLASSEX);
-	wcex.style = CS_HREDRAW | CS_VREDRAW;
-	wcex.cbClsExtra = 0;
-	wcex.cbWndExtra = 0;
-	wcex.hInstance = Dll::Module();
-	wcex.hIcon = hIcon;
-	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
-	wcex.hbrBackground = GetSysColorBrush(COLOR_WINDOW);
-	wcex.lpszClassName = L"XivAlexander::Window::ProgressPopupWindow";
-	wcex.hIconSm = hIcon;
-	return wcex;
+namespace {
+	WNDCLASSEXW WindowClass() {
+		const auto hIcon = Utils::Win32::Icon(LoadIconW(Dll::Module(), MAKEINTRESOURCEW(IDI_TRAY_ICON)),
+			nullptr,
+			"LoadIconW");
+		WNDCLASSEXW wcex{};
+		wcex.cbSize = sizeof(WNDCLASSEX);
+		wcex.style = CS_HREDRAW | CS_VREDRAW;
+		wcex.cbClsExtra = 0;
+		wcex.cbWndExtra = 0;
+		wcex.hInstance = Dll::Module();
+		wcex.hIcon = hIcon;
+		wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
+		wcex.hbrBackground = GetSysColorBrush(COLOR_WINDOW);
+		wcex.lpszClassName = L"XivAlexander::Window::ProgressPopupWindow";
+		wcex.hIconSm = hIcon;
+		return wcex;
+	}
 }
 
 XivAlexander::Apps::MainApp::Window::ProgressPopupWindow::ProgressPopupWindow(HWND hParentWindow)

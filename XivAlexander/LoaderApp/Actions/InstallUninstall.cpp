@@ -152,42 +152,44 @@ void XivAlexander::LoaderApp::Actions::InstallUninstall::Uninstall(const std::fi
 		Utils::Win32::ShellExecutePathOrThrow(dataPath);
 }
 
-static void QueueRemoval(const std::filesystem::path& path, const bool& success, xivres::util::on_dtor::multi& revert) {
-	std::filesystem::path temp;
-	for (size_t i = 0; ; i++)
-		if (!exists(temp = std::filesystem::path(path).replace_filename(std::format(L"_temp.{}.dll", i))))
-			break;
-	rename(path, temp);
-	revert += [path, temp, &success]() {
-		if (success) {
-			try {
-				remove(temp);
-			} catch (...) {
-				std::filesystem::path temp2;
-				for (size_t i = 0; ; i++)
-					if (!exists(temp2 = std::filesystem::path(path).replace_filename(std::format(L"_xivalex_temp_delete_me_{}.tmp", i))))
-						break;
-				rename(temp, temp2);
-			}
-		} else
-			rename(temp, path);
-	};
-}
-
-static std::string GetSha1(const std::filesystem::path& f) {
-	uint8_t hash[20]{};
-	{
-		const auto file = Utils::Win32::Handle::FromCreateFile(f, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
-		xivres::util::hash_sha1 sha1;
-		std::vector<uint8_t> buf(8192);
-		for (uint64_t i = 0, len = file.GetFileSize(); i < len; i += 8192) {
-			const auto read = file.Read(i, &buf[0], std::min<uint64_t>(len - i, buf.size()));
-			sha1.process_bytes(buf.data(), read);
-		}
-
-		sha1.get_digest_bytes(hash);
+namespace {
+	void QueueRemoval(const std::filesystem::path& path, const bool& success, xivres::util::on_dtor::multi& revert) {
+		std::filesystem::path temp;
+		for (size_t i = 0; ; i++)
+			if (!exists(temp = std::filesystem::path(path).replace_filename(std::format(L"_temp.{}.dll", i))))
+				break;
+		rename(path, temp);
+		revert += [path, temp, &success]() {
+			if (success) {
+				try {
+					remove(temp);
+				} catch (...) {
+					std::filesystem::path temp2;
+					for (size_t i = 0; ; i++)
+						if (!exists(temp2 = std::filesystem::path(path).replace_filename(std::format(L"_xivalex_temp_delete_me_{}.tmp", i))))
+							break;
+					rename(temp, temp2);
+				}
+			} else
+				rename(temp, path);
+		};
 	}
-	return std::string(reinterpret_cast<const char*>(hash), sizeof hash);
+
+	std::string GetSha1(const std::filesystem::path& f) {
+		uint8_t hash[20]{};
+		{
+			const auto file = Utils::Win32::Handle::FromCreateFile(f, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0);
+			xivres::util::hash_sha1 sha1;
+			std::vector<uint8_t> buf(8192);
+			for (uint64_t i = 0, len = file.GetFileSize(); i < len; i += 8192) {
+				const auto read = file.Read(i, &buf[0], std::min<uint64_t>(len - i, buf.size()));
+				sha1.process_bytes(buf.data(), read);
+			}
+
+			sha1.get_digest_bytes(hash);
+		}
+		return std::string(reinterpret_cast<const char*>(hash), sizeof hash);
+	}
 }
 
 void XivAlexander::LoaderApp::Actions::InstallUninstall::RevertChainLoadDlls(

@@ -64,6 +64,8 @@ namespace XivAlexander::Apps::MainApp {
 		[[nodiscard]] std::optional<Features::MainThreadTimingHandler>& GetMainThreadTimingHelper();
 		[[nodiscard]] std::optional<Features::LoginSessions>& GetLoginSessions();
 
+		void AskVersionSensitiveFeatures(HWND hParent);
+
 		static xivres::util::listener_manager<App, void, App&> OnAppCreated;
 	};
 }

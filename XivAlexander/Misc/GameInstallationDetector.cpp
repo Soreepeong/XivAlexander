@@ -3,129 +3,131 @@
 
 #include "Utils/Win32/Process.h"
 
-static std::string TestPublisher(const std::filesystem::path& path) {
-	// See: https://docs.microsoft.com/en-US/troubleshoot/windows/win32/get-information-authenticode-signed-executables
+namespace {
+	std::string TestPublisher(const std::filesystem::path& path) {
+		// See: https://docs.microsoft.com/en-US/troubleshoot/windows/win32/get-information-authenticode-signed-executables
 
-	constexpr auto ENCODING = X509_ASN_ENCODING | PKCS_7_ASN_ENCODING;
+		constexpr auto ENCODING = X509_ASN_ENCODING | PKCS_7_ASN_ENCODING;
 
-	HCERTSTORE hStore = nullptr;
-	HCRYPTMSG hMsg = nullptr;
-	DWORD dwEncoding = 0, dwContentType = 0, dwFormatType = 0;
-	std::vector<xivres::util::on_dtor> cleanupList;
-	if (!CryptQueryObject(CERT_QUERY_OBJECT_FILE,
-		path.c_str(),
-		CERT_QUERY_CONTENT_FLAG_PKCS7_SIGNED_EMBED,
-		CERT_QUERY_FORMAT_FLAG_BINARY,
-		0,
-		&dwEncoding,
-		&dwContentType,
-		&dwFormatType,
-		&hStore,
-		&hMsg,
-		nullptr))
-		return {};
-	if (hMsg) cleanupList.emplace_back([hMsg] { CryptMsgClose(hMsg); });
-	if (hStore) cleanupList.emplace_back([hStore] { CertCloseStore(hStore, 0); });
-
-	DWORD cbData = 0;
-	std::vector<uint8_t> signerInfoBuf;
-	for (size_t i = 0; i < 2; ++i) {
-		if (!CryptMsgGetParam(hMsg,
-			CMSG_SIGNER_INFO_PARAM,
+		HCERTSTORE hStore = nullptr;
+		HCRYPTMSG hMsg = nullptr;
+		DWORD dwEncoding = 0, dwContentType = 0, dwFormatType = 0;
+		std::vector<xivres::util::on_dtor> cleanupList;
+		if (!CryptQueryObject(CERT_QUERY_OBJECT_FILE,
+			path.c_str(),
+			CERT_QUERY_CONTENT_FLAG_PKCS7_SIGNED_EMBED,
+			CERT_QUERY_FORMAT_FLAG_BINARY,
 			0,
-			signerInfoBuf.empty() ? nullptr : &signerInfoBuf[0],
-			&cbData))
+			&dwEncoding,
+			&dwContentType,
+			&dwFormatType,
+			&hStore,
+			&hMsg,
+			nullptr))
 			return {};
-		signerInfoBuf.resize(cbData);
+		if (hMsg) cleanupList.emplace_back([hMsg] { CryptMsgClose(hMsg); });
+		if (hStore) cleanupList.emplace_back([hStore] { CertCloseStore(hStore, 0); });
+
+		DWORD cbData = 0;
+		std::vector<uint8_t> signerInfoBuf;
+		for (size_t i = 0; i < 2; ++i) {
+			if (!CryptMsgGetParam(hMsg,
+				CMSG_SIGNER_INFO_PARAM,
+				0,
+				signerInfoBuf.empty() ? nullptr : &signerInfoBuf[0],
+				&cbData))
+				return {};
+			signerInfoBuf.resize(cbData);
+		}
+
+		const auto& signerInfo = *reinterpret_cast<CMSG_SIGNER_INFO*>(&signerInfoBuf[0]);
+
+		CERT_INFO certInfo{};
+		certInfo.Issuer = signerInfo.Issuer;
+		certInfo.SerialNumber = signerInfo.SerialNumber;
+		const auto pCertContext = CertFindCertificateInStore(hStore,
+			ENCODING,
+			0,
+			CERT_FIND_SUBJECT_CERT,
+			&certInfo,
+			nullptr);
+		if (!pCertContext)
+			return {};
+		if (pCertContext) cleanupList.emplace_back([pCertContext] { CertFreeCertificateContext(pCertContext); });
+
+		std::wstring country;
+		const auto pvTypePara = const_cast<char*>(szOID_COUNTRY_NAME);
+		country.resize(CertGetNameStringW(pCertContext, CERT_NAME_ATTR_TYPE, 0, pvTypePara, nullptr, 0));
+		country.resize(CertGetNameStringW(pCertContext, CERT_NAME_ATTR_TYPE, 0, pvTypePara, country.data(), static_cast<DWORD>(country.size())) - 1);
+
+		return xivres::util::unicode::convert<std::string>(country);
 	}
 
-	const auto& signerInfo = *reinterpret_cast<CMSG_SIGNER_INFO*>(&signerInfoBuf[0]);
+	std::wstring ReadRegistryAsString(const wchar_t* lpSubKey, const wchar_t* lpValueName, HKEY hRoot = HKEY_LOCAL_MACHINE, int mode = 0) {
+		if (mode == 0) {
+			auto res1 = ReadRegistryAsString(lpSubKey, lpValueName, hRoot, KEY_WOW64_32KEY);
+			if (res1.empty())
+				res1 = ReadRegistryAsString(lpSubKey, lpValueName, hRoot, KEY_WOW64_64KEY);
+			return res1;
+		}
+		HKEY hKey;
+		if (RegOpenKeyExW(hRoot,
+			lpSubKey,
+			0, KEY_READ | mode, &hKey))
+			return {};
+		xivres::util::on_dtor c([hKey] { RegCloseKey(hKey); });
 
-	CERT_INFO certInfo{};
-	certInfo.Issuer = signerInfo.Issuer;
-	certInfo.SerialNumber = signerInfo.SerialNumber;
-	const auto pCertContext = CertFindCertificateInStore(hStore,
-		ENCODING,
-		0,
-		CERT_FIND_SUBJECT_CERT,
-		&certInfo,
-		nullptr);
-	if (!pCertContext)
-		return {};
-	if (pCertContext) cleanupList.emplace_back([pCertContext] { CertFreeCertificateContext(pCertContext); });
+		DWORD buflen = 0;
+		if (RegQueryValueExW(hKey, lpValueName, nullptr, nullptr, nullptr, &buflen))
+			return {};
 
-	std::wstring country;
-	const auto pvTypePara = const_cast<char*>(szOID_COUNTRY_NAME);
-	country.resize(CertGetNameStringW(pCertContext, CERT_NAME_ATTR_TYPE, 0, pvTypePara, nullptr, 0));
-	country.resize(CertGetNameStringW(pCertContext, CERT_NAME_ATTR_TYPE, 0, pvTypePara, &country[0], static_cast<DWORD>(country.size())) - 1);
+		std::wstring buf;
+		buf.resize(buflen + 1);
+		if (RegQueryValueExW(hKey, lpValueName, nullptr, nullptr, reinterpret_cast<LPBYTE>(buf.data()), &buflen))
+			return {};
 
-	return xivres::util::unicode::convert<std::string>(country);
-}
+		buf.erase(std::ranges::find(buf, L'\0'), buf.end());
 
-static std::wstring ReadRegistryAsString(const wchar_t* lpSubKey, const wchar_t* lpValueName, HKEY hRoot = HKEY_LOCAL_MACHINE, int mode = 0) {
-	if (mode == 0) {
-		auto res1 = ReadRegistryAsString(lpSubKey, lpValueName, hRoot, KEY_WOW64_32KEY);
-		if (res1.empty())
-			res1 = ReadRegistryAsString(lpSubKey, lpValueName, hRoot, KEY_WOW64_64KEY);
-		return res1;
+		return buf;
 	}
-	HKEY hKey;
-	if (RegOpenKeyExW(hRoot,
-		lpSubKey,
-		0, KEY_READ | mode, &hKey))
-		return {};
-	xivres::util::on_dtor c([hKey] { RegCloseKey(hKey); });
 
-	DWORD buflen = 0;
-	if (RegQueryValueExW(hKey, lpValueName, nullptr, nullptr, nullptr, &buflen))
-		return {};
+	std::vector<std::wstring> ListRegistrySubkeys(const wchar_t* lpSubKey) {
+		HKEY hKey;
+		if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, lpSubKey, 0, KEY_READ | KEY_WOW64_64KEY, &hKey))
+			return {};
+		xivres::util::on_dtor c([hKey] { RegCloseKey(hKey); });
 
-	std::wstring buf;
-	buf.resize(buflen + 1);
-	if (RegQueryValueExW(hKey, lpValueName, nullptr, nullptr, reinterpret_cast<LPBYTE>(&buf[0]), &buflen))
-		return {};
-
-	buf.erase(std::ranges::find(buf, L'\0'), buf.end());
-
-	return buf;
-}
-
-static std::vector<std::wstring> ListRegistrySubkeys(const wchar_t* lpSubKey) {
-	HKEY hKey;
-	if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, lpSubKey, 0, KEY_READ | KEY_WOW64_64KEY, &hKey))
-		return {};
-	xivres::util::on_dtor c([hKey] { RegCloseKey(hKey); });
-
-	std::vector<std::wstring> res;
-	std::wstring name(256, L'\0');
-	for (DWORD i = 0;; ++i) {
-		auto length = static_cast<DWORD>(name.size());
-		if (RegEnumKeyExW(hKey, i, name.data(), &length, nullptr, nullptr, nullptr, nullptr))
-			break;
-		res.emplace_back(name.data(), length);
+		std::vector<std::wstring> res;
+		std::wstring name(256, L'\0');
+		for (DWORD i = 0;; ++i) {
+			auto length = static_cast<DWORD>(name.size());
+			if (RegEnumKeyExW(hKey, i, name.data(), &length, nullptr, nullptr, nullptr, nullptr))
+				break;
+			res.emplace_back(name.data(), length);
+		}
+		return res;
 	}
-	return res;
-}
 
-static std::vector<std::wstring> ListRegistryStringValues(const wchar_t* lpSubKey) {
-	HKEY hKey;
-	if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, lpSubKey, 0, KEY_READ | KEY_WOW64_64KEY, &hKey))
-		return {};
-	xivres::util::on_dtor c([hKey] { RegCloseKey(hKey); });
+	std::vector<std::wstring> ListRegistryStringValues(const wchar_t* lpSubKey) {
+		HKEY hKey;
+		if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, lpSubKey, 0, KEY_READ | KEY_WOW64_64KEY, &hKey))
+			return {};
+		xivres::util::on_dtor c([hKey] { RegCloseKey(hKey); });
 
-	std::vector<std::wstring> res;
-	std::wstring name(256, L'\0');
-	std::wstring data(MAX_PATH * 4, L'\0');
-	for (DWORD i = 0;; ++i) {
-		auto nameLength = static_cast<DWORD>(name.size());
-		auto dataBytes = static_cast<DWORD>(data.size() * sizeof(wchar_t));
-		DWORD type{};
-		if (RegEnumValueW(hKey, i, name.data(), &nameLength, nullptr, &type, reinterpret_cast<LPBYTE>(data.data()), &dataBytes))
-			break;
-		if (type == REG_SZ)
-			res.emplace_back(data.data(), wcsnlen(data.data(), dataBytes / sizeof(wchar_t)));
+		std::vector<std::wstring> res;
+		std::wstring name(256, L'\0');
+		std::wstring data(MAX_PATH * 4, L'\0');
+		for (DWORD i = 0;; ++i) {
+			auto nameLength = static_cast<DWORD>(name.size());
+			auto dataBytes = static_cast<DWORD>(data.size() * sizeof(wchar_t));
+			DWORD type{};
+			if (RegEnumValueW(hKey, i, name.data(), &nameLength, nullptr, &type, reinterpret_cast<LPBYTE>(data.data()), &dataBytes))
+				break;
+			if (type == REG_SZ)
+				res.emplace_back(data.data(), wcsnlen(data.data(), dataBytes / sizeof(wchar_t)));
+		}
+		return res;
 	}
-	return res;
 }
 
 XivAlexander::Misc::GameInstallationDetector::GameReleaseInfo XivAlexander::Misc::GameInstallationDetector::GetGameReleaseInfo(std::filesystem::path deepestLookupPath) {

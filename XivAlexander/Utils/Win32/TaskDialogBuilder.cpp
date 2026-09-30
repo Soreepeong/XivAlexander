@@ -95,7 +95,7 @@ HRESULT Utils::Win32::TaskDialog::TaskDialogProc(HWND hwnd, UINT msg, WPARAM wPa
 				if (!ShellExecuteExW(&shex)) {
 					std::wstring title(64, L'\0');
 					while (true) {
-						const size_t copied = GetWindowTextW(hwnd, &title[0], static_cast<int>(title.size()));
+						const size_t copied = GetWindowTextW(hwnd, title.data(), static_cast<int>(title.size()));
 						if (copied + 1 == title.size())
 							title.resize(title.size() * 2);
 						else {

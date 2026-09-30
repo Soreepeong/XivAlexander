@@ -11,6 +11,8 @@
 #include "Config.h"
 #include "Misc/DebuggerDetectionDisabler.h"
 #include "Misc/Hooks.h"
+#include "Misc/Logger.h"
+#include "MainApp/Features/LoginSessions.h"
 #include "resource.h"
 #if INTPTR_MAX == INT64_MAX
 #include "EntryPointApp/x64.h"
@@ -332,7 +334,157 @@ void XivAlexander::EntryPoint::EntryPointApp::SetFlags(size_t flags) {
 	m_pImpl->InjectGameOnly = flags & Dll::InjectOnCreateProcessAppFlags::InjectGameOnly;
 }
 
-static std::unique_ptr<XivAlexander::EntryPoint::EntryPointApp> s_injectOnCreateProcessApp;
+namespace {
+	std::unique_ptr<XivAlexander::EntryPoint::EntryPointApp> s_injectOnCreateProcessApp;
+
+	void InitializeAsStubBeforeOriginalEntryPoint() {
+		const auto conf = XivAlexander::Config::Acquire();
+		auto selfFileNameLower = Dll::Module().PathOf().filename().wstring();
+		CharLowerW(selfFileNameLower.data());
+		if (selfFileNameLower == L"d3d11.dll") {
+			for (auto& path : conf->Runtime.ChainLoadPath_d3d11.Value())
+				if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(XivAlexander::Config::Config::TranslatePath(path), 0, false))
+					mod.SetPinned();
+		} else if (selfFileNameLower == L"dinput8.dll") {
+			for (auto& path : conf->Runtime.ChainLoadPath_dinput8.Value())
+				if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(XivAlexander::Config::Config::TranslatePath(path), 0, false))
+					mod.SetPinned();
+		} else if (selfFileNameLower == L"dxgi.dll") {
+			for (auto& path : conf->Runtime.ChainLoadPath_dxgi.Value())
+				if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(XivAlexander::Config::Config::TranslatePath(path), 0, false))
+					mod.SetPinned();
+		}
+
+		Dll::DisableUnloading(std::format("Loaded as DLL dependency in place of {}", Dll::Module().PathOf().filename()).c_str());
+
+		GetEnvironmentVariableW(L"XIVALEXANDER_DISABLE", nullptr, 0);
+		if (GetLastError() != ERROR_ENVVAR_NOT_FOUND)
+			return;
+
+		std::filesystem::path loadPath;
+		try {
+			const auto conf = XivAlexander::Config::Acquire();
+			loadPath = conf->Init.ResolveXivAlexInstallationPath() / Dll::XivAlexDllNameW;
+			const auto loadTarget = Utils::Win32::LoadedModule(loadPath);
+			const auto params = Dll::PatchEntryPointForInjection(GetCurrentProcess());
+			loadTarget.SetPinned();
+			loadTarget.GetProcAddress<decltype(&Dll::InjectEntryPoint)>("XA_InjectEntryPoint")(params);
+
+		} catch (const std::exception& e) {
+			const auto activationContextCleanup = Dll::ActivationContext().With();
+			auto loop = true;
+			while (loop) {
+				const auto choice = Dll::MessageBoxF(
+					nullptr, MB_ICONWARNING | MB_ABORTRETRYIGNORE,
+					L"{}\nReason: {}\n\nPress Abort to exit.\nPress Retry to open XivAlexander help webpage.\nPress Ignore to skip loading XivAlexander.",
+					loadPath.empty() ? L"Failed to resolve XivAlexander installation path." : std::format(L"Failed to load {}.", loadPath.wstring()),
+					e.what());
+				switch (choice) {
+				case IDRETRY: {
+					SHELLEXECUTEINFOW shex{};
+					shex.cbSize = sizeof shex;
+					shex.nShow = SW_SHOW;
+					shex.lpFile = conf->Runtime.GetStringRes(IDS_URL_HELP);
+					if (!ShellExecuteExW(&shex))
+						Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, Utils::Win32::FormatWindowsErrorMessage(GetLastError()));
+					break;
+				}
+				case IDIGNORE: {
+					loop = false;
+					break;
+				}
+				case IDABORT:
+					TerminateProcess(GetCurrentProcess(), -1);
+				}
+			}
+		}
+	}
+
+	void InitializeBeforeOriginalEntryPoint() {
+		const auto& process = Utils::Win32::Process::Current();
+		auto filename = process.PathOf().filename().wstring();
+		CharLowerW(filename.data());
+		s_injectOnCreateProcessApp = std::make_unique<XivAlexander::EntryPoint::EntryPointApp>();
+
+		Dll::SetLoadedFromEntryPoint();
+
+		if (filename != Dll::GameExecutableNameW)
+			return;  // not the game process; don't load XivAlex app
+
+		static xivres::util::on_dtor::multi s_hooks;
+	
+		// Prevent mutexes from being created
+		static XivAlexander::Misc::Hooks::ImportedFunction<HANDLE, DWORD, BOOL, LPCSTR> s_OpenMutexA("kernel32!OpenMutexA", "kernel32.dll", "OpenMutexA");
+		static XivAlexander::Misc::Hooks::ImportedFunction<HANDLE, LPSECURITY_ATTRIBUTES, BOOL, LPCSTR> s_CreateMutexA("kernel32!CreateMutexA", "kernel32.dll", "CreateMutexA");
+		s_hooks += s_OpenMutexA.SetHook([](DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName) {
+			if (lpName && std::string_view(lpName).starts_with("Global\\6AA83AB5-BAC4-4a36-9F66-A309770760CB_ffxiv_"))
+				return static_cast<HANDLE>(0);
+
+			return s_OpenMutexA.bridge(dwDesiredAccess, bInheritHandle, lpName);
+			});
+		s_hooks += s_CreateMutexA.SetHook([](LPSECURITY_ATTRIBUTES lpMutexAttributes, BOOL bInitialOwner, LPCSTR lpName) {
+			if (lpName && std::string_view(lpName).starts_with("Global\\6AA83AB5-BAC4-4a36-9F66-A309770760CB_ffxiv_"))
+				return s_CreateMutexA.bridge(lpMutexAttributes, bInitialOwner, nullptr);
+
+			return s_CreateMutexA.bridge(lpMutexAttributes, bInitialOwner, lpName);
+			});
+
+		// Prevent the game from restarting to "fix" ACL
+		static XivAlexander::Misc::Hooks::ImportedFunction<HANDLE, DWORD, BOOL, DWORD> s_OpenProcessForXiv("kernel32!OpenProcess", "kernel32.dll", "OpenProcess");
+		static XivAlexander::Misc::Hooks::PointerFunction<HANDLE, DWORD, BOOL, DWORD> s_OpenProcess("OpenProcess", OpenProcess);
+		if (s_OpenProcessForXiv) {
+			s_hooks += s_OpenProcessForXiv.SetHook([](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) {
+				if (dwProcessId == GetCurrentProcessId()) {
+					// Prevent game from restarting itself on startup
+					if (dwDesiredAccess & PROCESS_VM_WRITE) {
+						SetLastError(ERROR_ACCESS_DENIED);
+						return HANDLE{};
+					}
+				}
+				return s_OpenProcess.bridge(dwDesiredAccess, bInheritHandle, dwProcessId);
+				});
+		}
+		if (s_OpenProcess) {
+			s_hooks += s_OpenProcess.SetHook([](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) {
+				if (dwProcessId == GetCurrentProcessId()) {
+					// Prevent Reloaded from tripping
+					if (HANDLE h{}; DuplicateHandle(GetCurrentProcess(), GetCurrentProcess(), GetCurrentProcess(), &h, dwDesiredAccess, bInheritHandle, 0))
+						return h;
+					return HANDLE{};
+				}
+				return s_OpenProcess.bridge(dwDesiredAccess, bInheritHandle, dwProcessId);
+				});
+		}
+
+		// Started without a command line, as in double-clicking the game; use the session the launcher stored last.
+		try {
+			if (XivAlexander::Game::CommandLine::FromString(Dll::GetOriginalCommandLine()).empty()) {
+				if (auto stored = XivAlexander::Apps::MainApp::Features::LoginSessions::GetMostRecentlyStoredArguments()) {
+					XivAlexander::Misc::Logger::Acquire()->Format(XivAlexander::LogCategory::General, "Started without arguments; using login session \"{}\"", stored->first);
+					Dll::ReplaceOriginalCommandLine(std::move(stored->second));
+				}
+			}
+		} catch (const std::exception& e) {
+			XivAlexander::Misc::Logger::Acquire()->Format<XivAlexander::LogLevel::Warning>(XivAlexander::LogCategory::General, "Cannot use a stored login session: {}", e.what());
+		}
+
+		if (XivAlexander::Config::Acquire()->Runtime.UseMoreCpuTime) {
+			static XivAlexander::Misc::Hooks::ImportedFunction<DWORD_PTR, HANDLE, DWORD_PTR> s_SetThreadAffinityMask("kernel32!SetThreadAffinityMask", "kernel32.dll", "SetThreadAffinityMask");
+			static XivAlexander::Misc::Hooks::ImportedFunction<void, LPSYSTEM_INFO> s_GetSystemInfo("kernel32!GetSystemInfo", "kernel32.dll", "GetSystemInfo");
+			if (s_SetThreadAffinityMask) {
+				s_hooks += s_SetThreadAffinityMask.SetHook([](HANDLE h, DWORD_PTR d) { return static_cast<DWORD_PTR>(-1); });
+			}
+			if (s_GetSystemInfo) {
+				s_hooks += s_GetSystemInfo.SetHook([&](LPSYSTEM_INFO i) {
+					s_GetSystemInfo.bridge(i);
+					i->dwNumberOfProcessors = std::min(192UL, i->dwNumberOfProcessors * 8);
+					});
+			}
+		}
+
+		Dll::EnableXivAlexander(1);
+	}
+}
 
 size_t Dll::EnableInjectOnCreateProcess(size_t flags) {
 	const bool use = flags & InjectOnCreateProcessAppFlags::Use;
@@ -350,142 +502,6 @@ size_t Dll::EnableInjectOnCreateProcess(size_t flags) {
 		Utils::Win32::DebugPrint(L"EnableInjectOnCreateProcessApp error: {}\n", e.what());
 		return -1;
 	}
-}
-
-static void InitializeAsStubBeforeOriginalEntryPoint() {
-	const auto conf = XivAlexander::Config::Acquire();
-	auto selfFileNameLower = Dll::Module().PathOf().filename().wstring();
-	CharLowerW(&selfFileNameLower[0]);
-	if (selfFileNameLower == L"d3d11.dll") {
-		for (auto& path : conf->Runtime.ChainLoadPath_d3d11.Value())
-			if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(XivAlexander::Config::Config::TranslatePath(path), 0, false))
-				mod.SetPinned();
-	} else if (selfFileNameLower == L"dinput8.dll") {
-		for (auto& path : conf->Runtime.ChainLoadPath_dinput8.Value())
-			if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(XivAlexander::Config::Config::TranslatePath(path), 0, false))
-				mod.SetPinned();
-	} else if (selfFileNameLower == L"dxgi.dll") {
-		for (auto& path : conf->Runtime.ChainLoadPath_dxgi.Value())
-			if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(XivAlexander::Config::Config::TranslatePath(path), 0, false))
-				mod.SetPinned();
-	}
-
-	Dll::DisableUnloading(std::format("Loaded as DLL dependency in place of {}", Dll::Module().PathOf().filename()).c_str());
-
-	GetEnvironmentVariableW(L"XIVALEXANDER_DISABLE", nullptr, 0);
-	if (GetLastError() != ERROR_ENVVAR_NOT_FOUND)
-		return;
-
-	std::filesystem::path loadPath;
-	try {
-		const auto conf = XivAlexander::Config::Acquire();
-		loadPath = conf->Init.ResolveXivAlexInstallationPath() / Dll::XivAlexDllNameW;
-		const auto loadTarget = Utils::Win32::LoadedModule(loadPath);
-		const auto params = Dll::PatchEntryPointForInjection(GetCurrentProcess());
-		loadTarget.SetPinned();
-		loadTarget.GetProcAddress<decltype(&Dll::InjectEntryPoint)>("XA_InjectEntryPoint")(params);
-
-	} catch (const std::exception& e) {
-		const auto activationContextCleanup = Dll::ActivationContext().With();
-		auto loop = true;
-		while (loop) {
-			const auto choice = Dll::MessageBoxF(
-				nullptr, MB_ICONWARNING | MB_ABORTRETRYIGNORE,
-				L"{}\nReason: {}\n\nPress Abort to exit.\nPress Retry to open XivAlexander help webpage.\nPress Ignore to skip loading XivAlexander.",
-				loadPath.empty() ? L"Failed to resolve XivAlexander installation path." : std::format(L"Failed to load {}.", loadPath.wstring()),
-				e.what());
-			switch (choice) {
-			case IDRETRY: {
-				SHELLEXECUTEINFOW shex{};
-				shex.cbSize = sizeof shex;
-				shex.nShow = SW_SHOW;
-				shex.lpFile = conf->Runtime.GetStringRes(IDS_URL_HELP);
-				if (!ShellExecuteExW(&shex))
-					Dll::MessageBoxF(nullptr, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, Utils::Win32::FormatWindowsErrorMessage(GetLastError()));
-				break;
-			}
-			case IDIGNORE: {
-				loop = false;
-				break;
-			}
-			case IDABORT:
-				TerminateProcess(GetCurrentProcess(), -1);
-			}
-		}
-	}
-}
-
-static void InitializeBeforeOriginalEntryPoint() {
-	const auto& process = Utils::Win32::Process::Current();
-	auto filename = process.PathOf().filename().wstring();
-	CharLowerW(&filename[0]);
-	s_injectOnCreateProcessApp = std::make_unique<XivAlexander::EntryPoint::EntryPointApp>();
-
-	Dll::SetLoadedFromEntryPoint();
-
-	if (filename != Dll::GameExecutableNameW)
-		return;  // not the game process; don't load XivAlex app
-
-	static xivres::util::on_dtor::multi s_hooks;
-	
-	// Prevent mutexes from being created
-	static XivAlexander::Misc::Hooks::ImportedFunction<HANDLE, DWORD, BOOL, LPCSTR> s_OpenMutexA("kernel32!OpenMutexA", "kernel32.dll", "OpenMutexA");
-	static XivAlexander::Misc::Hooks::ImportedFunction<HANDLE, LPSECURITY_ATTRIBUTES, BOOL, LPCSTR> s_CreateMutexA("kernel32!CreateMutexA", "kernel32.dll", "CreateMutexA");
-	s_hooks += s_OpenMutexA.SetHook([](DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName) {
-		if (lpName && std::string_view(lpName).starts_with("Global\\6AA83AB5-BAC4-4a36-9F66-A309770760CB_ffxiv_"))
-			return static_cast<HANDLE>(0);
-
-		return s_OpenMutexA.bridge(dwDesiredAccess, bInheritHandle, lpName);
-		});
-	s_hooks += s_CreateMutexA.SetHook([](LPSECURITY_ATTRIBUTES lpMutexAttributes, BOOL bInitialOwner, LPCSTR lpName) {
-		if (lpName && std::string_view(lpName).starts_with("Global\\6AA83AB5-BAC4-4a36-9F66-A309770760CB_ffxiv_"))
-			return s_CreateMutexA.bridge(lpMutexAttributes, bInitialOwner, nullptr);
-
-		return s_CreateMutexA.bridge(lpMutexAttributes, bInitialOwner, lpName);
-		});
-
-	// Prevent the game from restarting to "fix" ACL
-	static XivAlexander::Misc::Hooks::ImportedFunction<HANDLE, DWORD, BOOL, DWORD> s_OpenProcessForXiv("kernel32!OpenProcess", "kernel32.dll", "OpenProcess");
-	static XivAlexander::Misc::Hooks::PointerFunction<HANDLE, DWORD, BOOL, DWORD> s_OpenProcess("OpenProcess", OpenProcess);
-	if (s_OpenProcessForXiv) {
-		s_hooks += s_OpenProcessForXiv.SetHook([](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) {
-			if (dwProcessId == GetCurrentProcessId()) {
-				// Prevent game from restarting itself on startup
-				if (dwDesiredAccess & PROCESS_VM_WRITE) {
-					SetLastError(ERROR_ACCESS_DENIED);
-					return HANDLE{};
-				}
-			}
-			return s_OpenProcess.bridge(dwDesiredAccess, bInheritHandle, dwProcessId);
-			});
-	}
-	if (s_OpenProcess) {
-		s_hooks += s_OpenProcess.SetHook([](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) {
-			if (dwProcessId == GetCurrentProcessId()) {
-				// Prevent Reloaded from tripping
-				if (HANDLE h{}; DuplicateHandle(GetCurrentProcess(), GetCurrentProcess(), GetCurrentProcess(), &h, dwDesiredAccess, bInheritHandle, 0))
-					return h;
-				return HANDLE{};
-			}
-			return s_OpenProcess.bridge(dwDesiredAccess, bInheritHandle, dwProcessId);
-			});
-	}
-
-	if (XivAlexander::Config::Acquire()->Runtime.UseMoreCpuTime) {
-		static XivAlexander::Misc::Hooks::ImportedFunction<DWORD_PTR, HANDLE, DWORD_PTR> s_SetThreadAffinityMask("kernel32!SetThreadAffinityMask", "kernel32.dll", "SetThreadAffinityMask");
-		static XivAlexander::Misc::Hooks::ImportedFunction<void, LPSYSTEM_INFO> s_GetSystemInfo("kernel32!GetSystemInfo", "kernel32.dll", "GetSystemInfo");
-		if (s_SetThreadAffinityMask) {
-			s_hooks += s_SetThreadAffinityMask.SetHook([](HANDLE h, DWORD_PTR d) { return static_cast<DWORD_PTR>(-1); });
-		}
-		if (s_GetSystemInfo) {
-			s_hooks += s_GetSystemInfo.SetHook([&](LPSYSTEM_INFO i) {
-				s_GetSystemInfo.bridge(i);
-				i->dwNumberOfProcessors = std::min(192UL, i->dwNumberOfProcessors * 8);
-				});
-		}
-	}
-
-	Dll::EnableXivAlexander(1);
 }
 
 void Dll::InjectEntryPoint(InjectEntryPointParameters* pParam) {

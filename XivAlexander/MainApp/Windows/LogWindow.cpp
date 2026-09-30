@@ -13,29 +13,31 @@
 constexpr int BaseFontSize = 9;
 constexpr auto MaxDisplayedLines = 256 * 1024;
 
-static const std::map<XivAlexander::LogLevel, int> LogLevelStyleMap{
-	{XivAlexander::LogLevel::Debug, STYLE_LASTPREDEFINED + 0},
-	{XivAlexander::LogLevel::Info, STYLE_LASTPREDEFINED + 1},
-	{XivAlexander::LogLevel::Warning, STYLE_LASTPREDEFINED + 2},
-	{XivAlexander::LogLevel::Error, STYLE_LASTPREDEFINED + 3},
-};
+namespace {
+	const std::map<XivAlexander::LogLevel, int> LogLevelStyleMap{
+		{XivAlexander::LogLevel::Debug, STYLE_LASTPREDEFINED + 0},
+		{XivAlexander::LogLevel::Info, STYLE_LASTPREDEFINED + 1},
+		{XivAlexander::LogLevel::Warning, STYLE_LASTPREDEFINED + 2},
+		{XivAlexander::LogLevel::Error, STYLE_LASTPREDEFINED + 3},
+	};
 
-static WNDCLASSEXW WindowClass() {
-	const auto hIcon = Utils::Win32::Icon(LoadIconW(Dll::Module(), MAKEINTRESOURCEW(IDI_TRAY_ICON)),
-		nullptr,
-		"LoadIconW");
-	WNDCLASSEXW wcex{};
-	wcex.cbSize = sizeof(WNDCLASSEX);
-	wcex.style = CS_HREDRAW | CS_VREDRAW;
-	wcex.cbClsExtra = 0;
-	wcex.cbWndExtra = 0;
-	wcex.hInstance = Dll::Module();
-	wcex.hIcon = hIcon;
-	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
-	wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
-	wcex.lpszClassName = L"XivAlexander::Window::LogWindow";
-	wcex.hIconSm = hIcon;
-	return wcex;
+	WNDCLASSEXW WindowClass() {
+		const auto hIcon = Utils::Win32::Icon(LoadIconW(Dll::Module(), MAKEINTRESOURCEW(IDI_TRAY_ICON)),
+			nullptr,
+			"LoadIconW");
+		WNDCLASSEXW wcex{};
+		wcex.cbSize = sizeof(WNDCLASSEX);
+		wcex.style = CS_HREDRAW | CS_VREDRAW;
+		wcex.cbClsExtra = 0;
+		wcex.cbWndExtra = 0;
+		wcex.hInstance = Dll::Module();
+		wcex.hIcon = hIcon;
+		wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
+		wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+		wcex.lpszClassName = L"XivAlexander::Window::LogWindow";
+		wcex.hIconSm = hIcon;
+		return wcex;
+	}
 }
 
 XivAlexander::Apps::MainApp::Window::LogWindow::LogWindow()
@@ -125,7 +127,7 @@ LRESULT XivAlexander::Apps::MainApp::Window::LogWindow::WndProc(HWND hwnd, UINT 
 			switch (LOWORD(wParam)) {
 				case ID_FILE_SAVE: {
 					std::string buf(m_direct(m_directPtr, SCI_GETLENGTH, 0, 0) + 1, '\0');
-					m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(&buf[0]));
+					m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(buf.data()));
 					buf.resize(buf.length() - 1);
 					m_logger->AskAndExportLogs(m_hWnd, {}, buf);
 					return 0;

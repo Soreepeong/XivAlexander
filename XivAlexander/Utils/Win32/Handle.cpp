@@ -173,7 +173,7 @@ uint64_t Utils::Win32::Handle::GetFileSize() const {
 std::filesystem::path Utils::Win32::Handle::GetPathName(bool bOpenedPath, bool bNtPath) const {
 	std::wstring result;
 	result.resize(PATHCCH_MAX_CCH);
-	result.resize(GetFinalPathNameByHandleW(m_object, &result[0], static_cast<DWORD>(result.size()), 
+	result.resize(GetFinalPathNameByHandleW(m_object, result.data(), static_cast<DWORD>(result.size()), 
 		(bNtPath ? VOLUME_NAME_NT : VOLUME_NAME_DOS) |
 		(bOpenedPath ? FILE_NAME_OPENED : FILE_NAME_NORMALIZED)
 	));

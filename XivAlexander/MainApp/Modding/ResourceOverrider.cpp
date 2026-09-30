@@ -22,6 +22,7 @@ struct XivAlexander::Apps::MainApp::Features::Modding::ResourceOverrider::Implem
 	const std::filesystem::path SqpackPath;
 	SqpackRebuildLock IoGate;
 	std::optional<VirtualSqPacks> Sqpacks;
+	std::atomic_bool SqpacksFailed = false;
 	std::optional<PathRewriter> Rewriter;
 	std::optional<SqpackFileHooks> FileHooks;
 	std::optional<SqpackLookupHooks> LookupHooks;
@@ -43,12 +44,15 @@ struct XivAlexander::Apps::MainApp::Features::Modding::ResourceOverrider::Implem
 		if (!Config->Runtime.UseModding)
 			return;
 
+		if (!Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::GameResourceOverrider, "Modding"))
+			return;
+
 		VirtualSqPackInitThread = Utils::Win32::Thread(L"VirtualSqPackInitThread", [&] {
 			try {
 				Sqpacks.emplace(App, SqpackPath, IoGate);
 			} catch (const std::exception& e) {
 				Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"Failed to load VirtualSqPacks: {}", e.what());
-				return;
+				SqpacksFailed = true;
 			}
 
 			OnVirtualSqPacksInitialized();
@@ -79,6 +83,10 @@ XivAlexander::Apps::MainApp::Features::Modding::ResourceOverrider::~ResourceOver
 
 std::optional<XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks>& XivAlexander::Apps::MainApp::Features::Modding::ResourceOverrider::GetVirtualSqPacks() {
 	return m_pImpl->Sqpacks;
+}
+
+bool XivAlexander::Apps::MainApp::Features::Modding::ResourceOverrider::IsActive() const {
+	return m_pImpl->FileHooks.has_value() && !m_pImpl->SqpacksFailed;
 }
 
 xivres::util::on_dtor XivAlexander::Apps::MainApp::Features::Modding::ResourceOverrider::OnVirtualSqPacksInitialized(std::function<void()> f) {

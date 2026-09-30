@@ -3,47 +3,49 @@
 
 #include "Config.h"
 
-static const XivAlexander::Apps::MainApp::Window::ThemeColors Dark{
-	.UseSystemColors = false,
-	.Background = RGB(32, 32, 32),
-	.Foreground = RGB(220, 220, 220),
-	.BackgroundSelection = RGB(58, 88, 128),
-	.BackgroundHovered = RGB(51, 51, 51),
-	.BackgroundWeak = RGB(45, 45, 45),
-	.ForegroundWeak = RGB(100, 100, 100),
-	.SciForegroundLogDebug = RGB(120, 120, 120),
-	.SciForegroundLogInfo = RGB(200, 200, 200),
-	.SciForegroundLogWarning = RGB(240, 200, 0),
-	.SciForegroundLogError = RGB(255, 100, 100),
+namespace {
+	const XivAlexander::Apps::MainApp::Window::ThemeColors Dark{
+		.UseSystemColors = false,
+		.Background = RGB(32, 32, 32),
+		.Foreground = RGB(220, 220, 220),
+		.BackgroundSelection = RGB(58, 88, 128),
+		.BackgroundHovered = RGB(51, 51, 51),
+		.BackgroundWeak = RGB(45, 45, 45),
+		.ForegroundWeak = RGB(100, 100, 100),
+		.SciForegroundLogDebug = RGB(120, 120, 120),
+		.SciForegroundLogInfo = RGB(200, 200, 200),
+		.SciForegroundLogWarning = RGB(240, 200, 0),
+		.SciForegroundLogError = RGB(255, 100, 100),
 
-	.SciForegroundJsonKey = RGB(204, 204, 0),
-	.SciForegroundJsonValue = RGB(100, 200, 255),
-	.SciForegroundJsonString = RGB(210, 230, 150),
-	.SciForegroundJsonNumber = RGB(150, 255, 150),
-	.SciForegroundJsonBracket = RGB(255, 150, 100),
-	.SciForegroundJsonEscape = RGB(200, 200, 200),
-};
+		.SciForegroundJsonKey = RGB(204, 204, 0),
+		.SciForegroundJsonValue = RGB(100, 200, 255),
+		.SciForegroundJsonString = RGB(210, 230, 150),
+		.SciForegroundJsonNumber = RGB(150, 255, 150),
+		.SciForegroundJsonBracket = RGB(255, 150, 100),
+		.SciForegroundJsonEscape = RGB(200, 200, 200),
+	};
 
-static const XivAlexander::Apps::MainApp::Window::ThemeColors Light{
-	.UseSystemColors = true,
-	.Background = 0,
-	.Foreground = 0,
-	.BackgroundSelection = 0,
-	.BackgroundHovered = 0,
-	.BackgroundWeak = RGB(232, 232, 232),
-	.ForegroundWeak = RGB(128, 128, 128),
-	.SciForegroundLogDebug = RGB(80, 80, 80),
-	.SciForegroundLogInfo = RGB(0, 0, 0),
-	.SciForegroundLogWarning = RGB(160, 160, 0),
-	.SciForegroundLogError = RGB(255, 80, 80),
+	const XivAlexander::Apps::MainApp::Window::ThemeColors Light{
+		.UseSystemColors = true,
+		.Background = 0,
+		.Foreground = 0,
+		.BackgroundSelection = 0,
+		.BackgroundHovered = 0,
+		.BackgroundWeak = RGB(232, 232, 232),
+		.ForegroundWeak = RGB(128, 128, 128),
+		.SciForegroundLogDebug = RGB(80, 80, 80),
+		.SciForegroundLogInfo = RGB(0, 0, 0),
+		.SciForegroundLogWarning = RGB(160, 160, 0),
+		.SciForegroundLogError = RGB(255, 80, 80),
 
-	.SciForegroundJsonKey = RGB(120, 0, 0),
-	.SciForegroundJsonValue = RGB(0, 0, 180),
-	.SciForegroundJsonString = RGB(0, 100, 0),
-	.SciForegroundJsonNumber = RGB(0, 0, 200),
-	.SciForegroundJsonBracket = RGB(140, 70, 0),
-	.SciForegroundJsonEscape = RGB(100, 50, 120),
-};
+		.SciForegroundJsonKey = RGB(120, 0, 0),
+		.SciForegroundJsonValue = RGB(0, 0, 180),
+		.SciForegroundJsonString = RGB(0, 100, 0),
+		.SciForegroundJsonNumber = RGB(0, 0, 200),
+		.SciForegroundJsonBracket = RGB(140, 70, 0),
+		.SciForegroundJsonEscape = RGB(100, 50, 120),
+	};
+}
 
 COLORREF XivAlexander::Apps::MainApp::Window::ThemeColors::GetBackground() const {
 	return UseSystemColors ? GetSysColor(COLOR_WINDOW) : Background;

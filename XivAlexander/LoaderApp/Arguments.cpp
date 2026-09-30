@@ -205,7 +205,7 @@ std::set<DWORD> XivAlexander::LoaderApp::Arguments::GetTargetPidList() const {
 			try {
 				const auto hProcess = OpenProcessForInformation(pid);
 				auto pathbuf = hProcess.PathOf().wstring();
-				CharLowerW(&pathbuf[0]);
+				CharLowerW(pathbuf.data());
 				for (const auto& suffix : m_targetSuffix) {
 					if (pathbuf.ends_with(suffix))
 						return true;

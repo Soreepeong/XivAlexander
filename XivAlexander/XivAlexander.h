@@ -55,6 +55,7 @@ namespace Dll {
 
 	std::wstring GetOriginalCommandLine();
 	[[nodiscard]] bool IsOriginalCommandLineObfuscated();
+	void ReplaceOriginalCommandLine(std::vector<std::pair<std::string, std::string>> params);
 	[[nodiscard]] bool IsLanguageRegionModifiable();
 
 	void SetLoadedFromEntryPoint();

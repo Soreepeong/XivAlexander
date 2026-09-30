@@ -11,24 +11,26 @@
 
 constexpr int BaseFontSize = 11;
 
-static WNDCLASSEXW WindowClass() {
-	const auto hIcon = Utils::Win32::Icon(
-		LoadIconW(Dll::Module(), MAKEINTRESOURCEW(IDI_TRAY_ICON)),
-		nullptr,
-		"LoadIconW");
-	WNDCLASSEXW wcex{};
-	wcex.cbSize = sizeof(WNDCLASSEX);
-	wcex.style = CS_HREDRAW | CS_VREDRAW;
-	wcex.cbClsExtra = 0;
-	wcex.cbWndExtra = 0;
-	wcex.hInstance = Dll::Module();
-	wcex.hIcon = hIcon;
-	wcex.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-	wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
-	wcex.lpszMenuName = MAKEINTRESOURCE(IDR_CONFIG_EDITOR_MENU);
-	wcex.lpszClassName = L"XivAlexander::Window::ConfigWindow";
-	wcex.hIconSm = hIcon;
-	return wcex;
+namespace {
+	WNDCLASSEXW WindowClass() {
+		const auto hIcon = Utils::Win32::Icon(
+			LoadIconW(Dll::Module(), MAKEINTRESOURCEW(IDI_TRAY_ICON)),
+			nullptr,
+			"LoadIconW");
+		WNDCLASSEXW wcex{};
+		wcex.cbSize = sizeof(WNDCLASSEX);
+		wcex.style = CS_HREDRAW | CS_VREDRAW;
+		wcex.cbClsExtra = 0;
+		wcex.cbWndExtra = 0;
+		wcex.hInstance = Dll::Module();
+		wcex.hIcon = hIcon;
+		wcex.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+		wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+		wcex.lpszMenuName = MAKEINTRESOURCE(IDR_CONFIG_EDITOR_MENU);
+		wcex.lpszClassName = L"XivAlexander::Window::ConfigWindow";
+		wcex.hIconSm = hIcon;
+		return wcex;
+	}
 }
 
 XivAlexander::Apps::MainApp::Window::ConfigWindow::ConfigWindow(UINT nTitleStringResourceId, BaseConfigRepository* pRepository)
@@ -83,13 +85,13 @@ void XivAlexander::Apps::MainApp::Window::ConfigWindow::Revert() {
 		m_logger->Format(LogCategory::General, m_config->Runtime.GetLangId(), IDS_ERROR_CONFIGURATION_LOAD, e.what());
 	}
 	m_originalConfig = j.dump(1, '\t');
-	m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(&m_originalConfig[0]));
+	m_direct(m_directPtr, SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(m_originalConfig.data()));
 }
 
 bool XivAlexander::Apps::MainApp::Window::ConfigWindow::TrySave() {
 	try {
 		std::string buf(m_direct(m_directPtr, SCI_GETLENGTH, 0, 0) + 1, '\0');
-		m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(&buf[0]));
+		m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(buf.data()));
 		buf.resize(buf.length() - 1);
 		auto buf2 = nlohmann::json::parse(buf).dump(1, '\t');
 		Utils::SaveToFile(m_pRepository->GetConfigPath(), buf2);
@@ -162,7 +164,7 @@ LRESULT XivAlexander::Apps::MainApp::Window::ConfigWindow::WndProc(HWND hwnd, UI
 
 		case WM_CLOSE:
 			std::string buf(m_direct(m_directPtr, SCI_GETLENGTH, 0, 0) + 1, '\0');
-			m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(&buf[0]));
+			m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(buf.data()));
 			buf.resize(buf.length() - 1);
 			if (buf != m_originalConfig) {
 				switch (Dll::MessageBoxF(m_hWnd, MB_YESNOCANCEL | MB_ICONQUESTION, m_config->Runtime.GetStringRes(IDS_CONFIRM_CONFIG_WINDOW_CLOSE))) {

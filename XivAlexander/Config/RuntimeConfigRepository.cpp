@@ -7,46 +7,60 @@
 #include "XivAlexander.h"
 
 #include "Misc/GameInstallationDetector.h"
+#include "Misc/Logger.h"
 
-static const std::map<XivAlexander::Language, WORD> LanguageIdMap{
-	{XivAlexander::Language::SystemDefault, MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL)},
-	{XivAlexander::Language::Japanese, MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN)},
-	{XivAlexander::Language::English, MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US)},
-	{XivAlexander::Language::Korean, MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN)},
-};
+namespace {
+	const std::map<XivAlexander::Language, WORD> LanguageIdMap{
+		{XivAlexander::Language::SystemDefault, MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL)},
+		{XivAlexander::Language::Japanese, MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN)},
+		{XivAlexander::Language::English, MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US)},
+		{XivAlexander::Language::Korean, MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN)},
+	};
 
-static const std::map<xivres::game_language, WORD> GameLanguageIdMap{
-	{xivres::game_language::Unspecified, MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL)},
-	{xivres::game_language::Japanese, MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN)},
-	{xivres::game_language::English, MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US)},
-	{xivres::game_language::German, MAKELANGID(LANG_GERMAN, SUBLANG_GERMAN)},
-	{xivres::game_language::French, MAKELANGID(LANG_FRENCH, SUBLANG_FRENCH)},
-	{xivres::game_language::ChineseSimplified, MAKELANGID(LANG_CHINESE_SIMPLIFIED, SUBLANG_CHINESE_SIMPLIFIED)},
-	{xivres::game_language::ChineseTraditional, MAKELANGID(LANG_CHINESE_TRADITIONAL, SUBLANG_CHINESE_TRADITIONAL)},
-	{xivres::game_language::Korean, MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN)},
-	{xivres::game_language::TraditionalChinese, MAKELANGID(LANG_CHINESE_TRADITIONAL, SUBLANG_CHINESE_TRADITIONAL)},
-};
+	const std::map<xivres::game_language, WORD> GameLanguageIdMap{
+		{xivres::game_language::Unspecified, MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL)},
+		{xivres::game_language::Japanese, MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN)},
+		{xivres::game_language::English, MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US)},
+		{xivres::game_language::German, MAKELANGID(LANG_GERMAN, SUBLANG_GERMAN)},
+		{xivres::game_language::French, MAKELANGID(LANG_FRENCH, SUBLANG_FRENCH)},
+		{xivres::game_language::ChineseSimplified, MAKELANGID(LANG_CHINESE_SIMPLIFIED, SUBLANG_CHINESE_SIMPLIFIED)},
+		{xivres::game_language::ChineseTraditional, MAKELANGID(LANG_CHINESE_TRADITIONAL, SUBLANG_CHINESE_TRADITIONAL)},
+		{xivres::game_language::Korean, MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN)},
+		{xivres::game_language::TraditionalChinese, MAKELANGID(LANG_CHINESE_TRADITIONAL, SUBLANG_CHINESE_TRADITIONAL)},
+	};
 
-static const std::map<WORD, int> LanguageIdNameResourceIdMap{
-	{MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), IDS_LANGUAGE_NAME_UNSPECIFIED},
-	{MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN), IDS_LANGUAGE_NAME_JAPANESE},
-	{MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), IDS_LANGUAGE_NAME_ENGLISH},
-	{MAKELANGID(LANG_GERMAN, SUBLANG_GERMAN), IDS_LANGUAGE_NAME_GERMAN},
-	{MAKELANGID(LANG_FRENCH, SUBLANG_FRENCH), IDS_LANGUAGE_NAME_FRENCH},
-	{MAKELANGID(LANG_CHINESE_SIMPLIFIED, SUBLANG_CHINESE_SIMPLIFIED), IDS_LANGUAGE_NAME_CHINESE_SIMPLIFIED},
-	{MAKELANGID(LANG_CHINESE_TRADITIONAL, SUBLANG_CHINESE_TRADITIONAL), IDS_LANGUAGE_NAME_CHINESE_TRADITIONAL},
-	{MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN), IDS_LANGUAGE_NAME_KOREAN},
-};
+	const std::map<WORD, int> LanguageIdNameResourceIdMap{
+		{MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), IDS_LANGUAGE_NAME_UNSPECIFIED},
+		{MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN), IDS_LANGUAGE_NAME_JAPANESE},
+		{MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), IDS_LANGUAGE_NAME_ENGLISH},
+		{MAKELANGID(LANG_GERMAN, SUBLANG_GERMAN), IDS_LANGUAGE_NAME_GERMAN},
+		{MAKELANGID(LANG_FRENCH, SUBLANG_FRENCH), IDS_LANGUAGE_NAME_FRENCH},
+		{MAKELANGID(LANG_CHINESE_SIMPLIFIED, SUBLANG_CHINESE_SIMPLIFIED), IDS_LANGUAGE_NAME_CHINESE_SIMPLIFIED},
+		{MAKELANGID(LANG_CHINESE_TRADITIONAL, SUBLANG_CHINESE_TRADITIONAL), IDS_LANGUAGE_NAME_CHINESE_TRADITIONAL},
+		{MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN), IDS_LANGUAGE_NAME_KOREAN},
+	};
 
-static const std::map<xivres::game_publisher, int> RegionResourceIdMap{
-	{xivres::game_publisher::Unspecified, IDS_REGION_NAME_UNSPECIFIED},
-	{xivres::game_publisher::SquareEnixJapan, IDS_REGION_NAME_JAPAN},
-	{xivres::game_publisher::SquareEnixAmerica, IDS_REGION_NAME_NORTH_AMERICA},
-	{xivres::game_publisher::SquareEnixEurope, IDS_REGION_NAME_EUROPE},
-	{xivres::game_publisher::ShengquGames, IDS_REGION_NAME_CHINA},
-	{xivres::game_publisher::ActozSoft, IDS_REGION_NAME_KOREA},
-	{xivres::game_publisher::UserjoyGames, IDS_REGION_NAME_CHINATRAD},
-};
+	const std::map<xivres::game_publisher, int> RegionResourceIdMap{
+		{xivres::game_publisher::Unspecified, IDS_REGION_NAME_UNSPECIFIED},
+		{xivres::game_publisher::SquareEnixJapan, IDS_REGION_NAME_JAPAN},
+		{xivres::game_publisher::SquareEnixAmerica, IDS_REGION_NAME_NORTH_AMERICA},
+		{xivres::game_publisher::SquareEnixEurope, IDS_REGION_NAME_EUROPE},
+		{xivres::game_publisher::ShengquGames, IDS_REGION_NAME_CHINA},
+		{xivres::game_publisher::ActozSoft, IDS_REGION_NAME_KOREA},
+		{xivres::game_publisher::UserjoyGames, IDS_REGION_NAME_CHINATRAD},
+	};
+
+	const std::string& CurrentGameVersion() {
+		static const auto version = [] {
+			try {
+				return XivAlexander::Misc::GameInstallationDetector::GetGameReleaseInfo().GameVersion;
+			} catch (...) {
+				return std::string();
+			}
+		}();
+		return version;
+	}
+}
 
 
 XivAlexander::RuntimeConfigRepository::RuntimeConfigRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey)
@@ -55,9 +69,16 @@ XivAlexander::RuntimeConfigRepository::RuntimeConfigRepository(__in_opt const Co
 		Utils::Win32::Error::SetDefaultLanguageId(GetLangId());
 	});
 
-	m_cleanup += SynchronizeProcessing.AddAndCallOnChange([&] { UseMainThreadTimingHandler = SynchronizeProcessing || LockFramerateAutomatic || LockFramerateInterval; });
-	m_cleanup += LockFramerateAutomatic.AddAndCallOnChange([&] { UseMainThreadTimingHandler = SynchronizeProcessing || LockFramerateAutomatic || LockFramerateInterval; });
-	m_cleanup += LockFramerateInterval.AddAndCallOnChange([&] { UseMainThreadTimingHandler = SynchronizeProcessing || LockFramerateAutomatic || LockFramerateInterval; });
+	m_cleanup += VersionSensitiveFeaturesAllowedGameVersion.OnChange([&] { OnVersionSensitiveFeaturesAllowedChange(); });
+
+	const auto updateUseMainThreadTimingHandler = [&] {
+		UseMainThreadTimingHandler = SynchronizeProcessing || LockFramerateAutomatic || LockFramerateInterval || UseBackgroundFramerateLimit || UseMoreCpuTime;
+	};
+	m_cleanup += SynchronizeProcessing.AddAndCallOnChange(updateUseMainThreadTimingHandler);
+	m_cleanup += LockFramerateAutomatic.AddAndCallOnChange(updateUseMainThreadTimingHandler);
+	m_cleanup += LockFramerateInterval.AddAndCallOnChange(updateUseMainThreadTimingHandler);
+	m_cleanup += UseBackgroundFramerateLimit.AddAndCallOnChange(updateUseMainThreadTimingHandler);
+	m_cleanup += UseMoreCpuTime.AddAndCallOnChange(updateUseMainThreadTimingHandler);
 }
 
 XivAlexander::RuntimeConfigRepository::~RuntimeConfigRepository() {
@@ -109,6 +130,69 @@ std::vector<xivres::game_language> XivAlexander::RuntimeConfigRepository::GetFal
 	return result;
 }
 
+bool XivAlexander::RuntimeConfigRepository::IsCurrentGameVersionAllowed() const {
+	const auto& gameVersion = CurrentGameVersion();
+	return !gameVersion.empty() && VersionSensitiveFeaturesAllowedGameVersion.Value() == gameVersion;
+}
+
+void XivAlexander::RuntimeConfigRepository::AllowCurrentGameVersion() {
+	if (const auto& gameVersion = CurrentGameVersion(); !gameVersion.empty())
+		VersionSensitiveFeaturesAllowedGameVersion = gameVersion;
+}
+
+bool XivAlexander::RuntimeConfigRepository::IsVersionSensitiveFeaturesDecided() const {
+	return m_versionSensitiveFeaturesAllowedTemporarily != -1 || IsCurrentGameVersionAllowed();
+}
+
+bool XivAlexander::RuntimeConfigRepository::AreVersionSensitiveFeaturesAllowed(LogCategory logCategory, const std::string& featureName) const {
+	const auto temporary = m_versionSensitiveFeaturesAllowedTemporarily.load();
+	if (temporary == -1 ? IsCurrentGameVersionAllowed() : temporary != 0)
+		return true;
+
+	Misc::Logger::Acquire()->Format<LogLevel::Warning>(logCategory, "{} is disabled on this game version.", featureName);
+	return false;
+}
+
+void XivAlexander::RuntimeConfigRepository::DecideVersionSensitiveFeatures(VersionSensitiveFeaturesDecision decision) {
+	switch (decision) {
+		case VersionSensitiveFeaturesDecision::Keep:
+			m_versionSensitiveFeaturesAllowedTemporarily = -1;
+			if (IsCurrentGameVersionAllowed())
+				OnVersionSensitiveFeaturesAllowedChange();
+			else
+				AllowCurrentGameVersion();
+			break;
+
+		case VersionSensitiveFeaturesDecision::KeepTemporarily:
+			m_versionSensitiveFeaturesAllowedTemporarily = 1;
+			OnVersionSensitiveFeaturesAllowedChange();
+			break;
+
+		case VersionSensitiveFeaturesDecision::DisableTemporarily:
+			m_versionSensitiveFeaturesAllowedTemporarily = 0;
+			OnVersionSensitiveFeaturesAllowedChange();
+			break;
+
+		case VersionSensitiveFeaturesDecision::Disable: {
+			UseLoginSessionSwitching = false;
+			UseModding = false;
+			EnabledPatchCodes = std::vector<std::string>();
+			UseAltCodecMusicSupport = false;
+			AudioOutputSamplingRate = 48000U;
+			auto soxr = SoxrResampler.Value();
+			soxr.Enabled = false;
+			SoxrResampler = soxr;
+
+			m_versionSensitiveFeaturesAllowedTemporarily = -1;
+			if (IsCurrentGameVersionAllowed())
+				OnVersionSensitiveFeaturesAllowedChange();
+			else
+				AllowCurrentGameVersion();
+			break;
+		}
+	}
+}
+
 std::wstring XivAlexander::RuntimeConfigRepository::GetRegionNameLocalized(xivres::game_publisher gameRegion) const {
 	return GetStringRes(RegionResourceIdMap.at(gameRegion));
 }
@@ -125,10 +209,10 @@ std::vector<std::pair<WORD, std::string>> XivAlexander::RuntimeConfigRepository:
 		if (!GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &num, nullptr, &bufSize))
 			throw Utils::Win32::Error("GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &num, nullptr, &bufSize)");
 		std::wstring buf(bufSize, L'\0');
-		if (!GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &num, &buf[0], &bufSize))
+		if (!GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &num, buf.data(), &bufSize))
 			throw Utils::Win32::Error("GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &num, &buf[0], &bufSize)");
 		buf.resize(bufSize);
-		auto ptr = &buf[0];
+		auto ptr = buf.data();
 		while (*ptr) {
 			const auto len = wcslen(ptr);
 			res.emplace_back(LANGIDFROMLCID(LocaleNameToLCID(ptr, 0)), xivres::util::unicode::convert<std::string>(ptr));

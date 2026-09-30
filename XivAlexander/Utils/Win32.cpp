@@ -188,7 +188,7 @@ std::filesystem::path Utils::Win32::TranslatePath(const std::filesystem::path& p
 		return {};
 	std::wstring buf;
 	buf.resize(PATHCCH_MAX_CCH);
-	buf.resize(ExpandEnvironmentStringsW(path.wstring().c_str(), &buf[0], PATHCCH_MAX_CCH));
+	buf.resize(ExpandEnvironmentStringsW(path.wstring().c_str(), buf.data(), PATHCCH_MAX_CCH));
 	if (!buf.empty())
 		buf.resize(buf.size() - 1);
 
@@ -212,7 +212,7 @@ std::filesystem::path Utils::Win32::EnsureDirectory(const std::filesystem::path&
 std::filesystem::path Utils::Win32::ResolvePathFromFileName(const std::filesystem::path& path, const std::filesystem::path& ext) {
 	std::wstring buf;
 	buf.resize(PATHCCH_MAX_CCH);
-	buf.resize(SearchPathW(nullptr, path.c_str(), ext.empty() ? nullptr : ext.c_str(), PATHCCH_MAX_CCH, &buf[0], nullptr));
+	buf.resize(SearchPathW(nullptr, path.c_str(), ext.empty() ? nullptr : ext.c_str(), PATHCCH_MAX_CCH, buf.data(), nullptr));
 	if (buf.empty())
 		throw Error("SearchPathW");
 	return buf;
@@ -226,7 +226,7 @@ void Utils::Win32::SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked, bool 
 	mii.fState &= ~(MFS_CHECKED | MFS_ENABLED | MFS_DISABLED);
 	mii.fState |= (bChecked ? MFS_CHECKED : 0) | (bEnabled ? MFS_ENABLED : MFS_DISABLED);
 	if (!newText.empty()) {
-		mii.dwTypeData = &newText[0];
+		mii.dwTypeData = newText.data();
 		mii.cch = static_cast<UINT>(newText.size());
 	}
 	SetMenuItemInfoW(hMenu, nMenuId, false, &mii);
@@ -274,7 +274,7 @@ bool Utils::Win32::IsUserAnAdmin() {
 std::filesystem::path Utils::Win32::GetMappedImageNativePath(HANDLE hProcess, void* lpMem) {
 	std::wstring result;
 	result.resize(PATHCCH_MAX_CCH);
-	result.resize(GetMappedFileNameW(hProcess, lpMem, &result[0], static_cast<DWORD>(result.size())));
+	result.resize(GetMappedFileNameW(hProcess, lpMem, result.data(), static_cast<DWORD>(result.size())));
 	if (result.starts_with(LR"(\Device\)"))
 		return LR"(\\?\)" + result.substr(8);
 	throw std::runtime_error(std::format("Path unprocessable: {}", result));
@@ -287,7 +287,7 @@ std::filesystem::path Utils::Win32::ToNativePath(const std::filesystem::path& pa
 std::filesystem::path Utils::Win32::GetSystem32Path() {
 	std::wstring sysDir;
 	sysDir.resize(PATHCCH_MAX_CCH);  // assume
-	sysDir.resize(GetSystemDirectoryW(&sysDir[0], static_cast<UINT>(sysDir.size())));
+	sysDir.resize(GetSystemDirectoryW(sysDir.data(), static_cast<UINT>(sysDir.size())));
 	if (sysDir.empty())
 		throw Error("GetSystemWindowsDirectoryW");
 	return {std::move(sysDir)};

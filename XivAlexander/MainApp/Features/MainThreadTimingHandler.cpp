@@ -10,7 +10,9 @@
 #include "Misc/Hooks.h"
 #include "Misc/Logger.h"
 
-static constexpr auto SecondToMicrosecondMultiplier = 1000000ULL;
+namespace {
+	constexpr auto SecondToMicrosecondMultiplier = 1000000ULL;
+}
 
 struct XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::Implementation {
 	App& App;
@@ -150,17 +152,15 @@ struct XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::Implement
 			}
 		}
 
-		if (waitUntilCounterUs > 0 && !LastMessagePumpCounterUs.empty()) {
-			const auto useMoreCpuTime = rt.UseMoreCpuTime.Value();
-			const auto maxMsgWaitDuration =static_cast<DWORD>(
-				rt.UseBackgroundFramerateLimit && rt.BackgroundFramerateLimit > 0 && !App.IsGameWindowFocused()
-					? 1000 / rt.BackgroundFramerateLimit
-					: 0);
+		const auto maxMsgWaitDuration = static_cast<DWORD>(
+			rt.UseBackgroundFramerateLimit && rt.BackgroundFramerateLimit > 0 && !App.IsGameWindowFocused()
+				? 1000 / rt.BackgroundFramerateLimit
+				: 0);
+		if (maxMsgWaitDuration)
+			(void)MsgWaitForMultipleObjectsEx(0, nullptr, maxMsgWaitDuration, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
 
-			if (maxMsgWaitDuration)
-				(void)MsgWaitForMultipleObjectsEx(0, nullptr, maxMsgWaitDuration, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
-			
-			if (useMoreCpuTime) {
+		if (waitUntilCounterUs > 0 && !LastMessagePumpCounterUs.empty()) {
+			if (rt.UseMoreCpuTime) {
 				while (waitUntilCounterUs > Utils::QpcUs())
 					(void)0;
 			} else {
@@ -174,7 +174,7 @@ struct XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::Implement
 			}
 			LastMessagePumpCounterUs.push_back(Utils::QpcUs());
 		} else {
-			LastMessagePumpCounterUs.push_back(nowUs);
+			LastMessagePumpCounterUs.push_back(maxMsgWaitDuration ? Utils::QpcUs() : nowUs);
 			recordPumpInterval = true;
 		}
 		if (recordPumpInterval && LastMessagePumpCounterUs.size() >= 2)

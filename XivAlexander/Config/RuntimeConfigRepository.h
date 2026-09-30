@@ -10,6 +10,8 @@
 #include "ResourceOverrideRules.h"
 
 namespace XivAlexander {
+	enum class LogCategory;
+
 	class RuntimeConfigRepository : public BaseConfigRepository {
 		friend class Config;
 		using BaseConfigRepository::BaseConfigRepository;
@@ -56,6 +58,10 @@ namespace XivAlexander {
 
 		ConfigItem<std::vector<std::string>> EnabledPatchCodes{this, "EnabledPatchCodes", std::vector<std::string>()};
 
+		ConfigItem<std::string> VersionSensitiveFeaturesAllowedGameVersion{this, "VersionSensitiveFeaturesAllowedGameVersion"};
+
+		ConfigItem<bool> UseLoginSessionSwitching{this, "UseLoginSessionSwitching", false};
+
 		ConfigItem<bool> LogAllDataFileRead{this, "LogAllDataFileRead", false};
 
 		ConfigItem<xivres::game_language> RememberedGameLaunchLanguage{this, "RememberedGameLaunchLanguage", xivres::game_language::Unspecified};
@@ -69,6 +75,7 @@ namespace XivAlexander {
 		ConfigItem<bool> SynchronizeProcessing{this, "SynchronizeProcessing", false};
 		ConfigItem<GameWindowTitleMode> GameWindowTitleMode{this, "AddProcessIDToGameWindowTitle", GameWindowTitleMode::None};
 		ConfigItem<std::string> GameWindowTitlePrefixFormat{this, "GameWindowTitlePrefixFormat", std::string("{alias_or_pid} - {title}")};
+		ConfigItem<bool> DisableWindowGhosting{this, "DisableWindowGhosting", false};
 		ConfigItem<std::string> GameWindowTitleSuffixFormat{this, "GameWindowTitleSuffixFormat", std::string("{title} ({alias_or_pid})")};
 
 		ConfigItem<uint64_t> LockFramerateInterval{
@@ -151,6 +158,27 @@ namespace XivAlexander {
 		[[nodiscard]] std::vector<xivres::game_language> GetFallbackLanguageList() const;
 		[[nodiscard]] std::vector<std::pair<WORD, std::string>> GetDisplayLanguagePriorities() const;
 
+		enum class VersionSensitiveFeaturesDecision {
+			Keep,
+			KeepTemporarily,
+			DisableTemporarily,
+			Disable,
+		};
+
+		xivres::util::listener_manager<RuntimeConfigRepository, void> OnVersionSensitiveFeaturesAllowedChange;
+
+		[[nodiscard]] bool IsVersionSensitiveFeaturesDecided() const;
+		[[nodiscard]] bool AreVersionSensitiveFeaturesAllowed(LogCategory logCategory, const std::string& featureName) const;
+		[[nodiscard]] bool IsCurrentGameVersionAllowed() const;
+		[[nodiscard]] bool AreVersionSensitiveFeaturesDisabledTemporarily() const { return m_versionSensitiveFeaturesAllowedTemporarily == 0; }
+		void DecideVersionSensitiveFeatures(VersionSensitiveFeaturesDecision decision);
+
+	private:
+		std::atomic_int m_versionSensitiveFeaturesAllowedTemporarily = -1;
+
+		void AllowCurrentGameVersion();
+
+	public:
 		[[nodiscard]] static uint64_t CalculateLockFramerateIntervalUs(double fromFps, double toFps, uint64_t gcdUs, uint64_t maximumRenderIntervalDeviation);
 
 	private:

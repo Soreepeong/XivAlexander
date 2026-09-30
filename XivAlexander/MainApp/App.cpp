@@ -3,6 +3,7 @@
 
 #include <XivAlexander/XivAlexander.h>
 #include "Utils/Win32/Resource.h"
+#include "Utils/Win32/TaskDialogBuilder.h"
 
 #include "Config.h"
 
@@ -22,6 +23,7 @@
 #include "MainApp/Windows/MainWindow.h"
 #include "Misc/DebuggerDetectionDisabler.h"
 #include "Misc/FreeGameMutex.h"
+#include "Misc/GameInstallationDetector.h"
 #include "Misc/Hooks.h"
 #include "Misc/Logger.h"
 #include "Misc/OpcodeGuesser.h"
@@ -74,6 +76,8 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 
 	xivres::util::on_dtor::multi Cleanup;
 
+	bool WindowGhostingDisabled = false;
+
 	std::optional<Features::PatchCode> PatchCode;
 	std::optional<Features::AudioResampler> AudioResampler;
 	std::optional<Misc::OpcodeGuesser> OpcodeGuesser;
@@ -122,7 +126,13 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 		, Logger(Misc::Logger::Acquire())
 		, Config(Config::Acquire()) {
 
-		DisableProcessWindowsGhosting();
+		Cleanup += Config->Runtime.DisableWindowGhosting.AddAndCallOnChange([this] {
+			if (Config->Runtime.DisableWindowGhosting)
+				DisableProcessWindowsGhosting();
+			else if (WindowGhostingDisabled)
+				Logger->Log(LogCategory::General, "Window ghosting stays disabled until the game restarts.");
+			WindowGhostingDisabled |= Config->Runtime.DisableWindowGhosting.Value();
+		});
 
 		Cleanup += [&app] {
 			if (const auto hwnd = app.m_pGameWindow->GetHwnd(false)) {
@@ -136,7 +146,101 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 		Cleanup.clear();
 	}
 
+	[[nodiscard]] std::vector<std::wstring> GetEnabledVersionSensitiveFeatures() const {
+		const auto& runtime = Config->Runtime;
+		std::vector<std::wstring> features;
+		if (runtime.UseModding)
+			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_MODDING));
+		if (runtime.UseLoginSessionSwitching)
+			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_LOGINSESSIONS));
+		{
+			const auto& digests = runtime.EnabledPatchCodes.Value();
+			for (const auto& entry : *Config->PatchCode.GetEntries()) {
+				if (std::ranges::find(digests, entry.Digest) != digests.end())
+					features.emplace_back(runtime.FormatStringRes(IDS_VERSIONSENSITIVE_PATCHCODE, xivres::util::unicode::convert<std::wstring>(entry.Patch.Name)));
+			}
+		}
+		if (runtime.AudioOutputSamplingRate != Features::AudioResampler::GameDefault)
+			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_SAMPLINGRATE));
+		if (runtime.SoxrResampler.Value().Enabled)
+			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_SOXR));
+		if (runtime.UseAltCodecMusicSupport)
+			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_ALTCODEC));
+		return features;
+	}
+
+	void AskVersionSensitiveFeatures(HWND hParent, bool onStartup) {
+		using Decision = RuntimeConfigRepository::VersionSensitiveFeaturesDecision;
+		auto& runtime = Config->Runtime;
+
+		const auto features = GetEnabledVersionSensitiveFeatures();
+		if (features.empty()) {
+			runtime.DecideVersionSensitiveFeatures(Decision::Keep);
+			return;
+		}
+
+		std::wstring gameVersion;
+		try {
+			gameVersion = xivres::util::unicode::convert<std::wstring>(Misc::GameInstallationDetector::GetGameReleaseInfo().GameVersion);
+		} catch (...) {
+			// leave it empty
+		}
+
+		std::wstring list;
+		for (const auto& feature : features)
+			list += std::format(L"\n• {}", feature);
+
+		static constexpr int IdKeep = 1001;
+		static constexpr int IdKeepTemporarily = 1002;
+		static constexpr int IdDisableTemporarily = 1003;
+		static constexpr int IdDisable = 1004;
+		const auto choice = Utils::Win32::TaskDialog::Builder()
+			.WithWindowTitle(Dll::GetGenericMessageBoxTitle())
+			.WithParentWindow(hParent)
+			.WithInstance(Dll::Module())
+			.WithAllowDialogCancellation()
+			.WithMainIcon(IDI_TRAY_ICON)
+			.WithMainInstruction(std::wstring(runtime.GetStringRes(IDS_VERSIONSENSITIVE_TITLE)))
+			.WithContent(runtime.FormatStringRes(IDS_VERSIONSENSITIVE_CONTENT, gameVersion, list))
+			.WithButton({.IdSet = true, .Id = IdKeep, .Text = std::wstring(runtime.GetStringRes(IDS_VERSIONSENSITIVE_KEEP))})
+			.WithButton({.IdSet = true, .Id = IdKeepTemporarily, .Text = std::wstring(runtime.GetStringRes(IDS_VERSIONSENSITIVE_KEEPTEMPORARILY))})
+			.WithButton({.IdSet = true, .Id = IdDisableTemporarily, .Text = std::wstring(runtime.GetStringRes(IDS_VERSIONSENSITIVE_DISABLETEMPORARILY))})
+			.WithButton({.IdSet = true, .Id = IdDisable, .Text = std::wstring(runtime.GetStringRes(IDS_VERSIONSENSITIVE_DISABLE))})
+			.WithButtonCommandLinks()
+			.WithButtonDefault(IdDisableTemporarily)
+			.Build()
+			.Show()
+			.Button;
+
+		switch (choice) {
+			case IdKeep:
+				runtime.DecideVersionSensitiveFeatures(Decision::Keep);
+				break;
+			case IdKeepTemporarily:
+				runtime.DecideVersionSensitiveFeatures(Decision::KeepTemporarily);
+				break;
+			case IdDisable:
+				runtime.DecideVersionSensitiveFeatures(Decision::Disable);
+				break;
+			case IdDisableTemporarily:
+				runtime.DecideVersionSensitiveFeatures(Decision::DisableTemporarily);
+				break;
+			default:
+				if (onStartup)
+					runtime.DecideVersionSensitiveFeatures(Decision::DisableTemporarily);
+				break;
+		}
+	}
+
 	void LoadAfterThisConstruct() {
+		if (!Config->Runtime.IsVersionSensitiveFeaturesDecided()) {
+			try {
+				AskVersionSensitiveFeatures(nullptr, true);
+			} catch (const std::exception& e) {
+				Logger->Format<LogLevel::Error>(LogCategory::General, "Failed to ask about game-version-sensitive features: {}", e.what());
+			}
+		}
+
 		PatchCode.emplace(App);
 		// early: the mix rate has to be in place before the game sets up its audio
 		AudioResampler.emplace(App);
@@ -198,9 +302,16 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 			[this] { LogWindow.emplace(); },
 			[this] { LogWindow.reset(); });
 
-		Cleanup += Config->Runtime.UseAltCodecMusicSupport.AddAndCallOnBoolChange(
-			[this] { AltCodecMusicSupport->Enable(); },
-			[this] { AltCodecMusicSupport->Disable(); });
+		{
+			const auto updateAltCodecMusicSupport = [this] {
+				if (Config->Runtime.UseAltCodecMusicSupport && Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::AltCodecMusic, "Alternate codecs for musics"))
+					AltCodecMusicSupport->Enable();
+				else
+					AltCodecMusicSupport->Disable();
+			};
+			Cleanup += Config->Runtime.UseAltCodecMusicSupport.AddAndCallOnChange(updateAltCodecMusicSupport, [this] { AltCodecMusicSupport->Disable(); });
+			Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange(updateAltCodecMusicSupport);
+		}
 	}
 };
 
@@ -355,6 +466,8 @@ void XivAlexander::Apps::MainApp::App::Implementation_GameWindow::UpdateWindowTi
 	}
 
 	if (format.empty()) {
+		if (AppliedTitle.empty())
+			return;
 		AppliedTitle.clear();
 		SetWindowTextW(Handle, OriginalTitle.c_str());
 		return;
@@ -568,6 +681,10 @@ std::optional<XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler>& X
 
 std::optional<XivAlexander::Apps::MainApp::Features::LoginSessions>& XivAlexander::Apps::MainApp::App::GetLoginSessions() {
 	return m_pImpl->LoginSessions;
+}
+
+void XivAlexander::Apps::MainApp::App::AskVersionSensitiveFeatures(HWND hParent) {
+	m_pImpl->AskVersionSensitiveFeatures(hParent, false);
 }
 
 size_t Dll::EnableXivAlexander(size_t bEnable) {

@@ -16,11 +16,9 @@ namespace XivAlexander::Apps::MainApp {
 namespace XivAlexander::Apps::MainApp::Features {
 	class LoginSessions {
 	public:
-		// WM_COPYDATA (dwData: UTF-8 JSON)
-		// Adds a session. {"Alias": "...", "Parameters": {"DEV.TestSID": "...", ...}, "Select": true (default)}
-		static constexpr ULONG_PTR CopyDataId = 0x58414753;
+		static constexpr auto CredentialTargetPrefix = L"XivAlexander/LoginSession/";
 
-		static constexpr auto SessionsLaunchParameter = "XivAlexander.LoginSessions";
+		static constexpr UINT ReloadMessage = WM_APP + 0x100;
 
 		struct Session {
 			std::string Alias;
@@ -47,8 +45,10 @@ namespace XivAlexander::Apps::MainApp::Features {
 		[[nodiscard]] size_t GetSelectedIndex() const;
 		void Select(size_t index);
 
-		std::optional<LRESULT> HandleCopyData(const COPYDATASTRUCT& cds);
+		void Reload(bool selectMostRecentlyWritten = false);
 
-		void ApplySelectedTo(std::vector<std::pair<std::string, std::string>>& args) const;
+		[[nodiscard]] static std::optional<std::pair<std::string, std::vector<std::pair<std::string, std::string>>>> GetMostRecentlyStoredArguments();
+
+		void ApplySelectedTo(std::vector<std::pair<std::string, std::string>>& args);
 	};
 }

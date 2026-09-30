@@ -10,36 +10,38 @@
 #include "resource.h"
 #include "XivAlexander.h"
 
-static double GetDlgItemDouble(HWND hwnd, int nId) {
-	std::wstring buf;
-	buf.resize(16);
-	buf.resize(GetDlgItemTextW(hwnd, nId, &buf[0], static_cast<int>(buf.size())));
-	return std::wcstod(buf.c_str(), nullptr);
-}
+namespace {
+	double GetDlgItemDouble(HWND hwnd, int nId) {
+		std::wstring buf;
+		buf.resize(16);
+		buf.resize(GetDlgItemTextW(hwnd, nId, buf.data(), static_cast<int>(buf.size())));
+		return std::wcstod(buf.c_str(), nullptr);
+	}
 
-static std::wstring GetDlgItemString(HWND hwnd, int nId) {
-	std::wstring buf;
-	int capacity = 128;
-	do {
-		capacity *= 2;
-		buf.resize(capacity);
-		buf.resize(GetDlgItemTextW(hwnd, nId, &buf[0], capacity));
-	} while (buf.size() == capacity);
-	return buf;
-}
+	std::wstring GetDlgItemString(HWND hwnd, int nId) {
+		std::wstring buf;
+		int capacity = 128;
+		do {
+			capacity *= 2;
+			buf.resize(capacity);
+			buf.resize(GetDlgItemTextW(hwnd, nId, buf.data(), capacity));
+		} while (buf.size() == capacity);
+		return buf;
+	}
 
-static void SetDlgItemTextIfChanged(HWND hwnd, int nId, double val, const std::wstring& repr) {
-	const auto buf2 = GetDlgItemString(hwnd, nId);
-	if (std::wcstod(&buf2[0], nullptr) == val)
-		return;
-	SetDlgItemTextW(hwnd, nId, repr.c_str());
-}
+	void SetDlgItemTextIfChanged(HWND hwnd, int nId, double val, const std::wstring& repr) {
+		const auto buf2 = GetDlgItemString(hwnd, nId);
+		if (std::wcstod(buf2.data(), nullptr) == val)
+			return;
+		SetDlgItemTextW(hwnd, nId, repr.c_str());
+	}
 
-static void SetDlgItemTextIfChanged(HWND hwnd, int nId, uint64_t val, const std::wstring& repr) {
-	const auto buf2 = GetDlgItemString(hwnd, nId);
-	if (std::wcstoull(&buf2[0], nullptr, 10) == val)
-		return;
-	SetDlgItemTextW(hwnd, nId, repr.c_str());
+	void SetDlgItemTextIfChanged(HWND hwnd, int nId, uint64_t val, const std::wstring& repr) {
+		const auto buf2 = GetDlgItemString(hwnd, nId);
+		if (std::wcstoull(buf2.data(), nullptr, 10) == val)
+			return;
+		SetDlgItemTextW(hwnd, nId, repr.c_str());
+	}
 }
 
 void XivAlexander::Apps::MainApp::Window::Dialog::FramerateLockingDialog::ShowModal(App& app, HWND hParentWindow, const Utils::Win32::Event& hCancelEvent) {

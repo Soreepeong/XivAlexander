@@ -14,12 +14,59 @@
 
 namespace Game = XivAlexander::Game;
 
-static Utils::Win32::LoadedModule s_hModule;
-static Utils::Win32::ActivationContext s_hActivationContext;
-static std::string s_dllUnloadDisableReason;
-static bool s_bLoadedAsDependency = false;
-static bool s_bLoadedFromEntryPoint = false;
-static std::unique_ptr<XivAlexander::Misc::CrashMessageBoxHandler> s_crashMessageBoxHandler;
+namespace {
+	Utils::Win32::LoadedModule s_hModule;
+	Utils::Win32::ActivationContext s_hActivationContext;
+	std::string s_dllUnloadDisableReason;
+	bool s_bLoadedAsDependency = false;
+	bool s_bLoadedFromEntryPoint = false;
+	std::unique_ptr<XivAlexander::Misc::CrashMessageBoxHandler> s_crashMessageBoxHandler;
+
+	std::wstring s_originalCommandLine;
+	bool s_originalCommandLineIsObfuscated;
+
+	std::wstring s_gameCommandLineW;
+	std::string s_gameCommandLineA;
+
+	void SetGameCommandLine(std::vector<std::pair<std::string, std::string>> params) {
+		if (Dll::IsLanguageRegionModifiable()) {
+			auto config = XivAlexander::Config::Acquire();
+			Game::CommandLine::WellKnown::SetLanguage(params, config->Runtime.RememberedGameLaunchLanguage);
+			Game::CommandLine::WellKnown::SetRegion(params, config->Runtime.RememberedGameLaunchRegion);
+			OutputDebugStringW(std::format(L"Parameters modified (language={} region={})\n",
+				static_cast<int>(config->Runtime.RememberedGameLaunchLanguage.Value()),
+				static_cast<int>(config->Runtime.RememberedGameLaunchRegion.Value())).c_str());
+		}
+
+		s_gameCommandLineW = std::format(L"\"{}\" {}", Utils::Win32::Process::Current().PathOf().wstring(), Game::CommandLine::ToString(params, false));
+		s_gameCommandLineA = Utils::ToAnsi(s_gameCommandLineW);
+	}
+
+	void CheckObfuscatedArguments() {
+		const auto& process = Utils::Win32::Process::Current();
+		auto filename = process.PathOf().filename().wstring();
+		CharLowerW(filename.data());
+
+		if (filename != Dll::GameExecutableNameW)
+			return;
+
+		try {
+			SetGameCommandLine(Game::CommandLine::FromString(Dll::GetOriginalCommandLine(), &s_originalCommandLineIsObfuscated));
+
+			static XivAlexander::Misc::Hooks::ImportedFunction<LPWSTR> GetCommandLineW("kernel32!GetCommandLineW", "kernel32.dll", "GetCommandLineW");
+			static const auto h1 = GetCommandLineW.SetHook([]() -> LPWSTR {
+				return s_gameCommandLineW.data();
+			});
+
+			static XivAlexander::Misc::Hooks::ImportedFunction<LPSTR> GetCommandLineA("kernel32!GetCommandLineA", "kernel32.dll", "GetCommandLineA");
+			static const auto h2 = GetCommandLineA.SetHook([]() -> LPSTR {
+				return s_gameCommandLineA.data();
+			});
+		} catch (const std::exception& e) {
+			OutputDebugStringW(std::format(L"Error in CheckObfuscatedArguments: {}\n", e.what()).c_str());
+		}
+	}
+}
 
 const Utils::Win32::LoadedModule& Dll::Module() {
 	return s_hModule;
@@ -94,48 +141,6 @@ DWORD Dll::LaunchXivAlexLoaderWithTargetHandles(
 		if (!GetExitCodeProcess(companionProcess, &retCode))
 			throw Utils::Win32::Error("GetExitCodeProcess");
 		return retCode;
-	}
-}
-
-static std::wstring s_originalCommandLine;
-static bool s_originalCommandLineIsObfuscated;
-
-static void CheckObfuscatedArguments() {
-	const auto& process = Utils::Win32::Process::Current();
-	auto filename = process.PathOf().filename().wstring();
-	CharLowerW(&filename[0]);
-
-	if (filename != Dll::GameExecutableNameW)
-		return;  // not the game process
-
-	try {
-		auto params = Game::CommandLine::FromString(Dll::GetOriginalCommandLine(), &s_originalCommandLineIsObfuscated);
-		if (Dll::IsLanguageRegionModifiable()) {
-			auto config = XivAlexander::Config::Acquire();
-			Game::CommandLine::WellKnown::SetLanguage(params, config->Runtime.RememberedGameLaunchLanguage);
-			Game::CommandLine::WellKnown::SetRegion(params, config->Runtime.RememberedGameLaunchRegion);
-			OutputDebugStringW(std::format(L"Parameters modified (language={} region={})\n",
-				static_cast<int>(config->Runtime.RememberedGameLaunchLanguage.Value()),
-				static_cast<int>(config->Runtime.RememberedGameLaunchRegion.Value())).c_str());
-		}
-
-		// Once this function is called, it means that this dll will stick to the process until it exits,
-		// so it's safe to store stuff into static variables.
-
-		static auto newlyCreatedArgumentsW = std::format(L"\"{}\" {}", process.PathOf().wstring(), Game::CommandLine::ToString(params, false));
-		static auto newlyCreatedArgumentsA = Utils::ToAnsi(newlyCreatedArgumentsW);
-
-		static XivAlexander::Misc::Hooks::ImportedFunction<LPWSTR> GetCommandLineW("kernel32!GetCommandLineW", "kernel32.dll", "GetCommandLineW");
-		static const auto h1 = GetCommandLineW.SetHook([]() -> LPWSTR {
-			return &newlyCreatedArgumentsW[0];
-		});
-
-		static XivAlexander::Misc::Hooks::ImportedFunction<LPSTR> GetCommandLineA("kernel32!GetCommandLineA", "kernel32.dll", "GetCommandLineA");
-		static const auto h2 = GetCommandLineA.SetHook([]() -> LPSTR {
-			return &newlyCreatedArgumentsA[0];
-		});
-	} catch (const std::exception& e) {
-		OutputDebugStringW(std::format(L"Error in CheckObfuscatedArguments: {}\n", e.what()).c_str());
 	}
 }
 
@@ -289,6 +294,12 @@ std::wstring Dll::GetOriginalCommandLine() {
 
 bool Dll::IsOriginalCommandLineObfuscated() {
 	return s_originalCommandLineIsObfuscated;
+}
+
+void Dll::ReplaceOriginalCommandLine(std::vector<std::pair<std::string, std::string>> params) {
+	s_originalCommandLine = std::format(L"\"{}\" {}", Utils::Win32::Process::Current().PathOf().wstring(), Game::CommandLine::ToString(params, false));
+	s_originalCommandLineIsObfuscated = false;
+	SetGameCommandLine(std::move(params));
 }
 
 bool Dll::IsLanguageRegionModifiable() {

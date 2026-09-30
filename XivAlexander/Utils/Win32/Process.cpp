@@ -163,11 +163,11 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 	}
 
 	PROCESS_INFORMATION pi{};
-	if (!CreateProcessW(m_path.c_str(), &args[0],
+	if (!CreateProcessW(m_path.c_str(), args.data(),
 		nullptr, nullptr,
 		handles.empty() ? FALSE : TRUE,
 		CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT | (m_bNoWindow ? CREATE_NO_WINDOW : 0),
-		environString.empty() ? nullptr : &environString[0],
+		environString.empty() ? nullptr : environString.data(),
 		m_dir.empty() ? nullptr : m_dir.c_str(),
 		&siex.StartupInfo,
 		&pi))
@@ -360,23 +360,25 @@ void Utils::Win32::ProcessBuilder::InitializeEnviron() {
 	m_environInitialized = true;
 }
 
-static xivres::util::on_dtor WithRunAsInvoker() {
-	static constexpr auto NeverElevateEnvKey = L"__COMPAT_LAYER";
-	static constexpr auto NeverElevateEnvVal = L"RunAsInvoker";
+namespace {
+	xivres::util::on_dtor WithRunAsInvoker() {
+		static constexpr auto NeverElevateEnvKey = L"__COMPAT_LAYER";
+		static constexpr auto NeverElevateEnvVal = L"RunAsInvoker";
 
-	std::wstring env;
-	env.resize(32768);
-	env.resize(GetEnvironmentVariableW(NeverElevateEnvKey, &env[0], static_cast<DWORD>(env.size())));
-	const auto envNone = env.empty() && GetLastError() == ERROR_ENVVAR_NOT_FOUND;
-	if (!envNone && env.empty())
-		throw Utils::Win32::Error("GetEnvironmentVariableW");
-	if (!SetEnvironmentVariableW(NeverElevateEnvKey, NeverElevateEnvVal))
-		throw Utils::Win32::Error("SetEnvironmentVariableW");
-	return {
-		[env = std::move(env), envNone]() {
-			SetEnvironmentVariableW(NeverElevateEnvKey, envNone ? nullptr : &env[0]);
-		}
-	};
+		std::wstring env;
+		env.resize(32768);
+		env.resize(GetEnvironmentVariableW(NeverElevateEnvKey, env.data(), static_cast<DWORD>(env.size())));
+		const auto envNone = env.empty() && GetLastError() == ERROR_ENVVAR_NOT_FOUND;
+		if (!envNone && env.empty())
+			throw Utils::Win32::Error("GetEnvironmentVariableW");
+		if (!SetEnvironmentVariableW(NeverElevateEnvKey, NeverElevateEnvVal))
+			throw Utils::Win32::Error("SetEnvironmentVariableW");
+		return {
+			[env = std::move(env), envNone]() {
+				SetEnvironmentVariableW(NeverElevateEnvKey, envNone ? nullptr : env.data());
+			}
+		};
+	}
 }
 
 Utils::Win32::Process Utils::Win32::RunProgram(RunProgramParams params) {
@@ -387,7 +389,7 @@ Utils::Win32::Process Utils::Win32::RunProgram(RunProgramParams params) {
 	else if (!exists(params.path)) {
 		std::wstring buf;
 		buf.resize(PATHCCH_MAX_CCH);
-		buf.resize(SearchPathW(nullptr, params.path.c_str(), L".exe", static_cast<DWORD>(buf.size()), &buf[0], nullptr));
+		buf.resize(SearchPathW(nullptr, params.path.c_str(), L".exe", static_cast<DWORD>(buf.size()), buf.data(), nullptr));
 		if (buf.empty())
 			throw Error("SearchPath");
 		params.path = buf;
@@ -534,13 +536,13 @@ std::filesystem::path Utils::Win32::Process::PathOf(HMODULE hModule) const {
 
 	DWORD length;
 	if (IsCurrentProcessPseudoHandle())
-		length = GetModuleFileNameW(hModule, &buf[0], static_cast<DWORD>(buf.size()));
+		length = GetModuleFileNameW(hModule, buf.data(), static_cast<DWORD>(buf.size()));
 	else if (!hModule) {
 		length = static_cast<DWORD>(buf.size());
-		if (!QueryFullProcessImageNameW(m_object, 0, &buf[0], &length))
+		if (!QueryFullProcessImageNameW(m_object, 0, buf.data(), &length))
 			length = 0;
 	} else
-		length = GetModuleFileNameExW(m_object, hModule, &buf[0], static_cast<DWORD>(buf.size()));
+		length = GetModuleFileNameExW(m_object, hModule, buf.data(), static_cast<DWORD>(buf.size()));
 	if (!length)
 		throw Error("Failed to get module name.");
 	buf.resize(length);
@@ -670,7 +672,7 @@ void* Utils::Win32::Process::FindExportedFunction(HMODULE hModule, const char* p
 				continue;  // invalid; format is DLLNAME.FUNCTIONAME
 			forwardedName[dot] = '\0';
 
-			const auto* moduleName = &forwardedName[0];
+			const auto* moduleName = forwardedName.data();
 			const auto* functionName = &forwardedName[dot + 1];
 
 			const auto hForwardedToModule = AddressOf(moduleName, ModuleNameCompareMode::FileNameWithoutExtension);

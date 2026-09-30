@@ -104,6 +104,11 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 			Cleanup += Config->Runtime.SoxrResampler.OnChange([this] { SetEnabled(Config->Runtime.SoxrResampler.Value().Enabled); });
 			SetEnabled(Config->Runtime.SoxrResampler.Value().Enabled);
+
+			Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange([this] {
+				ApplyMixRate(false);
+				SetEnabled(Config->Runtime.SoxrResampler.Value().Enabled);
+			});
 		}
 
 		~Implementation() {
@@ -145,6 +150,11 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 
 			if (rate == 0 || rate == NativeRate) {
+				UnapplyMixRate(live);
+				return;
+			}
+
+			if (!Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::AudioResampler, std::format("{} Hz sampling rate", rate))) {
 				UnapplyMixRate(live);
 				return;
 			}
@@ -357,6 +367,9 @@ namespace XivAlexander::Apps::MainApp::Features {
 		}
 
 		void SetEnabled(bool enabled) {
+			if (enabled && !Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::AudioResampler, "soxr resampler"))
+				enabled = false;
+
 			if (enabled && !InstallVoiceHooks())
 				return;
 

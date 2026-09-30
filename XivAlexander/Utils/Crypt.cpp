@@ -2,119 +2,27 @@
 #include "Utils/Crypt.h"
 
 
-static NTSTATUS CheckNtStatus(NTSTATUS status, const char* operation) {
-	if (status >= 0)
-		return status;
-
-	LPVOID lpMessageBuffer;
-	FormatMessageA(
-		FORMAT_MESSAGE_ALLOCATE_BUFFER |
-		FORMAT_MESSAGE_FROM_SYSTEM |
-		FORMAT_MESSAGE_FROM_HMODULE,
-		GetModuleHandleW(L"NTDLL.DLL"),
-		status,
-		MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
-		reinterpret_cast<LPSTR>(&lpMessageBuffer),
-		0,
-		NULL);
-	const auto msg = std::format("{} failed: {} (NTSTATUS 0x{:08X})", operation, lpMessageBuffer, static_cast<uint32_t>(status));
-	LocalFree(lpMessageBuffer);
-	throw std::runtime_error(msg);
-}
-
-Utils::Crypt::HmacSha512::HmacSha512(std::span<const uint8_t> key)
-	: m_hAlg(nullptr)
-	, m_hHash(nullptr) {
-	CheckNtStatus(BCryptOpenAlgorithmProvider(&m_hAlg, BCRYPT_SHA512_ALGORITHM, nullptr, BCRYPT_ALG_HANDLE_HMAC_FLAG), "BCryptOpenAlgorithmProvider(SHA512/HMAC)");
-	try {
-		DWORD hashObjectSize = 0, cbData = 0;
-		CheckNtStatus(BCryptGetProperty(m_hAlg, BCRYPT_OBJECT_LENGTH, reinterpret_cast<PUCHAR>(&hashObjectSize), sizeof(hashObjectSize), &cbData, 0), "BCryptGetProperty(BCRYPT_OBJECT_LENGTH)");
-
-		m_hashObject.resize(hashObjectSize);
-		CheckNtStatus(BCryptCreateHash(m_hAlg, &m_hHash, m_hashObject.data(), hashObjectSize,
-			const_cast<PUCHAR>(key.data()), static_cast<ULONG>(key.size()), 0), "BCryptCreateHash(HMAC-SHA512)");
-	} catch (...) {
-		BCryptCloseAlgorithmProvider(m_hAlg, 0);
-		throw;
-	}
-}
-
-Utils::Crypt::HmacSha512::~HmacSha512() {
-	if (m_hHash)
-		BCryptDestroyHash(m_hHash);
-	if (m_hAlg)
-		BCryptCloseAlgorithmProvider(m_hAlg, 0);
-}
-
-void Utils::Crypt::HmacSha512::Update(std::span<const uint8_t> data) {
-	CheckNtStatus(BCryptHashData(m_hHash, const_cast<PUCHAR>(data.data()), static_cast<ULONG>(data.size()), 0), "BCryptHashData");
-}
-
-void Utils::Crypt::HmacSha512::Final(std::span<uint8_t> digest) {
-	if (digest.size() < DigestSize)
-		throw std::invalid_argument("Digest buffer is too small for HMAC-SHA512");
-	CheckNtStatus(BCryptFinishHash(m_hHash, digest.data(), DigestSize, 0), "BCryptFinishHash");
-}
-
-std::string Utils::Crypt::Base64Encode(std::span<const uint8_t> data) {
-	DWORD chars = 0;
-	if (!CryptBinaryToStringA(data.data(), static_cast<DWORD>(data.size()), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, nullptr, &chars))
-		throw std::runtime_error("CryptBinaryToStringA(size) failed");
-
-	std::string result(chars, '\0');
-	if (!CryptBinaryToStringA(data.data(), static_cast<DWORD>(data.size()), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, result.data(), &chars))
-		throw std::runtime_error("CryptBinaryToStringA failed");
-
-	// Remove trailing null and any whitespace
-	while (!result.empty() && (result.back() == '\0' || result.back() == '\r' || result.back() == '\n'))
-		result.pop_back();
-
-	return result;
-}
-
-std::vector<uint8_t> Utils::Crypt::Base64Decode(std::string_view str) {
-	DWORD bytes = 0;
-	if (!CryptStringToBinaryA(str.data(), static_cast<DWORD>(str.size()), CRYPT_STRING_BASE64, nullptr, &bytes, nullptr, nullptr))
-		throw std::runtime_error("CryptStringToBinaryA(size) failed");
-
-	std::vector<uint8_t> result(bytes);
-	if (!CryptStringToBinaryA(str.data(), static_cast<DWORD>(str.size()), CRYPT_STRING_BASE64, result.data(), &bytes, nullptr, nullptr))
-		throw std::runtime_error("CryptStringToBinaryA failed");
-
-	result.resize(bytes);
-	return result;
-}
-
-std::string Utils::Crypt::Base64UrlEncode(std::span<const uint8_t> data) {
-	auto result = Base64Encode(data);
-	for (auto& c : result) {
-		if (c == '+') c = '-';
-		else if (c == '/') c = '_';
-	}
-
-	while (!result.empty() && result.back() == '=')
-		result.pop_back();
-	return result;
-}
-
-std::vector<uint8_t> Utils::Crypt::Base64UrlDecode(std::string_view str) {
-	std::string standard(str);
-	for (auto& c : standard) {
-		if (c == '-')
-			c = '+';
-		else if (c == '_')
-			c = '/';
-	}
-
-	standard.resize((standard.size() + 3) / 4 * 4, '=');
-	return Base64Decode(standard);
-}
-
-void Utils::Crypt::GenerateRandom(std::span<uint8_t> buf) {
-	CheckNtStatus(BCryptGenRandom(nullptr, buf.data(), static_cast<ULONG>(buf.size()), BCRYPT_USE_SYSTEM_PREFERRED_RNG), "BCryptGenRandom");
-}
-
 namespace {
+	NTSTATUS CheckNtStatus(NTSTATUS status, const char* operation) {
+		if (status >= 0)
+			return status;
+
+		LPVOID lpMessageBuffer;
+		FormatMessageA(
+			FORMAT_MESSAGE_ALLOCATE_BUFFER |
+			FORMAT_MESSAGE_FROM_SYSTEM |
+			FORMAT_MESSAGE_FROM_HMODULE,
+			GetModuleHandleW(L"NTDLL.DLL"),
+			status,
+			MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
+			reinterpret_cast<LPSTR>(&lpMessageBuffer),
+			0,
+			NULL);
+		const auto msg = std::format("{} failed: {} (NTSTATUS 0x{:08X})", operation, lpMessageBuffer, static_cast<uint32_t>(status));
+		LocalFree(lpMessageBuffer);
+		throw std::runtime_error(msg);
+	}
+
 	constexpr uint32_t BlowfishP[18] = {
 		0x243f6a88, 0x85a308d3, 0x13198a2e, 0x03707344,
 		0xa4093822, 0x299f31d0, 0x082efa98, 0xec4e6c89,
@@ -450,6 +358,98 @@ namespace {
 			std::swap(L, R);
 		}
 	};
+}
+
+Utils::Crypt::HmacSha512::HmacSha512(std::span<const uint8_t> key)
+	: m_hAlg(nullptr)
+	, m_hHash(nullptr) {
+	CheckNtStatus(BCryptOpenAlgorithmProvider(&m_hAlg, BCRYPT_SHA512_ALGORITHM, nullptr, BCRYPT_ALG_HANDLE_HMAC_FLAG), "BCryptOpenAlgorithmProvider(SHA512/HMAC)");
+	try {
+		DWORD hashObjectSize = 0, cbData = 0;
+		CheckNtStatus(BCryptGetProperty(m_hAlg, BCRYPT_OBJECT_LENGTH, reinterpret_cast<PUCHAR>(&hashObjectSize), sizeof(hashObjectSize), &cbData, 0), "BCryptGetProperty(BCRYPT_OBJECT_LENGTH)");
+
+		m_hashObject.resize(hashObjectSize);
+		CheckNtStatus(BCryptCreateHash(m_hAlg, &m_hHash, m_hashObject.data(), hashObjectSize,
+			const_cast<PUCHAR>(key.data()), static_cast<ULONG>(key.size()), 0), "BCryptCreateHash(HMAC-SHA512)");
+	} catch (...) {
+		BCryptCloseAlgorithmProvider(m_hAlg, 0);
+		throw;
+	}
+}
+
+Utils::Crypt::HmacSha512::~HmacSha512() {
+	if (m_hHash)
+		BCryptDestroyHash(m_hHash);
+	if (m_hAlg)
+		BCryptCloseAlgorithmProvider(m_hAlg, 0);
+}
+
+void Utils::Crypt::HmacSha512::Update(std::span<const uint8_t> data) {
+	CheckNtStatus(BCryptHashData(m_hHash, const_cast<PUCHAR>(data.data()), static_cast<ULONG>(data.size()), 0), "BCryptHashData");
+}
+
+void Utils::Crypt::HmacSha512::Final(std::span<uint8_t> digest) {
+	if (digest.size() < DigestSize)
+		throw std::invalid_argument("Digest buffer is too small for HMAC-SHA512");
+	CheckNtStatus(BCryptFinishHash(m_hHash, digest.data(), DigestSize, 0), "BCryptFinishHash");
+}
+
+std::string Utils::Crypt::Base64Encode(std::span<const uint8_t> data) {
+	DWORD chars = 0;
+	if (!CryptBinaryToStringA(data.data(), static_cast<DWORD>(data.size()), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, nullptr, &chars))
+		throw std::runtime_error("CryptBinaryToStringA(size) failed");
+
+	std::string result(chars, '\0');
+	if (!CryptBinaryToStringA(data.data(), static_cast<DWORD>(data.size()), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, result.data(), &chars))
+		throw std::runtime_error("CryptBinaryToStringA failed");
+
+	// Remove trailing null and any whitespace
+	while (!result.empty() && (result.back() == '\0' || result.back() == '\r' || result.back() == '\n'))
+		result.pop_back();
+
+	return result;
+}
+
+std::vector<uint8_t> Utils::Crypt::Base64Decode(std::string_view str) {
+	DWORD bytes = 0;
+	if (!CryptStringToBinaryA(str.data(), static_cast<DWORD>(str.size()), CRYPT_STRING_BASE64, nullptr, &bytes, nullptr, nullptr))
+		throw std::runtime_error("CryptStringToBinaryA(size) failed");
+
+	std::vector<uint8_t> result(bytes);
+	if (!CryptStringToBinaryA(str.data(), static_cast<DWORD>(str.size()), CRYPT_STRING_BASE64, result.data(), &bytes, nullptr, nullptr))
+		throw std::runtime_error("CryptStringToBinaryA failed");
+
+	result.resize(bytes);
+	return result;
+}
+
+std::string Utils::Crypt::Base64UrlEncode(std::span<const uint8_t> data) {
+	auto result = Base64Encode(data);
+	for (auto& c : result) {
+		if (c == '+') c = '-';
+		else if (c == '/') c = '_';
+	}
+
+	while (!result.empty() && result.back() == '=')
+		result.pop_back();
+	return result;
+}
+
+std::vector<uint8_t> Utils::Crypt::Base64UrlDecode(std::string_view str) {
+	std::string standard(str);
+	for (auto& c : standard) {
+		if (c == '-')
+			c = '+';
+		else if (c == '_')
+			c = '/';
+	}
+
+	standard.resize((standard.size() + 3) / 4 * 4, '=');
+	return Base64Decode(standard);
+}
+
+void Utils::Crypt::GenerateRandom(std::span<uint8_t> buf) {
+	CheckNtStatus(BCryptGenRandom(nullptr, buf.data(), static_cast<ULONG>(buf.size()), BCRYPT_USE_SYSTEM_PREFERRED_RNG), "BCryptGenRandom");
 }
 
 void Utils::Crypt::BlowfishEcbEncrypt(std::span<const uint8_t> key, std::span<uint8_t> data) {

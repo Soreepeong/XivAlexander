@@ -9,82 +9,96 @@
 
 #include "Config.h"
 
-static WORD s_wLanguage = MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL);
+namespace {
+	WORD s_wLanguage = MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL);
 
-static Utils::Win32::LoadedModule EnsureOriginalDependencyModule(const char* szDllName, std::filesystem::path originalDllPath);
+	Utils::Win32::LoadedModule EnsureOriginalDependencyModule(const char* szDllName, std::filesystem::path originalDllPath);
 
-static std::set<std::filesystem::path> s_ignoreDlls;
-static bool s_useSystemDll = false;
+	std::set<std::filesystem::path> s_ignoreDlls;
+	bool s_useSystemDll = false;
 
-template<typename T_Fn, typename Ret>
-static Ret ChainCall(const char* szDllName, const char* szFunctionName, std::vector<std::filesystem::path> chainLoadDlls, std::function<Ret(T_Fn, bool discardImmediately)> cb) {
-	const auto systemDll = Utils::Win32::GetSystem32Path() / szDllName;
+	template<typename T_Fn, typename Ret>
+	Ret ChainCall(const char* szDllName, const char* szFunctionName, std::vector<std::filesystem::path> chainLoadDlls, std::function<Ret(T_Fn, bool discardImmediately)> cb) {
+		const auto systemDll = Utils::Win32::GetSystem32Path() / szDllName;
 
-	if (s_useSystemDll) {
-		chainLoadDlls.clear();
-	} else {
-		std::vector<std::filesystem::path> temp;
-		for (auto& path : chainLoadDlls)
-			if (!path.empty())
-				temp.emplace_back(XivAlexander::Config::Config::TranslatePath(path));
-		chainLoadDlls = std::move(temp);
-	}
-
-	if (chainLoadDlls.empty())
-		chainLoadDlls.emplace_back(systemDll);
-
-	for (size_t i = 0; i < chainLoadDlls.size(); ++i) {
-		const auto& dll = chainLoadDlls[i];
-		const auto isLast = i == chainLoadDlls.size() - 1;
-
-		if (s_ignoreDlls.find(dll) != s_ignoreDlls.end())
-			continue;
-
-		try {
-			const auto mod = Utils::Win32::LoadedModule(dll);
-			const auto pOriginalFunction =
-				EnsureOriginalDependencyModule(szDllName, dll).GetProcAddress<T_Fn>(szFunctionName, true);
-
-			mod.SetPinned();
-
-			if (isLast)
-				return cb(pOriginalFunction, !isLast);
-			else
-				cb(pOriginalFunction, !isLast);
-
-		} catch (const std::exception& e) {
-			const auto activationContextCleanup = Dll::ActivationContext().With();
-			const auto choice = Dll::MessageBoxF(
-				Dll::FindGameMainWindow(false), MB_ICONWARNING | MB_ABORTRETRYIGNORE,
-				L"Failed to load {}.\nReason: {}\n\nPress Abort to exit.\nPress Retry to keep on loading.\nPress Ignore to skip right ahead to system DLL.",
-				dll, e.what());
-			switch (choice) {
-				case IDRETRY:
-					s_ignoreDlls.insert(dll);
-					return ChainCall(szDllName, szFunctionName, std::move(chainLoadDlls), cb);
-
-				case IDIGNORE:
-					s_useSystemDll = true;
-					chainLoadDlls = {systemDll};
-					i = static_cast<size_t>(-1);
-					break;
-
-				case IDABORT:
-					TerminateProcess(GetCurrentProcess(), -1);
-			}
+		if (s_useSystemDll) {
+			chainLoadDlls.clear();
+		} else {
+			std::vector<std::filesystem::path> temp;
+			for (auto& path : chainLoadDlls)
+				if (!path.empty())
+					temp.emplace_back(XivAlexander::Config::Config::TranslatePath(path));
+			chainLoadDlls = std::move(temp);
 		}
 
-		if (isLast && std::ranges::find(chainLoadDlls, systemDll) == chainLoadDlls.end())
+		if (chainLoadDlls.empty())
 			chainLoadDlls.emplace_back(systemDll);
+
+		for (size_t i = 0; i < chainLoadDlls.size(); ++i) {
+			const auto& dll = chainLoadDlls[i];
+			const auto isLast = i == chainLoadDlls.size() - 1;
+
+			if (s_ignoreDlls.find(dll) != s_ignoreDlls.end())
+				continue;
+
+			try {
+				const auto mod = Utils::Win32::LoadedModule(dll);
+				const auto pOriginalFunction =
+					EnsureOriginalDependencyModule(szDllName, dll).GetProcAddress<T_Fn>(szFunctionName, true);
+
+				mod.SetPinned();
+
+				if (isLast)
+					return cb(pOriginalFunction, !isLast);
+				else
+					cb(pOriginalFunction, !isLast);
+
+			} catch (const std::exception& e) {
+				const auto activationContextCleanup = Dll::ActivationContext().With();
+				const auto choice = Dll::MessageBoxF(
+					Dll::FindGameMainWindow(false), MB_ICONWARNING | MB_ABORTRETRYIGNORE,
+					L"Failed to load {}.\nReason: {}\n\nPress Abort to exit.\nPress Retry to keep on loading.\nPress Ignore to skip right ahead to system DLL.",
+					dll, e.what());
+				switch (choice) {
+					case IDRETRY:
+						s_ignoreDlls.insert(dll);
+						return ChainCall(szDllName, szFunctionName, std::move(chainLoadDlls), cb);
+
+					case IDIGNORE:
+						s_useSystemDll = true;
+						chainLoadDlls = {systemDll};
+						i = static_cast<size_t>(-1);
+						break;
+
+					case IDABORT:
+						TerminateProcess(GetCurrentProcess(), -1);
+				}
+			}
+
+			if (isLast && std::ranges::find(chainLoadDlls, systemDll) == chainLoadDlls.end())
+				chainLoadDlls.emplace_back(systemDll);
+		}
+
+		const auto activationContextCleanup = Dll::ActivationContext().With();
+		Dll::MessageBoxF(
+			Dll::FindGameMainWindow(false), MB_ICONERROR,
+			L"Failed to load any of the possible {}. Aborting.",
+			szDllName);
+		TerminateProcess(GetCurrentProcess(), -1);
+		ExitProcess(-1);  // Mark noreturn
 	}
 
-	const auto activationContextCleanup = Dll::ActivationContext().With();
-	Dll::MessageBoxF(
-		Dll::FindGameMainWindow(false), MB_ICONERROR,
-		L"Failed to load any of the possible {}. Aborting.",
-		szDllName);
-	TerminateProcess(GetCurrentProcess(), -1);
-	ExitProcess(-1);  // Mark noreturn
+	Utils::Win32::LoadedModule EnsureOriginalDependencyModule(const char* szDllName, std::filesystem::path originalDllPath) {
+		static std::mutex preventDuplicateLoad;
+		std::lock_guard lock(preventDuplicateLoad);
+
+		if (originalDllPath.empty())
+			originalDllPath = Utils::Win32::GetSystem32Path() / szDllName;
+
+		auto mod = Utils::Win32::LoadedModule(originalDllPath);
+		mod.SetPinned();
+		return mod;
+	}
 }
 
 #if INTPTR_MAX == INT64_MAX
@@ -176,16 +190,4 @@ HRESULT WINAPI FORWARDER_DirectInput8Create(
 		}
 		return res;
 	});
-}
-
-static Utils::Win32::LoadedModule EnsureOriginalDependencyModule(const char* szDllName, std::filesystem::path originalDllPath) {
-	static std::mutex preventDuplicateLoad;
-	std::lock_guard lock(preventDuplicateLoad);
-
-	if (originalDllPath.empty())
-		originalDllPath = Utils::Win32::GetSystem32Path() / szDllName;
-
-	auto mod = Utils::Win32::LoadedModule(originalDllPath);
-	mod.SetPinned();
-	return mod;
 }

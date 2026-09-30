@@ -57,6 +57,93 @@ namespace {
 		wcex.hIconSm = hIcon;
 		return wcex;
 	}
+
+	std::wstring CreateTtmpDirectoryName(const std::string& modPackName, std::wstring fileName) {
+		auto name = xivres::util::unicode::convert<std::wstring>(modPackName);
+		if (name.empty())
+			name = std::move(fileName);
+		if (name.empty())
+			name = L"Unnamed";
+		else
+			name = std::format(L"Mod_{}", name);
+		name = xivres::util::trim(name);
+		for (auto& c : name) {
+			if (c == '/' || c == '<' || c == '>' || c == ':' || c == '"' || c == '\\' || c == '|' || c == '?' || c == '*')
+				c = '_';
+		}
+		return name;
+	}
+
+	enum class RemoteConfigUpdateResult {
+		NotFound,
+		NotChanged,
+		Changed,
+	};
+
+	RemoteConfigUpdateResult UpdateConfigFromRemote(XivAlexander::BaseConfigRepository& repository, const std::string& url) {
+		std::string prev;
+		try {
+			const auto prevFile = Utils::Win32::Handle::FromCreateFile(repository.GetConfigPath(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING);
+			prev.resize(prevFile.GetFileSize());
+			prevFile.Read(0, prev.data(), prev.size());
+			prev = nlohmann::json::parse(prev).dump();
+		} catch (...) {
+			prev.clear();
+		}
+
+		std::string updated;
+		{
+			const auto response = Utils::Win32::WinHttp::Get(url);
+
+			switch (static_cast<int>(response.StatusCode)) {
+				case 200:
+					updated = nlohmann::json::parse(response.Body).dump();
+					break;
+
+				case 404:
+					return RemoteConfigUpdateResult::NotFound;
+
+				default:
+					throw std::runtime_error(std::format("HTTP Error {}", response.StatusCode));
+			}
+		}
+
+		if (updated == prev)
+			return RemoteConfigUpdateResult::NotChanged;
+
+		std::ofstream(repository.GetConfigPath()) << updated;
+		repository.Reload();
+		return RemoteConfigUpdateResult::Changed;
+	}
+
+	size_t UpdatePatchCodesFromRemote(const std::filesystem::path& directory) {
+		const auto listing = Utils::Win32::WinHttp::Get("https://api.github.com/repos/Soreepeong/XivAlexander/contents/StaticData/PatchCode?ref=main");
+		if (listing.StatusCode != 200)
+			throw std::runtime_error(std::format("HTTP Error {}", listing.StatusCode));
+
+		size_t changed = 0;
+		for (const auto& item : nlohmann::json::parse(listing.Body)) {
+			const auto name = item.value("name", "");
+			if (item.value("type", "") != "file" || !name.ends_with(".json") || name.find_first_of("/\\:") != std::string::npos)
+				continue;
+
+			const auto response = Utils::Win32::WinHttp::Get(item.at("download_url").get<std::string>());
+			if (response.StatusCode != 200)
+				throw std::runtime_error(std::format("{}: HTTP Error {}", name, response.StatusCode));
+			const auto updated = nlohmann::json::parse(response.Body);
+
+			const auto path = directory / xivres::util::unicode::convert<std::wstring>(name);
+			try {
+				if (Utils::ParseJsonFromFile(path) == updated)
+					continue;
+			} catch (...) {
+				// missing or broken; overwrite
+			}
+			Utils::SaveJsonToFile(path, updated);
+			changed++;
+		}
+		return changed;
+	}
 }
 
 XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(App& app, std::function<void()> unloadFunction)
@@ -82,7 +169,7 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(App& app, std::funct
 	, m_startupArgumentsForDisplay([this] {
 			auto params{ m_launchParameters };
 			for (auto& [k, v] : params) {
-				if (k == "DEV.TestSID" || k == Features::LoginSessions::SessionsLaunchParameter) {
+				if (k == "DEV.TestSID") {
 					for (auto& c : v)
 						c = '*';
 					v += std::format("({})", v.size());
@@ -158,7 +245,12 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(App& app, std::funct
 	m_cleanup += m_config->Runtime.SoxrResampler.OnChange([this] {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
-
+	m_cleanup += m_config->Runtime.OnVersionSensitiveFeaturesAllowedChange([this] {
+		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
+		});
+	m_cleanup += m_config->Runtime.UseLoginSessionSwitching.OnChange([this] {
+		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
+		});
 	if (!m_sqpacksLoaded) {
 		if (auto& sqpacks = m_app.GetResourceOverrider().GetVirtualSqPacks()) {
 			m_cleanup += sqpacks->OnTtmpSetsChanged([this] { RepopulateMenu(); });
@@ -180,8 +272,8 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(App& app, std::funct
 
 	DragAcceptFiles(m_hWnd, TRUE);
 	ChangeWindowMessageFilterEx(m_hWnd, WM_DROPFILES, MSGFLT_ALLOW, nullptr);
-	ChangeWindowMessageFilterEx(m_hWnd, WM_COPYDATA, MSGFLT_ALLOW, nullptr);
 	ChangeWindowMessageFilterEx(m_hWnd, WM_COPYGLOBALDATA, MSGFLT_ALLOW, nullptr);
+	ChangeWindowMessageFilterEx(m_hWnd, Features::LoginSessions::ReloadMessage, MSGFLT_ALLOW, nullptr);
 
 	if (m_config->Runtime.CheckForUpdatedOpcodesOnStartup)
 		CheckUpdatedOpcodes(false);
@@ -271,20 +363,12 @@ LRESULT XivAlexander::Apps::MainApp::Window::MainWindow::WndProc(HWND hwnd, UINT
 
 		InstallMultipleFiles(paths);
 
-	} else if (uMsg == WM_COPYDATA) {
-		const auto pcds = reinterpret_cast<const COPYDATASTRUCT*>(lParam);
-		if (!pcds || IsBadReadPtr(pcds, sizeof *pcds))
+	} else if (uMsg == Features::LoginSessions::ReloadMessage) {
+		auto& loginSessions = m_app.GetLoginSessions();
+		if (!loginSessions)
 			return 0;
-
-		if (pcds->cbData && IsBadReadPtr(pcds->lpData, pcds->cbData))
-			return 0;
-
-		if (auto& loginSessions = m_app.GetLoginSessions()) {
-			if (const auto result = loginSessions->HandleCopyData(*pcds))
-				return *result;
-		}
-
-		// continue execution; no return here
+		loginSessions->Reload(wParam == 1);
+		return 1;
 
 	} else if (uMsg == WM_COMMAND) {
 		if (!lParam) {
@@ -366,6 +450,8 @@ LRESULT XivAlexander::Apps::MainApp::Window::MainWindow::WndProc(HWND hwnd, UINT
 				m_gameReleaseInfo.GameVersion, m_gameReleaseInfo.CountryCode,
 				msgPumpMean, msgPumpDev, msgPumpCount,
 				m_app.GetSocketHook().Describe());
+			if (m_config->Runtime.AreVersionSensitiveFeaturesDisabledTemporarily())
+				str = std::format(L"{}\n{}", m_config->Runtime.GetStringRes(IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART), str);
 		} catch (...) {
 			// pass
 		}
@@ -433,6 +519,17 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu() {
 	const auto title = std::format(L"{}: {}, {}, {}",
 		m_config->Runtime.GetStringRes(IDS_APP_NAME), GetCurrentProcessId(), m_gameReleaseInfo.CountryCode, m_gameReleaseInfo.GameVersion);
 	ModifyMenuW(menu, ID_FILE_CURRENTINFO, MF_BYCOMMAND, ID_FILE_CURRENTINFO, title.c_str());
+
+	if (m_config->Runtime.AreVersionSensitiveFeaturesDisabledTemporarily()) {
+		for (const UINT id : {ID_MODDING_ENABLE, ID_MODDING_USEALTCODECMUSICSUPPORT}) {
+			const auto label = std::format(L"(!) {}", RepopulateMenu_GetMenuTextById(menu, id).c_str());
+			ModifyMenuW(menu, id, MF_BYCOMMAND | MF_STRING, id, label.c_str());
+		}
+	}
+	if (!m_app.GetResourceOverrider().IsActive()) {
+		ModifyMenuW(menu, ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, MF_BYCOMMAND | MF_STRING | MF_DISABLED, ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART,
+			m_config->Runtime.GetStringRes(IDS_MENU_MODDING_REQUIRESENABLEANDRESTART));
+	}
 
 	m_menuIdCallbacks.clear();
 	{
@@ -840,6 +937,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_GameFix(HME
 	const std::set digests(digestsVector.begin(), digestsVector.end());
 
 	DeleteMenu(hParentMenu, ID_CONFIGURE_GAMEFIX_EMPTY, MF_BYCOMMAND);
+	const auto mark = m_config->Runtime.AreVersionSensitiveFeaturesDisabledTemporarily() ? L"(!) " : L"";
 	UINT position = 0;
 	for (const auto& entry : *entries) {
 		const auto active = digests.contains(entry.Digest);
@@ -851,11 +949,13 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_GameFix(HME
 			else
 				pcs.erase(it);
 			m_config->Runtime.EnabledPatchCodes = pcs;
-			}), std::format(L"{} ({})", xivres::util::unicode::convert<std::wstring>(entry.Patch.Name), entry.Path.filename().wstring()).c_str());
+			}), std::format(L"{}{} ({})", mark, xivres::util::unicode::convert<std::wstring>(entry.Patch.Name), entry.Path.filename().wstring()).c_str());
 	}
 }
 
 void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_LoginSessions(HMENU hMenu) {
+	if (!m_config->Runtime.UseLoginSessionSwitching)
+		return;
 	const auto& loginSessions = m_app.GetLoginSessions();
 	if (!loginSessions)
 		return;
@@ -896,7 +996,8 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_LoginSessio
 	// a top-level menu right after the one with "Copy Launch Command Line", wherever that ended up
 	for (int i = 0, count = GetMenuItemCount(hMenu); i < count; i++) {
 		if (const auto hSub = GetSubMenu(hMenu, i); hSub && GetMenuState(hSub, ID_RESTART_COPYLAUNCHCOMMANDLINE, MF_BYCOMMAND) != static_cast<UINT>(-1)) {
-			InsertMenuW(hMenu, i + 1, MF_BYPOSITION | MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hSessionMenu), m_config->Runtime.GetStringRes(IDS_MENU_LOGINSESSION));
+			const auto label = std::format(L"{}{}", m_config->Runtime.AreVersionSensitiveFeaturesDisabledTemporarily() ? L"(!) " : L"", m_config->Runtime.GetStringRes(IDS_MENU_LOGINSESSION));
+			InsertMenuW(hMenu, i + 1, MF_BYPOSITION | MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hSessionMenu), label.c_str());
 			return;
 		}
 	}
@@ -944,6 +1045,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_AudioResamp
 			label.c_str());
 	}
 
+	const auto mark = m_config->Runtime.AreVersionSensitiveFeaturesDisabledTemporarily() ? L"(!) " : L"";
 	AppendMenuW(hRateMenu, MF_SEPARATOR, 0, nullptr);
 	AppendMenuW(hRateMenu, MF_STRING | (useSoxr ? MF_CHECKED : 0),
 		RepopulateMenu_AllocateMenuId([this] {
@@ -951,10 +1053,10 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_AudioResamp
 			soxr.Enabled = !soxr.Enabled;
 			m_config->Runtime.SoxrResampler = soxr;
 		}),
-		m_config->Runtime.GetStringRes(IDS_MENU_USESOXRRESAMPLER));
+		std::format(L"{}{}", mark, m_config->Runtime.GetStringRes(IDS_MENU_USESOXRRESAMPLER)).c_str());
 
 	InsertMenuW(hParent, index, MF_BYPOSITION | MF_STRING | MF_POPUP,
-		reinterpret_cast<UINT_PTR>(hRateMenu), m_config->Runtime.GetStringRes(IDS_MENU_MODDING_SAMPLINGRATE));
+		reinterpret_cast<UINT_PTR>(hRateMenu), std::format(L"{}{}", mark, m_config->Runtime.GetStringRes(IDS_MENU_MODDING_SAMPLINGRATE)).c_str());
 }
 
 void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
@@ -1085,7 +1187,7 @@ std::filesystem::path XivAlexander::Apps::MainApp::Window::MainWindow::GameExecu
 
 std::wstring XivAlexander::Apps::MainApp::Window::MainWindow::MakeLaunchArguments() const {
 	auto params{ m_launchParameters };
-	if (const auto& loginSessions = m_app.GetLoginSessions())
+	if (auto& loginSessions = m_app.GetLoginSessions())
 		loginSessions->ApplySelectedTo(params);
 	if (Dll::IsLanguageRegionModifiable()) {
 		Game::CommandLine::WellKnown::SetLanguage(params, m_gameLanguage);
@@ -1886,24 +1988,6 @@ std::vector<std::filesystem::path> XivAlexander::Apps::MainApp::Window::MainWind
 	}
 }
 
-namespace {
-	std::wstring CreateTtmpDirectoryName(const std::string& modPackName, std::wstring fileName) {
-		auto name = xivres::util::unicode::convert<std::wstring>(modPackName);
-		if (name.empty())
-			name = std::move(fileName);
-		if (name.empty())
-			name = L"Unnamed";
-		else
-			name = std::format(L"Mod_{}", name);
-		name = xivres::util::trim(name);
-		for (auto& c : name) {
-			if (c == '/' || c == '<' || c == '>' || c == ':' || c == '"' || c == '\\' || c == '|' || c == '?' || c == '*')
-				c = '_';
-		}
-		return name;
-	}
-}
-
 std::string XivAlexander::Apps::MainApp::Window::MainWindow::InstallTTMP(const std::filesystem::path& path, ProgressPopupWindow& progressWindow) {
 	const auto targetDirectory = m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods";
 	if (path.empty())
@@ -2136,79 +2220,6 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::EnsureAndOpenDirectory(con
 	};
 	if (!ShellExecuteExW(&se))
 		throw Utils::Win32::Error("ShellExecuteExW");
-}
-
-namespace {
-	enum class RemoteConfigUpdateResult {
-		NotFound,
-		NotChanged,
-		Changed,
-	};
-
-	RemoteConfigUpdateResult UpdateConfigFromRemote(XivAlexander::BaseConfigRepository& repository, const std::string& url) {
-		std::string prev;
-		try {
-			const auto prevFile = Utils::Win32::Handle::FromCreateFile(repository.GetConfigPath(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING);
-			prev.resize(prevFile.GetFileSize());
-			prevFile.Read(0, prev.data(), prev.size());
-			prev = nlohmann::json::parse(prev).dump();
-		} catch (...) {
-			prev.clear();
-		}
-
-		std::string updated;
-		{
-			const auto response = Utils::Win32::WinHttp::Get(url);
-
-			switch (static_cast<int>(response.StatusCode)) {
-				case 200:
-					updated = nlohmann::json::parse(response.Body).dump();
-					break;
-
-				case 404:
-					return RemoteConfigUpdateResult::NotFound;
-
-				default:
-					throw std::runtime_error(std::format("HTTP Error {}", response.StatusCode));
-			}
-		}
-
-		if (updated == prev)
-			return RemoteConfigUpdateResult::NotChanged;
-
-		std::ofstream(repository.GetConfigPath()) << updated;
-		repository.Reload();
-		return RemoteConfigUpdateResult::Changed;
-	}
-
-	size_t UpdatePatchCodesFromRemote(const std::filesystem::path& directory) {
-		const auto listing = Utils::Win32::WinHttp::Get("https://api.github.com/repos/Soreepeong/XivAlexander/contents/StaticData/PatchCode?ref=main");
-		if (listing.StatusCode != 200)
-			throw std::runtime_error(std::format("HTTP Error {}", listing.StatusCode));
-
-		size_t changed = 0;
-		for (const auto& item : nlohmann::json::parse(listing.Body)) {
-			const auto name = item.value("name", "");
-			if (item.value("type", "") != "file" || !name.ends_with(".json") || name.find_first_of("/\\:") != std::string::npos)
-				continue;
-
-			const auto response = Utils::Win32::WinHttp::Get(item.at("download_url").get<std::string>());
-			if (response.StatusCode != 200)
-				throw std::runtime_error(std::format("{}: HTTP Error {}", name, response.StatusCode));
-			const auto updated = nlohmann::json::parse(response.Body);
-
-			const auto path = directory / xivres::util::unicode::convert<std::wstring>(name);
-			try {
-				if (Utils::ParseJsonFromFile(path) == updated)
-					continue;
-			} catch (...) {
-				// missing or broken; overwrite
-			}
-			Utils::SaveJsonToFile(path, updated);
-			changed++;
-		}
-		return changed;
-	}
 }
 
 void XivAlexander::Apps::MainApp::Window::MainWindow::CheckUpdatedOpcodes(bool showResultMessageBox) {

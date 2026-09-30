@@ -6,12 +6,14 @@
 
 #include "XivAlexander.h"
 
-static void* OodleAlignedAlloc(size_t size, size_t align) {
-	return _aligned_malloc(size, align);
-}
+namespace {
+	void* OodleAlignedAlloc(size_t size, size_t align) {
+		return _aligned_malloc(size, align);
+	}
 
-static void OodleAlignedFree(void* ptr){
-	return _aligned_free(ptr);
+	void OodleAlignedFree(void* ptr){
+		return _aligned_free(ptr);
+	}
 }
 
 std::string XivAlexander::Game::Oodle::to_string(const OodleNetworkFunctions& value) {

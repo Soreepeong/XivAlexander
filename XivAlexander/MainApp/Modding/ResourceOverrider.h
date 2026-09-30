@@ -18,7 +18,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		~ResourceOverrider();
 
 		[[nodiscard]] std::optional<VirtualSqPacks>& GetVirtualSqPacks();
-
+		[[nodiscard]] bool IsActive() const;
 		[[nodiscard]] xivres::util::on_dtor OnVirtualSqPacksInitialized(std::function<void()>);
 	};
 }

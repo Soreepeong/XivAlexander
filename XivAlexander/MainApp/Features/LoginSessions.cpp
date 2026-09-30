@@ -1,13 +1,15 @@
 #include "pch.h"
 #include "LoginSessions.h"
 
+#include <wincred.h>
+
 #include <XivAlexander/XivAlexander.h>
 
+#include "Config.h"
 #include "Game/CommandLine.h"
 #include "Game/SignatureDefinitions.h"
 #include "Game/Structs.h"
 #include "MainApp/App.h"
-#include "Utils/Crypt.h"
 #include "Misc/Hooks.h"
 #include "Misc/Logger.h"
 
@@ -15,41 +17,118 @@ namespace {
 	constexpr auto SessionIdKey = "DEV.TestSID";
 	constexpr const char* AllowedKeys[]{SessionIdKey, "DEV.MaxEntitledExpansionID"};
 
-	void Validate(const XivAlexander::Apps::MainApp::Features::LoginSessions::Session& session) {
-		if (session.Alias.empty() || session.Alias.size() > 64)
+	using ArgumentList = std::vector<std::pair<std::string, std::string>>;
+
+	struct StoredSession {
+		XivAlexander::Apps::MainApp::Features::LoginSessions::Session Session;
+		ArgumentList Arguments;
+		FILETIME LastWritten{};
+	};
+
+	void ValidateAlias(const std::string& alias) {
+		if (alias.empty() || alias.size() > 64)
 			throw std::invalid_argument("Alias must be 1 to 64 bytes long");
-		if (std::ranges::any_of(session.Alias, [](char c) { return static_cast<uint8_t>(c) < 0x20; }))
+		if (std::ranges::any_of(alias, [](char c) { return static_cast<uint8_t>(c) < 0x20; }))
 			throw std::invalid_argument("Alias must not contain control characters");
+	}
 
-		auto hasSessionId = false;
-		for (const auto& [key, value] : session.Parameters) {
-			if (std::ranges::find(AllowedKeys, key) == std::end(AllowedKeys))
-				throw std::invalid_argument(std::format("Parameter {} is not accepted", key));
+	ArgumentList ArgumentsFromJson(const nlohmann::json& json) {
+		const auto& items = json.at("Arguments");
+		if (!items.is_array() || items.size() > 64)
+			throw std::invalid_argument("Arguments must be an array of at most 64 items");
 
+		ArgumentList arguments;
+		for (const auto& item : items) {
+			const auto argument = item.get<std::string>();
+			const auto eq = argument.find('=');
+			if (eq == std::string::npos || eq == 0)
+				throw std::invalid_argument("Arguments must be in key=value form");
+
+			auto key = argument.substr(0, eq);
+			auto value = argument.substr(eq + 1);
+			if (key.size() > 64 || std::ranges::any_of(key, [](char c) { return !std::isalnum(static_cast<uint8_t>(c)) && c != '.' && c != '_'; }))
+				throw std::invalid_argument("Argument has an invalid key");
 			if (value.empty() || value.size() > 1024 || std::ranges::any_of(value, [](char c) { return c <= 0x20 || c >= 0x7F || c == '"'; }))
-				throw std::invalid_argument(std::format("Parameter {} has an invalid value", key));
-
-			if (key == SessionIdKey)
-				hasSessionId = true;
+				throw std::invalid_argument(std::format("Argument {} has an invalid value", key));
+			arguments.emplace_back(std::move(key), std::move(value));
 		}
-		if (!hasSessionId)
-			throw std::invalid_argument(std::format("Parameter {} is missing", SessionIdKey));
+		if (std::ranges::none_of(arguments, [](const auto& p) { return p.first == SessionIdKey; }))
+			throw std::invalid_argument(std::format("Argument {} is missing", SessionIdKey));
+		return arguments;
 	}
 
-	XivAlexander::Apps::MainApp::Features::LoginSessions::Session SessionFromJson(const nlohmann::json& json) {
-		XivAlexander::Apps::MainApp::Features::LoginSessions::Session session;
-		session.Alias = json.at("Alias").get<std::string>();
-		for (const auto& [key, value] : json.at("Parameters").items())
-			session.Parameters.emplace_back(key, value.get<std::string>());
-		Validate(session);
-		return session;
+	StoredSession StoredSessionFromCredential(const CREDENTIALW& cred) {
+		const auto blob = std::string_view(reinterpret_cast<const char*>(cred.CredentialBlob), cred.CredentialBlobSize);
+		const auto json = nlohmann::json::parse(blob, nullptr, false);
+		if (json.is_discarded())
+			throw std::invalid_argument("Invalid JSON");
+
+		StoredSession stored{.LastWritten = cred.LastWritten};
+		stored.Session.Alias = json.at("Alias").get<std::string>();
+		ValidateAlias(stored.Session.Alias);
+		stored.Arguments = ArgumentsFromJson(json);
+		for (const auto& allowedKey : AllowedKeys)
+			for (const auto& [key, value] : stored.Arguments)
+				if (key == allowedKey)
+					stored.Session.Parameters.emplace_back(key, value);
+		return stored;
 	}
 
-	nlohmann::json SessionToJson(const XivAlexander::Apps::MainApp::Features::LoginSessions::Session& session) {
-		auto parameters = nlohmann::json::object();
-		for (const auto& [key, value] : session.Parameters)
-			parameters[key] = value;
-		return {{"Alias", session.Alias}, {"Parameters", std::move(parameters)}};
+	std::wstring CredentialTarget(const std::string& alias) {
+		return XivAlexander::Apps::MainApp::Features::LoginSessions::CredentialTargetPrefix + xivres::util::unicode::convert<std::wstring>(alias);
+	}
+
+	std::vector<StoredSession> ReadStoredSessions(XivAlexander::Misc::Logger& logger) {
+		using XivAlexander::Apps::MainApp::Features::LoginSessions;
+
+		DWORD count = 0;
+		PCREDENTIALW* creds = nullptr;
+		const auto filter = std::format(L"{}*", LoginSessions::CredentialTargetPrefix);
+		if (!CredEnumerateW(filter.c_str(), 0, &count, &creds)) {
+			if (const auto err = GetLastError(); err != ERROR_NOT_FOUND)
+				logger.Format<XivAlexander::LogLevel::Warning>(XivAlexander::LogCategory::General, "Cannot read login sessions from Credential Manager: {}", Utils::Win32::FormatWindowsErrorMessage(err));
+			return {};
+		}
+		const auto freeCreds = xivres::util::on_dtor([creds] { CredFree(creds); });
+
+		const auto prefixLength = std::wstring_view(LoginSessions::CredentialTargetPrefix).size();
+		std::vector<StoredSession> result;
+		for (DWORD i = 0; i < count; i++) {
+			const auto& cred = *creds[i];
+			if (cred.Type != CRED_TYPE_GENERIC)
+				continue;
+
+			const auto alias = xivres::util::unicode::convert<std::string>(std::wstring(cred.TargetName).substr(prefixLength));
+			try {
+				auto stored = StoredSessionFromCredential(cred);
+				if (stored.Session.Alias != alias)
+					throw std::invalid_argument("Alias does not match the credential name");
+				result.emplace_back(std::move(stored));
+			} catch (const std::exception& e) {
+				logger.Format<XivAlexander::LogLevel::Warning>(XivAlexander::LogCategory::General, "Ignored login session \"{}\" in Credential Manager: {}", alias, e.what());
+			}
+		}
+		return result;
+	}
+
+	bool DeleteStoredSessionIfSessionId(const std::string& alias, const std::string& sessionId) {
+		const auto target = CredentialTarget(alias);
+		PCREDENTIALW cred = nullptr;
+		if (!CredReadW(target.c_str(), CRED_TYPE_GENERIC, 0, &cred))
+			return false;
+
+		{
+			const auto freeCred = xivres::util::on_dtor([cred] { CredFree(cred); });
+			try {
+				const auto stored = StoredSessionFromCredential(*cred);
+				if (std::ranges::find(stored.Session.Parameters, std::pair<std::string, std::string>(SessionIdKey, sessionId)) == stored.Session.Parameters.end())
+					return false;
+			} catch (...) {
+				return false;
+			}
+		}
+
+		return CredDeleteW(target.c_str(), CRED_TYPE_GENERIC, 0);
 	}
 }
 
@@ -63,9 +142,11 @@ struct XivAlexander::Apps::MainApp::Features::LoginSessions::Implementation {
 
 	LoginSessions& Owner;
 	App& App;
+	const std::shared_ptr<Config> Config;
 	const std::shared_ptr<Misc::Logger> Logger;
 
 	mutable std::mutex Mtx;
+	std::optional<Session> LaunchSession;
 	std::vector<Session> Sessions;
 	size_t Selected = 0;
 	std::string LastLoginSid;
@@ -74,19 +155,48 @@ struct XivAlexander::Apps::MainApp::Features::LoginSessions::Implementation {
 	std::optional<Misc::Hooks::PointerFunctionOf<Game::Resolved::LobbyErrorDialogFn>> LobbyErrorDialog;
 
 	xivres::util::on_dtor::multi Cleanup;
+	xivres::util::on_dtor::multi HookCleanup;
 
 	Implementation(LoginSessions& owner, MainApp::App& app)
 		: Owner(owner)
 		, App(app)
+		, Config(Config::Acquire())
 		, Logger(Misc::Logger::Acquire()) {
 		LoadStartupSessions();
+		Reload(false);
+
+		Cleanup += Config->Runtime.UseLoginSessionSwitching.AddAndCallOnChange([this] { UpdateHooks(); });
+		Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange([this] { UpdateHooks(); });
+	}
+
+	void UpdateHooks() {
+		if (!Config->Runtime.UseLoginSessionSwitching) {
+			RemoveHooks();
+		} else if (!Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::General, "Switching login sessions in the running game")) {
+			RemoveHooks();
+		} else {
+			InstallHooks();
+		}
+	}
+
+	void RemoveHooks() {
+		HookCleanup.clear();
+		LobbyLogin.reset();
+		LobbyErrorDialog.reset();
+	}
+
+	void InstallHooks() {
+		if (LobbyLogin || LobbyErrorDialog)
+			return;
 
 		try {
 			Game::Resolved::LobbyLoginFn lobbyLogin;
 			if (const auto status = Game::Resolved::LobbyLoginFunction.Resolve(lobbyLogin); status != Game::Signatures::ResolveError::Ok)
 				throw std::runtime_error(status.Detail);
 			LobbyLogin.emplace("LobbyLogin", lobbyLogin);
-			Cleanup += LobbyLogin->SetHook([this](void* self, void* sessionId, void* arg3, void* arg4, void* arg5, void* arg6, uint8_t arg7, uint8_t arg8) {
+			HookCleanup += LobbyLogin->SetHook([this](void* self, void* sessionId, void* arg3, void* arg4, void* arg5, void* arg6, uint8_t arg7, uint8_t arg8) {
+				Owner.Reload();
+
 				std::string alias, sid;
 				auto expired = false;
 				{
@@ -135,7 +245,7 @@ struct XivAlexander::Apps::MainApp::Features::LoginSessions::Implementation {
 			if (const auto status = Game::Resolved::LobbyErrorDialogFunction.Resolve(lobbyErrorDialog); status != Game::Signatures::ResolveError::Ok)
 				throw std::runtime_error(status.Detail);
 			LobbyErrorDialog.emplace("LobbyErrorDialog", lobbyErrorDialog);
-			Cleanup += LobbyErrorDialog->SetHook([this](void* self, void* arg2, Game::AtkValue& result) {
+			HookCleanup += LobbyErrorDialog->SetHook([this](void* self, void* arg2, Game::AtkValue& result) {
 				if (result.Type != Game::AtkValueType::UInt)
 					return LobbyErrorDialog->bridge(self, arg2, result);
 
@@ -162,8 +272,10 @@ struct XivAlexander::Apps::MainApp::Features::LoginSessions::Implementation {
 	std::optional<std::string> RejectLastLogin() {
 		std::vector<std::string> expired;
 		std::optional<std::string> next;
+		std::string rejectedSid;
 		{
 			const auto lock = std::lock_guard(Mtx);
+			rejectedSid = LastLoginSid;
 			const auto rejected = std::pair<std::string, std::string>(SessionIdKey, LastLoginSid);
 			for (auto& session : Sessions) {
 				if (!session.Expired && !LastLoginSid.empty() && std::ranges::find(session.Parameters, rejected) != session.Parameters.end()) {
@@ -179,62 +291,76 @@ struct XivAlexander::Apps::MainApp::Features::LoginSessions::Implementation {
 				}
 			}
 		}
-		for (const auto& alias : expired)
+		for (const auto& alias : expired) {
 			Logger->Format<LogLevel::Warning>(LogCategory::General, "Login session \"{}\" was rejected; marked as expired", alias);
+			if (!alias.empty() && DeleteStoredSessionIfSessionId(alias, rejectedSid))
+				Logger->Format(LogCategory::General, "Removed login session \"{}\" from Credential Manager", alias);
+		}
 		Owner.NotifyChanged();
 		return next;
 	}
 
 	~Implementation() {
 		Cleanup.clear();
+		HookCleanup.clear();
 	}
 
-	bool AddOrReplace(std::vector<Session> sessions, bool selectLast) {
+	bool Reload(bool selectMostRecentlyWritten) {
+		auto stored = ReadStoredSessions(*Logger);
+
 		const auto lock = std::lock_guard(Mtx);
-		auto changed = false;
+		const auto firstLoad = Sessions.empty();
+
+		if (LaunchSession && LaunchSession->Alias.empty()) {
+			const auto launchSid = std::ranges::find(LaunchSession->Parameters, SessionIdKey, &std::pair<std::string, std::string>::first)->second;
+			for (const auto& s : stored) {
+				if (std::ranges::find(s.Session.Parameters, std::pair<std::string, std::string>(SessionIdKey, launchSid)) != s.Session.Parameters.end()) {
+					LaunchSession->Alias = s.Session.Alias;
+					break;
+				}
+			}
+		}
+
+		std::vector<Session> sessions;
+		if (LaunchSession && (LaunchSession->Alias.empty() || std::ranges::none_of(stored, [this](const auto& s) { return s.Session.Alias == LaunchSession->Alias; })))
+			sessions.emplace_back(*LaunchSession);
+
+		std::optional<size_t> mostRecent;
+		FILETIME mostRecentTime{};
+		for (auto& s : stored) {
+			if (!mostRecent || CompareFileTime(&s.LastWritten, &mostRecentTime) > 0) {
+				mostRecent = sessions.size();
+				mostRecentTime = s.LastWritten;
+			}
+			sessions.emplace_back(std::move(s.Session));
+		}
+
+		// keep what the lobby said about the same sessions
 		for (auto& session : sessions) {
-			size_t index;
-			if (const auto it = std::ranges::find(Sessions, session.Alias, &Session::Alias); it != Sessions.end()) {
-				index = it - Sessions.begin();
-				if (it->Expired && it->Parameters == session.Parameters)
-					session.Expired = true;
-				if (*it != session) {
-					*it = std::move(session);
-					changed = true;
-				}
-			} else {
-				index = Sessions.size();
-				Sessions.emplace_back(std::move(session));
-				changed = true;
-			}
-			if (selectLast && Selected != index) {
-				Selected = index;
-				changed = true;
-			}
+			if (const auto it = std::ranges::find(Sessions, session.Alias, &Session::Alias); it != Sessions.end() && it->Parameters == session.Parameters)
+				session.Expired = it->Expired;
 		}
-		return changed;
-	}
 
-	[[nodiscard]] std::vector<Session> NamedSessionsExcept(size_t skipIndex) const {
-		std::vector<Session> result;
-		for (size_t i = 0; i < Sessions.size(); i++)
-			if (i != skipIndex && !Sessions[i].Alias.empty() && !Sessions[i].Expired)
-				result.emplace_back(Sessions[i]);
-		return result;
-	}
-
-	void ParseSessionMap(const nlohmann::json& map, std::optional<std::string>& alias, std::vector<Session>& sessions) {
-		if (const auto it = map.find("Alias"); it != map.end())
-			alias = it->get<std::string>();
-		if (const auto it = map.find("Sessions"); it != map.end()) {
-			for (const auto& item : *it) {
-				try {
-					sessions.emplace_back(SessionFromJson(item));
-				} catch (const std::exception& e) {
-					Logger->Format<LogLevel::Warning>(LogCategory::General, "Ignored a login session from the launch arguments: {}", e.what());
-				}
+		size_t selected = 0;
+		if (selectMostRecentlyWritten && mostRecent) {
+			selected = *mostRecent;
+		} else if (firstLoad) {
+			// the session the game was launched with
+			if (LaunchSession) {
+				if (const auto it = std::ranges::find(sessions, LaunchSession->Alias, &Session::Alias); it != sessions.end())
+					selected = it - sessions.begin();
 			}
+		} else if (Selected < Sessions.size()) {
+			if (const auto it = std::ranges::find(sessions, Sessions[Selected].Alias, &Session::Alias); it != sessions.end())
+				selected = it - sessions.begin();
 		}
+
+		if (sessions == Sessions && selected == Selected)
+			return false;
+
+		Sessions = std::move(sessions);
+		Selected = selected;
+		return true;
 	}
 
 	void LoadStartupSessions() {
@@ -245,31 +371,13 @@ struct XivAlexander::Apps::MainApp::Features::LoginSessions::Implementation {
 			// no launch session then
 		}
 
-		std::optional<std::string> alias;
-		std::vector<Session> sessions;
-		for (const auto& [key, value] : args) {
-			if (key != SessionsLaunchParameter)
-				continue;
-			try {
-				const auto decoded = Utils::Crypt::Base64UrlDecode(value);
-				ParseSessionMap(nlohmann::json::parse(decoded.begin(), decoded.end()), alias, sessions);
-			} catch (const std::exception& e) {
-				Logger->Format<LogLevel::Warning>(LogCategory::General, "Ignored login sessions from the launch arguments: {}", e.what());
-			}
-		}
-
 		Session launchSession;
 		for (const auto& allowedKey : AllowedKeys)
 			for (const auto& [key, value] : args)
 				if (key == allowedKey)
 					launchSession.Parameters.emplace_back(key, value);
-		if (std::ranges::any_of(launchSession.Parameters, [](const auto& p) { return p.first == SessionIdKey; })) {
-			launchSession.Alias = alias.value_or(std::string());
-			Sessions.emplace_back(std::move(launchSession));
-		}
-
-		std::erase_if(sessions, [this](const Session& s) { return !Sessions.empty() && s.Alias == Sessions.front().Alias; });
-		AddOrReplace(std::move(sessions), false);
+		if (std::ranges::any_of(launchSession.Parameters, [](const auto& p) { return p.first == SessionIdKey; }))
+			LaunchSession = std::move(launchSession);
 	}
 };
 
@@ -305,52 +413,35 @@ void XivAlexander::Apps::MainApp::Features::LoginSessions::Select(size_t index) 
 	OnChange();
 }
 
-std::optional<LRESULT> XivAlexander::Apps::MainApp::Features::LoginSessions::HandleCopyData(const COPYDATASTRUCT& cds) {
-	const auto payload = cds.cbData ? std::string_view(static_cast<const char*>(cds.lpData), cds.cbData) : std::string_view();
-	try {
-		switch (cds.dwData) {
-			case CopyDataId: {
-				const auto parsed = nlohmann::json::parse(payload);
-				auto session = SessionFromJson(parsed);
-				const auto alias = session.Alias;
-				const auto select = parsed.value("Select", true);
-				if (m_pImpl->AddOrReplace({std::move(session)}, select))
-					OnChange();
-				m_pImpl->Logger->Format(LogCategory::General, "Received login session \"{}\"{}", alias, select ? " (selected)" : "");
-				return 1;
-			}
-
-			default:
-				return std::nullopt;
-		}
-	} catch (const std::exception& e) {
-		m_pImpl->Logger->Format<LogLevel::Warning>(LogCategory::General, "Rejected a login session message: {}", e.what());
-		return 0;
-	}
+std::optional<std::pair<std::string, std::vector<std::pair<std::string, std::string>>>> XivAlexander::Apps::MainApp::Features::LoginSessions::GetMostRecentlyStoredArguments() {
+	auto stored = ReadStoredSessions(*Misc::Logger::Acquire());
+	const auto it = std::ranges::max_element(stored, [](const StoredSession& l, const StoredSession& r) {
+		return CompareFileTime(&l.LastWritten, &r.LastWritten) < 0;
+	});
+	if (it == stored.end())
+		return std::nullopt;
+	return std::make_pair(std::move(it->Session.Alias), std::move(it->Arguments));
 }
 
-void XivAlexander::Apps::MainApp::Features::LoginSessions::ApplySelectedTo(std::vector<std::pair<std::string, std::string>>& args) const {
-	std::erase_if(args, [](const auto& p) { return p.first == SessionsLaunchParameter; });
+void XivAlexander::Apps::MainApp::Features::LoginSessions::Reload(bool selectMostRecentlyWritten) {
+	if (!m_pImpl->Reload(selectMostRecentlyWritten))
+		return;
+
+	if (selectMostRecentlyWritten) {
+		const auto lock = std::lock_guard(m_pImpl->Mtx);
+		if (m_pImpl->Selected < m_pImpl->Sessions.size())
+			m_pImpl->Logger->Format(LogCategory::General, "Selected login session \"{}\"", m_pImpl->Sessions[m_pImpl->Selected].Alias);
+	}
+	OnChange();
+}
+
+void XivAlexander::Apps::MainApp::Features::LoginSessions::ApplySelectedTo(std::vector<std::pair<std::string, std::string>>& args) {
+	Reload();
 
 	const auto lock = std::lock_guard(m_pImpl->Mtx);
 	if (m_pImpl->Selected >= m_pImpl->Sessions.size())
 		return;
 
-	const auto& selected = m_pImpl->Sessions[m_pImpl->Selected];
-	for (const auto& [key, value] : selected.Parameters)
+	for (const auto& [key, value] : m_pImpl->Sessions[m_pImpl->Selected].Parameters)
 		Game::CommandLine::ModifyParameter(args, key, value);
-
-	auto map = nlohmann::json::object();
-	if (!selected.Alias.empty())
-		map["Alias"] = selected.Alias;
-	if (auto others = m_pImpl->NamedSessionsExcept(m_pImpl->Selected); !others.empty()) {
-		auto list = nlohmann::json::array();
-		for (const auto& session : others)
-			list.emplace_back(SessionToJson(session));
-		map["Sessions"] = std::move(list);
-	}
-	if (!map.empty()) {
-		const auto json = map.dump();
-		args.emplace_back(SessionsLaunchParameter, Utils::Crypt::Base64UrlEncode(std::span(json)));
-	}
 }

@@ -64,7 +64,7 @@ std::filesystem::path Utils::Win32::LoadedModule::PathOf() const {
 std::filesystem::path Utils::Win32::LoadedModule::BaseName() const {
 	std::wstring result;
 	result.resize(PATHCCH_MAX_CCH);
-	result.resize(GetModuleBaseNameW(GetCurrentProcess(), m_object, &result[0], static_cast<DWORD>(result.size())));
+	result.resize(GetModuleBaseNameW(GetCurrentProcess(), m_object, result.data(), static_cast<DWORD>(result.size())));
 	if (result.empty())
 		throw Error("GetModuleBaseNameW");
 	return result;

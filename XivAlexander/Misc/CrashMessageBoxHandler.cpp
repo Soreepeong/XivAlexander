@@ -9,70 +9,70 @@
 #include "Misc/Logger.h"
 #include "Utils/Win32/Resource.h"
 
-static const std::wstring_view PossibleCrashMessageBoxTitle[]{
-	L"ファイナルファンタジーXIV", // Japanese
-	L"FINAL FANTASY XIV", // English, German, French, and Korean
-	L"最终幻想14", // Chinese
-};
-
-static const std::wstring_view PossibleCrashMessageBody[]{
-	// Japanese
-	L"「ファイナルファンタジーXIV」でエラーが発生したため終了しました。",
-	L"DirectXで致命的なエラーが発生しました。",
-	L"データファイルが見つかりません。「ファイナルファンタジーXIV」を一度アンインストールしてから再度インストールを試して下さい。",
-	L"このアプリケーションは直接実行できません。ffxivboot.exe から実行してください。",
-	L"「ファイナルファンタジーXIV」を終了します。",
-	L"最新のDirectX がインストールされていません。",
-	L"DirectX エンド ユーザー ランタイムをダウンロードして、インストールしてください。",
-
-	// English
-	L"An unexpected error has occurred. Exiting FINAL FANTASY XIV.",
-	L"A fatal DirectX error has occurred.",
-	L"Could not locate data files. Please reinstall FINAL FANTASY XIV.",
-	L"Exiting FINAL FANTASY XIV.",
-	L"Unable to launch application. Launch using the ffxivboot.exe file.",
-	L"The latest version of DirectX is required to play FINAL FANTASY XIV.",
-	L"Please download and install the DirectX End-User Runtime, then restart the game.",
-
-	// German
-	L"FINAL FANTASY XIV wurde aufgrund eines Fehlers beendet.",
-	L"Ein schwerwiegender DirectX-Fehler ist aufgetreten.",
-	L"FINAL FANTASY XIV wird beendet.",
-	L"Die Datendateien konnten nicht gefunden werden. Bitte installieren Sie FINAL FANTASY XIV erneut.",
-	L"Diese Anwendung kann nicht direkt gestartet werden. Bitte führen Sie „ffxivboot.exe“ aus.",
-	L"Die neueste Version von DirectX ist nicht installiert. Bitte lade die DirectX-Endbenutzer-Runtime herunter, um die neueste Version von DirectX zu installieren.",
-
-	// French
-	L"FINAL FANTASY s'est fermé parce qu'une erreur s'est produite.",
-	L"Une erreur fatale DirectX s’est produite.",
-	L"FINAL FANTASY XIV va prendre fin.",
-	L"Impossible de trouver les fichiers de données. Veuillez désinstaller puis réinstaller FINAL FANTASY XIV.",
-	L"Impossible d'exécuter cette application. Veuillez lancer le jeu à partir du fichier ffxivboot.exe.",
-	L"FINAL FANTASY XIV a rencontré une erreur. Le programme va prendre fin.",
-	L"La dernière version de DirectX n'est pas installée. Veuillez télécharger et installer le programme d'installation de DirectX.",
-
-	// Chinese
-	L"《最终幻想14》发生意外错误，程序即将关闭。",
-	L"DirectX出现了致命错误。",
-	L"无法找到文件。请卸载并重新安装《最终幻想14》。",
-	L"该程序无法直接运行。请运行ffxivboot.exe。",
-	L"即将退出《最终幻想14》。",
-	L"《最终幻想14》发生未知错误，程序即将关闭。",
-	L"没有安装最新版的DirectX。",
-	L"请下载并安装最新的DirectX End-User Runtime。",
-
-	// Korean
-	L"예기치 못한 오류로 인해 ‘파이널 판타지 14’가 종료되었습니다.",
-	L"DirectX에서 심각한 오류가 발생했습니다.",
-	L"데이터 파일을 찾을 수 없습니다. FINAL FANTASY XIV를 다시 설치해보시기 바랍니다.",
-	L"이 응용 프로그램은 직접 실행할 수 없습니다.",
-	L"FINAL FANTASY XIV을 종료합니다.",
-	L"FINAL FANTASY XIV에서 오류가 발생하여 종료되었습니다.",
-	L"최신 버전의 DirectX가 설치되지 않았습니다.",
-	L"DirectX 엔드유저 런타임을 다운로드하여 설치하십시오.",
-};
-
 namespace {
+	const std::wstring_view PossibleCrashMessageBoxTitle[]{
+		L"ファイナルファンタジーXIV", // Japanese
+		L"FINAL FANTASY XIV", // English, German, French, and Korean
+		L"最终幻想14", // Chinese
+	};
+
+	const std::wstring_view PossibleCrashMessageBody[]{
+		// Japanese
+		L"「ファイナルファンタジーXIV」でエラーが発生したため終了しました。",
+		L"DirectXで致命的なエラーが発生しました。",
+		L"データファイルが見つかりません。「ファイナルファンタジーXIV」を一度アンインストールしてから再度インストールを試して下さい。",
+		L"このアプリケーションは直接実行できません。ffxivboot.exe から実行してください。",
+		L"「ファイナルファンタジーXIV」を終了します。",
+		L"最新のDirectX がインストールされていません。",
+		L"DirectX エンド ユーザー ランタイムをダウンロードして、インストールしてください。",
+
+		// English
+		L"An unexpected error has occurred. Exiting FINAL FANTASY XIV.",
+		L"A fatal DirectX error has occurred.",
+		L"Could not locate data files. Please reinstall FINAL FANTASY XIV.",
+		L"Exiting FINAL FANTASY XIV.",
+		L"Unable to launch application. Launch using the ffxivboot.exe file.",
+		L"The latest version of DirectX is required to play FINAL FANTASY XIV.",
+		L"Please download and install the DirectX End-User Runtime, then restart the game.",
+
+		// German
+		L"FINAL FANTASY XIV wurde aufgrund eines Fehlers beendet.",
+		L"Ein schwerwiegender DirectX-Fehler ist aufgetreten.",
+		L"FINAL FANTASY XIV wird beendet.",
+		L"Die Datendateien konnten nicht gefunden werden. Bitte installieren Sie FINAL FANTASY XIV erneut.",
+		L"Diese Anwendung kann nicht direkt gestartet werden. Bitte führen Sie „ffxivboot.exe“ aus.",
+		L"Die neueste Version von DirectX ist nicht installiert. Bitte lade die DirectX-Endbenutzer-Runtime herunter, um die neueste Version von DirectX zu installieren.",
+
+		// French
+		L"FINAL FANTASY s'est fermé parce qu'une erreur s'est produite.",
+		L"Une erreur fatale DirectX s’est produite.",
+		L"FINAL FANTASY XIV va prendre fin.",
+		L"Impossible de trouver les fichiers de données. Veuillez désinstaller puis réinstaller FINAL FANTASY XIV.",
+		L"Impossible d'exécuter cette application. Veuillez lancer le jeu à partir du fichier ffxivboot.exe.",
+		L"FINAL FANTASY XIV a rencontré une erreur. Le programme va prendre fin.",
+		L"La dernière version de DirectX n'est pas installée. Veuillez télécharger et installer le programme d'installation de DirectX.",
+
+		// Chinese
+		L"《最终幻想14》发生意外错误，程序即将关闭。",
+		L"DirectX出现了致命错误。",
+		L"无法找到文件。请卸载并重新安装《最终幻想14》。",
+		L"该程序无法直接运行。请运行ffxivboot.exe。",
+		L"即将退出《最终幻想14》。",
+		L"《最终幻想14》发生未知错误，程序即将关闭。",
+		L"没有安装最新版的DirectX。",
+		L"请下载并安装最新的DirectX End-User Runtime。",
+
+		// Korean
+		L"예기치 못한 오류로 인해 ‘파이널 판타지 14’가 종료되었습니다.",
+		L"DirectX에서 심각한 오류가 발생했습니다.",
+		L"데이터 파일을 찾을 수 없습니다. FINAL FANTASY XIV를 다시 설치해보시기 바랍니다.",
+		L"이 응용 프로그램은 직접 실행할 수 없습니다.",
+		L"FINAL FANTASY XIV을 종료합니다.",
+		L"FINAL FANTASY XIV에서 오류가 발생하여 종료되었습니다.",
+		L"최신 버전의 DirectX가 설치되지 않았습니다.",
+		L"DirectX 엔드유저 런타임을 다운로드하여 설치하십시오.",
+	};
+
 	struct ErrorCodeName {
 		uint32_t Code;
 		const wchar_t* Name;
@@ -235,7 +235,7 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 					return L"<unknown>";
 
 				std::wstring res(Data.MaxNameLen, L'\0');
-				res.resize(UnDecorateSymbolNameW(Data.Name, &res[0], static_cast<DWORD>(res.size()), UNDNAME_COMPLETE));
+				res.resize(UnDecorateSymbolNameW(Data.Name, res.data(), static_cast<DWORD>(res.size()), UNDNAME_COMPLETE));
 				if (res.empty())
 					return Data.Name;
 				return res;
