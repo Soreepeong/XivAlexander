@@ -30,6 +30,9 @@ namespace XivAlexander::Apps::MainApp {
 					break;
 			}
 
+			if (out.size() == bufferSize && stream.FetchCallback)
+				stream.FetchCallback(stream.User, nullptr, 0, stream.PendingFetchOffset);
+
 			std::ranges::fill(out, uint8_t{});
 			return bufferSize - static_cast<uint32_t>(out.size());
 		}

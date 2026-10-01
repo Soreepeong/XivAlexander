@@ -27,6 +27,22 @@ namespace XivAlexander::Apps::MainApp {
 		FLAC__MAX_BLOCK_SIZE
 	}) * MaxChannelCount * TargetBitDepthInBytes;
 
+	inline const uint8_t* VorbisChannelOrderFromPcm(uint32_t channels) {
+		static constexpr uint8_t ch2_1[] = {0, 2, 1};
+		static constexpr uint8_t ch4_1[] = {0, 2, 1, 3, 4};
+		static constexpr uint8_t ch5_1[] = {0, 2, 1, 4, 5, 3};
+		static constexpr uint8_t ch6_1[] = {0, 2, 1, 5, 6, 4, 3};
+		static constexpr uint8_t ch7_1[] = {0, 2, 1, 6, 7, 4, 5, 3};
+		switch (channels) {
+			case 3: return ch2_1;
+			case 5: return ch4_1;
+			case 6: return ch5_1;
+			case 7: return ch6_1;
+			case 8: return ch7_1;
+			default: return nullptr;
+		}
+	}
+
 	class Decoder {
 		uint32_t m_channelCount = 2;
 		uint32_t m_bitDepth = 16;

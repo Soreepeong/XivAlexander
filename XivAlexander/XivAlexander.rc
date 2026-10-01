@@ -250,8 +250,8 @@ BEGIN
             MENUITEM SEPARATOR
             MENUITEM "インポート(&I)",                   ID_MODDING_TTMP_IMPORT
             MENUITEM "フォルダーを開ける(&O)",               ID_MODDING_TTMP_OPENDIRECTORY
-            MENUITEM "再読み込み(&R)",                   ID_MODDING_TTMP_REFRESH
         END
+        MENUITEM "再読み込み(&F)", ID_MODDING_TTMP_REFRESH
         MENUITEM "置き換えファイルのフォルダーを開ける(&R)",      ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
         MENUITEM "TTMPL/TTMPDファイルに変換して保存(&O)",  ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
@@ -820,8 +820,8 @@ BEGIN
             MENUITEM SEPARATOR
             MENUITEM "불러오기(&I)",                    ID_MODDING_TTMP_IMPORT
             MENUITEM "폴더 열기(&O)",                   ID_MODDING_TTMP_OPENDIRECTORY
-            MENUITEM "목록 다시 불러오기(&R)",              ID_MODDING_TTMP_REFRESH
         END
+        MENUITEM "다시 불러오기(&F)", ID_MODDING_TTMP_REFRESH
         MENUITEM "교체 파일 폴더 열기(&R)",             ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
         MENUITEM "TTMPL/TTMPD파일로 내보내기(&O)",     ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
@@ -1458,8 +1458,8 @@ BEGIN
             MENUITEM SEPARATOR
             MENUITEM "&Import",                     ID_MODDING_TTMP_IMPORT
             MENUITEM "&Open Directory",             ID_MODDING_TTMP_OPENDIRECTORY
-            MENUITEM "&Refresh",                    ID_MODDING_TTMP_REFRESH
         END
+        MENUITEM "Re&fresh", ID_MODDING_TTMP_REFRESH
         MENUITEM "Open &Replacement File Entries Directory", ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
         MENUITEM "Exp&ort to TTMPL/TTMPD Files", ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR

@@ -251,6 +251,12 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(App& app, std::funct
 	m_cleanup += m_config->Runtime.UseLoginSessionSwitching.OnChange([this] {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
+	m_cleanup += m_config->Runtime.AdditionalTexToolsModPackSearchDirectories.OnChange([this] {
+		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
+		});
+	m_cleanup += m_config->Runtime.AdditionalGameResourceFileEntryRootDirectories.OnChange([this] {
+		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
+		});
 	if (!m_sqpacksLoaded) {
 		if (auto& sqpacks = m_app.GetResourceOverrider().GetVirtualSqPacks()) {
 			m_cleanup += sqpacks->OnTtmpSetsChanged([this] { RepopulateMenu(); });
@@ -561,6 +567,26 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu() {
 
 		RepopulateMenu_Ttmp(hInnerTtmpMenu, hOuterTtmpMenu);
 		RepopulateMenu_TtmpChoicesProfiles(m_config->Runtime.TtmpShowDedicatedMenu ? hOuterTtmpMenu : hInnerTtmpMenu);
+
+		{
+			std::vector<std::filesystem::path> ttmpDirs{m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods"};
+			if (const auto& additional = m_config->Runtime.AdditionalTexToolsModPackSearchDirectories.Value(); !additional.empty()) {
+				if (const auto inGame = m_path.parent_path() / "sqpack" / "TexToolsMods"; is_directory(inGame))
+					ttmpDirs.emplace_back(inGame);
+				for (const auto& dir : additional) {
+					if (!dir.empty())
+						ttmpDirs.emplace_back(Config::TranslatePath(dir));
+				}
+			}
+			RepopulateMenu_DirectoryChoices(menu, ID_MODDING_TTMP_OPENDIRECTORY, ttmpDirs);
+
+			std::vector<std::filesystem::path> replacementDirs{m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries"};
+			for (const auto& dir : m_config->Runtime.AdditionalGameResourceFileEntryRootDirectories.Value()) {
+				if (!dir.empty())
+					replacementDirs.emplace_back(Config::TranslatePath(dir));
+			}
+			RepopulateMenu_DirectoryChoices(menu, ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY, replacementDirs);
+		}
 		// last: everything above finds its menus by index, and these add a Configure menu item and a top-level menu
 		RepopulateMenu_AudioResampler(menu);
 		RepopulateMenu_LoginSessions(menu);
@@ -1057,6 +1083,41 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_AudioResamp
 
 	InsertMenuW(hParent, index, MF_BYPOSITION | MF_STRING | MF_POPUP,
 		reinterpret_cast<UINT_PTR>(hRateMenu), std::format(L"{}{}", mark, m_config->Runtime.GetStringRes(IDS_MENU_MODDING_SAMPLINGRATE)).c_str());
+}
+
+void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_DirectoryChoices(HMENU hMenu, UINT commandId, const std::vector<std::filesystem::path>& dirs) {
+	if (dirs.size() < 2)
+		return;
+
+	const std::function<std::pair<HMENU, int>(HMENU)> find = [&](HMENU hParent) -> std::pair<HMENU, int> {
+		for (int i = 0, count = GetMenuItemCount(hParent); i < count; i++) {
+			if (const auto hSub = GetSubMenu(hParent, i)) {
+				if (const auto found = find(hSub); found.first)
+					return found;
+			} else if (GetMenuItemID(hParent, i) == commandId) {
+				return {hParent, i};
+			}
+		}
+		return {};
+	};
+	const auto [hParent, index] = find(hMenu);
+	if (!hParent)
+		return;
+
+	const auto hDirMenu = CreatePopupMenu();
+	for (const auto& dir : dirs) {
+		std::wstring label;
+		for (const auto c : dir.wstring()) {
+			if (c == L'&')
+				label += L'&';
+			label += c;
+		}
+		AppendMenuW(hDirMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, dir] { EnsureAndOpenDirectory(dir); }), label.c_str());
+	}
+
+	const auto label = RepopulateMenu_GetMenuTextById(hParent, commandId);
+	DeleteMenu(hParent, index, MF_BYPOSITION);
+	InsertMenuW(hParent, index, MF_BYPOSITION | MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hDirMenu), label.c_str());
 }
 
 void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {

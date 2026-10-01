@@ -12,6 +12,12 @@ namespace XivAlexander::Apps::MainApp {
 		size_t m_payloadLength = 0;
 		size_t m_payloadConsumed = 0;
 
+		std::array<uint8_t, MaxChannelCount * 4> m_frameIn{};
+		uint32_t m_frameInSize = 0;
+		std::array<uint8_t, MaxChannelCount * TargetBitDepthInBytes> m_frameOut{};
+		uint32_t m_frameOutOffset = 0;
+		uint32_t m_frameOutSize = 0;
+
 	public:
 		static bool IsWav(std::span<const uint8_t> peek);
 
@@ -28,6 +34,7 @@ namespace XivAlexander::Apps::MainApp {
 
 	private:
 		std::pair<uint32_t, uint32_t> DecodeSamples(std::span<const uint8_t> data, std::span<uint8_t> out);
+		std::pair<uint32_t, uint32_t> DecodeReordered(std::span<const uint8_t> data, std::span<uint8_t> out, const uint8_t* order);
 	};
 
 	

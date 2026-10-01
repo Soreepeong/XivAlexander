@@ -120,7 +120,16 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 				creator.reserve_space(pathSpec, size);
 		}
 
-		AddReplacementFiles(creator, indexFile);
+		for (const auto& [pathSpec, file] : *GetReplacementFiles(FutureReservations::PackKey(creator), indexFile)) {
+			try {
+				creator.reserve_space(pathSpec, static_cast<uint32_t>(file.Stream->size()));
+			} catch (const std::exception& e) {
+				m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+					"[{}/{}] Error processing {}: {}",
+					creator.DatExpac, creator.DatName,
+					file.File, e.what());
+			}
+		}
 		futureReservations.Reserve(creator);
 
 		if (emptyScd) {
@@ -169,46 +178,81 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		return dirs;
 	}
 
-	void PackSources::AddReplacementFiles(xivres::sqpack::generator& creator, const std::filesystem::path& indexPath) const {
+	std::shared_ptr<const PackSources::ReplacementFiles> PackSources::GetReplacementFiles(const std::string& packKey, const std::filesystem::path& indexPath) const {
+		std::vector<std::filesystem::path> roots;
+		uint64_t generation;
+		{
+			const auto lock = std::lock_guard(m_replacementMtx);
+			if (const auto it = m_replacementFiles.find(packKey); it != m_replacementFiles.end())
+				return it->second;
+			roots = m_replacementRoots;
+			generation = m_replacementGeneration;
+		}
+
+		auto files = std::make_shared<const ReplacementFiles>(ScanReplacementFiles(roots, packKey, indexPath));
+
+		const auto lock = std::lock_guard(m_replacementMtx);
+		if (generation != m_replacementGeneration)
+			return files;
+		return m_replacementFiles.try_emplace(packKey, std::move(files)).first->second;
+	}
+
+	void PackSources::RescanReplacementRoots() {
+		auto roots = CollectReplacementRoots();
+		m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks, "Rescanning {} replacement root(s)", roots.size());
+
+		const auto lock = std::lock_guard(m_replacementMtx);
+		m_replacementRoots = std::move(roots);
+		m_replacementFiles.clear();
+		m_replacementGeneration++;
+	}
+
+	PackSources::ReplacementFiles PackSources::ScanReplacementFiles(const std::vector<std::filesystem::path>& roots, const std::string& packKey, const std::filesystem::path& indexPath) const {
+		const auto slash = packKey.find('/');
+		const auto datExpac = packKey.substr(0, slash);
+		const auto datName = slash == std::string::npos ? std::string() : packKey.substr(slash + 1);
+
 		std::vector<std::filesystem::path> rootDirs;
 		rootDirs.emplace_back(indexPath.parent_path().parent_path());
-		rootDirs.insert(rootDirs.end(), m_replacementRoots.begin(), m_replacementRoots.end());
+		rootDirs.insert(rootDirs.end(), roots.begin(), roots.end());
 
 		std::vector<std::pair<std::filesystem::path, std::filesystem::path>> dirs;
 		for (const auto& dir : rootDirs) {
-			dirs.emplace_back(dir / creator.DatExpac / creator.DatName, dir / creator.DatExpac / creator.DatName);
-			dirs.emplace_back(dir / creator.DatExpac / std::format("{}.win32", creator.DatName), dir / creator.DatExpac / std::format("{}.win32", creator.DatName));
+			dirs.emplace_back(dir / datExpac / datName, dir / datExpac / datName);
+			dirs.emplace_back(dir / datExpac / std::format("{}.win32", datName), dir / datExpac / std::format("{}.win32", datName));
 		}
 		std::filesystem::path pathPrefix;
 		if (const auto datType = indexPath.filename().wstring().substr(0, 2);
 			lstrcmpiW(datType.c_str(), L"0c") == 0)
-			pathPrefix = std::format("music/{}", creator.DatExpac);
+			pathPrefix = std::format("music/{}", datExpac);
 		else if (datType == L"02")
-			pathPrefix = std::format("bg/{}", creator.DatExpac);
+			pathPrefix = std::format("bg/{}", datExpac);
 		else if (datType == L"03")
-			pathPrefix = std::format("cut/{}", creator.DatExpac);
-		else if (datType == L"00" && creator.DatExpac == "ffxiv")
+			pathPrefix = std::format("cut/{}", datExpac);
+		else if (datType == L"00" && datExpac == "ffxiv")
 			pathPrefix = "common";
-		else if (datType == L"01" && creator.DatExpac == "ffxiv")
+		else if (datType == L"01" && datExpac == "ffxiv")
 			pathPrefix = "bgcommon";
-		else if (datType == L"04" && creator.DatExpac == "ffxiv")
+		else if (datType == L"04" && datExpac == "ffxiv")
 			pathPrefix = "chara";
-		else if (datType == L"05" && creator.DatExpac == "ffxiv")
+		else if (datType == L"05" && datExpac == "ffxiv")
 			pathPrefix = "shader";
-		else if (datType == L"06" && creator.DatExpac == "ffxiv")
+		else if (datType == L"06" && datExpac == "ffxiv")
 			pathPrefix = "ui";
-		else if (datType == L"07" && creator.DatExpac == "ffxiv")
+		else if (datType == L"07" && datExpac == "ffxiv")
 			pathPrefix = "sound";
-		else if (datType == L"08" && creator.DatExpac == "ffxiv")
+		else if (datType == L"08" && datExpac == "ffxiv")
 			pathPrefix = "vfx";
-		else if (datType == L"0a" && creator.DatExpac == "ffxiv")
+		else if (datType == L"0a" && datExpac == "ffxiv")
 			pathPrefix = "exd";
-		else if (datType == L"0b" && creator.DatExpac == "ffxiv")
+		else if (datType == L"0b" && datExpac == "ffxiv")
 			pathPrefix = "game_script";
 		if (!pathPrefix.empty()) {
 			for (const auto& dir : rootDirs)
 				dirs.emplace_back(dir / pathPrefix, dir);
 		}
+
+		ReplacementFiles result;
 		for (const auto& [dir, relativeTo] : dirs) {
 			if (!is_directory(dir))
 				continue;
@@ -223,38 +267,31 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 				}
 			} catch (const std::exception& e) {
 				m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-					"[{}/{}] Failed to list items in {}: {}",
-					creator.DatName, creator.DatExpac,
-					dir, e.what());
+					"[{}] Failed to list items in {}: {}",
+					packKey, dir, e.what());
 				continue;
 			}
 
+			// later ones win, as they did when added to the pack one by one
 			std::ranges::sort(files);
 			for (const auto& file : files) {
-				if (is_directory(file))
-					continue;
-
 				try {
-					const auto result = creator.add(std::make_shared<xivres::oplocking_packed_stream>(file.lexically_relative(relativeTo), file), true);
-					if (const auto item = result.any())
-						m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
-							"[{}/{}] {} file {}: (nameHash={:08x}, pathHash={:08x}, fullPathHash={:08x})",
-							creator.DatName, creator.DatExpac,
-							result.Added.empty() ? "Replaced" : "Added",
-							item->path_spec().text(),
-							item->path_spec().name_hash(),
-							item->path_spec().path_hash(),
-							item->path_spec().full_path_hash());
-					else
-						for (const auto& error : result.Error | std::views::values)
-							throw std::runtime_error(error);
+					const auto pathSpec = xivres::path_spec(file.lexically_relative(relativeTo));
+					if (FutureReservations::PackKey(pathSpec) != packKey)
+						throw std::runtime_error(std::format("belongs to {}", FutureReservations::PackKey(pathSpec)));
+
+					auto stream = std::make_shared<xivres::oplocking_packed_stream>(pathSpec, file);
+					result.insert_or_assign(pathSpec, ReplacementFile{.File = file, .Stream = std::move(stream)});
 				} catch (const std::exception& e) {
 					m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-						"[{}/{}] Error processing {}: {}",
-						creator.DatName, creator.DatExpac,
-						file, e.what());
+						"[{}] Error processing {}: {}",
+						packKey, file, e.what());
 				}
 			}
 		}
+
+		if (!result.empty())
+			m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks, "[{}] Found {} replacement file(s)", packKey, result.size());
+		return result;
 	}
 }

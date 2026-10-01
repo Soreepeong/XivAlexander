@@ -67,6 +67,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void RepopulateMenu_GameFix(HMENU hParentMenu);
 		void RepopulateMenu_LoginSessions(HMENU hMenu);
 		void RepopulateMenu_AudioResampler(HMENU hMenu);
+		void RepopulateMenu_DirectoryChoices(HMENU hMenu, UINT commandId, const std::vector<std::filesystem::path>& dirs);
 		void SetMenuStates() const;
 		void RegisterTrayIcon();
 		void RemoveTrayIcon();

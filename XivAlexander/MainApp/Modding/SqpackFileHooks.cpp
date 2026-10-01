@@ -20,7 +20,11 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 			std::shared_ptr<const xivres::sqpack::generator::data_view_stream> View;
 			Utils::Win32::Handle Original;
+
+			std::shared_ptr<const xivres::sqpack::generator::data_view_stream> DataView;
 		};
+
+		static constexpr size_t MaxEntriesDescribedPerRead = 8;
 
 		SqpackRebuildLock& Gate;
 		const Opener Open;
@@ -45,6 +49,34 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			return it == OpenedFiles.end() ? nullptr : it->second;
 		}
 
+		static std::wstring DescribeRead(const OpenedFile& file, uint64_t offset, uint64_t length) {
+			if (!file.DataView)
+				return {};
+
+			std::wstring result;
+			if (offset < file.DataView->header_size())
+				result += L" [header]";
+
+			const auto entries = file.DataView->entries_in(offset, length);
+			for (size_t i = 0; i < entries.size(); i++) {
+				if (i == MaxEntriesDescribedPerRead) {
+					result += std::format(L" [and {} more]", entries.size() - i);
+					break;
+				}
+
+				const auto& entry = *entries[i];
+				const auto start = static_cast<uint64_t>(entry.locator().offset());
+				const auto from = (std::max)(offset, start);
+				const auto to = (std::min)(offset + length, start + entry.entry_size());
+				result += std::format(L" [{}{} @0x{:X}+0x{:X}: 0x{:X}+0x{:X}]",
+					xivres::util::unicode::convert<std::wstring>(entry.path_spec().text()),
+					entry.swapped() ? L" (replaced)" : L"",
+					start, entry.entry_size(),
+					from - start, to - from);
+			}
+			return result;
+		}
+
 		Implementation(SqpackRebuildLock& ioGate, Opener opener)
 			: Gate(ioGate)
 			, Open(std::move(opener))
@@ -67,7 +99,8 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 						if (auto stream = Open(lpFileName)) {
 							auto file = std::make_shared<OpenedFile>(Utils::Win32::Event::Create(), lpFileName, LARGE_INTEGER{}, std::move(stream));
-							if (auto view = std::dynamic_pointer_cast<const xivres::sqpack::generator::data_view_stream>(file->Stream); view && view->original_size()) {
+							file->DataView = std::dynamic_pointer_cast<const xivres::sqpack::generator::data_view_stream>(file->Stream);
+							if (auto view = file->DataView; view && view->original_size()) {
 								try {
 									file->Original = Utils::Win32::Handle::FromCreateFile(lpFileName, GENERIC_READ, dwShareMode | FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL);
 									file->View = std::move(view);
@@ -126,12 +159,12 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 								*lpNumberOfBytesRead = static_cast<DWORD>(read);
 
 							if (read != nNumberOfBytesToRead) {
-								Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, requested {} bytes, read {} bytes",
-									vpath.Path.filename(), nNumberOfBytesToRead, read);
+								Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {} @0x{:X}, requested {} bytes, read {} bytes{}",
+									vpath.Path.filename(), fp, nNumberOfBytesToRead, read, DescribeRead(vpath, fp, nNumberOfBytesToRead));
 							} else {
 								if (Config->Runtime.LogAllDataFileRead) {
-									Logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, L"ReadFile: {}, requested {} bytes",
-										vpath.Path.filename(), nNumberOfBytesToRead);
+									Logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, L"ReadFile: {} @0x{:X}, requested {} bytes{}",
+										vpath.Path.filename(), fp, nNumberOfBytesToRead, DescribeRead(vpath, fp, nNumberOfBytesToRead));
 								}
 							}
 

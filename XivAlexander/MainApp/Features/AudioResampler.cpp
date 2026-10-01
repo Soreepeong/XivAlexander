@@ -289,9 +289,10 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 
 			if (out.empty()) {
-				if (queued > 0)
+				if (framesIn != 0 && queued > 0)
 					return 0;
-				out.assign(channels, 0.f);
+				if (queued == 0)
+					out.assign(channels, 0.f);
 			}
 
 			const auto result = SubmitHook->bridge(voice, out.data(), out.size() * sizeof(float), context, v->ToMixFrames(startFrame));

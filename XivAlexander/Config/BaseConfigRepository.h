@@ -148,6 +148,8 @@ namespace XivAlexander {
 
 		std::vector<ConfigItemBase*> m_allItems;
 
+		[[nodiscard]] std::string FindParentKey(const nlohmann::json& totalConfig) const;
+
 	protected:
 		xivres::util::on_dtor::multi m_cleanup;
 

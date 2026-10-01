@@ -45,6 +45,7 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 	TtmpLibrary Library;
 	TtmpLibrary::Reservations PackReservations;
 	FutureReservations Reservations;
+	std::map<const Pack*, std::vector<xivres::path_spec>> AppliedReplacementFiles;
 
 	std::shared_ptr<xivres::sqpack::generator::sqpack_view_entry_cache> DataViewBuffer;
 	std::shared_ptr<const xivres::stream> EmptyScd;
@@ -95,6 +96,10 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 			}
 			ReflectUsedEntries();
 		});
+		Cleanup += Config->Runtime.AdditionalGameResourceFileEntryRootDirectories.OnChange([this] {
+			Sources.RescanReplacementRoots();
+			ReflectUsedEntries();
+		});
 	}
 
 	~Implementation() {
@@ -118,6 +123,10 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 		const auto views = pack ? Queue.EnsureBuilt(*pack) : nullptr;
 		if (!views)
 			throw std::out_of_range("entry not found");
+
+		const auto replacements = Sources.GetReplacementFiles(pack->Key, pack->IndexPath);
+		if (const auto it = replacements->find(pathSpec); it != replacements->end())
+			return std::make_shared<xivres::unpacked_stream>(it->second.Stream);
 
 		auto it = views->HashOnlyEntries.find(pathSpec);
 		if (it == views->HashOnlyEntries.end()) {
@@ -164,6 +173,29 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 			return pack && packs.contains(pack) ? pack : nullptr;
 		};
 
+		// Step. Find replacement files
+		for (const auto pack : packs) {
+			if (!pack->Views)
+				continue;
+			auto& view = const_cast<xivres::sqpack::generator::sqpack_views&>(*pack->Views);
+
+			auto& applied = AppliedReplacementFiles[pack];
+			for (const auto& pathSpec : applied)
+				ReflectUsedEntries_FindPlaceholders(view, tempData, pathSpec);
+			applied.clear();
+
+			for (const auto& [pathSpec, file] : *Sources.GetReplacementFiles(pack->Key, pack->IndexPath)) {
+				applied.emplace_back(pathSpec);
+				ReflectUsedEntries_FindPlaceholders(view, tempData, pathSpec);
+				if (const auto it = tempData.Replacements.find(pathSpec); it != tempData.Replacements.end()) {
+					std::get<1>(it->second) = file.Stream;
+					std::get<2>(it->second) = std::format("Replacement file {}", xivres::util::unicode::convert<std::string>(file.File.wstring()));
+				} else {
+					tempData.Unplaced.insert_or_assign(pathSpec, file.Stream);
+				}
+			}
+		}
+
 		// Step. Find voices to enable or disable
 		if (const auto soundPack = Queue.Find(SqpackPath / L"ffxiv/070000.win32.index2"); soundPack && packs.contains(soundPack) && soundPack->Views) {
 			const auto voBattle = xivres::path_spec::hash("sound/voice/vo_battle");
@@ -174,7 +206,7 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 				const auto provider = entry;
 				const auto& pathSpec = provider->path_spec();
 				if (pathSpec.path_hash() == voBattle || pathSpec.path_hash() == voCm || pathSpec.path_hash() == voEmote || pathSpec.path_hash() == voLine)
-					tempData.Replacements.insert_or_assign(pathSpec, std::make_tuple(provider, std::shared_ptr<xivres::stream_as_packed_stream>(), std::string()));
+					tempData.Replacements.try_emplace(pathSpec, provider, std::shared_ptr<xivres::packed_stream>(), std::string());
 
 				if ((pathSpec.path_hash() == voBattle && Config->Runtime.MuteVoice_Battle)
 					|| (pathSpec.path_hash() == voCm && Config->Runtime.MuteVoice_Cm)
@@ -286,7 +318,7 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 
 		const auto provider = &entryIt->second;
 		provider->update_path_spec(pathSpec);
-		tempData.Replacements.insert_or_assign(pathSpec, std::make_tuple(provider, std::shared_ptr<xivres::packed_stream>(), std::string()));
+		tempData.Replacements.try_emplace(pathSpec, provider, std::shared_ptr<xivres::packed_stream>(), std::string());
 	}
 
 	void ReflectUsedEntries_SetReplacementsFromTtmpEntry(
@@ -557,6 +589,7 @@ void XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::RescanTtmp(
 		const auto lock = LockTtmps();
 		m_pImpl->Library.Rescan(progressWindow);
 	}
+	m_pImpl->Sources.RescanReplacementRoots();
 	m_pImpl->ReflectUsedEntries();
 }
 

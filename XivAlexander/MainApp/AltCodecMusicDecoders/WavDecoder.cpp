@@ -66,14 +66,57 @@ bool XivAlexander::Apps::MainApp::WavDecoder::Finished() const {
 void XivAlexander::Apps::MainApp::WavDecoder::ResetBufferInternal() {
 	m_partialSize = 0;
 	m_payloadConsumed = 0;
+	m_frameInSize = 0;
+	m_frameOutOffset = 0;
+	m_frameOutSize = 0;
 }
 
 std::pair<uint32_t, uint32_t> XivAlexander::Apps::MainApp::WavDecoder::Decode(std::span<const uint8_t> data, std::span<uint8_t> out) {
 	if (m_payloadLength != 0)
 		data = data.subspan(0, std::min(data.size(), m_payloadLength - m_payloadConsumed));
-	const auto result = DecodeSamples(data, out);
+	const auto* const order = VorbisChannelOrderFromPcm(ChannelCount());
+	const auto result = order ? DecodeReordered(data, out, order) : DecodeSamples(data, out);
 	m_payloadConsumed += result.first;
 	return result;
+}
+
+std::pair<uint32_t, uint32_t> XivAlexander::Apps::MainApp::WavDecoder::DecodeReordered(std::span<const uint8_t> data, std::span<uint8_t> out, const uint8_t* order) {
+	const auto channels = ChannelCount();
+	const auto sourceBytes = m_sourceBits / 8;
+	const auto frameInBytes = channels * sourceBytes;
+	uint32_t consumed = 0;
+	uint32_t written = 0;
+
+	while (true) {
+		if (m_frameOutOffset < m_frameOutSize) {
+			const auto take = std::min<size_t>(m_frameOutSize - m_frameOutOffset, out.size() - written);
+			std::memcpy(out.data() + written, m_frameOut.data() + m_frameOutOffset, take);
+			m_frameOutOffset += static_cast<uint32_t>(take);
+			written += static_cast<uint32_t>(take);
+			if (m_frameOutOffset < m_frameOutSize)
+				break;
+		}
+
+		const auto take = std::min<size_t>(frameInBytes - m_frameInSize, data.size() - consumed);
+		std::memcpy(m_frameIn.data() + m_frameInSize, data.data() + consumed, take);
+		m_frameInSize += static_cast<uint32_t>(take);
+		consumed += static_cast<uint32_t>(take);
+		if (m_frameInSize < frameInBytes)
+			break;
+
+		for (uint32_t channel = 0; channel < channels; channel++) {
+			const auto* src = m_frameIn.data() + order[channel] * sourceBytes;
+			const auto value = sourceBytes == 1
+				? static_cast<int16_t>((static_cast<int>(*src) - 128) << 8)
+				: static_cast<int16_t>(static_cast<uint16_t>(src[sourceBytes - 2] | (src[sourceBytes - 1] << 8)));
+			std::memcpy(m_frameOut.data() + channel * sizeof value, &value, sizeof value);
+		}
+		m_frameInSize = 0;
+		m_frameOutOffset = 0;
+		m_frameOutSize = channels * static_cast<uint32_t>(sizeof(int16_t));
+	}
+
+	return {consumed, written};
 }
 
 std::pair<uint32_t, uint32_t> XivAlexander::Apps::MainApp::WavDecoder::DecodeSamples(std::span<const uint8_t> data, std::span<uint8_t> out) {

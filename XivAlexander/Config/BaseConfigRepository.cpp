@@ -49,11 +49,24 @@ void XivAlexander::BaseConfigRepository::Reload(const std::filesystem::path& fro
 		m_logger->FormatDefaultLanguage(LogCategory::General, IDS_LOG_NEW_CONFIG, xivres::util::unicode::convert<std::string>((from.empty() ? m_sConfigPath : from).wstring()));
 	}
 
-	const auto& currentConfig = m_parentKey.empty() ? totalConfig : totalConfig[m_parentKey];
+	const auto& currentConfig = m_parentKey.empty() ? totalConfig : totalConfig[FindParentKey(totalConfig)];
 
 	const auto suppressSave = WithSuppressSave();
 	for (const auto& item : m_allItems)
 		item->LoadFrom(currentConfig);
+}
+
+std::string XivAlexander::BaseConfigRepository::FindParentKey(const nlohmann::json& totalConfig) const {
+	if (!totalConfig.is_object())
+		return m_parentKey;
+
+	const auto wanted = xivres::util::unicode::convert<std::wstring>(m_parentKey);
+	for (const auto& [key, value] : totalConfig.items()) {
+		const auto candidate = xivres::util::unicode::convert<std::wstring>(key);
+		if (CompareStringOrdinal(candidate.c_str(), static_cast<int>(candidate.size()), wanted.c_str(), static_cast<int>(wanted.size()), TRUE) == CSTR_EQUAL)
+			return key;
+	}
+	return m_parentKey;
 }
 
 xivres::util::on_dtor XivAlexander::BaseConfigRepository::WithSuppressSave() {
@@ -93,7 +106,7 @@ void XivAlexander::BaseConfigRepository::Save(const std::filesystem::path& to) {
 		totalConfig = nlohmann::json::object();
 	}
 
-	nlohmann::json& currentConfig = m_parentKey.empty() ? totalConfig : totalConfig[m_parentKey];
+	nlohmann::json& currentConfig = m_parentKey.empty() ? totalConfig : totalConfig[FindParentKey(totalConfig)];
 	for (const auto& item : m_allItems)
 		item->SaveTo(currentConfig);
 

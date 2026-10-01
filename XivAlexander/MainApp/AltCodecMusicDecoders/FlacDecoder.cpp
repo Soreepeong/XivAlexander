@@ -149,7 +149,7 @@ std::pair<uint32_t, uint32_t> XivAlexander::Apps::MainApp::FlacDecoder::Decode(s
 	auto consumed = static_cast<uint32_t>(drop);
 
 	if (m_progress != Progress::Unrecoverable && wanted == out.size() && Queued().Writable() == 0) {
-		const auto queued = Queued().Readable();
+		const auto queued = Queued().Readable() - drop;
 		m_garbageLength += queued;
 		Stream::flush();
 		m_streamOffset = m_streamOffsetNextFrame = m_streamOffset + (queued - m_queueOffset); // assume drained
@@ -170,6 +170,9 @@ std::pair<uint32_t, uint32_t> XivAlexander::Apps::MainApp::FlacDecoder::Decode(s
 void XivAlexander::Apps::MainApp::FlacDecoder::ResetBufferInternal() {
 	if (m_progress == Progress::AwaitingPayload)
 		return;
+
+	if (m_progress == Progress::Unrecoverable && get_state() != FLAC__STREAM_DECODER_UNINITIALIZED)
+		m_progress = Progress::SearchForFrameSync;
 
 	Stream::flush();
 	m_queueOffset = 0;
@@ -212,11 +215,12 @@ FLAC__StreamDecoderWriteStatus XivAlexander::Apps::MainApp::FlacDecoder::write_c
 		return FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE;
 
 	auto* const dst = out.data();
+	const auto* const order = VorbisChannelOrderFromPcm(channels);
 	const auto interleave = [&](auto&& narrow) {
 		size_t pos = 0;
 		for (uint32_t i = 0; i < samples; i++) {
 			for (uint32_t channel = 0; channel < channels; channel++, pos += sizeof(int16_t)) {
-				const auto value = narrow(buffer[channel][i]);
+				const auto value = narrow(buffer[order ? order[channel] : channel][i]);
 				std::memcpy(dst + pos, &value, sizeof value);
 			}
 		}

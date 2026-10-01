@@ -1,7 +1,9 @@
 #pragma once
 
 #include <filesystem>
+#include <map>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 #include <xivres/sqpack.generator.h>
@@ -21,10 +23,23 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	class FutureReservations;
 
 	class PackSources {
+	public:
+		struct ReplacementFile {
+			std::filesystem::path File;
+			std::shared_ptr<const xivres::packed_stream> Stream;
+		};
+
+		using ReplacementFiles = std::map<xivres::path_spec, ReplacementFile, xivres::path_spec::AllHashComparator>;
+
+	private:
 		const std::shared_ptr<Config> m_config;
 		const std::shared_ptr<Misc::Logger> m_logger;
 		const std::vector<std::filesystem::path> m_additionalGameDirectories;
-		const std::vector<std::filesystem::path> m_replacementRoots;
+
+		mutable std::mutex m_replacementMtx;
+		std::vector<std::filesystem::path> m_replacementRoots;
+		uint64_t m_replacementGeneration = 0;
+		mutable std::map<std::string, std::shared_ptr<const ReplacementFiles>> m_replacementFiles;
 
 	public:
 		PackSources();
@@ -36,9 +51,12 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			const TtmpLibrary::Reservations& modpackReservations,
 			FutureReservations& futureReservations) const;
 
+		[[nodiscard]] std::shared_ptr<const ReplacementFiles> GetReplacementFiles(const std::string& packKey, const std::filesystem::path& indexPath) const;
+		void RescanReplacementRoots();
+
 	private:
 		[[nodiscard]] std::vector<std::filesystem::path> CollectReplacementRoots() const;
 		[[nodiscard]] std::vector<std::filesystem::path> CollectAdditionalGameDirectories() const;
-		void AddReplacementFiles(xivres::sqpack::generator& creator, const std::filesystem::path& indexPath) const;
+		[[nodiscard]] ReplacementFiles ScanReplacementFiles(const std::vector<std::filesystem::path>& roots, const std::string& packKey, const std::filesystem::path& indexPath) const;
 	};
 }
