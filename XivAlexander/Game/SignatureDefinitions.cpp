@@ -7,6 +7,7 @@
 
 #include "Game/ResolveContext.h"
 #include "Game/Signatures.h"
+#include "Utils/Win32/Process.h"
 
 namespace XivAlexander::Game {
 	const Signatures::RegexSignature SqPackIndexEntryCount(R"([\x48\x49\x4C\x4D]\x39[\x80-\xBF](....)\x75\x05\xC1[\xE8-\xEF]\x03\xEB\x03\xC1[\xE8-\xEF]\x04)");
@@ -54,6 +55,12 @@ namespace XivAlexander::Game {
 
 	// Same as what NoKillPlugin (Bluefissure) hooks: reads the error code from the dialog result right away.
 	const Signatures::RegexSignature LobbyErrorDialog(R"(\x40\x53\x48\x83\xEC\x30\x48\x8B\xD9\x49\x8B\xC8\xE8....\x8B\xD0)");
+
+	// The IME mode getter starts by asking ImmGetOpenStatus, then ImmGetConversionStatus, about the HIMC in a global;
+	// it returns early when closed with a jz, or with a jnz over the return before 7.0. Holds since 5.55.
+	const Signatures::RegexSignature ImeStatusQueries(R"(\x48\x8B\x0D(....)(?:\xE8|\xFF\x15)(....)\x85\xC0(?:\x74.|\x0F\x84....|\x75.{1,16}?)\x48\x8B\x0D(....)(?:\x4C\x8D\x44\x24.\x48\x8D\x54\x24.|\x48\x8D\x54\x24.\x4C\x8D\x44\x24.)(?:\xE8|\xFF\x15)(....))");
+	// bt eax, 8: tests IME_CMODE_NOCONVERSION, which only the IME mode getter does after those queries.
+	const Signatures::RegexSignature ImeNoConversionTest(R"(\x0F\xBA\xE0\x08)");
 }
 
 namespace XivAlexander::Game::Resolved {
@@ -128,6 +135,26 @@ namespace XivAlexander::Game::Resolved {
 			std::ranges::sort(result, [](const auto& a, const auto& b) { return a.Offset < b.Offset; });
 			return result;
 		}
+
+		const void* ImportSlot(const ResolveContext& ctx, const char* dllName, const char* functionName) {
+			const auto slot = Utils::Win32::Process::Current().FindImportedFunction(*ctx.Module(), dllName, functionName).first;
+			ctx.Require(slot != nullptr, ResolveError::NotFound, "{}!{} is not imported", dllName, functionName);
+			return slot;
+		}
+
+		// The import slot a call reads its target from: call [rip+slot], or call to a jmp [rip+slot] thunk.
+		const void* ImportSlotCalledAt(const ResolveContext& ctx, const ScanResult& m, size_t group) {
+			const auto target = m.ResolveAddress<const uint8_t*>(group);
+			if (static_cast<const uint8_t*>(m.begin(group))[-1] != 0xE8)
+				return target;
+			if (!ctx.InSection(target, ".text"))
+				return nullptr;
+
+			const auto jump = target[0] == 0x48 ? target + 1 : target;
+			if (jump[0] != 0xFF || jump[1] != 0x25)
+				return nullptr;
+			return jump + 6 + *reinterpret_cast<const int32_t*>(jump + 2);
+		}
 	}
 
 	std::string to_string(const MssAsiFunctions& value) {
@@ -155,6 +182,12 @@ namespace XivAlexander::Game::Resolved {
 			Signatures::Describe(value.C2S_ActionRequest),
 			Signatures::Describe(value.C2S_ActionRequestGroundTargeted),
 			value.PayloadWriters.size());
+	}
+
+	std::string to_string(const ImeModeGetter& value) {
+		return std::format("function {}, input context {}",
+			Signatures::Describe(value.Function),
+			Signatures::Describe(value.InputContext));
 	}
 
 	const Signatures::ComplexSignature<std::vector<SqPackIndexLookupFn>> SqPackIndexLookupFunctions("SqPackIndexLookupFunctions", [](ResolveContext& ctx) {
@@ -406,5 +439,33 @@ namespace XivAlexander::Game::Resolved {
 	const Signatures::ComplexSignature<LobbyErrorDialogFn> LobbyErrorDialogFunction("LobbyErrorDialogFunction", [](ResolveContext& ctx) -> LobbyErrorDialogFn {
 		const auto match = ctx.Unique(LobbyErrorDialog, ctx.Text(), "lobby error dialog");
 		return Address(ctx.FunctionStartingAt(&match.Get<const uint8_t>(0), "lobby error dialog").data());
+	});
+
+	const Signatures::ComplexSignature<ImeModeGetter> ImeModeGetterFunction("ImeModeGetterFunction", [](ResolveContext& ctx) {
+		const auto openStatus = ImportSlot(ctx, "imm32.dll", "ImmGetOpenStatus");
+		const auto conversionStatus = ImportSlot(ctx, "imm32.dll", "ImmGetConversionStatus");
+
+		std::optional<ImeModeGetter> found;
+		for (const auto& m : ctx.All(ImeStatusQueries, ctx.Text())) {
+			const auto inputContext = m.ResolveAddress<void* const*>(1);
+			if (inputContext != m.ResolveAddress<void* const*>(3)
+				|| ImportSlotCalledAt(ctx, m, 2) != openStatus
+				|| ImportSlotCalledAt(ctx, m, 4) != conversionStatus)
+				continue;
+
+			// the queries are the first thing it does, right after reserving its stack
+			const auto fn = ctx.FunctionContaining(m.begin(0), "IME mode getter");
+			if (static_cast<const uint8_t*>(m.begin(0)) - fn.data() > 0x10 || !ctx.Find(ImeNoConversionTest, fn))
+				continue;
+
+			ctx.Require(!found, ResolveError::Ambiguous, "IME mode getters at {} and {}",
+				Signatures::Describe(found ? found->Function : nullptr), Signatures::Describe(fn.data()));
+			found = ImeModeGetter{
+				.Function = Address(fn.data()),
+				.InputContext = static_cast<void* const*>(ctx.RequireInSection(inputContext, ".data", "input context")),
+			};
+		}
+		ctx.Require(found.has_value(), ResolveError::NotFound, "IME mode getter not found");
+		return *found;
 	});
 }

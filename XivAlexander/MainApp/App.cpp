@@ -11,6 +11,7 @@
 #include "MainApp/Features/AllIpcMessageLogger.h"
 #include "MainApp/Features/AltCodecMusicSupport.h"
 #include "MainApp/Features/AudioResampler.h"
+#include "MainApp/Features/ImeModeIndicator.h"
 #include "MainApp/Features/IpcTypeFinder.h"
 #include "MainApp/Features/LoginSessions.h"
 #include "MainApp/Features/MainThreadTimingHandler.h"
@@ -89,6 +90,7 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 	std::optional<Features::LoginSessions> LoginSessions;
 
 	// Optional
+	std::optional<Features::ImeModeIndicator> ImeModeIndicator;
 	std::optional<Features::NetworkTimingHandler> NetworkTimingHandler;
 	std::optional<Features::MainThreadTimingHandler> MainThreadTimingHandler;
 	std::optional<Features::IpcTypeFinder> IpcTypeFinder;
@@ -166,6 +168,8 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_SOXR));
 		if (runtime.UseAltCodecMusicSupport)
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_ALTCODEC));
+		if (runtime.UseImeModeIndicator)
+			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_IMEMODEINDICATOR));
 		return features;
 	}
 
@@ -311,6 +315,19 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 			};
 			Cleanup += Config->Runtime.UseAltCodecMusicSupport.AddAndCallOnChange(updateAltCodecMusicSupport, [this] { AltCodecMusicSupport->Disable(); });
 			Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange(updateAltCodecMusicSupport);
+		}
+
+		{
+			const auto updateImeModeIndicator = [this] {
+				if (Config->Runtime.UseImeModeIndicator && Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::General, "IME mode indicator for Korean and Chinese IMEs")) {
+					if (!ImeModeIndicator)
+						ImeModeIndicator.emplace();
+				} else {
+					ImeModeIndicator.reset();
+				}
+			};
+			Cleanup += Config->Runtime.UseImeModeIndicator.AddAndCallOnChange(updateImeModeIndicator, [this] { ImeModeIndicator.reset(); });
+			Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange(updateImeModeIndicator);
 		}
 	}
 };

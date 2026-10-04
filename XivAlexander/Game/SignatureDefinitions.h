@@ -37,8 +37,18 @@ namespace XivAlexander::Game::Resolved {
 		std::optional<uint16_t> C2S_ActionRequestGroundTargeted;
 	};
 
+	// TextService's IME mode for the indicator in the chat input: 0 when closed, otherwise the indicator shows U+E01F + mode.
+	using ImeModeGetterFn = uint32_t(*)(void* textService);
+
+	struct ImeModeGetter {
+		ImeModeGetterFn Function{};
+		// The HIMC the game keeps for its window, which the getter queries.
+		void* const* InputContext{};
+	};
+
 	[[nodiscard]] std::string to_string(const MssAsiFunctions& value);
 	[[nodiscard]] std::string to_string(const IpcTypeCandidates& value);
+	[[nodiscard]] std::string to_string(const ImeModeGetter& value);
 
 	using SqPackIndexLookupFn = bool(*)(void* sqpackManager, const char* path, uint32_t* outOffset, uint32_t* outDatIndex);
 	using StringIndirectionResolverFn = const char8_t*(*)(const char8_t* str);
@@ -68,4 +78,6 @@ namespace XivAlexander::Game::Resolved {
 
 	extern const Signatures::ComplexSignature<LobbyLoginFn> LobbyLoginFunction;
 	extern const Signatures::ComplexSignature<LobbyErrorDialogFn> LobbyErrorDialogFunction;
+
+	extern const Signatures::ComplexSignature<ImeModeGetter> ImeModeGetterFunction;
 }

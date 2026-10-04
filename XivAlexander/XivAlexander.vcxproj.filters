@@ -132,6 +132,9 @@
     <ClCompile Include="MainApp\Features\Modding\VirtualSqPacks.cpp">
       <Filter>MainApp\Features</Filter>
     </ClCompile>
+    <ClCompile Include="MainApp\Features\ImeModeIndicator.cpp">
+      <Filter>MainApp\Features</Filter>
+    </ClCompile>
     <ClCompile Include="MainApp\Features\LoginSessions.cpp">
       <Filter>MainApp\Features</Filter>
     </ClCompile>
@@ -248,6 +251,9 @@
       <Filter>Misc</Filter>
     </ClInclude>
     <ClInclude Include="MainApp\Features\Modding\VirtualSqPacks.h">
+      <Filter>MainApp\Features</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\Features\ImeModeIndicator.h">
       <Filter>MainApp\Features</Filter>
     </ClInclude>
     <ClInclude Include="MainApp\Features\LoginSessions.h">

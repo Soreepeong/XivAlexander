@@ -178,6 +178,7 @@ void XivAlexander::RuntimeConfigRepository::DecideVersionSensitiveFeatures(Versi
 			UseModding = false;
 			EnabledPatchCodes = std::vector<std::string>();
 			UseAltCodecMusicSupport = false;
+			UseImeModeIndicator = false;
 			AudioOutputSamplingRate = 48000U;
 			auto soxr = SoxrResampler.Value();
 			soxr.Enabled = false;

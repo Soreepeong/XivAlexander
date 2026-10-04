@@ -130,7 +130,6 @@ namespace XivAlexander {
 		ConfigItem<bool> LogReplacedPaths{this, "LogReplacedPaths", false};
 		ConfigItem<bool> LogDialogueCharacterNames{this, "LogDialogueCharacterNames", false};
 
-
 		ConfigItem<bool> MuteVoice_Battle{this, "MuteVoice_Battle", false};
 		ConfigItem<bool> MuteVoice_Cm{this, "MuteVoice_Cm", false};
 		ConfigItem<bool> MuteVoice_Emote{this, "MuteVoice_Emote", false};
@@ -139,6 +138,8 @@ namespace XivAlexander {
 		ConfigItem<bool> UseAltCodecMusicSupport{this, "UseAltCodecMusicSupport", false};
 		ConfigItem<SoxrResamplerConfig> SoxrResampler{this, "SoxrResampler", {}, [](const SoxrResamplerConfig& v) { return v.Sanitized(); }};
 		ConfigItem<uint32_t> AudioOutputSamplingRate{this, "AudioOutputSamplingRate", 48000U};
+
+		ConfigItem<bool> UseImeModeIndicator{this, "UseImeModeIndicator", false};
 
 		RuntimeConfigRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
 		~RuntimeConfigRepository() override;

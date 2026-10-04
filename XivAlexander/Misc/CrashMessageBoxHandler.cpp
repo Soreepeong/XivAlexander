@@ -217,7 +217,10 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 	// https://stackoverflow.com/a/28276227
 	//
 
-	static inline std::wstring DumpStackTrace(const CONTEXT& context, HANDLE hThread = GetCurrentThread()) {
+	static inline std::wstring DumpStackTrace(const CONTEXT& originalContext, HANDLE hThread = GetCurrentThread()) {
+		// StackWalk64 unwinds the context it is given; keep the caller's (possibly the exception's) intact.
+		auto context = originalContext;
+
 		union Symbol {
 			char Buffer[sizeof(SYMBOL_INFOW) + sizeof(wchar_t) * 1024]{};
 			SYMBOL_INFOW Data;
@@ -291,7 +294,7 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 						builder << "\n";
 				} else
 					builder << "* (No Symbols: PC == 0)\n";
-				if (!StackWalk64(imageType, GetCurrentProcess(), hThread, &frame, const_cast<PVOID>(reinterpret_cast<const void*>(&context)),
+				if (!StackWalk64(imageType, GetCurrentProcess(), hThread, &frame, &context,
 					nullptr, SymFunctionTableAccess64, SymGetModuleBase64, nullptr))
 					break;
 			} while (frame.AddrReturn.Offset != 0 && n++ < 128);
@@ -302,6 +305,32 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 		} catch (const std::exception& e) {
 			return std::format(L"Error occurred while trying to capture stack trace: {}", e.what());
 		}
+	}
+
+	static std::wstring DumpRegisters(const CONTEXT& context) {
+#ifdef _M_X64
+		return std::format(
+			L"rax={:016X} rbx={:016X} rcx={:016X}\n"
+			L"rdx={:016X} rsi={:016X} rdi={:016X}\n"
+			L"rip={:016X} rsp={:016X} rbp={:016X}\n"
+			L" r8={:016X}  r9={:016X} r10={:016X}\n"
+			L"r11={:016X} r12={:016X} r13={:016X}\n"
+			L"r14={:016X} r15={:016X} efl={:08X}\n",
+			context.Rax, context.Rbx, context.Rcx,
+			context.Rdx, context.Rsi, context.Rdi,
+			context.Rip, context.Rsp, context.Rbp,
+			context.R8, context.R9, context.R10,
+			context.R11, context.R12, context.R13,
+			context.R14, context.R15, context.EFlags);
+#else
+		return std::format(
+			L"eax={:08X} ebx={:08X} ecx={:08X} edx={:08X}\n"
+			L"esi={:08X} edi={:08X} eip={:08X} esp={:08X}\n"
+			L"ebp={:08X} efl={:08X}\n",
+			context.Eax, context.Ebx, context.Ecx, context.Edx,
+			context.Esi, context.Edi, context.Eip, context.Esp,
+			context.Ebp, context.EFlags);
+#endif
 	}
 
 	static std::wstring ReadableAddress(DWORD64 address, std::vector<Utils::Win32::LoadedModule>& modules) {
@@ -389,6 +418,8 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 						errStr << std::format(L"Param #{}: {:x}\n", i, excRec->ExceptionInformation[i]);
 					}
 				}
+				if (excInfo->ContextRecord && !IsBadReadPtr(excInfo->ContextRecord, sizeof *excInfo->ContextRecord))
+					errStr << L"Registers:\n" << DumpRegisters(*excInfo->ContextRecord);
 				errStr << L"Stack trace:\n" << DumpStackTrace(*excInfo->ContextRecord);
 				stackTraceDisplayed = true;
 			} catch (const std::exception& e) {
