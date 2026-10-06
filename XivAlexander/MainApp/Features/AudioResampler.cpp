@@ -3,6 +3,7 @@
 
 #include <array>
 #include <atomic>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
@@ -35,6 +36,10 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		constexpr size_t OutputBufferCount = VoiceMaxQueuedBuffers + 1;
 
+		// What the engine submits a buffer with when a MARK falls in it (7.56h: FUN_141eb13e0 decides,
+		// the buffer start callback 0x141eb1370 acts on it when the buffer starts playing).
+		constexpr uint64_t MarkContext = 1;
+
 		bool Write(uint32_t* target, uint32_t value) {
 			DWORD oldProtect;
 			if (!VirtualProtect(target, sizeof value, PAGE_EXECUTE_READWRITE, &oldProtect))
@@ -58,6 +63,23 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 			std::array<std::vector<float>, OutputBufferCount> Output;
 			size_t NextOutput = 0;
+
+			int64_t InFrames = 0;
+			int64_t OutFrames = 0;
+			int64_t InBase = 0;
+			int64_t OutBase = 0;
+			bool Drained = false;
+			std::deque<int64_t> PendingMarks;
+
+			void ResetPosition() {
+				InFrames = OutFrames = InBase = OutBase = 0;
+				Drained = false;
+				PendingMarks.clear();
+			}
+
+			[[nodiscard]] int64_t ToOutputFrame(int64_t inFrame) const {
+				return OutBase + std::llround(static_cast<double>(inFrame - InBase) * Ratio);
+			}
 
 			[[nodiscard]] size_t SourceFrameBytes() const {
 				return static_cast<size_t>(Channels) * (SourceFormat == VoiceFormat::Int16 ? sizeof(int16_t) : sizeof(float));
@@ -280,9 +302,21 @@ namespace XivAlexander::Apps::MainApp::Features {
 			auto& out = v->Output[v->NextOutput];
 			out.clear();
 
+			if (v->Drained) {
+				v->InBase = v->InFrames;
+				v->OutBase = v->OutFrames;
+				v->Drained = false;
+			}
+			const auto marked = context == MarkContext;
+			if (marked)
+				v->PendingMarks.push_back(v->ToOutputFrame(v->InFrames));
+			v->InFrames += static_cast<int64_t>(framesIn);
+
 			auto ok = v->Resampler->Process(data, framesIn, out);
-			if (ok && v->EndOfData && *v->EndOfData != 0)
+			if (ok && v->EndOfData && *v->EndOfData != 0) {
 				ok = v->Resampler->Drain(out);
+				v->Drained = true;
+			}
 			if (!ok) {
 				Logger->Format<LogLevel::Error>(LogCategory::AudioResampler,
 					"voice {:p}: {} failed on {} frames", voice, v->Resampler->Name(), framesIn);
@@ -295,10 +329,19 @@ namespace XivAlexander::Apps::MainApp::Features {
 					out.assign(channels, 0.f);
 			}
 
-			const auto result = SubmitHook->bridge(voice, out.data(), out.size() * sizeof(float), context, v->ToMixFrames(startFrame));
+			const auto framesOut = static_cast<int64_t>(out.size() / channels);
+			const auto bufferEnd = v->OutFrames + framesOut;
+			auto marksHere = 0;
+			for (auto it = v->PendingMarks.begin(); it != v->PendingMarks.end() && *it < bufferEnd; ++it)
+				++marksHere;
+			const auto contextOut = marksHere ? MarkContext : marked ? 0 : context;
+
+			const auto result = SubmitHook->bridge(voice, out.data(), out.size() * sizeof(float), contextOut, v->ToMixFrames(startFrame));
 			if (result != 0)
 				return result;
 
+			v->PendingMarks.erase(v->PendingMarks.begin(), v->PendingMarks.begin() + marksHere);
+			v->OutFrames = bufferEnd;
 			v->NextOutput = (v->NextOutput + 1) % OutputBufferCount;
 			return result;
 		}
@@ -334,6 +377,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 					if (const auto v = Find(voice)) {
 						const auto lock = std::lock_guard(v->Mtx);
 						v->Resampler->Reset();
+						v->ResetPosition();
 					}
 					return result;
 				});
