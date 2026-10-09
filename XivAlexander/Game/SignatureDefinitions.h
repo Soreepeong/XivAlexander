@@ -198,6 +198,7 @@ namespace XivAlexander::Game::Resolved {
 	extern const Signatures::ComplexSignature<void* const*> CullingManagerInstance;
 	extern const Signatures::ComplexSignature<GraphicsNotifiers> GraphicsNotifierList;
 	extern const Signatures::ComplexSignature<JobPoolWake> JobPoolWakeFunctions;
+	extern const Signatures::ComplexSignature<JobListKickFn> JobListKickFunction;
 	extern const Signatures::ComplexSignature<SkeletonPoseSyncWalkFn> SkeletonPoseSyncWalkFunction;
 	extern const Signatures::ComplexSignature<CullingVisibilityClear> CullingVisibilityClearLoop;
 	extern const Signatures::ComplexSignature<GraphicsAllocatorFreeFn> GraphicsAllocatorFreeFunction;

@@ -134,6 +134,128 @@ namespace XivAlexander::Apps::MainApp::Features {
 			void SetEnabled(bool, const FrameState&) override {}
 		};
 
+		/// As filled by JobList vf1: claim function, its object, then 16 bytes the claim function reads.
+		struct JobDescriptor {
+			void* Claim;
+			void* Owner;
+			uint8_t State[0x10];
+		};
+
+		using JobClaimFn = void*(*)(void* owner, void* state, void*** argument, int32_t* remaining);
+
+		/// As InnerThread::Run runs a claimed task.
+		void RunTask(void* task, void** argument, void* context) {
+			if (argument)
+				VirtualFunction<void(*)(void*, void*, void*)>(task, 2)(task, context, *argument);
+			else
+				VirtualFunction<void(*)(void*, void*)>(task, 1)(task, context);
+		}
+
+		/// Runs a job list on this thread instead of kicking it, through the list's own claim and task functions, so the
+		/// list ends up exactly as a worker would leave it. Returns what the kick would.
+		uint32_t RunJobListInline(void* taskManager, void* jobList) {
+			// item count
+			if (!VirtualFunction<uint32_t(*)(void*)>(jobList, 4)(jobList))
+				return 0;
+
+			// Prepare: waits for the previous run, resets counters
+			VirtualFunction<void(*)(void*)>(jobList, 2)(jobList);
+			JobDescriptor descriptor{};
+			VirtualFunction<JobDescriptor*(*)(void*, JobDescriptor*)>(jobList, 1)(jobList, &descriptor);
+
+			// Same steps as InnerThread::Run: claim a task, run it with the pool context.
+			const auto context = static_cast<uint8_t*>(taskManager) + TaskManagerPoolContextOffset;
+			while (true) {
+				void** argument = nullptr;
+				int32_t remaining = 0;
+				const auto task = reinterpret_cast<JobClaimFn>(descriptor.Claim)(descriptor.Owner, descriptor.State, &argument, &remaining);
+				if (!task)
+					break;
+
+				RunTask(task, argument, context);
+				if (!remaining)
+					break;
+			}
+
+			return 1;
+		}
+
+		/// TaskManager::KickJobList, for every fix that runs some job lists itself: MinHook takes one hook per function.
+		class JobListKick {
+		public:
+			class Filter {
+			public:
+				/// Whether it took the list; the kick then returns result.
+				virtual bool OnKick(void* taskManager, void* jobList, uint32_t& result) = 0;
+
+			protected:
+				~Filter() = default;
+			};
+
+		private:
+			std::optional<PointerFunctionOf<Resolved::JobListKickFn>> m_kick;
+			std::string m_error;
+			std::array<std::atomic<Filter*>, 2> m_filters{};
+			xivres::util::on_dtor m_hook;
+
+		public:
+			JobListKick() {
+				Resolved::JobListKickFn kick;
+				if (const auto status = Resolved::JobListKickFunction.Resolve(kick); status != ResolveError::Ok) {
+					m_error = std::format("{}", status.Detail);
+					return;
+				}
+
+				try {
+					m_kick.emplace("TaskManager::KickJobList", kick);
+				} catch (const std::exception& e) {
+					m_error = e.what();
+				}
+			}
+
+			[[nodiscard]] bool Available() const { return !!m_kick; }
+			[[nodiscard]] const std::string& Error() const { return m_error; }
+
+			uint32_t Bridge(void* taskManager, void* jobList) {
+				return m_kick->bridge(taskManager, jobList);
+			}
+
+			/// Game main thread, like every toggle.
+			void Add(Filter* filter) {
+				for (auto& slot : m_filters) {
+					if (!slot) {
+						slot = filter;
+						break;
+					}
+				}
+
+				if (!m_hook)
+					m_hook = m_kick->SetHook([this](void* taskManager, void* jobList) { return KickDetour(taskManager, jobList); });
+			}
+
+			void Remove(Filter* filter) {
+				for (auto& slot : m_filters) {
+					if (slot == filter)
+						slot = nullptr;
+				}
+
+				if (std::ranges::all_of(m_filters, [](const auto& slot) { return !slot; }))
+					m_hook.clear();
+			}
+
+		private:
+			/// Main thread, job workers, the action timeline thread and bone physics all kick: filters must be cheap.
+			uint32_t KickDetour(void* taskManager, void* jobList) {
+				for (const auto& slot : m_filters) {
+					uint32_t result;
+					if (const auto filter = slot.load(std::memory_order_relaxed); filter && filter->OnKick(taskManager, jobList, result))
+						return result;
+				}
+
+				return m_kick->bridge(taskManager, jobList);
+			}
+		};
+
 		/// DeviceDX11::PostTick walks every Kernel::Notifier twice per frame (vtbl+0x10 before Present, vtbl+0x08 after
 		/// kicking the render thread). Every GPU resource is linked into that list for device events, but only CPU mapped
 		/// buffers do per frame work, so a crowd turns into ~50k cache missing calls that return immediately.
@@ -970,31 +1092,26 @@ namespace XivAlexander::Apps::MainApp::Features {
 		/// BGInstancingRenderer::Render waits for it a little later: ~20 kicks per frame, each with an enqueue, a worker
 		/// wake and an event wait, for ~1 us of work. This runs that one item on the main thread at kick time instead,
 		/// through the list's own claim and task functions, so the list ends up exactly as a worker would leave it.
-		class BgPrepInline final : public FixBase {
-			/// As filled by JobList vf1: claim function, its object, then 16 bytes the claim function reads.
-			struct JobDescriptor {
-				void* Claim;
-				void* Owner;
-				uint8_t State[0x10];
-			};
-
-			using ClaimFn = void*(*)(void* owner, void* state, void*** argument, int32_t* remaining);
-
+		class BgPrepInline final : public FixBase, JobListKick::Filter {
 			Resolved::BgInstancingPrep m_prep;
-			std::optional<PointerFunctionOf<Resolved::JobListKickFn>> m_kick;
+			const std::shared_ptr<JobListKick> m_kick;
 
 			void* m_prepList{};
 			DWORD m_mainThreadId{};
 
-			xivres::util::on_dtor::multi m_hooks;
 			bool m_enabled = false;
 
 		public:
-			BgPrepInline() {
+			explicit BgPrepInline(std::shared_ptr<JobListKick> kick)
+				: m_kick(std::move(kick)) {
 				if (!Resolve(Resolved::BgInstancingPrepJob, m_prep))
 					return;
 
-				m_kick.emplace("TaskManager::KickJobList", m_prep.Kick);
+				if (!m_kick->Available()) {
+					SetStatus(std::format("Unavailable: {}", m_kick->Error()));
+					return;
+				}
+
 				m_available = true;
 			}
 
@@ -1008,7 +1125,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 					return;
 
 				if (!enabled) {
-					m_hooks.clear();
+					m_kick->Remove(this);
 					m_enabled = false;
 					SetStatus("Off");
 					return;
@@ -1023,45 +1140,18 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 				m_prepList = static_cast<uint8_t*>(manager) + m_prep.PrepListOffset;
 				m_mainThreadId = GetCurrentThreadId();
-				m_hooks += m_kick->SetHook([this](void* taskManager, void* jobList) { return KickDetour(taskManager, jobList); });
+				m_kick->Add(this);
 				m_enabled = true;
 				SetStatus("On");
 			}
 
 		private:
-			/// Main thread, job workers, the action timeline thread and bone physics all kick: keep the filter cheap.
-			uint32_t KickDetour(void* taskManager, void* jobList) {
+			bool OnKick(void* taskManager, void* jobList, uint32_t& result) override {
 				if (jobList != m_prepList || GetCurrentThreadId() != m_mainThreadId)
-					return m_kick->bridge(taskManager, jobList);
+					return false;
 
-				// item count
-				if (!VirtualFunction<uint32_t(*)(void*)>(jobList, 4)(jobList))
-					return 0;
-
-				// Prepare: waits for the previous run, resets counters
-				VirtualFunction<void(*)(void*)>(jobList, 2)(jobList);
-				JobDescriptor descriptor{};
-				VirtualFunction<JobDescriptor*(*)(void*, JobDescriptor*)>(jobList, 1)(jobList, &descriptor);
-
-				// Same steps as InnerThread::Run: claim a task, run it with the pool context.
-				const auto context = static_cast<uint8_t*>(taskManager) + TaskManagerPoolContextOffset;
-				while (true) {
-					void** argument = nullptr;
-					int32_t remaining = 0;
-					const auto task = reinterpret_cast<ClaimFn>(descriptor.Claim)(descriptor.Owner, descriptor.State, &argument, &remaining);
-					if (!task)
-						break;
-
-					if (argument)
-						VirtualFunction<void(*)(void*, void*, void*)>(task, 2)(task, context, *argument);
-					else
-						VirtualFunction<void(*)(void*, void*)>(task, 1)(task, context);
-
-					if (!remaining)
-						break;
-				}
-
-				return 1;
+				result = RunJobListInline(taskManager, jobList);
+				return true;
 			}
 		};
 
@@ -1558,6 +1648,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				return true;
 			}
 		};
+
 	}
 }
 
@@ -1612,7 +1703,8 @@ struct XivAlexander::Apps::MainApp::Features::CrowdFix::Implementation {
 		Create<StagingPool>(Fix::PoolStagingBlocks);
 		Create<HiddenMinionFreeze>(Fix::FreezeHiddenMinions);
 		Create<PrepareWaitSkip>(Fix::SkipPrepareWait);
-		Create<BgPrepInline>(Fix::InlineBgPrep);
+		const auto kick = std::make_shared<JobListKick>();
+		Create<BgPrepInline>(Fix::InlineBgPrep, kick);
 		Create<HiddenHotbarSkip>(Fix::SkipHiddenHotbars);
 		Create<AnimTailParallel>(Fix::ParallelAnimTail);
 		Create<CharacterCullSplit>(Fix::SplitCharacterCulling);

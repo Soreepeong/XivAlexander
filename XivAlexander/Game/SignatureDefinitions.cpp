@@ -715,6 +715,10 @@ namespace XivAlexander::Game::Resolved {
 		};
 	});
 
+	const Signatures::ComplexSignature<JobListKickFn> JobListKickFunction("JobListKickFunction", [](ResolveContext& ctx) -> JobListKickFn {
+		return Address(UniqueFunctionStart(ctx, JobListKick, "job list kick"));
+	});
+
 	const Signatures::ComplexSignature<SkeletonPoseSyncWalkFn> SkeletonPoseSyncWalkFunction("SkeletonPoseSyncWalkFunction", [](ResolveContext& ctx) -> SkeletonPoseSyncWalkFn {
 		return Address(UniqueCallTarget(ctx, SkeletonPoseSyncWalkCall, "pose sync walk call"));
 	});
