@@ -5,6 +5,8 @@
 #include <string>
 #include <string_view>
 
+#include <xivres/util.byte_regex.h>
+
 namespace XivAlexander::Game::Signatures {
 	class ScanResult {
 		srell::cmatch m_match;
@@ -21,6 +23,10 @@ namespace XivAlexander::Game::Signatures {
 
 		bool ready() const {
 			return m_match.ready();
+		}
+
+		[[nodiscard]] const srell::cmatch& Match() const {
+			return m_match;
 		}
 
 		template<typename T>
@@ -78,7 +84,7 @@ namespace XivAlexander::Game::Signatures {
 	public:
 		template<size_t Length>
 		RegexSignature(const char (&data)[Length])
-			: m_pattern{data, data + Length - 1, srell::regex_constants::dotall} {}
+			: m_pattern{xivres::util::byte_regex::compile(std::string_view(data, Length - 1))} {}
 
 		enum LookupFrom {
 			FromNextByte,

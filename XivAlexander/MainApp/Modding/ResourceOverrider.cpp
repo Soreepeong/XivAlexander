@@ -41,7 +41,7 @@ struct XivAlexander::Apps::MainApp::Features::Modding::ResourceOverrider::Implem
 		if (!Dll::IsLoadedAsDependency() && !Dll::IsLoadedFromEntryPoint())
 			return;
 
-		if (!Config->Runtime.UseModding)
+		if (!Config->Runtime.Modding.Enabled)
 			return;
 
 		if (!Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::GameResourceOverrider, "Modding"))

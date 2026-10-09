@@ -21,6 +21,14 @@
       ]
     },
     "libflac",
-    "soxr"
+    "soxr",
+    "clipper2",
+    "freetype",
+    {
+      "name": "harfbuzz",
+      "features": [
+        "freetype"
+      ]
+    }
   ]
 }

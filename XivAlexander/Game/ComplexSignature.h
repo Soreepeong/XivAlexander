@@ -110,8 +110,7 @@ namespace XivAlexander::Game::Signatures {
 		bool operator==(ResolveError code) const { return Code == code; }
 	};
 
-	/// What a resolver is given to look into the module with; defined in Game/ResolveContext.h, which only the
-	/// signature definitions include.
+	/// Defined in Game/ResolveContext.h, which only the signature definitions include.
 	class ResolveContext;
 
 	class ComplexSignatureBase {
@@ -129,21 +128,19 @@ namespace XivAlexander::Game::Signatures {
 
 		[[nodiscard]] virtual ResolveStatus Check(const Utils::Win32::LoadedModule& module = Utils::Win32::LoadedModule::MainModule()) const = 0;
 
-		/// \returns Every complex signature defined.
 		static std::vector<const ComplexSignatureBase*> All();
 
 	protected:
 		using InvokeFn = void(*)(const ComplexSignatureBase& self, ResolveContext& ctx, void* out);
 
-		/// Runs a resolver against \p module, turning whatever it throws into the status returned.
+		/// Whatever the resolver throws becomes the returned status.
 		ResolveStatus RunResolver(const Utils::Win32::LoadedModule& module, InvokeFn invoke, void* out) const;
 
 		void LogResolved(const Utils::Win32::LoadedModule& module, const std::string& description) const;
 		void LogFailed(const Utils::Win32::LoadedModule& module, const ResolveStatus& status) const;
 	};
 
-	/// A value derived from the game's code, with how it is derived kept next to the signatures it is derived from.
-	/// The resolver runs once per module; its value or its failure is kept for later.
+	/// A value derived from the game's code next to its signatures; resolved once per module, keeping the value or failure.
 	template<typename T>
 	class ComplexSignature final : public ComplexSignatureBase {
 		static_assert(Describable<T>, "a complex signature's value must be a pointer, a number, an enum, an optional or vector of those, or have a to_string");

@@ -16,13 +16,10 @@ namespace XivAlexander {
 	public:
 		ConfigItem<bool> Common_UseOodleTcp{this, "Common_UseOodleTcp", true};
 
-		// Make the program consume all network connections by default.
 		ConfigItem<std::string> Server_IpRange{this, "Server_IpRange", std::string("0.0.0.0/0")};
 		ConfigItem<std::string> Server_PortRange{this, "Server_PortRange", std::string("54992-54994, 55006-55007, 55021-55040")};
 
-		// Set defaults so that the values will never be a valid IPC code.
-		// Assumes structure doesn't change too often.
-		// Will be loaded from configuration file on initialization.
+		// Invalid by default; the real IPC codes are loaded from the config file.
 		ConfigItem<uint16_t> S2C_ActionEffects[5]{
 			{this, "S2C_ActionEffect01", InvalidIpcType},
 			{this, "S2C_ActionEffect08", InvalidIpcType},

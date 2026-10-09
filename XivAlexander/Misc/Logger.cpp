@@ -24,6 +24,7 @@ const std::map<XivAlexander::LogCategory, const char*> XivAlexander::Misc::Logge
 	{LogCategory::AltCodecMusic, "AltCodecMusic"},
 	{LogCategory::AudioResampler, "AudioResampler"},
 	{LogCategory::Signatures, "Signatures"},
+	{LogCategory::FontReplacement, "FontReplacement"},
 };
 
 std::weak_ptr<XivAlexander::Misc::Logger> XivAlexander::Misc::Logger::s_instance;
@@ -206,16 +207,21 @@ void XivAlexander::Misc::Logger::Clear() {
 	m_pImpl->m_pendingItems.clear();
 }
 
-void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::string_view heading, std::string_view preformatted) {
+std::optional<std::filesystem::path> XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::string_view heading, std::string_view preformatted) {
 	static const COMDLG_FILTERSPEC saveFileTypes[] = {
 		{.pszName = FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_LOGFILES) + 1, .pszSpec = L"*.log"},
 		{.pszName = FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_ALLFILES) + 1, .pszSpec = L"*.*"},
 	};
 
+	// Where the logs were saved, even if opening them afterwards fails.
+	std::optional<std::filesystem::path> saved;
 	try {
 		IFileSaveDialogPtr pDialog;
 		DWORD dwFlags;
+		// Remembers its own last folder, apart from the other file dialogs'.
+		static constexpr GUID ClientGuid{0x2688f2ef, 0x094b, 0x4886, {0xb1, 0x5b, 0x64, 0x16, 0x7e, 0xd3, 0x11, 0xc1}};
 		Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER));
+		Utils::Win32::Error::ThrowIfFailed(pDialog->SetClientGuid(ClientGuid));
 		Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypes(ARRAYSIZE(saveFileTypes), saveFileTypes));
 		Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypeIndex(0));
 		Utils::Win32::Error::ThrowIfFailed(pDialog->SetDefaultExtension(L"log"));
@@ -376,6 +382,7 @@ void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::st
 			else
 				of << preformatted;
 		}
+		saved = newFileName;
 		if (Dll::MessageBoxF(hwndDialogParent, MB_YESNO | MB_ICONINFORMATION, IDS_LOG_SAVED, newFileName.wstring()) == IDYES) {
 			SHELLEXECUTEINFOW shex{
 				.cbSize = sizeof shex,
@@ -393,6 +400,7 @@ void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::st
 	} catch (const std::exception& e) {
 		Dll::MessageBoxF(hwndDialogParent, MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 	}
+	return saved;
 }
 
 void XivAlexander::Misc::Logger::WithLogs(const std::function<void(const std::deque<LogItem>& items)>& cb) const {

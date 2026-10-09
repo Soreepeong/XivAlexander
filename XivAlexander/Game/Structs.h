@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 namespace XivAlexander::Game {
+	// LoginSessions refuses its lobby login hook unless the game's copy reads these fields here.
 	struct Utf8String {
 		const char* StringPtr;
 		int64_t BufSize;
@@ -36,6 +37,7 @@ namespace XivAlexander::Game {
 		ManagedVector = Managed | Vector,
 	};
 
+	// LoginSessions refuses its lobby error hook unless the game's getter reads these fields here.
 	struct AtkValue {
 		AtkValueType Type;
 		uint8_t Padding_0x1[7];

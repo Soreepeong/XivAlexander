@@ -70,10 +70,10 @@ XivAlexander::Apps::MainApp::Window::BaseWindow::BaseWindow(const WNDCLASSEXW& w
 	, m_hWnd(InternalCreateWindow(wndclassex, lpWindowName, dwStyle, dwExStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, this)) {
 	s_allBaseWindows.insert(this);
 	m_cleanup += [this]() { s_allBaseWindows.erase(this); };
-	m_cleanup += m_config->Runtime.Language.OnChange([this]() {
+	m_cleanup += m_config->Runtime.Ui.Language.OnChange([this]() {
 		this->ApplyLanguage(m_config->Runtime.GetLangId());
 	});
-	m_cleanup += m_config->Runtime.ThemeMode.OnChange([this]() {
+	m_cleanup += m_config->Runtime.Ui.ThemeMode.OnChange([this]() {
 		OnThemeChanged();
 	});
 }
@@ -139,7 +139,7 @@ double XivAlexander::Apps::MainApp::Window::BaseWindow::GetZoom() const {
 }
 
 bool XivAlexander::Apps::MainApp::Window::BaseWindow::IsDarkModeEnabled(bool refresh) const {
-	switch (m_config->Runtime.ThemeMode.Value()) {
+	switch (m_config->Runtime.Ui.ThemeMode.Value()) {
 		case ThemeMode::Dark:
 			return true;
 		case ThemeMode::Light:
@@ -154,23 +154,7 @@ bool XivAlexander::Apps::MainApp::Window::BaseWindow::IsDarkModeEnabled(bool ref
 void XivAlexander::Apps::MainApp::Window::BaseWindow::ApplyLanguage(WORD languageId) {}
 
 void XivAlexander::Apps::MainApp::Window::BaseWindow::ApplyDarkMode() {
-	static const Utils::Win32::LoadedModule uxTheme(GetModuleHandleW(L"uxtheme.dll"), false);
-
-	const bool dark = IsDarkModeEnabled(true);
-	const BOOL darkBool = dark ? TRUE : FALSE;
-	if (FAILED(DwmSetWindowAttribute(m_hWnd, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, &darkBool, sizeof(darkBool))))
-		(void)DwmSetWindowAttribute(m_hWnd, 19, &darkBool, sizeof(darkBool));
-
-	if (static const auto pSetPreferredAppMode = uxTheme.GetProcAddress<DWORD (WINAPI*)(DWORD)>(135, false))
-		pSetPreferredAppMode(dark ? 1 : 0);
-
-	if (static const auto pAllowDarkModeForWindow = uxTheme.GetProcAddress<bool (WINAPI*)(HWND, bool)>(133, false))
-		pAllowDarkModeForWindow(m_hWnd, dark);
-
-	(void)SetWindowTheme(m_hWnd, dark ? L"DarkMode_Explorer" : nullptr, nullptr);
-
-	if (static const auto pFlushMenuThemes = uxTheme.GetProcAddress<void (WINAPI*)()>(136, false))
-		pFlushMenuThemes();
+	ApplyDarkModeToWindow(m_hWnd, IsDarkModeEnabled(true));
 }
 
 LRESULT XivAlexander::Apps::MainApp::Window::BaseWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {

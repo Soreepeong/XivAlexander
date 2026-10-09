@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Utils/Win32/LoadedModule.h"
 
+#include <xivres/pe_image.h>
+
 #include "Utils/Win32/Process.h"
 
 Utils::Win32::LoadedModule::LoadedModule(const wchar_t* pwszFileName, DWORD dwFlags, bool bRequire)
@@ -110,24 +112,6 @@ std::span<const uint8_t> Utils::Win32::LoadedModule::DataDirectoryAt(size_t inde
 }
 
 namespace {
-	const IMAGE_RUNTIME_FUNCTION_ENTRY& PrimaryFunctionEntry(const uint8_t* base, const IMAGE_RUNTIME_FUNCTION_ENTRY& entry) {
-		auto current = &entry;
-		for (size_t depth = 0; depth < 32; depth++) {
-			if (current->UnwindData & 1) {
-				current = reinterpret_cast<const IMAGE_RUNTIME_FUNCTION_ENTRY*>(base + (current->UnwindData & ~1U));
-				continue;
-			}
-
-			const auto info = base + current->UnwindData;
-			if (!((info[0] >> 3) & UNW_FLAG_CHAININFO))
-				break;
-
-			const auto codeCount = static_cast<size_t>(info[2]);
-			current = reinterpret_cast<const IMAGE_RUNTIME_FUNCTION_ENTRY*>(info + 4 + ((codeCount + 1) & ~static_cast<size_t>(1)) * 2);
-		}
-		return *current;
-	}
-
 	bool DecodeAt(const ZydisDecoder& decoder, const uint8_t* p, const uint8_t* end, ZydisDecodedInstruction& inst, ZydisDecodedOperand* operands) {
 		return ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, p, static_cast<ZyanUSize>(end - p), &inst, operands));
 	}
@@ -194,31 +178,14 @@ namespace {
 
 std::span<const uint8_t> Utils::Win32::LoadedModule::FunctionAt(const void* ptr) const {
 	const auto base = reinterpret_cast<const uint8_t*>(m_object);
-	const auto fns = xivres::util::span_cast<IMAGE_RUNTIME_FUNCTION_ENTRY>(DataDirectoryAt(IMAGE_DIRECTORY_ENTRY_EXCEPTION));
-	const auto va = static_cast<uint32_t>(static_cast<const uint8_t*>(ptr) - base);
+	const auto image = xivres::pe_image::from_loaded(base);
+	const auto rva = static_cast<uint32_t>(static_cast<const uint8_t*>(ptr) - base);
+	if (const auto fn = image.function_containing(rva))
+		return {base + fn->BeginAddress, fn->EndAddress - fn->BeginAddress};
 
-	const auto it = std::ranges::upper_bound(fns, va, {}, &IMAGE_RUNTIME_FUNCTION_ENTRY::BeginAddress);
-	if (it != fns.begin()) {
-		if (const auto& entry = *std::prev(it); entry.BeginAddress <= va && va < entry.EndAddress) {
-			const auto& primary = PrimaryFunctionEntry(base, entry);
-			return {base + primary.BeginAddress, primary.EndAddress - primary.BeginAddress};
-		}
-	}
-
-	const auto section = std::ranges::find_if(SectionHeaders(), [va](const IMAGE_SECTION_HEADER& s) {
-		return (s.Characteristics & IMAGE_SCN_MEM_EXECUTE) && s.VirtualAddress <= va && va < s.VirtualAddress + s.Misc.VirtualSize;
-	});
-	if (section == SectionHeaders().end())
-		return {};
-
-	auto gapBegin = section->VirtualAddress;
-	auto gapEnd = section->VirtualAddress + section->Misc.VirtualSize;
-	if (it != fns.begin())
-		gapBegin = (std::max)(gapBegin, std::prev(it)->EndAddress);
-	if (it != fns.end())
-		gapEnd = (std::min)(gapEnd, it->BeginAddress);
-
-	return LeafAt(base + gapBegin, base + gapEnd, static_cast<const uint8_t*>(ptr));
+	if (const auto gap = image.code_gap_around(rva))
+		return LeafAt(base + gap->first, base + gap->second, static_cast<const uint8_t*>(ptr));
+	return {};
 }
 
 std::span<const uint8_t> Utils::Win32::LoadedModule::SectionFrom(const IMAGE_SECTION_HEADER& section) const {
@@ -226,15 +193,9 @@ std::span<const uint8_t> Utils::Win32::LoadedModule::SectionFrom(const IMAGE_SEC
 }
 
 std::span<const uint8_t> Utils::Win32::LoadedModule::SectionFrom(std::string_view name) const {
-	for (const auto& sectionHeader : SectionHeaders()) {
-		if (name.size() > sizeof(sectionHeader.Name) || std::memcmp(sectionHeader.Name, name.data(), name.size()) != 0)
-			continue;
-		if (name.size() < sizeof(sectionHeader.Name) && sectionHeader.Name[name.size()] != '\0')
-			continue;
-
-		return SectionFrom(sectionHeader);
-	}
-
+	const auto image = xivres::pe_image::from_loaded(m_object);
+	if (const auto section = image.find_section(name))
+		return image.section_data(*section);
 	throw std::runtime_error(std::format("LoadedModule::SectionFrom: section \"{}\" not found", name));
 }
 

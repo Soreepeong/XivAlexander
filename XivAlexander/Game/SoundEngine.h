@@ -12,9 +12,10 @@ namespace XivAlexander::Game {
 		Float = 2,
 	};
 
+	// The voice functions resolve only where the game's submit and init use these limits.
 	constexpr int32_t VoiceMaxQueuedBuffers = 2;
 	constexpr int32_t VoiceMaxChannels = 16;
-	constexpr uint32_t VoiceFailure = 0xFFFFFFFF;
+	constexpr uint32_t VoiceFailure = 0xFFFFFFFF;  // What the voice functions return on failure. As of 7.56h.
 
 	enum class SoundVoiceState : uint32_t {
 		None [[maybe_unused]] = 0,
@@ -32,29 +33,31 @@ namespace XivAlexander::Game {
 		return static_cast<SoundVoiceState>(~static_cast<uint32_t>(a));
 	}
 
-	struct SoundVoice : DynamicVirtualStruct<64, 0xA48> { // 7.56h
+	// Size as of 7.56h, only as a bound: the game allocates voices. 64 is how far the vtable is scanned.
+	struct SoundVoice : DynamicVirtualStruct<64, 0xA48> {
 		struct Layout {
-			size_t State{}; // 0xA8
-			size_t QueuedBuffers{}; // 0xD8
+			size_t State{};
+			size_t QueuedBuffers{};
 
-			size_t DestructorSlot{}; // 0
-			size_t FlushSlot{}; // 7
-			size_t SubmitSlot{}; // 12
-			size_t SetMarkerSlot{}; // 19
+			size_t DestructorSlot{};
+			size_t FlushSlot{};
+			size_t SubmitSlot{};
+			size_t SetMarkerSlot{};
 		};
 
 		[[nodiscard]] SoundVoiceState State(const Layout& layout) const { return Field<SoundVoiceState>(layout.State); }
 		[[nodiscard]] int32_t QueuedBuffers(const Layout& layout) const { return Field<int32_t>(layout.QueuedBuffers); }
 	};
 
-	struct SoundVoiceCallback : DynamicVirtualStruct<4, 0x328> { // 7.56h
+	// Size as of 7.56h, only as a bound: the game allocates callbacks.
+	struct SoundVoiceCallback : DynamicVirtualStruct<4, 0x328> {
 		struct Layout {
 			// vtbl[0]: dtor
 			// vtbl[1]: buffer start
 			// vtbl[2]: buffer end
 			// vtbl[3]: marker reached
 
-			size_t EndOfData{}; // 0x270 (7.00), 0x248 (6.50-6.58h), 0x208 (6.0x-6.4x)
+			size_t EndOfData{};
 		};
 
 		[[nodiscard]] const uint8_t* EndOfData(const Layout& layout) const { return &Field<uint8_t>(layout.EndOfData); }

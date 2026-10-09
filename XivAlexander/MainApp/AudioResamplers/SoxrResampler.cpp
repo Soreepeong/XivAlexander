@@ -3,10 +3,10 @@
 #include "SoxrResampler.h"
 
 XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::SoxrResampler(uint32_t inRate, uint32_t outRate, uint32_t channels, SampleFormat format, const SoxrResamplerConfig& config, std::string& error)
-	: m_channels(channels)
-	, m_inFrameBytes(channels * (format == SampleFormat::Int16 ? sizeof(int16_t) : sizeof(float)))
+	: m_frameBytes(channels * (format == SampleFormat::Int16 ? sizeof(int16_t) : sizeof(float)))
 	, m_ratio(static_cast<double>(outRate) / inRate) {
-	const auto io = soxr_io_spec(format == SampleFormat::Int16 ? SOXR_INT16_I : SOXR_FLOAT32_I, SOXR_FLOAT32_I);
+	const auto type = format == SampleFormat::Int16 ? SOXR_INT16_I : SOXR_FLOAT32_I;
+	const auto io = soxr_io_spec(type, type);
 	using Q = SoxrResamplerConfig::QualityPreset;
 	using P = SoxrResamplerConfig::PhaseResponse;
 	unsigned long recipe;
@@ -55,7 +55,7 @@ XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::~SoxrResampler() {
 
 const char* XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::Name() const { return "soxr"; }
 
-bool XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::Process(const void* in, size_t frames, std::vector<float>& out) {
+bool XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::Process(const void* in, size_t frames, std::vector<uint8_t>& out) {
 	if (m_drained) {
 		soxr_clear(m_soxr);
 		m_drained = false;
@@ -63,7 +63,7 @@ bool XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::Process(const 
 	return Run(static_cast<const uint8_t*>(in), frames, out);
 }
 
-bool XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::Drain(std::vector<float>& out) {
+bool XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::Drain(std::vector<uint8_t>& out) {
 	if (m_drained)
 		return true;
 	m_drained = true;
@@ -79,9 +79,9 @@ double XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::HeldBack() c
 	return soxr_delay(m_soxr);
 }
 
-bool XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::Run(const uint8_t* in, size_t frames, std::vector<float>& out) {
-	const auto base = out.size() / m_channels;
-	out.resize((base + static_cast<size_t>(static_cast<double>(frames) * m_ratio) + 64) * m_channels);
+bool XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::Run(const uint8_t* in, size_t frames, std::vector<uint8_t>& out) {
+	const auto base = out.size() / m_frameBytes;
+	out.resize((base + static_cast<size_t>(static_cast<double>(frames) * m_ratio) + 64) * m_frameBytes);
 
 	size_t consumed = 0;
 	size_t produced = 0;
@@ -89,24 +89,24 @@ bool XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::Run(const uint
 		size_t done = 0;
 		size_t made = 0;
 		if (soxr_process(m_soxr,
-			in ? in + consumed * m_inFrameBytes : nullptr, frames - consumed, &done,
-			out.data() + (base + produced) * m_channels, out.size() / m_channels - base - produced, &made)) {
-			out.resize((base + produced) * m_channels);
+			in ? in + consumed * m_frameBytes : nullptr, frames - consumed, &done,
+			out.data() + (base + produced) * m_frameBytes, out.size() / m_frameBytes - base - produced, &made)) {
+			out.resize((base + produced) * m_frameBytes);
 			return false;
 		}
 		consumed += done;
 		produced += made;
 
-		if (base + produced == out.size() / m_channels)
+		if (base + produced == out.size() / m_frameBytes)
 			out.resize(out.size() * 2);
 		else if (in ? consumed == frames : made == 0)
 			break;
 		else if (in && done == 0 && made == 0) {
-			out.resize((base + produced) * m_channels);
+			out.resize((base + produced) * m_frameBytes);
 			return false;
 		}
 	}
 
-	out.resize((base + produced) * m_channels);
+	out.resize((base + produced) * m_frameBytes);
 	return true;
 }

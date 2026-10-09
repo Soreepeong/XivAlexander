@@ -25,20 +25,24 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			: Config(Config::Acquire())
 			, Logger(Misc::Logger::Acquire()) {
 
-			if (Game::Resolved::CutSceneLanguageGetterFn getter; Game::Resolved::CutSceneLanguageGetterFunction.Resolve(getter) == Game::Signatures::ResolveError::Ok) {
-				CutSceneLanguageGetter.emplace("FFXIV::GetCutSceneLanguage", getter);
+			// Never fails as a whole: the getter is optional, and there may be no resolvers.
+			Game::Resolved::TextHooksFunctions functions;
+			if (Game::Resolved::TextHooks.Resolve(functions) != Game::Signatures::ResolveError::Ok)
+				functions = {};
+
+			if (functions.CutSceneLanguageGetter) {
+				CutSceneLanguageGetter.emplace("FFXIV::GetCutSceneLanguage", *functions.CutSceneLanguageGetter);
+				// The game's language index is game_language - 1. The item only holds LipSyncLanguages; others may lack lip sync or voices here, so recheck.
 				Cleanup += CutSceneLanguageGetter->SetHook([this](void* p) -> int {
-					if (const auto forced = Config->Runtime.ForcedCharacterLanguageLipSync.Value(); forced != -1)
-						return forced;
+					using Languages = RuntimeConfigRepository::ModdingGroup::LanguagesGroup;
+					if (const auto language = Config->Runtime.Modding.Languages.LipSyncLanguage.Value();
+						std::ranges::find(Languages::LipSyncLanguages, language) != std::end(Languages::LipSyncLanguages))
+						return static_cast<int>(language) - 1;
 					return CutSceneLanguageGetter->bridge(p);
 				});
 			}
 
-			std::vector<Game::Resolved::StringIndirectionResolverFn> resolvers;
-			if (Game::Resolved::StringIndirectionResolverFunctions.Resolve(resolvers) != Game::Signatures::ResolveError::Ok)
-				resolvers.clear();
-
-			for (const auto ptr : resolvers) {
+			for (const auto ptr : functions.StringIndirectionResolvers) {
 				auto& hook = FoundStringIndirectionResolverFunctions.emplace_back("FFXIV::StringIndirectionResolverFunctions", ptr);
 				Cleanup += hook.SetHook([this, ptr, self = &hook](const char8_t* s) {
 					auto error = true;
@@ -48,15 +52,14 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 						error = false;
 						goto done;
 					} __except(EXCEPTION_EXECUTE_HANDLER) {
-						// pass
 					}
 
 					Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "Invalid ptr to string indirection resolving function(0x{:X}); trying again with -0xE", reinterpret_cast<size_t>(ptr));
 					__try {
+						// A fallback for pointers past a string's start, found by trial in 6.1x; no instruction gives it.
 						s = self->bridge(s - 0x0e);
 						goto done;
 					} __except (EXCEPTION_EXECUTE_HANDLER) {
-						// pass
 					}
 
 					Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "Attempt failed, just returning +2");
@@ -76,7 +79,6 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 						__try {
 							pass = SeStringTester(s);
 						} __except (EXCEPTION_EXECUTE_HANDLER) {
-							// pass
 						}
 
 						if (pass)

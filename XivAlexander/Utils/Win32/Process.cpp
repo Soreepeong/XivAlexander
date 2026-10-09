@@ -32,6 +32,7 @@ Utils::Win32::Process& Utils::Win32::Process::operator=(Process&& r) noexcept {
 	if (&r == this)
 		return *this;
 
+	Clear();
 	m_object = r.m_object;
 	m_bOwnership = r.m_bOwnership;
 	m_moduleMemory = std::move(r.m_moduleMemory);

@@ -52,7 +52,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	}
 
 	std::string DialogueSpeakers::ForceLanguageForSpeaker(const std::string& path) const {
-		if (m_config->Runtime.ForcedCharacterLanguages.Value().empty() && !m_config->Runtime.LogDialogueCharacterNames)
+		if (m_config->Runtime.Modding.Languages.ForcedCharacterLanguages.Value().empty() && !m_config->Runtime.Modding.Logging.DialogueCharacterNames)
 			return {};
 
 		const auto pathSpec = xivres::path_spec(path);
@@ -83,21 +83,27 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 						continue;
 
 					const auto speaker = xivres::util::unicode::convert<std::string>(key.substr(keyPrefixUpper.size()), &xivres::util::unicode::lower);
-					if (m_config->Runtime.LogDialogueCharacterNames) {
+					if (m_config->Runtime.Modding.Logging.DialogueCharacterNames) {
 						m_logger->Format(LogCategory::GameResourceOverrider,
 							"Dialogue character name={} path={}", speaker, path);
 					}
 
-					const auto& forced = m_config->Runtime.ForcedCharacterLanguages.Value();
-					auto it = forced.find(speaker);
+					// The speaker's first enabled entry, else the unnamed one; names compare case-insensitively.
+					const auto& forced = m_config->Runtime.Modding.Languages.ForcedCharacterLanguages.Value();
+					const auto find = [&forced](const std::string& name) {
+						return std::ranges::find_if(forced, [&name](const ForcedCharacterLanguage& entry) {
+							return entry.Enabled && xivres::util::unicode::convert<std::string>(entry.Name, &xivres::util::unicode::lower) == name;
+						});
+					};
+					auto it = find(speaker);
 					if (it == forced.end())
-						it = forced.find("");  // anyone unnamed
-					if (it == forced.end() || it->second.empty())
+						it = find("");
+					if (it == forced.end() || it->Language.empty())
 						return {};
 
 					const auto scdName = std::string(pathSpec.parts().back());
 					return std::format("{}/{}{}.scd",
-						pathSpec.parent_path().text(), scdName.substr(0, scdName.rfind('_') + 1), it->second);
+						pathSpec.parent_path().text(), scdName.substr(0, scdName.rfind('_') + 1), it->Language);
 				}
 			}
 		} catch (const std::exception& e) {

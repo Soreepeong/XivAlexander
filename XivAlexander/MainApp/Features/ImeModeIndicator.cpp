@@ -10,7 +10,7 @@
 #include "Misc/Logger.h"
 
 namespace {
-	// The indicator shows U+E01F + mode, or a blank for 0.
+	// The indicator shows U+E01F + mode, or a blank for 0; the game font's glyph order, not code. As of 7.56h.
 	constexpr uint32_t ImeModeClosed = 0;
 	constexpr uint32_t ImeModeFullwidthLatin = 3;  // Ａ
 	constexpr uint32_t ImeModeHangul = 6;  // 가
@@ -27,7 +27,7 @@ namespace {
 struct XivAlexander::Apps::MainApp::Features::ImeModeIndicator::Implementation {
 	const std::shared_ptr<Misc::Logger> Logger;
 
-	Game::Resolved::ImeModeGetter Getter;
+	Game::Resolved::ImeModeIndicatorFunctions Getter;
 	std::optional<Misc::Hooks::PointerFunctionOf<Game::Resolved::ImeModeGetterFn>> GetImeMode;
 	Misc::Hooks::ImportedFunction<BOOL, HIMC, DWORD, DWORD> ImmSetConversionStatus{"imm32!ImmSetConversionStatus", "imm32.dll", "ImmSetConversionStatus"};
 
@@ -40,12 +40,12 @@ struct XivAlexander::Apps::MainApp::Features::ImeModeIndicator::Implementation {
 		else
 			Logger->Log(LogCategory::General, "IME conversion modes the game sets are left as is: ImmSetConversionStatus is not imported");
 
-		if (const auto status = Game::Resolved::ImeModeGetterFunction.Resolve(Getter); status != Game::Signatures::ResolveError::Ok) {
+		if (const auto status = Game::Resolved::ImeModeIndicator.Resolve(Getter); status != Game::Signatures::ResolveError::Ok) {
 			Logger->Format<LogLevel::Warning>(LogCategory::General, "IME mode indicator is left as is: {}", status.Detail);
 			return;
 		}
 
-		GetImeMode.emplace("TextService::GetImeMode", Getter.Function);
+		GetImeMode.emplace("TextService::GetImeMode", Getter.GetImeMode);
 		Cleanup += GetImeMode->SetHook([this](void* textService) { return GetImeModeDetour(textService); });
 	}
 
@@ -53,8 +53,7 @@ struct XivAlexander::Apps::MainApp::Features::ImeModeIndicator::Implementation {
 		Cleanup.clear();
 	}
 
-	// The game picks Japanese modes, where hiragana is native and full-width; to a Korean or Chinese IME that turns on
-	// full-width Latin, so these keep whatever width the IME has and take only the native or Latin choice.
+	// Japanese modes (hiragana: native, full-width) mean full-width Latin to Korean/Chinese IMEs: keep the IME's width, take only native/Latin.
 	BOOL ImmSetConversionStatusDetour(HIMC inputContext, DWORD conversion, DWORD sentence) {
 		if (KoreanOrChineseKeyboardLanguage() != LANG_NEUTRAL) {
 			constexpr DWORD kept = IME_CMODE_FULLSHAPE | IME_CMODE_KATAKANA;

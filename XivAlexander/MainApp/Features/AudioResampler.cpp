@@ -36,8 +36,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		constexpr size_t OutputBufferCount = VoiceMaxQueuedBuffers + 1;
 
-		// What the engine submits a buffer with when a MARK falls in it (7.56h: FUN_141eb13e0 decides,
-		// the buffer start callback 0x141eb1370 acts on it when the buffer starts playing).
+		// Context the engine submits a buffer with when a MARK falls in it; read from no instruction we resolve. As of 7.56h.
 		constexpr uint64_t MarkContext = 1;
 
 		bool Write(uint32_t* target, uint32_t value) {
@@ -61,7 +60,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			std::unique_ptr<Resampler> Resampler;
 			const uint8_t* EndOfData{};
 
-			std::array<std::vector<float>, OutputBufferCount> Output;
+			std::array<std::vector<uint8_t>, OutputBufferCount> Output;
 			size_t NextOutput = 0;
 
 			int64_t InFrames = 0;
@@ -71,10 +70,17 @@ namespace XivAlexander::Apps::MainApp::Features {
 			bool Drained = false;
 			std::deque<int64_t> PendingMarks;
 
+			// The engine flags every buffer after a marked one in the same refill, which goes on while fewer than two buffers are queued;
+			// a buffer held back here leaves the queue short, so the refill continues, and a flag inherited that way marks nothing.
+			bool LastMarked = false;
+			int32_t HeldBack = 0;
+
 			void ResetPosition() {
 				InFrames = OutFrames = InBase = OutBase = 0;
 				Drained = false;
 				PendingMarks.clear();
+				LastMarked = false;
+				HeldBack = 0;
 			}
 
 			[[nodiscard]] int64_t ToOutputFrame(int64_t inFrame) const {
@@ -121,15 +127,15 @@ namespace XivAlexander::Apps::MainApp::Features {
 			: Config(Config::Acquire())
 			, Logger(Misc::Logger::Acquire()) {
 			ResolveMixRate();
-			Cleanup += Config->Runtime.AudioOutputSamplingRate.OnChange([this] { ApplyMixRate(false); });
+			Cleanup += Config->Runtime.Audio.OutputSamplingRate.OnChange([this] { ApplyMixRate(false); });
 			ApplyMixRate(true);
 
-			Cleanup += Config->Runtime.SoxrResampler.OnChange([this] { SetEnabled(Config->Runtime.SoxrResampler.Value().Enabled); });
-			SetEnabled(Config->Runtime.SoxrResampler.Value().Enabled);
+			Cleanup += Config->Runtime.Audio.SoxrResampler.Enabled.OnChange([this] { SetEnabled(Config->Runtime.Audio.SoxrResampler.Enabled); });
+			SetEnabled(Config->Runtime.Audio.SoxrResampler.Enabled);
 
 			Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange([this] {
 				ApplyMixRate(false);
-				SetEnabled(Config->Runtime.SoxrResampler.Value().Enabled);
+				SetEnabled(Config->Runtime.Audio.SoxrResampler.Enabled);
 			});
 		}
 
@@ -147,16 +153,15 @@ namespace XivAlexander::Apps::MainApp::Features {
 		}
 
 		void ResolveMixRate() {
-			Game::SoundVoiceRenderInfo render;
-			const auto setupStatus = Game::Resolved::MixRateSetup.Resolve(Immediate);
-			const auto renderStatus = Game::Resolved::VoiceRender.Resolve(render);
-			if (setupStatus != Game::Signatures::ResolveError::Ok || renderStatus != Game::Signatures::ResolveError::Ok) {
+			Game::Resolved::AudioResamplerFunctions functions;
+			if (Game::Resolved::AudioResampler.Resolve(functions) != Game::Signatures::ResolveError::Ok) {
 				Logger->Format<LogLevel::Warning>(LogCategory::AudioResampler, "mix rate not found; the game's own rate stays");
 				Immediate = nullptr;
 				Global = nullptr;
 				return;
 			}
-			Global = render.MixRate;
+			Immediate = functions.MixRateSetup;
+			Global = functions.Render.MixRate;
 			NativeRate = *Immediate;
 			NativeGlobal = *Global;
 		}
@@ -165,7 +170,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			if (!Immediate)
 				return;
 
-			auto rate = Config->Runtime.AudioOutputSamplingRate.Value();
+			auto rate = Config->Runtime.Audio.OutputSamplingRate.Value();
 			if (rate == MatchDefaultDevice) {
 				if ((rate = DefaultDeviceRate()))
 					Logger->Format<LogLevel::Info>(LogCategory::AudioResampler, "default output device mixes at {} Hz", rate);
@@ -232,7 +237,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 		std::unique_ptr<Resampler> MakeResampler(int32_t rate, int32_t mix, int32_t channels, VoiceFormat format) {
 			const auto sampleFormat = format == VoiceFormat::Int16 ? SampleFormat::Int16 : SampleFormat::Float;
 			std::string error;
-			auto r = std::make_unique<AudioResamplers::SoxrResampler>(rate, mix, channels, sampleFormat, Config->Runtime.SoxrResampler.Value(), error);
+			auto r = std::make_unique<AudioResamplers::SoxrResampler>(rate, mix, channels, sampleFormat, Config->Runtime.Audio.SoxrResampler.Filter.Snapshot(), error);
 			if (!error.empty()) {
 				Logger->Format<LogLevel::Error>(LogCategory::AudioResampler,
 					"soxr ({} -> {} Hz, {} ch) failed: {}", rate, mix, channels, error);
@@ -265,7 +270,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			if (!resampler)
 				return InitHook->bridge(voice, rate, channels, format, a5, a6, a7, a8, a9, a10, a11);
 
-			const auto result = InitHook->bridge(voice, mix, channels, VoiceFormat::Float, a5, a6, a7, a8, a9, a10, a11);
+			const auto result = InitHook->bridge(voice, mix, channels, format, a5, a6, a7, a8, a9, a10, a11);
 			if (result != 0)
 				return result;
 
@@ -296,8 +301,8 @@ namespace XivAlexander::Apps::MainApp::Features {
 				|| bytes % v->SourceFrameBytes() != 0)
 				return VoiceFailure;
 
-			const auto framesIn = bytes / v->SourceFrameBytes();
-			const auto channels = static_cast<size_t>(v->Channels);
+			const auto frameBytes = v->SourceFrameBytes();
+			const auto framesIn = bytes / frameBytes;
 			const auto lock = std::lock_guard(v->Mtx);
 			auto& out = v->Output[v->NextOutput];
 			out.clear();
@@ -308,7 +313,9 @@ namespace XivAlexander::Apps::MainApp::Features {
 				v->Drained = false;
 			}
 			const auto marked = context == MarkContext;
-			if (marked)
+			const auto inherited = marked && v->LastMarked && queued + v->HeldBack >= VoiceMaxQueuedBuffers;
+			v->LastMarked = marked;
+			if (marked && !inherited)
 				v->PendingMarks.push_back(v->ToOutputFrame(v->InFrames));
 			v->InFrames += static_cast<int64_t>(framesIn);
 
@@ -323,25 +330,28 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 
 			if (out.empty()) {
-				if (framesIn != 0 && queued > 0)
+				if (framesIn != 0 && queued > 0) {
+					++v->HeldBack;
 					return 0;
+				}
 				if (queued == 0)
-					out.assign(channels, 0.f);
+					out.assign(frameBytes, 0);
 			}
 
-			const auto framesOut = static_cast<int64_t>(out.size() / channels);
+			const auto framesOut = static_cast<int64_t>(out.size() / frameBytes);
 			const auto bufferEnd = v->OutFrames + framesOut;
 			auto marksHere = 0;
 			for (auto it = v->PendingMarks.begin(); it != v->PendingMarks.end() && *it < bufferEnd; ++it)
 				++marksHere;
 			const auto contextOut = marksHere ? MarkContext : marked ? 0 : context;
 
-			const auto result = SubmitHook->bridge(voice, out.data(), out.size() * sizeof(float), contextOut, v->ToMixFrames(startFrame));
+			const auto result = SubmitHook->bridge(voice, out.data(), out.size(), contextOut, v->ToMixFrames(startFrame));
 			if (result != 0)
 				return result;
 
 			v->PendingMarks.erase(v->PendingMarks.begin(), v->PendingMarks.begin() + marksHere);
 			v->OutFrames = bufferEnd;
+			v->HeldBack = 0;
 			v->NextOutput = (v->NextOutput + 1) % OutputBufferCount;
 			return result;
 		}
@@ -352,13 +362,18 @@ namespace XivAlexander::Apps::MainApp::Features {
 			if (HooksFailed)
 				return false;
 
+			// The mix rate was found, or there would be no Global, so only the voice parts can be missing.
+			Game::Resolved::AudioResamplerFunctions functions;
 			if (!Global
-				|| Game::Resolved::VoiceFunctions.Resolve(Functions) != Game::Signatures::ResolveError::Ok
-				|| Game::Resolved::BufferEndHandler.Resolve(BufferEnd) != Game::Signatures::ResolveError::Ok) {
+				|| Game::Resolved::AudioResampler.Resolve(functions) != Game::Signatures::ResolveError::Ok
+				|| !functions.Voice
+				|| !functions.BufferEnd) {
 				Logger->Format<LogLevel::Error>(LogCategory::AudioResampler, "voice functions not found; voices cannot be resampled");
 				HooksFailed = true;
 				return false;
 			}
+			Functions = *functions.Voice;
+			BufferEnd = *functions.BufferEnd;
 
 			try {
 				InitHook.emplace("AudioResampler::Init", Functions.Init);

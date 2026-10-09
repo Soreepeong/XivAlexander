@@ -51,17 +51,17 @@ XivAlexander::Apps::MainApp::Window::LogWindow::LogWindow()
 	m_direct(m_directPtr, SCI_SETREADONLY, TRUE, 0);
 	m_direct(m_directPtr, SCI_SETMARGINTYPEN, 0, SC_MARGIN_NUMBER);
 	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 1, 0);
-	m_direct(m_directPtr, SCI_SETWRAPMODE, m_config->Runtime.UseWordWrap_XivAlexLogWindow ? SC_WRAP_CHAR : SC_WRAP_NONE, 0);
+	m_direct(m_directPtr, SCI_SETWRAPMODE, m_config->Runtime.Ui.LogWindow.UseWordWrap ? SC_WRAP_CHAR : SC_WRAP_NONE, 0);
 	ApplyScintillaFont();
 	ApplyScintillaTheme();
 
-	m_cleanup += m_config->Runtime.AlwaysOnTop_XivAlexLogWindow.OnChange([this]() {
-		SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexLogWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+	m_cleanup += m_config->Runtime.Ui.LogWindow.AlwaysOnTop.OnChange([this]() {
+		SetWindowPos(m_hWnd, m_config->Runtime.Ui.LogWindow.AlwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 		});
-	m_cleanup += m_config->Runtime.UseWordWrap_XivAlexLogWindow.OnChange([this]() {
-		m_direct(m_directPtr, SCI_SETWRAPMODE, m_config->Runtime.UseWordWrap_XivAlexLogWindow ? SC_WRAP_CHAR : SC_WRAP_NONE, 0);
+	m_cleanup += m_config->Runtime.Ui.LogWindow.UseWordWrap.OnChange([this]() {
+		m_direct(m_directPtr, SCI_SETWRAPMODE, m_config->Runtime.Ui.LogWindow.UseWordWrap ? SC_WRAP_CHAR : SC_WRAP_NONE, 0);
 		});
-	m_cleanup += m_config->Runtime.UseMonospaceFont_XivAlexLogWindow.OnChange([this]() {
+	m_cleanup += m_config->Runtime.Ui.LogWindow.UseMonospaceFont.OnChange([this]() {
 		ApplyScintillaFont();
 		ApplyScintillaTheme();
 		ResizeMargin();
@@ -90,7 +90,7 @@ XivAlexander::Apps::MainApp::Window::LogWindow::LogWindow()
 
 	ApplyLanguage(m_config->Runtime.GetLangId());
 	ShowWindow(m_hWnd, SW_SHOW);
-	SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexLogWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+	SetWindowPos(m_hWnd, m_config->Runtime.Ui.LogWindow.AlwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 	SetFocus(m_hScintilla);
 }
 
@@ -112,9 +112,9 @@ void XivAlexander::Apps::MainApp::Window::LogWindow::OnLayout(double zoom, doubl
 LRESULT XivAlexander::Apps::MainApp::Window::LogWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
 		case WM_INITMENUPOPUP: {
-			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_ALWAYSONTOP, m_config->Runtime.AlwaysOnTop_XivAlexLogWindow, true);
-			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_USEWORDWRAP, m_config->Runtime.UseWordWrap_XivAlexLogWindow, true);
-			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_USEMONOSPACEDFONT, m_config->Runtime.UseMonospaceFont_XivAlexLogWindow, true);
+			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_ALWAYSONTOP, m_config->Runtime.Ui.LogWindow.AlwaysOnTop, true);
+			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_USEWORDWRAP, m_config->Runtime.Ui.LogWindow.UseWordWrap, true);
+			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_USEMONOSPACEDFONT, m_config->Runtime.Ui.LogWindow.UseMonospaceFont, true);
 			break;
 		}
 
@@ -147,17 +147,17 @@ LRESULT XivAlexander::Apps::MainApp::Window::LogWindow::WndProc(HWND hwnd, UINT 
 				}
 
 				case ID_VIEW_ALWAYSONTOP: {
-					m_config->Runtime.AlwaysOnTop_XivAlexLogWindow = !m_config->Runtime.AlwaysOnTop_XivAlexLogWindow;
+					m_config->Runtime.Ui.LogWindow.AlwaysOnTop = !m_config->Runtime.Ui.LogWindow.AlwaysOnTop;
 					return 0;
 				}
 
 				case ID_VIEW_USEMONOSPACEDFONT: {
-					m_config->Runtime.UseMonospaceFont_XivAlexLogWindow = !m_config->Runtime.UseMonospaceFont_XivAlexLogWindow;
+					m_config->Runtime.Ui.LogWindow.UseMonospaceFont = !m_config->Runtime.Ui.LogWindow.UseMonospaceFont;
 					return 0;
 				}
 
 				case ID_VIEW_USEWORDWRAP: {
-					m_config->Runtime.UseWordWrap_XivAlexLogWindow = !m_config->Runtime.UseWordWrap_XivAlexLogWindow;
+					m_config->Runtime.Ui.LogWindow.UseWordWrap = !m_config->Runtime.Ui.LogWindow.UseWordWrap;
 					return 0;
 				}
 			}
@@ -178,7 +178,7 @@ LRESULT XivAlexander::Apps::MainApp::Window::LogWindow::OnNotify(const LPNMHDR n
 }
 
 void XivAlexander::Apps::MainApp::Window::LogWindow::OnDestroy() {
-	m_config->Runtime.ShowLoggingWindow = false;
+	m_config->Runtime.Ui.LogWindow.Show = false;
 }
 
 void XivAlexander::Apps::MainApp::Window::LogWindow::OnThemeChanged() {
@@ -187,7 +187,7 @@ void XivAlexander::Apps::MainApp::Window::LogWindow::OnThemeChanged() {
 }
 
 void XivAlexander::Apps::MainApp::Window::LogWindow::ApplyScintillaFont() {
-	if (m_config->Runtime.UseMonospaceFont_XivAlexLogWindow) {
+	if (m_config->Runtime.Ui.LogWindow.UseMonospaceFont) {
 		m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>("Courier New"));
 	} else {
 		NONCLIENTMETRICS ncm = { sizeof(NONCLIENTMETRICS) };

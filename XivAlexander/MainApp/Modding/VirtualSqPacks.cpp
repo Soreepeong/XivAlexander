@@ -85,18 +85,18 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 		});
 		Queue.Start(BuilderCount, [this](Pack& pack) { BuildPack(pack); });
 
-		Cleanup += Config->Runtime.MuteVoice_Battle.OnChange([this] { ReflectUsedEntries(); });
-		Cleanup += Config->Runtime.MuteVoice_Cm.OnChange([this] { ReflectUsedEntries(); });
-		Cleanup += Config->Runtime.MuteVoice_Emote.OnChange([this] { ReflectUsedEntries(); });
-		Cleanup += Config->Runtime.MuteVoice_Line.OnChange([this] { ReflectUsedEntries(); });
-		Cleanup += Config->Runtime.TtmpChoicesFiles.OnChange([this] {
+		Cleanup += Config->Runtime.Modding.MuteVoice.Battle.OnChange([this] { ReflectUsedEntries(); });
+		Cleanup += Config->Runtime.Modding.MuteVoice.Cm.OnChange([this] { ReflectUsedEntries(); });
+		Cleanup += Config->Runtime.Modding.MuteVoice.Emote.OnChange([this] { ReflectUsedEntries(); });
+		Cleanup += Config->Runtime.Modding.MuteVoice.Line.OnChange([this] { ReflectUsedEntries(); });
+		Cleanup += Config->Runtime.Modding.Ttmp.ChoicesFiles.OnChange([this] {
 			{
 				const auto lock = Queue.Lock();
 				Library.ReloadChoices();
 			}
 			ReflectUsedEntries();
 		});
-		Cleanup += Config->Runtime.AdditionalGameResourceFileEntryRootDirectories.OnChange([this] {
+		Cleanup += Config->Runtime.Modding.GameResourceFileEntryRootDirectories.OnChange([this] {
 			Sources.RescanReplacementRoots();
 			ReflectUsedEntries();
 		});
@@ -164,6 +164,34 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 		Sqpacks.OnTtmpSetsChanged();
 	}
 
+	/// Moving directories needs their data files kept closed, so reads are stopped and builders locked out; every pack is then reapplied so no entry refers to an old stream.
+	/// \param change Sets changed once it changed anything, even if it throws afterwards.
+	void ChangeTtmpLayout(const std::function<void(bool& changed)>& change) {
+		auto changed = false;
+		std::exception_ptr error;
+		{
+			const auto pause = GamePause(App);
+			const auto resumeIo = RebuildLock.Hold();
+			const auto lock = PackQueue::ApplyLock(Queue);
+			try {
+				change(changed);
+			} catch (...) {
+				error = std::current_exception();
+			}
+
+			if (changed) {
+				ApplyToPacks(Queue.Built(), true);
+				if (DataViewBuffer)
+					DataViewBuffer->flush();
+			}
+		}
+
+		if (changed)
+			Sqpacks.OnTtmpSetsChanged();
+		if (error)
+			std::rethrow_exception(error);
+	}
+
 	void ApplyToPacks(const std::set<const Pack*>& packs, bool reconcileTtmpFiles) {
 		const auto lock = PackQueue::ApplyLock(Queue);
 		ReflectUsedEntriesTempData tempData;
@@ -208,10 +236,10 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 				if (pathSpec.path_hash() == voBattle || pathSpec.path_hash() == voCm || pathSpec.path_hash() == voEmote || pathSpec.path_hash() == voLine)
 					tempData.Replacements.try_emplace(pathSpec, provider, std::shared_ptr<xivres::packed_stream>(), std::string());
 
-				if ((pathSpec.path_hash() == voBattle && Config->Runtime.MuteVoice_Battle)
-					|| (pathSpec.path_hash() == voCm && Config->Runtime.MuteVoice_Cm)
-					|| (pathSpec.path_hash() == voEmote && Config->Runtime.MuteVoice_Emote)
-					|| (pathSpec.path_hash() == voLine && Config->Runtime.MuteVoice_Line))
+				if ((pathSpec.path_hash() == voBattle && Config->Runtime.Modding.MuteVoice.Battle)
+					|| (pathSpec.path_hash() == voCm && Config->Runtime.Modding.MuteVoice.Cm)
+					|| (pathSpec.path_hash() == voEmote && Config->Runtime.Modding.MuteVoice.Emote)
+					|| (pathSpec.path_hash() == voLine && Config->Runtime.Modding.MuteVoice.Line))
 					std::get<1>(tempData.Replacements.at(pathSpec)) = std::make_shared<xivres::stream_as_packed_stream>(pathSpec, EmptyScd);
 			}
 		}
@@ -376,7 +404,7 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 			}
 
 			std::get<1>(entryIt->second) = std::move(packed);
-			std::get<2>(entryIt->second) = ttmp.List.Name;
+			std::get<2>(entryIt->second) = ttmp.DisplayName();
 		}
 	}
 
@@ -604,4 +632,87 @@ void XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::ApplyTtmpCh
 	}
 	if (announce)
 		m_pImpl->ReflectUsedEntries();
+}
+
+std::vector<std::filesystem::path> XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::GetTtmpSearchDirectories() const {
+	return m_pImpl->Library.SearchDirectories();
+}
+
+void XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::RenameTtmp(const std::shared_ptr<NestedTtmp>& item, const std::wstring& newName) {
+	// Refuse the obviously wrong without pausing the game; the library checks again once everything is stopped.
+	{
+		const auto lock = LockTtmps();
+		m_pImpl->Library.ValidateRename(*item, newName);
+	}
+	m_pImpl->ChangeTtmpLayout([&](bool& changed) {
+		changed = m_pImpl->Library.Rename(item, newName);
+	});
+}
+
+void XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::MoveTtmps(const std::vector<std::shared_ptr<NestedTtmp>>& items, const std::filesystem::path& folderDir) {
+	std::vector<std::shared_ptr<NestedTtmp>> toMove;
+	{
+		const auto lock = LockTtmps();
+		std::set<std::wstring> names;
+		for (const auto& item : items) {
+			if (!item || std::ranges::find(toMove, item) != toMove.end())
+				continue;
+
+			auto inOtherItem = false;
+			for (auto parent = item->Parent; parent && !inOtherItem; parent = parent->Parent)
+				inOtherItem = std::ranges::find(items, parent) != items.end();
+			if (inOtherItem)
+				continue;
+
+			m_pImpl->Library.ValidateMove(*item, folderDir);
+
+			auto name = item->Path.filename().wstring();
+			std::ranges::transform(name, name.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towupper(c)); });
+			if (!names.insert(std::move(name)).second) {
+				throw std::invalid_argument(m_pImpl->Config->Runtime.FormatStringResUtf8(IDS_TTMP_ERROR_DUPLICATENAMES,
+					item->Path.filename().wstring()));
+			}
+
+			toMove.emplace_back(item);
+		}
+	}
+	if (toMove.empty())
+		return;
+
+	m_pImpl->ChangeTtmpLayout([&](bool& changed) {
+		for (const auto& item : toMove) {
+			if (m_pImpl->Library.Move(item, folderDir))
+				changed = true;
+		}
+	});
+}
+
+std::filesystem::path XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::CreateTtmpFolder(const std::filesystem::path& parentDir, const std::wstring& name, const std::vector<std::shared_ptr<NestedTtmp>>& items) {
+	std::filesystem::path path;
+	{
+		const auto lock = LockTtmps();
+		path = m_pImpl->Library.CreateFolder(parentDir, name);
+	}
+	if (items.empty())
+		return path;
+
+	try {
+		MoveTtmps(items, path);
+	} catch (...) {
+		if (std::error_code ec; is_empty(path, ec) && !ec)
+			remove(path, ec);
+		throw;
+	}
+	return path;
+}
+
+void XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::SetTtmpOrder(const std::shared_ptr<NestedTtmp>& folder, const std::vector<std::shared_ptr<NestedTtmp>>& children) {
+	{
+		const auto lock = LockTtmps();
+		m_pImpl->Library.ValidateOrder(*folder, children);
+	}
+	m_pImpl->ChangeTtmpLayout([&](bool& changed) {
+		m_pImpl->Library.SetOrder(folder, children);
+		changed = true;
+	});
 }

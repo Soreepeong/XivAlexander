@@ -26,11 +26,11 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			: Rewriter(rewriter)
 			, Logger(Misc::Logger::Acquire()) {
 
-			std::vector<Game::Resolved::SqPackIndexLookupFn> found;
-			if (Game::Resolved::SqPackIndexLookupFunctions.Resolve(found) != Game::Signatures::ResolveError::Ok)
+			Game::Resolved::SqpackLookupHooksFunctions functions;
+			if (Game::Resolved::SqpackLookupHooks.Resolve(functions) != Game::Signatures::ResolveError::Ok)
 				return;
 
-			for (const auto fn : found) {
+			for (const auto fn : functions.IndexLookups) {
 				auto& hook = Hooks.emplace_back("FFXIV::SqPackManager::TryGetOffsetFromIndex", fn);
 				Cleanup += hook.SetHook([this, &hook, fn](void* manager, const char* path, uint32_t* outOffset, uint32_t* outDatIndex) {
 					if (!path || !*path)

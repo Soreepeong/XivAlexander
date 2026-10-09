@@ -164,7 +164,7 @@ BEGIN
         MENUITEM "(Current Process Information)", ID_FILE_CURRENTINFO
         MENUITEM SEPARATOR
         MENUITEM "コントロールウィンドウの表示(&C)\tCtrl+(Alt+)W", ID_FILE_SHOWCONTROLWINDOW
-        MENUITEM "ログウィンドウの表示(&L)\t(Ctrl+Alt+)L", ID_FILE_SHOWLOGGINGWINDOW
+        MENUITEM "ログウィンドウの表示(&L)\tCtrl+Shift+L", ID_FILE_SHOWLOGGINGWINDOW
         MENUITEM "新規アップデートをチェック(&P)\tCtrl+(Alt+)U", ID_FILE_CHECKFORUPDATES
         MENUITEM "XivAlexanderを終了(&U)\tCtrl+(Alt+)Q", ID_FILE_UNLOADXIVALEXANDER
         MENUITEM SEPARATOR
@@ -175,9 +175,9 @@ BEGIN
         MENUITEM "以下の設定で再起動(&R)\tCtrl+Shift+R", ID_RESTART_RESTART
         MENUITEM "起動コマンドラインをコピー(&M)",           ID_RESTART_COPYLAUNCHCOMMANDLINE
         MENUITEM SEPARATOR
-        MENUITEM "XivAlexanderを使用(&X)\t(Ctrl+Shift+)X", ID_RESTART_USEXIVALEXANDER
-        MENUITEM "コマンドラインの難読化を使用(&P)\t(Ctrl+Shift+)P", ID_RESTART_USEPARAMETEROBFUSCATION
-        MENUITEM "管理者として実行(&E)\t(Ctrl+Shift+)A", ID_RESTART_USEELEVATION
+        MENUITEM "XivAlexanderを使用(&X)\tCtrl+Shift+X", ID_RESTART_USEXIVALEXANDER
+        MENUITEM "コマンドラインの難読化を使用(&P)\tCtrl+Shift+P", ID_RESTART_USEPARAMETEROBFUSCATION
+        MENUITEM "管理者として実行(&E)\tCtrl+Shift+A", ID_RESTART_USEELEVATION
         MENUITEM SEPARATOR
         MENUITEM "言語：日本語(&J)",                  ID_RESTART_LANGUAGE_JAPANESE
         MENUITEM "言語：英語(&E)",                   ID_RESTART_LANGUAGE_ENGLISH
@@ -198,7 +198,7 @@ BEGIN
     BEGIN
         POPUP "遅延とタイミングの処理(&H)"
         BEGIN
-            MENUITEM "有効化(&E)\t(Ctrl+Shift+)H",     ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
+            MENUITEM "有効化(&E)\tCtrl+Shift+H",     ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
             MENUITEM SEPARATOR
             MENUITEM "モード&1：次のアクションの使用可能時刻からレイテンシを繰り上げる", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1
             MENUITEM "モード&2：サーバからの応答にかかる時間を{}usに固定", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2
@@ -208,18 +208,17 @@ BEGIN
             MENUITEM "作動のシミュレーション(ログに記録)(&P)\tCtrl+(Alt+)P", ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE
         END
         MENUITEM SEPARATOR
-        MENUITEM "IPCタイプファインダーを使用(&F)\t(Ctrl+Shift+)F", ID_NETWORK_USEIPCTYPEFINDER
-        MENUITEM "すべてのIPCメッセージをログに記録(&I)\t(Ctrl+Shift+)M", ID_NETWORK_USEALLIPCMESSAGELOGGER
+        MENUITEM "IPCタイプファインダーを使用(&F)\tCtrl+Shift+F", ID_NETWORK_USEIPCTYPEFINDER
+        MENUITEM "すべてのIPCメッセージをログに記録(&I)\tCtrl+Shift+M", ID_NETWORK_USEALLIPCMESSAGELOGGER
         MENUITEM SEPARATOR
-        MENUITEM "パケット遅延の軽減(&R)\t(Ctrl+Shift+)F1", ID_NETWORK_REDUCEPACKETDELAY
-        MENUITEM "すべての接続の処理を解除する(&E)\t(Ctrl+Shift+)F2", ID_NETWORK_RELEASEALLCONNECTIONS
-        MENUITEM "すべての接続を強制に終了する(&S)\t(Ctrl+Shift+)F3", ID_NETWORK_RESETALLCONNECTIONS
+        MENUITEM "パケット遅延の軽減(&R)\tCtrl+Shift+F1", ID_NETWORK_REDUCEPACKETDELAY
+        MENUITEM "すべての接続を強制に終了する(&S)", ID_NETWORK_RESETALLCONNECTIONS
         POPUP "トラブルシューティング(&T)"
         BEGIN
-            MENUITEM "ループバックアドレスを処理(&L) (127.0.0.0/8)\t(Ctrl+Shift+)1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
-            MENUITEM "ローカルアドレスを処理(&P) (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\t(Ctrl+Shift+)2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
-            MENUITEM "すべてのアドレスを処理(&A) (0.0.0.0/0)\t(Ctrl+Shift+)3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
-            MENUITEM "すべてのポートを処理(&O)\t(Ctrl+Shift+)4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
+            MENUITEM "ループバックアドレスを処理(&L) (127.0.0.0/8)\tCtrl+Shift+1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
+            MENUITEM "ローカルアドレスを処理(&P) (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\tCtrl+Shift+2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
+            MENUITEM "すべてのアドレスを処理(&A) (0.0.0.0/0)\tCtrl+Shift+3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
+            MENUITEM "すべてのポートを処理(&O)\tCtrl+Shift+4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
         END
     END
     POPUP "MOD(&M)"
@@ -228,21 +227,9 @@ BEGIN
         MENUITEM SEPARATOR
         POPUP "TexTools MODパック(&T)"
         BEGIN
-            POPUP "(template entry to be inserted at bottom)"
-            BEGIN
-                MENUITEM "有効化(&E)",                     ID_MODDING_TTMP_ENTRY_ENABLE, CHECKED
-                MENUITEM "削除(&D)",                      ID_MODDING_TTMP_ENTRY_DELETE
-                MENUITEM SEPARATOR
-                MENUITEM "再起動必要",                       ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
-                MENUITEM "説明を表示(&S)",                   ID_MODDING_TTMP_ENTRY_SHOWDESCRIPTION
-                MENUITEM SEPARATOR
-            END
+            MENUITEM "再起動必要",                       ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
             MENUITEM "(インストール済みのMODパックなし)",         ID_MODDING_TTMP_NOENTRY, INACTIVE
             MENUITEM "(MOD機能がロードされてない)",            ID_MODDING_TTMP_NOTREADY, INACTIVE
-            MENUITEM SEPARATOR
-            MENUITEM "1次元でフォルダーを表示(&F)",            ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY
-            MENUITEM "1次元でフォルダーを表示の時、フォルダーの有・無効化設定を有効化(&T)", ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW
-            MENUITEM "専用のメニューを表示(&M)",              ID_MODDING_TTMP_SHOWDEDICATEDMENU
             MENUITEM SEPARATOR
             MENUITEM "すべてを有効化(&E)",                 ID_MODDING_TTMP_ENABLEALL
             MENUITEM "すべてを無効化(&D)",                 ID_MODDING_TTMP_DISABLEALL
@@ -252,8 +239,6 @@ BEGIN
             MENUITEM "フォルダーを開ける(&O)",               ID_MODDING_TTMP_OPENDIRECTORY
         END
         MENUITEM "再読み込み(&F)", ID_MODDING_TTMP_REFRESH
-        MENUITEM "置き換えファイルのフォルダーを開ける(&R)",      ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
-        MENUITEM "TTMPL/TTMPDファイルに変換して保存(&O)",  ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
         MENUITEM "別コーデックの.scdを再生可能にする(&C)",     ID_MODDING_USEALTCODECMUSICSUPPORT
         MENUITEM "すべてのファイルのアクセスをログに記録(I)",      ID_MODDING_LOGALLFILEACCESS
@@ -265,16 +250,12 @@ BEGIN
             MENUITEM "戦闘中のNPCのセリフ(&D)",             ID_MODDING_MUTEVOICE_LINE
         END
         MENUITEM SEPARATOR
-        MENUITEM "ゲームを再起動するまで適用されない場合があります。",   ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
-    END
-    POPUP "TTMP(&T)"
-    BEGIN
-        MENUITEM SEPARATOR
     END
     POPUP "設定(&C)"
     BEGIN
-        MENUITEM "環境（ランタイム）設定(&R)\t(Ctrl+Alt+)R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
-        MENUITEM "Opcodeの設定(&O)\t(Ctrl+Alt+)O", ID_CONFIGURE_EDITOPCODECONFIGURATION
+        MENUITEM SEPARATOR
+        MENUITEM "環境（ランタイム）設定(&R)\tCtrl+Alt+R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
+        MENUITEM "Opcodeの設定(&O)\tCtrl+Alt+O", ID_CONFIGURE_EDITOPCODECONFIGURATION
         MENUITEM "Opcodeのアップデートを確認する(&U)",      ID_CONFIGURE_CHECKFORUPDATEDOPCODES
         MENUITEM "軌道のときに自動でOpcodeのアップデートを確認(&T)", ID_CONFIGURE_CHECKFORUPDATEDOPCODESONSTARTUP
         MENUITEM SEPARATOR
@@ -285,16 +266,19 @@ BEGIN
             MENUITEM "フォルダーを開ける(&O)",               ID_CONFIGURE_GAMEFIX_OPENDIRECTORY
         END
         MENUITEM SEPARATOR
-        MENUITEM "ゲームがCPUをできるだけ利用させる(&C)",      ID_CONFIGURE_USEMORECPUTIME
-        MENUITEM "バックグラウンド時のフレームレートを制限(&B)",    ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
+        POPUP "フレームレート制御(&F)"
+        BEGIN
+            MENUITEM "ゲームがCPUをできるだけ利用させる(&C)",      ID_CONFIGURE_USEMORECPUTIME
+            MENUITEM "バックグラウンド時のフレームレートを制限(&B)",    ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
+            MENUITEM "FPSの固定(&F)",                  ID_CONFIGURE_LOCKFRAMERATE
+            MENUITEM "リキャストとアニメーション待機時間とゲーム処理の同期化(&P)", ID_CONFIGURE_SYNCHRONIZEPROCESSING
+        END
         POPUP "ウィンドウタイトル(&I)"
         BEGIN
             MENUITEM "変更しない(&N)",                   ID_CONFIGURE_WINDOWTITLE_PID_NONE
             MENUITEM "前にセッション名かPIDを追加する(&P)",     ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
             MENUITEM "後ろにセッション名かPIDを追加する(&A)",    ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
         END
-        MENUITEM "FPSの固定(&F)",                  ID_CONFIGURE_LOCKFRAMERATE
-        MENUITEM "リキャストとアニメーション待機時間とゲーム処理の同期化(&P)", ID_CONFIGURE_SYNCHRONIZEPROCESSING
         MENUITEM SEPARATOR
         POPUP "言語(&L) (Language/언어)"
         BEGIN
@@ -311,7 +295,7 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "設定のフォルダーを開ける(&D)",            ID_CONFIGURE_OPENCONFIGURATIONDIRECTORY
-        MENUITEM "設定の再読み込み(&Z)\t(Ctrl+Shift+)F5", ID_CONFIGURE_RELOAD
+        MENUITEM "設定の再読み込み(&Z)\tCtrl+Shift+F5", ID_CONFIGURE_RELOAD
     END
     POPUP "表示(&V)"
     BEGIN
@@ -361,7 +345,6 @@ BEGIN
     IDS_NOUNLOADREASON_WNDPROC 
                             "他のプログラムにウィンドウのプロシージャを割り込まれました。先に競合のプログラムを終了してください。"
     IDS_ERROR_INJECT        "このプログラムの初期化に失敗しました。\nエラー：{}\nPID：{}\nパス：{}\nコマンドライン：{}"
-    IDS_WARNING_ZEROPING    "rtt={}, latency={}; VPNまたはネットワークから0msの遅延が報告されているため、遅延を計算に参考しない「モード２」をおすすめします。"
     IDS_ERROR_FREEGAMEMUTEX_CLOSEHANDLE 
                             "ハンドルの取得に失敗しました。({:p}(type {:2x}): {})"
     IDS_PINGTRACKER_START   "{} -> {}: 遅延の測定を開始します。"
@@ -399,11 +382,12 @@ END
 STRINGTABLE
 BEGIN
     IDS_CONFIRM_EXIT_GAME   "ゲームを強制終了しますか？"
+    IDS_CONFIRM_RESET_ALL_CONNECTIONS "すべての接続を強制終了しますか？"
     IDS_TITLE_UNRECOVERABLEERROR_FOOTER 
                             "<a href=""issues"">XivAlexanderのGitHubのIssueページ</a>を開ける"
     IDS_CONFIRM_RESTART_GAME 
                             "XivAlexanderの使用：{}\nコマンドラインの難読化の使用：{}\n管理者権限で実行：{}\n言語：{}\n地域：{}"
-    IDS_MAIN_TEXT           "PID: {}\nゲームのインストール先: {}\nコマンドライン：{}\nゲームのバージョン: {} ({})\nメッセジーループ：{}+{:06}us (毎秒{:.02f}回)\n\n{}"
+    IDS_MAIN_TEXT           "メッセジーループ：{}+{:06}us (毎秒{:.02f}回){}\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "環境設定"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcodeの設定"
@@ -468,8 +452,8 @@ BEGIN
     IDS_VERSIONSENSITIVE_ALTCODEC "別コーデックの.scdの再生"
     IDS_VERSIONSENSITIVE_IMEMODEINDICATOR "IMEモード表示の韓国語・中国語IME対応"
     IDS_VERSIONSENSITIVE_CROWDFIX "CrowdFix (混雑時のパフォーマンス改善)"
+    IDS_VERSIONSENSITIVE_FONTREPLACEMENT "フォントの置き換え"
     IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART "(!) 一部の機能は再起動するまで無効になっています。"
-    IDS_MENU_MODDING_REQUIRESENABLEANDRESTART "ここの機能はMODを有効化してゲームを再起動するまで適用されません。"
 END
 
 STRINGTABLE
@@ -478,7 +462,6 @@ BEGIN
     IDS_URL_RELEASES        "https://github.com/Soreepeong/XivAlexander/releases"
     IDS_ERROR_NO_FFXIV_PROCESS "{} プロセスを見つけませんでした。ゲームを起動しているか確認してください。"
     IDS_ERROR_NO_MATCHING_PROCESS "指定の条件に一致するプロセスを見つけることができませんでした。"
-    IDS_ERROR_RESTART_ADMIN "管理者権限で実行に失敗しました。{}"
     IDS_UPDATE_PROGRESS_DOWNLOADING_FILES "アップデートファイルをダウンロードしています・・・"
     IDS_UPDATE_PROGRESS_PREPARING_FILES "アップデートファイルを準備しています・・・"
     IDS_UPDATE_PROGRESS_CHECKING "アップデートを確認しています・・・"
@@ -498,7 +481,6 @@ BEGIN
                             "起動中のゲームのプロセス({}:{})にすでにXivAlexanderがロードされています。\n\n{}のボタンを押し再びロードするか、\n{}のボタンで終了するか、\n{}のボタンでスキップします。"
     IDS_CONFIRM_INJECT      "ゲームのプロセスを見つけました。\n\n・PID：{}\n・パス：{}\n\nこのプロセスにXivAlexanderをロードしますか？"
     IDS_UPDATE_FILE_TOO_BIG "アップデートのファイルサイズのがが大きすぎます。アップデートファイルの無欠性を信頼できる場合、手動でファイルを取り換えアップデートしてください。"
-    IDS_UPDATE_INVALID_VERSION "バージョン情報の検証に失敗しました。手動でアップデートを確認した後、続けてください。"
     IDS_HELP_ACTION         "作業を指定します。\n\t・auto: すでにゲームが起動中の場合起動中のプロセスにロードし、起動していない場合ゲームを起動して起動したプロセスにロードします。\n\t・ask: ゲームプロセス毎に行う作業を確認します。\n\t・load: ゲームプロセスにXivAlexanderをロードします。\n\t・unload: ゲームプロセスからXivAlexanderを終了します。\n\t・launcher: 指定のゲームランチャーを起動し、起動したゲームにXivAlexanderをロードします。\n\t・update-check: アップデートを確認します。\n\t・web: 配布サイト (https://github.com/Soreepeong/XivAlexander) を開きます。"
     IDS_HELP_LAUNCHER       "ランチャーを指定します。有効な値はauto（自動）、select（毎回確認）、squareenix（スクウェア・エニックス）、actozsoft（Actoz Soft）、shengqugames（Shengqu Games）、userjoygames（USERJOY GAMES）です。"
     IDS_HELP_QUIET          "エラーメッセージを表示しません。"
@@ -512,7 +494,6 @@ END
 STRINGTABLE
 BEGIN
     IDS_MENU_BACKGROUND_FRAMERATE_TARGET "バックグラウンド時のFPS制限: {:g} fps"
-    IDS_MENU_WORDWRAPCONFIGWINDOW "自動 &改行"
     IDS_FILTERSPEC_ALLFILES "すべてのファイル (*.*)"
     IDS_FILTERSPEC_TTMP     "TexTools MODパックファイル (*.ttmp, *.ttmp2, *.mpl)"
     IDS_CONFIRM_REMOVEALLTTMP "「{}」フォルダーにある全てのTexTools MODパックを削除します。"
@@ -531,10 +512,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_RESULT_EXCELCONFIGFILE_INSTALLED "テキスト置き換え定義ファイルをインストールしました。"
     IDS_ERROR_UNSUPPORTED_FILE_TYPE "サポートされないファイル形式です。"
-    IDS_TITLE_COMPRESSING   "データを圧縮しています…"
-    IDS_CONFIGURE           "設定"
     IDS_ERROR_NO_MATCHING_FILES "このフォルダで対応のファイルが見つかりませんでした"
     IDS_TITLE_IMPORT_TTMP   "TexTools MODパックを選択してください"
     IDS_TITLE_IMPORTING     "インポート中…"
@@ -600,16 +578,11 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_TITLE_INDEXINGFILES "ファイルを索引しています…({1}/{2}): {0}"
-    IDS_TITLE_FINALIZING    "ファイルの準備を完了しています…"
-    IDS_ERROR_MODDINGACTIVEREQUIRED "この機能のためにはMODが必要です。"
     IDS_ERROR_CANCELLING_TRYAGAINLATER "前のオペレーションをキャンセル中です。ちょっと後でもう一回してください。"
 END
 
 STRINGTABLE
 BEGIN
-    IDS_TITLE_EXPORTTTMPDIRECTORY "TTMPL/TTMPDファイルの保存フォルダーを選択してください"
-    IDS_TITLE_EXPORTTTMPPROGRESS "TTMPファイルセットに変換しています…({1}/{2}): {0}"
     IDS_UPDATE_CONFIRM_NOAUTO 
                             "新しいアップデートがあります。新規のバージョンは{4:%Ec}にリリーズされた{0}.{1}.{2}.{3}で、現在のバージョンは{5}.{6}.{7}.{8}です。\n\n{9}のボタンを押しリリーズノートを確認するか、\n{10}のボタンを押し今すぐアップデートするか、または\n{11}ボタンを押し取り消します。ゲームがもう起動中のため、自動アップデートはできません。Githubでアップデートを確認しますか？"
     IDS_UPDATE_ERROR_ACCESS_DENIED 
@@ -621,9 +594,233 @@ BEGIN
     IDS_OPCODEUPDATE_ERROR_404 "Opcodeの設定がまだアップデートされていません。後でもう一度してください。"
     IDS_OPCODEUPDATE_OK_NOTCHANGED "現在のOpcodeの設定がもう最新です。"
     IDS_OPCODEUPDATE_OK_CHANGED "Opcodeの設定をアップデートしました。"
-    IDS_SOCKETHOOK_SOCKET_RESET2 "{:x}: 強制終了 => {}"
+    IDS_SOCKETHOOK_SOCKET_RESET  "{:x}: 強制終了 => {}"
     IDS_MENU_TTMP_PROFILE   "プロフィール"
     IDS_MENU_MODDING_SAMPLINGRATE "オーディオサンプリングレート(&S)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_BROWSE     "参照…"
+    IDS_SETTINGS_ADD        "追加…"
+    IDS_SETTINGS_REMOVE     "削除"
+    IDS_SETTINGS_EDITINCONFIGEDITOR "環境（ランタイム）設定で編集できます。"
+    IDS_SETTINGS_OPENEDITOR "エディターを開く"
+    IDS_SETTINGS_GROUP_UI   "インターフェース"
+    IDS_SETTINGS_GROUP_UI_MAINWINDOW "コントロールウィンドウ"
+    IDS_SETTINGS_GROUP_UI_LOGWINDOW "ログウィンドウ"
+    IDS_SETTINGS_GROUP_UI_CONFIGWINDOW "設定エディター"
+    IDS_SETTINGS_GROUP_GAMEWINDOW "ゲームウィンドウ"
+    IDS_SETTINGS_GROUP_NETWORKTIMING "遅延とタイミングの処理"
+    IDS_SETTINGS_GROUP_SOCKET "接続"
+    IDS_SETTINGS_GROUP_FRAMERATECONTROL "フレームレート制御"
+    IDS_SETTINGS_GROUP_FRAMERATECONTROL_LOCK "FPSの固定"
+    IDS_SETTINGS_GROUP_OPCODES "Opcode"
+    IDS_SETTINGS_GROUP_LAUNCH "起動"
+    IDS_SETTINGS_GROUP_CHAINLOAD "チェーンロード"
+    IDS_SETTINGS_GROUP_MODDING "MOD"
+    IDS_SETTINGS_GROUP_MODDING_LANGUAGES "言語"
+    IDS_SETTINGS_GROUP_MODDING_TTMP "TexTools MODパック"
+    IDS_SETTINGS_GROUP_MODDING_LOGGING "ログ"
+    IDS_SETTINGS_GROUP_AUDIO "オーディオ"
+    IDS_SETTINGS_GROUP_AUDIO_MUTEVOICE "声のミュート"
+    IDS_SETTINGS_GROUP_AUDIO_SOXR "soxrリサンプラー"
+    IDS_SETTINGS_GROUP_AUDIO_SOXR_FILTER "フィルター"
+    IDS_SETTINGS_GROUP_CROWDFIX "CrowdFix"
+    IDS_SETTINGS_GROUP_CROWDFIX_FIXES "修正項目"
+    IDS_SETTINGS_GROUP_FONTREPLACEMENT "フォント置き換え"
+    IDS_SETTINGS_GROUP_FONTREPLACEMENT_FACES "フォント"
+    IDS_SETTINGS_BACKGROUNDLIMIT "バックグラウンド時のフレームレート制限 (fps)"
+    IDS_SETTINGS_LOCK_INTERVAL "描画間隔（µs、0で無効）"
+    IDS_SETTINGS_LOCK_AUTOMATIC "間隔を自動で決める"
+    IDS_SETTINGS_LOCK_RANGEFROM "目標フレームレートの下限 (fps)"
+    IDS_SETTINGS_LOCK_RANGETO "目標フレームレートの上限 (fps)"
+    IDS_SETTINGS_LOCK_MAXDEVIATION "描画間隔の最大偏差 (µs)"
+    IDS_SETTINGS_LOCK_GCD   "グローバルクールダウン (s)"
+    IDS_SETTINGS_CROWDFIX_ENABLED "CrowdFixを使用"
+    IDS_SETTINGS_CROWDFIX_ENABLED_DESC "周囲のオブジェクトの数に応じて増えるフレームごとの処理を減らします。変更は次のフレームから反映されます。"
+    IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS "処理のないGPUリソース通知をスキップ"
+    IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS_DESC "毎フレームすべてのGPUリソースを2回巡回する代わりに、処理が必要なリソースだけを巡回します。"
+    IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS "ワーカースレッドの起床を連鎖させる"
+    IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS_DESC "ジョブを投入するたびに全ワーカーを起こす代わりに1つだけ起こし、起きたワーカーが次のワーカーを起こします。"
+    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS "スケルトンのポーズ同期をフレームごとに1回にする"
+    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS_DESC "描画するビューごとに繰り返される全スケルトンのポーズ同期を、フレームの最初の1回以降はスキップします。"
+    IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR "使用済みのカリングスロットだけをクリア"
+    IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR_DESC "フレームごとに数回40,960スロットすべてをクリアする代わりに、これまで使われた最も高いオブジェクトスロットまでだけ可視性テーブルをクリアします。"
+    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK "グラフィックアロケーターのロック外で大きなブロックを解放"
+    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK_DESC "大きなブロックの解放中も小さな割り当てが進むようにします。主にメインスレッドがワーカーを待つCPUで効果があります。"
+    IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS "描画用ステージングブロックを再利用"
+    IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS_DESC "解放されたステージングブロックをサイズ別にためて再利用し、ほとんどの割り当てがアロケーターのグローバルロックを通らないようにします。"
+    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS "非表示のミニオンの追従AIを止める"
+    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS_DESC "モデルが非表示のミニオンの、衝突判定を伴う追従AIをスキップします。離れすぎた場合は今まで通り主人のそばにワープします。"
+    IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT "不要なジョブリストの待機をスキップ"
+    IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT_DESC "すでにシグナル状態のイベントをもう一度待つ処理を省きます。フレームあたり約75回のシステムコールが減ります。"
+    IDS_SETTINGS_CROWDFIX_INLINEBGPREP "背景インスタンシングの準備をメインスレッドで実行"
+    IDS_SETTINGS_CROWDFIX_INLINEBGPREP_DESC "ビューごとのごく小さな背景インスタンシングのジョブを、ワーカーに渡して待つ代わりにその場で実行します。"
+    IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS "非表示のホットバーの準備をスキップ"
+    IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS_DESC "毎フレーム非表示のホットバーのスロットを準備する処理をスキップします。表示されたホットバーはそのフレームで準備されます。"
+    IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL "アニメーションの仕上げを並列化"
+    IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL_DESC "スケルトンの仕上げ処理をメインスレッドで1つずつ行う代わりに、接続の深さごとにワーカーで処理します。"
+    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING "キャラクターのカリングを複数スレッドに分ける"
+    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING_DESC "ゲームはすべてのキャラクターを1つのジョブでカリングしますが、自分の分を終えたスレッドがそれを手伝うようにします。"
+    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS "カリング処理を1項目ずつ配る"
+    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS_DESC "一部のスレッドしか受け取らない最大8項目単位の代わりに1項目ずつ配り、セルのカリングをより多くのスレッドに分散します。"
+    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS "コマンドリストの使用中の項目だけを集める"
+    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS_DESC "各コマンドリストの使用中の項目だけをコピーし、すでに並んでいれば並べ替えを省きます。結果はゲームと同じです。"
+    IDS_SETTINGS_PAGE_PATCHCODES "ゲームのバグのフィックス"
+    IDS_SETTINGS_PATCHCODE_NEW "新規作成…"
+    IDS_SETTINGS_PATCHCODE_EDIT "編集…"
+    IDS_SETTINGS_PATCHCODE_DELETE "削除"
+    IDS_SETTINGS_PATCHCODE_CONFIRMDELETE "{}を削除しますか？"
+    IDS_SETTINGS_PATCHCODE_EDITORTITLE "ゲームのバグのフィックス：{}"
+    IDS_SETTINGS_HEADING_OPCODECONFIG "Opcodeの設定"
+    IDS_SETTINGS_PAGE_STATUS "状態"
+    IDS_SETTINGS_PAGE_GAMEBEHAVIOR "ゲームの動作"
+    IDS_SETTINGS_PAGE_CONFIGURATION "設定"
+    IDS_SETTINGS_OPENFRAMERATELOCKING "FPSの固定ダイアログを開く…"
+    IDS_SETTINGS_LOCK_MODE  "モード"
+    IDS_SETTINGS_LOCK_MODE_OFF "使用しない"
+    IDS_SETTINGS_LOCK_MODE_FIXED "固定FPS"
+    IDS_SETTINGS_LOCK_MODE_AUTOMATIC "自動設定"
+    IDS_SETTINGS_LOCK_FRAMERATE "FPS"
+    IDS_SETTINGS_LOCK_MINIMIZECLIPPING "GCDが遅くられないようにするFPSを探す"
+    IDS_SETTINGS_LOCK_ESTIMATEDGCD "予想される実際のGCD (s)"
+    IDS_SETTINGS_LOCK_INTERVALINUSE "使用中の描画間隔 (µs)"
+    IDS_SETTINGS_LOCK_MEASUREDGCD "測定されたGCD (s)"
+    IDS_SETTINGS_LOCK_LATESTGCDS "最近使ったGCDの測定"
+    IDS_SETTINGS_LOCK_RESET "空にする"
+    IDS_SETTINGS_GRID_ENABLED "有効"
+    IDS_SETTINGS_GRID_NAME  "名前"
+    IDS_SETTINGS_GRID_LANGUAGE "言語"
+    IDS_SETTINGS_GRID_FILENAME "ファイル名"
+    IDS_SETTINGS_GRID_ADD   "追加"
+    IDS_SETTINGS_PATHREPLACEMENT_FROM "置き換え元（正規表現）"
+    IDS_SETTINGS_PATHREPLACEMENT_TO "置き換え先"
+    IDS_SETTINGS_PATHREPLACEMENT_STOP "停止"
+    IDS_SETTINGS_PATHREPLACEMENT_DESC "上から順に適用され、停止が有効な規則に一致するとそこで終わります。"
+    IDS_SETTINGS_PATHFILTER_PATTERN "パターン（正規表現）"
+    IDS_SETTINGS_PATHFILTER_INCLUDE "記録"
+    IDS_SETTINGS_PATHFILTER_DESC "最初に一致したフィルターがパスを記録するかを決め、どれにも一致しないパスは上の設定に従います。"
+    IDS_SETTINGS_FALLBACK_DESC "ドラッグで並べ替え：選んだ言語のファイルがない場合、上の言語から使われます。"
+    IDS_SETTINGS_FORCEDLANGUAGE_UNNAMED "（名前のない全員）"
+    IDS_SETTINGS_FORCEDLANGUAGE_DESC "話者の最初の有効な項目が適用され、空の名前は名前のない全員を表します。"
+    IDS_SETTINGS_CHOICES_ACTIVE "使用中"
+    IDS_SETTINGS_CHOICES_DESC "使用中の項目がない場合、ファイル名がある最初のプロフィールが使われます。ファイル名を変えても、MODにすでにあるファイルの名前は変わりません。"
+    IDS_SETTINGS_FONT_SOURCE_TYPE "種類"
+    IDS_SETTINGS_FONT_SOURCE_PRESET "プリセット"
+    IDS_SETTINGS_FONT_SOURCE_FONT "システムフォント"
+    IDS_SETTINGS_FONT_WEIGHT "太さ"
+    IDS_SETTINGS_FONT_STRETCH "幅"
+    IDS_SETTINGS_FONT_STYLE "スタイル"
+    IDS_SETTINGS_FONT_ADDPRESET "プリセットを追加…"
+    IDS_SETTINGS_FONT_ADDFONT "システムフォントを追加"
+    IDS_SETTINGS_FONT_COPYTOOTHERS "他のファミリーにコピー"
+    IDS_SETTINGS_FONT_CONFIRMCOPY "他のすべてのファミリーのソースを{}のもので置き換えますか？"
+    IDS_SETTINGS_FONT_SOURCES_DESC "後のソースが字ごとに前のものの上に描かれます。プリセットはこのファミリーのフォントだけが使われます。"
+    IDS_SETTINGS_EDGE_SCALE "文字サイズ1ピクセルあたりの縁の太さ"
+    IDS_SETTINGS_EDGE_MIN   "縁の最小の太さ (px)"
+    IDS_SETTINGS_EDGE_MAX   "縁の最大の太さ (px)"
+    IDS_SETTINGS_DIRS_FOLDER "フォルダー"
+    IDS_SETTINGS_DIRS_LOCATION "場所"
+    IDS_SETTINGS_DIRS_ADDDEFAULT "(既定のパスを追加)"
+    IDS_SETTINGS_DIRS_NOTFOUND "{} (見つかりません)"
+    IDS_SETTINGS_DIRS_ADD "フォルダーを追加…"
+    IDS_SETTINGS_SHOWINEXPLORER "エクスプローラーで表示"
+    IDS_SETTINGS_DIRS_DESC "ドラッグで並べ替えられます。<config> は設定フォルダー、<sqpack> はゲームの sqpack フォルダーを表します。"
+    IDS_SETTINGS_TTMP_AUTHOR "作者"
+    IDS_SETTINGS_TTMP_VERSION "バージョン"
+    IDS_SETTINGS_TTMP_STATUS "状態"
+    IDS_SETTINGS_TTMP_FILTER "絞り込み"
+    IDS_SETTINGS_TTMP_CONFIRMDELETE "「{}」を削除しますか?\n\n{}"
+    IDS_SETTINGS_TTMP_RENAME "名前を変更"
+    IDS_SETTINGS_TTMP_MOVETO "移動…"
+    IDS_SETTINGS_TTMP_MOVETONEWFOLDER "新しいフォルダーへ移動"
+    IDS_SETTINGS_TTMP_NEWFOLDER "新しいフォルダー"
+    IDS_SETTINGS_TTMP_TOPLEVEL "最上位: {}"
+    IDS_SETTINGS_TTMP_ORDER_DESC "ドラッグで並べ替えられます。複数のモッドパックが同じファイルを変更する場合、下にあるものが優先されます。"
+    IDS_STATUS_TTMPPROFILE "\nモッドパックのプロファイル: {}"
+    IDS_SETTINGS_MODDING_ENABLE_DESC "変更はゲームを再起動すると反映されます。"
+    IDS_SETTINGS_LIPSYNC    "カットシーンのリップシンク言語"
+    IDS_SETTINGS_LIPSYNC_DESC "カットシーンで口の動きに使われる言語です。カットシーンのボイスファイルも同じ言語で選ばれます。選べるのはゲームにボイスがある言語だけです。"
+    IDS_SETTINGS_FONT_PREVIEW_SIZE "サイズ"
+    IDS_SETTINGS_FONT_PREVIEW_TEXT "サンプルテキスト"
+    IDS_SETTINGS_FONT_PREVIEW_DESC "選んだサイズのフォントを、これらのソースから作られるとおりに、ゲームと同じ縁取りを付けて描きます。フォントにない文字はゲームの字形で描かれますが、SystemFallback が有効ならゲーム内ではシステムフォントで描かれます。"
+    IDS_SETTINGS_FONT_PREVIEW_COLORS "色"
+    IDS_SETTINGS_FONT_PREVIEW_NOEDGE "縁取りを表示できません: {}"
+    IDS_SETTINGS_EDGE_PREVIEW_DESC "{} をフォントの置き換えのとおりに、選んだサイズでこの設定の縁取りを付けて描きます。色はゲームで使われているもので、すべてのフォントのプレビューに使われます。"
+    IDS_SETTINGS_FONT_COLORS_DEFAULT "標準"
+    IDS_SETTINGS_FONT_COLORS_TOOLTIPLABEL "ツールチップの項目名"
+    IDS_SETTINGS_FONT_COLORS_ACTIONNAME "アクション名"
+    IDS_SETTINGS_FONT_COLORS_STATUSNAME "ステータス名"
+    IDS_SETTINGS_FONT_COLORS_WARNING "警告"
+    IDS_SETTINGS_FONT_COLORS_NOTICE "お知らせ"
+    IDS_SETTINGS_FONT_COLORS_QUESTHIGHLIGHT "クエストの強調"
+    IDS_SETTINGS_FONT_COLORS_TUTORIAL "チュートリアルの本文"
+    IDS_SETTINGS_RESTART_REGION "地域"
+    IDS_SETTINGS_MISCELLANEOUS "その他"
+    IDS_SETTINGS_UPDATES "アップデート"
+    IDS_SETTINGS_LAUNCH_SESSIONSWITCHING "セッション切り替えを使う"
+    IDS_SETTINGS_REMEMBER   "記憶する"
+    IDS_SETTINGS_SESSIONS_FORGET "すべて削除"
+    IDS_SETTINGS_SESSIONS_FORGET_CONFIRM "記憶したログインセッションをすべて削除しますか?\nWindows の資格情報マネージャーから削除されます。"
+    IDS_SETTINGS_SESSIONS_FORGETONE "このセッションを削除"
+    IDS_SETTINGS_SESSIONS_FORGETONE_CONFIRM "ログインセッション「{}」を削除しますか?\nWindows の資格情報マネージャーから削除されます。"
+    IDS_SETTINGS_LAUNCH_CLEARCOPIED "コピーしたコマンドラインを消去するまでの秒数"
+    IDS_SETTINGS_LAUNCH_CLEARCOPIED_DESC "コピーしたコマンドラインをこの秒数の後にクリップボードから消去します。0 にすると消去しません。"
+    IDS_SETTINGS_EDITMENU "編集 ▾"
+    IDS_SETTINGS_SHOWMORE "続きを表示"
+    IDS_SETTINGS_SHOWLESS "折りたたむ"
+    IDS_SETTINGS_TTMP_CONFIRMDELETEMANY "{}個のモッドパックを削除しますか?"
+    IDS_SETTINGS_FONT_MONOSPACEDDIGITS "システムフォントの数字を等幅にする"
+    IDS_SETTINGS_FONT_OPENPRESETFOLDER "プリセットフォルダーを開く"
+    IDS_SETTINGS_FONT_IMPORT_TITLE "このプリセットはプリセットフォルダーの外にあります。"
+    IDS_SETTINGS_FONT_IMPORT_CONTENT "{}\n\nプリセットフォルダーにコピーして取り込みますか？それとも、このファイルを今の場所のまま使いますか？"
+    IDS_SETTINGS_FONT_IMPORT_GLYPHS "このプリセットは、隣にある次のフォルダーからグリフ画像を読み込みます。取り込むと、これらのフォルダーもプリセット専用のフォルダーへ一緒にコピーされます。{}"
+    IDS_SETTINGS_FONT_IMPORT_NOGLYPHCOPY "このプリセットは次のフォルダーからグリフ画像を読み込みますが、プリセットのあるフォルダーの中にないため、一緒にコピーできません。今の場所のままでのみ使えます。{}"
+    IDS_SETTINGS_FONT_IMPORT_IMPORT "取り込む\nプリセットフォルダーにコピーします。後で元のファイルを変更しても反映されません。"
+    IDS_SETTINGS_FONT_IMPORT_INPLACE "今の場所のまま使う\n今の場所から読み込みます。ファイルを移動したり削除したりすると使えなくなります。"
+    IDS_SETTINGS_FONT_PRESETUNREADABLE "{}\n\nプリセットを読み込めません: {}"
+    IDS_SETTINGS_FONT_IMPORTFAILED "{}\n\nプリセットを取り込めませんでした: {}"
+    IDS_TTMP_ERROR_NAME_EMPTY "名前を空にすることはできません。"
+    IDS_TTMP_ERROR_NAME_DOTS "「.」と「..」は名前に使えません。"
+    IDS_TTMP_ERROR_NAME_TOOLONG "名前が長すぎます。"
+    IDS_TTMP_ERROR_NAME_INVALIDCHARS "名前に < > : "" / \\ | ? * や制御文字は使えません。"
+    IDS_TTMP_ERROR_NAME_TRAILING "名前の末尾にスペースやピリオドは使えません。"
+    IDS_TTMP_ERROR_NAME_RESERVED "この名前はWindowsで予約されているため使えません。"
+    IDS_TTMP_ERROR_DIFFERENTDRIVE "フォルダーを別のドライブに移動することはできません。"
+    IDS_TTMP_ERROR_MOVEFAILED "{} を {} に移動できませんでした"
+    IDS_TTMP_ERROR_ITEMGONE "この項目はもうモッドパックの一覧にありません。再読み込みしてからもう一度お試しください。"
+    IDS_TTMP_ERROR_NAMETAKEN "そのフォルダーには「{}」という名前のものがすでにあります。"
+    IDS_TTMP_ERROR_DESTINATIONMISSING "移動先のフォルダーが存在しません。"
+    IDS_TTMP_ERROR_DESTINATIONOUTSIDE "移動先が、TexTools モッドパックを探すどのフォルダーの中にもありません。"
+    IDS_TTMP_ERROR_MOVEINTOSELF "フォルダーをそれ自身やその中のフォルダーに移動することはできません。"
+    IDS_TTMP_ERROR_MOVEINTOMODPACK "モッドパックの中には移動できません。"
+    IDS_TTMP_ERROR_NAMETAKENATDESTINATION "移動先のフォルダーには「{}」という名前のものがすでにあります。"
+    IDS_TTMP_ERROR_DESTINATIONNOTFOUND "移動先のフォルダーが見つかりませんでした。"
+    IDS_TTMP_ERROR_PARENTMISSING "親フォルダーが存在しません。"
+    IDS_TTMP_ERROR_PARENTOUTSIDE "親フォルダーが、TexTools モッドパックを探すどのフォルダーの中にもありません。"
+    IDS_TTMP_ERROR_FOLDERINMODPACK "モッドパックの中にフォルダーを作ることはできません。"
+    IDS_TTMP_ERROR_CREATEFOLDER "フォルダー {} を作成できませんでした: {}"
+    IDS_TTMP_ERROR_FOLDERGONE "このフォルダーはもうモッドパックの一覧にありません。再読み込みしてからもう一度お試しください。"
+    IDS_TTMP_ERROR_ORDERINCOMPLETE "新しい順序には、フォルダー内のすべての項目をちょうど1回ずつ含める必要があります。"
+    IDS_TTMP_ERROR_SAVEORDER "{} を保存できませんでした: {}"
+    IDS_TTMP_ERROR_OPENDATA "{} を開けませんでした。"
+    IDS_TTMP_ERROR_MOVEBACKFAILED "{}; 元の場所に戻すこともできませんでした ({})。TexTools モッドパックを再読み込みしてください。"
+    IDS_TTMP_ERROR_DUPLICATENAMES "「{}」という名前の項目が複数あります。"
+    IDS_ERROR_FILE_TOO_BIG  "ファイルが大きすぎます。"
+    IDS_ERROR_HTTP          "HTTPエラー {}"
+    IDS_RESULT_IMPORT_OK    "成功: {}: {}"
+    IDS_RESULT_IMPORT_ERROR "エラー: {}: {}"
+    IDS_FONTPRESET_ERROR_CANNOTREAD "{} を読み込めません。"
+    IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE "グリフ画像のフォルダー {} がプリセットのフォルダーの中にありません。"
+    IDS_FONTPRESET_ERROR_NOFACES "このプリセットにはフォントがありません。"
+    IDS_FONTPREVIEW_ERROR_NOFACE "{} を描くためのフォントがありません。"
+    IDS_SETTINGS_PATCHCODE_DEFAULTNAME "新しいゲームのバグのフィックス"
+    IDS_ERROR_LOAD_INSTALLED "{}\n理由: {}\n\n終了する場合は{}のボタンを、\nXivAlexanderのヘルプページを開く場合は{}のボタンを、\nXivAlexanderをロードせずに続ける場合は{}のボタンを押してください。"
+    IDS_ERROR_LOAD_INSTALLED_NOPATH "XivAlexanderのインストール先を確認できませんでした。"
+    IDS_ERROR_LOAD_INSTALLED_PATH "{} をロードできませんでした。"
+    IDS_FONTPREVIEW_ERROR_EMPTYELEMENT "{} にはグリフがありません。インストールされていないか、読み込めない可能性があります。"
+    IDS_FONTPREVIEW_ERROR_NOGLYPHS "{} にはテキストの文字がひとつもありません。"
 END
 
 #endif    // Japanese (Japan) resources
@@ -736,7 +933,7 @@ BEGIN
         MENUITEM "(Current Process Information)", ID_FILE_CURRENTINFO
         MENUITEM SEPARATOR
         MENUITEM "관리 창 보이기(&C)\tCtrl+(Alt+)W",  ID_FILE_SHOWCONTROLWINDOW
-        MENUITEM "로그 창 보이기(&L)\t(Ctrl+Alt+)L",  ID_FILE_SHOWLOGGINGWINDOW
+        MENUITEM "로그 창 보이기(&L)\tCtrl+Shift+L",  ID_FILE_SHOWLOGGINGWINDOW
         MENUITEM "업데이트 확인(&P)\tCtrl+(Alt+)U",   ID_FILE_CHECKFORUPDATES
         MENUITEM "XivAlexander 종료(&U)\tCtrl+(Alt+)Q", ID_FILE_UNLOADXIVALEXANDER
         MENUITEM SEPARATOR
@@ -747,9 +944,9 @@ BEGIN
         MENUITEM "아래 설정을 반영해 재시작하기(&R)\tCtrl+Shift+R", ID_RESTART_RESTART
         MENUITEM "실행 명령줄 복사(&M)",               ID_RESTART_COPYLAUNCHCOMMANDLINE
         MENUITEM SEPARATOR
-        MENUITEM "XivAlexander 사용(&X)\t(Ctrl+Shift+)X", ID_RESTART_USEXIVALEXANDER
-        MENUITEM "명령줄 난독화 사용(&P)\t(Ctrl+Shift+)P", ID_RESTART_USEPARAMETEROBFUSCATION
-        MENUITEM "관리자 권한으로 실행(&A)\t(Ctrl+Shift+)A", ID_RESTART_USEELEVATION
+        MENUITEM "XivAlexander 사용(&X)\tCtrl+Shift+X", ID_RESTART_USEXIVALEXANDER
+        MENUITEM "명령줄 난독화 사용(&P)\tCtrl+Shift+P", ID_RESTART_USEPARAMETEROBFUSCATION
+        MENUITEM "관리자 권한으로 실행(&A)\tCtrl+Shift+A", ID_RESTART_USEELEVATION
         MENUITEM SEPARATOR
         MENUITEM "언어: 일본어(&J)",                 ID_RESTART_LANGUAGE_JAPANESE
         MENUITEM "언어: 영어(&E)",                  ID_RESTART_LANGUAGE_ENGLISH
@@ -770,7 +967,7 @@ BEGIN
     BEGIN
         POPUP "지연 및 타이밍 도우미(&H)"
         BEGIN
-            MENUITEM "사용(&E)\t(Ctrl+Shift+)H",      ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
+            MENUITEM "사용(&E)\tCtrl+Shift+H",      ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
             MENUITEM SEPARATOR
             MENUITEM "모드 &1: 지연 시간만큼 다음 기술 시전 가능 시각 앞당기기", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1
             MENUITEM "모드 &2: 서버 응답 시간을 {}us로 고정",   ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2
@@ -780,18 +977,17 @@ BEGIN
             MENUITEM "모의 작동 (로그에서 미리 보기)(&P)\tCtrl+(Alt+)P", ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE
         END
         MENUITEM SEPARATOR
-        MENUITEM "IPC 검색 도우미 사용(&F)\t(Ctrl+Shift+)F", ID_NETWORK_USEIPCTYPEFINDER
-        MENUITEM "모든 IPC 메시지 로그 사용(&I)\t(Ctrl+Shift+)M", ID_NETWORK_USEALLIPCMESSAGELOGGER
+        MENUITEM "IPC 검색 도우미 사용(&F)\tCtrl+Shift+F", ID_NETWORK_USEIPCTYPEFINDER
+        MENUITEM "모든 IPC 메시지 로그 사용(&I)\tCtrl+Shift+M", ID_NETWORK_USEALLIPCMESSAGELOGGER
         MENUITEM SEPARATOR
-        MENUITEM "패킷 딜레이 감소(&R)\t(Ctrl+Shift+)F1", ID_NETWORK_REDUCEPACKETDELAY
-        MENUITEM "모든 연결 처리 해제하기(&E)\t(Ctrl+Shift+)F2", ID_NETWORK_RELEASEALLCONNECTIONS
-        MENUITEM "모든 접속 강제 해제하기(&S)\t(Ctrl+Shift+)F3", ID_NETWORK_RESETALLCONNECTIONS
+        MENUITEM "패킷 딜레이 감소(&R)\tCtrl+Shift+F1", ID_NETWORK_REDUCEPACKETDELAY
+        MENUITEM "모든 접속 강제 해제하기(&S)", ID_NETWORK_RESETALLCONNECTIONS
         POPUP "문제 해결(&T)"
         BEGIN
-            MENUITEM "루프백 주소 처리(&L) (127.0.0.0/8)\t(Ctrl+Shift+)1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
-            MENUITEM "사설 주소 처리(&P) (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\t(Ctrl+Shift+)2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
-            MENUITEM "모든 주소 처리(&A) (0.0.0.0/0)\t(Ctrl+Shift+)3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
-            MENUITEM "모든 포트 처리(&O)\t(Ctrl+Shift+)4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
+            MENUITEM "루프백 주소 처리(&L) (127.0.0.0/8)\tCtrl+Shift+1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
+            MENUITEM "사설 주소 처리(&P) (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\tCtrl+Shift+2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
+            MENUITEM "모든 주소 처리(&A) (0.0.0.0/0)\tCtrl+Shift+3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
+            MENUITEM "모든 포트 처리(&O)\tCtrl+Shift+4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
         END
     END
     POPUP "모딩(&M)"
@@ -800,21 +996,9 @@ BEGIN
         MENUITEM SEPARATOR
         POPUP "TexTools 모드팩(&T)"
         BEGIN
-            POPUP "(template entry to be inserted at bottom)"
-            BEGIN
-                MENUITEM "사용함(&E)",                     ID_MODDING_TTMP_ENTRY_ENABLE, CHECKED
-                MENUITEM "제거(&D)",                      ID_MODDING_TTMP_ENTRY_DELETE
-                MENUITEM SEPARATOR
-                MENUITEM "재시작 필요",                      ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
-                MENUITEM "설명 보기(&S)",                   ID_MODDING_TTMP_ENTRY_SHOWDESCRIPTION
-                MENUITEM SEPARATOR
-            END
+            MENUITEM "재시작 필요",                      ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
             MENUITEM "(설치된 모드팩 없음 )",               ID_MODDING_TTMP_NOENTRY, INACTIVE
             MENUITEM "(모딩 기능 준비되지 않음)",             ID_MODDING_TTMP_NOTREADY, INACTIVE
-            MENUITEM SEPARATOR
-            MENUITEM "일차원으로 폴더 표시(&F)",             ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY
-            MENUITEM "일차원으로 폴더 표시 시 폴더 활성화 제어 사용(&T)", ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW
-            MENUITEM "전용 메뉴 보이기(&M)",               ID_MODDING_TTMP_SHOWDEDICATEDMENU
             MENUITEM SEPARATOR
             MENUITEM "모두 활성화(&E)",                  ID_MODDING_TTMP_ENABLEALL
             MENUITEM "모두 비활성화(&D)",                 ID_MODDING_TTMP_DISABLEALL
@@ -824,8 +1008,6 @@ BEGIN
             MENUITEM "폴더 열기(&O)",                   ID_MODDING_TTMP_OPENDIRECTORY
         END
         MENUITEM "다시 불러오기(&F)", ID_MODDING_TTMP_REFRESH
-        MENUITEM "교체 파일 폴더 열기(&R)",             ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
-        MENUITEM "TTMPL/TTMPD파일로 내보내기(&O)",     ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
         MENUITEM "타 코덱 포함 음악 .scd 지원(&C)",      ID_MODDING_USEALTCODECMUSICSUPPORT
         MENUITEM "모든 파일 접근 기록하기(&I)",           ID_MODDING_LOGALLFILEACCESS
@@ -837,16 +1019,12 @@ BEGIN
             MENUITEM "전투 중 NPC 대사(&D)",             ID_MODDING_MUTEVOICE_LINE
         END
         MENUITEM SEPARATOR
-        MENUITEM "게임 재시작까지 변경 사항이 반영되지 않을 수도 있습니다.", ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
-    END
-    POPUP "TTMP(&T)"
-    BEGIN
-        MENUITEM SEPARATOR
     END
     POPUP "설정(&C)"
     BEGIN
-        MENUITEM "런타임(프로그램) 설정 변경(&R)\t(Ctrl+Alt+)R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
-        MENUITEM "옵코드 설정 변경(&O)\t(Ctrl+Alt+)O", ID_CONFIGURE_EDITOPCODECONFIGURATION
+        MENUITEM SEPARATOR
+        MENUITEM "런타임(프로그램) 설정 변경(&R)\tCtrl+Alt+R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
+        MENUITEM "옵코드 설정 변경(&O)\tCtrl+Alt+O", ID_CONFIGURE_EDITOPCODECONFIGURATION
         MENUITEM "옵코드 업데이트 확인하기(&U)",           ID_CONFIGURE_CHECKFORUPDATEDOPCODES
         MENUITEM "프로그램 시작 시 자동으로 옵코드 업데이트 확인(&T)", ID_CONFIGURE_CHECKFORUPDATEDOPCODESONSTARTUP
         MENUITEM SEPARATOR
@@ -857,16 +1035,19 @@ BEGIN
             MENUITEM "폴더 열기(&O)",                   ID_CONFIGURE_GAMEFIX_OPENDIRECTORY
         END
         MENUITEM SEPARATOR
-        MENUITEM "게임이 가능한 만큼 CPU를 쓰도록 만들기(&C)", ID_CONFIGURE_USEMORECPUTIME
-        MENUITEM "백그라운드 시 프레임 레이트 제한(&B)",      ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
+        POPUP "프레임 레이트 제어(&F)"
+        BEGIN
+            MENUITEM "게임이 가능한 만큼 CPU를 쓰도록 만들기(&C)", ID_CONFIGURE_USEMORECPUTIME
+            MENUITEM "백그라운드 시 프레임 레이트 제한(&B)",      ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
+            MENUITEM "FPS 고정(&F)",                  ID_CONFIGURE_LOCKFRAMERATE
+            MENUITEM "재사용 대기 시간 및 애니메이션 시간에 게임 처리를 동기화하기(&P)", ID_CONFIGURE_SYNCHRONIZEPROCESSING
+        END
         POPUP "창 제목(&I)"
         BEGIN
             MENUITEM "변경 안함(&N)",                   ID_CONFIGURE_WINDOWTITLE_PID_NONE
             MENUITEM "접두어로 추가(&P)",                 ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
             MENUITEM "접미어로 추가(&A)",                 ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
         END
-        MENUITEM "FPS 고정(&F)",                  ID_CONFIGURE_LOCKFRAMERATE
-        MENUITEM "재사용 대기 시간 및 애니메이션 시간에 게임 처리를 동기화하기(&P)", ID_CONFIGURE_SYNCHRONIZEPROCESSING
         MENUITEM SEPARATOR
         POPUP "언어(&L) (Language/言語)"
         BEGIN
@@ -884,7 +1065,7 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "설정값 저장 폴더 열기(&D)",            ID_CONFIGURE_OPENCONFIGURATIONDIRECTORY
-        MENUITEM "설정 다시 불러오기(&Z)\t(Ctrl+Shift+)F5", ID_CONFIGURE_RELOAD
+        MENUITEM "설정 다시 불러오기(&Z)\tCtrl+Shift+F5", ID_CONFIGURE_RELOAD
     END
     POPUP "보기(&V)"
     BEGIN
@@ -994,7 +1175,6 @@ BEGIN
     IDS_NOUNLOADREASON_SOCKET "다른 프로그램이 소켓 함수를 가로챘습니다. 다른 프로그램을 먼저 종료해 주세요."
     IDS_NOUNLOADREASON_WNDPROC "다른 프로그램이 창 프로시저를 가로챘습니다. 다른 프로그램을 먼저 종료해 주세요."
     IDS_ERROR_INJECT        "이 프로그램을 초기화하지 못했습니다.\n오류: {}\nPID: {}\n경로: {}\n명령줄: {}"
-    IDS_WARNING_ZEROPING    "rtt={}, latency={}; VPN 또는 네트워크에서 핑이 0ms라고 보고하고 있습니다. 현재 핑 정보를 사용하지 않는 ""모드 2""를 사용하는 것을 권장합니다."
     IDS_ERROR_FREEGAMEMUTEX_CLOSEHANDLE 
                             "핸들 처리에 실패했습니다. ({:p}(type {:2x}): {})"
     IDS_PINGTRACKER_START   "{} -> {}: 지연 시간 측정을 시작합니다."
@@ -1033,11 +1213,12 @@ END
 STRINGTABLE
 BEGIN
     IDS_CONFIRM_EXIT_GAME   "게임을 강제로 종료하시겠습니까?"
+    IDS_CONFIRM_RESET_ALL_CONNECTIONS "모든 접속을 강제로 해제하시겠습니까?"
     IDS_TITLE_UNRECOVERABLEERROR_FOOTER 
                             "<a href=""issues"">XivAlexander의 GitHub 이슈 페이지</a> 열기"
     IDS_CONFIRM_RESTART_GAME 
                             "XivAlexander 사용: {}\n명령줄 난독화 사용: {}\n관리자 권한으로 실행: {}\n언어: {}\n지역: {}"
-    IDS_MAIN_TEXT           "PID: {}\n게임 경로: {}\n인자: {}\n게임 버전: {} ({})\n메시지 루프: {}+{:06}us (초당 {:.02f}회)\n\n{}"
+    IDS_MAIN_TEXT           "메시지 루프: {}+{:06}us (초당 {:.02f}회){}\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "프로그램 설정 편집"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "옵코드 설정 편집"
@@ -1101,8 +1282,8 @@ BEGIN
     IDS_VERSIONSENSITIVE_ALTCODEC "타 코덱 포함 음악 .scd 지원"
     IDS_VERSIONSENSITIVE_IMEMODEINDICATOR "한국어·중국어 IME 입력 모드 표시"
     IDS_VERSIONSENSITIVE_CROWDFIX "CrowdFix (사람 많은 곳 성능 개선)"
+    IDS_VERSIONSENSITIVE_FONTREPLACEMENT "폰트 교체"
     IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART "(!) 일부 기능이 재시작 전까지 비활성화되었습니다."
-    IDS_MENU_MODDING_REQUIRESENABLEANDRESTART "모드 기능을 사용하고 게임을 재시작해야 여기의 기능들이 적용됩니다."
 END
 
 STRINGTABLE
@@ -1111,7 +1292,6 @@ BEGIN
     IDS_URL_RELEASES        "https://github.com/Soreepeong/XivAlexander/releases"
     IDS_ERROR_NO_FFXIV_PROCESS "{} 프로세스를 찾을 수 없습니다. 먼저 게임을 실행하고 다시 시도해 주세요."
     IDS_ERROR_NO_MATCHING_PROCESS "지정한 조건에 맞는 프로세스를 찾을 수 없었습니다."
-    IDS_ERROR_RESTART_ADMIN "관리자 권한으로 실행할 수 없었습니다. {}"
     IDS_UPDATE_PROGRESS_DOWNLOADING_FILES "업데이트 파일 다운로드 중..."
     IDS_UPDATE_PROGRESS_PREPARING_FILES "업데이트 파일 준비 중..."
     IDS_UPDATE_PROGRESS_CHECKING "업데이트 확인 중..."
@@ -1132,15 +1312,12 @@ BEGIN
                             "이미 실행중인 게임 프로세스({}:{})에 XivAlexander가 이미 불러들어져 있습니다.\n\n{} 버튼으로 다시 불러들이거나\n{} 버튼으로 종료하거나\n{} 버튼으로 건너뛰세요."
     IDS_CONFIRM_INJECT      "게임 프로세스를 찾았습니다.\n\n* PID: {}\n* 경로: {}\n\n이 프로세스에 XivAlexander을 불러들일까요?"
     IDS_UPDATE_FILE_TOO_BIG "업데이트 파일이 너무 큽니다. 문제가 없는 업데이트 파일이란 것이 확실하다면 수동으로 파일을 교체해 업데이트해 주세요."
-    IDS_UPDATE_INVALID_VERSION "버전 정보를 검증할 수 없었습니다. 수동으로 업데이트 확인 후 진행해 주세요."
     IDS_HELP_ACTION         "작업을 지정합니다.\n\t* auto: 게임이 이미 실행 중이면 실행중인 게임 프로세스로 불러들이고, 아니라면 게임을 실행하고 실행된 게임에 불러들입니다.\n\t* ask: 게임 프로세스 별 작업을 묻습니다.\n\t* load: 게임 프로세스에 XivAlexander를 불러들입니다.\n\t* unload: 게임 프로세스에서 XivAlexander를 종료합니다.\n\t* launcher: 지정한 게임 런처를 실행하고 실행된 게임에 XivAlexander를 불러들입니다.\n\t* update-check: 업데이트를 확인합니다.\n\t* web: 배포 웹페이지 https://github.com/Soreepeong/XivAlexander 를 엽니다."
     IDS_HELP_LAUNCHER       "런처를 지정합니다. 사용 가능한 값은 auto (감지), select (선택), squareenix (스퀘어 에닉스), actozsoft (액토즈소프트), shengqugames (Shengqu Games), userjoygames (USERJOY GAMES) 입니다."
     IDS_HELP_QUIET          "오류 메시지를 보이지 않습니다."
     IDS_HELP_DISABLE_RUNAS  "어떤 경우에도 관리자 권한으로 실행하지 않습니다."
     IDS_HELP_INTERNAL_USE_ONLY "내부 용도입니다. 사용 금지."
     IDS_HELP_TARGETS        "불러들이거나 종료 시에는 프로세스 ID 또는 프로세스 경로 접미사, 실행 시에는 실행할 프로세스의 경로입니다."
-    IDS_TITLE_IMPORT_FONTCONFIG_PRESET "폰트 프리셋 파일 불러오기"
-    IDS_TITLE_ADD_EXTERNAL_GAME_DIRECTORY "외부 게임 설치 폴더 추가하기"
     IDS_NOTIFY_TTMP_HAS_CONFIGURATION 
                             "방금 설치한 TexTools 모드팩 파일은 추가 설정이 필요합니다. 메뉴에서 설정해 주세요."
 END
@@ -1148,7 +1325,6 @@ END
 STRINGTABLE
 BEGIN
     IDS_MENU_BACKGROUND_FRAMERATE_TARGET "비활성화 시 FPS 제한: {:g} fps"
-    IDS_MENU_WORDWRAPCONFIGWINDOW "자동 &줄바꿈"
     IDS_FILTERSPEC_ALLFILES "모든 파일 (*.*)"
     IDS_FILTERSPEC_TTMP     "TexTools 모드팩 파일 (*.ttmp, *.ttmp2, *.mpl)"
     IDS_CONFIRM_REMOVEALLTTMP """{}"" 폴더에 있는 모든 TexTools 모드팩 파일을 제거합니다."
@@ -1167,11 +1343,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_RESULT_EXCELCONFIGFILE_INSTALLED "문자열 변경 규칙 파일로 설치하였습니다."
-    IDS_RESULT_FONTCONFIG_INSTALLED "폰트 프리셋 파일로 설치하였습니다."
     IDS_ERROR_UNSUPPORTED_FILE_TYPE "지원하지 않는 파일 형식입니다."
-    IDS_TITLE_COMPRESSING   "압축 중..."
-    IDS_CONFIGURE           "설정"
     IDS_ERROR_NO_MATCHING_FILES "이 폴더 안에서 지원하는 파일을 찾을 수 없었습니다."
     IDS_TITLE_IMPORT_TTMP   "TexTools 모드팩 파일 가져오기"
     IDS_TITLE_IMPORTING     "가져오는 중..."
@@ -1232,24 +1404,16 @@ BEGIN
                             "설치 모드 지정이 잘못되었습니다. 사용 가능한 값은 d3d, dinput8 입니다."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8 
                             "XivAlexander를 dinput8.dll로 설치하기(&I)\nXivAlexander를 선택한 게임 설치 폴더에 dinput8.dll 파일로 설치합니다."
-    IDS_ERROR_GENERATEFONT  "폰트 생성/불러오기 중 오류가 발생했습니다. 다시 시도하시겠습니까?\n\n오류: {}"
-    IDS_GENERATEFONT_FONTINSTALLATIONREQUIRED "폰트 설치가 필요합니다."
-    IDS_GENERATEFONT_CHECKAGAIN "설치 상태 재확인"
     IDS_TITLE_DISCOVERINGFILES "파일 찾는 중..."
 END
 
 STRINGTABLE
 BEGIN
-    IDS_TITLE_INDEXINGFILES "파일 색인 중... ({1}/{2}): {0}"
-    IDS_TITLE_FINALIZING    "파일 준비 완료 중..."
-    IDS_ERROR_MODDINGACTIVEREQUIRED "모딩이 켜져 있어야 사용할 수 있는 기능입니다."
     IDS_ERROR_CANCELLING_TRYAGAINLATER "마지막 작업을 취소 중입니다. 잠시 후 다시 시도해 주세요."
 END
 
 STRINGTABLE
 BEGIN
-    IDS_TITLE_EXPORTTTMPDIRECTORY "TTMPL/TTMPD 파일을 저장할 경로 선택하기"
-    IDS_TITLE_EXPORTTTMPPROGRESS "TTMP 파일로 내보내는 중... ({1}/{2}): {0}"
     IDS_UPDATE_CONFIRM_NOAUTO 
                             "새 업데이트가 있습니다. 새 버전은 {4:%Ec}에 올라온 {0}.{1}.{2}.{3}이고, 현재 버전은 {5}.{6}.{7}.{8} 입니다. 게임이 이미 실행 중이므로 자동으로 업데이트할 수 없습니다. Github에서 직접 다운로드하시겠습니까?"
     IDS_UPDATE_ERROR_ACCESS_DENIED 
@@ -1261,9 +1425,233 @@ BEGIN
     IDS_OPCODEUPDATE_ERROR_404 "옵코드 설정이 아직 업데이트되지 않았습니다. 나중에 다시 시도해 주세요."
     IDS_OPCODEUPDATE_OK_NOTCHANGED "현재 옵코드 설정이 이미 최신입니다."
     IDS_OPCODEUPDATE_OK_CHANGED "옵코드 설정이 업데이트되었습니다."
-    IDS_SOCKETHOOK_SOCKET_RESET2 "{:x}: 강제 연결 해제 => {}"
+    IDS_SOCKETHOOK_SOCKET_RESET  "{:x}: 강제 연결 해제 => {}"
     IDS_MENU_TTMP_PROFILE   "프로파일"
     IDS_MENU_MODDING_SAMPLINGRATE "오디오 샘플링 레이트(&S)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_BROWSE     "찾아보기..."
+    IDS_SETTINGS_ADD        "추가..."
+    IDS_SETTINGS_REMOVE     "제거"
+    IDS_SETTINGS_EDITINCONFIGEDITOR "런타임 설정 편집기에서 변경할 수 있습니다."
+    IDS_SETTINGS_OPENEDITOR "편집기 열기"
+    IDS_SETTINGS_GROUP_UI   "인터페이스"
+    IDS_SETTINGS_GROUP_UI_MAINWINDOW "컨트롤 창"
+    IDS_SETTINGS_GROUP_UI_LOGWINDOW "로그 창"
+    IDS_SETTINGS_GROUP_UI_CONFIGWINDOW "설정 편집기"
+    IDS_SETTINGS_GROUP_GAMEWINDOW "게임 창"
+    IDS_SETTINGS_GROUP_NETWORKTIMING "지연 및 타이밍 도우미"
+    IDS_SETTINGS_GROUP_SOCKET "연결"
+    IDS_SETTINGS_GROUP_FRAMERATECONTROL "프레임 레이트 제어"
+    IDS_SETTINGS_GROUP_FRAMERATECONTROL_LOCK "FPS 고정"
+    IDS_SETTINGS_GROUP_OPCODES "옵코드"
+    IDS_SETTINGS_GROUP_LAUNCH "실행"
+    IDS_SETTINGS_GROUP_CHAINLOAD "체인 로딩"
+    IDS_SETTINGS_GROUP_MODDING "모딩"
+    IDS_SETTINGS_GROUP_MODDING_LANGUAGES "언어"
+    IDS_SETTINGS_GROUP_MODDING_TTMP "TexTools 모드팩"
+    IDS_SETTINGS_GROUP_MODDING_LOGGING "로그"
+    IDS_SETTINGS_GROUP_AUDIO "오디오"
+    IDS_SETTINGS_GROUP_AUDIO_MUTEVOICE "목소리 분류 음소거"
+    IDS_SETTINGS_GROUP_AUDIO_SOXR "soxr 리샘플러"
+    IDS_SETTINGS_GROUP_AUDIO_SOXR_FILTER "필터"
+    IDS_SETTINGS_GROUP_CROWDFIX "CrowdFix"
+    IDS_SETTINGS_GROUP_CROWDFIX_FIXES "수정 항목"
+    IDS_SETTINGS_GROUP_FONTREPLACEMENT "글꼴 바꾸기"
+    IDS_SETTINGS_GROUP_FONTREPLACEMENT_FACES "글꼴"
+    IDS_SETTINGS_BACKGROUNDLIMIT "백그라운드 시 프레임 레이트 제한 (fps)"
+    IDS_SETTINGS_LOCK_INTERVAL "렌더링 간격 (µs, 0이면 사용 안 함)"
+    IDS_SETTINGS_LOCK_AUTOMATIC "간격 자동으로 정하기"
+    IDS_SETTINGS_LOCK_RANGEFROM "목표 프레임 레이트 최솟값 (fps)"
+    IDS_SETTINGS_LOCK_RANGETO "목표 프레임 레이트 최댓값 (fps)"
+    IDS_SETTINGS_LOCK_MAXDEVIATION "렌더링 간격 최대 편차 (µs)"
+    IDS_SETTINGS_LOCK_GCD   "글로벌 쿨다운 (s)"
+    IDS_SETTINGS_CROWDFIX_ENABLED "CrowdFix 사용"
+    IDS_SETTINGS_CROWDFIX_ENABLED_DESC "주변 오브젝트 수에 따라 늘어나는 프레임당 작업을 줄입니다. 변경 사항은 다음 프레임부터 적용됩니다."
+    IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS "작업 없는 GPU 리소스 알림 건너뛰기"
+    IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS_DESC "프레임마다 모든 GPU 리소스를 두 번씩 순회하는 대신, 실제로 할 일이 있는 리소스만 순회합니다."
+    IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS "작업 스레드 깨우기를 연쇄로 처리"
+    IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS_DESC "작업을 넣을 때마다 모든 작업 스레드를 깨우는 대신 하나만 깨우고, 깨어난 스레드가 다음 스레드를 깨웁니다."
+    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS "스켈레톤 포즈 동기화를 프레임당 한 번만 하기"
+    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS_DESC "렌더링하는 뷰마다 반복되는 모든 스켈레톤의 포즈 동기화를, 프레임의 첫 번째 이후로는 건너뜁니다."
+    IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR "사용한 컬링 슬롯만 지우기"
+    IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR_DESC "프레임마다 여러 번 40,960개 슬롯 전체를 지우는 대신, 지금까지 사용된 가장 높은 오브젝트 슬롯까지만 가시성 테이블을 지웁니다."
+    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK "그래픽 할당자 잠금 밖에서 큰 블록 해제하기"
+    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK_DESC "큰 블록을 해제하는 동안에도 작은 할당이 진행되게 합니다. 주로 메인 스레드가 작업 스레드를 기다리는 CPU에서 효과가 있습니다."
+    IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS "그리기용 스테이징 블록 재사용하기"
+    IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS_DESC "해제된 스테이징 블록을 크기별로 모아 다시 내주어, 대부분의 할당이 할당자의 전역 잠금을 거치지 않게 합니다."
+    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS "숨겨진 미니언의 따라가기 AI 멈추기"
+    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS_DESC "모델이 숨겨진 미니언의 충돌 검사를 포함한 따라가기 AI를 건너뜁니다. 너무 멀어지면 여전히 주인 곁으로 순간이동합니다."
+    IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT "불필요한 작업 목록 대기 건너뛰기"
+    IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT_DESC "이미 신호 상태인 이벤트를 한 번 더 기다리는 부분을 없앱니다. 프레임당 약 75번의 시스템 호출이 줄어듭니다."
+    IDS_SETTINGS_CROWDFIX_INLINEBGPREP "배경 인스턴싱 준비를 메인 스레드에서 실행하기"
+    IDS_SETTINGS_CROWDFIX_INLINEBGPREP_DESC "뷰마다 있는 아주 작은 배경 인스턴싱 작업을, 작업 스레드에 넘기고 기다리는 대신 바로 실행합니다."
+    IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS "숨겨진 단축바 준비 건너뛰기"
+    IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS_DESC "프레임마다 숨겨진 단축바의 슬롯을 준비하는 작업을 건너뜁니다. 보이게 된 단축바는 그 프레임에 바로 준비됩니다."
+    IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL "애니메이션 마무리를 병렬로 처리하기"
+    IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL_DESC "스켈레톤 마무리 작업을 메인 스레드에서 하나씩 하는 대신, 연결 깊이별로 작업 스레드에서 처리합니다."
+    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING "캐릭터 컬링을 여러 스레드로 나누기"
+    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING_DESC "게임은 모든 캐릭터를 한 작업에서 컬링하는데, 자기 몫을 끝낸 스레드가 이를 돕게 합니다."
+    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS "컬링 작업을 한 항목씩 나눠주기"
+    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS_DESC "몇몇 스레드만 받는 최대 8개 단위 대신, 한 항목씩 나눠 주어 셀 컬링을 더 많은 스레드에 분산합니다."
+    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS "명령 목록의 사용된 항목만 모으기"
+    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS_DESC "각 명령 목록에서 사용된 항목만 복사하고, 이미 정렬되어 있으면 정렬을 건너뜁니다. 결과는 게임과 같습니다."
+    IDS_SETTINGS_PAGE_PATCHCODES "게임 버그 수정"
+    IDS_SETTINGS_PATCHCODE_NEW "새로 만들기..."
+    IDS_SETTINGS_PATCHCODE_EDIT "편집..."
+    IDS_SETTINGS_PATCHCODE_DELETE "삭제"
+    IDS_SETTINGS_PATCHCODE_CONFIRMDELETE "{}을(를) 삭제하시겠습니까?"
+    IDS_SETTINGS_PATCHCODE_EDITORTITLE "게임 버그 수정: {}"
+    IDS_SETTINGS_HEADING_OPCODECONFIG "옵코드 설정"
+    IDS_SETTINGS_PAGE_STATUS "상태"
+    IDS_SETTINGS_PAGE_GAMEBEHAVIOR "게임 동작"
+    IDS_SETTINGS_PAGE_CONFIGURATION "설정"
+    IDS_SETTINGS_OPENFRAMERATELOCKING "FPS 고정 대화 상자 열기..."
+    IDS_SETTINGS_LOCK_MODE  "모드"
+    IDS_SETTINGS_LOCK_MODE_OFF "사용 안 함"
+    IDS_SETTINGS_LOCK_MODE_FIXED "고정 FPS"
+    IDS_SETTINGS_LOCK_MODE_AUTOMATIC "자동 설정"
+    IDS_SETTINGS_LOCK_FRAMERATE "FPS"
+    IDS_SETTINGS_LOCK_MINIMIZECLIPPING "글쿨이 밀리지 않도록 FPS 설정"
+    IDS_SETTINGS_LOCK_ESTIMATEDGCD "예상되는 실제 글로벌 쿨다운 (s)"
+    IDS_SETTINGS_LOCK_INTERVALINUSE "사용 중인 렌더링 간격 (µs)"
+    IDS_SETTINGS_LOCK_MEASUREDGCD "측정된 글로벌 쿨다운 (s)"
+    IDS_SETTINGS_LOCK_LATESTGCDS "최근 사용한 글쿨 측정"
+    IDS_SETTINGS_LOCK_RESET "비우기"
+    IDS_SETTINGS_GRID_ENABLED "사용"
+    IDS_SETTINGS_GRID_NAME  "이름"
+    IDS_SETTINGS_GRID_LANGUAGE "언어"
+    IDS_SETTINGS_GRID_FILENAME "파일 이름"
+    IDS_SETTINGS_GRID_ADD   "추가"
+    IDS_SETTINGS_PATHREPLACEMENT_FROM "원래 경로 (정규식)"
+    IDS_SETTINGS_PATHREPLACEMENT_TO "바꿀 경로"
+    IDS_SETTINGS_PATHREPLACEMENT_STOP "중단"
+    IDS_SETTINGS_PATHREPLACEMENT_DESC "위에서부터 차례로 적용되며, 중단이 켜진 규칙과 일치하면 거기서 끝납니다."
+    IDS_SETTINGS_PATHFILTER_PATTERN "패턴 (정규식)"
+    IDS_SETTINGS_PATHFILTER_INCLUDE "기록"
+    IDS_SETTINGS_PATHFILTER_DESC "처음으로 일치하는 필터가 경로를 기록할지 정하며, 어느 필터와도 일치하지 않는 경로는 위의 설정을 따릅니다."
+    IDS_SETTINGS_FALLBACK_DESC "끌어서 순서 변경: 선택한 언어의 파일이 없으면 위에 있는 언어부터 사용합니다."
+    IDS_SETTINGS_FORCEDLANGUAGE_UNNAMED "(이름 없는 모든 인물)"
+    IDS_SETTINGS_FORCEDLANGUAGE_DESC "말하는 인물의 첫 번째로 켜진 항목이 적용되며, 빈 이름은 이름 없는 모든 인물을 뜻합니다."
+    IDS_SETTINGS_CHOICES_ACTIVE "사용 중"
+    IDS_SETTINGS_CHOICES_DESC "사용 중인 항목이 없으면 파일 이름이 있는 첫 번째 프로필을 사용합니다. 파일 이름을 바꿔도 모드에 이미 있는 파일의 이름은 바뀌지 않습니다."
+    IDS_SETTINGS_FONT_SOURCE_TYPE "종류"
+    IDS_SETTINGS_FONT_SOURCE_PRESET "프리셋"
+    IDS_SETTINGS_FONT_SOURCE_FONT "시스템 글꼴"
+    IDS_SETTINGS_FONT_WEIGHT "굵기"
+    IDS_SETTINGS_FONT_STRETCH "너비"
+    IDS_SETTINGS_FONT_STYLE "스타일"
+    IDS_SETTINGS_FONT_ADDPRESET "프리셋 추가…"
+    IDS_SETTINGS_FONT_ADDFONT "시스템 글꼴 추가"
+    IDS_SETTINGS_FONT_COPYTOOTHERS "다른 글꼴 패밀리에 복사"
+    IDS_SETTINGS_FONT_CONFIRMCOPY "다른 모든 글꼴 패밀리의 소스를 {}의 것으로 바꾸시겠습니까?"
+    IDS_SETTINGS_FONT_SOURCES_DESC "뒤에 있는 소스가 글자별로 앞의 것을 덮어씁니다. 프리셋은 이 글꼴 패밀리의 글꼴만 사용합니다."
+    IDS_SETTINGS_EDGE_SCALE "글자 크기 1픽셀당 테두리 두께"
+    IDS_SETTINGS_EDGE_MIN   "최소 테두리 두께 (px)"
+    IDS_SETTINGS_EDGE_MAX   "최대 테두리 두께 (px)"
+    IDS_SETTINGS_DIRS_FOLDER "폴더"
+    IDS_SETTINGS_DIRS_LOCATION "위치"
+    IDS_SETTINGS_DIRS_ADDDEFAULT "(기본 경로 추가)"
+    IDS_SETTINGS_DIRS_NOTFOUND "{} (찾을 수 없음)"
+    IDS_SETTINGS_DIRS_ADD "폴더 추가..."
+    IDS_SETTINGS_SHOWINEXPLORER "탐색기에서 보기"
+    IDS_SETTINGS_DIRS_DESC "끌어서 순서를 바꿀 수 있습니다. <config>는 설정 폴더를, <sqpack>은 게임의 sqpack 폴더를 뜻합니다."
+    IDS_SETTINGS_TTMP_AUTHOR "제작자"
+    IDS_SETTINGS_TTMP_VERSION "버전"
+    IDS_SETTINGS_TTMP_STATUS "상태"
+    IDS_SETTINGS_TTMP_FILTER "필터"
+    IDS_SETTINGS_TTMP_CONFIRMDELETE """{}""을(를) 삭제할까요?\n\n{}"
+    IDS_SETTINGS_TTMP_RENAME "이름 바꾸기"
+    IDS_SETTINGS_TTMP_MOVETO "이동..."
+    IDS_SETTINGS_TTMP_MOVETONEWFOLDER "새 폴더로 이동"
+    IDS_SETTINGS_TTMP_NEWFOLDER "새 폴더"
+    IDS_SETTINGS_TTMP_TOPLEVEL "최상위: {}"
+    IDS_SETTINGS_TTMP_ORDER_DESC "끌어서 순서를 바꿀 수 있습니다. 여러 모드팩이 같은 파일을 바꾸면 아래에 있는 것이 우선합니다."
+    IDS_STATUS_TTMPPROFILE "\n모드팩 프로필: {}"
+    IDS_SETTINGS_MODDING_ENABLE_DESC "변경 사항은 게임을 재시작하면 적용됩니다."
+    IDS_SETTINGS_LIPSYNC    "컷신 립싱크 언어"
+    IDS_SETTINGS_LIPSYNC_DESC "컷신에서 입 모양에 쓰이는 언어입니다. 컷신 음성 파일도 같은 언어로 고릅니다. 게임에 음성이 있는 언어만 고를 수 있습니다."
+    IDS_SETTINGS_FONT_PREVIEW_SIZE "크기"
+    IDS_SETTINGS_FONT_PREVIEW_TEXT "예시 문장"
+    IDS_SETTINGS_FONT_PREVIEW_DESC "선택한 크기의 글꼴을 이 소스들로 만든 그대로, 게임과 같은 테두리를 붙여 그립니다. 글꼴에 없는 글자는 게임의 글리프로 그리지만, SystemFallback을 켜면 게임에서는 시스템 글꼴로 그려집니다."
+    IDS_SETTINGS_FONT_PREVIEW_COLORS "색상"
+    IDS_SETTINGS_FONT_PREVIEW_NOEDGE "테두리를 표시할 수 없습니다: {}"
+    IDS_SETTINGS_EDGE_PREVIEW_DESC "{} 글꼴을 글꼴 교체가 그리는 대로, 선택한 크기에서 이 설정의 테두리를 붙여 그립니다. 색상은 게임에서 쓰이는 것으로, 모든 글꼴 미리 보기에 적용됩니다."
+    IDS_SETTINGS_FONT_COLORS_DEFAULT "기본"
+    IDS_SETTINGS_FONT_COLORS_TOOLTIPLABEL "툴팁 항목 이름"
+    IDS_SETTINGS_FONT_COLORS_ACTIONNAME "기술 이름"
+    IDS_SETTINGS_FONT_COLORS_STATUSNAME "상태 이름"
+    IDS_SETTINGS_FONT_COLORS_WARNING "경고"
+    IDS_SETTINGS_FONT_COLORS_NOTICE "알림"
+    IDS_SETTINGS_FONT_COLORS_QUESTHIGHLIGHT "퀘스트 강조"
+    IDS_SETTINGS_FONT_COLORS_TUTORIAL "튜토리얼 본문"
+    IDS_SETTINGS_RESTART_REGION "지역"
+    IDS_SETTINGS_MISCELLANEOUS "기타"
+    IDS_SETTINGS_UPDATES "업데이트"
+    IDS_SETTINGS_LAUNCH_SESSIONSWITCHING "세션 전환 사용"
+    IDS_SETTINGS_REMEMBER   "기억"
+    IDS_SETTINGS_SESSIONS_FORGET "모두 삭제"
+    IDS_SETTINGS_SESSIONS_FORGET_CONFIRM "기억한 로그인 세션을 모두 삭제할까요?\nWindows 자격 증명 관리자에서 삭제됩니다."
+    IDS_SETTINGS_SESSIONS_FORGETONE "이 세션 삭제"
+    IDS_SETTINGS_SESSIONS_FORGETONE_CONFIRM "로그인 세션 ""{}""을(를) 삭제할까요?\nWindows 자격 증명 관리자에서 삭제됩니다."
+    IDS_SETTINGS_LAUNCH_CLEARCOPIED "복사한 명령줄을 지울 때까지의 초"
+    IDS_SETTINGS_LAUNCH_CLEARCOPIED_DESC "복사한 명령줄을 이 시간이 지나면 클립보드에서 지웁니다. 0이면 지우지 않습니다."
+    IDS_SETTINGS_EDITMENU "편집 ▾"
+    IDS_SETTINGS_SHOWMORE "더 보기"
+    IDS_SETTINGS_SHOWLESS "접기"
+    IDS_SETTINGS_TTMP_CONFIRMDELETEMANY "모드팩 {}개를 삭제할까요?"
+    IDS_SETTINGS_FONT_MONOSPACEDDIGITS "시스템 글꼴의 숫자를 고정 폭으로 표시"
+    IDS_SETTINGS_FONT_OPENPRESETFOLDER "프리셋 폴더 열기"
+    IDS_SETTINGS_FONT_IMPORT_TITLE "이 프리셋은 프리셋 폴더 밖에 있습니다."
+    IDS_SETTINGS_FONT_IMPORT_CONTENT "{}\n\n프리셋 폴더에 복사해서 가져올까요, 아니면 이 파일을 지금 위치 그대로 사용할까요?"
+    IDS_SETTINGS_FONT_IMPORT_GLYPHS "이 프리셋은 옆에 있는 다음 폴더에서 글리프 이미지를 읽습니다. 가져오면 이 폴더들도 프리셋 전용 폴더에 함께 복사됩니다.{}"
+    IDS_SETTINGS_FONT_IMPORT_NOGLYPHCOPY "이 프리셋은 다음 폴더에서 글리프 이미지를 읽지만, 이 폴더들은 프리셋이 있는 폴더 안에 있지 않아 함께 복사할 수 없습니다. 지금 위치 그대로만 사용할 수 있습니다.{}"
+    IDS_SETTINGS_FONT_IMPORT_IMPORT "가져오기\n프리셋 폴더에 복사합니다. 나중에 원본 파일을 바꿔도 반영되지 않습니다."
+    IDS_SETTINGS_FONT_IMPORT_INPLACE "지금 위치에서 사용\n지금 위치에서 읽습니다. 파일을 옮기거나 지우면 더 이상 작동하지 않습니다."
+    IDS_SETTINGS_FONT_PRESETUNREADABLE "{}\n\n프리셋을 읽을 수 없습니다: {}"
+    IDS_SETTINGS_FONT_IMPORTFAILED "{}\n\n프리셋을 가져오지 못했습니다: {}"
+    IDS_TTMP_ERROR_NAME_EMPTY "이름을 비워 둘 수 없습니다."
+    IDS_TTMP_ERROR_NAME_DOTS """.""과 ""..""은 이름으로 쓸 수 없습니다."
+    IDS_TTMP_ERROR_NAME_TOOLONG "이름이 너무 깁니다."
+    IDS_TTMP_ERROR_NAME_INVALIDCHARS "이름에 < > : "" / \\ | ? * 또는 제어 문자를 쓸 수 없습니다."
+    IDS_TTMP_ERROR_NAME_TRAILING "이름은 공백이나 마침표로 끝날 수 없습니다."
+    IDS_TTMP_ERROR_NAME_RESERVED "Windows에서 예약된 이름이라 쓸 수 없습니다."
+    IDS_TTMP_ERROR_DIFFERENTDRIVE "폴더를 다른 드라이브로 옮길 수 없습니다."
+    IDS_TTMP_ERROR_MOVEFAILED "{}을(를) {}(으)로 옮기지 못했습니다"
+    IDS_TTMP_ERROR_ITEMGONE "이 항목은 더 이상 모드팩 목록에 없습니다. 목록을 다시 불러온 뒤 다시 시도해 주세요."
+    IDS_TTMP_ERROR_NAMETAKEN "그 폴더에 이미 ""{}""(이)라는 이름의 항목이 있습니다."
+    IDS_TTMP_ERROR_DESTINATIONMISSING "대상 폴더가 존재하지 않습니다."
+    IDS_TTMP_ERROR_DESTINATIONOUTSIDE "대상 폴더가 TexTools 모드팩을 찾는 폴더 중 어디에도 속하지 않습니다."
+    IDS_TTMP_ERROR_MOVEINTOSELF "폴더를 자기 자신이나 그 안의 폴더로 옮길 수 없습니다."
+    IDS_TTMP_ERROR_MOVEINTOMODPACK "모드팩 안으로는 옮길 수 없습니다."
+    IDS_TTMP_ERROR_NAMETAKENATDESTINATION "대상 폴더에 이미 ""{}""(이)라는 이름의 항목이 있습니다."
+    IDS_TTMP_ERROR_DESTINATIONNOTFOUND "대상 폴더를 찾을 수 없었습니다."
+    IDS_TTMP_ERROR_PARENTMISSING "상위 폴더가 존재하지 않습니다."
+    IDS_TTMP_ERROR_PARENTOUTSIDE "상위 폴더가 TexTools 모드팩을 찾는 폴더 중 어디에도 속하지 않습니다."
+    IDS_TTMP_ERROR_FOLDERINMODPACK "모드팩 안에는 폴더를 만들 수 없습니다."
+    IDS_TTMP_ERROR_CREATEFOLDER "폴더 {}을(를) 만들지 못했습니다: {}"
+    IDS_TTMP_ERROR_FOLDERGONE "이 폴더는 더 이상 모드팩 목록에 없습니다. 목록을 다시 불러온 뒤 다시 시도해 주세요."
+    IDS_TTMP_ERROR_ORDERINCOMPLETE "새 순서에는 폴더 안의 모든 항목이 정확히 한 번씩 들어 있어야 합니다."
+    IDS_TTMP_ERROR_SAVEORDER "{}을(를) 저장하지 못했습니다: {}"
+    IDS_TTMP_ERROR_OPENDATA "{}을(를) 열지 못했습니다."
+    IDS_TTMP_ERROR_MOVEBACKFAILED "{}; 원래 위치로 되돌리는 것도 실패했습니다 ({}). TexTools 모드팩을 다시 불러와 주세요."
+    IDS_TTMP_ERROR_DUPLICATENAMES """{}""(이)라는 이름의 항목이 여러 개 있습니다."
+    IDS_ERROR_FILE_TOO_BIG  "파일이 너무 큽니다."
+    IDS_ERROR_HTTP          "HTTP 오류 {}"
+    IDS_RESULT_IMPORT_OK    "성공: {}: {}"
+    IDS_RESULT_IMPORT_ERROR "오류: {}: {}"
+    IDS_FONTPRESET_ERROR_CANNOTREAD "{}을(를) 읽을 수 없습니다."
+    IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE "글리프 이미지 폴더 {}이(가) 프리셋 폴더 안에 있지 않습니다."
+    IDS_FONTPRESET_ERROR_NOFACES "이 프리셋에는 글꼴이 없습니다."
+    IDS_FONTPREVIEW_ERROR_NOFACE "{}을(를) 그릴 글꼴이 없습니다."
+    IDS_SETTINGS_PATCHCODE_DEFAULTNAME "새 게임 버그 수정"
+    IDS_ERROR_LOAD_INSTALLED "{}\n이유: {}\n\n종료하려면 {} 버튼을,\nXivAlexander 도움말 웹페이지를 열려면 {} 버튼을,\nXivAlexander를 불러들이지 않고 계속하려면 {} 버튼을 누르세요."
+    IDS_ERROR_LOAD_INSTALLED_NOPATH "XivAlexander 설치 경로를 확인하지 못했습니다."
+    IDS_ERROR_LOAD_INSTALLED_PATH "{}을(를) 불러들이지 못했습니다."
+    IDS_FONTPREVIEW_ERROR_EMPTYELEMENT "{}에 글리프가 없습니다. 설치되지 않았거나 읽을 수 없는 것 같습니다."
+    IDS_FONTPREVIEW_ERROR_NOGLYPHS "{}에는 텍스트의 글자가 하나도 없습니다."
 END
 
 #endif    // Korean (Korea) resources
@@ -1376,7 +1764,7 @@ BEGIN
         MENUITEM "(Current Process Information)", ID_FILE_CURRENTINFO
         MENUITEM SEPARATOR
         MENUITEM "Show &Control Window\tCtrl+(Alt+)W", ID_FILE_SHOWCONTROLWINDOW
-        MENUITEM "Show &Logging Window\t(Ctrl+Alt+)L", ID_FILE_SHOWLOGGINGWINDOW
+        MENUITEM "Show &Logging Window\tCtrl+Shift+L", ID_FILE_SHOWLOGGINGWINDOW
         MENUITEM "Check for U&pdates\tCtrl+(Alt+)U", ID_FILE_CHECKFORUPDATES
         MENUITEM "&Unload XivAlexander\tCtrl+(Alt+)Q", ID_FILE_UNLOADXIVALEXANDER
         MENUITEM SEPARATOR
@@ -1387,9 +1775,9 @@ BEGIN
         MENUITEM "&Restart Using Choices Below\tCtrl+Shift+R", ID_RESTART_RESTART
         MENUITEM "Copy Launch Co&mmand Line",   ID_RESTART_COPYLAUNCHCOMMANDLINE
         MENUITEM SEPARATOR
-        MENUITEM "Use &XivAlexander\t(Ctrl+Shift+)X", ID_RESTART_USEXIVALEXANDER
-        MENUITEM "Use &Parameter Obfuscation\t(Ctrl+Shift+)P", ID_RESTART_USEPARAMETEROBFUSCATION
-        MENUITEM "Use Elevation (Run as &Administrator)\t(Ctrl+Shift+)A", ID_RESTART_USEELEVATION
+        MENUITEM "Use &XivAlexander\tCtrl+Shift+X", ID_RESTART_USEXIVALEXANDER
+        MENUITEM "Use &Parameter Obfuscation\tCtrl+Shift+P", ID_RESTART_USEPARAMETEROBFUSCATION
+        MENUITEM "Use Elevation (Run as &Administrator)\tCtrl+Shift+A", ID_RESTART_USEELEVATION
         MENUITEM SEPARATOR
         MENUITEM "Language: &Japanese",         ID_RESTART_LANGUAGE_JAPANESE
         MENUITEM "Language: &English",          ID_RESTART_LANGUAGE_ENGLISH
@@ -1410,7 +1798,7 @@ BEGIN
     BEGIN
         POPUP "Latency and Timing &Helper"
         BEGIN
-            MENUITEM "&Enable\t(Ctrl+Shift+)H",     ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
+            MENUITEM "&Enable\tCtrl+Shift+H",     ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
             MENUITEM SEPARATOR
             MENUITEM "Mode &1: Subtract Latency",   ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1
             MENUITEM "Mode &2: Simulate RTT ({}us)", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2
@@ -1420,18 +1808,17 @@ BEGIN
             MENUITEM "&Preview Mode (Dry Run)\tCtrl+(Alt+)P", ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE
         END
         MENUITEM SEPARATOR
-        MENUITEM "Use IPC Type &Finder\t(Ctrl+Shift+)F", ID_NETWORK_USEIPCTYPEFINDER
-        MENUITEM "Log All &IPC Message \t(Ctrl+Shift+)M", ID_NETWORK_USEALLIPCMESSAGELOGGER
+        MENUITEM "Use IPC Type &Finder\tCtrl+Shift+F", ID_NETWORK_USEIPCTYPEFINDER
+        MENUITEM "Log All &IPC Message \tCtrl+Shift+M", ID_NETWORK_USEALLIPCMESSAGELOGGER
         MENUITEM SEPARATOR
-        MENUITEM "&Reduce Packet Delay\t(Ctrl+Shift+)F1", ID_NETWORK_REDUCEPACKETDELAY
-        MENUITEM "R&elease All Connections\t(Ctrl+Shift+)F2", ID_NETWORK_RELEASEALLCONNECTIONS
-        MENUITEM "Re&set All Connections\t(Ctrl+Shift+)F3", ID_NETWORK_RESETALLCONNECTIONS
+        MENUITEM "&Reduce Packet Delay\tCtrl+Shift+F1", ID_NETWORK_REDUCEPACKETDELAY
+        MENUITEM "Re&set All Connections", ID_NETWORK_RESETALLCONNECTIONS
         POPUP "&Troubleshooting"
         BEGIN
-            MENUITEM "Take Over &Loopback Addresses (127.0.0.0/8)\t(Ctrl+Shift+)1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
-            MENUITEM "Take Over &Private Addresses (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\t(Ctrl+Shift+)2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
-            MENUITEM "Take Over &All Addresses (0.0.0.0/0)\t(Ctrl+Shift+)3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
-            MENUITEM "Take Over All P&orts\t(Ctrl+Shift+)4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
+            MENUITEM "Take Over &Loopback Addresses (127.0.0.0/8)\tCtrl+Shift+1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
+            MENUITEM "Take Over &Private Addresses (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\tCtrl+Shift+2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
+            MENUITEM "Take Over &All Addresses (0.0.0.0/0)\tCtrl+Shift+3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
+            MENUITEM "Take Over All P&orts\tCtrl+Shift+4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
         END
     END
     POPUP "&Modding"
@@ -1440,21 +1827,9 @@ BEGIN
         MENUITEM SEPARATOR
         POPUP "&TexTools ModPacks"
         BEGIN
-            POPUP "(template entry to be inserted at bottom)"
-            BEGIN
-                MENUITEM "&Enable",                     ID_MODDING_TTMP_ENTRY_ENABLE, CHECKED
-                MENUITEM "&Delete",                     ID_MODDING_TTMP_ENTRY_DELETE
-                MENUITEM SEPARATOR
-                MENUITEM "Requires restart",            ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
-                MENUITEM "&Show Description",           ID_MODDING_TTMP_ENTRY_SHOWDESCRIPTION
-                MENUITEM SEPARATOR
-            END
+            MENUITEM "Requires restart",            ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
             MENUITEM "(No installed ModPacks found)", ID_MODDING_TTMP_NOENTRY, INACTIVE
             MENUITEM "(Not ready)",                 ID_MODDING_TTMP_NOTREADY, INACTIVE
-            MENUITEM SEPARATOR
-            MENUITEM "&Flatten Folder Display",     ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY
-            MENUITEM "Use Folder &Toggling on Flattened View", ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW
-            MENUITEM "Show Dedicated &Menu",        ID_MODDING_TTMP_SHOWDEDICATEDMENU
             MENUITEM SEPARATOR
             MENUITEM "&Enable All",                 ID_MODDING_TTMP_ENABLEALL
             MENUITEM "&Disable All",                ID_MODDING_TTMP_DISABLEALL
@@ -1464,8 +1839,6 @@ BEGIN
             MENUITEM "&Open Directory",             ID_MODDING_TTMP_OPENDIRECTORY
         END
         MENUITEM "Re&fresh", ID_MODDING_TTMP_REFRESH
-        MENUITEM "Open &Replacement File Entries Directory", ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
-        MENUITEM "Exp&ort to TTMPL/TTMPD Files", ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
         MENUITEM "Support Alternate &Codecs for Musics", ID_MODDING_USEALTCODECMUSICSUPPORT
         MENUITEM "Log All F&ile Access",        ID_MODDING_LOGALLFILEACCESS
@@ -1477,16 +1850,12 @@ BEGIN
             MENUITEM "NPC &Dialogue During Battle", ID_MODDING_MUTEVOICE_LINE
         END
         MENUITEM SEPARATOR
-        MENUITEM "Anything here will not be fully applied until game restart.", ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
-    END
-    POPUP "&TTMP"
-    BEGIN
-        MENUITEM SEPARATOR
     END
     POPUP "&Configure"
     BEGIN
-        MENUITEM "Edit &Runtime Configuration\t(Ctrl+Alt+)R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
-        MENUITEM "Edit &Opcode Configuration\t(Ctrl+Alt+)O", ID_CONFIGURE_EDITOPCODECONFIGURATION
+        MENUITEM SEPARATOR
+        MENUITEM "Edit &Runtime Configuration\tCtrl+Alt+R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
+        MENUITEM "Edit &Opcode Configuration\tCtrl+Alt+O", ID_CONFIGURE_EDITOPCODECONFIGURATION
         MENUITEM "Check for Opcode &Updates",   ID_CONFIGURE_CHECKFORUPDATEDOPCODES
         MENUITEM "Check for Opcode Updates on S&tartup", ID_CONFIGURE_CHECKFORUPDATEDOPCODESONSTARTUP
         MENUITEM SEPARATOR
@@ -1497,16 +1866,19 @@ BEGIN
             MENUITEM "&Open Directory",             ID_CONFIGURE_GAMEFIX_OPENDIRECTORY
         END
         MENUITEM SEPARATOR
-        MENUITEM "Force the Game to Use More &CPU Time", ID_CONFIGURE_USEMORECPUTIME
-        MENUITEM "&Background Framerate Limit", ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
+        POPUP "&Framerate Control"
+        BEGIN
+            MENUITEM "Force the Game to Use More &CPU Time", ID_CONFIGURE_USEMORECPUTIME
+            MENUITEM "&Background Framerate Limit", ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
+            MENUITEM "Lock &Framerate ",            ID_CONFIGURE_LOCKFRAMERATE
+            MENUITEM "Synchronize &Processing to Cooldowns and Animation Locks", ID_CONFIGURE_SYNCHRONIZEPROCESSING
+        END
         POPUP "Game Window T&itle"
         BEGIN
             MENUITEM "&No Change",                  ID_CONFIGURE_WINDOWTITLE_PID_NONE
             MENUITEM "&Prepend Session Name or Process ID", ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
             MENUITEM "&Append Session Name or Process ID", ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
         END
-        MENUITEM "Lock &Framerate ",            ID_CONFIGURE_LOCKFRAMERATE
-        MENUITEM "Synchronize &Processing to Cooldowns and Animation Locks", ID_CONFIGURE_SYNCHRONIZEPROCESSING
         MENUITEM SEPARATOR
         POPUP "&Language (言語/언어)"
         BEGIN
@@ -1524,7 +1896,7 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "Open Configuration &Directory", ID_CONFIGURE_OPENCONFIGURATIONDIRECTORY
-        MENUITEM "Reload (&Z)\t(Ctrl+Shift+)F5", ID_CONFIGURE_RELOAD
+        MENUITEM "Reload (&Z)\tCtrl+Shift+F5", ID_CONFIGURE_RELOAD
     END
     POPUP "&View"
     BEGIN
@@ -1636,6 +2008,22 @@ IDR_RT_MANIFEST_LATE_ACTIVATION RT_MANIFEST             "DummyAssemblyIdentity.m
 
 /////////////////////////////////////////////////////////////////////////////
 //
+// RCDATA
+//
+
+// Game code signatures the font replacement uses, shared with FFXIV-FontChanger.
+IDR_GAMEFONTSIGNATURES  RCDATA                  "..\\FFXIV-FontChanger\\xivres\\data\\game_font_signatures.json"
+
+// Compiled from FFXIV-FontChanger's FontEdgePS.hlsl by FxCompile into the intermediate directory, an include directory of the resource compiler.
+IDR_FONTEDGEPS          RCDATA                  "FontEdgePS.cso"
+
+// Settings font preview shaders, compiled by FxCompile into the intermediate directory.
+IDR_FONTPREVIEWVS       RCDATA                  "FontPreviewVS.cso"
+IDR_FONTPREVIEWTEXTPS   RCDATA                  "FontPreviewTextPS.cso"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
 // Accelerator
 //
 
@@ -1660,29 +2048,11 @@ END
 
 IDR_TRAY_ACCELERATOR ACCELERATORS
 BEGIN
-    "O",            ID_CONFIGURE_EDITOPCODECONFIGURATION, VIRTKEY, NOINVERT
-    "R",            ID_CONFIGURE_EDITRUNTIMECONFIGURATION, VIRTKEY, NOINVERT
-    VK_F5,          ID_CONFIGURE_RELOAD,    VIRTKEY, NOINVERT
     "U",            ID_FILE_CHECKFORUPDATES, VIRTKEY, CONTROL, NOINVERT
     "W",            ID_FILE_SHOWCONTROLWINDOW, VIRTKEY, CONTROL, NOINVERT
-    "L",            ID_FILE_SHOWLOGGINGWINDOW, VIRTKEY, NOINVERT
     "Q",            ID_FILE_UNLOADXIVALEXANDER, VIRTKEY, CONTROL, NOINVERT
-    "H",            ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE, VIRTKEY, NOINVERT
     "P",            ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE, VIRTKEY, CONTROL, NOINVERT
-    "E",            ID_NETWORK_HIGHLATENCYMITIGATION_USEEARLYPENALTY, VIRTKEY, CONTROL, NOINVERT
     "L",            ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING, VIRTKEY, CONTROL, NOINVERT
-    "E",            ID_NETWORK_LOGEFFECTAPPLICATIONDELAY, VIRTKEY, NOINVERT
-    VK_F1,          ID_NETWORK_REDUCEPACKETDELAY, VIRTKEY, NOINVERT
-    VK_F2,          ID_NETWORK_RELEASEALLCONNECTIONS, VIRTKEY, NOINVERT
-    "3",            ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES, VIRTKEY, NOINVERT
-    "4",            ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS, VIRTKEY, NOINVERT
-    "1",            ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES, VIRTKEY, NOINVERT
-    "2",            ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES, VIRTKEY, NOINVERT
-    "M",            ID_NETWORK_USEALLIPCMESSAGELOGGER, VIRTKEY, NOINVERT
-    "F",            ID_NETWORK_USEIPCTYPEFINDER, VIRTKEY, NOINVERT
-    "A",            ID_RESTART_USEELEVATION, VIRTKEY, NOINVERT
-    "P",            ID_RESTART_USEPARAMETEROBFUSCATION, VIRTKEY, NOINVERT
-    "X",            ID_RESTART_USEXIVALEXANDER, VIRTKEY, NOINVERT
     "T",            ID_VIEW_ALWAYSONTOP,    VIRTKEY, CONTROL, NOINVERT
 END
 
@@ -1697,23 +2067,7 @@ BEGIN
     "L",            ID_FILE_SHOWLOGGINGWINDOW, VIRTKEY, SHIFT, CONTROL, NOINVERT
     "Q",            ID_FILE_UNLOADXIVALEXANDER, VIRTKEY, CONTROL, ALT, NOINVERT
     VK_F1,          ID_GLOBAL_SHOW_TRAYMENU, VIRTKEY, NOINVERT
-    "H",            ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "P",            ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE, VIRTKEY, CONTROL, ALT, NOINVERT
-    "E",            ID_NETWORK_HIGHLATENCYMITIGATION_USEEARLYPENALTY, VIRTKEY, CONTROL, ALT, NOINVERT
-    "L",            ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING, VIRTKEY, CONTROL, ALT, NOINVERT
-    "E",            ID_NETWORK_LOGEFFECTAPPLICATIONDELAY, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    VK_F1,          ID_NETWORK_REDUCEPACKETDELAY, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    VK_F2,          ID_NETWORK_RELEASEALLCONNECTIONS, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "3",            ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "4",            ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "1",            ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "2",            ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "M",            ID_NETWORK_USEALLIPCMESSAGELOGGER, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "F",            ID_NETWORK_USEIPCTYPEFINDER, VIRTKEY, SHIFT, CONTROL, NOINVERT
     "R",            ID_RESTART_RESTART,     VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "A",            ID_RESTART_USEELEVATION, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "P",            ID_RESTART_USEPARAMETEROBFUSCATION, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "X",            ID_RESTART_USEXIVALEXANDER, VIRTKEY, SHIFT, CONTROL, NOINVERT
     "T",            ID_VIEW_ALWAYSONTOPGAME, VIRTKEY, SHIFT, CONTROL, NOINVERT
 END
 
@@ -1752,7 +2106,6 @@ BEGIN
     IDS_NOUNLOADREASON_WNDPROC 
                             "Another module has hooked window procedure over XivAlexander. Try unloading that other module first."
     IDS_ERROR_INJECT        "Failed to initialize this process.\nError: {}\nPID: {}\nPath: {}\nCommand Line: {}"
-    IDS_WARNING_ZEROPING    "rtt={} but latency={}; your VPN or network might be reporting 0 ping. Using ""Mode 2"" for High Latency Mitigation is recommended as that is the only option that does not use current latency information to do the job."
     IDS_ERROR_FREEGAMEMUTEX_CLOSEHANDLE 
                             "Failed to process handle {:p}(type {:2x}): {}"
     IDS_PINGTRACKER_START   "Ping {} -> {}: Start tracking."
@@ -1796,11 +2149,12 @@ END
 STRINGTABLE
 BEGIN
     IDS_CONFIRM_EXIT_GAME   "Do you want to force quit the game?"
+    IDS_CONFIRM_RESET_ALL_CONNECTIONS "Do you want to reset all connections?"
     IDS_TITLE_UNRECOVERABLEERROR_FOOTER 
                             "Report to <a href=""issues"">XivAlexander Issues at GitHub</a>"
     IDS_CONFIRM_RESTART_GAME 
                             "Use XivAlexander: {}\nUse Parameter Obfuscation: {}\nUse Elevation (Run as Administrator): {}\nGame Language: {}\nRegion: {}"
-    IDS_MAIN_TEXT           "Process ID: {}\nGame Path: {}\nArguments: {}\nGame Release: {} ({})\nMessage Pump: {}+{:06}us ({:.02f}/s)\n\n{}"
+    IDS_MAIN_TEXT           "Message Pump: {}+{:06}us ({:.02f}/s){}\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "Runtime Configuration Editor"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcode Configuration Editor"
@@ -1867,8 +2221,8 @@ BEGIN
     IDS_VERSIONSENSITIVE_ALTCODEC "Alternate codecs for musics"
     IDS_VERSIONSENSITIVE_IMEMODEINDICATOR "IME mode indicator for Korean and Chinese IMEs"
     IDS_VERSIONSENSITIVE_CROWDFIX "CrowdFix (performance fixes for crowded areas)"
+    IDS_VERSIONSENSITIVE_FONTREPLACEMENT "Font replacement"
     IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART "(!) Some features are disabled until restart."
-    IDS_MENU_MODDING_REQUIRESENABLEANDRESTART "Anything here requires enabling modding and restarting the game."
 END
 
 STRINGTABLE
@@ -1879,7 +2233,6 @@ BEGIN
                             "{} not found. Run the game first, and then try again."
     IDS_ERROR_NO_MATCHING_PROCESS 
                             "No process matching given conditions found."
-    IDS_ERROR_RESTART_ADMIN "Failed to restart as Administrator. ({})"
     IDS_UPDATE_PROGRESS_DOWNLOADING_FILES "Downloading update files..."
     IDS_UPDATE_PROGRESS_PREPARING_FILES "Preparing files for update..."
     IDS_UPDATE_PROGRESS_CHECKING "Checking for updates..."
@@ -1901,16 +2254,12 @@ BEGIN
                             "XivAlexander detected in FFXIV Process ({}:{})\n\nPress {} to try loading again if it hasn't loaded properly,\nPress {} to unload, or\nPress {} to skip."
     IDS_CONFIRM_INJECT      "Game process found:\n\n* Process ID: {}\n* Path: {}\n\nContinue loading XivAlexander into this process?"
     IDS_UPDATE_FILE_TOO_BIG "Update package is too big, meaning that the package is possibly corrupted. Please replace files by yourself if you are sure that the update is correct."
-    IDS_UPDATE_INVALID_VERSION 
-                            "Version information could not be confirmed. Manually check and update the program."
     IDS_HELP_ACTION         "specify action\n\t* auto: load into game if already running, otherwise try to detect game installation and run\n\t* ask: confirm action per game process\n\t* load: load XivAlexander into game process\n\t* unload: unload XivAlexander from game process\n\t* launcher: run specified game launcher and load XivAlexander to the game run\n\t* update-check: check for updates\n\t* web: open github repository at https://github.com/Soreepeong/XivAlexander"
     IDS_HELP_LAUNCHER       "specify launcher (possible values: auto, select, squareenix, actozsoft, shengqugames, userjoygames)"
     IDS_HELP_QUIET          "disable error messages"
     IDS_HELP_DISABLE_RUNAS  "disable run as administrator"
     IDS_HELP_INTERNAL_USE_ONLY "internal use only. Do not use."
     IDS_HELP_TARGETS        "List of target process ID or path suffix if loading. Path of program to execute if launching."
-    IDS_ERROR_NOT_GAME_DIRECTORY 
-                            "Selected path ""{}"" does not seem to be a game directory. A game directory should have ""ffxiv_dx11.exe"" in it."
     IDS_NOTIFY_TTMP_HAS_CONFIGURATION 
                             "Installed TexTools ModPack file has user configurable settings attached to it. Use menu to change settings."
 END
@@ -1919,9 +2268,8 @@ STRINGTABLE
 BEGIN
     IDS_MENU_BACKGROUND_FRAMERATE_TARGET 
                             "Background Framerate Limit: {:g} fps"
-    IDS_MENU_WORDWRAPCONFIGWINDOW "&Word Wrap"
     IDS_FILTERSPEC_ALLFILES "All files (*.*)"
-    IDS_FILTERSPEC_TTMP     "Process ID: {}\nGame Path: {}\nArguments: {}\nGame Release: {} ({})\nMessage Pump: {:06}+{:06}us ({}/s)\nRender Time: {:06}+{:06}us ({}/s if without FPS limits)\n\n{}"
+    IDS_FILTERSPEC_TTMP     "TexTools ModPack files (*.ttmp, *.ttmp2, *.mpl)"
     IDS_CONFIRM_REMOVEALLTTMP 
                             "Do you want to remove all TexTools ModPacks in ""{}""?"
     IDS_URL_ISSUES          "https://github.com/Soreepeong/XivAlexander/issues"
@@ -1944,12 +2292,8 @@ END
 STRINGTABLE
 BEGIN
     IDS_ERROR_UNSUPPORTED_FILE_TYPE "Unsupported file type."
-    IDS_TITLE_COMPRESSING   "Compressing data..."
-    IDS_CONFIGURE           "Configure"
     IDS_ERROR_NO_MATCHING_FILES 
                             "Could not find supported files in this directory."
-    IDS_TITLE_ADD_EXCELTRANSFORMCONFIG 
-                            "Select excel transformation configuration file"
     IDS_TITLE_IMPORT_TTMP   "Select TexTools ModPack file"
     IDS_TITLE_IMPORTING     "Importing..."
     IDS_UNRECOVERABLEERROR_EXPORTLOG "Export &Log"
@@ -2015,20 +2359,12 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_TITLE_INDEXINGFILES "Indexing files... ({1}/{2}): {0}"
-    IDS_TITLE_FINALIZING    "Finalizing..."
-    IDS_ERROR_MODDINGACTIVEREQUIRED 
-                            "Modding must be active to use this feature."
     IDS_ERROR_CANCELLING_TRYAGAINLATER 
                             "Cancelling previous operation. Please try again later."
 END
 
 STRINGTABLE
 BEGIN
-    IDS_ERROR_GENERATESTRINGTABLES 
-                            "An error has occurred while generating or loading string tables. Do you want to retry?\n\nError: {}"
-    IDS_TITLE_EXPORTTTMPDIRECTORY "Select a folder to save TTMPL/TTMPD files"
-    IDS_TITLE_EXPORTTTMPPROGRESS "Exporting files... ({1}/{2}): {0}"
     IDS_UPDATE_CONFIRM_NOAUTO 
                             "New version {}.{}.{}.{}, released at {:%Ec}, is available. Local version is {}.{}.{}.{}. Since the game is already running, automatic updates are unavailable. Open the releases page at Github?"
     IDS_UPDATE_ERROR_ACCESS_DENIED 
@@ -2044,6 +2380,230 @@ BEGIN
     IDS_SOCKETHOOK_SOCKET_RESET "{:x}: Force shutdown => {}"
     IDS_MENU_TTMP_PROFILE   "Profile"
     IDS_MENU_MODDING_SAMPLINGRATE "Audio &Sampling Rate"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_BROWSE     "Browse..."
+    IDS_SETTINGS_ADD        "Add..."
+    IDS_SETTINGS_REMOVE     "Remove"
+    IDS_SETTINGS_EDITINCONFIGEDITOR "Edit this in the runtime configuration editor."
+    IDS_SETTINGS_OPENEDITOR "Open Editor"
+    IDS_SETTINGS_GROUP_UI   "Interface"
+    IDS_SETTINGS_GROUP_UI_MAINWINDOW "Control Window"
+    IDS_SETTINGS_GROUP_UI_LOGWINDOW "Logging Window"
+    IDS_SETTINGS_GROUP_UI_CONFIGWINDOW "Configuration Editor"
+    IDS_SETTINGS_GROUP_GAMEWINDOW "Game Window"
+    IDS_SETTINGS_GROUP_NETWORKTIMING "Latency and Timing Helper"
+    IDS_SETTINGS_GROUP_SOCKET "Connections"
+    IDS_SETTINGS_GROUP_FRAMERATECONTROL "Framerate Control"
+    IDS_SETTINGS_GROUP_FRAMERATECONTROL_LOCK "Lock Framerate"
+    IDS_SETTINGS_GROUP_OPCODES "Opcodes"
+    IDS_SETTINGS_GROUP_LAUNCH "Launch"
+    IDS_SETTINGS_GROUP_CHAINLOAD "Chain Loading"
+    IDS_SETTINGS_GROUP_MODDING "Modding"
+    IDS_SETTINGS_GROUP_MODDING_LANGUAGES "Languages"
+    IDS_SETTINGS_GROUP_MODDING_TTMP "TexTools ModPacks"
+    IDS_SETTINGS_GROUP_MODDING_LOGGING "Logging"
+    IDS_SETTINGS_GROUP_AUDIO "Audio"
+    IDS_SETTINGS_GROUP_AUDIO_MUTEVOICE "Mute Voice"
+    IDS_SETTINGS_GROUP_AUDIO_SOXR "soxr Resampler"
+    IDS_SETTINGS_GROUP_AUDIO_SOXR_FILTER "Filter"
+    IDS_SETTINGS_GROUP_CROWDFIX "CrowdFix"
+    IDS_SETTINGS_GROUP_CROWDFIX_FIXES "Fixes"
+    IDS_SETTINGS_GROUP_FONTREPLACEMENT "Font Replacement"
+    IDS_SETTINGS_GROUP_FONTREPLACEMENT_FACES "Faces"
+    IDS_SETTINGS_BACKGROUNDLIMIT "Background framerate limit (fps)"
+    IDS_SETTINGS_LOCK_INTERVAL "Render interval (µs; 0 to disable)"
+    IDS_SETTINGS_LOCK_AUTOMATIC "Choose the interval automatically"
+    IDS_SETTINGS_LOCK_RANGEFROM "Lowest target framerate (fps)"
+    IDS_SETTINGS_LOCK_RANGETO "Highest target framerate (fps)"
+    IDS_SETTINGS_LOCK_MAXDEVIATION "Maximum render interval deviation (µs)"
+    IDS_SETTINGS_LOCK_GCD   "Global cooldown (s)"
+    IDS_SETTINGS_CROWDFIX_ENABLED "Enable CrowdFix"
+    IDS_SETTINGS_CROWDFIX_ENABLED_DESC "Reduces per-frame work that grows with the number of objects around. Changes apply from the next frame."
+    IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS "Skip idle GPU resource notifiers"
+    IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS_DESC "Walks only the GPU resources that do per-frame work, instead of every resource twice per frame."
+    IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS "Chain job worker wake-ups"
+    IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS_DESC "Wakes one sleeping worker per job submit, and lets each woken worker wake the next, instead of waking every worker from the submitting thread."
+    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS "Sync skeleton poses once per frame"
+    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS_DESC "Skips the pose syncs of every skeleton that repeat for each rendered view after the first one in a frame."
+    IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR "Clear only the used culling slots"
+    IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR_DESC "Clears the visibility table only up to the highest object slot ever used, instead of all 40,960 slots several times per frame."
+    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK "Free large graphics blocks outside the allocator lock"
+    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK_DESC "Lets small allocations proceed while large blocks are being freed. Mostly helps on CPUs where the main thread waits for the job workers."
+    IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS "Pool draw staging blocks"
+    IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS_DESC "Reuses freed staging blocks by size, so most allocations skip the allocator's global locks."
+    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS "Freeze the follow AI of hidden minions"
+    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS_DESC "Skips the follow AI, with its collision sweeps, of minions whose model is hidden. They still warp back to their owner when left behind."
+    IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT "Skip the redundant job list wait"
+    IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT_DESC "Removes a second wait on an event that is always already signaled: about 75 system calls per frame."
+    IDS_SETTINGS_CROWDFIX_INLINEBGPREP "Run background instancing prep on the main thread"
+    IDS_SETTINGS_CROWDFIX_INLINEBGPREP_DESC "Runs the tiny per-view background instancing job right away, instead of handing it to a worker and waiting for it."
+    IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS "Skip preparing hidden hotbars"
+    IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS_DESC "Skips preparing the slots of hidden hotbars every frame. A bar that becomes visible is prepared in that same frame."
+    IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL "Finish animations in parallel"
+    IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL_DESC "Finishes the skeletons of each attach depth on the job workers, instead of one by one on the main thread."
+    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING "Split character culling across threads"
+    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING_DESC "The game culls all characters in a single job; this lets every thread that finishes its own culling work help with it."
+    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS "Hand out culling work one item at a time"
+    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS_DESC "Spreads cell culling over more threads, instead of handing out blocks of up to 8 items that only a few threads get."
+    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS "Gather only the used command list entries"
+    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS_DESC "Copies only the used entries of each command list, and skips sorting them when they are already in order. The result is the same as the game's."
+    IDS_SETTINGS_PAGE_PATCHCODES "Game Fixes"
+    IDS_SETTINGS_PATCHCODE_NEW "New..."
+    IDS_SETTINGS_PATCHCODE_EDIT "Edit..."
+    IDS_SETTINGS_PATCHCODE_DELETE "Delete"
+    IDS_SETTINGS_PATCHCODE_CONFIRMDELETE "Delete {}?"
+    IDS_SETTINGS_PATCHCODE_EDITORTITLE "Game Fix: {}"
+    IDS_SETTINGS_HEADING_OPCODECONFIG "Opcode Configuration"
+    IDS_SETTINGS_PAGE_STATUS "Status"
+    IDS_SETTINGS_PAGE_GAMEBEHAVIOR "Game Behavior"
+    IDS_SETTINGS_PAGE_CONFIGURATION "Configuration"
+    IDS_SETTINGS_OPENFRAMERATELOCKING "Open Framerate Locking..."
+    IDS_SETTINGS_LOCK_MODE  "Mode"
+    IDS_SETTINGS_LOCK_MODE_OFF "Disabled"
+    IDS_SETTINGS_LOCK_MODE_FIXED "Fixed framerate"
+    IDS_SETTINGS_LOCK_MODE_AUTOMATIC "Automatic"
+    IDS_SETTINGS_LOCK_FRAMERATE "Framerate (fps)"
+    IDS_SETTINGS_LOCK_MINIMIZECLIPPING "Adjust Framerate to Minimize Cooldown Clipping"
+    IDS_SETTINGS_LOCK_ESTIMATEDGCD "Estimated actual global cooldown (s)"
+    IDS_SETTINGS_LOCK_INTERVALINUSE "Render interval in use (µs)"
+    IDS_SETTINGS_LOCK_MEASUREDGCD "Measured global cooldown (s)"
+    IDS_SETTINGS_LOCK_LATESTGCDS "Latest global cooldowns"
+    IDS_SETTINGS_LOCK_RESET "Reset"
+    IDS_SETTINGS_GRID_ENABLED "Enabled"
+    IDS_SETTINGS_GRID_NAME  "Name"
+    IDS_SETTINGS_GRID_LANGUAGE "Language"
+    IDS_SETTINGS_GRID_FILENAME "File name"
+    IDS_SETTINGS_GRID_ADD   "Add"
+    IDS_SETTINGS_PATHREPLACEMENT_FROM "From (regular expression)"
+    IDS_SETTINGS_PATHREPLACEMENT_TO "To"
+    IDS_SETTINGS_PATHREPLACEMENT_STOP "Stop"
+    IDS_SETTINGS_PATHREPLACEMENT_DESC "Applied from the top; a matching rule with Stop ends the replacement."
+    IDS_SETTINGS_PATHFILTER_PATTERN "Pattern (regular expression)"
+    IDS_SETTINGS_PATHFILTER_INCLUDE "Log"
+    IDS_SETTINGS_PATHFILTER_DESC "The first matching filter decides whether a path is logged; paths none match follow the options above."
+    IDS_SETTINGS_FALLBACK_DESC "Drag to reorder: when a file isn't in the language chosen, languages higher up are used first."
+    IDS_SETTINGS_FORCEDLANGUAGE_UNNAMED "(Anyone unnamed)"
+    IDS_SETTINGS_FORCEDLANGUAGE_DESC "The first enabled entry of a speaker applies; an empty name stands for anyone unnamed."
+    IDS_SETTINGS_CHOICES_ACTIVE "Active"
+    IDS_SETTINGS_CHOICES_DESC "When none is active, the first profile with a file name is used. Changing a file name doesn't rename the files mods already have."
+    IDS_SETTINGS_FONT_SOURCE_TYPE "Type"
+    IDS_SETTINGS_FONT_SOURCE_PRESET "Preset"
+    IDS_SETTINGS_FONT_SOURCE_FONT "System font"
+    IDS_SETTINGS_FONT_WEIGHT "Weight"
+    IDS_SETTINGS_FONT_STRETCH "Stretch"
+    IDS_SETTINGS_FONT_STYLE "Style"
+    IDS_SETTINGS_FONT_ADDPRESET "Add Preset…"
+    IDS_SETTINGS_FONT_ADDFONT "Add System Font"
+    IDS_SETTINGS_FONT_COPYTOOTHERS "Copy to Other Families"
+    IDS_SETTINGS_FONT_CONFIRMCOPY "Replace the sources of every other family with those of {}?"
+    IDS_SETTINGS_FONT_SOURCES_DESC "Later sources are drawn over earlier ones, glyph by glyph. Of a preset, only this family's faces are used."
+    IDS_SETTINGS_EDGE_SCALE "Edge width per pixel of text size"
+    IDS_SETTINGS_EDGE_MIN   "Minimum edge width (px)"
+    IDS_SETTINGS_EDGE_MAX   "Maximum edge width (px)"
+    IDS_SETTINGS_DIRS_FOLDER "Folder"
+    IDS_SETTINGS_DIRS_LOCATION "Location"
+    IDS_SETTINGS_DIRS_ADDDEFAULT "(add default path)"
+    IDS_SETTINGS_DIRS_NOTFOUND "{} (not found)"
+    IDS_SETTINGS_DIRS_ADD "Add Folder..."
+    IDS_SETTINGS_SHOWINEXPLORER "Show in Explorer"
+    IDS_SETTINGS_DIRS_DESC "Drag to reorder. <config> is the configuration folder, and <sqpack> is the game's sqpack folder."
+    IDS_SETTINGS_TTMP_AUTHOR "Author"
+    IDS_SETTINGS_TTMP_VERSION "Version"
+    IDS_SETTINGS_TTMP_STATUS "Status"
+    IDS_SETTINGS_TTMP_FILTER "Filter"
+    IDS_SETTINGS_TTMP_CONFIRMDELETE "Delete ""{}""?\n\n{}"
+    IDS_SETTINGS_TTMP_RENAME "Rename"
+    IDS_SETTINGS_TTMP_MOVETO "Move To..."
+    IDS_SETTINGS_TTMP_MOVETONEWFOLDER "Move to New Folder"
+    IDS_SETTINGS_TTMP_NEWFOLDER "New Folder"
+    IDS_SETTINGS_TTMP_TOPLEVEL "Top level: {}"
+    IDS_SETTINGS_TTMP_ORDER_DESC "Drag to reorder. Where ModPacks change the same file, the one further down wins."
+    IDS_STATUS_TTMPPROFILE "\nModPack profile: {}"
+    IDS_SETTINGS_MODDING_ENABLE_DESC "Changing this takes effect after restarting the game."
+    IDS_SETTINGS_LIPSYNC    "Cutscene lip sync language"
+    IDS_SETTINGS_LIPSYNC_DESC "The language whose mouth movements cutscenes play. The game picks the cutscene voice files by the same language. Only the languages the game is voiced in can be chosen."
+    IDS_SETTINGS_FONT_PREVIEW_SIZE "Size"
+    IDS_SETTINGS_FONT_PREVIEW_TEXT "Sample text"
+    IDS_SETTINGS_FONT_PREVIEW_DESC "The font at the chosen size, drawn as these sources make it, with the edge the game draws. Characters it lacks are drawn with the game's own glyphs here; with SystemFallback on, the game draws them with system fonts instead."
+    IDS_SETTINGS_FONT_PREVIEW_COLORS "Colors"
+    IDS_SETTINGS_FONT_PREVIEW_NOEDGE "The edge can't be shown: {}"
+    IDS_SETTINGS_EDGE_PREVIEW_DESC "{} as the font replacement draws it, with the edge these settings give at the chosen size. The colors are ones the game uses, and apply to every font preview."
+    IDS_SETTINGS_FONT_COLORS_DEFAULT "Default"
+    IDS_SETTINGS_FONT_COLORS_TOOLTIPLABEL "Tooltip labels"
+    IDS_SETTINGS_FONT_COLORS_ACTIONNAME "Action names"
+    IDS_SETTINGS_FONT_COLORS_STATUSNAME "Status names"
+    IDS_SETTINGS_FONT_COLORS_WARNING "Warnings"
+    IDS_SETTINGS_FONT_COLORS_NOTICE "Notices"
+    IDS_SETTINGS_FONT_COLORS_QUESTHIGHLIGHT "Quest highlights"
+    IDS_SETTINGS_FONT_COLORS_TUTORIAL "Tutorial text"
+    IDS_SETTINGS_RESTART_REGION "Region"
+    IDS_SETTINGS_MISCELLANEOUS "Miscellaneous"
+    IDS_SETTINGS_UPDATES "Updates"
+    IDS_SETTINGS_LAUNCH_SESSIONSWITCHING "Use session switch"
+    IDS_SETTINGS_REMEMBER   "Remember"
+    IDS_SETTINGS_SESSIONS_FORGET "Forget all"
+    IDS_SETTINGS_SESSIONS_FORGET_CONFIRM "Forget all remembered login sessions?\nThey are removed from Windows Credential Manager."
+    IDS_SETTINGS_SESSIONS_FORGETONE "Forget This Session"
+    IDS_SETTINGS_SESSIONS_FORGETONE_CONFIRM "Forget the login session ""{}""?\nIt is removed from Windows Credential Manager."
+    IDS_SETTINGS_LAUNCH_CLEARCOPIED "Clear the copied command line after (seconds)"
+    IDS_SETTINGS_LAUNCH_CLEARCOPIED_DESC "The copied command line is cleared from the clipboard after this many seconds; 0 keeps it."
+    IDS_SETTINGS_EDITMENU "Edit ▾"
+    IDS_SETTINGS_SHOWMORE "Show more"
+    IDS_SETTINGS_SHOWLESS "Show less"
+    IDS_SETTINGS_TTMP_CONFIRMDELETEMANY "Delete {} ModPacks?"
+    IDS_SETTINGS_FONT_MONOSPACEDDIGITS "Monospaced digits for system fonts"
+    IDS_SETTINGS_FONT_OPENPRESETFOLDER "Open Presets Folder"
+    IDS_SETTINGS_FONT_IMPORT_TITLE "This preset is outside the presets folder."
+    IDS_SETTINGS_FONT_IMPORT_CONTENT "{}\n\nImport a copy into the presets folder, or use the file where it is?"
+    IDS_SETTINGS_FONT_IMPORT_GLYPHS "It reads glyph images from these folders next to it, which importing copies along with it into a folder of its own:{}"
+    IDS_SETTINGS_FONT_IMPORT_NOGLYPHCOPY "It reads glyph images from these folders, which aren't inside its own folder and can't be copied along with it, so it can only be used where it is:{}"
+    IDS_SETTINGS_FONT_IMPORT_IMPORT "Import\nCopy it into the presets folder. Later changes to the original won't be seen."
+    IDS_SETTINGS_FONT_IMPORT_INPLACE "Use it where it is\nRead it from where it is now. It stops working if the file is moved or deleted."
+    IDS_SETTINGS_FONT_PRESETUNREADABLE "{}\n\nThe preset can't be read: {}"
+    IDS_SETTINGS_FONT_IMPORTFAILED "{}\n\nThe preset couldn't be imported: {}"
+    IDS_TTMP_ERROR_NAME_EMPTY "The name cannot be empty."
+    IDS_TTMP_ERROR_NAME_DOTS """."" and "".."" cannot be used as a name."
+    IDS_TTMP_ERROR_NAME_TOOLONG "The name is too long."
+    IDS_TTMP_ERROR_NAME_INVALIDCHARS "The name cannot contain any of < > : "" / \\ | ? * or control characters."
+    IDS_TTMP_ERROR_NAME_TRAILING "The name cannot end with a space or a period."
+    IDS_TTMP_ERROR_NAME_RESERVED "The name is reserved by Windows."
+    IDS_TTMP_ERROR_DIFFERENTDRIVE "Folders cannot be moved to a different drive."
+    IDS_TTMP_ERROR_MOVEFAILED "Failed to move {} to {}"
+    IDS_TTMP_ERROR_ITEMGONE "The item is no longer among the TexTools ModPacks. Refresh and try again."
+    IDS_TTMP_ERROR_NAMETAKEN "Something named ""{}"" already exists in that folder."
+    IDS_TTMP_ERROR_DESTINATIONMISSING "The destination folder does not exist."
+    IDS_TTMP_ERROR_DESTINATIONOUTSIDE "The destination is not in any of the folders TexTools ModPacks are looked for in."
+    IDS_TTMP_ERROR_MOVEINTOSELF "A folder cannot be moved into itself or into a folder inside it."
+    IDS_TTMP_ERROR_MOVEINTOMODPACK "Nothing can be moved into a ModPack."
+    IDS_TTMP_ERROR_NAMETAKENATDESTINATION "Something named ""{}"" already exists in the destination folder."
+    IDS_TTMP_ERROR_DESTINATIONNOTFOUND "The destination folder could not be found."
+    IDS_TTMP_ERROR_PARENTMISSING "The parent folder does not exist."
+    IDS_TTMP_ERROR_PARENTOUTSIDE "The parent folder is not in any of the folders TexTools ModPacks are looked for in."
+    IDS_TTMP_ERROR_FOLDERINMODPACK "Folders cannot be created inside a ModPack."
+    IDS_TTMP_ERROR_CREATEFOLDER "Failed to create the folder {}: {}"
+    IDS_TTMP_ERROR_FOLDERGONE "The folder is no longer among the TexTools ModPacks. Refresh and try again."
+    IDS_TTMP_ERROR_ORDERINCOMPLETE "The new order must list every item in the folder exactly once."
+    IDS_TTMP_ERROR_SAVEORDER "Failed to save {}: {}"
+    IDS_TTMP_ERROR_OPENDATA "Failed to open {}."
+    IDS_TTMP_ERROR_MOVEBACKFAILED "{}; moving it back failed too ({}). Refresh the TexTools ModPacks."
+    IDS_TTMP_ERROR_DUPLICATENAMES "More than one of the items is named ""{}""."
+    IDS_ERROR_FILE_TOO_BIG  "The file is too big."
+    IDS_ERROR_HTTP          "HTTP error {}"
+    IDS_RESULT_IMPORT_OK    "OK: {}: {}"
+    IDS_RESULT_IMPORT_ERROR "Error: {}: {}"
+    IDS_FONTPRESET_ERROR_CANNOTREAD "{} can't be read."
+    IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE "The glyph image folder {} isn't under the preset's folder."
+    IDS_FONTPRESET_ERROR_NOFACES "The preset has no faces."
+    IDS_FONTPREVIEW_ERROR_NOFACE "There is no face to draw {} with."
+    IDS_SETTINGS_PATCHCODE_DEFAULTNAME "New Game Fix"
+    IDS_ERROR_LOAD_INSTALLED "{}\nReason: {}\n\nPress {} to exit.\nPress {} to open the XivAlexander help webpage.\nPress {} to skip loading XivAlexander."
+    IDS_ERROR_LOAD_INSTALLED_NOPATH "Failed to resolve the XivAlexander installation path."
+    IDS_ERROR_LOAD_INSTALLED_PATH "Failed to load {}."
+    IDS_FONTPREVIEW_ERROR_EMPTYELEMENT "{} has no glyphs; it may not be installed, or can't be read."
+    IDS_FONTPREVIEW_ERROR_NOGLYPHS "{} has none of the text's characters."
 END
 
 #endif    // English (United States) resources

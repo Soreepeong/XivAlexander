@@ -129,9 +129,7 @@ namespace Utils {
 		}
 
 	private:
-		/// Copies \p length items from \p from down onto \p to, which is below it. Lowest first, so that
-		/// what a later run reads has not been written over yet; each run is whole on both sides, which
-		/// leaves the overlap between them for memmove to sort out.
+		/// For \p to below \p from: lowest run first so later reads aren't overwritten; runs never wrap, so memmove handles any overlap.
 		void MoveDown(size_t to, size_t from, size_t length) {
 			while (length) {
 				const auto run = RunUp(to, from, length);
@@ -142,7 +140,7 @@ namespace Utils {
 			}
 		}
 
-		/// The same the other way, so highest first, for \p to above \p from.
+		/// For \p to above \p from: highest run first.
 		void MoveUp(size_t to, size_t from, size_t length) {
 			while (length) {
 				const auto run = RunDown(to, from, length);
@@ -151,7 +149,7 @@ namespace Utils {
 			}
 		}
 
-		/// \returns How much of \p a and \p b can be taken at once going up: neither may cross the wrap.
+		/// \returns Longest run going up from \p a and \p b without either crossing the wrap.
 		[[nodiscard]] size_t RunUp(size_t a, size_t b, size_t length) const {
 			return std::min<size_t>({
 				length,
@@ -160,7 +158,7 @@ namespace Utils {
 			});
 		}
 
-		/// \returns The same going down, measured back from the far end of each.
+		/// \returns The same going down, measured back from the end of each range.
 		[[nodiscard]] size_t RunDown(size_t a, size_t b, size_t length) const {
 			return std::min<size_t>({
 				length,

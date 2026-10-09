@@ -25,8 +25,7 @@ Utils::Win32::Process XivAlexander::LoaderApp::OpenProcessForInformation(DWORD p
 			throw;
 	}
 
-	// some processes only allow PROCESS_QUERY_INFORMATION,
-	// while denying PROCESS_QUERY_LIMITED_INFORMATION, so try again.
+	// Some processes allow PROCESS_QUERY_INFORMATION while denying PROCESS_QUERY_LIMITED_INFORMATION.
 	try {
 		return {PROCESS_QUERY_INFORMATION, false, pid};
 	} catch (const Utils::Win32::Error& e) {
@@ -169,7 +168,6 @@ public:
 					return 0;
 
 				case LoaderAction::Interactive:
-					// Preemptively elevate self if possible, when any of the target processes are not accessible
 					if (!m_args.m_disableAutoRunAs && !Utils::Win32::IsUserAnAdmin() && TestAdminRequirementForProcessManipulation(m_args.GetTargetPidList()))
 						RunElevatedSelfIfPossible();
 					return Actions::Interactive(m_args).Run();
@@ -177,7 +175,6 @@ public:
 				case LoaderAction::Ask:
 				case LoaderAction::Load:
 				case LoaderAction::Unload:
-					// Preemptively elevate self if possible, when any of the target processes are not accessible
 					if (!m_args.m_disableAutoRunAs && !Utils::Win32::IsUserAnAdmin() && TestAdminRequirementForProcessManipulation(m_args.GetTargetPidList()))
 						RunElevatedSelfIfPossible();
 					return Actions::LoadUnload(m_args).Run();
@@ -237,7 +234,6 @@ private:
 				.elevateMode = Utils::Win32::RunProgramParams::Force,
 				}).WaitAndGetExitCode());
 		} catch (const std::exception&) {
-			// pass
 		}
 	}
 };

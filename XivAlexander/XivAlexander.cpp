@@ -31,11 +31,11 @@ namespace {
 	void SetGameCommandLine(std::vector<std::pair<std::string, std::string>> params) {
 		if (Dll::IsLanguageRegionModifiable()) {
 			auto config = XivAlexander::Config::Acquire();
-			Game::CommandLine::WellKnown::SetLanguage(params, config->Runtime.RememberedGameLaunchLanguage);
-			Game::CommandLine::WellKnown::SetRegion(params, config->Runtime.RememberedGameLaunchRegion);
+			Game::CommandLine::WellKnown::SetLanguage(params, config->Runtime.Launch.RememberedLanguage);
+			Game::CommandLine::WellKnown::SetRegion(params, config->Runtime.Launch.RememberedRegion);
 			OutputDebugStringW(std::format(L"Parameters modified (language={} region={})\n",
-				static_cast<int>(config->Runtime.RememberedGameLaunchLanguage.Value()),
-				static_cast<int>(config->Runtime.RememberedGameLaunchRegion.Value())).c_str());
+				static_cast<int>(config->Runtime.Launch.RememberedLanguage.Value()),
+				static_cast<int>(config->Runtime.Launch.RememberedRegion.Value())).c_str());
 		}
 
 		s_gameCommandLineW = std::format(L"\"{}\" {}", Utils::Win32::Process::Current().PathOf().wstring(), Game::CommandLine::ToString(params, false));

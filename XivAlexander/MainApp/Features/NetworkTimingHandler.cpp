@@ -65,7 +65,7 @@ struct XivAlexander::Apps::MainApp::Features::NetworkTimingHandler::Implementati
 							.RequestUs = Utils::QpcUs(),
 							});
 
-						if (runtimeConfig.UseHighLatencyMitigationLogging) {
+						if (runtimeConfig.NetworkTiming.UseHighLatencyMitigationLogging) {
 							const auto delayUs = LastAnimationLockEndsAtUs ? PendingActions.back().RequestUs - *LastAnimationLockEndsAtUs : INT64_MAX;
 							const auto prevRelativeUs = LatestSuccessfulRequest ? PendingActions.back().RequestUs - LatestSuccessfulRequest->RequestUs : INT64_MAX;
 
@@ -181,7 +181,7 @@ struct XivAlexander::Apps::MainApp::Features::NetworkTimingHandler::Implementati
 								waitUs = 0;
 								description << std::format(" wait={}us->{}us->{}us (ping/jitter too high)", originalWaitUs, invalidWaitUs, waitUs);
 
-								if (!runtimeConfig.UseHighLatencyMitigationPreviewMode) {
+								if (!runtimeConfig.NetworkTiming.UseHighLatencyMitigationPreviewMode) {
 									actionEffect.AnimationLockDurationUs(0);
 									if (LatestSuccessfulRequest)
 										LatestSuccessfulRequest->WaitTimeUs = -LatestSuccessfulRequest->OriginalWaitUs;
@@ -190,7 +190,7 @@ struct XivAlexander::Apps::MainApp::Features::NetworkTimingHandler::Implementati
 							} else if (waitUs < originalWaitUs) {
 								description << std::format(" wait={}us->{}us", originalWaitUs, waitUs);
 
-								if (!runtimeConfig.UseHighLatencyMitigationPreviewMode) {
+								if (!runtimeConfig.NetworkTiming.UseHighLatencyMitigationPreviewMode) {
 									actionEffect.AnimationLockDurationUs(waitUs);
 									if (LatestSuccessfulRequest)
 										LatestSuccessfulRequest->WaitTimeUs = waitUs - originalWaitUs;
@@ -199,13 +199,13 @@ struct XivAlexander::Apps::MainApp::Features::NetworkTimingHandler::Implementati
 							}
 							description << std::format(" next={:%H:%M:%S}", std::chrono::system_clock::now() + std::chrono::microseconds(waitUs));
 
-							if (Config->Runtime.SynchronizeProcessing) {
+							if (Config->Runtime.FramerateControl.SynchronizeProcessing) {
 								if (auto& handler = Impl.App.GetMainThreadTimingHelper()) {
 									handler->GuaranteePumpBeginCounterAt(*LastAnimationLockEndsAtUs + (LatestSuccessfulRequest ? LatestSuccessfulRequest->CastTimeUs : 0));
 								}
 							}
 
-							if (runtimeConfig.UseHighLatencyMitigationLogging)
+							if (runtimeConfig.NetworkTiming.UseHighLatencyMitigationLogging)
 								Impl.Logger->Log(LogCategory::NetworkTimingHandler, description.str());
 
 						} else if (pMessage->Data.Ipc.SubType == gameConfig.S2C_ActorControlSelf) {
@@ -225,14 +225,14 @@ struct XivAlexander::Apps::MainApp::Features::NetworkTimingHandler::Implementati
 									}
 									group.TimestampUs = PendingActions.front().RequestUs;
 
-									if (Config->Runtime.SynchronizeProcessing) {
-										if (group.Id != CooldownGroup::Id_Gcd || !(Config->Runtime.LockFramerateAutomatic || Config->Runtime.LockFramerateInterval)) {
+									if (Config->Runtime.FramerateControl.SynchronizeProcessing) {
+										if (group.Id != CooldownGroup::Id_Gcd || !(Config->Runtime.FramerateControl.Lock.Automatic || Config->Runtime.FramerateControl.Lock.Interval)) {
 											if (auto& handler = Impl.App.GetMainThreadTimingHelper())
 												handler->GuaranteePumpBeginCounterAt(PendingActions.front().RequestUs + cooldown.DurationUs());
 										}
 									}
 
-									if (runtimeConfig.UseHighLatencyMitigationLogging) {
+									if (runtimeConfig.NetworkTiming.UseHighLatencyMitigationLogging) {
 										Impl.Logger->Format(
 											LogCategory::NetworkTimingHandler,
 											"{:x}: S2C_ActorControlSelf/Cooldown: actionId={:04x} group={:04x} duration={:.02f}s",
@@ -267,7 +267,7 @@ struct XivAlexander::Apps::MainApp::Features::NetworkTimingHandler::Implementati
 								if (!PendingActions.empty())
 									PendingActions.pop_front();
 
-								if (runtimeConfig.UseHighLatencyMitigationLogging)
+								if (runtimeConfig.NetworkTiming.UseHighLatencyMitigationLogging)
 									Impl.Logger->Format(
 										LogCategory::NetworkTimingHandler,
 										"{:x}: S2C_ActorControlSelf/ActionRejected: actionId={:04x} sourceSequence={:04x}",
@@ -296,7 +296,7 @@ struct XivAlexander::Apps::MainApp::Features::NetworkTimingHandler::Implementati
 								if (!PendingActions.empty())
 									PendingActions.pop_front();
 
-								if (runtimeConfig.UseHighLatencyMitigationLogging)
+								if (runtimeConfig.NetworkTiming.UseHighLatencyMitigationLogging)
 									Impl.Logger->Format(
 										LogCategory::NetworkTimingHandler,
 										"{:x}: S2C_ActorControl/CancelCast: actionId={:04x}",
@@ -312,7 +312,7 @@ struct XivAlexander::Apps::MainApp::Features::NetworkTimingHandler::Implementati
 							if (!PendingActions.empty())
 								PendingActions.front().CastTimeUs = actorCast.CastTimeUs();
 
-							if (runtimeConfig.UseHighLatencyMitigationLogging)
+							if (runtimeConfig.NetworkTiming.UseHighLatencyMitigationLogging)
 								Impl.Logger->Format(
 									LogCategory::NetworkTimingHandler,
 									"{:x}: S2C_ActorCast: actionId={:04x} time={:.3f} target={:08x}",
@@ -333,7 +333,7 @@ struct XivAlexander::Apps::MainApp::Features::NetworkTimingHandler::Implementati
 
 		int64_t ResolveNextAnimationLockEndUs(const int64_t lastAnimationLockEndsAtUs, const int64_t nowUs, const int64_t originalWaitUs, const int64_t rttUs, std::stringstream& description) {
 			const auto& runtimeConfig = Config->Runtime;
-			const auto mode = runtimeConfig.HighLatencyMitigationMode.Value();
+			const auto mode = runtimeConfig.NetworkTiming.HighLatencyMitigationMode.Value();
 			description << std::format(" mode={}", static_cast<int>(mode) + 1);
 
 			// Obtain actual connection latency statistics.
@@ -366,7 +366,7 @@ struct XivAlexander::Apps::MainApp::Features::NetworkTimingHandler::Implementati
 					break;
 				
 				case HighLatencyMitigationMode::SimulateRtt:
-					delay = Config->Runtime.ExpectedAnimationLockDurationUs.Value();
+					delay = Config->Runtime.NetworkTiming.ExpectedAnimationLockDurationUs.Value();
 					break;
 
 				case HighLatencyMitigationMode::SimulateNormalizedRttAndLatency: {

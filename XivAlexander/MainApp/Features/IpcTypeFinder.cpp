@@ -22,6 +22,7 @@ struct XivAlexander::Apps::MainApp::Features::IpcTypeFinder::Implementation {
 			conn.AddIncomingFFXIVMessageHandler(this, [&](auto pMessage) {
 				if (pMessage->Type == message_type::Ipc && pMessage->Data.Ipc.Type == ipc_type::InterestedType) {
 					if (pMessage->CurrentActor == pMessage->SourceActor) {
+						// Wire lengths of ActionEffect01..32, which match the payload sizes the game's duty recorder writes. As of 7.56h.
 						if (pMessage->Length == 0x9c ||
 							pMessage->Length == 0x29c ||
 							pMessage->Length == 0x4dc ||

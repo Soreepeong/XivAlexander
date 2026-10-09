@@ -17,9 +17,13 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XivAlexanderLoader", "XivAl
 		{0EABCDC9-5A49-43AE-9B77-EB3FE9D48804} = {0EABCDC9-5A49-43AE-9B77-EB3FE9D48804}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xivres", "xivres\xivres\xivres.vcxproj", "{58DADDF6-5733-40E0-855C-CC3B4BF235EB}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xivres", "FFXIV-FontChanger\xivres\xivres\xivres.vcxproj", "{58DADDF6-5733-40E0-855C-CC3B4BF235EB}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ScratchProject", "ScratchProject\ScratchProject.vcxproj", "{B6C2672B-F7A3-4C79-94B9-34F6B165F751}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FontChanger.FixedSizeFont", "FFXIV-FontChanger\FontChanger.FixedSizeFont\FontChanger.FixedSizeFont.vcxproj", "{90E4B098-E528-44EE-B643-56A0EE1A4FFB}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FontChanger.Presets.Native", "FFXIV-FontChanger\FontChanger.Presets.Native\FontChanger.Presets.Native.vcxproj", "{FE56ED18-3140-423B-8100-D2FD1AC9164E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -28,6 +32,18 @@ Global
 		ReleaseWithoutAsm|x64 = ReleaseWithoutAsm|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{90E4B098-E528-44EE-B643-56A0EE1A4FFB}.Debug|x64.ActiveCfg = Debug|x64
+		{90E4B098-E528-44EE-B643-56A0EE1A4FFB}.Debug|x64.Build.0 = Debug|x64
+		{90E4B098-E528-44EE-B643-56A0EE1A4FFB}.Release|x64.ActiveCfg = Release|x64
+		{90E4B098-E528-44EE-B643-56A0EE1A4FFB}.Release|x64.Build.0 = Release|x64
+		{90E4B098-E528-44EE-B643-56A0EE1A4FFB}.ReleaseWithoutAsm|x64.ActiveCfg = Release|x64
+		{90E4B098-E528-44EE-B643-56A0EE1A4FFB}.ReleaseWithoutAsm|x64.Build.0 = Release|x64
+		{FE56ED18-3140-423B-8100-D2FD1AC9164E}.Debug|x64.ActiveCfg = Debug|x64
+		{FE56ED18-3140-423B-8100-D2FD1AC9164E}.Debug|x64.Build.0 = Debug|x64
+		{FE56ED18-3140-423B-8100-D2FD1AC9164E}.Release|x64.ActiveCfg = Release|x64
+		{FE56ED18-3140-423B-8100-D2FD1AC9164E}.Release|x64.Build.0 = Release|x64
+		{FE56ED18-3140-423B-8100-D2FD1AC9164E}.ReleaseWithoutAsm|x64.ActiveCfg = Release|x64
+		{FE56ED18-3140-423B-8100-D2FD1AC9164E}.ReleaseWithoutAsm|x64.Build.0 = Release|x64
 		{58DADDF6-5733-40E0-855C-CC3B4BF235EB}.Debug|x64.ActiveCfg = Debug|x64
 		{58DADDF6-5733-40E0-855C-CC3B4BF235EB}.Debug|x64.Build.0 = Debug|x64
 		{58DADDF6-5733-40E0-855C-CC3B4BF235EB}.Release|x64.ActiveCfg = Release|x64

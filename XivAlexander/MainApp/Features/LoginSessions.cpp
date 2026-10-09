@@ -165,12 +165,12 @@ struct XivAlexander::Apps::MainApp::Features::LoginSessions::Implementation {
 		LoadStartupSessions();
 		Reload(false);
 
-		Cleanup += Config->Runtime.UseLoginSessionSwitching.AddAndCallOnChange([this] { UpdateHooks(); });
+		Cleanup += Config->Runtime.Launch.UseLoginSessionSwitching.AddAndCallOnChange([this] { UpdateHooks(); });
 		Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange([this] { UpdateHooks(); });
 	}
 
 	void UpdateHooks() {
-		if (!Config->Runtime.UseLoginSessionSwitching) {
+		if (!Config->Runtime.Launch.UseLoginSessionSwitching) {
 			RemoveHooks();
 		} else if (!Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::General, "Switching login sessions in the running game")) {
 			RemoveHooks();
@@ -189,11 +189,15 @@ struct XivAlexander::Apps::MainApp::Features::LoginSessions::Implementation {
 		if (LobbyLogin || LobbyErrorDialog)
 			return;
 
+		// The parts are independent, so a missing one doesn't fail the whole; why it's missing was already logged.
+		Game::Resolved::LoginSessionsFunctions functions;
+		if (Game::Resolved::LoginSessions.Resolve(functions) != Game::Signatures::ResolveError::Ok)
+			functions = {};
+
 		try {
-			Game::Resolved::LobbyLoginFn lobbyLogin;
-			if (const auto status = Game::Resolved::LobbyLoginFunction.Resolve(lobbyLogin); status != Game::Signatures::ResolveError::Ok)
-				throw std::runtime_error(status.Detail);
-			LobbyLogin.emplace("LobbyLogin", lobbyLogin);
+			if (!functions.LobbyLogin)
+				throw std::runtime_error("lobby login not found");
+			LobbyLogin.emplace("LobbyLogin", *functions.LobbyLogin);
 			HookCleanup += LobbyLogin->SetHook([this](void* self, void* sessionId, void* arg3, void* arg4, void* arg5, void* arg6, uint8_t arg7, uint8_t arg8) {
 				Owner.Reload();
 
@@ -241,10 +245,9 @@ struct XivAlexander::Apps::MainApp::Features::LoginSessions::Implementation {
 		}
 
 		try {
-			Game::Resolved::LobbyErrorDialogFn lobbyErrorDialog;
-			if (const auto status = Game::Resolved::LobbyErrorDialogFunction.Resolve(lobbyErrorDialog); status != Game::Signatures::ResolveError::Ok)
-				throw std::runtime_error(status.Detail);
-			LobbyErrorDialog.emplace("LobbyErrorDialog", lobbyErrorDialog);
+			if (!functions.LobbyErrorDialog)
+				throw std::runtime_error("lobby error dialog not found");
+			LobbyErrorDialog.emplace("LobbyErrorDialog", *functions.LobbyErrorDialog);
 			HookCleanup += LobbyErrorDialog->SetHook([this](void* self, void* arg2, Game::AtkValue& result) {
 				if (result.Type != Game::AtkValueType::UInt)
 					return LobbyErrorDialog->bridge(self, arg2, result);
@@ -345,7 +348,6 @@ struct XivAlexander::Apps::MainApp::Features::LoginSessions::Implementation {
 		if (selectMostRecentlyWritten && mostRecent) {
 			selected = *mostRecent;
 		} else if (firstLoad) {
-			// the session the game was launched with
 			if (LaunchSession) {
 				if (const auto it = std::ranges::find(sessions, LaunchSession->Alias, &Session::Alias); it != sessions.end())
 					selected = it - sessions.begin();
@@ -433,6 +435,31 @@ void XivAlexander::Apps::MainApp::Features::LoginSessions::Reload(bool selectMos
 			m_pImpl->Logger->Format(LogCategory::General, "Selected login session \"{}\"", m_pImpl->Sessions[m_pImpl->Selected].Alias);
 	}
 	OnChange();
+}
+
+size_t XivAlexander::Apps::MainApp::Features::LoginSessions::ForgetStoredSessions() {
+	DWORD count = 0;
+	PCREDENTIALW* creds = nullptr;
+	const auto filter = std::format(L"{}*", CredentialTargetPrefix);
+	size_t removed = 0;
+	if (CredEnumerateW(filter.c_str(), 0, &count, &creds)) {
+		const auto freeCreds = xivres::util::on_dtor([creds] { CredFree(creds); });
+		for (DWORD i = 0; i < count; i++) {
+			if (creds[i]->Type == CRED_TYPE_GENERIC && CredDeleteW(creds[i]->TargetName, CRED_TYPE_GENERIC, 0))
+				removed++;
+		}
+	}
+	m_pImpl->Logger->Format(LogCategory::General, "Removed {} login session(s) from Credential Manager", removed);
+	Reload();
+	return removed;
+}
+
+bool XivAlexander::Apps::MainApp::Features::LoginSessions::ForgetStoredSession(const std::string& alias) {
+	const auto removed = !alias.empty() && CredDeleteW(CredentialTarget(alias).c_str(), CRED_TYPE_GENERIC, 0);
+	if (removed)
+		m_pImpl->Logger->Format(LogCategory::General, "Removed login session \"{}\" from Credential Manager", alias);
+	Reload();
+	return removed;
 }
 
 void XivAlexander::Apps::MainApp::Features::LoginSessions::ApplySelectedTo(std::vector<std::pair<std::string, std::string>>& args) {

@@ -7,8 +7,7 @@
 #include "Utils/Win32/LoadedModule.h"
 
 namespace Utils::Win32 {
-	/// A copy of a loaded module's image, read from its file and relocated to wherever the copy is placed, so that
-	/// it holds the module's code as shipped, without whatever has since been hooked or patched into the original.
+	/// A loaded module's image read from its file and relocated to the copy, holding the code as shipped, without later hooks or patches.
 	class RelocatedImageCopy {
 		std::span<char> m_mem{};
 		xivres::util::on_dtor m_memRelease{};
@@ -23,16 +22,13 @@ namespace Utils::Win32 {
 		RelocatedImageCopy& operator=(RelocatedImageCopy&&) = delete;
 		~RelocatedImageCopy();
 
-		/// \returns The copy, as a module that signatures can be resolved against.
 		[[nodiscard]] const LoadedModule& Copy() const { return m_copy; }
 
-		/// \returns Where \p p in the copy is in the original.
 		template<typename T>
 		[[nodiscard]] T* ToOriginal(T* p) const {
 			return Rebase(p, reinterpret_cast<const char*>(m_mem.data()), reinterpret_cast<const char*>(m_original));
 		}
 
-		/// \returns Where \p p in the original is in the copy.
 		template<typename T>
 		[[nodiscard]] T* ToCopy(T* p) const {
 			return Rebase(p, reinterpret_cast<const char*>(m_original), reinterpret_cast<const char*>(m_mem.data()));
