@@ -150,12 +150,14 @@ namespace XivAlexander {
 		ConfigItem<bool> CrowdFix_PoolStagingBlocks{this, "CrowdFix_PoolStagingBlocks", false};
 		ConfigItem<bool> CrowdFix_FreezeHiddenMinions{this, "CrowdFix_FreezeHiddenMinions", true};
 		ConfigItem<bool> CrowdFix_SkipPrepareWait{this, "CrowdFix_SkipPrepareWait", false};
-		ConfigItem<bool> CrowdFix_InlineBgPrep{this, "CrowdFix_InlineBgPrep", false};
+		ConfigItem<bool> CrowdFix_InlineBgPrep{this, "CrowdFix_InlineBgPrep", true};
 		ConfigItem<bool> CrowdFix_SkipHiddenHotbars{this, "CrowdFix_SkipHiddenHotbars", true};
 		ConfigItem<bool> CrowdFix_ParallelAnimTail{this, "CrowdFix_ParallelAnimTail", true};
-		ConfigItem<bool> CrowdFix_SplitCharacterCulling{this, "CrowdFix_SplitCharacterCulling", false};
-		ConfigItem<bool> CrowdFix_PerItemCullingClaims{this, "CrowdFix_PerItemCullingClaims", false};
+		ConfigItem<bool> CrowdFix_SplitCharacterCulling{this, "CrowdFix_SplitCharacterCulling", true};
+		ConfigItem<bool> CrowdFix_PerItemCullingClaims{this, "CrowdFix_PerItemCullingClaims", true};
 		ConfigItem<bool> CrowdFix_GatherUsedCommands{this, "CrowdFix_GatherUsedCommands", true};
+		ConfigItem<bool> CrowdFix_DrainJoins{this, "CrowdFix_DrainJoins", true};
+		ConfigItem<bool> CrowdFix_InlineSmallJoins{this, "CrowdFix_InlineSmallJoins", true};
 
 		RuntimeConfigRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
 		~RuntimeConfigRepository() override;

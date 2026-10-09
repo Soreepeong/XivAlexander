@@ -89,7 +89,7 @@ namespace XivAlexander::Game {
 	const Signatures::RegexSignature ConstantBufferNotifierPrePresent(R"(\x48\x89\x5C\x24\x10\x57\x48\x83\xEC\x40\x8B\x05....\x48\x8B\xD9\x48\x8B\x7C\xC1\x18\x48\x85\xFF\x74.\x48\x83\x79\x30\x00\x74.\xF7\x41\xEC\x00\x40\x00\x00\x74)");
 
 	// lea rcx, [queue lock]; call [EnterCriticalSection]; mov eax, [queue write index]; ...
-	const Signatures::RegexSignature JobQueueLock(R"(\x48\x8D\x0D....\xFF\x15....\x8B\x05(....)\x4C\x8D\x0D....\x48\x8B\x0B\x0F\x57\xC9)");
+	const Signatures::RegexSignature JobQueueLock(R"(\x48\x8D\x0D(....)\xFF\x15....\x8B\x05(....)\x4C\x8D\x0D....\x48\x8B\x0B\x0F\x57\xC9)");
 	const Signatures::RegexSignature JobPoolWakeAllCall(R"(\xE8(....)\x48\x8B\x4C\x24.\xBA....\xFF\x15)");
 
 	const Signatures::RegexSignature SkeletonPoseSyncWalkCall(R"(\xE8(....)\xE8....\xE8....\x41\x8B\xFF)");
@@ -107,6 +107,9 @@ namespace XivAlexander::Game {
 	// JobList::Prepare: call [rax+0x18] (wait for the previous run); reset counters; mov edx, -1; call [WaitForSingleObject]
 	const Signatures::RegexSignature JobListArrayPrepare(R"(\x40\x53\x48\x83\xEC\x20\x48\x8B\x01\x48\x8B\xD9\xFF\x50\x18\x33\xD2\x8B\xC2\x87\x43\x7C\x87\x93\xA0\x00\x00\x00\x48\x8B\x4B\x10\xBA\xFF\xFF\xFF\xFF(\xFF\x15)(....))");
 	const Signatures::RegexSignature JobListSingleItemPrepare(R"(\x40\x53\x48\x83\xEC\x20\x48\x8B\x01\x48\x8B\xD9\xFF\x50\x18\x33\xC0\xBA\xFF\xFF\xFF\xFF\x87\x43\x74\x48\x8B\x4B\x10(\xFF\x15)(....))");
+
+	// JobListArgArrayAndIndex vf3, the parallel-for join: mov rcx, [rcx+0x10]; mov edx, -1; jmp [WaitForSingleObject]
+	const Signatures::RegexSignature JobListJoinWait(R"(\x48\x8B\x49\x10\xBA\xFF\xFF\xFF\xFF\x48(\xFF\x25)(....)\xCC{16}\x41\xB9\x01\x00\x00\x00\xF0\x44\x0F\xC1\x49\x74)");
 
 	const Signatures::RegexSignature JobListKick(R"(\x40\x53\x57\x48\x83\xEC\x58\x48\x8B\x05....\x48\x33\xC4\x48\x89\x44\x24\x40\x48\x8B\x02)");
 	const Signatures::RegexSignature RenderManagerLoad(R"(\x48\x8B\x0D(....)\xE8....\x84\xC0\x74.\x48\x8B\x0D....\xE8....\x33\xC9)");
@@ -309,8 +312,9 @@ namespace XivAlexander::Game::Resolved {
 	}
 
 	std::string to_string(const JobPoolWake& value) {
-		return std::format("queue indices {}, wake all {}",
+		return std::format("queue indices {}, queue lock {}, wake all {}",
 			Signatures::Describe(value.QueueIndices),
+			Signatures::Describe(value.QueueLock),
 			Signatures::Describe(value.WakeAll));
 	}
 
@@ -710,9 +714,20 @@ namespace XivAlexander::Game::Resolved {
 	const Signatures::ComplexSignature<JobPoolWake> JobPoolWakeFunctions("JobPoolWakeFunctions", [](ResolveContext& ctx) {
 		const auto queue = ctx.Unique(JobQueueLock, ctx.Text(), "job queue lock");
 		return JobPoolWake{
-			.QueueIndices = static_cast<const uint32_t*>(ctx.RequireInSection(queue.ResolveAddress<const void*>(1), ".data", "job queue indices")),
+			.QueueIndices = static_cast<const uint32_t*>(ctx.RequireInSection(queue.ResolveAddress<const void*>(2), ".data", "job queue indices")),
+			.QueueLock = static_cast<CRITICAL_SECTION*>(const_cast<void*>(ctx.RequireInSection(queue.ResolveAddress<const void*>(1), ".data", "job queue lock"))),
 			.WakeAll = Address(UniqueCallTarget(ctx, JobPoolWakeAllCall, "job pool wake-all call")),
 		};
+	});
+
+	const Signatures::ComplexSignature<JobListKickFn> JobListKickFunction("JobListKickFunction", [](ResolveContext& ctx) -> JobListKickFn {
+		return Address(UniqueFunctionStart(ctx, JobListKick, "job list kick"));
+	});
+
+	const Signatures::ComplexSignature<JobListWaitFn> JobListJoinWaitFunction("JobListJoinWaitFunction", [](ResolveContext& ctx) -> JobListWaitFn {
+		const auto m = ctx.Unique(JobListJoinWait, ctx.Text(), "parallel-for join wait");
+		ctx.Require(ImportSlotCalledAt(ctx, m, 2) == ImportSlot(ctx, "kernel32.dll", "WaitForSingleObject"), ResolveError::Mismatch, "the parallel-for join wait does not jump to WaitForSingleObject");
+		return Address(m.begin(0));
 	});
 
 	const Signatures::ComplexSignature<SkeletonPoseSyncWalkFn> SkeletonPoseSyncWalkFunction("SkeletonPoseSyncWalkFunction", [](ResolveContext& ctx) -> SkeletonPoseSyncWalkFn {

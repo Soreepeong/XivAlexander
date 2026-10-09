@@ -24,6 +24,8 @@ namespace XivAlexander::Apps::MainApp::Features {
 			SplitCharacterCulling,
 			PerItemCullingClaims,
 			GatherUsedCommands,
+			DrainJoins,
+			InlineSmallJoins,
 			Count,
 		};
 

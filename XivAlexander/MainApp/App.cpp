@@ -352,6 +352,8 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 				{Fix::SplitCharacterCulling, &runtime.CrowdFix_SplitCharacterCulling},
 				{Fix::PerItemCullingClaims, &runtime.CrowdFix_PerItemCullingClaims},
 				{Fix::GatherUsedCommands, &runtime.CrowdFix_GatherUsedCommands},
+				{Fix::DrainJoins, &runtime.CrowdFix_DrainJoins},
+				{Fix::InlineSmallJoins, &runtime.CrowdFix_InlineSmallJoins},
 			};
 			static_assert(std::size(crowdFixItems) == static_cast<size_t>(Fix::Count));
 
