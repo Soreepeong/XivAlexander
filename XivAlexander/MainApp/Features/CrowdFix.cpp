@@ -1664,11 +1664,11 @@ struct XivAlexander::Apps::MainApp::Features::CrowdFix::Implementation {
 		false,  // PoolStagingBlocks
 		true,  // FreezeHiddenMinions
 		false,  // SkipPrepareWait
-		false,  // InlineBgPrep
+		true,  // InlineBgPrep
 		true,  // SkipHiddenHotbars
 		true,  // ParallelAnimTail
-		false,  // SplitCharacterCulling
-		false,  // PerItemCullingClaims
+		true,  // SplitCharacterCulling
+		true,  // PerItemCullingClaims
 		true,  // GatherUsedCommands
 	};
 
