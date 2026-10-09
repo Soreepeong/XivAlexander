@@ -156,6 +156,8 @@ namespace XivAlexander {
 		ConfigItem<bool> CrowdFix_SplitCharacterCulling{this, "CrowdFix_SplitCharacterCulling", true};
 		ConfigItem<bool> CrowdFix_PerItemCullingClaims{this, "CrowdFix_PerItemCullingClaims", true};
 		ConfigItem<bool> CrowdFix_GatherUsedCommands{this, "CrowdFix_GatherUsedCommands", true};
+		ConfigItem<bool> CrowdFix_DrainJoins{this, "CrowdFix_DrainJoins", true};
+		ConfigItem<bool> CrowdFix_InlineSmallJoins{this, "CrowdFix_InlineSmallJoins", true};
 
 		RuntimeConfigRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
 		~RuntimeConfigRepository() override;

@@ -52,6 +52,8 @@ namespace XivAlexander::Game::Resolved {
 	using JobPoolWakeAllFn = void(*)(void* jobPool);
 	// Puts a job list on the queue of TaskManager::JobPool and wakes workers for it.
 	using JobListKickFn = uint32_t(*)(void* taskManager, void* jobList);
+	// Waits until every task of a job list has run.
+	using JobListWaitFn = void(*)(void* jobList);
 	// Joins in on a parallel-for group: claims its work in blocks of items, or one item at a time.
 	using ParallelForHelpFn = void(*)(void* group);
 	using NotifierLinkFn = void(*)(void* notifier);
@@ -95,6 +97,7 @@ namespace XivAlexander::Game::Resolved {
 
 	struct JobPoolWake {
 		const uint32_t* QueueIndices{};  // write index, then read index
+		CRITICAL_SECTION* QueueLock{};
 		JobPoolWakeAllFn WakeAll{};
 	};
 
@@ -199,6 +202,7 @@ namespace XivAlexander::Game::Resolved {
 	extern const Signatures::ComplexSignature<GraphicsNotifiers> GraphicsNotifierList;
 	extern const Signatures::ComplexSignature<JobPoolWake> JobPoolWakeFunctions;
 	extern const Signatures::ComplexSignature<JobListKickFn> JobListKickFunction;
+	extern const Signatures::ComplexSignature<JobListWaitFn> JobListJoinWaitFunction;
 	extern const Signatures::ComplexSignature<SkeletonPoseSyncWalkFn> SkeletonPoseSyncWalkFunction;
 	extern const Signatures::ComplexSignature<CullingVisibilityClear> CullingVisibilityClearLoop;
 	extern const Signatures::ComplexSignature<GraphicsAllocatorFreeFn> GraphicsAllocatorFreeFunction;

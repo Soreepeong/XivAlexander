@@ -1649,6 +1649,415 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 		};
 
+		/// A parallel-for join (JobListArgArrayAndIndex vf3) waits until every queued task has run: one per worker, each
+		/// just a help call, even when the main thread already did every item. With few workers awake that is a worker
+		/// wake-up plus ~14 empty tasks, then the main thread's own wake-up. Here the main thread claims and runs the list's
+		/// remaining tasks itself from the queue head, exactly as a worker would, then spins briefly before sleeping.
+		/// Small culling joins (shadow views: ~25 cells, ~3 us of work) skip the queue entirely and run on the main thread
+		/// at kick time (SmallJoinInline toggles that part). Spin length and inline limits are measured and picked per
+		/// scene: nothing to tune by hand, and nothing is timed between measurements.
+		class JoinDrain final : public FixBase, JobListKick::Filter {
+			// JobListArgArrayAndIndex: +0xC pending tasks, +0x18/+0x20 completion fn/obj, +0x88 group, +0x90 task thunk
+			static constexpr size_t PendingOffset = 0x0C;
+			static constexpr size_t CompletionOffset = 0x18;
+			static constexpr size_t GroupOffset = 0x88;
+			static constexpr size_t ThunkOffset = 0x90;
+			static constexpr size_t GroupListOffset = 0x18;  // parallel-for group: its job list
+			// queue: write index, read index, lock at +8, ring of 128 x 0x98 entries at +0x30
+			static constexpr size_t LockOffset = 0x08;
+			static constexpr size_t RingOffset = 0x30;
+			static constexpr size_t EntrySize = 0x98;
+			static constexpr uint32_t RingMask = 0x7F;
+			// entry: +0x38 claim trampoline, +0x40 list, +0x48 claim state, +0x88 optional event
+			static constexpr size_t EntryClaimOffset = 0x38;
+			static constexpr size_t EntryListOffset = 0x40;
+			static constexpr size_t EntryStateOffset = 0x48;
+			static constexpr size_t EntryEventOffset = 0x88;
+			// culling groups: cells (272 B blocks), camera (80 B blocks)
+			static constexpr size_t CellGroupOffset = 0x2168;
+			static constexpr size_t CameraGroupOffset = 0x23A8;
+			static constexpr size_t BlockCountOffset = 0xB0;
+			static constexpr size_t ChunksOffset = 0x30;
+			static constexpr size_t BlockSizes[]{272, 80};
+			static constexpr int HoldFrames = 1800;  // between measurements
+			static constexpr const char* TuningStatuses[]{"Off", "On, tuning for this scene", "On, tuned for this scene"};
+
+			using Clock = std::chrono::steady_clock;
+
+			/// Holds its best choice. While measuring, cycles through every choice frame by frame (same scene for all),
+			/// then keeps the lowest median, switching only when clearly cheaper.
+			class Tuner {
+				static constexpr int Rounds = 30;
+
+				std::vector<int> m_choices;
+				std::vector<std::array<double, Rounds>> m_samples;
+				size_t m_best = 0;
+				int m_sample = -1;
+
+			public:
+				Tuner(std::initializer_list<int> choices)
+					: m_choices(choices)
+					, m_samples(choices.size()) {}
+
+				[[nodiscard]] bool Measuring() const { return m_sample >= 0; }
+
+				[[nodiscard]] int Current() const {
+					return m_choices[Measuring() ? static_cast<size_t>(m_sample) % m_choices.size() : m_best];
+				}
+
+				void StartMeasuring() { m_sample = 0; }
+				void StopMeasuring() { m_sample = -1; }
+
+				void Record(double frameCost) {
+					if (!Measuring())
+						return;
+
+					const auto count = static_cast<int>(m_choices.size());
+					m_samples[m_sample % count][m_sample / count] = frameCost;
+					if (++m_sample < count * Rounds)
+						return;
+
+					m_sample = -1;
+					std::vector<double> medians;
+					for (auto samples : m_samples) {
+						std::ranges::sort(samples);
+						medians.push_back((samples[Rounds / 2 - 1] + samples[Rounds / 2]) / 2);
+					}
+
+					const auto cheapest = static_cast<size_t>(std::ranges::min_element(medians) - medians.begin());
+					if (medians[cheapest] < medians[m_best] * 0.97)
+						m_best = cheapest;
+				}
+			};
+
+			Resolved::JobPoolWake m_queue;
+			Resolved::JobListWaitFn m_waitFunction{};
+			void* const* m_cullingManager{};
+			std::optional<PointerFunctionOf<Resolved::JobListWaitFn>> m_wait;
+			const std::shared_ptr<JobListKick> m_kick;
+
+			// spin before sleeping (us); max items run inline, per culling group
+			Tuner m_spin{0, 10, 20, 30, 40, 60};
+			std::array<Tuner, 2> m_inlineLimit{Tuner{0, 16, 32, 64}, Tuner{0, 1, 8}};
+			Tuner* m_measuring{};
+			bool m_tuned = false;
+			int m_holdFrames = 0;
+			int m_nextTuner = -1;
+			int m_shownState = 0;
+			std::array<Clock::time_point, 2> m_kickStart{};
+			std::array<Clock::duration, 2> m_groupTime{};
+			std::array<int, 2> m_groupRuns{};
+			Clock::duration m_waitTime{};
+			int m_waits = 0;
+
+			bool m_drain = false;
+			bool m_inline = false;
+			DWORD m_mainThreadId{};
+			void* m_poolContext{};
+
+			xivres::util::on_dtor m_hook;
+
+		public:
+			explicit JoinDrain(std::shared_ptr<JobListKick> kick)
+				: m_kick(std::move(kick)) {
+				if (!Resolve(Resolved::JobPoolWakeFunctions, m_queue)
+					|| !Resolve(Resolved::CullingManagerInstance, m_cullingManager)
+					|| !Resolve(Resolved::JobListJoinWaitFunction, m_waitFunction))
+					return;
+
+				if (reinterpret_cast<const uint8_t*>(m_queue.QueueLock) != reinterpret_cast<const uint8_t*>(m_queue.QueueIndices) + LockOffset) {
+					SetStatus("Unavailable: unexpected job queue layout");
+					return;
+				}
+
+				if (!m_kick->Available()) {
+					SetStatus(std::format("Unavailable: {}", m_kick->Error()));
+					return;
+				}
+
+				m_wait.emplace("JobListArgArrayAndIndex::Wait", m_waitFunction);
+				m_available = true;
+			}
+
+			[[nodiscard]] bool Enabled() const override { return m_drain; }
+			[[nodiscard]] bool InlineEnabled() const { return m_inline; }
+
+			/// 0 off, 1 tuning, 2 tuned.
+			[[nodiscard]] int TuningState(bool part) const { return part ? 1 + m_tuned : 0; }
+
+			void SetEnabled(bool enabled, const FrameState& frame) override {
+				SetParts(enabled, m_inline, frame);
+			}
+
+			/// Both detours only act on the main thread, and the inline path never leaves anything queued, so nothing is
+			/// in flight here.
+			void SetParts(bool drain, bool inlineSmallJoins, const FrameState& frame) {
+				if (!m_available || (drain == m_drain && inlineSmallJoins == m_inline))
+					return;
+
+				// a tuner of a part being turned off would never finish
+				if (m_measuring)
+					m_measuring->StopMeasuring();
+				m_measuring = nullptr;
+				m_holdFrames = 0;
+				m_kickStart = {};
+
+				m_poolContext = static_cast<uint8_t*>(frame.TaskManager) + TaskManagerPoolContextOffset;
+				m_mainThreadId = GetCurrentThreadId();
+				m_drain = drain;
+				if (inlineSmallJoins != m_inline) {
+					if (inlineSmallJoins)
+						m_kick->Add(this);
+					else
+						m_kick->Remove(this);
+					m_inline = inlineSmallJoins;
+				}
+
+				if (!drain && !inlineSmallJoins)
+					m_hook.clear();
+				else if (!m_hook)
+					m_hook = m_wait->SetHook([this](void* jobList) { WaitDetour(jobList); });
+
+				ShowState();
+			}
+
+			/// Scores last frame's choice, picks this frame's.
+			void Update(const FrameState&) override {
+				if (m_hook) {
+					if (m_measuring == &m_spin && m_waits)
+						m_spin.Record(static_cast<double>(m_waitTime.count()));
+
+					for (size_t i = 0; i < m_inlineLimit.size(); i++) {
+						if (m_measuring == &m_inlineLimit[i] && m_groupRuns[i])
+							m_inlineLimit[i].Record(static_cast<double>(m_groupTime[i].count()));
+					}
+
+					ScheduleMeasuring();
+					m_tuned |= !m_measuring;
+					ShowState();
+				}
+
+				m_waitTime = {};
+				m_waits = 0;
+				m_groupTime = {};
+				m_groupRuns = {};
+			}
+
+			static const char* TuningStatus(int state) { return TuningStatuses[state]; }
+
+		private:
+			void ShowState() {
+				if (const auto state = TuningState(m_drain); state != m_shownState) {
+					m_shownState = state;
+					SetStatus(TuningStatus(state));
+				}
+			}
+
+			/// One tuner measures at a time while the others hold their best, so they do not skew each other.
+			void ScheduleMeasuring() {
+				if (m_measuring && m_measuring->Measuring())
+					return;
+
+				m_measuring = nullptr;
+				std::array<Tuner*, 3> active{};
+				size_t count = 0;
+				if (m_drain)
+					active[count++] = &m_spin;
+				if (m_inline) {
+					for (auto& tuner : m_inlineLimit)
+						active[count++] = &tuner;
+				}
+
+				if (!count || --m_holdFrames > 0)
+					return;
+
+				// all tuners back to back, then hold
+				m_nextTuner = (m_nextTuner + 1) % static_cast<int>(count);
+				m_holdFrames = m_nextTuner == static_cast<int>(count) - 1 ? HoldFrames : 0;
+				m_measuring = active[m_nextTuner];
+				m_measuring->StartMeasuring();
+				m_kickStart = {};
+			}
+
+			void WaitDetour(void* jobList) {
+				if (GetCurrentThreadId() != m_mainThreadId || !IsGroupList(jobList))
+					return m_wait->bridge(jobList);
+
+				const auto measuring = m_measuring;
+				const auto start = measuring == &m_spin ? Clock::now() : Clock::time_point{};
+				if (m_drain) {
+					const auto pending = std::atomic_ref(At<int32_t>(jobList, PendingOffset));
+					if (pending.load() > 0)
+						RunQueuedTasks(jobList);
+
+					// clock only read while still waiting
+					if (const auto spin = m_spin.Current(); spin > 0 && pending.load() > 0) {
+						const auto until = Clock::now() + std::chrono::microseconds(spin);
+						while (pending.load() > 0 && Clock::now() < until) {
+							for (auto i = 0; i < 16; i++)
+								YieldProcessor();
+						}
+					}
+				}
+
+				m_wait->bridge(jobList);
+				if (!measuring)
+					return;
+
+				const auto end = Clock::now();
+				if (measuring == &m_spin) {
+					m_waitTime += end - start;
+					m_waits++;
+					return;
+				}
+
+				if (const auto group = GroupOf(jobList); group >= 0 && m_kickStart[group] != Clock::time_point{}) {
+					m_groupTime[group] += end - m_kickStart[group];
+					m_groupRuns[group]++;
+					m_kickStart[group] = {};
+				}
+			}
+
+			bool OnKick(void* taskManager, void* jobList, uint32_t& result) override {
+				if (GetCurrentThreadId() != m_mainThreadId)
+					return false;
+
+				const auto group = GroupOf(jobList);
+				if (group < 0)
+					return false;
+
+				if (m_measuring != &m_inlineLimit[group]) {
+					result = Kick(taskManager, jobList, group);
+					return true;
+				}
+
+				// Prepare waits on the same list inside the kick: only the join after it counts
+				const auto start = Clock::now();
+				m_kickStart[group] = {};
+				result = Kick(taskManager, jobList, group);
+				m_kickStart[group] = start;
+				return true;
+			}
+
+			uint32_t Kick(void* taskManager, void* jobList, int group) {
+				const auto limit = m_inlineLimit[group].Current();
+				if (!limit || !HasAtMostItems(At<uint8_t*>(jobList, GroupOffset), BlockSizes[group], limit))
+					return m_kick->Bridge(taskManager, jobList);
+
+				return RunJobListInline(taskManager, jobList);
+			}
+
+			/// Only parallel-for group lists: help tasks, no completion callback.
+			[[nodiscard]] bool IsGroupList(void* jobList) const {
+				if (VirtualFunction<Resolved::JobListWaitFn>(jobList, 3) != m_waitFunction)
+					return false;
+
+				const auto group = At<uint8_t*>(jobList, GroupOffset);
+				const auto thunk = At<const uint8_t*>(jobList, ThunkOffset);
+				return group && At<void*>(group, GroupListOffset) == jobList
+					&& !At<void*>(jobList, CompletionOffset) && !At<void*>(jobList, CompletionOffset + 8)
+					&& thunk && *thunk == 0xE9;
+			}
+
+			/// 0 cells, 1 camera, -1 anything else.
+			[[nodiscard]] int GroupOf(void* jobList) const {
+				const auto manager = static_cast<uint8_t*>(*m_cullingManager);
+				if (!manager || VirtualFunction<Resolved::JobListWaitFn>(jobList, 3) != m_waitFunction)
+					return -1;
+
+				const auto group = At<uint8_t*>(jobList, GroupOffset);
+				return group == manager + CellGroupOffset ? 0 : group == manager + CameraGroupOffset ? 1 : -1;
+			}
+
+			/// Item counts as the help functions read them: u32 at the start of each block, 32 blocks per chunk.
+			static bool HasAtMostItems(const uint8_t* group, size_t blockSize, int limit) {
+				int64_t items = 0;
+				for (uint32_t block = 0, blocks = At<uint32_t>(group, BlockCountOffset); block < blocks; block++) {
+					const auto chunk = At<const uint8_t*>(group, ChunksOffset + 8 * (block >> 5));
+					items += At<uint32_t>(chunk, blockSize * (block & 31));
+					if (items > limit)
+						return false;
+				}
+
+				return true;
+			}
+
+			/// Same steps as InnerThread::Run, but only while this list's entry is the queue head.
+			void RunQueuedTasks(void* jobList) {
+				const auto indices = const_cast<uint32_t*>(m_queue.QueueIndices);  // write index, then read index
+				const auto ring = reinterpret_cast<uint8_t*>(indices) + RingOffset;
+				while (true) {
+					void** argument = nullptr;
+					int32_t remaining = 0;
+
+					EnterCriticalSection(m_queue.QueueLock);
+					const auto read = indices[1];
+					const auto entry = ring + read * EntrySize;
+					if (read == indices[0] || At<void*>(entry, EntryListOffset) != jobList) {
+						LeaveCriticalSection(m_queue.QueueLock);
+						return;
+					}
+
+					const auto task = reinterpret_cast<JobClaimFn>(At<void*>(entry, EntryClaimOffset))(jobList, entry + EntryStateOffset, &argument, &remaining);
+					if (!task || !remaining) {
+						if (const auto done = At<HANDLE*>(entry, EntryEventOffset))
+							SetEvent(*done);
+
+						indices[1] = (read + 1) & RingMask;
+					}
+
+					LeaveCriticalSection(m_queue.QueueLock);
+					if (!task)
+						return;
+
+					RunTask(task, argument, m_poolContext);
+					if (!remaining)
+						return;
+				}
+			}
+		};
+
+		/// The small culling join part of JoinDrain, toggled on its own; both parts share its tuning.
+		class SmallJoinInline final : public FixBase {
+			JoinDrain* const m_drain;
+			int m_shownState = 0;
+
+		public:
+			explicit SmallJoinInline(JoinDrain* drain)
+				: m_drain(drain) {
+				if (!m_drain) {
+					SetStatus("Unavailable: join drain is unavailable");
+					return;
+				}
+
+				if (!m_drain->Available()) {
+					SetStatus(m_drain->Status());
+					return;
+				}
+
+				m_available = true;
+			}
+
+			[[nodiscard]] bool Enabled() const override { return m_available && m_drain->InlineEnabled(); }
+
+			void SetEnabled(bool enabled, const FrameState& frame) override {
+				if (!m_available)
+					return;
+
+				m_drain->SetParts(m_drain->Enabled(), enabled, frame);
+				Update(frame);
+			}
+
+			void Update(const FrameState&) override {
+				if (!m_available)
+					return;
+
+				if (const auto state = m_drain->TuningState(m_drain->InlineEnabled()); state != m_shownState) {
+					m_shownState = state;
+					SetStatus(JoinDrain::TuningStatus(state));
+				}
+			}
+		};
 	}
 }
 
@@ -1670,6 +2079,8 @@ struct XivAlexander::Apps::MainApp::Features::CrowdFix::Implementation {
 		true,  // SplitCharacterCulling
 		true,  // PerItemCullingClaims
 		true,  // GatherUsedCommands
+		true,  // DrainJoins
+		true,  // InlineSmallJoins
 	};
 
 	const std::shared_ptr<Misc::Logger> Logger;
@@ -1710,6 +2121,8 @@ struct XivAlexander::Apps::MainApp::Features::CrowdFix::Implementation {
 		Create<CharacterCullSplit>(Fix::SplitCharacterCulling);
 		Create<CullPerItemClaim>(Fix::PerItemCullingClaims);
 		Create<GatherUsedBytes>(Fix::GatherUsedCommands);
+		Create<JoinDrain>(Fix::DrainJoins, kick);
+		Create<SmallJoinInline>(Fix::InlineSmallJoins, dynamic_cast<JoinDrain*>(Fixes[static_cast<size_t>(Fix::DrainJoins)].get()));
 
 		// Fixes are toggled and updated from here, like CrowdFix does from Framework.Update: on the main thread, before
 		// the frame's tasks, and so outside DeviceDX11::PostTick, which some of them patch.
