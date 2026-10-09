@@ -186,6 +186,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="MainApp\AltCodecMusicDecoders\WavDecoder.cpp" />
     <ClCompile Include="MainApp\App.cpp" />
     <ClCompile Include="MainApp\AudioResamplers\SoxrResampler.cpp" />
+    <ClCompile Include="MainApp\Features\CrowdFix.cpp" />
     <ClCompile Include="MainApp\Features\ImeModeIndicator.cpp" />
     <ClCompile Include="MainApp\Features\LoginSessions.cpp" />
     <ClCompile Include="MainApp\Features\MainThreadTimingHandler.cpp" />
@@ -284,6 +285,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="MainApp\AudioResamplers\Resampler.h" />
     <ClInclude Include="MainApp\AudioResamplers\SoxrResampler.h" />
     <ClInclude Include="MainApp\Features\MainThreadTimingHandler.h" />
+    <ClInclude Include="MainApp\Features\CrowdFix.h" />
     <ClInclude Include="MainApp\Features\ImeModeIndicator.h" />
     <ClInclude Include="MainApp\Features\LoginSessions.h" />
     <ClInclude Include="MainApp\Features\PatchCode.h" />

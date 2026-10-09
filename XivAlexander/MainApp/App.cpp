@@ -11,6 +11,7 @@
 #include "MainApp/Features/AllIpcMessageLogger.h"
 #include "MainApp/Features/AltCodecMusicSupport.h"
 #include "MainApp/Features/AudioResampler.h"
+#include "MainApp/Features/CrowdFix.h"
 #include "MainApp/Features/ImeModeIndicator.h"
 #include "MainApp/Features/IpcTypeFinder.h"
 #include "MainApp/Features/LoginSessions.h"
@@ -91,6 +92,7 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 
 	// Optional
 	std::optional<Features::ImeModeIndicator> ImeModeIndicator;
+	std::optional<Features::CrowdFix> CrowdFix;
 	std::optional<Features::NetworkTimingHandler> NetworkTimingHandler;
 	std::optional<Features::MainThreadTimingHandler> MainThreadTimingHandler;
 	std::optional<Features::IpcTypeFinder> IpcTypeFinder;
@@ -170,6 +172,8 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_ALTCODEC));
 		if (runtime.UseImeModeIndicator)
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_IMEMODEINDICATOR));
+		if (runtime.UseCrowdFix)
+			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_CROWDFIX));
 		return features;
 	}
 
@@ -328,6 +332,48 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 			};
 			Cleanup += Config->Runtime.UseImeModeIndicator.AddAndCallOnChange(updateImeModeIndicator, [this] { ImeModeIndicator.reset(); });
 			Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange(updateImeModeIndicator);
+		}
+
+		{
+			using Fix = Features::CrowdFix::Fix;
+			auto& runtime = Config->Runtime;
+			const std::pair<Fix, ConfigItem<bool>*> crowdFixItems[]{
+				{Fix::SkipIdleNotifiers, &runtime.CrowdFix_SkipIdleNotifiers},
+				{Fix::ChainWorkerWakeups, &runtime.CrowdFix_ChainWorkerWakeups},
+				{Fix::DedupeSkeletonSyncs, &runtime.CrowdFix_DedupeSkeletonSyncs},
+				{Fix::TrimCullingClear, &runtime.CrowdFix_TrimCullingClear},
+				{Fix::ShortenAllocatorLock, &runtime.CrowdFix_ShortenAllocatorLock},
+				{Fix::PoolStagingBlocks, &runtime.CrowdFix_PoolStagingBlocks},
+				{Fix::FreezeHiddenMinions, &runtime.CrowdFix_FreezeHiddenMinions},
+				{Fix::SkipPrepareWait, &runtime.CrowdFix_SkipPrepareWait},
+				{Fix::InlineBgPrep, &runtime.CrowdFix_InlineBgPrep},
+				{Fix::SkipHiddenHotbars, &runtime.CrowdFix_SkipHiddenHotbars},
+				{Fix::ParallelAnimTail, &runtime.CrowdFix_ParallelAnimTail},
+				{Fix::SplitCharacterCulling, &runtime.CrowdFix_SplitCharacterCulling},
+				{Fix::PerItemCullingClaims, &runtime.CrowdFix_PerItemCullingClaims},
+				{Fix::GatherUsedCommands, &runtime.CrowdFix_GatherUsedCommands},
+			};
+			static_assert(std::size(crowdFixItems) == static_cast<size_t>(Fix::Count));
+
+			const auto updateCrowdFix = [this, crowdFixItems] {
+				if (Config->Runtime.UseCrowdFix && Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::General, "CrowdFix")) {
+					if (!CrowdFix) {
+						CrowdFix.emplace();
+						for (const auto& [fix, item] : crowdFixItems)
+							CrowdFix->SetEnabled(fix, item->Value());
+					}
+				} else {
+					CrowdFix.reset();
+				}
+			};
+			Cleanup += runtime.UseCrowdFix.AddAndCallOnChange(updateCrowdFix, [this] { CrowdFix.reset(); });
+			Cleanup += runtime.OnVersionSensitiveFeaturesAllowedChange(updateCrowdFix);
+			for (const auto& [fix, item] : crowdFixItems) {
+				Cleanup += item->OnChange([this, fix, item] {
+					if (CrowdFix)
+						CrowdFix->SetEnabled(fix, item->Value());
+				});
+			}
 		}
 	}
 };

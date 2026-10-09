@@ -141,6 +141,22 @@ namespace XivAlexander {
 
 		ConfigItem<bool> UseImeModeIndicator{this, "UseImeModeIndicator", false};
 
+		ConfigItem<bool> UseCrowdFix{this, "UseCrowdFix", false};
+		ConfigItem<bool> CrowdFix_SkipIdleNotifiers{this, "CrowdFix_SkipIdleNotifiers", true};
+		ConfigItem<bool> CrowdFix_ChainWorkerWakeups{this, "CrowdFix_ChainWorkerWakeups", true};
+		ConfigItem<bool> CrowdFix_DedupeSkeletonSyncs{this, "CrowdFix_DedupeSkeletonSyncs", true};
+		ConfigItem<bool> CrowdFix_TrimCullingClear{this, "CrowdFix_TrimCullingClear", true};
+		ConfigItem<bool> CrowdFix_ShortenAllocatorLock{this, "CrowdFix_ShortenAllocatorLock", false};
+		ConfigItem<bool> CrowdFix_PoolStagingBlocks{this, "CrowdFix_PoolStagingBlocks", false};
+		ConfigItem<bool> CrowdFix_FreezeHiddenMinions{this, "CrowdFix_FreezeHiddenMinions", true};
+		ConfigItem<bool> CrowdFix_SkipPrepareWait{this, "CrowdFix_SkipPrepareWait", false};
+		ConfigItem<bool> CrowdFix_InlineBgPrep{this, "CrowdFix_InlineBgPrep", false};
+		ConfigItem<bool> CrowdFix_SkipHiddenHotbars{this, "CrowdFix_SkipHiddenHotbars", true};
+		ConfigItem<bool> CrowdFix_ParallelAnimTail{this, "CrowdFix_ParallelAnimTail", true};
+		ConfigItem<bool> CrowdFix_SplitCharacterCulling{this, "CrowdFix_SplitCharacterCulling", false};
+		ConfigItem<bool> CrowdFix_PerItemCullingClaims{this, "CrowdFix_PerItemCullingClaims", false};
+		ConfigItem<bool> CrowdFix_GatherUsedCommands{this, "CrowdFix_GatherUsedCommands", true};
+
 		RuntimeConfigRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
 		~RuntimeConfigRepository() override;
 

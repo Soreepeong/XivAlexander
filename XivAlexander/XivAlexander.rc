@@ -467,6 +467,7 @@ BEGIN
     IDS_VERSIONSENSITIVE_SOXR "soxrリサンプラー"
     IDS_VERSIONSENSITIVE_ALTCODEC "別コーデックの.scdの再生"
     IDS_VERSIONSENSITIVE_IMEMODEINDICATOR "IMEモード表示の韓国語・中国語IME対応"
+    IDS_VERSIONSENSITIVE_CROWDFIX "CrowdFix (混雑時のパフォーマンス改善)"
     IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART "(!) 一部の機能は再起動するまで無効になっています。"
     IDS_MENU_MODDING_REQUIRESENABLEANDRESTART "ここの機能はMODを有効化してゲームを再起動するまで適用されません。"
 END
@@ -1099,6 +1100,7 @@ BEGIN
     IDS_VERSIONSENSITIVE_SOXR "soxr 리샘플러"
     IDS_VERSIONSENSITIVE_ALTCODEC "타 코덱 포함 음악 .scd 지원"
     IDS_VERSIONSENSITIVE_IMEMODEINDICATOR "한국어·중국어 IME 입력 모드 표시"
+    IDS_VERSIONSENSITIVE_CROWDFIX "CrowdFix (사람 많은 곳 성능 개선)"
     IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART "(!) 일부 기능이 재시작 전까지 비활성화되었습니다."
     IDS_MENU_MODDING_REQUIRESENABLEANDRESTART "모드 기능을 사용하고 게임을 재시작해야 여기의 기능들이 적용됩니다."
 END
@@ -1864,6 +1866,7 @@ BEGIN
     IDS_VERSIONSENSITIVE_SOXR "soxr resampler"
     IDS_VERSIONSENSITIVE_ALTCODEC "Alternate codecs for musics"
     IDS_VERSIONSENSITIVE_IMEMODEINDICATOR "IME mode indicator for Korean and Chinese IMEs"
+    IDS_VERSIONSENSITIVE_CROWDFIX "CrowdFix (performance fixes for crowded areas)"
     IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART "(!) Some features are disabled until restart."
     IDS_MENU_MODDING_REQUIRESENABLEANDRESTART "Anything here requires enabling modding and restarting the game."
 END
