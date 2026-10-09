@@ -24,6 +24,7 @@ namespace XivAlexander {
 		AltCodecMusic,
 		AudioResampler,
 		Signatures,
+		FontReplacement,
 	};
 }
 

@@ -5,6 +5,18 @@ using XivAlexander::Game::Signatures::MatchCount;
 using XivAlexander::Game::Signatures::RegexSignature;
 using XivAlexander::Game::Signatures::ScanResult;
 
+namespace byte_regex = xivres::util::byte_regex;
+
+namespace {
+	std::span<const uint8_t> Bytes(const char* begin, const char* end) {
+		return {reinterpret_cast<const uint8_t*>(begin), static_cast<size_t>(end - begin)};
+	}
+
+	byte_regex::resume ToResume(RegexSignature::LookupFrom lookupFrom) {
+		return lookupFrom == RegexSignature::FromMatchEnd ? byte_regex::resume::match_end : byte_regex::resume::next_byte;
+	}
+}
+
 RegexSignature::LookupResult::Iterator::Iterator(const srell::regex& pattern, const char* begin, const char* end, const char* from, LookupFrom lookupFrom)
 	: m_pattern(&pattern)
 	, m_begin(begin)
@@ -17,9 +29,7 @@ RegexSignature::LookupResult::Iterator::Iterator(const srell::regex& pattern, co
 }
 
 RegexSignature::LookupResult::Iterator& RegexSignature::LookupResult::Iterator::operator++() {
-	const auto first = static_cast<const char*>(m_current.begin(0));
-	const auto last = static_cast<const char*>(m_current.end(0));
-	SearchFrom(m_lookupFrom == FromMatchEnd && last != first ? last : first + 1);
+	SearchFrom(m_begin + byte_regex::resume_offset(m_current.Match(), Bytes(m_begin, m_end), ToResume(m_lookupFrom)));
 	return *this;
 }
 
@@ -37,7 +47,7 @@ bool RegexSignature::LookupResult::Iterator::operator==(const Iterator& r) const
 
 void RegexSignature::LookupResult::Iterator::SearchFrom(const char* from) {
 	srell::cmatch match;
-	if (from >= m_end || !srell::regex_search(from, m_end, m_begin, match, *m_pattern)) {
+	if (!byte_regex::search(*m_pattern, Bytes(m_begin, m_end), static_cast<size_t>(from - m_begin), match)) {
 		m_pattern = nullptr;
 		m_current = {};
 		return;
@@ -69,7 +79,7 @@ bool RegexSignature::Lookup(const void* data, size_t length, ScanResult& result,
 		if (prevBegin < begin || prevBegin >= end || prevEnd < prevBegin || prevEnd > end)
 			return false;
 
-		from = lookupFrom == FromMatchEnd && prevEnd != prevBegin ? prevEnd : prevBegin + 1;
+		from = begin + byte_regex::resume_offset(result.Match(), Bytes(begin, end), ToResume(lookupFrom));
 	}
 
 	const LookupResult::Iterator it(m_pattern, begin, end, from, lookupFrom);
@@ -83,7 +93,7 @@ bool RegexSignature::Lookup(const void* data, size_t length, ScanResult& result,
 bool RegexSignature::MatchAt(const void* data, size_t length, ScanResult& result) const {
 	const auto begin = static_cast<const char*>(data);
 	srell::cmatch match;
-	if (!srell::regex_search(begin, begin + length, match, m_pattern, srell::regex_constants::match_continuous))
+	if (!byte_regex::match_at(m_pattern, Bytes(begin, begin + length), match))
 		return false;
 
 	result = ScanResult(std::move(match));
@@ -91,10 +101,9 @@ bool RegexSignature::MatchAt(const void* data, size_t length, ScanResult& result
 }
 
 std::pair<ScanResult, MatchCount> RegexSignature::LookupUnique(const void* data, size_t length, LookupFrom lookupFrom) const {
-	auto it = Lookup(data, length, lookupFrom).begin();
-	if (it == std::default_sentinel)
+	const auto begin = static_cast<const char*>(data);
+	auto found = byte_regex::find_unique(m_pattern, Bytes(begin, begin + length), ToResume(lookupFrom));
+	if (!found.Count)
 		return {ScanResult{}, MatchCount::None};
-
-	auto first = *it;
-	return {std::move(first), ++it == std::default_sentinel ? MatchCount::One : MatchCount::Many};
+	return {ScanResult(std::move(found.First)), found.Count == 1 ? MatchCount::One : MatchCount::Many};
 }

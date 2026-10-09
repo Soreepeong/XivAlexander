@@ -54,6 +54,10 @@ namespace Utils::Win32 {
 		}
 
 		Closeable& operator=(Closeable&& r) noexcept {
+			if (&r == this)
+				return *this;
+
+			Clear();
 			m_object = r.m_object;
 			m_bOwnership = r.m_bOwnership;
 			r.m_object = Null;

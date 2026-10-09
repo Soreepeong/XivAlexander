@@ -6,6 +6,7 @@
 #include "Enums.h"
 #include "AudioResamplerConfigs.h"
 #include "BaseConfigRepository.h"
+#include "FontReplacementConfigs.h"
 #include "ChoicesProfile.h"
 #include "ResourceOverrideRules.h"
 
@@ -156,6 +157,8 @@ namespace XivAlexander {
 		ConfigItem<bool> CrowdFix_SplitCharacterCulling{this, "CrowdFix_SplitCharacterCulling", false};
 		ConfigItem<bool> CrowdFix_PerItemCullingClaims{this, "CrowdFix_PerItemCullingClaims", false};
 		ConfigItem<bool> CrowdFix_GatherUsedCommands{this, "CrowdFix_GatherUsedCommands", true};
+
+		ConfigItem<FontReplacementConfig> FontReplacement{this, "FontReplacement", {}, [](const FontReplacementConfig& v) { return v.Sanitized(); }};
 
 		RuntimeConfigRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
 		~RuntimeConfigRepository() override;

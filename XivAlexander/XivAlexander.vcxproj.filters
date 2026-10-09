@@ -25,6 +25,9 @@
     <Filter Include="MainApp\Features">
       <UniqueIdentifier>{5e7ce527-5f3d-4639-9abe-c56ac9c6f73f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="MainApp\FontReplacement">
+      <UniqueIdentifier>{3b1e0c4e-7d52-4f3a-9c61-2a8f5e4d7b90}</UniqueIdentifier>
+    </Filter>
     <Filter Include="MainApp\Windows">
       <UniqueIdentifier>{b4121b9e-107c-474d-8bc1-6d8a8dc8be3d}</UniqueIdentifier>
     </Filter>
@@ -134,6 +137,69 @@
     </ClCompile>
     <ClCompile Include="MainApp\Features\CrowdFix.cpp">
       <Filter>MainApp\Features</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\EdgeShader.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\ElementFonts.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\Features\FontReplacement.cpp">
+      <Filter>MainApp\Features</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\FontReplacer.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\FontStructs.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\FreeTypeFonts.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\GameFontNames.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\GameLayout.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\GameTextureReader.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\GameUi.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\GlyphAtlas.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\GlyphRasterizer.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\GlyphRunCollector.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\Host.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\LineBreaker.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\LookupFont.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\NamePlateText.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\PresetController.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\Presets.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\ReplacementFace.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\TextShaper.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
     </ClCompile>
     <ClCompile Include="MainApp\Features\ImeModeIndicator.cpp">
       <Filter>MainApp\Features</Filter>
@@ -258,6 +324,75 @@
     </ClInclude>
     <ClInclude Include="MainApp\Features\CrowdFix.h">
       <Filter>MainApp\Features</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\EdgeShader.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\ElementFonts.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\Features\FontReplacement.h">
+      <Filter>MainApp\Features</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\FontReplacer.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\FontStructs.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\FreeTypeFonts.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\GameFontNames.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\GameLayout.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\GameText.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\GameTextureReader.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\GameUi.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\GlyphAtlas.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\GlyphRasterizer.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\GlyphRunCollector.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\Host.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\Utilities.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\LineBreaker.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\LookupFont.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\NamePlateText.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\PresetController.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\Presets.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\ReplacementFace.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\TextShaper.h">
+      <Filter>MainApp\FontReplacement</Filter>
     </ClInclude>
     <ClInclude Include="MainApp\Features\ImeModeIndicator.h">
       <Filter>MainApp\Features</Filter>

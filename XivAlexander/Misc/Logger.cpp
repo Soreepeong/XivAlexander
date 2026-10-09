@@ -24,6 +24,7 @@ const std::map<XivAlexander::LogCategory, const char*> XivAlexander::Misc::Logge
 	{LogCategory::AltCodecMusic, "AltCodecMusic"},
 	{LogCategory::AudioResampler, "AudioResampler"},
 	{LogCategory::Signatures, "Signatures"},
+	{LogCategory::FontReplacement, "FontReplacement"},
 };
 
 std::weak_ptr<XivAlexander::Misc::Logger> XivAlexander::Misc::Logger::s_instance;

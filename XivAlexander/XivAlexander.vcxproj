@@ -48,7 +48,7 @@
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>$(ProjectDir);$(SolutionDir);$(SolutionDir)xivres\xivres\include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir);$(SolutionDir);$(SolutionDir)FFXIV-FontChanger\xivres\xivres\include\;$(SolutionDir)FFXIV-FontChanger\FontChanger.FixedSizeFont\include\;$(SolutionDir)FFXIV-FontChanger\FontChanger.Presets.Native\include\;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
     <LibraryPath>$(OutDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
@@ -56,7 +56,7 @@
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>$(ProjectDir);$(SolutionDir);$(SolutionDir)xivres\xivres\include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir);$(SolutionDir);$(SolutionDir)FFXIV-FontChanger\xivres\xivres\include\;$(SolutionDir)FFXIV-FontChanger\FontChanger.FixedSizeFont\include\;$(SolutionDir)FFXIV-FontChanger\FontChanger.Presets.Native\include\;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
     <LibraryPath>$(OutDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
@@ -95,7 +95,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>DbgHelp.lib;uxtheme.lib;Dwmapi.lib;Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;Winhttp.lib;Security.lib;Secur32.lib;Scintilla.lib;Lexilla.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>DbgHelp.lib;uxtheme.lib;Dwmapi.lib;Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;Winhttp.lib;Security.lib;Secur32.lib;Scintilla.lib;Lexilla.lib;dwrite.lib;windowscodecs.lib;icu.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
       <ModuleDefinitionFile>Exports_x64.def</ModuleDefinitionFile>
       <DelayLoadDLLs>
@@ -145,7 +145,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>DbgHelp.lib;uxtheme.lib;Dwmapi.lib;Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;Winhttp.lib;Security.lib;Secur32.lib;Scintilla.lib;Lexilla.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>DbgHelp.lib;uxtheme.lib;Dwmapi.lib;Imm32.lib;Msimg32.lib;Comctl32.lib;Propsys.lib;Winhttp.lib;Security.lib;Secur32.lib;Scintilla.lib;Lexilla.lib;dwrite.lib;windowscodecs.lib;icu.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
       <ModuleDefinitionFile>Exports_x64.def</ModuleDefinitionFile>
       <DelayLoadDLLs>
@@ -187,6 +187,28 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="MainApp\App.cpp" />
     <ClCompile Include="MainApp\AudioResamplers\SoxrResampler.cpp" />
     <ClCompile Include="MainApp\Features\CrowdFix.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\EdgeShader.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\ElementFonts.cpp" />
+    <ClCompile Include="MainApp\Features\FontReplacement.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\FontReplacer.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\FontStructs.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\FreeTypeFonts.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\GameFontNames.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\GameLayout.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\GameTextureReader.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\GameUi.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\GlyphAtlas.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\GlyphRasterizer.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\GlyphRunCollector.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\Host.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\LineBreaker.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\LookupFont.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\NamePlateText.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\PresetController.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\Presets.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\ReplacementFace.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\TextShaper.cpp" />
+    <ClCompile Include="Config\FontReplacementConfigs.cpp" />
     <ClCompile Include="MainApp\Features\ImeModeIndicator.cpp" />
     <ClCompile Include="MainApp\Features\LoginSessions.cpp" />
     <ClCompile Include="MainApp\Features\MainThreadTimingHandler.cpp" />
@@ -286,6 +308,30 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="MainApp\AudioResamplers\SoxrResampler.h" />
     <ClInclude Include="MainApp\Features\MainThreadTimingHandler.h" />
     <ClInclude Include="MainApp\Features\CrowdFix.h" />
+    <ClInclude Include="MainApp\FontReplacement\EdgeShader.h" />
+    <ClInclude Include="MainApp\FontReplacement\ElementFonts.h" />
+    <ClInclude Include="MainApp\Features\FontReplacement.h" />
+    <ClInclude Include="MainApp\FontReplacement\FontReplacer.h" />
+    <ClInclude Include="MainApp\FontReplacement\FontStructs.h" />
+    <ClInclude Include="MainApp\FontReplacement\FreeTypeFonts.h" />
+    <ClInclude Include="MainApp\FontReplacement\GameFontNames.h" />
+    <ClInclude Include="MainApp\FontReplacement\GameLayout.h" />
+    <ClInclude Include="MainApp\FontReplacement\GameText.h" />
+    <ClInclude Include="MainApp\FontReplacement\GameTextureReader.h" />
+    <ClInclude Include="MainApp\FontReplacement\GameUi.h" />
+    <ClInclude Include="MainApp\FontReplacement\GlyphAtlas.h" />
+    <ClInclude Include="MainApp\FontReplacement\GlyphRasterizer.h" />
+    <ClInclude Include="MainApp\FontReplacement\GlyphRunCollector.h" />
+    <ClInclude Include="MainApp\FontReplacement\Host.h" />
+    <ClInclude Include="MainApp\FontReplacement\Utilities.h" />
+    <ClInclude Include="MainApp\FontReplacement\LineBreaker.h" />
+    <ClInclude Include="MainApp\FontReplacement\LookupFont.h" />
+    <ClInclude Include="MainApp\FontReplacement\NamePlateText.h" />
+    <ClInclude Include="MainApp\FontReplacement\PresetController.h" />
+    <ClInclude Include="MainApp\FontReplacement\Presets.h" />
+    <ClInclude Include="MainApp\FontReplacement\ReplacementFace.h" />
+    <ClInclude Include="MainApp\FontReplacement\TextShaper.h" />
+    <ClInclude Include="Config\FontReplacementConfigs.h" />
     <ClInclude Include="MainApp\Features\ImeModeIndicator.h" />
     <ClInclude Include="MainApp\Features\LoginSessions.h" />
     <ClInclude Include="MainApp\Features\PatchCode.h" />
@@ -376,6 +422,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
       </AdditionalOptions>
       <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</NullTerminateStrings>
       <NullTerminateStrings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</NullTerminateStrings>
+      <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
@@ -386,8 +433,14 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <None Include="vcpkg.json" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\xivres\xivres\xivres.vcxproj">
+    <ProjectReference Include="..\FFXIV-FontChanger\xivres\xivres\xivres.vcxproj">
       <Project>{58DADDF6-5733-40E0-855C-CC3B4BF235EB}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\FFXIV-FontChanger\FontChanger.FixedSizeFont\FontChanger.FixedSizeFont.vcxproj">
+      <Project>{90e4b098-e528-44ee-b643-56a0ee1a4ffb}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\FFXIV-FontChanger\FontChanger.Presets.Native\FontChanger.Presets.Native.vcxproj">
+      <Project>{fe56ed18-3140-423b-8100-d2fd1ac9164e}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
@@ -396,4 +449,19 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <!--
+    The edge shader of the font replacement (IDR_FONTEDGEPS): FFXIV-FontChanger's FontEdgePS.hlsl, completed and compiled
+    by its FontChanger.ShaderGen, as the Dalamud plugin's build does.
+  -->
+  <PropertyGroup>
+    <FontEdgeShaderSource>$(SolutionDir)FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontEdgePS.hlsl</FontEdgeShaderSource>
+    <FontEdgeShaderGen>$(SolutionDir)FFXIV-FontChanger\FontChanger.ShaderGen\FontChanger.ShaderGen.csproj</FontEdgeShaderGen>
+  </PropertyGroup>
+  <Target Name="CompileFontEdgeShader" BeforeTargets="ResourceCompile" Inputs="$(FontEdgeShaderSource);@(FontEdgeShaderGenSource)" Outputs="$(IntDir)FontEdgePS.cso">
+    <MakeDir Directories="$(IntDir)" />
+    <Exec Command="dotnet run --project &quot;$(FontEdgeShaderGen)&quot; -c Release -- &quot;$(FontEdgeShaderSource)&quot; &quot;$(IntDir)FontEdgePS.cso&quot;" />
+  </Target>
+  <ItemGroup>
+    <FontEdgeShaderGenSource Include="$(SolutionDir)FFXIV-FontChanger\FontChanger.ShaderGen\*.cs" />
+  </ItemGroup>
 </Project>

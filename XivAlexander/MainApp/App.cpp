@@ -12,6 +12,7 @@
 #include "MainApp/Features/AltCodecMusicSupport.h"
 #include "MainApp/Features/AudioResampler.h"
 #include "MainApp/Features/CrowdFix.h"
+#include "MainApp/Features/FontReplacement.h"
 #include "MainApp/Features/ImeModeIndicator.h"
 #include "MainApp/Features/IpcTypeFinder.h"
 #include "MainApp/Features/LoginSessions.h"
@@ -93,6 +94,7 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 	// Optional
 	std::optional<Features::ImeModeIndicator> ImeModeIndicator;
 	std::optional<Features::CrowdFix> CrowdFix;
+	std::optional<Features::FontReplacement> FontReplacement;
 	std::optional<Features::NetworkTimingHandler> NetworkTimingHandler;
 	std::optional<Features::MainThreadTimingHandler> MainThreadTimingHandler;
 	std::optional<Features::IpcTypeFinder> IpcTypeFinder;
@@ -174,6 +176,8 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_IMEMODEINDICATOR));
 		if (runtime.UseCrowdFix)
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_CROWDFIX));
+		if (runtime.FontReplacement.Value().Enabled)
+			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_FONTREPLACEMENT));
 		return features;
 	}
 
@@ -374,6 +378,33 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 						CrowdFix->SetEnabled(fix, item->Value());
 				});
 			}
+		}
+
+		{
+			// Set up off the game's thread, which it waits for; a version of the game it can't work with leaves it off.
+			const auto updateFontReplacement = [this] {
+				if (Config->Runtime.FontReplacement.Value().Enabled && Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::FontReplacement, "Font replacement")) {
+					if (!FontReplacement) {
+						try {
+							FontReplacement.emplace(App);
+						} catch (const std::exception& e) {
+							Logger->Format<LogLevel::Error>(LogCategory::FontReplacement, "Font replacement is off: {}", e.what());
+						}
+					}
+				} else {
+					FontReplacement.reset();
+				}
+			};
+			// The feature applies its other settings itself; only turning it on or off is acted on here.
+			const auto onSettingsChange = [this, updateFontReplacement, lastEnabled = std::make_shared<std::optional<bool>>()] {
+				const auto enabled = Config->Runtime.FontReplacement.Value().Enabled;
+				if (*lastEnabled == enabled)
+					return;
+				*lastEnabled = enabled;
+				updateFontReplacement();
+			};
+			Cleanup += Config->Runtime.FontReplacement.AddAndCallOnChange(onSettingsChange, [this] { FontReplacement.reset(); });
+			Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange(updateFontReplacement);
 		}
 	}
 };
