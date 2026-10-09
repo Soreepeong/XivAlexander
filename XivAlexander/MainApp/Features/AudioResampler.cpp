@@ -61,7 +61,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			std::unique_ptr<Resampler> Resampler;
 			const uint8_t* EndOfData{};
 
-			std::array<std::vector<float>, OutputBufferCount> Output;
+			std::array<std::vector<uint8_t>, OutputBufferCount> Output;
 			size_t NextOutput = 0;
 
 			int64_t InFrames = 0;
@@ -71,10 +71,19 @@ namespace XivAlexander::Apps::MainApp::Features {
 			bool Drained = false;
 			std::deque<int64_t> PendingMarks;
 
+			// The engine flags every buffer after a marked one within the same refill, and a refill
+			// goes on while fewer than two buffers are queued. A buffer held back here leaves the queue
+			// short where the game's own would be full, so the refill continues; a flag inherited that
+			// way marks nothing.
+			bool LastMarked = false;
+			int32_t HeldBack = 0;
+
 			void ResetPosition() {
 				InFrames = OutFrames = InBase = OutBase = 0;
 				Drained = false;
 				PendingMarks.clear();
+				LastMarked = false;
+				HeldBack = 0;
 			}
 
 			[[nodiscard]] int64_t ToOutputFrame(int64_t inFrame) const {
@@ -265,7 +274,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			if (!resampler)
 				return InitHook->bridge(voice, rate, channels, format, a5, a6, a7, a8, a9, a10, a11);
 
-			const auto result = InitHook->bridge(voice, mix, channels, VoiceFormat::Float, a5, a6, a7, a8, a9, a10, a11);
+			const auto result = InitHook->bridge(voice, mix, channels, format, a5, a6, a7, a8, a9, a10, a11);
 			if (result != 0)
 				return result;
 
@@ -296,8 +305,8 @@ namespace XivAlexander::Apps::MainApp::Features {
 				|| bytes % v->SourceFrameBytes() != 0)
 				return VoiceFailure;
 
-			const auto framesIn = bytes / v->SourceFrameBytes();
-			const auto channels = static_cast<size_t>(v->Channels);
+			const auto frameBytes = v->SourceFrameBytes();
+			const auto framesIn = bytes / frameBytes;
 			const auto lock = std::lock_guard(v->Mtx);
 			auto& out = v->Output[v->NextOutput];
 			out.clear();
@@ -308,7 +317,9 @@ namespace XivAlexander::Apps::MainApp::Features {
 				v->Drained = false;
 			}
 			const auto marked = context == MarkContext;
-			if (marked)
+			const auto inherited = marked && v->LastMarked && queued + v->HeldBack >= VoiceMaxQueuedBuffers;
+			v->LastMarked = marked;
+			if (marked && !inherited)
 				v->PendingMarks.push_back(v->ToOutputFrame(v->InFrames));
 			v->InFrames += static_cast<int64_t>(framesIn);
 
@@ -323,25 +334,28 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 
 			if (out.empty()) {
-				if (framesIn != 0 && queued > 0)
+				if (framesIn != 0 && queued > 0) {
+					++v->HeldBack;
 					return 0;
+				}
 				if (queued == 0)
-					out.assign(channels, 0.f);
+					out.assign(frameBytes, 0);
 			}
 
-			const auto framesOut = static_cast<int64_t>(out.size() / channels);
+			const auto framesOut = static_cast<int64_t>(out.size() / frameBytes);
 			const auto bufferEnd = v->OutFrames + framesOut;
 			auto marksHere = 0;
 			for (auto it = v->PendingMarks.begin(); it != v->PendingMarks.end() && *it < bufferEnd; ++it)
 				++marksHere;
 			const auto contextOut = marksHere ? MarkContext : marked ? 0 : context;
 
-			const auto result = SubmitHook->bridge(voice, out.data(), out.size() * sizeof(float), contextOut, v->ToMixFrames(startFrame));
+			const auto result = SubmitHook->bridge(voice, out.data(), out.size(), contextOut, v->ToMixFrames(startFrame));
 			if (result != 0)
 				return result;
 
 			v->PendingMarks.erase(v->PendingMarks.begin(), v->PendingMarks.begin() + marksHere);
 			v->OutFrames = bufferEnd;
+			v->HeldBack = 0;
 			v->NextOutput = (v->NextOutput + 1) % OutputBufferCount;
 			return result;
 		}
