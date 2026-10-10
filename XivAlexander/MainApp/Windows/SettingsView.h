@@ -17,6 +17,10 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	struct NestedTtmp;
 }
 
+namespace XivAlexander::Apps::MainApp::FontReplacement {
+	class FamilyPreview;
+}
+
 namespace XivAlexander::Apps::MainApp {
 	class App;
 }
@@ -50,6 +54,12 @@ namespace XivAlexander::Apps::MainApp::Window {
 
 			// For a group: shown on its parent's page under a heading, instead of in the tree.
 			bool Inline = false;
+			// For a group: its heading is this item of it, a check box, instead of its label.
+			const ConfigItemBase* HeadingItem = nullptr;
+			// For a group: its check boxes without descriptions side by side, as many as fit on a line.
+			bool Flow = false;
+			// For an item: shown at the end of its page, in a tab of its own among the page's others.
+			bool Tabbed = false;
 			// For a group: buttons atop its page, sending commands to the owner; labelled by a string resource, or with
 			// the command's menu text if it is 0.
 			std::vector<std::pair<UINT, UINT>> Actions;
@@ -137,14 +147,28 @@ namespace XivAlexander::Apps::MainApp::Window {
 		std::wstring m_ttmpFilter;
 		std::filesystem::path m_ttmpPackToSelect;
 		std::filesystem::path m_ttmpToReselect;  // Where what was shown went, by a rename or a move.
+		bool m_ttmpRenameAfterSelect = false;  // A ModPack chosen in a folder's list, to be renamed in the tree.
 		bool m_ttmpRenameAfterReselect = false;  // A folder made here, to be named.
 		std::vector<std::string> m_fontFamilies;
 		std::vector<std::wstring> m_systemFontFamilies;
+		std::filesystem::path m_fontPresetFolder;  // FontReplacement::Presets::Folder, found when first needed.
+
+		// The preview of a font family's page, or of the font replacement's page (for the edge). Images are drawn on the
+		// previewer's thread, which posts when one is done; it is taken by the number of the page's latest request, so one
+		// that comes after the page is gone, or after a newer request, is dropped.
+		struct FontPreview;
+		std::unique_ptr<FontReplacement::FamilyPreview> m_fontPreviewer;  // Made when first needed; lives with this.
+		std::unique_ptr<FontPreview> m_fontPreview;  // Of the page shown; goes with its rows.
+		std::map<std::string, float> m_fontPreviewSizes;  // The size last chosen of each family.
+		std::map<std::string, std::wstring> m_fontPreviewTexts;  // Kept from page to page, by FontPreviewTextKey.
+		size_t m_fontPreviewColors = 0;  // Of FontPreviewColorPresets; for the session, for every page's preview.
 
 		// The node whose page is shown.
 		const TreeNode* m_pNode{};
 		std::vector<std::unique_ptr<ConfigWindow>> m_patchCodeEditors;
 		std::vector<std::unique_ptr<Row>> m_rows;
+		std::vector<ConfigItemBase*> m_deferredTabbed;  // Met while adding the page's rows, added in tabs after them.
+		std::map<const ConfigItemBase*, int> m_activeTabs;  // By the first item of the tabs.
 		xivres::util::on_dtor::multi m_rowCleanup;
 		int m_scrollY = 0;
 
@@ -199,7 +223,12 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void CreateChoiceRow(const std::wstring& label, bool enabled, std::function<bool()> isChosen, std::function<void()> choose, bool checkBox = false, int flowGroup = 0);
 		void CreateRow(ConfigItemBase& item);
 		void CreateHeadingRow(const std::wstring& text);
+		void CreateHeadingRow(const std::wstring& text, const std::wstring& checkLabel, bool enabled, std::function<bool()> isChecked, std::function<void()> toggle,
+			const std::wstring& linkLabel = {}, std::function<void()> link = {});
 		void CreateNoteRow(const std::wstring& text);
+		void AddTabbedRows();
+		void CreateRichTextRow(const std::wstring& text);
+		void CreateEnabledRow(std::function<bool()> isChecked, std::function<void()> toggle, std::vector<std::pair<std::wstring, std::function<void()>>> actions);
 		void CreateActionRow(std::wstring label1, std::function<void()> onClick1, std::wstring label2 = {}, std::function<void()> onClick2 = {});
 		void CreateActionRow(std::vector<std::pair<std::wstring, std::function<void()>>> buttons);
 		GridView& CreateGridRow(const std::wstring& label, UINT descriptionId, int height, std::vector<GridView::Column> columns, GridView::Source source);
@@ -213,7 +242,15 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void AddDirectoryListRows(ConfigItem<std::vector<std::filesystem::path>>& item, std::vector<std::filesystem::path> defaults, UINT descriptionId);
 		void AddEdgeRows();
 		void AddFontFamilyRows(const std::string& family);
+		// Adds a family's preview: with the size and the sample text on a family's page, or the size and the colors on the
+		// font replacement's page (edgePage).
+		void AddFontPreviewRows(const std::string& family, bool edgePage);
+		// Asks for the preview drawn anew, at the control's size, once nothing has changed for the delay.
+		void RequestFontPreview(std::chrono::milliseconds delay);
+		void OnFontPreviewDrawn();
+		void PaintFontPreview(HWND hwnd);
 		[[nodiscard]] RECT GetDividerRect() const;
+		void DragWindow() const;
 		void ListenToTtmps();
 		bool AttachTtmpNodes(bool force);
 		void SelectNode(const std::function<bool(const TreeNode&)>& predicate);
@@ -221,17 +258,23 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void AddTtmpFolderRows(const std::filesystem::path& folder);
 		void FilterTtmps();
 		void AddTtmpPackRows(const std::filesystem::path& path);
+		void AddTtmpProfileRow();
 		[[nodiscard]] std::shared_ptr<Features::Modding::NestedTtmp> FindTtmp(const std::filesystem::path& path) const;
 		bool RunTtmpOperation(const std::function<void()>& operation, std::filesystem::path reselect = {});
 		void ShowTtmpMoveMenu(std::vector<std::shared_ptr<Features::Modding::NestedTtmp>> items);
-		void MoveTtmpToNewFolder(const std::shared_ptr<Features::Modding::NestedTtmp>& item);
+		void MoveTtmpToNewFolder(const std::vector<std::shared_ptr<Features::Modding::NestedTtmp>>& items);
+		void RenameTtmpInTree(const std::filesystem::path& path);
 		void RenameShownTtmp();
 		void AddTtmpDetailRows(const std::shared_ptr<Features::Modding::NestedTtmp>& pack);
 		void SetTtmpEnabled(Features::Modding::NestedTtmp& nestedTtmp, bool enabled);
 		void ChooseTtmpOption(const std::shared_ptr<Features::Modding::NestedTtmp>& pack, size_t pageIndex, size_t groupIndex, size_t optionIndex, bool multiple);
-		void DeleteTtmp(const std::shared_ptr<Features::Modding::NestedTtmp>& pack);
+		void DeleteTtmps(const std::vector<std::shared_ptr<Features::Modding::NestedTtmp>>& packs);
 		void TruncateRows(size_t count);
-		[[nodiscard]] std::vector<std::wstring> ListPresets() const;
+		const std::filesystem::path& GetFontPresetFolder();
+		[[nodiscard]] std::vector<std::wstring> ListPresets();
+		/// Asks for a preset file, and for one outside the presets folder, whether to import it or use it where it is; gets
+		/// what a source keeps of it (FontReplacementFamilySource::Preset), or nothing if cancelled.
+		std::optional<std::string> ChooseFontPreset();
 		const std::vector<std::wstring>& ListSystemFontFamilies();
 		bool RenamePatchCode(const std::filesystem::path& path, const std::wstring& text);
 		bool RenamePatchCodeName(const std::filesystem::path& path, const std::string& digest, const std::wstring& text);

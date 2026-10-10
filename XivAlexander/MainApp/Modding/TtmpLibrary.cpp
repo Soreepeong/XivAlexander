@@ -67,19 +67,25 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			return xivres::util::unicode::convert<std::string>(path.wstring());
 		}
 
+		/// The message of an exception that is shown to the user as it is, in the language of the interface.
+		template<typename... Args>
+		std::string Message(UINT id, Args&&... args) {
+			return Config::Acquire()->Runtime.FormatStringResUtf8(id, std::forward<Args>(args)...);
+		}
+
 		void ValidateName(const std::wstring& name) {
 			if (name.empty())
-				throw std::invalid_argument("The name cannot be empty.");
+				throw std::invalid_argument(Message(IDS_TTMP_ERROR_NAME_EMPTY));
 			if (name == L"." || name == L"..")
-				throw std::invalid_argument("\".\" and \"..\" cannot be used as a name.");
+				throw std::invalid_argument(Message(IDS_TTMP_ERROR_NAME_DOTS));
 			if (name.size() > 255)
-				throw std::invalid_argument("The name is too long.");
+				throw std::invalid_argument(Message(IDS_TTMP_ERROR_NAME_TOOLONG));
 			if (std::ranges::any_of(name, [](wchar_t c) { return c < 32 || std::wstring_view(L"<>:\"/\\|?*").find(c) != std::wstring_view::npos; }))
-				throw std::invalid_argument("The name cannot contain any of < > : \" / \\ | ? * or control characters.");
+				throw std::invalid_argument(Message(IDS_TTMP_ERROR_NAME_INVALIDCHARS));
 
 			// Windows would silently drop these, so the directory would end up with a name different from what was asked.
 			if (name.back() == L' ' || name.back() == L'.')
-				throw std::invalid_argument("The name cannot end with a space or a period.");
+				throw std::invalid_argument(Message(IDS_TTMP_ERROR_NAME_TRAILING));
 
 			auto stem = name.substr(0, name.find(L'.'));
 			while (!stem.empty() && stem.back() == L' ')
@@ -87,7 +93,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			std::ranges::transform(stem, stem.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towupper(c)); });
 			if (stem == L"CON" || stem == L"PRN" || stem == L"AUX" || stem == L"NUL"
 				|| (stem.size() == 4 && (stem.starts_with(L"COM") || stem.starts_with(L"LPT")) && stem[3] >= L'1' && stem[3] <= L'9'))
-				throw std::invalid_argument("The name is reserved by Windows.");
+				throw std::invalid_argument(Message(IDS_TTMP_ERROR_NAME_RESERVED));
 		}
 
 		/// \returns Where path ends up when the directory from, which contains it, is moved to to.
@@ -117,10 +123,10 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 				const auto error = GetLastError();
 				if (error == ERROR_NOT_SAME_DEVICE)
-					throw std::runtime_error("Folders cannot be moved to a different drive.");
+					throw std::runtime_error(Message(IDS_TTMP_ERROR_DIFFERENTDRIVE));
 				if ((error != ERROR_ACCESS_DENIED && error != ERROR_SHARING_VIOLATION && error != ERROR_LOCK_VIOLATION)
 					|| std::chrono::steady_clock::now() >= until)
-					throw Utils::Win32::Error(error, std::format("Failed to move {} to {}", ToUtf8(from), ToUtf8(to)));
+					throw Utils::Win32::Error(error, Message(IDS_TTMP_ERROR_MOVEFAILED, from.wstring(), to.wstring()));
 				Sleep(RenameRetryIntervalMs);
 			}
 		}
@@ -219,6 +225,8 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 				"Failed to load TexTools ModPack from {}: {}", ttmplPath.wstring(), e.what());
 			return nullptr;
 		}
+		if (added)
+			AppendLast(folder, added);
 		return added.get();
 	}
 
@@ -235,15 +243,21 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 	void TtmpLibrary::ReconcileFiles() {
 		// A pack whose list is gone was deleted. This runs once what it replaced is known to be put back, so its data
-		// file can go too; the node goes as well, as its data stream is no more.
-		m_root->TraverseInterruptible(false, [](NestedTtmp& nestedTtmp) {
+		// file can go too; the node goes as well, as its data stream is no more. Its name goes from its folder's order
+		// once its directory is gone.
+		std::vector<std::shared_ptr<NestedTtmp>> parents;
+		m_root->TraverseInterruptible(false, [&parents](NestedTtmp& nestedTtmp) {
 			if (!nestedTtmp.Ttmp || exists(nestedTtmp.Ttmp->ListPath))
 				return NestedTtmp::Continue;
 
 			nestedTtmp.Ttmp->TryCleanupUnusedFiles();
+			if (nestedTtmp.Parent && std::ranges::find(parents, nestedTtmp.Parent) == parents.end())
+				parents.push_back(nestedTtmp.Parent);
 			nestedTtmp.Parent = nullptr;
 			return NestedTtmp::Delete;
 		});
+		for (const auto& parent : parents)
+			ForgetMissingInOrder(*parent);
 		m_root->RemoveEmptyChildren();
 	}
 
@@ -360,9 +374,16 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 		if (const auto orderingFile = path / "order.json"; exists(orderingFile)) {
 			try {
+				// Kept alive while it is read: structured bindings over items() of a temporary read the values as null. A value
+				// that is not a position is skipped, so that one bad entry does not lose the order of the rest.
+				const auto order = LoadOrderFile(path);
 				std::map<std::filesystem::path, uint64_t> orderMap;
-				for (const auto& [path, index] : Utils::ParseJsonFromFile(orderingFile).items()) {
-					orderMap.emplace(std::filesystem::path(xivres::util::unicode::convert<std::wstring>(path)), index.get<uint64_t>());
+				for (auto it = order.begin(); it != order.end(); ++it) {
+					if (it.value().is_number_unsigned() || (it.value().is_number_integer() && it.value().get<int64_t>() >= 0))
+						orderMap.emplace(std::filesystem::path(xivres::util::unicode::convert<std::wstring>(it.key())), it.value().get<uint64_t>());
+					else
+						m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+							"Ignored \"{}\" in {}: not a position", it.key(), orderingFile.wstring());
 				}
 				m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
 					"Ordering file loaded from {}", orderingFile.wstring());
@@ -372,7 +393,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 				}
 			} catch (const std::exception& e) {
 				m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-					"Failed to load choices from {}: {}", orderingFile.wstring(), e.what());
+					"Failed to load the order from {}: {}", orderingFile.wstring(), e.what());
 			}
 		}
 
@@ -456,6 +477,8 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 					.Children = std::vector<std::shared_ptr<NestedTtmp>>{},
 				}));
 				folder->Sort();
+				if (subfolder->Index == UINT64_MAX)
+					AppendLast(folder, subfolder);
 			}
 			if (!subfolder->IsGroup())
 				return nullptr;
@@ -506,12 +529,12 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 	void TtmpLibrary::ValidateRename(const NestedTtmp& item, const std::wstring& newName) const {
 		if (&item == m_root.get() || !Contains(item))
-			throw std::invalid_argument("The item is no longer in the library. Rescan and try again.");
+			throw std::invalid_argument(Message(IDS_TTMP_ERROR_ITEMGONE));
 		ValidateName(newName);
 
 		const auto newPath = item.Path.parent_path() / newName;
 		if (std::error_code ec; exists(newPath) && !(equivalent(newPath, item.Path, ec) && !ec))
-			throw std::invalid_argument(std::format("There already is something named \"{}\" in that folder.", ToUtf8(newName)));
+			throw std::invalid_argument(Message(IDS_TTMP_ERROR_NAMETAKEN, newName));
 	}
 
 	bool TtmpLibrary::Rename(const std::shared_ptr<NestedTtmp>& item, const std::wstring& newName) {
@@ -533,30 +556,31 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			"Renamed {} to {}", oldPath.wstring(), newName);
 
 		UpdateOrderFile(oldPath.parent_path(), oldPath.filename(), newPath.filename(), m_logger);
+		ForgetMissingInOrder(*item->Parent);
 		item->Parent->Sort();
 		return true;
 	}
 
 	void TtmpLibrary::ValidateMove(const NestedTtmp& item, const std::filesystem::path& folderDir) const {
 		if (&item == m_root.get() || !Contains(item))
-			throw std::invalid_argument("The item is no longer in the library. Rescan and try again.");
+			throw std::invalid_argument(Message(IDS_TTMP_ERROR_ITEMGONE));
 		if (!is_directory(folderDir))
-			throw std::invalid_argument("The destination folder does not exist.");
+			throw std::invalid_argument(Message(IDS_TTMP_ERROR_DESTINATIONMISSING));
 
 		const auto chain = ResolveFolderChain(folderDir);
 		if (!chain)
-			throw std::invalid_argument("The destination is not in any of the folders TexTools ModPacks are looked for in.");
+			throw std::invalid_argument(Message(IDS_TTMP_ERROR_DESTINATIONOUTSIDE));
 		for (const auto& dir : chain->Dirs) {
 			if (std::error_code ec; equivalent(dir, item.Path, ec) && !ec)
-				throw std::invalid_argument("A folder cannot be moved into itself or into a folder inside it.");
+				throw std::invalid_argument(Message(IDS_TTMP_ERROR_MOVEINTOSELF));
 			if (exists(dir / "TTMPL.mpl"))
-				throw std::invalid_argument("Things cannot be moved into a ModPack.");
+				throw std::invalid_argument(Message(IDS_TTMP_ERROR_MOVEINTOMODPACK));
 		}
 
 		if (std::error_code ec; equivalent(folderDir, item.Path.parent_path(), ec) && !ec)
 			return;
 		if (exists(folderDir / item.Path.filename()))
-			throw std::invalid_argument(std::format("There already is something named \"{}\" in the destination folder.", ToUtf8(item.Path.filename())));
+			throw std::invalid_argument(Message(IDS_TTMP_ERROR_NAMETAKENATDESTINATION, item.Path.filename().wstring()));
 	}
 
 	bool TtmpLibrary::Move(const std::shared_ptr<NestedTtmp>& item, const std::filesystem::path& folderDir) {
@@ -569,7 +593,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		const auto folder = FindFolder(folderDir, true);
 		try {
 			if (!folder)
-				throw std::runtime_error("The destination folder could not be found.");
+				throw std::runtime_error(Message(IDS_TTMP_ERROR_DESTINATIONNOTFOUND));
 
 			// Spelled the way the scanner would have it, so that paths in the tree keep sharing their prefixes.
 			Relocate(*item, (folder == m_root ? ResolveFolderChain(folderDir)->Root : folder->Path) / name);
@@ -584,34 +608,34 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			"Moved {} to {}", oldPath.wstring(), item->Path.wstring());
 
 		UpdateOrderFile(oldPath.parent_path(), name, std::nullopt, m_logger);
+		ForgetMissingInOrder(*item->Parent);
 
 		auto& oldSiblings = *item->Parent->Children;
 		oldSiblings.erase(std::ranges::find(oldSiblings, item));
 		item->Parent = folder;
-		item->Index = LookupOrderIndex(*folder, name);
 		folder->Children->emplace_back(item);
-		folder->Sort();
+		AppendLast(folder, item);
 		return true;
 	}
 
 	std::filesystem::path TtmpLibrary::CreateFolder(const std::filesystem::path& parentDir, const std::wstring& name) const {
 		ValidateName(name);
 		if (!is_directory(parentDir))
-			throw std::invalid_argument("The parent folder does not exist.");
+			throw std::invalid_argument(Message(IDS_TTMP_ERROR_PARENTMISSING));
 
 		const auto chain = ResolveFolderChain(parentDir);
 		if (!chain)
-			throw std::invalid_argument("The parent folder is not in any of the folders TexTools ModPacks are looked for in.");
+			throw std::invalid_argument(Message(IDS_TTMP_ERROR_PARENTOUTSIDE));
 		if (std::ranges::any_of(chain->Dirs, [](const auto& dir) { return exists(dir / "TTMPL.mpl"); }))
-			throw std::invalid_argument("Folders cannot be created inside a ModPack.");
+			throw std::invalid_argument(Message(IDS_TTMP_ERROR_FOLDERINMODPACK));
 
 		const auto path = parentDir / name;
 		if (exists(path))
-			throw std::invalid_argument(std::format("There already is something named \"{}\" in that folder.", ToUtf8(name)));
+			throw std::invalid_argument(Message(IDS_TTMP_ERROR_NAMETAKEN, name));
 		if (std::error_code ec; !create_directory(path, ec)) {
 			m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
 				"Failed to create folder {}: {}", path.wstring(), ec.message());
-			throw std::runtime_error(std::format("Failed to create folder {}: {}", ToUtf8(path), ec.message()));
+			throw std::runtime_error(Message(IDS_TTMP_ERROR_CREATEFOLDER, path.wstring(), Utils::FromAnsi(ec.message())));
 		}
 
 		m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks, "Created folder {}", path.wstring());
@@ -620,22 +644,25 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 	void TtmpLibrary::ValidateOrder(const NestedTtmp& folder, const std::vector<std::shared_ptr<NestedTtmp>>& children) const {
 		if (!folder.IsGroup() || !Contains(folder))
-			throw std::invalid_argument("The folder is no longer in the library. Rescan and try again.");
+			throw std::invalid_argument(Message(IDS_TTMP_ERROR_FOLDERGONE));
 
 		std::set<const NestedTtmp*> remaining;
 		for (const auto& child : *folder.Children)
 			remaining.insert(child.get());
 		for (const auto& child : children) {
 			if (!remaining.erase(child.get()))
-				throw std::invalid_argument("The new order must list every item in the folder exactly once.");
+				throw std::invalid_argument(Message(IDS_TTMP_ERROR_ORDERINCOMPLETE));
 		}
 		if (!remaining.empty())
-			throw std::invalid_argument("The new order must list every item in the folder exactly once.");
+			throw std::invalid_argument(Message(IDS_TTMP_ERROR_ORDERINCOMPLETE));
 	}
 
 	void TtmpLibrary::SetOrder(const std::shared_ptr<NestedTtmp>& folder, const std::vector<std::shared_ptr<NestedTtmp>>& children) {
 		ValidateOrder(*folder, children);
+		WriteOrder(folder, children);
+	}
 
+	void TtmpLibrary::WriteOrder(const std::shared_ptr<NestedTtmp>& folder, const std::vector<std::shared_ptr<NestedTtmp>>& children) {
 		// The top level gathers several search directories, each with its own order.json; every child goes into the
 		// one of the directory it is in, with its position counted across the whole top level.
 		std::map<std::filesystem::path, std::vector<std::pair<std::filesystem::path, uint64_t>>> entriesByDir;
@@ -667,7 +694,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			} catch (const std::exception& e) {
 				m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
 					"Failed to save {}: {}", orderPath.wstring(), e.what());
-				throw std::runtime_error(std::format("Failed to save {}: {}", ToUtf8(orderPath), e.what()));
+				throw std::runtime_error(Message(IDS_TTMP_ERROR_SAVEORDER, orderPath.wstring(), xivres::util::unicode::convert<std::wstring>(e.what())));
 			}
 		}
 
@@ -676,6 +703,46 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		folder->Sort();
 		m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
 			"Saved the order of {} items in {}", children.size(), folder->Path.empty() ? std::wstring(L"the top level") : folder->Path.wstring());
+	}
+
+	void TtmpLibrary::AppendLast(const std::shared_ptr<NestedTtmp>& folder, const std::shared_ptr<NestedTtmp>& item) {
+		// The siblings as they are sorted now, all of them listed, then the item; a failure to save leaves the change made.
+		folder->Sort();
+		std::vector<std::shared_ptr<NestedTtmp>> children;
+		for (const auto& child : *folder->Children) {
+			if (child != item)
+				children.push_back(child);
+		}
+		children.push_back(item);
+		try {
+			WriteOrder(folder, children);
+		} catch (const std::exception& e) {
+			m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+				"Failed to put {} last in its folder's order: {}", item->Path.wstring(), e.what());
+			folder->Sort();
+		}
+	}
+
+	void TtmpLibrary::ForgetMissingInOrder(const NestedTtmp& folder) const {
+		for (const auto& dir : &folder == m_root.get() ? GetPossibleTtmpDirs() : std::vector{folder.Path}) {
+			try {
+				auto order = LoadOrderFile(dir);
+				auto changed = false;
+				for (auto it = order.begin(); it != order.end();) {
+					if (is_directory(dir / xivres::util::unicode::convert<std::wstring>(it.key()))) {
+						++it;
+					} else {
+						it = order.erase(it);
+						changed = true;
+					}
+				}
+				if (changed)
+					Utils::SaveJsonToFile(dir / "order.json", order);
+			} catch (const std::exception& e) {
+				m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+					"Failed to update {}: {}", (dir / "order.json").wstring(), e.what());
+			}
+		}
 	}
 
 	void TtmpLibrary::Relocate(NestedTtmp& item, const std::filesystem::path& newPath) {
@@ -699,7 +766,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 				const auto dataPath = Rebase(pack->Ttmp->DataPath, oldPath, newPath);
 				auto stream = std::make_shared<xivres::oplocking_file_stream>(dataPath, false);
 				if (stream->done())
-					throw std::runtime_error(std::format("Failed to open {}", ToUtf8(dataPath)));
+					throw std::runtime_error(Message(IDS_TTMP_ERROR_OPENDATA, dataPath.wstring()));
 				stream->emplace_tag<ModpackNameTag>(pack->Ttmp->List.Name.empty() ? ToUtf8(dataPath.parent_path().filename()) : pack->Ttmp->List.Name);
 				streams.emplace_back(std::move(stream));
 			}
@@ -711,7 +778,8 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			} catch (const std::exception& e2) {
 				m_logger->Format<LogLevel::Error>(LogCategory::VirtualSqPacks,
 					"Failed to move {} back to {}: {}", newPath.wstring(), oldPath.wstring(), e2.what());
-				throw std::runtime_error(std::format("{}; moving it back failed too ({}). Rescan TexTools ModPacks.", e.what(), e2.what()));
+				throw std::runtime_error(Message(IDS_TTMP_ERROR_MOVEBACKFAILED,
+					xivres::util::unicode::convert<std::wstring>(e.what()), xivres::util::unicode::convert<std::wstring>(e2.what())));
 			}
 			throw;
 		}

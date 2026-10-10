@@ -132,6 +132,15 @@ namespace XivAlexander::Misc::Hooks {
 			this->m_bridge = static_cast<FunctionType>(bridge);
 		}
 
+		~PointerFunction() override {
+			// Remove the hook so that the function can be hooked again; the trampoline goes with it, so wait for the
+			// calls still in it first.
+			MH_DisableHook(this->m_pAddress);
+			while (this->m_hookCounter)
+				Sleep(1);
+			MH_RemoveHook(this->m_pAddress);
+		}
+
 		R operator()(Args...args) const override {
 			return this->m_pAddress(std::forward<Args&>(args)...);
 		}
@@ -158,6 +167,81 @@ namespace XivAlexander::Misc::Hooks {
 	/// e.g. PointerFunctionOf<decltype(Game::SoundVoiceFunctions::Submit)>.
 	template<typename TFunctionPointer>
 	using PointerFunctionOf = typename PointerFunctionOfImpl<std::remove_cvref_t<TFunctionPointer>>::Type;
+
+	/// Points one call rel32 instruction elsewhere, through a jump stub allocated within its reach. The displacement is
+	/// swapped with one locked store, so a thread running the code calls either the old or the new target.
+	class CallSitePatch {
+		uint8_t* const m_call;
+		const int32_t m_original;
+		int32_t m_redirected{};
+		uint8_t* m_stub{};  // jmp [rip+2]; int3 x2; the destination, 8 byte aligned
+
+	public:
+		/// Gets what a call rel32 instruction calls; throws if it isn't one.
+		[[nodiscard]] static void* TargetOf(const void* callInstruction);
+
+		CallSitePatch(void* callInstruction, void* destination);
+		CallSitePatch(const CallSitePatch&) = delete;
+		CallSitePatch& operator=(const CallSitePatch&) = delete;
+		~CallSitePatch();
+
+		/// Whether the call goes to the destination now.
+		[[nodiscard]] bool IsRedirected() const;
+
+		/// Whether the call goes to the destination or the original target, i.e. nobody patched it over this.
+		[[nodiscard]] bool IsRestorable() const;
+
+		/// Redirects the call, unless something else changed it since it was looked at; returns whether it did.
+		bool Redirect();
+
+		/// Restores the call. If something else redirected it over this, it may chain to the stub, which is then pointed at
+		/// the original target and kept.
+		void Restore();
+
+	private:
+		[[nodiscard]] int32_t Current() const;
+		bool Exchange(int32_t from, int32_t to);
+		void SetStubDestination(const void* destination);
+	};
+
+	/// A hook of one call site: only the call rel32 at callInstruction goes to the detour, and the bridge calls whatever it
+	/// called before. Other callers of the function, and other hooks of the function itself (which other tools may patch
+	/// inline), are left alone.
+	template<typename R, typename ...Args>
+	class CallSiteFunction : public Function<R, Args...> {
+		using Function<R, Args...>::FunctionType;
+
+		CallSitePatch m_patch;
+
+	public:
+		CallSiteFunction(const char* szName, void* callInstruction)
+			: Function<R, Args...>(szName, reinterpret_cast<FunctionType>(CallSitePatch::TargetOf(callInstruction)))
+			, m_patch(callInstruction, this->m_binder.GetBinder()) {
+			this->m_bridge = this->m_pAddress;
+		}
+
+		R operator()(Args...args) const override {
+			return this->m_pAddress(std::forward<Args&>(args)...);
+		}
+
+		[[nodiscard]] bool IsDisableable() const final {
+			return m_patch.IsRestorable();
+		}
+
+		/// Whether the call goes to the detour; after SetHook, false if something else changed the call in between.
+		[[nodiscard]] bool IsEnabled() const {
+			return m_patch.IsRedirected();
+		}
+
+	protected:
+		void HookEnable() final {
+			m_patch.Redirect();
+		}
+
+		void HookDisable() final {
+			m_patch.Restore();
+		}
+	};
 
 	template<typename R, typename ...Args>
 	class ImportedFunction : public Function<R, Args...> {

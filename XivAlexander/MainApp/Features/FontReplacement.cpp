@@ -31,6 +31,8 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 	std::optional<std::pair<Presets::Faces, bool>> PendingPreset;
 	bool PendingSettings = true;
 
+	// One of them: the hook of the game's call of Present, or where that isn't found, the hook of DXGI's Present.
+	std::optional<Host::PresentCallHook> PresentCall;
 	std::optional<Host::PresentHook> Present;
 	std::unique_ptr<PresetController> Controller;  // With PendingMutex.
 	xivres::util::on_dtor::multi Cleanup;
@@ -79,7 +81,13 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		// The game calls Present on its thread after the frame's UI was drawn; glyphs added during it are uploaded then and
 		// show from the next frame.
 		try {
-			Present.emplace(window, [this] { BeforePresent(); });
+			try {
+				PresentCall.emplace([this] { BeforePresent(); });
+				Host::Information("Uploading glyphs from the game's call of Present.");
+			} catch (const std::exception& e) {
+				Host::Information("Uploading glyphs from a hook of IDXGISwapChain::Present, as the game's call of it can't be hooked: {}", e.what());
+				Present.emplace(window, [this] { BeforePresent(); });
+			}
 		} catch (...) {
 			App.RunOnGameLoop([this] { TearDown(); });
 			throw;
@@ -98,7 +106,6 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 			PendingSettings = true;
 		};
 		Cleanup += settings.Edge.OnChange(markPending);
-		Cleanup += settings.NamePlateMode.OnChange(markPending);
 
 		auto controller = std::make_unique<PresetController>(Config, [this](Presets::Faces faces, bool systemFallback) {
 			const auto lock = std::scoped_lock(PendingMutex);
@@ -112,6 +119,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		InitThread.join();
 		Cleanup.clear();
 		Controller.reset();
+		PresentCall.reset();
 		Present.reset();
 
 		// Between frames on the game's thread.
@@ -160,8 +168,6 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		if (settings) {
 			const auto& current = Config->Runtime.FontReplacement;
 			Replacer->SetEdge(current.Edge.Value());
-			if (NamePlates)
-				NamePlates->SetMode(current.NamePlateMode.Value());
 		}
 
 		if (preset) {

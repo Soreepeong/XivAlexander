@@ -19,21 +19,22 @@ struct XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::Implement
 	const std::shared_ptr<Config> Config;
 	const std::shared_ptr<Misc::Logger> Logger;
 
-	std::optional<Misc::Hooks::PointerFunctionOf<Game::Resolved::MessageLoopFn>> SingleMessageLoop;
-	Misc::Hooks::ImportedFunction<BOOL, LPMSG, HWND, UINT, UINT, UINT> PeekMessageW{ "user32!PeekMessageW", "user32.dll", "PeekMessageW" };
-	Misc::Hooks::ImportedFunction<void, DWORD> Sleep{ "kernel32!Sleep", "kernel32.dll", "Sleep" };
-	Misc::Hooks::ImportedFunction<DWORD, DWORD, BOOL> SleepEx{ "kernel32!SleepEx", "kernel32.dll", "SleepEx" };
-
 	std::deque<int64_t> LastMessagePumpCounterUs;
 	std::set<int64_t> MessagePumpGuaranteeCounterUs;
 	Utils::NumericStatisticsTracker MessagePumpIntervalTrackerUs{ 1024, 0 };
-
-	xivres::util::on_dtor::multi Cleanup;
 
 	UINT LastPeekMessageHadRemoveMsg{};
 	int64_t LastLockedFramerateRenderIntervalUs{};
 	int64_t LastLockedFramerateRenderDriftUs{};
 	Utils::Win32::Handle HighResTimer{};
+
+	// After what the detours use, so that they go first: each waits for the calls still in its detour.
+	std::optional<Misc::Hooks::PointerFunctionOf<Game::Resolved::MessageLoopFn>> SingleMessageLoop;
+	Misc::Hooks::ImportedFunction<BOOL, LPMSG, HWND, UINT, UINT, UINT> PeekMessageW{ "user32!PeekMessageW", "user32.dll", "PeekMessageW" };
+	Misc::Hooks::ImportedFunction<void, DWORD> Sleep{ "kernel32!Sleep", "kernel32.dll", "Sleep" };
+	Misc::Hooks::ImportedFunction<DWORD, DWORD, BOOL> SleepEx{ "kernel32!SleepEx", "kernel32.dll", "SleepEx" };
+
+	xivres::util::on_dtor::multi Cleanup;
 
 	Implementation(MainApp::App& app)
 		: App(app)

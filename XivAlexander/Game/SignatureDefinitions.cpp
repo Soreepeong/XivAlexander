@@ -65,6 +65,16 @@ namespace XivAlexander::Game {
 	// bt eax, 8: tests IME_CMODE_NOCONVERSION, which only the IME mode getter does after those queries.
 	const Signatures::RegexSignature ImeNoConversionTest(R"(\x0F\xBA\xE0\x08)");
 
+	// DeviceDX11::PostTick with the render thread: mov rcx, [device+0x70]; call Kernel::SwapChain::Present; mov byte
+	// [device+0x79], 0; then a jmp over the branch without the render thread, whose call is the same but not followed by
+	// one. Holds since 7.0 (checked through 7.56h); before, PostTick has only the call without the jmp.
+	const Signatures::RegexSignature SwapChainPresentCall(R"([\x48\x49]\x8B[\x48-\x4B\x4D-\x4F]\x70\xE8(....)\x41?\xC6[\x40-\x47]\x79\x00\xEB)");
+	// The walk of the notifiers before Present, 117 bytes before that call since 7.0: lea rcx, [lock];
+	// call [EnterCriticalSection]; mov rbx, [head]; test rbx, rbx; jz; mov rax, [rbx]; mov rcx, rbx; call [rax+0x10]
+	// The walk as the game has it, or as CrowdFix's SkipIdleNotifiers rewrites it (mov rcx, imm64; mov rax, imm64; call rax;
+	// jmp past the rest), after the lock is taken.
+	const Signatures::RegexSignature PrePresentNotifierWalk(R"(\x48\x8D\x0D....\xFF\x15....(?:\x48\x8B\x1D....\x48\x85\xDB\x74.\x48\x8B\x03\x48\x8B\xCB\xFF\x50\x10|\x48\xB9.{8}\x48\xB8.{8}\xFF\xD0\xEB))");
+
 	// The signatures below are from CrowdFix (SheepGoMeh), checked against 7.56h (2026.09.15).
 
 	// Framework::Tick: lea rcx, [rbx+TaskManager]; ...; call ExecuteAllTasks; mov rcx, [rbx+...]; test rcx, rcx
@@ -118,6 +128,14 @@ namespace XivAlexander::Game {
 	const Signatures::RegexSignature CullingVisibilityClearCount(R"(\xB9(\x00\xA0\x00\x00)(?:[\x48\x4C]\x8B[\x84-\xBC]\x24....|\x0F\x28[\x84-\xBC]\x24....|\x90|\x0F\x1F[\x00-\x84].{0,6}?){0,10}\xF3\x0F\x7F\x00\x48\x8D\x40\x10\x48\x83\xE9\x01\x75\xF2)");
 	// Right before it: mov rax, [culling manager+table]; xorps xmm0, xmm0; ...; mov ecx, 0xA000
 	const Signatures::RegexSignature CullingVisibilityTableLoad(R"([\x48\x49]\x8B[\x40-\x47](.)\x0F\x57\xC0.{0,12}?\xB9\x00\xA0\x00\x00)");
+	// The object slot allocator: mov r11, [rcx+mask]; ...; mov eax, [r9]; cmp eax, -1; je (full word); the bit loop;
+	// cmp r8d, words; jb; ...; or edx, eax; mov [r11+r8*4], edx; shl r8d, 5; lea ebx, [rcx+r8] (the slot);
+	// shl rbx, entry shift; add rbx, [r10+objects]
+	const Signatures::RegexSignature CullingSlotAlloc(R"([\x48\x4C]\x8B[\x41\x49\x51\x59\x61\x69\x71\x79](.).{0,16}?\x8B[\x00-\x3F]\x83\xF8\xFF\x74..{0,40}?\x81[\xF8-\xFF](....)\x72..{0,24}?\x0B[\xC0-\xFF][\x40-\x4F]?\x89[\x04-\x3C][\x80-\xBF][\x41]?\xC1[\xE0-\xE7]\x05.{0,8}?[\x48\x49]\xC1[\xE0-\xE7](.)[\x48\x49\x4C\x4D]\x03[\x40-\x7F](.))");
+	// The release: sub rcx, [r10+objects]; mov rax, [r10+mask]; sar rcx, entry shift; ...; not eax; and [r9], eax
+	const Signatures::RegexSignature CullingSlotRelease(R"([\x48\x49\x4C\x4D]\x2B[\x40-\x7F](.)[\x48\x49\x4C\x4D]\x8B[\x40-\x7F](.)[\x48\x49]\xC1[\xF8-\xFF](.).{0,24}?\xF7[\xD0-\xD7][\x40-\x4F]?\x21)");
+	// mov rcx, [g_CullingManager]; call ...
+	const Signatures::RegexSignature CullingManagerCall(R"(\x48\x8B\x0D(....)\xE8(....))");
 
 	const Signatures::RegexSignature GraphicsAllocatorFreeStart(R"(\x48\x85\xD2\x0F\x84....\x48\x89\x74\x24.\x57\x48\x83\xEC.\x48\x8B\xF1\x48\x89\x5C\x24.\x48\x81\xC1)");
 	// The slab check of Free: add rcx, lock; mov rdi, rdx; call [EnterCriticalSection]; mov r8, rdi; and r8, ~page mask;
@@ -129,7 +147,19 @@ namespace XivAlexander::Game {
 	// The unlock at the end: lea rcx, [rsi+lock]; call [LeaveCriticalSection]
 	const Signatures::RegexSignature GraphicsAllocatorUnlock(R"(\x48\x8D[\x88-\x8F](....)\xFF\x15(....))");
 	// In the buffer write lock: mov rax, [g_AllocatorManager]; ...; mov rcx, [rax+allocator]; mov rax, [rcx]; call [rax+0x10]
-	const Signatures::RegexSignature GraphicsAllocatorManagerLoad(R"(\x48\x8B\x05(....)\x41\xB8....\x8B\xD7\x48\x8B\x48(.)\x48\x8B\x01\xFF\x50.\x48\x89\x83)");
+	const Signatures::RegexSignature GraphicsAllocatorManagerLoad(R"(\x48\x8B\x05(....)\x41\xB8....\x8B\xD7\x48\x8B\x48(.)\x48\x8B\x01\xFF\x50(.)\x48\x89\x83)");
+	// The graphics allocator's destructor (and constructor) setting both vtables: lea rax, [vtable]; (mov rdi, rcx;)
+	// mov [rcx], rax; (mov ebx, edx;) lea rax, [inner vtable]; mov [rcx+inner], rax
+	const Signatures::RegexSignature GraphicsAllocatorVtables(R"(\x48\x8D\x05(....)(?:[\x48\x4C]\x8B[\xC0-\xFF])?\x48\x89\x01(?:\x8B[\xC0-\xFF])?\x48\x8D\x05(....)\x48\x89\x81(....))");
+	// Its slots: the alloc counts, then forwards to the inner allocator: mov eax, 1; lock xadd [rcx+counter], eax;
+	// add rcx, inner; mov rax, [rcx]; jmp [rax+slot]. Most others only forward.
+	const Signatures::RegexSignature GraphicsAllocatorCountingWrapper(R"(\xB8\x01\x00\x00\x00\xF0\x0F\xC1\x81(....)\x48\x81\xC1(....)\x48\x8B\x01\x48\xFF\x60(.))");
+	const Signatures::RegexSignature GraphicsAllocatorForwardingWrapper(R"(\x48\x81\xC1(....)\x48\x8B\x01\x48\xFF\x60(.))");
+	// The terminate releases the inner allocator, then calls the base's: push rbx; sub rsp, ..; mov rbx, rcx;
+	// add rcx, inner; mov rax, [rcx]; call [rax+slot]; mov rax, [rbx+base]; lea rcx, [rbx+base]; ...
+	const Signatures::RegexSignature GraphicsAllocatorTerminateWrapper(R"(\x40\x53\x48\x83\xEC.\x48\x8B\xD9\x48\x81\xC1(....)\x48\x8B\x01\xFF\x50(.)\x48\x8B\x43(.)\x48\x8D\x4B(.))");
+	// The inner allocator's size query: mov r9, rdx; and r9, ~page mask; mov eax, [r9+page index]; cmp [rcx+chunk count], eax
+	const Signatures::RegexSignature SmallObjectAllocatorSize(R"([\x48\x4C]\x8B[\xC8-\xCF][\x48\x49]\x81[\xE0-\xE7](....)[\x40-\x4F]?\x8B[\x40-\x7F](.)\x39[\x80-\xBF](....))");
 
 	// The tail jump to the follow AI at the end of Companion::Update.
 	const Signatures::RegexSignature CompanionFollowJump(R"(\xE9(....)\x48\x8B\xCF\xE8....\xF3\x0F\x58\x87....\x0F\x2F\x05)");
@@ -145,6 +175,16 @@ namespace XivAlexander::Game {
 	const Signatures::RegexSignature RenderManagerLoad(R"(\x48\x8B\x0D(....)\xE8....\x84\xC0\x74.\x48\x8B\x0D....\xE8....\x33\xC9)");
 	// Manager::RenderView: lea rdx, [manager+prep list]; add rcx, TaskManager (rcx: g_Framework); call kick
 	const Signatures::RegexSignature BgInstancingPrepKickCall(R"(\x48\x8D\x93(....)\x48\x81\xC1(....)\xE8(....))");
+	// The kick's calls on the job list (rbx): call [rax+count]; test eax, eax; jz; then call [rax+prepare];
+	// call [rax+describe] (rdx: the descriptor); call [rax+count] again
+	const Signatures::RegexSignature JobListKickCalls(R"(\xFF\x50(.)\x85\xC0(?:\x0F\x84....|\x74.)[\x48\x49]\x8B[\x00-\x3F][\x48\x49]\x8B[\xC8-\xCF]\xFF\x50(.)[\x48\x49]\x8B[\x00-\x3F](?:\x48\x8D\x54\x24.|[\x48\x49]\x8B[\xC8-\xCF]){2}\xFF\x50(.)[\x48\x49]\x8B[\x00-\x3F][\x48\x49]\x8B[\xC8-\xCF]\xFF\x50(.))");
+	// InnerThread::Run running a claimed task: mov rdx, [thread+pool]; mov rcx, rdi (task); mov r8, [rsp+argument];
+	// add rdx, context; mov rax, [rdi]; test r8, r8; jnz; call [rax+slot]; jmp; mov r8, [r8]; call [rax+slot]
+	const Signatures::RegexSignature JobRunTask(R"(\x48\x8B[\x50-\x57](.)[\x48\x49]\x8B[\xC8-\xCF][\x4C\x48]\x8B[\x44\x4C]\x24.[\x48\x49]\x83\xC2(.)[\x48\x49]\x8B[\x00-\x07][\x4D\x48]\x85[\xC0-\xFF]\x75.\xFF\x50(.)\xE9....[\x4D\x49]\x8B[\x00-\x3F]\xFF\x50(.))");
+	// And claiming it first, from the queue entry (rbx): mov rax, [rbx+claim]; lea rdx, [rbx+state];
+	// mov rcx, [rbx+owner]; lea r9, [rsp+remaining]; lea r8, [rsp+argument]; ...; call rax. Before 7.30, mov rcx, [rbx+owner];
+	// lea rdx, [rbx+state]; lea r9; ...; lea r8; call [rbx+claim].
+	const Signatures::RegexSignature JobRunClaim(R"((?:\x48\x8B[\x40-\x47](.)\x48\x8D[\x50-\x57](.)\x48\x8B[\x48-\x4F](.)\x4C\x8D\x4C\x24.\x4C\x8D\x44\x24..{0,8}?\xFF\xD0|\x48\x8B[\x48-\x4F](.)\x48\x8D[\x50-\x57](.)\x4C\x8D\x4C\x24..{0,8}?\x4C\x8D\x44\x24.\xFF[\x50-\x57](.)))");
 
 	// lea rcx, [tmp]; call HotbarUIIntermediate::ctor; mov rcx, [module]; lea r8, [tmp]; mov rdx, slot; call Prepare;
 	// inc slot index; add slot id, 0x11
@@ -155,10 +195,40 @@ namespace XivAlexander::Game {
 	// In the animation update: mov [entry count], reg; lea reg, [entries]; cmp reg, 1
 	const Signatures::RegexSignature AnimationTailEntries(R"(\x89[\x05\x0D\x15\x1D\x2D\x35\x3D](....)\x48\x8D[\x05\x0D\x15\x1D\x2D\x35\x3D](....)\x83[\xF8-\xFF]\x01)");
 	const Signatures::RegexSignature AnimationSubmit(R"(\x48\x89\x5C\x24\x08\x48\x89\x74\x24\x10\x57\x48\x83\xEC\x20\x48\x8B\x05(....)\x48\x8B\xD9\xF3\x0F\x11\x88\xF0\x00\x00\x00)");
-	// mov rdx, [group+0x18]; mov rcx, [g_TaskManager]; call kick; mov rcx, group; cmp [group+0xBC], <zero>; je; call help; jmp; call help
-	const Signatures::RegexSignature AnimationSubmitKick(R"(\x48\x8B[\x50-\x57]\x18\x48\x8B\x0D(....)\xE8(....)[\x48\x49]\x8B[\xC8-\xCF][\x40-\x47]?\x38[\x80-\xBF]\xBC\x00\x00\x00\x74\x07\xE8(....)\xEB\x05\xE8(....))");
+	// The animation submit, in this order. Its group: mov r9, [submit base]; xor esi, esi; mov edi, [r9+writer count];
+	// lea rbx, [r9+group]
+	const Signatures::RegexSignature AnimationSubmitGroup(R"([\x48\x4C]\x8B[\x05\x0D\x15\x1D\x25\x2D\x35\x3D](....)(?:[\x40-\x4F]?\x33[\xC0-\xFF])?[\x40-\x4F]?\x8B[\x40-\x7F](.)[\x48\x49\x4C\x4D]\x8D[\x40-\x7F](.))");
+	// Publishing every writer's item count to its block: mov rax, [rbx+writers]; mov r8, [rcx+rax+block];
+	// test r8, r8; jz; mov eax, [rcx+rax+items]; mov [r8], eax; add rcx, writer size; sub rdx, 1; jnz
+	const Signatures::RegexSignature ParallelForWriterFlush(R"([\x48\x49]\x8B[\x40-\x7F](.)[\x48\x4C]\x8B[\x44\x4C\x54\x5C\x64\x6C\x74\x7C].(.)[\x48\x4D]\x85[\xC0-\xFF]\x74.\x8B[\x44\x4C\x54\x5C\x64\x6C\x74\x7C].(.)[\x40-\x4F]?\x89[\x00-\x3F][\x48\x49]\x83[\xC0-\xC7](.)[\x48\x49]\x83[\xE8-\xEF]\x01\x75.)");
+	// Arming: lea rax, [job]; mov [rbx+context], r9; mov [rbx+job], rax; mov eax, esi; xchg [rbx+counter], eax (twice);
+	// mov eax, esi; lock xadd [rbx+blocks claimed], eax; test eax, eax; jz (nothing appended)
+	const Signatures::RegexSignature ParallelForArm(R"(\x48\x8D\x05(....)[\x48\x4C]\x89[\x40-\x7F](.)\x48\x89[\x40-\x7F](.)\x8B[\xC0-\xFF]\x87[\x80-\xBF](....)\x8B[\xC0-\xFF]\x87[\x80-\xBF](....)\x8B[\xC0-\xFF]\xF0\x0F\xC1[\x80-\xBF](....)\x85\xC0\x74.)");
+	// mov rdx, [group+job list]; mov rcx, [g_TaskManager]; call kick; mov rcx, group; cmp [group+per-item claims], <zero>;
+	// je; call help; jmp; call help; then the wait: mov rcx, [group+job list]; mov rax, [rcx]; call [rax+wait]
+	const Signatures::RegexSignature AnimationSubmitKick(R"(\x48\x8B[\x50-\x57](.)\x48\x8B\x0D(....)\xE8(....)[\x48\x49]\x8B[\xC8-\xCF][\x40-\x47]?\x38[\x80-\xBF](....)\x74\x07\xE8(....)\xEB\x05\xE8(....)[\x48\x49]\x8B[\x48-\x4F](.)\x48\x8B\x01\xFF\x50(.))");
+	// Disarming: mov [rbx+context], rsi; mov [rbx+job], rsi; then emptying every writer: mov rax, [rbx+writers];
+	// lea rcx, [rcx+writer size]; mov dword [rcx+rax+items-size], items per block; mov [rcx+rax+block-size], rsi
+	const Signatures::RegexSignature ParallelForDisarm(R"([\x48\x4C]\x89[\x40-\x7F](.)[\x48\x4C]\x89[\x40-\x7F](.).{0,40}?[\x48\x49]\x8B[\x40-\x7F](.)[\x48\x49]\x8D[\x40-\x7F](.)\xC7\x44[\x00-\x3F](.)(....)[\x48\x4C]\x89[\x44\x4C\x54\x5C\x64\x6C\x74\x7C][\x00-\x3F](.))");
+	// Emptying the chunks, from the submit base: lea rax, [r8+chunks]; mov edx, chunk count; mov rcx, [rax];
+	// test rcx, rcx; jz; mov [rcx], esi; add rax, 8; sub rdx, 1; jnz; ...; mov [r8+blocks claimed], esi
+	const Signatures::RegexSignature ParallelForChunkReset(R"([\x48\x49]\x8D[\x40-\x47](.)\xBA(....)[\x48\x49]\x8B[\x00-\x3F][\x48\x49]\x85[\xC0-\xFF]\x74\x02\x89[\x00-\x3F][\x48\x49]\x83[\xC0-\xC7]\x08[\x48\x49]\x83[\xE8-\xEF]\x01\x75..{0,8}?[\x40-\x4F]?\x89[\x80-\xBF](....))");
 	// The append's prologue, up to mov ebp, TLS slot of the thread's parallel-for writer
 	const Signatures::RegexSignature AnimationTailAppend(R"(\x40\x53\x55\x41\x54\x48\x83\xEC\x20\x8B\x0D....\x4C\x8B\xE2\x65\x48\x8B\x04\x25\x58\x00\x00\x00\xBD(....))");
+	// Then claiming a block when the writer's is full: mov ebx, [rbp+items]; cmp ebx, items per block - 1; jbe;
+	// mov rax, [rbp+block]; test rax, rax; jz; mov [rax], ebx; mov rdx, [rbp+group]; ...; lock xadd [rdx+blocks claimed],
+	// ecx; ...; shr r8d, chunk shift; cmp r8d, chunk count; jb (past the last chunk, it stores the item through null);
+	// ...; lock xadd [r15+chunks], rax
+	const Signatures::RegexSignature ParallelForBlockClaim(R"(\x8B[\x40-\x7F](.)\x83[\xF8-\xFF](.)(?:\x0F\x86....|\x76.)[\x48\x4C]\x8B[\x40-\x7F](.)[\x48\x4D]\x85[\xC0-\xFF]\x74\x02\x89[\x00-\x3F][\x48\x4C]\x8B[\x40-\x7F](.).{0,8}?\xF0[\x40-\x4F]?\x0F\xC1[\x80-\xBF](....).{0,8}?[\x41]?\xC1[\xE8-\xEF](.)[\x41]?\x83[\xF8-\xFF](.)\x72..{0,64}?\xF0[\x48\x49\x4C\x4D]\x0F\xC1[\x40-\x7F](.))");
+	// The tail's ground ray: mov rcx, [skeleton+ground]; test rcx, rcx; jz; call is active; test al, al; jz
+	const Signatures::RegexSignature AnimationTailGround(R"([\x48\x49]\x8B[\x88-\x8F](....)[\x48\x4D]\x85\xC9\x74.\xE8(....)\x84\xC0\x74.)");
+	// That test, which only reads the ground state: test byte [rcx+flags], 1; jz; cmp qword [rcx+..], 0; jz; (again); mov al, 1; ret
+	const Signatures::RegexSignature GroundRayActiveBody(R"(\xF6\x41.\x01\x74.\x48\x83\x79.\x00\x74.\x48\x83\x79.\x00\x74.\xB0\x01\xC3)");
+	// Then every partial skeleton: cmp qword [partial+pose], 0; jz; (movaps xmm1, xmm6;) mov rcx, partial; call update
+	const Signatures::RegexSignature AnimationTailPartialUpdate(R"([\x48\x49]\x83[\xB8-\xBF](....)\x00\x74.(?:\x0F\x28[\xC8-\xCF]|[\x48\x49]\x8B[\xC8-\xCF]){1,3}\xE8(....))");
+	// The partial skeleton update ends by applying every pending animation control removal: ...; lea rcx, [partial+list];
+	// call erase; cmp qword [partial+count], 0; jnz
+	const Signatures::RegexSignature PartialPendingRemovals(R"([\x48\x49\x4C\x4D]\x8D[\x88-\x8F](....)\xE8....[\x48\x49]\x83[\xB8-\xBF](....)\x00\x75.)");
 
 	// A parallel-for group being armed: lea rax, [job]; mov [group+0x20], reg; mov [group+0x28], rax
 	const Signatures::RegexSignature ParallelForJobStore(R"(\x48\x8D\x05(....)[\x4C\x48]\x89[\x40-\x7F]\x20\x48\x89[\x40-\x7F]\x28)");
@@ -166,6 +236,13 @@ namespace XivAlexander::Game {
 	const Signatures::RegexSignature CameraCullItemType(R"([\x40-\x4F]?\x0F\xB6[\x02\x0A\x12\x1A\x32\x3A])");
 	const Signatures::RegexSignature CameraCullItemStart(R"([\x40-\x4F]?\x8B[\x42\x4A\x52\x5A\x62\x6A\x72\x7A]\x30)");
 	const Signatures::RegexSignature CameraCullItemCount(R"([\x40-\x4F]?\x8B[\x42\x4A\x52\x5A\x62\x6A\x72\x7A]\x34)");
+	// Where the culling builds its items: object type tests (cmp r11b, type) sort the visible objects into lists, then
+	// every list but the BG objects' becomes one item: call allocate item; ...; mov [rax+8], list; mov byte [rax], type
+	const Signatures::RegexSignature CameraCullObjectTypeTest(R"(\x41\x80[\xF8-\xFF](.)\x75)");
+	const Signatures::RegexSignature CameraCullSingleItem(R"(\xE8(....).{0,32}?\x48\x89[\x40-\x7F]\x08\xC6[\x00-\x03\x06\x07](.))");
+	// The item allocator returns the item at the writer's cursor: lea rax, [block+header]; mov [writer+cursor], rax;
+	// ...; mov eax, ebx (index); shl rax, item shift; add rax, [writer+cursor]
+	const Signatures::RegexSignature CameraCullItemAddress(R"([\x48\x49]\x8D[\x40-\x47](.)[\x48\x4C]\x89[\x40-\x7F](.).{0,24}?[\x48\x49]\xC1[\xE0-\xE7](.)[\x48\x49]\x03[\x40-\x7F](.))");
 
 	// add rcx, cell group (or lea); lea r8, [cell job]; movzx r9d, r12b; mov rdx, rsi (in any order); register restores;
 	// call or jmp parallel-for
@@ -183,7 +260,9 @@ namespace XivAlexander::Game {
 	const Signatures::RegexSignature CommandListContextArray(R"([\x48\x4C]\x69[\xC0-\xFF](....)[\x48\x4C]\x8B[\x44\x4C\x54\x5C]\x24.[\x48\x4C]\x03[\x40-\x7F](.))");
 	// The gather of one context's blocks starts with: inc rax (list + 1); lea rax, [rax+rax*2]; lea r12, [rcx+rax*8];
 	// mov eax, [rcx+rax*8+blocks]; mov ebp, eax; shl ebp, block shift
-	const Signatures::RegexSignature CommandListBlocks(R"(\x48\xFF\xC0.{0,12}?\x48\x8D\x04\x40.{0,8}?\x8B\x44\xC1(.)\x8B[\xE8-\xEF]\xC1[\xE0-\xE7](.))");
+	const Signatures::RegexSignature CommandListBlocks(R"(\x48\xFF\xC0.{0,12}?\x48\x8D\x04\x40.{0,8}?\x4C\x8D([\x04\x0C\x14\x1C\x24\x2C\x34\x3C])\xC1\x8B\x44\xC1(.)\x8B[\xE8-\xEF]\xC1[\xE0-\xE7](.))");
+	// Then, before copying, it loads the first block from that list: mov rdi, [r12] (or r13, in 7.20)
+	const Signatures::RegexSignature CommandListFirstBlock(R"([\x48-\x4F]\x8B)");
 	// Its copy of every full block: call memcpy; mov rdi, [rdi+next block]; add rbx, block size; sub rsi, 1; jnz
 	const Signatures::RegexSignature CommandListBlockCopy(R"(\xE8....[\x48\x4C]\x8B[\x80-\xBF](....)[\x48\x49]\x81[\xC0-\xC7](....)[\x48\x49]\x83[\xE8-\xEF]\x01\x75.)");
 	// Then the entry count: shr ebp, entry shift; sub ebp, [r12+free slots]
@@ -521,6 +600,12 @@ namespace XivAlexander::Game::Resolved {
 			Signatures::Describe(value.InputContext));
 	}
 
+	std::string to_string(const FontReplacementFunctions& value) {
+		return std::format("Present call {}, Present {}",
+			Signatures::Describe(value.PresentCall),
+			Signatures::Describe(value.Present));
+	}
+
 	const Signatures::ComplexSignature<SqpackLookupHooksFunctions> SqpackLookupHooks("SqpackLookupHooks", [](ResolveContext& ctx) {
 		// Each SqPackManager keeps the lookup for its kind of index in a member, which LoadSqPack sets with the
 		// address of either function and then compares against one of them.
@@ -705,6 +790,25 @@ namespace XivAlexander::Game::Resolved {
 		ctx.Require(found.has_value(), ResolveError::NotFound, "IME mode getter not found");
 		return *found;
 	});
+
+	const Signatures::ComplexSignature<FontReplacementFunctions> FontReplacement("FontReplacement", [](ResolveContext& ctx) {
+		const auto text = ctx.Text();
+		const auto call = ctx.Unique(SwapChainPresentCall, text, "Present call");
+		const auto callInstruction = static_cast<const uint8_t*>(call.begin(1)) - 1;
+
+		// Only PostTick walks the notifiers right before calling Present.
+		const auto before = (std::min)(static_cast<size_t>(0x100), static_cast<size_t>(callInstruction - text.data()));
+		ctx.Require(ctx.Find(PrePresentNotifierWalk, std::span(callInstruction - before, before)).has_value(), ResolveError::Mismatch,
+			"the Present call at {} does not follow the pre-present notifier walk", Signatures::Describe(callInstruction));
+
+		const auto present = call.ResolveAddress<const void*>(1);
+		ctx.Require(!ctx.FunctionStartingAt(present).empty(), ResolveError::Mismatch,
+			"Present {} is not where a function starts", Signatures::Describe(present));
+		return FontReplacementFunctions{
+			.PresentCall = Address(callInstruction),
+			.Present = Address(present),
+		};
+	});
 }
 
 namespace XivAlexander::Game::Resolved::CrowdFix {
@@ -775,6 +879,84 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 				.Pose = FieldOffset(ctx, pose, 1, "partial skeleton pose"),
 			};
 		}
+
+		struct JobPoolWakeAll {
+			const void* WakeAll{};
+			JobPoolLayout Layout;
+		};
+
+		// The job pool's wake-all, as what the kick calls, and the layout as the wake-all reads it. Used by
+		// ChainWorkerWakeups and InlineBgPrep.
+		JobPoolWakeAll FindJobPoolWakeAll(const ResolveContext& ctx) {
+			const auto call = ctx.Unique(JobPoolWakeAllCall, ctx.Text(), "job pool wake-all call");
+			const auto wakeAll = ctx.RequireInSection(call.ResolveAddress<const void*>(2), ".text", "job pool wake-all");
+			const auto body = ctx.Find(JobPoolWakeAllBody, ctx.FunctionStartingAt(wakeAll, "job pool wake-all"));
+			ctx.Require(body.has_value(), ResolveError::Mismatch, "job pool wake-all {} does not match", Signatures::Describe(wakeAll));
+			ctx.Require(ImportSlotCalledAt(ctx, *body, 6) == ImportSlot(ctx, "kernel32.dll", "SetEvent"), ResolveError::Mismatch,
+				"job pool wake-all {} does not call SetEvent", Signatures::Describe(wakeAll));
+
+			return {
+				.WakeAll = wakeAll,
+				.Layout = {
+					.TaskManagerJobPool = ByteAt(call, 1),
+					.Threads = ByteAt(*body, 2),
+					.ThreadCount = ByteAt(*body, 1),
+					.ThreadSkip = ByteAt(*body, 3),
+					.ThreadWakeCount = ByteAt(*body, 4),
+					.ThreadEvent = ByteAt(*body, 5),
+				},
+			};
+		}
+
+		// A disp8 operand, which is signed.
+		ptrdiff_t SignedByteAt(const ScanResult& m, size_t group) {
+			return m.Get<int8_t>(group);
+		}
+
+		// The function p is in, from the start of its first part to the end of its last. The compiler moves the code after
+		// a shrink-wrapped register save, or rarely run code, into parts of their own, which only chain to the first one in
+		// their unwind info; a pattern may well span parts.
+		std::span<const uint8_t> WholeFunctionContaining(const ResolveContext& ctx, const void* p, std::string_view what) {
+			const auto base = reinterpret_cast<const uint8_t*>(*ctx.Module());
+			const auto image = xivres::pe_image::from_loaded(base);
+			const auto rva = static_cast<uint32_t>(static_cast<const uint8_t*>(p) - base);
+			const auto table = image.function_table();
+			auto it = std::ranges::upper_bound(table, rva, {}, &xivres::pe_image::runtime_function::BeginAddress);
+			ctx.Require(it != table.begin() && rva < (it - 1)->EndAddress, ResolveError::NotFound, "{}: no function contains {}", what, Signatures::Describe(p));
+
+			const auto parts = FunctionParts(ctx, base + image.primary_of(*(it - 1)).BeginAddress);
+			const auto begin = std::ranges::min(parts, {}, [](const auto& part) { return part.data(); }).data();
+			const auto& last = std::ranges::max(parts, {}, [](const auto& part) { return part.data(); });
+			return {begin, last.data() + last.size()};
+		}
+
+		// The base register and displacement of mov r64, [base+disp] (no index, not rip relative) at the start of code.
+		std::optional<std::pair<uint8_t, int32_t>> LoadFrom(std::span<const uint8_t> code) {
+			if (code.size() < 3 || (code[0] & 0xF8) != 0x48 || (code[0] & 0x02) || code[1] != 0x8B)
+				return std::nullopt;
+
+			const auto mod = code[2] >> 6;
+			auto rm = code[2] & 7;
+			size_t next = 3;
+			if (mod == 3)
+				return std::nullopt;
+			if (rm == 4) {
+				// SIB without an index
+				if (code.size() < 4 || ((code[3] >> 3) & 7) != 4)
+					return std::nullopt;
+				rm = code[3] & 7;
+				next = 4;
+			}
+			if (mod == 0 && rm == 5)
+				return std::nullopt;
+
+			const auto baseRegister = static_cast<uint8_t>(rm | (code[0] & 1 ? 8 : 0));
+			if (mod == 0)
+				return std::make_pair(baseRegister, 0);
+			if (mod == 1)
+				return code.size() > next ? std::optional(std::make_pair(baseRegister, static_cast<int32_t>(static_cast<int8_t>(code[next])))) : std::nullopt;
+			return code.size() >= next + 4 ? std::optional(std::make_pair(baseRegister, *reinterpret_cast<const int32_t*>(&code[next]))) : std::nullopt;
+		}
 	}
 
 	std::string to_string(const FixDriverFunctions& value) {
@@ -812,14 +994,37 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			Signatures::Describe(value.Pose));
 	}
 
+	std::string to_string(const ParallelForGroupLayout& value) {
+		return std::format("writers +{} (count +{}, size {}, items +{}, block +{}), job list +{} (wait slot {}), context +{}, job +{}, chunks +{} ({} x {} blocks x {} items), blocks claimed +{}, claim counters +{} +{}, per-item claims +{}",
+			Signatures::Describe(value.Writers),
+			Signatures::Describe(value.WriterCount),
+			Signatures::Describe(value.WriterSize),
+			Signatures::Describe(value.WriterItems),
+			Signatures::Describe(value.WriterBlock),
+			Signatures::Describe(value.JobList),
+			Signatures::Describe(value.JobListWaitSlot),
+			Signatures::Describe(value.JobContext),
+			Signatures::Describe(value.Job),
+			Signatures::Describe(value.Chunks),
+			Signatures::Describe(value.ChunkCount),
+			Signatures::Describe(value.ChunkBlocks),
+			Signatures::Describe(value.BlockItems),
+			Signatures::Describe(value.BlocksClaimed),
+			Signatures::Describe(value.ClaimCounters[0]),
+			Signatures::Describe(value.ClaimCounters[1]),
+			Signatures::Describe(value.PerItemClaims));
+	}
+
 	std::string to_string(const DedupeSkeletonSyncsFunctions& value) {
 		return std::format("pose sync walk {}", Signatures::Describe(value.SyncWalk));
 	}
 
 	std::string to_string(const TrimCullingClearFunctions& value) {
-		return std::format("clear count {}, table +{}, culling manager {}",
+		return std::format("clear count {}, table +{}, object mask +{} ({} words), culling manager {}",
 			Signatures::Describe(value.ClearCount),
 			Signatures::Describe(value.TableOffset),
+			Signatures::Describe(value.ObjectMask),
+			Signatures::Describe(value.ObjectMaskWords),
 			Signatures::Describe(value.CullingManager));
 	}
 
@@ -840,9 +1045,15 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 	}
 
 	std::string to_string(const PoolStagingBlocksFunctions& value) {
-		return std::format("allocator manager {}, allocator +{}",
+		return std::format("allocator manager {}, allocator +{} (vtable {}, slots: terminate {}, alloc {}, free {}, size {}; alloc counter +{})",
 			Signatures::Describe(value.AllocatorManager),
-			Signatures::Describe(value.AllocatorOffset));
+			Signatures::Describe(value.AllocatorOffset),
+			Signatures::Describe(value.Vtable),
+			Signatures::Describe(value.TerminateSlot),
+			Signatures::Describe(value.AllocSlot),
+			Signatures::Describe(value.FreeSlot),
+			Signatures::Describe(value.SizeSlot),
+			Signatures::Describe(value.AllocCounter));
 	}
 
 	std::string to_string(const FreezeHiddenMinionsFunctions& value) {
@@ -858,11 +1069,21 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 	}
 
 	std::string to_string(const InlineBgPrepFunctions& value) {
-		return std::format("kick {}, render manager {}, prep list +{}, framework task manager +{}",
+		return std::format("kick {}, render manager {}, prep list +{}, framework task manager +{}, list slots: count {}, prepare {}, describe {}, job pool +{} (threads +{}, count +{}), thread pool +{}, pool context +{}, task slots {} and {}",
 			Signatures::Describe(value.Kick),
 			Signatures::Describe(value.RenderManager),
 			Signatures::Describe(value.PrepListOffset),
-			Signatures::Describe(value.FrameworkTaskManagerOffset));
+			Signatures::Describe(value.FrameworkTaskManagerOffset),
+			Signatures::Describe(value.ListCountSlot),
+			Signatures::Describe(value.ListPrepareSlot),
+			Signatures::Describe(value.ListDescribeSlot),
+			Signatures::Describe(value.Pool.TaskManagerJobPool),
+			Signatures::Describe(value.Pool.Threads),
+			Signatures::Describe(value.Pool.ThreadCount),
+			Signatures::Describe(value.Run.ThreadPool),
+			Signatures::Describe(value.Run.PoolContext),
+			Signatures::Describe(value.Run.TaskRunSlot),
+			Signatures::Describe(value.Run.TaskRunWithArgumentSlot));
 	}
 
 	std::string to_string(const SkipHiddenHotbarsFunctions& value) {
@@ -873,23 +1094,31 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 	}
 
 	std::string to_string(const ParallelAnimTailFunctions& value) {
-		return std::format("update {}, tail {}, entry count {}, entries {}, submit base {}, task manager {}, kick {}, help per item {}, help blocks {}, append {} (TLS +{}), partial skeletons: {}",
+		return std::format("update {}, tail {}, entry count {}, entries {}, submit base {} (group +{}: {}), task manager {}, kick {}, help per item {}, help blocks {}, append {} (TLS +{}), partial skeletons: {} (pending removals +{}), ground +{} (active {})",
 			Signatures::Describe(value.Update),
 			Signatures::Describe(value.Tail),
 			Signatures::Describe(value.EntryCount),
 			Signatures::Describe(value.Entries),
 			Signatures::Describe(value.SubmitBase),
+			Signatures::Describe(value.GroupOffset),
+			to_string(value.Group),
 			Signatures::Describe(value.TaskManager),
 			Signatures::Describe(value.Kick),
 			Signatures::Describe(value.HelpPerItem),
 			Signatures::Describe(value.HelpBlocks),
 			Signatures::Describe(value.Append),
 			Signatures::Describe(value.AppendTlsSlot),
-			to_string(value.Partials));
+			to_string(value.Partials),
+			Signatures::Describe(value.PartialPendingRemovals),
+			Signatures::Describe(value.SkeletonGround),
+			Signatures::Describe(value.GroundRayActive));
 	}
 
 	std::string to_string(const SplitCharacterCullingFunctions& value) {
-		return std::format("camera cull job {}", Signatures::Describe(value.CullJob));
+		return std::format("camera cull job {}, character item type {}, item size {}",
+			Signatures::Describe(value.CullJob),
+			Signatures::Describe(static_cast<size_t>(value.CharacterItemType)),
+			Signatures::Describe(value.ItemSize));
 	}
 
 	std::string to_string(const PerItemCullingClaimsFunctions& value) {
@@ -905,7 +1134,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 
 	std::string to_string(const GatherUsedCommandsFunctions& value) {
 		const auto& l = value.Layout;
-		return std::format("gather {}, sort {}, contexts +{} (count +{}, size {}), lists +{} (size {}, free slots +{}, blocks +{}), block size {} (next +{}), entry size {}",
+		return std::format("gather {}, sort {}, contexts +{} (count +{}, size {}), lists +{} (size {}, first block +{}, free slots +{}, blocks +{}), block size {} (next +{}), entry size {}",
 			Signatures::Describe(value.Gather),
 			Signatures::Describe(value.Sort),
 			Signatures::Describe(l.ContextArray),
@@ -913,6 +1142,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			Signatures::Describe(l.ContextSize),
 			Signatures::Describe(l.Lists),
 			Signatures::Describe(l.ListSize),
+			Signatures::Describe(l.ListFirstBlock),
 			Signatures::Describe(l.ListFreeSlots),
 			Signatures::Describe(l.ListBlocks),
 			Signatures::Describe(l.BlockSize),
@@ -1006,24 +1236,11 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			"job ring indices {} ({} increments) and {} ({} increments) are not a write and a read index",
 			Signatures::Describe(writeIndex), writes, Signatures::Describe(readIndex), reads);
 
-		const auto call = ctx.Unique(JobPoolWakeAllCall, text, "job pool wake-all call");
-		const auto wakeAll = ctx.RequireInSection(call.ResolveAddress<const void*>(2), ".text", "job pool wake-all");
-		const auto body = ctx.Find(JobPoolWakeAllBody, ctx.FunctionStartingAt(wakeAll, "job pool wake-all"));
-		ctx.Require(body.has_value(), ResolveError::Mismatch, "job pool wake-all {} does not match", Signatures::Describe(wakeAll));
-		ctx.Require(ImportSlotCalledAt(ctx, *body, 6) == ImportSlot(ctx, "kernel32.dll", "SetEvent"), ResolveError::Mismatch,
-			"job pool wake-all {} does not call SetEvent", Signatures::Describe(wakeAll));
-
+		const auto [wakeAll, layout] = FindJobPoolWakeAll(ctx);
 		return ChainWorkerWakeupsFunctions{
 			.QueueIndices = static_cast<const uint32_t*>(ctx.RequireInSection(writeIndex, ".data", "job queue indices")),
 			.WakeAll = Address(wakeAll),
-			.Layout = {
-				.TaskManagerJobPool = ByteAt(call, 1),
-				.Threads = ByteAt(*body, 2),
-				.ThreadCount = ByteAt(*body, 1),
-				.ThreadSkip = ByteAt(*body, 3),
-				.ThreadWakeCount = ByteAt(*body, 4),
-				.ThreadEvent = ByteAt(*body, 5),
-			},
+			.Layout = layout,
 		};
 	});
 
@@ -1040,11 +1257,53 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		// the table pointer is loaded into rax, which the loop stores through, right before the count
 		const auto load = ctx.Find(CullingVisibilityTableLoad, std::span(site - 0x30, 0x35));
 		ctx.Require(load && load->end(0) == site + 5, ResolveError::NotFound, "visibility table load not found");
-		return TrimCullingClearFunctions{
+		TrimCullingClearFunctions r{
 			.ClearCount = loop.begin<uint32_t>(1),
 			.TableOffset = ByteAt(*load, 1),
 			.CullingManager = FindCullingManager(ctx),
 		};
+
+		// The object slots, as the slot allocator and release that the game calls on the culling manager use them. The
+		// camera culling indexes the visibility table with the same slots.
+		std::set<const void*> callees;
+		for (const auto& m : ctx.All(CullingManagerCall, text)) {
+			if (m.ResolveAddress<void* const*>(1) == r.CullingManager)
+				callees.insert(m.ResolveAddress<const void*>(2));
+		}
+
+		// mask, objects, entry shift; and the words the allocator scans
+		std::optional<std::tuple<size_t, size_t, size_t>> allocator, release;
+		uint32_t words = 0;
+		for (const auto callee : callees) {
+			const auto fn = ctx.InSection(callee, ".text") ? ctx.FunctionStartingAt(callee) : std::span<const uint8_t>();
+			if (fn.empty())
+				continue;
+
+			if (const auto m = ctx.Find(CullingSlotAlloc, fn)) {
+				const auto current = std::make_tuple(ByteAt(*m, 1), ByteAt(*m, 4), ByteAt(*m, 3));
+				ctx.Require(!allocator || *allocator == current, ResolveError::Ambiguous, "culling slot allocators disagree");
+				allocator = current;
+				words = m->Get<uint32_t>(2);
+			}
+			if (const auto m = ctx.Find(CullingSlotRelease, fn)) {
+				const auto current = std::make_tuple(ByteAt(*m, 2), ByteAt(*m, 1), ByteAt(*m, 3));
+				ctx.Require(!release || *release == current, ResolveError::Ambiguous, "culling slot releases disagree");
+				release = current;
+			}
+		}
+		ctx.Require(allocator.has_value(), ResolveError::NotFound, "culling slot allocator not found");
+		ctx.Require(release.has_value(), ResolveError::NotFound, "culling slot release not found");
+
+		const auto [mask, objects, shift] = *allocator;
+		ctx.Require(*release == *allocator, ResolveError::Mismatch,
+			"the culling slot allocator (mask +0x{:X}, objects +0x{:X}) and release (mask +0x{:X}, objects +0x{:X}) disagree",
+			mask, objects, std::get<0>(*release), std::get<1>(*release));
+		ctx.Require(std::cmp_equal(static_cast<uint64_t>(words) * 32, *r.ClearCount), ResolveError::Mismatch,
+			"the culling slot allocator scans {} mask words for 0x{:X} visibility slots", words, *r.ClearCount);
+		ctx.Require(mask != r.TableOffset && mask != objects, ResolveError::Invalid, "the object mask +0x{:X} overlaps the visibility table or the objects", mask);
+		r.ObjectMask = mask;
+		r.ObjectMaskWords = words;
+		return r;
 	});
 
 	const Signatures::ComplexSignature<ShortenAllocatorLockFunctions> ShortenAllocatorLock("CrowdFix::ShortenAllocatorLock", [](ResolveContext& ctx) {
@@ -1098,11 +1357,76 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 	});
 
 	const Signatures::ComplexSignature<PoolStagingBlocksFunctions> PoolStagingBlocks("CrowdFix::PoolStagingBlocks", [](ResolveContext& ctx) {
-		const auto load = ctx.Unique(GraphicsAllocatorManagerLoad, ctx.Text(), "allocator manager load");
-		return PoolStagingBlocksFunctions{
+		const auto text = ctx.Text();
+		const auto load = ctx.Unique(GraphicsAllocatorManagerLoad, text, "allocator manager load");
+		PoolStagingBlocksFunctions r{
 			.AllocatorManager = static_cast<void* const*>(ctx.RequireInSection(load.ResolveAddress<const void*>(1), ".data", "allocator manager")),
 			.AllocatorOffset = ByteAt(load, 2),
 		};
+
+		const auto slotsOf = [&ctx](const void* const* vtable) {
+			std::vector<const void*> slots;
+			for (size_t i = 0; i < 32 && ctx.InSection(vtable[i], ".text"); i++)
+				slots.push_back(vtable[i]);
+			return slots;
+		};
+		const auto matchingSlots = [&ctx](const std::vector<const void*>& slots, const RegexSignature& signature, auto&& predicate) {
+			std::vector<std::pair<size_t, ScanResult>> found;
+			for (size_t i = 0; i < slots.size(); i++) {
+				if (const auto m = ctx.TryMatchAt(signature, CodeFrom(ctx, slots[i], 0x40)); m && predicate(*m))
+					found.emplace_back(i, *m);
+			}
+			return found;
+		};
+
+		// The allocator's class is the one whose vtable has the counting alloc that forwards to the small-object allocator
+		// set up next to it. Its other slots are told apart by which of that allocator's slots they forward to, and those
+		// by their code. A pooled block's size class must come from the real size query, and pooled blocks must still be
+		// freed by the real free when the pool is turned off, so a slot guessed wrong would corrupt the heap.
+		std::optional<std::tuple<const void* const*, const void* const*, int32_t>> classes;
+		for (const auto& m : ctx.All(GraphicsAllocatorVtables, text)) {
+			const auto vtable = m.ResolveAddress<const void* const*>(1);
+			const auto inner = m.ResolveAddress<const void* const*>(2);
+			const auto innerOffset = m.Get<int32_t>(3);
+			if (!ctx.InSection(vtable, ".rdata") || !ctx.InSection(inner, ".rdata") || (classes && std::get<0>(*classes) == vtable))
+				continue;
+			if (matchingSlots(slotsOf(vtable), GraphicsAllocatorCountingWrapper, [innerOffset](const ScanResult& w) { return w.Get<int32_t>(2) == innerOffset; }).empty())
+				continue;
+
+			ctx.Require(!classes, ResolveError::Ambiguous, "graphics allocator vtables at {} and {}", Signatures::Describe(std::get<0>(*classes)), Signatures::Describe(vtable));
+			classes.emplace(vtable, inner, innerOffset);
+		}
+		ctx.Require(classes.has_value(), ResolveError::NotFound, "graphics allocator vtable not found");
+		const auto [vtable, innerVtable, innerOffset] = *classes;
+		const auto slots = slotsOf(vtable);
+		const auto innerSlots = slotsOf(innerVtable);
+
+		const auto unique = [&ctx](const auto& found, std::string_view what) {
+			ctx.Require(found.size() == 1, ResolveError::Mismatch, "{} graphics allocator {} slots instead of 1", found.size(), what);
+			return found.front();
+		};
+		const auto [innerFree, innerFreeMatch] = unique(matchingSlots(innerSlots, GraphicsAllocatorFreeStart, [](const ScanResult&) { return true; }), "inner free");
+		const auto [innerSize, innerSizeMatch] = unique(matchingSlots(innerSlots, SmallObjectAllocatorSize, [](const ScanResult&) { return true; }), "inner size");
+		const auto forwardingTo = [&](size_t innerSlot) {
+			return [innerOffset, innerSlot](const ScanResult& w) {
+				return w.Get<int32_t>(1) == innerOffset && w.Get<uint8_t>(2) == innerSlot * 8;
+			};
+		};
+
+		const auto [allocSlot, alloc] = unique(matchingSlots(slots, GraphicsAllocatorCountingWrapper, [innerOffset](const ScanResult& w) { return w.Get<int32_t>(2) == innerOffset; }), "alloc");
+		r.Vtable = vtable;
+		r.AllocSlot = allocSlot;
+		r.FreeSlot = unique(matchingSlots(slots, GraphicsAllocatorForwardingWrapper, forwardingTo(innerFree)), "free").first;
+		r.SizeSlot = unique(matchingSlots(slots, GraphicsAllocatorForwardingWrapper, forwardingTo(innerSize)), "size").first;
+		r.TerminateSlot = unique(matchingSlots(slots, GraphicsAllocatorTerminateWrapper, [innerOffset](const ScanResult& w) {
+			return w.Get<int32_t>(1) == innerOffset && w.Get<uint8_t>(3) == w.Get<uint8_t>(4);
+		}), "terminate").first;
+		r.AllocCounter = FieldOffset(ctx, alloc, 1, "alloc counter");
+
+		// what the game itself calls to allocate through the manager
+		ctx.Require(ByteAt(load, 3) == r.AllocSlot * 8, ResolveError::Mismatch,
+			"the game allocates through slot +0x{:X}, but the counting alloc is slot {}", ByteAt(load, 3), r.AllocSlot);
+		return r;
 	});
 
 	const Signatures::ComplexSignature<FreezeHiddenMinionsFunctions> FreezeHiddenMinions("CrowdFix::FreezeHiddenMinions", [](ResolveContext& ctx) {
@@ -1155,12 +1479,43 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		ctx.Require(offsets.has_value(), ResolveError::NotFound, "BG instancing prep kick not found");
 
 		const auto load = ctx.Unique(RenderManagerLoad, text, "render manager load");
-		return InlineBgPrepFunctions{
+		InlineBgPrepFunctions r{
 			.Kick = Address(kick),
 			.RenderManager = static_cast<void* const*>(ctx.RequireInSection(load.ResolveAddress<const void*>(1), ".data", "render manager")),
 			.PrepListOffset = static_cast<size_t>(ctx.InRange<int32_t>(offsets->first, 1, 0x100000, "prep list offset")),
 			.FrameworkTaskManagerOffset = static_cast<size_t>(ctx.InRange<int32_t>(offsets->second, 1, 0x100000, "framework task manager offset")),
 		};
+
+		// The inline run does what the kick and a worker would: the kick's job list calls, then the worker's claim and
+		// task calls, with the context the worker passes.
+		const auto calls = ctx.Find(JobListKickCalls, CodeFrom(ctx, kick, 0x80));
+		ctx.Require(calls.has_value(), ResolveError::Mismatch, "job list kick {} does not call the job list as expected", Signatures::Describe(kick));
+		ctx.Require(ByteAt(*calls, 1) == ByteAt(*calls, 4), ResolveError::Mismatch, "the job list kick counts the items with two different slots");
+		for (const auto group : {1, 2, 3})
+			ctx.Require(ByteAt(*calls, group) % 8 == 0, ResolveError::Invalid, "job list slot offset 0x{:X}", ByteAt(*calls, group));
+		r.ListCountSlot = ByteAt(*calls, 1) / 8;
+		r.ListPrepareSlot = ByteAt(*calls, 2) / 8;
+		r.ListDescribeSlot = ByteAt(*calls, 3) / 8;
+
+		const auto task = ctx.Unique(JobRunTask, text, "job run task call");
+		const auto claim = ctx.Find(JobRunClaim, WholeFunctionContaining(ctx, task.begin(0), "job run"));
+		ctx.Require(claim.has_value(), ResolveError::NotFound, "job run claim call not found");
+		// The descriptor the describe fills is copied as it is into the queue entry, which the worker reads as these.
+		const auto throughRax = claim->Match()[1].matched;
+		const auto claimFunction = ByteAt(*claim, throughRax ? 1 : 6);
+		const auto claimState = ByteAt(*claim, throughRax ? 2 : 5);
+		const auto claimOwner = ByteAt(*claim, throughRax ? 3 : 4);
+		ctx.Require(claimOwner == claimFunction + 8 && claimState == claimFunction + 0x10, ResolveError::Mismatch,
+			"the job run claims with the function at +0x{:X}, its object at +0x{:X} and its state at +0x{:X}", claimFunction, claimOwner, claimState);
+		ctx.Require(ByteAt(task, 3) % 8 == 0 && ByteAt(task, 4) % 8 == 0, ResolveError::Invalid, "task slot offsets 0x{:X} and 0x{:X}", ByteAt(task, 3), ByteAt(task, 4));
+		r.Run = {
+			.ThreadPool = ByteAt(task, 1),
+			.PoolContext = ByteAt(task, 2),
+			.TaskRunSlot = ByteAt(task, 3) / 8,
+			.TaskRunWithArgumentSlot = ByteAt(task, 4) / 8,
+		};
+		r.Pool = FindJobPoolWakeAll(ctx).Layout;
+		return r;
 	});
 
 	const Signatures::ComplexSignature<SkipHiddenHotbarsFunctions> SkipHiddenHotbars("CrowdFix::SkipHiddenHotbars", [](ResolveContext& ctx) {
@@ -1204,8 +1559,8 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		const auto submitFn = ctx.FunctionStartingAt(submit.begin(0), "animation submit");
 		const auto jobListKick = FindJobListKick(ctx);
 		const auto kick = ctx.Unique(AnimationSubmitKick, submitFn, "animation submit kick");
-		ctx.Require(kick.ResolveAddress<const void*>(2) == jobListKick.Kick, ResolveError::Mismatch, "the animation submit kicks with another function");
-		ctx.Require(kick.ResolveAddress<void* const*>(1) == jobListKick.TaskManager, ResolveError::Mismatch, "the animation submit kicks on another task manager");
+		ctx.Require(kick.ResolveAddress<const void*>(3) == jobListKick.Kick, ResolveError::Mismatch, "the animation submit kicks with another function");
+		ctx.Require(kick.ResolveAddress<void* const*>(2) == jobListKick.TaskManager, ResolveError::Mismatch, "the animation submit kicks on another task manager");
 
 		// The append is the function with this prologue that the submit calls; its TLS slot moves from build to build.
 		const ScanResult* append = nullptr;
@@ -1224,10 +1579,10 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			.EntryCount = entries.ResolveAddress<int32_t*>(1),
 			.Entries = entries.ResolveAddress<void*>(2),
 			.SubmitBase = submit.ResolveAddress<void* const*>(1),
-			.TaskManager = kick.ResolveAddress<void* const*>(1),
-			.Kick = Address(kick.ResolveAddress<const void*>(2)),
-			.HelpPerItem = Address(ctx.RequireInSection(kick.ResolveAddress<const void*>(3), ".text", "per-item help")),
-			.HelpBlocks = Address(ctx.RequireInSection(kick.ResolveAddress<const void*>(4), ".text", "block help")),
+			.TaskManager = kick.ResolveAddress<void* const*>(2),
+			.Kick = Address(kick.ResolveAddress<const void*>(3)),
+			.HelpPerItem = Address(ctx.RequireInSection(kick.ResolveAddress<const void*>(5), ".text", "per-item help")),
+			.HelpBlocks = Address(ctx.RequireInSection(kick.ResolveAddress<const void*>(6), ".text", "block help")),
 			.Append = Address(append->begin(0)),
 			.AppendTlsSlot = static_cast<size_t>(ctx.InRange<int32_t>(append->Get<int32_t>(1), 1, 0x10000, "append TLS slot")),
 			.Partials = FindPartialSkeletonLayout(ctx),
@@ -1236,6 +1591,83 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		ctx.RequireInSection(r.Entries, ".data", "tail entries");
 		ctx.RequireInSection(r.SubmitBase, ".data", "submit base");
 		ctx.RequireInSection(r.TaskManager, ".data", "task manager");
+
+		// The fix repeats the submit's whole arm, kick, help, wait and reset sequence on the same group, so all of the
+		// group is read from the submit, and every field it touches more than once has to agree. The writer and block
+		// fields also have to agree with the append, which crashes once the claimed blocks pass the last chunk.
+		const auto group = ctx.First(AnimationSubmitGroup, submitFn, "animation submit group");
+		ctx.Require(group.ResolveAddress<void* const*>(1) == r.SubmitBase, ResolveError::Mismatch, "the animation submit group is not in the submit base");
+		const auto flush = ctx.First(ParallelForWriterFlush, After(submitFn, group), "parallel-for writer flush");
+		const auto arm = ctx.First(ParallelForArm, After(submitFn, flush), "parallel-for arming");
+		ctx.Require(static_cast<const uint8_t*>(arm.end(0)) <= kick.begin<const uint8_t>(0), ResolveError::Mismatch, "the animation submit arms its group after kicking it");
+		const auto disarm = ctx.First(ParallelForDisarm, After(submitFn, kick), "parallel-for disarming");
+		const auto chunkReset = ctx.First(ParallelForChunkReset, After(submitFn, disarm), "parallel-for chunk reset");
+		const auto claim = ctx.First(ParallelForBlockClaim, WholeFunctionContaining(ctx, append->begin(0), "animation append"), "parallel-for block claim");
+
+		r.GroupOffset = ByteAt(group, 3);
+		auto& g = r.Group;
+		ctx.Require(ByteAt(group, 2) > r.GroupOffset, ResolveError::Invalid, "the writer count +0x{:X} is before the group +0x{:X}", ByteAt(group, 2), r.GroupOffset);
+		g.WriterCount = ByteAt(group, 2) - r.GroupOffset;
+		g.Writers = ByteAt(flush, 1);
+		g.WriterBlock = ByteAt(flush, 2);
+		g.WriterItems = ByteAt(flush, 3);
+		g.WriterSize = ByteAt(flush, 4);
+		g.JobContext = ByteAt(arm, 2);
+		g.Job = ByteAt(arm, 3);
+		g.ClaimCounters[0] = FieldOffset(ctx, arm, 4, "claim counter");
+		g.ClaimCounters[1] = FieldOffset(ctx, arm, 5, "claim counter");
+		g.BlocksClaimed = FieldOffset(ctx, arm, 6, "blocks claimed");
+		g.JobList = ByteAt(kick, 1);
+		g.PerItemClaims = FieldOffset(ctx, kick, 4, "per-item claims");
+		g.BlockItems = static_cast<size_t>(ctx.InRange<int32_t>(disarm.Get<int32_t>(6), 1, 0x100, "items per block"));
+		g.ChunkCount = static_cast<size_t>(ctx.InRange<int32_t>(chunkReset.Get<int32_t>(2), 1, 0x100, "chunk count"));
+		g.ChunkBlocks = size_t{1} << ctx.InRange<uint8_t>(claim.Get<uint8_t>(6), 1, 16, "chunk shift");
+		ctx.Require(ByteAt(chunkReset, 1) > r.GroupOffset, ResolveError::Invalid, "the chunks +0x{:X} are before the group +0x{:X}", ByteAt(chunkReset, 1), r.GroupOffset);
+		g.Chunks = ByteAt(chunkReset, 1) - r.GroupOffset;
+		ctx.Require(ByteAt(kick, 8) % 8 == 0, ResolveError::Invalid, "job list wait slot offset 0x{:X}", ByteAt(kick, 8));
+		g.JobListWaitSlot = ByteAt(kick, 8) / 8;
+
+		ctx.Require(ByteAt(kick, 7) == g.JobList, ResolveError::Mismatch, "the animation submit waits on +0x{:X}, but kicks +0x{:X}", ByteAt(kick, 7), g.JobList);
+		ctx.Require(ByteAt(disarm, 1) == g.JobContext && ByteAt(disarm, 2) == g.Job, ResolveError::Mismatch,
+			"the animation submit arms +0x{:X} and +0x{:X}, but disarms +0x{:X} and +0x{:X}", g.JobContext, g.Job, ByteAt(disarm, 1), ByteAt(disarm, 2));
+		ctx.Require(ByteAt(disarm, 3) == g.Writers && ByteAt(disarm, 4) == g.WriterSize
+			&& std::cmp_equal(SignedByteAt(disarm, 5) + static_cast<ptrdiff_t>(g.WriterSize), g.WriterItems)
+			&& std::cmp_equal(SignedByteAt(disarm, 7) + static_cast<ptrdiff_t>(g.WriterSize), g.WriterBlock), ResolveError::Mismatch,
+			"the animation submit publishes and empties its writers differently");
+		ctx.Require(FieldOffset(ctx, chunkReset, 3, "blocks claimed") == r.GroupOffset + g.BlocksClaimed, ResolveError::Mismatch,
+			"the animation submit counts claimed blocks at +0x{:X}, but resets +0x{:X}", r.GroupOffset + g.BlocksClaimed, FieldOffset(ctx, chunkReset, 3, "blocks claimed"));
+		ctx.Require(ByteAt(claim, 1) == g.WriterItems && ByteAt(claim, 2) + 1 == g.BlockItems && ByteAt(claim, 3) == g.WriterBlock, ResolveError::Mismatch,
+			"the animation append fills its writer differently from the submit");
+		ctx.Require(FieldOffset(ctx, claim, 5, "blocks claimed") == g.BlocksClaimed && ByteAt(claim, 7) == g.ChunkCount && ByteAt(claim, 8) == g.Chunks, ResolveError::Mismatch,
+			"the animation append claims blocks differently from the submit");
+		ctx.Require(g.WriterItems + 4 <= g.WriterSize && g.WriterBlock + 8 <= g.WriterSize, ResolveError::Invalid, "writer fields outside a writer of {} bytes", g.WriterSize);
+
+		// The tail only casts a ground ray for a skeleton whose ground state passes this test.
+		const auto tailFn = WholeFunctionContaining(ctx, tail, "animation tail");
+		const auto ground = ctx.First(AnimationTailGround, tailFn, "animation tail ground ray");
+		const auto groundRayActive = ctx.RequireInSection(ground.ResolveAddress<const void*>(2), ".text", "ground ray test");
+		ctx.Require(ctx.TryMatchAt(GroundRayActiveBody, CodeFrom(ctx, groundRayActive, 0x20)).has_value(), ResolveError::Mismatch,
+			"the ground ray test {} does more than read the ground state", Signatures::Describe(groundRayActive));
+		r.SkeletonGround = FieldOffset(ctx, ground, 1, "skeleton ground");
+		r.GroundRayActive = Address(groundRayActive);
+
+		// Then it updates every partial skeleton with a pose, which ends by applying its pending animation control removals.
+		const auto partialUpdate = ctx.First(AnimationTailPartialUpdate, After(tailFn, ground), "animation tail partial skeleton update");
+		ctx.Require(FieldOffset(ctx, partialUpdate, 1, "partial skeleton pose") == r.Partials.Pose, ResolveError::Mismatch,
+			"the animation tail tests the pose at +0x{:X}, the pose sync walk at +0x{:X}", FieldOffset(ctx, partialUpdate, 1, "partial skeleton pose"), r.Partials.Pose);
+		std::optional<size_t> removals;
+		const auto partialUpdateFn = WholeFunctionContaining(ctx, ctx.RequireInSection(partialUpdate.ResolveAddress<const void*>(2), ".text", "partial skeleton update"), "partial skeleton update");
+		for (const auto& m : ctx.All(PartialPendingRemovals, partialUpdateFn)) {
+			// a list: its head, then its count
+			const auto count = FieldOffset(ctx, m, 2, "pending removals");
+			if (count != FieldOffset(ctx, m, 1, "pending removals list") + 8)
+				continue;
+			ctx.Require(!removals || *removals == count, ResolveError::Ambiguous, "pending removals at +0x{:X} and +0x{:X}", removals.value_or(0), count);
+			removals = count;
+		}
+		ctx.Require(removals.has_value(), ResolveError::NotFound, "pending animation control removals not found");
+		ctx.Require(*removals + 8 <= r.Partials.Stride, ResolveError::Invalid, "pending removals +0x{:X} outside a partial skeleton of 0x{:X} bytes", *removals, r.Partials.Stride);
+		r.PartialPendingRemovals = *removals;
 		return r;
 	});
 
@@ -1243,20 +1675,53 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		// Of the jobs stored into parallel-for groups, the camera culling job is the one that starts by reading its
 		// item's type, start and count.
 		const void* found = nullptr;
+		std::set<const void*> builders;
 		for (const auto& m : ctx.All(ParallelForJobStore, ctx.Text())) {
 			const auto job = m.ResolveAddress<const void*>(1);
-			if (job == found || !ctx.InSection(job, ".text") || ctx.FunctionStartingAt(job).empty())
-				continue;
+			if (job != found) {
+				if (!ctx.InSection(job, ".text") || ctx.FunctionStartingAt(job).empty())
+					continue;
 
-			const auto head = CodeFrom(ctx, job, 0x60);
-			if (!ctx.Find(CameraCullItemType, head) || !ctx.Find(CameraCullItemStart, head) || !ctx.Find(CameraCullItemCount, head))
-				continue;
+				const auto head = CodeFrom(ctx, job, 0x60);
+				if (!ctx.Find(CameraCullItemType, head) || !ctx.Find(CameraCullItemStart, head) || !ctx.Find(CameraCullItemCount, head))
+					continue;
 
-			ctx.Require(!found, ResolveError::Ambiguous, "camera cull jobs at {} and {}", Signatures::Describe(found), Signatures::Describe(job));
-			found = job;
+				ctx.Require(!found, ResolveError::Ambiguous, "camera cull jobs at {} and {}", Signatures::Describe(found), Signatures::Describe(job));
+				found = job;
+			}
+			builders.insert(WholeFunctionContaining(ctx, m.begin(0), "camera culling").data());
 		}
 		ctx.Require(found != nullptr, ResolveError::NotFound, "camera cull job not found");
-		return SplitCharacterCullingFunctions{.CullJob = Address(found)};
+		ctx.Require(builders.size() == 1, ResolveError::Mismatch, "{} functions arm the camera cull job instead of 1", builders.size());
+		const auto builder = WholeFunctionContaining(ctx, *builders.begin(), "camera culling");
+
+		// The function that arms the job builds its items: it sorts the visible objects by type, then puts every list but
+		// the BG objects' into a single item of the same type. The character type has to be one of those single items,
+		// and the item size is the stride the item allocator hands items out at.
+		std::set<uint8_t> objectTypes;
+		for (const auto& m : ctx.All(CameraCullObjectTypeTest, builder))
+			objectTypes.insert(m.Get<uint8_t>(1));
+		std::set<uint8_t> singleItemTypes;
+		const void* allocator = nullptr;
+		for (const auto& m : ctx.All(CameraCullSingleItem, builder)) {
+			const auto target = m.ResolveAddress<const void*>(1);
+			ctx.Require(!allocator || allocator == target, ResolveError::Mismatch, "the camera culling allocates its items with {} and {}", Signatures::Describe(allocator), Signatures::Describe(target));
+			allocator = target;
+			singleItemTypes.insert(m.Get<uint8_t>(2));
+		}
+		ctx.Require(allocator != nullptr, ResolveError::NotFound, "camera culling item allocation not found");
+		constexpr uint8_t characterType = 2;
+		ctx.Require(objectTypes.contains(characterType) && singleItemTypes.contains(characterType), ResolveError::Mismatch,
+			"the camera culling does not put objects of type {} into a single item of their own", characterType);
+
+		const auto address = ctx.First(CameraCullItemAddress, WholeFunctionContaining(ctx, ctx.RequireInSection(allocator, ".text", "camera culling item allocator"), "camera culling item allocator"), "camera culling item address");
+		ctx.Require(ByteAt(address, 2) == ByteAt(address, 4), ResolveError::Mismatch, "the camera culling item allocator returns items from another cursor");
+		const auto itemSize = size_t{1} << ctx.InRange<uint8_t>(address.Get<uint8_t>(3), 6, 8, "camera culling item shift");
+		return SplitCharacterCullingFunctions{
+			.CullJob = Address(found),
+			.CharacterItemType = characterType,
+			.ItemSize = itemSize,
+		};
 	});
 
 	const Signatures::ComplexSignature<PerItemCullingClaimsFunctions> PerItemCullingClaims("CrowdFix::PerItemCullingClaims", [](ResolveContext& ctx) {
@@ -1336,6 +1801,17 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		ctx.Require(prologue.has_value(), ResolveError::Mismatch, "command list gather of blocks {} does not start as expected", Signatures::Describe(blocks));
 		const auto copy = ctx.First(CommandListBlockCopy, After(blocksFn, *prologue), "block copy");
 		const auto entryCount = ctx.First(CommandListEntryCount, After(blocksFn, copy), "entry count");
+		// The first block, loaded from the list (lea reg, [rcx+rax*8]) before the copy.
+		const auto list = static_cast<uint8_t>(((prologue->Get<uint8_t>(1) >> 3) & 7) | 8);
+		const auto beforeCopy = After(blocksFn, *prologue).first(static_cast<size_t>(static_cast<const uint8_t*>(copy.begin(0)) - static_cast<const uint8_t*>(prologue->end(0))));
+		std::optional<int32_t> firstBlock;
+		for (const auto& m : ctx.All(CommandListFirstBlock, beforeCopy)) {
+			if (const auto load = LoadFrom(std::span(m.begin<const uint8_t>(0), beforeCopy.data() + beforeCopy.size())); load && load->first == list) {
+				firstBlock = load->second;
+				break;
+			}
+		}
+		ctx.Require(firstBlock.has_value() && *firstBlock >= 0, ResolveError::NotFound, "the command list gather of blocks does not load the first block");
 
 		// The list descriptor is found at (list + 1) * 24 inside the context: the lists start one descriptor in.
 		CommandListLayout r{
@@ -1344,16 +1820,17 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			.ContextSize = static_cast<size_t>(ctx.InRange<int32_t>(contextArray.Get<int32_t>(1), 0x100, 0x100000, "context size")),
 			.Lists = 24,
 			.ListSize = 24,
+			.ListFirstBlock = static_cast<size_t>(*firstBlock),
 			.ListFreeSlots = ByteAt(entryCount, 2),
-			.ListBlocks = ByteAt(*prologue, 1),
-			.BlockSize = size_t{1} << ctx.InRange<uint8_t>(prologue->Get<uint8_t>(2), 8, 24, "block shift"),
+			.ListBlocks = ByteAt(*prologue, 2),
+			.BlockSize = size_t{1} << ctx.InRange<uint8_t>(prologue->Get<uint8_t>(3), 8, 24, "block shift"),
 			.NextBlock = FieldOffset(ctx, copy, 1, "next block"),
 			.EntrySize = size_t{1} << ctx.InRange<uint8_t>(entryCount.Get<uint8_t>(1), 2, 8, "entry shift"),
 		};
 		ctx.Require(std::cmp_equal(copy.Get<int32_t>(2), r.BlockSize) && r.NextBlock == r.BlockSize - r.EntrySize, ResolveError::Mismatch,
 			"blocks of 0x{:X} bytes are copied 0x{:X} bytes at a time and linked at +0x{:X}", r.BlockSize, copy.Get<int32_t>(2), r.NextBlock);
-		ctx.Require(r.ListFreeSlots + 4 <= r.ListSize && r.ListBlocks + 4 <= r.ListSize, ResolveError::Invalid,
-			"list fields +0x{:X} and +0x{:X} are outside a list", r.ListFreeSlots, r.ListBlocks);
+		ctx.Require(r.ListFreeSlots + 4 <= r.ListSize && r.ListBlocks + 4 <= r.ListSize && r.ListFirstBlock + 8 <= r.ListSize, ResolveError::Invalid,
+			"list fields +0x{:X}, +0x{:X} and +0x{:X} are outside a list", r.ListFirstBlock, r.ListFreeSlots, r.ListBlocks);
 
 		return GatherUsedCommandsFunctions{
 			.Gather = Address(gather),

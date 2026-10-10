@@ -36,6 +36,8 @@
     <None Include="..\graphics\rt_manif.bin" />
   </ItemGroup>
   <ItemGroup>
-    <Manifest Include="DummyAssemblyIdentity.manifest" />
+    <Manifest Include="DpiAware.manifest">
+      <Filter>Resources</Filter>
+    </Manifest>
   </ItemGroup>
 </Project>

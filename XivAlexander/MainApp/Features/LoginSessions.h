@@ -47,6 +47,12 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		void Reload(bool selectMostRecentlyWritten = false);
 
+		/// Removes every session stored in Credential Manager, leaving those of the launch arguments; gets how many.
+		size_t ForgetStoredSessions();
+
+		/// Removes the session of the alias from Credential Manager; gets whether it was there.
+		bool ForgetStoredSession(const std::string& alias);
+
 		[[nodiscard]] static std::optional<std::pair<std::string, std::vector<std::pair<std::string, std::string>>>> GetMostRecentlyStoredArguments();
 
 		void ApplySelectedTo(std::vector<std::pair<std::string, std::string>>& args);

@@ -43,6 +43,10 @@ namespace XivAlexander::Apps::MainApp::Window {
 
 		std::map<uint16_t, std::function<void()>> m_menuIdCallbacks;
 
+		// The menu, which isn't the window's: its first submenu is the tray icon's, and is in the window menu.
+		Utils::Win32::Menu m_menu;
+		std::vector<UINT> m_systemMenuCommands;  // The commands of the items added to the window menu, in order.
+
 
 		xivres::util::on_dtor::multi m_cleanup;
 		xivres::util::on_dtor m_cleanupFramerateLockDialog;
@@ -60,6 +64,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 
 		LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 		void OnLayout(double zoom, double width, double height, int resizeType) override;
+		LRESULT OnSysCommand(WPARAM commandId, short xPos, short yPos) override;
 		void OnDestroy() override;
 		void OnThemeChanged() override;
 
@@ -73,6 +78,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		std::vector<std::filesystem::path> ResolveDirectories(const std::vector<std::filesystem::path>& configured) const;
 		std::filesystem::path ResolvePrimaryDirectory(const std::vector<std::filesystem::path>& configured, const wchar_t* defaultName) const;
 		void SetMenuStates() const;
+		void RepopulateSystemMenu();
 		void RegisterTrayIcon();
 		void RemoveTrayIcon();
 

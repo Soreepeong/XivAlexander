@@ -69,9 +69,15 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 	void NestedTtmp::Sort() {
 		std::sort(Children->begin(), Children->end(), [](const auto& l, const auto& r) {
-			if (l->Index == r->Index)
-				return l->Path.wstring() < r->Path.wstring();
-			return l->Index < r->Index;
+			if (l->Index != r->Index)
+				return l->Index < r->Index;
+
+			// Those without a position by name, ignoring case; names differing only in case, as they are.
+			const auto& ln = l->Path.native();
+			const auto& rn = r->Path.native();
+			if (const auto res = CompareStringOrdinal(ln.data(), static_cast<int>(ln.size()), rn.data(), static_cast<int>(rn.size()), TRUE); res != CSTR_EQUAL)
+				return res == CSTR_LESS_THAN;
+			return ln < rn;
 		});
 	}
 

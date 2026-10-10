@@ -159,6 +159,10 @@ std::optional<LRESULT> XivAlexander::Apps::MainApp::Window::CustomDrawDarkButton
 	if (_wcsicmp(className, WC_BUTTONW) != 0)
 		return std::nullopt;
 
+	// Those that look like push buttons are drawn as the theme draws them.
+	if (GetWindowLongPtrW(hButton, GWL_STYLE) & BS_PUSHLIKE)
+		return std::nullopt;
+
 	int part;
 	switch (GetWindowLongPtrW(hButton, GWL_STYLE) & BS_TYPEMASK) {
 		case BS_CHECKBOX:

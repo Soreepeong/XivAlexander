@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/Host.h"
 
+#include "Game/SignatureDefinitions.h"
 #include "MainApp/FontReplacement/GameLayout.h"
 #include "MainApp/FontReplacement/Utilities.h"
 #include "Utils/Win32/LoadedModule.h"
@@ -10,8 +11,9 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 void FontReplacement::Host::Log(LogLevel level, std::string message) {
-	static const auto s_logger = Misc::Logger::Acquire();
-	s_logger->Log(LogCategory::FontReplacement, message, level);
+	// Not kept in a static: the logger would then live until the DLL is detached, where its destructor waits on its thread,
+	// which can't exit under the loader lock.
+	Misc::Logger::Acquire()->Log(LogCategory::FontReplacement, message, level);
 }
 
 std::filesystem::path FontReplacement::Host::GameFileName() {
@@ -112,6 +114,38 @@ HRESULT FontReplacement::Host::PresentHook::PresentDetour(IDXGISwapChain* swapCh
 		}
 	}
 	return m_hook->Original(swapChain, syncInterval, flags);
+}
+
+FontReplacement::Host::PresentCallHook::PresentCallHook(std::function<void()> beforePresent)
+	: m_beforePresent(std::move(beforePresent)) {
+	Game::Resolved::FontReplacementFunctions functions;
+	if (const auto status = Game::Resolved::FontReplacement.Resolve(functions); status != Game::Signatures::ResolveError::Ok)
+		throw std::runtime_error(status.Detail);
+
+	m_hook.emplace("Kernel::SwapChain::Present (DeviceDX11::PostTick)", functions.PresentCall);
+	m_unhook = m_hook->SetHook([this](void* swapChain) { PresentDetour(swapChain); });
+
+	// Something else changed the call between finding it and redirecting it.
+	if (!m_hook->IsEnabled()) {
+		m_unhook.clear();
+		m_hook.reset();
+		throw std::runtime_error("The call to Present was changed by something else.");
+	}
+}
+
+FontReplacement::Host::PresentCallHook::~PresentCallHook() {
+	// Restores the call, then waits for a call still in Present, which may be waiting for the display.
+	m_unhook.clear();
+	m_hook.reset();
+}
+
+void FontReplacement::Host::PresentCallHook::PresentDetour(void* swapChain) {
+	try {
+		m_beforePresent();
+	} catch (const std::exception& e) {
+		Error("Before presenting a frame: {}", e.what());
+	}
+	m_hook->bridge(swapChain);
 }
 
 FontReplacement::Host::Texture::Texture(int width, int height) {

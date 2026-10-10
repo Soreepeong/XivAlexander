@@ -438,6 +438,31 @@ void XivAlexander::Apps::MainApp::Features::LoginSessions::Reload(bool selectMos
 	OnChange();
 }
 
+size_t XivAlexander::Apps::MainApp::Features::LoginSessions::ForgetStoredSessions() {
+	DWORD count = 0;
+	PCREDENTIALW* creds = nullptr;
+	const auto filter = std::format(L"{}*", CredentialTargetPrefix);
+	size_t removed = 0;
+	if (CredEnumerateW(filter.c_str(), 0, &count, &creds)) {
+		const auto freeCreds = xivres::util::on_dtor([creds] { CredFree(creds); });
+		for (DWORD i = 0; i < count; i++) {
+			if (creds[i]->Type == CRED_TYPE_GENERIC && CredDeleteW(creds[i]->TargetName, CRED_TYPE_GENERIC, 0))
+				removed++;
+		}
+	}
+	m_pImpl->Logger->Format(LogCategory::General, "Removed {} login session(s) from Credential Manager", removed);
+	Reload();
+	return removed;
+}
+
+bool XivAlexander::Apps::MainApp::Features::LoginSessions::ForgetStoredSession(const std::string& alias) {
+	const auto removed = !alias.empty() && CredDeleteW(CredentialTarget(alias).c_str(), CRED_TYPE_GENERIC, 0);
+	if (removed)
+		m_pImpl->Logger->Format(LogCategory::General, "Removed login session \"{}\" from Credential Manager", alias);
+	Reload();
+	return removed;
+}
+
 void XivAlexander::Apps::MainApp::Features::LoginSessions::ApplySelectedTo(std::vector<std::pair<std::string, std::string>>& args) {
 	Reload();
 

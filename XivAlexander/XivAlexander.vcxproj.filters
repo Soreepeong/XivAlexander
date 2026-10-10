@@ -159,6 +159,9 @@
     <ClCompile Include="MainApp\FontReplacement\FontStructs.cpp">
       <Filter>MainApp\FontReplacement</Filter>
     </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\FamilyPreview.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\FreeTypeFonts.cpp">
       <Filter>MainApp\FontReplacement</Filter>
     </ClCompile>
@@ -199,6 +202,9 @@
       <Filter>MainApp\FontReplacement</Filter>
     </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\Presets.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\PreviewRenderer.cpp">
       <Filter>MainApp\FontReplacement</Filter>
     </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\ReplacementFace.cpp">
@@ -352,6 +358,9 @@
     <ClInclude Include="MainApp\FontReplacement\FontStructs.h">
       <Filter>MainApp\FontReplacement</Filter>
     </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\FamilyPreview.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
     <ClInclude Include="MainApp\FontReplacement\FreeTypeFonts.h">
       <Filter>MainApp\FontReplacement</Filter>
     </ClInclude>
@@ -400,6 +409,9 @@
     <ClInclude Include="MainApp\FontReplacement\Presets.h">
       <Filter>MainApp\FontReplacement</Filter>
     </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\PreviewRenderer.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
     <ClInclude Include="MainApp\FontReplacement\ReplacementFace.h">
       <Filter>MainApp\FontReplacement</Filter>
     </ClInclude>
@@ -441,5 +453,19 @@
     <Manifest Include="DummyAssemblyIdentity.manifest">
       <Filter>Resources</Filter>
     </Manifest>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="MainApp\FontReplacement\FontPreviewTextPS.hlsl">
+      <Filter>MainApp\FontReplacement</Filter>
+    </FxCompile>
+    <FxCompile Include="MainApp\FontReplacement\FontPreviewVS.hlsl">
+      <Filter>MainApp\FontReplacement</Filter>
+    </FxCompile>
+    <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontEdgePS.hlsl">
+      <Filter>MainApp\FontReplacement</Filter>
+    </FxCompile>
+    <None Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontEdgeSquares.hlsli">
+      <Filter>MainApp\FontReplacement</Filter>
+    </None>
   </ItemGroup>
 </Project>

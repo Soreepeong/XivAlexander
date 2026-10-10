@@ -47,6 +47,14 @@ namespace XivAlexander::Apps::MainApp::Window {
 
 			// The selected row changed, or was unselected; told after the list is done with its own notification.
 			std::function<void(std::optional<size_t> row)> SelectionChanged;
+
+			// Rows may be selected together, with Ctrl and Shift; a check box of a selected row then sets those of all.
+			bool MultiSelect = false;
+			// Sets a check box of several rows at once; SetChecked for each if none.
+			std::function<void(const std::vector<size_t>& rows, size_t column, bool checked)> SetCheckedRows;
+
+			// A key pressed in the list, not editing; true if handled.
+			std::function<bool(UINT vk)> KeyDown;
 		};
 
 	private:
@@ -90,6 +98,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void Refresh();
 
 		[[nodiscard]] std::optional<size_t> GetSelectedRow() const;
+		[[nodiscard]] std::vector<size_t> GetSelectedRows() const;
 		void Select(size_t row);
 		void ClearSelection();
 		void BeginEdit(size_t row, size_t column, std::optional<wchar_t> typed = std::nullopt);

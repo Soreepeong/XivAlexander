@@ -671,8 +671,8 @@ void XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::MoveTtmps(c
 			auto name = item->Path.filename().wstring();
 			std::ranges::transform(name, name.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towupper(c)); });
 			if (!names.insert(std::move(name)).second) {
-				throw std::invalid_argument(std::format("More than one of the items is named \"{}\".",
-					xivres::util::unicode::convert<std::string>(item->Path.filename().wstring())));
+				throw std::invalid_argument(m_pImpl->Config->Runtime.FormatStringResUtf8(IDS_TTMP_ERROR_DUPLICATENAMES,
+					item->Path.filename().wstring()));
 			}
 
 			toMove.emplace_back(item);

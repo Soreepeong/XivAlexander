@@ -376,9 +376,14 @@ namespace {
 			while (loop) {
 				const auto choice = Dll::MessageBoxF(
 					nullptr, MB_ICONWARNING | MB_ABORTRETRYIGNORE,
-					L"{}\nReason: {}\n\nPress Abort to exit.\nPress Retry to open XivAlexander help webpage.\nPress Ignore to skip loading XivAlexander.",
-					loadPath.empty() ? L"Failed to resolve XivAlexander installation path." : std::format(L"Failed to load {}.", loadPath.wstring()),
-					e.what());
+					conf->Runtime.FormatStringRes(IDS_ERROR_LOAD_INSTALLED,
+						loadPath.empty()
+							? std::wstring(conf->Runtime.GetStringRes(IDS_ERROR_LOAD_INSTALLED_NOPATH))
+							: conf->Runtime.FormatStringRes(IDS_ERROR_LOAD_INSTALLED_PATH, loadPath.wstring()),
+						xivres::util::unicode::convert<std::wstring>(e.what()),
+						Utils::Win32::MB_GetString(IDABORT - 1),
+						Utils::Win32::MB_GetString(IDRETRY - 1),
+						Utils::Win32::MB_GetString(IDIGNORE - 1)));
 				switch (choice) {
 				case IDRETRY: {
 					SHELLEXECUTEINFOW shex{};

@@ -21,7 +21,8 @@ namespace XivAlexander {
 	struct FontReplacementFamilySource {
 		bool Enabled = true;
 
-		/// The preset, as a path relative to the preset folder; empty for a system font.
+		/// The preset: a path relative to the presets folder (<configuration folder>\FontPresets) for one imported there, or an
+		/// absolute path for one used where it is; empty for a system font.
 		std::string Preset;
 
 		/// The system font, if there is no preset.
@@ -30,6 +31,21 @@ namespace XivAlexander {
 		[[nodiscard]] bool IsPreset() const { return !Preset.empty(); }
 
 		bool operator==(const FontReplacementFamilySource&) const = default;
+	};
+
+	/// How a game font family (AXIS, JupiterN, ...) is replaced.
+	struct FontReplacementFamily {
+		/// Whether the family is replaced at all; if not, the game's own font is kept, as for a family without sources.
+		bool Enabled = true;
+
+		/// Whether a system font's digits are made monospaced: with its tabular figures (tnum) if it has them, else by putting
+		/// each in a cell as wide as its 0.
+		bool MonospacedDigits = true;
+
+		/// The sources, in order: of a preset, only the family's faces are used, and of a face several give, the last one's.
+		std::vector<FontReplacementFamilySource> Sources;
+
+		bool operator==(const FontReplacementFamily&) const = default;
 	};
 
 	/// The edge outline's width at a text size px: clamp(Scale * px, Min, Max) pixels. The defaults are the game's own edge,
@@ -51,24 +67,6 @@ namespace XivAlexander {
 		bool operator==(const FontReplacementEdgeConfig&) const = default;
 	};
 
-	/// How nameplate text is drawn.
-	enum class FontReplacementNamePlateMode : uint8_t {
-		/// As the game does: baked once at the text node's unscaled size, drawn scaled (soft as plates zoom).
-		Game,
-
-		/// Baked once at the size the plate has up close, drawn scaled down from there: 1:1 at full size.
-		BakedAtFullSize,
-
-		/// Laid out and drawn every frame at the size shown: always sharp, but costly with many plates.
-		Live,
-	};
-
-	NLOHMANN_JSON_SERIALIZE_ENUM(FontReplacementNamePlateMode, {
-		{FontReplacementNamePlateMode::BakedAtFullSize, "BakedAtFullSize"},
-		{FontReplacementNamePlateMode::Game, "Game"},
-		{FontReplacementNamePlateMode::Live, "Live"},
-	})
-
 	/// The font replacement's settings, saved as an object: draws the game's text with fonts of FFXIV-FontChanger's presets,
 	/// or of system fonts, rasterized at the size drawn.
 	class FontReplacementConfigGroup : public ConfigGroup {
@@ -82,30 +80,23 @@ namespace XivAlexander {
 		public:
 			using ConfigGroup::ConfigGroup;
 
-			/// The folder presets are chosen from.
-			ConfigItem<std::filesystem::path> PresetFolder{this, "PresetFolder"};
-
-			/// The sources per game font family (AXIS, JupiterN, ...), in order: of a preset, only the family's faces are
-			/// used, and of a face several give, the last one's. A family without any (and a face its sources lack) uses the
-			/// game's glyphs, with SystemFallback for the characters they lack.
-			ConfigItem<std::map<std::string, std::vector<FontReplacementFamilySource>>> FamilySources{this, "FamilySources"};
-
-			/// Whether a system font's digits are made monospaced: with its tabular figures (tnum) if it has them, else by
-			/// putting each in a cell as wide as its 0.
-			ConfigItem<bool> MonospacedDigits{this, "MonospacedDigits", true};
+			/// The settings per game font family. A family that isn't here, is turned off, or has no sources (and a face its
+			/// sources lack) uses the game's glyphs, with SystemFallback for the characters they lack.
+			ConfigItem<std::map<std::string, FontReplacementFamily>> Families{this, "Families"};
 
 			/// Whether characters the presets lack are drawn with Windows' fallback fonts, instead of the game's.
 			ConfigItem<bool> SystemFallback{this, "SystemFallback", true};
 		} Faces{this, "Faces"};
 
 		ConfigItem<FontReplacementEdgeConfig> Edge{this, "Edge", {}, [](const FontReplacementEdgeConfig& v) { return v.Clamped(); }};
-		ConfigItem<FontReplacementNamePlateMode> NamePlateMode{this, "NamePlateMode", FontReplacementNamePlateMode::BakedAtFullSize};
 	};
 
 	void to_json(nlohmann::json&, const FontReplacementFamilyFont&);
 	void from_json(const nlohmann::json&, FontReplacementFamilyFont&);
 	void to_json(nlohmann::json&, const FontReplacementFamilySource&);
 	void from_json(const nlohmann::json&, FontReplacementFamilySource&);
+	void to_json(nlohmann::json&, const FontReplacementFamily&);
+	void from_json(const nlohmann::json&, FontReplacementFamily&);
 	void to_json(nlohmann::json&, const FontReplacementEdgeConfig&);
 	void from_json(const nlohmann::json&, FontReplacementEdgeConfig&);
 }

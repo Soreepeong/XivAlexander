@@ -67,6 +67,7 @@
 #include <audioclient.h>
 #include <bcrypt.h>
 #include <CommCtrl.h>
+#include <Richedit.h>
 #include <DbgHelp.h>
 #include <dwmapi.h>
 #include <imm.h>

@@ -183,7 +183,7 @@ FontReplacement::GlyphAtlas* FontReplacement::FontReplacer::GetAtlas(const std::
 	if (const auto it = m_atlases.find(family); it != m_atlases.end())
 		return it->second.get();
 
-	auto atlas = std::make_unique<GlyphAtlas>(EqualsIgnoringCase(family, "AXIS") ? AxisAtlasSize : OtherAtlasSize, family);
+	auto atlas = std::make_unique<GlyphAtlas>(GetAtlasSize(family), family);
 	const auto p = atlas.get();
 	atlas->PageAdded = [this, p] { OnPageAdded(p); };
 	m_atlases.emplace(family, std::move(atlas));
@@ -216,8 +216,24 @@ void FontReplacement::FontReplacer::SetEdge(FontReplacementEdgeConfig edge) {
 	RebuildGlyphs();
 }
 
+int FontReplacement::FontReplacer::GetAtlasSize(std::string_view family) {
+	return EqualsIgnoringCase(family, "AXIS") ? AxisAtlasSize : OtherAtlasSize;
+}
+
+uint16_t FontReplacement::FontReplacer::GetClaimedTextureWidth(const FontReplacementEdgeConfig& edge, int atlasSize, float px) {
+	return static_cast<uint16_t>(std::clamp(std::round(static_cast<float>(atlasSize) / edge.GetWidth(px)), 256.f, 65535.f));
+}
+
+float FontReplacement::FontReplacer::GetDrawnPx(float size) {
+	return static_cast<float>(std::clamp(static_cast<int>(std::round(size * 2)), MinHalfPx, MaxHalfPx)) / 2.f;
+}
+
+int FontReplacement::FontReplacer::GetEdgeMargin(const FontReplacementEdgeConfig& edge, float px) {
+	return (std::max)(0, static_cast<int>(std::ceil(edge.GetWidth(px))) - 1);
+}
+
 FontReplacement::RasterGlyph FontReplacement::FontReplacer::FinishGlyph(const SizedFont& sized, RasterGlyph r) const {
-	const auto m = (std::max)(0, static_cast<int>(std::ceil(m_edge.GetWidth(sized.Px))) - 1);
+	const auto m = GetEdgeMargin(m_edge, sized.Px);
 	if (m == 0 || r.Width == 0)
 		return r;
 	const auto w = r.Width + 2 * m;
@@ -550,7 +566,7 @@ void FontReplacement::FontReplacer::Sync(GameFont* copy, const CopyInfo& info) c
 	// The edge and glare shaders step by one texel of this width (it goes into every vertex): the pages', which the game
 	// font's textures may not share (the lobby fonts' are smaller), else outlines sample several texels apart. Claiming a
 	// narrower width makes the step, and so the edge, that many times wider; the edge shader takes the step as its radius.
-	const auto width = static_cast<uint16_t>(std::clamp(std::round(static_cast<float>(sized.Atlas->Size()) / m_edge.GetWidth(sized.Px)), 256.f, 65535.f));
+	const auto width = GetClaimedTextureWidth(m_edge, sized.Atlas->Size(), sized.Px);
 	copy->TextureWidth() = width;
 	copy->TextureHeight() = width;
 	ApplyPages(copy, *sized.Atlas);

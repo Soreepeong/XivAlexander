@@ -215,6 +215,19 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Sets the edge outline's width at each text size. Game thread; glyphs are made again.
 		void SetEdge(FontReplacementEdgeConfig edge);
 
+		// Gets the sizes of the pages of a game font family's atlas.
+		[[nodiscard]] static int GetAtlasSize(std::string_view family);
+
+		// Gets the texture width a copy at a size claims for an edge (clamped settings), with pages of a size: the edge
+		// shader's radius is the pages' size over it. The settings' previews draw the edge with the same radius.
+		[[nodiscard]] static uint16_t GetClaimedTextureWidth(const FontReplacementEdgeConfig& edge, int atlasSize, float px);
+
+		// Gets the size a copy's glyphs are drawn at for a size asked for: rounded to half pixels, from 4 to 255 px.
+		[[nodiscard]] static float GetDrawnPx(float size);
+
+		// Gets the empty pixels around a glyph that an edge at a size needs (FinishGlyph).
+		[[nodiscard]] static int GetEdgeMargin(const FontReplacementEdgeConfig& edge, float px);
+
 		// Makes a glyph rasterized for a size (and adjusted as its element says) ready to be placed: surrounded with empty
 		// pixels for a wide edge, which is only drawn within a glyph's box and the pixel around it.
 		[[nodiscard]] RasterGlyph FinishGlyph(const SizedFont& sized, RasterGlyph r) const;

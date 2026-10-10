@@ -32,9 +32,13 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 			if (functions.CutSceneLanguageGetter) {
 				CutSceneLanguageGetter.emplace("FFXIV::GetCutSceneLanguage", *functions.CutSceneLanguageGetter);
+				// The game's index of a language is one less than its game_language. The item only holds the languages of
+				// LipSyncLanguages; others may have no lip sync or voices in this client, so they are checked again here.
 				Cleanup += CutSceneLanguageGetter->SetHook([this](void* p) -> int {
-					if (const auto forced = Config->Runtime.Modding.Languages.ForcedCharacterLipSync.Value(); forced != -1)
-						return forced;
+					using Languages = RuntimeConfigRepository::ModdingGroup::LanguagesGroup;
+					if (const auto language = Config->Runtime.Modding.Languages.LipSyncLanguage.Value();
+						std::ranges::find(Languages::LipSyncLanguages, language) != std::end(Languages::LipSyncLanguages))
+						return static_cast<int>(language) - 1;
 					return CutSceneLanguageGetter->bridge(p);
 				});
 			}

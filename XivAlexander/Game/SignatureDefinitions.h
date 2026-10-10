@@ -88,6 +88,16 @@ namespace XivAlexander::Game::Resolved {
 		void* const* InputContext{};
 	};
 
+	// Kernel::SwapChain::Present, which times the frame and calls IDXGISwapChain::Present.
+	using SwapChainPresentFn = void(*)(void* swapChain);
+
+	struct FontReplacementFunctions {
+		// DeviceDX11::PostTick's call of Present (call rel32) when the render thread is used, which it always is: after the
+		// render thread is done with the frame and the immediate context was cleared, and before the next frame is kicked.
+		uint8_t* PresentCall{};
+		SwapChainPresentFn Present{};
+	};
+
 	[[nodiscard]] std::string to_string(const SqpackLookupHooksFunctions& value);
 	[[nodiscard]] std::string to_string(const TextHooksFunctions& value);
 	[[nodiscard]] std::string to_string(const OpcodeGuesserCandidates& value);
@@ -96,6 +106,7 @@ namespace XivAlexander::Game::Resolved {
 	[[nodiscard]] std::string to_string(const MainThreadTimingHandlerFunctions& value);
 	[[nodiscard]] std::string to_string(const LoginSessionsFunctions& value);
 	[[nodiscard]] std::string to_string(const ImeModeIndicatorFunctions& value);
+	[[nodiscard]] std::string to_string(const FontReplacementFunctions& value);
 
 	extern const Signatures::ComplexSignature<SqpackLookupHooksFunctions> SqpackLookupHooks;
 	extern const Signatures::ComplexSignature<TextHooksFunctions> TextHooks;
@@ -106,6 +117,7 @@ namespace XivAlexander::Game::Resolved {
 	extern const Signatures::ComplexSignature<MainThreadTimingHandlerFunctions> MainThreadTimingHandler;
 	extern const Signatures::ComplexSignature<LoginSessionsFunctions> LoginSessions;
 	extern const Signatures::ComplexSignature<ImeModeIndicatorFunctions> ImeModeIndicator;
+	extern const Signatures::ComplexSignature<FontReplacementFunctions> FontReplacement;
 }
 
 // Every CrowdFix fix is a feature of its own, which keeps working when what another fix needs is not found.
@@ -126,6 +138,8 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 	using AnimationTailFn = void(*)(void* skeleton, float deltaTime);
 	using AnimationTailAppendFn = void(*)(void* submitBase, void* skeleton);
 	using CameraCullJobFn = int64_t(*)(void* cullingManager, uint8_t* item);
+	// Whether the animation tail casts a ground ray for a skeleton's ground state; only reads the state.
+	using GroundRayActiveFn = bool(*)(const void* ground);
 	using CommandListGatherFn = uint64_t(*)(void* device, uint32_t list, uint8_t** cursor, uint32_t* remaining, uint8_t** results, uint32_t* counts, uint32_t* total);
 	using CommandListSortFn = void(*)(uint8_t* out, uint8_t* in, int32_t first, int32_t last);
 
@@ -146,6 +160,36 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		size_t ThreadSkip{};  // uint8_t: the wake-all leaves the thread alone when set
 		size_t ThreadWakeCount{};  // int32_t: 0 when asleep
 		size_t ThreadEvent{};  // HANDLE
+	};
+
+	// How a job pool worker runs what it claims of a queued job list, as InnerThread::Run does: claim(owner, &state,
+	// &argument, &remaining) from the queue entry, then the task's vtable call with the pool context.
+	struct JobRunLayout {
+		size_t ThreadPool{};  // the JobPool*, in an InnerThread
+		size_t PoolContext{};  // what tasks are called with, in the JobPool
+		size_t TaskRunSlot{};  // task vtable slot called when the claim gives no argument
+		size_t TaskRunWithArgumentSlot{};
+	};
+
+	// A parallel-for group, as the animation submit arms, joins and resets it and its append fills it. Items go into
+	// blocks, blocks into chunks; each thread appends through its writer, which owns one block at a time.
+	struct ParallelForGroupLayout {
+		size_t Writers{};  // pointer to the writers, one per thread
+		size_t WriterCount{};  // uint32_t
+		size_t JobList{};  // the job list the group is kicked with
+		size_t JobContext{};  // what the job is called with
+		size_t Job{};  // void(*)(void* context, void** item)
+		size_t Chunks{};  // the first of ChunkCount chunk pointers
+		size_t BlocksClaimed{};  // uint32_t, incremented by every block claim; zero when nothing was appended
+		size_t ClaimCounters[2]{};  // uint32_t each, zeroed when the group is armed
+		size_t PerItemClaims{};  // uint8_t: the helps claim single items rather than blocks
+		size_t WriterSize{};
+		size_t WriterItems{};  // uint32_t, in a writer: items in its block, BlockItems when it has none
+		size_t WriterBlock{};  // pointer to the item count of its block, in a writer
+		size_t ChunkCount{};
+		size_t ChunkBlocks{};
+		size_t BlockItems{};
+		size_t JobListWaitSlot{};  // vtable slot of the job list's wait
 	};
 
 	// Graphics::SmallObjectAllocator, as its Free reads it: the slab chunk table and the backing allocator.
@@ -177,6 +221,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		size_t ContextSize{};  // sizeof(Kernel::Context)
 		size_t Lists{};  // the first list, in a context
 		size_t ListSize{};  // per list: first block, write pointer, u32 free slots, u32 blocks
+		size_t ListFirstBlock{};  // pointer to the first block, in a list
 		size_t ListFreeSlots{};  // uint32_t, in a list
 		size_t ListBlocks{};  // uint32_t, in a list
 		size_t BlockSize{};
@@ -195,7 +240,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 	};
 
 	// The list every Kernel::Notifier is linked into, and the two walks over it in DeviceDX11::PostTick, which call
-	// vtable+0x10 on every notifier before Present and vtable+0x08 after kicking the render thread.
+	// vtable+0x10 on every notifier before Present and vtable+0x08 after it, right before kicking the render thread.
 	struct SkipIdleNotifiersFunctions {
 		CRITICAL_SECTION* Lock{};
 		void* const* Head{};  // linked through +0x10
@@ -221,6 +266,11 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 	struct TrimCullingClearFunctions {
 		uint32_t* ClearCount{};  // the immediate of the loop that clears the visibility table 16 bytes at a time
 		size_t TableOffset{};  // the visibility table inside the culling manager
+		// The u32 words of the object slot bitmask inside the culling manager, as its slot allocator reads them: a bit
+		// is set while its slot (the index into the visibility table too) holds an object, and the allocator takes
+		// the lowest clear one.
+		size_t ObjectMask{};
+		uint32_t ObjectMaskWords{};
 		void* const* CullingManager{};
 	};
 
@@ -229,9 +279,16 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		GraphicsAllocatorLayout Layout;
 	};
 
+	// The graphics allocator's class: a wrapper whose vtable slots forward to the small-object allocator inside it.
 	struct PoolStagingBlocksFunctions {
 		void* const* AllocatorManager{};
 		size_t AllocatorOffset{};  // the graphics allocator that dynamic buffer writes use, inside the manager
+		const void* const* Vtable{};  // the graphics allocator's own
+		size_t TerminateSlot{};  // releases everything at once
+		size_t AllocSlot{};  // (size, alignment); also counts the allocation
+		size_t FreeSlot{};  // (block)
+		size_t SizeSlot{};  // (block): the size of a block it handed out
+		size_t AllocCounter{};  // int32_t, in the graphics allocator: what the alloc counts
 	};
 
 	struct FreezeHiddenMinionsFunctions {
@@ -250,6 +307,13 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		void* const* RenderManager{};
 		size_t PrepListOffset{};  // the single-item job list inside Render::Manager that RenderView kicks
 		size_t FrameworkTaskManagerOffset{};  // the TaskManager inside Framework that RenderView kicks it on
+		// The job list vtable slots the kick calls, in this order: item count, prepare, and describe, which fills a
+		// { claim function, its object, 16 bytes of claim state } descriptor.
+		size_t ListCountSlot{};
+		size_t ListPrepareSlot{};
+		size_t ListDescribeSlot{};
+		JobPoolLayout Pool;
+		JobRunLayout Run;
 	};
 
 	// The hotbar update's prepare of every slot of a hidden bar: lea rcx, [intermediate], ..., call Prepare; then the
@@ -265,7 +329,9 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		AnimationTailFn Tail{};
 		int32_t* EntryCount{};
 		void* Entries{};  // { void* skeleton; int32_t depth; } x EntryCount, sorted by depth
-		void* const* SubmitBase{};  // the animation submit's parallel-for group is at +0x30
+		void* const* SubmitBase{};
+		size_t GroupOffset{};  // the animation submit's parallel-for group, in the submit base
+		ParallelForGroupLayout Group;
 		void* const* TaskManager{};
 		JobListKickFn Kick{};
 		ParallelForHelpFn HelpPerItem{};
@@ -273,10 +339,15 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		AnimationTailAppendFn Append{};
 		size_t AppendTlsSlot{};  // the thread's parallel-for writer, in the game's TLS block
 		PartialSkeletonLayout Partials;
+		size_t SkeletonGround{};  // the ground ray state, in a skeleton
+		GroundRayActiveFn GroundRayActive{};
+		size_t PartialPendingRemovals{};  // the count of pending animation control removals, in a partial skeleton
 	};
 
 	struct SplitCharacterCullingFunctions {
 		CameraCullJobFn CullJob{};
+		uint8_t CharacterItemType{};  // the type byte of the item that holds every character
+		size_t ItemSize{};  // the stride the culling item allocator hands items out at
 	};
 
 	struct PerItemCullingClaimsFunctions {
@@ -296,6 +367,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 	};
 
 	[[nodiscard]] std::string to_string(const PartialSkeletonLayout& value);
+	[[nodiscard]] std::string to_string(const ParallelForGroupLayout& value);
 	[[nodiscard]] std::string to_string(const FixDriverFunctions& value);
 	[[nodiscard]] std::string to_string(const SkipIdleNotifiersFunctions& value);
 	[[nodiscard]] std::string to_string(const ChainWorkerWakeupsFunctions& value);

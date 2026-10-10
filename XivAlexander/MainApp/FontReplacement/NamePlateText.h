@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Config/FontReplacementConfigs.h"
 #include "MainApp/FontReplacement/Host.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
@@ -43,9 +42,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		int m_bakeTextYOffset = 0;
 		int m_bakeAlpha = 0;
 
-		// BakePlateRenderer: the BakeData being baked, and its own live mode (set by the game's text render mode setting).
+		// BakePlateRenderer: the BakeData being baked.
 		int m_rendererCurrentBakeData = 0;
-		int m_rendererLiveMode = 0;
 
 		// AtkResNode: its transform (a 2x2 matrix of floats, row by row), size, parent and scale.
 		int m_nodeTransform = 0;
@@ -58,12 +56,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		uintptr_t m_lastRenderer = 0;
 		bool m_rebakePending = false;
 
-		FontReplacementNamePlateMode m_mode = FontReplacementNamePlateMode::BakedAtFullSize;
-
 		std::optional<Host::Hook<uint8_t, uintptr_t, uintptr_t>> m_allocateBakeHook;
 		std::optional<Host::Hook<void, uintptr_t, float*, GameFontSet*, uintptr_t>> m_prepareHook;
 		std::optional<Host::Hook<void, uintptr_t, uintptr_t, uintptr_t>> m_drawBakedHook;
-		std::optional<Host::Hook<void, uintptr_t, uintptr_t>> m_bakePlateDrawHook;
 
 	public:
 		explicit NamePlateText(FontReplacer& replacer);
@@ -71,18 +66,12 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		NamePlateText& operator=(const NamePlateText&) = delete;
 		~NamePlateText();
 
-		// Gets or sets how nameplate text is drawn while the replacement is on. Game thread.
-		[[nodiscard]] FontReplacementNamePlateMode Mode() const { return m_mode; }
-		void SetMode(FontReplacementNamePlateMode value);
-
 		// Makes every plate allocate and bake its region again at its next update. The plates are reached from the renderer
 		// the hooks see (it is embedded in the NamePlate addon): through the one seen last if that addon is still loaded, else
 		// at the next draw.
 		void ForceRebake();
 
 	private:
-		[[nodiscard]] FontReplacementNamePlateMode EffectiveMode() const;
-
 		// Remembers the renderer a hook was called with, and makes the bakes asked for before it was seen.
 		void SeeRenderer(uintptr_t renderer);
 
@@ -100,8 +89,5 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		uint8_t AllocateBakeDetour(uintptr_t renderer, uintptr_t obj);
 		void PrepareDetour(uintptr_t renderer, float* rect, GameFontSet* set, uintptr_t node);
 		void DrawBakedDetour(uintptr_t renderer, uintptr_t node, uintptr_t bake);
-
-		// In Live mode, the renderer's own live mode (set by the game's text render mode setting).
-		void BakePlateDrawDetour(uintptr_t renderer, uintptr_t node);
 	};
 }

@@ -191,7 +191,22 @@ namespace XivAlexander {
 				ConfigItem<xivres::game_language> VoiceResourceOverride{this, "VoiceResourceOverride", xivres::game_language::Unspecified};
 				ConfigItem<std::vector<xivres::game_language>> FallbackPriority{this, "FallbackPriority"};
 				ConfigItem<std::vector<ForcedCharacterLanguage>> ForcedCharacterLanguages{this, "ForcedCharacterLanguages"};
-				ConfigItem<int> ForcedCharacterLipSync{this, "ForcedCharacterLipSync", -1};
+
+				// The languages the game's cutscene language can be: those it has voices of. Its index of a language is one
+				// less than the game_language (0 for Japanese); it indexes the cutscenes' lip sync tables and the voice files'
+				// suffixes, which only the client's own languages are sure to have.
+				static constexpr xivres::game_language LipSyncLanguages[]{
+					xivres::game_language::Japanese,
+					xivres::game_language::English,
+					xivres::game_language::German,
+					xivres::game_language::French,
+				};
+
+				// The language whose mouth movements cutscenes play; Unspecified leaves the game's own. Others are read as
+				// Unspecified.
+				ConfigItem<xivres::game_language> LipSyncLanguage{this, "LipSyncLanguage", xivres::game_language::Unspecified, [](const xivres::game_language& value) {
+					return std::ranges::find(LipSyncLanguages, value) == std::end(LipSyncLanguages) ? xivres::game_language::Unspecified : value;
+				}};
 			} Languages{this, "Languages"};
 
 			class TtmpGroup : public ConfigGroup {
@@ -273,6 +288,12 @@ namespace XivAlexander {
 		template<typename... Args>
 		[[nodiscard]] std::wstring FormatStringRes(UINT uId, Args&&... args) const {
 			return std::vformat(GetStringRes(uId), std::make_wformat_args(std::forward<Args&>(args)...));
+		}
+
+		/// FormatStringRes in UTF-8, for the message of an exception that is shown to the user as it is.
+		template<typename... Args>
+		[[nodiscard]] std::string FormatStringResUtf8(UINT uId, Args&&... args) const {
+			return xivres::util::unicode::convert<std::string>(FormatStringRes(uId, std::forward<Args>(args)...));
 		}
 
 		[[nodiscard]] std::wstring GetLanguageNameLocalized(xivres::game_language gameLanguage) const;

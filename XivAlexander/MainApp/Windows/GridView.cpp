@@ -41,7 +41,7 @@ XivAlexander::Apps::MainApp::Window::GridView::GridView(HWND hParent, UINT id, s
 	SetWindowLongPtrW(m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
 
 	m_hList = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
-		WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_CLIPCHILDREN | LVS_REPORT | LVS_OWNERDATA | LVS_SINGLESEL | LVS_SHOWSELALWAYS,
+		WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_CLIPCHILDREN | LVS_REPORT | LVS_OWNERDATA | LVS_SHOWSELALWAYS | (m_source.MultiSelect ? 0 : LVS_SINGLESEL),
 		0, 0, 0, 0, m_hWnd, nullptr, Dll::Module(), nullptr);
 	ListView_SetExtendedListViewStyle(m_hList, LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
 	for (size_t i = 0; i < m_columns.size(); ++i) {
@@ -76,6 +76,16 @@ std::optional<size_t> XivAlexander::Apps::MainApp::Window::GridView::GetSelected
 	if (const auto index = ListView_GetNextItem(m_hList, -1, LVNI_SELECTED); index >= 0 && static_cast<size_t>(index) < GetRowCount())
 		return static_cast<size_t>(index);
 	return std::nullopt;
+}
+
+std::vector<size_t> XivAlexander::Apps::MainApp::Window::GridView::GetSelectedRows() const {
+	std::vector<size_t> rows;
+	const auto count = GetRowCount();
+	for (auto index = ListView_GetNextItem(m_hList, -1, LVNI_SELECTED); index >= 0; index = ListView_GetNextItem(m_hList, index, LVNI_SELECTED)) {
+		if (static_cast<size_t>(index) < count)
+			rows.push_back(static_cast<size_t>(index));
+	}
+	return rows;
 }
 
 void XivAlexander::Apps::MainApp::Window::GridView::Select(size_t row) {
@@ -129,10 +139,22 @@ std::optional<std::pair<size_t, size_t>> XivAlexander::Apps::MainApp::Window::Gr
 }
 
 void XivAlexander::Apps::MainApp::Window::GridView::Toggle(size_t row, size_t column) {
-	if (!IsEditable(row, column) || m_columns[column].Kind != CellKind::Check || !m_source.GetChecked || !m_source.SetChecked)
+	if (!IsEditable(row, column) || m_columns[column].Kind != CellKind::Check || !m_source.GetChecked || (!m_source.SetChecked && !m_source.SetCheckedRows))
 		return;
-	m_source.SetChecked(row, column, !m_source.GetChecked(row, column));
-	ListView_RedrawItems(m_hList, static_cast<int>(row), static_cast<int>(row));
+
+	// The selected rows together, if this is one of them: all as this one becomes.
+	auto rows = m_source.MultiSelect ? GetSelectedRows() : std::vector<size_t>();
+	if (std::ranges::find(rows, row) == rows.end())
+		rows = {row};
+	std::erase_if(rows, [this, column](size_t r) { return !IsEditable(r, column); });
+	const auto checked = !m_source.GetChecked(row, column);
+	if (m_source.SetCheckedRows) {
+		m_source.SetCheckedRows(rows, column, checked);
+	} else {
+		for (const auto r : rows)
+			m_source.SetChecked(r, column, checked);
+	}
+	InvalidateRect(m_hList, nullptr, FALSE);
 }
 
 void XivAlexander::Apps::MainApp::Window::GridView::MoveRow(size_t from, size_t to) {
@@ -342,7 +364,13 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ListProc(UINT uMsg, WPARA
 		}
 
 		case WM_KEYDOWN: {
+			if (m_source.KeyDown && m_source.KeyDown(static_cast<UINT>(wParam)))
+				return 0;
 			const auto ctrl = GetKeyState(VK_CONTROL) < 0;
+			if (m_source.MultiSelect && ctrl && wParam == 'A') {
+				ListView_SetItemState(m_hList, -1, LVIS_SELECTED, LVIS_SELECTED);
+				return 0;
+			}
 			switch (wParam) {
 				case VK_LEFT:
 					if (m_column > 0)
@@ -398,9 +426,24 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ListProc(UINT uMsg, WPARA
 				return 0;
 			break;
 
+		case WM_MOUSEWHEEL: {
+			EndEdit(EndEditMode::ApplyOrCancel);
+
+			// Scrolls the list while it can that way, and then what the list is in, as nested scrolling goes elsewhere: the
+			// list would otherwise take every turn of the wheel over it, even with nothing left to scroll.
+			SCROLLINFO si{.cbSize = sizeof si, .fMask = SIF_RANGE | SIF_PAGE | SIF_POS};
+			const auto scrollable = (GetWindowLongPtrW(m_hList, GWL_STYLE) & WS_VSCROLL) && GetScrollInfo(m_hList, SB_VERT, &si);
+			const auto up = GET_WHEEL_DELTA_WPARAM(wParam) > 0;
+			const auto atEnd = !scrollable || (up ? si.nPos <= si.nMin : si.nPos + static_cast<int>(si.nPage) > si.nMax);
+			if (atEnd) {
+				if (const auto hOuter = GetParent(m_hWnd))
+					return SendMessageW(hOuter, WM_MOUSEWHEEL, wParam, lParam);
+			}
+			break;
+		}
+
 		case WM_VSCROLL:
 		case WM_HSCROLL:
-		case WM_MOUSEWHEEL:
 			EndEdit(EndEditMode::ApplyOrCancel);
 			break;
 
@@ -409,6 +452,21 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ListProc(UINT uMsg, WPARA
 			const POINT pt{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
 			if (const auto hit = HitTest(pt)) {
 				const auto [row, column] = *hit;
+				const auto isCheck = column < m_columns.size() && m_columns[column].Kind == CellKind::Check;
+				if (m_source.MultiSelect && (wParam & (MK_CONTROL | MK_SHIFT))) {
+					const auto result = DefSubclassProc(m_hList, uMsg, wParam, lParam);
+					m_row = row;
+					m_column = column;
+					InvalidateRect(m_hList, nullptr, FALSE);
+					return result;
+				}
+				if (m_source.MultiSelect && isCheck && ListView_GetItemState(m_hList, static_cast<int>(row), LVIS_SELECTED) && ListView_GetSelectedCount(m_hList) > 1) {
+					SetFocus(m_hList);
+					m_row = row;
+					m_column = column;
+					Toggle(row, column);
+					return 0;
+				}
 				const auto wasCurrent = row == m_row && column == m_column && GetFocus() == m_hList;
 				const auto result = DefSubclassProc(m_hList, uMsg, wParam, lParam);  // Selects, focuses, and may begin a drag.
 				if (m_dragRow)
@@ -455,7 +513,13 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ListProc(UINT uMsg, WPARA
 					ScreenToClient(m_hList, &ptClient);
 					if (const auto hit = HitTest(ptClient)) {
 						row = hit->first;
-						MoveCurrent(hit->first, hit->second);
+						// A selected row keeps the others selected with it, for the menu to act on them all.
+						if (m_source.MultiSelect && ListView_GetItemState(m_hList, static_cast<int>(hit->first), LVIS_SELECTED)) {
+							m_row = hit->first;
+							m_column = hit->second;
+						} else {
+							MoveCurrent(hit->first, hit->second);
+						}
 					}
 				}
 				if (row)

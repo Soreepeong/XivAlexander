@@ -218,7 +218,10 @@ std::optional<std::filesystem::path> XivAlexander::Misc::Logger::AskAndExportLog
 	try {
 		IFileSaveDialogPtr pDialog;
 		DWORD dwFlags;
+		// Remembers its own last folder, apart from the other file dialogs'.
+		static constexpr GUID ClientGuid{0x2688f2ef, 0x094b, 0x4886, {0xb1, 0x5b, 0x64, 0x16, 0x7e, 0xd3, 0x11, 0xc1}};
 		Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER));
+		Utils::Win32::Error::ThrowIfFailed(pDialog->SetClientGuid(ClientGuid));
 		Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypes(ARRAYSIZE(saveFileTypes), saveFileTypes));
 		Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypeIndex(0));
 		Utils::Win32::Error::ThrowIfFailed(pDialog->SetDefaultExtension(L"log"));

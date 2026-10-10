@@ -228,21 +228,9 @@ BEGIN
         MENUITEM SEPARATOR
         POPUP "TexTools MODパック(&T)"
         BEGIN
-            POPUP "(template entry to be inserted at bottom)"
-            BEGIN
-                MENUITEM "有効化(&E)",                     ID_MODDING_TTMP_ENTRY_ENABLE, CHECKED
-                MENUITEM "削除(&D)",                      ID_MODDING_TTMP_ENTRY_DELETE
-                MENUITEM SEPARATOR
-                MENUITEM "再起動必要",                       ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
-                MENUITEM "説明を表示(&S)",                   ID_MODDING_TTMP_ENTRY_SHOWDESCRIPTION
-                MENUITEM SEPARATOR
-            END
+            MENUITEM "再起動必要",                       ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
             MENUITEM "(インストール済みのMODパックなし)",         ID_MODDING_TTMP_NOENTRY, INACTIVE
             MENUITEM "(MOD機能がロードされてない)",            ID_MODDING_TTMP_NOTREADY, INACTIVE
-            MENUITEM SEPARATOR
-            MENUITEM "1次元でフォルダーを表示(&F)",            ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY
-            MENUITEM "1次元でフォルダーを表示の時、フォルダーの有・無効化設定を有効化(&T)", ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW
-            MENUITEM "専用のメニューを表示(&M)",              ID_MODDING_TTMP_SHOWDEDICATEDMENU
             MENUITEM SEPARATOR
             MENUITEM "すべてを有効化(&E)",                 ID_MODDING_TTMP_ENABLEALL
             MENUITEM "すべてを無効化(&D)",                 ID_MODDING_TTMP_DISABLEALL
@@ -252,8 +240,6 @@ BEGIN
             MENUITEM "フォルダーを開ける(&O)",               ID_MODDING_TTMP_OPENDIRECTORY
         END
         MENUITEM "再読み込み(&F)", ID_MODDING_TTMP_REFRESH
-        MENUITEM "置き換えファイルのフォルダーを開ける(&R)",      ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
-        MENUITEM "TTMPL/TTMPDファイルに変換して保存(&O)",  ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
         MENUITEM "別コーデックの.scdを再生可能にする(&C)",     ID_MODDING_USEALTCODECMUSICSUPPORT
         MENUITEM "すべてのファイルのアクセスをログに記録(I)",      ID_MODDING_LOGALLFILEACCESS
@@ -265,15 +251,9 @@ BEGIN
             MENUITEM "戦闘中のNPCのセリフ(&D)",             ID_MODDING_MUTEVOICE_LINE
         END
         MENUITEM SEPARATOR
-        MENUITEM "ゲームを再起動するまで適用されない場合があります。",   ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
-    END
-    POPUP "TTMP(&T)"
-    BEGIN
-        MENUITEM SEPARATOR
     END
     POPUP "設定(&C)"
     BEGIN
-        MENUITEM "詳細設定(&S)…", ID_CONFIGURE_SETTINGS
         MENUITEM SEPARATOR
         MENUITEM "環境（ランタイム）設定(&R)\tCtrl+Alt+R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
         MENUITEM "Opcodeの設定(&O)\tCtrl+Alt+O", ID_CONFIGURE_EDITOPCODECONFIGURATION
@@ -366,7 +346,6 @@ BEGIN
     IDS_NOUNLOADREASON_WNDPROC 
                             "他のプログラムにウィンドウのプロシージャを割り込まれました。先に競合のプログラムを終了してください。"
     IDS_ERROR_INJECT        "このプログラムの初期化に失敗しました。\nエラー：{}\nPID：{}\nパス：{}\nコマンドライン：{}"
-    IDS_WARNING_ZEROPING    "rtt={}, latency={}; VPNまたはネットワークから0msの遅延が報告されているため、遅延を計算に参考しない「モード２」をおすすめします。"
     IDS_ERROR_FREEGAMEMUTEX_CLOSEHANDLE 
                             "ハンドルの取得に失敗しました。({:p}(type {:2x}): {})"
     IDS_PINGTRACKER_START   "{} -> {}: 遅延の測定を開始します。"
@@ -475,7 +454,6 @@ BEGIN
     IDS_VERSIONSENSITIVE_CROWDFIX "CrowdFix (混雑時のパフォーマンス改善)"
     IDS_VERSIONSENSITIVE_FONTREPLACEMENT "フォントの置き換え"
     IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART "(!) 一部の機能は再起動するまで無効になっています。"
-    IDS_MENU_MODDING_REQUIRESENABLEANDRESTART "ここの機能はMODを有効化してゲームを再起動するまで適用されません。"
 END
 
 STRINGTABLE
@@ -484,7 +462,6 @@ BEGIN
     IDS_URL_RELEASES        "https://github.com/Soreepeong/XivAlexander/releases"
     IDS_ERROR_NO_FFXIV_PROCESS "{} プロセスを見つけませんでした。ゲームを起動しているか確認してください。"
     IDS_ERROR_NO_MATCHING_PROCESS "指定の条件に一致するプロセスを見つけることができませんでした。"
-    IDS_ERROR_RESTART_ADMIN "管理者権限で実行に失敗しました。{}"
     IDS_UPDATE_PROGRESS_DOWNLOADING_FILES "アップデートファイルをダウンロードしています・・・"
     IDS_UPDATE_PROGRESS_PREPARING_FILES "アップデートファイルを準備しています・・・"
     IDS_UPDATE_PROGRESS_CHECKING "アップデートを確認しています・・・"
@@ -504,7 +481,6 @@ BEGIN
                             "起動中のゲームのプロセス({}:{})にすでにXivAlexanderがロードされています。\n\n{}のボタンを押し再びロードするか、\n{}のボタンで終了するか、\n{}のボタンでスキップします。"
     IDS_CONFIRM_INJECT      "ゲームのプロセスを見つけました。\n\n・PID：{}\n・パス：{}\n\nこのプロセスにXivAlexanderをロードしますか？"
     IDS_UPDATE_FILE_TOO_BIG "アップデートのファイルサイズのがが大きすぎます。アップデートファイルの無欠性を信頼できる場合、手動でファイルを取り換えアップデートしてください。"
-    IDS_UPDATE_INVALID_VERSION "バージョン情報の検証に失敗しました。手動でアップデートを確認した後、続けてください。"
     IDS_HELP_ACTION         "作業を指定します。\n\t・auto: すでにゲームが起動中の場合起動中のプロセスにロードし、起動していない場合ゲームを起動して起動したプロセスにロードします。\n\t・ask: ゲームプロセス毎に行う作業を確認します。\n\t・load: ゲームプロセスにXivAlexanderをロードします。\n\t・unload: ゲームプロセスからXivAlexanderを終了します。\n\t・launcher: 指定のゲームランチャーを起動し、起動したゲームにXivAlexanderをロードします。\n\t・update-check: アップデートを確認します。\n\t・web: 配布サイト (https://github.com/Soreepeong/XivAlexander) を開きます。"
     IDS_HELP_LAUNCHER       "ランチャーを指定します。有効な値はauto（自動）、select（毎回確認）、squareenix（スクウェア・エニックス）、actozsoft（Actoz Soft）、shengqugames（Shengqu Games）、userjoygames（USERJOY GAMES）です。"
     IDS_HELP_QUIET          "エラーメッセージを表示しません。"
@@ -518,7 +494,6 @@ END
 STRINGTABLE
 BEGIN
     IDS_MENU_BACKGROUND_FRAMERATE_TARGET "バックグラウンド時のFPS制限: {:g} fps"
-    IDS_MENU_WORDWRAPCONFIGWINDOW "自動 &改行"
     IDS_FILTERSPEC_ALLFILES "すべてのファイル (*.*)"
     IDS_FILTERSPEC_TTMP     "TexTools MODパックファイル (*.ttmp, *.ttmp2, *.mpl)"
     IDS_CONFIRM_REMOVEALLTTMP "「{}」フォルダーにある全てのTexTools MODパックを削除します。"
@@ -537,10 +512,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_RESULT_EXCELCONFIGFILE_INSTALLED "テキスト置き換え定義ファイルをインストールしました。"
     IDS_ERROR_UNSUPPORTED_FILE_TYPE "サポートされないファイル形式です。"
-    IDS_TITLE_COMPRESSING   "データを圧縮しています…"
-    IDS_CONFIGURE           "設定"
     IDS_ERROR_NO_MATCHING_FILES "このフォルダで対応のファイルが見つかりませんでした"
     IDS_TITLE_IMPORT_TTMP   "TexTools MODパックを選択してください"
     IDS_TITLE_IMPORTING     "インポート中…"
@@ -606,16 +578,11 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_TITLE_INDEXINGFILES "ファイルを索引しています…({1}/{2}): {0}"
-    IDS_TITLE_FINALIZING    "ファイルの準備を完了しています…"
-    IDS_ERROR_MODDINGACTIVEREQUIRED "この機能のためにはMODが必要です。"
     IDS_ERROR_CANCELLING_TRYAGAINLATER "前のオペレーションをキャンセル中です。ちょっと後でもう一回してください。"
 END
 
 STRINGTABLE
 BEGIN
-    IDS_TITLE_EXPORTTTMPDIRECTORY "TTMPL/TTMPDファイルの保存フォルダーを選択してください"
-    IDS_TITLE_EXPORTTTMPPROGRESS "TTMPファイルセットに変換しています…({1}/{2}): {0}"
     IDS_UPDATE_CONFIRM_NOAUTO 
                             "新しいアップデートがあります。新規のバージョンは{4:%Ec}にリリーズされた{0}.{1}.{2}.{3}で、現在のバージョンは{5}.{6}.{7}.{8}です。\n\n{9}のボタンを押しリリーズノートを確認するか、\n{10}のボタンを押し今すぐアップデートするか、または\n{11}ボタンを押し取り消します。ゲームがもう起動中のため、自動アップデートはできません。Githubでアップデートを確認しますか？"
     IDS_UPDATE_ERROR_ACCESS_DENIED 
@@ -627,7 +594,7 @@ BEGIN
     IDS_OPCODEUPDATE_ERROR_404 "Opcodeの設定がまだアップデートされていません。後でもう一度してください。"
     IDS_OPCODEUPDATE_OK_NOTCHANGED "現在のOpcodeの設定がもう最新です。"
     IDS_OPCODEUPDATE_OK_CHANGED "Opcodeの設定をアップデートしました。"
-    IDS_SOCKETHOOK_SOCKET_RESET2 "{:x}: 強制終了 => {}"
+    IDS_SOCKETHOOK_SOCKET_RESET  "{:x}: 強制終了 => {}"
     IDS_MENU_TTMP_PROFILE   "プロフィール"
     IDS_MENU_MODDING_SAMPLINGRATE "オーディオサンプリングレート(&S)"
 END
@@ -745,12 +712,11 @@ BEGIN
     IDS_SETTINGS_FONT_WEIGHT "太さ"
     IDS_SETTINGS_FONT_STRETCH "幅"
     IDS_SETTINGS_FONT_STYLE "スタイル"
-    IDS_SETTINGS_FONT_ADDPRESET "プリセットを追加"
+    IDS_SETTINGS_FONT_ADDPRESET "プリセットを追加…"
     IDS_SETTINGS_FONT_ADDFONT "システムフォントを追加"
     IDS_SETTINGS_FONT_COPYTOOTHERS "他のファミリーにコピー"
     IDS_SETTINGS_FONT_CONFIRMCOPY "他のすべてのファミリーのソースを{}のもので置き換えますか？"
     IDS_SETTINGS_FONT_SOURCES_DESC "後のソースが字ごとに前のものの上に描かれます。プリセットはこのファミリーのフォントだけが使われます。"
-    IDS_SETTINGS_FONT_NOPRESETS "プリセットフォルダーにプリセットがありません。"
     IDS_SETTINGS_EDGE_SCALE "文字サイズ1ピクセルあたりの縁の太さ"
     IDS_SETTINGS_EDGE_MIN   "縁の最小の太さ (px)"
     IDS_SETTINGS_EDGE_MAX   "縁の最大の太さ (px)"
@@ -761,13 +727,11 @@ BEGIN
     IDS_SETTINGS_DIRS_ADD "フォルダーを追加…"
     IDS_SETTINGS_SHOWINEXPLORER "エクスプローラーで表示"
     IDS_SETTINGS_DIRS_DESC "ドラッグで並べ替えられます。<config> は設定フォルダー、<sqpack> はゲームの sqpack フォルダーを表します。"
-    IDS_SETTINGS_TTMP_NOFOLDER "(フォルダーなし)"
     IDS_SETTINGS_TTMP_AUTHOR "作者"
     IDS_SETTINGS_TTMP_VERSION "バージョン"
     IDS_SETTINGS_TTMP_STATUS "状態"
     IDS_SETTINGS_TTMP_FILTER "絞り込み"
     IDS_SETTINGS_TTMP_CONFIRMDELETE "「{}」を削除しますか?\n\n{}"
-    IDS_SETTINGS_TTMP_NOMATCH "(該当するモッドパックはありません)"
     IDS_SETTINGS_TTMP_RENAME "名前を変更"
     IDS_SETTINGS_TTMP_MOVETO "移動…"
     IDS_SETTINGS_TTMP_MOVETONEWFOLDER "新しいフォルダーへ移動"
@@ -776,6 +740,87 @@ BEGIN
     IDS_SETTINGS_TTMP_ORDER_DESC "ドラッグで並べ替えられます。複数のモッドパックが同じファイルを変更する場合、下にあるものが優先されます。"
     IDS_STATUS_TTMPPROFILE "\nモッドパックのプロファイル: {}"
     IDS_SETTINGS_MODDING_ENABLE_DESC "変更はゲームを再起動すると反映されます。"
+    IDS_SETTINGS_LIPSYNC    "カットシーンのリップシンク言語"
+    IDS_SETTINGS_LIPSYNC_DESC "カットシーンで口の動きに使われる言語です。カットシーンのボイスファイルも同じ言語で選ばれます。選べるのはゲームにボイスがある言語だけです。"
+    IDS_SETTINGS_FONT_PREVIEW_SIZE "サイズ"
+    IDS_SETTINGS_FONT_PREVIEW_TEXT "サンプルテキスト"
+    IDS_SETTINGS_FONT_PREVIEW_DESC "選んだサイズのフォントを、これらのソースから作られるとおりに、ゲームと同じ縁取りを付けて描きます。フォントにない文字はゲームの字形で描かれますが、SystemFallback が有効ならゲーム内ではシステムフォントで描かれます。"
+    IDS_SETTINGS_FONT_PREVIEW_COLORS "色"
+    IDS_SETTINGS_FONT_PREVIEW_NOEDGE "縁取りを表示できません: {}"
+    IDS_SETTINGS_EDGE_PREVIEW_DESC "{} をフォントの置き換えのとおりに、選んだサイズでこの設定の縁取りを付けて描きます。色はゲームで使われているもので、すべてのフォントのプレビューに使われます。"
+    IDS_SETTINGS_FONT_COLORS_DEFAULT "標準"
+    IDS_SETTINGS_FONT_COLORS_TOOLTIPLABEL "ツールチップの項目名"
+    IDS_SETTINGS_FONT_COLORS_ACTIONNAME "アクション名"
+    IDS_SETTINGS_FONT_COLORS_STATUSNAME "ステータス名"
+    IDS_SETTINGS_FONT_COLORS_WARNING "警告"
+    IDS_SETTINGS_FONT_COLORS_NOTICE "お知らせ"
+    IDS_SETTINGS_FONT_COLORS_QUESTHIGHLIGHT "クエストの強調"
+    IDS_SETTINGS_FONT_COLORS_TUTORIAL "チュートリアルの本文"
+    IDS_SETTINGS_RESTART_REGION "地域"
+    IDS_SETTINGS_MISCELLANEOUS "その他"
+    IDS_SETTINGS_UPDATES "アップデート"
+    IDS_SETTINGS_LAUNCH_SESSIONSWITCHING "セッション切り替えを使う"
+    IDS_SETTINGS_REMEMBER   "記憶する"
+    IDS_SETTINGS_SESSIONS_FORGET "すべて削除"
+    IDS_SETTINGS_SESSIONS_FORGET_CONFIRM "記憶したログインセッションをすべて削除しますか?\nWindows の資格情報マネージャーから削除されます。"
+    IDS_SETTINGS_SESSIONS_FORGETONE "このセッションを削除"
+    IDS_SETTINGS_SESSIONS_FORGETONE_CONFIRM "ログインセッション「{}」を削除しますか?\nWindows の資格情報マネージャーから削除されます。"
+    IDS_SETTINGS_LAUNCH_CLEARCOPIED "コピーしたコマンドラインを消去するまでの秒数"
+    IDS_SETTINGS_LAUNCH_CLEARCOPIED_DESC "コピーしたコマンドラインをこの秒数の後にクリップボードから消去します。0 にすると消去しません。"
+    IDS_SETTINGS_EDITMENU "編集 ▾"
+    IDS_SETTINGS_SHOWMORE "続きを表示"
+    IDS_SETTINGS_SHOWLESS "折りたたむ"
+    IDS_SETTINGS_TTMP_CONFIRMDELETEMANY "{}個のモッドパックを削除しますか?"
+    IDS_SETTINGS_FONT_MONOSPACEDDIGITS "システムフォントの数字を等幅にする"
+    IDS_SETTINGS_FONT_OPENPRESETFOLDER "プリセットフォルダーを開く"
+    IDS_SETTINGS_FONT_IMPORT_TITLE "このプリセットはプリセットフォルダーの外にあります。"
+    IDS_SETTINGS_FONT_IMPORT_CONTENT "{}\n\nプリセットフォルダーにコピーして取り込みますか？それとも、このファイルを今の場所のまま使いますか？"
+    IDS_SETTINGS_FONT_IMPORT_GLYPHS "このプリセットは、隣にある次のフォルダーからグリフ画像を読み込みます。取り込むと、これらのフォルダーもプリセット専用のフォルダーへ一緒にコピーされます。{}"
+    IDS_SETTINGS_FONT_IMPORT_NOGLYPHCOPY "このプリセットは次のフォルダーからグリフ画像を読み込みますが、プリセットのあるフォルダーの中にないため、一緒にコピーできません。今の場所のままでのみ使えます。{}"
+    IDS_SETTINGS_FONT_IMPORT_IMPORT "取り込む\nプリセットフォルダーにコピーします。後で元のファイルを変更しても反映されません。"
+    IDS_SETTINGS_FONT_IMPORT_INPLACE "今の場所のまま使う\n今の場所から読み込みます。ファイルを移動したり削除したりすると使えなくなります。"
+    IDS_SETTINGS_FONT_PRESETUNREADABLE "{}\n\nプリセットを読み込めません: {}"
+    IDS_SETTINGS_FONT_IMPORTFAILED "{}\n\nプリセットを取り込めませんでした: {}"
+    IDS_TTMP_ERROR_NAME_EMPTY "名前を空にすることはできません。"
+    IDS_TTMP_ERROR_NAME_DOTS "「.」と「..」は名前に使えません。"
+    IDS_TTMP_ERROR_NAME_TOOLONG "名前が長すぎます。"
+    IDS_TTMP_ERROR_NAME_INVALIDCHARS "名前に < > : "" / \\ | ? * や制御文字は使えません。"
+    IDS_TTMP_ERROR_NAME_TRAILING "名前の末尾にスペースやピリオドは使えません。"
+    IDS_TTMP_ERROR_NAME_RESERVED "この名前はWindowsで予約されているため使えません。"
+    IDS_TTMP_ERROR_DIFFERENTDRIVE "フォルダーを別のドライブに移動することはできません。"
+    IDS_TTMP_ERROR_MOVEFAILED "{} を {} に移動できませんでした"
+    IDS_TTMP_ERROR_ITEMGONE "この項目はもうモッドパックの一覧にありません。再読み込みしてからもう一度お試しください。"
+    IDS_TTMP_ERROR_NAMETAKEN "そのフォルダーには「{}」という名前のものがすでにあります。"
+    IDS_TTMP_ERROR_DESTINATIONMISSING "移動先のフォルダーが存在しません。"
+    IDS_TTMP_ERROR_DESTINATIONOUTSIDE "移動先が、TexTools モッドパックを探すどのフォルダーの中にもありません。"
+    IDS_TTMP_ERROR_MOVEINTOSELF "フォルダーをそれ自身やその中のフォルダーに移動することはできません。"
+    IDS_TTMP_ERROR_MOVEINTOMODPACK "モッドパックの中には移動できません。"
+    IDS_TTMP_ERROR_NAMETAKENATDESTINATION "移動先のフォルダーには「{}」という名前のものがすでにあります。"
+    IDS_TTMP_ERROR_DESTINATIONNOTFOUND "移動先のフォルダーが見つかりませんでした。"
+    IDS_TTMP_ERROR_PARENTMISSING "親フォルダーが存在しません。"
+    IDS_TTMP_ERROR_PARENTOUTSIDE "親フォルダーが、TexTools モッドパックを探すどのフォルダーの中にもありません。"
+    IDS_TTMP_ERROR_FOLDERINMODPACK "モッドパックの中にフォルダーを作ることはできません。"
+    IDS_TTMP_ERROR_CREATEFOLDER "フォルダー {} を作成できませんでした: {}"
+    IDS_TTMP_ERROR_FOLDERGONE "このフォルダーはもうモッドパックの一覧にありません。再読み込みしてからもう一度お試しください。"
+    IDS_TTMP_ERROR_ORDERINCOMPLETE "新しい順序には、フォルダー内のすべての項目をちょうど1回ずつ含める必要があります。"
+    IDS_TTMP_ERROR_SAVEORDER "{} を保存できませんでした: {}"
+    IDS_TTMP_ERROR_OPENDATA "{} を開けませんでした。"
+    IDS_TTMP_ERROR_MOVEBACKFAILED "{}; 元の場所に戻すこともできませんでした ({})。TexTools モッドパックを再読み込みしてください。"
+    IDS_TTMP_ERROR_DUPLICATENAMES "「{}」という名前の項目が複数あります。"
+    IDS_ERROR_FILE_TOO_BIG  "ファイルが大きすぎます。"
+    IDS_ERROR_HTTP          "HTTPエラー {}"
+    IDS_RESULT_IMPORT_OK    "成功: {}: {}"
+    IDS_RESULT_IMPORT_ERROR "エラー: {}: {}"
+    IDS_FONTPRESET_ERROR_CANNOTREAD "{} を読み込めません。"
+    IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE "グリフ画像のフォルダー {} がプリセットのフォルダーの中にありません。"
+    IDS_FONTPRESET_ERROR_NOFACES "このプリセットにはフォントがありません。"
+    IDS_FONTPREVIEW_ERROR_NOFACE "{} を描くためのフォントがありません。"
+    IDS_SETTINGS_PATCHCODE_DEFAULTNAME "新しいゲームのバグのフィックス"
+    IDS_ERROR_LOAD_INSTALLED "{}\n理由: {}\n\n終了する場合は{}のボタンを、\nXivAlexanderのヘルプページを開く場合は{}のボタンを、\nXivAlexanderをロードせずに続ける場合は{}のボタンを押してください。"
+    IDS_ERROR_LOAD_INSTALLED_NOPATH "XivAlexanderのインストール先を確認できませんでした。"
+    IDS_ERROR_LOAD_INSTALLED_PATH "{} をロードできませんでした。"
+    IDS_FONTPREVIEW_ERROR_EMPTYELEMENT "{} にはグリフがありません。インストールされていないか、読み込めない可能性があります。"
+    IDS_FONTPREVIEW_ERROR_NOGLYPHS "{} にはテキストの文字がひとつもありません。"
 END
 
 #endif    // Japanese (Japan) resources
@@ -952,21 +997,9 @@ BEGIN
         MENUITEM SEPARATOR
         POPUP "TexTools 모드팩(&T)"
         BEGIN
-            POPUP "(template entry to be inserted at bottom)"
-            BEGIN
-                MENUITEM "사용함(&E)",                     ID_MODDING_TTMP_ENTRY_ENABLE, CHECKED
-                MENUITEM "제거(&D)",                      ID_MODDING_TTMP_ENTRY_DELETE
-                MENUITEM SEPARATOR
-                MENUITEM "재시작 필요",                      ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
-                MENUITEM "설명 보기(&S)",                   ID_MODDING_TTMP_ENTRY_SHOWDESCRIPTION
-                MENUITEM SEPARATOR
-            END
+            MENUITEM "재시작 필요",                      ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
             MENUITEM "(설치된 모드팩 없음 )",               ID_MODDING_TTMP_NOENTRY, INACTIVE
             MENUITEM "(모딩 기능 준비되지 않음)",             ID_MODDING_TTMP_NOTREADY, INACTIVE
-            MENUITEM SEPARATOR
-            MENUITEM "일차원으로 폴더 표시(&F)",             ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY
-            MENUITEM "일차원으로 폴더 표시 시 폴더 활성화 제어 사용(&T)", ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW
-            MENUITEM "전용 메뉴 보이기(&M)",               ID_MODDING_TTMP_SHOWDEDICATEDMENU
             MENUITEM SEPARATOR
             MENUITEM "모두 활성화(&E)",                  ID_MODDING_TTMP_ENABLEALL
             MENUITEM "모두 비활성화(&D)",                 ID_MODDING_TTMP_DISABLEALL
@@ -976,8 +1009,6 @@ BEGIN
             MENUITEM "폴더 열기(&O)",                   ID_MODDING_TTMP_OPENDIRECTORY
         END
         MENUITEM "다시 불러오기(&F)", ID_MODDING_TTMP_REFRESH
-        MENUITEM "교체 파일 폴더 열기(&R)",             ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
-        MENUITEM "TTMPL/TTMPD파일로 내보내기(&O)",     ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
         MENUITEM "타 코덱 포함 음악 .scd 지원(&C)",      ID_MODDING_USEALTCODECMUSICSUPPORT
         MENUITEM "모든 파일 접근 기록하기(&I)",           ID_MODDING_LOGALLFILEACCESS
@@ -989,15 +1020,9 @@ BEGIN
             MENUITEM "전투 중 NPC 대사(&D)",             ID_MODDING_MUTEVOICE_LINE
         END
         MENUITEM SEPARATOR
-        MENUITEM "게임 재시작까지 변경 사항이 반영되지 않을 수도 있습니다.", ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
-    END
-    POPUP "TTMP(&T)"
-    BEGIN
-        MENUITEM SEPARATOR
     END
     POPUP "설정(&C)"
     BEGIN
-        MENUITEM "상세 설정(&S)...", ID_CONFIGURE_SETTINGS
         MENUITEM SEPARATOR
         MENUITEM "런타임(프로그램) 설정 변경(&R)\tCtrl+Alt+R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
         MENUITEM "옵코드 설정 변경(&O)\tCtrl+Alt+O", ID_CONFIGURE_EDITOPCODECONFIGURATION
@@ -1151,7 +1176,6 @@ BEGIN
     IDS_NOUNLOADREASON_SOCKET "다른 프로그램이 소켓 함수를 가로챘습니다. 다른 프로그램을 먼저 종료해 주세요."
     IDS_NOUNLOADREASON_WNDPROC "다른 프로그램이 창 프로시저를 가로챘습니다. 다른 프로그램을 먼저 종료해 주세요."
     IDS_ERROR_INJECT        "이 프로그램을 초기화하지 못했습니다.\n오류: {}\nPID: {}\n경로: {}\n명령줄: {}"
-    IDS_WARNING_ZEROPING    "rtt={}, latency={}; VPN 또는 네트워크에서 핑이 0ms라고 보고하고 있습니다. 현재 핑 정보를 사용하지 않는 ""모드 2""를 사용하는 것을 권장합니다."
     IDS_ERROR_FREEGAMEMUTEX_CLOSEHANDLE 
                             "핸들 처리에 실패했습니다. ({:p}(type {:2x}): {})"
     IDS_PINGTRACKER_START   "{} -> {}: 지연 시간 측정을 시작합니다."
@@ -1260,7 +1284,6 @@ BEGIN
     IDS_VERSIONSENSITIVE_CROWDFIX "CrowdFix (사람 많은 곳 성능 개선)"
     IDS_VERSIONSENSITIVE_FONTREPLACEMENT "폰트 교체"
     IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART "(!) 일부 기능이 재시작 전까지 비활성화되었습니다."
-    IDS_MENU_MODDING_REQUIRESENABLEANDRESTART "모드 기능을 사용하고 게임을 재시작해야 여기의 기능들이 적용됩니다."
 END
 
 STRINGTABLE
@@ -1269,7 +1292,6 @@ BEGIN
     IDS_URL_RELEASES        "https://github.com/Soreepeong/XivAlexander/releases"
     IDS_ERROR_NO_FFXIV_PROCESS "{} 프로세스를 찾을 수 없습니다. 먼저 게임을 실행하고 다시 시도해 주세요."
     IDS_ERROR_NO_MATCHING_PROCESS "지정한 조건에 맞는 프로세스를 찾을 수 없었습니다."
-    IDS_ERROR_RESTART_ADMIN "관리자 권한으로 실행할 수 없었습니다. {}"
     IDS_UPDATE_PROGRESS_DOWNLOADING_FILES "업데이트 파일 다운로드 중..."
     IDS_UPDATE_PROGRESS_PREPARING_FILES "업데이트 파일 준비 중..."
     IDS_UPDATE_PROGRESS_CHECKING "업데이트 확인 중..."
@@ -1290,15 +1312,12 @@ BEGIN
                             "이미 실행중인 게임 프로세스({}:{})에 XivAlexander가 이미 불러들어져 있습니다.\n\n{} 버튼으로 다시 불러들이거나\n{} 버튼으로 종료하거나\n{} 버튼으로 건너뛰세요."
     IDS_CONFIRM_INJECT      "게임 프로세스를 찾았습니다.\n\n* PID: {}\n* 경로: {}\n\n이 프로세스에 XivAlexander을 불러들일까요?"
     IDS_UPDATE_FILE_TOO_BIG "업데이트 파일이 너무 큽니다. 문제가 없는 업데이트 파일이란 것이 확실하다면 수동으로 파일을 교체해 업데이트해 주세요."
-    IDS_UPDATE_INVALID_VERSION "버전 정보를 검증할 수 없었습니다. 수동으로 업데이트 확인 후 진행해 주세요."
     IDS_HELP_ACTION         "작업을 지정합니다.\n\t* auto: 게임이 이미 실행 중이면 실행중인 게임 프로세스로 불러들이고, 아니라면 게임을 실행하고 실행된 게임에 불러들입니다.\n\t* ask: 게임 프로세스 별 작업을 묻습니다.\n\t* load: 게임 프로세스에 XivAlexander를 불러들입니다.\n\t* unload: 게임 프로세스에서 XivAlexander를 종료합니다.\n\t* launcher: 지정한 게임 런처를 실행하고 실행된 게임에 XivAlexander를 불러들입니다.\n\t* update-check: 업데이트를 확인합니다.\n\t* web: 배포 웹페이지 https://github.com/Soreepeong/XivAlexander 를 엽니다."
     IDS_HELP_LAUNCHER       "런처를 지정합니다. 사용 가능한 값은 auto (감지), select (선택), squareenix (스퀘어 에닉스), actozsoft (액토즈소프트), shengqugames (Shengqu Games), userjoygames (USERJOY GAMES) 입니다."
     IDS_HELP_QUIET          "오류 메시지를 보이지 않습니다."
     IDS_HELP_DISABLE_RUNAS  "어떤 경우에도 관리자 권한으로 실행하지 않습니다."
     IDS_HELP_INTERNAL_USE_ONLY "내부 용도입니다. 사용 금지."
     IDS_HELP_TARGETS        "불러들이거나 종료 시에는 프로세스 ID 또는 프로세스 경로 접미사, 실행 시에는 실행할 프로세스의 경로입니다."
-    IDS_TITLE_IMPORT_FONTCONFIG_PRESET "폰트 프리셋 파일 불러오기"
-    IDS_TITLE_ADD_EXTERNAL_GAME_DIRECTORY "외부 게임 설치 폴더 추가하기"
     IDS_NOTIFY_TTMP_HAS_CONFIGURATION 
                             "방금 설치한 TexTools 모드팩 파일은 추가 설정이 필요합니다. 메뉴에서 설정해 주세요."
 END
@@ -1306,7 +1325,6 @@ END
 STRINGTABLE
 BEGIN
     IDS_MENU_BACKGROUND_FRAMERATE_TARGET "비활성화 시 FPS 제한: {:g} fps"
-    IDS_MENU_WORDWRAPCONFIGWINDOW "자동 &줄바꿈"
     IDS_FILTERSPEC_ALLFILES "모든 파일 (*.*)"
     IDS_FILTERSPEC_TTMP     "TexTools 모드팩 파일 (*.ttmp, *.ttmp2, *.mpl)"
     IDS_CONFIRM_REMOVEALLTTMP """{}"" 폴더에 있는 모든 TexTools 모드팩 파일을 제거합니다."
@@ -1325,11 +1343,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_RESULT_EXCELCONFIGFILE_INSTALLED "문자열 변경 규칙 파일로 설치하였습니다."
-    IDS_RESULT_FONTCONFIG_INSTALLED "폰트 프리셋 파일로 설치하였습니다."
     IDS_ERROR_UNSUPPORTED_FILE_TYPE "지원하지 않는 파일 형식입니다."
-    IDS_TITLE_COMPRESSING   "압축 중..."
-    IDS_CONFIGURE           "설정"
     IDS_ERROR_NO_MATCHING_FILES "이 폴더 안에서 지원하는 파일을 찾을 수 없었습니다."
     IDS_TITLE_IMPORT_TTMP   "TexTools 모드팩 파일 가져오기"
     IDS_TITLE_IMPORTING     "가져오는 중..."
@@ -1390,24 +1404,16 @@ BEGIN
                             "설치 모드 지정이 잘못되었습니다. 사용 가능한 값은 d3d, dinput8 입니다."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8 
                             "XivAlexander를 dinput8.dll로 설치하기(&I)\nXivAlexander를 선택한 게임 설치 폴더에 dinput8.dll 파일로 설치합니다."
-    IDS_ERROR_GENERATEFONT  "폰트 생성/불러오기 중 오류가 발생했습니다. 다시 시도하시겠습니까?\n\n오류: {}"
-    IDS_GENERATEFONT_FONTINSTALLATIONREQUIRED "폰트 설치가 필요합니다."
-    IDS_GENERATEFONT_CHECKAGAIN "설치 상태 재확인"
     IDS_TITLE_DISCOVERINGFILES "파일 찾는 중..."
 END
 
 STRINGTABLE
 BEGIN
-    IDS_TITLE_INDEXINGFILES "파일 색인 중... ({1}/{2}): {0}"
-    IDS_TITLE_FINALIZING    "파일 준비 완료 중..."
-    IDS_ERROR_MODDINGACTIVEREQUIRED "모딩이 켜져 있어야 사용할 수 있는 기능입니다."
     IDS_ERROR_CANCELLING_TRYAGAINLATER "마지막 작업을 취소 중입니다. 잠시 후 다시 시도해 주세요."
 END
 
 STRINGTABLE
 BEGIN
-    IDS_TITLE_EXPORTTTMPDIRECTORY "TTMPL/TTMPD 파일을 저장할 경로 선택하기"
-    IDS_TITLE_EXPORTTTMPPROGRESS "TTMP 파일로 내보내는 중... ({1}/{2}): {0}"
     IDS_UPDATE_CONFIRM_NOAUTO 
                             "새 업데이트가 있습니다. 새 버전은 {4:%Ec}에 올라온 {0}.{1}.{2}.{3}이고, 현재 버전은 {5}.{6}.{7}.{8} 입니다. 게임이 이미 실행 중이므로 자동으로 업데이트할 수 없습니다. Github에서 직접 다운로드하시겠습니까?"
     IDS_UPDATE_ERROR_ACCESS_DENIED 
@@ -1419,7 +1425,7 @@ BEGIN
     IDS_OPCODEUPDATE_ERROR_404 "옵코드 설정이 아직 업데이트되지 않았습니다. 나중에 다시 시도해 주세요."
     IDS_OPCODEUPDATE_OK_NOTCHANGED "현재 옵코드 설정이 이미 최신입니다."
     IDS_OPCODEUPDATE_OK_CHANGED "옵코드 설정이 업데이트되었습니다."
-    IDS_SOCKETHOOK_SOCKET_RESET2 "{:x}: 강제 연결 해제 => {}"
+    IDS_SOCKETHOOK_SOCKET_RESET  "{:x}: 강제 연결 해제 => {}"
     IDS_MENU_TTMP_PROFILE   "프로파일"
     IDS_MENU_MODDING_SAMPLINGRATE "오디오 샘플링 레이트(&S)"
 END
@@ -1537,12 +1543,11 @@ BEGIN
     IDS_SETTINGS_FONT_WEIGHT "굵기"
     IDS_SETTINGS_FONT_STRETCH "너비"
     IDS_SETTINGS_FONT_STYLE "스타일"
-    IDS_SETTINGS_FONT_ADDPRESET "프리셋 추가"
+    IDS_SETTINGS_FONT_ADDPRESET "프리셋 추가…"
     IDS_SETTINGS_FONT_ADDFONT "시스템 글꼴 추가"
     IDS_SETTINGS_FONT_COPYTOOTHERS "다른 글꼴 패밀리에 복사"
     IDS_SETTINGS_FONT_CONFIRMCOPY "다른 모든 글꼴 패밀리의 소스를 {}의 것으로 바꾸시겠습니까?"
     IDS_SETTINGS_FONT_SOURCES_DESC "뒤에 있는 소스가 글자별로 앞의 것을 덮어씁니다. 프리셋은 이 글꼴 패밀리의 글꼴만 사용합니다."
-    IDS_SETTINGS_FONT_NOPRESETS "프리셋 폴더에 프리셋이 없습니다."
     IDS_SETTINGS_EDGE_SCALE "글자 크기 1픽셀당 테두리 두께"
     IDS_SETTINGS_EDGE_MIN   "최소 테두리 두께 (px)"
     IDS_SETTINGS_EDGE_MAX   "최대 테두리 두께 (px)"
@@ -1553,13 +1558,11 @@ BEGIN
     IDS_SETTINGS_DIRS_ADD "폴더 추가..."
     IDS_SETTINGS_SHOWINEXPLORER "탐색기에서 보기"
     IDS_SETTINGS_DIRS_DESC "끌어서 순서를 바꿀 수 있습니다. <config>는 설정 폴더를, <sqpack>은 게임의 sqpack 폴더를 뜻합니다."
-    IDS_SETTINGS_TTMP_NOFOLDER "(폴더 없음)"
     IDS_SETTINGS_TTMP_AUTHOR "제작자"
     IDS_SETTINGS_TTMP_VERSION "버전"
     IDS_SETTINGS_TTMP_STATUS "상태"
     IDS_SETTINGS_TTMP_FILTER "필터"
     IDS_SETTINGS_TTMP_CONFIRMDELETE """{}""을(를) 삭제할까요?\n\n{}"
-    IDS_SETTINGS_TTMP_NOMATCH "(일치하는 모드팩이 없습니다)"
     IDS_SETTINGS_TTMP_RENAME "이름 바꾸기"
     IDS_SETTINGS_TTMP_MOVETO "이동..."
     IDS_SETTINGS_TTMP_MOVETONEWFOLDER "새 폴더로 이동"
@@ -1568,6 +1571,87 @@ BEGIN
     IDS_SETTINGS_TTMP_ORDER_DESC "끌어서 순서를 바꿀 수 있습니다. 여러 모드팩이 같은 파일을 바꾸면 아래에 있는 것이 우선합니다."
     IDS_STATUS_TTMPPROFILE "\n모드팩 프로필: {}"
     IDS_SETTINGS_MODDING_ENABLE_DESC "변경 사항은 게임을 재시작하면 적용됩니다."
+    IDS_SETTINGS_LIPSYNC    "컷신 립싱크 언어"
+    IDS_SETTINGS_LIPSYNC_DESC "컷신에서 입 모양에 쓰이는 언어입니다. 컷신 음성 파일도 같은 언어로 고릅니다. 게임에 음성이 있는 언어만 고를 수 있습니다."
+    IDS_SETTINGS_FONT_PREVIEW_SIZE "크기"
+    IDS_SETTINGS_FONT_PREVIEW_TEXT "예시 문장"
+    IDS_SETTINGS_FONT_PREVIEW_DESC "선택한 크기의 글꼴을 이 소스들로 만든 그대로, 게임과 같은 테두리를 붙여 그립니다. 글꼴에 없는 글자는 게임의 글리프로 그리지만, SystemFallback을 켜면 게임에서는 시스템 글꼴로 그려집니다."
+    IDS_SETTINGS_FONT_PREVIEW_COLORS "색상"
+    IDS_SETTINGS_FONT_PREVIEW_NOEDGE "테두리를 표시할 수 없습니다: {}"
+    IDS_SETTINGS_EDGE_PREVIEW_DESC "{} 글꼴을 글꼴 교체가 그리는 대로, 선택한 크기에서 이 설정의 테두리를 붙여 그립니다. 색상은 게임에서 쓰이는 것으로, 모든 글꼴 미리 보기에 적용됩니다."
+    IDS_SETTINGS_FONT_COLORS_DEFAULT "기본"
+    IDS_SETTINGS_FONT_COLORS_TOOLTIPLABEL "툴팁 항목 이름"
+    IDS_SETTINGS_FONT_COLORS_ACTIONNAME "기술 이름"
+    IDS_SETTINGS_FONT_COLORS_STATUSNAME "상태 이름"
+    IDS_SETTINGS_FONT_COLORS_WARNING "경고"
+    IDS_SETTINGS_FONT_COLORS_NOTICE "알림"
+    IDS_SETTINGS_FONT_COLORS_QUESTHIGHLIGHT "퀘스트 강조"
+    IDS_SETTINGS_FONT_COLORS_TUTORIAL "튜토리얼 본문"
+    IDS_SETTINGS_RESTART_REGION "지역"
+    IDS_SETTINGS_MISCELLANEOUS "기타"
+    IDS_SETTINGS_UPDATES "업데이트"
+    IDS_SETTINGS_LAUNCH_SESSIONSWITCHING "세션 전환 사용"
+    IDS_SETTINGS_REMEMBER   "기억"
+    IDS_SETTINGS_SESSIONS_FORGET "모두 삭제"
+    IDS_SETTINGS_SESSIONS_FORGET_CONFIRM "기억한 로그인 세션을 모두 삭제할까요?\nWindows 자격 증명 관리자에서 삭제됩니다."
+    IDS_SETTINGS_SESSIONS_FORGETONE "이 세션 삭제"
+    IDS_SETTINGS_SESSIONS_FORGETONE_CONFIRM "로그인 세션 ""{}""을(를) 삭제할까요?\nWindows 자격 증명 관리자에서 삭제됩니다."
+    IDS_SETTINGS_LAUNCH_CLEARCOPIED "복사한 명령줄을 지울 때까지의 초"
+    IDS_SETTINGS_LAUNCH_CLEARCOPIED_DESC "복사한 명령줄을 이 시간이 지나면 클립보드에서 지웁니다. 0이면 지우지 않습니다."
+    IDS_SETTINGS_EDITMENU "편집 ▾"
+    IDS_SETTINGS_SHOWMORE "더 보기"
+    IDS_SETTINGS_SHOWLESS "접기"
+    IDS_SETTINGS_TTMP_CONFIRMDELETEMANY "모드팩 {}개를 삭제할까요?"
+    IDS_SETTINGS_FONT_MONOSPACEDDIGITS "시스템 글꼴의 숫자를 고정 폭으로 표시"
+    IDS_SETTINGS_FONT_OPENPRESETFOLDER "프리셋 폴더 열기"
+    IDS_SETTINGS_FONT_IMPORT_TITLE "이 프리셋은 프리셋 폴더 밖에 있습니다."
+    IDS_SETTINGS_FONT_IMPORT_CONTENT "{}\n\n프리셋 폴더에 복사해서 가져올까요, 아니면 이 파일을 지금 위치 그대로 사용할까요?"
+    IDS_SETTINGS_FONT_IMPORT_GLYPHS "이 프리셋은 옆에 있는 다음 폴더에서 글리프 이미지를 읽습니다. 가져오면 이 폴더들도 프리셋 전용 폴더에 함께 복사됩니다.{}"
+    IDS_SETTINGS_FONT_IMPORT_NOGLYPHCOPY "이 프리셋은 다음 폴더에서 글리프 이미지를 읽지만, 이 폴더들은 프리셋이 있는 폴더 안에 있지 않아 함께 복사할 수 없습니다. 지금 위치 그대로만 사용할 수 있습니다.{}"
+    IDS_SETTINGS_FONT_IMPORT_IMPORT "가져오기\n프리셋 폴더에 복사합니다. 나중에 원본 파일을 바꿔도 반영되지 않습니다."
+    IDS_SETTINGS_FONT_IMPORT_INPLACE "지금 위치에서 사용\n지금 위치에서 읽습니다. 파일을 옮기거나 지우면 더 이상 작동하지 않습니다."
+    IDS_SETTINGS_FONT_PRESETUNREADABLE "{}\n\n프리셋을 읽을 수 없습니다: {}"
+    IDS_SETTINGS_FONT_IMPORTFAILED "{}\n\n프리셋을 가져오지 못했습니다: {}"
+    IDS_TTMP_ERROR_NAME_EMPTY "이름을 비워 둘 수 없습니다."
+    IDS_TTMP_ERROR_NAME_DOTS """.""과 ""..""은 이름으로 쓸 수 없습니다."
+    IDS_TTMP_ERROR_NAME_TOOLONG "이름이 너무 깁니다."
+    IDS_TTMP_ERROR_NAME_INVALIDCHARS "이름에 < > : "" / \\ | ? * 또는 제어 문자를 쓸 수 없습니다."
+    IDS_TTMP_ERROR_NAME_TRAILING "이름은 공백이나 마침표로 끝날 수 없습니다."
+    IDS_TTMP_ERROR_NAME_RESERVED "Windows에서 예약된 이름이라 쓸 수 없습니다."
+    IDS_TTMP_ERROR_DIFFERENTDRIVE "폴더를 다른 드라이브로 옮길 수 없습니다."
+    IDS_TTMP_ERROR_MOVEFAILED "{}을(를) {}(으)로 옮기지 못했습니다"
+    IDS_TTMP_ERROR_ITEMGONE "이 항목은 더 이상 모드팩 목록에 없습니다. 목록을 다시 불러온 뒤 다시 시도해 주세요."
+    IDS_TTMP_ERROR_NAMETAKEN "그 폴더에 이미 ""{}""(이)라는 이름의 항목이 있습니다."
+    IDS_TTMP_ERROR_DESTINATIONMISSING "대상 폴더가 존재하지 않습니다."
+    IDS_TTMP_ERROR_DESTINATIONOUTSIDE "대상 폴더가 TexTools 모드팩을 찾는 폴더 중 어디에도 속하지 않습니다."
+    IDS_TTMP_ERROR_MOVEINTOSELF "폴더를 자기 자신이나 그 안의 폴더로 옮길 수 없습니다."
+    IDS_TTMP_ERROR_MOVEINTOMODPACK "모드팩 안으로는 옮길 수 없습니다."
+    IDS_TTMP_ERROR_NAMETAKENATDESTINATION "대상 폴더에 이미 ""{}""(이)라는 이름의 항목이 있습니다."
+    IDS_TTMP_ERROR_DESTINATIONNOTFOUND "대상 폴더를 찾을 수 없었습니다."
+    IDS_TTMP_ERROR_PARENTMISSING "상위 폴더가 존재하지 않습니다."
+    IDS_TTMP_ERROR_PARENTOUTSIDE "상위 폴더가 TexTools 모드팩을 찾는 폴더 중 어디에도 속하지 않습니다."
+    IDS_TTMP_ERROR_FOLDERINMODPACK "모드팩 안에는 폴더를 만들 수 없습니다."
+    IDS_TTMP_ERROR_CREATEFOLDER "폴더 {}을(를) 만들지 못했습니다: {}"
+    IDS_TTMP_ERROR_FOLDERGONE "이 폴더는 더 이상 모드팩 목록에 없습니다. 목록을 다시 불러온 뒤 다시 시도해 주세요."
+    IDS_TTMP_ERROR_ORDERINCOMPLETE "새 순서에는 폴더 안의 모든 항목이 정확히 한 번씩 들어 있어야 합니다."
+    IDS_TTMP_ERROR_SAVEORDER "{}을(를) 저장하지 못했습니다: {}"
+    IDS_TTMP_ERROR_OPENDATA "{}을(를) 열지 못했습니다."
+    IDS_TTMP_ERROR_MOVEBACKFAILED "{}; 원래 위치로 되돌리는 것도 실패했습니다 ({}). TexTools 모드팩을 다시 불러와 주세요."
+    IDS_TTMP_ERROR_DUPLICATENAMES """{}""(이)라는 이름의 항목이 여러 개 있습니다."
+    IDS_ERROR_FILE_TOO_BIG  "파일이 너무 큽니다."
+    IDS_ERROR_HTTP          "HTTP 오류 {}"
+    IDS_RESULT_IMPORT_OK    "성공: {}: {}"
+    IDS_RESULT_IMPORT_ERROR "오류: {}: {}"
+    IDS_FONTPRESET_ERROR_CANNOTREAD "{}을(를) 읽을 수 없습니다."
+    IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE "글리프 이미지 폴더 {}이(가) 프리셋 폴더 안에 있지 않습니다."
+    IDS_FONTPRESET_ERROR_NOFACES "이 프리셋에는 글꼴이 없습니다."
+    IDS_FONTPREVIEW_ERROR_NOFACE "{}을(를) 그릴 글꼴이 없습니다."
+    IDS_SETTINGS_PATCHCODE_DEFAULTNAME "새 게임 버그 수정"
+    IDS_ERROR_LOAD_INSTALLED "{}\n이유: {}\n\n종료하려면 {} 버튼을,\nXivAlexander 도움말 웹페이지를 열려면 {} 버튼을,\nXivAlexander를 불러들이지 않고 계속하려면 {} 버튼을 누르세요."
+    IDS_ERROR_LOAD_INSTALLED_NOPATH "XivAlexander 설치 경로를 확인하지 못했습니다."
+    IDS_ERROR_LOAD_INSTALLED_PATH "{}을(를) 불러들이지 못했습니다."
+    IDS_FONTPREVIEW_ERROR_EMPTYELEMENT "{}에 글리프가 없습니다. 설치되지 않았거나 읽을 수 없는 것 같습니다."
+    IDS_FONTPREVIEW_ERROR_NOGLYPHS "{}에는 텍스트의 글자가 하나도 없습니다."
 END
 
 #endif    // Korean (Korea) resources
@@ -1744,21 +1828,9 @@ BEGIN
         MENUITEM SEPARATOR
         POPUP "&TexTools ModPacks"
         BEGIN
-            POPUP "(template entry to be inserted at bottom)"
-            BEGIN
-                MENUITEM "&Enable",                     ID_MODDING_TTMP_ENTRY_ENABLE, CHECKED
-                MENUITEM "&Delete",                     ID_MODDING_TTMP_ENTRY_DELETE
-                MENUITEM SEPARATOR
-                MENUITEM "Requires restart",            ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
-                MENUITEM "&Show Description",           ID_MODDING_TTMP_ENTRY_SHOWDESCRIPTION
-                MENUITEM SEPARATOR
-            END
+            MENUITEM "Requires restart",            ID_MODDING_TTMP_ENTRY_REQUIRESRESTART, INACTIVE
             MENUITEM "(No installed ModPacks found)", ID_MODDING_TTMP_NOENTRY, INACTIVE
             MENUITEM "(Not ready)",                 ID_MODDING_TTMP_NOTREADY, INACTIVE
-            MENUITEM SEPARATOR
-            MENUITEM "&Flatten Folder Display",     ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY
-            MENUITEM "Use Folder &Toggling on Flattened View", ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW
-            MENUITEM "Show Dedicated &Menu",        ID_MODDING_TTMP_SHOWDEDICATEDMENU
             MENUITEM SEPARATOR
             MENUITEM "&Enable All",                 ID_MODDING_TTMP_ENABLEALL
             MENUITEM "&Disable All",                ID_MODDING_TTMP_DISABLEALL
@@ -1768,8 +1840,6 @@ BEGIN
             MENUITEM "&Open Directory",             ID_MODDING_TTMP_OPENDIRECTORY
         END
         MENUITEM "Re&fresh", ID_MODDING_TTMP_REFRESH
-        MENUITEM "Open &Replacement File Entries Directory", ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY
-        MENUITEM "Exp&ort to TTMPL/TTMPD Files", ID_MODDING_EXPORTTOTTMP
         MENUITEM SEPARATOR
         MENUITEM "Support Alternate &Codecs for Musics", ID_MODDING_USEALTCODECMUSICSUPPORT
         MENUITEM "Log All F&ile Access",        ID_MODDING_LOGALLFILEACCESS
@@ -1781,15 +1851,9 @@ BEGIN
             MENUITEM "NPC &Dialogue During Battle", ID_MODDING_MUTEVOICE_LINE
         END
         MENUITEM SEPARATOR
-        MENUITEM "Anything here will not be fully applied until game restart.", ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, INACTIVE
-    END
-    POPUP "&TTMP"
-    BEGIN
-        MENUITEM SEPARATOR
     END
     POPUP "&Configure"
     BEGIN
-        MENUITEM "&Settings...", ID_CONFIGURE_SETTINGS
         MENUITEM SEPARATOR
         MENUITEM "Edit &Runtime Configuration\tCtrl+Alt+R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
         MENUITEM "Edit &Opcode Configuration\tCtrl+Alt+O", ID_CONFIGURE_EDITOPCODECONFIGURATION
@@ -1951,9 +2015,13 @@ IDR_RT_MANIFEST_LATE_ACTIVATION RT_MANIFEST             "DummyAssemblyIdentity.m
 // The signatures of the game's code that the font replacement uses, shared with FFXIV-FontChanger.
 IDR_GAMEFONTSIGNATURES  RCDATA                  "..\\FFXIV-FontChanger\\xivres\\data\\game_font_signatures.json"
 
-// The font replacement's edge shader, made from FFXIV-FontChanger's FontEdgePS.hlsl at build time (in the intermediate
-// directory, which is an include directory of the resource compiler).
+// The font replacement's edge shader, compiled from FFXIV-FontChanger's FontEdgePS.hlsl at build time (FxCompile) into the
+// intermediate directory, which is an include directory of the resource compiler.
 IDR_FONTEDGEPS          RCDATA                  "FontEdgePS.cso"
+
+// The shaders of the settings' font previews, compiled at build time (FxCompile) into the intermediate directory.
+IDR_FONTPREVIEWVS       RCDATA                  "FontPreviewVS.cso"
+IDR_FONTPREVIEWTEXTPS   RCDATA                  "FontPreviewTextPS.cso"
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -2040,7 +2108,6 @@ BEGIN
     IDS_NOUNLOADREASON_WNDPROC 
                             "Another module has hooked window procedure over XivAlexander. Try unloading that other module first."
     IDS_ERROR_INJECT        "Failed to initialize this process.\nError: {}\nPID: {}\nPath: {}\nCommand Line: {}"
-    IDS_WARNING_ZEROPING    "rtt={} but latency={}; your VPN or network might be reporting 0 ping. Using ""Mode 2"" for High Latency Mitigation is recommended as that is the only option that does not use current latency information to do the job."
     IDS_ERROR_FREEGAMEMUTEX_CLOSEHANDLE 
                             "Failed to process handle {:p}(type {:2x}): {}"
     IDS_PINGTRACKER_START   "Ping {} -> {}: Start tracking."
@@ -2157,7 +2224,6 @@ BEGIN
     IDS_VERSIONSENSITIVE_CROWDFIX "CrowdFix (performance fixes for crowded areas)"
     IDS_VERSIONSENSITIVE_FONTREPLACEMENT "Font replacement"
     IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART "(!) Some features are disabled until restart."
-    IDS_MENU_MODDING_REQUIRESENABLEANDRESTART "Anything here requires enabling modding and restarting the game."
 END
 
 STRINGTABLE
@@ -2168,7 +2234,6 @@ BEGIN
                             "{} not found. Run the game first, and then try again."
     IDS_ERROR_NO_MATCHING_PROCESS 
                             "No process matching given conditions found."
-    IDS_ERROR_RESTART_ADMIN "Failed to restart as Administrator. ({})"
     IDS_UPDATE_PROGRESS_DOWNLOADING_FILES "Downloading update files..."
     IDS_UPDATE_PROGRESS_PREPARING_FILES "Preparing files for update..."
     IDS_UPDATE_PROGRESS_CHECKING "Checking for updates..."
@@ -2190,16 +2255,12 @@ BEGIN
                             "XivAlexander detected in FFXIV Process ({}:{})\n\nPress {} to try loading again if it hasn't loaded properly,\nPress {} to unload, or\nPress {} to skip."
     IDS_CONFIRM_INJECT      "Game process found:\n\n* Process ID: {}\n* Path: {}\n\nContinue loading XivAlexander into this process?"
     IDS_UPDATE_FILE_TOO_BIG "Update package is too big, meaning that the package is possibly corrupted. Please replace files by yourself if you are sure that the update is correct."
-    IDS_UPDATE_INVALID_VERSION 
-                            "Version information could not be confirmed. Manually check and update the program."
     IDS_HELP_ACTION         "specify action\n\t* auto: load into game if already running, otherwise try to detect game installation and run\n\t* ask: confirm action per game process\n\t* load: load XivAlexander into game process\n\t* unload: unload XivAlexander from game process\n\t* launcher: run specified game launcher and load XivAlexander to the game run\n\t* update-check: check for updates\n\t* web: open github repository at https://github.com/Soreepeong/XivAlexander"
     IDS_HELP_LAUNCHER       "specify launcher (possible values: auto, select, squareenix, actozsoft, shengqugames, userjoygames)"
     IDS_HELP_QUIET          "disable error messages"
     IDS_HELP_DISABLE_RUNAS  "disable run as administrator"
     IDS_HELP_INTERNAL_USE_ONLY "internal use only. Do not use."
     IDS_HELP_TARGETS        "List of target process ID or path suffix if loading. Path of program to execute if launching."
-    IDS_ERROR_NOT_GAME_DIRECTORY 
-                            "Selected path ""{}"" does not seem to be a game directory. A game directory should have ""ffxiv_dx11.exe"" in it."
     IDS_NOTIFY_TTMP_HAS_CONFIGURATION 
                             "Installed TexTools ModPack file has user configurable settings attached to it. Use menu to change settings."
 END
@@ -2208,9 +2269,8 @@ STRINGTABLE
 BEGIN
     IDS_MENU_BACKGROUND_FRAMERATE_TARGET 
                             "Background Framerate Limit: {:g} fps"
-    IDS_MENU_WORDWRAPCONFIGWINDOW "&Word Wrap"
     IDS_FILTERSPEC_ALLFILES "All files (*.*)"
-    IDS_FILTERSPEC_TTMP     "Process ID: {}\nGame Path: {}\nArguments: {}\nGame Release: {} ({})\nMessage Pump: {:06}+{:06}us ({}/s)\nRender Time: {:06}+{:06}us ({}/s if without FPS limits)\n\n{}"
+    IDS_FILTERSPEC_TTMP     "TexTools ModPack files (*.ttmp, *.ttmp2, *.mpl)"
     IDS_CONFIRM_REMOVEALLTTMP 
                             "Do you want to remove all TexTools ModPacks in ""{}""?"
     IDS_URL_ISSUES          "https://github.com/Soreepeong/XivAlexander/issues"
@@ -2233,12 +2293,8 @@ END
 STRINGTABLE
 BEGIN
     IDS_ERROR_UNSUPPORTED_FILE_TYPE "Unsupported file type."
-    IDS_TITLE_COMPRESSING   "Compressing data..."
-    IDS_CONFIGURE           "Configure"
     IDS_ERROR_NO_MATCHING_FILES 
                             "Could not find supported files in this directory."
-    IDS_TITLE_ADD_EXCELTRANSFORMCONFIG 
-                            "Select excel transformation configuration file"
     IDS_TITLE_IMPORT_TTMP   "Select TexTools ModPack file"
     IDS_TITLE_IMPORTING     "Importing..."
     IDS_UNRECOVERABLEERROR_EXPORTLOG "Export &Log"
@@ -2304,20 +2360,12 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_TITLE_INDEXINGFILES "Indexing files... ({1}/{2}): {0}"
-    IDS_TITLE_FINALIZING    "Finalizing..."
-    IDS_ERROR_MODDINGACTIVEREQUIRED 
-                            "Modding must be active to use this feature."
     IDS_ERROR_CANCELLING_TRYAGAINLATER 
                             "Cancelling previous operation. Please try again later."
 END
 
 STRINGTABLE
 BEGIN
-    IDS_ERROR_GENERATESTRINGTABLES 
-                            "An error has occurred while generating or loading string tables. Do you want to retry?\n\nError: {}"
-    IDS_TITLE_EXPORTTTMPDIRECTORY "Select a folder to save TTMPL/TTMPD files"
-    IDS_TITLE_EXPORTTTMPPROGRESS "Exporting files... ({1}/{2}): {0}"
     IDS_UPDATE_CONFIRM_NOAUTO 
                             "New version {}.{}.{}.{}, released at {:%Ec}, is available. Local version is {}.{}.{}.{}. Since the game is already running, automatic updates are unavailable. Open the releases page at Github?"
     IDS_UPDATE_ERROR_ACCESS_DENIED 
@@ -2448,12 +2496,11 @@ BEGIN
     IDS_SETTINGS_FONT_WEIGHT "Weight"
     IDS_SETTINGS_FONT_STRETCH "Stretch"
     IDS_SETTINGS_FONT_STYLE "Style"
-    IDS_SETTINGS_FONT_ADDPRESET "Add Preset"
+    IDS_SETTINGS_FONT_ADDPRESET "Add Preset…"
     IDS_SETTINGS_FONT_ADDFONT "Add System Font"
     IDS_SETTINGS_FONT_COPYTOOTHERS "Copy to Other Families"
     IDS_SETTINGS_FONT_CONFIRMCOPY "Replace the sources of every other family with those of {}?"
     IDS_SETTINGS_FONT_SOURCES_DESC "Later sources are drawn over earlier ones, glyph by glyph. Of a preset, only this family's faces are used."
-    IDS_SETTINGS_FONT_NOPRESETS "No presets were found in the preset folder."
     IDS_SETTINGS_EDGE_SCALE "Edge width per pixel of text size"
     IDS_SETTINGS_EDGE_MIN   "Minimum edge width (px)"
     IDS_SETTINGS_EDGE_MAX   "Maximum edge width (px)"
@@ -2464,13 +2511,11 @@ BEGIN
     IDS_SETTINGS_DIRS_ADD "Add Folder..."
     IDS_SETTINGS_SHOWINEXPLORER "Show in Explorer"
     IDS_SETTINGS_DIRS_DESC "Drag to reorder. <config> is the configuration folder, and <sqpack> is the game's sqpack folder."
-    IDS_SETTINGS_TTMP_NOFOLDER "(No folder)"
     IDS_SETTINGS_TTMP_AUTHOR "Author"
     IDS_SETTINGS_TTMP_VERSION "Version"
     IDS_SETTINGS_TTMP_STATUS "Status"
     IDS_SETTINGS_TTMP_FILTER "Filter"
     IDS_SETTINGS_TTMP_CONFIRMDELETE "Delete ""{}""?\n\n{}"
-    IDS_SETTINGS_TTMP_NOMATCH "(No matching ModPacks)"
     IDS_SETTINGS_TTMP_RENAME "Rename"
     IDS_SETTINGS_TTMP_MOVETO "Move To..."
     IDS_SETTINGS_TTMP_MOVETONEWFOLDER "Move to New Folder"
@@ -2479,6 +2524,87 @@ BEGIN
     IDS_SETTINGS_TTMP_ORDER_DESC "Drag to reorder. Where ModPacks change the same file, the one further down wins."
     IDS_STATUS_TTMPPROFILE "\nModPack profile: {}"
     IDS_SETTINGS_MODDING_ENABLE_DESC "Changing this takes effect after restarting the game."
+    IDS_SETTINGS_LIPSYNC    "Cutscene lip sync language"
+    IDS_SETTINGS_LIPSYNC_DESC "The language whose mouth movements cutscenes play. The game picks the cutscene voice files by the same language. Only the languages the game is voiced in can be chosen."
+    IDS_SETTINGS_FONT_PREVIEW_SIZE "Size"
+    IDS_SETTINGS_FONT_PREVIEW_TEXT "Sample text"
+    IDS_SETTINGS_FONT_PREVIEW_DESC "The font at the chosen size, drawn as these sources make it, with the edge the game draws. Characters it lacks are drawn with the game's own glyphs here; with SystemFallback on, the game draws them with system fonts instead."
+    IDS_SETTINGS_FONT_PREVIEW_COLORS "Colors"
+    IDS_SETTINGS_FONT_PREVIEW_NOEDGE "The edge can't be shown: {}"
+    IDS_SETTINGS_EDGE_PREVIEW_DESC "{} as the font replacement draws it, with the edge these settings give at the chosen size. The colors are ones the game uses, and apply to every font preview."
+    IDS_SETTINGS_FONT_COLORS_DEFAULT "Default"
+    IDS_SETTINGS_FONT_COLORS_TOOLTIPLABEL "Tooltip labels"
+    IDS_SETTINGS_FONT_COLORS_ACTIONNAME "Action names"
+    IDS_SETTINGS_FONT_COLORS_STATUSNAME "Status names"
+    IDS_SETTINGS_FONT_COLORS_WARNING "Warnings"
+    IDS_SETTINGS_FONT_COLORS_NOTICE "Notices"
+    IDS_SETTINGS_FONT_COLORS_QUESTHIGHLIGHT "Quest highlights"
+    IDS_SETTINGS_FONT_COLORS_TUTORIAL "Tutorial text"
+    IDS_SETTINGS_RESTART_REGION "Region"
+    IDS_SETTINGS_MISCELLANEOUS "Miscellaneous"
+    IDS_SETTINGS_UPDATES "Updates"
+    IDS_SETTINGS_LAUNCH_SESSIONSWITCHING "Use session switch"
+    IDS_SETTINGS_REMEMBER   "Remember"
+    IDS_SETTINGS_SESSIONS_FORGET "Forget all"
+    IDS_SETTINGS_SESSIONS_FORGET_CONFIRM "Forget all remembered login sessions?\nThey are removed from Windows Credential Manager."
+    IDS_SETTINGS_SESSIONS_FORGETONE "Forget This Session"
+    IDS_SETTINGS_SESSIONS_FORGETONE_CONFIRM "Forget the login session ""{}""?\nIt is removed from Windows Credential Manager."
+    IDS_SETTINGS_LAUNCH_CLEARCOPIED "Clear the copied command line after (seconds)"
+    IDS_SETTINGS_LAUNCH_CLEARCOPIED_DESC "The copied command line is cleared from the clipboard after this many seconds; 0 keeps it."
+    IDS_SETTINGS_EDITMENU "Edit ▾"
+    IDS_SETTINGS_SHOWMORE "Show more"
+    IDS_SETTINGS_SHOWLESS "Show less"
+    IDS_SETTINGS_TTMP_CONFIRMDELETEMANY "Delete {} ModPacks?"
+    IDS_SETTINGS_FONT_MONOSPACEDDIGITS "Monospaced digits for system fonts"
+    IDS_SETTINGS_FONT_OPENPRESETFOLDER "Open Presets Folder"
+    IDS_SETTINGS_FONT_IMPORT_TITLE "This preset is outside the presets folder."
+    IDS_SETTINGS_FONT_IMPORT_CONTENT "{}\n\nImport a copy into the presets folder, or use the file where it is?"
+    IDS_SETTINGS_FONT_IMPORT_GLYPHS "It reads glyph images from these folders next to it, which importing copies along with it into a folder of its own:{}"
+    IDS_SETTINGS_FONT_IMPORT_NOGLYPHCOPY "It reads glyph images from these folders, which aren't inside its own folder and can't be copied along with it, so it can only be used where it is:{}"
+    IDS_SETTINGS_FONT_IMPORT_IMPORT "Import\nCopy it into the presets folder. Later changes to the original won't be seen."
+    IDS_SETTINGS_FONT_IMPORT_INPLACE "Use it where it is\nRead it from where it is now. It stops working if the file is moved or deleted."
+    IDS_SETTINGS_FONT_PRESETUNREADABLE "{}\n\nThe preset can't be read: {}"
+    IDS_SETTINGS_FONT_IMPORTFAILED "{}\n\nThe preset couldn't be imported: {}"
+    IDS_TTMP_ERROR_NAME_EMPTY "The name cannot be empty."
+    IDS_TTMP_ERROR_NAME_DOTS """."" and "".."" cannot be used as a name."
+    IDS_TTMP_ERROR_NAME_TOOLONG "The name is too long."
+    IDS_TTMP_ERROR_NAME_INVALIDCHARS "The name cannot contain any of < > : "" / \\ | ? * or control characters."
+    IDS_TTMP_ERROR_NAME_TRAILING "The name cannot end with a space or a period."
+    IDS_TTMP_ERROR_NAME_RESERVED "The name is reserved by Windows."
+    IDS_TTMP_ERROR_DIFFERENTDRIVE "Folders cannot be moved to a different drive."
+    IDS_TTMP_ERROR_MOVEFAILED "Failed to move {} to {}"
+    IDS_TTMP_ERROR_ITEMGONE "The item is no longer among the TexTools ModPacks. Refresh and try again."
+    IDS_TTMP_ERROR_NAMETAKEN "Something named ""{}"" already exists in that folder."
+    IDS_TTMP_ERROR_DESTINATIONMISSING "The destination folder does not exist."
+    IDS_TTMP_ERROR_DESTINATIONOUTSIDE "The destination is not in any of the folders TexTools ModPacks are looked for in."
+    IDS_TTMP_ERROR_MOVEINTOSELF "A folder cannot be moved into itself or into a folder inside it."
+    IDS_TTMP_ERROR_MOVEINTOMODPACK "Nothing can be moved into a ModPack."
+    IDS_TTMP_ERROR_NAMETAKENATDESTINATION "Something named ""{}"" already exists in the destination folder."
+    IDS_TTMP_ERROR_DESTINATIONNOTFOUND "The destination folder could not be found."
+    IDS_TTMP_ERROR_PARENTMISSING "The parent folder does not exist."
+    IDS_TTMP_ERROR_PARENTOUTSIDE "The parent folder is not in any of the folders TexTools ModPacks are looked for in."
+    IDS_TTMP_ERROR_FOLDERINMODPACK "Folders cannot be created inside a ModPack."
+    IDS_TTMP_ERROR_CREATEFOLDER "Failed to create the folder {}: {}"
+    IDS_TTMP_ERROR_FOLDERGONE "The folder is no longer among the TexTools ModPacks. Refresh and try again."
+    IDS_TTMP_ERROR_ORDERINCOMPLETE "The new order must list every item in the folder exactly once."
+    IDS_TTMP_ERROR_SAVEORDER "Failed to save {}: {}"
+    IDS_TTMP_ERROR_OPENDATA "Failed to open {}."
+    IDS_TTMP_ERROR_MOVEBACKFAILED "{}; moving it back failed too ({}). Refresh the TexTools ModPacks."
+    IDS_TTMP_ERROR_DUPLICATENAMES "More than one of the items is named ""{}""."
+    IDS_ERROR_FILE_TOO_BIG  "The file is too big."
+    IDS_ERROR_HTTP          "HTTP error {}"
+    IDS_RESULT_IMPORT_OK    "OK: {}: {}"
+    IDS_RESULT_IMPORT_ERROR "Error: {}: {}"
+    IDS_FONTPRESET_ERROR_CANNOTREAD "{} can't be read."
+    IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE "The glyph image folder {} isn't under the preset's folder."
+    IDS_FONTPRESET_ERROR_NOFACES "The preset has no faces."
+    IDS_FONTPREVIEW_ERROR_NOFACE "There is no face to draw {} with."
+    IDS_SETTINGS_PATCHCODE_DEFAULTNAME "New Game Fix"
+    IDS_ERROR_LOAD_INSTALLED "{}\nReason: {}\n\nPress {} to exit.\nPress {} to open the XivAlexander help webpage.\nPress {} to skip loading XivAlexander."
+    IDS_ERROR_LOAD_INSTALLED_NOPATH "Failed to resolve the XivAlexander installation path."
+    IDS_ERROR_LOAD_INSTALLED_PATH "Failed to load {}."
+    IDS_FONTPREVIEW_ERROR_EMPTYELEMENT "{} has no glyphs; it may not be installed, or can't be read."
+    IDS_FONTPREVIEW_ERROR_NOGLYPHS "{} has none of the text's characters."
 END
 
 #endif    // English (United States) resources

@@ -7,7 +7,6 @@
 #include "MainApp/FontReplacement/Utilities.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
-using XivAlexander::FontReplacementNamePlateMode;
 
 namespace {
 	// The plate's distance factor never goes below this (OnRequestedUpdate clamps it).
@@ -23,7 +22,7 @@ namespace {
 
 FontReplacement::NamePlateText::NamePlateText(FontReplacer& replacer)
 	: m_replacer(replacer) {
-	uintptr_t allocateBake = 0, prepare = 0, drawBaked = 0, bakePlateDraw = 0;
+	uintptr_t allocateBake = 0, prepare = 0, drawBaked = 0;
 	GameLayout::Resolve("Nameplate text", [&] {
 		GameUi::ResolveUnits();
 
@@ -41,9 +40,6 @@ FontReplacement::NamePlateText::NamePlateText(FontReplacer& replacer)
 		// scale is exactly 1.
 		drawBaked = GameLayout::Address("NamePlateDrawBaked");
 
-		// void BakePlateRenderer.vf2(BakePlateRenderer* this, AtkResNode* node): draws a plate's text, baked or live.
-		bakePlateDraw = GameLayout::Address("NamePlateBakePlateDraw");
-
 		m_addonBakePlate = GameLayout::Get("AddonNamePlate.BakePlate");
 		m_addonObjects = GameLayout::Get("AddonNamePlate.NamePlateObjectArray");
 		m_objectSize = GameLayout::Get("NamePlateObject");
@@ -55,7 +51,6 @@ FontReplacement::NamePlateText::NamePlateText(FontReplacer& replacer)
 		m_bakeTextYOffset = GameLayout::Get("BakeData.TextYOffset");
 		m_bakeAlpha = GameLayout::Get("BakeData.Alpha");
 		m_rendererCurrentBakeData = GameLayout::Get("BakePlateRenderer.CurrentBakeData");
-		m_rendererLiveMode = GameLayout::Get("BakePlateRenderer.DisableFixedFontResolution");
 
 		// The transform's first row is captured as its two floats; the matrix starts at the first.
 		m_nodeTransform = (std::min)(GameLayout::Get("AtkResNode.Transform.Row1A"), GameLayout::Get("AtkResNode.Transform.Row1B"));
@@ -69,12 +64,10 @@ FontReplacement::NamePlateText::NamePlateText(FontReplacer& replacer)
 	m_allocateBakeHook.emplace("NamePlateAllocateBake", allocateBake, [this](uintptr_t renderer, uintptr_t obj) { return AllocateBakeDetour(renderer, obj); });
 	m_prepareHook.emplace("NamePlateBakePrepare", prepare, [this](uintptr_t renderer, float* rect, GameFontSet* set, uintptr_t node) { PrepareDetour(renderer, rect, set, node); });
 	m_drawBakedHook.emplace("NamePlateDrawBaked", drawBaked, [this](uintptr_t renderer, uintptr_t node, uintptr_t bake) { DrawBakedDetour(renderer, node, bake); });
-	m_bakePlateDrawHook.emplace("NamePlateBakePlateDraw", bakePlateDraw, [this](uintptr_t renderer, uintptr_t node) { BakePlateDrawDetour(renderer, node); });
 	ForceRebake();
 }
 
 FontReplacement::NamePlateText::~NamePlateText() {
-	m_bakePlateDrawHook.reset();
 	m_allocateBakeHook.reset();
 
 	// Regions baked at another scale must not be drawn without the hooks that know their scale: a plate that needs baking is
@@ -87,17 +80,6 @@ FontReplacement::NamePlateText::~NamePlateText() {
 
 	m_prepareHook.reset();
 	m_drawBakedHook.reset();
-}
-
-void FontReplacement::NamePlateText::SetMode(FontReplacementNamePlateMode value) {
-	if (m_mode == value)
-		return;
-	m_mode = value;
-	ForceRebake();
-}
-
-FontReplacementNamePlateMode FontReplacement::NamePlateText::EffectiveMode() const {
-	return m_replacer.Enabled() ? m_mode : FontReplacementNamePlateMode::Game;
 }
 
 void FontReplacement::NamePlateText::ForceRebake() {
@@ -161,7 +143,8 @@ uint8_t FontReplacement::NamePlateText::AllocateBakeDetour(uintptr_t renderer, u
 		m_bakeScales.erase(it);
 	}
 
-	const auto fullSize = EffectiveMode() == FontReplacementNamePlateMode::BakedAtFullSize ? GetFullSizeScale(obj) : std::nullopt;
+	// As the game bakes while the replacement is off.
+	const auto fullSize = m_replacer.Enabled() ? GetFullSizeScale(obj) : std::nullopt;
 	if (!fullSize)
 		return m_allocateBakeHook->Original(renderer, obj);
 
@@ -209,7 +192,7 @@ void FontReplacement::NamePlateText::DrawBakedDetour(uintptr_t renderer, uintptr
 	// Shown larger than it was baked for (a percent over 100 up close, a targeted plate): bake it again at that size (BakeData
 	// is the object's first member). It is drawn live until then.
 	const auto obj = bake;
-	if (shown > scale * (1 + ScaleTolerance) && !NeedsToBeBaked(obj) && EffectiveMode() == FontReplacementNamePlateMode::BakedAtFullSize)
+	if (shown > scale * (1 + ScaleTolerance) && !NeedsToBeBaked(obj) && m_replacer.Enabled())
 		SetNeedsToBeBaked(obj);
 
 	// The region is in bake pixels, scale per node unit: give the original the node in bake pixels too (its size and the text
@@ -236,18 +219,4 @@ void FontReplacement::NamePlateText::DrawBakedDetour(uintptr_t renderer, uintptr
 		textYOffsetField = textYOffset;
 	});
 	m_drawBakedHook->Original(renderer, node, bake);
-}
-
-void FontReplacement::NamePlateText::BakePlateDrawDetour(uintptr_t renderer, uintptr_t node) {
-	SeeRenderer(renderer);
-	if (EffectiveMode() != FontReplacementNamePlateMode::Live) {
-		m_bakePlateDrawHook->Original(renderer, node);
-		return;
-	}
-
-	auto& liveMode = At<uint8_t>(renderer + m_rendererLiveMode);
-	const auto saved = liveMode;
-	liveMode = 1;
-	const auto restore = xivres::util::on_dtor([&] { liveMode = saved; });
-	m_bakePlateDrawHook->Original(renderer, node);
 }

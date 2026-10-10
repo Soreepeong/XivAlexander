@@ -42,6 +42,21 @@ void XivAlexander::from_json(const nlohmann::json& j, FontReplacementFamilySourc
 	Read(j, "Font", v.Font);
 }
 
+void XivAlexander::to_json(nlohmann::json& j, const FontReplacementFamily& v) {
+	j = nlohmann::json::object({
+		{"Enabled", v.Enabled},
+		{"MonospacedDigits", v.MonospacedDigits},
+		{"Sources", v.Sources},
+	});
+}
+
+void XivAlexander::from_json(const nlohmann::json& j, FontReplacementFamily& v) {
+	v = {};
+	Read(j, "Enabled", v.Enabled);
+	Read(j, "MonospacedDigits", v.MonospacedDigits);
+	Read(j, "Sources", v.Sources);
+}
+
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementEdgeConfig& v) {
 	j = nlohmann::json::object({
 		{"Scale", v.Scale},

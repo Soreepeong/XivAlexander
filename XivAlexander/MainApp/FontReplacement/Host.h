@@ -89,6 +89,26 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::Host {
 		HRESULT PresentDetour(IDXGISwapChain* swapChain, UINT syncInterval, UINT flags);
 	};
 
+	// Calls a function at the same point as PresentHook, but from the game's own call of Kernel::SwapChain::Present in
+	// DeviceDX11::PostTick, which only that call is redirected for: the many tools that hook IDXGISwapChain::Present
+	// (Dalamud, ReShade, overlays) are not in the way, and whatever hooks Present itself is still called through. The call
+	// is made after the render thread is done with the frame and before the next is kicked, the only time the immediate
+	// context is free to use. Throws if the call isn't found in this version of the game.
+	class PresentCallHook {
+		std::function<void()> m_beforePresent;
+		std::optional<Misc::Hooks::CallSiteFunction<void, void*>> m_hook;
+		xivres::util::on_dtor m_unhook;
+
+	public:
+		explicit PresentCallHook(std::function<void()> beforePresent);
+		PresentCallHook(const PresentCallHook&) = delete;
+		PresentCallHook& operator=(const PresentCallHook&) = delete;
+		~PresentCallHook();
+
+	private:
+		void PresentDetour(void* swapChain);
+	};
+
 	// A B8G8R8A8 texture the game can bind (a Kernel::Texture), made on the game's device; destroying it releases it once
 	// the game is done with it.
 	class Texture {

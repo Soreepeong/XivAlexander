@@ -95,5 +95,13 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		[[nodiscard]] bool Contains(const NestedTtmp& item) const;
 		[[nodiscard]] uint64_t LookupOrderIndex(const NestedTtmp& folder, const std::filesystem::path& name) const;
 		void Relocate(NestedTtmp& item, const std::filesystem::path& newPath);
+
+		// Keeps order.json true to the disk after a change to it. WriteOrder saves children's order in full (each top-level
+		// child's in the file of the search directory it is in); AppendLast saves the folder's order with item last, so
+		// that it comes after every sibling; ForgetMissingInOrder drops the names of directories that are gone, without
+		// making a file where there was none.
+		void WriteOrder(const std::shared_ptr<NestedTtmp>& folder, const std::vector<std::shared_ptr<NestedTtmp>>& children);
+		void AppendLast(const std::shared_ptr<NestedTtmp>& folder, const std::shared_ptr<NestedTtmp>& item);
+		void ForgetMissingInOrder(const NestedTtmp& folder) const;
 	};
 }

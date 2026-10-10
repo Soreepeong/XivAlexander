@@ -27,6 +27,7 @@ namespace {
 FontReplacement::PresetController::PresetController(std::shared_ptr<Config> config, Apply apply)
 	: m_config(std::move(config))
 	, m_apply(std::move(apply))
+	, m_presetFolder(Presets::Folder(*m_config))
 	, m_thread([this] { ThreadBody(); }) {
 	Reload();
 }
@@ -60,8 +61,8 @@ void FontReplacement::PresetController::Schedule(bool edited, std::chrono::milli
 }
 
 void FontReplacement::PresetController::ThreadBody() {
-	FolderWatch presetWatch;
-	std::filesystem::path watchedFolder;
+	// The presets folder, and the folders of the presets' glyph images, and no others.
+	auto presetWatch = WatchFolder(m_presetFolder, true);
 	std::map<std::filesystem::path, FolderWatch> glyphWatches;
 
 	while (true) {
@@ -87,15 +88,6 @@ void FontReplacement::PresetController::ThreadBody() {
 				const auto lock = std::scoped_lock(m_mutex);
 				m_status = std::format("Loading failed ({})", e.what());
 			}
-		}
-
-		// The preset folder, and the folders of the presets' glyph images, and no others.
-		const auto folder = m_config->Runtime.FontReplacement.Faces.PresetFolder.Value();
-		if (folder != watchedFolder) {
-			watchedFolder = folder;
-			presetWatch.Clear();
-			if (!folder.empty() && is_directory(folder))
-				presetWatch = WatchFolder(folder, true);
 		}
 
 		std::vector<std::filesystem::path> wantedGlyphFolders;
@@ -151,45 +143,17 @@ void FontReplacement::PresetController::ThreadBody() {
 
 void FontReplacement::PresetController::Load(bool keepOnFailure) {
 	const auto& settings = m_config->Runtime.FontReplacement.Faces;
-	const auto folder = settings.PresetFolder.Value();
-	const auto families = settings.FamilySources.Value();
-	const bool monospacedDigits = settings.MonospacedDigits;
+	const auto families = settings.Families.Value();
 	const bool systemFallback = settings.SystemFallback;
 
-	// Each preset is read once, however many families use it.
-	std::map<std::string, std::optional<Presets::Faces>, LessIgnoringCase> loaded;
 	std::vector<std::string> failures;
-	const auto read = [&](const std::string& relative) -> const std::optional<Presets::Faces>& {
-		if (const auto it = loaded.find(relative); it != loaded.end())
-			return it->second;
-		const auto path = folder / std::filesystem::path(xivres::util::unicode::convert<std::wstring>(relative));
-		try {
-			return loaded.emplace(relative, Presets::Load(path)).first->second;
-		} catch (const std::exception& e) {
-			Host::Error("Loading the preset {} failed: {}", relative, e.what());
-			failures.push_back(std::format("{}: {}", relative, e.what()));
-			return loaded.emplace(relative, std::nullopt).first->second;
-		}
-	};
+	PresetReader read(m_presetFolder, failures);
 
-	// Each family's sources in order, the later over the earlier; of a preset, only the family's faces.
 	Presets::Faces preset;
 	auto fontFamilies = 0;
-	for (const auto& [family, sources] : families) {
-		Presets::Faces combined;
+	for (const auto& [family, familySettings] : families) {
 		auto usesFont = false;
-		for (const auto& source : sources) {
-			if (!source.Enabled)
-				continue;
-			if (source.IsPreset()) {
-				if (const auto& faces = read(source.Preset))
-					Presets::Combine(combined, Presets::FacesOfFamily(*faces, family));
-			} else if (const auto generated = MakeFaces(family, source.Font, monospacedDigits, failures)) {
-				Presets::Combine(combined, *generated);
-				usesFont = true;
-			}
-		}
-		Presets::Combine(preset, combined);
+		Presets::Combine(preset, MakeFamilyFaces(family, familySettings, read, failures, &usesFont));
 		fontFamilies += usesFont ? 1 : 0;
 	}
 
@@ -207,7 +171,7 @@ void FontReplacement::PresetController::Load(bool keepOnFailure) {
 	std::set<std::string, LessIgnoringCase> presetFamilies;
 	for (const auto& name : preset | std::views::keys)
 		presetFamilies.insert(GameFontNames::FamilyOf(name));
-	const auto presetCount = std::ranges::count_if(loaded | std::views::values, [](const auto& p) { return p.has_value(); });
+	const auto presetCount = read.ReadCount();
 	auto status = preset.empty()
 		? std::string("The game's fonts")
 		: std::format("{} faces of {} families", preset.size(), presetFamilies.size())
@@ -224,6 +188,46 @@ void FontReplacement::PresetController::Load(bool keepOnFailure) {
 	}
 
 	m_apply(std::move(preset), systemFallback);
+}
+
+FontReplacement::PresetController::PresetReader::PresetReader(std::filesystem::path folder, std::vector<std::string>& failures)
+	: m_folder(std::move(folder))
+	, m_failures(failures) {
+}
+
+const std::optional<FontReplacement::Presets::Faces>& FontReplacement::PresetController::PresetReader::operator()(const std::string& preset) {
+	if (const auto it = m_loaded.find(preset); it != m_loaded.end())
+		return it->second;
+	try {
+		return m_loaded.emplace(preset, Presets::Load(Presets::Resolve(m_folder, preset))).first->second;
+	} catch (const std::exception& e) {
+		Host::Error("Loading the preset {} failed: {}", preset, e.what());
+		m_failures.push_back(std::format("{}: {}", preset, e.what()));
+		return m_loaded.emplace(preset, std::nullopt).first->second;
+	}
+}
+
+size_t FontReplacement::PresetController::PresetReader::ReadCount() const {
+	return static_cast<size_t>(std::ranges::count_if(m_loaded | std::views::values, [](const auto& p) { return p.has_value(); }));
+}
+
+FontReplacement::Presets::Faces FontReplacement::PresetController::MakeFamilyFaces(const std::string& family, const FontReplacementFamily& settings, PresetReader& read, std::vector<std::string>& failures, bool* usesFont) {
+	Presets::Faces combined;
+	if (!settings.Enabled)
+		return combined;
+	for (const auto& source : settings.Sources) {
+		if (!source.Enabled)
+			continue;
+		if (source.IsPreset()) {
+			if (const auto& faces = read(source.Preset))
+				Presets::Combine(combined, Presets::FacesOfFamily(*faces, family));
+		} else if (const auto generated = MakeFaces(family, source.Font, settings.MonospacedDigits, failures)) {
+			Presets::Combine(combined, *generated);
+			if (usesFont)
+				*usesFont = true;
+		}
+	}
+	return combined;
 }
 
 std::optional<FontReplacement::Presets::Faces> FontReplacement::PresetController::MakeFaces(const std::string& family, const FontReplacementFamilyFont& font, bool monospacedDigits, std::vector<std::string>& failures) {
@@ -253,11 +257,22 @@ std::optional<FontReplacement::Presets::Faces> FontReplacement::PresetController
 
 		Presets::Faces faces;
 		for (const auto& [name, size] : GameFontNames::FacesOf(family)) {
+			auto elements = FontChanger::FaceFromFont::MakeElements(GameFontNames::FamilyOf(name), size, lookup, *info, open, monospacedDigits);
+			if (elements.empty())
+				continue;
+
+			// The game's own glyphs first, as FontChanger's FaceFromFont.MakeFace makes a face: MakeElements' elements
+			// replace (merge mode Replace) the characters an earlier element has, so with nothing before them they would
+			// draw none. It also makes the face's sizes and line metrics the game font's, as in a preset.
 			auto face = std::make_shared<FontChanger::Structs::Face>();
 			face->Name = name;
-			face->Elements = FontChanger::FaceFromFont::MakeElements(GameFontNames::FamilyOf(name), size, lookup, *info, open, monospacedDigits);
-			if (!face->Elements.empty())
-				faces.emplace(name, std::move(face));
+			auto& game = *face->Elements.emplace_back(std::make_unique<FontChanger::Structs::FaceElement>());
+			game.Renderer = FontChanger::Structs::RendererEnum::PrerenderedGameInstallation;
+			game.Lookup.Name = GameFontNames::FamilyOf(name);
+			game.Size = size;
+			game.WrapModifiers.Codepoints = {{0, 0x10FFFF}};
+			std::ranges::move(elements, std::back_inserter(face->Elements));
+			faces.emplace(name, std::move(face));
 		}
 		return faces.empty() ? std::nullopt : std::optional(std::move(faces));
 	} catch (const std::exception& e) {

@@ -4,13 +4,18 @@
 #include "MainApp/Windows/ThemeColors.h"
 
 #include "Utils/Win32/Resource.h"
+#include "Utils/Win32/TaskDialogBuilder.h"
 
 #include "Config.h"
 #include "MainApp/App.h"
 #include "MainApp/Features/LoginSessions.h"
 #include "MainApp/Features/AudioResampler.h"
 #include "MainApp/Features/NetworkTimingHandler.h"
+#include <FontChanger.FixedSizeFont/image_glyph_files.h>
+
+#include "MainApp/FontReplacement/FamilyPreview.h"
 #include "MainApp/FontReplacement/GameFontNames.h"
+#include "MainApp/FontReplacement/Presets.h"
 #include "MainApp/Modding/NestedTtmp.h"
 #include "MainApp/Modding/ResourceOverrider.h"
 #include "MainApp/Modding/VirtualSqPacks.h"
@@ -34,10 +39,12 @@ namespace {
 		WmCooldown,
 		WmTtmpSetsChanged,
 		WmSelectTtmpPack,
+		WmFontPreviewDrawn,
 	};
 
 	// The controls of the n-th row of the page have the IDs FirstRowControlId + n * ControlsPerRow + RowPart.
 	constexpr int FirstRowControlId = 1000;
+	constexpr int FirstTabControlId = 900;  // Of the buttons of the page's tabs, below its rows'.
 	constexpr int ControlsPerRow = 8;
 
 	enum RowPart : int {
@@ -53,6 +60,59 @@ namespace {
 
 	constexpr auto ContainerClassName = L"XivAlexander::Window::SettingsView";
 	constexpr auto StatusClassName = L"XivAlexander::Window::SettingsView::Status";
+	constexpr auto FontPreviewClassName = L"XivAlexander::Window::SettingsView::FontPreview";
+
+	// How long a font family's preview waits for changes to stop before it is drawn: making the faces can take a while.
+	constexpr auto FontPreviewDelay = std::chrono::milliseconds(300);
+
+	// Latin, Japanese and Korean, so that what the family's sources lack shows.
+	constexpr auto DefaultFontPreviewText = L"The quick brown fox jumps over the lazy dog. 0123456789 いろはにほへと ちりぬるを 漢字とカタカナ 다람쥐 헌 쳇바퀴에 타고파";
+
+	// Meidinger draws the numbers flying over battles: digits and a few signs only. Its sample text is its own.
+	constexpr auto MeidingerFamily = "Meidinger";
+	constexpr auto MeidingerPreviewText = L"0123456789?!%+-./";
+
+	// Which sample text a family's page shows and keeps: Meidinger's, or the one the others share.
+	std::string FontPreviewTextKey(const std::string& family) {
+		return family == MeidingerFamily ? family : std::string();
+	}
+
+	// The family the font replacement's page previews the edge with: that of most of the UI's text.
+	constexpr auto EdgePreviewFamily = "AXIS";
+
+	// The sizes a preview can be drawn at: those the replacement draws (FontReplacer::GetDrawnPx).
+	constexpr float MinFontPreviewSize = 4;
+	constexpr float MaxFontPreviewSize = 255;
+
+	// Colors of text in the game, for the previews: a text color and an edge color the game's strings set together with
+	// <colortype(n)> and <edgecolortype(m)> (rows n and m of UIColor, dark theme), and a background to see both on. The
+	// pairs are the most used in the game's sheets' strings as of game version 2026.09.15.0000.0000, counted by
+	// scratch\local\uicolor\uicolor_stats.cpp. 571/572, white on a black edge, is left out as the same as Default;
+	// those setting a text color only (547, an unseen speaker's lines) keep the edge of the text around them.
+	struct FontPreviewColorPreset {
+		UINT LabelId;
+		COLORREF Text;
+		COLORREF Edge;
+		COLORREF Background;
+	};
+	constexpr FontPreviewColorPreset FontPreviewColorPresets[]{
+		// The game's text without color macros: white, with a dark edge.
+		{IDS_SETTINGS_FONT_COLORS_DEFAULT, RGB(0xFF, 0xFF, 0xFF), RGB(0x00, 0x00, 0x00), RGB(0x60, 0x60, 0x60)},
+		// 504/505: "Duration:", "Potency:" and other labels in tooltips.
+		{IDS_SETTINGS_FONT_COLORS_TOOLTIPLABEL, RGB(0x00, 0xCC, 0x22), RGB(0x00, 0x00, 0x00), RGB(0x60, 0x60, 0x60)},
+		// 500/501: names of actions and terms in descriptions, and headings.
+		{IDS_SETTINGS_FONT_COLORS_ACTIONNAME, RGB(0xFF, 0x7B, 0x1A), RGB(0x00, 0x00, 0x00), RGB(0x60, 0x60, 0x60)},
+		// 506/507: names of statuses in descriptions, and notes.
+		{IDS_SETTINGS_FONT_COLORS_STATUSNAME, RGB(0xFF, 0xFF, 0x66), RGB(0x00, 0x00, 0x00), RGB(0x60, 0x60, 0x60)},
+		// 508/509: warnings, and confirmations of what can't be undone.
+		{IDS_SETTINGS_FONT_COLORS_WARNING, RGB(0xFF, 0x80, 0x80), RGB(0x00, 0x00, 0x00), RGB(0x60, 0x60, 0x60)},
+		// 533/534: notices such as "This quest has been adjusted...", pale on a red edge.
+		{IDS_SETTINGS_FONT_COLORS_NOTICE, RGB(0xFF, 0xC8, 0xC8), RGB(0xAE, 0x00, 0x00), RGB(0x30, 0x30, 0x30)},
+		// 582/581: places and things highlighted in some quests, orange on a purple edge.
+		{IDS_SETTINGS_FONT_COLORS_QUESTHIGHLIGHT, RGB(0xFF, 0xA0, 0x00), RGB(0x40, 0x00, 0x80), RGB(0x30, 0x30, 0x30)},
+		// 7/3: the text of content tutorials, black on a grey edge over a light page.
+		{IDS_SETTINGS_FONT_COLORS_TUTORIAL, RGB(0x00, 0x00, 0x00), RGB(0xA0, 0xA0, 0xA0), RGB(0xE8, 0xE0, 0xD0)},
+	};
 
 	std::wstring GetText(HWND hWnd) {
 		std::wstring text(static_cast<size_t>(GetWindowTextLengthW(hWnd)) + 1, L'\0');
@@ -87,25 +147,70 @@ namespace {
 		return Trim(std::move(res));
 	}
 
-	/// Asks for a folder, or with pickFile, for a DLL file.
-	std::optional<std::filesystem::path> PickPath(HWND hOwner, const std::filesystem::path& initial, bool pickFile) {
+	/// Gets the client GUID of the file dialogs for a purpose, so that each purpose's dialogs remember their own last folder
+	/// instead of sharing one. It is made from the purpose's name (FNV-1a, twice with different starting values), so that it
+	/// stays the same from build to build.
+	GUID DialogGuid(std::string_view purpose) {
+		const auto hash = [purpose](uint64_t value) {
+			for (const auto c : std::string_view("XivAlexander.SettingsView.FileDialog."))
+				value = (value ^ static_cast<uint8_t>(c)) * 0x100000001b3ULL;
+			for (const auto c : purpose)
+				value = (value ^ static_cast<uint8_t>(c)) * 0x100000001b3ULL;
+			return value;
+		};
+		const auto high = hash(0xcbf29ce484222325ULL);
+		const auto low = hash(0x84222325cbf29ce4ULL);
+		GUID guid{
+			.Data1 = static_cast<uint32_t>(high >> 32),
+			.Data2 = static_cast<uint16_t>(high >> 16),
+			// Marked as made by a method of its own (RFC 9562's version 8 and variant), so it can't be taken for another kind.
+			.Data3 = static_cast<uint16_t>((high & 0x0FFF) | 0x8000),
+		};
+		for (size_t i = 0; i < 8; ++i)
+			guid.Data4[i] = static_cast<uint8_t>(low >> (56 - i * 8));
+		guid.Data4[0] = static_cast<uint8_t>((guid.Data4[0] & 0x3F) | 0x80);
+		return guid;
+	}
+
+	/// What PickPath asks for.
+	enum class PickKind {
+		Folder,
+		Dll,
+		Preset,  // A font preset (.json).
+	};
+
+	/// Asks for a folder or a file, starting in initial if it is a folder; purpose tells the dialog's last folder apart
+	/// from other dialogs' (DialogGuid).
+	std::optional<std::filesystem::path> PickPath(HWND hOwner, const std::filesystem::path& initial, PickKind kind, std::string_view purpose) {
 		try {
 			IFileOpenDialogPtr pDialog;
 			DWORD dwFlags;
 			Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
+			Utils::Win32::Error::ThrowIfFailed(pDialog->SetClientGuid(DialogGuid(purpose)));
 			Utils::Win32::Error::ThrowIfFailed(pDialog->GetOptions(&dwFlags));
-			Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM | (pickFile ? FOS_FILEMUSTEXIST : FOS_PICKFOLDERS)));
-			if (pickFile) {
+			Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM | (kind == PickKind::Folder ? FOS_PICKFOLDERS : FOS_FILEMUSTEXIST)));
+			if (kind == PickKind::Dll) {
 				static constexpr COMDLG_FILTERSPEC FileTypes[]{
 					{L"*.dll", L"*.dll"},
+					{L"*.*", L"*.*"},
+				};
+				Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypes(static_cast<UINT>(std::size(FileTypes)), FileTypes));
+			} else if (kind == PickKind::Preset) {
+				static constexpr COMDLG_FILTERSPEC FileTypes[]{
+					{L"*.json", L"*.json"},
 					{L"*.*", L"*.*"},
 				};
 				Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypes(static_cast<UINT>(std::size(FileTypes)), FileTypes));
 			}
 			if (!initial.empty() && is_directory(initial)) {
 				IShellItemPtr pFolder;
-				if (SUCCEEDED(SHCreateItemFromParsingName(initial.c_str(), nullptr, IID_PPV_ARGS(&pFolder))))
-					pDialog->SetFolder(pFolder);
+				// The presets' folder is only where it starts the first time; after that, where one was last picked from.
+				if (SUCCEEDED(SHCreateItemFromParsingName(initial.c_str(), nullptr, IID_PPV_ARGS(&pFolder)))) {
+					if (kind == PickKind::Preset)
+						pDialog->SetDefaultFolder(pFolder);
+					else
+						pDialog->SetFolder(pFolder);
+				}
 			}
 			Utils::Win32::Error::ThrowIfFailed(pDialog->Show(hOwner), true);
 
@@ -287,6 +392,17 @@ namespace {
 	}
 
 	/// For the text of a button, which would take an ampersand as the start of a shortcut.
+	// The box of a label being edited in the tree takes Enter and Esc, which the window, as a dialog, would otherwise take
+	// as its OK and Cancel before the box sees them.
+	constexpr UINT_PTR LabelEditSubclassId = 1;
+	LRESULT CALLBACK LabelEditSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR) {
+		if (uMsg == WM_GETDLGCODE)
+			return DefSubclassProc(hWnd, uMsg, wParam, lParam) | DLGC_WANTALLKEYS;
+		if (uMsg == WM_NCDESTROY)
+			RemoveWindowSubclass(hWnd, LabelEditSubclassProc, LabelEditSubclassId);
+		return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+	}
+
 	std::wstring EscapeMnemonics(std::wstring_view text) {
 		std::wstring res;
 		for (const auto c : text) {
@@ -319,7 +435,10 @@ struct XivAlexander::Apps::MainApp::Window::SettingsView::Row {
 		Action,  // Buttons; no item.
 		Value,  // A label and a value shown; no item.
 		Grid,  // A grid of a list; no item.
+		RichText,  // Text that can be selected, with its links followed, shortened unless expanded; no item.
+		Tabs,  // Buttons choosing which of the rows after it are shown; no item.
 		Slider,  // A slider, and the number it sets; no item.
+		Preview,  // A font family's preview, drawn by the control; no item.
 	};
 
 	ConfigItemBase* Item{};
@@ -339,7 +458,20 @@ struct XivAlexander::Apps::MainApp::Window::SettingsView::Row {
 	std::unique_ptr<XivAlexander::Apps::MainApp::Window::GridView> Grid;
 	int Height = 0;  // Of a grid, at 100% zoom.
 	int FlowGroup = 0;  // Of a check row without a description: side by side with the rows before it of the same group.
+	// Of an edit or combo row without a description: on one line with the rows next to it of the same group, each label
+	// as wide as its text and each control LineWidth wide (at 100% zoom), but the last, which takes the rest of the line.
+	int LineGroup = 0;
+	int LineWidth = 0;
 	bool CommitOnChange = false;  // Of an edit row: as it is typed into, rather than when left.
+	bool Bold = false;  // Of a check row that is a group's heading.
+	bool Expanded = false;  // Of a rich text row: all of it shown.
+	bool LinkButton = false;  // Button1 is drawn as a link.
+	std::function<void(POINT ptScreen)> ContextMenu;  // A right click on the control.
+
+	std::vector<HWND> Tabs;  // Of a tabs row: its buttons,
+	int ActiveTab = 0;  // and which is chosen.
+	const Row* TabOwner{};  // Of a row in a tab: the tabs row,
+	int TabIndex = -1;  // and its tab.
 
 	// Shows the item's value in the controls.
 	std::function<void()> Refresh;
@@ -347,6 +479,16 @@ struct XivAlexander::Apps::MainApp::Window::SettingsView::Row {
 	std::function<void()> Commit;
 	// A click on the label, the control, or a button (RowPart).
 	std::function<void(int)> Click;
+};
+
+struct XivAlexander::Apps::MainApp::Window::SettingsView::FontPreview {
+	std::string Family;
+	std::vector<std::pair<std::string, float>> Faces;  // Of the family, with their sizes (GameFontNames::FacesOf).
+	HWND Control{};  // Of its row, which draws Image.
+	uint64_t Generation = 0;  // Of the latest request; 0 before the first.
+	bool Reload = true;  // The page's first request makes the faces anew: their files may have changed since.
+	SIZE Requested{};  // The size of the latest request.
+	std::optional<FontReplacement::FamilyPreview::Image> Image;
 };
 
 namespace {
@@ -429,7 +571,7 @@ namespace {
 		row.Click = [&row, item](int part) {
 			if (part != PartButton1)
 				return;
-			if (const auto path = PickPath(GetAncestor(row.Control, GA_ROOT), item->Value(), false))
+			if (const auto path = PickPath(GetAncestor(row.Control, GA_ROOT), item->Value(), PickKind::Folder, std::format("Path.{}", item->Name)))
 				*item = *path;
 		};
 		return true;
@@ -452,7 +594,9 @@ namespace {
 			const auto selected = ListBox_GetCurSel(row.Control);
 			const auto hasSelection = selected >= 0 && static_cast<size_t>(selected) < item->Value().size();
 			if (part == PartButton1) {
-				if (const auto path = PickPath(GetAncestor(row.Control, GA_ROOT), {}, row.PickFiles)) {
+				// The chain-loaded DLLs share where they are picked from.
+				const auto purpose = row.PickFiles ? std::string("ChainLoadDll") : std::format("PathList.{}", item->Name);
+				if (const auto path = PickPath(GetAncestor(row.Control, GA_ROOT), {}, row.PickFiles ? PickKind::Dll : PickKind::Folder, purpose)) {
 					auto paths = item->Value();
 					paths.push_back(*path);
 					*item = std::move(paths);
@@ -596,6 +740,16 @@ XivAlexander::Apps::MainApp::Window::SettingsView::SettingsView(App& app, HWND h
 			return self->StatusProc(hwnd, uMsg, wParam, lParam);
 		return DefWindowProcW(hwnd, uMsg, wParam, lParam);
 	});
+	registerClass(FontPreviewClassName, [](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT {
+		const auto self = reinterpret_cast<SettingsView*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+		if (uMsg == WM_ERASEBKGND)
+			return 1;
+		if (uMsg == WM_PAINT && self) {
+			self->PaintFontPreview(hwnd);
+			return 0;
+		}
+		return DefWindowProcW(hwnd, uMsg, wParam, lParam);
+	});
 
 	const auto create = [this](HWND hParent, DWORD exStyle, LPCWSTR className, DWORD style) {
 		const auto hWnd = CreateWindowExW(exStyle, className, L"", WS_CHILD | style, 0, 0, 0, 0, hParent, nullptr, Dll::Module(), nullptr);
@@ -631,6 +785,8 @@ XivAlexander::Apps::MainApp::Window::SettingsView::SettingsView(App& app, HWND h
 }
 
 XivAlexander::Apps::MainApp::Window::SettingsView::~SettingsView() {
+	// Waits for a preview being drawn, which then posts to nothing.
+	m_fontPreviewer.reset();
 	m_rowCleanup.clear();
 	m_cleanup.clear();
 	if (IsWindow(m_hWnd))
@@ -732,6 +888,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 	label(rt.FramerateControl.Lock.TargetFramerateRangeTo, IDS_SETTINGS_LOCK_RANGETO);
 	label(rt.FramerateControl.Lock.MaximumRenderIntervalDeviation, IDS_SETTINGS_LOCK_MAXDEVIATION);
 	label(rt.FramerateControl.Lock.GlobalCooldown, IDS_SETTINGS_LOCK_GCD);
+	label(rt.Modding.Languages.LipSyncLanguage, IDS_SETTINGS_LIPSYNC, IDS_SETTINGS_LIPSYNC_DESC);
 
 	auto& fixes = rt.CrowdFix.Fixes;
 	label(rt.CrowdFix.Enabled, IDS_SETTINGS_CROWDFIX_ENABLED, IDS_SETTINGS_CROWDFIX_ENABLED_DESC);
@@ -755,6 +912,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 		static_cast<ConfigItemBase*>(&rt.Ui.LogWindow),
 		static_cast<ConfigItemBase*>(&rt.Ui.ConfigWindow),
 		static_cast<ConfigItemBase*>(&rt.Modding.MuteVoice),
+		static_cast<ConfigItemBase*>(&rt.Modding.Ttmp),
 		static_cast<ConfigItemBase*>(&rt.Audio.SoxrResampler),
 		static_cast<ConfigItemBase*>(&rt.Audio.SoxrResampler.Filter),
 		static_cast<ConfigItemBase*>(&rt.CrowdFix.Fixes),
@@ -762,7 +920,27 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 	})
 		m_itemInfo[group].Inline = true;
 
-	m_itemInfo[&rt.Opcodes].Actions = {{0, ID_CONFIGURE_EDITOPCODECONFIGURATION}, {0, ID_CONFIGURE_CHECKFORUPDATEDOPCODES}};
+	m_itemInfo[&rt.Opcodes].Actions = {{0, ID_CONFIGURE_EDITOPCODECONFIGURATION}};
+	for (const ConfigItemBase* item : {
+		static_cast<ConfigItemBase*>(&rt.Modding.Ttmp.SearchDirectories),
+		static_cast<ConfigItemBase*>(&rt.Modding.Ttmp.ChoicesFiles),
+		static_cast<ConfigItemBase*>(&rt.Modding.PathReplacements),
+		static_cast<ConfigItemBase*>(&rt.Modding.GameResourceFileEntryRootDirectories),
+		static_cast<ConfigItemBase*>(&rt.Modding.AdditionalSqpackRootDirectories),
+	})
+		m_itemInfo[item].Tabbed = true;
+	m_itemInfo[&rt.Ui.MainWindow].HeadingItem = &rt.Ui.MainWindow.Show;
+	m_itemInfo[&rt.Audio.SoxrResampler].HeadingItem = &rt.Audio.SoxrResampler.Enabled;
+	m_itemInfo[&rt.Ui.LogWindow].HeadingItem = &rt.Ui.LogWindow.Show;
+	for (const ConfigItemBase* group : {
+		static_cast<ConfigItemBase*>(&rt.Ui.MainWindow),
+		static_cast<ConfigItemBase*>(&rt.Ui.LogWindow),
+		static_cast<ConfigItemBase*>(&rt.Ui.ConfigWindow),
+		static_cast<ConfigItemBase*>(&rt.Modding.Logging),
+	})
+		m_itemInfo[group].Flow = true;
+	label(rt.Launch.UseLoginSessionSwitching, IDS_SETTINGS_LAUNCH_SESSIONSWITCHING);
+	label(rt.Launch.ClearCopiedCommandLineSeconds, IDS_SETTINGS_LAUNCH_CLEARCOPIED, IDS_SETTINGS_LAUNCH_CLEARCOPIED_DESC);
 	m_itemInfo[&rt.Opcodes].AppendNode = &m_config->Game;
 	m_itemInfo[&rt.Opcodes].AppendHeadingId = IDS_SETTINGS_HEADING_OPCODECONFIG;
 
@@ -779,12 +957,13 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 		static_cast<ConfigItemBase*>(&rt.Launch.RememberedLanguage),
 		static_cast<ConfigItemBase*>(&rt.Launch.RememberedRegion),
 		static_cast<ConfigItemBase*>(&rt.Ui.MainWindow.SettingsTreeWidth),
+		static_cast<ConfigItemBase*>(&rt.Opcodes.CheckForUpdatesOnStartup),
 		static_cast<ConfigItemBase*>(&rt.NetworkTiming.ExpectedAnimationLockDurationUs),
 		static_cast<ConfigItemBase*>(&rt.NetworkTiming.MaximumAnimationLockDurationUs),
 		static_cast<ConfigItemBase*>(&rt.FramerateControl.UseMainThreadTimingHandler),
 		static_cast<ConfigItemBase*>(&rt.Opcodes.VersionSensitiveFeaturesAllowedGameVersion),
 		static_cast<ConfigItemBase*>(&rt.Opcodes.EnabledPatchCodes),
-		static_cast<ConfigItemBase*>(&rt.FontReplacement.Faces.FamilySources),
+		static_cast<ConfigItemBase*>(&rt.FontReplacement.Faces.Families),
 	})
 		m_itemInfo[item].Hidden = true;
 
@@ -805,7 +984,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 	m_fontFamilies = Apps::MainApp::FontReplacement::GameFontNames::Families();
 	if (m_fontFamilies.empty())
 		m_fontFamilies = {"AXIS", "Jupiter", "JupiterN", "Meidinger", "MiedingerMid", "TrumpGothic"};
-	for (const auto& family : rt.FontReplacement.Faces.FamilySources.Value() | std::views::keys) {
+	for (const auto& family : rt.FontReplacement.Faces.Families.Value() | std::views::keys) {
 		if (std::ranges::find(m_fontFamilies, family) == m_fontFamilies.end())
 			m_fontFamilies.push_back(family);
 	}
@@ -813,7 +992,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 	for (const auto& family : m_fontFamilies)
 		fontFamilyNodes.push_back({.Kind = TreeNode::NodeKind::FontFamily, .Family = family});
 
-	// Positions of the top-level menus in the menu resource: 1 Restart, 2 Network, 5 Configure, 7 Help.
+	// Positions of the top-level menus in the menu resource: 1 Restart, 2 Network, 4 Configure, 6 Help.
 	using Kind = TreeNode::NodeKind;
 	const auto commands = [this](std::vector<UINT> commandIds) {
 		std::vector<std::pair<std::wstring, std::function<void()>>> buttons;
@@ -830,7 +1009,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 				{.Groups = {&rt.Opcodes}},
 			}, .AddFirst = [commands] { commands({ID_NETWORK_RELEASEALLCONNECTIONS, ID_NETWORK_RESETALLCONNECTIONS}); }},
 			{.Groups = {&rt.Modding}, .Children = {
-				{.Groups = {&rt.Modding.Ttmp}},
+				{.Kind = Kind::TtmpFolder},
 				{.Groups = {&rt.FontReplacement}, .Children = std::move(fontFamilyNodes)},
 				{.Groups = {&rt.Modding.Languages}},
 				{.Groups = {&rt.Modding.Logging}},
@@ -846,10 +1025,13 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 		// The loading of other DLLs on a page of its own.
 		{.LabelId = IDS_SETTINGS_PAGE_CONFIGURATION, .Groups = {&rt.Ui}, .Headings = true, .Children = {
 			{.Groups = {&rt.ChainLoad}},
-		}, .AddLast = [this, commands] {
-			CreateHeadingRow(GetTopLevelMenuText(5));
+		}, .AddLast = [this, &rt, commands] {
+			CreateHeadingRow(rt.GetStringRes(IDS_SETTINGS_UPDATES));
+			commands({ID_FILE_CHECKFORUPDATES, ID_CONFIGURE_CHECKFORUPDATEDOPCODES});
+			CreateRow(rt.Opcodes.CheckForUpdatesOnStartup);
+			CreateHeadingRow(GetTopLevelMenuText(4));
 			commands({ID_CONFIGURE_EDITRUNTIMECONFIGURATION, ID_CONFIGURE_OPENCONFIGURATIONDIRECTORY, ID_CONFIGURE_RELOAD});
-			CreateHeadingRow(GetTopLevelMenuText(7));
+			CreateHeadingRow(GetTopLevelMenuText(6));
 			commands({ID_HELP_OPENHELPWEBPAGE, ID_HELP_OPENHOMEPAGE});
 		}},
 	};
@@ -927,7 +1109,7 @@ std::wstring XivAlexander::Apps::MainApp::Window::SettingsView::GetNodeLabel(con
 	if (node.Kind == TreeNode::NodeKind::FontFamily)
 		return xivres::util::unicode::convert<std::wstring>(node.Family);
 	if (node.Kind == TreeNode::NodeKind::TtmpFolder && node.TtmpPath.empty())
-		return m_config->Runtime.GetStringRes(IDS_SETTINGS_TTMP_NOFOLDER);
+		return GetItemLabel(m_config->Runtime.Modding.Ttmp);
 	if (node.Kind == TreeNode::NodeKind::TtmpFolder || node.Kind == TreeNode::NodeKind::TtmpPack)
 		return node.TtmpPath.filename().wstring();
 	if (node.LabelId)
@@ -975,6 +1157,8 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::PopulateTree() {
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::ClearRows() {
 	m_rowCleanup.clear();
+	m_fontPreview.reset();
+	m_deferredTabbed.clear();
 	TruncateRows(0);
 	m_ttmpPage.reset();
 	m_scrollY = 0;
@@ -987,6 +1171,8 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::TruncateRows(size_t coun
 			if (hWnd)
 				DestroyWindow(hWnd);
 		}
+		for (const auto hWnd : row->Tabs)
+			DestroyWindow(hWnd);
 	}
 	if (count < m_rows.size())
 		m_rows.erase(m_rows.begin() + static_cast<ptrdiff_t>(count), m_rows.end());
@@ -1032,10 +1218,8 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::ShowPage(const TreeNode*
 				break;
 
 			case TreeNode::NodeKind::Restart:
+				// The launch group's items are placed among the restart's.
 				AddRestartRows();
-				for (const auto group : pShown->Groups)
-					AddGroupSection(*group, pShown->Headings);
-				AddSessionRows();
 				break;
 
 			default:
@@ -1045,6 +1229,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::ShowPage(const TreeNode*
 					AddGroupSection(*group, pShown->Headings);
 				if (pShown->AddLast)
 					pShown->AddLast();
+				AddTabbedRows();
 				break;
 		}
 	}
@@ -1053,10 +1238,20 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::ShowPage(const TreeNode*
 }
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::AddGroupSection(const ConfigGroup& group, bool heading) {
-	if (heading)
-		CreateHeadingRow(GetItemLabel(group));
-
 	const auto info = FindItemInfo(group);
+	if (heading && info && info->HeadingItem) {
+		CreateRow(*const_cast<ConfigItemBase*>(info->HeadingItem));
+		if (!m_rows.empty() && m_rows.back()->Item == info->HeadingItem && m_rows.back()->Type == Row::RowType::Check) {
+			m_rows.back()->Bold = true;
+			SendMessageW(m_rows.back()->Control, WM_SETFONT, reinterpret_cast<WPARAM>(*m_boldFont), FALSE);
+		}
+	} else if (heading && std::ranges::any_of(group.Items(), [this](const ConfigItemBase* item) {
+		const auto info = FindItemInfo(*item);
+		return !dynamic_cast<const ConfigGroup*>(item) && !(info && (info->Hidden || info->Tabbed));
+	})) {
+		CreateHeadingRow(GetItemLabel(group));
+	}
+
 	if (info) {
 		for (size_t i = 0; i < info->Actions.size(); i += 2) {
 			const auto action = [this](const std::pair<UINT, UINT>& labelAndCommand) {
@@ -1085,12 +1280,24 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddGroupSection(const Co
 }
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::AddGroupRows(const ConfigNode& node) {
+	// A group's check boxes may go side by side: each group's of its own.
+	const auto nodeGroup = dynamic_cast<const ConfigGroup*>(&node);
+	const auto nodeInfo = nodeGroup ? FindItemInfo(*nodeGroup) : nullptr;
+	const auto flowGroup = nodeInfo && nodeInfo->Flow ? static_cast<int>(reinterpret_cast<uintptr_t>(&node) & 0x7FFFFFFF) : 0;
 	for (const auto item : node.Items()) {
 		if (dynamic_cast<const ConfigGroup*>(item))
 			continue;
 		if (const auto info = FindItemInfo(*item); info && info->Hidden)
 			continue;
+		if (nodeInfo && nodeInfo->HeadingItem == item)
+			continue;
+		if (const auto info = FindItemInfo(*item); info && info->Tabbed) {
+			m_deferredTabbed.push_back(item);
+			continue;
+		}
 		CreateRow(*item);
+		if (flowGroup && !m_rows.empty() && m_rows.back()->Item == item && m_rows.back()->Type == Row::RowType::Check && !m_rows.back()->Description)
+			m_rows.back()->FlowGroup = flowGroup;
 	}
 
 	// Inline groups follow, each under its heading, with theirs in turn.
@@ -1292,22 +1499,45 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddRestartRows() {
 
 	// The languages and regions that can't be chosen, of other publishers or for an installation that doesn't allow it,
 	// aren't shown; nor is remembering them when none is.
-	const auto choices = [this, &choice](std::initializer_list<UINT> commandIds, UINT rememberId, int flowGroup) {
-		auto any = false;
+	const auto choices = [this, &rt, &choice](const std::wstring& heading, std::initializer_list<UINT> commandIds, UINT rememberId, int flowGroup) {
+		if (std::ranges::none_of(commandIds, [this](UINT commandId) { return m_restartChoices.GetState(commandId).second; }))
+			return;
+		CreateHeadingRow(heading, rt.GetStringRes(IDS_SETTINGS_REMEMBER), m_restartChoices.GetState(rememberId).second,
+			[this, rememberId] { return m_restartChoices.GetState(rememberId).first; },
+			[this, rememberId] { m_restartChoices.Choose(rememberId); });
 		for (const auto commandId : commandIds) {
-			if (m_restartChoices.GetState(commandId).second) {
+			if (m_restartChoices.GetState(commandId).second)
 				choice(commandId, false, flowGroup);
-				any = true;
-			}
 		}
-		if (any)
-			choice(rememberId, true, flowGroup + 1);
 	};
-	choices({
+	choices(rt.GetStringRes(IDS_SETTINGS_GRID_LANGUAGE), {
 		ID_RESTART_LANGUAGE_JAPANESE, ID_RESTART_LANGUAGE_ENGLISH, ID_RESTART_LANGUAGE_GERMAN, ID_RESTART_LANGUAGE_FRENCH,
 		ID_RESTART_LANGUAGE_SIMPLIFIEDCHINESE, ID_RESTART_LANGUAGE_KOREAN, ID_RESTART_LANGUAGE_CHINESETRADITIONAL,
 	}, ID_RESTART_LANGUAGE_REMEMBER, 2);
-	choices({ID_RESTART_REGION_JAPAN, ID_RESTART_REGION_NORTH_AMERICA, ID_RESTART_REGION_EUROPE}, ID_RESTART_REGION_REMEMBER, 4);
+	choices(rt.GetStringRes(IDS_SETTINGS_RESTART_REGION), {ID_RESTART_REGION_JAPAN, ID_RESTART_REGION_NORTH_AMERICA, ID_RESTART_REGION_EUROPE}, ID_RESTART_REGION_REMEMBER, 4);
+
+	// Switching the sessions, and the sessions to choose from.
+	// Forgetting the stored ones is by the heading, asked first; the launch arguments' session isn't stored.
+	auto anyStored = false;
+	if (auto& loginSessions = m_app.GetLoginSessions()) {
+		m_rowCleanup += loginSessions->OnChange([this] { PostMessageW(m_hWnd, WmRebuildPage, 0, 0); });
+		anyStored = std::ranges::any_of(loginSessions->GetSessions(), [](const auto& session) { return !session.Alias.empty(); });
+	}
+	CreateHeadingRow(std::format(L"{}{}", rt.AreVersionSensitiveFeaturesDisabledTemporarily() ? L"(!) " : L"", CleanMenuText(rt.GetStringRes(IDS_MENU_LOGINSESSION))),
+		rt.GetStringRes(IDS_SETTINGS_LAUNCH_SESSIONSWITCHING), true,
+		[&rt] { return rt.Launch.UseLoginSessionSwitching.Value(); },
+		[&rt] { rt.Launch.UseLoginSessionSwitching.Toggle(); },
+		anyStored ? std::wstring(rt.GetStringRes(IDS_SETTINGS_SESSIONS_FORGET)) : std::wstring(),
+		anyStored ? std::function<void()>([this] {
+			if (Dll::MessageBoxF(m_hWndOwner, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2, m_config->Runtime.GetStringRes(IDS_SETTINGS_SESSIONS_FORGET_CONFIRM)) != IDYES)
+				return;
+			if (auto& sessions = m_app.GetLoginSessions())
+				sessions->ForgetStoredSessions();
+		}) : std::function<void()>());
+	AddSessionRows();
+
+	CreateHeadingRow(rt.GetStringRes(IDS_SETTINGS_MISCELLANEOUS));
+	CreateRow(rt.Launch.ClearCopiedCommandLineSeconds);
 }
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::AddSessionRows() {
@@ -1331,7 +1561,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddSessionRows() {
 		return CompareStringEx(LOCALE_NAME_USER_DEFAULT, NORM_IGNORECASE | SORT_DIGITSASNUMBERS, l.first.c_str(), -1, r.first.c_str(), -1, nullptr, nullptr, 0) == CSTR_LESS_THAN;
 	});
 
-	CreateHeadingRow(std::format(L"{}{}", rt.AreVersionSensitiveFeaturesDisabledTemporarily() ? L"(!) " : L"", CleanMenuText(rt.GetStringRes(IDS_MENU_LOGINSESSION))));
 	for (const auto& [alias, k] : order) {
 		auto label = alias.empty() ? std::wstring(rt.GetStringRes(IDS_MENU_LOGINSESSION_LAUNCHARGUMENTS)) : alias;
 		if (sessions[k].Expired)
@@ -1346,6 +1575,19 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddSessionRows() {
 					loginSessions->Select(index);
 			},
 			false, 1);
+		if (alias.empty())
+			continue;
+		m_rows.back()->ContextMenu = [this, alias = xivres::util::unicode::convert<std::string>(alias), label](POINT ptScreen) {
+			const auto hMenu = CreatePopupMenu();
+			const auto destroyMenu = xivres::util::on_dtor([hMenu] { DestroyMenu(hMenu); });
+			AppendMenuW(hMenu, MF_STRING, 1, m_config->Runtime.GetStringRes(IDS_SETTINGS_SESSIONS_FORGETONE));
+			if (TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_RIGHTBUTTON, ptScreen.x, ptScreen.y, 0, m_hWnd, nullptr) != 1)
+				return;
+			if (Dll::MessageBoxF(m_hWndOwner, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2, m_config->Runtime.FormatStringRes(IDS_SETTINGS_SESSIONS_FORGETONE_CONFIRM, label)) != IDYES)
+				return;
+			if (auto& loginSessions = m_app.GetLoginSessions())
+				loginSessions->ForgetStoredSession(alias);
+		};
 	}
 }
 
@@ -1662,7 +1904,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddDirectoryListRows(Con
 	});
 	CreateActionRow({
 		{rt.GetStringRes(IDS_SETTINGS_DIRS_ADD), [this, &item, &grid] {
-			if (const auto path = PickPath(m_hWndOwner, {}, false)) {
+			if (const auto path = PickPath(m_hWndOwner, {}, PickKind::Folder, std::format("DirectoryList.{}", item.Name))) {
 				auto values = item.Value();
 				values.push_back(*path);
 				item = std::move(values);
@@ -1684,8 +1926,8 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddDirectoryListRows(Con
 
 struct XivAlexander::Apps::MainApp::Window::SettingsView::TtmpPage {
 	std::shared_ptr<Features::Modding::NestedTtmp> Folder;
-	std::vector<std::shared_ptr<Features::Modding::NestedTtmp>> Packs;  // In the folder itself, in its order.
-	std::vector<size_t> Shown;  // Of the packs, those matching the filter.
+	std::vector<std::shared_ptr<Features::Modding::NestedTtmp>> Items;  // The folders and packs in the folder, in its order.
+	std::vector<size_t> Shown;  // Of the items, those matching the filter.
 	GridView* Grid{};
 };
 
@@ -1700,12 +1942,12 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::ListenToTtmps() {
 }
 
 bool XivAlexander::Apps::MainApp::Window::SettingsView::AttachTtmpNodes(bool force) {
-	// Under the node of the TexTools ModPacks group: the packs in no folder, then the folders as they nest, each with
-	// its packs, all in the library's order.
+	// Under the node of the TexTools ModPacks, which is the page of those in no folder: the folders as they nest and the
+	// packs, each folder with its own, all in the library's order.
 	TreeNode* pGroupNode{};
 	const std::function<void(std::vector<TreeNode>&)> findGroupNode = [&](std::vector<TreeNode>& nodes) {
 		for (auto& node : nodes) {
-			if (node.Kind == TreeNode::NodeKind::Groups && node.Groups.size() == 1 && node.Groups.front() == &m_config->Runtime.Modding.Ttmp)
+			if (node.Kind == TreeNode::NodeKind::TtmpFolder && node.TtmpPath.empty())
 				pGroupNode = &node;
 			else
 				findGroupNode(node.Children);
@@ -1717,7 +1959,7 @@ bool XivAlexander::Apps::MainApp::Window::SettingsView::AttachTtmpNodes(bool for
 
 	std::vector<std::filesystem::path> paths;
 	std::set<std::filesystem::path> disabled;
-	std::vector<TreeNode> nodes{{.Kind = TreeNode::NodeKind::TtmpFolder}};
+	std::vector<TreeNode> nodes;
 	if (const auto& sqpacks = m_app.GetResourceOverrider().GetVirtualSqPacks()) {
 		const auto lock = sqpacks->LockTtmps();
 		const std::function<void(const Features::Modding::NestedTtmp&, std::vector<TreeNode>&, std::vector<TreeNode>&)> addChildren =
@@ -1735,10 +1977,7 @@ bool XivAlexander::Apps::MainApp::Window::SettingsView::AttachTtmpNodes(bool for
 					}
 				}
 			};
-		// The packs at the top go under the node of those in no folder.
-		std::vector<TreeNode> topPacks;
-		addChildren(*sqpacks->GetTtmps(), nodes, topPacks);
-		nodes.front().Children = std::move(topPacks);
+		addChildren(*sqpacks->GetTtmps(), nodes, nodes);
 	}
 
 	// Struck through in the tree.
@@ -1831,14 +2070,12 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::OnTtmpSetsChanged() {
 	if (shownKind != Kind::TtmpFolder)
 		return;
 
-	// The same packs: only what they show; else the page anew, keeping the filter.
+	// The same folders and packs, in the same order: only what they show; else the page anew, keeping the filter.
 	std::vector<std::filesystem::path> packs;
 	if (const auto& sqpacks = m_app.GetResourceOverrider().GetVirtualSqPacks(); sqpacks && m_ttmpPage && m_ttmpPage->Folder) {
 		const auto lock = sqpacks->LockTtmps();
-		for (const auto& child : *m_ttmpPage->Folder->Children) {
-			if (child->Ttmp)
-				packs.push_back(child->Path);
-		}
+		for (const auto& child : *m_ttmpPage->Folder->Children)
+			packs.push_back(child->Path);
 	}
 	if (packs == m_ttmpPagePacks && m_ttmpPage && m_ttmpPage->Folder)
 		RefreshRows();
@@ -1853,13 +2090,10 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpFolderRows(const 
 	const auto command = [this](UINT commandId) { return [this, commandId] { PostMessageW(m_hWndOwner, WM_COMMAND, commandId, 0); }; };
 
 	m_ttmpPagePacks.clear();
-	CreateActionRow({
-		{menuText(ID_MODDING_TTMP_IMPORT), command(ID_MODDING_TTMP_IMPORT)},
-		{menuText(ID_MODDING_TTMP_REFRESH), command(ID_MODDING_TTMP_REFRESH)},
-	});
-
+	AddTtmpProfileRow();
 	const auto& sqpacks = m_app.GetResourceOverrider().GetVirtualSqPacks();
 	if (!sqpacks) {
+		CreateActionRow({{menuText(ID_MODDING_TTMP_IMPORT), command(ID_MODDING_TTMP_IMPORT)}, {menuText(ID_MODDING_TTMP_REFRESH), command(ID_MODDING_TTMP_REFRESH)}});
 		CreateNoteRow(menuText(ID_MODDING_TTMP_NOTREADY));
 		return;
 	}
@@ -1884,8 +2118,8 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpFolderRows(const 
 		}
 		if (page->Folder) {
 			for (const auto& child : *page->Folder->Children) {
-				if (child->Ttmp) {
-					page->Packs.push_back(child);
+				if (child->Ttmp || child->IsGroup()) {
+					page->Items.push_back(child);
 					m_ttmpPagePacks.push_back(child->Path);
 				}
 			}
@@ -1897,25 +2131,25 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpFolderRows(const 
 	}
 	m_ttmpPage = page;
 
+	// Whether the folder is used, and what is done with it; the top level has neither a switch nor a name.
 	const auto pFolder = page->Folder;
-	if (!folder.empty()) {
-		CreateChoiceRow(rt.GetStringRes(IDS_SETTINGS_GRID_ENABLED), true,
+	if (folder.empty()) {
+		CreateActionRow({{menuText(ID_MODDING_TTMP_IMPORT), command(ID_MODDING_TTMP_IMPORT)}, {menuText(ID_MODDING_TTMP_REFRESH), command(ID_MODDING_TTMP_REFRESH)}});
+	} else {
+		CreateEnabledRow(
 			[pFolder] { return pFolder->Enabled; },
 			[this, pFolder] { SetTtmpEnabled(*pFolder, !pFolder->Enabled); },
-			true);
-		CreateActionRow({
-			{rt.GetStringRes(IDS_SETTINGS_TTMP_RENAME), [this] { RenameShownTtmp(); }},
-			{rt.GetStringRes(IDS_SETTINGS_TTMP_MOVETO), [this, pFolder] { ShowTtmpMoveMenu({pFolder}); }},
-		});
+			{
+				{rt.GetStringRes(IDS_SETTINGS_TTMP_RENAME), [this] { RenameShownTtmp(); }},
+				{rt.GetStringRes(IDS_SETTINGS_TTMP_MOVETO), [this, pFolder] { ShowTtmpMoveMenu({pFolder}); }},
+				{rt.GetStringRes(IDS_SETTINGS_SHOWINEXPLORER), [this, pFolder] { OpenInExplorer(m_hWndOwner, pFolder->Path); }},
+				{{}, {}},
+				{menuText(ID_MODDING_TTMP_IMPORT), command(ID_MODDING_TTMP_IMPORT)},
+				{menuText(ID_MODDING_TTMP_REFRESH), command(ID_MODDING_TTMP_REFRESH)},
+			});
 	}
-	// Of everything in the folder, and in the folders in it, as the menu had them; each asks first.
-	CreateActionRow({
-		{menuText(ID_MODDING_TTMP_ENABLEALL), [this, pFolder] { m_batchTtmp(*pFolder, ID_MODDING_TTMP_ENABLEALL); }},
-		{menuText(ID_MODDING_TTMP_DISABLEALL), [this, pFolder] { m_batchTtmp(*pFolder, ID_MODDING_TTMP_DISABLEALL); }},
-		{menuText(ID_MODDING_TTMP_REMOVEALL), [this, pFolder] { m_batchTtmp(*pFolder, ID_MODDING_TTMP_REMOVEALL); }},
-	});
 
-	if (page->Packs.empty()) {
+	if (page->Items.empty()) {
 		CreateNoteRow(menuText(ID_MODDING_TTMP_NOENTRY));
 		return;
 	}
@@ -1932,9 +2166,20 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpFolderRows(const 
 	SetWindowTextW(filterRow.Control, m_ttmpFilter.c_str());
 	filterRow.CommitOnChange = true;
 
-	// A double click opens the pack's own page.
+	// Several may be selected, and acted on together; a double click opens one's own page.
 	const auto requiresRestart = menuText(ID_MODDING_TTMP_ENTRY_REQUIRESRESTART);
-	const auto packAt = [page](size_t row) -> NestedTtmp& { return *page->Packs[page->Shown[row]]; };
+	const std::wstring folderStatus = rt.GetStringRes(IDS_SETTINGS_DIRS_FOLDER);
+	const auto packAt = [page](size_t row) -> NestedTtmp& { return *page->Items[page->Shown[row]]; };
+	const auto selected = [page]() {
+		std::vector<std::shared_ptr<NestedTtmp>> packs;
+		if (page->Grid) {
+			for (const auto row : page->Grid->GetSelectedRows()) {
+				if (row < page->Shown.size())
+					packs.push_back(page->Items[page->Shown[row]]);
+			}
+		}
+		return packs;
+	};
 	auto& grid = CreateGridRow({}, IDS_SETTINGS_TTMP_ORDER_DESC, 260, {
 		{.Title = rt.GetStringRes(IDS_SETTINGS_GRID_ENABLED), .Kind = GridView::CellKind::Check, .Width = 60},
 		{.Title = rt.GetStringRes(IDS_SETTINGS_GRID_NAME), .Kind = GridView::CellKind::ReadOnly, .Width = 260},
@@ -1943,8 +2188,12 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpFolderRows(const 
 		{.Title = rt.GetStringRes(IDS_SETTINGS_TTMP_STATUS), .Kind = GridView::CellKind::ReadOnly, .Width = 120},
 	}, {
 		.GetRowCount = [page] { return page->Shown.size(); },
-		.GetText = [packAt, requiresRestart](size_t row, size_t column) -> std::wstring {
-			const auto& set = *packAt(row).Ttmp;
+		.GetText = [packAt, requiresRestart, folderStatus](size_t row, size_t column) -> std::wstring {
+			// A folder is named by its directory, and says it is one.
+			const auto& item = packAt(row);
+			if (!item.Ttmp)
+				return column == 1 ? item.Path.filename().wstring() : column == 4 ? folderStatus : std::wstring();
+			const auto& set = *item.Ttmp;
 			switch (column) {
 				case 1: return Wide(set.DisplayName());
 				case 2: return Wide(set.List.Author);
@@ -1961,21 +2210,9 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpFolderRows(const 
 				MessageBeep(MB_ICONWARNING);
 				return;
 			}
-			auto packs = page->Packs;
-			MoveWithin(packs, from, to);
-
-			// The packs take the places of packs among the folder's children; the folders in it stay where they are.
-			std::vector<std::shared_ptr<NestedTtmp>> children;
-			{
-				const auto& sqpacks = m_app.GetResourceOverrider().GetVirtualSqPacks();
-				const auto lock = sqpacks->LockTtmps();
-				children = *page->Folder->Children;
-			}
-			auto next = packs.begin();
-			for (auto& child : children) {
-				if (child->Ttmp && next != packs.end())
-					child = *next++;
-			}
+			// Every child of the folder is listed, so the list in its new order is the folder's.
+			auto children = page->Items;
+			MoveWithin(children, from, to);
 			auto& sqpacks = m_app.GetResourceOverrider().GetVirtualSqPacks();
 			RunTtmpOperation([&] { sqpacks->SetTtmpOrder(page->Folder, children); });
 		},
@@ -1984,56 +2221,78 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpFolderRows(const 
 			m_ttmpPackToSelect = packAt(row).Path;
 			PostMessageW(m_hWnd, WmSelectTtmpPack, 0, 0);
 		},
-		.ShowContextMenu = [this, page](size_t row, POINT ptScreen) {
-			const auto pack = page->Packs[page->Shown[row]];
-			enum : UINT { IdMove = 1, IdNewFolder, IdDelete, IdShow };
+		.ShowContextMenu = [this, selected](size_t, POINT ptScreen) {
+			const auto packs = selected();
+			if (packs.empty())
+				return;
+			enum : UINT { IdRename = 1, IdMove, IdNewFolder, IdDelete, IdShow };
+			const auto single = packs.size() == 1 ? 0 : MF_GRAYED;
 			const auto hMenu = CreatePopupMenu();
 			const auto destroyMenu = xivres::util::on_dtor([hMenu] { DestroyMenu(hMenu); });
+			AppendMenuW(hMenu, MF_STRING | single, IdRename, m_config->Runtime.GetStringRes(IDS_SETTINGS_TTMP_RENAME));
 			AppendMenuW(hMenu, MF_STRING, IdMove, m_config->Runtime.GetStringRes(IDS_SETTINGS_TTMP_MOVETO));
 			AppendMenuW(hMenu, MF_STRING, IdNewFolder, m_config->Runtime.GetStringRes(IDS_SETTINGS_TTMP_MOVETONEWFOLDER));
 			AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
-			AppendMenuW(hMenu, MF_STRING, IdDelete, m_config->Runtime.GetStringRes(IDS_SETTINGS_PATCHCODE_DELETE));
-			AppendMenuW(hMenu, MF_STRING, IdShow, m_config->Runtime.GetStringRes(IDS_SETTINGS_SHOWINEXPLORER));
+			const auto onlyPacks = std::ranges::all_of(packs, [](const auto& item) { return item->Ttmp.has_value(); }) ? 0 : MF_GRAYED;
+			AppendMenuW(hMenu, MF_STRING | onlyPacks, IdDelete, m_config->Runtime.GetStringRes(IDS_SETTINGS_PATCHCODE_DELETE));
+			AppendMenuW(hMenu, MF_STRING | single, IdShow, m_config->Runtime.GetStringRes(IDS_SETTINGS_SHOWINEXPLORER));
 			switch (TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_RIGHTBUTTON, ptScreen.x, ptScreen.y, 0, m_hWnd, nullptr)) {
+				case IdRename:
+					RenameTtmpInTree(packs.front()->Path);
+					break;
 				case IdMove:
-					ShowTtmpMoveMenu({pack});
+					ShowTtmpMoveMenu(packs);
 					break;
 				case IdNewFolder:
-					MoveTtmpToNewFolder(pack);
+					MoveTtmpToNewFolder(packs);
 					break;
 				case IdDelete:
-					DeleteTtmp(pack);
+					DeleteTtmps(packs);
 					break;
 				case IdShow:
-					OpenInExplorer(m_hWndOwner, pack->Path);
+					OpenInExplorer(m_hWndOwner, packs.front()->Path);
 					break;
 			}
 		},
+		.MultiSelect = true,
+		.SetCheckedRows = [this, page](const std::vector<size_t>& rows, size_t, bool checked) {
+			// Saved each, and applied to the game once.
+			auto& sqpacks = m_app.GetResourceOverrider().GetVirtualSqPacks();
+			if (!sqpacks || rows.empty())
+				return;
+			try {
+				std::vector<std::shared_ptr<NestedTtmp>> packs;
+				{
+					const auto lock = sqpacks->LockTtmps();
+					for (const auto row : rows) {
+						packs.push_back(page->Items[page->Shown[row]]);
+						packs.back()->Enabled = checked;
+					}
+				}
+				for (size_t i = 0; i < packs.size(); ++i)
+					sqpacks->ApplyTtmpChanges(*packs[i], i + 1 == packs.size());
+			} catch (const std::exception& e) {
+				Dll::MessageBoxF(m_hWndOwner, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+			}
+		},
+		.KeyDown = [this, selected](UINT vk) {
+			if (vk == VK_DELETE) {
+				// Packs only: a folder is deleted by deleting what is in it.
+				if (const auto items = selected(); std::ranges::all_of(items, [](const auto& item) { return item->Ttmp.has_value(); }))
+					DeleteTtmps(items);
+				else
+					MessageBeep(MB_ICONWARNING);
+				return true;
+			}
+			if (vk == VK_F2) {
+				if (const auto packs = selected(); packs.size() == 1)
+					RenameTtmpInTree(packs.front()->Path);
+				return true;
+			}
+			return false;
+		},
 	});
 	page->Grid = &grid;
-
-	const auto selected = [page]() -> std::shared_ptr<NestedTtmp> {
-		const auto row = page->Grid ? page->Grid->GetSelectedRow() : std::nullopt;
-		return row && *row < page->Shown.size() ? page->Packs[page->Shown[*row]] : nullptr;
-	};
-	CreateActionRow({
-		{rt.GetStringRes(IDS_SETTINGS_TTMP_MOVETO), [this, selected] {
-			if (const auto pack = selected())
-				ShowTtmpMoveMenu({pack});
-		}},
-		{rt.GetStringRes(IDS_SETTINGS_TTMP_MOVETONEWFOLDER), [this, selected] {
-			if (const auto pack = selected())
-				MoveTtmpToNewFolder(pack);
-		}},
-		{rt.GetStringRes(IDS_SETTINGS_PATCHCODE_DELETE), [this, selected] {
-			if (const auto pack = selected())
-				DeleteTtmp(pack);
-		}},
-		{rt.GetStringRes(IDS_SETTINGS_SHOWINEXPLORER), [this, selected] {
-			if (const auto pack = selected())
-				OpenInExplorer(m_hWndOwner, pack->Path);
-		}},
-	});
 
 	FilterTtmps();
 }
@@ -2051,18 +2310,49 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::FilterTtmps() {
 	};
 	const auto needle = lower(Trim(m_ttmpFilter));
 	page->Shown.clear();
-	for (size_t i = 0; i < page->Packs.size(); ++i) {
-		const auto& list = page->Packs[i]->Ttmp->List;
-		if (needle.empty() || lower(Wide(page->Packs[i]->Ttmp->DisplayName())).find(needle) != std::wstring::npos || lower(Wide(list.Author)).find(needle) != std::wstring::npos)
+	for (size_t i = 0; i < page->Items.size(); ++i) {
+		const auto& item = *page->Items[i];
+		const auto name = item.Ttmp ? Wide(item.Ttmp->DisplayName()) : item.Path.filename().wstring();
+		const auto author = item.Ttmp ? Wide(item.Ttmp->List.Author) : std::wstring();
+		if (needle.empty() || lower(name).find(needle) != std::wstring::npos || lower(author).find(needle) != std::wstring::npos)
 			page->Shown.push_back(i);
 	}
 	page->Grid->ClearSelection();
 	page->Grid->Refresh();
 }
 
+void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpProfileRow() {
+	// Which profile's choices are used, as the library picks it: the active one, or else the first. Only with more than one
+	// to switch between.
+	auto& item = m_config->Runtime.Modding.Ttmp.ChoicesFiles;
+	const auto profiles = item.Value();
+	m_rowCleanup += item.OnChange([this] { PostMessageW(m_hWnd, WmRebuildPage, 0, 0); });
+	if (profiles.size() < 2)
+		return;
+
+	std::vector<std::wstring> names;
+	for (const auto& profile : profiles)
+		names.push_back(Wide(profile.Name.empty() ? profile.FileName : profile.Name));
+	CreateComboRow(CleanMenuText(m_config->Runtime.GetStringRes(IDS_MENU_TTMP_PROFILE)), names,
+		[&item] {
+			const auto& current = item.Value();
+			const auto it = std::ranges::find_if(current, [](const auto& profile) { return profile.Active && !profile.FileName.empty(); });
+			return it == current.end() ? 0 : static_cast<int>(it - current.begin());
+		},
+		[&item](int index) {
+			auto updated = item.Value();
+			if (index < 0 || static_cast<size_t>(index) >= updated.size())
+				return;
+			for (size_t i = 0; i < updated.size(); ++i)
+				updated[i].Active = static_cast<int>(i) == index;
+			item = std::move(updated);
+		});
+}
+
 void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpPackRows(const std::filesystem::path& path) {
 	using Features::Modding::NestedTtmp;
 	auto& rt = m_config->Runtime;
+	AddTtmpProfileRow();
 	const auto& sqpacks = m_app.GetResourceOverrider().GetVirtualSqPacks();
 	if (!sqpacks) {
 		CreateNoteRow(GetMenuText(IDR_TRAY_MENU, ID_MODDING_TTMP_NOTREADY));
@@ -2087,19 +2377,17 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpPackRows(const st
 		return;
 	}
 
-	CreateChoiceRow(rt.GetStringRes(IDS_SETTINGS_GRID_ENABLED), true,
+	CreateEnabledRow(
 		[pack] { return pack->Enabled; },
 		[this, pack] { SetTtmpEnabled(*pack, !pack->Enabled); },
-		true);
-	CreateActionRow({
-		{rt.GetStringRes(IDS_SETTINGS_TTMP_RENAME), [this] { RenameShownTtmp(); }},
-		{rt.GetStringRes(IDS_SETTINGS_TTMP_MOVETO), [this, pack] { ShowTtmpMoveMenu({pack}); }},
-		{rt.GetStringRes(IDS_SETTINGS_TTMP_MOVETONEWFOLDER), [this, pack] { MoveTtmpToNewFolder(pack); }},
-	});
-	CreateActionRow({
-		{rt.GetStringRes(IDS_SETTINGS_PATCHCODE_DELETE), [this, pack] { DeleteTtmp(pack); }},
-		{rt.GetStringRes(IDS_SETTINGS_SHOWINEXPLORER), [this, pack] { OpenInExplorer(m_hWndOwner, pack->Path); }},
-	});
+		{
+			{rt.GetStringRes(IDS_SETTINGS_TTMP_RENAME), [this] { RenameShownTtmp(); }},
+			{rt.GetStringRes(IDS_SETTINGS_TTMP_MOVETO), [this, pack] { ShowTtmpMoveMenu({pack}); }},
+			{rt.GetStringRes(IDS_SETTINGS_TTMP_MOVETONEWFOLDER), [this, pack] { MoveTtmpToNewFolder({pack}); }},
+			{{}, {}},
+			{rt.GetStringRes(IDS_SETTINGS_PATCHCODE_DELETE), [this, pack] { DeleteTtmps({pack}); }},
+			{rt.GetStringRes(IDS_SETTINGS_SHOWINEXPLORER), [this, pack] { OpenInExplorer(m_hWndOwner, pack->Path); }},
+		});
 	AddTtmpDetailRows(pack);
 }
 
@@ -2190,13 +2478,13 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::ShowTtmpMoveMenu(std::ve
 	RunTtmpOperation([&] { sqpacks->MoveTtmps(items, target); }, items.size() == 1 ? target / items.front()->Path.filename() : std::filesystem::path());
 }
 
-void XivAlexander::Apps::MainApp::Window::SettingsView::MoveTtmpToNewFolder(const std::shared_ptr<Features::Modding::NestedTtmp>& item) {
+void XivAlexander::Apps::MainApp::Window::SettingsView::MoveTtmpToNewFolder(const std::vector<std::shared_ptr<Features::Modding::NestedTtmp>>& items) {
 	auto& sqpacks = m_app.GetResourceOverrider().GetVirtualSqPacks();
-	if (!sqpacks)
+	if (!sqpacks || items.empty())
 		return;
 
-	// Next to it, under a name not taken, to be named in the tree.
-	const auto parent = item->Path.parent_path();
+	// Next to the first, under a name not taken, to be named in the tree.
+	const auto parent = items.front()->Path.parent_path();
 	const std::wstring baseName = m_config->Runtime.GetStringRes(IDS_SETTINGS_TTMP_NEWFOLDER);
 	auto name = baseName;
 	std::error_code ec;
@@ -2205,7 +2493,14 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::MoveTtmpToNewFolder(cons
 
 	std::filesystem::path created;
 	m_ttmpRenameAfterReselect = true;
-	RunTtmpOperation([&] { created = sqpacks->CreateTtmpFolder(parent, name, {item}); }, parent / name);
+	RunTtmpOperation([&] { created = sqpacks->CreateTtmpFolder(parent, name, items); }, parent / name);
+}
+
+void XivAlexander::Apps::MainApp::Window::SettingsView::RenameTtmpInTree(const std::filesystem::path& path) {
+	// After the list is done with the key or the menu: its page goes once the pack's is shown.
+	m_ttmpPackToSelect = path;
+	m_ttmpRenameAfterSelect = true;
+	PostMessageW(m_hWnd, WmSelectTtmpPack, 0, 0);
 }
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpDetailRows(const std::shared_ptr<Features::Modding::NestedTtmp>& pack) {
@@ -2219,7 +2514,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpDetailRows(const 
 		heading += std::format(L" - {}", Wide(list.Author.empty() ? list.Version : list.Author));
 	CreateHeadingRow(heading);
 	if (!list.Description.empty())
-		CreateNoteRow(Wide(list.Description));
+		CreateRichTextRow(Wide(list.Description));
 	if (!set.Allocated)
 		CreateNoteRow(GetMenuText(IDR_TRAY_MENU, ID_MODDING_TTMP_ENTRY_REQUIRESRESTART));
 	if (!list.Url.empty()) {
@@ -2311,16 +2606,24 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::ChooseTtmpOption(const s
 	}
 }
 
-void XivAlexander::Apps::MainApp::Window::SettingsView::DeleteTtmp(const std::shared_ptr<Features::Modding::NestedTtmp>& pack) {
+void XivAlexander::Apps::MainApp::Window::SettingsView::DeleteTtmps(const std::vector<std::shared_ptr<Features::Modding::NestedTtmp>>& packs) {
 	auto& sqpacks = m_app.GetResourceOverrider().GetVirtualSqPacks();
-	if (!sqpacks || !pack->Ttmp)
+	std::vector<std::filesystem::path> lists;
+	for (const auto& pack : packs) {
+		if (pack->Ttmp)
+			lists.push_back(pack->Ttmp->ListPath);
+	}
+	if (!sqpacks || lists.empty())
 		return;
-	const auto& set = *pack->Ttmp;
-	if (Dll::MessageBoxF(m_hWndOwner, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2,
-		m_config->Runtime.FormatStringRes(IDS_SETTINGS_TTMP_CONFIRMDELETE, Wide(set.DisplayName()), set.ListPath.wstring())) != IDYES)
+
+	const auto message = lists.size() == 1
+		? m_config->Runtime.FormatStringRes(IDS_SETTINGS_TTMP_CONFIRMDELETE, Wide(packs.front()->Ttmp->DisplayName()), lists.front().wstring())
+		: m_config->Runtime.FormatStringRes(IDS_SETTINGS_TTMP_CONFIRMDELETEMANY, lists.size());
+	if (Dll::MessageBoxF(m_hWndOwner, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2, message) != IDYES)
 		return;
 	try {
-		sqpacks->DeleteTtmp(set.ListPath);
+		for (size_t i = 0; i < lists.size(); ++i)
+			sqpacks->DeleteTtmp(lists[i], i + 1 == lists.size());
 	} catch (const std::exception& e) {
 		Dll::MessageBoxF(m_hWndOwner, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 	}
@@ -2434,18 +2737,34 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddEdgeRows() {
 	CreateSliderRow(rt.GetStringRes(IDS_SETTINGS_EDGE_MIN), 0.25, 8, 0.05, [&edge] { return static_cast<double>(edge.Value().Min); }, setter(&FontReplacementEdgeConfig::Min));
 	CreateSliderRow(rt.GetStringRes(IDS_SETTINGS_EDGE_MAX), 0.25, 8, 0.05, [&edge] { return static_cast<double>(edge.Value().Max); }, setter(&FontReplacementEdgeConfig::Max));
 	m_rowCleanup += edge.OnChange([this] { PostMessageW(m_hWnd, WmRefreshRows, 0, 0); });
+
+	// A preview to judge the edge by, of the family of most of the UI's text (or the first there is), drawn again as the
+	// rows are refreshed: as the sliders move.
+	auto family = std::string(EdgePreviewFamily);
+	if (FontReplacement::GameFontNames::FacesOf(family).empty() && !m_fontFamilies.empty())
+		family = m_fontFamilies.front();
+	AddFontPreviewRows(family, true);
 }
 
-std::vector<std::wstring> XivAlexander::Apps::MainApp::Window::SettingsView::ListPresets() const {
-	// Paths relative to the preset folder, as the sources keep them.
+const std::filesystem::path& XivAlexander::Apps::MainApp::Window::SettingsView::GetFontPresetFolder() {
+	if (m_fontPresetFolder.empty())
+		m_fontPresetFolder = FontReplacement::Presets::Folder(*m_config);
+	return m_fontPresetFolder;
+}
+
+std::vector<std::wstring> XivAlexander::Apps::MainApp::Window::SettingsView::ListPresets() {
+	// Paths relative to the presets folder, as the sources keep them; not the font.json of glyph image folders imported
+	// along with their presets, which are no presets.
 	std::vector<std::wstring> res;
-	const auto folder = m_config->Runtime.FontReplacement.Faces.PresetFolder.Value();
+	const auto& folder = GetFontPresetFolder();
 	std::error_code ec;
-	if (folder.empty() || !is_directory(folder, ec))
+	if (!is_directory(folder, ec))
 		return res;
 	for (auto it = std::filesystem::recursive_directory_iterator(folder, std::filesystem::directory_options::skip_permission_denied, ec);
 		!ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec)) {
-		if (it->is_regular_file(ec) && _wcsicmp(it->path().extension().c_str(), L".json") == 0)
+		if (it->is_regular_file(ec)
+			&& _wcsicmp(it->path().extension().c_str(), L".json") == 0
+			&& _wcsicmp(it->path().filename().c_str(), FontChanger::FixedSizeFont::glyph_files_metadata_file_name) != 0)
 			res.emplace_back(it->path().lexically_relative(folder).wstring());
 	}
 	std::ranges::sort(res, [](const auto& l, const auto& r) { return _wcsicmp(l.c_str(), r.c_str()) < 0; });
@@ -2483,24 +2802,114 @@ const std::vector<std::wstring>& XivAlexander::Apps::MainApp::Window::SettingsVi
 	return m_systemFontFamilies;
 }
 
+std::optional<std::string> XivAlexander::Apps::MainApp::Window::SettingsView::ChooseFontPreset() {
+	auto& rt = m_config->Runtime;
+	const auto& folder = GetFontPresetFolder();
+	const auto picked = PickPath(m_hWndOwner, folder, PickKind::Preset, "FontPreset");
+	if (!picked)
+		return std::nullopt;
+
+	// One already in the presets folder is used by its path relative to it. Both are made canonical first, so that a
+	// path through a link, or of another case, is still found to be in it.
+	std::error_code ec;
+	auto canonicalFolder = weakly_canonical(folder, ec);
+	if (ec)
+		canonicalFolder = absolute(folder).lexically_normal();
+	auto canonicalPicked = weakly_canonical(*picked, ec);
+	if (ec)
+		canonicalPicked = absolute(*picked).lexically_normal();
+	if (const auto relative = canonicalPicked.lexically_relative(canonicalFolder); !relative.empty() && *relative.begin() != L"..")
+		return Utf8(relative.wstring());
+
+	// Otherwise it is imported, or used where it is. Glyph images it reads from folders next to it would be left behind by
+	// copying the preset alone; they are copied along with it if they are under its folder, and if any isn't, it can only
+	// be used where it is.
+	std::vector<std::filesystem::path> glyphFolders;
+	try {
+		glyphFolders = FontReplacement::Presets::RelativeGlyphImageFolders(*picked);
+	} catch (const std::exception& e) {
+		Dll::MessageBoxF(m_hWndOwner, MB_OK | MB_ICONERROR, IDS_SETTINGS_FONT_PRESETUNREADABLE, picked->wstring(), Wide(e.what()));
+		return std::nullopt;
+	}
+	const auto copyable = std::ranges::all_of(glyphFolders, &FontReplacement::Presets::IsCopyableGlyphImageFolder);
+
+	std::wstring folderList;
+	for (const auto& glyphFolder : glyphFolders)
+		folderList += std::format(L"\n• {}", glyphFolder.wstring());
+	auto content = rt.FormatStringRes(IDS_SETTINGS_FONT_IMPORT_CONTENT, picked->wstring());
+	if (!glyphFolders.empty())
+		content += L"\n\n" + rt.FormatStringRes(copyable ? IDS_SETTINGS_FONT_IMPORT_GLYPHS : IDS_SETTINGS_FONT_IMPORT_NOGLYPHCOPY, folderList);
+
+	static constexpr int IdImport = 1001;
+	static constexpr int IdInPlace = 1002;
+	auto builder = Utils::Win32::TaskDialog::Builder();
+	builder
+		.WithWindowTitle(Dll::GetGenericMessageBoxTitle())
+		.WithParentWindow(m_hWndOwner)
+		.WithInstance(Dll::Module())
+		.WithAllowDialogCancellation()
+		.WithMainIcon(IDI_TRAY_ICON)
+		.WithMainInstruction(std::wstring(rt.GetStringRes(IDS_SETTINGS_FONT_IMPORT_TITLE)))
+		.WithContent(content);
+	if (copyable)
+		builder.WithButton({.IdSet = true, .Id = IdImport, .Text = std::wstring(rt.GetStringRes(IDS_SETTINGS_FONT_IMPORT_IMPORT))});
+	builder
+		.WithButton({.IdSet = true, .Id = IdInPlace, .Text = std::wstring(rt.GetStringRes(IDS_SETTINGS_FONT_IMPORT_INPLACE))})
+		.WithCommonButton(TDCBF_CANCEL_BUTTON)
+		.WithButtonCommandLinks()
+		.WithButtonDefault(copyable ? IdImport : IdInPlace);
+
+	int choice;
+	try {
+		choice = builder.Build().Show().Button;
+	} catch (const std::exception& e) {
+		Dll::MessageBoxF(m_hWndOwner, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+		return std::nullopt;
+	}
+
+	switch (choice) {
+		case IdImport:
+			try {
+				return Utf8(FontReplacement::Presets::Import(*picked, folder, glyphFolders).wstring());
+			} catch (const std::exception& e) {
+				Dll::MessageBoxF(m_hWndOwner, MB_OK | MB_ICONERROR, IDS_SETTINGS_FONT_IMPORTFAILED, picked->wstring(), Wide(e.what()));
+				return std::nullopt;
+			}
+
+		case IdInPlace:
+			// As it was picked, not canonical: that may be through another drive's path (a mapped drive's share).
+			return Utf8(picked->lexically_normal().wstring());
+
+		default:
+			// Closed, or cancelled.
+			return std::nullopt;
+	}
+}
+
 void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const std::string& family) {
 	auto& rt = m_config->Runtime;
-	auto& item = rt.FontReplacement.Faces.FamilySources;
+	auto& item = rt.FontReplacement.Faces.Families;
 
-	// The family's list, and setting it: a family without any is left out.
-	const auto get = [&item, family]() -> const std::vector<FontReplacementFamilySource>& {
-		static const std::vector<FontReplacementFamilySource> none;
+	// The family's settings, and setting them: a family as the defaults have it, on and without sources, is left out.
+	const auto getFamily = [&item, family]() -> const FontReplacementFamily& {
+		static const FontReplacementFamily defaults;
 		const auto& all = item.Value();
 		const auto it = all.find(family);
-		return it == all.end() ? none : it->second;
+		return it == all.end() ? defaults : it->second;
 	};
-	const auto set = [&item, family](std::vector<FontReplacementFamilySource> sources) {
+	const auto setFamily = [&item, family](FontReplacementFamily settings) {
 		auto all = item.Value();
-		if (sources.empty())
+		if (settings == FontReplacementFamily{})
 			all.erase(family);
 		else
-			all[family] = std::move(sources);
+			all[family] = std::move(settings);
 		item = std::move(all);
+	};
+	const auto get = [getFamily]() -> const std::vector<FontReplacementFamilySource>& { return getFamily().Sources; };
+	const auto set = [getFamily, setFamily](std::vector<FontReplacementFamilySource> sources) {
+		auto settings = getFamily();
+		settings.Sources = std::move(sources);
+		setFamily(std::move(settings));
 	};
 	const auto edit = [get, set](size_t row, auto&& fn) {
 		auto sources = get();
@@ -2511,7 +2920,75 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 	};
 	const auto parseNumber = [](const std::wstring& text) { return std::wcstol(text.c_str(), nullptr, 10); };
 
-	auto& grid = CreateGridRow(Wide(family), IDS_SETTINGS_FONT_SOURCES_DESC, 200, {
+	// The menu atop the page acts on the grid below it, which is made after it.
+	const auto pGrid = std::make_shared<GridView*>();
+	const auto add = [get, set, pGrid](FontReplacementFamilySource source, bool editName) {
+		auto sources = get();
+		sources.push_back(std::move(source));
+		set(std::move(sources));
+		auto& grid = **pGrid;
+		grid.Refresh();
+		if (editName)
+			grid.BeginEdit(get().size() - 1, 2);
+		else
+			grid.Select(get().size() - 1);
+	};
+	const auto remove = [get, set, pGrid] {
+		auto& grid = **pGrid;
+		const auto selected = grid.GetSelectedRow();
+		auto sources = get();
+		if (!selected || *selected >= sources.size())
+			return;
+		sources.erase(sources.begin() + static_cast<ptrdiff_t>(*selected));
+		set(std::move(sources));
+		grid.Refresh();
+		if (!get().empty())
+			grid.Select(std::min(*selected, get().size() - 1));
+	};
+
+	// Whether the family is replaced, as a folder or a ModPack is used, with what is done with its sources in the menu.
+	CreateEnabledRow(
+		[getFamily] { return getFamily().Enabled; },
+		[this, getFamily, setFamily] {
+			auto settings = getFamily();
+			settings.Enabled = !settings.Enabled;
+			setFamily(std::move(settings));
+			InvalidateRect(m_hTree, nullptr, FALSE);
+		},
+		{
+			{rt.GetStringRes(IDS_SETTINGS_FONT_ADDPRESET), [this, add] {
+				if (const auto preset = ChooseFontPreset())
+					add({.Preset = *preset}, false);
+			}},
+			{rt.GetStringRes(IDS_SETTINGS_FONT_ADDFONT), [add] { add({.Font = {.Name = "Segoe UI"}}, true); }},
+			{rt.GetStringRes(IDS_SETTINGS_REMOVE), remove},
+			{{}, {}},
+			{rt.GetStringRes(IDS_SETTINGS_FONT_COPYTOOTHERS), [this, &item, family, get] {
+				if (Dll::MessageBoxF(m_hWndOwner, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2, m_config->Runtime.FormatStringRes(IDS_SETTINGS_FONT_CONFIRMCOPY, Wide(family))) != IDYES)
+					return;
+				// Only the sources; whether the others are on, and their digits, stay as they are.
+				auto all = item.Value();
+				for (const auto& other : m_fontFamilies) {
+					if (other == family)
+						continue;
+					auto& settings = all[other];
+					settings.Sources = get();
+					if (settings == FontReplacementFamily{})
+						all.erase(other);
+				}
+				item = std::move(all);
+			}},
+			{{}, {}},
+			{rt.GetStringRes(IDS_SETTINGS_FONT_OPENPRESETFOLDER), [this] { OpenInExplorer(m_hWndOwner, GetFontPresetFolder()); }},
+		});
+
+	CreateChoiceRow(rt.GetStringRes(IDS_SETTINGS_FONT_MONOSPACEDDIGITS), true, [getFamily] { return getFamily().MonospacedDigits; }, [getFamily, setFamily] {
+		auto settings = getFamily();
+		settings.MonospacedDigits = !settings.MonospacedDigits;
+		setFamily(std::move(settings));
+	}, true);
+
+	auto& grid = CreateGridRow({}, IDS_SETTINGS_FONT_SOURCES_DESC, 200, {
 		{.Title = rt.GetStringRes(IDS_SETTINGS_GRID_ENABLED), .Kind = GridView::CellKind::Check, .Width = 60},
 		{.Title = rt.GetStringRes(IDS_SETTINGS_FONT_SOURCE_TYPE), .Kind = GridView::CellKind::ReadOnly, .Width = 100},
 		{.Title = rt.GetStringRes(IDS_SETTINGS_GRID_NAME), .Kind = GridView::CellKind::ComboEdit, .Width = 220, .GetChoices = [this, get](size_t row) {
@@ -2571,51 +3048,248 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 			MoveWithin(sources, from, to);
 			set(std::move(sources));
 		},
-	});
-
-	const auto add = [this, &grid, get, set](FontReplacementFamilySource source) {
-		auto sources = get();
-		sources.push_back(std::move(source));
-		set(std::move(sources));
-		grid.Refresh();
-		grid.BeginEdit(get().size() - 1, 2);
-	};
-	CreateActionRow({
-		{rt.GetStringRes(IDS_SETTINGS_FONT_ADDPRESET), [this, add] {
-			// The first preset, to be changed in its editor.
-			const auto presets = ListPresets();
-			if (presets.empty()) {
-				Dll::MessageBoxF(m_hWndOwner, MB_OK | MB_ICONINFORMATION, m_config->Runtime.GetStringRes(IDS_SETTINGS_FONT_NOPRESETS));
+		.ShowContextMenu = [this, get, remove](size_t row, POINT ptScreen) {
+			if (row >= get().size())
 				return;
+			const auto preset = get()[row].Preset;
+			enum : UINT { IdRemove = 1, IdShow };
+			const auto hMenu = CreatePopupMenu();
+			const auto destroyMenu = xivres::util::on_dtor([hMenu] { DestroyMenu(hMenu); });
+			AppendMenuW(hMenu, MF_STRING, IdRemove, m_config->Runtime.GetStringRes(IDS_SETTINGS_REMOVE));
+			AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
+			AppendMenuW(hMenu, MF_STRING | (preset.empty() ? MF_GRAYED : 0), IdShow, m_config->Runtime.GetStringRes(IDS_SETTINGS_SHOWINEXPLORER));
+			switch (TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_RIGHTBUTTON, ptScreen.x, ptScreen.y, 0, m_hWnd, nullptr)) {
+				case IdRemove:
+					remove();
+					break;
+				case IdShow:
+					OpenInExplorer(m_hWndOwner, FontReplacement::Presets::Resolve(GetFontPresetFolder(), preset));
+					break;
 			}
-			add({.Preset = Utf8(presets.front())});
-		}},
-		{rt.GetStringRes(IDS_SETTINGS_FONT_ADDFONT), [add] { add({.Font = {.Name = "Segoe UI"}}); }},
-		{rt.GetStringRes(IDS_SETTINGS_REMOVE), [&grid, get, set] {
-			const auto selected = grid.GetSelectedRow();
-			auto sources = get();
-			if (!selected || *selected >= sources.size())
-				return;
-			sources.erase(sources.begin() + static_cast<ptrdiff_t>(*selected));
-			set(std::move(sources));
-			grid.Refresh();
-		}},
-		{rt.GetStringRes(IDS_SETTINGS_FONT_COPYTOOTHERS), [this, &item, family, get] {
-			if (Dll::MessageBoxF(m_hWndOwner, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2, m_config->Runtime.FormatStringRes(IDS_SETTINGS_FONT_CONFIRMCOPY, Wide(family))) != IDYES)
-				return;
-			auto all = item.Value();
-			for (const auto& other : m_fontFamilies) {
-				if (other == family)
-					continue;
-				if (get().empty())
-					all.erase(other);
-				else
-					all[other] = get();
-			}
-			item = std::move(all);
-		}},
+		},
+		.KeyDown = [remove](UINT vk) {
+			if (vk != VK_DELETE)
+				return false;
+			remove();
+			return true;
+		},
 	});
+	*pGrid = &grid;
 	m_rowCleanup += item.OnChange([this] { PostMessageW(m_hWnd, WmRefreshRows, 0, 0); });
+
+	// The preview shows the edge, as it is set on the font replacement's page.
+	m_rowCleanup += rt.FontReplacement.Edge.OnChange([this] { PostMessageW(m_hWnd, WmRefreshRows, 0, 0); });
+	AddFontPreviewRows(family, false);
+}
+
+void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontPreviewRows(const std::string& family, bool edgePage) {
+	// Without the game's font table there is no face to draw with.
+	auto faces = FontReplacement::GameFontNames::FacesOf(family);
+	if (faces.empty())
+		return;
+	auto& rt = m_config->Runtime;
+
+	// The family's sizes are offered; any other can be typed. The size last chosen, or the one nearest the size most text
+	// is drawn at.
+	std::vector<float> sizes;
+	for (const auto size : faces | std::views::values) {
+		if (std::ranges::find(sizes, size) == sizes.end())
+			sizes.push_back(size);
+	}
+	std::ranges::sort(sizes);
+	if (auto& chosen = m_fontPreviewSizes[family]; chosen <= 0)
+		chosen = std::ranges::min(sizes, {}, [](float size) { return std::fabs(size - 14.f); });
+	const auto textKey = FontPreviewTextKey(family);
+	if (auto& text = m_fontPreviewTexts[textKey]; text.empty())
+		text = textKey == MeidingerFamily ? MeidingerPreviewText : DefaultFontPreviewText;
+	m_fontPreview = std::make_unique<FontPreview>(FontPreview{.Family = family, .Faces = std::move(faces)});
+
+	// The size and what goes with it share a line, the size box as wide as a number needs.
+	constexpr int LineGroup = 1;
+	auto pSizeRow = std::make_unique<Row>();
+	auto& sizeRow = *pSizeRow;
+	sizeRow.Type = Row::RowType::ComboEdit;
+	sizeRow.LineGroup = LineGroup;
+	sizeRow.LineWidth = 80;
+	sizeRow.Label = CreateRowControl(PartLabel, 0, WC_STATICW, rt.GetStringRes(IDS_SETTINGS_FONT_PREVIEW_SIZE), SS_LEFT | SS_NOPREFIX);
+	sizeRow.Control = CreateRowControl(PartControl, 0, WC_COMBOBOXW, L"", WS_TABSTOP | WS_VSCROLL | CBS_DROPDOWN | CBS_AUTOHSCROLL);
+	for (const auto size : sizes)
+		ComboBox_AddString(sizeRow.Control, FormatNumber(size).c_str());
+	sizeRow.Refresh = [this, &sizeRow, family] { SetWindowTextW(sizeRow.Control, FormatNumber(m_fontPreviewSizes[family]).c_str()); };
+	// Drawn as it is typed, once typing stops for a while. A size is drawn as the replacement draws it: rounded to half
+	// pixels, from 4 to 255 px; what isn't a size is left alone while it is typed, and shown as it was once the box is left.
+	sizeRow.CommitOnChange = true;
+	sizeRow.Commit = [this, &sizeRow, family] {
+		if (const auto value = ParseNumber<float>(GetText(sizeRow.Control)); value && std::isfinite(*value) && *value > 0) {
+			const auto size = std::round(std::clamp(*value, MinFontPreviewSize, MaxFontPreviewSize) * 2) / 2;
+			if (auto& chosen = m_fontPreviewSizes[family]; chosen != size) {
+				chosen = size;
+				RequestFontPreview(FontPreviewDelay);
+			}
+		}
+		if (!IsTypingInto(sizeRow, GetFocus()))
+			sizeRow.Refresh();
+	};
+	sizeRow.Click = [this, &sizeRow, family, sizes](int part) {
+		// One of the family's sizes was picked from the list.
+		if (const auto selected = ComboBox_GetCurSel(sizeRow.Control); part == PartControl && selected >= 0 && static_cast<size_t>(selected) < sizes.size()) {
+			m_fontPreviewSizes[family] = sizes[selected];
+			RequestFontPreview(std::chrono::milliseconds(0));
+		}
+	};
+	m_rows.emplace_back(std::move(pSizeRow));
+
+	if (edgePage) {
+		// The colors of every page's preview, for the session.
+		std::vector<std::wstring> colorChoices;
+		for (const auto& preset : FontPreviewColorPresets)
+			colorChoices.emplace_back(rt.GetStringRes(preset.LabelId));
+		CreateComboRow(rt.GetStringRes(IDS_SETTINGS_FONT_PREVIEW_COLORS), colorChoices, [this] { return static_cast<int>(m_fontPreviewColors); }, [this](int index) {
+			if (index >= 0 && static_cast<size_t>(index) < std::size(FontPreviewColorPresets)) {
+				m_fontPreviewColors = static_cast<size_t>(index);
+				RequestFontPreview(std::chrono::milliseconds(0));
+			}
+		});
+		m_rows.back()->LineGroup = LineGroup;
+	} else {
+		// Drawn as it is typed, once typing stops for a while; as the TexTools ModPacks' filter, it is not set back.
+		CreateNumberRow(rt.GetStringRes(IDS_SETTINGS_FONT_PREVIEW_TEXT), {}, {});
+		auto& textRow = *m_rows.back();
+		textRow.LineGroup = LineGroup;
+		textRow.Refresh = nullptr;
+		textRow.Commit = [this, &textRow, textKey] {
+			m_fontPreviewTexts[textKey] = GetText(textRow.Control);
+			RequestFontPreview(FontPreviewDelay);
+		};
+		// Setting the text tells of a change at once; it is applied only after.
+		SetWindowTextW(textRow.Control, m_fontPreviewTexts[textKey].c_str());
+		textRow.CommitOnChange = true;
+	}
+
+	auto pRow = std::make_unique<Row>();
+	auto& row = *pRow;
+	row.Type = Row::RowType::Preview;
+	row.Height = 140;
+	row.Description = CreateRowControl(PartDescription, 0, WC_STATICW, edgePage
+		? rt.FormatStringRes(IDS_SETTINGS_EDGE_PREVIEW_DESC, Wide(family))
+		: std::wstring(rt.GetStringRes(IDS_SETTINGS_FONT_PREVIEW_DESC)), SS_LEFT | SS_NOPREFIX);
+	row.Control = CreateRowControl(PartControl, 0, FontPreviewClassName, L"", 0);
+	SetWindowLongPtrW(row.Control, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+	// Asked for again whenever the page's rows are refreshed, as they are when the sources change; the faces are kept if
+	// the sources are the same, so that costs only drawing the text.
+	row.Refresh = [this] { RequestFontPreview(FontPreviewDelay); };
+	m_fontPreview->Control = row.Control;
+	m_rows.emplace_back(std::move(pRow));
+}
+
+void XivAlexander::Apps::MainApp::Window::SettingsView::RequestFontPreview(std::chrono::milliseconds delay) {
+	if (!m_fontPreview)
+		return;
+
+	// Before the page is laid out, LayoutPage asks once it is.
+	RECT rc;
+	GetClientRect(m_fontPreview->Control, &rc);
+	if (rc.right <= 0 || rc.bottom <= 0)
+		return;
+
+	// The page's first image is wanted at once; the previewer posts here, and whether the image is still wanted is told
+	// when it is taken.
+	if (!m_fontPreview->Generation)
+		delay = std::chrono::milliseconds(0);
+	if (!m_fontPreviewer)
+		m_fontPreviewer = std::make_unique<FontReplacement::FamilyPreview>([hWnd = m_hWnd](uint64_t) { PostMessageW(hWnd, WmFontPreviewDrawn, 0, 0); });
+
+	const auto& settings = m_config->Runtime.FontReplacement.Faces;
+	const auto& family = m_fontPreview->Family;
+	FontReplacementFamily familySettings;
+	if (const auto& all = settings.Families.Value(); all.contains(family))
+		familySettings = all.at(family);
+	// The face the game picks for the size, taken to be the nearest (the larger of two as near), scaled to the size.
+	const auto size = m_fontPreviewSizes[family];
+	const auto& face = std::ranges::min(m_fontPreview->Faces, [size](const auto& l, const auto& r) {
+		const auto dl = std::fabs(l.second - size), dr = std::fabs(r.second - size);
+		return dl < dr || (dl == dr && l.second > r.second);
+	});
+	const auto& colors = FontPreviewColorPresets[std::min(m_fontPreviewColors, std::size(FontPreviewColorPresets) - 1)];
+	m_fontPreview->Requested = {rc.right, rc.bottom};
+	m_fontPreview->Generation = m_fontPreviewer->Request({
+		.Family = family,
+		.FaceName = face.first,
+		.Size = size,
+		.Settings = std::move(familySettings),
+		.PresetFolder = GetFontPresetFolder(),
+		.Reload = std::exchange(m_fontPreview->Reload, false),
+		.Edge = m_config->Runtime.FontReplacement.Edge.Value(),
+		.Text = m_fontPreviewTexts[FontPreviewTextKey(family)],
+		.Width = static_cast<int>(rc.right),
+		.Height = static_cast<int>(rc.bottom),
+		.Foreground = colors.Text,
+		.EdgeColor = colors.Edge,
+		.Background = colors.Background,
+	}, delay);
+}
+
+void XivAlexander::Apps::MainApp::Window::SettingsView::OnFontPreviewDrawn() {
+	if (!m_fontPreview || !m_fontPreviewer)
+		return;
+	if (auto image = m_fontPreviewer->Take(m_fontPreview->Generation)) {
+		m_fontPreview->Image = std::move(*image);
+		InvalidateRect(m_fontPreview->Control, nullptr, FALSE);
+	}
+}
+
+void XivAlexander::Apps::MainApp::Window::SettingsView::PaintFontPreview(HWND hwnd) {
+	PAINTSTRUCT ps{};
+	const auto hdc = BeginPaint(hwnd, &ps);
+	RECT rc;
+	GetClientRect(hwnd, &rc);
+	const auto& colors = GetThemeColors(IsDarkModeEnabled());
+
+	// The image at the top left, which is of the size it was asked for; the page's background around it, until it is
+	// drawn anew at the new size.
+	const auto pImage = m_fontPreview && m_fontPreview->Control == hwnd && m_fontPreview->Image ? &*m_fontPreview->Image : nullptr;
+	auto drawnWidth = 0, drawnHeight = 0;
+	if (pImage && pImage->Pixels.size() == static_cast<size_t>(pImage->Width) * pImage->Height) {
+		BITMAPINFO bmi{.bmiHeader = {
+			.biSize = sizeof(BITMAPINFOHEADER),
+			.biWidth = pImage->Width,
+			.biHeight = -pImage->Height,
+			.biPlanes = 1,
+			.biBitCount = 32,
+			.biCompression = BI_RGB,
+		}};
+		SetDIBitsToDevice(hdc, 0, 0, pImage->Width, pImage->Height, 0, 0, 0, pImage->Height, pImage->Pixels.data(), &bmi, DIB_RGB_COLORS);
+		drawnWidth = pImage->Width;
+		drawnHeight = pImage->Height;
+	}
+	const RECT rcRight{drawnWidth, 0, rc.right, rc.bottom};
+	const RECT rcBelow{0, drawnHeight, std::min<LONG>(drawnWidth, rc.right), rc.bottom};
+	for (const auto& r : {rcRight, rcBelow}) {
+		if (r.left < r.right && r.top < r.bottom)
+			FillRect(hdc, &r, *m_backgroundBrush);
+	}
+
+	// What couldn't be read, and why the edge isn't drawn, along the bottom, in the text's color: the image's background
+	// is the preview's colors', not the page's.
+	auto failures = pImage ? Wide(pImage->Failures) : std::wstring();
+	if (pImage && !pImage->EdgeFailure.empty())
+		failures += (failures.empty() ? L"" : L"\n") + m_config->Runtime.FormatStringRes(IDS_SETTINGS_FONT_PREVIEW_NOEDGE, Wide(pImage->EdgeFailure));
+	if (!failures.empty()) {
+		const auto& text = failures;
+		const auto hPrevFont = SelectObject(hdc, *m_font);
+		const auto margin = static_cast<int>(8 * GetZoom());
+		RECT rcText{margin, 0, std::max<LONG>(margin + 1, rc.right - margin), 0};
+		DrawTextW(hdc, text.c_str(), static_cast<int>(text.size()), &rcText, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX | DT_EDITCONTROL);
+		const auto height = rcText.bottom;
+		rcText = {margin, std::max<LONG>(0, rc.bottom - margin - height), rc.right - margin, rc.bottom - margin};
+		SetBkMode(hdc, TRANSPARENT);
+		SetTextColor(hdc, FontPreviewColorPresets[std::min(m_fontPreviewColors, std::size(FontPreviewColorPresets) - 1)].Text);
+		DrawTextW(hdc, text.c_str(), static_cast<int>(text.size()), &rcText, DT_WORDBREAK | DT_NOPREFIX | DT_EDITCONTROL);
+		SelectObject(hdc, hPrevFont);
+	}
+
+	FrameRect(hdc, &rc, *colors.CreateBackgroundWeakBrush());
+	EndPaint(hwnd, &ps);
 }
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::CreateChoiceRow(const std::wstring& label, bool enabled, std::function<bool()> isChosen, std::function<void()> choose, bool checkBox, int flowGroup) {
@@ -2649,12 +3323,13 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::CreatePatchCode() {
 		const auto& directory = m_config->PatchCode.GetDirectory();
 		create_directories(directory);
 
-		auto path = directory / L"New Game Fix.json";
+		const std::wstring name = m_config->Runtime.GetStringRes(IDS_SETTINGS_PATCHCODE_DEFAULTNAME);
+		auto path = directory / std::format(L"{}.json", name);
 		for (auto i = 2; exists(path); ++i)
-			path = directory / std::format(L"New Game Fix ({}).json", i);
+			path = directory / std::format(L"{} ({}).json", name, i);
 
 		// With its key made now, so that loading it does not write to the file being edited.
-		PatchInstruction patch{.Name = "New Game Fix"};
+		PatchInstruction patch{.Name = Utf8(name)};
 		patch.CreateNewHmacKeyIfInvalid();
 		Utils::SaveJsonToFile(path, patch);
 		m_config->PatchCode.Reload();
@@ -2680,6 +3355,163 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::CreateHeadingRow(const s
 	pRow->Type = Row::RowType::Heading;
 	pRow->Label = CreateRowControl(PartLabel, 0, WC_STATICW, text, SS_LEFT | SS_NOPREFIX);
 	SendMessageW(pRow->Label, WM_SETFONT, reinterpret_cast<WPARAM>(*m_boldFont), FALSE);
+	m_rows.emplace_back(std::move(pRow));
+}
+
+void XivAlexander::Apps::MainApp::Window::SettingsView::CreateRichTextRow(const std::wstring& text) {
+	static const auto hRichEdit = LoadLibraryW(L"Msftedit.dll");
+	if (!hRichEdit) {
+		CreateNoteRow(text);
+		return;
+	}
+
+	auto& rt = m_config->Runtime;
+	auto pRow = std::make_unique<Row>();
+	auto& row = *pRow;
+	row.Type = Row::RowType::RichText;
+	row.Description = CreateRowControl(PartDescription, 0, MSFTEDIT_CLASS, L"", ES_MULTILINE | ES_READONLY | ES_NOHIDESEL);
+	row.Button1 = CreateRowControl(PartButton1, 0, WC_BUTTONW, rt.GetStringRes(IDS_SETTINGS_SHOWMORE), WS_TABSTOP | BS_PUSHBUTTON | BS_NOTIFY);
+
+	// Paragraphs as the control takes them, and links told to the page.
+	std::wstring normalized;
+	for (size_t i = 0; i < text.size(); ++i) {
+		if (text[i] == L'\r' && i + 1 < text.size() && text[i + 1] == L'\n')
+			continue;
+		if (text[i] == L'\n' || text[i] == L'\r')
+			normalized += L"\r\n";
+		else
+			normalized += text[i];
+	}
+	SendMessageW(row.Description, EM_AUTOURLDETECT, AURL_ENABLEURL, 0);
+	SendMessageW(row.Description, EM_SETEVENTMASK, 0, ENM_LINK);
+	SetWindowTextW(row.Description, normalized.c_str());
+
+	// In the theme's colors, which it doesn't take from the page.
+	row.Refresh = [this, &row] {
+		const auto& colors = GetThemeColors(IsDarkModeEnabled());
+		SendMessageW(row.Description, EM_SETBKGNDCOLOR, 0, colors.GetBackground());
+		CHARFORMAT2W format{};
+		format.cbSize = sizeof format;
+		format.dwMask = CFM_COLOR;
+		format.crTextColor = colors.GetForeground();
+		SendMessageW(row.Description, EM_SETCHARFORMAT, SCF_ALL, reinterpret_cast<LPARAM>(&format));
+	};
+	row.Click = [this, &row](int part) {
+		if (part != PartButton1)
+			return;
+		row.Expanded = !row.Expanded;
+		SetWindowTextW(row.Button1, m_config->Runtime.GetStringRes(row.Expanded ? IDS_SETTINGS_SHOWLESS : IDS_SETTINGS_SHOWMORE));
+		LayoutPage();
+	};
+	m_rows.emplace_back(std::move(pRow));
+}
+
+void XivAlexander::Apps::MainApp::Window::SettingsView::CreateEnabledRow(std::function<bool()> isChecked, std::function<void()> toggle, std::vector<std::pair<std::wstring, std::function<void()>>> actions) {
+	// Whether the page's folder, pack, or family is used, with what can be done with it in a menu at the line's end.
+	auto& rt = m_config->Runtime;
+	auto pRow = std::make_unique<Row>();
+	auto& row = *pRow;
+	row.Type = Row::RowType::Check;
+	row.Control = CreateRowControl(PartControl, 0, WC_BUTTONW, EscapeMnemonics(rt.GetStringRes(IDS_SETTINGS_GRID_ENABLED)), WS_TABSTOP | BS_CHECKBOX | BS_MULTILINE | BS_TOP | BS_NOTIFY);
+	if (!actions.empty())
+		row.Button1 = CreateRowControl(PartButton1, 0, WC_BUTTONW, rt.GetStringRes(IDS_SETTINGS_EDITMENU), WS_TABSTOP | BS_PUSHBUTTON | BS_NOTIFY);
+	row.Refresh = [&row, isChecked = std::move(isChecked)] { Button_SetCheck(row.Control, isChecked() ? BST_CHECKED : BST_UNCHECKED); };
+	row.Click = [this, &row, toggle = std::move(toggle), actions = std::move(actions)](int part) {
+		if (part != PartButton1) {
+			toggle();
+			RefreshRows();
+			return;
+		}
+
+		// Below the button, at its right edge, as a drop-down's list; an action without a label is a separator.
+		RECT rc{};
+		GetWindowRect(row.Button1, &rc);
+		const auto hMenu = CreatePopupMenu();
+		const auto destroyMenu = xivres::util::on_dtor([hMenu] { DestroyMenu(hMenu); });
+		for (size_t i = 0; i < actions.size(); ++i) {
+			if (actions[i].first.empty())
+				AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
+			else
+				AppendMenuW(hMenu, MF_STRING, i + 1, actions[i].first.c_str());
+		}
+		const auto chosen = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_RIGHTALIGN | TPM_TOPALIGN, rc.right, rc.bottom, 0, m_hWnd, nullptr);
+		if (chosen > 0 && static_cast<size_t>(chosen) <= actions.size() && actions[chosen - 1].second)
+			actions[chosen - 1].second();
+	};
+	m_rows.emplace_back(std::move(pRow));
+}
+
+void XivAlexander::Apps::MainApp::Window::SettingsView::AddTabbedRows() {
+	// The page's lists, each in a tab; the tab chosen last for them is chosen again.
+	if (m_deferredTabbed.empty())
+		return;
+	const auto items = std::exchange(m_deferredTabbed, {});
+
+	auto pRow = std::make_unique<Row>();
+	auto& row = *pRow;
+	row.Type = Row::RowType::Tabs;
+	const auto key = items.front();
+	row.ActiveTab = std::clamp(m_activeTabs[key], 0, static_cast<int>(items.size()) - 1);
+	for (size_t i = 0; i < items.size(); ++i) {
+		const auto hButton = CreateWindowExW(0, WC_BUTTONW, EscapeMnemonics(GetItemLabel(*items[i])).c_str(), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_RADIOBUTTON | BS_PUSHLIKE | BS_NOTIFY,
+			0, 0, 0, 0, m_hPage, reinterpret_cast<HMENU>(static_cast<INT_PTR>(FirstTabControlId + i)), Dll::Module(), nullptr);
+		SendMessageW(hButton, WM_SETFONT, reinterpret_cast<WPARAM>(*m_font), FALSE);
+		ApplyThemeToControl(hButton);
+		row.Tabs.push_back(hButton);
+	}
+	row.Refresh = [&row] {
+		for (size_t i = 0; i < row.Tabs.size(); ++i)
+			Button_SetCheck(row.Tabs[i], static_cast<int>(i) == row.ActiveTab ? BST_CHECKED : BST_UNCHECKED);
+	};
+	row.Click = [this, &row, key](int tab) {
+		row.ActiveTab = tab;
+		m_activeTabs[key] = tab;
+		row.Refresh();
+		LayoutPage();
+	};
+	const auto pOwner = pRow.get();
+	m_rows.emplace_back(std::move(pRow));
+
+	// A list in a tab goes without its label, which is the tab's.
+	for (size_t i = 0; i < items.size(); ++i) {
+		const auto first = m_rows.size();
+		CreateRow(*items[i]);
+		for (auto r = first; r < m_rows.size(); ++r) {
+			m_rows[r]->TabOwner = pOwner;
+			m_rows[r]->TabIndex = static_cast<int>(i);
+			if (r == first && m_rows[r]->Type == Row::RowType::Grid && m_rows[r]->Label) {
+				DestroyWindow(m_rows[r]->Label);
+				m_rows[r]->Label = nullptr;
+			}
+		}
+	}
+}
+
+void XivAlexander::Apps::MainApp::Window::SettingsView::CreateHeadingRow(const std::wstring& text, const std::wstring& checkLabel, bool enabled, std::function<bool()> isChecked, std::function<void()> toggle,
+	const std::wstring& linkLabel, std::function<void()> link) {
+	// A heading with a check box right after it, for a choice about the whole section.
+	auto pRow = std::make_unique<Row>();
+	auto& row = *pRow;
+	row.Type = Row::RowType::Heading;
+	row.Label = CreateRowControl(PartLabel, 0, WC_STATICW, text, SS_LEFT | SS_NOPREFIX);
+	SendMessageW(row.Label, WM_SETFONT, reinterpret_cast<WPARAM>(*m_boldFont), FALSE);
+	row.Control = CreateRowControl(PartControl, 0, WC_BUTTONW, EscapeMnemonics(checkLabel), WS_TABSTOP | BS_CHECKBOX | BS_NOTIFY);
+	EnableWindow(row.Control, enabled);
+	if (link) {
+		// At the line's end, drawn as a link (WM_DRAWITEM) for an action lighter than a button's.
+		row.Button1 = CreateRowControl(PartButton1, 0, WC_BUTTONW, linkLabel, WS_TABSTOP | BS_OWNERDRAW | BS_NOTIFY);
+		row.LinkButton = true;
+	}
+	row.Refresh = [&row, isChecked = std::move(isChecked)] { Button_SetCheck(row.Control, isChecked() ? BST_CHECKED : BST_UNCHECKED); };
+	row.Click = [this, toggle = std::move(toggle), link = std::move(link)](int part) {
+		if (part == PartButton1) {
+			if (link)
+				link();
+			return;
+		}
+		toggle();
+		RefreshRows();
+	};
 	m_rows.emplace_back(std::move(pRow));
 }
 
@@ -2755,12 +3587,27 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::CreateRow(ConfigItemBase
 	row.Item = &item;
 
 	const auto menuText = [this](UINT commandId) { return GetMenuText(IDR_TRAY_MENU, commandId); };
+	const auto gameLanguageChoice = [&rt](xivres::game_language language) {
+		return std::pair{language, language == xivres::game_language::Unspecified
+			? rt.GetLanguageNameLocalized(language)
+			: std::format(L"{} ({})", rt.GetLanguageNameLocalized(language), xivres::util::unicode::convert<std::wstring>(xivres::game_language_code(language)))};
+	};
 
 	if (CreateSpecialRows(item))
 		return;
 
 	if (const auto info = FindItemInfo(item))
 		row.PickFiles = info->PickFiles;
+
+	if (&item == &rt.Modding.Languages.LipSyncLanguage) {
+		// Only the languages the game has lip sync of; the item holds no others.
+		BindEnum<xivres::game_language>(row, [&gameLanguageChoice] {
+			std::vector<std::pair<xivres::game_language, std::wstring>> res{gameLanguageChoice(xivres::game_language::Unspecified)};
+			for (const auto language : RuntimeConfigRepository::ModdingGroup::LanguagesGroup::LipSyncLanguages)
+				res.emplace_back(gameLanguageChoice(language));
+			return res;
+		});
+	}
 
 	if (&item == &rt.Audio.OutputSamplingRate) {
 		// As the menu offers them.
@@ -2821,14 +3668,10 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::CreateRow(ConfigItemBase
 				{HighLatencyMitigationMode::SimulateNormalizedRttAndLatency, menuText(ID_NETWORK_HIGHLATENCYMITIGATION_MODE_3)},
 			};
 		})
-		|| BindEnum<xivres::game_language>(row, [&rt] {
+		|| BindEnum<xivres::game_language>(row, [&gameLanguageChoice] {
 			std::vector<std::pair<xivres::game_language, std::wstring>> res;
-			for (auto i = 0; i <= static_cast<int>(xivres::game_language::TraditionalChinese); ++i) {
-				const auto language = static_cast<xivres::game_language>(i);
-				res.emplace_back(language, language == xivres::game_language::Unspecified
-					? rt.GetLanguageNameLocalized(language)
-					: std::format(L"{} ({})", rt.GetLanguageNameLocalized(language), xivres::util::unicode::convert<std::wstring>(xivres::game_language_code(language))));
-			}
+			for (auto i = 0; i <= static_cast<int>(xivres::game_language::TraditionalChinese); ++i)
+				res.emplace_back(gameLanguageChoice(static_cast<xivres::game_language>(i)));
 			return res;
 		})
 		|| BindEnum<xivres::game_publisher>(row, [&rt] {
@@ -2848,10 +3691,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::CreateRow(ConfigItemBase
 		|| BindEnum<SoxrResamplerConfig::Rolloff>(row, [] {
 			using R = SoxrResamplerConfig::Rolloff;
 			return NamedChoices({R::Small, R::Medium, R::None});
-		})
-		|| BindEnum<FontReplacementNamePlateMode>(row, [] {
-			using M = FontReplacementNamePlateMode;
-			return NamedChoices({M::Game, M::BakedAtFullSize, M::Live});
 		}));
 
 	if (row.Type == Row::RowType::Unsupported) {
@@ -2975,160 +3814,320 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 			placements.emplace_back(hWnd, x, y, width, height);
 	};
 
-	auto y = pad;
-	auto flowGroup = 0;
-	auto flowX = pad;
-	for (const auto& row : m_rows) {
-		const auto previousFlowGroup = std::exchange(flowGroup, 0);
-		int rowHeight;
-		switch (row->Type) {
-			case Row::RowType::Heading: {
-				y += scale(8);
-				rowHeight = measure(row->Label, inner);
-				place(row->Label, pad, y, inner, rowHeight);
-				break;
+	// Laid out with the grids at their own heights, then again with what the page has left shared among them alike.
+	const auto layoutRows = [&](int gridExtra) {
+		placements.clear();
+		auto y = pad;
+		auto flowGroup = 0;
+		auto flowX = pad;
+		auto lineGroup = 0;
+		auto lineX = pad;
+		for (const auto& row : m_rows) {
+			if (row->TabOwner) {
+				const auto shown = row->TabIndex == row->TabOwner->ActiveTab;
+				for (const auto hWnd : {row->Label, row->Control, row->Button1, row->Button2, row->Button3, row->Button4, row->Description, row->Secondary}) {
+					if (hWnd)
+						ShowWindow(hWnd, shown ? SW_SHOWNA : SW_HIDE);
+				}
+				if (!shown)
+					continue;
 			}
-
-			case Row::RowType::Note: {
-				rowHeight = measure(row->Description, inner);
-				place(row->Description, pad, y, inner, rowHeight);
-				break;
+			const auto previousFlowGroup = std::exchange(flowGroup, 0);
+			const auto previousLineGroup = std::exchange(lineGroup, 0);
+			SelectObject(hdc, *m_font);
+			int rowHeight;
+			if (row->LineGroup) {
+				// After the row before it of its group, on its line if the label and a little of the control fit; the last
+				// of the group (or of the line) takes the rest of the line.
+				const auto next = &row + 1 != m_rows.data() + m_rows.size() ? (&row)[1].get() : nullptr;
+				const auto labelText = GetText(row->Label);
+				RECT rcLabel{};
+				DrawTextW(hdc, labelText.c_str(), static_cast<int>(labelText.size()), &rcLabel, DT_CALCRECT | DT_SINGLELINE | DT_NOPREFIX);
+				const auto labelWidth = static_cast<int>(rcLabel.right);
+				const auto wanted = scale(row->LineWidth ? row->LineWidth : 120);
+				if (previousLineGroup == row->LineGroup && lineX + labelWidth + gap + wanted <= pad + inner)
+					y -= controlHeight + rowGap;
+				else
+					lineX = pad;
+				place(row->Label, lineX, y + std::max(0, (controlHeight - lineHeight) / 2), labelWidth, lineHeight);
+				const auto controlX = lineX + labelWidth + gap;
+				const auto rest = std::max(0, pad + inner - controlX);
+				const auto last = !next || next->LineGroup != row->LineGroup || controlX + wanted + gap * 2 + scale(120) > pad + inner;
+				const auto controlWidth = last ? rest : std::min(rest, wanted);
+				// The height of a drop-down list is that of its list.
+				place(row->Control, controlX, y, controlWidth, row->Type == Row::RowType::Edit ? controlHeight : scale(300));
+				lineX = controlX + controlWidth + gap * 2;
+				lineGroup = row->LineGroup;
+				y += controlHeight + rowGap;
+				continue;
 			}
-
-			case Row::RowType::Action: {
-				// Each as wide as its text needs, side by side, going on to the next line where one doesn't fit.
-				auto x = pad;
-				auto lineY = y;
-				for (const auto hButton : {row->Button1, row->Button2, row->Button3, row->Button4}) {
-					if (!hButton)
-						continue;
-					RECT rcText{};
-					const auto text = GetText(hButton);
-					DrawTextW(hdc, text.c_str(), static_cast<int>(text.size()), &rcText, DT_CALCRECT | DT_SINGLELINE);
-					auto width = std::max(buttonWidth, static_cast<int>(rcText.right) + scale(24));
-					if (x > pad && x + width > pad + inner) {
-						x = pad;
-						lineY += controlHeight + gap;
+			switch (row->Type) {
+				case Row::RowType::Heading: {
+					y += scale(8);
+					if (!row->Control) {
+						rowHeight = measure(row->Label, inner);
+						place(row->Label, pad, y, inner, rowHeight);
+						break;
 					}
-					width = std::min(pad + inner - x, width);
-					place(hButton, x, lineY, width, controlHeight);
-					x += width + gap;
-				}
-				rowHeight = lineY + controlHeight - y;
-				break;
-			}
 
-			case Row::RowType::Grid: {
-				// Its label and description above, the full width.
-				auto gridY = y;
-				if (const auto labelHeight = measure(row->Label, inner)) {
-					place(row->Label, pad, gridY, inner, labelHeight);
-					gridY += labelHeight + scale(2);
-				}
-				if (const auto descriptionHeight = measure(row->Description, inner)) {
-					place(row->Description, pad, gridY, inner, descriptionHeight);
-					gridY += descriptionHeight + scale(4);
-				}
-				const auto gridHeight = scale(row->Height ? row->Height : 200);
-				place(row->Control, pad, gridY, inner, gridHeight);
-				rowHeight = gridY + gridHeight - y;
-				break;
-			}
-
-			case Row::RowType::Check: {
-				// The button has its label, and is as wide as it needs, wrapping it at the page's width; a line is
-				// left above and below for the focus.
-				const auto text = GetText(row->Control);
-				const auto textX = checkWidth + scale(4);
-				RECT rcLine{};
-				DrawTextW(hdc, text.c_str(), static_cast<int>(text.size()), &rcLine, DT_CALCRECT | DT_SINGLELINE);
-				const auto singleWidth = textX + static_cast<int>(rcLine.right) + scale(6);
-
-				if (row->FlowGroup) {
-					// After the one before it of its group, on its line if it fits, or else at the start of the next.
-					if (previousFlowGroup == row->FlowGroup && flowX + singleWidth <= pad + inner)
-						y -= lineHeight + 2 + rowGap;
-					else
-						flowX = pad;
-					place(row->Control, flowX, y, std::min(singleWidth, pad + inner - flowX), lineHeight + 2);
-					flowX += singleWidth + scale(14);
-					flowGroup = row->FlowGroup;
-					rowHeight = lineHeight + 2;
+					// The heading as wide as its text, in its bold font, and its check box after it on the same line.
+					SelectObject(hdc, *m_boldFont);
+					RECT rcHeading{};
+					const auto heading = GetText(row->Label);
+					DrawTextW(hdc, heading.c_str(), static_cast<int>(heading.size()), &rcHeading, DT_CALCRECT | DT_SINGLELINE | DT_NOPREFIX);
+					SelectObject(hdc, *m_font);
+					RECT rcCheck{};
+					const auto check = GetText(row->Control);
+					DrawTextW(hdc, check.c_str(), static_cast<int>(check.size()), &rcCheck, DT_CALCRECT | DT_SINGLELINE);
+					const auto headingWidth = std::min(inner, static_cast<int>(rcHeading.right) + scale(2));
+					const auto checkX = pad + headingWidth + scale(16);
+					const auto checkWidth2 = std::max(0, std::min(pad + inner - checkX, checkWidth + scale(4) + static_cast<int>(rcCheck.right) + scale(6)));
+					rowHeight = std::max(lineHeight, static_cast<int>(rcHeading.bottom)) + 2;
+					place(row->Label, pad, y + 1, headingWidth, rowHeight - 2);
+					place(row->Control, checkX, y, checkWidth2, rowHeight);
+					if (row->Button1) {
+						RECT rcLink{};
+						const auto link = GetText(row->Button1);
+						DrawTextW(hdc, link.c_str(), static_cast<int>(link.size()), &rcLink, DT_CALCRECT | DT_SINGLELINE);
+						const auto linkWidth = static_cast<int>(rcLink.right) + scale(6);
+						place(row->Button1, std::max(checkX + checkWidth2 + gap, pad + inner - linkWidth), y, linkWidth, rowHeight);
+					}
 					break;
 				}
 
-				RECT rcText{0, 0, std::max(1, inner - textX - scale(6)), 0};
-				DrawTextW(hdc, text.c_str(), static_cast<int>(text.size()), &rcText, DT_CALCRECT | DT_WORDBREAK | DT_EDITCONTROL);
-				const auto textHeight = std::max(lineHeight, static_cast<int>(rcText.bottom)) + 2;
-				const auto labelX = pad + textX;
-				const auto labelWidth = inner - textX;
-				const auto descriptionHeight = measure(row->Description, labelWidth);
-				place(row->Control, pad, y, std::min(inner, singleWidth), textHeight);
-				place(row->Description, labelX, y + textHeight + scale(2), labelWidth, descriptionHeight);
-				rowHeight = textHeight + (descriptionHeight ? scale(2) + descriptionHeight : 0);
-				break;
-			}
-
-			case Row::RowType::PathList: {
-				const auto labelHeight = measure(row->Label, inner);
-				const auto descriptionHeight = measure(row->Description, inner);
-				place(row->Label, pad, y, inner, labelHeight);
-				auto listY = y + labelHeight + scale(4);
-				if (descriptionHeight) {
-					place(row->Description, pad, listY - scale(2), inner, descriptionHeight);
-					listY += descriptionHeight + scale(2);
+				case Row::RowType::Note: {
+					rowHeight = measure(row->Description, inner);
+					place(row->Description, pad, y, inner, rowHeight);
+					break;
 				}
-				const auto listHeight = scale(96);
-				place(row->Control, pad, listY, inner - buttonWidth - gap, listHeight);
-				place(row->Button1, pad + inner - buttonWidth, listY, buttonWidth, controlHeight);
-				place(row->Button2, pad + inner - buttonWidth, listY + controlHeight + scale(4), buttonWidth, controlHeight);
-				rowHeight = listY + listHeight - y;
-				break;
-			}
 
-			default: {
-				// The label and its description on the left, the control on the right.
-				const auto labelWidth = inner * 45 / 100;
-				const auto controlX = pad + labelWidth + gap;
-				const auto controlWidth = inner - labelWidth - gap;
-				const auto labelY = y + std::max(0, (controlHeight - lineHeight) / 2);
-				const auto labelHeight = measure(row->Label, labelWidth);
-				const auto descriptionHeight = measure(row->Description, labelWidth);
-				place(row->Label, pad, labelY, labelWidth, labelHeight);
-				place(row->Description, pad, labelY + labelHeight + scale(2), labelWidth, descriptionHeight);
-				switch (row->Type) {
-					case Row::RowType::Edit:
-						place(row->Control, controlX, y, controlWidth, controlHeight);
-						break;
-					case Row::RowType::Value:
-						place(row->Control, controlX, labelY, controlWidth, lineHeight);
-						break;
-					case Row::RowType::Slider: {
-						const auto numberWidth = scale(72);
-						place(row->Control, controlX, y, controlWidth - numberWidth - gap, controlHeight);
-						place(row->Secondary, controlX + controlWidth - numberWidth, y, numberWidth, controlHeight);
+				case Row::RowType::Tabs: {
+					// Side by side, as wide as each needs, going on to the next line where one doesn't fit.
+					auto x = pad;
+					auto lineY = y;
+					for (const auto hButton : row->Tabs) {
+						RECT rcText{};
+						const auto text = GetText(hButton);
+						DrawTextW(hdc, text.c_str(), static_cast<int>(text.size()), &rcText, DT_CALCRECT | DT_SINGLELINE);
+						auto width = static_cast<int>(rcText.right) + scale(24);
+						if (x > pad && x + width > pad + inner) {
+							x = pad;
+							lineY += controlHeight;
+						}
+						width = std::min(pad + inner - x, width);
+						place(hButton, x, lineY, width, controlHeight);
+						x += width;
+					}
+					rowHeight = lineY + controlHeight - y;
+					break;
+				}
+
+				case Row::RowType::RichText: {
+					// Three lines, with a button for the rest, if there is more; the control has a margin of its own.
+					const auto full = measure(row->Description, std::max(1, inner - scale(8))) + scale(4);
+					const auto collapsed = lineHeight * 3 + scale(4);
+					const auto shortened = full > collapsed;
+					const auto textHeight = shortened && !row->Expanded ? collapsed : full;
+					place(row->Description, pad, y, inner, textHeight);
+					rowHeight = textHeight;
+					if (shortened) {
+						RECT rcButton{};
+						const auto buttonText = GetText(row->Button1);
+						DrawTextW(hdc, buttonText.c_str(), static_cast<int>(buttonText.size()), &rcButton, DT_CALCRECT | DT_SINGLELINE);
+						place(row->Button1, pad, y + textHeight + scale(4), std::max(buttonWidth, static_cast<int>(rcButton.right) + scale(24)), controlHeight);
+						rowHeight += scale(4) + controlHeight;
+					} else {
+						place(row->Button1, 0, 0, 0, 0);
+					}
+					break;
+				}
+
+				case Row::RowType::Action: {
+					// Each as wide as its text needs, side by side, going on to the next line where one doesn't fit.
+					auto x = pad;
+					auto lineY = y;
+					for (const auto hButton : {row->Button1, row->Button2, row->Button3, row->Button4}) {
+						if (!hButton)
+							continue;
+						RECT rcText{};
+						const auto text = GetText(hButton);
+						DrawTextW(hdc, text.c_str(), static_cast<int>(text.size()), &rcText, DT_CALCRECT | DT_SINGLELINE);
+						auto width = std::max(buttonWidth, static_cast<int>(rcText.right) + scale(24));
+						if (x > pad && x + width > pad + inner) {
+							x = pad;
+							lineY += controlHeight + gap;
+						}
+						width = std::min(pad + inner - x, width);
+						place(hButton, x, lineY, width, controlHeight);
+						x += width + gap;
+					}
+					rowHeight = lineY + controlHeight - y;
+					break;
+				}
+
+				case Row::RowType::Grid: {
+					// Its label and description above, the full width.
+					auto gridY = y;
+					if (const auto labelHeight = measure(row->Label, inner)) {
+						place(row->Label, pad, gridY, inner, labelHeight);
+						gridY += labelHeight + scale(2);
+					}
+					if (const auto descriptionHeight = measure(row->Description, inner)) {
+						place(row->Description, pad, gridY, inner, descriptionHeight);
+						gridY += descriptionHeight + scale(4);
+					}
+					const auto gridHeight = scale(row->Height ? row->Height : 200) + gridExtra;
+					place(row->Control, pad, gridY, inner, gridHeight);
+					rowHeight = gridY + gridHeight - y;
+					break;
+				}
+
+				case Row::RowType::Preview: {
+					// Its description above, the full width, at its own height.
+					auto previewY = y;
+					if (const auto descriptionHeight = measure(row->Description, inner)) {
+						place(row->Description, pad, previewY, inner, descriptionHeight);
+						previewY += descriptionHeight + scale(4);
+					}
+					const auto previewHeight = scale(row->Height);
+					place(row->Control, pad, previewY, inner, previewHeight);
+					rowHeight = previewY + previewHeight - y;
+					break;
+				}
+
+				case Row::RowType::Check: {
+					// The button has its label, and is as wide as it needs, wrapping it at the page's width; a line is
+					// left above and below for the focus. A group's heading is spaced and measured as one.
+					if (row->Bold) {
+						y += scale(8);
+						SelectObject(hdc, *m_boldFont);
+					}
+					const auto text = GetText(row->Control);
+					// Where the button draws its label, so that the description lines up with it: after its glyph and a third
+					// of the glyph's width, as the theme and CustomDrawDarkButton place it.
+					const auto textX = [&] {
+						if (const auto hTheme = OpenThemeData(row->Control, L"Button")) {
+							const auto type = GetWindowLongPtrW(row->Control, GWL_STYLE) & BS_TYPEMASK;
+							const auto part = type == BS_RADIOBUTTON || type == BS_AUTORADIOBUTTON ? BP_RADIOBUTTON : BP_CHECKBOX;
+							SIZE glyph{};
+							const auto measured = SUCCEEDED(GetThemePartSize(hTheme, hdc, part, 1, nullptr, TS_DRAW, &glyph));
+							CloseThemeData(hTheme);
+							if (measured && glyph.cx > 0)
+								return static_cast<int>(glyph.cx + glyph.cx / 3);
+						}
+						return checkWidth + scale(4);
+					}();
+					RECT rcLine{};
+					DrawTextW(hdc, text.c_str(), static_cast<int>(text.size()), &rcLine, DT_CALCRECT | DT_SINGLELINE);
+					const auto singleWidth = textX + static_cast<int>(rcLine.right) + scale(6);
+
+					if (row->FlowGroup) {
+						// After the one before it of its group, on its line if it fits, or else at the start of the next.
+						if (previousFlowGroup == row->FlowGroup && flowX + singleWidth <= pad + inner)
+							y -= lineHeight + 2 + rowGap;
+						else
+							flowX = pad;
+						place(row->Control, flowX, y, std::min(singleWidth, pad + inner - flowX), lineHeight + 2);
+						flowX += singleWidth + scale(14);
+						flowGroup = row->FlowGroup;
+						rowHeight = lineHeight + 2;
 						break;
 					}
-					case Row::RowType::Combo:
-					case Row::RowType::ComboEdit:
-						// The height of a drop-down list is that of its list.
-						place(row->Control, controlX, y, controlWidth, scale(300));
-						break;
-					case Row::RowType::PathEdit:
-						place(row->Control, controlX, y, controlWidth - buttonWidth - gap, controlHeight);
-						place(row->Button1, controlX + controlWidth - buttonWidth, y, buttonWidth, controlHeight);
-						break;
-					case Row::RowType::Unsupported:
-						place(row->Button1, controlX, y, std::min(controlWidth, buttonWidth * 3 / 2), controlHeight);
-						break;
-					default:
-						break;
+
+					RECT rcText{0, 0, std::max(1, inner - textX - scale(6)), 0};
+					DrawTextW(hdc, text.c_str(), static_cast<int>(text.size()), &rcText, DT_CALCRECT | DT_WORDBREAK | DT_EDITCONTROL);
+					const auto textHeight = std::max(lineHeight, static_cast<int>(rcText.bottom)) + 2;
+					const auto labelX = pad + textX;
+					const auto labelWidth = inner - textX;
+					const auto descriptionHeight = measure(row->Description, labelWidth);
+
+					// A menu button at the line's right end, the check box beside it in the line's middle.
+					auto controlWidth = std::min(inner, singleWidth);
+					auto controlY = y;
+					auto lineHeightUsed = textHeight;
+					if (row->Button1) {
+						RECT rcButton{};
+						const auto buttonText = GetText(row->Button1);
+						DrawTextW(hdc, buttonText.c_str(), static_cast<int>(buttonText.size()), &rcButton, DT_CALCRECT | DT_SINGLELINE);
+						const auto menuWidth = std::max(scale(72), static_cast<int>(rcButton.right) + scale(24));
+						place(row->Button1, pad + inner - menuWidth, y, menuWidth, controlHeight);
+						controlWidth = std::min(controlWidth, std::max(0, inner - menuWidth - gap));
+						controlY = y + std::max(0, (controlHeight - textHeight) / 2);
+						lineHeightUsed = std::max(textHeight, controlHeight);
+					}
+					place(row->Control, pad, controlY, controlWidth, textHeight);
+					place(row->Description, labelX, y + lineHeightUsed + scale(2), labelWidth, descriptionHeight);
+					rowHeight = lineHeightUsed + (descriptionHeight ? scale(2) + descriptionHeight : 0);
+					break;
 				}
-				rowHeight = std::max(controlHeight, labelY - y + labelHeight + (descriptionHeight ? scale(2) + descriptionHeight : 0));
-				break;
+
+				case Row::RowType::PathList: {
+					const auto labelHeight = measure(row->Label, inner);
+					const auto descriptionHeight = measure(row->Description, inner);
+					place(row->Label, pad, y, inner, labelHeight);
+					auto listY = y + labelHeight + scale(4);
+					if (descriptionHeight) {
+						place(row->Description, pad, listY - scale(2), inner, descriptionHeight);
+						listY += descriptionHeight + scale(2);
+					}
+					const auto listHeight = scale(96);
+					place(row->Control, pad, listY, inner - buttonWidth - gap, listHeight);
+					place(row->Button1, pad + inner - buttonWidth, listY, buttonWidth, controlHeight);
+					place(row->Button2, pad + inner - buttonWidth, listY + controlHeight + scale(4), buttonWidth, controlHeight);
+					rowHeight = listY + listHeight - y;
+					break;
+				}
+
+				default: {
+					// The label and its description on the left, the control on the right.
+					const auto labelWidth = inner * 45 / 100;
+					const auto controlX = pad + labelWidth + gap;
+					const auto controlWidth = inner - labelWidth - gap;
+					const auto labelY = y + std::max(0, (controlHeight - lineHeight) / 2);
+					const auto labelHeight = measure(row->Label, labelWidth);
+					const auto descriptionHeight = measure(row->Description, labelWidth);
+					place(row->Label, pad, labelY, labelWidth, labelHeight);
+					place(row->Description, pad, labelY + labelHeight + scale(2), labelWidth, descriptionHeight);
+					switch (row->Type) {
+						case Row::RowType::Edit:
+							place(row->Control, controlX, y, controlWidth, controlHeight);
+							break;
+						case Row::RowType::Value:
+							place(row->Control, controlX, labelY, controlWidth, lineHeight);
+							break;
+						case Row::RowType::Slider: {
+							const auto numberWidth = scale(72);
+							place(row->Control, controlX, y, controlWidth - numberWidth - gap, controlHeight);
+							place(row->Secondary, controlX + controlWidth - numberWidth, y, numberWidth, controlHeight);
+							break;
+						}
+						case Row::RowType::Combo:
+						case Row::RowType::ComboEdit:
+							// The height of a drop-down list is that of its list.
+							place(row->Control, controlX, y, controlWidth, scale(300));
+							break;
+						case Row::RowType::PathEdit:
+							place(row->Control, controlX, y, controlWidth - buttonWidth - gap, controlHeight);
+							place(row->Button1, controlX + controlWidth - buttonWidth, y, buttonWidth, controlHeight);
+							break;
+						case Row::RowType::Unsupported:
+							place(row->Button1, controlX, y, std::min(controlWidth, buttonWidth * 3 / 2), controlHeight);
+							break;
+						default:
+							break;
+					}
+					rowHeight = std::max(controlHeight, labelY - y + labelHeight + (descriptionHeight ? scale(2) + descriptionHeight : 0));
+					break;
+				}
 			}
+			y += rowHeight + rowGap;
 		}
-		y += rowHeight + rowGap;
+		return y;
+	};
+	auto y = layoutRows(0);
+	if (const auto grids = static_cast<int>(std::ranges::count_if(m_rows, [](const auto& row) { return row->Type == Row::RowType::Grid && (!row->TabOwner || row->TabIndex == row->TabOwner->ActiveTab); }))) {
+		if (const auto spare = static_cast<int>(rcPage.bottom) - (y - rowGap + pad); spare > 0)
+			y = layoutRows(spare / grids);
 	}
 	SelectObject(hdc, hPrevFont);
 	ReleaseDC(m_hPage, hdc);
@@ -3154,6 +4153,14 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 	};
 	SetScrollInfo(m_hPage, SB_VERT, &si, TRUE);
 	InvalidateRect(m_hPage, nullptr, TRUE);
+
+	// The font preview is drawn at its size: anew once that changes, as the page is resized.
+	if (m_fontPreview) {
+		RECT rcPreview;
+		GetClientRect(m_fontPreview->Control, &rcPreview);
+		if (rcPreview.right != m_fontPreview->Requested.cx || rcPreview.bottom != m_fontPreview->Requested.cy)
+			RequestFontPreview(FontPreviewDelay);
+	}
 }
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::ScrollPageTo(int y) {
@@ -3184,7 +4191,67 @@ LRESULT XivAlexander::Apps::MainApp::Window::SettingsView::PageProc(HWND hwnd, U
 			OnPageCommand(LOWORD(wParam), HIWORD(wParam));
 			return 0;
 
+		case WM_DRAWITEM: {
+			// A link: underlined text in the theme's link color, and the focus around it.
+			const auto& dis = *reinterpret_cast<LPDRAWITEMSTRUCT>(lParam);
+			const auto isLink = std::ranges::any_of(m_rows, [&dis](const auto& row) { return row->LinkButton && row->Button1 == dis.hwndItem; });
+			if (!isLink)
+				break;
+			FillRect(dis.hDC, &dis.rcItem, *m_backgroundBrush);
+			LOGFONTW logFont{};
+			GetObjectW(*m_font, sizeof logFont, &logFont);
+			logFont.lfUnderline = TRUE;
+			const auto hUnderline = CreateFontIndirectW(&logFont);
+			const auto hPrevFont = SelectObject(dis.hDC, hUnderline);
+			SetBkMode(dis.hDC, TRANSPARENT);
+			SetTextColor(dis.hDC, (dis.itemState & ODS_DISABLED) ? GetThemeColors(IsDarkModeEnabled()).ForegroundWeak : IsDarkModeEnabled() ? RGB(0x66, 0xB3, 0xFF) : RGB(0x00, 0x66, 0xCC));
+			const auto text = GetText(dis.hwndItem);
+			RECT rc = dis.rcItem;
+			DrawTextW(dis.hDC, text.c_str(), static_cast<int>(text.size()), &rc, DT_SINGLELINE | DT_VCENTER | DT_CENTER | DT_NOPREFIX);
+			if ((dis.itemState & ODS_FOCUS) && !(dis.itemState & ODS_NOFOCUSRECT))
+				DrawFocusRect(dis.hDC, &dis.rcItem);
+			DeleteObject(SelectObject(dis.hDC, hPrevFont));
+			return TRUE;
+		}
+
+		case WM_SETCURSOR:
+			if (std::ranges::any_of(m_rows, [wParam](const auto& row) { return row->LinkButton && row->Button1 == reinterpret_cast<HWND>(wParam); })) {
+				SetCursor(LoadCursorW(nullptr, IDC_HAND));
+				return TRUE;
+			}
+			break;
+
+		case WM_CONTEXTMENU:
+			for (const auto& row : m_rows) {
+				if (row->ContextMenu && (row->Control == reinterpret_cast<HWND>(wParam) || row->Label == reinterpret_cast<HWND>(wParam))) {
+					POINT pt{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+					if (pt.x == -1 && pt.y == -1) {
+						// From the keyboard: below the control.
+						RECT rc{};
+						GetWindowRect(row->Control, &rc);
+						pt = {rc.left, rc.bottom};
+					}
+					row->ContextMenu(pt);
+					return 0;
+				}
+			}
+			break;
+
 		case WM_NOTIFY:
+			if (reinterpret_cast<LPNMHDR>(lParam)->code == EN_LINK) {
+				const auto& link = *reinterpret_cast<ENLINK*>(lParam);
+				if (link.msg != WM_LBUTTONUP)
+					return 0;
+				std::wstring url(static_cast<size_t>(std::max(0L, link.chrg.cpMax - link.chrg.cpMin)) + 1, L'\0');
+				TEXTRANGEW range{.chrg = link.chrg, .lpstrText = url.data()};
+				url.resize(static_cast<size_t>(SendMessageW(link.nmhdr.hwndFrom, EM_GETTEXTRANGE, 0, reinterpret_cast<LPARAM>(&range))));
+				try {
+					Utils::Win32::ShellExecutePathOrThrow(url, m_hWndOwner);
+				} catch (const std::exception& e) {
+					Dll::MessageBoxF(m_hWndOwner, MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
+				}
+				return 1;
+			}
 			// The dark theme draws the text of radio buttons as if they were disabled; these draw it themselves.
 			if (IsDarkModeEnabled() && reinterpret_cast<LPNMHDR>(lParam)->code == NM_CUSTOMDRAW) {
 				if (const auto result = CustomDrawDarkButton(*reinterpret_cast<LPNMCUSTOMDRAW>(lParam)))
@@ -3212,8 +4279,10 @@ LRESULT XivAlexander::Apps::MainApp::Window::SettingsView::PageProc(HWND hwnd, U
 			return 0;
 
 		case WM_LBUTTONDOWN:
-			// The background takes the focus, so that a click on it ends what was being edited.
+			// The background takes the focus, so that a click on it ends what was being edited; dragging it moves the
+			// window, as its title bar would.
 			SetFocus(hwnd);
+			DragWindow();
 			return 0;
 
 		case WM_HSCROLL:
@@ -3251,6 +4320,15 @@ LRESULT XivAlexander::Apps::MainApp::Window::SettingsView::PageProc(HWND hwnd, U
 }
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::OnPageCommand(int controlId, int notification) {
+	if (controlId >= FirstTabControlId && controlId < FirstRowControlId) {
+		if (notification != BN_CLICKED)
+			return;
+		for (const auto& row : m_rows) {
+			if (row->Type == Row::RowType::Tabs && row->Click && static_cast<size_t>(controlId - FirstTabControlId) < row->Tabs.size())
+				row->Click(controlId - FirstTabControlId);
+		}
+		return;
+	}
 	if (controlId < FirstRowControlId)
 		return;
 	const auto index = static_cast<size_t>((controlId - FirstRowControlId) / ControlsPerRow);
@@ -3292,6 +4370,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::OnPageCommand(int contro
 
 	switch (row.Type) {
 		case Row::RowType::Check:
+		case Row::RowType::Heading:
 			if (notification == BN_CLICKED)
 				click(PartControl);
 			else if (notification == BN_SETFOCUS)
@@ -3316,7 +4395,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::OnPageCommand(int contro
 		case Row::RowType::ComboEdit:
 			if (notification == CBN_SELCHANGE)
 				click(PartControl);
-			else if (notification == CBN_KILLFOCUS && row.Commit)
+			else if ((notification == CBN_KILLFOCUS || (notification == CBN_EDITCHANGE && row.CommitOnChange)) && row.Commit)
 				row.Commit();
 			else if (notification == CBN_SETFOCUS)
 				ScrollIntoView(row.Control);
@@ -3416,13 +4495,19 @@ LRESULT XivAlexander::Apps::MainApp::Window::SettingsView::ContainerProc(HWND hw
 		case WM_NOTIFY: {
 			const auto nmhdr = reinterpret_cast<LPNMHDR>(lParam);
 			if (nmhdr->hwndFrom == m_hTree && nmhdr->code == NM_CUSTOMDRAW) {
-				// The folders and ModPacks turned off are struck through.
+				// The folders, ModPacks and font families turned off are struck through.
 				const auto& nmcd = reinterpret_cast<LPNMTVCUSTOMDRAW>(lParam)->nmcd;
 				if (nmcd.dwDrawStage == CDDS_PREPAINT)
 					return CDRF_NOTIFYITEMDRAW;
 				if (nmcd.dwDrawStage == CDDS_ITEMPREPAINT && nmcd.lItemlParam) {
 					const auto& node = *reinterpret_cast<const TreeNode*>(nmcd.lItemlParam);
-					if ((node.Kind == TreeNode::NodeKind::TtmpFolder || node.Kind == TreeNode::NodeKind::TtmpPack) && m_ttmpDisabled.contains(node.TtmpPath)) {
+					const auto isFamilyDisabled = [this, &node] {
+						const auto& families = m_config->Runtime.FontReplacement.Faces.Families.Value();
+						const auto it = families.find(node.Family);
+						return it != families.end() && !it->second.Enabled;
+					};
+					if (((node.Kind == TreeNode::NodeKind::TtmpFolder || node.Kind == TreeNode::NodeKind::TtmpPack) && m_ttmpDisabled.contains(node.TtmpPath))
+						|| (node.Kind == TreeNode::NodeKind::FontFamily && isFamilyDisabled())) {
 						SelectObject(nmcd.hdc, *m_strikeFont);
 						return CDRF_NEWFONT;
 					}
@@ -3436,7 +4521,12 @@ LRESULT XivAlexander::Apps::MainApp::Window::SettingsView::ContainerProc(HWND hw
 			if (nmhdr->hwndFrom == m_hTree && nmhdr->code == TVN_BEGINLABELEDITW) {
 				// Only the folders and the ModPacks, which are directories; true refuses.
 				const auto pNode = reinterpret_cast<const TreeNode*>(reinterpret_cast<LPNMTVDISPINFOW>(lParam)->item.lParam);
-				return !pNode || !((pNode->Kind == TreeNode::NodeKind::TtmpFolder && !pNode->TtmpPath.empty()) || pNode->Kind == TreeNode::NodeKind::TtmpPack);
+				const auto refuse = !pNode || !((pNode->Kind == TreeNode::NodeKind::TtmpFolder && !pNode->TtmpPath.empty()) || pNode->Kind == TreeNode::NodeKind::TtmpPack);
+				if (!refuse) {
+					if (const auto hEdit = TreeView_GetEditControl(m_hTree))
+						SetWindowSubclass(hEdit, LabelEditSubclassProc, LabelEditSubclassId, 0);
+				}
+				return refuse;
 			}
 			if (nmhdr->hwndFrom == m_hTree && nmhdr->code == TVN_ENDLABELEDITW) {
 				const auto& item = reinterpret_cast<LPNMTVDISPINFOW>(lParam)->item;
@@ -3501,7 +4591,15 @@ LRESULT XivAlexander::Apps::MainApp::Window::SettingsView::ContainerProc(HWND hw
 			return 0;
 
 		case WmSelectTtmpPack:
-			SelectNode([this](const TreeNode& node) { return node.Kind == TreeNode::NodeKind::TtmpPack && node.TtmpPath == m_ttmpPackToSelect; });
+			SelectNode([this](const TreeNode& node) {
+				return (node.Kind == TreeNode::NodeKind::TtmpPack || node.Kind == TreeNode::NodeKind::TtmpFolder) && !node.TtmpPath.empty() && node.TtmpPath == m_ttmpPackToSelect;
+			});
+			if (std::exchange(m_ttmpRenameAfterSelect, false))
+				RenameShownTtmp();
+			return 0;
+
+		case WmFontPreviewDrawn:
+			OnFontPreviewDrawn();
 			return 0;
 
 		case WM_DESTROY:
@@ -3509,6 +4607,7 @@ LRESULT XivAlexander::Apps::MainApp::Window::SettingsView::ContainerProc(HWND hw
 			m_cooldownListener.clear();
 			m_rowCleanup.clear();
 			m_cleanup.clear();
+			m_fontPreview.reset();
 			m_rows.clear();
 			break;
 	}
@@ -3519,6 +4618,10 @@ LRESULT XivAlexander::Apps::MainApp::Window::SettingsView::StatusProc(HWND hwnd,
 	switch (uMsg) {
 		case WM_ERASEBKGND:
 			return 1;
+
+		case WM_LBUTTONDOWN:
+			DragWindow();
+			return 0;
 
 		case WM_PAINT: {
 			// Drawn by the host, off screen first.
@@ -3556,6 +4659,12 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::Layout() {
 	SetWindowPos(m_hPage, nullptr, pageX, 0, pageWidth, rc.bottom, SWP_NOZORDER | SWP_NOACTIVATE);
 	SetWindowPos(m_hStatus, nullptr, pageX, 0, pageWidth, rc.bottom, SWP_NOZORDER | SWP_NOACTIVATE);
 
+}
+
+void XivAlexander::Apps::MainApp::Window::SettingsView::DragWindow() const {
+	// The title bar's move, which waits for the mouse to move before moving anything.
+	ReleaseCapture();
+	SendMessageW(GetAncestor(m_hWnd, GA_ROOT), WM_NCLBUTTONDOWN, HTCAPTION, 0);
 }
 
 RECT XivAlexander::Apps::MainApp::Window::SettingsView::GetDividerRect() const {
@@ -3598,6 +4707,8 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::UpdateFont(double zoom) 
 	for (const auto& row : m_rows) {
 		if (row->Type == Row::RowType::Heading)
 			SendMessageW(row->Label, WM_SETFONT, reinterpret_cast<WPARAM>(*boldFont), TRUE);
+		else if (row->Bold)
+			SendMessageW(row->Control, WM_SETFONT, reinterpret_cast<WPARAM>(*boldFont), TRUE);
 		else if (row->Grid)
 			row->Grid->SetZoom(zoom, *font);
 	}
@@ -3629,5 +4740,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::RefreshTheme() {
 		if (row->Grid)
 			row->Grid->ApplyTheme(dark);
 	}
+	// The preview's image has colors of its own (FontPreviewColorPresets); its frame is the theme's, drawn with it.
 	RedrawWindow(m_hWnd, nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_FRAME);
 }

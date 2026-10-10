@@ -41,6 +41,9 @@ namespace {
 	constexpr int TimerIdRepaint = 101;
 	constexpr int TimerIdClearCopiedLaunchCommandLine = 102;
 
+	// The first command of the items added to the window menu; below the window menu's own (SC_*, from 0xF000).
+	constexpr UINT SystemMenuCommandBase = 0x1000;
+
 	/// Deletes the submenu that has the command among its items.
 	bool DeleteSubMenuHolding(HMENU hMenu, UINT commandId) {
 		for (int i = GetMenuItemCount(hMenu) - 1; i >= 0; --i) {
@@ -95,7 +98,6 @@ namespace {
 	/// Takes out of the menus what is set on the settings pages in the window; their commands and shortcuts still work.
 	void TrimMenu(HMENU hMenu) {
 		for (const UINT commandId : {
-			ID_CONFIGURE_SETTINGS,
 			ID_CONFIGURE_EDITOPCODECONFIGURATION,
 			ID_CONFIGURE_CHECKFORUPDATEDOPCODES,
 			ID_CONFIGURE_CHECKFORUPDATEDOPCODESONSTARTUP,
@@ -103,9 +105,6 @@ namespace {
 			ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE,
 			ID_NETWORK_USEIPCTYPEFINDER,
 			ID_NETWORK_USEALLIPCMESSAGELOGGER,
-			ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY,
-			ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW,
-			ID_MODDING_TTMP_SHOWDEDICATEDMENU,
 			ID_MODDING_TTMP_OPENDIRECTORY,
 			ID_MODDING_USEALTCODECMUSICSUPPORT,
 			ID_MODDING_LOGALLFILEACCESS,
@@ -120,9 +119,8 @@ namespace {
 			while (DeleteMenu(hMenu, commandId, MF_BYCOMMAND)) {}
 		}
 
-		// Restart, Modding (whose TexTools ModPacks is the TTMP menu by now), Configure, and Help; and the game fixes, the
-		// language, the theme, the window title, the network troubleshooting, the latency and timing helper, the
-		// framerate control, and the voice muting.
+		// Restart, Modding, Configure, and Help; and the game fixes, the language, the theme, the window title, the network
+		// troubleshooting, the latency and timing helper, the framerate control, and the voice muting.
 		for (const UINT commandId : {
 			ID_RESTART_RESTART,
 			ID_MODDING_TTMP_REFRESH,
@@ -207,7 +205,7 @@ namespace {
 					return RemoteConfigUpdateResult::NotFound;
 
 				default:
-					throw std::runtime_error(std::format("HTTP Error {}", response.StatusCode));
+					throw std::runtime_error(XivAlexander::Config::Acquire()->Runtime.FormatStringResUtf8(IDS_ERROR_HTTP, response.StatusCode));
 			}
 		}
 
@@ -222,7 +220,7 @@ namespace {
 	size_t UpdatePatchCodesFromRemote(const std::filesystem::path& directory) {
 		const auto listing = Utils::Win32::WinHttp::Get("https://api.github.com/repos/Soreepeong/XivAlexander/contents/StaticData/PatchCode?ref=main");
 		if (listing.StatusCode != 200)
-			throw std::runtime_error(std::format("HTTP Error {}", listing.StatusCode));
+			throw std::runtime_error(XivAlexander::Config::Acquire()->Runtime.FormatStringResUtf8(IDS_ERROR_HTTP, listing.StatusCode));
 
 		size_t changed = 0;
 		for (const auto& item : nlohmann::json::parse(listing.Body)) {
@@ -232,7 +230,7 @@ namespace {
 
 			const auto response = Utils::Win32::WinHttp::Get(item.at("download_url").get<std::string>());
 			if (response.StatusCode != 200)
-				throw std::runtime_error(std::format("{}: HTTP Error {}", name, response.StatusCode));
+				throw std::runtime_error(std::format("{}: {}", name, XivAlexander::Config::Acquire()->Runtime.FormatStringResUtf8(IDS_ERROR_HTTP, response.StatusCode)));
 			const auto updated = nlohmann::json::parse(response.Body);
 
 			const auto path = directory / xivres::util::unicode::convert<std::wstring>(name);
@@ -390,7 +388,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::ShowContextMenu(const Base
 	{
 		const auto temporaryFocus = parent->WithTemporaryFocus();
 		result = TrackPopupMenu(
-			GetSubMenu(GetMenu(m_hWnd), 0),
+			GetSubMenu(m_menu, 0),
 			TPM_RETURNCMD | TPM_NONOTIFY,
 			curPoint.x,
 			curPoint.y,
@@ -619,25 +617,56 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu() {
 		m_config->Runtime.GetStringRes(IDS_APP_NAME), GetCurrentProcessId(), m_gameReleaseInfo.CountryCode, m_gameReleaseInfo.GameVersion);
 	ModifyMenuW(menu, ID_FILE_CURRENTINFO, MF_BYCOMMAND, ID_FILE_CURRENTINFO, title.c_str());
 
-	if (m_config->Runtime.AreVersionSensitiveFeaturesDisabledTemporarily()) {
-		for (const UINT id : {ID_MODDING_ENABLE, ID_MODDING_USEALTCODECMUSICSUPPORT}) {
-			const auto label = std::format(L"(!) {}", RepopulateMenu_GetMenuTextById(menu, id).c_str());
-			ModifyMenuW(menu, id, MF_BYCOMMAND | MF_STRING, id, label.c_str());
-		}
-	}
-	if (!m_app.GetResourceOverrider().IsActive()) {
-		ModifyMenuW(menu, ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART, MF_BYCOMMAND | MF_STRING | MF_DISABLED, ID_MODDING_ANYTHINGBELOWHEREWILLBEAPPLIEDONRESTART,
-			m_config->Runtime.GetStringRes(IDS_MENU_MODDING_REQUIRESENABLEANDRESTART));
-	}
-
 	m_menuIdCallbacks.clear();
 
 	TrimMenu(menu);
-	menu.AttachAndSwap(m_hWnd);
+	m_menu = std::move(menu);
+
+	// No menu bar: what is left of the menu is in the window menu (Alt+Space).
+	if (const auto hAttached = GetMenu(m_hWnd)) {
+		SetMenu(m_hWnd, nullptr);
+		DestroyMenu(hAttached);
+	}
+	RepopulateSystemMenu();
+}
+
+void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateSystemMenu() {
+	// Anew from the stock window menu, after a separator; the window menu reserves the low four bits of its commands, so
+	// the items are numbered by sixteens, each standing for a command of the menu.
+	GetSystemMenu(m_hWnd, TRUE);
+	const auto hSystemMenu = GetSystemMenu(m_hWnd, FALSE);
+	const auto hFileMenu = GetSubMenu(m_menu, 0);
+	m_systemMenuCommands.clear();
+	if (!hSystemMenu || !hFileMenu)
+		return;
+
+	AppendMenuW(hSystemMenu, MF_SEPARATOR, 0, nullptr);
+	for (int i = 0, count = GetMenuItemCount(hFileMenu); i < count; ++i) {
+		const auto commandId = GetMenuItemID(hFileMenu, i);
+		// The process information is in the title bar already.
+		if (commandId == ID_FILE_CURRENTINFO)
+			continue;
+		if (commandId == 0 || commandId == static_cast<UINT>(-1)) {
+			if (!m_systemMenuCommands.empty())
+				AppendMenuW(hSystemMenu, MF_SEPARATOR, 0, nullptr);
+			continue;
+		}
+		m_systemMenuCommands.push_back(commandId);
+		AppendMenuW(hSystemMenu, MF_STRING, SystemMenuCommandBase + (m_systemMenuCommands.size() - 1) * 16, RepopulateMenu_GetMenuTextById(hFileMenu, commandId).c_str());
+	}
+}
+
+LRESULT XivAlexander::Apps::MainApp::Window::MainWindow::OnSysCommand(WPARAM commandId, short xPos, short yPos) {
+	const auto id = commandId & 0xFFF0;
+	if (id >= SystemMenuCommandBase && (id - SystemMenuCommandBase) / 16 < m_systemMenuCommands.size()) {
+		SendMessageW(m_hWnd, WM_COMMAND, MAKEWPARAM(m_systemMenuCommands[(id - SystemMenuCommandBase) / 16], 0), 0);
+		return 0;
+	}
+	return BaseWindow::OnSysCommand(commandId, xPos, yPos);
 }
 
 UINT_PTR XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_AllocateMenuId(std::function<void()> cb) {
-	const auto hMenu = GetMenu(m_hWnd);
+	const auto hMenu = static_cast<HMENU>(m_menu);
 	uint16_t counter = 50000;
 
 	MENUITEMINFOW mii = {
@@ -675,15 +704,25 @@ std::filesystem::path XivAlexander::Apps::MainApp::Window::MainWindow::ResolvePr
 }
 
 void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
-	const auto hMenu = GetMenu(m_hWnd);
+	const auto hMenu = static_cast<HMENU>(m_menu);
 
 	const auto& config = m_config->Runtime;
 	using namespace Utils::Win32;
 
-	// File
+	// File, and its items in the window menu.
 	{
 		SetMenuState(hMenu, ID_FILE_SHOWCONTROLWINDOW, config.Ui.MainWindow.Show, true);
 		SetMenuState(hMenu, ID_FILE_SHOWLOGGINGWINDOW, config.Ui.LogWindow.Show, true);
+		if (const auto hSystemMenu = GetSystemMenu(m_hWnd, FALSE)) {
+			for (size_t i = 0; i < m_systemMenuCommands.size(); ++i) {
+				const auto state = GetMenuState(hMenu, m_systemMenuCommands[i], MF_BYCOMMAND);
+				if (state == static_cast<UINT>(-1))
+					continue;
+				const auto id = static_cast<UINT>(SystemMenuCommandBase + i * 16);
+				CheckMenuItem(hSystemMenu, id, MF_BYCOMMAND | (state & MF_CHECKED ? MF_CHECKED : MF_UNCHECKED));
+				EnableMenuItem(hSystemMenu, id, MF_BYCOMMAND | (state & (MF_DISABLED | MF_GRAYED) ? MF_GRAYED : MF_ENABLED));
+			}
+		}
 	}
 
 	// Network
@@ -1286,133 +1325,6 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Modding(int
 			}
 			return;
 		}
-
-		case ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY:
-			EnsureAndOpenDirectory(ResolvePrimaryDirectory(m_config->Runtime.Modding.GameResourceFileEntryRootDirectories.Value(), L"ReplacementFileEntries"));
-			return;
-
-		case ID_MODDING_EXPORTTOTTMP: {
-			if (m_backgroundWorkerThread) {
-				const auto window = decltype(m_backgroundWorkerProgressWindow)(m_backgroundWorkerProgressWindow);
-				if (window && window->GetCancelEvent().Wait(0) == WAIT_TIMEOUT)
-					SetForegroundWindow(m_backgroundWorkerProgressWindow->Handle());
-				else
-					Dll::MessageBoxF(m_hWnd, MB_ICONWARNING, IDS_ERROR_CANCELLING_TRYAGAINLATER);
-				return;
-			}
-
-			std::filesystem::path targetDir;
-			try {
-				IFileOpenDialogPtr pDialog;
-				DWORD dwFlags;
-				Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
-				Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(m_config->Runtime.GetStringRes(IDS_TITLE_EXPORTTTMPDIRECTORY)));
-				Utils::Win32::Error::ThrowIfFailed(pDialog->GetOptions(&dwFlags));
-				Utils::Win32::Error::ThrowIfFailed(pDialog->SetOptions(dwFlags | FOS_FORCEFILESYSTEM | FOS_PICKFOLDERS));
-				Utils::Win32::Error::ThrowIfFailed(pDialog->Show(m_hWnd), true);
-
-				IShellItemPtr pResult;
-				PWSTR pszFileName;
-				Utils::Win32::Error::ThrowIfFailed(pDialog->GetResult(&pResult));
-				Utils::Win32::Error::ThrowIfFailed(pResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileName));
-				if (!pszFileName)
-					throw std::runtime_error("DEBUG: The selected file does not have a filesystem path.");
-				const auto freeFileName = xivres::util::on_dtor([pszFileName] { CoTaskMemFree(pszFileName); });
-
-				targetDir = pszFileName;
-
-			} catch (const Utils::Win32::CancelledError&) {
-				return;
-
-			} catch (const std::exception& e) {
-				Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
-				return;
-			}
-			auto ttmpl = Utils::Win32::Handle::FromCreateFile(targetDir / "TTMPL.mpl", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
-			auto ttmpd = Utils::Win32::Handle::FromCreateFile(targetDir / "TTMPD.mpd", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0);
-
-			m_backgroundWorkerThread = Utils::Win32::Thread(L"TtmpExporterOnOtherThread", [this, ttmpl = std::move(ttmpl), ttmpd = std::move(ttmpd)]{
-				uint64_t ttmplPtr = 0, ttmpdPtr = 0;
-
-				m_backgroundWorkerProgressWindow = std::make_shared<ProgressPopupWindow>(nullptr);
-
-				size_t index = 0;
-				size_t count = 0;
-				std::vector<std::pair<std::filesystem::path, std::wstring>> worklist;
-				const std::wstring * pLastStartedTargetFile = nullptr;
-
-				const auto workerThread = Utils::Win32::Thread(L"TtmpExporter", [&] {
-					const auto targetBasePath = ResolvePrimaryDirectory(m_config->Runtime.Modding.GameResourceFileEntryRootDirectories.Value(), L"ReplacementFileEntries");
-					try {
-						for (const auto& target : std::filesystem::recursive_directory_iterator(targetBasePath))
-							if (target.is_regular_file()) {
-								worklist.emplace_back(target.path(), relative(target.path(), targetBasePath).wstring());
-								for (auto& c : worklist.back().second) {
-									if (c == L'\\')
-										c = '/';
-								}
-							}
-					} catch (const std::exception& e) {
-						Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
-						return;
-					}
-
-					count = worklist.size();
-
-					for (const auto& [target, relPath] : worklist) {
-						pLastStartedTargetFile = &relPath;
-						auto extensionLower = std::filesystem::path(relPath).extension().wstring();
-						CharLowerW(&extensionLower[0]);
-						try {
-							const auto entryPathSpec = xivres::path_spec(relPath);
-							const auto datFile = entryPathSpec.packname();
-							if (datFile.empty())
-								throw std::runtime_error(std::format("Could not decide where to store {}", relPath));
-
-							std::vector<char> dv;
-							if (file_size(target) == 0)
-								dv = xivres::placeholder_packed_stream(entryPathSpec).read_vector<char>();
-							else if (extensionLower == L".tex")
-								dv = xivres::compressing_packed_stream<xivres::texture_compressing_packer>(entryPathSpec, std::make_shared<xivres::file_stream>(target), Z_BEST_COMPRESSION).read_vector<char>();
-							else if (extensionLower == L".mdl")
-								dv = xivres::compressing_packed_stream<xivres::model_compressing_packer>(entryPathSpec, std::make_shared<xivres::file_stream>(target), Z_BEST_COMPRESSION).read_vector<char>();
-							else
-								dv = xivres::compressing_packed_stream<xivres::standard_compressing_packer>(entryPathSpec, std::make_shared<xivres::file_stream>(target), Z_BEST_COMPRESSION).read_vector<char>();
-
-							if (m_backgroundWorkerProgressWindow->GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-								return;
-
-							const auto entryLine = std::format("{}\n", nlohmann::json::object({
-								{"FullPath", xivres::util::replace(entryPathSpec.text(), std::string("\\"), std::string("/"))},
-								{"ModOffset", ttmpdPtr},
-								{"ModSize", dv.size()},
-								{"DatFile", datFile},
-								}).dump());
-							ttmplPtr += ttmpl.Write(ttmplPtr, std::span(entryLine));
-							ttmpdPtr += ttmpd.Write(ttmpdPtr, std::span(dv));
-							index++;
-						} catch (const std::exception& e) {
-							m_logger->Format<LogLevel::Error>(LogCategory::General, "{}: {}\n", target.wstring(), e.what());
-						}
-					}
-					});
-
-				do {
-					m_backgroundWorkerProgressWindow->UpdateMessage(m_config->Runtime.FormatStringRes(IDS_TITLE_EXPORTTTMPPROGRESS, pLastStartedTargetFile ? *pLastStartedTargetFile : std::wstring(), index, count));
-					if (index == count)
-						m_backgroundWorkerProgressWindow->UpdateProgress(0, 0);
-					else
-						m_backgroundWorkerProgressWindow->UpdateProgress(index, count);
-					m_backgroundWorkerProgressWindow->Show();
-				} while (WAIT_TIMEOUT == m_backgroundWorkerProgressWindow->DoModalLoop(100, { workerThread }));
-				workerThread.Wait();
-				m_backgroundWorkerThread = nullptr;
-				m_backgroundWorkerProgressWindow = nullptr;
-				if (m_ttmpRescanPending.exchange(false))
-					PostMessageW(m_hWnd, WM_COMMAND, ID_MODDING_TTMP_REFRESH, 0);
-				});
-			return;
-		}
 	}
 }
 
@@ -1420,12 +1332,6 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Configure(i
 	auto& config = m_config->Runtime;
 
 	switch (menuId) {
-		case ID_CONFIGURE_SETTINGS:
-			// The settings are in this window.
-			m_config->Runtime.Ui.MainWindow.Show = true;
-			SetForegroundWindow(m_hWnd);
-			return;
-
 		case ID_CONFIGURE_EDITRUNTIMECONFIGURATION:
 			if (m_runtimeConfigEditor && !m_runtimeConfigEditor->IsDestroyed())
 				SetForegroundWindow(m_runtimeConfigEditor->Handle());
@@ -1561,7 +1467,10 @@ std::vector<std::filesystem::path> XivAlexander::Apps::MainApp::Window::MainWind
 	try {
 		IFileOpenDialogPtr pDialog;
 		DWORD dwFlags;
+		// Remembers its own last folder, apart from the other file dialogs'; importing ModPacks is its only use.
+		static constexpr GUID ClientGuid{0x78a319c5, 0xcb8c, 0x471b, {0x9e, 0xb5, 0x6c, 0xac, 0x65, 0xdb, 0x33, 0x3b}};
 		Utils::Win32::Error::ThrowIfFailed(pDialog.CreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER));
+		Utils::Win32::Error::ThrowIfFailed(pDialog->SetClientGuid(ClientGuid));
 		Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypes(static_cast<UINT>(fileTypes.size()), fileTypes.data()));
 		Utils::Win32::Error::ThrowIfFailed(pDialog->SetFileTypeIndex(0));
 		Utils::Win32::Error::ThrowIfFailed(pDialog->SetTitle(m_config->Runtime.GetStringRes(nTitleResId)));
@@ -1730,7 +1639,7 @@ std::pair<std::filesystem::path, std::string> XivAlexander::Apps::MainApp::Windo
 	}
 	const auto fileSize = file.GetFileSize();
 	if (fileSize > 1048576)
-		throw std::runtime_error("File too big");
+		throw std::runtime_error(m_config->Runtime.FormatStringResUtf8(IDS_ERROR_FILE_TOO_BIG));
 
 	if (const auto ttmpl = xivres::textools::mod_pack_json::from_stream(xivres::file_stream(path)); !ttmpl.SimpleModsList.empty() || !ttmpl.ModPackPages.empty()) {
 		const auto msg = InstallTTMP(path, progressWindow);
@@ -1801,14 +1710,14 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::InstallMultipleFiles(const
 	for (const auto& pair : success) {
 		if (!report.empty())
 			report += "\n";
-		report += std::format("OK: {}: {}", pair.first.wstring(), pair.second);
+		report += m_config->Runtime.FormatStringResUtf8(IDS_RESULT_IMPORT_OK, pair.first.wstring(), xivres::util::unicode::convert<std::wstring>(pair.second));
 	}
 	if (!report.empty())
 		report += "\n";
 	for (const auto& pair : ignored) {
 		if (!report.empty())
 			report += "\n";
-		report += std::format("Error: {}: {}", pair.first.wstring(), pair.second);
+		report += m_config->Runtime.FormatStringResUtf8(IDS_RESULT_IMPORT_ERROR, pair.first.wstring(), xivres::util::unicode::convert<std::wstring>(pair.second));
 	}
 
 	if (!report.empty())

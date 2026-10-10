@@ -655,7 +655,10 @@ XivAlexander::Apps::MainApp::App::~App() {
 		TerminateProcess(GetCurrentProcess(), 0);
 	}
 
-	m_pImpl.reset();
+	// Not reset: that nulls m_pImpl before the features go, and their hooks call back into the app from game threads until
+	// each is torn down.
+	delete m_pImpl.get();
+	(void)m_pImpl.release();
 }
 
 void XivAlexander::Apps::MainApp::App::CustomMessageLoopBody() {
